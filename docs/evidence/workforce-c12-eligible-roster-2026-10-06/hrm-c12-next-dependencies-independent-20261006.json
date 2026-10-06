@@ -1,0 +1,1136 @@
+{
+  "schema_version": 1,
+  "reviewer": "independent /root/pr585_independent_review",
+  "reviewed_at": "2026-10-06T08:30:30.734556+00:00",
+  "source_head": "5f87cc94a684d5083804f0dae23116384dda24b4",
+  "main": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+  "status": "READ_ONLY_DEPENDENCY_AND_CONTRACT_REVIEW_NO_NEW_SOURCE_ACCEPTANCE",
+  "ledger": {
+    "raw_rows": 169,
+    "unique_ids": 161,
+    "done": 82,
+    "open": 79,
+    "status_counts": {
+      "DONE": 82,
+      "PARTIAL (OWNER ATTESTATION)": 1,
+      "PARTIAL": 55,
+      "OWNER DECISION": 6,
+      "PLANNED": 14,
+      "BLOCKED": 3
+    },
+    "resolution": "Last explicit task-table row per exact ID; checkpoint prose is historical evidence, not automatic status override.",
+    "duplicates": {
+      "WF-C8-011": [
+        {
+          "line": 981,
+          "status": "PLANNED"
+        },
+        {
+          "line": 6603,
+          "status": "DONE"
+        }
+      ],
+      "WF-C12-004": [
+        {
+          "line": 1068,
+          "status": "PARTIAL"
+        },
+        {
+          "line": 1075,
+          "status": "PARTIAL"
+        }
+      ],
+      "WF-C12-005": [
+        {
+          "line": 1069,
+          "status": "PARTIAL"
+        },
+        {
+          "line": 1076,
+          "status": "PARTIAL"
+        }
+      ],
+      "WF-C12-006": [
+        {
+          "line": 1070,
+          "status": "PLANNED"
+        },
+        {
+          "line": 1077,
+          "status": "PARTIAL"
+        }
+      ],
+      "WF-C12-007": [
+        {
+          "line": 1071,
+          "status": "PLANNED"
+        },
+        {
+          "line": 1078,
+          "status": "PARTIAL"
+        }
+      ],
+      "WF-C12-008": [
+        {
+          "line": 1072,
+          "status": "PARTIAL"
+        },
+        {
+          "line": 1079,
+          "status": "PARTIAL"
+        }
+      ],
+      "WF-C12-009": [
+        {
+          "line": 1073,
+          "status": "PLANNED"
+        },
+        {
+          "line": 1080,
+          "status": "PARTIAL"
+        }
+      ],
+      "WF-C12-010": [
+        {
+          "line": 1074,
+          "status": "DONE"
+        },
+        {
+          "line": 1081,
+          "status": "DONE"
+        }
+      ]
+    },
+    "weighted_progress": "59% retained authoritative checkpoint, not recomputed as82/161.",
+    "gates": "14/15 retained; five GitHub gates are a different metric."
+  },
+  "groups": [
+    {
+      "id": "owner_privacy_decisions",
+      "count": 7,
+      "rows": [
+        "WF-C0-004",
+        "WF-C0-006",
+        "WF-C2-003",
+        "WF-C2-008",
+        "WF-C4-008",
+        "WF-C5-001",
+        "WF-C5-010"
+      ],
+      "dependencies": "Owner/HR/privacy scope and policy evidence; six OWNER DECISION rows remain non-DONE even where notes say OD resolved.",
+      "api_keys_boundary": "No technical dependency on api_keys. Do not independently invent owner/legal approval or close statuses from prose."
+    },
+    {
+      "id": "android_device_assurance",
+      "count": 21,
+      "rows": [
+        "WF-C5-003",
+        "WF-C5-004",
+        "WF-C5-005",
+        "WF-C5-006",
+        "WF-C5-007",
+        "WF-C5-008",
+        "WF-C5-013",
+        "WF-C9-001",
+        "WF-C9-003",
+        "WF-C9-004",
+        "WF-C9-005",
+        "WF-C9-006",
+        "WF-C9-007",
+        "WF-C9-008",
+        "WF-C9-009",
+        "WF-C9-010",
+        "WF-C9-011",
+        "WF-C9-012",
+        "WF-C9-013",
+        "WF-C9-014",
+        "WF-C14-004"
+      ],
+      "dependencies": "Exact signed Android artifact/package/distribution identity, physical devices, official attestation/verdict integration, key/biometric/QR/offline/accessibility matrix.",
+      "api_keys_boundary": "Source/contract preparation can proceed independently; signed physical and external provider evidence requires its own authorized environment. api_keys is not the direct blocker."
+    },
+    {
+      "id": "authorization_security",
+      "count": 6,
+      "rows": [
+        "WF-C5-002",
+        "WF-C5-009",
+        "WF-C5-011",
+        "WF-C7-002",
+        "WF-C7-010",
+        "WF-C10-006"
+      ],
+      "dependencies": "Granular policy enforcement, accountable privilege review, per-use step-up, finite security alerts and purpose-scoped evidence access.",
+      "api_keys_boundary": "Dormant source and pure tests can proceed; operational grants/access changes require scoped approval; full DB RLS acceptance uses authoritative staging."
+    },
+    {
+      "id": "schedule_configuration",
+      "count": 4,
+      "rows": [
+        "WF-C3-006",
+        "WF-C3-009",
+        "WF-C7-007",
+        "WF-C8-007"
+      ],
+      "dependencies": "Versioned overnight/split and future-effective bulk/cover/recurrence contracts, immutable old hashes, safe preview and publish semantics.",
+      "api_keys_boundary": "Source and UI preparation independent of api_keys; new policy scope/DB changes and activation require own review. Existing release-one exclusion must not be silently reversed."
+    },
+    {
+      "id": "exception_workflow",
+      "count": 10,
+      "rows": [
+        "WF-C6-002",
+        "WF-C6-003",
+        "WF-C6-004",
+        "WF-C6-005",
+        "WF-C6-006",
+        "WF-C6-007",
+        "WF-C6-009",
+        "WF-C6-010",
+        "WF-C8-002",
+        "WF-C8-005"
+      ],
+      "dependencies": "Published schedule/calendar eligibility, immutable case lifecycle, scoped queue and employee appeal, bounded corrections/reminder policy, real operational outcomes.",
+      "api_keys_boundary": "Dormant implementation and selected tests independent of api_keys; full historical RLS/staging and reminder delivery/pilot measurement remain separate dependent acceptance."
+    },
+    {
+      "id": "web_accessibility_privacy",
+      "count": 5,
+      "rows": [
+        "WF-C8-008",
+        "WF-C8-009",
+        "WF-C8-010",
+        "WF-C10-008",
+        "WF-C14-003"
+      ],
+      "dependencies": "Permission-separated web surfaces, finite error/recovery/empty states, three-language keyboard/focus/contrast/responsive/zoom and restricted evidence UX.",
+      "api_keys_boundary": "Bounded browser/source work independent of missing api_keys creation. Full role flows depend on security/exception contracts; real AT/device evidence cannot be inferred from geometry."
+    },
+    {
+      "id": "retention_data_rights",
+      "count": 5,
+      "rows": [
+        "WF-C10-004",
+        "WF-C10-005",
+        "WF-C10-009",
+        "WF-C10-010",
+        "WF-C10-011"
+      ],
+      "dependencies": "Retention/legal-hold fail-closed policy, accountable dry runs/purge/audit, data-subject workflows and minimized telemetry/incident response.",
+      "api_keys_boundary": "Pure policy and dry-run/source contracts can proceed. Destructive operations/backup access are not authorized; actual historical schema/restore proof needs authoritative staging."
+    },
+    {
+      "id": "approved_export_delivery",
+      "count": 1,
+      "rows": [
+        "WF-C11-004"
+      ],
+      "dependencies": "Purpose/recipient/scope plus encrypted delivery and expiry; distinguish prepared session download from proven recipient delivery.",
+      "api_keys_boundary": "Contract/source preparation independent of api_keys. External destination/delivery/credentials and release approval are separate; do not manufacture a delivery manifest."
+    },
+    {
+      "id": "reliability_operations",
+      "count": 9,
+      "rows": [
+        "WF-C0-005",
+        "WF-C12-002",
+        "WF-C12-003",
+        "WF-C12-004",
+        "WF-C12-005",
+        "WF-C12-006",
+        "WF-C12-007",
+        "WF-C12-008",
+        "WF-C12-009"
+      ],
+      "dependencies": "Tenant baseline, finite metrics, load/isolation/fairness, dormant jobs and eligible roster, query-plan/storage/restore and reconciliation/rollback exercises.",
+      "api_keys_boundary": "Monitoring source and synthetic tests independent of clean-history replay. Representative historical staging/restore/5k load and runtime schedule/alert delivery are separate gates; api_keys blocks this full-history evidence route, not all implementation."
+    },
+    {
+      "id": "compatibility_rollout",
+      "count": 4,
+      "rows": [
+        "WF-C13-006",
+        "WF-C13-007",
+        "WF-C13-008",
+        "WF-C13-009"
+      ],
+      "dependencies": "Four entitlement modes, migration/rollback window, legacy adoption+offline drain and zero unexplained before/after fact deltas.",
+      "api_keys_boundary": "Source protocol and isolated tests can proceed. Real historical migration rehearsal needs authoritative baseline; deprecation awaits adopted artifact/outbox evidence and scoped release."
+    },
+    {
+      "id": "integrated_security_pilot_release",
+      "count": 7,
+      "rows": [
+        "WF-C14-002",
+        "WF-C14-006",
+        "WF-C14-007",
+        "WF-C14-008",
+        "WF-C14-009",
+        "WF-C14-010",
+        "WF-C14-011"
+      ],
+      "dependencies": "Integrated security and staging drills; named cohort/policies/notices/devices/rollback owner, bounded activation, observed exit review and expansion.",
+      "api_keys_boundary": "Preparation can proceed. Completion depends on earlier source+staging+physical/privacy gates, named owner decisions, and separate release/activation authorization; not a single api_keys-only dependency."
+    }
+  ],
+  "open_rows": [
+    {
+      "id": "WF-C0-004",
+      "priority": "P0",
+      "status": "PARTIAL (OWNER ATTESTATION)",
+      "owner": "Legal/Privacy",
+      "task": "Complete Azerbaijan employment/privacy review and any required employee notice/assessment; add jurisdiction template for future tenants",
+      "evidence": "Owner explicitly closed the LeadDrive privacy gate on 2026-09-12 based on the published section 9 notice, roles and retention; a reusable future-tenant jurisdiction template and any separate external-counsel opinion are not claimed",
+      "line": 777,
+      "dependency_group": "owner_privacy_decisions"
+    },
+    {
+      "id": "WF-C0-005",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "owner": "SRE/DBA",
+      "task": "Capture tenant-scoped baseline: employees, events/day, peak/minute, p50/p95/p99, failures, conflicts, outbox age, storage growth and prior-day opens",
+      "evidence": "Read-only query/NOT RUN baseline recorded; production telemetry access remains required",
+      "line": 778,
+      "dependency_group": "reliability_operations"
+    },
+    {
+      "id": "WF-C0-006",
+      "priority": "P1",
+      "status": "OWNER DECISION",
+      "owner": "Product/Mobile",
+      "task": "Record platforms, distribution, supported OS/device classes and app-version window",
+      "evidence": "OD-01 and OD-15 resolved",
+      "line": 779,
+      "dependency_group": "owner_privacy_decisions"
+    },
+    {
+      "id": "WF-C2-003",
+      "priority": "P0",
+      "status": "OWNER DECISION",
+      "owner": "HR/Privacy",
+      "task": "Approve per-site geofence calibration procedure, minimum/maximum radius and accuracy policy",
+      "evidence": "OD-05 resolved with calibration evidence",
+      "line": 838,
+      "dependency_group": "owner_privacy_decisions"
+    },
+    {
+      "id": "WF-C2-008",
+      "priority": "P1",
+      "status": "OWNER DECISION",
+      "owner": "HR/Legal",
+      "task": "Define inter-site travel, paid/expected treatment, delay grace and who may alter it",
+      "evidence": "OD-09 resolved; calculation rule versioned",
+      "line": 843,
+      "dependency_group": "owner_privacy_decisions"
+    },
+    {
+      "id": "WF-C3-006",
+      "priority": "P1",
+      "status": "PLANNED",
+      "owner": "Backend",
+      "task": "Extend schedule model for overnight/split segments without changing historical definition hashes",
+      "evidence": "Compatibility and DST/property tests",
+      "line": 863,
+      "dependency_group": "schedule_configuration"
+    },
+    {
+      "id": "WF-C3-009",
+      "priority": "P2",
+      "status": "PARTIAL",
+      "owner": "HR/Web",
+      "task": "Add bulk assignments, temporary cover, recurring templates and safe preview",
+      "evidence": "[`workforce-c3-bulk-preview-evidence-2026-08-30.md`](./workforce-c3-bulk-preview-evidence-2026-08-30.md): named 200-person browser draft and read-only impact preview; bulk apply/cover/recurrence remain deliberately unavailable",
+      "line": 866,
+      "dependency_group": "schedule_configuration"
+    },
+    {
+      "id": "WF-C4-008",
+      "priority": "P1",
+      "status": "OWNER DECISION",
+      "owner": "Product/HR/Privacy",
+      "task": "Define equitable fallback when GPS/QR/device/smartphone is unavailable, including disability and lost-phone cases: retry, kiosk/alternative proof or reviewed manual request",
+      "evidence": "OD-16 resolved; every rejection code has a safe recovery action",
+      "line": 887,
+      "dependency_group": "owner_privacy_decisions"
+    },
+    {
+      "id": "WF-C5-001",
+      "priority": "P0",
+      "status": "OWNER DECISION",
+      "owner": "Product/Security/HR",
+      "task": "Approve assurance tiers per tenant/site/action and BYOD/company-device rules",
+      "evidence": "OD-02 and OD-04 resolved",
+      "line": 901,
+      "dependency_group": "owner_privacy_decisions"
+    },
+    {
+      "id": "WF-C5-002",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "owner": "Security/Backend",
+      "task": "Require HRM-specific MFA/step-up policy for critical employee/admin actions; preserve recovery codes and accountable reset",
+      "evidence": "[Attendance-security MFA evidence](./workforce-c5-attendance-security-mfa-evidence-2026-08-30.md): critical QR/device-admin mutations fail closed unless the accountable live admin has an enrolled mandatory MFA factor; mobile per-use step-up remains open",
+      "line": 902,
+      "dependency_group": "authorization_security"
+    },
+    {
+      "id": "WF-C5-003",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "owner": "Mobile/Security",
+      "task": "Generate non-exportable Android Keystore keys with user-auth properties and safe rotation",
+      "evidence": "[`Android foundation`](./workforce-c9-android-foundation-evidence-2026-08-30.md) and [`terminal cleanup`](./workforce-c5-device-key-terminal-cleanup-evidence-2026-08-31.md): challenge-bound Android Keystore/StrongBox-preferred source plus server-confirmed terminal-state key cleanup exist; physical key lifecycle, rotation transport and server validation remain open",
+      "line": 903,
+      "dependency_group": "android_device_assurance"
+    },
+    {
+      "id": "WF-C5-004",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "owner": "Backend/Security",
+      "task": "Validate Android Key Attestation chain, roots, revocation, security level, challenge and app identity server-side",
+      "evidence": "[`attestation verifier foundation`](./workforce-c5-android-key-attestation-foundation-evidence-2026-08-30.md), [`server-first preflight`](./workforce-c5-attestation-preflight-evidence-2026-08-31.md), [`material minimization`](./workforce-c5-attestation-material-minimization-evidence-2026-09-01.md) and [`receipt write fence`](./workforce-c5-attestation-receipt-write-fence-evidence-2026-09-01.md): fail-closed verifier foundation and server nonce exist, while approval/use require a minimal verified receipt; official verifier integration, receipt writer, live status feed and physical evidence remain open",
+      "line": 904,
+      "dependency_group": "android_device_assurance"
+    },
+    {
+      "id": "WF-C5-005",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "owner": "Mobile/Backend",
+      "task": "Bind Play Integrity verdict/request hash to the exact attendance action; use tiered response and no verdict cache",
+      "evidence": "[`Play Integrity binding evidence`](./workforce-c5-play-integrity-binding-evidence-2026-08-30.md): exact-action hash, fresh Android token path, server decoder and minimal verification fact are default-off and fail closed without explicit identity/service configuration; live Google decode, migration apply and physical tamper evidence remain open",
+      "line": 905,
+      "dependency_group": "android_device_assurance"
+    },
+    {
+      "id": "WF-C5-006",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "owner": "Mobile",
+      "task": "Use local BiometricPrompt/device credential only to unlock per-use signature; no template/result leaves OS",
+      "evidence": "[`local-biometric foundation`](./workforce-c5-local-biometric-foundation-evidence-2026-08-30.md) and [`manifest downgrade fence`](./workforce-c5-biometric-manifest-fence-evidence-2026-09-01.md): the OS-owned strong-biometric prompt releases one exact Keystore signature behind an atomic one-shot callback fence, and biometric-only policy cannot fall through unsigned; Android Gradle, packet/log inspection and physical biometric evidence remain open",
+      "line": 906,
+      "dependency_group": "android_device_assurance"
+    },
+    {
+      "id": "WF-C5-007",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "owner": "Backend/Web",
+      "task": "Complete device pending/approve/revoke/replace/lost/recovery UI with separation of duties",
+      "evidence": "[Partial UI evidence](./workforce-c5-attendance-admin-ui-evidence-2026-08-30.md) and [`attestation receipt fence`](./workforce-c5-attestation-receipt-write-fence-evidence-2026-09-01.md): self-approval is rejected, proof-only enrollment cannot be promoted, linked employees can revoke only their own pending/active factor, and replacement lineage is visible. Signed-mobile recovery and physical evidence remain open",
+      "line": 907,
+      "dependency_group": "android_device_assurance"
+    },
+    {
+      "id": "WF-C5-008",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "owner": "Backend/Web",
+      "task": "Complete QR station create/display/rotate/disable/emergency replacement UI linked to a site, with controller health and clock-skew state",
+      "evidence": "[Partial UI evidence](./workforce-c5-attendance-admin-ui-evidence-2026-08-30.md): MFA-gated emergency replacement atomically creates a same-site/same-effective-circle successor and disables the old station; physical controller health/skew and display verification remain open",
+      "line": 908,
+      "dependency_group": "android_device_assurance"
+    },
+    {
+      "id": "WF-C5-009",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "owner": "Security/Backend",
+      "task": "Detect concurrent sessions/devices, impossible device changes and abnormal action volume; route to review",
+      "evidence": "[Review-only triage evidence](./workforce-c5-security-triage-evidence-2026-08-30.md): bounded aggregate concurrent-device/churn/volume prompts and metadata-only audit; C6 lifecycle and C7 reviewer scope remain open",
+      "line": 909,
+      "dependency_group": "authorization_security"
+    },
+    {
+      "id": "WF-C5-010",
+      "priority": "P1",
+      "status": "OWNER DECISION",
+      "owner": "Product/HR/Security",
+      "task": "Define site kiosk/badge/PIN mode, anti-sharing controls and emergency fallback",
+      "evidence": "OD-06 resolved before kiosk implementation",
+      "line": 910,
+      "dependency_group": "owner_privacy_decisions"
+    },
+    {
+      "id": "WF-C5-011",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "owner": "Security",
+      "task": "Add rate limits, nonce/challenge expiry, key/secret rotation, redaction and security event alerts",
+      "evidence": "[Endpoint throttling evidence](./workforce-c5-attendance-rate-limit-evidence-2026-08-30.md): fingerprinted QR/device endpoint throttles and existing one-time expiry are regression-tested; central limiter, rotation and alerts remain open",
+      "line": 911,
+      "dependency_group": "authorization_security"
+    },
+    {
+      "id": "WF-C5-013",
+      "priority": "P1",
+      "status": "PLANNED",
+      "owner": "Security/QA",
+      "task": "Exercise QR photo/video relay and remote screen-sharing scenarios; document proximity mitigations and residual risk",
+      "evidence": "Threat test/evidence shows which policy combinations detect or cannot prevent relay",
+      "line": 913,
+      "dependency_group": "android_device_assurance"
+    },
+    {
+      "id": "WF-C6-002",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "owner": "Backend",
+      "task": "Create immutable exception case/decision lifecycle with deduplication and links to claim/evidence/workday/segment",
+      "evidence": "[`workforce-c6-exception-case-lifecycle-evidence-2026-08-30.md`](./workforce-c6-exception-case-lifecycle-evidence-2026-08-30.md), [`scoped decision API`](./workforce-c6-scoped-decision-api-evidence-2026-08-31.md), [`scoped workbench backend`](./workforce-c6-scoped-workbench-backend-evidence-2026-09-26.md), [`case-revision cutover`](./workforce-c6-case-revision-cutover-evidence-2026-09-27.md), [`employee-response rollout fence`](./workforce-c6-exception-response-rollout-fence-evidence-2026-09-27.md), [`inactive policy-revision foundation`](./workforce-c6-exception-policy-revision-foundation-evidence-2026-09-27.md), [`policy-revision FK validation`](./workforce-c6-exception-policy-revision-validation-evidence-2026-09-27.md), [`dormant policy-revision writer`](./workforce-c6-exception-policy-revision-writer-evidence-2026-09-27.md), [`session-only acknowledgement API`](./workforce-c6-exception-policy-revision-session-api-evidence-2026-09-27.md) and [`draft-receipt GET`](./workforce-c6-exception-policy-revision-read-api-evidence-2026-09-27.md): immutable/RLS storage, exact replay, granular scope, case-local causal revisions, response-channel rollout fencing and session-attributed inactive draft provenance recording/readback exist; separately fenced activation/decision linkage/terminal action/UI remain open",
+      "line": 927,
+      "dependency_group": "exception_workflow"
+    },
+    {
+      "id": "WF-C6-003",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "owner": "Backend",
+      "task": "Generate no-show only from a published expected schedule after grace and approved leave/calendar checks",
+      "evidence": "[`exception intake`](./workforce-c6-exception-intake-evidence-2026-08-30.md) and [`bounded scheduler`](./workforce-c6-no-show-review-scheduler-evidence-2026-09-01.md): a default-deny leased worker rechecks published historical schedule, grace, employment, calendar/leave and current workday state inside a serializable materialization transaction, then writes only an immutable review case. Production cadence, tenant flag/cohort, measured load and applied-RLS concurrency remain open",
+      "line": 928,
+      "dependency_group": "exception_workflow"
+    },
+    {
+      "id": "WF-C6-004",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "owner": "Backend/HR",
+      "task": "Define missed checkout and stale open-shift policy: reminder, review, bounded auto-close proposal or manual correction",
+      "evidence": "[`workforce-c6-exception-intake-evidence-2026-08-30.md`](./workforce-c6-exception-intake-evidence-2026-08-30.md): safe generic reminder/review proposal requires immutable schedule and complete observation; it never fabricates a finish, while policy timing/delivery/auto-close stay owner-gated",
+      "line": 929,
+      "dependency_group": "exception_workflow"
+    },
+    {
+      "id": "WF-C6-005",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "owner": "Web",
+      "task": "Build exception queue with scope, risk, age, evidence completeness, employee response and next action",
+      "evidence": "[`queue foundation`](./workforce-c6-exception-queue-foundation-evidence-2026-08-30.md), [`scoped backend`](./workforce-c6-scoped-workbench-backend-evidence-2026-09-26.md), [`case-revision cutover`](./workforce-c6-case-revision-cutover-evidence-2026-09-27.md), [`scoped acknowledgement UI`](./workforce-c6-exception-acknowledgement-ui-evidence-2026-09-27.md) and [`correction-request UI`](./workforce-c6-exception-correction-request-ui-evidence-2026-09-27.md): the raw-proof-free queue filters by immutable historical team/site grants, evaluates current-cycle signals only by validated case revision and exposes only one exact server-offered acknowledgement or correction-review request through a two-step UI; employee-response/appeal UI, terminal action enablement, real browser evidence and full C6 acceptance remain open",
+      "line": 930,
+      "dependency_group": "exception_workflow"
+    },
+    {
+      "id": "WF-C6-006",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "owner": "Web/Mobile",
+      "task": "Let employee explain or appeal an exception and request a correction from the exact day/segment",
+      "evidence": "[`employee-response foundation`](./workforce-c6-employee-response-foundation-evidence-2026-08-30.md), [`case-to-correction source link`](./workforce-c6-correction-request-link-evidence-2026-08-31.md), [`mobile self-exception foundation`](./workforce-c6-mobile-self-exception-evidence-2026-08-31.md), [`case-revision cutover`](./workforce-c6-case-revision-cutover-evidence-2026-09-27.md), [`response rollout fence`](./workforce-c6-exception-response-rollout-fence-evidence-2026-09-27.md), [`self-response projection`](./workforce-c6-self-response-projection-evidence-2026-09-27.md), [`mobile self-response projection`](./workforce-c6-mobile-self-response-projection-evidence-2026-09-27.md), [`mobile acknowledgement API`](./workforce-c6-mobile-acknowledgement-api-evidence-2026-09-27.md), [`web revision binding`](./workforce-c6-web-response-revision-binding-evidence-2026-09-28.md) and [`response-cycle deduplication`](./workforce-c6-exception-response-cycle-dedup-evidence-2026-09-28.md): self discovery and exact-case/workday/source correction linking exist across web/mobile; bounded current-cycle acknowledgement status is projected across server/web/mobile, both server-only mobile plus existing web acknowledgement writes bind the employee-visible revision under the case lock, and cooperating writers allow only one operation per case revision. Android control/outbox/delivery, database-enforced cycle uniqueness, full appeal UX and real mobile/browser evidence remain open",
+      "line": 931,
+      "dependency_group": "exception_workflow"
+    },
+    {
+      "id": "WF-C6-007",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "owner": "Backend",
+      "task": "Constrain manager corrections to configured date/duration/range rules; mark derived records as manual",
+      "evidence": "[`workforce-c6-correction-bounds-foundation-evidence-2026-08-30.md`](./workforce-c6-correction-bounds-foundation-evidence-2026-08-30.md): the session-only correction route has mandatory MFA, strict input validation, a fail-closed shared rate guard, generic conflict containment and immutable service handoff; tenant bounds-policy selection and escalation ownership remain open",
+      "line": 932,
+      "dependency_group": "exception_workflow"
+    },
+    {
+      "id": "WF-C6-009",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "owner": "Notifications",
+      "task": "Add reminders/escalations for missed actions and aging cases without exposing reasons/location in unsafe channels",
+      "evidence": "[`workforce-c6-exception-notification-boundary-evidence-2026-08-31.md`](./workforce-c6-exception-notification-boundary-evidence-2026-08-31.md): pure private in-app planner suppresses unsafe/ineligible/duplicate delivery and emits no raw HRM proof; durable outbox, retry worker, policy/recipient mapping and delivery evidence remain open",
+      "line": 934,
+      "dependency_group": "exception_workflow"
+    },
+    {
+      "id": "WF-C6-010",
+      "priority": "P2",
+      "status": "PLANNED",
+      "owner": "HR/Analytics",
+      "task": "Measure false positives, correction rate, appeal overturn rate and time-to-resolution",
+      "evidence": "Aggregated metrics exclude raw coordinates/reasons",
+      "line": 935,
+      "dependency_group": "exception_workflow"
+    },
+    {
+      "id": "WF-C7-002",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "owner": "Backend",
+      "task": "Implement granular scopes: employee self, team/site manager, scheduler, time approver, evidence reviewer, device admin, export custodian, retention/legal-hold officer, pilot/rollback operator and tenant admin",
+      "evidence": "[`granular foundation`](./workforce-c7-granular-access-foundation-evidence-2026-08-30.md), [`write fence`](./workforce-c7-grant-management-write-fence-evidence-2026-09-05.md), [`Today read fence`](./workforce-c7-today-granular-read-fence-evidence-2026-09-01.md), [`Timesheet read fence`](./workforce-c7-timesheet-granular-read-fence-evidence-2026-09-01.md), [`request-read grant evidence`](./workforce-c7-request-read-grant-evidence-2026-09-13.md), [`named-read session boundary`](./workforce-c7-session-read-boundary-evidence-2026-09-13.md), [`actor-independent grant evidence`](./workforce-c7-actorless-read-grants-evidence-2026-09-13.md), [`timesheet approval grant evidence`](./workforce-c7-timesheet-approval-grant-evidence-2026-09-13.md), [`direct correction grant evidence`](./workforce-c7-direct-correction-grant-evidence-2026-09-13.md), [`shift configuration grant evidence`](./workforce-c7-shift-configuration-grant-evidence-2026-09-13.md), [`assignment configuration grant evidence`](./workforce-c7-assignment-configuration-grant-evidence-2026-09-13.md), [`policy configuration grant evidence`](./workforce-c7-policy-configuration-grant-evidence-2026-09-13.md), [`site-assignment grant evidence`](./workforce-c7-site-assignment-grant-evidence-2026-09-13.md), [`site/geofence configuration grant evidence`](./workforce-c7-site-geofence-configuration-grant-evidence-2026-09-13.md), [`pilot-fence grant evidence`](./workforce-c7-pilot-fence-grant-evidence-2026-09-13.md), [`attendance-security grant evidence`](./workforce-c7-attendance-security-grant-evidence-2026-09-13.md) and [`retention dry-run grant evidence`](./workforce-c7-retention-read-grant-evidence-2026-09-13.md): the empty ledger and replay-safe management endpoints feed bounded inventory/search and default-off pre-disclosure reads/approvals/corrections/configuration; named browser reads reject API-key impersonation and deliberately granted principals no longer depend on a legacy CRM actor. Historical-team grants, remaining endpoint migration, browser role management, initial custody, tenant activation and disposable-DB/RLS evidence stay open",
+      "line": 949,
+      "dependency_group": "authorization_security"
+    },
+    {
+      "id": "WF-C7-007",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "owner": "HR/Web",
+      "task": "Add future-effective bulk schedules/sites, preview, conflict report and reversible draft before publish",
+      "evidence": "[`workforce-c7-bulk-draft-preview-evidence-2026-08-30.md`](./workforce-c7-bulk-draft-preview-evidence-2026-08-30.md): named schedule/site browser drafts and read-only conflict reports are safe; durable publish and recurrence remain open",
+      "line": 954,
+      "dependency_group": "schedule_configuration"
+    },
+    {
+      "id": "WF-C7-010",
+      "priority": "P2",
+      "status": "PARTIAL",
+      "owner": "Security/HR",
+      "task": "Review access and decisions periodically; disable stale privileged assignments",
+      "evidence": "[`workforce-c7-access-review-foundation-2026-09-13.md`](./workforce-c7-access-review-foundation-2026-09-13.md): bounded tenant-snapshot review detects expired, inactive, stale, incompatible and out-of-window grants by exact grant ID; it is dry-run only, while the durable reader, reviewed revocation, schedule and staging SLA remain open",
+      "line": 957,
+      "dependency_group": "authorization_security"
+    },
+    {
+      "id": "WF-C8-002",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "owner": "Web",
+      "task": "Rebuild manager Today around scheduled roster, no-show/previous-open and exceptions rather than only existing workdays",
+      "evidence": "[`bounded manager Today evidence`](./workforce-c8-manager-today-evidence-2026-09-29.md): scheduled roster, immutable/live plan boundary, distinct calendar, previous-open fact and independently authorized persisted exception projection are implemented with stable pagination and safe response minimization; real browser/AT proof that the absent employee is visible and explained remains open",
+      "line": 972,
+      "dependency_group": "exception_workflow"
+    },
+    {
+      "id": "WF-C8-005",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "owner": "Web",
+      "task": "Add exception workbench and employee response/appeal context",
+      "evidence": "[`Scoped acknowledgement UI`](./workforce-c6-exception-acknowledgement-ui-evidence-2026-09-27.md) and [`correction-request UI`](./workforce-c6-exception-correction-request-ui-evidence-2026-09-27.md): the queue shows scoped risk/age/evidence/response context and records one exact server-offered non-terminal acknowledgement or correction-review request through a two-step localized UI; employee response/appeal surfaces, terminal lifecycle and real browser evidence remain open, so C6 acceptance is not yet met",
+      "line": 975,
+      "dependency_group": "exception_workflow"
+    },
+    {
+      "id": "WF-C8-007",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "owner": "Web",
+      "task": "Add schedule/calendar/break/segment policy editor with safe defaults and validation",
+      "evidence": "[`ordered segment editor evidence`](./workforce-c8-shift-segment-editor-evidence-2026-09-29.md), [`organization calendar evidence`](./workforce-c8-calendar-configuration-evidence-2026-09-29.md), [`team calendar evidence`](./workforce-c8-team-calendar-configuration-evidence-2026-09-29.md), [`employee calendar evidence`](./workforce-c8-agent-calendar-configuration-evidence-2026-09-29.md) and [`atomic moved-day evidence`](./workforce-c8-moved-day-configuration-evidence-2026-09-29.md): named ACTIVE sites, ordered released segments, strict future organization/team/employee holiday/closure/exception create/list and atomic organization/team moved-day create/list are source-complete; moved-day reversal/delete, general update/delete governance, break-policy authoring and real browser/AT evidence remain open",
+      "line": 977,
+      "dependency_group": "schedule_configuration"
+    },
+    {
+      "id": "WF-C8-008",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "owner": "Web",
+      "task": "Add proof-policy, QR station and trusted-device administration separated by permission",
+      "evidence": "[`workforce-c5-attendance-admin-ui-evidence-2026-08-30.md`](./workforce-c5-attendance-admin-ui-evidence-2026-08-30.md): named-site/effective-circle QR station creation plus device/QR lifecycle UI are administrator-only; proof-policy UI and granular separation-of-duties await C7/C5 gates",
+      "line": 978,
+      "dependency_group": "web_accessibility_privacy"
+    },
+    {
+      "id": "WF-C8-009",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "owner": "Web",
+      "task": "Add restricted evidence timeline and access audit; normal view shows verdict instead of exact coordinates",
+      "evidence": "[`derived evidence timeline evidence`](./workforce-c10-derived-evidence-timeline-evidence-2026-09-13.md): a visible named-employee web timeline now returns only bounded localized verdict/reason records after exact grant, explicit context and successful access audit; raw-investigation policy/UI and real-browser acceptance remain open",
+      "line": 979,
+      "dependency_group": "web_accessibility_privacy"
+    },
+    {
+      "id": "WF-C8-010",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "owner": "Web/I18n",
+      "task": "Complete AZ/RU/EN, keyboard, focus, contrast, 200% zoom, responsive tablet/phone and error/empty states",
+      "evidence": "[`derived evidence timeline evidence`](./workforce-c10-derived-evidence-timeline-evidence-2026-09-13.md) and [`bulk preview evidence`](./workforce-c7-bulk-draft-preview-evidence-2026-08-30.md): AZ/RU/EN, concise announcements, focus transfer, bounded named search, responsive source and error/empty states exist; real browser/AT/contrast/200%-zoom/mobile evidence remains open",
+      "line": 980,
+      "dependency_group": "web_accessibility_privacy"
+    },
+    {
+      "id": "WF-C9-001",
+      "priority": "P0",
+      "status": "BLOCKED",
+      "owner": "Product/Mobile",
+      "task": "Approve repository/app ownership, Android-first scope, package/signing/distribution and supported device matrix",
+      "evidence": "OD-01/OD-15 resolved; keys/credentials stay outside git",
+      "line": 993,
+      "dependency_group": "android_device_assurance"
+    },
+    {
+      "id": "WF-C9-003",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "owner": "Mobile",
+      "task": "Build Today state machine UI with one action, current segment/site, timer and server truth",
+      "evidence": "[`workforce-c9-android-foundation-evidence-2026-08-30.md`](./workforce-c9-android-foundation-evidence-2026-08-30.md): source restores server truth after process death, uses server-disclosed actions and requires live acknowledgement; an explicit allow-list now renders only one server-selected immutable current/next segment and safe site name, never GPS/address/geofence/QR/proof. Physical verification remains open",
+      "line": 995,
+      "dependency_group": "android_device_assurance"
+    },
+    {
+      "id": "WF-C9-004",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "owner": "Mobile",
+      "task": "Build Work Time history and day detail with pending/conflict/review/correction status",
+      "evidence": "[`Android foundation`](./workforce-c9-android-foundation-evidence-2026-08-30.md), [`accepted day detail`](./workforce-c9-mobile-history-detail-evidence-2026-08-31.md) and [`local recovery status`](./workforce-c9-history-local-recovery-evidence-2026-08-31.md): bounded self history and expandable accepted event/review/correction detail expose no raw proof, while only global metadata-only pending/conflict/review counts are shown; device evidence remains open",
+      "line": 996,
+      "dependency_group": "android_device_assurance"
+    },
+    {
+      "id": "WF-C9-005",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "owner": "Mobile",
+      "task": "Build Requests: leave, absence, correction, cancellation, evidence-safe reason and status history",
+      "evidence": "[`Android foundation`](./workforce-c9-android-foundation-evidence-2026-08-30.md), [`request status history`](./workforce-c9-mobile-request-history-evidence-2026-08-31.md) and [`request delivery recovery`](./workforce-c9-request-local-recovery-evidence-2026-08-31.md): typed employee-only request/cancellation, encrypted per-domain queue, explicit self-history/status timeline and aggregate local delivery status exist; physical form/offline/conflict/review evidence remains open",
+      "line": 997,
+      "dependency_group": "android_device_assurance"
+    },
+    {
+      "id": "WF-C9-006",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "owner": "Mobile",
+      "task": "Implement encrypted local database/outbox, per-domain ordering, operation IDs, retry bounds and logout/tenant-change isolation",
+      "evidence": "[`Android foundation`](./workforce-c9-android-foundation-evidence-2026-08-30.md), [`account-bound outbox fence`](./workforce-c9-account-bound-outbox-evidence-2026-08-31.md) and [`sign-in boundary`](./workforce-c9-sign-in-boundary-evidence-2026-08-31.md): encrypted Room payload envelope, fixed operation ID, 7-day/8-attempt bounds, scoped WorkManager drain and account-isolated successful sign-in boundary exist; Android build/Room migration/process-death/two-account/7-day tests remain open",
+      "line": 998,
+      "dependency_group": "android_device_assurance"
+    },
+    {
+      "id": "WF-C9-007",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "owner": "Mobile",
+      "task": "Implement permission-aware action-time location capture and approved on-duty transition mode; stop at Finish/off-shift",
+      "evidence": "[`Android foundation`](./workforce-c9-android-foundation-evidence-2026-08-30.md), [`policy contract`](./workforce-c9-action-time-location-contract-evidence-2026-08-31.md), [`v4 action binding`](./workforce-c9-action-time-location-binding-evidence-2026-08-31.md) and [`encrypted persistence`](./workforce-c9-action-time-evidence-persistence-evidence-2026-08-31.md): foreground-only action capture, permission/recovery, immediate-only transport, quality fail-closed guard, transaction-bound encrypted raw evidence, raw-free quality assessment and server-resolved immutable SITE geofence verdict now exist; C6 review-case lifecycle and physical background/permission/battery evidence remain open",
+      "line": 999,
+      "dependency_group": "android_device_assurance"
+    },
+    {
+      "id": "WF-C9-008",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "owner": "Mobile",
+      "task": "Implement QR scanner with fresh-token immediate path; never persist raw QR or queue an expired scan",
+      "evidence": "[`Android foundation`](./workforce-c9-android-foundation-evidence-2026-08-30.md) and [`fresh QR action-attempt fence`](./workforce-c9-qr-attempt-fence-evidence-2026-08-31.md): delegated single-QR callback is bound to one live server-required action, uses an opaque one-use token, has no app camera permission and bypasses durable outbox; device storage/log/replay evidence remains open",
+      "line": 1000,
+      "dependency_group": "android_device_assurance"
+    },
+    {
+      "id": "WF-C9-009",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "owner": "Mobile",
+      "task": "Implement device enrollment, attested key, local authentication, revoke/replace cleanup and exact-action signature",
+      "evidence": "[`Android foundation`](./workforce-c9-android-foundation-evidence-2026-08-30.md), [`sign-in boundary`](./workforce-c9-sign-in-boundary-evidence-2026-08-31.md), [`mobile replacement source`](./workforce-c9-device-replacement-source-evidence-2026-09-01.md) and [`terminal cleanup`](./workforce-c5-device-key-terminal-cleanup-evidence-2026-08-31.md): Android Keystore candidate, per-use OS strong-biometric signature, self enrollment/proof, account-bound cleanup, manager-approved replacement link, server-confirmed terminal key cleanup and exact workday signature source exist; server attestation validation and physical H5 matrix remain open",
+      "line": 1001,
+      "dependency_group": "android_device_assurance"
+    },
+    {
+      "id": "WF-C9-010",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "owner": "Mobile",
+      "task": "Implement offline/conflict/review recovery center and safe re-scan/re-capture rules",
+      "evidence": "[`workforce-c9-android-foundation-evidence-2026-08-30.md`](./workforce-c9-android-foundation-evidence-2026-08-30.md), [`location recovery`](./workforce-c9-location-recovery-evidence-2026-08-31.md) and [`server-truth return`](./workforce-c9-recovery-server-truth-evidence-2026-08-31.md): metadata-only outbox recovery, explicit fresh-capture/review guidance and a distinct return to current server truth exist; Android conflict/device/re-scan exercise remains open",
+      "line": 1002,
+      "dependency_group": "android_device_assurance"
+    },
+    {
+      "id": "WF-C9-011",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "owner": "Mobile",
+      "task": "Add push/local reminders for shift/segment/missed action with privacy-safe notification text",
+      "evidence": "[`Android foundation`](./workforce-c9-android-foundation-evidence-2026-08-30.md) and [`next-segment reminder`](./workforce-c9-next-segment-reminder-evidence-2026-09-01.md): opt-in generic local end/next-segment source uses only immutable server instants and has no identifier/payload input; permission/channel/delivery physical tests plus push/start-before-workday lanes remain open",
+      "line": 1003,
+      "dependency_group": "android_device_assurance"
+    },
+    {
+      "id": "WF-C9-012",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "owner": "Mobile",
+      "task": "Add AZ/RU/EN, TalkBack, 200% font, 48 dp, reduced motion, poor-vision/color-independent states",
+      "evidence": "[`workforce-c9-android-foundation-evidence-2026-08-30.md`](./workforce-c9-android-foundation-evidence-2026-08-30.md): AZ/RU/EN core resource catalogs, canonical server update-error mapping, tab state semantics, live status and explicit 48 dp source exist; physical accessibility/language review remains open",
+      "line": 1004,
+      "dependency_group": "android_device_assurance"
+    },
+    {
+      "id": "WF-C9-013",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "owner": "Mobile/SRE",
+      "task": "Add privacy-safe crash/sync telemetry, build SHA, app version and device-class diagnostics",
+      "evidence": "[`workforce-c9-android-foundation-evidence-2026-08-30.md`](./workforce-c9-android-foundation-evidence-2026-08-30.md): bounded app/build/platform/device-class diagnostics are sent through the existing sanitized sync census; crash SDK, telemetry collector/dashboard and release/privacy review remain open",
+      "line": 1005,
+      "dependency_group": "android_device_assurance"
+    },
+    {
+      "id": "WF-C9-014",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "owner": "Mobile",
+      "task": "Implement version migration, forced upgrade, offline outbox drain and safe uninstall/lost-device guidance",
+      "evidence": "[`workforce-c9-android-foundation-evidence-2026-08-30.md`](./workforce-c9-android-foundation-evidence-2026-08-30.md): client/server update gate and update-safe encrypted outbox source exist; supported device/version matrix, managed-Play release and physical rollback drill remain open",
+      "line": 1006,
+      "dependency_group": "android_device_assurance"
+    },
+    {
+      "id": "WF-C10-004",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "owner": "Backend",
+      "task": "Implement one-year time/decision retention with explicit eligible classes, legal-hold fail-closed check and immutable purge audit",
+      "evidence": "[`workforce-c10-time-decision-retention-hold-evidence-2026-08-30.md`](./workforce-c10-time-decision-retention-hold-evidence-2026-08-30.md): calendar-year inventory and immutable tenant hold contract are fail-closed; writer, executor and immutable purge audit remain fenced",
+      "line": 1023,
+      "dependency_group": "retention_data_rights"
+    },
+    {
+      "id": "WF-C10-005",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "owner": "Backend/SRE",
+      "task": "Add retention dry run, backup/restore verification, batching, resume cursor, pressure stop and metrics",
+      "evidence": "[`workforce-c10-retention-dry-run-evidence-2026-08-30.md`](./workforce-c10-retention-dry-run-evidence-2026-08-30.md): dry-run, bounded batching and fail-closed external-execution preflight complete; restore proof, cursor/lease implementation, pressure metrics and staging drill remain open",
+      "line": 1024,
+      "dependency_group": "retention_data_rights"
+    },
+    {
+      "id": "WF-C10-006",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "owner": "Security/Web",
+      "task": "Enforce restricted raw-evidence access, purpose/reason, access log and periodic review",
+      "evidence": "[`derived evidence timeline evidence`](./workforce-c10-derived-evidence-timeline-evidence-2026-09-13.md): generic managers/API keys are denied; the visible directory and timeline require explicit purpose/reason plus the same exact evidence-review grant and audit before response; the wire timeline is raw-free and its internal IDs are removed from the parsed result before rendering, while raw-investigation policy/UI and periodic review remain open",
+      "line": 1025,
+      "dependency_group": "authorization_security"
+    },
+    {
+      "id": "WF-C10-008",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "owner": "Product/Mobile/Web",
+      "task": "Show employees when/why location is captured, permission state, retention summary and how to request correction",
+      "evidence": "[`Android action transparency`](./workforce-c9-action-time-location-transparency-evidence-2026-08-31.md): AZ/RU/EN source gives an action-specific current-location/no-background explanation only when the server manifest requires location; rendered permission/accessibility and physical employee acceptance remain open",
+      "line": 1027,
+      "dependency_group": "web_accessibility_privacy"
+    },
+    {
+      "id": "WF-C10-009",
+      "priority": "P1",
+      "status": "PLANNED",
+      "owner": "Backend/Privacy",
+      "task": "Implement employee/tenant data access/export/deactivation workflows with redaction and third-party separation",
+      "evidence": "Subject/contract request test and approval audit",
+      "line": 1028,
+      "dependency_group": "retention_data_rights"
+    },
+    {
+      "id": "WF-C10-010",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "owner": "Security/SRE",
+      "task": "Add privacy/security incident runbook for location/device/export exposure",
+      "evidence": "[`workforce-c10-privacy-security-incident-runbook-2026-08-30.md`](./workforce-c10-privacy-security-incident-runbook-2026-08-30.md): privacy-safe preservation, containment, triage and recovery procedure is recorded; named notification owner and tabletop drill remain external/NOT RUN",
+      "line": 1029,
+      "dependency_group": "retention_data_rights"
+    },
+    {
+      "id": "WF-C10-011",
+      "priority": "P2",
+      "status": "PLANNED",
+      "owner": "Privacy/Analytics",
+      "task": "Use aggregated/minimized operational metrics; forbid raw location/reasons in general analytics",
+      "evidence": "Schema/log scanners and dashboard review",
+      "line": 1030,
+      "dependency_group": "retention_data_rights"
+    },
+    {
+      "id": "WF-C11-004",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "owner": "Security/Web",
+      "task": "Require purpose, recipient, authorized scope and encrypted delivery channel; set artifact expiry",
+      "evidence": "[`workforce-c11-direct-export-purpose-evidence-2026-08-30.md`](./workforce-c11-direct-export-purpose-evidence-2026-08-30.md): fixed direct-review purpose, MFA, shared rate guard and historic export-custodian scope exist; external encrypted artifact delivery/expiry remain open",
+      "line": 1046,
+      "dependency_group": "approved_export_delivery"
+    },
+    {
+      "id": "WF-C12-002",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "owner": "Backend/SRE",
+      "task": "Emit tenant-safe metrics by stream/app/schema/policy result without high-cardinality employee/location data",
+      "evidence": "[`bounded mobile-sync telemetry evidence`](./workforce-c12-mobile-sync-telemetry-evidence-2026-09-13.md): current pull telemetry maps all runtime dimensions to finite allowlists/bounds before logging; dashboard ingestion, paging and end-to-end cardinality/privacy review remain open",
+      "line": 1066,
+      "dependency_group": "reliability_operations"
+    },
+    {
+      "id": "WF-C12-003",
+      "priority": "P0",
+      "status": "PLANNED",
+      "owner": "SRE/QA",
+      "task": "Run 5,000-user morning START wave with jitter on isolated staging and representative trust-off/trust-on profiles",
+      "evidence": "p95/p99, DB/queue metrics and zero-loss reconciliation",
+      "line": 1067,
+      "dependency_group": "reliability_operations"
+    },
+    {
+      "id": "WF-C12-004",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "owner": "Backend/SRE",
+      "task": "Prove Workforce and Route queue/cursor/failure isolation under 503, timeout and overload",
+      "evidence": "[`workforce-c12-mobile-isolation-observability-evidence-2026-08-30.md`](./workforce-c12-mobile-isolation-observability-evidence-2026-08-30.md): injected Route write failure leaves the next Workforce sync operation independently successful; real queue/cursor/timeout/overload proof remains staging work",
+      "line": 1075,
+      "dependency_group": "reliability_operations"
+    },
+    {
+      "id": "WF-C12-005",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "owner": "Backend",
+      "task": "Bound retries/backoff, payload size, batch size, per-tenant fairness and poison-operation quarantine",
+      "evidence": "[`workforce-c12-sync-push-bounds-evidence-2026-08-30.md`](./workforce-c12-sync-push-bounds-evidence-2026-08-30.md): 512 KiB bounded body, 100-operation contract, 64 KiB payload-free terminal disposition and source-only Android terminal recovery mapping exist; tenant fairness and signed/load proof remain open",
+      "line": 1076,
+      "dependency_group": "reliability_operations"
+    },
+    {
+      "id": "WF-C12-006",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "owner": "SRE",
+      "task": "Schedule and monitor cleanup/retention/reminder/no-show jobs with leases, cursors and stale-job alerts",
+      "evidence": "[`scheduler plan`](./workforce-c12-scheduler-operations-plan-2026-08-30.md), [`reconciliation foundation`](./workforce-c12-reconciliation-foundation-evidence-2026-08-30.md) and [`lease health probe`](./workforce-c12-job-health-probe-evidence-2026-08-31.md): CRON_SECRET-gated lease/cursor read-only workers and a fixed-name aggregate health probe exist in source but are deliberately absent from deployment cron; destructive/notification jobs, final thresholds/alerts and production-like scheduler evidence remain NOT RUN",
+      "line": 1077,
+      "dependency_group": "reliability_operations"
+    },
+    {
+      "id": "WF-C12-007",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "owner": "SRE/DBA",
+      "task": "Validate indexes/query plans, partition/archive need, storage forecast and backup/restore RTO/RPO",
+      "evidence": "[`workforce-c12-capacity-restore-plan-2026-08-30.md`](./workforce-c12-capacity-restore-plan-2026-08-30.md): representative plan/restore/storage gates are defined; 5k plan, restore drill and owner RTO/RPO remain NOT RUN",
+      "line": 1078,
+      "dependency_group": "reliability_operations"
+    },
+    {
+      "id": "WF-C12-008",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "owner": "Backend/SRE",
+      "task": "Add reconciliation jobs for claim/event/assessment/exception/approval/export invariants",
+      "evidence": "[`workforce-c12-reconciliation-foundation-evidence-2026-08-30.md`](./workforce-c12-reconciliation-foundation-evidence-2026-08-30.md): bounded scanner plus source-only, lease/cursor-fenced scheduled 31-day structural scan for one enabled tenant; migration-gated case/decision coverage, alerting, cron activation, export delivery and staging zero-loss evidence remain open",
+      "line": 1079,
+      "dependency_group": "reliability_operations"
+    },
+    {
+      "id": "WF-C12-009",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "owner": "SRE",
+      "task": "Complete freeze/cohort/rollback and offline-drain runbooks; exercise them",
+      "evidence": "[Controlled fence rollback evidence](./workforce-c12-freeze-rollback-evidence-2026-08-30.md): MFA-gated non-destructive procedure and source contracts exist; timed tabletop/staging/offline-drain evidence remains open",
+      "line": 1080,
+      "dependency_group": "reliability_operations"
+    },
+    {
+      "id": "WF-C13-006",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "owner": "Backend/QA",
+      "task": "Test Neither, HRM-only, Routes-only and Both for APIs, jobs, nav, sync, mobile and failures",
+      "evidence": "Server bootstrap stream matrix covers all four entitlement modes; signed mobile, jobs and full failure/staging matrix remain open",
+      "line": 1098,
+      "dependency_group": "compatibility_rollout"
+    },
+    {
+      "id": "WF-C13-007",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "owner": "SRE",
+      "task": "Define migration rollout, compatibility window, metrics, freeze and rollback without schema deletion",
+      "evidence": "[`C13 additive migration ADR`](./workforce-c13-additive-migration-adr-2026-09-13.md) and existing sync-v2 runbook define additive rollback/window/drain; timed staging rehearsal remains open",
+      "line": 1099,
+      "dependency_group": "compatibility_rollout"
+    },
+    {
+      "id": "WF-C13-008",
+      "priority": "P1",
+      "status": "PLANNED",
+      "owner": "Backend/Mobile",
+      "task": "Drain/deprecate legacy mutation paths only after app adoption and offline horizon; return explicit unsupported-version code afterward",
+      "evidence": "Usage reaches approved threshold and no pending old outbox remains",
+      "line": 1100,
+      "dependency_group": "compatibility_rollout"
+    },
+    {
+      "id": "WF-C13-009",
+      "priority": "P1",
+      "status": "PLANNED",
+      "owner": "QA",
+      "task": "Reconcile before/after workday counts, event hashes, approvals, tenant scope and reports",
+      "evidence": "Zero unexplained delta",
+      "line": 1101,
+      "dependency_group": "compatibility_rollout"
+    },
+    {
+      "id": "WF-C14-002",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "owner": "QA/Security",
+      "task": "Run tenant/RLS/role/IDOR, replay, backdating, QR relay assumptions, GPS spoof signals, attestation and admin-abuse tests",
+      "evidence": "[`C14 security matrix`](./workforce-c14-security-matrix-2026-09-13.md) maps seven lanes to 16 passing server/source files; real QR relay, hardware attestation/biometric, signed-device recovery and disposable-DB RLS gates remain open",
+      "line": 1113,
+      "dependency_group": "integrated_security_pilot_release"
+    },
+    {
+      "id": "WF-C14-003",
+      "priority": "P0",
+      "status": "PLANNED",
+      "owner": "QA/Web",
+      "task": "Run browser E2E for employee/manager/HR/security roles in AZ/RU/EN at desktop/tablet/phone and 200% zoom",
+      "evidence": "Artifacts show success/error/recovery states",
+      "line": 1114,
+      "dependency_group": "web_accessibility_privacy"
+    },
+    {
+      "id": "WF-C14-004",
+      "priority": "P0",
+      "status": "BLOCKED",
+      "owner": "QA/Mobile",
+      "task": "Run signed physical Android matrix on at least two device classes: install/update, GPS/permission, QR, attestation, biometric unlock, offline, process death, reboot and date rollover",
+      "evidence": "Exact build SHA/checksum and pass/fail evidence",
+      "line": 1115,
+      "dependency_group": "android_device_assurance"
+    },
+    {
+      "id": "WF-C14-006",
+      "priority": "P0",
+      "status": "PLANNED",
+      "owner": "QA/SRE",
+      "task": "Run load/chaos/reconciliation/backup/retention/export drills in isolated staging",
+      "evidence": "C10-C12 gates met",
+      "line": 1117,
+      "dependency_group": "integrated_security_pilot_release"
+    },
+    {
+      "id": "WF-C14-007",
+      "priority": "P0",
+      "status": "BLOCKED",
+      "owner": "Product/HR/Privacy",
+      "task": "Record named LeadDrive pilot cohort, participants, devices, policies, sites, notice, observation window and rollback owner outside git",
+      "evidence": "OD-14 and all legal gates resolved",
+      "line": 1118,
+      "dependency_group": "integrated_security_pilot_release"
+    },
+    {
+      "id": "WF-C14-008",
+      "priority": "P0",
+      "status": "PLANNED",
+      "owner": "SRE/Product",
+      "task": "Enable exact cohort behind write fence; preserve Route independence and daily evidence review",
+      "evidence": "No global enablement; daily metric/exception report",
+      "line": 1119,
+      "dependency_group": "integrated_security_pilot_release"
+    },
+    {
+      "id": "WF-C14-009",
+      "priority": "P0",
+      "status": "PLANNED",
+      "owner": "Product/HR/QA",
+      "task": "Complete pilot exit review: usability, false positives, corrections, appeals, event loss, privacy complaints and SLO",
+      "evidence": "Signed GO/NO-GO; no open P0/P1",
+      "line": 1120,
+      "dependency_group": "integrated_security_pilot_release"
+    },
+    {
+      "id": "WF-C14-010",
+      "priority": "P1",
+      "status": "PLANNED",
+      "owner": "Product/SRE",
+      "task": "Release to official LeadDrive use only after green gates; initially prohibit automatic payroll/discipline",
+      "evidence": "Main/CI/deploy/smoke evidence and communication",
+      "line": 1121,
+      "dependency_group": "integrated_security_pilot_release"
+    },
+    {
+      "id": "WF-C14-011",
+      "priority": "P1",
+      "status": "PLANNED",
+      "owner": "Product",
+      "task": "Add a Both-modules tenant cohort only after HRM-only LeadDrive evidence; then measured tenant-by-tenant expansion",
+      "evidence": "Route/Workforce isolation and cohort observation pass",
+      "line": 1122,
+      "dependency_group": "integrated_security_pilot_release"
+    }
+  ],
+  "catalog_export_review": {
+    "minimum_contract": [
+      "Caller authorizes exact source/staging instance identity and schema scope; opaque source identifier, observed time, PostgreSQL version/collation, exact source revision and export-format version. No credential or connection URL fields.",
+      "Use supplied read-only repeatable-read transaction; explicit completion flag and bounded row/UTF8 totals. Missing target, missing ledger, count/byte/recursive-dependency overflow must be incomplete/refused, not truncated success.",
+      "Fixed allowlisted pg_catalog relations/projections and exact schema-qualified relation OIDs; retain columns/types/null/default/generated/identity, PK/FK/CHECK/index definitions, RLS enable/force/policies, triggers and dependencies, relation ownership/ACL references with stated visibility.",
+      "Migration ledger is specifically permitted metadata: name/checksum/applied-step/finished/rolled-back state; never logs/errorSQL/connection fields or application rows. Preserve failed/incomplete and duplicate-name states, and completeness count; do not mark applied.",
+      "Catalog dependency closure must bound incoming/outgoing FK dependencies, trigger functions, policy functions/types/extensions/sequences as applicable. Record unresolved/omitted dependencies explicitly; api_keys-only is not full database/Workforce bootstrap proof.",
+      "Machine-sanitized report must distinguish exact content retained, digest-only content, redacted content and omitted content. Digest-only cannot serve as executable baseline."
+    ],
+    "hazards": [
+      "Schema text can itself contain secrets/PII in DEFAULT/CHECK/policy expressions, function bodies, comments, names and owner/role labels. Schema-only is not automatically safe; do not emit raw pg_dump or unrestricted pg_get_functiondef/pg_get_expr output.",
+      "Never query pg_authid, pg_statistic, pg_stat_activity query strings, user rows or Prisma migration logs. Role membership/ACL identifiers need explicit source/package privacy handling; no role passwords or server connection provenance.",
+      "Do not introspect an arbitrary caller-provided table/query/schema string or execute generated DDL. Parameterize OIDs and values; no shell interpolation; actual DB access/export remains separately authorized.",
+      "Catalog MVCC snapshot does not prove deployed application revision, schema migration provenance, backups or cross-transaction consistency; instance/build identity must be attested separately.",
+      "Privileges/RLS may hide ledger/catalog data: empty result must not assert complete clean schema or no policies. Export source role authority and visibility boundaries explicitly.",
+      "Current-model SQL generation may prepare synthetic fixtures but cannot fill missing historicapi_keysDDL/ACLprovenance. No repair/mark-applied/production backup access in this scope."
+    ]
+  },
+  "eligible_roster_review": {
+    "current_health_limit": "Current health() scans only attemptstate, counts ineligible/inactive tracked rows and misses eligible orgs without state; TRACKED_ATTEMPTS_ONLY/NOT_MEASURED is accurate.",
+    "requirements": [
+      "Enumerate active organizations independently, evaluate identical canonical workforce-hrm entitlement semantics, LEFTJOIN state so never-attempted orgs remain in denominator. No innerjoin, due-only filter or selection-page denominator.",
+      "One authorized snapshot and one observedAt instant for eligibility and attempt freshness; use clock/timestamptypes consistently. Canonical capability parser deliberately supports legacy shapes; do not silently redefine entitlement.",
+      "Count eligibleTotal, trackedEligible, neverAttempted, neverMatched, liveRunning, expiredRunning, due, latestFailure, staleLastMatched; document overlapping sets versus disjoint partitions. lastCompletedAt means lastMATCHED, not any finish.",
+      "Exclude inactive/disabled state from eligible coverage, optionally report separate fixed aggregate counts. Zeroeligible => NO_ELIGIBLE/NOT_APPLICABLE, not100%coverage. Never call missing/unobservable state healthy.",
+      "10001sentinel/rowcap/4MiB budget/invalid required row fields must produce finite UNAVAILABLE or explicitly incomplete observation; no partial healthy denominator. Counts are bounded integers, no raw metadata/IDs/tokens in returneddiagnostics or metriclabels.",
+      "Authorized cross-tenant visibility is a precondition; RLS-hidden organizations or hidden states can undercount/misclassify. Either verify the supplied visibility contract or label visible-only coverage, not globaleligiblecoverage.",
+      "Monitoring is read-only and dormant: no state insertion, due/lease/cursor mutation, new schedule, grants, notification dispatch or false claim of alert delivery.",
+      "Meaningful probes: missingstate; activeHRMdisabled; Route-only/Neither/Both; explicitHRMoff overridinglegacyMTM; staleMATCHED withlatestfailure; expiredRUNNING; exacttimeboundary; emptyroster; oversizedroster/metadata; hiddenRLS; concurrent entitlement/state changes in one snapshot."
+    ]
+  },
+  "source_bindings": [
+    {
+      "path": "docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+      "bytes": 1160539,
+      "sha256": "d403ef692cf7775a940e8b5be104d72032a52ca407935d71d27083526d664045",
+      "git_blob": "7d5f07745aee11de0a61f4c66fd243ef894e053d"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-operations.ts",
+      "bytes": 11420,
+      "sha256": "9550065b64ecfae0e40e8dbf2561a3e5eb63cc738558a4c5fd13f1d1a3d95bd2",
+      "git_blob": "73d03c393835b6ec4e45c4ad6feaac1b51e8ff80"
+    },
+    {
+      "path": "src/lib/tenant-capabilities.ts",
+      "bytes": 21507,
+      "sha256": "67720a5f24cf735bf2bf05d72441612ab9a6ccb671bf04cbd72758e34853d9b4",
+      "git_blob": "3ec62258fed2a6a311fccc45342c8988a16a0868"
+    },
+    {
+      "path": "prisma/migrations/20261005193000_workforce_reconciliation_operations/migration.sql",
+      "bytes": 2721,
+      "sha256": "c452e7f6d13dca1e5257d8353c252745d05cd4f18eae83cd45501f61664ef719",
+      "git_blob": "56c246ae8afd8ea5be2989034bd56953e28406c5"
+    },
+    {
+      "path": "docs/workforce-c12-api-key-baseline-investigation-2026-10-06.md",
+      "bytes": 3219,
+      "sha256": "d154a301f237dfd1a68d5eb0592f6283fbea13b6a5e356ba66aa63f0647328b9",
+      "git_blob": "7925b9739bc86dd763ef9f0d6298794f47034676"
+    }
+  ],
+  "limits": [
+    "Dependency grouping is review interpretation, not owner prioritization or new task closure. All79rows assigned exactlyonce for indexing; real dependencies cross groups.",
+    "No source edits/remote writes/production or backup access/Support592 changes/migration application.",
+    "New implementation not yet supplied; no source acceptance or tests claimed for proposed exporter/monitor."
+  ]
+}

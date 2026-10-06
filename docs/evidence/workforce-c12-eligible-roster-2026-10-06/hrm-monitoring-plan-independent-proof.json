@@ -1,0 +1,482 @@
+{
+  "canonical_unique": 161,
+  "done": 82,
+  "open": 79,
+  "all_plan_rows_exact": true,
+  "rows": [
+    {
+      "id": "WF-C0-004",
+      "status": "PARTIAL (OWNER ATTESTATION)",
+      "canonical_line": 777,
+      "plan_line": 28
+    },
+    {
+      "id": "WF-C0-006",
+      "status": "OWNER DECISION",
+      "canonical_line": 779,
+      "plan_line": 29
+    },
+    {
+      "id": "WF-C2-003",
+      "status": "OWNER DECISION",
+      "canonical_line": 838,
+      "plan_line": 30
+    },
+    {
+      "id": "WF-C2-008",
+      "status": "OWNER DECISION",
+      "canonical_line": 843,
+      "plan_line": 31
+    },
+    {
+      "id": "WF-C4-008",
+      "status": "OWNER DECISION",
+      "canonical_line": 887,
+      "plan_line": 32
+    },
+    {
+      "id": "WF-C5-001",
+      "status": "OWNER DECISION",
+      "canonical_line": 901,
+      "plan_line": 33
+    },
+    {
+      "id": "WF-C5-010",
+      "status": "OWNER DECISION",
+      "canonical_line": 910,
+      "plan_line": 34
+    },
+    {
+      "id": "WF-C5-003",
+      "status": "PARTIAL",
+      "canonical_line": 903,
+      "plan_line": 44
+    },
+    {
+      "id": "WF-C5-004",
+      "status": "PARTIAL",
+      "canonical_line": 904,
+      "plan_line": 45
+    },
+    {
+      "id": "WF-C5-005",
+      "status": "PARTIAL",
+      "canonical_line": 905,
+      "plan_line": 46
+    },
+    {
+      "id": "WF-C5-006",
+      "status": "PARTIAL",
+      "canonical_line": 906,
+      "plan_line": 47
+    },
+    {
+      "id": "WF-C5-007",
+      "status": "PARTIAL",
+      "canonical_line": 907,
+      "plan_line": 48
+    },
+    {
+      "id": "WF-C5-008",
+      "status": "PARTIAL",
+      "canonical_line": 908,
+      "plan_line": 49
+    },
+    {
+      "id": "WF-C5-013",
+      "status": "PLANNED",
+      "canonical_line": 913,
+      "plan_line": 50
+    },
+    {
+      "id": "WF-C9-001",
+      "status": "BLOCKED",
+      "canonical_line": 993,
+      "plan_line": 51
+    },
+    {
+      "id": "WF-C9-003",
+      "status": "PARTIAL",
+      "canonical_line": 995,
+      "plan_line": 52
+    },
+    {
+      "id": "WF-C9-004",
+      "status": "PARTIAL",
+      "canonical_line": 996,
+      "plan_line": 53
+    },
+    {
+      "id": "WF-C9-005",
+      "status": "PARTIAL",
+      "canonical_line": 997,
+      "plan_line": 54
+    },
+    {
+      "id": "WF-C9-006",
+      "status": "PARTIAL",
+      "canonical_line": 998,
+      "plan_line": 55
+    },
+    {
+      "id": "WF-C9-007",
+      "status": "PARTIAL",
+      "canonical_line": 999,
+      "plan_line": 56
+    },
+    {
+      "id": "WF-C9-008",
+      "status": "PARTIAL",
+      "canonical_line": 1000,
+      "plan_line": 57
+    },
+    {
+      "id": "WF-C9-009",
+      "status": "PARTIAL",
+      "canonical_line": 1001,
+      "plan_line": 58
+    },
+    {
+      "id": "WF-C9-010",
+      "status": "PARTIAL",
+      "canonical_line": 1002,
+      "plan_line": 59
+    },
+    {
+      "id": "WF-C9-011",
+      "status": "PARTIAL",
+      "canonical_line": 1003,
+      "plan_line": 60
+    },
+    {
+      "id": "WF-C9-012",
+      "status": "PARTIAL",
+      "canonical_line": 1004,
+      "plan_line": 61
+    },
+    {
+      "id": "WF-C9-013",
+      "status": "PARTIAL",
+      "canonical_line": 1005,
+      "plan_line": 62
+    },
+    {
+      "id": "WF-C9-014",
+      "status": "PARTIAL",
+      "canonical_line": 1006,
+      "plan_line": 63
+    },
+    {
+      "id": "WF-C14-004",
+      "status": "BLOCKED",
+      "canonical_line": 1115,
+      "plan_line": 64
+    },
+    {
+      "id": "WF-C5-002",
+      "status": "PARTIAL",
+      "canonical_line": 902,
+      "plan_line": 74
+    },
+    {
+      "id": "WF-C5-009",
+      "status": "PARTIAL",
+      "canonical_line": 909,
+      "plan_line": 75
+    },
+    {
+      "id": "WF-C5-011",
+      "status": "PARTIAL",
+      "canonical_line": 911,
+      "plan_line": 76
+    },
+    {
+      "id": "WF-C7-002",
+      "status": "PARTIAL",
+      "canonical_line": 949,
+      "plan_line": 77
+    },
+    {
+      "id": "WF-C7-010",
+      "status": "PARTIAL",
+      "canonical_line": 957,
+      "plan_line": 78
+    },
+    {
+      "id": "WF-C10-006",
+      "status": "PARTIAL",
+      "canonical_line": 1025,
+      "plan_line": 79
+    },
+    {
+      "id": "WF-C3-006",
+      "status": "PLANNED",
+      "canonical_line": 863,
+      "plan_line": 89
+    },
+    {
+      "id": "WF-C3-009",
+      "status": "PARTIAL",
+      "canonical_line": 866,
+      "plan_line": 90
+    },
+    {
+      "id": "WF-C7-007",
+      "status": "PARTIAL",
+      "canonical_line": 954,
+      "plan_line": 91
+    },
+    {
+      "id": "WF-C8-007",
+      "status": "PARTIAL",
+      "canonical_line": 977,
+      "plan_line": 92
+    },
+    {
+      "id": "WF-C6-002",
+      "status": "PARTIAL",
+      "canonical_line": 927,
+      "plan_line": 102
+    },
+    {
+      "id": "WF-C6-003",
+      "status": "PARTIAL",
+      "canonical_line": 928,
+      "plan_line": 103
+    },
+    {
+      "id": "WF-C6-004",
+      "status": "PARTIAL",
+      "canonical_line": 929,
+      "plan_line": 104
+    },
+    {
+      "id": "WF-C6-005",
+      "status": "PARTIAL",
+      "canonical_line": 930,
+      "plan_line": 105
+    },
+    {
+      "id": "WF-C6-006",
+      "status": "PARTIAL",
+      "canonical_line": 931,
+      "plan_line": 106
+    },
+    {
+      "id": "WF-C6-007",
+      "status": "PARTIAL",
+      "canonical_line": 932,
+      "plan_line": 107
+    },
+    {
+      "id": "WF-C6-009",
+      "status": "PARTIAL",
+      "canonical_line": 934,
+      "plan_line": 108
+    },
+    {
+      "id": "WF-C6-010",
+      "status": "PLANNED",
+      "canonical_line": 935,
+      "plan_line": 109
+    },
+    {
+      "id": "WF-C8-002",
+      "status": "PARTIAL",
+      "canonical_line": 972,
+      "plan_line": 110
+    },
+    {
+      "id": "WF-C8-005",
+      "status": "PARTIAL",
+      "canonical_line": 975,
+      "plan_line": 111
+    },
+    {
+      "id": "WF-C8-008",
+      "status": "PARTIAL",
+      "canonical_line": 978,
+      "plan_line": 121
+    },
+    {
+      "id": "WF-C8-009",
+      "status": "PARTIAL",
+      "canonical_line": 979,
+      "plan_line": 122
+    },
+    {
+      "id": "WF-C8-010",
+      "status": "PARTIAL",
+      "canonical_line": 980,
+      "plan_line": 123
+    },
+    {
+      "id": "WF-C10-008",
+      "status": "PARTIAL",
+      "canonical_line": 1027,
+      "plan_line": 124
+    },
+    {
+      "id": "WF-C14-003",
+      "status": "PLANNED",
+      "canonical_line": 1114,
+      "plan_line": 125
+    },
+    {
+      "id": "WF-C10-004",
+      "status": "PARTIAL",
+      "canonical_line": 1023,
+      "plan_line": 135
+    },
+    {
+      "id": "WF-C10-005",
+      "status": "PARTIAL",
+      "canonical_line": 1024,
+      "plan_line": 136
+    },
+    {
+      "id": "WF-C10-009",
+      "status": "PLANNED",
+      "canonical_line": 1028,
+      "plan_line": 137
+    },
+    {
+      "id": "WF-C10-010",
+      "status": "PARTIAL",
+      "canonical_line": 1029,
+      "plan_line": 138
+    },
+    {
+      "id": "WF-C10-011",
+      "status": "PLANNED",
+      "canonical_line": 1030,
+      "plan_line": 139
+    },
+    {
+      "id": "WF-C11-004",
+      "status": "PARTIAL",
+      "canonical_line": 1046,
+      "plan_line": 149
+    },
+    {
+      "id": "WF-C0-005",
+      "status": "PARTIAL",
+      "canonical_line": 778,
+      "plan_line": 159
+    },
+    {
+      "id": "WF-C12-002",
+      "status": "PARTIAL",
+      "canonical_line": 1066,
+      "plan_line": 160
+    },
+    {
+      "id": "WF-C12-003",
+      "status": "PLANNED",
+      "canonical_line": 1067,
+      "plan_line": 161
+    },
+    {
+      "id": "WF-C12-004",
+      "status": "PARTIAL",
+      "canonical_line": 1075,
+      "plan_line": 162
+    },
+    {
+      "id": "WF-C12-005",
+      "status": "PARTIAL",
+      "canonical_line": 1076,
+      "plan_line": 163
+    },
+    {
+      "id": "WF-C12-006",
+      "status": "PARTIAL",
+      "canonical_line": 1077,
+      "plan_line": 164
+    },
+    {
+      "id": "WF-C12-007",
+      "status": "PARTIAL",
+      "canonical_line": 1078,
+      "plan_line": 165
+    },
+    {
+      "id": "WF-C12-008",
+      "status": "PARTIAL",
+      "canonical_line": 1079,
+      "plan_line": 166
+    },
+    {
+      "id": "WF-C12-009",
+      "status": "PARTIAL",
+      "canonical_line": 1080,
+      "plan_line": 167
+    },
+    {
+      "id": "WF-C13-006",
+      "status": "PARTIAL",
+      "canonical_line": 1098,
+      "plan_line": 177
+    },
+    {
+      "id": "WF-C13-007",
+      "status": "PARTIAL",
+      "canonical_line": 1099,
+      "plan_line": 178
+    },
+    {
+      "id": "WF-C13-008",
+      "status": "PLANNED",
+      "canonical_line": 1100,
+      "plan_line": 179
+    },
+    {
+      "id": "WF-C13-009",
+      "status": "PLANNED",
+      "canonical_line": 1101,
+      "plan_line": 180
+    },
+    {
+      "id": "WF-C14-002",
+      "status": "PARTIAL",
+      "canonical_line": 1113,
+      "plan_line": 190
+    },
+    {
+      "id": "WF-C14-006",
+      "status": "PLANNED",
+      "canonical_line": 1117,
+      "plan_line": 191
+    },
+    {
+      "id": "WF-C14-007",
+      "status": "BLOCKED",
+      "canonical_line": 1118,
+      "plan_line": 192
+    },
+    {
+      "id": "WF-C14-008",
+      "status": "PLANNED",
+      "canonical_line": 1119,
+      "plan_line": 193
+    },
+    {
+      "id": "WF-C14-009",
+      "status": "PLANNED",
+      "canonical_line": 1120,
+      "plan_line": 194
+    },
+    {
+      "id": "WF-C14-010",
+      "status": "PLANNED",
+      "canonical_line": 1121,
+      "plan_line": 195
+    },
+    {
+      "id": "WF-C14-011",
+      "status": "PLANNED",
+      "canonical_line": 1122,
+      "plan_line": 196
+    }
+  ]
+}

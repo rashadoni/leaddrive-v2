@@ -1,0 +1,52 @@
+{
+  "source_head": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+  "scope": "NEXT_SLICE_PREPARATION_ONLY_NO_SOURCE_EDITS",
+  "roadmap": [
+    "WF-C12-002",
+    "WF-C10-011"
+  ],
+  "observations": [
+    "All seven Workforce data classes currently forbid generalTelemetry. Reuse this deny-by-default boundary.",
+    "today-read-access, timesheet-read-access and request-decision currently pass raw caught error objects to console.error. This source review establishes an exposure path, not evidence of a runtime leak.",
+    "cron workforce-no-show-review emits error.name from arbitrary Error instances; names are not necessarily a finite allowlist.",
+    "sensitive-operation-log already provides a finite operation vocabulary without error objects."
+  ],
+  "proposed_change": [
+    "Extend fixed operation vocabulary for four discovered catch sites.",
+    "Replace error-object/error.name console calls with fixed operation labels, preserving existing denied/unavailable responses.",
+    "Add thrown error canaries containing synthetic coordinates, reasons, tenant/employee references, tokens and nested causes; assert complete absence from captured log arguments.",
+    "Retain four-entitlement behavior, Route isolation and no telemetry transport; review current remaining log surfaces before any broader metrics wiring."
+  ],
+  "dependencies": [
+    "No api_keys historical creation required",
+    "Fresh ownership/ref and Support path inventory before edits",
+    "Bounded source tests and independent review",
+    "Runtime delivery/activation remains separate approval"
+  ],
+  "source_bindings": [
+    {
+      "path": "src/lib/workforce/data-classification.ts",
+      "sha256": "b01411dd343c40849d6a04e50ab308d2f005baaa3fdf1a85aa9a8d783e72490c"
+    },
+    {
+      "path": "src/lib/workforce/sensitive-operation-log.ts",
+      "sha256": "18b3c6dbf9789565c7bb385ac406f59b813ff1b2d292d50bad3654e2a7733118"
+    },
+    {
+      "path": "src/lib/workforce/today-read-access.ts",
+      "sha256": "7d2564affea535828a3e5659f2ac5d3e8b4f7c26125927a867730d8fbea5cb74"
+    },
+    {
+      "path": "src/lib/workforce/timesheet-read-access.ts",
+      "sha256": "3ee4d5f4d0712ab69b5687102016728ccacf5ef84ef92e256b125d9bc3e4114c"
+    },
+    {
+      "path": "src/lib/workforce/request-decision.ts",
+      "sha256": "5f452caeb47882b43781ea35a3b3e9fd75e051f84c14cbb33a29181894950f4a"
+    },
+    {
+      "path": "src/app/api/cron/workforce-no-show-review/route.ts",
+      "sha256": "79e20b33700d1f458435393c4bcfb2d08c5b29f1a73d43a9a58ab44141aa5aae"
+    }
+  ]
+}

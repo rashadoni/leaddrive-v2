@@ -1,0 +1,151 @@
+{
+  "schema_version": 1,
+  "source_head": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+  "source_tree": "6f0779e839c6c684107a17314798dbcb0ac1b339",
+  "parent": "5f87cc94a684d5083804f0dae23116384dda24b4",
+  "main": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+  "source_bindings": [
+    {
+      "path": "docs/workforce-c12-schema-only-baseline-contract-2026-10-06.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha256": "e19d6693a0ea56ded92eb376f7d26558d1aa83d0ff4508b83253f651d598b670",
+      "bytes": 6611,
+      "git_blob": "f54840de6016c7f728ad37b2d9450a433a7ee66c"
+    },
+    {
+      "path": "docs/workforce-c12-eligible-roster-monitoring-2026-10-06.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha256": "67e79f60cc380a2acff8541a680410f11d11fa36df797f907233546e8d21935e",
+      "bytes": 3440,
+      "git_blob": "40887d245ae0f18c439daa60d451cef9ad2b9921"
+    },
+    {
+      "path": "docs/workforce-hrm-79-open-dependency-plan-2026-10-06.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha256": "068f6e106d3c77d702806c5ef40ae3038cde847add8ea780b1461514489caec3",
+      "bytes": 19681,
+      "git_blob": "8a4581757c68c94b4380b7bd46e2f40074dea8f9"
+    },
+    {
+      "path": "scripts/workforce-baseline-schema-export.sql",
+      "mode": "100644",
+      "type": "blob",
+      "sha256": "0dbc6afdce78fd63df8e39d2a6b8d231f2e60eaac158937ffe1a2bcbc4e71cef",
+      "bytes": 6528,
+      "git_blob": "f25e7fb7a1b536aa34ceff81a385d695b2e4f6e3"
+    },
+    {
+      "path": "scripts/workforce-baseline-schema-export.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha256": "f07cd5ca7ada24c9070b58206f7e4a1dbdfc05cc9ed528e0554c55f5e54580fc",
+      "bytes": 4689,
+      "git_blob": "73ad71307b74b36bb2f9eabfe647a34e56c51ecd"
+    },
+    {
+      "path": "scripts/workforce-baseline-schema-export.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha256": "f975b54de6fda8bcef088334dadeefa5d39bbcc81fba408297999739787adfbb",
+      "bytes": 10957,
+      "git_blob": "a77a649fe91636579af7e1b9d039d68dea0158e1"
+    },
+    {
+      "path": "src/__tests__/workforce-reconciliation-roster-health.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha256": "e803c41369667d110419ab5f15c22e4524a6b385e97bb54a7aa19710c16a351b",
+      "bytes": 9333,
+      "git_blob": "842905a8ceeba994f03e6aed814c31dd53ccb0ad"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-operations.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha256": "514eb7cc12e5d89dabb5cd03ccddadefd7bec50c682620bc1cccca6bdb5c6576",
+      "bytes": 11588,
+      "git_blob": "c4f7738a9284c3ab7251eaf2fd92a7006ef04ebe"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-roster-health.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha256": "896fb07c70b918714ca5c5cd7685fbdd9655811a06c0fd3a41dd095de2f911e9",
+      "bytes": 6396,
+      "git_blob": "f707fd0b652b18fae49ea4ac500503f9f0dcacee"
+    }
+  ],
+  "hrm_tests": {
+    "numTotalTests": 138,
+    "numPassedTests": 138,
+    "numFailedTests": 0,
+    "numPendingTests": 0
+  },
+  "exporter_pure_tests": {
+    "passed": 9,
+    "failed": 0,
+    "skipped": 0
+  },
+  "postgres_export": {
+    "status": "PASS",
+    "environment": "DISPOSABLE_SYNTHETIC_PG16_NOT_HISTORICAL_BASELINE",
+    "checks": [
+      "catalog SQL under nonsuperuser ledger-only SELECT",
+      "api_keys SELECT denied",
+      "private row/default/function/comment/log canaries absent",
+      "repository ledger checksum match",
+      "incomplete ledger record retained",
+      "DDL fragment refused for unknown default",
+      "output mode 0600",
+      "overwrite refused",
+      "read-only data fingerprint unchanged",
+      "RLS-filtered ledger export refused",
+      "unsupported ledger view refused before body evaluation"
+    ],
+    "psqlInterface": "temporary local wrapper executing docker exec psql; external PGSERVICE resolution NOT TESTED"
+  },
+  "bounded_typecheck": "PASS",
+  "targeted_eslint": "PASS",
+  "whitespace": "PASS",
+  "ledger": {
+    "done": 82,
+    "total": 161,
+    "open": 79,
+    "weighted_percent": 59,
+    "c12_008": "PARTIAL"
+  },
+  "limits": [
+    "Synthetic PostgreSQL fixtures only, not historical schema replay",
+    "External PGSERVICE resolution not tested",
+    "No runtime scheduling/alert delivery/activation",
+    "No production access or migration history mutation",
+    "Full repository typecheck/build not claimed; hosted gates recorded separately"
+  ],
+  "mtm_regression": {
+    "numTotalTests": 191,
+    "numPassedTests": 191,
+    "numFailedTests": 0,
+    "numPendingTests": 0
+  },
+  "execution_receipts": {
+    "bounded_typecheck": {
+      "command": "NODE_OPTIONS=--max-old-space-size=8192 ./node_modules/.bin/tsc --noEmit -p /tmp/hrm-monitor-tsconfig.json",
+      "exit_code": 0,
+      "tool_session": 95337,
+      "completion_chunk": "8d75e6"
+    },
+    "targeted_eslint": {
+      "exit_code": 0,
+      "tool_session": 49691,
+      "completion_chunk": "49a839"
+    }
+  },
+  "fixture_cleanup": {
+    "owned_container_and_anonymous_volumes_removed": true,
+    "ephemeral_password_file_removed": true,
+    "local_psql_wrapper_removed": true
+  }
+}

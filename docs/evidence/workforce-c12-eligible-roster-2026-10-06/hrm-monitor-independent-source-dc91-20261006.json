@@ -1,0 +1,250 @@
+{
+  "schema_version": 1,
+  "reviewer": "independent /root/pr585_independent_review",
+  "reviewed_at": "2026-10-06T08:55:01.303618+00:00",
+  "status": "ACCEPTED_EXACT_BOUNDED_SOURCE_HOSTED_PENDING",
+  "repository": "rashadoni/leaddrive-v2",
+  "pr": 589,
+  "head": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+  "tree": "6f0779e839c6c684107a17314798dbcb0ac1b339",
+  "parent": "5f87cc94a684d5083804f0dae23116384dda24b4",
+  "main": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+  "synthetic": "e6d9e7a1fe1245a7009e9bd0a01c3dc00473ec1a",
+  "synthetic_parents": [
+    "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+    "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e"
+  ],
+  "synthetic_tree_equals_candidate": true,
+  "tree_verification": {
+    "blobs_and_modes_verified": 8758,
+    "tree_recomputed": "6f0779e839c6c684107a17314798dbcb0ac1b339",
+    "exact_delta": [
+      "docs/workforce-c12-eligible-roster-monitoring-2026-10-06.md",
+      "docs/workforce-c12-schema-only-baseline-contract-2026-10-06.md",
+      "docs/workforce-hrm-79-open-dependency-plan-2026-10-06.md",
+      "scripts/workforce-baseline-schema-export.mjs",
+      "scripts/workforce-baseline-schema-export.sql",
+      "scripts/workforce-baseline-schema-export.test.mjs",
+      "src/__tests__/workforce-reconciliation-roster-health.test.ts",
+      "src/lib/workforce/reconciliation-operations.ts",
+      "src/lib/workforce/reconciliation-roster-health.ts"
+    ],
+    "unchanged_base_files": 8749,
+    "nine_selected_remote_blobs_equal_reviewed_source": true,
+    "baseline_pairs": 64
+  },
+  "source_bindings": [
+    {
+      "path": "docs/workforce-c12-schema-only-baseline-contract-2026-10-06.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha256": "e19d6693a0ea56ded92eb376f7d26558d1aa83d0ff4508b83253f651d598b670",
+      "bytes": 6611,
+      "git_blob": "f54840de6016c7f728ad37b2d9450a433a7ee66c"
+    },
+    {
+      "path": "docs/workforce-c12-eligible-roster-monitoring-2026-10-06.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha256": "67e79f60cc380a2acff8541a680410f11d11fa36df797f907233546e8d21935e",
+      "bytes": 3440,
+      "git_blob": "40887d245ae0f18c439daa60d451cef9ad2b9921"
+    },
+    {
+      "path": "docs/workforce-hrm-79-open-dependency-plan-2026-10-06.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha256": "068f6e106d3c77d702806c5ef40ae3038cde847add8ea780b1461514489caec3",
+      "bytes": 19681,
+      "git_blob": "8a4581757c68c94b4380b7bd46e2f40074dea8f9"
+    },
+    {
+      "path": "scripts/workforce-baseline-schema-export.sql",
+      "mode": "100644",
+      "type": "blob",
+      "sha256": "0dbc6afdce78fd63df8e39d2a6b8d231f2e60eaac158937ffe1a2bcbc4e71cef",
+      "bytes": 6528,
+      "git_blob": "f25e7fb7a1b536aa34ceff81a385d695b2e4f6e3"
+    },
+    {
+      "path": "scripts/workforce-baseline-schema-export.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha256": "f07cd5ca7ada24c9070b58206f7e4a1dbdfc05cc9ed528e0554c55f5e54580fc",
+      "bytes": 4689,
+      "git_blob": "73ad71307b74b36bb2f9eabfe647a34e56c51ecd"
+    },
+    {
+      "path": "scripts/workforce-baseline-schema-export.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha256": "f975b54de6fda8bcef088334dadeefa5d39bbcc81fba408297999739787adfbb",
+      "bytes": 10957,
+      "git_blob": "a77a649fe91636579af7e1b9d039d68dea0158e1"
+    },
+    {
+      "path": "src/__tests__/workforce-reconciliation-roster-health.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha256": "e803c41369667d110419ab5f15c22e4524a6b385e97bb54a7aa19710c16a351b",
+      "bytes": 9333,
+      "git_blob": "842905a8ceeba994f03e6aed814c31dd53ccb0ad"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-operations.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha256": "514eb7cc12e5d89dabb5cd03ccddadefd7bec50c682620bc1cccca6bdb5c6576",
+      "bytes": 11588,
+      "git_blob": "c4f7738a9284c3ab7251eaf2fd92a7006ef04ebe"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-roster-health.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha256": "896fb07c70b918714ca5c5cd7685fbdd9655811a06c0fd3a41dd095de2f911e9",
+      "bytes": 6396,
+      "git_blob": "f707fd0b652b18fae49ea4ac500503f9f0dcacee"
+    }
+  ],
+  "source_review": {
+    "exporter": "Fixed catalog+explicitmigrationmetadata query in RO RR transaction; ordinaryrelation/ledgerRLS preflight DO guard occurs before main ledger SELECT, time/process/output/collection ceilings, minimized identifiers and SQL-side expression/functionbody hashes, exclusive0600file and finiteCLIerrors. Policy role references distinguish equalcount role changes. Provenance calendar validation bounded/real dates; operator claims explicitly unverified.",
+    "roster": "Dormant suppliedauthorized control reader; separate ordinaryrelation/RLS visibility guard, activeorganizations LEFTJOIN state at one RR snapshot/time, canonical entitlement+strictshapevalidation, neverattempted/nevermatched andineligibletracked handling, bounded fullroster refusal, emptyNO_ELIGIBLE/unknownnozero, finiteaggregate output. Existinghealth unchanged.",
+    "integration": "Only import plus eligibleRosterHealth method added to existing operations factory; claim/finish/fencing/tick behavior byte-unchanged. No routes/schedules/grants.",
+    "documentation": "Three docs read whole: minimal firstcatalogpackage vs separatelyreviewed transitive executablebaseline, readonlyauthorization boundary, partial/dormant monitor semantics, exact79status-preserving dependency plan. Factoryname corrected.",
+    "roadmap_parity": "169canonical rows ->161unique,82DONE79open; all79planIDs/statuses/canonical-line refs match, no duplicate/missing/new closure."
+  },
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "resolved_history": [
+    {
+      "id": "CATALOG_POLICY_ROLE_SCOPE",
+      "previous": "P2",
+      "resolution": "Sorted opaqueOID references now included and validated againstrolecount; puretest distinguishes samecount targetrole change."
+    },
+    {
+      "id": "CATALOG_RELATION_KIND",
+      "previous": "P2",
+      "resolution": "Ordinaryrelation checks in both JS/minimizedprojection and SQL DO preflight beforeledgerread; owner reportsactual throwing-viewcanary neverexecuted. Roster preflights source relationkinds separately."
+    },
+    {
+      "id": "PROVENANCE_DATE_VALIDATION",
+      "previous": "P3",
+      "resolution": "Bounded timestamp length/fraction and explicitcalendar/leapday/time/offset validity; prior impossibledate nowrefused in9test suite."
+    },
+    {
+      "id": "DOCUMENTATION_FACTORY_NAME",
+      "previous": "P3 editorial",
+      "resolution": "Doc now names actual workforceReconciliationOperationsStore."
+    }
+  ],
+  "tests_actual_independent": [
+    {
+      "report": "hrm-monitoring-export-independent-final-tests.tap",
+      "runner": "node --test",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0
+    },
+    {
+      "report": "hrm-monitoring-roster-independent-final-tests.json",
+      "runner": "vitest roster test",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 14,
+      "exit_code": 0
+    },
+    {
+      "probe": "Canonical plan parity",
+      "passed": true,
+      "task_ids_verified": 79
+    }
+  ],
+  "owner_evidence_reviewed": {
+    "hrm_report": "138PASS0FAIL0SKIP,87actualPG+51pure, includes prior123 and new14PG+1pure. Parsed complete test report; reviewer did not rerunPG.",
+    "exporter": "Sanitized11check PG16summary read: ledger-onlySELECTrole,api_keysSELECTdenied,canaryminimization/checksum/incompleteledger,privateexclusivefile,factfingerprint,filteredledgerrefusal,unsupportedviewpreflight. Temporary dockerpsql wrapper used; realexternalPGSERVICE untested.",
+    "bounded_tsc": "Owner actualexit0 session95337/chunk8d75e6 nooutput on latestTS via8GiB/config; sanitized ownerreceipt bound. Reviewer didnot independently executecompiler. LaterSQL/doc changes noTSchange.",
+    "lint": "Owner targetedeslint actualexit0 session49691, reported andreceipt-bound."
+  },
+  "support_files": [
+    {
+      "path": "/tmp/hrm-monitor-source-bindings.json",
+      "bytes": 2518,
+      "sha256": "cd3aae46a4399cae98f8830730686630536c628a08d17988798600ffeaa64595"
+    },
+    {
+      "path": "/tmp/hrm-monitor-independent-tree-proof.json",
+      "bytes": 784,
+      "sha256": "4221d8c04ad085f7ba909fbcd4a7c1da279b32e4e7e82d0d51285bdbd6d668e1"
+    },
+    {
+      "path": "/tmp/hrm-monitor-independent-remote-bindings.json",
+      "bytes": 4795,
+      "sha256": "25a6d689283c6a9133bda6ff1a228d2f06f10e5d735f5e1ea4bcb17c85f63f99"
+    },
+    {
+      "path": "/tmp/hrm-monitor-independent-remote-tree.json",
+      "bytes": 3622367,
+      "sha256": "b45a33c65a3f7030d311444537e701e8c4be74120c75e149318d3d36611ad63d"
+    },
+    {
+      "path": "/tmp/hrm-monitoring-plan-independent-proof.json",
+      "bytes": 9437,
+      "sha256": "e1f2ab29fb66e82a363128cba3352dd7e783cf0d484d3d1dce465c557a8ca159"
+    },
+    {
+      "path": "/tmp/hrm-monitoring-export-independent-final-tests.tap",
+      "bytes": 2127,
+      "sha256": "e9369f81961a3f0509aa5a03d46b581eff13799cef9d758a019b8af1968559c5"
+    },
+    {
+      "path": "/tmp/hrm-monitoring-roster-independent-final-tests.json",
+      "bytes": 6170,
+      "sha256": "680718731e49ffa7066149ad80b3674ae7016cb9b2075a73b4d03119ca937f74"
+    },
+    {
+      "path": "/tmp/hrm-monitor-tests.json",
+      "bytes": 52260,
+      "sha256": "1c09eeae36f10260dbf69e7a9e4b80d85678512ff6b9db67551bde5530ae5b6d"
+    },
+    {
+      "path": "/tmp/hrm-monitor-export-validation.json",
+      "bytes": 703,
+      "sha256": "64ff3fb9859b00c02d1d671a5966828fc8dc1ac66cef0b4dece8c0c4208d1b72"
+    },
+    {
+      "path": "/tmp/hrm-monitor-tsconfig.json",
+      "bytes": 1004,
+      "sha256": "a0c27480b081058c97697712cba081b3c75482c46f35583f1e5462f98aedd03c"
+    },
+    {
+      "path": "/tmp/hrm-monitor-owner-validation.json",
+      "bytes": 5148,
+      "sha256": "0e098602552660d11618ce162c0752239c8ce2e0f4988614db805f208d7df07c"
+    },
+    {
+      "path": "/tmp/hrm-c12-monitoring-independent-preliminary-20261006.json",
+      "bytes": 4333,
+      "sha256": "67116b7f40d3788450af0a0d3ae44ab74632588dce667c58809b216086573e3c"
+    },
+    {
+      "path": "/tmp/hrm-c12-next-dependencies-independent-20261006.json",
+      "bytes": 67662,
+      "sha256": "5dd2239aed6ed84c059a1a8a73fa3c789f616791ed2c7d2175cd78a17ae4497f"
+    }
+  ],
+  "remaining_limits": [
+    "New exacthead hostedrequired gates pending; old5f87gates not borrowed.",
+    "No actual restoredcopy/backup/production access, external service/credentials, schema baseline acquisition, migrationapply/repair/mark-applied or rawdump.",
+    "Minimizedcatalog is deliberately non-executable partial schema evidence, directFK scope nottransitiveclosure; hashes do not reveal historical body/ACLsemantics or establish oldapi_keyscreation.",
+    "Catalog identifiers/roleOID/database fingerprints are correlation handles notanonymization; sharing requiresreview. Operator provenance notindependentlyverified byexporter.",
+    "Roster snapshot is not alertdelivery/scheduler/operationalSLO/fullhistorycorrectness. Countersets overlap;10000active+trackedroster/4MiBlimits andvisibility refusalremain explicit.",
+    "No fullhistoricalstaging/physicalAndroid/load/backuprestore/pilot or C12completionclaim. Ledger82/161DONE79open59%unchanged.",
+    "No remote/source changes byreviewer; Support592 untouched. No merge/deploy/runtimeactivation."
+  ]
+}

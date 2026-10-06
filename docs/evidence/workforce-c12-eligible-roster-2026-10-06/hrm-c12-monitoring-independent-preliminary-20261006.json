@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "reviewer": "independent /root/pr585_independent_review",
+  "reviewed_at": "2026-10-06T08:48:01.402853+00:00",
+  "status": "PRELIMINARY_FINDINGS_UNFROZEN_SOURCE",
+  "base": "5f87cc94a684d5083804f0dae23116384dda24b4",
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [
+      {
+        "id": "CATALOG_POLICY_ROLE_SCOPE",
+        "path": "scripts/workforce-baseline-schema-export.sql",
+        "lines": "44-48",
+        "finding": "Policy export retains roleCount but neither opaque role references nor role-target fingerprint. Equal-size target-role changes produce identical exported policy evidence when qual/check/command/permissive are unchanged.",
+        "fix": "Include bounded sorted role references/fingerprint and explicit PUBLIC marker semantics; preserve no raw role names."
+      },
+      {
+        "id": "CATALOG_RELATION_KIND",
+        "path": "scripts/workforce-baseline-schema-export.sql",
+        "lines": "7,58-74",
+        "finding": "Target and migration ledger relation kinds are not verified. row_security_active=false is not proof that a view/foreign ledger is unfiltered; a view api_keys could emit a CREATE TABLE column fragment.",
+        "fix": "Preflight fixed schema-qualified relation OIDs and supported ordinary table kinds, refuse or explicitly mark unsupported before reading ledger. Keep missing-table evidence honest.",
+        "verification": "Source inspection; no relation replacement or DB access performed."
+      }
+    ],
+    "P3": [
+      {
+        "id": "PROVENANCE_DATE_VALIDATION",
+        "path": "scripts/workforce-baseline-schema-export.mjs",
+        "line": 13,
+        "finding": "Regex-only date accepts impossible calendar/time and unbounded fractional precision. Independent pure probe accepted2026-99-99T99:99:99Z.",
+        "fix": "Bound string/fraction lengths and require real canonical timestamps; preserve explicit operator-supplied/unverified provenance."
+      }
+    ]
+  },
+  "roster_review": "No concrete current false-coverage defect found in source: independent active roster LEFTJOIN, single RR timestamp, RLS visibility refusal, missing-state counts, explicit emptyeligible and finite limits are present. Consider future lastAttemptAt/lastCompletedAt clock-anomaly validation and document overlapping count sets; no full staging/operational acceptance.",
+  "actual_independent_tests": {
+    "node_exporter": {
+      "passed": 7,
+      "failed": 0,
+      "report": "/tmp/hrm-monitoring-export-independent-tests.tap"
+    },
+    "vitest_roster": {
+      "passed": 1,
+      "failed": 0,
+      "skipped": 14,
+      "report": "/tmp/hrm-monitoring-roster-independent-tests.json"
+    },
+    "date_probe": {
+      "impossible": "2026-99-99T99:99:99Z",
+      "accepted": true
+    }
+  },
+  "source_hashes_at_receipt": [
+    {
+      "path": "scripts/workforce-baseline-schema-export.mjs",
+      "bytes": 10016,
+      "sha256": "77fcc974f444dd24398d537eeaa4f818b86b3fb69e131c32075516954f90a31f"
+    },
+    {
+      "path": "scripts/workforce-baseline-schema-export.sql",
+      "bytes": 5698,
+      "sha256": "aee574caef52fa3fcc92b1e99eafad598ff5719dfadcfe9f3d2f676d871dd351"
+    },
+    {
+      "path": "scripts/workforce-baseline-schema-export.test.mjs",
+      "bytes": 3735,
+      "sha256": "4c5380c0837b042bcd53512cbf9ff6b7c1a5fee1e5d463e087f45daa61c37d4b"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-roster-health.ts",
+      "bytes": 6179,
+      "sha256": "1acb4fe15c8cb9da73b93cef33361d558f2b96f9b43d055b7d87b569ed4ebd6a"
+    },
+    {
+      "path": "src/__tests__/workforce-reconciliation-roster-health.test.ts",
+      "bytes": 9333,
+      "sha256": "e803c41369667d110419ab5f15c22e4524a6b385e97bb54a7aa19710c16a351b"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-operations.ts",
+      "bytes": 11588,
+      "sha256": "514eb7cc12e5d89dabb5cd03ccddadefd7bec50c682620bc1cccca6bdb5c6576"
+    }
+  ],
+  "limits": [
+    "Unfrozen candidate, no exact remote SHA acceptance; source may change to address findings.",
+    "No source/ref mutation, credentials, rawlogs, database/migration/prod/Support access.",
+    "New PG tests skipped by reviewer; owner results not yet received/accepted.",
+    "Exporter is intentionally partial non-executable baseline; no historical creation provenance or C12completion inferred."
+  ]
+}

@@ -1,0 +1,77 @@
+[
+  {
+    "name": "hrm-monitor-source-bindings.json",
+    "bytes": 2518,
+    "sha256": "cd3aae46a4399cae98f8830730686630536c628a08d17988798600ffeaa64595"
+  },
+  {
+    "name": "hrm-monitor-independent-tree-proof.json",
+    "bytes": 784,
+    "sha256": "4221d8c04ad085f7ba909fbcd4a7c1da279b32e4e7e82d0d51285bdbd6d668e1"
+  },
+  {
+    "name": "hrm-monitor-independent-remote-bindings.json",
+    "bytes": 4795,
+    "sha256": "25a6d689283c6a9133bda6ff1a228d2f06f10e5d735f5e1ea4bcb17c85f63f99"
+  },
+  {
+    "name": "hrm-monitoring-plan-independent-proof.json",
+    "bytes": 9437,
+    "sha256": "e1f2ab29fb66e82a363128cba3352dd7e783cf0d484d3d1dce465c557a8ca159"
+  },
+  {
+    "name": "hrm-monitoring-export-independent-final-tests.tap",
+    "bytes": 2127,
+    "sha256": "e9369f81961a3f0509aa5a03d46b581eff13799cef9d758a019b8af1968559c5"
+  },
+  {
+    "name": "hrm-monitoring-roster-independent-final-tests.json",
+    "bytes": 6170,
+    "sha256": "680718731e49ffa7066149ad80b3674ae7016cb9b2075a73b4d03119ca937f74"
+  },
+  {
+    "name": "hrm-monitor-tests.json",
+    "bytes": 52260,
+    "sha256": "1c09eeae36f10260dbf69e7a9e4b80d85678512ff6b9db67551bde5530ae5b6d"
+  },
+  {
+    "name": "hrm-monitor-export-validation.json",
+    "bytes": 703,
+    "sha256": "64ff3fb9859b00c02d1d671a5966828fc8dc1ac66cef0b4dece8c0c4208d1b72"
+  },
+  {
+    "name": "hrm-monitor-tsconfig.json",
+    "bytes": 1004,
+    "sha256": "a0c27480b081058c97697712cba081b3c75482c46f35583f1e5462f98aedd03c"
+  },
+  {
+    "name": "hrm-monitor-owner-validation.json",
+    "bytes": 5148,
+    "sha256": "0e098602552660d11618ce162c0752239c8ce2e0f4988614db805f208d7df07c"
+  },
+  {
+    "name": "hrm-c12-monitoring-independent-preliminary-20261006.json",
+    "bytes": 4333,
+    "sha256": "67116b7f40d3788450af0a0d3ae44ab74632588dce667c58809b216086573e3c"
+  },
+  {
+    "name": "hrm-c12-next-dependencies-independent-20261006.json",
+    "bytes": 67662,
+    "sha256": "5dd2239aed6ed84c059a1a8a73fa3c789f616791ed2c7d2175cd78a17ae4497f"
+  },
+  {
+    "name": "hrm-monitor-independent-source-dc91-20261006.json",
+    "bytes": 11473,
+    "sha256": "d6dcd75d951450ff5d36ab197d2a809fcf9e80a4cb9eaa0365a07e6f28924413"
+  },
+  {
+    "name": "hrm-monitor-next-slice-preparation.json",
+    "bytes": 2541,
+    "sha256": "b703437cc78939b883c2fb03513d7a4516897db9f91b6b1eb82c5871c4b3d16d"
+  },
+  {
+    "name": "hrm-monitor-mtm-regression.json",
+    "bytes": 63147,
+    "sha256": "ba32e7d4c450d334bad2fb75048e77509178152dd47920ccd5ff76f0388a0b83"
+  }
+]

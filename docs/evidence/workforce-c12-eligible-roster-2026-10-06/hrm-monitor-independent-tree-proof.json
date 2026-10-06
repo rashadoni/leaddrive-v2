@@ -1,0 +1,18 @@
+{
+  "blobs_and_modes_verified": 8758,
+  "tree_recomputed": "6f0779e839c6c684107a17314798dbcb0ac1b339",
+  "exact_delta": [
+    "docs/workforce-c12-eligible-roster-monitoring-2026-10-06.md",
+    "docs/workforce-c12-schema-only-baseline-contract-2026-10-06.md",
+    "docs/workforce-hrm-79-open-dependency-plan-2026-10-06.md",
+    "scripts/workforce-baseline-schema-export.mjs",
+    "scripts/workforce-baseline-schema-export.sql",
+    "scripts/workforce-baseline-schema-export.test.mjs",
+    "src/__tests__/workforce-reconciliation-roster-health.test.ts",
+    "src/lib/workforce/reconciliation-operations.ts",
+    "src/lib/workforce/reconciliation-roster-health.ts"
+  ],
+  "unchanged_base_files": 8749,
+  "nine_selected_remote_blobs_equal_reviewed_source": true,
+  "baseline_pairs": 64
+}

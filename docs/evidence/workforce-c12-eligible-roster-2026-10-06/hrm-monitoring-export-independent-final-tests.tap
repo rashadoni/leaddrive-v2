@@ -1,0 +1,64 @@
+TAP version 13
+# Subtest: column fragment explicitly cannot establish a historical executable baseline
+ok 1 - column fragment explicitly cannot establish a historical executable baseline
+  ---
+  duration_ms: 4.316198
+  type: 'test'
+  ...
+# Subtest: absent api_keys is evidence of absence, never reconstructed from Prisma
+ok 2 - absent api_keys is evidence of absence, never reconstructed from Prisma
+  ---
+  duration_ms: 0.401262
+  type: 'test'
+  ...
+# Subtest: unknown identifiers, defaults and extra raw fields cannot reach output
+ok 3 - unknown identifiers, defaults and extra raw fields cannot reach output
+  ---
+  duration_ms: 3.577049
+  type: 'test'
+  ...
+# Subtest: generated or differently collated columns cannot masquerade as equivalent DDL
+ok 4 - generated or differently collated columns cannot masquerade as equivalent DDL
+  ---
+  duration_ms: 0.392447
+  type: 'test'
+  ...
+# Subtest: preserves incomplete, rolled-back and duplicate ledger records without logs
+ok 5 - preserves incomplete, rolled-back and duplicate ledger records without logs
+  ---
+  duration_ms: 0.941152
+  type: 'test'
+  ...
+# Subtest: refuses filtered ledger, collection truncation and malformed checksum
+ok 6 - refuses filtered ledger, collection truncation and malformed checksum
+  ---
+  duration_ms: 1.235139
+  type: 'test'
+  ...
+# Subtest: provenance accepts only bounded opaque receipts and a revision, never credential paths
+ok 7 - provenance accepts only bounded opaque receipts and a revision, never credential paths
+  ---
+  duration_ms: 0.842068
+  type: 'test'
+  ...
+# Subtest: refuses views, foreign/partitioned relations and impossible calendar timestamps
+ok 8 - refuses views, foreign/partitioned relations and impossible calendar timestamps
+  ---
+  duration_ms: 0.339274
+  type: 'test'
+  ...
+# Subtest: policy target roles remain distinct even when counts and expressions are unchanged
+ok 9 - policy target roles remain distinct even when counts and expressions are unchanged
+  ---
+  duration_ms: 1.894786
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 170.94552

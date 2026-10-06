@@ -1,0 +1,18 @@
+{
+  "status": "PASS",
+  "environment": "DISPOSABLE_SYNTHETIC_PG16_NOT_HISTORICAL_BASELINE",
+  "checks": [
+    "catalog SQL under nonsuperuser ledger-only SELECT",
+    "api_keys SELECT denied",
+    "private row/default/function/comment/log canaries absent",
+    "repository ledger checksum match",
+    "incomplete ledger record retained",
+    "DDL fragment refused for unknown default",
+    "output mode 0600",
+    "overwrite refused",
+    "read-only data fingerprint unchanged",
+    "RLS-filtered ledger export refused",
+    "unsupported ledger view refused before body evaluation"
+  ],
+  "psqlInterface": "temporary local wrapper executing docker exec psql; external PGSERVICE resolution NOT TESTED"
+}
