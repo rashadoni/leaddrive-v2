@@ -1,0 +1,39 @@
+{
+  "status": "PASS",
+  "at": "2026-10-06 17:54:00 UTC",
+  "head": "e3170049eaebd6e07ab99c76917300912ba3d9e2",
+  "tree": "ba872cb1729f2ffb91550a3dad4fd513b61b8549",
+  "parent": "f6a4d6ebf5d2326420d29eefc59eff627c218eaf",
+  "priorBlobsModesPreserved": 9259,
+  "totalBlobs": 9263,
+  "newFiles": [
+    {
+      "path": "docs/evidence/workforce-c7-final-2026-10-06/README.md",
+      "blob": "91760c181277222762fdc28a2b37f9924726720c",
+      "mode": "100644",
+      "exactContent": true
+    },
+    {
+      "path": "docs/evidence/workforce-c7-final-2026-10-06/manifest.json",
+      "blob": "0a10b4853a4757105204281bec322ecb001b9d9f",
+      "mode": "100644",
+      "exactContent": true
+    },
+    {
+      "path": "docs/evidence/workforce-c7-final-2026-10-06/final-minimized-receipts.json",
+      "blob": "77af1d09f506e89af4b1364d5243d08a5b808207",
+      "mode": "100644",
+      "exactContent": true
+    },
+    {
+      "path": "docs/evidence/workforce-c7-final-2026-10-06/accepted-artifact-zips.json",
+      "blob": "a6de5f4307dfc9f5f7905a07888855a97364a99b",
+      "mode": "100644",
+      "exactContent": true
+    }
+  ],
+  "sourceHead": "a856a9e533c4f3cec6f2313e69f5be0d5b4d4226",
+  "sourceTree": "a50243196992bf8c91af48b10ed0674669f7756b",
+  "originalReceipts": 43,
+  "originalC7Zips": 3
+}

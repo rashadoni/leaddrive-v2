@@ -1,0 +1,446 @@
+{
+  "status": "ACCEPTED_IMMUTABLE_E317_FINAL_C7_EVIDENCE_DURABILITY",
+  "at": "2026-10-06T17:59:38.338074+00:00",
+  "archive": {
+    "commit": "e3170049eaebd6e07ab99c76917300912ba3d9e2",
+    "tree": "ba872cb1729f2ffb91550a3dad4fd513b61b8549",
+    "parent": "f6a4d6ebf5d2326420d29eefc59eff627c218eaf",
+    "prefix": "docs/evidence/workforce-c7-final-2026-10-06/",
+    "actualRemoteBlobsRead": 4,
+    "priorBlobsAndModesPreserved": 9259,
+    "totalBlobs": 9263,
+    "onlyFourExpectedPathsAdded": true,
+    "newAndParentRootTreesIndependentlyRecomputed": true,
+    "files": [
+      {
+        "path": "/tmp/hrm-c7-independent-final-archive-blobs/README.md",
+        "mode": "100644",
+        "gitBlob": "91760c181277222762fdc28a2b37f9924726720c",
+        "bytes": 6263,
+        "sha256": "7779a718bcdd8ccc8c568dac31e8050f3203817799b18db07ce54e163a2902ce"
+      },
+      {
+        "path": "/tmp/hrm-c7-independent-final-archive-blobs/accepted-artifact-zips.json",
+        "mode": "100644",
+        "gitBlob": "a6de5f4307dfc9f5f7905a07888855a97364a99b",
+        "bytes": 25526,
+        "sha256": "e0412e7cd1c4310d006269ebae1a9560bf04fa97254ef34649a2a2f01686d109"
+      },
+      {
+        "path": "/tmp/hrm-c7-independent-final-archive-blobs/final-minimized-receipts.json",
+        "mode": "100644",
+        "gitBlob": "77af1d09f506e89af4b1364d5243d08a5b808207",
+        "bytes": 386585,
+        "sha256": "a49233655f4066929478d07e5443b18651829cf106f2fd4939f87c3c85d88550"
+      },
+      {
+        "path": "/tmp/hrm-c7-independent-final-archive-blobs/manifest.json",
+        "mode": "100644",
+        "gitBlob": "0a10b4853a4757105204281bec322ecb001b9d9f",
+        "bytes": 1706,
+        "sha256": "ff960965f5872c37c290aed4744f39af3d5a554beddfff69ef21297ea794fe7f"
+      }
+    ]
+  },
+  "source": {
+    "head": "a856a9e533c4f3cec6f2313e69f5be0d5b4d4226",
+    "tree": "a50243196992bf8c91af48b10ed0674669f7756b",
+    "main": "4eb451bb62bac71860bbe47e576f2be506eab860",
+    "synthetic": "16f440b587dc22ad961955651e2ee8e2ada87941",
+    "freshMainPrAndEvidenceRefsMatch": true,
+    "pr": 589,
+    "state": "open_ready",
+    "mergeOrDeployNotPerformedOrAuthorized": true
+  },
+  "originals": {
+    "current": 43,
+    "priorF6": 55,
+    "combinedDistinctNames": 98,
+    "exactUtf8ByteLengthHashAndLocalCaptures": true,
+    "entries": [
+      {
+        "name": "hrm-c7-archive-readback.json",
+        "bytes": 671,
+        "sha256": "adca48385bb71de0b2fd5fe65aaf6de38aea2c8590ad2c041c5291265e2d16c0"
+      },
+      {
+        "name": "hrm-c7-independent-durable-f6a4-20261006.json",
+        "bytes": 7956,
+        "sha256": "27a8a8886fe9d1157a17a2d2f59d66d17fdcd24d0608199e6cc5b74521112720"
+      },
+      {
+        "name": "hrm-c7-docs-closure-prepared.json",
+        "bytes": 711,
+        "sha256": "9e464fd5a73f33425d0ee7dfe59d5d917d84c66a52521d5e06fd2b844cebec31"
+      },
+      {
+        "name": "hrm-c7-docs-diff-check.json",
+        "bytes": 356,
+        "sha256": "b42acaffaaea3c82e753551cf357b8957fbefb02b648f1199c795d8f53902077"
+      },
+      {
+        "name": "hrm-c7-independent-docs-local-20261006.json",
+        "bytes": 3896,
+        "sha256": "5b6a6d68575196a5c751cb7e2bf8d82242f40c3a3e529cd8d475e05851aec082"
+      },
+      {
+        "name": "hrm-c7-independent-docs-source-a9fdf-20261006.json",
+        "bytes": 4490,
+        "sha256": "4b2a1c074cd3ef95702e5e800f69f74d8aad61baedc25076d269dd175b98db02"
+      },
+      {
+        "name": "hrm-c7-docs-source-freeze.json",
+        "bytes": 13392,
+        "sha256": "a0e69112aa9e89c4d3ed36804b2fa6a7032fb5715aee137c68bfddcbb407ce9e"
+      },
+      {
+        "name": "hrm-c7-local-process-cleanup-observation.json",
+        "bytes": 777,
+        "sha256": "aedd9aaf1b42c1719cbab9a727ca83204c2c7c2dcfbd38f908a6dead337d8ae8"
+      },
+      {
+        "name": "hrm-c7-docs-current-verification.json",
+        "bytes": 981,
+        "sha256": "aa96a383130e1b7c360a15751527832fd42cdcea542a5685424f2a522ca68df4"
+      },
+      {
+        "name": "hrm-c7-hosted-a9fd-verification.json",
+        "bytes": 1289,
+        "sha256": "031cf4fbf82fd6e4c4ed80354853a0f29a58303fa34dd90f02aa532f347031d1"
+      },
+      {
+        "name": "hrm-c7-final-artifact-provenance.json",
+        "bytes": 1071,
+        "sha256": "556a92a94ded99e4518abd0bfc05278041f07ad8514f45498bf854194b521986"
+      },
+      {
+        "name": "hrm-c7-hosted-a9fd/bulk-browser-receipt.json",
+        "bytes": 24051,
+        "sha256": "e0d32f66b9597490b5ec58b1274cb578be15196ba1dc13729928628398328e60"
+      },
+      {
+        "name": "hrm-c7-hosted-a9fd/fixture.json",
+        "bytes": 3152,
+        "sha256": "8df7cd7a2430af20a76b7b3144fa5a45a031ef70a2f03344cb1919cc2e2b82f9"
+      },
+      {
+        "name": "hrm-c7-hosted-a9fd/tests.json",
+        "bytes": 10151,
+        "sha256": "3e8a9df99604485f412041ad12d07cf945acb417fd827778f9b10f3abe4ec616"
+      },
+      {
+        "name": "hrm-c7-hosted-a9fd/workflow.json",
+        "bytes": 208,
+        "sha256": "e57a9318a5a4c66710f5664d70d93792af26afa376580116f08a4186218dbab5"
+      },
+      {
+        "name": "hrm-c7-independent-hosted-artifact-a9fd-20261006.json",
+        "bytes": 15988,
+        "sha256": "e2dd2ef91689f816322942a0886468317f9f34b85517d313dc8f6d707b18a34c"
+      },
+      {
+        "name": "hrm-c7-a9fd-restore-negative-original.json",
+        "bytes": 7471,
+        "sha256": "462e092c537bd5c58e8879b821e15786918517e6df2f5210d63c419eb36f9b51"
+      },
+      {
+        "name": "hrm-c7-restore-bounded-retry.json",
+        "bytes": 1160,
+        "sha256": "ddb24a13165a7a6715f688a31b604cd912ee7d47bd2a1d01f68d390592092028"
+      },
+      {
+        "name": "hrm-c7-independent-a9fd-restore-negative-review-20261006.json",
+        "bytes": 12829,
+        "sha256": "590a9e0ad18f691a69c420b1a498dc01799a10700da27fe05e000e2a39272f32"
+      },
+      {
+        "name": "hrm-c7-a9fd-restore-retry-original.json",
+        "bytes": 15958,
+        "sha256": "50a5a356d492d453335bc1ae859d5b88ce423cdaa5705d4a0ad389fb9672c6e0"
+      },
+      {
+        "name": "hrm-c7-restore-retry-verification.json",
+        "bytes": 1005,
+        "sha256": "829ba3e42341ae87a3b8bd56ea7b608ed0dba1cbed4804c7ea3c339eb897f6b1"
+      },
+      {
+        "name": "hrm-c7-independent-terminal-a9fd-tested-base-20261006.json",
+        "bytes": 13506,
+        "sha256": "44cc4f1d38cf07bc94869c82319566e1a668e92b504c34442b0008931b7f0d84"
+      },
+      {
+        "name": "hrm-c7-main600-integration-proof.json",
+        "bytes": 5977,
+        "sha256": "613f0fa0ae30fa0cde6a86a0afb61a0d5ffbb62eec9a987ba0fd4881506fc878"
+      },
+      {
+        "name": "hrm-c7-main600-checks-qualified.json",
+        "bytes": 9509,
+        "sha256": "d622643ce084589ae684e8878fbc5a50c446cc355abe85e3a51c609f24ee06d7"
+      },
+      {
+        "name": "hrm-c7-main600-targeted-tests-minimized.json",
+        "bytes": 22484,
+        "sha256": "0c61615a60e7ad0b0ddd2506707c91219d7ae6a92388ab749f0b2426d5ca2f0f"
+      },
+      {
+        "name": "hrm-c7-independent-main600-local-review-20261006.json",
+        "bytes": 10593,
+        "sha256": "72a1d48d676f909a1152a9a636c1ab3f870ea3fc60b82fb486a92f615c90da3f"
+      },
+      {
+        "name": "hrm-c7-independent-source-a856-20261006.json",
+        "bytes": 7053,
+        "sha256": "29a1190793d2c4947a26f0a607f9053ba24cfb0aca354763b23a74ad4986cf16"
+      },
+      {
+        "name": "hrm-c7-main600-source-freeze.json",
+        "bytes": 16023,
+        "sha256": "0e98b8994cb8add0ab060d8280681112fd0b5489af95d1066eb9812d70c92e4d"
+      },
+      {
+        "name": "hrm-c7-a856-restore-original.json",
+        "bytes": 15958,
+        "sha256": "efae572ee009c93ef6ec0d501ecdb0af3c6f2c3f3713b1f6f02b21811a0c70f5"
+      },
+      {
+        "name": "hrm-c7-a856-restore-verification.json",
+        "bytes": 1026,
+        "sha256": "72a79d2d0d7cebb081d5354ec63ee7c39c5e515079f9583d4cbd06fe641f72d8"
+      },
+      {
+        "name": "hrm-c7-independent-restore-a856-20261006.json",
+        "bytes": 12566,
+        "sha256": "a13b32bdb670714de511ed2e18c64abe922852ed9d9f9ba8d1945afd0f23c0c0"
+      },
+      {
+        "name": "hrm-c7-hosted-a856-verification.json",
+        "bytes": 1289,
+        "sha256": "33266fdafd58ea6be22717db3a915324eead92bcdef21b8e6b9c455085188170"
+      },
+      {
+        "name": "hrm-c7-a856-artifact-provenance.json",
+        "bytes": 1071,
+        "sha256": "a0ca2899b9d4b17e41f4a54d6548e27b0493fc83d4ad24e37b222bc7606c8d14"
+      },
+      {
+        "name": "hrm-c7-hosted-a856/bulk-browser-receipt.json",
+        "bytes": 24051,
+        "sha256": "9cb7d733d3356d8545802a0f10fb9165130c1e16585389d266dd78f77cd2d77c"
+      },
+      {
+        "name": "hrm-c7-hosted-a856/fixture.json",
+        "bytes": 3152,
+        "sha256": "8df7cd7a2430af20a76b7b3144fa5a45a031ef70a2f03344cb1919cc2e2b82f9"
+      },
+      {
+        "name": "hrm-c7-hosted-a856/tests.json",
+        "bytes": 10151,
+        "sha256": "1f4b500ebbe4402c0bddf6766858144b865ba1d738ae4c8a8efde1cdb430109f"
+      },
+      {
+        "name": "hrm-c7-hosted-a856/workflow.json",
+        "bytes": 208,
+        "sha256": "f6d05c9f64c6c27c0385e3b9dd736cadf61528e101141fe8e0f87ca41fa05601"
+      },
+      {
+        "name": "hrm-c7-independent-hosted-artifact-a856-20261006.json",
+        "bytes": 18430,
+        "sha256": "2d1dc043e4d31ada04292f608523ec5bc472e3615671afa5bc293f3d540e9873"
+      },
+      {
+        "name": "hrm-c7-independent-a856-contrast-disposition-20261006.json",
+        "bytes": 5165,
+        "sha256": "0988b7d91cf47a57c59ae8e048905b42a1816a79cf8654e31ef0124021b20383"
+      },
+      {
+        "name": "hrm-c7-ownership-final-observation.json",
+        "bytes": 1468,
+        "sha256": "74d03c6fee768bb080f5edd37d980b6c13b20efebbb43de12638b5074e20cdbb"
+      },
+      {
+        "name": "hrm-c7-independent-prepared-final-packet-review-20261006.json",
+        "bytes": 11795,
+        "sha256": "0f96706f3aec6a44a7f414f8956328c02686cf1828abecc4176630ea9376aaca"
+      },
+      {
+        "name": "hrm-c7-a856-final-ci.json",
+        "bytes": 12017,
+        "sha256": "6da33430ca975b08aa406dca56a5b96ca9d9a405eb06b4ed96329c16a1a093a7"
+      },
+      {
+        "name": "hrm-c7-independent-terminal-a856-20261006.json",
+        "bytes": 15690,
+        "sha256": "da835d71fa525a474d0ad1f9c62c3040a94cd8b68efb47c6e41e3ae1212f06fe"
+      }
+    ],
+    "historicalCaptureAliases": [
+      {
+        "storedName": "hrm-c7-docs-source-freeze.json",
+        "originalName": "hrm-c7-source-freeze.json",
+        "meaning": "Preserved historical capture alias, not replacement of the mutable current path."
+      }
+    ],
+    "prior55BundleRehashedWithoutMutation": true,
+    "terminalOriginalSha256": "da835d71fa525a474d0ad1f9c62c3040a94cd8b68efb47c6e41e3ae1212f06fe",
+    "terminalOriginalBytes": 15690,
+    "historicalPendingStatusesPreservedAsHistory": true
+  },
+  "zipChecks": [
+    {
+      "head": "d303ae3aac6a2ddb62439e433c08bca29c0befb9",
+      "artifact": 11427323359,
+      "bytes": 6162,
+      "sha256": "ac1a180f8b77ea885b3145c566df71ec36b68c0b565b4d12fb3065fd719be780",
+      "base64Strict": true,
+      "crcPassed": true,
+      "onlyFourMinimizedJsonMembers": true,
+      "allMembersEqualOriginalReceiptBundles": true
+    },
+    {
+      "head": "a9fdf5b3c04459d454ad0e1bf3254251b23a8320",
+      "artifact": 11428728463,
+      "bytes": 6160,
+      "sha256": "47992f4ddcef342f6612ab658567f2f7e4de42fe44230c2a9e03892dcb476aee",
+      "base64Strict": true,
+      "crcPassed": true,
+      "onlyFourMinimizedJsonMembers": true,
+      "allMembersEqualOriginalReceiptBundles": true
+    },
+    {
+      "head": "a856a9e533c4f3cec6f2313e69f5be0d5b4d4226",
+      "artifact": 11430613495,
+      "bytes": 6168,
+      "sha256": "e8fa3107469bddce7bae41142420630be1f537bd68399b0490703ed4577cf10e",
+      "base64Strict": true,
+      "crcPassed": true,
+      "onlyFourMinimizedJsonMembers": true,
+      "allMembersEqualOriginalReceiptBundles": true
+    }
+  ],
+  "sanitizedTestProjection": {
+    "passed": 163,
+    "sourceOriginalHashCountsAndCaseProjectionReverified": true,
+    "notRawTestReportLosslessArchival": true
+  },
+  "acceptance": {
+    "exactCurrentHeadChecks": 15,
+    "currentWorkflows": 11,
+    "allCurrentAttempts": 1,
+    "ciRepeatedInThisDurabilityReview": false,
+    "sourceAndTestsRepeated": false,
+    "C7Cases": {
+      "postgresAndReact": 52,
+      "browser": 26,
+      "actualContrastSamples": 24
+    },
+    "ledger": {
+      "done": 83,
+      "total": 161,
+      "open": 78,
+      "weightedPercent": 60,
+      "closedOnly": "WF-C7-007"
+    },
+    "C8": "PREPARED_NOT_DONE",
+    "C12": "PARTIAL",
+    "runtimeDeployment": "NOT_PERFORMED"
+  },
+  "qualifications": {
+    "contrastP3": "24 actual sampled ratios exceed4.5; harness does not assert :hover. One intended-hover RU/shift/light sample has normal palette. No claim of24 independently observed interaction states, no demonstrated product contrast defect. Literal C7 acceptance remains bounded.",
+    "restoreHistory": "a9 first attempt seed TimeoutError before cases remains original, cause unknown; unchanged retry15PASS. Current a856 first attempt15PASS separately source-bound.",
+    "compilerAndLint": "Baseline-qualified18 known files/64typecheck pairs, six preexisting localTS7006, main60016 inheritedlintdiagnostics; no global compiler/suite/lint cleanliness.",
+    "artifactPrivacy": "Only three C7 ZIPs containing exactly four minimized JSON each are archived/read here. Restore safeJSON only; screenshot-bearing restore ZIPs not archived or inspected beyond previously allowlistedJSON. Other five workflow payloads metadata-only.",
+    "archiveClosure": "This proves43 exact originals plus preserved55 originals and3 exact C7 ZIPs. Nested references to source trees, local transports and prior evidence are not all newly archived; no universal recursive support closure claim.",
+    "scope": "Only WF-C7-007 ledger closure. No full historical migration replay, full HRM/staging/live collector retention/ACL/device/pilot/humanAT/fullWCAG acceptance.",
+    "subsequentProofAppend": "Parent plans separate additive durability/root-readback/environment-proof files; these are not part of the immutable four-file e317 manifest and are not claimed published by this receipt."
+  },
+  "README": {
+    "wholeRead": true,
+    "noFinalPendingPlaceholder": true,
+    "negativeHistoryAndP3Retained": true,
+    "exactLedgerAndPreparedNextScope": true,
+    "inheritedMainGeoPermissionHeaderDisclosed": true,
+    "cleanupIdentityReadDenialNoBypassDisclosed": true
+  },
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": [
+      "Previously accepted contrast observation limitation retained; no new archive defect."
+    ]
+  },
+  "remainingBlockersForBoundedC7Durability": [],
+  "supports": [
+    {
+      "path": "/tmp/hrm-c7-independent-final-archive-blobs/README.md",
+      "bytes": 6263,
+      "sha256": "7779a718bcdd8ccc8c568dac31e8050f3203817799b18db07ce54e163a2902ce"
+    },
+    {
+      "path": "/tmp/hrm-c7-independent-final-archive-blobs/manifest.json",
+      "bytes": 1706,
+      "sha256": "ff960965f5872c37c290aed4744f39af3d5a554beddfff69ef21297ea794fe7f"
+    },
+    {
+      "path": "/tmp/hrm-c7-independent-final-archive-blobs/final-minimized-receipts.json",
+      "bytes": 386585,
+      "sha256": "a49233655f4066929478d07e5443b18651829cf106f2fd4939f87c3c85d88550"
+    },
+    {
+      "path": "/tmp/hrm-c7-independent-final-archive-blobs/accepted-artifact-zips.json",
+      "bytes": 25526,
+      "sha256": "e0412e7cd1c4310d006269ebae1a9560bf04fa97254ef34649a2a2f01686d109"
+    },
+    {
+      "path": "/tmp/hrm-c7-independent-final-archive-commit.json",
+      "bytes": 1337,
+      "sha256": "946a023de35ae1253d3d51d9260a32a2f1464cd83f361103d7a1441e6733c6a0"
+    },
+    {
+      "path": "/tmp/hrm-c7-independent-final-archive-tree.json",
+      "bytes": 3814955,
+      "sha256": "4cd944862b3fab215dc4a24cd0507ecf03129bf490fb79a5821ab402c269fbe9"
+    },
+    {
+      "path": "/tmp/hrm-c7-independent-final-archive-parent-tree.json",
+      "bytes": 3813315,
+      "sha256": "0c7566c1c13c5cb1d243df74c165e6f0fc801e60b94e88b20ff4124dd1e276c6"
+    },
+    {
+      "path": "/tmp/hrm-c7-independent-final-durability-fresh-main.json",
+      "bytes": 381,
+      "sha256": "a1b1b7e237aa736668f1905b81728cf724033801b0f56b530e6f6adc4617a7f6"
+    },
+    {
+      "path": "/tmp/hrm-c7-independent-final-durability-fresh-pr.json",
+      "bytes": 21637,
+      "sha256": "853288100efc5cd61ea1adf2cab2795270f4a6a888527c86c8f297bd156dfe36"
+    },
+    {
+      "path": "/tmp/hrm-c7-independent-final-durability-fresh-evidence.json",
+      "bytes": 474,
+      "sha256": "0025facf4c44589349dfaa75b5e701932a7ea54e64964909095c620c15d54a2d"
+    },
+    {
+      "path": "/tmp/hrm-c7-independent-durable-f6a4-20261006.json",
+      "bytes": 7956,
+      "sha256": "27a8a8886fe9d1157a17a2d2f59d66d17fdcd24d0608199e6cc5b74521112720"
+    },
+    {
+      "path": "/tmp/hrm-c7-independent-terminal-a856-20261006.json",
+      "bytes": 15690,
+      "sha256": "da835d71fa525a474d0ad1f9c62c3040a94cd8b68efb47c6e41e3ae1212f06fe"
+    },
+    {
+      "path": "/tmp/hrm-c7-independent-verify-final-durable-e317.py",
+      "bytes": 7957,
+      "sha256": "a4893b63d5f72224ce92a971e443042c9f956013c839d9ecd33738e83edf24b6"
+    },
+    {
+      "path": "/tmp/hrm-c7-independent-final-durable-core.py",
+      "bytes": 3389,
+      "sha256": "83cc6b0dfda484f38a101f0472c6b33530934c645a2f06eb1a49652c5e710bae"
+    }
+  ]
+}

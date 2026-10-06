@@ -1,0 +1,13 @@
+{
+  "at": "2026-10-06T17:54:23.476432+00:00",
+  "sourceReadable": true,
+  "sourceSha256": "33e3a2bade4ff3169b30dc101bbb2d4a1e6b10d8e373852866a4392afae1f64b",
+  "workspace": "/workspace/hrm-c7-completion",
+  "candidateSourceUnchanged": true,
+  "tmpWriteRead": "PASS",
+  "hostedTypecheckRestarted": false,
+  "allCurrentCI": "15 PASS / 11 first-attempt workflows",
+  "publishedFinalArchive": "e3170049eaebd6e07ab99c76917300912ba3d9e2",
+  "P3RUHoverCaveat": "retained",
+  "blocker": null
+}
