@@ -1,0 +1,144 @@
+{
+  "schema_version": 1,
+  "reviewer": "independent /root/pr585_independent_review",
+  "reviewed_at": "2026-10-06T09:00:01.952578+00:00",
+  "status": "ACCEPTED_DURABLE_SOURCE_ARCHIVE",
+  "commit": "4856226e0fc42bc2c50c2cf6fc8a72c1654c56e9",
+  "tree": "834fb213287d00dea2f47178067dc0e8c1095cf4",
+  "parent": "fb226889179ec99ea5c5939cc5957a91a37fe137",
+  "source_head": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+  "source_tree": "6f0779e839c6c684107a17314798dbcb0ac1b339",
+  "remote_blobs_verified": 17,
+  "receipt_originals_byte_equal": 15,
+  "manifest_originals_sha256_and_size_verified": 15,
+  "source_receipt_support_references_verified": 13,
+  "local_only_support": "hrm-monitor-independent-remote-tree.json, explicit originalhash and immutable Git tree recovery retained. Twelve other source-receipt supports archived byteequal.",
+  "source_receipt_sha256": "d6dcd75d951450ff5d36ab197d2a809fcf9e80a4cb9eaa0365a07e6f28924413",
+  "readme_review": "WholeREADME accurately states source-only acceptance, independentPGskips, synthetic boundaries, preservedfindings, partialnonexecutablecatalog, originalbytes recovery and unchanged82/16179open59%. Hostedterminal explicitlypending.",
+  "file_proof": [
+    {
+      "path": "docs/evidence/workforce-c12-eligible-roster-2026-10-06/README.md",
+      "bytes": 1528,
+      "sha256": "9c2ae76c41b00f68fd61c9003d44d9c7b241f749bd661eb6cef280b3231f0742",
+      "git_blob": "41e0bda226a1199a7fc406f2964d9a5a9a2a30d0",
+      "local_exact": false
+    },
+    {
+      "path": "docs/evidence/workforce-c12-eligible-roster-2026-10-06/hrm-c12-monitoring-independent-preliminary-20261006.json",
+      "bytes": 4333,
+      "sha256": "67116b7f40d3788450af0a0d3ae44ab74632588dce667c58809b216086573e3c",
+      "git_blob": "62a200065ea75a37964b6e0464535737fe0d0e11",
+      "local_exact": true
+    },
+    {
+      "path": "docs/evidence/workforce-c12-eligible-roster-2026-10-06/hrm-c12-next-dependencies-independent-20261006.json",
+      "bytes": 67662,
+      "sha256": "5dd2239aed6ed84c059a1a8a73fa3c789f616791ed2c7d2175cd78a17ae4497f",
+      "git_blob": "9a7bde8bc15a39bfba4a8337e16d35b959d2223d",
+      "local_exact": true
+    },
+    {
+      "path": "docs/evidence/workforce-c12-eligible-roster-2026-10-06/hrm-monitor-export-validation.json",
+      "bytes": 703,
+      "sha256": "64ff3fb9859b00c02d1d671a5966828fc8dc1ac66cef0b4dece8c0c4208d1b72",
+      "git_blob": "4ef7120073cd293d5729c39205a4b8694d0ce13b",
+      "local_exact": true
+    },
+    {
+      "path": "docs/evidence/workforce-c12-eligible-roster-2026-10-06/hrm-monitor-independent-remote-bindings.json",
+      "bytes": 4795,
+      "sha256": "25a6d689283c6a9133bda6ff1a228d2f06f10e5d735f5e1ea4bcb17c85f63f99",
+      "git_blob": "5f2f7243421fb1ce8db74388fbdf7abdda720970",
+      "local_exact": true
+    },
+    {
+      "path": "docs/evidence/workforce-c12-eligible-roster-2026-10-06/hrm-monitor-independent-source-dc91-20261006.json",
+      "bytes": 11473,
+      "sha256": "d6dcd75d951450ff5d36ab197d2a809fcf9e80a4cb9eaa0365a07e6f28924413",
+      "git_blob": "d7f611fb745842c59650700f0e0f992c54ed69eb",
+      "local_exact": true
+    },
+    {
+      "path": "docs/evidence/workforce-c12-eligible-roster-2026-10-06/hrm-monitor-independent-tree-proof.json",
+      "bytes": 784,
+      "sha256": "4221d8c04ad085f7ba909fbcd4a7c1da279b32e4e7e82d0d51285bdbd6d668e1",
+      "git_blob": "0cbaa300ff84bff78298c6e101fa318445e9b553",
+      "local_exact": true
+    },
+    {
+      "path": "docs/evidence/workforce-c12-eligible-roster-2026-10-06/hrm-monitor-mtm-regression.json",
+      "bytes": 63147,
+      "sha256": "ba32e7d4c450d334bad2fb75048e77509178152dd47920ccd5ff76f0388a0b83",
+      "git_blob": "b385af74fb41bd5680f7223d7600303b3546321d",
+      "local_exact": true
+    },
+    {
+      "path": "docs/evidence/workforce-c12-eligible-roster-2026-10-06/hrm-monitor-next-slice-preparation.json",
+      "bytes": 2541,
+      "sha256": "b703437cc78939b883c2fb03513d7a4516897db9f91b6b1eb82c5871c4b3d16d",
+      "git_blob": "12fbc2ef0e9e2e7560ce18df025f229dd0712f50",
+      "local_exact": true
+    },
+    {
+      "path": "docs/evidence/workforce-c12-eligible-roster-2026-10-06/hrm-monitor-owner-validation.json",
+      "bytes": 5148,
+      "sha256": "0e098602552660d11618ce162c0752239c8ce2e0f4988614db805f208d7df07c",
+      "git_blob": "0b40fb7aba7d71b02b49db48dbe58025be932aa3",
+      "local_exact": true
+    },
+    {
+      "path": "docs/evidence/workforce-c12-eligible-roster-2026-10-06/hrm-monitor-source-bindings.json",
+      "bytes": 2518,
+      "sha256": "cd3aae46a4399cae98f8830730686630536c628a08d17988798600ffeaa64595",
+      "git_blob": "167ea3a04d9d6b72affc63215318bd1169866d2a",
+      "local_exact": true
+    },
+    {
+      "path": "docs/evidence/workforce-c12-eligible-roster-2026-10-06/hrm-monitor-tests.json",
+      "bytes": 52260,
+      "sha256": "1c09eeae36f10260dbf69e7a9e4b80d85678512ff6b9db67551bde5530ae5b6d",
+      "git_blob": "221103860c572f0b329a89fcd38de6651af3ceb1",
+      "local_exact": true
+    },
+    {
+      "path": "docs/evidence/workforce-c12-eligible-roster-2026-10-06/hrm-monitor-tsconfig.json",
+      "bytes": 1004,
+      "sha256": "a0c27480b081058c97697712cba081b3c75482c46f35583f1e5462f98aedd03c",
+      "git_blob": "8871d7735abe7b6454c47c889eea006997e4392c",
+      "local_exact": true
+    },
+    {
+      "path": "docs/evidence/workforce-c12-eligible-roster-2026-10-06/hrm-monitoring-export-independent-final-tests.tap",
+      "bytes": 2127,
+      "sha256": "e9369f81961a3f0509aa5a03d46b581eff13799cef9d758a019b8af1968559c5",
+      "git_blob": "e2dd06f3421fff8fec9652f5ab6206e9e59800f9",
+      "local_exact": true
+    },
+    {
+      "path": "docs/evidence/workforce-c12-eligible-roster-2026-10-06/hrm-monitoring-plan-independent-proof.json",
+      "bytes": 9437,
+      "sha256": "e1f2ab29fb66e82a363128cba3352dd7e783cf0d484d3d1dce465c557a8ca159",
+      "git_blob": "8449687aa49b22281e8ce70d8c7722dae273aa68",
+      "local_exact": true
+    },
+    {
+      "path": "docs/evidence/workforce-c12-eligible-roster-2026-10-06/hrm-monitoring-roster-independent-final-tests.json",
+      "bytes": 6170,
+      "sha256": "680718731e49ffa7066149ad80b3674ae7016cb9b2075a73b4d03119ca937f74",
+      "git_blob": "1eced33cfeb309d4151a03aa635011a5633c52d4",
+      "local_exact": true
+    },
+    {
+      "path": "docs/evidence/workforce-c12-eligible-roster-2026-10-06/manifest.json",
+      "bytes": 2476,
+      "sha256": "e842a9d367bfed788cf9f27aa7b3ec23473afc5e273b498e455bb7c0a4758fa7",
+      "git_blob": "172fe6bf103e814da474729c0093a3d5c75b0047",
+      "local_exact": false
+    }
+  ],
+  "limits": [
+    "Archive bindings only; no source/tests/CI rerun or remote writes.",
+    "Next-slice proposal archived as original; no new source implementation acceptance inferred.",
+    "Hosted exactdc91 terminal review remains separate; no priorheadcredit."
+  ]
+}

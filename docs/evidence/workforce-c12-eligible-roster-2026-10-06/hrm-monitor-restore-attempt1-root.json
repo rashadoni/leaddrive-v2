@@ -1,0 +1,30 @@
+{
+  "head": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+  "synthetic": "e6d9e7a1fe1245a7009e9bd0a01c3dc00473ec1a",
+  "run": 37439083751,
+  "attempt": 1,
+  "job": 112188072766,
+  "artifact": 11401037156,
+  "zipBytes": 100833,
+  "zipSha256": "a097c9d16371fce471afdcf01367118d0e18027d3956b2d9532e0d821f766fb8",
+  "onlyReadMember": "restore-rendered-ui-receipt.json",
+  "safeReceiptBytes": 7471,
+  "safeReceiptSha256": "d2cea788176f62117ee5a8e9d73c40e7a792b0bf74c91407f2d67ed77f812a94",
+  "status": "FAIL",
+  "casesPassed": 0,
+  "casesRequired": 15,
+  "cleanupPassed": 2,
+  "sourceBindingsVerifiedLocal": 34,
+  "failure": {
+    "stage": "seed",
+    "name": "TimeoutError",
+    "sourcePosition": {
+      "line": 127,
+      "column": 57
+    },
+    "diagnostic": "Fixed category/position only; no raw error, stack, credentials, tokens, cookies or response body"
+  },
+  "rootCause": "UNKNOWN",
+  "retry": "One exact-head single-job retry requested through authorized correct GitHub connector; request confirmed",
+  "noRawLogsOrScreenshotsOpened": true
+}
