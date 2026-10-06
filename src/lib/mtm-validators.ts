@@ -152,6 +152,8 @@ const ContactBulkAssignmentBaseSchema = z.object({
   contactIds: z.array(cuid).min(1).max(500).transform((ids) => [...new Set(ids)]),
   mode: z.enum(["ASSIGN", "UNASSIGN"]),
   targetAgentId: cuid.optional().nullable(),
+  // UNASSIGN: the one employee to detach; absent — every employee of the client.
+  sourceAgentId: cuid.optional().nullable(),
   effectiveFrom: z.string().date(),
   reason: z.string().trim().min(3).max(500),
 }).superRefine((value, ctx) => {
@@ -160,6 +162,9 @@ const ContactBulkAssignmentBaseSchema = z.object({
   }
   if (value.mode === "UNASSIGN" && value.targetAgentId) {
     ctx.addIssue({ code: "custom", path: ["targetAgentId"], message: "targetAgentId must be empty for UNASSIGN" })
+  }
+  if (value.mode === "ASSIGN" && value.sourceAgentId) {
+    ctx.addIssue({ code: "custom", path: ["sourceAgentId"], message: "sourceAgentId must be empty for ASSIGN" })
   }
 })
 

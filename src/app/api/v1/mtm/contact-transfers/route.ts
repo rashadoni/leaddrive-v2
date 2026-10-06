@@ -228,7 +228,6 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
             organizationId: auth.orgId,
             contactId: row.contactId,
             agentId: body.sourceAgentId,
-            role: "PRIMARY",
             deletedAt: null,
             effectiveFrom: { lte: effectiveFrom },
             OR: [{ effectiveTo: null }, { effectiveTo: { gt: effectiveFrom } }],
@@ -241,7 +240,8 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
             organizationId: auth.orgId,
             contactId: row.contactId,
             agentId: body.targetAgentId,
-            role: "PRIMARY",
+            // The target takes the source employee's place for this client.
+            role: row.currentRole ?? "PRIMARY",
             effectiveFrom,
             effectiveTo: null,
             source: "BULK_TRANSFER",

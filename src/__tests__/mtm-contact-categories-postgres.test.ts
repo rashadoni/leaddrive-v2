@@ -245,6 +245,158 @@ pgDescribe("client categories on a real Postgres", () => {
     })
   })
 
+  // Owner, 2026-10-06: «может быть, что клиент привязан к нескольким агентам» —
+  // and, asked what «Привязать» does to a client who already has an employee:
+  // «добавлять агента». Until then attaching ENDED the current employee's
+  // assignment: two of one agent's clients attached to another were taken away
+  // from the first. The rules are effective-dated rows and relation filters,
+  // which a mocked Prisma answers however it is told to — so they run here.
+  describe("a client attached to several employees", () => {
+    const today = new Date().toISOString().slice(0, 10)
+    const ids = {} as Record<"seymur" | "rashad" | "leyla" | "aydin" | "vuqar" | "xalid", string>
+
+    type Handler = (request: NextRequest) => Promise<Response>
+    async function change(
+      routes: { preview: Handler; execute: Handler },
+      body: Record<string, unknown>,
+      key: string,
+    ) {
+      const request = { reason: "Field ownership", ...body }
+      const previewed = await (await routes.preview(send("POST", "/preview", request))).json()
+      if (!previewed.data) throw new Error(`preview refused: ${JSON.stringify(previewed)}`)
+      const preview = previewed.data
+      const executed = await routes.execute(send("POST", "/execute", {
+        ...request,
+        previewToken: preview.previewToken,
+        idempotencyKey: `several-employees-${key}`,
+      }))
+      return { preview, status: executed.status, result: await executed.json() }
+    }
+    async function assignments() {
+      const { POST: preview } = await import("@/app/api/v1/mtm/contact-assignments/preview/route")
+      const { POST: execute } = await import("@/app/api/v1/mtm/contact-assignments/route")
+      return { preview: preview as Handler, execute: execute as Handler }
+    }
+    /** Who the client is attached to today, as the database has it: "name:ROLE", responsible first. */
+    async function employeesOf(contactId: string): Promise<string[]> {
+      const rows = await bypass(() => prisma.mtmContactAgentAssignment.findMany({
+        where: { contactId, deletedAt: null, effectiveFrom: { lte: new Date(`${today}T00:00:00.000Z`) }, OR: [{ effectiveTo: null }, { effectiveTo: { gt: new Date(`${today}T00:00:00.000Z`) } }] },
+        select: { role: true, agent: { select: { name: true } } },
+        orderBy: [{ role: "asc" }, { agent: { name: "asc" } }],
+      }))
+      return rows.map((row: { role: string; agent: { name: string } }) => `${row.agent.name}:${row.role}`)
+    }
+    /** Names the Clients list returns for a query, and the employees it shows per client. */
+    async function listed(query: string): Promise<Record<string, string[]>> {
+      const { GET } = await import("@/app/api/v1/mtm/contacts/route")
+      const response = await GET(new NextRequest(`http://localhost:3000/api/v1/mtm/contacts?status=ACTIVE&limit=200&${query}`))
+      const body = await response.json() as { data: { contacts: Array<{ displayName: string; agentAssignments: Array<{ agent: { name: string } }> }> } }
+      return Object.fromEntries(body.data.contacts
+        .filter((contact) => contact.displayName.startsWith("Abbasov "))
+        .map((contact) => [contact.displayName, contact.agentAssignments.map((assignment) => assignment.agent.name)]))
+    }
+
+    beforeAll(async () => {
+      await bypass(async () => {
+        for (const name of ["seymur", "rashad", "leyla"] as const) {
+          ids[name] = (await prisma.mtmAgent.create({
+            data: { organizationId: ORG, name: name[0].toUpperCase() + name.slice(1) },
+            select: { id: true },
+          })).id
+        }
+        for (const [key, firstName] of [["aydin", "Aydın"], ["vuqar", "Vüqar"], ["xalid", "Xalid"]] as const) {
+          ids[key] = (await prisma.mtmContact.create({
+            data: { organizationId: ORG, firstName, lastName: "Abbasov", displayName: `Abbasov ${firstName}`, type: "DOCTOR" },
+            select: { id: true },
+          })).id
+        }
+        // Seymur has Aydın and Xalid; nobody has Vüqar.
+        for (const contactId of [ids.aydin, ids.xalid]) {
+          await prisma.mtmContactAgentAssignment.create({
+            data: { organizationId: ORG, contactId, agentId: ids.seymur, role: "PRIMARY", effectiveFrom: new Date("2026-01-01T00:00:00.000Z") },
+          })
+        }
+      })
+    })
+
+    it("adds a second employee to a client and takes nothing from the first", async () => {
+      const body = { contactIds: [ids.aydin], mode: "ASSIGN", targetAgentId: ids.rashad, effectiveFrom: today }
+      const { preview, status } = await change(await assignments(), body, "add-second")
+
+      expect(preview.summary).toMatchObject({ selected: 1, assignable: 1, excluded: 0, additional: 1 })
+      expect(status).toBe(200)
+      expect(await employeesOf(ids.aydin)).toEqual(["Seymur:PRIMARY", "Rashad:SECONDARY"])
+
+      // Both employees' lists hold the client, and each row names them both.
+      expect(await listed(`ownerAgentId=${ids.seymur}`)).toEqual({ "Abbasov Aydın": ["Seymur", "Rashad"], "Abbasov Xalid": ["Seymur"] })
+      expect(await listed(`ownerAgentId=${ids.rashad}`)).toEqual({ "Abbasov Aydın": ["Seymur", "Rashad"] })
+      // The attach tab offers Rashad everyone he does not have yet — with or without an employee.
+      expect(await listed(`notAgentId=${ids.rashad}`)).toEqual({ "Abbasov Vüqar": [], "Abbasov Xalid": ["Seymur"] })
+
+      // The agents list resolves its tenant through getOrgId, not requireAuth.
+      const { getOrgId } = await import("@/lib/api-auth")
+      vi.mocked(getOrgId).mockResolvedValueOnce(ORG)
+      const { GET } = await import("@/app/api/v1/mtm/agents/route")
+      const agents = (await (await GET(new NextRequest("http://localhost:3000/api/v1/mtm/agents?limit=100"))).json()).data.agents as Array<{ name: string; clients: number | null }>
+      const clients = Object.fromEntries(agents.map((agent) => [agent.name, agent.clients]))
+      expect([clients.Seymur, clients.Rashad, clients.Leyla]).toEqual([2, 1, 0])
+    })
+
+    it("refuses to attach the same employee twice", async () => {
+      const { preview } = await change(await assignments(), { contactIds: [ids.aydin], mode: "ASSIGN", targetAgentId: ids.rashad, effectiveFrom: today }, "add-twice")
+      expect(preview.rows[0].issues).toEqual(["TARGET_ALREADY_ASSIGNED"])
+      expect(await employeesOf(ids.aydin)).toEqual(["Seymur:PRIMARY", "Rashad:SECONDARY"])
+    })
+
+    it("makes the first employee of a client the responsible one", async () => {
+      await change(await assignments(), { contactIds: [ids.vuqar], mode: "ASSIGN", targetAgentId: ids.leyla, effectiveFrom: today }, "first-employee")
+      expect(await employeesOf(ids.vuqar)).toEqual(["Leyla:PRIMARY"])
+    })
+
+    it("detaches one employee and leaves the other; the one who stays becomes responsible", async () => {
+      const body = { contactIds: [ids.aydin], mode: "UNASSIGN", targetAgentId: null, sourceAgentId: ids.seymur, effectiveFrom: today }
+      const { status } = await change(await assignments(), body, "detach-responsible")
+
+      expect(status).toBe(200)
+      expect(await employeesOf(ids.aydin)).toEqual(["Rashad:PRIMARY"])
+      expect(await listed(`ownerAgentId=${ids.seymur}`)).toEqual({ "Abbasov Xalid": ["Seymur"] })
+      // Nothing is deleted: the history keeps who had the client and until when.
+      const history = await bypass(() => prisma.mtmContactAgentAssignment.count({ where: { contactId: ids.aydin } }))
+      expect(history).toBe(3)
+    })
+
+    it("refuses to detach an employee the client is not attached to", async () => {
+      const body = { contactIds: [ids.aydin], mode: "UNASSIGN", targetAgentId: null, sourceAgentId: ids.leyla, effectiveFrom: today }
+      const { preview } = await change(await assignments(), body, "detach-stranger")
+      expect(preview.rows[0].issues).toEqual(["SOURCE_NOT_ASSIGNED"])
+      expect(await employeesOf(ids.aydin)).toEqual(["Rashad:PRIMARY"])
+    })
+
+    it("hands over the place of an employee who is not the responsible one", async () => {
+      await change(await assignments(), { contactIds: [ids.xalid], mode: "ASSIGN", targetAgentId: ids.rashad, effectiveFrom: today }, "second-for-transfer")
+      expect(await employeesOf(ids.xalid)).toEqual(["Seymur:PRIMARY", "Rashad:SECONDARY"])
+
+      const { POST: preview } = await import("@/app/api/v1/mtm/contact-transfers/preview/route")
+      const { POST: execute } = await import("@/app/api/v1/mtm/contact-transfers/route")
+      const { status } = await change(
+        { preview: preview as Handler, execute: execute as Handler },
+        { contactIds: [ids.xalid], sourceAgentId: ids.rashad, targetAgentId: ids.leyla, effectiveFrom: today },
+        "transfer-second",
+      )
+
+      expect(status).toBe(200)
+      expect(await employeesOf(ids.xalid)).toEqual(["Seymur:PRIMARY", "Leyla:SECONDARY"])
+    })
+
+    it("detaches everyone when no employee is named, and the client is free again", async () => {
+      const body = { contactIds: [ids.xalid], mode: "UNASSIGN", targetAgentId: null, effectiveFrom: today }
+      await change(await assignments(), body, "detach-everyone")
+
+      expect(await employeesOf(ids.xalid)).toEqual([])
+      expect(Object.keys(await listed("assignmentState=UNASSIGNED"))).toEqual(["Abbasov Xalid"])
+    })
+  })
+
   describe("task actions behind the same lock", () => {
     const AGENT_USER = "field-user"
     const params = (id: string) => ({ params: Promise.resolve({ id }) })

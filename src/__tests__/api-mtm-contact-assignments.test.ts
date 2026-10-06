@@ -27,6 +27,7 @@ const ORG = "org-1"
 const TARGET = "cm000000000000000000001"
 const CONTACT = "cm000000000000000000002"
 const ASSIGNMENT = "cm000000000000000000003"
+const OTHER = "cm000000000000000000004"
 const ADMIN_AUTH: AuthResult = {
   orgId: ORG,
   userId: "admin-user",
@@ -155,15 +156,53 @@ describe("MTM governed contact assignment", () => {
     expect(prisma.mtmContact.delete).not.toHaveBeenCalled()
   })
 
-  it("excludes operational conflicts and denies field agents", async () => {
-    vi.mocked(prisma.mtmVisit.findMany).mockResolvedValue([{ contactId: CONTACT }] as any)
-    vi.mocked(prisma.mtmRoutePoint.findMany).mockResolvedValue([{ contactId: CONTACT }] as any)
-    const preview = await previewAssignment(jsonRequest("/preview", assignInput))
-    expect((await preview.json()).data.rows[0].issues).toEqual([
-      "OPEN_VISIT_CONFLICT",
-      "ROUTE_PLAN_CONFLICT",
-    ])
+  // Owner, 2026-10-06: a client may have several employees, and «Привязать»
+  // adds one. Before, it ended the current employee's assignment.
+  it("adds a second employee and ends nobody's assignment", async () => {
+    vi.mocked(prisma.mtmContact.findMany).mockResolvedValue([contact([{
+      id: ASSIGNMENT,
+      agentId: OTHER,
+      role: "PRIMARY",
+      effectiveFrom: new Date("2026-01-01T00:00:00.000Z"),
+      effectiveTo: null,
+    }])] as any)
+    const preview = (await (await previewAssignment(jsonRequest("/preview", assignInput))).json()).data
+    expect(preview.summary).toMatchObject({ assignable: 1, additional: 1 })
 
+    const response = await executeAssignment(jsonRequest("/execute", {
+      ...assignInput,
+      previewToken: preview.previewToken,
+      idempotencyKey: "contact-assignment-20260730-002",
+    }))
+    expect(response.status).toBe(200)
+    expect(prisma.mtmContactAgentAssignment.updateMany).not.toHaveBeenCalled()
+    expect(prisma.mtmContactAgentAssignment.create).toHaveBeenCalledTimes(1)
+    expect(prisma.mtmContactAgentAssignment.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ contactId: CONTACT, agentId: TARGET, role: "SECONDARY" }),
+      select: { id: true },
+    })
+  })
+
+  it("lets nobody's unfinished work stop an attachment, and stops a detachment only for the employee doing that work", async () => {
+    const two = [
+      { id: ASSIGNMENT, agentId: OTHER, role: "PRIMARY", effectiveFrom: new Date("2026-01-01T00:00:00.000Z"), effectiveTo: null },
+      { id: "cm000000000000000000005", agentId: TARGET, role: "SECONDARY", effectiveFrom: new Date("2026-02-01T00:00:00.000Z"), effectiveTo: null },
+    ]
+    // OTHER is in the middle of a visit and has the client in a planned route.
+    vi.mocked(prisma.mtmVisit.findMany).mockResolvedValue([{ contactId: CONTACT, agentId: OTHER }] as any)
+    vi.mocked(prisma.mtmRoutePoint.findMany).mockResolvedValue([{ contactId: CONTACT, route: { agentId: OTHER } }] as any)
+    const issuesOf = async (body: unknown) => (await (await previewAssignment(jsonRequest("/preview", body))).json()).data.rows[0].issues
+
+    vi.mocked(prisma.mtmContact.findMany).mockResolvedValue([contact([two[0]])] as any)
+    expect(await issuesOf(assignInput)).toEqual([])
+
+    vi.mocked(prisma.mtmContact.findMany).mockResolvedValue([contact(two)] as any)
+    const detach = { contactIds: [CONTACT], mode: "UNASSIGN", targetAgentId: null, effectiveFrom: "2026-07-30", reason: "Leaves the territory" }
+    expect(await issuesOf({ ...detach, sourceAgentId: TARGET })).toEqual([])
+    expect(await issuesOf({ ...detach, sourceAgentId: OTHER })).toEqual(["OPEN_VISIT_CONFLICT", "ROUTE_PLAN_CONFLICT"])
+  })
+
+  it("denies field agents", async () => {
     vi.mocked(requireAuth).mockResolvedValue(AGENT_AUTH)
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: TARGET, role: "AGENT" } as any)
     const forbidden = await previewAssignment(jsonRequest("/preview", assignInput))
