@@ -160,6 +160,9 @@ export function MtmCustomerForm({
                 latitude={form.latitude ? parseFloat(form.latitude) : null}
                 longitude={form.longitude ? parseFloat(form.longitude) : null}
                 onChange={(lat, lng) => { update("latitude", lat.toString()); update("longitude", lng.toString()) }}
+                // The address if the form has one; otherwise the name — a
+                // clinic or a pharmacy is usually on the map under its name.
+                address={[form.address, form.district, form.city].map((part) => part.trim()).filter(Boolean).join(", ") || form.name.trim()}
               />
               <div className="grid grid-cols-2 gap-3 mt-2">
                 <div><Input id="latitude" type="number" step="any" placeholder={tf("placeholderLatitude")} value={form.latitude} onChange={e => update("latitude", e.target.value)} className="text-xs" /></div>
