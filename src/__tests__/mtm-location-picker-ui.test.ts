@@ -30,6 +30,10 @@ const map = vi.hoisted(() => ({
   flights: [] as { to: [number, number]; zoom: number }[],
   handlers: {} as Record<string, (event?: unknown) => void>,
   marker: null as MarkerProps | null,
+  /** What the component asked of the map, in order. */
+  asked: [] as string[],
+  /** The element whose size the map must follow. */
+  box: null as HTMLElement | null,
 }))
 
 vi.mock("leaflet/dist/leaflet.css", () => ({}))
@@ -39,8 +43,9 @@ vi.mock("react-leaflet", () => {
   const mapApi = {
     getCenter: () => map.center,
     getZoom: () => map.zoom,
-    invalidateSize: () => {},
-    flyTo: (to: [number, number], zoom: number) => { map.flights.push({ to, zoom }) },
+    getContainer: () => ({ parentElement: map.box }),
+    invalidateSize: () => { map.asked.push("measure") },
+    flyTo: (to: [number, number], zoom: number) => { map.asked.push("fly"); map.flights.push({ to, zoom }) },
   }
   return {
     MapContainer: ({ children }: { children?: ReactNode }) => createElement("div", { "data-testid": "map" }, children),
@@ -101,6 +106,8 @@ beforeEach(() => {
   map.flights = []
   map.handlers = {}
   map.marker = null
+  map.asked = []
+  map.box = document.createElement("div")
   map.center = { lat: 40.4093, lng: 49.8671 }
   geocode = () => ({
     status: 200,
@@ -218,6 +225,39 @@ describe("map picker — by where the manager is now", () => {
     await press(button("Моё местоположение"))
     expect(notice()).toBe("Не удалось определить местоположение. Попробуйте ещё раз или поставьте метку вручную.")
     expect(changes).toEqual([])
+  })
+})
+
+describe("map picker — the map keeps up with its own box", () => {
+  // Production, 2026-10-06: after an address was chosen the list of addresses
+  // closed, the map's box grew, and the map kept drawing for the old box — a
+  // grey band down one side and the pin off-centre.
+  it("measures its box before flying to the chosen address", async () => {
+    await open()
+    await type("Tbilisi prospekti 10")
+    await press(button("Найти"))
+    map.asked = []
+    await press(results()[0])
+
+    expect(map.asked.slice(0, 2)).toEqual(["measure", "fly"])
+  })
+
+  it("measures again whenever the box changes size, and stops when the picker closes", async () => {
+    const watcher = { observed: [] as Element[], resized: (() => {}) as () => void, disconnected: 0 }
+    vi.stubGlobal("ResizeObserver", class {
+      constructor(callback: () => void) { watcher.resized = callback }
+      observe(element: Element) { watcher.observed.push(element) }
+      disconnect() { watcher.disconnected += 1 }
+    })
+    await open()
+    expect(watcher.observed).toEqual([map.box])
+
+    map.asked = []
+    await act(async () => { watcher.resized() })
+    expect(map.asked).toEqual(["measure"])
+
+    await press(button("Готово"))
+    expect(watcher.disconnected).toBe(1)
   })
 })
 
