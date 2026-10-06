@@ -1,0 +1,55 @@
+{
+  "head": "2d723e02627d2983db91b1d2360fd7592f886e8b",
+  "status": "SOURCE_INVENTORY_ONLY_LIVE_DESTINATION_ACCEPTANCE_BLOCKED",
+  "evidence": {
+    "application": "PM2 stdout/error files with date prefix; shared application payload fixes cover only reviewed sinks",
+    "rotation": "daily,14rotations,copytruncate/delaycompress; unchanged",
+    "shipper": "exact reviewed app/nginx/Postgres sources, encrypted immutable storage,min400dayretention; unchanged",
+    "nginx": "Repository virtual-host templates contain no log_format/access_log/error_log directive; effective inherited http-context format cannot be inferred from these files",
+    "postgres": "No effective live server logging settings read; absence of explicit Prisma query logging is not native driver proof"
+  },
+  "nextRequiredEvidence": [
+    "Effective nginx/PostgreSQL logging configuration metadata from an authorized owner, without raw user logs",
+    "Synthetic canary at actual approved collector plus egress metadata/access/retention review",
+    "Approved historical handling without modifying COMPLIANCE retention or deleting archived evidence",
+    "Staging and signed-device receipts bound to actual candidate when factual access is provided"
+  ],
+  "noActions": [
+    "No shell execution of shipper/backup scripts",
+    "No network to collector, production host or DB",
+    "No credentials or permissions read/changed",
+    "No retention/ACL modification, deletion, deployment or activation"
+  ],
+  "sourceBindings": [
+    {
+      "path": "ecosystem.config.cjs",
+      "bytes": 5229,
+      "sha256": "6c2f04b080a06f01ea2b82d1e32e5c6de845414576b640fe419c81737d1bfa13"
+    },
+    {
+      "path": "ops/logrotate/leaddrive-v2",
+      "bytes": 948,
+      "sha256": "122a012ca7e84951b4862c78cc0c1989e8118da839c591f4d2ace7f4d38f165b"
+    },
+    {
+      "path": "scripts/backup/ship-logs.sh",
+      "bytes": 94956,
+      "sha256": "e23e9fc7c241a10b669b9bca1a71079533f914b579a17a868eacca2c9af5a331"
+    },
+    {
+      "path": "nginx/leaddrive.conf",
+      "bytes": 4129,
+      "sha256": "51785b7780cb829eed9396ca53226eef78a3ba2e715e6e3cfbf5537c7ace0643"
+    },
+    {
+      "path": "nginx/wildcard.leaddrivecrm.org.conf",
+      "bytes": 3831,
+      "sha256": "e1582f0f67760fbb29b08123753ecf17e8b67177e7b7f66a3cfe1fe7e7f56f84"
+    },
+    {
+      "path": "clients/nginx/template.conf",
+      "bytes": 2102,
+      "sha256": "6546b9fc7aacc4aface8bec63bd8a79ebbef133dcef0c680e507de22d29e57c1"
+    }
+  ]
+}

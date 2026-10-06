@@ -1,0 +1,261 @@
+{
+  "createdAt": "2026-10-06T13:36:22.895063+00:00",
+  "status": "EXACT_HEAD_BOUNDED_SOURCE_HOSTED_AND_PRODUCTION_BUILD_ACCEPTED",
+  "source": {
+    "head": "2d723e02627d2983db91b1d2360fd7592f886e8b",
+    "tree": "5d1f81a8c306e1d07f22f25f248b206882aabc5e",
+    "main": "5c7412266c29a53e12963621b090c4f1aee95a3a",
+    "synthetic": "93c23c3546b88ed5f3a316a0e59d8a8718ae640f",
+    "syntheticParents": [
+      "5c7412266c29a53e12963621b090c4f1aee95a3a",
+      "2d723e02627d2983db91b1d2360fd7592f886e8b"
+    ]
+  },
+  "metadataCompleteness": {
+    "allChecks": 18,
+    "allRuns": 11,
+    "currentSuccessfulRuns": 10,
+    "cancelledPriorRuns": 1,
+    "allJobs": 18,
+    "currentSuccessfulJobs": 14,
+    "artifacts": 6,
+    "appId": 15368,
+    "event": "pull_request",
+    "attempt": 1,
+    "allJobsCountsMatchPaginatedAPI": true
+  },
+  "mandatoryFive": [
+    {
+      "name": "pr-scope",
+      "id": 112287449173,
+      "runId": 37469035934,
+      "conclusion": "success"
+    },
+    {
+      "name": "typecheck",
+      "id": 112287601786,
+      "runId": 37469035934,
+      "conclusion": "success"
+    },
+    {
+      "name": "static-checks",
+      "id": 112287601789,
+      "runId": 37469035934,
+      "conclusion": "success"
+    },
+    {
+      "name": "scan",
+      "id": 112287331403,
+      "runId": 37469024251,
+      "conclusion": "success"
+    },
+    {
+      "name": "runner-policy",
+      "id": 112287331465,
+      "runId": 37469024323,
+      "conclusion": "success"
+    }
+  ],
+  "additionalEight": [
+    {
+      "name": "Authenticated Workforce exception report browser evidence",
+      "id": 112287331912,
+      "runId": 37469024332,
+      "conclusion": "success"
+    },
+    {
+      "name": "Real PostgreSQL SELECT-only and authenticated employee impact browser evidence",
+      "id": 112287334050,
+      "runId": 37469024485,
+      "conclusion": "success"
+    },
+    {
+      "name": "Authenticated Workforce manager Today browser evidence",
+      "id": 112287333340,
+      "runId": 37469024732,
+      "conclusion": "success"
+    },
+    {
+      "name": "Real PostgreSQL, authorized API and rendered policy restore UI evidence",
+      "id": 112287331624,
+      "runId": 37469024320,
+      "conclusion": "success"
+    },
+    {
+      "name": "Authenticated Workforce calendar browser evidence",
+      "id": 112287331635,
+      "runId": 37469024240,
+      "conclusion": "success"
+    },
+    {
+      "name": "Authenticated Workforce policy version browser evidence",
+      "id": 112287331397,
+      "runId": 37469024221,
+      "conclusion": "success"
+    },
+    {
+      "name": "Blocking Social Monitoring regression suite",
+      "id": 112287332033,
+      "runId": 37469024337,
+      "conclusion": "success"
+    },
+    {
+      "name": "Browser close, cron takeover & durable recovery",
+      "id": 112289943308,
+      "runId": 37469024337,
+      "conclusion": "success"
+    }
+  ],
+  "productionBuild": {
+    "id": 112287448741,
+    "runId": 37469035934,
+    "status": "SUCCESS",
+    "standaloneBundleAndOutputVerification": "PASS",
+    "platform": "GitHub-hosted Linux",
+    "deployment": false,
+    "payloadInspection": "No build bundle downloaded or executed; source workflow and metadata only"
+  },
+  "preservedHistory": {
+    "supersededRun": 37469024233,
+    "conclusion": "cancelled",
+    "cause": "Owner added existing production-build label; original run superseded by existing concurrency behavior",
+    "jobs": [
+      {
+        "id": 112287331443,
+        "name": "pr-scope",
+        "conclusion": "cancelled"
+      },
+      {
+        "id": 112287333192,
+        "name": "GitHub-hosted Linux production build",
+        "conclusion": "skipped"
+      },
+      {
+        "id": 112287445247,
+        "name": "typecheck",
+        "conclusion": "cancelled"
+      },
+      {
+        "id": 112287445611,
+        "name": "static-checks",
+        "conclusion": "cancelled"
+      }
+    ],
+    "initialSource0fde": "Rejected historical lifecycle candidate retained with fixed successor; not retroactively accepted",
+    "initialPinoProbe": "Historical failing child-bindings probe preserved separately"
+  },
+  "sourceReview": {
+    "exactSourceReceipt": "/tmp/hrm-shared-independent-source-2d723-20261006.json",
+    "independentTests": {
+      "new": 41,
+      "compatibility": 98,
+      "failed": 0,
+      "skipped": 0
+    },
+    "ownerFinalRegression": {
+      "passed": 386,
+      "failed": 0,
+      "skipped": 0,
+      "files": 23
+    },
+    "independentFullTree": {
+      "blobs": 8797,
+      "trees": 2811,
+      "changed": 21,
+      "preserved": 8776
+    },
+    "unresolvedFindings": 0
+  },
+  "sourceArchive": {
+    "commit": "54ef3d5fd6f6bd2a534dc2a81fb1d8be40c93f33",
+    "readbacks": 42,
+    "newOriginals": 40,
+    "priorBlobsPreserved": 9190,
+    "recursiveTmpBindings": 43,
+    "priorReferences": 4,
+    "sourceBindingsOnly": 27,
+    "largeTransportCopiesLocalOnly": 2
+  },
+  "restorePayload": {
+    "artifactId": 11416073675,
+    "runId": 37469024320,
+    "jobId": 112287331624,
+    "attempt": 1,
+    "casesPass": 15,
+    "cleanupPass": 2,
+    "authRecords": 10,
+    "sourceBindings": 34,
+    "digestAndAllowlistedJsonVerified": true,
+    "otherZipContentsRead": false
+  },
+  "artifactPayloadBoundaries": {
+    "restore": "Only restore-rendered-ui-receipt.json inspected",
+    "otherFiveWorkforceArtifacts": "METADATA_ONLY",
+    "social": "Metadata and source workflow only, no raw log or payload claim"
+  },
+  "baselineQualification": {
+    "typecheckGatedFileCodePairs": 64,
+    "knownFailingTestFiles": 18,
+    "bothBlockingTypecheckSteps": "SUCCESS",
+    "globalCleanCompilerClaim": false,
+    "fullDiagnosticFamilyOrActualFailureListInspected": false,
+    "currentScopedLocalCompiler": "Owner scoped production/test inclusive clean; not global compiler",
+    "lint": "Six unchanged existing auth/Prisma diagnostics; no new suppression or baseline change"
+  },
+  "acceptanceLimits": [
+    "Bounded source + current baseline-required metadata + eight additional jobs + exact production build only.",
+    "No real collector/destination payload, retention/ACL, PM2/nginx/PostgreSQL effective runtime settings or complete native driver output acceptance.",
+    "Pseudonymous HMAC/trace/span identifiers retained, not anonymity guarantee.",
+    "No full historical staging, signed-device, production activation, merge/deployment or credentials/permission changes.",
+    "Historical api_keys migration baseline unresolved; no invented DDL/history repair.",
+    "WF-C10-011 PLANNED; WF-C12-002/008 PARTIAL; 82/161 DONE79openweighted59 unchanged.",
+    "All raw CI logs and screenshot contents excluded."
+  ],
+  "supports": [
+    {
+      "path": "/tmp/hrm-shared-independent-terminal-metadata.json",
+      "bytes": 388225,
+      "sha256": "dc64c15746a229eb47e2a2784ec8690faa8f26c759269751d2b1f98852323b0d"
+    },
+    {
+      "path": "/tmp/hrm-shared-independent-source-2d723-20261006.json",
+      "bytes": 17466,
+      "sha256": "dd11e532b620b8ad88fde5a9c3e03e35a6f67a416018af1458bdf46fedc5d8b6"
+    },
+    {
+      "path": "/tmp/hrm-shared-independent-source-durable-20261006.json",
+      "bytes": 2839,
+      "sha256": "72e3bddd833347ec42173c2b2840bff4c31b52d056783c0cd05b68e8297b9ee1"
+    },
+    {
+      "path": "/tmp/hrm-shared-restore-independent-review-20261006.json",
+      "bytes": 19901,
+      "sha256": "c8f710442ec85d6c664af2a5c72789c23fdf6993c14e14a97a0f6c21042a242e"
+    },
+    {
+      "path": "/tmp/hrm-shared-restore-attempt1-sanitized.json",
+      "bytes": 15958,
+      "sha256": "1826d3b488e0f6917a51aff14ae7a916e408d1bf631e051ed05caa0c0a3a4f2d"
+    },
+    {
+      "path": "/tmp/hrm-shared-restore-independent-metadata.json",
+      "bytes": 19211,
+      "sha256": "7f70b8909b98c5b1d6f51b3d8f403841f4e73167a2985b3e8460261ffeb4c3ad"
+    },
+    {
+      "path": "/tmp/hrm-shared-independent-hosted-initial-metadata.json",
+      "bytes": 291882,
+      "sha256": "3ffea3bf97e4aad41832a536a71020947a976272525c4c51b45160f777679fe7"
+    },
+    {
+      "path": "/tmp/hrm-shared-independent-source-blocked-0fde-20261006.json",
+      "bytes": 3435,
+      "sha256": "d2ed0dd1ea052f86645797db0a9f29dc77fe7f9d65dd837857aea12158ae1738"
+    },
+    {
+      "path": "/tmp/hrm-shared-destination-boundaries.json",
+      "bytes": 2471,
+      "sha256": "6b9700a6ca08d787b91aa9611e5c0853f4acbb561eb1cf073edbbb972f660beb"
+    }
+  ]
+}

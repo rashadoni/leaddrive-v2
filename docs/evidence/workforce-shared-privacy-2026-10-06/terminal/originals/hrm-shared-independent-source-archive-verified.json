@@ -1,0 +1,303 @@
+{
+  "exactReadbacks": 42,
+  "members": 40,
+  "priorBlobsPreserved": 9190,
+  "priorOriginalsReadback": 4,
+  "tmpRecursiveRefsRehashed": [
+    "/tmp/hrm-fault-independent-source-b896-20261006.json",
+    "/tmp/hrm-fault-shared-privacy-independent-review-20261006.json",
+    "/tmp/hrm-privacy-shared-synthetic-probe.cjs",
+    "/tmp/hrm-privacy-shared-synthetic-probe.json",
+    "/tmp/hrm-shared-baseline-typecheck.txt",
+    "/tmp/hrm-shared-corrected-independent-remote-0.json",
+    "/tmp/hrm-shared-corrected-independent-remote-1.json",
+    "/tmp/hrm-shared-corrected-independent-remote-2.json",
+    "/tmp/hrm-shared-corrected-independent-remote-3.json",
+    "/tmp/hrm-shared-existing-lint-baseline.json",
+    "/tmp/hrm-shared-existing-lint.json",
+    "/tmp/hrm-shared-independent-compat-tests.json",
+    "/tmp/hrm-shared-independent-corrected-tests.json",
+    "/tmp/hrm-shared-independent-final-tests.json",
+    "/tmp/hrm-shared-independent-pino-sentry-tests.json",
+    "/tmp/hrm-shared-independent-remote-2.json",
+    "/tmp/hrm-shared-independent-remote-3.json",
+    "/tmp/hrm-shared-independent-remote-4.json",
+    "/tmp/hrm-shared-independent-remote-5.json",
+    "/tmp/hrm-shared-independent-sdk-lifecycle-bindings.json",
+    "/tmp/hrm-shared-independent-source-blocked-0fde-20261006.json",
+    "/tmp/hrm-shared-independent-tree-proof-0fde.json",
+    "/tmp/hrm-shared-independent-tree-proof-2d723.json",
+    "/tmp/hrm-shared-independent-verify-corrected-tree.py",
+    "/tmp/hrm-shared-initial-source-freeze-0fde.json",
+    "/tmp/hrm-shared-initial-tests.json",
+    "/tmp/hrm-shared-lifecycle-final-tests.json",
+    "/tmp/hrm-shared-owned-lint-lifecycle.txt",
+    "/tmp/hrm-shared-pino-independent-probe.cjs",
+    "/tmp/hrm-shared-pino-independent-probe.json",
+    "/tmp/hrm-shared-pino-independent-resolved-probe.cjs",
+    "/tmp/hrm-shared-pino-independent-resolved-probe.json",
+    "/tmp/hrm-shared-privacy-independent-scope-20261006.json",
+    "/tmp/hrm-shared-regression-accepted.json",
+    "/tmp/hrm-shared-regression-final.json",
+    "/tmp/hrm-shared-sentry-independent-probe.cjs",
+    "/tmp/hrm-shared-sentry-independent-probe.json",
+    "/tmp/hrm-shared-sentry-init-independent-probe.cjs",
+    "/tmp/hrm-shared-sentry-init-independent-probe.json",
+    "/tmp/hrm-shared-sentry-init-resolved-independent-probe.cjs",
+    "/tmp/hrm-shared-sentry-init-resolved-independent-probe.json",
+    "/tmp/hrm-shared-source-freeze.json",
+    "/tmp/hrm-shared-tests-typecheck-lifecycle.txt"
+  ],
+  "declaredRecursiveBindings": [
+    "/tmp/hrm-fault-independent-source-b896-20261006.json",
+    "/tmp/hrm-fault-shared-privacy-independent-review-20261006.json",
+    "/tmp/hrm-privacy-shared-synthetic-probe.cjs",
+    "/tmp/hrm-privacy-shared-synthetic-probe.json",
+    "/tmp/hrm-shared-baseline-typecheck.txt",
+    "/tmp/hrm-shared-corrected-independent-remote-0.json",
+    "/tmp/hrm-shared-corrected-independent-remote-1.json",
+    "/tmp/hrm-shared-corrected-independent-remote-2.json",
+    "/tmp/hrm-shared-corrected-independent-remote-3.json",
+    "/tmp/hrm-shared-existing-lint-baseline.json",
+    "/tmp/hrm-shared-existing-lint.json",
+    "/tmp/hrm-shared-independent-compat-tests.json",
+    "/tmp/hrm-shared-independent-corrected-tests.json",
+    "/tmp/hrm-shared-independent-final-tests.json",
+    "/tmp/hrm-shared-independent-pino-sentry-tests.json",
+    "/tmp/hrm-shared-independent-remote-2.json",
+    "/tmp/hrm-shared-independent-remote-3.json",
+    "/tmp/hrm-shared-independent-remote-4.json",
+    "/tmp/hrm-shared-independent-remote-5.json",
+    "/tmp/hrm-shared-independent-sdk-lifecycle-bindings.json",
+    "/tmp/hrm-shared-independent-source-blocked-0fde-20261006.json",
+    "/tmp/hrm-shared-independent-tree-proof-0fde.json",
+    "/tmp/hrm-shared-independent-tree-proof-2d723.json",
+    "/tmp/hrm-shared-independent-verify-corrected-tree.py",
+    "/tmp/hrm-shared-initial-source-freeze-0fde.json",
+    "/tmp/hrm-shared-initial-tests.json",
+    "/tmp/hrm-shared-lifecycle-final-tests.json",
+    "/tmp/hrm-shared-owned-lint-lifecycle.txt",
+    "/tmp/hrm-shared-pino-independent-probe.cjs",
+    "/tmp/hrm-shared-pino-independent-probe.json",
+    "/tmp/hrm-shared-pino-independent-resolved-probe.cjs",
+    "/tmp/hrm-shared-pino-independent-resolved-probe.json",
+    "/tmp/hrm-shared-privacy-independent-scope-20261006.json",
+    "/tmp/hrm-shared-regression-accepted.json",
+    "/tmp/hrm-shared-regression-final.json",
+    "/tmp/hrm-shared-sentry-independent-probe.cjs",
+    "/tmp/hrm-shared-sentry-independent-probe.json",
+    "/tmp/hrm-shared-sentry-init-independent-probe.cjs",
+    "/tmp/hrm-shared-sentry-init-independent-probe.json",
+    "/tmp/hrm-shared-sentry-init-resolved-independent-probe.cjs",
+    "/tmp/hrm-shared-sentry-init-resolved-independent-probe.json",
+    "/tmp/hrm-shared-source-freeze.json",
+    "/tmp/hrm-shared-tests-typecheck-lifecycle.txt"
+  ],
+  "sourceBindingOnly": [
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/shared-privacy-pino.test.ts",
+      "bytes": 5003,
+      "sha256": "f430a7353789845418ff1ed332b7c1e1bc230285f3c8f42c647613ccb377c507",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/shared-privacy-sentry.test.ts",
+      "bytes": 7762,
+      "sha256": "d4cb6230c02784e724fc33aa4305abb4c3ce80e66f58ab867b2fd4d090cab117",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/shared-privacy-api-auth.test.ts",
+      "bytes": 1508,
+      "sha256": "56b82791a9fe52a6de9b878d7ae623cf7737147c004eacdd81f7a7d296890425",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/shared-privacy-auth-callbacks.test.ts",
+      "bytes": 3584,
+      "sha256": "ffb8aa8d0a240f2c769e8b09bc1e4411f358139c3d955975d7dbe955d09e377a",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/shared-privacy-auth-rls.test.ts",
+      "bytes": 3170,
+      "sha256": "b27a2ab6d77cef2922e6e57048846b52dd3e3cb09482b5133979dda24269449c",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/shared-privacy-prisma.test.ts",
+      "bytes": 2914,
+      "sha256": "4a2d935339fac33d9a415cfbf05aeb995a199efb52027b821d3478d99e2a1d98",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/shared-privacy-sentry-config.test.ts",
+      "bytes": 1733,
+      "sha256": "85cd01c96a67b81aad78a8684e36d04aeca5f8d0a17791528990571ecae2b76c",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/api-auth-totp.test.ts",
+      "bytes": 26222,
+      "sha256": "41540a9348fc39bd0c3acde74546c3622345207353e26b721d8b879dc87b5e18",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/api-auth.test.ts",
+      "bytes": 13730,
+      "sha256": "f93168bb1d5a9b0304f255bc56e64d27b5dd1c1b2e5529a17cd63d4051db4281",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/auth-session-invalidation.test.ts",
+      "bytes": 13857,
+      "sha256": "21e005809200d25b7c0d457ccea35093d233f7bda7ad920c296f4ebda089e98e",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/demo-center.test.ts",
+      "bytes": 7974,
+      "sha256": "d1d9d077f3d3ea78de992bce40f3d594a86031c2b1be4fed03112a4eabe40110",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/lib-api-auth.test.ts",
+      "bytes": 36636,
+      "sha256": "270943d74069da878c6a2adc8cc3e0268ce9be2ce737733975ef979f6f66a4f8",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/lib-auth-tenant-scope.test.ts",
+      "bytes": 8233,
+      "sha256": "42ad6f6f125b99035de66f9ba84ac0b175676b0be8a8fc0eaba7c41f8e962da4",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/lib-mtm-route-observability.test.ts",
+      "bytes": 3435,
+      "sha256": "004d0b6f22c64be4f0e1e33f645c20f556ea35feedf892323500b2990fc05715",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/lib-prisma-decimal-a12.test.ts",
+      "bytes": 7052,
+      "sha256": "c237d7384f7f13c627e030c425513a79d2b8062428507a41bc48b9dca2af5da7",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/lib-prisma-rls-extension.test.ts",
+      "bytes": 5181,
+      "sha256": "74d16032d8b9081ac0178b162aa13666c4b3543a266f0093bcb641dd9d323d5e",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/lib-prisma-soft-delete.test.ts",
+      "bytes": 1608,
+      "sha256": "fd08a6fa375b5cc72e05b68e71e696ebe22853719991cd8602d33bef8497bd7b",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/lib-with-rls-authorization.test.ts",
+      "bytes": 6062,
+      "sha256": "6c1bb6c1b6cc8afa9d00192aef5adc257f77b3467655b66824ad0fd2be81e2a2",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/lib-with-rls.test.ts",
+      "bytes": 4952,
+      "sha256": "a8b248ff43a7b28975c57b10d891aadafe55e18ce434025969265587cd7e42d5",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/mobile-auth-scope.test.ts",
+      "bytes": 29763,
+      "sha256": "a0f43b6fca0c43b0455cf80bb384f959f4d2f92da027abd41f9abc94a43d24d1",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/support-ux-observation-api.test.ts",
+      "bytes": 7278,
+      "sha256": "7e705720d84baf220df9e29b8a894528f0b98b8ce47451434b44d34f0c954434",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/support-ux-observation.test.ts",
+      "bytes": 13617,
+      "sha256": "55822debc69d24da5db1ea7cd342203e6aeb1a135cdd9634d6c77619220a1c03",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/workforce-privacy-source-audit.test.ts",
+      "bytes": 6025,
+      "sha256": "0c7a3982ffa52b28f5351c175502e45b5a860b653ccdca7fe66c2de0dadaca87",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/lib/auth.ts",
+      "bytes": 26606,
+      "sha256": "a0cd1185fe0db3b543998dacbf815322c84010a75f539fc6d9631679a32907bd",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/lib/prisma.ts",
+      "bytes": 14015,
+      "sha256": "e13b0a9561945eef531b4dbabc9193bb5b6fbcfc3297dfce54fbf219ee3275a1",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-integration-fault/src/lib/auth.ts",
+      "bytes": 26635,
+      "sha256": "cc7ecee26681fb5fa8c2b0f08f064edcc2041ee2ecc845498de4fe851cbc78b7",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-integration-fault/src/lib/prisma.ts",
+      "bytes": 13628,
+      "sha256": "65dda4d278f8deb6310af5f4fe57e60bc8bcda776459f8bfed31daae945dbd26",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    }
+  ],
+  "localOnly": [
+    {
+      "original": "/tmp/hrm-shared-corrected-independent-remote-1.json",
+      "bytes": 3635478,
+      "sha256": "c52b8fff696ebcef1b1d12ab0f270e59a0c7f16d2e5cb5c3dc916089edd23eca",
+      "status": "LOCAL_ONLY",
+      "reason": "Large GitHub transport copy with immutable tree provenance, or local verifier text not promoted as raw logs"
+    },
+    {
+      "original": "/tmp/hrm-shared-independent-remote-3.json",
+      "bytes": 3635478,
+      "sha256": "497a9fc6f62fde0d16987d2a386b189f18a957df4e0e8408a1319ccef00e9268",
+      "status": "LOCAL_ONLY",
+      "reason": "Large GitHub transport copy with immutable tree provenance, or local verifier text not promoted as raw logs"
+    }
+  ]
+}

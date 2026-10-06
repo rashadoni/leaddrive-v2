@@ -1,0 +1,58 @@
+{
+  "createdAt": "2026-10-06T13:19:21.531664+00:00",
+  "status": "SOURCE_ARCHIVE_BYTE_EXACT_ACCEPTED_HOSTED_PENDING",
+  "commit": "54ef3d5fd6f6bd2a534dc2a81fb1d8be40c93f33",
+  "tree": "b4292005ddb3a1006ffb1a3f00f635bc14e0c1b2",
+  "parent": "2d7c8c90e7d385f021cb8f13de31c383b005aca4",
+  "sourceHead": "2d723e02627d2983db91b1d2360fd7592f886e8b",
+  "sourceTree": "5d1f81a8c306e1d07f22f25f248b206882aabc5e",
+  "prefix": "docs/evidence/workforce-shared-privacy-2026-10-06/source/",
+  "verification": {
+    "newFiles42FetchedActualGitBlobs": true,
+    "all42UTF8BytesMatchOwnerElements": true,
+    "all40OriginalsMatchLocalAndManifestBytesSHA256": true,
+    "independentSourceReceiptSha256": "dd11e532b620b8ad88fde5a9c3e03e35a6f67a416018af1458bdf46fedc5d8b6",
+    "all9190PriorBlobsAndModesPreserved": true,
+    "deltaExactly42NewPaths": true,
+    "all43RecursiveTmpBindingsRehashed": true,
+    "fourPriorArchiveReferencesFetchedAndSHA256Verified": true,
+    "twentySevenSourceBindingsOnlyRehashed": true,
+    "twoLargeRemoteTreeTransportCopiesRehashedLocalOnly": true
+  },
+  "readme": "Accurately records source acceptance, independent41+98 owner386, 6unchanged lint diagnostics, historical failed Pino/init probes, hosted pending, unchanged82/161ledger and runtime limits.",
+  "qualification": [
+    "40 newly archived originals only; four prior originals preserved separately and not counted as new.",
+    "27 source/installed dependency files remain source bindings, not evidence copies.",
+    "2 large GitHub tree transport JSONs remain LOCAL_ONLY; immutable Git tree provenance retained.",
+    "Initial Pino and 0fde hidden-session failures preserved byte-exact, not relabeled.",
+    "No terminal hosted/build acceptance from this archive; no live destination/staging/retention/driver/signed-device closure.",
+    "No source/remote writes by reviewer."
+  ],
+  "supports": [
+    {
+      "path": "/tmp/hrm-shared-independent-source-archive-provenance.json",
+      "bytes": 7962819,
+      "sha256": "cbebf06d006b63dbf891a3781b6a7ac097b12f2874ad590cd8e1e4e9a46562a4"
+    },
+    {
+      "path": "/tmp/hrm-shared-independent-source-archive-contents.json",
+      "bytes": 666996,
+      "sha256": "c33024304b28ce6613096f7fa2dd01b88af11d9429017b5424b564058efefe69"
+    },
+    {
+      "path": "/tmp/hrm-shared-independent-source-archive-prior-originals.json",
+      "bytes": 51185,
+      "sha256": "8c214decf102dc6444fe45d73af850841e881055e17bf9cc591fabee08d5aff7"
+    },
+    {
+      "path": "/tmp/hrm-shared-independent-source-archive-verified.json",
+      "bytes": 15321,
+      "sha256": "5e6439938415b5c9aa32efdcfa50258dadb942254495755699a7d90668edfc73"
+    },
+    {
+      "path": "/tmp/hrm-shared-source-archive-manifest.json",
+      "bytes": 29007,
+      "sha256": "e18ddfbe61132cb070eb85b55a9cfb90c292838b24931049b0cba9994e70968a"
+    }
+  ]
+}

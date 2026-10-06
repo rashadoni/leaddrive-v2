@@ -1,0 +1,61 @@
+{
+  "status": "EXACT_HEAD_BOUNDED_SOURCE_HOSTED_AND_BUILD_ACCEPTED_PENDING_TERMINAL_ARCHIVE",
+  "head": "2d723e02627d2983db91b1d2360fd7592f886e8b",
+  "tree": "5d1f81a8c306e1d07f22f25f248b206882aabc5e",
+  "main": "5c7412266c29a53e12963621b090c4f1aee95a3a",
+  "synthetic": "93c23c3546b88ed5f3a316a0e59d8a8718ae640f",
+  "sourceArchive": "54ef3d5fd6f6bd2a534dc2a81fb1d8be40c93f33",
+  "requiredPassed": [
+    "pr-scope",
+    "runner-policy",
+    "scan",
+    "static-checks",
+    "typecheck"
+  ],
+  "additionalPassed": [
+    "Authenticated Workforce exception report browser evidence",
+    "Real PostgreSQL SELECT-only and authenticated employee impact browser evidence",
+    "Authenticated Workforce manager Today browser evidence",
+    "Real PostgreSQL, authorized API and rendered policy restore UI evidence",
+    "Authenticated Workforce calendar browser evidence",
+    "Authenticated Workforce policy version browser evidence",
+    "Blocking Social Monitoring regression suite",
+    "Browser close, cron takeover & durable recovery"
+  ],
+  "productionBuild": "PASS",
+  "currentPassedJobs": 14,
+  "allCheckRecords": 18,
+  "workflowRecords": 11,
+  "successfulWorkflowRecords": 10,
+  "supersededCancelledWorkflow": 37469024233,
+  "preservedSupersededJobs": 4,
+  "allJobsHostedUbuntu2404": true,
+  "allCheckApps": 15368,
+  "restore": {
+    "cases": 15,
+    "auth": 10,
+    "cleanup": 2,
+    "sourceBindings": 34,
+    "otherMembersRead": false
+  },
+  "local": {
+    "regressionPassed": 386,
+    "independentNewPassed": 41,
+    "independentCompatibilityPassed": 98,
+    "scopedTypingDiagnostics": 0,
+    "existingLintUnchanged": 6
+  },
+  "limits": [
+    "Metadata/source/sanitized Restore JSON only; no raw CI logs or screenshots",
+    "Typecheck baseline acceptance is not global zero diagnostics; existing baseline unchanged",
+    "Other five Workforce artifacts metadata-only, not visual or full-payload review",
+    "No live destination/retention/ACL/native-driver/staging/signed-device acceptance",
+    "No merge/deploy/activation or permission change",
+    "Ledger82/161DONE79openweighted59 unchanged"
+  ],
+  "metadataBinding": {
+    "path": "/tmp/hrm-shared-terminal-metadata.json",
+    "bytes": 85963,
+    "sha256": "0d63bb968d13c5f734c9c198f5472b07199eedcdd4d898cfcb2761ce787acc32"
+  }
+}

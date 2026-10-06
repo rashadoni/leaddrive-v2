@@ -1,0 +1,384 @@
+{
+  "capturedAt": "2026-10-06T13:25:43.364Z",
+  "run": {
+    "id": 37469024320,
+    "name": "Workforce policy restore writer evidence",
+    "node_id": "WFR_kwLOUTPB8c8AAAAIuVPwQA",
+    "head_branch": "codex/hrm-588-validation-20261005",
+    "head_sha": "2d723e02627d2983db91b1d2360fd7592f886e8b",
+    "path": ".github/workflows/workforce-policy-restore-evidence.yml",
+    "display_title": "fix(hrm): fault fairness and shared privacy sink completion",
+    "run_number": 45,
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "success",
+    "workflow_id": 374471253,
+    "check_suite_id": 101491725670,
+    "check_suite_node_id": "CS_kwDOUTPB8c8AAAAXoWDVZg",
+    "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/runs/37469024320",
+    "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37469024320",
+    "pull_requests": [
+      {
+        "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/pulls/589",
+        "id": 4748088998,
+        "number": 589,
+        "head": {
+          "ref": "codex/hrm-588-validation-20261005",
+          "sha": "2d723e02627d2983db91b1d2360fd7592f886e8b",
+          "repo": {
+            "id": 1362346481,
+            "url": "https://api.github.com/repos/rashadoni/leaddrive-v2",
+            "name": "leaddrive-v2"
+          }
+        },
+        "base": {
+          "ref": "main",
+          "sha": "5c7412266c29a53e12963621b090c4f1aee95a3a",
+          "repo": {
+            "id": 1362346481,
+            "url": "https://api.github.com/repos/rashadoni/leaddrive-v2",
+            "name": "leaddrive-v2"
+          }
+        }
+      }
+    ],
+    "created_at": "2026-10-06T13:12:48Z",
+    "updated_at": "2026-10-06T13:22:59Z",
+    "actor": {
+      "login": "rashadoni",
+      "id": 225867371,
+      "node_id": "U_kgDODXZ2aw",
+      "avatar_url": "https://avatars.githubusercontent.com/u/225867371?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/rashadoni",
+      "html_url": "https://github.com/rashadoni",
+      "followers_url": "https://api.github.com/users/rashadoni/followers",
+      "following_url": "https://api.github.com/users/rashadoni/following{/other_user}",
+      "gists_url": "https://api.github.com/users/rashadoni/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/rashadoni/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/rashadoni/subscriptions",
+      "organizations_url": "https://api.github.com/users/rashadoni/orgs",
+      "repos_url": "https://api.github.com/users/rashadoni/repos",
+      "events_url": "https://api.github.com/users/rashadoni/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/rashadoni/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "run_attempt": 1,
+    "referenced_workflows": [],
+    "run_started_at": "2026-10-06T13:12:48Z",
+    "triggering_actor": {
+      "login": "rashadoni",
+      "id": 225867371,
+      "node_id": "U_kgDODXZ2aw",
+      "avatar_url": "https://avatars.githubusercontent.com/u/225867371?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/rashadoni",
+      "html_url": "https://github.com/rashadoni",
+      "followers_url": "https://api.github.com/users/rashadoni/followers",
+      "following_url": "https://api.github.com/users/rashadoni/following{/other_user}",
+      "gists_url": "https://api.github.com/users/rashadoni/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/rashadoni/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/rashadoni/subscriptions",
+      "organizations_url": "https://api.github.com/users/rashadoni/orgs",
+      "repos_url": "https://api.github.com/users/rashadoni/repos",
+      "events_url": "https://api.github.com/users/rashadoni/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/rashadoni/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "jobs_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/runs/37469024320/jobs",
+    "logs_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/runs/37469024320/logs",
+    "check_suite_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/check-suites/101491725670",
+    "artifacts_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/runs/37469024320/artifacts",
+    "cancel_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/runs/37469024320/cancel",
+    "rerun_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/runs/37469024320/rerun",
+    "previous_attempt_url": null,
+    "workflow_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/workflows/374471253",
+    "head_commit": {
+      "id": "2d723e02627d2983db91b1d2360fd7592f886e8b",
+      "tree_id": "5d1f81a8c306e1d07f22f25f248b206882aabc5e",
+      "message": "fix(privacy): install Sentry boundary before SDK initialization sends",
+      "timestamp": "2026-10-06T13:09:36Z",
+      "author": {
+        "name": "rashadoni",
+        "email": "rashadrahimsoy@gmail.com"
+      },
+      "committer": {
+        "name": "rashadoni",
+        "email": "rashadrahimsoy@gmail.com"
+      }
+    },
+    "repository": {
+      "id": 1362346481,
+      "node_id": "R_kgDOUTPB8Q",
+      "name": "leaddrive-v2",
+      "full_name": "rashadoni/leaddrive-v2",
+      "private": false,
+      "owner": {
+        "login": "rashadoni",
+        "id": 225867371,
+        "node_id": "U_kgDODXZ2aw",
+        "avatar_url": "https://avatars.githubusercontent.com/u/225867371?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/rashadoni",
+        "html_url": "https://github.com/rashadoni",
+        "followers_url": "https://api.github.com/users/rashadoni/followers",
+        "following_url": "https://api.github.com/users/rashadoni/following{/other_user}",
+        "gists_url": "https://api.github.com/users/rashadoni/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/rashadoni/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/rashadoni/subscriptions",
+        "organizations_url": "https://api.github.com/users/rashadoni/orgs",
+        "repos_url": "https://api.github.com/users/rashadoni/repos",
+        "events_url": "https://api.github.com/users/rashadoni/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/rashadoni/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "html_url": "https://github.com/rashadoni/leaddrive-v2",
+      "description": null,
+      "fork": false,
+      "url": "https://api.github.com/repos/rashadoni/leaddrive-v2",
+      "forks_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/forks",
+      "keys_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/keys{/key_id}",
+      "collaborators_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/collaborators{/collaborator}",
+      "teams_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/teams",
+      "hooks_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/hooks",
+      "issue_events_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/issues/events{/number}",
+      "events_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/events",
+      "assignees_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/assignees{/user}",
+      "branches_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/branches{/branch}",
+      "tags_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/tags",
+      "blobs_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/git/blobs{/sha}",
+      "git_tags_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/git/tags{/sha}",
+      "git_refs_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/git/refs{/sha}",
+      "trees_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/git/trees{/sha}",
+      "statuses_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/statuses/{sha}",
+      "languages_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/languages",
+      "stargazers_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/stargazers",
+      "contributors_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/contributors",
+      "subscribers_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/subscribers",
+      "subscription_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/subscription",
+      "commits_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/commits{/sha}",
+      "git_commits_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/git/commits{/sha}",
+      "comments_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/comments{/number}",
+      "issue_comment_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/issues/comments{/number}",
+      "contents_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/contents/{+path}",
+      "compare_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/compare/{base}...{head}",
+      "merges_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/merges",
+      "archive_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/{archive_format}{/ref}",
+      "downloads_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/downloads",
+      "issues_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/issues{/number}",
+      "pulls_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/pulls{/number}",
+      "milestones_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/milestones{/number}",
+      "notifications_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/notifications{?since,all,participating}",
+      "labels_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/labels{/name}",
+      "releases_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/releases{/id}",
+      "deployments_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/deployments"
+    },
+    "head_repository": {
+      "id": 1362346481,
+      "node_id": "R_kgDOUTPB8Q",
+      "name": "leaddrive-v2",
+      "full_name": "rashadoni/leaddrive-v2",
+      "private": false,
+      "owner": {
+        "login": "rashadoni",
+        "id": 225867371,
+        "node_id": "U_kgDODXZ2aw",
+        "avatar_url": "https://avatars.githubusercontent.com/u/225867371?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/rashadoni",
+        "html_url": "https://github.com/rashadoni",
+        "followers_url": "https://api.github.com/users/rashadoni/followers",
+        "following_url": "https://api.github.com/users/rashadoni/following{/other_user}",
+        "gists_url": "https://api.github.com/users/rashadoni/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/rashadoni/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/rashadoni/subscriptions",
+        "organizations_url": "https://api.github.com/users/rashadoni/orgs",
+        "repos_url": "https://api.github.com/users/rashadoni/repos",
+        "events_url": "https://api.github.com/users/rashadoni/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/rashadoni/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "html_url": "https://github.com/rashadoni/leaddrive-v2",
+      "description": null,
+      "fork": false,
+      "url": "https://api.github.com/repos/rashadoni/leaddrive-v2",
+      "forks_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/forks",
+      "keys_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/keys{/key_id}",
+      "collaborators_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/collaborators{/collaborator}",
+      "teams_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/teams",
+      "hooks_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/hooks",
+      "issue_events_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/issues/events{/number}",
+      "events_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/events",
+      "assignees_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/assignees{/user}",
+      "branches_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/branches{/branch}",
+      "tags_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/tags",
+      "blobs_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/git/blobs{/sha}",
+      "git_tags_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/git/tags{/sha}",
+      "git_refs_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/git/refs{/sha}",
+      "trees_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/git/trees{/sha}",
+      "statuses_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/statuses/{sha}",
+      "languages_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/languages",
+      "stargazers_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/stargazers",
+      "contributors_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/contributors",
+      "subscribers_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/subscribers",
+      "subscription_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/subscription",
+      "commits_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/commits{/sha}",
+      "git_commits_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/git/commits{/sha}",
+      "comments_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/comments{/number}",
+      "issue_comment_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/issues/comments{/number}",
+      "contents_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/contents/{+path}",
+      "compare_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/compare/{base}...{head}",
+      "merges_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/merges",
+      "archive_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/{archive_format}{/ref}",
+      "downloads_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/downloads",
+      "issues_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/issues{/number}",
+      "pulls_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/pulls{/number}",
+      "milestones_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/milestones{/number}",
+      "notifications_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/notifications{?since,all,participating}",
+      "labels_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/labels{/name}",
+      "releases_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/releases{/id}",
+      "deployments_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/deployments"
+    }
+  },
+  "jobs": {
+    "jobs": [
+      {
+        "id": 112287331624,
+        "name": "Real PostgreSQL, authorized API and rendered policy restore UI evidence",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 37469024320,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Initialize containers",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Checkout candidate merge and exact base",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "Resolve fenced ephemeral ports and masked secrets",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Setup Node",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Install candidate dependencies",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Apply selected base schema, canonical guards and actual additive migration",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 7
+          },
+          {
+            "name": "Execute mandatory real PostgreSQL restore concurrency and rollback tests",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 8
+          },
+          {
+            "name": "Execute real credentials and authorized restore API scenarios",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Install Chromium on hosted Ubuntu",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 10
+          },
+          {
+            "name": "Execute real rendered manual restore UI, session, retry and rollback scenarios",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 11
+          },
+          {
+            "name": "Upload complete non-secret restore receipts",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 12
+          },
+          {
+            "name": "Post Setup Node",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 22
+          },
+          {
+            "name": "Post Checkout candidate merge and exact base",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 23
+          },
+          {
+            "name": "Stop containers",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 24
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 25
+          }
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "artifacts": [
+      {
+        "id": 11416073675,
+        "name": "workforce-policy-restore-93c23c3546b88ed5f3a316a0e59d8a8718ae640f-1",
+        "size_in_bytes": 883989,
+        "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11416073675",
+        "archive_download_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11416073675/zip",
+        "expired": false,
+        "created_at": "2026-10-06T13:22:55Z",
+        "expires_at": "2026-10-20T13:22:55Z",
+        "updated_at": "2026-10-06T13:22:55Z",
+        "digest": "sha256:3d355ab2f1ef3065a59f9500d89ac03c69d60be09a657e78a2527cf23564a7a4",
+        "workflow_run": {
+          "id": 37469024320,
+          "repository_id": 1362346481,
+          "head_repository_id": 1362346481,
+          "head_branch": "codex/hrm-588-validation-20261005",
+          "head_sha": "2d723e02627d2983db91b1d2360fd7592f886e8b"
+        }
+      }
+    ]
+  }
+}
