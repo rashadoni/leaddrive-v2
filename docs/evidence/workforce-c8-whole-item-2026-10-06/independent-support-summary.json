@@ -1,0 +1,11 @@
+{
+  "file": "independent-support-originals.zip",
+  "bytes": 6774505,
+  "sha256": "e00d981cb5180a980465e1dd57a5f048bae34d302511b3d531d7b44346a2ba84",
+  "gitBlob": "fffc67cfd106be3a5de149989036cc0c23f40f7d",
+  "members": 31,
+  "preservedSupports": 30,
+  "scope": "24 previously local immutable source/metadata/verifier supports plus six original9bb archive verification supports; exact listed bytes, no log or private fixture",
+  "localCRCAndMemberHashes": "PASS",
+  "remoteBinaryPayloadReadback": false
+}

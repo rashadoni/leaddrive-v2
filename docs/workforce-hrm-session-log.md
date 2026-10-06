@@ -7688,3 +7688,18 @@ and independent integration review; prior green is not reused as its result.
 
 Only C7 remains newly closed:83/161 DONE,78 open,14/15 gates,weighted60%.
 The separate prepared C8 whole-item/AT plan and all other open rows are unchanged.
+
+
+### 2026-10-06 — WF-C8-002 finite whole-item acceptance, incoming-main successor
+
+Only WF-C8-002 changes to DONE: 84/161 accepted, 77 open, C8 6/11 (55%),
+14/15 gates; weighted raw 60.40579710144928%, rounded 60%; open P0/P1 73.
+[Whole manager Today acceptance](./workforce-c8-manager-today-acceptance-2026-10-06.md)
+binds independent R1–R6 acceptance to runtime30c/main251, actual EN/RU/AZ AT
+90/90, hosted browser/PG, full baseline-qualified compiler gates and production
+build. Original 54/54 AT, 100+14 tests, archives and negative attempts remain.
+The new main cb5 MTM integration is separate: 138/138 local tests pass; its own
+exact-head hosted checks, build, browser and final source review remain pending
+at this publication. No global compiler cleanliness, historical migration replay,
+production activation or additional task/gate credit is inferred.
+Next prepared dependency slice is [existing C12 worker acceptance](./workforce-c12-next-acceptance-slice-2026-10-06.md); C12 remains PARTIAL.

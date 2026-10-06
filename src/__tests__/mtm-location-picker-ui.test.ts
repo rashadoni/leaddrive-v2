@@ -188,6 +188,17 @@ describe("map picker — by the address the manager types", () => {
       .toEqual([["Rustaveli 12, Tbilisi", "41.69", "44.8"]])
   })
 
+  // The owner's first card, 2026-10-07: the pin stood at one place and the
+  // search box, filled from the card, named another — «это не тот адрес,
+  // который выбран на карте».
+  it("does not put the card's address into the search over a pin that already stands", async () => {
+    position = { latitude: 40.412166, longitude: 49.951784 }
+    await open("Old street 79B, Old district, Bakı")
+
+    expect(searchBox()?.value).toBe("")
+    expect(searchBox()?.placeholder).toBe("Адрес: улица, дом, город")
+  })
+
   it("searches on Enter without submitting the form it sits in", async () => {
     await open()
     await type("Nizami 5")

@@ -969,7 +969,7 @@ from Route & Field.
 | ID | Pri | Status | Owner | Task | Acceptance evidence |
 |---|---:|---|---|---|---|
 | WF-C8-001 | P1 | DONE | Web | Add employee Workforce Today web fallback with one valid action, assignment, evidence requirement and sync/server outcome | [`Employee Workforce Today evidence`](./workforce-c8-employee-today-evidence-2026-09-13.md): self-only assignment/segments, exactly one canonical action, fail-closed proof requirements and explicit server/pending-review outcome on `/workforce`; no Route dependency or second state machine |
-| WF-C8-002 | P1 | PARTIAL | Web | Rebuild manager Today around scheduled roster, no-show/previous-open and exceptions rather than only existing workdays | [`bounded manager Today evidence`](./workforce-c8-manager-today-evidence-2026-09-29.md): scheduled roster, immutable/live plan boundary, distinct calendar, previous-open fact and independently authorized persisted exception projection are implemented with stable pagination and safe response minimization; real browser/AT proof that the absent employee is visible and explained remains open |
+| WF-C8-002 | P1 | DONE | Web | Rebuild manager Today around scheduled roster, no-show/previous-open and exceptions rather than only existing workdays | [`whole manager Today acceptance`](./workforce-c8-manager-today-acceptance-2026-10-06.md): scheduled absent employees, immutable/live plan boundary, calendar/previous-open/persisted exception distinctions and scoped pagination are accepted with actual EN/RU/AZ Orca, real session isolation, localized safe error/retry, native 200% focus and sampled contrast; exact-source hosted browser/PostgreSQL and baseline-qualified CI/build evidence are bound to the acceptance packet. No production activation or physical-presence claim |
 | WF-C8-003 | P1 | DONE | Web | Add multi-site day timeline and transition status | [`workforce-c8-multisite-timeline-evidence-2026-09-13.md`](./workforce-c8-multisite-timeline-evidence-2026-09-13.md): the self-only timeline shows Site/Travel/Site plans and append-only arrival/departure/review states without raw proof or physical-presence claims |
 | WF-C8-004 | P1 | DONE | Web | Complete timesheet: plan/fact/evidence status/exceptions/approval/correction revisions | [`Complete timesheet review evidence`](./workforce-c8-complete-timesheet-evidence-2026-09-29.md): query-bounded, calculation-version-aware linked and schedule-only exceptions plus hash-verified v1/v2 approval/correction history join deterministic plan/fact; missing snapshots and unresolved exceptions remain non-approvable, successful writes refresh exact history, and PR #489 passed independent review, exact-head gates, release and exact-SHA production verification. |
 | WF-C8-005 | P1 | PARTIAL | Web | Add exception workbench and employee response/appeal context | [`Scoped acknowledgement UI`](./workforce-c6-exception-acknowledgement-ui-evidence-2026-09-27.md) and [`correction-request UI`](./workforce-c6-exception-correction-request-ui-evidence-2026-09-27.md): the queue shows scoped risk/age/evidence/response context and records one exact server-offered non-terminal acknowledgement or correction-review request through a two-step localized UI; employee response/appeal surfaces, terminal lifecycle and real browser evidence remain open, so C6 acceptance is not yet met |
@@ -7344,3 +7344,18 @@ implementation do not establish representative staging/operational runtime,
 full historical replay or the broader unimplemented mutation coverage. No merge, deployment, activation,
 real employee publication, credentials, grants, retention, physical-device,
 pilot or whole-HRM completion is claimed.
+
+
+### 2026-10-06 — WF-C8-002 finite whole-item acceptance, incoming-main successor
+
+Only WF-C8-002 changes to DONE: 84/161 accepted, 77 open, C8 6/11 (55%),
+14/15 gates; weighted raw 60.40579710144928%, rounded 60%; open P0/P1 73.
+[Whole manager Today acceptance](./workforce-c8-manager-today-acceptance-2026-10-06.md)
+binds independent R1–R6 acceptance to runtime30c/main251, actual EN/RU/AZ AT
+90/90, hosted browser/PG, full baseline-qualified compiler gates and production
+build. Original 54/54 AT, 100+14 tests, archives and negative attempts remain.
+The new main cb5 MTM integration is separate: 138/138 local tests pass; its own
+exact-head hosted checks, build, browser and final source review remain pending
+at this publication. No global compiler cleanliness, historical migration replay,
+production activation or additional task/gate credit is inferred.
+Next prepared dependency slice is [existing C12 worker acceptance](./workforce-c12-next-acceptance-slice-2026-10-06.md); C12 remains PARTIAL.
