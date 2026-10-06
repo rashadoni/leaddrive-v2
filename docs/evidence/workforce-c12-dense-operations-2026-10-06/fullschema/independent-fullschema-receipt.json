@@ -1,0 +1,327 @@
+{
+  "kind": "independent_full_schema_plus_actual_operations_migration_experiment",
+  "at": "2026-10-05T19:51:56.683224+00:00",
+  "outcome": "PASS_WITH_EXPLICIT_STAGING_LIMITS",
+  "source_binding": {
+    "at": "2026-10-05T19:50:19.571408+00:00",
+    "base_sha": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+    "base_tree": "126d95fddda4eaa15df202e3e320421358f5b0a0",
+    "base_blob_count": 8744,
+    "unchanged_blobs_and_modes_verified": 8738,
+    "changed_paths_verified": 11,
+    "candidate_blobs": 8749,
+    "recomputed_candidate_tree": "c02d617c3c3f525970ee1003a21af1ed84bcd31d",
+    "mismatches": [],
+    "remote_candidate_commit": null,
+    "frozen_paths": [
+      {
+        "path": "prisma/schema.prisma",
+        "bytes": 958569,
+        "sha256": "f3dc692c6d0b75ebdb2f21be4e97cbdc6454f9da03b92c8bc74d249315114b7b",
+        "blob": "55b03933686c10512ea5502b0401e45326c7a804"
+      },
+      {
+        "path": "src/lib/workforce/reconciliation.ts",
+        "bytes": 10678,
+        "sha256": "292720bc88e8484dd173e6ed50d7616f008e5524201dc756f40ab3fabca20a27",
+        "blob": "acefe57681bbc04e158f538dfd7645b5b28fbf93"
+      },
+      {
+        "path": "src/lib/workforce/reconciliation-cursor-store.ts",
+        "bytes": 6533,
+        "sha256": "8b04ef4d1c7ea5cca424ef13e7c0d80e949271523a22cf4d43a545049949a6bd",
+        "blob": "f43235f707457f3cafef25ebe2fdec97e395f2ef"
+      },
+      {
+        "path": "src/lib/workforce/reconciliation-snapshot.ts",
+        "bytes": 9679,
+        "sha256": "bdba98ef3f2d18b916200673038b4ad3eb523f2a5e3d12c864198eac26f490a3",
+        "blob": "97aa9097d0fdadcbedcd77df053531ac592d9039"
+      },
+      {
+        "path": "src/lib/workforce/reconciliation-sweep.ts",
+        "bytes": 3049,
+        "sha256": "309ce1eabde967c795c47bb4a123f7c4cfd73a2a13638d8937327d8db4b0024c",
+        "blob": "0fec4461ce893335761d6d2ba11dbefb6836a2b4"
+      },
+      {
+        "path": "src/__tests__/workforce-reconciliation-sweep.test.ts",
+        "bytes": 49872,
+        "sha256": "276a6bd5077d31d883fba6e1499cb9e4b95016ec36f1932ad02759b903a338ea",
+        "blob": "8d5f3f9c626f7f6d4b5e06bbb3785ad4314a5f3e"
+      },
+      {
+        "path": "src/lib/workforce/reconciliation-source-page.ts",
+        "bytes": 5013,
+        "sha256": "7c45f9b7d1b621d7418e4ce18cdbace2bfed1a9a3a522944c5504c1259da03fe",
+        "blob": "24a8b7b9b8cb51bd31ec5ae1c2f0981ad5d59fea"
+      },
+      {
+        "path": "src/lib/workforce/reconciliation-dense.ts",
+        "bytes": 8490,
+        "sha256": "500f3f9b68cb68a0ab0ee6085814961b359b46ceb3b18a5ba38d9cafbd175959",
+        "blob": "99e7ddf90d536a78baeff97f1dd95fb00d18b644"
+      },
+      {
+        "path": "src/lib/workforce/reconciliation-operations.ts",
+        "bytes": 11420,
+        "sha256": "9550065b64ecfae0e40e8dbf2561a3e5eb63cc738558a4c5fd13f1d1a3d95bd2",
+        "blob": "73d03c393835b6ec4e45c4ad6feaac1b51e8ff80"
+      },
+      {
+        "path": "prisma/migrations/20261005193000_workforce_reconciliation_operations/migration.sql",
+        "bytes": 2721,
+        "sha256": "c452e7f6d13dca1e5257d8353c252745d05cd4f18eae83cd45501f61664ef719",
+        "blob": "56c246ae8afd8ea5be2989034bd56953e28406c5"
+      },
+      {
+        "path": "docs/workforce-c12-dense-operations-2026-10-05.md",
+        "bytes": 5401,
+        "sha256": "c69199ad54e9404e25e6a1f2e324cb3476e9d4b66664f3e27cd46c38c9780c21",
+        "blob": "821f4909dff71327c78ee418f6e3fe7d5115c246"
+      }
+    ],
+    "all_frozen_bytes_rechecked_after_experiment": true,
+    "remote_commit_acceptance": "PENDING_IMMUTABLE_COMMIT"
+  },
+  "independence": {
+    "reviewer_wrote_product_source": false,
+    "reviewer_remote_mutations": false,
+    "own_unique_database_container": true,
+    "root_fixture_used": false,
+    "production_access": false,
+    "raw_ci_logs_access": false
+  },
+  "schema_provenance": {
+    "base_source": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+    "base_schema_sha256": "229c57f4cbd9707b77edb5c022edb248036e2f19e755a04d0bf5dcd3869bbf68",
+    "construction": "Prisma migrate diff --from-empty generated base schema SQL, then exact new migration SQL; no db push; not complete historical migration replay",
+    "new_migration": "prisma/migrations/20261005193000_workforce_reconciliation_operations/migration.sql",
+    "actual_schema": {
+      "version": "PostgreSQL 16.15 (Debian 16.15-1.pgdg12+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14+deb12u1) 12.2.0, 64-bit",
+      "collation": "en_US.utf8",
+      "table_count": 587,
+      "index_count": 2432,
+      "foreign_key_count": 1221
+    },
+    "actual_c_collated_indexes": 9,
+    "rls": "18 selected source/aux tables use explicitly installed repository-derived SELECT predicate with FORCE RLS; new operational-state FORCE RLS is supplied by the actual new migration",
+    "forced_rls_table_count": 19,
+    "role": {
+      "rolsuper": false,
+      "rolbypassrls": false,
+      "rolcreatedb": false,
+      "rolcreaterole": false
+    },
+    "role_grants": "SELECT only on 20 tables; own isolated role/database; trusted application org context",
+    "control_role": "isolated fixture administrator for seed and authorized cross-tenant operational writes; source reader is non-superuser/NOBYPASSRLS"
+  },
+  "actual_independent_tests": {
+    "distinct_pg_scenarios": 9,
+    "distinct_final_pass": 9,
+    "skipped": 0,
+    "initial_run": {
+      "passed": 5,
+      "failed": 4,
+      "reason": "Independent harness incorrectly named lease.startedAt instead of schema lastStartedAt; all4 affected tests failed before their behavior assertions, SQL42703; preserved sanitized history."
+    },
+    "correction": "Only /tmp test harness column name corrected, own database fixture reset; only4 failed scenarios rerun; all4PASS. No product source fix required.",
+    "own_pure_probe_separate": {
+      "path": "/tmp/hrm-ops-independent/ownership-report.json",
+      "passed": 3,
+      "scope": "full vs root-kind mismatch/accounting partition and fatal duplicate dependencies"
+    },
+    "owner_suite": "Not independently executed; separate owner report123/123,73PG+50pure read only."
+  },
+  "behavior": {
+    "minimal_all8": "MATCHED,8roots",
+    "dense_all8": "12002roots:2000 each workdays/events/evidence/assessments/exceptions/exports,1transition,1approval; full FKs retained",
+    "tenant_noise": "20001 foreign workdays plus one foreign record per other root kind",
+    "direct_unfiltered_rls": "all8 root families foreign count0",
+    "readonly_mutation": "denied",
+    "operational_tick": "MATCHED,8roots,opaque global cursor version1,tenant-owned state hidden from other tenant; fact fingerprints unchanged",
+    "wrong_context": "INCOMPLETE, no cursor",
+    "superuser_reader": "INCOMPLETE, no cursor",
+    "attempt_fence": "expired/replaced attempt under same live owner cannot commit cursor or finish old tenant outcome",
+    "oversized_utf8_approval": "INCOMPLETE with no cursor; fact fingerprints unchanged",
+    "mvcc": "concurrent source change invisible within original RR snapshot; later invocation detects MISMATCH",
+    "root_ceiling": "100001workday roots finite WORKFORCE_DENSE_SWEEP_OVERFLOW after782queries; no truncated success",
+    "facts": "all8 source families fingerprinted across read operations; readers did not mutate facts"
+  },
+  "performance": {
+    "warm_dense12002_ms": [
+      2263.8313830000006,
+      2838.5549109999993,
+      1943.7576039999985
+    ],
+    "warm_dense12002_queries": 260,
+    "dense100001_refusal_ms_including_two_explains": 4297.533756000001,
+    "query_plan_projection": "Node types,row/loop counts,timings,buffers,sort metadata only; no raw SQL/filter/params/row values/index or relation names",
+    "plans": "Actual C indexes exist;100001-workday first/second page Index Scan128rows,1.251/1.112ms. At2000 selected workdays planner chose Bitmap Heap Scan2000rows plus C sort,4.806ms; index use is not universal.",
+    "limits": "Synthetic shared container timings,3warm repetitions,not p95/not production SLO/not load or starvation qualification"
+  },
+  "prior_findings_resolution": [
+    {
+      "id": "OPS-CLAIM-POSTWAIT",
+      "status": "RESOLVED_SOURCE_OWNER_PG",
+      "evidence": "Separate post-upsert live fence throws inside transaction; owner absent/present conflict tests checked; independent did not rerun conflict scenario."
+    },
+    {
+      "id": "OPS-RLS-CONTEXT",
+      "status": "RESOLVED_INDEPENDENT_PG",
+      "evidence": "selected app.org_id, bypass off and non-superuser/NOBYPASSRLS asserted before reading facts; wrong-context and superuser refused."
+    },
+    {
+      "id": "OPS-ATTEMPT-VS-CURSOR",
+      "status": "RESOLVED_INDEPENDENT_PG",
+      "evidence": "Optional attempt token/RUNNING/due lock+predicate at cursor commit; expired/replaced claims refused."
+    },
+    {
+      "id": "OPS-HEALTH-COVERAGE",
+      "status": "RESOLVED_EXPLICIT_SCOPE",
+      "evidence": "TRACKED_ATTEMPTS_ONLY with eligibleRosterCoverage NOT_MEASURED; unattempted/ineligible coverage remains outside this telemetry."
+    }
+  ],
+  "findings_by_severity": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "remaining_acceptance_limits": [
+    "Existing historical clean migration replay fails P3018/42P01 api_keys after391 completed migrations; not repaired, not marked applied.",
+    "Full generated schema retains FKs/indexes/types but does not reproduce every historical trigger/check/ACL/partial index. Only new migration applied literally.",
+    "Schedule-only/pinned auxiliary source scenarios were not exercised by these full-schema fixtures; new and inherited owner fixture evidence is separate.",
+    "RLS checks assume trusted app GUC setter; not a defense against arbitrary SQL executing a forged tenant/bypass setting.",
+    "No production-shaped many-approval-group, sparse audit, large roster/churn, cold-cache or sustained concurrent-load performance claim.",
+    "Roster cap10000/4MiB and tenant total100000/atomic1000revision1MiB bounds still refuse larger input; no silent progress.",
+    "Reader factory setup must be bounded by caller; no scheduler/route/notification registration or activation.",
+    "Prisma cannot encode C-index collation; deployment must apply reviewed actual migration and assess blocking index build/storage/maintenance window.",
+    "No hosted gates/whole compiler acceptance for this new source inferred from prior0a40.",
+    "C12 remains PARTIAL,82/161DONE,79open,weighted59%; no production acceptance."
+  ],
+  "cleanup": {
+    "at": "2026-10-05T19:49:36.486541+00:00",
+    "own_container_removed": true,
+    "own_anonymous_volume_count": 1,
+    "all_own_volumes_removed": true,
+    "credential_files_removed": true,
+    "other_containers_untouched": true
+  },
+  "supports": [
+    {
+      "path": "/tmp/hrm-ops-independent-fullschema/schema-setup.json",
+      "bytes": 1059,
+      "sha256": "c520da7394428e17639765e025f971acfebf14977caa4a696c040c59af226082",
+      "publication": "sanitized_safe_original"
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-fullschema/base-schema-generated.sql",
+      "bytes": 911280,
+      "sha256": "ff1e48cdd5f4f47e1977c4fe6440f5949e24da2c614254ef6e056187b88fcc4b",
+      "publication": "local_large_schema_input"
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-fullschema/new-migration.sql",
+      "bytes": 2721,
+      "sha256": "c452e7f6d13dca1e5257d8353c252745d05cd4f18eae83cd45501f61664ef719",
+      "publication": "sanitized_safe_original"
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-fullschema/policy-projection.sql",
+      "bytes": 5970,
+      "sha256": "656724b7d9c6b39a0924f99637036947abbb994005f1f18e702eba67819b94e8",
+      "publication": "sanitized_safe_original"
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-fullschema/historical-base-policy-provenance.json",
+      "bytes": 2065,
+      "sha256": "cc458616c70e72aba6053fc7a5af486fd3fa2f5378ea858596e231b4114426af",
+      "publication": "sanitized_safe_original"
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-fullschema/historical-clean-migration-blocker.json",
+      "bytes": 18677,
+      "sha256": "a12b15593501a976f3d4bd37b1092c8bb12b90df21dd9a5e6918fca81f38b8fd",
+      "publication": "sanitized_safe_original"
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-fullschema/source-bindings-start.json",
+      "bytes": 2459,
+      "sha256": "b45a096f76a00938346ff952847dcb785cd59f247a7c69eac9af1285c5136d4d",
+      "publication": "sanitized_safe_original"
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-fullschema/frozen-owner-source-bindings.json",
+      "bytes": 2504,
+      "sha256": "6e8804a77ebbeeff34a9136b4a7ccf063ea005579daa408118e0780912b4ea70",
+      "publication": "sanitized_safe_original"
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-fullschema/source-tree-verification.json",
+      "bytes": 426,
+      "sha256": "3f52ade54abd76588b0ecd491b703e1ce7c725645d4203707263bb12ae88cec3",
+      "publication": "sanitized_safe_original"
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-fullschema/baseline.test.ts",
+      "bytes": 19204,
+      "sha256": "db7508f874cebbda7a6107273e81e94d4820b47291d1116480c7354b4044657b",
+      "publication": "sanitized_safe_original"
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-fullschema/retest.test.ts",
+      "bytes": 13723,
+      "sha256": "02a7f563e2dc0c0d07fda307bc0faa7228d318a2838da552f0f87743786e4cfe",
+      "publication": "sanitized_safe_original"
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-fullschema/vitest.config.ts",
+      "bytes": 275,
+      "sha256": "f7026e1eab2792ab8d6657b9f8e4691334e9934dc251157b867632d2f227ac10",
+      "publication": "sanitized_safe_original"
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-fullschema/retest.config.ts",
+      "bytes": 273,
+      "sha256": "c1d13e487978c47ad0c874638ad524780fe465364e35f21bad00289d82ab0afe",
+      "publication": "sanitized_safe_original"
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-fullschema/baseline-results.json",
+      "bytes": 82052,
+      "sha256": "ce6524139edad6ddc98c80ce51806d3288742f084b4157e95d44c74629df8637",
+      "publication": "sanitized_safe_original"
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-fullschema/retest-results.json",
+      "bytes": 1245,
+      "sha256": "fa3eb4de3cc22ce9f58ad3c7d9f1efc30bcb7d1ad210896efd35eda12dac76f6",
+      "publication": "sanitized_safe_original"
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-fullschema/tests-initial-sanitized.json",
+      "bytes": 1585,
+      "sha256": "517610f8e0e86cea811e1c12d4ba5a610187e1574712a474d108a92bfcb08808",
+      "publication": "sanitized_safe_original"
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-fullschema/tests-corrected-sanitized.json",
+      "bytes": 742,
+      "sha256": "8c4f87807edf3f9a2894e2e82552f3b6ab098f8a1d558b407869ceadcb00287d",
+      "publication": "sanitized_safe_original"
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-fullschema/initial-fixture-failure-summary.json",
+      "bytes": 716,
+      "sha256": "3e0e715e5dc769231c7f890bcf5b39c63ac72b4b096ce6ff1382d29de4371057",
+      "publication": "sanitized_safe_original"
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-fullschema/cleanup.json",
+      "bytes": 224,
+      "sha256": "e7a73d2c20efa65426eaedbe3fca275ba9720c197640eb2d98ac17f90c87f456",
+      "publication": "sanitized_safe_original"
+    }
+  ]
+}

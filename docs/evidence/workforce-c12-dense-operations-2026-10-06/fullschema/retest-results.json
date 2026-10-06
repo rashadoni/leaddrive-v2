@@ -1,0 +1,51 @@
+{
+  "source": "mutable_ops_draft_base0a40",
+  "schema_mode": "base0a40 generated full schema SQL plus actual operations migration; not full migration replay",
+  "scenarios": [
+    {
+      "label": "scoped_tick",
+      "status": "MATCHED",
+      "unchanged_facts": true,
+      "tenant_owned_state_isolated": true,
+      "global_checkpoint_opaque": true
+    },
+    {
+      "label": "wrong_context_and_superuser_refusal",
+      "checkpoint": "NONE"
+    },
+    {
+      "label": "attempt_replacement_and_expiry",
+      "checkpoint": "NONE",
+      "stale_finish": false
+    },
+    {
+      "label": "atomic_utf8_group_refusal",
+      "checkpoint": "NONE",
+      "unchanged_facts": true
+    }
+  ],
+  "plans": [],
+  "private_values_emitted": false,
+  "database": [
+    {
+      "version": "PostgreSQL 16.15 (Debian 16.15-1.pgdg12+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14+deb12u1) 12.2.0, 64-bit",
+      "collation": "en_US.utf8",
+      "table_count": 587,
+      "index_count": 2432,
+      "foreign_key_count": 1221
+    }
+  ],
+  "reader_role": [
+    {
+      "rolsuper": false,
+      "rolbypassrls": false,
+      "rolcreatedb": false,
+      "rolcreaterole": false
+    }
+  ],
+  "forced_rls": [
+    {
+      "forced_tables": 19
+    }
+  ]
+}

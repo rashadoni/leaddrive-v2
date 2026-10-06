@@ -1,0 +1,43 @@
+{
+  "mode": "base0a40 schema generated SQL plus exact actual new migration, not complete migration replay",
+  "steps": [
+    {
+      "step": "vector",
+      "exit_code": 0
+    },
+    {
+      "step": "full_base_schema",
+      "exit_code": 0
+    },
+    {
+      "step": "actual_new_migration",
+      "exit_code": 0
+    },
+    {
+      "step": "repository_policy_projection",
+      "exit_code": 0
+    },
+    {
+      "step": "isolated_select_role",
+      "exit_code": 0
+    }
+  ],
+  "schema_inputs": [
+    {
+      "path": "base-schema-generated.sql",
+      "bytes": 911280,
+      "sha256": "ff1e48cdd5f4f47e1977c4fe6440f5949e24da2c614254ef6e056187b88fcc4b"
+    },
+    {
+      "path": "new-migration.sql",
+      "bytes": 2721,
+      "sha256": "c452e7f6d13dca1e5257d8353c252745d05cd4f18eae83cd45501f61664ef719"
+    },
+    {
+      "path": "policy-projection.sql",
+      "bytes": 5970,
+      "sha256": "656724b7d9c6b39a0924f99637036947abbb994005f1f18e702eba67819b94e8"
+    }
+  ],
+  "reader_grants": "SELECT only on 20 selected tables; USAGE public; isolated DB only"
+}

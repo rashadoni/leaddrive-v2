@@ -1,0 +1,22 @@
+[
+  {
+    "test": "full-schema scoped tick commits only operational state and opaque progress",
+    "missing_startedAt_fixture_column": true,
+    "undefined_column_sqlstate": true
+  },
+  {
+    "test": "wrong tenant context and superuser reader refuse without checkpoint",
+    "missing_startedAt_fixture_column": true,
+    "undefined_column_sqlstate": true
+  },
+  {
+    "test": "replaced or expired attempt cannot advance even with same live lease owner",
+    "missing_startedAt_fixture_column": true,
+    "undefined_column_sqlstate": true
+  },
+  {
+    "test": "oversized atomic approval refuses without operational progress",
+    "missing_startedAt_fixture_column": true,
+    "undefined_column_sqlstate": true
+  }
+]

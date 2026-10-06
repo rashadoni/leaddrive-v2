@@ -1,0 +1,28 @@
+{
+  "total": 4,
+  "passed": 4,
+  "failed": 0,
+  "pending": 0,
+  "tests": [
+    {
+      "name": "full-schema scoped tick commits only operational state and opaque progress",
+      "status": "passed",
+      "duration_ms": 229.48281199999997
+    },
+    {
+      "name": "wrong tenant context and superuser reader refuse without checkpoint",
+      "status": "passed",
+      "duration_ms": 71.17320699999982
+    },
+    {
+      "name": "replaced or expired attempt cannot advance even with same live lease owner",
+      "status": "passed",
+      "duration_ms": 52.17448300000001
+    },
+    {
+      "name": "oversized atomic approval refuses without operational progress",
+      "status": "passed",
+      "duration_ms": 361.7399639999999
+    }
+  ]
+}

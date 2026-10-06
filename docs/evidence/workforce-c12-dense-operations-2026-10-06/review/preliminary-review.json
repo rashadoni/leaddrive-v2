@@ -1,0 +1,82 @@
+{
+  "status": "PRELIMINARY_REVIEW_FINDINGS_PENDING_OWNER_RESPONSE",
+  "reviewed_base": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+  "workspace": "/workspace/hrm-ops-draft",
+  "candidate_commit": null,
+  "at": "2026-10-05T19:39:31.101736+00:00",
+  "source_scope": [
+    "reconciliation.ts",
+    "reconciliation-snapshot.ts",
+    "reconciliation-sweep.ts",
+    "reconciliation-source-page.ts",
+    "reconciliation-dense.ts",
+    "reconciliation-operations.ts",
+    "prisma/schema.prisma",
+    "prisma/migrations/20261005193000_workforce_reconciliation_operations/migration.sql",
+    "src/__tests__/workforce-reconciliation-sweep.test.ts"
+  ],
+  "findings": [
+    {
+      "id": "OPS-CLAIM-POSTWAIT",
+      "priority": "P2",
+      "status": "OPEN",
+      "description": "Absent tenant-state row cannot be locked by SELECT FOR UPDATE; first-insert ON CONFLICT may wait after lease check. Require explicit post-upsert lease check and rollback on expiry rather than relying on subplan clock evaluation."
+    },
+    {
+      "id": "OPS-RLS-CONTEXT",
+      "priority": "P1",
+      "status": "OPEN",
+      "description": "In-snapshot capability check does not prove selected tenant RLS context. Wrong app.org_id may leave organizations visible but hide all facts, yielding empty MATCHED under a misconfigured reader factory. Add fail-closed context assertion and wrong-context regression or explicitly narrow supported trusted reader contract."
+    },
+    {
+      "id": "OPS-ATTEMPT-VS-CURSOR",
+      "priority": "P2",
+      "status": "OPEN_CONTRACT_QUESTION",
+      "description": "Finish token guards tenant outcome, but same-owner stale attempt after reader factory delay can still commit global cursor if attempt replaced; clarify global success-only token semantics or fence cursor on active attempt."
+    },
+    {
+      "id": "OPS-HEALTH-COVERAGE",
+      "priority": "P2",
+      "status": "OPEN_SCOPE_QUALIFICATION",
+      "description": "health counts only tracked operational rows including inactive/ineligible tenants; unattempted eligible roster is invisible. Must not imply tenant coverage/healthy empty roster."
+    }
+  ],
+  "positive_findings": [
+    "All eight root kinds independently traversed; dependency roots are not silently dropped through inner joins.",
+    "Per-root-kind kernel accounting partitions mismatch ownership; complete approval histories remain atomic.",
+    "Dense root pages retain one MVCC transaction and restart on each invocation; scope overflow refuses checkpoint.",
+    "Finish uses lease then state locks and token-conditioned update; diagnostics/cursor omit tenant payload.",
+    "Migration uses tenant FK, FORCE RLS and no runtime registration or grants."
+  ],
+  "independent_tests": {
+    "file": "/tmp/hrm-ops-independent/ownership-report.json",
+    "passed": 3,
+    "failed": 0,
+    "total": 3,
+    "database_tests_run": 0
+  },
+  "evidence_boundaries": [
+    "Mutable owner draft; no exact commit accepted.",
+    "Existing clean migration blocker api_keys/P3018 is not repaired and prevents claiming full migration reproducibility.",
+    "Generated Prisma schema omits SQL C-collation semantics; actual migration application is required.",
+    "Owner tests still pending final source; prior/full-schema baseline remains separate.",
+    "No source edits, remote mutations, activation or production database access."
+  ],
+  "supports": [
+    {
+      "path": "/tmp/hrm-ops-independent/ownership.test.ts",
+      "bytes": 5179,
+      "sha256": "4a76696830e50e07716825afa64524fe7d9105d43cd646e66e0c8972d26db59a"
+    },
+    {
+      "path": "/tmp/hrm-ops-independent/vitest.config.ts",
+      "bytes": 220,
+      "sha256": "839bc09980f6f4637793039ca9ad94f480cf8518616eaea108d16347d7a2cef3"
+    },
+    {
+      "path": "/tmp/hrm-ops-independent/ownership-report.json",
+      "bytes": 1682,
+      "sha256": "ad9758513fd6377976234e72576388f9415dd90658bbe45f58b5ccda7f25fdc1"
+    }
+  ]
+}

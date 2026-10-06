@@ -1,0 +1,53 @@
+{
+  "total": 9,
+  "passed": 5,
+  "failed": 4,
+  "pending": 0,
+  "tests": [
+    {
+      "name": "actual migration supplies nine C indexes and tenant state checks/FORCE RLS",
+      "status": "passed",
+      "duration_ms": 165.16948000000002
+    },
+    {
+      "name": "non-bypass role isolates all eight direct source reads and rejects mutations",
+      "status": "passed",
+      "duration_ms": 61.153268000000025
+    },
+    {
+      "name": "full-schema scoped tick commits only operational state and opaque progress",
+      "status": "failed",
+      "duration_ms": 20.99517199999991
+    },
+    {
+      "name": "wrong tenant context and superuser reader refuse without checkpoint",
+      "status": "failed",
+      "duration_ms": 8.340788999999859
+    },
+    {
+      "name": "replaced or expired attempt cannot advance even with same live lease owner",
+      "status": "failed",
+      "duration_ms": 16.952416000000085
+    },
+    {
+      "name": "dense 12002 roots close dependencies under full FKs and C indexes",
+      "status": "passed",
+      "duration_ms": 13204.288345
+    },
+    {
+      "name": "same MVCC snapshot is stable and next snapshot detects concurrent corruption",
+      "status": "passed",
+      "duration_ms": 6570.011573000002
+    },
+    {
+      "name": "oversized atomic approval refuses without operational progress",
+      "status": "failed",
+      "duration_ms": 211.02779900000314
+    },
+    {
+      "name": "100001 workday roots refuse finite total budget with indexed keyset plans",
+      "status": "passed",
+      "duration_ms": 11301.264335999997
+    }
+  ]
+}

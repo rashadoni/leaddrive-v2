@@ -1,0 +1,68 @@
+[
+  {
+    "path": "prisma/schema.prisma",
+    "bytes": 958569,
+    "sha256": "f3dc692c6d0b75ebdb2f21be4e97cbdc6454f9da03b92c8bc74d249315114b7b",
+    "blob": "55b03933686c10512ea5502b0401e45326c7a804"
+  },
+  {
+    "path": "src/lib/workforce/reconciliation.ts",
+    "bytes": 10678,
+    "sha256": "292720bc88e8484dd173e6ed50d7616f008e5524201dc756f40ab3fabca20a27",
+    "blob": "acefe57681bbc04e158f538dfd7645b5b28fbf93"
+  },
+  {
+    "path": "src/lib/workforce/reconciliation-cursor-store.ts",
+    "bytes": 6533,
+    "sha256": "8b04ef4d1c7ea5cca424ef13e7c0d80e949271523a22cf4d43a545049949a6bd",
+    "blob": "f43235f707457f3cafef25ebe2fdec97e395f2ef"
+  },
+  {
+    "path": "src/lib/workforce/reconciliation-snapshot.ts",
+    "bytes": 9679,
+    "sha256": "bdba98ef3f2d18b916200673038b4ad3eb523f2a5e3d12c864198eac26f490a3",
+    "blob": "97aa9097d0fdadcbedcd77df053531ac592d9039"
+  },
+  {
+    "path": "src/lib/workforce/reconciliation-sweep.ts",
+    "bytes": 3049,
+    "sha256": "309ce1eabde967c795c47bb4a123f7c4cfd73a2a13638d8937327d8db4b0024c",
+    "blob": "0fec4461ce893335761d6d2ba11dbefb6836a2b4"
+  },
+  {
+    "path": "src/__tests__/workforce-reconciliation-sweep.test.ts",
+    "bytes": 49872,
+    "sha256": "276a6bd5077d31d883fba6e1499cb9e4b95016ec36f1932ad02759b903a338ea",
+    "blob": "8d5f3f9c626f7f6d4b5e06bbb3785ad4314a5f3e"
+  },
+  {
+    "path": "src/lib/workforce/reconciliation-source-page.ts",
+    "bytes": 5013,
+    "sha256": "7c45f9b7d1b621d7418e4ce18cdbace2bfed1a9a3a522944c5504c1259da03fe",
+    "blob": "24a8b7b9b8cb51bd31ec5ae1c2f0981ad5d59fea"
+  },
+  {
+    "path": "src/lib/workforce/reconciliation-dense.ts",
+    "bytes": 8490,
+    "sha256": "500f3f9b68cb68a0ab0ee6085814961b359b46ceb3b18a5ba38d9cafbd175959",
+    "blob": "99e7ddf90d536a78baeff97f1dd95fb00d18b644"
+  },
+  {
+    "path": "src/lib/workforce/reconciliation-operations.ts",
+    "bytes": 11420,
+    "sha256": "9550065b64ecfae0e40e8dbf2561a3e5eb63cc738558a4c5fd13f1d1a3d95bd2",
+    "blob": "73d03c393835b6ec4e45c4ad6feaac1b51e8ff80"
+  },
+  {
+    "path": "prisma/migrations/20261005193000_workforce_reconciliation_operations/migration.sql",
+    "bytes": 2721,
+    "sha256": "c452e7f6d13dca1e5257d8353c252745d05cd4f18eae83cd45501f61664ef719",
+    "blob": "56c246ae8afd8ea5be2989034bd56953e28406c5"
+  },
+  {
+    "path": "docs/workforce-c12-dense-operations-2026-10-05.md",
+    "bytes": 5401,
+    "sha256": "c69199ad54e9404e25e6a1f2e324cb3476e9d4b66664f3e27cd46c38c9780c21",
+    "blob": "821f4909dff71327c78ee418f6e3fe7d5115c246"
+  }
+]

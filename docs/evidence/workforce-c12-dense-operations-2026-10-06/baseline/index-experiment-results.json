@@ -1,0 +1,169 @@
+{
+  "source": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+  "experimental_index_only_in_disposable_db": true,
+  "production_or_repository_schema_change": false,
+  "plans": [
+    {
+      "page": 1,
+      "planning_ms": 4.414,
+      "execution_ms": 7.006,
+      "plan": {
+        "Node Type": "Subquery Scan",
+        "Actual Rows": 1,
+        "Actual Loops": 1,
+        "Actual Total Time": 6.848,
+        "Shared Hit Blocks": 6,
+        "Shared Read Blocks": 3,
+        "Plans": [
+          {
+            "Node Type": "Limit",
+            "Actual Rows": 128,
+            "Actual Loops": 1,
+            "Actual Total Time": 0.758,
+            "Shared Hit Blocks": 3,
+            "Shared Read Blocks": 3,
+            "Plans": [
+              {
+                "Node Type": "Index Scan",
+                "Actual Rows": 128,
+                "Actual Loops": 1,
+                "Actual Total Time": 0.747,
+                "Rows Removed by Filter": 0,
+                "Shared Hit Blocks": 3,
+                "Shared Read Blocks": 3
+              }
+            ]
+          },
+          {
+            "Node Type": "Aggregate",
+            "Actual Rows": 1,
+            "Actual Loops": 1,
+            "Actual Total Time": 0.418,
+            "Shared Hit Blocks": 3,
+            "Shared Read Blocks": 0,
+            "Plans": [
+              {
+                "Node Type": "Sort",
+                "Actual Rows": 128,
+                "Actual Loops": 1,
+                "Actual Total Time": 0.089,
+                "Shared Hit Blocks": 3,
+                "Shared Read Blocks": 0,
+                "Sort Method": "quicksort",
+                "Plans": [
+                  {
+                    "Node Type": "CTE Scan",
+                    "Actual Rows": 128,
+                    "Actual Loops": 1,
+                    "Actual Total Time": 0.013,
+                    "Shared Hit Blocks": 0,
+                    "Shared Read Blocks": 0
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "Node Type": "Aggregate",
+            "Actual Rows": 1,
+            "Actual Loops": 1,
+            "Actual Total Time": 6.411,
+            "Shared Hit Blocks": 3,
+            "Shared Read Blocks": 3,
+            "Plans": [
+              {
+                "Node Type": "CTE Scan",
+                "Actual Rows": 128,
+                "Actual Loops": 1,
+                "Actual Total Time": 6.248,
+                "Shared Hit Blocks": 3,
+                "Shared Read Blocks": 3
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "page": 2,
+      "planning_ms": 0.217,
+      "execution_ms": 1.01,
+      "plan": {
+        "Node Type": "Subquery Scan",
+        "Actual Rows": 1,
+        "Actual Loops": 1,
+        "Actual Total Time": 0.972,
+        "Shared Hit Blocks": 6,
+        "Shared Read Blocks": 1,
+        "Plans": [
+          {
+            "Node Type": "Limit",
+            "Actual Rows": 128,
+            "Actual Loops": 1,
+            "Actual Total Time": 0.537,
+            "Shared Hit Blocks": 6,
+            "Shared Read Blocks": 1,
+            "Plans": [
+              {
+                "Node Type": "Index Scan",
+                "Actual Rows": 128,
+                "Actual Loops": 1,
+                "Actual Total Time": 0.495,
+                "Rows Removed by Filter": 0,
+                "Shared Hit Blocks": 6,
+                "Shared Read Blocks": 1
+              }
+            ]
+          },
+          {
+            "Node Type": "Aggregate",
+            "Actual Rows": 1,
+            "Actual Loops": 1,
+            "Actual Total Time": 0.221,
+            "Shared Hit Blocks": 0,
+            "Shared Read Blocks": 0,
+            "Plans": [
+              {
+                "Node Type": "Sort",
+                "Actual Rows": 128,
+                "Actual Loops": 1,
+                "Actual Total Time": 0.051,
+                "Shared Hit Blocks": 0,
+                "Shared Read Blocks": 0,
+                "Sort Method": "quicksort",
+                "Plans": [
+                  {
+                    "Node Type": "CTE Scan",
+                    "Actual Rows": 128,
+                    "Actual Loops": 1,
+                    "Actual Total Time": 0.011,
+                    "Shared Hit Blocks": 0,
+                    "Shared Read Blocks": 0
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "Node Type": "Aggregate",
+            "Actual Rows": 1,
+            "Actual Loops": 1,
+            "Actual Total Time": 0.738,
+            "Shared Hit Blocks": 6,
+            "Shared Read Blocks": 1,
+            "Plans": [
+              {
+                "Node Type": "CTE Scan",
+                "Actual Rows": 128,
+                "Actual Loops": 1,
+                "Actual Total Time": 0.587,
+                "Shared Hit Blocks": 6,
+                "Shared Read Blocks": 1
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

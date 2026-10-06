@@ -1,0 +1,313 @@
+{
+  "kind": "additive_independent_immutable_source_acceptance",
+  "at": "2026-10-06T07:14:25.078550+00:00",
+  "repository": "rashadoni/leaddrive-v2",
+  "outcome": "ACCEPTED_EXACT_HEAD_SOURCE_ONLY",
+  "candidate": {
+    "sha": "ba2c10a9fce6164af90bd9d49d45f58fede804e0",
+    "tree": "c02d617c3c3f525970ee1003a21af1ed84bcd31d",
+    "parents": [
+      "0a40cd6922affc8c21cc07c655ad5af5df990b19"
+    ],
+    "verified_signature": false
+  },
+  "source_acceptance": "/tmp/hrm-ops-independent-source-acceptance-20261006.json",
+  "verification": {
+    "candidate_blobs_verified": 8749,
+    "candidate_tree": "c02d617c3c3f525970ee1003a21af1ed84bcd31d",
+    "main_tree": "47755297e38198f69b4fadaee037033d8aa854d1",
+    "old_main_tree": "b401da9762d0fe4aebd5132cfd91356ee51d7f53",
+    "new_delta_paths": [
+      "docs/workforce-c12-dense-operations-2026-10-05.md",
+      "prisma/migrations/20261005193000_workforce_reconciliation_operations/migration.sql",
+      "prisma/schema.prisma",
+      "src/__tests__/workforce-reconciliation-sweep.test.ts",
+      "src/lib/workforce/reconciliation-cursor-store.ts",
+      "src/lib/workforce/reconciliation-dense.ts",
+      "src/lib/workforce/reconciliation-operations.ts",
+      "src/lib/workforce/reconciliation-snapshot.ts",
+      "src/lib/workforce/reconciliation-source-page.ts",
+      "src/lib/workforce/reconciliation-sweep.ts",
+      "src/lib/workforce/reconciliation.ts"
+    ],
+    "cumulative_paths": [
+      "docs/evidence/workforce-c12-cursor-fencing-draft-2026-10-05.json",
+      "docs/evidence/workforce-c12-dormant-kernel-main-compiler-review-scope-clarification-2026-10-05.json",
+      "docs/evidence/workforce-c12-duplicate-coherence-application-2026-10-05.json",
+      "docs/evidence/workforce-c12-duplicate-coherence-bounded-checks-2026-10-05.json",
+      "docs/evidence/workforce-c12-duplicate-coherence-selected-catalogue-2026-10-05.json",
+      "docs/evidence/workforce-timesheet-nullability-current-compiler-suite-root-2026-10-05.json",
+      "docs/evidence/workforce-timesheet-nullability-current-hosted-independent-2026-10-05.json",
+      "docs/evidence/workforce-timesheet-nullability-current-hosted-root-2026-10-05.json",
+      "docs/evidence/workforce-timesheet-nullability-current-manager-root-2026-10-05.json",
+      "docs/evidence/workforce-timesheet-nullability-current-manager-root-png-views-2026-10-05.json",
+      "docs/evidence/workforce-timesheet-nullability-normal-merge-2026-10-05.json",
+      "docs/evidence/workforce-timesheet-nullability-own-release-compact-2026-10-05.json",
+      "docs/evidence/workforce-timesheet-nullability-range-2026-10-05.json",
+      "docs/evidence/workforce-timesheet-nullability-ready-publication-2026-10-05.json",
+      "docs/evidence/workforce-timesheet-nullability-ready-synthetic-2026-10-05.json",
+      "docs/evidence/workforce-timesheet-nullability-source-independent-2026-10-05.json",
+      "docs/evidence/workforce-timesheet-nullability-source-root-2026-10-05.json",
+      "docs/workforce-c12-completion-plan-2026-10-05.md",
+      "docs/workforce-c12-dense-operations-2026-10-05.md",
+      "docs/workforce-c12-dormant-kernel-integrity-evidence-2026-10-05.md",
+      "docs/workforce-c12-duplicate-coherence-evidence-2026-10-05.md",
+      "docs/workforce-c12-sweep-staging-2026-10-05.md",
+      "docs/workforce-c8-calendar-native-zoom-evidence-2026-10-04.md",
+      "docs/workforce-c8-manager-today-native-zoom-evidence-2026-10-04.md",
+      "docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+      "docs/workforce-hrm-session-log.md",
+      "docs/workforce-timesheet-nullability-evidence-2026-10-05.md",
+      "prisma/migrations/20261005193000_workforce_reconciliation_operations/migration.sql",
+      "prisma/schema.prisma",
+      "src/__tests__/workforce-reconciliation-approval-group.test.ts",
+      "src/__tests__/workforce-reconciliation-cursor-store.test.ts",
+      "src/__tests__/workforce-reconciliation-export-audit.test.ts",
+      "src/__tests__/workforce-reconciliation-job.test.ts",
+      "src/__tests__/workforce-reconciliation-sweep.test.ts",
+      "src/__tests__/workforce-reconciliation.test.ts",
+      "src/lib/workforce/reconciliation-approval-group.ts",
+      "src/lib/workforce/reconciliation-cursor-store.ts",
+      "src/lib/workforce/reconciliation-dense.ts",
+      "src/lib/workforce/reconciliation-export-audit.ts",
+      "src/lib/workforce/reconciliation-operations.ts",
+      "src/lib/workforce/reconciliation-schedule-subject.ts",
+      "src/lib/workforce/reconciliation-snapshot.ts",
+      "src/lib/workforce/reconciliation-source-page.ts",
+      "src/lib/workforce/reconciliation-sweep.ts",
+      "src/lib/workforce/reconciliation.ts"
+    ],
+    "fresh_main_delta": [
+      {
+        "path": "docs/security/2026-08-11-pentest-remediation.md",
+        "mode": "100644",
+        "sha": "bfad87740d510fdef962c5cb7200419cf92b011e"
+      },
+      {
+        "path": "src/__tests__/api-mtm-misc.test.ts",
+        "mode": "100644",
+        "sha": "49611e28cab6dfe6552b1e8460380ef37b96620d"
+      },
+      {
+        "path": "src/app/api/v1/mtm/mobile/ping/route.ts",
+        "mode": "100644",
+        "sha": "3c4cbe0f6bca290b9424cd44bb5c0cd1190ba5df"
+      }
+    ],
+    "path_overlap": [],
+    "expected_integrated_tree": "5a8876158b6c08be43e372c2d82c82d70a40365a",
+    "expected_integrated_blobs": 8749,
+    "protected_paths": [
+      {
+        "path": ".gitleaks.toml",
+        "sha256": "f2c83316fa50e9f8a7b52dacb30236bc3dc88c9984ab1159cc8dc5ac724ff809",
+        "blob": "48f3f3a3fede5d266216f2030a78f9966826d20c",
+        "unchanged_base": true,
+        "unchanged_main": true,
+        "matches_preexisting_receipt_hash": true
+      },
+      {
+        "path": ".github/workflows/pr-checks.yml",
+        "sha256": "d034cae6f3d5fa64d15ad52686d4b78b46a487d330151907e069e1239f162969",
+        "blob": "952038c2356dad827cfbb69eb130f5fa17b7b541",
+        "unchanged_base": true,
+        "unchanged_main": true,
+        "matches_preexisting_receipt_hash": true
+      },
+      {
+        "path": ".github/workflows/runner-policy.yml",
+        "sha256": "46792e8379ba8c3640d8549a91aa4fc59c778a1f14652e609b4f6fc243ddbf6a",
+        "blob": "22e3e8b818e4d7235828d3413ef5dec203e85260",
+        "unchanged_base": true,
+        "unchanged_main": true,
+        "matches_preexisting_receipt_hash": true
+      },
+      {
+        "path": "scripts/ci/check-typecheck-gate.sh",
+        "sha256": "a18608d9297c039380481fb27d6200d9ebbcc731e9ec23dd40b5e3a2c5a40937",
+        "blob": "e6c3c4a836424b834e90f4192ad81513c9541b9c",
+        "unchanged_base": true,
+        "unchanged_main": true,
+        "matches_preexisting_receipt_hash": true
+      },
+      {
+        "path": "scripts/ci/check-typecheck-baseline.mjs",
+        "sha256": "8b8a2472a1c813e85c4177c24c6df5fb5907d981b5b43e6870a04cbbba2b812a",
+        "blob": "034bfd1f18061bad8291f505367e84c74ec510ae",
+        "unchanged_base": true,
+        "unchanged_main": true,
+        "matches_preexisting_receipt_hash": true
+      },
+      {
+        "path": "scripts/ci/check-github-runner-policy.mjs",
+        "sha256": "d0133dc3d1f3e1642f05209be4436751a69a5bf2dd56c8854bbf256179bed3b0",
+        "blob": "beda500cf1bb1e28a974007fa039a6dd925ac084",
+        "unchanged_base": true,
+        "unchanged_main": true,
+        "matches_preexisting_receipt_hash": true
+      },
+      {
+        "path": ".github/workflows/gitleaks.yml",
+        "sha256": "c5d38a364e21e5b1e3272d54d9d79faaa8b88b2e8390a24efb29414103039e89",
+        "blob": "4b696fe261a4629b974482dcc5edae52a44a77c5",
+        "unchanged_base": true,
+        "unchanged_main": true,
+        "matches_preexisting_receipt_hash": true
+      },
+      {
+        "path": ".github/workflows/set-social-app-secrets.yml",
+        "sha256": "6465745a44f77c04d30642768b8df0342adb4145942390305998e94871dfe3f5",
+        "blob": "d3d981780007f34a2db0eddb50fbe857c89b39e3",
+        "unchanged_base": true,
+        "unchanged_main": true,
+        "matches_preexisting_receipt_hash": true
+      },
+      {
+        "path": "scripts/check-test-baseline.mjs",
+        "sha256": "6c3380718fd71061d2efe4aa396fcb9cc998336c5c95a3bbd2de05230058027e",
+        "blob": "7c27358c48c09131ce7966b2f4938490591c3cd1",
+        "unchanged_base": true,
+        "unchanged_main": true,
+        "matches_preexisting_receipt_hash": true
+      },
+      {
+        "path": "scripts/workforce-hrm-baseline.sql",
+        "sha256": "82fc77ad14844e3a2339063ab267500868be429063a1a9d549fe481361ccba90",
+        "blob": "014b80b82f15119a720f0f37f5072297d83fa248",
+        "unchanged_base": true,
+        "unchanged_main": true,
+        "matches_preexisting_receipt_hash": true
+      },
+      {
+        "path": "src/__tests__/check-test-baseline-timeout-rendering.test.ts",
+        "sha256": "eaf638908c02306d8559909cbcbebc74c67c19442bbc80002cc11716cde28a29",
+        "blob": "d49b1d2978470bc659095734eb8b6859a5f4c4c5",
+        "unchanged_base": true,
+        "unchanged_main": true,
+        "matches_preexisting_receipt_hash": true
+      },
+      {
+        "path": "src/__tests__/production-test-baseline-gate.test.ts",
+        "sha256": "7a6d1d18120475624998b0c0c9827a7bb7c3bc4e4317d42cbcb2b6b45ab09da7",
+        "blob": "ffb2d074fad4b90555c658ff69c4fcc6611b8f24",
+        "unchanged_base": true,
+        "unchanged_main": true,
+        "matches_preexisting_receipt_hash": true
+      },
+      {
+        "path": "test-baseline.json",
+        "sha256": "8f0fc568274f9fd8c0c741db618d6e4d81025de7112a315cd93e6b92bbd5a4b1",
+        "blob": "fcdde20b245a686642676341f01cb39e73e42ffa",
+        "unchanged_base": true,
+        "unchanged_main": true,
+        "matches_preexisting_receipt_hash": true
+      },
+      {
+        "path": "typecheck-baseline.json",
+        "sha256": "e33fe73cb126f5bf205f317d240af968917a5ce516c8b83a30b8d6e34077001b",
+        "blob": "845db48542b4c2b89c947fedcea5e62c7fbe55d9",
+        "unchanged_base": true,
+        "unchanged_main": true,
+        "matches_preexisting_receipt_hash": true
+      },
+      {
+        "path": "next.config.ts",
+        "sha256": "0c0724cf9386a556257f8d2f104ed35c93d072b9e6debba9e08a1d45582b239f",
+        "blob": "88e50c680d5035c2f301f091decf13a301e8c1bb",
+        "unchanged_base": true,
+        "unchanged_main": true,
+        "matches_preexisting_receipt_hash": true
+      }
+    ],
+    "mismatches": []
+  },
+  "baseline": {
+    "gated_path_code_pairs": 66,
+    "known_failing_test_files": 18,
+    "files_unchanged": true,
+    "actual_current_compiler_diagnostic_identity": "NOT_CLAIMED",
+    "actual_hosted_suite_failure_identity": "NOT_CLAIMED"
+  },
+  "fresh_main": {
+    "sha": "0dad3e4cc2bc1704e6be5258ee5e0874418ab1d4",
+    "tree": "47755297e38198f69b4fadaee037033d8aa854d1",
+    "parents": [
+      "60ccd403fa172f2fafda31a9d4728c32933d4058",
+      "e75db22910af9d22e0ca98a64fc16a94c81b62a5"
+    ]
+  },
+  "main_change_scope": [
+    {
+      "path": "docs/security/2026-08-11-pentest-remediation.md",
+      "blob": "bfad87740d510fdef962c5cb7200419cf92b011e",
+      "status": "modified"
+    },
+    {
+      "path": "src/__tests__/api-mtm-misc.test.ts",
+      "blob": "49611e28cab6dfe6552b1e8460380ef37b96620d",
+      "status": "modified"
+    },
+    {
+      "path": "src/app/api/v1/mtm/mobile/ping/route.ts",
+      "blob": "3c4cbe0f6bca290b9424cd44bb5c0cd1190ba5df",
+      "status": "modified"
+    }
+  ],
+  "integration_state": "Expected tree independently computed from disjoint path manifests; new hosted synthetic not yet observed.",
+  "independent_validation": "Preserves prior exact-byte9distinctPG+3pure and owner123tests; no rerun/borrowed hosted credit.",
+  "findings_by_severity": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "pending": [
+    "Root ordinary update solePR589, then fresh exact head hosted5mandatory gates, synthetic parents[main0dad,ba2c10a9] and expected tree5a8876158b6c08be43e372c2d82c82d70a40365a.",
+    "Existing api_keys/P3018 historical migration replay blocker persists; fullschema+newmigration synthetic fixtures do not close production staging/RLS/ACL/trigger/SLO/coverage/activation prerequisites."
+  ],
+  "protected_route": "No merge/deploy/activation/grants authorized; reviewer remote writes0/source edits0.",
+  "supports": [
+    {
+      "path": "/tmp/hrm-ops-independent-source-acceptance-20261006.json",
+      "bytes": 7403,
+      "sha256": "26c7a4690d2b039dc44e43f6665677f4528317c3c440e8afd8202f073c48aa17",
+      "large_manifest_local_only": false
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-fullschema/independent-fullschema-receipt.json",
+      "bytes": 15328,
+      "sha256": "3fdbc6b95cd33064f5c2a8ff4ee0600d702a4a9412a56d6a81103f6d465d6c2b",
+      "large_manifest_local_only": false
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-remote-binding-20261006.json",
+      "bytes": 1419,
+      "sha256": "b07f9ac5fc0718043f89a419bed8036d78b14851a2440af19035c540c95b50b2",
+      "large_manifest_local_only": false
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-integration-proof-20261006.json",
+      "bytes": 9374,
+      "sha256": "92c763bc8b58008867b86a11e98fe7c5b2985351559a3b2aba51f5d697555055",
+      "large_manifest_local_only": false
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-tree-20261006.json",
+      "bytes": 1096157,
+      "sha256": "64e5a7c6cd9e161e7cadb84e4761bace795f90df0f5d79a51a506b3eb496e21c",
+      "large_manifest_local_only": true
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-main_tree-20261006.json",
+      "bytes": 1091167,
+      "sha256": "074f6d811147efdfdf50f0f6509ebada18898db8c12b44f14499c9d45fabf107",
+      "large_manifest_local_only": true
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-oldmain_tree-20261006.json",
+      "bytes": 1091167,
+      "sha256": "7fb377bd038b9d282b18a02b7adfaf7679ab1a943d4dd11e4f0030c7713a1f63",
+      "large_manifest_local_only": true
+    }
+  ]
+}

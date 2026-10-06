@@ -1,0 +1,105 @@
+{
+  "kind": "root-whole-receipt-support-rehash",
+  "receipt": "/tmp/hrm-independent-perf/independent-baseline-receipt.json",
+  "receiptSha256": "45716fba4a81e8608bd215f06e35022a584159a38d36522234dafac40a4825a1",
+  "supports": [
+    {
+      "path": "/tmp/hrm-independent-perf/baseline-results.json",
+      "bytes": 83759,
+      "sha256": "ff2846f3a8f2977c3320c141f4939657f7dfa3951e3bcb38b0d10e3b7790124c"
+    },
+    {
+      "path": "/tmp/hrm-independent-perf/dense-results.json",
+      "bytes": 4758,
+      "sha256": "77330f8c87784d9ec314fa06e5c8c26b0624dd2830074da582bebb12544ac3bb"
+    },
+    {
+      "path": "/tmp/hrm-independent-perf/index-experiment-results.json",
+      "bytes": 4954,
+      "sha256": "4f4161ec5ed5fb055dfde9d3766603be348720facfa59fb11e5af58922d437b5"
+    },
+    {
+      "path": "/tmp/hrm-independent-perf/test-report.json",
+      "bytes": 2036,
+      "sha256": "bd15270f396d52d78bc5a5c1e1c5d02f926d2415d3a639d41ce225f26ed257b3"
+    },
+    {
+      "path": "/tmp/hrm-independent-perf/dense-test-report.json",
+      "bytes": 906,
+      "sha256": "eb8a11d13cefa8221826e6d0789ff8d3d03719eab9b4e72ad878441dfcd36559"
+    },
+    {
+      "path": "/tmp/hrm-independent-perf/index-test-report.json",
+      "bytes": 901,
+      "sha256": "0dcf690906ead0a9eced8112d79bc38e2e98e768604c7c17ad3f188d9cb40a3e"
+    },
+    {
+      "path": "/tmp/hrm-independent-perf/schema-inputs.json",
+      "bytes": 215,
+      "sha256": "f7d266e71cb1d0af08adb9438330df7174919e0a9a1e27cb169116e386dc9f9f"
+    },
+    {
+      "path": "/tmp/hrm-independent-perf/migration-attempt.json",
+      "bytes": 18677,
+      "sha256": "a12b15593501a976f3d4bd37b1092c8bb12b90df21dd9a5e6918fca81f38b8fd"
+    },
+    {
+      "path": "/tmp/hrm-independent-perf/schema-apply-summary.json",
+      "bytes": 241,
+      "sha256": "2fb8b2a951421c936debebaf2a252a3292037cf686410bfd094bf57d3f2c555b"
+    },
+    {
+      "path": "/tmp/hrm-independent-perf/schema-generated.sql",
+      "bytes": 911280,
+      "sha256": "ff1e48cdd5f4f47e1977c4fe6440f5949e24da2c614254ef6e056187b88fcc4b"
+    },
+    {
+      "path": "/tmp/hrm-independent-perf/policy-projection.sql",
+      "bytes": 5970,
+      "sha256": "656724b7d9c6b39a0924f99637036947abbb994005f1f18e702eba67819b94e8"
+    },
+    {
+      "path": "/tmp/hrm-independent-perf/baseline.test.ts",
+      "bytes": 13972,
+      "sha256": "1e25b47351b743ebf58456d4c8deac810371b1b0c7afad8f57b95cb8ebc55ac2"
+    },
+    {
+      "path": "/tmp/hrm-independent-perf/dense.test.ts",
+      "bytes": 2867,
+      "sha256": "3fea3d4302ccfcb12c2445dbe4deaef9647ea857fb1973e26da7575e6b5a455e"
+    },
+    {
+      "path": "/tmp/hrm-independent-perf/index.test.ts",
+      "bytes": 2051,
+      "sha256": "d08525fc08a3dc88b51843225eb250d95d6ebc4188489a8ec45a83ebdd940e3b"
+    },
+    {
+      "path": "/tmp/hrm-independent-perf/vitest.config.ts",
+      "bytes": 270,
+      "sha256": "f141de1f49bd91119a822b9e6e19be42edf25cc6311f75cd65cf516ede6938fe"
+    },
+    {
+      "path": "/tmp/hrm-independent-perf/dense.config.ts",
+      "bytes": 248,
+      "sha256": "729db95887d8a03af18b1b4a310c2f532938f51b3e143f6ded0d1dba5d9a69d2"
+    },
+    {
+      "path": "/tmp/hrm-independent-perf/index.config.ts",
+      "bytes": 248,
+      "sha256": "359b460e0fadb77b02db45caffca507252fcf883f87d6ea798de58e948b50904"
+    },
+    {
+      "path": "/tmp/hrm-independent-perf/cleanup.json",
+      "bytes": 238,
+      "sha256": "2e2bda0c71e31377b2fcc0bbe3351386ccab428b5921839241dcaa85beecc12d"
+    },
+    {
+      "path": "/tmp/hrm-independent-perf/source-and-policy-bindings.json",
+      "bytes": 2065,
+      "sha256": "cc458616c70e72aba6053fc7a5af486fd3fa2f5378ea858596e231b4114426af"
+    }
+  ],
+  "verified": 19,
+  "fullMigrationHistory": "BLOCKED_P3018_API_KEYS",
+  "fallback": "schema-generated SQL plus projected policies; not migration acceptance"
+}

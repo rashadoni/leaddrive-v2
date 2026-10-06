@@ -1,0 +1,7 @@
+{
+  "method": "prisma migrate diff --from-empty --to-schema-datamodel, then SQL execution",
+  "exit_code": 0,
+  "duration_ms": 7364,
+  "stderr": "NOTICE:  schema \"public\" already exists, skipping\n",
+  "full_migration_acceptance": false
+}

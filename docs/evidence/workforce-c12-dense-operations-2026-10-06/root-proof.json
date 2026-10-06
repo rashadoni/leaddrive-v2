@@ -1,0 +1,486 @@
+{
+  "source": "ba2c10a9fce6164af90bd9d49d45f58fede804e0",
+  "tree": "c02d617c3c3f525970ee1003a21af1ed84bcd31d",
+  "parent": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+  "freshMain": "0dad3e4cc2bc1704e6be5258ee5e0874418ab1d4",
+  "tests": {
+    "total": 123,
+    "passed": 123,
+    "failed": 0,
+    "skipped": 0,
+    "actualPostgreSQL": 73,
+    "pure": 50
+  },
+  "typecheck": {
+    "exitCode": 0,
+    "diagnostics": ""
+  },
+  "lint": "PASS",
+  "prismaValidate": "PASS",
+  "initialFailuresPreserved": {
+    "auditTypeNarrowing": "fixed before freeze",
+    "fixtureSetup": "SQL splitting comment semicolon fixed in test harness; initial63pass42pending not credited",
+    "typecheck": "default4GiB heap OOM;8GiB rerunexit0 no diagnostics"
+  },
+  "independent": "9distinctPG+3purePASS; separate initial5PASS4harnessfailures followed4PASS",
+  "fullMigrationHistory": "BLOCKED_P3018_42P01_api_keys_after391",
+  "runtimeActivation": "NONE",
+  "ledger": "82/161DONE,79open,weighted59%;C12PARTIAL",
+  "rootReceiptAndSupportRehashes": {
+    "baseline": 19,
+    "newFullschema": 19
+  },
+  "sourceEvidenceIndex": [
+    {
+      "originalPath": "/tmp/hrm-independent-perf/independent-baseline-receipt.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/baseline/independent-baseline-receipt.json",
+      "bytes": 15080,
+      "sha256": "45716fba4a81e8608bd215f06e35022a584159a38d36522234dafac40a4825a1",
+      "encoding": "identity",
+      "publishedSha256": "45716fba4a81e8608bd215f06e35022a584159a38d36522234dafac40a4825a1"
+    },
+    {
+      "originalPath": "/tmp/hrm-independent-perf/baseline-results.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/baseline/baseline-results.json",
+      "bytes": 83759,
+      "sha256": "ff2846f3a8f2977c3320c141f4939657f7dfa3951e3bcb38b0d10e3b7790124c",
+      "encoding": "identity",
+      "publishedSha256": "ff2846f3a8f2977c3320c141f4939657f7dfa3951e3bcb38b0d10e3b7790124c"
+    },
+    {
+      "originalPath": "/tmp/hrm-independent-perf/dense-results.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/baseline/dense-results.json",
+      "bytes": 4758,
+      "sha256": "77330f8c87784d9ec314fa06e5c8c26b0624dd2830074da582bebb12544ac3bb",
+      "encoding": "identity",
+      "publishedSha256": "77330f8c87784d9ec314fa06e5c8c26b0624dd2830074da582bebb12544ac3bb"
+    },
+    {
+      "originalPath": "/tmp/hrm-independent-perf/index-experiment-results.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/baseline/index-experiment-results.json",
+      "bytes": 4954,
+      "sha256": "4f4161ec5ed5fb055dfde9d3766603be348720facfa59fb11e5af58922d437b5",
+      "encoding": "identity",
+      "publishedSha256": "4f4161ec5ed5fb055dfde9d3766603be348720facfa59fb11e5af58922d437b5"
+    },
+    {
+      "originalPath": "/tmp/hrm-independent-perf/test-report.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/baseline/test-report.json",
+      "bytes": 2036,
+      "sha256": "bd15270f396d52d78bc5a5c1e1c5d02f926d2415d3a639d41ce225f26ed257b3",
+      "encoding": "identity",
+      "publishedSha256": "bd15270f396d52d78bc5a5c1e1c5d02f926d2415d3a639d41ce225f26ed257b3"
+    },
+    {
+      "originalPath": "/tmp/hrm-independent-perf/dense-test-report.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/baseline/dense-test-report.json",
+      "bytes": 906,
+      "sha256": "eb8a11d13cefa8221826e6d0789ff8d3d03719eab9b4e72ad878441dfcd36559",
+      "encoding": "identity",
+      "publishedSha256": "eb8a11d13cefa8221826e6d0789ff8d3d03719eab9b4e72ad878441dfcd36559"
+    },
+    {
+      "originalPath": "/tmp/hrm-independent-perf/index-test-report.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/baseline/index-test-report.json",
+      "bytes": 901,
+      "sha256": "0dcf690906ead0a9eced8112d79bc38e2e98e768604c7c17ad3f188d9cb40a3e",
+      "encoding": "identity",
+      "publishedSha256": "0dcf690906ead0a9eced8112d79bc38e2e98e768604c7c17ad3f188d9cb40a3e"
+    },
+    {
+      "originalPath": "/tmp/hrm-independent-perf/schema-inputs.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/baseline/schema-inputs.json",
+      "bytes": 215,
+      "sha256": "f7d266e71cb1d0af08adb9438330df7174919e0a9a1e27cb169116e386dc9f9f",
+      "encoding": "identity",
+      "publishedSha256": "f7d266e71cb1d0af08adb9438330df7174919e0a9a1e27cb169116e386dc9f9f"
+    },
+    {
+      "originalPath": "/tmp/hrm-independent-perf/migration-attempt.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/baseline/migration-attempt.json",
+      "bytes": 18677,
+      "sha256": "a12b15593501a976f3d4bd37b1092c8bb12b90df21dd9a5e6918fca81f38b8fd",
+      "encoding": "identity",
+      "publishedSha256": "a12b15593501a976f3d4bd37b1092c8bb12b90df21dd9a5e6918fca81f38b8fd"
+    },
+    {
+      "originalPath": "/tmp/hrm-independent-perf/schema-apply-summary.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/baseline/schema-apply-summary.json",
+      "bytes": 241,
+      "sha256": "2fb8b2a951421c936debebaf2a252a3292037cf686410bfd094bf57d3f2c555b",
+      "encoding": "identity",
+      "publishedSha256": "2fb8b2a951421c936debebaf2a252a3292037cf686410bfd094bf57d3f2c555b"
+    },
+    {
+      "originalPath": "/tmp/hrm-independent-perf/schema-generated.sql",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/baseline/schema-generated.sql.gz.b64",
+      "bytes": 911280,
+      "sha256": "ff1e48cdd5f4f47e1977c4fe6440f5949e24da2c614254ef6e056187b88fcc4b",
+      "encoding": "base64(gzip(original))",
+      "publishedSha256": "e4321b967cfb94b2919813df8c1507697b5cd4c90ba6c822dcf0b717fac1afaf",
+      "publishedParts": [
+        "docs/evidence/workforce-c12-dense-operations-2026-10-06/baseline/schema-generated.sql.gz.b64.part000",
+        "docs/evidence/workforce-c12-dense-operations-2026-10-06/baseline/schema-generated.sql.gz.b64.part001"
+      ],
+      "reassembly": "concatenate publishedParts in order, then decode base64 and gunzip"
+    },
+    {
+      "originalPath": "/tmp/hrm-independent-perf/policy-projection.sql",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/baseline/policy-projection.sql",
+      "bytes": 5970,
+      "sha256": "656724b7d9c6b39a0924f99637036947abbb994005f1f18e702eba67819b94e8",
+      "encoding": "identity",
+      "publishedSha256": "656724b7d9c6b39a0924f99637036947abbb994005f1f18e702eba67819b94e8"
+    },
+    {
+      "originalPath": "/tmp/hrm-independent-perf/baseline.test.ts",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/baseline/baseline.test.ts",
+      "bytes": 13972,
+      "sha256": "1e25b47351b743ebf58456d4c8deac810371b1b0c7afad8f57b95cb8ebc55ac2",
+      "encoding": "identity",
+      "publishedSha256": "1e25b47351b743ebf58456d4c8deac810371b1b0c7afad8f57b95cb8ebc55ac2"
+    },
+    {
+      "originalPath": "/tmp/hrm-independent-perf/dense.test.ts",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/baseline/dense.test.ts",
+      "bytes": 2867,
+      "sha256": "3fea3d4302ccfcb12c2445dbe4deaef9647ea857fb1973e26da7575e6b5a455e",
+      "encoding": "identity",
+      "publishedSha256": "3fea3d4302ccfcb12c2445dbe4deaef9647ea857fb1973e26da7575e6b5a455e"
+    },
+    {
+      "originalPath": "/tmp/hrm-independent-perf/index.test.ts",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/baseline/index.test.ts",
+      "bytes": 2051,
+      "sha256": "d08525fc08a3dc88b51843225eb250d95d6ebc4188489a8ec45a83ebdd940e3b",
+      "encoding": "identity",
+      "publishedSha256": "d08525fc08a3dc88b51843225eb250d95d6ebc4188489a8ec45a83ebdd940e3b"
+    },
+    {
+      "originalPath": "/tmp/hrm-independent-perf/vitest.config.ts",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/baseline/vitest.config.ts",
+      "bytes": 270,
+      "sha256": "f141de1f49bd91119a822b9e6e19be42edf25cc6311f75cd65cf516ede6938fe",
+      "encoding": "identity",
+      "publishedSha256": "f141de1f49bd91119a822b9e6e19be42edf25cc6311f75cd65cf516ede6938fe"
+    },
+    {
+      "originalPath": "/tmp/hrm-independent-perf/dense.config.ts",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/baseline/dense.config.ts",
+      "bytes": 248,
+      "sha256": "729db95887d8a03af18b1b4a310c2f532938f51b3e143f6ded0d1dba5d9a69d2",
+      "encoding": "identity",
+      "publishedSha256": "729db95887d8a03af18b1b4a310c2f532938f51b3e143f6ded0d1dba5d9a69d2"
+    },
+    {
+      "originalPath": "/tmp/hrm-independent-perf/index.config.ts",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/baseline/index.config.ts",
+      "bytes": 248,
+      "sha256": "359b460e0fadb77b02db45caffca507252fcf883f87d6ea798de58e948b50904",
+      "encoding": "identity",
+      "publishedSha256": "359b460e0fadb77b02db45caffca507252fcf883f87d6ea798de58e948b50904"
+    },
+    {
+      "originalPath": "/tmp/hrm-independent-perf/cleanup.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/baseline/cleanup.json",
+      "bytes": 238,
+      "sha256": "2e2bda0c71e31377b2fcc0bbe3351386ccab428b5921839241dcaa85beecc12d",
+      "encoding": "identity",
+      "publishedSha256": "2e2bda0c71e31377b2fcc0bbe3351386ccab428b5921839241dcaa85beecc12d"
+    },
+    {
+      "originalPath": "/tmp/hrm-independent-perf/source-and-policy-bindings.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/baseline/source-and-policy-bindings.json",
+      "bytes": 2065,
+      "sha256": "cc458616c70e72aba6053fc7a5af486fd3fa2f5378ea858596e231b4114426af",
+      "encoding": "identity",
+      "publishedSha256": "cc458616c70e72aba6053fc7a5af486fd3fa2f5378ea858596e231b4114426af"
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-independent-fullschema/independent-fullschema-receipt.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/fullschema/independent-fullschema-receipt.json",
+      "bytes": 15328,
+      "sha256": "3fdbc6b95cd33064f5c2a8ff4ee0600d702a4a9412a56d6a81103f6d465d6c2b",
+      "encoding": "identity",
+      "publishedSha256": "3fdbc6b95cd33064f5c2a8ff4ee0600d702a4a9412a56d6a81103f6d465d6c2b"
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-independent-fullschema/schema-setup.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/fullschema/schema-setup.json",
+      "bytes": 1059,
+      "sha256": "c520da7394428e17639765e025f971acfebf14977caa4a696c040c59af226082",
+      "encoding": "identity",
+      "publishedSha256": "c520da7394428e17639765e025f971acfebf14977caa4a696c040c59af226082"
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-independent-fullschema/base-schema-generated.sql",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/fullschema/base-schema-generated.sql.gz.b64",
+      "bytes": 911280,
+      "sha256": "ff1e48cdd5f4f47e1977c4fe6440f5949e24da2c614254ef6e056187b88fcc4b",
+      "encoding": "base64(gzip(original))",
+      "publishedSha256": "e4321b967cfb94b2919813df8c1507697b5cd4c90ba6c822dcf0b717fac1afaf",
+      "publishedParts": [
+        "docs/evidence/workforce-c12-dense-operations-2026-10-06/fullschema/base-schema-generated.sql.gz.b64.part000",
+        "docs/evidence/workforce-c12-dense-operations-2026-10-06/fullschema/base-schema-generated.sql.gz.b64.part001"
+      ],
+      "reassembly": "concatenate publishedParts in order, then decode base64 and gunzip"
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-independent-fullschema/new-migration.sql",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/fullschema/new-migration.sql",
+      "bytes": 2721,
+      "sha256": "c452e7f6d13dca1e5257d8353c252745d05cd4f18eae83cd45501f61664ef719",
+      "encoding": "identity",
+      "publishedSha256": "c452e7f6d13dca1e5257d8353c252745d05cd4f18eae83cd45501f61664ef719"
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-independent-fullschema/policy-projection.sql",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/fullschema/policy-projection.sql",
+      "bytes": 5970,
+      "sha256": "656724b7d9c6b39a0924f99637036947abbb994005f1f18e702eba67819b94e8",
+      "encoding": "identity",
+      "publishedSha256": "656724b7d9c6b39a0924f99637036947abbb994005f1f18e702eba67819b94e8"
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-independent-fullschema/historical-base-policy-provenance.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/fullschema/historical-base-policy-provenance.json",
+      "bytes": 2065,
+      "sha256": "cc458616c70e72aba6053fc7a5af486fd3fa2f5378ea858596e231b4114426af",
+      "encoding": "identity",
+      "publishedSha256": "cc458616c70e72aba6053fc7a5af486fd3fa2f5378ea858596e231b4114426af"
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-independent-fullschema/historical-clean-migration-blocker.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/fullschema/historical-clean-migration-blocker.json",
+      "bytes": 18677,
+      "sha256": "a12b15593501a976f3d4bd37b1092c8bb12b90df21dd9a5e6918fca81f38b8fd",
+      "encoding": "identity",
+      "publishedSha256": "a12b15593501a976f3d4bd37b1092c8bb12b90df21dd9a5e6918fca81f38b8fd"
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-independent-fullschema/source-bindings-start.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/fullschema/source-bindings-start.json",
+      "bytes": 2459,
+      "sha256": "b45a096f76a00938346ff952847dcb785cd59f247a7c69eac9af1285c5136d4d",
+      "encoding": "identity",
+      "publishedSha256": "b45a096f76a00938346ff952847dcb785cd59f247a7c69eac9af1285c5136d4d"
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-independent-fullschema/frozen-owner-source-bindings.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/fullschema/frozen-owner-source-bindings.json",
+      "bytes": 2504,
+      "sha256": "6e8804a77ebbeeff34a9136b4a7ccf063ea005579daa408118e0780912b4ea70",
+      "encoding": "identity",
+      "publishedSha256": "6e8804a77ebbeeff34a9136b4a7ccf063ea005579daa408118e0780912b4ea70"
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-independent-fullschema/source-tree-verification.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/fullschema/source-tree-verification.json",
+      "bytes": 426,
+      "sha256": "3f52ade54abd76588b0ecd491b703e1ce7c725645d4203707263bb12ae88cec3",
+      "encoding": "identity",
+      "publishedSha256": "3f52ade54abd76588b0ecd491b703e1ce7c725645d4203707263bb12ae88cec3"
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-independent-fullschema/baseline.test.ts",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/fullschema/baseline.test.ts",
+      "bytes": 19204,
+      "sha256": "db7508f874cebbda7a6107273e81e94d4820b47291d1116480c7354b4044657b",
+      "encoding": "identity",
+      "publishedSha256": "db7508f874cebbda7a6107273e81e94d4820b47291d1116480c7354b4044657b"
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-independent-fullschema/retest.test.ts",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/fullschema/retest.test.ts",
+      "bytes": 13723,
+      "sha256": "02a7f563e2dc0c0d07fda307bc0faa7228d318a2838da552f0f87743786e4cfe",
+      "encoding": "identity",
+      "publishedSha256": "02a7f563e2dc0c0d07fda307bc0faa7228d318a2838da552f0f87743786e4cfe"
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-independent-fullschema/vitest.config.ts",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/fullschema/vitest.config.ts",
+      "bytes": 275,
+      "sha256": "f7026e1eab2792ab8d6657b9f8e4691334e9934dc251157b867632d2f227ac10",
+      "encoding": "identity",
+      "publishedSha256": "f7026e1eab2792ab8d6657b9f8e4691334e9934dc251157b867632d2f227ac10"
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-independent-fullschema/retest.config.ts",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/fullschema/retest.config.ts",
+      "bytes": 273,
+      "sha256": "c1d13e487978c47ad0c874638ad524780fe465364e35f21bad00289d82ab0afe",
+      "encoding": "identity",
+      "publishedSha256": "c1d13e487978c47ad0c874638ad524780fe465364e35f21bad00289d82ab0afe"
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-independent-fullschema/baseline-results.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/fullschema/baseline-results.json",
+      "bytes": 82052,
+      "sha256": "ce6524139edad6ddc98c80ce51806d3288742f084b4157e95d44c74629df8637",
+      "encoding": "identity",
+      "publishedSha256": "ce6524139edad6ddc98c80ce51806d3288742f084b4157e95d44c74629df8637"
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-independent-fullschema/retest-results.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/fullschema/retest-results.json",
+      "bytes": 1245,
+      "sha256": "fa3eb4de3cc22ce9f58ad3c7d9f1efc30bcb7d1ad210896efd35eda12dac76f6",
+      "encoding": "identity",
+      "publishedSha256": "fa3eb4de3cc22ce9f58ad3c7d9f1efc30bcb7d1ad210896efd35eda12dac76f6"
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-independent-fullschema/tests-initial-sanitized.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/fullschema/tests-initial-sanitized.json",
+      "bytes": 1585,
+      "sha256": "517610f8e0e86cea811e1c12d4ba5a610187e1574712a474d108a92bfcb08808",
+      "encoding": "identity",
+      "publishedSha256": "517610f8e0e86cea811e1c12d4ba5a610187e1574712a474d108a92bfcb08808"
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-independent-fullschema/tests-corrected-sanitized.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/fullschema/tests-corrected-sanitized.json",
+      "bytes": 742,
+      "sha256": "8c4f87807edf3f9a2894e2e82552f3b6ab098f8a1d558b407869ceadcb00287d",
+      "encoding": "identity",
+      "publishedSha256": "8c4f87807edf3f9a2894e2e82552f3b6ab098f8a1d558b407869ceadcb00287d"
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-independent-fullschema/initial-fixture-failure-summary.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/fullschema/initial-fixture-failure-summary.json",
+      "bytes": 716,
+      "sha256": "3e0e715e5dc769231c7f890bcf5b39c63ac72b4b096ce6ff1382d29de4371057",
+      "encoding": "identity",
+      "publishedSha256": "3e0e715e5dc769231c7f890bcf5b39c63ac72b4b096ce6ff1382d29de4371057"
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-independent-fullschema/cleanup.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/fullschema/cleanup.json",
+      "bytes": 224,
+      "sha256": "e7a73d2c20efa65426eaedbe3fca275ba9720c197640eb2d98ac17f90c87f456",
+      "encoding": "identity",
+      "publishedSha256": "e7a73d2c20efa65426eaedbe3fca275ba9720c197640eb2d98ac17f90c87f456"
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-independent-source-acceptance-20261006.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/review/hrm-ops-independent-source-acceptance-20261006.json",
+      "bytes": 7403,
+      "sha256": "26c7a4690d2b039dc44e43f6665677f4528317c3c440e8afd8202f073c48aa17",
+      "encoding": "identity",
+      "publishedSha256": "26c7a4690d2b039dc44e43f6665677f4528317c3c440e8afd8202f073c48aa17"
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-tree-proof.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/review/hrm-ops-tree-proof.json",
+      "bytes": 2845,
+      "sha256": "c1b3d6f54db9a7a4436c58bf1de9405d5f18e54f3859284cd4f89471845ddbd0",
+      "encoding": "identity",
+      "publishedSha256": "c1b3d6f54db9a7a4436c58bf1de9405d5f18e54f3859284cd4f89471845ddbd0"
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-candidate-files.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/review/hrm-ops-candidate-files.json",
+      "bytes": 2504,
+      "sha256": "6e8804a77ebbeeff34a9136b4a7ccf063ea005579daa408118e0780912b4ea70",
+      "encoding": "identity",
+      "publishedSha256": "6e8804a77ebbeeff34a9136b4a7ccf063ea005579daa408118e0780912b4ea70"
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-base-tree.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/review/hrm-ops-base-tree.json.gz.b64",
+      "bytes": 1147969,
+      "sha256": "6d8ff913ccf589f5511f6f2a5a1ccdb92030359fcb7817fa8e8ef53bb5bb6f56",
+      "encoding": "base64(gzip(original))",
+      "publishedSha256": "5caa64c07f1650b8bc77d525aac30266ff5027b5fd9cadcf8a5a6a6fd7828ff9",
+      "publishedParts": [
+        "docs/evidence/workforce-c12-dense-operations-2026-10-06/review/hrm-ops-base-tree.json.gz.b64.part000",
+        "docs/evidence/workforce-c12-dense-operations-2026-10-06/review/hrm-ops-base-tree.json.gz.b64.part001",
+        "docs/evidence/workforce-c12-dense-operations-2026-10-06/review/hrm-ops-base-tree.json.gz.b64.part002",
+        "docs/evidence/workforce-c12-dense-operations-2026-10-06/review/hrm-ops-base-tree.json.gz.b64.part003",
+        "docs/evidence/workforce-c12-dense-operations-2026-10-06/review/hrm-ops-base-tree.json.gz.b64.part004",
+        "docs/evidence/workforce-c12-dense-operations-2026-10-06/review/hrm-ops-base-tree.json.gz.b64.part005"
+      ],
+      "reassembly": "concatenate publishedParts in order, then decode base64 and gunzip"
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-tests.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/review/hrm-ops-tests.json",
+      "bytes": 46185,
+      "sha256": "028aa6ed6b366f3efcb1c4e4904ec4b769bf807e29c969f40ad41822c67a7ccd",
+      "encoding": "identity",
+      "publishedSha256": "028aa6ed6b366f3efcb1c4e4904ec4b769bf807e29c969f40ad41822c67a7ccd"
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-typecheck-result.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/review/hrm-ops-typecheck-result.json",
+      "bytes": 34,
+      "sha256": "fe1c03673b582b8268d7787f082c6162340d1f00591e138f8430c9a7066f0944",
+      "encoding": "identity",
+      "publishedSha256": "fe1c03673b582b8268d7787f082c6162340d1f00591e138f8430c9a7066f0944"
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-typecheck-verified.txt",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/review/hrm-ops-typecheck-verified.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "identity",
+      "publishedSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-prisma-validate-final.txt",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/review/hrm-ops-prisma-validate-final.txt",
+      "bytes": 96,
+      "sha256": "87ec5a1ec220f83c7901f1e5363e347ac10881a41f69cdac2b2e74f2b3ed30a6",
+      "encoding": "identity",
+      "publishedSha256": "87ec5a1ec220f83c7901f1e5363e347ac10881a41f69cdac2b2e74f2b3ed30a6"
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-lint.txt",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/review/hrm-ops-lint.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "identity",
+      "publishedSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-root-cleanup.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/review/hrm-ops-root-cleanup.json",
+      "bytes": 175,
+      "sha256": "64382675b48072c192bfcde0689ea361926e7ac1d96e740681db8be9f1c554dd",
+      "encoding": "identity",
+      "publishedSha256": "64382675b48072c192bfcde0689ea361926e7ac1d96e740681db8be9f1c554dd"
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-baseline-root-rehash.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/review/hrm-ops-baseline-root-rehash.json",
+      "bytes": 3812,
+      "sha256": "c46671da70ffc3dfb4e2743ae22041148878692acb93f37e26fb622eef96727d",
+      "encoding": "identity",
+      "publishedSha256": "c46671da70ffc3dfb4e2743ae22041148878692acb93f37e26fb622eef96727d"
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-independent/ownership-report.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/review/ownership-report.json",
+      "bytes": 1682,
+      "sha256": "ad9758513fd6377976234e72576388f9415dd90658bbe45f58b5ccda7f25fdc1",
+      "encoding": "identity",
+      "publishedSha256": "ad9758513fd6377976234e72576388f9415dd90658bbe45f58b5ccda7f25fdc1"
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-independent/ownership.test.ts",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/review/ownership.test.ts",
+      "bytes": 5179,
+      "sha256": "4a76696830e50e07716825afa64524fe7d9105d43cd646e66e0c8972d26db59a",
+      "encoding": "identity",
+      "publishedSha256": "4a76696830e50e07716825afa64524fe7d9105d43cd646e66e0c8972d26db59a"
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-independent/preliminary-review.json",
+      "repositoryPath": "docs/evidence/workforce-c12-dense-operations-2026-10-06/review/preliminary-review.json",
+      "bytes": 3912,
+      "sha256": "bce8208a89f8192c511f81b7cffad17bd118ac4bba12aecef5e4dd4cb7e3bb7f",
+      "encoding": "identity",
+      "publishedSha256": "bce8208a89f8192c511f81b7cffad17bd118ac4bba12aecef5e4dd4cb7e3bb7f"
+    }
+  ]
+}
