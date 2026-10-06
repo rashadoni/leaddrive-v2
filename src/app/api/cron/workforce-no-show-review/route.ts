@@ -1,3 +1,4 @@
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log";
 import { NextRequest, NextResponse } from "next/server";
 import { requireCronAuth } from "@/lib/cron-auth";
 import { runScheduledWorkforceNoShowReview } from "@/lib/workforce/no-show-review-scheduler";
@@ -20,11 +21,8 @@ export async function POST(req: NextRequest) {
         },
       },
     );
-  } catch (error) {
-    console.error(
-      "[CRON/workforce-no-show-review]",
-      error instanceof Error ? error.name : "unknown",
-    );
+  } catch {
+    logWorkforceSensitiveOperationFailure({ operation: "run-no-show-review" });
     return NextResponse.json(
       { error: "Workforce no-show review failed" },
       {

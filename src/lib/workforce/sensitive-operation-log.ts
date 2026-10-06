@@ -39,6 +39,10 @@ export function logWorkforceSensitiveOperationFailure(input: {
     | "configuration-exception-policy-revision-write"
     | "read-request-list"
     | "read-exception-queue"
+    | "authorize-today-read"
+    | "authorize-timesheet-read"
+    | "authorize-request-decision"
+    | "run-no-show-review"
 }): void {
   console.error("[workforce/privacy] sensitive operation failed", { operation: input.operation })
 }

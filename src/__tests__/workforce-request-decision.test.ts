@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { workforceLogFailures } from "./fixtures/workforce-log-failures"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("@/lib/prisma", async () => {
   const { makeMtmPrismaMock } = await import("./mocks/mtm-prisma")
@@ -82,6 +83,23 @@ beforeEach(() => {
 })
 
 describe("decideWorkforceRequest time corrections", () => {
+  it.each(workforceLogFailures)("logs only a fixed event for $kind and denies a failed grant lookup before writes", async ({ make }) => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {})
+    vi.mocked(prisma.mtmHrmRequest.findFirst).mockResolvedValue(PENDING_LEAVE as never)
+    enableGranularRequestDecisions()
+    vi.mocked(prisma.$queryRaw).mockRejectedValueOnce(make())
+    await expect(decideWorkforceRequest({
+      organizationId: "org-workforce", userId: "manager-1",
+      actor: { agentId: null, role: "MANAGER", scopedAgentIds: [] },
+      requestId: "leave-request-1", input: { decision: "APPROVED" }, includeRouteConflicts: true,
+    })).resolves.toEqual({ kind: "forbidden" })
+    expect(prisma.mtmHrmRequest.updateMany).not.toHaveBeenCalled()
+    expect(prisma.mtmNotification.create).not.toHaveBeenCalled()
+    expect(prisma.mtmRoute.findMany).not.toHaveBeenCalled()
+    expect(log.mock.calls).toEqual([["[workforce/privacy] sensitive operation failed", { operation: "authorize-request-decision" }]])
+    expect(JSON.stringify(log.mock.calls)).not.toContain("WORKFORCE_PRIVATE_CANARY")
+  })
+
   it("never lets an employee decide their own request", async () => {
     vi.mocked(prisma.mtmHrmRequest.findFirst).mockResolvedValue(PENDING_LEAVE as never)
 
@@ -482,3 +500,5 @@ describe("decideWorkforceRequest time corrections", () => {
     expect(prisma.mtmHrmRequest.findUnique).not.toHaveBeenCalled()
   })
 })
+
+afterEach(() => vi.restoreAllMocks())

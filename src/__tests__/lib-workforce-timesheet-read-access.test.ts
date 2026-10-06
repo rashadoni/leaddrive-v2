@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { workforceLogFailures } from "./fixtures/workforce-log-failures"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("@/lib/workforce/access-grant-resolution", () => ({
   decidePersistedWorkforceAccess: vi.fn(),
@@ -23,6 +24,17 @@ const input = {
 beforeEach(() => vi.clearAllMocks())
 
 describe("Workforce timesheet granular read access", () => {
+  it.each(workforceLogFailures)("logs only a fixed event for $kind and keeps access unavailable", async ({ make }) => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {})
+    vi.mocked(workforceGranularAccessEnabled).mockReturnValue(true)
+    vi.mocked(decidePersistedWorkforceAccess).mockRejectedValueOnce(make())
+    const response = await requireWorkforceTimesheetReadAccess(input)
+    expect(response?.status).toBe(503)
+    await expect(response?.json()).resolves.toEqual({ error: "Unable to verify Workforce timesheet access.", code: "WORKFORCE_TIMESHEET_READ_ACCESS_UNAVAILABLE" })
+    expect(log.mock.calls).toEqual([["[workforce/privacy] sensitive operation failed", { operation: "authorize-timesheet-read" }]])
+    expect(JSON.stringify(log.mock.calls)).not.toContain("WORKFORCE_PRIVATE_CANARY")
+  })
+
   it("preserves the established actor boundary before the explicit granular cutover", async () => {
     vi.mocked(workforceGranularAccessEnabled).mockReturnValue(false)
 
@@ -79,3 +91,5 @@ describe("Workforce timesheet granular read access", () => {
     })
   })
 })
+
+afterEach(() => vi.restoreAllMocks())
