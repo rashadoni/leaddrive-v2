@@ -1,0 +1,9 @@
+{
+  "candidate": "6843cc24428a181cf80c57fe358a4944a9439ded",
+  "verifiedMain": "0dad3e4cc2bc1704e6be5258ee5e0874418ab1d4",
+  "newMain": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+  "status": "PR593_INTEGRATION_REVALIDATION_REQUIRED",
+  "priorTerminalReceipt": "/tmp/hrm-ops-6843-hosted-independent-terminal-20261006.json",
+  "priorExactHeadChecks": "5required+6additionalPASS;buildSKIPPED;restoreattempt1FAILretainedattempt2PASS",
+  "authorization": "User explicitly authorizes continue integration into589 preserving main; no baseline edits for green, migrationapply, merge, deploy, activation or Support592 work"
+}

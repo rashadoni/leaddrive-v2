@@ -1,0 +1,119 @@
+[
+  {
+    "path": ".github/workflows/pr-checks.yml",
+    "sha256": "d034cae6f3d5fa64d15ad52686d4b78b46a487d330151907e069e1239f162969",
+    "bytes": 19641,
+    "schema_filter": false,
+    "opt_in_env_occurrences": {
+      "WORKFORCE_APPROVAL_GROUP_TEST_DATABASE_URL": false,
+      "WORKFORCE_CURSOR_TEST_DATABASE_URL": false,
+      "WORKFORCE_EXPORT_AUDIT_TEST_DATABASE_URL": false,
+      "WORKFORCE_RECONCILIATION_SWEEP_TEST_DATABASE_URL": false
+    },
+    "checkout_default_synthetic": true
+  },
+  {
+    "path": ".github/workflows/runner-policy.yml",
+    "sha256": "46792e8379ba8c3640d8549a91aa4fc59c778a1f14652e609b4f6fc243ddbf6a",
+    "bytes": 1151,
+    "schema_filter": false,
+    "opt_in_env_occurrences": {
+      "WORKFORCE_APPROVAL_GROUP_TEST_DATABASE_URL": false,
+      "WORKFORCE_CURSOR_TEST_DATABASE_URL": false,
+      "WORKFORCE_EXPORT_AUDIT_TEST_DATABASE_URL": false,
+      "WORKFORCE_RECONCILIATION_SWEEP_TEST_DATABASE_URL": false
+    },
+    "checkout_default_synthetic": true
+  },
+  {
+    "path": ".github/workflows/gitleaks.yml",
+    "sha256": "c5d38a364e21e5b1e3272d54d9d79faaa8b88b2e8390a24efb29414103039e89",
+    "bytes": 2379,
+    "schema_filter": false,
+    "opt_in_env_occurrences": {
+      "WORKFORCE_APPROVAL_GROUP_TEST_DATABASE_URL": false,
+      "WORKFORCE_CURSOR_TEST_DATABASE_URL": false,
+      "WORKFORCE_EXPORT_AUDIT_TEST_DATABASE_URL": false,
+      "WORKFORCE_RECONCILIATION_SWEEP_TEST_DATABASE_URL": false
+    },
+    "checkout_default_synthetic": true
+  },
+  {
+    "path": ".github/workflows/workforce-calendar-browser-evidence.yml",
+    "sha256": "5c503403a3c30ca57b93dc7abda58ade8315ed55ea899aa1ad5a417de8ead059",
+    "bytes": 8632,
+    "schema_filter": true,
+    "opt_in_env_occurrences": {
+      "WORKFORCE_APPROVAL_GROUP_TEST_DATABASE_URL": false,
+      "WORKFORCE_CURSOR_TEST_DATABASE_URL": false,
+      "WORKFORCE_EXPORT_AUDIT_TEST_DATABASE_URL": false,
+      "WORKFORCE_RECONCILIATION_SWEEP_TEST_DATABASE_URL": false
+    },
+    "checkout_default_synthetic": true
+  },
+  {
+    "path": ".github/workflows/workforce-exception-report-browser-evidence.yml",
+    "sha256": "46582002058a418fb44c13453c943ea91d5ce0b4d1267a402f97fb255aeba457",
+    "bytes": 9584,
+    "schema_filter": true,
+    "opt_in_env_occurrences": {
+      "WORKFORCE_APPROVAL_GROUP_TEST_DATABASE_URL": false,
+      "WORKFORCE_CURSOR_TEST_DATABASE_URL": false,
+      "WORKFORCE_EXPORT_AUDIT_TEST_DATABASE_URL": false,
+      "WORKFORCE_RECONCILIATION_SWEEP_TEST_DATABASE_URL": false
+    },
+    "checkout_default_synthetic": true
+  },
+  {
+    "path": ".github/workflows/workforce-manager-today-browser-evidence.yml",
+    "sha256": "741f5ee020129c6ef98c275b6ad62e2ec61986e04da047cf884533331bc534a1",
+    "bytes": 10288,
+    "schema_filter": true,
+    "opt_in_env_occurrences": {
+      "WORKFORCE_APPROVAL_GROUP_TEST_DATABASE_URL": false,
+      "WORKFORCE_CURSOR_TEST_DATABASE_URL": false,
+      "WORKFORCE_EXPORT_AUDIT_TEST_DATABASE_URL": false,
+      "WORKFORCE_RECONCILIATION_SWEEP_TEST_DATABASE_URL": false
+    },
+    "checkout_default_synthetic": true
+  },
+  {
+    "path": ".github/workflows/workforce-policy-employee-impact-evidence.yml",
+    "sha256": "566ae108c5369e63ad6c3f8a939ac8137a7f6d37ea6ca13c1bc4f190b94ec733",
+    "bytes": 9998,
+    "schema_filter": true,
+    "opt_in_env_occurrences": {
+      "WORKFORCE_APPROVAL_GROUP_TEST_DATABASE_URL": false,
+      "WORKFORCE_CURSOR_TEST_DATABASE_URL": false,
+      "WORKFORCE_EXPORT_AUDIT_TEST_DATABASE_URL": false,
+      "WORKFORCE_RECONCILIATION_SWEEP_TEST_DATABASE_URL": false
+    },
+    "checkout_default_synthetic": true
+  },
+  {
+    "path": ".github/workflows/workforce-policy-version-browser-evidence.yml",
+    "sha256": "8c4db4a469ae1a4ca76459fc54c69bbd7c401fd221c31f38fac46f1266a05102",
+    "bytes": 9979,
+    "schema_filter": true,
+    "opt_in_env_occurrences": {
+      "WORKFORCE_APPROVAL_GROUP_TEST_DATABASE_URL": false,
+      "WORKFORCE_CURSOR_TEST_DATABASE_URL": false,
+      "WORKFORCE_EXPORT_AUDIT_TEST_DATABASE_URL": false,
+      "WORKFORCE_RECONCILIATION_SWEEP_TEST_DATABASE_URL": false
+    },
+    "checkout_default_synthetic": true
+  },
+  {
+    "path": ".github/workflows/workforce-policy-restore-evidence.yml",
+    "sha256": "2c3409c2afeb5898659263e4de1a2a6731a81ffd481ef4932b3e10d762129286",
+    "bytes": 10266,
+    "schema_filter": true,
+    "opt_in_env_occurrences": {
+      "WORKFORCE_APPROVAL_GROUP_TEST_DATABASE_URL": false,
+      "WORKFORCE_CURSOR_TEST_DATABASE_URL": false,
+      "WORKFORCE_EXPORT_AUDIT_TEST_DATABASE_URL": false,
+      "WORKFORCE_RECONCILIATION_SWEEP_TEST_DATABASE_URL": false
+    },
+    "checkout_default_synthetic": true
+  }
+]

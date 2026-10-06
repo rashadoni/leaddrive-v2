@@ -1,0 +1,77 @@
+{
+  "candidate": "6843cc24428a181cf80c57fe358a4944a9439ded",
+  "candidateTree": "7db4fc853549936bd773581aabd3c02fa3ddf7e4",
+  "main": "0dad3e4cc2bc1704e6be5258ee5e0874418ab1d4",
+  "synthetic": {
+    "sha": "10e4c2b06e68262285dcf6b132364c440e94b649",
+    "tree": "f0bea9d5f8d3fdb5e7d4f7c96a88e1f1025e78a4",
+    "parents": [
+      "0dad3e4cc2bc1704e6be5258ee5e0874418ab1d4",
+      "6843cc24428a181cf80c57fe358a4944a9439ded"
+    ]
+  },
+  "mandatoryChecks": [
+    {
+      "id": 112154977439,
+      "name": "pr-scope",
+      "head_sha": "6843cc24428a181cf80c57fe358a4944a9439ded",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-06T07:19:27Z",
+      "completed_at": "2026-10-06T07:19:42Z",
+      "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37428839226/job/112154977439",
+      "app_id": 15368
+    },
+    {
+      "id": 112155077209,
+      "name": "static-checks",
+      "head_sha": "6843cc24428a181cf80c57fe358a4944a9439ded",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-06T07:19:46Z",
+      "completed_at": "2026-10-06T07:33:55Z",
+      "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37428839226/job/112155077209",
+      "app_id": 15368
+    },
+    {
+      "id": 112155077300,
+      "name": "typecheck",
+      "head_sha": "6843cc24428a181cf80c57fe358a4944a9439ded",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-06T07:19:45Z",
+      "completed_at": "2026-10-06T07:37:18Z",
+      "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37428839226/job/112155077300",
+      "app_id": 15368
+    },
+    {
+      "id": 112154654764,
+      "name": "runner-policy",
+      "head_sha": "6843cc24428a181cf80c57fe358a4944a9439ded",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-06T07:18:28Z",
+      "completed_at": "2026-10-06T07:18:42Z",
+      "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37428839182/job/112154654764",
+      "app_id": 15368
+    },
+    {
+      "id": 112154654465,
+      "name": "scan",
+      "head_sha": "6843cc24428a181cf80c57fe358a4944a9439ded",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-06T07:18:28Z",
+      "completed_at": "2026-10-06T07:18:46Z",
+      "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37428839175/job/112154654465",
+      "app_id": 15368
+    }
+  ],
+  "independentReceipt": "/tmp/hrm-ops-6843-mandatory-hosted-independent-20261006.json",
+  "independentReceiptSha256": "fb51bcfb4f1b787d2932cb5de406f494b3927a801a183bee56d843de12c8844a",
+  "rootReadWhole": true,
+  "baselineScope": "15 protected files unchanged;66typepairs/18knownfailingfiles preserved; no globalzero-diagnosticsclaim",
+  "optionalBuild": "SKIPPED",
+  "rawLogsOpened": false,
+  "productionActivation": "NONE"
+}

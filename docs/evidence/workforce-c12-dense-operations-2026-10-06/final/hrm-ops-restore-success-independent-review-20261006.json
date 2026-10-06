@@ -1,0 +1,526 @@
+{
+  "schema_version": 1,
+  "reviewer": "independent /root/pr585_independent_review",
+  "reviewed_at": "2026-10-06T07:48:14.165052+00:00",
+  "candidate_head": "6843cc24428a181cf80c57fe358a4944a9439ded",
+  "checked_merge_sha": "10e4c2b06e68262285dcf6b132364c440e94b649",
+  "status": "ACCEPTED_FINITE_SANITIZED_RETRY_EVIDENCE",
+  "safe_receipts": [
+    {
+      "path": "/tmp/hrm-ops-restore-failure-sanitized.json",
+      "bytes": 14215,
+      "sha256": "acc8166ba5e393b081f34acadb443361616afb7765ff754e1dd04a8096423751"
+    },
+    {
+      "path": "/tmp/hrm-ops-restore-success-sanitized.json",
+      "bytes": 15958,
+      "sha256": "280a3849156b180ebc7865e4994b914da720b67e83cb04cc2e0331b37c455c19"
+    }
+  ],
+  "attempt1": {
+    "job_id": 112154857935,
+    "conclusion": "failure",
+    "passed_cases": 10,
+    "required_cases": 15,
+    "cleanup_pass": 2,
+    "stage": "lost-real-201-same-body-replay",
+    "failure": {
+      "stage": "lost-real-201-same-body-replay",
+      "name": "Error",
+      "sourcePosition": {
+        "line": 240,
+        "column": 79
+      },
+      "diagnostic": "Fixed category/position only; no raw error, stack, credentials, tokens, cookies or response body"
+    },
+    "source_position": "scripts/workforce-policy-restore-browser-evidence.mjs:240:79",
+    "classification": "Generic Error at route.fetch, before 201 assertion. Configured 120000 ms does not prove an actual timeout. Cause unknown; five cases uncompleted, not five known assertion failures."
+  },
+  "attempt2": {
+    "job_id": 112159404277,
+    "conclusion": "success",
+    "passed_cases": 15,
+    "required_cases": 15,
+    "cleanup_pass": 2,
+    "completed_at": "2026-10-06T07:42:02.002Z",
+    "finite_cases": [
+      {
+        "name": "manual-en-320",
+        "status": "PASS",
+        "locale": "en",
+        "width": 320,
+        "actual201": true,
+        "strictFullJsonNullZeroCopy": true,
+        "oneDraftOneAudit": true,
+        "reviewEditNoWrite": true,
+        "originalCreationBoundary": true,
+        "formGeometry": {
+          "visible": true,
+          "insideWidth": true,
+          "noHorizontalOverflow": true,
+          "controlCount": 3,
+          "mainControls44px": true
+        },
+        "receiptGeometry": {
+          "visible": true,
+          "insideWidth": true,
+          "noHorizontalOverflow": true,
+          "controlCount": 0,
+          "mainControls44px": true
+        },
+        "nativeReviewEditCreate": true
+      },
+      {
+        "name": "manual-en-768",
+        "status": "PASS",
+        "locale": "en",
+        "width": 768,
+        "actual201": true,
+        "strictFullJsonNullZeroCopy": true,
+        "oneDraftOneAudit": true,
+        "reviewEditNoWrite": true,
+        "originalCreationBoundary": true,
+        "formGeometry": {
+          "visible": true,
+          "insideWidth": true,
+          "noHorizontalOverflow": true,
+          "controlCount": 3,
+          "mainControls44px": true
+        },
+        "receiptGeometry": {
+          "visible": true,
+          "insideWidth": true,
+          "noHorizontalOverflow": true,
+          "controlCount": 0,
+          "mainControls44px": true
+        },
+        "nativeReviewEditCreate": false
+      },
+      {
+        "name": "manual-en-1440",
+        "status": "PASS",
+        "locale": "en",
+        "width": 1440,
+        "actual201": true,
+        "strictFullJsonNullZeroCopy": true,
+        "oneDraftOneAudit": true,
+        "reviewEditNoWrite": true,
+        "originalCreationBoundary": true,
+        "formGeometry": {
+          "visible": true,
+          "insideWidth": true,
+          "noHorizontalOverflow": true,
+          "controlCount": 3,
+          "mainControls44px": true
+        },
+        "receiptGeometry": {
+          "visible": true,
+          "insideWidth": true,
+          "noHorizontalOverflow": true,
+          "controlCount": 0,
+          "mainControls44px": true
+        },
+        "nativeReviewEditCreate": false
+      },
+      {
+        "name": "manual-ru-320",
+        "status": "PASS",
+        "locale": "ru",
+        "width": 320,
+        "actual201": true,
+        "strictFullJsonNullZeroCopy": true,
+        "oneDraftOneAudit": true,
+        "reviewEditNoWrite": true,
+        "originalCreationBoundary": true,
+        "formGeometry": {
+          "visible": true,
+          "insideWidth": true,
+          "noHorizontalOverflow": true,
+          "controlCount": 3,
+          "mainControls44px": true
+        },
+        "receiptGeometry": {
+          "visible": true,
+          "insideWidth": true,
+          "noHorizontalOverflow": true,
+          "controlCount": 0,
+          "mainControls44px": true
+        },
+        "nativeReviewEditCreate": false
+      },
+      {
+        "name": "manual-ru-768",
+        "status": "PASS",
+        "locale": "ru",
+        "width": 768,
+        "actual201": true,
+        "strictFullJsonNullZeroCopy": true,
+        "oneDraftOneAudit": true,
+        "reviewEditNoWrite": true,
+        "originalCreationBoundary": true,
+        "formGeometry": {
+          "visible": true,
+          "insideWidth": true,
+          "noHorizontalOverflow": true,
+          "controlCount": 3,
+          "mainControls44px": true
+        },
+        "receiptGeometry": {
+          "visible": true,
+          "insideWidth": true,
+          "noHorizontalOverflow": true,
+          "controlCount": 0,
+          "mainControls44px": true
+        },
+        "nativeReviewEditCreate": false
+      },
+      {
+        "name": "manual-ru-1440",
+        "status": "PASS",
+        "locale": "ru",
+        "width": 1440,
+        "actual201": true,
+        "strictFullJsonNullZeroCopy": true,
+        "oneDraftOneAudit": true,
+        "reviewEditNoWrite": true,
+        "originalCreationBoundary": true,
+        "formGeometry": {
+          "visible": true,
+          "insideWidth": true,
+          "noHorizontalOverflow": true,
+          "controlCount": 3,
+          "mainControls44px": true
+        },
+        "receiptGeometry": {
+          "visible": true,
+          "insideWidth": true,
+          "noHorizontalOverflow": true,
+          "controlCount": 0,
+          "mainControls44px": true
+        },
+        "nativeReviewEditCreate": false
+      },
+      {
+        "name": "manual-az-320",
+        "status": "PASS",
+        "locale": "az",
+        "width": 320,
+        "actual201": true,
+        "strictFullJsonNullZeroCopy": true,
+        "oneDraftOneAudit": true,
+        "reviewEditNoWrite": true,
+        "originalCreationBoundary": true,
+        "formGeometry": {
+          "visible": true,
+          "insideWidth": true,
+          "noHorizontalOverflow": true,
+          "controlCount": 3,
+          "mainControls44px": true
+        },
+        "receiptGeometry": {
+          "visible": true,
+          "insideWidth": true,
+          "noHorizontalOverflow": true,
+          "controlCount": 0,
+          "mainControls44px": true
+        },
+        "nativeReviewEditCreate": false
+      },
+      {
+        "name": "manual-az-768",
+        "status": "PASS",
+        "locale": "az",
+        "width": 768,
+        "actual201": true,
+        "strictFullJsonNullZeroCopy": true,
+        "oneDraftOneAudit": true,
+        "reviewEditNoWrite": true,
+        "originalCreationBoundary": true,
+        "formGeometry": {
+          "visible": true,
+          "insideWidth": true,
+          "noHorizontalOverflow": true,
+          "controlCount": 3,
+          "mainControls44px": true
+        },
+        "receiptGeometry": {
+          "visible": true,
+          "insideWidth": true,
+          "noHorizontalOverflow": true,
+          "controlCount": 0,
+          "mainControls44px": true
+        },
+        "nativeReviewEditCreate": false
+      },
+      {
+        "name": "manual-az-1440",
+        "status": "PASS",
+        "locale": "az",
+        "width": 1440,
+        "actual201": true,
+        "strictFullJsonNullZeroCopy": true,
+        "oneDraftOneAudit": true,
+        "reviewEditNoWrite": true,
+        "originalCreationBoundary": true,
+        "formGeometry": {
+          "visible": true,
+          "insideWidth": true,
+          "noHorizontalOverflow": true,
+          "controlCount": 3,
+          "mainControls44px": true
+        },
+        "receiptGeometry": {
+          "visible": true,
+          "insideWidth": true,
+          "noHorizontalOverflow": true,
+          "controlCount": 0,
+          "mainControls44px": true
+        },
+        "nativeReviewEditCreate": false
+      },
+      {
+        "name": "retired-team-exact-scope",
+        "status": "PASS",
+        "actual201": true,
+        "teamScopePreserved": true
+      },
+      {
+        "name": "lost-real-201-same-body-replay",
+        "status": "PASS",
+        "actualServer201LostInTransport": true,
+        "actual200Replay": true,
+        "byteIdenticalRequest": true,
+        "noAdditionalDraftOrAudit": true,
+        "nativeSummaryAcknowledgementRetry": true,
+        "abandonmentNotSubmitted": true
+      },
+      {
+        "name": "real-audit-insert-rollback-and-retry",
+        "status": "PASS",
+        "actual503Rollback": true,
+        "sameBody201Retry": true
+      },
+      {
+        "name": "actual-current-session-team-403-clears-parent",
+        "status": "PASS",
+        "realChangedCookieSession": true,
+        "actual403": true,
+        "noWrite": true,
+        "allPrivateParentCleared": true
+      },
+      {
+        "name": "actual-current-session-crm-403-clears-parent",
+        "status": "PASS",
+        "realChangedCookieSession": true,
+        "actual403": true,
+        "noWrite": true,
+        "allPrivateParentCleared": true
+      },
+      {
+        "name": "actual-tenant-session-change-ignores-held-old-creation",
+        "status": "PASS",
+        "actualOldServer201": true,
+        "actualNewTenantSession": true,
+        "sessionRefresh": "NATIVE_AUTHJS_BROADCAST_REAL_SESSION_GET",
+        "parentSelectionCleared": true,
+        "oldCreationNotRendered": true,
+        "transportCompletion": "DELIVERED",
+        "navigationDoesNotRollback": true
+      }
+    ],
+    "authentication_records": 10,
+    "classification": "Single unchanged-head retry passed; initial failure retained. No flakiness, transport root-cause or product-cause determination."
+  },
+  "source_verification": {
+    "bindings": 34,
+    "all_local_bytes_and_sha256_match": true,
+    "all_git_blob_sha1_match_independently_verified_exact_remote_manifest": true,
+    "identical_bindings_across_attempts": true,
+    "source_bindings": [
+      {
+        "path": "scripts/workforce-policy-restore-browser-evidence.mjs",
+        "bytes": 33364,
+        "sha256": "52bbe381303e0adf2631713bbcb49af795e62d81647d4d24a9fc237200abe530"
+      },
+      {
+        "path": "scripts/_rls.mjs",
+        "bytes": 2250,
+        "sha256": "fae67dd4467cfd14667236a570ee4884100d8236496f64e31984305146ad7266"
+      },
+      {
+        "path": ".github/workflows/workforce-policy-restore-evidence.yml",
+        "bytes": 10266,
+        "sha256": "2c3409c2afeb5898659263e4de1a2a6731a81ffd481ef4932b3e10d762129286"
+      },
+      {
+        "path": "scripts/ci/workforce-policy-restore-pre-anchor.mjs",
+        "bytes": 15698,
+        "sha256": "6cb5b7f0cf62558596995522bbe883b3d4bfa091e2a7888836d27b602dd27440"
+      },
+      {
+        "path": "scripts/ci/fixtures/workforce-policy-restore-writer.sql",
+        "bytes": 1735,
+        "sha256": "01c468b09e9f915490f196330ff9df19b5e9d429ce616a0aab036e5f78c133e3"
+      },
+      {
+        "path": "scripts/ci/fixtures/workforce-manager-today-browser.sql",
+        "bytes": 33617,
+        "sha256": "448d08b65048f3692145d1d2d73d1f4b2f5973363172dddb959b4c9daf20a4fb"
+      },
+      {
+        "path": "scripts/ci/fixtures/workforce-policy-version-browser.sql",
+        "bytes": 4634,
+        "sha256": "8f97329849dbb6d06181fed07ca9df50c4f2bcd202956861be53f610989765cb"
+      },
+      {
+        "path": "src/components/workforce/workforce-policy-restore-draft.tsx",
+        "bytes": 11062,
+        "sha256": "db72dd17f27c517cd7697c99e585d6d5353f06d23ca05119bb2a05a61f1566af"
+      },
+      {
+        "path": "src/components/workforce/workforce-policy-version-comparison.tsx",
+        "bytes": 16003,
+        "sha256": "52272ba626f24dad98051cbb8df052e40c586a78162aafa912125b1d852f9d60"
+      },
+      {
+        "path": "src/components/workforce/workforce-policy-future-window-preview.tsx",
+        "bytes": 8629,
+        "sha256": "678c2fffa97096748c56c25a015a9032f331a31a90bfa4852a065aed07f49cbc"
+      },
+      {
+        "path": "src/lib/workforce/policy-restore-receipt.ts",
+        "bytes": 2863,
+        "sha256": "970fefe5a93dc70ced0f3bf0eed5bf85aa270351f8c5c9959ad401fe090a6cec"
+      },
+      {
+        "path": "src/lib/workforce/policy-restore-draft.ts",
+        "bytes": 11084,
+        "sha256": "b7dda97c1764aaa3eff9e2257db2a47dd8c82720943f9bcea05f2f521922e50e"
+      },
+      {
+        "path": "src/lib/workforce/policy-draft-write.ts",
+        "bytes": 1937,
+        "sha256": "d49f39f52170ddd4c5f12de6834879fcc7609f8f6366d6002af1556fb35dc7c3"
+      },
+      {
+        "path": "src/lib/workforce/policy-version-comparison.ts",
+        "bytes": 4685,
+        "sha256": "3aabfe54002086898529bea2cd1b73006b7be6da1d50a2cb90281cc11eb343d4"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/policies/[id]/restore-draft/route.ts",
+        "bytes": 2580,
+        "sha256": "332c851ebda2c7191af6c834394cd8b12b5e091879821f9a1acbd08fd7bb514f"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/policies/search/route.ts",
+        "bytes": 1753,
+        "sha256": "d88f101dd55588d5f39edfa7ece192211e710a179b1360b04d1811d7abe6f1f9"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/policies/compare/route.ts",
+        "bytes": 2794,
+        "sha256": "9bacf8bc38287bd8a061bedf60b70733fcc623f22a59d434d306462ba7788461"
+      },
+      {
+        "path": "src/lib/with-workforce-rls-auth.ts",
+        "bytes": 21768,
+        "sha256": "b3353f92fc1350608556a90c6378a3c763deee15133a44e131becab4db89b043"
+      },
+      {
+        "path": "src/lib/auth.ts",
+        "bytes": 26635,
+        "sha256": "cc7ecee26681fb5fa8c2b0f08f064edcc2041ee2ecc845498de4fe851cbc78b7"
+      },
+      {
+        "path": "src/lib/rls-context.ts",
+        "bytes": 5099,
+        "sha256": "3ca4e34c3d94ba361fc2452b56f2b9a500b7487ee2402d436bc476786e3a53fd"
+      },
+      {
+        "path": "src/lib/prisma.ts",
+        "bytes": 13628,
+        "sha256": "65dda4d278f8deb6310af5f4fe57e60bc8bcda776459f8bfed31daae945dbd26"
+      },
+      {
+        "path": "src/proxy.ts",
+        "bytes": 48987,
+        "sha256": "a013772f7d07d11905705596417f57bea000837a29b67fb0048b183606345ef5"
+      },
+      {
+        "path": "src/lib/rate-limit.ts",
+        "bytes": 4011,
+        "sha256": "71fb22a8831b4a01a0ad46a9af7e6660ea70caf5a8ae0c63158170fd6ff797ac"
+      },
+      {
+        "path": "src/components/ui/button.tsx",
+        "bytes": 2099,
+        "sha256": "2d401bc2999487316df2b5319e28bd3fb5077cb0f625e272ca9a4bf100e6771a"
+      },
+      {
+        "path": "src/components/ui/input.tsx",
+        "bytes": 833,
+        "sha256": "f114d3bfb7b66f7ae843119f34bd32b91bf2f9a2fcf6123c962038f98cadee90"
+      },
+      {
+        "path": "src/components/ui/select.tsx",
+        "bytes": 1025,
+        "sha256": "9289ce86e4ea159cf5a12a5ae5a51ed3798e9cf041eb584fad40c242be119f9c"
+      },
+      {
+        "path": "src/app/(dashboard)/workforce/configuration/policy-versions/page.tsx",
+        "bytes": 223,
+        "sha256": "1a3dde6eda05b7af914455f9c08e1c5ce6e10975b0373d54b442c0298f9b779f"
+      },
+      {
+        "path": "src/components/providers.tsx",
+        "bytes": 1890,
+        "sha256": "3d82c0cf34677754f2e4d80e0978d2583bded1daa1d476ba59f2e0524242526d"
+      },
+      {
+        "path": "src/app/(dashboard)/layout.tsx",
+        "bytes": 13392,
+        "sha256": "be2ef432d60a19e8ea930becd30894b76c7bda5875a81246a95cb4cdfe4b6e3f"
+      },
+      {
+        "path": "messages/en.json",
+        "bytes": 1345106,
+        "sha256": "a29038688cd841b571bfc637916786c0445a84d4c99e81f3363079e483e7e892"
+      },
+      {
+        "path": "messages/ru.json",
+        "bytes": 1985758,
+        "sha256": "3729c69c6c3a6c14abc6527d699c3698b011cd5d4872c4d1b766a56b27f864aa"
+      },
+      {
+        "path": "messages/az.json",
+        "bytes": 1487673,
+        "sha256": "fd02030571c3a9ac0db59687a695a3f8693fd3d376b76828343a74db0f76ac22"
+      },
+      {
+        "path": "prisma/schema.prisma",
+        "bytes": 958605,
+        "sha256": "a2cf656923aa83241d8601b3e4577402a4ec5e5ad4cde8e302ed6e03d8156e0f"
+      },
+      {
+        "path": "prisma/migrations/20261004073000_workforce_policy_restore_operation_anchor/migration.sql",
+        "bytes": 2624,
+        "sha256": "00cf1e477a5071e74698a42554f5ae69d49b2ff806ebb768bf3d4faa9386303f"
+      }
+    ]
+  },
+  "artifact_provenance": {
+    "run_id": 37428839234,
+    "artifact_attempt1": 11396513919,
+    "artifact_attempt2": 11396688417,
+    "attempt2_api_digest": "sha256:a9172f680a52edb96d0079af50ab1b83e92eabb86ce2dd18f77680bd87ad87d2",
+    "attempt2_api_size": 884002,
+    "zip_digest_and_safe_extraction": "Root verified download digest and extracted only safe JSON; reviewer independently read entire safe JSON and checked metadata/source bindings."
+  },
+  "limits": [
+    "No raw CI logs or PNG payloads opened by this review.",
+    "Geometry assertions are not visual, pixel occlusion, whole-page localization, WCAG, AT or native zoom acceptance.",
+    "Only restore safe JSON payloads reviewed; other five workflow artifacts metadata only.",
+    "Disposable CI data and finite scenarios; no production, activation, load or complete migration-chain claim."
+  ]
+}

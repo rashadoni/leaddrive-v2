@@ -1,0 +1,138 @@
+{
+  "status": "BOUNDED_DORMANT_SOURCE_AND_CURRENT_GATES_READY_WITH_EXPLICIT_LIMITS",
+  "candidate": "6843cc24428a181cf80c57fe358a4944a9439ded",
+  "tree": "7db4fc853549936bd773581aabd3c02fa3ddf7e4",
+  "main": "0dad3e4cc2bc1704e6be5258ee5e0874418ab1d4",
+  "synthetic": {
+    "sha": "10e4c2b06e68262285dcf6b132364c440e94b649",
+    "tree": "f0bea9d5f8d3fdb5e7d4f7c96a88e1f1025e78a4",
+    "parents": [
+      "0dad3e4cc2bc1704e6be5258ee5e0874418ab1d4",
+      "6843cc24428a181cf80c57fe358a4944a9439ded"
+    ]
+  },
+  "soleCandidatePR": 589,
+  "owner": "sole root writer; existing independent reviewer read-only",
+  "mandatoryFive": "PASS exactheadApp15368",
+  "additionalSix": "PASS current outcomes; restore attempt2",
+  "restore": {
+    "head": "6843cc24428a181cf80c57fe358a4944a9439ded",
+    "synthetic": "10e4c2b06e68262285dcf6b132364c440e94b649",
+    "run": 37428839234,
+    "attempt": 2,
+    "job": 112159404277,
+    "artifact": 11396688417,
+    "zipBytes": 884002,
+    "zipSha256": "a9172f680a52edb96d0079af50ab1b83e92eabb86ce2dd18f77680bd87ad87d2",
+    "onlyReadMember": "restore-rendered-ui-receipt.json",
+    "sourceBindingsVerified": 34,
+    "sanitizedReceiptSha256": "280a3849156b180ebc7865e4994b914da720b67e83cb04cc2e0331b37c455c19",
+    "casesPassed": 15,
+    "cleanup": [
+      {
+        "action": "scoped-row-removal-and-four-guards-restored",
+        "status": "PASS"
+      },
+      {
+        "action": "disconnect",
+        "status": "PASS"
+      }
+    ],
+    "firstAttempt": "FAIL preserved, root cause remains unestablished; successful retry does not erase initial incomplete evidence",
+    "rawLogsOpened": false,
+    "screenshotsOpened": false
+  },
+  "ownerTests": {
+    "passed": 123,
+    "failed": 0,
+    "skipped": 0,
+    "actualPostgreSQL": 73,
+    "pure": 50
+  },
+  "independentTests": {
+    "distinctPostgreSQL": 9,
+    "pure": 3,
+    "scope": "full generatedschema+literalnewmigration+selectedFORCERLS; not complete historical staging"
+  },
+  "schemaCorrection": "two explicit Prisma annotations match unchanged tested SQL; runtime/tests/SQL exact-byte reuse reviewed; corrected Prisma generated in current hosted checks",
+  "globalCompilerAndWholeSuiteZeroFailureClaim": false,
+  "build": "SKIPPED",
+  "receiptReadback": {
+    "f46cc492023457436e6c158adb6b8ade51984ecc": 63,
+    "c38d05af4824defe419fcda42073c73ac820777e": 14,
+    "25143db74652fce81b27acd3de99d2a02b5b6aa5": 7
+  },
+  "independentReceipts": [
+    {
+      "path": "/tmp/hrm-ops-independent-immutable-6843cc2-20261006.json",
+      "bytes": 4993,
+      "sha256": "be6613c41376c3b35ca070ef3873aca49de506d68b71b64f3f5554a6d2960afe",
+      "rootReadWhole": true
+    },
+    {
+      "path": "/tmp/hrm-ops-6843-mandatory-hosted-independent-20261006.json",
+      "bytes": 24082,
+      "sha256": "fb51bcfb4f1b787d2932cb5de406f494b3927a801a183bee56d843de12c8844a",
+      "rootReadWhole": true
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-durable-f46-20261006.json",
+      "bytes": 14270,
+      "sha256": "cb4b9674f183c08b5212f23a56b13d6f796c2c81be2799cba0a8e415f6380366",
+      "rootReadWhole": true
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-durable-c38-20261006.json",
+      "bytes": 2968,
+      "sha256": "6990a6c6a52a3a577cc15b47f30b416213f37ce1df7edb4a316307151f27e074",
+      "rootReadWhole": true
+    },
+    {
+      "path": "/tmp/hrm-ops-restore-failure-independent-review-20261006.json",
+      "bytes": 2587,
+      "sha256": "1ddd0392c86eb5db825885cc6880ed17cdf1e2e499399f340701d8c21719ddf8",
+      "rootReadWhole": true
+    },
+    {
+      "path": "/tmp/hrm-ops-6843-hosted-independent-terminal-20261006.json",
+      "bytes": 92458,
+      "sha256": "d957ecac6dc716f4fae934b105205725856c9841561d74ca1477fc82cf215e05",
+      "rootReadWhole": true
+    },
+    {
+      "path": "/tmp/hrm-ops-restore-success-independent-review-20261006.json",
+      "bytes": 17646,
+      "sha256": "e50e0409d777d55c7f16fe5de0cba53572ea7fb57bfa28c5ea09623ba458b6c5",
+      "rootReadWhole": true
+    }
+  ],
+  "fullC12Acceptance": false,
+  "remainingBlockers": [
+    "Clean migration history P3018/42P01 missingapi_keys after391complete; approved reproduciblebaseline or separatelyscopedhistoryrepair required",
+    "Full historical stagingRLS/ACL/trigger and auxiliaryschedule coverage",
+    "Production-shaped density/churn/load/SLO and index rollout qualification",
+    "Eligible-roster healthcoverage and alertdelivery; current trackedattemptsonly",
+    "Runtime activation requires separate scope; none performed"
+  ],
+  "ledger": {
+    "done": 82,
+    "total": 161,
+    "open": 79,
+    "gates": "14/15",
+    "C8": "45%",
+    "weighted": "59%",
+    "C12-008": "PARTIAL"
+  },
+  "nextSlicePrepared": "final/hrm-ops-next-staging-validation.md",
+  "productionMergeDeployActivation": "NONE",
+  "rawCILogs": "NOT_ACCESSED",
+  "cleanup": "all own isolated synthetic containers/volumes/credentials removed",
+  "qualificationAfterPR593": "Historical source/head acceptance and oldmain0dad integration only; freshmain86cba integration requires new5f87 receipts.",
+  "terminalIndependentSupportValidation": {
+    "all11SupportHashesMatch": true,
+    "embeddedHostedMetadataEqualsSeparateReceipt": true,
+    "embeddedRetryReceiptReferenceHashMatches": true,
+    "bothSafeReceiptHashesMatch": true,
+    "all34RetrySourceBindingsRehashed": true
+  }
+}

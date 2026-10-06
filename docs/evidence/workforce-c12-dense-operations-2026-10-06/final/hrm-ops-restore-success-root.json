@@ -1,0 +1,27 @@
+{
+  "head": "6843cc24428a181cf80c57fe358a4944a9439ded",
+  "synthetic": "10e4c2b06e68262285dcf6b132364c440e94b649",
+  "run": 37428839234,
+  "attempt": 2,
+  "job": 112159404277,
+  "artifact": 11396688417,
+  "zipBytes": 884002,
+  "zipSha256": "a9172f680a52edb96d0079af50ab1b83e92eabb86ce2dd18f77680bd87ad87d2",
+  "onlyReadMember": "restore-rendered-ui-receipt.json",
+  "sourceBindingsVerified": 34,
+  "sanitizedReceiptSha256": "280a3849156b180ebc7865e4994b914da720b67e83cb04cc2e0331b37c455c19",
+  "casesPassed": 15,
+  "cleanup": [
+    {
+      "action": "scoped-row-removal-and-four-guards-restored",
+      "status": "PASS"
+    },
+    {
+      "action": "disconnect",
+      "status": "PASS"
+    }
+  ],
+  "firstAttempt": "FAIL preserved, root cause remains unestablished; successful retry does not erase initial incomplete evidence",
+  "rawLogsOpened": false,
+  "screenshotsOpened": false
+}

@@ -1,0 +1,219 @@
+{
+  "at": {
+    "current_time": "2026-10-06 07:43:40 UTC"
+  },
+  "head": "6843cc24428a181cf80c57fe358a4944a9439ded",
+  "main": "0dad3e4cc2bc1704e6be5258ee5e0874418ab1d4",
+  "pr": {
+    "number": 589,
+    "state": "open",
+    "merged": false,
+    "head": "6843cc24428a181cf80c57fe358a4944a9439ded",
+    "reportedBase": "60ccd403fa172f2fafda31a9d4728c32933d4058",
+    "mergeable": true
+  },
+  "synthetic": {
+    "sha": "10e4c2b06e68262285dcf6b132364c440e94b649",
+    "tree": "f0bea9d5f8d3fdb5e7d4f7c96a88e1f1025e78a4",
+    "parents": [
+      "0dad3e4cc2bc1704e6be5258ee5e0874418ab1d4",
+      "6843cc24428a181cf80c57fe358a4944a9439ded"
+    ]
+  },
+  "checks": [
+    {
+      "id": 112159404277,
+      "name": "Real PostgreSQL, authorized API and rendered policy restore UI evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "6843cc24428a181cf80c57fe358a4944a9439ded",
+      "app": 15368,
+      "completed": "2026-10-06T07:42:07Z"
+    },
+    {
+      "id": 112155077300,
+      "name": "typecheck",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "6843cc24428a181cf80c57fe358a4944a9439ded",
+      "app": 15368,
+      "completed": "2026-10-06T07:37:18Z"
+    },
+    {
+      "id": 112155077209,
+      "name": "static-checks",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "6843cc24428a181cf80c57fe358a4944a9439ded",
+      "app": 15368,
+      "completed": "2026-10-06T07:33:55Z"
+    },
+    {
+      "id": 112154978898,
+      "name": "GitHub-hosted Linux production build",
+      "status": "completed",
+      "conclusion": "skipped",
+      "head_sha": "6843cc24428a181cf80c57fe358a4944a9439ded",
+      "app": 15368,
+      "completed": "2026-10-06T07:19:24Z"
+    },
+    {
+      "id": 112154977439,
+      "name": "pr-scope",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "6843cc24428a181cf80c57fe358a4944a9439ded",
+      "app": 15368,
+      "completed": "2026-10-06T07:19:42Z"
+    },
+    {
+      "id": 112154887969,
+      "name": "Authenticated Workforce policy version browser evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "6843cc24428a181cf80c57fe358a4944a9439ded",
+      "app": 15368,
+      "completed": "2026-10-06T07:26:39Z"
+    },
+    {
+      "id": 112154722979,
+      "name": "Real PostgreSQL SELECT-only and authenticated employee impact browser evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "6843cc24428a181cf80c57fe358a4944a9439ded",
+      "app": 15368,
+      "completed": "2026-10-06T07:24:50Z"
+    },
+    {
+      "id": 112154721150,
+      "name": "Authenticated Workforce manager Today browser evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "6843cc24428a181cf80c57fe358a4944a9439ded",
+      "app": 15368,
+      "completed": "2026-10-06T07:23:49Z"
+    },
+    {
+      "id": 112154705597,
+      "name": "Authenticated Workforce calendar browser evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "6843cc24428a181cf80c57fe358a4944a9439ded",
+      "app": 15368,
+      "completed": "2026-10-06T07:27:24Z"
+    },
+    {
+      "id": 112154672080,
+      "name": "Authenticated Workforce exception report browser evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "6843cc24428a181cf80c57fe358a4944a9439ded",
+      "app": 15368,
+      "completed": "2026-10-06T07:25:46Z"
+    },
+    {
+      "id": 112154654764,
+      "name": "runner-policy",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "6843cc24428a181cf80c57fe358a4944a9439ded",
+      "app": 15368,
+      "completed": "2026-10-06T07:18:42Z"
+    },
+    {
+      "id": 112154654465,
+      "name": "scan",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "6843cc24428a181cf80c57fe358a4944a9439ded",
+      "app": 15368,
+      "completed": "2026-10-06T07:18:46Z"
+    }
+  ],
+  "runs": [
+    {
+      "id": 37428839182,
+      "name": "Runner policy",
+      "head_sha": "6843cc24428a181cf80c57fe358a4944a9439ded",
+      "event": "pull_request",
+      "attempt": 1,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 37428839175,
+      "name": "Secret scan",
+      "head_sha": "6843cc24428a181cf80c57fe358a4944a9439ded",
+      "event": "pull_request",
+      "attempt": 1,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 37428839289,
+      "name": "Workforce policy employee impact evidence",
+      "head_sha": "6843cc24428a181cf80c57fe358a4944a9439ded",
+      "event": "pull_request",
+      "attempt": 1,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 37428839204,
+      "name": "Workforce manager Today browser evidence",
+      "head_sha": "6843cc24428a181cf80c57fe358a4944a9439ded",
+      "event": "pull_request",
+      "attempt": 1,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 37428839205,
+      "name": "Workforce exception report browser evidence",
+      "head_sha": "6843cc24428a181cf80c57fe358a4944a9439ded",
+      "event": "pull_request",
+      "attempt": 1,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 37428839298,
+      "name": "Workforce policy version browser evidence",
+      "head_sha": "6843cc24428a181cf80c57fe358a4944a9439ded",
+      "event": "pull_request",
+      "attempt": 1,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 37428839151,
+      "name": "Workforce calendar browser evidence",
+      "head_sha": "6843cc24428a181cf80c57fe358a4944a9439ded",
+      "event": "pull_request",
+      "attempt": 1,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 37428839226,
+      "name": "PR checks",
+      "head_sha": "6843cc24428a181cf80c57fe358a4944a9439ded",
+      "event": "pull_request",
+      "attempt": 1,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 37428839234,
+      "name": "Workforce policy restore writer evidence",
+      "head_sha": "6843cc24428a181cf80c57fe358a4944a9439ded",
+      "event": "pull_request",
+      "attempt": 2,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "rawLogsOpened": false,
+  "build": "SKIPPED",
+  "qualification": "Restore attempt1FAIL10of15causeUNKNOWN; one identical-head retry15of15PASS; preserve both; no global compiler/suite zero-diagnostics or full staging credit."
+}

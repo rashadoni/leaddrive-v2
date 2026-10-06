@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "reviewer": "independent /root/pr585_independent_review",
+  "reviewed_at": "2026-10-06T07:57:08.989390+00:00",
+  "status": "PRELIMINARY_READ_ONLY_COMPATIBILITY_AND_MIGRATION_FINDINGS_NOT_NEW_INTEGRATION_ACCEPTANCE",
+  "base_before": "0dad3e4cc2bc1704e6be5258ee5e0874418ab1d4",
+  "base_after": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+  "base_after_tree": "742d4c2ad2ee68c606ff64d5eb5635912b7645b2",
+  "frozen_hrm_head": "6843cc24428a181cf80c57fe358a4944a9439ded",
+  "pr593": {
+    "merged": true,
+    "head": "c39e8a0931d8800f8fe2848bf4b4ee654708ef6d",
+    "changed_paths": [
+      "messages/az.json",
+      "messages/en.json",
+      "messages/ru.json",
+      "src/__tests__/api-mtm-agents.test.ts",
+      "src/__tests__/api-mtm-contact-assignments.test.ts",
+      "src/__tests__/api-mtm-field-master-data.test.ts",
+      "src/__tests__/mtm-agent-section.test.ts",
+      "src/__tests__/mtm-contact-categories-postgres.test.ts",
+      "src/app/api/v1/mtm/agents/route.ts",
+      "src/app/api/v1/mtm/contact-assignments/preview/route.ts",
+      "src/app/api/v1/mtm/contact-assignments/route.ts",
+      "src/app/api/v1/mtm/contact-transfers/route.ts",
+      "src/app/api/v1/mtm/contacts/route.ts",
+      "src/components/mtm/contact-assignment-dialog.tsx",
+      "src/components/mtm/contact-explorer.tsx",
+      "src/lib/mtm-validators.ts",
+      "src/lib/mtm/contact-bulk-assignment.ts",
+      "src/lib/mtm/contact-transfer.ts",
+      "typecheck-baseline.json"
+    ],
+    "path_count": 19,
+    "all19_are_exact_main_delta": true,
+    "direct_changed_path_overlap": [],
+    "shared_evidence_dependencies": [
+      "messages/en.json",
+      "messages/ru.json",
+      "messages/az.json",
+      "typecheck-baseline.json"
+    ],
+    "static_local_reconciliation_import_projection": {
+      "files": 26,
+      "pr593_overlap": [],
+      "limit": "Static local import strings only; not a complete dynamic graph or independent MTM feature acceptance."
+    },
+    "baseline": {
+      "old_pairs": 66,
+      "fresh_pairs": 64,
+      "removed": {
+        "src/lib/mtm/contact-bulk-assignment.ts TS2322": 1,
+        "src/lib/mtm/contact-bulk-assignment.ts TS2339": 1
+      },
+      "added_or_changed_existing": {},
+      "requirement": "Preserve entire upstream baseline byte-for-byte; do not restore removed entries or inherit old66 diagnostic identity."
+    },
+    "translations": "Upstream patch changes MTM clients/assignment copy, including additional-employee semantics. Preserve full fresh EN/RU/AZ files; six existing browser workflows watch messages/*.json and previous bindings no longer apply.",
+    "candidate_vs_main0dad_differing_paths": 48,
+    "cumulative_hrm_paths": 45,
+    "three_other_differences": "Source6843 lacks three PR591 main-only paths; integrated candidate must preserve those too. They are unrelated and not HRM-owned changes."
+  },
+  "migration_findings": {
+    "status": "CANONICAL_CREATION_OR_COMPLETE_BOOTSTRAP_NOT_FOUND_IN_VERIFIED_PUBLIC_REPOSITORY",
+    "public_root_commit": "76994875a251e0956b56f8d300625b97eb098661",
+    "public_root_parents": [],
+    "public_root_tree": "af72328284733820592160832cd786ea5f84412c",
+    "public_root_message": "chore: establish sanitized public GitHub baseline",
+    "root_schema_contains_ApiKey": true,
+    "root_schema_blob": "5391a5f2fc3936f0e883fea67239af65719f88f5",
+    "root_migrations_all_verified_against_current_bytes": 440,
+    "root_migration_api_keys_references": [
+      "prisma/migrations/20260811150000_zapier_webhook_api_key_provenance/migration.sql:13"
+    ],
+    "fresh_existing_migrations_match_local_bytes": 511,
+    "additional_dormant_candidate_migration": 1,
+    "fresh_migration_api_keys_create_statements_found": 0,
+    "init_migration_blob": "e8a8ccd075cca5d0fe4be2c4a0a6db2f8c3eba20",
+    "init_creates_webhooks_but_not_api_keys": true,
+    "zapier_migration_blob": "a59a7ad596cedd53ef75cbff0a9e59e8f5a84d0b",
+    "zapier_migration_has_unconditional_api_keys_foreign_key": true,
+    "other_references": "RLS batch5 assumes existing api_keys; export scripts name table but do not create it. MTM phase2 comment documents historical db push for MTM specifically, not evidence that ApiKey was deployed by db push.",
+    "inference": "Public root imports existing model plus already-incomplete DDL history. Pre-public creation/deployment provenance is unavailable here; do not infer exact old creation route.",
+    "prior_actual_clean_replay": "Independent experiment failed after391completed migrations at Zapier provenance (P3018/42P01 missingapi_keys); no rerun/application in this read-only followup.",
+    "boundary": "Schema-generated CREATE TABLE can describe current desired shape but cannot establish historical constraints, data, ACL or deployment provenance. A reviewed bootstrap authority or migration repair remains separate required work; do not invent or mark migrations applied."
+  },
+  "support": [
+    {
+      "path": "/tmp/hrm-pr593-files-independent.json",
+      "bytes": 103487,
+      "sha256": "1c4b19bc6468cc59ca472e96f7eaaf1d41237820abde0dd48ade2abe76c908a2"
+    },
+    {
+      "path": "/tmp/hrm-main86-tree-independent.json",
+      "bytes": 3607282,
+      "sha256": "5039af8ffa51ff520c3ed860801a6dc23f53deaed7ff1b9883389452b49fad95"
+    },
+    {
+      "path": "/tmp/hrm-main86-baseline-independent.json",
+      "bytes": 3907,
+      "sha256": "919fa9d0212b18ee685af4f08680ebbc34e8c4969294054447df03147bf0fc53"
+    },
+    {
+      "path": "/tmp/hrm-public-root-tree-independent.json",
+      "bytes": 2762592,
+      "sha256": "b0807ce06ce4bd68101ee0bb77980e977dd39818c7f6a69de2a11205d236efb1"
+    },
+    {
+      "path": "/tmp/hrm-public-root-schema-independent.prisma",
+      "bytes": 868816,
+      "sha256": "7384a0fefe2a6be21eb22e46a0fdf91c95dfb8269ca7bde4f3f650b3b141a024"
+    },
+    {
+      "path": "/tmp/hrm-pr593-reconciliation-import-projection.json",
+      "bytes": 1373,
+      "sha256": "fa4cc67dccb1351a37cb117c94162229ebe9bf66ed80e4d0739cdcc5bfd2b548"
+    }
+  ],
+  "not_done": [
+    "New integrated immutable source review and exact-head CI pending owner candidate.",
+    "No source, refs, database, production, migrations or Support PR592 changes.",
+    "Prior terminal receipt qualified only to old main0dad/synthetic10e4."
+  ]
+}
