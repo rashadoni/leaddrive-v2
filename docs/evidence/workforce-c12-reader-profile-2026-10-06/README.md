@@ -15,3 +15,14 @@ Use the repository matrix script for the self-contained reproduction route.
 
 No receipt is a complete historical migration replay, production ACL/trigger
 acceptance, real collector/retention validation, activation or whole-task closure.
+
+The first published head `7df3808` failed Secret scan run37541688155/job112535951848
+at the blocking scan step. The same pinned local scanner identified five
+occurrences of the synthetic lease owner marker in the two original probe files.
+The successor preserves their bytes and adds a rule-level generic-api-key
+condition-AND, exact-two-path, exact-value allowlist. Negative controls confirm
+another value at those paths and the same value elsewhere are still blocked.
+No authentication credential or default detector is exempted. The proposed
+global-list form failed these controls and was never published as configuration;
+its rejected source and diagnostic matrix remain evidence. Initial local check
+failures are preserved. Hosted scan is a separate exact-head result.

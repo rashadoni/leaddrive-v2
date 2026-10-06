@@ -3,9 +3,9 @@
   "files": [
     {
       "path": "README.md",
-      "bytes": 1027,
-      "sha256": "37cd4fe8e323f47de6382a70e2f18ab39add97a6e1a5ac274370806169532e49",
-      "gitBlob": "c15b537805033de4503aa966031f8ec355a1d62e"
+      "bytes": 1802,
+      "sha256": "27debc83fd1268e49e26ea6f865739d9aef78a7fa3b49196816015b052862791",
+      "gitBlob": "f096d46e61c5d3351e856e7ddea32ddcf2cdccff"
     },
     {
       "path": "existing-pg-regression-final.json",
@@ -18,6 +18,12 @@
       "bytes": 1114,
       "sha256": "7e4bd3f30eb056c72cceddd9aea4616bb3b644cf92c171f31bd232b8d9db23c6",
       "gitBlob": "0a8ddb73870bd25878ba834d787f7a0521eea74f"
+    },
+    {
+      "path": "hrm-c12-independent-exact-source-7df3808-20261006.json",
+      "bytes": 15498,
+      "sha256": "abceb136441805eadd38a3b5fd7a41a9f102b40d493802d2861b94464c37a8be",
+      "gitBlob": "62f56df0a390efab09527f7b1570251e06ffa186"
     },
     {
       "path": "hrm-c12-independent-profile-semantic-revision-20261006.json",
@@ -152,6 +158,12 @@
       "gitBlob": "09d6f7f8f28ff17d307d1acba0dd3d67d8bef6c2"
     },
     {
+      "path": "rejected-global-rule.toml",
+      "bytes": 3321,
+      "sha256": "370ecc468fe7bf68a2ef138ea2a69920b32be3e809e1ae3b07b26c8d758ef61d",
+      "gitBlob": "1793441933c98c55d37873be0ce3164b33d3d5de"
+    },
+    {
       "path": "run-regression.py",
       "bytes": 3863,
       "sha256": "1a8edc724916e51195dadbc8df3e0bfd8e5b741ac0892da4e4339cd3fc8d389b",
@@ -162,6 +174,48 @@
       "bytes": 209,
       "sha256": "dd97fa20a1347ec4389598ec345c6b4ffcd2a9dcb46a307033732f0b94267490",
       "gitBlob": "56b1492e5fd85d5d2a577449dc6663fdfbfb1536"
+    },
+    {
+      "path": "secret-scan-local-metadata.json",
+      "bytes": 948,
+      "sha256": "46ead8ef1e82f96ea12baffdd112be944336deab402020214d71a465c4c8f815",
+      "gitBlob": "9cfff534c500fff98dc68971bf2c99dee0123d94"
+    },
+    {
+      "path": "secret-scan-narrow-rule-verification.json",
+      "bytes": 548,
+      "sha256": "f36855e41a917577adb180d6260538959a9206de562d1d690244033f8804ff4e",
+      "gitBlob": "ff7490a7571a56c4b12477be934bfa8f4885ebca"
+    },
+    {
+      "path": "secret-scan-negative-control-attempt1.json",
+      "bytes": 329,
+      "sha256": "8c38199c3714f873a6b7ef8cff9fff2e977f5d7f42663fe13f8e35d412853793",
+      "gitBlob": "ad05d663e942308a607e43d2834f7eda440434ad"
+    },
+    {
+      "path": "secret-scan-negative-control-attempt2.json",
+      "bytes": 340,
+      "sha256": "c89cb71bf71bb80df115e0dbd30104fc53b08c265328d5507b04e4f98f69aab9",
+      "gitBlob": "aa211680a02177fd7f455e6ca8cab57ffef12af8"
+    },
+    {
+      "path": "secret-scan-path-mode-negative.json",
+      "bytes": 339,
+      "sha256": "1416a378da42989158268fa79bab1c88b158ffc031556b7cfb6964d9dbaaad26",
+      "gitBlob": "02dbef2a5a5f6252f16067e89e9ba7ac2755832b"
+    },
+    {
+      "path": "secret-scan-rule-diagnostic.json",
+      "bytes": 2406,
+      "sha256": "875ee69f5cd089498c0cdbca7046bb1ebf3f2fe30282250c94eaaa6ce2cc6a12",
+      "gitBlob": "88336e882a4bef535d896140faae6cbb8ead7a7b"
+    },
+    {
+      "path": "verify-secret-rule.py",
+      "bytes": 1955,
+      "sha256": "1404eb3d6a2c8f256f45c0d9e0b55a4a121197630748888043df8bfe494fa7d3",
+      "gitBlob": "43d94b0fcd5e2d2b4c1d5a11ec67093b7bee4ae7"
     }
   ]
 }

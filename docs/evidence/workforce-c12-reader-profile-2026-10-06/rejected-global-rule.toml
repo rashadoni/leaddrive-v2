@@ -77,10 +77,7 @@ paths = ['''^docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-a2768
 regexTarget = "line"
 regexes = ['''^\s*"currentPrApiBaseSha":\s*"f62ab3a609a0461cbd14c264306df2d28325628f",?\s*$''']
 
-[[rules]]
-id = "generic-api-key"
-
-[[rules.allowlists]]
+[[allowlists]]
 description = "Synthetic lease owner marker in two immutable isolated C12 reproduction probes; not an authentication credential"
 condition = "AND"
 paths = [
