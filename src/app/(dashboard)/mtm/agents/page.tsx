@@ -16,7 +16,7 @@ import { PageDescription } from "@/components/page-description"
 import { MtmFilterBar, MtmFilterSearch, MtmFilterSelect } from "@/components/mtm/filter-bar"
 import { HelpButton } from "@/components/help/help-button"
 import { MtmAgentForm } from "@/components/mtm/agent-form"
-import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
+import { ConfirmDialog, DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { UserCog, Plus, Pencil, Trash2, MoreHorizontal, Users, Download, Phone, MessageCircle, Smartphone, BellOff, History, MapPinned, X, Filter, AlertCircle, LayoutGrid, List, UsersRound, ChevronRight } from "lucide-react"
@@ -62,6 +62,9 @@ export default function MtmAgentsPage() {
   const [editData, setEditData] = useState<any>(undefined)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteItem, setDeleteItem] = useState<any>(null)
+  // An employee with work history cannot be deleted; the refusal turns into
+  // the offer that does what the manager came for — take them out of work.
+  const [keptItem, setKeptItem] = useState<{ id: string; name: string; status: string } | null>(null)
   const [search, setSearch] = useState("")
   const [activeFilter, setActiveFilter] = useState("all")
   const [sortBy, setSortBy] = useState("activity")
@@ -203,7 +206,29 @@ export default function MtmAgentsPage() {
   async function confirmDelete() {
     if (!deleteItem) return
     const res = await fetch(`/api/v1/mtm/agents/${deleteItem.id}`, { method: "DELETE", headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string> })
-    if (!res.ok) throw new Error((await res.json()).error || "Failed to delete")
+    if (!res.ok) {
+      const body = await res.json().catch(() => null) as { code?: string } | null
+      // Prod 2026-10-06: the dialog printed «Invalid `prisma.mtmAgent.deleteMany()`
+      // invocation: Foreign key constraint violated…». A refusal is shown in
+      // the reader's words; «has history» is not an error to read and close but
+      // a different action to offer.
+      if (res.status === 409 && (body?.code === "MTM_AGENT_HAS_HISTORY" || body?.code === "WORKFORCE_RETENTION_BLOCKED")) {
+        setKeptItem(deleteItem)
+        return
+      }
+      throw new Error(explainError(body, res.status))
+    }
+    fetchAgents()
+  }
+
+  async function confirmDeactivate() {
+    if (!keptItem || keptItem.status !== "ACTIVE") return
+    const res = await fetch(`/api/v1/mtm/agents/${keptItem.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...(orgId ? { "x-organization-id": String(orgId) } : {}) },
+      body: JSON.stringify({ status: "INACTIVE" }),
+    })
+    if (!res.ok) throw new Error(explainError(await res.json().catch(() => null), res.status))
     fetchAgents()
   }
 
@@ -569,7 +594,17 @@ export default function MtmAgentsPage() {
       )}
 
       <MtmAgentForm open={formOpen} onOpenChange={setFormOpen} onSaved={fetchAgents} initialData={editData} orgId={orgId ? String(orgId) : undefined} />
-      <DeleteConfirmDialog open={deleteOpen} onOpenChange={setDeleteOpen} onConfirm={confirmDelete} title={t("delete")} itemName={deleteItem?.name} />
+      <DeleteConfirmDialog open={deleteOpen} onOpenChange={setDeleteOpen} onConfirm={confirmDelete} title={t("delete")} itemName={deleteItem?.name}
+        description={deleteItem ? t("deleteConfirm", { name: deleteItem.name }) : undefined} />
+      <ConfirmDialog
+        open={Boolean(keptItem)}
+        onOpenChange={(open) => { if (!open) setKeptItem(null) }}
+        onConfirm={confirmDeactivate}
+        title={t("deleteKeptTitle")}
+        description={keptItem ? t(keptItem.status === "ACTIVE" ? "deleteKeptBody" : "deleteKeptAlreadyInactive", { name: keptItem.name }) : undefined}
+        confirmLabel={t(keptItem?.status === "ACTIVE" ? "deleteKeptAction" : "deleteKeptClose")}
+        confirmVariant="default"
+      />
     </div>
   )
 }
