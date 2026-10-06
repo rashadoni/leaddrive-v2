@@ -51,6 +51,12 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
     managerId: "",
   })
   const [managers, setManagers] = useState<ManagerOption[]>([])
+  // Shown in clear by default. The manager sets this password for someone else
+  // and has to hand it over, so what is saved must be what they can read: on
+  // 2026-10-06 a manager set an agent's password twice behind the dots and the
+  // phone was refused both times — the card held something else, and nothing on
+  // the screen could show it.
+  const [passwordHidden, setPasswordHidden] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
 
@@ -69,6 +75,7 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
         managerId: initialData?.managerId || "",
       })
       setError("")
+      setPasswordHidden(false)
       fetch("/api/v1/mtm/agents?limit=200", {
         headers: orgId ? { "x-organization-id": orgId } : {} as Record<string, string>,
       })
@@ -137,17 +144,37 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
               <Input id="externalCode" value={form.externalCode} onChange={e => update("externalCode", e.target.value)} placeholder={tf("externalCodeHint")} />
             </div>
             <div>
-              <Label htmlFor="password">{isEdit ? tf("newPassword") : tf("password")} {!isEdit && "*"}</Label>
-              <Input
-                id="password"
-                type="password"
-                value={form.password}
-                onChange={e => update("password", e.target.value)}
-                placeholder={isEdit ? tf("leaveEmptyToKeep") : tf("minSixChars")}
-                minLength={isEdit ? undefined : 12}
-                maxLength={72}
-                required={!isEdit}
-              />
+              <Label htmlFor="agent-password">{isEdit ? tf("newPassword") : tf("password")} {!isEdit && "*"}</Label>
+              <div className="relative">
+                {/* Not `id="password"` beside an email field: that is a sign-in
+                    form to a browser, which then offers — or fills in — the
+                    manager's own saved password. `new-password` says this is a
+                    credential being set; in clear it is an ordinary field the
+                    browser must not remember. */}
+                <Input
+                  id="agent-password"
+                  name="agent-new-password"
+                  type={passwordHidden ? "password" : "text"}
+                  value={form.password}
+                  onChange={e => update("password", e.target.value)}
+                  placeholder={isEdit ? tf("leaveEmptyToKeep") : tf("minSixChars")}
+                  minLength={isEdit ? undefined : 12}
+                  maxLength={72}
+                  required={!isEdit}
+                  autoComplete={passwordHidden ? "new-password" : "off"}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  className="pr-24"
+                />
+                <button
+                  type="button"
+                  onClick={() => setPasswordHidden(hidden => !hidden)}
+                  className="absolute inset-y-0 right-0 flex items-center px-3 text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                >
+                  {passwordHidden ? tf("showPassword") : tf("hidePassword")}
+                </button>
+              </div>
               <p className="text-xs text-muted-foreground mt-1">{tf("passwordHint")}</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
