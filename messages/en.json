@@ -14504,6 +14504,28 @@
     "legacyBadge": "before translations",
     "moreActions": "More actions"
   },
+  "mtmLocationPicker": {
+    "title": "Place on the map",
+    "searchPlaceholder": "Address: street, building, city",
+    "search": "Find",
+    "searching": "Searching…",
+    "myLocation": "My location",
+    "locating": "Locating…",
+    "hintEmpty": "Search for an address, press “My location”, or just click the map.",
+    "hintSet": "You can correct the pin: drag it, or click the map where it should be.",
+    "resultsTitle": "Choose an address:",
+    "noResults": "Nothing found. Refine the address or place the pin on the map by hand.",
+    "searchFailed": "Address search is unavailable right now. Place the pin on the map by hand.",
+    "searchTooShort": "Enter at least 3 characters.",
+    "rateLimited": "Too many searches. Try again in a minute.",
+    "locationDenied": "The browser did not allow access to your location. Allow it for this site and reload the page — or place the pin by hand.",
+    "locationUnavailable": "Could not determine your location. Try again or place the pin by hand.",
+    "locationAccuracy": "Located to within about {meters} m. If the pin is off, correct it.",
+    "done": "Done",
+    "previewEmpty": "Set the place on the map",
+    "previewEmptyHint": "Search by address, my location, or a point on the map",
+    "previewChange": "Click to change"
+  },
   "mtmForms": {
     "selectAgent": "— Select agent —",
     "selectCustomer": "— Select customer —",
