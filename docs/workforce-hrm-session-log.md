@@ -7646,3 +7646,24 @@ hosted acceptance are recorded separately, without borrowing previous green.
 No production activation, merge/deploy, migration-history/baseline edits, raw
 CI logs, credentials or Support changes. Accounting82/161DONE,79open,59%,14/15
 gates unchanged; canonical C10-011PLANNED and C12-002/004/005/008/C13-006PARTIAL.
+
+
+### 2026-10-06T16:44:42+00:00 — whole WF-C7-007 accepted; next C8 item prepared
+
+Runtime `d303ae3aac6a2ddb62439e433c08bca29c0befb9` / tree `d0b39cd92c5078b22438bc7249cde9701843ee35` is independently accepted with
+all 15 applicable hosted checks PASS,52 PG/React cases zero-skip, 26 real browser
+cases, 24 contrast measurements and actual EN/RU/AZ native 200% zoom. Published
+[evidence checkpoint](https://github.com/rashadoni/leaddrive-v2/blob/f6a4d6ebf5d2326420d29eefc59eff627c218eaf/docs/evidence/workforce-c7-whole-item-2026-10-06/README.md) preserves 55 original minimized JSON receipts,
+15 sanitized local reports, all negative attempts, exact source bindings and
+all 9,255 preceding archive blobs. Support/MTM main bytes are preserved.
+
+Canonical C7-007 alone is DONE: 83/161 accepted, 78 open, C7 8/10, 14/15 gates,
+weighted 60%. C3 recurrence and C8/12/13 remaining criteria are not borrowed or
+closed by these tests. Baseline-qualified gates and historical compiler errors
+remain explicit. No raw CI logs/screenshots, Mac/SSH, paid review, merge, deploy,
+activation or production changes were used.
+
+Prepared next whole task: [C8-002 manager Today](./workforce-c8-whole-item-acceptance-plan-2026-10-06.md).
+Actual isolated Linux AT tooling is not yet implemented; available AT-SPI/GI
+groundwork makes it a technical next step, not a proven external/human-only gate.
+The same sole writer retains PR589; no duplicate branch or candidate workspace.

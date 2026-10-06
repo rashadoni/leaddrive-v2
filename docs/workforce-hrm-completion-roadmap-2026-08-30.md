@@ -951,7 +951,7 @@ overbroad CRM roles or mobile-only requests.
 | WF-C7-004 | P1 | DONE | Backend/HR | Add employment/team/site history for transfer, temporary assignment, termination and rehire | [`Workforce C7 employment-history evidence`](./workforce-c7-employment-history-evidence-2026-08-30.md): append-only employment lifecycle and effective-dated team/site resolvers are tenant-scoped, generated-client checked and present in the production schema; delayed facts never infer history from mutable directory status or Route data |
 | WF-C7-005 | P1 | DONE | Web/Mobile | Deliver self-service leave, absence and time-correction creation/cancel/history | Workforce C7 self-service evidence: self-scoped web fallback, named workday picker, idempotency/overlap/DST/cancel tests; mobile remains C9 |
 | WF-C7-006 | P1 | DONE | Web/Backend | Complete manager request decision queue, route conflict acknowledgement and immutable audit | [`Manager request decision acceptance`](./workforce-c7-request-decision-evidence-2026-09-13.md): bounded actor-scoped queue and web actions use a pending-only idempotent transition; request/calendar/correction/notification/audit facts commit atomically and Route overlaps require explicit acknowledgement without mutating Route |
-| WF-C7-007 | P1 | PARTIAL | HR/Web | Add future-effective bulk schedules/sites, preview, conflict report and reversible draft before publish | [`workforce-c7-bulk-draft-preview-evidence-2026-08-30.md`](./workforce-c7-bulk-draft-preview-evidence-2026-08-30.md): named schedule/site browser drafts and read-only conflict reports are safe; durable publish and recurrence remain open |
+| WF-C7-007 | P1 | DONE | HR/Web | Add future-effective bulk schedules/sites, preview, conflict report and reversible draft before publish | [C7 whole-item acceptance](./workforce-c7-bulk-completion-2026-10-06.md): named up-to-200 schedule/site drafts, conflict/NO_CHANGE reports, explicit atomic future publish, safe exact retry and scope reset accepted against exact source with real PostgreSQL/RLS and authenticated EN/RU/AZ browser evidence. General recurrence/temporary cover remain WF-C3-009 PARTIAL; deployment and activation are separate. |
 | WF-C7-008 | P1 | DONE | Backend | Freeze approvals when unresolved blocking exceptions or snapshot gaps exist | [`C11 approval blocker evidence`](./workforce-c11-approval-blockers-evidence-2026-09-13.md): server-rebuilt workdays, snapshot/history failures, current deviations and unresolved C6 lifecycles fail closed with exact minimized rows |
 | WF-C7-009 | P2 | DONE | HR | Define delegation, temporary approver and manager absence workflow | [`Delegation and manager-absence contract`](./workforce-c7-delegation-absence-contract-2026-09-13.md): temporary authority is explicitly approved, tenant/scope/time/operation bounded, non-transferable, automatically expiring and audited to the actual actor; implementation remains separate |
 | WF-C7-010 | P2 | PARTIAL | Security/HR | Review access and decisions periodically; disable stale privileged assignments | [`workforce-c7-access-review-foundation-2026-09-13.md`](./workforce-c7-access-review-foundation-2026-09-13.md): bounded tenant-snapshot review detects expired, inactive, stale, incompatible and out-of-window grants by exact grant ID; it is dry-run only, while the durable reader, reviewed revocation, schedule and staging SLA remain open |
@@ -7308,3 +7308,39 @@ Compact durable whole-review bindings and actual receipts: docs/evidence/workfor
 Supersedes the earlier future-duplicate UNAPPLIED state only after own584 root+independent full release acceptance. Fresh fetch/API/remote main=daf05b6030c89c4508f2a999706f4169360ccce2 allowed ordinary successor47 integration and exact three draft recipes/five chunks. Seven ID-bearing kinds reject duplicate keys before lookup; exception subjects must resolve to one workday, even for the same employee. Existing job implementation unchanged. Actual two files/44 aggregate meaningful tests PASS, scoped three-target ESLint113rules/notignored and diffcheck PASS; serial one-worker checks after18115MiBavailable/332GiBdisk/memoryfullavg10zero. New evidence docs/workforce-c12-duplicate-coherence-evidence-2026-10-05.md and apply/bounded/current-base finite4owned/core13 catalogue JSON.
 
 Fresh exact-head independent source/current PR compiler/suite/required5 and own normal release PENDING; no earlier Manager/browser/PG/compiler result borrowed. Full compiler/suite/build/browser/PG/Android/load NOT RUN locally. No schema/DB reader/durablelease-versionadapter/cron/generalupdate-delete/break/AGENT/Route changes; no complete page closure/approval grouping/exportsource claim. WF-C12-008 staysPARTIAL;82/161DONE/79non-DONE/14of15gates/C845%/overall59%, no rowclosure/no100. Next freeze logical source checkpoint, unchanged400000scope/protected15/range scan/current workflow applicability and independent exact-head review.
+
+
+### 2026-10-06T16:44:42+00:00 — WF-C7-007 whole-item acceptance, no production activation
+
+| Checkpoint | Weighted total | C7 tasks | Accepted tasks | Open tasks | Phase gates |
+|---|---|---|---|---|---|
+| Bulk schedules/sites whole-item acceptance | 60% | 8/10 (80%) | 83/161 | 78 | 14/15 |
+
+Only canonical WF-C7-007 changes from PARTIAL to DONE. The literal future-effective
+bulk schedule/site contract is accepted on runtime head `d303ae3aac6a2ddb62439e433c08bca29c0befb9`,
+tree `d0b39cd92c5078b22438bc7249cde9701843ee35`, integrated main
+`d2fd13aab5c85841ccab723dfc9d784ca7c7fb09`. Independent exact-source and whole-item
+review found no unresolved P0–P3 issues; all 15 applicable GitHub Actions jobs pass,
+including five required checks and Linux production build. Fresh hosted acceptance
+is 52 PostgreSQL/React tests with zero skips, 26 authenticated browser cases and 24
+rendered contrast measurements; EN/RU/AZ native 200% zoom and 11 FORCE RLS tables
+are verified. [Immutable originals and acceptance](https://github.com/rashadoni/leaddrive-v2/blob/f6a4d6ebf5d2326420d29eefc59eff627c218eaf/docs/evidence/workforce-c7-whole-item-2026-10-06/README.md) preserve all negative
+attempts and all 9,255 prior archive blobs. The follow-up documentation commit
+changes no runtime implementation; its own required checks remain separately
+bound to its head.
+
+General recurrence/temporary cover remains WF-C3-009 PARTIAL. No other canonical
+task or phase gate changes. Weighted raw progress is 59.908902691511386%, rounded
+to 60%; open P0/P1 count is 74. Historical checkpoints are retained rather than
+rewritten. The repository gates retain 18 known failing test files and 64 gated
+typecheck pairs; scoped compilation retains six pre-existing TS7006 diagnostics.
+This is not global compiler/suite cleanliness or full historical migration replay.
+
+Next non-overlapping whole item: [WF-C8-002 acceptance plan](./workforce-c8-whole-item-acceptance-plan-2026-10-06.md).
+Actual browser/AT proof remains unfinished work; an absent installed screen reader
+does not establish an external blocker or a human-only approval requirement.
+WF-C12-008 remains PARTIAL: the accepted snapshot readers and bounded fact/cursor
+implementation do not establish representative staging/operational runtime,
+full historical replay or the broader unimplemented mutation coverage. No merge, deployment, activation,
+real employee publication, credentials, grants, retention, physical-device,
+pilot or whole-HRM completion is claimed.

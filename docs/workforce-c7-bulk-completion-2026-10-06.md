@@ -66,8 +66,9 @@ The full 79-open-item audit selected C7 because its existing approved contract
 can be implemented and tested without a new HR policy decision. Technical
 evidence must not be counted as production activation, physical-device testing,
 human assistive-technology acceptance, legal approval or full HRM acceptance.
-The canonical ledger remains 82/161 done, 79 open and 59% weighted until the
-whole item has exact-source acceptance; no helper-level percentage increment.
+Whole-item acceptance now closes C7-007 alone: 83/161 done, 78 open, C7 80%,
+14/15 phase gates and 60% rounded weighted progress. No helper-level credit
+or other task closure is added.
 
 This document does not approve merge, deployment, tenant activation, credentials,
 permissions, retention changes or production migration execution. Those remain
@@ -81,3 +82,24 @@ existing explicit publication rules. The function-only narrowing repair can
 remain during a UI rollback. Restoring a prior function or disabling a live
 capability requires separate scoped authorization; no destructive down migration
 or reversal of saved employee facts is assumed.
+
+
+## Accepted exact runtime checkpoint
+
+Runtime head `d303ae3aac6a2ddb62439e433c08bca29c0befb9`, tree `d0b39cd92c5078b22438bc7249cde9701843ee35`, synthetic merge
+`b59a81751fa811d419f2056f21348ea695d6bb47` on main
+`d2fd13aab5c85841ccab723dfc9d784ca7c7fb09` passed all 15 applicable hosted jobs,
+including the five mandatory checks and Linux production build. Independent
+source and artifact review found no unresolved P0–P3 findings.
+
+[Immutable evidence](https://github.com/rashadoni/leaddrive-v2/blob/f6a4d6ebf5d2326420d29eefc59eff627c218eaf/docs/evidence/workforce-c7-whole-item-2026-10-06/README.md) contains the original 52-case PostgreSQL/React,
+26-case authenticated browser and 24-combination contrast receipts from run
+37494712563, artifact 11427323359. All pass, no test is skipped, and minimum
+measured text contrast is 5.223162711549741:1. Hashes bind the unmodified hosted
+candidate schema, selected migration guards and actual sources. The archive
+retains failed predecessors and local limitations; no current result is borrowed.
+
+The subsequent documentation closure retains this exact runtime implementation;
+its CI metadata is evaluated on its own published head. Next work is the separate
+[C8-002 whole-item acceptance plan](./workforce-c8-whole-item-acceptance-plan-2026-10-06.md),
+with no C8 completion credit or assumed external blocker.
