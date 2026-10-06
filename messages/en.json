@@ -14514,7 +14514,7 @@
     "hintEmpty": "Search for an address, press “My location”, or just click the map.",
     "hintSet": "You can correct the pin: drag it, or click the map where it should be.",
     "resultsTitle": "Choose an address:",
-    "noResults": "Nothing found. Refine the address or place the pin on the map by hand.",
+    "noResults": "Nothing found. Try it shorter — street and house number, or the organization's name — or place the pin on the map by hand.",
     "searchFailed": "Address search is unavailable right now. Place the pin on the map by hand.",
     "searchTooShort": "Enter at least 3 characters.",
     "rateLimited": "Too many searches. Try again in a minute.",

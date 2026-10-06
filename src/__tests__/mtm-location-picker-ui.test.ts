@@ -181,7 +181,7 @@ describe("map picker — by the address the manager types", () => {
     geocode = () => ({ status: 200, body: { success: true, data: { results: [] } } })
     await type("zzzz qqqq")
     await press(button("Найти"))
-    expect(notice()).toBe("Ничего не найдено. Уточните адрес или поставьте метку на карте вручную.")
+    expect(notice()).toBe("Ничего не найдено. Попробуйте короче — улица и номер дома или название организации — либо поставьте метку на карте вручную.")
 
     geocode = () => ({ status: 502, body: { error: "Address search is unavailable right now", code: "MTM_GEOCODE_UNAVAILABLE" } })
     await press(button("Найти"))
