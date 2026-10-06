@@ -58,10 +58,33 @@ function ClickHandler({ onChange }: { onChange: (lat: number, lng: number) => vo
   return null
 }
 
+/**
+ * Keeps the map's idea of its own size true (the pattern of live-map.tsx).
+ *
+ * The list of found addresses opens above the map and closes again, so the
+ * map's box changes height while it is on screen. Leaflet measures the box
+ * once; on production (2026-10-06) the map came back from a search with a
+ * grey band down one side and the pin off-centre, because the picture was
+ * still being drawn for the box it had before.
+ */
 function InvalidateSize() {
   const map = useMap()
   useEffect(() => {
-    setTimeout(() => map.invalidateSize(), 100)
+    const t1 = setTimeout(() => map.invalidateSize(), 100)
+    const t2 = setTimeout(() => map.invalidateSize(), 500)
+    const t3 = setTimeout(() => map.invalidateSize(), 1500)
+    const parent = map.getContainer()?.parentElement
+    let observer: ResizeObserver | null = null
+    if (parent && typeof ResizeObserver !== "undefined") {
+      observer = new ResizeObserver(() => map.invalidateSize())
+      observer.observe(parent)
+    }
+    return () => {
+      clearTimeout(t1)
+      clearTimeout(t2)
+      clearTimeout(t3)
+      observer?.disconnect()
+    }
   }, [map])
   return null
 }
@@ -82,7 +105,10 @@ function FlyTo({ target }: { target: { latitude: number; longitude: number; seq:
   const map = useMap()
   useEffect(() => {
     if (!target) return
-    map.flyTo([target.latitude, target.longitude], Math.max(map.getZoom(), PIN_ZOOM))
+    // The list of addresses has just closed and the map's box has grown:
+    // measure it before flying, or the flight ends centred on the old box.
+    map.invalidateSize()
+    map.flyTo([target.latitude, target.longitude], Math.max(map.getZoom(), PIN_ZOOM), { duration: 0.5 })
   }, [map, target])
   return null
 }
