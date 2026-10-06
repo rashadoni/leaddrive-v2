@@ -1,0 +1,16 @@
+{
+  "file": "contrast-effects-supplement.zip",
+  "bytes": 902425,
+  "sha256": "27a308396a4e29a581ce660489e8c35ee46dfda245257ccafc5211ac5e66864e",
+  "members": 24,
+  "sourceHead": "30c4185b41d85be43a588e71d8c74c5f34e63596",
+  "sourceManifest": "c901a63016fc966df40fbc3e96d9c6d7b3c41088f5038210f39ff4ffc99da881",
+  "cases": 12,
+  "checked": 174,
+  "minimumRatio": 4.574019684523154,
+  "unsupportedEffects": 0,
+  "failures": 0,
+  "limits": "selected computed text/ancestor styles only; not whole-page WCAG, allhoverstates, physicaldevice or productionruntime",
+  "localCRCAndAllMemberHashes": "PASS",
+  "remoteBinaryRoundtrip": "NOT_PERFORMED"
+}

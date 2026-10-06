@@ -1,0 +1,18 @@
+[
+  {
+    "path": "test-baseline.json",
+    "sha256": "8f0fc568274f9fd8c0c741db618d6e4d81025de7112a315cd93e6b92bbd5a4b1",
+    "bytes": 1139,
+    "counts": {
+      "knownFailingFiles": 18
+    }
+  },
+  {
+    "path": "typecheck-baseline.json",
+    "sha256": "919fa9d0212b18ee685af4f08680ebbc34e8c4969294054447df03147bf0fc53",
+    "bytes": 3907,
+    "counts": {
+      "gated": 64
+    }
+  }
+]

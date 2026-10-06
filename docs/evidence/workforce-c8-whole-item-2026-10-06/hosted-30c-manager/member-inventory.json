@@ -1,0 +1,292 @@
+[
+  {
+    "path": "approver-ru-absent-page-two.png",
+    "bytes": 84842,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "approver-ru-first-page.png",
+    "bytes": 50241,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "approver-ru-native-pagination.png",
+    "bytes": 82602,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "approver-ru-snapshot-completed.png",
+    "bytes": 79812,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "approver-ru-snapshot-missing.png",
+    "bytes": 79401,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "approver-ru-snapshot-paused.png",
+    "bytes": 81751,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "approver-ru-snapshot-started.png",
+    "bytes": 80701,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "denied-ru-no-grant.png",
+    "bytes": 51846,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-az-absent-page-two.png",
+    "bytes": 91239,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-az-first-page.png",
+    "bytes": 76699,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-az-native-200-absent-page-two.png",
+    "bytes": 182135,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-az-native-200-first-page.png",
+    "bytes": 102016,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-az-native-200-native-pagination.png",
+    "bytes": 182790,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-az-native-200-snapshot-completed.png",
+    "bytes": 175835,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-az-native-200-snapshot-missing.png",
+    "bytes": 174837,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-az-native-200-snapshot-paused.png",
+    "bytes": 176591,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-az-native-200-snapshot-started.png",
+    "bytes": 174905,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-az-native-pagination.png",
+    "bytes": 90138,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-az-snapshot-completed.png",
+    "bytes": 86637,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-az-snapshot-missing.png",
+    "bytes": 89827,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-az-snapshot-paused.png",
+    "bytes": 88881,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-az-snapshot-started.png",
+    "bytes": 84649,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-en-absent-page-two.png",
+    "bytes": 181879,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-en-first-page.png",
+    "bytes": 150678,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-en-native-200-absent-page-two.png",
+    "bytes": 184810,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-en-native-200-first-page.png",
+    "bytes": 99839,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-en-native-200-native-pagination.png",
+    "bytes": 185123,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-en-native-200-snapshot-completed.png",
+    "bytes": 180096,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-en-native-200-snapshot-missing.png",
+    "bytes": 177107,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-en-native-200-snapshot-paused.png",
+    "bytes": 181775,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-en-native-200-snapshot-started.png",
+    "bytes": 179147,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-en-native-pagination.png",
+    "bytes": 169561,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-en-snapshot-completed.png",
+    "bytes": 174437,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-en-snapshot-missing.png",
+    "bytes": 170875,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-en-snapshot-paused.png",
+    "bytes": 174437,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-en-snapshot-started.png",
+    "bytes": 174437,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-ru-absent-page-two.png",
+    "bytes": 82050,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-ru-first-page.png",
+    "bytes": 50241,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-ru-native-200-absent-page-two.png",
+    "bytes": 180522,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-ru-native-200-first-page.png",
+    "bytes": 106364,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-ru-native-200-native-pagination.png",
+    "bytes": 175323,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-ru-native-200-snapshot-completed.png",
+    "bytes": 172689,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-ru-native-200-snapshot-missing.png",
+    "bytes": 174535,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-ru-native-200-snapshot-paused.png",
+    "bytes": 181974,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-ru-native-200-snapshot-started.png",
+    "bytes": 172224,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-ru-native-pagination.png",
+    "bytes": 80378,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-ru-snapshot-completed.png",
+    "bytes": 78233,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-ru-snapshot-missing.png",
+    "bytes": 79498,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-ru-snapshot-paused.png",
+    "bytes": 79713,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-ru-snapshot-started.png",
+    "bytes": 78277,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "manager-today-receipt.json",
+    "bytes": 302572,
+    "kind": "JSON_READ"
+  },
+  {
+    "path": "native-zoom-az-control-100.png",
+    "bytes": 155215,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "native-zoom-az-observed-200.png",
+    "bytes": 102015,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "native-zoom-en-control-100.png",
+    "bytes": 153765,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "native-zoom-ru-control-100.png",
+    "bytes": 156922,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "native-zoom-en-observed-200.png",
+    "bytes": 99839,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "native-zoom-ru-observed-200.png",
+    "bytes": 106364,
+    "kind": "NOT_READ"
+  },
+  {
+    "path": "workflow-context.json",
+    "bytes": 261,
+    "kind": "JSON_READ"
+  }
+]
