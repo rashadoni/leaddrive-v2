@@ -1,0 +1,64 @@
+{
+  "status": "PASS_UNCHANGED_RETRY_ORIGINAL_FAIL_RETAINED",
+  "head": "bf6ed11f2bba8c93e828fb044315794b44224741",
+  "run": 37535907941,
+  "attempt": 2,
+  "job": 112519901775,
+  "artifact": 11446444783,
+  "artifactBytes": 829849,
+  "artifactSHA256": "f5b60412a74d78fe9f3121f23e134a6d78b74037f668ed6a6af7c5c8407c8267",
+  "members": [
+    "employee-impact-az-1440.png",
+    "employee-impact-az-320.png",
+    "employee-impact-az-768.png",
+    "employee-impact-browser-receipt.json",
+    "employee-impact-en-1440.png",
+    "employee-impact-en-320.png",
+    "employee-impact-en-768.png",
+    "employee-impact-postgres-receipt.json",
+    "employee-impact-ru-1440.png",
+    "employee-impact-ru-320.png",
+    "employee-impact-ru-768.png",
+    "workflow-context.json"
+  ],
+  "readJSONOnly": true,
+  "results": {
+    "employee-impact-browser-receipt.json": {
+      "status": "PASS",
+      "cases": 17,
+      "requiredCases": 17,
+      "sourceBindings": 48,
+      "cleanup": [
+        {
+          "action": "scoped-row-absence-and-both-named-guards-restored",
+          "status": "PASS"
+        },
+        {
+          "action": "owner-disconnect",
+          "status": "PASS"
+        }
+      ]
+    },
+    "employee-impact-postgres-receipt.json": {
+      "status": "PASS",
+      "cases": 9,
+      "requiredCases": 9,
+      "sourceBindings": 24,
+      "cleanup": [
+        {
+          "action": "scoped-owner-fixture-removal-absence-guard-enabled",
+          "status": "PASS"
+        },
+        {
+          "action": "reader-disconnect",
+          "status": "PASS"
+        },
+        {
+          "action": "owner-disconnect",
+          "status": "PASS"
+        }
+      ]
+    }
+  },
+  "rootCauseAttempt1": "UNKNOWN"
+}

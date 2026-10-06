@@ -1,0 +1,9 @@
+{
+  "status": "failure",
+  "candidateHead": "bf6ed11f2bba8c93e828fb044315794b44224741",
+  "checkedMergeSha": "c36bd6c1348f6725f9809eab208963f0f8749aeb",
+  "runId": "37535907941",
+  "runAttempt": "1",
+  "runtime": "disposable-postgresql16-only",
+  "productionMutation": false
+}

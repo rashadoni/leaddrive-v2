@@ -1,0 +1,80 @@
+{
+  "status": "PREPARED_NOT_EXECUTED_NO_CREDIT",
+  "head": "bf6ed11f2bba8c93e828fb044315794b44224741",
+  "sourcePlanHead": "30c4185b41d85be43a588e71d8c74c5f34e63596",
+  "bindings": [
+    {
+      "path": "src/lib/workforce/reconciliation-snapshot.ts",
+      "expected": "97aa9097d0fdadcbedcd77df053531ac592d9039",
+      "actual": "97aa9097d0fdadcbedcd77df053531ac592d9039",
+      "same": true
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-source-page.ts",
+      "expected": "24a8b7b9b8cb51bd31ec5ae1c2f0981ad5d59fea",
+      "actual": "24a8b7b9b8cb51bd31ec5ae1c2f0981ad5d59fea",
+      "same": true
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-approval-group.ts",
+      "expected": "8ecafeb590c05bac26ce71dde0587496309d61ca",
+      "actual": "8ecafeb590c05bac26ce71dde0587496309d61ca",
+      "same": true
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-export-audit.ts",
+      "expected": "7d3e57bf9fe795674a61dddca63e545701ae4d40",
+      "actual": "7d3e57bf9fe795674a61dddca63e545701ae4d40",
+      "same": true
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-dense.ts",
+      "expected": "99e7ddf90d536a78baeff97f1dd95fb00d18b644",
+      "actual": "99e7ddf90d536a78baeff97f1dd95fb00d18b644",
+      "same": true
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-sweep.ts",
+      "expected": "0fec4461ce893335761d6d2ba11dbefb6836a2b4",
+      "actual": "0fec4461ce893335761d6d2ba11dbefb6836a2b4",
+      "same": true
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-cursor-store.ts",
+      "expected": "f43235f707457f3cafef25ebe2fdec97e395f2ef",
+      "actual": "f43235f707457f3cafef25ebe2fdec97e395f2ef",
+      "same": true
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-operations.ts",
+      "expected": "c4f7738a9284c3ab7251eaf2fd92a7006ef04ebe",
+      "actual": "c4f7738a9284c3ab7251eaf2fd92a7006ef04ebe",
+      "same": true
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-roster-health.ts",
+      "expected": "f707fd0b652b18fae49ea4ac500503f9f0dcacee",
+      "actual": "f707fd0b652b18fae49ea4ac500503f9f0dcacee",
+      "same": true
+    },
+    {
+      "path": "docs/workforce-c12-dense-operations-2026-10-05.md",
+      "expected": "821f4909dff71327c78ee418f6e3fe7d5115c246",
+      "actual": "821f4909dff71327c78ee418f6e3fe7d5115c246",
+      "same": true
+    },
+    {
+      "path": "docs/workforce-c12-sweep-staging-2026-10-05.md",
+      "expected": "7a484414a5bd3758711292c66583b953c6c0d531",
+      "actual": "7a484414a5bd3758711292c66583b953c6c0d531",
+      "same": true
+    },
+    {
+      "path": "docs/workforce-c12-fault-fairness-matrix-2026-10-06.md",
+      "expected": "b1ee0f6477e9a99a8444fad751fc5ac097728e8c",
+      "actual": "b1ee0f6477e9a99a8444fad751fc5ac097728e8c",
+      "same": true
+    }
+  ],
+  "scope": "Reproducible isolated schema/authorization and operational acceptance packet for the existing dormant reconciliation worker"
+}

@@ -1,0 +1,173 @@
+{
+  "schema": "independent-c8-adjacent-impact-negative/v1",
+  "reviewedAt": "2026-10-06T21:52:59.797616+00:00",
+  "status": "ORIGINAL_ATTEMPT1_FAIL_VERIFIED_ATTEMPT2_PENDING_CAUSE_UNKNOWN",
+  "head": "bf6ed11f2bba8c93e828fb044315794b44224741",
+  "synthetic": "c36bd6c1348f6725f9809eab208963f0f8749aeb",
+  "run": 37535907941,
+  "failedJob": 112516623855,
+  "attempt": 1,
+  "artifact": 11446193917,
+  "zip": {
+    "path": "/workspace/attachments/a22cf1f2-3224-4361-a6a3-97beeed7c799/c8-bf6-impact-attempt1-safe-evidence.zip",
+    "bytes": 49268,
+    "sha256": "74b324ee8903d40e0ea1b5f24932d1f7952cef561c5aa0e1529056ad768a9a40",
+    "githubDigestMatches": true,
+    "readOnlyMembers": [
+      "employee-impact-browser-receipt.json",
+      "employee-impact-postgres-receipt.json",
+      "workflow-context.json"
+    ],
+    "otherContentsNotRead": 1
+  },
+  "boundary": {
+    "stage": "aggregate-en-320",
+    "safeCategory": "TimeoutError",
+    "sourcePosition": {
+      "line": 123,
+      "column": 153
+    },
+    "sourceOperation": "After authenticated navigation wait for #workforce-policy-version-query; before first aggregate scenario.",
+    "completedBrowserCases": 0,
+    "requiredBrowserCases": 17,
+    "capturedAggregateHttp": 0,
+    "capturedWorkforceRequests": 0,
+    "networkQualification": "Zero captured aggregate/Workforce entries does not mean no browser/network traffic: real authentication and page navigation occurred.",
+    "realCsrfCredentialsSessionPassed": true,
+    "browserCleanupPassed": 2,
+    "postgresReceipt": {
+      "status": "PASS",
+      "cases": 9,
+      "cleanupPassed": 3,
+      "sourceBound": true,
+      "notHistoricalMigrationOrProductionProof": true
+    }
+  },
+  "sourceBindingCounts": {
+    "browser": 48,
+    "postgres": 24,
+    "allByteShaAndGitBlobVerified": true,
+    "unique": 49
+  },
+  "jobSteps": [
+    {
+      "name": "Set up job",
+      "conclusion": "success"
+    },
+    {
+      "name": "Initialize containers",
+      "conclusion": "success"
+    },
+    {
+      "name": "Checkout candidate merge",
+      "conclusion": "success"
+    },
+    {
+      "name": "Resolve isolated masked database credentials",
+      "conclusion": "success"
+    },
+    {
+      "name": "Setup Node.js",
+      "conclusion": "success"
+    },
+    {
+      "name": "Install exact candidate dependencies",
+      "conclusion": "success"
+    },
+    {
+      "name": "Prepare current schema and separate SELECT-only role",
+      "conclusion": "success"
+    },
+    {
+      "name": "Verify populated real PostgreSQL snapshots, locks, RLS and bounds",
+      "conclusion": "success"
+    },
+    {
+      "name": "Install Chromium on hosted Ubuntu",
+      "conclusion": "success"
+    },
+    {
+      "name": "Verify real authenticated on-demand aggregate UI and session boundaries",
+      "conclusion": "failure"
+    },
+    {
+      "name": "Preserve safe workflow outcome",
+      "conclusion": "success"
+    },
+    {
+      "name": "Upload complete non-secret PostgreSQL and browser evidence",
+      "conclusion": "success"
+    },
+    {
+      "name": "Post Setup Node.js",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "Post Checkout candidate merge",
+      "conclusion": "success"
+    },
+    {
+      "name": "Stop containers",
+      "conclusion": "success"
+    },
+    {
+      "name": "Complete job",
+      "conclusion": "success"
+    }
+  ],
+  "retryQualification": {
+    "observedRunAttempt": 2,
+    "observedStatus": "in_progress",
+    "observedConclusion": null,
+    "sameImmutableHead": true,
+    "ownerReportedOnlyExistingFailedJobRerun": true,
+    "notSourceFix": true,
+    "noGateTimeoutPredicateChangeAtThisHead": true,
+    "rootCause": "UNKNOWN",
+    "transientOrProductDefectClassification": "NOT_ESTABLISHED",
+    "doNotEraseFirstFailure": true,
+    "doNotAcceptWholeCIUntilTerminalAttemptReviewed": true
+  },
+  "limits": [
+    "Safe JSON read completely; no screenshots/rawlogs/private fixture inspection.",
+    "Postgres positive receipt accepted only at the named disposable SELECT-only/RR/RLS/bounds fixture scope; no production/fullhistory/activation claim.",
+    "Existing ManagerToday evidence remains separately accepted; no duplicate review performed."
+  ],
+  "supports": [
+    {
+      "path": "/tmp/hrm-c8-30c-independent/bf6-impact-negative-metadata.json",
+      "bytes": 22781,
+      "sha256": "c83f3682e2e8756f8a044fee2cbffb9c351ae497e8393df22a1a22e0c407efef"
+    },
+    {
+      "path": "/tmp/hrm-c8-acceptance-20261006/impact-bf6-attempt1/employee-impact-browser-receipt.json",
+      "bytes": 10178,
+      "sha256": "da3672cb5fe839ea3e99217c5be0184aeca6e2955a544b258a80463e1d28ffac"
+    },
+    {
+      "path": "/tmp/hrm-c8-acceptance-20261006/impact-bf6-attempt1/employee-impact-postgres-receipt.json",
+      "bytes": 7476,
+      "sha256": "812e8150a701c6a87679cad7ba61f0de1a9251fc582d04ecef35b68d9e4c5e90"
+    },
+    {
+      "path": "/tmp/hrm-c8-acceptance-20261006/impact-bf6-attempt1/workflow-context.json",
+      "bytes": 277,
+      "sha256": "df51b551da90347d78cc99222f5d9d9ca91baac7ae0acefc48ff5cf28eb9c32a"
+    },
+    {
+      "path": "/tmp/hrm-c8-acceptance-20261006/impact-bf6-attempt1/negative-analysis.json",
+      "bytes": 820,
+      "sha256": "750a5987d46b18631a71ece3a87100893ea8b90791e1187c6f170b6162844d08"
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/scripts/workforce-policy-employee-impact-browser-evidence.mjs",
+      "bytes": 34857,
+      "sha256": "0a00004c6479e05226fe282175cabda121f42e7ca20dbb3aaa2b2b273aac8967"
+    },
+    {
+      "path": "/tmp/hrm-c8-independent-source-bf6ed11-20261006.json",
+      "bytes": 15673,
+      "sha256": "770febed52a07c00cfc1ad41a69d9b89c479ee0ae5478a3fd19bde046a1ae994"
+    }
+  ]
+}

@@ -1,0 +1,107 @@
+{
+  "schema": "independent-c8-adjacent-impact-retry/v1",
+  "reviewedAt": "2026-10-06T21:59:41.356733+00:00",
+  "status": "EXACT_BF6_ATTEMPT2_FINITE_IMPACT_PASS_ATTEMPT1_FAIL_RETAINED",
+  "head": "bf6ed11f2bba8c93e828fb044315794b44224741",
+  "synthetic": "c36bd6c1348f6725f9809eab208963f0f8749aeb",
+  "run": 37535907941,
+  "attempt": 2,
+  "job": 112519901775,
+  "artifact": 11446444783,
+  "metadataFetchedIndependently": true,
+  "zip": {
+    "path": "/workspace/attachments/256c9246-9cc7-44be-833a-aec02e5f84d8/c8-bf6-impact-attempt2-safe-evidence.zip",
+    "bytes": 829849,
+    "sha256": "f5b60412a74d78fe9f3121f23e134a6d78b74037f668ed6a6af7c5c8407c8267",
+    "githubDigestMatched": true,
+    "onlyMembersRead": [
+      "employee-impact-browser-receipt.json",
+      "employee-impact-postgres-receipt.json",
+      "workflow-context.json"
+    ],
+    "otherMemberContentsNotRead": 9
+  },
+  "results": {
+    "browser": {
+      "passed": 17,
+      "required": 17,
+      "aggregateLocaleViewportCases": 9,
+      "realAuthPairs": 16,
+      "capturedAggregateHttp": 17,
+      "allExpectedHttpAndPrivateHeadersMatch": true,
+      "actual403AndHeldOld200BoundariesPass": true,
+      "cleanup": 2
+    },
+    "postgres": {
+      "passed": 9,
+      "required": 9,
+      "sameBeforeAfterNamedFingerprints": true,
+      "cleanup": 3
+    },
+    "sourceBindings": {
+      "browser": 48,
+      "postgres": 24,
+      "allExactBf6ShaAndGitBlob": true,
+      "identicalAcrossBothAttempts": true
+    }
+  },
+  "failedHistory": {
+    "originalNegativeReceipt": {
+      "path": "/tmp/hrm-c8-independent-impact-attempt1-negative-bf6-20261006.json",
+      "bytes": 5692,
+      "sha256": "4e85a836087119707de818afaae337cae0dab6022ed967abb87355142f56e591"
+    },
+    "allOriginalNegativeSupportHashesStillEqual": true,
+    "priorAttempt1ArtifactStillListed": true,
+    "originalBrowser0of17": true,
+    "selectorTimeout123_153AfterAuthNavigation": true,
+    "rootCause": "UNKNOWN",
+    "retryNotSourceFix": true,
+    "noFlakyOrProductCauseClassification": true
+  },
+  "limits": [
+    "Disposable hosted Chromium, real credentials/session/authorized aggregate GET. Current ACTIVE directory all roles, recorded membership only, no employee identities/full definition. Explicit what-if is not future employment eligibility or activation guarantee. Controlled transport loss/corruption and native AuthJS notification are fixture drivers distinct from server/auth mocks or end-user tenant switching. Owner setup/status replacements/guard-disabled scoped cleanup are fixture maintenance, not canonical writers. Bounded native controls/geometry are not full WCAG, pixel occlusion, human AT, native zoom, Android, load or production feature/activation/pilot acceptance.",
+    "Real disposable SELECT-only loader/RR/RLS/limits. Owner setup/replacements/guard-disabled cleanup are fixture maintenance, not canonical writers, employment prediction, activation or production mutation.",
+    "All JSON payloads parsed; PNG/rawlogs not inspected. No new AT/native200/whole-siteWCAG/production-runtime/historicalmigration proof.",
+    "One unchanged exact-head rerun passed. First failure is retained, not erased.",
+    "Other mandatory CI/build lanes remain pending and this receipt does not grant whole-head terminal readiness."
+  ],
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "supports": [
+    {
+      "path": "/tmp/hrm-c8-30c-independent/bf6-impact-attempt2-metadata.json",
+      "bytes": 23758,
+      "sha256": "87ed65788e0546baf3931f9ec9896a8f81f8fba1197c6699d78f13583bb90c51"
+    },
+    {
+      "path": "/tmp/hrm-c8-acceptance-20261006/impact-bf6-attempt2/employee-impact-browser-receipt.json",
+      "bytes": 22070,
+      "sha256": "a38563b3e26417234c2cd065b9a9295bb5cd05f43e7f932a2011e5b159fb032b"
+    },
+    {
+      "path": "/tmp/hrm-c8-acceptance-20261006/impact-bf6-attempt2/employee-impact-postgres-receipt.json",
+      "bytes": 7476,
+      "sha256": "05810ec5b98d87b3411cb5010ef8ff44b08031e70834a2ab6f4e8c7b16014bb8"
+    },
+    {
+      "path": "/tmp/hrm-c8-acceptance-20261006/impact-bf6-attempt2/workflow-context.json",
+      "bytes": 277,
+      "sha256": "b5595d2c3273c4140f9ac43a48e28b999f106dc21158ebcf8ff013710e4d292b"
+    },
+    {
+      "path": "/tmp/hrm-c8-independent-impact-attempt1-negative-bf6-20261006.json",
+      "bytes": 5692,
+      "sha256": "4e85a836087119707de818afaae337cae0dab6022ed967abb87355142f56e591"
+    },
+    {
+      "path": "/tmp/hrm-c8-independent-source-bf6ed11-20261006.json",
+      "bytes": 15673,
+      "sha256": "770febed52a07c00cfc1ad41a69d9b89c479ee0ae5478a3fd19bde046a1ae994"
+    }
+  ]
+}

@@ -1,0 +1,199 @@
+{
+  "status": "PASS",
+  "candidateHead": "bf6ed11f2bba8c93e828fb044315794b44224741",
+  "checkedMergeSha": "c36bd6c1348f6725f9809eab208963f0f8749aeb",
+  "completedAt": "2026-10-06T21:48:03.829Z",
+  "cases": [
+    "real-active-directory-history-org-and-team-projections",
+    "four-table-populated-force-rls-select-only",
+    "coherent-repeatable-read-four-fact-concurrent-commit",
+    "observed-access-share-only-independent-owner-write-completes",
+    "real-100-employee-complete-positive",
+    "real-101-employee-fail-closed",
+    "real-100-global-policy-complete-positive",
+    "real-101-global-policy-fail-closed",
+    "damaged-hash-rejection-rollback-no-dml-no-context-leak"
+  ],
+  "requiredCases": 9,
+  "fingerprints": [
+    {
+      "case": "real-active-directory-history-org-and-team-projections",
+      "before": "7d18382fe9d462589c18fcc3588cf92e2b767128f8fa629236f253d7f4eedd36",
+      "after": "7d18382fe9d462589c18fcc3588cf92e2b767128f8fa629236f253d7f4eedd36",
+      "tables": 555
+    },
+    {
+      "case": "four-table-populated-force-rls-select-only",
+      "before": "7d18382fe9d462589c18fcc3588cf92e2b767128f8fa629236f253d7f4eedd36",
+      "after": "7d18382fe9d462589c18fcc3588cf92e2b767128f8fa629236f253d7f4eedd36",
+      "tables": 555
+    },
+    {
+      "case": "real-100-employee-complete-positive",
+      "before": "d57ccc3bb28655452217a34e04e8080131d87d0d5bf77f771509b21d5bcfcd7a",
+      "after": "d57ccc3bb28655452217a34e04e8080131d87d0d5bf77f771509b21d5bcfcd7a",
+      "tables": 555
+    },
+    {
+      "case": "real-101-employee-fail-closed",
+      "before": "c4f495749b42ba99d2c57d84fe30089ec60ea903bbb7f00ebf00df6bad900548",
+      "after": "c4f495749b42ba99d2c57d84fe30089ec60ea903bbb7f00ebf00df6bad900548",
+      "tables": 555
+    },
+    {
+      "case": "real-100-global-policy-complete-positive",
+      "before": "dce265c1a5c23a5fdfde4883cc04ecb802a68881f9b3579fac3502a39b6eb73d",
+      "after": "dce265c1a5c23a5fdfde4883cc04ecb802a68881f9b3579fac3502a39b6eb73d",
+      "tables": 555
+    },
+    {
+      "case": "real-101-global-policy-fail-closed",
+      "before": "1ca400678d685b1655362f99beeb88e033f27126ecba46a38d4885d5d3ea23c6",
+      "after": "1ca400678d685b1655362f99beeb88e033f27126ecba46a38d4885d5d3ea23c6",
+      "tables": 555
+    },
+    {
+      "case": "damaged-hash-rejection-rollback-no-dml-no-context-leak",
+      "before": "52e877b9094dc2811670795781ea7ba8f85f77dcbb1a886b92a911625b0384f6",
+      "after": "52e877b9094dc2811670795781ea7ba8f85f77dcbb1a886b92a911625b0384f6",
+      "tables": 555
+    }
+  ],
+  "sourceBindings": [
+    {
+      "path": "src/__tests__/lib-workforce-policy-employee-impact-postgres.test.ts",
+      "bytes": 26093,
+      "sha256": "5d72d9aed717bf2e7608b2eeee7188c10c441c9f57cb0df37684b5552e0038c7"
+    },
+    {
+      "path": "src/lib/workforce/policy-employee-impact-read.ts",
+      "bytes": 5300,
+      "sha256": "f4796d8fd26f5d045c69ff0b108a8ee0859419ad8de20e29a259ea46afda8601"
+    },
+    {
+      "path": "src/lib/workforce/policy-employee-impact-preview.ts",
+      "bytes": 10533,
+      "sha256": "8ae3f76f1355f6322d0c9cf2388a70751682b088f5ded4e6ca0a24c17035a346"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/policies/[id]/employee-impact/route.ts",
+      "bytes": 2947,
+      "sha256": "d20b0f214cfbd8b388298359268941e83b6c8ad9b859e6fb33c99860edb4b2a0"
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-policy-employee-impact.sql",
+      "bytes": 1739,
+      "sha256": "8f3ee314c6fa1ff90572941eeba4925cae9a4499e085990077b94b56eeb4b190"
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-manager-today-browser.sql",
+      "bytes": 33617,
+      "sha256": "448d08b65048f3692145d1d2d73d1f4b2f5973363172dddb959b4c9daf20a4fb"
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-policy-version-browser.sql",
+      "bytes": 4634,
+      "sha256": "8f97329849dbb6d06181fed07ca9df50c4f2bcd202956861be53f610989765cb"
+    },
+    {
+      "path": "prisma/schema.prisma",
+      "bytes": 958771,
+      "sha256": "fd2e0a5b835669dafa736943fd9e5ee403a81dd0dd28d127e895e1f19232eae7"
+    },
+    {
+      "path": ".github/workflows/workforce-policy-employee-impact-evidence.yml",
+      "bytes": 9998,
+      "sha256": "566ae108c5369e63ad6c3f8a939ac8137a7f6d37ea6ca13c1bc4f190b94ec733"
+    },
+    {
+      "path": "src/lib/workforce/policy-definition.ts",
+      "bytes": 3207,
+      "sha256": "da7a0767861a80180e6d6183fdd78f9457b8815d67c1eac04459d68f3f96eb40"
+    },
+    {
+      "path": "src/lib/workforce/policy-resolution.ts",
+      "bytes": 7415,
+      "sha256": "e552b0c255e589057fd81fd519a78458f15d6ee1a2371e43a68c1e99695accfb"
+    },
+    {
+      "path": "src/lib/workforce/policy-future-window-preview.ts",
+      "bytes": 5799,
+      "sha256": "13c480618ca3ba91837e8cd87f2111fb9723080bc5dd53971b023e52b4839483"
+    },
+    {
+      "path": "src/lib/timezone.ts",
+      "bytes": 12919,
+      "sha256": "88761f7c31ff4d596f1b0a0c1aa198c5c70a3d2ac4d494818728884cb5b75247"
+    },
+    {
+      "path": "src/lib/mtm-settings.ts",
+      "bytes": 11570,
+      "sha256": "cc3b23855cfaf3354b40ad22bd2ee88cf97764b1ae4db3ea6b8c7b5aac15285c"
+    },
+    {
+      "path": "src/lib/mtm/mobile-week.ts",
+      "bytes": 4180,
+      "sha256": "6f557666c7e17161e914696f4d7891ebac9ec2845da4de6e4de9c5b1db864d96"
+    },
+    {
+      "path": "src/lib/with-workforce-rls-auth.ts",
+      "bytes": 21653,
+      "sha256": "289aa253b4d8d3a25913136a545db598bf1a01c9b571b6c89e2689da2fe6d8ff"
+    },
+    {
+      "path": "src/lib/with-rls.ts",
+      "bytes": 10390,
+      "sha256": "533dfc91f795970fe7abaf1aedc37e7ea82d175257b33a0d84c864e791618e38"
+    },
+    {
+      "path": "src/lib/api-auth.ts",
+      "bytes": 25973,
+      "sha256": "1bd273786679f9b59718a4eec9314f51ae19efcddd6455cae8d562d88d1c8f84"
+    },
+    {
+      "path": "src/lib/workforce/sensitive-response.ts",
+      "bytes": 553,
+      "sha256": "4c11bbe1d33bbba582ec7ac18ecd1a650494bfb86896d1ddb23bd359cf790471"
+    },
+    {
+      "path": "src/lib/workforce/sensitive-operation-log.ts",
+      "bytes": 4396,
+      "sha256": "808c955586869d7005fdb60f76cd25b03106937e15778aef7056375f9e93d89b"
+    },
+    {
+      "path": "prisma/migrations/20260828223000_workforce_h3_foundation/migration.sql",
+      "bytes": 48914,
+      "sha256": "fe87338c7318fd0e713223af6905e5d1e7ca9794260fdbeb48e32d521b46681a"
+    },
+    {
+      "path": "prisma/migrations/20260829114500_workforce_future_only_lifecycle/migration.sql",
+      "bytes": 7060,
+      "sha256": "72cbac29ad2b1139672fb235b7a18d42bb4cd98c4e636180c4a3f8ea373a9c67"
+    },
+    {
+      "path": "prisma/migrations/20260829140000_workforce_system_provisioning_defaults/migration.sql",
+      "bytes": 4868,
+      "sha256": "7874b9e2a37396268c593b3b157b386a8ae90fc6f39c0967e4cfd735cd2fff45"
+    },
+    {
+      "path": "prisma/migrations/20260830130000_workforce_employee_team_membership_history/migration.sql",
+      "bytes": 15814,
+      "sha256": "bbc3b8477ca1f6ef62a14c2f83a80b59344fdb1bf3fbf31f468aff385c2166a3"
+    }
+  ],
+  "cleanup": [
+    {
+      "action": "scoped-owner-fixture-removal-absence-guard-enabled",
+      "status": "PASS"
+    },
+    {
+      "action": "reader-disconnect",
+      "status": "PASS"
+    },
+    {
+      "action": "owner-disconnect",
+      "status": "PASS"
+    }
+  ],
+  "boundary": "Real disposable SELECT-only loader/RR/RLS/limits. Owner setup/replacements/guard-disabled cleanup are fixture maintenance, not canonical writers, employment prediction, activation or production mutation."
+}

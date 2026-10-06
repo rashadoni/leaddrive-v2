@@ -1,0 +1,541 @@
+{
+  "schema": "independent-c8-final-terminal/v1",
+  "reviewedAt": "2026-10-06T22:05:42.660243+00:00",
+  "status": "READY_FOR_SCOPED_APPROVAL_EXACT_BF6_FINITE_WF_C8_002_ACCEPTED",
+  "head": "bf6ed11f2bba8c93e828fb044315794b44224741",
+  "tree": "72a268a0358cfb6d60ccefa3b62b42bb2112d055",
+  "testedAndFreshMain": "cb5a0453e7ead310e0515e265efee209be1c272b",
+  "synthetic": "c36bd6c1348f6725f9809eab208963f0f8749aeb",
+  "syntheticParents": [
+    "cb5a0453e7ead310e0515e265efee209be1c272b",
+    "bf6ed11f2bba8c93e828fb044315794b44224741"
+  ],
+  "acceptedDependencyPR589": "a856a9e533c4f3cec6f2313e69f5be0d5b4d4226",
+  "PR605": "source owner, dependent on accepted PR589",
+  "PR606": "validation-only, must not be merged",
+  "readiness": "Source, finite whole-item evidence, current-head baseline-qualified CI and production build accepted. Ready for separate scoped release approval after final evidence-only publication/readback. This verdict authorizes no merge/deploy/activation and does not complete whole HRM.",
+  "R5": {
+    "freshIndependentMetadata": true,
+    "checkRecordsAllHistory": 24,
+    "currentJobRecords": 23,
+    "currentSuccessfulCheckRecords": 16,
+    "uniqueApplicablePassingContexts": 15,
+    "requiredContexts": [
+      "pr-scope",
+      "runner-policy",
+      "scan",
+      "static-checks",
+      "typecheck"
+    ],
+    "appId": 15368,
+    "draftSkippedChecksAndRuns": 7,
+    "failedHistoryRecordsRetained": 1,
+    "successfulDuplicateRunnerRecords": 2,
+    "runs": [
+      {
+        "id": 37535908484,
+        "name": "Workforce exception report browser evidence",
+        "workflowId": 374242321,
+        "attempt": 1,
+        "conclusion": "skipped"
+      },
+      {
+        "id": 37535908134,
+        "name": "Workforce manager Today browser evidence",
+        "workflowId": 374060138,
+        "attempt": 1,
+        "conclusion": "success"
+      },
+      {
+        "id": 37535907874,
+        "name": "Workforce calendar browser evidence",
+        "workflowId": 373358281,
+        "attempt": 1,
+        "conclusion": "skipped"
+      },
+      {
+        "id": 37535907795,
+        "name": "Workforce bulk assignment acceptance",
+        "workflowId": 376563997,
+        "attempt": 1,
+        "conclusion": "skipped"
+      },
+      {
+        "id": 37535908012,
+        "name": "Workforce policy version browser evidence",
+        "workflowId": 374324434,
+        "attempt": 1,
+        "conclusion": "skipped"
+      },
+      {
+        "id": 37535907786,
+        "name": "Workforce policy employee impact evidence",
+        "workflowId": 374632212,
+        "attempt": 1,
+        "conclusion": "skipped"
+      },
+      {
+        "id": 37535907913,
+        "name": "Workforce policy restore writer evidence",
+        "workflowId": 374471253,
+        "attempt": 1,
+        "conclusion": "skipped"
+      },
+      {
+        "id": 37535907890,
+        "name": "Workforce manager Today browser evidence",
+        "workflowId": 374060138,
+        "attempt": 1,
+        "conclusion": "skipped"
+      },
+      {
+        "id": 37535907764,
+        "name": "Secret scan",
+        "workflowId": 353805359,
+        "attempt": 1,
+        "conclusion": "success"
+      },
+      {
+        "id": 37535907655,
+        "name": "Runner policy",
+        "workflowId": 353805369,
+        "attempt": 1,
+        "conclusion": "success"
+      },
+      {
+        "id": 37535908089,
+        "name": "Runner policy",
+        "workflowId": 353805369,
+        "attempt": 1,
+        "conclusion": "success"
+      },
+      {
+        "id": 37535907608,
+        "name": "Workforce exception report browser evidence",
+        "workflowId": 374242321,
+        "attempt": 1,
+        "conclusion": "success"
+      },
+      {
+        "id": 37535908049,
+        "name": "Workforce policy version browser evidence",
+        "workflowId": 374324434,
+        "attempt": 1,
+        "conclusion": "success"
+      },
+      {
+        "id": 37535907637,
+        "name": "Workforce calendar browser evidence",
+        "workflowId": 373358281,
+        "attempt": 1,
+        "conclusion": "success"
+      },
+      {
+        "id": 37535907941,
+        "name": "Workforce policy employee impact evidence",
+        "workflowId": 374632212,
+        "attempt": 2,
+        "conclusion": "success"
+      },
+      {
+        "id": 37535907841,
+        "name": "Workforce bulk assignment acceptance",
+        "workflowId": 376563997,
+        "attempt": 1,
+        "conclusion": "success"
+      },
+      {
+        "id": 37535907735,
+        "name": "Social Monitoring queue E2E",
+        "workflowId": 353805385,
+        "attempt": 1,
+        "conclusion": "success"
+      },
+      {
+        "id": 37535907930,
+        "name": "Workforce policy restore writer evidence",
+        "workflowId": 374471253,
+        "attempt": 1,
+        "conclusion": "success"
+      },
+      {
+        "id": 37535907658,
+        "name": "PR checks",
+        "workflowId": 353805361,
+        "attempt": 1,
+        "conclusion": "success"
+      }
+    ],
+    "successfulLatestRuns": 12,
+    "successfulUniqueWorkflowIds": 11,
+    "currentJobsStepsComplete": true,
+    "artifactsMetadataComplete": 8,
+    "onlyRetry": "Impact run37535907941 attempt1FAIL -> attempt2SUCCESS; all other runs attempt1.",
+    "acceptedChecks": [
+      {
+        "id": 112519901775,
+        "name": "Real PostgreSQL SELECT-only and authenticated employee impact browser evidence",
+        "app": 15368,
+        "head": "bf6ed11f2bba8c93e828fb044315794b44224741",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37535907941/job/112519901775"
+      },
+      {
+        "id": 112517999119,
+        "name": "Browser close, cron takeover & durable recovery",
+        "app": 15368,
+        "head": "bf6ed11f2bba8c93e828fb044315794b44224741",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37535907735/job/112517999119"
+      },
+      {
+        "id": 112516768409,
+        "name": "static-checks",
+        "app": 15368,
+        "head": "bf6ed11f2bba8c93e828fb044315794b44224741",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37535907658/job/112516768409"
+      },
+      {
+        "id": 112516768359,
+        "name": "typecheck",
+        "app": 15368,
+        "head": "bf6ed11f2bba8c93e828fb044315794b44224741",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37535907658/job/112516768359"
+      },
+      {
+        "id": 112516626184,
+        "name": "runner-policy",
+        "app": 15368,
+        "head": "bf6ed11f2bba8c93e828fb044315794b44224741",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37535908089/job/112516626184"
+      },
+      {
+        "id": 112516625151,
+        "name": "Authenticated Workforce exception report browser evidence",
+        "app": 15368,
+        "head": "bf6ed11f2bba8c93e828fb044315794b44224741",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37535907608/job/112516625151"
+      },
+      {
+        "id": 112516624948,
+        "name": "Authenticated Workforce manager Today browser evidence",
+        "app": 15368,
+        "head": "bf6ed11f2bba8c93e828fb044315794b44224741",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37535908134/job/112516624948"
+      },
+      {
+        "id": 112516624946,
+        "name": "Authenticated Workforce policy version browser evidence",
+        "app": 15368,
+        "head": "bf6ed11f2bba8c93e828fb044315794b44224741",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37535908049/job/112516624946"
+      },
+      {
+        "id": 112516624030,
+        "name": "C7 bulk schedules and sites acceptance",
+        "app": 15368,
+        "head": "bf6ed11f2bba8c93e828fb044315794b44224741",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37535907841/job/112516624030"
+      },
+      {
+        "id": 112516623859,
+        "name": "Real PostgreSQL, authorized API and rendered policy restore UI evidence",
+        "app": 15368,
+        "head": "bf6ed11f2bba8c93e828fb044315794b44224741",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37535907930/job/112516623859"
+      },
+      {
+        "id": 112516623272,
+        "name": "pr-scope",
+        "app": 15368,
+        "head": "bf6ed11f2bba8c93e828fb044315794b44224741",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37535907658/job/112516623272"
+      },
+      {
+        "id": 112516623232,
+        "name": "scan",
+        "app": 15368,
+        "head": "bf6ed11f2bba8c93e828fb044315794b44224741",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37535907764/job/112516623232"
+      },
+      {
+        "id": 112516623110,
+        "name": "Authenticated Workforce calendar browser evidence",
+        "app": 15368,
+        "head": "bf6ed11f2bba8c93e828fb044315794b44224741",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37535907637/job/112516623110"
+      },
+      {
+        "id": 112516623058,
+        "name": "runner-policy",
+        "app": 15368,
+        "head": "bf6ed11f2bba8c93e828fb044315794b44224741",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37535907655/job/112516623058"
+      },
+      {
+        "id": 112516622975,
+        "name": "GitHub-hosted Linux production build",
+        "app": 15368,
+        "head": "bf6ed11f2bba8c93e828fb044315794b44224741",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37535907658/job/112516622975"
+      },
+      {
+        "id": 112516622790,
+        "name": "Blocking Social Monitoring regression suite",
+        "app": 15368,
+        "head": "bf6ed11f2bba8c93e828fb044315794b44224741",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37535907735/job/112516622790"
+      }
+    ],
+    "preservedNonSuccessHistory": [
+      {
+        "id": 112516634852,
+        "name": "Real PostgreSQL, authorized API and rendered policy restore UI evidence",
+        "conclusion": "skipped",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37535907913/job/112516634852"
+      },
+      {
+        "id": 112516628984,
+        "name": "Authenticated Workforce exception report browser evidence",
+        "conclusion": "skipped",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37535908484/job/112516628984"
+      },
+      {
+        "id": 112516628641,
+        "name": "Real PostgreSQL SELECT-only and authenticated employee impact browser evidence",
+        "conclusion": "skipped",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37535907786/job/112516628641"
+      },
+      {
+        "id": 112516628240,
+        "name": "Authenticated Workforce policy version browser evidence",
+        "conclusion": "skipped",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37535908012/job/112516628240"
+      },
+      {
+        "id": 112516627321,
+        "name": "Authenticated Workforce manager Today browser evidence",
+        "conclusion": "skipped",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37535907890/job/112516627321"
+      },
+      {
+        "id": 112516627096,
+        "name": "Authenticated Workforce calendar browser evidence",
+        "conclusion": "skipped",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37535907874/job/112516627096"
+      },
+      {
+        "id": 112516624854,
+        "name": "C7 bulk schedules and sites acceptance",
+        "conclusion": "skipped",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37535907795/job/112516624854"
+      },
+      {
+        "id": 112516623855,
+        "name": "Real PostgreSQL SELECT-only and authenticated employee impact browser evidence",
+        "conclusion": "failure",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37535907941/job/112516623855"
+      }
+    ],
+    "configuredFullCompilerAdvisory": {
+      "job": 112516768359,
+      "name": "TypeScript compile-check (advisory diagnostics)",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 7,
+      "started_at": "2026-10-06T21:50:22Z",
+      "completed_at": "2026-10-06T22:02:28Z"
+    },
+    "blockingGates": [
+      {
+        "job": 112516768359,
+        "name": "Syntax, missing-module and undefined-name errors (BLOCKING)",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 8,
+        "started_at": "2026-10-06T22:02:28Z",
+        "completed_at": "2026-10-06T22:02:28Z"
+      },
+      {
+        "job": 112516768359,
+        "name": "Defect-shaped type errors vs baseline (BLOCKING)",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 9,
+        "started_at": "2026-10-06T22:02:28Z",
+        "completed_at": "2026-10-06T22:02:28Z"
+      },
+      {
+        "job": 112516768409,
+        "name": "Unit tests vs baseline (BLOCKING)",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 20,
+        "started_at": "2026-10-06T21:51:20Z",
+        "completed_at": "2026-10-06T21:58:26Z"
+      }
+    ],
+    "productionBuildAndOutputCheck": [
+      {
+        "job": 112516622975,
+        "name": "Build the production standalone bundle",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 8,
+        "started_at": "2026-10-06T21:48:45Z",
+        "completed_at": "2026-10-06T22:00:18Z"
+      },
+      {
+        "job": 112516622975,
+        "name": "Verify production build outputs",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 9,
+        "started_at": "2026-10-06T22:00:18Z",
+        "completed_at": "2026-10-06T22:00:18Z"
+      }
+    ],
+    "qualification": "Actual configured full compile-check ran and completed; advisory step success is not proof of compiler exit0 or no diagnostics. Both unchanged blocking type gates and static baseline gate passed. Baselines remain64 gated file/code pairs and18 known failing test files. Raw diagnostics and per-file whole-suite outcomes were not retrieved; no global clean compiler/suite or all-family identity claim."
+  },
+  "finiteWholeItemAcceptance": {
+    "R1": "Exactbf6 complete8886blob/mode tree and23newUTF8readbacks independently verified, maincb5 incoming six blobs+15catalogkeys preserved; acceptedC7 unchanged.",
+    "R2": "Freshbf6 Manager9cases,58sourcebindings,6strictfocus,10namedPGguards,21FORCERLS16populated+5empty,20unchangedfacttables,11cleanup accepted.",
+    "R3": "Historicalsource-bound90/90actualLinuxOrca9scenarios3697pairedspeech/return events transferred by unchangedToday/shared dependencies andcatalogleaves. Not relabelled as newbf6execution.",
+    "R4": "SafeTodayerrors,principalraceguard,paginationretainedfocus/result and exact30c12case174sampleeffect-awarecontrastminimum4.574019684523154 transferred by unchangedHRMbytes; newbf6 hostedstrictfractionalzoomfocusPASS.",
+    "R5": "Current exactbf6 all15uniqueapplicablecontextsPASS,configuredcompiler+blockinggates,baselineunitgate,productionstandalonebuild+outputverificationPASS.",
+    "R6": "Finite support/rollback/cohort boundaries and soleC8ledgerclosure accepted; old9bb evidence27files unchanged,30originalsupportZIP nowtreeattached withlocalCRC/hash validation. Finalterminal evidence-only archive/readback pending publication work."
+  },
+  "adjacentImpactRetry": {
+    "attempt1": "Original actual first-selector TimeoutError123:153 after real authentication,0/17UIcases,PG9PASS; original artifact11446193917 and safeJSON unchanged.",
+    "attempt2": "Same immutablebf6,17/17browser+9/9PG,48+24exactsourcebindings,16realAuthpairs,2+3cleanupPASS;artifact11446444783.",
+    "rootCause": "UNKNOWN",
+    "notSourceFix": true,
+    "noFlakyOrProductCauseClaim": true,
+    "failedHistoryNotHidden": true
+  },
+  "artifacts": {
+    "payloadsActuallyReviewed": [
+      "bf6ManagerJSON",
+      "bf6ImpactAttempt1ThreeJSON",
+      "bf6ImpactAttempt2ThreeJSON"
+    ],
+    "otherFiveArtifactPayloads": "metadata-only",
+    "noScreenshotsOrRawLogsRead": true
+  },
+  "ledger": {
+    "soleClosedRow": "WF-C8-002",
+    "done": 84,
+    "total": 161,
+    "open": 77,
+    "C8Done": 6,
+    "C8Total": 11,
+    "C8RoundedPercent": 55,
+    "gatesPassed": 14,
+    "gatesTotal": 15,
+    "weightedRaw": 60.40579710144928,
+    "weightedRounded": 60,
+    "openP0P1": 73,
+    "C12": "PARTIAL, next12-boundpathplan prepared only",
+    "noOtherRowOrGateCredit": true
+  },
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "limits": [
+    "ActualOrca withALSA null proveseventprocessing/presentation,not humanlistening/pronunciation/physicaldevice.",
+    "Development browser/AT plus standaloneproductionbuild is not production-bundlebrowser/AT or productionrollout.",
+    "Current disposabledbpush plus selectedguards is not fullhistoricalmigrationreplay/productionACLcompleteness; fiveemptyRLStables no populatedisolationcredit.",
+    "Adminseededworkdays are not acceptedSTART/physicalpresence/historicaldisplaynameimmutability.",
+    "Sampled174textcontrast is not whole-siteWCAG/allhover/overlayocclusion/devicecoverage.",
+    "Olddenial,contrast,focus,semanticmatcher/startup failures andcurrentimpactfirstFAIL retained.",
+    "Binaryoriginals are locallyhash/CRCverified andGit-upload/treebound;remote binarypayloadreadback unavailable/notclaimed.",
+    "FullHRM/C12historicalstaging/load/runtimecollector/retention/signeddevice/pilot acceptance remain separate."
+  ],
+  "remainingDeliveryActions": [
+    "Publish final terminal evidence-only immutable commit without movingbf6sourcebranch; independentlyverifyreadback/preservation.",
+    "Link final proof fromsourcePR605; keepPR606 validation-only.",
+    "Separate scoped approval beforeanymerge/deploy/activation."
+  ],
+  "supportBindings": [
+    {
+      "path": "/tmp/hrm-c8-independent-source-bf6ed11-20261006.json",
+      "bytes": 15673,
+      "sha256": "770febed52a07c00cfc1ad41a69d9b89c479ee0ae5478a3fd19bde046a1ae994"
+    },
+    {
+      "path": "/tmp/hrm-c8-independent-hosted-manager-bf6-20261006.json",
+      "bytes": 17879,
+      "sha256": "64c708cfc677cc023652da1a26bc3f8f31a6bf6b414c75f4b8758a3a993a2e4e"
+    },
+    {
+      "path": "/tmp/hrm-c8-independent-impact-attempt1-negative-bf6-20261006.json",
+      "bytes": 5692,
+      "sha256": "4e85a836087119707de818afaae337cae0dab6022ed967abb87355142f56e591"
+    },
+    {
+      "path": "/tmp/hrm-c8-independent-impact-attempt2-bf6-20261006.json",
+      "bytes": 4630,
+      "sha256": "5cba4c01a77b174dced8c75e0ff59498e3fe96f869d6dd4a385963aae60321e5"
+    },
+    {
+      "path": "/tmp/hrm-c8-independent-terminal-whole-30c-20261006.json",
+      "bytes": 20229,
+      "sha256": "ef7e070b10a352a1f8a82454dd7c682a06d05ea16e1b7894b58da71441cfce49"
+    },
+    {
+      "path": "/tmp/hrm-c8-independent-source-transfer-30c-20261006.json",
+      "bytes": 71109,
+      "sha256": "a2dc4217b3b1ab1a3bd29cf1d82d23be86c5174ebe379fd10b22447c26142525"
+    },
+    {
+      "path": "/tmp/hrm-c8-independent-packet-durable-9bb70-20261006.json",
+      "bytes": 19561,
+      "sha256": "202feb5c473f8989445fdb83f49dbc4013a1713ba4d40e64d5516f95be59eba6"
+    },
+    {
+      "path": "/tmp/hrm-c8-independent-supplement-prose-prepared-20261006.json",
+      "bytes": 10489,
+      "sha256": "ef27f1e04ec27905df5e38d724031269117cc00750fc515fc1ff8a318d17360e"
+    },
+    {
+      "path": "/tmp/hrm-c8-independent-r6-prepared-ledger-20261006.json",
+      "bytes": 10724,
+      "sha256": "bcbbe1dd8bbb7fdebcc1efc392f4c3b56050068393c2fd624240de7cba478295"
+    },
+    {
+      "path": "/tmp/hrm-c8-independent-maincb5-integration-20261006.json",
+      "bytes": 5798,
+      "sha256": "37489be0c54894730dbd7784c41c5be3144dc9af9b3a8fecc37531f39b482591"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent/bf6-terminal-ci-fresh.json",
+      "bytes": 674444,
+      "sha256": "7e5983ef7571d0fecb052726abab77fcd5aa25eee38e6a52f617c2577f99a879"
+    },
+    {
+      "path": "/tmp/hrm-c8-acceptance-20261006/terminal-bf6-packet/terminal-ci-bf6.json",
+      "bytes": 93668,
+      "sha256": "945b92f59ed252a60d0a4de3e8f6d992da27b7fd650fab15eb7d2523637d029e"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent/verify-bf6-terminal.py",
+      "bytes": 11246,
+      "sha256": "06965407283bfdf51be37881ba74e8b9d06dc6bde074629b71b17cab6fa455ce"
+    },
+    {
+      "path": "/tmp/hrm-c8-acceptance-20261006/terminal-bf6-packet/README.md",
+      "bytes": 4030,
+      "sha256": "1dd9c6c4ffc9e02ab459e9c0c8d8d54b59c721c6c04ad4597b8806d203757a55"
+    }
+  ],
+  "actions": "Independent read-only metadata/source/safeJSON andown/tmpreceipts; no source,remote,tests,browserorprocessmutations.",
+  "terminalPacketProseReview": {
+    "wholeREADMERead": true,
+    "scopeAccepted": true,
+    "sourceChangeNeeded": false,
+    "evidenceCommitExecutionNotClaimed": true,
+    "firstImpactFailureAndBaselineLimitsPreserved": true,
+    "publicationReadbackPending": true
+  }
+}

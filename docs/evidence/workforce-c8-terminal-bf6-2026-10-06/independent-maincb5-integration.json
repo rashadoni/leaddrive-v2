@@ -1,0 +1,161 @@
+{
+  "schema": "independent-c8-maincb5-integration/v1",
+  "reviewedAt": "2026-10-06T21:43:23.428632+00:00",
+  "status": "NINE_PATH_MAIN_INTEGRATION_ACCEPTED_CLOSURE_DOCS_AND_SUCCESSOR_FREEZE_PENDING",
+  "testedParent": "30c4185b41d85be43a588e71d8c74c5f34e63596",
+  "incomingMain": "cb5a0453e7ead310e0515e265efee209be1c272b",
+  "incomingMainTree": "12f0faafd5071c09407a38f49dbb932564b46e9f",
+  "incomingMainParent": "251823a5b1b78818593e14be1a8ac8be47e321f4",
+  "incomingNinePathsVerifiedAgainstFreshGitHub": true,
+  "sixNoncatalogBlobsAndModesExact": true,
+  "threeCatalogsFiveAdditiveMTMKeysEach": true,
+  "allPriorHRMCatalogValuesPreserved": true,
+  "incomingDetails": [
+    {
+      "path": "messages/az.json",
+      "incomingMTMKeys": [
+        "mtmRoutesPage.awaitingBody",
+        "mtmRoutesPage.awaitingMore",
+        "mtmRoutesPage.awaitingOpen",
+        "mtmRoutesPage.awaitingStops",
+        "mtmRoutesPage.awaitingTitle"
+      ],
+      "allPriorCandidateLeavesUnchanged": true,
+      "mode": "100644"
+    },
+    {
+      "path": "messages/en.json",
+      "incomingMTMKeys": [
+        "mtmRoutesPage.awaitingBody",
+        "mtmRoutesPage.awaitingMore",
+        "mtmRoutesPage.awaitingOpen",
+        "mtmRoutesPage.awaitingStops",
+        "mtmRoutesPage.awaitingTitle"
+      ],
+      "allPriorCandidateLeavesUnchanged": true,
+      "mode": "100644"
+    },
+    {
+      "path": "messages/ru.json",
+      "incomingMTMKeys": [
+        "mtmRoutesPage.awaitingBody",
+        "mtmRoutesPage.awaitingMore",
+        "mtmRoutesPage.awaitingOpen",
+        "mtmRoutesPage.awaitingStops",
+        "mtmRoutesPage.awaitingTitle"
+      ],
+      "allPriorCandidateLeavesUnchanged": true,
+      "mode": "100644"
+    },
+    {
+      "path": "src/__tests__/mtm-location-picker-ui.test.ts",
+      "exactMainBlob": "001a8b6ace88fb64d9a3960022d46f3ea76e69ed",
+      "mode": "100644"
+    },
+    {
+      "path": "src/__tests__/mtm-routes-awaiting-publish-ui.test.ts",
+      "exactMainBlob": "10d8401ab1b7e850cf22b7c5cca7e6e674e36d45",
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/(dashboard)/mtm/routes/page.tsx",
+      "exactMainBlob": "7d4577bc74723b4f82f8fa90f8044ef45c733a49",
+      "mode": "100644"
+    },
+    {
+      "path": "src/components/mtm/location-picker-map.tsx",
+      "exactMainBlob": "bf473fbdf5f2e2dbde8508cd49079dce655b7015",
+      "mode": "100644"
+    },
+    {
+      "path": "src/components/mtm/routes-awaiting-publish.tsx",
+      "exactMainBlob": "f1fbe4386a086d3f27e8874c05ae7966b670796d",
+      "mode": "100644"
+    },
+    {
+      "path": "src/lib/mtm/routes-awaiting-publish.ts",
+      "exactMainBlob": "03ec0b008fdcba116f79cd7bff41e5ffe8e40eed",
+      "mode": "100644"
+    }
+  ],
+  "existing30cBlobsChecked": 8844,
+  "unchangedExistingBlobsModes": 8835,
+  "changedExistingPaths": [
+    "docs/workforce-c8-whole-item-acceptance-plan-2026-10-06.md",
+    "docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+    "docs/workforce-hrm-session-log.md",
+    "messages/az.json",
+    "messages/en.json",
+    "messages/ru.json",
+    "src/__tests__/mtm-location-picker-ui.test.ts",
+    "src/app/(dashboard)/mtm/routes/page.tsx",
+    "src/components/mtm/location-picker-map.tsx"
+  ],
+  "newIncomingPaths": [
+    "src/__tests__/mtm-routes-awaiting-publish-ui.test.ts",
+    "src/components/mtm/routes-awaiting-publish.tsx",
+    "src/lib/mtm/routes-awaiting-publish.ts"
+  ],
+  "explicitPendingOwnerClosureDocs": [
+    "docs/workforce-c8-whole-item-acceptance-plan-2026-10-06.md",
+    "docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+    "docs/workforce-hrm-session-log.md"
+  ],
+  "wholeWorktreeOnlyNinePathsClaim": false,
+  "runtimeTransfer": "All current Today/workbench/global shell/style/package bytes preserved from30c; incoming changes are MTM-only plus15additiveMTMkeys. No new actualAT rerun is claimed. Final successor exacttree and applicable hostedCI require separate acceptance.",
+  "ownerReports": {
+    "targetedPassed": 138,
+    "failed": 0,
+    "skipped": 0,
+    "i18nExit": 0,
+    "targetedThreeMTMFileLint": {
+      "errors": 0,
+      "warnings": 0
+    },
+    "reviewerRerun": false
+  },
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "limits": "Owner began three closure-doc edits after receiving30c whole-item acceptance; this is not evidence of a competing writer. No final closure text, canonical ledger or immutable successor tree is accepted by this incoming-only receipt.",
+  "supportBindings": [
+    {
+      "path": "/tmp/hrm-c8-30c-independent/maincb5-commit.json",
+      "bytes": 3022,
+      "sha256": "3e8e07744aa55b3db5148e219808e35c4a93f0ebf3c121a750b9f11e6a3c03b0"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent/maincb5-tree.json",
+      "bytes": 3615189,
+      "sha256": "79b5f2bffdafd1e7fbf5ddef513b1f68eefda0200af36d8e34eeaf6696cc408c"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent/maincb5-incoming.json",
+      "bytes": 5341992,
+      "sha256": "a025a2c2abc2d113351a7b6be89abab9934dc12451c70cc764901fdb122b99fe"
+    },
+    {
+      "path": "/tmp/hrm-c8-acceptance-20261006/maincb5-incoming-bindings.json",
+      "bytes": 18337,
+      "sha256": "8452d9e06513ff7e510b7a773d81abe6104528d90363f1dedbc72e6d2abfb596"
+    },
+    {
+      "path": "/tmp/hrm-c8-acceptance-20261006/maincb5-targeted-tests.json",
+      "bytes": 1898,
+      "sha256": "4375843bebb013c6f8922d0112cd4d50b7d3358e0ba163051bbc2b9dfdce203e"
+    },
+    {
+      "path": "/tmp/hrm-c8-acceptance-20261006/maincb5-static-minimized.json",
+      "bytes": 111,
+      "sha256": "018f16be55f77861be9df192785169bae6b7d2693cd495665a96721ba9f9d9e9"
+    },
+    {
+      "path": "/tmp/hrm-c8-independent-terminal-whole-30c-20261006.json",
+      "bytes": 20229,
+      "sha256": "ef7e070b10a352a1f8a82454dd7c682a06d05ea16e1b7894b58da71441cfce49"
+    }
+  ]
+}

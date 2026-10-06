@@ -1,0 +1,23 @@
+{
+  "status": "ORIGINAL_FAIL_PRESERVED",
+  "head": "bf6ed11f2bba8c93e828fb044315794b44224741",
+  "run": 37535907941,
+  "attempt": 1,
+  "job": 112516623855,
+  "artifact": 11446193917,
+  "artifactSHA256": "74b324ee8903d40e0ea1b5f24932d1f7952cef561c5aa0e1529056ad768a9a40",
+  "postgres": "PASS",
+  "browser": "FAIL",
+  "failedStage": "aggregate-en-320",
+  "safeFailureCategory": "TimeoutError",
+  "sourcePosition": {
+    "line": 123,
+    "column": 153
+  },
+  "sourceOperation": "After navigation, wait for #workforce-policy-version-query before first aggregate scenario",
+  "completedCases": 0,
+  "capturedAggregateHTTP": 0,
+  "rootCause": "UNKNOWN; no raw logs or images read",
+  "retryPlan": "One unchanged exact-head existing-job retry; do not weaken timeout/predicate or call retry a source fix",
+  "cleanup": "PASS"
+}

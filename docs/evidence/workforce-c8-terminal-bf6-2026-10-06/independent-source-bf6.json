@@ -1,0 +1,342 @@
+{
+  "schema": "independent-c8-final-successor-source/v1",
+  "reviewedAt": "2026-10-06T21:46:01.206046+00:00",
+  "status": "EXACT_BF6_SOURCE_AND_CANONICAL_C8_CLOSURE_ACCEPTED_SUCCESSOR_HOSTED_CI_PENDING",
+  "head": "bf6ed11f2bba8c93e828fb044315794b44224741",
+  "tree": "72a268a0358cfb6d60ccefa3b62b42bb2112d055",
+  "orderedParents": [
+    "9bb70b2b742deec13d225aded25a896a1393eb90",
+    "cb5a0453e7ead310e0515e265efee209be1c272b"
+  ],
+  "main": "cb5a0453e7ead310e0515e265efee209be1c272b",
+  "acceptedDependency589": "a856a9e533c4f3cec6f2313e69f5be0d5b4d4226",
+  "PR606Synthetic": {
+    "sha": "c36bd6c1348f6725f9809eab208963f0f8749aeb",
+    "parents": [
+      "cb5a0453e7ead310e0515e265efee209be1c272b",
+      "bf6ed11f2bba8c93e828fb044315794b44224741"
+    ],
+    "tree": "72a268a0358cfb6d60ccefa3b62b42bb2112d055"
+  },
+  "fullIdentity": {
+    "blobs": 8886,
+    "treeObjectsIncludingRoot": 2821,
+    "allLocalBytesModesMatchFreshRemoteTree": true,
+    "independentGitTreeRecomputation": true,
+    "deltaEntries": 24,
+    "modifiedExisting": 9,
+    "added": 15,
+    "deleted": 0,
+    "remoteTextBlobsActuallyRead": 23,
+    "newBinaryBlobPayloadRemoteReadback": false,
+    "newBinaryLocalGitSHAAndTreeIdentity": "fffc67cfd106be3a5de149989036cc0c23f40f7d"
+  },
+  "preservation": {
+    "all8871PriorBlobPathsRetained": true,
+    "unchangedPriorBlobsAndModes": 8862,
+    "old9bbEvidence27FilesByteIdentity": true,
+    "incomingMainSixNoncatalogExact": true,
+    "incoming15MTMCatalogLeavesOnly": true,
+    "allPriorHRMCatalogLeavesPreserved": true,
+    "noC8RuntimeChangeFrom30c": true,
+    "originalRoadmapPreservedExceptSoleCanonicalC8RowAndAppend": true,
+    "sessionAndPlanAppendOnly": true,
+    "originalNegativeEvidencePreserved": true
+  },
+  "docsReview": {
+    "fiveDocsReadWholeOrExactAppendDiff": [
+      "docs/workforce-c12-next-acceptance-slice-2026-10-06.md",
+      "docs/workforce-c8-manager-today-acceptance-2026-10-06.md",
+      "docs/workforce-c8-whole-item-acceptance-plan-2026-10-06.md",
+      "docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+      "docs/workforce-hrm-session-log.md"
+    ],
+    "onlyC8_002ChangesToDONE": true,
+    "ledger": {
+      "done": 84,
+      "total": 161,
+      "open": 77,
+      "C8Done": 6,
+      "C8Total": 11,
+      "C8Rounded": 55,
+      "gates": 14,
+      "allGates": 15,
+      "weightedRaw": 60.40579710144928,
+      "weightedRounded": 60,
+      "openP0P1": 73
+    },
+    "truthBoundary": "Finite product accepted on30c/main251; newcb5 successor source is now accepted, its own hostedCI/build/browser remainsPENDING. Earlier9bb README PENDING retained historically. No wholeHRM/globalcompiler/physical/production activation claim.",
+    "nextC12": "Preparation only, recognizes existingdense/operations/eligible-roster implementations and preserves historicalmigration/load/collector/runtime limits."
+  },
+  "evidence": {
+    "publishedFourIndependentReceiptsExact": true,
+    "published30cRootTerminalExact": true,
+    "supportArchive31Members30OriginalsNowTreeAttached": true,
+    "supportArchivePreviouslyIndependentCRCOriginalHashVerified": true,
+    "noBinaryRoundtripClaim": true,
+    "archivalScope": "New raw support originals cover30 explicitly bound previouslylocal files; do not claim everyfuture review/checkpoint or the newbf6 verdict is already archived."
+  },
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "remaining": [
+    "Fresh exactbf6 mandatory/applicable Actions metadata,production build and current ManagerToday evidence must be independently accepted.",
+    "Final durable terminal checkpoint after current-head acceptance.",
+    "Separate scoped merge/deploy/activation approval; do not merge validation-onlyPR606 or duplicateacceptedPR589diff."
+  ],
+  "supportBindings": [
+    {
+      "path": "/tmp/hrm-c8-30c-independent/final-bf6-commit.json",
+      "bytes": 1653,
+      "sha256": "c81ba6a3867bbaaf6350c4b316f96e95cd8c1180be3845819e1caea5738e052e"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent/final-bf6-tree.json",
+      "bytes": 3669150,
+      "sha256": "50717adf270c4620fc86121c7605986b6a5e9b6223e84b3fc368f4ddf00cd88f"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent/final-bf6-main.json",
+      "bytes": 381,
+      "sha256": "0110b6d11ca8221515e8980ab0424b1287afe258faf010534b69b9a3691d1ed8"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent/final-bf6-pr605.json",
+      "bytes": 41197,
+      "sha256": "1bf7074911ac23e5cef76d9d50c774bc3f63bc9399a7d3dd37709586db4a113e"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent/final-bf6-pr606.json",
+      "bytes": 20441,
+      "sha256": "6ffef0b157c030d5c6ab442f4667ffe1cd1396ce6451ef55ea2a72c94ba259bb"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent/final-bf6-synthetic.json",
+      "bytes": 2846,
+      "sha256": "e207ffc740d127332accc4aa9c6931b59dd71694f71dcb4e431002daf2695d11"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent/final-bf6-delta-readback.json",
+      "bytes": 8358891,
+      "sha256": "0f156740dd0ac5939c2bd4bf6772592843e861065fe784905c0856afe703d227"
+    },
+    {
+      "path": "/tmp/hrm-c8-independent-maincb5-integration-20261006.json",
+      "bytes": 5798,
+      "sha256": "37489be0c54894730dbd7784c41c5be3144dc9af9b3a8fecc37531f39b482591"
+    },
+    {
+      "path": "/tmp/hrm-c8-independent-terminal-whole-30c-20261006.json",
+      "bytes": 20229,
+      "sha256": "ef7e070b10a352a1f8a82454dd7c682a06d05ea16e1b7894b58da71441cfce49"
+    },
+    {
+      "path": "/tmp/hrm-c8-independent-supplement-prose-prepared-20261006.json",
+      "bytes": 10489,
+      "sha256": "ef27f1e04ec27905df5e38d724031269117cc00750fc515fc1ff8a318d17360e"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent/verify-final-bf6.py",
+      "bytes": 8838,
+      "sha256": "094995a1d8e9ff18a562fd440bda6ed1e4c26bbc99dc646dc5358f180ebaeb3c"
+    }
+  ],
+  "deltaBindings": [
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/docs/evidence/workforce-c8-whole-item-2026-10-06/independent-packet-durable-9bb70.json",
+      "bytes": 19561,
+      "sha256": "202feb5c473f8989445fdb83f49dbc4013a1713ba4d40e64d5516f95be59eba6",
+      "repositoryPath": "docs/evidence/workforce-c8-whole-item-2026-10-06/independent-packet-durable-9bb70.json",
+      "gitBlob": "2ee182e4771466de8247b99e3910ec3b1ab88edc",
+      "mode": "100644"
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/docs/evidence/workforce-c8-whole-item-2026-10-06/independent-r6-prepared-ledger.json",
+      "bytes": 10724,
+      "sha256": "bcbbe1dd8bbb7fdebcc1efc392f4c3b56050068393c2fd624240de7cba478295",
+      "repositoryPath": "docs/evidence/workforce-c8-whole-item-2026-10-06/independent-r6-prepared-ledger.json",
+      "gitBlob": "78ae3b8172e4af3fbd49abda961cc4f18ee8f378",
+      "mode": "100644"
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/docs/evidence/workforce-c8-whole-item-2026-10-06/independent-supplement-prose-prepared.json",
+      "bytes": 10489,
+      "sha256": "ef27f1e04ec27905df5e38d724031269117cc00750fc515fc1ff8a318d17360e",
+      "repositoryPath": "docs/evidence/workforce-c8-whole-item-2026-10-06/independent-supplement-prose-prepared.json",
+      "gitBlob": "a47e57e3da4421efcbd9fbe7ae8bf5fedbd67d77",
+      "mode": "100644"
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/docs/evidence/workforce-c8-whole-item-2026-10-06/independent-support-originals.zip",
+      "bytes": 6774505,
+      "sha256": "e00d981cb5180a980465e1dd57a5f048bae34d302511b3d531d7b44346a2ba84",
+      "repositoryPath": "docs/evidence/workforce-c8-whole-item-2026-10-06/independent-support-originals.zip",
+      "gitBlob": "fffc67cfd106be3a5de149989036cc0c23f40f7d",
+      "mode": "100644"
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/docs/evidence/workforce-c8-whole-item-2026-10-06/independent-support-summary.json",
+      "bytes": 504,
+      "sha256": "fbe2d23502b9ba63014cff72bef8996aec74f853498314551ad9e7b2002af106",
+      "repositoryPath": "docs/evidence/workforce-c8-whole-item-2026-10-06/independent-support-summary.json",
+      "gitBlob": "6522c1e93d7eb64d9f4522cdedfaec72a9becf6d",
+      "mode": "100644"
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/docs/evidence/workforce-c8-whole-item-2026-10-06/independent-terminal-whole-30c.json",
+      "bytes": 20229,
+      "sha256": "ef7e070b10a352a1f8a82454dd7c682a06d05ea16e1b7894b58da71441cfce49",
+      "repositoryPath": "docs/evidence/workforce-c8-whole-item-2026-10-06/independent-terminal-whole-30c.json",
+      "gitBlob": "630a33cc3f0ff54d9301c2a6f4d2be84f11a4293",
+      "mode": "100644"
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/docs/evidence/workforce-c8-whole-item-2026-10-06/maincb5-integration-source-proof.json",
+      "bytes": 2028,
+      "sha256": "9f3ceb4e55213dc7728dbaffd2051894db8e9562c8bb2bf187b86a8e782f9659",
+      "repositoryPath": "docs/evidence/workforce-c8-whole-item-2026-10-06/maincb5-integration-source-proof.json",
+      "gitBlob": "215fee2b11258e8a4e4ae963c8675904cf4a3395",
+      "mode": "100644"
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/docs/evidence/workforce-c8-whole-item-2026-10-06/maincb5-static-minimized.json",
+      "bytes": 111,
+      "sha256": "018f16be55f77861be9df192785169bae6b7d2693cd495665a96721ba9f9d9e9",
+      "repositoryPath": "docs/evidence/workforce-c8-whole-item-2026-10-06/maincb5-static-minimized.json",
+      "gitBlob": "b0b1ff8205bb99fadd8c4e8ba76a8240eebf7609",
+      "mode": "100644"
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/docs/evidence/workforce-c8-whole-item-2026-10-06/maincb5-targeted-tests.json",
+      "bytes": 1898,
+      "sha256": "4375843bebb013c6f8922d0112cd4d50b7d3358e0ba163051bbc2b9dfdce203e",
+      "repositoryPath": "docs/evidence/workforce-c8-whole-item-2026-10-06/maincb5-targeted-tests.json",
+      "gitBlob": "cc7b1c32d8949228e53a08d6e823f330e033ad88",
+      "mode": "100644"
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/docs/evidence/workforce-c8-whole-item-2026-10-06/terminal-ci-30c.json",
+      "bytes": 546381,
+      "sha256": "a4d4282e29d1a155e9de1414684079e38b5fe92e4dc3295f3e5aff6a45515584",
+      "repositoryPath": "docs/evidence/workforce-c8-whole-item-2026-10-06/terminal-ci-30c.json",
+      "gitBlob": "9e69c1261980d39b4f74b76cb53ca7492b56abeb",
+      "mode": "100644"
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/docs/workforce-c12-next-acceptance-slice-2026-10-06.md",
+      "bytes": 2473,
+      "sha256": "fcf58cb3d054d195f2e924263a788fba22a170879b7cc087ce0668281b53b6f7",
+      "repositoryPath": "docs/workforce-c12-next-acceptance-slice-2026-10-06.md",
+      "gitBlob": "09f16a942c59883252a0bbdb665eeb853d302c59",
+      "mode": "100644"
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/docs/workforce-c8-manager-today-acceptance-2026-10-06.md",
+      "bytes": 6288,
+      "sha256": "75364d9b16291c8e7a9e5bc501e29d16248a6ecaeba966f91dce090b462594f8",
+      "repositoryPath": "docs/workforce-c8-manager-today-acceptance-2026-10-06.md",
+      "gitBlob": "30291e2cc13225b422020172659621f1ee953642",
+      "mode": "100644"
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/docs/workforce-c8-whole-item-acceptance-plan-2026-10-06.md",
+      "bytes": 4543,
+      "sha256": "b25ed39a3944f05a60ef88930d381c82ce0469cae80b15c96c657462b7372da0",
+      "repositoryPath": "docs/workforce-c8-whole-item-acceptance-plan-2026-10-06.md",
+      "gitBlob": "10281aa702e1ac3bdca5f911b5d911eb61fd51fd",
+      "mode": "100644"
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+      "bytes": 1164557,
+      "sha256": "0ebfc636d6ab6f53ce07e7dfc51af139e1f52eefeb6a2bb1b7e02082db821f34",
+      "repositoryPath": "docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+      "gitBlob": "5136be802381014efdd6ec18d786d999aa7bb58c",
+      "mode": "100644"
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/docs/workforce-hrm-session-log.md",
+      "bytes": 1153675,
+      "sha256": "aeabb561473405a1fd384f47267d245c8c424162637856718cb90b869418c31e",
+      "repositoryPath": "docs/workforce-hrm-session-log.md",
+      "gitBlob": "a1e2a3c9f4511ead1d5e9d54950678b2606fa002",
+      "mode": "100644"
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/messages/az.json",
+      "bytes": 1492630,
+      "sha256": "0bc97084c19b8e67994b109cfbe18a96986338b71acb2fbb7b17364e7acc518f",
+      "repositoryPath": "messages/az.json",
+      "gitBlob": "34dd30d4efe7f63f46246fc388b57ae9a2eed460",
+      "mode": "100644"
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/messages/en.json",
+      "bytes": 1349444,
+      "sha256": "6e95dcd00ce3af9c8f8fa8a7b21b72b9f003dc5c88e98bc93b977abde35f0f1c",
+      "repositoryPath": "messages/en.json",
+      "gitBlob": "36dbd21e74834d55552236cad996fb52370a8a4b",
+      "mode": "100644"
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/messages/ru.json",
+      "bytes": 1992396,
+      "sha256": "f3b0cd56656d3947ae2c59ce67e649684f29cab01c347e5ebcacc6de739ca512",
+      "repositoryPath": "messages/ru.json",
+      "gitBlob": "a552850a70852ca906f8cb0da76e68490d9076e0",
+      "mode": "100644"
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/src/__tests__/mtm-location-picker-ui.test.ts",
+      "bytes": 20101,
+      "sha256": "cc2f755b6cc05e8436a6fd3a17c92f65a15ced316299bf855ea27f48d4b3cd4a",
+      "repositoryPath": "src/__tests__/mtm-location-picker-ui.test.ts",
+      "gitBlob": "001a8b6ace88fb64d9a3960022d46f3ea76e69ed",
+      "mode": "100644"
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/src/__tests__/mtm-routes-awaiting-publish-ui.test.ts",
+      "bytes": 5838,
+      "sha256": "48a8e53c3ccd8d4b5f3deba1a553627221dc2632498aae1d05d738ec7354b486",
+      "repositoryPath": "src/__tests__/mtm-routes-awaiting-publish-ui.test.ts",
+      "gitBlob": "10d8401ab1b7e850cf22b7c5cca7e6e674e36d45",
+      "mode": "100644"
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/src/app/(dashboard)/mtm/routes/page.tsx",
+      "bytes": 72200,
+      "sha256": "4e1b549af81732eb38f1b942e87573670fbc5a656ab1e74c8f941a7d96e83e35",
+      "repositoryPath": "src/app/(dashboard)/mtm/routes/page.tsx",
+      "gitBlob": "7d4577bc74723b4f82f8fa90f8044ef45c733a49",
+      "mode": "100644"
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/src/components/mtm/location-picker-map.tsx",
+      "bytes": 18469,
+      "sha256": "78badf152d50bde59523aa1d2bd14742ec75025dec1291bbe021447182b1d1f7",
+      "repositoryPath": "src/components/mtm/location-picker-map.tsx",
+      "gitBlob": "bf473fbdf5f2e2dbde8508cd49079dce655b7015",
+      "mode": "100644"
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/src/components/mtm/routes-awaiting-publish.tsx",
+      "bytes": 3501,
+      "sha256": "a93027cd071343066f3532dc7fb0ea274a4d1b0ad776df52a0479513855119c8",
+      "repositoryPath": "src/components/mtm/routes-awaiting-publish.tsx",
+      "gitBlob": "f1fbe4386a086d3f27e8874c05ae7966b670796d",
+      "mode": "100644"
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/src/lib/mtm/routes-awaiting-publish.ts",
+      "bytes": 1542,
+      "sha256": "1a60ec02cafac914e59b013720cb9ea955c102f438d62d007d6bc672af367b1a",
+      "repositoryPath": "src/lib/mtm/routes-awaiting-publish.ts",
+      "gitBlob": "03ec0b008fdcba116f79cd7bff41e5ffe8e40eed",
+      "mode": "100644"
+    }
+  ],
+  "inspection": "Read-only source/remote metadata and blobs, own/tmp verification; no tests/process/runtime/remote mutation or logs/screenshots."
+}

@@ -1,0 +1,283 @@
+{
+  "status": "FAIL",
+  "stage": "aggregate-en-320",
+  "failure": {
+    "stage": "aggregate-en-320",
+    "name": "TimeoutError",
+    "sourcePosition": {
+      "line": 123,
+      "column": 153
+    },
+    "diagnostic": "Original failure retained as fixed category/position; no raw stack, error, response, SQL, private IDs, credentials, tokens or cookies"
+  },
+  "cases": [],
+  "requiredCases": 17,
+  "sessions": [
+    {
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "realPrincipalAndTenant": true
+    }
+  ],
+  "http": [],
+  "workforceRequests": {
+    "count": 0,
+    "allGet": true
+  },
+  "cleanup": [
+    {
+      "action": "scoped-row-absence-and-both-named-guards-restored",
+      "status": "PASS"
+    },
+    {
+      "action": "owner-disconnect",
+      "status": "PASS"
+    }
+  ],
+  "sourceBindings": [
+    {
+      "path": "scripts/workforce-policy-employee-impact-browser-evidence.mjs",
+      "bytes": 34857,
+      "sha256": "0a00004c6479e05226fe282175cabda121f42e7ca20dbb3aaa2b2b273aac8967"
+    },
+    {
+      "path": "scripts/_rls.mjs",
+      "bytes": 2250,
+      "sha256": "fae67dd4467cfd14667236a570ee4884100d8236496f64e31984305146ad7266"
+    },
+    {
+      "path": ".github/workflows/workforce-policy-employee-impact-evidence.yml",
+      "bytes": 9998,
+      "sha256": "566ae108c5369e63ad6c3f8a939ac8137a7f6d37ea6ca13c1bc4f190b94ec733"
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-policy-employee-impact.sql",
+      "bytes": 1739,
+      "sha256": "8f3ee314c6fa1ff90572941eeba4925cae9a4499e085990077b94b56eeb4b190"
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-manager-today-browser.sql",
+      "bytes": 33617,
+      "sha256": "448d08b65048f3692145d1d2d73d1f4b2f5973363172dddb959b4c9daf20a4fb"
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-policy-version-browser.sql",
+      "bytes": 4634,
+      "sha256": "8f97329849dbb6d06181fed07ca9df50c4f2bcd202956861be53f610989765cb"
+    },
+    {
+      "path": "src/lib/workforce/policy-employee-impact-preview.ts",
+      "bytes": 10533,
+      "sha256": "8ae3f76f1355f6322d0c9cf2388a70751682b088f5ded4e6ca0a24c17035a346"
+    },
+    {
+      "path": "src/lib/workforce/policy-employee-impact-read.ts",
+      "bytes": 5300,
+      "sha256": "f4796d8fd26f5d045c69ff0b108a8ee0859419ad8de20e29a259ea46afda8601"
+    },
+    {
+      "path": "src/lib/workforce/policy-employee-impact-receipt.ts",
+      "bytes": 7629,
+      "sha256": "63c6bf4a2e999694dbe26cac4e59badb7cdf561597b27874b2152a55cb9aaac1"
+    },
+    {
+      "path": "src/components/workforce/workforce-policy-employee-impact-preview.tsx",
+      "bytes": 6398,
+      "sha256": "ef63fe17947f9381f3c4dd7d9a3d798b1d6118ff6a7aea7574b679535ae0c31d"
+    },
+    {
+      "path": "src/components/workforce/workforce-policy-version-comparison.tsx",
+      "bytes": 16003,
+      "sha256": "52272ba626f24dad98051cbb8df052e40c586a78162aafa912125b1d852f9d60"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/policies/[id]/employee-impact/route.ts",
+      "bytes": 2947,
+      "sha256": "d20b0f214cfbd8b388298359268941e83b6c8ad9b859e6fb33c99860edb4b2a0"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/policies/search/route.ts",
+      "bytes": 1753,
+      "sha256": "d88f101dd55588d5f39edfa7ece192211e710a179b1360b04d1811d7abe6f1f9"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/policies/compare/route.ts",
+      "bytes": 2794,
+      "sha256": "9bacf8bc38287bd8a061bedf60b70733fcc623f22a59d434d306462ba7788461"
+    },
+    {
+      "path": "src/lib/workforce/policy-definition.ts",
+      "bytes": 3207,
+      "sha256": "da7a0767861a80180e6d6183fdd78f9457b8815d67c1eac04459d68f3f96eb40"
+    },
+    {
+      "path": "src/lib/workforce/policy-resolution.ts",
+      "bytes": 7415,
+      "sha256": "e552b0c255e589057fd81fd519a78458f15d6ee1a2371e43a68c1e99695accfb"
+    },
+    {
+      "path": "src/lib/workforce/policy-future-window-preview.ts",
+      "bytes": 5799,
+      "sha256": "13c480618ca3ba91837e8cd87f2111fb9723080bc5dd53971b023e52b4839483"
+    },
+    {
+      "path": "src/lib/with-workforce-rls-auth.ts",
+      "bytes": 21653,
+      "sha256": "289aa253b4d8d3a25913136a545db598bf1a01c9b571b6c89e2689da2fe6d8ff"
+    },
+    {
+      "path": "src/lib/auth.ts",
+      "bytes": 26606,
+      "sha256": "a0cd1185fe0db3b543998dacbf815322c84010a75f539fc6d9631679a32907bd"
+    },
+    {
+      "path": "src/lib/api-auth.ts",
+      "bytes": 25973,
+      "sha256": "1bd273786679f9b59718a4eec9314f51ae19efcddd6455cae8d562d88d1c8f84"
+    },
+    {
+      "path": "src/lib/workforce/sensitive-response.ts",
+      "bytes": 553,
+      "sha256": "4c11bbe1d33bbba582ec7ac18ecd1a650494bfb86896d1ddb23bd359cf790471"
+    },
+    {
+      "path": "src/lib/workforce/sensitive-operation-log.ts",
+      "bytes": 4396,
+      "sha256": "808c955586869d7005fdb60f76cd25b03106937e15778aef7056375f9e93d89b"
+    },
+    {
+      "path": "src/lib/rls-context.ts",
+      "bytes": 5099,
+      "sha256": "3ca4e34c3d94ba361fc2452b56f2b9a500b7487ee2402d436bc476786e3a53fd"
+    },
+    {
+      "path": "src/lib/prisma.ts",
+      "bytes": 14015,
+      "sha256": "e13b0a9561945eef531b4dbabc9193bb5b6fbcfc3297dfce54fbf219ee3275a1"
+    },
+    {
+      "path": "src/lib/rate-limit.ts",
+      "bytes": 4011,
+      "sha256": "71fb22a8831b4a01a0ad46a9af7e6660ea70caf5a8ae0c63158170fd6ff797ac"
+    },
+    {
+      "path": "src/proxy.ts",
+      "bytes": 49648,
+      "sha256": "dfd16dc4284f5b6d02bbfc9165c5b37d5849012298c52e1e303306e6d4c4b1d8"
+    },
+    {
+      "path": "src/lib/with-rls.ts",
+      "bytes": 10390,
+      "sha256": "533dfc91f795970fe7abaf1aedc37e7ea82d175257b33a0d84c864e791618e38"
+    },
+    {
+      "path": "src/components/providers.tsx",
+      "bytes": 1890,
+      "sha256": "3d82c0cf34677754f2e4d80e0978d2583bded1daa1d476ba59f2e0524242526d"
+    },
+    {
+      "path": "src/components/ui/button.tsx",
+      "bytes": 2099,
+      "sha256": "2d401bc2999487316df2b5319e28bd3fb5077cb0f625e272ca9a4bf100e6771a"
+    },
+    {
+      "path": "src/components/ui/input.tsx",
+      "bytes": 833,
+      "sha256": "f114d3bfb7b66f7ae843119f34bd32b91bf2f9a2fcf6123c962038f98cadee90"
+    },
+    {
+      "path": "src/components/ui/select.tsx",
+      "bytes": 1025,
+      "sha256": "9289ce86e4ea159cf5a12a5ae5a51ed3798e9cf041eb584fad40c242be119f9c"
+    },
+    {
+      "path": "src/components/workforce/workforce-policy-restore-draft.tsx",
+      "bytes": 11062,
+      "sha256": "db72dd17f27c517cd7697c99e585d6d5353f06d23ca05119bb2a05a61f1566af"
+    },
+    {
+      "path": "src/components/workforce/workforce-policy-future-window-preview.tsx",
+      "bytes": 8629,
+      "sha256": "678c2fffa97096748c56c25a015a9032f331a31a90bfa4852a065aed07f49cbc"
+    },
+    {
+      "path": "src/app/(dashboard)/workforce/configuration/policy-versions/page.tsx",
+      "bytes": 223,
+      "sha256": "1a3dde6eda05b7af914455f9c08e1c5ce6e10975b0373d54b442c0298f9b779f"
+    },
+    {
+      "path": "src/app/(dashboard)/layout.tsx",
+      "bytes": 13392,
+      "sha256": "be2ef432d60a19e8ea930becd30894b76c7bda5875a81246a95cb4cdfe4b6e3f"
+    },
+    {
+      "path": "src/lib/timezone.ts",
+      "bytes": 12919,
+      "sha256": "88761f7c31ff4d596f1b0a0c1aa198c5c70a3d2ac4d494818728884cb5b75247"
+    },
+    {
+      "path": "src/lib/mtm-settings.ts",
+      "bytes": 11570,
+      "sha256": "cc3b23855cfaf3354b40ad22bd2ee88cf97764b1ae4db3ea6b8c7b5aac15285c"
+    },
+    {
+      "path": "src/lib/mtm/mobile-week.ts",
+      "bytes": 4180,
+      "sha256": "6f557666c7e17161e914696f4d7891ebac9ec2845da4de6e4de9c5b1db864d96"
+    },
+    {
+      "path": "messages/en.json",
+      "bytes": 1349444,
+      "sha256": "6e95dcd00ce3af9c8f8fa8a7b21b72b9f003dc5c88e98bc93b977abde35f0f1c"
+    },
+    {
+      "path": "messages/ru.json",
+      "bytes": 1992396,
+      "sha256": "f3b0cd56656d3947ae2c59ce67e649684f29cab01c347e5ebcacc6de739ca512"
+    },
+    {
+      "path": "messages/az.json",
+      "bytes": 1492630,
+      "sha256": "0bc97084c19b8e67994b109cfbe18a96986338b71acb2fbb7b17364e7acc518f"
+    },
+    {
+      "path": "prisma/schema.prisma",
+      "bytes": 958771,
+      "sha256": "fd2e0a5b835669dafa736943fd9e5ee403a81dd0dd28d127e895e1f19232eae7"
+    },
+    {
+      "path": "package.json",
+      "bytes": 4935,
+      "sha256": "a813b2f20f55afcdd2b5c73b00a4c5d242b1525bd8c8824aa12a56f4f8c892cf"
+    },
+    {
+      "path": "package-lock.json",
+      "bytes": 707003,
+      "sha256": "54c9be2264ef8e1ec5f8b0d9c545ba868c24de938ee0cf3734f4c475e62c816f"
+    },
+    {
+      "path": "prisma/migrations/20260828223000_workforce_h3_foundation/migration.sql",
+      "bytes": 48914,
+      "sha256": "fe87338c7318fd0e713223af6905e5d1e7ca9794260fdbeb48e32d521b46681a"
+    },
+    {
+      "path": "prisma/migrations/20260829114500_workforce_future_only_lifecycle/migration.sql",
+      "bytes": 7060,
+      "sha256": "72cbac29ad2b1139672fb235b7a18d42bb4cd98c4e636180c4a3f8ea373a9c67"
+    },
+    {
+      "path": "prisma/migrations/20260829140000_workforce_system_provisioning_defaults/migration.sql",
+      "bytes": 4868,
+      "sha256": "7874b9e2a37396268c593b3b157b386a8ae90fc6f39c0967e4cfd735cd2fff45"
+    },
+    {
+      "path": "prisma/migrations/20260830130000_workforce_employee_team_membership_history/migration.sql",
+      "bytes": 15814,
+      "sha256": "bbc3b8477ca1f6ef62a14c2f83a80b59344fdb1bf3fbf31f468aff385c2166a3"
+    }
+  ],
+  "candidateHead": "bf6ed11f2bba8c93e828fb044315794b44224741",
+  "checkedMergeSha": "c36bd6c1348f6725f9809eab208963f0f8749aeb",
+  "completedAt": "2026-10-06T21:50:45.799Z",
+  "boundary": "Disposable hosted Chromium, real credentials/session/authorized aggregate GET. Current ACTIVE directory all roles, recorded membership only, no employee identities/full definition. Explicit what-if is not future employment eligibility or activation guarantee. Controlled transport loss/corruption and native AuthJS notification are fixture drivers distinct from server/auth mocks or end-user tenant switching. Owner setup/status replacements/guard-disabled scoped cleanup are fixture maintenance, not canonical writers. Bounded native controls/geometry are not full WCAG, pixel occlusion, human AT, native zoom, Android, load or production feature/activation/pilot acceptance."
+}

@@ -1,0 +1,25 @@
+{
+  "head": "bf6ed11f2bba8c93e828fb044315794b44224741",
+  "tree": "72a268a0358cfb6d60ccefa3b62b42bb2112d055",
+  "parents": [
+    "9bb70b2b742deec13d225aded25a896a1393eb90",
+    "cb5a0453e7ead310e0515e265efee209be1c272b"
+  ],
+  "baseOwn": "30c4185b41d85be43a588e71d8c74c5f34e63596",
+  "freshMainAtPush": "cb5a0453e7ead310e0515e265efee209be1c272b",
+  "accepted589": "a856a9e533c4f3cec6f2313e69f5be0d5b4d4226",
+  "fullTreeBlobsVerified": 8886,
+  "deltaFromArchive9bb": 24,
+  "newUTF8ReadbacksExact": 23,
+  "binaryNewSupport": "uploadSHA and tree membership; no remote payload readback",
+  "CASPush": "success",
+  "ledger": {
+    "total": 161,
+    "done": 84,
+    "c8Done": 6,
+    "openP0P1": 73
+  },
+  "gates": 14,
+  "weightedRaw": 60.40579710144928,
+  "hostedChecks": "PENDING_AT_PUBLICATION"
+}
