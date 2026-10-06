@@ -13264,6 +13264,8 @@
     "inlineAssignmentLoadFailed": "Mövcud qeydləri yükləmək alınmadı. Yenidən cəhd edin.",
     "inlineAssignmentNoResults": "Bu axtarışla təyin edilə bilən qeyd tapılmadı.",
     "inlineAssignmentOwnedBy": "Hazırda {agent}-dədir",
+    "inlineAssignmentSharedWith": "İndi «{agent}» adlı əməkdaşdadır — o qalır, bu əməkdaş ona əlavə olunacaq",
+    "inlineAssignmentShareAction": "Təyin et və marşruta əlavə et",
     "inlineAssignmentUnassigned": "Hələ heç kimə təyin edilməyib",
     "inlineAssignmentAddAction": "Təyin et və marşruta əlavə et",
     "inlineAssignmentTransferAction": "Köçür və marşruta əlavə et",

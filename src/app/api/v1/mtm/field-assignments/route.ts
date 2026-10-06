@@ -258,6 +258,35 @@ export const PUT = withRouteFieldRlsAuth("write", async (req, auth) => {
       })
       if (existing?.effectiveTo) throw new Error("ASSIGNMENT_OVERLAP")
       if (existing && existing.effectiveFrom > effectiveFrom) throw new Error("FUTURE_PRIMARY_CONFLICT")
+      if (body.keepOthers) {
+        // The route builder puts a client of another employee into this
+        // employee's route. Until 2026-10-06 that TRANSFERRED the client; now
+        // the employee is attached beside the one the client has.
+        if (existing) return existing
+        const responsible = await tx.mtmContactAgentAssignment.findFirst({
+          where: {
+            organizationId: auth.orgId,
+            contactId: body.subjectId,
+            role: "PRIMARY",
+            deletedAt: null,
+            ...overlapWindow,
+          },
+          select: { id: true },
+        })
+        return tx.mtmContactAgentAssignment.create({
+          data: {
+            organizationId: auth.orgId,
+            contactId: body.subjectId,
+            agentId: body.agentId,
+            role: responsible ? "SECONDARY" : "PRIMARY",
+            effectiveFrom,
+            effectiveTo,
+            source: "ADMIN",
+            assignedBy: auth.userId || null,
+            reason: body.reason ?? null,
+          },
+        })
+      }
       if ((body.role ?? "PRIMARY") === "PRIMARY") {
         const currentPrimary = await tx.mtmContactAgentAssignment.findFirst({
           where: {

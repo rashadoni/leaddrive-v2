@@ -13268,6 +13268,8 @@
     "inlineAssignmentLoadFailed": "Не удалось загрузить существующие записи. Повторите попытку.",
     "inlineAssignmentNoResults": "По этому запросу нет записи, которую можно назначить.",
     "inlineAssignmentOwnedBy": "Сейчас назначен(а) «{agent}»",
+    "inlineAssignmentSharedWith": "Сейчас у «{agent}» — он остаётся, этот сотрудник добавится к нему",
+    "inlineAssignmentShareAction": "Привязать и добавить в маршрут",
     "inlineAssignmentUnassigned": "Пока ни за кем не закреплён(а)",
     "inlineAssignmentAddAction": "Назначить и добавить в маршрут",
     "inlineAssignmentTransferAction": "Передать и добавить в маршрут",

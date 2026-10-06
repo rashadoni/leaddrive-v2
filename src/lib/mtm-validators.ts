@@ -358,6 +358,11 @@ export const FieldAssignmentUpsertSchema = z.object({
   // organization catalogue. It prevents a stale mobile result from silently
   // transferring a customer that another manager has since assigned.
   requireUnassigned: z.boolean().optional(),
+  // A client may have several employees (owner, 2026-10-06). With this the
+  // server attaches the employee BESIDE whoever the client already has —
+  // responsible if there is nobody, one more otherwise — and ends nobody's
+  // assignment. Clients only; `role` is then decided by the server.
+  keepOthers: z.boolean().optional(),
 }).superRefine((value, ctx) => {
   if (value.effectiveFrom && value.effectiveTo && value.effectiveFrom >= value.effectiveTo) {
     ctx.addIssue({ code: "custom", path: ["effectiveTo"], message: "effectiveTo must be later than effectiveFrom" })
