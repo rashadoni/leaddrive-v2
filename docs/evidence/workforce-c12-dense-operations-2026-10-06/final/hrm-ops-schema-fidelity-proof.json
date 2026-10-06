@@ -1,0 +1,8 @@
+{
+  "exitCode": 0,
+  "table": "CREATE TABLE \"workforce_reconciliation_tenant_states\" (\n    \"organizationId\" TEXT NOT NULL,\n    \"attemptToken\" UUID,\n    \"lastAttemptAt\" TIMESTAMP(3),\n    \"lastCompletedAt\" TIMESTAMP(3),\n    \"dueAt\" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,\n    \"consecutiveFailures\" INTEGER NOT NULL DEFAULT 0,\n    \"lastOutcome\" TEXT NOT NULL DEFAULT 'NEVER',\n    \"examinedCount\" INTEGER NOT NULL DEFAULT 0,\n    \"mismatchCount\" INTEGER NOT NULL DEFAULT 0,\n    \"durationMs\" INTEGER NOT NULL DEFAULT 0,\n    \"updatedAt\" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,\n\n    CONSTRAINT \"workforce_reconciliation_tenant_states_pkey\" PRIMARY KEY (\"organizationId\")\n);",
+  "foreignKey": "ALTER TABLE \"workforce_reconciliation_tenant_states\" ADD CONSTRAINT \"workforce_reconciliation_tenant_states_organizationId_fkey\" FOREIGN KEY (\"organizationId\") REFERENCES \"organizations\"(\"id\") ON DELETE CASCADE ON UPDATE NO ACTION;",
+  "actualMigrationUnchangedSha256": "c452e7f6d13dca1e5257d8353c252745d05cd4f18eae83cd45501f61664ef719",
+  "schemaSha256": "a2cf656923aa83241d8601b3e4577402a4ec5e5ad4cde8e302ed6e03d8156e0f",
+  "scope": "explicit Prisma NoAction and updatedAt default match already-tested SQL; Ccollation remains migration-owned"
+}

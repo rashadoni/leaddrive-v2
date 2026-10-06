@@ -1,0 +1,48 @@
+{
+  "kind": "additive_schema_fidelity_review",
+  "at": "2026-10-06T07:17:24.306430+00:00",
+  "candidate_sha": "ba2c10a9fce6164af90bd9d49d45f58fede804e0",
+  "candidate_tree": "c02d617c3c3f525970ee1003a21af1ed84bcd31d",
+  "outcome": "FINAL_ACCEPTANCE_WITHHELD_PENDING_P2_SCHEMA_ALIGNMENT",
+  "discovery": "Owner identified potential drift; independent reviewer generated complete target SQL and confirmed clauses.",
+  "verification_command": "prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script",
+  "command_exit": 0,
+  "generated_state_table": "CREATE TABLE \"workforce_reconciliation_tenant_states\" (\n    \"organizationId\" TEXT NOT NULL,\n    \"attemptToken\" UUID,\n    \"lastAttemptAt\" TIMESTAMP(3),\n    \"lastCompletedAt\" TIMESTAMP(3),\n    \"dueAt\" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,\n    \"consecutiveFailures\" INTEGER NOT NULL DEFAULT 0,\n    \"lastOutcome\" TEXT NOT NULL DEFAULT 'NEVER',\n    \"examinedCount\" INTEGER NOT NULL DEFAULT 0,\n    \"mismatchCount\" INTEGER NOT NULL DEFAULT 0,\n    \"durationMs\" INTEGER NOT NULL DEFAULT 0,\n    \"updatedAt\" TIMESTAMP(3) NOT NULL,\n\n    CONSTRAINT \"workforce_reconciliation_tenant_states_pkey\" PRIMARY KEY (\"organizationId\")\n);",
+  "generated_fk": "ALTER TABLE \"workforce_reconciliation_tenant_states\" ADD CONSTRAINT \"workforce_reconciliation_tenant_states_organizationId_fkey\" FOREIGN KEY (\"organizationId\") REFERENCES \"organizations\"(\"id\") ON DELETE CASCADE ON UPDATE CASCADE;",
+  "findings": [
+    {
+      "priority": "P2",
+      "id": "OPS-FK-ONUPDATE-DRIFT",
+      "prisma_target": "ON UPDATE CASCADE",
+      "actual_migration": "ON UPDATE omitted, PostgreSQL default NO ACTION",
+      "impact": "Schema comparison drift and different FK behavior if referenced organization ID changes; not exercised by prior synthetic scenarios."
+    },
+    {
+      "priority": "P2",
+      "id": "OPS-UPDATEDAT-DEFAULT-DRIFT",
+      "prisma_target": "updatedAt NOT NULL without database default",
+      "actual_migration": "updatedAt NOT NULL DEFAULT CURRENT_TIMESTAMP",
+      "impact": "Schema comparison drift; current application writes explicitly supply timestamp, but raw insert semantics differ."
+    }
+  ],
+  "recommended_alignment": "If current migration timestamp default is intentional, add Prisma @default(now()) to updatedAt; add SQL ON UPDATE CASCADE to reflect existing Prisma FK default. Explicit alternate alignment is possible if owner chooses intended semantics.",
+  "prior_evidence": "9PG/3pure/123owner tests and all source hashes remain true historical facts. Earlier no-unresolved-findings source receipt superseded by this additive finding; no full schema-equivalence or production acceptance claimed.",
+  "intentional_differences": "C-index collations, FORCE RLS and database CHECK constraints remain intentional SQL-only semantics.",
+  "supports": [
+    {
+      "path": "/tmp/hrm-ops-independent-generated-target-20261006.sql",
+      "bytes": 913339,
+      "sha256": "553023535eafea4dd538be11eda26848bb3819ffee20efa951bf2d2612a81530"
+    },
+    {
+      "path": "/workspace/hrm-ops-draft/prisma/migrations/20261005193000_workforce_reconciliation_operations/migration.sql",
+      "bytes": 2721,
+      "sha256": "c452e7f6d13dca1e5257d8353c252745d05cd4f18eae83cd45501f61664ef719"
+    },
+    {
+      "path": "/workspace/hrm-ops-draft/prisma/schema.prisma",
+      "bytes": 958605,
+      "sha256": "a2cf656923aa83241d8601b3e4577402a4ec5e5ad4cde8e302ed6e03d8156e0f"
+    }
+  ]
+}

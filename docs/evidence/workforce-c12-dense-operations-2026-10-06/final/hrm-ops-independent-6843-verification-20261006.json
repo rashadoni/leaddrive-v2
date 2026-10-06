@@ -1,0 +1,15 @@
+{
+  "candidate_blobs_verified": 8749,
+  "delta_vs_ba2c": [
+    "prisma/schema.prisma"
+  ],
+  "candidate_tree": "7db4fc853549936bd773581aabd3c02fa3ddf7e4",
+  "expected_integrated_tree": "f0bea9d5f8d3fdb5e7d4f7c96a88e1f1025e78a4",
+  "mismatches": [],
+  "schema": {
+    "blob": "8828fcaec2e5a36f4d59eab5e33ca497b272b0ef",
+    "sha256": "a2cf656923aa83241d8601b3e4577402a4ec5e5ad4cde8e302ed6e03d8156e0f",
+    "bytes": 958605
+  },
+  "all15_protected_paths_unchanged": true
+}

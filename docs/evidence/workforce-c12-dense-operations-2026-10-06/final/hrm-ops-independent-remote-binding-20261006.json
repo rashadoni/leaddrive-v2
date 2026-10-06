@@ -1,0 +1,44 @@
+{
+  "repository": "rashadoni/leaddrive-v2",
+  "commit": {
+    "sha": "ba2c10a9fce6164af90bd9d49d45f58fede804e0",
+    "tree": "c02d617c3c3f525970ee1003a21af1ed84bcd31d",
+    "parents": [
+      "0a40cd6922affc8c21cc07c655ad5af5df990b19"
+    ],
+    "verified_signature": false
+  },
+  "fresh_main": {
+    "sha": "0dad3e4cc2bc1704e6be5258ee5e0874418ab1d4",
+    "tree": "47755297e38198f69b4fadaee037033d8aa854d1",
+    "parents": [
+      "60ccd403fa172f2fafda31a9d4728c32933d4058",
+      "e75db22910af9d22e0ca98a64fc16a94c81b62a5"
+    ]
+  },
+  "pr591_files": [
+    {
+      "path": "docs/security/2026-08-11-pentest-remediation.md",
+      "blob": "bfad87740d510fdef962c5cb7200419cf92b011e",
+      "status": "modified"
+    },
+    {
+      "path": "src/__tests__/api-mtm-misc.test.ts",
+      "blob": "49611e28cab6dfe6552b1e8460380ef37b96620d",
+      "status": "modified"
+    },
+    {
+      "path": "src/app/api/v1/mtm/mobile/ping/route.ts",
+      "blob": "3c4cbe0f6bca290b9424cd44bb5c0cd1190ba5df",
+      "status": "modified"
+    }
+  ],
+  "pr589_initial_snapshot": {
+    "head": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+    "base_api": "60ccd403fa172f2fafda31a9d4728c32933d4058",
+    "synthetic": "d81d4f4ebf8cbbf50fd1134156b7060d0172e165",
+    "state": "open",
+    "draft": false
+  },
+  "note": "Initial PR API base was stale60ccd while actual main ref0dad; integration must use fresh ref and subsequent synthetic parents."
+}

@@ -1,0 +1,117 @@
+{
+  "kind": "independent_corrected_immutable_source_acceptance",
+  "at": "2026-10-06T07:19:53.910581+00:00",
+  "outcome": "ACCEPTED_EXACT_HEAD_BOUNDED_DORMANT_SOURCE",
+  "candidate": {
+    "sha": "6843cc24428a181cf80c57fe358a4944a9439ded",
+    "tree": "7db4fc853549936bd773581aabd3c02fa3ddf7e4",
+    "parents": [
+      "ba2c10a9fce6164af90bd9d49d45f58fede804e0"
+    ]
+  },
+  "synthetic_integration": {
+    "sha": "10e4c2b06e68262285dcf6b132364c440e94b649",
+    "tree": "f0bea9d5f8d3fdb5e7d4f7c96a88e1f1025e78a4",
+    "parents": [
+      "0dad3e4cc2bc1704e6be5258ee5e0874418ab1d4",
+      "6843cc24428a181cf80c57fe358a4944a9439ded"
+    ]
+  },
+  "verification": {
+    "candidate_blobs_verified": 8749,
+    "delta_vs_ba2c": [
+      "prisma/schema.prisma"
+    ],
+    "candidate_tree": "7db4fc853549936bd773581aabd3c02fa3ddf7e4",
+    "expected_integrated_tree": "f0bea9d5f8d3fdb5e7d4f7c96a88e1f1025e78a4",
+    "mismatches": [],
+    "schema": {
+      "blob": "8828fcaec2e5a36f4d59eab5e33ca497b272b0ef",
+      "sha256": "a2cf656923aa83241d8601b3e4577402a4ec5e5ad4cde8e302ed6e03d8156e0f",
+      "bytes": 958605
+    },
+    "all15_protected_paths_unchanged": true
+  },
+  "new_schema_delta": "Exactly two Prisma annotations in the only changed file versus ba2c: explicit NoAction FK update and updatedAt database default. Independent full target SQL generation exited 0 and changed exactly the two corresponding clauses, matching the unchanged literal SQL migration.",
+  "resolved_findings": [
+    "OPS-FK-ONUPDATE-DRIFT",
+    "OPS-UPDATEDAT-DEFAULT-DRIFT"
+  ],
+  "findings_by_severity": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "evidence_reuse": {
+    "runtime_and_test_bytes_unchanged_since_ba2c": true,
+    "actual_migration_bytes_unchanged": true,
+    "prior_independent_pg_distinct_pass": 9,
+    "prior_independent_pure_pass": 3,
+    "prior_owner_pass": 123,
+    "pg_rerun_on_successor": false,
+    "basis": "Previous PG tests applied the actual migration whose semantics are unchanged; the schema now describes that already tested SQL. New hosted CI must generate the corrected Prisma client; this is not claimed until terminal."
+  },
+  "main_integration": {
+    "fresh_main": "0dad3e4cc2bc1704e6be5258ee5e0874418ab1d4",
+    "delta_vs60ccd": "Exactly the three PR591 paths, disjoint from all 45 cumulative HRM paths.",
+    "synthetic_tree_equals_independently_recomputed_combination": true,
+    "all8749_localblobsverified": true,
+    "all15protectedpaths_preserved": true,
+    "baseline66pairs18files_unchanged": true
+  },
+  "history": "Earlier ba2c source acceptance was additively qualified by two P2 schema fidelity findings; both are resolved here. Old run outcomes remain separate from new-head CI.",
+  "pending": [
+    "Five exact-head GitHub Actions App15368 mandatory gates; six schema-triggered browser/PG workflow outcomes tracked separately.",
+    "Full historical migration api_keys P3018/42P01 blocker; production staging DDL/RLS/ACL/trigger, SLO, coverage/monitoring and activation remain open."
+  ],
+  "limits": [
+    "No raw CI logs, artifact payload or PII accessed in this metadata/source phase.",
+    "No global compiler/suite diagnostic identity or hosted new opt-in PG credit inferred.",
+    "No reviewer remote/source writes; merge/deploy/activation not authorized; C12 remains PARTIAL, 82/161 DONE, 79 open, weighted 59%."
+  ],
+  "supports": [
+    {
+      "path": "/tmp/hrm-ops-independent-6843-remote-20261006.json",
+      "bytes": 378,
+      "sha256": "771840b6883cc952a26187872f64d8cf18a9c81422b5b53005091cb7f9e94e9e",
+      "local_large_manifest": false
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-6843-verification-20261006.json",
+      "bytes": 470,
+      "sha256": "4967c14abbbdc8b0bae708d03975d9d3ea640c5b5776994a8fc59dfcd696b2f0",
+      "local_large_manifest": false
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-6843-tree-20261006.json",
+      "bytes": 1096157,
+      "sha256": "11871e672dbfd6c431f5b53d09b3e35b5acdc97339e36a2d67ad053c6af82764",
+      "local_large_manifest": true
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-schema-resolution-20261006.json",
+      "bytes": 4222,
+      "sha256": "8a575f64f1d53236f5af73154acbeb5fc6ad71897b2f5d770f78cfadea184bee",
+      "local_large_manifest": false
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-schema-drift-ba2c10a9-20261006.json",
+      "bytes": 3512,
+      "sha256": "5c033e7b08af0b5201f0cbaea54beb20f61b039308c34adc2f46c4c49baa32eb",
+      "local_large_manifest": false
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-immutable-ba2c10a9-20261006.json",
+      "bytes": 13832,
+      "sha256": "3c5f770a4e97df8940b1e60d2ba77b84f16d7b365a57143f41ee5568cd6a4744",
+      "local_large_manifest": false
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-fullschema/independent-fullschema-receipt.json",
+      "bytes": 15328,
+      "sha256": "3fdbc6b95cd33064f5c2a8ff4ee0600d702a4a9412a56d6a81103f6d465d6c2b",
+      "local_large_manifest": false
+    }
+  ]
+}

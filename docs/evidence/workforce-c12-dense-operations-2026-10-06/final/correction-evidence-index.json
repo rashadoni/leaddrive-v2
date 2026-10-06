@@ -1,0 +1,109 @@
+{
+  "candidate": "6843cc24428a181cf80c57fe358a4944a9439ded",
+  "supersedes": "ba2c10a9fce6164af90bd9d49d45f58fede804e0",
+  "readWholeReceiptsAndRehashedSupports": true,
+  "files": [
+    {
+      "originalPath": "/tmp/hrm-ops-independent-immutable-6843cc2-20261006.json",
+      "bytes": 4993,
+      "sha256": "be6613c41376c3b35ca070ef3873aca49de506d68b71b64f3f5554a6d2960afe",
+      "encoding": "identity",
+      "publishedParts": [
+        "hrm-ops-independent-immutable-6843cc2-20261006.json"
+      ]
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-independent-schema-resolution-20261006.json",
+      "bytes": 4222,
+      "sha256": "8a575f64f1d53236f5af73154acbeb5fc6ad71897b2f5d770f78cfadea184bee",
+      "encoding": "identity",
+      "publishedParts": [
+        "hrm-ops-independent-schema-resolution-20261006.json"
+      ]
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-independent-schema-drift-ba2c10a9-20261006.json",
+      "bytes": 3512,
+      "sha256": "5c033e7b08af0b5201f0cbaea54beb20f61b039308c34adc2f46c4c49baa32eb",
+      "encoding": "identity",
+      "publishedParts": [
+        "hrm-ops-independent-schema-drift-ba2c10a9-20261006.json"
+      ]
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-independent-6843-remote-20261006.json",
+      "bytes": 378,
+      "sha256": "771840b6883cc952a26187872f64d8cf18a9c81422b5b53005091cb7f9e94e9e",
+      "encoding": "identity",
+      "publishedParts": [
+        "hrm-ops-independent-6843-remote-20261006.json"
+      ]
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-independent-6843-verification-20261006.json",
+      "bytes": 470,
+      "sha256": "4967c14abbbdc8b0bae708d03975d9d3ea640c5b5776994a8fc59dfcd696b2f0",
+      "encoding": "identity",
+      "publishedParts": [
+        "hrm-ops-independent-6843-verification-20261006.json"
+      ]
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-independent-remote-binding-20261006.json",
+      "bytes": 1419,
+      "sha256": "b07f9ac5fc0718043f89a419bed8036d78b14851a2440af19035c540c95b50b2",
+      "encoding": "identity",
+      "publishedParts": [
+        "hrm-ops-independent-remote-binding-20261006.json"
+      ]
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-independent-integration-proof-20261006.json",
+      "bytes": 9374,
+      "sha256": "92c763bc8b58008867b86a11e98fe7c5b2985351559a3b2aba51f5d697555055",
+      "encoding": "identity",
+      "publishedParts": [
+        "hrm-ops-independent-integration-proof-20261006.json"
+      ]
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-schema-fidelity-proof.json",
+      "bytes": 1302,
+      "sha256": "29d7fb260e33e5ea065c3cee5d4718e79a4a69258a2989513a4d0fcdd243a808",
+      "encoding": "identity",
+      "publishedParts": [
+        "hrm-ops-schema-fidelity-proof.json"
+      ]
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-schema-fidelity-validate.txt",
+      "bytes": 96,
+      "sha256": "87ec5a1ec220f83c7901f1e5363e347ac10881a41f69cdac2b2e74f2b3ed30a6",
+      "encoding": "identity",
+      "publishedParts": [
+        "hrm-ops-schema-fidelity-validate.txt"
+      ]
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-independent-generated-target-20261006.sql",
+      "bytes": 913339,
+      "sha256": "553023535eafea4dd538be11eda26848bb3819ffee20efa951bf2d2612a81530",
+      "encoding": "base64(gzip(original))",
+      "publishedParts": [
+        "hrm-ops-independent-generated-target-20261006.sql.gz.b64.part000",
+        "hrm-ops-independent-generated-target-20261006.sql.gz.b64.part001"
+      ]
+    },
+    {
+      "originalPath": "/tmp/hrm-ops-independent-generated-target-corrected-20261006.sql",
+      "bytes": 913367,
+      "sha256": "c2babbe1ec75d51e7a654c66fe995486f1c3b6ebed320060a526c369cce68584",
+      "encoding": "base64(gzip(original))",
+      "publishedParts": [
+        "hrm-ops-independent-generated-target-corrected-20261006.sql.gz.b64.part000",
+        "hrm-ops-independent-generated-target-corrected-20261006.sql.gz.b64.part001"
+      ]
+    }
+  ],
+  "largeRemoteTreeDumps": "Bound by immutable Git commit/tree and reviewer SHA; remain local-only, unlike archived generated SQL."
+}

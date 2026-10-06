@@ -1,0 +1,65 @@
+{
+  "kind": "additive_schema_drift_resolution",
+  "at": "2026-10-06T07:18:36.083055+00:00",
+  "outcome": "RESOLVED_FOR_CORRECTED_LOCAL_BYTES_PENDING_SUCCESSOR_COMMIT",
+  "prior_head": "ba2c10a9fce6164af90bd9d49d45f58fede804e0",
+  "new_schema_sha256": "a2cf656923aa83241d8601b3e4577402a4ec5e5ad4cde8e302ed6e03d8156e0f",
+  "old_schema_sha256_reconstructed_from_only_two_edits": "f3dc692c6d0b75ebdb2f21be4e97cbdc6454f9da03b92c8bc74d249315114b7b",
+  "other_frozen_paths_unchanged": 10,
+  "actual_migration_sha256": "c452e7f6d13dca1e5257d8353c252745d05cd4f18eae83cd45501f61664ef719",
+  "actual_migration_unchanged": true,
+  "independent_generated_target_exit": 0,
+  "generated_ddl_diff": "--- ba2c_generated\n+++ corrected_generated\n@@ -12317,7 +12317,7 @@\n     \"examinedCount\" INTEGER NOT NULL DEFAULT 0,\n     \"mismatchCount\" INTEGER NOT NULL DEFAULT 0,\n     \"durationMs\" INTEGER NOT NULL DEFAULT 0,\n-    \"updatedAt\" TIMESTAMP(3) NOT NULL,\n+    \"updatedAt\" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,\n \n     CONSTRAINT \"workforce_reconciliation_tenant_states_pkey\" PRIMARY KEY (\"organizationId\")\n );\n@@ -21520,7 +21520,7 @@\n ALTER TABLE \"demo_access_events\" ADD CONSTRAINT \"demo_access_events_grantId_fkey\" FOREIGN KEY (\"grantId\") REFERENCES \"demo_grants\"(\"id\") ON DELETE CASCADE ON UPDATE CASCADE;\n \n -- AddForeignKey\n-ALTER TABLE \"workforce_reconciliation_tenant_states\" ADD CONSTRAINT \"workforce_reconciliation_tenant_states_organizationId_fkey\" FOREIGN KEY (\"organizationId\") REFERENCES \"organizations\"(\"id\") ON DELETE CASCADE ON UPDATE CASCADE;\n+ALTER TABLE \"workforce_reconciliation_tenant_states\" ADD CONSTRAINT \"workforce_reconciliation_tenant_states_organizationId_fkey\" FOREIGN KEY (\"organizationId\") REFERENCES \"organizations\"(\"id\") ON DELETE CASCADE ON UPDATE NO ACTION;\n \n -- AddForeignKey\n ALTER TABLE \"_ContractToContractTag\" ADD CONSTRAINT \"_ContractToContractTag_A_fkey\" FOREIGN KEY (\"A\") REFERENCES \"contracts\"(\"id\") ON DELETE CASCADE ON UPDATE CASCADE;\n",
+  "resolution": [
+    {
+      "id": "OPS-FK-ONUPDATE-DRIFT",
+      "status": "RESOLVED",
+      "detail": "Explicit Prisma onUpdate:NoAction generates ON UPDATE NO ACTION, matching unchanged SQL default semantics."
+    },
+    {
+      "id": "OPS-UPDATEDAT-DEFAULT-DRIFT",
+      "status": "RESOLVED",
+      "detail": "Prisma @default(now()) @updatedAt generates CURRENT_TIMESTAMP database default, matching unchanged tested SQL."
+    }
+  ],
+  "evidence_reuse": "All runtime/test/migration bytes unchanged; prior actual fullschema+literal migration9PG scenarios remain directly relevant to unchanged SQL behavior. No claim of rerunning PG or new generated client; final successor CI must generate client from corrected schema.",
+  "findings_by_severity": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "limits": "Intentional Ccollation/RLS/CHECK SQL-only semantics remain; historicalapi_keys migration blocker and staging/activation limitations unchanged.",
+  "supports": [
+    {
+      "path": "/tmp/hrm-ops-independent-generated-target-20261006.sql",
+      "bytes": 913339,
+      "sha256": "553023535eafea4dd538be11eda26848bb3819ffee20efa951bf2d2612a81530",
+      "local_large_input": false
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-generated-target-corrected-20261006.sql",
+      "bytes": 913367,
+      "sha256": "c2babbe1ec75d51e7a654c66fe995486f1c3b6ebed320060a526c369cce68584",
+      "local_large_input": false
+    },
+    {
+      "path": "/workspace/hrm-ops-draft/prisma/migrations/20261005193000_workforce_reconciliation_operations/migration.sql",
+      "bytes": 2721,
+      "sha256": "c452e7f6d13dca1e5257d8353c252745d05cd4f18eae83cd45501f61664ef719",
+      "local_large_input": false
+    },
+    {
+      "path": "/workspace/hrm-ops-draft/prisma/schema.prisma",
+      "bytes": 958605,
+      "sha256": "a2cf656923aa83241d8601b3e4577402a4ec5e5ad4cde8e302ed6e03d8156e0f",
+      "local_large_input": false
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-schema-drift-ba2c10a9-20261006.json",
+      "bytes": 3512,
+      "sha256": "5c033e7b08af0b5201f0cbaea54beb20f61b039308c34adc2f46c4c49baa32eb",
+      "local_large_input": false
+    }
+  ]
+}
