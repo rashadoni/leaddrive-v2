@@ -1,0 +1,92 @@
+{
+  "status": "PASS_SOURCE_ARCHIVE_DURABLE_HOSTED_TERMINAL_PENDING",
+  "at": "2026-10-06T11:12:04.112828+00:00",
+  "evidenceCommit": "3e3cb05343ba1bfdaeb4e4cab8b40bf3629856a7",
+  "evidenceTree": "614adbc38ce812d144e1d4816cf8a6c8bc390fa1",
+  "evidenceParent": "c3e196a14e56c16d038ff58fda036f9c9425e30e",
+  "directory": "docs/evidence/workforce-privacy-audit-2026-10-06",
+  "sourceHead": "8053702bbde2a43da537e263630f8a81ded2b659",
+  "sourceTree": "678503f2dc2a5a5d0c52d41156caee8bf100494b",
+  "main": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+  "synthetic": {
+    "sha": "e6beed0ed5f5960d427ace1678775f6473983d1e",
+    "parents": [
+      "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+      "8053702bbde2a43da537e263630f8a81ded2b659"
+    ],
+    "tree": "678503f2dc2a5a5d0c52d41156caee8bf100494b"
+  },
+  "checks": {
+    "freshCorrectConnectorReadbackFiles": 40,
+    "allUTF8BytesMatchOwnerOriginals": true,
+    "manifestOriginals": 38,
+    "allOriginalBytesLengthsSHA256AndGitBlobsMatch": true,
+    "ownerSupportsConserved": 25,
+    "independentSourceSupportsConserved": 14,
+    "explicitLocalOnlySupportCount": 1,
+    "nestedPreliminaryDeltaArchived": true,
+    "priorArchiveGitBlobPreservation": {
+      "requestLogging": 42,
+      "safeLogging": 34,
+      "eligibleRoster": 29
+    },
+    "freshSourceAndMainRefsMatch": true
+  },
+  "localOnly": [
+    {
+      "path": "/tmp/hrm-privacy-independent-remote-tree.json",
+      "sha256": "53d36ab7cf6092ecdf59cf2ec6ec2b6c4d5b59f5e7842db69bf371cad01be539",
+      "reason": "Large repository tree metadata copy; recover immutable source tree from GitHub tree678503. Independently hash-bound and verified locally, not represented as an archived file."
+    }
+  ],
+  "acceptedSourceReceipt": {
+    "path": "/tmp/hrm-privacy-independent-source-8053-20261006.json",
+    "bytes": 26639,
+    "sha256": "bb3f3e4624f059bb981b5be8ee197df4771b118df5fbf10a6a0d4904dffd80cf"
+  },
+  "readmeReview": [
+    "Whole README read; binds exact source8053/main86/synthetic e6be and tree678503.",
+    "Correctly distinguishes2307PASS/163SKIP,23production/25test compiler diagnostics and scope-qualified no findings.",
+    "Canonical statuses unchanged and whole privacy/C12 acceptance open.",
+    "Hosted checks/restore acceptance remain explicitly pending; no borrowed prior-head acceptance.",
+    "No merge/deploy/activation. Large source-tree metadata explicitly local-only, immutable source tree recoverable."
+  ],
+  "findings": [],
+  "limits": [
+    "Prior105archivefiles preservation verified by immutable Git blob identity, not repeated content-fetch/re-review.",
+    "No source, tests or CI review repeated for this durability check.",
+    "No terminal hosted acceptance in this receipt."
+  ],
+  "supports": [
+    {
+      "path": "/tmp/hrm-privacy-independent-source-archive-readback.json",
+      "bytes": 2642641,
+      "sha256": "549a239a011ddc6d46c43614db5a6156980a2b84b3a43e2e5af2fe49147681ff"
+    },
+    {
+      "path": "/tmp/hrm-privacy-independent-evidence-tree.json",
+      "bytes": 3730250,
+      "sha256": "f86bee57dfd0cf6606cb50a02dd6e5b8250d1859c217319ca758928348b23415"
+    },
+    {
+      "path": "/tmp/hrm-privacy-independent-durable-refs.json",
+      "bytes": 22954,
+      "sha256": "295d3b2d22d5ff26fe3212cf90885ec655d96f9fb01485a65e99fc08eedb1a44"
+    },
+    {
+      "path": "/tmp/hrm-privacy-source-archive-manifest.json",
+      "bytes": 14973,
+      "sha256": "d9a47ec29ccdd0f5eda0b25e4cb6657f67d6053b39a95c720673574805d4de0a"
+    },
+    {
+      "path": "/tmp/hrm-privacy-source-archive-elements.json",
+      "bytes": 2643571,
+      "sha256": "d4cad867839b10b986396a5323cc26a6021a5f7eac75e05ea0bcacd5d5f80c82"
+    },
+    {
+      "path": "/tmp/hrm-request-independent-final-archive-readback.json",
+      "bytes": 602347,
+      "sha256": "2ba4350fba852ece9dc3004ec188d44a4b4842eebccb32f40eab79470e73ef7d"
+    }
+  ]
+}

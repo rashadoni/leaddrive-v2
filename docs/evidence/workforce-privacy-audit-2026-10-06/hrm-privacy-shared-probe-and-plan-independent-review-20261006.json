@@ -1,0 +1,143 @@
+{
+  "status": "ACCEPTED_SCOPED_CHARACTERIZATION_AND_UNEXECUTED_PREPARATION",
+  "at": "2026-10-06T11:18:55.788312+00:00",
+  "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+  "reviewerExecution": "Read code and full reports; validated bindings. Did not rerun owner probes or implement/execute proposed cases.",
+  "probe": {
+    "sourceBindingsVerified": [
+      {
+        "path": "src/lib/demo-center/telemetry.ts",
+        "bytes": 905,
+        "sha256": "e25058c393c011aad88185856c8536600ed87dcfe013d59caca15d8e93ab91f3"
+      },
+      {
+        "path": "sentry.server.config.ts",
+        "bytes": 436,
+        "sha256": "2a5232c614fa2e485386e4362229f1867dba359e2ef9de39a657ed9cf11fd1f9"
+      },
+      {
+        "path": "sentry.edge.config.ts",
+        "bytes": 436,
+        "sha256": "2a5232c614fa2e485386e4362229f1867dba359e2ef9de39a657ed9cf11fd1f9"
+      },
+      {
+        "path": "instrumentation-client.ts",
+        "bytes": 1217,
+        "sha256": "ba6b8a0420aee965032426e57d2b87047598ada07eee675a62f1da17be0c17e7"
+      },
+      {
+        "path": "src/lib/logger.ts",
+        "bytes": 1125,
+        "sha256": "0c1cd91068f7585ff94051efbdc5f256ac1108836a7b27fef7ab318147560792"
+      },
+      {
+        "path": "src/lib/with-rls.ts",
+        "bytes": 10371,
+        "sha256": "9707a3842648d8f2615a8401752e5b368b1224584330956fe5c22b856760da74"
+      }
+    ],
+    "actualHooksWithSDKStub": 6,
+    "actualPinoMemorySerializer": true,
+    "actualRlsWrappersWithMockAuthContext": 3,
+    "handlerCalls": 0,
+    "interpretation": "Retained synthetic canaries establish reachable source privacy gaps under supplied synthetic conditions, not live capture/delivery or production leakage.",
+    "qualification": "Probe application modules evaluate an injected synthetic process.env. Real required Pino/TypeScript dependencies execute normally outside that VM; their internal environment access was not audited. No claim certifying zero reads of actual process.env by dependency internals."
+  },
+  "plan": {
+    "status": "PREPARED_NOT_IMPLEMENTED_OR_EXECUTED",
+    "cases": 8,
+    "executedNewCases": 0,
+    "sourceBindingsVerified": [
+      {
+        "path": "docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+        "bytes": 1160539,
+        "sha256": "d403ef692cf7775a940e8b5be104d72032a52ca407935d71d27083526d664045"
+      },
+      {
+        "path": "docs/workforce-hrm-79-open-dependency-plan-2026-10-06.md",
+        "bytes": 19681,
+        "sha256": "068f6e106d3c77d702806c5ef40ae3038cde847add8ea780b1461514489caec3"
+      },
+      {
+        "path": "src/__tests__/api-mtm-mobile-sync-v2-stream-isolation.test.ts",
+        "bytes": 4765,
+        "sha256": "6259bba313b1a311efe8b8b31bed4ce693ab75bb7f05bd98271b68dab026cfb7"
+      },
+      {
+        "path": "src/__tests__/lib-mtm-mobile-sync-v2-rate-guard.test.ts",
+        "bytes": 3048,
+        "sha256": "d0ff01c59fa31e4bf6a38f51afec7a868764772ab2d608cf7fe444f12d7c88b6"
+      },
+      {
+        "path": "src/__tests__/api-mtm-mobile-sync-v2-workforce.test.ts",
+        "bytes": 8208,
+        "sha256": "340ea1884b55a9fdd952a07a27ea40ba746b24328678b7e9fca14c9cb1f52be0"
+      },
+      {
+        "path": "src/__tests__/api-mtm-mobile-sync-v2-routes.test.ts",
+        "bytes": 24305,
+        "sha256": "5367853281b8625612376a59a84d7300333268adb78533c7f85a7dfe282436b8"
+      },
+      {
+        "path": "src/__tests__/lib-mtm-mobile-sync-v2.test.ts",
+        "bytes": 9114,
+        "sha256": "c3e306878c5632e4dbc2f2aae4d63acac51bf5d8dc4bb096fd8dd8922d6b1983"
+      },
+      {
+        "path": "src/lib/mtm/mobile-sync-v2-rate-guard.ts",
+        "bytes": 3134,
+        "sha256": "23187f5f6661e1f6d7e68824e1eee8c88d13d2132cc39b8d330ae51d07c3edc0"
+      },
+      {
+        "path": "src/lib/public-abuse-guard.ts",
+        "bytes": 20401,
+        "sha256": "ef2d31e6d9b6299050b24eb803b5fdd611679b74ed0db079b1b2e115636ae335"
+      },
+      {
+        "path": "src/app/api/v2/mtm/mobile/sync/routes/route.ts",
+        "bytes": 34563,
+        "sha256": "9635440516643ab814fdc904e24a73aaabcf517eeeca9de1e1824d01cb4996fa"
+      },
+      {
+        "path": "src/app/api/v2/mtm/mobile/sync/workforce/route.ts",
+        "bytes": 2504,
+        "sha256": "8d3a0660806cd445a6bb2c0c627450b569d6785845ab92ebcbdae773e773c4e0"
+      },
+      {
+        "path": "src/__tests__/api-mtm-mobile-bootstrap.test.ts",
+        "bytes": 32857,
+        "sha256": "957462357f4ad3a1e599c5235b178b397df9fb77ad183a069f6a8bfc8cbca215"
+      },
+      {
+        "path": "src/__tests__/workforce-h6-load-contract.test.ts",
+        "bytes": 1334,
+        "sha256": "880cfec3a7cdfba6aefe1268ffb0904045a6a3aabf3ffeddd6422f929f42f83c"
+      }
+    ],
+    "scope": "Finite virtual fault/fairness preparation; preserved real Redis/DB overload, signed Android and full entitlement matrix external limits.",
+    "acceptance": "No canonical status progress credited from plan; no authorization of production changes, access or activation."
+  },
+  "findings": [],
+  "supports": [
+    {
+      "path": "/tmp/hrm-privacy-shared-synthetic-probe.cjs",
+      "bytes": 5306,
+      "sha256": "f558a0913a6ff2a01ad53e2600f9493286f187800d20b026e4c2ec651bd78e07"
+    },
+    {
+      "path": "/tmp/hrm-privacy-shared-synthetic-probe.json",
+      "bytes": 3628,
+      "sha256": "481bc9cf78e44b9f2548d2dd41b14a7d4528c2a40845883c706a2ea5410e8ec4"
+    },
+    {
+      "path": "/tmp/hrm-privacy-next-fault-fairness-plan.json",
+      "bytes": 8703,
+      "sha256": "4e75d57109b92acad48daaae2f05a9a8a7b9292a1fb061741ddb70a366375577"
+    },
+    {
+      "path": "/tmp/hrm-privacy-independent-source-8053-20261006.json",
+      "bytes": 26639,
+      "sha256": "bb3f3e4624f059bb981b5be8ee197df4771b118df5fbf10a6a0d4904dffd80cf"
+    }
+  ]
+}

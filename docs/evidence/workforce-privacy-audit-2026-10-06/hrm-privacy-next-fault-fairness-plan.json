@@ -1,0 +1,167 @@
+{
+  "status": "PREPARED_NOT_IMPLEMENTED_OR_EXECUTED",
+  "source_head": "8053702bbde2a43da537e263630f8a81ded2b659",
+  "next_slice": "WF-C12-004/005 bounded virtual fault and fairness matrix",
+  "canonical": {
+    "WF-C12-004": {
+      "line": 1075,
+      "last_explicit_row": "| WF-C12-004 | P0 | PARTIAL | Backend/SRE | Prove Workforce and Route queue/cursor/failure isolation under 503, timeout and overload | [`workforce-c12-mobile-isolation-observability-evidence-2026-08-30.md`](./workforce-c12-mobile-isolation-observability-evidence-2026-08-30.md): injected Route write failure leaves the next Workforce sync operation independently successful; real queue/cursor/timeout/overload proof remains staging work |"
+    },
+    "WF-C12-005": {
+      "line": 1076,
+      "last_explicit_row": "| WF-C12-005 | P1 | PARTIAL | Backend | Bound retries/backoff, payload size, batch size, per-tenant fairness and poison-operation quarantine | [`workforce-c12-sync-push-bounds-evidence-2026-08-30.md`](./workforce-c12-sync-push-bounds-evidence-2026-08-30.md): 512 KiB bounded body, 100-operation contract, 64 KiB payload-free terminal disposition and source-only Android terminal recovery mapping exist; tenant fairness and signed/load proof remain open |"
+    },
+    "WF-C13-006": {
+      "line": 1098,
+      "last_explicit_row": "| WF-C13-006 | P1 | PARTIAL | Backend/QA | Test Neither, HRM-only, Routes-only and Both for APIs, jobs, nav, sync, mobile and failures | Server bootstrap stream matrix covers all four entitlement modes; signed mobile, jobs and full failure/staging matrix remain open |"
+    }
+  },
+  "already_present_from_source_inspection": [
+    "Two API isolation scenarios: concurrent Workforceguard503 withRoute200; sequential Routedatabasefailure503 thenWorkforce200.",
+    "Rate guard already has three structural tests for exactdevice/user/tenant batch, atomicdenialpropagation andinitialsnapshotbudget.",
+    "Cursorlib covers tenant/agent/device/streambinding; routeAPIcovers429/503,leases,page/retention/scopechange.",
+    "WorkforceAPIcoversowncohort,entitlement,oversize413andcrossstreamcursor. Do not repeat acceptedcases without a missingcomposed boundary."
+  ],
+  "scenarios": [
+    {
+      "id": "F1",
+      "criterion": "WF-C12-004",
+      "case": "Both directions: a pending dependency in one stream must not delay the other stream completion",
+      "method": "Controlled deferred promises with deterministic resolution, no real sleep. Assert healthy response before resolving failing dependency; no claim of SDK/network timeout enforcement."
+    },
+    {
+      "id": "F2",
+      "criterion": "WF-C12-004",
+      "case": "503 and429 bursts followed by recovery preserve independent Workforce/Route cursors",
+      "method": "Finite virtual sequence; assert each response stream, Retry-After bound, no cursor advance on failure and valid cursor only after successful page."
+    },
+    {
+      "id": "F3",
+      "criterion": "WF-C12-004",
+      "case": "An existing cursor reused for the other stream is rejected without reading its snapshot",
+      "method": "Real sealing/parser plus real handler and controlled database mocks, compare no foreign stream reads/writes."
+    },
+    {
+      "id": "F4",
+      "criterion": "WF-C12-005",
+      "case": "One noisy synthetic tenant or stream does not debit another tenant/stream budget",
+      "method": "Real rate guard into controlled local batch-counter adapter; all-or-nothing accounting. Explicitly no Redis-failover/productionfairness claim."
+    },
+    {
+      "id": "F5",
+      "criterion": "WF-C12-005",
+      "case": "Denied device/user/tenant bucket does not burn remaining buckets; initial-snapshot and pull budgets remain separate",
+      "method": "Exercise all three denial positions and retry-window boundaries under virtual clock; preserve existing thresholds."
+    },
+    {
+      "id": "F6",
+      "criterion": "WF-C12-005",
+      "case": "Oversized response recovers with smaller page and preserves cursor until success",
+      "method": "Actual serialization/page boundary; assert fixed413 recovery envelope, no payload in diagnostics and successful bounded retry."
+    },
+    {
+      "id": "F7",
+      "criterion": "WF-C12-005",
+      "case": "Poison operation disposition is terminal and metadata-only in current server/source contract",
+      "method": "Review/reuse existing terminal mappings; add only demonstrably missing contract cases. Physical Android encryptedqueue/processdeath proof remains external."
+    },
+    {
+      "id": "F8",
+      "criterion": "WF-C13-006",
+      "case": "Next dependency: Neither/HRM-only/Routes-only/Both failure matrix extends APIs to jobs/nav/sync",
+      "method": "Build per-surface gap table after F1-F7. Do not claim signedmobile or staging equivalence from bootstrap-only results."
+    }
+  ],
+  "proposed_new_paths": [
+    "src/__tests__/api-mtm-mobile-sync-v2-fault-fairness.test.ts",
+    "docs/workforce-c12-fault-fairness-matrix-2026-10-06.md"
+  ],
+  "production_change_rule": "Only a reproduced owned correctness defect justifies a narrow source fix; no limit relaxation, featureactivation or sharedglobalpolicy rewrite. Freshscope/ownership review before firstwrite.",
+  "dependencies_not_required": [
+    "Historical api_keys creation baseline for synthetic local cases",
+    "Production telemetrycollector activation",
+    "Backup owner export completion"
+  ],
+  "remaining_external_acceptance": [
+    "Real sustained overload/DBorRedisfailover with representative staging",
+    "Signed physical Android queue timing/processdeath/poisonquarantine",
+    "Approved5000usertrustoff/onload",
+    "Allfourentitlementmodes acrosssignedmobile/jobs/nav/API/failures"
+  ],
+  "protected": [
+    "Support paths",
+    "Foreign MTM mock fixture",
+    "Baselines/denominator/canonicalstatuses",
+    "Migrationhistory/credentials/permissions",
+    "Productioncollector/deploy/merge/activation"
+  ],
+  "exit_rule": "One finite composedmatrix with exactheadtests/review; record concrete remainingexternalgate. Do not cycle back through completed loggingcalls or markcanonicalDONEfromvirtualevidence.",
+  "source_bindings": [
+    {
+      "path": "docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+      "bytes": 1160539,
+      "sha256": "d403ef692cf7775a940e8b5be104d72032a52ca407935d71d27083526d664045"
+    },
+    {
+      "path": "docs/workforce-hrm-79-open-dependency-plan-2026-10-06.md",
+      "bytes": 19681,
+      "sha256": "068f6e106d3c77d702806c5ef40ae3038cde847add8ea780b1461514489caec3"
+    },
+    {
+      "path": "src/__tests__/api-mtm-mobile-sync-v2-stream-isolation.test.ts",
+      "bytes": 4765,
+      "sha256": "6259bba313b1a311efe8b8b31bed4ce693ab75bb7f05bd98271b68dab026cfb7"
+    },
+    {
+      "path": "src/__tests__/lib-mtm-mobile-sync-v2-rate-guard.test.ts",
+      "bytes": 3048,
+      "sha256": "d0ff01c59fa31e4bf6a38f51afec7a868764772ab2d608cf7fe444f12d7c88b6"
+    },
+    {
+      "path": "src/__tests__/api-mtm-mobile-sync-v2-workforce.test.ts",
+      "bytes": 8208,
+      "sha256": "340ea1884b55a9fdd952a07a27ea40ba746b24328678b7e9fca14c9cb1f52be0"
+    },
+    {
+      "path": "src/__tests__/api-mtm-mobile-sync-v2-routes.test.ts",
+      "bytes": 24305,
+      "sha256": "5367853281b8625612376a59a84d7300333268adb78533c7f85a7dfe282436b8"
+    },
+    {
+      "path": "src/__tests__/lib-mtm-mobile-sync-v2.test.ts",
+      "bytes": 9114,
+      "sha256": "c3e306878c5632e4dbc2f2aae4d63acac51bf5d8dc4bb096fd8dd8922d6b1983"
+    },
+    {
+      "path": "src/lib/mtm/mobile-sync-v2-rate-guard.ts",
+      "bytes": 3134,
+      "sha256": "23187f5f6661e1f6d7e68824e1eee8c88d13d2132cc39b8d330ae51d07c3edc0"
+    },
+    {
+      "path": "src/lib/public-abuse-guard.ts",
+      "bytes": 20401,
+      "sha256": "ef2d31e6d9b6299050b24eb803b5fdd611679b74ed0db079b1b2e115636ae335"
+    },
+    {
+      "path": "src/app/api/v2/mtm/mobile/sync/routes/route.ts",
+      "bytes": 34563,
+      "sha256": "9635440516643ab814fdc904e24a73aaabcf517eeeca9de1e1824d01cb4996fa"
+    },
+    {
+      "path": "src/app/api/v2/mtm/mobile/sync/workforce/route.ts",
+      "bytes": 2504,
+      "sha256": "8d3a0660806cd445a6bb2c0c627450b569d6785845ab92ebcbdae773e773c4e0"
+    },
+    {
+      "path": "src/__tests__/api-mtm-mobile-bootstrap.test.ts",
+      "bytes": 32857,
+      "sha256": "957462357f4ad3a1e599c5235b178b397df9fb77ad183a069f6a8bfc8cbca215"
+    },
+    {
+      "path": "src/__tests__/workforce-h6-load-contract.test.ts",
+      "bytes": 1334,
+      "sha256": "880cfec3a7cdfba6aefe1268ffb0904045a6a3aabf3ffeddd6422f929f42f83c"
+    }
+  ],
+  "evidence_credit": "Preparation is source inspection only. Current2307PASS includesstreamisolation2tests; no newfault/fairnesscases have been executed."
+}

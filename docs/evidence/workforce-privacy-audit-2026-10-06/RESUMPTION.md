@@ -1,0 +1,7 @@
+# Historical 8053 receipts preserved after resumption
+
+The 67 neighboring original files are the byte-identical collection frozen when main advanced to PR594. Their original LOCAL_ONLY/BLOCKED wording describes that historical checkpoint; it has not been rewritten. This additive receipt records their subsequent publication after explicit user authorization to continue routine main integration. It does not retroactively certify the new main or candidate.
+
+Historical candidate8053702 and tested base86cba428 retain their own nine-run/restore evidence and limitations. Current HRM candidate b896cdb35246c22bcaddb176774a5c1b528190f9 integrates main5c741226 and has independent new source and hosted acceptance in progress, tracked separately. The eight prepared fault/fairness scenarios are now implemented and locally executed in that new candidate. Shared privacy and operational acceptance remain open;82/161DONE,79open,weighted59% unchanged.
+
+The old original65 files plus historical manifest/README were rehashed against the frozen workspace before publication. Seven transport/content-copy supports remain explicitly LOCAL_ONLY and recoverable from their cited immutable Git objects; they are not promoted to archived originals. Prior source archive3e3cb053 remains immutable. No source branch, main, production, credentials, permissions or Support data are changed by this evidence publication.

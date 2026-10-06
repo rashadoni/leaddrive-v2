@@ -1,5 +1,5 @@
 {
-  "status": "TESTED_BASE_PASS_FRESH_MAIN_BLOCKED_LOCAL_ONLY_ARCHIVE_PREPARATION",
+  "status": "EXACT_SOURCE_ACCEPTED_HOSTED_TERMINAL_PENDING",
   "head": "8053702bbde2a43da537e263630f8a81ded2b659",
   "tree": "678503f2dc2a5a5d0c52d41156caee8bf100494b",
   "parent": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
@@ -63,27 +63,6 @@
       "git_blob_sha": "07b65c1c4e9b2acae5b60d17f7bb19253a7bb245"
     },
     {
-      "source_path": "/tmp/hrm-privacy-cardinality-independent-review-20261006.json",
-      "archive_path": "docs/evidence/workforce-privacy-audit-2026-10-06/hrm-privacy-cardinality-independent-review-20261006.json",
-      "bytes": 4333,
-      "sha256": "a5279b1863de3ac56c25ea45c706edb78941183a764d77870e5020ee496e2d47",
-      "git_blob_sha": "de28f428941f2e106a7b39e73d647d3c54d78865"
-    },
-    {
-      "source_path": "/tmp/hrm-privacy-cardinality-probe.cjs",
-      "archive_path": "docs/evidence/workforce-privacy-audit-2026-10-06/hrm-privacy-cardinality-probe.cjs",
-      "bytes": 4328,
-      "sha256": "d8c122a71f55c965cf8b45c91001c2a7ffc629cd1ac2701083ac6738f9380bc1",
-      "git_blob_sha": "b53984f45eeb3de1e7e84ef45f8065b63585f96e"
-    },
-    {
-      "source_path": "/tmp/hrm-privacy-cardinality-probe.json",
-      "archive_path": "docs/evidence/workforce-privacy-audit-2026-10-06/hrm-privacy-cardinality-probe.json",
-      "bytes": 2086,
-      "sha256": "885a9fa960bb3294a32ebbb4facf5d394e2b5a71b918f9f86dc51c6c142e7fdd",
-      "git_blob_sha": "4b1c951ccf426e77cc612e5026dab894d15475b4"
-    },
-    {
       "source_path": "/tmp/hrm-privacy-compiler-comparison.json",
       "archive_path": "docs/evidence/workforce-privacy-audit-2026-10-06/hrm-privacy-compiler-comparison.json",
       "bytes": 2604,
@@ -96,27 +75,6 @@
       "bytes": 98518,
       "sha256": "3b5c189e94bf326139bc910d4fd04793131f98f463047fa293faa54a5a3c9f24",
       "git_blob_sha": "9b938231cd412062e46b89d598aff1f07dffd1fd"
-    },
-    {
-      "source_path": "/tmp/hrm-privacy-fresh-main-change-20261006.json",
-      "archive_path": "docs/evidence/workforce-privacy-audit-2026-10-06/hrm-privacy-fresh-main-change-20261006.json",
-      "bytes": 54559,
-      "sha256": "6ae08e2bf6f1444b748311b6a2e0e3885135816cee44f3bc2b35aa96fafea0a2",
-      "git_blob_sha": "4f7ff2f0124d2f14c5c83b745a213776c5edc50e"
-    },
-    {
-      "source_path": "/tmp/hrm-privacy-fresh-main-independent-review-20261006.json",
-      "archive_path": "docs/evidence/workforce-privacy-audit-2026-10-06/hrm-privacy-fresh-main-independent-review-20261006.json",
-      "bytes": 3581,
-      "sha256": "d17ead13fb23d90098f2380e81b5a95d4e7ff987a736b056e5f1188a99b762d7",
-      "git_blob_sha": "cf81a3532ac9336b487f5b29d8d771c3de3825d7"
-    },
-    {
-      "source_path": "/tmp/hrm-privacy-independent-durable-refs.json",
-      "archive_path": "docs/evidence/workforce-privacy-audit-2026-10-06/hrm-privacy-independent-durable-refs.json",
-      "bytes": 22954,
-      "sha256": "295d3b2d22d5ff26fe3212cf90885ec655d96f9fb01485a65e99fc08eedb1a44",
-      "git_blob_sha": "5f9e5a779cbb332375475fe46b5335f939fee36d"
     },
     {
       "source_path": "/tmp/hrm-privacy-independent-freeze-doc-review-20261006.json",
@@ -189,32 +147,11 @@
       "git_blob_sha": "df7239d466a05a20e51d3ba9274ffd86cb159488"
     },
     {
-      "source_path": "/tmp/hrm-privacy-independent-source-durable-20261006.json",
-      "archive_path": "docs/evidence/workforce-privacy-audit-2026-10-06/hrm-privacy-independent-source-durable-20261006.json",
-      "bytes": 3860,
-      "sha256": "341600bf709338c47bce016c8c4f7d571fd85832ca18512748ee7cc42dd5f65c",
-      "git_blob_sha": "bf4c434db64c535fa91a211a89af0c8940f3de09"
-    },
-    {
       "source_path": "/tmp/hrm-privacy-independent-synthetic.json",
       "archive_path": "docs/evidence/workforce-privacy-audit-2026-10-06/hrm-privacy-independent-synthetic.json",
       "bytes": 2846,
       "sha256": "9148b4f3fc6a5594feb7acaddfba97f3f4d5dd2c37fa4fbd9c7ff078cb587548",
       "git_blob_sha": "db0ed4239c2c4d20c4742c6134252cddf7946604"
-    },
-    {
-      "source_path": "/tmp/hrm-privacy-independent-terminal-20261006.json",
-      "archive_path": "docs/evidence/workforce-privacy-audit-2026-10-06/hrm-privacy-independent-terminal-20261006.json",
-      "bytes": 16760,
-      "sha256": "d7d6b8dfbd6f7b4bac9910f6b2f819d1612e555ae8a9f785633ea702caf3206e",
-      "git_blob_sha": "028d87dbe8bdcb60184507976e4fb09439ad3208"
-    },
-    {
-      "source_path": "/tmp/hrm-privacy-independent-terminal-metadata.json",
-      "archive_path": "docs/evidence/workforce-privacy-audit-2026-10-06/hrm-privacy-independent-terminal-metadata.json",
-      "bytes": 300332,
-      "sha256": "850aca2788fd692eb3db6a88092bb7df69a8202bf6e7003e66d2a0f9f1d277e8",
-      "git_blob_sha": "883cd63a18815b0a7d8855825d65d9296cc9e871"
     },
     {
       "source_path": "/tmp/hrm-privacy-independent-tests.json",
@@ -245,27 +182,6 @@
       "git_blob_sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
     },
     {
-      "source_path": "/tmp/hrm-privacy-main594-independent-metadata.json",
-      "archive_path": "docs/evidence/workforce-privacy-audit-2026-10-06/hrm-privacy-main594-independent-metadata.json",
-      "bytes": 102029,
-      "sha256": "cae385d8ad68287cb6b3effbfcb660c5c80651c09f23fa172c986f1cc4f6aa84",
-      "git_blob_sha": "8af649ecae78c9c12f6bd368c1f9a765b15df8d7"
-    },
-    {
-      "source_path": "/tmp/hrm-privacy-main594-independent-pull-merge-ref.json",
-      "archive_path": "docs/evidence/workforce-privacy-audit-2026-10-06/hrm-privacy-main594-independent-pull-merge-ref.json",
-      "bytes": 394,
-      "sha256": "e42d078b74e69ed883d804c02e8ef8a8b4d1a8aa4db6586ae8e3c23cad3ccc92",
-      "git_blob_sha": "b8d0d1806bd28f8e4460481ebb4bbd5fac93d7b3"
-    },
-    {
-      "source_path": "/tmp/hrm-privacy-next-fault-fairness-plan.json",
-      "archive_path": "docs/evidence/workforce-privacy-audit-2026-10-06/hrm-privacy-next-fault-fairness-plan.json",
-      "bytes": 8703,
-      "sha256": "4e75d57109b92acad48daaae2f05a9a8a7b9292a1fb061741ddb70a366375577",
-      "git_blob_sha": "3b6d692755bb751c3a145239158207ae2a90bf54"
-    },
-    {
       "source_path": "/tmp/hrm-privacy-owner-validation.json",
       "archive_path": "docs/evidence/workforce-privacy-audit-2026-10-06/hrm-privacy-owner-validation.json",
       "bytes": 8817,
@@ -285,13 +201,6 @@
       "bytes": 5823,
       "sha256": "3c82da4dca27171587f897c2a5ce4076b92051c42a4ea68382f915a8d75ec273",
       "git_blob_sha": "f00a8ff30d0939180ce9601dbefa8b3e5bed0599"
-    },
-    {
-      "source_path": "/tmp/hrm-privacy-prepare-next.py",
-      "archive_path": "docs/evidence/workforce-privacy-audit-2026-10-06/hrm-privacy-prepare-next.py",
-      "bytes": 5771,
-      "sha256": "59b6ff77b90f0b008c1fb7c1ef26c730cd333f4d0b3176321f9aefb063819137",
-      "git_blob_sha": "aadcd97b626eea020d902e0fb0e62ae1e6e2c5d1"
     },
     {
       "source_path": "/tmp/hrm-privacy-production-tsconfig.json",
@@ -329,102 +238,11 @@
       "git_blob_sha": "f9fed8f86ebc99116416ded25244f265a46f91fa"
     },
     {
-      "source_path": "/tmp/hrm-privacy-restore-artifact-metadata.json",
-      "archive_path": "docs/evidence/workforce-privacy-audit-2026-10-06/hrm-privacy-restore-artifact-metadata.json",
-      "bytes": 851,
-      "sha256": "43afd3ce7697232a8a7203444fc0f4ac8e280c5619ec361958a80d5fa9416e75",
-      "git_blob_sha": "82c7e0fbc26833d8e2a7f2b1ddf5d3fabeb4ea6f"
-    },
-    {
-      "source_path": "/tmp/hrm-privacy-restore-attempt1-root.json",
-      "archive_path": "docs/evidence/workforce-privacy-audit-2026-10-06/hrm-privacy-restore-attempt1-root.json",
-      "bytes": 1609,
-      "sha256": "6fc64e41a35850f46a779a98d240b468136067b243704eb6d2b51b45ac36143c",
-      "git_blob_sha": "e0eaedc5c99aae4acb5f02b16148dc08fa289e13"
-    },
-    {
-      "source_path": "/tmp/hrm-privacy-restore-attempt1-sanitized.json",
-      "archive_path": "docs/evidence/workforce-privacy-audit-2026-10-06/hrm-privacy-restore-attempt1-sanitized.json",
-      "bytes": 15958,
-      "sha256": "a3e8584b575565ed33ae2736ffe2463e02b8f0a7b056a5e83bd3eb3e15415fd9",
-      "git_blob_sha": "19a7d89b67e0d5608541b6cede54c4431d54e4e4"
-    },
-    {
-      "source_path": "/tmp/hrm-privacy-restore-independent-metadata.json",
-      "archive_path": "docs/evidence/workforce-privacy-audit-2026-10-06/hrm-privacy-restore-independent-metadata.json",
-      "bytes": 21750,
-      "sha256": "34732952aca75a5532338c154517b0739e6f2875657271b61c0427e632af9f08",
-      "git_blob_sha": "d48d6c3586f81fbc6995e2ea5d5f7cb43e5a3b08"
-    },
-    {
-      "source_path": "/tmp/hrm-privacy-restore-independent-review-20261006.json",
-      "archive_path": "docs/evidence/workforce-privacy-audit-2026-10-06/hrm-privacy-restore-independent-review-20261006.json",
-      "bytes": 14425,
-      "sha256": "9b75f05ab0fee5884243d2d00ccfe58d1668355860bbcc9d1f4dacdf2a9a1e7c",
-      "git_blob_sha": "ec420ba9e5303a3884c250cc1aeda499f0749729"
-    },
-    {
-      "source_path": "/tmp/hrm-privacy-root-full-tree-proof.json",
-      "archive_path": "docs/evidence/workforce-privacy-audit-2026-10-06/hrm-privacy-root-full-tree-proof.json",
-      "bytes": 3103,
-      "sha256": "3a24f917600d8aaabf5ab5a0f6e6d023b14696da3523f0c95b9195261221994c",
-      "git_blob_sha": "17955814a0fcb8428c9b4acc0d0b1548776e1ced"
-    },
-    {
-      "source_path": "/tmp/hrm-privacy-root-terminal-acceptance.json",
-      "archive_path": "docs/evidence/workforce-privacy-audit-2026-10-06/hrm-privacy-root-terminal-acceptance.json",
-      "bytes": 4537,
-      "sha256": "44d2aa66bb999ff8e06763d9b22258dc5e76f21b0567bb0b2195ef7581dbfda9",
-      "git_blob_sha": "f5afe5edd74a970c9e3924e9f2bd60164f4e1b47"
-    },
-    {
-      "source_path": "/tmp/hrm-privacy-root-terminal-metadata.json",
-      "archive_path": "docs/evidence/workforce-privacy-audit-2026-10-06/hrm-privacy-root-terminal-metadata.json",
-      "bytes": 312130,
-      "sha256": "13aad9e71a9acac9a72034937d3442a96b6500c42cb69565d52248923a685aa0",
-      "git_blob_sha": "66d61fd36c3dfdb1de7c1ac2fd0583fbd08225ad"
-    },
-    {
-      "source_path": "/tmp/hrm-privacy-root-tree-verify.py",
-      "archive_path": "docs/evidence/workforce-privacy-audit-2026-10-06/hrm-privacy-root-tree-verify.py",
-      "bytes": 2331,
-      "sha256": "3a6445d06e32a5316ca17d0375a578804b4025be232c2c72d1cd7ad6ecee590e",
-      "git_blob_sha": "55ac6cd2defd0869ede617212318b3c9c2d1801f"
-    },
-    {
-      "source_path": "/tmp/hrm-privacy-shared-probe-and-plan-independent-review-20261006.json",
-      "archive_path": "docs/evidence/workforce-privacy-audit-2026-10-06/hrm-privacy-shared-probe-and-plan-independent-review-20261006.json",
-      "bytes": 5721,
-      "sha256": "8126b67fe90b7a33d1e0b968b9b93c2b31539eb6c72d0952f6bdfcce85111098",
-      "git_blob_sha": "5c62dfdf80c40aa3eae8d170fe4cf4209b58f6b9"
-    },
-    {
-      "source_path": "/tmp/hrm-privacy-shared-synthetic-probe.cjs",
-      "archive_path": "docs/evidence/workforce-privacy-audit-2026-10-06/hrm-privacy-shared-synthetic-probe.cjs",
-      "bytes": 5306,
-      "sha256": "f558a0913a6ff2a01ad53e2600f9493286f187800d20b026e4c2ec651bd78e07",
-      "git_blob_sha": "ca7b9befe2552829e561967009d60a217240f70e"
-    },
-    {
-      "source_path": "/tmp/hrm-privacy-shared-synthetic-probe.json",
-      "archive_path": "docs/evidence/workforce-privacy-audit-2026-10-06/hrm-privacy-shared-synthetic-probe.json",
-      "bytes": 3628,
-      "sha256": "481bc9cf78e44b9f2548d2dd41b14a7d4528c2a40845883c706a2ea5410e8ec4",
-      "git_blob_sha": "fef8ad32cceef325e8e5df4063124302722457d1"
-    },
-    {
       "source_path": "/tmp/hrm-privacy-skipped-suites.json",
       "archive_path": "docs/evidence/workforce-privacy-audit-2026-10-06/hrm-privacy-skipped-suites.json",
       "bytes": 1571,
       "sha256": "b6bc57a4753906168dc443fa467dd8d7d0a486e1f1b982e9c366126a06fb6c93",
       "git_blob_sha": "8eb072d09673b5f14a21f70099481a5bdbb0a124"
-    },
-    {
-      "source_path": "/tmp/hrm-privacy-source-archive-manifest.json",
-      "archive_path": "docs/evidence/workforce-privacy-audit-2026-10-06/hrm-privacy-source-archive-manifest.json",
-      "bytes": 14973,
-      "sha256": "d9a47ec29ccdd0f5eda0b25e4cb6657f67d6053b39a95c720673574805d4de0a",
-      "git_blob_sha": "cc0a52bba13b31f68eb48c9737c6d1367bc98f10"
     },
     {
       "source_path": "/tmp/hrm-privacy-source-proof.json",
@@ -455,13 +273,6 @@
       "git_blob_sha": "9e9059a6b2b65b95e98be09ab0da2df322ebc461"
     },
     {
-      "source_path": "/tmp/hrm-privacy-validate-restore.py",
-      "archive_path": "docs/evidence/workforce-privacy-audit-2026-10-06/hrm-privacy-validate-restore.py",
-      "bytes": 2623,
-      "sha256": "ebf997fceff9a0a51a2525fe46d37d13e2962854961cf9a16b2efdc474fff829",
-      "git_blob_sha": "32f8ecf056d17b2f06a92ebd3e45e34ef88efbf3"
-    },
-    {
       "source_path": "/tmp/hrm-privacy-verify-scope.cjs",
       "archive_path": "docs/evidence/workforce-privacy-audit-2026-10-06/hrm-privacy-verify-scope.cjs",
       "bytes": 4947,
@@ -472,61 +283,10 @@
   "local_only_supports": [
     {
       "path": "/tmp/hrm-privacy-independent-remote-tree.json",
-      "bytes": 3625592,
       "sha256": "53d36ab7cf6092ecdf59cf2ec6ec2b6c4d5b59f5e7842db69bf371cad01be539",
-      "reason": "LOCAL_ONLY transport/content-copy metadata; original files recoverable from immutable source8053/main86 trees or evidence commits3e3c/c3e1. Original receipts are included in the prepared collection; this transport copy is not represented as an archived file."
-    },
-    {
-      "path": "/tmp/hrm-request-independent-remote-tree.json",
-      "bytes": 3623661,
-      "sha256": "fc931a79e5b5f0c981c64089a4ba0652d6f8932eb54fc35f42d01dd15b394d21",
-      "reason": "LOCAL_ONLY transport/content-copy metadata; original files recoverable from immutable source8053/main86 trees or evidence commits3e3c/c3e1. Original receipts are included in the prepared collection; this transport copy is not represented as an archived file."
-    },
-    {
-      "path": "/tmp/hrm-privacy-independent-source-archive-readback.json",
-      "bytes": 2642641,
-      "sha256": "549a239a011ddc6d46c43614db5a6156980a2b84b3a43e2e5af2fe49147681ff",
-      "reason": "LOCAL_ONLY transport/content-copy metadata; original files recoverable from immutable source8053/main86 trees or evidence commits3e3c/c3e1. Original receipts are included in the prepared collection; this transport copy is not represented as an archived file."
-    },
-    {
-      "path": "/tmp/hrm-privacy-independent-evidence-tree.json",
-      "bytes": 3730250,
-      "sha256": "f86bee57dfd0cf6606cb50a02dd6e5b8250d1859c217319ca758928348b23415",
-      "reason": "LOCAL_ONLY transport/content-copy metadata; original files recoverable from immutable source8053/main86 trees or evidence commits3e3c/c3e1. Original receipts are included in the prepared collection; this transport copy is not represented as an archived file."
-    },
-    {
-      "path": "/tmp/hrm-privacy-source-archive-elements.json",
-      "bytes": 2643571,
-      "sha256": "d4cad867839b10b986396a5323cc26a6021a5f7eac75e05ea0bcacd5d5f80c82",
-      "reason": "LOCAL_ONLY transport/content-copy metadata; original files recoverable from immutable source8053/main86 trees or evidence commits3e3c/c3e1. Original receipts are included in the prepared collection; this transport copy is not represented as an archived file."
-    },
-    {
-      "path": "/tmp/hrm-request-independent-final-archive-readback.json",
-      "bytes": 602347,
-      "sha256": "2ba4350fba852ece9dc3004ec188d44a4b4842eebccb32f40eab79470e73ef7d",
-      "reason": "LOCAL_ONLY transport/content-copy metadata; original files recoverable from immutable source8053/main86 trees or evidence commits3e3c/c3e1. Original receipts are included in the prepared collection; this transport copy is not represented as an archived file."
-    },
-    {
-      "path": "/tmp/hrm-main86-tree-independent.json",
-      "bytes": 3607282,
-      "sha256": "5039af8ffa51ff520c3ed860801a6dc23f53deaed7ff1b9883389452b49fad95",
-      "reason": "LOCAL_ONLY transport/content-copy metadata; original files recoverable from immutable source8053/main86 trees or evidence commits3e3c/c3e1. Original receipts are included in the prepared collection; this transport copy is not represented as an archived file."
+      "reason": "Large repository tree metadata copy; recover immutable source tree from GitHub tree678503. Independently hash-bound and verified locally, not represented as an archived file."
     }
   ],
-  "archive_parent": "3e3cb05343ba1bfdaeb4e4cab8b40bf3629856a7",
-  "limits": "53logreplacements plus3equivalentBigIntconstants; no fullprivacy/C12closure;23prod/25test historicaldiagnostics;163optinPGskips; no merge/deploy/activation.",
-  "at": "2026-10-06T11:32:19.677309+00:00",
-  "source_archive_commit": "3e3cb05343ba1bfdaeb4e4cab8b40bf3629856a7",
-  "hosted": {
-    "mandatory_pass": 5,
-    "additional_pass": 6,
-    "workflows_pass": 9,
-    "all_attempts": 1,
-    "optional_build": "SKIPPED",
-    "scope": "Exact8053 with tested86/e6be only; no0562integration acceptance"
-  },
-  "fresh_main": "0562b7ceb56b256b5fd9728b44dc17c4a4617865",
-  "fresh_main_acceptance": "BLOCKED after concurrent PR594 HRM domain write; no source/evidence/PR GitHub writes since detection. This prepared archive is LOCAL_ONLY, not published.",
-  "whole_privacy_acceptance": "OPEN: shared auth/RLS/Prisma/Pino/Sentry, destination and release/principal cardinality criteria remain unmet; synthetic source characterization does not certify production.",
-  "next_slice": "Eight WF-C12-004/005 fault/fairness scenarios prepared only; none newly implemented or executed."
+  "archive_parent": "c3e196a14e56c16d038ff58fda036f9c9425e30e",
+  "limits": "53logreplacements plus3equivalentBigIntconstants; no fullprivacy/C12closure;23prod/25test historicaldiagnostics;163optinPGskips; no merge/deploy/activation."
 }

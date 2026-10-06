@@ -1,0 +1,391 @@
+{
+  "status": "PASS_BOUNDED_RESTORE_PAYLOAD_AND_PROVENANCE",
+  "at": "2026-10-06T11:18:55.787239+00:00",
+  "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+  "synthetic": "e6beed0ed5f5960d427ace1678775f6473983d1e",
+  "sourceTree": "678503f2dc2a5a5d0c52d41156caee8bf100494b",
+  "run": {
+    "id": 37454224418,
+    "attempt": 1,
+    "event": "pull_request",
+    "conclusion": "success"
+  },
+  "job": {
+    "id": 112237759595,
+    "conclusion": "success",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-10-06T11:06:42Z",
+        "completed_at": "2026-10-06T11:06:43Z"
+      },
+      {
+        "name": "Initialize containers",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-10-06T11:06:43Z",
+        "completed_at": "2026-10-06T11:07:04Z"
+      },
+      {
+        "name": "Checkout candidate merge and exact base",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-10-06T11:07:04Z",
+        "completed_at": "2026-10-06T11:07:16Z"
+      },
+      {
+        "name": "Resolve fenced ephemeral ports and masked secrets",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-10-06T11:07:16Z",
+        "completed_at": "2026-10-06T11:07:16Z"
+      },
+      {
+        "name": "Setup Node",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-10-06T11:07:16Z",
+        "completed_at": "2026-10-06T11:07:26Z"
+      },
+      {
+        "name": "Install candidate dependencies",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-10-06T11:07:26Z",
+        "completed_at": "2026-10-06T11:09:02Z"
+      },
+      {
+        "name": "Apply selected base schema, canonical guards and actual additive migration",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7,
+        "started_at": "2026-10-06T11:09:02Z",
+        "completed_at": "2026-10-06T11:12:18Z"
+      },
+      {
+        "name": "Execute mandatory real PostgreSQL restore concurrency and rollback tests",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 8,
+        "started_at": "2026-10-06T11:12:18Z",
+        "completed_at": "2026-10-06T11:12:20Z"
+      },
+      {
+        "name": "Execute real credentials and authorized restore API scenarios",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 9,
+        "started_at": "2026-10-06T11:12:20Z",
+        "completed_at": "2026-10-06T11:12:32Z"
+      },
+      {
+        "name": "Install Chromium on hosted Ubuntu",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 10,
+        "started_at": "2026-10-06T11:12:32Z",
+        "completed_at": "2026-10-06T11:12:58Z"
+      },
+      {
+        "name": "Execute real rendered manual restore UI, session, retry and rollback scenarios",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 11,
+        "started_at": "2026-10-06T11:12:58Z",
+        "completed_at": "2026-10-06T11:15:36Z"
+      },
+      {
+        "name": "Upload complete non-secret restore receipts",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 12,
+        "started_at": "2026-10-06T11:15:36Z",
+        "completed_at": "2026-10-06T11:15:37Z"
+      },
+      {
+        "name": "Post Setup Node",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 22,
+        "started_at": "2026-10-06T11:15:37Z",
+        "completed_at": "2026-10-06T11:15:37Z"
+      },
+      {
+        "name": "Post Checkout candidate merge and exact base",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 23,
+        "started_at": "2026-10-06T11:15:37Z",
+        "completed_at": "2026-10-06T11:15:38Z"
+      },
+      {
+        "name": "Stop containers",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 24,
+        "started_at": "2026-10-06T11:15:38Z",
+        "completed_at": "2026-10-06T11:15:38Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 25,
+        "started_at": "2026-10-06T11:15:38Z",
+        "completed_at": "2026-10-06T11:15:38Z"
+      }
+    ]
+  },
+  "artifact": {
+    "id": 11408932446,
+    "name": "workforce-policy-restore-e6beed0ed5f5960d427ace1678775f6473983d1e-1",
+    "size_in_bytes": 884264,
+    "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11408932446",
+    "archive_download_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11408932446/zip",
+    "expired": false,
+    "created_at": "2026-10-06T11:15:37Z",
+    "expires_at": "2026-10-20T11:15:36Z",
+    "updated_at": "2026-10-06T11:15:37Z",
+    "digest": "sha256:fab9c543ecd5946572f6207082da8ab6a2eef95678cbaba535e7f27e5d52a5c2",
+    "workflow_run": {
+      "id": 37454224418,
+      "repository_id": 1362346481,
+      "head_repository_id": 1362346481,
+      "head_branch": "codex/hrm-588-validation-20261005",
+      "head_sha": "8053702bbde2a43da537e263630f8a81ded2b659"
+    }
+  },
+  "payload": {
+    "path": "/tmp/hrm-privacy-restore-attempt1-sanitized.json",
+    "bytes": 15958,
+    "sha256": "a3e8584b575565ed33ae2736ffe2463e02b8f0a7b056a5e83bd3eb3e15415fd9"
+  },
+  "readScope": {
+    "wholeSanitizedJSON": true,
+    "zipSHA256AndSizeIndependentlyVerified": true,
+    "zipContentsRead": [
+      "restore-rendered-ui-receipt.json"
+    ],
+    "otherMembersRawLogsScreenshotsRead": false
+  },
+  "finiteClaims": {
+    "uniqueCasesPASS": 15,
+    "cleanupPASS": 2,
+    "authRecordsPASS": 10,
+    "sourceBindingsVerifiedAgainstLocalBytesAndExactRemoteGitBlob": 34,
+    "localeWidthGrid": "EN/RU/AZ \u00d7320/768/1440",
+    "nativeReviewEditCreate": "Only manual-en-320 expressly true; other grid rows are not credited with native keyboard flow.",
+    "behavior": "Canonical201 drafts, strict null/zero copy, retired-team scope, lost201/replay200, audit503 rollback/retry201, current-session403 clearing, tenant-session held response clearing.",
+    "noUnexpectedWrites": "Workflow-script bounded fact snapshots, expected draft/audit/auth changes excluded; no general production write proof."
+  },
+  "sourceBindings": [
+    {
+      "path": "scripts/workforce-policy-restore-browser-evidence.mjs",
+      "bytes": 33364,
+      "sha256": "52bbe381303e0adf2631713bbcb49af795e62d81647d4d24a9fc237200abe530"
+    },
+    {
+      "path": "scripts/_rls.mjs",
+      "bytes": 2250,
+      "sha256": "fae67dd4467cfd14667236a570ee4884100d8236496f64e31984305146ad7266"
+    },
+    {
+      "path": ".github/workflows/workforce-policy-restore-evidence.yml",
+      "bytes": 10266,
+      "sha256": "2c3409c2afeb5898659263e4de1a2a6731a81ffd481ef4932b3e10d762129286"
+    },
+    {
+      "path": "scripts/ci/workforce-policy-restore-pre-anchor.mjs",
+      "bytes": 15698,
+      "sha256": "6cb5b7f0cf62558596995522bbe883b3d4bfa091e2a7888836d27b602dd27440"
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-policy-restore-writer.sql",
+      "bytes": 1735,
+      "sha256": "01c468b09e9f915490f196330ff9df19b5e9d429ce616a0aab036e5f78c133e3"
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-manager-today-browser.sql",
+      "bytes": 33617,
+      "sha256": "448d08b65048f3692145d1d2d73d1f4b2f5973363172dddb959b4c9daf20a4fb"
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-policy-version-browser.sql",
+      "bytes": 4634,
+      "sha256": "8f97329849dbb6d06181fed07ca9df50c4f2bcd202956861be53f610989765cb"
+    },
+    {
+      "path": "src/components/workforce/workforce-policy-restore-draft.tsx",
+      "bytes": 11062,
+      "sha256": "db72dd17f27c517cd7697c99e585d6d5353f06d23ca05119bb2a05a61f1566af"
+    },
+    {
+      "path": "src/components/workforce/workforce-policy-version-comparison.tsx",
+      "bytes": 16003,
+      "sha256": "52272ba626f24dad98051cbb8df052e40c586a78162aafa912125b1d852f9d60"
+    },
+    {
+      "path": "src/components/workforce/workforce-policy-future-window-preview.tsx",
+      "bytes": 8629,
+      "sha256": "678c2fffa97096748c56c25a015a9032f331a31a90bfa4852a065aed07f49cbc"
+    },
+    {
+      "path": "src/lib/workforce/policy-restore-receipt.ts",
+      "bytes": 2863,
+      "sha256": "970fefe5a93dc70ced0f3bf0eed5bf85aa270351f8c5c9959ad401fe090a6cec"
+    },
+    {
+      "path": "src/lib/workforce/policy-restore-draft.ts",
+      "bytes": 11084,
+      "sha256": "b7dda97c1764aaa3eff9e2257db2a47dd8c82720943f9bcea05f2f521922e50e"
+    },
+    {
+      "path": "src/lib/workforce/policy-draft-write.ts",
+      "bytes": 1937,
+      "sha256": "d49f39f52170ddd4c5f12de6834879fcc7609f8f6366d6002af1556fb35dc7c3"
+    },
+    {
+      "path": "src/lib/workforce/policy-version-comparison.ts",
+      "bytes": 4685,
+      "sha256": "3aabfe54002086898529bea2cd1b73006b7be6da1d50a2cb90281cc11eb343d4"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/policies/[id]/restore-draft/route.ts",
+      "bytes": 2580,
+      "sha256": "332c851ebda2c7191af6c834394cd8b12b5e091879821f9a1acbd08fd7bb514f"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/policies/search/route.ts",
+      "bytes": 1753,
+      "sha256": "d88f101dd55588d5f39edfa7ece192211e710a179b1360b04d1811d7abe6f1f9"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/policies/compare/route.ts",
+      "bytes": 2794,
+      "sha256": "9bacf8bc38287bd8a061bedf60b70733fcc623f22a59d434d306462ba7788461"
+    },
+    {
+      "path": "src/lib/with-workforce-rls-auth.ts",
+      "bytes": 21653,
+      "sha256": "289aa253b4d8d3a25913136a545db598bf1a01c9b571b6c89e2689da2fe6d8ff"
+    },
+    {
+      "path": "src/lib/auth.ts",
+      "bytes": 26635,
+      "sha256": "cc7ecee26681fb5fa8c2b0f08f064edcc2041ee2ecc845498de4fe851cbc78b7"
+    },
+    {
+      "path": "src/lib/rls-context.ts",
+      "bytes": 5099,
+      "sha256": "3ca4e34c3d94ba361fc2452b56f2b9a500b7487ee2402d436bc476786e3a53fd"
+    },
+    {
+      "path": "src/lib/prisma.ts",
+      "bytes": 13628,
+      "sha256": "65dda4d278f8deb6310af5f4fe57e60bc8bcda776459f8bfed31daae945dbd26"
+    },
+    {
+      "path": "src/proxy.ts",
+      "bytes": 48987,
+      "sha256": "a013772f7d07d11905705596417f57bea000837a29b67fb0048b183606345ef5"
+    },
+    {
+      "path": "src/lib/rate-limit.ts",
+      "bytes": 4011,
+      "sha256": "71fb22a8831b4a01a0ad46a9af7e6660ea70caf5a8ae0c63158170fd6ff797ac"
+    },
+    {
+      "path": "src/components/ui/button.tsx",
+      "bytes": 2099,
+      "sha256": "2d401bc2999487316df2b5319e28bd3fb5077cb0f625e272ca9a4bf100e6771a"
+    },
+    {
+      "path": "src/components/ui/input.tsx",
+      "bytes": 833,
+      "sha256": "f114d3bfb7b66f7ae843119f34bd32b91bf2f9a2fcf6123c962038f98cadee90"
+    },
+    {
+      "path": "src/components/ui/select.tsx",
+      "bytes": 1025,
+      "sha256": "9289ce86e4ea159cf5a12a5ae5a51ed3798e9cf041eb584fad40c242be119f9c"
+    },
+    {
+      "path": "src/app/(dashboard)/workforce/configuration/policy-versions/page.tsx",
+      "bytes": 223,
+      "sha256": "1a3dde6eda05b7af914455f9c08e1c5ce6e10975b0373d54b442c0298f9b779f"
+    },
+    {
+      "path": "src/components/providers.tsx",
+      "bytes": 1890,
+      "sha256": "3d82c0cf34677754f2e4d80e0978d2583bded1daa1d476ba59f2e0524242526d"
+    },
+    {
+      "path": "src/app/(dashboard)/layout.tsx",
+      "bytes": 13392,
+      "sha256": "be2ef432d60a19e8ea930becd30894b76c7bda5875a81246a95cb4cdfe4b6e3f"
+    },
+    {
+      "path": "messages/en.json",
+      "bytes": 1345494,
+      "sha256": "ccdc3609ce04151217a15d42cbc76ea5a796290737724316134e0bda530b47bd"
+    },
+    {
+      "path": "messages/ru.json",
+      "bytes": 1986292,
+      "sha256": "89c50ec4e27a94cc6f5c9a6a03d31ba90a64baeb672c14bf45dba587baa0a5bd"
+    },
+    {
+      "path": "messages/az.json",
+      "bytes": 1488162,
+      "sha256": "6cf6f20076dcb783102db9d33ccc2932828ede917b1153e56ed27f96c3432093"
+    },
+    {
+      "path": "prisma/schema.prisma",
+      "bytes": 958605,
+      "sha256": "a2cf656923aa83241d8601b3e4577402a4ec5e5ad4cde8e302ed6e03d8156e0f"
+    },
+    {
+      "path": "prisma/migrations/20261004073000_workforce_policy_restore_operation_anchor/migration.sql",
+      "bytes": 2624,
+      "sha256": "00cf1e477a5071e74698a42554f5ae69d49b2ff806ebb768bf3d4faa9386303f"
+    }
+  ],
+  "reviewedSource": "Workflow and browser evidence source assertions reviewed to interpret fields; complete receipt read, finite fields and34bindings verified.",
+  "limits": [
+    "Real hosted Chromium/credentials/session/canonical restore writer and PostgreSQL on disposable data. EN/RU/AZ at320/768/1440, bounded native controls/reflow, real201 loss/replay200, audit rollback503/retry201 and session/grant changes. Controlled transport loss is distinct from server failure. Existing policy read-only-role lane unchanged. Geometry is not pixel occlusion/whole-page WCAG/AT/native zoom. No production authenticated write/activation/employee impact/Android/load/pilot credit. Auth metadata and explicitly expected new draft/audit writes are excluded from preserved source/employee facts.",
+    "This is restore workflow evidence, not the other five browser artifact payloads.",
+    "No blanket localization/a11y/visual/production/authentication/privacy guarantee.",
+    "No prior-head failure erased or converted into current-head acceptance.",
+    "Mandatory typecheck/static terminal acceptance is separate and not claimed by this receipt."
+  ],
+  "supports": [
+    {
+      "path": "/tmp/hrm-privacy-restore-independent-metadata.json",
+      "bytes": 21750,
+      "sha256": "34732952aca75a5532338c154517b0739e6f2875657271b61c0427e632af9f08"
+    },
+    {
+      "path": "/tmp/hrm-privacy-restore-attempt1-root.json",
+      "bytes": 1609,
+      "sha256": "6fc64e41a35850f46a779a98d240b468136067b243704eb6d2b51b45ac36143c"
+    },
+    {
+      "path": "/tmp/hrm-privacy-restore-artifact-metadata.json",
+      "bytes": 851,
+      "sha256": "43afd3ce7697232a8a7203444fc0f4ac8e280c5619ec361958a80d5fa9416e75"
+    },
+    {
+      "path": "/tmp/hrm-privacy-independent-source-8053-20261006.json",
+      "bytes": 26639,
+      "sha256": "bb3f3e4624f059bb981b5be8ee197df4771b118df5fbf10a6a0d4904dffd80cf"
+    }
+  ]
+}

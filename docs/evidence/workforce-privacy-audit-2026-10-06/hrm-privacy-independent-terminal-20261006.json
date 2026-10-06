@@ -1,0 +1,434 @@
+{
+  "schemaVersion": 1,
+  "status": "TESTED_BASE_BOUNDED_PASS_FRESH_MAIN_BLOCKED",
+  "at": "2026-10-06T11:31:50.814206+00:00",
+  "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+  "sourceTree": "678503f2dc2a5a5d0c52d41156caee8bf100494b",
+  "testedBase": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+  "testedSynthetic": {
+    "sha": "e6beed0ed5f5960d427ace1678775f6473983d1e",
+    "parents": [
+      "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+      "8053702bbde2a43da537e263630f8a81ded2b659"
+    ],
+    "tree": "678503f2dc2a5a5d0c52d41156caee8bf100494b"
+  },
+  "freshMain": "0562b7ceb56b256b5fd9728b44dc17c4a4617865",
+  "freshMainAcceptance": false,
+  "candidateOverallReady": false,
+  "readScope": "Fresh correct GitHub connector refs/checks/runs/jobs/steps/artifact metadata only; no rawCIlogs, annotations, other artifact payloads or screenshots. Previously reviewed permitted restore JSON retained separately.",
+  "mandatoryGates": [
+    {
+      "name": "typecheck",
+      "id": 112237890135,
+      "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+      "appId": 15368,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "static-checks",
+      "id": 112237890075,
+      "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+      "appId": 15368,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "runner-policy",
+      "id": 112237760708,
+      "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+      "appId": 15368,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "scan",
+      "id": 112237759743,
+      "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+      "appId": 15368,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "pr-scope",
+      "id": 112237759664,
+      "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+      "appId": 15368,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "additionalGates": [
+    {
+      "name": "Authenticated Workforce calendar browser evidence",
+      "id": 112237762690,
+      "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+      "appId": 15368,
+      "conclusion": "success"
+    },
+    {
+      "name": "Authenticated Workforce manager Today browser evidence",
+      "id": 112237760611,
+      "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+      "appId": 15368,
+      "conclusion": "success"
+    },
+    {
+      "name": "Authenticated Workforce policy version browser evidence",
+      "id": 112237759904,
+      "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+      "appId": 15368,
+      "conclusion": "success"
+    },
+    {
+      "name": "Authenticated Workforce exception report browser evidence",
+      "id": 112237759847,
+      "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+      "appId": 15368,
+      "conclusion": "success"
+    },
+    {
+      "name": "Real PostgreSQL SELECT-only and authenticated employee impact browser evidence",
+      "id": 112237759597,
+      "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+      "appId": 15368,
+      "conclusion": "success"
+    },
+    {
+      "name": "Real PostgreSQL, authorized API and rendered policy restore UI evidence",
+      "id": 112237759595,
+      "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+      "appId": 15368,
+      "conclusion": "success"
+    }
+  ],
+  "optionalBuild": [
+    {
+      "id": 112237761025,
+      "conclusion": "skipped",
+      "credit": "NONE"
+    }
+  ],
+  "runs": [
+    {
+      "id": 37454224694,
+      "name": "Runner policy",
+      "event": "pull_request",
+      "attempt": 1,
+      "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+      "status": "completed",
+      "conclusion": "success",
+      "prBases": [
+        "86cba428d39e3ce4be13245bdb8e34e49dccf8d4"
+      ]
+    },
+    {
+      "id": 37454224798,
+      "name": "Workforce calendar browser evidence",
+      "event": "pull_request",
+      "attempt": 1,
+      "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+      "status": "completed",
+      "conclusion": "success",
+      "prBases": [
+        "86cba428d39e3ce4be13245bdb8e34e49dccf8d4"
+      ]
+    },
+    {
+      "id": 37454224423,
+      "name": "Secret scan",
+      "event": "pull_request",
+      "attempt": 1,
+      "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+      "status": "completed",
+      "conclusion": "success",
+      "prBases": [
+        "86cba428d39e3ce4be13245bdb8e34e49dccf8d4"
+      ]
+    },
+    {
+      "id": 37454224455,
+      "name": "Workforce exception report browser evidence",
+      "event": "pull_request",
+      "attempt": 1,
+      "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+      "status": "completed",
+      "conclusion": "success",
+      "prBases": [
+        "86cba428d39e3ce4be13245bdb8e34e49dccf8d4"
+      ]
+    },
+    {
+      "id": 37454224498,
+      "name": "Workforce manager Today browser evidence",
+      "event": "pull_request",
+      "attempt": 1,
+      "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+      "status": "completed",
+      "conclusion": "success",
+      "prBases": [
+        "86cba428d39e3ce4be13245bdb8e34e49dccf8d4"
+      ]
+    },
+    {
+      "id": 37454224448,
+      "name": "Workforce policy employee impact evidence",
+      "event": "pull_request",
+      "attempt": 1,
+      "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+      "status": "completed",
+      "conclusion": "success",
+      "prBases": [
+        "86cba428d39e3ce4be13245bdb8e34e49dccf8d4"
+      ]
+    },
+    {
+      "id": 37454224505,
+      "name": "Workforce policy version browser evidence",
+      "event": "pull_request",
+      "attempt": 1,
+      "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+      "status": "completed",
+      "conclusion": "success",
+      "prBases": [
+        "86cba428d39e3ce4be13245bdb8e34e49dccf8d4"
+      ]
+    },
+    {
+      "id": 37454224418,
+      "name": "Workforce policy restore writer evidence",
+      "event": "pull_request",
+      "attempt": 1,
+      "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+      "status": "completed",
+      "conclusion": "success",
+      "prBases": [
+        "86cba428d39e3ce4be13245bdb8e34e49dccf8d4"
+      ]
+    },
+    {
+      "id": 37454224479,
+      "name": "PR checks",
+      "event": "pull_request",
+      "attempt": 1,
+      "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+      "status": "completed",
+      "conclusion": "success",
+      "prBases": [
+        "86cba428d39e3ce4be13245bdb8e34e49dccf8d4"
+      ]
+    }
+  ],
+  "jobsAndSteps": {
+    "jobCount": 12,
+    "success": 11,
+    "skipped": 1,
+    "allStepsSuccessOrSkipped": true,
+    "metadataSupport": "/tmp/hrm-privacy-independent-terminal-metadata.json"
+  },
+  "artifactMetadata": [
+    {
+      "id": 11409081136,
+      "name": "workforce-calendar-browser-e6beed0ed5f5960d427ace1678775f6473983d1e-1",
+      "size_in_bytes": 8539958,
+      "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11409081136",
+      "archive_download_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11409081136/zip",
+      "expired": false,
+      "created_at": "2026-10-06T11:12:38Z",
+      "expires_at": "2026-10-20T11:12:37Z",
+      "updated_at": "2026-10-06T11:12:38Z",
+      "digest": "sha256:8322cc315e46dab523697172b4a645125e1b247197dd283eb66a9cf0b3c916a5",
+      "workflow_run": {
+        "id": 37454224798,
+        "repository_id": 1362346481,
+        "head_repository_id": 1362346481,
+        "head_branch": "codex/hrm-588-validation-20261005",
+        "head_sha": "8053702bbde2a43da537e263630f8a81ded2b659"
+      }
+    },
+    {
+      "id": 11408976745,
+      "name": "workforce-exception-report-browser-e6beed0ed5f5960d427ace1678775f6473983d1e-1",
+      "size_in_bytes": 650118,
+      "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11408976745",
+      "archive_download_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11408976745/zip",
+      "expired": false,
+      "created_at": "2026-10-06T11:11:26Z",
+      "expires_at": "2026-10-20T11:11:25Z",
+      "updated_at": "2026-10-06T11:11:26Z",
+      "digest": "sha256:55e2cef45aba358d9df1b7f14393437c8eafa43317f36aadf6f224090f0e659e",
+      "workflow_run": {
+        "id": 37454224455,
+        "repository_id": 1362346481,
+        "head_repository_id": 1362346481,
+        "head_branch": "codex/hrm-588-validation-20261005",
+        "head_sha": "8053702bbde2a43da537e263630f8a81ded2b659"
+      }
+    },
+    {
+      "id": 11409006079,
+      "name": "workforce-manager-today-browser-e6beed0ed5f5960d427ace1678775f6473983d1e-1",
+      "size_in_bytes": 7096738,
+      "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11409006079",
+      "archive_download_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11409006079/zip",
+      "expired": false,
+      "created_at": "2026-10-06T11:12:17Z",
+      "expires_at": "2026-10-20T11:12:16Z",
+      "updated_at": "2026-10-06T11:12:17Z",
+      "digest": "sha256:1ee5540ceb13199d2c911b2498806a4c57c7864ee56731731ac04d7872d270bf",
+      "workflow_run": {
+        "id": 37454224498,
+        "repository_id": 1362346481,
+        "head_repository_id": 1362346481,
+        "head_branch": "codex/hrm-588-validation-20261005",
+        "head_sha": "8053702bbde2a43da537e263630f8a81ded2b659"
+      }
+    },
+    {
+      "id": 11409151637,
+      "name": "workforce-policy-employee-impact-e6beed0ed5f5960d427ace1678775f6473983d1e-1",
+      "size_in_bytes": 829845,
+      "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11409151637",
+      "archive_download_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11409151637/zip",
+      "expired": false,
+      "created_at": "2026-10-06T11:15:01Z",
+      "expires_at": "2026-10-20T11:15:00Z",
+      "updated_at": "2026-10-06T11:15:01Z",
+      "digest": "sha256:183a986a6a78be720d726deaa4ea96c39079f4136c628edf9c252407abd96594",
+      "workflow_run": {
+        "id": 37454224448,
+        "repository_id": 1362346481,
+        "head_repository_id": 1362346481,
+        "head_branch": "codex/hrm-588-validation-20261005",
+        "head_sha": "8053702bbde2a43da537e263630f8a81ded2b659"
+      }
+    },
+    {
+      "id": 11408671992,
+      "name": "workforce-policy-version-browser-e6beed0ed5f5960d427ace1678775f6473983d1e-1",
+      "size_in_bytes": 908482,
+      "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11408671992",
+      "archive_download_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11408671992/zip",
+      "expired": false,
+      "created_at": "2026-10-06T11:11:23Z",
+      "expires_at": "2026-10-20T11:11:21Z",
+      "updated_at": "2026-10-06T11:11:23Z",
+      "digest": "sha256:79e022f430cf9c3214f221a2b22577b4072941b0e1c9e0d4050f80c222e40ea5",
+      "workflow_run": {
+        "id": 37454224505,
+        "repository_id": 1362346481,
+        "head_repository_id": 1362346481,
+        "head_branch": "codex/hrm-588-validation-20261005",
+        "head_sha": "8053702bbde2a43da537e263630f8a81ded2b659"
+      }
+    },
+    {
+      "id": 11408932446,
+      "name": "workforce-policy-restore-e6beed0ed5f5960d427ace1678775f6473983d1e-1",
+      "size_in_bytes": 884264,
+      "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11408932446",
+      "archive_download_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11408932446/zip",
+      "expired": false,
+      "created_at": "2026-10-06T11:15:37Z",
+      "expires_at": "2026-10-20T11:15:36Z",
+      "updated_at": "2026-10-06T11:15:37Z",
+      "digest": "sha256:fab9c543ecd5946572f6207082da8ab6a2eef95678cbaba535e7f27e5d52a5c2",
+      "workflow_run": {
+        "id": 37454224418,
+        "repository_id": 1362346481,
+        "head_repository_id": 1362346481,
+        "head_branch": "codex/hrm-588-validation-20261005",
+        "head_sha": "8053702bbde2a43da537e263630f8a81ded2b659"
+      }
+    }
+  ],
+  "payloadReview": {
+    "restoreArtifact": 11408932446,
+    "restoreReceipt": "/tmp/hrm-privacy-restore-independent-review-20261006.json",
+    "cases": 15,
+    "cleanup": 2,
+    "auth": 10,
+    "sourceBindings": 34,
+    "otherFivePayloads": "METADATA_ONLY_UNREAD"
+  },
+  "sourceAcceptance": {
+    "receipt": "/tmp/hrm-privacy-independent-source-8053-20261006.json",
+    "files": 8768,
+    "gitTrees": 2809,
+    "deltaPaths": 42,
+    "scope": "53fixedoperation log replacements plus3ownedBigInt constants; no new scoped P0-P3 findings."
+  },
+  "baselineQualification": [
+    "Hosted typecheck advisory compile plus blocking diagnostic gates passed against repository baselines;64file/codepairs and18knownsuitefiles remain unchanged.",
+    "Metadata does not establish globally clean compiler, exact allfamily diagnostic identity or actual full failed-suite inventory.",
+    "Local expandedproduction still23historical diagnostics; test-inclusive25. Owner parent26\u2192candidate23 removes3ownedPlayIntegrityTS2737 only. ForeignMTM2TS2737 unchanged.",
+    "Owner2307PASS/163SKIP across265files is local source validation; opt-in skippedcases not credited as executedPG, and localcounts not inherited as hostedcounts.",
+    "Optional productionbuild SKIPPED, no build credit.",
+    "Historical prior-head retries/failures remain separate; allnine current8053runs are firstattemptSUCCESS."
+  ],
+  "freshMainBlocker": "Honor explicit stop/report rule. No silent integration, source edits or archive writes. Retain current8053 evidence as historical exact tested-base result only.",
+  "domainChange": [
+    "New membership agent FK changes onDelete Restrict to Cascade.",
+    "Replacement immutability trigger permits nested deletion when referenced employee no longer exists.",
+    "New application agentHistory classification and delete/deactivate behavior alter retention semantics outside current privacy-only source scope.",
+    "Dormant reconciliation-schedule-subject uses historical workforce_employee_team_memberships to establish schedule-only team ownership. A textually clean merge does not prove behavior compatibility."
+  ],
+  "ownershipQualification": "Observed concurrent main write with HRM domain changes. An active competing writer on PR589 itself is NOT established by this evidence.",
+  "remaining": [
+    "Cleared HRM ownership boundary and fresh0562retention/roster/schedulecompatibility before integrating.",
+    "Sharedauth/RLS,Prisma,Pino,Sentry,destination andcardinality privacy criteria remain open; offlineprobes characterize gaps, notproductionleaks orfixes.",
+    "Eightfault/fairnesscases prepared only,0newcases executed.",
+    "Canonical82/161DONE,79open,weighted59%;C10-011PLANNED,C12-002PARTIAL,C12-008PARTIAL unchanged.",
+    "Historicalapi_keyscreation/baseline blocks cleanmigrationreplay; no workaround or appliedmarks."
+  ],
+  "durability": {
+    "existingSourceArchive": "3e3cb05343ba1bfdaeb4e4cab8b40bf3629856a7",
+    "existing40FileSourceArchiveVerified": true,
+    "newTerminalAndFreshMainReceipts": "LOCAL_ONLY_UNPUBLISHED",
+    "remoteWritesSinceStop": "NONE_BY_REVIEWER",
+    "noArchiveRecursionOrRemotePublication": true
+  },
+  "supports": [
+    {
+      "path": "/tmp/hrm-privacy-independent-terminal-metadata.json",
+      "bytes": 300332,
+      "sha256": "850aca2788fd692eb3db6a88092bb7df69a8202bf6e7003e66d2a0f9f1d277e8"
+    },
+    {
+      "path": "/tmp/hrm-privacy-fresh-main-independent-review-20261006.json",
+      "bytes": 3581,
+      "sha256": "d17ead13fb23d90098f2380e81b5a95d4e7ff987a736b056e5f1188a99b762d7"
+    },
+    {
+      "path": "/tmp/hrm-privacy-independent-source-8053-20261006.json",
+      "bytes": 26639,
+      "sha256": "bb3f3e4624f059bb981b5be8ee197df4771b118df5fbf10a6a0d4904dffd80cf"
+    },
+    {
+      "path": "/tmp/hrm-privacy-independent-source-durable-20261006.json",
+      "bytes": 3860,
+      "sha256": "341600bf709338c47bce016c8c4f7d571fd85832ca18512748ee7cc42dd5f65c"
+    },
+    {
+      "path": "/tmp/hrm-privacy-restore-independent-review-20261006.json",
+      "bytes": 14425,
+      "sha256": "9b75f05ab0fee5884243d2d00ccfe58d1668355860bbcc9d1f4dacdf2a9a1e7c"
+    },
+    {
+      "path": "/tmp/hrm-privacy-shared-probe-and-plan-independent-review-20261006.json",
+      "bytes": 5721,
+      "sha256": "8126b67fe90b7a33d1e0b968b9b93c2b31539eb6c72d0952f6bdfcce85111098"
+    },
+    {
+      "path": "/tmp/hrm-privacy-cardinality-independent-review-20261006.json",
+      "bytes": 4333,
+      "sha256": "a5279b1863de3ac56c25ea45c706edb78941183a764d77870e5020ee496e2d47"
+    },
+    {
+      "path": "/tmp/hrm-privacy-owner-validation.json",
+      "bytes": 8817,
+      "sha256": "3e3064913ab1504ff73d9ca1dbcf225383a013923b8adf1c47b6fad2e0ad81de"
+    }
+  ]
+}

@@ -1,0 +1,120 @@
+{
+  "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+  "scope": "LOCAL_SYNTHETIC_SHARED_BOUNDARY_CHARACTERIZATION_NOT_PRODUCT_FIX_OR_LIVE_DELIVERY",
+  "source_bindings": [
+    {
+      "path": "src/lib/demo-center/telemetry.ts",
+      "bytes": 905,
+      "sha256": "e25058c393c011aad88185856c8536600ed87dcfe013d59caca15d8e93ab91f3"
+    },
+    {
+      "path": "sentry.server.config.ts",
+      "bytes": 436,
+      "sha256": "2a5232c614fa2e485386e4362229f1867dba359e2ef9de39a657ed9cf11fd1f9"
+    },
+    {
+      "path": "sentry.edge.config.ts",
+      "bytes": 436,
+      "sha256": "2a5232c614fa2e485386e4362229f1867dba359e2ef9de39a657ed9cf11fd1f9"
+    },
+    {
+      "path": "instrumentation-client.ts",
+      "bytes": 1217,
+      "sha256": "ba6b8a0420aee965032426e57d2b87047598ada07eee675a62f1da17be0c17e7"
+    },
+    {
+      "path": "src/lib/logger.ts",
+      "bytes": 1125,
+      "sha256": "0c1cd91068f7585ff94051efbdc5f256ac1108836a7b27fef7ab318147560792"
+    },
+    {
+      "path": "src/lib/with-rls.ts",
+      "bytes": 10371,
+      "sha256": "9707a3842648d8f2615a8401752e5b368b1224584330956fe5c22b856760da74"
+    }
+  ],
+  "sentry_composed_config_hooks": [
+    {
+      "file": "sentry.server.config.ts",
+      "hook": "beforeSend",
+      "demo_redacted": true,
+      "workforce_canary_retained": true,
+      "dsns_absent": true,
+      "replay_config_present": false
+    },
+    {
+      "file": "sentry.server.config.ts",
+      "hook": "beforeSendTransaction",
+      "demo_redacted": true,
+      "workforce_canary_retained": true,
+      "dsns_absent": true,
+      "replay_config_present": false
+    },
+    {
+      "file": "sentry.edge.config.ts",
+      "hook": "beforeSend",
+      "demo_redacted": true,
+      "workforce_canary_retained": true,
+      "dsns_absent": true,
+      "replay_config_present": false
+    },
+    {
+      "file": "sentry.edge.config.ts",
+      "hook": "beforeSendTransaction",
+      "demo_redacted": true,
+      "workforce_canary_retained": true,
+      "dsns_absent": true,
+      "replay_config_present": false
+    },
+    {
+      "file": "instrumentation-client.ts",
+      "hook": "beforeSend",
+      "demo_redacted": true,
+      "workforce_canary_retained": true,
+      "dsns_absent": true,
+      "replay_config_present": true
+    },
+    {
+      "file": "instrumentation-client.ts",
+      "hook": "beforeSendTransaction",
+      "demo_redacted": true,
+      "workforce_canary_retained": true,
+      "dsns_absent": true,
+      "replay_config_present": true
+    }
+  ],
+  "pino": {
+    "actual_serializer": true,
+    "in_memory_destination": true,
+    "private_message_retained": true,
+    "private_context_retained": true,
+    "private_error_retained": true
+  },
+  "shared_rls": [
+    {
+      "name": "withRls",
+      "status": 401,
+      "raw_private_error_forwarded": true
+    },
+    {
+      "name": "withRlsAuth",
+      "status": 401,
+      "raw_private_error_forwarded": true
+    },
+    {
+      "name": "withRlsSessionAuth",
+      "status": 401,
+      "raw_private_error_forwarded": true
+    }
+  ],
+  "handler_calls": 0,
+  "no_sdk_loaded": true,
+  "no_network": true,
+  "source_environment_is_synthetic_and_no_credentials_requested": true,
+  "no_real_rls_context_or_database_exercised": true,
+  "limits": [
+    "Observed retained synthetic fields demonstrate source gaps, not production capture/export.",
+    "Sentry SDK init replaced by inert capture; actual hooks executed. Pino actual serializer writes only in-memory. Shared RLS actual wrappers use mocked authentication/context/JSON response.",
+    "No shared-source changes; canonical privacy/cardinality/destination criteria remain open."
+  ]
+}

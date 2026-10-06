@@ -1,0 +1,115 @@
+{
+  "status": "TESTED_BASE_BOUNDED_PASS_FRESH_MAIN_INTEGRATION_BLOCKED",
+  "at": "2026-10-06T11:32:19.357713+00:00",
+  "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+  "tree": "678503f2dc2a5a5d0c52d41156caee8bf100494b",
+  "tested_main": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+  "tested_synthetic": "e6beed0ed5f5960d427ace1678775f6473983d1e",
+  "fresh_main": "0562b7ceb56b256b5fd9728b44dc17c4a4617865",
+  "hosted": {
+    "mandatory_pass": 5,
+    "additional_pass": 6,
+    "workflows_pass": 9,
+    "all_attempts": 1,
+    "optional_build": "SKIPPED",
+    "scope": "Exact8053 with tested86/e6be only; no0562integration acceptance"
+  },
+  "owner_regression": {
+    "pass": 2307,
+    "fail": 0,
+    "skip": 163,
+    "files": 265,
+    "new_cases_included": 251,
+    "lint": "PASS",
+    "production_compiler": "23historicaldiagnostics,exit2;parent26;3ownedTS2737removed;new0",
+    "test_inclusive_compiler": "25historicaldiagnostics,including2untouchedforeignMTMTS2737"
+  },
+  "restore": {
+    "cases_pass": 15,
+    "cleanup_pass": 2,
+    "authorization_assertions": 10,
+    "source_bindings": 34,
+    "attempt": 1
+  },
+  "source_review": "Independent exact8768blobs/modes2809trees42delta accepted; no P0-P3 in bounded source scope",
+  "blocker": {
+    "observed": "ConcurrentmainHRMdomainchangePR594 merged11:25:34Z",
+    "path_overlap": [
+      "prisma/schema.prisma"
+    ],
+    "latest_logging_delta_overlap": [],
+    "domain_change": "Workforce teammembership FK Restrict\u2192Cascade and immutability trigger cascade-delete exception; reconciliation schedule-only proof depends on membership history.",
+    "same_branch_competing_writer_proven": false,
+    "action": "Honor explicitstop/report: no GitHub mutation after detection, no silent integration or current-main ready claim.",
+    "resume_requires": "Cleared HRM ownership/domain boundary for PR594 integration, then exact freshmain tree and retention/roster/schedule compatibility checks plus independent review/CI."
+  },
+  "archive": {
+    "source_commit": "3e3cb05343ba1bfdaeb4e4cab8b40bf3629856a7",
+    "source_files_root_and_independent_verified": 40,
+    "new_terminal_evidence": "LOCAL_ONLY due stop/report; prepared archive has not been published",
+    "pr_body": "Existing8053body conservatively still says hostedpending; deliberately not mutated after stoprule"
+  },
+  "canonical": {
+    "WF-C10-011": "PLANNED",
+    "WF-C12-002": "PARTIAL",
+    "done": 82,
+    "total": 161,
+    "open": 79,
+    "weighted_percent": 59,
+    "gates": "14/15",
+    "C12-008": "PARTIAL"
+  },
+  "next_slice": "Eight fault/fairness dependency scenarios PREPARED_NOT_IMPLEMENTED_OR_EXECUTED",
+  "supports": [
+    {
+      "path": "/tmp/hrm-privacy-owner-validation.json",
+      "bytes": 8817,
+      "sha256": "3e3064913ab1504ff73d9ca1dbcf225383a013923b8adf1c47b6fad2e0ad81de"
+    },
+    {
+      "path": "/tmp/hrm-privacy-source-proof.json",
+      "bytes": 14582,
+      "sha256": "90e274536e8c616975118bf103ff8c8b2737577895fe54011919894d8827f868"
+    },
+    {
+      "path": "/tmp/hrm-privacy-independent-source-8053-20261006.json",
+      "bytes": 26639,
+      "sha256": "bb3f3e4624f059bb981b5be8ee197df4771b118df5fbf10a6a0d4904dffd80cf"
+    },
+    {
+      "path": "/tmp/hrm-privacy-independent-source-durable-20261006.json",
+      "bytes": 3860,
+      "sha256": "341600bf709338c47bce016c8c4f7d571fd85832ca18512748ee7cc42dd5f65c"
+    },
+    {
+      "path": "/tmp/hrm-privacy-restore-independent-review-20261006.json",
+      "bytes": 14425,
+      "sha256": "9b75f05ab0fee5884243d2d00ccfe58d1668355860bbcc9d1f4dacdf2a9a1e7c"
+    },
+    {
+      "path": "/tmp/hrm-privacy-shared-probe-and-plan-independent-review-20261006.json",
+      "bytes": 5721,
+      "sha256": "8126b67fe90b7a33d1e0b968b9b93c2b31539eb6c72d0952f6bdfcce85111098"
+    },
+    {
+      "path": "/tmp/hrm-privacy-cardinality-independent-review-20261006.json",
+      "bytes": 4333,
+      "sha256": "a5279b1863de3ac56c25ea45c706edb78941183a764d77870e5020ee496e2d47"
+    },
+    {
+      "path": "/tmp/hrm-privacy-root-terminal-metadata.json",
+      "bytes": 312130,
+      "sha256": "13aad9e71a9acac9a72034937d3442a96b6500c42cb69565d52248923a685aa0"
+    },
+    {
+      "path": "/tmp/hrm-privacy-independent-terminal-20261006.json",
+      "bytes": 16760,
+      "sha256": "d7d6b8dfbd6f7b4bac9910f6b2f819d1612e555ae8a9f785633ea702caf3206e"
+    },
+    {
+      "path": "/tmp/hrm-privacy-fresh-main-change-20261006.json",
+      "bytes": 54559,
+      "sha256": "6ae08e2bf6f1444b748311b6a2e0e3885135816cee44f3bc2b35aa96fafea0a2"
+    }
+  ]
+}

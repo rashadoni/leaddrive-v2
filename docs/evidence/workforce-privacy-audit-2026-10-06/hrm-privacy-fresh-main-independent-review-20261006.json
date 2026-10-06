@@ -1,0 +1,73 @@
+{
+  "status": "FRESH_MAIN_INTEGRATION_BLOCKED_STOP_REPORT",
+  "at": "2026-10-06T11:31:50.814206+00:00",
+  "sourceHead": "8053702bbde2a43da537e263630f8a81ded2b659",
+  "testedBase": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+  "freshMain": "0562b7ceb56b256b5fd9728b44dc17c4a4617865",
+  "observedChange": {
+    "pr": 594,
+    "mergedAt": "2026-10-06T11:25:34Z",
+    "mergeParents": [
+      "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+      "6a4385091556d7d4d7d84b56a8c126249b741b4b"
+    ],
+    "files": 12,
+    "cumulativePR589ChangedPaths": 111,
+    "cumulativeOverlap": [
+      "prisma/schema.prisma"
+    ],
+    "latestPrivacy42PathOverlap": []
+  },
+  "domainBoundary": [
+    "New membership agent FK changes onDelete Restrict to Cascade.",
+    "Replacement immutability trigger permits nested deletion when referenced employee no longer exists.",
+    "New application agentHistory classification and delete/deactivate behavior alter retention semantics outside current privacy-only source scope.",
+    "Dormant reconciliation-schedule-subject uses historical workforce_employee_team_memberships to establish schedule-only team ownership. A textually clean merge does not prove behavior compatibility."
+  ],
+  "ownership": "Observed concurrent main write with HRM domain changes. An active competing writer on PR589 itself is NOT established by this evidence.",
+  "currentPRMetadata": {
+    "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+    "reportedBase": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+    "synthetic": "e6beed0ed5f5960d427ace1678775f6473983d1e",
+    "interpretation": "PR base and refs/pull589merge still describe old86/e6be, not integrated0562."
+  },
+  "decision": "Honor explicit stop/report rule. No silent integration, source edits or archive writes. Retain current8053 evidence as historical exact tested-base result only.",
+  "resumeRequirements": [
+    "Cleared HRM ownership/domain boundary and explicit resumption for fresh-main integration.",
+    "Preserve PR594 changes, translations, new migration and PR589 source; prove combined tree rather than overwriting either.",
+    "Fresh retention/agent-deletion, roster and schedule/reconciliation compatibility checks against0562, including schema/client and migration provenance limits.",
+    "New exact-head independent source/integration and mandatory gates before fresh-main readiness."
+  ],
+  "notClaimed": [
+    "No concrete product defect in PR594 is asserted from this bounded freshness review.",
+    "No new migration was applied, no full history replay was performed.",
+    "No production/backup/credential access or merge/deploy/activation."
+  ],
+  "supports": [
+    {
+      "path": "/tmp/hrm-privacy-main594-independent-metadata.json",
+      "bytes": 102029,
+      "sha256": "cae385d8ad68287cb6b3effbfcb660c5c80651c09f23fa172c986f1cc4f6aa84"
+    },
+    {
+      "path": "/tmp/hrm-privacy-main594-independent-pull-merge-ref.json",
+      "bytes": 394,
+      "sha256": "e42d078b74e69ed883d804c02e8ef8a8b4d1a8aa4db6586ae8e3c23cad3ccc92"
+    },
+    {
+      "path": "/tmp/hrm-main86-tree-independent.json",
+      "bytes": 3607282,
+      "sha256": "5039af8ffa51ff520c3ed860801a6dc23f53deaed7ff1b9883389452b49fad95"
+    },
+    {
+      "path": "/tmp/hrm-privacy-independent-remote-tree.json",
+      "bytes": 3625592,
+      "sha256": "53d36ab7cf6092ecdf59cf2ec6ec2b6c4d5b59f5e7842db69bf371cad01be539"
+    },
+    {
+      "path": "/tmp/hrm-privacy-independent-terminal-metadata.json",
+      "bytes": 300332,
+      "sha256": "850aca2788fd692eb3db6a88092bb7df69a8202bf6e7003e66d2a0f9f1d277e8"
+    }
+  ]
+}

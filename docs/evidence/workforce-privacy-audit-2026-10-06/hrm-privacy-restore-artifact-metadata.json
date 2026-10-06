@@ -1,0 +1,20 @@
+{
+  "id": 11408932446,
+  "node_id": "MDg6QXJ0aWZhY3QxMTQwODkzMjQ0Ng==",
+  "name": "workforce-policy-restore-e6beed0ed5f5960d427ace1678775f6473983d1e-1",
+  "size_in_bytes": 884264,
+  "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11408932446",
+  "archive_download_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11408932446/zip",
+  "expired": false,
+  "digest": "sha256:fab9c543ecd5946572f6207082da8ab6a2eef95678cbaba535e7f27e5d52a5c2",
+  "created_at": "2026-10-06T11:15:37Z",
+  "updated_at": "2026-10-06T11:15:37Z",
+  "expires_at": "2026-10-20T11:15:36Z",
+  "workflow_run": {
+    "id": 37454224418,
+    "repository_id": 1362346481,
+    "head_repository_id": 1362346481,
+    "head_branch": "codex/hrm-588-validation-20261005",
+    "head_sha": "8053702bbde2a43da537e263630f8a81ded2b659"
+  }
+}
