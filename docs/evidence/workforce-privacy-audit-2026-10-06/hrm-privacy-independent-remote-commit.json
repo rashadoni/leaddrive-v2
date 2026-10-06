@@ -1,0 +1,35 @@
+{
+  "sha": "8053702bbde2a43da537e263630f8a81ded2b659",
+  "node_id": "C_kwDOUTPB8doAKDgwNTM3MDJiYmRlMmE0M2RhNTM3ZTI2MzYzMGY4YTgxZGVkMmI2NTk",
+  "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/git/commits/8053702bbde2a43da537e263630f8a81ded2b659",
+  "html_url": "https://github.com/rashadoni/leaddrive-v2/commit/8053702bbde2a43da537e263630f8a81ded2b659",
+  "author": {
+    "name": "rashadoni",
+    "email": "rashadrahimsoy@gmail.com",
+    "date": "2026-10-06T11:05:54Z"
+  },
+  "committer": {
+    "name": "rashadoni",
+    "email": "rashadrahimsoy@gmail.com",
+    "date": "2026-10-06T11:05:54Z"
+  },
+  "tree": {
+    "sha": "678503f2dc2a5a5d0c52d41156caee8bf100494b",
+    "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/git/trees/678503f2dc2a5a5d0c52d41156caee8bf100494b"
+  },
+  "message": "Complete bounded Workforce failure logging privacy audit",
+  "parents": [
+    {
+      "sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+      "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/git/commits/ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+      "html_url": "https://github.com/rashadoni/leaddrive-v2/commit/ef5d90010d9b317a493dfe7ae574b1863f3c83fb"
+    }
+  ],
+  "verification": {
+    "verified": false,
+    "reason": "unsigned",
+    "signature": null,
+    "payload": null,
+    "verified_at": null
+  }
+}

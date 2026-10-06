@@ -1,0 +1,34 @@
+src/app/api/v1/workforce/attendance/security-triage/route.ts(49,34): error TS7006: Parameter 'agent' implicitly has an 'any' type.
+src/app/api/v1/workforce/attendance/security-triage/route.ts(96,43): error TS7006: Parameter 'row' implicitly has an 'any' type.
+src/app/api/v1/workforce/attendance/security-triage/route.ts(97,35): error TS7006: Parameter 'row' implicitly has an 'any' type.
+src/app/api/v1/workforce/exceptions/mine/route.ts(99,31): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/lib/workforce/calendar-configuration.ts(394,41): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/lib/workforce/calendar-configuration.ts(420,37): error TS2347: Untyped function calls may not accept type arguments.
+src/lib/workforce/calendar-configuration.ts(493,41): error TS7006: Parameter 'candidate' implicitly has an 'any' type.
+src/lib/workforce/calendar-configuration.ts(497,30): error TS7006: Parameter 'candidate' implicitly has an 'any' type.
+src/lib/workforce/calendar-configuration.ts(499,32): error TS7006: Parameter 'candidate' implicitly has an 'any' type.
+src/lib/workforce/calendar-configuration.ts(636,41): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/lib/workforce/calendar-configuration.ts(645,36): error TS2347: Untyped function calls may not accept type arguments.
+src/lib/workforce/calendar-configuration.ts(679,60): error TS7006: Parameter 'candidate' implicitly has an 'any' type.
+src/lib/workforce/calendar-configuration.ts(719,30): error TS7006: Parameter 'candidate' implicitly has an 'any' type.
+src/lib/workforce/mobile-write-fence.ts(218,37): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/lib/workforce/mobile-write-fence.ts(292,37): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/lib/workforce/mobile-write-fence.ts(372,37): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/lib/workforce/play-integrity.ts(80,37): error TS2737: BigInt literals are not available when targeting lower than ES2020.
+src/lib/workforce/play-integrity.ts(242,72): error TS2737: BigInt literals are not available when targeting lower than ES2020.
+src/lib/workforce/play-integrity.ts(264,69): error TS2737: BigInt literals are not available when targeting lower than ES2020.
+src/lib/workforce/site-management.ts(378,41): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/lib/workforce/site-management.ts(437,33): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/lib/workforce/site-management.ts(515,41): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/lib/workforce/site-management.ts(659,46): error TS7006: Parameter 'agent' implicitly has an 'any' type.
+src/lib/workforce/site-management.ts(748,41): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/lib/workforce/site-management.ts(925,41): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/lib/workforce/timesheet-approval-service.ts(512,15): error TS2352: Conversion of type 'TransactionClient' to type 'WorkforceAccessGrantReaderDb' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  The types of 'workforceAccessGrant.findMany' are incompatible between these types.
+    Type '<T extends WorkforceAccessGrantFindManyArgs>(args?: SelectSubset<T, WorkforceAccessGrantFindManyArgs<DefaultArgs>> | undefined) => PrismaPromise<...>' is not comparable to type '(args: { where: { organizationId: string; principalUserId: string; effectiveFrom: { lte: Date; }; OR: readonly [{ effectiveUntil: null; }, { effectiveUntil: { gt: Date; }; }]; }; orderBy: readonly [{ effectiveFrom: "desc"; }, { ...; }]; take: number; select: Record<...>; }) => Promise<...>'.
+      Types of parameters 'args' and 'args' are incompatible.
+        Type '{ where: { organizationId: string; principalUserId: string; effectiveFrom: { lte: Date; }; OR: readonly [{ effectiveUntil: null; }, { effectiveUntil: { gt: Date; }; }]; }; orderBy: readonly [{ effectiveFrom: "desc"; }, { ...; }]; take: number; select: Record<...>; }' is not comparable to type 'SelectSubset<any, WorkforceAccessGrantFindManyArgs<DefaultArgs>> | undefined'.
+          Type '{ where: { organizationId: string; principalUserId: string; effectiveFrom: { lte: Date; }; OR: readonly [{ effectiveUntil: null; }, { effectiveUntil: { gt: Date; }; }]; }; orderBy: readonly [{ effectiveFrom: "desc"; }, { ...; }]; take: number; select: Record<...>; }' is not comparable to type '{ [x: string]: never; } & "Please either choose `select` or `omit`."'.
+            Type '{ where: { organizationId: string; principalUserId: string; effectiveFrom: { lte: Date; }; OR: readonly [{ effectiveUntil: null; }, { effectiveUntil: { gt: Date; }; }]; }; orderBy: readonly [{ effectiveFrom: "desc"; }, { ...; }]; take: number; select: Record<...>; }' is not comparable to type '{ [x: string]: never; }'.
+              Property 'where' is incompatible with index signature.
+                Type '{ organizationId: string; principalUserId: string; effectiveFrom: { lte: Date; }; OR: readonly [{ effectiveUntil: null; }, { effectiveUntil: { gt: Date; }; }]; }' is not comparable to type 'never'.

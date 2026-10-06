@@ -1,0 +1,325 @@
+{
+  "parent": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+  "parentTree": "5b94c2111dbe51ceb74b1e803e142fff74e66cbc",
+  "parentFiles": 8762,
+  "unchanged": 8726,
+  "changed": [
+    {
+      "path": "src/app/api/v1/workforce/attendance/devices/[id]/approve/route.ts",
+      "parentGitBlob": "c1cd6db8575dad5f1011212b506bdf9959014094",
+      "gitBlob": "f7c5bf503aa91fd57ebcc6a14674b9712a01dbef",
+      "sha256": "374b03976e23f03faa90133f8e597ae56bc578a285b7cdb662b58d1fb2bfe27a",
+      "bytes": 2036,
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/api/v1/workforce/attendance/devices/[id]/revoke/route.ts",
+      "parentGitBlob": "b5c2e2321bd23733138e649af29af858f17871a5",
+      "gitBlob": "54b1df25d9ea1742754630ec9237503e29e8e328",
+      "sha256": "de428d5ece794f81c3732391bce752ae96cbd2e1083e170c870cbcb2a7da660f",
+      "bytes": 1955,
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/api/v1/workforce/attendance/devices/route.ts",
+      "parentGitBlob": "197bffa1342f161f3cdc6c034f5f171b79b9498e",
+      "gitBlob": "5b52d27ff3a30a4e0103338a783e10719f4bd95a",
+      "sha256": "5cc6e7c150e63991ccec3a27b2d09729b961c76efaaf8b0da2e2eff7a4e72753",
+      "bytes": 1431,
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/api/v1/workforce/attendance/security-triage/route.ts",
+      "parentGitBlob": "2fe7f82e666bff66f7f3a94591b2514646ccbf00",
+      "gitBlob": "921d5441239b55a12370270e8eaf94aea8d0b561",
+      "sha256": "d529b87de04eebf133e81563f43633081c00968124c1f40a3d5de681f15edf98",
+      "bytes": 5741,
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/api/v1/workforce/attendance/stations/[id]/disable/route.ts",
+      "parentGitBlob": "47d0fba1b3b179798af881a33c53977ba779e14c",
+      "gitBlob": "076af8bca852c59d4505308758b4a79f11f985e0",
+      "sha256": "3ae5b791597b14a5c6051296bb34d3f0acd5058ba747e092e355d94baab38662",
+      "bytes": 2012,
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/api/v1/workforce/attendance/stations/[id]/qr/route.ts",
+      "parentGitBlob": "faaa63c3880a6682ef7e37968170cdfd8cec976b",
+      "gitBlob": "4af7f2030500dc69773fce5660e8a758bd471f83",
+      "sha256": "6515cdcab984e121fc5fee3aadbfd766bccc49365e48f7ed5f7517058251e5ac",
+      "bytes": 3220,
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/api/v1/workforce/attendance/stations/[id]/replace/route.ts",
+      "parentGitBlob": "f4bcf2fd6a00ea25de9bf94a0b84a3b40a979f6f",
+      "gitBlob": "1e7b3e84f57d41f7df1ebc51635200a6dad0ba6f",
+      "sha256": "8b72d10f399861d288d324e06d9aea36f4698d86c23d5ce56d4e9ed568d1ab82",
+      "bytes": 2474,
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/api/v1/workforce/attendance/stations/route.ts",
+      "parentGitBlob": "ed886fa4fae9ddaf3be5d4e1a8e03859d7db0b88",
+      "gitBlob": "7c4a879492aa4d3e8223070782ffddaedb6a01b0",
+      "sha256": "2fd8aee349ef35b0a0a09bb8ac1b50b8fe7a570040e3d5ccdb5051b84e211657",
+      "bytes": 3018,
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/assignments/bulk/publish/route.ts",
+      "parentGitBlob": "80a324c482b9b767b0455d33677e8875890a6dab",
+      "gitBlob": "9ed5a29551afb5d7d0682c68ad5405d25a397f82",
+      "sha256": "2a0d2e7b0718cab1e843063cc8f44f673b1a932b93901342b205d2f13241449d",
+      "bytes": 2810,
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/assignments/preview/route.ts",
+      "parentGitBlob": "f7d7e34f01d5f44bc17d6d113ac14a59b8152ebf",
+      "gitBlob": "f839a0809542dc8c8a2fdb9344540e91f1572376",
+      "sha256": "8b889bce62a6f97f5c982812cf3edcf698a88c96bb5ae46b854b3271a20e80d9",
+      "bytes": 2026,
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/assignments/route.ts",
+      "parentGitBlob": "c5988b71e6710cced55ef0f91b2e9aa8c4a3f633",
+      "gitBlob": "ba7a8ff619f9a72bd3a68069218a5e4f5a821128",
+      "sha256": "cec32163b7d64bc027c9392c1e648c7caf09e8e1dcb94e5e2f1e8c18fa35ec3b",
+      "bytes": 8296,
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/calendar/route.ts",
+      "parentGitBlob": "8536e2fb6739f7d4343c7d07767e40e2d3c30b05",
+      "gitBlob": "ebc8d415de2cdb2069e129b1068d07b94a369760",
+      "sha256": "72a2ed0cf250b979624a0f9de828390795f760aeee04760a9a1ada564af38379",
+      "bytes": 9445,
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/employment-events/route.ts",
+      "parentGitBlob": "f4d6fc523e5c28ee270b8e3012e9bb3358e32602",
+      "gitBlob": "5c72f0efa535ed6281b825e0cb01083ea085582b",
+      "sha256": "09926ea665ba72fdc4041823d3fc77a25fbef603afd02fe04b05c4a07caaba94",
+      "bytes": 3581,
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/mobile-write-fence/cohorts/route.ts",
+      "parentGitBlob": "65bd9e9c5c622811d5cf2efcb1a855bf1437df7d",
+      "gitBlob": "44c70a03c0b7e20909690e2f3bd8b7a05d03d0ff",
+      "sha256": "8150c082a79c0a3555ca82638175d1da4c697fbe4a37665485762b039b2ff798",
+      "bytes": 3767,
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/mobile-write-fence/route.ts",
+      "parentGitBlob": "19946b6b77b5004bd3049879be9307d235696b12",
+      "gitBlob": "9927c0f9db6e004ee9fcef782b03b5de28635bfa",
+      "sha256": "19a338804b0895cb9ffb829468c125bdc9025a9d76994391d3b4d6088d180556",
+      "bytes": 3477,
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/policies/[id]/activate/route.ts",
+      "parentGitBlob": "adbd72868f72cf7875edf3eaa862ef8c12cfc069",
+      "gitBlob": "3569cbdf9e3cfc5370ba110cb70af0251df66e37",
+      "sha256": "b0145d0416687c243c28614899bd84169253bceed89155df0d401da7cb3610c1",
+      "bytes": 2058,
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/policies/[id]/route.ts",
+      "parentGitBlob": "9b797d1d0a38f9426bae5a8e1163d41f8a09beb6",
+      "gitBlob": "2328b4e8d2bdeca52ba0c88be7fae663764c8264",
+      "sha256": "031e4d56cc779b98cb6726b1787335e82fff87de7975336337a6302924abeee9",
+      "bytes": 1814,
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/policies/route.ts",
+      "parentGitBlob": "ed08dc2dfbc0f5fc2623bac7d81e48cc8c27879d",
+      "gitBlob": "b5096f169df5f685c051f1eab175e86e3c4708a8",
+      "sha256": "780d37e9101f567486ea33d7a0f71f706de4fcacdd7962f5efb7c08b5b707c65",
+      "bytes": 2627,
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/shifts/[id]/activate/route.ts",
+      "parentGitBlob": "ba0819f9ef875146530a7f40edcc445fed3cbbca",
+      "gitBlob": "1574d8202f4bbdd5479f38009e5eafd41a87e2aa",
+      "sha256": "2ca725d0b3cf2db45ef102f0bcb74928583707454f2a10d4bf152c4287015367",
+      "bytes": 1682,
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/shifts/[id]/route.ts",
+      "parentGitBlob": "b7e2acb5b64dd3eddd3b2be936ba193031f51234",
+      "gitBlob": "00c01a4829d5a3fccf82bfce88c78ceb5b30908f",
+      "sha256": "f8cce781b33db073c5c19dc722f4234e828e71b6d491c5137bbd914e1f39819d",
+      "bytes": 1857,
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/shifts/default/route.ts",
+      "parentGitBlob": "e270354d979bccbfbf34bd5ea28cebbb2c5d3cc4",
+      "gitBlob": "61f617469aef6ff7197fba801c59cd94f940c09e",
+      "sha256": "24b35759e3c4c507c2773f27050184ec43b54d1a086735f825b6d6f892c5404b",
+      "bytes": 3480,
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/shifts/route.ts",
+      "parentGitBlob": "54dd24e2afb2ab3286d81fdfab989cf079c2a83d",
+      "gitBlob": "43f425101ce1e1fc27b5290fdfb642ba20c90b3e",
+      "sha256": "2f6e5aaad6b18d9713d2bd0f8ee0d8bb28106a8163d9411fe5abffa56a116c91",
+      "bytes": 2981,
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/shifts/team-default/route.ts",
+      "parentGitBlob": "ab12dfc74aeed50b649031650ab7a02172f5448f",
+      "gitBlob": "2dd22c80cc4fb2ea29fb97bb2d2c3042ea3ece78",
+      "sha256": "f20a21d85729be098a275554a6a16b1c92cc0db528468c0f08484a99dbd90f50",
+      "bytes": 3798,
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/site-assignments/bulk/publish/route.ts",
+      "parentGitBlob": "54b4a56cd014f12eca8d984b814b856d48b93ef8",
+      "gitBlob": "56c70a4d218e3c8e790bf50c347ebc8f2be89032",
+      "sha256": "34455cf3ccb27d28f395b11c77b02d2d41f8cd5f3a6befee0506e9c72f7fb666",
+      "bytes": 2658,
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/site-assignments/preview/route.ts",
+      "parentGitBlob": "6406a4824b0c0f8205507899fd6b08eefb2bc84e",
+      "gitBlob": "f8df2afeeb23c3c2d04a7de53ac882ded7d6d35d",
+      "sha256": "16eb56255a9c01d85bd8b5063c6941a27fa06bdae4971aa09048699a099396bb",
+      "bytes": 1927,
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/site-assignments/route.ts",
+      "parentGitBlob": "52d64e57a46602cd58353c0fe3693186798b6f99",
+      "gitBlob": "c6f737c0169ea7ad560041aebe2411bc60ad456e",
+      "sha256": "e6c0bff7ab926a8d09048d28f2ed90357872460eb4554b6feffa60c3f11d42d6",
+      "bytes": 3176,
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/sites/[id]/archive/route.ts",
+      "parentGitBlob": "230c8e50999911fb5cca3158a23731feea5f88fc",
+      "gitBlob": "0358de74ca5d768d3bcde3b104d6ef41b3e9f6f4",
+      "sha256": "7dbca51676800e6bd78cf2727d795af4c200ba9b21fe559129e23206cb75682e",
+      "bytes": 1818,
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/sites/[id]/geofences/route.ts",
+      "parentGitBlob": "12e9b0bc4b69445eeccb962c5cd2daa578c4cae4",
+      "gitBlob": "8d393d0e708b77fca23b35898e98cadc44af136d",
+      "sha256": "7980057fb68076d0dceab368a0f06c388c8dfd318575fe2b2507c06c19c3ec24",
+      "bytes": 3374,
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/sites/route.ts",
+      "parentGitBlob": "9cbd1d1cee1605dbcfcc459999ad95509cc0adcf",
+      "gitBlob": "788142db59b5b1473ebbf42c139b2344656cfd40",
+      "sha256": "92bf0d8f2c0fae3f8f52bfbf20277cbd52f74a82f1219586fac3c66a581f395a",
+      "bytes": 2492,
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/api/v1/workforce/exceptions/mine/route.ts",
+      "parentGitBlob": "cf8f6ca5f6844024a7927a211c7c9a09daa50a43",
+      "gitBlob": "95c1166288d1695bf1b1a5f563fd4a534ed1305a",
+      "sha256": "73d00c82a0ba3febdd74d0894d7e47f634337d708332be3591e223f3ba8a76db",
+      "bytes": 6717,
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/api/v1/workforce/timesheet/approvals/route.ts",
+      "parentGitBlob": "6d5687912fe7108ce821bae921375ff2963f736d",
+      "gitBlob": "52128ecb59f87bfc6a5700c4c351192c3ac8e2aa",
+      "sha256": "c7b6864a1faf666c17485bc90d6bb00e9bf1f8a9752ef74b85753387fa13ae91",
+      "bytes": 2672,
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/api/v1/workforce/timesheet/route.ts",
+      "parentGitBlob": "ca1a49f789c38fe8554249f217ee61942a459240",
+      "gitBlob": "bfee5a4f4bca9dfd0baaaac3ecd0ffbc6cc5e7bd",
+      "sha256": "54cafe3d87cbc7de785feaf920a74f8c5bb4f0b258b816319abdeb72faaf3ec9",
+      "bytes": 22266,
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/api/v1/workforce/today/route.ts",
+      "parentGitBlob": "0df59ab77879e227f0a176cd9e88036bd7cf61ac",
+      "gitBlob": "e1573c33693279631597ce5cebfde9ab2aad42b7",
+      "sha256": "13f6524a645b52444f33dd172eebdd6154b497b15c5b69aa89089f4e2dbab0a6",
+      "bytes": 24603,
+      "mode": "100644"
+    },
+    {
+      "path": "src/lib/with-workforce-rls-auth.ts",
+      "parentGitBlob": "0f8830742e7445f9f48e265a185cdb3c6fea5df5",
+      "gitBlob": "fc6e31b5380acc3d7e34e51a71b5f02b6dca7676",
+      "sha256": "289aa253b4d8d3a25913136a545db598bf1a01c9b571b6c89e2689da2fe6d8ff",
+      "bytes": 21653,
+      "mode": "100644"
+    },
+    {
+      "path": "src/lib/workforce/play-integrity.ts",
+      "parentGitBlob": "d1140c57bcd3867c245af72b371f3abb655f8064",
+      "gitBlob": "e07a57a8abdd4e856871260f70c6c7ff5f420c82",
+      "sha256": "420fbefa35870ca749e1c7b4d4742921ec0f10ae37afa807144892c03192dfe0",
+      "bytes": 11984,
+      "mode": "100644"
+    },
+    {
+      "path": "src/lib/workforce/sensitive-operation-log.ts",
+      "parentGitBlob": "178f184bdd9d9284918915180a5f41d8a5b3d3d6",
+      "gitBlob": "58ff8ccb5f4b40b3c0fd0a7a2da1219a951e0335",
+      "sha256": "808c955586869d7005fdb60f76cd25b03106937e15778aef7056375f9e93d89b",
+      "bytes": 4396,
+      "mode": "100644"
+    }
+  ],
+  "new": [
+    {
+      "path": "src/__tests__/api-workforce-privacy-audit.test.ts",
+      "sha256": "540f61d2936c44a02fbedaa36e94598e1687f93502e53578723a17f44f4e582e",
+      "bytes": 24796
+    },
+    {
+      "path": "src/__tests__/workforce-auth-failure-logging.test.ts",
+      "sha256": "059b46eda996b5fd87afdac4e7d2cbb988e09eca92fc9c415bf0676aad0bd408",
+      "bytes": 3792
+    },
+    {
+      "path": "src/__tests__/workforce-privacy-source-audit.test.ts",
+      "sha256": "0c7a3982ffa52b28f5351c175502e45b5a860b653ccdca7fe66c2de0dadaca87",
+      "bytes": 6025
+    },
+    {
+      "path": "src/__tests__/workforce-privacy-telemetry.test.ts",
+      "sha256": "568da0d4eee425cc7b6aea83c8202b989a36bf352216a38d9b326094ebe3b69a",
+      "bytes": 3172
+    },
+    {
+      "path": "src/__tests__/fixtures/workforce-privacy-routes.json",
+      "sha256": "65f700be1c0deac70902e06cf9a0566eaffb58926214f36bcae7b37402dd15f6",
+      "bytes": 12009
+    }
+  ],
+  "modeChanges": [],
+  "missing": []
+}

@@ -1,0 +1,85 @@
+{
+  "parent_production_diagnostics": 26,
+  "current_production_diagnostics": 23,
+  "current_tests_diagnostics": 25,
+  "removed": [
+    {
+      "file": "src/lib/workforce/play-integrity.ts",
+      "code": "TS2737",
+      "message": "BigInt literals are not available when targeting lower than ES2020.",
+      "count": 3
+    }
+  ],
+  "new": [],
+  "test_extra": [
+    {
+      "file": "src/__tests__/mocks/mtm-prisma.ts",
+      "code": "TS2737",
+      "count": 2
+    }
+  ],
+  "historical_remaining": [
+    {
+      "file": "src/app/api/v1/workforce/attendance/security-triage/route.ts",
+      "code": "TS7006",
+      "message": "Parameter 'agent' implicitly has an 'any' type.",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/v1/workforce/attendance/security-triage/route.ts",
+      "code": "TS7006",
+      "message": "Parameter 'row' implicitly has an 'any' type.",
+      "count": 2
+    },
+    {
+      "file": "src/app/api/v1/workforce/exceptions/mine/route.ts",
+      "code": "TS7006",
+      "message": "Parameter 'item' implicitly has an 'any' type.",
+      "count": 1
+    },
+    {
+      "file": "src/lib/workforce/calendar-configuration.ts",
+      "code": "TS7006",
+      "message": "Parameter 'tx' implicitly has an 'any' type.",
+      "count": 2
+    },
+    {
+      "file": "src/lib/workforce/calendar-configuration.ts",
+      "code": "TS2347",
+      "message": "Untyped function calls may not accept type arguments.",
+      "count": 2
+    },
+    {
+      "file": "src/lib/workforce/calendar-configuration.ts",
+      "code": "TS7006",
+      "message": "Parameter 'candidate' implicitly has an 'any' type.",
+      "count": 5
+    },
+    {
+      "file": "src/lib/workforce/mobile-write-fence.ts",
+      "code": "TS7006",
+      "message": "Parameter 'tx' implicitly has an 'any' type.",
+      "count": 3
+    },
+    {
+      "file": "src/lib/workforce/site-management.ts",
+      "code": "TS7006",
+      "message": "Parameter 'tx' implicitly has an 'any' type.",
+      "count": 5
+    },
+    {
+      "file": "src/lib/workforce/site-management.ts",
+      "code": "TS7006",
+      "message": "Parameter 'agent' implicitly has an 'any' type.",
+      "count": 1
+    },
+    {
+      "file": "src/lib/workforce/timesheet-approval-service.ts",
+      "code": "TS2352",
+      "message": "Conversion of type 'TransactionClient' to type 'WorkforceAccessGrantReaderDb' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.",
+      "count": 1
+    }
+  ],
+  "baselines_and_target_unchanged": true,
+  "all_compile_exit_codes": 2
+}
