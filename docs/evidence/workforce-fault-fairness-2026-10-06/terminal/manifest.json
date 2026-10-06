@@ -1,0 +1,1107 @@
+{
+  "status": "EXACT_HEAD_BOUNDED_CANDIDATE_READY_NO_PRODUCTION_ACTIVATION",
+  "at": "2026-10-06T12:34:45.331500+00:00",
+  "head": "b896cdb35246c22bcaddb176774a5c1b528190f9",
+  "tree": "56054b2aaf225d54668c7c99b19d6f276c81f02b",
+  "main": "5c7412266c29a53e12963621b090c4f1aee95a3a",
+  "synthetic": "d28db54c37d62248b029fe935bea6cb5b85a6b86",
+  "sourceArchive": "a10975647599a004e44d25953e00971400bdd989",
+  "historical8053Archive": "b0d41908058093c41d18910d1d6bd470ba8847f2",
+  "source_archive_originals": [
+    {
+      "source_path": "/tmp/hrm-fault-aux-and-matrix.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-aux-and-matrix.json",
+      "bytes": 18269,
+      "sha256": "436b782aef4dc5bcdf057532db659511b028c1fc4efbb1ae057324582d06490a",
+      "blob": "e5cea2b30330cdc6f1a4ddd0378100581b7d57a5"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-b896-independent-commit.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-b896-independent-commit.json",
+      "bytes": 871,
+      "sha256": "cae53118f46bed582ac5e2185b3f076557fb7da8539216b0853b819c9116cc24",
+      "blob": "3652a8aa8e08c438ad9546e35800e827379f83dd"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-b896-independent-main.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-b896-independent-main.json",
+      "bytes": 2963917,
+      "sha256": "07ed58ede2ffab1ae9e4e6eb6bff2fcb70c2618be5ba0c29cfbe8b835d326419",
+      "blob": "0da1d2565293f9be1ef54a8c975e8037e4a21f11"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-b896-independent-mainref.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-b896-independent-mainref.json",
+      "bytes": 343,
+      "sha256": "44b5cd8dc88e5a5ae206471516053cbcb752b67635e9900661cb5327aecaddd9",
+      "blob": "a2a81998417050fe65d5e4e81ff9ab9bef29e2d0"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-b896-independent-refs.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-b896-independent-refs.json",
+      "bytes": 192,
+      "sha256": "8730173d9324f68d60d859fef03425997d082ff4127ada0e826f81ff714b259f",
+      "blob": "65292352ff80e758698d466c8a33c92440ae65d4"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-b896-independent-synthetic.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-b896-independent-synthetic.json",
+      "bytes": 766,
+      "sha256": "325dceb2449407fbd2787ac165105a23bcb1a49277ddd54c088b1e1a8410658b",
+      "blob": "61f659f9d7986f37ef057595395c937b079deb16"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-b896-independent-tree-proof.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-b896-independent-tree-proof.json",
+      "bytes": 4104,
+      "sha256": "645d176647f3716cd76d2083f34729a9400ba4be1779968cf977d82fdc9e2526",
+      "blob": "a933f026419f6836404d50f6e79214c10755b2ff"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-baseline-tsconfig.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-baseline-tsconfig.json",
+      "bytes": 4688,
+      "sha256": "de84d8ddd7c7a512cd4ef1e86642e966c88de0bc10c5db934092803f98fffe31",
+      "blob": "73198ae6336f35caefdc0516cd824f11e1c45688"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-baseline-typecheck.txt",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-baseline-typecheck.txt",
+      "bytes": 13190,
+      "sha256": "4c2b85421c7001eb0ad5d3802be0fc7413d6eb9b5a9c4a1f9e55ed37d1080c8b",
+      "blob": "9fee7bf2378dd8e1e42fb3297eecf100c6f90d4e"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-broad-final.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-broad-final.json",
+      "bytes": 1144834,
+      "sha256": "6f0c8ccef5564648144653d418871d89bdd4d42673b8f2c93657604813cc23c0",
+      "blob": "7ae90b0f28f234debc4ce20222b980ea4b3fb9ee"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-browser-guards-retry.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-browser-guards-retry.json",
+      "bytes": 12664,
+      "sha256": "45aedc724918cc3111d637ea43ce94f33d5865a22d259024f4e237291dc81693",
+      "blob": "dd73b4b24e4a23eeee4f88b7f1761fb7aef75ff0"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-entitlement-initial.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-entitlement-initial.json",
+      "bytes": 40019,
+      "sha256": "34ff603a1f8b24ddf1bb1c2bf10d89f6080718e769926e186477e440d6319494",
+      "blob": "d567344462a5a37c7c98d1c41c61d01fe780fdc7"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-final-owned-retest.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-final-owned-retest.json",
+      "bytes": 14012,
+      "sha256": "58a86a756ede1c18fab1b4e47cfea5526eb5d216e5e27c3a66f458c3696ff1b8",
+      "blob": "5a66b9803d66f21fefc9e902a6ca8a9e6ca71f0b"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-final-retyped-lint.txt",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-final-retyped-lint.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-freeze.py",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-freeze.py",
+      "bytes": 4077,
+      "sha256": "d697c7a1a0bc97f74a85140dcc55194bf123b72f7ecaef9fa2b17fe8966810f1",
+      "blob": "517a781d90d77f9ac2fc833dcc3223cfcad633d6"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-historical-archive-publication.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-historical-archive-publication.json",
+      "bytes": 292,
+      "sha256": "4bfc0ebd9509027e433834d399cc4015f9e3273e5e78352844ee2d44efe9f0ed",
+      "blob": "083991894674b910b76e1e27697b79fb101f6a92"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-historical-archive-readback.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-historical-archive-readback.json",
+      "bytes": 11190,
+      "sha256": "0d8862eb586dd1160a851b6feaa29c4869c08ef2f16bcd2c8c4e981bbe7a7173",
+      "blob": "a3bb84af0b6fe118882581fe4a47779f81c5f684"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-i18n-main597.txt",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-i18n-main597.txt",
+      "bytes": 400,
+      "sha256": "b7fe6240884dbe9707e52db95bdab6fd6eefbffebb3e12e94de992151d0d7507",
+      "blob": "af1e158a5b6ab9212cf8084e9f7c34447bd056fe"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-i18n.txt",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-i18n.txt",
+      "bytes": 400,
+      "sha256": "f9b8d9313c8e67be5ba1485dcf59af583b3fbd128b328f692ca5230dc066c536",
+      "blob": "36f544e89fcd20fdac4228ac2df896311cbc31f8"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-independent-freeze-verification.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-independent-freeze-verification.json",
+      "bytes": 3488,
+      "sha256": "1128641f2fa0722e76720d61ec4810813043ef27bc71c5676047ae0d28f6e209",
+      "blob": "74eded4f3784a0878e589b3b720ddde510fe862b"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-independent-local-tree-proof.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-independent-local-tree-proof.json",
+      "bytes": 4196,
+      "sha256": "2e6e2d928f4352f22696fc14cf0da192fa6ed072331030d3f6f9e2d852cadc3b",
+      "blob": "23e68fcfe18ce0f5a66d6bc6923fda26c8e79f59"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-independent-preliminary-20261006.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-independent-preliminary-20261006.json",
+      "bytes": 7885,
+      "sha256": "d035d2157819b2fe068648adb9e79a73407aef731c3c5d748ca99a4846b0648b",
+      "blob": "dbb10c55979fb3ccd54c134e4cc4dd7df9cbc8e8"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-independent-retention-tests.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-independent-retention-tests.json",
+      "bytes": 2409,
+      "sha256": "b604a1b25fbbe9dc372d6f3676bb9530d7824400737ce1acffa55bc4c0ea1a94",
+      "blob": "13d295324bb84c951c51b30691a419830f5985da"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-independent-selected-tests.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-independent-selected-tests.json",
+      "bytes": 11725,
+      "sha256": "cfc6c27cc3ab5b8227ce1d777d40f5687341b893401d62ba8c88935e4ae78724",
+      "blob": "35a1dccff375895db1c23d85fc04cf96a49249a5"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-independent-source-b896-20261006.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-independent-source-b896-20261006.json",
+      "bytes": 29691,
+      "sha256": "4070cb483ea38cc6740fa36a6a55dfb4c1fe5be8c3f3f333c153bb4ae1d0f7a7",
+      "blob": "bb14299e8192663eeffe93ec5881743444638a0e"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-independent-telemetry-tests.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-independent-telemetry-tests.json",
+      "bytes": 9320,
+      "sha256": "3e54900365ad24fbd7d9e2783db4be8276ba7780481fc0fdc787f8e81c54fc8e",
+      "blob": "c2859fb9028f4dcd57e360af93c13e5df1c99873"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-independent-version-object-probe.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-independent-version-object-probe.json",
+      "bytes": 360,
+      "sha256": "f17003a8c4ed5a0099083cb8bf44c149b1d5220a8f29ff3635288e763c7f2cfb",
+      "blob": "1cf717b7fa54b92410dbab7296796b3e153ca587"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-initial-tests.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-initial-tests.json",
+      "bytes": 7315,
+      "sha256": "d94304cdc51e88631796a2653c78e16475c5fa98bddebd75d55a28f394bc293c",
+      "blob": "072c3c0a4829cbf4acbf0d861093b4ea94d2c251"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-lint-final.txt",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-lint-final.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-lint-initial.txt",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-lint-initial.txt",
+      "bytes": 224,
+      "sha256": "add9f78c96b7c75858bd65cc212b5815179b3bd0b5493b19275ba9d2254b43c6",
+      "blob": "2f7101eb4b383a91dc0cab081380a00222f3496a"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-local-cleanup.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-local-cleanup.json",
+      "bytes": 534,
+      "sha256": "7706aa61ccbf617d0782679fbbf0df253c922712721a249fe3bcc9f0bc4936b6",
+      "blob": "cc15007fa94b11abea45c6cfd1de9f167bb93d9a"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-local-validation.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-local-validation.json",
+      "bytes": 4695,
+      "sha256": "3d5177e533976361a720150c7e6aa20c846760728ab8bcbdf2720f8f81dad003",
+      "blob": "3c9b20d0861dd9d76ab21c30c101620fbbb33bbf"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-main594-fullschema-tests.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-main594-fullschema-tests.json",
+      "bytes": 6755,
+      "sha256": "f0dfcdaa8ee9c1760fc84423d15e59c672e5e238bd2f666cfd125f9ca96c00c6",
+      "blob": "3fde6e6156437f003ade30228375430a78e6bf81"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-main595596-tests.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-main595596-tests.json",
+      "bytes": 11601,
+      "sha256": "2f6ffa74f237be124875c736f3ad42a184cdbd673ac997528e77a6ea2989e82a",
+      "blob": "b963bb28df82dbc93d995b8551304bb873da4024"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-main597-contract-tests.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-main597-contract-tests.json",
+      "bytes": 11679,
+      "sha256": "d7d82823bd3b475a9c67f91d014c6d8b72206d6155777ca306abd945a098b0ba",
+      "blob": "6fd1436a3e824db72d5b0e63c5cd4e9ebef18e6d"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-main597-tests.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-main597-tests.json",
+      "bytes": 29550,
+      "sha256": "f5d5093861a63a8bc5bb21f86587d69a52a6c20e9244cbbaed14a7da8a50c941",
+      "blob": "d88445bbeda256518b72a4fe69bd1c0fb082fb65"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-membership-and-cursors.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-membership-and-cursors.json",
+      "bytes": 7659,
+      "sha256": "9d7af66223c6dbb94c2c71e10ab945389c835671e45425e780eb395b3d2d6361",
+      "blob": "4158ee6f391a296338d11f790afa5c7ae188f11a"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-pg-sweep-roster.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-pg-sweep-roster.json",
+      "bytes": 24940,
+      "sha256": "61fbfb4bff750d77448a421228083086853a8f1bca0a1ce5d68b626cd2b35c3b",
+      "blob": "95a23168cb8a9c65b187452d34f31fa8a55f666d"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-prisma-validate.txt",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-prisma-validate.txt",
+      "bytes": 96,
+      "sha256": "87ec5a1ec220f83c7901f1e5363e347ac10881a41f69cdac2b2e74f2b3ed30a6",
+      "blob": "8c541ecae7304be9b0b83cc2159150e372108088"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-production-tsconfig.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-production-tsconfig.json",
+      "bytes": 4336,
+      "sha256": "8cb1e196272139bf964ed6a8f8f9bed48894f18f3c612e976e64ed3969ec9cf1",
+      "blob": "780dbed2cd25ac504bb2967f762e756f395538c6"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-production-typecheck.txt",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-production-typecheck.txt",
+      "bytes": 11375,
+      "sha256": "4645a1285a64db633ee2baa3ccf62818061a9078e3d852e9a77afec5fac1fae8",
+      "blob": "0141a1b219edc4b29bd0f4a1a5ace1d7dbf8d606"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-publication-metadata.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-publication-metadata.json",
+      "bytes": 180585,
+      "sha256": "0a05c6be23f5e87c76c55d2914a6f5ef44da0039ad127903b45ce871d31f3209",
+      "blob": "db043c5e6f06e7582516ee462fe3d65e373d8060"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-push-initial.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-push-initial.json",
+      "bytes": 43784,
+      "sha256": "891d783fecd8276d1cd6d64ef4344d22b704614d485b51577678907d71190ea0",
+      "blob": "3c8230928e7b10d0060e9d1a1e7e8d063c8c3ba1"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-retention-api-tests.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-retention-api-tests.json",
+      "bytes": 2397,
+      "sha256": "51c7308bf005e7369e13ebbf44b575d5a77646415996dc8ce9441ee70e7581e6",
+      "blob": "ad60fa541a4a61270e566e116cc8a6c1426d95cd"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-routes-integration-initial.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-routes-integration-initial.json",
+      "bytes": 35175,
+      "sha256": "a78e81db7e3fc34a1cc963ef8bf1343d476c1b1cf4f0264fca86b7e36512456a",
+      "blob": "eec1e3e7a9219518c8dfe40baf4ec42676662c32"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-shared-privacy-independent-review-20261006.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-shared-privacy-independent-review-20261006.json",
+      "bytes": 8268,
+      "sha256": "ab713590539ea8723f1595d0a1824131b6b5b2a0e9bf3aeda61e402cecd4d6be",
+      "blob": "9d0632626d20c86c8f19c3c7278241d55c457d76"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-shared-privacy-support-metadata.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-shared-privacy-support-metadata.json",
+      "bytes": 979,
+      "sha256": "51368b4049c46a02c5a060048b355b88940f65ea181120976aef2014103e7691",
+      "blob": "60dce0230e564e45987de11dafc07db6e9d406b5"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-source-freeze.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-source-freeze.json",
+      "bytes": 16455,
+      "sha256": "35cbce9ab5e0346d88fd291930c44eac25a17feb2e9096f62d46ebb3440e3b35",
+      "blob": "f5be8f3cb881a2a357d33db504160b9c371d2e51"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-synthetic-commit.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-synthetic-commit.json",
+      "bytes": 2644,
+      "sha256": "df7bc6a0688bd3afdcdb7463f2ebb21baa024870735c327f8373ee50bea5d76c",
+      "blob": "d524e889ed4a617606c2ffe433eee5aa7313910f"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-tests-tsconfig.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-tests-tsconfig.json",
+      "bytes": 5004,
+      "sha256": "662976aaf293274dad985eb32631a3c3b15944262ca4d9c7f017b36c5fe37465",
+      "blob": "802fad8e0ae3b94793816c9cbbdc5365f2cd3fda"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-tests-typecheck-final.txt",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-tests-typecheck-final.txt",
+      "bytes": 11625,
+      "sha256": "8549525ff075a07f4c15c120e3db7edb06abff2886776b49aa83cd562a959288",
+      "blob": "332f51c9b850b3788d2dc1382fbeb7cfa5e7c70d"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-tests-typecheck-retry.txt",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-tests-typecheck-retry.txt",
+      "bytes": 12907,
+      "sha256": "dd10ca363cbc5e4641c1742c3e5ceea81a3f065a0970591866ee6adbd4acf9f9",
+      "blob": "38c748393ffbef8bf28ea273ffee3812b03daf37"
+    },
+    {
+      "source_path": "/tmp/hrm-pr594-compatibility-independent-review-20261006.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-pr594-compatibility-independent-review-20261006.json",
+      "bytes": 6978,
+      "sha256": "45a5323a510646b264bd4a7cd44054652aaf94d6df777ceaccaef5f14a9eb647",
+      "blob": "2e6d1afbe704dd42102a9f4ba319c2d34fb7cea2"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-audit-integrity-tests.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-audit-integrity-tests.json",
+      "bytes": 6116,
+      "sha256": "32222c5390d8c2a34e477762ede2366f5d67e81e82a2817138c08f8d838b664e",
+      "blob": "b58a204ab2ae93f461084cb8ef0e07dcf77c14cd"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-auth-tests.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-auth-tests.json",
+      "bytes": 30285,
+      "sha256": "7011e6361b365468e554175023a119054301b71301179a6de30a250872c975ef",
+      "blob": "26b646ca3a8c0aa225f929cf0b9f1a4d593182f2"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-boundary-independent-audit-20261006.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-boundary-independent-audit-20261006.json",
+      "bytes": 20927,
+      "sha256": "f45d35ba0fdf83a5f186cb18688da37ce90c915cc3656ea2754af8bc3e300b95",
+      "blob": "4ffab382fbd24f41eac643c933eea3b4029cee9d"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-boundary-probe.cjs",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-boundary-probe.cjs",
+      "bytes": 2284,
+      "sha256": "fdc51a4e0ca50d59949efc10e64c50166a4e1c928d81e2da12bece5d1677a449",
+      "blob": "798e773a4875a33cb4a9ab116510557fa2f290e2"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-boundary-probe.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-boundary-probe.json",
+      "bytes": 733,
+      "sha256": "b5a6074962cbcea43eef78fd045c223e07a2cb386ab0859ada3cb6112d7ddf83",
+      "blob": "07b65c1c4e9b2acae5b60d17f7bb19253a7bb245"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-boundary-root-probe.cjs",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-boundary-root-probe.cjs",
+      "bytes": 2285,
+      "sha256": "69dbb50c42f5b44c7168b8d31dea34299f59ea5fdfa1bff41206f82b467446db",
+      "blob": "846e5702335b75411e7740475bbda6f90b31c29f"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-boundary-root-probe.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-boundary-root-probe.json",
+      "bytes": 733,
+      "sha256": "b5a6074962cbcea43eef78fd045c223e07a2cb386ab0859ada3cb6112d7ddf83",
+      "blob": "07b65c1c4e9b2acae5b60d17f7bb19253a7bb245"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-cardinality-independent-review-20261006.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-cardinality-independent-review-20261006.json",
+      "bytes": 4333,
+      "sha256": "a5279b1863de3ac56c25ea45c706edb78941183a764d77870e5020ee496e2d47",
+      "blob": "de28f428941f2e106a7b39e73d647d3c54d78865"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-cardinality-probe.cjs",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-cardinality-probe.cjs",
+      "bytes": 4328,
+      "sha256": "d8c122a71f55c965cf8b45c91001c2a7ffc629cd1ac2701083ac6738f9380bc1",
+      "blob": "b53984f45eeb3de1e7e84ef45f8065b63585f96e"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-cardinality-probe.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-cardinality-probe.json",
+      "bytes": 2086,
+      "sha256": "885a9fa960bb3294a32ebbb4facf5d394e2b5a71b918f9f86dc51c6c142e7fdd",
+      "blob": "4b1c951ccf426e77cc612e5026dab894d15475b4"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-compiler-comparison.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-compiler-comparison.json",
+      "bytes": 2604,
+      "sha256": "95cc79fe4b0b6ec0c180f07f5b2eee68605cd6452d2f3c5d36525c52c7895523",
+      "blob": "6a99a14b1cbb792414351a1be59083edc77b833c"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-focused-tests.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-focused-tests.json",
+      "bytes": 98518,
+      "sha256": "3b5c189e94bf326139bc910d4fd04793131f98f463047fa293faa54a5a3c9f24",
+      "blob": "9b938231cd412062e46b89d598aff1f07dffd1fd"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-independent-freeze-doc-review-20261006.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-independent-freeze-doc-review-20261006.json",
+      "bytes": 19350,
+      "sha256": "c3e9277a7889804886cc7218919ac1b9c08c0df58673045de44bad15e5c155ab",
+      "blob": "069c58dfd20292bba24c9ebdac9f902ae4c6d1b1"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-independent-fresh-pr.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-independent-fresh-pr.json",
+      "bytes": 21955,
+      "sha256": "1df3b464b421f29ec883c86bb65dc4ce8a394a753a1a8da2f4e79850fda18cf6",
+      "blob": "f65f1454ead6f0bef7823a5efbf23c40b26bf863"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-independent-full-tree-proof.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-independent-full-tree-proof.json",
+      "bytes": 3103,
+      "sha256": "3a24f917600d8aaabf5ab5a0f6e6d023b14696da3523f0c95b9195261221994c",
+      "blob": "17955814a0fcb8428c9b4acc0d0b1548776e1ced"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-independent-integrity-tests.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-independent-integrity-tests.json",
+      "bytes": 1816,
+      "sha256": "77037da79e47df891de3236f5a92b1fa1a05517c0dbd6e68222e51180d4e5b91",
+      "blob": "e1ddf668d9ecbacdfec0d2d687724474326d2496"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-independent-play-integrity-tests.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-independent-play-integrity-tests.json",
+      "bytes": 2622,
+      "sha256": "f3aff33d992441204654a32d16f72d3087e063a819ec71d59e49bac2331c7a8a",
+      "blob": "9fb4b42537c5d425e571b6d452918944f5fae5db"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-independent-preliminary-20261006.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-independent-preliminary-20261006.json",
+      "bytes": 22369,
+      "sha256": "6958c45c78483fee8b0566469263233b040c5d810f2ee041340a9ba565fab7ea",
+      "blob": "4621a9eb85d7c3c5672117c9bd052fdc368efd8c"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-independent-preliminary-delta.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-independent-preliminary-delta.json",
+      "bytes": 13642,
+      "sha256": "6bde69d8bb5e1910c10dd49b82614b9a42d60b4645dd83c30d091f1ecd4f1ef0",
+      "blob": "40182a05f7a13395831f98dfe09efd02b07896d6"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-independent-remote-commit.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-independent-remote-commit.json",
+      "bytes": 1332,
+      "sha256": "129b9424debd96432dab2958a7bc3a8b25c227fecd6d129351671040158153bb",
+      "blob": "6107bb818ae351dacf55ccc8df934850f72a90f2"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-independent-remote-main.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-independent-remote-main.json",
+      "bytes": 381,
+      "sha256": "459ef741b0bd36704aa22dd21bbffc55967dc56a39448d3570d88403dfe316fe",
+      "blob": "e0f30a789f652d8357dffcce09b80f68b6e813af"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-independent-source-8053-20261006.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-independent-source-8053-20261006.json",
+      "bytes": 26639,
+      "sha256": "bb3f3e4624f059bb981b5be8ee197df4771b118df5fbf10a6a0d4904dffd80cf",
+      "blob": "df7239d466a05a20e51d3ba9274ffd86cb159488"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-independent-synthetic.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-independent-synthetic.json",
+      "bytes": 2846,
+      "sha256": "9148b4f3fc6a5594feb7acaddfba97f3f4d5dd2c37fa4fbd9c7ff078cb587548",
+      "blob": "db0ed4239c2c4d20c4742c6134252cddf7946604"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-independent-tests.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-independent-tests.json",
+      "bytes": 100801,
+      "sha256": "83801ac8b55346010115a5872ffdf1bdd68983c9878147ab9b0cffd0475324e7",
+      "blob": "200a95674a2991dc14a979bb18f4dd03fbb20d6a"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-independent-tree-verify.py",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-independent-tree-verify.py",
+      "bytes": 2338,
+      "sha256": "4873daab0cbf20fd71db857f181553b9809bc51607a60da0adc3e99bcbcfbe70",
+      "blob": "a2d41cd3916f6e176043d9e079f56f3f5b8cae23"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-initial-tests.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-initial-tests.json",
+      "bytes": 70089,
+      "sha256": "92fbe9aaa7b2a43802ab78bed8ac8103ee43742ca75c7f119fcb7b9ca28ad6e2",
+      "blob": "7f5ee56594dfe7b7fedefdd7a3c082e2a2cdbf52"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-lint-final.txt",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-lint-final.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-next-fault-fairness-plan.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-next-fault-fairness-plan.json",
+      "bytes": 8703,
+      "sha256": "4e75d57109b92acad48daaae2f05a9a8a7b9292a1fb061741ddb70a366375577",
+      "blob": "3b6d692755bb751c3a145239158207ae2a90bf54"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-owner-validation.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-owner-validation.json",
+      "bytes": 8817,
+      "sha256": "3e3064913ab1504ff73d9ca1dbcf225383a013923b8adf1c47b6fad2e0ad81de",
+      "blob": "7f34e697222637ad9014be9a9fdd68efee302cac"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-parent-production-tsconfig.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-parent-production-tsconfig.json",
+      "bytes": 3788,
+      "sha256": "0263f02458b86eb6e41fac68440363db4efb2f66ab3db00ec0e450ae665e6f99",
+      "blob": "2cb8bfea7f9519af7ed2b0609650df9f0904fc65"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-parent-production-typecheck.txt",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-parent-production-typecheck.txt",
+      "bytes": 5823,
+      "sha256": "3c82da4dca27171587f897c2a5ce4076b92051c42a4ea68382f915a8d75ec273",
+      "blob": "f00a8ff30d0939180ce9601dbefa8b3e5bed0599"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-production-tsconfig.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-production-tsconfig.json",
+      "bytes": 3784,
+      "sha256": "75a895e8f95ac03b5d3f93c262f5a6eb2ba0d17a5b78cf46299795ed30836f1f",
+      "blob": "f09a155e63cc66a68fd2a7f94f201322ac28e34d"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-production-typecheck-final.txt",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-production-typecheck-final.txt",
+      "bytes": 4845,
+      "sha256": "c60b348d3daa0000151e12036ba1bb3739dc10c135be2dc888b8a89cd8d2af70",
+      "blob": "f307b744722b60d195cf632f3f4168daec157938"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-production-typecheck.txt",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-production-typecheck.txt",
+      "bytes": 5225,
+      "sha256": "8e008c962d1890ccb596a4632f960aaa026de6a53ef6623ad07e97e5f93d5ffa",
+      "blob": "e2018b8bb7808a3ef7ac5a46fe956a99a2a71e39"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-regressions-final.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-regressions-final.json",
+      "bytes": 966204,
+      "sha256": "1d8a9ed44067fe6bf4b4ddf4b665c50998f6c2ad9cd85f0cac805686ca246c84",
+      "blob": "8c0be091ed1b6cef89f0f76a6b04266846e30dac"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-regressions.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-regressions.json",
+      "bytes": 967155,
+      "sha256": "7c1d2e12ad03673fb3b87151d0c7fc1ef8bf1a23137649d590b827305fa413f0",
+      "blob": "f9fed8f86ebc99116416ded25244f265a46f91fa"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-shared-probe-and-plan-independent-review-20261006.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-shared-probe-and-plan-independent-review-20261006.json",
+      "bytes": 5721,
+      "sha256": "8126b67fe90b7a33d1e0b968b9b93c2b31539eb6c72d0952f6bdfcce85111098",
+      "blob": "5c62dfdf80c40aa3eae8d170fe4cf4209b58f6b9"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-shared-synthetic-probe.cjs",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-shared-synthetic-probe.cjs",
+      "bytes": 5306,
+      "sha256": "f558a0913a6ff2a01ad53e2600f9493286f187800d20b026e4c2ec651bd78e07",
+      "blob": "ca7b9befe2552829e561967009d60a217240f70e"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-shared-synthetic-probe.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-shared-synthetic-probe.json",
+      "bytes": 3628,
+      "sha256": "481bc9cf78e44b9f2548d2dd41b14a7d4528c2a40845883c706a2ea5410e8ec4",
+      "blob": "fef8ad32cceef325e8e5df4063124302722457d1"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-skipped-suites.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-skipped-suites.json",
+      "bytes": 1571,
+      "sha256": "b6bc57a4753906168dc443fa467dd8d7d0a486e1f1b982e9c366126a06fb6c93",
+      "blob": "8eb072d09673b5f14a21f70099481a5bdbb0a124"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-source-proof.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-source-proof.json",
+      "bytes": 14582,
+      "sha256": "90e274536e8c616975118bf103ff8c8b2737577895fe54011919894d8827f868",
+      "blob": "757ed248ae23c2d0912bb8cfdb89d8d748d6e11f"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-tests-tsconfig.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-tests-tsconfig.json",
+      "bytes": 4134,
+      "sha256": "0a0720169ec21ba6b9e36aa07195b21c5ce46e4b03dcda5e6448304b8a3eb6d7",
+      "blob": "61388476e17dd61dbb73f5ba189461deef6c9bf0"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-tests-typecheck-final.txt",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-tests-typecheck-final.txt",
+      "bytes": 5095,
+      "sha256": "a04b6dffcd360dbfe752fddafcb8363697496372ddcf32bc471f88e5c7cc9b8d",
+      "blob": "68cfdbd8abac510c39064d752e2a5bacd833a685"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-tests-typecheck.txt",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-tests-typecheck.txt",
+      "bytes": 5475,
+      "sha256": "667797209c810b0da000f7ef3fc72b19128222b9656727a5b6fde85df73181d4",
+      "blob": "9e9059a6b2b65b95e98be09ab0da2df322ebc461"
+    },
+    {
+      "source_path": "/tmp/hrm-privacy-verify-scope.cjs",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-privacy-verify-scope.cjs",
+      "bytes": 4947,
+      "sha256": "ff863e2d012bc3aa93d933abbacad9215aba2dacbba8b4eea6f3551f5ab83ecb",
+      "blob": "7904c0075142aa65df53f9838ff27a04f107c8a0"
+    },
+    {
+      "source_path": "/tmp/hrm-push-bounds-independent-contract-review-20261006.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-push-bounds-independent-contract-review-20261006.json",
+      "bytes": 4639,
+      "sha256": "3c74a52557ab6b50a75341779b2995d60ee3511da0d6be8aa6b5c6fe97b0717f",
+      "blob": "c410e9321a7f2dc5de2c007a1039923475788634"
+    }
+  ],
+  "original_files": [
+    {
+      "source_path": "/tmp/hrm-fault-accept-terminal.py",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/terminal/hrm-fault-accept-terminal.py",
+      "bytes": 5412,
+      "sha256": "badee5844219547eb718e3a90e0d7bd3148638d6c773a614a2c6df51b4f9ba7f",
+      "blob": "0462506fb204cd644c36256b5c4203c3d4f58278"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-build-terminal-archive.py",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/terminal/hrm-fault-build-terminal-archive.py",
+      "bytes": 6415,
+      "sha256": "f5e4692f59b1f939c54eda1ee2a6c25825dc1187477ee40295302ea2363b6c2a",
+      "blob": "7ac8b4e7c72f17cd757f9228a4d9badf45e65265"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-historical-independent-durability-20261006.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/terminal/hrm-fault-historical-independent-durability-20261006.json",
+      "bytes": 22172,
+      "sha256": "998232b81657818f6bd3ce7ec2cfd940e2eead9dfe3497798c82e00086260bc2",
+      "blob": "2796ebe50bf6eaa2137421d5bd5983b502d450cc"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-independent-source-durable-20261006.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/terminal/hrm-fault-independent-source-durable-20261006.json",
+      "bytes": 70892,
+      "sha256": "02ec1d1ba41ba1f2f7736680dc605ff336f6bbca694b7bb0606e35b1673b4a04",
+      "blob": "802dcbadbbb79fbade7f5c5ac4ecd6492dceb512"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-independent-terminal-20261006.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/terminal/hrm-fault-independent-terminal-20261006.json",
+      "bytes": 37938,
+      "sha256": "c542b41fa35b77ed17ad654c286723e53e7eeb47b18114989d97fb1bbba102e7",
+      "blob": "093c1f5cb060b2588bcfc5d95086be3c96e3121a"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-independent-terminal-metadata.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/terminal/hrm-fault-independent-terminal-metadata.json",
+      "bytes": 223658,
+      "sha256": "3ebd59ca03b9ecc8a703f1fa275b3b76f72a6b0f36e384434ba047cc30b42cb5",
+      "blob": "2dc3e0f3519d3bb2ea773fa7a74e9163cea3b90f"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-next-dependencies.md",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/terminal/hrm-fault-next-dependencies.md",
+      "bytes": 2820,
+      "sha256": "3bdae518ff629da2783142846f301e20af95e72cbb67cb1c02f018a516321310",
+      "blob": "6a06f0e1ee5549fe49ef35dfa139b34ecd1e4614"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-restore-artifact-metadata.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/terminal/hrm-fault-restore-artifact-metadata.json",
+      "bytes": 769,
+      "sha256": "94e5ea3f3c9d7514ad4e6cd5385a6e97d4c1258d262e43cd5e42161ee71ffca4",
+      "blob": "0461f9b00b73ddc878b638c57da10e2ffc3f4398"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-restore-attempt1-root.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/terminal/hrm-fault-restore-attempt1-root.json",
+      "bytes": 1609,
+      "sha256": "559455ae58ac016992694f878e79e4f994ca6c49ec37292be5eb73688943050d",
+      "blob": "90b92165be5db6aad219c5fa64ebb8c2fc250154"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-restore-attempt1-sanitized.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/terminal/hrm-fault-restore-attempt1-sanitized.json",
+      "bytes": 15958,
+      "sha256": "f2628012b4895820c93a2e134eb42af8e5a1d9abb331712063d66624fccbef09",
+      "blob": "ff8dce3f8216e34339364b6e0e968026f65504e8"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-restore-independent-metadata.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/terminal/hrm-fault-restore-independent-metadata.json",
+      "bytes": 17950,
+      "sha256": "bac4baee4876c842583e77e5d6fb225ef8da80c5f98e44ad7ff02f50103b19a9",
+      "blob": "21d5aa54f61774d0b4583e0e19f80df3330095e3"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-restore-independent-review-20261006.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/terminal/hrm-fault-restore-independent-review-20261006.json",
+      "bytes": 13041,
+      "sha256": "becf4b3434a8b860c8baad20418933baff294d9796b6569efe0c5ba6034683af",
+      "blob": "bb342b75b2ed6007b5200da42e4e296a027bfb99"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-root-durable-source.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/terminal/hrm-fault-root-durable-source.json",
+      "bytes": 1831,
+      "sha256": "13a1cd809e8956b8cd6e6ac4ac9ae86c0419d47fbe5f67df9c0d31994be584aa",
+      "blob": "82ef1785946a405581a36993ac58ddc768c478c3"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-root-source-acceptance.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/terminal/hrm-fault-root-source-acceptance.json",
+      "bytes": 1845,
+      "sha256": "3f653b35862e9325d953e368a5ff686a661375b87dc021496dddc20b09faddf7",
+      "blob": "969c50ae0db4fe346004f82a59c51ba7621bd399"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-root-terminal-acceptance.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/terminal/hrm-fault-root-terminal-acceptance.json",
+      "bytes": 6819,
+      "sha256": "9127aa5658b9fe0d6bac36f9d72e6ef81e6f8686f94dbf85df67eb6367d0cb4e",
+      "blob": "9ffe819c0cbe588295835420b1137022074e5f42"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-source-archive-publication.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/terminal/hrm-fault-source-archive-publication.json",
+      "bytes": 204,
+      "sha256": "830d7b8030dabc8d6842cd548f6ac07679f60b580318cebe9b4f32f3bb1b2281",
+      "blob": "1dc93fcbf2134a0a506f1e148fa641b50ef6892e"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-source-archive-readback.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/terminal/hrm-fault-source-archive-readback.json",
+      "bytes": 16436,
+      "sha256": "5dc207e214faa6f726c0047bbb4c2a7fb792cb0b84d33ea30698e00b67209ce2",
+      "blob": "ed3be68812c45f68db8f71024a17038e4cc8c4d7"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-terminal-metadata.json",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/terminal/hrm-fault-terminal-metadata.json",
+      "bytes": 229051,
+      "sha256": "4e46db7b892fec00e201354f90e991eebbf666a064297c70d520288dbbbe20d8",
+      "blob": "16204d3ac65d2441472a9abf42204bd81fb77758"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-tests-typecheck.txt",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/terminal/hrm-fault-tests-typecheck.txt",
+      "bytes": 851,
+      "sha256": "74e4ec4d4845f5702019fa02044e7b2910d50c71801e26181b80e00e13b85e0b",
+      "blob": "34922e5cf3691c6472cacf3227eaa81b42b8f4e2"
+    },
+    {
+      "source_path": "/tmp/hrm-fault-validate-restore.py",
+      "archive_path": "docs/evidence/workforce-fault-fairness-2026-10-06/terminal/hrm-fault-validate-restore.py",
+      "bytes": 2623,
+      "sha256": "c5e6ca94d18976c51c11dab21aba2901736a193130c550f928ee891d7ac94d08",
+      "blob": "aefd97365794e71cdad36c46e847045e712a4b65"
+    }
+  ],
+  "local_only_supports": [
+    {
+      "path": "/tmp/hrm-fault-b896-independent-tree.json",
+      "bytes": 2981445,
+      "sha256": "fc15fba4c89548667fff4fab25c0c477bcc326a7b4c87c2454502df76397f5b4",
+      "reason": "LOCAL_ONLY GitHub transport/content-copy; exact originals recoverable from immutable source/evidence commits and manifest blob identities. Not archived-original credit."
+    },
+    {
+      "path": "/tmp/hrm-privacy-independent-remote-tree.json",
+      "bytes": 3625592,
+      "sha256": "53d36ab7cf6092ecdf59cf2ec6ec2b6c4d5b59f5e7842db69bf371cad01be539",
+      "reason": "LOCAL_ONLY GitHub transport/content-copy; exact originals recoverable from immutable source/evidence commits and manifest blob identities. Not archived-original credit."
+    },
+    {
+      "path": "/tmp/hrm-request-independent-remote-tree.json",
+      "bytes": 3623661,
+      "sha256": "fc931a79e5b5f0c981c64089a4ba0652d6f8932eb54fc35f42d01dd15b394d21",
+      "reason": "LOCAL_ONLY GitHub transport/content-copy; exact originals recoverable from immutable source/evidence commits and manifest blob identities. Not archived-original credit."
+    },
+    {
+      "path": "/tmp/hrm-privacy-final-archive-elements.json",
+      "bytes": 3687638,
+      "sha256": "a1c4d4658651a2a89684d7b0d5331b30abe38e7864101e7b56c342ae638c0afd",
+      "reason": "LOCAL_ONLY GitHub transport/content-copy; exact originals recoverable from immutable source/evidence commits and manifest blob identities. Not archived-original credit."
+    },
+    {
+      "path": "/tmp/hrm-fault-historical-independent-remote-contents.json",
+      "bytes": 3678432,
+      "sha256": "adc0d4560162e1dae6d007b385941b548f99b5880cf423a54c07755ad235d4be",
+      "reason": "LOCAL_ONLY GitHub transport/content-copy; exact originals recoverable from immutable source/evidence commits and manifest blob identities. Not archived-original credit."
+    },
+    {
+      "path": "/tmp/hrm-fault-historical-independent-provenance.json",
+      "bytes": 6138907,
+      "sha256": "17bae6439545c24ab049b1897757dacc85249259b38c8c1a6f7c0aab63adc198",
+      "reason": "LOCAL_ONLY GitHub transport/content-copy; exact originals recoverable from immutable source/evidence commits and manifest blob identities. Not archived-original credit."
+    },
+    {
+      "path": "/tmp/hrm-fault-source-archive-elements.json",
+      "bytes": 7834427,
+      "sha256": "7af6f5a6f04de684bf0c5dadde3e1000aa9fe0213ce271b0e8be0098eb1a3d69",
+      "reason": "LOCAL_ONLY GitHub transport/content-copy; exact originals recoverable from immutable source/evidence commits and manifest blob identities. Not archived-original credit."
+    },
+    {
+      "path": "/tmp/hrm-fault-source-independent-archive-contents.json",
+      "bytes": 3409577,
+      "sha256": "7be1ba49530a9505572fab71418c8856f5e3de7f98afaab3069c9348bd36345b",
+      "reason": "LOCAL_ONLY GitHub transport/content-copy; exact originals recoverable from immutable source/evidence commits and manifest blob identities. Not archived-original credit."
+    },
+    {
+      "path": "/tmp/hrm-fault-source-independent-large-blobs.json",
+      "bytes": 4433690,
+      "sha256": "0272c8912d9b68addcf6a6e609ca2a90501552beacfea9b0941c7960292946a3",
+      "reason": "LOCAL_ONLY GitHub transport/content-copy; exact originals recoverable from immutable source/evidence commits and manifest blob identities. Not archived-original credit."
+    },
+    {
+      "path": "/tmp/hrm-fault-source-independent-archive-provenance.json",
+      "bytes": 3104592,
+      "sha256": "cba205404ad5e4339b5f4d8f0df9c99f9c021b5f8351856644e6f40810eb50c8",
+      "reason": "LOCAL_ONLY GitHub transport/content-copy; exact originals recoverable from immutable source/evidence commits and manifest blob identities. Not archived-original credit."
+    }
+  ],
+  "acceptance": {
+    "at": "2026-10-06T12:34:13.282748+00:00",
+    "status": "EXACT_HEAD_BOUNDED_CANDIDATE_READY_NO_PRODUCTION_ACTIVATION",
+    "head": "b896cdb35246c22bcaddb176774a5c1b528190f9",
+    "tree": "56054b2aaf225d54668c7c99b19d6f276c81f02b",
+    "freshMain": "5c7412266c29a53e12963621b090c4f1aee95a3a",
+    "synthetic": "d28db54c37d62248b029fe935bea6cb5b85a6b86",
+    "requiredChecks": [
+      "pr-scope",
+      "runner-policy",
+      "scan",
+      "static-checks",
+      "typecheck"
+    ],
+    "additionalChecks": [
+      "Authenticated Workforce policy version browser evidence",
+      "Real PostgreSQL, authorized API and rendered policy restore UI evidence",
+      "Authenticated Workforce calendar browser evidence",
+      "Real PostgreSQL SELECT-only and authenticated employee impact browser evidence",
+      "Authenticated Workforce manager Today browser evidence",
+      "Authenticated Workforce exception report browser evidence"
+    ],
+    "allPassed": 11,
+    "optionalBuild": "SKIPPED_BY_EXISTING_POLICY",
+    "firstAttemptRuns": [
+      {
+        "id": 37461463728,
+        "name": "Workforce manager Today browser evidence",
+        "conclusion": "success",
+        "attempt": 1
+      },
+      {
+        "id": 37461463605,
+        "name": "Workforce policy version browser evidence",
+        "conclusion": "success",
+        "attempt": 1
+      },
+      {
+        "id": 37461463604,
+        "name": "Workforce exception report browser evidence",
+        "conclusion": "success",
+        "attempt": 1
+      },
+      {
+        "id": 37461463798,
+        "name": "Workforce policy employee impact evidence",
+        "conclusion": "success",
+        "attempt": 1
+      },
+      {
+        "id": 37461463802,
+        "name": "Workforce calendar browser evidence",
+        "conclusion": "success",
+        "attempt": 1
+      },
+      {
+        "id": 37461463852,
+        "name": "Workforce policy restore writer evidence",
+        "conclusion": "success",
+        "attempt": 1
+      },
+      {
+        "id": 37461463804,
+        "name": "Secret scan",
+        "conclusion": "success",
+        "attempt": 1
+      },
+      {
+        "id": 37461463664,
+        "name": "Runner policy",
+        "conclusion": "success",
+        "attempt": 1
+      },
+      {
+        "id": 37461463714,
+        "name": "PR checks",
+        "conclusion": "success",
+        "attempt": 1
+      }
+    ],
+    "metadataCompleteness": {
+      "runs": 9,
+      "checks": 12,
+      "jobs": 12,
+      "artifacts": 6,
+      "appId": 15368
+    },
+    "restore": {
+      "head": "b896cdb35246c22bcaddb176774a5c1b528190f9",
+      "synthetic": "d28db54c37d62248b029fe935bea6cb5b85a6b86",
+      "artifact_id": 11412804798,
+      "artifact_digest_verified": "sha256:2a410da11217069855436ab6a6cbf694240a1fa1ab6a54e382dd1f2c3f6fc843",
+      "safe_member": "restore-rendered-ui-receipt.json",
+      "other_zip_member_contents_read": false,
+      "status": "PASS",
+      "required_cases": 15,
+      "completed_cases": 15,
+      "unique_case_names": 15,
+      "case_statuses": [
+        "PASS",
+        "PASS",
+        "PASS",
+        "PASS",
+        "PASS",
+        "PASS",
+        "PASS",
+        "PASS",
+        "PASS",
+        "PASS",
+        "PASS",
+        "PASS",
+        "PASS",
+        "PASS",
+        "PASS"
+      ],
+      "cleanup": [
+        {
+          "action": "scoped-row-removal-and-four-guards-restored",
+          "status": "PASS"
+        },
+        {
+          "action": "disconnect",
+          "status": "PASS"
+        }
+      ],
+      "authentication_records": 10,
+      "source_bindings_verified": 34,
+      "receipt_sha256": "f2628012b4895820c93a2e134eb42af8e5a1d9abb331712063d66624fccbef09",
+      "boundary": "Real hosted Chromium/credentials/session/canonical restore writer and PostgreSQL on disposable data. EN/RU/AZ at320/768/1440, bounded native controls/reflow, real201 loss/replay200, audit rollback503/retry201 and session/grant changes. Controlled transport loss is distinct from server failure. Existing policy read-only-role lane unchanged. Geometry is not pixel occlusion/whole-page WCAG/AT/native zoom. No production authenticated write/activation/employee impact/Android/load/pilot credit. Auth metadata and explicitly expected new draft/audit writes are excluded from preserved source/employee facts."
+    },
+    "evidenceScope": "Metadata for all checks and artifacts; only allowlisted restore-rendered-ui-receipt.json payload examined. No raw CI logs or screenshots; other five browser artifact payloads metadata-only.",
+    "sourceArchive": "a10975647599a004e44d25953e00971400bdd989",
+    "historical8053Archive": "b0d41908058093c41d18910d1d6bd470ba8847f2",
+    "supports": [
+      {
+        "path": "/tmp/hrm-fault-terminal-metadata.json",
+        "bytes": 229051,
+        "sha256": "4e46db7b892fec00e201354f90e991eebbf666a064297c70d520288dbbbe20d8"
+      },
+      {
+        "path": "/tmp/hrm-fault-independent-terminal-20261006.json",
+        "bytes": 37938,
+        "sha256": "c542b41fa35b77ed17ad654c286723e53e7eeb47b18114989d97fb1bbba102e7"
+      },
+      {
+        "path": "/tmp/hrm-fault-root-source-acceptance.json",
+        "bytes": 1845,
+        "sha256": "3f653b35862e9325d953e368a5ff686a661375b87dc021496dddc20b09faddf7"
+      },
+      {
+        "path": "/tmp/hrm-fault-independent-source-b896-20261006.json",
+        "bytes": 29691,
+        "sha256": "4070cb483ea38cc6740fa36a6a55dfb4c1fe5be8c3f3f333c153bb4ae1d0f7a7"
+      },
+      {
+        "path": "/tmp/hrm-fault-root-durable-source.json",
+        "bytes": 1831,
+        "sha256": "13a1cd809e8956b8cd6e6ac4ac9ae86c0419d47fbe5f67df9c0d31994be584aa"
+      },
+      {
+        "path": "/tmp/hrm-fault-restore-independent-review-20261006.json",
+        "bytes": 13041,
+        "sha256": "becf4b3434a8b860c8baad20418933baff294d9796b6569efe0c5ba6034683af"
+      },
+      {
+        "path": "/tmp/hrm-fault-local-validation.json",
+        "bytes": 4695,
+        "sha256": "3d5177e533976361a720150c7e6aa20c846760728ab8bcbdf2720f8f81dad003"
+      },
+      {
+        "path": "/tmp/hrm-fault-local-cleanup.json",
+        "bytes": 534,
+        "sha256": "7706aa61ccbf617d0782679fbbf0df253c922712721a249fe3bcc9f0bc4936b6"
+      },
+      {
+        "path": "/tmp/hrm-fault-next-dependencies.md",
+        "bytes": 2820,
+        "sha256": "3bdae518ff629da2783142846f301e20af95e72cbb67cb1c02f018a516321310"
+      }
+    ],
+    "qualification": [
+      "Local production55diagnostics equal integrated baseline55; test57 adds two unchanged fixture TS2737; not globally clean compiler.",
+      "Original broad2728PASS/18spawnFAIL/168SKIP retained; affected unchanged files32PASS retry; not a single all-green broad run.",
+      "No signed-device/physical network/representative5k load/cluster failover/full migration replay or production acceptance.",
+      "Shared auth/Pino/Sentry/cardinality/collector/destination criteria remain open.",
+      "No merge/deploy/productionactivation/migrationhistory/baseline/credentials/permissions changes; Support exact main."
+    ],
+    "canonical": {
+      "done": 82,
+      "total": 161,
+      "open": 79,
+      "weightedPercent": 59,
+      "gates": "14/15",
+      "C12-008": "PARTIAL",
+      "C10-011": "PLANNED"
+    }
+  },
+  "canonical": "82/161DONE,79open,59%,14/15gates; fullHRM/privacy/C12 acceptance remains incomplete"
+}

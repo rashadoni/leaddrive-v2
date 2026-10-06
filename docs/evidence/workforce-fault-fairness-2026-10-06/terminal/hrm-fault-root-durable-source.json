@@ -1,0 +1,52 @@
+{
+  "at": "2026-10-06T12:21:35.692830+00:00",
+  "status": "ROOT_AND_INDEPENDENT_ARCHIVE_DURABILITY_PASS_HOSTED_PENDING",
+  "source": "b896cdb35246c22bcaddb176774a5c1b528190f9",
+  "historicalArchive": "b0d41908058093c41d18910d1d6bd470ba8847f2",
+  "sourceArchive": "a10975647599a004e44d25953e00971400bdd989",
+  "rootHistoricalReadback": {
+    "path": "/tmp/hrm-fault-historical-archive-readback.json",
+    "sha256": "0d8862eb586dd1160a851b6feaa29c4869c08ef2f16bcd2c8c4e981bbe7a7173"
+  },
+  "rootSourceReadback": {
+    "path": "/tmp/hrm-fault-source-archive-readback.json",
+    "sha256": "5dc207e214faa6f726c0047bbb4c2a7fb792cb0b84d33ea30698e00b67209ce2"
+  },
+  "independentReceipt": {
+    "path": "/tmp/hrm-fault-independent-source-durable-20261006.json",
+    "bytes": 70892,
+    "sha256": "02ec1d1ba41ba1f2f7736680dc605ff336f6bbca694b7bb0606e35b1673b4a04"
+  },
+  "counts": {
+    "remoteFilesIndependentlyFetched": 101,
+    "originalsHashVerified": 99,
+    "manifestAndREADME": 2,
+    "recursiveAbsoluteTmpSHAReferencesVerified": 172,
+    "missingRecursiveSupports": 0,
+    "explicitLocalOnly": 3,
+    "largeContentsFallbackToFullBlobAPI": 2
+  },
+  "priorArchives": [
+    {
+      "directory": "docs/evidence/workforce-privacy-audit-2026-10-06/",
+      "files": 68,
+      "unchanged": true
+    },
+    {
+      "directory": "docs/evidence/workforce-request-safe-logging-2026-10-06/",
+      "files": 42,
+      "unchanged": true
+    },
+    {
+      "directory": "docs/evidence/workforce-safe-logging-2026-10-06/",
+      "files": 34,
+      "unchanged": true
+    },
+    {
+      "directory": "docs/evidence/workforce-c12-eligible-roster-2026-10-06/",
+      "files": 29,
+      "unchanged": true
+    }
+  ],
+  "limitations": "Seven historical and three current transport copies remain explicitlyLOCAL_ONLY; no new hosted acceptance inferred."
+}

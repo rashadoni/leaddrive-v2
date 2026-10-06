@@ -1,0 +1,357 @@
+{
+  "schemaVersion": 1,
+  "status": "EXACT_HEAD_RESTORE_ATTEMPT1_BOUNDED_PASS_MANDATORY_GATES_PENDING",
+  "reviewedAt": "2026-10-06T12:23:22.961500+00:00",
+  "head": "b896cdb35246c22bcaddb176774a5c1b528190f9",
+  "synthetic": "d28db54c37d62248b029fe935bea6cb5b85a6b86",
+  "tree": "56054b2aaf225d54668c7c99b19d6f276c81f02b",
+  "run": {
+    "id": 37461463852,
+    "attempt": 1,
+    "event": "pull_request",
+    "conclusion": "success",
+    "job": 112261806869
+  },
+  "artifact": {
+    "id": 11412804798,
+    "bytes": 884002,
+    "sha256": "2a410da11217069855436ab6a6cbf694240a1fa1ab6a54e382dd1f2c3f6fc843",
+    "digestVerifiedAgainstFreshAPI": true,
+    "onlyContentMemberRead": "restore-rendered-ui-receipt.json"
+  },
+  "safeJSON": {
+    "path": "/tmp/hrm-fault-restore-attempt1-sanitized.json",
+    "bytes": 15958,
+    "sha256": "f2628012b4895820c93a2e134eb42af8e5a1d9abb331712063d66624fccbef09"
+  },
+  "sourceBindings": [
+    {
+      "path": "scripts/workforce-policy-restore-browser-evidence.mjs",
+      "bytes": 33364,
+      "sha256": "52bbe381303e0adf2631713bbcb49af795e62d81647d4d24a9fc237200abe530",
+      "gitBlob": "cbff539bc964bf6b84e32d3cbed73b606d0f4aa5"
+    },
+    {
+      "path": "scripts/_rls.mjs",
+      "bytes": 2250,
+      "sha256": "fae67dd4467cfd14667236a570ee4884100d8236496f64e31984305146ad7266",
+      "gitBlob": "a7e989ed14be6c850da001cee6f0acb381f31d8d"
+    },
+    {
+      "path": ".github/workflows/workforce-policy-restore-evidence.yml",
+      "bytes": 10266,
+      "sha256": "2c3409c2afeb5898659263e4de1a2a6731a81ffd481ef4932b3e10d762129286",
+      "gitBlob": "129941d274799e0b569d8caf5c9616ac47272006"
+    },
+    {
+      "path": "scripts/ci/workforce-policy-restore-pre-anchor.mjs",
+      "bytes": 15698,
+      "sha256": "6cb5b7f0cf62558596995522bbe883b3d4bfa091e2a7888836d27b602dd27440",
+      "gitBlob": "ce04eca3efe3f7c8302367c9bb6550d3c9caa52e"
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-policy-restore-writer.sql",
+      "bytes": 1735,
+      "sha256": "01c468b09e9f915490f196330ff9df19b5e9d429ce616a0aab036e5f78c133e3",
+      "gitBlob": "e7500c607c39afaef0673d7bff6484066fee2dbf"
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-manager-today-browser.sql",
+      "bytes": 33617,
+      "sha256": "448d08b65048f3692145d1d2d73d1f4b2f5973363172dddb959b4c9daf20a4fb",
+      "gitBlob": "d79b77a3196f259f24b460829e86bc2c190f4a87"
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-policy-version-browser.sql",
+      "bytes": 4634,
+      "sha256": "8f97329849dbb6d06181fed07ca9df50c4f2bcd202956861be53f610989765cb",
+      "gitBlob": "36a6be6dd79c4051cfda55b712a28c6f2ecf240f"
+    },
+    {
+      "path": "src/components/workforce/workforce-policy-restore-draft.tsx",
+      "bytes": 11062,
+      "sha256": "db72dd17f27c517cd7697c99e585d6d5353f06d23ca05119bb2a05a61f1566af",
+      "gitBlob": "16a6f6f8177703da65ba8aefdc25b266e91d4703"
+    },
+    {
+      "path": "src/components/workforce/workforce-policy-version-comparison.tsx",
+      "bytes": 16003,
+      "sha256": "52272ba626f24dad98051cbb8df052e40c586a78162aafa912125b1d852f9d60",
+      "gitBlob": "d0fe47437965a4fa089b0c919f2cb8036a74ed2d"
+    },
+    {
+      "path": "src/components/workforce/workforce-policy-future-window-preview.tsx",
+      "bytes": 8629,
+      "sha256": "678c2fffa97096748c56c25a015a9032f331a31a90bfa4852a065aed07f49cbc",
+      "gitBlob": "b7c5997f7100d9f2a4e84e03a467510b31e665d1"
+    },
+    {
+      "path": "src/lib/workforce/policy-restore-receipt.ts",
+      "bytes": 2863,
+      "sha256": "970fefe5a93dc70ced0f3bf0eed5bf85aa270351f8c5c9959ad401fe090a6cec",
+      "gitBlob": "0fa6e945c1d6d32e64e9bf904679229c9300b741"
+    },
+    {
+      "path": "src/lib/workforce/policy-restore-draft.ts",
+      "bytes": 11084,
+      "sha256": "b7dda97c1764aaa3eff9e2257db2a47dd8c82720943f9bcea05f2f521922e50e",
+      "gitBlob": "fe48e668584c086b990a671eb945ba154c06efee"
+    },
+    {
+      "path": "src/lib/workforce/policy-draft-write.ts",
+      "bytes": 1937,
+      "sha256": "d49f39f52170ddd4c5f12de6834879fcc7609f8f6366d6002af1556fb35dc7c3",
+      "gitBlob": "6ea06260d101c22f5b00b7b2675da0c350d02c4b"
+    },
+    {
+      "path": "src/lib/workforce/policy-version-comparison.ts",
+      "bytes": 4685,
+      "sha256": "3aabfe54002086898529bea2cd1b73006b7be6da1d50a2cb90281cc11eb343d4",
+      "gitBlob": "de6c6dbf0bfac648d7414a58ca9d530f8fe97264"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/policies/[id]/restore-draft/route.ts",
+      "bytes": 2580,
+      "sha256": "332c851ebda2c7191af6c834394cd8b12b5e091879821f9a1acbd08fd7bb514f",
+      "gitBlob": "53c14bd89ea77b9db97c08451193130af826593e"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/policies/search/route.ts",
+      "bytes": 1753,
+      "sha256": "d88f101dd55588d5f39edfa7ece192211e710a179b1360b04d1811d7abe6f1f9",
+      "gitBlob": "09c25947d1b8d2fb076349a3c6c7b253fc21ff7e"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/policies/compare/route.ts",
+      "bytes": 2794,
+      "sha256": "9bacf8bc38287bd8a061bedf60b70733fcc623f22a59d434d306462ba7788461",
+      "gitBlob": "cc3c806b3294db59fd860f1f37dd46b9b75764fa"
+    },
+    {
+      "path": "src/lib/with-workforce-rls-auth.ts",
+      "bytes": 21653,
+      "sha256": "289aa253b4d8d3a25913136a545db598bf1a01c9b571b6c89e2689da2fe6d8ff",
+      "gitBlob": "fc6e31b5380acc3d7e34e51a71b5f02b6dca7676"
+    },
+    {
+      "path": "src/lib/auth.ts",
+      "bytes": 26635,
+      "sha256": "cc7ecee26681fb5fa8c2b0f08f064edcc2041ee2ecc845498de4fe851cbc78b7",
+      "gitBlob": "d0b7526ab93c1538271c18903148197513712d41"
+    },
+    {
+      "path": "src/lib/rls-context.ts",
+      "bytes": 5099,
+      "sha256": "3ca4e34c3d94ba361fc2452b56f2b9a500b7487ee2402d436bc476786e3a53fd",
+      "gitBlob": "7b53e45c2ffc82b90d3e44baec3541f4db5a205a"
+    },
+    {
+      "path": "src/lib/prisma.ts",
+      "bytes": 13628,
+      "sha256": "65dda4d278f8deb6310af5f4fe57e60bc8bcda776459f8bfed31daae945dbd26",
+      "gitBlob": "de9cd5e4e2d3e1732518e89b689cd87002a90935"
+    },
+    {
+      "path": "src/proxy.ts",
+      "bytes": 48987,
+      "sha256": "a013772f7d07d11905705596417f57bea000837a29b67fb0048b183606345ef5",
+      "gitBlob": "30a141d4d8ba0f622e8edb68073c8ae5404a9e06"
+    },
+    {
+      "path": "src/lib/rate-limit.ts",
+      "bytes": 4011,
+      "sha256": "71fb22a8831b4a01a0ad46a9af7e6660ea70caf5a8ae0c63158170fd6ff797ac",
+      "gitBlob": "8de98df58d986bb670765bcbb6544281b3279f2c"
+    },
+    {
+      "path": "src/components/ui/button.tsx",
+      "bytes": 2099,
+      "sha256": "2d401bc2999487316df2b5319e28bd3fb5077cb0f625e272ca9a4bf100e6771a",
+      "gitBlob": "ab109355174d2efa906d9f97b7884238e448f62e"
+    },
+    {
+      "path": "src/components/ui/input.tsx",
+      "bytes": 833,
+      "sha256": "f114d3bfb7b66f7ae843119f34bd32b91bf2f9a2fcf6123c962038f98cadee90",
+      "gitBlob": "4c7a1b9b58668c7843674419a09eff7ff4a70f4d"
+    },
+    {
+      "path": "src/components/ui/select.tsx",
+      "bytes": 1025,
+      "sha256": "9289ce86e4ea159cf5a12a5ae5a51ed3798e9cf041eb584fad40c242be119f9c",
+      "gitBlob": "dc041dedcc3df5445a77d99d5f0c5bb5d242f836"
+    },
+    {
+      "path": "src/app/(dashboard)/workforce/configuration/policy-versions/page.tsx",
+      "bytes": 223,
+      "sha256": "1a3dde6eda05b7af914455f9c08e1c5ce6e10975b0373d54b442c0298f9b779f",
+      "gitBlob": "11f8164651ca2bdca4a6f26c1098b370d7bbe5cc"
+    },
+    {
+      "path": "src/components/providers.tsx",
+      "bytes": 1890,
+      "sha256": "3d82c0cf34677754f2e4d80e0978d2583bded1daa1d476ba59f2e0524242526d",
+      "gitBlob": "cc4625916c253e9301d82b9a23a85a9ecb8762bd"
+    },
+    {
+      "path": "src/app/(dashboard)/layout.tsx",
+      "bytes": 13392,
+      "sha256": "be2ef432d60a19e8ea930becd30894b76c7bda5875a81246a95cb4cdfe4b6e3f",
+      "gitBlob": "f7d89a70329ac3c554c5e0bf029463a33a61563c"
+    },
+    {
+      "path": "messages/en.json",
+      "bytes": 1347269,
+      "sha256": "8f458fd2a1af033233a545c3a7a47ee60c108ce37f00b5a5aeef86e697499b16",
+      "gitBlob": "87e5360bc273073a217782962934d17de586ac25"
+    },
+    {
+      "path": "messages/ru.json",
+      "bytes": 1989016,
+      "sha256": "53131da4507f5cd65da9de307e234de3e345d4ac6285876d4ec7e8b692bb58f2",
+      "gitBlob": "aa38ec00207b9dacc4deb1f2caa8757d5e0c5dc2"
+    },
+    {
+      "path": "messages/az.json",
+      "bytes": 1490146,
+      "sha256": "a98714ba3c8d165e1fcfe69f30d6384ef69b7ef4f0514114426343b53eb3a01d",
+      "gitBlob": "31259216bcb35e1c510419e515885f337a2db257"
+    },
+    {
+      "path": "prisma/schema.prisma",
+      "bytes": 958757,
+      "sha256": "2a4696f87d878452a22a44f4d385265fcccf75f8da90b2b417d5d045c53910d1",
+      "gitBlob": "34e2d86a8c3baf3a4a78bd90b0979718b06a0315"
+    },
+    {
+      "path": "prisma/migrations/20261004073000_workforce_policy_restore_operation_anchor/migration.sql",
+      "bytes": 2624,
+      "sha256": "00cf1e477a5071e74698a42554f5ae69d49b2ff806ebb768bf3d4faa9386303f",
+      "gitBlob": "c4601661532e3e27f026d1c97a1db90515484de5"
+    }
+  ],
+  "results": {
+    "uniqueCases": 15,
+    "pass": 15,
+    "cleanupPass": 2,
+    "authenticationAssertions": 10,
+    "manualGrid": {
+      "locales": [
+        "en",
+        "ru",
+        "az"
+      ],
+      "widths": [
+        320,
+        768,
+        1440
+      ],
+      "cases": 9
+    },
+    "nativeKeyboardReviewEditCreateOnly": "manual-en-320",
+    "remainingCases": [
+      "retired-team-exact-scope",
+      "lost-real-201-same-body-replay",
+      "real-audit-insert-rollback-and-retry",
+      "actual-current-session-team-403-clears-parent",
+      "actual-current-session-crm-403-clears-parent",
+      "actual-tenant-session-change-ignores-held-old-creation"
+    ]
+  },
+  "metadataSteps": [
+    {
+      "name": "Set up job",
+      "conclusion": "success"
+    },
+    {
+      "name": "Initialize containers",
+      "conclusion": "success"
+    },
+    {
+      "name": "Checkout candidate merge and exact base",
+      "conclusion": "success"
+    },
+    {
+      "name": "Resolve fenced ephemeral ports and masked secrets",
+      "conclusion": "success"
+    },
+    {
+      "name": "Setup Node",
+      "conclusion": "success"
+    },
+    {
+      "name": "Install candidate dependencies",
+      "conclusion": "success"
+    },
+    {
+      "name": "Apply selected base schema, canonical guards and actual additive migration",
+      "conclusion": "success"
+    },
+    {
+      "name": "Execute mandatory real PostgreSQL restore concurrency and rollback tests",
+      "conclusion": "success"
+    },
+    {
+      "name": "Execute real credentials and authorized restore API scenarios",
+      "conclusion": "success"
+    },
+    {
+      "name": "Install Chromium on hosted Ubuntu",
+      "conclusion": "success"
+    },
+    {
+      "name": "Execute real rendered manual restore UI, session, retry and rollback scenarios",
+      "conclusion": "success"
+    },
+    {
+      "name": "Upload complete non-secret restore receipts",
+      "conclusion": "success"
+    },
+    {
+      "name": "Post Setup Node",
+      "conclusion": "success"
+    },
+    {
+      "name": "Post Checkout candidate merge and exact base",
+      "conclusion": "success"
+    },
+    {
+      "name": "Stop containers",
+      "conclusion": "success"
+    },
+    {
+      "name": "Complete job",
+      "conclusion": "success"
+    }
+  ],
+  "limits": [
+    "Only sanitized receipt and metadata inspected; no screenshots, other ZIP member contents or rawCIlogs.",
+    "Real hosted Chromium/auth/session/restore writer/PostgreSQL evidence limited to disposable fixtures and listed15cases. Controlled transport loss differs from server rollback; expected draft/audit and auth writes are excluded from invariant fact preservation.",
+    "Geometry bounds are not screenshot pixel-occlusion, whole-page WCAG/assistive-technology/native-zoom or localization perfection proof. Native review/edit/create assertion exists only en320; other grid entries explicitly false.",
+    "No Android/signed-device/load/pilot/production activation or full migration-history evidence.",
+    "Other five hosted evidence payloads uninspected; metadata-only acceptance separate. Mandatory typecheck/static terminal not accepted here.",
+    "Prior failed attempts on other historical heads are not failures of this first-attempt run; historical receipts retained."
+  ],
+  "supportBindings": [
+    {
+      "path": "/tmp/hrm-fault-restore-independent-metadata.json",
+      "bytes": 17950,
+      "sha256": "bac4baee4876c842583e77e5d6fb225ef8da80c5f98e44ad7ff02f50103b19a9"
+    },
+    {
+      "path": "/tmp/hrm-fault-restore-attempt1-root.json",
+      "bytes": 1609,
+      "sha256": "559455ae58ac016992694f878e79e4f994ca6c49ec37292be5eb73688943050d"
+    },
+    {
+      "path": "/tmp/hrm-fault-b896-independent-tree.json",
+      "bytes": 2981445,
+      "sha256": "fc15fba4c89548667fff4fab25c0c477bcc326a7b4c87c2454502df76397f5b4"
+    },
+    {
+      "path": "/tmp/hrm-fault-independent-source-b896-20261006.json",
+      "bytes": 29691,
+      "sha256": "4070cb483ea38cc6740fa36a6a55dfb4c1fe5be8c3f3f333c153bb4ae1d0f7a7"
+    }
+  ]
+}
