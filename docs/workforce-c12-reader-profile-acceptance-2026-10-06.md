@@ -37,8 +37,8 @@ leaves the cursor unchanged. The verifier grants no rights and changes no facts.
 
 ## Actual bounded evidence
 
-- [Final matrix](./evidence/workforce-c12-reader-profile-2026-10-06/profile-matrix-attempt5.json):
-  35/35 PASS, with before/after exact bindings for 14 files, immutable fingerprints
+- [Final matrix](./evidence/workforce-c12-reader-profile-2026-10-06/profile-matrix-attempt6.json):
+  35/35 PASS, with before/after exact bindings for 15 files, immutable fingerprints
   for 18 fact tables, supported tenant-only and tenant-plus-bypass policies,
   18 individual hidden-table refusals, direct/PUBLIC/inherited grant checks,
   inherited and non-applicable policy distinction, temporary shadow/view/missing
@@ -48,7 +48,7 @@ leaves the cursor unchanged. The verifier grants no rights and changes no facts.
   source bindings. These include dense traversal, approval/export closure,
   cursor/lease/attempt fencing and roster diagnostics. Their selected-DDL fixtures
   remain separate from the full-current-schema matrix.
-- [Scoped ESLint](./evidence/workforce-c12-reader-profile-2026-10-06/profile-lint-final.json):
+- [Scoped ESLint](./evidence/workforce-c12-reader-profile-2026-10-06/profile-lint-final-harness.json):
   all three changed executable files, zero errors/warnings.
 - The matrix uses the locally pinned pgvector PostgreSQL 16 image, a complete
   current Prisma-generated schema, and the complete byte-bound C12 operations
@@ -63,7 +63,18 @@ leaves the cursor unchanged. The verifier grants no rights and changes no facts.
   dependent synthetic policy around ALTER COLUMN; no raw diagnostic was used to
   establish the precise PostgreSQL failure cause. Attempt5 is a changed-fixture
   success, not an unchanged retry or proof of the cause. Attempts2/3 remain 30/33
-  PASS respectively and are not substituted for final source bindings.
+  PASS respectively and are not substituted for final source bindings. Attempt5
+  passed 35 cases; final attempt6 repeats all 35 after adopting the existing
+  RLS-test factory. Both original harness and receipt remain.
+
+The initial workflow-selected Social suite also exposed a classification error
+in the new harness: direct Prisma clients did not use `scripts/_rls.mjs`. The
+local result was 882/883, preserved with the failed test name. The harness now
+uses the existing unscoped test factory, fenced to its just-created loopback
+container; its process-local test URL is restored at exit. No classifier or
+shared factory was changed. Final full selected Social regression: 883/883 PASS
+across 52 files, zero skips. Hosted failures remain separate metadata; their raw
+logs were not read.
 
 Reproduce the bounded matrix with
 `node scripts/workforce-reconciliation-reader-profile-evidence.mjs /absolute/private/receipt.json`.

@@ -3,9 +3,9 @@
   "files": [
     {
       "path": "README.md",
-      "bytes": 1802,
-      "sha256": "27debc83fd1268e49e26ea6f865739d9aef78a7fa3b49196816015b052862791",
-      "gitBlob": "f096d46e61c5d3351e856e7ddea32ddcf2cdccff"
+      "bytes": 2279,
+      "sha256": "96cbcf3e8f62f9cfbc766008a56aa3d39650d24f50120d0b7c33fdac7580e5e6",
+      "gitBlob": "c5fe690f9f4c98441cdfb243ce7c19f9923809a6"
     },
     {
       "path": "existing-pg-regression-final.json",
@@ -18,6 +18,18 @@
       "bytes": 1114,
       "sha256": "7e4bd3f30eb056c72cceddd9aea4616bb3b644cf92c171f31bd232b8d9db23c6",
       "gitBlob": "0a8ddb73870bd25878ba834d787f7a0521eea74f"
+    },
+    {
+      "path": "hosted-negative-7df-metadata.json",
+      "bytes": 3887,
+      "sha256": "8577719d0f81b3fc75a4a1af0b7ac83d2b31b75049732b08bfef3d93ed5df83b",
+      "gitBlob": "7845a2e10451c51761f229bf223acfbc1db90239"
+    },
+    {
+      "path": "hrm-c12-independent-exact-source-1d1741-20261006.json",
+      "bytes": 7641,
+      "sha256": "8bd88b8e6e0f242a6d20459f969cc6a3d42abed23103e26057d492bd7712fd34",
+      "gitBlob": "9950eb1173dde724320e89ece2d89b63d27c5cf5"
     },
     {
       "path": "hrm-c12-independent-exact-source-7df3808-20261006.json",
@@ -48,6 +60,12 @@
       "bytes": 18068,
       "sha256": "25cb3be974b2f92f780ca6f91cb45fc400114076affff9bab40db0f01576b694",
       "gitBlob": "706d5b4ee59c320b6b59a21eda5cbba710c0774a"
+    },
+    {
+      "path": "hrm-c12-independent-secret-rule-controls-20261006.json",
+      "bytes": 1612,
+      "sha256": "309e5ed35feb2b8b70f11892348f7f996ccd85b9d30cc4c731b9e404e63662fb",
+      "gitBlob": "1e21a974d94227c637624d4734254e04a38ceaa1"
     },
     {
       "path": "hrm-c12-independent-visibility-repro-addendum-20261006.json",
@@ -84,6 +102,12 @@
       "bytes": 5878,
       "sha256": "ea4a6a71083f0e66f08a3c9a5b12d6476a091cbcbbd16ebbea64ea6a6133cfab",
       "gitBlob": "80eef59b60ed6bbddc7884a32d2aba3ffaed0aac"
+    },
+    {
+      "path": "profile-lint-final-harness.json",
+      "bytes": 73,
+      "sha256": "f27e1ad33efdf785355e0a2865eea7da5ad1066fe26989bb86f3533ed0463da5",
+      "gitBlob": "56b16bcd0b8e5b0fad83c6be9a73e36346aedd16"
     },
     {
       "path": "profile-lint-final.json",
@@ -152,10 +176,28 @@
       "gitBlob": "9ef41a72ac9199bc2cafe73a0c679c1716b1646d"
     },
     {
+      "path": "profile-matrix-attempt5-harness.mjs",
+      "bytes": 20955,
+      "sha256": "768bf3fb8434117d541a72bb15e4aac48dc8367b9c61492fd2588ed761e0c507",
+      "gitBlob": "ed063ecaa82057e992af009912b47575c0e72684"
+    },
+    {
       "path": "profile-matrix-attempt5.json",
       "bytes": 19136,
       "sha256": "770f2133adea25fe3ecf569406c24836f6a949fb1bb23531ba45ba222ca5b9b9",
       "gitBlob": "09d6f7f8f28ff17d307d1acba0dd3d67d8bef6c2"
+    },
+    {
+      "path": "profile-matrix-attempt6.json",
+      "bytes": 19287,
+      "sha256": "f8faceb0d493d1eb12c48ed7108e132fd9f5bc2f1743cde51e3396a45d2c9d83",
+      "gitBlob": "2f72b1c4dcc0be54a9f43a49e065ea745a3b08a5"
+    },
+    {
+      "path": "published-source-1d-metadata.json",
+      "bytes": 720,
+      "sha256": "9b4de683b6bb74c1bce6dea93c9416ff685996d045937b47b7386b3440f956d9",
+      "gitBlob": "29f7221b87ee6f378c488e5730b1a83580eff1f0"
     },
     {
       "path": "rejected-global-rule.toml",
@@ -210,6 +252,24 @@
       "bytes": 2406,
       "sha256": "875ee69f5cd089498c0cdbca7046bb1ebf3f2fe30282250c94eaaa6ce2cc6a12",
       "gitBlob": "88336e882a4bef535d896140faae6cbb8ead7a7b"
+    },
+    {
+      "path": "secret-scan-successor-metadata.json",
+      "bytes": 38,
+      "sha256": "2e50e8de660d6f17851a97de446bc9e97e6e9d7b335bcd602c76ebc4e87dbeda",
+      "gitBlob": "5549490b8674c6bd35ee017465ebe136225cbf7f"
+    },
+    {
+      "path": "social-regression-final.json",
+      "bytes": 9240,
+      "sha256": "be9021761b9d55e9784feeb1aeadf5db3d9bb8be91e2f1edc0a9bdb868e92044",
+      "gitBlob": "70cc17101e4bd775a327e680f4098d51f4505a91"
+    },
+    {
+      "path": "social-regression-local.json",
+      "bytes": 9204,
+      "sha256": "acfb35017d8a585e5136eec8025b4af26c2f47caad341bd90707f5715be9a017",
+      "gitBlob": "4c4854b9fdce8bbea7ac85fa9a58f4d529a53c68"
     },
     {
       "path": "verify-secret-rule.py",

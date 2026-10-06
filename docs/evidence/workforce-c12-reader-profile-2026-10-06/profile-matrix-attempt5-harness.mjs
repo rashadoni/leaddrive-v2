@@ -5,8 +5,8 @@ import { mkdtemp, readFile, writeFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { PrismaClient } from "@prisma/client"
 import { createJiti } from "jiti"
-import { makeRlsTestPrisma } from "./_rls.mjs"
 
 // Owns a fresh local container; accepts no connection URL or existing database.
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..")
@@ -26,7 +26,7 @@ const tables = [
   "workforce_workday_schedule_snapshots", "workforce_shift_snapshots", "workforce_policy_snapshots",
 ]
 const migrationPath = "prisma/migrations/20261005193000_workforce_reconciliation_operations/migration.sql"
-const sourcePaths = ["prisma/schema.prisma", migrationPath, "scripts/_rls.mjs",
+const sourcePaths = ["prisma/schema.prisma", migrationPath,
   "src/lib/workforce/reconciliation-reader-profile.ts", "src/lib/workforce/reconciliation-operations.ts",
   "src/lib/workforce/reconciliation-sweep.ts", "src/lib/workforce/reconciliation-dense.ts",
   "src/lib/workforce/reconciliation-source-page.ts", "src/lib/workforce/reconciliation-snapshot.ts",
@@ -37,7 +37,6 @@ const hash = bytes => createHash("sha256").update(bytes).digest("hex")
 const receipt = { status: "RUNNING", fixture: "FULL_CURRENT_PRISMA_SCHEMA_PLUS_EXACT_C12_MIGRATION_AND_SYNTHETIC_RLS",
   historicalReplay: false, productionAccess: false, stage: "source-binding", cases: [], cleanup: [], sourceBindings: [] }
 let container, db, other, fixturePath
-const originalTestDatabaseUrl = process.env.EVENT_PLATFORM_TEST_DATABASE_URL
 const command = (file, args, options = {}) => {
   const result = spawnSync(file, args, { cwd: root, encoding: "utf8", timeout: 120000,
     maxBuffer: 2 * 1024 * 1024, ...options })
@@ -87,11 +86,8 @@ try {
   // CHECK/RLS/collation semantics. Replace only these empty fixture objects and
   // apply the complete, byte-bound migration; never mark history as applied.
   sql(`DROP TABLE workforce_reconciliation_tenant_states;\n${indexes.map(name => `DROP INDEX "${name}";`).join("\n")}\n${migration}`)
-  // The shared RLS-test factory fences both clients to this just-created target;
-  // it deliberately installs no bypass/tenant setting before the negative cases.
-  process.env.EVENT_PLATFORM_TEST_DATABASE_URL = url
-  db = makeRlsTestPrisma(url)
-  other = makeRlsTestPrisma(url)
+  db = new PrismaClient({ datasources: { db: { url } }, log: [] })
+  other = new PrismaClient({ datasources: { db: { url } }, log: [] })
   receipt.stage = "synthetic-reader-and-facts"
   await db.$executeRawUnsafe(`CREATE ROLE ${role} NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOREPLICATION NOINHERIT`)
   await db.$executeRawUnsafe(`GRANT SELECT ON organizations,workforce_reconciliation_tenant_states,${tables.join(",")} TO ${role}`)
@@ -275,8 +271,6 @@ try {
     if (result.status !== 0) process.exitCode = 1
   }
   if (fixturePath) await rm(fixturePath, { recursive: true, force: true })
-  if (originalTestDatabaseUrl === undefined) delete process.env.EVENT_PLATFORM_TEST_DATABASE_URL
-  else process.env.EVENT_PLATFORM_TEST_DATABASE_URL = originalTestDatabaseUrl
   if (process.exitCode) receipt.status = "FAIL"
   await writeFile(output, JSON.stringify(receipt, null, 2) + "\n", { mode: 0o600, flag: "wx" })
   console.log(JSON.stringify({ status: receipt.status, cases: receipt.cases.length, cleanup: receipt.cleanup }))

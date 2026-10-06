@@ -26,3 +26,10 @@ No authentication credential or default detector is exempted. The proposed
 global-list form failed these controls and was never published as configuration;
 its rejected source and diagnostic matrix remain evidence. Initial local check
 failures are preserved. Hosted scan is a separate exact-head result.
+
+The final harness adopts the existing fenced RLS-test factory, correcting the
+local882/883 classifier failure. Finalattempt6 is35/35 with15sourcebindings, and
+the workflow-selected Socialsuite is883/883 in52files,zero skips. Product helper
+and operations bytes remain identical. Older hosted Socialfailure has no safe
+artifact; its precise CI failure cause remains UNKNOWN, with local reproduction
+reported separately. All older receipts and attempt5harness remain immutable.
