@@ -1,0 +1,364 @@
+{
+  "candidate": "5f87cc94a684d5083804f0dae23116384dda24b4",
+  "tree": "9733850bf05fce1ac451367e961ab605813f6b3f",
+  "main": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+  "mergeCommit": "4f4e59c08cd5b0d94c7af43cd1240ef1d32d35b3",
+  "mergeParents": [
+    "6843cc24428a181cf80c57fe358a4944a9439ded",
+    "86cba428d39e3ce4be13245bdb8e34e49dccf8d4"
+  ],
+  "sourceVerification": "8750files;22mainpaths exact;45HRMpaths unchanged;1newdocument",
+  "mainBaselinePairs": 64,
+  "baselineEditedForGreen": false,
+  "tests": [
+    {
+      "path": "/tmp/hrm-593-tests.json",
+      "bytes": 46267,
+      "sha256": "445754eee045662de3e6651aed691f961a8dbd10598cab97b67c91610ecb5c39",
+      "numTotalTests": 123,
+      "numPassedTests": 123,
+      "numFailedTests": 0,
+      "numPendingTests": 0
+    },
+    {
+      "path": "/tmp/hrm-593-mtm-regression.json",
+      "bytes": 63143,
+      "sha256": "1fd7c383a1c79e38868ae44bfeb1ceeeb8d0ce3ed22486482f444bd6bdb0c124",
+      "numTotalTests": 191,
+      "numPassedTests": 191,
+      "numFailedTests": 0,
+      "numPendingTests": 0
+    }
+  ],
+  "i18n": "PASS",
+  "boundedTypecheck": "PASS exit0emptydiagnostics",
+  "wholeCompilerZeroErrorsClaim": false,
+  "ci": "5mandatory+6additionalPASSfirstattempt;optionalbuildSKIPPED",
+  "independentReview": "ACCEPTED exactsource/freshmain/restore/terminalhosted",
+  "migrationApply": "NONE",
+  "mergeDeployActivation": "NONE",
+  "synthetic": {
+    "sha": "8e10365ee67e222ac222a0732c3feec33e95d329",
+    "tree": "9733850bf05fce1ac451367e961ab605813f6b3f",
+    "parents": [
+      "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+      "5f87cc94a684d5083804f0dae23116384dda24b4"
+    ]
+  },
+  "initialEvidenceCommit": "e28c5b20e98cb856af7c709a49aea12a3dc8621a",
+  "initialEvidenceReadbackFiles": 14,
+  "cleanup": "Own isolated PostgreSQL container, volumes, ephemeral password file removed",
+  "independentSourceReceipt": {
+    "path": "/tmp/hrm-593-independent-source-acceptance-20261006.json",
+    "sha256": "e8fc08ffe8a289c48d2481f2f139935c341569c0795ed34d81056743d305f3b1",
+    "rootWholeRead": true,
+    "all78BindingsVerified": true,
+    "findings": "P0-P3empty",
+    "freshIndependentTests": "50pure+3probesPASS;73PGskipped"
+  },
+  "status": "BOUNDED_DORMANT_INTEGRATION_AND_BASELINE_QUALIFIED_HOSTED_GATES_ACCEPTED",
+  "restore": {
+    "head": "5f87cc94a684d5083804f0dae23116384dda24b4",
+    "synthetic": "8e10365ee67e222ac222a0732c3feec33e95d329",
+    "run": 37433172745,
+    "attempt": 1,
+    "job": 112168589763,
+    "artifact": 11398541186,
+    "zipBytes": 883920,
+    "zipSha256": "48ae2f430a2e329db24be5447b6784b8e6e010b1a1ff8278844019a1c6110878",
+    "onlyReadMember": "restore-rendered-ui-receipt.json",
+    "safeReceiptBytes": 15958,
+    "safeReceiptSha256": "96500a57e6c87ae8eb22a0485009d63242f2cbdec29ac7472f41fa6f61429fc6",
+    "casesPassed": 15,
+    "cleanupPassed": 2,
+    "sourceBindingsVerifiedLocalAndRemote": 34,
+    "noRawLogsOrScreenshotsOpened": true,
+    "prior6843failurePreservedSeparately": true
+  },
+  "receiptBindings": [
+    {
+      "path": "/tmp/hrm-593-independent-source-acceptance-20261006.json",
+      "bytes": 30261,
+      "sha256": "e8fc08ffe8a289c48d2481f2f139935c341569c0795ed34d81056743d305f3b1"
+    },
+    {
+      "path": "/tmp/hrm-593-independent-durable-e28.json",
+      "bytes": 5126,
+      "sha256": "25604deb55aacbb8ea0c3e655d607706a48fb8c9396c6c7a86f4c42087082e52"
+    },
+    {
+      "path": "/tmp/hrm-593-restore-independent-review-20261006.json",
+      "bytes": 15853,
+      "sha256": "dae092c48676956caf1fe8d61c940fe08e8d1150b8c8bbd3a15ff00118b5af3c"
+    },
+    {
+      "path": "/tmp/hrm-main593-migration-independent-findings-20261006.json",
+      "bytes": 6276,
+      "sha256": "96c99f423b4f6a5baeb3c5f414b7bf9fa5b520e7710bbcd1ddfca86b970c25c8"
+    },
+    {
+      "path": "/tmp/hrm-593-root-integration-proof.json",
+      "bytes": 4846,
+      "sha256": "387c242ee7c433336f17da4e03492e7468a791f887b49cd015e4ae5904483e46"
+    },
+    {
+      "path": "/tmp/hrm-593-artifact-boundary.json",
+      "bytes": 1350,
+      "sha256": "d516c8545196eae28e2039b8f3ff841ed812a64ed6ffe42460fbaa9cac197f60"
+    },
+    {
+      "path": "/tmp/hrm-593-independent-hosted-terminal-20261006.json",
+      "bytes": 81232,
+      "sha256": "06b2c7c3730ceead17cc5dc01163d00925269c77ed5d9e310eccd924798b8e41",
+      "rootWholeRead": true,
+      "embeddedMetadataVerified": true,
+      "all6SupportHashesVerified": true
+    }
+  ],
+  "limits": [
+    "Full C12 remains PARTIAL82/161DONE79open59%",
+    "Missing historical api_keys creation/bootstrap provenance blocks complete migration-chain staging",
+    "Owner123 includes73realPG; independent rerun50pure+3probes;73PGskipped by reviewer",
+    "RequiredCI acceptance is baseline-qualified; no globallycleancompiler/full-suite claim",
+    "Other five additional artifact payloads metadata-only; onlyrestore safeJSONread",
+    "Productiondensity/churn/SLO/fullschedule/RLS/ACL/triggers/eligible-rostercoverage/delivery/activation open",
+    "No migrationhistoryapply, production, grants, merge, deploy, activation or Support592 changes"
+  ],
+  "hostedMetadata": {
+    "observed_at": "2026-10-06 08:19:52 UTC",
+    "head": "5f87cc94a684d5083804f0dae23116384dda24b4",
+    "main": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+    "tree": "9733850bf05fce1ac451367e961ab605813f6b3f",
+    "synthetic": {
+      "sha": "8e10365ee67e222ac222a0732c3feec33e95d329",
+      "tree": "9733850bf05fce1ac451367e961ab605813f6b3f",
+      "parents": [
+        "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+        "5f87cc94a684d5083804f0dae23116384dda24b4"
+      ]
+    },
+    "pr": {
+      "number": 589,
+      "state": "open",
+      "merged": false,
+      "head": "5f87cc94a684d5083804f0dae23116384dda24b4",
+      "base": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+      "mergeable": true,
+      "mergeable_state": "clean"
+    },
+    "checks": [
+      {
+        "name": "static-checks",
+        "id": 112168693837,
+        "head_sha": "5f87cc94a684d5083804f0dae23116384dda24b4",
+        "app_id": 15368,
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37433172623/job/112168693837"
+      },
+      {
+        "name": "typecheck",
+        "id": 112168693763,
+        "head_sha": "5f87cc94a684d5083804f0dae23116384dda24b4",
+        "app_id": 15368,
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37433172623/job/112168693763"
+      },
+      {
+        "name": "Authenticated Workforce manager Today browser evidence",
+        "id": 112168590420,
+        "head_sha": "5f87cc94a684d5083804f0dae23116384dda24b4",
+        "app_id": 15368,
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37433172630/job/112168590420"
+      },
+      {
+        "name": "Real PostgreSQL SELECT-only and authenticated employee impact browser evidence",
+        "id": 112168590093,
+        "head_sha": "5f87cc94a684d5083804f0dae23116384dda24b4",
+        "app_id": 15368,
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37433172775/job/112168590093"
+      },
+      {
+        "name": "Authenticated Workforce calendar browser evidence",
+        "id": 112168590010,
+        "head_sha": "5f87cc94a684d5083804f0dae23116384dda24b4",
+        "app_id": 15368,
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37433172760/job/112168590010"
+      },
+      {
+        "name": "Real PostgreSQL, authorized API and rendered policy restore UI evidence",
+        "id": 112168589763,
+        "head_sha": "5f87cc94a684d5083804f0dae23116384dda24b4",
+        "app_id": 15368,
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37433172745/job/112168589763"
+      },
+      {
+        "name": "Authenticated Workforce policy version browser evidence",
+        "id": 112168589734,
+        "head_sha": "5f87cc94a684d5083804f0dae23116384dda24b4",
+        "app_id": 15368,
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37433172708/job/112168589734"
+      },
+      {
+        "name": "GitHub-hosted Linux production build",
+        "id": 112168589230,
+        "head_sha": "5f87cc94a684d5083804f0dae23116384dda24b4",
+        "app_id": 15368,
+        "status": "completed",
+        "conclusion": "skipped",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37433172623/job/112168589230"
+      },
+      {
+        "name": "runner-policy",
+        "id": 112168588168,
+        "head_sha": "5f87cc94a684d5083804f0dae23116384dda24b4",
+        "app_id": 15368,
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37433172627/job/112168588168"
+      },
+      {
+        "name": "scan",
+        "id": 112168588158,
+        "head_sha": "5f87cc94a684d5083804f0dae23116384dda24b4",
+        "app_id": 15368,
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37433172652/job/112168588158"
+      },
+      {
+        "name": "Authenticated Workforce exception report browser evidence",
+        "id": 112168588069,
+        "head_sha": "5f87cc94a684d5083804f0dae23116384dda24b4",
+        "app_id": 15368,
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37433172697/job/112168588069"
+      },
+      {
+        "name": "pr-scope",
+        "id": 112168587671,
+        "head_sha": "5f87cc94a684d5083804f0dae23116384dda24b4",
+        "app_id": 15368,
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37433172623/job/112168587671"
+      }
+    ],
+    "runs": [
+      {
+        "id": 37433172627,
+        "name": "Runner policy",
+        "head_sha": "5f87cc94a684d5083804f0dae23116384dda24b4",
+        "event": "pull_request",
+        "attempt": 1,
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37433172627"
+      },
+      {
+        "id": 37433172652,
+        "name": "Secret scan",
+        "head_sha": "5f87cc94a684d5083804f0dae23116384dda24b4",
+        "event": "pull_request",
+        "attempt": 1,
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37433172652"
+      },
+      {
+        "id": 37433172697,
+        "name": "Workforce exception report browser evidence",
+        "head_sha": "5f87cc94a684d5083804f0dae23116384dda24b4",
+        "event": "pull_request",
+        "attempt": 1,
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37433172697"
+      },
+      {
+        "id": 37433172760,
+        "name": "Workforce calendar browser evidence",
+        "head_sha": "5f87cc94a684d5083804f0dae23116384dda24b4",
+        "event": "pull_request",
+        "attempt": 1,
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37433172760"
+      },
+      {
+        "id": 37433172630,
+        "name": "Workforce manager Today browser evidence",
+        "head_sha": "5f87cc94a684d5083804f0dae23116384dda24b4",
+        "event": "pull_request",
+        "attempt": 1,
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37433172630"
+      },
+      {
+        "id": 37433172708,
+        "name": "Workforce policy version browser evidence",
+        "head_sha": "5f87cc94a684d5083804f0dae23116384dda24b4",
+        "event": "pull_request",
+        "attempt": 1,
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37433172708"
+      },
+      {
+        "id": 37433172775,
+        "name": "Workforce policy employee impact evidence",
+        "head_sha": "5f87cc94a684d5083804f0dae23116384dda24b4",
+        "event": "pull_request",
+        "attempt": 1,
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37433172775"
+      },
+      {
+        "id": 37433172745,
+        "name": "Workforce policy restore writer evidence",
+        "head_sha": "5f87cc94a684d5083804f0dae23116384dda24b4",
+        "event": "pull_request",
+        "attempt": 1,
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37433172745"
+      },
+      {
+        "id": 37433172623,
+        "name": "PR checks",
+        "head_sha": "5f87cc94a684d5083804f0dae23116384dda24b4",
+        "event": "pull_request",
+        "attempt": 1,
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37433172623"
+      }
+    ]
+  },
+  "independentTerminalReview": "ACCEPTED_EXACT_FRESH_INTEGRATION_SOURCE_AND_BASELINE_QUALIFIED_HOSTED_GATES",
+  "newHeadReruns": 0,
+  "rawCILogsAccessed": false,
+  "screenshotsAccessed": false,
+  "terminalCrossCheck": {
+    "checks": 12,
+    "jobs": 12,
+    "workflowRuns": 9,
+    "artifactsMetadata": 6,
+    "firstAttempt": true,
+    "noFailedSteps": true
+  }
+}

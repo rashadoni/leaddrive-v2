@@ -1,0 +1,119 @@
+{
+  "commit": "e28c5b20e98cb856af7c709a49aea12a3dc8621a",
+  "tree": "68b4df6d8d4b0070fcd4b2bd89e058f24af85911",
+  "files": [
+    {
+      "path": "docs/evidence/workforce-c12-dense-operations-2026-10-06/README.md",
+      "bytes": 3569,
+      "sha256": "096001411a6faedba46ab68c064c500d1e9536e4120f4c81c7146084ec84d650",
+      "git_blob_verified": true,
+      "local_original_exists": false,
+      "local_byte_equal": false
+    },
+    {
+      "path": "docs/evidence/workforce-c12-dense-operations-2026-10-06/final/hrm-593-owner-checkpoint.json",
+      "bytes": 1297,
+      "sha256": "286a476cfe916dfaa10b1b1a4fe5884a18d2233f6bcc6dfc6e00fa6ce31a538d",
+      "git_blob_verified": true,
+      "local_original_exists": true,
+      "local_byte_equal": false
+    },
+    {
+      "path": "docs/evidence/workforce-c12-dense-operations-2026-10-06/final/hrm-main593-migration-independent-findings-20261006.json",
+      "bytes": 6276,
+      "sha256": "96c99f423b4f6a5baeb3c5f414b7bf9fa5b520e7710bbcd1ddfca86b970c25c8",
+      "git_blob_verified": true,
+      "local_original_exists": true,
+      "local_byte_equal": true
+    },
+    {
+      "path": "docs/evidence/workforce-c12-dense-operations-2026-10-06/final/hrm-ops-6843-hosted-independent-terminal-20261006.json",
+      "bytes": 92458,
+      "sha256": "d957ecac6dc716f4fae934b105205725856c9841561d74ca1477fc82cf215e05",
+      "git_blob_verified": true,
+      "local_original_exists": true,
+      "local_byte_equal": true
+    },
+    {
+      "path": "docs/evidence/workforce-c12-dense-operations-2026-10-06/final/hrm-ops-6843-mandatory-hosted-independent-20261006.json",
+      "bytes": 24082,
+      "sha256": "fb51bcfb4f1b787d2932cb5de406f494b3927a801a183bee56d843de12c8844a",
+      "git_blob_verified": true,
+      "local_original_exists": true,
+      "local_byte_equal": true
+    },
+    {
+      "path": "docs/evidence/workforce-c12-dense-operations-2026-10-06/final/hrm-ops-6843-resume-terminal-checkpoint.json",
+      "bytes": 618,
+      "sha256": "438b73c3d7c2bc519c8716f1a32040035059b67ff1bddacdda351874b8408255",
+      "git_blob_verified": true,
+      "local_original_exists": true,
+      "local_byte_equal": true
+    },
+    {
+      "path": "docs/evidence/workforce-c12-dense-operations-2026-10-06/final/hrm-ops-6843-terminal-metadata-independent-20261006.json",
+      "bytes": 75852,
+      "sha256": "9dcb79f17882d40199dac73dc72d0a28e6d7225d00af01068d97bb42fb59081b",
+      "git_blob_verified": true,
+      "local_original_exists": true,
+      "local_byte_equal": true
+    },
+    {
+      "path": "docs/evidence/workforce-c12-dense-operations-2026-10-06/final/hrm-ops-independent-6843-workflow-source-bindings.json",
+      "bytes": 4628,
+      "sha256": "fb896010725910b8cd106740de8efbe28b27f270dbb907d2caeb77fbd2ee3191",
+      "git_blob_verified": true,
+      "local_original_exists": true,
+      "local_byte_equal": true
+    },
+    {
+      "path": "docs/evidence/workforce-c12-dense-operations-2026-10-06/final/hrm-ops-restore-success-independent-review-20261006.json",
+      "bytes": 17646,
+      "sha256": "e50e0409d777d55c7f16fe5de0cba53572ea7fb57bfa28c5ea09623ba458b6c5",
+      "git_blob_verified": true,
+      "local_original_exists": true,
+      "local_byte_equal": true
+    },
+    {
+      "path": "docs/evidence/workforce-c12-dense-operations-2026-10-06/final/hrm-ops-restore-success-root.json",
+      "bytes": 885,
+      "sha256": "04de45d89f4f438bde332157cf9e31ca2239880f9d6bde695432bbdfa4b5e290",
+      "git_blob_verified": true,
+      "local_original_exists": true,
+      "local_byte_equal": true
+    },
+    {
+      "path": "docs/evidence/workforce-c12-dense-operations-2026-10-06/final/hrm-ops-restore-success-sanitized.json",
+      "bytes": 15958,
+      "sha256": "280a3849156b180ebc7865e4994b914da720b67e83cb04cc2e0331b37c455c19",
+      "git_blob_verified": true,
+      "local_original_exists": true,
+      "local_byte_equal": true
+    },
+    {
+      "path": "docs/evidence/workforce-c12-dense-operations-2026-10-06/final/hrm-ops-root-mandatory-acceptance.json",
+      "bytes": 2929,
+      "sha256": "a1fa8c7d5cc33124b27baf88070653a4bd850e5f2a5ec558f8f7fe9b06cc720d",
+      "git_blob_verified": true,
+      "local_original_exists": true,
+      "local_byte_equal": true
+    },
+    {
+      "path": "docs/evidence/workforce-c12-dense-operations-2026-10-06/final/hrm-ops-root-terminal-acceptance.json",
+      "bytes": 5318,
+      "sha256": "4e315ab61d6f30ef67d413b01977516ed307e30cc7e25149ab8c21259b09e78d",
+      "git_blob_verified": true,
+      "local_original_exists": true,
+      "local_byte_equal": true
+    },
+    {
+      "path": "docs/evidence/workforce-c12-dense-operations-2026-10-06/final/hrm-ops-root-terminal-metadata.json",
+      "bytes": 6570,
+      "sha256": "500fe6c141d149eda6b3cf0872e25f6e9201b707f06b12b3b74a7da40df4068e",
+      "git_blob_verified": true,
+      "local_original_exists": true,
+      "local_byte_equal": true
+    }
+  ],
+  "limits": "Historical6843terminal archive remains qualified oldmain0dad, not fresh5f87 hosted acceptance. Latest ownercheckpoint local file differs from archived pending snapshot; exact diff recorded separately."
+}

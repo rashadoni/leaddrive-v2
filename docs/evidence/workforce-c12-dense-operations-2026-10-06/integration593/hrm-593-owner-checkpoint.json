@@ -1,0 +1,60 @@
+{
+  "candidate": "5f87cc94a684d5083804f0dae23116384dda24b4",
+  "tree": "9733850bf05fce1ac451367e961ab605813f6b3f",
+  "main": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+  "mergeCommit": "4f4e59c08cd5b0d94c7af43cd1240ef1d32d35b3",
+  "mergeParents": [
+    "6843cc24428a181cf80c57fe358a4944a9439ded",
+    "86cba428d39e3ce4be13245bdb8e34e49dccf8d4"
+  ],
+  "sourceVerification": "8750files;22mainpaths exact;45HRMpaths unchanged;1newdocument",
+  "mainBaselinePairs": 64,
+  "baselineEditedForGreen": false,
+  "tests": [
+    {
+      "path": "/tmp/hrm-593-tests.json",
+      "bytes": 46267,
+      "sha256": "445754eee045662de3e6651aed691f961a8dbd10598cab97b67c91610ecb5c39",
+      "numTotalTests": 123,
+      "numPassedTests": 123,
+      "numFailedTests": 0,
+      "numPendingTests": 0
+    },
+    {
+      "path": "/tmp/hrm-593-mtm-regression.json",
+      "bytes": 63143,
+      "sha256": "1fd7c383a1c79e38868ae44bfeb1ceeeb8d0ce3ed22486482f444bd6bdb0c124",
+      "numTotalTests": 191,
+      "numPassedTests": 191,
+      "numFailedTests": 0,
+      "numPendingTests": 0
+    }
+  ],
+  "i18n": "PASS",
+  "boundedTypecheck": "PASS exit0emptydiagnostics",
+  "wholeCompilerZeroErrorsClaim": false,
+  "ci": "ALL5mandatory+6additionalPASSfirstattempt;optionalbuildSKIPPED",
+  "independentReview": "ACCEPTED exactsource/freshmain/restore/terminalhosted",
+  "migrationApply": "NONE",
+  "mergeDeployActivation": "NONE",
+  "synthetic": {
+    "sha": "8e10365ee67e222ac222a0732c3feec33e95d329",
+    "tree": "9733850bf05fce1ac451367e961ab605813f6b3f",
+    "parents": [
+      "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+      "5f87cc94a684d5083804f0dae23116384dda24b4"
+    ]
+  },
+  "initialEvidenceCommit": "e28c5b20e98cb856af7c709a49aea12a3dc8621a",
+  "initialEvidenceReadbackFiles": 14,
+  "cleanup": "Own isolated PostgreSQL container, volumes, ephemeral password file removed",
+  "independentSourceReceipt": {
+    "path": "/tmp/hrm-593-independent-source-acceptance-20261006.json",
+    "sha256": "e8fc08ffe8a289c48d2481f2f139935c341569c0795ed34d81056743d305f3b1",
+    "rootWholeRead": true,
+    "all78BindingsVerified": true,
+    "findings": "P0-P3empty",
+    "freshIndependentTests": "50pure+3probesPASS;73PGskipped"
+  },
+  "terminalAcceptance": "/tmp/hrm-593-root-terminal-acceptance.json"
+}

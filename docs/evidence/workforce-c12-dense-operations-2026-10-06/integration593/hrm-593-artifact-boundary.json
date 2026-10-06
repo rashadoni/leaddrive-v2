@@ -1,0 +1,33 @@
+{
+  "sourceHead": "5f87cc94a684d5083804f0dae23116384dda24b4",
+  "sourceTree": "9733850bf05fce1ac451367e961ab605813f6b3f",
+  "main": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+  "publicRoot": "76994875a251e0956b56f8d300625b97eb098661",
+  "largeLocalSupportingDumps": [
+    {
+      "path": "/tmp/hrm-593-independent-remote-tree.json",
+      "bytes": 3619766,
+      "sha256": "7e1dc664de6313097296dcfc9b84aa63053c65c381061f3cda19f655743c92a6",
+      "archived": false
+    },
+    {
+      "path": "/tmp/hrm-main86-tree-independent.json",
+      "bytes": 3607282,
+      "sha256": "5039af8ffa51ff520c3ed860801a6dc23f53deaed7ff1b9883389452b49fad95",
+      "archived": false
+    },
+    {
+      "path": "/tmp/hrm-public-root-tree-independent.json",
+      "bytes": 2762592,
+      "sha256": "b0807ce06ce4bd68101ee0bb77980e977dd39818c7f6a69de2a11205d236efb1",
+      "archived": false
+    },
+    {
+      "path": "/tmp/hrm-public-root-schema-independent.prisma",
+      "bytes": 868816,
+      "sha256": "7384a0fefe2a6be21eb22e46a0fdf91c95dfb8269ca7bde4f3f650b3b141a024",
+      "archived": false
+    }
+  ],
+  "scope": "Large remote-tree response dumps remain local; immutable Git commit/tree/blob identities in archived receipts permit source recovery. Archived selected evidence uses exact original JSON/text bytes. Raw CI logs and screenshots were not accessed."
+}

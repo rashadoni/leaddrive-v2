@@ -1,0 +1,616 @@
+{
+  "schema_version": 1,
+  "reviewer": "independent /root/pr585_independent_review",
+  "reviewed_at": "2026-10-06T08:01:49.130310+00:00",
+  "status": "ACCEPTED_EXACT_SOURCE_FRESH_MAIN_COMPATIBILITY_HOSTED_PENDING",
+  "head": "5f87cc94a684d5083804f0dae23116384dda24b4",
+  "tree": "9733850bf05fce1ac451367e961ab605813f6b3f",
+  "parent": "4f4e59c08cd5b0d94c7af43cd1240ef1d32d35b3",
+  "integration_parent_tree": "72f55efe724e83b8c8b9a17445b1a131c7949afa",
+  "integration_parents": [
+    "6843cc24428a181cf80c57fe358a4944a9439ded",
+    "86cba428d39e3ce4be13245bdb8e34e49dccf8d4"
+  ],
+  "main": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+  "synthetic": "8e10365ee67e222ac222a0732c3feec33e95d329",
+  "synthetic_parents": [
+    "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+    "5f87cc94a684d5083804f0dae23116384dda24b4"
+  ],
+  "synthetic_tree_equals_candidate": true,
+  "verification": {
+    "blobs_verified": 8750,
+    "modes_verified": true,
+    "recomputed_tree": "9733850bf05fce1ac451367e961ab605813f6b3f",
+    "preserved_main_paths": [
+      "docs/security/2026-08-11-pentest-remediation.md",
+      "messages/az.json",
+      "messages/en.json",
+      "messages/ru.json",
+      "src/__tests__/api-mtm-agents.test.ts",
+      "src/__tests__/api-mtm-contact-assignments.test.ts",
+      "src/__tests__/api-mtm-field-master-data.test.ts",
+      "src/__tests__/api-mtm-misc.test.ts",
+      "src/__tests__/mtm-agent-section.test.ts",
+      "src/__tests__/mtm-contact-categories-postgres.test.ts",
+      "src/app/api/v1/mtm/agents/route.ts",
+      "src/app/api/v1/mtm/contact-assignments/preview/route.ts",
+      "src/app/api/v1/mtm/contact-assignments/route.ts",
+      "src/app/api/v1/mtm/contact-transfers/route.ts",
+      "src/app/api/v1/mtm/contacts/route.ts",
+      "src/app/api/v1/mtm/mobile/ping/route.ts",
+      "src/components/mtm/contact-assignment-dialog.tsx",
+      "src/components/mtm/contact-explorer.tsx",
+      "src/lib/mtm-validators.ts",
+      "src/lib/mtm/contact-bulk-assignment.ts",
+      "src/lib/mtm/contact-transfer.ts",
+      "typecheck-baseline.json"
+    ],
+    "preserved_hrm_paths": [
+      "docs/evidence/workforce-c12-cursor-fencing-draft-2026-10-05.json",
+      "docs/evidence/workforce-c12-dormant-kernel-main-compiler-review-scope-clarification-2026-10-05.json",
+      "docs/evidence/workforce-c12-duplicate-coherence-application-2026-10-05.json",
+      "docs/evidence/workforce-c12-duplicate-coherence-bounded-checks-2026-10-05.json",
+      "docs/evidence/workforce-c12-duplicate-coherence-selected-catalogue-2026-10-05.json",
+      "docs/evidence/workforce-timesheet-nullability-current-compiler-suite-root-2026-10-05.json",
+      "docs/evidence/workforce-timesheet-nullability-current-hosted-independent-2026-10-05.json",
+      "docs/evidence/workforce-timesheet-nullability-current-hosted-root-2026-10-05.json",
+      "docs/evidence/workforce-timesheet-nullability-current-manager-root-2026-10-05.json",
+      "docs/evidence/workforce-timesheet-nullability-current-manager-root-png-views-2026-10-05.json",
+      "docs/evidence/workforce-timesheet-nullability-normal-merge-2026-10-05.json",
+      "docs/evidence/workforce-timesheet-nullability-own-release-compact-2026-10-05.json",
+      "docs/evidence/workforce-timesheet-nullability-range-2026-10-05.json",
+      "docs/evidence/workforce-timesheet-nullability-ready-publication-2026-10-05.json",
+      "docs/evidence/workforce-timesheet-nullability-ready-synthetic-2026-10-05.json",
+      "docs/evidence/workforce-timesheet-nullability-source-independent-2026-10-05.json",
+      "docs/evidence/workforce-timesheet-nullability-source-root-2026-10-05.json",
+      "docs/workforce-c12-completion-plan-2026-10-05.md",
+      "docs/workforce-c12-dense-operations-2026-10-05.md",
+      "docs/workforce-c12-dormant-kernel-integrity-evidence-2026-10-05.md",
+      "docs/workforce-c12-duplicate-coherence-evidence-2026-10-05.md",
+      "docs/workforce-c12-sweep-staging-2026-10-05.md",
+      "docs/workforce-c8-calendar-native-zoom-evidence-2026-10-04.md",
+      "docs/workforce-c8-manager-today-native-zoom-evidence-2026-10-04.md",
+      "docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+      "docs/workforce-hrm-session-log.md",
+      "docs/workforce-timesheet-nullability-evidence-2026-10-05.md",
+      "prisma/migrations/20261005193000_workforce_reconciliation_operations/migration.sql",
+      "prisma/schema.prisma",
+      "src/__tests__/workforce-reconciliation-approval-group.test.ts",
+      "src/__tests__/workforce-reconciliation-cursor-store.test.ts",
+      "src/__tests__/workforce-reconciliation-export-audit.test.ts",
+      "src/__tests__/workforce-reconciliation-job.test.ts",
+      "src/__tests__/workforce-reconciliation-sweep.test.ts",
+      "src/__tests__/workforce-reconciliation.test.ts",
+      "src/lib/workforce/reconciliation-approval-group.ts",
+      "src/lib/workforce/reconciliation-cursor-store.ts",
+      "src/lib/workforce/reconciliation-dense.ts",
+      "src/lib/workforce/reconciliation-export-audit.ts",
+      "src/lib/workforce/reconciliation-operations.ts",
+      "src/lib/workforce/reconciliation-schedule-subject.ts",
+      "src/lib/workforce/reconciliation-snapshot.ts",
+      "src/lib/workforce/reconciliation-source-page.ts",
+      "src/lib/workforce/reconciliation-sweep.ts",
+      "src/lib/workforce/reconciliation.ts"
+    ],
+    "only_additional_path": "docs/workforce-c12-api-key-baseline-investigation-2026-10-06.md",
+    "baseline_pairs": 64,
+    "mismatches": []
+  },
+  "source_review": {
+    "unchanged_runtime": "Previous exact6843 runtime review retained only by newly verified exact bytes, not treated as fresh-base hosted acceptance. No source behavior changes in integration.",
+    "new_document": "Read whole migration investigation. Accurate 391-migration failure history, public-root440/current-main511 migration provenance, lack of api_keys creation and limits, safe schema-only baseline dependency, no executable repair.",
+    "fresh_translation_and_baseline": "All22main files byte-equal including3translation files and64-pair reducedbaseline. Old66pair baseline and old browser source bindings superseded for integration.",
+    "support_pr592": "Untouched and not reviewed."
+  },
+  "tests_actually_run_by_reviewer": [
+    {
+      "report": "hrm-593-independent-guard-tests.json",
+      "passed": 50,
+      "failed": 0,
+      "skipped": 73,
+      "exit_code": 0,
+      "scope": "Five reconciliation files; 73 opt-in realPG tests skipped, no PG credit."
+    },
+    {
+      "report": "hrm-593-independent-ownership-tests.json",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "scope": "Independent coherent/multi-corruption accounting partition and duplicate-dependency fatality probes on new workspace."
+    }
+  ],
+  "owner_tests_report_verified": [
+    {
+      "report": "hrm-593-tests.json",
+      "passed": 123,
+      "failed": 0,
+      "skipped": 0,
+      "reported_pg": 73,
+      "pure": 50
+    },
+    {
+      "report": "hrm-593-mtm-regression.json",
+      "passed": 191,
+      "failed": 0,
+      "skipped": 0
+    }
+  ],
+  "owner_typecheck": "Empty bounded compiler output verified; owner reports actualexit0. Not independent full repository typecheck.",
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "source_bindings": [
+    {
+      "path": "/workspace/hrm-593-integration/docs/security/2026-08-11-pentest-remediation.md",
+      "bytes": 61014,
+      "sha256": "0a849ea15ac3c812e5473db3752400a8c930e573606309a5c921377bc2268008",
+      "repository_path": "docs/security/2026-08-11-pentest-remediation.md"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/messages/az.json",
+      "bytes": 1488162,
+      "sha256": "6cf6f20076dcb783102db9d33ccc2932828ede917b1153e56ed27f96c3432093",
+      "repository_path": "messages/az.json"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/messages/en.json",
+      "bytes": 1345494,
+      "sha256": "ccdc3609ce04151217a15d42cbc76ea5a796290737724316134e0bda530b47bd",
+      "repository_path": "messages/en.json"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/messages/ru.json",
+      "bytes": 1986292,
+      "sha256": "89c50ec4e27a94cc6f5c9a6a03d31ba90a64baeb672c14bf45dba587baa0a5bd",
+      "repository_path": "messages/ru.json"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/src/__tests__/api-mtm-agents.test.ts",
+      "bytes": 66124,
+      "sha256": "e952c7be020ec3f1141d03b57e6bffa792ce3cd07b002c4194ad98f8f31df071",
+      "repository_path": "src/__tests__/api-mtm-agents.test.ts"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/src/__tests__/api-mtm-contact-assignments.test.ts",
+      "bytes": 8812,
+      "sha256": "b5a066a0066e9e75b3bfd5756cd37a9fb1f3d145fbf5115c3004379699240f4f",
+      "repository_path": "src/__tests__/api-mtm-contact-assignments.test.ts"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/src/__tests__/api-mtm-field-master-data.test.ts",
+      "bytes": 40439,
+      "sha256": "74ecc314ff574d6cb773dc741acb8c80cb558960397389a788df99a575b3ca51",
+      "repository_path": "src/__tests__/api-mtm-field-master-data.test.ts"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/src/__tests__/api-mtm-misc.test.ts",
+      "bytes": 42107,
+      "sha256": "bb2b58042fce4d0cbc6aa2ebea43c83726939ebc7dd022fa744ba1db684a89a1",
+      "repository_path": "src/__tests__/api-mtm-misc.test.ts"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/src/__tests__/mtm-agent-section.test.ts",
+      "bytes": 33840,
+      "sha256": "e002fe56a685159866fd5daabfca17836fb15f23678562f7e998e242f5272651",
+      "repository_path": "src/__tests__/mtm-agent-section.test.ts"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/src/__tests__/mtm-contact-categories-postgres.test.ts",
+      "bytes": 26866,
+      "sha256": "ea7e04901aa98ad6c055b67762d14ee8dc3e83fbc4bb9afcc53c413bb82d2ca8",
+      "repository_path": "src/__tests__/mtm-contact-categories-postgres.test.ts"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/src/app/api/v1/mtm/agents/route.ts",
+      "bytes": 19587,
+      "sha256": "b639b1a1ae5ea20be41a772a01b562a9c1733b94d2c315e4c9ce38eb2ad408ea",
+      "repository_path": "src/app/api/v1/mtm/agents/route.ts"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/src/app/api/v1/mtm/contact-assignments/preview/route.ts",
+      "bytes": 1638,
+      "sha256": "1e9b014bf667826c26dfe68190493fc9457a979bca204fa3c4b2c3e7296e57a8",
+      "repository_path": "src/app/api/v1/mtm/contact-assignments/preview/route.ts"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/src/app/api/v1/mtm/contact-assignments/route.ts",
+      "bytes": 9914,
+      "sha256": "4fd1a1d4f49b8049ded1479e263e1e72d6c34015b3ac2862d752d6d10a80ae34",
+      "repository_path": "src/app/api/v1/mtm/contact-assignments/route.ts"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/src/app/api/v1/mtm/contact-transfers/route.ts",
+      "bytes": 13424,
+      "sha256": "bb62b1a53668e03282cbbf427428df9ef6dcc17444b75297948a320e30dc6377",
+      "repository_path": "src/app/api/v1/mtm/contact-transfers/route.ts"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/src/app/api/v1/mtm/contacts/route.ts",
+      "bytes": 22129,
+      "sha256": "ffbc40084ad45695d5dfe0060192808ed681c5aed715f8996d7dadbc63ac03b1",
+      "repository_path": "src/app/api/v1/mtm/contacts/route.ts"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/src/app/api/v1/mtm/mobile/ping/route.ts",
+      "bytes": 3666,
+      "sha256": "fbbe64575e3d1d203e4330408af74c2c5aa3a9b38d5ca19a38529e6fc30f9985",
+      "repository_path": "src/app/api/v1/mtm/mobile/ping/route.ts"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/src/components/mtm/contact-assignment-dialog.tsx",
+      "bytes": 16826,
+      "sha256": "0af43843217db0df0f055030eedbafebfe320caf8557ac4b1408a933ad331242",
+      "repository_path": "src/components/mtm/contact-assignment-dialog.tsx"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/src/components/mtm/contact-explorer.tsx",
+      "bytes": 68623,
+      "sha256": "eea3231b00d02c5f4091086f0aabe1c9252894b5c4ec005e3e0f000814b49c4a",
+      "repository_path": "src/components/mtm/contact-explorer.tsx"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/src/lib/mtm-validators.ts",
+      "bytes": 43860,
+      "sha256": "aa4cee94ab57c296921fa9ef0dbbe40bd0be78d68192cd4f72f47971056edc40",
+      "repository_path": "src/lib/mtm-validators.ts"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/src/lib/mtm/contact-bulk-assignment.ts",
+      "bytes": 10515,
+      "sha256": "9eb6068df1d6e181ddae6b02250a6f7f5c03f9d637d6116147f3651bc6bffd62",
+      "repository_path": "src/lib/mtm/contact-bulk-assignment.ts"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/src/lib/mtm/contact-transfer.ts",
+      "bytes": 10504,
+      "sha256": "a02b55bc2a88ea2daff75814393f8b31c34c83cb71d5b59270190b12b1ca44b5",
+      "repository_path": "src/lib/mtm/contact-transfer.ts"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/typecheck-baseline.json",
+      "bytes": 3907,
+      "sha256": "919fa9d0212b18ee685af4f08680ebbc34e8c4969294054447df03147bf0fc53",
+      "repository_path": "typecheck-baseline.json"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/docs/evidence/workforce-c12-cursor-fencing-draft-2026-10-05.json",
+      "bytes": 4093,
+      "sha256": "fa27341c7525120c7b1af8a132792cc1f3a3c06ee91ffa0e0f8f6eabee4cc6ee",
+      "repository_path": "docs/evidence/workforce-c12-cursor-fencing-draft-2026-10-05.json"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/docs/evidence/workforce-c12-dormant-kernel-main-compiler-review-scope-clarification-2026-10-05.json",
+      "bytes": 1073,
+      "sha256": "7113395a046353ee483903e5fd330b54dc65449424bcf4b2888858584a56fda8",
+      "repository_path": "docs/evidence/workforce-c12-dormant-kernel-main-compiler-review-scope-clarification-2026-10-05.json"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/docs/evidence/workforce-c12-duplicate-coherence-application-2026-10-05.json",
+      "bytes": 4211,
+      "sha256": "e4a10e5efac536bea2d1ffa4dedca7ae3fabdd5f614e187b43393a28bb0f0d71",
+      "repository_path": "docs/evidence/workforce-c12-duplicate-coherence-application-2026-10-05.json"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/docs/evidence/workforce-c12-duplicate-coherence-bounded-checks-2026-10-05.json",
+      "bytes": 6198,
+      "sha256": "6bb203f832fab267f7327a6a7fb59714d68e03fdc9b54c0851a75b6ec7fea647",
+      "repository_path": "docs/evidence/workforce-c12-duplicate-coherence-bounded-checks-2026-10-05.json"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/docs/evidence/workforce-c12-duplicate-coherence-selected-catalogue-2026-10-05.json",
+      "bytes": 7553,
+      "sha256": "ad33846fc27f580f53e745d8fc8f8857658965d58e9b40b0768ce4906c44c410",
+      "repository_path": "docs/evidence/workforce-c12-duplicate-coherence-selected-catalogue-2026-10-05.json"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/docs/evidence/workforce-timesheet-nullability-current-compiler-suite-root-2026-10-05.json",
+      "bytes": 5525,
+      "sha256": "9efa748d06a5cbf41fc6e5c58266d486bc9b0827f6102bd08f033c4571afd53d",
+      "repository_path": "docs/evidence/workforce-timesheet-nullability-current-compiler-suite-root-2026-10-05.json"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/docs/evidence/workforce-timesheet-nullability-current-hosted-independent-2026-10-05.json",
+      "bytes": 65664,
+      "sha256": "f4508161bdb7827b1284c28a4c374e15d38aab2bcadcb4c479b5770c6781106b",
+      "repository_path": "docs/evidence/workforce-timesheet-nullability-current-hosted-independent-2026-10-05.json"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/docs/evidence/workforce-timesheet-nullability-current-hosted-root-2026-10-05.json",
+      "bytes": 12197,
+      "sha256": "f4ff9fe8fab95f57d72225469af6d05a516d573541c60c14516a89adfea35677",
+      "repository_path": "docs/evidence/workforce-timesheet-nullability-current-hosted-root-2026-10-05.json"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/docs/evidence/workforce-timesheet-nullability-current-manager-root-2026-10-05.json",
+      "bytes": 31618,
+      "sha256": "bd4f25201812cd31a073a011f932c8a8736071cf18ca2f218a8ab408e5d247c4",
+      "repository_path": "docs/evidence/workforce-timesheet-nullability-current-manager-root-2026-10-05.json"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/docs/evidence/workforce-timesheet-nullability-current-manager-root-png-views-2026-10-05.json",
+      "bytes": 2909,
+      "sha256": "7eb6dc7e054942339dbed17e1bba1899e9d6262297b1196e0f19c54c01f9a099",
+      "repository_path": "docs/evidence/workforce-timesheet-nullability-current-manager-root-png-views-2026-10-05.json"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/docs/evidence/workforce-timesheet-nullability-normal-merge-2026-10-05.json",
+      "bytes": 4789,
+      "sha256": "7c0fdda48c2751a83d038e3dcac25c53162e9982699662cad2794cd9a369c514",
+      "repository_path": "docs/evidence/workforce-timesheet-nullability-normal-merge-2026-10-05.json"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/docs/evidence/workforce-timesheet-nullability-own-release-compact-2026-10-05.json",
+      "bytes": 18852,
+      "sha256": "c5050e2804214644d5b062d0e9a70be26f416f7706e95f46f5d07ef24f6196c3",
+      "repository_path": "docs/evidence/workforce-timesheet-nullability-own-release-compact-2026-10-05.json"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/docs/evidence/workforce-timesheet-nullability-range-2026-10-05.json",
+      "bytes": 6735,
+      "sha256": "cc13666a207713059df4d99a5de12acaef67f123d2d989ebd3f60121dca6b9a2",
+      "repository_path": "docs/evidence/workforce-timesheet-nullability-range-2026-10-05.json"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/docs/evidence/workforce-timesheet-nullability-ready-publication-2026-10-05.json",
+      "bytes": 4312,
+      "sha256": "40f78c7bf059b1ae44413755fe02332c95d1cb0efc068bf9a8290b4f3c5dffed",
+      "repository_path": "docs/evidence/workforce-timesheet-nullability-ready-publication-2026-10-05.json"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/docs/evidence/workforce-timesheet-nullability-ready-synthetic-2026-10-05.json",
+      "bytes": 8775,
+      "sha256": "082757ba3696e4213c4731b76b56551309cc69b80842c5b358bfd65839caefbc",
+      "repository_path": "docs/evidence/workforce-timesheet-nullability-ready-synthetic-2026-10-05.json"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/docs/evidence/workforce-timesheet-nullability-source-independent-2026-10-05.json",
+      "bytes": 34671,
+      "sha256": "3b1dc5356719b833806d2540e95862c3561d0d12506983ae99c52a02620d9267",
+      "repository_path": "docs/evidence/workforce-timesheet-nullability-source-independent-2026-10-05.json"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/docs/evidence/workforce-timesheet-nullability-source-root-2026-10-05.json",
+      "bytes": 25286,
+      "sha256": "1e318daf5b64acb19e2aee57054df0c28c3c27de49bdcef7c6afb5a9379064ff",
+      "repository_path": "docs/evidence/workforce-timesheet-nullability-source-root-2026-10-05.json"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/docs/workforce-c12-completion-plan-2026-10-05.md",
+      "bytes": 18101,
+      "sha256": "239dace6318b595357a8014beed5ae1929a085bea857fbba5978e678bbb1973a",
+      "repository_path": "docs/workforce-c12-completion-plan-2026-10-05.md"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/docs/workforce-c12-dense-operations-2026-10-05.md",
+      "bytes": 5401,
+      "sha256": "c69199ad54e9404e25e6a1f2e324cb3476e9d4b66664f3e27cd46c38c9780c21",
+      "repository_path": "docs/workforce-c12-dense-operations-2026-10-05.md"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/docs/workforce-c12-dormant-kernel-integrity-evidence-2026-10-05.md",
+      "bytes": 36916,
+      "sha256": "b5b969cbcc0d443cd42d8670187c17b318c4cb8344307291b6b91a058f2240ff",
+      "repository_path": "docs/workforce-c12-dormant-kernel-integrity-evidence-2026-10-05.md"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/docs/workforce-c12-duplicate-coherence-evidence-2026-10-05.md",
+      "bytes": 3937,
+      "sha256": "1193e15c3cc016b032ecb9b69f9b477536e89e325dcdc807cf8a361c1726a6b7",
+      "repository_path": "docs/workforce-c12-duplicate-coherence-evidence-2026-10-05.md"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/docs/workforce-c12-sweep-staging-2026-10-05.md",
+      "bytes": 5677,
+      "sha256": "fca6a3692af9545731a4461a99338e7d2280e2ef85d73d7fd5a0c303feac5cfc",
+      "repository_path": "docs/workforce-c12-sweep-staging-2026-10-05.md"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/docs/workforce-c8-calendar-native-zoom-evidence-2026-10-04.md",
+      "bytes": 196630,
+      "sha256": "73bc3f85cf934a1bed32049a64beb280374fa8743f7da615b082c6fd61a669eb",
+      "repository_path": "docs/workforce-c8-calendar-native-zoom-evidence-2026-10-04.md"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/docs/workforce-c8-manager-today-native-zoom-evidence-2026-10-04.md",
+      "bytes": 128786,
+      "sha256": "d1a7ab7b40114f10c4418987f03a28bc7a89178dd5b224d17b0f6db976198df0",
+      "repository_path": "docs/workforce-c8-manager-today-native-zoom-evidence-2026-10-04.md"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+      "bytes": 1160539,
+      "sha256": "d403ef692cf7775a940e8b5be104d72032a52ca407935d71d27083526d664045",
+      "repository_path": "docs/workforce-hrm-completion-roadmap-2026-08-30.md"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/docs/workforce-hrm-session-log.md",
+      "bytes": 1148984,
+      "sha256": "5dd1ac0729c6728e28d93074b112d983138b8db211d9e83395d5608d4a6bff3c",
+      "repository_path": "docs/workforce-hrm-session-log.md"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/docs/workforce-timesheet-nullability-evidence-2026-10-05.md",
+      "bytes": 18152,
+      "sha256": "85613cc06a675d1d8f3217031815fc85a2a9552fb5c7ede87f226f0fd20795f0",
+      "repository_path": "docs/workforce-timesheet-nullability-evidence-2026-10-05.md"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/prisma/migrations/20261005193000_workforce_reconciliation_operations/migration.sql",
+      "bytes": 2721,
+      "sha256": "c452e7f6d13dca1e5257d8353c252745d05cd4f18eae83cd45501f61664ef719",
+      "repository_path": "prisma/migrations/20261005193000_workforce_reconciliation_operations/migration.sql"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/prisma/schema.prisma",
+      "bytes": 958605,
+      "sha256": "a2cf656923aa83241d8601b3e4577402a4ec5e5ad4cde8e302ed6e03d8156e0f",
+      "repository_path": "prisma/schema.prisma"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/src/__tests__/workforce-reconciliation-approval-group.test.ts",
+      "bytes": 10992,
+      "sha256": "c7ea1b137f2c5df66aa873b1b67e0326e2bcf1f7aa436ded512f9e6cb984031a",
+      "repository_path": "src/__tests__/workforce-reconciliation-approval-group.test.ts"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/src/__tests__/workforce-reconciliation-cursor-store.test.ts",
+      "bytes": 11018,
+      "sha256": "f001e4b708c1d6ffa9aab79d14f47b3fa4e9acc2fb9cc34e6b2aba4244988916",
+      "repository_path": "src/__tests__/workforce-reconciliation-cursor-store.test.ts"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/src/__tests__/workforce-reconciliation-export-audit.test.ts",
+      "bytes": 17050,
+      "sha256": "6c0905449efc6056247e65429abdbde929612c890845acb35f26cafc0dfe1f6c",
+      "repository_path": "src/__tests__/workforce-reconciliation-export-audit.test.ts"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/src/__tests__/workforce-reconciliation-job.test.ts",
+      "bytes": 7778,
+      "sha256": "8df55e84e2f2aca80633f167659f3a509a5f467e9f4b79ab072728105791db2b",
+      "repository_path": "src/__tests__/workforce-reconciliation-job.test.ts"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/src/__tests__/workforce-reconciliation-sweep.test.ts",
+      "bytes": 49872,
+      "sha256": "276a6bd5077d31d883fba6e1499cb9e4b95016ec36f1932ad02759b903a338ea",
+      "repository_path": "src/__tests__/workforce-reconciliation-sweep.test.ts"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/src/__tests__/workforce-reconciliation.test.ts",
+      "bytes": 13558,
+      "sha256": "bb1dedf39a72beb6fe4cff41336b59fa4bdd5faa08d03ecdae7343b20f43ecd8",
+      "repository_path": "src/__tests__/workforce-reconciliation.test.ts"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/src/lib/workforce/reconciliation-approval-group.ts",
+      "bytes": 4263,
+      "sha256": "aa45ab91f54678c457d066a9a8bc044acabbd5cd29df4bad1b1924f7c0632a05",
+      "repository_path": "src/lib/workforce/reconciliation-approval-group.ts"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/src/lib/workforce/reconciliation-cursor-store.ts",
+      "bytes": 6533,
+      "sha256": "8b04ef4d1c7ea5cca424ef13e7c0d80e949271523a22cf4d43a545049949a6bd",
+      "repository_path": "src/lib/workforce/reconciliation-cursor-store.ts"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/src/lib/workforce/reconciliation-dense.ts",
+      "bytes": 8490,
+      "sha256": "500f3f9b68cb68a0ab0ee6085814961b359b46ceb3b18a5ba38d9cafbd175959",
+      "repository_path": "src/lib/workforce/reconciliation-dense.ts"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/src/lib/workforce/reconciliation-export-audit.ts",
+      "bytes": 7445,
+      "sha256": "38094ed52225428eb46eae6247f4a618a98d66e4e83151b7ba217168c6722409",
+      "repository_path": "src/lib/workforce/reconciliation-export-audit.ts"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/src/lib/workforce/reconciliation-operations.ts",
+      "bytes": 11420,
+      "sha256": "9550065b64ecfae0e40e8dbf2561a3e5eb63cc738558a4c5fd13f1d1a3d95bd2",
+      "repository_path": "src/lib/workforce/reconciliation-operations.ts"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/src/lib/workforce/reconciliation-schedule-subject.ts",
+      "bytes": 9921,
+      "sha256": "6ef11cc56e3132e4e48ba99cb57e021b9fed425488aea11c12864e9025eae9d9",
+      "repository_path": "src/lib/workforce/reconciliation-schedule-subject.ts"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/src/lib/workforce/reconciliation-snapshot.ts",
+      "bytes": 9679,
+      "sha256": "bdba98ef3f2d18b916200673038b4ad3eb523f2a5e3d12c864198eac26f490a3",
+      "repository_path": "src/lib/workforce/reconciliation-snapshot.ts"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/src/lib/workforce/reconciliation-source-page.ts",
+      "bytes": 5013,
+      "sha256": "7c45f9b7d1b621d7418e4ce18cdbace2bfed1a9a3a522944c5504c1259da03fe",
+      "repository_path": "src/lib/workforce/reconciliation-source-page.ts"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/src/lib/workforce/reconciliation-sweep.ts",
+      "bytes": 3049,
+      "sha256": "309ce1eabde967c795c47bb4a123f7c4cfd73a2a13638d8937327d8db4b0024c",
+      "repository_path": "src/lib/workforce/reconciliation-sweep.ts"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/src/lib/workforce/reconciliation.ts",
+      "bytes": 10678,
+      "sha256": "292720bc88e8484dd173e6ed50d7616f008e5524201dc756f40ab3fabca20a27",
+      "repository_path": "src/lib/workforce/reconciliation.ts"
+    },
+    {
+      "path": "/workspace/hrm-593-integration/docs/workforce-c12-api-key-baseline-investigation-2026-10-06.md",
+      "bytes": 3219,
+      "sha256": "d154a301f237dfd1a68d5eb0592f6283fbea13b6a5e356ba66aa63f0647328b9",
+      "repository_path": "docs/workforce-c12-api-key-baseline-investigation-2026-10-06.md"
+    }
+  ],
+  "support_files": [
+    {
+      "path": "/tmp/hrm-593-independent-tree-proof.json",
+      "bytes": 4451,
+      "sha256": "8465a2043fdf4423c3c623acbb234c19725201b6b815d672305505e0dcea748c"
+    },
+    {
+      "path": "/tmp/hrm-593-independent-remote-bindings.json",
+      "bytes": 6513,
+      "sha256": "e89a2c1072c9592717add99bf7f1596f8c83fa3433d4e6d1980f9224fb3992a8"
+    },
+    {
+      "path": "/tmp/hrm-593-independent-remote-tree.json",
+      "bytes": 3619766,
+      "sha256": "7e1dc664de6313097296dcfc9b84aa63053c65c381061f3cda19f655743c92a6"
+    },
+    {
+      "path": "/tmp/hrm-593-independent-guard-tests.json",
+      "bytes": 44201,
+      "sha256": "15d65614edfc39bb2890aa11425d4a54ae8a8e89a96ab3bf20d523386470e6a9"
+    },
+    {
+      "path": "/tmp/hrm-593-independent-ownership-tests.json",
+      "bytes": 1681,
+      "sha256": "c5db14b0967449e8a690d3742c988fcd395d0b70a78491b3db2eee344570fedc"
+    },
+    {
+      "path": "/tmp/hrm-593-tests.json",
+      "bytes": 46267,
+      "sha256": "445754eee045662de3e6651aed691f961a8dbd10598cab97b67c91610ecb5c39"
+    },
+    {
+      "path": "/tmp/hrm-593-mtm-regression.json",
+      "bytes": 63143,
+      "sha256": "1fd7c383a1c79e38868ae44bfeb1ceeeb8d0ce3ed22486482f444bd6bdb0c124"
+    },
+    {
+      "path": "/tmp/hrm-593-typecheck.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/hrm-main593-migration-independent-findings-20261006.json",
+      "bytes": 6276,
+      "sha256": "96c99f423b4f6a5baeb3c5f414b7bf9fa5b520e7710bbcd1ddfca86b970c25c8"
+    },
+    {
+      "path": "/tmp/hrm-ops-independent-immutable-6843cc2-20261006.json",
+      "bytes": 4993,
+      "sha256": "be6613c41376c3b35ca070ef3873aca49de506d68b71b64f3f5554a6d2960afe"
+    }
+  ],
+  "limits": [
+    "Exacthead hosted5mandatory+6schema workflows pending, no green acceptance yet.",
+    "No new migration application or historicalDB replay performed.",
+    "Old6843 terminalreceipt applies only oldmain0dad/synthetic10e4; newbinding does not inherit oldbrowserpayload evidence.",
+    "FullC12 PARTIAL82/161DONE79open59%; missingapi_keys canonical historicalcreation/bootstrap remains blocker.",
+    "Dormant worker runtime not activated; no merge/deploy/grants/production/Support592 actions."
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "extends": "/workspace/hrm-593-integration/tsconfig.json",
+  "compilerOptions": {
+    "incremental": false,
+    "typeRoots": [
+      "/workspace/hrm-593-integration/node_modules/@types"
+    ],
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "/workspace/hrm-593-integration/src/lib/workforce/reconciliation.ts",
+    "/workspace/hrm-593-integration/src/lib/workforce/reconciliation-source-page.ts",
+    "/workspace/hrm-593-integration/src/lib/workforce/reconciliation-dense.ts",
+    "/workspace/hrm-593-integration/src/lib/workforce/reconciliation-operations.ts",
+    "/workspace/hrm-593-integration/src/lib/workforce/reconciliation-sweep.ts",
+    "/workspace/hrm-593-integration/src/lib/workforce/reconciliation-snapshot.ts",
+    "/workspace/hrm-593-integration/src/lib/workforce/reconciliation-cursor-store.ts",
+    "/workspace/hrm-593-integration/src/__tests__/workforce-reconciliation-sweep.test.ts"
+  ]
+}
