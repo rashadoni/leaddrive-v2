@@ -9,9 +9,11 @@ const mocks = vi.hoisted(() => ({
   user: { findFirst: vi.fn() },
   lock: vi.fn(),
   transaction: vi.fn(),
+  milestone: { findMany: vi.fn() },
 }))
 vi.mock("@/lib/prisma", () => ({ prisma: {
   ticketMacro: mocks.macro,
+  entitlementTicketMilestone: mocks.milestone,
   $transaction: mocks.transaction,
 } }))
 vi.mock("@/lib/with-rls", () => ({
@@ -36,6 +38,7 @@ beforeEach(() => {
   mocks.macro.findFirst.mockResolvedValue({ id: "macro-1", isActive: true, actions })
   mocks.ticket.findFirst.mockResolvedValue({ id: "ticket-1", tags: [], comments: [] })
   mocks.audit.findFirst.mockResolvedValue(null)
+  mocks.milestone.findMany.mockResolvedValue([])
   mocks.transaction.mockImplementation(async (fn: (tx: unknown) => unknown) => fn({
     ticketMacro: mocks.macro, ticket: mocks.ticket, ticketComment: mocks.comment,
     auditLog: mocks.audit, user: mocks.user, $queryRaw: mocks.lock,
@@ -62,9 +65,57 @@ describe("confirmed macro application", () => {
     mocks.audit.findFirst.mockResolvedValue(receipt)
     expect((await invoke(confirmed())).status).toBe(200)
     expect(mocks.comment.create).toHaveBeenCalledTimes(2)
-    expect(mocks.ticket.update).toHaveBeenCalledTimes(1)
+    // The priority change and the first-response timestamp of the public reply.
+    expect(mocks.ticket.update).toHaveBeenCalledTimes(2)
+    expect(mocks.milestone.findMany).toHaveBeenCalledTimes(1)
     expect(mocks.audit.create).toHaveBeenCalledTimes(1)
     expect(mocks.macro.update).toHaveBeenCalledTimes(1)
+  })
+
+  it("records the first response and the resolution exactly as the ticket card does", async () => {
+    // A macro used to write only `status` and the comment: a ticket resolved by
+    // macro had no resolution time in reports, and its first-response SLA kept
+    // counting as unanswered.
+    const closing = [
+      { type: "add_comment", value: "Synthetic closing reply" },
+      { type: "set_status", value: "resolved" },
+    ]
+    mocks.macro.findFirst.mockResolvedValue({ id: "macro-1", isActive: true, actions: closing })
+    mocks.ticket.findFirst.mockResolvedValue({ id: "ticket-1", tags: [], comments: [], status: "in_progress", firstResponseAt: null })
+
+    expect((await invoke({ ticketId: "ticket-1", requestId, expectedActions: closing })).status).toBe(200)
+
+    const updates = mocks.ticket.update.mock.calls.map(call => call[0].data)
+    expect(updates[0]).toEqual({ status: "resolved", resolvedAt: expect.any(Date) })
+    expect(updates[1]).toEqual({ firstResponseAt: expect.any(Date) })
+    expect(mocks.milestone.findMany.mock.calls[0][0].where).toMatchObject({
+      organizationId: "org-confirmed", ticketId: "ticket-1", type: { in: ["resolution", "first_response"] },
+    })
+  })
+
+  it("keeps an earlier first response and counts a reopening", async () => {
+    const reopening = [
+      { type: "add_comment", value: "Synthetic follow-up" },
+      { type: "set_status", value: "in_progress" },
+    ]
+    const answeredAt = new Date("2026-10-01T08:00:00.000Z")
+    mocks.macro.findFirst.mockResolvedValue({ id: "macro-1", isActive: true, actions: reopening })
+    mocks.ticket.findFirst.mockResolvedValue({ id: "ticket-1", tags: [], comments: [], status: "resolved", firstResponseAt: answeredAt })
+
+    expect((await invoke({ ticketId: "ticket-1", requestId, expectedActions: reopening })).status).toBe(200)
+
+    expect(mocks.ticket.update.mock.calls.map(call => call[0].data)).toEqual([
+      { status: "in_progress", reopenCount: { increment: 1 }, resolvedAt: null, closedAt: null },
+    ])
+  })
+
+  it("does not complete milestones again when a committed request is replayed", async () => {
+    expect((await invoke(confirmed())).status).toBe(200)
+    mocks.audit.findFirst.mockResolvedValue(mocks.audit.create.mock.calls[0][0].data)
+    mocks.milestone.findMany.mockClear()
+
+    expect((await invoke(confirmed())).status).toBe(200)
+    expect(mocks.milestone.findMany).not.toHaveBeenCalled()
   })
 
   it("rejects changed macro actions before any mutation", async () => {

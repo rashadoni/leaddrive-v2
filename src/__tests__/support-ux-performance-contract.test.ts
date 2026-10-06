@@ -14,7 +14,13 @@ describe("Service Desk performance contract", () => {
   it("keeps the initial queue volume bounded", () => {
     const tickets = read("src/app/(dashboard)/tickets/page.tsx")
 
-    expect(tickets).toContain("/api/v1/tickets?limit=200")
+    // Every active ticket plus a recent window of finished ones; older finished
+    // tickets are reached through the server-side search.
+    expect(tickets).toContain("const ACTIVE_QUEUE_LIMIT = 500")
+    expect(tickets).toContain("const DONE_WINDOW_LIMIT = 200")
+    expect(tickets).toContain("/api/v1/tickets?scope=active&limit=${ACTIVE_QUEUE_LIMIT}&counts=1")
+    expect(tickets).toContain("/api/v1/tickets?scope=done&limit=${DONE_WINDOW_LIMIT}")
+    expect(tickets).not.toContain("/api/v1/tickets?limit=200")
     expect(tickets).toContain("const KANBAN_COLLAPSE_LIMIT = 8")
   })
 

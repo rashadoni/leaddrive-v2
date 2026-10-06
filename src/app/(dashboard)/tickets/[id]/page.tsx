@@ -598,6 +598,7 @@ export default function TicketDetailPage() {
           method: "PUT",
           headers: { "Content-Type": "application/json", ...headers },
           body: JSON.stringify({ handleTimeSeconds: finalTime }),
+          keepalive: true,
         }).catch(() => {})
       }
     }
@@ -1579,7 +1580,7 @@ export default function TicketDetailPage() {
                   placeholder={isInternal ? t("internalNotePlaceholder") : t("replyPlaceholder")}
                   rows={4}
                   disabled={sending || ticket.status === "closed"}
-                  aria-describedby={sendError ? "ticket-send-error" : isInternal ? "ticket-internal-note-hint" : undefined}
+                  aria-describedby={sendError ? "ticket-send-error" : isInternal ? "ticket-internal-note-hint" : "ticket-reply-audience-hint"}
                   className={isInternal ? "border-amber-300 bg-amber-50/30 focus-visible:ring-amber-300/30 dark:border-amber-900 dark:bg-amber-950/10" : "bg-background"}
                 />
 
@@ -1756,8 +1757,12 @@ export default function TicketDetailPage() {
                 )}
                 {aiError && <p role="alert" className="text-xs text-red-700 dark:text-red-300">{aiError}</p>}
 
-                {isInternal && (
+                {isInternal ? (
                   <p id="ticket-internal-note-hint" className="text-xs text-amber-700 dark:text-amber-300">{t("internalNoteHint")}</p>
+                ) : (
+                  <p id="ticket-reply-audience-hint" data-testid="ticket-reply-audience-hint" className="text-xs text-muted-foreground">
+                    {(ticket.tags || []).includes("whatsapp") ? t("replyAudienceWhatsapp") : t("replyAudiencePortal")}
+                  </p>
                 )}
 
                 {/* Da Vinci Result display */}
@@ -2258,7 +2263,7 @@ export default function TicketDetailPage() {
                   {kbArticles.slice(0, 3).map(article => (
                     <Link
                       key={article.id}
-                      href={`/knowledge-base`}
+                      href={`/knowledge-base/${article.id}`}
                       className="block rounded-lg p-2 transition-colors hover:bg-muted/50 motion-reduce:transition-none"
                     >
                       <p className="text-sm font-medium line-clamp-1">{article.title}</p>

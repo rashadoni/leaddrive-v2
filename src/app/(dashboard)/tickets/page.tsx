@@ -122,6 +122,17 @@ function parseViewMode(value: string | null): ViewMode {
   return "list"
 }
 
+// The queue holds every active ticket; resolved and closed ones are a recent
+// window, and anything older is reached through the server-side search.
+const ACTIVE_QUEUE_LIMIT = 500
+const DONE_WINDOW_LIMIT = 200
+const SEARCH_RESULT_LIMIT = 200
+const SERVER_SEARCH_MIN_LENGTH = 2
+
+type QueueCounts = { open: number; new: number; unassigned: number; slaBreached: number; escalated: number }
+type QueueTotals = { active: number; done: number }
+type SearchResults = { query: string; tickets: TicketData[]; total: number }
+
 export default function TicketsPage() {
   const t = useTranslations("tickets")
   const tc = useTranslations("common")
@@ -155,6 +166,9 @@ export default function TicketsPage() {
   const [movingTicketId, setMovingTicketId] = useState<string | null>(null)
   const [takingNext, setTakingNext] = useState(false)
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null)
+  const [queueCounts, setQueueCounts] = useState<QueueCounts | null>(null)
+  const [queueTotals, setQueueTotals] = useState<QueueTotals | null>(null)
+  const [searchResults, setSearchResults] = useState<SearchResults | null>(null)
   const orgId = session?.user?.organizationId
   const currentUserId = session?.user?.id
   const canTakeNext = Boolean(session?.user?.role && checkPermission(session.user.role as Role, "tickets", "write"))
@@ -237,20 +251,26 @@ export default function TicketsPage() {
 
   const fetchTickets = useCallback(async () => {
     try {
-      const res = await fetch("/api/v1/tickets?limit=200", {
-        headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>,
-      })
-      if (!res.ok) {
-        setPermissionDenied(res.status === 403)
-        throw new Error(`ticket_request_failed:${res.status}`)
+      const headers = orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>
+      const [res, doneRes] = await Promise.all([
+        fetch(`/api/v1/tickets?scope=active&limit=${ACTIVE_QUEUE_LIMIT}&counts=1`, { headers }),
+        fetch(`/api/v1/tickets?scope=done&limit=${DONE_WINDOW_LIMIT}`, { headers }),
+      ])
+      const failed = !res.ok ? res : !doneRes.ok ? doneRes : null
+      if (failed) {
+        setPermissionDenied(failed.status === 403)
+        throw new Error(`ticket_request_failed:${failed.status}`)
       }
-      const json = await res.json()
-      if (json.success) {
+      const [json, doneJson] = await Promise.all([res.json(), doneRes.json()])
+      if (json.success && doneJson.success) {
         setLoadError(false)
         setPermissionDenied(false)
         setLastUpdatedAt(new Date())
-        const list: TicketData[] = json.data.tickets
+        const list: TicketData[] = [...json.data.tickets as TicketData[], ...doneJson.data.tickets as TicketData[]]
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         setTickets(list)
+        setQueueCounts(json.data.queueCounts ?? null)
+        setQueueTotals({ active: Number(json.data.total) || 0, done: Number(doneJson.data.total) || 0 })
         // Flag genuinely-new arrivals (present now, never seen on this browser) so the row blinks and
         // stays highlighted until opened. Gated on knownKey so the pre-auth fetch (orgId not yet
         // resolved) never seeds — otherwise the first real fetch would flag the whole backlog.
@@ -308,6 +328,33 @@ export default function TicketsPage() {
     const interval = setInterval(fetchTickets, 20000)
     return () => clearInterval(interval)
   }, [fetchTickets])
+
+  // Search runs on the server over every ticket the agent may see. Until the
+  // answer arrives (or when it fails) the loaded queue is filtered locally.
+  // `lastUpdatedAt` re-runs it after each refresh so results never go stale.
+  useEffect(() => {
+    const query = searchQuery.trim()
+    if (query.length < SERVER_SEARCH_MIN_LENGTH) {
+      setSearchResults(null)
+      return
+    }
+    const controller = new AbortController()
+    const timeout = window.setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/v1/tickets?q=${encodeURIComponent(query)}&limit=${SEARCH_RESULT_LIMIT}`, {
+          headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>,
+          signal: controller.signal,
+        })
+        if (!res.ok) return
+        const json = await res.json()
+        if (json.success) setSearchResults({ query, tickets: json.data.tickets, total: Number(json.data.total) || 0 })
+      } catch { /* aborted or offline: the local filter stays in place */ }
+    }, 300)
+    return () => {
+      window.clearTimeout(timeout)
+      controller.abort()
+    }
+  }, [searchQuery, orgId, lastUpdatedAt])
 
   function handleEdit(item: TicketData) {
     setEditData(item)
@@ -549,19 +596,26 @@ export default function TicketsPage() {
     },
   ]
 
-  const openCount = tickets.filter(t => !["resolved", "closed"].includes(t.status)).length
-  const breachedCount = tickets.filter(t => isSlaBreached(t.slaDueAt) && !["resolved", "closed"].includes(t.status)).length
-  const newCount = tickets.filter(t => t.status === "new").length
-  const unassignedCount = tickets.filter(t => !t.assignedTo && !["resolved", "closed"].includes(t.status)).length
-  const escalatedCount = tickets.filter(t => t.escalationLevel > 0 && !["resolved", "closed"].includes(t.status)).length
+  // Queue counters come from the server and cover the whole queue; the local
+  // fallback only serves the moment before the first answer.
+  const openCount = queueCounts?.open ?? tickets.filter(t => !["resolved", "closed"].includes(t.status)).length
+  const breachedCount = queueCounts?.slaBreached ?? tickets.filter(t => isSlaBreached(t.slaDueAt) && !["resolved", "closed"].includes(t.status)).length
+  const newCount = queueCounts?.new ?? tickets.filter(t => t.status === "new").length
+  const unassignedCount = queueCounts?.unassigned ?? tickets.filter(t => !t.assignedTo && !["resolved", "closed"].includes(t.status)).length
+  const escalatedCount = queueCounts?.escalated ?? tickets.filter(t => t.escalationLevel > 0 && !["resolved", "closed"].includes(t.status)).length
+  const serverSearch = searchResults && searchResults.query === searchQuery.trim() ? searchResults : null
   const filteredTickets = (() => {
-    let filtered = statusFilter === "all" ? tickets : tickets.filter(t => t.status === statusFilter)
+    // A found ticket that is also in the loaded queue is shown from the queue,
+    // so a status or assignee change made here is visible at once.
+    const loadedById = new Map(tickets.map(ticket => [ticket.id, ticket]))
+    const source = serverSearch ? serverSearch.tickets.map(ticket => loadedById.get(ticket.id) ?? ticket) : tickets
+    let filtered = statusFilter === "all" ? source : source.filter(t => t.status === statusFilter)
     if (escalatedFilter) filtered = filtered.filter(t => t.escalationLevel > 0)
     if (focusFilter === "sla") filtered = filtered.filter(t => isSlaBreached(t.slaDueAt) && !["resolved", "closed"].includes(t.status))
     if (priorityFilter !== "all") filtered = filtered.filter(t => t.priority === priorityFilter)
     if (ownershipFilter === "unassigned") filtered = filtered.filter(t => !t.assignedTo)
     if (ownershipFilter === "mine") filtered = filtered.filter(t => t.assignedTo === currentUserId)
-    if (searchQuery.trim()) {
+    if (searchQuery.trim() && !serverSearch) {
       const query = searchQuery.trim().toLocaleLowerCase()
       filtered = filtered.filter(ticket => [
         ticket.ticketNumber,
@@ -593,6 +647,18 @@ export default function TicketsPage() {
     ? kanbanStatuses
     : kanbanStatuses.filter(status => status === statusFilter)
   const hasActiveFilters = statusFilter !== "all" || priorityFilter !== "all" || ownershipFilter !== "all" || focusFilter !== "all" || escalatedFilter || Boolean(searchQuery.trim())
+  // What "of N" means next to the result count, and an honest note whenever
+  // the loaded window is smaller than what exists.
+  const knownTotal = serverSearch ? serverSearch.total : queueTotals ? queueTotals.active + queueTotals.done : tickets.length
+  const queueWindowHint = serverSearch
+    ? serverSearch.total > serverSearch.tickets.length
+      ? t("searchWindowHint", { loaded: serverSearch.tickets.length, total: serverSearch.total })
+      : null
+    : queueTotals && queueTotals.active > ACTIVE_QUEUE_LIMIT
+      ? t("activeWindowHint", { loaded: ACTIVE_QUEUE_LIMIT, total: queueTotals.active })
+      : queueTotals && queueTotals.done > DONE_WINDOW_LIMIT
+        ? t("doneWindowHint", { loaded: DONE_WINDOW_LIMIT, total: queueTotals.done })
+        : null
   const activeFilterChips: Array<{ key: string; label: string; onClear: () => void }> = []
   if (statusFilter !== "all") activeFilterChips.push({ key: "status", label: t("filterChip", { label: t("statusFilterLabel"), value: statusLabels[statusFilter] || statusFilter }), onClear: () => { setStatusFilter("all"); updateWorkspaceParams({ status: null }) } })
   if (priorityFilter !== "all") activeFilterChips.push({ key: "priority", label: t("filterChip", { label: t("priorityFilterLabel"), value: priorityLabel(priorityFilter) }), onClear: () => { setPriorityFilter("all"); updateWorkspaceParams({ priority: null }) } })
@@ -676,6 +742,9 @@ export default function TicketsPage() {
             </button>
           ))}
         </div>
+        {hasActiveFilters && (
+          <p data-testid="tickets-queue-scope-hint" className="mt-1 px-2 text-xs text-muted-foreground">{t("queueScopeHint")}</p>
+        )}
         {(nextUnassignedTicket || mostUrgentTicket) && (
           <div className="mt-1 flex items-center justify-between gap-2 border-t px-2 pt-2">
             <p className="min-w-0 truncate text-xs text-muted-foreground">
@@ -775,9 +844,12 @@ export default function TicketsPage() {
             )}
           </div>
           <div className="mt-1 flex items-center justify-between gap-3 px-1 text-xs text-muted-foreground" aria-live="polite">
-            <span>{t("filteredResults", { visible: filteredTickets.length, total: tickets.length })}</span>
-            {lastUpdatedAt && <span className="hidden sm:inline">{t("updatedAt", { time: lastUpdatedAt.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" }) })}</span>}
+            <span>{t("filteredResults", { visible: filteredTickets.length, total: knownTotal })}</span>
+            {lastUpdatedAt && <span className="hidden sm:inline">{t("updatedAt", { time: lastUpdatedAt.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", timeZoneName: "shortOffset" }) })}</span>}
           </div>
+          {queueWindowHint && (
+            <p data-testid="tickets-window-hint" className="mt-1 px-1 text-xs text-muted-foreground">{queueWindowHint}</p>
+          )}
           {activeFilterChips.length > 0 && (
             <div className="mt-2 flex gap-1.5 overflow-x-auto" aria-label={t("activeFilters")}>
               {activeFilterChips.map(chip => (

@@ -364,9 +364,11 @@ describe("POST /api/v1/ticket-macros/[id]/apply", () => {
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.success).toBe(true)
+    // Resolving by macro stamps the resolution time like the ticket card does;
+    // without it the ticket has no resolution time in reports.
     expect(prisma.ticket.update).toHaveBeenCalledWith({
       where: { id: "t1" },
-      data: { status: "resolved" },
+      data: { status: "resolved", resolvedAt: expect.any(Date) },
     })
     expect(prisma.ticketMacro.update).toHaveBeenCalledWith({
       where: { id: "m1" },
