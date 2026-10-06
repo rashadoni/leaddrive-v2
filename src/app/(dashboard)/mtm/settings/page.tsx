@@ -427,7 +427,6 @@ export default function MtmSettingsPage() {
       icon: Route,
       items: [
         { key: "routeAssignmentsEnabled", labelKey: "lblRouteAssignments", hintKey: "hintRouteAssignments", type: "boolean" },
-        { key: "routeSelfPublish", labelKey: "lblRouteSelfPublish", hintKey: "hintRouteSelfPublish", type: "boolean" },
         { key: "routeTravelEnabled", labelKey: "lblRouteTravel", hintKey: "hintRouteTravel", type: "boolean" },
         { key: "routeTravelNavigationEnabled", labelKey: "lblRouteTravelNavigation", hintKey: "hintRouteTravelNavigation", type: "boolean" },
         { key: "enforceWorkCalendarForRoutes", labelKey: "lblEnforceWorkCalendar", hintKey: "hintEnforceWorkCalendar", type: "boolean" },

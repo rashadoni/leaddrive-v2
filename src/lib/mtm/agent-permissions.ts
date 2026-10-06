@@ -28,7 +28,6 @@ export type AgentPermissionSurface = "app" | "web"
 
 /** Tenant MTM settings that are agent permissions. All are booleans. */
 export const AGENT_PERMISSION_SETTING_KEYS = [
-  "routeSelfPublish",
   "teamScheduleVisibilityEnabled",
   "taskSelfCreate",
   "taskSelfRecurring",
@@ -41,7 +40,7 @@ export type AgentPermissionSettings = Record<AgentPermissionSettingKey, boolean>
 
 /**
  * The switches this matrix introduced. Only an administrator changes them —
- * the four older ones keep the rule they always had (the settings page lets a
+ * the three older ones keep the rule they always had (the settings page lets a
  * CRM manager change them too).
  */
 export const AGENT_PERMISSION_ADMIN_ONLY_KEYS = [
@@ -64,8 +63,6 @@ export type AgentPermissionRow = RowBase & (
     surfaces: readonly AgentPermissionSurface[]
     /** Another switch that must be on for this one to mean anything. */
     requires?: AgentPermissionSettingKey
-    /** The agent additionally needs this grant on their own card. */
-    cardFlag?: AgentCardFlag
   }
 )
 
@@ -79,10 +76,10 @@ export const AGENT_PERMISSION_ROWS = [
   // --- Routes
   { id: "routeViewOwn", group: "routes", kind: "always" },
   { id: "routePlanOwn", group: "routes", kind: "perAgent", cardFlag: "canPlanOwnRoutes" },
-  {
-    id: "routeSelfPublish", group: "routes", kind: "switch", setting: "routeSelfPublish",
-    surfaces: ["app", "web"], cardFlag: "canSelfPublishRoutes",
-  },
+  // One tick on the agent's card and nothing above it: the organization-wide
+  // switch that also had to be on was removed on 2026-10-06 (owner: «что за
+  // включение компании, зачем усложняешь»). See canPublishMtmRoute.
+  { id: "routeSelfPublish", group: "routes", kind: "perAgent", cardFlag: "canSelfPublishRoutes" },
   { id: "routeChangeRequest", group: "routes", kind: "always" },
   { id: "routeManageOthers", group: "routes", kind: "never" },
   {

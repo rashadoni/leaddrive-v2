@@ -77,9 +77,9 @@ export const MTM_SETTING_DEFAULTS = {
   // Routes Phase 1 rollout controls. These are enforced by the corresponding
   // write APIs and let a pilot organization disable a slice without a deploy.
   routeAssignmentsEnabled: true,
-  // This is a tenant-wide circuit breaker. An agent additionally needs their
-  // individual canSelfPublishRoutes grant before publishing their own draft.
-  routeSelfPublish: false,
+  // There is no organization-wide switch for self-publishing any more: the
+  // agent's own card (canSelfPublishRoutes) is the whole rule. A stored
+  // `routeSelfPublish` row from before 2026-10-06 is simply not read.
   // Google Maps route calculation is an explicit tenant opt-in. It still
   // fails closed unless the operator configures an allowlisted server key and
   // a finite daily cost ceiling; the setting never contains credentials.

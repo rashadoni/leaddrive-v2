@@ -24,11 +24,6 @@ function forbidden() {
   return NextResponse.json({ error: "Forbidden", code: "MTM_ROUTE_SCOPE_DENIED" }, { status: 403 })
 }
 
-function selfPublishEnabled(value: unknown): boolean {
-  if (value === true) return true
-  return Boolean(value && typeof value === "object" && "enabled" in value && value.enabled === true)
-}
-
 class RouteVersionConflict extends Error {}
 
 class RouteScheduleConflict extends Error {
@@ -59,19 +54,11 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth, { params }:
   })
   if (!route) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
-  let allowSelfPublish = false
-  if (actor.role === "AGENT") {
-    const setting = await prisma.mtmSetting.findUnique({
-      where: { organizationId_key: { organizationId: auth.orgId, key: "routeSelfPublish" } },
-      select: { value: true },
-    })
-    allowSelfPublish = selfPublishEnabled(setting?.value)
-  }
   if (!canPublishMtmRoute(actor, {
     primaryAgentId: route.agentId,
     assignedAgentIds: route.assignments.map((assignment: { agentId: string }) => assignment.agentId),
     status: "DRAFT",
-  }, allowSelfPublish)) return forbidden()
+  })) return forbidden()
   if (route.status === "PLANNED") {
     return NextResponse.json({
       success: true,

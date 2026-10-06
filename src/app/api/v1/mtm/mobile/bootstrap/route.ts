@@ -330,12 +330,11 @@ export const GET = withMobileRls(async (req, auth) => {
     const canPlanOwnRoutes = routeFieldEnabled
       && hasMobilePermission(auth.role, "ROUTE_SELF_PLAN")
       && (agent.role !== "AGENT" || agent.canPlanOwnRoutes)
-    // Publishing remains manager-controlled unless the tenant circuit breaker
-    // and this specific field agent both grant it.
+    // Publishing remains manager-controlled unless this specific field agent
+    // was granted it on their card (canPublishMtmRoute).
     const canSelfPublishRoutes = routeFieldEnabled && (agent.role !== "AGENT" || (
       canPlanOwnRoutes
       && agent.canSelfPublishRoutes === true
-      && settings.routeSelfPublish
     ))
     const permissions = mobileFieldPermissions(auth.role, {
       routeField: routeFieldEnabled,

@@ -151,7 +151,6 @@ export const GET = withMobileRls(async (req, auth) => {
     const canSelfPublishRoutes = agent.role !== "AGENT" || (
       canPlanOwnRoutes
       && agent.canSelfPublishRoutes === true
-      && settings.routeSelfPublish
     )
     const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
     const today = currentDateKey(new Date(), timezone)

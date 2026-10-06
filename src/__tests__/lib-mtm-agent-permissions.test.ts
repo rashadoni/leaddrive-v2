@@ -58,7 +58,6 @@ describe("agent permission registry", () => {
 
   it("changes nothing for an organization that never opened the matrix", () => {
     expect(agentPermissionStates(MTM_SETTING_DEFAULTS)).toEqual({
-      routeSelfPublish: false,
       teamSchedule: false,
       contactCreateRequest: true,
       contactChangeRequest: true,
@@ -234,7 +233,6 @@ describe("switch rows are enforced where the agent asks", () => {
   })
 
   it.each([
-    ["routeSelfPublish", "src/app/api/v1/mtm/routes/[id]/publish/route.ts", "routeSelfPublish"],
     ["teamSchedule", "src/app/api/v1/mtm/mobile/team-schedule/route.ts", "settings.teamScheduleVisibilityEnabled"],
     ["taskSelfCreate", "src/app/api/v1/mtm/tasks/route.ts", 'actor.role === "AGENT" && !settings.taskSelfCreate'],
     ["taskSelfRecurring", "src/app/api/v1/mtm/tasks/route.ts", "!settings.taskSelfRecurring"],
@@ -245,7 +243,25 @@ describe("switch rows are enforced where the agent asks", () => {
   it("covers every switch row", () => {
     expect(AGENT_SWITCH_ROWS.map((row) => row.id).sort()).toEqual([
       "contactChangeRequest", "contactCreateRequest", "customerCreateRequest",
-      "routeSelfPublish", "taskSelfCreate", "taskSelfRecurring", "teamSchedule",
+      "taskSelfCreate", "taskSelfRecurring", "teamSchedule",
     ])
+  })
+
+  // Publishing one's own routes is not a switch: one tick on the agent's card
+  // decides it, and no organization setting stands above the tick (owner,
+  // 2026-10-06: «что за включение компании, зачем усложняешь»).
+  it("decides self-publishing on the agent's card alone, with no organization setting behind it", () => {
+    const row = AGENT_PERMISSION_ROWS.find((candidate) => candidate.id === "routeSelfPublish")
+    expect(row).toEqual({ id: "routeSelfPublish", group: "routes", kind: "perAgent", cardFlag: "canSelfPublishRoutes" })
+    expect(Object.keys(MTM_SETTING_DEFAULTS)).not.toContain("routeSelfPublish")
+    const readers = [
+      "src/app/api/v1/mtm/routes/[id]/publish/route.ts",
+      "src/app/api/v1/mtm/routes/route.ts",
+      "src/app/api/v1/mtm/mobile/bootstrap/route.ts",
+      "src/app/api/v1/mtm/mobile/week/route.ts",
+      "src/lib/mtm/mobile-route-command.ts",
+      "src/app/(dashboard)/mtm/settings/page.tsx",
+    ]
+    expect(readers.filter((file) => source(file).includes("routeSelfPublish"))).toEqual([])
   })
 })

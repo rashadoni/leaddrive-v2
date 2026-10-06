@@ -5744,7 +5744,7 @@ model MtmAgent {
   /// Managers and administrators always plan within their normal scope.
   canPlanOwnRoutes Boolean       @default(true)
   /// Whether this field agent may publish their own route drafts.
-  /// This individual grant never bypasses the organization-wide routeSelfPublish kill switch.
+  /// This grant is the whole rule: the organization-wide routeSelfPublish switch was removed on 2026-10-06.
   canSelfPublishRoutes Boolean   @default(false)
   avatar         String?
   teamId         String?

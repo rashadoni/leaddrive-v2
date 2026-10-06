@@ -37,8 +37,8 @@ export const POST = withMobileRls(async (req: NextRequest, auth) => {
   if (!parsed.success) return invalidCommand()
 
   // ROUTE_SELF_PUBLISH is intentionally dynamic: the same AGENT role may be
-  // allowed or denied by the current agent grant and tenant routeSelfPublish
-  // setting. The durable state machine reads both inside its transaction, so
+  // allowed or denied by the current grant on the agent's card. The durable
+  // state machine reads it inside its transaction, so
   // a static role-only check here would reject every otherwise-authorized
   // agent before that authoritative check can run.
   const permission = requireMobilePermission(
