@@ -1,0 +1,88 @@
+{
+  "atUtc": "2026-10-05T05:35:57.789145+00:00",
+  "prNumber": 584,
+  "url": "https://github.com/rashadoni/leaddrive-v2/pull/584",
+  "head": "a490c963c17d3c5cda1814943ef31cc5347fd8d6",
+  "base": "e26cb0a85168b623ea092fb3e81ece922de20718",
+  "branch": "codex/workforce-completion-part45",
+  "draft": false,
+  "ordinaryPush": true,
+  "forcePush": false,
+  "sourceRootWholeAccepted": {
+    "path": "/tmp/workforce-timesheet-part45-source-root-accepted-primary.json",
+    "bytes": 25286,
+    "sha256": "1e318daf5b64acb19e2aee57054df0c28c3c27de49bdcef7c6afb5a9379064ff"
+  },
+  "sourceReport": {
+    "path": "/tmp/workforce-timesheet-part45-a490c9-whole-source-independent.json",
+    "bytes": 34671,
+    "sha256": "3b1dc5356719b833806d2540e95862c3561d0d12506983ae99c52a02620d9267"
+  },
+  "range": {
+    "path": "/tmp/workforce-timesheet-part45-range-primary/proof.json",
+    "bytes": 6735,
+    "sha256": "cc13666a207713059df4d99a5de12acaef67f123d2d989ebd3f60121dca6b9a2"
+  },
+  "identities": {
+    "full": {
+      "paths": 30,
+      "bytes": 310645,
+      "sha256": "417ac6912348d047b2c9a978c83ff15c1fe5a26efbc00e1529a1f1c331b56d82",
+      "repoPaths": [
+        "docs/evidence/workforce-c12-dormant-kernel-current-hosted-independent-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-current-hosted-root-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-current-static-root-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-literal-ip-strict-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-normal-merge-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-own-release-independent-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-own-release-root-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-own-release-whole-log-root-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-range-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-ready-publication-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-root-catalogue-list-guard-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-source-review-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-source-root-2026-10-05.json",
+        "docs/evidence/workforce-c12-duplicate-coherence-next-preliminary-2026-10-05.json",
+        "docs/evidence/workforce-c12-duplicate-coherence-next-preliminary-root-2026-10-05.json",
+        "docs/evidence/workforce-c12-duplicate-coherence-next-root-reader-guard-2026-10-05.json",
+        "docs/evidence/workforce-c12-duplicate-coherence-next-unapplied-2026-10-05.json",
+        "docs/evidence/workforce-timesheet-nullability-application-2026-10-05.json",
+        "docs/evidence/workforce-timesheet-nullability-bounded-checks-2026-10-05.json",
+        "docs/evidence/workforce-timesheet-nullability-next-preliminary-2026-10-05.json",
+        "docs/evidence/workforce-timesheet-nullability-next-preliminary-root-2026-10-05.json",
+        "docs/evidence/workforce-timesheet-nullability-next-unapplied-2026-10-05.json",
+        "docs/evidence/workforce-timesheet-nullability-selected-catalogue-2026-10-05.json",
+        "docs/workforce-c12-dormant-kernel-integrity-evidence-2026-10-05.md",
+        "docs/workforce-c8-calendar-native-zoom-evidence-2026-10-04.md",
+        "docs/workforce-c8-manager-today-native-zoom-evidence-2026-10-04.md",
+        "docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+        "docs/workforce-hrm-session-log.md",
+        "docs/workforce-timesheet-nullability-evidence-2026-10-05.md",
+        "src/lib/workforce/timesheet-calculation.ts"
+      ]
+    },
+    "nonDoc": {
+      "paths": 1,
+      "bytes": 1420,
+      "sha256": "3084fd67bbe5c55153a9fd61c1b5b3ef3ff3e8331fef91fb9dae8182056d2ab4",
+      "repoPaths": [
+        "src/lib/workforce/timesheet-calculation.ts"
+      ]
+    }
+  },
+  "scopeMaximum": 400000,
+  "requiredActions15368": [
+    "pr-scope",
+    "runner-policy",
+    "scan",
+    "static-checks",
+    "typecheck"
+  ],
+  "currentHostedRuntimeAccepted": false,
+  "conditionalDraftRunIds": {},
+  "allFiveCurrentChecks": "PENDING",
+  "appAttachment": "NOT YET CALLED",
+  "normalMergeAllowed": false,
+  "ownMergedMainReleaseGreen": false,
+  "newRowClosure": false
+}

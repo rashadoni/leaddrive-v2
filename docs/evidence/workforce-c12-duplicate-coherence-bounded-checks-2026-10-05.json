@@ -1,0 +1,165 @@
+{
+  "atUtc": "2026-10-05T06:44:01.236185+00:00",
+  "status": "SMALL SEQUENTIAL DORMANT KERNEL CHECKS PASS; FRESH EXACTHEAD HOSTED REQUIRED",
+  "executionParent": "3e441392d75a75aa8ed9193b4ce79810ef652fce",
+  "branch": "codex/workforce-completion-part47",
+  "appliedPaths": [
+    {
+      "repoPath": "src/lib/workforce/reconciliation.ts",
+      "original": {
+        "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-workforce-android-foundation-part3/src/lib/workforce/reconciliation.ts",
+        "bytes": 9151,
+        "sha256": "83b0f897de05515a4cfa92068edb6ce32026009e8d0690545b3b7309735fca5c"
+      }
+    },
+    {
+      "repoPath": "src/__tests__/workforce-reconciliation.test.ts",
+      "original": {
+        "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-workforce-android-foundation-part3/src/__tests__/workforce-reconciliation.test.ts",
+        "bytes": 13558,
+        "sha256": "bb1dedf39a72beb6fe4cff41336b59fa4bdd5faa08d03ecdae7343b20f43ecd8"
+      }
+    },
+    {
+      "repoPath": "src/__tests__/workforce-reconciliation-job.test.ts",
+      "original": {
+        "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-workforce-android-foundation-part3/src/__tests__/workforce-reconciliation-job.test.ts",
+        "bytes": 7778,
+        "sha256": "8df55e84e2f2aca80633f167659f3a509a5f467e9f4b79ab072728105791db2b"
+      }
+    }
+  ],
+  "commands": [
+    {
+      "label": "resources",
+      "command": [
+        "bash",
+        "-c",
+        "free -m\ndf -h .\ncat /proc/pressure/memory\ncat /proc/pressure/io"
+      ],
+      "startedAt": "2026-10-05T06:43:52.578686+00:00",
+      "completedAt": "2026-10-05T06:43:52.600741+00:00",
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-c12-duplicate-coherence-part47-bounded-primary/resources.stdout",
+        "bytes": 544,
+        "sha256": "7f06e036ff61a36935b527c8460b553cbbeb6473d03e11469025adf6352abf9f"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-c12-duplicate-coherence-part47-bounded-primary/resources.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "scoped-eslint",
+      "command": [
+        "/home/codex-alt/.local/bin/node",
+        "node_modules/eslint/bin/eslint.js",
+        "src/lib/workforce/reconciliation.ts",
+        "src/__tests__/workforce-reconciliation.test.ts",
+        "src/__tests__/workforce-reconciliation-job.test.ts"
+      ],
+      "startedAt": "2026-10-05T06:43:52.601190+00:00",
+      "completedAt": "2026-10-05T06:43:57.271617+00:00",
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-c12-duplicate-coherence-part47-bounded-primary/scoped-eslint.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-c12-duplicate-coherence-part47-bounded-primary/scoped-eslint.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "kernel-job-meaningful-tests",
+      "command": [
+        "/home/codex-alt/.local/bin/node",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "src/__tests__/workforce-reconciliation.test.ts",
+        "src/__tests__/workforce-reconciliation-job.test.ts",
+        "--maxWorkers=1",
+        "--no-file-parallelism"
+      ],
+      "startedAt": "2026-10-05T06:43:57.271702+00:00",
+      "completedAt": "2026-10-05T06:43:59.408627+00:00",
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-c12-duplicate-coherence-part47-bounded-primary/kernel-job-meaningful-tests.stdout",
+        "bytes": 280,
+        "sha256": "c8a71648f8eb67ca3e2e5e9387d59e09bb1900e5816d864403f7a79e3921d320"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-c12-duplicate-coherence-part47-bounded-primary/kernel-job-meaningful-tests.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "diff-check",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "startedAt": "2026-10-05T06:43:59.408906+00:00",
+      "completedAt": "2026-10-05T06:43:59.427248+00:00",
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-c12-duplicate-coherence-part47-bounded-primary/diff-check.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-c12-duplicate-coherence-part47-bounded-primary/diff-check.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  ],
+  "actualLintConfiguredTargets": [
+    {
+      "path": "src/lib/workforce/reconciliation.ts",
+      "ignored": false,
+      "configured": true,
+      "rules": 113
+    },
+    {
+      "path": "src/__tests__/workforce-reconciliation.test.ts",
+      "ignored": false,
+      "configured": true,
+      "rules": 113
+    },
+    {
+      "path": "src/__tests__/workforce-reconciliation-job.test.ts",
+      "ignored": false,
+      "configured": true,
+      "rules": 113
+    }
+  ],
+  "lintConfigurationStdout": {
+    "path": "/tmp/workforce-c12-duplicate-coherence-part47-bounded-primary/lint-configuration.stdout",
+    "bytes": 307,
+    "sha256": "fe2328d5d80616888e0e2ae6a335cf148738d554e853a164a36b4d8fa07e8cff"
+  },
+  "lintConfigurationStderr": {
+    "path": "/tmp/workforce-c12-duplicate-coherence-part47-bounded-primary/lint-configuration.stderr",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "testsExecutedBeforeSourceCheckpoint": true,
+  "actualAggregateTestsPassed": 44,
+  "actualTestFilesPassed": 2,
+  "sourceDerivedIndividualCountsNotActualQuietOutcomes": {
+    "kernel": 35,
+    "job": 9
+  },
+  "fullCompilerSuiteBuildBrowserPostgresAndroidLoad": "NOT RUN locally by Contabo contract; no DB adapter implemented",
+  "newHostedRuntimeAccepted": false,
+  "DBAdapterOrCronActivated": false,
+  "newRowClosure": false
+}
