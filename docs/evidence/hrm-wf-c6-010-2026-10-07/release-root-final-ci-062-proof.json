@@ -1,0 +1,108 @@
+{
+  "head": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+  "runId": 37635350493,
+  "runAttempt": 1,
+  "all5RequiredApp15368Checks": [
+    {
+      "name": "typecheck",
+      "id": 112840698026,
+      "app": 15368,
+      "head": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+      "conclusion": "success",
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37635351166/job/112840698026"
+    },
+    {
+      "name": "static-checks",
+      "id": 112840697965,
+      "app": 15368,
+      "head": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+      "conclusion": "success",
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37635351166/job/112840697965"
+    },
+    {
+      "name": "pr-scope",
+      "id": 112840499444,
+      "app": 15368,
+      "head": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+      "conclusion": "success",
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37635351166/job/112840499444"
+    },
+    {
+      "name": "scan",
+      "id": 112839731666,
+      "app": 15368,
+      "head": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+      "conclusion": "success",
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37635278901/job/112839731666"
+    },
+    {
+      "name": "runner-policy",
+      "id": 112839730301,
+      "app": 15368,
+      "head": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+      "conclusion": "success",
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37635278690/job/112839730301"
+    }
+  ],
+  "all5ExactJobs": [
+    {
+      "name": "Exact WF-C6-010 full compiler gates",
+      "id": 112839990595,
+      "conclusion": "success"
+    },
+    {
+      "name": "Authenticated Workforce exception report browser evidence",
+      "id": 112839990999,
+      "conclusion": "success"
+    },
+    {
+      "name": "Exact WF-C6-010 authenticated HR recording browser",
+      "id": 112839991015,
+      "conclusion": "success"
+    },
+    {
+      "name": "Exact WF-C6-010 isolated production bundle build",
+      "id": 112839991063,
+      "conclusion": "success"
+    },
+    {
+      "name": "Exact WF-C6-010 source and PostgreSQL regressions",
+      "id": 112839991260,
+      "conclusion": "success"
+    }
+  ],
+  "compiler": {
+    "diagnostics": 1153,
+    "exit": 2,
+    "ownedTypedPaths": [
+      "src/__tests__/api-workforce-exception-decisions.test.ts",
+      "src/__tests__/api-workforce-exception-reports.test.ts",
+      "src/__tests__/lib-workforce-exception-case-writer.test.ts",
+      "src/__tests__/lib-workforce-exception-report-postgres.test.ts",
+      "src/__tests__/lib-workforce-exception-workbench.test.ts",
+      "src/__tests__/workforce-exception-case-report-recorded-outcomes.test.ts",
+      "src/__tests__/workforce-exception-classification-browser-evidence-guard.test.ts",
+      "src/__tests__/workforce-exception-queue-action-ui.test.ts",
+      "src/__tests__/workforce-exception-recorded-outcomes-ui.test.ts",
+      "src/app/api/v1/workforce/exceptions/route.ts",
+      "src/components/workforce/workforce-exception-queue.tsx",
+      "src/components/workforce/workforce-exception-recorded-outcomes.tsx",
+      "src/lib/workforce/exception-case-report-recorded-outcomes.ts",
+      "src/lib/workforce/exception-case-writer.ts",
+      "src/lib/workforce/exception-decision-service.ts",
+      "src/lib/workforce/exception-outcome-classification.ts",
+      "src/lib/workforce/exception-policy-draft.ts",
+      "src/lib/workforce/exception-workbench.ts"
+    ],
+    "ownedAllFamilyErrors": [],
+    "rawSHA256": "4ba2582a30f0eb51aad260ecb79715b6ce02e5dd8f70aafd33a98e38d4886bde",
+    "byteIdentical9f": false,
+    "unchangedGatedPairs": 64,
+    "globallyClean": false
+  },
+  "limits": [
+    "Full local compiler/build/browser/SQL NOT RUN",
+    "Runtime is synthetic isolated, not real HR/C12 observations",
+    "Independent compiler/full packet and production metadata pending"
+  ]
+}

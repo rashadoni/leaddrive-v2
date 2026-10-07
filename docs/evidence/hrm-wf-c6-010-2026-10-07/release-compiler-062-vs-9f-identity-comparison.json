@@ -1,0 +1,23 @@
+{
+  "currentHead": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+  "oldHead": "9f3cc73dcdb8c4ccea1fdac9dfae29570339abc5",
+  "identicalBytes": false,
+  "sameDiagnosticLinesIgnoringOrder": false,
+  "differenceLines": [
+    "--- \n",
+    "+++ \n",
+    "@@ -10,7 +10,7 @@\n",
+    " src/__tests__/api-calls.test.ts(1315,76): error TS7031: Binding element 'args' implicitly has an 'any' type.",
+    "-src/__tests__/api-finance-funds.test.ts(62,60): error TS7006: Parameter 'callback' implicitly has an 'any' type.",
+    "-src/__tests__/api-finance-funds.test.ts(138,76): error TS2737: BigInt literals are not available when targeting lower than ES2020.",
+    "-src/__tests__/api-finance-funds.test.ts(260,76): error TS2737: BigInt literals are not available when targeting lower than ES2020.",
+    "-src/__tests__/api-finance-funds.test.ts(280,76): error TS2737: BigInt literals are not available when targeting lower than ES2020.",
+    "-src/__tests__/api-finance-funds.test.ts(491,49): error TS2737: BigInt literals are not available when targeting lower than ES2020.",
+    "+src/__tests__/api-finance-funds.test.ts(75,60): error TS7006: Parameter 'callback' implicitly has an 'any' type.",
+    "+src/__tests__/api-finance-funds.test.ts(150,76): error TS2737: BigInt literals are not available when targeting lower than ES2020.",
+    "+src/__tests__/api-finance-funds.test.ts(271,76): error TS2737: BigInt literals are not available when targeting lower than ES2020.",
+    "+src/__tests__/api-finance-funds.test.ts(291,76): error TS2737: BigInt literals are not available when targeting lower than ES2020.",
+    "+src/__tests__/api-finance-funds.test.ts(502,49): error TS2737: BigInt literals are not available when targeting lower than ES2020.",
+    " src/__tests__/api-finance.test.ts(330,76): error TS2737: BigInt literals are not available when targeting lower than ES2020."
+  ]
+}
