@@ -1,0 +1,90 @@
+TAP version 13
+# Subtest: one held runtime backend is observed before rollback, with finite public evidence only
+ok 1 - one held runtime backend is observed before rollback, with finite public evidence only
+  ---
+  duration_ms: 8.773895
+  ...
+# Subtest: topology is limited to unchanged loopback hosts, distinct roles and equal port/database
+ok 2 - topology is limited to unchanged loopback hosts, distinct roles and equal port/database
+  ---
+  duration_ms: 1.997285
+  ...
+# Subtest: root, artifact, private files, canonical parser and topology failures never start SQL
+ok 3 - root, artifact, private files, canonical parser and topology failures never start SQL
+  ---
+  duration_ms: 5.135439
+  ...
+# Subtest: session identity, primary/read-only isolation, private probe and database correlation fail closed
+ok 4 - session identity, primary/read-only isolation, private probe and database correlation fail closed
+  ---
+  duration_ms: 8.131813
+  ...
+# Subtest: runtime remains NOSUPERUSER/NOBYPASSRLS/no privileged SET and migration remains bounded expected profile
+ok 5 - runtime remains NOSUPERUSER/NOBYPASSRLS/no privileged SET and migration remains bounded expected profile
+  ---
+  duration_ms: 2.647319
+  ...
+# Subtest: strict private snapshots reject identifier/shape/type injection and runtime ACL output
+ok 6 - strict private snapshots reject identifier/shape/type injection and runtime ACL output
+  ---
+  duration_ms: 1.112688
+  ...
+# Subtest: changes to artifact or either private file during cleanup discard all successful observation
+ok 7 - changes to artifact or either private file during cleanup discard all successful observation
+  ---
+  duration_ms: 1.78736
+  ...
+# Subtest: cleanup is mandatory and secondary failures retain the original primary error
+ok 8 - cleanup is mandatory and secondary failures retain the original primary error
+  ---
+  duration_ms: 2.445667
+  ...
+# Subtest: malformed/raw output and private process errors never enter the public receipt
+ok 9 - malformed/raw output and private process errors never enter the public receipt
+  ---
+  duration_ms: 1.661231
+  ...
+# Subtest: reports reject readiness/secret fields, forged enums, invalid proof and role contradictions
+ok 10 - reports reject readiness/secret fields, forged enums, invalid proof and role contradictions
+  ---
+  duration_ms: 2.390885
+  ...
+# Subtest: PUBLIC, OTHER write privileges and grant options remain finite observations without automatic ACL approval
+ok 11 - PUBLIC, OTHER write privileges and grant options remain finite observations without automatic ACL approval
+  ---
+  duration_ms: 1.217255
+  ...
+# Subtest: clean libpq transport holds runtime stdin until explicit rollback and keeps credentials out of argv
+ok 12 - clean libpq transport holds runtime stdin until explicit rollback and keeps credentials out of argv
+  ---
+  duration_ms: 3.267129
+  ...
+# Subtest: transport rejects already-dead/error/oversize processes and proves failed rollback cannot pass
+ok 13 - transport rejects already-dead/error/oversize processes and proves failed rollback cannot pass
+  ---
+  duration_ms: 1.662992
+  ...
+# Subtest: fixed SQL proves only live PID/name/user/database catalogs and original nine source files remain exact
+ok 14 - fixed SQL proves only live PID/name/user/database catalogs and original nine source files remain exact
+  ---
+  duration_ms: 1.779478
+  ...
+# Subtest: stdin source bindings and output validation reject forged private receipts without database access
+ok 15 - stdin source bindings and output validation reject forged private receipts without database access
+  ---
+  duration_ms: 529.618705
+  ...
+# Subtest: hosted PostgreSQL proves one live runtime backend, exact nonce/PID, read-only ACL projection and complete cleanup
+ok 16 - hosted PostgreSQL proves one live runtime backend, exact nonce/PID, read-only ACL projection and complete cleanup # SKIP
+  ---
+  duration_ms: 0.373921
+  ...
+1..16
+# tests 16
+# suites 0
+# pass 15
+# fail 0
+# cancelled 0
+# skipped 1
+# todo 0
+# duration_ms 739.256035

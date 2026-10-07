@@ -1,0 +1,866 @@
+{
+  "version": 1,
+  "status": "EXACT5638_SOURCE_ACCEPTED_CURRENT_RUNTIME_AND_PRODUCTION_ACL_PENDING",
+  "head": "5638f1ea63c2818aef8be1b0c497eff718303388",
+  "tree": "8743c6aa6b338efde65d8f24a04ee0ec5650fb46",
+  "reviewedAtUtc": "2026-10-07T20:55:15.178367+00:00",
+  "worktree": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-release-integration-20261007",
+  "cleanObserved": true,
+  "findingsP0P1P2P3": [],
+  "authorshipDisclosure": {
+    "independent": "Root production C6/workflow implementation and incoming source reviewed independently. Prior accepted byte contracts reverified at exact new commit.",
+    "reviewerOwnScope": "C6 browser/DB harnesses and new loopback SQL/test/workflow authored here, independently cross-reviewed by root; base/connect-timeout helper contributions disclosed; no independent authorship claim."
+  },
+  "C6ProductionWorkflow24ExactAccepted88": [
+    {
+      "path": "src/lib/workforce/exception-outcome-classification.ts",
+      "bytes": 2447,
+      "sha256": "947410fb0687987a465c38ce0c9455d3923d62039d9030b43bda3e0afae99a23",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "src/lib/workforce/exception-policy-draft.ts",
+      "bytes": 8270,
+      "sha256": "f45f761e9c2e829351eb930c7e191f667327b3ed040338b4033b54381da59b6b",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "src/lib/workforce/exception-workbench.ts",
+      "bytes": 12753,
+      "sha256": "17107791d3895fe0e66d4ed349c32f19eec21fc4bb42220060ff8989ebc3cd21",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-writer.ts",
+      "bytes": 19607,
+      "sha256": "61814e5d395143a6deacc9bd92e0aee1ffb508cc1c168724897dd9bf67da201f",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "src/lib/workforce/exception-decision-service.ts",
+      "bytes": 11916,
+      "sha256": "dd10ffed0f37f80b79eae0e784918966033995283cafdbf6a4ec738b6275e21c",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-report-recorded-outcomes.ts",
+      "bytes": 8338,
+      "sha256": "1d84daa28a7b21a8ad8545f5b494c1030c338cff75fc168f87153541d5f0321c",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-report-read.ts",
+      "bytes": 3384,
+      "sha256": "b34a3ef9d52359a235040802c5ede11c03f128c7250b41f5b2a86d10860b82b5",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-ledger.ts",
+      "bytes": 9052,
+      "sha256": "da971cdfdc696085e40be8a35386e48a1746a3c92ebaa2ab9e0cedded25cc8ab",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "src/lib/workforce/exception-workbench-token.ts",
+      "bytes": 5735,
+      "sha256": "4479cba8767dd4a8bb596ff8bf311ba139d1b417782035b13db92edef204fd1a",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "src/lib/workforce/access-control.ts",
+      "bytes": 10353,
+      "sha256": "b4915d133bb102251dccc94b9ba33a3a65905488135b00cb652f0e299cfa0b9f",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "src/lib/workforce/access-grant-resolution.ts",
+      "bytes": 5664,
+      "sha256": "1720277ff37308894c9c3e3313a7235150350bcfa254ac4846905a5f9875e2c3",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "src/lib/workforce/exception-read-access.ts",
+      "bytes": 2032,
+      "sha256": "adedcbd7844335ff63c2506c82c46fee240a473ba47974e90bcb8a8f62da69ae",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-read-scope.ts",
+      "bytes": 8461,
+      "sha256": "42ff417bb8afc67546b4cc57bfc0b6549a839c2ce293297b1f440e625093f9b5",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "src/lib/workforce/team-membership.ts",
+      "bytes": 4282,
+      "sha256": "47fc2f92856ff8e8bc67a31bf9087c73faf673bc741fc58b76a4f5efac7723fb",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "src/lib/with-workforce-rls-auth.ts",
+      "bytes": 21653,
+      "sha256": "289aa253b4d8d3a25913136a545db598bf1a01c9b571b6c89e2689da2fe6d8ff",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "src/app/api/v1/workforce/exceptions/route.ts",
+      "bytes": 13279,
+      "sha256": "5a33ec78dc7fe6b05e920cbdb22fecb46f85d45c74840486533ea56df68034ff",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "src/app/api/v1/workforce/exception-decisions/route.ts",
+      "bytes": 4157,
+      "sha256": "eeeb1dda5d637fb0fdaa831021556a1200a1bd502e73df05838e850284db34c9",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "src/app/api/v1/workforce/exception-reports/route.ts",
+      "bytes": 6162,
+      "sha256": "6d4935a3cd3adbbbb411619a813287a6ba8b7d58cc89dec888074130360233bf",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "src/components/workforce/workforce-exception-queue.tsx",
+      "bytes": 23077,
+      "sha256": "5160dcc8b943d0caca712ae0dcad02725784fcb4c2401479c16dede00d0c3b1f",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "src/components/workforce/workforce-exception-recorded-outcomes.tsx",
+      "bytes": 6293,
+      "sha256": "1039384b9a47e87b48a001b115300c7161cd3d144b376adce20276f5172cc386",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": ".github/workflows/workforce-exception-report-browser-evidence.yml",
+      "bytes": 25256,
+      "sha256": "1dcd49d422fb212d4ee1eac6368de97837fe62fc5ca5975a7faa2b6c61dc18e7",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql",
+      "bytes": 9684,
+      "sha256": "314d4f0e83c81544a50633bceb977298ece24fff918923310671b07c0e8c5f2a",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql",
+      "bytes": 10851,
+      "sha256": "1deee0b735aee6ca3b055ee71b3663799daa71c3d6c6ef66c47a02dee7efecec",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "prisma/migrations/20260927014300_workforce_exception_case_revisions_contract/migration.sql",
+      "bytes": 1262,
+      "sha256": "418f1cf3c481c1624cd16a26c0aad49680a2430f75fe9e2f3dd22117f000fc7e",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    }
+  ],
+  "C6HarnessFourExactAccepted88": [
+    {
+      "path": "scripts/ci/fixtures/workforce-exception-classification-browser.sql",
+      "bytes": 8727,
+      "sha256": "41ecf5a96c0accb2469971042bf3f47f0e8d7e6fcfa65a8538e1cd7f4013d7e0",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-exception-report-browser.sql",
+      "bytes": 4741,
+      "sha256": "85d4237ef3e2a9c1fb782d9ee70e8ed801d82fcc2703fd4932494fa2e3e344b3",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "scripts/workforce-exception-classification-browser-evidence.mjs",
+      "bytes": 35825,
+      "sha256": "216967516c60bab48390aefeebce651524130eefabc7c90cf4d00ee05e899025",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "scripts/workforce-exception-report-browser-evidence.mjs",
+      "bytes": 41827,
+      "sha256": "4216c6421088dc1b47e90ee1f4c68a43e740b80efbfdfc7337b31016d85a8458",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    }
+  ],
+  "threeLocales14WorkforceNamespacesExactAccepted88": [
+    {
+      "path": "messages/en.json",
+      "wholeFileSha256": "b92bd59be9e84c9d44678d5261cccf9b13af40f620c1bddc672dc54eac9696a8",
+      "namespaces": [
+        {
+          "namespace": "workforcePage",
+          "byteCanonicalSha256": "f28c526ed39e8675a1bff1388ecdadd53b6e27deaba311073daaf9a7e816f76f",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforceExceptionQueue",
+          "byteCanonicalSha256": "5ac57c1cd2c61b941de79dbdeb745c6efc787eff1414bffcff3628137a6575da",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforceExceptionReport",
+          "byteCanonicalSha256": "73ad0885d8eefa57b278e0d495b34733c0e326ab7b0663b0fa310d4195bfe9a0",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforceMyExceptions",
+          "byteCanonicalSha256": "696113eaccab00d66f79be69fdba369ab58671598f1c6f744f35d272a87017ad",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforceConfigurationPage",
+          "byteCanonicalSha256": "4523b12538491cda981a12cddd48a7c8259627a6336c0d9c6ec818ef8681e0d8",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforceSiteTransitionReport",
+          "byteCanonicalSha256": "a4671775bed6d141831e39788bda657f8d5f3d25edea38bc7ff93f6919a2e482",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforceEvidenceTimeline",
+          "byteCanonicalSha256": "b825cdc22005c12c28544a897fd3ed4c5cdd58a2e894130e31a1eefba6bf8c70",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforceCalendarConfiguration",
+          "byteCanonicalSha256": "365d2d6a6e34f699af59ac44d86ecb9a225de8346306fc2cedcb3bbded41ec53",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforceAccessManagement",
+          "byteCanonicalSha256": "7923864c9a2954786f0a341afc8aeaaffd4a28871effb095cac7dbd751068076",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforceAttendanceAdmin",
+          "byteCanonicalSha256": "ab131e764683333f19c7bbca52954e6523527cb454e5d955393e6915bf6f8279",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforcePolicyVersionComparison",
+          "byteCanonicalSha256": "af1c1fcb9f42a8a3f67ac7112cfdb589685b8649838a311e15609f44ce62e8ec",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforcePolicyFutureWindowPreview",
+          "byteCanonicalSha256": "dd7780bb6bb4f74dba941ea98a5194f3316e55532a636ebb6292bc3bdeb0b851",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforcePolicyRestoreDraft",
+          "byteCanonicalSha256": "4fc914ab5ec213b9ea394a3acb48915b6bee11c3ac74c293045644b042a1edf0",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforcePolicyEmployeeImpact",
+          "byteCanonicalSha256": "25bd062da3e3cd55d6cf0a32621af726b4816bb82887d49682c0ea6fc67145fe",
+          "exactAccepted88": true
+        }
+      ],
+      "all14ExactAccepted88": true
+    },
+    {
+      "path": "messages/ru.json",
+      "wholeFileSha256": "71dea36553c01a3d6e39ec796a242d8afc0b52be41bcb61ac0c43399053c2571",
+      "namespaces": [
+        {
+          "namespace": "workforcePage",
+          "byteCanonicalSha256": "e6f1c6e500d929e4c71a444eddc75da5e6501b8bd973bf48d2afe7ab14fd004f",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforceExceptionQueue",
+          "byteCanonicalSha256": "c66ce66aed2a95dda2d659a66e787ba1d3302be61d58cd534452422750885af7",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforceExceptionReport",
+          "byteCanonicalSha256": "a799ca97c81aaa5f45873bdf25a15601a048d69af1e4f86ffac5a1e39b906004",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforceMyExceptions",
+          "byteCanonicalSha256": "8a19bfcaa49152548a6c41816e5bb80c3369f17d21c0d68a75c33b5475ed8a20",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforceConfigurationPage",
+          "byteCanonicalSha256": "a0f30f815065e92b434c2ded8fe7dffc2550fe0200cf880e5309dce23ef9306a",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforceSiteTransitionReport",
+          "byteCanonicalSha256": "4d9d6b90da2b70345f9ca3006a1a7353a5946dedd7688a4b9c07a8b7b962bf53",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforceEvidenceTimeline",
+          "byteCanonicalSha256": "75ae14a23207eccd64d2d29ff51160939175834506d74436109b7c2bb4f36c00",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforceCalendarConfiguration",
+          "byteCanonicalSha256": "35a240928787e35e3319b9606d5825d581be0f42f8652e6a03d1b49e138e34b5",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforceAccessManagement",
+          "byteCanonicalSha256": "09f2601e22966e81be2733268de3216792cd006f2c8bef71977a25718c6b22fb",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforceAttendanceAdmin",
+          "byteCanonicalSha256": "4f028b85b137ed2058d0d7655ae649720fa3a0405e873e1f9d0b02925f57237b",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforcePolicyVersionComparison",
+          "byteCanonicalSha256": "90720507d10cc818a373da1dc406fef76c8273ec4f9094cc2ac98b3761bcc4a1",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforcePolicyFutureWindowPreview",
+          "byteCanonicalSha256": "794d94b2fedb01e10d1b12d4b4acb62b88b6cd6c484530f19e5c675f4fd2d609",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforcePolicyRestoreDraft",
+          "byteCanonicalSha256": "5e7b8d7bc6bd86d0b9378840c65be41b7a970e2e6f111f3d29571564a180c3c2",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforcePolicyEmployeeImpact",
+          "byteCanonicalSha256": "3c1347a9941b9b708c17850ad8641c2b42b5004e8df5f3aa3a526dc6ded2b9b1",
+          "exactAccepted88": true
+        }
+      ],
+      "all14ExactAccepted88": true
+    },
+    {
+      "path": "messages/az.json",
+      "wholeFileSha256": "1aaff0ddb6086e97e22a50a4b88597d4ec02096cbbf2a38ecfcae6c07c6719cb",
+      "namespaces": [
+        {
+          "namespace": "workforcePage",
+          "byteCanonicalSha256": "807704391ec93d903356fedf3310e9754ecc8f261b31ef29bdede79526b8ed9e",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforceExceptionQueue",
+          "byteCanonicalSha256": "c7400fd672c75314bb43d4f8751719f1450fb85708e97fe76bdf1adb255a25ff",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforceExceptionReport",
+          "byteCanonicalSha256": "2688c9aab14ece7c0c3c4a32bb303c02689fe664e1c2d8c94cf1f20bed9028e7",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforceMyExceptions",
+          "byteCanonicalSha256": "59f0904b2c7786f4c7eb6330dba1e9fa0025216ea6f8e43da60405471d815f07",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforceConfigurationPage",
+          "byteCanonicalSha256": "c32808feb8334d2e3bb02bc5ca2ba30f697d53c56c0bdd575506cef8522a0a59",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforceSiteTransitionReport",
+          "byteCanonicalSha256": "c63fe976b236522c257d00565f9be7c2ed884ad653258493c390fef1800a5bd7",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforceEvidenceTimeline",
+          "byteCanonicalSha256": "c6642812831be4aee9236826710aa8f0cf1d535540d966ad34dcd6d23a568b55",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforceCalendarConfiguration",
+          "byteCanonicalSha256": "e135c7b998cd8782a65d27e0fa840fe59a8136bc183edd88e5799a5d96f774ad",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforceAccessManagement",
+          "byteCanonicalSha256": "be202f5cf85b4ea8a0e67ea644d82faab107fd031210333cc37b373f9e426b1c",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforceAttendanceAdmin",
+          "byteCanonicalSha256": "ed75b10392045d3a64a156c6a5dc4db5d55e6c660b9dbb8fd820b5e044a2993c",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforcePolicyVersionComparison",
+          "byteCanonicalSha256": "03f0cb80b123f53aa233a365d5f47bd23f05a115273b9d54c04e9dfa3a56887d",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforcePolicyFutureWindowPreview",
+          "byteCanonicalSha256": "cd88e2f54ce57de53ab174fb499a6352cfda4aca2b18c6050ccf297e81e5b9e7",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforcePolicyRestoreDraft",
+          "byteCanonicalSha256": "fd2ba15afbfe52d46d3952f426ed62cdcfa83f9642fb0f080108c8b4ecca6e28",
+          "exactAccepted88": true
+        },
+        {
+          "namespace": "workforcePolicyEmployeeImpact",
+          "byteCanonicalSha256": "34d3e8d0a786159612eade31b092a64a351387b6cbf46b4f430810370d8602a0",
+          "exactAccepted88": true
+        }
+      ],
+      "all14ExactAccepted88": true
+    }
+  ],
+  "baselineGateFiveExactAccepted973": [
+    {
+      "path": "test-baseline.json",
+      "bytes": 1139,
+      "sha256": "8f0fc568274f9fd8c0c741db618d6e4d81025de7112a315cd93e6b92bbd5a4b1",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "typecheck-baseline.json",
+      "bytes": 3907,
+      "sha256": "919fa9d0212b18ee685af4f08680ebbc34e8c4969294054447df03147bf0fc53",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "scripts/ci/check-typecheck-gate.sh",
+      "bytes": 3468,
+      "sha256": "a18608d9297c039380481fb27d6200d9ebbcc731e9ec23dd40b5e3a2c5a40937",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "scripts/ci/check-typecheck-baseline.mjs",
+      "bytes": 5909,
+      "sha256": "8b8a2472a1c813e85c4177c24c6df5fb5907d981b5b43e6870a04cbbba2b812a",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "scripts/check-test-baseline.mjs",
+      "bytes": 10188,
+      "sha256": "6c3380718fd71061d2efe4aa396fcb9cc998336c5c95a3bbd2de05230058027e",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    }
+  ],
+  "oldNineToolsExactReviewed5fAndProtectedMain": [
+    {
+      "path": ".github/workflows/hrm-default-acl-inspection.yml",
+      "bytes": 7352,
+      "sha256": "954c6d042bf00420f1ecd3c9ed0c378bc41305c0af08c30cdc3a97f06f81df2a",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "scripts/hrm-default-acl-inspection.mjs",
+      "bytes": 15455,
+      "sha256": "a6aa4f3526fd5edf29bd2b3a1309f7703e85acad70c0e683cba69dbb281c2027",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "scripts/hrm-default-acl-inspection.sql",
+      "bytes": 4320,
+      "sha256": "524bc02f34a75f445aff6b3834df6e02aa86665dee9acd835b2b5fc621127e2a",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "scripts/hrm-default-acl-inspection.test.mjs",
+      "bytes": 27522,
+      "sha256": "402a2dde20443676d6bac430ab4e80a74f507c2dd3828b920c278cafcf0c7c3c",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "docs/hrm-default-acl-inspection-session-log.md",
+      "bytes": 12649,
+      "sha256": "8d3af68cc9a724374a30d5eba1e06d37537473cef61ca4d89549adced5500a5f",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": ".github/workflows/hrm-migration-metadata-preflight.yml",
+      "bytes": 7131,
+      "sha256": "f90937ecda3b81e7dd017819cfaec1afdefc5fee58167fdfc2289ce012a1dcf1",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.mjs",
+      "bytes": 24904,
+      "sha256": "46b417da7bbe763960b8ede8fa0e9dbd98543d090d54f73979289504bfe35771",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.sql",
+      "bytes": 14770,
+      "sha256": "b174e32eb68a0dbcca98e8557fe8c716ed8277111e79ba822bce43f4e7023b6a",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.test.mjs",
+      "bytes": 44730,
+      "sha256": "39c947982f5e7dc2ca1e96307ac5314518bfe748ec58a3cf217f8f09194c0eef",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    }
+  ],
+  "newFiveToolPathsExactReviewed5f": [
+    {
+      "path": ".github/workflows/hrm-loopback-acl-inspection.yml",
+      "bytes": 8001,
+      "sha256": "bfbcb2b83fab53817ce71ae1e511389cbab7f9ca6aeff0785801b24aee76a116",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "docs/hrm-loopback-acl-inspection-session-log.md",
+      "bytes": 10556,
+      "sha256": "36658d86a3a32d577e1284c3f0ca7bdd38221d64237903c74ddcc5fa60969d72",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "scripts/hrm-loopback-acl-inspection.mjs",
+      "bytes": 17694,
+      "sha256": "e8d5fb47eddfb0d7e371943f2d3b3459b66e9d17927161bf9233bd6189074dbf",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "scripts/hrm-loopback-acl-inspection.sql",
+      "bytes": 5173,
+      "sha256": "7a4a9d79534e40cf7672c31797f2015a543f7061c1522ee30a7cfb9e147f8c58",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "scripts/hrm-loopback-acl-inspection.test.mjs",
+      "bytes": 36360,
+      "sha256": "7e1264a6a754b655306b936c971a28584532b6921a005012f5d2769d522c8993",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    }
+  ],
+  "acceptedMTM625EightIncomingPathsPreserved": [
+    {
+      "path": "messages/az.json",
+      "changedMainNamespaces": [
+        "mtmVisitPolicies"
+      ],
+      "everyIncomingNamespaceExactMain": true,
+      "nonempty": true
+    },
+    {
+      "path": "messages/en.json",
+      "changedMainNamespaces": [
+        "mtmVisitPolicies"
+      ],
+      "everyIncomingNamespaceExactMain": true,
+      "nonempty": true
+    },
+    {
+      "path": "messages/ru.json",
+      "changedMainNamespaces": [
+        "mtmVisitPolicies"
+      ],
+      "everyIncomingNamespaceExactMain": true,
+      "nonempty": true
+    },
+    {
+      "path": "src/__tests__/lib-mtm-visit-action-switches.test.ts",
+      "bytes": 6978,
+      "sha256": "4db528520a78d67c4227ca643b0bfe81c5e94abcd9244281e5c1c02bbbefdb4f",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "src/__tests__/mtm-visit-action-switches-ui.test.ts",
+      "bytes": 11452,
+      "sha256": "550d1f9e56205d5d022c51cc5b12c6c828d0ff8dd743d283e4717c39492b2243",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "src/app/(dashboard)/mtm/settings/visit-action-switches.tsx",
+      "bytes": 8670,
+      "sha256": "bb0cf8747d76d48fc9b96a913f254326c0e4aba0c89de16a340de7bd9cc2fb4c",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "src/app/(dashboard)/mtm/settings/visit-policy-settings.tsx",
+      "bytes": 34121,
+      "sha256": "1c6805c3a137f356d7dfa7d769c2107ee1d19b52a1b869f46a346e170d8d65c8",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "src/lib/mtm/visit-action-switches.ts",
+      "bytes": 5383,
+      "sha256": "946e908611fd87f5cf95f9d8f9021bc804ed5b587db0430a6d33e92e9970e671",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    }
+  ],
+  "sharedMobileWorkforceAndMTMHunksPreserved": {
+    "currentBinding": {
+      "path": "src/app/api/v1/mtm/mobile/sync/push/route.ts",
+      "bytes": 140646,
+      "sha256": "931491c78772a6f42b65f0ccc9bd7ee2e5fbd1ca9a228cad2601238ff90166db",
+      "byteExactReference": true,
+      "workingBytesExactCommit": true
+    },
+    "priorAcceptedProofRetained": "Both inherited WF hunks and earlier MTM623 hunks exact88; MTM625 does not change shared mobile route."
+  },
+  "protectedAncestors": [
+    {
+      "label": "acceptedPR589",
+      "sha": "a856a9e533c4f3cec6f2313e69f5be0d5b4d4226",
+      "isAncestor": true
+    },
+    {
+      "label": "acceptedPR605",
+      "sha": "bf6ed11f2bba8c93e828fb044315794b44224741",
+      "isAncestor": true
+    },
+    {
+      "label": "acceptedPR608",
+      "sha": "973241bacc296b71fe817d1af11187c32e8126af",
+      "isAncestor": true
+    },
+    {
+      "label": "acceptedPR612",
+      "sha": "9f3cc73dcdb8c4ccea1fdac9dfae29570339abc5",
+      "isAncestor": true
+    },
+    {
+      "label": "C7AcceptedRuntime",
+      "sha": "d303ae3aac6a2ddb62439e433c08bca29c0befb9",
+      "isAncestor": true
+    },
+    {
+      "label": "C8AcceptedRuntime",
+      "sha": "30c4185b41d85be43a588e71d8c74c5f34e63596",
+      "isAncestor": true
+    },
+    {
+      "label": "acceptedC12EvidenceArchive",
+      "sha": "c123556e7a758b7eb5264137dcaf85504b07e471",
+      "isAncestor": true
+    },
+    {
+      "label": "C6EvidenceArchive",
+      "sha": "2cbfe2981578520edc9def5fa3c681ab5fb55536",
+      "isAncestor": true
+    },
+    {
+      "label": "incomingMain8301",
+      "sha": "8301f6ce0925cf1b8f9ddaa004ea31c26d1e6982",
+      "isAncestor": true
+    },
+    {
+      "label": "reviewedAuxPreflight",
+      "sha": "546d67c1efe7e145e1bfa9a19e9eea7c108b5e57",
+      "isAncestor": true
+    },
+    {
+      "label": "acceptedPriorFinalSource062",
+      "sha": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+      "isAncestor": true
+    },
+    {
+      "label": "acceptedIncomingMain8235",
+      "sha": "8235c3b24ad12189e1ef95427ce7f192c077ae5c",
+      "isAncestor": true
+    },
+    {
+      "label": "currentIncomingMain5ce",
+      "sha": "5cebf61623c58ca65b66f2b58506157c097a1931",
+      "isAncestor": true
+    },
+    {
+      "label": "reviewedDiagnostics3fc",
+      "sha": "3fc77196bdc7b6582b3fbcb32e9155004702de69",
+      "isAncestor": true
+    },
+    {
+      "label": "preservedInitialHintCheckpoint",
+      "sha": "d55110c4cfe2bc7ba7cc8c5444498d5531d53ad8",
+      "isAncestor": true
+    },
+    {
+      "label": "reviewedHintSuccessor683",
+      "sha": "683bfa056ab1f81877de5b8a238658847f1f51e4",
+      "isAncestor": true
+    },
+    {
+      "label": "reviewed8fc",
+      "sha": "8fcf51b8a600c49c34c2d7e87e25b7eae952aa69",
+      "isAncestor": true
+    },
+    {
+      "label": "reviewed8d",
+      "sha": "8d6088440a13bc308bf20ea05b46cf4e6cd4d2fb",
+      "isAncestor": true
+    },
+    {
+      "label": "reviewed5ed",
+      "sha": "5ed4dcffae03dce7e76709a5f610a351dfc5cd06",
+      "isAncestor": true
+    },
+    {
+      "label": "reviewedTool2fb",
+      "sha": "2fb474a7842034ab7e845f5bf553fd94c6301481",
+      "isAncestor": true
+    },
+    {
+      "label": "protectedMainFinanceEbb",
+      "sha": "ebb48f83a02474cc616ec3c3a421c3c77fcbcf0f",
+      "isAncestor": true
+    },
+    {
+      "label": "protectedMainTool777",
+      "sha": "777d6daa0e902ebd28a369694e235accf44ad3eb",
+      "isAncestor": true
+    },
+    {
+      "label": "acceptedArchival851",
+      "sha": "8513737b880623b2b62ab4721672a55b8101ba1a",
+      "isAncestor": true
+    },
+    {
+      "label": "superseded091",
+      "sha": "09190249b5e13b405ac95d06aa9dcc6c9a0f17ce",
+      "isAncestor": true
+    },
+    {
+      "label": "reviewedTool05",
+      "sha": "05deed0368ec6f4001c04508c95742623fb5a4f5",
+      "isAncestor": true
+    },
+    {
+      "label": "protectedIncomingMain4c",
+      "sha": "4c1e3d29dc492254978f0d0ff303d91957b26f2c",
+      "isAncestor": true
+    },
+    {
+      "label": "currentMain7bf",
+      "sha": "7bfcca6b5b53a33fca926786718f8a80037e2809",
+      "isAncestor": true
+    },
+    {
+      "label": "auxLiveLoopbackTool",
+      "sha": "5f1437559afd5e1f2f8a2ebcf5aa4123c687e6db",
+      "isAncestor": true
+    },
+    {
+      "label": "currentAcceptedMainMTM625",
+      "sha": "cecb5a7d80895d9f41d7c2b7ddcc43a2e6057938",
+      "isAncestor": true
+    }
+  ],
+  "C12": {
+    "status": "PARTIAL",
+    "archiveTree": "ce32912ddbab58e5e287930a446ba690531ead09",
+    "originalTree": "ce32912ddbab58e5e287930a446ba690531ead09",
+    "all28FilesTreeExactOriginalc123": true,
+    "newRealOperationalCredit": false
+  },
+  "scopeVsAccepted88": [
+    ".github/workflows/hrm-loopback-acl-inspection.yml",
+    "docs/hrm-loopback-acl-inspection-session-log.md",
+    "docs/hrm-wf-c6-010-session-log.md",
+    "messages/az.json",
+    "messages/en.json",
+    "messages/ru.json",
+    "scripts/hrm-loopback-acl-inspection.mjs",
+    "scripts/hrm-loopback-acl-inspection.sql",
+    "scripts/hrm-loopback-acl-inspection.test.mjs",
+    "src/__tests__/lib-mtm-visit-action-switches.test.ts",
+    "src/__tests__/mtm-visit-action-switches-ui.test.ts",
+    "src/app/(dashboard)/mtm/settings/visit-action-switches.tsx",
+    "src/app/(dashboard)/mtm/settings/visit-policy-settings.tsx",
+    "src/lib/mtm/visit-action-switches.ts"
+  ],
+  "freshRefsAndProspectiveMerge": {
+    "observedRemoteRefs": "5638f1ea63c2818aef8be1b0c497eff718303388\trefs/heads/codex/hrm-588-validation-20261005\ncecb5a7d80895d9f41d7c2b7ddcc43a2e6057938\trefs/heads/main\n",
+    "PR589": {
+      "url": "https://github.com/rashadoni/leaddrive-v2/pull/589",
+      "head": "5638f1ea63c2818aef8be1b0c497eff718303388",
+      "baseSha": "cecb5a7d80895d9f41d7c2b7ddcc43a2e6057938",
+      "draft": false,
+      "merged": false
+    },
+    "main": "cecb5a7d80895d9f41d7c2b7ddcc43a2e6057938",
+    "prospectiveTree": "8743c6aa6b338efde65d8f24a04ee0ec5650fb46",
+    "wholeTreeExactFrozenSource": true,
+    "mustRecheckBeforeMerge": true
+  },
+  "productContract": "C6 source bytes unchanged88: explicit scopedHR/mandatoryMFA final classifications and FULL/PARTIAL/REJECTED appeals, partial separately; no automatic personnel decisions, private immutable audit/reason, CASE_RECORDED_AT ranges, final current-resolved-cycle denominators excluding open/reopened/unclassified/integrity cases, null empty shares and samples separate; generic writer reserved-code guard and post-lock role/grant/tenant checks retained. Support source untouched.",
+  "sourceToolLimits": "New5source reviewed/hosted at5f but actual run at5638 must be independently verified; supplemental READ_COMPLETE is not ACL approval. Original actual7bf hostMismatch ERROR and504 defaultACLUnreviewed INCOMPLETE remain historical unchanged.",
+  "remaining": [
+    "All exact5638 required App15368/applicable event workflows + manual5 jobs/current artifacts must actually complete and be reviewed.",
+    "Aux626 all5 required/fresh main/protection/prospective tree before root authorized normal merge/deploy; actual new source-bound live production catalog then manual recipient review.",
+    "No runtime, production HRM release, DONE or C12 credit borrowed from historical88/851/9f."
+  ],
+  "retainedAcceptance": [
+    {
+      "path": "/tmp/hrm-release-independent-source-88c93978.json",
+      "sha256": "ff2dfc9434d53eb1e7af830d6459b31b72cd83eb2bc6dc8b1a792268925cdc03"
+    },
+    {
+      "path": "/tmp/hrm-release-independent-technical-acceptance-88c93978.json",
+      "sha256": "11697f9688f1f0e17f5965a48fd05018462a18e42dc02a6baf8a73e6f9dc52b3"
+    },
+    {
+      "path": "/tmp/hrm-loopback-acl-independent-source-5f143755.json",
+      "sha256": "785c830b98d4672d293324daf08d7e8a482db408dc29cd6c556c86cf47c62f72"
+    },
+    {
+      "path": "/tmp/hrm-loopback-acl-independent-hosted-5f143755.json",
+      "sha256": "6326bd6a251cdbf6d952ec868ff01776b1f53185243faea35c13ca4e023c476d"
+    }
+  ]
+}

@@ -1,0 +1,152 @@
+{
+  "version": 1,
+  "status": "SOURCE_ACCEPTED_CURRENT_REAL_SQL_PENDING",
+  "head": "5f1437559afd5e1f2f8a2ebcf5aa4123c687e6db",
+  "tree": "1c3464637a17643d1b1c601af7c4b7f8a691c9d9",
+  "currentOriginMain": "cecb5a7d80895d9f41d7c2b7ddcc43a2e6057938",
+  "reviewedAcceptedMain": "cecb5a7d80895d9f41d7c2b7ddcc43a2e6057938",
+  "sourceScope": [
+    ".github/workflows/hrm-loopback-acl-inspection.yml",
+    "docs/hrm-loopback-acl-inspection-session-log.md",
+    "scripts/hrm-loopback-acl-inspection.mjs",
+    "scripts/hrm-loopback-acl-inspection.sql",
+    "scripts/hrm-loopback-acl-inspection.test.mjs"
+  ],
+  "prospectiveMerge": {
+    "base": "cecb5a7d80895d9f41d7c2b7ddcc43a2e6057938",
+    "head": "5f1437559afd5e1f2f8a2ebcf5aa4123c687e6db",
+    "tree": "1c3464637a17643d1b1c601af7c4b7f8a691c9d9",
+    "wholeTreeEqualsReviewedSource": true
+  },
+  "bindings": [
+    {
+      "path": "scripts/hrm-loopback-acl-inspection.mjs",
+      "bytes": 17694,
+      "sha256": "e8d5fb47eddfb0d7e371943f2d3b3459b66e9d17927161bf9233bd6189074dbf",
+      "workingBytesExact": true
+    },
+    {
+      "path": "scripts/hrm-loopback-acl-inspection.sql",
+      "bytes": 5173,
+      "sha256": "7a4a9d79534e40cf7672c31797f2015a543f7061c1522ee30a7cfb9e147f8c58",
+      "workingBytesExact": true
+    },
+    {
+      "path": "scripts/hrm-loopback-acl-inspection.test.mjs",
+      "bytes": 36360,
+      "sha256": "7e1264a6a754b655306b936c971a28584532b6921a005012f5d2769d522c8993",
+      "workingBytesExact": true
+    },
+    {
+      "path": ".github/workflows/hrm-loopback-acl-inspection.yml",
+      "bytes": 8001,
+      "sha256": "bfbcb2b83fab53817ce71ae1e511389cbab7f9ca6aeff0785801b24aee76a116",
+      "workingBytesExact": true
+    },
+    {
+      "path": "docs/hrm-loopback-acl-inspection-session-log.md",
+      "bytes": 10556,
+      "sha256": "36658d86a3a32d577e1284c3f0ca7bdd38221d64237903c74ddcc5fa60969d72",
+      "workingBytesExact": true
+    }
+  ],
+  "oldNine": [
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.mjs",
+      "sha256": "46b417da7bbe763960b8ede8fa0e9dbd98543d090d54f73979289504bfe35771",
+      "exactAcceptedMain7bf": true,
+      "exactCurrentBase": true
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.sql",
+      "sha256": "b174e32eb68a0dbcca98e8557fe8c716ed8277111e79ba822bce43f4e7023b6a",
+      "exactAcceptedMain7bf": true,
+      "exactCurrentBase": true
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.test.mjs",
+      "sha256": "39c947982f5e7dc2ca1e96307ac5314518bfe748ec58a3cf217f8f09194c0eef",
+      "exactAcceptedMain7bf": true,
+      "exactCurrentBase": true
+    },
+    {
+      "path": ".github/workflows/hrm-migration-metadata-preflight.yml",
+      "sha256": "f90937ecda3b81e7dd017819cfaec1afdefc5fee58167fdfc2289ce012a1dcf1",
+      "exactAcceptedMain7bf": true,
+      "exactCurrentBase": true
+    },
+    {
+      "path": "scripts/hrm-default-acl-inspection.mjs",
+      "sha256": "a6aa4f3526fd5edf29bd2b3a1309f7703e85acad70c0e683cba69dbb281c2027",
+      "exactAcceptedMain7bf": true,
+      "exactCurrentBase": true
+    },
+    {
+      "path": "scripts/hrm-default-acl-inspection.sql",
+      "sha256": "524bc02f34a75f445aff6b3834df6e02aa86665dee9acd835b2b5fc621127e2a",
+      "exactAcceptedMain7bf": true,
+      "exactCurrentBase": true
+    },
+    {
+      "path": "scripts/hrm-default-acl-inspection.test.mjs",
+      "sha256": "402a2dde20443676d6bac430ab4e80a74f507c2dd3828b920c278cafcf0c7c3c",
+      "exactAcceptedMain7bf": true,
+      "exactCurrentBase": true
+    },
+    {
+      "path": ".github/workflows/hrm-default-acl-inspection.yml",
+      "sha256": "954c6d042bf00420f1ecd3c9ed0c378bc41305c0af08c30cdc3a97f06f81df2a",
+      "exactAcceptedMain7bf": true,
+      "exactCurrentBase": true
+    },
+    {
+      "path": "docs/hrm-default-acl-inspection-session-log.md",
+      "sha256": "8d3af68cc9a724374a30d5eba1e06d37537473cef61ca4d89549adced5500a5f",
+      "exactAcceptedMain7bf": true,
+      "exactCurrentBase": true
+    }
+  ],
+  "confirmedSourceCorrection": {
+    "initialActualFailHead": "d2d8032891967bef45b43109bfaa9a0b1ea7760c",
+    "finiteDiagnosticFailHead": "85234153841e8afab8d47befd98336db6827bc3e",
+    "actualFailedFlag": "runtime probeNameVerified=false; expectedIdentity,sessionIdentityUnchanged,primary,readOnly,repeatableRead all true; migration not reached; runtime cleanupPASS",
+    "correction": "Explicit libpq PGAPPNAME equals generated private nonce for runtime and fixed name for migration. Existing PGOPTIONS/SQL equality and live PID+nonce+user+datid guards remain unchanged. Direct fake transport asserts both startup names.",
+    "helperDiffVsOriginal": "diff --git a/scripts/hrm-loopback-acl-inspection.mjs b/scripts/hrm-loopback-acl-inspection.mjs\nindex 6a37a9e23..973da9837 100644\n--- a/scripts/hrm-loopback-acl-inspection.mjs\n+++ b/scripts/hrm-loopback-acl-inspection.mjs\n@@ -62,7 +62,7 @@ function liveParse(raw,mode) {\n function liveConnection(connection,probe,mode) {\n   const env=databaseConnectionEnvironment(connection)\n   if (!probe || !/^[A-Za-z_][A-Za-z0-9_$-]{0,62}$/.test(probe.runtimeRole) || !/^hrm_loopback_acl_[0-9a-f]{32}$/.test(probe.nonce) || !liveInt(probe.pid,0,2147483647)) liveFail(\"INPUT_INVALID\")\n-  return {...env,PGOPTIONS:\"-c default_transaction_read_only=on -c application_name=\"+(mode===\"runtime\"?probe.nonce:\"hrm_loopback_acl_inspection\")+\" -c hrm.live_expected_role=\"+env.PGUSER+\" -c hrm.live_runtime_role=\"+probe.runtimeRole+\" -c hrm.live_mode=\"+mode+\" -c hrm.live_probe_name=\"+probe.nonce+\" -c hrm.live_expected_pid=\"+probe.pid}\n+  return {...env,PGAPPNAME:mode===\"runtime\"?probe.nonce:\"hrm_loopback_acl_inspection\",PGOPTIONS:\"-c default_transaction_read_only=on -c application_name=\"+(mode===\"runtime\"?probe.nonce:\"hrm_loopback_acl_inspection\")+\" -c hrm.live_expected_role=\"+env.PGUSER+\" -c hrm.live_runtime_role=\"+probe.runtimeRole+\" -c hrm.live_mode=\"+mode+\" -c hrm.live_probe_name=\"+probe.nonce+\" -c hrm.live_expected_pid=\"+probe.pid}\n }\n const liveArgs=[\"-X\",\"-qAt\",\"--no-password\",\"-v\",\"ON_ERROR_STOP=1\",\"-v\",\"VERBOSITY=sqlstate\"]\n \n",
+    "sqlAndWorkflowExactOriginal": true
+  },
+  "retainedReviews": [
+    {
+      "path": "/tmp/hrm-loopback-acl-root-helper-peer-review.json",
+      "sha256": "98167bb3e3f02eb3e293faa900bb8de7e33bcfdc4935d433ce558e898bc936d8"
+    },
+    {
+      "path": "/tmp/hrm-loopback-acl-independent-source-d2d80328.json",
+      "sha256": "3a083e88f323f00bc17cd861dcd6363b6b93185e3f99f7af353cd03517eec91b"
+    },
+    {
+      "path": "/tmp/hrm-loopback-acl-d2-first-hosted-peer-assessment.json",
+      "sha256": "9b86716f9549759c5628f7a9e0d75f6fbd924b77600c8a670beca85186d09afb"
+    }
+  ],
+  "verification": {
+    "changedLocalUnit": {
+      "total": 16,
+      "pass": 15,
+      "fail": 0,
+      "skip": 1,
+      "sql": "NOT RUN locally, explicitly skipped",
+      "path": "/tmp/hrm-loopback-pgappname-correction-node-unit.log",
+      "sha256": "b1c95283dde4743af005462438bfdb4f4fa746653e3acf47543fead6a55a75da"
+    },
+    "sourceHostedRun": 37684879260,
+    "sourceJob": 113010010492,
+    "status": "IN_PROGRESS at observation; no actual live backend or all52 pass claim"
+  },
+  "authorship": "Root authored helper reviewed independently here. This reviewer authored SQL/test/workflow, independently cross-reviewed by root. No independent test-authorship claim.",
+  "limits": [
+    "New actual PostgreSQL source fixture pending; both original failures retained and SQL assertions unchanged.",
+    "Supplemental READ_COMPLETE only; no approval/READY or production catalog credit until actually executed and independently reviewed.",
+    "Original actual7bf ERROR IDENTITY_ENDPOINT_HOST_MISMATCH and504 INCOMPLETE DEFAULT_ACL_UNREVIEWED remain unchanged.",
+    "No production grant/role/config/secret changes, no business rows and no Support/activation/personnel decisions."
+  ]
+}
