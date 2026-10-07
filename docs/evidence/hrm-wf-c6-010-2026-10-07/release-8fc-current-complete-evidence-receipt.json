@@ -1,0 +1,94 @@
+{
+  "head": "8fcf51b8a600c49c34c2d7e87e25b7eae952aa69",
+  "run": 37652828448,
+  "attempt": 1,
+  "all5SpecializedJobs": "success",
+  "all5RequiredApp15368": "success viaindividualendpoints",
+  "individualRequiredIds": [
+    112900348793,
+    112900348184,
+    112900347944,
+    112900523901,
+    112900523940
+  ],
+  "knownGlobalCompilerDiagnostics": 1153,
+  "strictKnownFailingTestFiles": 18,
+  "rootActualGateAnalysis": "pass onoriginaldownloaded log, no localcompile",
+  "indexApiError": "HTTP500/index malformedJSON preservedindependentreceipt; exactindividualhead/app/status fields fetchedsuccessfully, no productfailure/gatebypass",
+  "scope": "Completecurrenttechnicalacceptance, realcatalog/releasepending",
+  "bindings": {
+    "release-independent-browser-8fc.json": {
+      "bytes": 38613,
+      "sha256": "5dee324ea94361bd302925e4cff2ab79fe4325a356427b46979a980442e0ba4a"
+    },
+    "release-independent-pg-build-8fc.json": {
+      "bytes": 15891,
+      "sha256": "ea926979672b988cfdb54e312bcab6e31c4d84f783da0c89a17620b8248b0efe"
+    },
+    "release-independent-technical-acceptance-8fc.json": {
+      "bytes": 27141,
+      "sha256": "8c3fc1c67ae9067fc26dfb3ed827303c94b681c38f20549533c382a83ffd62ae"
+    },
+    "release-root-report-8fc-proof.json": {
+      "bytes": 1163,
+      "sha256": "278cfb35163c1758b69e11b1230af7040753d55d528f213810b3f1ae1a80b501"
+    },
+    "release-root-compiler-8fc-proof.json": {
+      "bytes": 688,
+      "sha256": "2a9bd246f38748bab434a6c0d1e28914b4dc85a39ce83bd83bc0ff40cbb78c30"
+    },
+    "release-independent-compiler-assessment-8fc.json": {
+      "bytes": 2522,
+      "sha256": "3ba35e82955f49259dde4144fee59e81f5946b070fa1a52144f94574069f179b"
+    },
+    "hrm-pr619-premerge-proof.json": {
+      "bytes": 1471,
+      "sha256": "be7c3679d3c5bfe07f178b3ad911a279b5399528682f3acfee25f2eeb6520706"
+    },
+    "hrm-pr619-normal-merge-result.json": {
+      "bytes": 109,
+      "sha256": "1bcf3aed8c6df661e06493655981ab5371f1928a8dd398ae7463a0e2cbe842e4"
+    },
+    "hrm-pr589-main504-prospective-tree.json": {
+      "bytes": 331,
+      "sha256": "bbe6347d14c2f748afec9eec8b8b952360fa9cb82e6a5399fcae6cf5bcf00716"
+    },
+    "release-8fc-report-original.zip": {
+      "bytes": 853182,
+      "sha256": "73fb453fc26c0c3bf69ad0f20bfd0ed11bd5fc2dce526d176b097ee2aeabe8b0"
+    },
+    "release-8fc-classification-original.zip": {
+      "bytes": 269373,
+      "sha256": "2e2f3704438c1a39add9a7ee7a3d0f9c8043ede872e019c07f8bf88a14caee22"
+    },
+    "release-8fc-compiler-original.zip": {
+      "bytes": 19675,
+      "sha256": "c9457c4f995fb06f669312e62a21c065262f5d9f0d76aa68bc1c5b84b3afbe1b"
+    },
+    "release-8fc-report-original.log.gz": {
+      "rawBytes": 88811,
+      "rawSha256": "f6ff11e104710db25a59c2992337956f354b18fd36c923d6fc4c3f9fcdbbb479",
+      "storedSha256": "62591356a2d26018f0cd7693b623251c528a84ea302055a77fe1b91b393d35f0"
+    },
+    "release-8fc-classification-original.log.gz": {
+      "rawBytes": 97194,
+      "rawSha256": "3e54f09f6b0382bac78ed5656b4169f2539013982e67957177731c6e03239e79",
+      "storedSha256": "fa22c89b3049f7125d8728d07b64def5bc90cd3b6115c2fe834a25cea665f774"
+    },
+    "release-8fc-compiler-original.log.gz": {
+      "rawBytes": 254998,
+      "rawSha256": "2d8d9ad9a8ea9bf58cfc2c9e05b470bf4cb780213140a606ac4503109c14863e",
+      "storedSha256": "2a076c4fd5bd10fc511c1dd0117270c201bfd639b5e0b43e82a01b6e2dcdad14"
+    },
+    "release-8fc-build-original.log.gz": {
+      "rawBytes": 130188,
+      "rawSha256": "02faec97868032d851fbde09031850e11d2681095480d0b48d625706d25d3f56",
+      "storedSha256": "dbf907a71089fe4cf722774cbc17bc6ab607cc8d6fe301840c9401752eb5f39b"
+    },
+    "release-8fc-source-regression-original.log.gz": {
+      "rawBytes": 158421,
+      "rawSha256": "21e778c69760fc13133ace30906fc75af4efd47c357ef65d1f425d50748152ac",
+      "storedSha256": "a0c667c7e9f36146e25092fa7febeb2d0477baf0f88b5fd02f9c8c10b399fe62"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "head": "8fcf51b8a600c49c34c2d7e87e25b7eae952aa69",
+  "artifact": 11497652130,
+  "run": 37652828448,
+  "job": 112900332621,
+  "zipDigest": "73fb453fc26c0c3bf69ad0f20bfd0ed11bd5fc2dce526d176b097ee2aeabe8b0",
+  "zipBytes": 853182,
+  "crcPass": true,
+  "members": 14,
+  "currentNineCasesPass": true,
+  "sourceBindingsMatched": 12,
+  "rootActuallyViewedCurrentPNG": [
+    "report-en-1440-recorded-outcomes.png",
+    "report-az-768-recorded-outcomes.png",
+    "report-ru-320-recorded-outcomes.png"
+  ],
+  "visualFindings": {
+    "en": "Four33.33% fractions and reviewed3/unfinished2/unclassified2/integrity1 visible",
+    "az": "Fourfractionsvisible; top/bottomclipped;50minutes/0seconds/2hoursEnglishdurationunits inherited",
+    "ru": "Heading/manualboundary/duration6/1/1 visible; finalfractions/samplefooternotvisible in nestedscroller screenshot"
+  },
+  "limits": [
+    "No complete RU/mobile visual or WCAG/humanAT acceptance claimed",
+    "No production HR observations; disposable fixtureonly",
+    "Classification/compiler/build/PG/requiredcurrentgates remainpending atreview"
+  ],
+  "factTablesUnchanged": 22,
+  "tenantCount": 2,
+  "cleanupPass": true
+}

@@ -1,0 +1,436 @@
+{
+  "version": 1,
+  "reviewId": "WF-C6-010 fresh8fc PostgreSQL/regression/build supplement",
+  "createdAtUtc": "2026-10-07T16:51:38.576547+00:00",
+  "headSha": "8fcf51b8a600c49c34c2d7e87e25b7eae952aa69",
+  "gitTree": "c4398c5aecbb5064fd26db692672cb982adf80b6",
+  "runId": 37652828448,
+  "status": "PASS_FRESH_PG44_STRICT18_BASELINE_AND_BUILD_MINIMAL_BUNDLE_COMPILER_AND_WHOLE_ACCEPTANCE_SEPARATE",
+  "authorshipDisclosure": "Reviewer authored the report PostgreSQL/browser fixtures and auxiliary preflight verification. Independently inspects actual current hosted logs/source bindings to root-authored implementation, not independent test authorship or a second test/build execution.",
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "jobs": [
+    {
+      "family": "source-regression",
+      "id": 112900333125,
+      "name": "Exact WF-C6-010 source and PostgreSQL regressions",
+      "headSha": "8fcf51b8a600c49c34c2d7e87e25b7eae952aa69",
+      "status": "completed",
+      "conclusion": "success",
+      "completedAt": "2026-10-07T16:42:36Z",
+      "actualSteps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-07T16:32:29Z",
+          "completed_at": "2026-10-07T16:32:30Z"
+        },
+        {
+          "name": "Initialize containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-07T16:32:30Z",
+          "completed_at": "2026-10-07T16:32:47Z"
+        },
+        {
+          "name": "Run actions/checkout@v6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-07T16:32:47Z",
+          "completed_at": "2026-10-07T16:33:00Z"
+        },
+        {
+          "name": "Verify exact head and preserved PR608 ancestor",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-07T16:33:00Z",
+          "completed_at": "2026-10-07T16:33:00Z"
+        },
+        {
+          "name": "Run actions/setup-node@v6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-07T16:33:00Z",
+          "completed_at": "2026-10-07T16:33:09Z"
+        },
+        {
+          "name": "Run npm ci",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-07T16:33:09Z",
+          "completed_at": "2026-10-07T16:34:46Z"
+        },
+        {
+          "name": "Validate and generate existing schema clients",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-07T16:34:46Z",
+          "completed_at": "2026-10-07T16:36:42Z"
+        },
+        {
+          "name": "Unchanged runner policy and translation parity",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-07T16:36:42Z",
+          "completed_at": "2026-10-07T16:36:42Z"
+        },
+        {
+          "name": "Scoped production source lint",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-10-07T16:36:42Z",
+          "completed_at": "2026-10-07T16:36:45Z"
+        },
+        {
+          "name": "Actual shared-lock and aggregate PostgreSQL gates",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-10-07T16:36:45Z",
+          "completed_at": "2026-10-07T16:37:05Z"
+        },
+        {
+          "name": "Full regression suite against unchanged baseline",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-10-07T16:37:05Z",
+          "completed_at": "2026-10-07T16:42:33Z"
+        },
+        {
+          "name": "Post Run actions/setup-node@v6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 20,
+          "started_at": "2026-10-07T16:42:33Z",
+          "completed_at": "2026-10-07T16:42:33Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 21,
+          "started_at": "2026-10-07T16:42:33Z",
+          "completed_at": "2026-10-07T16:42:33Z"
+        },
+        {
+          "name": "Stop containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-10-07T16:42:33Z",
+          "completed_at": "2026-10-07T16:42:33Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-10-07T16:42:33Z",
+          "completed_at": "2026-10-07T16:42:33Z"
+        }
+      ],
+      "originalJobMetadata": {
+        "path": "/tmp/hrm-release-final-source-regression-8fc-job-original.json",
+        "bytes": 3555,
+        "sha256": "99059952b2073019276376a8c5de2b96161bf8ac9257f3c1f1deec542c40aee7"
+      },
+      "originalFullLog": {
+        "path": "/tmp/hrm-release-final-source-regression-8fc.log",
+        "bytes": 158421,
+        "sha256": "21e778c69760fc13133ace30906fc75af4efd47c357ef65d1f425d50748152ac"
+      }
+    },
+    {
+      "family": "build",
+      "id": 112900333112,
+      "name": "Exact WF-C6-010 isolated production bundle build",
+      "headSha": "8fcf51b8a600c49c34c2d7e87e25b7eae952aa69",
+      "status": "completed",
+      "conclusion": "success",
+      "completedAt": "2026-10-07T16:48:25Z",
+      "actualSteps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-07T16:32:29Z",
+          "completed_at": "2026-10-07T16:32:30Z"
+        },
+        {
+          "name": "Run actions/checkout@v6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-07T16:32:30Z",
+          "completed_at": "2026-10-07T16:32:42Z"
+        },
+        {
+          "name": "Verify exact head",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-07T16:32:42Z",
+          "completed_at": "2026-10-07T16:32:42Z"
+        },
+        {
+          "name": "Run actions/setup-node@v6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-07T16:32:42Z",
+          "completed_at": "2026-10-07T16:32:55Z"
+        },
+        {
+          "name": "Run bash scripts/ci/prepare-hosted-build-runner.sh",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-07T16:32:55Z",
+          "completed_at": "2026-10-07T16:32:56Z"
+        },
+        {
+          "name": "Run npm ci",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-07T16:32:56Z",
+          "completed_at": "2026-10-07T16:36:04Z"
+        },
+        {
+          "name": "Run npx prisma generate",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-07T16:36:04Z",
+          "completed_at": "2026-10-07T16:38:43Z"
+        },
+        {
+          "name": "Build isolated bundle with inert fixture configuration",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-07T16:38:43Z",
+          "completed_at": "2026-10-07T16:48:22Z"
+        },
+        {
+          "name": "Cleanup bounded build swap",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-10-07T16:48:22Z",
+          "completed_at": "2026-10-07T16:48:22Z"
+        },
+        {
+          "name": "Post Run actions/setup-node@v6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-10-07T16:48:22Z",
+          "completed_at": "2026-10-07T16:48:22Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 18,
+          "started_at": "2026-10-07T16:48:22Z",
+          "completed_at": "2026-10-07T16:48:22Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 19,
+          "started_at": "2026-10-07T16:48:22Z",
+          "completed_at": "2026-10-07T16:48:22Z"
+        }
+      ],
+      "originalJobMetadata": {
+        "path": "/tmp/hrm-release-final-build-8fc-job-original.json",
+        "bytes": 2999,
+        "sha256": "8be94f17b2355d5a89499727cbc470c9043c3983037e892132a04545aea11aa1"
+      },
+      "originalFullLog": {
+        "path": "/tmp/hrm-release-final-build-8fc.log",
+        "bytes": 130188,
+        "sha256": "02faec97868032d851fbde09031850e11d2681095480d0b48d625706d25d3f56"
+      }
+    }
+  ],
+  "workflowSourceBinding": {
+    "path": ".github/workflows/workforce-exception-report-browser-evidence.yml",
+    "bytes": 25256,
+    "sha256": "1dcd49d422fb212d4ee1eac6368de97837fe62fc5ca5975a7faa2b6c61dc18e7",
+    "workingExactCommit": true
+  },
+  "sourceAndPgAssessment": {
+    "actualFiles": 4,
+    "actualPassedTests": 44,
+    "actualSkipped": 0,
+    "selectedTestBindings": [
+      {
+        "path": "src/__tests__/lib-workforce-calendar-configuration-lock-postgres.test.ts",
+        "bytes": 46209,
+        "sha256": "7174be0a5908c720e3edc7b252aa8f4a1dc6de3bc256a25243a0a7be9cf885c7",
+        "workingExactCommit": true,
+        "actualPassedTests": 12
+      },
+      {
+        "path": "src/__tests__/lib-workforce-exception-lock-postgres.test.ts",
+        "bytes": 113586,
+        "sha256": "7724e6a3a9a53a221b0dba3a6024fdb9bf6a24d41c67e91b3fe1d2c65ecd2e21",
+        "workingExactCommit": true,
+        "actualPassedTests": 15
+      },
+      {
+        "path": "src/__tests__/lib-workforce-exception-policy-revision-postgres.test.ts",
+        "bytes": 29427,
+        "sha256": "95a530f05d065e34cd055297db080fe1b30a982ccef682029cfd35838bf6b637",
+        "workingExactCommit": true,
+        "actualPassedTests": 6
+      },
+      {
+        "path": "src/__tests__/lib-workforce-exception-report-postgres.test.ts",
+        "bytes": 43001,
+        "sha256": "ee7e6aaafa17545f1c77130a537745407ad133e1e503fbb71b6b7d50639114e1",
+        "workingExactCommit": true,
+        "actualPassedTests": 11
+      }
+    ],
+    "schemaValidated": true,
+    "mainAndSelectedLegacyClientsGenerated": true,
+    "sourceLint": true,
+    "runnerPolicy48Workflows": true,
+    "ruAzParityBothMissingExtra0": true,
+    "strictHeadAndAccepted973Ancestor": true,
+    "scope": "Disposable PostgreSQL locks/revisions/current cycle aggregates, not production DB or complete migration replay/C12 operations."
+  },
+  "fullRegressionAssessment": {
+    "observedFailingFiles": 18,
+    "unchangedBaselineFiles": 18,
+    "newFailingFiles": 0,
+    "everyBaselineEntryStillFails": true,
+    "gate": "PASS",
+    "globallyClean": false,
+    "rawVitestJson": "Temporary runner report not retained; finite hosted strict gate is source-bound, no independently received per-file JSON claim."
+  },
+  "buildAssessment": {
+    "compiledSuccessfully": true,
+    "actualCompileMinutes": 7.0,
+    "standaloneServerAndStaticAssertions": true,
+    "inertConfiguration": true,
+    "existingTypeValidationSkip": true,
+    "completeTracedBundleOrRuntime": false,
+    "productionDeployment": false,
+    "cleanupBoundedSwapPassed": true,
+    "warning": {
+      "actualCurrent": "Next standalone trace copy ENOENT dashboard page_client-reference-manifest.js",
+      "alsoObservedOriginal9f": true,
+      "priorCompressedLogBinding": {
+        "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/hosted-9f3-build-original.log.gz",
+        "bytes": 24881,
+        "sha256": "111e3349891250b494d77b3bbc3ed332b4fee0ce81e2bd12755a0e0a1eef8cf0"
+      },
+      "priorDecompressedSha256": "e01e3ef373e6fd3596a25b68d1831d9e4c8444d01c32dc309a7b1b2e64afeb4a",
+      "unchangedBuildInputs": [
+        {
+          "path": "next.config.ts",
+          "bytes": 8010,
+          "sha256": "0c0724cf9386a556257f8d2f104ed35c93d072b9e6debba9e08a1d45582b239f",
+          "workingExactCommit": true,
+          "byteExactAccepted062And9f": true
+        },
+        {
+          "path": "src/app/(dashboard)/page.tsx",
+          "bytes": 11251,
+          "sha256": "6d201abd41cde359700c231564d1708ec527033d5f1d76d83431f1532ddf81cd",
+          "workingExactCommit": true,
+          "byteExactAccepted062And9f": true
+        },
+        {
+          "path": "package-lock.json",
+          "bytes": 707003,
+          "sha256": "54c9be2264ef8e1ec5f8b0d9c545ba868c24de938ee0cf3734f4c475e62c816f",
+          "workingExactCommit": true,
+          "byteExactAccepted062And9f": true
+        },
+        {
+          "path": "scripts/ci/prepare-hosted-build-runner.sh",
+          "bytes": 4907,
+          "sha256": "f37a2565878c7c2b7b4882cc33fb90736903d834c5519ea90145f01ccef25b6c",
+          "workingExactCommit": true,
+          "byteExactAccepted062And9f": true
+        }
+      ],
+      "qualification": "Observed inherited warning retained, not a proved harmless condition. Success establishes compilation and explicit minimal paths only; no warning-free or every-route trace completeness claim."
+    }
+  },
+  "baselineAndGateBindings": [
+    {
+      "path": "test-baseline.json",
+      "bytes": 1139,
+      "sha256": "8f0fc568274f9fd8c0c741db618d6e4d81025de7112a315cd93e6b92bbd5a4b1",
+      "workingExactCommit": true
+    },
+    {
+      "path": "typecheck-baseline.json",
+      "bytes": 3907,
+      "sha256": "919fa9d0212b18ee685af4f08680ebbc34e8c4969294054447df03147bf0fc53",
+      "workingExactCommit": true
+    },
+    {
+      "path": "scripts/check-test-baseline.mjs",
+      "bytes": 10188,
+      "sha256": "6c3380718fd71061d2efe4aa396fcb9cc998336c5c95a3bbd2de05230058027e",
+      "workingExactCommit": true
+    },
+    {
+      "path": "scripts/ci/check-typecheck-gate.sh",
+      "bytes": 3468,
+      "sha256": "a18608d9297c039380481fb27d6200d9ebbcc731e9ec23dd40b5e3a2c5a40937",
+      "workingExactCommit": true
+    },
+    {
+      "path": "scripts/ci/check-typecheck-baseline.mjs",
+      "bytes": 5909,
+      "sha256": "8b8a2472a1c813e85c4177c24c6df5fb5907d981b5b43e6870a04cbbba2b812a",
+      "workingExactCommit": true
+    }
+  ],
+  "currentSourceReviewBinding": {
+    "path": "/tmp/hrm-release-independent-source-8fcf51b8.json",
+    "bytes": 29283,
+    "sha256": "ba491f4c303bc344c6382ad3ccc2b3650009e3a1afa75f1252e4f463d9ed15af"
+  },
+  "currentBrowserReviewBinding": {
+    "path": "/tmp/hrm-release-independent-browser-8fcf51b8.json",
+    "bytes": 38613,
+    "sha256": "5dee324ea94361bd302925e4cff2ab79fe4325a356427b46979a980442e0ba4a"
+  },
+  "remainingAcceptance": [
+    "Fresh full compiler all families/owned/gates/artifact independently assessed in whole technical supplement",
+    "Current five requiredApp15368/all applicable workflows terminal and ref/prospective merge proof",
+    "Protected current-main production metadata and eventual actual HRM main/deploy/public SHA acceptance"
+  ],
+  "limits": [
+    "Full repo compiler/suite globally NONCLEAN; immutable baselines are preserved, not relaxed.",
+    "No local compiler/build/tests/DB/browser or production action performed; only received complete hosted originals/source metadata inspected.",
+    "No new real HR samples, tenant activation, physical presence, load, staging, full migration replay or C12 credit."
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "head": "8fcf51b8a600c49c34c2d7e87e25b7eae952aa69",
+  "artifact": 11497588885,
+  "digest": "c9457c4f995fb06f669312e62a21c065262f5d9f0d76aa68bc1c5b84b3afbe1b",
+  "rawDigest": "4ba2582a30f0eb51aad260ecb79715b6ce02e5dd8f70aafd33a98e38d4886bde",
+  "rootActualDownloadedArtifactCRCAndRawHashPass": true,
+  "actualDiagnostics": 1153,
+  "families": 35,
+  "ownedTypedPaths": 18,
+  "ownedAllFamilyDiagnostics": 0,
+  "rawByteExact062": true,
+  "rootReexecutedOnlyUnchangedGateAnalysis": {
+    "syntaxMissingModuleUndefinedName": "PASS",
+    "defectBaseline": "PASS",
+    "gatedPairs": 64,
+    "baselinePairs": 64
+  },
+  "localCompilation": "NOT RUN perhostcontract",
+  "globallyClean": false
+}
