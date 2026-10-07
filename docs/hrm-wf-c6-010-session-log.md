@@ -460,3 +460,10 @@
 ## 2026-10-07 — evidencewhitespace check correction preserved
 
 - Initialevidence ef00b700e preparation gitdiffcheck reportedone trailingwhitespace at newjournal line456; shellsequence mistakenlycontinued docsevidencecommit/push. This was NOT a passedcheck andnot a source8fc/CI/productionfailure. Originalcommithistoryretained,noamend/force. Onlynewentrytrailingblank removed; olderjournalinformation/artifacts remain. Correctivesequence nowfailclosed(set-e) and recheckscomplete newevidence diff before explicitdocspath checkpoint; frozen8fc source untouched.
+
+
+## 2026-10-07 — own504 release complete; third actual metadata dispatched
+
+- Normal auxiliary PR619 main50466e3fce9f23eaba8079a51be914fe6a6eff07 ownDeploy37655470317 completed SUCCESS: build112909361592, quality112909361814, atomic deploy/smoke112914520246 and retention112916563948 all SUCCESS. Protected production route unchanged; no direct main push/manual copy/access/config changes.
+- Root pinned verified TLS public build-before/ping/build-after all HTTP200; both full artifact SHA exactly504, ping ok. Sanitized proof stored release-504-public-proof.json SHAff95a3671efee94ec10e654e57a3cf729fdf39bbc7196161eaf033cbbf92c0ee. No headers/cookies/raw configuration stored. Fresh actual main504 reverified before authorized read-only dispatch37657755660 expected_main_sha504. Current source-validation112917119418 IN_PROGRESS; actual real metadata not yet received.
+- Source8fc/treec439 remains frozen, all current technical acceptance PASS. App main PR589 still unmerged pending real catalog review. No other active HRM executor in fresh app snapshot; unrelated active heartbeat not identified as repository executor. Accounting84/161,77open,60%; C6/C12 PARTIAL. Next: sanitized exact504 real metadata plus independent schema/DDL review, then normal PR589 own release if accepted.

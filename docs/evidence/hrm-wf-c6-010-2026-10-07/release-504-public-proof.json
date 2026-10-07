@@ -1,0 +1,45 @@
+{
+  "expectedMain": "50466e3fce9f23eaba8079a51be914fe6a6eff07",
+  "deploymentRun": 37655470317,
+  "scope": "Own auxiliary tool main release, NOT final HRM feature deployment",
+  "canonicalTlsPinnedPublicBracket": "PASS",
+  "observations": [
+    {
+      "probe": "build-before",
+      "url": "https://app.leaddrivecrm.org/api/v1/public/build-info",
+      "pinnedAddress": "13.140.132.245",
+      "http": 200,
+      "tlsVerify": 0,
+      "value": {
+        "sha": "50466e3fce9f",
+        "artifactSha": "50466e3fce9f23eaba8079a51be914fe6a6eff07",
+        "builtAt": "2026-10-07T16:59:31Z"
+      },
+      "observedAtUtc": "2026-10-07T17:16:10.077921+00:00"
+    },
+    {
+      "probe": "ping",
+      "url": "https://app.leaddrivecrm.org/api/v1/ping",
+      "pinnedAddress": "13.140.132.245",
+      "http": 200,
+      "tlsVerify": 0,
+      "value": {
+        "ok": true
+      },
+      "observedAtUtc": "2026-10-07T17:16:10.138130+00:00"
+    },
+    {
+      "probe": "build-after",
+      "url": "https://app.leaddrivecrm.org/api/v1/public/build-info",
+      "pinnedAddress": "13.140.132.245",
+      "http": 200,
+      "tlsVerify": 0,
+      "value": {
+        "sha": "50466e3fce9f",
+        "artifactSha": "50466e3fce9f23eaba8079a51be914fe6a6eff07",
+        "builtAt": "2026-10-07T16:59:31Z"
+      },
+      "observedAtUtc": "2026-10-07T17:16:10.195129+00:00"
+    }
+  ]
+}
