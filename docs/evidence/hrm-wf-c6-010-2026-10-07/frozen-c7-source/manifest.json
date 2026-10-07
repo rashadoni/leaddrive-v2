@@ -1,0 +1,29 @@
+{
+  "head": "c7deecf8c86672204434c157f7be2f0e85566fc7",
+  "tree": "a3be6ea7f6fd48ef63aba0e0f6245ba95872f404",
+  "manual5": 37692949528,
+  "source": "ROOT_AND_INDEPENDENT_PASS",
+  "runtime": "PENDING_FRESH_FULL_GATES",
+  "artifacts": [
+    {
+      "path": "hrm-release-independent-source-c7deecf8.json",
+      "bytes": 27066,
+      "sha256": "995bfa5dca34a575979ea0dfade1715c2ecc0f9370c63594b3c534732cbbf4b1"
+    },
+    {
+      "path": "hrm-final-c7de-root-source-proof.json",
+      "bytes": 887,
+      "sha256": "563321a19fe1f08709f0b6a047c7943ee13624eeb531fedbdd66f359348a11b7"
+    },
+    {
+      "path": "hrm-final-c7de-first-all-runs.json",
+      "bytes": 167966,
+      "sha256": "a6f32a5f064c0cb733d45eb7465638645ba3133fbdfc0ec77b56c3dc63328925"
+    },
+    {
+      "path": "hrm-final-c7de-manual-first-jobs.json",
+      "bytes": 14717,
+      "sha256": "8891c2647876369ee2fcc17d2938f71c59be0f2c83071a4c51d2268bd427cfd7"
+    }
+  ]
+}

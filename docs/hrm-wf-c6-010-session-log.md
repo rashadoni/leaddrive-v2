@@ -738,3 +738,24 @@ Exactaux60efe238/treee575 PR627draftpublished/attached, source37692727660/113036
 FinalHRM589 headc7deecf8c86672204434c157f7be2f0e85566fc7/treea3be6ea7f6fd48ef63aba0e0f6245ba95872f404 publishedFF; diff5638 only identicalaux5newpaths+overarchingjournal append. Frozen5638 actualtechnicalPASS retainedpublishedarchive. Freshmanual5 run37692949528 and12actualapplicableautomaticworkflows (newbackupsource replacesoldlivepathnowalreadymain) =13 currentgates running. No oldruntimecredit borrowed. Evidenceordinarymerge importsnewC7source; onlyjournalconflict resolved entireimmutableprior evidenceprefix + exactnewC7append beyondshared5638, no historyloss.
 
 Ledger parserlastfulltask-row override yields161unique/84DONE/77open; formula80*84/161+20*14/15=60.405797%=60. ConditionalONLYC6closure85/161/76/61 remainscalculationonly, no rowstatus/gatewrite. C6/C12PARTIAL. No grants/roles/config/access/secrets/activation/personnelautomation/Support/Mac change. Next freshC7fulltechnicalreview inparallel ownauxrelease/read-only purposeassessment, thennormal589release onlysafeallcriteria.
+
+
+## 2026-10-08 Europe/Berlin — exactC7 source continuity independently accepted
+
+IndependentcurrentC7 source995bfa5d.../27066B and rootfull source proof accepted
+55unchangedbindings/new5exact60/14realnonemptyWFnamespaces×3locale/31accepted
+ancestors/c123wholearchive/journalprefix/fullprospective mainf8 treea3be.
+ActualPR606/609 stillCLOSEDmergedfalse, strict973...HEAD diffcheckPASS. Current
+C6source/harness/roles/tenant/MFA/privateimmutableaudit/CASE_RECORDED_AT behavior
+byteexactpreviousaccepted5638, no oldruntime credit toC7. Current13 applicable
+workflows andmanual5 remainrunning, finalrequired5 runtime pending. Reviewer
+initialassembly missing priorMTM sha256 field KeyError corrected by explicit
+actualprior-committed-byte comparison, recorded as review-only issue, no source
+orcheck edits. Exact current source/proofs/APIinitialsnapshots retained here.
+
+Aux627actual66noskip sourcePASS/peeraccepted; three requiredchecksSUCCESS, full
+static113037158500/type113037158519 pending. Productionbackupattribution NOTRUN
+untilownnormalrelease. HRM589 notmerged/deployed. Accounting84/161/77/60 and
+C6/C12PARTIAL unchanged; no activation/personnelautomation/Support/access/role/
+grant/config/secret/Mac changes. Next terminalgates and normalauxexactrelease,
+protectedactualattribution/manualassessment then normalHRMrelease ifallcriteria.
