@@ -305,3 +305,10 @@
 ## 2026-10-07 — третья actualSQL попытка: запрос выполнен, strictoutputFAIL
 
 - e87b run37632434312/job112829871580 FAILED14unitPASS/1actualSQLFAIL/zeroSKIP; productionSKIPPED. Fixedqueryexecutes, thenvalidateSnapshot relationarraypredicate atline115rejectsOUTPUT_INVALID. Originalfullthirdlog losslessgzip+receiptretained; prior293/0cebfailures remain. LocaleORDERBYname vsJSASCIIcanonicalarray suspected; diagnosis/sourcecorrectionpending, strictvalidator andcase/indexprivacychecks notweakened. RootrequestedcanonicalCorderingandboundedfencedfixturediagnostics. Nextreviewfix/fourthhosted, noHRMmainmerge/productionDDL yet.
+
+
+## 2026-10-07 — пользовательский archivec123 сохранён в releaseancestry
+
+- Проверкаобнаружилаc123556e7a758b7eb5264137dcaf85504b07e471 в objectstore после initialfetch, но безreachablebranch и отсутствующимв integrationtree: FETCH_HEADперезаписывается, этого недостаточно дляdurablepreservation. Archiveadds ONLY28safeJSON/READMEfiles198648bytes, parentaccepted973; product/gates/journals unchanged.
+- Normalmergearchive into dedicatedreleaseworktree preserves c123 asancestor; directorytree ce32912ddbab58e5e287930a446ba690531ead09 exactlyequal originalarchive. Original973/9f sourcebranchesнеизменны. README/evidence retaininitialUNKNOWNpolicybrowserfailure,retry/sourcequantifiers/C12PARTIAL andhistorical391migrationapi_keys/P3018/42P01 replayblocker; archiveisnotcurrentruntimecredit.
+- PR589temporarilydraft duringfinalpreparation; oldsourceae80unchangedremotely, title/bodyrewrittenfinalmanualHR/bulk/Today+dormantC12scope. PR606/609 rereadCLOSED/mergedfalse. Nextfourthhostedfixedcatalogtest thenfreshfinalHRMCI whileprotectedmainpreflightprepares.
