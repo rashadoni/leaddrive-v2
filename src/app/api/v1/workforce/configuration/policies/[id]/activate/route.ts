@@ -1,3 +1,4 @@
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { NextRequest, NextResponse } from "next/server"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
@@ -35,7 +36,7 @@ export const POST = withWorkforceSessionPolicyConfigurationAuth<RouteContext>(as
       const status = error.code === "WORKFORCE_CONFIGURATION_POLICY_NOT_FOUND" ? 404 : 409
       return NextResponse.json({ error: error.message, code: error.code }, { status })
     }
-    console.error("[workforce/configuration/policies activate]", error)
+    logWorkforceSensitiveOperationFailure({ operation: "configuration-policies-item-activate-post" })
     return NextResponse.json({ error: "Failed to activate Workforce policy" }, { status: 500 })
   }
 })

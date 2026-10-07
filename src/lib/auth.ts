@@ -1,3 +1,4 @@
+import { logOperationalFailure } from "./telemetry/operational-failure"
 import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import { PrismaAdapter } from "@auth/prisma-adapter"
@@ -8,7 +9,6 @@ import {
   buildLoginUserWhere,
   buildTenantLoginUserWhere,
   buildJwtRefreshWhere,
-  maskLegacyAuthEmail,
   pickCandidateByPassword,
 } from "./auth-credentials"
 import {
@@ -71,9 +71,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           }
 
           // F-36 — tenant-scoped lookup when slug is provided; legacy
-          // email-only path otherwise. Where-builder + masked log live in
+          // email-only path otherwise. The where-builder lives in
           // ./auth-credentials so the regression tests assert against the
-          // same code paths the credentials provider uses.
+          // same code paths the credentials provider uses. Logs contain no identity.
           //
           // Operators can flip `REQUIRE_TENANT_SLUG=1` once all clients
           // pass a slug; this returns null (→ 401 from NextAuth) for
@@ -85,7 +85,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           const legacyWhere = buildLoginUserWhere(parsed.data)
           if (!parsed.data.organizationSlug) {
             console.warn(
-              `[Auth] legacy email-only lookup (F-36 deprecated path) — email=${maskLegacyAuthEmail(parsed.data.email)}`
+              "[Auth] legacy email-only lookup (F-36 deprecated path)"
             )
           }
 
@@ -164,8 +164,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 organizationId: user.organizationId,
                 userId: user.id,
               }))
-            } catch (e) {
-              console.error("[Auth] SMS 2FA code dispatch failed:", e)
+            } catch {
+              logOperationalFailure("auth-sms-dispatch")
               // Don't block login — user can request a resend on the verify page.
             }
           }
@@ -194,8 +194,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             twoFactorMethod: twoFactorMethod || undefined,
             needsSetup2fa: requiresTwoFactorSetup(user) ? true : undefined,
           }
-        } catch (err) {
-          console.error("[Auth] Login error:", err)
+        } catch {
+          logOperationalFailure("auth-login")
           return null
         }
       },
@@ -472,11 +472,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             token.needs2fa = true
             token.twoFactorMethod = freshTwoFactorMethod
           }
-        } catch (error) {
+        } catch {
           // Credential/session validation is security-critical. A transient DB
           // or fingerprint error must deny the token, never preserve stale
           // claims until the database/cache recovers.
-          console.warn("[Auth] session validation failed closed", error)
+          logOperationalFailure("auth-session-validation", "warn")
           return null
         }
       }

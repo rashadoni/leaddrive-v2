@@ -37,7 +37,8 @@ describe("recorded outcome presentation with real report builder and locale cata
     await render([])
     expect(container.querySelector('[data-testid="workforce-exception-recorded-link-share"]')?.textContent).toBe(copy.noCases)
     expect(container.querySelector('[data-testid="workforce-exception-recorded-resolution-mean"]')?.textContent).toBe(copy.noSamples)
-    expect(container.textContent).toContain(copy.classificationUnavailable)
+    expect(container.textContent).toContain(copy.classificationHint)
+    expect(container.querySelector('[data-testid="workforce-exception-false-positive-share"]')?.textContent).toBe(copy.noClassifiedSamples)
 
     await render([caseRecord([
       { caseRevision: 1, decisionCode: "ACKNOWLEDGE", createdAt: new Date("2026-10-01T00:00:00Z") },
@@ -71,7 +72,7 @@ describe("recorded outcome presentation with real report builder and locale cata
     }
     expect(container.textContent).toContain("1 of 3 recorded cases")
     expect(container.textContent).toContain(messages.workforceExceptionReport.recordedOutcomes.linkedHint)
-    expect(container.textContent).toContain(messages.workforceExceptionReport.recordedOutcomes.classificationUnavailable)
+    expect(container.textContent).toContain(messages.workforceExceptionReport.recordedOutcomes.classificationHint)
     expect(container.innerHTML).not.toContain("private-")
   })
 })

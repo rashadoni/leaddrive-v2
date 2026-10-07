@@ -1,0 +1,127 @@
+{
+  "status": "BOUNDED_REVIEW_TWO_REPRODUCED_COUNT_FINDINGS_MARKER_LIFECYCLE_PASSED",
+  "at": "2026-10-06T19:23:06.200948+00:00",
+  "candidate": "local isolated C8 draft; immutable commit not yet supplied",
+  "testExecution": {
+    "actual": 10,
+    "pass": 8,
+    "fail": 2,
+    "skip": 0,
+    "exitCode": 1,
+    "real": "React root, actual ManagerToday and Workbench, real next-intl provider/ENcatalog and Next context",
+    "mocked": "useSession + fetch; direct component cases provide synthetic owner callback/markers intentionally",
+    "noBrowserOrATCredit": true
+  },
+  "findings": [
+    {
+      "priority": "P2",
+      "id": "C8-PAGINATION-UNIQUE-APPEND",
+      "trigger": "Accepted page contains same previously unseen person.id twice.",
+      "observed": "3 rendered articles; Added2 Loaded3 rather than2 unique articles/Added1 Loaded2.",
+      "cause": "page.people.filter consults only pre-page knownSet and never adds accepted newIDs to Set.",
+      "limit": "Backend roster query normally yields unique IDs; this is synthetic defensive unique-count contract validation, not a demonstrated production backend duplicate or RLS bypass.",
+      "repair": "Deduplicate within as well as across pages while preserving chosen first-seen row semantics."
+    },
+    {
+      "priority": "P2",
+      "id": "C8-PAGINATION-LOADED-SUMMARY",
+      "trigger": "Accepted empty exhaustion after page repeats already-known STARTED employee.",
+      "observed": "1 article and correct Added0 Loaded1 status, but visible Started summary=2.",
+      "cause": "Full incoming page.summary accumulated though duplicate person discarded.",
+      "repair": "Derive loaded summary from accepted unique merged rows, preserving original domain status/previousOpen definitions."
+    }
+  ],
+  "passed": [
+    "StrictMode mount and freshmount ignore injected stale marker",
+    "Current marker alone waits own Promise settlement",
+    "Fast Promise settlement then later marker works without loading-prop edge",
+    "Wrong/prior-request markers ignored",
+    "Synchronous multi-click onlyone callback; exhaustedactivation ignored",
+    "Failed request releasesbusy withoutsuccess/focussteal",
+    "Unmount old Promise/marker cannot affect new request; requestIds distinct",
+    "Integrated fast accepted append retains same native control focus and exposes counts only"
+  ],
+  "observations": [
+    {
+      "case": "initial-old-marker",
+      "suppressed": true
+    },
+    {
+      "case": "settlement-marker",
+      "waitedForBoth": true
+    },
+    {
+      "case": "fast-batch",
+      "noLoadingTransitionRequired": true
+    },
+    {
+      "case": "wrong-and-prior-marker",
+      "suppressed": true
+    },
+    {
+      "case": "synchronous-guard",
+      "oneRequest": true
+    },
+    {
+      "case": "failure",
+      "retryEnabled": true,
+      "noFocusSteal": true,
+      "noSuccess": true
+    },
+    {
+      "case": "unmount-old-settlement",
+      "suppressed": true,
+      "uniqueId": true
+    },
+    {
+      "case": "integrated-fast",
+      "correctCountsAndFocus": true
+    },
+    {
+      "case": "duplicate-new-page",
+      "articles": 3,
+      "announcement": "Added: 2. Loaded: 3. End of employee list"
+    },
+    {
+      "case": "duplicate-existing-summary",
+      "articles": 1,
+      "startedCount": "2",
+      "announcement": "Added: 0. Loaded: 1. End of employee list"
+    }
+  ],
+  "sourceSnapshots": [
+    {
+      "path": "/tmp/hrm-c8-independent-pagination/workforce-manager-today-before.tsx",
+      "bytes": 10497,
+      "sha256": "3c29f45d80123215e81870a32e804c0f3d31d1f513ca3f64865b857fef3d1987"
+    },
+    {
+      "path": "/tmp/hrm-c8-independent-pagination/workforce-workbench-before.tsx",
+      "bytes": 86184,
+      "sha256": "9138c50c4fd2d6c41ebc66ac341ba8b2873d4fab5ff5355d98bf226660fe9917"
+    }
+  ],
+  "supports": [
+    {
+      "path": "/tmp/hrm-c8-independent-pagination/pagination.test.ts",
+      "bytes": 10751,
+      "sha256": "a559d985d99f1e082b2c76ad84b9be585922b9335155f463d8de30bb6a603777"
+    },
+    {
+      "path": "/tmp/hrm-c8-independent-pagination/vitest.config.mjs",
+      "bytes": 299,
+      "sha256": "ca3aea3f01d75f3e73645de6221c030152f3d2fbeb5d5c2c7be22d695665410f"
+    },
+    {
+      "path": "/tmp/hrm-c8-independent-pagination/result-initial.json",
+      "bytes": 4360,
+      "sha256": "8c7d024d46f5d90c35c6bb547b9d6af1542bc0119108e82fafb72733e116659d"
+    },
+    {
+      "path": "/tmp/hrm-c8-independent-pagination/observations-initial-preserved.json",
+      "bytes": 904,
+      "sha256": "502a761e96475e5cab96021e3e928de0d71ff2458b272dacb75314792f654995"
+    }
+  ],
+  "scope": "No source/ref/probe/browser/process changes; only reviewer-owned tmp. Old178archive untouched. No wholeC8 green while these findings/finalAT/CI remain."
+}

@@ -1,0 +1,336 @@
+{
+  "status": "FINITE_WHOLE_WF_C8_002_REMAINING_ACCEPTANCE_AUDIT_NO_CLOSURE",
+  "at": "2026-10-06T20:36:09.261842+00:00",
+  "sourceHead": "00ec36a55df55672a912ad72765a1b07db041878",
+  "tree": "09da852e7a5209cc360a0538e8d9cd123c78bccd",
+  "canonical": {
+    "row": "| WF-C8-002 | P1 | PARTIAL | Web | Rebuild manager Today around scheduled roster, no-show/previous-open and exceptions rather than only existing workdays | [`bounded manager Today evidence`](./workforce-c8-manager-today-evidence-2026-09-29.md): scheduled roster, immutable/live plan boundary, distinct calendar, previous-open fact and independently authorized persisted exception projection are implemented with stable pagination and safe response minimization; real browser/AT proof that the absent employee is visible and explained remains open |",
+    "applicableDoDVerbatim": "A task or phase is `DONE` only when all applicable items are true:\n\n1. Owner/legal decision is recorded where required.\n2. Schema/API/UX contract and threat/privacy implications are reviewed.\n3. Tenant/RLS, role and negative paths are tested.\n4. Additive migration has validate/generate/migration evidence and rollback.\n5. New copy is complete in AZ/RU/EN.\n6. Targeted tests and static checks pass in the exact tree.\n7. Full build/browser/Android/load gates run only in approved CI/heavy workers;\n   unrun gates are recorded as `NOT RUN` with reason.\n8. Visible behavior has browser or physical-device evidence; source inspection\n   alone does not close it.\n9. Metrics, support and rollback exist before a real cohort.\n10. Checkpoint commit contains only task-owned paths and an evidence entry.",
+    "publishedPlan": "docs/workforce-c8-whole-item-acceptance-plan-2026-10-06.md",
+    "statusNow": "PARTIAL",
+    "ledgerBeforeC8": {
+      "done": 83,
+      "total": 161,
+      "open": 78,
+      "weightedRoundedPercent": 60
+    },
+    "humanOnlyATGate": false,
+    "actualATRequired": true,
+    "noAutomaticLedgerChange": true
+  },
+  "supersedesOnlyPriorMatrixEvidenceStatuses": "Original negative matrix retained; lifetime/count/pagination defects are repaired and source+boundedAT accepted. Requirements remain finite; no new HR policy or human-only gate.",
+  "alreadyAccepted": [
+    "Exact00ec full8,830blob/mode/tree identity; main919+accepted589 preservation with pending latermain603.",
+    "Scope lifetime repair and14independent adversarial React tests;100owner targetedtests reported/bound.",
+    "Six actual Orca runs54checks/1,816original speech calls returning, EN/RU/AZ native100/200%; actual absent identity/plan/nonpresence/NO_SHOW/readpagination result and retainedvisiblefocus.",
+    "Negative count tests, outsideviewport failure and copy-race disqualified pass preserved; nullaudio/humanpronunciation limits explicit."
+  ],
+  "remaining": [
+    {
+      "id": "C8-R1",
+      "mapsTo": [
+        "C8-10"
+      ],
+      "required": "Integrate fresh authorized main603 or later exactly, preserving162accepted589delta and C7 evidence/ledger; freeze finalhead/fulltree/synthetic parents.",
+      "passEvidence": "Independent whole-tree/delta/sourcebindings; exactforeignMTM tests/i18n where applicable. Prior00ecAT is historicalsource-bound until unchangeddependency transfer or fresh final runtime proof is explicitly documented.",
+      "notRequired": "No dependencybranch merge, deployment or production activation."
+    },
+    {
+      "id": "C8-R2",
+      "mapsTo": [
+        "C8-02",
+        "C8-03",
+        "C8-04"
+      ],
+      "required": "Fresh exacthead authenticated managerToday browser+disposablePG/RLS/fact-immutability lane.",
+      "passEvidence": "Existing nine unique cases, current immutable STARTED/PAUSED/COMPLETED snapshots and missinghistory unavailable; separate unresolvedpersistedNO_SHOW/previousopen/calendar; manager vs attendance-only exceptionsnull; denied403; foreign/inactive/outscope excluded; private,no-store; FORCE RLS role noSUPERUSER/noBYPASS with populated-vs-empty table qualifications; named snapshot guards roll back; capturedfacthashes unchanged and cleanup.",
+      "notRequired": "No historicalfullmigration replay or genuinephysicalSTART; dbpush fixture is current schema+explicitguards only."
+    },
+    {
+      "id": "C8-R3",
+      "mapsTo": [
+        "C8-05",
+        "C8-08",
+        "C8-09"
+      ],
+      "required": "Real authenticated same-org principal transition and denied-role/session path on the actual page, including originalpending request; observe AT-visible absence of stale names and accessible result/error.",
+      "passEvidence": "Use authorized synthetic Auth.js credentials/session/BroadcastChannel; old rows disappear while newresponse pending; no staleappend or stalebusy clear; actual denied view has no roster/privatecanary in DOM or actualOrca presentations; retry accessible; preserve existingtimesheet/requestcompat. Existing14Reacttests remain strong deterministic race proof but are not realauth transition evidence.",
+      "scope": "Finite representative actual transition plus deterministic existingrace matrix; no exhaustive users/roles/ATbrowser combinations."
+    },
+    {
+      "id": "C8-R4",
+      "mapsTo": [
+        "C8-07",
+        "C8-08"
+      ],
+      "required": "Complete localized safe denial/error/retry and targeted readablecontrast/responsive proof.",
+      "sourceGap": "Current load throws result.error and shows Error.message beneath localized heading. Existing RUdenial scenario tests heading only; it does not prove localized detail. No evidence that arbitrary serverpayload is safe solely from this UI code.",
+      "passEvidence": "Reproduce real localizeddenial and controlledsafe network/unavailable fault, then bounded code-based usermessage mapping if required; all EN/RU/AZ labels and announcements. Measure sampled relevantTodaystatebadges/explanations/loadmore/retry foreground/background includinglight/dark; assert actualstate if claiminghover/focus. Retain focus+viewport proof at native200 and320CSSnarrow.",
+      "notRequired": "No blanketwhole-siteWCAG, human-only listening or unrelatedpagefeature repairs. Auxiliarypreferences500/devbadge must remain qualified unless relevant visibleobstruction reproduced."
+    },
+    {
+      "id": "C8-R5",
+      "mapsTo": [
+        "C8-10"
+      ],
+      "required": "Run full compiler attempt with terminalexit and applicable unchangedbaselinegates, static/suitebaseline/security gates, Linux productionbuild and applicableworkflow regressions on exactcandidate.",
+      "passEvidence": "Fresh App15368check/run/job/attempt metadata and sanitizedoutputs boundtohead/synthetic; no OOMaccepted as pass; no currentbaseline edits or hidden skips. Parent/failinginitial receipts retained.",
+      "qualification": "Full compiler may be globally nonclean while historicalbaseline gates pass; source-owned diagnostics and baselineidentity must be stated, not globalclean inferred. Build output verification proves productionbundle construction, not productionruntime browser/AT."
+    },
+    {
+      "id": "C8-R6",
+      "mapsTo": [
+        "C8-11"
+      ],
+      "required": "Final independent source/evidence review and durable boundedoriginals; task-owned C8 checkpoint/rollback/support scope and canonicalledger update only after allapplicablecriteria.",
+      "passEvidence": "EN/RU/AZ parity, privacy/rolecontract reviewed, source-specifictests andreadback; rollback preservesfacts/assignments andrequiresdeploymentapproval; metric/support plan beforeanyrealcohort. No schema changes =>migrationDoD N/A withreason.",
+      "ledger": "OnlyWF-C8-002 maychange onceaccepted; current83/161,78open,60% remains until then. Compute revisedweightedledger from canonical rules, do not guess roundedpercent."
+    }
+  ],
+  "workflowRouting": {
+    "prChecks": {
+      "file": ".github/workflows/pr-checks.yml",
+      "pullRequestBase": [
+        "main"
+      ],
+      "pushBranches": [
+        "main"
+      ],
+      "workflowDispatch": false,
+      "stackedPR605ReadyOrLabelSufficient": false,
+      "scope": "pr-scope,static-checks,typecheck,production-build absent from standard routing for605base589branch",
+      "staticAndTypeGate": "code scope true; readyPR; type compile advisory plus two blockinggate steps; suite vs strictbaseline",
+      "productionBuild": "Requires production-build label AND workflowtrigger; label alone onstackedPR not enough. Existing isolatedbuild-only auth and Carto secret remain workflow-owned; do not fetch/change credentials."
+    },
+    "managerToday": {
+      "file": ".github/workflows/workforce-manager-today-browser-evidence.yml",
+      "baseFilter": null,
+      "workflowDispatch": true,
+      "draftPR": "job skipped",
+      "readyPR": "watched8paths trigger existinglane",
+      "runtime": "next dev,NODE_ENVdevelopment",
+      "schema": "prisma db push+two explicitSQLfixtures,notmigrationchain",
+      "evidence": "9browsercases,3nativezoom,PG/RLS/facthashes/sourcebindings; noOrca,contrast measurement orreal samepage principaltransition inexistingharness",
+      "artifact": "containsPNGandJSON; only authorizedsanitizedJSON mayberead here; rawapp log notuploaded"
+    },
+    "gitleaks": {
+      "baseFilter": [
+        "main"
+      ],
+      "workflowDispatch": true,
+      "manualScope": "--all reachable history per existingworkflow; not implicitPRbase..headscan"
+    },
+    "runnerPolicy": {
+      "baseFilter": null,
+      "draftRuns": true
+    },
+    "resolution": "Owner-proposed authorized validation-only PR targeting main at exactly the same immutable integrated SHA as605 is source-compatible with existing workflows.605 remains dependency-based draft. Mark only validationPR ready and add production-build label; retain canceled label-transition history. No workflow edit, baseline relaxation, merge, deploy or activation. ValidationPR is test evidence, not alternate delivery/merge authority.",
+    "acceptedProposedValidationRoute": {
+      "status": "SOURCE_ROUTE_ACCEPTED_NOT_YET_EXECUTION_PROOF",
+      "sameHeadRequired": true,
+      "base": "main",
+      "readyForReview": true,
+      "productionBuildLabel": true,
+      "keep605DependencyBaseUnchanged": true,
+      "noMergeEitherPR": true,
+      "freshSyntheticParentsAndTreeGuard": true,
+      "allApplicableExactHeadJobsMustActuallyRun": true,
+      "noLocal14GiBCompilerRequired": "Use existing hosted bounded14GiBheap/18GiBbudget gate; local16GiB cgroup shared-pressure limitation ownerreported, not independently remeasured."
+    }
+  },
+  "notInventedAsWholeItemBlockers": [
+    "Nohuman-onlygate: actualOrca eventprocessing/presentation is accepted withnullaudio limitation.",
+    "No new no-show/schedule/disciplinary/appeal policy.",
+    "No productiondeploy/tenantactivation,physicalSTART/device/load/pilot orC12historicalmigration/collectorretention proof required solelytofinishthiswebrow.",
+    "Standaloneproductionbuild is explicitlyrequested and required; actualproductionbundlebrowser/AT is an additional runtimeclaim not establishedbybuild. CanonicalDoDdoesnotbyitselfrequireall ATscenarios to rerun onproductionbundle. If candidatecompletiondoc retains production-runtime evidence as required, satisfyit or qualifythatself-imposedwording transparently.",
+    "No claim allremaining78roadmaptasks dependonC8 or are externallyblocked."
+  ],
+  "sourceBindings": [
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+      "bytes": 1163415,
+      "sha256": "7abbe39499a266388a58dcd49ca04e56f09f5ca9573e3f41ba3614729833b89d",
+      "repositoryPath": "docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+      "gitBlob": "01a4a5eab5868ed40a86593e12ed15b42584f764",
+      "boundTo00ec": true
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/docs/workforce-c8-whole-item-acceptance-plan-2026-10-06.md",
+      "bytes": 4119,
+      "sha256": "20e5441a074e9ddb18fcf0bce80953db38012f59156baf5110a35599c3a10dd2",
+      "repositoryPath": "docs/workforce-c8-whole-item-acceptance-plan-2026-10-06.md",
+      "gitBlob": "875704d6c6c6861241b539a189d25892c2680bdb",
+      "boundTo00ec": true
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/docs/workforce-c8-manager-today-evidence-2026-09-29.md",
+      "bytes": 17375,
+      "sha256": "9f4172f4420fa795fbe3ef30abdc8c994ce5f030610fb25adeca404d612efc70",
+      "repositoryPath": "docs/workforce-c8-manager-today-evidence-2026-09-29.md",
+      "gitBlob": "53222a7d28bfd85722bad0333f5a913e6768108e",
+      "boundTo00ec": true
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/docs/workforce-pilot-rollback-retention-runbook-2026-08-28.md",
+      "bytes": 21581,
+      "sha256": "2f72fc8fea1b26acc40a3ce3abdf48c5938a7961ad91cbc8c8afe69d82c6e766",
+      "repositoryPath": "docs/workforce-pilot-rollback-retention-runbook-2026-08-28.md",
+      "gitBlob": "c364997b23aa5c0a30045a169ff325b4c73803c6",
+      "boundTo00ec": true
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/.github/workflows/pr-checks.yml",
+      "bytes": 19641,
+      "sha256": "d034cae6f3d5fa64d15ad52686d4b78b46a487d330151907e069e1239f162969",
+      "repositoryPath": ".github/workflows/pr-checks.yml",
+      "gitBlob": "952038c2356dad827cfbb69eb130f5fa17b7b541",
+      "boundTo00ec": true
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/.github/workflows/gitleaks.yml",
+      "bytes": 2379,
+      "sha256": "c5d38a364e21e5b1e3272d54d9d79faaa8b88b2e8390a24efb29414103039e89",
+      "repositoryPath": ".github/workflows/gitleaks.yml",
+      "gitBlob": "4b696fe261a4629b974482dcc5edae52a44a77c5",
+      "boundTo00ec": true
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/.github/workflows/runner-policy.yml",
+      "bytes": 1151,
+      "sha256": "46792e8379ba8c3640d8549a91aa4fc59c778a1f14652e609b4f6fc243ddbf6a",
+      "repositoryPath": ".github/workflows/runner-policy.yml",
+      "gitBlob": "22e3e8b818e4d7235828d3413ef5dec203e85260",
+      "boundTo00ec": true
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/.github/workflows/workforce-manager-today-browser-evidence.yml",
+      "bytes": 10288,
+      "sha256": "741f5ee020129c6ef98c275b6ad62e2ec61986e04da047cf884533331bc534a1",
+      "repositoryPath": ".github/workflows/workforce-manager-today-browser-evidence.yml",
+      "gitBlob": "415fff36b65f51129856417171293368c321d95d",
+      "boundTo00ec": true
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/scripts/workforce-manager-today-browser-evidence.mjs",
+      "bytes": 63478,
+      "sha256": "6add74cec8cd8e60fb656b52a26248958beb0d5ac4cefa6171615f495b27a0ca",
+      "repositoryPath": "scripts/workforce-manager-today-browser-evidence.mjs",
+      "gitBlob": "21b79c8b53c688e60ae812a33bdc10a6a52d7d81",
+      "boundTo00ec": true
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/scripts/ci/fixtures/workforce-manager-today-browser.sql",
+      "bytes": 33617,
+      "sha256": "448d08b65048f3692145d1d2d73d1f4b2f5973363172dddb959b4c9daf20a4fb",
+      "repositoryPath": "scripts/ci/fixtures/workforce-manager-today-browser.sql",
+      "gitBlob": "d79b77a3196f259f24b460829e86bc2c190f4a87",
+      "boundTo00ec": true
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/scripts/ci/fixtures/workforce-manager-today-snapshot-browser.sql",
+      "bytes": 15243,
+      "sha256": "e0433c3a48370f2b789c03c7749aa1a66611f70544dd76cf8c87a904b397a2eb",
+      "repositoryPath": "scripts/ci/fixtures/workforce-manager-today-snapshot-browser.sql",
+      "gitBlob": "63df11ab6ce3cb87b47d15fc5f7d3445e49db6ef",
+      "boundTo00ec": true
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/src/components/workforce/workforce-manager-today.tsx",
+      "bytes": 10848,
+      "sha256": "fb6ae346b33ed05bb027be278178a0be8a17e65a27617246d2c0ca0efc2ee91f",
+      "repositoryPath": "src/components/workforce/workforce-manager-today.tsx",
+      "gitBlob": "aa90613f61c43093e049d7762c79b58e5aa5cee9",
+      "boundTo00ec": true
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/src/components/workforce/workforce-workbench.tsx",
+      "bytes": 86361,
+      "sha256": "660a5525935d5de13ec06a6f50ca01ac517889c22d3ac291ded59f79e1038d82",
+      "repositoryPath": "src/components/workforce/workforce-workbench.tsx",
+      "gitBlob": "f52bc4f573c4efdf25a8c766b65925a49fbe3767",
+      "boundTo00ec": true
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/src/app/api/v1/workforce/today/route.ts",
+      "bytes": 24603,
+      "sha256": "13f6524a645b52444f33dd172eebdd6154b497b15c5b69aa89089f4e2dbab0a6",
+      "repositoryPath": "src/app/api/v1/workforce/today/route.ts",
+      "gitBlob": "e1573c33693279631597ce5cebfde9ab2aad42b7",
+      "boundTo00ec": true
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/src/lib/workforce/manager-today.ts",
+      "bytes": 21291,
+      "sha256": "21f501588f7dae24648d3789a07cb660506be69195f3d9653fef4edd1f1973cd",
+      "repositoryPath": "src/lib/workforce/manager-today.ts",
+      "gitBlob": "362f30767e21ffb989511b2f763b2956dea34290",
+      "boundTo00ec": true
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/src/lib/workforce/today-read-access.ts",
+      "bytes": 6868,
+      "sha256": "fc3d9a7dc72989844cd8d236f084610af5b4f0495f9f5612286dd0f55fac9620",
+      "repositoryPath": "src/lib/workforce/today-read-access.ts",
+      "gitBlob": "d39b846583b99bf53dd7a258ecf0bcbd1e8db201",
+      "boundTo00ec": true
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/src/__tests__/workforce-today-session-isolation-ui.test.ts",
+      "bytes": 19570,
+      "sha256": "aaa47ad38109867e127907855c2d0752a7649471e9a4c9378df49573798935bc",
+      "repositoryPath": "src/__tests__/workforce-today-session-isolation-ui.test.ts",
+      "gitBlob": "42f250c73c84f7f3a78916cdc19f156972454276",
+      "boundTo00ec": true
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/src/__tests__/workforce-manager-today-ui.test.ts",
+      "bytes": 5502,
+      "sha256": "befa2d17ea5d8fc78bc2a983765c54d9075cf0b9b50c93e7bb10b43840d7c6aa",
+      "repositoryPath": "src/__tests__/workforce-manager-today-ui.test.ts",
+      "gitBlob": "92ffddbe29708d3d0918d1c69ad00897a4eee94e",
+      "boundTo00ec": true
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/src/__tests__/workforce-manager-today.test.ts",
+      "bytes": 8620,
+      "sha256": "2ed98ff871fe397a45b3d8ff49da8a94acc7b74bf7f544a3cd8f58e477a2c742",
+      "repositoryPath": "src/__tests__/workforce-manager-today.test.ts",
+      "gitBlob": "e1d3ae65192fcf5eec6f9e0d632498f9e35f174e",
+      "boundTo00ec": true
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/src/__tests__/lib-workforce-today-read-access.test.ts",
+      "bytes": 5768,
+      "sha256": "09c91ee64dd76e989e86b168fae92b38b4ec495a730dbeaa694b1c922a6db574",
+      "repositoryPath": "src/__tests__/lib-workforce-today-read-access.test.ts",
+      "gitBlob": "ba9a64fb3799b1710d38724cb78650d618cbd53b",
+      "boundTo00ec": true
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/src/__tests__/workforce-manager-today-localization.test.ts",
+      "bytes": 4048,
+      "sha256": "6b6fc025a8dd1de24c2b6472060f00411834d39ca9be17eaae22fb9c8c68c731",
+      "repositoryPath": "src/__tests__/workforce-manager-today-localization.test.ts",
+      "gitBlob": "6b57d59f97e85ca17c9138f4e2d78295c3efd041",
+      "boundTo00ec": true
+    }
+  ],
+  "supports": [
+    {
+      "path": "/tmp/hrm-c8-whole-item-matrix-independent-20261006.json",
+      "bytes": 20933,
+      "sha256": "77a2270fc2343ff9614e19c70dff6da869f09f96e120359b948a8d5830557557"
+    },
+    {
+      "path": "/tmp/hrm-c8-independent-immutable-00ec-20261006.json",
+      "bytes": 15782,
+      "sha256": "6dff97033922805938ed5f930e31291ecc3b457c145d652dcdbd03df1f8f0c54"
+    },
+    {
+      "path": "/tmp/hrm-c8-fixed-at-independent-review-20261006.json",
+      "bytes": 14140,
+      "sha256": "d1a31d26dc83f25f1a822b53641abdf5b24d52e9bf664ca033307a8670fc540b"
+    }
+  ],
+  "reviewerActions": "Read-onlysource/sanitizedJSON; own/tmpreceipt only. No tests,browser/process/remotechanges,rawlogs/screenshots orsourceedits."
+}

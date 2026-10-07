@@ -1,3 +1,4 @@
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { Prisma, type PrismaClient } from "@prisma/client"
 import { NextRequest } from "next/server"
 import { z } from "zod"
@@ -220,8 +221,8 @@ export async function decideWorkforceRequest(context: WorkforceDecisionContext):
         userId,
         request,
       })) return { kind: "forbidden" }
-    } catch (error) {
-      console.error("[workforce/request decision] granular authorization lookup failed", error)
+    } catch {
+      logWorkforceSensitiveOperationFailure({ operation: "authorize-request-decision" })
       return { kind: "forbidden" }
     }
   }

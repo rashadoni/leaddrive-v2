@@ -1,0 +1,114 @@
+{
+  "status": "BOUNDED_PROPOSED_FIXES_ACCEPTABLE_IMPLEMENTATION_AND_NEW_MEASUREMENTS_PENDING",
+  "at": "2026-10-06T20:52:57.637524+00:00",
+  "reviewer": "read-only independent reviewer",
+  "negativeEvidence": {
+    "sessionRun": "run-62ehoths",
+    "assertionsPassed": 11,
+    "assertionsFailed": 1,
+    "allCheckedRatiosIndependentlyRecomputed": true,
+    "contrastFailures": [
+      {
+        "label": "denial-dark",
+        "text": "Your account does not have access to this team view.",
+        "ratioRecomputed": 4.390019314551676,
+        "foreground": [
+          125,
+          138,
+          155
+        ],
+        "background": [
+          31,
+          37,
+          46
+        ]
+      },
+      {
+        "label": "manager-light",
+        "text": "Open exception review",
+        "ratioRecomputed": 3.2914654050228607,
+        "foreground": [
+          233,
+          86,
+          12
+        ],
+        "background": [
+          243,
+          244,
+          247
+        ]
+      }
+    ],
+    "hostedManager": "d97 original failure preserved, exact final focus below integer viewport bound by0.5CSSpixel",
+    "focus": {
+      "target": {
+        "top": 752.5,
+        "bottom": 800.5,
+        "left": 103.5390625,
+        "right": 280.453125,
+        "width": 176.9140625,
+        "height": 48
+      },
+      "viewport": {
+        "width": 320,
+        "height": 800,
+        "devicePixelRatio": 2,
+        "visualWidth": 320,
+        "visualHeight": 800.5,
+        "visualScale": 1,
+        "scrollX": 0,
+        "scrollY": 0
+      },
+      "focused": true,
+      "focusVisible": true,
+      "clauses": {
+        "top": true,
+        "bottom": false,
+        "left": true,
+        "right": true
+      }
+    }
+  },
+  "proposalReview": [
+    {
+      "fix": "Today-only error-detail text zinc700/darkzinc300",
+      "verdict": "appropriate localfix; keep conditional Today branch, other Workbench views retain their class",
+      "pending": "Measure actual resolved colors/background/effects in real light/dark browser."
+    },
+    {
+      "fix": "Manager exceptionlink orange700/darkorange300",
+      "verdict": "local Button asChild class override; existing cn/tailwind-merge permits override without changing shared component",
+      "pending": "Measure actual rendered link in both themes; no ratio inferred from classnames."
+    },
+    {
+      "fix": "Retained pagination control scroll-my-2",
+      "verdict": "appropriate scroll-margin for nearest-scroll withoutchangingfocus/activation/busy semantics",
+      "pending": "Confirmactualintegerlayoutviewport,mainclip,focusringclearance at fractionalnative200; margin is not measuredproof. Keep strict existingbottom predicate."
+    },
+    {
+      "fix": "Three localized errors neutral work-time wording",
+      "verdict": "resolves prior SELF/team wording P3 without newauthorizationpolicy",
+      "pending": "Verifythreecatalogs andactualATexpectedmessage binding."
+    }
+  ],
+  "noPredicateRelaxation": true,
+  "historyPreservation": "Originalcontrast11/12 and d97hostedfocusFAIL remain negative originals; subsequentPASS will not erase them.",
+  "limits": [
+    "No finalsourcefreeze/newheadreview ornewbrowser/ATtest run byreviewer.",
+    "No screenshot/rawlog content read; sanitizedJSON/source only.",
+    "No source/remote/process/credential changes; own/tmpreceipt only.",
+    "No wholeC8/CI/globalWCAG/focusring visibility acceptance from proposal."
+  ],
+  "supports": [
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-62ehoths/at-receipt.json",
+      "bytes": 94423,
+      "sha256": "bcf58016086726395c0b5b44b8088f4276a64ef8ff8e6b1c4943526b04ff3be7"
+    },
+    {
+      "path": "/tmp/hrm-c8-acceptance-20261006/hosted-d97-manager/manager-today-receipt.json",
+      "bytes": 114110,
+      "sha256": "4d922e92b7d88b9a2724c5e611acea08b2a3f830318903928acae39941781fac"
+    }
+  ]
+}

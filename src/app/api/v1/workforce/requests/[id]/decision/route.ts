@@ -4,6 +4,10 @@ import { isTenantCapabilityEnabled } from "@/lib/tenant-capabilities"
 import { withWorkforceRlsAuth } from "@/lib/with-workforce-rls-auth"
 import { resolveWorkforceActor } from "@/lib/workforce/actor"
 import {
+  logWorkforceSensitiveOperationFailure,
+  logWorkforceSensitiveOperationWarning,
+} from "@/lib/workforce/sensitive-operation-log"
+import {
   decideWorkforceRequest,
   WorkforceRequestDecisionSchema,
 } from "@/lib/workforce/request-decision"
@@ -26,8 +30,8 @@ async function routeConflictPreviewEnabled(organizationId: string): Promise<bool
       select: { plan: true, addons: true, features: true, modules: true },
     })
     return Boolean(organization && isTenantCapabilityEnabled("route-field", organization))
-  } catch (error) {
-    console.warn("[workforce/request decision] Route & Field entitlement lookup failed", error)
+  } catch {
+    logWorkforceSensitiveOperationWarning({ operation: "request-route-entitlement" })
     return false
   }
 }
@@ -82,8 +86,8 @@ export const POST = withWorkforceRlsAuth<RouteContext>("write", async (req: Next
       conflicts: result.conflicts,
       ...(result.idempotent ? { idempotent: true } : {}),
     })
-  } catch (error) {
-    console.error("[workforce/request decision POST]", error)
+  } catch {
+    logWorkforceSensitiveOperationFailure({ operation: "decide-request" })
     return NextResponse.json({ error: "Failed to save Workforce decision" }, { status: 500 })
   }
 })

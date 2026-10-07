@@ -3,7 +3,6 @@ import {
   appendAuthorizedWorkforceExceptionDecision,
   appendAuthorizedPolicyWorkforceExceptionDecision,
   persistAuthorizedWorkforceExceptionCase,
-  WorkforceExceptionCaseWriterError,
 } from "@/lib/workforce/exception-case-writer"
 import {
   createWorkforceExceptionCaseDraft,
@@ -79,7 +78,7 @@ describe("Workforce immutable exception-case writer", () => {
       db,
       draft: caseDraft,
       authorize: async () => false,
-    })).rejects.toMatchObject<Partial<WorkforceExceptionCaseWriterError>>({
+    })).rejects.toMatchObject({
       code: "WORKFORCE_EXCEPTION_CASE_NOT_AUTHORIZED",
     })
     expect(db.$executeRaw).not.toHaveBeenCalled()
@@ -94,7 +93,7 @@ describe("Workforce immutable exception-case writer", () => {
       kind: "NO_SHOW",
     })
     await expect(persistAuthorizedWorkforceExceptionCase({ db, draft: caseDraft, authorize: allow }))
-      .rejects.toMatchObject<Partial<WorkforceExceptionCaseWriterError>>({
+      .rejects.toMatchObject({
       code: "WORKFORCE_EXCEPTION_CASE_WRITE_CONFLICT",
     })
   })
@@ -118,7 +117,7 @@ describe("Workforce immutable exception-case writer", () => {
   it("requires a tenant-scoped case and appends only an exact replayable decision envelope", async () => {
     db.workforceExceptionCaseLookup.findFirst.mockResolvedValueOnce(null)
     await expect(appendAuthorizedWorkforceExceptionDecision({ db, draft: decisionDraft, authorize: allow }))
-      .rejects.toMatchObject<Partial<WorkforceExceptionCaseWriterError>>({
+      .rejects.toMatchObject({
       code: "WORKFORCE_EXCEPTION_DECISION_CASE_NOT_FOUND",
     })
 
@@ -155,7 +154,7 @@ describe("Workforce immutable exception-case writer", () => {
       decisionCode: "REJECTED",
     })
     await expect(appendAuthorizedWorkforceExceptionDecision({ db, draft: decisionDraft, authorize: allow }))
-      .rejects.toMatchObject<Partial<WorkforceExceptionCaseWriterError>>({
+      .rejects.toMatchObject({
       code: "WORKFORCE_EXCEPTION_DECISION_WRITE_CONFLICT",
     })
   })
@@ -166,7 +165,7 @@ describe("Workforce immutable exception-case writer", () => {
     db.workforceExceptionDecision.create.mockRejectedValueOnce({ code: "P2002" })
 
     await expect(appendAuthorizedWorkforceExceptionDecision({ db, draft: decisionDraft, authorize: allow }))
-      .rejects.toMatchObject<Partial<WorkforceExceptionCaseWriterError>>({
+      .rejects.toMatchObject({
         code: "WORKFORCE_EXCEPTION_DECISION_WRITE_CONFLICT",
       })
 
@@ -232,7 +231,7 @@ describe("Workforce immutable exception-case writer", () => {
       draft: { ...decisionDraft, operationId: "decision-over-capacity" },
       authorize: allow,
       validateContext,
-    })).rejects.toMatchObject<Partial<WorkforceExceptionCaseWriterError>>({
+    })).rejects.toMatchObject({
       code: "WORKFORCE_EXCEPTION_DECISION_HISTORY_LIMIT_EXCEEDED",
     })
     expect(db.workforceExceptionDecision.findFirst).toHaveBeenCalledTimes(1)
@@ -267,10 +266,18 @@ describe("Workforce immutable exception-case writer", () => {
       draft: { ...decisionDraft, operationId: "decision-gap-1" },
       authorize: allow,
       validateContext,
-    })).rejects.toMatchObject<Partial<WorkforceExceptionCaseWriterError>>({
+    })).rejects.toMatchObject({
       code: "WORKFORCE_EXCEPTION_DECISION_HISTORY_INVALID",
     })
     expect(validateContext).not.toHaveBeenCalled()
     expect(db.workforceExceptionDecision.create).not.toHaveBeenCalled()
+  })
+})
+
+describe("reserved HR outcome vocabulary", () => {
+  it.each(["CLASSIFY_FALSE_POSITIVE","CLASSIFY_CONFIRMED_EXCEPTION","APPEAL_FULLY_UPHELD","APPEAL_PARTIALLY_UPHELD","APPEAL_REJECTED"])("rejects %s through the inactive generic writer", async decisionCode => {
+    await expect(appendAuthorizedWorkforceExceptionDecision({ db, draft: { ...decisionDraft, decisionCode }, authorize: allow })).rejects.toMatchObject({ code: "WORKFORCE_EXCEPTION_CASE_NOT_AUTHORIZED" })
+    expect(db.workforceExceptionDecision.create).not.toHaveBeenCalled()
+    expect(db.mtmAuditLog.create).not.toHaveBeenCalled()
   })
 })

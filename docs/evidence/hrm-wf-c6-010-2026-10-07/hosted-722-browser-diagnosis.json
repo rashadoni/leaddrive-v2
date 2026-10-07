@@ -1,0 +1,20 @@
+{
+  "head": "722259bebbdda8ba6bd47bb4326c70b5460a319e",
+  "runId": 37601997137,
+  "report": {
+    "artifactId": 11473247825,
+    "artifactDigest": "sha256:df766f0b00efcdd0df43b6223ad7d341faa8a8d69a20a167bcfa7cba4a756388",
+    "status": "FAIL",
+    "cause": "AZ Node Intl 12,5% differs from actual browser Intl and DOM 12.5%; numeric share 0.125 exact",
+    "next": "Calculate rendered percentage expectations in browser Intl realm, retaining exact API numeric, null and sample assertions"
+  },
+  "classification": {
+    "artifactId": 11473227805,
+    "artifactDigest": "sha256:cd777a39e5bfca9d02575e8c32f133e05f1c424f13671d7ac08f08290fe858cf",
+    "status": "FAIL",
+    "primaryEvidence": "Actual screenshot displays mandatory MFA form error; fixture principals have TOTP disabled",
+    "receiptFailure": "Unhandled pending GET response observer rejects during browser cleanup, preventing main receipt write; original job log preserved",
+    "next": "Configure canonical real synthetic TOTP verification/session flow; preserve mandatory MFA guard; observe waiter rejection immediately without bypassing original awaited error"
+  },
+  "acceptance": "NOT ACCEPTED; first5ead and second722 failures retained; remaining722 jobs still running"
+}

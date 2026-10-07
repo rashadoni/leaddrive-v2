@@ -676,27 +676,34 @@ export async function previewWorkforceSiteAssignments(input: {
     }
     const scopedAssignments = assignmentsByAgentId.get(agentId) ?? []
     const latest = scopedAssignments.at(-1) ?? null
-    if (latest && input.preview.effectiveFrom <= dateKey(latest.effectiveFrom)) {
-      summary.CONFLICT += 1
-      return { agentId, outcome: "CONFLICT", currentAssignmentId: latest.id, closesAssignmentId: null }
-    }
+    const start = input.preview.effectiveFrom
     const requestedEnd = input.preview.effectiveTo
+    const latestStart = latest == null ? null : dateKey(latest.effectiveFrom)
+    const latestEnd = latest?.effectiveTo == null ? null : dateKey(latest.effectiveTo)
     const alreadyCovered = latest != null
       && latest.siteId === input.preview.siteId
-      && dateKey(latest.effectiveFrom) < input.preview.effectiveFrom
-      && (requestedEnd == null
-        ? latest.effectiveTo == null
-        : latest.effectiveTo != null && dateKey(latest.effectiveTo) >= requestedEnd)
+      && latestStart! <= start
+      && (latestEnd == null || (requestedEnd != null && latestEnd >= requestedEnd))
     if (alreadyCovered) {
       summary.NO_CHANGE += 1
       return { agentId, outcome: "NO_CHANGE", currentAssignmentId: latest.id, closesAssignmentId: null }
+    }
+    // Only an open PRIMARY predecessor can be shortened by this writer.
+    // Finite windows and secondary/temporary overlap must be reported before
+    // confirmation, not left for a database trigger to reject as a 500.
+    const closesPrimary = latest != null && input.preview.kind === "PRIMARY"
+      && latestEnd == null && latestStart! < start
+    const overlaps = latest != null && (latestEnd == null || latestEnd >= start)
+    if (latest && (start <= latestStart! || (overlaps && !closesPrimary))) {
+      summary.CONFLICT += 1
+      return { agentId, outcome: "CONFLICT", currentAssignmentId: latest.id, closesAssignmentId: null }
     }
     summary.READY += 1
     return {
       agentId,
       outcome: "READY",
       currentAssignmentId: latest?.id ?? null,
-      closesAssignmentId: input.preview.kind === "PRIMARY" && latest != null && latest.effectiveTo == null ? latest.id : null,
+      closesAssignmentId: closesPrimary ? latest!.id : null,
     }
   })
   return {
@@ -727,7 +734,7 @@ export async function publishWorkforceSiteAssignments(input: {
   audit: WorkforceConfigurationAuditContext
   db?: PrismaClient
 }): Promise<WorkforceSiteAssignmentBulkPublishResult> {
-  if (!isDateKey(input.currentDateKey) || input.publish.effectiveFrom <= input.currentDateKey) {
+  if (!isDateKey(input.currentDateKey)) {
     throw new WorkforceSiteAssignmentManagementError(
       "WORKFORCE_SITE_ASSIGNMENT_EFFECTIVE_DATE_NOT_FUTURE",
       "A Workforce bulk site assignment must begin after the organization current date",

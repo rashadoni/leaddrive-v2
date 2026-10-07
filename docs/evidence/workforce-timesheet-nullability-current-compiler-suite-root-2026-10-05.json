@@ -1,0 +1,160 @@
+{
+  "atUtc": "2026-10-05T05:59:48.446975+00:00",
+  "head": "a490c963c17d3c5cda1814943ef31cc5347fd8d6",
+  "base": "e26cb0a85168b623ea092fb3e81ece922de20718",
+  "testedSynthetic": "867625bbef6cc2401eba4d0f6ebe18d61e328a73",
+  "status": "CURRENT WHOLE COMPILER/SUITE ACCEPTED; WHOLE MANAGER AND INDEPENDENT HOSTED ACCEPTANCE PENDING",
+  "capture": {
+    "path": "/tmp/workforce-pr584-a490c9-current-primary/observation-20261005T055908803027Z/whole-capture.json",
+    "bytes": 29149,
+    "sha256": "96fa70d85e782bd67c2c7d0004e8f4c9f1f856438c75bc49334f2874262a9b35"
+  },
+  "requiredChecks": [
+    {
+      "name": "pr-scope",
+      "checkId": 111630295190,
+      "appId": 15368,
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37268503297/job/111630295190",
+      "runId": 37268503297
+    },
+    {
+      "name": "runner-policy",
+      "checkId": 111630294410,
+      "appId": 15368,
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37268503298/job/111630294410",
+      "runId": 37268503298
+    },
+    {
+      "name": "scan",
+      "checkId": 111630294220,
+      "appId": 15368,
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37268503312/job/111630294220",
+      "runId": 37268503312
+    },
+    {
+      "name": "static-checks",
+      "checkId": 111630370696,
+      "appId": 15368,
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37268503297/job/111630370696",
+      "runId": 37268503297
+    },
+    {
+      "name": "typecheck",
+      "checkId": 111630370570,
+      "appId": 15368,
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37268503297/job/111630370570",
+      "runId": 37268503297
+    }
+  ],
+  "allFiveActions15368Success": true,
+  "paginationCompletenessObserved": true,
+  "DBAdapterOrCronActivation": false,
+  "newRowClosure": false,
+  "normalMergeAllowed": false,
+  "wholeExternalAnalysis": {
+    "path": "/tmp/workforce-pr584-a490c9-current-compiler-suite-root-analysis-primary.json",
+    "bytes": 333107,
+    "sha256": "60f3a134b878d423959632315b497fe0a581119d03102f7f6417b2f11d6ef7d3"
+  },
+  "compiler": {
+    "wholeLog": {
+      "path": "/tmp/workforce-pr584-a490c9-current-primary/whole-logs/111630370570.txt",
+      "bytes": 256121,
+      "sha256": "791dc445b6ea90aac1479e28a44fa1945c69978ad15d3c65c5397f00de78736a"
+    },
+    "totalDiagnostics": 1168,
+    "allFamilyCounts": {
+      "TS7006": 581,
+      "TS7031": 19,
+      "TS2353": 5,
+      "TS2737": 151,
+      "TS2493": 14,
+      "TS18048": 14,
+      "TS2532": 6,
+      "TS2322": 55,
+      "TS2352": 12,
+      "TS2502": 4,
+      "TS2345": 29,
+      "TS7022": 2,
+      "TS2739": 3,
+      "TS2459": 1,
+      "TS2339": 76,
+      "TS2558": 57,
+      "TS2769": 9,
+      "TS7016": 1,
+      "TS2540": 1,
+      "TS2741": 9,
+      "TS18047": 2,
+      "TS2347": 8,
+      "TS18049": 1,
+      "TS18046": 89,
+      "TS2488": 1,
+      "TS2551": 1,
+      "TS2367": 6,
+      "TS2820": 1,
+      "TS2677": 1,
+      "TS2305": 1,
+      "TS2559": 1,
+      "TS2561": 1,
+      "TS2698": 4,
+      "TS4104": 1,
+      "TS2783": 1
+    },
+    "familyCount": 35,
+    "actualExitCode": 2,
+    "exactGatedBaselineEquality": true,
+    "gatedPairCount": 66,
+    "selectedDiagnosticCount": 0,
+    "actualSelectedTS18047Removed": true,
+    "remainingEntireDiagnosticListEqualsPrior": true,
+    "priorParentComparison": {
+      "path": "/tmp/workforce-c12-part43-current-compiler-suite-root-analysis-primary.json",
+      "bytes": 318269,
+      "sha256": "5e94c814a87c3c552ef2a6c03fab5cfec51a2b26f1ddfea6b7193086cc82651d"
+    },
+    "claimCompilerClean": false,
+    "fullCompilerGraphClaim": false,
+    "selectedPathCount": 74,
+    "selectedTypedCount": 56
+  },
+  "suite": {
+    "wholeLog": {
+      "path": "/tmp/workforce-pr584-a490c9-current-primary/whole-logs/111630370696.txt",
+      "bytes": 212969,
+      "sha256": "985f6f26244c653ceb72b88215a506e5498ed0f4ae15446bbc9dd5531f334a54"
+    },
+    "observedSummary": [
+      [
+        "18",
+        "18"
+      ]
+    ],
+    "knownFailingFilesFromFrozenBaseline": [
+      "src/__tests__/api-social-brand-protection.test.ts",
+      "src/__tests__/api-social-convert-to-lead.test.ts",
+      "src/__tests__/api-social-legal-reports.test.ts",
+      "src/__tests__/lead-ai-call-action-ui.test.ts",
+      "src/__tests__/lib-ai-advisor-query.test.ts",
+      "src/__tests__/lib-mtm-coverage-snapshot.test.ts",
+      "src/__tests__/lib-mtm-location-history.test.ts",
+      "src/__tests__/lib-social-discovery-auto-review-report.test.ts",
+      "src/__tests__/lib-social-discovery-review.test.ts",
+      "src/__tests__/lib-social-relevance-evaluator.test.ts",
+      "src/__tests__/lib-social-subject-relevance.test.ts",
+      "src/__tests__/migration-mtm-task-recurrence-schedule.test.ts",
+      "src/__tests__/mtm-operational-week-base-coverage-ui-contract.test.ts",
+      "src/__tests__/mtm-organization-grid-ui-contract.test.ts",
+      "src/__tests__/mtm-pharmacy-promotion-workspace-role-ux-contract.test.ts",
+      "src/__tests__/mtm-route-builder-filters-ui-contract.test.ts",
+      "src/__tests__/mtm-route-customer-prefill-ui-contract.test.ts",
+      "src/__tests__/zeytunpharm-swissmed-evidence-seed.test.ts"
+    ],
+    "actualStrictExactBaselineGuardPassed": true,
+    "claimSuiteClean": false
+  },
+  "currentManagerRoot": {
+    "path": "/tmp/workforce-pr584-a490c9-current-manager-sublane-primary.json",
+    "bytes": 31618,
+    "sha256": "bd4f25201812cd31a073a011f932c8a8736071cf18ca2f218a8ab408e5d247c4"
+  }
+}

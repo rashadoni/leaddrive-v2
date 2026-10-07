@@ -1,0 +1,167 @@
+name: Workforce bulk assignment acceptance
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - '.github/workflows/workforce-bulk-assignment-evidence.yml'
+      - 'scripts/workforce-bulk-*.mjs'
+      - 'scripts/_rls.mjs'
+      - 'scripts/ci/fixtures/workforce-native-zoom-extension/**'
+      - 'src/components/providers.tsx'
+      - 'src/__tests__/workforce-bulk-assignment-*.test.ts'
+      - 'src/components/workforce/workforce-configuration-workbench.tsx'
+      - 'src/app/(dashboard)/workforce/configuration/page.tsx'
+      - 'src/app/api/v1/workforce/configuration/assignments/**'
+      - 'src/app/api/v1/workforce/configuration/site-assignments/**'
+      - 'src/lib/workforce/configuration-management.ts'
+      - 'src/lib/workforce/site-management.ts'
+      - 'src/lib/with-workforce-rls-auth.ts'
+      - 'src/lib/with-rls.ts'
+      - 'src/lib/auth.ts'
+      - 'src/lib/api-auth.ts'
+      - 'src/lib/prisma.ts'
+      - 'src/proxy.ts'
+      - 'messages/*.json'
+      - 'prisma/schema.prisma'
+      - 'prisma/migrations/*workforce*/migration.sql'
+
+concurrency:
+  group: workforce-bulk-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  bulk-acceptance:
+    name: C7 bulk schedules and sites acceptance
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      CI: 'true'
+      NODE_ENV: development
+      NODE_OPTIONS: --max-old-space-size=6144
+      NEXT_TELEMETRY_DISABLED: '1'
+      LEADDRIVE_DISABLE_SERVICE_WORKER: '1'
+      WF_BULK_TEST: '1'
+      WF_BULK_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      WF_BULK_OUTPUT: artifacts/workforce-bulk
+      WF_BULK_FIXTURE_RECEIPT: artifacts/workforce-bulk/fixture.json
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: workforce_bulk_browser
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d workforce_bulk_browser"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - name: Checkout candidate merge
+        uses: actions/checkout@v6
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Prepare isolated targets
+        env:
+          PG_PORT: ${{ job.services.postgres.ports['5432'] }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$WF_BULK_HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]
+          WF_APP_PORT="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1])')"
+          WF_BULK_DATABASE_PASSWORD="$(openssl rand -hex 24)"
+          WF_AUTH_SECRET="$(openssl rand -hex 32)"
+          WF_PII_SECRET="$(openssl rand -hex 32)"
+          echo "::add-mask::$WF_BULK_DATABASE_PASSWORD"
+          echo "::add-mask::$WF_AUTH_SECRET"
+          echo "::add-mask::$WF_PII_SECRET"
+          {
+            echo "ADMIN_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:${PG_PORT}/workforce_bulk_browser"
+            echo "EVENT_PLATFORM_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:${PG_PORT}/workforce_bulk_browser"
+            echo "WF_BULK_ADMIN_TEST_URL=postgresql://postgres:postgres@127.0.0.1:${PG_PORT}/workforce_bulk_browser"
+            echo "DATABASE_URL=postgresql://wf_bulk_browser:${WF_BULK_DATABASE_PASSWORD}@127.0.0.1:${PG_PORT}/workforce_bulk_browser"
+            echo "WF_BULK_APP_TEST_URL=postgresql://wf_bulk_browser:${WF_BULK_DATABASE_PASSWORD}@127.0.0.1:${PG_PORT}/workforce_bulk_browser"
+            echo "WF_BULK_DATABASE_PASSWORD=$WF_BULK_DATABASE_PASSWORD"
+            echo "WF_APP_PORT=$WF_APP_PORT"
+            echo "NEXTAUTH_URL=http://localhost:${WF_APP_PORT}"
+            echo "AUTH_URL=http://localhost:${WF_APP_PORT}"
+            echo "APP_URL=http://localhost:${WF_APP_PORT}"
+            echo "NEXT_PUBLIC_APP_URL=http://localhost:${WF_APP_PORT}"
+            echo "NEXT_PUBLIC_MARKETING_URL=http://localhost:${WF_APP_PORT}"
+            echo "WF_BULK_BASE_URL=http://localhost:${WF_APP_PORT}"
+            echo "NEXTAUTH_SECRET=$WF_AUTH_SECRET"
+            echo "AUTH_SECRET=$WF_AUTH_SECRET"
+            echo "TENANT_PII_MASTER_KEY=$WF_PII_SECRET"
+          } >> "$GITHUB_ENV"
+          mkdir -p "$WF_BULK_OUTPUT"
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Prepare candidate schema and exact scoped migration guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION IF NOT EXISTS vector'
+          DATABASE_URL="$ADMIN_DATABASE_URL" npx prisma db push --skip-generate
+          npx prisma generate
+          node scripts/workforce-bulk-fixture.mjs
+      - name: Verify PostgreSQL and React behavior
+        shell: bash
+        run: |
+          set +e
+          VITEST_MAX_WORKERS=1 npx vitest run src/__tests__/workforce-bulk-assignment-postgres.test.ts src/__tests__/workforce-bulk-assignment-intent-ui.test.ts --reporter=json --outputFile="$RUNNER_TEMP/bulk-tests-private.json" > "$RUNNER_TEMP/bulk-tests-private.txt" 2>&1
+          WF_TEST_EXIT=$?
+          set -e
+          node - <<'JS'
+          const fs=require('node:fs');
+          const r=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/bulk-tests-private.json','utf8'));
+          const crypto=require('node:crypto');
+          const paths=['src/__tests__/workforce-bulk-assignment-postgres.test.ts','src/__tests__/workforce-bulk-assignment-intent-ui.test.ts','scripts/workforce-bulk-fixture.mjs'];
+          const sourceBindings=paths.map(path=>{const b=fs.readFileSync(path);return {path,bytes:b.length,sha256:crypto.createHash('sha256').update(b).digest('hex')}});
+          const summary={head:process.env.WF_BULK_HEAD_SHA,merge:process.env.GITHUB_SHA,success:r.success,passed:r.numPassedTests,failed:r.numFailedTests,pending:r.numPendingTests,todo:r.numTodoTests,sourceBindings,cases:r.testResults.flatMap(f=>f.assertionResults.map(t=>({name:t.fullName,status:t.status})))};
+          fs.writeFileSync(process.env.WF_BULK_OUTPUT+'/tests.json',JSON.stringify(summary,null,2)+'\n');
+          if(!summary.success||summary.passed!==52||summary.failed||summary.pending||summary.todo||summary.cases.some(t=>t.status!=='passed'))process.exit(1);
+          JS
+          exit "$WF_TEST_EXIT"
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run authenticated named-record browser scenarios
+        shell: bash
+        run: |
+          set -euo pipefail
+          node node_modules/next/dist/bin/next dev --hostname 127.0.0.1 --port "$WF_APP_PORT" > "$RUNNER_TEMP/bulk-app-private.txt" 2>&1 &
+          WF_APP_PID=$!
+          cleanup() { kill "$WF_APP_PID" 2>/dev/null || true; wait "$WF_APP_PID" 2>/dev/null || true; }
+          trap cleanup EXIT
+          for attempt in $(seq 1 90); do
+            if curl -fsS --max-time 5 "${WF_BULK_BASE_URL}/api/v1/ping" >/dev/null 2>&1; then break; fi
+            if ! kill -0 "$WF_APP_PID" 2>/dev/null || [ "$attempt" -eq 90 ]; then exit 1; fi
+            sleep 2
+          done
+          node scripts/workforce-bulk-browser-evidence.mjs
+      - name: Record workflow outcome without logs or credentials
+        if: always()
+        env:
+          WF_JOB_STATUS: ${{ job.status }}
+        run: |
+          node - <<'JS'
+          const fs=require('node:fs');fs.mkdirSync(process.env.WF_BULK_OUTPUT,{recursive:true});
+          fs.writeFileSync(process.env.WF_BULK_OUTPUT+'/workflow.json',JSON.stringify({head:process.env.WF_BULK_HEAD_SHA,merge:process.env.GITHUB_SHA,run:process.env.GITHUB_RUN_ID,attempt:process.env.GITHUB_RUN_ATTEMPT,status:process.env.WF_JOB_STATUS,productionMutation:false},null,2)+'\n');
+          JS
+      - name: Preserve minimized acceptance receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: workforce-bulk-${{ github.sha }}-${{ github.run_attempt }}
+          path: artifacts/workforce-bulk/*.json
+          if-no-files-found: error
+          retention-days: 14

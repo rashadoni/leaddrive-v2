@@ -1,0 +1,479 @@
+{
+  "at": "2026-10-06T19:37:19.207018+00:00",
+  "status": "PASS_BOUNDED_C8_PAGINATION_AND_SCOPE_CANDIDATE_NOT_WHOLE_C8",
+  "checksPassed": 54,
+  "scenarios": [
+    {
+      "locale": "en",
+      "zoom": 1,
+      "run": "run-msti0x38",
+      "checks": [
+        {
+          "name": "absent-employee-name-associated-with-localized-not-started",
+          "pass": true
+        },
+        {
+          "name": "absent-employee-plan-and-UTC-window",
+          "pass": true
+        },
+        {
+          "name": "absent-employee-non-presence-boundary",
+          "pass": true
+        },
+        {
+          "name": "recorded-no-show-is-distinct",
+          "pass": true
+        },
+        {
+          "name": "native-load-more-control-spoken",
+          "pass": true
+        },
+        {
+          "name": "appended-absent-employee-26-reached-by-real-Orca",
+          "pass": true
+        },
+        {
+          "name": "focus-stays-on-same-native-control-at-exhaustion",
+          "pass": true
+        },
+        {
+          "name": "actual-Orca-automatic-localized-count-and-end-result",
+          "pass": true
+        },
+        {
+          "name": "retained-focus-visible-and-within-viewport",
+          "pass": true
+        }
+      ],
+      "actualSpeechEvents": 298,
+      "allDispatchesReturned": true,
+      "focus": {
+        "sameFocusedNode": true,
+        "connected": true,
+        "nativeDisabled": false,
+        "ariaDisabled": "true",
+        "focusVisible": true,
+        "visibleRect": {
+          "x": 723.203125,
+          "y": 852,
+          "width": 174.578125,
+          "height": 48
+        },
+        "withinViewport": true
+      },
+      "automaticResultSpeech": [
+        "return",
+        "Loading more employees… button grayed.",
+        "End of employee list button grayed.",
+        "Added: 1. Loaded: 26. End of employee list"
+      ],
+      "nativeZoom": null,
+      "ownChildrenReaped": 7
+    },
+    {
+      "locale": "ru",
+      "zoom": 1,
+      "run": "run-eoikemmr",
+      "checks": [
+        {
+          "name": "absent-employee-name-associated-with-localized-not-started",
+          "pass": true
+        },
+        {
+          "name": "absent-employee-plan-and-UTC-window",
+          "pass": true
+        },
+        {
+          "name": "absent-employee-non-presence-boundary",
+          "pass": true
+        },
+        {
+          "name": "recorded-no-show-is-distinct",
+          "pass": true
+        },
+        {
+          "name": "native-load-more-control-spoken",
+          "pass": true
+        },
+        {
+          "name": "appended-absent-employee-26-reached-by-real-Orca",
+          "pass": true
+        },
+        {
+          "name": "focus-stays-on-same-native-control-at-exhaustion",
+          "pass": true
+        },
+        {
+          "name": "actual-Orca-automatic-localized-count-and-end-result",
+          "pass": true
+        },
+        {
+          "name": "retained-focus-visible-and-within-viewport",
+          "pass": true
+        }
+      ],
+      "actualSpeechEvents": 299,
+      "allDispatchesReturned": true,
+      "focus": {
+        "sameFocusedNode": true,
+        "connected": true,
+        "nativeDisabled": false,
+        "ariaDisabled": "true",
+        "focusVisible": true,
+        "visibleRect": {
+          "x": 697.859375,
+          "y": 852,
+          "width": 225.265625,
+          "height": 48
+        },
+        "withinViewport": true
+      },
+      "automaticResultSpeech": [
+        "return",
+        "Загружаем сотрудников… button grayed.",
+        "Конец списка сотрудников button grayed.",
+        "Добавлено: 1. Всего загружено: 26. Конец списка сотрудников"
+      ],
+      "nativeZoom": null,
+      "ownChildrenReaped": 7
+    },
+    {
+      "locale": "az",
+      "zoom": 1,
+      "run": "run-v0md_r2n",
+      "checks": [
+        {
+          "name": "absent-employee-name-associated-with-localized-not-started",
+          "pass": true
+        },
+        {
+          "name": "absent-employee-plan-and-UTC-window",
+          "pass": true
+        },
+        {
+          "name": "absent-employee-non-presence-boundary",
+          "pass": true
+        },
+        {
+          "name": "recorded-no-show-is-distinct",
+          "pass": true
+        },
+        {
+          "name": "native-load-more-control-spoken",
+          "pass": true
+        },
+        {
+          "name": "appended-absent-employee-26-reached-by-real-Orca",
+          "pass": true
+        },
+        {
+          "name": "focus-stays-on-same-native-control-at-exhaustion",
+          "pass": true
+        },
+        {
+          "name": "actual-Orca-automatic-localized-count-and-end-result",
+          "pass": true
+        },
+        {
+          "name": "retained-focus-visible-and-within-viewport",
+          "pass": true
+        }
+      ],
+      "actualSpeechEvents": 299,
+      "allDispatchesReturned": true,
+      "focus": {
+        "sameFocusedNode": true,
+        "connected": true,
+        "nativeDisabled": false,
+        "ariaDisabled": "true",
+        "focusVisible": true,
+        "visibleRect": {
+          "x": 704.21875,
+          "y": 852,
+          "width": 212.5625,
+          "height": 48
+        },
+        "withinViewport": true
+      },
+      "automaticResultSpeech": [
+        "return",
+        "Əməkdaşlar yüklənir… button grayed.",
+        "Əməkdaş siyahısının sonu button grayed.",
+        "Əlavə edildi: 1. Yüklənib: 26. Əməkdaş siyahısının sonu"
+      ],
+      "nativeZoom": null,
+      "ownChildrenReaped": 7
+    },
+    {
+      "locale": "en",
+      "zoom": 2,
+      "run": "run-yhtzrz7y",
+      "checks": [
+        {
+          "name": "absent-employee-name-associated-with-localized-not-started",
+          "pass": true
+        },
+        {
+          "name": "absent-employee-plan-and-UTC-window",
+          "pass": true
+        },
+        {
+          "name": "absent-employee-non-presence-boundary",
+          "pass": true
+        },
+        {
+          "name": "recorded-no-show-is-distinct",
+          "pass": true
+        },
+        {
+          "name": "native-load-more-control-spoken",
+          "pass": true
+        },
+        {
+          "name": "appended-absent-employee-26-reached-by-real-Orca",
+          "pass": true
+        },
+        {
+          "name": "focus-stays-on-same-native-control-at-exhaustion",
+          "pass": true
+        },
+        {
+          "name": "actual-Orca-automatic-localized-count-and-end-result",
+          "pass": true
+        },
+        {
+          "name": "retained-focus-visible-and-within-viewport",
+          "pass": true
+        }
+      ],
+      "actualSpeechEvents": 304,
+      "allDispatchesReturned": true,
+      "focus": {
+        "sameFocusedNode": true,
+        "connected": true,
+        "nativeDisabled": false,
+        "ariaDisabled": "true",
+        "focusVisible": true,
+        "visibleRect": {
+          "x": 285.9609375,
+          "y": 402,
+          "width": 174.5703125,
+          "height": 48
+        },
+        "withinViewport": true
+      },
+      "automaticResultSpeech": [
+        "return",
+        "Loading more employees… button grayed.",
+        "End of employee list button grayed.",
+        "Added: 1. Loaded: 26. End of employee list"
+      ],
+      "nativeZoom": {
+        "before": {
+          "dpr": 1,
+          "width": 1380,
+          "height": 900,
+          "scale": 1
+        },
+        "after": {
+          "dpr": 2,
+          "width": 690,
+          "height": 450,
+          "scale": 1
+        },
+        "factor": 2,
+        "method": "five physical Ctrl+plus shortcuts after Ctrl+0"
+      },
+      "ownChildrenReaped": 7
+    },
+    {
+      "locale": "ru",
+      "zoom": 2,
+      "run": "run-da8hur6k",
+      "checks": [
+        {
+          "name": "absent-employee-name-associated-with-localized-not-started",
+          "pass": true
+        },
+        {
+          "name": "absent-employee-plan-and-UTC-window",
+          "pass": true
+        },
+        {
+          "name": "absent-employee-non-presence-boundary",
+          "pass": true
+        },
+        {
+          "name": "recorded-no-show-is-distinct",
+          "pass": true
+        },
+        {
+          "name": "native-load-more-control-spoken",
+          "pass": true
+        },
+        {
+          "name": "appended-absent-employee-26-reached-by-real-Orca",
+          "pass": true
+        },
+        {
+          "name": "focus-stays-on-same-native-control-at-exhaustion",
+          "pass": true
+        },
+        {
+          "name": "actual-Orca-automatic-localized-count-and-end-result",
+          "pass": true
+        },
+        {
+          "name": "retained-focus-visible-and-within-viewport",
+          "pass": true
+        }
+      ],
+      "actualSpeechEvents": 309,
+      "allDispatchesReturned": true,
+      "focus": {
+        "sameFocusedNode": true,
+        "connected": true,
+        "nativeDisabled": false,
+        "ariaDisabled": "true",
+        "focusVisible": true,
+        "visibleRect": {
+          "x": 260.6171875,
+          "y": 402,
+          "width": 225.265625,
+          "height": 48
+        },
+        "withinViewport": true
+      },
+      "automaticResultSpeech": [
+        "return",
+        "Загружаем сотрудников… button grayed.",
+        "Конец списка сотрудников button grayed.",
+        "Добавлено: 1. Всего загружено: 26. Конец списка сотрудников"
+      ],
+      "nativeZoom": {
+        "before": {
+          "dpr": 1,
+          "width": 1380,
+          "height": 900,
+          "scale": 1
+        },
+        "after": {
+          "dpr": 2,
+          "width": 690,
+          "height": 450,
+          "scale": 1
+        },
+        "factor": 2,
+        "method": "five physical Ctrl+plus shortcuts after Ctrl+0"
+      },
+      "ownChildrenReaped": 7
+    },
+    {
+      "locale": "az",
+      "zoom": 2,
+      "run": "run-08oxommv",
+      "checks": [
+        {
+          "name": "absent-employee-name-associated-with-localized-not-started",
+          "pass": true
+        },
+        {
+          "name": "absent-employee-plan-and-UTC-window",
+          "pass": true
+        },
+        {
+          "name": "absent-employee-non-presence-boundary",
+          "pass": true
+        },
+        {
+          "name": "recorded-no-show-is-distinct",
+          "pass": true
+        },
+        {
+          "name": "native-load-more-control-spoken",
+          "pass": true
+        },
+        {
+          "name": "appended-absent-employee-26-reached-by-real-Orca",
+          "pass": true
+        },
+        {
+          "name": "focus-stays-on-same-native-control-at-exhaustion",
+          "pass": true
+        },
+        {
+          "name": "actual-Orca-automatic-localized-count-and-end-result",
+          "pass": true
+        },
+        {
+          "name": "retained-focus-visible-and-within-viewport",
+          "pass": true
+        }
+      ],
+      "actualSpeechEvents": 307,
+      "allDispatchesReturned": true,
+      "focus": {
+        "sameFocusedNode": true,
+        "connected": true,
+        "nativeDisabled": false,
+        "ariaDisabled": "true",
+        "focusVisible": true,
+        "visibleRect": {
+          "x": 266.96875,
+          "y": 402,
+          "width": 212.5546875,
+          "height": 48
+        },
+        "withinViewport": true
+      },
+      "automaticResultSpeech": [
+        "return",
+        "Əməkdaşlar yüklənir… button grayed.",
+        "Əməkdaş siyahısının sonu button grayed.",
+        "Əlavə edildi: 1. Yüklənib: 26. Əməkdaş siyahısının sonu"
+      ],
+      "nativeZoom": {
+        "before": {
+          "dpr": 1,
+          "width": 1380,
+          "height": 900,
+          "scale": 1
+        },
+        "after": {
+          "dpr": 2,
+          "width": 690,
+          "height": 450,
+          "scale": 1
+        },
+        "factor": 2,
+        "method": "five physical Ctrl+plus shortcuts after Ctrl+0"
+      },
+      "ownChildrenReaped": 7
+    }
+  ],
+  "totalActualSpeechEvents": 1816,
+  "sourceManifestSha256": "70d8df80b30433225097fd76bef7afdae27b05c673989cac2867beb31ffc795d",
+  "sourceCount": 8817,
+  "workingAndRuntimeSourceMatch": true,
+  "incidentalTsconfigExcluded": true,
+  "auth": "actual CSRF/credentials/session; scoped non-superuser synthetic fixture",
+  "AT": "Chromium151 -> real AT-SPI -> Orca48.1 -> real speech-dispatcher/espeak-ng; observation calls original speak unchanged",
+  "audio": "ALSA null; no human listening, pronunciation or audio recording claim",
+  "isolation": "private D-Bus/Xvfb displayfd/Xauthority/XDG/profile each run, retained owned child handles only",
+  "prior178ArchiveSha256": "c199f0f6328c6e774fef6af4933e6b1044bfbc7111e1e21eafd10eefea2fa6c7",
+  "negativeHistory": [
+    "initial independent8PASS2FAIL; counts corrected then independent14PASS",
+    "first fixed AT retainedfocus outsideviewport; conditional nearest scroll correction",
+    "run-xj34tq0s excluded from final proof because copying had not reported completion before launch",
+    "full local TypeScript diagnostics blocked by default4GiB Node heap OOM"
+  ],
+  "limits": [
+    "Development bundle, not production build",
+    "Synthetic seeded work-time facts, not accepted physical START or presence",
+    "Real denied-session and same-page live-session transition AT not run here",
+    "No whole-page WCAG/contrast/Android/physical/load/pilot acceptance",
+    "No new exact-head hosted build or full CI acceptance at this checkpoint",
+    "No merge/deploy/production activation"
+  ],
+  "ledger": "WF-C8-002 PARTIAL;83/161DONE,78open,weighted60% unchanged"
+}

@@ -218,6 +218,70 @@ describe("Workforce reconciliation", () => {
     expect(JSON.stringify(source)).toBe(original)
   })
 
+
+  it.each(["workdays", "events", "transitions", "evidence", "assessments", "exceptions", "approvals"] as const)("rejects duplicate %s primary keys before resolving references", (kind) => {
+    const source = coherentSnapshot()
+    const rows = source[kind]
+    const duplicate = { ...source, [kind]: [...rows, { ...rows[0] }] }
+    const original = JSON.stringify(duplicate)
+    expect(() => reconcileWorkforceSnapshot(duplicate)).toThrow(`WORKFORCE_RECONCILIATION_DUPLICATE_ID:${kind}`)
+    expect(() => reconcileWorkforceSnapshot({ ...duplicate, [kind]: [...duplicate[kind]].reverse() }))
+      .toThrow(`WORKFORCE_RECONCILIATION_DUPLICATE_ID:${kind}`)
+    expect(JSON.stringify(duplicate)).toBe(original)
+  })
+
+  it("allows equal identifiers across separate row kinds without conflating their lookups", () => {
+    const source = coherentSnapshot()
+    const sharedId = "shared-private"
+    const result = reconcileWorkforceSnapshot({
+      ...source,
+      events: [{ ...source.events[0], id: sharedId }],
+      transitions: [{ ...source.transitions[0], id: sharedId }],
+      evidence: [
+        { ...source.evidence[0], workdayEventId: sharedId },
+        { ...source.evidence[1], siteTransitionId: sharedId },
+      ],
+      exceptions: [{ ...source.exceptions[0], workdayEventId: sharedId }],
+    })
+    expect(result.status).toBe("MATCHED")
+    expect(JSON.stringify(result)).not.toContain(sharedId)
+  })
+
+  it.each(["explicit-workday", "event-versus-evidence", "transition-versus-workday"])("rejects incoherent %s references to separate workdays of the same employee", (kind) => {
+    const source = coherentSnapshot()
+    const secondWorkday = { ...source.workdays[0], id: "second-workday-private" }
+    const secondEvent = { ...source.events[0], id: "second-event-private", workdayId: secondWorkday.id }
+    const secondTransition = { ...source.transitions[0], id: "second-transition-private", workdayId: secondWorkday.id }
+    const eventProof = { ...source.evidence[0], id: "second-proof-private", workdayEventId: secondEvent.id }
+    const transitionProof = { ...source.evidence[1], id: "second-transition-proof-private", siteTransitionId: secondTransition.id }
+    const subject = kind === "explicit-workday"
+      ? { ...source.exceptions[0], workdayId: secondWorkday.id }
+      : kind === "event-versus-evidence"
+        ? { ...source.exceptions[0], workdayId: null, evidenceId: eventProof.id }
+        : { ...source.exceptions[0], workdayEventId: null, evidenceId: transitionProof.id }
+    const snapshot = {
+      ...source,
+      workdays: [...source.workdays, secondWorkday],
+      events: [...source.events, secondEvent],
+      transitions: [...source.transitions, secondTransition],
+      evidence: [...source.evidence, eventProof, transitionProof],
+      exceptions: [subject],
+    }
+    const original = JSON.stringify(snapshot)
+    const result = reconcileWorkforceSnapshot(snapshot)
+    expect(result).toMatchObject({ status: "MISMATCH", mismatchTotal: 1, mismatchCounts: { EXCEPTION_SUBJECT_SCOPE_MISMATCH: 1 }, repair: "NONE" })
+    expect(JSON.stringify(result)).not.toMatch(/private|org-1|agent-1|workday-1/)
+    expect(JSON.stringify(snapshot)).toBe(original)
+  })
+
+  it("accepts matching event and transition evidence references to the same workday", () => {
+    const source = coherentSnapshot()
+    expect(reconcileWorkforceSnapshot({
+      ...source,
+      exceptions: [{ ...source.exceptions[0], evidenceId: "evidence-transition" }],
+    }).status).toBe("MATCHED")
+  })
+
   it("fails closed before processing an unbounded kind", () => {
     const source = coherentSnapshot()
     expect(() => reconcileWorkforceSnapshot({

@@ -1,0 +1,100 @@
+{
+  "status": "SOURCE_AND_TARGETED_TESTS_PASS_HOSTED_PENDING",
+  "parentCandidate": "d97e8ba8c276d62a01c1f0de4a3ce7ee15dbb6cd",
+  "incomingMain": "251823a5b1b78818593e14be1a8ac8be47e321f4",
+  "incomingParent": "da6d8e5c7d6d6a231af508bf0b243fe507094067",
+  "accepted589": "a856a9e533c4f3cec6f2313e69f5be0d5b4d4226",
+  "incomingPaths": [
+    {
+      "path": "messages/az.json",
+      "mode": "100644",
+      "sha": "a05f7a10e3d3e5dd20967307ee5aebd12abdba68",
+      "sha256": "f25699f16cc0843731356db86abecefe5adbc31b0c37fa21ff470fd92368e19f",
+      "bytes": 1492316,
+      "mainBlob": "e706b5c09a444242ff4b9ad96d147d80f71b3660"
+    },
+    {
+      "path": "messages/en.json",
+      "mode": "100644",
+      "sha": "fe509ef51a52c42b4fa085d4c21587ab5c54752f",
+      "sha256": "0bc57f1ad9f3c0aaa4762c8b5b6e874a01f5fd51f031a81dab11f0057c300e9e",
+      "bytes": 1349152,
+      "mainBlob": "b3c868a7b0710765d4dd1f87d3ae7af7ebacec23"
+    },
+    {
+      "path": "messages/ru.json",
+      "mode": "100644",
+      "sha": "de59e10814f025939972544fcd7f8c626d6e5b0a",
+      "sha256": "2a2678bca15da098b9be2fc6235ccb1e361b3370dd3a6c16e60828aec66596e3",
+      "bytes": 1991993,
+      "mainBlob": "65663b86c9091705b1e310625bcf09e9a17586b7"
+    },
+    {
+      "path": "src/__tests__/api-mtm-geocode-reverse.test.ts",
+      "mode": "100644",
+      "sha": "69c93f343406a0c415a8a35e860ad0da1589906d",
+      "sha256": "864292572b61c4ec6b3b3d3ad0456dea954ddd0cf18010fdd485310a3d300f44",
+      "bytes": 4507,
+      "mainBlob": "69c93f343406a0c415a8a35e860ad0da1589906d"
+    },
+    {
+      "path": "src/__tests__/lib-mtm-geocode.test.ts",
+      "mode": "100644",
+      "sha": "56d850cb2e2b5faff770b06d772200369cd18679",
+      "sha256": "78fd450245824ab43848812b2fbfe40bd8eab147ac87c5a4bcf7724b74c6d6fe",
+      "bytes": 18460,
+      "mainBlob": "56d850cb2e2b5faff770b06d772200369cd18679"
+    },
+    {
+      "path": "src/__tests__/mtm-customer-form-address-from-map.test.ts",
+      "mode": "100644",
+      "sha": "27c7fe45f7d11082a1a899094c6c07626ad82502",
+      "sha256": "6191eee38fd935f2a96b0284f8421e47d5fb76854f41ca291a15189e0d1e19f9",
+      "bytes": 6007,
+      "mainBlob": "27c7fe45f7d11082a1a899094c6c07626ad82502"
+    },
+    {
+      "path": "src/__tests__/mtm-location-picker-ui.test.ts",
+      "mode": "100644",
+      "sha": "42c338b36e73b5328039eaa4025a84e626948f83",
+      "sha256": "697ed6abfc97e6039e0a7733d2b7e349a29e8e9edc6bc58426e89ec9e7da829d",
+      "bytes": 19532,
+      "mainBlob": "42c338b36e73b5328039eaa4025a84e626948f83"
+    },
+    {
+      "path": "src/app/api/v1/mtm/geocode/reverse/route.ts",
+      "mode": "100644",
+      "sha": "6295e32ae5e29dbb7f06a795ce23071721680ffc",
+      "sha256": "e9e51ccc2d115b436ac97f140d429dc4f836fabbe73302d4b2b92b7d8b0a7304",
+      "bytes": 1980,
+      "mainBlob": "6295e32ae5e29dbb7f06a795ce23071721680ffc"
+    },
+    {
+      "path": "src/components/mtm/customer-form.tsx",
+      "mode": "100644",
+      "sha": "b365215fdc489b161d12289c8a4911add4626eef",
+      "sha256": "915e8c0425b13df072f9919159c92a3944070f9c0bbbff1399a51d29462f1337",
+      "bytes": 9898,
+      "mainBlob": "b365215fdc489b161d12289c8a4911add4626eef"
+    },
+    {
+      "path": "src/components/mtm/location-picker-map.tsx",
+      "mode": "100644",
+      "sha": "276d48dd59b90d6cba815200b5ef6cee78e4ae7f",
+      "sha256": "13e5851e49cb47f95e433957d4972edee3092f3a5e1ff9d88daccc9e2c04dfb3",
+      "bytes": 17991,
+      "mainBlob": "276d48dd59b90d6cba815200b5ef6cee78e4ae7f"
+    },
+    {
+      "path": "src/lib/mtm/geocode.ts",
+      "mode": "100644",
+      "sha": "b00372fd7ce797c202e4b90f6cdfe53a6653ada7",
+      "sha256": "e6c9d96137c8181e4b0c97991c8a7538c7fc63c2d776d4c00ea5cf9a744f57ba",
+      "bytes": 17475,
+      "mainBlob": "b00372fd7ce797c202e4b90f6cdfe53a6653ada7"
+    }
+  ],
+  "catalogMerge": "Exact incoming four new MTM keys per locale; all other pre-integration catalog leaves unchanged. No HRM semantic overlap.",
+  "runtimeAtSource": "b2b9a917e3901a0c1f0ac6995b1f596f2904c27e265628169ba6b5c662d09ea5 before incoming MTM changes; independent transfer review pending",
+  "protected": "No workflow, baseline, permission, schema, credentials, Support or production changes beyond reviewed-main MTM incoming paths."
+}

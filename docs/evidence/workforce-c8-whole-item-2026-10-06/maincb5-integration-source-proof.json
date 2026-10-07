@@ -1,0 +1,64 @@
+{
+  "status": "PASS_SOURCE_INTEGRATION_ONLY",
+  "priorHead": "30c4185b41d85be43a588e71d8c74c5f34e63596",
+  "incomingMain": "cb5a0453e7ead310e0515e265efee209be1c272b",
+  "priorFiles": 8844,
+  "newFiles": 8847,
+  "changedPriorPaths": [
+    "messages/az.json",
+    "messages/en.json",
+    "messages/ru.json",
+    "src/__tests__/mtm-location-picker-ui.test.ts",
+    "src/app/(dashboard)/mtm/routes/page.tsx",
+    "src/components/mtm/location-picker-map.tsx"
+  ],
+  "incomingPaths": [
+    "messages/az.json",
+    "messages/en.json",
+    "messages/ru.json",
+    "src/__tests__/mtm-location-picker-ui.test.ts",
+    "src/__tests__/mtm-routes-awaiting-publish-ui.test.ts",
+    "src/app/(dashboard)/mtm/routes/page.tsx",
+    "src/components/mtm/location-picker-map.tsx",
+    "src/components/mtm/routes-awaiting-publish.tsx",
+    "src/lib/mtm/routes-awaiting-publish.ts"
+  ],
+  "allOtherPriorBlobsUnchanged": true,
+  "catalogs": [
+    {
+      "path": "messages/en.json",
+      "allPriorLeavesUnchanged": true,
+      "added": [
+        ".mtmRoutesPage.awaitingBody",
+        ".mtmRoutesPage.awaitingMore",
+        ".mtmRoutesPage.awaitingOpen",
+        ".mtmRoutesPage.awaitingStops",
+        ".mtmRoutesPage.awaitingTitle"
+      ]
+    },
+    {
+      "path": "messages/ru.json",
+      "allPriorLeavesUnchanged": true,
+      "added": [
+        ".mtmRoutesPage.awaitingBody",
+        ".mtmRoutesPage.awaitingMore",
+        ".mtmRoutesPage.awaitingOpen",
+        ".mtmRoutesPage.awaitingStops",
+        ".mtmRoutesPage.awaitingTitle"
+      ]
+    },
+    {
+      "path": "messages/az.json",
+      "allPriorLeavesUnchanged": true,
+      "added": [
+        ".mtmRoutesPage.awaitingBody",
+        ".mtmRoutesPage.awaitingMore",
+        ".mtmRoutesPage.awaitingOpen",
+        ".mtmRoutesPage.awaitingStops",
+        ".mtmRoutesPage.awaitingTitle"
+      ]
+    }
+  ],
+  "hostedCandidateChecks": "PENDING",
+  "ATTransfer": "Original runs retain their own source; unchanged HRM dependencies support qualified transfer, not a new actual-AT execution."
+}

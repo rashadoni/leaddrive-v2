@@ -1,0 +1,4180 @@
+{
+  "version": 1,
+  "candidateHead": "d97e8ba8c276d62a01c1f0de4a3ce7ee15dbb6cd",
+  "checkedMergeSha": "bc5bf4832685c48a518f99d4469ea6df88f2869d",
+  "harnessSha256": "6add74cec8cd8e60fb656b52a26248958beb0d5ac4cefa6171615f495b27a0ca",
+  "startedAt": "2026-10-06T20:42:24.421Z",
+  "date": "2026-10-06",
+  "environment": "hosted Chromium / loopback Next dev / disposable PostgreSQL16",
+  "authentication": "real CSRF, credentials provider and session; no auth mocks",
+  "authenticationDiagnostics": [
+    {
+      "ordinal": 1,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-06T20:42:26.886Z"
+    },
+    {
+      "ordinal": 2,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-06T20:42:43.859Z"
+    },
+    {
+      "ordinal": 3,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-06T20:42:46.812Z"
+    },
+    {
+      "ordinal": 4,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-06T20:42:50.410Z"
+    },
+    {
+      "ordinal": 5,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-06T20:42:53.110Z"
+    },
+    {
+      "ordinal": 6,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-06T20:42:55.466Z"
+    }
+  ],
+  "nativeZoomDiagnostics": [
+    {
+      "locale": "en",
+      "status": "PASS",
+      "method": "BROWSER_TABS_AUTOMATIC_PER_TAB_ZOOM",
+      "fixture": "manager-today",
+      "factor": 2,
+      "event": {
+        "oldFactor": 1,
+        "newFactor": 2,
+        "settings": {
+          "mode": "automatic",
+          "scope": "per-tab"
+        }
+      },
+      "settings": {
+        "defaultZoomFactor": 1,
+        "mode": "automatic",
+        "scope": "per-tab"
+      },
+      "control": {
+        "width": 640,
+        "height": 1601,
+        "devicePixelRatio": 1,
+        "visualViewportScale": 1,
+        "rootZoom": "1",
+        "bodyZoom": "1",
+        "rootTransform": "none",
+        "bodyTransform": "none"
+      },
+      "zoomed": {
+        "width": 320,
+        "height": 800,
+        "devicePixelRatio": 2,
+        "visualViewportScale": 1,
+        "rootZoom": "1",
+        "bodyZoom": "1",
+        "rootTransform": "none",
+        "bodyTransform": "none"
+      },
+      "viewportEmulation": false,
+      "applicationCssChanged": false,
+      "applicationServiceWorkers": 0
+    }
+  ],
+  "nativeCaptureDiagnostics": [
+    {
+      "screenshot": "native-zoom-en-control-100.png",
+      "method": "CDP_VISIBLE_SURFACE_NO_CLIP",
+      "suppliedClip": false,
+      "control": true,
+      "status": "PASS",
+      "before": {
+        "width": 640,
+        "height": 1601,
+        "devicePixelRatio": 1,
+        "visualViewportScale": 1,
+        "rootZoom": "1",
+        "bodyZoom": "1",
+        "rootTransform": "none",
+        "bodyTransform": "none",
+        "scrollX": 0,
+        "scrollY": 0,
+        "visualViewportWidth": 640,
+        "visualViewportHeight": 1601,
+        "visualViewportOffsetLeft": 0,
+        "visualViewportOffsetTop": 0,
+        "sameFocusedElement": true,
+        "focusVisible": false,
+        "sameScrollNodes": true,
+        "scrollContainers": [
+          {
+            "tag": "HTML",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 640,
+            "clientHeight": 1601,
+            "scrollWidth": 640,
+            "scrollHeight": 1601
+          },
+          {
+            "tag": "BODY",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 640,
+            "clientHeight": 1601,
+            "scrollWidth": 640,
+            "scrollHeight": 1601
+          },
+          {
+            "tag": "MAIN",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 576,
+            "clientHeight": 1545,
+            "scrollWidth": 576,
+            "scrollHeight": 8740
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 576,
+            "clientHeight": 1601,
+            "scrollWidth": 576,
+            "scrollHeight": 1601
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 640,
+            "clientHeight": 1601,
+            "scrollWidth": 640,
+            "scrollHeight": 1601
+          }
+        ]
+      },
+      "layoutBefore": {
+        "layoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601
+        },
+        "visualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601,
+          "scale": 1,
+          "zoom": 1
+        },
+        "cssLayoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601
+        },
+        "cssVisualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601,
+          "scale": 1,
+          "zoom": 1
+        }
+      },
+      "original": {
+        "bytes": 154230,
+        "sha256": "e4f25b7cf5681cb00c474bfb58b396e9a2d7e7b6758b847f2a7443654a6080ea"
+      },
+      "pixels": {
+        "width": 640,
+        "height": 1601
+      },
+      "after": {
+        "width": 640,
+        "height": 1601,
+        "devicePixelRatio": 1,
+        "visualViewportScale": 1,
+        "rootZoom": "1",
+        "bodyZoom": "1",
+        "rootTransform": "none",
+        "bodyTransform": "none",
+        "scrollX": 0,
+        "scrollY": 0,
+        "visualViewportWidth": 640,
+        "visualViewportHeight": 1601,
+        "visualViewportOffsetLeft": 0,
+        "visualViewportOffsetTop": 0,
+        "sameFocusedElement": true,
+        "focusVisible": false,
+        "sameScrollNodes": true,
+        "scrollContainers": [
+          {
+            "tag": "HTML",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 640,
+            "clientHeight": 1601,
+            "scrollWidth": 640,
+            "scrollHeight": 1601
+          },
+          {
+            "tag": "BODY",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 640,
+            "clientHeight": 1601,
+            "scrollWidth": 640,
+            "scrollHeight": 1601
+          },
+          {
+            "tag": "MAIN",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 576,
+            "clientHeight": 1545,
+            "scrollWidth": 576,
+            "scrollHeight": 8740
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 576,
+            "clientHeight": 1601,
+            "scrollWidth": 576,
+            "scrollHeight": 1601
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 640,
+            "clientHeight": 1601,
+            "scrollWidth": 640,
+            "scrollHeight": 1601
+          }
+        ]
+      },
+      "layoutAfter": {
+        "layoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601
+        },
+        "visualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601,
+          "scale": 1,
+          "zoom": 1
+        },
+        "cssLayoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601
+        },
+        "cssVisualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601,
+          "scale": 1,
+          "zoom": 1
+        }
+      },
+      "cssIntegerHeightRoundingBoundPixels": 1,
+      "controlSurface": {
+        "width": 640,
+        "height": 1601
+      },
+      "cleanup": "PASS"
+    },
+    {
+      "screenshot": "native-zoom-en-observed-200.png",
+      "method": "CDP_VISIBLE_SURFACE_NO_CLIP",
+      "suppliedClip": false,
+      "control": false,
+      "status": "PASS",
+      "before": {
+        "width": 320,
+        "height": 800,
+        "devicePixelRatio": 2,
+        "visualViewportScale": 1,
+        "rootZoom": "1",
+        "bodyZoom": "1",
+        "rootTransform": "none",
+        "bodyTransform": "none",
+        "scrollX": 0,
+        "scrollY": 0,
+        "visualViewportWidth": 320,
+        "visualViewportHeight": 800.5,
+        "visualViewportOffsetLeft": 0,
+        "visualViewportOffsetTop": 0,
+        "sameFocusedElement": true,
+        "focusVisible": false,
+        "sameScrollNodes": true,
+        "scrollContainers": [
+          {
+            "tag": "HTML",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 800,
+            "scrollWidth": 320,
+            "scrollHeight": 800
+          },
+          {
+            "tag": "BODY",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "MAIN",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 256,
+            "clientHeight": 745,
+            "scrollWidth": 256,
+            "scrollHeight": 10654
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 256,
+            "clientHeight": 801,
+            "scrollWidth": 256,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801
+          }
+        ]
+      },
+      "layoutBefore": {
+        "layoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601
+        },
+        "visualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601,
+          "scale": 1,
+          "zoom": 2
+        },
+        "cssLayoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 320,
+          "clientHeight": 800
+        },
+        "cssVisualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 320,
+          "clientHeight": 800.5,
+          "scale": 1,
+          "zoom": 2
+        }
+      },
+      "original": {
+        "bytes": 99879,
+        "sha256": "ef6c8c4ac58014168b3cf5758a16a27957ae4a8f9b72d2165cf64f1cc884691f"
+      },
+      "pixels": {
+        "width": 640,
+        "height": 1601
+      },
+      "after": {
+        "width": 320,
+        "height": 800,
+        "devicePixelRatio": 2,
+        "visualViewportScale": 1,
+        "rootZoom": "1",
+        "bodyZoom": "1",
+        "rootTransform": "none",
+        "bodyTransform": "none",
+        "scrollX": 0,
+        "scrollY": 0,
+        "visualViewportWidth": 320,
+        "visualViewportHeight": 800.5,
+        "visualViewportOffsetLeft": 0,
+        "visualViewportOffsetTop": 0,
+        "sameFocusedElement": true,
+        "focusVisible": false,
+        "sameScrollNodes": true,
+        "scrollContainers": [
+          {
+            "tag": "HTML",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 800,
+            "scrollWidth": 320,
+            "scrollHeight": 800
+          },
+          {
+            "tag": "BODY",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "MAIN",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 256,
+            "clientHeight": 745,
+            "scrollWidth": 256,
+            "scrollHeight": 10654
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 256,
+            "clientHeight": 801,
+            "scrollWidth": 256,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801
+          }
+        ]
+      },
+      "layoutAfter": {
+        "layoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601
+        },
+        "visualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601,
+          "scale": 1,
+          "zoom": 2
+        },
+        "cssLayoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 320,
+          "clientHeight": 800
+        },
+        "cssVisualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 320,
+          "clientHeight": 800.5,
+          "scale": 1,
+          "zoom": 2
+        }
+      },
+      "cssIntegerHeightRoundingBoundPixels": 2,
+      "controlSurface": {
+        "width": 640,
+        "height": 1601
+      },
+      "cleanup": "PASS"
+    },
+    {
+      "screenshot": "manager-en-native-200-first-page.png",
+      "method": "CDP_VISIBLE_SURFACE_NO_CLIP",
+      "suppliedClip": false,
+      "control": false,
+      "status": "PASS",
+      "before": {
+        "width": 320,
+        "height": 800,
+        "devicePixelRatio": 2,
+        "visualViewportScale": 1,
+        "rootZoom": "1",
+        "bodyZoom": "1",
+        "rootTransform": "none",
+        "bodyTransform": "none",
+        "scrollX": 0,
+        "scrollY": 0,
+        "visualViewportWidth": 320,
+        "visualViewportHeight": 800.5,
+        "visualViewportOffsetLeft": 0,
+        "visualViewportOffsetTop": 0,
+        "sameFocusedElement": true,
+        "focusVisible": false,
+        "sameScrollNodes": true,
+        "scrollContainers": [
+          {
+            "tag": "HTML",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 800,
+            "scrollWidth": 320,
+            "scrollHeight": 800
+          },
+          {
+            "tag": "BODY",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "MAIN",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 256,
+            "clientHeight": 745,
+            "scrollWidth": 256,
+            "scrollHeight": 10654
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 256,
+            "clientHeight": 801,
+            "scrollWidth": 256,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801
+          }
+        ]
+      },
+      "layoutBefore": {
+        "layoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601
+        },
+        "visualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601,
+          "scale": 1,
+          "zoom": 2
+        },
+        "cssLayoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 320,
+          "clientHeight": 800
+        },
+        "cssVisualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 320,
+          "clientHeight": 800.5,
+          "scale": 1,
+          "zoom": 2
+        }
+      },
+      "original": {
+        "bytes": 99889,
+        "sha256": "70464a61101825389cc8da0518394a23cd33685d6806dfdfc34ee7fb142be860"
+      },
+      "pixels": {
+        "width": 640,
+        "height": 1601
+      },
+      "after": {
+        "width": 320,
+        "height": 800,
+        "devicePixelRatio": 2,
+        "visualViewportScale": 1,
+        "rootZoom": "1",
+        "bodyZoom": "1",
+        "rootTransform": "none",
+        "bodyTransform": "none",
+        "scrollX": 0,
+        "scrollY": 0,
+        "visualViewportWidth": 320,
+        "visualViewportHeight": 800.5,
+        "visualViewportOffsetLeft": 0,
+        "visualViewportOffsetTop": 0,
+        "sameFocusedElement": true,
+        "focusVisible": false,
+        "sameScrollNodes": true,
+        "scrollContainers": [
+          {
+            "tag": "HTML",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 800,
+            "scrollWidth": 320,
+            "scrollHeight": 800
+          },
+          {
+            "tag": "BODY",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "MAIN",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 256,
+            "clientHeight": 745,
+            "scrollWidth": 256,
+            "scrollHeight": 10654
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 256,
+            "clientHeight": 801,
+            "scrollWidth": 256,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801
+          }
+        ]
+      },
+      "layoutAfter": {
+        "layoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601
+        },
+        "visualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601,
+          "scale": 1,
+          "zoom": 2
+        },
+        "cssLayoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 320,
+          "clientHeight": 800
+        },
+        "cssVisualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 320,
+          "clientHeight": 800.5,
+          "scale": 1,
+          "zoom": 2
+        }
+      },
+      "cssIntegerHeightRoundingBoundPixels": 2,
+      "controlSurface": {
+        "width": 640,
+        "height": 1601
+      },
+      "cleanup": "PASS"
+    },
+    {
+      "screenshot": "manager-en-native-200-snapshot-started.png",
+      "method": "CDP_VISIBLE_SURFACE_NO_CLIP",
+      "suppliedClip": false,
+      "control": false,
+      "status": "PASS",
+      "before": {
+        "width": 320,
+        "height": 800,
+        "devicePixelRatio": 2,
+        "visualViewportScale": 1,
+        "rootZoom": "1",
+        "bodyZoom": "1",
+        "rootTransform": "none",
+        "bodyTransform": "none",
+        "scrollX": 0,
+        "scrollY": 0,
+        "visualViewportWidth": 320,
+        "visualViewportHeight": 800.5,
+        "visualViewportOffsetLeft": 0,
+        "visualViewportOffsetTop": 0,
+        "sameFocusedElement": true,
+        "focusVisible": false,
+        "sameScrollNodes": true,
+        "scrollContainers": [
+          {
+            "tag": "HTML",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 800,
+            "scrollWidth": 320,
+            "scrollHeight": 800
+          },
+          {
+            "tag": "BODY",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "MAIN",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 3119,
+            "clientWidth": 256,
+            "clientHeight": 745,
+            "scrollWidth": 256,
+            "scrollHeight": 10654
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 256,
+            "clientHeight": 801,
+            "scrollWidth": 256,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801
+          }
+        ]
+      },
+      "layoutBefore": {
+        "layoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601
+        },
+        "visualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601,
+          "scale": 1,
+          "zoom": 2
+        },
+        "cssLayoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 320,
+          "clientHeight": 800
+        },
+        "cssVisualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 320,
+          "clientHeight": 800.5,
+          "scale": 1,
+          "zoom": 2
+        }
+      },
+      "original": {
+        "bytes": 179988,
+        "sha256": "0e769c3a7dd406ba0f575ef94789e1694d8f199e18651fcbc5b942702ec9720d"
+      },
+      "pixels": {
+        "width": 640,
+        "height": 1601
+      },
+      "after": {
+        "width": 320,
+        "height": 800,
+        "devicePixelRatio": 2,
+        "visualViewportScale": 1,
+        "rootZoom": "1",
+        "bodyZoom": "1",
+        "rootTransform": "none",
+        "bodyTransform": "none",
+        "scrollX": 0,
+        "scrollY": 0,
+        "visualViewportWidth": 320,
+        "visualViewportHeight": 800.5,
+        "visualViewportOffsetLeft": 0,
+        "visualViewportOffsetTop": 0,
+        "sameFocusedElement": true,
+        "focusVisible": false,
+        "sameScrollNodes": true,
+        "scrollContainers": [
+          {
+            "tag": "HTML",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 800,
+            "scrollWidth": 320,
+            "scrollHeight": 800
+          },
+          {
+            "tag": "BODY",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "MAIN",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 3119,
+            "clientWidth": 256,
+            "clientHeight": 745,
+            "scrollWidth": 256,
+            "scrollHeight": 10654
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 256,
+            "clientHeight": 801,
+            "scrollWidth": 256,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801
+          }
+        ]
+      },
+      "layoutAfter": {
+        "layoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601
+        },
+        "visualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601,
+          "scale": 1,
+          "zoom": 2
+        },
+        "cssLayoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 320,
+          "clientHeight": 800
+        },
+        "cssVisualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 320,
+          "clientHeight": 800.5,
+          "scale": 1,
+          "zoom": 2
+        }
+      },
+      "cssIntegerHeightRoundingBoundPixels": 2,
+      "controlSurface": {
+        "width": 640,
+        "height": 1601
+      },
+      "cleanup": "PASS"
+    },
+    {
+      "screenshot": "manager-en-native-200-snapshot-paused.png",
+      "method": "CDP_VISIBLE_SURFACE_NO_CLIP",
+      "suppliedClip": false,
+      "control": false,
+      "status": "PASS",
+      "before": {
+        "width": 320,
+        "height": 800,
+        "devicePixelRatio": 2,
+        "visualViewportScale": 1,
+        "rootZoom": "1",
+        "bodyZoom": "1",
+        "rootTransform": "none",
+        "bodyTransform": "none",
+        "scrollX": 0,
+        "scrollY": 0,
+        "visualViewportWidth": 320,
+        "visualViewportHeight": 800.5,
+        "visualViewportOffsetLeft": 0,
+        "visualViewportOffsetTop": 0,
+        "sameFocusedElement": true,
+        "focusVisible": false,
+        "sameScrollNodes": true,
+        "scrollContainers": [
+          {
+            "tag": "HTML",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 800,
+            "scrollWidth": 320,
+            "scrollHeight": 800
+          },
+          {
+            "tag": "BODY",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "MAIN",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 3321,
+            "clientWidth": 256,
+            "clientHeight": 745,
+            "scrollWidth": 256,
+            "scrollHeight": 10654
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 256,
+            "clientHeight": 801,
+            "scrollWidth": 256,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801
+          }
+        ]
+      },
+      "layoutBefore": {
+        "layoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601
+        },
+        "visualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601,
+          "scale": 1,
+          "zoom": 2
+        },
+        "cssLayoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 320,
+          "clientHeight": 800
+        },
+        "cssVisualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 320,
+          "clientHeight": 800.5,
+          "scale": 1,
+          "zoom": 2
+        }
+      },
+      "original": {
+        "bytes": 182397,
+        "sha256": "905b980de6849e18f1ce84125b44c3962e05c6c10e796e51edf67caa20e9d2d6"
+      },
+      "pixels": {
+        "width": 640,
+        "height": 1601
+      },
+      "after": {
+        "width": 320,
+        "height": 800,
+        "devicePixelRatio": 2,
+        "visualViewportScale": 1,
+        "rootZoom": "1",
+        "bodyZoom": "1",
+        "rootTransform": "none",
+        "bodyTransform": "none",
+        "scrollX": 0,
+        "scrollY": 0,
+        "visualViewportWidth": 320,
+        "visualViewportHeight": 800.5,
+        "visualViewportOffsetLeft": 0,
+        "visualViewportOffsetTop": 0,
+        "sameFocusedElement": true,
+        "focusVisible": false,
+        "sameScrollNodes": true,
+        "scrollContainers": [
+          {
+            "tag": "HTML",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 800,
+            "scrollWidth": 320,
+            "scrollHeight": 800
+          },
+          {
+            "tag": "BODY",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "MAIN",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 3321,
+            "clientWidth": 256,
+            "clientHeight": 745,
+            "scrollWidth": 256,
+            "scrollHeight": 10654
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 256,
+            "clientHeight": 801,
+            "scrollWidth": 256,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801
+          }
+        ]
+      },
+      "layoutAfter": {
+        "layoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601
+        },
+        "visualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601,
+          "scale": 1,
+          "zoom": 2
+        },
+        "cssLayoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 320,
+          "clientHeight": 800
+        },
+        "cssVisualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 320,
+          "clientHeight": 800.5,
+          "scale": 1,
+          "zoom": 2
+        }
+      },
+      "cssIntegerHeightRoundingBoundPixels": 2,
+      "controlSurface": {
+        "width": 640,
+        "height": 1601
+      },
+      "cleanup": "PASS"
+    },
+    {
+      "screenshot": "manager-en-native-200-snapshot-completed.png",
+      "method": "CDP_VISIBLE_SURFACE_NO_CLIP",
+      "suppliedClip": false,
+      "control": false,
+      "status": "PASS",
+      "before": {
+        "width": 320,
+        "height": 800,
+        "devicePixelRatio": 2,
+        "visualViewportScale": 1,
+        "rootZoom": "1",
+        "bodyZoom": "1",
+        "rootTransform": "none",
+        "bodyTransform": "none",
+        "scrollX": 0,
+        "scrollY": 0,
+        "visualViewportWidth": 320,
+        "visualViewportHeight": 800.5,
+        "visualViewportOffsetLeft": 0,
+        "visualViewportOffsetTop": 0,
+        "sameFocusedElement": true,
+        "focusVisible": false,
+        "sameScrollNodes": true,
+        "scrollContainers": [
+          {
+            "tag": "HTML",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 800,
+            "scrollWidth": 320,
+            "scrollHeight": 800
+          },
+          {
+            "tag": "BODY",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "MAIN",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 3885,
+            "clientWidth": 256,
+            "clientHeight": 745,
+            "scrollWidth": 256,
+            "scrollHeight": 10654
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 256,
+            "clientHeight": 801,
+            "scrollWidth": 256,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801
+          }
+        ]
+      },
+      "layoutBefore": {
+        "layoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601
+        },
+        "visualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601,
+          "scale": 1,
+          "zoom": 2
+        },
+        "cssLayoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 320,
+          "clientHeight": 800
+        },
+        "cssVisualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 320,
+          "clientHeight": 800.5,
+          "scale": 1,
+          "zoom": 2
+        }
+      },
+      "original": {
+        "bytes": 180872,
+        "sha256": "af4635ced9c86408a8f910d0aab52dcbd411fdf76ae436d0e86df324d5003612"
+      },
+      "pixels": {
+        "width": 640,
+        "height": 1601
+      },
+      "after": {
+        "width": 320,
+        "height": 800,
+        "devicePixelRatio": 2,
+        "visualViewportScale": 1,
+        "rootZoom": "1",
+        "bodyZoom": "1",
+        "rootTransform": "none",
+        "bodyTransform": "none",
+        "scrollX": 0,
+        "scrollY": 0,
+        "visualViewportWidth": 320,
+        "visualViewportHeight": 800.5,
+        "visualViewportOffsetLeft": 0,
+        "visualViewportOffsetTop": 0,
+        "sameFocusedElement": true,
+        "focusVisible": false,
+        "sameScrollNodes": true,
+        "scrollContainers": [
+          {
+            "tag": "HTML",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 800,
+            "scrollWidth": 320,
+            "scrollHeight": 800
+          },
+          {
+            "tag": "BODY",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "MAIN",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 3885,
+            "clientWidth": 256,
+            "clientHeight": 745,
+            "scrollWidth": 256,
+            "scrollHeight": 10654
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 256,
+            "clientHeight": 801,
+            "scrollWidth": 256,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801
+          }
+        ]
+      },
+      "layoutAfter": {
+        "layoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601
+        },
+        "visualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601,
+          "scale": 1,
+          "zoom": 2
+        },
+        "cssLayoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 320,
+          "clientHeight": 800
+        },
+        "cssVisualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 320,
+          "clientHeight": 800.5,
+          "scale": 1,
+          "zoom": 2
+        }
+      },
+      "cssIntegerHeightRoundingBoundPixels": 2,
+      "controlSurface": {
+        "width": 640,
+        "height": 1601
+      },
+      "cleanup": "PASS"
+    },
+    {
+      "screenshot": "manager-en-native-200-snapshot-missing.png",
+      "method": "CDP_VISIBLE_SURFACE_NO_CLIP",
+      "suppliedClip": false,
+      "control": false,
+      "status": "PASS",
+      "before": {
+        "width": 320,
+        "height": 800,
+        "devicePixelRatio": 2,
+        "visualViewportScale": 1,
+        "rootZoom": "1",
+        "bodyZoom": "1",
+        "rootTransform": "none",
+        "bodyTransform": "none",
+        "scrollX": 0,
+        "scrollY": 0,
+        "visualViewportWidth": 320,
+        "visualViewportHeight": 800.5,
+        "visualViewportOffsetLeft": 0,
+        "visualViewportOffsetTop": 0,
+        "sameFocusedElement": true,
+        "focusVisible": false,
+        "sameScrollNodes": true,
+        "scrollContainers": [
+          {
+            "tag": "HTML",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 800,
+            "scrollWidth": 320,
+            "scrollHeight": 800
+          },
+          {
+            "tag": "BODY",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "MAIN",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 4063,
+            "clientWidth": 256,
+            "clientHeight": 745,
+            "scrollWidth": 256,
+            "scrollHeight": 10654
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 256,
+            "clientHeight": 801,
+            "scrollWidth": 256,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801
+          }
+        ]
+      },
+      "layoutBefore": {
+        "layoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601
+        },
+        "visualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601,
+          "scale": 1,
+          "zoom": 2
+        },
+        "cssLayoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 320,
+          "clientHeight": 800
+        },
+        "cssVisualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 320,
+          "clientHeight": 800.5,
+          "scale": 1,
+          "zoom": 2
+        }
+      },
+      "original": {
+        "bytes": 177944,
+        "sha256": "bb7370629a487b1e85a1039ccfcd36b48339122fee305513317b6b9f88d8057b"
+      },
+      "pixels": {
+        "width": 640,
+        "height": 1601
+      },
+      "after": {
+        "width": 320,
+        "height": 800,
+        "devicePixelRatio": 2,
+        "visualViewportScale": 1,
+        "rootZoom": "1",
+        "bodyZoom": "1",
+        "rootTransform": "none",
+        "bodyTransform": "none",
+        "scrollX": 0,
+        "scrollY": 0,
+        "visualViewportWidth": 320,
+        "visualViewportHeight": 800.5,
+        "visualViewportOffsetLeft": 0,
+        "visualViewportOffsetTop": 0,
+        "sameFocusedElement": true,
+        "focusVisible": false,
+        "sameScrollNodes": true,
+        "scrollContainers": [
+          {
+            "tag": "HTML",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 800,
+            "scrollWidth": 320,
+            "scrollHeight": 800
+          },
+          {
+            "tag": "BODY",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "MAIN",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 4063,
+            "clientWidth": 256,
+            "clientHeight": 745,
+            "scrollWidth": 256,
+            "scrollHeight": 10654
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 256,
+            "clientHeight": 801,
+            "scrollWidth": 256,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801
+          }
+        ]
+      },
+      "layoutAfter": {
+        "layoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601
+        },
+        "visualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601,
+          "scale": 1,
+          "zoom": 2
+        },
+        "cssLayoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 320,
+          "clientHeight": 800
+        },
+        "cssVisualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 320,
+          "clientHeight": 800.5,
+          "scale": 1,
+          "zoom": 2
+        }
+      },
+      "cssIntegerHeightRoundingBoundPixels": 2,
+      "controlSurface": {
+        "width": 640,
+        "height": 1601
+      },
+      "cleanup": "PASS"
+    },
+    {
+      "screenshot": "manager-en-native-200-native-pagination.png",
+      "method": "CDP_VISIBLE_SURFACE_NO_CLIP",
+      "suppliedClip": false,
+      "control": false,
+      "status": "PASS",
+      "before": {
+        "width": 320,
+        "height": 800,
+        "devicePixelRatio": 2,
+        "visualViewportScale": 1,
+        "rootZoom": "1",
+        "bodyZoom": "1",
+        "rootTransform": "none",
+        "bodyTransform": "none",
+        "scrollX": 0,
+        "scrollY": 0,
+        "visualViewportWidth": 320,
+        "visualViewportHeight": 800.5,
+        "visualViewportOffsetLeft": 0,
+        "visualViewportOffsetTop": 0,
+        "sameFocusedElement": true,
+        "focusVisible": true,
+        "sameScrollNodes": true,
+        "scrollContainers": [
+          {
+            "tag": "HTML",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 800,
+            "scrollWidth": 320,
+            "scrollHeight": 800
+          },
+          {
+            "tag": "BODY",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "MAIN",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 9909,
+            "clientWidth": 256,
+            "clientHeight": 745,
+            "scrollWidth": 256,
+            "scrollHeight": 10654
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 256,
+            "clientHeight": 801,
+            "scrollWidth": 256,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "BUTTON",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 189,
+            "clientHeight": 46,
+            "scrollWidth": 189,
+            "scrollHeight": 46
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 232,
+            "clientHeight": 88,
+            "scrollWidth": 232,
+            "scrollHeight": 88
+          },
+          {
+            "tag": "SECTION",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 232,
+            "clientHeight": 9838,
+            "scrollWidth": 232,
+            "scrollHeight": 9838
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 232,
+            "clientHeight": 10630,
+            "scrollWidth": 232,
+            "scrollHeight": 10630
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 232,
+            "clientHeight": 10630,
+            "scrollWidth": 232,
+            "scrollHeight": 10630
+          }
+        ]
+      },
+      "layoutBefore": {
+        "layoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601
+        },
+        "visualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601,
+          "scale": 1,
+          "zoom": 2
+        },
+        "cssLayoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 320,
+          "clientHeight": 800
+        },
+        "cssVisualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 320,
+          "clientHeight": 800.5,
+          "scale": 1,
+          "zoom": 2
+        }
+      },
+      "original": {
+        "bytes": 186063,
+        "sha256": "a68dd14ac54d07febaaf5c1c96de52ebdb194318295c27310aa14d51ae9909aa"
+      },
+      "pixels": {
+        "width": 640,
+        "height": 1601
+      },
+      "after": {
+        "width": 320,
+        "height": 800,
+        "devicePixelRatio": 2,
+        "visualViewportScale": 1,
+        "rootZoom": "1",
+        "bodyZoom": "1",
+        "rootTransform": "none",
+        "bodyTransform": "none",
+        "scrollX": 0,
+        "scrollY": 0,
+        "visualViewportWidth": 320,
+        "visualViewportHeight": 800.5,
+        "visualViewportOffsetLeft": 0,
+        "visualViewportOffsetTop": 0,
+        "sameFocusedElement": true,
+        "focusVisible": true,
+        "sameScrollNodes": true,
+        "scrollContainers": [
+          {
+            "tag": "HTML",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 800,
+            "scrollWidth": 320,
+            "scrollHeight": 800
+          },
+          {
+            "tag": "BODY",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "MAIN",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 9909,
+            "clientWidth": 256,
+            "clientHeight": 745,
+            "scrollWidth": 256,
+            "scrollHeight": 10654
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 256,
+            "clientHeight": 801,
+            "scrollWidth": 256,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "BUTTON",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 189,
+            "clientHeight": 46,
+            "scrollWidth": 189,
+            "scrollHeight": 46
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 232,
+            "clientHeight": 88,
+            "scrollWidth": 232,
+            "scrollHeight": 88
+          },
+          {
+            "tag": "SECTION",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 232,
+            "clientHeight": 9838,
+            "scrollWidth": 232,
+            "scrollHeight": 9838
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 232,
+            "clientHeight": 10630,
+            "scrollWidth": 232,
+            "scrollHeight": 10630
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 232,
+            "clientHeight": 10630,
+            "scrollWidth": 232,
+            "scrollHeight": 10630
+          }
+        ]
+      },
+      "layoutAfter": {
+        "layoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601
+        },
+        "visualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601,
+          "scale": 1,
+          "zoom": 2
+        },
+        "cssLayoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 320,
+          "clientHeight": 800
+        },
+        "cssVisualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 320,
+          "clientHeight": 800.5,
+          "scale": 1,
+          "zoom": 2
+        }
+      },
+      "cssIntegerHeightRoundingBoundPixels": 2,
+      "controlSurface": {
+        "width": 640,
+        "height": 1601
+      },
+      "cleanup": "PASS"
+    },
+    {
+      "screenshot": "failure-original.png",
+      "method": "CDP_VISIBLE_SURFACE_NO_CLIP",
+      "suppliedClip": false,
+      "control": false,
+      "status": "PASS",
+      "before": {
+        "width": 320,
+        "height": 800,
+        "devicePixelRatio": 2,
+        "visualViewportScale": 1,
+        "rootZoom": "1",
+        "bodyZoom": "1",
+        "rootTransform": "none",
+        "bodyTransform": "none",
+        "scrollX": 0,
+        "scrollY": 0,
+        "visualViewportWidth": 320,
+        "visualViewportHeight": 800.5,
+        "visualViewportOffsetLeft": 0,
+        "visualViewportOffsetTop": 0,
+        "sameFocusedElement": true,
+        "focusVisible": true,
+        "sameScrollNodes": true,
+        "scrollContainers": [
+          {
+            "tag": "HTML",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 800,
+            "scrollWidth": 320,
+            "scrollHeight": 800
+          },
+          {
+            "tag": "BODY",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "MAIN",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 10259,
+            "clientWidth": 256,
+            "clientHeight": 745,
+            "scrollWidth": 256,
+            "scrollHeight": 11037
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 256,
+            "clientHeight": 801,
+            "scrollWidth": 256,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "BUTTON",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 175,
+            "clientHeight": 46,
+            "scrollWidth": 175,
+            "scrollHeight": 46
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 232,
+            "clientHeight": 88,
+            "scrollWidth": 232,
+            "scrollHeight": 88
+          },
+          {
+            "tag": "SECTION",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 232,
+            "clientHeight": 10221,
+            "scrollWidth": 232,
+            "scrollHeight": 10221
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 232,
+            "clientHeight": 11013,
+            "scrollWidth": 232,
+            "scrollHeight": 11013
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 232,
+            "clientHeight": 11013,
+            "scrollWidth": 232,
+            "scrollHeight": 11013
+          }
+        ]
+      },
+      "layoutBefore": {
+        "layoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601
+        },
+        "visualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601,
+          "scale": 1,
+          "zoom": 2
+        },
+        "cssLayoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 320,
+          "clientHeight": 800
+        },
+        "cssVisualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 320,
+          "clientHeight": 800.5,
+          "scale": 1,
+          "zoom": 2
+        }
+      },
+      "original": {
+        "bytes": 188520,
+        "sha256": "349689573a4ccb5b98258c05f92263eb31a43501c25347904b059b0d58aa0676"
+      },
+      "pixels": {
+        "width": 640,
+        "height": 1601
+      },
+      "after": {
+        "width": 320,
+        "height": 800,
+        "devicePixelRatio": 2,
+        "visualViewportScale": 1,
+        "rootZoom": "1",
+        "bodyZoom": "1",
+        "rootTransform": "none",
+        "bodyTransform": "none",
+        "scrollX": 0,
+        "scrollY": 0,
+        "visualViewportWidth": 320,
+        "visualViewportHeight": 800.5,
+        "visualViewportOffsetLeft": 0,
+        "visualViewportOffsetTop": 0,
+        "sameFocusedElement": true,
+        "focusVisible": true,
+        "sameScrollNodes": true,
+        "scrollContainers": [
+          {
+            "tag": "HTML",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 800,
+            "scrollWidth": 320,
+            "scrollHeight": 800
+          },
+          {
+            "tag": "BODY",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "MAIN",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 10259,
+            "clientWidth": 256,
+            "clientHeight": 745,
+            "scrollWidth": 256,
+            "scrollHeight": 11037
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 256,
+            "clientHeight": 801,
+            "scrollWidth": 256,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801
+          },
+          {
+            "tag": "BUTTON",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 175,
+            "clientHeight": 46,
+            "scrollWidth": 175,
+            "scrollHeight": 46
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 232,
+            "clientHeight": 88,
+            "scrollWidth": 232,
+            "scrollHeight": 88
+          },
+          {
+            "tag": "SECTION",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 232,
+            "clientHeight": 10221,
+            "scrollWidth": 232,
+            "scrollHeight": 10221
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 232,
+            "clientHeight": 11013,
+            "scrollWidth": 232,
+            "scrollHeight": 11013
+          },
+          {
+            "tag": "DIV",
+            "connected": true,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "clientWidth": 232,
+            "clientHeight": 11013,
+            "scrollWidth": 232,
+            "scrollHeight": 11013
+          }
+        ]
+      },
+      "layoutAfter": {
+        "layoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601
+        },
+        "visualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 640,
+          "clientHeight": 1601,
+          "scale": 1,
+          "zoom": 2
+        },
+        "cssLayoutViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "clientWidth": 320,
+          "clientHeight": 800
+        },
+        "cssVisualViewport": {
+          "pageX": 0,
+          "pageY": 0,
+          "offsetX": 0,
+          "offsetY": 0,
+          "clientWidth": 320,
+          "clientHeight": 800.5,
+          "scale": 1,
+          "zoom": 2
+        }
+      },
+      "cssIntegerHeightRoundingBoundPixels": 2,
+      "controlSurface": {
+        "width": 640,
+        "height": 1601
+      },
+      "cleanup": "PASS"
+    }
+  ],
+  "focusGeometryDiagnostics": [
+    {
+      "description": "native200 Today pagination visible focus",
+      "status": "PASS",
+      "polls": 1,
+      "first": {
+        "pass": true,
+        "focused": true,
+        "focusVisible": true,
+        "connected": true,
+        "disabled": false,
+        "clauses": {
+          "top": true,
+          "bottom": true,
+          "left": true,
+          "right": true
+        },
+        "target": {
+          "top": 719.5,
+          "bottom": 767.5,
+          "left": 96.3125,
+          "right": 287.6796875,
+          "width": 191.3671875,
+          "height": 48
+        },
+        "main": {
+          "top": 56,
+          "bottom": 800.5,
+          "left": 64,
+          "right": 320,
+          "width": 256,
+          "height": 744.5
+        },
+        "viewport": {
+          "width": 320,
+          "height": 800,
+          "devicePixelRatio": 2,
+          "visualWidth": 320,
+          "visualHeight": 800.5,
+          "visualScale": 1,
+          "scrollX": 0,
+          "scrollY": 0
+        },
+        "root": {
+          "clientWidth": 320,
+          "clientHeight": 800,
+          "scrollWidth": 320,
+          "scrollHeight": 800,
+          "offsetWidth": 320,
+          "offsetHeight": 801,
+          "scrollLeft": 0,
+          "scrollTop": 0
+        },
+        "body": {
+          "clientWidth": 320,
+          "clientHeight": 801,
+          "scrollWidth": 320,
+          "scrollHeight": 801,
+          "offsetWidth": 320,
+          "offsetHeight": 801,
+          "scrollLeft": 0,
+          "scrollTop": 0
+        },
+        "ancestors": [
+          {
+            "tag": "DIV",
+            "bounds": {
+              "top": 698.5,
+              "bottom": 787.5,
+              "left": 76,
+              "right": 308,
+              "width": 232,
+              "height": 89
+            },
+            "clientWidth": 232,
+            "clientHeight": 88,
+            "scrollWidth": 232,
+            "scrollHeight": 88,
+            "offsetWidth": 232,
+            "offsetHeight": 89,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "SECTION",
+            "bounds": {
+              "top": -9051,
+              "bottom": 788.5,
+              "left": 76,
+              "right": 308,
+              "width": 232,
+              "height": 9839.5
+            },
+            "clientWidth": 232,
+            "clientHeight": 9838,
+            "scrollWidth": 232,
+            "scrollHeight": 9838,
+            "offsetWidth": 232,
+            "offsetHeight": 9840,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "DIV",
+            "bounds": {
+              "top": -9841,
+              "bottom": 788.5,
+              "left": 76,
+              "right": 308,
+              "width": 232,
+              "height": 10629.5
+            },
+            "clientWidth": 232,
+            "clientHeight": 10630,
+            "scrollWidth": 232,
+            "scrollHeight": 10630,
+            "offsetWidth": 232,
+            "offsetHeight": 10630,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "DIV",
+            "bounds": {
+              "top": -9841,
+              "bottom": 788.5,
+              "left": 76,
+              "right": 308,
+              "width": 232,
+              "height": 10629.5
+            },
+            "clientWidth": 232,
+            "clientHeight": 10630,
+            "scrollWidth": 232,
+            "scrollHeight": 10630,
+            "offsetWidth": 232,
+            "offsetHeight": 10630,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "MAIN",
+            "bounds": {
+              "top": 56,
+              "bottom": 800.5,
+              "left": 64,
+              "right": 320,
+              "width": 256,
+              "height": 744.5
+            },
+            "clientWidth": 256,
+            "clientHeight": 745,
+            "scrollWidth": 256,
+            "scrollHeight": 10654,
+            "offsetWidth": 256,
+            "offsetHeight": 745,
+            "scrollLeft": 0,
+            "scrollTop": 9909,
+            "overflowX": "hidden",
+            "overflowY": "auto"
+          },
+          {
+            "tag": "DIV",
+            "bounds": {
+              "top": 0,
+              "bottom": 800.5,
+              "left": 64,
+              "right": 320,
+              "width": 256,
+              "height": 800.5
+            },
+            "clientWidth": 256,
+            "clientHeight": 801,
+            "scrollWidth": 256,
+            "scrollHeight": 801,
+            "offsetWidth": 256,
+            "offsetHeight": 801,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "overflowX": "hidden",
+            "overflowY": "hidden"
+          },
+          {
+            "tag": "DIV",
+            "bounds": {
+              "top": 0,
+              "bottom": 800.5,
+              "left": 0,
+              "right": 320,
+              "width": 320,
+              "height": 800.5
+            },
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801,
+            "offsetWidth": 320,
+            "offsetHeight": 801,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "BODY",
+            "bounds": {
+              "top": 0,
+              "bottom": 800.5,
+              "left": 0,
+              "right": 320,
+              "width": 320,
+              "height": 800.5
+            },
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801,
+            "offsetWidth": 320,
+            "offsetHeight": 801,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "overflowX": "visible",
+            "overflowY": "visible"
+          }
+        ]
+      },
+      "last": {
+        "pass": true,
+        "focused": true,
+        "focusVisible": true,
+        "connected": true,
+        "disabled": false,
+        "clauses": {
+          "top": true,
+          "bottom": true,
+          "left": true,
+          "right": true
+        },
+        "target": {
+          "top": 719.5,
+          "bottom": 767.5,
+          "left": 96.3125,
+          "right": 287.6796875,
+          "width": 191.3671875,
+          "height": 48
+        },
+        "main": {
+          "top": 56,
+          "bottom": 800.5,
+          "left": 64,
+          "right": 320,
+          "width": 256,
+          "height": 744.5
+        },
+        "viewport": {
+          "width": 320,
+          "height": 800,
+          "devicePixelRatio": 2,
+          "visualWidth": 320,
+          "visualHeight": 800.5,
+          "visualScale": 1,
+          "scrollX": 0,
+          "scrollY": 0
+        },
+        "root": {
+          "clientWidth": 320,
+          "clientHeight": 800,
+          "scrollWidth": 320,
+          "scrollHeight": 800,
+          "offsetWidth": 320,
+          "offsetHeight": 801,
+          "scrollLeft": 0,
+          "scrollTop": 0
+        },
+        "body": {
+          "clientWidth": 320,
+          "clientHeight": 801,
+          "scrollWidth": 320,
+          "scrollHeight": 801,
+          "offsetWidth": 320,
+          "offsetHeight": 801,
+          "scrollLeft": 0,
+          "scrollTop": 0
+        },
+        "ancestors": [
+          {
+            "tag": "DIV",
+            "bounds": {
+              "top": 698.5,
+              "bottom": 787.5,
+              "left": 76,
+              "right": 308,
+              "width": 232,
+              "height": 89
+            },
+            "clientWidth": 232,
+            "clientHeight": 88,
+            "scrollWidth": 232,
+            "scrollHeight": 88,
+            "offsetWidth": 232,
+            "offsetHeight": 89,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "SECTION",
+            "bounds": {
+              "top": -9051,
+              "bottom": 788.5,
+              "left": 76,
+              "right": 308,
+              "width": 232,
+              "height": 9839.5
+            },
+            "clientWidth": 232,
+            "clientHeight": 9838,
+            "scrollWidth": 232,
+            "scrollHeight": 9838,
+            "offsetWidth": 232,
+            "offsetHeight": 9840,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "DIV",
+            "bounds": {
+              "top": -9841,
+              "bottom": 788.5,
+              "left": 76,
+              "right": 308,
+              "width": 232,
+              "height": 10629.5
+            },
+            "clientWidth": 232,
+            "clientHeight": 10630,
+            "scrollWidth": 232,
+            "scrollHeight": 10630,
+            "offsetWidth": 232,
+            "offsetHeight": 10630,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "DIV",
+            "bounds": {
+              "top": -9841,
+              "bottom": 788.5,
+              "left": 76,
+              "right": 308,
+              "width": 232,
+              "height": 10629.5
+            },
+            "clientWidth": 232,
+            "clientHeight": 10630,
+            "scrollWidth": 232,
+            "scrollHeight": 10630,
+            "offsetWidth": 232,
+            "offsetHeight": 10630,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "MAIN",
+            "bounds": {
+              "top": 56,
+              "bottom": 800.5,
+              "left": 64,
+              "right": 320,
+              "width": 256,
+              "height": 744.5
+            },
+            "clientWidth": 256,
+            "clientHeight": 745,
+            "scrollWidth": 256,
+            "scrollHeight": 10654,
+            "offsetWidth": 256,
+            "offsetHeight": 745,
+            "scrollLeft": 0,
+            "scrollTop": 9909,
+            "overflowX": "hidden",
+            "overflowY": "auto"
+          },
+          {
+            "tag": "DIV",
+            "bounds": {
+              "top": 0,
+              "bottom": 800.5,
+              "left": 64,
+              "right": 320,
+              "width": 256,
+              "height": 800.5
+            },
+            "clientWidth": 256,
+            "clientHeight": 801,
+            "scrollWidth": 256,
+            "scrollHeight": 801,
+            "offsetWidth": 256,
+            "offsetHeight": 801,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "overflowX": "hidden",
+            "overflowY": "hidden"
+          },
+          {
+            "tag": "DIV",
+            "bounds": {
+              "top": 0,
+              "bottom": 800.5,
+              "left": 0,
+              "right": 320,
+              "width": 320,
+              "height": 800.5
+            },
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801,
+            "offsetWidth": 320,
+            "offsetHeight": 801,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "BODY",
+            "bounds": {
+              "top": 0,
+              "bottom": 800.5,
+              "left": 0,
+              "right": 320,
+              "width": 320,
+              "height": 800.5
+            },
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801,
+            "offsetWidth": 320,
+            "offsetHeight": 801,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "overflowX": "visible",
+            "overflowY": "visible"
+          }
+        ]
+      }
+    },
+    {
+      "description": "native200 Today completed pagination visible focus",
+      "status": "FAIL",
+      "polls": 283,
+      "first": {
+        "pass": false,
+        "focused": true,
+        "focusVisible": true,
+        "connected": true,
+        "disabled": false,
+        "clauses": {
+          "top": true,
+          "bottom": false,
+          "left": true,
+          "right": true
+        },
+        "target": {
+          "top": 752.5,
+          "bottom": 800.5,
+          "left": 103.5390625,
+          "right": 280.453125,
+          "width": 176.9140625,
+          "height": 48
+        },
+        "main": {
+          "top": 56,
+          "bottom": 800.5,
+          "left": 64,
+          "right": 320,
+          "width": 256,
+          "height": 744.5
+        },
+        "viewport": {
+          "width": 320,
+          "height": 800,
+          "devicePixelRatio": 2,
+          "visualWidth": 320,
+          "visualHeight": 800.5,
+          "visualScale": 1,
+          "scrollX": 0,
+          "scrollY": 0
+        },
+        "root": {
+          "clientWidth": 320,
+          "clientHeight": 800,
+          "scrollWidth": 320,
+          "scrollHeight": 800,
+          "offsetWidth": 320,
+          "offsetHeight": 801,
+          "scrollLeft": 0,
+          "scrollTop": 0
+        },
+        "body": {
+          "clientWidth": 320,
+          "clientHeight": 801,
+          "scrollWidth": 320,
+          "scrollHeight": 801,
+          "offsetWidth": 320,
+          "offsetHeight": 801,
+          "scrollLeft": 0,
+          "scrollTop": 0
+        },
+        "ancestors": [
+          {
+            "tag": "DIV",
+            "bounds": {
+              "top": 731.5,
+              "bottom": 820.5,
+              "left": 76,
+              "right": 308,
+              "width": 232,
+              "height": 89
+            },
+            "clientWidth": 232,
+            "clientHeight": 88,
+            "scrollWidth": 232,
+            "scrollHeight": 88,
+            "offsetWidth": 232,
+            "offsetHeight": 89,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "SECTION",
+            "bounds": {
+              "top": -9401,
+              "bottom": 821.5,
+              "left": 76,
+              "right": 308,
+              "width": 232,
+              "height": 10222.5
+            },
+            "clientWidth": 232,
+            "clientHeight": 10221,
+            "scrollWidth": 232,
+            "scrollHeight": 10221,
+            "offsetWidth": 232,
+            "offsetHeight": 10223,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "DIV",
+            "bounds": {
+              "top": -10191,
+              "bottom": 821.5,
+              "left": 76,
+              "right": 308,
+              "width": 232,
+              "height": 11012.5
+            },
+            "clientWidth": 232,
+            "clientHeight": 11013,
+            "scrollWidth": 232,
+            "scrollHeight": 11013,
+            "offsetWidth": 232,
+            "offsetHeight": 11013,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "DIV",
+            "bounds": {
+              "top": -10191,
+              "bottom": 821.5,
+              "left": 76,
+              "right": 308,
+              "width": 232,
+              "height": 11012.5
+            },
+            "clientWidth": 232,
+            "clientHeight": 11013,
+            "scrollWidth": 232,
+            "scrollHeight": 11013,
+            "offsetWidth": 232,
+            "offsetHeight": 11013,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "MAIN",
+            "bounds": {
+              "top": 56,
+              "bottom": 800.5,
+              "left": 64,
+              "right": 320,
+              "width": 256,
+              "height": 744.5
+            },
+            "clientWidth": 256,
+            "clientHeight": 745,
+            "scrollWidth": 256,
+            "scrollHeight": 11037,
+            "offsetWidth": 256,
+            "offsetHeight": 745,
+            "scrollLeft": 0,
+            "scrollTop": 10259,
+            "overflowX": "hidden",
+            "overflowY": "auto"
+          },
+          {
+            "tag": "DIV",
+            "bounds": {
+              "top": 0,
+              "bottom": 800.5,
+              "left": 64,
+              "right": 320,
+              "width": 256,
+              "height": 800.5
+            },
+            "clientWidth": 256,
+            "clientHeight": 801,
+            "scrollWidth": 256,
+            "scrollHeight": 801,
+            "offsetWidth": 256,
+            "offsetHeight": 801,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "overflowX": "hidden",
+            "overflowY": "hidden"
+          },
+          {
+            "tag": "DIV",
+            "bounds": {
+              "top": 0,
+              "bottom": 800.5,
+              "left": 0,
+              "right": 320,
+              "width": 320,
+              "height": 800.5
+            },
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801,
+            "offsetWidth": 320,
+            "offsetHeight": 801,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "BODY",
+            "bounds": {
+              "top": 0,
+              "bottom": 800.5,
+              "left": 0,
+              "right": 320,
+              "width": 320,
+              "height": 800.5
+            },
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801,
+            "offsetWidth": 320,
+            "offsetHeight": 801,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "overflowX": "visible",
+            "overflowY": "visible"
+          }
+        ]
+      },
+      "last": {
+        "pass": false,
+        "focused": true,
+        "focusVisible": true,
+        "connected": true,
+        "disabled": false,
+        "clauses": {
+          "top": true,
+          "bottom": false,
+          "left": true,
+          "right": true
+        },
+        "target": {
+          "top": 752.5,
+          "bottom": 800.5,
+          "left": 103.5390625,
+          "right": 280.453125,
+          "width": 176.9140625,
+          "height": 48
+        },
+        "main": {
+          "top": 56,
+          "bottom": 800.5,
+          "left": 64,
+          "right": 320,
+          "width": 256,
+          "height": 744.5
+        },
+        "viewport": {
+          "width": 320,
+          "height": 800,
+          "devicePixelRatio": 2,
+          "visualWidth": 320,
+          "visualHeight": 800.5,
+          "visualScale": 1,
+          "scrollX": 0,
+          "scrollY": 0
+        },
+        "root": {
+          "clientWidth": 320,
+          "clientHeight": 800,
+          "scrollWidth": 320,
+          "scrollHeight": 800,
+          "offsetWidth": 320,
+          "offsetHeight": 801,
+          "scrollLeft": 0,
+          "scrollTop": 0
+        },
+        "body": {
+          "clientWidth": 320,
+          "clientHeight": 801,
+          "scrollWidth": 320,
+          "scrollHeight": 801,
+          "offsetWidth": 320,
+          "offsetHeight": 801,
+          "scrollLeft": 0,
+          "scrollTop": 0
+        },
+        "ancestors": [
+          {
+            "tag": "DIV",
+            "bounds": {
+              "top": 731.5,
+              "bottom": 820.5,
+              "left": 76,
+              "right": 308,
+              "width": 232,
+              "height": 89
+            },
+            "clientWidth": 232,
+            "clientHeight": 88,
+            "scrollWidth": 232,
+            "scrollHeight": 88,
+            "offsetWidth": 232,
+            "offsetHeight": 89,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "SECTION",
+            "bounds": {
+              "top": -9401,
+              "bottom": 821.5,
+              "left": 76,
+              "right": 308,
+              "width": 232,
+              "height": 10222.5
+            },
+            "clientWidth": 232,
+            "clientHeight": 10221,
+            "scrollWidth": 232,
+            "scrollHeight": 10221,
+            "offsetWidth": 232,
+            "offsetHeight": 10223,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "DIV",
+            "bounds": {
+              "top": -10191,
+              "bottom": 821.5,
+              "left": 76,
+              "right": 308,
+              "width": 232,
+              "height": 11012.5
+            },
+            "clientWidth": 232,
+            "clientHeight": 11013,
+            "scrollWidth": 232,
+            "scrollHeight": 11013,
+            "offsetWidth": 232,
+            "offsetHeight": 11013,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "DIV",
+            "bounds": {
+              "top": -10191,
+              "bottom": 821.5,
+              "left": 76,
+              "right": 308,
+              "width": 232,
+              "height": 11012.5
+            },
+            "clientWidth": 232,
+            "clientHeight": 11013,
+            "scrollWidth": 232,
+            "scrollHeight": 11013,
+            "offsetWidth": 232,
+            "offsetHeight": 11013,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "MAIN",
+            "bounds": {
+              "top": 56,
+              "bottom": 800.5,
+              "left": 64,
+              "right": 320,
+              "width": 256,
+              "height": 744.5
+            },
+            "clientWidth": 256,
+            "clientHeight": 745,
+            "scrollWidth": 256,
+            "scrollHeight": 11037,
+            "offsetWidth": 256,
+            "offsetHeight": 745,
+            "scrollLeft": 0,
+            "scrollTop": 10259,
+            "overflowX": "hidden",
+            "overflowY": "auto"
+          },
+          {
+            "tag": "DIV",
+            "bounds": {
+              "top": 0,
+              "bottom": 800.5,
+              "left": 64,
+              "right": 320,
+              "width": 256,
+              "height": 800.5
+            },
+            "clientWidth": 256,
+            "clientHeight": 801,
+            "scrollWidth": 256,
+            "scrollHeight": 801,
+            "offsetWidth": 256,
+            "offsetHeight": 801,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "overflowX": "hidden",
+            "overflowY": "hidden"
+          },
+          {
+            "tag": "DIV",
+            "bounds": {
+              "top": 0,
+              "bottom": 800.5,
+              "left": 0,
+              "right": 320,
+              "width": 320,
+              "height": 800.5
+            },
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801,
+            "offsetWidth": 320,
+            "offsetHeight": 801,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "BODY",
+            "bounds": {
+              "top": 0,
+              "bottom": 800.5,
+              "left": 0,
+              "right": 320,
+              "width": 320,
+              "height": 800.5
+            },
+            "clientWidth": 320,
+            "clientHeight": 801,
+            "scrollWidth": 320,
+            "scrollHeight": 801,
+            "offsetWidth": 320,
+            "offsetHeight": 801,
+            "scrollLeft": 0,
+            "scrollTop": 0,
+            "overflowX": "visible",
+            "overflowY": "visible"
+          }
+        ]
+      }
+    }
+  ],
+  "nativeZoomVerdict": "NOT RUN",
+  "cases": [
+    {
+      "name": "manager-ru",
+      "status": "PASS",
+      "firstPage": 25,
+      "secondPage": 1,
+      "finalUniqueOrderedPeople": 26,
+      "currentSnapshotStates": [
+        "STARTED",
+        "PAUSED",
+        "COMPLETED"
+      ],
+      "canonicalSnapshotLinksAndFrozenUtcPlan": true,
+      "positiveSnapshotLocalizedDomAndOriginalScreenshots": true,
+      "missingCurrentSnapshotUnavailableExplained": true,
+      "liveAssignmentDoesNotReconstructExistingWorkday": true,
+      "scheduledWithoutWorkdayExplained": true,
+      "persistedNoShowAuthority": true,
+      "exceptionsNullWithoutAuthority": false,
+      "previousOpenRetained": true,
+      "leaveAndHolidayExplained": true,
+      "unavailableScheduleExplained": true,
+      "nativePaginationTabs": 19,
+      "nativePaginationEnter": true,
+      "pageTwoAbsenceGeometry": [
+        {
+          "positive": true,
+          "withinViewport": true,
+          "untruncated": true,
+          "displayed": true,
+          "stateTextMatched": true
+        },
+        {
+          "positive": true,
+          "withinViewport": true,
+          "untruncated": true,
+          "displayed": true,
+          "stateTextMatched": true
+        }
+      ],
+      "readOnlyWorkforceRequests": true,
+      "realSessionPreserved": true,
+      "viewport": {
+        "width": 320,
+        "height": 900
+      }
+    },
+    {
+      "name": "manager-az",
+      "status": "PASS",
+      "firstPage": 25,
+      "secondPage": 1,
+      "finalUniqueOrderedPeople": 26,
+      "currentSnapshotStates": [
+        "STARTED",
+        "PAUSED",
+        "COMPLETED"
+      ],
+      "canonicalSnapshotLinksAndFrozenUtcPlan": true,
+      "positiveSnapshotLocalizedDomAndOriginalScreenshots": true,
+      "missingCurrentSnapshotUnavailableExplained": true,
+      "liveAssignmentDoesNotReconstructExistingWorkday": true,
+      "scheduledWithoutWorkdayExplained": true,
+      "persistedNoShowAuthority": true,
+      "exceptionsNullWithoutAuthority": false,
+      "previousOpenRetained": true,
+      "leaveAndHolidayExplained": true,
+      "unavailableScheduleExplained": true,
+      "nativePaginationTabs": 19,
+      "nativePaginationEnter": true,
+      "pageTwoAbsenceGeometry": [
+        {
+          "positive": true,
+          "withinViewport": true,
+          "untruncated": true,
+          "displayed": true,
+          "stateTextMatched": true
+        },
+        {
+          "positive": true,
+          "withinViewport": true,
+          "untruncated": true,
+          "displayed": true,
+          "stateTextMatched": true
+        }
+      ],
+      "readOnlyWorkforceRequests": true,
+      "realSessionPreserved": true,
+      "viewport": {
+        "width": 768,
+        "height": 900
+      }
+    },
+    {
+      "name": "manager-en",
+      "status": "PASS",
+      "firstPage": 25,
+      "secondPage": 1,
+      "finalUniqueOrderedPeople": 26,
+      "currentSnapshotStates": [
+        "STARTED",
+        "PAUSED",
+        "COMPLETED"
+      ],
+      "canonicalSnapshotLinksAndFrozenUtcPlan": true,
+      "positiveSnapshotLocalizedDomAndOriginalScreenshots": true,
+      "missingCurrentSnapshotUnavailableExplained": true,
+      "liveAssignmentDoesNotReconstructExistingWorkday": true,
+      "scheduledWithoutWorkdayExplained": true,
+      "persistedNoShowAuthority": true,
+      "exceptionsNullWithoutAuthority": false,
+      "previousOpenRetained": true,
+      "leaveAndHolidayExplained": true,
+      "unavailableScheduleExplained": true,
+      "nativePaginationTabs": 19,
+      "nativePaginationEnter": true,
+      "pageTwoAbsenceGeometry": [
+        {
+          "positive": true,
+          "withinViewport": true,
+          "untruncated": true,
+          "displayed": true,
+          "stateTextMatched": true
+        },
+        {
+          "positive": true,
+          "withinViewport": true,
+          "untruncated": true,
+          "displayed": true,
+          "stateTextMatched": true
+        }
+      ],
+      "readOnlyWorkforceRequests": true,
+      "realSessionPreserved": true,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      }
+    },
+    {
+      "name": "forged-tenant-headers-remain-session-bound",
+      "status": "PASS",
+      "responseStatus": 200,
+      "foreignPeopleExcluded": true,
+      "authenticatedTenantPreserved": true,
+      "noHeaderDerived403Claim": true
+    },
+    {
+      "name": "approver-ru",
+      "status": "PASS",
+      "firstPage": 25,
+      "secondPage": 1,
+      "finalUniqueOrderedPeople": 26,
+      "currentSnapshotStates": [
+        "STARTED",
+        "PAUSED",
+        "COMPLETED"
+      ],
+      "canonicalSnapshotLinksAndFrozenUtcPlan": true,
+      "positiveSnapshotLocalizedDomAndOriginalScreenshots": true,
+      "missingCurrentSnapshotUnavailableExplained": true,
+      "liveAssignmentDoesNotReconstructExistingWorkday": true,
+      "scheduledWithoutWorkdayExplained": true,
+      "persistedNoShowAuthority": false,
+      "exceptionsNullWithoutAuthority": true,
+      "previousOpenRetained": true,
+      "leaveAndHolidayExplained": true,
+      "unavailableScheduleExplained": true,
+      "nativePaginationTabs": 18,
+      "nativePaginationEnter": true,
+      "pageTwoAbsenceGeometry": [
+        {
+          "positive": true,
+          "withinViewport": true,
+          "untruncated": true,
+          "displayed": true,
+          "stateTextMatched": true
+        },
+        {
+          "positive": true,
+          "withinViewport": true,
+          "untruncated": true,
+          "displayed": true,
+          "stateTextMatched": true
+        }
+      ],
+      "readOnlyWorkforceRequests": true,
+      "realSessionPreserved": true,
+      "viewport": {
+        "width": 320,
+        "height": 900
+      }
+    },
+    {
+      "name": "no-grant-real-session-denied",
+      "status": "PASS",
+      "responseStatus": 403,
+      "code": "WORKFORCE_TODAY_READ_ACCESS_REQUIRED",
+      "namesAndFactsExcluded": true,
+      "noRosterRendered": true,
+      "localizedErrorRendered": true,
+      "readOnlyWorkforceRequests": true,
+      "realSessionPreserved": true
+    }
+  ],
+  "status": "FAIL",
+  "limitations": [
+    "Development bundle, not production build",
+    "Synthetic disposable data only",
+    "Positive workdays are synthetic admin-seeded facts, not a real accepted START workflow or physical presence",
+    "Frozen UTC plan/hashlinks do not prove historical template display-name immutability",
+    "No human AT/whole-page keyboard/Android/physical/load/pilot acceptance",
+    "Geometry/text checks do not prove pixel occlusion or whole-page accessibility",
+    "Native200 cases are fixture-extension automatic browser zoom, not a human browser-shortcut/AT session",
+    "Read-only manager Today; no production feature/grant activation"
+  ],
+  "sourceBindings": [
+    {
+      "path": "scripts/workforce-manager-today-browser-evidence.mjs",
+      "bytes": 63478,
+      "sha256": "6add74cec8cd8e60fb656b52a26248958beb0d5ac4cefa6171615f495b27a0ca"
+    },
+    {
+      "path": "scripts/workforce-native-browser-zoom.mjs",
+      "bytes": 14287,
+      "sha256": "d7ca00632b2f6730bc5049ca2a897f332d594e0a0377a2f63fc96b7d5f8c24be"
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-native-zoom-extension/manifest.json",
+      "bytes": 228,
+      "sha256": "8684a33b8edce2587e17612e0b7dc7f1b25a85fe2dde08ba642b6f21ba3ec7cb"
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-native-zoom-extension/background.js",
+      "bytes": 144,
+      "sha256": "45e33ffc8a0f58560b991a8ef59dd0a31b5e93781850538e94ae03eb67d72c6c"
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-manager-today-browser.sql",
+      "bytes": 33617,
+      "sha256": "448d08b65048f3692145d1d2d73d1f4b2f5973363172dddb959b4c9daf20a4fb"
+    },
+    {
+      "path": "scripts/_rls.mjs",
+      "bytes": 2250,
+      "sha256": "fae67dd4467cfd14667236a570ee4884100d8236496f64e31984305146ad7266"
+    },
+    {
+      "path": ".github/workflows/workforce-manager-today-browser-evidence.yml",
+      "bytes": 10288,
+      "sha256": "741f5ee020129c6ef98c275b6ad62e2ec61986e04da047cf884533331bc534a1"
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-manager-today-snapshot-browser.sql",
+      "bytes": 15243,
+      "sha256": "e0433c3a48370f2b789c03c7749aa1a66611f70544dd76cf8c87a904b397a2eb"
+    },
+    {
+      "path": "src/lib/workforce/snapshot-writer.ts",
+      "bytes": 22831,
+      "sha256": "4698459ee85e3835ab362190f402d67e8dd3b6ab83ef18cccc9d706bd10a6c6b"
+    },
+    {
+      "path": "src/lib/workforce/policy-definition.ts",
+      "bytes": 3207,
+      "sha256": "da7a0767861a80180e6d6183fdd78f9457b8815d67c1eac04459d68f3f96eb40"
+    },
+    {
+      "path": "src/lib/workforce/policy-resolution.ts",
+      "bytes": 7415,
+      "sha256": "e552b0c255e589057fd81fd519a78458f15d6ee1a2371e43a68c1e99695accfb"
+    },
+    {
+      "path": "src/lib/workforce/geofence-evaluation.ts",
+      "bytes": 4509,
+      "sha256": "7510d31959e0f6a8b627f9975a57a60e10b051826fee58841ea1e55155e4bcd4"
+    },
+    {
+      "path": "prisma/migrations/20260828223000_workforce_h3_foundation/migration.sql",
+      "bytes": 48914,
+      "sha256": "fe87338c7318fd0e713223af6905e5d1e7ca9794260fdbeb48e32d521b46681a"
+    },
+    {
+      "path": "prisma/migrations/20260830110000_workforce_shift_default_timeline/migration.sql",
+      "bytes": 7209,
+      "sha256": "9b097c2cee3c48780774cd1c1f7b0392193bcbb1b2717c694da6a6227682500d"
+    },
+    {
+      "path": "prisma/migrations/20260830120000_workforce_workday_schedule_snapshots/migration.sql",
+      "bytes": 6009,
+      "sha256": "c3f2eaee65d95a83cca1f5c4d2e50c781be0fb618a802030fc1c46bb44bb2686"
+    },
+    {
+      "path": "prisma/migrations/20260830130000_workforce_employee_team_membership_history/migration.sql",
+      "bytes": 15814,
+      "sha256": "bbc3b8477ca1f6ef62a14c2f83a80b59344fdb1bf3fbf31f468aff385c2166a3"
+    },
+    {
+      "path": "prisma/migrations/20260901080000_workforce_team_default_shift_timeline/migration.sql",
+      "bytes": 12454,
+      "sha256": "d4141d1fb438cadf687e71253ef3bc92d0a5a3c6f24a90e05a95ef7ab44490a8"
+    },
+    {
+      "path": "prisma/schema.prisma",
+      "bytes": 958771,
+      "sha256": "fd2e0a5b835669dafa736943fd9e5ee403a81dd0dd28d127e895e1f19232eae7"
+    },
+    {
+      "path": "src/app/(dashboard)/workforce/page.tsx",
+      "bytes": 175,
+      "sha256": "e28a521670f737ce4087e6eb021079ee5ccdc5dccb8b916d9f1769b5c0f60b89"
+    },
+    {
+      "path": "src/components/workforce/workforce-manager-today.tsx",
+      "bytes": 10848,
+      "sha256": "fb6ae346b33ed05bb027be278178a0be8a17e65a27617246d2c0ca0efc2ee91f"
+    },
+    {
+      "path": "src/components/workforce/workforce-workbench.tsx",
+      "bytes": 86361,
+      "sha256": "660a5525935d5de13ec06a6f50ca01ac517889c22d3ac291ded59f79e1038d82"
+    },
+    {
+      "path": "src/components/ui/button.tsx",
+      "bytes": 2099,
+      "sha256": "2d401bc2999487316df2b5319e28bd3fb5077cb0f625e272ca9a4bf100e6771a"
+    },
+    {
+      "path": "src/components/ui/badge.tsx",
+      "bytes": 1746,
+      "sha256": "4a707bb4ddeae36de6d8dbb1d96c0e3ff48ed2cbd4b8d9ca89f99fd55e23506f"
+    },
+    {
+      "path": "src/app/api/v1/workforce/today/route.ts",
+      "bytes": 24603,
+      "sha256": "13f6524a645b52444f33dd172eebdd6154b497b15c5b69aa89089f4e2dbab0a6"
+    },
+    {
+      "path": "src/lib/workforce/manager-today.ts",
+      "bytes": 21291,
+      "sha256": "21f501588f7dae24648d3789a07cb660506be69195f3d9653fef4edd1f1973cd"
+    },
+    {
+      "path": "src/lib/workforce/today-read-access.ts",
+      "bytes": 6868,
+      "sha256": "fc3d9a7dc72989844cd8d236f084610af5b4f0495f9f5612286dd0f55fac9620"
+    },
+    {
+      "path": "src/lib/workforce/access-control.ts",
+      "bytes": 10353,
+      "sha256": "b4915d133bb102251dccc94b9ba33a3a65905488135b00cb652f0e299cfa0b9f"
+    },
+    {
+      "path": "src/lib/workforce/access-grant-resolution.ts",
+      "bytes": 5664,
+      "sha256": "1720277ff37308894c9c3e3313a7235150350bcfa254ac4846905a5f9875e2c3"
+    },
+    {
+      "path": "src/lib/workforce/actor.ts",
+      "bytes": 2000,
+      "sha256": "5a2b4a7ead07f3fdf3a570bd5cf65f83446afac234145052bfba632a8f608644"
+    },
+    {
+      "path": "src/lib/workforce/employee-today.ts",
+      "bytes": 19963,
+      "sha256": "4021a3595fe5f9ed506c1e265451847b4487930c94f0ddf78c9d2596ed65e1cc"
+    },
+    {
+      "path": "src/lib/workforce/exception-read-access.ts",
+      "bytes": 2032,
+      "sha256": "adedcbd7844335ff63c2506c82c46fee240a473ba47974e90bcb8a8f62da69ae"
+    },
+    {
+      "path": "src/lib/workforce/exception-case-read-scope.ts",
+      "bytes": 8461,
+      "sha256": "42ff417bb8afc67546b4cc57bfc0b6549a839c2ce293297b1f440e625093f9b5"
+    },
+    {
+      "path": "src/lib/workforce/granular-access-rollout.ts",
+      "bytes": 519,
+      "sha256": "5e2278c1995a9bea0d3aca34f864afaf036e0ce56d409fd4b6d42ea13ae8d93b"
+    },
+    {
+      "path": "src/lib/workforce/sensitive-response.ts",
+      "bytes": 553,
+      "sha256": "4c11bbe1d33bbba582ec7ac18ecd1a650494bfb86896d1ddb23bd359cf790471"
+    },
+    {
+      "path": "src/lib/workforce/team-membership.ts",
+      "bytes": 4282,
+      "sha256": "47fc2f92856ff8e8bc67a31bf9087c73faf673bc741fc58b76a4f5efac7723fb"
+    },
+    {
+      "path": "src/lib/workforce/calendar.ts",
+      "bytes": 8032,
+      "sha256": "d4d31c098c4f54dbfbeca83c0e4e7aff21bb874aad0d7d278dc0c2737ee67da8"
+    },
+    {
+      "path": "src/lib/workforce/shift-definition.ts",
+      "bytes": 5818,
+      "sha256": "f63737ed9c400f8b5d6895aa3654c1acf2ccfc9ec6f0bd1cf41882c606d07602"
+    },
+    {
+      "path": "src/lib/workforce/shift-resolution.ts",
+      "bytes": 10849,
+      "sha256": "fc56776588860d78293286c09e1c010de8fc8b1cff4d2065aaabfac8954b9d5f"
+    },
+    {
+      "path": "src/lib/workforce/timesheet-schedule-snapshot.ts",
+      "bytes": 8140,
+      "sha256": "b4a01de4b538bddc61da0a35f641762c2a4c5967153cd9b95d1ef3bb5f2a1d2e"
+    },
+    {
+      "path": "src/lib/workforce/timesheet-read-model.ts",
+      "bytes": 15268,
+      "sha256": "80dce28ad04af0172fb8419f947790d86ffe72405ed72379dd3d10fb128955c8"
+    },
+    {
+      "path": "src/lib/with-workforce-rls-auth.ts",
+      "bytes": 21653,
+      "sha256": "289aa253b4d8d3a25913136a545db598bf1a01c9b571b6c89e2689da2fe6d8ff"
+    },
+    {
+      "path": "src/lib/with-rls.ts",
+      "bytes": 10390,
+      "sha256": "533dfc91f795970fe7abaf1aedc37e7ea82d175257b33a0d84c864e791618e38"
+    },
+    {
+      "path": "src/lib/auth.ts",
+      "bytes": 26606,
+      "sha256": "a0cd1185fe0db3b543998dacbf815322c84010a75f539fc6d9631679a32907bd"
+    },
+    {
+      "path": "src/lib/api-auth.ts",
+      "bytes": 25973,
+      "sha256": "1bd273786679f9b59718a4eec9314f51ae19efcddd6455cae8d562d88d1c8f84"
+    },
+    {
+      "path": "src/lib/user-module-access.ts",
+      "bytes": 9778,
+      "sha256": "aab31a0abf2e4be7c96df6c6ad9e474c6a2141764a6894882172d16519d12166"
+    },
+    {
+      "path": "src/lib/mtm-settings.ts",
+      "bytes": 11570,
+      "sha256": "cc3b23855cfaf3354b40ad22bd2ee88cf97764b1ae4db3ea6b8c7b5aac15285c"
+    },
+    {
+      "path": "src/lib/mtm/mobile-week.ts",
+      "bytes": 4180,
+      "sha256": "6f557666c7e17161e914696f4d7891ebac9ec2845da4de6e4de9c5b1db864d96"
+    },
+    {
+      "path": "src/lib/timezone.ts",
+      "bytes": 12919,
+      "sha256": "88761f7c31ff4d596f1b0a0c1aa198c5c70a3d2ac4d494818728884cb5b75247"
+    },
+    {
+      "path": "src/lib/modules.ts",
+      "bytes": 23495,
+      "sha256": "08c8d13bebc1d6ba811687ee56f98f2510510c73f196c01f24cfefa521d23c24"
+    },
+    {
+      "path": "src/lib/tenant-capabilities.ts",
+      "bytes": 21507,
+      "sha256": "67720a5f24cf735bf2bf05d72441612ab9a6ccb671bf04cbd72758e34853d9b4"
+    },
+    {
+      "path": "src/proxy.ts",
+      "bytes": 49648,
+      "sha256": "dfd16dc4284f5b6d02bbfc9165c5b37d5849012298c52e1e303306e6d4c4b1d8"
+    },
+    {
+      "path": "src/app/layout.tsx",
+      "bytes": 3211,
+      "sha256": "261242a8ef66750a5f296c56dd93ddda08e39eb1560bc4dbc18f58f0ee975625"
+    },
+    {
+      "path": "src/app/(dashboard)/layout.tsx",
+      "bytes": 13392,
+      "sha256": "be2ef432d60a19e8ea930becd30894b76c7bda5875a81246a95cb4cdfe4b6e3f"
+    },
+    {
+      "path": "src/app/globals.css",
+      "bytes": 52755,
+      "sha256": "7ab5a052ade58a3be83771ce412d57b801b57145b9d37fe7947d1c803eaeb019"
+    },
+    {
+      "path": "src/components/providers.tsx",
+      "bytes": 1890,
+      "sha256": "3d82c0cf34677754f2e4d80e0978d2583bded1daa1d476ba59f2e0524242526d"
+    },
+    {
+      "path": "messages/en.json",
+      "bytes": 1348644,
+      "sha256": "756ac5887fb0afaf0f2c28bb6082250572046cfbd06450d6c78fdf707f7db295"
+    },
+    {
+      "path": "messages/ru.json",
+      "bytes": 1991195,
+      "sha256": "54d3c646844366bdd0cbf382764080583ba82378284284e798fc1d865678a16c"
+    },
+    {
+      "path": "messages/az.json",
+      "bytes": 1491737,
+      "sha256": "11e3fece9dd853b5e0713f292d1235379f55186bff626ba939b7c76b4df4e0ba"
+    }
+  ],
+  "positiveCurrentSnapshots": {
+    "status": "PASS",
+    "states": [
+      {
+        "ordinal": 1,
+        "status": "STARTED",
+        "sourceHelperCreatedTriplet": true,
+        "replayAlreadyPresent": true,
+        "schemaVersion": 2,
+        "historicalMembershipLinked": true,
+        "canonicalScheduleHashVerified": true,
+        "frozenUtcPlanVerified": true,
+        "remoteSegmentCount": 1
+      },
+      {
+        "ordinal": 2,
+        "status": "PAUSED",
+        "sourceHelperCreatedTriplet": true,
+        "replayAlreadyPresent": true,
+        "schemaVersion": 2,
+        "historicalMembershipLinked": true,
+        "canonicalScheduleHashVerified": true,
+        "frozenUtcPlanVerified": true,
+        "remoteSegmentCount": 1
+      },
+      {
+        "ordinal": 3,
+        "status": "COMPLETED",
+        "sourceHelperCreatedTriplet": true,
+        "replayAlreadyPresent": true,
+        "schemaVersion": 2,
+        "historicalMembershipLinked": true,
+        "canonicalScheduleHashVerified": true,
+        "frozenUtcPlanVerified": true,
+        "remoteSegmentCount": 1
+      }
+    ],
+    "adminFixtureSeedOnly": true,
+    "actualAcceptedStartEventWorkflowTested": false,
+    "physicalPresenceInferred": false,
+    "historicalTemplateDisplayNameImmutabilityTested": false
+  },
+  "missingCurrentSnapshot": {
+    "status": "PASS",
+    "syntheticStartedWorkday": true,
+    "currentPublishedAssignmentExists": true,
+    "allThreeSnapshotRowsAbsent": true,
+    "actualAcceptedStartEventWorkflowTested": false,
+    "physicalPresenceInferred": false,
+    "adminFixtureSeedOnly": true
+  },
+  "snapshotDatabaseGuards": {
+    "status": "PASS",
+    "role": "postgres",
+    "disposableAdminTransactionsOnly": true,
+    "productionMigrationsChanged": false,
+    "appWritePrivilegesAdded": false,
+    "exactNamedGuardScopeOnly": true,
+    "results": [
+      {
+        "name": "workforce_policy_snapshots-UPDATE",
+        "status": "PASS",
+        "postgresCode": "55000",
+        "stagedFactCreatedBeforeError": true,
+        "stagedWorkdayCount": 6,
+        "committedWorkdayCountAfter": 5,
+        "allFactHashesAndCountsRestored": true
+      },
+      {
+        "name": "workforce_policy_snapshots-DELETE",
+        "status": "PASS",
+        "postgresCode": "55000",
+        "stagedFactCreatedBeforeError": true,
+        "stagedWorkdayCount": 6,
+        "committedWorkdayCountAfter": 5,
+        "allFactHashesAndCountsRestored": true
+      },
+      {
+        "name": "workforce_shift_snapshots-UPDATE",
+        "status": "PASS",
+        "postgresCode": "55000",
+        "stagedFactCreatedBeforeError": true,
+        "stagedWorkdayCount": 6,
+        "committedWorkdayCountAfter": 5,
+        "allFactHashesAndCountsRestored": true
+      },
+      {
+        "name": "workforce_shift_snapshots-DELETE",
+        "status": "PASS",
+        "postgresCode": "55000",
+        "stagedFactCreatedBeforeError": true,
+        "stagedWorkdayCount": 6,
+        "committedWorkdayCountAfter": 5,
+        "allFactHashesAndCountsRestored": true
+      },
+      {
+        "name": "workforce_workday_schedule_snapshots-UPDATE",
+        "status": "PASS",
+        "postgresCode": "55000",
+        "stagedFactCreatedBeforeError": true,
+        "stagedWorkdayCount": 6,
+        "committedWorkdayCountAfter": 5,
+        "allFactHashesAndCountsRestored": true
+      },
+      {
+        "name": "workforce_workday_schedule_snapshots-DELETE",
+        "status": "PASS",
+        "postgresCode": "55000",
+        "stagedFactCreatedBeforeError": true,
+        "stagedWorkdayCount": 6,
+        "committedWorkdayCountAfter": 5,
+        "allFactHashesAndCountsRestored": true
+      },
+      {
+        "name": "policy-workday-employee-link",
+        "status": "PASS",
+        "postgresCode": "23514",
+        "stagedFactCreatedBeforeError": true,
+        "stagedWorkdayCount": 6,
+        "committedWorkdayCountAfter": 5,
+        "allFactHashesAndCountsRestored": true
+      },
+      {
+        "name": "shift-workday-employee-link",
+        "status": "PASS",
+        "postgresCode": "23514",
+        "stagedFactCreatedBeforeError": true,
+        "stagedWorkdayCount": 6,
+        "committedWorkdayCountAfter": 5,
+        "allFactHashesAndCountsRestored": true
+      },
+      {
+        "name": "schedule-cross-workday-snapshot-links",
+        "status": "PASS",
+        "postgresCode": "23514",
+        "stagedFactCreatedBeforeError": true,
+        "stagedWorkdayCount": 6,
+        "committedWorkdayCountAfter": 5,
+        "allFactHashesAndCountsRestored": true
+      },
+      {
+        "name": "schedule-v2-historical-membership",
+        "status": "PASS",
+        "postgresCode": "23514",
+        "stagedFactCreatedBeforeError": true,
+        "stagedWorkdayCount": 6,
+        "committedWorkdayCountAfter": 5,
+        "allFactHashesAndCountsRestored": true
+      }
+    ]
+  },
+  "rlsBefore": {
+    "phase": "BEFORE_AUTHENTICATED_READS",
+    "role": "wf_manager_today_browser",
+    "tenantContextAbsent": true,
+    "bypassAbsent": true,
+    "unsafeRolePrivilegesAbsent": true,
+    "counts": [
+      {
+        "table": "mtm_agent_workday_events",
+        "syntheticRows": 0,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "mtm_agent_workdays",
+        "syntheticRows": 5,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "mtm_agents",
+        "syntheticRows": 29,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "mtm_settings",
+        "syntheticRows": 1,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "mtm_teams",
+        "syntheticRows": 3,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "mtm_work_calendar_days",
+        "syntheticRows": 3,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "users",
+        "syntheticRows": 4,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "workforce_access_grant_revocations",
+        "syntheticRows": 0,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "workforce_access_grants",
+        "syntheticRows": 2,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "workforce_employee_team_memberships",
+        "syntheticRows": 26,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "workforce_exception_cases",
+        "syntheticRows": 1,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "workforce_exception_decisions",
+        "syntheticRows": 0,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "workforce_policies",
+        "syntheticRows": 1,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "workforce_policy_snapshots",
+        "syntheticRows": 3,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "workforce_shift_assignments",
+        "syntheticRows": 25,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "workforce_shift_default_assignments",
+        "syntheticRows": 0,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "workforce_shift_segments",
+        "syntheticRows": 1,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "workforce_shift_snapshots",
+        "syntheticRows": 3,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "workforce_shift_team_default_assignments",
+        "syntheticRows": 0,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "workforce_shift_templates",
+        "syntheticRows": 1,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "workforce_workday_schedule_snapshots",
+        "syntheticRows": 3,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      }
+    ]
+  },
+  "deniedBoundary": {
+    "responseStatus": 403,
+    "totalRoleAlerts": 2,
+    "localizedErrorAlerts": 1
+  },
+  "failure": {
+    "stage": "today-manager-en-native-200-native-enter-second-response",
+    "name": "Error",
+    "sourcePosition": {
+      "line": 581,
+      "column": 9
+    },
+    "check": "Inspect sourcePosition against harnessSha256; no raw error message recorded",
+    "diagnostic": "Original hosted assertion failed; no raw payload, stack, token or credentials uploaded",
+    "screenshot": "failure-original.png"
+  },
+  "cleanupActions": [
+    {
+      "action": "context-1",
+      "status": "PASS"
+    },
+    {
+      "action": "context-2",
+      "status": "PASS"
+    },
+    {
+      "action": "context-3",
+      "status": "PASS"
+    },
+    {
+      "action": "context-4",
+      "status": "PASS"
+    },
+    {
+      "action": "context-5",
+      "status": "PASS"
+    },
+    {
+      "action": "native-context-profile-1",
+      "status": "PASS"
+    },
+    {
+      "action": "browser",
+      "status": "PASS"
+    },
+    {
+      "action": "application-database",
+      "status": "PASS"
+    },
+    {
+      "action": "fixture-database",
+      "status": "PASS"
+    }
+  ],
+  "cleanup": "PASS",
+  "completedAt": "2026-10-06T20:43:29.145Z"
+}

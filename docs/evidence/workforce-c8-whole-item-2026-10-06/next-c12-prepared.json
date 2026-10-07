@@ -1,0 +1,105 @@
+{
+  "status": "PREPARED_NOT_EXECUTED_NO_ROW_CREDIT",
+  "sourceHead": "30c4185b41d85be43a588e71d8c74c5f34e63596",
+  "acceptedDependency589": "a856a9e533c4f3cec6f2313e69f5be0d5b4d4226",
+  "task": "WF-C12-008",
+  "scope": "Reproducible isolated schema/authorization and operational acceptance packet for the existing dormant reconciliation worker",
+  "existingImplemented": [
+    "complete selected approval revision reader and bounded export audit projection",
+    "all eight root families, complete dependency closure, dense keyset traversal and indivisible approval groups",
+    "read-only repeatable-read sweep, late/backdated revisit and lease/attempt/version cursor fencing",
+    "bounded multi-tenant due selection, fair retry/backoff and finite tracked-attempt health",
+    "separate eligible-roster health with explicit visibility refusal and finite aggregate outcomes"
+  ],
+  "notMissingImplementation": [
+    "Do not add another snapshot reader, dense scanner, tenant selector or eligible-roster count helper. Older completion-plan paragraphs predate their existing source."
+  ],
+  "firstBoundedSlice": [
+    "Bind exact migration/schema/RLS/trigger/index identities and source revision to a disposable synthetic fixture manifest; distinguish db-push plus selected guards from full history.",
+    "Inventory existing source-bound dense/operations/roster-health PG receipts and identify genuinely unexecuted schema/visibility/timeout assertions before adding or rerunning tests.",
+    "Prepare fail-closed checks for authorized-reader visibility, missing required objects, C-collated indexes, non-superuser/no-BYPASSRLS, unchanged business-fact hashes and finite identifier-free diagnostics.",
+    "Keep all work in tests/evidence and existing dormant C12 paths, separated from C8 UI and accepted PR589 branch."
+  ],
+  "dependenciesAndLimits": [
+    "Current C8 whole-item acceptance first; re-confirm sole writer and fresh main/head before any write.",
+    "An approved reproducible production-like staging baseline or separately scoped historical baseline repair is required for full-history claims. The observed api_keys/P3018/42P01 migration failure remains preserved and is not resolved/marked applied or bypassed.",
+    "Synthetic fixture tests and manifest preparation can continue without production permission changes; do not promote their result to production ACL/trigger completeness.",
+    "Measured representative density/query/timeouts, operational alert/collector delivery, retention/access and runtime scheduling/activation remain distinct criteria.",
+    "C12-003 5000-user/load, C12-009 rollback/drain, C10 telemetry and signed-device gates remain separate; do not imply every open task is externally blocked.",
+    "Existing source/read-only helpers do not authorize new cron, credentials, real grants, routes, tenant activation, merge or deployment."
+  ],
+  "sourceBindings": [
+    {
+      "path": "src/lib/workforce/reconciliation-snapshot.ts",
+      "bytes": 9679,
+      "sha256": "bdba98ef3f2d18b916200673038b4ad3eb523f2a5e3d12c864198eac26f490a3",
+      "blob": "97aa9097d0fdadcbedcd77df053531ac592d9039"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-source-page.ts",
+      "bytes": 5013,
+      "sha256": "7c45f9b7d1b621d7418e4ce18cdbace2bfed1a9a3a522944c5504c1259da03fe",
+      "blob": "24a8b7b9b8cb51bd31ec5ae1c2f0981ad5d59fea"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-approval-group.ts",
+      "bytes": 4263,
+      "sha256": "aa45ab91f54678c457d066a9a8bc044acabbd5cd29df4bad1b1924f7c0632a05",
+      "blob": "8ecafeb590c05bac26ce71dde0587496309d61ca"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-export-audit.ts",
+      "bytes": 7445,
+      "sha256": "38094ed52225428eb46eae6247f4a618a98d66e4e83151b7ba217168c6722409",
+      "blob": "7d3e57bf9fe795674a61dddca63e545701ae4d40"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-dense.ts",
+      "bytes": 8490,
+      "sha256": "500f3f9b68cb68a0ab0ee6085814961b359b46ceb3b18a5ba38d9cafbd175959",
+      "blob": "99e7ddf90d536a78baeff97f1dd95fb00d18b644"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-sweep.ts",
+      "bytes": 3049,
+      "sha256": "309ce1eabde967c795c47bb4a123f7c4cfd73a2a13638d8937327d8db4b0024c",
+      "blob": "0fec4461ce893335761d6d2ba11dbefb6836a2b4"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-cursor-store.ts",
+      "bytes": 6533,
+      "sha256": "8b04ef4d1c7ea5cca424ef13e7c0d80e949271523a22cf4d43a545049949a6bd",
+      "blob": "f43235f707457f3cafef25ebe2fdec97e395f2ef"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-operations.ts",
+      "bytes": 11588,
+      "sha256": "514eb7cc12e5d89dabb5cd03ccddadefd7bec50c682620bc1cccca6bdb5c6576",
+      "blob": "c4f7738a9284c3ab7251eaf2fd92a7006ef04ebe"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-roster-health.ts",
+      "bytes": 6396,
+      "sha256": "896fb07c70b918714ca5c5cd7685fbdd9655811a06c0fd3a41dd095de2f911e9",
+      "blob": "f707fd0b652b18fae49ea4ac500503f9f0dcacee"
+    },
+    {
+      "path": "docs/workforce-c12-dense-operations-2026-10-05.md",
+      "bytes": 5401,
+      "sha256": "c69199ad54e9404e25e6a1f2e324cb3476e9d4b66664f3e27cd46c38c9780c21",
+      "blob": "821f4909dff71327c78ee418f6e3fe7d5115c246"
+    },
+    {
+      "path": "docs/workforce-c12-sweep-staging-2026-10-05.md",
+      "bytes": 5677,
+      "sha256": "fca6a3692af9545731a4461a99338e7d2280e2ef85d73d7fd5a0c303feac5cfc",
+      "blob": "7a484414a5bd3758711292c66583b953c6c0d531"
+    },
+    {
+      "path": "docs/workforce-c12-fault-fairness-matrix-2026-10-06.md",
+      "bytes": 9281,
+      "sha256": "0e063efb3182aaf13389e8c73483ee5804d6ecc2329319afb7016397babef2e4",
+      "blob": "b1ee0f6477e9a99a8444fad751fc5ac097728e8c"
+    }
+  ]
+}

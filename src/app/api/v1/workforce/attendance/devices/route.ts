@@ -1,3 +1,4 @@
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { withWorkforceRlsAuth } from "@/lib/with-workforce-rls-auth"
@@ -26,8 +27,8 @@ export const GET = withWorkforceRlsAuth("read", async (_req: NextRequest, auth) 
       },
     })
     return NextResponse.json({ success: true, data: { enrollments } })
-  } catch (error) {
-    console.error("[workforce/attendance/devices GET]", error)
+  } catch {
+    logWorkforceSensitiveOperationFailure({ operation: "attendance-devices-get" })
     return NextResponse.json({ error: "Failed to load attendance devices" }, { status: 500 })
   }
 })

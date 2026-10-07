@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { workforceLogFailures } from "./fixtures/workforce-log-failures"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
 
 const { requireCronAuth, runScheduledWorkforceNoShowReview } = vi.hoisted(
@@ -41,6 +42,19 @@ beforeEach(() => {
 });
 
 describe("POST /api/cron/workforce-no-show-review", () => {
+  it.each(workforceLogFailures)("logs only a fixed event for $kind and preserves generic no-store failure", async ({ make }) => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {})
+    runScheduledWorkforceNoShowReview.mockRejectedValueOnce(make())
+    const response = await POST(request())
+    expect(response.status).toBe(500)
+    expect(response.headers.get("cache-control")).toBe("no-store")
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff")
+    await expect(response.json()).resolves.toEqual({ error: "Workforce no-show review failed" })
+    expect(runScheduledWorkforceNoShowReview).toHaveBeenCalledOnce()
+    expect(log.mock.calls).toEqual([["[workforce/privacy] sensitive operation failed", { operation: "run-no-show-review" }]])
+    expect(JSON.stringify(log.mock.calls)).not.toContain("WORKFORCE_PRIVATE_CANARY")
+  })
+
   it("does not enter the write-capable worker when the shared CRON_SECRET boundary rejects", async () => {
     requireCronAuth.mockReturnValue(
       NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
@@ -80,3 +94,5 @@ describe("POST /api/cron/workforce-no-show-review", () => {
     await expect(response.json()).resolves.toEqual({ error: "Workforce no-show review failed" });
   });
 });
+
+afterEach(() => vi.restoreAllMocks())

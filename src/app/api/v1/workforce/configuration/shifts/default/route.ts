@@ -1,3 +1,4 @@
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { NextRequest, NextResponse } from "next/server"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
@@ -42,8 +43,8 @@ export const GET = withWorkforceSessionScheduleConfigurationAuth("SCHEDULE_READ"
       select: defaultAssignmentSelect,
     })
     return NextResponse.json({ success: true, data: { defaultAssignments } })
-  } catch (error) {
-    console.error("[workforce/configuration/shifts/default GET]", error)
+  } catch {
+    logWorkforceSensitiveOperationFailure({ operation: "configuration-shifts-default-get" })
     return NextResponse.json({ error: "Failed to load Workforce default shifts" }, { status: 500 })
   }
 })
@@ -77,7 +78,7 @@ export const POST = withWorkforceSessionScheduleConfigurationAuth("SCHEDULE_WRIT
       const status = error.code === "WORKFORCE_CONFIGURATION_DEFAULT_TEMPLATE_NOT_FOUND" ? 404 : 409
       return NextResponse.json({ error: error.message, code: error.code }, { status })
     }
-    console.error("[workforce/configuration/shifts/default POST]", error)
+    logWorkforceSensitiveOperationFailure({ operation: "configuration-shifts-default-post" })
     return NextResponse.json({ error: "Failed to schedule Workforce default shift" }, { status: 500 })
   }
 })

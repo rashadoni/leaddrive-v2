@@ -1,0 +1,121 @@
+{
+  "sourceHead": "30c4185b41d85be43a588e71d8c74c5f34e63596",
+  "tree": "9302e6432c64e818d7859dae78977a35fc996749",
+  "synthetic": "99009aff39ae1445e2f43eb3c748db3fe7a3e122",
+  "main": "251823a5b1b78818593e14be1a8ac8be47e321f4",
+  "accepted589": "a856a9e533c4f3cec6f2313e69f5be0d5b4d4226",
+  "allBlobModesVerified": 8844,
+  "changedTextReadback": [
+    {
+      "path": "messages/az.json",
+      "sha": "a05f7a10e3d3e5dd20967307ee5aebd12abdba68",
+      "utf8Readback": "EXACT"
+    },
+    {
+      "path": "messages/en.json",
+      "sha": "fe509ef51a52c42b4fa085d4c21587ab5c54752f",
+      "utf8Readback": "EXACT"
+    },
+    {
+      "path": "messages/ru.json",
+      "sha": "de59e10814f025939972544fcd7f8c626d6e5b0a",
+      "utf8Readback": "EXACT"
+    },
+    {
+      "path": "src/components/workforce/workforce-workbench.tsx",
+      "sha": "764aeb27cab3ca09959d93359dcf6fce3bab9e9f",
+      "utf8Readback": "EXACT"
+    },
+    {
+      "path": "src/components/workforce/workforce-manager-today.tsx",
+      "sha": "b44f70ba42402f681dc801792e1254d916634921",
+      "utf8Readback": "EXACT"
+    },
+    {
+      "path": "src/__tests__/workforce-today-session-isolation-ui.test.ts",
+      "sha": "9d8695e5ef996526d0399431b0d43ce396b946f3",
+      "utf8Readback": "EXACT"
+    },
+    {
+      "path": "docs/evidence/workforce-c8-pagination-2026-10-06/error-and-focus/targeted-tests.json",
+      "sha": "fc174eca98624b747bf17a76c8b5409c03570878",
+      "utf8Readback": "EXACT"
+    },
+    {
+      "path": "docs/evidence/workforce-c8-pagination-2026-10-06/error-and-focus/initial-unit-negative.json",
+      "sha": "192fb30aabb3cb8768b96bac3cb24d17b0fddc1b",
+      "utf8Readback": "EXACT"
+    },
+    {
+      "path": "docs/evidence/workforce-c8-pagination-2026-10-06/error-and-focus/initial-real-denial-negative.json",
+      "sha": "76116c2f52b9d854134f4cfe150c4e08ae917439",
+      "utf8Readback": "EXACT"
+    },
+    {
+      "path": "docs/evidence/workforce-c8-pagination-2026-10-06/error-and-focus/README.md",
+      "sha": "16e0827c7e8b5532ae350bc489ec4f5c5849b55b",
+      "utf8Readback": "EXACT"
+    },
+    {
+      "path": "src/__tests__/api-mtm-geocode-reverse.test.ts",
+      "sha": "69c93f343406a0c415a8a35e860ad0da1589906d",
+      "utf8Readback": "EXACT"
+    },
+    {
+      "path": "src/__tests__/lib-mtm-geocode.test.ts",
+      "sha": "56d850cb2e2b5faff770b06d772200369cd18679",
+      "utf8Readback": "EXACT"
+    },
+    {
+      "path": "src/__tests__/mtm-customer-form-address-from-map.test.ts",
+      "sha": "27c7fe45f7d11082a1a899094c6c07626ad82502",
+      "utf8Readback": "EXACT"
+    },
+    {
+      "path": "src/__tests__/mtm-location-picker-ui.test.ts",
+      "sha": "42c338b36e73b5328039eaa4025a84e626948f83",
+      "utf8Readback": "EXACT"
+    },
+    {
+      "path": "src/app/api/v1/mtm/geocode/reverse/route.ts",
+      "sha": "6295e32ae5e29dbb7f06a795ce23071721680ffc",
+      "utf8Readback": "EXACT"
+    },
+    {
+      "path": "src/components/mtm/customer-form.tsx",
+      "sha": "b365215fdc489b161d12289c8a4911add4626eef",
+      "utf8Readback": "EXACT"
+    },
+    {
+      "path": "src/components/mtm/location-picker-map.tsx",
+      "sha": "276d48dd59b90d6cba815200b5ef6cee78e4ae7f",
+      "utf8Readback": "EXACT"
+    },
+    {
+      "path": "src/lib/mtm/geocode.ts",
+      "sha": "b00372fd7ce797c202e4b90f6cdfe53a6653ada7",
+      "utf8Readback": "EXACT"
+    },
+    {
+      "path": "docs/evidence/workforce-c8-pagination-2026-10-06/main-251-integration/targeted-tests.json",
+      "sha": "95402ca1247c4fe2b83a29ee85ec3d79c3836a1a",
+      "utf8Readback": "EXACT"
+    },
+    {
+      "path": "docs/evidence/workforce-c8-pagination-2026-10-06/main-251-integration/static-checks.json",
+      "sha": "7da3480c4bdcc63e135ba477384d90c4f0100e5f",
+      "utf8Readback": "EXACT"
+    },
+    {
+      "path": "docs/evidence/workforce-c8-pagination-2026-10-06/main-251-integration/source-proof.json",
+      "sha": "961f45d9807ce898a8cad099a25d5821c0156b01",
+      "utf8Readback": "EXACT"
+    },
+    {
+      "path": "docs/evidence/workforce-c8-pagination-2026-10-06/main-251-integration/README.md",
+      "sha": "d81dce87c7b787a0c899e3d3b6e47e7603b48faa",
+      "utf8Readback": "EXACT"
+    }
+  ],
+  "binaryReadback": false
+}

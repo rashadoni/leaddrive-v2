@@ -1,0 +1,54 @@
+{
+  "atUtc": "2026-10-05T05:47:14.303567+00:00",
+  "head": "a490c963c17d3c5cda1814943ef31cc5347fd8d6",
+  "testedSynthetic": "867625bbef6cc2401eba4d0f6ebe18d61e328a73",
+  "artifactId": 11327129498,
+  "actualViews": [
+    {
+      "name": "manager-en-native-200-snapshot-missing.png",
+      "path": "/tmp/workforce-pr584-a490c9-current-primary/whole-artifacts/11327129498-members/manager-en-native-200-snapshot-missing.png",
+      "bytes": 177944,
+      "sha256": "bb7370629a487b1e85a1039ccfcd36b48339122fee305513317b6b9f88d8057b"
+    },
+    {
+      "name": "manager-ru-native-200-snapshot-missing.png",
+      "path": "/tmp/workforce-pr584-a490c9-current-primary/whole-artifacts/11327129498-members/manager-ru-native-200-snapshot-missing.png",
+      "bytes": 175457,
+      "sha256": "ad229d5a2d7706581c46eaf0253807e7ed46feb18c9d57b61fb6d01eaef83a6e"
+    },
+    {
+      "name": "manager-az-native-200-snapshot-missing.png",
+      "path": "/tmp/workforce-pr584-a490c9-current-primary/whole-artifacts/11327129498-members/manager-az-native-200-snapshot-missing.png",
+      "bytes": 175899,
+      "sha256": "d5a41d7907fe61661a35346bfc02fe7512585858fd73e37d1cc7957ce44b0e16"
+    },
+    {
+      "name": "manager-en-native-200-native-pagination.png",
+      "path": "/tmp/workforce-pr584-a490c9-current-primary/whole-artifacts/11327129498-members/manager-en-native-200-native-pagination.png",
+      "bytes": 186062,
+      "sha256": "60efda8e6a2525fd71763204474218f4c84dd6e9c7fb35fd8b857678e0096213"
+    },
+    {
+      "name": "manager-ru-native-200-native-pagination.png",
+      "path": "/tmp/workforce-pr584-a490c9-current-primary/whole-artifacts/11327129498-members/manager-ru-native-200-native-pagination.png",
+      "bytes": 176180,
+      "sha256": "719c8a51c651915a6d6a0c122cabae83dcac41365d777bbdff10bbb970b0099e"
+    },
+    {
+      "name": "manager-az-native-200-native-pagination.png",
+      "path": "/tmp/workforce-pr584-a490c9-current-primary/whole-artifacts/11327129498-members/manager-az-native-200-native-pagination.png",
+      "bytes": 183860,
+      "sha256": "d911b30e938c8e77eaad22aec24dfa84a2204d5c91985fc3aba4270007f39a7e"
+    }
+  ],
+  "actualViewCount": 6,
+  "inspectionTool": "view_image actual six local current originals displayed to root in functions.exec; no planned view credit",
+  "observations": [
+    "Current EN/RU/AZ missing-snapshot cards visibly report unavailable published schedule and historical calendar beside Working state.",
+    "Current EN/RU/AZ pagination button/focus outline visible, with development 1 Issue badge occluding part of the lower button/body.",
+    "Geometry/current focus credit remains limited; whole-page nonocclusion, human AT, WCAG, real accepted START and physical presence are not established."
+  ],
+  "other50PNGRootVisualReview": "NOT RUN; whole bytes/CRC/IDAT checks separate",
+  "wholePageNonocclusionAccepted": false,
+  "wholePageWCAGAccepted": false
+}

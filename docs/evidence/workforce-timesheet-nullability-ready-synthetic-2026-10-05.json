@@ -1,0 +1,193 @@
+{
+  "atUtc": "2026-10-05T05:36:32.803902+00:00",
+  "prNumber": 584,
+  "url": "https://github.com/rashadoni/leaddrive-v2/pull/584",
+  "head": "a490c963c17d3c5cda1814943ef31cc5347fd8d6",
+  "base": "e26cb0a85168b623ea092fb3e81ece922de20718",
+  "branch": "codex/workforce-completion-part45",
+  "draft": false,
+  "ordinaryPush": true,
+  "forcePush": false,
+  "sourceRootWholeAccepted": {
+    "path": "/tmp/workforce-timesheet-part45-source-root-accepted-primary.json",
+    "bytes": 25286,
+    "sha256": "1e318daf5b64acb19e2aee57054df0c28c3c27de49bdcef7c6afb5a9379064ff"
+  },
+  "sourceReport": {
+    "path": "/tmp/workforce-timesheet-part45-a490c9-whole-source-independent.json",
+    "bytes": 34671,
+    "sha256": "3b1dc5356719b833806d2540e95862c3561d0d12506983ae99c52a02620d9267"
+  },
+  "range": {
+    "path": "/tmp/workforce-timesheet-part45-range-primary/proof.json",
+    "bytes": 6735,
+    "sha256": "cc13666a207713059df4d99a5de12acaef67f123d2d989ebd3f60121dca6b9a2"
+  },
+  "identities": {
+    "full": {
+      "paths": 30,
+      "bytes": 310645,
+      "sha256": "417ac6912348d047b2c9a978c83ff15c1fe5a26efbc00e1529a1f1c331b56d82",
+      "repoPaths": [
+        "docs/evidence/workforce-c12-dormant-kernel-current-hosted-independent-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-current-hosted-root-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-current-static-root-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-literal-ip-strict-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-normal-merge-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-own-release-independent-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-own-release-root-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-own-release-whole-log-root-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-range-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-ready-publication-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-root-catalogue-list-guard-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-source-review-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-source-root-2026-10-05.json",
+        "docs/evidence/workforce-c12-duplicate-coherence-next-preliminary-2026-10-05.json",
+        "docs/evidence/workforce-c12-duplicate-coherence-next-preliminary-root-2026-10-05.json",
+        "docs/evidence/workforce-c12-duplicate-coherence-next-root-reader-guard-2026-10-05.json",
+        "docs/evidence/workforce-c12-duplicate-coherence-next-unapplied-2026-10-05.json",
+        "docs/evidence/workforce-timesheet-nullability-application-2026-10-05.json",
+        "docs/evidence/workforce-timesheet-nullability-bounded-checks-2026-10-05.json",
+        "docs/evidence/workforce-timesheet-nullability-next-preliminary-2026-10-05.json",
+        "docs/evidence/workforce-timesheet-nullability-next-preliminary-root-2026-10-05.json",
+        "docs/evidence/workforce-timesheet-nullability-next-unapplied-2026-10-05.json",
+        "docs/evidence/workforce-timesheet-nullability-selected-catalogue-2026-10-05.json",
+        "docs/workforce-c12-dormant-kernel-integrity-evidence-2026-10-05.md",
+        "docs/workforce-c8-calendar-native-zoom-evidence-2026-10-04.md",
+        "docs/workforce-c8-manager-today-native-zoom-evidence-2026-10-04.md",
+        "docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+        "docs/workforce-hrm-session-log.md",
+        "docs/workforce-timesheet-nullability-evidence-2026-10-05.md",
+        "src/lib/workforce/timesheet-calculation.ts"
+      ]
+    },
+    "nonDoc": {
+      "paths": 1,
+      "bytes": 1420,
+      "sha256": "3084fd67bbe5c55153a9fd61c1b5b3ef3ff3e8331fef91fb9dae8182056d2ab4",
+      "repoPaths": [
+        "src/lib/workforce/timesheet-calculation.ts"
+      ]
+    }
+  },
+  "scopeMaximum": 400000,
+  "requiredActions15368": [
+    "pr-scope",
+    "runner-policy",
+    "scan",
+    "static-checks",
+    "typecheck"
+  ],
+  "currentHostedRuntimeAccepted": false,
+  "conditionalDraftRunIds": {},
+  "allFiveCurrentChecks": "PENDING",
+  "appAttachment": "NOT YET CALLED",
+  "normalMergeAllowed": false,
+  "ownMergedMainReleaseGreen": false,
+  "newRowClosure": false,
+  "ordinaryReadyPublication": {
+    "path": "/tmp/workforce-timesheet-part45-ready-publish-primary/publication-proof.json",
+    "bytes": 4312,
+    "sha256": "40f78c7bf059b1ae44413755fe02332c95d1cb0efc068bf9a8290b4f3c5dffed"
+  },
+  "testedSynthetic": "867625bbef6cc2401eba4d0f6ebe18d61e328a73",
+  "testedTree": "cde2e15d16858c2d9e6c1bc4f2f7ec17ba270c82",
+  "syntheticParents": [
+    "e26cb0a85168b623ea092fb3e81ece922de20718",
+    "a490c963c17d3c5cda1814943ef31cc5347fd8d6"
+  ],
+  "candidateAndSyntheticTreeEqual": true,
+  "testedSyntheticBinding": "ACTUAL own READY synthetic parents/tree verified; descriptive text, not a file descriptor",
+  "readyOriginals": [
+    {
+      "path": "/tmp/workforce-timesheet-part45-ready-synthetic-primary/candidate-tree.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-timesheet-part45-ready-synthetic-primary/candidate-tree.stdout",
+      "bytes": 41,
+      "sha256": "447494152bbf8dd9591812021c6c878c50be4722a0a2ce9f9234018c9c6bfd64"
+    },
+    {
+      "path": "/tmp/workforce-timesheet-part45-ready-synthetic-primary/clean.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-timesheet-part45-ready-synthetic-primary/clean.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-timesheet-part45-ready-synthetic-primary/exact-own-ready-pr.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-timesheet-part45-ready-synthetic-primary/exact-own-ready-pr.stdout",
+      "bytes": 18246,
+      "sha256": "ae31df9cf9883681972970ac107332faaf7664312ffaaec1e1ef2bd5e198d8fa"
+    },
+    {
+      "path": "/tmp/workforce-timesheet-part45-ready-synthetic-primary/fetch-tested-synthetic.stderr",
+      "bytes": 106,
+      "sha256": "c96dedb7a722c88fbbb72ef1da7d6170cad9a5670ad1064ea6391f78d752f391"
+    },
+    {
+      "path": "/tmp/workforce-timesheet-part45-ready-synthetic-primary/fetch-tested-synthetic.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-timesheet-part45-ready-synthetic-primary/frozen-public-ref.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-timesheet-part45-ready-synthetic-primary/frozen-public-ref.stdout",
+      "bytes": 41,
+      "sha256": "25198e0aae1d58f2a97ab323b51a66a7c93900c8a46a7ecf87034d6ad12acbdd"
+    },
+    {
+      "path": "/tmp/workforce-timesheet-part45-ready-synthetic-primary/private-branch.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-timesheet-part45-ready-synthetic-primary/private-branch.stdout",
+      "bytes": 46,
+      "sha256": "f0b5393a8f15c0b29856bf0286455653b2342fa220c64c264ad514f18aae97ac"
+    },
+    {
+      "path": "/tmp/workforce-timesheet-part45-ready-synthetic-primary/synthetic-parents.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-timesheet-part45-ready-synthetic-primary/synthetic-parents.stdout",
+      "bytes": 82,
+      "sha256": "64e8f7bd1a04c55194ca357710f1ecc4c485d35ccfeb4d819e8e0271e5dccf2f"
+    },
+    {
+      "path": "/tmp/workforce-timesheet-part45-ready-synthetic-primary/synthetic-tree.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-timesheet-part45-ready-synthetic-primary/synthetic-tree.stdout",
+      "bytes": 41,
+      "sha256": "447494152bbf8dd9591812021c6c878c50be4722a0a2ce9f9234018c9c6bfd64"
+    },
+    {
+      "path": "/tmp/workforce-timesheet-part45-ready-synthetic-primary/tested-synthetic.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-timesheet-part45-ready-synthetic-primary/tested-synthetic.stdout",
+      "bytes": 41,
+      "sha256": "4f99c4d376eeb265282b9d87d6a780eb702ade25829a3fe751404677cb26fa4a"
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "exitCode": 0,
+  "tests": 138,
+  "pass": 138,
+  "failed": 0,
+  "skipped": 0,
+  "files": [
+    {
+      "name": "api-mtm-geocode-reverse.test.ts",
+      "status": "passed",
+      "tests": 4
+    },
+    {
+      "name": "api-mtm-geocode.test.ts",
+      "status": "passed",
+      "tests": 8
+    },
+    {
+      "name": "api-workforce-requests.test.ts",
+      "status": "passed",
+      "tests": 10
+    },
+    {
+      "name": "lib-mtm-geocode.test.ts",
+      "status": "passed",
+      "tests": 25
+    },
+    {
+      "name": "mtm-customer-form-address-from-map.test.ts",
+      "status": "passed",
+      "tests": 5
+    },
+    {
+      "name": "mtm-location-picker-ui.test.ts",
+      "status": "passed",
+      "tests": 17
+    },
+    {
+      "name": "mtm-routes-awaiting-publish-ui.test.ts",
+      "status": "passed",
+      "tests": 7
+    },
+    {
+      "name": "workforce-manager-today-localization.test.ts",
+      "status": "passed",
+      "tests": 3
+    },
+    {
+      "name": "workforce-manager-today-ui.test.ts",
+      "status": "passed",
+      "tests": 2
+    },
+    {
+      "name": "workforce-manager-today.test.ts",
+      "status": "passed",
+      "tests": 6
+    },
+    {
+      "name": "workforce-request-read-access.test.ts",
+      "status": "passed",
+      "tests": 3
+    },
+    {
+      "name": "workforce-timesheet-approval-blockers-ui-contract.test.ts",
+      "status": "passed",
+      "tests": 2
+    },
+    {
+      "name": "workforce-timesheet-complete-ui-contract.test.ts",
+      "status": "passed",
+      "tests": 7
+    },
+    {
+      "name": "workforce-timesheet-export-preview-ui-contract.test.ts",
+      "status": "passed",
+      "tests": 3
+    },
+    {
+      "name": "workforce-timesheet-refresh-lifecycle.test.ts",
+      "status": "passed",
+      "tests": 6
+    },
+    {
+      "name": "workforce-today-session-isolation-ui.test.ts",
+      "status": "passed",
+      "tests": 30
+    }
+  ]
+}

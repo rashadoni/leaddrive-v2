@@ -1,3 +1,4 @@
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { withWorkforceRlsAuth } from "@/lib/with-workforce-rls-auth"
@@ -36,8 +37,8 @@ export const GET = withWorkforceRlsAuth("read", async (_req: NextRequest, auth) 
       },
     })
     return NextResponse.json({ success: true, data: { stations } })
-  } catch (error) {
-    console.error("[workforce/attendance/stations GET]", error)
+  } catch {
+    logWorkforceSensitiveOperationFailure({ operation: "attendance-stations-get" })
     return NextResponse.json({ error: "Failed to load attendance QR stations" }, { status: 500 })
   }
 })
@@ -64,7 +65,7 @@ export const POST = withWorkforceRlsAuth("write", async (req: NextRequest, auth)
     if (error instanceof WorkforceAttendanceManagementError) {
       return NextResponse.json({ error: error.message, code: error.code }, { status: 409 })
     }
-    console.error("[workforce/attendance/stations POST]", error)
+    logWorkforceSensitiveOperationFailure({ operation: "attendance-stations-post" })
     return NextResponse.json({ error: "Failed to create attendance QR station" }, { status: 500 })
   }
 })

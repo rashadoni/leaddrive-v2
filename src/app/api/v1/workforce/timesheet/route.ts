@@ -1,3 +1,4 @@
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { addDateKeyDays, currentDateKey, isDateKey } from "@/lib/mtm/mobile-week"
@@ -524,7 +525,7 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
         code: error.code,
       }, { status: 409 })
     }
-    console.error("[workforce/timesheet GET]", error)
+    logWorkforceSensitiveOperationFailure({ operation: "timesheet-get" })
     return NextResponse.json({ error: "Failed to load workforce timesheet" }, { status: 500 })
   }
 })

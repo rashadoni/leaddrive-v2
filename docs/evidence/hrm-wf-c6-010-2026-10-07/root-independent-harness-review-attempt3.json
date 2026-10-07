@@ -1,0 +1,47 @@
+{
+  "reviewId": "WF-C6-010-root-independent-harness-attempt3",
+  "reviewer": "/root",
+  "createdAtUtc": "2026-10-07T09:57:55.460081+00:00",
+  "sourceHead": "722259bebbdda8ba6bd47bb4326c70b5460a319e",
+  "authorshipDisclosure": "Harness changes authored by /root/inspect_outcome_contract; reviewed by root, who authored production implementation. Independent production-source review remains separate.",
+  "status": "PASS_SOURCE_REVIEW_RUNTIME_PENDING",
+  "bindings": [
+    {
+      "path": "scripts/workforce-exception-report-browser-evidence.mjs",
+      "bytes": 41568,
+      "sha256": "7318d0e27634f6145b83e8d8825f2930484ecf08df009e8017691aee36119f5e"
+    },
+    {
+      "path": "scripts/workforce-exception-classification-browser-evidence.mjs",
+      "bytes": 34764,
+      "sha256": "4f4c2f4547982901d7cfde2e988ad8155ec6f2a5ccf4a535b7222b948d4b9f0e"
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-exception-classification-browser.sql",
+      "bytes": 8727,
+      "sha256": "41ecf5a96c0accb2469971042bf3f47f0e8d7e6fcfa65a8538e1cd7f4013d7e0"
+    }
+  ],
+  "checks": [
+    "Exact API fractions, samples and nulls remain unchanged; rendered percentages compare known values with actual browser Intl formatter, no text normalization",
+    "MFA-required production guard unchanged; synthetic principals enroll mandatory TOTP and pass canonical verify-2fa then CSRF Auth.js session update; consume server nonce is asserted",
+    "Separate granted HR principal without MFA retains explicit403 and zero decision/audit delta; actor/tenant404 guards still require real verified sessions",
+    "Separate disposable SQL only adds users.twoFactorNonce column UPDATE; enrollment/active/64hex trigger and four-column privilege assertion prohibit broader auth writes",
+    "Production/Today/report SQL, application source and both baselines unchanged since722",
+    "All response waiters immediately observe rejection while original awaited promise and assertions retained; failed write status/code recorded before assert; raw payloads excluded",
+    "Password/hash/TOTP secrets/issuednonce/private reasons remain protected markers; safe receipt rejects markers",
+    "Root targeted19guards2files PASS after16712MiBavailable/281GiBfree/memorypressure0; syntax+gitdiffcheck PASS"
+  ],
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "limitations": [
+    "No local database/browser/fullcompiler/build workload",
+    "Actual hosted next-head runtime required; current722 browser failures remain failures",
+    "Synthetic evidence does not replace real operational observation or full migration replay",
+    "Fixture audit append-only guard is synthetic; authoritative decisions use exact production append-only routines"
+  ]
+}

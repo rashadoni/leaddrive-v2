@@ -1,3 +1,4 @@
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { withWorkforceRlsAuth } from "@/lib/with-workforce-rls-auth"
@@ -46,7 +47,7 @@ export const POST = withWorkforceRlsAuth<RouteContext>("write", async (req: Next
       const status = error.code === "WORKFORCE_ATTENDANCE_STATION_NOT_FOUND" ? 404 : 409
       return NextResponse.json({ error: error.message, code: error.code }, { status })
     }
-    console.error("[workforce/attendance/stations/:id/replace POST]", error)
+    logWorkforceSensitiveOperationFailure({ operation: "attendance-stations-item-replace-post" })
     return NextResponse.json({ error: "Failed to replace attendance QR station" }, { status: 500 })
   }
 })
