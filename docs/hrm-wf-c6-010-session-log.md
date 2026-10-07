@@ -287,3 +287,9 @@
 - Auxiliary successor0ceb35ecef649aad2ace9a5482fbc27f9420c6c2 reviewed root against original293: explicit libpq host/port/decoded db/user/password and finite SSL mapping, no URI argv/temp logs/profile inheritance, PGPASSFILE=/dev/null; production read-only options retained. Original fixed SQL/workflow bytes and incoming main8301 preserved. No gates/baselines/Support edits. Official mapping https://www.postgresql.org/docs/16/libpq-envars.html.
 - Root actual bounded Node14PASS/1hostedSQLSKIP/zeroFAIL after capacitycheck14281MiBavailable,279GiBfree,pressurezero. Original293 hostedFAIL remains unchanged. Root review7blob/SHA bindings in release-preflight-root-source-review-0ceb.json; no runtime or production credit inferred. Published fast-forward to existingdraft616; new hostedSQL and ready/full5 gates pending.
 - App snapshot: only current HRM chat ACTIVE; othersnotLoaded. Registered production13.140.132.245:/opt/leaddrive-v2, main→Actions route unchanged. Currentsourceintegration34bbb remainsunpublished; next hostedfixedSQL then auxiliaryreviewedmain merge and actualproductionmetadata.
+
+
+## 2026-10-07 — второй hosted diagnostic FAIL сохранён
+
+- Exact0ceb run37631152301/job112825447351 FAILED:14NodeunitPASS/1actualfixedSQLFAIL/zeroSKIP; productionjobSKIPPED. Connection correction passedfixturecreation, firstactualfixedSQL returnedQUERY_FAILED. Original secondfull log retainedlosslessgzip and receipt; first293FAIL/rootreview retained. Source-only safeSQLSTATE diagnosis requested in fencedsyntheticfixture; productionredaction/assertions/gates not loosened.
+- Existingmain8301 ordinarydeployment37628408066 SUCCESS; this is previousreleasedfinance/testmain, notHRMrelease. Mainprotection reread: unchanged5App15368 checks/enforceadmins/no force/delete; no requiredagentreview. Next diagnosefixedquery, reviewedcorrection/newhostedrun; allHRMproductionactions pending.
