@@ -1,0 +1,698 @@
+{
+  "version": 1,
+  "reviewId": "WF-C6-010 final source supplement8fcf51b8",
+  "createdAtUtc": "2026-10-07T16:36:08.369064+00:00",
+  "headSha": "8fcf51b8a600c49c34c2d7e87e25b7eae952aa69",
+  "gitTree": "c4398c5aecbb5064fd26db692672cb982adf80b6",
+  "priorAcceptedSource": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+  "acceptedImplementation9f": "9f3cc73dcdb8c4ccea1fdac9dfae29570339abc5",
+  "acceptedPR608": "973241bacc296b71fe817d1af11187c32e8126af",
+  "worktree": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-release-integration-20261007",
+  "branch": "codex/hrm-release-integration-20261007",
+  "origin": "https://github.com/rashadoni/leaddrive-v2.git",
+  "workingTreeCleanBeforeAndAfter": true,
+  "productionRoute": {
+    "host": "13.140.132.245",
+    "directory": "/opt/leaddrive-v2",
+    "release": "reviewed protectedmain -> deploy.yml -> immutable SHA artifact"
+  },
+  "status": "PASS_UNCHANGED_PRODUCT_SOURCE_INTEGRATION_FRESH_EXACT_HEAD_CI_AND_ACTUAL_PRODUCTION_METADATA_PENDING",
+  "scope": "Read-only independent source/ref review of root-authored C6 production integration and accepted source preservation. No product runtime tests/build/compiler/DB/browser, source/repo edits, commit, push, status publication or production access.",
+  "authorshipDisclosure": "Reviewer authored C6 PostgreSQL/browser verification and auxiliary metadata helper/workflow/SQL/tests, including diagnostic3fc and timeout683. Own scope is byte-bound to root independent review, not claimed independently authored or reviewed here. Product source/root integration review is independent; no second test execution claimed.",
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "protectedAncestors": [
+    {
+      "label": "acceptedPR589",
+      "sha": "a856a9e533c4f3cec6f2313e69f5be0d5b4d4226",
+      "isAncestor": true
+    },
+    {
+      "label": "acceptedPR605",
+      "sha": "bf6ed11f2bba8c93e828fb044315794b44224741",
+      "isAncestor": true
+    },
+    {
+      "label": "acceptedPR608",
+      "sha": "973241bacc296b71fe817d1af11187c32e8126af",
+      "isAncestor": true
+    },
+    {
+      "label": "acceptedPR612",
+      "sha": "9f3cc73dcdb8c4ccea1fdac9dfae29570339abc5",
+      "isAncestor": true
+    },
+    {
+      "label": "C7AcceptedRuntime",
+      "sha": "d303ae3aac6a2ddb62439e433c08bca29c0befb9",
+      "isAncestor": true
+    },
+    {
+      "label": "C8AcceptedRuntime",
+      "sha": "30c4185b41d85be43a588e71d8c74c5f34e63596",
+      "isAncestor": true
+    },
+    {
+      "label": "acceptedC12EvidenceArchive",
+      "sha": "c123556e7a758b7eb5264137dcaf85504b07e471",
+      "isAncestor": true
+    },
+    {
+      "label": "C6EvidenceArchive",
+      "sha": "2cbfe2981578520edc9def5fa3c681ab5fb55536",
+      "isAncestor": true
+    },
+    {
+      "label": "incomingMain8301",
+      "sha": "8301f6ce0925cf1b8f9ddaa004ea31c26d1e6982",
+      "isAncestor": true
+    },
+    {
+      "label": "reviewedAuxPreflight",
+      "sha": "546d67c1efe7e145e1bfa9a19e9eea7c108b5e57",
+      "isAncestor": true
+    },
+    {
+      "label": "acceptedPriorFinalSource062",
+      "sha": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+      "isAncestor": true
+    },
+    {
+      "label": "acceptedIncomingMain8235",
+      "sha": "8235c3b24ad12189e1ef95427ce7f192c077ae5c",
+      "isAncestor": true
+    },
+    {
+      "label": "currentIncomingMain5ce",
+      "sha": "5cebf61623c58ca65b66f2b58506157c097a1931",
+      "isAncestor": true
+    },
+    {
+      "label": "reviewedDiagnostics3fc",
+      "sha": "3fc77196bdc7b6582b3fbcb32e9155004702de69",
+      "isAncestor": true
+    },
+    {
+      "label": "preservedInitialHintCheckpoint",
+      "sha": "d55110c4cfe2bc7ba7cc8c5444498d5531d53ad8",
+      "isAncestor": true
+    },
+    {
+      "label": "reviewedHintSuccessor683",
+      "sha": "683bfa056ab1f81877de5b8a238658847f1f51e4",
+      "isAncestor": true
+    }
+  ],
+  "changedPathsSinceAccepted062": [
+    "docs/hrm-release-preflight-session-log.md",
+    "docs/hrm-wf-c6-010-session-log.md",
+    "scripts/hrm-migration-metadata-preflight.mjs",
+    "scripts/hrm-migration-metadata-preflight.test.mjs"
+  ],
+  "allProductPrismaLocaleCIHarnessPathsExact062": true,
+  "productionAndWorkflowBindings": [
+    {
+      "path": "src/lib/workforce/exception-outcome-classification.ts",
+      "sha256": "947410fb0687987a465c38ce0c9455d3923d62039d9030b43bda3e0afae99a23",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactAccepted9f": true
+    },
+    {
+      "path": "src/lib/workforce/exception-policy-draft.ts",
+      "sha256": "f45f761e9c2e829351eb930c7e191f667327b3ed040338b4033b54381da59b6b",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactAccepted9f": true
+    },
+    {
+      "path": "src/lib/workforce/exception-workbench.ts",
+      "sha256": "17107791d3895fe0e66d4ed349c32f19eec21fc4bb42220060ff8989ebc3cd21",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactAccepted9f": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-writer.ts",
+      "sha256": "61814e5d395143a6deacc9bd92e0aee1ffb508cc1c168724897dd9bf67da201f",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactAccepted9f": true
+    },
+    {
+      "path": "src/lib/workforce/exception-decision-service.ts",
+      "sha256": "dd10ffed0f37f80b79eae0e784918966033995283cafdbf6a4ec738b6275e21c",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactAccepted9f": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-report-recorded-outcomes.ts",
+      "sha256": "1d84daa28a7b21a8ad8545f5b494c1030c338cff75fc168f87153541d5f0321c",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactAccepted9f": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-report-read.ts",
+      "sha256": "b34a3ef9d52359a235040802c5ede11c03f128c7250b41f5b2a86d10860b82b5",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactAccepted9f": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-ledger.ts",
+      "sha256": "da971cdfdc696085e40be8a35386e48a1746a3c92ebaa2ab9e0cedded25cc8ab",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactAccepted9f": true
+    },
+    {
+      "path": "src/lib/workforce/exception-workbench-token.ts",
+      "sha256": "4479cba8767dd4a8bb596ff8bf311ba139d1b417782035b13db92edef204fd1a",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactAccepted9f": true
+    },
+    {
+      "path": "src/lib/workforce/access-control.ts",
+      "sha256": "b4915d133bb102251dccc94b9ba33a3a65905488135b00cb652f0e299cfa0b9f",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactAccepted9f": true
+    },
+    {
+      "path": "src/lib/workforce/access-grant-resolution.ts",
+      "sha256": "1720277ff37308894c9c3e3313a7235150350bcfa254ac4846905a5f9875e2c3",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactAccepted9f": true
+    },
+    {
+      "path": "src/lib/workforce/exception-read-access.ts",
+      "sha256": "adedcbd7844335ff63c2506c82c46fee240a473ba47974e90bcb8a8f62da69ae",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactAccepted9f": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-read-scope.ts",
+      "sha256": "42ff417bb8afc67546b4cc57bfc0b6549a839c2ce293297b1f440e625093f9b5",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactAccepted9f": true
+    },
+    {
+      "path": "src/lib/workforce/team-membership.ts",
+      "sha256": "47fc2f92856ff8e8bc67a31bf9087c73faf673bc741fc58b76a4f5efac7723fb",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactAccepted9f": true
+    },
+    {
+      "path": "src/lib/with-workforce-rls-auth.ts",
+      "sha256": "289aa253b4d8d3a25913136a545db598bf1a01c9b571b6c89e2689da2fe6d8ff",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactAccepted9f": true
+    },
+    {
+      "path": "src/app/api/v1/workforce/exceptions/route.ts",
+      "sha256": "5a33ec78dc7fe6b05e920cbdb22fecb46f85d45c74840486533ea56df68034ff",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactAccepted9f": true
+    },
+    {
+      "path": "src/app/api/v1/workforce/exception-decisions/route.ts",
+      "sha256": "eeeb1dda5d637fb0fdaa831021556a1200a1bd502e73df05838e850284db34c9",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactAccepted9f": true
+    },
+    {
+      "path": "src/app/api/v1/workforce/exception-reports/route.ts",
+      "sha256": "6d4935a3cd3adbbbb411619a813287a6ba8b7d58cc89dec888074130360233bf",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactAccepted9f": true
+    },
+    {
+      "path": "src/components/workforce/workforce-exception-queue.tsx",
+      "sha256": "5160dcc8b943d0caca712ae0dcad02725784fcb4c2401479c16dede00d0c3b1f",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactAccepted9f": true
+    },
+    {
+      "path": "src/components/workforce/workforce-exception-recorded-outcomes.tsx",
+      "sha256": "1039384b9a47e87b48a001b115300c7161cd3d144b376adce20276f5172cc386",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactAccepted9f": true
+    },
+    {
+      "path": ".github/workflows/workforce-exception-report-browser-evidence.yml",
+      "sha256": "1dcd49d422fb212d4ee1eac6368de97837fe62fc5ca5975a7faa2b6c61dc18e7",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactAccepted9f": true
+    },
+    {
+      "path": "messages/en.json",
+      "sha256": "968f55c77be76ef307a5d4b3d72f3ee9e1fd255bc6a37edc8632552892331244",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactAccepted9f": false
+    },
+    {
+      "path": "messages/ru.json",
+      "sha256": "f4401ef992a363e9c3d8deb5b158545016be2b5732db797227fb8517972be956",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactAccepted9f": false
+    },
+    {
+      "path": "messages/az.json",
+      "sha256": "d7bc057c39c526d58f88e99201371e1e508d14ebd82e490ada359d93dd06eddd",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactAccepted9f": false
+    },
+    {
+      "path": "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql",
+      "sha256": "314d4f0e83c81544a50633bceb977298ece24fff918923310671b07c0e8c5f2a",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactAccepted9f": true
+    },
+    {
+      "path": "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql",
+      "sha256": "1deee0b735aee6ca3b055ee71b3663799daa71c3d6c6ef66c47a02dee7efecec",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactAccepted9f": true
+    },
+    {
+      "path": "prisma/migrations/20260927014300_workforce_exception_case_revisions_contract/migration.sql",
+      "sha256": "418f1cf3c481c1624cd16a26c0aad49680a2430f75fe9e2f3dd22117f000fc7e",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactAccepted9f": true
+    }
+  ],
+  "baselineAndGateBindings": [
+    {
+      "path": "test-baseline.json",
+      "sha256": "8f0fc568274f9fd8c0c741db618d6e4d81025de7112a315cd93e6b92bbd5a4b1",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactAccepted973": true
+    },
+    {
+      "path": "typecheck-baseline.json",
+      "sha256": "919fa9d0212b18ee685af4f08680ebbc34e8c4969294054447df03147bf0fc53",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactAccepted973": true
+    },
+    {
+      "path": "scripts/ci/check-typecheck-gate.sh",
+      "sha256": "a18608d9297c039380481fb27d6200d9ebbcc731e9ec23dd40b5e3a2c5a40937",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactAccepted973": true
+    },
+    {
+      "path": "scripts/ci/check-typecheck-baseline.mjs",
+      "sha256": "8b8a2472a1c813e85c4177c24c6df5fb5907d981b5b43e6870a04cbbba2b812a",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactAccepted973": true
+    },
+    {
+      "path": "scripts/check-test-baseline.mjs",
+      "sha256": "6c3380718fd71061d2efe4aa396fcb9cc998336c5c95a3bbd2de05230058027e",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactAccepted973": true
+    }
+  ],
+  "prismaSchemaBinding": {
+    "path": "prisma/schema.prisma",
+    "bytes": 958771,
+    "sha256": "fd2e0a5b835669dafa736943fd9e5ee403a81dd0dd28d127e895e1f19232eae7",
+    "blob": "4577e8c3b03f0689728283b36144a2d0e228305d",
+    "workingBytesMatchCommit": true,
+    "byteExactPrior062": true
+  },
+  "harnessBindings": [
+    {
+      "path": "scripts/ci/fixtures/workforce-exception-classification-browser.sql",
+      "sha256": "41ecf5a96c0accb2469971042bf3f47f0e8d7e6fcfa65a8538e1cd7f4013d7e0",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-exception-report-browser.sql",
+      "sha256": "85d4237ef3e2a9c1fb782d9ee70e8ed801d82fcc2703fd4932494fa2e3e344b3",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true
+    },
+    {
+      "path": "scripts/workforce-exception-classification-browser-evidence.mjs",
+      "sha256": "216967516c60bab48390aefeebce651524130eefabc7c90cf4d00ee05e899025",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true
+    },
+    {
+      "path": "scripts/workforce-exception-report-browser-evidence.mjs",
+      "sha256": "4216c6421088dc1b47e90ee1f4c68a43e740b80efbfdfc7337b31016d85a8458",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true
+    }
+  ],
+  "incomingMain": {
+    "reviewedMain5ce": "5cebf61623c58ca65b66f2b58506157c097a1931",
+    "liveRefSnapshot": {
+      "refs/heads/codex/hrm-588-validation-20261005": "8fcf51b8a600c49c34c2d7e87e25b7eae952aa69",
+      "refs/heads/main": "5cebf61623c58ca65b66f2b58506157c097a1931",
+      "refs/pull/589/head": "8fcf51b8a600c49c34c2d7e87e25b7eae952aa69"
+    },
+    "onlyNewMainDeltaBeyond8235": [
+      "docs/hrm-release-preflight-session-log.md",
+      "scripts/hrm-migration-metadata-preflight.mjs",
+      "scripts/hrm-migration-metadata-preflight.test.mjs"
+    ],
+    "financeSharedBoundaries": [
+      {
+        "path": ".github/workflows/deploy.yml",
+        "sha256": "eb527b9cf31ca320c2f69760fb3495a5367bedd4de3ff63def4b30b6094ac28f",
+        "workingBytesMatchCommit": true,
+        "byteExactPrior062": true,
+        "byteExactCurrentMain5ce": true
+      },
+      {
+        "path": ".github/workflows/pr-checks.yml",
+        "sha256": "7de832432ad7e36758ca793205bfe84aa0ead2be0bea82f58a8be3be24e0f834",
+        "workingBytesMatchCommit": true,
+        "byteExactPrior062": true,
+        "byteExactCurrentMain5ce": true
+      },
+      {
+        "path": ".github/actions/setup-production-ssh/action.yml",
+        "sha256": "8d9fbd9ccec5f3605609f97fb60647be361a8ba94147d82a23410203a06c5b07",
+        "workingBytesMatchCommit": true,
+        "byteExactPrior062": true,
+        "byteExactCurrentMain5ce": true
+      },
+      {
+        "path": ".github/actions/assert-production-environment-protection/action.yml",
+        "sha256": "fc45626cf9b5c07b6be55a3ce29c4aa0434f438aac8c1044608d108a236c98a0",
+        "workingBytesMatchCommit": true,
+        "byteExactPrior062": true,
+        "byteExactCurrentMain5ce": true
+      },
+      {
+        "path": "src/lib/permissions.ts",
+        "sha256": "33fde1143bc31e6bb1bdd4438160e255a3ae864171cf7ccbdb168c497ce0844e",
+        "workingBytesMatchCommit": true,
+        "byteExactPrior062": true,
+        "byteExactCurrentMain5ce": true
+      },
+      {
+        "path": "src/lib/user-access-summary.ts",
+        "sha256": "3da6bbe5a9204a39cd8158f0fedad531d4efb612df627f996f40c50e585a0803",
+        "workingBytesMatchCommit": true,
+        "byteExactPrior062": true,
+        "byteExactCurrentMain5ce": true
+      },
+      {
+        "path": "src/proxy.ts",
+        "sha256": "9d3fe10f167e964101aaf7e1f455bebb71ae05024f7e91fb20c0f2c48049f40d",
+        "workingBytesMatchCommit": true,
+        "byteExactPrior062": true,
+        "byteExactCurrentMain5ce": true
+      },
+      {
+        "path": "src/lib/nav-items.ts",
+        "sha256": "abf946a3e474304d7d5c11cf1732878e0d0c1596e8d971e7d548640cada9a7bd",
+        "workingBytesMatchCommit": true,
+        "byteExactPrior062": true,
+        "byteExactCurrentMain5ce": true
+      },
+      {
+        "path": "clients/registry.json",
+        "sha256": "4bf46474fe28f4d7c424d747189f9bbf04cee89dbc15f8436d5226f7a4eb6044",
+        "workingBytesMatchCommit": true,
+        "byteExactPrior062": true,
+        "byteExactCurrentMain5ce": true
+      }
+    ],
+    "accepted062IncomingFinance89PathProofRemainsUnchanged": true,
+    "localeNamespaces": [
+      {
+        "locale": "en",
+        "workforceNamespaceCount": 14,
+        "allWorkforceNamespacesExactAccepted9f": true,
+        "wholeCatalogExactAccepted062": true
+      },
+      {
+        "locale": "ru",
+        "workforceNamespaceCount": 14,
+        "allWorkforceNamespacesExactAccepted9f": true,
+        "wholeCatalogExactAccepted062": true
+      },
+      {
+        "locale": "az",
+        "workforceNamespaceCount": 14,
+        "allWorkforceNamespacesExactAccepted9f": true,
+        "wholeCatalogExactAccepted062": true
+      }
+    ]
+  },
+  "C7C8": {
+    "sourceByteExactAccepted062": true,
+    "priorAcceptedClosureSourcePreserved": true,
+    "actualPriorEvidenceCredit": "Historical only, no new8fc runtime or real observations"
+  },
+  "C12": {
+    "acceptedArchiveSha": "c123556e7a758b7eb5264137dcaf85504b07e471",
+    "path": "docs/evidence/workforce-c12-terminal-973-2026-10-06",
+    "tree": "ce32912ddbab58e5e287930a446ba690531ead09",
+    "files": 28,
+    "unchangedArchiveBytesAndAncestry": true,
+    "operationalCredit": false,
+    "status": "PARTIAL"
+  },
+  "sourceContract": [
+    "Only explicitly offered CLASSIFY_FALSE_POSITIVE / CLASSIFY_CONFIRMED_EXCEPTION / APPEAL_FULLY_UPHELD / APPEAL_PARTIALLY_UPHELD / APPEAL_REJECTED can append reserved outcomes. Generic writer rejects those codes.",
+    "Live HR_ADMIN scoped grants, session-only mandatory MFA, tenant capability and historical resource checks are preserved. New writes re-read capability/grants/current scope under the bound per-case advisory lock using ReadCommitted. Tokens remain locators. Exact retry preserves original reason/operation and writes no duplicate row.",
+    "Current resolved cycle permits one finding per classification/appeal dimension; reopening invalidates current findings. Classified resolved samples alone form final outcome denominators; unfinished and each dimension's unclassified resolved cases are separate, zero classified sample yields null shares.",
+    "CASE_RECORDED_AT cohort and protected repeatable-read report snapshot remain explicit. Linked approved correction evidence remains a separate measure and cannot imply false positive or appeal outcome.",
+    "Reason is required3-1000, privately persisted in immutable decision ledger; aggregate report/audit envelope contains no private reason/raw coordinates. Manager allowlist is unchanged and HR outcome actions separate; UI sanitizes enums and uses explicit confirmation/frozen retry reason.",
+    "No automated employment decision, tenant activation, grant/secret/access configuration change, or Support product delta. Existing finance-only shared changes are exact approved incoming main."
+  ],
+  "migrationBindings": [
+    {
+      "path": "prisma/migrations/20261005193000_workforce_reconciliation_operations/migration.sql",
+      "sha256": "c452e7f6d13dca1e5257d8353c252745d05cd4f18eae83cd45501f61664ef719",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactAccepted973": true
+    },
+    {
+      "path": "prisma/migrations/20261006150000_workforce_transferred_assignment_window/migration.sql",
+      "sha256": "239c19f1a973fd0687fc0d558d628befa50cbe3ce9e6a3a0b24c02361a7e533f",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactAccepted973": true
+    }
+  ],
+  "migrationReadiness": "Two existing source migrations unchanged973; catalog prerequisites, default ACL, actual index/function state, size/lock contention and production execution not accepted by source equality.",
+  "preflightSourceBindings": [
+    {
+      "path": ".github/workflows/hrm-migration-metadata-preflight.yml",
+      "sha256": "f90937ecda3b81e7dd017819cfaec1afdefc5fee58167fdfc2289ce012a1dcf1",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactReviewed683": true
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.mjs",
+      "sha256": "46b417da7bbe763960b8ede8fa0e9dbd98543d090d54f73979289504bfe35771",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": false,
+      "byteExactReviewed683": true
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.sql",
+      "sha256": "b174e32eb68a0dbcca98e8557fe8c716ed8277111e79ba822bce43f4e7023b6a",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": true,
+      "byteExactReviewed683": true
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.test.mjs",
+      "sha256": "39c947982f5e7dc2ca1e96307ac5314518bfe748ec58a3cf217f8f09194c0eef",
+      "workingBytesMatchCommit": true,
+      "byteExactPrior062": false,
+      "byteExactReviewed683": true
+    }
+  ],
+  "rootIndependentOwnScopeReview": {
+    "path": "/tmp/hrm-connect-timeout-root-review-683.json",
+    "bytes": 2060,
+    "sha256": "ae48045ec9ad56dd45acfd73ddbc881fdc4e51e2057776660e578001fab883eb",
+    "headSha": "683bfa056ab1f81877de5b8a238658847f1f51e4",
+    "status": "PASS narrow known non-startup connection hint normalizes; arbitrary options remain forbidden; guarded SQL/default observations unchanged; actual catalogue NOT RUN"
+  },
+  "retainedPriorFailureReviewBindings": [
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/independent-source-review-7400.json",
+      "sha256": "e810cc3fbdf33bba655fa863ce919f1fb7ebe4bf5e6d036dc2183a707909b066",
+      "byteExactPrior062AndPriorAcceptance": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/independent-source-review-supplement-5ead.json",
+      "sha256": "6a3fc39cb9d560a296116ac15cd8ac087ddd5a0bab689881e774c1ce4ad6cfa7",
+      "byteExactPrior062AndPriorAcceptance": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/independent-source-review-supplement-b416.json",
+      "sha256": "4a7c003bda2006a44fbce81f4e5177f135b5b8a55a090aadb068f78a95936b65",
+      "byteExactPrior062AndPriorAcceptance": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/independent-source-review-supplement-722.json",
+      "sha256": "307e85c4cf29707323119e47e9c6729df0d73478cd90569d2088add20211de9b",
+      "byteExactPrior062AndPriorAcceptance": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/independent-source-review-supplement-30677.json",
+      "sha256": "4c134a6dab2e84082bb20f63fc1b95954e0fbac8526daf8af8f574b99c18a7eb",
+      "byteExactPrior062AndPriorAcceptance": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/hosted-5ead-compiler/tsc-output.log.gz",
+      "sha256": "71e62e6caa9ac8f9bf2c0cdf40e0f298ba3978517fdf62108a1a7a1ba88f01be",
+      "byteExactPrior062AndPriorAcceptance": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/hosted-722-compiler/tsc-output.log.gz",
+      "sha256": "1d0cd6ea21cd0c067aac22734e303311e79444379a7841c1ba1f7ba9e729cd81",
+      "byteExactPrior062AndPriorAcceptance": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/hosted-30677-compiler/tsc-output.log.gz",
+      "sha256": "382177e8cd88f05e649491526479404b50ebaa576bc1556e2df188440bab98c9",
+      "byteExactPrior062AndPriorAcceptance": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/hosted-722-classification-original.log.gz",
+      "sha256": "3a762530f486cd0bf5ee968cdaa27f1ca659023139f6cdf20e002c74b0ca81a7",
+      "byteExactPrior062AndPriorAcceptance": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/hosted-30677-classification-original.log.gz",
+      "sha256": "bc14dae98bd13f5b1a839245b7c4df923ae97f6bcf54ee76fe6f30eeccc0bb08",
+      "byteExactPrior062AndPriorAcceptance": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/strict-receiver-original-fail.log.gz",
+      "sha256": "1c4d4e3742149bf3ff4320724bfa9cf5ed28a6ac55024c53b5985ff1d073095e",
+      "byteExactPrior062AndPriorAcceptance": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/strict-receiver-repaired-regression.log.gz",
+      "sha256": "4bdd5ce88de73acad42654a1a14a8d35b023461cccf286f03c3d99614047868a",
+      "byteExactPrior062AndPriorAcceptance": true
+    }
+  ],
+  "retainedProductionFailures": [
+    {
+      "runId": 37641215366,
+      "mainSha": "8235c3b24ad12189e1ef95427ce7f192c077ae5c",
+      "code": "ENV_INVALID",
+      "sqlAttempted": false,
+      "scope": "Root-reported previously validated original, no current production credit"
+    },
+    {
+      "runId": 37650822335,
+      "mainSha": "5cebf61623c58ca65b66f2b58506157c097a1931",
+      "code": "ENV_INVALID",
+      "envDetail": "PARAM_UNSUPPORTED_CONNECT_TIMEOUT",
+      "actualValue": "UNKNOWN_NOT_READ_OR_GUESSED",
+      "sqlAttempted": false,
+      "originalZipSha256": "ea62a225e6b65d835992beb6fbbe31e276c37afed6023c9e244c05b15355721d",
+      "scope": "Root-reported previously validated original; original remains FAIL"
+    }
+  ],
+  "livePullRequestSnapshot": [
+    {
+      "number": 589,
+      "state": "open",
+      "merged": false,
+      "draft": false,
+      "headSha": "8fcf51b8a600c49c34c2d7e87e25b7eae952aa69",
+      "baseRef": "main",
+      "baseSha": "5cebf61623c58ca65b66f2b58506157c097a1931",
+      "url": "https://github.com/rashadoni/leaddrive-v2/pull/589"
+    },
+    {
+      "number": 606,
+      "state": "closed",
+      "merged": false,
+      "draft": false,
+      "headSha": "ec2e7812e81abef94319a58818aeee22e56984df",
+      "baseRef": "main",
+      "baseSha": "cb5a0453e7ead310e0515e265efee209be1c272b",
+      "url": "https://github.com/rashadoni/leaddrive-v2/pull/606"
+    },
+    {
+      "number": 609,
+      "state": "closed",
+      "merged": false,
+      "draft": false,
+      "headSha": "100a381b90a52690899f6a1eded38494eea050e4",
+      "baseRef": "main",
+      "baseSha": "cb5a0453e7ead310e0515e265efee209be1c272b",
+      "url": "https://github.com/rashadoni/leaddrive-v2/pull/609"
+    },
+    {
+      "number": 619,
+      "state": "open",
+      "merged": false,
+      "draft": false,
+      "headSha": "683bfa056ab1f81877de5b8a238658847f1f51e4",
+      "baseRef": "main",
+      "baseSha": "5cebf61623c58ca65b66f2b58506157c097a1931",
+      "url": "https://github.com/rashadoni/leaddrive-v2/pull/619"
+    }
+  ],
+  "priorSourceReviewBinding": {
+    "path": "/tmp/hrm-release-independent-source-06254.json",
+    "sha256": "026f4c33cccd8c1676e149fe64658bb4f7a982dbd84e17f19dd604d67e8e8b2c",
+    "bytes": 28190
+  },
+  "remainingAcceptance": [
+    "Fresh8fc full compiler all diagnostic families + owned0 + unchanged64 gatedpairs + both blocking gates",
+    "Fresh8fc44 PostgreSQL/strict full18failure baseline/build/report9/classification11 and artifact-source bindings",
+    "Fresh five required GitHubApp15368/current-head contexts plus all applicable workflows and attempts",
+    "Current protectedmain/live immutableartifact/read-only catalog metadata after reviewed619 release",
+    "Immediate refs/protection/prospective merge tree + normal589 merge/deploy/public fullSHA proof"
+  ],
+  "limitations": [
+    "This supplement establishes source equality only. Historical9f/062 runtime PASS are not reused as new8fc executions; all fresh runtime acceptance remains pending separate artifacts.",
+    "Global compiler/full-suite historically NONCLEAN1153 diagnostics/18 known failures; no warning-free build or clean global compiler/suite claim.",
+    "Prior inherited dashboard page_client-reference-manifest trace warning retained; fresh8fc build behavior pending.",
+    "RU metric section capture clipped by nested scroller; positive final-percent screenshot claim not made. AZ duration Intl English units inherited; no wholepage/mobile/global WCAG or humanAT claim.",
+    "Synthetic DB/browser evidence cannot prove actual HR false-positive rates, appeal rates, pilot operation, load, production quiet window, full migration replay, tenant activation or C12 closure.",
+    "Scope does not authorize personnel decisions, grant/secret/role configuration, activation, Support or production mutation."
+  ],
+  "bindingProof": "Every listed working file was compared to its exact8fc committed blob; all matched. Full head/tree binds bytes and prior review carries detailed blob/size bindings."
+}
