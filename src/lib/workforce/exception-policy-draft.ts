@@ -1,3 +1,5 @@
+import { isWorkforceExceptionOutcomeDecision, workforceExceptionOutcomeDimension, WORKFORCE_EXCEPTION_OUTCOME_DECISIONS, type WorkforceExceptionOutcomeDecision } from "@/lib/workforce/exception-outcome-classification"
+
 /**
  * Recommended v1 exception policy, deliberately stored as a pure draft.
  *
@@ -31,6 +33,7 @@ export type WorkforceExceptionDraftStage =
   | "HR_REVIEW"
   | "RESOLVED"
 export type WorkforceExceptionDraftDecisionCode =
+  | WorkforceExceptionOutcomeDecision
   | "ACKNOWLEDGE"
   | "REQUEST_EMPLOYEE_RESPONSE"
   | "REQUEST_TIME_CORRECTION"
@@ -108,6 +111,7 @@ export type WorkforceExceptionDraftLifecycleEvaluation =
     }
 
 const DRAFT_DECISION_CODES = new Set<string>([
+  ...WORKFORCE_EXCEPTION_OUTCOME_DECISIONS,
   "ACKNOWLEDGE",
   "REQUEST_EMPLOYEE_RESPONSE",
   "REQUEST_TIME_CORRECTION",
@@ -126,9 +130,18 @@ export function evaluateWorkforceExceptionDraftLifecycle(
   decisions: readonly WorkforceExceptionDraftLifecycleDecision[],
 ): WorkforceExceptionDraftLifecycleEvaluation {
   let stage: WorkforceExceptionDraftStage = "OPEN"
+  const recordedDimensions = new Set<string>()
   for (const { decisionCode } of decisions) {
     if (!DRAFT_DECISION_CODES.has(decisionCode)) {
       return { valid: false, code: "WORKFORCE_EXCEPTION_DRAFT_DECISION_UNKNOWN", stage }
+    }
+    if (isWorkforceExceptionOutcomeDecision(decisionCode)) {
+      const dimension = workforceExceptionOutcomeDimension(decisionCode)
+      if (stage !== "RESOLVED" || recordedDimensions.has(dimension)) {
+        return { valid: false, code: "WORKFORCE_EXCEPTION_DRAFT_TRANSITION_INVALID", stage }
+      }
+      recordedDimensions.add(dimension)
+      continue
     }
     switch (decisionCode as WorkforceExceptionDraftDecisionCode) {
       case "ACKNOWLEDGE":
@@ -153,6 +166,7 @@ export function evaluateWorkforceExceptionDraftLifecycle(
         stage = "RESOLVED"
         break
       case "REOPEN_FOR_REVIEW":
+        recordedDimensions.clear()
         if (stage !== "RESOLVED") {
           return { valid: false, code: "WORKFORCE_EXCEPTION_DRAFT_TRANSITION_INVALID", stage }
         }

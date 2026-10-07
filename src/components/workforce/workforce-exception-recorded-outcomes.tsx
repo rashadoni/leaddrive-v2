@@ -21,6 +21,8 @@ export function WorkforceExceptionRecordedOutcomesSummary({ outcomes }: { outcom
   const percent = new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 2 })
   const correction = outcomes.linkedCorrection
   const resolution = outcomes.firstResolution
+  const final = outcomes.finalClassification
+  const share = (value: number | null) => value === null ? t("noClassifiedSamples") : percent.format(value)
   const duration = (value: number | null) => formatRecordedResolutionDuration(value, locale) ?? t("unavailable")
 
   return <section data-testid="workforce-exception-recorded-outcomes" aria-labelledby="workforce-exception-recorded-outcomes-title" className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
@@ -46,7 +48,26 @@ export function WorkforceExceptionRecordedOutcomesSummary({ outcomes }: { outcom
       <Count label={t("integrityExcluded")} value={resolution.integrityExcludedCases} number={number} />
     </dl>
     <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">{t("sampleHint")}</p>
-    <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">{t("classificationUnavailable")}</p>
+    <h3 className="mt-6 font-semibold">{t("classificationTitle")}</h3>
+    <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">{t("classificationHint")}</p>
+    <dl className="mt-4 grid gap-x-8 gap-y-4 sm:grid-cols-2">
+      <div><dt>{t("falsePositive")}</dt><dd data-testid="workforce-exception-false-positive-share" className="mt-1 font-semibold tabular-nums">{share(final.falsePositive.share)}</dd>
+        <dd className="mt-1 text-sm">{t("classifiedCount", { count: final.falsePositive.falsePositiveCases, sample: final.falsePositive.sampleCount })}</dd></div>
+      <div><dt>{t("appealFull")}</dt><dd data-testid="workforce-exception-appeal-full-share" className="mt-1 font-semibold tabular-nums">{share(final.appeal.fullyUpheldShare)}</dd>
+        <dd className="mt-1 text-sm">{t("classifiedCount", { count: final.appeal.fullyUpheldCases, sample: final.appeal.sampleCount })}</dd></div>
+      <div><dt>{t("appealPartial")}</dt><dd data-testid="workforce-exception-appeal-partial-share" className="mt-1 font-semibold tabular-nums">{share(final.appeal.partiallyUpheldShare)}</dd>
+        <dd className="mt-1 text-sm">{t("classifiedCount", { count: final.appeal.partiallyUpheldCases, sample: final.appeal.sampleCount })}</dd></div>
+      <div><dt>{t("appealRejected")}</dt><dd data-testid="workforce-exception-appeal-rejected-share" className="mt-1 font-semibold tabular-nums">{share(final.appeal.rejectedShare)}</dd>
+        <dd className="mt-1 text-sm">{t("classifiedCount", { count: final.appeal.rejectedCases, sample: final.appeal.sampleCount })}</dd></div>
+    </dl>
+    <dl className="mt-4 flex flex-wrap gap-x-8 gap-y-3 text-sm">
+      <Count label={t("classificationSamples")} value={final.falsePositive.sampleCount} number={number} />
+      <Count label={t("appealSamples")} value={final.appeal.sampleCount} number={number} />
+      <Count label={t("unfinishedCases")} value={final.unfinishedCases} number={number} />
+      <Count label={t("unclassifiedResolved")} value={final.falsePositive.unclassifiedResolvedCases} number={number} />
+      <Count label={t("unclassifiedAppeal")} value={final.appeal.unclassifiedResolvedCases} number={number} />
+      <Count label={t("finalIntegrityExcluded")} value={final.integrityExcludedCases} number={number} />
+    </dl>
   </section>
 }
 

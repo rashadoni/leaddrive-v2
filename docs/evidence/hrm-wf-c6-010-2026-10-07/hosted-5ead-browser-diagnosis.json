@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "createdAtUtc": "2026-10-07T09:23:34.902188+00:00",
+  "reviewer": "/root/inspect_outcome_contract",
+  "observedHeadSha": "5eadeb43f7406a96e3145e8b21b78a3708827ef4",
+  "originals": [
+    {
+      "relativeArtifactPath": "report/exception-report-receipt.json",
+      "bytes": 7795,
+      "sha256": "175d06e6c4e6f2736e9ab9c5fef59fdec3dbba866a1697e8adb66c0762ce7eff"
+    },
+    {
+      "relativeArtifactPath": "report/failure-original.png",
+      "bytes": 86723,
+      "sha256": "5caf4d17b9653da65ad17ac107023defe3c97e479ddb684c3a318e216d4ddb58"
+    },
+    {
+      "relativeArtifactPath": "classification/exception-classification-receipt.json",
+      "bytes": 4703,
+      "sha256": "76fa4a8d2a3b9c5b7d5afcfcaf6875f34733ee554461ae524e840479ecce1a89"
+    }
+  ],
+  "classificationBrowser": {
+    "actualStatus": "FAIL",
+    "actualStage": "fixture-preparing",
+    "actualErrorName": "PrismaClientKnownRequestError",
+    "actualSourceLine": 124,
+    "actualUiWrites": 0,
+    "actualAuthenticationCallbacks": 0,
+    "diagnosis": "SOURCE_AND_EXECUTION_STAGE_CONFIRM_DUPLICATE_APPEND_ONLY_TRIGGER_CREATION",
+    "evidence": "Unmodified Today fixture already creates workforce_exception_cases_append_only and workforce_exception_decisions_append_only. Installer executes four CREATE OR REPLACE functions then attempts CREATE TRIGGER using the first existing name. The original receipt places failure at that SQL execution point.",
+    "transactionLimit": "Four routine receipt entries describe attempted statements inside a transaction that aborted; they are not four committed installations.",
+    "sqlState": "NOT_RECORDED_IN_ORIGINAL_RECEIPT",
+    "harnessCorrection": "Verify exact disposable database/admin role and the two enabled noninternal fixture triggers, drop/recreate only those two named guards atomically using extracted exact production statements. Any failure rolls back original guards. Record PENDING/COMMITTED/ROLLED_BACK and safe future SQLSTATE/Prisma code.",
+    "acceptance": "NOT_RUN_AFTER_CORRECTION"
+  },
+  "reportBrowser": {
+    "actualStatus": "FAIL",
+    "actualStage": "report-az-nonempty-range",
+    "actualSourceLine": 333,
+    "actualCompletedCaseCount": 4,
+    "passedCases": [
+      "empty",
+      "unresolved-no-sample",
+      "measured-zero",
+      "nonempty-ru-320"
+    ],
+    "diagnosis": "CAUSE_UNCONFIRMED_MISSING_AGGREGATE_RENDER_TEXT_DIAGNOSTICS",
+    "evidence": "Exact report API assertions completed before the linked-share DOM equality failed. The original lacks actual/expected text. Failure PNG768x900 shows eight-case summary but linked-share text is below the internally scrolling viewport; screenshot cannot distinguish formatting mismatch from a render synchronization issue.",
+    "excludedClaims": [
+      "No transient failure claim",
+      "No proven Intl mismatch claim",
+      "No proven render race claim"
+    ],
+    "harnessChange": "Add locale/numeric share/actual aggregate text/Node and browser expected text/codepoints before preserving the original exact equality. Capture focused outcomes block on failure. No assertion or semantic denominator weakened.",
+    "nextRequirement": "Actual hosted diagnostic retry must establish cause before changing percentage comparison or synchronization."
+  },
+  "localVerification": {
+    "hostResourcesInspected": true,
+    "node20SyntaxChecks": {
+      "scripts/workforce-exception-classification-browser-evidence.mjs": "PASS exit0",
+      "scripts/workforce-exception-report-browser-evidence.mjs": "PASS exit0"
+    },
+    "browserOrDatabaseExecution": "NOT RUN on Contabo per host contract",
+    "tests": "NOT RUN by reviewer in this phase"
+  },
+  "limitations": [
+    "Reviewer owns these harnesses; diagnosis is independent inspection of original hosted failure evidence, not independent authorship of fixes.",
+    "No production source/workflow changed; no commits, merge, deploy, activation, access or secrets modified.",
+    "Original hosted receipts/screenshots remain unmodified; root archives them durably."
+  ]
+}

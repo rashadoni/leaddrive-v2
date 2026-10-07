@@ -1,0 +1,23 @@
+{
+  "headSha": "722259bebbdda8ba6bd47bb4326c70b5460a319e",
+  "runId": 37601997137,
+  "compilerJob": 112728347730,
+  "artifactId": 11474605533,
+  "artifactDigest": "sha256:8f608922f21d41387b9d946d3aa79cf730a571576c0c3ec6097164767d56656b",
+  "compilerGate": "FAIL_NEW_GATED_PAIR",
+  "globalCompilerClean": false,
+  "exit": "2",
+  "diagnosticCount": 1154,
+  "gatedPairs": 65,
+  "baselinePairs": 64,
+  "ownedDiagnosticCount": 1,
+  "ownedDiagnostics": [
+    "src/__tests__/workforce-exception-queue-action-ui.test.ts(418,302): error TS2353: Object literal may only specify known properties, and 'outcomeContext' does not exist in type '{ displayReference: string; employeeDisplayName: string; type: string; triageSeverity: string; ageSeconds: number; stage: string; evidenceState: string; employeeResponse: string; nextAction: string; decisionContext: { ...; }; }'."
+  ],
+  "compilerSha256": "e5b75e6c18eae808f1f26431fa716e0ae0cc28a121cd844a6733c99d3e5aa2e1",
+  "limits": [
+    "Exact722 results only",
+    "No baseline modifications",
+    "Build and regression passed; both browser lanes failed, terminaloverallFAIL"
+  ]
+}

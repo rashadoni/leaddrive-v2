@@ -1,5 +1,6 @@
 "use client"
 
+import { WORKFORCE_EXCEPTION_OUTCOME_DECISIONS, isWorkforceExceptionOutcomeDecision } from "@/lib/workforce/exception-outcome-classification"
 import { Fragment, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
@@ -12,11 +13,11 @@ import { workforceExceptionQueueLabelKey } from "@/lib/workforce/exception-queue
 
 const QUEUE_DECISION_CODES = ["ACKNOWLEDGE", "REQUEST_TIME_CORRECTION"] as const
 
-type QueueDecisionCode = typeof QUEUE_DECISION_CODES[number]
+type QueueDecisionCode = typeof QUEUE_DECISION_CODES[number] | typeof WORKFORCE_EXCEPTION_OUTCOME_DECISIONS[number]
 const DECISION_REASONS = {
   ACKNOWLEDGE: "MANAGER_ACKNOWLEDGED_FOR_HUMAN_REVIEW",
   REQUEST_TIME_CORRECTION: "MANAGER_REQUESTED_TIME_CORRECTION_FOR_REVIEW",
-} satisfies Record<QueueDecisionCode, string>
+} satisfies Record<"ACKNOWLEDGE" | "REQUEST_TIME_CORRECTION", string>
 
 type QueueAction = { decisionCode: QueueDecisionCode; actionToken: string }
 type QueueItem = {
@@ -29,6 +30,7 @@ type QueueItem = {
   evidenceState: string
   employeeResponse: string
   nextAction: string
+  outcomeContext?: { classification: string | null; appeal: string | null; actions: QueueAction[] }
   decisionContext?: {
     correctionState: string
     employeeVisibility: string
@@ -55,15 +57,20 @@ function isQueueDecisionCode(value: unknown): value is QueueDecisionCode {
 }
 
 function safeQueueActions(item: QueueItem): QueueAction[] {
-  if (!Array.isArray(item.decisionContext?.actions)) return []
-  const eligibleActions = item.decisionContext.actions.filter((action) => (
+  const eligibleActions = (Array.isArray(item.decisionContext?.actions) ? item.decisionContext.actions : []).filter((action) => (
     action != null
     && isQueueDecisionCode(action.decisionCode)
+    && !isWorkforceExceptionOutcomeDecision(action.decisionCode)
     && typeof action.actionToken === "string"
     && action.actionToken.length > 0
     && action.actionToken.length <= 2_048
   ))
-  return eligibleActions.length === 1 ? eligibleActions : []
+  const rawOutcomes = item.outcomeContext?.actions
+  const outcomeActions = Array.isArray(rawOutcomes) && rawOutcomes.length <= 5
+    ? rawOutcomes.filter((action) => action != null && isWorkforceExceptionOutcomeDecision(action.decisionCode)
+      && typeof action.actionToken === "string" && action.actionToken.length > 0 && action.actionToken.length <= 2_048) : []
+  const uniqueOutcomes = new Set(outcomeActions.map((action) => action.decisionCode)).size === outcomeActions.length
+  return [...(eligibleActions.length === 1 ? eligibleActions : []), ...(uniqueOutcomes ? outcomeActions : [])]
 }
 
 export function WorkforceExceptionQueue() {
@@ -76,6 +83,8 @@ export function WorkforceExceptionQueue() {
   const [loading, setLoading] = useState(true)
   const [retry, setRetry] = useState(0)
   const [selectedAction, setSelectedAction] = useState<SelectedAction | null>(null)
+  const [outcomeReason, setOutcomeReason] = useState("")
+  const recordedReasonByTokenRef = useRef(new Map<string, string>())
   const [formError, setFormError] = useState<string | null>(null)
   const [actionFeedback, setActionFeedback] = useState<ActionFeedback | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -94,6 +103,7 @@ export function WorkforceExceptionQueue() {
 
   useEffect(() => {
     organizationIdRef.current = organizationId
+    recordedReasonByTokenRef.current.clear()
     operationIdByTokenRef.current.clear()
     selectedActionTokenRef.current = null
     pendingActionRef.current = null
@@ -168,6 +178,7 @@ export function WorkforceExceptionQueue() {
       ?? globalThis.crypto.randomUUID()
     operationIdByTokenRef.current.set(action.actionToken, operationId)
     selectedActionTokenRef.current = action.actionToken
+    setOutcomeReason(recordedReasonByTokenRef.current.get(action.actionToken) ?? "")
     setSelectedAction({
       ...action,
       displayReference: item.displayReference,
@@ -181,6 +192,12 @@ export function WorkforceExceptionQueue() {
   async function recordAction() {
     if (!selectedAction || submittingRef.current) return
     const requestAction = selectedAction
+    const isOutcome = isWorkforceExceptionOutcomeDecision(requestAction.decisionCode)
+    const reason = isOutcome
+      ? recordedReasonByTokenRef.current.get(requestAction.actionToken) ?? outcomeReason.trim()
+      : DECISION_REASONS[requestAction.decisionCode as keyof typeof DECISION_REASONS]
+    if (isOutcome && (reason.length < 3 || reason.length > 1_000)) { setFormError(t("outcomeReasonRequired")); return }
+    if (isOutcome) recordedReasonByTokenRef.current.set(requestAction.actionToken, reason)
     pendingActionRef.current = requestAction
     submittingRef.current = true
 
@@ -201,7 +218,7 @@ export function WorkforceExceptionQueue() {
         body: JSON.stringify({
           actionToken: requestAction.actionToken,
           operationId: requestAction.operationId,
-          reason: DECISION_REASONS[requestAction.decisionCode],
+          reason,
         }),
       })
       const body = await response.json().catch(() => ({}))
@@ -350,6 +367,8 @@ export function WorkforceExceptionQueue() {
                         <td className="whitespace-nowrap px-4 py-3 font-mono text-xs">{item.displayReference}</td>
                         <td className="px-4 py-3 font-medium">{item.employeeDisplayName}</td>
                         <td className="px-4 py-3" data-testid="workforce-exception-actions">
+                          {item.outcomeContext?.classification === "FALSE_POSITIVE" || item.outcomeContext?.classification === "CONFIRMED_EXCEPTION" ? <p className="mb-2 text-sm">{t(`outcomeLabels.${item.outcomeContext.classification}`)}</p> : null}
+                          {["FULLY_UPHELD", "PARTIALLY_UPHELD", "REJECTED"].includes(item.outcomeContext?.appeal ?? "") ? <p className="mb-2 text-sm">{t(`outcomeLabels.${item.outcomeContext!.appeal}`)}</p> : null}
                           {actions.length > 0 ? (
                             <div className="flex max-w-sm flex-wrap gap-2">
                               {actions.map((action) => (
@@ -403,7 +422,15 @@ export function WorkforceExceptionQueue() {
                                     {t(`actionHints.${selectedAction.decisionCode}`)}
                                   </p>
                                 </div>
-                                <p className="text-sm leading-6 text-muted-foreground">{t("serverChecksHint")}</p>
+                                <p className="text-sm leading-6 text-muted-foreground">{isWorkforceExceptionOutcomeDecision(selectedAction.decisionCode) ? t("outcomeChecksHint") : t("serverChecksHint")}</p>
+                                {isWorkforceExceptionOutcomeDecision(selectedAction.decisionCode) ? <div className="space-y-2">
+                                  <label htmlFor={`workforce-outcome-reason-${itemIndex}`} className="block text-sm font-medium">{t("outcomeReason")}</label>
+                                  <textarea id={`workforce-outcome-reason-${itemIndex}`} name="reason" required minLength={3} maxLength={1_000}
+                                    className="min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                    value={outcomeReason} disabled={submitting || recordedReasonByTokenRef.current.has(selectedAction.actionToken)}
+                                    onChange={(event) => setOutcomeReason(event.target.value)} aria-describedby={`workforce-outcome-reason-hint-${itemIndex}`} />
+                                  <p id={`workforce-outcome-reason-hint-${itemIndex}`} className="text-sm text-muted-foreground">{t("outcomeReasonHint")}</p>
+                                </div> : null}
                                 {formError ? <p role="alert" className="text-sm text-destructive">{formError}</p> : null}
                               </div>
                               <div className="flex flex-wrap gap-2 lg:justify-end">
