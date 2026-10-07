@@ -1,3 +1,4 @@
+import { currentWorkforceExceptionOutcomes } from "@/lib/workforce/exception-outcome-classification"
 import { NextRequest, NextResponse } from "next/server"
 import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
@@ -18,6 +19,7 @@ import {
 } from "@/lib/workforce/exception-queue"
 import {
   evaluateWorkforceExceptionWorkbenchContext,
+  availableWorkforceExceptionOutcomeDecisions,
   MAX_WORKFORCE_EXCEPTION_CORRECTION_REQUESTS,
   MAX_WORKFORCE_EXCEPTION_DECISIONS,
 } from "@/lib/workforce/exception-workbench"
@@ -175,6 +177,7 @@ export const GET = withWorkforceSessionExceptionQueueAuth(async (_req: NextReque
     }
 
     let authorization: ReadonlyMap<string, { readable: boolean; decidable: boolean }>
+    let hrAuthorization = new Map<string, { decidable: boolean }>()
     if (!granularAccess) {
       authorization = new Map(candidates.map((candidate) => [candidate.id, { readable: true, decidable: false }]))
     } else {
@@ -190,6 +193,11 @@ export const GET = withWorkforceSessionExceptionQueueAuth(async (_req: NextReque
         historicalTeamByCaseId: scopes.historicalTeamByCaseId,
         grants: grants!,
         now,
+      })
+      hrAuthorization = authorizeWorkforceExceptionReadCandidates({
+        organizationId: auth.orgId, principalUserId: auth.userId,
+        candidates: scopes.candidates, historicalTeamByCaseId: scopes.historicalTeamByCaseId,
+        grants: (grants ?? []).filter((grant) => grant.role === "HR_ADMIN"), now,
       })
     }
 
@@ -277,8 +285,19 @@ export const GET = withWorkforceSessionExceptionQueueAuth(async (_req: NextReque
             }),
           }))
         : []
+      const outcomeActions = hrAuthorization.get(item.id)?.decidable
+        ? availableWorkforceExceptionOutcomeDecisions({ context: decisionContext, priorDecisions })
+          .map((decisionCode) => ({ decisionCode, actionToken: issueWorkforceExceptionActionToken({
+            organizationId: auth.orgId, principalUserId: auth.userId, caseId: item.id,
+            decisionCode, decisionCount: priorDecisions.length, now,
+          }) }))
+        : []
+      const outcomes = decisionContext.stage === "RESOLVED"
+        ? currentWorkforceExceptionOutcomes(priorDecisions)
+        : { classification: null, appeal: null }
       return [{
         ...safeProjection,
+        outcomeContext: { ...outcomes, actions: outcomeActions },
         decisionContext: {
           correctionState: decisionContext.correctionState,
           employeeVisibility: decisionContext.employeeVisibility,

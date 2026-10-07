@@ -6,6 +6,12 @@ on:
     paths:
       - ".github/workflows/workforce-exception-report-browser-evidence.yml"
       - "scripts/workforce-exception-report-browser-evidence.mjs"
+      - "scripts/workforce-exception-classification-browser-evidence.mjs"
+      - "scripts/ci/fixtures/workforce-exception-classification-browser.sql"
+      - "src/__tests__/workforce-exception-classification-browser-evidence-guard.test.ts"
+      - "src/components/workforce/workforce-exception-queue.tsx"
+      - "src/app/api/v1/workforce/exception-decisions/route.ts"
+      - "src/app/api/v1/workforce/exceptions/route.ts"
       - "scripts/_rls.mjs"
       - "scripts/ci/fixtures/workforce-manager-today-browser.sql"
       - "scripts/ci/fixtures/workforce-exception-report-browser.sql"
@@ -46,6 +52,11 @@ on:
       - "messages/*.json"
       - "prisma/schema.prisma"
   workflow_dispatch:
+    inputs:
+      expected_head:
+        description: "Optional exact WF-C6-010 head for isolated source, regression, build and HR recording gates"
+        required: false
+        default: ""
 
 concurrency:
   group: workforce-exception-report-browser-${{ github.event.pull_request.number || github.ref }}
@@ -215,3 +226,350 @@ jobs:
           path: artifacts/workforce-exception-report-browser
           if-no-files-found: error
           retention-days: 14
+
+  exception-classification-browser:
+    name: Exact WF-C6-010 authenticated HR recording browser
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.expected_head != '' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      CI: "true"
+      NODE_ENV: development
+      NODE_OPTIONS: --max-old-space-size=6144
+      NEXT_TELEMETRY_DISABLED: "1"
+      LEADDRIVE_DISABLE_SERVICE_WORKER: "1"
+      WF_EXCEPTION_CLASSIFICATION_BROWSER: "1"
+      WF_EXCEPTION_CLASSIFICATION_BROWSER_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      WF_EXCEPTION_CLASSIFICATION_BROWSER_OUTPUT_DIR: artifacts/workforce-exception-classification-browser
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: workforce_manager_today_browser
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d workforce_manager_today_browser"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    steps:
+      # The normal pull_request checkout is GitHub's candidate/base merge.
+      # Preserve the distinct PR head and GITHUB_SHA in the evidence receipt.
+      - name: Checkout candidate
+        uses: actions/checkout@v6
+
+      - name: Verify exact authorized candidate
+        env:
+          EXPECTED_HEAD: ${{ inputs.expected_head }}
+        run: |
+          [[ "$EXPECTED_HEAD" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          test "$GITHUB_SHA" = "$EXPECTED_HEAD"
+
+      - name: Resolve isolated ports and masked application secrets
+        env:
+          PG_PORT: ${{ job.services.postgres.ports['5432'] }}
+          WF_REDIS_PORT: ${{ job.services.redis.ports['6379'] }}
+        shell: bash
+        run: |
+          test -n "$WF_REDIS_PORT" || exit 1
+          test -n "$PG_PORT" || { echo "::error::Postgres service port is missing"; exit 1; }
+          [[ "$WF_EXCEPTION_CLASSIFICATION_BROWSER_HEAD_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          APP_PORT="$(python3 -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')"
+          WF_DATABASE_PASSWORD="$(openssl rand -hex 24)"
+          WF_AUTH_SECRET="$(openssl rand -hex 32)"
+          WF_PII_SECRET="$(openssl rand -hex 32)"
+          echo "::add-mask::$WF_DATABASE_PASSWORD"
+          echo "::add-mask::$WF_AUTH_SECRET"
+          echo "::add-mask::$WF_PII_SECRET"
+          {
+            echo "REDIS_URL=redis://127.0.0.1:${WF_REDIS_PORT}/0"
+            echo "ADMIN_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:${PG_PORT}/workforce_manager_today_browser"
+            echo "EVENT_PLATFORM_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:${PG_PORT}/workforce_manager_today_browser"
+            echo "DATABASE_URL=postgresql://wf_manager_today_browser:${WF_DATABASE_PASSWORD}@127.0.0.1:${PG_PORT}/workforce_manager_today_browser"
+            echo "WF_MANAGER_TODAY_BROWSER_DATABASE_PASSWORD=$WF_DATABASE_PASSWORD"
+            echo "APP_PORT=$APP_PORT"
+            echo "NEXTAUTH_URL=http://localhost:${APP_PORT}"
+            echo "AUTH_URL=http://localhost:${APP_PORT}"
+            echo "APP_URL=http://localhost:${APP_PORT}"
+            echo "NEXT_PUBLIC_APP_URL=http://localhost:${APP_PORT}"
+            echo "NEXT_PUBLIC_MARKETING_URL=http://localhost:${APP_PORT}"
+            echo "WF_EXCEPTION_CLASSIFICATION_BROWSER_BASE_URL=http://localhost:${APP_PORT}"
+            echo "WF_EXCEPTION_CLASSIFICATION_BROWSER_APP_LOG=${RUNNER_TEMP}/workforce-exception-classification-browser-app.log"
+            echo "AUTH_SECRET=$WF_AUTH_SECRET"
+            echo "NEXTAUTH_SECRET=$WF_AUTH_SECRET"
+            echo "TENANT_PII_MASTER_KEY=$WF_PII_SECRET"
+          } >> "$GITHUB_ENV"
+          mkdir -p "$WF_EXCEPTION_CLASSIFICATION_BROWSER_OUTPUT_DIR"
+          python3 - <<'PY'
+          import json, os, pathlib
+          receipt = {
+              "stage": "workflow-preparing",
+              "headSha": os.environ["WF_EXCEPTION_CLASSIFICATION_BROWSER_HEAD_SHA"],
+              "ciSha": os.environ["GITHUB_SHA"],
+              "runId": os.environ["GITHUB_RUN_ID"],
+              "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "runtime": "ephemeral-next-dev",
+              "productionMutation": False,
+          }
+          target = pathlib.Path(os.environ["WF_EXCEPTION_CLASSIFICATION_BROWSER_OUTPUT_DIR"]) / "workflow-context.json"
+          target.write_text(json.dumps(receipt, indent=2) + "\n")
+          PY
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install candidate dependencies
+        run: npm ci
+
+      - name: Create candidate schema and restricted application role
+        shell: bash
+        run: |
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 \
+            -c 'CREATE EXTENSION IF NOT EXISTS vector'
+          DATABASE_URL="$ADMIN_DATABASE_URL" npx prisma db push --skip-generate
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 \
+            --set=app_password="$WF_MANAGER_TODAY_BROWSER_DATABASE_PASSWORD" \
+            -f scripts/ci/fixtures/workforce-manager-today-browser.sql
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 \
+            -f scripts/ci/fixtures/workforce-exception-classification-browser.sql
+          npx prisma generate
+
+      - name: Install Chromium on hosted Ubuntu
+        run: npx playwright install --with-deps chromium
+
+      - name: Run real authenticated aggregate report scenarios
+        shell: bash
+        run: |
+          test "$CI" = true && test "$WF_EXCEPTION_CLASSIFICATION_BROWSER" = 1
+          # The log stays transient on the ephemeral runner. The harness emits
+          # sanitized JSON/screenshots; cookies, passwords and raw logs are not
+          # uploaded as evidence.
+          node node_modules/next/dist/bin/next dev --hostname 127.0.0.1 --port "$APP_PORT" > "$WF_EXCEPTION_CLASSIFICATION_BROWSER_APP_LOG" 2>&1 &
+          WF_APP_PID=$!
+          cleanup() {
+            kill "$WF_APP_PID" 2>/dev/null || true
+            wait "$WF_APP_PID" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          for attempt in $(seq 1 90); do
+            if curl -fsS --max-time 5 "${WF_EXCEPTION_CLASSIFICATION_BROWSER_BASE_URL}/api/v1/ping" >/dev/null 2>&1; then
+              break
+            fi
+            if ! kill -0 "$WF_APP_PID" 2>/dev/null || [ "$attempt" -eq 90 ]; then
+              echo "::error::Isolated exception report browser application did not become ready"
+              exit 1
+            fi
+            sleep 2
+          done
+          node scripts/workforce-exception-classification-browser-evidence.mjs
+
+      - name: Preserve non-secret workflow failure receipt
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p "$WF_EXCEPTION_CLASSIFICATION_BROWSER_OUTPUT_DIR"
+          python3 - <<'PY'
+          import json, os, pathlib
+          receipt = {
+              "status": "FAILED",
+              "headSha": os.environ["WF_EXCEPTION_CLASSIFICATION_BROWSER_HEAD_SHA"],
+              "ciSha": os.environ["GITHUB_SHA"],
+              "runId": os.environ["GITHUB_RUN_ID"],
+              "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "runtime": "ephemeral-next-dev",
+          }
+          target = pathlib.Path(os.environ["WF_EXCEPTION_CLASSIFICATION_BROWSER_OUTPUT_DIR"]) / "workflow-failure.json"
+          target.write_text(json.dumps(receipt, indent=2) + "\n")
+          PY
+
+      - name: Upload sanitized exception report evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: workforce-exception-classification-browser-${{ github.sha }}-${{ github.run_attempt }}
+          path: artifacts/workforce-exception-classification-browser
+          if-no-files-found: error
+          retention-days: 14
+
+  wf-c6-010-regressions:
+    name: Exact WF-C6-010 source and PostgreSQL regressions
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.expected_head != '' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      CI: "true"
+      VITEST_MAX_WORKERS: "4"
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: event_platform_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d event_platform_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Verify exact head and preserved PR608 ancestor
+        env:
+          EXPECTED_HEAD: ${{ inputs.expected_head }}
+        run: |
+          [[ "$EXPECTED_HEAD" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          test "$GITHUB_SHA" = "$EXPECTED_HEAD"
+          git merge-base --is-ancestor 973241bacc296b71fe817d1af11187c32e8126af HEAD
+          git diff --exit-code 973241bacc296b71fe817d1af11187c32e8126af -- test-baseline.json typecheck-baseline.json
+          git diff --check 973241bacc296b71fe817d1af11187c32e8126af...HEAD
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+      - name: Validate and generate existing schema clients
+        run: |
+          npx prisma validate
+          npx prisma generate
+          npx prisma generate --schema scripts/ci/fixtures/event-platform-legacy-client/schema.prisma
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/event_platform_test
+      - name: Unchanged runner policy and translation parity
+        run: |
+          node scripts/ci/check-github-runner-policy.mjs
+          npm run i18n:check
+      - name: Scoped production source lint
+        run: >-
+          npx eslint src/lib/workforce/exception-outcome-classification.ts
+          src/lib/workforce/exception-policy-draft.ts src/lib/workforce/exception-case-writer.ts
+          src/lib/workforce/exception-workbench.ts src/lib/workforce/exception-decision-service.ts
+          src/lib/workforce/exception-case-report-recorded-outcomes.ts
+          src/app/api/v1/workforce/exceptions/route.ts
+          src/components/workforce/workforce-exception-queue.tsx
+          src/components/workforce/workforce-exception-recorded-outcomes.tsx
+      - name: Actual shared-lock and aggregate PostgreSQL gates
+        run: >-
+          npx vitest run
+          src/__tests__/lib-workforce-calendar-configuration-lock-postgres.test.ts
+          src/__tests__/lib-workforce-exception-lock-postgres.test.ts
+          src/__tests__/lib-workforce-exception-policy-revision-postgres.test.ts
+          src/__tests__/lib-workforce-exception-report-postgres.test.ts
+        env:
+          VITEST_MAX_WORKERS: "1"
+          WORKFORCE_CALENDAR_LOCK_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/event_platform_test
+          WORKFORCE_EXCEPTION_LOCK_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/event_platform_test
+      - name: Full regression suite against unchanged baseline
+        run: node scripts/check-test-baseline.mjs
+
+  wf-c6-010-typecheck:
+    name: Exact WF-C6-010 full compiler gates
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.expected_head != '' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+      - name: Verify exact head
+        env:
+          EXPECTED_HEAD: ${{ inputs.expected_head }}
+        run: |
+          [[ "$EXPECTED_HEAD" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          test "$GITHUB_SHA" = "$EXPECTED_HEAD"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - name: Prepare bounded hosted compiler memory
+        run: bash scripts/ci/prepare-hosted-build-runner.sh
+        env:
+          LEADDRIVE_BUILD_MIN_BUDGET_KIB: "18874368"
+      - name: Complete compiler diagnostics with preserved exit
+        env:
+          NODE_OPTIONS: --max-old-space-size=14336
+        run: |
+          ulimit -c 0
+          set +e
+          npx tsc --noEmit 2>&1 | tee tsc-output.log
+          echo "${PIPESTATUS[0]}" > tsc-exit-code
+      - name: Unchanged blocking compiler gates
+        run: |
+          bash scripts/ci/check-typecheck-gate.sh tsc-output.log tsc-exit-code
+          node scripts/ci/check-typecheck-baseline.mjs tsc-output.log
+      - name: Preserve complete compiler originals
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: workforce-outcomes-compiler-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            tsc-output.log
+            tsc-exit-code
+          if-no-files-found: error
+          retention-days: 14
+      - name: Cleanup bounded compiler swap
+        if: always()
+        run: bash scripts/ci/prepare-hosted-build-runner.sh cleanup
+
+  wf-c6-010-build:
+    name: Exact WF-C6-010 isolated production bundle build
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.expected_head != '' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v6
+      - name: Verify exact head
+        env:
+          EXPECTED_HEAD: ${{ inputs.expected_head }}
+        run: |
+          [[ "$EXPECTED_HEAD" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          test "$GITHUB_SHA" = "$EXPECTED_HEAD"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: npm
+      - run: bash scripts/ci/prepare-hosted-build-runner.sh
+      - run: npm ci
+      - run: npx prisma generate
+      - name: Build isolated bundle with inert fixture configuration
+        run: |
+          ulimit -c 0
+          npx next build --webpack
+          test -f .next/standalone/server.js
+          test -d .next/static
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+          NEXT_BUILD_CPUS: "1"
+          NEXT_WEBPACK_PARALLELISM: "1"
+          LEADDRIVE_COLD_PRODUCTION_BUILD: "1"
+          NEXTAUTH_SECRET: isolated-hrm-build-${{ github.sha }}
+          NEXTAUTH_URL: https://build.invalid
+          NEXT_PUBLIC_CARTO_BASEMAPS_API_KEY: isolated-hrm-build-placeholder
+      - name: Cleanup bounded build swap
+        if: always()
+        run: bash scripts/ci/prepare-hosted-build-runner.sh cleanup

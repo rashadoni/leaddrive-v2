@@ -274,3 +274,11 @@ describe("Workforce immutable exception-case writer", () => {
     expect(db.workforceExceptionDecision.create).not.toHaveBeenCalled()
   })
 })
+
+describe("reserved HR outcome vocabulary", () => {
+  it.each(["CLASSIFY_FALSE_POSITIVE","CLASSIFY_CONFIRMED_EXCEPTION","APPEAL_FULLY_UPHELD","APPEAL_PARTIALLY_UPHELD","APPEAL_REJECTED"])("rejects %s through the inactive generic writer", async decisionCode => {
+    await expect(appendAuthorizedWorkforceExceptionDecision({ db, draft: { ...decisionDraft, decisionCode }, authorize: allow })).rejects.toMatchObject({ code: "WORKFORCE_EXCEPTION_CASE_NOT_AUTHORIZED" })
+    expect(db.workforceExceptionDecision.create).not.toHaveBeenCalled()
+    expect(db.mtmAuditLog.create).not.toHaveBeenCalled()
+  })
+})
