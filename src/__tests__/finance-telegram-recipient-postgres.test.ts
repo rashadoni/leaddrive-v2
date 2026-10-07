@@ -20,6 +20,12 @@
  * which answers for api.telegram.org, records where each message was headed,
  * and refuses every other host.
  *
+ * The same requests show what a notice says. It is sent with
+ * `parse_mode: "HTML"`, so whatever a tenant typed into a counterparty or a
+ * purpose has to arrive as text: Telegram refuses a whole message over one `<`
+ * it cannot read as a tag — and the notifier swallows that refusal on purpose —
+ * while a value that is a tag would be a link posted by the organization's bot.
+ *
  * Set FINANCE_TELEGRAM_TEST_DATABASE_URL to an admin connection, e.g.
  *   docker run --rm -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55499:5432 postgres:16
  *   FINANCE_TELEGRAM_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55499/postgres
@@ -35,6 +41,7 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import { NextRequest } from "next/server"
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
+import { APP_URL } from "@/lib/domains"
 
 const adminUrl = process.env.FINANCE_TELEGRAM_TEST_DATABASE_URL
 if (!adminUrl && process.env.FINANCE_TELEGRAM_DB_GATE === "required") {
@@ -155,6 +162,9 @@ pgDescribe("finance notices in Telegram on a real Postgres", () => {
   let putSettings!: typeof import("@/app/api/finance/payment-orders/notification-settings/route").PUT
   let sendTest!: typeof import("@/app/api/finance/payment-orders/notification-settings/test/route").POST
   let submit!: typeof import("@/app/api/finance/payment-orders/[id]/submit/route").POST
+  let execute!: typeof import("@/app/api/finance/payment-orders/[id]/execute/route").POST
+  let payBill!: typeof import("@/app/api/finance/payables/[id]/payments/route").POST
+  let checkDeadlines!: typeof import("@/app/api/finance/payment-orders/check-deadlines/route").POST
   let runDeadlineJob!: typeof import("@/lib/cron/finance-deadline-job").runFinanceDeadlineJob
   let sequence = 0
 
@@ -166,11 +176,17 @@ pgDescribe("finance notices in Telegram on a real Postgres", () => {
       { ...process.env, DATABASE_URL: scratch!.url },
     )
     stubFetch()
+    // No mail provider, whatever the machine has: `sendEmail` then records the
+    // message it would have sent in email_logs and stops.
+    for (const name of ["SMTP_USER", "RESEND_API_KEY", "POSTMARK_SERVER_TOKEN"]) delete process.env[name]
     prisma = (await import("@/lib/prisma")).prisma
     bypass = (await import("@/lib/rls-context")).runWithRlsBypass
     ;({ GET: getSettings, PUT: putSettings } = await import("@/app/api/finance/payment-orders/notification-settings/route"))
     sendTest = (await import("@/app/api/finance/payment-orders/notification-settings/test/route")).POST
     submit = (await import("@/app/api/finance/payment-orders/[id]/submit/route")).POST
+    execute = (await import("@/app/api/finance/payment-orders/[id]/execute/route")).POST
+    payBill = (await import("@/app/api/finance/payables/[id]/payments/route")).POST
+    checkDeadlines = (await import("@/app/api/finance/payment-orders/check-deadlines/route")).POST
     runDeadlineJob = (await import("@/lib/cron/finance-deadline-job")).runFinanceDeadlineJob
     for (const org of [A, B, C]) {
       await bypass(() => prisma.organization.create({
@@ -214,7 +230,7 @@ pgDescribe("finance notices in Telegram on a real Postgres", () => {
   }
 
   /** An organization submits a payment order for approval: the event that notifies. */
-  async function submitOrder(orgId: string, counterpartyName: string) {
+  async function submitOrder(orgId: string, counterpartyName: string, purpose = `Confidential purpose of ${orgId}`) {
     const id = `po-${++sequence}`
     await bypass(() => prisma.paymentOrder.create({
       data: {
@@ -223,7 +239,7 @@ pgDescribe("finance notices in Telegram on a real Postgres", () => {
         orderNumber: `PO-${orgId}-${sequence}`,
         counterpartyName,
         amount: 12_500,
-        purpose: `Confidential purpose of ${orgId}`,
+        purpose,
         status: "draft",
       },
     }))
@@ -431,5 +447,130 @@ pgDescribe("finance notices in Telegram on a real Postgres", () => {
     // Three messages in all: nothing for C, nothing to the installation's chat.
     expect(outbound.telegram).toHaveLength(3)
     expect(outbound.telegram.some((message) => message.bot === INSTALLATION.bot || message.chat === INSTALLATION.chat)).toBe(false)
+  })
+
+  // ── What a notice says ──────────────────────────────────────────────────
+
+  /** As a tenant may type them into a counterparty, a vendor or a purpose. */
+  const NAME = "Smith & Sons <Baku>"
+  const PURPOSE = 'Advance <a href="https://example.com">x</a>'
+
+  /**
+   * What is left of a Telegram message once the template's own markup is taken
+   * out: `<b>`, and links into the app. Telegram's rule for HTML mode is that
+   * every other `<`, `>` and `&` is an entity, so anything left here came from
+   * data and either breaks the message or is markup nobody wrote.
+   */
+  function strayMarkup(text: string): string[] {
+    return text
+      .replace(/<a href="([^"]*)">/g, (tag, href: string) => (href.startsWith(`${APP_URL}/`) ? "" : tag))
+      .replace(/<\/?b>|<\/a>/g, "")
+      .match(/[<>]|&(?!(?:amp|lt|gt);)/g) ?? []
+  }
+
+  /** The message as the chat displays it: tags applied, entities decoded. */
+  const shown = (text: string) =>
+    text.replace(/<[^>]*>/g, "").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&")
+
+  /** Where the links of an email lead, the app's own aside. */
+  const foreignLinks = (html: string) =>
+    [...html.matchAll(/<a\s[^>]*href="([^"]*)"/g)].map((link) => link[1]).filter((href) => !href.startsWith(`${APP_URL}/`))
+
+  const emailsOf = (orgId: string): Promise<{ subject: string | null; body: string | null }[]> =>
+    bypass(() => prisma.emailLog.findMany({ where: { organizationId: orgId }, select: { subject: true, body: true }, orderBy: { createdAt: "asc" } }))
+
+  it("delivers a counterparty and a purpose as the text that was typed, markup characters included", async () => {
+    await connect(A)
+    const everyChannel = { enabled: true, channels: ["telegram", "email", "inApp"] }
+    expect((await save(A.id, { ...FORM, recipientEmail: "cfo@org-a.example", paymentOrders: everyChannel })).status).toBe(200)
+    await bypass(() => prisma.emailLog.deleteMany({}))
+
+    const order = await submitOrder(A.id, NAME, PURPOSE)
+
+    expect(outbound.telegram).toHaveLength(1)
+    const { text } = outbound.telegram[0]
+    expect(text).toContain("🏢 Smith &amp; Sons &lt;Baku&gt;\n")
+    expect(text).toContain('📝 Advance &lt;a href="https://example.com"&gt;x&lt;/a&gt;\n')
+    // The template's own markup is still markup, and it is all the markup there is.
+    expect(text).toContain("<b>Payment order pending approval</b>")
+    expect(text).toContain(`<a href="${APP_URL}/finance?tab=payments">Approve / Reject</a>`)
+    expect(strayMarkup(text)).toEqual([])
+    expect(shown(text)).toContain(`📋 ${order}\n🏢 ${NAME}\n`)
+    expect(shown(text)).toContain(`📝 ${PURPOSE}\n`)
+
+    // The email is HTML as well. `sendEmail` sanitizes it, which removes what
+    // is dangerous — not a link, and not the fact that `<Baku>` reads as a tag.
+    const emails = await emailsOf(A.id)
+    expect(emails.map((email) => email.subject)).toEqual([expect.stringContaining(order)])
+    expect(emails[0].body).toContain("Smith &amp; Sons &lt;Baku&gt;")
+    expect(emails[0].body).toContain('Advance &lt;a href="https://example.com"&gt;x&lt;/a&gt;')
+    expect(emails[0].body).toContain(`<a href="${APP_URL}/finance?tab=payments">Approve / Reject</a>`)
+    expect(foreignLinks(emails[0].body!)).toEqual([])
+
+    // The in-app notice is plain text and is rendered as such: nothing to escape.
+    const notices: { message: string }[] = await bypass(() => prisma.notification.findMany({ where: { organizationId: A.id } }))
+    expect(notices.map((notice) => notice.message)).toEqual([expect.stringContaining(`— ${NAME}`)])
+  })
+
+  it("does the same in every other finance notice: executed order, bill payment, overdue items, deadlines", async () => {
+    await connect(A)
+    const both = { enabled: true, channels: ["telegram", "email"] }
+    const form = { ...FORM, recipientEmail: "cfo@org-a.example", overdue: both, advance: { ...both, daysBeforeDeadline: 7 }, paymentOrders: both, billPayments: both }
+    expect((await save(A.id, form)).status).toBe(200)
+    await bypass(() => prisma.emailLog.deleteMany({}))
+    const day = 86_400_000
+    const bill = (billNumber: string, dueInDays: number) => bypass(() => prisma.bill.create({
+      data: { organizationId: A.id, billNumber, vendorName: NAME, title: "Rent", status: "pending", totalAmount: "100", balanceDue: "100", dueDate: new Date(Date.now() + dueInDays * day) },
+    }))
+    const invoice = (invoiceNumber: string, dueInDays: number) => bypass(() => prisma.invoice.create({
+      data: { organizationId: A.id, invoiceNumber, recipientName: NAME, title: "Services", status: "sent", totalAmount: "100", balanceDue: "100", dueDate: new Date(Date.now() + dueInDays * day) },
+    }))
+    signIn(A.id)
+
+    // 1. A payment order is executed.
+    await bypass(() => prisma.paymentOrder.create({
+      data: { id: "po-typed", organizationId: A.id, orderNumber: "PO <7>", counterpartyName: NAME, amount: 300, currency: "A&B", purpose: PURPOSE, status: "approved" },
+    }))
+    const executed = await execute(request("http://localhost:3000/api/finance/payment-orders/po-typed/execute", "POST"), idParams("po-typed"))
+    expect(executed.status).toBe(200)
+
+    // 2. A payment is recorded against a bill.
+    const paid = await bill("B <paid>", 60)
+    const payment = await payBill(
+      request(`http://localhost:3000/api/finance/payables/${paid.id}/payments`, "POST", { amount: 40, currency: "A&B" }),
+      idParams(paid.id),
+    )
+    expect(payment.status).toBe(201)
+
+    // 3–5. The deadline check finds overdue bills, overdue invoices and items due soon.
+    await bill("B <late>", -7)
+    await invoice("INV <late>", -7)
+    await bill("B <soon>", 3)
+    await invoice("INV <soon>", 3)
+    const checked = await checkDeadlines(request("http://localhost:3000/api/finance/payment-orders/check-deadlines", "POST"))
+    expect(checked.status).toBe(200)
+
+    // Each notice by its heading, with what was typed into the records behind it.
+    const notices = [
+      ["Payment order executed", NAME, PURPOSE, "PO <7>", "A&B"],
+      ["Bill payment recorded", NAME, "B <paid>", "A&B"],
+      ["Overdue: ", NAME, "B <late>"],
+      ["Overdue A/R: ", NAME, "INV <late>"],
+      ["Deadlines in the next 7 day(s)", NAME, "B <soon>", "INV <soon>"],
+    ]
+    expect(outbound.telegram.map(({ text }) => text.split("\n")[0])).toEqual(notices.map(([heading]) => expect.stringContaining(heading)))
+    outbound.telegram.forEach(({ text }, i) => {
+      expect(strayMarkup(text), text).toEqual([])
+      for (const typed of notices[i].slice(1)) expect(shown(text), text).toContain(typed)
+    })
+
+    const emails = await emailsOf(A.id)
+    expect(emails).toHaveLength(notices.length)
+    for (const { body } of emails) {
+      expect(body, body!).toContain("Smith &amp; Sons &lt;Baku&gt;")
+      expect(foreignLinks(body!), body!).toEqual([])
+    }
+    expect(emails[0].body).toContain("PO &lt;7&gt;")
+    expect(emails[1].body).toContain("B &lt;paid&gt;")
   })
 })
