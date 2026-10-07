@@ -13348,6 +13348,11 @@
     "publishing": "Publishing...",
     "saveAndPublish": "Save and publish",
     "publishRoute": "Publish route",
+    "awaitingTitle": "Waiting to be published: {count}",
+    "awaitingBody": "These routes are saved, but employees cannot work by them until you publish them.",
+    "awaitingStops": "stops: {count}",
+    "awaitingOpen": "Open",
+    "awaitingMore": "And {count} more — in the list below.",
     "publishSuccess": "Route published",
     "chooseEmployeeAction": "Choose employee",
     "chooseDateAction": "Choose date",
@@ -14513,8 +14518,11 @@
     "locating": "Locating…",
     "hintEmpty": "Search for an address, press “My location”, or just click the map.",
     "hintSet": "You can correct the pin: drag it, or click the map where it should be.",
+    "pinAddressUnknown": "No address was found for this point — the card keeps the one it has.",
+    "pinAddress": "Address under the pin:",
+    "addressWritten": "written into the card",
     "resultsTitle": "Choose an address:",
-    "noResults": "Nothing found. Refine the address or place the pin on the map by hand.",
+    "noResults": "Nothing found. Try it shorter — street and house number, or the organization's name — or place the pin on the map by hand.",
     "searchFailed": "Address search is unavailable right now. Place the pin on the map by hand.",
     "searchTooShort": "Enter at least 3 characters.",
     "rateLimited": "Too many searches. Try again in a minute.",
@@ -14597,6 +14605,7 @@
     "thisVisit": "this visit",
     "visitTo": "visit to {name}",
     "placeholderCode": "e.g. C-001",
+    "addressFromMapHint": "appears once you set the place on the map",
     "placeholderLatitude": "Latitude",
     "placeholderLongitude": "Longitude",
     "location": "Location"
@@ -25156,6 +25165,11 @@
     "managerPresenceBoundary": "Schedule and server-recorded work-time facts do not prove continuous physical presence.",
     "managerLoadMore": "Load more employees",
     "managerLoadingMore": "Loading more employees…",
+    "managerReadSessionExpired": "Sign in again to load work-time data.",
+    "managerReadDenied": "Your account does not have access to this work-time view.",
+    "managerReadUnavailable": "Work-time data is temporarily unavailable. Try again.",
+    "managerLoadMoreResult": "Added: {added}. Loaded: {total}.",
+    "managerListComplete": "End of employee list",
     "managerAttendanceState": {
       "STARTED": "Working",
       "PAUSED": "Paused",
@@ -25426,7 +25440,7 @@
     "subtitle": "Review uncertain attendance cases without exposing raw location, QR, device proof or employee reasons.",
     "adminOnly": "This exception queue requires an effective Workforce HR-review role.",
     "boundaryTitle": "Human review only",
-    "boundaryHint": "Available review actions append only immutable, non-terminal human-review steps. They cannot notify the employee, create or approve a correction, or change attendance, pay, discipline, evidence or resolution. Coordinates, maps, QR values, device identifiers, proof payloads, prior decision reasons and internal identifiers remain unavailable here.",
+    "boundaryHint": "Authorized HR manually records findings for an already resolved case and the appeal outcome. Every action remains in an immutable ledger. A timesheet correction alone does not establish a false positive or an upheld appeal. Coordinates, QR, device data, evidence content and previous decision reasons remain restricted.",
     "viewAggregateReport": "View aggregate report",
     "refresh": "Refresh queue",
     "loading": "Loading attendance exception queue",
@@ -25439,11 +25453,21 @@
     "noActionAvailable": "No action available",
     "actions": {
       "ACKNOWLEDGE": "Acknowledge review",
-      "REQUEST_TIME_CORRECTION": "Request time correction review"
+      "REQUEST_TIME_CORRECTION": "Request time correction review",
+      "CLASSIFY_FALSE_POSITIVE": "Record false positive",
+      "CLASSIFY_CONFIRMED_EXCEPTION": "Confirm exception",
+      "APPEAL_FULLY_UPHELD": "Appeal fully upheld",
+      "APPEAL_PARTIALLY_UPHELD": "Appeal partially upheld",
+      "APPEAL_REJECTED": "Appeal rejected"
     },
     "actionHints": {
       "ACKNOWLEDGE": "Confirm that you have taken this case into human review. This append-only step does not resolve the case, notify the employee or change recorded time.",
-      "REQUEST_TIME_CORRECTION": "Record that a time correction should be requested for human review. This append-only step does not notify the employee, create or approve a correction, or change recorded time."
+      "REQUEST_TIME_CORRECTION": "Record that a time correction should be requested for human review. This append-only step does not notify the employee, create or approve a correction, or change recorded time.",
+      "CLASSIFY_FALSE_POSITIVE": "The server rechecks the live HR grant, resource scope, revision and final case state. Reopening excludes earlier findings from final percentages.",
+      "CLASSIFY_CONFIRMED_EXCEPTION": "The server rechecks the live HR grant, resource scope, revision and final case state. Reopening excludes earlier findings from final percentages.",
+      "APPEAL_FULLY_UPHELD": "The server rechecks the live HR grant, resource scope, revision and final case state. Reopening excludes earlier findings from final percentages.",
+      "APPEAL_PARTIALLY_UPHELD": "The server rechecks the live HR grant, resource scope, revision and final case state. Reopening excludes earlier findings from final percentages.",
+      "APPEAL_REJECTED": "The server rechecks the live HR grant, resource scope, revision and final case state. Reopening excludes earlier findings from final percentages."
     },
     "actionFormTitle": "Confirm {action} for {reference}",
     "serverChecksHint": "Before recording, the server rechecks your current role, scope, case revision and mandatory MFA. No free-text reason is collected.",
@@ -25507,6 +25531,17 @@
       "NO_FURTHER_ACTION": "No further action",
       "ESCALATE_DATA_INTEGRITY_REVIEW": "Escalate data integrity review",
       "unavailable": "Next action unavailable"
+    },
+    "outcomeReason": "HR decision reason",
+    "outcomeReasonRequired": "Enter a reason between 3 and 1000 characters.",
+    "outcomeReasonHint": "The reason stays in the restricted decision ledger and is excluded from aggregate reports. Do not enter exact coordinates, QR or secrets. Retries preserve the original reason.",
+    "outcomeChecksHint": "The server rechecks the live HR grant, resource scope, revision and final case state. Reopening excludes earlier findings from final percentages.",
+    "outcomeLabels": {
+      "FALSE_POSITIVE": "False positive",
+      "CONFIRMED_EXCEPTION": "Confirmed exception",
+      "FULLY_UPHELD": "Appeal fully upheld",
+      "PARTIALLY_UPHELD": "Appeal partially upheld",
+      "REJECTED": "Appeal rejected"
     }
   },
   "workforceExceptionReport": {
@@ -25526,7 +25561,20 @@
       "unresolved": "Unresolved cases",
       "integrityExcluded": "Excluded for data integrity",
       "sampleHint": "Unresolved cases and inconsistent decision histories are excluded from the duration sample. Durations use elapsed units, rounded to at most three decimal places; they are not business-hour or SLA measurements.",
-      "classificationUnavailable": "False-positive and appeal-overturn rates are unavailable: an approved outcome classification has not been defined."
+      "classificationTitle": "Explicit HR findings",
+      "classificationHint": "Percentages use separate samples of classified resolved cases and reviewed appeals in the current cycle. Open, reopened and unclassified cases are excluded. Timesheet corrections never determine these outcomes automatically.",
+      "noClassifiedSamples": "No reviewed classified cases",
+      "falsePositive": "False positives",
+      "appealFull": "Appeals fully upheld",
+      "appealPartial": "Appeals partially upheld",
+      "appealRejected": "Appeals rejected",
+      "classifiedCount": "{count} of {sample} reviewed cases",
+      "classificationSamples": "Classification sample",
+      "appealSamples": "Appeal sample",
+      "unfinishedCases": "Unfinished cases",
+      "unclassifiedResolved": "Resolved without exception classification",
+      "unclassifiedAppeal": "Resolved without an appeal outcome",
+      "finalIntegrityExcluded": "Excluded from final outcomes for integrity"
     },
     "title": "Attendance exception report",
     "subtitle": "Review bounded aggregate counts from persisted attendance cases without exposing employee, case, location, QR, device or reason data.",

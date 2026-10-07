@@ -1,0 +1,319 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-10-06T22:16:40.381204+00:00",
+  "reviewer": "independent read-only reviewer",
+  "status": "SOURCE_CONFIRMED_VISIBILITY_ACCEPTANCE_GAP_NOT_RUNTIME_INCIDENT",
+  "source": {
+    "head": "bf6ed11f2bba8c93e828fb044315794b44224741",
+    "tree": "72a268a0358cfb6d60ccefa3b62b42bb2112d055",
+    "workspace": "/workspace/hrm-c12-acceptance-20261006",
+    "bindingMethod": "Selected local Git blob hashes matched previously independently fetched exact bf6 full tree; no new remote freshness claim"
+  },
+  "scope": "Existing dormant WF-C12-008 complete-tenant reader authorization and schema acceptance; no source mutation or DB execution",
+  "conclusion": {
+    "answer": "Yes. A correctly selected tenant context under a non-superuser/NOBYPASSRLS role can still hide same-tenant roots through an applicable restrictive SELECT policy. Current tick validates context and capability, not visibility completeness.",
+    "counterexample": "Keep organizations visible and HRM enabled; apply an effective restrictive USING(false) policy to the eight fact streams, or hide a whole disconnected offending component. All root pages can validly exhaust empty; dense result starts MATCHED with zero counts, sweep commits its opaque token, and tick can record MATCHED/lastCompletedAt when lease and attempt remain valid.",
+    "counterexampleEvidence": "Source-derived with official PostgreSQL policy semantics. Not executed against a database in this review; no claim this exists in deployed policy.",
+    "contractQualification": "Caller owns authorized reader and scoped read authorization; staging docs explicitly limit MATCHED to completed visible-tenant sweep. This preserves prior bounded acceptance. Authorization alone does not imply complete tenant visibility; full C12 acceptance needs a declared and verified complete-selected-tenant reader profile.",
+    "priority": "P2 acceptance/integration gap before any full-tenant completion claim or runtime activation; no proven active production defect",
+    "additionalRisk": "SQL table references are generally unqualified. A preflight must bind the objects actually resolved by those queries, not only inspect same-named public tables; search_path/temp shadowing and views must fail closed or be excluded by the authorized profile."
+  },
+  "existingEvidenceLimit": {
+    "sweepFixture": "Selected hand-written tables deliberately omit FKs, use artificial tenant_isolation policies, then apply the real operations-state/index migration. This proves selected mechanics, not complete production schema/ACL/policy/trigger compatibility.",
+    "eligibleRoster": "Separate roster-health refuses row_security_active on its two aggregate tables. This strategy cannot simply be copied to fact reads because the intended fact reader must be subject to tenant RLS.",
+    "runtime": "Dormant; no new route/scheduler/activation needed for the proposed acceptance work."
+  },
+  "requiredInventory": {
+    "factTables": [
+      "mtm_agent_workdays",
+      "mtm_agent_workday_events",
+      "workforce_site_transitions",
+      "workforce_attendance_evidence",
+      "workforce_evidence_assessments",
+      "workforce_exception_cases",
+      "workforce_timesheet_approvals",
+      "mtm_audit_logs"
+    ],
+    "scheduleDependencyTables": [
+      "mtm_agents",
+      "workforce_employee_team_memberships",
+      "workforce_shift_templates",
+      "workforce_shift_segments",
+      "workforce_shift_assignments",
+      "workforce_shift_team_default_assignments",
+      "workforce_shift_default_assignments",
+      "workforce_workday_schedule_snapshots",
+      "workforce_shift_snapshots",
+      "workforce_policy_snapshots"
+    ],
+    "controlTables": [
+      "organizations",
+      "workforce_reconciliation_tenant_states",
+      "system_job_leases",
+      "system_job_cursors"
+    ],
+    "directTableCount": 22,
+    "readerProfile": [
+      "Actual relation OID/schema/name and ordinary relation kind for every resolved source/dependency; no view/temp shadow.",
+      "ENABLE and FORCE RLS, owner and effective current role attributes, inherited role memberships relevant to policies; selected app.org_id and bypass off within the same authorized transaction.",
+      "Complete applicable SELECT/ALL policy set: permissive/restrictive, PUBLIC and inherited roles, USING expression and referenced function identity/definitions. Policy name alone is not evidence.",
+      "Schema USAGE and required SELECT columns; reader has no business-fact DML path. Keep control lease/state/cursor privileges and authorized cross-tenant roster visibility separate.",
+      "Read-only RepeatableRead snapshot, bounds and statement/transaction deadlines; verify no unsupported profile allows checkpoint advancement."
+    ],
+    "schemaObjects": [
+      "Projected column names/types/nullability/date and enum assumptions; current Prisma schema plus migration-derived checks, uniqueness, FKs and delete actions.",
+      "Eight organizationId/id C-collated keyset indexes and approval-group C index from 20261005193000; validate actual index definitions/readiness, not names only. Operational due/attempt/org index separately.",
+      "Enabled immutable, append-only, insert-subject and legacy-fact guards on relevant fact/snapshot tables; trigger function bodies and later replacements, not only initial CREATE TRIGGER.",
+      "Historical membership agent-deletion cascade/guard from 20261006120000 and assignment transfer-window guard from 20261006150000 must be retained; do not revert accepted PR594/C7 semantics.",
+      "Migration ledger/provenance distinguishes full historical replay from generated Prisma schema plus explicitly selected policies/guards."
+    ],
+    "policyProvenanceExamples": {
+      "workdays_events": "20260806160000 normalizes earlier MTM policies to tenant OR explicit bypass; bypass must remain off for reader.",
+      "agents_audit": "20260806120000 MTM RLS coverage",
+      "transitions": "20260830070000",
+      "evidence_assessments": "20260830100000",
+      "approvals_policy_shift_snapshots": "20260828223000 command-specific SELECT policies",
+      "exception_cases": "20260830170000",
+      "schedule_snapshot": "20260830120000",
+      "membership": "20260830130000",
+      "team_default": "20260901080000"
+    },
+    "inventoryQualification": "Direct query surface and concrete provenance anchors, not an exhaustive transitive migration/trigger inventory or proof of actual staging ACLs. Later migration definitions must be resolved in order."
+  },
+  "smallestMeaningfulNextSlice": [
+    "Build one finite source-bound schema/reader-profile manifest from the actual required tables and repository policy definitions; preserve generated-schema and selected-migration provenance.",
+    "In an isolated fixture only, reproduce valid-context hidden offending root versus visible control, including inherited-role restrictive policy and true empty tenant. Assert the former cannot earn complete-tenant MATCHED/checkpoint after a fix; retain baseline negative.",
+    "If runtime enforcement is included, reject unsupported effective SELECT policy/role/relation profiles before root enumeration, using approved exact profile definitions rather than arbitrary SQL equivalence or a caller Boolean. Restrictive-policy absence alone is insufficient if permissive policy itself is narrowed.",
+    "Test canonical complete-tenant profile positive, selected/foreign tenant isolation, missing/narrowed SELECT policy, missing FORCE RLS, missing SELECT privilege, ordinary-table/search_path shadow refusal, and incomplete visibility of schedule dependencies.",
+    "Every refusal must leave business facts/cursor unchanged; attempt may record bounded INCOMPLETE/backoff. Lease/version/attempt fencing remains mandatory. Verify profile drift/concurrency assumptions explicitly; no untested claim that RepeatableRead alone freezes DDL/role authorization.",
+    "Reuse existing dense/fairness/overflow/fencing evidence for unchanged bytes. Run only uncovered profile/schema cases; no new reader architecture, scheduler, grants or business rules."
+  ],
+  "nonSolutions": [
+    "Counting through the same RLS-filtered reader cannot detect invisible disconnected roots.",
+    "FORCE RLS does not mean full tenant visibility.",
+    "row_security=off is not a bypass; it refuses policy-filtered reads and is not a positive complete-tenant fact reader check.",
+    "Do not fix by granting BYPASSRLS, disabling policies or using a superuser fact reader."
+  ],
+  "remainingExternalOrSeparateCriteria": [
+    "Historical empty-DB replay still blocked at missing api_keys/P3018/42P01; no marking applied or schema repair authorized by this review.",
+    "Representative staging data/query plans/density/timeouts and complete ACL/trigger verification remain separate from a synthetic manifest.",
+    "Real collector destinations, retention/access, operational alert delivery, scheduling/activation and signed-device work are not proven or modified.",
+    "WF-C12-008 remains PARTIAL; ledger stays 84/161 DONE, 77 open."
+  ],
+  "verification": {
+    "sourceBindings": [
+      {
+        "path": "src/lib/workforce/reconciliation-operations.ts",
+        "bytes": 11588,
+        "sha256": "514eb7cc12e5d89dabb5cd03ccddadefd7bec50c682620bc1cccca6bdb5c6576",
+        "gitBlob": "c4f7738a9284c3ab7251eaf2fd92a7006ef04ebe",
+        "mode": "100644"
+      },
+      {
+        "path": "src/lib/workforce/reconciliation-sweep.ts",
+        "bytes": 3049,
+        "sha256": "309ce1eabde967c795c47bb4a123f7c4cfd73a2a13638d8937327d8db4b0024c",
+        "gitBlob": "0fec4461ce893335761d6d2ba11dbefb6836a2b4",
+        "mode": "100644"
+      },
+      {
+        "path": "src/lib/workforce/reconciliation-source-page.ts",
+        "bytes": 5013,
+        "sha256": "7c45f9b7d1b621d7418e4ce18cdbace2bfed1a9a3a522944c5504c1259da03fe",
+        "gitBlob": "24a8b7b9b8cb51bd31ec5ae1c2f0981ad5d59fea",
+        "mode": "100644"
+      },
+      {
+        "path": "src/lib/workforce/reconciliation-dense.ts",
+        "bytes": 8490,
+        "sha256": "500f3f9b68cb68a0ab0ee6085814961b359b46ceb3b18a5ba38d9cafbd175959",
+        "gitBlob": "99e7ddf90d536a78baeff97f1dd95fb00d18b644",
+        "mode": "100644"
+      },
+      {
+        "path": "src/lib/workforce/reconciliation-snapshot.ts",
+        "bytes": 9679,
+        "sha256": "bdba98ef3f2d18b916200673038b4ad3eb523f2a5e3d12c864198eac26f490a3",
+        "gitBlob": "97aa9097d0fdadcbedcd77df053531ac592d9039",
+        "mode": "100644"
+      },
+      {
+        "path": "src/lib/workforce/reconciliation-schedule-subject.ts",
+        "bytes": 9921,
+        "sha256": "6ef11cc56e3132e4e48ba99cb57e021b9fed425488aea11c12864e9025eae9d9",
+        "gitBlob": "7e2ca6f1943b35043842b032690e4906b697b938",
+        "mode": "100644"
+      },
+      {
+        "path": "src/lib/workforce/reconciliation-approval-group.ts",
+        "bytes": 4263,
+        "sha256": "aa45ab91f54678c457d066a9a8bc044acabbd5cd29df4bad1b1924f7c0632a05",
+        "gitBlob": "8ecafeb590c05bac26ce71dde0587496309d61ca",
+        "mode": "100644"
+      },
+      {
+        "path": "src/lib/workforce/reconciliation-export-audit.ts",
+        "bytes": 7445,
+        "sha256": "38094ed52225428eb46eae6247f4a618a98d66e4e83151b7ba217168c6722409",
+        "gitBlob": "7d3e57bf9fe795674a61dddca63e545701ae4d40",
+        "mode": "100644"
+      },
+      {
+        "path": "src/lib/workforce/reconciliation-cursor-store.ts",
+        "bytes": 6533,
+        "sha256": "8b04ef4d1c7ea5cca424ef13e7c0d80e949271523a22cf4d43a545049949a6bd",
+        "gitBlob": "f43235f707457f3cafef25ebe2fdec97e395f2ef",
+        "mode": "100644"
+      },
+      {
+        "path": "src/lib/workforce/reconciliation-roster-health.ts",
+        "bytes": 6396,
+        "sha256": "896fb07c70b918714ca5c5cd7685fbdd9655811a06c0fd3a41dd095de2f911e9",
+        "gitBlob": "f707fd0b652b18fae49ea4ac500503f9f0dcacee",
+        "mode": "100644"
+      },
+      {
+        "path": "src/__tests__/workforce-reconciliation-sweep.test.ts",
+        "bytes": 49872,
+        "sha256": "276a6bd5077d31d883fba6e1499cb9e4b95016ec36f1932ad02759b903a338ea",
+        "gitBlob": "8d5f3f9c626f7f6d4b5e06bbb3785ad4314a5f3e",
+        "mode": "100644"
+      },
+      {
+        "path": "src/__tests__/workforce-reconciliation-roster-health.test.ts",
+        "bytes": 9333,
+        "sha256": "e803c41369667d110419ab5f15c22e4524a6b385e97bb54a7aa19710c16a351b",
+        "gitBlob": "842905a8ceeba994f03e6aed814c31dd53ccb0ad",
+        "mode": "100644"
+      },
+      {
+        "path": "docs/workforce-c12-next-acceptance-slice-2026-10-06.md",
+        "bytes": 2473,
+        "sha256": "fcf58cb3d054d195f2e924263a788fba22a170879b7cc087ce0668281b53b6f7",
+        "gitBlob": "09f16a942c59883252a0bbdb665eeb853d302c59",
+        "mode": "100644"
+      },
+      {
+        "path": "docs/workforce-c12-dense-operations-2026-10-05.md",
+        "bytes": 5401,
+        "sha256": "c69199ad54e9404e25e6a1f2e324cb3476e9d4b66664f3e27cd46c38c9780c21",
+        "gitBlob": "821f4909dff71327c78ee418f6e3fe7d5115c246",
+        "mode": "100644"
+      },
+      {
+        "path": "docs/workforce-c12-sweep-staging-2026-10-05.md",
+        "bytes": 5677,
+        "sha256": "fca6a3692af9545731a4461a99338e7d2280e2ef85d73d7fd5a0c303feac5cfc",
+        "gitBlob": "7a484414a5bd3758711292c66583b953c6c0d531",
+        "mode": "100644"
+      },
+      {
+        "path": "prisma/migrations/20261005193000_workforce_reconciliation_operations/migration.sql",
+        "bytes": 2721,
+        "sha256": "c452e7f6d13dca1e5257d8353c252745d05cd4f18eae83cd45501f61664ef719",
+        "gitBlob": "56c246ae8afd8ea5be2989034bd56953e28406c5",
+        "mode": "100644"
+      },
+      {
+        "path": "prisma/migrations/20260828223000_workforce_h3_foundation/migration.sql",
+        "bytes": 48914,
+        "sha256": "fe87338c7318fd0e713223af6905e5d1e7ca9794260fdbeb48e32d521b46681a",
+        "gitBlob": "b9014bd5466a490f64a0a69268f09a98ec90f25a",
+        "mode": "100644"
+      },
+      {
+        "path": "prisma/migrations/20260806160000_mtm_rls_bypass_clause_normalization/migration.sql",
+        "bytes": 12226,
+        "sha256": "8660edf5ba9f17ce167d87be1bf03135e751989c8f0d712dc08432e6bc0a05b7",
+        "gitBlob": "0df733e2a9d4eae8774e9eea227a7758a17da0f6",
+        "mode": "100644"
+      },
+      {
+        "path": "prisma/migrations/20260806120000_mtm_rls_coverage_completion/migration.sql",
+        "bytes": 24606,
+        "sha256": "4c42baed14a7ef8fe9ba6e4b61b814ef1578a6f00e096ecd47d5187f7e3021f6",
+        "gitBlob": "ffca8ce1524b8968f9f92f0ab804d324a87d6126",
+        "mode": "100644"
+      },
+      {
+        "path": "prisma/migrations/20260830070000_workforce_site_transitions/migration.sql",
+        "bytes": 5319,
+        "sha256": "a83be8b3a9b741f0cbbb837bbfdac549a507951781f30753dbeb9d2d696c776e",
+        "gitBlob": "d61c4722a89d63844d00550d05c8f48a8643a6a5",
+        "mode": "100644"
+      },
+      {
+        "path": "prisma/migrations/20260830100000_workforce_evidence_assessments/migration.sql",
+        "bytes": 8437,
+        "sha256": "13817a7f667f054003cf9597fca577190cfd832d1a35b66ae8aea6f1b1513b49",
+        "gitBlob": "407f2ad0cb4e71ca2d1270bb30654f8104fba031",
+        "mode": "100644"
+      },
+      {
+        "path": "prisma/migrations/20260830120000_workforce_workday_schedule_snapshots/migration.sql",
+        "bytes": 6009,
+        "sha256": "c3f2eaee65d95a83cca1f5c4d2e50c781be0fb618a802030fc1c46bb44bb2686",
+        "gitBlob": "0ec6a4b161b7354775f51cb3b5ff77bc9544ea9d",
+        "mode": "100644"
+      },
+      {
+        "path": "prisma/migrations/20260830130000_workforce_employee_team_membership_history/migration.sql",
+        "bytes": 15814,
+        "sha256": "bbc3b8477ca1f6ef62a14c2f83a80b59344fdb1bf3fbf31f468aff385c2166a3",
+        "gitBlob": "c01d462989b37e276d298cc3589dace301e515c7",
+        "mode": "100644"
+      },
+      {
+        "path": "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql",
+        "bytes": 9684,
+        "sha256": "314d4f0e83c81544a50633bceb977298ece24fff918923310671b07c0e8c5f2a",
+        "gitBlob": "c14b3aed36d12b40dcbbdcaa35745a8517006654",
+        "mode": "100644"
+      },
+      {
+        "path": "prisma/migrations/20260830173000_workforce_exception_case_subject_integrity/migration.sql",
+        "bytes": 3616,
+        "sha256": "c275668b6a09483f4d9f5aab9371c49c0837258734c54251137d980e1f8cd6cd",
+        "gitBlob": "c72c9d545912d12be831aa70575fbb8cc341f8d7",
+        "mode": "100644"
+      },
+      {
+        "path": "prisma/migrations/20260901080000_workforce_team_default_shift_timeline/migration.sql",
+        "bytes": 12454,
+        "sha256": "d4141d1fb438cadf687e71253ef3bc92d0a5a3c6f24a90e05a95ef7ab44490a8",
+        "gitBlob": "2ba5e42ae93e92b5ce175fd990fa1c0ef607a2a2",
+        "mode": "100644"
+      },
+      {
+        "path": "prisma/migrations/20261006120000_workforce_team_membership_follows_deleted_agent/migration.sql",
+        "bytes": 2368,
+        "sha256": "9117b8b3bef541fb4321dbc25d8c5e1e9974a724b8a90c900130578cc5b980c6",
+        "gitBlob": "558e47643e1c13d134754011827b35f625936776",
+        "mode": "100644"
+      },
+      {
+        "path": "prisma/migrations/20261006150000_workforce_transferred_assignment_window/migration.sql",
+        "bytes": 3664,
+        "sha256": "239c19f1a973fd0687fc0d558d628befa50cbe3ce9e6a3a0b24c02361a7e533f",
+        "gitBlob": "84fcfa2d07857cb136e2d99bd4c10aa22d313762",
+        "mode": "100644"
+      }
+    ],
+    "newTestsRun": 0,
+    "databaseCommandsRun": 0,
+    "productionAccess": false,
+    "remoteWrites": false,
+    "repoWrites": false,
+    "rawLogsOrScreenshotsRead": false
+  },
+  "primaryReferences": [
+    {
+      "url": "https://www.postgresql.org/docs/16/ddl-rowsecurity.html",
+      "supports": "Invisible rows are omitted; role inheritance and FORCE/owner/BYPASS semantics; row_security off refusal."
+    },
+    {
+      "url": "https://www.postgresql.org/docs/16/sql-createpolicy.html",
+      "supports": "Permissive OR and restrictive AND, role/command applicability."
+    }
+  ]
+}

@@ -116,7 +116,7 @@ async function createCorrection(tx: Prisma.TransactionClient, org: string, id: s
       CURRENT_TIMESTAMP,${options.at ?? new Date()})`
 }
 async function legacyHistory(tx: Prisma.TransactionClient, caseId: string, at: Date,
-  entries: Array<{ code: string; ms: number; revision?: number }>) {
+  entries: Array<{ code: string; ms: number; revision?: number }>, org = orgA) {
   // Explicit historical fixture import. Current trigger normally stamps server-time/revision;
   // bypass only USER triggers in this owner transaction, restore BEFORE commit. Constraints remain.
   // No terminal writer is enabled or accepted by this fixture import.
@@ -127,8 +127,8 @@ async function legacyHistory(tx: Prisma.TransactionClient, caseId: string, at: D
     const id = `${caseId}-decision-${index}`
     await tx.$executeRaw`INSERT INTO workforce_exception_decisions
         ("id","organizationId","caseId","caseRevision","operationId","decisionCode","reason","actorUserId","createdAt")
-        VALUES (${id},${orgA},${caseId},${entry.revision ?? index + 1},${`operation-${id}`},${entry.code},
-          'PRIVATE_FIXTURE_DECISION_REASON',${actor(orgA)},${new Date(at.getTime() + entry.ms)})`
+        VALUES (${id},${org},${caseId},${entry.revision ?? index + 1},${`operation-${id}`},${entry.code},
+          'PRIVATE_FIXTURE_DECISION_REASON',${actor(org)},${new Date(at.getTime() + entry.ms)})`
   }
   await tx.$executeRawUnsafe("ALTER TABLE workforce_exception_decisions ENABLE TRIGGER USER")
 }
@@ -316,7 +316,12 @@ postgresDescribe("bounded recorded exception report on real PostgreSQL", () => {
     })
     const result=await read(2)
     expect(result.recordedOutcomes.linkedCorrection).toMatchObject({cohortCases:9,recordedLinkedCorrectionCases:1,share:1/9})
-    expect(result.recordedOutcomes.unavailable).toEqual({falsePositiveRate:"UNAVAILABLE_NO_APPROVED_OUTCOME_CLASSIFICATION",appealOverturnRate:"UNAVAILABLE_NO_APPROVED_OUTCOME_CLASSIFICATION"})
+    expect(result.recordedOutcomes.finalClassification).toEqual({
+      basis:"EXPLICIT_HR_CLASSIFICATION_OF_CURRENT_RESOLVED_CYCLE",
+      falsePositive:{sampleCount:0,falsePositiveCases:0,confirmedCases:0,share:null,unclassifiedResolvedCases:0},
+      appeal:{sampleCount:0,fullyUpheldCases:0,partiallyUpheldCases:0,rejectedCases:0,fullyUpheldShare:null,partiallyUpheldShare:null,rejectedShare:null,unclassifiedResolvedCases:0},
+      unfinishedCases:9,integrityExcludedCases:0,
+    })
   })
 
   it("uses exact production enum/link/approval/FK/unique/append-only constraints for negative writes",async()=>{
@@ -413,8 +418,94 @@ postgresDescribe("bounded recorded exception report on real PostgreSQL", () => {
     expect(result.summary.cases).toBe(0)
     expect(result.recordedOutcomes.linkedCorrection).toMatchObject({cohortCases:0,recordedLinkedCorrectionCases:0,share:null})
     expect(result.recordedOutcomes.firstResolution).toMatchObject({sampleCount:0,unresolvedCases:0,integrityExcludedCases:0,minMs:null,maxMs:null,meanMs:null})
+    expect(result.recordedOutcomes.finalClassification).toEqual({
+      basis:"EXPLICIT_HR_CLASSIFICATION_OF_CURRENT_RESOLVED_CYCLE",
+      falsePositive:{sampleCount:0,falsePositiveCases:0,confirmedCases:0,share:null,unclassifiedResolvedCases:0},
+      appeal:{sampleCount:0,fullyUpheldCases:0,partiallyUpheldCases:0,rejectedCases:0,fullyUpheldShare:null,partiallyUpheldShare:null,rejectedShare:null,unclassifiedResolvedCases:0},
+      unfinishedCases:0,integrityExcludedCases:0,
+    })
     expect(await fingerprints()).toEqual(before)
   })
+
+  it("counts only explicit current-cycle final outcomes, separates partial appeals and excludes reopened, unfinished and corrupt histories",async()=>{
+    const at=window(10).startAt
+    const resolved=[{code:"ACKNOWLEDGE",ms:0},{code:"RESOLVE_NO_CHANGE",ms:1000}]
+    await owner(async tx=>{
+      const histories:Array<[string,Array<{code:string;ms:number}>]>=[
+        ["classified-full",[...resolved,{code:"CLASSIFY_FALSE_POSITIVE",ms:2000},{code:"APPEAL_FULLY_UPHELD",ms:3000}]],
+        ["classified-partial",[...resolved,{code:"CLASSIFY_CONFIRMED_EXCEPTION",ms:2000},{code:"APPEAL_PARTIALLY_UPHELD",ms:3000}]],
+        ["classified-rejected",[...resolved,{code:"CLASSIFY_CONFIRMED_EXCEPTION",ms:2000},{code:"APPEAL_REJECTED",ms:3000}]],
+        ["classified-reopened",[...resolved,{code:"CLASSIFY_FALSE_POSITIVE",ms:2000},{code:"APPEAL_FULLY_UPHELD",ms:3000},{code:"REOPEN_FOR_REVIEW",ms:4000}]],
+        ["classified-reresolved",[...resolved,{code:"CLASSIFY_FALSE_POSITIVE",ms:2000},{code:"APPEAL_FULLY_UPHELD",ms:3000},{code:"REOPEN_FOR_REVIEW",ms:4000},{code:"RESOLVE_NO_CHANGE",ms:5000}]],
+        ["classified-unclassified",resolved],
+        ["classified-open",[]],
+        ["classified-invalid-before-resolution",[{code:"ACKNOWLEDGE",ms:0},{code:"CLASSIFY_FALSE_POSITIVE",ms:1000}]],
+        ["classified-duplicate-false-positive",[...resolved,{code:"CLASSIFY_FALSE_POSITIVE",ms:2000},{code:"CLASSIFY_CONFIRMED_EXCEPTION",ms:3000}]],
+        ["classified-duplicate-appeal",[...resolved,{code:"APPEAL_FULLY_UPHELD",ms:2000},{code:"APPEAL_PARTIALLY_UPHELD",ms:3000}]],
+        ["classified-new-cycle",[...resolved,{code:"CLASSIFY_FALSE_POSITIVE",ms:2000},{code:"APPEAL_FULLY_UPHELD",ms:3000},{code:"REOPEN_FOR_REVIEW",ms:4000},{code:"RESOLVE_WITH_CORRECTION",ms:5000},{code:"CLASSIFY_CONFIRMED_EXCEPTION",ms:6000},{code:"APPEAL_REJECTED",ms:7000}]],
+        ["classified-only-false-positive",[...resolved,{code:"CLASSIFY_FALSE_POSITIVE",ms:2000}]],
+        ["classified-only-appeal",[...resolved,{code:"APPEAL_PARTIALLY_UPHELD",ms:2000}]],
+      ]
+      for(const [id,entries] of histories){await createCase(tx,orgA,id,at);await legacyHistory(tx,id,at,entries)}
+      // A linked approved correction supplies no HR classification by itself.
+      await createRequest(tx,orgA,"classified-unclassified-request","classified-unclassified")
+      await createCorrection(tx,orgA,"classified-unclassified-ledger","classified-unclassified-request")
+      await createCase(tx,orgB,"classified-foreign-case",at)
+      await legacyHistory(tx,"classified-foreign-case",at,[...resolved,{code:"CLASSIFY_CONFIRMED_EXCEPTION",ms:2000},{code:"APPEAL_REJECTED",ms:3000}],orgB)
+    })
+    const before=await fingerprints();const result=await read(10)
+    expect(result.recordedOutcomes.finalClassification).toEqual({
+      basis:"EXPLICIT_HR_CLASSIFICATION_OF_CURRENT_RESOLVED_CYCLE",
+      falsePositive:{sampleCount:5,falsePositiveCases:2,confirmedCases:3,share:2/5,unclassifiedResolvedCases:3},
+      appeal:{sampleCount:5,fullyUpheldCases:1,partiallyUpheldCases:2,rejectedCases:2,fullyUpheldShare:1/5,partiallyUpheldShare:2/5,rejectedShare:2/5,unclassifiedResolvedCases:3},
+      unfinishedCases:2,integrityExcludedCases:3,
+    })
+    expect(result.summary).toMatchObject({cases:13,resolved:8,open:1,hrReview:1,dataIntegrityReview:3})
+    expect(result.recordedOutcomes.linkedCorrection.recordedLinkedCorrectionCases).toBe(1)
+    const foreign=await read(10,orgB,orgB)
+    expect(foreign.recordedOutcomes.finalClassification).toMatchObject({
+      falsePositive:{sampleCount:1,falsePositiveCases:0,confirmedCases:1,share:0},
+      appeal:{sampleCount:1,fullyUpheldCases:0,partiallyUpheldCases:0,rejectedCases:1,rejectedShare:1},
+      unfinishedCases:0,integrityExcludedCases:0,
+    })
+    expect((await read(10,orgB,orgA)).summary.cases).toBe(0)
+    expect((await read(10,orgA,null)).summary.cases).toBe(0)
+    expect(JSON.stringify(result)).not.toMatch(/PRIVATE_FIXTURE|classified-|report-org-|actor/)
+    expect(await fingerprints()).toEqual(before)
+    await rejected("55000",tx=>tx.$executeRaw`UPDATE workforce_exception_decisions SET "decisionCode"='APPEAL_REJECTED' WHERE id='classified-full-decision-3'`)
+    await rejected("55000",tx=>tx.$executeRaw`DELETE FROM workforce_exception_decisions WHERE id='classified-full-decision-3'`)
+    await rejected("23503",tx=>tx.$executeRaw`INSERT INTO workforce_exception_decisions("id","organizationId","caseId","operationId","decisionCode","reason","actorUserId") VALUES ('classified-foreign-actor',${orgA},'classified-unclassified','classified-foreign-actor-operation','CLASSIFY_FALSE_POSITIVE','PRIVATE_FIXTURE_REASON',${actor(orgB)})`)
+  })
+
+  it("keeps the final-classification cohort at CASE_RECORDED_AT and observes classification atomically in a repeatable snapshot",async()=>{
+    const at=window(11).startAt
+    await owner(async tx=>{
+      await createCase(tx,orgA,"classification-snapshot-case",at)
+      await legacyHistory(tx,"classification-snapshot-case",at,[{code:"ACKNOWLEDGE",ms:0},{code:"RESOLVE_NO_CHANGE",ms:1000}])
+    })
+    let snapshotReady!:()=>void;let allowRead!:()=>void
+    const ready=new Promise<void>(resolve=>{snapshotReady=resolve});const committed=new Promise<void>(resolve=>{allowRead=resolve})
+    const oldRead=scoped(orgA,async tx=>{
+      expect(await tx.workforceExceptionCase.count({where:{organizationId:orgA,createdAt:at}})).toBe(1)
+      snapshotReady();await committed
+      return readWorkforceExceptionCaseReport(tx,{organizationId:orgA,...window(11)})
+    })
+    let synchronizationError:unknown
+    try{
+      await Promise.race([ready,oldRead.then(()=>{throw new Error("Classification reader unexpectedly ended before synchronization")})])
+      await owner(async tx=>{
+        // Real owner fixture append obeys exact revision/append-only triggers.
+        // Decision time lies outside the case cohort; no application HR writer acceptance inferred.
+        await tx.$executeRaw`INSERT INTO workforce_exception_decisions("id","organizationId","caseId","operationId","decisionCode","reason","actorUserId") VALUES ('classification-snapshot-final',${orgA},'classification-snapshot-case','classification-snapshot-final-operation','CLASSIFY_FALSE_POSITIVE','PRIVATE_FIXTURE_REASON',${actor(orgA)})`
+      })
+    }catch(error){synchronizationError=error}finally{allowRead()}
+    const oldResult=await oldRead;if(synchronizationError)throw synchronizationError
+    expect(oldResult.recordedOutcomes.finalClassification.falsePositive).toEqual({sampleCount:0,falsePositiveCases:0,confirmedCases:0,share:null,unclassifiedResolvedCases:1})
+    const before=await fingerprints();const current=await read(11)
+    expect(current.recordedOutcomes.finalClassification.falsePositive).toEqual({sampleCount:1,falsePositiveCases:1,confirmedCases:0,share:1,unclassifiedResolvedCases:0})
+    expect(current.recordedOutcomes.finalClassification.appeal).toMatchObject({sampleCount:0,fullyUpheldShare:null,partiallyUpheldShare:null,rejectedShare:null,unclassifiedResolvedCases:1})
+    expect(await fingerprints()).toEqual(before)
+  },30_000)
 
   it("fails closed at the 5001-case sentinel without returning a truncated aggregate",async()=>{
     await owner(tx=>tx.$executeRaw`INSERT INTO workforce_exception_cases("id","organizationId","agentId","workdayId","kind","detectorVersion","deduplicationKey","createdAt") SELECT 'limit-case-'||n,${orgA},${agent(orgA)},${workday(orgA)},'NO_SHOW','fixture-recorded-v1',md5('limit-case-'||n)||md5('case-proof-'||n),${window(7).startAt} FROM generate_series(1,5001) n`)

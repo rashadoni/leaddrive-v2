@@ -1,0 +1,50 @@
+[
+  {
+    "path": "typecheck-baseline.json",
+    "mainBlob": "10afff7f7fa1d2d4ea79f2bce53e2b7ca29e484a",
+    "currentBlob": "10afff7f7fa1d2d4ea79f2bce53e2b7ca29e484a",
+    "unchanged": true
+  },
+  {
+    "path": "test-baseline.json",
+    "mainBlob": "fcdde20b245a686642676341f01cb39e73e42ffa",
+    "currentBlob": "fcdde20b245a686642676341f01cb39e73e42ffa",
+    "unchanged": true
+  },
+  {
+    "path": "scripts/ci/check-typecheck-gate.sh",
+    "mainBlob": "e6c3c4a836424b834e90f4192ad81513c9541b9c",
+    "currentBlob": "e6c3c4a836424b834e90f4192ad81513c9541b9c",
+    "unchanged": true
+  },
+  {
+    "path": "scripts/ci/check-typecheck-baseline.mjs",
+    "mainBlob": "034bfd1f18061bad8291f505367e84c74ec510ae",
+    "currentBlob": "034bfd1f18061bad8291f505367e84c74ec510ae",
+    "unchanged": true
+  },
+  {
+    "path": "scripts/check-test-baseline.mjs",
+    "mainBlob": "7c27358c48c09131ce7966b2f4938490591c3cd1",
+    "currentBlob": "7c27358c48c09131ce7966b2f4938490591c3cd1",
+    "unchanged": true
+  },
+  {
+    "path": ".github/workflows/pr-checks.yml",
+    "mainBlob": "952038c2356dad827cfbb69eb130f5fa17b7b541",
+    "currentBlob": "952038c2356dad827cfbb69eb130f5fa17b7b541",
+    "unchanged": true
+  },
+  {
+    "path": ".github/workflows/gitleaks.yml",
+    "mainBlob": "4b696fe261a4629b974482dcc5edae52a44a77c5",
+    "currentBlob": "4b696fe261a4629b974482dcc5edae52a44a77c5",
+    "unchanged": true
+  },
+  {
+    "path": ".github/workflows/runner-policy.yml",
+    "mainBlob": "22e3e8b818e4d7235828d3413ef5dec203e85260",
+    "currentBlob": "22e3e8b818e4d7235828d3413ef5dec203e85260",
+    "unchanged": true
+  }
+]

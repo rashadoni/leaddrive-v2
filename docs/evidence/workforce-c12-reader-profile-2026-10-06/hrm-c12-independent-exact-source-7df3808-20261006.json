@@ -1,0 +1,380 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-10-06T22:40:10.949171+00:00",
+  "status": "EXACT_SOURCE_AND_DURABLE_EVIDENCE_ACCEPTED_HOSTED_SCAN_BLOCKED",
+  "head": "7df38080839440f2ede9671e9aac01fee5436cd0",
+  "tree": "f555b1662f68dc5e4d5d80c59d5de80cc260bd95",
+  "parent": "bf6ed11f2bba8c93e828fb044315794b44224741",
+  "sourceAcceptance": "Bounded complete-tenant reader-profile source and local synthetic PostgreSQL acceptance; not whole C12 or approval to merge/deploy.",
+  "findings": {
+    "unresolvedSourceP0P3": [],
+    "hostedBlocker": {
+      "check": "scan",
+      "appId": 15368,
+      "runId": 37541688155,
+      "jobId": 112535951848,
+      "conclusion": "failure",
+      "diagnosis": "Owner pinned local scanner identifies five generic-api-key findings on literal synthetic fixture lease token in two archived probes. Reviewer inspected all five source uses and confirms non-authentication lease-fencing semantics. Narrow AND/exact-path/exact-secret allowlist successor is proposed, not accepted or credited here."
+    }
+  },
+  "lineage": {
+    "primary": {
+      "pr": 608,
+      "draft": true,
+      "head": "7df38080839440f2ede9671e9aac01fee5436cd0",
+      "base": "bf6ed11f2bba8c93e828fb044315794b44224741"
+    },
+    "validationOnly": {
+      "pr": 609,
+      "draft": false,
+      "head": "7df38080839440f2ede9671e9aac01fee5436cd0",
+      "base": "cb5a0453e7ead310e0515e265efee209be1c272b",
+      "mergeCandidate": "Do not merge validation PR independently of dependency chain"
+    },
+    "freshMain": "cb5a0453e7ead310e0515e265efee209be1c272b",
+    "synthetic": {
+      "sha": "1849fb9e72ba3bbd7bded12b2ae2881c86920a7e",
+      "tree": "f555b1662f68dc5e4d5d80c59d5de80cc260bd95",
+      "parents": [
+        "cb5a0453e7ead310e0515e265efee209be1c272b",
+        "7df38080839440f2ede9671e9aac01fee5436cd0"
+      ]
+    },
+    "preservedRefs": {
+      "pr589": "a856a9e533c4f3cec6f2313e69f5be0d5b4d4226",
+      "pr605": "bf6ed11f2bba8c93e828fb044315794b44224741",
+      "pr606": "bf6ed11f2bba8c93e828fb044315794b44224741",
+      "c8Archive": "382b6e75d8de68e0ec4825aa7a2977b000674587"
+    }
+  },
+  "treeVerification": {
+    "remoteRecursiveTreeTruncated": false,
+    "blobCount": 8917,
+    "allLocalBlobHashesAndModesMatch": true,
+    "treeObjectsIncludingRootRecomputed": 2822,
+    "gitRootTreeRecomputed": true,
+    "parentUnchangedBlobsAndModes": 8882,
+    "modified": [
+      "docs/workforce-c12-next-acceptance-slice-2026-10-06.md",
+      "docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+      "docs/workforce-hrm-session-log.md",
+      "src/lib/workforce/reconciliation-operations.ts"
+    ],
+    "added": [
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/README.md",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/existing-pg-regression-final.json",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/existing-pg-regression.json",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/hrm-c12-independent-profile-semantic-revision-20261006.json",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/hrm-c12-independent-reader-profile-local-acceptance-20261006.json",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/hrm-c12-independent-reader-profile-preliminary-20261006.json",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/hrm-c12-independent-reader-visibility-assessment-20261006.json",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/hrm-c12-independent-visibility-repro-addendum-20261006.json",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/initial-visibility-probe.json",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/manifest.json",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/original-fixture-cleanup.json",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/postfix-probe-result.json",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/postfix-probe.mjs",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/probe.mjs",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/profile-lint-final.json",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/profile-lint-initial.json",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/profile-matrix-attempt1-harness.mjs",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/profile-matrix-attempt1.json",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/profile-matrix-attempt2.json",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/profile-matrix-attempt3-reconciliation-reader-profile.ts",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/profile-matrix-attempt3-workforce-reconciliation-reader-profile-evidence.mjs",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/profile-matrix-attempt3.json",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/profile-matrix-attempt4-reconciliation-reader-profile.ts",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/profile-matrix-attempt4-workforce-reconciliation-reader-profile-evidence.mjs",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/profile-matrix-attempt4.json",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/profile-matrix-attempt5.json",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/run-regression.py",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/schema-push-result.json",
+      "docs/workforce-c12-reader-profile-acceptance-2026-10-06.md",
+      "scripts/workforce-reconciliation-reader-profile-evidence.mjs",
+      "src/lib/workforce/reconciliation-reader-profile.ts"
+    ],
+    "deleted": [],
+    "actualRemoteUtf8ChangedBlobReadback": 35,
+    "all35ByteExact": true
+  },
+  "evidence": {
+    "directory": "docs/evidence/workforce-c12-reader-profile-2026-10-06/",
+    "files": 28,
+    "manifestOriginals": 27,
+    "allManifestBytesSha256GitBlobMatch": true,
+    "localIndependentAcceptanceArchivedVerbatim": true,
+    "immutablePriorBytes": "Initial hidden-root negative, attempts1/4 failures and failed source/harness snapshots retained; earlier finite receipts not rewritten.",
+    "remoteBinaryReadback": "No new binary files in this C12 delta; earlier preserved binary artifacts only inherit exact prior Git blob/mode identity."
+  },
+  "ownerValidation": {
+    "matrixCases": 35,
+    "matrixNoFailures": true,
+    "matrixBindings": 14,
+    "regressionStatus": "PASS_152_ZERO_SKIP",
+    "regressionPass": 152,
+    "regressionFailed": 0,
+    "regressionSkipped": 0,
+    "regressionFiles": 7,
+    "regressionBindings": 22,
+    "regressionCleanup": "PASS",
+    "lint": {
+      "exitCode": 0,
+      "errors": 0,
+      "warnings": 0,
+      "diagnostics": []
+    },
+    "ownIndependentTestsOrDbRun": false
+  },
+  "ledger": {
+    "canonicalRowsUnchanged": true,
+    "method": "Exact parent modified-doc readback and diff: roadmap/session only append a bounded C12 note, no prior rows/status edits.",
+    "done": 84,
+    "total": 161,
+    "open": 77,
+    "phaseGates": "14/15",
+    "weightedRoundedPercent": 60,
+    "openP0P1": 73,
+    "WF-C12-008": "PARTIAL"
+  },
+  "hostedSnapshot": {
+    "terminalAcceptance": false,
+    "requiredContexts": [
+      "pr-scope",
+      "static-checks",
+      "typecheck",
+      "runner-policy",
+      "scan"
+    ],
+    "additionalApplicable": "Current cumulative validation PR triggers six Workforce browser/PG lanes, C7 and Social Monitoring; inspect all jobs of applicable workflows at terminal rather than borrowing prior bf6 results.",
+    "productionBuild": "SKIPPED without production-build label; not a passed build, and prior bf6 build is historical unchanged-dependency evidence only.",
+    "cancelledHistory": "Earlier PR checks37541688269 cancelled; replacement37541713751 active at this snapshot. Draft evidence skips preserved.",
+    "rawLogsOrArtifactPayloadsRead": false,
+    "checkRecords": [
+      {
+        "id": 112536101433,
+        "name": "GitHub-hosted Linux production build",
+        "status": "completed",
+        "conclusion": "skipped",
+        "appId": 15368
+      },
+      {
+        "id": 112536100277,
+        "name": "pr-scope",
+        "status": "in_progress",
+        "conclusion": null,
+        "appId": 15368
+      },
+      {
+        "id": 112536098780,
+        "name": "typecheck",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "appId": 15368
+      },
+      {
+        "id": 112536098386,
+        "name": "static-checks",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "appId": 15368
+      },
+      {
+        "id": 112536037800,
+        "name": "Real PostgreSQL SELECT-only and authenticated employee impact browser evidence",
+        "status": "in_progress",
+        "conclusion": null,
+        "appId": 15368
+      },
+      {
+        "id": 112536037186,
+        "name": "Real PostgreSQL, authorized API and rendered policy restore UI evidence",
+        "status": "in_progress",
+        "conclusion": null,
+        "appId": 15368
+      },
+      {
+        "id": 112536037124,
+        "name": "C7 bulk schedules and sites acceptance",
+        "status": "in_progress",
+        "conclusion": null,
+        "appId": 15368
+      },
+      {
+        "id": 112536037024,
+        "name": "Authenticated Workforce policy version browser evidence",
+        "status": "in_progress",
+        "conclusion": null,
+        "appId": 15368
+      },
+      {
+        "id": 112536036944,
+        "name": "Authenticated Workforce calendar browser evidence",
+        "status": "in_progress",
+        "conclusion": null,
+        "appId": 15368
+      },
+      {
+        "id": 112536036793,
+        "name": "Authenticated Workforce exception report browser evidence",
+        "status": "in_progress",
+        "conclusion": null,
+        "appId": 15368
+      },
+      {
+        "id": 112536036774,
+        "name": "Authenticated Workforce manager Today browser evidence",
+        "status": "in_progress",
+        "conclusion": null,
+        "appId": 15368
+      },
+      {
+        "id": 112535955537,
+        "name": "C7 bulk schedules and sites acceptance",
+        "status": "completed",
+        "conclusion": "skipped",
+        "appId": 15368
+      },
+      {
+        "id": 112535954549,
+        "name": "Authenticated Workforce exception report browser evidence",
+        "status": "completed",
+        "conclusion": "skipped",
+        "appId": 15368
+      },
+      {
+        "id": 112535954366,
+        "name": "Real PostgreSQL SELECT-only and authenticated employee impact browser evidence",
+        "status": "completed",
+        "conclusion": "skipped",
+        "appId": 15368
+      },
+      {
+        "id": 112535954347,
+        "name": "Authenticated Workforce manager Today browser evidence",
+        "status": "completed",
+        "conclusion": "skipped",
+        "appId": 15368
+      },
+      {
+        "id": 112535954211,
+        "name": "Real PostgreSQL, authorized API and rendered policy restore UI evidence",
+        "status": "completed",
+        "conclusion": "skipped",
+        "appId": 15368
+      },
+      {
+        "id": 112535953845,
+        "name": "GitHub-hosted Linux production build",
+        "status": "completed",
+        "conclusion": "skipped",
+        "appId": 15368
+      },
+      {
+        "id": 112535953583,
+        "name": "Authenticated Workforce calendar browser evidence",
+        "status": "completed",
+        "conclusion": "skipped",
+        "appId": 15368
+      },
+      {
+        "id": 112535953389,
+        "name": "Authenticated Workforce policy version browser evidence",
+        "status": "completed",
+        "conclusion": "skipped",
+        "appId": 15368
+      },
+      {
+        "id": 112535952818,
+        "name": "Blocking Social Monitoring regression suite",
+        "status": "in_progress",
+        "conclusion": null,
+        "appId": 15368
+      },
+      {
+        "id": 112535952689,
+        "name": "runner-policy",
+        "status": "completed",
+        "conclusion": "success",
+        "appId": 15368
+      },
+      {
+        "id": 112535952440,
+        "name": "pr-scope",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "appId": 15368
+      },
+      {
+        "id": 112535951848,
+        "name": "scan",
+        "status": "completed",
+        "conclusion": "failure",
+        "appId": 15368
+      },
+      {
+        "id": 112535921408,
+        "name": "runner-policy",
+        "status": "completed",
+        "conclusion": "success",
+        "appId": 15368
+      }
+    ]
+  },
+  "limits": [
+    "Exact supported role/profile, stable administrative memberships/attributes; locks prove relation/policy DDL only.",
+    "Generated current Prisma schema plus exact C12 migration and synthetic RLS; 16 of18 fact tables empty, no historical user triggers; no complete real ACL/trigger staging acceptance.",
+    "Historical api_keys migration blocker, representative density/query plans/timeouts, control-client visibility, collector/retention/alert delivery, rollback/drain and runtime activation remain separate.",
+    "No global compiler/test-suite clean claim or new hosted PG credit. Existing64 type pairs/18 known failing files remain baseline-qualified and unchanged.",
+    "No source writes, remote mutations, production actions or independent DB execution in this review."
+  ],
+  "supports": [
+    {
+      "path": "/tmp/hrm-c12-independent-publication/dependency-refs.json",
+      "bytes": 82786,
+      "sha256": "3336dac3b56194e5bda48c3e56fb1de0601260dae84f2f4559d435c1d49ccaec",
+      "availability": "LOCAL_ONLY independently fetched transport/proof"
+    },
+    {
+      "path": "/tmp/hrm-c12-independent-publication/parent-modified-blobs.json",
+      "bytes": 2349172,
+      "sha256": "6ca5226044651050a0ef32ac5885ae4ac375480b5f258297ee3c5ecc614c6213",
+      "availability": "LOCAL_ONLY independently fetched transport/proof"
+    },
+    {
+      "path": "/tmp/hrm-c12-independent-publication/actual-35-blob-readback.json",
+      "bytes": 2613068,
+      "sha256": "2123f7ddbeb4171a3b6cd13333037c7c03772819459df1a14e1cb66fb778666b",
+      "availability": "LOCAL_ONLY independently fetched transport/proof"
+    },
+    {
+      "path": "/tmp/hrm-c12-independent-publication/delta.json",
+      "bytes": 10807,
+      "sha256": "95c80913ee6ce1741367bd522e0b1f40cfd36ef7d4e1762c473c134e71d0cbb4",
+      "availability": "LOCAL_ONLY independently fetched transport/proof"
+    },
+    {
+      "path": "/tmp/hrm-c12-independent-publication/local-tree-proof.json",
+      "bytes": 3329,
+      "sha256": "eb7cafa5835a431cea00befbf81e91edb695b603a082c7c603593ab44e7f5c5a",
+      "availability": "LOCAL_ONLY independently fetched transport/proof"
+    },
+    {
+      "path": "/tmp/hrm-c12-independent-publication/synthetic.json",
+      "bytes": 2644,
+      "sha256": "2cf3d14de4c633e33923d2b72eb04119e7a38e53a31b80900308ffd568e0d0f7",
+      "availability": "LOCAL_ONLY independently fetched transport/proof"
+    },
+    {
+      "path": "/tmp/hrm-c12-independent-publication/initial-metadata.json",
+      "bytes": 406570,
+      "sha256": "be1b8b55e4e4eb63017cdf0b14b9b29ff2f54294de89cb5aa3560d0c261c38df",
+      "availability": "LOCAL_ONLY independently fetched transport/proof"
+    },
+    {
+      "path": "/tmp/hrm-c12-independent-publication/remote-tree.json",
+      "bytes": 3022336,
+      "sha256": "6e47bdfc99a70cf8166810dab3fcaf15471b11e7433d7c1cb5417574fd9eb421",
+      "availability": "LOCAL_ONLY independently fetched transport/proof"
+    }
+  ]
+}

@@ -1,0 +1,1727 @@
+{
+  "schema": "independent-c8-source-at-transfer-review/v1",
+  "reviewedAt": "2026-10-06T21:20:33.653399+00:00",
+  "reviewer": "existing independent read-only reviewer /root/pr585_independent_review",
+  "status": "BOUNDED_EXACT_SOURCE_AND_AT_TRANSFER_ACCEPTED_HOSTED_WHOLE_ITEM_PENDING",
+  "source": {
+    "head": "30c4185b41d85be43a588e71d8c74c5f34e63596",
+    "tree": "9302e6432c64e818d7859dae78977a35fc996749",
+    "orderedParents": [
+      "d97e8ba8c276d62a01c1f0de4a3ce7ee15dbb6cd",
+      "251823a5b1b78818593e14be1a8ac8be47e321f4"
+    ],
+    "blobCount": 8844,
+    "treeCount": 2817,
+    "allLocalBytesAndModesIndependentlyVerified": true,
+    "fullGitTreeRecomputed": true,
+    "remoteChangedTextBlobsFetchedAndCompared": 22,
+    "main": "251823a5b1b78818593e14be1a8ac8be47e321f4",
+    "dependentPR605Base": "a856a9e533c4f3cec6f2313e69f5be0d5b4d4226",
+    "validationOnlyPR606Synthetic": "99009aff39ae1445e2f43eb3c748db3fe7a3e122",
+    "validationSyntheticParents": [
+      "251823a5b1b78818593e14be1a8ac8be47e321f4",
+      "30c4185b41d85be43a588e71d8c74c5f34e63596"
+    ],
+    "validationSyntheticTree": "9302e6432c64e818d7859dae78977a35fc996749",
+    "freshRefs": {
+      "path": "/tmp/hrm-c8-30c-independent/final-freshness.json",
+      "bytes": 62533,
+      "sha256": "5f5285fd65b43102af0730081c05d6fdfe4e63793044824052b1625f80466b09"
+    }
+  },
+  "integration": {
+    "sourceHead": "30c4185b41d85be43a588e71d8c74c5f34e63596",
+    "tree": "9302e6432c64e818d7859dae78977a35fc996749",
+    "blobs": 8844,
+    "allLocalBlobBytesModesEqualIndependentRemoteTree": true,
+    "remoteChangedTextBlobsExact": 22,
+    "deltaFromD97": [
+      "docs/evidence/workforce-c8-pagination-2026-10-06/error-and-focus/README.md",
+      "docs/evidence/workforce-c8-pagination-2026-10-06/error-and-focus/initial-real-denial-negative.json",
+      "docs/evidence/workforce-c8-pagination-2026-10-06/error-and-focus/initial-unit-negative.json",
+      "docs/evidence/workforce-c8-pagination-2026-10-06/error-and-focus/targeted-tests.json",
+      "docs/evidence/workforce-c8-pagination-2026-10-06/main-251-integration/README.md",
+      "docs/evidence/workforce-c8-pagination-2026-10-06/main-251-integration/source-proof.json",
+      "docs/evidence/workforce-c8-pagination-2026-10-06/main-251-integration/static-checks.json",
+      "docs/evidence/workforce-c8-pagination-2026-10-06/main-251-integration/targeted-tests.json",
+      "messages/az.json",
+      "messages/en.json",
+      "messages/ru.json",
+      "src/__tests__/api-mtm-geocode-reverse.test.ts",
+      "src/__tests__/lib-mtm-geocode.test.ts",
+      "src/__tests__/mtm-customer-form-address-from-map.test.ts",
+      "src/__tests__/mtm-location-picker-ui.test.ts",
+      "src/__tests__/workforce-today-session-isolation-ui.test.ts",
+      "src/app/api/v1/mtm/geocode/reverse/route.ts",
+      "src/components/mtm/customer-form.tsx",
+      "src/components/mtm/location-picker-map.tsx",
+      "src/components/workforce/workforce-manager-today.tsx",
+      "src/components/workforce/workforce-workbench.tsx",
+      "src/lib/mtm/geocode.ts"
+    ],
+    "incomingMainPaths": [
+      "messages/az.json",
+      "messages/en.json",
+      "messages/ru.json",
+      "src/__tests__/api-mtm-geocode-reverse.test.ts",
+      "src/__tests__/lib-mtm-geocode.test.ts",
+      "src/__tests__/mtm-customer-form-address-from-map.test.ts",
+      "src/__tests__/mtm-location-picker-ui.test.ts",
+      "src/app/api/v1/mtm/geocode/reverse/route.ts",
+      "src/components/mtm/customer-form.tsx",
+      "src/components/mtm/location-picker-map.tsx",
+      "src/lib/mtm/geocode.ts"
+    ],
+    "allEightNoncatalogMainPathsExact": true,
+    "translationProof": [
+      {
+        "path": "messages/en.json",
+        "incomingLeaves": 4,
+        "keys": [
+          "mtmForms.addressFromMapHint",
+          "mtmLocationPicker.addressWritten",
+          "mtmLocationPicker.pinAddress",
+          "mtmLocationPicker.pinAddressUnknown"
+        ],
+        "entireOtherExistingCatalogLeavesPreserved": true
+      },
+      {
+        "path": "messages/ru.json",
+        "incomingLeaves": 4,
+        "keys": [
+          "mtmForms.addressFromMapHint",
+          "mtmLocationPicker.addressWritten",
+          "mtmLocationPicker.pinAddress",
+          "mtmLocationPicker.pinAddressUnknown"
+        ],
+        "entireOtherExistingCatalogLeavesPreserved": true
+      },
+      {
+        "path": "messages/az.json",
+        "incomingLeaves": 4,
+        "keys": [
+          "mtmForms.addressFromMapHint",
+          "mtmLocationPicker.addressWritten",
+          "mtmLocationPicker.pinAddress",
+          "mtmLocationPicker.pinAddressUnknown"
+        ],
+        "entireOtherExistingCatalogLeavesPreserved": true
+      }
+    ],
+    "ATFrozenSourceFiles": 8833,
+    "ATToFinalChangedExistingFiles": [
+      "messages/az.json",
+      "messages/en.json",
+      "messages/ru.json",
+      "src/__tests__/lib-mtm-geocode.test.ts",
+      "src/__tests__/mtm-location-picker-ui.test.ts",
+      "src/components/mtm/customer-form.tsx",
+      "src/components/mtm/location-picker-map.tsx",
+      "src/lib/mtm/geocode.ts"
+    ],
+    "ATToFinalAddedFiles": [
+      "docs/evidence/workforce-c8-pagination-2026-10-06/error-and-focus/README.md",
+      "docs/evidence/workforce-c8-pagination-2026-10-06/error-and-focus/initial-real-denial-negative.json",
+      "docs/evidence/workforce-c8-pagination-2026-10-06/error-and-focus/initial-unit-negative.json",
+      "docs/evidence/workforce-c8-pagination-2026-10-06/error-and-focus/targeted-tests.json",
+      "docs/evidence/workforce-c8-pagination-2026-10-06/main-251-integration/README.md",
+      "docs/evidence/workforce-c8-pagination-2026-10-06/main-251-integration/source-proof.json",
+      "docs/evidence/workforce-c8-pagination-2026-10-06/main-251-integration/static-checks.json",
+      "docs/evidence/workforce-c8-pagination-2026-10-06/main-251-integration/targeted-tests.json",
+      "src/__tests__/api-mtm-geocode-reverse.test.ts",
+      "src/__tests__/mtm-customer-form-address-from-map.test.ts",
+      "src/app/api/v1/mtm/geocode/reverse/route.ts"
+    ],
+    "noATFrozenFileDeleted": true,
+    "allATSourceRuntimeBytesModesVerified": true,
+    "acceptedC7Delta": 162,
+    "acceptedC7Noncatalog159Exact": true,
+    "canonicalLedgerUnchanged": true
+  },
+  "sourceReview": {
+    "findings": {
+      "P0": [],
+      "P1": [],
+      "P2": [],
+      "P3": []
+    },
+    "scope": "Today initial-read and pagination safe localized errors, owned contrast colors, retained focus scroll margin; incoming main MTM changes preserved, accepted C7 and canonical ledger preserved.",
+    "behavior": [
+      "Today HTTP 401/403/other outcomes select only local finite error keys; untrusted server/network detail is not rendered in these paths. Timesheet/request behavior is unchanged by this error fix.",
+      "Accepted pagination completion marker, unique-row accounting, principal/org/role remount and generation checks remain intact.",
+      "Retained button scrollIntoView is conditional on that control still being document.activeElement, with scroll-my-2; no focus() call or focus predicate relaxation.",
+      "Neutral localized wording applies to SELF and manager work-time views. Scoped colors affect Today only; global tokens/shared Button remain unchanged."
+    ],
+    "changedPathBindings": [
+      {
+        "path": "/workspace/hrm-c8-completion-20261006/docs/evidence/workforce-c8-pagination-2026-10-06/error-and-focus/README.md",
+        "bytes": 2427,
+        "sha256": "9880a5933bedec5e9b3cc1465c99b5417b93f5fd750ba80420da84555e4f6e56",
+        "repositoryPath": "docs/evidence/workforce-c8-pagination-2026-10-06/error-and-focus/README.md",
+        "gitBlob": "16e0827c7e8b5532ae350bc489ec4f5c5849b55b",
+        "mode": "100644"
+      },
+      {
+        "path": "/workspace/hrm-c8-completion-20261006/docs/evidence/workforce-c8-pagination-2026-10-06/error-and-focus/initial-real-denial-negative.json",
+        "bytes": 1078,
+        "sha256": "e52ddbee2040b47c92f3334f730499a7ba7cacafc3e9c3b522b16c6f04c719b5",
+        "repositoryPath": "docs/evidence/workforce-c8-pagination-2026-10-06/error-and-focus/initial-real-denial-negative.json",
+        "gitBlob": "76116c2f52b9d854134f4cfe150c4e08ae917439",
+        "mode": "100644"
+      },
+      {
+        "path": "/workspace/hrm-c8-completion-20261006/docs/evidence/workforce-c8-pagination-2026-10-06/error-and-focus/initial-unit-negative.json",
+        "bytes": 616,
+        "sha256": "02b3a64abd5f345b4e1489a3eb55eafa568a31cc974509a78d3f81c5e7c4fdbd",
+        "repositoryPath": "docs/evidence/workforce-c8-pagination-2026-10-06/error-and-focus/initial-unit-negative.json",
+        "gitBlob": "192fb30aabb3cb8768b96bac3cb24d17b0fddc1b",
+        "mode": "100644"
+      },
+      {
+        "path": "/workspace/hrm-c8-completion-20261006/docs/evidence/workforce-c8-pagination-2026-10-06/error-and-focus/targeted-tests.json",
+        "bytes": 20509,
+        "sha256": "d38f9f89cf45b1914894c59f6c13ffffdaeb5b53c317ac504336e2653c0c38c9",
+        "repositoryPath": "docs/evidence/workforce-c8-pagination-2026-10-06/error-and-focus/targeted-tests.json",
+        "gitBlob": "fc174eca98624b747bf17a76c8b5409c03570878",
+        "mode": "100644"
+      },
+      {
+        "path": "/workspace/hrm-c8-completion-20261006/docs/evidence/workforce-c8-pagination-2026-10-06/main-251-integration/README.md",
+        "bytes": 1314,
+        "sha256": "e66ddf59d75e6cea10c3dce8581670cd09ff1378592c410e67fd738228202fd0",
+        "repositoryPath": "docs/evidence/workforce-c8-pagination-2026-10-06/main-251-integration/README.md",
+        "gitBlob": "d81dce87c7b787a0c899e3d3b6e47e7603b48faa",
+        "mode": "100644"
+      },
+      {
+        "path": "/workspace/hrm-c8-completion-20261006/docs/evidence/workforce-c8-pagination-2026-10-06/main-251-integration/source-proof.json",
+        "bytes": 4227,
+        "sha256": "64fcee5ea39b6ba90d284271397173ba3b696718bb8dd4dab432f340dfe6428f",
+        "repositoryPath": "docs/evidence/workforce-c8-pagination-2026-10-06/main-251-integration/source-proof.json",
+        "gitBlob": "961f45d9807ce898a8cad099a25d5821c0156b01",
+        "mode": "100644"
+      },
+      {
+        "path": "/workspace/hrm-c8-completion-20261006/docs/evidence/workforce-c8-pagination-2026-10-06/main-251-integration/static-checks.json",
+        "bytes": 276,
+        "sha256": "5a7c2708f6d0a03b09320e95251c893febe405ed3cf107eb04585f1706055829",
+        "repositoryPath": "docs/evidence/workforce-c8-pagination-2026-10-06/main-251-integration/static-checks.json",
+        "gitBlob": "7da3480c4bdcc63e135ba477384d90c4f0100e5f",
+        "mode": "100644"
+      },
+      {
+        "path": "/workspace/hrm-c8-completion-20261006/docs/evidence/workforce-c8-pagination-2026-10-06/main-251-integration/targeted-tests.json",
+        "bytes": 24587,
+        "sha256": "91043aa356d023956b63b73066c4d2fb6bf64cdaaa6b249a0be8161ad28a5981",
+        "repositoryPath": "docs/evidence/workforce-c8-pagination-2026-10-06/main-251-integration/targeted-tests.json",
+        "gitBlob": "95402ca1247c4fe2b83a29ee85ec3d79c3836a1a",
+        "mode": "100644"
+      },
+      {
+        "path": "/workspace/hrm-c8-completion-20261006/messages/az.json",
+        "bytes": 1492316,
+        "sha256": "f25699f16cc0843731356db86abecefe5adbc31b0c37fa21ff470fd92368e19f",
+        "repositoryPath": "messages/az.json",
+        "gitBlob": "a05f7a10e3d3e5dd20967307ee5aebd12abdba68",
+        "mode": "100644"
+      },
+      {
+        "path": "/workspace/hrm-c8-completion-20261006/messages/en.json",
+        "bytes": 1349152,
+        "sha256": "0bc57f1ad9f3c0aaa4762c8b5b6e874a01f5fd51f031a81dab11f0057c300e9e",
+        "repositoryPath": "messages/en.json",
+        "gitBlob": "fe509ef51a52c42b4fa085d4c21587ab5c54752f",
+        "mode": "100644"
+      },
+      {
+        "path": "/workspace/hrm-c8-completion-20261006/messages/ru.json",
+        "bytes": 1991993,
+        "sha256": "2a2678bca15da098b9be2fc6235ccb1e361b3370dd3a6c16e60828aec66596e3",
+        "repositoryPath": "messages/ru.json",
+        "gitBlob": "de59e10814f025939972544fcd7f8c626d6e5b0a",
+        "mode": "100644"
+      },
+      {
+        "path": "/workspace/hrm-c8-completion-20261006/src/__tests__/api-mtm-geocode-reverse.test.ts",
+        "bytes": 4507,
+        "sha256": "864292572b61c4ec6b3b3d3ad0456dea954ddd0cf18010fdd485310a3d300f44",
+        "repositoryPath": "src/__tests__/api-mtm-geocode-reverse.test.ts",
+        "gitBlob": "69c93f343406a0c415a8a35e860ad0da1589906d",
+        "mode": "100644"
+      },
+      {
+        "path": "/workspace/hrm-c8-completion-20261006/src/__tests__/lib-mtm-geocode.test.ts",
+        "bytes": 18460,
+        "sha256": "78fd450245824ab43848812b2fbfe40bd8eab147ac87c5a4bcf7724b74c6d6fe",
+        "repositoryPath": "src/__tests__/lib-mtm-geocode.test.ts",
+        "gitBlob": "56d850cb2e2b5faff770b06d772200369cd18679",
+        "mode": "100644"
+      },
+      {
+        "path": "/workspace/hrm-c8-completion-20261006/src/__tests__/mtm-customer-form-address-from-map.test.ts",
+        "bytes": 6007,
+        "sha256": "6191eee38fd935f2a96b0284f8421e47d5fb76854f41ca291a15189e0d1e19f9",
+        "repositoryPath": "src/__tests__/mtm-customer-form-address-from-map.test.ts",
+        "gitBlob": "27c7fe45f7d11082a1a899094c6c07626ad82502",
+        "mode": "100644"
+      },
+      {
+        "path": "/workspace/hrm-c8-completion-20261006/src/__tests__/mtm-location-picker-ui.test.ts",
+        "bytes": 19532,
+        "sha256": "697ed6abfc97e6039e0a7733d2b7e349a29e8e9edc6bc58426e89ec9e7da829d",
+        "repositoryPath": "src/__tests__/mtm-location-picker-ui.test.ts",
+        "gitBlob": "42c338b36e73b5328039eaa4025a84e626948f83",
+        "mode": "100644"
+      },
+      {
+        "path": "/workspace/hrm-c8-completion-20261006/src/__tests__/workforce-today-session-isolation-ui.test.ts",
+        "bytes": 21419,
+        "sha256": "d95e39010bac981ca5b375c795defcc128cd2109c9e2f0041e52e2315ac853bd",
+        "repositoryPath": "src/__tests__/workforce-today-session-isolation-ui.test.ts",
+        "gitBlob": "9d8695e5ef996526d0399431b0d43ce396b946f3",
+        "mode": "100644"
+      },
+      {
+        "path": "/workspace/hrm-c8-completion-20261006/src/app/api/v1/mtm/geocode/reverse/route.ts",
+        "bytes": 1980,
+        "sha256": "e9e51ccc2d115b436ac97f140d429dc4f836fabbe73302d4b2b92b7d8b0a7304",
+        "repositoryPath": "src/app/api/v1/mtm/geocode/reverse/route.ts",
+        "gitBlob": "6295e32ae5e29dbb7f06a795ce23071721680ffc",
+        "mode": "100644"
+      },
+      {
+        "path": "/workspace/hrm-c8-completion-20261006/src/components/mtm/customer-form.tsx",
+        "bytes": 9898,
+        "sha256": "915e8c0425b13df072f9919159c92a3944070f9c0bbbff1399a51d29462f1337",
+        "repositoryPath": "src/components/mtm/customer-form.tsx",
+        "gitBlob": "b365215fdc489b161d12289c8a4911add4626eef",
+        "mode": "100644"
+      },
+      {
+        "path": "/workspace/hrm-c8-completion-20261006/src/components/mtm/location-picker-map.tsx",
+        "bytes": 17991,
+        "sha256": "13e5851e49cb47f95e433957d4972edee3092f3a5e1ff9d88daccc9e2c04dfb3",
+        "repositoryPath": "src/components/mtm/location-picker-map.tsx",
+        "gitBlob": "276d48dd59b90d6cba815200b5ef6cee78e4ae7f",
+        "mode": "100644"
+      },
+      {
+        "path": "/workspace/hrm-c8-completion-20261006/src/components/workforce/workforce-manager-today.tsx",
+        "bytes": 11040,
+        "sha256": "df40bf5d5ac92e5fc73a6ea64146481292954929ebff6616454ad6f09157d87c",
+        "repositoryPath": "src/components/workforce/workforce-manager-today.tsx",
+        "gitBlob": "b44f70ba42402f681dc801792e1254d916634921",
+        "mode": "100644"
+      },
+      {
+        "path": "/workspace/hrm-c8-completion-20261006/src/components/workforce/workforce-workbench.tsx",
+        "bytes": 87022,
+        "sha256": "cd1051a0e5ce25c54a9b8dcec15bad9bbd3cd4050be47171852f3bf2202fc25c",
+        "repositoryPath": "src/components/workforce/workforce-workbench.tsx",
+        "gitBlob": "764aeb27cab3ca09959d93359dcf6fce3bab9e9f",
+        "mode": "100644"
+      },
+      {
+        "path": "/workspace/hrm-c8-completion-20261006/src/lib/mtm/geocode.ts",
+        "bytes": 17475,
+        "sha256": "e6c9d96137c8181e4b0c97991c8a7538c7fc63c2d776d4c00ea5cf9a744f57ba",
+        "repositoryPath": "src/lib/mtm/geocode.ts",
+        "gitBlob": "b00372fd7ce797c202e4b90f6cdfe53a6653ada7",
+        "mode": "100644"
+      }
+    ]
+  },
+  "actualAT": {
+    "runtimeManifestSha256": "b2b9a917e3901a0c1f0ac6995b1f596f2904c27e265628169ba6b5c662d09ea5",
+    "runtimeFiles": 8833,
+    "allRuntimeBytesModesVerified": true,
+    "acceptedRuns": [
+      {
+        "run": "run-i76cy91q",
+        "locale": "en",
+        "assertions": 12,
+        "speechCalls": 436,
+        "originalDispatchesReturned": true,
+        "ownChildrenReaped": 7,
+        "scriptSnapshotsBeforeAfterVerified": true,
+        "checkedContrastSamples": 58,
+        "minimumSampledRGBRatio": 4.574019684523154,
+        "unmodeledVisualEffectsNotRecorded": true,
+        "realOldResponseFulfilledDuringNewPending": true,
+        "localizedDeniedAndUnavailableActuallySpoken": true,
+        "narrow": {
+          "width": 320,
+          "documentWidth": 320,
+          "rosterRows": 25,
+          "buttons": [
+            {
+              "width": 187.546875,
+              "height": 48,
+              "withinWidth": true
+            }
+          ]
+        }
+      },
+      {
+        "run": "run-zl8128bb",
+        "locale": "en",
+        "assertions": 9,
+        "speechCalls": 407,
+        "originalDispatchesReturned": true,
+        "ownChildrenReaped": 7,
+        "scriptSnapshotsBeforeAfterVerified": true,
+        "fractionalGeometry": {
+          "sameFocusedNode": true,
+          "connected": true,
+          "nativeDisabled": false,
+          "ariaDisabled": "true",
+          "focusVisible": true,
+          "visibleRect": {
+            "x": 100.9609375,
+            "y": 394.5,
+            "width": 174.5703125,
+            "height": 48
+          },
+          "withinViewport": true,
+          "ringClearance": {
+            "viewportBottom": 7.5,
+            "mainBottom": 8
+          },
+          "viewport": {
+            "width": 320,
+            "height": 450,
+            "visualHeight": 450.5,
+            "dpr": 2
+          }
+        },
+        "nativeZoom": {
+          "before": {
+            "dpr": 1,
+            "width": 640,
+            "height": 901,
+            "scale": 1
+          },
+          "after": {
+            "dpr": 2,
+            "width": 320,
+            "height": 450,
+            "scale": 1
+          },
+          "factor": 2,
+          "method": "five physical Ctrl+plus shortcuts after Ctrl+0"
+        }
+      },
+      {
+        "run": "run-inuhdf1q",
+        "locale": "ru",
+        "assertions": 12,
+        "speechCalls": 423,
+        "originalDispatchesReturned": true,
+        "ownChildrenReaped": 7,
+        "scriptSnapshotsBeforeAfterVerified": true,
+        "checkedContrastSamples": 58,
+        "minimumSampledRGBRatio": 4.574019684523154,
+        "unmodeledVisualEffectsNotRecorded": true,
+        "realOldResponseFulfilledDuringNewPending": true,
+        "localizedDeniedAndUnavailableActuallySpoken": true,
+        "narrow": {
+          "width": 320,
+          "documentWidth": 320,
+          "rosterRows": 25,
+          "buttons": [
+            {
+              "width": 217,
+              "height": 58,
+              "withinWidth": true
+            }
+          ]
+        }
+      },
+      {
+        "run": "run-stoinndz",
+        "locale": "az",
+        "assertions": 12,
+        "speechCalls": 422,
+        "originalDispatchesReturned": true,
+        "ownChildrenReaped": 7,
+        "scriptSnapshotsBeforeAfterVerified": true,
+        "checkedContrastSamples": 58,
+        "minimumSampledRGBRatio": 4.574019684523154,
+        "unmodeledVisualEffectsNotRecorded": true,
+        "realOldResponseFulfilledDuringNewPending": true,
+        "localizedDeniedAndUnavailableActuallySpoken": true,
+        "narrow": {
+          "width": 320,
+          "documentWidth": 320,
+          "rosterRows": 25,
+          "buttons": [
+            {
+              "width": 204.125,
+              "height": 48,
+              "withinWidth": true
+            }
+          ]
+        }
+      },
+      {
+        "run": "run-5y_dzq61",
+        "locale": "en",
+        "assertions": 9,
+        "speechCalls": 392,
+        "originalDispatchesReturned": true,
+        "ownChildrenReaped": 7,
+        "scriptSnapshotsBeforeAfterVerified": true,
+        "fractionalGeometry": {
+          "sameFocusedNode": true,
+          "connected": true,
+          "nativeDisabled": false,
+          "ariaDisabled": "true",
+          "focusVisible": true,
+          "visibleRect": {
+            "x": 723.203125,
+            "y": 844,
+            "width": 174.578125,
+            "height": 48
+          },
+          "withinViewport": true,
+          "ringClearance": {
+            "viewportBottom": 8,
+            "mainBottom": 8
+          },
+          "viewport": {
+            "width": 1380,
+            "height": 900,
+            "visualHeight": 900,
+            "dpr": 1
+          }
+        },
+        "nativeZoom": null
+      },
+      {
+        "run": "run-33syfzh1",
+        "locale": "ru",
+        "assertions": 9,
+        "speechCalls": 400,
+        "originalDispatchesReturned": true,
+        "ownChildrenReaped": 7,
+        "scriptSnapshotsBeforeAfterVerified": true,
+        "fractionalGeometry": {
+          "sameFocusedNode": true,
+          "connected": true,
+          "nativeDisabled": false,
+          "ariaDisabled": "true",
+          "focusVisible": true,
+          "visibleRect": {
+            "x": 697.859375,
+            "y": 844,
+            "width": 225.265625,
+            "height": 48
+          },
+          "withinViewport": true,
+          "ringClearance": {
+            "viewportBottom": 8,
+            "mainBottom": 8
+          },
+          "viewport": {
+            "width": 1380,
+            "height": 900,
+            "visualHeight": 900,
+            "dpr": 1
+          }
+        },
+        "nativeZoom": null
+      },
+      {
+        "run": "run-u67wcky2",
+        "locale": "az",
+        "assertions": 9,
+        "speechCalls": 400,
+        "originalDispatchesReturned": true,
+        "ownChildrenReaped": 7,
+        "scriptSnapshotsBeforeAfterVerified": true,
+        "fractionalGeometry": {
+          "sameFocusedNode": true,
+          "connected": true,
+          "nativeDisabled": false,
+          "ariaDisabled": "true",
+          "focusVisible": true,
+          "visibleRect": {
+            "x": 704.21875,
+            "y": 844,
+            "width": 212.5625,
+            "height": 48
+          },
+          "withinViewport": true,
+          "ringClearance": {
+            "viewportBottom": 8,
+            "mainBottom": 8
+          },
+          "viewport": {
+            "width": 1380,
+            "height": 900,
+            "visualHeight": 900,
+            "dpr": 1
+          }
+        },
+        "nativeZoom": null
+      },
+      {
+        "run": "run-06o_pnqt",
+        "locale": "ru",
+        "assertions": 9,
+        "speechCalls": 410,
+        "originalDispatchesReturned": true,
+        "ownChildrenReaped": 7,
+        "scriptSnapshotsBeforeAfterVerified": true,
+        "fractionalGeometry": {
+          "sameFocusedNode": true,
+          "connected": true,
+          "nativeDisabled": false,
+          "ariaDisabled": "true",
+          "focusVisible": true,
+          "visibleRect": {
+            "x": 76,
+            "y": 384.5,
+            "width": 224.5,
+            "height": 58
+          },
+          "withinViewport": true,
+          "ringClearance": {
+            "viewportBottom": 7.5,
+            "mainBottom": 8
+          },
+          "viewport": {
+            "width": 320,
+            "height": 450,
+            "visualHeight": 450.5,
+            "dpr": 2
+          }
+        },
+        "nativeZoom": {
+          "before": {
+            "dpr": 1,
+            "width": 640,
+            "height": 901,
+            "scale": 1
+          },
+          "after": {
+            "dpr": 2,
+            "width": 320,
+            "height": 450,
+            "scale": 1
+          },
+          "factor": 2,
+          "method": "five physical Ctrl+plus shortcuts after Ctrl+0"
+        }
+      },
+      {
+        "run": "run-vyv3dy87",
+        "locale": "az",
+        "assertions": 9,
+        "speechCalls": 407,
+        "originalDispatchesReturned": true,
+        "ownChildrenReaped": 7,
+        "scriptSnapshotsBeforeAfterVerified": true,
+        "fractionalGeometry": {
+          "sameFocusedNode": true,
+          "connected": true,
+          "nativeDisabled": false,
+          "ariaDisabled": "true",
+          "focusVisible": true,
+          "visibleRect": {
+            "x": 81.96875,
+            "y": 394.5,
+            "width": 212.5546875,
+            "height": 48
+          },
+          "withinViewport": true,
+          "ringClearance": {
+            "viewportBottom": 7.5,
+            "mainBottom": 8
+          },
+          "viewport": {
+            "width": 320,
+            "height": 450,
+            "visualHeight": 450.5,
+            "dpr": 2
+          }
+        },
+        "nativeZoom": {
+          "before": {
+            "dpr": 1,
+            "width": 640,
+            "height": 901,
+            "scale": 1
+          },
+          "after": {
+            "dpr": 2,
+            "width": 320,
+            "height": 450,
+            "scale": 1
+          },
+          "factor": 2,
+          "method": "five physical Ctrl+plus shortcuts after Ctrl+0"
+        }
+      }
+    ],
+    "assertionsPassed": 90,
+    "assertionsTotal": 90,
+    "actualSpeechCalls": 3697,
+    "allOriginalDispatchesReturned": true,
+    "speechBoundary": "Actual Linux AT-SPI/Orca SpeechServer.speak and original speech-dispatcher/espeak-ng return events observed; ALSA null output. No human listening or physical speaker output claim. Native keys are synthetic xdotool events.",
+    "R3": "Real Auth.js session/scope transitions, real denied responses, held old successful pagination delivery during new-principal pending state, localized denied/unavailable announcement and retry pass EN/RU/AZ. Controlled unavailable response remains an explicit fault injection.",
+    "pagination": "Six EN/RU/AZ 100% and actual native 200% scenarios confirm retained connected focused control, aria-disabled true/native disabled false, automatic unique-added 1/total 26/end announcement. Fractional 200% innerHeight450/visual450.5 retains 7.5px viewport and 8px main clearance.",
+    "semanticNormalizer": "Only whitespace immediately after a literal hyphen and before a letter is removed for phrase matching. Original speech bytes, words/negation and focus/geometry predicates are unchanged. Original run-2zt_mlln 8/9 remains retained.",
+    "transferToExact30c": {
+      "accepted": true,
+      "newHeadOrcaRerunClaim": false,
+      "unchangedTodayRuntimeAndDependencies": "All original runtime files verified; complete changed/addition lists are in source-validation. Existing differences are MTM files plus four unrelated MTM leaves per catalog; Today/workforce/navigation/common values, global provider/layout/style/package bytes are unchanged. Bounded source import search found no direct incoming MTM component/geocode import in Workforce/global shell files; this is not a proof of every possible dynamic import.",
+      "ownerCompatibility130Reported": true
+    },
+    "proof": {
+      "path": "/tmp/hrm-c8-30c-independent/validation.json",
+      "bytes": 36039,
+      "sha256": "401f8303f650ec9663b8f0533bdc13a0a9fe1f4a0975fedb0a70041a71337eda"
+    }
+  },
+  "R4Supplement": {
+    "run": "run-0crzwea6",
+    "sourceManifestSha256": "c901a63016fc966df40fbc3e96d9c6d7b3c41088f5038210f39ff4ffc99da881",
+    "all8844SourceBytesModesMatchExact30cRemoteTree": true,
+    "cases": 12,
+    "samples": 174,
+    "minimum": 4.574019684523154,
+    "unsupported": 0,
+    "excluded": 0,
+    "allRatiosRecomputed": true,
+    "originalScriptSnapshotsMatchStableBeforeAfter": true,
+    "ownChildrenReaped": 7,
+    "newATClaim": false,
+    "acceptance": "ACCEPTED_FOR_OBSERVED_SAMPLED_TEXT",
+    "scope": "Twelve EN/RU/AZ denied/manager light/dark cases at exact30c, 174 sampled selected text nodes. Independent ratio recomputation and source inspection confirm composite ancestor background plus foreground alpha handling; dedupe includes background/effects; unsupported filters/backdrops/blends/shadows/masks/pseudo-content, gradients or opacity are explicitly rejected for accepted samples.",
+    "qualification": "All 174 samples checked, none unsupported or excluded. This resolves the earlier finite missing-effects qualification; it does not establish all page nodes, arbitrary overlay occlusion, all hover/focus states, every theme/device or whole WCAG compliance. It adds browser color evidence, not additional Orca speech cases.",
+    "startupNegative": "run-awol2ixh and initial-startup-negative.json retained. Subsequent regular source snapshot and immutable dependency hardlinks succeeded without application source changes; original failure root cause is not independently established."
+  },
+  "ownerTests": {
+    "report": {
+      "path": "/tmp/hrm-c8-acceptance-20261006/main251-targeted-tests.json",
+      "bytes": 24587,
+      "sha256": "91043aa356d023956b63b73066c4d2fb6bf64cdaaa6b249a0be8161ad28a5981"
+    },
+    "observedReportCounts": {
+      "passed": 130,
+      "failed": 0,
+      "skipped": 0
+    },
+    "independentlyRerunNow": false,
+    "scopedLintAndI18nReportsPassed": true,
+    "independentPreviousErrorProbes": {
+      "passed": 25,
+      "scope": "real React/next-intl components with synthetic session/fetch and error objects, not real Auth or PG",
+      "receipt": {
+        "path": "/tmp/hrm-c8-error-independent-review-20261006.json",
+        "bytes": 10383,
+        "sha256": "ec78814a0670ef3e3fbdeaa30685d75edfa1d22c5f54854275a6c4ce547e8873"
+      }
+    }
+  },
+  "originalArchive": {
+    "path": "/tmp/hrm-c8-acceptance-20261006/session-and-pagination-originals-complete.zip",
+    "sha256": "b7f5404e309a83cb28f5919d85233078c0d88bdfb98219d5309fbfccb33b8fa5",
+    "bytes": 10844602,
+    "members": 223,
+    "manifestRows": 222,
+    "allMemberHashLengthsCRCAndOriginalLocalBytesMatch": true,
+    "allSafeRegularUniqueRelativePaths": true,
+    "noRawLogsScreenshotsPrivateFixturesOrProfiles": true,
+    "optionalAtspiNodesInspected": 6179,
+    "explicitNegativeSourceFiles": [
+      "run-ltcj6sf_/negative-source/probe.mjs",
+      "run-ltcj6sf_/negative-source/messages/az.json",
+      "run-ltcj6sf_/negative-source/messages/en.json",
+      "run-ltcj6sf_/negative-source/messages/ru.json",
+      "run-ltcj6sf_/negative-source/src/components/workforce/workforce-workbench.tsx",
+      "run-62ehoths/negative-source/messages/az.json",
+      "run-62ehoths/negative-source/messages/en.json",
+      "run-62ehoths/negative-source/messages/ru.json",
+      "run-62ehoths/negative-source/src/components/workforce/workforce-workbench.tsx",
+      "run-62ehoths/negative-source/src/components/workforce/workforce-manager-today.tsx",
+      "run-vmft4p33/negative-source/messages/az.json",
+      "run-vmft4p33/negative-source/messages/en.json",
+      "run-vmft4p33/negative-source/messages/ru.json",
+      "run-vmft4p33/negative-source/src/components/workforce/workforce-workbench.tsx",
+      "run-vmft4p33/negative-source/src/components/workforce/workforce-manager-today.tsx"
+    ],
+    "originalRunStatuses": [
+      {
+        "run": "run-ltcj6sf_",
+        "status": "NEGATIVE_REPRODUCED",
+        "passed": 4,
+        "assertions": 5
+      },
+      {
+        "run": "run-jkm3b3ph",
+        "status": "PASS",
+        "passed": 10,
+        "assertions": 10
+      },
+      {
+        "run": "run-62ehoths",
+        "status": "NEGATIVE_REPRODUCED",
+        "passed": 11,
+        "assertions": 12
+      },
+      {
+        "run": "run-vmft4p33",
+        "status": "NEGATIVE_REPRODUCED",
+        "passed": 11,
+        "assertions": 12
+      },
+      {
+        "run": "run-i76cy91q",
+        "status": "PASS",
+        "passed": 12,
+        "assertions": 12
+      },
+      {
+        "run": "run-2zt_mlln",
+        "status": "AT_READING_NOT_ESTABLISHED",
+        "passed": 8,
+        "assertions": 9
+      },
+      {
+        "run": "run-zl8128bb",
+        "status": "ACTUAL_AT_READING_OBSERVED",
+        "passed": 9,
+        "assertions": 9
+      },
+      {
+        "run": "run-inuhdf1q",
+        "status": "PASS",
+        "passed": 12,
+        "assertions": 12
+      },
+      {
+        "run": "run-stoinndz",
+        "status": "PASS",
+        "passed": 12,
+        "assertions": 12
+      },
+      {
+        "run": "run-5y_dzq61",
+        "status": "ACTUAL_AT_READING_OBSERVED",
+        "passed": 9,
+        "assertions": 9
+      },
+      {
+        "run": "run-33syfzh1",
+        "status": "ACTUAL_AT_READING_OBSERVED",
+        "passed": 9,
+        "assertions": 9
+      },
+      {
+        "run": "run-u67wcky2",
+        "status": "ACTUAL_AT_READING_OBSERVED",
+        "passed": 9,
+        "assertions": 9
+      },
+      {
+        "run": "run-06o_pnqt",
+        "status": "ACTUAL_AT_READING_OBSERVED",
+        "passed": 9,
+        "assertions": 9
+      },
+      {
+        "run": "run-vyv3dy87",
+        "status": "ACTUAL_AT_READING_OBSERVED",
+        "passed": 9,
+        "assertions": 9
+      }
+    ],
+    "remoteBinaryReadback": false
+  },
+  "archiveAllowlist": {
+    "only": "Original safe AT receipts, source manifests, synthetic speech/returned streams, executed script snapshots/hashes, finite cleanup/readiness/category metadata, optional minimized AT-SPI trees, explicitly named harness sources and 15 negative-source snapshots.",
+    "excluded": "All raw application/CI/AT .log files, screenshots, private fixtures, browser profile/cache, credentials/config/runtime/xauthority/sockets and thread-stack captures.",
+    "qualification": "Fourteen original run records are retained; only the nine named final matrix runs are counted as 90/90. Supplement originals are separately hash-bound and are not members of this 223-member session/pagination ZIP. Local archive integrity is accepted; remote publication/binary readback is not claimed."
+  },
+  "negativeHistory": [
+    "Real RU denied detail originally English (4/5) retained.",
+    "Initial foreground contrast negatives 11/12 and first palette muted-text 11/12 retained with negative source snapshots.",
+    "Fractional native 200% phrase matcher 8/9 retained; its focus checks already passed.",
+    "Prior d97 hosted manager native-zoom bottom 800.5 > integer viewport800 failure retained; not waived by these local proofs.",
+    "Initial supplementary Turbopack startup failure retained; cause not proven.",
+    "Earlier initial focus-outside-viewport, source-copy-race disqualification, original178-member archive and previous independent receipts remain historical, not overwritten."
+  ],
+  "remainingAcceptance": [
+    "Fresh exact30c hosted baseline-qualified compiler/static/build and applicable workflow metadata must be independently accepted; d97 successes cannot substitute.",
+    "Fresh exact30c Manager Today PG/RLS/fact and browser evidence must pass existing strict predicates; no new PG acceptance is asserted by this AT review.",
+    "Durable original evidence publication/readback and final whole-item acceptance matrix remain pending.",
+    "WF-C8-002 and broader C12 remain PARTIAL; ledger remains 83/161 DONE, 78 open, weighted60%. No merge/deploy/activation or live collector/staging acceptance."
+  ],
+  "actionsPerformed": "Read-only source/GitHub metadata and blob retrieval; local original evidence parsing, hashing, bounded independent verification scripts in own /tmp. No source/remote/browser/process mutations and no raw logs/screenshots read.",
+  "supportBindings": [
+    {
+      "path": "/tmp/hrm-c8-30c-independent/verify-source.py",
+      "bytes": 4434,
+      "sha256": "3857e5196f64d7d844e17a63454f6dae90c8288cabba55a2f68b83b5063e852f"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent/source-validation.json",
+      "bytes": 4687,
+      "sha256": "389a7ca4df3d3021733de195ffe59bed98990cfd36453b5a0f280b441c85266b"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent/verify-at.py",
+      "bytes": 6117,
+      "sha256": "50e6a31303ec5114343cd97344dba85b521fa54d749946b2df06e9c690e5ae9f"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent/validation.json",
+      "bytes": 36039,
+      "sha256": "401f8303f650ec9663b8f0533bdc13a0a9fe1f4a0975fedb0a70041a71337eda"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent/at-validation-summary.json",
+      "bytes": 8477,
+      "sha256": "5983fb70767362a8dae6903cf80cbeb87d222e4b64b7a6d1375d12ebb26831f7"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent/verify-contrast-archive.py",
+      "bytes": 4930,
+      "sha256": "300baaaed44717cb21b6d82fd8ff76bea2c8a2030488c2b99c00cf302ac3ecc8"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent/contrast-archive-validation.json",
+      "bytes": 3913,
+      "sha256": "5bf224193a16942adae4dab6382f99b6ffe064528c099fd84d0d4120c31e7b26"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent/final-freshness.json",
+      "bytes": 62533,
+      "sha256": "5f5285fd65b43102af0730081c05d6fdfe4e63793044824052b1625f80466b09"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent-commit.json",
+      "bytes": 1457,
+      "sha256": "5b17875238234fb010383ea0199b75aadd348bb47de9323cc16b410a255a49df"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent-tree.json",
+      "bytes": 2999598,
+      "sha256": "34a69a5be80966b8c1a733b7cee5e8635a3e462035e63b959385af3bfe43a1d7"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent-main.json",
+      "bytes": 343,
+      "sha256": "b6822d0c555db7508156c256195c033b772d0eb255802b204c1023898756075d"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent-pr605.json",
+      "bytes": 37067,
+      "sha256": "7a3d52f7bb3b49413718733682948bc75d42c3a8c51c8c9488ab22241f0fa108"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent-pr606.json",
+      "bytes": 17433,
+      "sha256": "33b1f64921a8769ef1510a26caa6c9966e9d8d39b3f9942363b66c7dd7d4f866"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent-synthetic.json",
+      "bytes": 2644,
+      "sha256": "f96653a8407c62b12da2389fc3de5a178d74ef0a8597b502406ce3ad3af72053"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent-parent.json",
+      "bytes": 2995637,
+      "sha256": "976cba51268d9b05490a5daffbdb354e57b04a47fbdb1475bcfa4f529ed62cb0"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent-mainTree.json",
+      "bytes": 2967203,
+      "sha256": "842d6e44e91112fe38590d753be9347fb3a0585444a43dcf9b9a7d6e7c81f949"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent-oldMain.json",
+      "bytes": 2966181,
+      "sha256": "6ff9f2c17cc1002a23af19cdfdf503ce31686c0b9fe8aafe35b1f56623dd2d68"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent-remote-delta.json",
+      "bytes": 5500085,
+      "sha256": "464733e65283d6f732329a383a442ca71acb2f0d1c602d2f2a8f7f8e74bb7dcf"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent-catalog-mainTree.json",
+      "bytes": 5212349,
+      "sha256": "ab84157ccb4450c801eea0f98d19699d1e52d281b64a2bd0255df94f5865f406"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent-catalog-oldMain.json",
+      "bytes": 5211418,
+      "sha256": "c67707ecbbde88abfbccd831dc0fd886c8453659ffe1d586c62bb6a292f6977e"
+    },
+    {
+      "path": "/tmp/hrm-c8-r3-r4-independent-review-20261006.json",
+      "bytes": 11191,
+      "sha256": "9afd5a136c6a4b63c694fb2204ee95921937435654edbe8f2161ac5c548fc858"
+    },
+    {
+      "path": "/tmp/hrm-c8-error-independent-review-20261006.json",
+      "bytes": 10383,
+      "sha256": "ec78814a0670ef3e3fbdeaa30685d75edfa1d22c5f54854275a6c4ce547e8873"
+    },
+    {
+      "path": "/tmp/hrm-c8-contrast-focus-proposal-independent-20261006.json",
+      "bytes": 3868,
+      "sha256": "21f519d72dd2307691364c23bcfe5a5dc754611c637f16e8213e04f854dcf36f"
+    },
+    {
+      "path": "/tmp/hrm-c8-whole-item-remaining-independent-00ec-20261006.json",
+      "bytes": 20198,
+      "sha256": "60a602ca04166b5c140e10e8af53a7be48b48dee9a0411790f41d8e45fb82d95"
+    },
+    {
+      "path": "/tmp/hrm-c8-acceptance-20261006/main251-targeted-tests.json",
+      "bytes": 24587,
+      "sha256": "91043aa356d023956b63b73066c4d2fb6bf64cdaaa6b249a0be8161ad28a5981"
+    },
+    {
+      "path": "/tmp/hrm-c8-acceptance-20261006/main251-static-minimized.json",
+      "bytes": 276,
+      "sha256": "5a7c2708f6d0a03b09320e95251c893febe405ed3cf107eb04585f1706055829"
+    },
+    {
+      "path": "/tmp/hrm-c8-acceptance-20261006/final-static-minimized.json",
+      "bytes": 73,
+      "sha256": "f0cc760fc53e6f5c38fd45a44b5e96d0c7041377b1db1342026b018fa51b19dd"
+    },
+    {
+      "path": "/tmp/hrm-c8-acceptance-20261006/final-source-expected-tree.json",
+      "bytes": 1321108,
+      "sha256": "a8548f4de3014052b500a9598ecae9af04ab4953077b9cb5e9a9e2961f420d9a"
+    },
+    {
+      "path": "/tmp/hrm-c8-acceptance-20261006/hosted-d97-manager/manager-today-receipt.json",
+      "bytes": 114110,
+      "sha256": "4d922e92b7d88b9a2724c5e611acea08b2a3f830318903928acae39941781fac"
+    },
+    {
+      "path": "/workspace/hrm-c8-contrast-at-20261006/run-0crzwea6/at-receipt.json",
+      "bytes": 125389,
+      "sha256": "1000b979c5112382caf7b68af8fd27b045f6e55891175db6c0d78be5c8cd68ce"
+    },
+    {
+      "path": "/workspace/hrm-c8-contrast-at-20261006/run-0crzwea6/source-manifest.json",
+      "bytes": 1559896,
+      "sha256": "c901a63016fc966df40fbc3e96d9c6d7b3c41088f5038210f39ff4ffc99da881"
+    },
+    {
+      "path": "/workspace/hrm-c8-contrast-at-20261006/run-0crzwea6/executed-probe.mjs",
+      "bytes": 4601,
+      "sha256": "56b4ad7abd3418d8309cc1fb5e06e553788bebd9f14704cd4b64800c729921a4"
+    },
+    {
+      "path": "/workspace/hrm-c8-contrast-at-20261006/run-0crzwea6/executed-contrast-helper.mjs",
+      "bytes": 3926,
+      "sha256": "106c1cc86f8cd9c83207cf9cd3d65a3828bc879a3107c3eab51f39156723d36a"
+    },
+    {
+      "path": "/workspace/hrm-c8-contrast-at-20261006/run-0crzwea6/executed-script-hashes-before.json",
+      "bytes": 631,
+      "sha256": "1b03d79fbd491ec0c11e885154c20e486c828dfa24e89e555970eb9b76526d23"
+    },
+    {
+      "path": "/workspace/hrm-c8-contrast-at-20261006/run-0crzwea6/executed-script-hashes-after.json",
+      "bytes": 631,
+      "sha256": "1b03d79fbd491ec0c11e885154c20e486c828dfa24e89e555970eb9b76526d23"
+    },
+    {
+      "path": "/workspace/hrm-c8-contrast-at-20261006/run-0crzwea6/cleanup.json",
+      "bytes": 976,
+      "sha256": "97f225ca9e7a91d02952b3bb13b1a31aa5b0c113d570d538eb79a8216b7512e7"
+    },
+    {
+      "path": "/workspace/hrm-c8-contrast-at-20261006/run-0crzwea6/safe-error-categories.json",
+      "bytes": 3002,
+      "sha256": "644d5f3da85cddc107644d58c2b30d81fc8f86c5873e9a82dac4f8e2342b2294"
+    },
+    {
+      "path": "/workspace/hrm-c8-contrast-at-20261006/run-0crzwea6/backend-check.json",
+      "bytes": 501,
+      "sha256": "441b98c7a269673b5cd053067cd99b31d4b79961b6341385a15333136dc092ec"
+    },
+    {
+      "path": "/workspace/hrm-c8-contrast-at-20261006/run-0crzwea6/app-ready.json",
+      "bytes": 137,
+      "sha256": "4b7f3a6b521408eaacb2fbd992af60a8a4f6477075c2ef174da8ab6bea504f0f"
+    },
+    {
+      "path": "/workspace/hrm-c8-contrast-at-20261006/run-0crzwea6/supervisor-events.json",
+      "bytes": 450,
+      "sha256": "9ed59b9d6814389790213ee8b58ab8bae999e1725f8be9e89a230c2fdc3af24a"
+    },
+    {
+      "path": "/workspace/hrm-c8-contrast-at-20261006/initial-startup-negative.json",
+      "bytes": 378,
+      "sha256": "24cfe28489a4284ec3627f912e670e3b30ea101675dc75663744a0e053a36db7"
+    }
+  ],
+  "recursiveOriginalATSupportBindings": [
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-i76cy91q/at-receipt.json",
+      "bytes": 93604,
+      "sha256": "932ea9898fec548c6092bf449f021f51c64ea961b2c72dfdffcbe7506c51c3cc"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-i76cy91q/source-manifest.json",
+      "bytes": 1557654,
+      "sha256": "b2b9a917e3901a0c1f0ac6995b1f596f2904c27e265628169ba6b5c662d09ea5"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-i76cy91q/orca-presentations.jsonl",
+      "bytes": 52844,
+      "sha256": "32ac09786640030dc5429f07b46e51b979f1b955843334825ccc2b54d3a4cf91"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-i76cy91q/orca-dispatch-completed.jsonl",
+      "bytes": 20002,
+      "sha256": "857ce60b41cc5c36ae5534b2ac421075cdb9de2086cfcaf3a91eefa83457eba2"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-i76cy91q/executed-script-hashes-before.json",
+      "bytes": 815,
+      "sha256": "1177442f7d7a7016e3e8f243648d3e75a218b49c962f1210805311911b514740"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-i76cy91q/executed-script-hashes-after.json",
+      "bytes": 815,
+      "sha256": "1177442f7d7a7016e3e8f243648d3e75a218b49c962f1210805311911b514740"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-i76cy91q/cleanup.json",
+      "bytes": 976,
+      "sha256": "1774c474161614cde9494c038dfe162176832dcf36ae68211df10f0929ba08c6"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-i76cy91q/safe-error-categories.json",
+      "bytes": 502,
+      "sha256": "c47d76cac86116abbc314a359d6a976eb766f2a46c54681e0a0ec2cbc0a4827a"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-i76cy91q/backend-check.json",
+      "bytes": 501,
+      "sha256": "441b98c7a269673b5cd053067cd99b31d4b79961b6341385a15333136dc092ec"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-i76cy91q/supervisor-events.json",
+      "bytes": 448,
+      "sha256": "3ff594497951a181ad5c2bdcdb4674a8547f8c11f7ec60abd870cb7a7b74f0d2"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-i76cy91q/app-ready.json",
+      "bytes": 137,
+      "sha256": "a9e880feb6093d20bf0380c64559ebb406b9e15001ce061229df7e00fa694b5b"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-i76cy91q/executed-probe.mjs",
+      "bytes": 15084,
+      "sha256": "60f519f990b5edf43eea8328d24f436025773e24d68bb3304b0d04b064a20b4f"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-i76cy91q/executed-contrast-helper.mjs",
+      "bytes": 3079,
+      "sha256": "0c38740781f9adfcd7d3ce6aedec15aeecb94a2988272e72f6132cb8bb89a180"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-zl8128bb/at-receipt.json",
+      "bytes": 93170,
+      "sha256": "188cd94d11b237f203bf5df97bdb5ea994d328e9d1d4a9c01bcb8d4109c3868a"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-zl8128bb/source-manifest.json",
+      "bytes": 1557654,
+      "sha256": "b2b9a917e3901a0c1f0ac6995b1f596f2904c27e265628169ba6b5c662d09ea5"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-zl8128bb/orca-presentations.jsonl",
+      "bytes": 50220,
+      "sha256": "ad5a3dc609d1b2bc7283757dbe25b85a95cbf3770611d899df94e90539fb156a"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-zl8128bb/orca-dispatch-completed.jsonl",
+      "bytes": 18679,
+      "sha256": "932ea3c899f6c003a0b2af9d98a9030a0bd51bfd3f760d685c02f88a0365efb6"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-zl8128bb/executed-script-hashes-before.json",
+      "bytes": 913,
+      "sha256": "0ad6926b5125c7191b897ccfb1005834710836c25d96f7e0148c4919f98ef0a7"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-zl8128bb/executed-script-hashes-after.json",
+      "bytes": 913,
+      "sha256": "0ad6926b5125c7191b897ccfb1005834710836c25d96f7e0148c4919f98ef0a7"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-zl8128bb/cleanup.json",
+      "bytes": 976,
+      "sha256": "398f87a993c9c37f391070c3d821050768b78ac7ebe3968db11b626730701b92"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-zl8128bb/safe-error-categories.json",
+      "bytes": 502,
+      "sha256": "205e304be672234e34fe3a4684824329501a1137de706a2a13f16a9597ba5e5e"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-zl8128bb/backend-check.json",
+      "bytes": 501,
+      "sha256": "441b98c7a269673b5cd053067cd99b31d4b79961b6341385a15333136dc092ec"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-zl8128bb/supervisor-events.json",
+      "bytes": 450,
+      "sha256": "a1902d1e7344558d1dc17df0dd6266bbfbdb4a638dab7b0a11f35b4ecebea685"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-zl8128bb/app-ready.json",
+      "bytes": 137,
+      "sha256": "adc3da0c1ffae43da8bf3bc3b7a3349d226c4d10d0a078f3cd1026b855f817be"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-zl8128bb/executed-probe.mjs",
+      "bytes": 15084,
+      "sha256": "60f519f990b5edf43eea8328d24f436025773e24d68bb3304b0d04b064a20b4f"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-zl8128bb/executed-pagination-probe.mjs",
+      "bytes": 12633,
+      "sha256": "2af9e75735f7c45290193d7a3d3619686c6afea94943f8fc41cfec914cefca8f"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-zl8128bb/executed-contrast-helper.mjs",
+      "bytes": 3079,
+      "sha256": "0c38740781f9adfcd7d3ce6aedec15aeecb94a2988272e72f6132cb8bb89a180"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-zl8128bb/atspi-tree.json",
+      "bytes": 101306,
+      "sha256": "27e4163b54cd6fef3eb9a7ccd6d242f2d261b79c664258523a20734c0f7a78b1"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-inuhdf1q/at-receipt.json",
+      "bytes": 99329,
+      "sha256": "c1a3c02a662c69f88e2825ea52324d3139f15e7bf85952093827c18788a1a8cd"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-inuhdf1q/source-manifest.json",
+      "bytes": 1557654,
+      "sha256": "b2b9a917e3901a0c1f0ac6995b1f596f2904c27e265628169ba6b5c662d09ea5"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-inuhdf1q/orca-presentations.jsonl",
+      "bytes": 54184,
+      "sha256": "f9b9ec4348ae8a2215a78447a4f02fd8044359beeff18c16737f01bbb6c9797c"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-inuhdf1q/orca-dispatch-completed.jsonl",
+      "bytes": 19400,
+      "sha256": "c38ad54fca045ecf7c31ded2c5940d7e05e18ad9076112ad8509d7e310b089aa"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-inuhdf1q/executed-script-hashes-before.json",
+      "bytes": 913,
+      "sha256": "0ad6926b5125c7191b897ccfb1005834710836c25d96f7e0148c4919f98ef0a7"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-inuhdf1q/executed-script-hashes-after.json",
+      "bytes": 913,
+      "sha256": "0ad6926b5125c7191b897ccfb1005834710836c25d96f7e0148c4919f98ef0a7"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-inuhdf1q/cleanup.json",
+      "bytes": 976,
+      "sha256": "fd7da6350c06755680d2842011fa9cd2799de9a160ba2cf13f9e8ac861e6554f"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-inuhdf1q/safe-error-categories.json",
+      "bytes": 502,
+      "sha256": "ed8e35e34eeb28c89437ec9e79d3b5aac65d20d58c9f58bb7223be3c41c77411"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-inuhdf1q/backend-check.json",
+      "bytes": 501,
+      "sha256": "441b98c7a269673b5cd053067cd99b31d4b79961b6341385a15333136dc092ec"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-inuhdf1q/supervisor-events.json",
+      "bytes": 450,
+      "sha256": "f5260c3d1e1953f0a0669697bc2f4547428f744179b2ba7cc2258417013d566d"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-inuhdf1q/app-ready.json",
+      "bytes": 137,
+      "sha256": "000a2f97ee46f0cf4cd753e7dd5b91bad8e8ba623bdda6d50d207e24191d4278"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-inuhdf1q/executed-probe.mjs",
+      "bytes": 15084,
+      "sha256": "60f519f990b5edf43eea8328d24f436025773e24d68bb3304b0d04b064a20b4f"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-inuhdf1q/executed-pagination-probe.mjs",
+      "bytes": 12633,
+      "sha256": "2af9e75735f7c45290193d7a3d3619686c6afea94943f8fc41cfec914cefca8f"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-inuhdf1q/executed-contrast-helper.mjs",
+      "bytes": 3079,
+      "sha256": "0c38740781f9adfcd7d3ce6aedec15aeecb94a2988272e72f6132cb8bb89a180"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-stoinndz/at-receipt.json",
+      "bytes": 95673,
+      "sha256": "65edee7898d6c61ee5b1dfbab8bd01153fe8c82cf22b458de8f2d5adff8e437e"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-stoinndz/source-manifest.json",
+      "bytes": 1557654,
+      "sha256": "b2b9a917e3901a0c1f0ac6995b1f596f2904c27e265628169ba6b5c662d09ea5"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-stoinndz/orca-presentations.jsonl",
+      "bytes": 52501,
+      "sha256": "201ac868199ef8289d6ea3324934144600ed529970c96fd7cb41f3d5012628d9"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-stoinndz/orca-dispatch-completed.jsonl",
+      "bytes": 19368,
+      "sha256": "0da4a796a1a326660a65f27e9d0d0bff768fa4bd26c1d50c65e4d11acb313c09"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-stoinndz/executed-script-hashes-before.json",
+      "bytes": 913,
+      "sha256": "0ad6926b5125c7191b897ccfb1005834710836c25d96f7e0148c4919f98ef0a7"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-stoinndz/executed-script-hashes-after.json",
+      "bytes": 913,
+      "sha256": "0ad6926b5125c7191b897ccfb1005834710836c25d96f7e0148c4919f98ef0a7"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-stoinndz/cleanup.json",
+      "bytes": 976,
+      "sha256": "c503826b1aa8c1d765b033da41e1303b8efdcb58b8e35ed84619837f347335ab"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-stoinndz/safe-error-categories.json",
+      "bytes": 502,
+      "sha256": "e1ee20a108c23f3268963bcbbc58c90cec18ad22053536612ea638fba12ee754"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-stoinndz/backend-check.json",
+      "bytes": 501,
+      "sha256": "441b98c7a269673b5cd053067cd99b31d4b79961b6341385a15333136dc092ec"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-stoinndz/supervisor-events.json",
+      "bytes": 449,
+      "sha256": "08c2db62c2c05049eb0daa83034bbdb4167efc98dacc8ffb17c2c7b916740aec"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-stoinndz/app-ready.json",
+      "bytes": 137,
+      "sha256": "29c8a93a8a727e6b00b85c6f452cd84576f409fd0564e507d0d1a706a25cc2df"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-stoinndz/executed-probe.mjs",
+      "bytes": 15084,
+      "sha256": "60f519f990b5edf43eea8328d24f436025773e24d68bb3304b0d04b064a20b4f"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-stoinndz/executed-pagination-probe.mjs",
+      "bytes": 12633,
+      "sha256": "2af9e75735f7c45290193d7a3d3619686c6afea94943f8fc41cfec914cefca8f"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-stoinndz/executed-contrast-helper.mjs",
+      "bytes": 3079,
+      "sha256": "0c38740781f9adfcd7d3ce6aedec15aeecb94a2988272e72f6132cb8bb89a180"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-5y_dzq61/at-receipt.json",
+      "bytes": 91883,
+      "sha256": "c10744e08c98ae65b2d3644fe41f4f57fe89a2f632c7fc2f99dc3df4e1d67227"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-5y_dzq61/source-manifest.json",
+      "bytes": 1557654,
+      "sha256": "b2b9a917e3901a0c1f0ac6995b1f596f2904c27e265628169ba6b5c662d09ea5"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-5y_dzq61/orca-presentations.jsonl",
+      "bytes": 49752,
+      "sha256": "0278878b545c9f5aefba3e5ca40f15f60e7fca1bbaeb44d4a5f5a28f8a8c419c"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-5y_dzq61/orca-dispatch-completed.jsonl",
+      "bytes": 17993,
+      "sha256": "fd8547e1d120c0c81a060f2ff6c78eb2c1d70b0749bd38a3f4994f693927c12f"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-5y_dzq61/executed-script-hashes-before.json",
+      "bytes": 913,
+      "sha256": "0ad6926b5125c7191b897ccfb1005834710836c25d96f7e0148c4919f98ef0a7"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-5y_dzq61/executed-script-hashes-after.json",
+      "bytes": 913,
+      "sha256": "0ad6926b5125c7191b897ccfb1005834710836c25d96f7e0148c4919f98ef0a7"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-5y_dzq61/cleanup.json",
+      "bytes": 976,
+      "sha256": "22f3d40fbe2eb51641aef554a2767e9819270f782f9e73491fffa83643819544"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-5y_dzq61/safe-error-categories.json",
+      "bytes": 502,
+      "sha256": "9ebccb6951afc226f4aed28bf1133ee771f50d7661b7b525840d567be45dc6b2"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-5y_dzq61/backend-check.json",
+      "bytes": 501,
+      "sha256": "441b98c7a269673b5cd053067cd99b31d4b79961b6341385a15333136dc092ec"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-5y_dzq61/supervisor-events.json",
+      "bytes": 450,
+      "sha256": "3f02512eee615ad006da9097288e8b38064a3f1522cf403362337123957acadf"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-5y_dzq61/app-ready.json",
+      "bytes": 137,
+      "sha256": "a6a2ff555a0fc8620ab39ac9633bc2c2371b86118511689b9f6233374899fd5a"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-5y_dzq61/executed-probe.mjs",
+      "bytes": 15084,
+      "sha256": "60f519f990b5edf43eea8328d24f436025773e24d68bb3304b0d04b064a20b4f"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-5y_dzq61/executed-pagination-probe.mjs",
+      "bytes": 12633,
+      "sha256": "2af9e75735f7c45290193d7a3d3619686c6afea94943f8fc41cfec914cefca8f"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-5y_dzq61/executed-contrast-helper.mjs",
+      "bytes": 3079,
+      "sha256": "0c38740781f9adfcd7d3ce6aedec15aeecb94a2988272e72f6132cb8bb89a180"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-5y_dzq61/atspi-tree.json",
+      "bytes": 103353,
+      "sha256": "43d96504ddcf0778386ee9a5402acc18848151098c344e26023810d2ad9a2d62"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-33syfzh1/at-receipt.json",
+      "bytes": 98220,
+      "sha256": "59332e4141d2327467fe17e33df1303b75c2186a2c009c5d28e57381d2a17d41"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-33syfzh1/source-manifest.json",
+      "bytes": 1557654,
+      "sha256": "b2b9a917e3901a0c1f0ac6995b1f596f2904c27e265628169ba6b5c662d09ea5"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-33syfzh1/orca-presentations.jsonl",
+      "bytes": 55265,
+      "sha256": "eb568e6f0cca252d274108e014cae72b951ede95c9396f1a29b969f61725b015"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-33syfzh1/orca-dispatch-completed.jsonl",
+      "bytes": 18344,
+      "sha256": "21baa755353c27a80f4cec8e58270b5e558e63b711c7e5daf59612d715b9b4a4"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-33syfzh1/executed-script-hashes-before.json",
+      "bytes": 913,
+      "sha256": "0ad6926b5125c7191b897ccfb1005834710836c25d96f7e0148c4919f98ef0a7"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-33syfzh1/executed-script-hashes-after.json",
+      "bytes": 913,
+      "sha256": "0ad6926b5125c7191b897ccfb1005834710836c25d96f7e0148c4919f98ef0a7"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-33syfzh1/cleanup.json",
+      "bytes": 976,
+      "sha256": "2b9e0dba64e52f98e6ac0da8a1661d1735cc5cecea7388f275ab4be5e532ea83"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-33syfzh1/safe-error-categories.json",
+      "bytes": 502,
+      "sha256": "51aeb627df50c934e62dfebc2b489d3bc78a95a1d6ec06a0c367f40baa5345a5"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-33syfzh1/backend-check.json",
+      "bytes": 501,
+      "sha256": "441b98c7a269673b5cd053067cd99b31d4b79961b6341385a15333136dc092ec"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-33syfzh1/supervisor-events.json",
+      "bytes": 451,
+      "sha256": "0e05ea506ed0b29e2a20034fe94e0881386f6086663f8d4de930a75e692a7876"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-33syfzh1/app-ready.json",
+      "bytes": 137,
+      "sha256": "bdb3573bb724b32eecbcf93a1aa31f08f0cfba4c70dee8f080f8718e344551ab"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-33syfzh1/executed-probe.mjs",
+      "bytes": 15084,
+      "sha256": "60f519f990b5edf43eea8328d24f436025773e24d68bb3304b0d04b064a20b4f"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-33syfzh1/executed-pagination-probe.mjs",
+      "bytes": 12633,
+      "sha256": "2af9e75735f7c45290193d7a3d3619686c6afea94943f8fc41cfec914cefca8f"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-33syfzh1/executed-contrast-helper.mjs",
+      "bytes": 3079,
+      "sha256": "0c38740781f9adfcd7d3ce6aedec15aeecb94a2988272e72f6132cb8bb89a180"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-33syfzh1/atspi-tree.json",
+      "bytes": 111357,
+      "sha256": "dd2eb8e62d8a40c11cd39e4dd813c196255ebdcd95bd7dc66978084564fd3208"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-u67wcky2/at-receipt.json",
+      "bytes": 94413,
+      "sha256": "0ebcce25a4ff151b3b90d9061f4cfcf242594e8bb2710ca1884d7aaf0b0d6c96"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-u67wcky2/source-manifest.json",
+      "bytes": 1557654,
+      "sha256": "b2b9a917e3901a0c1f0ac6995b1f596f2904c27e265628169ba6b5c662d09ea5"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-u67wcky2/orca-presentations.jsonl",
+      "bytes": 51730,
+      "sha256": "68dad539f99da671f725d74b05fd3304ed38ae88e41a99fcd9f1f103857fc51c"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-u67wcky2/orca-dispatch-completed.jsonl",
+      "bytes": 18358,
+      "sha256": "582428e265d0595eefd00b7afc8dd6f7b003c986e05e8b59f425896f8dc9729d"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-u67wcky2/executed-script-hashes-before.json",
+      "bytes": 913,
+      "sha256": "0ad6926b5125c7191b897ccfb1005834710836c25d96f7e0148c4919f98ef0a7"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-u67wcky2/executed-script-hashes-after.json",
+      "bytes": 913,
+      "sha256": "0ad6926b5125c7191b897ccfb1005834710836c25d96f7e0148c4919f98ef0a7"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-u67wcky2/cleanup.json",
+      "bytes": 976,
+      "sha256": "d441244f807d8389303dd993a23e604aeefc8276b76e3c4886cacdceaef241d4"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-u67wcky2/safe-error-categories.json",
+      "bytes": 502,
+      "sha256": "1c5190504bfb3e4395c9e7cecb8abe5b6bd4431869bb256567d9b859c669d954"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-u67wcky2/backend-check.json",
+      "bytes": 501,
+      "sha256": "441b98c7a269673b5cd053067cd99b31d4b79961b6341385a15333136dc092ec"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-u67wcky2/supervisor-events.json",
+      "bytes": 450,
+      "sha256": "6ea0b7eec59f9c18e24f31173c5582a0f340f5e2ae362f6848dd8199b556f5df"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-u67wcky2/app-ready.json",
+      "bytes": 137,
+      "sha256": "b8397f645f5c446ca09964e8841dba8e02df889a1818cac9899d7203d8f430a2"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-u67wcky2/executed-probe.mjs",
+      "bytes": 15084,
+      "sha256": "60f519f990b5edf43eea8328d24f436025773e24d68bb3304b0d04b064a20b4f"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-u67wcky2/executed-pagination-probe.mjs",
+      "bytes": 12633,
+      "sha256": "2af9e75735f7c45290193d7a3d3619686c6afea94943f8fc41cfec914cefca8f"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-u67wcky2/executed-contrast-helper.mjs",
+      "bytes": 3079,
+      "sha256": "0c38740781f9adfcd7d3ce6aedec15aeecb94a2988272e72f6132cb8bb89a180"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-u67wcky2/atspi-tree.json",
+      "bytes": 105039,
+      "sha256": "157a2fbae15430cdf6bbc1fa360a6f885c00fe402a453ae803bcf42aca0cdd43"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-06o_pnqt/at-receipt.json",
+      "bytes": 98202,
+      "sha256": "e003a13da9c63fe0324c7d0a7e31b65d13a5c3a38aea14bba304167f46a2ba04"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-06o_pnqt/source-manifest.json",
+      "bytes": 1557654,
+      "sha256": "b2b9a917e3901a0c1f0ac6995b1f596f2904c27e265628169ba6b5c662d09ea5"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-06o_pnqt/orca-presentations.jsonl",
+      "bytes": 54686,
+      "sha256": "3087a03aff15c8b50ffeb4ff6fb4d85108f285a37d088ede2c812a649d5772a8"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-06o_pnqt/orca-dispatch-completed.jsonl",
+      "bytes": 18813,
+      "sha256": "723fb0a188d53a1e64fc1ce0cd5341e1c7251da53b792f29c7a478a4947adccc"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-06o_pnqt/executed-script-hashes-before.json",
+      "bytes": 913,
+      "sha256": "0ad6926b5125c7191b897ccfb1005834710836c25d96f7e0148c4919f98ef0a7"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-06o_pnqt/executed-script-hashes-after.json",
+      "bytes": 913,
+      "sha256": "0ad6926b5125c7191b897ccfb1005834710836c25d96f7e0148c4919f98ef0a7"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-06o_pnqt/cleanup.json",
+      "bytes": 976,
+      "sha256": "37090be8c263d785a15c6a3411521d46edeaf3e6426966be685de7d03c4ff5b4"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-06o_pnqt/safe-error-categories.json",
+      "bytes": 502,
+      "sha256": "6ea29956785cf66cfd3f8945c201f5e0831930492e8ea171aeb22f91c8b6c2e3"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-06o_pnqt/backend-check.json",
+      "bytes": 501,
+      "sha256": "441b98c7a269673b5cd053067cd99b31d4b79961b6341385a15333136dc092ec"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-06o_pnqt/supervisor-events.json",
+      "bytes": 451,
+      "sha256": "074469d7a7018d23f3bb3b16c728333084f1c1477c9df659b81d995846583785"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-06o_pnqt/app-ready.json",
+      "bytes": 137,
+      "sha256": "7096901567649eb0227e4a10ecf37e14e9672f5d31c33671d742293b5251914d"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-06o_pnqt/executed-probe.mjs",
+      "bytes": 15084,
+      "sha256": "60f519f990b5edf43eea8328d24f436025773e24d68bb3304b0d04b064a20b4f"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-06o_pnqt/executed-pagination-probe.mjs",
+      "bytes": 12633,
+      "sha256": "2af9e75735f7c45290193d7a3d3619686c6afea94943f8fc41cfec914cefca8f"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-06o_pnqt/executed-contrast-helper.mjs",
+      "bytes": 3079,
+      "sha256": "0c38740781f9adfcd7d3ce6aedec15aeecb94a2988272e72f6132cb8bb89a180"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-06o_pnqt/atspi-tree.json",
+      "bytes": 109150,
+      "sha256": "ff308707e9958a6cb13ac803cf5e6600bee693c5b635db5d3832ea01649d1add"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-vyv3dy87/at-receipt.json",
+      "bytes": 94827,
+      "sha256": "83d666fa050d39306185cd670b36600f0ead2e9f13ee4ffe217c3544931811dd"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-vyv3dy87/source-manifest.json",
+      "bytes": 1557654,
+      "sha256": "b2b9a917e3901a0c1f0ac6995b1f596f2904c27e265628169ba6b5c662d09ea5"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-vyv3dy87/orca-presentations.jsonl",
+      "bytes": 51818,
+      "sha256": "47716a7b7d5ccc62d4329c8f3c42565b4461da822829891a15e953ddcf781563"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-vyv3dy87/orca-dispatch-completed.jsonl",
+      "bytes": 18687,
+      "sha256": "7b6c85ed247440a3d48f466052e0769563e2db97353e3133d5cba1b203aa89f2"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-vyv3dy87/executed-script-hashes-before.json",
+      "bytes": 913,
+      "sha256": "0ad6926b5125c7191b897ccfb1005834710836c25d96f7e0148c4919f98ef0a7"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-vyv3dy87/executed-script-hashes-after.json",
+      "bytes": 913,
+      "sha256": "0ad6926b5125c7191b897ccfb1005834710836c25d96f7e0148c4919f98ef0a7"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-vyv3dy87/cleanup.json",
+      "bytes": 976,
+      "sha256": "42e5d18e094212dd0729806f813b8af87dca0388faf007c0909eb3ad79619dc5"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-vyv3dy87/safe-error-categories.json",
+      "bytes": 502,
+      "sha256": "d6d8afb4a4b852abd1ef3f8c82c0b0b8b22d16c66dfe9a945b403e85abef741f"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-vyv3dy87/backend-check.json",
+      "bytes": 501,
+      "sha256": "441b98c7a269673b5cd053067cd99b31d4b79961b6341385a15333136dc092ec"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-vyv3dy87/supervisor-events.json",
+      "bytes": 450,
+      "sha256": "3f8ce08a5eca56b28891ce21c385919ace554e25180f4c114a49d4678135dbfe"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-vyv3dy87/app-ready.json",
+      "bytes": 137,
+      "sha256": "e9eb1c7b2fca544f58f90917c0fa15a86524d3ba14d8201602a64c33de163b05"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-vyv3dy87/executed-probe.mjs",
+      "bytes": 15084,
+      "sha256": "60f519f990b5edf43eea8328d24f436025773e24d68bb3304b0d04b064a20b4f"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-vyv3dy87/executed-pagination-probe.mjs",
+      "bytes": 12633,
+      "sha256": "2af9e75735f7c45290193d7a3d3619686c6afea94943f8fc41cfec914cefca8f"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-vyv3dy87/executed-contrast-helper.mjs",
+      "bytes": 3079,
+      "sha256": "0c38740781f9adfcd7d3ce6aedec15aeecb94a2988272e72f6132cb8bb89a180"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-vyv3dy87/atspi-tree.json",
+      "bytes": 102942,
+      "sha256": "4067faf8b0dce8e92acc59fffc9f10500f99e670812524127029911fe8a74b41"
+    }
+  ]
+}

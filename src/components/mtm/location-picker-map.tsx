@@ -42,8 +42,15 @@ interface Props {
   onChange: (lat: number, lng: number) => void
   /** The address already typed in the form: offered as the first search. */
   address?: string
+  /**
+   * Given when the form takes its address from the map: the picker names the
+   * address under the pin, and hands over the address of every pin the
+   * manager sets here — by search, by «my location», by a click or a drag.
+   */
+  onAddress?: (place: PinAddress) => void
 }
 
+export type PinAddress = { address: string; district: string; city: string; label: string }
 type SearchHit = { label: string; latitude: number; longitude: number }
 type Notice = { tone: "info" | "problem"; text: string }
 
@@ -58,10 +65,33 @@ function ClickHandler({ onChange }: { onChange: (lat: number, lng: number) => vo
   return null
 }
 
+/**
+ * Keeps the map's idea of its own size true (the pattern of live-map.tsx).
+ *
+ * The list of found addresses opens above the map and closes again, so the
+ * map's box changes height while it is on screen. Leaflet measures the box
+ * once; on production (2026-10-06) the map came back from a search with a
+ * grey band down one side and the pin off-centre, because the picture was
+ * still being drawn for the box it had before.
+ */
 function InvalidateSize() {
   const map = useMap()
   useEffect(() => {
-    setTimeout(() => map.invalidateSize(), 100)
+    const t1 = setTimeout(() => map.invalidateSize(), 100)
+    const t2 = setTimeout(() => map.invalidateSize(), 500)
+    const t3 = setTimeout(() => map.invalidateSize(), 1500)
+    const parent = map.getContainer()?.parentElement
+    let observer: ResizeObserver | null = null
+    if (parent && typeof ResizeObserver !== "undefined") {
+      observer = new ResizeObserver(() => map.invalidateSize())
+      observer.observe(parent)
+    }
+    return () => {
+      clearTimeout(t1)
+      clearTimeout(t2)
+      clearTimeout(t3)
+      observer?.disconnect()
+    }
   }, [map])
   return null
 }
@@ -82,28 +112,89 @@ function FlyTo({ target }: { target: { latitude: number; longitude: number; seq:
   const map = useMap()
   useEffect(() => {
     if (!target) return
-    map.flyTo([target.latitude, target.longitude], Math.max(map.getZoom(), PIN_ZOOM))
+    // The list of addresses has just closed and the map's box has grown:
+    // measure it before flying, or the flight ends centred on the old box.
+    map.invalidateSize()
+    map.flyTo([target.latitude, target.longitude], Math.max(map.getZoom(), PIN_ZOOM), { duration: 0.5 })
   }, [map, target])
   return null
 }
 
-function FullScreenMap({ latitude, longitude, onChange, onClose, address }: Props & { onClose: () => void }) {
+function FullScreenMap({ latitude, longitude, onChange, onClose, address, onAddress }: Props & { onClose: () => void }) {
   const t = useTranslations("mtmLocationPicker")
   const locale = useLocale()
   const hasPosition = latitude != null && longitude != null && latitude !== 0 && longitude !== 0
   const center: [number, number] = hasPosition ? [latitude!, longitude!] : DEFAULT_CENTER
   const centerRef = useRef<[number, number]>(center)
 
-  const [query, setQuery] = useState(address?.trim() ?? "")
+  // The card's address is offered as the first search only while there is no
+  // pin to find. Over a pin that already stands, the same text in the search
+  // box read as «the address chosen on the map» — and on the first card the
+  // owner opened (2026-10-07) it named a clinic while the pin stood elsewhere:
+  // «это не тот адрес, который выбран на карте». The pin's own address is the
+  // line under the search.
+  const [query, setQuery] = useState(hasPosition ? "" : address?.trim() ?? "")
   const [searching, setSearching] = useState(false)
   const [locating, setLocating] = useState(false)
   const [hits, setHits] = useState<SearchHit[]>([])
   const [notice, setNotice] = useState<Notice | null>(null)
   const [target, setTarget] = useState<{ latitude: number; longitude: number; seq: number } | null>(null)
+  // The address under the pin. Owner, 2026-10-07: he moved the pin and the
+  // card kept showing the old address; then — «адрес поле убери из заполнений,
+  // пусть он добавляется через поиск на карте». So the card's address is what
+  // stands under the pin the manager set, and it is written without a second
+  // press. A pin that was only looked at is not a pin that was set: opening
+  // the map over a card must not rewrite its address. `forPoint` ties an
+  // answer to the pin it was asked for.
+  const [pinPlace, setPinPlace] = useState<{ forPoint: string; place: PinAddress | null } | null>(null)
+  const [movedHere, setMovedHere] = useState(false)
+  const writtenFor = useRef<string | null>(null)
+  const onAddressRef = useRef(onAddress)
+  onAddressRef.current = onAddress
+  const pointKey = hasPosition ? `${latitude},${longitude}` : null
+  const move = (lat: number, lng: number) => {
+    setMovedHere(true)
+    onChange(lat, lng)
+  }
+  // Whether the form takes an address back — not the callback itself, which
+  // is a new function on every render of the form.
+  const wantsAddress = Boolean(onAddress)
+
+  useEffect(() => {
+    if (!wantsAddress || !pointKey || !hasPosition) return
+    let cancelled = false
+    // The pin is dragged in steps; ask once it has rested.
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams({ lat: String(latitude), lng: String(longitude), lang: locale })
+      fetch(`/api/v1/mtm/geocode/reverse?${params.toString()}`, { headers: { Accept: "application/json" } })
+        .then(async (response) => (response.ok ? await response.json().catch(() => null) : null))
+        .then((body) => {
+          if (cancelled || !body?.data) return
+          const found = body.data.place
+          const place = found && typeof found.label === "string" && found.label ? (found as PinAddress) : null
+          setPinPlace({ forPoint: pointKey, place })
+        })
+        .catch(() => {})
+    }, 600)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [hasPosition, latitude, locale, longitude, pointKey, wantsAddress])
+
+  const lookedUp = pinPlace !== null && pinPlace.forPoint === pointKey
+  const placeUnderPin = lookedUp ? pinPlace.place : null
+
+  // Hand the address of a pin the manager set to the form, once per pin.
+  useEffect(() => {
+    if (!movedHere || !pointKey || !placeUnderPin || writtenFor.current === pointKey) return
+    writtenFor.current = pointKey
+    onAddressRef.current?.(placeUnderPin)
+  }, [movedHere, placeUnderPin, pointKey])
 
   const place = (lat: number, lng: number) => {
     const point = { latitude: sixDecimals(lat), longitude: sixDecimals(lng) }
-    onChange(point.latitude, point.longitude)
+    move(point.latitude, point.longitude)
     setTarget((current) => ({ ...point, seq: (current?.seq ?? 0) + 1 }))
   }
 
@@ -263,12 +354,29 @@ function FullScreenMap({ latitude, longitude, onChange, onClose, address }: Prop
           >
             {notice?.text ?? t(hasPosition ? "hintSet" : "hintEmpty")}
           </p>
+
+          {onAddress && lookedUp && (placeUnderPin || movedHere) && (
+            <p
+              className="rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-700"
+              data-testid="mtm-location-picker-pin-address"
+            >
+              {placeUnderPin ? (
+                <>
+                  <span className="text-muted-foreground">{t("pinAddress")}</span>{" "}
+                  <span className="font-medium">{placeUnderPin.label}</span>
+                  {movedHere && <span className="text-muted-foreground"> — {t("addressWritten")}</span>}
+                </>
+              ) : (
+                <span className="text-muted-foreground">{t("pinAddressUnknown")}</span>
+              )}
+            </p>
+          )}
         </div>
 
         <div className="min-h-0 flex-1">
           <MapContainer center={center} zoom={hasPosition ? 16 : 13} style={{ height: "100%", width: "100%" }}>
             <CartoVectorBasemap />
-            <ClickHandler onChange={onChange} />
+            <ClickHandler onChange={move} />
             <CenterTracker centerRef={centerRef} />
             <FlyTo target={target} />
             <InvalidateSize />
@@ -280,7 +388,7 @@ function FullScreenMap({ latitude, longitude, onChange, onClose, address }: Prop
                 eventHandlers={{
                   dragend(event) {
                     const point = (event.target as L.Marker).getLatLng()
-                    onChange(sixDecimals(point.lat), sixDecimals(point.lng))
+                    move(sixDecimals(point.lat), sixDecimals(point.lng))
                   },
                 }}
               />
@@ -292,7 +400,7 @@ function FullScreenMap({ latitude, longitude, onChange, onClose, address }: Prop
   )
 }
 
-export default function LocationPickerMap({ latitude, longitude, onChange, address }: Props) {
+export default function LocationPickerMap({ latitude, longitude, onChange, address, onAddress }: Props) {
   const t = useTranslations("mtmLocationPicker")
   const [expanded, setExpanded] = useState(false)
   const hasPosition = latitude != null && longitude != null && latitude !== 0 && longitude !== 0
@@ -326,6 +434,7 @@ export default function LocationPickerMap({ latitude, longitude, onChange, addre
           longitude={longitude}
           onChange={onChange}
           address={address}
+          onAddress={onAddress}
           onClose={() => setExpanded(false)}
         />
       )}

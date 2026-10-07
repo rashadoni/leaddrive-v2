@@ -1,0 +1,167 @@
+{
+  "status": "PASS_152_ZERO_SKIP",
+  "fixture": "isolated existing selected-DDL regression suites; not historical staging",
+  "sourceBindings": [
+    {
+      "path": "prisma/migrations/20261005193000_workforce_reconciliation_operations/migration.sql",
+      "bytes": 2721,
+      "sha256": "c452e7f6d13dca1e5257d8353c252745d05cd4f18eae83cd45501f61664ef719"
+    },
+    {
+      "path": "prisma/schema.prisma",
+      "bytes": 958771,
+      "sha256": "fd2e0a5b835669dafa736943fd9e5ee403a81dd0dd28d127e895e1f19232eae7"
+    },
+    {
+      "path": "src/__tests__/workforce-reconciliation-approval-group.test.ts",
+      "bytes": 10992,
+      "sha256": "c7ea1b137f2c5df66aa873b1b67e0326e2bcf1f7aa436ded512f9e6cb984031a"
+    },
+    {
+      "path": "src/__tests__/workforce-reconciliation-cursor-store.test.ts",
+      "bytes": 11018,
+      "sha256": "f001e4b708c1d6ffa9aab79d14f47b3fa4e9acc2fb9cc34e6b2aba4244988916"
+    },
+    {
+      "path": "src/__tests__/workforce-reconciliation-export-audit.test.ts",
+      "bytes": 17050,
+      "sha256": "6c0905449efc6056247e65429abdbde929612c890845acb35f26cafc0dfe1f6c"
+    },
+    {
+      "path": "src/__tests__/workforce-reconciliation-job.test.ts",
+      "bytes": 7778,
+      "sha256": "8df55e84e2f2aca80633f167659f3a509a5f467e9f4b79ab072728105791db2b"
+    },
+    {
+      "path": "src/__tests__/workforce-reconciliation-roster-health.test.ts",
+      "bytes": 9333,
+      "sha256": "e803c41369667d110419ab5f15c22e4524a6b385e97bb54a7aa19710c16a351b"
+    },
+    {
+      "path": "src/__tests__/workforce-reconciliation-sweep.test.ts",
+      "bytes": 49872,
+      "sha256": "276a6bd5077d31d883fba6e1499cb9e4b95016ec36f1932ad02759b903a338ea"
+    },
+    {
+      "path": "src/__tests__/workforce-reconciliation.test.ts",
+      "bytes": 13558,
+      "sha256": "bb1dedf39a72beb6fe4cff41336b59fa4bdd5faa08d03ecdae7343b20f43ecd8"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-approval-group.ts",
+      "bytes": 4263,
+      "sha256": "aa45ab91f54678c457d066a9a8bc044acabbd5cd29df4bad1b1924f7c0632a05"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-cursor-store.ts",
+      "bytes": 6533,
+      "sha256": "8b04ef4d1c7ea5cca424ef13e7c0d80e949271523a22cf4d43a545049949a6bd"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-dense.ts",
+      "bytes": 8490,
+      "sha256": "500f3f9b68cb68a0ab0ee6085814961b359b46ceb3b18a5ba38d9cafbd175959"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-export-audit.ts",
+      "bytes": 7445,
+      "sha256": "38094ed52225428eb46eae6247f4a618a98d66e4e83151b7ba217168c6722409"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-job.ts",
+      "bytes": 3722,
+      "sha256": "1fd328013fac465edf3446c834bb3e97fca9f6af27b499f47ee81f2cc4a2cc6f"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-operations.ts",
+      "bytes": 11784,
+      "sha256": "2031a6dc00b16c508120d584f6b9c4f038a36aa78068e1161c99de06a5f919de"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-reader-profile.ts",
+      "bytes": 5391,
+      "sha256": "c336446067a9e4e6a26bdf0403579317b34e2615983aa29640325569b552342e"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-roster-health.ts",
+      "bytes": 6396,
+      "sha256": "896fb07c70b918714ca5c5cd7685fbdd9655811a06c0fd3a41dd095de2f911e9"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-schedule-subject.ts",
+      "bytes": 9921,
+      "sha256": "6ef11cc56e3132e4e48ba99cb57e021b9fed425488aea11c12864e9025eae9d9"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-snapshot.ts",
+      "bytes": 9679,
+      "sha256": "bdba98ef3f2d18b916200673038b4ad3eb523f2a5e3d12c864198eac26f490a3"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-source-page.ts",
+      "bytes": 5013,
+      "sha256": "7c45f9b7d1b621d7418e4ce18cdbace2bfed1a9a3a522944c5504c1259da03fe"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-sweep.ts",
+      "bytes": 3049,
+      "sha256": "309ce1eabde967c795c47bb4a123f7c4cfd73a2a13638d8937327d8db4b0024c"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation.ts",
+      "bytes": 10678,
+      "sha256": "292720bc88e8484dd173e6ed50d7616f008e5524201dc756f40ab3fabca20a27"
+    }
+  ],
+  "exitCode": 0,
+  "elapsedSeconds": 25.82,
+  "tests": 152,
+  "pass": 152,
+  "failed": 0,
+  "skipped": 0,
+  "files": [
+    {
+      "name": "workforce-reconciliation-approval-group.test.ts",
+      "status": "passed",
+      "tests": 14,
+      "failedNames": []
+    },
+    {
+      "name": "workforce-reconciliation-cursor-store.test.ts",
+      "status": "passed",
+      "tests": 13,
+      "failedNames": []
+    },
+    {
+      "name": "workforce-reconciliation-export-audit.test.ts",
+      "status": "passed",
+      "tests": 17,
+      "failedNames": []
+    },
+    {
+      "name": "workforce-reconciliation-job.test.ts",
+      "status": "passed",
+      "tests": 9,
+      "failedNames": []
+    },
+    {
+      "name": "workforce-reconciliation-roster-health.test.ts",
+      "status": "passed",
+      "tests": 15,
+      "failedNames": []
+    },
+    {
+      "name": "workforce-reconciliation-sweep.test.ts",
+      "status": "passed",
+      "tests": 49,
+      "failedNames": []
+    },
+    {
+      "name": "workforce-reconciliation.test.ts",
+      "status": "passed",
+      "tests": 35,
+      "failedNames": []
+    }
+  ],
+  "cleanup": "PASS"
+}

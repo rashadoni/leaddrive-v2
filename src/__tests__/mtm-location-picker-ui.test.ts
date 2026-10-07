@@ -30,6 +30,10 @@ const map = vi.hoisted(() => ({
   flights: [] as { to: [number, number]; zoom: number }[],
   handlers: {} as Record<string, (event?: unknown) => void>,
   marker: null as MarkerProps | null,
+  /** What the component asked of the map, in order. */
+  asked: [] as string[],
+  /** The element whose size the map must follow. */
+  box: null as HTMLElement | null,
 }))
 
 vi.mock("leaflet/dist/leaflet.css", () => ({}))
@@ -39,8 +43,9 @@ vi.mock("react-leaflet", () => {
   const mapApi = {
     getCenter: () => map.center,
     getZoom: () => map.zoom,
-    invalidateSize: () => {},
-    flyTo: (to: [number, number], zoom: number) => { map.flights.push({ to, zoom }) },
+    getContainer: () => ({ parentElement: map.box }),
+    invalidateSize: () => { map.asked.push("measure") },
+    flyTo: (to: [number, number], zoom: number) => { map.asked.push("fly"); map.flights.push({ to, zoom }) },
   }
   return {
     MapContainer: ({ children }: { children?: ReactNode }) => createElement("div", { "data-testid": "map" }, children),
@@ -57,6 +62,12 @@ let position: { latitude: number | null; longitude: number | null }
 let changes: [number, number][]
 let geocode: (url: URL) => { status: number; body: unknown }
 let searches: URL[]
+/** «What is the address under this pin?» — asked only when the form takes an address back. */
+type Place = { address: string; district: string; city: string; label: string }
+let takesAddress: boolean
+let underPin: (url: URL) => Place | null
+let lookups: URL[]
+let written: Place[]
 let root: Root
 let container: HTMLDivElement
 
@@ -64,6 +75,7 @@ function draw(address?: string) {
   root.render(createElement(LocationPickerMap, {
     ...position,
     address,
+    ...(takesAddress ? { onAddress: (place: Place) => { written.push(place) } } : {}),
     onChange: (lat: number, lng: number) => {
       changes.push([lat, lng])
       position = { latitude: lat, longitude: lng }
@@ -85,6 +97,9 @@ const searchBox = () => picker()?.querySelector<HTMLInputElement>('input[type="s
 const notice = () => picker()?.querySelector('[data-testid="mtm-location-picker-notice"]')?.textContent ?? ""
 const results = () => [...(picker()?.querySelectorAll('[data-testid="mtm-location-picker-results"] button') ?? [])] as HTMLButtonElement[]
 const press = async (element: HTMLElement | null) => { await act(async () => { element?.click() }); await settle() }
+/** Long enough for a pin that has stopped moving to be looked up. */
+const rest = async () => { await act(async () => { await new Promise((resolve) => setTimeout(resolve, 750)) }) }
+const pinAddress = () => picker()?.querySelector<HTMLElement>('[data-testid="mtm-location-picker-pin-address"]') ?? null
 async function type(value: string) {
   const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set
   await act(async () => {
@@ -98,9 +113,18 @@ beforeEach(() => {
   position = { latitude: null, longitude: null }
   changes = []
   searches = []
+  takesAddress = false
+  lookups = []
+  written = []
+  underPin = () => ({
+    address: "Tbilisi prospekti 10", district: "Yasamal rayonu", city: "Bakı",
+    label: "Tbilisi prospekti 10, Yasamal rayonu, Bakı",
+  })
   map.flights = []
   map.handlers = {}
   map.marker = null
+  map.asked = []
+  map.box = document.createElement("div")
   map.center = { lat: 40.4093, lng: 49.8671 }
   geocode = () => ({
     status: 200,
@@ -111,6 +135,10 @@ beforeEach(() => {
   })
   vi.stubGlobal("fetch", vi.fn(async (input: string) => {
     const url = new URL(String(input), "http://localhost")
+    if (url.pathname.endsWith("/geocode/reverse")) {
+      lookups.push(url)
+      return { ok: true, status: 200, json: async () => ({ success: true, data: { place: underPin(url) } }) }
+    }
     searches.push(url)
     const { status, body } = geocode(url)
     return { ok: status < 400, status, json: async () => body }
@@ -160,6 +188,17 @@ describe("map picker — by the address the manager types", () => {
       .toEqual([["Rustaveli 12, Tbilisi", "41.69", "44.8"]])
   })
 
+  // The owner's first card, 2026-10-07: the pin stood at one place and the
+  // search box, filled from the card, named another — «это не тот адрес,
+  // который выбран на карте».
+  it("does not put the card's address into the search over a pin that already stands", async () => {
+    position = { latitude: 40.412166, longitude: 49.951784 }
+    await open("Old street 79B, Old district, Bakı")
+
+    expect(searchBox()?.value).toBe("")
+    expect(searchBox()?.placeholder).toBe("Адрес: улица, дом, город")
+  })
+
   it("searches on Enter without submitting the form it sits in", async () => {
     await open()
     await type("Nizami 5")
@@ -181,7 +220,7 @@ describe("map picker — by the address the manager types", () => {
     geocode = () => ({ status: 200, body: { success: true, data: { results: [] } } })
     await type("zzzz qqqq")
     await press(button("Найти"))
-    expect(notice()).toBe("Ничего не найдено. Уточните адрес или поставьте метку на карте вручную.")
+    expect(notice()).toBe("Ничего не найдено. Попробуйте короче — улица и номер дома или название организации — либо поставьте метку на карте вручную.")
 
     geocode = () => ({ status: 502, body: { error: "Address search is unavailable right now", code: "MTM_GEOCODE_UNAVAILABLE" } })
     await press(button("Найти"))
@@ -218,6 +257,133 @@ describe("map picker — by where the manager is now", () => {
     await press(button("Моё местоположение"))
     expect(notice()).toBe("Не удалось определить местоположение. Попробуйте ещё раз или поставьте метку вручную.")
     expect(changes).toEqual([])
+  })
+})
+
+describe("map picker — the map keeps up with its own box", () => {
+  // Production, 2026-10-06: after an address was chosen the list of addresses
+  // closed, the map's box grew, and the map kept drawing for the old box — a
+  // grey band down one side and the pin off-centre.
+  it("measures its box before flying to the chosen address", async () => {
+    await open()
+    await type("Tbilisi prospekti 10")
+    await press(button("Найти"))
+    map.asked = []
+    await press(results()[0])
+
+    expect(map.asked.slice(0, 2)).toEqual(["measure", "fly"])
+  })
+
+  it("measures again whenever the box changes size, and stops when the picker closes", async () => {
+    const watcher = { observed: [] as Element[], resized: (() => {}) as () => void, disconnected: 0 }
+    vi.stubGlobal("ResizeObserver", class {
+      constructor(callback: () => void) { watcher.resized = callback }
+      observe(element: Element) { watcher.observed.push(element) }
+      disconnect() { watcher.disconnected += 1 }
+    })
+    await open()
+    expect(watcher.observed).toEqual([map.box])
+
+    map.asked = []
+    await act(async () => { watcher.resized() })
+    expect(map.asked).toEqual(["measure"])
+
+    await press(button("Готово"))
+    expect(watcher.disconnected).toBe(1)
+  })
+})
+
+// Owner, 2026-10-07, after moving an organization's pin with «Моё
+// местоположение»: «я тут изменил адрес, но в отображении всё ещё старый
+// адрес» — and then: «адрес поле убери из заполнений, пусть он добавляется
+// через поиск на карте». The card's address is what stands under the pin the
+// manager set.
+describe("map picker — the address under the pin", () => {
+  const withLocation = (getCurrentPosition: (ok: (position: unknown) => void) => void) =>
+    vi.stubGlobal("navigator", { ...navigator, geolocation: { getCurrentPosition } })
+  const tbilisi = {
+    address: "Tbilisi prospekti 10", district: "Yasamal rayonu", city: "Bakı",
+    label: "Tbilisi prospekti 10, Yasamal rayonu, Bakı",
+  }
+
+  it("hands the form the address of a pin set by a click, with no second press", async () => {
+    takesAddress = true
+    await open()
+    await act(async () => { map.handlers.click?.({ latlng: { lat: 40.397828, lng: 49.81699 } }) })
+    await rest()
+
+    expect(lookups.map((url) => [url.searchParams.get("lat"), url.searchParams.get("lng"), url.searchParams.get("lang")]))
+      .toEqual([["40.397828", "49.81699", "ru"]])
+    expect(written).toEqual([tbilisi])
+    expect(pinAddress()?.textContent).toBe("Адрес по метке: Tbilisi prospekti 10, Yasamal rayonu, Bakı — записан в карточку")
+    expect(picker()?.querySelector('[data-testid="mtm-location-picker-pin-address"] button')).toBeNull()
+  })
+
+  it("does the same for an address chosen from the search and for «my location»", async () => {
+    takesAddress = true
+    await open()
+    await type("Tbilisi prospekti 10")
+    await press(button("Найти"))
+    await press(results()[0])
+    await rest()
+    expect(written).toEqual([tbilisi])
+
+    underPin = () => ({ address: "Nizami küçəsi 203", district: "Nəsimi rayonu", city: "Bakı", label: "Nizami küçəsi 203, Nəsimi rayonu, Bakı" })
+    withLocation((ok) => ok({ coords: { latitude: 40.37721, longitude: 49.854073, accuracy: 12 } }))
+    await press(button("Моё местоположение"))
+    await rest()
+    expect(written.map((place) => place.address)).toEqual(["Tbilisi prospekti 10", "Nizami küçəsi 203"])
+  })
+
+  it("does not rewrite the card's address for a pin that was only looked at", async () => {
+    takesAddress = true
+    position = { latitude: 40.397828, longitude: 49.81699 }
+    await open()
+    await rest()
+
+    // It is named, so the manager sees what the map thinks is there…
+    expect(pinAddress()?.textContent).toBe("Адрес по метке: Tbilisi prospekti 10, Yasamal rayonu, Bakı")
+    // …and the card keeps the address it has until the pin is moved.
+    expect(written).toEqual([])
+  })
+
+  it("asks once for a pin dragged through several places, and writes the last one once", async () => {
+    takesAddress = true
+    position = { latitude: 40.397828, longitude: 49.81699 }
+    await open()
+    await rest()
+    lookups = []
+
+    for (const lat of [40.3981, 40.3984, 40.3987]) {
+      await act(async () => { map.handlers.click?.({ latlng: { lat, lng: 49.817 } }) })
+    }
+    // The address of the old place is not shown under the new pin meanwhile.
+    expect(pinAddress()).toBeNull()
+    await rest()
+    await rest()
+
+    expect(lookups.map((url) => url.searchParams.get("lat"))).toEqual(["40.3987"])
+    expect(written).toHaveLength(1)
+  })
+
+  it("says the card keeps its address when there is no street under the new pin", async () => {
+    takesAddress = true
+    underPin = () => null
+    await open()
+    await act(async () => { map.handlers.click?.({ latlng: { lat: 40.1, lng: 49.1 } }) })
+    await rest()
+
+    expect(pinAddress()?.textContent).toBe("Адрес для этой точки не найден — в карточке останется прежний.")
+    expect(written).toEqual([])
+  })
+
+  it("asks nobody where the form does not take its address from the map", async () => {
+    position = { latitude: 40.397828, longitude: 49.81699 }
+    await open()
+    await act(async () => { map.handlers.click?.({ latlng: { lat: 40.3985, lng: 49.8168 } }) })
+    await rest()
+
+    expect([lookups.length, pinAddress(), written.length]).toEqual([0, null, 0])
   })
 })
 

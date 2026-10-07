@@ -31,6 +31,7 @@ import { Textarea } from "@/components/ui/textarea"
 import {
   WorkforceManagerToday,
   type WorkforceManagerTodayPerson,
+  type WorkforceManagerTodayPaginationResult,
 } from "@/components/workforce/workforce-manager-today"
 import {
   createWorkforceReadIdentity,
@@ -40,6 +41,16 @@ import {
 
 type WorkforceView = "today" | "timesheet" | "requests"
 type RequestStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED"
+
+class TodayReadError extends Error {
+  readonly messageKey: "managerReadSessionExpired" | "managerReadDenied" | "managerReadUnavailable"
+
+  constructor(status: number) {
+    super("Workforce Today read failed")
+    this.messageKey = status === 401 ? "managerReadSessionExpired"
+      : status === 403 ? "managerReadDenied" : "managerReadUnavailable"
+  }
+}
 
 type TodayData = {
   date: string
@@ -86,6 +97,7 @@ type TodayData = {
     } | null
   } | null
   people: WorkforceManagerTodayPerson[]
+  paginationResult?: WorkforceManagerTodayPaginationResult
 }
 
 type WorkforceTimesheetCalculationView = {
@@ -472,7 +484,24 @@ function statusTone(status: string): "default" | "secondary" | "outline" | "dest
 }
 
 export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
+  const t = useTranslations("workforcePage")
+  if (status !== "authenticated" || !session?.user) {
+    return <p role={status === "unauthenticated" ? "alert" : "status"}>
+      {t(status === "unauthenticated" ? "loadFailed" : "loading")}
+    </p>
+  }
+  // Protected rows and pending operations belong to one authenticated scope.
+  // Remount synchronously so a same-tenant principal/role change cannot display
+  // the previous scope while its replacement request is still in flight.
+  const scope = JSON.stringify([session.user.organizationId, session.user.id, session.user.role])
+  return <ScopedWorkforceWorkbench key={scope} view={view} session={session} />
+}
+
+function ScopedWorkforceWorkbench({ view, session }: {
+  view: WorkforceView
+  session: NonNullable<ReturnType<typeof useSession>["data"]>
+}) {
   const searchParams = useSearchParams()
   const locale = useLocale()
   const t = useTranslations("workforcePage")
@@ -513,6 +542,7 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
   })
   const activeLoadIdentityRef = useRef(activeLoadIdentity)
   activeLoadIdentityRef.current = activeLoadIdentity
+  useEffect(() => () => { activeLoadIdentityRef.current = "" }, [])
 
   function requestReload(options: { preserveTimesheet?: boolean } = {}) {
     if (!options.preserveTimesheet && approvalRefreshLifecycle.isBusy()) return
@@ -537,6 +567,7 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
     const taggedApprovalLoad = approvalRefreshLifecycle.begin(activeLoadIdentity)
     const preserveTimesheet = view === "timesheet" && taggedApprovalLoad
     setLoading(true)
+    setLoadingMore(false)
     setError(null)
     fetch(endpointForView(view, timesheetQuery), {
       headers: organizationId ? { "x-organization-id": organizationId } : {},
@@ -544,7 +575,10 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
     })
       .then(async (response) => {
         const result = await response.json().catch(() => ({}))
-        if (!response.ok || !result.success) throw new Error(result.error || `HTTP ${response.status}`)
+        if (!response.ok || !result.success) {
+          if (view === "today") throw new TodayReadError(response.status)
+          throw new Error(result.error || `HTTP ${response.status}`)
+        }
         if (!cancelled) {
           setData(result.data)
           setDataLoadIdentity(activeLoadIdentity)
@@ -566,7 +600,9 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
             toast.error(t("loadFailed"))
           }
           else {
-            setError(cause instanceof Error ? cause.message : t("loadFailed"))
+            setError(view === "today"
+              ? t(cause instanceof TodayReadError ? cause.messageKey : "managerReadUnavailable")
+              : cause instanceof Error ? cause.message : t("loadFailed"))
             setData(null)
             setDataLoadIdentity(null)
           }
@@ -703,7 +739,7 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
     }
   }
 
-  async function loadMoreToday() {
+  async function loadMoreToday(requestId: string) {
     const cursor = today?.pagination.nextCursor
     if (!cursor || loadingMore) return
     const requestedIdentity = activeLoadIdentity
@@ -713,7 +749,7 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
         headers: organizationId ? { "x-organization-id": organizationId } : {},
       })
       const result = await response.json().catch(() => ({}))
-      if (!response.ok || !result.success) throw new Error(result.error || `HTTP ${response.status}`)
+      if (!response.ok || !result.success) throw new TodayReadError(response.status)
       if (activeLoadIdentityRef.current !== requestedIdentity) return
       const page = result.data as TodayData
       setData((current) => {
@@ -725,25 +761,38 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
           || current.pagination.nextCursor !== cursor
         ) return current
         const known = new Set(current.people.map((person) => person.id))
+        const addedPeople = page.people.filter((person) => {
+          if (known.has(person.id)) return false
+          known.add(person.id)
+          return true
+        })
+        const people = [...current.people, ...addedPeople]
         return {
           ...page,
           employeeToday: current.employeeToday,
-          people: [...current.people, ...page.people.filter((person) => !known.has(person.id))],
-          summary: {
-            started: current.summary.started + page.summary.started,
-            paused: current.summary.paused + page.summary.paused,
-            completed: current.summary.completed + page.summary.completed,
-            notStarted: current.summary.notStarted + page.summary.notStarted,
-            previousOpen: current.summary.previousOpen + page.summary.previousOpen,
+          people,
+          paginationResult: {
+            requestId,
+            added: addedPeople.length,
+            total: people.length,
+            hasMore: Boolean(page.pagination.nextCursor),
           },
+          summary: people.reduce((summary, person) => {
+            if (person.status === "STARTED") summary.started += 1
+            else if (person.status === "PAUSED") summary.paused += 1
+            else if (person.status === "COMPLETED") summary.completed += 1
+            else summary.notStarted += 1
+            if (person.previousOpenWorkday) summary.previousOpen += 1
+            return summary
+          }, { started: 0, paused: 0, completed: 0, notStarted: 0, previousOpen: 0 }),
         }
       })
     } catch (cause) {
       if (activeLoadIdentityRef.current === requestedIdentity) {
-        toast.error(cause instanceof Error ? cause.message : t("loadFailed"))
+        toast.error(t(cause instanceof TodayReadError ? cause.messageKey : "managerReadUnavailable"))
       }
     } finally {
-      setLoadingMore(false)
+      if (activeLoadIdentityRef.current === requestedIdentity) setLoadingMore(false)
     }
   }
 
@@ -910,7 +959,7 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
       {loading && !taggedApprovalRefresh ? <div className="h-48 animate-pulse border-y border-zinc-200 bg-muted/40 motion-reduce:animate-none dark:border-zinc-700" aria-label={t("loading")} role="status" /> : null}
       {!loading && error ? (
         <section className="flex flex-col gap-3 border-y border-zinc-200 bg-card py-5 dark:border-zinc-700 sm:flex-row sm:items-center sm:justify-between" role="alert">
-          <div><p className="font-medium">{t("loadFailed")}</p><p className="mt-1 text-sm text-muted-foreground">{error}</p></div>
+          <div><p className="font-medium">{t("loadFailed")}</p><p className={view === "today" ? "mt-1 text-sm text-zinc-700 dark:text-zinc-300" : "mt-1 text-sm text-muted-foreground"}>{error}</p></div>
           <Button type="button" variant="outline" className="min-h-12" onClick={() => requestReload()}>{t("tryAgain")}</Button>
         </section>
       ) : null}
@@ -967,7 +1016,7 @@ function TodayView({ data, t, formatter, locale, submittingWorkday, workdayOutco
   submittingWorkday: boolean
   workdayOutcome: "SENDING" | "APPLIED" | "PENDING_REVIEW" | "CONFLICT" | null
   loadingMore: boolean
-  onLoadMore: () => void
+  onLoadMore: (requestId: string) => void | Promise<void>
   onWorkdayAction: () => void
 }) {
   const timeFormatter = useMemo(() => new Intl.DateTimeFormat(locale, {

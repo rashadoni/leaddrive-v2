@@ -80,6 +80,32 @@ describe("GET /api/v1/mtm/geocode", () => {
       .toEqual([["Nizami kucesi 5", "en", false]])
   })
 
+  // Production, 2026-10-06: the first real card tried had the street spelled
+  // the card's way, not the map's, and the search found nothing.
+  it("finds an address the map spells differently, through the forgiving search", async () => {
+    fetchMock.mockImplementation(async (url: string) => String(url).includes("photon.komoot.io")
+      ? {
+          ok: true,
+          status: 200,
+          json: async () => ({ features: [{
+            geometry: { coordinates: [49.805225, 40.399929] },
+            properties: { name: "Milli Onkologiya Mərkəzi", street: "Həsən bəy Zərdabi prospekti", housenumber: "79B", city: "Bakı" },
+          }] }),
+        }
+      : { ok: true, status: 200, json: async () => [] })
+
+    const response = await GET(request(`?q=${encodeURIComponent("Yasamal r-nu, Hasanbay Zardabi küçəsi 79B, Yasamal, Bakı")}&lang=az&lat=40.4093&lng=49.8671`))
+
+    expect(await response.json()).toEqual({
+      success: true,
+      data: { results: [{ label: "Milli Onkologiya Mərkəzi, Həsən bəy Zərdabi prospekti 79B, Bakı", latitude: 40.399929, longitude: 49.805225 }] },
+    })
+    expect(asked().map((url) => [url.hostname, url.searchParams.get("q")])).toEqual([
+      ["nominatim.openstreetmap.org", "Yasamal r-nu, Hasanbay Zardabi küçəsi 79B, Yasamal, Bakı"],
+      ["photon.komoot.io", "Yasamal Hasanbay Zardabi 79B Bakı"],
+    ])
+  }, 10_000)
+
   it("refuses a search that is no address, without asking anyone", async () => {
     const statuses = []
     for (const query of ["", "?q=", "?q=%20a%20", `?q=${"a".repeat(201)}`]) {

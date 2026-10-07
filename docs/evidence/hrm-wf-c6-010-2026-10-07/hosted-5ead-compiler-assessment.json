@@ -1,0 +1,47 @@
+{
+  "headSha": "5eadeb43f7406a96e3145e8b21b78a3708827ef4",
+  "runId": 37598967356,
+  "compilerJob": 112718756824,
+  "compilerGate": "SUCCESS_BASELINE_QUALIFIED",
+  "globalCompilerClean": false,
+  "exit": "2",
+  "diagnosticCount": 1163,
+  "ownedDiagnosticCount": 10,
+  "ownedDiagnostics": [
+    "src/__tests__/api-workforce-exception-decisions.test.ts(28,35): error TS2502: 'auth' is referenced directly or indirectly in its own type annotation.",
+    "src/__tests__/api-workforce-exception-decisions.test.ts(413,7): error TS2502: 'auth' is referenced directly or indirectly in its own type annotation.",
+    "src/__tests__/lib-workforce-exception-case-writer.test.ts(82,31): error TS2558: Expected 0 type arguments, but got 1.",
+    "src/__tests__/lib-workforce-exception-case-writer.test.ts(97,30): error TS2558: Expected 0 type arguments, but got 1.",
+    "src/__tests__/lib-workforce-exception-case-writer.test.ts(121,30): error TS2558: Expected 0 type arguments, but got 1.",
+    "src/__tests__/lib-workforce-exception-case-writer.test.ts(158,30): error TS2558: Expected 0 type arguments, but got 1.",
+    "src/__tests__/lib-workforce-exception-case-writer.test.ts(169,30): error TS2558: Expected 0 type arguments, but got 1.",
+    "src/__tests__/lib-workforce-exception-case-writer.test.ts(235,31): error TS2558: Expected 0 type arguments, but got 1.",
+    "src/__tests__/lib-workforce-exception-case-writer.test.ts(270,31): error TS2558: Expected 0 type arguments, but got 1.",
+    "src/lib/workforce/exception-decision-service.ts(120,23): error TS7006: Parameter 'args' implicitly has an 'any' type."
+  ],
+  "compilerSha256": "53e2e73c3c5936845de54371cc1c013ccab223fc8e08c25c82844b81dbe37cb1",
+  "changedSourcePaths": [
+    "src/__tests__/api-workforce-exception-decisions.test.ts",
+    "src/__tests__/api-workforce-exception-reports.test.ts",
+    "src/__tests__/lib-workforce-exception-case-writer.test.ts",
+    "src/__tests__/lib-workforce-exception-report-postgres.test.ts",
+    "src/__tests__/lib-workforce-exception-workbench.test.ts",
+    "src/__tests__/workforce-exception-case-report-recorded-outcomes.test.ts",
+    "src/__tests__/workforce-exception-classification-browser-evidence-guard.test.ts",
+    "src/__tests__/workforce-exception-recorded-outcomes-ui.test.ts",
+    "src/app/api/v1/workforce/exceptions/route.ts",
+    "src/components/workforce/workforce-exception-queue.tsx",
+    "src/components/workforce/workforce-exception-recorded-outcomes.tsx",
+    "src/lib/workforce/exception-case-report-recorded-outcomes.ts",
+    "src/lib/workforce/exception-case-writer.ts",
+    "src/lib/workforce/exception-decision-service.ts",
+    "src/lib/workforce/exception-outcome-classification.ts",
+    "src/lib/workforce/exception-policy-draft.ts",
+    "src/lib/workforce/exception-workbench.ts"
+  ],
+  "limits": [
+    "Not final b416 or future head verification",
+    "Historical full suite/compiler remain nonclean",
+    "No production/runtime/operational/migration replay claim"
+  ]
+}

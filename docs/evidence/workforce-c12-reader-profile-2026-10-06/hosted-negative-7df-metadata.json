@@ -1,0 +1,126 @@
+{
+  "head": "7df38080839440f2ede9671e9aac01fee5436cd0",
+  "scan": [
+    {
+      "id": 112535951848,
+      "name": "scan",
+      "conclusion": "failure",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-06T22:36:56Z",
+          "completed_at": "2026-10-06T22:36:56Z"
+        },
+        {
+          "name": "Checkout full history",
+          "conclusion": "success",
+          "started_at": "2026-10-06T22:36:56Z",
+          "completed_at": "2026-10-06T22:37:10Z"
+        },
+        {
+          "name": "Install verified Gitleaks binary",
+          "conclusion": "success",
+          "started_at": "2026-10-06T22:37:10Z",
+          "completed_at": "2026-10-06T22:37:10Z"
+        },
+        {
+          "name": "Select commit range",
+          "conclusion": "success",
+          "started_at": "2026-10-06T22:37:10Z",
+          "completed_at": "2026-10-06T22:37:11Z"
+        },
+        {
+          "name": "Block newly committed secrets",
+          "conclusion": "failure",
+          "started_at": "2026-10-06T22:37:11Z",
+          "completed_at": "2026-10-06T22:37:11Z"
+        },
+        {
+          "name": "Post Checkout full history",
+          "conclusion": "success",
+          "started_at": "2026-10-06T22:37:11Z",
+          "completed_at": "2026-10-06T22:37:11Z"
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-06T22:37:11Z",
+          "completed_at": "2026-10-06T22:37:11Z"
+        }
+      ]
+    }
+  ],
+  "social": [
+    {
+      "id": 112535952818,
+      "name": "Blocking Social Monitoring regression suite",
+      "conclusion": "failure",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-06T22:36:59Z",
+          "completed_at": "2026-10-06T22:37:00Z"
+        },
+        {
+          "name": "Checkout candidate",
+          "conclusion": "success",
+          "started_at": "2026-10-06T22:37:00Z",
+          "completed_at": "2026-10-06T22:37:10Z"
+        },
+        {
+          "name": "Setup Node.js",
+          "conclusion": "success",
+          "started_at": "2026-10-06T22:37:10Z",
+          "completed_at": "2026-10-06T22:37:15Z"
+        },
+        {
+          "name": "Install dependencies and generate Prisma client",
+          "conclusion": "success",
+          "started_at": "2026-10-06T22:37:15Z",
+          "completed_at": "2026-10-06T22:43:36Z"
+        },
+        {
+          "name": "Validate translations",
+          "conclusion": "success",
+          "started_at": "2026-10-06T22:43:36Z",
+          "completed_at": "2026-10-06T22:43:37Z"
+        },
+        {
+          "name": "Run server queue, provider deadline and UI regressions",
+          "conclusion": "failure",
+          "started_at": "2026-10-06T22:43:37Z",
+          "completed_at": "2026-10-06T22:43:48Z"
+        },
+        {
+          "name": "Post Setup Node.js",
+          "conclusion": "skipped",
+          "started_at": "2026-10-06T22:43:48Z",
+          "completed_at": "2026-10-06T22:43:48Z"
+        },
+        {
+          "name": "Post Checkout candidate",
+          "conclusion": "success",
+          "started_at": "2026-10-06T22:43:48Z",
+          "completed_at": "2026-10-06T22:43:48Z"
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-06T22:43:48Z",
+          "completed_at": "2026-10-06T22:43:48Z"
+        }
+      ]
+    },
+    {
+      "id": 112538317914,
+      "name": "Browser close, cron takeover & durable recovery",
+      "conclusion": "skipped",
+      "steps": []
+    }
+  ],
+  "rawLogsRead": false,
+  "socialFailureCause": "UNKNOWN",
+  "scanDiagnosis": "Pinned local scanner and independent review identify only synthetic lease markers; narrow rule-level successor controls pass."
+}

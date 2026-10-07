@@ -1,0 +1,21 @@
+{
+  "status": "ISOLATED_MAIN_PLUS_ACCEPTED_PR589_AND_REVIEWED_C8_DIFF",
+  "baseMain": "9197240a600e47252694ffb3e9c84ec5392d4a8b",
+  "acceptedDependency": "a856a9e533c4f3cec6f2313e69f5be0d5b4d4226",
+  "acceptedDependencyPR": 589,
+  "commonBase": "4eb451bb62bac71860bbe47e576f2be506eab860",
+  "acceptedDeltaFiles": 162,
+  "baseFileCount": 8816,
+  "threeWayPreservedMessages": [
+    "messages/az.json",
+    "messages/en.json",
+    "messages/ru.json"
+  ],
+  "importedC8Files": [
+    "src/components/workforce/workforce-workbench.tsx",
+    "src/__tests__/workforce-today-session-isolation-ui.test.ts"
+  ],
+  "tsconfigBlob": "a458160b36b2a5e71e2cd6b4a5571243f12a5dfa",
+  "oldRepoWritten": false,
+  "publication": "new dependent draft branch; retain accepted PR589 head unchanged"
+}

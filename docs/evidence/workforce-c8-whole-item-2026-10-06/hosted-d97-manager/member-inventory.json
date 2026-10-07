@@ -1,0 +1,166 @@
+[
+  {
+    "name": "approver-ru-absent-page-two.png",
+    "bytes": 85024
+  },
+  {
+    "name": "approver-ru-first-page.png",
+    "bytes": 50072
+  },
+  {
+    "name": "approver-ru-native-pagination.png",
+    "bytes": 82978
+  },
+  {
+    "name": "approver-ru-snapshot-completed.png",
+    "bytes": 80137
+  },
+  {
+    "name": "approver-ru-snapshot-missing.png",
+    "bytes": 79763
+  },
+  {
+    "name": "approver-ru-snapshot-paused.png",
+    "bytes": 82223
+  },
+  {
+    "name": "approver-ru-snapshot-started.png",
+    "bytes": 81042
+  },
+  {
+    "name": "denied-ru-no-grant.png",
+    "bytes": 50146
+  },
+  {
+    "name": "failure-original.png",
+    "bytes": 188520
+  },
+  {
+    "name": "manager-az-absent-page-two.png",
+    "bytes": 92111
+  },
+  {
+    "name": "manager-az-first-page.png",
+    "bytes": 76777
+  },
+  {
+    "name": "manager-az-native-pagination.png",
+    "bytes": 90626
+  },
+  {
+    "name": "manager-az-snapshot-completed.png",
+    "bytes": 87159
+  },
+  {
+    "name": "manager-az-snapshot-missing.png",
+    "bytes": 90307
+  },
+  {
+    "name": "manager-az-snapshot-started.png",
+    "bytes": 85040
+  },
+  {
+    "name": "manager-az-snapshot-paused.png",
+    "bytes": 89236
+  },
+  {
+    "name": "manager-en-absent-page-two.png",
+    "bytes": 182535
+  },
+  {
+    "name": "manager-en-first-page.png",
+    "bytes": 150945
+  },
+  {
+    "name": "manager-en-native-200-first-page.png",
+    "bytes": 99889
+  },
+  {
+    "name": "manager-en-native-200-native-pagination.png",
+    "bytes": 186063
+  },
+  {
+    "name": "manager-en-native-200-snapshot-completed.png",
+    "bytes": 180872
+  },
+  {
+    "name": "manager-en-native-200-snapshot-missing.png",
+    "bytes": 177944
+  },
+  {
+    "name": "manager-en-native-200-snapshot-started.png",
+    "bytes": 179988
+  },
+  {
+    "name": "manager-en-native-200-snapshot-paused.png",
+    "bytes": 182397
+  },
+  {
+    "name": "manager-en-native-pagination.png",
+    "bytes": 170133
+  },
+  {
+    "name": "manager-en-snapshot-completed.png",
+    "bytes": 175229
+  },
+  {
+    "name": "manager-en-snapshot-missing.png",
+    "bytes": 171673
+  },
+  {
+    "name": "manager-en-snapshot-paused.png",
+    "bytes": 175229
+  },
+  {
+    "name": "manager-en-snapshot-started.png",
+    "bytes": 175229
+  },
+  {
+    "name": "manager-ru-absent-page-two.png",
+    "bytes": 82702
+  },
+  {
+    "name": "manager-ru-first-page.png",
+    "bytes": 50072
+  },
+  {
+    "name": "manager-ru-native-pagination.png",
+    "bytes": 80573
+  },
+  {
+    "name": "manager-ru-snapshot-completed.png",
+    "bytes": 78499
+  },
+  {
+    "name": "manager-ru-snapshot-missing.png",
+    "bytes": 79787
+  },
+  {
+    "name": "manager-ru-snapshot-paused.png",
+    "bytes": 80100
+  },
+  {
+    "name": "manager-ru-snapshot-started.png",
+    "bytes": 78539
+  },
+  {
+    "name": "manager-today-receipt.json",
+    "bytes": 114110
+  },
+  {
+    "name": "native-zoom-en-control-100.png",
+    "bytes": 154230
+  },
+  {
+    "name": "native-zoom-en-observed-200.png",
+    "bytes": 99879
+  },
+  {
+    "name": "workflow-context.json",
+    "bytes": 261
+  },
+  {
+    "name": "workflow-failure.json",
+    "bytes": 219
+  }
+]

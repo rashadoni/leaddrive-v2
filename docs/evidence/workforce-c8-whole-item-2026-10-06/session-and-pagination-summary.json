@@ -1,0 +1,131 @@
+{
+  "file": "session-and-pagination-originals-complete.zip",
+  "bytes": 10844602,
+  "sha256": "b7f5404e309a83cb28f5919d85233078c0d88bdfb98219d5309fbfccb33b8fa5",
+  "members": 223,
+  "sourceMatrix": "b2b9a917e3901a0c1f0ac6995b1f596f2904c27e265628169ba6b5c662d09ea5",
+  "runs": [
+    "run-ltcj6sf_",
+    "run-jkm3b3ph",
+    "run-62ehoths",
+    "run-vmft4p33",
+    "run-i76cy91q",
+    "run-2zt_mlln",
+    "run-zl8128bb",
+    "run-inuhdf1q",
+    "run-stoinndz",
+    "run-5y_dzq61",
+    "run-33syfzh1",
+    "run-u67wcky2",
+    "run-06o_pnqt",
+    "run-vyv3dy87"
+  ],
+  "passMatrix": [
+    {
+      "kind": "session",
+      "locale": "en",
+      "zoom": 1,
+      "run": "run-i76cy91q",
+      "status": "PASS",
+      "checks": 12,
+      "sourceManifestSha256": "b2b9a917e3901a0c1f0ac6995b1f596f2904c27e265628169ba6b5c662d09ea5"
+    },
+    {
+      "kind": "pagination",
+      "locale": "en",
+      "zoom": 2,
+      "run": "run-zl8128bb",
+      "status": "ACTUAL_AT_READING_OBSERVED",
+      "exit": 0,
+      "checks": 9,
+      "assertions": 9,
+      "sourceManifestSha256": "b2b9a917e3901a0c1f0ac6995b1f596f2904c27e265628169ba6b5c662d09ea5"
+    },
+    {
+      "kind": "session",
+      "locale": "ru",
+      "zoom": 1,
+      "run": "run-inuhdf1q",
+      "status": "PASS",
+      "exit": 0,
+      "checks": 12,
+      "assertions": 12,
+      "sourceManifestSha256": "b2b9a917e3901a0c1f0ac6995b1f596f2904c27e265628169ba6b5c662d09ea5"
+    },
+    {
+      "kind": "session",
+      "locale": "az",
+      "zoom": 1,
+      "run": "run-stoinndz",
+      "status": "PASS",
+      "exit": 0,
+      "checks": 12,
+      "assertions": 12,
+      "sourceManifestSha256": "b2b9a917e3901a0c1f0ac6995b1f596f2904c27e265628169ba6b5c662d09ea5"
+    },
+    {
+      "kind": "pagination",
+      "locale": "en",
+      "zoom": 1,
+      "run": "run-5y_dzq61",
+      "status": "ACTUAL_AT_READING_OBSERVED",
+      "exit": 0,
+      "checks": 9,
+      "assertions": 9,
+      "sourceManifestSha256": "b2b9a917e3901a0c1f0ac6995b1f596f2904c27e265628169ba6b5c662d09ea5"
+    },
+    {
+      "kind": "pagination",
+      "locale": "ru",
+      "zoom": 1,
+      "run": "run-33syfzh1",
+      "status": "ACTUAL_AT_READING_OBSERVED",
+      "exit": 0,
+      "checks": 9,
+      "assertions": 9,
+      "sourceManifestSha256": "b2b9a917e3901a0c1f0ac6995b1f596f2904c27e265628169ba6b5c662d09ea5"
+    },
+    {
+      "kind": "pagination",
+      "locale": "az",
+      "zoom": 1,
+      "run": "run-u67wcky2",
+      "status": "ACTUAL_AT_READING_OBSERVED",
+      "exit": 0,
+      "checks": 9,
+      "assertions": 9,
+      "sourceManifestSha256": "b2b9a917e3901a0c1f0ac6995b1f596f2904c27e265628169ba6b5c662d09ea5"
+    },
+    {
+      "kind": "pagination",
+      "locale": "ru",
+      "zoom": 2,
+      "run": "run-06o_pnqt",
+      "status": "ACTUAL_AT_READING_OBSERVED",
+      "exit": 0,
+      "checks": 9,
+      "assertions": 9,
+      "sourceManifestSha256": "b2b9a917e3901a0c1f0ac6995b1f596f2904c27e265628169ba6b5c662d09ea5"
+    },
+    {
+      "kind": "pagination",
+      "locale": "az",
+      "zoom": 2,
+      "run": "run-vyv3dy87",
+      "status": "ACTUAL_AT_READING_OBSERVED",
+      "exit": 0,
+      "checks": 9,
+      "assertions": 9,
+      "sourceManifestSha256": "b2b9a917e3901a0c1f0ac6995b1f596f2904c27e265628169ba6b5c662d09ea5"
+    }
+  ],
+  "localCRCAndAllMemberHashes": "PASS",
+  "remoteBinaryRoundtrip": "NOT_PERFORMED",
+  "limits": [
+    "actualOrca with ALSA null, no humanlistening",
+    "development runtime",
+    "sampled computed RGB ratios pending effects supplement",
+    "all initial negatives/intermediate positives retained by original run identity; original 178 and54archives unchanged"
+  ],
+  "negativeSourceSnapshots": 15
+}

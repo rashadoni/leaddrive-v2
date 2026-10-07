@@ -1,0 +1,240 @@
+{
+  "schema": "independent-c8-r6-preparation-review/v1",
+  "reviewedAt": "2026-10-06T21:26:26.271176+00:00",
+  "status": "PREPARED_PACKET_TERMS_AND_CONDITIONAL_LEDGER_ACCEPTED_NOT_WHOLE_ITEM_CLOSURE",
+  "sourceHead": "30c4185b41d85be43a588e71d8c74c5f34e63596",
+  "tree": "9302e6432c64e818d7859dae78977a35fc996749",
+  "main": "251823a5b1b78818593e14be1a8ac8be47e321f4",
+  "ledger": {
+    "method": "Parse all canonical WF-Cx-nnn table rows in document order, last full task-row override wins. PARTIAL (OWNER ATTESTATION) is non-DONE and retained; later C8-011 DONE override is included. Historical aggregate checkpoint prose does not overwrite task identities.",
+    "current": {
+      "unique": 161,
+      "done": 83,
+      "open": 78,
+      "C8Done": 5,
+      "C8Total": 11,
+      "C8RoundedPercent": 45,
+      "passedGatesUnchanged": 14,
+      "totalGatesUnchanged": 15,
+      "weightedRaw": 59.908902691511386,
+      "weightedRounded": 60,
+      "openP0P1": 74
+    },
+    "conditionalOnlyC8_002Done": {
+      "unique": 161,
+      "done": 84,
+      "open": 77,
+      "C8Done": 6,
+      "C8Total": 11,
+      "C8RoundedPercent": 55,
+      "passedGatesUnchanged": 14,
+      "totalGatesUnchanged": 15,
+      "weightedRaw": 60.40579710144928,
+      "weightedRounded": 60,
+      "openP0P1": 73
+    },
+    "soleStatusDelta": "WF-C8-002 PARTIAL -> DONE only after final exact-head CI and independent finite acceptance; no phase-gate increment.",
+    "formula": "round(80 * acceptedTasks /161 +20 * passedPhaseGates /15)",
+    "gateEvidenceScope": "14/15 is the existing recorded accepted gate ledger, preserved without rerunning or re-accepting all phase gates.",
+    "noLedgerMutation": true
+  },
+  "baselineGateIdentity": {
+    "eightExactCurrentAndMainBlobs": [
+      {
+        "path": "typecheck-baseline.json",
+        "mainBlob": "10afff7f7fa1d2d4ea79f2bce53e2b7ca29e484a",
+        "currentBlob": "10afff7f7fa1d2d4ea79f2bce53e2b7ca29e484a",
+        "unchanged": true
+      },
+      {
+        "path": "test-baseline.json",
+        "mainBlob": "fcdde20b245a686642676341f01cb39e73e42ffa",
+        "currentBlob": "fcdde20b245a686642676341f01cb39e73e42ffa",
+        "unchanged": true
+      },
+      {
+        "path": "scripts/ci/check-typecheck-gate.sh",
+        "mainBlob": "e6c3c4a836424b834e90f4192ad81513c9541b9c",
+        "currentBlob": "e6c3c4a836424b834e90f4192ad81513c9541b9c",
+        "unchanged": true
+      },
+      {
+        "path": "scripts/ci/check-typecheck-baseline.mjs",
+        "mainBlob": "034bfd1f18061bad8291f505367e84c74ec510ae",
+        "currentBlob": "034bfd1f18061bad8291f505367e84c74ec510ae",
+        "unchanged": true
+      },
+      {
+        "path": "scripts/check-test-baseline.mjs",
+        "mainBlob": "7c27358c48c09131ce7966b2f4938490591c3cd1",
+        "currentBlob": "7c27358c48c09131ce7966b2f4938490591c3cd1",
+        "unchanged": true
+      },
+      {
+        "path": ".github/workflows/pr-checks.yml",
+        "mainBlob": "952038c2356dad827cfbb69eb130f5fa17b7b541",
+        "currentBlob": "952038c2356dad827cfbb69eb130f5fa17b7b541",
+        "unchanged": true
+      },
+      {
+        "path": ".github/workflows/gitleaks.yml",
+        "mainBlob": "4b696fe261a4629b974482dcc5edae52a44a77c5",
+        "currentBlob": "4b696fe261a4629b974482dcc5edae52a44a77c5",
+        "unchanged": true
+      },
+      {
+        "path": ".github/workflows/runner-policy.yml",
+        "mainBlob": "22e3e8b818e4d7235828d3413ef5dec203e85260",
+        "currentBlob": "22e3e8b818e4d7235828d3413ef5dec203e85260",
+        "unchanged": true
+      }
+    ],
+    "gatedTypePairs": 64,
+    "knownFailingTestFiles": 18,
+    "qualification": "These are unchanged baseline inventories, not evidence that the current full compiler has zero diagnostics or that the current suite has exactly this actual failing list. R5 remains pending."
+  },
+  "packetTerms": {
+    "readWholePreparedREADME": true,
+    "R5AndFinalAcceptanceExplicitlyPending": true,
+    "accepted": [
+      "Read-only C8 UI change has no data/schema migration; rollback is separately approved presentation/lifetime/error reversal preserving C7, MTM, facts/grants/assignments. No database repair or historical reconstruction is proposed.",
+      "Finite support states and synthetic reproduction/aggregate statuses preserve privacy. No employee roster, arbitrary error payload, proof, token or credential collection is authorized.",
+      "Real cohort collector/retention/support gates remain distinct; unexpected roster disclosure or stale-principal rows require stop/escalation. No collector pipeline or activation approval is inferred.",
+      "AT transfer is identified as historical frozen runtime plus unchanged relevant source, not relabelled as exact30c new Orca execution.",
+      "Sampled contrast and null-audio boundaries are explicit; remote binary readback is explicitly not performed. Earlier negatives and old archives remain preserved.",
+      "PR605 owns dependent source; PR606 validation-only must not be merged. Separate scoped merge/deploy/activation approval remains required."
+    ],
+    "durabilityQualification": "This review reads prepared terms only. It does not independently validate newly prepared supplement ZIP bytes, external final manifest completeness or remote upload/tree/durability. Future-tense publication assertions must become exact commit/blob bindings in the final packet."
+  },
+  "nextC12": {
+    "planAcceptedAsPreparation": true,
+    "sourceBindings12VerifiedAgainstExact30c": true,
+    "existingDenseOperationsRosterImplementationRecognized": true,
+    "notAnotherHelper": true,
+    "firstScope": "Inventory prior source-bound PG/operations receipts, bind schema/RLS/trigger/index identities and add only genuinely unexecuted isolated visibility/timeout assertions.",
+    "limits": "No full historical migration repair/apply, production ACL/trigger completeness, representative load, collector delivery, runtime scheduling or row credit. Historical api_keys blocker remains distinct from unimplemented test/evidence work.",
+    "noNextImplementationAuthorizedByThisReceipt": true
+  },
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "remaining": [
+    "Exact30c current full hosted compiler/build/applicable jobs terminal acceptance.",
+    "Final immutable evidence publication and independent durability review.",
+    "Only then sole C8-002 canonical row/checkpoint update with conditional counts above."
+  ],
+  "supportBindings": [
+    {
+      "path": "/tmp/hrm-c8-acceptance-20261006/final-packet/README.md",
+      "bytes": 6901,
+      "sha256": "ef14b134a714940ea2079d3782bb6b04e829303183142840971cf68cfebf9a29"
+    },
+    {
+      "path": "/tmp/hrm-c8-acceptance-20261006/next-c12-prepared.json",
+      "bytes": 5790,
+      "sha256": "c4f8e14fe18e9c0f2cf31ffb0e07230bec8ef9b8306ad6573341c9166e675632"
+    },
+    {
+      "path": "/tmp/hrm-c8-acceptance-20261006/baseline-gate-identity.json",
+      "bytes": 1604,
+      "sha256": "eedf7cf03af9b945c80b46be0226696aec444af101b520fba6a1b853099bd3c9"
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+      "bytes": 1163415,
+      "sha256": "7abbe39499a266388a58dcd49ca04e56f09f5ca9573e3f41ba3614729833b89d"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent-tree.json",
+      "bytes": 2999598,
+      "sha256": "34a69a5be80966b8c1a733b7cee5e8635a3e462035e63b959385af3bfe43a1d7"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent-mainTree.json",
+      "bytes": 2967203,
+      "sha256": "842d6e44e91112fe38590d753be9347fb3a0585444a43dcf9b9a7d6e7c81f949"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent/review-prepared-packet.py",
+      "bytes": 7249,
+      "sha256": "c7ebfc7ecd14999738a974d0bee4dcb30f1711e4ba57ef2f123990aa0e72fe31"
+    }
+  ],
+  "sourceBindings": [
+    {
+      "path": "src/lib/workforce/reconciliation-snapshot.ts",
+      "bytes": 9679,
+      "sha256": "bdba98ef3f2d18b916200673038b4ad3eb523f2a5e3d12c864198eac26f490a3",
+      "blob": "97aa9097d0fdadcbedcd77df053531ac592d9039"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-source-page.ts",
+      "bytes": 5013,
+      "sha256": "7c45f9b7d1b621d7418e4ce18cdbace2bfed1a9a3a522944c5504c1259da03fe",
+      "blob": "24a8b7b9b8cb51bd31ec5ae1c2f0981ad5d59fea"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-approval-group.ts",
+      "bytes": 4263,
+      "sha256": "aa45ab91f54678c457d066a9a8bc044acabbd5cd29df4bad1b1924f7c0632a05",
+      "blob": "8ecafeb590c05bac26ce71dde0587496309d61ca"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-export-audit.ts",
+      "bytes": 7445,
+      "sha256": "38094ed52225428eb46eae6247f4a618a98d66e4e83151b7ba217168c6722409",
+      "blob": "7d3e57bf9fe795674a61dddca63e545701ae4d40"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-dense.ts",
+      "bytes": 8490,
+      "sha256": "500f3f9b68cb68a0ab0ee6085814961b359b46ceb3b18a5ba38d9cafbd175959",
+      "blob": "99e7ddf90d536a78baeff97f1dd95fb00d18b644"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-sweep.ts",
+      "bytes": 3049,
+      "sha256": "309ce1eabde967c795c47bb4a123f7c4cfd73a2a13638d8937327d8db4b0024c",
+      "blob": "0fec4461ce893335761d6d2ba11dbefb6836a2b4"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-cursor-store.ts",
+      "bytes": 6533,
+      "sha256": "8b04ef4d1c7ea5cca424ef13e7c0d80e949271523a22cf4d43a545049949a6bd",
+      "blob": "f43235f707457f3cafef25ebe2fdec97e395f2ef"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-operations.ts",
+      "bytes": 11588,
+      "sha256": "514eb7cc12e5d89dabb5cd03ccddadefd7bec50c682620bc1cccca6bdb5c6576",
+      "blob": "c4f7738a9284c3ab7251eaf2fd92a7006ef04ebe"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-roster-health.ts",
+      "bytes": 6396,
+      "sha256": "896fb07c70b918714ca5c5cd7685fbdd9655811a06c0fd3a41dd095de2f911e9",
+      "blob": "f707fd0b652b18fae49ea4ac500503f9f0dcacee"
+    },
+    {
+      "path": "docs/workforce-c12-dense-operations-2026-10-05.md",
+      "bytes": 5401,
+      "sha256": "c69199ad54e9404e25e6a1f2e324cb3476e9d4b66664f3e27cd46c38c9780c21",
+      "blob": "821f4909dff71327c78ee418f6e3fe7d5115c246"
+    },
+    {
+      "path": "docs/workforce-c12-sweep-staging-2026-10-05.md",
+      "bytes": 5677,
+      "sha256": "fca6a3692af9545731a4461a99338e7d2280e2ef85d73d7fd5a0c303feac5cfc",
+      "blob": "7a484414a5bd3758711292c66583b953c6c0d531"
+    },
+    {
+      "path": "docs/workforce-c12-fault-fairness-matrix-2026-10-06.md",
+      "bytes": 9281,
+      "sha256": "0e063efb3182aaf13389e8c73483ee5804d6ecc2329319afb7016397babef2e4",
+      "blob": "b1ee0f6477e9a99a8444fad751fc5ac097728e8c"
+    }
+  ]
+}

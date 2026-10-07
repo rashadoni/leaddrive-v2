@@ -1,0 +1,210 @@
+{
+  "status": "BOUNDED_TODAY_ERROR_HANDLING_ACCEPTED_25_INDEPENDENT_TESTS_PASS_WITH_SELF_COPY_P3",
+  "at": "2026-10-06T20:50:36.781356+00:00",
+  "reviewer": "existing independent reviewer; read-only source and own/tmp tests",
+  "sourceManifest": {
+    "path": "/workspace/hrm-c8-session-at-20261006/source-manifest.json",
+    "bytes": 1557654,
+    "sha256": "c0f2c6e9244aadfabda7d5fe1feffa5a7609ddd5a5a0d8f4fb113f19c64e7430"
+  },
+  "sourceBindings": [
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/src/components/workforce/workforce-workbench.tsx",
+      "bytes": 86951,
+      "sha256": "8ad7742b9e5be96d66f13743bdf5c9faa1ca8ffdea7cc322bf24d7003dd140cb",
+      "repositoryPath": "src/components/workforce/workforce-workbench.tsx",
+      "matchesATManifest": true
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/src/__tests__/workforce-today-session-isolation-ui.test.ts",
+      "bytes": 21419,
+      "sha256": "d95e39010bac981ca5b375c795defcc128cd2109c9e2f0041e52e2315ac853bd",
+      "repositoryPath": "src/__tests__/workforce-today-session-isolation-ui.test.ts",
+      "matchesATManifest": true
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/messages/en.json",
+      "bytes": 1348881,
+      "sha256": "eaf1be4888711829253ceeb35d0d77e535114d6b6d203f31c29656c8d190ac88",
+      "repositoryPath": "messages/en.json",
+      "matchesATManifest": true
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/messages/ru.json",
+      "bytes": 1991585,
+      "sha256": "7bcf184537d9fecdef3456c0ad4ae1a4128dd3ecee79edc392c7de815d463fab",
+      "repositoryPath": "messages/ru.json",
+      "matchesATManifest": true
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/messages/az.json",
+      "bytes": 1492053,
+      "sha256": "f31f48fa0e113385c36e6e7c99d3dcc3c7ad787caeeb63e41a1cd8bd17d32aad",
+      "repositoryPath": "messages/az.json",
+      "matchesATManifest": true
+    }
+  ],
+  "scope": "Today initial and pagination read failures only; TodayReadError status401/403/other selects finite locale keys; nonToday read/othermutation/error branches unchanged.",
+  "sourceFindings": [
+    "Source diff against immutable00ec workbench comprises one private error class, initialToday conditionalthrow+localizedcatch and paginationthrow+localizedtoast. No request URLs/methods/payloads/auth guards/sessionkey/return/fences/domainwriter changes.",
+    "Untrusted response.error/code are not inspected for Today failure; transport errors and malformed200 payloads use generic unavailable.",
+    "Existing cancellation/loadidentity guards precede visibleerrors/toasts, with old-scope failures ignored. Pagination failure retains previously authorized current rows and allowsretry; no automatic entitlementrevocation behavior is invented.",
+    "ActualEN/RU/AZcatalogs used in independent tests; three matchingkey additions only.",
+    "Timesheet and Requests initialread failures retain exact previous domain error contract in actualcomponent tests."
+  ],
+  "independentExecution": {
+    "tests": 25,
+    "passed": 25,
+    "failed": 0,
+    "skipped": 0,
+    "framework": "Actual React workbench and real next-intl catalogs in jsdom; mocked session/fetch plus toast spy. No actualbrowser/AT/RLS/newfullcompiler credit.",
+    "cases": [
+      "en initial non-JSON 401 safely localizes and retry clears error",
+      "en pagination 401 non-JSON preserves old authorized rows and retry",
+      "en initial non-JSON 403 safely localizes and retry clears error",
+      "en pagination 403 non-JSON preserves old authorized rows and retry",
+      "en initial non-JSON 503 safely localizes and retry clears error",
+      "en pagination 503 non-JSON preserves old authorized rows and retry",
+      "ru initial non-JSON 401 safely localizes and retry clears error",
+      "ru pagination 401 non-JSON preserves old authorized rows and retry",
+      "ru initial non-JSON 403 safely localizes and retry clears error",
+      "ru pagination 403 non-JSON preserves old authorized rows and retry",
+      "ru initial non-JSON 503 safely localizes and retry clears error",
+      "ru pagination 503 non-JSON preserves old authorized rows and retry",
+      "az initial non-JSON 401 safely localizes and retry clears error",
+      "az pagination 401 non-JSON preserves old authorized rows and retry",
+      "az initial non-JSON 403 safely localizes and retry clears error",
+      "az pagination 403 non-JSON preserves old authorized rows and retry",
+      "az initial non-JSON 503 safely localizes and retry clears error",
+      "az pagination 503 non-JSON preserves old authorized rows and retry",
+      "200 application failure never reads untrusted error/code getters",
+      "non-Error string transport rejection is generic and private text absent",
+      "200 null payload fails generically without crashing or leaking TypeError",
+      "old principal initial403 does not replace fresh current rows",
+      "old pagination403 emits no toast after principal remount",
+      "requests existing domain error still follows its unchanged contract",
+      "timesheet existing domain error still follows its unchanged contract"
+    ],
+    "initialHarnessFailure": "Initialrun zeroexecutedtests due cross-root setupmodule path resolution. OriginalJSON/config retained; copied same setup intoown/tmp and reran unchangedproductsource.",
+    "noCanaryLeakAndNoGetterRead": true
+  },
+  "ownerHistory": {
+    "actualATNegative": {
+      "receipt": {
+        "path": "/workspace/hrm-c8-session-at-20261006/run-ltcj6sf_/at-receipt.json",
+        "bytes": 19994,
+        "sha256": "a19889abeb50a98d584807f985593aefd02b421f436a5d3e7a7a7d7c2161e38e"
+      },
+      "pass": 4,
+      "fail": 1,
+      "failure": "RealRU403detail remained English whilelocalizedheading/nativeRetry/noRoster/privateNoStore passed; original preserved."
+    },
+    "unitNegative": "Owner23prior tests passed and7new tests failed; minimized original bound.",
+    "ownerFixedTests": "109/109 targeted reported in boundownerreceipt; not reclassified as independent tests."
+  },
+  "catalogs": [
+    {
+      "locale": "en",
+      "exactlyThreeNewKeys": true,
+      "values": {
+        "managerReadSessionExpired": "Sign in again to load this team view.",
+        "managerReadDenied": "Your account does not have access to this team view.",
+        "managerReadUnavailable": "Team data is temporarily unavailable. Try again."
+      }
+    },
+    {
+      "locale": "ru",
+      "exactlyThreeNewKeys": true,
+      "values": {
+        "managerReadSessionExpired": "Чтобы загрузить обзор команды, войдите снова.",
+        "managerReadDenied": "У вашей учётной записи нет доступа к этому обзору команды.",
+        "managerReadUnavailable": "Данные команды временно недоступны. Повторите попытку."
+      }
+    },
+    {
+      "locale": "az",
+      "exactlyThreeNewKeys": true,
+      "values": {
+        "managerReadSessionExpired": "Komanda görünüşünü yükləmək üçün yenidən daxil olun.",
+        "managerReadDenied": "İstifadəçi hesabınızın bu komanda görünüşünə girişi yoxdur.",
+        "managerReadUnavailable": "Komanda məlumatları müvəqqəti olaraq əlçatan deyil. Yenidən cəhd edin."
+      }
+    }
+  ],
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": [
+      {
+        "id": "SELF_TODAY_TEAM_COPY",
+        "kind": "nonblocking wording scope",
+        "detail": "Same Today-read mapping also covers employee SELF view; currentthreecatalogmessages refer to team view/data. CorrectforManagerToday; neutralwork-time wording couldavoidmisleading SELFcopy. Source-only observation, no newauthorization/productpolicy demanded."
+      }
+    ]
+  },
+  "acceptanceLimits": [
+    "Sourceerrorfix and25independenttests accepted; finalfixed realAuth/sessiontransition/denial Orca receipt not yetreviewed.",
+    "No immutable newhead/hostedCI/build/globalcompiler orwholeC8acceptance implied.",
+    "No productioncredentials/browserprocess/remote/source modifications byreviewer; tests writtenonlyown/tmp.",
+    "Nullaudio and previousATnegative/disqualifiedhistory remain unchanged.",
+    "WF-C8-002 PARTIAL; ledger83/161DONE78open60 unchanged."
+  ],
+  "supports": [
+    {
+      "path": "/tmp/hrm-c8-error-independent/error.test.ts",
+      "bytes": 9224,
+      "sha256": "699277d476d6788144901ccdca84c7adac53f1fa348756ca67a0063f78318031"
+    },
+    {
+      "path": "/tmp/hrm-c8-error-independent/vitest.config.mjs",
+      "bytes": 348,
+      "sha256": "251d6d973918c85c4c84934dc91d055fc7355e50bccc56a02b7f74ac0e34adec"
+    },
+    {
+      "path": "/tmp/hrm-c8-error-independent/scroll-setup.ts",
+      "bytes": 115,
+      "sha256": "997e19fc6fc117bfbcdd0ac705b76143cfc09715f0a6bdda427c106082d3ea7b"
+    },
+    {
+      "path": "/tmp/hrm-c8-error-independent/results.json",
+      "bytes": 7252,
+      "sha256": "ce975d5c1465075b496261bc5ee1de47a57b0421090d82c845ffe03f2de57d70"
+    },
+    {
+      "path": "/tmp/hrm-c8-error-independent/observations.json",
+      "bytes": 1812,
+      "sha256": "de9479803bc1776e4498b4439cff3054048dcf47dbc0e9c5b539a843caca1224"
+    },
+    {
+      "path": "/tmp/hrm-c8-error-independent/results-initial-setup-failure.json",
+      "bytes": 729,
+      "sha256": "d7dae200b8a1205cdc7852d27f41c2514c6d3fe13873a3972589137a115e691b"
+    },
+    {
+      "path": "/tmp/hrm-c8-error-independent/config-initial.mjs",
+      "bytes": 367,
+      "sha256": "c46a66e0be7d06300172b7b5c8b89d64db5e7d2d31c564362575f059a910aa2c"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-ltcj6sf_/at-receipt.json",
+      "bytes": 19994,
+      "sha256": "a19889abeb50a98d584807f985593aefd02b421f436a5d3e7a7a7d7c2161e38e"
+    },
+    {
+      "path": "/tmp/hrm-c8-acceptance-20261006/error-tests-red.json",
+      "bytes": 616,
+      "sha256": "02b3a64abd5f345b4e1489a3eb55eafa568a31cc974509a78d3f81c5e7c4fdbd"
+    },
+    {
+      "path": "/tmp/hrm-c8-acceptance-20261006/error-tests-fixed.json",
+      "bytes": 20509,
+      "sha256": "d38f9f89cf45b1914894c59f6c13ffffdaeb5b53c317ac504336e2653c0c38c9"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/source-manifest.json",
+      "bytes": 1557654,
+      "sha256": "c0f2c6e9244aadfabda7d5fe1feffa5a7609ddd5a5a0d8f4fb113f19c64e7430"
+    }
+  ]
+}

@@ -99,6 +99,7 @@ describe("Workforce manager Today UI", () => {
       "managerLoadedPeople", "managerSummaryBoundary", "managerPlanTitle", "managerPlannedWindow",
       "managerExceptionsTitle", "managerExceptionsRestricted", "managerExceptionsNone",
       "managerOpenExceptionQueue", "managerPresenceBoundary", "managerLoadMore", "managerLoadingMore",
+      "managerLoadMoreResult", "managerListComplete",
     ]
     for (const locale of ["en", "ru", "az"]) {
       const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).workforcePage

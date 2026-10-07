@@ -59,3 +59,8 @@ replay, C12 staging/collector/zero-loss exercises, scale and pilot criteria rema
 separately scoped. The all 79 audit classified every open row, but its deep source
 review covered named alternatives; it does not prove every remaining item is
 externally blocked. C7 closure leaves 78 open tasks and this C8 row PARTIAL.
+
+
+### 2026-10-06 — superseding acceptance checkpoint
+
+The preceding plan is historical. [Whole manager Today acceptance](./workforce-c8-manager-today-acceptance-2026-10-06.md) records the independently accepted finite product criteria on30c/main251 and the separate incoming-maincb5 delivery checks. Original planned gaps and failed attempts are retained; no production/physical-device or whole-HRM completion is claimed.

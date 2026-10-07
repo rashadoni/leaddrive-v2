@@ -1,0 +1,52 @@
+{
+  "exitCode": 0,
+  "elapsedSeconds": 36.04,
+  "tests": 152,
+  "pass": 152,
+  "failed": 0,
+  "skipped": 0,
+  "files": [
+    {
+      "name": "workforce-reconciliation-approval-group.test.ts",
+      "status": "passed",
+      "tests": 14,
+      "failedNames": []
+    },
+    {
+      "name": "workforce-reconciliation-cursor-store.test.ts",
+      "status": "passed",
+      "tests": 13,
+      "failedNames": []
+    },
+    {
+      "name": "workforce-reconciliation-export-audit.test.ts",
+      "status": "passed",
+      "tests": 17,
+      "failedNames": []
+    },
+    {
+      "name": "workforce-reconciliation-job.test.ts",
+      "status": "passed",
+      "tests": 9,
+      "failedNames": []
+    },
+    {
+      "name": "workforce-reconciliation-roster-health.test.ts",
+      "status": "passed",
+      "tests": 15,
+      "failedNames": []
+    },
+    {
+      "name": "workforce-reconciliation-sweep.test.ts",
+      "status": "passed",
+      "tests": 49,
+      "failedNames": []
+    },
+    {
+      "name": "workforce-reconciliation.test.ts",
+      "status": "passed",
+      "tests": 35,
+      "failedNames": []
+    }
+  ]
+}

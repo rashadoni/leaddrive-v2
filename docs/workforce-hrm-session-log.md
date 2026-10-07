@@ -7688,3 +7688,38 @@ and independent integration review; prior green is not reused as its result.
 
 Only C7 remains newly closed:83/161 DONE,78 open,14/15 gates,weighted60%.
 The separate prepared C8 whole-item/AT plan and all other open rows are unchanged.
+
+
+### 2026-10-06 — WF-C8-002 finite whole-item acceptance, incoming-main successor
+
+Only WF-C8-002 changes to DONE: 84/161 accepted, 77 open, C8 6/11 (55%),
+14/15 gates; weighted raw 60.40579710144928%, rounded 60%; open P0/P1 73.
+[Whole manager Today acceptance](./workforce-c8-manager-today-acceptance-2026-10-06.md)
+binds independent R1–R6 acceptance to runtime30c/main251, actual EN/RU/AZ AT
+90/90, hosted browser/PG, full baseline-qualified compiler gates and production
+build. Original 54/54 AT, 100+14 tests, archives and negative attempts remain.
+The new main cb5 MTM integration is separate: 138/138 local tests pass; its own
+exact-head hosted checks, build, browser and final source review remain pending
+at this publication. No global compiler cleanliness, historical migration replay,
+production activation or additional task/gate credit is inferred.
+Next prepared dependency slice is [existing C12 worker acceptance](./workforce-c12-next-acceptance-slice-2026-10-06.md); C12 remains PARTIAL.
+
+
+### 2026-10-06 — WF-C12-008 whole-tenant reader admission, bounded successor
+
+The prepared C12 slice reproduced an actual hidden-root false MATCHED/cursor
+advance on exact bf6 source. The dormant tick now checks the supported complete
+tenant reader profile inside the protected snapshot and refuses unknown
+RLS/ACL/relation/operator/collation configurations without advancing progress.
+[Bounded acceptance](./workforce-c12-reader-profile-acceptance-2026-10-06.md)
+preserves the original negative, all intermediate FAILs, 35/35 final matrix,
+152/152 existing PostgreSQL regression (zero skips), scoped lint and explicit
+synthetic-schema provenance. No business facts, real grants or runtime schedule
+were changed. Historical staging/control visibility/collectors/retention/load
+and separately scoped activation remain open; WF-C12-008 stays PARTIAL.
+
+Ledger unchanged:84/161 DONE,77 open,C8 6/11,14/15 gates,weighted60%,P0/P1 open73.
+C8 exact bf6 terminal acceptance is preserved in archive382b6e7; PR589 → PR605
+lineage and validation-only606 remain frozen. New exact-head hosted gates and
+independent publication review are tracked separately, with no global-clean or
+production-readiness claim. No merge, deployment or activation is authorized.

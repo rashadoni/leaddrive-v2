@@ -1,0 +1,19 @@
+{
+  "priorHead": "00ec36a55df55672a912ad72765a1b07db041878",
+  "main": "da6d8e5c7d6d6a231af508bf0b243fe507094067",
+  "preservedPR589": "a856a9e533c4f3cec6f2313e69f5be0d5b4d4226",
+  "prior8830BlobsExactBeforeWrite": true,
+  "onlyIncomingMainPaths": [
+    {
+      "path": "src/__tests__/mtm-location-picker-ui.test.ts",
+      "previousBlob": "3af16248937f6911a3c1cdb52eb47b2a3150d423",
+      "newBlob": "37d65fcedeb32866359cada2bc33641ccc9da73b"
+    },
+    {
+      "path": "src/components/mtm/location-picker-map.tsx",
+      "previousBlob": "9e04123d4a9e86ce6ae6a32cb73c5f5d2eb501e0",
+      "newBlob": "0a81c13b4cf1ca972d49e8ab40c68516b740946c"
+    }
+  ],
+  "priorC8SourceAndAllEvidenceUnchanged": true
+}

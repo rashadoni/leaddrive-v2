@@ -1,0 +1,149 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-10-06T22:46:02.296082+00:00",
+  "status": "EXACT_SUCCESSOR_SOURCE_ACCEPTED_HOSTED_TERMINAL_PENDING",
+  "head": "1d1741a73fb0e318b5e7a05f58fc5faf6b2678f2",
+  "tree": "07f994edab248886dea877ec11b74ed7102b886b",
+  "parent": "7df38080839440f2ede9671e9aac01fee5436cd0",
+  "treeProof": {
+    "blobs": 8926,
+    "recomputedTreesIncludingRoot": 2822,
+    "tree": "07f994edab248886dea877ec11b74ed7102b886b",
+    "allBlobModesAndHashesMatch": true,
+    "changedReadbacks": 12,
+    "allReadbacksByteExact": true,
+    "priorUnchanged": 8914,
+    "modified": [
+      ".gitleaks.toml",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/README.md",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/manifest.json"
+    ],
+    "added": [
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/hrm-c12-independent-exact-source-7df3808-20261006.json",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/rejected-global-rule.toml",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/secret-scan-local-metadata.json",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/secret-scan-narrow-rule-verification.json",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/secret-scan-negative-control-attempt1.json",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/secret-scan-negative-control-attempt2.json",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/secret-scan-path-mode-negative.json",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/secret-scan-rule-diagnostic.json",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/verify-secret-rule.py"
+    ],
+    "removed": [],
+    "manifestOriginals": 36,
+    "sameIndependentlyTestedGitleaksConfig": true
+  },
+  "lineage": {
+    "main": "cb5a0453e7ead310e0515e265efee209be1c272b",
+    "primary608": {
+      "head": "1d1741a73fb0e318b5e7a05f58fc5faf6b2678f2",
+      "base": "bf6ed11f2bba8c93e828fb044315794b44224741",
+      "draft": true
+    },
+    "validationOnly609": {
+      "head": "1d1741a73fb0e318b5e7a05f58fc5faf6b2678f2",
+      "base": "cb5a0453e7ead310e0515e265efee209be1c272b",
+      "draft": false
+    },
+    "synthetic": {
+      "sha": "e4aa6e5e32abbe33bee0b0b600f7ee6241f9c1ab",
+      "tree": "07f994edab248886dea877ec11b74ed7102b886b",
+      "parents": [
+        "cb5a0453e7ead310e0515e265efee209be1c272b",
+        "1d1741a73fb0e318b5e7a05f58fc5faf6b2678f2"
+      ]
+    }
+  },
+  "sourceAcceptance": {
+    "runtimeAndHarnessByteIdenticalToAccepted7df": true,
+    "matrix35AndRegression152Transfer": "Prior owner-executed exact-runtime evidence retained; not rerun or credited as hosted DB execution.",
+    "ledger": "Unchanged84/161 DONE,77open,14/15gates,weighted60%,WF-C12-008PARTIAL.",
+    "independentFindings": []
+  },
+  "scanCorrection": {
+    "cause": "Five archived synthetic lease-owner marker occurrences misidentified by generic-api-key; source confirms no authentication use.",
+    "implemented": "Rule-level generic-api-key allowlist only, AND exacttwo anchoredpaths and exactsecret; extends default rules without altering detector regex/entropy/keywords.",
+    "independentControls": 7,
+    "independentControlsPass": 7,
+    "controls": "Original35 remote-byte copies scan clean; intended marker at bothallowedpaths clean; different marker at eachallowedpath, same marker outside and .backup suffix still blocked.",
+    "binary": "Actual local executable byte-equal to gitleaks8.30.1 archive with workflow-pinned SHA verified independently.",
+    "preservedFailure": "Original7df hosted scanFAIL and unpublished rejectedglobalrule negative controls retained, not relabeled PASS.",
+    "currentHostedScan": {
+      "jobId": 112538307781,
+      "status": "completed",
+      "conclusion": "success",
+      "scope": "Fresh exact1d check metadata only; not raw log inspection."
+    }
+  },
+  "hosted": {
+    "allRequiredPassed": false,
+    "snapshot": "scope/runner/scanSUCCESS; typecheck/static and applicable Workforce/C7/Social workflow jobs pending/running at initial snapshot.",
+    "optionalProductionBuild": "SKIPPED; no buildPASS claim.",
+    "noBorrowedHistoricalChecks": true
+  },
+  "evidence": {
+    "currentDirectoryFiles": 37,
+    "manifestOriginals": 36,
+    "manifestAllHashesVerified": true,
+    "newRemoteTextReadbacks": 12,
+    "allOriginalNegativesPreserved": true,
+    "priorC8Archive": "382b6e75d8de68e0ec4825aa7a2977b000674587 remains separately anchored and unchanged, source bf6 stays fixed."
+  },
+  "limits": [
+    "Full historical migration/schema/RLS/ACL/trigger acceptance and approved staging baseline still missing; api_keys blocker unchanged.",
+    "Synthetic18-table profile fixture, onlyworkdays/agents populated, nohistoricalusertriggers; representative density/controlvisibility and roleadministration stability remain independent.",
+    "Collectors/retention/alerts, activation, rollback/drain and wholeC12 completion not established.",
+    "No source/GitHub writes or new DB runs by independent reviewer; only temporary synthetic scanner controls executed.",
+    "Exacthead hosted terminal receipt pending; no merge/deploy/activation approval issued."
+  ],
+  "supports": [
+    {
+      "path": "/tmp/hrm-c12-independent-publication/successor-tree.json",
+      "bytes": 3025067,
+      "sha256": "682ba81a7aa2e90bdef2024600837abae1ac3337de1e52149f05f620c6751f08",
+      "availability": "LOCAL_ONLY supporting original; immutable prior source receipt separately archived"
+    },
+    {
+      "path": "/tmp/hrm-c12-independent-publication/successor-initial-metadata.json",
+      "bytes": 258636,
+      "sha256": "51b8aefcb144c519949daaa5f893ecd8170f4990878ef7ddcbfcbcd5cf7c5898",
+      "availability": "LOCAL_ONLY supporting original; immutable prior source receipt separately archived"
+    },
+    {
+      "path": "/tmp/hrm-c12-independent-publication/successor-synthetic.json",
+      "bytes": 2644,
+      "sha256": "cebd5fb051912fe72571aab26ae5953f56396ec6585647af84f4d642ee28a1eb",
+      "availability": "LOCAL_ONLY supporting original; immutable prior source receipt separately archived"
+    },
+    {
+      "path": "/tmp/hrm-c12-independent-publication/successor-12-blob-readback.json",
+      "bytes": 45925,
+      "sha256": "054499f59cbb62d51e9a777095f709ed999269ca79b3d547ef8503875ef1600f",
+      "availability": "LOCAL_ONLY supporting original; immutable prior source receipt separately archived"
+    },
+    {
+      "path": "/tmp/hrm-c12-independent-publication/successor-proof.json",
+      "bytes": 1416,
+      "sha256": "b9d9cbdf0e2dd0627a3c70aae077d1cbda1a644d27fb21f82c3ac5eeb34d8891",
+      "availability": "LOCAL_ONLY supporting original; immutable prior source receipt separately archived"
+    },
+    {
+      "path": "/tmp/hrm-c12-independent-secret-rule-controls-20261006.json",
+      "bytes": 1612,
+      "sha256": "309e5ed35feb2b8b70f11892348f7f996ccd85b9d30cc4c731b9e404e63662fb",
+      "availability": "LOCAL_ONLY supporting original; immutable prior source receipt separately archived"
+    },
+    {
+      "path": "/tmp/hrm-c12-independent-scan-controls.py",
+      "bytes": 3399,
+      "sha256": "9745489c3c7593da24dc204e51fd4f2a7de7a1ad77fc2e48aaeb9c67894b1e0f",
+      "availability": "LOCAL_ONLY supporting original; immutable prior source receipt separately archived"
+    },
+    {
+      "path": "/tmp/hrm-c12-independent-exact-source-7df3808-20261006.json",
+      "bytes": 15498,
+      "sha256": "abceb136441805eadd38a3b5fd7a41a9f102b40d493802d2861b94464c37a8be",
+      "availability": "LOCAL_ONLY supporting original; immutable prior source receipt separately archived"
+    }
+  ]
+}

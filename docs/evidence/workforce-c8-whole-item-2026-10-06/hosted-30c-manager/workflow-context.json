@@ -1,0 +1,9 @@
+{
+  "stage": "workflow-preparing",
+  "headSha": "30c4185b41d85be43a588e71d8c74c5f34e63596",
+  "ciSha": "99009aff39ae1445e2f43eb3c748db3fe7a3e122",
+  "runId": "37531925881",
+  "runAttempt": "1",
+  "runtime": "ephemeral-next-dev",
+  "productionMutation": false
+}

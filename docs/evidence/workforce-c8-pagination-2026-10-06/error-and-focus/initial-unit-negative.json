@@ -1,0 +1,15 @@
+{
+  "exitCode": 1,
+  "tests": 30,
+  "pass": 23,
+  "fail": 7,
+  "failedNames": [
+    "localizes Today read failure 401 without rendering server details",
+    "localizes Today read failure 403 without rendering server details",
+    "localizes Today read failure 500 without rendering server details",
+    "localizes Today read failure 200 without rendering server details",
+    "localizes a Today transport failure without rendering exception details",
+    "localizes pagination failure 403 while preserving retry and current rows",
+    "localizes pagination failure 503 while preserving retry and current rows"
+  ]
+}

@@ -1,0 +1,218 @@
+{
+  "status": "R3_ACTUAL_SESSION_DENIAL_RETRY_ACCEPTED_R4_SAMPLED_RGB_CONTRAST_QUALIFIED_FINAL_MATRIX_AND_HEAD_PENDING",
+  "at": "2026-10-06T21:10:28.306072+00:00",
+  "scope": "Independent finite R3/R4 evidence and source review; 3completed session runs+1completed fractionalpagination run only. Remaining ongoingmatrix not counted.",
+  "sourceManifest": {
+    "path": "/workspace/hrm-c8-session-at-20261006/source-manifest.json",
+    "bytes": 1557654,
+    "sha256": "b2b9a917e3901a0c1f0ac6995b1f596f2904c27e265628169ba6b5c662d09ea5"
+  },
+  "sourceFiles": 8833,
+  "sourceBytesModesBothCopiesVerified": true,
+  "sourceBindings": [
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/src/components/workforce/workforce-manager-today.tsx",
+      "bytes": 11040,
+      "sha256": "df40bf5d5ac92e5fc73a6ea64146481292954929ebff6616454ad6f09157d87c"
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/src/components/workforce/workforce-workbench.tsx",
+      "bytes": 87022,
+      "sha256": "cd1051a0e5ce25c54a9b8dcec15bad9bbd3cd4050be47171852f3bf2202fc25c"
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/messages/en.json",
+      "bytes": 1348891,
+      "sha256": "d21c7ac4232f6ad965d5a921d04f66107498dd221b06dc0ec7c2330dc85cd621"
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/messages/ru.json",
+      "bytes": 1991636,
+      "sha256": "187ee16d064cb7bc94498e52c4279c2c016fd64d60db06501a793e0574634430"
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/messages/az.json",
+      "bytes": 1492063,
+      "sha256": "29be1b9f7ea5ed8b3aa1a447231468ee2860dad785240a5da18bf1ebd6a125fd"
+    },
+    {
+      "path": "/workspace/hrm-c8-completion-20261006/src/components/ui/button.tsx",
+      "bytes": 2099,
+      "sha256": "2d401bc2999487316df2b5319e28bd3fb5077cb0f625e272ca9a4bf100e6771a"
+    }
+  ],
+  "R3": {
+    "status": "ACCEPTED_BOUNDED_ACTUAL_EXECUTION",
+    "runs": [
+      "run-i76cy91q",
+      "run-inuhdf1q",
+      "run-stoinndz"
+    ],
+    "assertions": 36,
+    "actualSpeechCalls": 1281,
+    "allOriginalCallsReturned": true,
+    "realAuth": "Actual CSRF/credentials callback/sessionidentity and same-page Auth.js BroadcastChannel; mocked session not used.",
+    "lateResponses": "Each oldreal200pagination response fetched under oldprincipal was actually fulfilled while newreal200initial response remained gated. Oldrows absent andnewloading preserved; final25rows withoutoldappend.",
+    "authorization": "Newrealattendance-only principal sees exceptionsnull. Deniedreal403private,no-store andnorooster; syntheticemployee names absent fromactualOrca slices.",
+    "localizedErrors": "Neutral work-time denied andunavailable messages found inactualEN/RU/AZOrca streams. Controlled503 body syntheticprivatecanary absentfromDOMandOrca. Nativekeyboardretry thenreal200roster restores25rows.",
+    "qualification": "The503 fault is explicit interceptedsyntheticresponse, not an observedserveroutage; session andordinarydataresponses use realserver. No additional endpoint/RLSclaim beyond finitefixtures."
+  },
+  "R4": {
+    "status": "SAMPLED_RGB_RATIO_PASS_WITH_VISUAL_EFFECTS_SCOPE_LIMIT",
+    "runs": 3,
+    "samplesPerRun": 58,
+    "totalCheckedSamples": 174,
+    "minimum": 4.574019684523154,
+    "allRatiosIndependentlyRecomputedFromCompositeRGB": true,
+    "selectedActiveSamplesNoOpacityOrGradient": true,
+    "noFullInteractionStateClaim": true,
+    "narrow320": "All3localizedbuttons remain withinwidth and>=48px; RUheight58,others48.",
+    "sourceChanges": "OnlyManagerToday13mutedclasses tozinc600/darkzinc300; exceptionlink orange700/darkorange300; Today-onlyerror detail zinc700/darkzinc300; retainedcontrolscroll-my-2; neutral3catalogmessages. SharedButton/globaltokens unchanged bythisfix.",
+    "limitation": "Helper doesnot capture/filter unsupported filter,backdrop-filter,mix-blend-mode,text-shadow orpseudooverlay effects; background/dedupe doesnot coverevery renderedelement. Accept sampled source-color RGB ratios, not blanketeffectivecontrast orwholepageWCAG.",
+    "completionEvidence": "Before claiming effective renderedcontrast withoutqualification, bound a read-only no-unsupported-effects supplement forselectednodes/ancestors or equivalentlyrestrictclaim with source-backed evidence. Do noteditactiveprobe scripts midrun."
+  },
+  "fractionalPagination": {
+    "run": "run-zl8128bb",
+    "status": "9_OF_9_ACCEPTED",
+    "speechCalls": 407,
+    "allOriginalCallsReturned": true,
+    "nativeZoom": "DPR1→2;640x901→320x450CSS;visualheight450.5;scale1.",
+    "bottom": 442.5,
+    "integerViewportBottomClearance": 7.5,
+    "mainBottomClearance": 8,
+    "focusVisibleAndSameNativeControl": true,
+    "noPredicateRelaxation": true,
+    "qualification": "Measured clearance supports fix; no standalonewholefocusringcontrast claim."
+  },
+  "normalizer": {
+    "status": "ACCEPTED_NARROW_SEMANTIC_COMPARISON",
+    "rule": "Collapsewhitespace,thenremove whitespace immediatelyafterliteralhyphenonlywhenfollowedbyUnicodeletter.",
+    "originalNegative": "run-2zt_mlln remains8/9. Actualoriginalspeech includes work- time withnonpresence sentence intact; strictfocusalreadyPASS.",
+    "recomputed": "Originalfailsoldwhitespace-only phrase match; newnarrowhyphen comparison matchesunchangedlocalizedsentence. Words/negation/numbers notremoved.",
+    "sourceSpeechUnchanged": true,
+    "originalSpeechAndOldExecutedProbeMustRemain": true
+  },
+  "archivePolicy": {
+    "acceptedExactPerRunBasenames": [
+      "at-receipt.json",
+      "source-manifest.json",
+      "orca-presentations.jsonl",
+      "orca-dispatch-completed.jsonl",
+      "executed-script-hashes-before.json",
+      "executed-script-hashes-after.json",
+      "cleanup.json",
+      "safe-error-categories.json",
+      "backend-check.json",
+      "supervisor-events.json",
+      "app-ready.json",
+      "executed-probe.mjs",
+      "executed-pagination-probe.mjs",
+      "executed-contrast-helper.mjs",
+      "atspi-tree.json"
+    ],
+    "requiredSafety": "Uniqueregularrelativefiles only,no symlinks/absolute/parenttraversal/directorywildcard; manifest rawlength/SHA256 andperrun source/script identities.",
+    "atspi": "Optional actualminimizedtree schema depth/role/name/focused/children; inspected ENtree875nodes noURL/email/tokenassignment-likenames. Verifyevery additionaltree contains onlyprivatefixturedesktop beforeincluding.",
+    "excluded": [
+      "all .log",
+      "screenshots/images",
+      "fixture-private.json",
+      "credential/env files",
+      "Chromium profile/cache",
+      "config/runtime directories",
+      "xauthority",
+      "sockets",
+      "unfiltered app/CI logs"
+    ],
+    "history": "Keep originaldenial4/5,contrast11/12,palette11/12,fractional8/9 andhosted0.5pxfocusfailure asoriginals; fixedresults additive. No safe-summary substitution for negativeoriginals.",
+    "sourceManifestQualification": "Manifest hashes bindfiles butdonot themselvesarchive sourcebytes; per-run executed-script snapshots preserve exactcomparators.",
+    "notClaimed": "No newarchiveZIP readback yet; onlylistedlocaloriginals independentlyhashed."
+  },
+  "unchangedDependencyTransfer": {
+    "status": "CONDITIONAL_FUTURE_CHECK_NOT_YET_ACCEPTED",
+    "incomingStagedPaths": 11,
+    "rule": [
+      "KeepacceptedAT receipt/run/sourceSHA immutable andexplicitlyhistorical.",
+      "Finalexacttree mustpreserve allManagerToday,Workbench,errorcopy,auth/session/provider/route/RLSdependencies,globalCSS/Button/browser+Orcaprobe relevantcode/modes orrerun affectedscenarios.",
+      "Threecatalogwholefiles necessarilychange: independentlyverifyallWorkforce/nav/sharedview leavesunchanged andonlyauthorizedMTMkeys added; no blindwholefileunchangedclaim.",
+      "Verify8incomingMTMpaths exactnewmain andnoalteredsharedsideeffect/importreachablebyWorkforcepage; preserveaccepted589/C7delta.",
+      "RetainfreshfinalheadhostedPG/browser/typebaseline/static/build andindependenttree checks; prior d97compiler/build doesnotacceptlaterfixes.",
+      "IfonlyisolatedMTM+unrelatedcatalogleaf changes, attachadditivetransferreceipt describing scopeofreusedlocalAT—notafabricatednewheadATrerun."
+    ]
+  },
+  "open": [
+    "Remainingpaginationmatrixscenarios not reviewedinthisreceipt.",
+    "Effectivevisualeffects contrast supplement/qualification unresolved; noactualproductfailureinacceptedcolor samples.",
+    "Freshmain251integration/finalimmutablehead+hostedCI/PG/browser stillpending.",
+    "No wholeC8orledgerclosure;83/161DONE78open60 remains."
+  ],
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2Product": [],
+    "evidenceQualification": [
+      {
+        "id": "CONTRAST_UNMODELED_EFFECTS",
+        "detail": "Observedcolor-ratio proof finite; helperdoesnotcurrentlyboundallvisualeffects. Nofullrenderedcontrastclaim."
+      }
+    ],
+    "resolvedP3": "Neutralwork-time wording removesSELF/teamcopy mismatch."
+  },
+  "supports": [
+    {
+      "path": "/tmp/hrm-c8-r3r4-independent/validation.json",
+      "bytes": 15474,
+      "sha256": "c8e7ca904d8b7eb7e711fe2a2c2753acae824ba1796b688295e11e4576e253df"
+    },
+    {
+      "path": "/tmp/hrm-c8-r3r4-independent/verify.py",
+      "bytes": 6101,
+      "sha256": "47415805e34bb012d24d965bfe2efbc45dbb10afde2f184995269d30199678a3"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/probe.mjs",
+      "bytes": 15084,
+      "sha256": "60f519f990b5edf43eea8328d24f436025773e24d68bb3304b0d04b064a20b4f"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/pagination-probe.mjs",
+      "bytes": 12633,
+      "sha256": "2af9e75735f7c45290193d7a3d3619686c6afea94943f8fc41cfec914cefca8f"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/contrast-helper.mjs",
+      "bytes": 3079,
+      "sha256": "0c38740781f9adfcd7d3ce6aedec15aeecb94a2988272e72f6132cb8bb89a180"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/observer.py",
+      "bytes": 1359,
+      "sha256": "e9b95bfd40018c0db3a9617bbd5f7300652d290e62a2dd19ebaa0138f6087d6e"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-ltcj6sf_/at-receipt.json",
+      "bytes": 19994,
+      "sha256": "a19889abeb50a98d584807f985593aefd02b421f436a5d3e7a7a7d7c2161e38e"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-62ehoths/at-receipt.json",
+      "bytes": 94423,
+      "sha256": "bcf58016086726395c0b5b44b8088f4276a64ef8ff8e6b1c4943526b04ff3be7"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-vmft4p33/at-receipt.json",
+      "bytes": 99810,
+      "sha256": "3dd478a9c26bd90ad4740519c4060b92a395b96a6349f2550ed1d6a02f89ca35"
+    },
+    {
+      "path": "/workspace/hrm-c8-session-at-20261006/run-2zt_mlln/at-receipt.json",
+      "bytes": 93074,
+      "sha256": "ec550ff55209f549e2620cd1265ef934e8fb4891d1fff8908ca842678ff12664"
+    },
+    {
+      "path": "/tmp/hrm-c8-acceptance-20261006/hosted-d97-manager/manager-today-receipt.json",
+      "bytes": 114110,
+      "sha256": "4d922e92b7d88b9a2724c5e611acea08b2a3f830318903928acae39941781fac"
+    }
+  ],
+  "actions": "Reviewer read-onlysource+syntheticJSON/streams; no rawlogs/screenshots/credentials/source/remote/browser/processwrites; own/tmpproofsonly."
+}
