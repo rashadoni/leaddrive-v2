@@ -442,6 +442,38 @@ describe("POST /api/v1/mtm/sync/push", () => {
     expect(txMock.mtmAlert.create).toHaveBeenCalledTimes(1)
   })
 
+  // Owner, 2026-10-07: the organization may let agents check in while not at
+  // the client and review the visit later.
+  it("accepts an out-of-zone check-in when the organization allows it, with an alert that says accepted", async () => {
+    txMock.mtmCustomer.findFirst.mockResolvedValue({ id: "cust-1", latitude: 40.0, longitude: 49.0, geofenceRadius: 100 })
+    txMock.mtmSetting.findFirst.mockImplementation(async ({ where }: { where: { key: string } }) => (
+      where.key === "agentCheckInOutsideZone" ? { value: true } : null
+    ))
+    const res = await POST(req({ operations: [checkinOp(uuid(), { checkInLat: 41.0, checkInLng: 50.0 })] }), undefined as never)
+
+    expect((await res.json()).data.results[0].status).toBe("ok")
+    expect(txMock.mtmVisit.create).toHaveBeenCalledTimes(1)
+    expect(txMock.mtmAlert.create).toHaveBeenCalledTimes(1)
+    expect(txMock.mtmAlert.create.mock.calls[0][0].data.metadata).toMatchObject({
+      outsideZoneAllowed: true,
+      messageKey: "outOfZoneCheckInAllowed",
+      geofenceRadius: 100,
+    })
+  })
+
+  it("does not open the zone on anything but a stored true", async () => {
+    txMock.mtmCustomer.findFirst.mockResolvedValue({ id: "cust-1", latitude: 40.0, longitude: 49.0, geofenceRadius: 100 })
+    for (const value of [false, "false", "yes", 1, null]) {
+      txMock.mtmVisit.create.mockClear()
+      txMock.mtmSetting.findFirst.mockImplementation(async ({ where }: { where: { key: string } }) => (
+        where.key === "agentCheckInOutsideZone" ? { value } : null
+      ))
+      const res = await POST(req({ operations: [checkinOp(uuid(), { checkInLat: 41.0, checkInLng: 50.0 })] }), undefined as never)
+      expect((await res.json()).data.results[0].result.status).toBe("out_of_zone")
+      expect(txMock.mtmVisit.create).not.toHaveBeenCalled()
+    }
+  })
+
   it("check-in conflicts when a targeted route point isn't available to the agent", async () => {
     const res = await POST(req({ operations: [checkinOp(uuid(), { routePointId: "rp-1" })] }), undefined as never)
     expect((await res.json()).data.results[0].result.status).toBe("route_point_unavailable")

@@ -58,6 +58,7 @@ const ROUTE_DEVIATION_KEYS = new Set(["routeDeviation", "agentRouteDeviation"])
 const OUT_OF_ZONE_KEYS = new Set([
   "outOfZoneCheckIn",
   "outOfZoneCheckInForced",
+  "outOfZoneCheckInAllowed",
   "geofenceViolation",
   "geofenceViolationUnnamed",
   "agentOutOfZoneCheckIn",

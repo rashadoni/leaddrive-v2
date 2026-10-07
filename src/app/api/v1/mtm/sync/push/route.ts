@@ -32,7 +32,7 @@ import {
 } from "@/lib/mtm/field-scope"
 import { VisitActionResultSchema } from "@/lib/mtm-validators"
 import { getMtmSettings } from "@/lib/mtm-settings"
-import { clampCheckInGeofenceRadius as geofenceRadius, createAlertOutOfZoneReader, mtmVisitPlaceSnapshot } from "@/lib/mtm/check-in-geofence"
+import { clampCheckInGeofenceRadius as geofenceRadius, createAlertOutOfZoneReader, createOutsideZoneCheckInReader, mtmVisitPlaceSnapshot } from "@/lib/mtm/check-in-geofence"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { canApplyMobileTaskTransition, type MobileTaskStatus } from "@/lib/mtm/mobile-task"
 import {
@@ -134,6 +134,7 @@ export const POST = withRouteFieldWebRlsAuth("write", async (req, auth) => {
   const results: Array<{ operationId: string; status: SyncStatus; result: unknown; replayed?: boolean }> = []
   // alertOutOfZone gates only the OUT_OF_ZONE alert row, never the refusal.
   const alertOutOfZoneEnabled = createAlertOutOfZoneReader(orgId)
+  const outsideZoneCheckInEnabled = createOutsideZoneCheckInReader(orgId)
 
   for (const op of operations) {
     const prior = seen.get(op.operationId)
@@ -142,7 +143,7 @@ export const POST = withRouteFieldWebRlsAuth("write", async (req, auth) => {
       continue
     }
 
-    const applied = await applyOp(orgId, principalId, actor, auth.name, op, alertOutOfZoneEnabled)
+    const applied = await applyOp(orgId, principalId, actor, auth.name, op, alertOutOfZoneEnabled, outsideZoneCheckInEnabled)
     results.push({ operationId: op.operationId, ...applied })
   }
 
@@ -156,6 +157,7 @@ async function applyOp(
   actorName: string,
   op: z.infer<typeof opSchema>,
   alertOutOfZoneEnabled: ReturnType<typeof createAlertOutOfZoneReader>,
+  outsideZoneCheckInEnabled: ReturnType<typeof createOutsideZoneCheckInReader>,
 ): Promise<ApplyResult & { replayed?: boolean }> {
   const kind = typeof op.data.kind === "string" ? op.data.kind : ""
   const d = op.data
@@ -276,7 +278,9 @@ async function applyOp(
         const checkInLng = coordinates.longitude
 
         // Geofence: an out-of-zone check-in is rejected with an alert, no visit
-        // (same rule as the native engine — protects field-data integrity offline).
+        // (same rule as the native engine — protects field-data integrity offline),
+        // unless the organization switched `checkInOutsideZone` on: then it is
+        // accepted, and the alert says so instead of «refused».
         if (validCoordinate(checkInLat, -90, 90) && validCoordinate(checkInLng, -180, 180)) {
           let radius = customer.geofenceRadius
           if (radius == null) {
@@ -287,21 +291,27 @@ async function applyOp(
           const allowedRadius = geofenceRadius(radius)
           if (distanceMeters > allowedRadius) {
             const roundedDistance = Math.round(distanceMeters)
+            const outsideAllowed = await outsideZoneCheckInEnabled(tx)
             if (await alertOutOfZoneEnabled(tx)) await tx.mtmAlert.create({
               data: {
                 organizationId: orgId, agentId: fieldAgentId, type: "OUT_OF_ZONE", category: "WARNING",
                 title: "Out of zone check-in",
-                description: `Agent attempted check-in ${roundedDistance}m away (max ${allowedRadius}m)`,
+                description: outsideAllowed
+                  ? `Check-in accepted ${roundedDistance}m away by organization setting (max ${allowedRadius}m)`
+                  : `Agent attempted check-in ${roundedDistance}m away (max ${allowedRadius}m)`,
                 metadata: {
                   customerId: resolvedCustomerId, routeId: routePoint?.routeId ?? null, routePointId: routePoint?.id ?? null,
                   distanceMeters: roundedDistance, geofenceRadius: allowedRadius,
-                  ...mtmAlertMessage("outOfZoneCheckIn", { distanceMeters: roundedDistance, geofenceRadius: allowedRadius }),
+                  outsideZoneAllowed: outsideAllowed,
+                  ...mtmAlertMessage(outsideAllowed ? "outOfZoneCheckInAllowed" : "outOfZoneCheckIn", { distanceMeters: roundedDistance, geofenceRadius: allowedRadius }),
                 },
               },
             })
-            const r = { status: "out_of_zone", code: MTM_CHECK_IN_ERROR.TOO_FAR, distanceMeters: roundedDistance, geofenceRadius: allowedRadius }
-            await pin("conflict", r)
-            return { status: "conflict" as const, result: r }
+            if (!outsideAllowed) {
+              const r = { status: "out_of_zone", code: MTM_CHECK_IN_ERROR.TOO_FAR, distanceMeters: roundedDistance, geofenceRadius: allowedRadius }
+              await pin("conflict", r)
+              return { status: "conflict" as const, result: r }
+            }
           }
         }
 

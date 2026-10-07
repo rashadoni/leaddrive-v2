@@ -1234,6 +1234,64 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
     vi.mocked(prisma.mtmSetting.findFirst).mockResolvedValue(null)
   })
 
+  // Owner, 2026-10-07: the organization may let agents check in while not at
+  // the client and review the visit later. Accepted, not forced.
+  it("accepts an agent's out-of-zone check-in when the organization allows it, and the alert says accepted", async () => {
+    vi.mocked(prisma.mtmCustomer.findFirst).mockResolvedValue({
+      id: "cust-1", category: "B", objectType: "CLINIC", latitude: 40.4, longitude: 49.8, geofenceRadius: 50,
+    } as any)
+    vi.mocked(prisma.mtmSetting.findFirst).mockImplementation((async ({ where }: any) => (
+      where.key === "agentCheckInOutsideZone" ? { value: true } : null
+    )) as never)
+    vi.mocked(prisma.mtmVisit.create).mockResolvedValue({
+      id: "field-visit-outside-allowed",
+      status: "CHECKED_IN",
+      checkInAt: new Date("2026-10-07T09:00:00.000Z"),
+      customerId: "cust-1",
+      contactId: null,
+      routeId: null,
+      routePointId: null,
+    } as never)
+
+    const response = await PushPOST(makePushReq({ operations: [{
+      operationId: "op-outside-allowed",
+      op: "create",
+      entity: "visits",
+      data: {
+        id: "field-visit-outside-allowed",
+        customerId: "cust-1",
+        checkInAt: "2026-10-07T09:00:00.000Z",
+        checkInLat: 41.0,
+        checkInLng: 50.5,
+      },
+      clientTimestamp: Date.now(),
+    }] }))
+    const body = await response.json()
+
+    expect(body.results[0]).toMatchObject({ status: "ok", serverId: "field-visit-outside-allowed" })
+    expect(prisma.mtmVisit.create).toHaveBeenCalledTimes(1)
+    expect(prisma.mtmAlert.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        type: "OUT_OF_ZONE",
+        metadata: expect.objectContaining({
+          forceOverride: false,
+          outsideZoneAllowed: true,
+          messageKey: "outOfZoneCheckInAllowed",
+          geofenceRadius: 50,
+        }),
+      }),
+    }))
+    // An ordinary check-in in the journal — nobody forced anything — with the distance kept.
+    expect(prisma.mtmAuditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: "CHECK_IN",
+        entityId: "field-visit-outside-allowed",
+        newData: expect.objectContaining({ outOfZone: true, allowedBy: "organization_setting", geofenceRadius: 50 }),
+      }),
+    })
+    vi.mocked(prisma.mtmSetting.findFirst).mockResolvedValue(null)
+  })
+
   it("rejects an ad-hoc contact outside the tenant customer before visit creation", async () => {
     vi.mocked(prisma.mtmContact.findFirst).mockResolvedValue(null)
 

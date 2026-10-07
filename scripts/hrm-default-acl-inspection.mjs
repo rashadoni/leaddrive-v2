@@ -16,7 +16,7 @@ export const ACL_LIMITS = Object.freeze([
   "No production files, grants, role configuration, tenant activation or business data mutated",
 ])
 export const ACL_PRIVILEGES = Object.freeze(["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"])
-export const ACL_CODES = Object.freeze(["INPUT_INVALID", "FILES_UNSAFE", "SOURCE_CHANGED", "ARTIFACT_MISMATCH", "APP_ENV_INVALID", "MIGRATION_ENV_INVALID", "QUERY_FAILED", "OUTPUT_INVALID", "IDENTITY_UNPROVED", "PROFILE_UNPROVED", "INSPECTION_FAILED"])
+export const ACL_CODES = Object.freeze(["INPUT_INVALID", "FILES_UNSAFE", "SOURCE_CHANGED", "ARTIFACT_MISMATCH", "APP_ENV_INVALID", "MIGRATION_ENV_INVALID", "QUERY_FAILED", "OUTPUT_INVALID", "IDENTITY_UNPROVED", "IDENTITY_PRINCIPALS_EQUAL", "IDENTITY_ENDPOINT_HOST_MISMATCH", "IDENTITY_ENDPOINT_PORT_MISMATCH", "IDENTITY_ENDPOINT_DATABASE_MISMATCH", "IDENTITY_RUNTIME_SESSION_UNPROVED", "IDENTITY_MIGRATION_SESSION_UNPROVED", "IDENTITY_CATALOG_MISMATCH", "PROFILE_UNPROVED", "INSPECTION_FAILED"])
 const ACL_SHA = /^[0-9a-f]{40}$/
 const ACL_DIGEST = /^[0-9a-f]{64}$/
 const ACL_MAX = 65536
@@ -123,8 +123,9 @@ export function inspectAclRemote(sql, bindings, expectedSha, dependencies = {}) 
     const runtimeConnection = parseApplicationEnv(appText)
     const runtimeEnv = databaseConnectionEnvironment(runtimeConnection)
     const migrationEnv = databaseConnectionEnvironment(migrationConnection)
-    if (runtimeEnv.PGUSER === migrationEnv.PGUSER) aclFail("IDENTITY_UNPROVED")
-    for (const key of ["PGHOST","PGPORT","PGDATABASE"]) if (runtimeEnv[key] !== migrationEnv[key]) aclFail("IDENTITY_UNPROVED")
+    if (runtimeEnv.PGUSER === migrationEnv.PGUSER) aclFail("IDENTITY_PRINCIPALS_EQUAL")
+    // Export only fixed categories; endpoint and role values stay in memory.
+    for (const [key,code] of [["PGHOST","IDENTITY_ENDPOINT_HOST_MISMATCH"],["PGPORT","IDENTITY_ENDPOINT_PORT_MISMATCH"],["PGDATABASE","IDENTITY_ENDPOINT_DATABASE_MISMATCH"]]) if (runtimeEnv[key] !== migrationEnv[key]) aclFail(code)
     const query = dependencies.query ?? queryAclMetadata
     const observe = (connection,mode) => {
       const raw = query(connection,sql,runtimeEnv.PGUSER,mode)
@@ -135,8 +136,8 @@ export function inspectAclRemote(sql, bindings, expectedSha, dependencies = {}) 
     }
     const runtime = observe(runtimeConnection,"runtime")
     const migration = observe(migrationConnection,"migration")
-    for (const s of [runtime,migration]) if (![s.identity.expectedIdentity,s.identity.sessionIdentityUnchanged,s.identity.primary,s.identity.readOnly,s.identity.repeatableRead].every(v => v === true)) aclFail("IDENTITY_UNPROVED")
-    for (const key of ["systemIdentifier","databaseOid","databaseName"]) if (runtime.identity[key] !== migration.identity[key]) aclFail("IDENTITY_UNPROVED")
+    for (const [s,code] of [[runtime,"IDENTITY_RUNTIME_SESSION_UNPROVED"],[migration,"IDENTITY_MIGRATION_SESSION_UNPROVED"]]) if (![s.identity.expectedIdentity,s.identity.sessionIdentityUnchanged,s.identity.primary,s.identity.readOnly,s.identity.repeatableRead].every(v => v === true)) aclFail(code)
+    for (const key of ["systemIdentifier","databaseOid","databaseName"]) if (runtime.identity[key] !== migration.identity[key]) aclFail("IDENTITY_CATALOG_MISMATCH")
     if (!aclSafeProfile(runtime.roleProfile) || !aclMigrationProfile(migration.roleProfile)) aclFail("PROFILE_UNPROVED")
     if (read(marker,128).trim() !== expectedSha) aclFail("ARTIFACT_MISMATCH")
     if (read("/etc/leaddrive/migration.env",32768,0o600) !== migrationText || read("/etc/leaddrive/app.env",ACL_MAX,0o600) !== appText) aclFail("SOURCE_CHANGED")

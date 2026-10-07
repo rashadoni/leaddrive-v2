@@ -848,6 +848,59 @@ describe("POST /api/v1/mtm/visits", () => {
     expect(alertData.data.type).toBe("OUT_OF_ZONE")
   })
 
+  // Owner, 2026-10-07: an organization may let its agents check in while not
+  // at the client, and review the visit afterwards. Off by default.
+  it("accepts an agent's check-in outside the zone when the organization allows it, alert included", async () => {
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(resolveMtmRouteActor).mockResolvedValue({ agentId: "agent-1", role: "AGENT", scopedAgentIds: ["agent-1"] } as never)
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "agent-1" } as any)
+    vi.mocked(prisma.mtmCustomer.findFirst).mockResolvedValue({
+      id: "cust-1", name: "Customer A", category: "B", objectType: "OTHER", latitude: 40.41, longitude: 49.87,
+    } as any)
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "agentCheckInOutsideZone", value: true }] as any)
+    vi.mocked(calculateDistance).mockReturnValue(500) // 500m > 100m
+    vi.mocked(prisma.mtmAlert.create).mockResolvedValue({} as any)
+    vi.mocked(prisma.mtmVisit.create).mockResolvedValue({ id: "v-outside" } as any)
+
+    const res = await POST(makePostReq({
+      agentId: "agent-1", customerId: "cust-1",
+      latitude: 40.42, longitude: 49.88,
+    }))
+
+    expect(res.status).toBe(201)
+    expect(prisma.mtmVisit.create).toHaveBeenCalledTimes(1)
+    // Not silent: the manager still gets the out-of-zone alert to review.
+    expect(prisma.mtmAlert.create).toHaveBeenCalledTimes(1)
+    expect((vi.mocked(prisma.mtmAlert.create).mock.calls[0][0] as any).data).toMatchObject({
+      type: "OUT_OF_ZONE",
+      metadata: expect.objectContaining({ distanceMeters: 500, geofenceRadius: 100 }),
+    })
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([] as any)
+  })
+
+  it("keeps refusing it, and creates no visit, while the organization's switch is off", async () => {
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(resolveMtmRouteActor).mockResolvedValue({ agentId: "agent-1", role: "AGENT", scopedAgentIds: ["agent-1"] } as never)
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "agent-1" } as any)
+    vi.mocked(prisma.mtmCustomer.findFirst).mockResolvedValue({
+      id: "cust-1", name: "Customer A", category: "B", objectType: "OTHER", latitude: 40.41, longitude: 49.87,
+    } as any)
+    vi.mocked(calculateDistance).mockReturnValue(500)
+    vi.mocked(prisma.mtmAlert.create).mockResolvedValue({} as any)
+
+    for (const stored of [[], [{ key: "agentCheckInOutsideZone", value: false }], [{ key: "agentCheckInOutsideZone", value: "yes" }]]) {
+      vi.mocked(prisma.mtmVisit.create).mockClear()
+      vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue(stored as any)
+      const res = await POST(makePostReq({
+        agentId: "agent-1", customerId: "cust-1",
+        latitude: 40.42, longitude: 49.88,
+      }))
+      expect([res.status, (await res.json()).code]).toEqual([400, "MTM_VISIT_OUT_OF_ZONE"])
+      expect(prisma.mtmVisit.create).not.toHaveBeenCalled()
+    }
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([] as any)
+  })
+
   it("refuses a check-in at a customer without coordinates, force included (audit A6, owner decision 2)", async () => {
     vi.mocked(getOrgId).mockResolvedValue(ORG)
     vi.mocked(prisma.mtmCustomer.findFirst).mockResolvedValue({
