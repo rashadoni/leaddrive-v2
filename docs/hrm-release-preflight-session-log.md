@@ -291,3 +291,67 @@
   stopping point: auxiliary successor checkpoint only. Next action: root
   independently reviews/publishes the successor and runs the fourth hosted
   fixed-SQL job before any main-only production metadata inspection.
+
+## 2026-10-07 — first actual production inspection refused env; finite diagnostics only
+
+- Root reported the fourth hosted fixed-SQL run37634692782 at exact546d
+  succeeded with16 PASS, zero FAIL and zero SKIP, including observed
+  noncanonical legacy catalog ordering and strict rejection. This is synthetic
+  disposable source validation, not production metadata or C12 evidence.
+- This separate clean auxiliary worktree starts from current main
+  8235c3b24ad12189e1ef95427ce7f192c077ae5c after reviewed PR616. Root verified
+  its deployment37638607825 and public immutable artifact8235. First actual
+  main-only metadata run37641215366 had source validation112860396402 PASS,
+  then production job112860690832 FAIL with code ENV_INVALID before SQL.
+  The protected file/marker read was reached; no catalog result is claimed.
+  Root retains original failure evidence separately. The original sanitized
+  artifact11492312014 ZIP SHA-256 is
+  a3f2d68839fac7e80fd0f86857252f38893fba241f3df461103a20b4f18b60c7.
+- Source-only compatibility review confirms server-deploy.sh loads literal
+  dotenv values, requires both MIGRATION_DATABASE_URL and
+  MIGRATION_EXPECTED_DB_ROLE, and verifies actual role identity. No fallback
+  role or missing field/default is inferred. The exact live rejection remains
+  unknown until a protected diagnostic rerun; no live config was read here.
+- Root authorized only a diagnostic extension. The helper report is now v2
+  with envDetail containing one of37 fixed codes only for ENV_INVALID, null
+  otherwise. Codes distinguish declaration cardinality, quotes, URI profile,
+  encoding, TCP/TLS, role mismatch and eight finite parameter categories;
+  unknown parameter names become OTHER. Coarse ENV_INVALID messages remain
+  unchanged. Known nested codes survive sanitization; unknown metadata becomes
+  UNCLASSIFIED_ENV_REJECTION without reflecting names or values.
+- No connection acceptance is widened: mandatory expected role, URL option
+  allowlist, clean libpq environment, TLS restrictions, read-only transaction,
+  default observations, SQLSTATE whitelist, SQL and workflow remain intact.
+  Root independently checked old8235/new parity on72 synthetic env cases
+  (11 accepted,61 rejected) and33 synthetic connection cases, all PASS.
+  This differential source proof does not establish live compatibility.
+- Tests preserve original negative assertions and add36 actual inspectRemote
+  env rejection cases: SQL must never run, report remains ERROR with no
+  snapshot/defaults, and connection values/unknown parameter names stay absent.
+  Further tests cover all37 accepted detail enums, forged enums/types/metadata,
+  version downgrade, detail absence, non-env/status misuse, nested error
+  sanitization and runner rejection with static withheld stderr only.
+- Bounded sequential checks after capacity inspection (14 GiB RAM available,
+  278 GiB disk available, memory pressure zero): helper/test syntax PASS,
+  18 Node unit PASS, zero FAIL,1 hosted SQL SKIP, whitespace PASS. No install,
+  local SQL, compiler, build, browser, production action or dispatch occurred.
+  Actual new hosted SQL and protected production diagnostic rerun: NOT RUN
+  here; coordinator must review/publish first.
+- SQL SHA-256 b174e32eb68a0dbcca98e8557fe8c716ed8277111e79ba822bce43f4e7023b6a
+  and workflow SHA-256 f90937ecda3b81e7dd017819cfaec1afdefc5fee58167fdfc2289ce012a1dcf1
+  exactly equal main8235. The unchanged workflow's separate transport-error
+  fallback stays v1; it is not a helper v2 report accepted by validateReport.
+  Only helper, owned tests and this append-only journal change. Support,
+  grants, roles, secrets, activation, baseline and product source stay intact.
+- Previously accepted HRM062 technical/runtime proof stays bound to062, not
+  this infrastructure successor. Root must integrate later main changes and
+  rerun required exact candidate checks before the HRM release. Actual catalog
+  prerequisites, production migration feasibility, real HR outcomes and C12
+  remain pending; no earlier FAIL or evidence is overwritten.
+- Current result: finite private env diagnostics prepared with unchanged
+  connection/security acceptance. Last completed action: small Node checks
+  and source-byte preservation. Precise stopping point: auxiliary source
+  checkpoint awaiting root review, without publication or live rerun.
+  Next action: root independently reviews and publishes the diagnostic change,
+  then reads the actual finite production rejection before any compatibility
+  correction or final HRM release.
