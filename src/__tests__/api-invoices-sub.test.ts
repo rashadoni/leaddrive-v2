@@ -18,7 +18,7 @@ vi.mock("@/lib/prisma", () => ({
       create: vi.fn(),
       delete: vi.fn(),
     },
-    paymentRegistryEntry: { create: vi.fn() },
+    paymentRegistryEntry: { create: vi.fn(), deleteMany: vi.fn() },
     journeyEnrollment: { findFirst: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
     journey: { update: vi.fn(), updateMany: vi.fn() },
     organization: { findUnique: vi.fn() },

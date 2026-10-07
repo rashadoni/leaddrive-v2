@@ -1,0 +1,74 @@
+-- Supplemental catalog inspection only. The existing HRM preflight stays unchanged.
+BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;
+SET LOCAL lock_timeout = '2s';
+SET LOCAL statement_timeout = '10s';
+WITH identity_role AS (
+  SELECT oid,rolsuper,rolbypassrls,rolcanlogin FROM pg_catalog.pg_roles
+  WHERE rolname=session_user
+), runtime_role AS (
+  SELECT oid,rolsuper,rolbypassrls,rolcanlogin FROM pg_catalog.pg_roles
+  WHERE rolname=pg_catalog.current_setting('hrm.acl_runtime_role')
+), acl_rows AS (
+  SELECT CASE WHEN d.defaclnamespace=0 THEN 'GLOBAL' ELSE 'PUBLIC_SCHEMA' END AS scope,
+    CASE WHEN x.grantee=0 THEN 'PUBLIC'
+      WHEN x.grantee=(SELECT oid FROM identity_role) THEN 'OWNER'
+      WHEN x.grantee=(SELECT oid FROM runtime_role) THEN 'EXPECTED_RUNTIME'
+      ELSE 'OTHER' END AS recipient,
+    x.grantee,x.privilege_type,x.is_grantable
+  FROM pg_catalog.pg_default_acl d
+  CROSS JOIN LATERAL pg_catalog.aclexplode(d.defaclacl) x
+  WHERE pg_catalog.current_setting('hrm.acl_mode')='migration'
+    AND d.defaclrole=(SELECT oid FROM identity_role)
+    AND d.defaclnamespace IN (0,'public'::regnamespace) AND d.defaclobjtype='r'
+), profiled_acl AS (
+  SELECT a.*,r.oid IS NOT NULL AS present,
+    COALESCE(NOT r.rolsuper,false) AS no_superuser,
+    COALESCE(NOT r.rolbypassrls,false) AS no_bypass_rls,
+    COALESCE(r.rolcanlogin,false) AS can_login,
+    (SELECT count(*) FROM pg_catalog.pg_roles p
+      WHERE r.oid IS NOT NULL AND p.oid<>r.oid AND (p.rolsuper OR p.rolbypassrls)
+        AND pg_catalog.pg_has_role(r.oid,p.oid,'SET')) AS set_privileged_count
+  FROM acl_rows a LEFT JOIN pg_catalog.pg_roles r ON r.oid=a.grantee
+), grouped_acl AS (
+  SELECT scope,recipient,privilege_type,is_grantable,present,no_superuser,no_bypass_rls,
+    can_login,set_privileged_count,count(*) AS row_count
+  FROM profiled_acl
+  GROUP BY scope,recipient,privilege_type,is_grantable,present,no_superuser,no_bypass_rls,
+    can_login,set_privileged_count
+)
+SELECT pg_catalog.json_build_object(
+  'mode',pg_catalog.current_setting('hrm.acl_mode'),
+  'identity',pg_catalog.json_build_object(
+    'expectedIdentity',session_user=pg_catalog.current_setting('hrm.acl_expected_role'),
+    'sessionIdentityUnchanged',current_user=session_user,
+    'systemIdentifier',(pg_catalog.pg_control_system()).system_identifier::text,
+    'databaseOid',(SELECT oid::text FROM pg_catalog.pg_database WHERE datname=current_database()),
+    'databaseName',current_database(),
+    'primary',NOT pg_catalog.pg_is_in_recovery(),
+    'readOnly',pg_catalog.current_setting('transaction_read_only')='on',
+    'repeatableRead',pg_catalog.current_setting('transaction_isolation')='repeatable read'),
+  'roleProfile',pg_catalog.json_build_object(
+    'present',EXISTS(SELECT 1 FROM identity_role),
+    'noSuperuser',COALESCE((SELECT NOT rolsuper FROM identity_role),false),
+    'noBypassRls',COALESCE((SELECT NOT rolbypassrls FROM identity_role),false),
+    'canLogin',COALESCE((SELECT rolcanlogin FROM identity_role),false),
+    'setPrivilegedCount',(SELECT count(*) FROM pg_catalog.pg_roles p
+      WHERE p.oid<>(SELECT oid FROM identity_role) AND (p.rolsuper OR p.rolbypassrls)
+        AND pg_catalog.pg_has_role((SELECT oid FROM identity_role),p.oid,'SET'))),
+  'acl',pg_catalog.json_build_object(
+    'explicitPrivilegeRows',(SELECT count(*) FROM acl_rows),
+    'publicPrivilegeRows',(SELECT count(*) FROM acl_rows WHERE grantee=0),
+    'nonOwnerWriteRows',(SELECT count(*) FROM acl_rows
+      WHERE grantee<>(SELECT oid FROM identity_role)
+        AND privilege_type IN ('INSERT','UPDATE','DELETE','TRUNCATE','TRIGGER','REFERENCES')),
+    'grantableRows',(SELECT count(*) FROM acl_rows WHERE is_grantable),
+    'entries',COALESCE((SELECT pg_catalog.json_agg(pg_catalog.json_build_object(
+      'scope',scope,'recipient',recipient,'privilege',privilege_type,
+      'grantable',is_grantable,'rowCount',row_count,
+      'recipientProfile',pg_catalog.json_build_object(
+        'present',present,'noSuperuser',no_superuser,'noBypassRls',no_bypass_rls,
+        'canLogin',can_login,'setPrivilegedCount',set_privileged_count))
+      ORDER BY scope COLLATE "C",recipient COLLATE "C",privilege_type COLLATE "C",
+        is_grantable,present,no_superuser,no_bypass_rls,can_login,set_privileged_count)
+      FROM grouped_acl),'[]'::json)));
+ROLLBACK;
