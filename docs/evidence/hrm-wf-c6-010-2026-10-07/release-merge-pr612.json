@@ -1,0 +1,11 @@
+{
+  "pr": 612,
+  "expectedSourceHead": "9f3cc73dcdb8c4ccea1fdac9dfae29570339abc5",
+  "targetBranch": "codex/hrm-c12-reader-profile-20261006",
+  "response": {
+    "sha": "100a381b90a52690899f6a1eded38494eea050e4",
+    "merged": true,
+    "message": "Pull Request successfully merged"
+  },
+  "productionMutation": false
+}
