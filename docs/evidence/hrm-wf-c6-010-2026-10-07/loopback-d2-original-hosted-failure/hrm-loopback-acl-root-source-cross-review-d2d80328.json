@@ -1,0 +1,52 @@
+{
+  "atUtc": "2026-10-07T20:42:09.013608+00:00",
+  "head": "d2d8032891967bef45b43109bfaa9a0b1ea7760c",
+  "tree": "11c71b85a68d0b1044af788e96df9448e38e95fa",
+  "main": "7bfcca6b5b53a33fca926786718f8a80037e2809",
+  "status": "SOURCE_CROSS_REVIEW_PASS_HOSTED_REAL_PG_PENDING",
+  "fiveNewPathsOnly": true,
+  "wholeProspectiveTreeEqualsSource": true,
+  "original9And5GateHashes": "/tmp/hrm-loopback-original-tools-and-gates-root-proof.json",
+  "openSourceFindings": [],
+  "supersededFindings": [
+    "Bounded postkill wait and startup/migration abort corrected",
+    "Marker/env rechecked after cleanup"
+  ],
+  "files": [
+    {
+      "path": ".github/workflows/hrm-loopback-acl-inspection.yml",
+      "bytes": 8001,
+      "sha256": "bfbcb2b83fab53817ce71ae1e511389cbab7f9ca6aeff0785801b24aee76a116",
+      "authorship": "Root helper/journal; child SQL/tests/workflow; opposite-agent source cross-review complete"
+    },
+    {
+      "path": "docs/hrm-loopback-acl-inspection-session-log.md",
+      "bytes": 7697,
+      "sha256": "0e95666d9f3b19956b8ef81b56beff18c3d2a96640d170d9aaccaf87bb0bcd7a",
+      "authorship": "Root helper/journal; child SQL/tests/workflow; opposite-agent source cross-review complete"
+    },
+    {
+      "path": "scripts/hrm-loopback-acl-inspection.mjs",
+      "bytes": 17625,
+      "sha256": "b576187c9bf33195b0996d3b7454311323489d7e5005873b68dee097aada79c9",
+      "authorship": "Root helper/journal; child SQL/tests/workflow; opposite-agent source cross-review complete"
+    },
+    {
+      "path": "scripts/hrm-loopback-acl-inspection.sql",
+      "bytes": 5173,
+      "sha256": "7a4a9d79534e40cf7672c31797f2015a543f7061c1522ee30a7cfb9e147f8c58",
+      "authorship": "Root helper/journal; child SQL/tests/workflow; opposite-agent source cross-review complete"
+    },
+    {
+      "path": "scripts/hrm-loopback-acl-inspection.test.mjs",
+      "bytes": 34721,
+      "sha256": "970b39f0f49f2815e51a390a524c806a648607f107dbfa98c4fd74cf59a18989",
+      "authorship": "Root helper/journal; child SQL/tests/workflow; opposite-agent source cross-review complete"
+    }
+  ],
+  "limits": [
+    "Root did not author child SQL/tests/workflow; independently read/reviewed them",
+    "New hostedPG16 mandatory tests and current5required not yet completed",
+    "READ_COMPLETE does not approve any ACL or HRM production release"
+  ]
+}

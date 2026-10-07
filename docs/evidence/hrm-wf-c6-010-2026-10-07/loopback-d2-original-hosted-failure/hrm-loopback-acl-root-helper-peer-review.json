@@ -1,0 +1,143 @@
+{
+  "version": 1,
+  "review": "Independent root-authored live helper source review; verification asset authorship disclosed",
+  "createdUtc": "2026-10-07T20:41:08.632856+00:00",
+  "worktree": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-release-loopback-acl-evidence-20261007",
+  "committedRootHelperCheckpoint": {
+    "sha": "d2d8032891967bef45b43109bfaa9a0b1ea7760c",
+    "tree": "11c71b85a68d0b1044af788e96df9448e38e95fa",
+    "helperBytesMatchCheckpoint": true
+  },
+  "currentBytes": [
+    {
+      "path": "scripts/hrm-loopback-acl-inspection.mjs",
+      "bytes": 17625,
+      "sha256": "b576187c9bf33195b0996d3b7454311323489d7e5005873b68dee097aada79c9",
+      "reviewAuthorship": "Independent: root implementation"
+    },
+    {
+      "path": "scripts/hrm-loopback-acl-inspection.sql",
+      "bytes": 5173,
+      "sha256": "7a4a9d79534e40cf7672c31797f2015a543f7061c1522ee30a7cfb9e147f8c58",
+      "reviewAuthorship": "Authored by this reviewer; independently cross-reviewed by root"
+    },
+    {
+      "path": "scripts/hrm-loopback-acl-inspection.test.mjs",
+      "bytes": 34721,
+      "sha256": "970b39f0f49f2815e51a390a524c806a648607f107dbfa98c4fd74cf59a18989",
+      "reviewAuthorship": "Authored by this reviewer; independently cross-reviewed by root"
+    },
+    {
+      "path": ".github/workflows/hrm-loopback-acl-inspection.yml",
+      "bytes": 8001,
+      "sha256": "bfbcb2b83fab53817ce71ae1e511389cbab7f9ca6aeff0785801b24aee76a116",
+      "reviewAuthorship": "Authored by this reviewer; independently cross-reviewed by root"
+    }
+  ],
+  "oldNineSourceBindings": [
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.mjs",
+      "sha256": "46b417da7bbe763960b8ede8fa0e9dbd98543d090d54f73979289504bfe35771",
+      "exactAcceptedMain7bf": true
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.sql",
+      "sha256": "b174e32eb68a0dbcca98e8557fe8c716ed8277111e79ba822bce43f4e7023b6a",
+      "exactAcceptedMain7bf": true
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.test.mjs",
+      "sha256": "39c947982f5e7dc2ca1e96307ac5314518bfe748ec58a3cf217f8f09194c0eef",
+      "exactAcceptedMain7bf": true
+    },
+    {
+      "path": ".github/workflows/hrm-migration-metadata-preflight.yml",
+      "sha256": "f90937ecda3b81e7dd017819cfaec1afdefc5fee58167fdfc2289ce012a1dcf1",
+      "exactAcceptedMain7bf": true
+    },
+    {
+      "path": "scripts/hrm-default-acl-inspection.mjs",
+      "sha256": "a6aa4f3526fd5edf29bd2b3a1309f7703e85acad70c0e683cba69dbb281c2027",
+      "exactAcceptedMain7bf": true
+    },
+    {
+      "path": "scripts/hrm-default-acl-inspection.sql",
+      "sha256": "524bc02f34a75f445aff6b3834df6e02aa86665dee9acd835b2b5fc621127e2a",
+      "exactAcceptedMain7bf": true
+    },
+    {
+      "path": "scripts/hrm-default-acl-inspection.test.mjs",
+      "sha256": "402a2dde20443676d6bac430ab4e80a74f507c2dd3828b920c278cafcf0c7c3c",
+      "exactAcceptedMain7bf": true
+    },
+    {
+      "path": ".github/workflows/hrm-default-acl-inspection.yml",
+      "sha256": "954c6d042bf00420f1ecd3c9ed0c378bc41305c0af08c30cdc3a97f06f81df2a",
+      "exactAcceptedMain7bf": true
+    },
+    {
+      "path": "docs/hrm-default-acl-inspection-session-log.md",
+      "sha256": "8d3af68cc9a724374a30d5eba1e06d37537473cef61ca4d89549adced5500a5f",
+      "exactAcceptedMain7bf": true
+    }
+  ],
+  "status": "SOURCE_ACCEPTED_PENDING_HOSTED_SQL_AND_PRODUCTION",
+  "openFindings": [],
+  "supersededFindings": [
+    {
+      "priority": "P2",
+      "finding": "Runtime finish waited unbounded for close after timeout/SIGKILL",
+      "resolution": "Bounded 5s close followed by at most 1s kill wait; detached broken streams fail CLEANUP_UNPROVED. Startup/migration timeout rejects, kills and detaches without waiting indefinitely. Re-read current checkpoint bytes."
+    },
+    {
+      "priority": "P2",
+      "finding": "Final marker/private file check preceded runtime cleanup",
+      "resolution": "Captured initial literal files and deployed SHA now rechecked after finish; tests actually verify mutations during finish discard all proof."
+    }
+  ],
+  "verifiedContracts": [
+    "Original strict PGHOST equality guard and actual host-mismatch ERROR remain byte unchanged; separate observer does not rewrite URLs or configuration.",
+    "Only configured localhost/127.0.0.1/::1, resolved localhost wholly loopback, same port/database and distinct declared identities are accepted before either query.",
+    "Runtime remains held in one read-only repeatable-read transaction, private random 128-bit application-name probe and validated PID; migration sees this exact PID/name/user/current database while runtime is held.",
+    "Session identity unchanged, current primary, expected runtime NOSUPERUSER/NOBYPASSRLS/login/no privileged SET and migration NOSUPERUSER/BYPASSRLS/login are mandatory.",
+    "RR/RO and 2s lock/10s statement bounds in fixed catalog-only SQL; clean libpq environment retains fixed10s connection budget. No URL/credential/PID/nonce in argv/tempfile/public receipt, stderr suppressed.",
+    "Runtime explicit ROLLBACK and quit awaited, migration ROLLBACK awaited. READ_COMPLETE requires cleanupPASS and unchanged private files/deployed marker after cleanup; primary body error survives secondary cleanup error.",
+    "Finite source-byte-bound output exports only booleans/profiles/ACL privilege groups. READ_COMPLETE is evidence only, never READY or ACL approval. PUBLIC/OTHER/TRUNCATE/TRIGGER/REFERENCES/grantable remain observations requiring independent recipient review.",
+    "No grants, roles, production data/files/config/secrets, Support, tenant activation or business records are changed by observer."
+  ],
+  "actualChecks": {
+    "node20Syntax": {
+      "status": "PASS",
+      "target": "new test"
+    },
+    "node20Unit": {
+      "status": "PASS",
+      "total": 16,
+      "pass": 15,
+      "fail": 0,
+      "skip": 1,
+      "hostedSql": "SKIP: forbidden local PostgreSQL; mandatory GitHub-hosted fixture",
+      "log": {
+        "path": "/tmp/hrm-loopback-acl-first-node-unit.log",
+        "bytes": 4022,
+        "sha256": "fa95cc6a2cd1552699d725e0c47cebbb1e092e99f79633aea88ee17915b7cb88"
+      }
+    },
+    "runnerPolicy": {
+      "status": "PASS",
+      "workflows": 49
+    },
+    "gitDiffCheck": {
+      "status": "PASS",
+      "scope": "tracked current tree; untracked new files are bound separately above"
+    }
+  },
+  "limitations": [
+    "This reviewer authored the new SQL, tests and workflow and prior C6 browser/DB harnesses. Independent helper review is of root-authored code; root separately cross-reviewed owned verification scope.",
+    "Actual hosted PostgreSQL new fixture has NOT RUN; neither its live proof nor production READ_COMPLETE nor recipient approval is claimed. Old36 hosted checks must run alongside new16.",
+    "Unit fake streams prove ordering, privacy and failed cleanup behavior; they cannot substitute real simultaneous PostgreSQL sessions.",
+    "Timeout paths can report ERROR while a child cannot be proven closed; cleanupFAILED and null proof give no successful cleanup credit.",
+    "Runtime/migration read-only snapshots differ; live backend proof does not reserve a DDL quiet interval or prove migration/index duration.",
+    "No actual HR operations, C12 pilot observations, global clean compiler/test baseline, WCAG/mobile screenshot completeness or production HRM release credit is obtained by this source check."
+  ]
+}
