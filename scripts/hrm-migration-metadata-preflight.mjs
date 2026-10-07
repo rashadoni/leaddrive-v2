@@ -8,16 +8,17 @@ export const MIGRATIONS = [
   "20261005193000_workforce_reconciliation_operations",
   "20261006150000_workforce_transferred_assignment_window",
 ]
-export const RELATIONS = ["organizations", "mtm_agent_workdays", "mtm_agent_workday_events", "workforce_site_transitions", "workforce_attendance_evidence", "workforce_evidence_assessments", "workforce_exception_cases", "workforce_timesheet_approvals", "mtm_audit_logs", "workforce_shift_assignments", "workforce_shift_templates", "workforce_shift_snapshots", "mtm_agents", "workforce_reconciliation_tenant_states"].sort()
+export const RELATIONS = ["organizations", "mtm_agent_workdays", "mtm_agent_workday_events", "workforce_site_transitions", "workforce_attendance_evidence", "workforce_evidence_assessments", "workforce_exception_cases", "workforce_exception_decisions", "workforce_timesheet_approvals", "mtm_audit_logs", "workforce_shift_assignments", "workforce_shift_templates", "workforce_shift_snapshots", "mtm_agents", "workforce_reconciliation_tenant_states"].sort()
 export const INDEXES = ["wf_reconciliation_due_attempt_org_idx", "wf_recon_workdays_c_idx", "wf_recon_events_c_idx", "wf_recon_transitions_c_idx", "wf_recon_evidence_c_idx", "wf_recon_assessments_c_idx", "wf_recon_exceptions_c_idx", "wf_recon_approvals_c_idx", "wf_recon_exports_c_idx", "wf_recon_approval_group_c_idx"].sort()
 export const GUARD_MD5 = { pending: "712f178455a49648664dba800c9f52d8", applied: "65a4268c973604f70832dbe350841cde" }
+export const LEDGER_GUARD_MD5 = { append: "eba304d394c516e8439246844c269722", revision: "ff5eb1a7ab63f1c9e7d75f926180f643" }
 const SHA = /^[0-9a-f]{40}$/
 const DIGEST = /^[0-9a-f]{64}$/
 const MAX_OUTPUT = 65_536
 const CODES = new Set(["INPUT_INVALID", "FILES_UNSAFE", "SOURCE_CHANGED", "ENV_INVALID", "QUERY_FAILED", "OUTPUT_INVALID", "ARTIFACT_MISMATCH", "INSPECTION_FAILED"])
 const SQL_STATES = new Set(["08001", "08003", "08004", "08006", "08P01", "22003", "22023", "25001", "25006", "28000", "28P01", "3D000", "42501", "42601", "42703", "42704", "42804", "42883", "42P01", "55P03", "57014", "XX000"])
-const REASONS = new Set(["TIMEOUT_DEFAULTS", "READ_ONLY_UNVERIFIED", "ROLE_PROFILE_UNVERIFIED", "LEDGER_UNRESOLVED", "LEDGER_AMBIGUOUS", "CHECKSUM_MISMATCH", "RELATION_SHAPE", "RLS_UNVERIFIED", "OWNER_ABILITY", "INDEX_SHAPE", "INDEX_LEDGER_MISMATCH", "FUNCTION_SHAPE", "DEFAULT_ACL_UNREVIEWED", "APPLIED_TABLE_CONSTRAINTS_NOT_PROVED", "ACTIVITY_VISIBILITY_UNVERIFIED"])
-const LIMITS = ["Metadata only; not a release, staging, full migration replay or C12 acceptance", "Relation rows are PostgreSQL estimates; live activity is one observation, not a reserved DDL quiet window", "Ordinary CREATE INDEX can block writes; elapsed time and future contention are not proved", "No business rows, role names, credentials, environment values or raw logs exported", "No production files, grants, role configuration, tenant activation or data mutated"]
+const REASONS = new Set(["TIMEOUT_DEFAULTS", "READ_ONLY_UNVERIFIED", "ROLE_PROFILE_UNVERIFIED", "LEDGER_UNRESOLVED", "LEDGER_AMBIGUOUS", "CHECKSUM_MISMATCH", "RELATION_SHAPE", "RLS_UNVERIFIED", "OWNER_ABILITY", "INDEX_SHAPE", "INDEX_LEDGER_MISMATCH", "FUNCTION_SHAPE", "LEDGER_GUARDS_UNVERIFIED", "DEFAULT_ACL_UNREVIEWED", "APPLIED_TABLE_CONSTRAINTS_NOT_PROVED", "ACTIVITY_VISIBILITY_UNVERIFIED"])
+const LIMITS = ["Metadata only; not a release, staging, full migration replay or C12 acceptance", "Relation rows are PostgreSQL estimates; live activity is one observation, not a reserved DDL quiet window", "Ordinary CREATE INDEX can block writes; elapsed time and future contention are not proved", "Decision guards cover row UPDATE/DELETE/INSERT; no TRUNCATE or privileged-bypass guarantee", "No business rows, role names, credentials, environment values or raw logs exported", "No production files, grants, role configuration, tenant activation or data mutated"]
 const fail = code => { throw new Error(code) }
 const digest = bytes => createHash("sha256").update(bytes).digest("hex")
 const exact = (value, keys) => value && typeof value === "object" && !Array.isArray(value) && Object.keys(value).sort().join(",") === keys.split(",").sort().join(",")
@@ -81,7 +82,7 @@ export function parseMigrationEnv(text) {
 /** Reject unknown fields before any remote output is stored or printed. */
 export function validateSnapshot(defaults, snapshot) {
   if (!exact(defaults, "lockTimeoutMs,statementTimeoutMs,readOnlyForced") || !integer(defaults.lockTimeoutMs) || !integer(defaults.statementTimeoutMs) || typeof defaults.readOnlyForced !== "boolean") fail("OUTPUT_INVALID")
-  if (!exact(snapshot, "readOnly,repeatableRead,roleProfile,ledger,relations,indexes,guard,defaultAcl,activity") || !booleans(snapshot, "readOnly,repeatableRead")) fail("OUTPUT_INVALID")
+  if (!exact(snapshot, "readOnly,repeatableRead,roleProfile,ledger,relations,indexes,guard,ledgerGuards,defaultAcl,activity") || !booleans(snapshot, "readOnly,repeatableRead")) fail("OUTPUT_INVALID")
   if (!exact(snapshot.roleProfile, "noSuperuser,bypassRls,canLogin,sessionIdentityUnchanged,expectedIdentity") || !booleans(snapshot.roleProfile, "noSuperuser,bypassRls,canLogin,sessionIdentityUnchanged,expectedIdentity")) fail("OUTPUT_INVALID")
   const ledger = snapshot.ledger
   if (!exact(ledger, "totalRows,unresolvedRows,known") || !integer(ledger.totalRows, 0, 5000) || !integer(ledger.unresolvedRows, 0, ledger.totalRows) || !Array.isArray(ledger.known) || ledger.known.length !== 2) fail("OUTPUT_INVALID")
@@ -92,6 +93,7 @@ export function validateSnapshot(defaults, snapshot) {
   if (!Array.isArray(snapshot.indexes) || snapshot.indexes.length !== INDEXES.length) fail("OUTPUT_INVALID")
   for (const [i, entry] of snapshot.indexes.entries()) if (!exact(entry, "name,present,shapeMatch") || entry.name !== INDEXES[i] || !booleans(entry, "present,shapeMatch")) fail("OUTPUT_INVALID")
   if (!exact(snapshot.guard, "present,shapeMatch,bodyMd5,ownerAbility,triggerBound") || !booleans(snapshot.guard, "present,shapeMatch,ownerAbility,triggerBound") || !(snapshot.guard.bodyMd5 === null || /^[0-9a-f]{32}$/.test(snapshot.guard.bodyMd5))) fail("OUTPUT_INVALID")
+  if (!exact(snapshot.ledgerGuards, "appendFunctionMatches,appendTriggerBound,revisionFunctionMatches,revisionTriggerBound") || !booleans(snapshot.ledgerGuards, "appendFunctionMatches,appendTriggerBound,revisionFunctionMatches,revisionTriggerBound")) fail("OUTPUT_INVALID")
   if (!exact(snapshot.defaultAcl, "canCreatePublicSchema,explicitPrivilegeRows,publicPrivilegeRows,nonOwnerWriteRows,grantableRows") || typeof snapshot.defaultAcl.canCreatePublicSchema !== "boolean" || ![snapshot.defaultAcl.explicitPrivilegeRows, snapshot.defaultAcl.publicPrivilegeRows, snapshot.defaultAcl.nonOwnerWriteRows, snapshot.defaultAcl.grantableRows].every(n => integer(n, 0, 10000))) fail("OUTPUT_INVALID")
   if (!exact(snapshot.activity, "visibilityComplete,otherActiveSessions,otherOpenTransactions,lockWaitSessions") || typeof snapshot.activity.visibilityComplete !== "boolean" || ![snapshot.activity.otherActiveSessions, snapshot.activity.otherOpenTransactions, snapshot.activity.lockWaitSessions].every(n => integer(n, 0, 10000))) fail("OUTPUT_INVALID")
   return { defaults, snapshot }
@@ -129,6 +131,7 @@ export function assessMetadata(defaults, snapshot) {
   const guard = snapshot.guard
   if (!guard.present || !guard.shapeMatch || !guard.triggerBound || guard.bodyMd5 !== GUARD_MD5[states[1]]) reasons.add("FUNCTION_SHAPE")
   if (!guard.ownerAbility || !snapshot.defaultAcl.canCreatePublicSchema) reasons.add("OWNER_ABILITY")
+  if (!Object.values(snapshot.ledgerGuards).every(value => value === true)) reasons.add("LEDGER_GUARDS_UNVERIFIED")
   if (snapshot.defaultAcl.publicPrivilegeRows || snapshot.defaultAcl.nonOwnerWriteRows) reasons.add("DEFAULT_ACL_UNREVIEWED")
   if (!snapshot.activity.visibilityComplete) reasons.add("ACTIVITY_VISIBILITY_UNVERIFIED")
   return { status: reasons.size ? "INCOMPLETE" : "READY_FOR_REVIEW", reasons: [...reasons].sort(), migrationStates: states }

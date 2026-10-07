@@ -30,12 +30,15 @@ plan_relations(name,required) AS (VALUES
   ('mtm_agent_workdays',true),('mtm_agent_workday_events',true),
   ('workforce_site_transitions',true),('workforce_attendance_evidence',true),
   ('workforce_evidence_assessments',true),('workforce_exception_cases',true),
+  ('workforce_exception_decisions',true),
   ('workforce_timesheet_approvals',true),('mtm_audit_logs',true),
   ('workforce_shift_assignments',true),('workforce_shift_templates',true),
   ('workforce_shift_snapshots',true),('mtm_agents',true),
   ('workforce_reconciliation_tenant_states',false)
 ),
 dependency_columns(table_name,name,type_name,not_null) AS (VALUES
+  ('workforce_exception_decisions','caseId','text',true),
+  ('workforce_exception_decisions','caseRevision','integer',true),
   ('mtm_agents','teamId','text',false),
   ('workforce_shift_templates','teamId','text',false),
   ('workforce_shift_templates','status','public."WorkforceDefinitionStatus"',true),
@@ -125,6 +128,18 @@ guard AS (
   FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_language l ON l.oid=p.prolang
   WHERE p.oid=pg_catalog.to_regprocedure('public.workforce_guard_shift_assignment()')
 ),
+ledger_guard_functions AS (
+  SELECT plan.kind,p.oid,
+    COALESCE(p.pronargs=0 AND p.prorettype='trigger'::regtype AND NOT p.proretset AND p.prokind='f'
+      AND l.lanname='plpgsql' AND NOT p.prosecdef AND NOT p.proleakproof
+      AND p.provolatile='v' AND p.proconfig IS NULL AND md5(p.prosrc)=plan.body_md5,false) AS matches
+  FROM (VALUES
+    ('append','workforce_reject_exception_decision_mutation','eba304d394c516e8439246844c269722'),
+    ('revision','workforce_assign_exception_decision_revision','ff5eb1a7ab63f1c9e7d75f926180f643')
+  ) plan(kind,name,body_md5)
+  LEFT JOIN pg_catalog.pg_proc p ON p.oid=to_regprocedure('public.'||plan.name||'()')
+  LEFT JOIN pg_catalog.pg_language l ON l.oid=p.prolang
+),
 default_acl AS (
   SELECT d.defaclobjtype,x.grantee,x.privilege_type,x.is_grantable
   FROM pg_catalog.pg_default_acl d CROSS JOIN LATERAL pg_catalog.aclexplode(d.defaclacl) x
@@ -154,6 +169,20 @@ SELECT pg_catalog.json_build_object(
     'bodyMd5',(SELECT md5(prosrc) FROM guard),
     'ownerAbility',COALESCE((SELECT (SELECT rolsuper FROM role_state) OR pg_has_role(current_user,proowner,'USAGE') FROM guard),false),
     'triggerBound',EXISTS(SELECT 1 FROM pg_catalog.pg_trigger t WHERE t.tgrelid=to_regclass('public.workforce_shift_assignments') AND t.tgname='workforce_shift_assignments_guard' AND t.tgfoid=(SELECT oid FROM guard) AND t.tgenabled='O' AND NOT t.tgisinternal AND t.tgtype=23)
+  ),
+  -- Catalog proof for the existing API's row UPDATE/DELETE/INSERT contract.
+  -- It does not claim TRUNCATE protection or resistance to privileged bypass.
+  'ledgerGuards',pg_catalog.json_build_object(
+    'appendFunctionMatches',(SELECT matches FROM ledger_guard_functions WHERE kind='append'),
+    'revisionFunctionMatches',(SELECT matches FROM ledger_guard_functions WHERE kind='revision'),
+    'appendTriggerBound',EXISTS(SELECT 1 FROM pg_catalog.pg_trigger t
+      WHERE t.tgrelid=to_regclass('public.workforce_exception_decisions') AND t.tgname='workforce_exception_decisions_append_only'
+        AND t.tgfoid=(SELECT oid FROM ledger_guard_functions WHERE kind='append') AND t.tgenabled='O' AND NOT t.tgisinternal
+        AND t.tgtype=27 AND t.tgqual IS NULL AND t.tgnargs=0 AND cardinality(t.tgattr::smallint[])=0 AND t.tgconstraint=0),
+    'revisionTriggerBound',EXISTS(SELECT 1 FROM pg_catalog.pg_trigger t
+      WHERE t.tgrelid=to_regclass('public.workforce_exception_decisions') AND t.tgname='workforce_exception_decisions_assign_case_revision'
+        AND t.tgfoid=(SELECT oid FROM ledger_guard_functions WHERE kind='revision') AND t.tgenabled='O' AND NOT t.tgisinternal
+        AND t.tgtype=7 AND t.tgqual IS NULL AND t.tgnargs=0 AND cardinality(t.tgattr::smallint[])=0 AND t.tgconstraint=0)
   ),
   'defaultAcl',pg_catalog.json_build_object(
     'canCreatePublicSchema',has_schema_privilege(current_user,'public','CREATE'),

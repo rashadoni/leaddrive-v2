@@ -10,6 +10,9 @@ on:
       - scripts/hrm-migration-metadata-preflight.sql
       - scripts/hrm-migration-metadata-preflight.test.mjs
       - docs/hrm-release-preflight-session-log.md
+      - prisma/migrations/20260829114500_workforce_future_only_lifecycle/migration.sql
+      - prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql
+      - prisma/migrations/20260927014100_workforce_exception_case_revisions_backfill/migration.sql
   workflow_dispatch:
     inputs:
       expected_main_sha:

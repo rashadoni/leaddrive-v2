@@ -113,3 +113,45 @@
   policy and cached whitespace checks passed. Only the five dedicated task
   paths are staged for the preparation checkpoint. No existing workflow,
   baseline, gate, Support or application source was modified.
+
+## 2026-10-07 — explicitly requested physical decision guard coverage
+
+- Preparation checkpoint `7a013247d82d46e292880d57d59d724925c723d9`
+  remains preserved. Root requested one final limited catalog extension before
+  independently publishing the successor; no production access was authorized
+  for this subtask.
+- Added `workforce_exception_decisions` to the fixed relation projection:
+  existing text organization/id/case keys, integer NOT NULL caseRevision,
+  ordinary table, FORCE RLS and owner facts. No decisions or reasons are read.
+- Added exactly four finite ledgerGuards booleans: append/revision function
+  matches and append/revision trigger bindings. Functions must be the existing
+  INVOKER zero-argument plpgsql trigger definitions with exact body digest;
+  triggers must be enabled ordinary row BEFORE UPDATE/DELETE (type 27) or
+  BEFORE INSERT (type 7), bound to the correct relation/function and without
+  a WHEN filter, UPDATE OF restriction, arguments or constraint-trigger shape.
+  Any missing or mismatched guard adds LEDGER_GUARDS_UNVERIFIED.
+- Exact current-main bodies match accepted HRM source 9f3 byte-for-byte:
+  final unconditional append guard `eba304d394c516e8439246844c269722` and
+  revision allocator `ff5eb1a7ab63f1c9e7d75f926180f643` (MD5 of PostgreSQL
+  prosrc). The backfill's temporary permissive guard is never selected.
+- Hosted-only isolated fixtures install the exact existing migration function
+  declarations. Negative catalog checks cover disabled trigger bindings,
+  changed append body, SECURITY DEFINER revision function and missing NOT NULL
+  caseRevision, with no decision-row reads or writes. Their source validation
+  trigger includes the three exact migration files used for source binding.
+- Scope explicitly remains the API's row UPDATE/DELETE/INSERT contract. The
+  projection claims no TRUNCATE protection or resistance to privileged bypass.
+  Source metadata alone does not replace runtime tests or actual production
+  metadata; those gates remain NOT RUN until the coordinator runs hosted CI
+  and then the reviewed main-only diagnostic.
+- Capacity remained suitable for bounded checks: about 13 GiB available RAM,
+  279 GiB free disk and zero immediate memory pressure. Node syntax, parsed
+  YAML environment/concurrency boundaries, runner policy and whitespace passed.
+  Successor Node result: 13 PASS, 1 hosted PostgreSQL SKIP, 0 failures.
+  No local database, production query, new access configuration, dispatch,
+  push, main change, merge or deployment was performed.
+- Current result: requested physical guard metadata coverage implemented.
+  Last completed action: bounded source checks. Precise stopping point: create
+  the successor checkpoint while retaining 7a013. Next action: root independently
+  reviews exact successor bytes and publishes its infrastructure PR; hosted SQL
+  and real production catalog results remain separate pending gates.

@@ -3,7 +3,7 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 import { createHash } from "node:crypto"
 import { execFileSync } from "node:child_process"
-import { TARGET_SOURCE_SHA, MIGRATIONS, RELATIONS, INDEXES, GUARD_MD5, parseMigrationEnv, readRootFile, validateSnapshot, assessMetadata, validateReport, inspectRemote, queryMetadata } from "./hrm-migration-metadata-preflight.mjs"
+import { TARGET_SOURCE_SHA, MIGRATIONS, RELATIONS, INDEXES, GUARD_MD5, LEDGER_GUARD_MD5, parseMigrationEnv, readRootFile, validateSnapshot, assessMetadata, validateReport, inspectRemote, queryMetadata } from "./hrm-migration-metadata-preflight.mjs"
 
 const sql = fs.readFileSync(new URL("./hrm-migration-metadata-preflight.sql", import.meta.url), "utf8")
 const helper = fs.readFileSync(new URL("./hrm-migration-metadata-preflight.mjs", import.meta.url), "utf8")
@@ -18,11 +18,16 @@ const snapshot = () => ({
   relations: RELATIONS.map(name => ({ name, present: name !== "workforce_reconciliation_tenant_states", ordinaryTable: name !== "workforce_reconciliation_tenant_states", rls: !["organizations", "workforce_reconciliation_tenant_states"].includes(name), forcedRls: !["organizations", "workforce_reconciliation_tenant_states"].includes(name), ownerAbility: name !== "workforce_reconciliation_tenant_states", bytes: 0, estimatedRows: 0, keyColumnsMatch: name !== "workforce_reconciliation_tenant_states" })),
   indexes: INDEXES.map(name => ({ name, present: false, shapeMatch: false })),
   guard: { present: true, shapeMatch: true, bodyMd5: GUARD_MD5.pending, ownerAbility: true, triggerBound: true },
+  ledgerGuards: { appendFunctionMatches: true, appendTriggerBound: true, revisionFunctionMatches: true, revisionTriggerBound: true },
   defaultAcl: { canCreatePublicSchema: true, explicitPrivilegeRows: 0, publicPrivilegeRows: 0, nonOwnerWriteRows: 0, grantableRows: 0 },
   activity: { visibilityComplete: true, otherActiveSessions: 0, otherOpenTransactions: 0, lockWaitSessions: 0 },
 })
 const encoded = () => JSON.stringify(defaults()) + "\n" + JSON.stringify(snapshot()) + "\n"
 const fakeRead = path => path.endsWith(".deploy-sha") ? sha + "\n" : "MIGRATION_DATABASE_URL='postgresql://synthetic:protected@127.0.0.1/fixture'\nMIGRATION_EXPECTED_DB_ROLE=synthetic\n"
+const sourceFunction = (migration, name) => {
+  const text = fs.readFileSync(new URL(`../prisma/migrations/${migration}/migration.sql`, import.meta.url), "utf8")
+  return [...text.matchAll(new RegExp(`CREATE OR REPLACE FUNCTION ${name}\\(\\)[\\s\\S]*?AS \\$\\$([\\s\\S]*?)\\$\\$;`, "g"))].at(-1)
+}
 
 test("static env parser never sources shell and rejects ambiguous/session overrides", () => {
   assert.equal(parseMigrationEnv("# comment\nexport MIGRATION_DATABASE_URL='postgresql://synthetic:protected@host/fixture?schema=public&sslmode=verify-full'\nMIGRATION_EXPECTED_DB_ROLE=synthetic\n"), "postgresql://synthetic:protected@host/fixture?sslmode=verify-full")
@@ -77,6 +82,27 @@ test("organizations FK target permits its existing RLS state while every tenant-
     changed.relations.find(entry => entry.name === name).forcedRls = false
     assert.ok(assessMetadata(defaults(), changed).reasons.includes("RLS_UNVERIFIED"), name)
   }
+})
+
+test("decision guard catalog booleans fail closed individually and bind exact committed function bodies", () => {
+  for (const field of Object.keys(snapshot().ledgerGuards)) {
+    const changed = snapshot()
+    changed.ledgerGuards[field] = false
+    assert.ok(assessMetadata(defaults(), changed).reasons.includes("LEDGER_GUARDS_UNVERIFIED"), field)
+    changed.ledgerGuards[field] = "protected"
+    assert.throws(() => validateSnapshot(defaults(), changed), { message: "OUTPUT_INVALID" })
+  }
+  for (const [kind, migration, name] of [
+    ["append", "20260927014100_workforce_exception_case_revisions_backfill", "workforce_reject_exception_decision_mutation"],
+    ["revision", "20260927014000_workforce_exception_case_revisions", "workforce_assign_exception_decision_revision"],
+  ]) {
+    const declaration = sourceFunction(migration, name)
+    assert.ok(declaration)
+    assert.equal(createHash("md5").update(declaration[1]).digest("hex"), LEDGER_GUARD_MD5[kind])
+    assert.ok(sql.includes(LEDGER_GUARD_MD5[kind]))
+  }
+  assert.match(sql, /t\.tgtype=27 AND t\.tgqual IS NULL/)
+  assert.match(sql, /t\.tgtype=7 AND t\.tgqual IS NULL/)
 })
 
 test("strict finite projection rejects secret fields, malformed counts and unknown names", () => {
@@ -189,6 +215,7 @@ test("hosted PostgreSQL executes the real fixed catalog query and rejects writes
   assert.ok(guard)
   assert.equal(createHash("md5").update(guard[1]).digest("hex"), GUARD_MD5.pending)
   const extra = {
+    workforce_exception_decisions: ',"caseId" text NOT NULL,"caseRevision" integer NOT NULL',
     mtm_agents: ',"teamId" text',
     workforce_shift_templates: ',"teamId" text,"status" "WorkforceDefinitionStatus" NOT NULL',
     workforce_shift_assignments: ',"agentId" text NOT NULL,"templateId" text NOT NULL,"assignedByUserId" text NOT NULL,"effectiveFrom" date NOT NULL,"effectiveTo" date',
@@ -198,7 +225,9 @@ test("hosted PostgreSQL executes the real fixed catalog query and rejects writes
   const tables = RELATIONS.filter(name => name !== "workforce_reconciliation_tenant_states").map(name => name === "organizations"
     ? 'CREATE TABLE organizations ("id" text PRIMARY KEY);'
     : `CREATE TABLE "${name}" ("organizationId" text NOT NULL,"id" text NOT NULL${extra[name] ?? ""}); ALTER TABLE "${name}" ENABLE ROW LEVEL SECURITY; ALTER TABLE "${name}" FORCE ROW LEVEL SECURITY;`).join("\n")
-  execute(`BEGIN; CREATE ROLE hrm_preflight_migration LOGIN NOSUPERUSER BYPASSRLS PASSWORD 'isolated-preflight-migration'; GRANT USAGE,CREATE ON SCHEMA public TO hrm_preflight_migration; SET ROLE hrm_preflight_migration; CREATE TABLE _prisma_migrations(id text NOT NULL,migration_name text NOT NULL,checksum text NOT NULL,finished_at timestamptz,rolled_back_at timestamptz); CREATE TYPE "WorkforceDefinitionStatus" AS ENUM ('ACTIVE','DRAFT','RETIRED'); ${tables}\n${guard[0]}\nCREATE TRIGGER workforce_shift_assignments_guard BEFORE INSERT OR UPDATE ON workforce_shift_assignments FOR EACH ROW EXECUTE FUNCTION workforce_guard_shift_assignment(); COMMIT; RESET ROLE; ALTER ROLE hrm_preflight_migration SET lock_timeout='10s'; ALTER ROLE hrm_preflight_migration SET statement_timeout='14min';`)
+  const append = sourceFunction("20260927014100_workforce_exception_case_revisions_backfill", "workforce_reject_exception_decision_mutation")
+  const revision = sourceFunction("20260927014000_workforce_exception_case_revisions", "workforce_assign_exception_decision_revision")
+  execute(`BEGIN; CREATE ROLE hrm_preflight_migration LOGIN NOSUPERUSER BYPASSRLS PASSWORD 'isolated-preflight-migration'; GRANT USAGE,CREATE ON SCHEMA public TO hrm_preflight_migration; SET ROLE hrm_preflight_migration; CREATE TABLE _prisma_migrations(id text NOT NULL,migration_name text NOT NULL,checksum text NOT NULL,finished_at timestamptz,rolled_back_at timestamptz); CREATE TYPE "WorkforceDefinitionStatus" AS ENUM ('ACTIVE','DRAFT','RETIRED'); ${tables}\n${guard[0]}\n${append[0]}\n${revision[0]}\nCREATE TRIGGER workforce_shift_assignments_guard BEFORE INSERT OR UPDATE ON workforce_shift_assignments FOR EACH ROW EXECUTE FUNCTION workforce_guard_shift_assignment(); CREATE TRIGGER workforce_exception_decisions_append_only BEFORE UPDATE OR DELETE ON workforce_exception_decisions FOR EACH ROW EXECUTE FUNCTION workforce_reject_exception_decision_mutation(); CREATE TRIGGER workforce_exception_decisions_assign_case_revision BEFORE INSERT ON workforce_exception_decisions FOR EACH ROW EXECUTE FUNCTION workforce_assign_exception_decision_revision(); COMMIT; RESET ROLE; ALTER ROLE hrm_preflight_migration SET lock_timeout='10s'; ALTER ROLE hrm_preflight_migration SET statement_timeout='14min';`)
   const migrationUrl = new URL(url.href)
   migrationUrl.username = "hrm_preflight_migration"
   migrationUrl.password = "isolated-preflight-migration"
@@ -206,6 +235,24 @@ test("hosted PostgreSQL executes the real fixed catalog query and rejects writes
     const query = () => { const lines = queryMetadata(migrationUrl.href, sql).trim().split("\n"); assert.equal(lines.length, 2); return lines.map(JSON.parse) }
     let [d, s] = query()
     assert.deepEqual(assessMetadata(d, s), { status: "READY_FOR_REVIEW", reasons: [], migrationStates: ["pending", "pending"] })
+    for (const [trigger, field] of [["workforce_exception_decisions_append_only", "appendTriggerBound"], ["workforce_exception_decisions_assign_case_revision", "revisionTriggerBound"]]) {
+      execute(`ALTER TABLE workforce_exception_decisions DISABLE TRIGGER ${trigger};`)
+      ;[d, s] = query()
+      assert.equal(s.ledgerGuards[field], false)
+      assert.ok(assessMetadata(d, s).reasons.includes("LEDGER_GUARDS_UNVERIFIED"))
+      execute(`ALTER TABLE workforce_exception_decisions ENABLE TRIGGER ${trigger};`)
+    }
+    execute("ALTER FUNCTION workforce_assign_exception_decision_revision() SECURITY DEFINER;")
+    ;[d, s] = query()
+    assert.equal(s.ledgerGuards.revisionFunctionMatches, false)
+    execute("ALTER FUNCTION workforce_assign_exception_decision_revision() SECURITY INVOKER; CREATE OR REPLACE FUNCTION workforce_reject_exception_decision_mutation() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RETURN OLD; END; $$;")
+    ;[d, s] = query()
+    assert.equal(s.ledgerGuards.appendFunctionMatches, false)
+    execute(append[0] + ' ALTER TABLE workforce_exception_decisions ALTER COLUMN "caseRevision" DROP NOT NULL;')
+    ;[d, s] = query()
+    assert.equal(s.relations.find(entry => entry.name === "workforce_exception_decisions").keyColumnsMatch, false)
+    assert.ok(assessMetadata(d, s).reasons.includes("RELATION_SHAPE"))
+    execute('ALTER TABLE workforce_exception_decisions ALTER COLUMN "caseRevision" SET NOT NULL;')
     execute("CREATE INDEX wf_recon_workdays_c_idx ON mtm_agent_workdays (\"organizationId\",\"id\");")
     ;[d, s] = query()
     assert.ok(assessMetadata(d, s).reasons.includes("INDEX_SHAPE"))
