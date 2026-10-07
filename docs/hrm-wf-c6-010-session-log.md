@@ -699,3 +699,33 @@ All earlier evidence journal bytes remain; the following frozen source suffix is
 - Actual5defaultACL entries: expectedruntime SELECT/I/U/D PUBLIC_SCHEMA nongrantable; runtime NOSUPER/NOBYPASS/LOGIN/SETpriv0. RemainingOTHER1SELECT PUBLIC_SCHEMA nongrantable NOSUPER/BYPASS/LOGIN/SETpriv0. PUBLIC0/grantable0/nonownerWRITE3 all expectedruntime, OTHERwrite0. OTHERpurpose UNATTRIBUTED; not provenunsafe, no blindrevocation/configchange justified. Original504DEFAULT_ACL_UNREVIEWED/777IDENTITY_UNPROVED/7bfhost mismatch unchanged; READ_COMPLETE remains observation, not approval.
 - Source backup contract explicitly grants owner defaultSELECT to configuredbackup_role; protected canonicalbackup.env uses PGUSER/BACKUP_EXPECTED_DB_ROLE/PGDATABASE, permits root0600 or root:leaddrive-backup0640. Existing source-probe requires backupcredentials/connection/transientservice and prints identity; unrelated environmental diagnostic does not attribute ACL. Neither is substituted for safe attribution. New clean codex/hrm-release-backup-acl-attribution-20261007 exactf8 worktree adds separate bounded read-only source, preserves old9+loopback5 byteexact. It will compare canonicaldeclaredidentity to actualOTHER through existing trusted migrationcatalog; no backupcredentialfile/thirdconnection/service/dump/access mutation. Declared identity/catalog profile cannot claim freshbackupservice/restore/commissioning acceptance.
 - User normalreviewedrelease authorization remains in force; no activation/personnelautomation/access/grant/role/config/secret/Support/Mac change. Exact5638 technicalPASS preserved, HRM589 notmerged/deployed. Accounting84/161DONE,77open,60%,C6/C12PARTIAL. Next actualbounded attribution after source/hosted/currentrequired5/normalauxrelease; assess actualrecipient manually, then exactfreshHRM acceptance and normalrelease if all criteria.
+
+
+## 2026-10-07 — frozen5638 archived; actual66-tested attribution tool integrated
+
+Technical5638/tree8743 fully accepted and preserved on published archive branch
+codex/hrm-release-5638-technical-archive-20261007. Actualmainf8 loopback catalog
+read37690299054/113028735948 proved same liveDB/expectedruntimeIUD/PUBLIC0/
+grantable0, but OTHER1SELECT NOSUPER/BYPASS/LOGIN purpose remainsunattributed.
+Oldstrictmetadata/defaultACL failures remain unchanged, READ_COMPLETE notapproval.
+
+Separate reviewed source60efe23846fddc7deea16c48ba3a90bd962aae35/treee57592a08
+PR627 adds5newpaths only, old14+5gates byteexact. Roothelper/peerSQL-tests-
+workflow crossreview; original counter gap and correction retained, no active
+findings. Actualsource37692727660/113036666929 firstattempt66/66PASS/noskips
+(old22+14+16/new14), full DEFAULT production helper transport throughactual
+held runtime + migration metadata observations, wrong/missingrole, ROsetting
+precedence/absence, memberships/unsafeprofile, globalPUBLIC/multirecipients/
+writes/grantoptions, wrongPID/ROguard; BODY/DBsetting+10drop+residuecleanupPASS.
+Local13unitPASS/1hostedSKIP/runner50/diffPASS; heavychecks NOTRUN onContabo.
+
+Ordinarymerge ofidentical5toolpaths into existing589 source preserves ALLold
+5638source and accepted973/c123/PRchain. Freshnewfrozenhead requires full5manual
+lanes/allcurrentapplicable+5required CI and exactindependent source/runtime
+acceptance; 5638 results are historical, notborrowed. Auxiliary627 ownnormal
+release and protectedmain actualbackup-attribution manualassessment mustfinish
+beforeHRM589normalrelease. No grant/role/access/config/secret/activation/
+personnelautomation/Support/Mac changes. Accounting84/161/77open/60%, C6/C12
+PARTIAL; configuredbackupcatalogidentity does not claim freshbackupservice,
+commissioning, restore or realHRoperations. Next currentheadfulltechnicalgates
+inparallel normalauxrelease/protectedcatalogassessment, then589release ifsafe.
