@@ -15,7 +15,7 @@ vi.mock("@/lib/prisma", () => ({
     cashFlowEntry: { findMany: vi.fn() },
     bill: { findFirst: vi.fn(), findMany: vi.fn(), findUnique: vi.fn(), update: vi.fn(), delete: vi.fn() },
     billPayment: { findMany: vi.fn(), create: vi.fn() },
-    paymentRegistryEntry: { findMany: vi.fn(), create: vi.fn(), count: vi.fn(), aggregate: vi.fn() },
+    paymentRegistryEntry: { findMany: vi.fn(), create: vi.fn(), count: vi.fn(), aggregate: vi.fn(), deleteMany: vi.fn() },
     paymentOrder: { count: vi.fn() },
     $executeRawUnsafe: vi.fn(),
     $queryRawUnsafe: vi.fn(),

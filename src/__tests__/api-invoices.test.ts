@@ -11,6 +11,8 @@ vi.mock("@/lib/prisma", () => ({
       deleteMany: vi.fn(),
     },
     invoiceItem: { deleteMany: vi.fn(), createMany: vi.fn() },
+    paymentRegistryEntry: { deleteMany: vi.fn() },
+    $transaction: vi.fn(),
   },
 }))
 vi.mock("@/lib/api-auth", () => ({ getOrgId: vi.fn(), getSession: vi.fn() }))
@@ -78,6 +80,7 @@ beforeEach(() => {
   // invoice routes are getOrgId-only withRls handlers; default getSession to null
   // so withRls falls through to getOrgId (the 401 tests null getOrgId too).
   vi.mocked(getSession).mockResolvedValue(null as any)
+  vi.mocked(prisma.$transaction).mockImplementation(async (callback: any) => callback(prisma))
 })
 
 // ─── GET /invoices ───────────────────────────────────────────────
