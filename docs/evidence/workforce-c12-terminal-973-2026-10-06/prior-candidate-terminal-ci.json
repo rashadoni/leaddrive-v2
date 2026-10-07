@@ -1,0 +1,303 @@
+{
+  "rawLogsRead": false,
+  "candidates": [
+    {
+      "head": "7df38080839440f2ede9671e9aac01fee5436cd0",
+      "runs": [
+        {
+          "id": 37541713712,
+          "name": "Workforce policy version browser evidence",
+          "status": "completed",
+          "conclusion": "success",
+          "attempt": 1,
+          "updated": "2026-10-06T22:42:25Z",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37541713712"
+        },
+        {
+          "id": 37541713716,
+          "name": "Workforce manager Today browser evidence",
+          "status": "completed",
+          "conclusion": "success",
+          "attempt": 1,
+          "updated": "2026-10-06T22:42:21Z",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37541713716"
+        },
+        {
+          "id": 37541713706,
+          "name": "Workforce policy employee impact evidence",
+          "status": "completed",
+          "conclusion": "success",
+          "attempt": 1,
+          "updated": "2026-10-06T22:43:01Z",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37541713706"
+        },
+        {
+          "id": 37541713735,
+          "name": "Workforce exception report browser evidence",
+          "status": "completed",
+          "conclusion": "success",
+          "attempt": 1,
+          "updated": "2026-10-06T22:43:30Z",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37541713735"
+        },
+        {
+          "id": 37541713751,
+          "name": "PR checks",
+          "status": "completed",
+          "conclusion": "cancelled",
+          "attempt": 1,
+          "updated": "2026-10-06T22:44:14Z",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37541713751"
+        },
+        {
+          "id": 37541713786,
+          "name": "Workforce policy restore writer evidence",
+          "status": "completed",
+          "conclusion": "cancelled",
+          "attempt": 1,
+          "updated": "2026-10-06T22:44:51Z",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37541713786"
+        },
+        {
+          "id": 37541713713,
+          "name": "Workforce calendar browser evidence",
+          "status": "completed",
+          "conclusion": "cancelled",
+          "attempt": 1,
+          "updated": "2026-10-06T22:44:59Z",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37541713713"
+        },
+        {
+          "id": 37541713744,
+          "name": "Workforce bulk assignment acceptance",
+          "status": "completed",
+          "conclusion": "cancelled",
+          "attempt": 1,
+          "updated": "2026-10-06T22:44:50Z",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37541713744"
+        },
+        {
+          "id": 37541688145,
+          "name": "Workforce policy restore writer evidence",
+          "status": "completed",
+          "conclusion": "skipped",
+          "attempt": 1,
+          "updated": "2026-10-06T22:36:53Z",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37541688145"
+        },
+        {
+          "id": 37541688220,
+          "name": "Workforce exception report browser evidence",
+          "status": "completed",
+          "conclusion": "skipped",
+          "attempt": 1,
+          "updated": "2026-10-06T22:36:53Z",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37541688220"
+        },
+        {
+          "id": 37541688215,
+          "name": "Workforce policy employee impact evidence",
+          "status": "completed",
+          "conclusion": "skipped",
+          "attempt": 1,
+          "updated": "2026-10-06T22:36:53Z",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37541688215"
+        },
+        {
+          "id": 37541688725,
+          "name": "Workforce bulk assignment acceptance",
+          "status": "completed",
+          "conclusion": "skipped",
+          "attempt": 1,
+          "updated": "2026-10-06T22:36:53Z",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37541688725"
+        },
+        {
+          "id": 37541688143,
+          "name": "Workforce policy version browser evidence",
+          "status": "completed",
+          "conclusion": "skipped",
+          "attempt": 1,
+          "updated": "2026-10-06T22:36:53Z",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37541688143"
+        },
+        {
+          "id": 37541688190,
+          "name": "Workforce calendar browser evidence",
+          "status": "completed",
+          "conclusion": "skipped",
+          "attempt": 1,
+          "updated": "2026-10-06T22:36:53Z",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37541688190"
+        },
+        {
+          "id": 37541688297,
+          "name": "Workforce manager Today browser evidence",
+          "status": "completed",
+          "conclusion": "skipped",
+          "attempt": 1,
+          "updated": "2026-10-06T22:36:53Z",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37541688297"
+        },
+        {
+          "id": 37541688269,
+          "name": "PR checks",
+          "status": "completed",
+          "conclusion": "cancelled",
+          "attempt": 1,
+          "updated": "2026-10-06T22:37:18Z",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37541688269"
+        },
+        {
+          "id": 37541688155,
+          "name": "Secret scan",
+          "status": "completed",
+          "conclusion": "failure",
+          "attempt": 1,
+          "updated": "2026-10-06T22:37:14Z",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37541688155"
+        },
+        {
+          "id": 37541688241,
+          "name": "Runner policy",
+          "status": "completed",
+          "conclusion": "success",
+          "attempt": 1,
+          "updated": "2026-10-06T22:37:14Z",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37541688241"
+        },
+        {
+          "id": 37541688306,
+          "name": "Social Monitoring queue E2E",
+          "status": "completed",
+          "conclusion": "failure",
+          "attempt": 1,
+          "updated": "2026-10-06T22:43:52Z",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37541688306"
+        },
+        {
+          "id": 37541679245,
+          "name": "Runner policy",
+          "status": "completed",
+          "conclusion": "success",
+          "attempt": 1,
+          "updated": "2026-10-06T22:37:10Z",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37541679245"
+        }
+      ]
+    },
+    {
+      "head": "1d1741a73fb0e318b5e7a05f58fc5faf6b2678f2",
+      "runs": [
+        {
+          "id": 37542413965,
+          "name": "Runner policy",
+          "status": "completed",
+          "conclusion": "success",
+          "attempt": 1,
+          "updated": "2026-10-06T22:44:26Z",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37542413965"
+        },
+        {
+          "id": 37542410962,
+          "name": "Runner policy",
+          "status": "completed",
+          "conclusion": "success",
+          "attempt": 1,
+          "updated": "2026-10-06T22:44:10Z",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37542410962"
+        },
+        {
+          "id": 37542411363,
+          "name": "Secret scan",
+          "status": "completed",
+          "conclusion": "success",
+          "attempt": 1,
+          "updated": "2026-10-06T22:44:12Z",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37542411363"
+        },
+        {
+          "id": 37542411259,
+          "name": "Social Monitoring queue E2E",
+          "status": "completed",
+          "conclusion": "failure",
+          "attempt": 1,
+          "updated": "2026-10-06T22:48:02Z",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37542411259"
+        },
+        {
+          "id": 37542411365,
+          "name": "PR checks",
+          "status": "completed",
+          "conclusion": "cancelled",
+          "attempt": 1,
+          "updated": "2026-10-06T22:50:00Z",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37542411365"
+        },
+        {
+          "id": 37542411028,
+          "name": "Workforce exception report browser evidence",
+          "status": "completed",
+          "conclusion": "cancelled",
+          "attempt": 1,
+          "updated": "2026-10-06T22:50:25Z",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37542411028"
+        },
+        {
+          "id": 37542411036,
+          "name": "Workforce calendar browser evidence",
+          "status": "completed",
+          "conclusion": "cancelled",
+          "attempt": 1,
+          "updated": "2026-10-06T22:50:23Z",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37542411036"
+        },
+        {
+          "id": 37542410909,
+          "name": "Workforce manager Today browser evidence",
+          "status": "completed",
+          "conclusion": "cancelled",
+          "attempt": 1,
+          "updated": "2026-10-06T22:50:28Z",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37542410909"
+        },
+        {
+          "id": 37542411003,
+          "name": "Workforce policy employee impact evidence",
+          "status": "completed",
+          "conclusion": "cancelled",
+          "attempt": 1,
+          "updated": "2026-10-06T22:50:19Z",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37542411003"
+        },
+        {
+          "id": 37542411016,
+          "name": "Workforce policy version browser evidence",
+          "status": "completed",
+          "conclusion": "cancelled",
+          "attempt": 1,
+          "updated": "2026-10-06T22:50:21Z",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37542411016"
+        },
+        {
+          "id": 37542411059,
+          "name": "Workforce policy restore writer evidence",
+          "status": "completed",
+          "conclusion": "cancelled",
+          "attempt": 1,
+          "updated": "2026-10-06T22:50:12Z",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37542411059"
+        },
+        {
+          "id": 37542411161,
+          "name": "Workforce bulk assignment acceptance",
+          "status": "completed",
+          "conclusion": "cancelled",
+          "attempt": 1,
+          "updated": "2026-10-06T22:50:09Z",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37542411161"
+        }
+      ]
+    }
+  ]
+}

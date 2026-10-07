@@ -1,0 +1,104 @@
+{
+  "createdAt": "2026-10-06T22:47:40.374675+00:00",
+  "status": "BOUNDED_HARNESS_FACTORY_ADOPTION_ACCEPTED_SOCIAL_FINAL_PENDING",
+  "baseHead": "1d1741a73fb0e318b5e7a05f58fc5faf6b2678f2",
+  "scope": "Existing approved RLS test-client factory adoption in reproducible owned-container evidence script; no product guard or operations change.",
+  "sourceBindings": [
+    {
+      "path": "prisma/schema.prisma",
+      "bytes": 958771,
+      "sha256": "fd2e0a5b835669dafa736943fd9e5ee403a81dd0dd28d127e895e1f19232eae7"
+    },
+    {
+      "path": "prisma/migrations/20261005193000_workforce_reconciliation_operations/migration.sql",
+      "bytes": 2721,
+      "sha256": "c452e7f6d13dca1e5257d8353c252745d05cd4f18eae83cd45501f61664ef719"
+    },
+    {
+      "path": "scripts/_rls.mjs",
+      "bytes": 2250,
+      "sha256": "fae67dd4467cfd14667236a570ee4884100d8236496f64e31984305146ad7266"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-reader-profile.ts",
+      "bytes": 5391,
+      "sha256": "c336446067a9e4e6a26bdf0403579317b34e2615983aa29640325569b552342e"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-operations.ts",
+      "bytes": 11784,
+      "sha256": "2031a6dc00b16c508120d584f6b9c4f038a36aa78068e1161c99de06a5f919de"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-sweep.ts",
+      "bytes": 3049,
+      "sha256": "309ce1eabde967c795c47bb4a123f7c4cfd73a2a13638d8937327d8db4b0024c"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-dense.ts",
+      "bytes": 8490,
+      "sha256": "500f3f9b68cb68a0ab0ee6085814961b359b46ceb3b18a5ba38d9cafbd175959"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-source-page.ts",
+      "bytes": 5013,
+      "sha256": "7c45f9b7d1b621d7418e4ce18cdbace2bfed1a9a3a522944c5504c1259da03fe"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-snapshot.ts",
+      "bytes": 9679,
+      "sha256": "bdba98ef3f2d18b916200673038b4ad3eb523f2a5e3d12c864198eac26f490a3"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-approval-group.ts",
+      "bytes": 4263,
+      "sha256": "aa45ab91f54678c457d066a9a8bc044acabbd5cd29df4bad1b1924f7c0632a05"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-export-audit.ts",
+      "bytes": 7445,
+      "sha256": "38094ed52225428eb46eae6247f4a618a98d66e4e83151b7ba217168c6722409"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-schedule-subject.ts",
+      "bytes": 9921,
+      "sha256": "6ef11cc56e3132e4e48ba99cb57e021b9fed425488aea11c12864e9025eae9d9"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation.ts",
+      "bytes": 10678,
+      "sha256": "292720bc88e8484dd173e6ed50d7616f008e5524201dc756f40ab3fabca20a27"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-cursor-store.ts",
+      "bytes": 6533,
+      "sha256": "8b04ef4d1c7ea5cca424ef13e7c0d80e949271523a22cf4d43a545049949a6bd"
+    },
+    {
+      "path": "scripts/workforce-reconciliation-reader-profile-evidence.mjs",
+      "bytes": 21371,
+      "sha256": "e2a2d22978160914c65145a7fd02f34f1d7f0804bc5311209b7dd63cef683f3e"
+    }
+  ],
+  "matrixSupport": {
+    "path": "/tmp/hrm-c12-acceptance-20261006/profile-matrix-attempt6.json",
+    "bytes": 19287,
+    "sha256": "f8faceb0d493d1eb12c48ed7108e132fd9f5bc2f1743cde51e3396a45d2c9d83"
+  },
+  "checks": {
+    "all15CurrentBindingsMatch": true,
+    "guardAndOperationsByteIdentical7df": true,
+    "sharedFactoryByteIdentical7df": true,
+    "ownerMatrix35Pass": true,
+    "allCleanupPass": true,
+    "sourceDiff": "Factory import replaces direct PrismaClient; local test target set only after owned loopback container/current schema setup; two clients created via existing no-bypass factory; prior environment value restored in finally; helper added to before/after bindings.",
+    "noTargetInput": "Harness accepts absolute output path only, no existing database URL; factory target is generated own container URL.",
+    "social883": "NOT_YET_REVIEWED in this receipt; original882/883 classifier failure preserved by parent, no green claim."
+  },
+  "findings": [],
+  "limits": [
+    "No own DB run; owner35 evidence rehashed/reviewed.",
+    "Fixture schema/policy/historical/role-stability limits from earlier receipt remain.",
+    "Exact successor commit and final Social/hosted checks pending; no gate weakening or production action."
+  ]
+}

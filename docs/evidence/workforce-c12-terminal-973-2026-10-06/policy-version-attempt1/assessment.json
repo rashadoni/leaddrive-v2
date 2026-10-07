@@ -1,0 +1,21 @@
+{
+  "head": "973241bacc296b71fe817d1af11187c32e8126af",
+  "run": 37542951424,
+  "attempt": 1,
+  "job": 112540479450,
+  "status": "FAIL_PRESERVED",
+  "passedBrowserCases": 17,
+  "requiredBrowserCases": 18,
+  "passedPostgresCases": 4,
+  "failureSource": "scripts/workforce-policy-version-browser-evidence.mjs:584",
+  "actualHttpStatus": 200,
+  "expectedHttpStatus": 401,
+  "precedingRealSignoutAndSessionNullAssertionsPassed": true,
+  "receiptStageLabelIsStale": true,
+  "finalFactImmutabilityAndRlsAfterAssertionsReached": false,
+  "cleanup": "PASS",
+  "cause": "UNKNOWN",
+  "requestBodyOrCookieTimelineAvailable": false,
+  "review": "One unchanged failed-job retry is diagnostic only; no source fix or transient-cause claim and no weakened assertion.",
+  "rawLogsOrScreenshotsRead": false
+}

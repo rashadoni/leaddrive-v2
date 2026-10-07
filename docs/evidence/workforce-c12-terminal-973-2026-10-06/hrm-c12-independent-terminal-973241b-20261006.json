@@ -1,0 +1,487 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-10-06T23:15:57.161667+00:00",
+  "status": "READY_FOR_SCOPED_APPROVAL_BOUNDED_C12_SLICE",
+  "head": "973241bacc296b71fe817d1af11187c32e8126af",
+  "tree": "e29f1bd33104d6b3aab4bce30d1116cbd0c82b66",
+  "main": "cb5a0453e7ead310e0515e265efee209be1c272b",
+  "synthetic": {
+    "sha": "ea2a86be4ca8b4b89aa4c067f9835d2e09f90c51",
+    "tree": "e29f1bd33104d6b3aab4bce30d1116cbd0c82b66",
+    "parents": [
+      "cb5a0453e7ead310e0515e265efee209be1c272b",
+      "973241bacc296b71fe817d1af11187c32e8126af"
+    ]
+  },
+  "scope": "Dormant C12 reader-profile visibility refusal and evidence harness; exact-source acceptance plus required/applicable hosted gate metadata. Full C12 acceptance is not granted.",
+  "freshness": {
+    "independentConnectorCapture": "2026-10-06T23:12:35.589Z",
+    "primary608Draft": true,
+    "validation609Ready": true,
+    "sourceHeadsAndMainMatch": true,
+    "dependency589": "a856a9e533c4f3cec6f2313e69f5be0d5b4d4226",
+    "dependency605And606": "bf6ed11f2bba8c93e828fb044315794b44224741",
+    "validation609IsNotIndependentMergeCandidate": true
+  },
+  "sourceAcceptance": {
+    "receipt": "/tmp/hrm-c12-independent-exact-source-973241b-20261006.json",
+    "all8936BlobsAndModesVerified": true,
+    "all2822TreesRecomputed": true,
+    "successor14ChangedUTF8BlobsReadBack": true,
+    "prior8922BlobsPreserved": true,
+    "noUnresolvedScopedSourceFindings": true,
+    "ownerActualPGMatrix": {
+      "pass": 35,
+      "bindings": 15,
+      "scope": "Full current Prisma schema plus exact C12 migration, artificial tenant policies; only two of 18 fact tables populated; no historical replay or production ACL claim."
+    },
+    "ownerExistingPGRegressions": {
+      "pass": 152,
+      "skip": 0
+    },
+    "ownerSocialRegressions": {
+      "pass": 883,
+      "skip": 0,
+      "files": 52
+    },
+    "reviewerDBRuns": 0,
+    "reviewerPinnedScannerControls": {
+      "pass": 7,
+      "allNegativeControlsPreserved": true
+    }
+  },
+  "hosted": {
+    "appId": 15368,
+    "requiredFive": "PASS",
+    "successfulRecords": 15,
+    "successfulUniqueContexts": 14,
+    "allCheckRecords": 17,
+    "latestJobs": 16,
+    "latestSuccessfulJobs": 15,
+    "workflowRuns": 12,
+    "attempt1Runs": 11,
+    "attempt2Runs": 1,
+    "allLatestRuns": "SUCCESS",
+    "checks": [
+      {
+        "id": 112543488703,
+        "name": "Authenticated Workforce policy version browser evidence",
+        "conclusion": "success",
+        "appId": 15368,
+        "head": "973241bacc296b71fe817d1af11187c32e8126af"
+      },
+      {
+        "id": 112541917833,
+        "name": "Browser close, cron takeover & durable recovery",
+        "conclusion": "success",
+        "appId": 15368,
+        "head": "973241bacc296b71fe817d1af11187c32e8126af"
+      },
+      {
+        "id": 112540540817,
+        "name": "static-checks",
+        "conclusion": "success",
+        "appId": 15368,
+        "head": "973241bacc296b71fe817d1af11187c32e8126af"
+      },
+      {
+        "id": 112540540615,
+        "name": "typecheck",
+        "conclusion": "success",
+        "appId": 15368,
+        "head": "973241bacc296b71fe817d1af11187c32e8126af"
+      },
+      {
+        "id": 112540518775,
+        "name": "Authenticated Workforce manager Today browser evidence",
+        "conclusion": "success",
+        "appId": 15368,
+        "head": "973241bacc296b71fe817d1af11187c32e8126af"
+      },
+      {
+        "id": 112540500077,
+        "name": "Authenticated Workforce exception report browser evidence",
+        "conclusion": "success",
+        "appId": 15368,
+        "head": "973241bacc296b71fe817d1af11187c32e8126af"
+      },
+      {
+        "id": 112540488614,
+        "name": "Authenticated Workforce calendar browser evidence",
+        "conclusion": "success",
+        "appId": 15368,
+        "head": "973241bacc296b71fe817d1af11187c32e8126af"
+      },
+      {
+        "id": 112540479450,
+        "name": "Authenticated Workforce policy version browser evidence",
+        "conclusion": "failure",
+        "appId": 15368,
+        "head": "973241bacc296b71fe817d1af11187c32e8126af"
+      },
+      {
+        "id": 112540467332,
+        "name": "Real PostgreSQL SELECT-only and authenticated employee impact browser evidence",
+        "conclusion": "success",
+        "appId": 15368,
+        "head": "973241bacc296b71fe817d1af11187c32e8126af"
+      },
+      {
+        "id": 112540426173,
+        "name": "Real PostgreSQL, authorized API and rendered policy restore UI evidence",
+        "conclusion": "success",
+        "appId": 15368,
+        "head": "973241bacc296b71fe817d1af11187c32e8126af"
+      },
+      {
+        "id": 112540407863,
+        "name": "C7 bulk schedules and sites acceptance",
+        "conclusion": "success",
+        "appId": 15368,
+        "head": "973241bacc296b71fe817d1af11187c32e8126af"
+      },
+      {
+        "id": 112540361109,
+        "name": "GitHub-hosted Linux production build",
+        "conclusion": "skipped",
+        "appId": 15368,
+        "head": "973241bacc296b71fe817d1af11187c32e8126af"
+      },
+      {
+        "id": 112540359315,
+        "name": "pr-scope",
+        "conclusion": "success",
+        "appId": 15368,
+        "head": "973241bacc296b71fe817d1af11187c32e8126af"
+      },
+      {
+        "id": 112540059663,
+        "name": "Blocking Social Monitoring regression suite",
+        "conclusion": "success",
+        "appId": 15368,
+        "head": "973241bacc296b71fe817d1af11187c32e8126af"
+      },
+      {
+        "id": 112540058415,
+        "name": "scan",
+        "conclusion": "success",
+        "appId": 15368,
+        "head": "973241bacc296b71fe817d1af11187c32e8126af"
+      },
+      {
+        "id": 112540056403,
+        "name": "runner-policy",
+        "conclusion": "success",
+        "appId": 15368,
+        "head": "973241bacc296b71fe817d1af11187c32e8126af"
+      },
+      {
+        "id": 112540046660,
+        "name": "runner-policy",
+        "conclusion": "success",
+        "appId": 15368,
+        "head": "973241bacc296b71fe817d1af11187c32e8126af"
+      }
+    ],
+    "runs": [
+      {
+        "id": 37542951429,
+        "name": "Workforce exception report browser evidence",
+        "event": "pull_request",
+        "attempt": 1,
+        "conclusion": "success"
+      },
+      {
+        "id": 37542951329,
+        "name": "Workforce calendar browser evidence",
+        "event": "pull_request",
+        "attempt": 1,
+        "conclusion": "success"
+      },
+      {
+        "id": 37542951165,
+        "name": "Workforce bulk assignment acceptance",
+        "event": "pull_request",
+        "attempt": 1,
+        "conclusion": "success"
+      },
+      {
+        "id": 37542951200,
+        "name": "Workforce policy restore writer evidence",
+        "event": "pull_request",
+        "attempt": 1,
+        "conclusion": "success"
+      },
+      {
+        "id": 37542951442,
+        "name": "Social Monitoring queue E2E",
+        "event": "pull_request",
+        "attempt": 1,
+        "conclusion": "success"
+      },
+      {
+        "id": 37542951335,
+        "name": "Workforce manager Today browser evidence",
+        "event": "pull_request",
+        "attempt": 1,
+        "conclusion": "success"
+      },
+      {
+        "id": 37542951249,
+        "name": "Workforce policy employee impact evidence",
+        "event": "pull_request",
+        "attempt": 1,
+        "conclusion": "success"
+      },
+      {
+        "id": 37542951424,
+        "name": "Workforce policy version browser evidence",
+        "event": "pull_request",
+        "attempt": 2,
+        "conclusion": "success"
+      },
+      {
+        "id": 37542951170,
+        "name": "Runner policy",
+        "event": "pull_request",
+        "attempt": 1,
+        "conclusion": "success"
+      },
+      {
+        "id": 37542951542,
+        "name": "Secret scan",
+        "event": "pull_request",
+        "attempt": 1,
+        "conclusion": "success"
+      },
+      {
+        "id": 37542951426,
+        "name": "PR checks",
+        "event": "pull_request",
+        "attempt": 1,
+        "conclusion": "success"
+      },
+      {
+        "id": 37542948601,
+        "name": "Runner policy",
+        "event": "pull_request",
+        "attempt": 1,
+        "conclusion": "success"
+      }
+    ],
+    "jobsAndStepsCompleteness": "Every run jobs total_count equals returned jobs length; all latest steps completed success/skipped. Full finite metadata support bound below.",
+    "typecheck": {
+      "job": 112540540615,
+      "conclusion": "success",
+      "completedAt": "2026-10-06T23:10:52Z",
+      "steps": [
+        {
+          "name": "TypeScript compile-check (advisory diagnostics)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-06T22:55:17Z",
+          "completed_at": "2026-10-06T23:10:48Z"
+        },
+        {
+          "name": "Syntax, missing-module and undefined-name errors (BLOCKING)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-06T23:10:48Z",
+          "completed_at": "2026-10-06T23:10:48Z"
+        },
+        {
+          "name": "Defect-shaped type errors vs baseline (BLOCKING)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-10-06T23:10:48Z",
+          "completed_at": "2026-10-06T23:10:48Z"
+        }
+      ],
+      "interpretation": "Configured advisory compiler completed and both blocking gates passed; no clean compiler or complete diagnostic identity claim."
+    },
+    "staticBaselineGate": "PASS",
+    "optionalProductionBuild": {
+      "job": 112540361109,
+      "conclusion": "SKIPPED",
+      "credit": false
+    },
+    "artifacts": [
+      {
+        "id": 11449787295,
+        "name": "workforce-exception-report-browser-ea2a86be4ca8b4b89aa4c067f9835d2e09f90c51-1",
+        "sizeInBytes": 650647,
+        "digest": "sha256:fb8040ef4b0bd2077b2ac7b1a20a79762fa6bd857c6c5e90b435e5070515718f",
+        "expired": false
+      },
+      {
+        "id": 11448809114,
+        "name": "workforce-calendar-browser-ea2a86be4ca8b4b89aa4c067f9835d2e09f90c51-1",
+        "sizeInBytes": 8512378,
+        "digest": "sha256:01db37ffb567da67fab7641bc92001233b7248475a1beb52f99b1b8ca8854857",
+        "expired": false
+      },
+      {
+        "id": 11449504204,
+        "name": "workforce-bulk-ea2a86be4ca8b4b89aa4c067f9835d2e09f90c51-1",
+        "sizeInBytes": 6159,
+        "digest": "sha256:13278ab12f0cbe5bdf067903b7e94d4e9a15d648a2eb8fdb44d739cf56013d99",
+        "expired": false
+      },
+      {
+        "id": 11449474653,
+        "name": "workforce-policy-restore-ea2a86be4ca8b4b89aa4c067f9835d2e09f90c51-1",
+        "sizeInBytes": 883940,
+        "digest": "sha256:0bb10b9d2d1ac0c7ec218d159b9502313d35584f71c53d1544bd202b5b9f4733",
+        "expired": false
+      },
+      {
+        "id": 11449029342,
+        "name": "workforce-manager-today-browser-ea2a86be4ca8b4b89aa4c067f9835d2e09f90c51-1",
+        "sizeInBytes": 7057634,
+        "digest": "sha256:79620cc598b75001438e7ef768eb6dfef726001bdf1729784958f11fb2796ecb",
+        "expired": false
+      },
+      {
+        "id": 11448719677,
+        "name": "workforce-policy-employee-impact-ea2a86be4ca8b4b89aa4c067f9835d2e09f90c51-1",
+        "sizeInBytes": 829813,
+        "digest": "sha256:18f9348fb91b0e4f626cd3626342d629d1650d395b42ca1b12c09936e1d72b95",
+        "expired": false
+      },
+      {
+        "id": 11450016274,
+        "name": "workforce-policy-version-browser-ea2a86be4ca8b4b89aa4c067f9835d2e09f90c51-2",
+        "sizeInBytes": 908552,
+        "digest": "sha256:eac03073d5bc8cbc14f2f6939ae8193dc6b3147308d1b65c43cc9548fc3f2e0e",
+        "expired": false
+      },
+      {
+        "id": 11449862043,
+        "name": "workforce-policy-version-browser-ea2a86be4ca8b4b89aa4c067f9835d2e09f90c51-1",
+        "sizeInBytes": 1031985,
+        "digest": "sha256:7ea42044c4fffae8bf34bbbe6beced0f0904c01d21d1da61704bac1dff591be3",
+        "expired": false
+      }
+    ],
+    "artifactPayloadScope": "Only safe policy-version JSON payloads from attempts 1 and 2 independently reviewed. Six other artifacts metadata only. No screenshot, raw log or independent ZIP binary readback claim."
+  },
+  "policyVersionRetry": {
+    "attempt1": {
+      "job": 112540479450,
+      "artifact": 11449862043,
+      "browserPass": 17,
+      "browserTotal": 18,
+      "postgresPass": 4,
+      "failure": "Source line584 expected401 received200 after signout and null-session assertion. Cause UNKNOWN; no request identity/cookie trace or root-cause proof.",
+      "cleanup": "PASS"
+    },
+    "attempt2": {
+      "job": 112543488703,
+      "artifact": 11450016274,
+      "browserPass": 18,
+      "browserTotal": 18,
+      "postgresPass": 4,
+      "sourceBindings": {
+        "browser": 24,
+        "postgres": 4
+      },
+      "actualUI401": true,
+      "factFingerprintTables": 20,
+      "factHashesUnchanged": true,
+      "rlsChecks": "Four populated tables across two tenants; 8 before/after observations; FORCE RLS and nonowner assertions.",
+      "cleanup": "9 browser and 3 PG cleanup actions PASS",
+      "proxyNoStoreObserved": false,
+      "unauthenticatedPrivateRouteHeaderAcceptance": "NOT RUN"
+    },
+    "comparison": "Same source and harness; first failure retained. One unchanged diagnostic retry passed; this is not a source fix or proof of transient root cause."
+  },
+  "negativeHistory": [
+    "7df hosted secret scan failure retained; synthetic fixture lease owner marker corrected by narrowly constrained rule-level exception with positive and negative controls.",
+    "Rejected global allowlist was never published; broader-than-intended negative control failure retained.",
+    "Local Social classifier882/883 failure retained; shared factory adoption restored883/883 without gate relaxation. Earlier hosted Social precise cause remains UNKNOWN where no safe artifact established it.",
+    "Initial full-schema fixture startup failure and column-alteration harness failure retained; passing final35 does not erase them.",
+    "Current973 policy-version attempt1 FAILURE remains visible alongside attempt2 SUCCESS."
+  ],
+  "baselineQualification": {
+    "gatedTypeFileCodePairs": 64,
+    "knownFailingTestFiles": 18,
+    "baselineFilesUnchanged": true,
+    "globalCleanCompiler": false,
+    "globalAllTestsCleanClaim": false,
+    "allFamilyDiagnosticOrStrictSuiteIdentityPayloadReviewed": false
+  },
+  "ledger": {
+    "done": 84,
+    "total": 161,
+    "open": 77,
+    "gates": "14/15",
+    "weightedRoundedPercent": 60,
+    "openP0P1": 73,
+    "WF-C12-008": "PARTIAL",
+    "changedByThisSlice": false
+  },
+  "remainingBoundaries": [
+    "Representative authorized staging with real schema/ACL/RLS/trigger and administrative role/membership stability evidence remains outstanding.",
+    "Clean historical migration replay remains blocked at missing api_keys; no migration marked applied and no replay acceptance inherited from current-schema construction.",
+    "Collector retention/access, operational alerts, representative density/query plans and operational activation are not accepted by this receipt.",
+    "No new real-device, actual AT, global privacy, whole-HRM completion or production readiness claim.",
+    "Final independent archive publication/readback remains to follow; support paths here are local unless already individually archived."
+  ],
+  "authorization": {
+    "merge": false,
+    "deploy": false,
+    "activation": false,
+    "remoteWritesByReviewer": false,
+    "sourceWritesByReviewer": false
+  },
+  "supportBindings": [
+    {
+      "path": "/tmp/hrm-c12-independent-publication/terminal973-complete-metadata.json",
+      "bytes": 410651,
+      "sha256": "61530e8fab850dad81fe6510bc937039b13c46c2f4e8e2e5a7010d129d637c06"
+    },
+    {
+      "path": "/tmp/hrm-c12-independent-exact-source-973241b-20261006.json",
+      "bytes": 7436,
+      "sha256": "e5254df26d34060aa317860929785598ef3c018df79406975052cc0824c25c27"
+    },
+    {
+      "path": "/tmp/hrm-c12-independent-policy-negative-973-attempt1-20261006.json",
+      "bytes": 4330,
+      "sha256": "4b1ce77e032deb8f3560780031922dbfd7d402f4a33cc585ca7396242591fbfc"
+    },
+    {
+      "path": "/tmp/hrm-c12-independent-policy-retry-973-attempt2-20261006.json",
+      "bytes": 4281,
+      "sha256": "73f8255a8c307104fc68440ef7c5074321363102f5f9aab7132be0871b046040"
+    },
+    {
+      "path": "/tmp/hrm-c12-independent-secret-rule-controls-20261006.json",
+      "bytes": 1612,
+      "sha256": "309e5ed35feb2b8b70f11892348f7f996ccd85b9d30cc4c731b9e404e63662fb"
+    },
+    {
+      "path": "/tmp/hrm-c12-independent-reader-profile-local-acceptance-20261006.json",
+      "bytes": 16946,
+      "sha256": "a065fda96462597b684e285468af218190879ea98b22a1eefdf6e5194605ec5f"
+    },
+    {
+      "path": "/tmp/hrm-c12-independent-harness-factory-review-20261006.json",
+      "bytes": 4333,
+      "sha256": "1ab2026247998911dfd48ccf18cdfe76d6d02b5b3f44a116052cb7e157e92d2f"
+    },
+    {
+      "path": "/workspace/hrm-c12-acceptance-20261006/typecheck-baseline.json",
+      "bytes": 3907,
+      "sha256": "919fa9d0212b18ee685af4f08680ebbc34e8c4969294054447df03147bf0fc53"
+    },
+    {
+      "path": "/workspace/hrm-c12-acceptance-20261006/test-baseline.json",
+      "bytes": 1139,
+      "sha256": "8f0fc568274f9fd8c0c741db618d6e4d81025de7112a315cd93e6b92bbd5a4b1"
+    }
+  ]
+}

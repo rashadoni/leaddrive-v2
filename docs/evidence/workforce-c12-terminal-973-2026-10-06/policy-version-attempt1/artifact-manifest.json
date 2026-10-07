@@ -1,0 +1,28 @@
+{
+  "artifactId": 11449862043,
+  "sha256": "7ea42044c4fffae8bf34bbbe6beced0f0904c01d21d1da61704bac1dff591be3",
+  "size": 1031985,
+  "members": [
+    {
+      "path": "future-window-postgres-receipt.json",
+      "bytes": 1692,
+      "sha256": "88e80834f68a5923119c768cf2e82ee46628c00420a58307b6a7473ee3fa040f"
+    },
+    {
+      "path": "policy-version-receipt.json",
+      "bytes": 18750,
+      "sha256": "9811109e59e48e3df200a3670549597ccf0755a155d469206879a6af8a4368d9"
+    },
+    {
+      "path": "workflow-context.json",
+      "bytes": 261,
+      "sha256": "3812355c8005fea72a3f8543d6e6b8c04771cc06529147245fa883df380e9b4b"
+    },
+    {
+      "path": "workflow-failure.json",
+      "bytes": 219,
+      "sha256": "f5b6fce36bbd9283f13eeac96763e3c09d506109e3b50e73fea3b7f225b7f13d"
+    }
+  ],
+  "screenshotsAndLogsRead": false
+}

@@ -1,0 +1,49 @@
+{
+  "sourceHead": "973241bacc296b71fe817d1af11187c32e8126af",
+  "tree": "e29f1bd33104d6b3aab4bce30d1116cbd0c82b66",
+  "main": "cb5a0453e7ead310e0515e265efee209be1c272b",
+  "syntheticMerge": "ea2a86be4ca8b4b89aa4c067f9835d2e09f90c51",
+  "primaryPr": 608,
+  "validationOnlyPr": 609,
+  "local": {
+    "profileMatrix": 35,
+    "profileSourceBindings": 15,
+    "reconciliationTests": 152,
+    "reconciliationSourceBindings": 22,
+    "socialTests": 883,
+    "socialSourceBindings": 54,
+    "skips": 0,
+    "lintErrors": 0,
+    "lintWarnings": 0
+  },
+  "allMainAndPredecessorBytesPreservedExceptScopedChanges": true,
+  "remaining": [
+    "approved reproducible historical staging baseline and real ACL/RLS/trigger/control visibility",
+    "representative density/timeouts",
+    "real collectors/retention/alerts",
+    "separately scoped activation"
+  ],
+  "ledger": {
+    "done": 84,
+    "total": 161,
+    "open": 77,
+    "phaseGates": "14/15",
+    "weightedPercent": 60,
+    "c12_008": "PARTIAL"
+  },
+  "mergeDeployActivation": false,
+  "status": "READY_BOUNDED_READER_PROFILE_WITH_REMAINING_C12_GATES",
+  "allApplicableCi": "14 unique job names PASS / 15 success records including duplicate runner-policy",
+  "requiredCi": "5 of 5 PASS from app15368",
+  "optionalBuild": "SKIPPED_NOT_CREDITED",
+  "policyVersionRetry": "attempt1 FAIL17/18 then unchangedattempt2 PASS18/18; causeUNKNOWN; both preserved",
+  "globalCompilerOrSuiteCleanClaim": false,
+  "baselineQualification": {
+    "knownFailingTestFiles": 18,
+    "gatedTypePairs": 64
+  },
+  "originalAndRetryPolicyVersionArtifactDigests": [
+    "7ea42044c4fffae8bf34bbbe6beced0f0904c01d21d1da61704bac1dff591be3",
+    "eac03073d5bc8cbc14f2f6939ae8193dc6b3147308d1b65c43cc9548fc3f2e0e"
+  ]
+}

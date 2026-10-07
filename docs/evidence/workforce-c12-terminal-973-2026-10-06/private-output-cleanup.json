@@ -1,0 +1,16 @@
+{
+  "status": "PASS",
+  "scope": "explicit owned private local reporter outputs after safe metadata extraction",
+  "removed": [
+    "regression-private.json",
+    "regression-final-private.json",
+    "social-regression-private.json",
+    "social-regression-final-private.json",
+    "secret-scan/redacted-private.json",
+    "secret-scan/rule-check-private.json",
+    "secret-scan/successor-private.json",
+    "secret-scan/harness-successor-private.json"
+  ],
+  "safeEvidencePreserved": true,
+  "productionOrSharedFilesTouched": false
+}

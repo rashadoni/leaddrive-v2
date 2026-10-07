@@ -1,0 +1,79 @@
+{
+  "sourceHead": "973241bacc296b71fe817d1af11187c32e8126af",
+  "syntheticMerge": "ea2a86be4ca8b4b89aa4c067f9835d2e09f90c51",
+  "scope": "API metadata only; these ZIPs not opened as part of this C12 terminal record",
+  "items": [
+    {
+      "runId": 37542951335,
+      "artifacts": [
+        {
+          "id": 11449029342,
+          "name": "workforce-manager-today-browser-ea2a86be4ca8b4b89aa4c067f9835d2e09f90c51-1",
+          "bytes": 7057634,
+          "digest": "sha256:79620cc598b75001438e7ef768eb6dfef726001bdf1729784958f11fb2796ecb",
+          "expired": false
+        }
+      ]
+    },
+    {
+      "runId": 37542951429,
+      "artifacts": [
+        {
+          "id": 11449787295,
+          "name": "workforce-exception-report-browser-ea2a86be4ca8b4b89aa4c067f9835d2e09f90c51-1",
+          "bytes": 650647,
+          "digest": "sha256:fb8040ef4b0bd2077b2ac7b1a20a79762fa6bd857c6c5e90b435e5070515718f",
+          "expired": false
+        }
+      ]
+    },
+    {
+      "runId": 37542951329,
+      "artifacts": [
+        {
+          "id": 11448809114,
+          "name": "workforce-calendar-browser-ea2a86be4ca8b4b89aa4c067f9835d2e09f90c51-1",
+          "bytes": 8512378,
+          "digest": "sha256:01db37ffb567da67fab7641bc92001233b7248475a1beb52f99b1b8ca8854857",
+          "expired": false
+        }
+      ]
+    },
+    {
+      "runId": 37542951249,
+      "artifacts": [
+        {
+          "id": 11448719677,
+          "name": "workforce-policy-employee-impact-ea2a86be4ca8b4b89aa4c067f9835d2e09f90c51-1",
+          "bytes": 829813,
+          "digest": "sha256:18f9348fb91b0e4f626cd3626342d629d1650d395b42ca1b12c09936e1d72b95",
+          "expired": false
+        }
+      ]
+    },
+    {
+      "runId": 37542951200,
+      "artifacts": [
+        {
+          "id": 11449474653,
+          "name": "workforce-policy-restore-ea2a86be4ca8b4b89aa4c067f9835d2e09f90c51-1",
+          "bytes": 883940,
+          "digest": "sha256:0bb10b9d2d1ac0c7ec218d159b9502313d35584f71c53d1544bd202b5b9f4733",
+          "expired": false
+        }
+      ]
+    },
+    {
+      "runId": 37542951165,
+      "artifacts": [
+        {
+          "id": 11449504204,
+          "name": "workforce-bulk-ea2a86be4ca8b4b89aa4c067f9835d2e09f90c51-1",
+          "bytes": 6159,
+          "digest": "sha256:13278ab12f0cbe5bdf067903b7e94d4e9a15d648a2eb8fdb44d739cf56013d99",
+          "expired": false
+        }
+      ]
+    }
+  ]
+}
