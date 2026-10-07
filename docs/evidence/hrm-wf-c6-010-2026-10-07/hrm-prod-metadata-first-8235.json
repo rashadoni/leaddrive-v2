@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "status": "ERROR",
+  "expectedMainSha": "8235c3b24ad12189e1ef95427ce7f192c077ae5c",
+  "productionArtifactSha": null,
+  "targetSourceSha": "9f3cc73dcdb8c4ccea1fdac9dfae29570339abc5",
+  "bindings": {
+    "helperSha256": "ab31354e7beaaed42508511c74eb304f52c2a6353e8b80d41bac9d6d63212f8b",
+    "sqlSha256": "b174e32eb68a0dbcca98e8557fe8c716ed8277111e79ba822bce43f4e7023b6a"
+  },
+  "reasons": [],
+  "migrationStates": [],
+  "defaults": null,
+  "snapshot": null,
+  "limits": [
+    "Metadata only; not a release, staging, full migration replay or C12 acceptance",
+    "Relation rows are PostgreSQL estimates; live activity is one observation, not a reserved DDL quiet window",
+    "Ordinary CREATE INDEX can block writes; elapsed time and future contention are not proved",
+    "Decision guards cover row UPDATE/DELETE/INSERT; no TRUNCATE or privileged-bypass guarantee",
+    "No business rows, role names, credentials, environment values or raw logs exported",
+    "No production files, grants, role configuration, tenant activation or data mutated"
+  ],
+  "code": "ENV_INVALID",
+  "sqlState": null
+}

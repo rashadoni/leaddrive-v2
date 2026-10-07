@@ -1,0 +1,32 @@
+{
+  "run": 37641215366,
+  "attempt": 1,
+  "head": "8235c3b24ad12189e1ef95427ce7f192c077ae5c",
+  "sourceJob": 112860396402,
+  "productionJob": 112860690832,
+  "artifact": 11492312014,
+  "result": "ERROR / ENV_INVALID before SQL",
+  "bindings": {
+    "hrm-prod-metadata-first-8235.json": {
+      "bytes": 1115,
+      "sha256": "cc6afea47d3d56984aac556ddadb0337eb9941b9b7c4c769e38783f352e42fc3"
+    },
+    "hrm-prod-metadata-first-8235.zip": {
+      "bytes": 847,
+      "sha256": "a3f2d68839fac7e80fd0f86857252f38893fba241f3df461103a20b4f18b60c7"
+    },
+    "hrm-release-8235-public-proof.json": {
+      "bytes": 1363,
+      "sha256": "60947e6426fd00f233e67fdf5cc092d5f5c7789f154ab36ddebf7906413b98fe"
+    },
+    "hrm-release-independent-technical-acceptance-06254.json": {
+      "bytes": 22898,
+      "sha256": "3dba5a71e5e0ef913aa1cb98a03f727f704aafbbfe5f40f3c83b8a6afe40a16f"
+    },
+    "hrm-prod-metadata-first-8235.log.gz": {
+      "rawBytes": 29043,
+      "rawSha256": "6fee0a6ac13ec59dfc08e9e710c9fc5bcd304bfb3e2ed60b21ee4c95dc7caf15",
+      "storedSha256": "56a55a5af3afede98e35643da4081e2aaec75b697ae93948ee36d05addf46f87"
+    }
+  }
+}
