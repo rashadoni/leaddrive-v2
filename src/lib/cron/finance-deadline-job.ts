@@ -1,6 +1,9 @@
 import { prisma } from "@/lib/prisma"
 import { runWithRlsBypass } from "@/lib/rls-context"
 import { withJobLease } from "@/lib/cron/job-lease"
+import { APP_URL } from "@/lib/domains"
+import { financeTelegramTarget, readFinanceNotifSettings } from "@/lib/finance/notification-settings"
+import { sendFinanceTelegram } from "@/lib/finance/telegram-send"
 
 export interface FinanceDeadlineSummary {
   overdueBills: number
@@ -11,7 +14,7 @@ export interface FinanceDeadlineSummary {
 
 async function executeFinanceDeadlineJob(): Promise<FinanceDeadlineSummary> {
   const now = new Date()
-  const orgs = await prisma.organization.findMany({ select: { id: true } })
+  const orgs = await prisma.organization.findMany({ select: { id: true, settings: true } })
   const summary: FinanceDeadlineSummary = {
     overdueBills: 0,
     overdueInvoices: 0,
@@ -62,32 +65,27 @@ async function executeFinanceDeadlineJob(): Promise<FinanceDeadlineSummary> {
       },
     })
 
+    // Each organization hears about its own items in its own chat, through its
+    // own bot, and only if it asked for overdue notices in Telegram. This loop
+    // used to post every organization's counts to one installation-wide chat.
+    const notif = readFinanceNotifSettings(org.settings)
+    const telegram = notif.overdue.enabled && notif.overdue.channels.includes("telegram")
+      ? financeTelegramTarget(notif)
+      : null
+    if (!telegram) continue
+
     if (bills.count > 0 || invoices.count > 0) {
-      const botToken = process.env.TELEGRAM_BOT_TOKEN
-      const chatId = process.env.TELEGRAM_FINANCE_CHAT_ID
-      if (botToken && chatId) {
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.leaddrivecrm.org"
-        const text = `🔴 <b>[Auto-check] New overdue items</b>\n\nOverdue bills: ${bills.count}\nOverdue invoices: ${invoices.count}\n\n📎 <a href="${appUrl}/finance">Open finance</a>`
-        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML" }),
-        }).catch(() => {})
-      }
+      await sendFinanceTelegram(
+        telegram,
+        `🔴 <b>[Auto-check] New overdue items</b>\n\nOverdue bills: ${bills.count}\nOverdue invoices: ${invoices.count}\n\n📎 <a href="${APP_URL}/finance">Open finance</a>`,
+      )
     }
 
     if (expiredContracts.count > 0) {
-      const botToken = process.env.TELEGRAM_BOT_TOKEN
-      const chatId = process.env.TELEGRAM_FINANCE_CHAT_ID
-      if (botToken && chatId) {
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.leaddrivecrm.org"
-        const text = `📋 <b>[Contracts] Status auto-update</b>\n\nExpired: ${expiredContracts.count}\n\n📎 <a href="${appUrl}/contracts">Open contracts</a>`
-        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML" }),
-        }).catch(() => {})
-      }
+      await sendFinanceTelegram(
+        telegram,
+        `📋 <b>[Contracts] Status auto-update</b>\n\nExpired: ${expiredContracts.count}\n\n📎 <a href="${APP_URL}/contracts">Open contracts</a>`,
+      )
     }
   }
 

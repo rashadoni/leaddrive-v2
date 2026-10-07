@@ -32,8 +32,8 @@ export default function financenotificationsHelpEn() {
         <p>
           The header shows the title <HelpKey>Payment Notifications</HelpKey>, the line "Configure when and
           where financial notifications are sent" below it, and a <HelpKey>Save</HelpKey> button at the top
-          right. Top to bottom, the page has five blocks: first a <strong>Notification email</strong> card,
-          then four notification categories — <strong>Overdue payments</strong>,{" "}
+          right. Top to bottom, the page has six blocks: first a <strong>Notification email</strong> card,
+          next a <strong>Telegram: your own bot and chat</strong> card, then four notification categories — <strong>Overdue payments</strong>,{" "}
           <strong>Advance warning</strong>, <strong>Payment orders</strong> and{" "}
           <strong>Bill payments</strong>.
         </p>
@@ -41,6 +41,11 @@ export default function financenotificationsHelpEn() {
           <HelpDef term="Notification email">
             The address financial notifications are sent to when the Email channel is enabled (e.g.
             finance@company.com).
+          </HelpDef>
+          <HelpDef term="Telegram: your own bot and chat">
+            The token of your own Telegram bot and the ID of your own chat. Finance notifications in Telegram
+            are sent only by this bot and only to this chat; until both fields are filled in, nothing goes to
+            Telegram.
           </HelpDef>
           <HelpDef term="Overdue payments">
             Notification category for payments that are past due.
@@ -90,6 +95,38 @@ export default function financenotificationsHelpEn() {
           <HelpCallout kind="see" label="What you'll see">
             If no category has the Email channel selected, nothing is sent to this address — the field only
             stores where mail should go.
+          </HelpCallout>
+        </HelpStep>
+      </HelpSection>
+
+      <HelpSection title="Step by step: connect Telegram">
+        <HelpStep n={1}>
+          <p>
+            Create a bot: open <HelpKey>@BotFather</HelpKey> in Telegram, send <HelpKey>/newbot</HelpKey> and
+            copy the token it replies with. Paste it into the <HelpKey>Bot token</HelpKey> field.
+          </p>
+          <HelpCallout kind="see" label="What you'll see">
+            Once saved, the token is no longer shown — the field holds dots. To switch to another bot, paste
+            the new token over them.
+          </HelpCallout>
+        </HelpStep>
+        <HelpStep n={2}>
+          <p>
+            Add the bot to the chat that should receive the notifications (for a personal chat, send{" "}
+            <HelpKey>/start</HelpKey> to the bot) and enter the <HelpKey>Chat ID</HelpKey>. A group's ID
+            starts with a minus.
+          </p>
+        </HelpStep>
+        <HelpStep n={3}>
+          <p>
+            Press <HelpKey>Send a test message</HelpKey>: the settings are saved and the bot writes to your
+            chat.
+          </p>
+          <HelpCallout kind="see" label="What you'll see">
+            "Sent — check the chat." appears next to the button. If Telegram did not accept the message, the
+            reason is shown there instead — for example, the bot was not added to the chat. Until Telegram
+            is connected, the Telegram channel in every category reads "Not set up — fill in the bot and the
+            chat above, otherwise nothing is sent".
           </HelpCallout>
         </HelpStep>
       </HelpSection>

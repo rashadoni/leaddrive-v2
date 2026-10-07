@@ -35,7 +35,8 @@ export default function financenotificationsHelpAz() {
         <p>
           Başlıqda <HelpKey>Ödəniş Bildirişləri</HelpKey> adı, altında «Maliyyə bildirişlərinin vaxtını
           və kanalını tənzimləyin» izahı, sağ yuxarıda isə <HelpKey>Saxla</HelpKey> düyməsi var. Səhifə
-          yuxarıdan aşağıya beş bölmədən ibarətdir: əvvəlcə <strong>Bildiriş emaili</strong> kartı, sonra
+          yuxarıdan aşağıya altı bölmədən ibarətdir: əvvəlcə <strong>Bildiriş emaili</strong> kartı, ardınca{" "}
+          <strong>Telegram: öz botunuz və öz çatınız</strong> kartı, sonra
           dörd bildiriş kateqoriyası — <strong>Gecikmiş ödənişlər</strong>,{" "}
           <strong>Əvvəlcədən xəbərdarlıq</strong>, <strong>Ödəniş tapşırıqları</strong> və{" "}
           <strong>Hesab ödənişləri</strong>.
@@ -44,6 +45,10 @@ export default function financenotificationsHelpAz() {
           <HelpDef term="Bildiriş emaili">
             Email kanalı aktiv olanda maliyyə bildirişlərinin göndəriləcəyi ünvan (məs.
             finance@company.com).
+          </HelpDef>
+          <HelpDef term="Telegram: öz botunuz və öz çatınız">
+            Öz Telegram botunuzun tokeni və öz çatınızın ID-si. Telegram-da maliyyə bildirişlərini yalnız bu
+            bot və yalnız bu çata göndərir; hər iki sahə doldurulmayana qədər Telegram-a heç nə getmir.
           </HelpDef>
           <HelpDef term="Gecikmiş ödənişlər">
             Vaxtı keçmiş ödənişlər haqqında bildiriş kateqoriyası.
@@ -93,6 +98,37 @@ export default function financenotificationsHelpAz() {
           <HelpCallout kind="see" label="Ekranda görəcəksiniz">
             Email kanalı heç bir kateqoriyada seçili deyilsə, bura yazdığınız ünvana heç nə gəlmir — sahə
             sadəcə hara göndəriləcəyini saxlayır.
+          </HelpCallout>
+        </HelpStep>
+      </HelpSection>
+
+      <HelpSection title="Addım-addım: Telegram-ı qoş">
+        <HelpStep n={1}>
+          <p>
+            Bot yaradın: Telegram-da <HelpKey>@BotFather</HelpKey>-i açın, <HelpKey>/newbot</HelpKey> göndərin
+            və onun qaytardığı tokeni kopyalayın. Onu <HelpKey>Bot tokeni</HelpKey> sahəsinə yapışdırın.
+          </p>
+          <HelpCallout kind="see" label="Ekranda görəcəksiniz">
+            Saxlandıqdan sonra token daha göstərilmir — sahədə nöqtələr qalır. Botu dəyişmək üçün yeni tokeni
+            onların üstündən yapışdırın.
+          </HelpCallout>
+        </HelpStep>
+        <HelpStep n={2}>
+          <p>
+            Botu bildirişlərin gələcəyi çata əlavə edin (şəxsi çat üçün bota <HelpKey>/start</HelpKey>{" "}
+            göndərin) və <HelpKey>Çat ID</HelpKey> sahəsini doldurun. Qrupun ID-si mənfi işarə ilə başlayır.
+          </p>
+        </HelpStep>
+        <HelpStep n={3}>
+          <p>
+            <HelpKey>Yoxlama mesajı göndər</HelpKey> düyməsini basın: tənzimləmələr saxlanılır və bot
+            çatınıza yazır.
+          </p>
+          <HelpCallout kind="see" label="Ekranda görəcəksiniz">
+            Düymənin yanında «Göndərildi — çatı yoxlayın.» yazısı görünür. Telegram mesajı qəbul etməsə,
+            səbəbi elə orada yazılır — məsələn, bot çata əlavə edilməyib. Telegram qoşulmayana qədər hər
+            kateqoriyada Telegram kanalının altında «Qurulmayıb — yuxarıda botu və çatı göstərin, əks halda
+            heç nə göndərilmir» yazılır.
           </HelpCallout>
         </HelpStep>
       </HelpSection>
