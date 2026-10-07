@@ -177,7 +177,7 @@ export const GET = withWorkforceSessionExceptionQueueAuth(async (_req: NextReque
     }
 
     let authorization: ReadonlyMap<string, { readable: boolean; decidable: boolean }>
-    let hrAuthorization = new Map<string, { decidable: boolean }>()
+    let hrAuthorization: ReadonlyMap<string, { decidable: boolean }> = new Map()
     if (!granularAccess) {
       authorization = new Map(candidates.map((candidate) => [candidate.id, { readable: true, decidable: false }]))
     } else {

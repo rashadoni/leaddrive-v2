@@ -54,3 +54,10 @@
 - Browser environment refusal guards: 2 файла/19 тестов PASS; output оригинал `/tmp/hrm-c6-browser-guards-attempt1.log` будет сохранён gzip.
 - Первый workflow_dispatch ошибочно получил сокращённый expected_head `7400af350`, вместо40символов. Run37598425072 на фактическом full7400; strict guards не признают такой input. Root отменил собственный ошибочный run, чтобы не расходовать hosted runtime. Это ошибка вызова CI, не дефект продукта и не PASS verification. Original metadata сохраняется отдельно; повтор будет с точным fullSHA.
 - Agent уточнил подписи proof metadata в своём browser harness (new-decision count, phase before intentional fixture revocation, workflow source hash); source/UI/API не менялись. Нужен новый checkpoint перед корректным dispatch.
+
+## 2026-10-07 — дополнительное обнаружение несовпадения типа
+
+- Actual fullSHA dispatch37598596183 начат на `de49d9bf72d1e49af4a30b1bbdf44becd9e7c63e`; все5 hosted jobs дошли до dependency install, exact-head guards прошли.
+- Независимый source-review artifact для7400 с byte-equivalence кde49 сохранён, active findings0 в момент его записи. Это source review, не compiler acceptance.
+- Последующая root inspection обнаружила missed type-level issue: новая hrAuthorization была inferred mutable Map, а authorizeWorkforceExceptionReadCandidates возвращает ReadonlyMap. Исправлена явная ReadonlyMap-аннотация без cast/assertion/baseline change. Фактический compiler ещё не вернул диагностик; ошибка подтверждена source signatures, не выдаётся за исполненный compiler FAIL. Агенту поручен отдельный supplement, прежний review не переписывается.
+- Новый checkpoint и CI нового fullSHA необходимы. de49-run будет superseded, не засчитывается final acceptance.
