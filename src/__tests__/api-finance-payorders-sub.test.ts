@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 /*  Mocks                                                              */
 /* ------------------------------------------------------------------ */
 vi.mock("@/lib/prisma", () => ({
+  logAudit: vi.fn(),
   prisma: {
     paymentOrder: {
       findFirst: vi.fn(),

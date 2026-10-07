@@ -229,6 +229,18 @@ jobs:
           FINANCE_BILL_PAYMENT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           FINANCE_BILL_PAYMENT_DB_GATE: required
 
+      - name: Finance Telegram recipient database gate
+        # Who receives a tenant's payment notices, read off the requests that
+        # leave for api.telegram.org. Until 2026-10-07 every tenant's
+        # counterparties and amounts were addressed to one chat named in the
+        # environment; the settings each organization saves are read back from
+        # a real Postgres here, with that environment pair set, to show it is
+        # never used.
+        run: npx vitest run src/__tests__/finance-telegram-recipient-postgres.test.ts
+        env:
+          FINANCE_TELEGRAM_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          FINANCE_TELEGRAM_DB_GATE: required
+
       - name: Previous Prisma client rollback-window gate
         run: node scripts/event-platform-legacy-client-probe.mjs
         env:

@@ -2,55 +2,42 @@
  * Finance Multi-Channel Notifications
  * Sends payment-related alerts via Telegram, Email, and In-App
  * Respects per-org notification settings from Organization.settings.financeNotifications
+ *
+ * Every channel is addressed from the organization's own settings. Telegram in
+ * particular has no installation-wide chat to fall back on — see
+ * `notification-settings.ts` for why.
  */
 
 import { prisma } from "@/lib/prisma"
 import { sendEmail } from "@/lib/email"
 import { APP_URL } from "@/lib/domains"
 import { getCurrencySymbol } from "@/lib/constants"
-
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || ""
-const CHAT_ID = process.env.TELEGRAM_FINANCE_CHAT_ID || ""
-
-interface NotifChannelSettings {
-  enabled: boolean
-  channels: string[]
-}
-
-interface FinanceNotifSettings {
-  recipientEmail: string
-  overdue: NotifChannelSettings
-  advance: NotifChannelSettings & { daysBeforeDeadline: number }
-  paymentOrders: NotifChannelSettings
-  billPayments: NotifChannelSettings
-}
-
-const DEFAULTS: FinanceNotifSettings = {
-  recipientEmail: "",
-  overdue: { enabled: true, channels: ["telegram"] },
-  advance: { enabled: true, channels: ["telegram"], daysBeforeDeadline: 7 },
-  paymentOrders: { enabled: true, channels: ["telegram"] },
-  billPayments: { enabled: true, channels: ["telegram"] },
-}
+import {
+  FINANCE_NOTIF_DEFAULTS,
+  financeTelegramTarget,
+  readFinanceNotifSettings,
+  type FinanceNotifCategory,
+  type FinanceNotifSettings,
+} from "@/lib/finance/notification-settings"
+import { sendFinanceTelegram } from "@/lib/finance/telegram-send"
 
 /** Load notification settings for an organization */
 async function getNotifSettings(orgId?: string): Promise<FinanceNotifSettings> {
-  if (!orgId) return DEFAULTS
+  if (!orgId) return FINANCE_NOTIF_DEFAULTS
   try {
     const org = await prisma.organization.findUnique({
       where: { id: orgId },
       select: { settings: true },
     })
-    const settings = (org?.settings as Record<string, any>) || {}
-    return { ...DEFAULTS, ...settings.financeNotifications }
+    return readFinanceNotifSettings(org?.settings)
   } catch {
-    return DEFAULTS
+    return FINANCE_NOTIF_DEFAULTS
   }
 }
 
 /** Send notification to all enabled channels for a category */
 async function sendToChannels(
-  category: NotifChannelSettings,
+  category: FinanceNotifCategory,
   settings: FinanceNotifSettings,
   orgId: string | undefined,
   telegramText: string,
@@ -65,9 +52,10 @@ async function sendToChannels(
 
   const promises: Promise<any>[] = []
 
-  // Telegram
-  if (category.channels.includes("telegram")) {
-    promises.push(sendTelegram(telegramText))
+  // Telegram — the organization's own bot and chat, or nothing at all
+  const telegram = orgId ? financeTelegramTarget(settings) : null
+  if (category.channels.includes("telegram") && telegram) {
+    promises.push(sendFinanceTelegram(telegram, telegramText))
   }
 
   // Email
@@ -116,28 +104,6 @@ async function sendToChannels(
   }
 
   await Promise.allSettled(promises)
-}
-
-async function sendTelegram(text: string): Promise<boolean> {
-  if (!BOT_TOKEN || !CHAT_ID) {
-    console.log("[Finance TG] Bot not configured, skipping notification")
-    return false
-  }
-  try {
-    const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: CHAT_ID, text, parse_mode: "HTML" }),
-    })
-    if (!res.ok) {
-      console.error("[Finance TG] Send failed:", await res.text())
-      return false
-    }
-    return true
-  } catch (e) {
-    console.error("[Finance TG] Error:", e)
-    return false
-  }
 }
 
 /** Get advance warning days from org settings */
