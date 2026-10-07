@@ -1,0 +1,128 @@
+{
+  "version": 1,
+  "status": "READ_COMPLETE",
+  "expectedMainSha": "f8dd20c7a849643087ee31969c2f582a96c8bab3",
+  "productionArtifactSha": "f8dd20c7a849643087ee31969c2f582a96c8bab3",
+  "bindings": {
+    "baseHelperSha256": "46b417da7bbe763960b8ede8fa0e9dbd98543d090d54f73979289504bfe35771",
+    "aclHelperSha256": "a6aa4f3526fd5edf29bd2b3a1309f7703e85acad70c0e683cba69dbb281c2027",
+    "helperSha256": "e8d5fb47eddfb0d7e371943f2d3b3459b66e9d17927161bf9233bd6189074dbf",
+    "sqlSha256": "7a4a9d79534e40cf7672c31797f2015a543f7061c1522ee30a7cfb9e147f8c58"
+  },
+  "proof": {
+    "readOnlyBoth": true,
+    "repeatableReadBoth": true,
+    "expectedRuntimeSession": true,
+    "expectedMigrationSession": true,
+    "separatePrincipals": true,
+    "configuredHostsVerifiedLoopback": true,
+    "matchingPortAndDatabase": true,
+    "sameLiveDatabaseBackend": true,
+    "primaryBoth": true,
+    "businessRowsRead": false,
+    "declaredHostsEqual": false,
+    "runtimeProfile": {
+      "present": true,
+      "noSuperuser": true,
+      "noBypassRls": true,
+      "canLogin": true,
+      "setPrivilegedCount": 0
+    },
+    "migrationProfile": {
+      "present": true,
+      "noSuperuser": true,
+      "noBypassRls": false,
+      "canLogin": true,
+      "setPrivilegedCount": 0
+    },
+    "acl": {
+      "explicitPrivilegeRows": 5,
+      "publicPrivilegeRows": 0,
+      "nonOwnerWriteRows": 3,
+      "grantableRows": 0,
+      "entries": [
+        {
+          "scope": "PUBLIC_SCHEMA",
+          "recipient": "EXPECTED_RUNTIME",
+          "privilege": "DELETE",
+          "grantable": false,
+          "rowCount": 1,
+          "recipientProfile": {
+            "present": true,
+            "noSuperuser": true,
+            "noBypassRls": true,
+            "canLogin": true,
+            "setPrivilegedCount": 0
+          }
+        },
+        {
+          "scope": "PUBLIC_SCHEMA",
+          "recipient": "EXPECTED_RUNTIME",
+          "privilege": "INSERT",
+          "grantable": false,
+          "rowCount": 1,
+          "recipientProfile": {
+            "present": true,
+            "noSuperuser": true,
+            "noBypassRls": true,
+            "canLogin": true,
+            "setPrivilegedCount": 0
+          }
+        },
+        {
+          "scope": "PUBLIC_SCHEMA",
+          "recipient": "EXPECTED_RUNTIME",
+          "privilege": "SELECT",
+          "grantable": false,
+          "rowCount": 1,
+          "recipientProfile": {
+            "present": true,
+            "noSuperuser": true,
+            "noBypassRls": true,
+            "canLogin": true,
+            "setPrivilegedCount": 0
+          }
+        },
+        {
+          "scope": "PUBLIC_SCHEMA",
+          "recipient": "EXPECTED_RUNTIME",
+          "privilege": "UPDATE",
+          "grantable": false,
+          "rowCount": 1,
+          "recipientProfile": {
+            "present": true,
+            "noSuperuser": true,
+            "noBypassRls": true,
+            "canLogin": true,
+            "setPrivilegedCount": 0
+          }
+        },
+        {
+          "scope": "PUBLIC_SCHEMA",
+          "recipient": "OTHER",
+          "privilege": "SELECT",
+          "grantable": false,
+          "rowCount": 1,
+          "recipientProfile": {
+            "present": true,
+            "noSuperuser": true,
+            "noBypassRls": false,
+            "canLogin": true,
+            "setPrivilegedCount": 0
+          }
+        }
+      ]
+    }
+  },
+  "cleanup": "PASS",
+  "limits": [
+    "Supplemental catalog observation only; READ_COMPLETE is not ACL approval or release readiness",
+    "Original metadata and strict declared-host ACL checks and their failures remain unchanged",
+    "Unchanged configured loopback endpoints are proved against one simultaneously live runtime backend",
+    "No role names, database identifiers, PID, private nonce, credentials or business rows exported",
+    "OTHER recipients remain unidentified; no backup identity or authorization is inferred",
+    "Read-only transactions have distinct snapshots; no reserved DDL quiet window or index timing is proved",
+    "No production files, grants, role configuration, tenant activation or business data mutated"
+  ],
+  "code": null
+}

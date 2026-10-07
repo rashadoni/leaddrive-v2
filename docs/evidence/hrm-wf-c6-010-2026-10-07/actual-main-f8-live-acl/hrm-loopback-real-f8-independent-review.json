@@ -1,0 +1,211 @@
+{
+  "version": 1,
+  "status": "ACTUAL_PRODUCTION_LIVE_IDENTITY_AND_RUNTIME_WRITE_RECIPIENTS_PROVED_OTHER_BYPASS_LOGIN_SELECT_UNATTRIBUTED_RELEASE_HELD",
+  "reviewedAtUtc": "2026-10-07T21:40:05.005660+00:00",
+  "expectedActualMain": "f8dd20c7a849643087ee31969c2f582a96c8bab3",
+  "productionRun": 37690299054,
+  "sourceJob": 113028449941,
+  "productionJob": 113028735948,
+  "artifact": {
+    "id": 11513675503,
+    "originalZipRoot": "b1a9c80d6d294cbeea3c35f1792df00824f16b92cf3c54be385270a623e4d823",
+    "bytesRoot": 1367,
+    "CRCRoot": "PASS1member",
+    "rootStrictValidatedBeforePeerRead": true
+  },
+  "validatedInput": {
+    "path": "/tmp/hrm-loopback-real-f8-validated.json",
+    "bytes": 4162,
+    "sha256": "5d4caefaf864d6a4b7f5387d4c77d1c7a59f3606aeb17a8cca2f2642b8cc8374"
+  },
+  "sourceBindings4": [
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.mjs",
+      "sha256": "46b417da7bbe763960b8ede8fa0e9dbd98543d090d54f73979289504bfe35771",
+      "exactActualMain": true
+    },
+    {
+      "path": "scripts/hrm-default-acl-inspection.mjs",
+      "sha256": "a6aa4f3526fd5edf29bd2b3a1309f7703e85acad70c0e683cba69dbb281c2027",
+      "exactActualMain": true
+    },
+    {
+      "path": "scripts/hrm-loopback-acl-inspection.mjs",
+      "sha256": "e8d5fb47eddfb0d7e371943f2d3b3459b66e9d17927161bf9233bd6189074dbf",
+      "exactActualMain": true
+    },
+    {
+      "path": "scripts/hrm-loopback-acl-inspection.sql",
+      "sha256": "7a4a9d79534e40cf7672c31797f2015a543f7061c1522ee30a7cfb9e147f8c58",
+      "exactActualMain": true
+    }
+  ],
+  "actualProof": {
+    "readOnlyBoth": true,
+    "repeatableReadBoth": true,
+    "expectedRuntimeSession": true,
+    "expectedMigrationSession": true,
+    "separatePrincipals": true,
+    "configuredHostsVerifiedLoopback": true,
+    "matchingPortAndDatabase": true,
+    "sameLiveDatabaseBackend": true,
+    "primaryBoth": true,
+    "businessRowsRead": false,
+    "declaredHostsEqual": false,
+    "runtimeProfile": {
+      "present": true,
+      "noSuperuser": true,
+      "noBypassRls": true,
+      "canLogin": true,
+      "setPrivilegedCount": 0
+    },
+    "migrationProfile": {
+      "present": true,
+      "noSuperuser": true,
+      "noBypassRls": false,
+      "canLogin": true,
+      "setPrivilegedCount": 0
+    },
+    "acl": {
+      "explicitPrivilegeRows": 5,
+      "publicPrivilegeRows": 0,
+      "nonOwnerWriteRows": 3,
+      "grantableRows": 0,
+      "entries": [
+        {
+          "scope": "PUBLIC_SCHEMA",
+          "recipient": "EXPECTED_RUNTIME",
+          "privilege": "DELETE",
+          "grantable": false,
+          "rowCount": 1,
+          "recipientProfile": {
+            "present": true,
+            "noSuperuser": true,
+            "noBypassRls": true,
+            "canLogin": true,
+            "setPrivilegedCount": 0
+          }
+        },
+        {
+          "scope": "PUBLIC_SCHEMA",
+          "recipient": "EXPECTED_RUNTIME",
+          "privilege": "INSERT",
+          "grantable": false,
+          "rowCount": 1,
+          "recipientProfile": {
+            "present": true,
+            "noSuperuser": true,
+            "noBypassRls": true,
+            "canLogin": true,
+            "setPrivilegedCount": 0
+          }
+        },
+        {
+          "scope": "PUBLIC_SCHEMA",
+          "recipient": "EXPECTED_RUNTIME",
+          "privilege": "SELECT",
+          "grantable": false,
+          "rowCount": 1,
+          "recipientProfile": {
+            "present": true,
+            "noSuperuser": true,
+            "noBypassRls": true,
+            "canLogin": true,
+            "setPrivilegedCount": 0
+          }
+        },
+        {
+          "scope": "PUBLIC_SCHEMA",
+          "recipient": "EXPECTED_RUNTIME",
+          "privilege": "UPDATE",
+          "grantable": false,
+          "rowCount": 1,
+          "recipientProfile": {
+            "present": true,
+            "noSuperuser": true,
+            "noBypassRls": true,
+            "canLogin": true,
+            "setPrivilegedCount": 0
+          }
+        },
+        {
+          "scope": "PUBLIC_SCHEMA",
+          "recipient": "OTHER",
+          "privilege": "SELECT",
+          "grantable": false,
+          "rowCount": 1,
+          "recipientProfile": {
+            "present": true,
+            "noSuperuser": true,
+            "noBypassRls": false,
+            "canLogin": true,
+            "setPrivilegedCount": 0
+          }
+        }
+      ]
+    }
+  },
+  "cleanup": "PASS",
+  "scopeAssessment": {
+    "sameLiveDatabaseBackend": "PROVED actualsimultaneous heldruntime and migrationPGstat PID+randomnonce+principal+datid predicate, sourcebound, no privateidentifiers exported",
+    "runtimeWriteRecipients": "PROVED all3nonownerwrites exactlyEXPECTED_RUNTIME INSERT/UPDATE/DELETE, NOSUPER/NOBYPASS/LOGIN/privilegedSET0, no grantoptions/PUBLIC/OTHERwrites",
+    "otherSelect": "One actualOTHERSELECT profileNOSUPER/BYPASS/LOGIN/SET0; identitypurpose notexported or otherwiseproved. Not evidenceofunsafeprincipal or neededrevocation; privilegedreader remainsunattributed and cannot be calledbackup.",
+    "originalGates": "Old504 DEFAULT_ACL_UNREVIEWED INCOMPLETE andold7bf strictdeclaredHOSTMismatch ERROR remain unchanged; currentREAD_COMPLETE neverREADY/automaticACLapproval."
+  },
+  "existingSourceCompatibleAttributionRoute": {
+    "canonicalFile": "/etc/leaddrive/backup.env",
+    "keys": "Static unique literal PGUSER plusBACKUP_EXPECTED_DB_ROLE, PGDATABASE and existingPGHOST/PGHOSTADDR; no BACKUP_DATABASE_URL field invented, no source/eval/defaultrolefallback",
+    "protectedFile": "Existingserverdeployer acceptsrootownednonwritable0600 OR0640 withleaddrive-backup group, stablyreadbefore/after; rejectothers ratherthanchangeactualmode",
+    "noCredentialNeeded": "A migrationcatalog projection can compare everyOTHERgrantee with canonicaldeclared backupprincipal in memory. PGPASSFILE and backup/AWScredentials neednot be opened for declaredrecipientattribution; no thirdDBconnection/backupservice/dump/systemdchange needed.",
+    "sourceSupportedPurpose": "Bootstrap script explicitly grants defaultSELECT for everypublictable/sequencecreatingowner to configuredbackuprole. Backupscript requires actualexpectedrole NOSUPER/BYPASS/LOGIN, defaultRO andzero inbound/outboundmemberships; current profile matches onlypartialshape, not identity or completebackupcontract.",
+    "safeFiniteAdditionalEvidence": "Boolean allOTHERSELECTgranteesExactlyDeclaredExpectedBackup, declaredBackupRoleIdentityMatchesCanonicalPGUSER, sameDeclaredDatabase; finiteSELECTprivilegecounts, recipientprofile and optionalsource-supportedmembership/defaultRO booleans. No role/name/OID/url/credential/envvalues exported.",
+    "notExistingEvidence": "Current snapshot andgeneric deployedroleverified messages do not identifyOTHER. No complete evidence-only attribution frompublicsource alone. Additional bounded actual read is needed; source-only diagnostic development is alreadyauthorized.",
+    "limits": "Declaredprotectedconfig-to-catalog recipient identity is narrowerthan freshbackupservice credential/livebackend/restoreproof. Do not claim fullbackupcommissioning/backupsuccess/C12 closure. If fullbackupconnectionproof desired, reuse livepredicate onlyafter strictlyreviewedexistingcanonicalPGHOSTADDR/TLS/passfile contract, no guessedURI/identity."
+  },
+  "sourceReferences": [
+    {
+      "path": "scripts/backup/bootstrap-backup-role.sql",
+      "line": 39,
+      "sha256ActualMain": "3762224949c9bc2e30f52a4e221c547c9c68c90d86c8ef9e84aca5914b4bdc75"
+    },
+    {
+      "path": "scripts/backup/postgres-backup.sh",
+      "line": 218,
+      "sha256ActualMain": "b2b0ca62ab77afe5ff2cda88351f71a038163b791484adc886cad806fe07edff"
+    },
+    {
+      "path": "scripts/backup/prove-source-database.sh",
+      "line": 23,
+      "sha256ActualMain": "f94560d31742394fe5670df2dcd101736bcb43fd1ce9c7cadb53b44042ccce19"
+    },
+    {
+      "path": "scripts/server-deploy.sh",
+      "line": 3242,
+      "sha256ActualMain": "9fbeede30d3ba9f032202c1e435a8b44c14372c6a19725f160bc188641829f52"
+    },
+    {
+      "path": "scripts/server-deploy.sh",
+      "line": 3758,
+      "sha256ActualMain": "9fbeede30d3ba9f032202c1e435a8b44c14372c6a19725f160bc188641829f52"
+    },
+    {
+      "path": "docs/MIGRATION_RUNBOOK.md",
+      "line": 1,
+      "sha256ActualMain": "6496508994f74a1c65e1b308d9e6812dad436ff2efc9935d41d4d6b564a42d14"
+    }
+  ],
+  "publicAuxiliaryReleaseProof": {
+    "path": "/tmp/hrm-release-f8-public-proof.json",
+    "bytes": 1363,
+    "sha256": "371690f3dfa56d5ac7b9e394165f4bcb690c2d732dfc1e4194f77264538731e6",
+    "scope": "Auxiliary ownf8 release not HRMfeature deployment"
+  },
+  "authorship": "Root authored live helper, reviewed independently. Reviewer authored live SQL/tests/workflow and originalC6harnesses, separatelycrossreviewedbyroot. Independent actualsanitizedreport assessment, not independent own-code authorship.",
+  "limitations": [
+    "Only sanitizedcatalog rows were read byreviewer, neverrootenv/credentials/role names/businessHRrows.",
+    "No local/prodquery/dispatch/sourceedit/merge/grants/config/secrets byreviewer.",
+    "RR/RO snapshots are separate, livebackendproof doesn’treservequietDDLwindow orproveindexduration; originaldeployerquietcheck/timecaps remainneeded.",
+    "Runtimewrite/defaultACLdata nowfiniteproven, but unclassifiedBYPASSLOGINreader reason remains preciseproofgap, not requestforunknownrevocation.",
+    "Current5638 wholetechnical PASS remainsvalid/sourcefrozen; HRM release held manualrecipientattribution, C12PARTIAL/no syntheticoperations credit."
+  ]
+}
