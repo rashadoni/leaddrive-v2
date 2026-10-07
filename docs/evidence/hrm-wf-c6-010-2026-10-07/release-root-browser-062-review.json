@@ -1,0 +1,44 @@
+{
+  "reviewer": "/root",
+  "head": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+  "runtimeRun": 37635350493,
+  "status": "PASS_PARTIAL_BROWSER_EVIDENCE_FULL_GATES_PENDING",
+  "results": [
+    {
+      "kind": "report",
+      "currentHead": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+      "cases": 9,
+      "sourceBindings": 12,
+      "allSourcesCurrentGitExact": true,
+      "receiptSHA256": "1ffd60ab135ac3c080f80ba84a6ec9608b6ddb4424369ef17aece8238d9ffb45",
+      "cleanup": "PASS",
+      "zipSha256": "162f69da47e03c657f5714d7a96f3021dd00f0c392b744802208673a257ca05e"
+    },
+    {
+      "kind": "classification",
+      "currentHead": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+      "cases": 11,
+      "sourceBindings": 14,
+      "allSourcesCurrentGitExact": true,
+      "receiptSHA256": "5d833c651c5bf5847547e6898882e215ff049a5d89ea0f80012bb4f0f54114fa",
+      "cleanup": "PASS",
+      "zipSha256": "3536cb256e92a98468dcb3b4d2d9d31347a88937abf76e2cdc72881398ad640f"
+    }
+  ],
+  "limitations": [
+    "Disposable synthetic PG16/Redis and real Auth.js/Chromium; not real HR observations",
+    "Ordinary audit fixture has synthetic guard; production decision ledger guards source-bound",
+    "EN four rates and sample counts visible; AZ four rates visible but top/bottom clipped; RU nested scroller screenshot excludes most metric values",
+    "EN/AZ classification controls and feedback visible; RU screenshot left columns only, actual controls201 credit is DOM/network",
+    "AZ duration units visibly English due inherited973 Chromium Intl fallback; one cross-realm duration mismatch, no full AZ unit localization claim",
+    "No global WCAG, human AT, physical pilot or real HR rate claim"
+  ],
+  "rootActualPNGViews": [
+    "report-en-1440-recorded-outcomes.png",
+    "report-az-768-recorded-outcomes.png",
+    "report-ru-320-recorded-outcomes.png",
+    "classification-ru-320.png",
+    "classification-az-768.png",
+    "classification-en-1440.png"
+  ]
+}

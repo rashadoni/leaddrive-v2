@@ -1,0 +1,616 @@
+{
+  "version": 1,
+  "reviewId": "HRM-release-independent-source-06254",
+  "createdAtUtc": "2026-10-07T14:25:58.927388+00:00",
+  "reviewer": "/root/inspect_outcome_contract",
+  "headSha": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+  "gitTree": "38b49b4cbe974a21e6a0f982dbbacab20aecf7da",
+  "worktree": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-release-integration-20261007",
+  "branch": "codex/hrm-release-integration-20261007",
+  "origin": "https://github.com/rashadoni/leaddrive-v2.git",
+  "workingTreeCleanBeforeAndAfter": true,
+  "productionRoute": {
+    "registeredHost": "13.140.132.245",
+    "appDir": "/opt/leaddrive-v2",
+    "route": "Reviewed protected main -> SHA-bound deploy.yml artifact -> normal atomic deployment"
+  },
+  "status": "PASS_FINAL_SOURCE_REVIEW_FRESH_EXACT_HEAD_RUNTIME_AND_PRODUCTION_PREFLIGHT_PENDING",
+  "scope": "Independent root-authored WF-C6 production/workflow preservation and final source integration review only; no new runtime or production acceptance.",
+  "authorshipDisclosure": "Reviewer authored the C6 PostgreSQL/browser verification fixtures and their repairs, plus the auxiliary metadata workflow/helper/SQL/test. Root independently reviewed that reviewer-authored verification/preflight source (including all546 bytes). This review independently evaluates root-authored production implementation/integration and source bindings, not an independent review of the reviewer's own harness or a second execution. Prior missed ReadonlyMap/receiver defects and first three metadata source failures remain retained and disclosed.",
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "protectedAncestors": [
+    {
+      "label": "acceptedPR589",
+      "sha": "a856a9e533c4f3cec6f2313e69f5be0d5b4d4226",
+      "isAncestor": true
+    },
+    {
+      "label": "acceptedPR605",
+      "sha": "bf6ed11f2bba8c93e828fb044315794b44224741",
+      "isAncestor": true
+    },
+    {
+      "label": "acceptedPR608",
+      "sha": "973241bacc296b71fe817d1af11187c32e8126af",
+      "isAncestor": true
+    },
+    {
+      "label": "acceptedPR612",
+      "sha": "9f3cc73dcdb8c4ccea1fdac9dfae29570339abc5",
+      "isAncestor": true
+    },
+    {
+      "label": "C7AcceptedRuntime",
+      "sha": "d303ae3aac6a2ddb62439e433c08bca29c0befb9",
+      "isAncestor": true
+    },
+    {
+      "label": "C8AcceptedRuntime",
+      "sha": "30c4185b41d85be43a588e71d8c74c5f34e63596",
+      "isAncestor": true
+    },
+    {
+      "label": "acceptedC12EvidenceArchive",
+      "sha": "c123556e7a758b7eb5264137dcaf85504b07e471",
+      "isAncestor": true
+    },
+    {
+      "label": "C6EvidenceArchive",
+      "sha": "2cbfe2981578520edc9def5fa3c681ab5fb55536",
+      "isAncestor": true
+    },
+    {
+      "label": "incomingMain8301",
+      "sha": "8301f6ce0925cf1b8f9ddaa004ea31c26d1e6982",
+      "isAncestor": true
+    },
+    {
+      "label": "reviewedAuxPreflight",
+      "sha": "546d67c1efe7e145e1bfa9a19e9eea7c108b5e57",
+      "isAncestor": true
+    }
+  ],
+  "accepted9fSourceBindings": [
+    {
+      "path": "src/lib/workforce/exception-outcome-classification.ts",
+      "bytes": 2447,
+      "sha256": "947410fb0687987a465c38ce0c9455d3923d62039d9030b43bda3e0afae99a23",
+      "blob": "2b712f77b32be775a503a9e59efd2dcb56bd706e",
+      "workingBytesMatchCommit": true,
+      "unchangedFromAccepted9fSource": true
+    },
+    {
+      "path": "src/lib/workforce/exception-policy-draft.ts",
+      "bytes": 8270,
+      "sha256": "f45f761e9c2e829351eb930c7e191f667327b3ed040338b4033b54381da59b6b",
+      "blob": "db91eb7a7183c3316fc12cfbc2b1c0f718174015",
+      "workingBytesMatchCommit": true,
+      "unchangedFromAccepted9fSource": true
+    },
+    {
+      "path": "src/lib/workforce/exception-workbench.ts",
+      "bytes": 12753,
+      "sha256": "17107791d3895fe0e66d4ed349c32f19eec21fc4bb42220060ff8989ebc3cd21",
+      "blob": "e8f70fe15f1c77ab58939ce7a6e67b88491a6ed0",
+      "workingBytesMatchCommit": true,
+      "unchangedFromAccepted9fSource": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-writer.ts",
+      "bytes": 19607,
+      "sha256": "61814e5d395143a6deacc9bd92e0aee1ffb508cc1c168724897dd9bf67da201f",
+      "blob": "ab95d6368d252d7e780696fd5bd5fa88d8034ac1",
+      "workingBytesMatchCommit": true,
+      "unchangedFromAccepted9fSource": true
+    },
+    {
+      "path": "src/lib/workforce/exception-decision-service.ts",
+      "bytes": 11916,
+      "sha256": "dd10ffed0f37f80b79eae0e784918966033995283cafdbf6a4ec738b6275e21c",
+      "blob": "69a9b1d89cde811937ddb85aad464d7f7303fada",
+      "workingBytesMatchCommit": true,
+      "unchangedFromAccepted9fSource": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-report-recorded-outcomes.ts",
+      "bytes": 8338,
+      "sha256": "1d84daa28a7b21a8ad8545f5b494c1030c338cff75fc168f87153541d5f0321c",
+      "blob": "192e9f00b988202f82663c2b0e616c4a87136c3b",
+      "workingBytesMatchCommit": true,
+      "unchangedFromAccepted9fSource": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-report-read.ts",
+      "bytes": 3384,
+      "sha256": "b34a3ef9d52359a235040802c5ede11c03f128c7250b41f5b2a86d10860b82b5",
+      "blob": "51bc463f9493c8149f1e2a823ebdb8ce2e982a06",
+      "workingBytesMatchCommit": true,
+      "unchangedFromAccepted9fSource": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-ledger.ts",
+      "bytes": 9052,
+      "sha256": "da971cdfdc696085e40be8a35386e48a1746a3c92ebaa2ab9e0cedded25cc8ab",
+      "blob": "bce584e8e4b791f670971fa8da4e29a030ac6c8c",
+      "workingBytesMatchCommit": true,
+      "unchangedFromAccepted9fSource": true
+    },
+    {
+      "path": "src/lib/workforce/exception-workbench-token.ts",
+      "bytes": 5735,
+      "sha256": "4479cba8767dd4a8bb596ff8bf311ba139d1b417782035b13db92edef204fd1a",
+      "blob": "fd1b73daac5fcd71c903921a95cf8c3aec680f7c",
+      "workingBytesMatchCommit": true,
+      "unchangedFromAccepted9fSource": true
+    },
+    {
+      "path": "src/lib/workforce/access-control.ts",
+      "bytes": 10353,
+      "sha256": "b4915d133bb102251dccc94b9ba33a3a65905488135b00cb652f0e299cfa0b9f",
+      "blob": "59f8d4e6aa5ec20c3819648bd8b0dce0ad6d5173",
+      "workingBytesMatchCommit": true,
+      "unchangedFromAccepted9fSource": true
+    },
+    {
+      "path": "src/lib/workforce/access-grant-resolution.ts",
+      "bytes": 5664,
+      "sha256": "1720277ff37308894c9c3e3313a7235150350bcfa254ac4846905a5f9875e2c3",
+      "blob": "48d9e9016d3b1882e2ff7f95e1970dafe24140df",
+      "workingBytesMatchCommit": true,
+      "unchangedFromAccepted9fSource": true
+    },
+    {
+      "path": "src/lib/workforce/exception-read-access.ts",
+      "bytes": 2032,
+      "sha256": "adedcbd7844335ff63c2506c82c46fee240a473ba47974e90bcb8a8f62da69ae",
+      "blob": "3a9099c3092fe8a976234b0ab69cd7513379fd69",
+      "workingBytesMatchCommit": true,
+      "unchangedFromAccepted9fSource": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-read-scope.ts",
+      "bytes": 8461,
+      "sha256": "42ff417bb8afc67546b4cc57bfc0b6549a839c2ce293297b1f440e625093f9b5",
+      "blob": "913a42caf076646e9ae380059aa8fdde90cd1afc",
+      "workingBytesMatchCommit": true,
+      "unchangedFromAccepted9fSource": true
+    },
+    {
+      "path": "src/lib/workforce/team-membership.ts",
+      "bytes": 4282,
+      "sha256": "47fc2f92856ff8e8bc67a31bf9087c73faf673bc741fc58b76a4f5efac7723fb",
+      "blob": "4d929406051c9048bba09c43e1203731d22e000f",
+      "workingBytesMatchCommit": true,
+      "unchangedFromAccepted9fSource": true
+    },
+    {
+      "path": "src/lib/with-workforce-rls-auth.ts",
+      "bytes": 21653,
+      "sha256": "289aa253b4d8d3a25913136a545db598bf1a01c9b571b6c89e2689da2fe6d8ff",
+      "blob": "fc6e31b5380acc3d7e34e51a71b5f02b6dca7676",
+      "workingBytesMatchCommit": true,
+      "unchangedFromAccepted9fSource": true
+    },
+    {
+      "path": "src/app/api/v1/workforce/exceptions/route.ts",
+      "bytes": 13279,
+      "sha256": "5a33ec78dc7fe6b05e920cbdb22fecb46f85d45c74840486533ea56df68034ff",
+      "blob": "15c9bb229abcc9b438356c3f377187116abd1877",
+      "workingBytesMatchCommit": true,
+      "unchangedFromAccepted9fSource": true
+    },
+    {
+      "path": "src/app/api/v1/workforce/exception-decisions/route.ts",
+      "bytes": 4157,
+      "sha256": "eeeb1dda5d637fb0fdaa831021556a1200a1bd502e73df05838e850284db34c9",
+      "blob": "ad2da46df064e7ac296823e1eb615220779d5633",
+      "workingBytesMatchCommit": true,
+      "unchangedFromAccepted9fSource": true
+    },
+    {
+      "path": "src/app/api/v1/workforce/exception-reports/route.ts",
+      "bytes": 6162,
+      "sha256": "6d4935a3cd3adbbbb411619a813287a6ba8b7d58cc89dec888074130360233bf",
+      "blob": "d8506dc1ec4788118e7f84640789bbf032c2edf7",
+      "workingBytesMatchCommit": true,
+      "unchangedFromAccepted9fSource": true
+    },
+    {
+      "path": "src/components/workforce/workforce-exception-queue.tsx",
+      "bytes": 23077,
+      "sha256": "5160dcc8b943d0caca712ae0dcad02725784fcb4c2401479c16dede00d0c3b1f",
+      "blob": "50424e0701b2f84b2eb739a5a2a0acedb18efabc",
+      "workingBytesMatchCommit": true,
+      "unchangedFromAccepted9fSource": true
+    },
+    {
+      "path": "src/components/workforce/workforce-exception-recorded-outcomes.tsx",
+      "bytes": 6293,
+      "sha256": "1039384b9a47e87b48a001b115300c7161cd3d144b376adce20276f5172cc386",
+      "blob": "b97498e1325b0c74ff6db1c3a8380d59508ac478",
+      "workingBytesMatchCommit": true,
+      "unchangedFromAccepted9fSource": true
+    },
+    {
+      "path": ".github/workflows/workforce-exception-report-browser-evidence.yml",
+      "bytes": 25256,
+      "sha256": "1dcd49d422fb212d4ee1eac6368de97837fe62fc5ca5975a7faa2b6c61dc18e7",
+      "blob": "61b8a890269f3a083628de6df13ac508e4d0b19a",
+      "workingBytesMatchCommit": true,
+      "unchangedFromAccepted9fSource": true
+    },
+    {
+      "path": "messages/en.json",
+      "bytes": 1353703,
+      "sha256": "968f55c77be76ef307a5d4b3d72f3ee9e1fd255bc6a37edc8632552892331244",
+      "blob": "ae3dbe4e2511c1cd6eff3c55f17b12810bc5292d",
+      "workingBytesMatchCommit": true,
+      "unchangedFromAccepted9fSource": false
+    },
+    {
+      "path": "messages/ru.json",
+      "bytes": 1999330,
+      "sha256": "f4401ef992a363e9c3d8deb5b158545016be2b5732db797227fb8517972be956",
+      "blob": "866a8e55422dfc131524de82728ab96b118b6a7c",
+      "workingBytesMatchCommit": true,
+      "unchangedFromAccepted9fSource": false
+    },
+    {
+      "path": "messages/az.json",
+      "bytes": 1497486,
+      "sha256": "d7bc057c39c526d58f88e99201371e1e508d14ebd82e490ada359d93dd06eddd",
+      "blob": "213ee07d4ad502867745604b8db9e1ab7c1dff39",
+      "workingBytesMatchCommit": true,
+      "unchangedFromAccepted9fSource": false
+    },
+    {
+      "path": "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql",
+      "bytes": 9684,
+      "sha256": "314d4f0e83c81544a50633bceb977298ece24fff918923310671b07c0e8c5f2a",
+      "blob": "c14b3aed36d12b40dcbbdcaa35745a8517006654",
+      "workingBytesMatchCommit": true,
+      "unchangedFromAccepted9fSource": true
+    },
+    {
+      "path": "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql",
+      "bytes": 10851,
+      "sha256": "1deee0b735aee6ca3b055ee71b3663799daa71c3d6c6ef66c47a02dee7efecec",
+      "blob": "e8cc7deb2f6bdb5024dc4cbb710c885f83fc8ce4",
+      "workingBytesMatchCommit": true,
+      "unchangedFromAccepted9fSource": true
+    },
+    {
+      "path": "prisma/migrations/20260927014300_workforce_exception_case_revisions_contract/migration.sql",
+      "bytes": 1262,
+      "sha256": "418f1cf3c481c1624cd16a26c0aad49680a2430f75fe9e2f3dd22117f000fc7e",
+      "blob": "f5268c37f2a85f887f9151ff949249ebdbe3d1f0",
+      "workingBytesMatchCommit": true,
+      "unchangedFromAccepted9fSource": true
+    }
+  ],
+  "immutableBaselineAndGateBindings": [
+    {
+      "path": "test-baseline.json",
+      "bytes": 1139,
+      "sha256": "8f0fc568274f9fd8c0c741db618d6e4d81025de7112a315cd93e6b92bbd5a4b1",
+      "blob": "fcdde20b245a686642676341f01cb39e73e42ffa",
+      "workingBytesMatchCommit": true,
+      "unchangedFromAccepted973": true
+    },
+    {
+      "path": "typecheck-baseline.json",
+      "bytes": 3907,
+      "sha256": "919fa9d0212b18ee685af4f08680ebbc34e8c4969294054447df03147bf0fc53",
+      "blob": "10afff7f7fa1d2d4ea79f2bce53e2b7ca29e484a",
+      "workingBytesMatchCommit": true,
+      "unchangedFromAccepted973": true
+    },
+    {
+      "path": "scripts/ci/check-typecheck-gate.sh",
+      "bytes": 3468,
+      "sha256": "a18608d9297c039380481fb27d6200d9ebbcc731e9ec23dd40b5e3a2c5a40937",
+      "blob": "e6c3c4a836424b834e90f4192ad81513c9541b9c",
+      "workingBytesMatchCommit": true,
+      "unchangedFromAccepted973": true
+    },
+    {
+      "path": "scripts/ci/check-typecheck-baseline.mjs",
+      "bytes": 5909,
+      "sha256": "8b8a2472a1c813e85c4177c24c6df5fb5907d981b5b43e6870a04cbbba2b812a",
+      "blob": "034bfd1f18061bad8291f505367e84c74ec510ae",
+      "workingBytesMatchCommit": true,
+      "unchangedFromAccepted973": true
+    },
+    {
+      "path": "scripts/check-test-baseline.mjs",
+      "bytes": 10188,
+      "sha256": "6c3380718fd71061d2efe4aa396fcb9cc998336c5c95a3bbd2de05230058027e",
+      "blob": "7c27358c48c09131ce7966b2f4938490591c3cd1",
+      "workingBytesMatchCommit": true,
+      "unchangedFromAccepted973": true
+    }
+  ],
+  "incomingMainPreservation": {
+    "main": "8301f6ce0925cf1b8f9ddaa004ea31c26d1e6982",
+    "commonBase": "cb5a0453e7ead310e0515e265efee209be1c272b",
+    "incomingNoncatalogProductPaths": 86,
+    "all86NoncatalogBytesExact": true,
+    "catalogs": [
+      {
+        "path": "messages/en.json",
+        "priorWorkforceNamespaceCount": 14,
+        "allPriorWorkforceNamespacesExact": true,
+        "incomingMainChangedLeaves": 18,
+        "allIncomingMainChangedLeavesExact": true
+      },
+      {
+        "path": "messages/ru.json",
+        "priorWorkforceNamespaceCount": 14,
+        "allPriorWorkforceNamespacesExact": true,
+        "incomingMainChangedLeaves": 18,
+        "allIncomingMainChangedLeavesExact": true
+      },
+      {
+        "path": "messages/az.json",
+        "priorWorkforceNamespaceCount": 14,
+        "allPriorWorkforceNamespacesExact": true,
+        "incomingMainChangedLeaves": 18,
+        "allIncomingMainChangedLeavesExact": true
+      }
+    ],
+    "incomingProductPathsIncludingCatalogs": 89,
+    "noOtherProductDeltaOutsideExactIncomingMainAndFourPreflightPaths": true,
+    "financeSharedBoundaryBindings": [
+      {
+        "path": ".github/workflows/deploy.yml",
+        "bytes": 110684,
+        "sha256": "eb527b9cf31ca320c2f69760fb3495a5367bedd4de3ff63def4b30b6094ac28f",
+        "blob": "f988ecc95aae05bfcc002766c902d2361f886d4c",
+        "workingBytesMatchCommit": true,
+        "byteExactIncomingMain8301": true
+      },
+      {
+        "path": ".github/workflows/pr-checks.yml",
+        "bytes": 21090,
+        "sha256": "7de832432ad7e36758ca793205bfe84aa0ead2be0bea82f58a8be3be24e0f834",
+        "blob": "4e04cbb4fc50e95cba5044c769984a49f72a848f",
+        "workingBytesMatchCommit": true,
+        "byteExactIncomingMain8301": true
+      },
+      {
+        "path": ".github/actions/setup-production-ssh/action.yml",
+        "bytes": 1776,
+        "sha256": "8d9fbd9ccec5f3605609f97fb60647be361a8ba94147d82a23410203a06c5b07",
+        "blob": "0c2b2ee446b1047c6d3bc9dfb1ef1ffe05f1ef67",
+        "workingBytesMatchCommit": true,
+        "byteExactIncomingMain8301": true
+      },
+      {
+        "path": ".github/actions/assert-production-environment-protection/action.yml",
+        "bytes": 2402,
+        "sha256": "fc45626cf9b5c07b6be55a3ce29c4aa0434f438aac8c1044608d108a236c98a0",
+        "blob": "289603743a24b429f9bc736f36e6483399ea8509",
+        "workingBytesMatchCommit": true,
+        "byteExactIncomingMain8301": true
+      },
+      {
+        "path": "src/lib/permissions.ts",
+        "bytes": 50982,
+        "sha256": "33fde1143bc31e6bb1bdd4438160e255a3ae864171cf7ccbdb168c497ce0844e",
+        "blob": "31a2a7956447aef9955c914579254c75065a4cdb",
+        "workingBytesMatchCommit": true,
+        "byteExactIncomingMain8301": true
+      },
+      {
+        "path": "src/lib/user-access-summary.ts",
+        "bytes": 7138,
+        "sha256": "3da6bbe5a9204a39cd8158f0fedad531d4efb612df627f996f40c50e585a0803",
+        "blob": "8a59512f0708a30f9edf7ce52bdb0426fe0ff589",
+        "workingBytesMatchCommit": true,
+        "byteExactIncomingMain8301": true
+      },
+      {
+        "path": "src/proxy.ts",
+        "bytes": 50300,
+        "sha256": "9d3fe10f167e964101aaf7e1f455bebb71ae05024f7e91fb20c0f2c48049f40d",
+        "blob": "f1de0349eb128d32550b5798a191552876138106",
+        "workingBytesMatchCommit": true,
+        "byteExactIncomingMain8301": true
+      },
+      {
+        "path": "src/lib/nav-items.ts",
+        "bytes": 50728,
+        "sha256": "abf946a3e474304d7d5c11cf1732878e0d0c1596e8d971e7d548640cada9a7bd",
+        "blob": "61f46cfd6433c9d5619372a69956dee9a4353682",
+        "workingBytesMatchCommit": true,
+        "byteExactIncomingMain8301": true
+      },
+      {
+        "path": "clients/registry.json",
+        "bytes": 3777,
+        "sha256": "4bf46474fe28f4d7c424d747189f9bbf04cee89dbc15f8436d5226f7a4eb6044",
+        "blob": "2adddbbc69fe88ff8b6857de1e7ea2962dc78e59",
+        "workingBytesMatchCommit": true,
+        "byteExactIncomingMain8301": true
+      }
+    ]
+  },
+  "C7C8Preservation": {
+    "workforceDomainByteExactAccepted9f": true,
+    "priorClosureDocumentsByteExact9f": true,
+    "oldActualATAndBrowserCredit": "Historical source-qualified evidence only; not new062 execution. C7 immutable packet remains referenced externally as in accepted9f."
+  },
+  "C12Archive": {
+    "acceptedSha": "c123556e7a758b7eb5264137dcaf85504b07e471",
+    "path": "docs/evidence/workforce-c12-terminal-973-2026-10-06",
+    "exactDirectoryTree": "ce32912ddbab58e5e287930a446ba690531ead09",
+    "files": 28,
+    "unchangedArchiveBytesAndAncestry": true,
+    "operationalCredit": false
+  },
+  "sourceContractAssessment": [
+    "Only explicitly offered CLASSIFY_FALSE_POSITIVE / CLASSIFY_CONFIRMED_EXCEPTION / APPEAL_FULLY_UPHELD / APPEAL_PARTIALLY_UPHELD / APPEAL_REJECTED can append reserved outcomes. Generic writer rejects those codes.",
+    "Live HR_ADMIN scoped grants, session-only mandatory MFA, tenant capability and historical resource checks are preserved. New writes re-read capability/grants/current scope under the bound per-case advisory lock using ReadCommitted. Tokens remain locators. Exact retry preserves original reason/operation and writes no duplicate row.",
+    "Current resolved cycle permits one finding per classification/appeal dimension; reopening invalidates current findings. Classified resolved samples alone form final outcome denominators; unfinished and each dimension's unclassified resolved cases are separate, zero classified sample yields null shares.",
+    "CASE_RECORDED_AT cohort and protected repeatable-read report snapshot remain explicit. Linked approved correction evidence remains a separate measure and cannot imply false positive or appeal outcome.",
+    "Reason is required3-1000, privately persisted in immutable decision ledger; aggregate report/audit envelope contains no private reason/raw coordinates. Manager allowlist is unchanged and HR outcome actions separate; UI sanitizes enums and uses explicit confirmation/frozen retry reason.",
+    "No automated employment decision, tenant activation, grant/secret/access configuration change, or Support product delta. Existing finance-only shared changes are exact approved incoming main."
+  ],
+  "migrationBindings": [
+    {
+      "path": "prisma/migrations/20261005193000_workforce_reconciliation_operations/migration.sql",
+      "bytes": 2721,
+      "sha256": "c452e7f6d13dca1e5257d8353c252745d05cd4f18eae83cd45501f61664ef719",
+      "blob": "56c246ae8afd8ea5be2989034bd56953e28406c5",
+      "workingBytesMatchCommit": true,
+      "unchangedFromAccepted973": true
+    },
+    {
+      "path": "prisma/migrations/20261006150000_workforce_transferred_assignment_window/migration.sql",
+      "bytes": 3664,
+      "sha256": "239c19f1a973fd0687fc0d558d628befa50cbe3ce9e6a3a0b24c02361a7e533f",
+      "blob": "84fcfa2d07857cb136e2d99bd4c10aa22d313762",
+      "workingBytesMatchCommit": true,
+      "unchangedFromAccepted973": true
+    }
+  ],
+  "migrationAssessment": {
+    "reconciliation": "Dormant empty tenant-state table with FORCE RLS and ten ordinary C-order indexes; no GRANT/backfill/activation/runtime registration. Ordinary CREATE INDEX may block writes; actual size/activity/ACL/ownership/checksum compatibility must be reviewed before release.",
+    "transferredAssignment": "Function-only narrowing exception retains identity and pinned snapshots; no business-row/grant mutation; no payroll/employment decision."
+  },
+  "preflightSourceBindings": [
+    {
+      "path": ".github/workflows/hrm-migration-metadata-preflight.yml",
+      "bytes": 7131,
+      "sha256": "f90937ecda3b81e7dd017819cfaec1afdefc5fee58167fdfc2289ce012a1dcf1",
+      "blob": "f9c1ea00cb2e31f6f3290521b6e4787f14121132",
+      "workingBytesMatchCommit": true,
+      "byteExactReviewed546Source": true
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.mjs",
+      "bytes": 20499,
+      "sha256": "ab31354e7beaaed42508511c74eb304f52c2a6353e8b80d41bac9d6d63212f8b",
+      "blob": "3c15b895edf7096b20474b1ea0928ca9d886c75d",
+      "workingBytesMatchCommit": true,
+      "byteExactReviewed546Source": true
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.sql",
+      "bytes": 14770,
+      "sha256": "b174e32eb68a0dbcca98e8557fe8c716ed8277111e79ba822bce43f4e7023b6a",
+      "blob": "4c0fbfec475aa3431c8b04a0961d7d948e48454a",
+      "workingBytesMatchCommit": true,
+      "byteExactReviewed546Source": true
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.test.mjs",
+      "bytes": 31231,
+      "sha256": "63e276c7005bb792044494e3401a006db529fef27b76859bbb786e8a6ede9895",
+      "blob": "4ecc60208cd6b1de0030c201257d6daffec12a63",
+      "workingBytesMatchCommit": true,
+      "byteExactReviewed546Source": true
+    }
+  ],
+  "rootIndependentPreflightReviewBinding": {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/release-preflight-root-source-review-546d.json",
+    "bytes": 3809,
+    "sha256": "a2daad2fced530717f1bb5a3d2c75a01c339c8a188541c40a04ed0e70978b1fc",
+    "blob": "f40ce8c1c69801038beea7182d12d3dc6e7c785a",
+    "workingBytesMatchCommit": true
+  },
+  "actualAux546Evidence": {
+    "runId": 37634692782,
+    "jobId": 112837694367,
+    "headSha": "546d67c1efe7e145e1bfa9a19e9eea7c108b5e57",
+    "pass": 16,
+    "fail": 0,
+    "skip": 0,
+    "legacyDefaultNameOrderCanonical": false,
+    "originalRawSha256": "56d80d71bbdcd950186b85be5f540659294a5fb82570d0e1eed686c620ec5050",
+    "originalGzipSha256": "e0a5e9061c07ee7c21bb0e446aff57102d1e6c0222e44e707759d84f9e896067",
+    "losslessOriginalIndependentlyRehashed": true,
+    "interpretation": "Real isolated hosted SQL confirmation bound byte-for-byte to candidate preflight; not a new062 source-validation run, production metadata, staging or C12 observation."
+  },
+  "retainedOriginalReviewAndFailureBindings": [
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/independent-source-review-7400.json",
+      "sha256": "e810cc3fbdf33bba655fa863ce919f1fb7ebe4bf5e6d036dc2183a707909b066",
+      "matchesPriorAcceptance": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/independent-source-review-supplement-5ead.json",
+      "sha256": "6a3fc39cb9d560a296116ac15cd8ac087ddd5a0bab689881e774c1ce4ad6cfa7",
+      "matchesPriorAcceptance": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/independent-source-review-supplement-b416.json",
+      "sha256": "4a7c003bda2006a44fbce81f4e5177f135b5b8a55a090aadb068f78a95936b65",
+      "matchesPriorAcceptance": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/independent-source-review-supplement-722.json",
+      "sha256": "307e85c4cf29707323119e47e9c6729df0d73478cd90569d2088add20211de9b",
+      "matchesPriorAcceptance": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/independent-source-review-supplement-30677.json",
+      "sha256": "4c134a6dab2e84082bb20f63fc1b95954e0fbac8526daf8af8f574b99c18a7eb",
+      "matchesPriorAcceptance": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/hosted-5ead-compiler/tsc-output.log.gz",
+      "sha256": "71e62e6caa9ac8f9bf2c0cdf40e0f298ba3978517fdf62108a1a7a1ba88f01be",
+      "matchesPriorAcceptance": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/hosted-722-compiler/tsc-output.log.gz",
+      "sha256": "1d0cd6ea21cd0c067aac22734e303311e79444379a7841c1ba1f7ba9e729cd81",
+      "matchesPriorAcceptance": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/hosted-30677-compiler/tsc-output.log.gz",
+      "sha256": "382177e8cd88f05e649491526479404b50ebaa576bc1556e2df188440bab98c9",
+      "matchesPriorAcceptance": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/hosted-722-classification-original.log.gz",
+      "sha256": "3a762530f486cd0bf5ee968cdaa27f1ca659023139f6cdf20e002c74b0ca81a7",
+      "matchesPriorAcceptance": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/hosted-30677-classification-original.log.gz",
+      "sha256": "bc14dae98bd13f5b1a839245b7c4df923ae97f6bcf54ee76fe6f30eeccc0bb08",
+      "matchesPriorAcceptance": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/strict-receiver-original-fail.log.gz",
+      "sha256": "1c4d4e3742149bf3ff4320724bfa9cf5ed28a6ac55024c53b5985ff1d073095e",
+      "matchesPriorAcceptance": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/strict-receiver-repaired-regression.log.gz",
+      "sha256": "4bdd5ce88de73acad42654a1a14a8d35b023461cccf286f03c3d99614047868a",
+      "matchesPriorAcceptance": true
+    }
+  ],
+  "remainingAcceptance": [
+    "Five required GitHub App15368 checks at current PR589 final head/synthetic merge with exact parents/tree binding, all applicable workflows/attempts inspected; no status forgery or agent-review.",
+    "Exact062 custom run37635350493 allfive jobs completed: production build, complete compiler plus unchanged gates/all diagnostic families and touched diagnostics,44PG/full baseline regressions,report9/classification11 original artifacts including original failures/cleanup/source hashes.",
+    "Fresh currentrefs/prospective final merge tree proof after reviewed616 main merge and infrastructure deploy. Any new incoming source requires integration and renewed checks.",
+    "Actual protected-main production metadata report bound helper/SQL/current deployed artifact, real role defaults/ledger checksums/ACL/RLS/owner/index/function/decision-trigger guards and DDL size/activity risk. Explicit INCOMPLETE/ERROR must remain a blocker or receive specifically scoped resolution.",
+    "Authorized final normal merge/deploy exact immutable artifact and no-cache public ping/build-info plus feature smoke. No606/609 merge; verify both closed and merged=false afterward. No tenant/grant/runtime activation.",
+    "Roadmap84/161DONE,77open,60% and C12PARTIAL unchanged until acceptance criteria complete. Real HR rates/physical/pilot/load/historical replay/global WCAG observations are not supplied by synthetic fixtures."
+  ],
+  "limitations": [
+    "No source edits, commit, push, check status publication, local tests/build/DB/browser or production access during this review. JSON is written only to/tmp at coordinator request.",
+    "Source equality transfers prior accepted implementation only; no previous9f PASS borrowed for062. Global compiler/suite historically NONCLEAN1153 diagnostics/18 baseline failures; fresh totals await completed CI.",
+    "Preflight metadata is catalog-only; no full migration replay/staging/C12/quiet-window/policy coverage or TRUNCATE/privileged-bypass immutability claim.",
+    "Live GitHub refs/checks and production are pending separate final evidence review, not claimed checked here."
+  ]
+}
