@@ -185,7 +185,19 @@ test("hosted PostgreSQL proves one live runtime backend, exact nonce/PID, read-o
   const migration = new URL(admin.href); migration.username = "hrm_live_migration"; migration.password = "isolated-live-migration"
   const privateRead = path => path.endsWith(".deploy-sha") ? sha : path.endsWith("migration.env") ? "MIGRATION_DATABASE_URL='" + migration.href + "'\nMIGRATION_EXPECTED_DB_ROLE=hrm_live_migration\n" : "DATABASE_URL='" + runtime.href + "'\n"
   const observe = async overrides => {
-    const r = await inspectLiveAclRemote(sql, bindings, sha, { uid: 0, read: privateRead, ...overrides })
+    let runtimeObserved
+    // These flags exist only inside the GitHub-fenced synthetic fixture. Never
+    // serialize the raw snapshot, role/DB identity, PID, probe or connection.
+    const recordIdentity = (raw, mode) => {
+      let observed
+      try { observed = validateLiveSnapshot(JSON.parse(raw), mode) }
+      catch { context.diagnostic("HOSTED_LIVE_OBSERVATION mode=" + mode + " snapshotShape=INVALID"); return }
+      const fields = ["expectedIdentity", "sessionIdentityUnchanged", "primary", "readOnly", "repeatableRead", "probeNameVerified", "liveRuntimeSeen"]
+      context.diagnostic("HOSTED_LIVE_OBSERVATION mode=" + mode + " " + fields.map(field => field + "=" + observed.identity[field]).join(" "))
+      if (mode === "runtime") runtimeObserved = observed
+      else if (runtimeObserved) context.diagnostic("HOSTED_LIVE_CORRELATION databaseOidEqual=" + (runtimeObserved.identity.databaseOid === observed.identity.databaseOid) + " databaseNameEqual=" + (runtimeObserved.identity.databaseName === observed.identity.databaseName) + " distinctBackendPids=" + (runtimeObserved.identity.backendPid !== observed.identity.backendPid))
+    }
+    const r = await inspectLiveAclRemote(sql, bindings, sha, { uid: 0, read: privateRead, startRuntime: async (connection, statement, probe) => { const held = await startLiveRuntime(connection, statement, probe); recordIdentity(held.raw, "runtime"); return held }, queryMigration: async (connection, statement, probe) => { const raw = await queryLiveMigration(connection, statement, probe); recordIdentity(raw, "migration"); return raw }, ...overrides })
     assert.equal(r.status, "READ_COMPLETE", "HOSTED_LIVE_INSPECTION status=" + r.status + " code=" + r.code + " cleanup=" + r.cleanup)
     assert.equal(r.cleanup, "PASS"); assert.equal(r.proof.sameLiveDatabaseBackend, true); assert.equal(r.proof.declaredHostsEqual, false); assert.equal(r.proof.businessRowsRead, false); assert.equal(validateLiveReport(r, sha), r)
     assert.doesNotMatch(JSON.stringify(r), /hrm_live_|isolated-live|postgresql:\/\/|backendPid|databaseOid|databaseName|hrm_loopback_acl_[0-9a-f]{32}/); return r
