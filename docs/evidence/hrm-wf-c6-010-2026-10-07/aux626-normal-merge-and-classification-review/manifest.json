@@ -1,0 +1,27 @@
+{
+  "auxMain": "f8dd20c7a849643087ee31969c2f582a96c8bab3",
+  "auxSource": "5f1437559afd5e1f2f8a2ebcf5aa4123c687e6db",
+  "status": "NORMAL_AUX_MERGE_ONLY_OWN_RELEASE_PENDING",
+  "files": [
+    {
+      "file": "hrm-pr626-root-premerge-proof.json",
+      "bytes": 3697,
+      "sha256": "9c9c5e275b62f521a5c4bd70b09cc41b8622f91ace5671357cc9ad830b1583e3"
+    },
+    {
+      "file": "hrm-pr626-normal-merge-result.json",
+      "bytes": 109,
+      "sha256": "34219d5589a6d711dcd62af66d3c589d7acdda0bddabf1893cb4239ada37cb13"
+    },
+    {
+      "file": "hrm-pr626-normal-merge-commit-proof.json",
+      "bytes": 501,
+      "sha256": "6ca2255932cfea17e309b643f6cfd8cc767063a9880a49c0535841cddedd9618"
+    },
+    {
+      "file": "hrm-release-5638-classification-first-failure-peer-review.json",
+      "bytes": 7687,
+      "sha256": "6bc5e4351697fe4cdbb592a13cbd4b4d76df83b8b3dbc51eb057bc40d69e9d39"
+    }
+  ]
+}
