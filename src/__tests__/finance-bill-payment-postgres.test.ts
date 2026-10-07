@@ -14,6 +14,13 @@
  *    three writes were not in a transaction);
  *  - an order executed twice at once pays its bill once.
  *
+ * The same database carries the other half of the registry's story: a payment
+ * that is taken back — deleted on its own, or along with the invoice or the
+ * vendor bill it belonged to — leaves the payment registry too. The registry
+ * has no foreign key to the payment it describes, so until 2026-10-07 nothing
+ * removed its row, and the registry went on listing and totalling money that
+ * no document accounted for any more.
+ *
  * And one thing learned the hard way on 2026-10-02 (the MTM category editor):
  * a write path that has only ever met a mocked Prisma has not been run.
  *
@@ -94,9 +101,9 @@ function schemaWithoutEmbeddings(): string {
   return file
 }
 
-function signIn(role: string) {
+function signIn(role: string, organizationId = ORG) {
   session.current = {
-    user: { id: `user-${role}`, organizationId: ORG, role, email: `${role}@example.com`, name: role },
+    user: { id: `user-${role}`, organizationId, role, email: `${role}@example.com`, name: role },
   }
 }
 
@@ -107,6 +114,7 @@ function post(url: string, body?: unknown): NextRequest {
   })
 }
 const idParams = (id: string) => ({ params: Promise.resolve({ id }) })
+const remove = (url: string) => new NextRequest(`http://localhost:3000${url}`, { method: "DELETE" })
 
 const pgDescribe = scratch ? describe : describe.skip
 
@@ -117,6 +125,11 @@ pgDescribe("vendor bill payments on a real Postgres", () => {
   let payBill!: typeof import("@/app/api/finance/payables/[id]/payments/route").POST
   let approve!: typeof import("@/app/api/finance/payment-orders/[id]/approve/route").POST
   let execute!: typeof import("@/app/api/finance/payment-orders/[id]/execute/route").POST
+  let deleteBill!: typeof import("@/app/api/finance/payables/[id]/route").DELETE
+  let payInvoice!: typeof import("@/app/api/v1/invoices/[id]/payments/route").POST
+  let deleteInvoicePayment!: typeof import("@/app/api/v1/invoices/[id]/payments/[paymentId]/route").DELETE
+  let deleteInvoice!: typeof import("@/app/api/v1/invoices/[id]/route").DELETE
+  let readRegistry!: typeof import("@/app/api/finance/registry/route").GET
   let sequence = 0
 
   beforeAll(async () => {
@@ -132,11 +145,28 @@ pgDescribe("vendor bill payments on a real Postgres", () => {
       process.env,
       `ALTER TABLE "payment_registry_entries" ADD CONSTRAINT "test_registry_refuses_marker" CHECK ("description" NOT LIKE '%REFUSE-THIS%')`,
     )
+    // And what makes removing a registry row fail on demand.
+    prismaCli(
+      ["db", "execute", "--url", scratch!.url, "--stdin"],
+      process.env,
+      `CREATE FUNCTION "test_registry_keeps_marker"() RETURNS trigger AS $$
+       BEGIN
+         IF OLD."description" LIKE '%KEEP-THIS%' THEN RAISE EXCEPTION 'test: this registry row refuses to be deleted'; END IF;
+         RETURN OLD;
+       END $$ LANGUAGE plpgsql;
+       CREATE TRIGGER "test_registry_keeps_marker" BEFORE DELETE ON "payment_registry_entries"
+         FOR EACH ROW EXECUTE FUNCTION "test_registry_keeps_marker"();`,
+    )
     prisma = (await import("@/lib/prisma")).prisma
     bypass = (await import("@/lib/rls-context")).runWithRlsBypass
     payBill = (await import("@/app/api/finance/payables/[id]/payments/route")).POST
     approve = (await import("@/app/api/finance/payment-orders/[id]/approve/route")).POST
     execute = (await import("@/app/api/finance/payment-orders/[id]/execute/route")).POST
+    deleteBill = (await import("@/app/api/finance/payables/[id]/route")).DELETE
+    payInvoice = (await import("@/app/api/v1/invoices/[id]/payments/route")).POST
+    deleteInvoicePayment = (await import("@/app/api/v1/invoices/[id]/payments/[paymentId]/route")).DELETE
+    deleteInvoice = (await import("@/app/api/v1/invoices/[id]/route")).DELETE
+    readRegistry = (await import("@/app/api/finance/registry/route")).GET
     await bypass(() => prisma.organization.create({
       data: { id: ORG, name: "Finance Test", slug: "finance-test", modules: { crm: true, finance: true } },
     }))
@@ -151,12 +181,12 @@ pgDescribe("vendor bill payments on a real Postgres", () => {
     signIn("manager")
   })
 
-  async function newBill(total: string, billNumber?: string) {
+  async function newBill(total: string, billNumber?: string, organizationId = ORG) {
     const id = `bill-${++sequence}`
     await bypass(() => prisma.bill.create({
       data: {
         id,
-        organizationId: ORG,
+        organizationId,
         billNumber: billNumber ?? `B-${sequence}`,
         vendorName: "Landlord LLC",
         title: "Rent",
@@ -168,12 +198,12 @@ pgDescribe("vendor bill payments on a real Postgres", () => {
     return id
   }
 
-  async function newOrder(status: string, amount: number, billId: string | null) {
+  async function newOrder(status: string, amount: number, billId: string | null, organizationId = ORG) {
     const id = `po-${++sequence}`
     await bypass(() => prisma.paymentOrder.create({
       data: {
         id,
-        organizationId: ORG,
+        organizationId,
         orderNumber: `PO-${sequence}`,
         counterpartyName: "Landlord LLC",
         amount,
@@ -293,5 +323,241 @@ pgDescribe("vendor bill payments on a real Postgres", () => {
     expect(await paymentsOf(billId)).toHaveLength(1)
     expect([bill.paidAmount.toFixed(4), bill.balanceDue.toFixed(4)]).toEqual(["40.0000", "60.0000"])
     expect(await bypass(() => prisma.paymentRegistryEntry.count({ where: { sourceType: "payment_order", sourceId: orderId } }))).toBe(1)
+  })
+
+  describe("the payment registry when a payment is taken back", () => {
+    // Each test gets an organization of its own, so the registry's totals —
+    // which are per organization, not per page — are exactly what the test put
+    // there and can be read as plain numbers.
+    let org!: string
+
+    beforeEach(async () => {
+      org = `org-registry-${++sequence}`
+      await bypass(() => prisma.organization.create({
+        data: { id: org, name: org, slug: org, modules: { crm: true, finance: true } },
+      }))
+      // Deleting a payment, an invoice or a bill is an admin's action.
+      signIn("admin", org)
+    })
+
+    async function newInvoice(total: string, invoiceNumber?: string) {
+      const id = `inv-${++sequence}`
+      await bypass(() => prisma.invoice.create({
+        data: {
+          id,
+          organizationId: org,
+          invoiceNumber: invoiceNumber ?? `INV-${sequence}`,
+          title: "Services",
+          status: "sent",
+          totalAmount: total,
+          balanceDue: total,
+          recipientName: "Client LLC",
+        },
+      }))
+      return id
+    }
+
+    /** Records a payment through the real handler and returns the payment's id. */
+    async function receive(invoiceId: string, amount: number): Promise<string> {
+      const res = await payInvoice(post(`/api/v1/invoices/${invoiceId}/payments`, { amount }), idParams(invoiceId))
+      expect(res.status).toBe(201)
+      return (await res.json()).data.id
+    }
+
+    async function takeBack(invoiceId: string, paymentId: string) {
+      return deleteInvoicePayment(
+        remove(`/api/v1/invoices/${invoiceId}/payments/${paymentId}`),
+        { params: Promise.resolve({ id: invoiceId, paymentId }) },
+      )
+    }
+
+    /** The registry as the finance screen gets it: the rows and the totals above them. */
+    async function registryScreen() {
+      const res = await readRegistry(new NextRequest("http://localhost:3000/api/finance/registry"))
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      return {
+        sources: (body.data as Array<{ sourceType: string; sourceId: string }>)
+          .map((entry) => `${entry.sourceType}:${entry.sourceId}`)
+          .sort(),
+        totalIncoming: body.stats.totalIncoming as number,
+        totalOutgoing: body.stats.totalOutgoing as number,
+        netFlow: body.stats.netFlow as number,
+      }
+    }
+
+    const registryRowsFor = (sourceType: string, sourceId: string) =>
+      bypass(() => prisma.paymentRegistryEntry.count({ where: { sourceType, sourceId } }))
+    const invoiceRow = (id: string) => bypass(() => prisma.invoice.findUniqueOrThrow({ where: { id } }))
+
+    it("a deleted invoice payment is gone from the registry and from its totals", async () => {
+      const invoiceId = await newInvoice("100")
+      const mistaken = await receive(invoiceId, 40)
+      const kept = await receive(invoiceId, 25)
+      expect(await registryScreen()).toEqual({
+        sources: [`invoice_payment:${kept}`, `invoice_payment:${mistaken}`].sort(),
+        totalIncoming: 65,
+        totalOutgoing: 0,
+        netFlow: 65,
+      })
+
+      const res = await takeBack(invoiceId, mistaken)
+
+      expect(res.status).toBe(200)
+      expect(await registryRowsFor("invoice_payment", mistaken)).toBe(0)
+      expect(await registryRowsFor("invoice_payment", kept)).toBe(1)
+      // The 40 used to stay here for good: listed as received, and counted.
+      expect(await registryScreen()).toEqual({
+        sources: [`invoice_payment:${kept}`],
+        totalIncoming: 25,
+        totalOutgoing: 0,
+        netFlow: 25,
+      })
+      const invoice = await invoiceRow(invoiceId)
+      expect([invoice.paidAmount.toFixed(4), invoice.balanceDue.toFixed(4), invoice.status]).toEqual(["25.0000", "75.0000", "partially_paid"])
+    })
+
+    it("another organization's registry row is left alone", async () => {
+      const invoiceId = await newInvoice("100")
+      const paymentId = await receive(invoiceId, 40)
+      // A row in a different organization that happens to name the same source.
+      const foreign = await bypass(() => prisma.paymentRegistryEntry.create({
+        data: {
+          organizationId: ORG,
+          direction: "incoming",
+          amount: 40,
+          counterpartyName: "Someone else's client",
+          sourceType: "invoice_payment",
+          sourceId: paymentId,
+          paymentDate: new Date(),
+        },
+      }))
+
+      const res = await takeBack(invoiceId, paymentId)
+
+      expect(res.status).toBe(200)
+      expect(await bypass(() => prisma.paymentRegistryEntry.findMany({
+        where: { sourceType: "invoice_payment", sourceId: paymentId },
+        select: { id: true, organizationId: true },
+      }))).toEqual([{ id: foreign.id, organizationId: ORG }])
+    })
+
+    it("when the registry row cannot be removed, the payment is not deleted either", async () => {
+      // The scratch database refuses to delete a registry row whose description
+      // carries this marker, and the description quotes the invoice number.
+      const invoiceId = await newInvoice("100", "KEEP-THIS")
+      const paymentId = await receive(invoiceId, 40)
+      const logged = vi.spyOn(console, "error").mockImplementation(() => {})
+
+      const res = await takeBack(invoiceId, paymentId)
+      logged.mockRestore()
+
+      // One transaction: either the payment and its registry row both go, or
+      // neither does. Never a payment that is gone while the registry keeps it.
+      expect(res.status).toBe(500)
+      expect(await bypass(() => prisma.invoicePayment.count({ where: { id: paymentId } }))).toBe(1)
+      expect(await registryRowsFor("invoice_payment", paymentId)).toBe(1)
+      const invoice = await invoiceRow(invoiceId)
+      expect([invoice.paidAmount.toFixed(4), invoice.balanceDue.toFixed(4), invoice.status]).toEqual(["40.0000", "60.0000", "partially_paid"])
+    })
+
+    it("deleting an invoice takes its payments out of the registry", async () => {
+      // The database deletes an invoice's payments with it (a cascade), so the
+      // registry has to let go of them at the same moment.
+      const doomed = await newInvoice("100")
+      await receive(doomed, 40)
+      await receive(doomed, 25)
+      const other = await newInvoice("100")
+      const otherPayment = await receive(other, 10)
+
+      const res = await deleteInvoice(remove(`/api/v1/invoices/${doomed}`), idParams(doomed))
+
+      expect(res.status).toBe(200)
+      expect(await bypass(() => prisma.invoice.count({ where: { id: doomed } }))).toBe(0)
+      expect(await bypass(() => prisma.invoicePayment.count({ where: { invoiceId: doomed } }))).toBe(0)
+      expect(await bypass(() => prisma.paymentRegistryEntry.count({ where: { invoiceId: doomed } }))).toBe(0)
+      expect(await registryScreen()).toEqual({
+        sources: [`invoice_payment:${otherPayment}`],
+        totalIncoming: 10,
+        totalOutgoing: 0,
+        netFlow: 10,
+      })
+    })
+
+    it("payments recorded while their invoice is being deleted leave nothing in the registry", async () => {
+      const invoiceId = await newInvoice("1000")
+      const pay = () => payInvoice(post(`/api/v1/invoices/${invoiceId}/payments`, { amount: 10 }), idParams(invoiceId))
+
+      const [deleted, ...paid] = await Promise.all([
+        deleteInvoice(remove(`/api/v1/invoices/${invoiceId}`), idParams(invoiceId)),
+        ...Array.from({ length: 8 }, pay),
+      ])
+
+      // A payment either got in before the invoice went (and went with it) or
+      // found no invoice. Which one is up to the race; what is left is not.
+      expect(deleted.status).toBe(200)
+      expect(paid.map((res) => res.status).filter((status) => status !== 201 && status !== 404)).toEqual([])
+      expect(await bypass(() => prisma.invoicePayment.count({ where: { invoiceId } }))).toBe(0)
+      expect(await bypass(() => prisma.paymentRegistryEntry.count({ where: { invoiceId } }))).toBe(0)
+      expect(await registryScreen()).toEqual({ sources: [], totalIncoming: 0, totalOutgoing: 0, netFlow: 0 })
+    })
+
+    it("deleting a vendor bill takes its payments out of the registry", async () => {
+      const doomed = await newBill("100", undefined, org)
+      await payBill(post(`/api/finance/payables/${doomed}/payments`, { amount: "40" }), idParams(doomed))
+      const other = await newBill("100", undefined, org)
+      await payBill(post(`/api/finance/payables/${other}/payments`, { amount: "15" }), idParams(other))
+      const [otherPayment] = await paymentsOf(other)
+      expect((await registryScreen()).totalOutgoing).toBe(55)
+
+      const res = await deleteBill(remove(`/api/finance/payables/${doomed}`), idParams(doomed))
+
+      expect(res.status).toBe(200)
+      expect(await paymentsOf(doomed)).toEqual([])
+      expect(await registryOf(doomed)).toEqual([])
+      expect(await registryScreen()).toEqual({
+        sources: [`bill_payment:${otherPayment.id}`],
+        totalIncoming: 0,
+        totalOutgoing: 15,
+        netFlow: -15,
+      })
+    })
+
+    it("payments recorded while their bill is being deleted leave nothing in the registry", async () => {
+      const billId = await newBill("1000", undefined, org)
+      const pay = () => payBill(post(`/api/finance/payables/${billId}/payments`, { amount: "10" }), idParams(billId))
+
+      // A payment that loses the race is turned away by the database itself (the
+      // bill it names is gone), so the outcomes are settled rather than awaited.
+      const [deleted] = await Promise.allSettled([
+        deleteBill(remove(`/api/finance/payables/${billId}`), idParams(billId)),
+        ...Array.from({ length: 8 }, pay),
+      ])
+
+      expect(deleted.status === "fulfilled" && deleted.value.status).toBe(200)
+      expect(await paymentsOf(billId)).toEqual([])
+      expect(await registryOf(billId)).toEqual([])
+      expect(await registryScreen()).toEqual({ sources: [], totalIncoming: 0, totalOutgoing: 0, netFlow: 0 })
+    })
+
+    it("an executed order stays in the registry when the bill it paid is deleted", async () => {
+      // Its registry row describes the order, not the bill, and the order is
+      // still there saying "executed". Removing the row would leave an executed
+      // order that the registry does not know about.
+      const billId = await newBill("100", undefined, org)
+      const orderId = await newOrder("approved", 40, billId, org)
+      expect((await execute(post(`/api/finance/payment-orders/${orderId}/execute`), idParams(orderId))).status).toBe(200)
+
+      const res = await deleteBill(remove(`/api/finance/payables/${billId}`), idParams(billId))
+
+      expect(res.status).toBe(200)
+      expect(await bypass(() => prisma.paymentOrder.findUniqueOrThrow({ where: { id: orderId } }))).toMatchObject({ status: "executed" })
+      expect(await registryScreen()).toEqual({
+        sources: [`payment_order:${orderId}`],
+        totalIncoming: 0,
+        totalOutgoing: 40,
+        netFlow: -40,
+      })
+    })
   })
 })
