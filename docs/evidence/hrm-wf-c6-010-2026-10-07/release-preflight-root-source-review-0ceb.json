@@ -1,0 +1,68 @@
+{
+  "head": "0ceb35ecef649aad2ace9a5482fbc27f9420c6c2",
+  "reviewer": "/root",
+  "author": "/root/inspect_outcome_contract",
+  "status": "ACCEPTED_SOURCE_CORRECTION_HOSTED_SQL_PENDING",
+  "rootUnitTests": {
+    "passed": 14,
+    "failed": 0,
+    "hostedSQLSkipped": 1
+  },
+  "originalSourceFailure": "37628952667/112817905912 at293aaf2036a4890f461b1e539f495cc33bbca461 remains FAIL; prior mocked review missed real libpq connection behavior",
+  "connectionReview": "Explicit decoded libpq child environment; no shell/URI argv/temp output; finite SSL mapping; no inherited profiles; force readonly before connecting; original SQL/workflow bytes retained",
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "bindings": [
+    {
+      "path": ".github/workflows/hrm-migration-metadata-preflight.yml",
+      "bytes": 7131,
+      "sha256": "f90937ecda3b81e7dd017819cfaec1afdefc5fee58167fdfc2289ce012a1dcf1",
+      "blob": "f9c1ea00cb2e31f6f3290521b6e4787f14121132"
+    },
+    {
+      "path": "docs/evidence/hrm-release-preflight-2026-10-07/source-293-first-failed.log.gz",
+      "bytes": 2481,
+      "sha256": "8971284d39f574b9af3050d331d996d641419d344c25a2d22800dafdbe3d830b",
+      "blob": "e11cf97b82b1cf54198b797acdd2545aa05ff0f2"
+    },
+    {
+      "path": "docs/evidence/hrm-release-preflight-2026-10-07/source-293-first-failure.json",
+      "bytes": 1087,
+      "sha256": "cfd27ab449ae3a29db915432c54d2b928ca9f625223077b08b7611bd1baea0db",
+      "blob": "7375dc5828eaf2e55bcbe046314e20943057dd1c"
+    },
+    {
+      "path": "docs/hrm-release-preflight-session-log.md",
+      "bytes": 14483,
+      "sha256": "05662671f64b4c71634c8fff5df884d1bf9bb66ce8dfde6286bb18ff3586d12e",
+      "blob": "b40ff2abde714a1368f4e65aa51d4c7be4c022fc"
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.mjs",
+      "bytes": 20499,
+      "sha256": "ab31354e7beaaed42508511c74eb304f52c2a6353e8b80d41bac9d6d63212f8b",
+      "blob": "3c15b895edf7096b20474b1ea0928ca9d886c75d"
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.sql",
+      "bytes": 14722,
+      "sha256": "90a76d2b41d6afef1933d4592fc438fe9692f286414aa723e37cd6f4d141c10c",
+      "blob": "2a3a6eb599d2a01505677b348363a93fb57dc8e0"
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.test.mjs",
+      "bytes": 26135,
+      "sha256": "49a73a7c0e14e6134b12f768857f08f6df4b235ceccae323a2ea4e572d11dc38",
+      "blob": "a083f43863bbe566fb6eaabf99417088a370771f"
+    }
+  ],
+  "limits": [
+    "No local DB/build/compiler/browser",
+    "Production metadata not inspected",
+    "Must pass actual hosted fixed SQL before main merge"
+  ]
+}
