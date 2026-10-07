@@ -80,7 +80,7 @@ test("env rejection details stop before SQL and never reflect connection values 
     ["SSL_VALUE_INVALID", env(base + "?sslcert=%00")],
     ["SSL_MODE_INVALID", env(base + "?sslmode=" + privateMarker)],
     ["SSL_PATH_UNSUPPORTED", env(base + "?sslrootcert=" + privateMarker)],
-    ["PARAM_UNSUPPORTED_CONNECT_TIMEOUT", env(base + "?connect_timeout=10")],
+    ["CONNECT_TIMEOUT_HINT_INVALID", env(base + "?connect_timeout=" + privateMarker)],
     ["PARAM_UNSUPPORTED_APPLICATION_NAME", env(base + "?application_name=" + privateMarker)],
     ["PARAM_UNSUPPORTED_SESSION_OPTIONS", env(base + "?options=-c%20default_transaction_read_only=off")],
     ["PARAM_UNSUPPORTED_HOST_OR_SOCKET", env(base + "?host=%2Fprivate-fixture-socket")],
@@ -161,6 +161,59 @@ test("env error sanitization preserves only finite nested detail and never unkno
     assert.equal(report.code, code === "private-error-message" ? "INSPECTION_FAILED" : code)
     assert.doesNotMatch(JSON.stringify(report), /private-/)
   }
+})
+
+test("connect_timeout hints normalize away while every explicit psql budget and startup guard remains fixed", () => {
+  const base = "postgresql://synthetic:private-timeout-fixture@host/fixture?schema=public&sslmode=verify-full"
+  const normalized = "postgresql://synthetic:private-timeout-fixture@host/fixture?sslmode=verify-full"
+  for (const value of ["10", "1", "0", "-0", "-1", "-2147483648", "2147483647", "+10", "0000000010"]) {
+    const connection = base + "&connect_timeout=" + encodeURIComponent(value)
+    const text = "MIGRATION_DATABASE_URL='" + connection + "'\nMIGRATION_EXPECTED_DB_ROLE=synthetic\n"
+    assert.equal(parseMigrationEnv(text), normalized)
+    assert.deepEqual(databaseConnectionEnvironment(connection), databaseConnectionEnvironment(normalized))
+    let observed
+    assert.equal(queryMetadata(connection, sql, (binary, args, options) => { observed = { binary, args, options }; return "bounded" }), "bounded")
+    assert.equal(observed.options.env.PGCONNECT_TIMEOUT, "10")
+    assert.equal(observed.options.timeout, 30000)
+    assert.equal(observed.options.env.PGOPTIONS, "-c default_transaction_read_only=on -c application_name=hrm_migration_metadata_preflight -c hrm.preflight_expected_role=synthetic")
+    assert.equal(observed.options.env.PGSSLMODE, "verify-full")
+    assert.equal(observed.options.input, sql)
+    assert.deepEqual(observed.args, ["-X", "-qAt", "--no-password", "-v", "ON_ERROR_STOP=1", "-v", "VERBOSITY=sqlstate"])
+    assert.equal(Object.values(observed.options.env).some(field => field.includes("connect_timeout") || field.includes("postgresql://")), false)
+    const report = inspectRemote(sql, bindings, sha, { uid: 0, read: path => path.endsWith(".deploy-sha") ? sha : text, query: url => { assert.equal(url, normalized); return encoded() } })
+    assert.equal(report.status, "READY_FOR_REVIEW")
+    assert.equal(report.envDetail, null)
+    assert.doesNotMatch(JSON.stringify(report), /private-timeout-fixture|connect_timeout|postgresql:\/\//)
+  }
+})
+
+test("malformed or repeated connect_timeout fails privately before SQL and never enables other URL overrides", () => {
+  const base = "postgresql://synthetic:private-timeout-fixture@host/fixture"
+  const rejected = [
+    ...["", "2147483648", "-2147483649", "999999999999999999", "1.5", "1e2", "0x10", "10s", " 10", "10 ", "\n10", "+", "--1", "private-timeout-value"].map(value => ["CONNECT_TIMEOUT_HINT_INVALID", "?connect_timeout=" + encodeURIComponent(value)]),
+    ["CONNECT_TIMEOUT_HINT_INVALID", "?connect_timeout=+10"],
+    ["PARAM_DUPLICATED_CONNECT_TIMEOUT", "?connect_timeout=10&connect_timeout=10"],
+    ["PARAM_DUPLICATED_CONNECT_TIMEOUT", "?connect_timeout=0&%63onnect_timeout=-1"],
+    ["PARAM_UNSUPPORTED_SESSION_OPTIONS", "?connect_timeout=10&options=-c%20default_transaction_read_only=off"],
+    ["PARAM_UNSUPPORTED_APPLICATION_NAME", "?connect_timeout=10&application_name=private-app-name"],
+    ["PARAM_UNSUPPORTED_HOST_OR_SOCKET", "?connect_timeout=10&host=%2Fprivate-socket"],
+    ["PARAM_UNSUPPORTED_IDENTITY_OVERRIDE", "?connect_timeout=10&user=private-override"],
+    ["PARAM_UNSUPPORTED_SSL", "?connect_timeout=10&sslpassword=private-override"],
+    ["PARAM_UNSUPPORTED_PRISMA", "?connect_timeout=10&pgbouncer=true"],
+    ["PARAM_UNSUPPORTED_OTHER", "?connect_timeout=10&private-unknown-name=private-value"],
+  ]
+  for (const [detail, suffix] of rejected) {
+    const text = "MIGRATION_DATABASE_URL='" + base + suffix + "'\nMIGRATION_EXPECTED_DB_ROLE=synthetic\n"
+    assert.throws(() => parseMigrationEnv(text), error => error.message === "ENV_INVALID" && error.envDetail === detail)
+    const report = inspectRemote(sql, bindings, sha, { uid: 0, read: path => path.endsWith(".deploy-sha") ? sha : text, query: () => assert.fail("invalid hint or override must never query SQL") })
+    assert.equal(report.code, "ENV_INVALID")
+    assert.equal(report.envDetail, detail)
+    assert.equal(report.sqlState, null)
+    assert.equal(report.defaults, null)
+    assert.equal(report.snapshot, null)
+    assert.doesNotMatch(JSON.stringify(report), /private-|connect_timeout|postgresql:\/\//)
+  }
+  assert.ok(ENV_DETAILS.includes("PARAM_UNSUPPORTED_CONNECT_TIMEOUT"), "retain the original finite failure code for prior evidence")
 })
 
 test("pending metadata is reviewable while every unresolved prerequisite stays explicit", () => {
@@ -375,6 +428,10 @@ test("hosted PostgreSQL executes the real fixed catalog query and rejects writes
   const migrationUrl = new URL(url.href)
   migrationUrl.username = "hrm_preflight_migration"
   migrationUrl.password = "isolated-preflight-migration"
+  // Known synthetic URI hint only; the real fixed query retains our budget.
+  migrationUrl.searchParams.set("connect_timeout", "0")
+  assert.equal(databaseConnectionEnvironment(migrationUrl.href).PGCONNECT_TIMEOUT, "10")
+  assert.equal(new URL(parseMigrationEnv("MIGRATION_DATABASE_URL='" + migrationUrl.href + "'\nMIGRATION_EXPECTED_DB_ROLE=hrm_preflight_migration\n")).searchParams.has("connect_timeout"), false)
   try {
     const query = (source = sql) => {
       let output
