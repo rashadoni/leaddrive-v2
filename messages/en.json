@@ -4989,6 +4989,8 @@
     "module_pricing": "Pricing",
     "module_budgeting": "Budgeting",
     "module_profitability": "Profitability",
+    "module_finance": "Finance overview",
+    "moduleHint_finance": "Vendor bills and their payments, payment orders and their approval, bank accounts, funds.",
     "module_users": "Users",
     "module_audit": "Audit log",
     "module_settings": "Settings",

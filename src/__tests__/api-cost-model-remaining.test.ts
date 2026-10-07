@@ -16,14 +16,26 @@ vi.mock("@/lib/prisma", () => ({
   },
 }))
 
-vi.mock("@/lib/api-auth", () => ({
-  getOrgId: vi.fn(),
-  getSession: vi.fn().mockResolvedValue(null),
-  requireAuth: vi.fn(),
-  isAuthError: vi.fn().mockImplementation(
-    (r: any) => r instanceof Response || (r && r.status !== undefined && typeof r.json === "function" && !r.orgId),
-  ),
-}))
+// The routes are built with withRlsAuth, which asks `requireAuth` who is calling.
+// These tests are about what a handler does once someone is let in, so
+// `requireAuth` answers from the same switch the tests already flip
+// (`getOrgId`): an organization id means "signed in, allowed", null means 401.
+// Who is refused, and on what grounds, is finance-api-authorization.test.ts —
+// that one runs the real `requireAuth`.
+vi.mock("@/lib/api-auth", () => {
+  const getOrgId = vi.fn()
+  return {
+    getOrgId,
+    getSession: vi.fn().mockResolvedValue(null),
+    requireAuth: vi.fn(async (req: unknown) => {
+      const orgId = await getOrgId(req)
+      return orgId
+        ? { orgId, userId: "user-1", role: "admin", email: "", name: "", principalType: "session" }
+        : new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 })
+    }),
+    isAuthError: vi.fn((value: unknown) => value instanceof Response),
+  }
+})
 
 vi.mock("@/lib/cost-model/db", () => ({
   loadAndCompute: vi.fn(),
@@ -50,7 +62,7 @@ import { GET as GET_V1_COST_MODEL } from "@/app/api/v1/cost-model/route"
 import { GET as GET_V1_CLIENTS, PUT as PUT_V1_CLIENTS } from "@/app/api/v1/cost-model/clients/route"
 
 import { prisma } from "@/lib/prisma"
-import { getOrgId, requireAuth } from "@/lib/api-auth"
+import { getOrgId } from "@/lib/api-auth"
 import { loadAndCompute, getAiCache, setAiCache, invalidateAiCache, writeCostModelLog } from "@/lib/cost-model/db"
 import { analyzeTab } from "@/lib/cost-model/ai-analysis"
 
@@ -162,7 +174,7 @@ describe("GET /api/cost-model/client-services/[id]", () => {
 
 describe("PUT /api/cost-model/client-services/[id]", () => {
   it("returns 400 when services array missing", async () => {
-    vi.mocked(requireAuth).mockResolvedValue({ orgId: "org1", userId: "u1" } as any)
+    vi.mocked(getOrgId).mockResolvedValue("org1")
     const res = await PUT_CLIENT_SERVICES(
       makeRequest("/api/cost-model/client-services/c1", { method: "PUT", body: JSON.stringify({}) }),
       makeParams("id", "c1") as any,
@@ -171,7 +183,7 @@ describe("PUT /api/cost-model/client-services/[id]", () => {
   })
 
   it("upserts services and invalidates cache", async () => {
-    vi.mocked(requireAuth).mockResolvedValue({ orgId: "org1", userId: "u1" } as any)
+    vi.mocked(getOrgId).mockResolvedValue("org1")
     vi.mocked(prisma.clientService.findMany).mockResolvedValue([])
     vi.mocked(prisma.clientService.upsert).mockResolvedValue({ id: "s1" } as any)
     const res = await PUT_CLIENT_SERVICES(
@@ -363,7 +375,7 @@ describe("GET /api/v1/cost-model/clients", () => {
 
 describe("PUT /api/v1/cost-model/clients", () => {
   it("returns 400 when updates is not an array", async () => {
-    vi.mocked(requireAuth).mockResolvedValue({ orgId: "org1", userId: "u1" } as any)
+    vi.mocked(getOrgId).mockResolvedValue("org1")
     const res = await PUT_V1_CLIENTS(
       makeRequest("/api/v1/cost-model/clients", { method: "PUT", body: JSON.stringify({ updates: "not-array" }) }),
     )
@@ -371,7 +383,7 @@ describe("PUT /api/v1/cost-model/clients", () => {
   })
 
   it("updates service revenues", async () => {
-    vi.mocked(requireAuth).mockResolvedValue({ orgId: "org1", userId: "u1" } as any)
+    vi.mocked(getOrgId).mockResolvedValue("org1")
     vi.mocked(prisma.clientService.updateMany).mockResolvedValue({ count: 1 } as any)
     const res = await PUT_V1_CLIENTS(
       makeRequest("/api/v1/cost-model/clients", {

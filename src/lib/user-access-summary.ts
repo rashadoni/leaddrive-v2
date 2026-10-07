@@ -47,7 +47,7 @@ export const HIDEABLE_MODULE_SCOPES: Record<UserHideableId, readonly string[]> =
   social: ["social"],
   voip: ["voip"],
   support: ["tickets", "kb"],
-  finance: ["invoices", "budgeting", "profitability", "pricing"],
+  finance: ["invoices", "finance", "budgeting", "profitability", "pricing"],
   analytics: ["reports"],
   mtm: ["mtm"],
   health: ["health"],

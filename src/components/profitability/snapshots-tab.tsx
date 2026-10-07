@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Camera, Calendar, TrendingUp, TrendingDown, Loader2 } from "lucide-react"
 import { useTranslations, useLocale } from "next-intl"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts"
-import { useSnapshots, useCreateSnapshot } from "@/lib/cost-model/hooks"
+import { useSnapshots, useCreateSnapshot, useCostModelAccess } from "@/lib/cost-model/hooks"
 import { fmtAmountDecimal } from "@/lib/utils"
 import { formatDate } from "@/lib/format-date"
 
@@ -40,6 +40,7 @@ export function SnapshotsTab() {
   const locale = useLocale()
   const { data: rawSnapshots = [], isLoading, error } = useSnapshots()
   const createMutation = useCreateSnapshot()
+  const { canWrite } = useCostModelAccess()
 
   // Sort snapshots chronologically for display
   const snapshots: SnapshotRow[] = useMemo(() => {
@@ -100,14 +101,16 @@ export function SnapshotsTab() {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-end">
-          <Button size="sm" onClick={handleCreateSnapshot} disabled={createMutation.isPending}>
-            {createMutation.isPending ? (
-              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-            ) : (
-              <Camera className="h-4 w-4 mr-1" />
-            )}
-            {t("snapSave")}
-          </Button>
+          {canWrite && (
+            <Button size="sm" onClick={handleCreateSnapshot} disabled={createMutation.isPending}>
+              {createMutation.isPending ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <Camera className="h-4 w-4 mr-1" />
+              )}
+              {t("snapSave")}
+            </Button>
+          )}
         </div>
         <Card>
           <CardContent className="py-10 text-center text-muted-foreground">
@@ -139,14 +142,16 @@ export function SnapshotsTab() {
             </span>
           )}
         </div>
-        <Button size="sm" onClick={handleCreateSnapshot} disabled={createMutation.isPending}>
-          {createMutation.isPending ? (
-            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-          ) : (
-            <Camera className="h-4 w-4 mr-1" />
-          )}
-          {t("snapSave")}
-        </Button>
+        {canWrite && (
+          <Button size="sm" onClick={handleCreateSnapshot} disabled={createMutation.isPending}>
+            {createMutation.isPending ? (
+              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+            ) : (
+              <Camera className="h-4 w-4 mr-1" />
+            )}
+            {t("snapSave")}
+          </Button>
+        )}
       </div>
 
       {selected && (

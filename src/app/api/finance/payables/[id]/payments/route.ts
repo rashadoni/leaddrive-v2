@@ -1,14 +1,22 @@
-import { NextRequest, NextResponse } from "next/server"
+import type { Prisma } from "@prisma/client"
+import { NextResponse } from "next/server"
 import { z, ZodError } from "zod"
-import { getOrgId } from "@/lib/api-auth"
-import { runWithTenant } from "@/lib/rls-context"
+import { withRlsAuth } from "@/lib/with-rls"
 import { prisma } from "@/lib/prisma"
 import { notifyBillPaymentRecorded } from "@/lib/finance/telegram-notify"
+import {
+  applyBillPayment,
+  parseMoneyAmount,
+  BillNotFoundError,
+  type AppliedBillPayment,
+} from "@/lib/finance/bill-payment"
 import { DEFAULT_CURRENCY } from "@/lib/constants"
-import { decimalToNumber, normalizeBillPaymentRow } from "@/lib/prisma-decimal"
+import { normalizeBillPaymentRow } from "@/lib/prisma-decimal"
+
+type RouteContext = { params: Promise<{ id: string }> }
 
 const createPaymentSchema = z.object({
-  amount: z.union([z.string().min(1), z.number().min(0).max(999999999)]),
+  amount: z.union([z.string().min(1).max(64), z.number()]),
   paymentMethod: z.string().max(50).optional(),
   paymentDate: z.string().max(50).optional(),
   reference: z.string().max(200).optional().nullable(),
@@ -17,108 +25,105 @@ const createPaymentSchema = z.object({
 }).strict()
 
 // GET — list payments for a bill
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const orgId = await getOrgId(req)
-  if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+export const GET = withRlsAuth<RouteContext>("finance", "read", async (_req, { orgId }, { params }) => {
   const { id } = await params
 
-  return runWithTenant(orgId, async () => {
-    const payments = await prisma.billPayment.findMany({
-      where: { billId: id, organizationId: orgId },
-      orderBy: { paymentDate: "desc" },
-    })
-
-    return NextResponse.json({ data: payments.map(normalizeBillPaymentRow) })
+  const payments = await prisma.billPayment.findMany({
+    where: { billId: id, organizationId: orgId },
+    orderBy: { paymentDate: "desc" },
   })
-}
+
+  return NextResponse.json({ data: payments.map(normalizeBillPaymentRow) })
+})
 
 // POST — add payment to a bill
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const orgId = await getOrgId(req)
-  if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+export const POST = withRlsAuth<RouteContext>("finance", "write", async (req, auth, { params }) => {
+  const { orgId } = auth
   const { id: billId } = await params
 
-  return runWithTenant(orgId, async () => {
-    let body
-    try {
-      body = await req.json()
-    } catch {
-      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 })
+  let body
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 })
+  }
+
+  let data
+  try {
+    data = createPaymentSchema.parse(body)
+  } catch (e) {
+    if (e instanceof ZodError) {
+      return NextResponse.json({ error: "Validation failed", details: e.flatten().fieldErrors }, { status: 400 })
     }
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 })
+  }
 
-    let data
-    try {
-      data = createPaymentSchema.parse(body)
-    } catch (e) {
-      if (e instanceof ZodError) {
-        return NextResponse.json({ error: "Validation failed", details: e.flatten().fieldErrors }, { status: 400 })
-      }
-      return NextResponse.json({ error: "Invalid request" }, { status: 400 })
-    }
+  let amount: Prisma.Decimal
+  try {
+    amount = parseMoneyAmount(data.amount)
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : "Invalid amount" }, { status: 400 })
+  }
 
-    const { amount, paymentMethod, paymentDate, reference, notes, currency } = data
+  const paymentDate = data.paymentDate ? new Date(data.paymentDate) : new Date()
+  if (Number.isNaN(paymentDate.getTime())) {
+    return NextResponse.json({ error: "paymentDate is not a valid date" }, { status: 400 })
+  }
+  const currency = data.currency || DEFAULT_CURRENCY
 
-    const paymentAmount = parseFloat(String(amount))
-
-    // Create payment
-    const payment = await prisma.billPayment.create({
-      data: {
+  // The payment row, the bill's totals and the registry entry are one fact
+  // written in three places. They used to be three separate writes, so a
+  // failure after the first left a payment that the bill did not count.
+  let applied: AppliedBillPayment
+  try {
+    applied = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const result = await applyBillPayment(tx, {
         organizationId: orgId,
         billId,
-        amount: paymentAmount,
-        currency: currency || DEFAULT_CURRENCY,
-        paymentMethod: paymentMethod || "bank_transfer",
-        paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
-        reference: reference || null,
-        notes: notes || null,
-      },
-    })
-
-    // Update bill totals — paidAmount/totalAmount are Decimal(18,4); convert to number before arithmetic
-    const bill = await prisma.bill.findUnique({ where: { id: billId } })
-    if (bill) {
-      const newPaid = decimalToNumber(bill.paidAmount) + paymentAmount
-      const newBalance = Math.max(0, decimalToNumber(bill.totalAmount) - newPaid)
-      const newStatus = newBalance <= 0 ? "paid" : newPaid > 0 ? "partially_paid" : bill.status
-
-      await prisma.bill.update({
-        where: { id: billId },
-        data: {
-          paidAmount: newPaid,
-          balanceDue: newBalance,
-          status: newStatus,
-          ...(newBalance <= 0 ? { paidAt: new Date() } : {}),
-        },
+        amount,
+        currency,
+        paymentMethod: data.paymentMethod || "bank_transfer",
+        paymentDate,
+        reference: data.reference || null,
+        notes: data.notes || null,
+        createdBy: auth.userId || null,
       })
 
-      // Create payment registry entry for audit trail
-      await prisma.paymentRegistryEntry.create({
+      // Payment registry entry for the audit trail
+      await tx.paymentRegistryEntry.create({
         data: {
           organizationId: orgId,
           direction: "outgoing",
-          amount: paymentAmount,
-          currency: currency || DEFAULT_CURRENCY,
-          counterpartyName: bill.vendorName,
-          counterpartyId: bill.vendorId,
+          // The registry column is still a Float; the exact figure lives on the payment row.
+          amount: amount.toNumber(),
+          currency,
+          counterpartyName: result.bill.vendorName,
+          counterpartyId: result.bill.vendorId,
           sourceType: "bill_payment",
-          sourceId: payment.id,
-          billId,
-          category: bill.category || "vendor_payment",
-          paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
-          description: `Оплата по счёту ${bill.billNumber}`,
+          sourceId: result.payment.id,
+          billId: result.bill.id,
+          category: result.bill.category || "vendor_payment",
+          paymentDate,
+          description: `Оплата по счёту ${result.bill.billNumber}`,
+          createdBy: auth.userId || null,
         },
       })
 
-      // Send Telegram notification
-      await notifyBillPaymentRecorded({
-        billNumber: bill.billNumber,
-        vendorName: bill.vendorName,
-        paymentAmount,
-        remainingBalance: newBalance, // identical to Math.max(0, totalAmount - newPaid)
-        currency: currency || DEFAULT_CURRENCY,
-      }, orgId)
-    }
+      return result
+    })
+  } catch (e) {
+    if (e instanceof BillNotFoundError) return NextResponse.json({ error: "Not found" }, { status: 404 })
+    throw e
+  }
 
-    return NextResponse.json({ data: normalizeBillPaymentRow(payment) }, { status: 201 })
-  })
-}
+  // After the commit, and never part of it: a Telegram outage must not undo a payment.
+  await notifyBillPaymentRecorded({
+    billNumber: applied.bill.billNumber,
+    vendorName: applied.bill.vendorName,
+    paymentAmount: amount.toNumber(),
+    remainingBalance: applied.balanceDue.toNumber(),
+    currency,
+  }, orgId)
+
+  return NextResponse.json({ data: normalizeBillPaymentRow(applied.payment) }, { status: 201 })
+})

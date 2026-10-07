@@ -1,16 +1,11 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getOrgId } from "@/lib/api-auth"
-import { runWithTenant } from "@/lib/rls-context"
+import { NextResponse } from "next/server"
+import { withRlsAuth } from "@/lib/with-rls"
 import { prisma } from "@/lib/prisma"
 import { notifyOverdueBills, notifyOverdueInvoices, notifyUpcomingDeadlines, getAdvanceDays } from "@/lib/finance/telegram-notify"
 import { decimalToNumber } from "@/lib/prisma-decimal"
 
 // POST — check and update overdue bills and invoices + send Telegram notifications
-export async function POST(req: NextRequest) {
-  const orgId = await getOrgId(req)
-  if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
-  return runWithTenant(orgId, async () => {
+export const POST = withRlsAuth("finance", "write", async (_req, { orgId }) => {
   const now = new Date()
 
   // Find bills that will become overdue (before updating)
@@ -99,15 +94,10 @@ export async function POST(req: NextRequest) {
       upcomingInvoices: upcomingInvoices.length,
     },
   })
-  })
-}
+})
 
 // GET — get upcoming deadlines (bills/invoices due within N days)
-export async function GET(req: NextRequest) {
-  const orgId = await getOrgId(req)
-  if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
-  return runWithTenant(orgId, async () => {
+export const GET = withRlsAuth("finance", "read", async (req, { orgId }) => {
   const { searchParams } = new URL(req.url)
   const daysAhead = parseInt(searchParams.get("days") || "7")
 
@@ -135,5 +125,4 @@ export async function GET(req: NextRequest) {
     })),
     daysAhead,
   } })
-  })
-}
+})

@@ -1,15 +1,10 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getOrgId } from "@/lib/api-auth"
+import { NextResponse } from "next/server"
+import { withRlsAuth } from "@/lib/with-rls"
 import { prisma } from "@/lib/prisma"
-import { runWithTenant } from "@/lib/rls-context"
 import { loadAndCompute, writeCostModelLog, invalidateAiCache } from "@/lib/cost-model/db"
 
-export async function POST(req: NextRequest) {
+export const POST = withRlsAuth("profitability", "write", async (_req, { orgId }) => {
   try {
-    const orgId = await getOrgId(req)
-    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
-    return runWithTenant(orgId, async () => {
     const result = await loadAndCompute(orgId)
     const summary = result.summary as any
 
@@ -53,9 +48,8 @@ export async function POST(req: NextRequest) {
     invalidateAiCache()
 
     return NextResponse.json({ success: true, data: snapshot }, { status: 201 })
-    })
   } catch (error) {
     console.error("Create snapshot error:", error)
     return NextResponse.json({ error: "Failed to create snapshot" }, { status: 500 })
   }
-}
+})

@@ -1,15 +1,10 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getOrgId } from "@/lib/api-auth"
+import { NextResponse } from "next/server"
+import { withRlsAuth } from "@/lib/with-rls"
 import { prisma } from "@/lib/prisma"
 import { decimalToNumber } from "@/lib/prisma-decimal"
 import { parseOptionalDateRange } from "@/lib/finance/date-range"
-import { runWithTenant } from "@/lib/rls-context"
 
-export async function GET(req: NextRequest) {
-  const orgId = await getOrgId(req)
-  if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
-  return runWithTenant(orgId, async () => {
+export const GET = withRlsAuth("finance", "read", async (req, { orgId }) => {
   const now = new Date()
 
   // E-4.4: optional date range filter
@@ -114,5 +109,4 @@ export async function GET(req: NextRequest) {
       overdueInvoices: overdueList.sort((a, b) => b.daysOverdue - a.daysOverdue).slice(0, 20),
     },
   })
-  })
-}
+})

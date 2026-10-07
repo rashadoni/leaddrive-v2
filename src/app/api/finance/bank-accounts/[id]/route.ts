@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { z, ZodError } from "zod"
-import { getOrgId } from "@/lib/api-auth"
+import { withRlsAuth } from "@/lib/with-rls"
 import { prisma } from "@/lib/prisma"
-import { runWithTenant } from "@/lib/rls-context"
+
+type RouteContext = { params: Promise<{ id: string }> }
 
 const updateSchema = z.object({
   accountName: z.string().min(1).max(200).optional(),
@@ -16,49 +17,41 @@ const updateSchema = z.object({
 }).strict()
 
 // PUT — update bank account
-export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const orgId = await getOrgId(req)
-  if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  return runWithTenant(orgId, async () => {
-    const { id } = await params
+export const PUT = withRlsAuth<RouteContext>("finance", "write", async (req, { orgId }, { params }) => {
+  const { id } = await params
 
-    const existing = await prisma.bankAccount.findFirst({ where: { id, organizationId: orgId } })
-    if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 })
+  const existing = await prisma.bankAccount.findFirst({ where: { id, organizationId: orgId } })
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
-    let body
-    try { body = await req.json() } catch {
-      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 })
-    }
+  let body
+  try { body = await req.json() } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 })
+  }
 
-    let data
-    try { data = updateSchema.parse(body) } catch (e) {
-      if (e instanceof ZodError) return NextResponse.json({ error: "Validation failed", details: e.flatten().fieldErrors }, { status: 400 })
-      return NextResponse.json({ error: "Invalid request" }, { status: 400 })
-    }
+  let data
+  try { data = updateSchema.parse(body) } catch (e) {
+    if (e instanceof ZodError) return NextResponse.json({ error: "Validation failed", details: e.flatten().fieldErrors }, { status: 400 })
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 })
+  }
 
-    if (data.isDefault) {
-      await prisma.bankAccount.updateMany({
-        where: { organizationId: orgId, isDefault: true },
-        data: { isDefault: false },
-      })
-    }
+  if (data.isDefault) {
+    await prisma.bankAccount.updateMany({
+      where: { organizationId: orgId, isDefault: true },
+      data: { isDefault: false },
+    })
+  }
 
-    const account = await prisma.bankAccount.update({ where: { id }, data })
-    return NextResponse.json({ data: account })
-  })
-}
+  const account = await prisma.bankAccount.update({ where: { id }, data })
+  return NextResponse.json({ data: account })
+})
 
 // DELETE — delete bank account
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const orgId = await getOrgId(req)
-  if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  return runWithTenant(orgId, async () => {
-    const { id } = await params
+export const DELETE = withRlsAuth<RouteContext>("finance", "delete", async (_req, { orgId }, { params }) => {
+  const { id } = await params
 
-    const existing = await prisma.bankAccount.findFirst({ where: { id, organizationId: orgId } })
-    if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 })
+  const existing = await prisma.bankAccount.findFirst({ where: { id, organizationId: orgId } })
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
-    await prisma.bankAccount.delete({ where: { id } })
-    return NextResponse.json({ success: true })
-  })
-}
+  await prisma.bankAccount.delete({ where: { id } })
+  return NextResponse.json({ success: true })
+})

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Save, RotateCcw, Loader2 } from "lucide-react"
-import { useParameters, useUpdateParameters } from "@/lib/cost-model/hooks"
+import { useParameters, useUpdateParameters, useCostModelAccess } from "@/lib/cost-model/hooks"
 import { getCurrencySymbol } from "@/lib/constants"
 import type { CostModelParams } from "@/lib/cost-model/types"
 
@@ -40,6 +40,7 @@ export function ParametersTab() {
   const t = useTranslations("profitabilityParams")
   const { data: serverParams, isLoading, error } = useParameters()
   const updateMutation = useUpdateParameters()
+  const { canWrite } = useCostModelAccess()
 
   const [localParams, setLocalParams] = useState<CostModelParams | null>(null)
   const [dirty, setDirty] = useState(false)
@@ -135,20 +136,22 @@ export function ParametersTab() {
             Paylaşma: Sabit {((params.fixedOverheadRatio || 0) * 100).toFixed(0)}% + Dəyişən {(variableRatio * 100).toFixed(0)}%
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleReset} disabled={!dirty}>
-            <RotateCcw className="h-4 w-4 mr-1" /> Sıfırla
-          </Button>
-          <Button size="sm" onClick={handleSave} disabled={!dirty || updateMutation.isPending}>
-            {updateMutation.isPending ? (
-              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-            ) : (
-              <Save className="h-4 w-4 mr-1" />
-            )}
-            Saxla
-            {dirty && <Badge variant="destructive" className="ml-2 h-4 text-[10px]">Dəyişiklik</Badge>}
-          </Button>
-        </div>
+        {canWrite && (
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={handleReset} disabled={!dirty}>
+              <RotateCcw className="h-4 w-4 mr-1" /> Sıfırla
+            </Button>
+            <Button size="sm" onClick={handleSave} disabled={!dirty || updateMutation.isPending}>
+              {updateMutation.isPending ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4 mr-1" />
+              )}
+              Saxla
+              {dirty && <Badge variant="destructive" className="ml-2 h-4 text-[10px]">Dəyişiklik</Badge>}
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Total Users — editable with auto-sync */}

@@ -44,6 +44,15 @@ function sessionModuleBlocked(authUser: SessionModuleGateUser, moduleId: ModuleI
 }
 
 /**
+ * API namespaces the tenant module gate looks at. Finance, the cost model and
+ * budgeting were built before `/api/v1` existed and never moved under it, so a
+ * gate that named only `/api/v1/` let a tenant without the Finance module call
+ * all three. Each prefix still has to resolve through ROUTE_MODULE_MAP to be
+ * gated; listing one here that resolves to nothing gates nothing.
+ */
+const MODULE_GATED_API_PREFIXES = ["/api/v1/", "/api/finance/", "/api/cost-model/", "/api/budgeting/"] as const
+
+/**
  * The `/api/v1/mtm/*` namespace is a compatibility container, not one runtime
  * entitlement. Admit a session only when at least one field capability is
  * enabled (a historical `mtm` grant dual-reads as both capabilities). The
@@ -910,12 +919,14 @@ const authMiddleware = auth(async (req) => {
   // enabled. This is the CENTRAL gate that closes the leak where getSession/
   // getOrgId routes (which don't call requireAuth) skip the per-route module
   // check. Page routes are covered by the dashboard layout guard, so we gate
-  // `/api/v1/*` only here. Uses the JWT's materialised modules
-  // (session.user.modules) — Edge-safe, no DB. Skips: superadmin; callers with
-  // no session modules (API-key/mobile — the route's own auth handles them);
-  // public/webhook/auth paths already returned earlier; paths whose module can't
-  // be resolved or isn't a real ModuleId (the bridge handles renamed ones).
-  if (pathname.startsWith("/api/v1/")) {
+  // API namespaces only here: `/api/v1/*` and the three finance namespaces that
+  // predate it (see MODULE_GATED_API_PREFIXES). Uses the JWT's materialised
+  // modules (session.user.modules) — Edge-safe, no DB. Skips: superadmin;
+  // callers with no session modules (API-key/mobile — the route's own auth
+  // handles them); public/webhook/auth paths already returned earlier; paths
+  // whose module can't be resolved or isn't a real ModuleId (the bridge handles
+  // renamed ones).
+  if (MODULE_GATED_API_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
     const resolved = resolveModuleFromPath(pathname)
     if (resolved) {
       const moduleId = (PERMISSION_MODULE_TO_MODULE_ID[resolved] ?? resolved) as ModuleId

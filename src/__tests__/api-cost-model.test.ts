@@ -27,11 +27,26 @@ vi.mock("@/lib/prisma", () => ({
   },
 }))
 
-vi.mock("@/lib/api-auth", () => ({
-  getOrgId: vi.fn(),
-  requireAuth: vi.fn(),
-  isAuthError: vi.fn().mockImplementation((r: any) => r instanceof Response || (r && r.status !== undefined && typeof r.json === "function" && !r.orgId)),
-}))
+// The routes are built with withRlsAuth, which asks `requireAuth` who is calling.
+// These tests are about what a handler does once someone is let in, so
+// `requireAuth` answers from the same switch the tests already flip
+// (`getOrgId`): an organization id means "signed in, allowed", null means 401.
+// Who is refused, and on what grounds, is finance-api-authorization.test.ts —
+// that one runs the real `requireAuth`.
+vi.mock("@/lib/api-auth", () => {
+  const getOrgId = vi.fn()
+  return {
+    getOrgId,
+    getSession: vi.fn().mockResolvedValue(null),
+    requireAuth: vi.fn(async (req: unknown) => {
+      const orgId = await getOrgId(req)
+      return orgId
+        ? { orgId, userId: "user-1", role: "admin", email: "", name: "", principalType: "session" }
+        : new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 })
+    }),
+    isAuthError: vi.fn((value: unknown) => value instanceof Response),
+  }
+})
 
 vi.mock("@/lib/cost-model/db", () => ({
   writeCostModelLog: vi.fn().mockResolvedValue(undefined),
@@ -155,7 +170,7 @@ describe("POST /api/cost-model/employees", () => {
 describe("PUT /api/cost-model/employees/[id]", () => {
   it("returns auth error when requireAuth fails", async () => {
     const authError = new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 })
-    vi.mocked(requireAuth).mockResolvedValue(authError as any)
+    vi.mocked(requireAuth).mockResolvedValueOnce(authError as any)
 
     const res = await PUT_EMPLOYEE(
       makeRequest("/api/cost-model/employees/e1", { method: "PUT", body: JSON.stringify({ position: "Lead" }) }),
@@ -165,7 +180,7 @@ describe("PUT /api/cost-model/employees/[id]", () => {
   })
 
   it("returns 404 when employee not found", async () => {
-    vi.mocked(requireAuth).mockResolvedValue({ orgId: "org-1", userId: "u1", role: "admin" } as any)
+    vi.mocked(getOrgId).mockResolvedValue("org-1")
     vi.mocked(prisma.costEmployee.findFirst).mockResolvedValue(null)
 
     const res = await PUT_EMPLOYEE(
@@ -176,7 +191,7 @@ describe("PUT /api/cost-model/employees/[id]", () => {
   })
 
   it("updates employee successfully", async () => {
-    vi.mocked(requireAuth).mockResolvedValue({ orgId: "org-1", userId: "u1", role: "admin" } as any)
+    vi.mocked(getOrgId).mockResolvedValue("org-1")
     vi.mocked(prisma.costEmployee.findFirst).mockResolvedValue({ id: "e1", netSalary: 1000 } as any)
     vi.mocked(prisma.costEmployee.update).mockResolvedValue({ id: "e1", position: "Lead" } as any)
 
@@ -193,7 +208,7 @@ describe("PUT /api/cost-model/employees/[id]", () => {
 
 describe("DELETE /api/cost-model/employees/[id]", () => {
   it("returns 404 when employee not found", async () => {
-    vi.mocked(requireAuth).mockResolvedValue({ orgId: "org-1", userId: "u1", role: "admin" } as any)
+    vi.mocked(getOrgId).mockResolvedValue("org-1")
     vi.mocked(prisma.costEmployee.findFirst).mockResolvedValue(null)
 
     const res = await DELETE_EMPLOYEE(
@@ -204,7 +219,7 @@ describe("DELETE /api/cost-model/employees/[id]", () => {
   })
 
   it("deletes employee successfully", async () => {
-    vi.mocked(requireAuth).mockResolvedValue({ orgId: "org-1", userId: "u1", role: "admin" } as any)
+    vi.mocked(getOrgId).mockResolvedValue("org-1")
     vi.mocked(prisma.costEmployee.findFirst).mockResolvedValue({ id: "e1" } as any)
     vi.mocked(prisma.costEmployee.delete).mockResolvedValue({} as any)
 
@@ -275,7 +290,7 @@ describe("POST /api/cost-model/overhead", () => {
 
 describe("DELETE /api/cost-model/overhead/[id]", () => {
   it("deletes overhead cost item", async () => {
-    vi.mocked(requireAuth).mockResolvedValue({ orgId: "org-1", userId: "u1", role: "admin" } as any)
+    vi.mocked(getOrgId).mockResolvedValue("org-1")
     vi.mocked(prisma.overheadCost.findFirst).mockResolvedValue({ id: "o1" } as any)
     vi.mocked(prisma.overheadCost.delete).mockResolvedValue({} as any)
 
@@ -314,7 +329,7 @@ describe("GET /api/cost-model/parameters", () => {
 
 describe("PUT /api/cost-model/parameters", () => {
   it("upserts parameters with validation", async () => {
-    vi.mocked(requireAuth).mockResolvedValue({ orgId: "org-1", userId: "u1", role: "admin" } as any)
+    vi.mocked(getOrgId).mockResolvedValue("org-1")
     vi.mocked(prisma.pricingParameters.findUnique).mockResolvedValue(null)
     vi.mocked(prisma.company.aggregate).mockResolvedValue({ _sum: { userCount: 50 } } as any)
     const updated = { id: "p1", vatRate: 0.18, monthlyWorkHours: 160 }

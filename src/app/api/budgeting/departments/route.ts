@@ -1,8 +1,7 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { z, ZodError } from "zod"
-import { getOrgId } from "@/lib/api-auth"
+import { withRlsAuth } from "@/lib/with-rls"
 import { prisma } from "@/lib/prisma"
-import { runWithTenant } from "@/lib/rls-context"
 
 const createDeptSchema = z.object({
   key: z.string().min(1).max(100),
@@ -24,26 +23,18 @@ const updateDeptSchema = z.object({
   isActive: z.boolean().optional(),
 })
 
-export async function GET(req: NextRequest) {
-  const orgId = await getOrgId(req)
-  if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+export const GET = withRlsAuth("budgeting", "read", async (req, { orgId }) => {
+  const includeInactive = req.nextUrl.searchParams.get("includeInactive") === "true"
 
-  return runWithTenant(orgId, async () => {
-    const includeInactive = req.nextUrl.searchParams.get("includeInactive") === "true"
-
-    const departments = await prisma.budgetDepartment.findMany({
-      where: { organizationId: orgId, ...(includeInactive ? {} : { isActive: true }) },
-      orderBy: { sortOrder: "asc" },
-    })
-
-    return NextResponse.json({ success: true, data: departments })
+  const departments = await prisma.budgetDepartment.findMany({
+    where: { organizationId: orgId, ...(includeInactive ? {} : { isActive: true }) },
+    orderBy: { sortOrder: "asc" },
   })
-}
 
-export async function POST(req: NextRequest) {
-  const orgId = await getOrgId(req)
-  if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  return NextResponse.json({ success: true, data: departments })
+})
 
+export const POST = withRlsAuth("budgeting", "write", async (req, { orgId }) => {
   let body
   try {
     body = await req.json()
@@ -63,34 +54,29 @@ export async function POST(req: NextRequest) {
 
   const { key, label, serviceKey, hasRevenue, color, sortOrder } = data
 
-  return runWithTenant(orgId, async () => {
-    const existing = await prisma.budgetDepartment.findUnique({
-      where: { organizationId_key: { organizationId: orgId, key } },
-    })
-    if (existing) {
-      return NextResponse.json({ error: `Department with key "${key}" already exists` }, { status: 409 })
-    }
-
-    const department = await prisma.budgetDepartment.create({
-      data: {
-        organizationId: orgId,
-        key,
-        label,
-        serviceKey: serviceKey || null,
-        hasRevenue: hasRevenue ?? true,
-        color: color || null,
-        sortOrder: sortOrder ?? 0,
-      },
-    })
-
-    return NextResponse.json({ success: true, data: department }, { status: 201 })
+  const existing = await prisma.budgetDepartment.findUnique({
+    where: { organizationId_key: { organizationId: orgId, key } },
   })
-}
+  if (existing) {
+    return NextResponse.json({ error: `Department with key "${key}" already exists` }, { status: 409 })
+  }
 
-export async function PUT(req: NextRequest) {
-  const orgId = await getOrgId(req)
-  if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const department = await prisma.budgetDepartment.create({
+    data: {
+      organizationId: orgId,
+      key,
+      label,
+      serviceKey: serviceKey || null,
+      hasRevenue: hasRevenue ?? true,
+      color: color || null,
+      sortOrder: sortOrder ?? 0,
+    },
+  })
 
+  return NextResponse.json({ success: true, data: department }, { status: 201 })
+})
+
+export const PUT = withRlsAuth("budgeting", "write", async (req, { orgId }) => {
   let body
   try {
     body = await req.json()
@@ -110,30 +96,23 @@ export async function PUT(req: NextRequest) {
 
   const { id, ...updates } = data
 
-  return runWithTenant(orgId, async () => {
-    const department = await prisma.budgetDepartment.update({
-      where: { id, organizationId: orgId },
-      data: updates,
-    })
-
-    return NextResponse.json({ success: true, data: department })
+  const department = await prisma.budgetDepartment.update({
+    where: { id, organizationId: orgId },
+    data: updates,
   })
-}
 
-export async function DELETE(req: NextRequest) {
-  const orgId = await getOrgId(req)
-  if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  return NextResponse.json({ success: true, data: department })
+})
 
+export const DELETE = withRlsAuth("budgeting", "delete", async (req, { orgId }) => {
   const id = req.nextUrl.searchParams.get("id")
   if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 })
 
-  return runWithTenant(orgId, async () => {
-    // Soft-delete: deactivate instead of removing (preserves FK references)
-    const department = await prisma.budgetDepartment.update({
-      where: { id, organizationId: orgId },
-      data: { isActive: false },
-    })
-
-    return NextResponse.json({ success: true, data: department })
+  // Soft-delete: deactivate instead of removing (preserves FK references)
+  const department = await prisma.budgetDepartment.update({
+    where: { id, organizationId: orgId },
+    data: { isActive: false },
   })
-}
+
+  return NextResponse.json({ success: true, data: department })
+})

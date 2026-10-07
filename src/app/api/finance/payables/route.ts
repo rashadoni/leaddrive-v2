@@ -1,7 +1,6 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { z } from "zod"
-import { getOrgId } from "@/lib/api-auth"
-import { runWithTenant } from "@/lib/rls-context"
+import { withRlsAuth } from "@/lib/with-rls"
 import { prisma } from "@/lib/prisma"
 import { DEFAULT_CURRENCY } from "@/lib/constants"
 import { normalizeBillRow, normalizeBillPaymentRow } from "@/lib/prisma-decimal"
@@ -20,36 +19,28 @@ const billSchema = z.object({
 })
 
 // GET — list all bills
-export async function GET(req: NextRequest) {
-  const orgId = await getOrgId(req)
-  if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+export const GET = withRlsAuth("finance", "read", async (req, { orgId }) => {
+  const status = req.nextUrl.searchParams.get("status")
 
-  return runWithTenant(orgId, async () => {
-    const status = req.nextUrl.searchParams.get("status")
-
-    const bills = await prisma.bill.findMany({
-      where: {
-        organizationId: orgId,
-        ...(status ? { status } : {}),
-      },
-      include: { payments: true, vendor: { select: { id: true, name: true } } },
-      orderBy: { createdAt: "desc" },
-    })
-
-    return NextResponse.json({
-      data: bills.map((b: typeof bills[number]) => ({
-        ...normalizeBillRow(b),
-        payments: b.payments.map(normalizeBillPaymentRow),
-      })),
-    })
+  const bills = await prisma.bill.findMany({
+    where: {
+      organizationId: orgId,
+      ...(status ? { status } : {}),
+    },
+    include: { payments: true, vendor: { select: { id: true, name: true } } },
+    orderBy: { createdAt: "desc" },
   })
-}
+
+  return NextResponse.json({
+    data: bills.map((b: typeof bills[number]) => ({
+      ...normalizeBillRow(b),
+      payments: b.payments.map(normalizeBillPaymentRow),
+    })),
+  })
+})
 
 // POST — create a bill
-export async function POST(req: NextRequest) {
-  const orgId = await getOrgId(req)
-  if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
+export const POST = withRlsAuth("finance", "write", async (req, { orgId, userId }) => {
   let body
   try {
     body = await req.json()
@@ -62,25 +53,24 @@ export async function POST(req: NextRequest) {
   }
   const { billNumber, vendorName, vendorId, title, totalAmount, currency, issueDate, dueDate, category, notes } = parsed.data
 
-  return runWithTenant(orgId, async () => {
-    const bill = await prisma.bill.create({
-      data: {
-        organizationId: orgId,
-        billNumber: billNumber || undefined,
-        vendorName,
-        vendorId: vendorId || null,
-        title,
-        status: "pending",
-        totalAmount,
-        balanceDue: totalAmount,
-        currency,
-        issueDate: issueDate ? new Date(issueDate) : new Date(),
-        dueDate: dueDate ? new Date(dueDate) : null,
-        category: category || null,
-        notes: notes || null,
-      },
-    })
-
-    return NextResponse.json({ data: normalizeBillRow(bill) }, { status: 201 })
+  const bill = await prisma.bill.create({
+    data: {
+      organizationId: orgId,
+      billNumber: billNumber || undefined,
+      vendorName,
+      vendorId: vendorId || null,
+      title,
+      status: "pending",
+      totalAmount,
+      balanceDue: totalAmount,
+      currency,
+      issueDate: issueDate ? new Date(issueDate) : new Date(),
+      dueDate: dueDate ? new Date(dueDate) : null,
+      category: category || null,
+      notes: notes || null,
+      createdBy: userId || null,
+    },
   })
-}
+
+  return NextResponse.json({ data: normalizeBillRow(bill) }, { status: 201 })
+})
