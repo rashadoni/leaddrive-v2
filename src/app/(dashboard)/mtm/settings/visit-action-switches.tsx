@@ -119,7 +119,7 @@ export function VisitActionSwitches({ rules, access, loading, onSaved, legacyPho
   }
 
   return (
-    <div className="max-w-2xl rounded-xl border border-zinc-200 bg-background p-4 dark:border-zinc-800" data-testid="visit-action-switches">
+    <div className="h-full rounded-lg border border-zinc-200 bg-card p-4 dark:border-zinc-700" data-testid="visit-action-switches">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 className="text-base font-semibold">{t("simpleTitle")}</h2>
         <p className="min-h-5 text-sm" role="status" data-testid="visit-action-switches-status">

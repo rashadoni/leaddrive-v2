@@ -97,7 +97,7 @@ export function RouteTargetTypeSettings({
   const shown = rows.filter((row) => row.enabled)
 
   return (
-    <section className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700" aria-labelledby="route-target-types-title">
+    <section className="rounded-lg border border-zinc-200 bg-card p-4 dark:border-zinc-700" aria-labelledby="route-target-types-title">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -111,7 +111,9 @@ export function RouteTargetTypeSettings({
         </Button>
       </div>
 
-      <div className="mt-3 grid gap-4 lg:grid-cols-[minmax(0,1fr)_16rem]">
+      {/* Two equal halves, like every other row of the settings page: the
+          list and what the agent sees stand side by side at one height. */}
+      <div className="mt-3 grid gap-4 lg:grid-cols-2">
         <ul className="divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700" data-testid="route-target-rows">
           {rows.map((row, index) => {
             // The unfiltered button is always there, always first and always on
@@ -124,30 +126,38 @@ export function RouteTargetTypeSettings({
             return (
               <li key={row.id} data-testid={`route-target-row-${row.id}`}>
                 <div className="flex items-center gap-1 py-1.5">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="min-h-11 min-w-9"
-                    aria-label={t("routeTargetMoveUp")}
-                    onClick={() => moveRow(index, -1)}
-                    disabled={fixed || index <= 1}
-                    style={fixed ? { visibility: "hidden" } : undefined}
-                  >
-                    <ArrowUp className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="min-h-11 min-w-9"
-                    aria-label={t("routeTargetMoveDown")}
-                    onClick={() => moveRow(index, 1)}
-                    disabled={fixed || index === rows.length - 1}
-                    style={fixed ? { visibility: "hidden" } : undefined}
-                  >
-                    <ArrowDown className="h-4 w-4" />
-                  </Button>
+                  {fixed ? (
+                    // The first button never moves: its slot says so instead
+                    // of standing empty and pushing the name out of line.
+                    <span className="inline-flex min-h-11 w-[4.75rem] shrink-0 items-center justify-center text-muted-foreground" title={t("routeTargetAlways")} data-testid="route-target-fixed-slot">
+                      <Lock className="h-4 w-4" aria-hidden="true" />
+                    </span>
+                  ) : (
+                    <>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="min-h-11 min-w-9"
+                        aria-label={t("routeTargetMoveUp")}
+                        onClick={() => moveRow(index, -1)}
+                        disabled={index <= 1}
+                      >
+                        <ArrowUp className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="min-h-11 min-w-9"
+                        aria-label={t("routeTargetMoveDown")}
+                        onClick={() => moveRow(index, 1)}
+                        disabled={index === rows.length - 1}
+                      >
+                        <ArrowDown className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
                   <button
                     type="button"
                     aria-expanded={open}
@@ -262,7 +272,8 @@ export function RouteTargetTypeSettings({
 
         {/* The picker as the agent's phone draws it, from the rows on the left:
             what is switched off is not here, and the order is the order. */}
-        <aside className="self-start rounded-2xl border border-zinc-200 bg-muted/40 p-3 dark:border-zinc-700" aria-label={t("routeTargetPreviewTitle")} data-testid="route-target-preview">
+        <aside className="rounded-2xl border border-zinc-200 bg-muted/40 p-4 dark:border-zinc-700" aria-label={t("routeTargetPreviewTitle")} data-testid="route-target-preview">
+          <div className="mx-auto w-full max-w-xs">
           <p className="text-center text-xs text-muted-foreground">{t("routeTargetPreviewTitle")}</p>
           <p className="mt-2 text-sm font-semibold">{t("routeTargetPreviewQuestion")}</p>
           <div className="mt-2 grid grid-cols-2 gap-2">
@@ -272,15 +283,17 @@ export function RouteTargetTypeSettings({
                 <span
                   key={row.id}
                   className={cn(
-                    "rounded-xl border px-2 py-2 text-center text-xs font-medium",
+                    "truncate rounded-xl border px-2 py-2 text-center text-xs font-medium",
                     index === 0 ? "border-primary bg-primary text-primary-foreground" : "border-zinc-300 bg-background dark:border-zinc-700",
-                    name.length > 14 && "col-span-2",
+                    // Pairs; an odd last button takes the whole row instead of half of it.
+                    shown.length % 2 === 1 && index === shown.length - 1 && "col-span-2",
                   )}
                 >
                   {name}
                 </span>
               )
             })}
+          </div>
           </div>
         </aside>
       </div>

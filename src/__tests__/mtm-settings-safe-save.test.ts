@@ -391,7 +391,7 @@ describe("settings page contract", () => {
   it("refreshes visit-rule warnings and the rule editor after rule-related saves", () => {
     const save = page.slice(page.indexOf("const handleSave"), page.indexOf("const settingGroups"))
     expect(save).toMatch(/if \("visitPoliciesEnabled" in changes \|\| "photoRequired" in changes\) \{\s*loadVisitPolicies\(\)\s*setVisitPolicyEditorKey/)
-    expect(page).toContain("<VisitPolicySettings key={visitPolicyEditorKey} legacyPhotoRequired={loaded.photoRequired === true} />")
+    expect(page).toMatch(/<VisitPolicySettings\s+key=\{visitPolicyEditorKey\}\s+legacyPhotoRequired=\{loaded\.photoRequired === true\}/)
   })
 
   it("warns when the photo limit drops below a rule's required photo minimum", () => {

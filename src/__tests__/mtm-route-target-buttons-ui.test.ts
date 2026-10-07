@@ -191,6 +191,13 @@ describe("«Кнопки выбора клиентов»", () => {
     expect((row("all-customers").querySelector("select") as HTMLSelectElement).disabled).toBe(true)
     expect(row("all-customers").textContent).toContain("Эта кнопка есть всегда")
     expect([...row("all-customers").querySelectorAll("button")].some((button) => button.textContent === "Удалить кнопку")).toBe(false)
+    // It never moves either: where the other rows have their arrows, this one
+    // says so — the slot is not left empty, pushing the name out of line.
+    const labels = ru.mtmSettingsPage as Messages
+    const arrows = (id: string) => [...row(id).querySelectorAll("button")]
+      .filter((button) => [labels.routeTargetMoveUp, labels.routeTargetMoveDown].includes(button.getAttribute("aria-label") ?? "")).length
+    expect([arrows("all-customers"), arrows("clinics")]).toEqual([0, 2])
+    expect(row("all-customers").querySelector('[data-testid="route-target-fixed-slot"]')?.getAttribute("title")).toBe(labels.routeTargetAlways)
   })
 
   it("deletes any other button from its open row", async () => {

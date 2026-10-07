@@ -641,7 +641,31 @@ export default function MtmSettingsPage() {
     )
   }
 
-  const cardClass = "mb-3 break-inside-avoid rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4"
+  const cardClass = "rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4"
+
+  // Every tab is one grid of two equal columns (owner, 2026-10-08, shown a
+  // half-width card with nothing beside it: «симметрично делай… половинчатые
+  // блоки»). A card is either half of a pair — the pair shares one height —
+  // or, when it would stand alone, the whole row with its settings laid out
+  // in columns of its own. There is no third kind.
+  const groupsOf = (name: SettingsTab) => settingGroups.filter((group) => group.tab === name)
+  const renderGroup = (group: SettingGroup, span: "half" | "full", extraClass = "") => {
+    const GroupIcon = group.icon
+    const columns = span === "half" ? "space-y-4" : `grid gap-x-8 gap-y-4 ${group.items.length % 3 === 0 ? "lg:grid-cols-3" : "lg:grid-cols-2"}`
+    return (
+      <section
+        key={group.titleKey}
+        data-settings-group={group.titleKey}
+        data-span={span}
+        className={`${cardClass} ${span === "full" ? "lg:col-span-2" : ""} ${extraClass}`}
+      >
+        <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
+          <GroupIcon className="h-4 w-4 text-muted-foreground" /> {ts(group.titleKey)}
+        </h3>
+        <div className={columns}>{group.items.map((item) => renderItem(item))}</div>
+      </section>
+    )
+  }
 
   if (loading) return (
     <div className="space-y-6">
@@ -696,11 +720,16 @@ export default function MtmSettingsPage() {
           id={`mtm-settings-panel-${name}`}
           aria-labelledby={`mtm-settings-tab-${name}`}
           hidden={tab !== name}
-          className="space-y-4"
+          className="space-y-3"
         >
-          {/* What an agent does in a visit comes first on the first tab. */}
+          {/* What an agent does in a visit comes first on the first tab; the
+              photo and zone cards are the second column of the same row. */}
           {name === "visit" ? (
-            <VisitPolicySettings key={visitPolicyEditorKey} legacyPhotoRequired={loaded.photoRequired === true} />
+            <VisitPolicySettings
+              key={visitPolicyEditorKey}
+              legacyPhotoRequired={loaded.photoRequired === true}
+              aside={groupsOf("visit").map((group) => renderGroup(group, "half", "flex-1"))}
+            />
           ) : null}
 
           {name === "routes" ? (
@@ -712,22 +741,9 @@ export default function MtmSettingsPage() {
 
           {name === "admin" ? <p className="max-w-2xl text-sm text-muted-foreground">{ts("adminIntro")}</p> : null}
 
-          {/* Masonry via CSS columns: cards of different heights pack without the
-              empty hole a two-column grid left next to the tall cards. The page
-              scrolls as one; no card has its own scroll. */}
-          {settingGroups.some((group) => group.tab === name) ? (
-            <div className="columns-1 gap-3 lg:columns-2">
-              {settingGroups.filter((group) => group.tab === name).map((group) => {
-                const GroupIcon = group.icon
-                return (
-                  <section key={group.titleKey} data-settings-group={group.titleKey} className={cardClass}>
-                    <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                      <GroupIcon className="h-4 w-4 text-muted-foreground" /> {ts(group.titleKey)}
-                    </h3>
-                    <div className="space-y-4">{group.items.map((item) => renderItem(item))}</div>
-                  </section>
-                )
-              })}
+          {name !== "visit" && groupsOf(name).length > 0 ? (
+            <div className="grid gap-3 lg:grid-cols-2" data-settings-grid={name}>
+              {groupsOf(name).map((group, index, all) => renderGroup(group, all.length % 2 === 1 && index === all.length - 1 ? "full" : "half"))}
             </div>
           ) : null}
 

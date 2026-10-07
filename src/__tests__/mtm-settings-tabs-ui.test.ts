@@ -168,6 +168,31 @@ describe("the settings page as six tabs", () => {
     expect(settingRow("photoRequired")).toBeNull()
   })
 
+  // Owner, 2026-10-08, shown the «Routes» tab with a half-width card and
+  // nothing beside it: «симметрично делай, ты как будто как попало
+  // накладываешь… половинчатые блоки». The rule since: a card is half of a
+  // pair or the whole row, never a half on its own.
+  it("leaves no half-width card standing alone on any tab", async () => {
+    await open()
+    for (const name of TABS) {
+      const cards = [...panel(name).querySelectorAll("[data-settings-group][data-span]")]
+      const halves = cards.filter((card) => card.getAttribute("data-span") === "half")
+      expect(halves.length % 2, `${name}: ${halves.length} half-width cards`).toBe(0)
+      for (const card of cards.filter((candidate) => candidate.getAttribute("data-span") === "full")) {
+        expect(card.className, `${name}: ${card.getAttribute("data-settings-group")}`).toContain("lg:col-span-2")
+      }
+    }
+    // The first tab's pair is the visit switches and, beside them, the two cards about photos and the zone.
+    const row = container.querySelector('[data-testid="visit-switches-row"]') as HTMLElement
+    expect(row.className).toContain("lg:grid-cols-2")
+    expect([...row.children].map((child) => child.getAttribute("data-testid") ?? [...child.children].map((card) => card.getAttribute("data-settings-group"))))
+      .toEqual(["visit-action-switches", ["groupVisits", "groupGeofence"]])
+    // Tabs with one card give it the whole row; the planner buttons are two equal halves as well.
+    expect([...panel("routes").querySelectorAll("[data-span]")].map((card) => card.getAttribute("data-span"))).toEqual(["full"])
+    expect([...panel("admin").querySelectorAll("[data-settings-grid] [data-span]")].map((card) => card.getAttribute("data-span"))).toEqual(["full"])
+    expect((container.querySelector('[data-testid="route-target-rows"]')?.parentElement as HTMLElement).className).toContain("lg:grid-cols-2")
+  })
+
   it("shows the unit beside every number, in words a person reads", async () => {
     await open()
     const unit = (key: string) => settingRow(key).querySelector('input[type="number"]')?.nextElementSibling?.textContent
