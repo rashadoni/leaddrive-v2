@@ -155,3 +155,54 @@
   the successor checkpoint while retaining 7a013. Next action: root independently
   reviews exact successor bytes and publishes its infrastructure PR; hosted SQL
   and real production catalog results remain separate pending gates.
+
+## 2026-10-07 — first hosted failure retained and libpq source correction
+
+- Original source-validation run 37628952667, job 112817905912, exact source
+  `293aaf2036a4890f461b1e539f495cc33bbca461` failed before the fixed SQL.
+  The fixture put the full URI in PGDATABASE, and libpq instead attempted its
+  local Unix socket. The production query helper contained the same source
+  assumption. This was a source connection defect missed by the prior source
+  review, not a transient hosted issue and not a production runtime observation.
+- Original complete job log is retained losslessly as
+  `docs/evidence/hrm-release-preflight-2026-10-07/source-293-first-failed.log.gz`;
+  uncompressed SHA-256 `f6488981be43a123db86b3ec54a3bfb965ce3f2b83cb1318eecdf70285f416bb`,
+  compressed SHA-256 `8971284d39f574b9af3050d331d996d641419d344c25a2d22800dafdbe3d830b`.
+  Its separate failure receipt records exact run/job/head and the source-stage
+  limitation. The source job had no production environment or secrets; this
+  is isolated synthetic fixture evidence, not app/auth/production logs.
+- Root authorized a normal merge of latest main into this auxiliary branch;
+  merge checkpoint `07bca1e22c93454541bf25d9cc998afdc94feac0` retains both
+  prior preparation checkpoints and current main
+  `8301f6ce0925cf1b8f9ddaa004ea31c26d1e6982`. The incoming unrelated
+  demo-Telegram fixture correction is preserved byte-for-byte, without rebase.
+- Corrected helper and fixture to parse the URI into explicit clean PGHOST,
+  PGPORT, decoded PGDATABASE/PGUSER/PGPASSWORD and documented TLS variables.
+  The connection stays solely in the child environment; no URI/password is
+  placed in argv, temp files, output or runner artifacts. PGPASSFILE=/dev/null
+  prevents an implicit credential-profile fallback. Production query options
+  still force read-only before connecting and preserve the original fresh
+  timeout observation and bounded repeatable-read query.
+- Official mapping reviewed against
+  [PostgreSQL 16 libpq environment variables](https://www.postgresql.org/docs/16/libpq-envars.html).
+  Only explicit sslmode/root-cert/client-cert/client-key mappings are supported;
+  sslpassword has no documented environment mapping and fails closed, as do
+  duplicate/unknown overrides and unsupported certificate engine/relative paths.
+- Added meaningful host/port/decoded identity/TLS tests and kept the genuine
+  hosted fixed SQL proof and all original read-only/GitHub/database/role fences.
+  Local unit revalidation and hosted rerun outcomes are appended separately;
+  no previous FAIL or source review is rewritten or converted to PASS.
+- Correction's bounded Node checks: 14 PASS, 1 hosted PostgreSQL SKIP, 0
+  failures; syntax/YAML/runner policy/whitespace passed. The actual new hosted
+  fixed-SQL rerun is NOT RUN here. Prior 293 hosted result remains FAIL.
+- Incoming main615 demo-Telegram fixture bytes exactly match
+  `8301f6ce0925cf1b8f9ddaa004ea31c26d1e6982`; only the dedicated helper,
+  its tests, this append-only journal and the original-failure evidence are
+  changed by the correction. Fixed SQL, production fences and existing gates
+  remain unchanged.
+- Current result: source connection defect corrected and original failure
+  durably retained. Last completed action: bounded checks and incoming-main
+  preservation check. Precise stopping point: correction checkpoint on the
+  auxiliary branch, with hosted SQL and production metadata still unproved.
+  Next action: coordinator reviews/publishes exact successor and reruns hosted
+  source validation before the separate main-only production inspection.

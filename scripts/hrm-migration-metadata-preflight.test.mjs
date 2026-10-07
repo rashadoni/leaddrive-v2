@@ -3,7 +3,7 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 import { createHash } from "node:crypto"
 import { execFileSync } from "node:child_process"
-import { TARGET_SOURCE_SHA, MIGRATIONS, RELATIONS, INDEXES, GUARD_MD5, LEDGER_GUARD_MD5, parseMigrationEnv, readRootFile, validateSnapshot, assessMetadata, validateReport, inspectRemote, queryMetadata } from "./hrm-migration-metadata-preflight.mjs"
+import { TARGET_SOURCE_SHA, MIGRATIONS, RELATIONS, INDEXES, GUARD_MD5, LEDGER_GUARD_MD5, databaseConnectionEnvironment, parseMigrationEnv, readRootFile, validateSnapshot, assessMetadata, validateReport, inspectRemote, queryMetadata } from "./hrm-migration-metadata-preflight.mjs"
 
 const sql = fs.readFileSync(new URL("./hrm-migration-metadata-preflight.sql", import.meta.url), "utf8")
 const helper = fs.readFileSync(new URL("./hrm-migration-metadata-preflight.mjs", import.meta.url), "utf8")
@@ -36,6 +36,17 @@ test("static env parser never sources shell and rejects ambiguous/session overri
   assert.throws(() => parseMigrationEnv("MIGRATION_DATABASE_URL=postgresql://synthetic@host/db\nMIGRATION_EXPECTED_DB_ROLE=synthetic\nMIGRATION_EXPECTED_DB_ROLE=synthetic"), { message: "ENV_INVALID" })
   // Even shell syntax in a literal password is only data passed to libpq.
   assert.match(parseMigrationEnv("MIGRATION_DATABASE_URL='postgresql://synthetic:%24%28false%29@host/fixture'\nMIGRATION_EXPECTED_DB_ROLE=synthetic"), /%24%28false%29/)
+})
+
+test("libpq receives explicit host/port/decoded identity and documented TLS fields without URI fallback", () => {
+  const env = databaseConnectionEnvironment("postgresql://synthetic:p%40ss%20word@db.example.invalid:6432/fixture%2Ddb?schema=public&connection_limit=1&sslmode=verify-full&sslrootcert=%2Fetc%2Ftrusted-ca.crt&sslcert=%2Fetc%2Fclient.crt&sslkey=%2Fetc%2Fclient.key")
+  assert.deepEqual(env, { PATH: "/usr/local/bin:/usr/bin:/bin", LC_ALL: "C", PGHOST: "db.example.invalid", PGPORT: "6432", PGDATABASE: "fixture-db", PGUSER: "synthetic", PGPASSWORD: "p@ss word", PGPASSFILE: "/dev/null", PGCONNECT_TIMEOUT: "10", PGSSLMODE: "verify-full", PGSSLROOTCERT: "/etc/trusted-ca.crt", PGSSLCERT: "/etc/client.crt", PGSSLKEY: "/etc/client.key" })
+  assert.equal(Object.values(env).some(value => value.includes("postgresql://")), false)
+  assert.equal(env.PGSERVICE, undefined)
+  assert.equal(env.HOME, undefined)
+  assert.equal(databaseConnectionEnvironment("postgresql://synthetic:protected@[::1]/fixture").PGHOST, "::1")
+  assert.equal(databaseConnectionEnvironment("postgresql://synthetic:protected@127.0.0.1/fixture").PGPORT, "5432")
+  for (const suffix of ["?sslpassword=secret", "?sslmode=invalid", "?sslkey=engine:unsafe", "?sslrootcert=relative.crt", "?sslmode=require&sslmode=disable", "?options=-c%20default_transaction_read_only=off", "?host=other", "?sslcert=%00"]) assert.throws(() => databaseConnectionEnvironment("postgresql://synthetic:protected@host/fixture" + suffix), { message: "ENV_INVALID" })
 })
 
 test("pending metadata is reviewable while every unresolved prerequisite stays explicit", () => {
@@ -136,7 +147,12 @@ test("psql receives connection only in a clean child environment, bounded read-o
   assert.equal(observed.binary, "psql")
   assert.equal(observed.args.join(" ").includes(connection), false)
   assert.equal(observed.options.input, sql)
-  assert.equal(observed.options.env.PGDATABASE, connection)
+  assert.equal(observed.options.env.PGHOST, "host")
+  assert.equal(observed.options.env.PGPORT, "5432")
+  assert.equal(observed.options.env.PGDATABASE, "fixture")
+  assert.equal(observed.options.env.PGUSER, "synthetic")
+  assert.equal(observed.options.env.PGPASSWORD, "protected")
+  assert.equal(observed.options.env.PGPASSFILE, "/dev/null")
   assert.equal(observed.options.env.PGOPTIONS, "-c default_transaction_read_only=on -c application_name=hrm_migration_metadata_preflight -c hrm.preflight_expected_role=synthetic")
   assert.equal(observed.options.env.HOME, undefined)
   assert.equal(observed.options.timeout, 30000)
@@ -206,7 +222,7 @@ test("hosted PostgreSQL executes the real fixed catalog query and rejects writes
   assert.equal(url.hostname, "127.0.0.1")
   assert.equal(url.pathname, "/hrm_preflight_test")
   assert.equal(url.username, "postgres")
-  const env = { PATH: process.env.PATH, LC_ALL: "C", PGDATABASE: url.href, PGCONNECT_TIMEOUT: "5" }
+  const env = databaseConnectionEnvironment(url.href)
   const execute = text => execFileSync("psql", ["-X", "-qAt", "--no-password", "-v", "ON_ERROR_STOP=1"], { input: text, encoding: "utf8", env, timeout: 20000, maxBuffer: 65536, stdio: ["pipe", "pipe", "pipe"] })
   assert.equal(execute("SELECT current_database()='hrm_preflight_test' AND (SELECT rolsuper FROM pg_roles WHERE rolname=current_user);\n").trim(), "t")
   assert.equal(execute("SELECT count(*) FROM pg_catalog.pg_class WHERE relnamespace='public'::regnamespace AND relkind='r';\n").trim(), "0")

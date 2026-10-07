@@ -19,11 +19,44 @@ const CODES = new Set(["INPUT_INVALID", "FILES_UNSAFE", "SOURCE_CHANGED", "ENV_I
 const SQL_STATES = new Set(["08001", "08003", "08004", "08006", "08P01", "22003", "22023", "25001", "25006", "28000", "28P01", "3D000", "42501", "42601", "42703", "42704", "42804", "42883", "42P01", "55P03", "57014", "XX000"])
 const REASONS = new Set(["TIMEOUT_DEFAULTS", "READ_ONLY_UNVERIFIED", "ROLE_PROFILE_UNVERIFIED", "LEDGER_UNRESOLVED", "LEDGER_AMBIGUOUS", "CHECKSUM_MISMATCH", "RELATION_SHAPE", "RLS_UNVERIFIED", "OWNER_ABILITY", "INDEX_SHAPE", "INDEX_LEDGER_MISMATCH", "FUNCTION_SHAPE", "LEDGER_GUARDS_UNVERIFIED", "DEFAULT_ACL_UNREVIEWED", "APPLIED_TABLE_CONSTRAINTS_NOT_PROVED", "ACTIVITY_VISIBILITY_UNVERIFIED"])
 const LIMITS = ["Metadata only; not a release, staging, full migration replay or C12 acceptance", "Relation rows are PostgreSQL estimates; live activity is one observation, not a reserved DDL quiet window", "Ordinary CREATE INDEX can block writes; elapsed time and future contention are not proved", "Decision guards cover row UPDATE/DELETE/INSERT; no TRUNCATE or privileged-bypass guarantee", "No business rows, role names, credentials, environment values or raw logs exported", "No production files, grants, role configuration, tenant activation or data mutated"]
+const TLS_ENV = { sslmode: "PGSSLMODE", sslrootcert: "PGSSLROOTCERT", sslcert: "PGSSLCERT", sslkey: "PGSSLKEY" }
 const fail = code => { throw new Error(code) }
 const digest = bytes => createHash("sha256").update(bytes).digest("hex")
 const exact = (value, keys) => value && typeof value === "object" && !Array.isArray(value) && Object.keys(value).sort().join(",") === keys.split(",").sort().join(",")
 const integer = (value, min = 0, max = Number.MAX_SAFE_INTEGER) => Number.isSafeInteger(value) && value >= min && value <= max
 const booleans = (value, keys) => keys.split(",").every(key => typeof value[key] === "boolean")
+
+function connectionUrl(connection) {
+  try {
+    const url = new URL(connection)
+    if (!["postgres:", "postgresql:"].includes(url.protocol) || !url.hostname || url.pathname.length < 2 || url.hash || /[\x00-\x20\x7f]/.test(connection)) fail("ENV_INVALID")
+    const allowed = new Set(["schema", "connection_limit", "pool_timeout", ...Object.keys(TLS_ENV)])
+    for (const key of url.searchParams.keys()) if (!allowed.has(key) || url.searchParams.getAll(key).length !== 1) fail("ENV_INVALID")
+    if (url.searchParams.has("schema") && url.searchParams.get("schema") !== "public") fail("ENV_INVALID")
+    for (const key of ["connection_limit", "pool_timeout"]) if (url.searchParams.has(key) && !/^[0-9]{1,4}$/.test(url.searchParams.get(key))) fail("ENV_INVALID")
+    for (const key of Object.keys(TLS_ENV)) if (url.searchParams.has(key)) {
+      const value = url.searchParams.get(key)
+      if (!value || /[\0\r\n]/.test(value)) fail("ENV_INVALID")
+      if (key === "sslmode" ? !["disable", "allow", "prefer", "require", "verify-ca", "verify-full"].includes(value) : !(value.startsWith("/") || key === "sslrootcert" && value === "system")) fail("ENV_INVALID")
+    }
+    for (const key of ["schema", "connection_limit", "pool_timeout"]) url.searchParams.delete(key)
+    return url
+  } catch { fail("ENV_INVALID") }
+}
+
+/** Explicit libpq defaults, not a URI in PGDATABASE. Values never leave child env. */
+export function databaseConnectionEnvironment(connection) {
+  const url = connectionUrl(connection)
+  const decode = value => { try { const decoded = decodeURIComponent(value); if (!decoded || /[\0\r\n]/.test(decoded)) fail("ENV_INVALID"); return decoded } catch { fail("ENV_INVALID") } }
+  const host = url.hostname.replace(/^\[|\]$/g, "")
+  const port = url.port || "5432"
+  if (!/^[A-Za-z0-9.:-]+$/.test(host) || !/^[0-9]{1,5}$/.test(port) || Number(port) < 1 || Number(port) > 65535) fail("ENV_INVALID")
+  const user = decode(url.username)
+  if (!/^[A-Za-z_][A-Za-z0-9_$-]{0,62}$/.test(user)) fail("ENV_INVALID")
+  const env = { PATH: "/usr/local/bin:/usr/bin:/bin", LC_ALL: "C", PGHOST: host, PGPORT: port, PGDATABASE: decode(url.pathname.slice(1)), PGUSER: user, PGPASSWORD: url.password ? decode(url.password) : "", PGPASSFILE: "/dev/null", PGCONNECT_TIMEOUT: "10" }
+  for (const [key, variable] of Object.entries(TLS_ENV)) if (url.searchParams.has(key)) env[variable] = url.searchParams.get(key)
+  return env
+}
 
 /** Root-owned, bounded, non-symlink, stable reads; never execute an env file. */
 export function readRootFile(file, limit, mode, io = fs) {
@@ -62,19 +95,9 @@ export function parseMigrationEnv(text) {
   const expectedRole = values.MIGRATION_EXPECTED_DB_ROLE[0]
   if (!/^[A-Za-z_][A-Za-z0-9_$-]{0,62}$/.test(expectedRole)) fail("ENV_INVALID")
   try {
-    const url = new URL(connection)
-    if (!["postgres:", "postgresql:"].includes(url.protocol) || !url.hostname || url.pathname.length < 2 || url.hash || /[\x00-\x20\x7f]/.test(connection) || decodeURIComponent(url.username) !== expectedRole) fail("ENV_INVALID")
-    // Accept only the documented TLS parameters and public-schema Prisma
-    // hints. Never accept libpq session options or another connection profile.
-    const allowed = new Set(["schema", "connection_limit", "pool_timeout", "sslmode", "sslrootcert", "sslcert", "sslkey", "sslpassword"])
-    for (const key of url.searchParams.keys()) {
-      if (!allowed.has(key) || url.searchParams.getAll(key).length !== 1) fail("ENV_INVALID")
-    }
-    if (url.searchParams.has("schema") && url.searchParams.get("schema") !== "public") fail("ENV_INVALID")
-    for (const key of ["connection_limit", "pool_timeout"]) {
-      if (url.searchParams.has(key) && !/^[0-9]{1,4}$/.test(url.searchParams.get(key))) fail("ENV_INVALID")
-    }
-    for (const key of ["schema", "connection_limit", "pool_timeout"]) url.searchParams.delete(key)
+    const url = connectionUrl(connection)
+    if (decodeURIComponent(url.username) !== expectedRole) fail("ENV_INVALID")
+    databaseConnectionEnvironment(url.href)
     return url.href
   } catch { fail("ENV_INVALID") }
 }
@@ -152,13 +175,12 @@ export function validateReport(value, expectedSha) {
 
 export function queryMetadata(url, sql, execute = execFileSync) {
   try {
-    const expectedRole = decodeURIComponent(new URL(url).username)
-    if (!/^[A-Za-z_][A-Za-z0-9_$-]{0,62}$/.test(expectedRole)) fail("ENV_INVALID")
-    // URL is environment-only. Fixed args, no shell, no temp file, no app.env,
+    const env = databaseConnectionEnvironment(url)
+    // Connection fields are environment-only. Fixed args, no shell, no temp file, no app.env,
     // no inherited credentials/config and no raw child stderr reaches output.
     return execute("psql", ["-X", "-qAt", "--no-password", "-v", "ON_ERROR_STOP=1", "-v", "VERBOSITY=sqlstate"], {
       input: sql, encoding: "utf8", maxBuffer: MAX_OUTPUT, timeout: 30_000,
-      env: { PATH: "/usr/local/bin:/usr/bin:/bin", LC_ALL: "C", PGDATABASE: url, PGCONNECT_TIMEOUT: "10", PGOPTIONS: "-c default_transaction_read_only=on -c application_name=hrm_migration_metadata_preflight -c hrm.preflight_expected_role=" + expectedRole },
+      env: { ...env, PGOPTIONS: "-c default_transaction_read_only=on -c application_name=hrm_migration_metadata_preflight -c hrm.preflight_expected_role=" + env.PGUSER },
       stdio: ["pipe", "pipe", "pipe"],
     })
   } catch (error) {
