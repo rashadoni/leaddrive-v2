@@ -1,0 +1,38 @@
+{
+  "sourceParent": "d97e8ba8c276d62a01c1f0de4a3ce7ee15dbb6cd",
+  "originalReceiptSha256": "a19889abeb50a98d584807f985593aefd02b421f436a5d3e7a7a7d7c2161e38e",
+  "status": "NEGATIVE_REPRODUCED",
+  "assertions": [
+    {
+      "name": "real-denied-session-403-private-no-store-no-roster",
+      "pass": true
+    },
+    {
+      "name": "denied-Orca-no-stale-employee-names",
+      "pass": true
+    },
+    {
+      "name": "localized-denied-heading-and-retry-spoken",
+      "pass": true
+    },
+    {
+      "name": "denial-detail-is-localized-safe-message",
+      "pass": false
+    },
+    {
+      "name": "real-denial-retry-reachable-by-native-keyboard",
+      "pass": true
+    }
+  ],
+  "denial": {
+    "status": 403,
+    "code": "WORKFORCE_TODAY_READ_ACCESS_REQUIRED",
+    "keys": [
+      "code",
+      "error"
+    ],
+    "alertText": "Не удалось загрузить данные табеля и команды.\n\nThis Workforce Today view requires an effective worktime-read grant.\n\nПовторить",
+    "noRoster": true,
+    "cacheControl": "private, no-store"
+  }
+}

@@ -1,3 +1,4 @@
+import { logOperationalFailure } from "./telemetry/operational-failure"
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "./auth"
 import { prisma } from "./prisma"
@@ -407,9 +408,7 @@ export async function getOrgId(req: NextRequest): Promise<string | null> {
     // loud, do not accept (the route then 401s for the mobile principal).
     const quickDecode = getMobileAuth(req)
     if (quickDecode) {
-      console.warn(
-        `[mobile-auth][scope-reject] mobile JWT presented on a non-MTM / web-only path — agentId=${quickDecode.agentId} path=${pathname}`
-      )
+      logOperationalFailure("auth-mobile-scope-rejected", "warn")
     }
   }
 
@@ -460,10 +459,7 @@ export async function requireAuth(
     // The MTM mobile app authenticates via requireMobileAuth / getOrgId exclusively.
     const mobileAuth = getMobileAuth(req)
     if (mobileAuth) {
-      const pathname = (() => { try { return new URL(req.url).pathname } catch { return "?" } })()
-      console.warn(
-        `[mobile-auth][requireAuth-reject] mobile JWT rejected on requireAuth endpoint — agentId=${mobileAuth.agentId} path=${pathname}`
-      )
+      logOperationalFailure("auth-mobile-permission-rejected", "warn")
       return NextResponse.json(
         { error: "Unauthorized", message: "Mobile tokens are not permitted on this endpoint" },
         { status: 401 }

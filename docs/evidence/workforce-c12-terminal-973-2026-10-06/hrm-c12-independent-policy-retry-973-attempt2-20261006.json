@@ -1,0 +1,103 @@
+{
+  "createdAt": "2026-10-06T23:08:50.192490+00:00",
+  "status": "ACCEPTED_BOUNDED_UNCHANGED_POLICY_RETRY_WITH_FIRST_FAILURE_PRESERVED",
+  "head": "973241bacc296b71fe817d1af11187c32e8126af",
+  "synthetic": "ea2a86be4ca8b4b89aa4c067f9835d2e09f90c51",
+  "run": 37542951424,
+  "attempt": 2,
+  "job": 112543488703,
+  "artifact": 11450016274,
+  "independentApiProvenance": {
+    "exactHead": true,
+    "runAndJobSuccess": true,
+    "artifactDigestAndSizeMatched": true
+  },
+  "safeJSON": {
+    "originals": 3,
+    "allMemberHashesMatched": true,
+    "browserCases": 18,
+    "pgCases": 4,
+    "browserSourceBindings": 24,
+    "pgSourceBindings": 4,
+    "allSourceHashesAndGitBlobsExact973": true,
+    "harnessAndAllBrowserBindingsUnchangedBetweenAttempts": true,
+    "factHashesBeforeAfter": 20,
+    "populatedFactTables": [
+      "mtm_teams",
+      "workforce_access_grants",
+      "workforce_policies"
+    ],
+    "rlsBeforeAfter": "8 observations across4populated tables/two tenants, forcedRLS/nonowner/read-only policy privileges/foreign+unscoped0; emptyfacttables notpositiveRLSproof.",
+    "browserCleanup": "PASS",
+    "pgCleanup": [
+      {
+        "action": "isolated-owner-fixture-removal-and-absence",
+        "status": "PASS"
+      },
+      {
+        "action": "app-disconnect",
+        "status": "PASS"
+      },
+      {
+        "action": "owner-disconnect",
+        "status": "PASS"
+      }
+    ],
+    "actualLogout": {
+      "name": "real-logout-reauthentication",
+      "status": "PASS",
+      "actualSignoutAndSameActorCredentialCallback": true,
+      "actualUiFetchProxy401": true,
+      "staleComparisonAndChoicesClearedBeforeNavigation": true,
+      "staleFutureProjectionClearedBeforeNavigation": true,
+      "proxyNoStoreObserved": false,
+      "unauthenticatedPrivateRouteHeaderAcceptance": "NOT RUN: unchanged proxy returns before the policy route",
+      "navigationAndReauthClearSelectionsAndResults": true,
+      "latePendingRequestAcceptanceRemainsMockedUnitScope": true
+    }
+  },
+  "history": {
+    "attempt1": "FAIL17/18 at584 expected401 got200; PG4PASS andcleanupPASS; unchangedoriginalretained.",
+    "cause": "UNKNOWN",
+    "interpretation": "Attempt2 passes unchangedsource. This is not proof of transientrootcause, a sourcefix or erasure offirstfailure."
+  },
+  "limits": [
+    "proxyNoStoreObserved=false remains literal; unauthenticatedPrivateRouteHeaderAcceptance NOT RUN becauseproxyreturnsbeforeroute. No newcache-headeracceptance claimed.",
+    "Developmentloopback/syntheticPG, notproductionbuild, canonicalpolicywriter/activation, AT/nativezoom/fullWCAG/load orcompletehistoricalstaging.",
+    "Only safeJSON plusmetadata read; otherZIPmembers/images/logs notread; noindependentfullZIPbinaryreadback.",
+    "Typecheck/fullCI stillseparatepending at request; do not deriveall-gatesPASS fromthisartifact.",
+    "No source/runtime/remote writes or additionalretry byreviewer."
+  ],
+  "supports": [
+    {
+      "path": "/tmp/hrm-c12-acceptance-20261006/terminal-archive/policy-version-attempt2/artifact-manifest.json",
+      "bytes": 672,
+      "sha256": "c5f67d2e4fad5016af875e1f38926b479416889b10e35a12b7a372e03c165423"
+    },
+    {
+      "path": "/tmp/hrm-c12-acceptance-20261006/terminal-archive/policy-version-attempt2/workflow-context.json",
+      "bytes": 261,
+      "sha256": "545b81910835ad68878b22824b3b711e23acae6343f074939abe49271094167a"
+    },
+    {
+      "path": "/tmp/hrm-c12-acceptance-20261006/terminal-archive/policy-version-attempt2/policy-version-receipt.json",
+      "bytes": 27330,
+      "sha256": "9e9bdb7eb5ada3f7f92b5f6dd0a831e2b1c0587a4aca9fbddc4ecb3250f31e65"
+    },
+    {
+      "path": "/tmp/hrm-c12-acceptance-20261006/terminal-archive/policy-version-attempt2/future-window-postgres-receipt.json",
+      "bytes": 1692,
+      "sha256": "aa356c4f39a3972ffd9204b505d238ac82a8efd617ae3192041da254e18b8269"
+    },
+    {
+      "path": "/tmp/hrm-c12-independent-publication/policy-attempt2-metadata.json",
+      "bytes": 84795,
+      "sha256": "4352480939aa2b337919297d231646c3baad6ee4afe9c931248e802f68538db3"
+    },
+    {
+      "path": "/tmp/hrm-c12-independent-policy-negative-973-attempt1-20261006.json",
+      "bytes": 4330,
+      "sha256": "4b1ce77e032deb8f3560780031922dbfd7d402f4a33cc585ca7396242591fbfc"
+    }
+  ]
+}

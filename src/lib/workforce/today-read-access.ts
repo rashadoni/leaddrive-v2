@@ -1,3 +1,4 @@
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { NextResponse } from "next/server"
 import {
   readPersistedWorkforceAccessGrants,
@@ -116,8 +117,8 @@ export async function resolveWorkforceTodayReadScope(input: {
       teamIds: [...teamIds].sort(),
       agentIds: [...agentIds].sort(),
     }
-  } catch (error) {
-    console.error("[workforce/today] authorization lookup failed", error)
+  } catch {
+    logWorkforceSensitiveOperationFailure({ operation: "authorize-today-read" })
     return todayReadUnavailable()
   }
 }

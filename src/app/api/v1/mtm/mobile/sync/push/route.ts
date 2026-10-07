@@ -3,6 +3,8 @@ import { NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { withMobileRls } from "@/lib/with-mobile-rls"
+import { readJsonRequestWithinLimit } from "@/lib/request-body-limit"
+import { classifyMtmMobileSyncOperation, MTM_MOBILE_SYNC_MAX_BODY_BYTES } from "@/lib/mtm/mobile-sync-push-bounds"
 import {
   hasMobileCapability,
   hasMobilePermission,
@@ -426,12 +428,14 @@ export const POST = withMobileRls(async (req, auth) => {
       : {}),
   })
 
-  let body: unknown
-  try {
-    body = await req.json()
-  } catch {
+  const parsedBody = await readJsonRequestWithinLimit(req, MTM_MOBILE_SYNC_MAX_BODY_BYTES)
+  if (!parsedBody.ok) {
+    if (parsedBody.reason === "too_large") {
+      return NextResponse.json({ error: "Sync request is too large", code: "MTM_MOBILE_SYNC_BODY_TOO_LARGE" }, { status: 413 })
+    }
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 })
   }
+  const body = parsedBody.value
 
   const bodyRecord = body && typeof body === "object" && !Array.isArray(body)
     ? body as { operations?: unknown }
@@ -443,6 +447,8 @@ export const POST = withMobileRls(async (req, auth) => {
   if (operations.length > 100) {
     return NextResponse.json({ error: "Max 100 operations per push" }, { status: 400 })
   }
+  const admissions = operations.map(classifyMtmMobileSyncOperation)
+  const admittedOperations = operations.filter((_, index) => admissions[index].allowed)
 
   // Preserve the status-level contract that old route-only APKs already use
   // to recognize a manager/supervisor without field execution.  A batch that
@@ -478,7 +484,7 @@ export const POST = withMobileRls(async (req, auth) => {
   let taskSelfRecurring = false
   let brandPotentialPerAgent = true
   let brandPotentialAsOf = new Date()
-  if (operations.some((operation) => (
+  if (admittedOperations.some((operation) => (
     operation != null &&
     typeof operation === "object" &&
     !Array.isArray(operation) &&
@@ -514,7 +520,7 @@ export const POST = withMobileRls(async (req, auth) => {
   // an optimization only: correctness is enforced by the atomic pin inside
   // each op's transaction, so a pre-check failure degrades gracefully — any
   // duplicate the Map misses is caught by P2002 on the pin and replayed.
-  const validIds = [...new Set(operations.map((o) => o?.operationId).filter(isValidOpId))]
+  const validIds = [...new Set(admittedOperations.map((o) => o?.operationId).filter(isValidOpId))]
   const known = new Map<string, StoredOp>()
   if (validIds.length > 0) {
     try {
@@ -571,7 +577,12 @@ export const POST = withMobileRls(async (req, auth) => {
   const alertOutOfZoneEnabled = createAlertOutOfZoneReader(orgId)
   const outsideZoneCheckInEnabled = createOutsideZoneCheckInReader(orgId)
 
-  for (const op of operations) {
+  for (const [index, op] of operations.entries()) {
+    const admission = admissions[index]
+    if (!admission.allowed) {
+      results.push(admission.result)
+      continue
+    }
     // `op ?? {}`: a null/undefined array element must fail as a malformed op,
     // not throw on destructuring outside every per-op handler (500ing the batch).
     const envelope = op != null && typeof op === "object" && !Array.isArray(op)

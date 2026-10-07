@@ -1,3 +1,4 @@
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { NextRequest, NextResponse } from "next/server"
 import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
@@ -651,7 +652,7 @@ export const GET = withWorkforceSessionAuth("read", async (request: NextRequest,
     }, { headers: workforceSensitiveResponseHeaders })
   } catch (error) {
     if (!(error instanceof WorkforceManagerTodayBoundsError)) {
-      console.error("[workforce/today GET]", error)
+      logWorkforceSensitiveOperationFailure({ operation: "today-get" })
     }
     return unavailable()
   }

@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "status": "BOUNDED_DORMANT_DRAFT_NOT_RUNTIME_ACCEPTANCE",
+  "baseHead": "ad8cc2ce22f11f18eb6e090ef4264a71def6c350",
+  "baseTree": "3bf40bb433577e885d31dfb26671c86480b3b4f1",
+  "originalPR585Head": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+  "dependsOn": "Acceptance/integration of existing HRM candidate; separate stacked draft must not gate PR585",
+  "changedSourcePaths": [
+    "src/lib/workforce/reconciliation-cursor-store.ts",
+    "src/__tests__/workforce-reconciliation-cursor-store.test.ts"
+  ],
+  "bindings": [
+    {
+      "path": "src/lib/workforce/reconciliation-cursor-store.ts",
+      "bytes": 4958,
+      "sha256": "2a8619e3e59cb0160be9efde63f12f695f77ee2eae4baa0fe048742e81f630b0"
+    },
+    {
+      "path": "src/__tests__/workforce-reconciliation-cursor-store.test.ts",
+      "bytes": 11018,
+      "sha256": "f001e4b708c1d6ffa9aab79d14f47b3fa4e9acc2fb9cc34e6b2aba4244988916"
+    }
+  ],
+  "checks": {
+    "targetedTests": {
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "inputGuardUnitCases": 2,
+      "realPostgreSQLCases": 11,
+      "database": "Disposable loopback PostgreSQL16-alpine; exact hrm_cursor_fencing_test database; minimal operational table fixture; no production connection",
+      "fullProductionSchemaOrMigrationAcceptance": false,
+      "fixtureCleanup": "Container/volumes and temporary credential file removed",
+      "originalJson": {
+        "bytes": 5074,
+        "sha256": "75dbfec273dd54507a7c145f3f4a73354baa87293ad49a441e5f74e342519328"
+      }
+    },
+    "scopedEslint": "PASS on both new paths",
+    "diffCheck": "PASS",
+    "boundedTypecheck": {
+      "final": "PASS",
+      "scope": "Only two new TS files and their imported type dependencies; not whole repository compiler",
+      "memoryMiB": 8192,
+      "priorAttempts": [
+        {
+          "exit": 134,
+          "reason": "Default4096MiB Node heap exhausted loading Prisma type graph"
+        },
+        {
+          "exit": 2,
+          "diagnostic": "TS2580 process in test: external tmp config did not resolve project Node types",
+          "sourceDefect": false
+        }
+      ],
+      "correction": "Separate external configuration pins existing project @types and Node types; no source/config/baseline file changed",
+      "cursor-draft-tsconfig-node.json": {
+        "bytes": 429,
+        "sha256": "b6f0b4a0864a595f589b8ceee11ffb04c21a6641ed69dcf2c3acef859f1b35ce"
+      },
+      "cursor-draft-typecheck-node.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "fullCompilerSuiteBuildBrowserAndroidLoad": "NOT RUN",
+    "hostedPGOrCurrentProductionSchema": "NOT RUN"
+  },
+  "implementation": [
+    "Unused helper requires an explicitly supplied authorized client; no default runtime client or route/scheduler import",
+    "Fixed operational job key; all writers for that key must use this store and lease protocol",
+    "Lease row lock then cursor row lock; guarded write evaluates database wall clock after lock waits",
+    "Cursor value plus version plus existence; absent is distinct from existing null cursor; version exhaustion fails closed",
+    "Finite COMMITTED/FENCED_OUT/VERSION_EXHAUSTED result; captures caller observation before await",
+    "No changes to shared helpers/schema/migrations/RLS/workflow/baselines/credentials/permissions"
+  ],
+  "limits": [
+    "Out-of-protocol insert/delete/version-reset for the fixed key is outside this helper contract",
+    "Helper is not connected to the reconciliation job and does not close dependency paging, orphan sources, approval grouping, export-delivery source, staging or activation gaps",
+    "Preliminary independent read-only reviewer found no blocker; exact commit-bound draft receipt follows publication",
+    "Regular test suite skips PostgreSQL cases unless explicit isolated test URL is provided; a skipped run earns no PG credit"
+  ],
+  "accounting": {
+    "done": 82,
+    "total": 161,
+    "open": 79,
+    "weightedPercent": 59,
+    "C12_008": "PARTIAL",
+    "rowClosure": false
+  }
+}

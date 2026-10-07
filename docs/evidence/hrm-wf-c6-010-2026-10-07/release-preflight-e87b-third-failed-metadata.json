@@ -1,0 +1,18 @@
+{
+  "runId": 37632434312,
+  "jobId": 112829871580,
+  "head": "e87b0fca5665a92805541a3fb830f52b20a7bd2f",
+  "conclusion": "FAILURE",
+  "unitPass": 14,
+  "hostedSQLFail": 1,
+  "skipped": 0,
+  "productionJob": "SKIPPED",
+  "rawBytes": 38597,
+  "rawSha256": "cf984a99de0846133a33303eda5ae9c9d2bece0aaa389815e5d676920d4cda55",
+  "gzipSha256": "b68a5b89567573763aaf8c7bceb5340a5ede3f29e37f18184eb68edc6a7d805f",
+  "cause": "Fixed SQL now executes; strict relation output validation rejects actual shape/type/order. Locale ORDER BY vs ASCII known-array order suspected, not yet runtime proved",
+  "limitations": [
+    "Isolated GitHub PostgreSQL only",
+    "Previous293/0ceb actual FAIL retained"
+  ]
+}

@@ -25208,6 +25208,11 @@
     "managerPresenceBoundary": "Cədvəl və serverdə qeydə alınmış iş vaxtı faktları fasiləsiz fiziki iştirakı sübut etmir.",
     "managerLoadMore": "Daha çox əməkdaş yüklə",
     "managerLoadingMore": "Əməkdaşlar yüklənir…",
+    "managerReadSessionExpired": "İş vaxtı məlumatlarını yükləmək üçün yenidən daxil olun.",
+    "managerReadDenied": "İstifadəçi hesabınızın bu iş vaxtı məlumatlarına girişi yoxdur.",
+    "managerReadUnavailable": "İş vaxtı məlumatları müvəqqəti olaraq əlçatan deyil. Yenidən cəhd edin.",
+    "managerLoadMoreResult": "Əlavə edildi: {added}. Yüklənib: {total}.",
+    "managerListComplete": "Əməkdaş siyahısının sonu",
     "managerAttendanceState": {
       "STARTED": "İşdə",
       "PAUSED": "Fasilədə",
@@ -25478,7 +25483,7 @@
     "subtitle": "Dəqiq məkanı, QR-ni, cihaz sübutunu və ya işçi səbəblərini açıqlamadan qeyri-müəyyən iştirak hallarını yoxlayın.",
     "adminOnly": "Bu istisna növbəsi qüvvədə olan Workforce HR-yoxlama rolunu tələb edir.",
     "boundaryTitle": "Yalnız insan yoxlaması",
-    "boundaryHint": "Əlçatan əməliyyatlar yalnız dəyişməz və yekun olmayan insan-yoxlama addımları əlavə edir. Onlar işçiyə bildiriş göndərmir, düzəliş yaratmır və ya təsdiqləmir, iştirak faktını, ödənişi, intizam qərarını, sübutu və ya halın nəticəsini dəyişmir. Koordinatlar, xəritələr, QR dəyərləri, cihaz identifikatorları, sübut materialları, əvvəlki qərar səbəbləri və daxili identifikatorlar əlçatmaz qalır.",
+    "boundaryHint": "Səlahiyyətli HR artıq həll edilmiş halın təsnifatını və apellyasiya nəticəsini əl ilə qeydə alır. Hər əməliyyat dəyişməz jurnalda saxlanılır. Tabel düzəlişi təkbaşına yanlış siqnalı və ya apellyasiyanın təmin edilməsini göstərmir. Koordinatlar, QR, cihaz məlumatları, sübut məzmunu və əvvəlki qərar səbəbləri məhdud qalır.",
     "viewAggregateReport": "Ümumi hesabatı aç",
     "refresh": "Növbəni yenilə",
     "loading": "İştirak istisnaları növbəsi yüklənir",
@@ -25491,11 +25496,21 @@
     "noActionAvailable": "Əməliyyat əlçatan deyil",
     "actions": {
       "ACKNOWLEDGE": "Yoxlamanın başlanmasını təsdiqlə",
-      "REQUEST_TIME_CORRECTION": "Vaxt düzəlişi yoxlamasını tələb et"
+      "REQUEST_TIME_CORRECTION": "Vaxt düzəlişi yoxlamasını tələb et",
+      "CLASSIFY_FALSE_POSITIVE": "Yanlış siqnalı qeydə al",
+      "CLASSIFY_CONFIRMED_EXCEPTION": "İstisnanı təsdiqlə",
+      "APPEAL_FULLY_UPHELD": "Apellyasiya tam təmin edilib",
+      "APPEAL_PARTIALLY_UPHELD": "Apellyasiya qismən təmin edilib",
+      "APPEAL_REJECTED": "Apellyasiya rədd edilib"
     },
     "actionHints": {
       "ACKNOWLEDGE": "Bu halı insan yoxlamasına götürdüyünüzü təsdiqləyin. Bu dəyişməz qeyd halı həll etmir, işçiyə bildiriş göndərmir və qeydə alınmış vaxtı dəyişmir.",
-      "REQUEST_TIME_CORRECTION": "İnsan yoxlaması üçün vaxt düzəlişinin tələb edilməli olduğunu qeydə alın. Bu dəyişməz addım işçiyə bildiriş göndərmir, düzəliş yaratmır və ya təsdiqləmir, qeydə alınmış vaxtı dəyişmir."
+      "REQUEST_TIME_CORRECTION": "İnsan yoxlaması üçün vaxt düzəlişinin tələb edilməli olduğunu qeydə alın. Bu dəyişməz addım işçiyə bildiriş göndərmir, düzəliş yaratmır və ya təsdiqləmir, qeydə alınmış vaxtı dəyişmir.",
+      "CLASSIFY_FALSE_POSITIVE": "Server qüvvədə olan HR icazəsini, əhatəni, redaksiyanı və halın yekun vəziyyətini yenidən yoxlayır. Yenidən açılma əvvəlki nəticələri yekun faizlərdən çıxarır.",
+      "CLASSIFY_CONFIRMED_EXCEPTION": "Server qüvvədə olan HR icazəsini, əhatəni, redaksiyanı və halın yekun vəziyyətini yenidən yoxlayır. Yenidən açılma əvvəlki nəticələri yekun faizlərdən çıxarır.",
+      "APPEAL_FULLY_UPHELD": "Server qüvvədə olan HR icazəsini, əhatəni, redaksiyanı və halın yekun vəziyyətini yenidən yoxlayır. Yenidən açılma əvvəlki nəticələri yekun faizlərdən çıxarır.",
+      "APPEAL_PARTIALLY_UPHELD": "Server qüvvədə olan HR icazəsini, əhatəni, redaksiyanı və halın yekun vəziyyətini yenidən yoxlayır. Yenidən açılma əvvəlki nəticələri yekun faizlərdən çıxarır.",
+      "APPEAL_REJECTED": "Server qüvvədə olan HR icazəsini, əhatəni, redaksiyanı və halın yekun vəziyyətini yenidən yoxlayır. Yenidən açılma əvvəlki nəticələri yekun faizlərdən çıxarır."
     },
     "actionFormTitle": "Təsdiq: {action} · {reference}",
     "serverChecksHint": "Qeyddən əvvəl server cari rolunuzu, giriş əhatəsini, halın redaksiyasını və məcburi MFA-nı yenidən yoxlayır. Sərbəst mətnli səbəb toplanmır.",
@@ -25559,6 +25574,17 @@
       "NO_FURTHER_ACTION": "Əlavə addım tələb olunmur",
       "ESCALATE_DATA_INTEGRITY_REVIEW": "Məlumat bütövlüyü yoxlamasına yönəlt",
       "unavailable": "Növbəti addım əlçatan deyil"
+    },
+    "outcomeReason": "HR qərarının əsaslandırılması",
+    "outcomeReasonRequired": "3–1000 simvoldan ibarət əsaslandırma daxil edin.",
+    "outcomeReasonHint": "Əsaslandırma məhdud qərar jurnalında saxlanılır və ümumi hesabata daxil edilmir. Dəqiq koordinatlar, QR və ya sirrlər daxil etməyin. Təkrar cəhd ilkin əsaslandırmanı saxlayır.",
+    "outcomeChecksHint": "Server qüvvədə olan HR icazəsini, əhatəni, redaksiyanı və halın yekun vəziyyətini yenidən yoxlayır. Yenidən açılma əvvəlki nəticələri yekun faizlərdən çıxarır.",
+    "outcomeLabels": {
+      "FALSE_POSITIVE": "Yanlış siqnal",
+      "CONFIRMED_EXCEPTION": "Təsdiqlənmiş istisna",
+      "FULLY_UPHELD": "Apellyasiya tam təmin edilib",
+      "PARTIALLY_UPHELD": "Apellyasiya qismən təmin edilib",
+      "REJECTED": "Apellyasiya rədd edilib"
     }
   },
   "workforceExceptionReport": {
@@ -25578,7 +25604,20 @@
       "unresolved": "Həll edilməmiş hallar",
       "integrityExcluded": "Məlumat bütövlüyünə görə çıxarılanlar",
       "sampleHint": "Həll edilməmiş hallar və ziddiyyətli qərar tarixçələri vaxt nümunəsindən çıxarılır. Müddətlər ən çox üç onluq rəqəmə yuvarlaqlaşdırılır; bunlar iş saatı və ya SLA ölçmələri deyil.",
-      "classificationUnavailable": "Yanlış siqnal və apellyasiyada qərarın ləğvi göstəriciləri mövcud deyil: nəticə təsnifatı hələ təsdiqlənməyib."
+      "classificationTitle": "Açıq HR qərarları",
+      "classificationHint": "Faizlər cari dövrdə təsnif edilmiş həll olunmuş hallar və baxılmış apellyasiyalar üçün ayrı nümunələrdən hesablanır. Açıq, yenidən açılmış və təsnif edilməmiş hallar daxil edilmir. Tabel düzəlişi bu nəticələri avtomatik müəyyən etmir.",
+      "noClassifiedSamples": "Baxılmış təsnif edilmiş hal yoxdur",
+      "falsePositive": "Yanlış siqnallar",
+      "appealFull": "Tam təmin edilmiş apellyasiyalar",
+      "appealPartial": "Qismən təmin edilmiş apellyasiyalar",
+      "appealRejected": "Rədd edilmiş apellyasiyalar",
+      "classifiedCount": "Baxılmış {sample} haldan {count}",
+      "classificationSamples": "Təsnifat nümunəsi",
+      "appealSamples": "Apellyasiya nümunəsi",
+      "unfinishedCases": "Tamamlanmamış hallar",
+      "unclassifiedResolved": "Siqnal təsnifatı olmadan həll edilmiş",
+      "unclassifiedAppeal": "Apellyasiya nəticəsi olmadan həll edilmiş",
+      "finalIntegrityExcluded": "Bütövlüyə görə yekunlardan çıxarılanlar"
     },
     "title": "İştirak istisnaları hesabatı",
     "subtitle": "İşçi, hal, geolokasiya, QR, cihaz və ya səbəb məlumatlarını açıqlamadan saxlanılmış iştirak hallarının məhdud ümumi saylarını yoxlayın.",
@@ -25630,6 +25669,7 @@
     "empty": "Özünüyoxlama üçün əlçatan iştirak istisnanız yoxdur."
   },
   "workforceConfigurationPage": {
+    "bulkPublishOutcomeUnknown": "Dərc nəticəsi təsdiqlənməyib. Eyni əməliyyatı yoxlamaq üçün sorğunu təkrarlayın. Yerli qaralamanı dəyişmək və ya silmək artıq saxlanmış ola bilən təyinatları geri qaytarmır.",
     "comparePolicyVersions": "Saxlanmış siyasət versiyalarını müqayisə et",
     "title": "İş vaxtı tənzimləməsi",
     "subtitle": "Audit olunan siyasət və növbə şablonları hazırlayın. Nəşr yalnız gələcəyə təsir edir və tamamlanmış iş günlərini dəyişmir.",

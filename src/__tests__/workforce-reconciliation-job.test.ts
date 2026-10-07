@@ -71,6 +71,38 @@ describe("Workforce reconciliation job", () => {
     expect(JSON.stringify(result)).not.toMatch(/private|2026-02-29/)
   })
 
+
+  it("rejects an ambiguous duplicate page before committing or loading the next page", async () => {
+    const snapshot = emptySnapshot()
+    const workday = { id: "workday-private", organizationId: "org-private", agentId: "agent-private" }
+    snapshot.workdays = [workday, { ...workday }]
+    const original = JSON.stringify(snapshot)
+    const db = store([{ snapshot, nextCursor: "page-next-private", more: true }])
+    await expect(runWorkforceReconciliationJob({ store: db, initialCursor: "page-before-private" }))
+      .rejects.toThrow("WORKFORCE_RECONCILIATION_DUPLICATE_ID:workdays")
+    expect(db.loadPage).toHaveBeenCalledTimes(1)
+    expect(db.commitCursor).not.toHaveBeenCalled()
+    expect(JSON.stringify(snapshot)).toBe(original)
+  })
+
+  it("leaves a same-employee cross-workday exception page uncommitted", async () => {
+    const snapshot = emptySnapshot()
+    snapshot.workdays = [
+      { id: "first-workday-private", organizationId: "org-private", agentId: "agent-private" },
+      { id: "second-workday-private", organizationId: "org-private", agentId: "agent-private" },
+    ]
+    snapshot.events = [{ id: "event-private", organizationId: "org-private", agentId: "agent-private", workdayId: "second-workday-private" }]
+    snapshot.exceptions = [{ id: "case-private", organizationId: "org-private", agentId: "agent-private", workdayId: "first-workday-private", workdayEventId: "event-private", evidenceId: null, segmentId: null, expectedWorkDate: null }]
+    const db = store([{ snapshot, nextCursor: "page-next-private", more: true }])
+    const original = JSON.stringify(snapshot)
+    const result = await runWorkforceReconciliationJob({ store: db, initialCursor: "page-before-private" })
+    expect(result).toMatchObject({ status: "MISMATCH", pagesExamined: 1, mismatchTotal: 1, mismatchCounts: { EXCEPTION_SUBJECT_SCOPE_MISMATCH: 1 }, repair: "NONE" })
+    expect(db.loadPage).toHaveBeenCalledTimes(1)
+    expect(db.commitCursor).not.toHaveBeenCalled()
+    expect(JSON.stringify(result)).not.toContain("private")
+    expect(JSON.stringify(snapshot)).toBe(original)
+  })
+
   it("reports cursor races and a finite page ceiling without claiming success", async () => {
     const raced = store([{ snapshot: emptySnapshot(), nextCursor: "next", more: false }], false)
     await expect(runWorkforceReconciliationJob({ store: raced, initialCursor: "old" })).resolves.toMatchObject({

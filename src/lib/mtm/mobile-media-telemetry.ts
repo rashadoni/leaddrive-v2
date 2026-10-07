@@ -1,9 +1,10 @@
 import { hmacToken } from "@/lib/secure-token"
 
 export type MtmMobileMediaResultClass = "ok" | "forbidden" | "invalid_request" | "conflict" | "rate_limited" | "unavailable" | "failed"
+const RESULTS = new Set<string>(["ok", "forbidden", "invalid_request", "conflict", "rate_limited", "unavailable", "failed"])
 
 function safeApkVersion(value: string | null): string {
-  return value && /^[A-Za-z0-9._+-]{1,64}$/.test(value) ? value : "unknown"
+  return typeof value === "string" && /^\d{1,4}\.\d{1,4}\.\d{1,4}(?:\+\d{1,10})?$/.test(value) ? value : "unknown"
 }
 
 function byteBucket(value: number | null): string {
@@ -33,12 +34,12 @@ export function recordMtmMobileMediaTelemetry(input: {
     console.info("[mtm-mobile-media-telemetry]", JSON.stringify({
       event: "mobile_media_upload",
       tenant: hmacToken(input.organizationId, "mtm-mobile-media-telemetry").slice(0, 16),
-      endpoint: input.endpoint,
-      contractVersion: input.contractVersion,
+      endpoint: input.endpoint === "photos" || input.endpoint === "documents" ? input.endpoint : "unknown",
+      contractVersion: input.contractVersion === 1 || input.contractVersion === 2 ? input.contractVersion : 0,
       apkVersion: safeApkVersion(input.apkVersion),
-      result: input.result,
+      result: RESULTS.has(input.result) ? input.result : "failed",
       byteBucket: byteBucket(input.bytes),
-      durationMs: Math.max(0, Math.round(input.durationMs)),
+      durationMs: Number.isFinite(input.durationMs) ? Math.max(0, Math.min(300_000, Math.round(input.durationMs))) : 0,
     }))
   } catch {
     // Observability must never alter upload durability or a retry decision.

@@ -187,7 +187,7 @@ async function seed() {
     } })
     privateMarkers.push(employee.id, employee.name, workday.id)
     const specifications = key === "a"
-      ? [["linked", 1, 3_600_000], ["zero", 1, 0], ["unresolved", 1, null], ["integrity", 1, "invalid"], ["only-unresolved", 2, null], ["only-zero", 3, 0]]
+      ? [["linked", 1, 3_600_000], ["zero", 1, 0], ["partial", 1, 3_600_000], ["rejected", 1, 7_200_000], ["reopened", 1, 1_800_000], ["reresolved", 1, 1_800_000], ["unresolved", 1, null], ["integrity", 1, "invalid"], ["only-unresolved", 2, null], ["only-zero", 3, 0]]
       : [["foreign-linked", 1, 7_200_000]]
     for (const [label, day, elapsed] of specifications) {
       const at = new Date(`2025-01-0${day}T00:00:00Z`)
@@ -202,6 +202,13 @@ async function seed() {
         const entries = elapsed === "invalid"
           ? [[2, "PRIVATE_UNKNOWN_HISTORICAL", 0]]
           : [[1, "ACKNOWLEDGE", 0], [2, "RESOLVE_NO_CHANGE", elapsed]]
+        const classifications = label === "zero" ? ["CLASSIFY_FALSE_POSITIVE", "APPEAL_FULLY_UPHELD"]
+          : label === "partial" ? ["CLASSIFY_CONFIRMED_EXCEPTION", "APPEAL_PARTIALLY_UPHELD"]
+          : ["rejected", "foreign-linked"].includes(label) ? ["CLASSIFY_CONFIRMED_EXCEPTION", "APPEAL_REJECTED"]
+          : ["reopened", "reresolved"].includes(label) ? ["CLASSIFY_FALSE_POSITIVE", "APPEAL_FULLY_UPHELD"] : []
+        for (const [offset, code] of classifications.entries()) entries.push([3 + offset, code, elapsed + 1_000 + offset])
+        if (["reopened", "reresolved"].includes(label)) entries.push([5, "REOPEN_FOR_REVIEW", elapsed + 2_000])
+        if (label === "reresolved") entries.push([6, "RESOLVE_NO_CHANGE", elapsed + 3_000])
         for (const [revision, decisionCode, ms] of entries) await admin.workforceExceptionDecision.create({ data: {
           organizationId: organization.id, caseId: record.id, caseRevision: revision, operationId: `report-${suffix}-${key}-${label}-${revision}`,
           decisionCode, reason: "PRIVATE_REPORT_DECISION_REASON", actorUserId: hr.id, createdAt: new Date(at.getTime() + ms),
@@ -233,13 +240,23 @@ async function seed() {
 function expected(tenant, start, end) {
   if (start !== end || !["2025-01-01", "2025-01-02", "2025-01-03"].includes(start)) {
     assert.ok(start > "2025-01-03" && end >= start, "Only fixed fixture or current empty windows are accepted")
-    return { cases: 0, resolved: 0, open: 0, integrity: 0, responses: 0, linked: 0, share: null, samples: 0, unresolved: 0, excluded: 0, min: null, max: null, mean: null }
+    return { cases: 0, resolved: 0, open: 0, hrReview: 0, integrity: 0, responses: 0, linked: 0, share: null, samples: 0, unresolved: 0, excluded: 0, min: null, max: null, mean: null, classified: finalClassification(0, 0, 0, 0, 0, 0, 0, 0, 0) }
   }
-  if (tenant === "b" && start === "2025-01-01") return { cases: 1, resolved: 1, open: 0, integrity: 0, responses: 1, linked: 1, share: 1, samples: 1, unresolved: 0, excluded: 0, min: 7_200_000, max: 7_200_000, mean: 7_200_000 }
-  if (tenant === "a" && start === "2025-01-01") return { cases: 4, resolved: 2, open: 1, integrity: 1, responses: 1, linked: 1, share: 0.25, samples: 2, unresolved: 1, excluded: 1, min: 0, max: 3_600_000, mean: 1_800_000 }
-  if (tenant === "a" && start === "2025-01-02") return { cases: 1, resolved: 0, open: 1, integrity: 0, responses: 0, linked: 0, share: 0, samples: 0, unresolved: 1, excluded: 0, min: null, max: null, mean: null }
-  if (tenant === "a" && start === "2025-01-03") return { cases: 1, resolved: 1, open: 0, integrity: 0, responses: 0, linked: 0, share: 0, samples: 1, unresolved: 0, excluded: 0, min: 0, max: 0, mean: 0 }
+  if (tenant === "b" && start === "2025-01-01") return { cases: 1, resolved: 1, open: 0, hrReview: 0, integrity: 0, responses: 1, linked: 1, share: 1, samples: 1, unresolved: 0, excluded: 0, min: 7_200_000, max: 7_200_000, mean: 7_200_000, classified: finalClassification(0, 1, 0, 0, 1, 0, 0, 0, 0) }
+  if (tenant === "a" && start === "2025-01-01") return { cases: 8, resolved: 5, open: 1, hrReview: 1, integrity: 1, responses: 1, linked: 1, share: 1/8, samples: 6, unresolved: 1, excluded: 1, min: 0, max: 7_200_000, mean: 3_000_000, classified: finalClassification(1, 2, 1, 1, 1, 2, 2, 2, 1) }
+  if (tenant === "a" && start === "2025-01-02") return { cases: 1, resolved: 0, open: 1, hrReview: 0, integrity: 0, responses: 0, linked: 0, share: 0, samples: 0, unresolved: 1, excluded: 0, min: null, max: null, mean: null, classified: finalClassification(0, 0, 0, 0, 0, 0, 0, 1, 0) }
+  if (tenant === "a" && start === "2025-01-03") return { cases: 1, resolved: 1, open: 0, hrReview: 0, integrity: 0, responses: 0, linked: 0, share: 0, samples: 1, unresolved: 0, excluded: 0, min: 0, max: 0, mean: 0, classified: finalClassification(0, 0, 0, 0, 0, 1, 1, 0, 0) }
   throw new Error("Unsupported fixture window")
+}
+function finalClassification(falsePositiveCases, confirmedCases, fullyUpheldCases, partiallyUpheldCases, rejectedCases, falsePositiveUnclassified, appealUnclassified, unfinishedCases, integrityExcludedCases) {
+  const falsePositiveSamples = falsePositiveCases + confirmedCases
+  const appealSamples = fullyUpheldCases + partiallyUpheldCases + rejectedCases
+  return {
+    basis: "EXPLICIT_HR_CLASSIFICATION_OF_CURRENT_RESOLVED_CYCLE",
+    falsePositive: { sampleCount: falsePositiveSamples, falsePositiveCases, confirmedCases, share: falsePositiveSamples ? falsePositiveCases / falsePositiveSamples : null, unclassifiedResolvedCases: falsePositiveUnclassified },
+    appeal: { sampleCount: appealSamples, fullyUpheldCases, partiallyUpheldCases, rejectedCases, fullyUpheldShare: appealSamples ? fullyUpheldCases / appealSamples : null, partiallyUpheldShare: appealSamples ? partiallyUpheldCases / appealSamples : null, rejectedShare: appealSamples ? rejectedCases / appealSamples : null, unclassifiedResolvedCases: appealUnclassified },
+    unfinishedCases, integrityExcludedCases,
+  }
 }
 function noPrivate(value) {
   for (const marker of privateMarkers) assert.equal(value.includes(marker), false, "Report must exclude private fixture subjects and payloads")
@@ -256,11 +273,12 @@ async function checkedRead(response, tenant) {
   assert.equal(body.data.dateBasis, "CASE_RECORDED_AT")
   noPrivate(JSON.stringify(body))
   const report = body.data.report, truth = expected(tenant, body.data.start, body.data.end)
-  assert.deepEqual(report.summary, { employees: truth.cases ? 1 : 0, cases: truth.cases, open: truth.open, awaitingEmployeeResponse: 0, hrReview: 0, resolved: truth.resolved, dataIntegrityReview: truth.integrity, employeeResponsesReceived: truth.responses })
+  assert.deepEqual(report.summary, { employees: truth.cases ? 1 : 0, cases: truth.cases, open: truth.open, awaitingEmployeeResponse: 0, hrReview: truth.hrReview, resolved: truth.resolved, dataIntegrityReview: truth.integrity, employeeResponsesReceived: truth.responses })
   const outcome = report.recordedOutcomes
   assert.deepEqual(outcome.linkedCorrection, { cohortCases: truth.cases, recordedLinkedCorrectionCases: truth.linked, share: truth.share, interpretation: "RECORDED_APPROVED_REQUEST_CORRECTION_LINK_NOT_CURRENT_WORKDAY_FACTS" })
   assert.deepEqual(outcome.firstResolution, { basis: "ELAPSED_WALL_CLOCK_FROM_CASE_TO_FIRST_RECORDED_RESOLUTION", sampleCount: truth.samples, unresolvedCases: truth.unresolved, integrityExcludedCases: truth.excluded, minMs: truth.min, maxMs: truth.max, meanMs: truth.mean, meanRounding: "NEAREST_MILLISECOND" })
-  assert.deepEqual(outcome.unavailable, { falsePositiveRate: "UNAVAILABLE_NO_APPROVED_OUTCOME_CLASSIFICATION", appealOverturnRate: "UNAVAILABLE_NO_APPROVED_OUTCOME_CLASSIFICATION" })
+  assert.equal(Object.hasOwn(outcome, "unavailable"), false)
+  assert.deepEqual(outcome.finalClassification, truth.classified)
   return { data: body.data, truth }
 }
 const isReportResponse = response => new URL(response.url()).pathname === endpoint && response.request().method() === "GET"
@@ -312,7 +330,29 @@ async function assertRendered(view, truth) {
   const block = view.page.getByTestId("workforce-exception-recorded-outcomes")
   await block.waitFor({ state: "visible" })
   const value = async testId => (await view.page.getByTestId(testId).innerText()).trim()
-  assert.equal(await value("workforce-exception-recorded-link-share"), truth.share === null ? view.ui.recordedOutcomes.noCases : new Intl.NumberFormat(view.locale, { style: "percent", maximumFractionDigits: 2 }).format(truth.share))
+  const linkedCountActual = await value("workforce-exception-recorded-link-count")
+  const linkedCountNodeExpected = truth.cases === 0 ? view.ui.recordedOutcomes.noCases : new Intl.NumberFormat(view.locale).format(truth.linked)
+  const linkedCountBrowserExpected = truth.cases === 0 ? view.ui.recordedOutcomes.noCases : await view.page.evaluate(([count, locale]) => new Intl.NumberFormat(locale).format(count), [truth.linked, view.locale])
+  receipts.aggregateRenderDiagnostics ??= []
+  receipts.aggregateRenderDiagnostics.push({
+    locale: view.locale, linkedCases: truth.linked, cohortCases: truth.cases,
+    legacyApiShare: truth.share, displayedAs: "COUNT", actualText: linkedCountActual,
+    nodeExpected: linkedCountNodeExpected, browserExpected: linkedCountBrowserExpected,
+    actualCodePoints: Array.from(linkedCountActual, character => character.codePointAt(0)),
+    nodeCodePoints: Array.from(linkedCountNodeExpected, character => character.codePointAt(0)),
+    browserCodePoints: Array.from(linkedCountBrowserExpected, character => character.codePointAt(0)),
+  })
+  // Historical correction links retain their exact all-recorded API cohort.
+  // Only reviewed final HR outcomes are displayed as percentages.
+  assert.equal(linkedCountActual, linkedCountBrowserExpected)
+  assert.doesNotMatch(linkedCountActual, /[%\u066a\uff05]/)
+  assert.equal(await view.page.getByTestId("workforce-exception-recorded-link-share").count(), 0)
+  const linkedTerm = block.locator("dt").filter({ hasText: view.ui.recordedOutcomes.linkedCorrection })
+  assert.equal(await linkedTerm.count(), 1)
+  const linkedSubtitle = view.ui.recordedOutcomes.linkedCount
+    .replace("{linked}", new Intl.NumberFormat(view.locale).format(truth.linked))
+    .replace("{cases}", new Intl.NumberFormat(view.locale).format(truth.cases))
+  assert.equal((await linkedTerm.locator("xpath=..").locator("dd").nth(1).innerText()).trim(), linkedSubtitle)
   const expected = await view.page.evaluate(expectedDuration, [truth.mean, view.locale])
   receipts.durationRealms ??= []; receipts.durationRealms.push({ locale: view.locale, equal: expectedDuration([truth.mean, view.locale]) === expected })
   assert.equal(await value("workforce-exception-recorded-resolution-mean"), expected ?? view.ui.recordedOutcomes.noSamples)
@@ -323,7 +363,11 @@ async function assertRendered(view, truth) {
     assert.equal((await term.locator("xpath=..").locator("dd").innerText()).trim(), new Intl.NumberFormat(view.locale).format(count))
   }
   const text = await block.innerText()
-  assert.ok(text.includes(view.ui.recordedOutcomes.classificationUnavailable))
+  const percentage = async share => share === null ? view.ui.recordedOutcomes.noClassifiedSamples : view.page.evaluate(([share, locale]) => new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 2 }).format(share), [share, view.locale])
+  assert.equal(await value("workforce-exception-false-positive-share"), await percentage(truth.classified.falsePositive.share))
+  assert.equal(await value("workforce-exception-appeal-full-share"), await percentage(truth.classified.appeal.fullyUpheldShare))
+  assert.equal(await value("workforce-exception-appeal-partial-share"), await percentage(truth.classified.appeal.partiallyUpheldShare))
+  assert.equal(await value("workforce-exception-appeal-rejected-share"), await percentage(truth.classified.appeal.rejectedShare))
   assert.ok(text.includes(view.ui.recordedOutcomes.linkedHint))
   assert.ok(text.includes(view.ui.recordedOutcomes.resolutionHint))
   noPrivate(await view.page.locator("body").innerText())
@@ -346,6 +390,8 @@ async function localeScenario(tenant, locale, width) {
   const selected = await applyRange(view, "2025-01-01", locale === "ru")
   const geometry = await assertRendered(view, selected.truth)
   await view.page.screenshot({ path: `${outputDirectory}/report-${locale}-${width}-nonempty.png`, fullPage: true })
+  const recordedOutcomesScreenshot = `report-${locale}-${width}-recorded-outcomes.png`
+  await view.page.getByTestId("workforce-exception-recorded-outcomes").screenshot({ path: `${outputDirectory}/${recordedOutcomesScreenshot}` })
   assert.ok((await view.page.locator('section[aria-labelledby="workforce-exception-report-summary"]').innerText()).includes(view.ui.summaryTitle))
   assert.equal(await view.page.getByTestId("workforce-exception-report-boundary").count(), 1)
   const region = view.page.locator('section[aria-labelledby="workforce-exception-report-types"]').getByRole("region", { name: view.ui.typesTitle, exact: true })
@@ -372,7 +418,7 @@ async function localeScenario(tenant, locale, width) {
     }
   }
   assert.deepEqual(view.writes, [])
-  receipts.cases.push({ name: `nonempty-${locale}-${width}`, status: "PASS", responseStatus: 200, linkedShare: selected.truth.share, meanMs: selected.truth.mean, integrityExcluded: selected.truth.excluded, geometry, nativeApplyRefreshAndTableFocus: keyboardControls, rawPrivateDataExcluded: true })
+  receipts.cases.push({ name: `nonempty-${locale}-${width}`, status: "PASS", responseStatus: 200, linkedShare: selected.truth.share, meanMs: selected.truth.mean, integrityExcluded: selected.truth.excluded, geometry, recordedOutcomesScreenshot, nativeApplyRefreshAndTableFocus: keyboardControls, rawPrivateDataExcluded: true })
   await assertSession(view.context, tenant.hr)
   await view.context.close()
 }
@@ -412,10 +458,10 @@ async function foreignScenario(tenants) {
   const context = await browser.newContext({ baseURL, serviceWorkers: "block" }); contexts.push(context)
   await authenticate(context, a.hr)
   const response = await context.request.get(`${endpoint}?start=2025-01-01&end=2025-01-01`, { headers: { "x-organization-id": b.organization.id }, timeout: 120_000 })
-  const own = await checkedRead(response, "a"); assert.equal(own.truth.cases, 4)
+  const own = await checkedRead(response, "a"); assert.equal(own.truth.cases, 8)
   extraReads.push({ tenant: "a", successfulResponses: 1, getRequests: 1 })
   await context.close()
-  receipts.cases.push({ name: "two-tenant-positive-and-session-header-fence", status: "PASS", ownCases: 4, foreignOwnCases: 1, foreignHeaderSelectsOwnSession: true })
+  receipts.cases.push({ name: "two-tenant-positive-and-session-header-fence", status: "PASS", ownCases: 8, foreignOwnCases: 1, foreignHeaderSelectsOwnSession: true })
 }
 async function rlsControls(tenants, phase) {
   const reportTables = ["workforce_exception_cases", "workforce_exception_decisions", "workforce_exception_employee_responses", "mtm_hrm_requests", "workforce_time_corrections"]
@@ -459,7 +505,7 @@ async function auditProof(tenants) {
       assert.equal(row.entityId, `${row.newData.start}:${row.newData.end}`)
       assert.deepEqual(row.newData, {
         start: row.newData.start, end: row.newData.end, caseCount: truth.cases, employeeCount: truth.cases ? 1 : 0, openCount: truth.open,
-        awaitingEmployeeResponseCount: 0, hrReviewCount: 0, resolvedCount: truth.resolved, dataIntegrityReviewCount: truth.integrity,
+        awaitingEmployeeResponseCount: 0, hrReviewCount: truth.hrReview, resolvedCount: truth.resolved, dataIntegrityReviewCount: truth.integrity,
         recordedLinkedCorrectionCases: truth.linked, firstResolutionSampleCount: truth.samples, firstResolutionIntegrityExcludedCount: truth.excluded,
       })
       noPrivate(JSON.stringify(row.newData))
@@ -500,6 +546,10 @@ try {
   receipts.failure = { stage, name: ["AssertionError", "TimeoutError", "PrismaClientKnownRequestError", "PrismaClientValidationError"].includes(error?.name) ? error.name : "Error", sourcePosition: position ? { line: Number(position[1]), column: Number(position[2]) } : null, diagnostic: "Original failure preserved; no raw error, stack, body, credentials, cookie or session uploaded" }
   if (activePage && !activePage.isClosed()) {
     try { await activePage.screenshot({ path: `${outputDirectory}/failure-original.png`, fullPage: true }); receipts.failure.screenshot = "failure-original.png" } catch { receipts.failure.screenshot = "NOT_CAPTURED" }
+    try {
+      await activePage.getByTestId("workforce-exception-recorded-outcomes").screenshot({ path: `${outputDirectory}/failure-outcomes.png` })
+      receipts.failure.outcomesScreenshot = "failure-outcomes.png"
+    } catch { receipts.failure.outcomesScreenshot = "NOT_CAPTURED" }
   }
 } finally {
   const closedContexts = await Promise.allSettled(contexts.map(context => context.close()))

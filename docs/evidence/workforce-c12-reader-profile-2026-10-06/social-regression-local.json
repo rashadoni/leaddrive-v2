@@ -1,0 +1,229 @@
+{
+  "sourceHead": "1d1741a73fb0e318b5e7a05f58fc5faf6b2678f2",
+  "reason": "diagnose failed former-head hosted Social regression without raw CI logs",
+  "exitCode": 1,
+  "elapsedSeconds": 13.71,
+  "files": 52,
+  "tests": 883,
+  "pass": 882,
+  "failed": 1,
+  "skipped": 0,
+  "failures": [
+    {
+      "file": "rls-bypass-classifier.test.ts",
+      "tests": [
+        "RLS bypass classifier (totality) every scripts/* file with its own PrismaClient goes through scripts/_rls.mjs"
+      ]
+    }
+  ],
+  "sourceBindings": [
+    {
+      "path": "src/__tests__/ai-social-viral.test.ts",
+      "sha256": "f854a591cbe3c7ac4498b7ca661ae26000e9c76f2d58224f229d8b5dcbad1042"
+    },
+    {
+      "path": "src/__tests__/lib-ai-classifiers-pii.test.ts",
+      "sha256": "96194a14151a943564b9d7f5b5e68c94a0eac1eb3ca1a67c100434a11f141922"
+    },
+    {
+      "path": "src/__tests__/api-social-analytics.test.ts",
+      "sha256": "7981ba673d286c8a14687eb7f1aa82f6d396dcaf598b8f4f5c84bf562e081db9"
+    },
+    {
+      "path": "src/__tests__/api-social-coverage-alerts.test.ts",
+      "sha256": "7ef9b2ea511f2debf54bc8e41b65d16b851aacdc7a9465cc0a5654219a442eb7"
+    },
+    {
+      "path": "src/__tests__/api-social-mentions.test.ts",
+      "sha256": "0ef7ea634da1315a1b619a2779565d574cc59e665ac5cadf2861d1a1e8b369c0"
+    },
+    {
+      "path": "src/__tests__/api-social-monitoring-report-export.test.ts",
+      "sha256": "426813b9f8c5ea986e0bbab61009d6b2d9e37947b088eda013b65cf4a8b6bd3d"
+    },
+    {
+      "path": "src/__tests__/api-social-monitoring-cron.test.ts",
+      "sha256": "d56cdb48bbd816276c8eb462fd963b95d4c52848956f90ec2ef321f46c5a58de"
+    },
+    {
+      "path": "src/__tests__/api-social-monitoring-run-jobs-cron.test.ts",
+      "sha256": "86f70736b1c8bc4ac459664f05610c487221a8a282cee3618fcc4b70001e2e2e"
+    },
+    {
+      "path": "src/__tests__/api-social-monitoring-run-jobs.test.ts",
+      "sha256": "67e3cd941a0eafd6fb5ea786cbea9e404f7901e53db27ce78f399669f472dc9e"
+    },
+    {
+      "path": "src/__tests__/api-social-monitoring-source-run.test.ts",
+      "sha256": "f679ec4447460a84890bcb61dbb820b4ff28c676eb40662747c5faa5b3af2e9d"
+    },
+    {
+      "path": "src/__tests__/api-social-ingest-envelopes-review.test.ts",
+      "sha256": "8c7d884c28ca5346626ceb95cbf69abb759b763a5d72a536a86ef41e2bd8c317"
+    },
+    {
+      "path": "src/__tests__/lib-social-apify-async-adapter.test.ts",
+      "sha256": "56efc930e13070ceb7d750982f0f74ced2ee79ce30b6fb5959852c721ee09680"
+    },
+    {
+      "path": "src/__tests__/lib-social-automatic-review-backfill.test.ts",
+      "sha256": "b98ce967fa37d14b97ea7150eda0c1ed2106108a057389fcfa32a6c7668d1b22"
+    },
+    {
+      "path": "src/__tests__/lib-social-automatic-review-triage.test.ts",
+      "sha256": "18ceda91a7025d46a6cb551f1d5ed369b7f7e276b547db01c67ca247314c2d0f"
+    },
+    {
+      "path": "src/__tests__/lib-social-ai-triage.test.ts",
+      "sha256": "bd792e8ebbc977cca90e292b97a7a5348330672db66840025aa91b8623d4a016"
+    },
+    {
+      "path": "src/__tests__/lib-social-bright-data-adapter.test.ts",
+      "sha256": "25d3249fb5d1b697a6ec8605b7bcaa04a6ad05ebb9b2d55dfade604b1ad8afb5"
+    },
+    {
+      "path": "src/__tests__/lib-social-bright-data-client.test.ts",
+      "sha256": "4a241b4206c0f1cb0fcac90e58a45a1e6fa254f47d61b2972b7890e5ff066903"
+    },
+    {
+      "path": "src/__tests__/lib-social-monitoring-collector.test.ts",
+      "sha256": "ccb0ec34360dc7bf16224d88a9b34a63d41b768b607de5e40dc9e6e098158a91"
+    },
+    {
+      "path": "src/__tests__/lib-social-monitoring-run-job-client.test.ts",
+      "sha256": "9b7e4826ea8fb31f1f3ccce4f79c534f68205c1553479e0cc214f40e74f2f99b"
+    },
+    {
+      "path": "src/__tests__/lib-social-monitoring-run-job.test.ts",
+      "sha256": "495c1c4a8b94572f4d7295363eff68c92366faa1589704f34c37131c2429405a"
+    },
+    {
+      "path": "src/__tests__/lib-social-monitoring-source-run.test.ts",
+      "sha256": "29bbf2820d59f25502506bc814ba6b9d3664564bade39f74fb92c2eeb1292213"
+    },
+    {
+      "path": "src/__tests__/lib-social-ingest-envelope-replay.test.ts",
+      "sha256": "eb5e71d500fd1a5d4e15035ec1b87bad7c42f045a16122f18fc7440528250213"
+    },
+    {
+      "path": "src/__tests__/lib-social-ingest-mention.test.ts",
+      "sha256": "e97cc322dcb1e76288e0643e7189d982eb63a6704c51369ba68114054dfd8a12"
+    },
+    {
+      "path": "src/__tests__/lib-social-incremental-monitoring-report.test.ts",
+      "sha256": "7a2c2a1a64a817cdbf00bf9b8fa6eaa25d79caa178d75a5beebe78f1747e98b8"
+    },
+    {
+      "path": "src/__tests__/lib-social-media-dashboard-filters.test.ts",
+      "sha256": "3bd5a560eedb7b5204649762e1fab1e0ae708674afc54665d698e3901a4985ce"
+    },
+    {
+      "path": "src/__tests__/lib-social-monitoring-profiles.test.ts",
+      "sha256": "424e536259f0ab8c1ff74c4948fdf862d900416c50770a6ca082e8f73f4874c6"
+    },
+    {
+      "path": "src/__tests__/lib-social-monitoring-rollups.test.ts",
+      "sha256": "8519a9d2bd0bd092bed45aa890b403b79e4e19bfc1979d6f03beb12c53898c3e"
+    },
+    {
+      "path": "src/__tests__/lib-social-notification-inbox-adapter.test.ts",
+      "sha256": "1d04429c90eae0af187e2d92e95d1a8266818a08923451b55eaf45472f398dd4"
+    },
+    {
+      "path": "src/__tests__/lib-social-observation-retention.test.ts",
+      "sha256": "137b47d1c68665bb01a7daf3bdf1b00c6184e9585059717cf62c70fe24136731"
+    },
+    {
+      "path": "src/__tests__/lib-social-official-collector.test.ts",
+      "sha256": "962870af1a2bb647888d0cb7158a888dbc8156f2532ea8da8acb644aa1aa563d"
+    },
+    {
+      "path": "src/__tests__/lib-social-paid-provider-run-scope.test.ts",
+      "sha256": "65019d03f9c2a18a05044f5f46f47daca297ca4e45ca22b952f48ea8cf28c8ea"
+    },
+    {
+      "path": "src/__tests__/lib-social-paid-route-budget.test.ts",
+      "sha256": "4ceb87635218afe67582947b670c950fe831e6c153d6315c9f217be730540664"
+    },
+    {
+      "path": "src/__tests__/lib-social-pollers-ingest.test.ts",
+      "sha256": "c9bdebd3297f8db0ec51347c9bccfd80eaf122b3f96d53753f073ed4a20583fe"
+    },
+    {
+      "path": "src/__tests__/lib-social-provider-adapter.test.ts",
+      "sha256": "26eca27c128b9a87a8bfe8e38534784898eda16f71295fd4d63d8151780d9158"
+    },
+    {
+      "path": "src/__tests__/lib-social-provider-request-timeout.test.ts",
+      "sha256": "657c6ecc86362e6cbdc082082191167a2f0f2e18c67926c2cfd5197cf39d7a9d"
+    },
+    {
+      "path": "src/__tests__/lib-social-review-queue-policy.test.ts",
+      "sha256": "8875ce677efbfa0905fe6a29ee5060da628a3c606296471862a16af98703686f"
+    },
+    {
+      "path": "src/__tests__/lib-social-risk-mention-visibility.test.ts",
+      "sha256": "fe17fd48bf49df31976bf69b0fe67dc4e5d761fe98dbc8f1f6622ff95938c143"
+    },
+    {
+      "path": "src/__tests__/lib-social-search-index-adapter.test.ts",
+      "sha256": "1fcfd09890cf2211cdaa1a145a433d4ceead8ddbd8a858367f6dc43287497e10"
+    },
+    {
+      "path": "src/__tests__/lib-social-telegram-discussion-scanner.test.ts",
+      "sha256": "2483220f3cc3646219e828135190da7573033adba760caa343335275d9482bcf"
+    },
+    {
+      "path": "src/__tests__/lib-social-tiktok-business-comments-adapter.test.ts",
+      "sha256": "0e3e6b8a7a57b2849e58098d7084c18a7d8dbf4c970a84b7b878aefbd8c6788b"
+    },
+    {
+      "path": "src/__tests__/lib-social-twitter-poller.test.ts",
+      "sha256": "e84ce595cd08c9d7ca4e074f8857f34e78d49900fb731d46549e2e894f48777c"
+    },
+    {
+      "path": "src/__tests__/lib-social-vk-comments-adapter.test.ts",
+      "sha256": "c3d76e28071784e152e427efd95513bf673fe6f91532ba4b39a13e2c0fa992e4"
+    },
+    {
+      "path": "src/__tests__/lib-social-visual-monitoring-report.test.ts",
+      "sha256": "1dc4d77de536f9ab21d841f793a11af62ab59d3bbb64d8ed870bd073732b6104"
+    },
+    {
+      "path": "src/__tests__/lib-social-youtube-oauth-timeout.test.ts",
+      "sha256": "836cb101c6216807af838f1c772689a9b8baa09ae8ea0a9d473b9539c2d3953c"
+    },
+    {
+      "path": "src/__tests__/lib-social-youtube-provider-timeout.test.ts",
+      "sha256": "8539934e295bb08cf416a65497aa7a21bd59f69a8dc04f29dd65b60d44b4e40a"
+    },
+    {
+      "path": "src/__tests__/review-queue-sentiment.test.ts",
+      "sha256": "ac9643adec574ff3a43f275f9468348cdf16049c586be53ad205bcbdfffb74a9"
+    },
+    {
+      "path": "src/__tests__/rls-bypass-classifier.test.ts",
+      "sha256": "72c72033701163b1c9005b6c412ee12ab39a6cbb1487165421079b1ea946a18a"
+    },
+    {
+      "path": "src/__tests__/social-monitoring-clean-slate-media-reset.test.ts",
+      "sha256": "73fe4ed57132cd33848fba66749700697247b7b93f140e888ea9ee7750392e8c"
+    },
+    {
+      "path": "src/__tests__/social-monitoring-profile-card-grid-ui.test.ts",
+      "sha256": "991997e91dc86f1c94d5914fcf84bf617a1104a4cfe9f58822722b965537a65f"
+    },
+    {
+      "path": "src/__tests__/social-monitoring-profile-provider-resume-ui.test.ts",
+      "sha256": "fcd05c5a8947f37e55b04134c932b8503a2b6d8cb131f71dfac5e9acd65ba298"
+    },
+    {
+      "path": "src/__tests__/social-monitoring-run-job-cron-install.test.ts",
+      "sha256": "dc6a3bd71eb314dd7c8f0fe6cc38ab6e8c5efacf48b488acefc28d493b230bed"
+    },
+    {
+      "path": "src/__tests__/social-monitoring-server-queue-ui.test.ts",
+      "sha256": "efd321404754187a83b72d0ade7f3cf11d04cb35370f8ec98c484b719c59740c"
+    }
+  ]
+}

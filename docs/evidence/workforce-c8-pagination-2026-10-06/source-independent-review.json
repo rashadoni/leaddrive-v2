@@ -1,0 +1,351 @@
+{
+  "status": "BOUNDED_PAGINATION_SOURCE_GREEN_14_INDEPENDENT_TESTS_PASS_ACTUAL_AT_EXACTHEAD_PENDING",
+  "at": "2026-10-06T19:28:47.031545+00:00",
+  "candidate": {
+    "workspace": "/workspace/hrm-c8-completion-20261006",
+    "ownerBaseMain": "9197240a600e47252694ffb3e9c84ec5392d4a8b",
+    "acceptedDependency": "a856a9e533c4f3cec6f2313e69f5be0d5b4d4226",
+    "sourceManifest": {
+      "path": "/workspace/hrm-c8-at-fixed-20261006/source-manifest.json",
+      "bytes": 1723769,
+      "sha256": "70d8df80b30433225097fd76bef7afdae27b05c673989cac2867beb31ffc795d"
+    },
+    "manifestFiles": 8817,
+    "selectedSourceBindings": [
+      {
+        "path": "src/components/workforce/workforce-manager-today.tsx",
+        "bytes": 10848,
+        "sha256": "fb6ae346b33ed05bb027be278178a0be8a17e65a27617246d2c0ca0efc2ee91f",
+        "mode": "100644",
+        "gitBlob": "aa90613f61c43093e049d7762c79b58e5aa5cee9",
+        "matchesFrozenATManifest": true
+      },
+      {
+        "path": "src/components/workforce/workforce-workbench.tsx",
+        "bytes": 86361,
+        "sha256": "660a5525935d5de13ec06a6f50ca01ac517889c22d3ac291ded59f79e1038d82",
+        "mode": "100644",
+        "gitBlob": "f52bc4f573c4efdf25a8c766b65925a49fbe3767",
+        "matchesFrozenATManifest": true
+      },
+      {
+        "path": "src/__tests__/workforce-today-session-isolation-ui.test.ts",
+        "bytes": 19570,
+        "sha256": "aaa47ad38109867e127907855c2d0752a7649471e9a4c9378df49573798935bc",
+        "mode": "100644",
+        "gitBlob": "42f250c73c84f7f3a78916cdc19f156972454276",
+        "matchesFrozenATManifest": true
+      },
+      {
+        "path": "scripts/workforce-manager-today-browser-evidence.mjs",
+        "bytes": 63478,
+        "sha256": "6add74cec8cd8e60fb656b52a26248958beb0d5ac4cefa6171615f495b27a0ca",
+        "mode": "100644",
+        "gitBlob": "21b79c8b53c688e60ae812a33bdc10a6a52d7d81",
+        "matchesFrozenATManifest": true
+      },
+      {
+        "path": "messages/en.json",
+        "bytes": 1348644,
+        "sha256": "756ac5887fb0afaf0f2c28bb6082250572046cfbd06450d6c78fdf707f7db295",
+        "mode": "100644",
+        "gitBlob": "9bf47a96e0af99c68a8d55d4edcd176003819000",
+        "matchesFrozenATManifest": true
+      },
+      {
+        "path": "messages/ru.json",
+        "bytes": 1991195,
+        "sha256": "54d3c646844366bdd0cbf382764080583ba82378284284e798fc1d865678a16c",
+        "mode": "100644",
+        "gitBlob": "1085babf27c78df2c8d4ec92284a530d8f2ee139",
+        "matchesFrozenATManifest": true
+      },
+      {
+        "path": "messages/az.json",
+        "bytes": 1491737,
+        "sha256": "11e3fece9dd853b5e0713f292d1235379f55186bff626ba939b7c76b4df4e0ba",
+        "mode": "100644",
+        "gitBlob": "c5b7047d677c72e56895cd8050c668b7dec01002",
+        "matchesFrozenATManifest": true
+      }
+    ],
+    "immutableRemoteHeadAndWholeBaseAssemblyNotYetAccepted": true
+  },
+  "mechanics": {
+    "ownership": "useId/counter requestId, synchronous ref guard, unmount invalidation; only matching completed request can speak.",
+    "marker": "Parent result emitted only in accepted functional append after date/timezone/scope/cursor checks. Component waits own Promise and matching committed marker; no dependence on a loading edge.",
+    "countFix": "knownSet extended peraccepted ID; mergeduniquepeople derive actualtotal and canonical status/previousOpen summary.",
+    "focus": "Retained aria-disabled control remainsmounted. Layoutscroll nearest onlyif matching completedresult exists and samecontrol=document.activeElement. No focus() call.",
+    "privacy": "Live region contains counts/end label only, not names/reasons/caseIDs/rawerrors. Error enablesretry without success.",
+    "copy": "Two new keys EN/RU/AZ; no HR rule orpermission change."
+  },
+  "independentTests": {
+    "total": 14,
+    "pass": 14,
+    "fail": 0,
+    "skip": 0,
+    "runs": [
+      {
+        "report": {
+          "path": "/tmp/hrm-c8-independent-pagination/result-final-source.json",
+          "bytes": 3472,
+          "sha256": "9a08cf1bb01fa3c5d099d12758e8278cb4bb6c84b37d266b431425ea6581cbfd"
+        },
+        "total": 10,
+        "pass": 10,
+        "fail": 0,
+        "skip": 0,
+        "exitCode": 0,
+        "cases": [
+          {
+            "name": "does not announce an injected old marker at initial mount or StrictMode remount",
+            "status": "passed"
+          },
+          {
+            "name": "does not announce matching committed marker before its own Promise settles",
+            "status": "passed"
+          },
+          {
+            "name": "handles Promise settlement before delayed accepted marker without loading prop transition",
+            "status": "passed"
+          },
+          {
+            "name": "ignores a wrong marker and never emits prior result during next request",
+            "status": "passed"
+          },
+          {
+            "name": "synchronous repeated activation calls load exactly once while pending and zero when exhausted",
+            "status": "passed"
+          },
+          {
+            "name": "failure permits retry and no successful message or focus steal",
+            "status": "passed"
+          },
+          {
+            "name": "unmount/new request ignores old Promise settlement and marker",
+            "status": "passed"
+          },
+          {
+            "name": "actual workbench fast response retains focus and exposes only accepted counts",
+            "status": "passed"
+          },
+          {
+            "name": "counts only unique new IDs within an accepted page",
+            "status": "passed"
+          },
+          {
+            "name": "loaded summary does not double count already known rows filtered out of append",
+            "status": "passed"
+          }
+        ]
+      },
+      {
+        "report": {
+          "path": "/tmp/hrm-c8-independent-pagination/scroll-result.json",
+          "bytes": 1798,
+          "sha256": "2da5b9c6b77e14d133496019af89245ee45e925e0d87672f8e34e0d7fc61a9b5"
+        },
+        "total": 4,
+        "pass": 4,
+        "fail": 0,
+        "skip": 0,
+        "exitCode": 0,
+        "cases": [
+          {
+            "name": "scrolls current focused control nearest once after matching committed result and Promise",
+            "status": "passed"
+          },
+          {
+            "name": "never scrolls or moves focus if user moved away while request pending",
+            "status": "passed"
+          },
+          {
+            "name": "no scroll on rejected, wrong-marker or initial injected-marker result",
+            "status": "passed"
+          },
+          {
+            "name": "unmounted old operation cannot scroll retained control in replacement instance",
+            "status": "passed"
+          }
+        ]
+      }
+    ],
+    "observations": [
+      {
+        "case": "initial-old-marker",
+        "suppressed": true
+      },
+      {
+        "case": "settlement-marker",
+        "waitedForBoth": true
+      },
+      {
+        "case": "fast-batch",
+        "noLoadingTransitionRequired": true
+      },
+      {
+        "case": "wrong-and-prior-marker",
+        "suppressed": true
+      },
+      {
+        "case": "synchronous-guard",
+        "oneRequest": true
+      },
+      {
+        "case": "failure",
+        "retryEnabled": true,
+        "noFocusSteal": true,
+        "noSuccess": true
+      },
+      {
+        "case": "unmount-old-settlement",
+        "suppressed": true,
+        "uniqueId": true
+      },
+      {
+        "case": "integrated-fast",
+        "correctCountsAndFocus": true
+      },
+      {
+        "case": "duplicate-new-page",
+        "articles": 2,
+        "announcement": "Added: 1. Loaded: 2. End of employee list"
+      },
+      {
+        "case": "duplicate-existing-summary",
+        "articles": 1,
+        "startedCount": "1",
+        "announcement": "Added: 0. Loaded: 1. End of employee list"
+      }
+    ],
+    "scrollObservations": [
+      {
+        "case": "current-matching",
+        "nearest": true,
+        "once": true,
+        "noFocusCall": true
+      },
+      {
+        "case": "user-moved",
+        "noScrollNoFocusSteal": true
+      },
+      {
+        "case": "unowned-error",
+        "noScroll": true
+      },
+      {
+        "case": "old-unmount",
+        "noScroll": true
+      }
+    ],
+    "fidelity": "Actual React, production components, real next-intl. Synthetic session/fetch or callback/marker inputs. JSdom scrollIntoView platformmock; no actual viewport/AT claim."
+  },
+  "ownerValidation": {
+    "report": {
+      "path": "/tmp/hrm-c8-new-isolation/targeted-tests-final-minimized.json",
+      "bytes": 19134,
+      "sha256": "e031162d2d352864f24c6f86b7939088eb4ff331122b5e08c29fb8a12eb82b44"
+    },
+    "tests": 100,
+    "pass": 100,
+    "fail": 0,
+    "skip": 0,
+    "rerunByReviewer": false
+  },
+  "negativeHistory": {
+    "twoCountFindings": {
+      "path": "/tmp/hrm-c8-pagination-initial-independent-review-20261006.json",
+      "bytes": 4760,
+      "sha256": "5eb9835d0a546f5bee10c0c678cd236ffbc2b0632731916db6847434b362c42b"
+    },
+    "originalSupportHashesUnchanged": true,
+    "countResolution": {
+      "path": "/tmp/hrm-c8-pagination-count-corrected-independent-20261006.json",
+      "bytes": 4726,
+      "sha256": "cc7b0a46593e412e8ca9f53c28f0f902193a4f4c10093497bfe30c82b3490e71"
+    },
+    "ATFirstRun": "Owner reports real completion announcement/retainedfocus but offscreencontrol y936,h48,viewport900; preservednegative, not accepted viewport proof.",
+    "ATConcurrentCopyRun": "Owner disqualified run-xj34tq0s exactsource due launch/copy ordering; no credit borrowed.",
+    "compiler": "Owner full TypeScript attempt Node4GB heapOOM; no pass/globalclean claim."
+  },
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": [],
+    "resolved": [
+      "uniqueadded rows across/withinpage",
+      "loadedsummary doublecount"
+    ]
+  },
+  "limits": [
+    "Bounded sourceGREEN only; C8PARTIAL and ledger unchanged",
+    "Postscroll actualOrca/viewport/locales/denied/session/nativezoom/contrast evidence pending",
+    "ALSA null does not establish human listening/pronunciation; old178archive preserved",
+    "Final immutablehead/main/tree/fullincomingpreservation/CI/build/durablearchive pending",
+    "Prior14scope+8compat are distinct receipts; no allwriteflow/fullapp acceptance",
+    "No source/probe/browser/process/remote writes; own/tmp only"
+  ],
+  "supports": [
+    {
+      "path": "/tmp/hrm-c8-independent-pagination/pagination.test.ts",
+      "bytes": 10751,
+      "sha256": "a559d985d99f1e082b2c76ad84b9be585922b9335155f463d8de30bb6a603777"
+    },
+    {
+      "path": "/tmp/hrm-c8-independent-pagination/vitest.config.mjs",
+      "bytes": 299,
+      "sha256": "ca3aea3f01d75f3e73645de6221c030152f3d2fbeb5d5c2c7be22d695665410f"
+    },
+    {
+      "path": "/tmp/hrm-c8-independent-pagination/scroll.test.ts",
+      "bytes": 6785,
+      "sha256": "882ba77aececc98dc266bf5e6412b87bd5e0f1d0058939826a2bd9000cdb7cbe"
+    },
+    {
+      "path": "/tmp/hrm-c8-independent-pagination/scroll.config.mjs",
+      "bytes": 295,
+      "sha256": "d95e8848618c25a22924c7b5f5735619fa30958034eb9f5be7bef842c16f83c5"
+    },
+    {
+      "path": "/tmp/hrm-c8-independent-pagination/final.config.mjs",
+      "bytes": 379,
+      "sha256": "03f721d77f5d3dd7aa47c42a60641975c3daf5a16c7b32d1e644c528eb35265b"
+    },
+    {
+      "path": "/tmp/hrm-c8-independent-pagination/pagination-scroll-polyfill.ts",
+      "bytes": 115,
+      "sha256": "997e19fc6fc117bfbcdd0ac705b76143cfc09715f0a6bdda427c106082d3ea7b"
+    },
+    {
+      "path": "/tmp/hrm-c8-independent-pagination/observations-final-source.json",
+      "bytes": 904,
+      "sha256": "7518ac17a0a7d029bd37fcf8dfdff73f4e5b8cec23ceac95a70f567aaba6105a"
+    },
+    {
+      "path": "/tmp/hrm-c8-independent-pagination/scroll-observations.json",
+      "bytes": 291,
+      "sha256": "eef6162ee394d64911b484b7858ca5dc081b16751be6eb91dcba7b689f6586e2"
+    },
+    {
+      "path": "/tmp/hrm-c8-independent-pagination/workforce-manager-today-scroll-before.tsx",
+      "bytes": 10848,
+      "sha256": "fb6ae346b33ed05bb027be278178a0be8a17e65a27617246d2c0ca0efc2ee91f"
+    },
+    {
+      "path": "/tmp/hrm-c8-independent-pagination/workforce-workbench-count-corrected.tsx",
+      "bytes": 86361,
+      "sha256": "660a5525935d5de13ec06a6f50ca01ac517889c22d3ac291ded59f79e1038d82"
+    },
+    {
+      "path": "/tmp/hrm-c8-new-isolation/assembly-proof.json",
+      "bytes": 776,
+      "sha256": "40b3e5123ee284893b4ab90951dae520ddc55f531e868d5e1c55cf1c6723ab00"
+    },
+    {
+      "path": "/tmp/hrm-c8-independent-pagination/write-final-review.py",
+      "bytes": 5633,
+      "sha256": "324c6d9e67d0e24c851b45da3f7eb67e2df051868393149e55e75f2e6543b00c"
+    }
+  ]
+}

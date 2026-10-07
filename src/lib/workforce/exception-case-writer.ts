@@ -1,3 +1,4 @@
+import { isWorkforceExceptionOutcomeDecision } from "@/lib/workforce/exception-outcome-classification"
 import {
   createWorkforceExceptionCaseDraft,
   createDraftPolicyWorkforceExceptionDecisionDraft,
@@ -301,6 +302,10 @@ export async function appendAuthorizedWorkforceExceptionDecision(input: {
   authorize: WorkforceExceptionCaseAuthorization
 }): Promise<{ decisionId: string; idempotent: boolean }> {
   const canonical = canonicalDecisionDraft(input.draft)
+  // Reserved HR findings may only use the policy-aware, context-checked path.
+  if (isWorkforceExceptionOutcomeDecision(canonical.decisionCode)) {
+    throw new WorkforceExceptionCaseWriterError("WORKFORCE_EXCEPTION_CASE_NOT_AUTHORIZED")
+  }
   await requireAuthorization(input.authorize, {
     operation: "DECISION_APPEND",
     organizationId: canonical.organizationId,

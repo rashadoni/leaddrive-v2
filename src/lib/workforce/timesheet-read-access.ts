@@ -1,3 +1,4 @@
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { NextResponse } from "next/server"
 import {
   decidePersistedWorkforceAccess,
@@ -58,8 +59,8 @@ export async function requireWorkforceTimesheetReadAccess(input: {
       },
     })
     return access.allowed ? null : timesheetReadDenied()
-  } catch (error) {
-    console.error("[workforce/timesheet] authorization lookup failed", error)
+  } catch {
+    logWorkforceSensitiveOperationFailure({ operation: "authorize-timesheet-read" })
     return timesheetReadUnavailable()
   }
 }

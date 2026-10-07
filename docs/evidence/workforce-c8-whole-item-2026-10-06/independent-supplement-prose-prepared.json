@@ -1,0 +1,245 @@
+{
+  "schema": "independent-c8-support-archive-prepared-prose/v1",
+  "reviewedAt": "2026-10-06T21:31:04.438234+00:00",
+  "status": "LOCAL_SUPPORT_ARCHIVE_AND_PREPARED_PROSE_ACCEPTED_TERMINAL_CI_PENDING",
+  "sourceHead": "30c4185b41d85be43a588e71d8c74c5f34e63596",
+  "archive": {
+    "path": "/tmp/hrm-c8-acceptance-20261006/independent-support-originals.zip",
+    "bytes": 6774505,
+    "sha256": "e00d981cb5180a980465e1dd57a5f048bae34d302511b3d531d7b44346a2ba84",
+    "gitBlob": "fffc67cfd106be3a5de149989036cc0c23f40f7d",
+    "members": 31,
+    "originals": 30,
+    "priorLocalSupports24Included": true,
+    "archiveReviewSupports6Included": true,
+    "allOriginalsByteExactAndReceiptHashBound": true,
+    "CRC": true,
+    "safeUniqueRelativeRegularPaths": true,
+    "remoteUploadResponse": "owner reported matching blob SHA; not independently fetched",
+    "attachedFinalTree": false,
+    "remoteBinaryPayloadReadback": false
+  },
+  "prose": {
+    "wholeTwoFilesRead": true,
+    "conditionalAcceptanceOnly": true,
+    "currentCanonicalLedgerUnchanged": true,
+    "finiteClaimsMatchAcceptedSourceATAndManagerReceipts": true,
+    "historicalPreparation9bb70PendingRetained": true,
+    "priorNegativeHistoryPreserved": true,
+    "noNewC12ImplementationOrCredit": true,
+    "deploymentActivationSeparate": true,
+    "publicationCondition": "Before application, replace preparation/status wording with actual exact-head terminal metadata/verdict and a concrete terminal supplement link. Do not imply existing 9bb70 pending checkpoint was terminal or that an unattached uploaded binary is tree-bound."
+  },
+  "conditionalLedger": "Only C8-002:84/161 DONE,77 open,C8 6/11=55%,14/15 gates unchanged,raw60.40579710144928=>60%,openP0/P1 73; not applied by this review.",
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "supports": [
+    {
+      "path": "/tmp/hrm-c8-independent-packet-durable-9bb70-20261006.json",
+      "bytes": 19561,
+      "sha256": "202feb5c473f8989445fdb83f49dbc4013a1713ba4d40e64d5516f95be59eba6"
+    },
+    {
+      "path": "/tmp/hrm-c8-independent-r6-prepared-ledger-20261006.json",
+      "bytes": 10724,
+      "sha256": "bcbbe1dd8bbb7fdebcc1efc392f4c3b56050068393c2fd624240de7cba478295"
+    },
+    {
+      "path": "/tmp/hrm-c8-acceptance-20261006/closure-prose/workforce-c12-next-acceptance-slice-2026-10-06.md",
+      "bytes": 2473,
+      "sha256": "fcf58cb3d054d195f2e924263a788fba22a170879b7cc087ce0668281b53b6f7"
+    },
+    {
+      "path": "/tmp/hrm-c8-acceptance-20261006/closure-prose/workforce-c8-manager-today-acceptance-2026-10-06.md",
+      "bytes": 4474,
+      "sha256": "6e8da8a80ea6da1cbff46129af0c19521bd1f63cd4521e1bcce579f733023f92"
+    }
+  ],
+  "manifest": [
+    {
+      "path": "tmp/hrm-c8-30c-independent/verify-source.py",
+      "originalPath": "/tmp/hrm-c8-30c-independent/verify-source.py",
+      "bytes": 4434,
+      "sha256": "3857e5196f64d7d844e17a63454f6dae90c8288cabba55a2f68b83b5063e852f"
+    },
+    {
+      "path": "tmp/hrm-c8-30c-independent/source-validation.json",
+      "originalPath": "/tmp/hrm-c8-30c-independent/source-validation.json",
+      "bytes": 4687,
+      "sha256": "389a7ca4df3d3021733de195ffe59bed98990cfd36453b5a0f280b441c85266b"
+    },
+    {
+      "path": "tmp/hrm-c8-30c-independent/verify-at.py",
+      "originalPath": "/tmp/hrm-c8-30c-independent/verify-at.py",
+      "bytes": 6117,
+      "sha256": "50e6a31303ec5114343cd97344dba85b521fa54d749946b2df06e9c690e5ae9f"
+    },
+    {
+      "path": "tmp/hrm-c8-30c-independent/validation.json",
+      "originalPath": "/tmp/hrm-c8-30c-independent/validation.json",
+      "bytes": 36039,
+      "sha256": "401f8303f650ec9663b8f0533bdc13a0a9fe1f4a0975fedb0a70041a71337eda"
+    },
+    {
+      "path": "tmp/hrm-c8-30c-independent/at-validation-summary.json",
+      "originalPath": "/tmp/hrm-c8-30c-independent/at-validation-summary.json",
+      "bytes": 8477,
+      "sha256": "5983fb70767362a8dae6903cf80cbeb87d222e4b64b7a6d1375d12ebb26831f7"
+    },
+    {
+      "path": "tmp/hrm-c8-30c-independent/verify-contrast-archive.py",
+      "originalPath": "/tmp/hrm-c8-30c-independent/verify-contrast-archive.py",
+      "bytes": 4930,
+      "sha256": "300baaaed44717cb21b6d82fd8ff76bea2c8a2030488c2b99c00cf302ac3ecc8"
+    },
+    {
+      "path": "tmp/hrm-c8-30c-independent/contrast-archive-validation.json",
+      "originalPath": "/tmp/hrm-c8-30c-independent/contrast-archive-validation.json",
+      "bytes": 3913,
+      "sha256": "5bf224193a16942adae4dab6382f99b6ffe064528c099fd84d0d4120c31e7b26"
+    },
+    {
+      "path": "tmp/hrm-c8-30c-independent/final-freshness.json",
+      "originalPath": "/tmp/hrm-c8-30c-independent/final-freshness.json",
+      "bytes": 62533,
+      "sha256": "5f5285fd65b43102af0730081c05d6fdfe4e63793044824052b1625f80466b09"
+    },
+    {
+      "path": "tmp/hrm-c8-30c-independent-commit.json",
+      "originalPath": "/tmp/hrm-c8-30c-independent-commit.json",
+      "bytes": 1457,
+      "sha256": "5b17875238234fb010383ea0199b75aadd348bb47de9323cc16b410a255a49df"
+    },
+    {
+      "path": "tmp/hrm-c8-30c-independent-tree.json",
+      "originalPath": "/tmp/hrm-c8-30c-independent-tree.json",
+      "bytes": 2999598,
+      "sha256": "34a69a5be80966b8c1a733b7cee5e8635a3e462035e63b959385af3bfe43a1d7"
+    },
+    {
+      "path": "tmp/hrm-c8-30c-independent-main.json",
+      "originalPath": "/tmp/hrm-c8-30c-independent-main.json",
+      "bytes": 343,
+      "sha256": "b6822d0c555db7508156c256195c033b772d0eb255802b204c1023898756075d"
+    },
+    {
+      "path": "tmp/hrm-c8-30c-independent-pr605.json",
+      "originalPath": "/tmp/hrm-c8-30c-independent-pr605.json",
+      "bytes": 37067,
+      "sha256": "7a3d52f7bb3b49413718733682948bc75d42c3a8c51c8c9488ab22241f0fa108"
+    },
+    {
+      "path": "tmp/hrm-c8-30c-independent-pr606.json",
+      "originalPath": "/tmp/hrm-c8-30c-independent-pr606.json",
+      "bytes": 17433,
+      "sha256": "33b1f64921a8769ef1510a26caa6c9966e9d8d39b3f9942363b66c7dd7d4f866"
+    },
+    {
+      "path": "tmp/hrm-c8-30c-independent-synthetic.json",
+      "originalPath": "/tmp/hrm-c8-30c-independent-synthetic.json",
+      "bytes": 2644,
+      "sha256": "f96653a8407c62b12da2389fc3de5a178d74ef0a8597b502406ce3ad3af72053"
+    },
+    {
+      "path": "tmp/hrm-c8-30c-independent-parent.json",
+      "originalPath": "/tmp/hrm-c8-30c-independent-parent.json",
+      "bytes": 2995637,
+      "sha256": "976cba51268d9b05490a5daffbdb354e57b04a47fbdb1475bcfa4f529ed62cb0"
+    },
+    {
+      "path": "tmp/hrm-c8-30c-independent-mainTree.json",
+      "originalPath": "/tmp/hrm-c8-30c-independent-mainTree.json",
+      "bytes": 2967203,
+      "sha256": "842d6e44e91112fe38590d753be9347fb3a0585444a43dcf9b9a7d6e7c81f949"
+    },
+    {
+      "path": "tmp/hrm-c8-30c-independent-oldMain.json",
+      "originalPath": "/tmp/hrm-c8-30c-independent-oldMain.json",
+      "bytes": 2966181,
+      "sha256": "6ff9f2c17cc1002a23af19cdfdf503ce31686c0b9fe8aafe35b1f56623dd2d68"
+    },
+    {
+      "path": "tmp/hrm-c8-30c-independent-remote-delta.json",
+      "originalPath": "/tmp/hrm-c8-30c-independent-remote-delta.json",
+      "bytes": 5500085,
+      "sha256": "464733e65283d6f732329a383a442ca71acb2f0d1c602d2f2a8f7f8e74bb7dcf"
+    },
+    {
+      "path": "tmp/hrm-c8-30c-independent-catalog-mainTree.json",
+      "originalPath": "/tmp/hrm-c8-30c-independent-catalog-mainTree.json",
+      "bytes": 5212349,
+      "sha256": "ab84157ccb4450c801eea0f98d19699d1e52d281b64a2bd0255df94f5865f406"
+    },
+    {
+      "path": "tmp/hrm-c8-30c-independent-catalog-oldMain.json",
+      "originalPath": "/tmp/hrm-c8-30c-independent-catalog-oldMain.json",
+      "bytes": 5211418,
+      "sha256": "c67707ecbbde88abfbccd831dc0fd886c8453659ffe1d586c62bb6a292f6977e"
+    },
+    {
+      "path": "tmp/hrm-c8-acceptance-20261006/final-static-minimized.json",
+      "originalPath": "/tmp/hrm-c8-acceptance-20261006/final-static-minimized.json",
+      "bytes": 73,
+      "sha256": "f0cc760fc53e6f5c38fd45a44b5e96d0c7041377b1db1342026b018fa51b19dd"
+    },
+    {
+      "path": "tmp/hrm-c8-acceptance-20261006/final-source-expected-tree.json",
+      "originalPath": "/tmp/hrm-c8-acceptance-20261006/final-source-expected-tree.json",
+      "bytes": 1321108,
+      "sha256": "a8548f4de3014052b500a9598ecae9af04ab4953077b9cb5e9a9e2961f420d9a"
+    },
+    {
+      "path": "tmp/hrm-c8-30c-independent/manager-hosted-metadata.json",
+      "originalPath": "/tmp/hrm-c8-30c-independent/manager-hosted-metadata.json",
+      "bytes": 22323,
+      "sha256": "7e0be347fa3192e67c4958c8c2d0f1d0f95397c4d8b472efae366b9be08310ef"
+    },
+    {
+      "path": "tmp/hrm-c8-30c-independent/verify-manager.py",
+      "originalPath": "/tmp/hrm-c8-30c-independent/verify-manager.py",
+      "bytes": 8665,
+      "sha256": "42dfd62a4be719f2bfa89ce72878c162210caf3fc606458ac31d62f8d0700d9e"
+    },
+    {
+      "path": "tmp/hrm-c8-30c-independent/archive-commit.json",
+      "originalPath": "/tmp/hrm-c8-30c-independent/archive-commit.json",
+      "bytes": 1350,
+      "sha256": "339f8c32b4b833c32b33798b61a2e676725e1b1f64cdc448f734087ae4fb3559"
+    },
+    {
+      "path": "tmp/hrm-c8-30c-independent/archive-tree.json",
+      "originalPath": "/tmp/hrm-c8-30c-independent/archive-tree.json",
+      "bytes": 3664000,
+      "sha256": "04e3c2f399ff71c48e605d401cd527260d4d59706285ca66fdc5a66c0697cf04"
+    },
+    {
+      "path": "tmp/hrm-c8-30c-independent/archive-text-readback.json",
+      "originalPath": "/tmp/hrm-c8-30c-independent/archive-text-readback.json",
+      "bytes": 739055,
+      "sha256": "adc80c3054cb5ba8e2bfccdd5f90f384bd7b97cff022fbe1e8601a9baa6ddcdd"
+    },
+    {
+      "path": "tmp/hrm-c8-acceptance-20261006/packet-files.json",
+      "originalPath": "/tmp/hrm-c8-acceptance-20261006/packet-files.json",
+      "bytes": 9229,
+      "sha256": "bdd20f7be5b9094166ec3c77a698393a1e6f82b4aa1df1523f8a6915164c309b"
+    },
+    {
+      "path": "tmp/hrm-c8-acceptance-20261006/packet-publication.json",
+      "originalPath": "/tmp/hrm-c8-acceptance-20261006/packet-publication.json",
+      "bytes": 323,
+      "sha256": "6c3ac31bf77e0f516fb37070559b8238747683b74e710b8e8f148d89f00b1c2b"
+    },
+    {
+      "path": "tmp/hrm-c8-30c-independent/verify-archive.py",
+      "originalPath": "/tmp/hrm-c8-30c-independent/verify-archive.py",
+      "bytes": 6191,
+      "sha256": "5fac3f3d5bf95a5dab52d2e62a9ba0c375a41b4a9d3d009c8f03c8fb43105340"
+    }
+  ],
+  "inspection": "Read-only local archive and prepared text; no test/process/source/remote writes, rawlogs or screenshots."
+}

@@ -1,3 +1,4 @@
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { withWorkforceSessionScheduleConfigurationAuth } from "@/lib/with-workforce-rls-auth"
@@ -30,8 +31,8 @@ export const GET = withWorkforceSessionScheduleConfigurationAuth("SCHEDULE_READ"
       select: siteSelect,
     })
     return NextResponse.json({ success: true, data: { sites } })
-  } catch (error) {
-    console.error("[workforce/configuration/sites GET]", error)
+  } catch {
+    logWorkforceSensitiveOperationFailure({ operation: "configuration-sites-get" })
     return NextResponse.json({ error: "Failed to load Workforce sites" }, { status: 500 })
   }
 })
@@ -54,7 +55,7 @@ export const POST = withWorkforceSessionScheduleConfigurationAuth("SCHEDULE_WRIT
     if (error instanceof WorkforceSiteManagementError) {
       return NextResponse.json({ error: error.message, code: error.code }, { status: 409 })
     }
-    console.error("[workforce/configuration/sites POST]", error)
+    logWorkforceSensitiveOperationFailure({ operation: "configuration-sites-post" })
     return NextResponse.json({ error: "Failed to create Workforce site" }, { status: 500 })
   }
 })

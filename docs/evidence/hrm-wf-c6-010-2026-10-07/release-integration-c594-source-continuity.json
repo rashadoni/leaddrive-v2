@@ -1,0 +1,210 @@
+{
+  "head": "c594aadfa4ce575cf941c9da2863725ce884d3f3",
+  "stage": "pre auxiliary main incorporation; final CI pending",
+  "acceptedAncestors": [
+    "a856a9e533c4f3cec6f2313e69f5be0d5b4d4226",
+    "bf6ed11f2bba8c93e828fb044315794b44224741",
+    "973241bacc296b71fe817d1af11187c32e8126af",
+    "9f3cc73dcdb8c4ccea1fdac9dfae29570339abc5",
+    "8301f6ce0925cf1b8f9ddaa004ea31c26d1e6982",
+    "2cbfe2981578520edc9def5fa3c681ab5fb55536"
+  ],
+  "allAncestryVerified": true,
+  "sourceAndBaselineBindings": [
+    {
+      "path": "src/lib/workforce/exception-outcome-classification.ts",
+      "bytes": 2447,
+      "sha256": "947410fb0687987a465c38ce0c9455d3923d62039d9030b43bda3e0afae99a23",
+      "matchesAccepted9f": true
+    },
+    {
+      "path": "src/lib/workforce/exception-policy-draft.ts",
+      "bytes": 8270,
+      "sha256": "f45f761e9c2e829351eb930c7e191f667327b3ed040338b4033b54381da59b6b",
+      "matchesAccepted9f": true
+    },
+    {
+      "path": "src/lib/workforce/exception-workbench.ts",
+      "bytes": 12753,
+      "sha256": "17107791d3895fe0e66d4ed349c32f19eec21fc4bb42220060ff8989ebc3cd21",
+      "matchesAccepted9f": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-writer.ts",
+      "bytes": 19607,
+      "sha256": "61814e5d395143a6deacc9bd92e0aee1ffb508cc1c168724897dd9bf67da201f",
+      "matchesAccepted9f": true
+    },
+    {
+      "path": "src/lib/workforce/exception-decision-service.ts",
+      "bytes": 11916,
+      "sha256": "dd10ffed0f37f80b79eae0e784918966033995283cafdbf6a4ec738b6275e21c",
+      "matchesAccepted9f": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-report-recorded-outcomes.ts",
+      "bytes": 8338,
+      "sha256": "1d84daa28a7b21a8ad8545f5b494c1030c338cff75fc168f87153541d5f0321c",
+      "matchesAccepted9f": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-report-read.ts",
+      "bytes": 3384,
+      "sha256": "b34a3ef9d52359a235040802c5ede11c03f128c7250b41f5b2a86d10860b82b5",
+      "matchesAccepted9f": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-ledger.ts",
+      "bytes": 9052,
+      "sha256": "da971cdfdc696085e40be8a35386e48a1746a3c92ebaa2ab9e0cedded25cc8ab",
+      "matchesAccepted9f": true
+    },
+    {
+      "path": "src/lib/workforce/exception-workbench-token.ts",
+      "bytes": 5735,
+      "sha256": "4479cba8767dd4a8bb596ff8bf311ba139d1b417782035b13db92edef204fd1a",
+      "matchesAccepted9f": true
+    },
+    {
+      "path": "src/lib/workforce/access-control.ts",
+      "bytes": 10353,
+      "sha256": "b4915d133bb102251dccc94b9ba33a3a65905488135b00cb652f0e299cfa0b9f",
+      "matchesAccepted9f": true
+    },
+    {
+      "path": "src/lib/workforce/access-grant-resolution.ts",
+      "bytes": 5664,
+      "sha256": "1720277ff37308894c9c3e3313a7235150350bcfa254ac4846905a5f9875e2c3",
+      "matchesAccepted9f": true
+    },
+    {
+      "path": "src/lib/workforce/exception-read-access.ts",
+      "bytes": 2032,
+      "sha256": "adedcbd7844335ff63c2506c82c46fee240a473ba47974e90bcb8a8f62da69ae",
+      "matchesAccepted9f": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-read-scope.ts",
+      "bytes": 8461,
+      "sha256": "42ff417bb8afc67546b4cc57bfc0b6549a839c2ce293297b1f440e625093f9b5",
+      "matchesAccepted9f": true
+    },
+    {
+      "path": "src/lib/workforce/team-membership.ts",
+      "bytes": 4282,
+      "sha256": "47fc2f92856ff8e8bc67a31bf9087c73faf673bc741fc58b76a4f5efac7723fb",
+      "matchesAccepted9f": true
+    },
+    {
+      "path": "src/lib/with-workforce-rls-auth.ts",
+      "bytes": 21653,
+      "sha256": "289aa253b4d8d3a25913136a545db598bf1a01c9b571b6c89e2689da2fe6d8ff",
+      "matchesAccepted9f": true
+    },
+    {
+      "path": "src/app/api/v1/workforce/exceptions/route.ts",
+      "bytes": 13279,
+      "sha256": "5a33ec78dc7fe6b05e920cbdb22fecb46f85d45c74840486533ea56df68034ff",
+      "matchesAccepted9f": true
+    },
+    {
+      "path": "src/app/api/v1/workforce/exception-decisions/route.ts",
+      "bytes": 4157,
+      "sha256": "eeeb1dda5d637fb0fdaa831021556a1200a1bd502e73df05838e850284db34c9",
+      "matchesAccepted9f": true
+    },
+    {
+      "path": "src/app/api/v1/workforce/exception-reports/route.ts",
+      "bytes": 6162,
+      "sha256": "6d4935a3cd3adbbbb411619a813287a6ba8b7d58cc89dec888074130360233bf",
+      "matchesAccepted9f": true
+    },
+    {
+      "path": "src/components/workforce/workforce-exception-queue.tsx",
+      "bytes": 23077,
+      "sha256": "5160dcc8b943d0caca712ae0dcad02725784fcb4c2401479c16dede00d0c3b1f",
+      "matchesAccepted9f": true
+    },
+    {
+      "path": "src/components/workforce/workforce-exception-recorded-outcomes.tsx",
+      "bytes": 6293,
+      "sha256": "1039384b9a47e87b48a001b115300c7161cd3d144b376adce20276f5172cc386",
+      "matchesAccepted9f": true
+    },
+    {
+      "path": ".github/workflows/workforce-exception-report-browser-evidence.yml",
+      "bytes": 25256,
+      "sha256": "1dcd49d422fb212d4ee1eac6368de97837fe62fc5ca5975a7faa2b6c61dc18e7",
+      "matchesAccepted9f": true
+    },
+    {
+      "path": "messages/en.json",
+      "bytes": 1353703,
+      "sha256": "968f55c77be76ef307a5d4b3d72f3ee9e1fd255bc6a37edc8632552892331244",
+      "matchesAccepted9f": false
+    },
+    {
+      "path": "messages/ru.json",
+      "bytes": 1999330,
+      "sha256": "f4401ef992a363e9c3d8deb5b158545016be2b5732db797227fb8517972be956",
+      "matchesAccepted9f": false
+    },
+    {
+      "path": "messages/az.json",
+      "bytes": 1497486,
+      "sha256": "d7bc057c39c526d58f88e99201371e1e508d14ebd82e490ada359d93dd06eddd",
+      "matchesAccepted9f": false
+    },
+    {
+      "path": "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql",
+      "bytes": 9684,
+      "sha256": "314d4f0e83c81544a50633bceb977298ece24fff918923310671b07c0e8c5f2a",
+      "matchesAccepted9f": true
+    },
+    {
+      "path": "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql",
+      "bytes": 10851,
+      "sha256": "1deee0b735aee6ca3b055ee71b3663799daa71c3d6c6ef66c47a02dee7efecec",
+      "matchesAccepted9f": true
+    },
+    {
+      "path": "prisma/migrations/20260927014300_workforce_exception_case_revisions_contract/migration.sql",
+      "bytes": 1262,
+      "sha256": "418f1cf3c481c1624cd16a26c0aad49680a2430f75fe9e2f3dd22117f000fc7e",
+      "matchesAccepted9f": true
+    },
+    {
+      "path": "test-baseline.json",
+      "bytes": 1139,
+      "sha256": "8f0fc568274f9fd8c0c741db618d6e4d81025de7112a315cd93e6b92bbd5a4b1",
+      "matchesAccepted9f": true
+    },
+    {
+      "path": "typecheck-baseline.json",
+      "bytes": 3907,
+      "sha256": "919fa9d0212b18ee685af4f08680ebbc34e8c4969294054447df03147bf0fc53",
+      "matchesAccepted9f": true
+    },
+    {
+      "path": "scripts/ci/check-typecheck-gate.sh",
+      "bytes": 3468,
+      "sha256": "a18608d9297c039380481fb27d6200d9ebbcc731e9ec23dd40b5e3a2c5a40937",
+      "matchesAccepted9f": true
+    },
+    {
+      "path": "scripts/ci/check-typecheck-baseline.mjs",
+      "bytes": 5909,
+      "sha256": "8b8a2472a1c813e85c4177c24c6df5fb5907d981b5b43e6870a04cbbba2b812a",
+      "matchesAccepted9f": true
+    },
+    {
+      "path": "scripts/check-test-baseline.mjs",
+      "bytes": 10188,
+      "sha256": "6c3380718fd71061d2efe4aa396fcb9cc998336c5c95a3bbd2de05230058027e",
+      "matchesAccepted9f": true
+    }
+  ],
+  "translationNote": "All accepted workforce namespaces exactly preserved; incoming finance added",
+  "incoming615": "byte-identical current8301",
+  "noSupportProductEdits": true
+}

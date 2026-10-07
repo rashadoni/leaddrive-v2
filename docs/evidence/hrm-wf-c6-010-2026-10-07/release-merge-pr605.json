@@ -1,0 +1,12 @@
+{
+  "pr": 605,
+  "expectedSourceHead": "ec2e7812e81abef94319a58818aeee22e56984df",
+  "targetBranch": "codex/hrm-588-validation-20261005",
+  "sourceTreeUnchanged": "1ffe09e8f370c65e487316ce3db775abc0ec0b1c",
+  "response": {
+    "sha": "ae80f7407705b6c38862acad191b26079344324e",
+    "merged": true,
+    "message": "Pull Request successfully merged"
+  },
+  "productionMutation": false
+}

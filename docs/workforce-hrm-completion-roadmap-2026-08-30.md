@@ -932,7 +932,7 @@ than a hidden calculation or direct data overwrite.
 | WF-C6-007 | P1 | PARTIAL | Backend | Constrain manager corrections to configured date/duration/range rules; mark derived records as manual | [`workforce-c6-correction-bounds-foundation-evidence-2026-08-30.md`](./workforce-c6-correction-bounds-foundation-evidence-2026-08-30.md): the session-only correction route has mandatory MFA, strict input validation, a fail-closed shared rate guard, generic conflict containment and immutable service handoff; tenant bounds-policy selection and escalation ownership remain open |
 | WF-C6-008 | P1 | DONE | Backend | Make correction affect calculation/approval through a new ledger revision, preserving original evidence/verdict | Workforce C6 correction-to-approval evidence: rehydration, correction revision/hash and no-evidence-mutation tests |
 | WF-C6-009 | P1 | PARTIAL | Notifications | Add reminders/escalations for missed actions and aging cases without exposing reasons/location in unsafe channels | [`workforce-c6-exception-notification-boundary-evidence-2026-08-31.md`](./workforce-c6-exception-notification-boundary-evidence-2026-08-31.md): pure private in-app planner suppresses unsafe/ineligible/duplicate delivery and emits no raw HRM proof; durable outbox, retry worker, policy/recipient mapping and delivery evidence remain open |
-| WF-C6-010 | P2 | PLANNED | HR/Analytics | Measure false positives, correction rate, appeal overturn rate and time-to-resolution | Aggregated metrics exclude raw coordinates/reasons |
+| WF-C6-010 | P2 | PARTIAL | HR/Analytics | Measure false positives, correction rate, appeal overturn rate and time-to-resolution | Aggregated metrics exclude raw coordinates/reasons |
 
 **Gate C6:** every uncertain attendance outcome has an accountable lifecycle,
 employee visibility and immutable resolution; no-show and corrections are
@@ -951,7 +951,7 @@ overbroad CRM roles or mobile-only requests.
 | WF-C7-004 | P1 | DONE | Backend/HR | Add employment/team/site history for transfer, temporary assignment, termination and rehire | [`Workforce C7 employment-history evidence`](./workforce-c7-employment-history-evidence-2026-08-30.md): append-only employment lifecycle and effective-dated team/site resolvers are tenant-scoped, generated-client checked and present in the production schema; delayed facts never infer history from mutable directory status or Route data |
 | WF-C7-005 | P1 | DONE | Web/Mobile | Deliver self-service leave, absence and time-correction creation/cancel/history | Workforce C7 self-service evidence: self-scoped web fallback, named workday picker, idempotency/overlap/DST/cancel tests; mobile remains C9 |
 | WF-C7-006 | P1 | DONE | Web/Backend | Complete manager request decision queue, route conflict acknowledgement and immutable audit | [`Manager request decision acceptance`](./workforce-c7-request-decision-evidence-2026-09-13.md): bounded actor-scoped queue and web actions use a pending-only idempotent transition; request/calendar/correction/notification/audit facts commit atomically and Route overlaps require explicit acknowledgement without mutating Route |
-| WF-C7-007 | P1 | PARTIAL | HR/Web | Add future-effective bulk schedules/sites, preview, conflict report and reversible draft before publish | [`workforce-c7-bulk-draft-preview-evidence-2026-08-30.md`](./workforce-c7-bulk-draft-preview-evidence-2026-08-30.md): named schedule/site browser drafts and read-only conflict reports are safe; durable publish and recurrence remain open |
+| WF-C7-007 | P1 | DONE | HR/Web | Add future-effective bulk schedules/sites, preview, conflict report and reversible draft before publish | [C7 whole-item acceptance](./workforce-c7-bulk-completion-2026-10-06.md): named up-to-200 schedule/site drafts, conflict/NO_CHANGE reports, explicit atomic future publish, safe exact retry and scope reset accepted against exact source with real PostgreSQL/RLS and authenticated EN/RU/AZ browser evidence. General recurrence/temporary cover remain WF-C3-009 PARTIAL; deployment and activation are separate. |
 | WF-C7-008 | P1 | DONE | Backend | Freeze approvals when unresolved blocking exceptions or snapshot gaps exist | [`C11 approval blocker evidence`](./workforce-c11-approval-blockers-evidence-2026-09-13.md): server-rebuilt workdays, snapshot/history failures, current deviations and unresolved C6 lifecycles fail closed with exact minimized rows |
 | WF-C7-009 | P2 | DONE | HR | Define delegation, temporary approver and manager absence workflow | [`Delegation and manager-absence contract`](./workforce-c7-delegation-absence-contract-2026-09-13.md): temporary authority is explicitly approved, tenant/scope/time/operation bounded, non-transferable, automatically expiring and audited to the actual actor; implementation remains separate |
 | WF-C7-010 | P2 | PARTIAL | Security/HR | Review access and decisions periodically; disable stale privileged assignments | [`workforce-c7-access-review-foundation-2026-09-13.md`](./workforce-c7-access-review-foundation-2026-09-13.md): bounded tenant-snapshot review detects expired, inactive, stale, incompatible and out-of-window grants by exact grant ID; it is dry-run only, while the durable reader, reviewed revocation, schedule and staging SLA remain open |
@@ -969,7 +969,7 @@ from Route & Field.
 | ID | Pri | Status | Owner | Task | Acceptance evidence |
 |---|---:|---|---|---|---|
 | WF-C8-001 | P1 | DONE | Web | Add employee Workforce Today web fallback with one valid action, assignment, evidence requirement and sync/server outcome | [`Employee Workforce Today evidence`](./workforce-c8-employee-today-evidence-2026-09-13.md): self-only assignment/segments, exactly one canonical action, fail-closed proof requirements and explicit server/pending-review outcome on `/workforce`; no Route dependency or second state machine |
-| WF-C8-002 | P1 | PARTIAL | Web | Rebuild manager Today around scheduled roster, no-show/previous-open and exceptions rather than only existing workdays | [`bounded manager Today evidence`](./workforce-c8-manager-today-evidence-2026-09-29.md): scheduled roster, immutable/live plan boundary, distinct calendar, previous-open fact and independently authorized persisted exception projection are implemented with stable pagination and safe response minimization; real browser/AT proof that the absent employee is visible and explained remains open |
+| WF-C8-002 | P1 | DONE | Web | Rebuild manager Today around scheduled roster, no-show/previous-open and exceptions rather than only existing workdays | [`whole manager Today acceptance`](./workforce-c8-manager-today-acceptance-2026-10-06.md): scheduled absent employees, immutable/live plan boundary, calendar/previous-open/persisted exception distinctions and scoped pagination are accepted with actual EN/RU/AZ Orca, real session isolation, localized safe error/retry, native 200% focus and sampled contrast; exact-source hosted browser/PostgreSQL and baseline-qualified CI/build evidence are bound to the acceptance packet. No production activation or physical-presence claim |
 | WF-C8-003 | P1 | DONE | Web | Add multi-site day timeline and transition status | [`workforce-c8-multisite-timeline-evidence-2026-09-13.md`](./workforce-c8-multisite-timeline-evidence-2026-09-13.md): the self-only timeline shows Site/Travel/Site plans and append-only arrival/departure/review states without raw proof or physical-presence claims |
 | WF-C8-004 | P1 | DONE | Web | Complete timesheet: plan/fact/evidence status/exceptions/approval/correction revisions | [`Complete timesheet review evidence`](./workforce-c8-complete-timesheet-evidence-2026-09-29.md): query-bounded, calculation-version-aware linked and schedule-only exceptions plus hash-verified v1/v2 approval/correction history join deterministic plan/fact; missing snapshots and unresolved exceptions remain non-approvable, successful writes refresh exact history, and PR #489 passed independent review, exact-head gates, release and exact-SHA production verification. |
 | WF-C8-005 | P1 | PARTIAL | Web | Add exception workbench and employee response/appeal context | [`Scoped acknowledgement UI`](./workforce-c6-exception-acknowledgement-ui-evidence-2026-09-27.md) and [`correction-request UI`](./workforce-c6-exception-correction-request-ui-evidence-2026-09-27.md): the queue shows scoped risk/age/evidence/response context and records one exact server-offered non-terminal acknowledgement or correction-review request through a two-step localized UI; employee response/appeal surfaces, terminal lifecycle and real browser evidence remain open, so C6 acceptance is not yet met |
@@ -1063,17 +1063,17 @@ LeadDrive modules.
 | ID | Pri | Status | Owner | Task | Acceptance evidence |
 |---|---:|---|---|---|---|
 | WF-C12-001 | P0 | DONE | SRE/Product | Approve SLOs: online acknowledgement, pending age, event loss, conflict/error rates and recovery | [`workforce-c12-slo-contract-2026-09-13.md`](./workforce-c12-slo-contract-2026-09-13.md): p95/p99, two/15-minute pending thresholds, zero-loss/reconciliation, error/isolation, RPO/RTO and accountable paging/runbooks |
-| WF-C12-002 | P0 | PARTIAL | Backend/SRE | Emit tenant-safe metrics by stream/app/schema/policy result without high-cardinality employee/location data | [`bounded mobile-sync telemetry evidence`](./workforce-c12-mobile-sync-telemetry-evidence-2026-09-13.md): current pull telemetry maps all runtime dimensions to finite allowlists/bounds before logging; dashboard ingestion, paging and end-to-end cardinality/privacy review remain open |
+| WF-C12-002 | P0 | PARTIAL | Backend/SRE | Emit tenant-safe metrics by stream/app/schema/policy result without high-cardinality employee/location data | [`runtime telemetry/privacy follow-up`](./workforce-c12-fault-fairness-matrix-2026-10-06.md): pull/GPS/media/census dimensions and primitive-string guards have synthetic serializer evidence; release/tenant/principal cardinality, shared sinks, collection and dashboard review remain open |
 | WF-C12-003 | P0 | PLANNED | SRE/QA | Run 5,000-user morning START wave with jitter on isolated staging and representative trust-off/trust-on profiles | p95/p99, DB/queue metrics and zero-loss reconciliation |
-| WF-C12-004 | P0 | PARTIAL | Backend/SRE | Prove Workforce and Route queue/cursor/failure isolation under 503, timeout and overload | [`server stream-isolation evidence`](./workforce-c12-stream-isolation-evidence-2026-09-13.md): concurrent/sequential API contracts prove bounded 503/timeout containment in both directions; mobile queue scheduling, sustained overload and DB failover remain open |
-| WF-C12-005 | P1 | PARTIAL | Backend | Bound retries/backoff, payload size, batch size, per-tenant fairness and poison-operation quarantine | [`server workload-bound evidence`](./workforce-c12-server-workload-bounds-evidence-2026-09-13.md): page/chunk/lease/retry and atomic stream/device/user/tenant limits fail closed with smaller-page recovery; Android maps invalid/oversized operations to terminal encrypted quarantine, while signed-device and load/chaos proof remain open |
+| WF-C12-004 | P0 | PARTIAL | Backend/SRE | Prove Workforce and Route queue/cursor/failure isolation under 503, timeout and overload | [`eight-scenario fault/fairness matrix`](./workforce-c12-fault-fairness-matrix-2026-10-06.md): bidirectional deferred-handler, 503/429 and real sealed-cursor isolation contracts; actual memory/Redis guard tests; physical mobile queues, network timeouts, sustained overload and DB failover remain open |
+| WF-C12-005 | P1 | PARTIAL | Backend | Bound retries/backoff, payload size, batch size, per-tenant fairness and poison-operation quarantine | [`push bounds and fairness correction`](./workforce-c12-fault-fairness-matrix-2026-10-06.md): this follow-up implements raw512KiB/canonical64KiB admission and sibling containment; actual memory/Redis atomic budgets pass; Android REQUIRES_REVIEW plus QUARANTINED_OPERATION hint is source-only, signed-device/load proof remains open |
 | WF-C12-006 | P1 | PLANNED | SRE | Schedule and monitor cleanup/retention/reminder/no-show jobs with leases, cursors and stale-job alerts | Production-like scheduler evidence |
 | WF-C12-007 | P1 | PLANNED | SRE/DBA | Validate indexes/query plans, partition/archive need, storage forecast and backup/restore RTO/RPO | 5k plan plus one-year storage model |
 | WF-C12-008 | P1 | PARTIAL | Backend/SRE | Add reconciliation jobs for claim/event/assessment/exception/approval/export invariants | [`reconciliation kernel`](../src/lib/workforce/reconciliation.ts), [paged job](../src/lib/workforce/reconciliation-job.ts) and additive global [`system_job_cursors`](../prisma/migrations/20260913063500_system_job_cursors/migration.sql) state check bounded claim/event/evidence/assessment/exception/approval/export chains, verify immutable approval hashes, compare-and-set progress only after clean pages and return identifier-free counts with `repair: NONE`; snapshot database reader, schedule and staging exercise remain open |
 | WF-C12-009 | P1 | PLANNED | SRE | Complete freeze/cohort/rollback and offline-drain runbooks; exercise them | Timed tabletop/staging rollback evidence |
 | WF-C12-010 | P2 | DONE | Support/Product | Create privacy-safe support diagnostics and escalation playbook | [`Workforce sync support playbook`](./workforce-sync-support-playbook.md) plus the bounded `scripts/workforce-sync-diagnostics.mjs` contract: support gets fixed aggregate machine evidence and a recovery/escalation path without raw secrets, proof, location or employee reasons |
-| WF-C12-004 | P0 | PARTIAL | Backend/SRE | Prove Workforce and Route queue/cursor/failure isolation under 503, timeout and overload | [`workforce-c12-mobile-isolation-observability-evidence-2026-08-30.md`](./workforce-c12-mobile-isolation-observability-evidence-2026-08-30.md): injected Route write failure leaves the next Workforce sync operation independently successful; real queue/cursor/timeout/overload proof remains staging work |
-| WF-C12-005 | P1 | PARTIAL | Backend | Bound retries/backoff, payload size, batch size, per-tenant fairness and poison-operation quarantine | [`workforce-c12-sync-push-bounds-evidence-2026-08-30.md`](./workforce-c12-sync-push-bounds-evidence-2026-08-30.md): 512 KiB bounded body, 100-operation contract, 64 KiB payload-free terminal disposition and source-only Android terminal recovery mapping exist; tenant fairness and signed/load proof remain open |
+| WF-C12-004 | P0 | PARTIAL | Backend/SRE | Prove Workforce and Route queue/cursor/failure isolation under 503, timeout and overload | [`eight-scenario fault/fairness matrix`](./workforce-c12-fault-fairness-matrix-2026-10-06.md): bidirectional deferred-handler, 503/429 and real sealed-cursor isolation contracts; actual memory/Redis guard tests; physical mobile queues, network timeouts, sustained overload and DB failover remain open |
+| WF-C12-005 | P1 | PARTIAL | Backend | Bound retries/backoff, payload size, batch size, per-tenant fairness and poison-operation quarantine | [`push bounds and fairness correction`](./workforce-c12-fault-fairness-matrix-2026-10-06.md): this follow-up implements raw512KiB/canonical64KiB admission and sibling containment; actual memory/Redis atomic budgets pass; Android REQUIRES_REVIEW plus QUARANTINED_OPERATION hint is source-only, signed-device/load proof remains open |
 | WF-C12-006 | P1 | PARTIAL | SRE | Schedule and monitor cleanup/retention/reminder/no-show jobs with leases, cursors and stale-job alerts | [`scheduler plan`](./workforce-c12-scheduler-operations-plan-2026-08-30.md), [`reconciliation foundation`](./workforce-c12-reconciliation-foundation-evidence-2026-08-30.md) and [`lease health probe`](./workforce-c12-job-health-probe-evidence-2026-08-31.md): CRON_SECRET-gated lease/cursor read-only workers and a fixed-name aggregate health probe exist in source but are deliberately absent from deployment cron; destructive/notification jobs, final thresholds/alerts and production-like scheduler evidence remain NOT RUN |
 | WF-C12-007 | P1 | PARTIAL | SRE/DBA | Validate indexes/query plans, partition/archive need, storage forecast and backup/restore RTO/RPO | [`workforce-c12-capacity-restore-plan-2026-08-30.md`](./workforce-c12-capacity-restore-plan-2026-08-30.md): representative plan/restore/storage gates are defined; 5k plan, restore drill and owner RTO/RPO remain NOT RUN |
 | WF-C12-008 | P1 | PARTIAL | Backend/SRE | Add reconciliation jobs for claim/event/assessment/exception/approval/export invariants | [`workforce-c12-reconciliation-foundation-evidence-2026-08-30.md`](./workforce-c12-reconciliation-foundation-evidence-2026-08-30.md): bounded scanner plus source-only, lease/cursor-fenced scheduled 31-day structural scan for one enabled tenant; migration-gated case/decision coverage, alerting, cron activation, export delivery and staging zero-loss evidence remain open |
@@ -1095,7 +1095,7 @@ old clients or coupling Workforce back to Route.
 | WF-C13-003 | P0 | DONE | Backend | Version mobile request/response/evidence schemas and advertise support in bootstrap | [`C13 mobile wire-schema evidence`](./workforce-c13-mobile-schema-contract-evidence-2026-09-13.md): exact deployed bootstrap-response, workday request/response, evidence-envelope and site-transition schemas are advertised independently from cohort protocol and Android release policy; structured update/drain outcomes fail closed once deliberately configured |
 | WF-C13-004 | P0 | DONE | Backend | Preserve legacy facts as `LEGACY/UNKNOWN` proof rather than fabricating site/device assurance | Additive schema default, no-backfill migration comment and the [`C13 compatibility contract`](../src/__tests__/workforce-c13-compatibility-contract.test.ts) preserve unknown historical assurance |
 | WF-C13-005 | P1 | DONE | Backend | Introduce read path by feature flag: new snapshots/evidence where available, explicit missing state otherwise | Approval service returns `WORKFORCE_TIMESHEET_APPROVAL_SNAPSHOT_MISSING`; the contract prevents silent recalculation from mutable live policy |
-| WF-C13-006 | P1 | PARTIAL | Backend/QA | Test Neither, HRM-only, Routes-only and Both for APIs, jobs, nav, sync, mobile and failures | Server bootstrap stream matrix covers all four entitlement modes; signed mobile, jobs and full failure/staging matrix remain open |
+| WF-C13-006 | P1 | PARTIAL | Backend/QA | Test Neither, HRM-only, Routes-only and Both for APIs, jobs, nav, sync, mobile and failures | [`four-mode failure matrix`](./workforce-c12-fault-fairness-matrix-2026-10-06.md): existing bootstrap plus actual v2 API/nav/no-show scheduler fixtures cover Neither/HRM-only/Routes-only/Both and dependency denial; signed-mobile and full staging acceptance remain open |
 | WF-C13-007 | P1 | PARTIAL | SRE | Define migration rollout, compatibility window, metrics, freeze and rollback without schema deletion | [`C13 additive migration ADR`](./workforce-c13-additive-migration-adr-2026-09-13.md) and existing sync-v2 runbook define additive rollback/window/drain; timed staging rehearsal remains open |
 | WF-C13-008 | P1 | PLANNED | Backend/Mobile | Drain/deprecate legacy mutation paths only after app adoption and offline horizon; return explicit unsupported-version code afterward | Usage reaches approved threshold and no pending old outbox remains |
 | WF-C13-009 | P1 | PLANNED | QA | Reconcile before/after workday counts, event hashes, approvals, tenant scope and reports | Zero unexplained delta |
@@ -7252,3 +7252,194 @@ Inherited exact tested tree compiler1169/35families/exit2/66exact baseline/owned
 ### 2026-10-05 successor45 nullable-local calculator applied and bounded-checked
 
 Own583 root+independent accepted release at full main e26cb0a85168b623ea092fb3e81ece922de20718 allowed normal fresh-main integration in same worktree/successor codex/workforce-completion-part45. Exactly two source replacements in only timesheet-calculation.ts capture validated workdayStart for the synchronous pause callback; no changed arithmetic/output/errors/casts. Actual3existingfiles/21aggregate semantic tests PASS, configured scoped one-file ESLint and diff check PASS, with precheck18GiBavailable/332GiBdisk/fullmemoryIOavg10zero. New evidence docs/workforce-timesheet-nullability-evidence-2026-10-05.md and selected catalogue/apply/bounded JSON. Fresh exact-head source/current CI compiler/full suite plus applicable Manager Today browser/PG and five mandatory checks PENDING; no earlier compiler/browser runtime borrowed. Existing selected TS18047 in own583 is historical and remains recorded until actual newcompiler acceptance. No local fullchecks, schema/check/baseline/DBadapter/cron/general/Route/AGENT/break changes, no rowclosure82/161DONE/79non-DONE/overall59%. Future duplicate/coherence remains UNAPPLIED; both original peer/root first schema reader guards retained.
+
+
+### 2026-10-05 exact successor45 source frozen; independent review pending
+
+Frozen public candidate H a490c963c17d3c5cda1814943ef31cc5347fd8d6/base released main e26cb0a85168b623ea092fb3e81ece922de20718. Full30paths310645bytes/SHA256417ac6912348d047b2c9a978c83ff15c1fe5a26efbc00e1529a1f1c331b56d82; non-doc ONLY calc1420bytes/SHA2563084fd67bbe5c55153a9fd61c1b5b3ef3ff3e8331fef91fb9dae8182056d2ab4. Gitleaks8.30.1 rangeexit0[]/45s bound, protected15 and frozen400000-byte scope unchanged. New static catalogue explicitly includes changed calc1, all3 unchanged existing semantic tests, dormant kernel4/core13, former Manager Today60owned/42typed; fresh union74selected/56typed with current/base bytes/hash and onlycalc changed, no full import graph claim or old source/runtime borrowing.
+
+Fresh whole46 candidate/base workflow bodies equal; actual12 PR path matrices yield exactly4 applicable workflows (pr-checks,runner-policy,gitleaks,Manager Today browser evidence) from calc timesheet*.ts watch. External applicability39459bytes/SHA256e045b2db24277587c596c4f946499fc286dd1213dced3affcdd9aa39554194ef. Independent exact-head source review PENDING; current hosted compiler/suite/Manager Today/required5/new ownmain release NOT RUN/PENDING. Private46 receipts-only branch holds review/publication receipts while public45 exactH stays frozen. Fullchecks locally NOT RUN per Contabo contract. Accounting unchanged82/161DONE/79non-DONE/overall59%; no100% or future duplicate-draft runtime credit.
+
+
+### 2026-10-05 additive main compiler review-scope clarification
+
+Supersedes any global reading of earlier own583/older release receipts saying own main additional compiler NOT RUN: that phrase describes separate review/acceptance in the four-job deploy audit, whose production build actually skips type validation. It does NOT mean GitHub never ran a main compiler. Fresh immutable API jobs observation6554bytes/SHA25680b79745e729ebc953f7acae4df2c7ae722dcc87d9e851e52dc7bfb9d32ad38f proves own583 mergedM e26cb0 main/pr-checks37264051695/typecheck111617069866 actually completed SUCCESS. Its separate whole compiler log remains NOT REVIEWED in this additive observation; no additional all-family/clean credit is invented. The immutable peer release packet already states this explicit scope limit. Original reports/journal/source checkpoint remain unchanged and retain their historical review status. Durable qualifier docs/evidence/workforce-c12-dormant-kernel-main-compiler-review-scope-clarification-2026-10-05.json. Fresh successor45 exactH compiler/browser/PG/runtime still PENDING; original1169diag/oneTS18047/nonclean observations remain. No rowclosure or100% claim.
+
+
+### 2026-10-05 — part45 exact a490 SOURCE ONLY accepted; READY publication next
+
+Independent exact a490c963c17d3c5cda1814943ef31cc5347fd8d6 versus e26cb0a85168b623ea092fb3e81ece922de20718 source review GREEN with zero P0/P1/P2/P3; root whole acceptance revalidated885 immutable originals,163 JSON/879 UTF8/6 binary,312 successful Git blobs plus24 expected missing paths and whole original stderr,30 reconstructed patches,22 durable copies,10 append-only prefixes, core9/direct81 and selected74/typed56 bindings. Root receipt SHA256 1e318daf5b64acb19e2aee57054df0c28c3c27de49bdcef7c6afb5a9379064ff; independent report SHA256 3b1dc5356719b833806d2540e95862c3561d0d12506983ae99c52a02620d9267; large external audit /tmp/workforce-timesheet-part45-a490c9-whole-source-input-audit-independent.json1682211bytes/SHA256 a09d1d3663ab251d86f9c890775607bd2c231a342be70f548ba9b908772e86cf remains external. Finite source review and actual precheckpoint21 aggregate tests/3 files are not fresh full hosted compiler/suite/manager acceptance. The old TS18047 is not retroactively cleared. Actual own583 additional main typecheck SUCCESS is scope-qualified as previously recorded; no current candidate runtime borrowing. Private46 holds these receipts while public45 remains frozen. Next: ordinary READY publication after fresh main/protection check, then fresh4 workflows and all5 Actions gates, independent hosted acceptance, normal merge and own full-SHA production acceptance. Full checks locally NOT RUN under Contabo placement. Future duplicate/coherence remains UNAPPLIED. Accounting82/161 DONE,79 non-DONE,14/15 gates,C8 45%,overall59%; no new row closure or100%.
+
+
+### 2026-10-05 — part45 READY PR584 published; current first-attempt gates running
+
+Ordinary push and structured READY PR https://github.com/rashadoni/leaddrive-v2/pull/584 published frozen head a490c963c17d3c5cda1814943ef31cc5347fd8d6 after fetch/API/remote main=e26cb0a85168b623ea092fb3e81ece922de20718 and unchanged five required Actions15368 checks/protection. Actual tested synthetic867625bbef6cc2401eba4d0f6ebe18d61e328a73 has parents[base,head], tree cde2e15d16858c2d9e6c1bc4f2f7ec17ba270c82 equals candidate; READY source receipts saved separately on private46. Publication proof4312bytes/SHA25640f78c7bf059b1ae44413755fe02332c95d1cb0efc068bf9a8290b4f3c5dffed; synthetic proof8775/SHA256082757ba3696e4213c4731b76b56551309cc69b80842c5b358bfd65839caefbc. App attach called once for584, service hung and was terminated; attachment UNCONFIRMED, GitHub publication independently verified. First capture20261005T053652103539Z observes all4 applicable first-attempt PR workflows: scope/runner/scan SUCCESS, static/typecheck and Manager Today still running; normal PR production build SKIPPED. No rerun or baseline weakening. No current hosted GREEN, merge or own new release credit yet. Independent reviewer now evaluating exact current packet including compiler74/typed56 and fresh Manager native/PG artifact. Full checks locally NOT RUN. Next: wait fresh completion, whole root/independent acceptance, fresh main, ordinary merge and own deploy.yml/public full-SHA check. Accounting unchanged82/161/79non-DONE/14of15/C845%/overall59%, future duplicate/coherence UNAPPLIED.
+
+
+### 2026-10-05 — PR584 current Manager sublane accepted, compiler/suite still pending
+
+Fresh manager first-attempt run37268503329/job111630294027 SUCCESS; artifact11327129498/7099265bytes/SHA256407856317a33584f864cd2ef8f09ed8f279448ddc95acb4c8426d314217af7b9. Root wholly checked58 ZIP members/56 PNG CRC+IDAT/2 JSON, actual9 cases/positive3 snapshot triplets and all3 missing beside current assignment,10 PG SQLSTATE rollback guards6to5,20 fact-table hashes,21 RLS tables before/after,native3/captures27/focus3/auth8/cleanup11 and actual58 H source bindings. Root actual view_image inspected current missing3 and pagination3 originals across EN/RU/AZ; current development1Issue badge overlaps lower body/button, so focus geometry is limited credit and no global nonocclusion/WCAG/humanAT/real acceptedSTART/physical presence/historical template-name immutability/global zeroDBwrites acceptance. Root manager receipt31618bytes/SHA256bd4f25201812cd31a073a011f932c8a8736071cf18ca2f218a8ab408e5d247c4. Current compiler/suite and independent whole HOSTED GREEN remain pending; no merge or own new release credit. Next finish fresh all-family compiler and strict suite, whole independent/root acceptance, freshmain normalmerge/own deploy. Full local gates NOT RUN per placement. Accounting unchanged82/161DONE/79non-DONE/14of15/C845%/overall59%, future duplicate/coherence UNAPPLIED.
+
+
+### 2026-10-05 — PR584 all5 Actions/all4 workflows GREEN; actual selected TS18047 removed
+
+Current first-attempt PR checks37268503297/type111630370570/static111630370696, runner37268503298/111630294410, scan37268503312/111630294220 and manager37268503329/111630294027 all SUCCESS; scope111630295190 SUCCESS and normal PR build111630295974 SKIPPED. Exact H a490/B e26/S867625bb tested tree cde2e15d unchanged. Whole compiler root analysis333107bytes/SHA25660f3a134b878d423959632315b497fe0a581119d03102f7f6417b2f11d6ef7d3 is external, whole actual1168 diagnostics/35families/exit2 equals entire prior1169 list minus only old selected calc240:24 TS18047. All74 selected paths/56 typed are zero across all families, including calc1/tests3/dormant4/core13/manager60owned42typed. Exact66 gated-pair baseline and strict18 known failing files unchanged; global compiler/suite NONCLEAN. Discovery/jobs/check/artifact total_count completeness, exact currentApp15368 checkID/job/detailsURL and4 firstattempt bindings checked. Current Manager root accepted separately with actual6 PNG views and unchanged limited nonocclusion/WCAG/AT/START/presence claims. Compact current compiler receipt saved; full333107 analysis is intentionally external to preserve400000scope. Independent whole HOSTED packet/root final acceptance pending; no merge/new own release yet. Next exact independent/root receipt acceptance, freshmain ordinary merge, own deploy.yml/full-SHA public proof. Full checks locally NOT RUN. Accounting unchanged82/161DONE,79non-DONE,14/15roadmapgates,C845%,overall59%; future duplicate/coherence UNAPPLIED.
+
+
+### 2026-10-05 — exact PR584 HOSTED GREEN independently/root whole accepted; normal merge next
+
+Independent H a490/B e26/S867625bb/tree cde2e15d HOSTED GREEN has zero P0/P1/P2/P3; report65664bytes/SHA256f4508161bdb7827b1284c28a4c374e15d38aab2bcadcb4c479b5770c6781106b, external audit1065415bytes/SHA256ec61749b1bfde9c610be773f8c3f46b6cd9ecd2a333b98fce62413d9b05f59cc. Root final12197bytes/SHA256f4ff9fe8fab95f57d72225469af6d05a516d573541c60c14516a89adfea35677 rehashed821 direct originals/278 JSON/758 UTF8/63 binary/108 successful explicit Git blobs+3 commit metadata,10 prefix checks/core9/direct81, current6 whole logs/root byte equality, all1168 full diagnostic identities/prior-minus-only-selectedTS18047, exact66/strict18 and all74/typed56 zero, exactApp5/current4 firstattemptSUCCESS, full current manager58/56/2 archive/root equality and56 actual peer views (51distinct) versus6 actual rootviews. Scope refinement:21 forced-RLS probes comprise16 populated+5 empty structural tables; empty5 get no populated-row isolation credit. Prior immutable semantic-label and all stronger reader/schema guards remain preserved by additive clarification, no source/CI failure inferred and no predicates/fixtures weakened. Global compiler/suite remain NONCLEAN; native focus only, no whole-page WCAG/nonocclusion/humanAT/real START/presence/historical-name/global zeroDBwrites credit. Normal merge now allowed only after immediate freshmain/check/protection/tree guards; own new deploy/build/full-SHA/public release still PENDING. Prepared original merge helper preserved; separate RLS-scope clarified variant SHA2560ffddfe9657adc6d1404db6a0c542da3285eef6f68ba8b9971591cbd7072b2b3 before first execution. Next ordinary merge then own deploy.yml4 normalSUCCESS/3manualSKIP and root+peer strict pinned13/full artifactSHA receipts. Future duplicate/coherence still UNAPPLIED; accounting82/161DONE/79non-DONE/14of15/C845%/overall59%, no rowclosure/no100.
+
+
+### 2026-10-05 — PR584 ordinary merged exact daf05b60; own release run37271261591 pending
+
+Freshmain/check/App/protection and actualS/T gates passed before ordinary gh pr merge --merge --match-head-commit a490c963c17d3c5cda1814943ef31cc5347fd8d6, without admin/force/baseline bypass. Actual merged main daf05b6030c89c4508f2a999706f4169360ccce2 has parents[e26cb0a85168b623ea092fb3e81ece922de20718,a490c963c17d3c5cda1814943ef31cc5347fd8d6] and reviewed/tested/candidate tree cde2e15d16858c2d9e6c1bc4f2f7ec17ba270c82. Own normalmerge proof4789bytes/SHA2567c0fdda48c2751a83d038e3dcac25c53162e9982699662cad2794cd9a369c514 saved; branchreturned private46, clean, origin/main fetched exactdaf. Actual own main/push/deploy.yml firstattempt37271261591 is running. Registered13.140.132.245:/opt/leaddrive-v2/canonicalapp.leaddrivecrm.org and GitHubmain artifact route were re-read from exactbase registry/deploymentdocs; no other host/directcopy/manualdeploy used. Next own4normalSUCCESS/3manualSKIP, complete logs/artifact digest/fullSHA plus root+peer strictpinned public bracket/literalIP observations; production acceptance NOT RUN yet, no source-only or oldpublic substitute. Additional automaticmainprchecks compiler outside four-log acceptance, no claim it neverexecutes. Futureduplicate/coherence staysUNAPPLIED pendingownroot+peerreleaseGREEN/freshmain. Globalcompiler/suite nonclean, accounting82/161DONE/79non-DONE/14of15/C845%/overall59%, no rowclosure.
+
+
+### 2026-10-05 — PR584 own merged-main production release accepted
+
+Supersedes preceding own584 PENDING release observations. Full main daf05b6030c89c4508f2a999706f4169360ccce2/parents[e26cb0a85168b623ea092fb3e81ece922de20718,a490c963c17d3c5cda1814943ef31cc5347fd8d6]/tree cde2e15d16858c2d9e6c1bc4f2f7ec17ba270c82 released through normal main/push/deploy.yml firstattempt37271261591; all4 jobs SUCCESS, manual3 SKIPPED. Root and independent whole4 logs2272/3270/1373/94 byte-equal; fullSHA artifact11329400727/444229021bytes/digestsha256:a6e226ca8e5bc2505620ac5a329f72d9be441839c07ca7c84157dc60c61e7acc/builtAt2026-10-05T06:17:39Z. Actual production compiled7.6min/typevalidationSKIPPED. Root06:40:36 and peer06:39:57 strict canonical pinned13 brackets allHTTP200/TLS0/no-store/bothfullM/pingtrue. Separate literalIP SAN failures curl60/HTTP000/TLS1 preserved; no insecure fallback or negative-IP credit. Own tenantRLS553checked/enforced553/leaks0/unreadable0/warnings0; child22/21reviewed/1unreviewed, plain uncommissioned recovery/fourtimersstopped/offboxinactive and retention21to20/delete1/fail0 remain qualified.
+
+Compact durable whole-review bindings and actual receipts: docs/evidence/workforce-timesheet-nullability-own-release-compact-2026-10-05.json; complete external report/audit/root/log/public originals retain bytes/SHA256. Fresh accepted584 PR compiler1168/35families/exit2/exact66baseline/all74typed56zero removed only prior selected calcTS18047; current584 Manager snapshot-positive/missingALL3 hosted acceptance is fresh, with21forced=16populated+5empty and no populated isolation credit for empty5. Global compiler/suite NONCLEAN, own strict18baseline accepted; separate automatic main compiler outsidefour-log audit, no absence claim. No DB adapter/cron/realSTART/presence/WCAG/AT/enterprise recovery acceptance. Futureduplicate/coherence remains UNAPPLIED here; next fresh-main successor47 exact3files/meaningful44 checks and fresh source/CI/normal release. Accounting82/161DONE/79non-DONE/14of15gates/C845%/overall59%, no row closure/no100.
+
+
+### 2026-10-05 — successor47 duplicate/coherence applied and bounded-checked
+
+Supersedes the earlier future-duplicate UNAPPLIED state only after own584 root+independent full release acceptance. Fresh fetch/API/remote main=daf05b6030c89c4508f2a999706f4169360ccce2 allowed ordinary successor47 integration and exact three draft recipes/five chunks. Seven ID-bearing kinds reject duplicate keys before lookup; exception subjects must resolve to one workday, even for the same employee. Existing job implementation unchanged. Actual two files/44 aggregate meaningful tests PASS, scoped three-target ESLint113rules/notignored and diffcheck PASS; serial one-worker checks after18115MiBavailable/332GiBdisk/memoryfullavg10zero. New evidence docs/workforce-c12-duplicate-coherence-evidence-2026-10-05.md and apply/bounded/current-base finite4owned/core13 catalogue JSON.
+
+Fresh exact-head independent source/current PR compiler/suite/required5 and own normal release PENDING; no earlier Manager/browser/PG/compiler result borrowed. Full compiler/suite/build/browser/PG/Android/load NOT RUN locally. No schema/DB reader/durablelease-versionadapter/cron/generalupdate-delete/break/AGENT/Route changes; no complete page closure/approval grouping/exportsource claim. WF-C12-008 staysPARTIAL;82/161DONE/79non-DONE/14of15gates/C845%/overall59%, no rowclosure/no100. Next freeze logical source checkpoint, unchanged400000scope/protected15/range scan/current workflow applicability and independent exact-head review.
+
+
+### 2026-10-06T16:44:42+00:00 — WF-C7-007 whole-item acceptance, no production activation
+
+| Checkpoint | Weighted total | C7 tasks | Accepted tasks | Open tasks | Phase gates |
+|---|---|---|---|---|---|
+| Bulk schedules/sites whole-item acceptance | 60% | 8/10 (80%) | 83/161 | 78 | 14/15 |
+
+Only canonical WF-C7-007 changes from PARTIAL to DONE. The literal future-effective
+bulk schedule/site contract is accepted on runtime head `d303ae3aac6a2ddb62439e433c08bca29c0befb9`,
+tree `d0b39cd92c5078b22438bc7249cde9701843ee35`, integrated main
+`d2fd13aab5c85841ccab723dfc9d784ca7c7fb09`. Independent exact-source and whole-item
+review found no unresolved P0–P3 issues; all 15 applicable GitHub Actions jobs pass,
+including five required checks and Linux production build. Fresh hosted acceptance
+is 52 PostgreSQL/React tests with zero skips, 26 authenticated browser cases and 24
+rendered contrast measurements; EN/RU/AZ native 200% zoom and 11 FORCE RLS tables
+are verified. [Immutable originals and acceptance](https://github.com/rashadoni/leaddrive-v2/blob/f6a4d6ebf5d2326420d29eefc59eff627c218eaf/docs/evidence/workforce-c7-whole-item-2026-10-06/README.md) preserve all negative
+attempts and all 9,255 prior archive blobs. The follow-up documentation commit
+changes no runtime implementation; its own required checks remain separately
+bound to its head.
+
+General recurrence/temporary cover remains WF-C3-009 PARTIAL. No other canonical
+task or phase gate changes. Weighted raw progress is 59.908902691511386%, rounded
+to 60%; open P0/P1 count is 74. Historical checkpoints are retained rather than
+rewritten. The repository gates retain 18 known failing test files and 64 gated
+typecheck pairs; scoped compilation retains six pre-existing TS7006 diagnostics.
+This is not global compiler/suite cleanliness or full historical migration replay.
+
+Next non-overlapping whole item: [WF-C8-002 acceptance plan](./workforce-c8-whole-item-acceptance-plan-2026-10-06.md).
+Actual browser/AT proof remains unfinished work; an absent installed screen reader
+does not establish an external blocker or a human-only approval requirement.
+WF-C12-008 remains PARTIAL: the accepted snapshot readers and bounded fact/cursor
+implementation do not establish representative staging/operational runtime,
+full historical replay or the broader unimplemented mutation coverage. No merge, deployment, activation,
+real employee publication, credentials, grants, retention, physical-device,
+pilot or whole-HRM completion is claimed.
+
+
+### 2026-10-06 — WF-C8-002 finite whole-item acceptance, incoming-main successor
+
+Only WF-C8-002 changes to DONE: 84/161 accepted, 77 open, C8 6/11 (55%),
+14/15 gates; weighted raw 60.40579710144928%, rounded 60%; open P0/P1 73.
+[Whole manager Today acceptance](./workforce-c8-manager-today-acceptance-2026-10-06.md)
+binds independent R1–R6 acceptance to runtime30c/main251, actual EN/RU/AZ AT
+90/90, hosted browser/PG, full baseline-qualified compiler gates and production
+build. Original 54/54 AT, 100+14 tests, archives and negative attempts remain.
+The new main cb5 MTM integration is separate: 138/138 local tests pass; its own
+exact-head hosted checks, build, browser and final source review remain pending
+at this publication. No global compiler cleanliness, historical migration replay,
+production activation or additional task/gate credit is inferred.
+Next prepared dependency slice is [existing C12 worker acceptance](./workforce-c12-next-acceptance-slice-2026-10-06.md); C12 remains PARTIAL.
+
+
+### 2026-10-06 — WF-C12-008 whole-tenant reader admission, bounded successor
+
+The prepared C12 slice reproduced an actual hidden-root false MATCHED/cursor
+advance on exact bf6 source. The dormant tick now checks the supported complete
+tenant reader profile inside the protected snapshot and refuses unknown
+RLS/ACL/relation/operator/collation configurations without advancing progress.
+[Bounded acceptance](./workforce-c12-reader-profile-acceptance-2026-10-06.md)
+preserves the original negative, all intermediate FAILs, 35/35 final matrix,
+152/152 existing PostgreSQL regression (zero skips), scoped lint and explicit
+synthetic-schema provenance. No business facts, real grants or runtime schedule
+were changed. Historical staging/control visibility/collectors/retention/load
+and separately scoped activation remain open; WF-C12-008 stays PARTIAL.
+
+Ledger unchanged:84/161 DONE,77 open,C8 6/11,14/15 gates,weighted60%,P0/P1 open73.
+C8 exact bf6 terminal acceptance is preserved in archive382b6e7; PR589 → PR605
+lineage and validation-only606 remain frozen. New exact-head hosted gates and
+independent publication review are tracked separately, with no global-clean or
+production-readiness claim. No merge, deployment or activation is authorized.
+
+
+### 2026-10-07 — WF-C6-010 explicit HR outcomes, dependent draft implementation
+
+WF-C6-010 changes from PLANNED to PARTIAL, with no DONE credit. Draft
+[PR612](https://github.com/rashadoni/leaddrive-v2/pull/612) depends on accepted
+PR608 head973241bacc296b71fe817d1af11187c32e8126af and preserves PR589→605→608.
+PR606/609 remain validation-only and cannot be merged. Explicit scoped HR_ADMIN
+findings append the existing immutable decision ledger with actor, reason,
+operation and revision. False-positive classification is independent of appeal
+FULLY_UPHELD/PARTIALLY_UPHELD/REJECTED; partial appeals are shown separately.
+Only classified cases in the current RESOLVED cycle enter each final-outcome
+denominator. Open/reopened and closed-unclassified samples remain separate,
+empty samples yield null, and approved corrections do not imply either finding.
+CASE_RECORDED_AT and existing snapshot/tenant/privacy/role guards are retained.
+No automated employment, payroll or disciplinary decision is introduced.
+
+Actual722 hosted PostgreSQL44 tests, schema validation, lint, translation parity,
+unchanged full regression18/18 baseline gate and isolated bundle build passed.
+The first5ead and second722 browser failures and all intermediate source/compiler
+findings are preserved under docs/evidence/hrm-wf-c6-010-2026-10-07. AZ rendered
+percent equality was diagnosed as Node/Chromium Intl difference; classification
+fixture lacked mandatory MFA. Harness corrections preserve exact API values and
+use real canonical TOTP/nonce authentication, retaining MFA and actor/tenant
+denials. Full next-head browser/compiler/regression/build acceptance remains
+PENDING here; no old-head verification is credited to a future commit.
+
+This is synthetic isolated verification, not live HR observation, full migration
+replay, tenant activation or production readiness. Accounting remains84/161 DONE,
+77open, weighted60%; C7-007/C8-002 stay DONE and C12 stays PARTIAL. Merge, deploy,
+activation, production, access and secrets changes require separate approval.
+Support and HRHub personnel-document work are outside this implementation.
+Continuation: docs/hrm-wf-c6-010-session-log.md records exact heads and each attempt.
+
+
+### 2026-10-07 — WF-C6-010 exact9f3 technical verification complete
+
+Supersedes the earlier pending technical acceptance at722/30677; earlier entries
+and original failures remain preserved. Draft
+[PR612](https://github.com/rashadoni/leaddrive-v2/pull/612) retains accepted PR608
+base973241bacc296b71fe817d1af11187c32e8126af and final source
+9f3cc73dcdb8c4ccea1fdac9dfae29570339abc5. All five jobs in exact-head
+[hosted run37607239591](https://github.com/rashadoni/leaddrive-v2/actions/runs/37607239591)
+completed successfully: production bundle, full compiler gates, source/PostgreSQL
+regressions, report browser and HR recording browser. Actual44 PostgreSQL tests
+and20 authenticated RU/AZ/EN browser scenarios passed, including6 decision appends,
+MFA, actor/tenant/RLS, immutable ledger, reopened cycles and idempotent conflicts.
+Independent final source/artifact review has zero active P0-P3 findings; test
+harness authorship and cross-review are explicitly disclosed in the evidence.
+
+Both baseline files and all existing gate scripts remain unchanged from accepted
+PR608. Global historical1153 compiler diagnostics and18 failing test files still
+exist; all touched-file diagnostic families are empty, both compiler gates and
+unchanged18/18 full regression gate passed. Initial failures and retries remain
+preserved. RU320 DOM/actions passed, while its clipped metrics screenshot is not
+whole-panel visual evidence. Synthetic isolated tests do not replace live HR
+observations or activation/production readiness; ordinary audit fixture protection
+is distinguished from the authoritative production immutable decision ledger.
+
+Final evidence/journal are checkpointed separately on local evidence branch
+codex/hrm-wf-c6-010-evidence-20261007, parent9f3, keeping verified PR source head
+unchanged. WF-C6-010 remains PARTIAL pending owner acceptance. Accounting remains
+84/161 DONE,77 open,weighted60%; C7-007/C8-002 DONE,C12 PARTIAL. No merge, deploy,
+activation, production/access/secrets changes, Support or HRHub document work.

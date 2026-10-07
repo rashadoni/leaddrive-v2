@@ -21,15 +21,16 @@ import { POST as LEGACY_POST } from "@/app/api/v1/workforce/exceptions/[id]/deci
 import { prisma } from "@/lib/prisma"
 import { requireWorkforceAttendanceSecurityMfa } from "@/lib/workforce/attendance-route"
 import { requireWorkforceExceptionDecisionRateLimit } from "@/lib/workforce/exception-decision-rate-limit"
+import type { WorkforceExceptionWorkbenchDecision } from "@/lib/workforce/exception-workbench"
 import { issueWorkforceExceptionActionToken } from "@/lib/workforce/exception-workbench-token"
 
 const auth = { orgId: "org_1", userId: "user_1", role: "admin" }
-type Handler = (req: NextRequest, auth: typeof auth) => Promise<Response>
+type Handler = (req: NextRequest, authContext: typeof auth) => Promise<Response>
 const callPost = POST as unknown as Handler
 
 function actionToken(
   decisionCount = 0,
-  decisionCode: "ACKNOWLEDGE" | "REQUEST_EMPLOYEE_RESPONSE" | "REQUEST_TIME_CORRECTION" | "RESOLVE_NO_CHANGE" = "ACKNOWLEDGE",
+  decisionCode: WorkforceExceptionWorkbenchDecision = "ACKNOWLEDGE",
 ) {
   return issueWorkforceExceptionActionToken({
     organizationId: auth.orgId,
@@ -409,7 +410,7 @@ describe("Workforce action-token exception-decision API", () => {
   it("leaves the legacy database-id endpoint as a non-oracular tombstone", async () => {
     const legacy = LEGACY_POST as unknown as (
       req: NextRequest,
-      auth: typeof auth,
+      authContext: typeof auth,
       context: { params: Promise<{ id: string }> },
     ) => Promise<Response>
     const response = await legacy(request({}), auth, { params: Promise.resolve({ id: "case_1" }) })
@@ -418,5 +419,77 @@ describe("Workforce action-token exception-decision API", () => {
       code: "WORKFORCE_EXCEPTION_DECISION_ACTION_TOKEN_REQUIRED",
     })
     expect(prisma.workforceExceptionCase.findFirst).not.toHaveBeenCalled()
+  })
+})
+
+const resolvedHistory = [
+  { decisionCode: "ACKNOWLEDGE", caseRevision: 1 },
+  { decisionCode: "RESOLVE_NO_CHANGE", caseRevision: 2 },
+]
+
+describe("Explicit HR outcome recording", () => {
+  beforeEach(() => {
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([{ ...grantRow, role: "HR_ADMIN" }] as never)
+    vi.mocked(prisma.workforceExceptionDecision.findMany).mockResolvedValue(resolvedHistory as never)
+  })
+
+  it.each(["CLASSIFY_FALSE_POSITIVE", "CLASSIFY_CONFIRMED_EXCEPTION", "APPEAL_FULLY_UPHELD", "APPEAL_PARTIALLY_UPHELD", "APPEAL_REJECTED"] as const)("records %s with accountable immutable audit", async (code) => {
+    const response = await callPost(request({ actionToken: actionToken(2, code), operationId: "hr-outcome-1", reason: "Reviewed explicitly by HR." }), auth)
+    expect(response.status).toBe(201)
+    expect(prisma.workforceExceptionDecision.create).toHaveBeenCalledWith({ data: expect.objectContaining({ actorUserId: auth.userId, decisionCode: code, caseRevision: 3, reason: "Reviewed explicitly by HR." }) })
+    expect(prisma.mtmAuditLog.create).toHaveBeenCalledWith({ data: expect.objectContaining({ newData: expect.objectContaining({ decisionCode: code, caseRevision: 3, policyMode: "REVIEWED_V1" }) }) })
+    const body = await response.json()
+    expect(JSON.stringify(body)).not.toContain("Reviewed explicitly")
+    expect(JSON.stringify(vi.mocked(prisma.mtmAuditLog.create).mock.calls)).not.toContain("Reviewed explicitly")
+  })
+
+  it.each(["TEAM_MANAGER", "TENANT_ADMIN", "AUDITOR"])("does not turn %s into HR authority", async (role) => {
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([{ ...grantRow, role }] as never)
+    const response = await callPost(request({ actionToken: actionToken(2, "CLASSIFY_FALSE_POSITIVE"), operationId: "hr-outcome-1", reason: "Reviewed explicitly by HR." }), auth)
+    expect(response.status).toBe(404)
+    expect(prisma.workforceExceptionDecision.create).not.toHaveBeenCalled()
+  })
+
+  it("rechecks HR revocation after waiting for the case lock", async () => {
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValueOnce([{ ...grantRow, role: "HR_ADMIN" }] as never).mockResolvedValue([] as never)
+    const response = await callPost(request({ actionToken: actionToken(2, "APPEAL_PARTIALLY_UPHELD"), operationId: "hr-outcome-1", reason: "Reviewed explicitly by HR." }), auth)
+    expect(response.status).toBe(409)
+    expect(prisma.workforceExceptionDecision.create).not.toHaveBeenCalled()
+  })
+
+  it("refuses unfinished and reopened cases", async () => {
+    for (const history of [resolvedHistory.slice(0,1), [...resolvedHistory, { decisionCode: "REOPEN_FOR_REVIEW", caseRevision: 3 }]]) {
+      vi.mocked(prisma.workforceExceptionDecision.findMany).mockResolvedValue(history as never)
+      const response = await callPost(request({ actionToken: actionToken(history.length, "APPEAL_FULLY_UPHELD"), operationId: "hr-outcome-1", reason: "Reviewed explicitly by HR." }), auth)
+      expect(response.status).toBe(409)
+    }
+    expect(prisma.workforceExceptionDecision.create).not.toHaveBeenCalled()
+  })
+
+  it("requires new classification after a reopen and prevents replacing an existing one", async () => {
+    const history = [...resolvedHistory, { decisionCode: "CLASSIFY_FALSE_POSITIVE", caseRevision: 3 }]
+    vi.mocked(prisma.workforceExceptionDecision.findMany).mockResolvedValue(history as never)
+    const body = { actionToken: actionToken(3, "CLASSIFY_CONFIRMED_EXCEPTION"), operationId: "hr-outcome-1", reason: "Reviewed explicitly by HR." }
+    expect((await callPost(request(body),auth)).status).toBe(409)
+    vi.mocked(prisma.workforceExceptionDecision.findMany).mockResolvedValue([...history, { decisionCode: "REOPEN_FOR_REVIEW", caseRevision: 4 }, { decisionCode: "RESOLVE_NO_CHANGE", caseRevision: 5 }] as never)
+    expect((await callPost(request({ ...body, actionToken: actionToken(5, "CLASSIFY_CONFIRMED_EXCEPTION") }),auth)).status).toBe(201)
+  })
+
+  it("retains the transaction receiver for both advisory locks before recording an HR outcome", async () => {
+    for (let index = 0; index < 2; index++) {
+      vi.mocked(prisma.$executeRaw).mockImplementationOnce(function (this: unknown) {
+        expect(this).toBe(prisma)
+        return Promise.resolve(0)
+      })
+    }
+    const response = await callPost(request({
+      actionToken: actionToken(2, "CLASSIFY_FALSE_POSITIVE"),
+      operationId: "hr-receiver-lock-1",
+      reason: "Reviewed explicitly by HR.",
+    }), auth)
+    expect(response.status).toBe(201)
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(2)
+    expect(prisma.workforceExceptionDecision.create).toHaveBeenCalledTimes(1)
+    expect(prisma.mtmAuditLog.create).toHaveBeenCalledTimes(1)
   })
 })

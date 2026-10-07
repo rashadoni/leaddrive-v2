@@ -199,7 +199,7 @@ describe("GET /api/v1/workforce/exception-reports", () => {
       cohortBasis: "CASE_RECORDED_AT",
       linkedCorrection: { cohortCases: 1, recordedLinkedCorrectionCases: 1, share: 1 },
       firstResolution: { sampleCount: 1, unresolvedCases: 0, integrityExcludedCases: 0, minMs: 3_000, maxMs: 3_000, meanMs: 3_000 },
-      unavailable: { falsePositiveRate: "UNAVAILABLE_NO_APPROVED_OUTCOME_CLASSIFICATION", appealOverturnRate: "UNAVAILABLE_NO_APPROVED_OUTCOME_CLASSIFICATION" },
+      finalClassification: { falsePositive: { sampleCount: 0, share: null, unclassifiedResolvedCases: 1 }, appeal: { sampleCount: 0, fullyUpheldShare: null, partiallyUpheldShare: null, rejectedShare: null, unclassifiedResolvedCases: 1 }, unfinishedCases: 0 },
     })
     expect(prisma.workforceTimeCorrection.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: { organizationId: AUTH.orgId, source: "REQUEST_APPROVAL", request: { is: {

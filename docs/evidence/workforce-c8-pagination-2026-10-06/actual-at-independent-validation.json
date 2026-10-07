@@ -1,0 +1,347 @@
+{
+  "archive": {
+    "sha256": "1a76f41e5d6f9c0648b1a138327318895a494afa7b1fb0cf09b353780a49994b",
+    "bytes": 4558415,
+    "members": 116,
+    "manifestRows": 115,
+    "allHashesLengthsCRCAndDiskMatch": true
+  },
+  "sourceMismatches": {
+    "/workspace/hrm-c8-completion-20261006": [],
+    "/workspace/hrm-c8-at-fixed-20261006/source": []
+  },
+  "priorArchiveHash": "c199f0f6328c6e774fef6af4933e6b1044bfbc7111e1e21eafd10eefea2fa6c7",
+  "scenarios": [
+    {
+      "run": "run-msti0x38",
+      "locale": "en",
+      "zoom": 1,
+      "checks": 9,
+      "speechCalls": 298,
+      "speechAllOriginalCallsReturned": true,
+      "receiptPresentationCount": 297,
+      "uniqueSequentialEventPairs": true,
+      "actualLocalizedResult": "Added: 1. Loaded: 26. End of employee list",
+      "focusBounds": {
+        "x": 723.203125,
+        "y": 852,
+        "width": 174.578125,
+        "height": 48
+      },
+      "viewport": [
+        1380,
+        900
+      ],
+      "scriptHashesStable": {
+        "run-final-matrix.py": "c0ca97d7b6b33c4129ec5f813fd10a29a1b46cd4dee6ee352bb40f596a6f1a8d",
+        "backend-check.py": "47fddebb6e93eb11724e551cb579a669da8d7cb19bd30fe6e9b1eae624250b94",
+        "supervisor.py": "732a34fa7eb338ef79d7aa5a5011e397a6bf20b1dc4b506dbd727b67ff683269",
+        "inspect-atspi.py": "85c54ae4ce140b51622e6a663a160b47a71a3dc3c2b4cafaf3082b01c26f03fc",
+        "observer.py": "e9b95bfd40018c0db3a9617bbd5f7300652d290e62a2dd19ebaa0138f6087d6e",
+        "prepare.py": "4769283fc38d9274401c58cdf5d2d1726df98339269e1c5bab439c10e22fa693",
+        "probe.mjs": "c3a570224979fb63231d1e2bba972969c296fcb1a592a9571d07d733e33dc0b8",
+        "next.cjs": "3b2e9bcd84e4beb31079ac36ae16a9adc071cab118f3784dfc6ef3dcb3254b4a",
+        "source/scripts/c8-local-fixture.mjs": "f90ebe5b1fa68ff99bd83dec64c294fdfc999832cde3f3a15be98acf60d2359a"
+      },
+      "ownChildrenReaped": 7,
+      "auxiliaryHttpNonSuccess": [
+        [
+          "/api/v1/ai/voice/access",
+          403
+        ],
+        [
+          "/api/v1/calls/active",
+          403
+        ],
+        [
+          "/api/v1/tickets/new-count",
+          403
+        ],
+        [
+          "/api/v1/users/me/preferences",
+          500
+        ],
+        [
+          "/api/v1/voip/capabilities",
+          403
+        ]
+      ]
+    },
+    {
+      "run": "run-eoikemmr",
+      "locale": "ru",
+      "zoom": 1,
+      "checks": 9,
+      "speechCalls": 299,
+      "speechAllOriginalCallsReturned": true,
+      "receiptPresentationCount": 298,
+      "uniqueSequentialEventPairs": true,
+      "actualLocalizedResult": "Добавлено: 1. Всего загружено: 26. Конец списка сотрудников",
+      "focusBounds": {
+        "x": 697.859375,
+        "y": 852,
+        "width": 225.265625,
+        "height": 48
+      },
+      "viewport": [
+        1380,
+        900
+      ],
+      "scriptHashesStable": {
+        "run-final-matrix.py": "c0ca97d7b6b33c4129ec5f813fd10a29a1b46cd4dee6ee352bb40f596a6f1a8d",
+        "backend-check.py": "47fddebb6e93eb11724e551cb579a669da8d7cb19bd30fe6e9b1eae624250b94",
+        "supervisor.py": "732a34fa7eb338ef79d7aa5a5011e397a6bf20b1dc4b506dbd727b67ff683269",
+        "inspect-atspi.py": "85c54ae4ce140b51622e6a663a160b47a71a3dc3c2b4cafaf3082b01c26f03fc",
+        "observer.py": "e9b95bfd40018c0db3a9617bbd5f7300652d290e62a2dd19ebaa0138f6087d6e",
+        "prepare.py": "4769283fc38d9274401c58cdf5d2d1726df98339269e1c5bab439c10e22fa693",
+        "probe.mjs": "c3a570224979fb63231d1e2bba972969c296fcb1a592a9571d07d733e33dc0b8",
+        "next.cjs": "3b2e9bcd84e4beb31079ac36ae16a9adc071cab118f3784dfc6ef3dcb3254b4a",
+        "source/scripts/c8-local-fixture.mjs": "f90ebe5b1fa68ff99bd83dec64c294fdfc999832cde3f3a15be98acf60d2359a"
+      },
+      "ownChildrenReaped": 7,
+      "auxiliaryHttpNonSuccess": [
+        [
+          "/api/v1/ai/voice/access",
+          403
+        ],
+        [
+          "/api/v1/calls/active",
+          403
+        ],
+        [
+          "/api/v1/tickets/new-count",
+          403
+        ],
+        [
+          "/api/v1/users/me/preferences",
+          500
+        ],
+        [
+          "/api/v1/voip/capabilities",
+          403
+        ]
+      ]
+    },
+    {
+      "run": "run-v0md_r2n",
+      "locale": "az",
+      "zoom": 1,
+      "checks": 9,
+      "speechCalls": 299,
+      "speechAllOriginalCallsReturned": true,
+      "receiptPresentationCount": 298,
+      "uniqueSequentialEventPairs": true,
+      "actualLocalizedResult": "Əlavə edildi: 1. Yüklənib: 26. Əməkdaş siyahısının sonu",
+      "focusBounds": {
+        "x": 704.21875,
+        "y": 852,
+        "width": 212.5625,
+        "height": 48
+      },
+      "viewport": [
+        1380,
+        900
+      ],
+      "scriptHashesStable": {
+        "run-final-matrix.py": "c0ca97d7b6b33c4129ec5f813fd10a29a1b46cd4dee6ee352bb40f596a6f1a8d",
+        "backend-check.py": "47fddebb6e93eb11724e551cb579a669da8d7cb19bd30fe6e9b1eae624250b94",
+        "supervisor.py": "732a34fa7eb338ef79d7aa5a5011e397a6bf20b1dc4b506dbd727b67ff683269",
+        "inspect-atspi.py": "85c54ae4ce140b51622e6a663a160b47a71a3dc3c2b4cafaf3082b01c26f03fc",
+        "observer.py": "e9b95bfd40018c0db3a9617bbd5f7300652d290e62a2dd19ebaa0138f6087d6e",
+        "prepare.py": "4769283fc38d9274401c58cdf5d2d1726df98339269e1c5bab439c10e22fa693",
+        "probe.mjs": "c3a570224979fb63231d1e2bba972969c296fcb1a592a9571d07d733e33dc0b8",
+        "next.cjs": "3b2e9bcd84e4beb31079ac36ae16a9adc071cab118f3784dfc6ef3dcb3254b4a",
+        "source/scripts/c8-local-fixture.mjs": "f90ebe5b1fa68ff99bd83dec64c294fdfc999832cde3f3a15be98acf60d2359a"
+      },
+      "ownChildrenReaped": 7,
+      "auxiliaryHttpNonSuccess": [
+        [
+          "/api/v1/ai/voice/access",
+          403
+        ],
+        [
+          "/api/v1/calls/active",
+          403
+        ],
+        [
+          "/api/v1/tickets/new-count",
+          403
+        ],
+        [
+          "/api/v1/users/me/preferences",
+          500
+        ],
+        [
+          "/api/v1/voip/capabilities",
+          403
+        ]
+      ]
+    },
+    {
+      "run": "run-yhtzrz7y",
+      "locale": "en",
+      "zoom": 2,
+      "checks": 9,
+      "speechCalls": 304,
+      "speechAllOriginalCallsReturned": true,
+      "receiptPresentationCount": 303,
+      "uniqueSequentialEventPairs": true,
+      "actualLocalizedResult": "Added: 1. Loaded: 26. End of employee list",
+      "focusBounds": {
+        "x": 285.9609375,
+        "y": 402,
+        "width": 174.5703125,
+        "height": 48
+      },
+      "viewport": [
+        690,
+        450
+      ],
+      "scriptHashesStable": {
+        "run-final-matrix.py": "c0ca97d7b6b33c4129ec5f813fd10a29a1b46cd4dee6ee352bb40f596a6f1a8d",
+        "backend-check.py": "47fddebb6e93eb11724e551cb579a669da8d7cb19bd30fe6e9b1eae624250b94",
+        "supervisor.py": "732a34fa7eb338ef79d7aa5a5011e397a6bf20b1dc4b506dbd727b67ff683269",
+        "inspect-atspi.py": "85c54ae4ce140b51622e6a663a160b47a71a3dc3c2b4cafaf3082b01c26f03fc",
+        "observer.py": "e9b95bfd40018c0db3a9617bbd5f7300652d290e62a2dd19ebaa0138f6087d6e",
+        "prepare.py": "4769283fc38d9274401c58cdf5d2d1726df98339269e1c5bab439c10e22fa693",
+        "probe.mjs": "c3a570224979fb63231d1e2bba972969c296fcb1a592a9571d07d733e33dc0b8",
+        "next.cjs": "3b2e9bcd84e4beb31079ac36ae16a9adc071cab118f3784dfc6ef3dcb3254b4a",
+        "source/scripts/c8-local-fixture.mjs": "f90ebe5b1fa68ff99bd83dec64c294fdfc999832cde3f3a15be98acf60d2359a"
+      },
+      "ownChildrenReaped": 7,
+      "auxiliaryHttpNonSuccess": [
+        [
+          "/api/v1/ai/voice/access",
+          403
+        ],
+        [
+          "/api/v1/calls/active",
+          403
+        ],
+        [
+          "/api/v1/tickets/new-count",
+          403
+        ],
+        [
+          "/api/v1/users/me/preferences",
+          500
+        ],
+        [
+          "/api/v1/voip/capabilities",
+          403
+        ]
+      ]
+    },
+    {
+      "run": "run-da8hur6k",
+      "locale": "ru",
+      "zoom": 2,
+      "checks": 9,
+      "speechCalls": 309,
+      "speechAllOriginalCallsReturned": true,
+      "receiptPresentationCount": 308,
+      "uniqueSequentialEventPairs": true,
+      "actualLocalizedResult": "Добавлено: 1. Всего загружено: 26. Конец списка сотрудников",
+      "focusBounds": {
+        "x": 260.6171875,
+        "y": 402,
+        "width": 225.265625,
+        "height": 48
+      },
+      "viewport": [
+        690,
+        450
+      ],
+      "scriptHashesStable": {
+        "run-final-matrix.py": "c0ca97d7b6b33c4129ec5f813fd10a29a1b46cd4dee6ee352bb40f596a6f1a8d",
+        "backend-check.py": "47fddebb6e93eb11724e551cb579a669da8d7cb19bd30fe6e9b1eae624250b94",
+        "supervisor.py": "732a34fa7eb338ef79d7aa5a5011e397a6bf20b1dc4b506dbd727b67ff683269",
+        "inspect-atspi.py": "85c54ae4ce140b51622e6a663a160b47a71a3dc3c2b4cafaf3082b01c26f03fc",
+        "observer.py": "e9b95bfd40018c0db3a9617bbd5f7300652d290e62a2dd19ebaa0138f6087d6e",
+        "prepare.py": "4769283fc38d9274401c58cdf5d2d1726df98339269e1c5bab439c10e22fa693",
+        "probe.mjs": "c3a570224979fb63231d1e2bba972969c296fcb1a592a9571d07d733e33dc0b8",
+        "next.cjs": "3b2e9bcd84e4beb31079ac36ae16a9adc071cab118f3784dfc6ef3dcb3254b4a",
+        "source/scripts/c8-local-fixture.mjs": "f90ebe5b1fa68ff99bd83dec64c294fdfc999832cde3f3a15be98acf60d2359a"
+      },
+      "ownChildrenReaped": 7,
+      "auxiliaryHttpNonSuccess": [
+        [
+          "/api/v1/ai/voice/access",
+          403
+        ],
+        [
+          "/api/v1/calls/active",
+          403
+        ],
+        [
+          "/api/v1/tickets/new-count",
+          403
+        ],
+        [
+          "/api/v1/users/me/preferences",
+          500
+        ],
+        [
+          "/api/v1/voip/capabilities",
+          403
+        ]
+      ]
+    },
+    {
+      "run": "run-08oxommv",
+      "locale": "az",
+      "zoom": 2,
+      "checks": 9,
+      "speechCalls": 307,
+      "speechAllOriginalCallsReturned": true,
+      "receiptPresentationCount": 306,
+      "uniqueSequentialEventPairs": true,
+      "actualLocalizedResult": "Əlavə edildi: 1. Yüklənib: 26. Əməkdaş siyahısının sonu",
+      "focusBounds": {
+        "x": 266.96875,
+        "y": 402,
+        "width": 212.5546875,
+        "height": 48
+      },
+      "viewport": [
+        690,
+        450
+      ],
+      "scriptHashesStable": {
+        "run-final-matrix.py": "c0ca97d7b6b33c4129ec5f813fd10a29a1b46cd4dee6ee352bb40f596a6f1a8d",
+        "backend-check.py": "47fddebb6e93eb11724e551cb579a669da8d7cb19bd30fe6e9b1eae624250b94",
+        "supervisor.py": "732a34fa7eb338ef79d7aa5a5011e397a6bf20b1dc4b506dbd727b67ff683269",
+        "inspect-atspi.py": "85c54ae4ce140b51622e6a663a160b47a71a3dc3c2b4cafaf3082b01c26f03fc",
+        "observer.py": "e9b95bfd40018c0db3a9617bbd5f7300652d290e62a2dd19ebaa0138f6087d6e",
+        "prepare.py": "4769283fc38d9274401c58cdf5d2d1726df98339269e1c5bab439c10e22fa693",
+        "probe.mjs": "c3a570224979fb63231d1e2bba972969c296fcb1a592a9571d07d733e33dc0b8",
+        "next.cjs": "3b2e9bcd84e4beb31079ac36ae16a9adc071cab118f3784dfc6ef3dcb3254b4a",
+        "source/scripts/c8-local-fixture.mjs": "f90ebe5b1fa68ff99bd83dec64c294fdfc999832cde3f3a15be98acf60d2359a"
+      },
+      "ownChildrenReaped": 7,
+      "auxiliaryHttpNonSuccess": [
+        [
+          "/api/v1/ai/voice/access",
+          403
+        ],
+        [
+          "/api/v1/calls/active",
+          403
+        ],
+        [
+          "/api/v1/tickets/new-count",
+          403
+        ],
+        [
+          "/api/v1/users/me/preferences",
+          500
+        ],
+        [
+          "/api/v1/voip/capabilities",
+          403
+        ]
+      ]
+    }
+  ],
+  "speechCalls": 1816
+}

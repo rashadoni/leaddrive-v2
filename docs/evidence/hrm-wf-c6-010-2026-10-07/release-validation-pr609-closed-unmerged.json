@@ -1,0 +1,12 @@
+{
+  "pr": 609,
+  "reason": "validation-only user prohibition on merge; close without merge before another PR makes its commits reachable from main",
+  "beforeState": "open",
+  "afterState": "closed",
+  "merged": false,
+  "headSha": "100a381b90a52690899f6a1eded38494eea050e4",
+  "headBranch": "codex/hrm-c12-reader-profile-20261006",
+  "baseBranch": "main",
+  "branchDeleted": false,
+  "reversibleClosure": true
+}

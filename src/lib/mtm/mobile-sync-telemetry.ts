@@ -75,7 +75,7 @@ function safeApkVersion(value: string | null): string {
   // canonical mobile shape major.minor.patch[+numericVersionCode], never a
   // generic header string. S7 still maps it through the approved
   // release-artifact ledger, and an unregistered value is treated as unknown.
-  if (value && /^\d{1,4}\.\d{1,4}\.\d{1,4}(?:\+\d{1,10})?$/.test(value)) return value
+  if (typeof value === "string" && /^\d{1,4}\.\d{1,4}\.\d{1,4}(?:\+\d{1,10})?$/.test(value)) return value
   return "unknown"
 }
 
@@ -97,7 +97,11 @@ function safePullDimensions(input: Pick<PullTelemetryInput,
 }
 
 function safeBuildSha(value: string | null): string {
-  return value != null && /^[0-9a-f]{40}$/.test(value) ? value : "unknown"
+  return typeof value === "string" && /^[0-9a-f]{40}$/.test(value) ? value : "unknown"
+}
+
+function safeCohort(value: boolean): boolean | "unknown" {
+  return typeof value === "boolean" ? value : "unknown"
 }
 
 function safePlatform(value: string | null): "android" | "unknown" {
@@ -190,15 +194,15 @@ export function recordMtmMobileApkObservation(input: MtmMobileApkObservationInpu
       ...identity,
       endpoint: "GET /api/v1/mtm/mobile/bootstrap",
       apkVersion: safeApkVersion(input.apkVersion),
-      protocolPreferred: input.protocolPreferred,
+      protocolPreferred: input.protocolPreferred === 1 || input.protocolPreferred === 2 ? input.protocolPreferred : 0,
       ...(input.diagnostics ? { diagnostics: safeClientDiagnostics(input.diagnostics) } : {}),
       cohorts: {
-        routes: input.cohorts.routes,
-        visits: input.cohorts.visits,
-        tasks: input.cohorts.tasks,
-        workforce: input.cohorts.workforce,
-        gps: input.cohorts.gps,
-        media: input.cohorts.media,
+        routes: safeCohort(input.cohorts.routes),
+        visits: safeCohort(input.cohorts.visits),
+        tasks: safeCohort(input.cohorts.tasks),
+        workforce: safeCohort(input.cohorts.workforce),
+        gps: safeCohort(input.cohorts.gps),
+        media: safeCohort(input.cohorts.media),
       },
     }))
   } catch {
@@ -223,7 +227,7 @@ export function recordMtmMobileV1SyncActivity(input: MtmMobileV1SyncActivityInpu
     console.info("[mtm-mobile-apk-telemetry]", JSON.stringify({
       event: "mobile_sync_v1_activity",
       ...identity,
-      endpoint: input.endpoint,
+      endpoint: input.endpoint === "GET /api/v1/mtm/mobile/sync/pull" || input.endpoint === "POST /api/v1/mtm/mobile/sync/push" ? input.endpoint : "unknown",
       apkVersion: safeApkVersion(input.apkVersion),
       protocolVersion: 1,
       ...(input.diagnostics ? { diagnostics: safeClientDiagnostics(input.diagnostics) } : {}),

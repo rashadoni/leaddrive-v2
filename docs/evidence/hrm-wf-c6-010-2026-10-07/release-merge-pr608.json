@@ -1,0 +1,12 @@
+{
+  "pr": 608,
+  "expectedSourceHead": "100a381b90a52690899f6a1eded38494eea050e4",
+  "targetBranch": "codex/hrm-c8-pagination-at-20261006",
+  "sourceTreeUnchanged": "1ffe09e8f370c65e487316ce3db775abc0ec0b1c",
+  "response": {
+    "sha": "ec2e7812e81abef94319a58818aeee22e56984df",
+    "merged": true,
+    "message": "Pull Request successfully merged"
+  },
+  "productionMutation": false
+}

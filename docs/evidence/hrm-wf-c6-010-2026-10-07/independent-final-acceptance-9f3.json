@@ -1,0 +1,536 @@
+{
+  "version": 1,
+  "reviewId": "WF-C6-010-independent-final-acceptance-9f3",
+  "createdAtUtc": "2026-10-07T10:53:22.184875+00:00",
+  "headSha": "9f3cc73dcdb8c4ccea1fdac9dfae29570339abc5",
+  "gitTree": "1ffe09e8f370c65e487316ce3db775abc0ec0b1c",
+  "acceptedAncestor": "973241bacc296b71fe817d1af11187c32e8126af",
+  "acceptedAncestorVerified": true,
+  "reviewer": "/root/inspect_outcome_contract",
+  "authorshipDisclosure": "Reviewer authored the PostgreSQL report test extensions, report browser extensions, separate classification fixture/harness and refusal tests, including MFA/Intl/cleanup fixes. Root independently reviewed those verification changes. This is independent inspection of actual hosted artifacts against root-authored production contracts, not independent test authorship or a second independent execution.",
+  "status": "ACCEPTED_VERIFIED_DRAFT_IMPLEMENTATION_EXACT_9F3",
+  "acceptanceScope": "Approved WF-C6-010 explicit-HR storage/API/UI/validation/immutable-decision-audit/aggregates and fresh exact-head technical gates. Not merge/deploy/activation, operational observations, globally clean repository or whole roadmap acceptance.",
+  "pr": {
+    "url": "https://github.com/rashadoni/leaddrive-v2/pull/612",
+    "status": "DRAFT",
+    "basePr": 608,
+    "chain": "589\u2192605\u2192608\u2192612",
+    "verifiedSourceHead": "9f3cc73dcdb8c4ccea1fdac9dfae29570339abc5",
+    "PR606and609": "verification-only; must not merge"
+  },
+  "sourceBindings": [
+    {
+      "path": "src/lib/workforce/exception-outcome-classification.ts",
+      "bytes": 2447,
+      "sha256": "947410fb0687987a465c38ce0c9455d3923d62039d9030b43bda3e0afae99a23",
+      "gitBlob": "2b712f77b32be775a503a9e59efd2dcb56bd706e",
+      "workingBytesMatchCommitted": true,
+      "unchangedFrom30677ReviewedSource": true
+    },
+    {
+      "path": "src/lib/workforce/exception-policy-draft.ts",
+      "bytes": 8270,
+      "sha256": "f45f761e9c2e829351eb930c7e191f667327b3ed040338b4033b54381da59b6b",
+      "gitBlob": "db91eb7a7183c3316fc12cfbc2b1c0f718174015",
+      "workingBytesMatchCommitted": true,
+      "unchangedFrom30677ReviewedSource": true
+    },
+    {
+      "path": "src/lib/workforce/exception-workbench.ts",
+      "bytes": 12753,
+      "sha256": "17107791d3895fe0e66d4ed349c32f19eec21fc4bb42220060ff8989ebc3cd21",
+      "gitBlob": "e8f70fe15f1c77ab58939ce7a6e67b88491a6ed0",
+      "workingBytesMatchCommitted": true,
+      "unchangedFrom30677ReviewedSource": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-writer.ts",
+      "bytes": 19607,
+      "sha256": "61814e5d395143a6deacc9bd92e0aee1ffb508cc1c168724897dd9bf67da201f",
+      "gitBlob": "ab95d6368d252d7e780696fd5bd5fa88d8034ac1",
+      "workingBytesMatchCommitted": true,
+      "unchangedFrom30677ReviewedSource": true
+    },
+    {
+      "path": "src/lib/workforce/exception-decision-service.ts",
+      "bytes": 11916,
+      "sha256": "dd10ffed0f37f80b79eae0e784918966033995283cafdbf6a4ec738b6275e21c",
+      "gitBlob": "69a9b1d89cde811937ddb85aad464d7f7303fada",
+      "workingBytesMatchCommitted": true,
+      "unchangedFrom30677ReviewedSource": false
+    },
+    {
+      "path": "src/lib/workforce/exception-case-report-recorded-outcomes.ts",
+      "bytes": 8338,
+      "sha256": "1d84daa28a7b21a8ad8545f5b494c1030c338cff75fc168f87153541d5f0321c",
+      "gitBlob": "192e9f00b988202f82663c2b0e616c4a87136c3b",
+      "workingBytesMatchCommitted": true,
+      "unchangedFrom30677ReviewedSource": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-report-read.ts",
+      "bytes": 3384,
+      "sha256": "b34a3ef9d52359a235040802c5ede11c03f128c7250b41f5b2a86d10860b82b5",
+      "gitBlob": "51bc463f9493c8149f1e2a823ebdb8ce2e982a06",
+      "workingBytesMatchCommitted": true,
+      "unchangedFrom30677ReviewedSource": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-ledger.ts",
+      "bytes": 9052,
+      "sha256": "da971cdfdc696085e40be8a35386e48a1746a3c92ebaa2ab9e0cedded25cc8ab",
+      "gitBlob": "bce584e8e4b791f670971fa8da4e29a030ac6c8c",
+      "workingBytesMatchCommitted": true,
+      "unchangedFrom30677ReviewedSource": true
+    },
+    {
+      "path": "src/lib/workforce/exception-workbench-token.ts",
+      "bytes": 5735,
+      "sha256": "4479cba8767dd4a8bb596ff8bf311ba139d1b417782035b13db92edef204fd1a",
+      "gitBlob": "fd1b73daac5fcd71c903921a95cf8c3aec680f7c",
+      "workingBytesMatchCommitted": true,
+      "unchangedFrom30677ReviewedSource": true
+    },
+    {
+      "path": "src/lib/workforce/access-control.ts",
+      "bytes": 10353,
+      "sha256": "b4915d133bb102251dccc94b9ba33a3a65905488135b00cb652f0e299cfa0b9f",
+      "gitBlob": "59f8d4e6aa5ec20c3819648bd8b0dce0ad6d5173",
+      "workingBytesMatchCommitted": true,
+      "unchangedFrom30677ReviewedSource": true
+    },
+    {
+      "path": "src/lib/workforce/access-grant-resolution.ts",
+      "bytes": 5664,
+      "sha256": "1720277ff37308894c9c3e3313a7235150350bcfa254ac4846905a5f9875e2c3",
+      "gitBlob": "48d9e9016d3b1882e2ff7f95e1970dafe24140df",
+      "workingBytesMatchCommitted": true,
+      "unchangedFrom30677ReviewedSource": true
+    },
+    {
+      "path": "src/lib/workforce/exception-read-access.ts",
+      "bytes": 2032,
+      "sha256": "adedcbd7844335ff63c2506c82c46fee240a473ba47974e90bcb8a8f62da69ae",
+      "gitBlob": "3a9099c3092fe8a976234b0ab69cd7513379fd69",
+      "workingBytesMatchCommitted": true,
+      "unchangedFrom30677ReviewedSource": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-read-scope.ts",
+      "bytes": 8461,
+      "sha256": "42ff417bb8afc67546b4cc57bfc0b6549a839c2ce293297b1f440e625093f9b5",
+      "gitBlob": "913a42caf076646e9ae380059aa8fdde90cd1afc",
+      "workingBytesMatchCommitted": true,
+      "unchangedFrom30677ReviewedSource": true
+    },
+    {
+      "path": "src/lib/workforce/team-membership.ts",
+      "bytes": 4282,
+      "sha256": "47fc2f92856ff8e8bc67a31bf9087c73faf673bc741fc58b76a4f5efac7723fb",
+      "gitBlob": "4d929406051c9048bba09c43e1203731d22e000f",
+      "workingBytesMatchCommitted": true,
+      "unchangedFrom30677ReviewedSource": true
+    },
+    {
+      "path": "src/lib/with-workforce-rls-auth.ts",
+      "bytes": 21653,
+      "sha256": "289aa253b4d8d3a25913136a545db598bf1a01c9b571b6c89e2689da2fe6d8ff",
+      "gitBlob": "fc6e31b5380acc3d7e34e51a71b5f02b6dca7676",
+      "workingBytesMatchCommitted": true,
+      "unchangedFrom30677ReviewedSource": true
+    },
+    {
+      "path": "src/app/api/v1/workforce/exceptions/route.ts",
+      "bytes": 13279,
+      "sha256": "5a33ec78dc7fe6b05e920cbdb22fecb46f85d45c74840486533ea56df68034ff",
+      "gitBlob": "15c9bb229abcc9b438356c3f377187116abd1877",
+      "workingBytesMatchCommitted": true,
+      "unchangedFrom30677ReviewedSource": true
+    },
+    {
+      "path": "src/app/api/v1/workforce/exception-decisions/route.ts",
+      "bytes": 4157,
+      "sha256": "eeeb1dda5d637fb0fdaa831021556a1200a1bd502e73df05838e850284db34c9",
+      "gitBlob": "ad2da46df064e7ac296823e1eb615220779d5633",
+      "workingBytesMatchCommitted": true,
+      "unchangedFrom30677ReviewedSource": true
+    },
+    {
+      "path": "src/app/api/v1/workforce/exception-reports/route.ts",
+      "bytes": 6162,
+      "sha256": "6d4935a3cd3adbbbb411619a813287a6ba8b7d58cc89dec888074130360233bf",
+      "gitBlob": "d8506dc1ec4788118e7f84640789bbf032c2edf7",
+      "workingBytesMatchCommitted": true,
+      "unchangedFrom30677ReviewedSource": true
+    },
+    {
+      "path": "src/components/workforce/workforce-exception-queue.tsx",
+      "bytes": 23077,
+      "sha256": "5160dcc8b943d0caca712ae0dcad02725784fcb4c2401479c16dede00d0c3b1f",
+      "gitBlob": "50424e0701b2f84b2eb739a5a2a0acedb18efabc",
+      "workingBytesMatchCommitted": true,
+      "unchangedFrom30677ReviewedSource": true
+    },
+    {
+      "path": "src/components/workforce/workforce-exception-recorded-outcomes.tsx",
+      "bytes": 6293,
+      "sha256": "1039384b9a47e87b48a001b115300c7161cd3d144b376adce20276f5172cc386",
+      "gitBlob": "b97498e1325b0c74ff6db1c3a8380d59508ac478",
+      "workingBytesMatchCommitted": true,
+      "unchangedFrom30677ReviewedSource": true
+    },
+    {
+      "path": ".github/workflows/workforce-exception-report-browser-evidence.yml",
+      "bytes": 25256,
+      "sha256": "1dcd49d422fb212d4ee1eac6368de97837fe62fc5ca5975a7faa2b6c61dc18e7",
+      "gitBlob": "61b8a890269f3a083628de6df13ac508e4d0b19a",
+      "workingBytesMatchCommitted": true,
+      "unchangedFrom30677ReviewedSource": true
+    },
+    {
+      "path": "messages/en.json",
+      "bytes": 1352170,
+      "sha256": "be99a98fbe605f2f1d6af6f58dba7d2d4cddae6b51f5dc41bcc126777543c0dc",
+      "gitBlob": "79199e6423f4eddce00fd142bd9ad9bac6709451",
+      "workingBytesMatchCommitted": true,
+      "unchangedFrom30677ReviewedSource": true
+    },
+    {
+      "path": "messages/ru.json",
+      "bytes": 1997081,
+      "sha256": "883624ffb0c17fcd9d8151af99d9162b1bf69b1c7e3f3baf7ad3477d3e6fa98e",
+      "gitBlob": "13f3c8225267d43fc24358b2e5c1c4b5dab72e89",
+      "workingBytesMatchCommitted": true,
+      "unchangedFrom30677ReviewedSource": true
+    },
+    {
+      "path": "messages/az.json",
+      "bytes": 1495785,
+      "sha256": "c3974dfb5915ebc03186e87ceaadc6b74fb9124f65c1865fde052829ced85fdc",
+      "gitBlob": "fc0dc779a092b3810590d203b369f4da655d5583",
+      "workingBytesMatchCommitted": true,
+      "unchangedFrom30677ReviewedSource": true
+    },
+    {
+      "path": "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql",
+      "bytes": 9684,
+      "sha256": "314d4f0e83c81544a50633bceb977298ece24fff918923310671b07c0e8c5f2a",
+      "gitBlob": "c14b3aed36d12b40dcbbdcaa35745a8517006654",
+      "workingBytesMatchCommitted": true,
+      "unchangedFrom30677ReviewedSource": true
+    },
+    {
+      "path": "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql",
+      "bytes": 10851,
+      "sha256": "1deee0b735aee6ca3b055ee71b3663799daa71c3d6c6ef66c47a02dee7efecec",
+      "gitBlob": "e8cc7deb2f6bdb5024dc4cbb710c885f83fc8ce4",
+      "workingBytesMatchCommitted": true,
+      "unchangedFrom30677ReviewedSource": true
+    },
+    {
+      "path": "prisma/migrations/20260927014300_workforce_exception_case_revisions_contract/migration.sql",
+      "bytes": 1262,
+      "sha256": "418f1cf3c481c1624cd16a26c0aad49680a2430f75fe9e2f3dd22117f000fc7e",
+      "gitBlob": "f5268c37f2a85f887f9151ff949249ebdbe3d1f0",
+      "workingBytesMatchCommitted": true,
+      "unchangedFrom30677ReviewedSource": true
+    }
+  ],
+  "baselineAndGateBindings": [
+    {
+      "path": "test-baseline.json",
+      "bytes": 1139,
+      "sha256": "8f0fc568274f9fd8c0c741db618d6e4d81025de7112a315cd93e6b92bbd5a4b1",
+      "gitBlob": "fcdde20b245a686642676341f01cb39e73e42ffa",
+      "workingBytesMatchCommitted": true,
+      "unchangedFromAcceptedPR608": true
+    },
+    {
+      "path": "typecheck-baseline.json",
+      "bytes": 3907,
+      "sha256": "919fa9d0212b18ee685af4f08680ebbc34e8c4969294054447df03147bf0fc53",
+      "gitBlob": "10afff7f7fa1d2d4ea79f2bce53e2b7ca29e484a",
+      "workingBytesMatchCommitted": true,
+      "unchangedFromAcceptedPR608": true
+    },
+    {
+      "path": "scripts/ci/check-typecheck-gate.sh",
+      "bytes": 3468,
+      "sha256": "a18608d9297c039380481fb27d6200d9ebbcc731e9ec23dd40b5e3a2c5a40937",
+      "gitBlob": "e6c3c4a836424b834e90f4192ad81513c9541b9c",
+      "workingBytesMatchCommitted": true,
+      "unchangedFromAcceptedPR608": true
+    },
+    {
+      "path": "scripts/ci/check-typecheck-baseline.mjs",
+      "bytes": 5909,
+      "sha256": "8b8a2472a1c813e85c4177c24c6df5fb5907d981b5b43e6870a04cbbba2b812a",
+      "gitBlob": "034bfd1f18061bad8291f505367e84c74ec510ae",
+      "workingBytesMatchCommitted": true,
+      "unchangedFromAcceptedPR608": true
+    },
+    {
+      "path": "scripts/check-test-baseline.mjs",
+      "bytes": 10188,
+      "sha256": "6c3380718fd71061d2efe4aa396fcb9cc998336c5c95a3bbd2de05230058027e",
+      "gitBlob": "7c27358c48c09131ce7966b2f4938490591c3cd1",
+      "workingBytesMatchCommitted": true,
+      "unchangedFromAcceptedPR608": true
+    }
+  ],
+  "hostedRun": {
+    "runId": 37607239591,
+    "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37607239591",
+    "headSha": "9f3cc73dcdb8c4ccea1fdac9dfae29570339abc5",
+    "status": "completed",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "name": "Exact WF-C6-010 isolated production bundle build",
+        "jobId": 112745610345,
+        "conclusion": "success",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37607239591/job/112745610345"
+      },
+      {
+        "name": "Authenticated Workforce exception report browser evidence",
+        "jobId": 112745610525,
+        "conclusion": "success",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37607239591/job/112745610525"
+      },
+      {
+        "name": "Exact WF-C6-010 full compiler gates",
+        "jobId": 112745610558,
+        "conclusion": "success",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37607239591/job/112745610558"
+      },
+      {
+        "name": "Exact WF-C6-010 source and PostgreSQL regressions",
+        "jobId": 112745610657,
+        "conclusion": "success",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37607239591/job/112745610657"
+      },
+      {
+        "name": "Exact WF-C6-010 authenticated HR recording browser",
+        "jobId": 112745610668,
+        "conclusion": "success",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37607239591/job/112745610668"
+      }
+    ]
+  },
+  "compilerEvidence": {
+    "artifactId": 11477010095,
+    "zipSha256": "cad4e8091d70683e4afa8c0c505caa73e6b1324989a37b4f8ae07f068427afa5",
+    "zipCrcAndExpandedMembersVerified": true,
+    "members": [
+      {
+        "path": "tsc-output.log",
+        "bytes": 177767,
+        "sha256": "dff3a43c1f03c9f872a786ab79528966041bcef545787c495fc0aac7955530ad",
+        "zipCrc32": "9e01faa9"
+      },
+      {
+        "path": "tsc-exit-code",
+        "bytes": 2,
+        "sha256": "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3",
+        "zipCrc32": "4c7caf90"
+      }
+    ],
+    "actualExitCode": 2,
+    "actualDiagnosticCount": 1153,
+    "allFamiliesTouchedFileDiagnostics": 0,
+    "gatedPairs": 64,
+    "unchangedBaselinePairs": 64,
+    "allDiagnosticBytesEqual30677": true,
+    "globalCompilerClean": false,
+    "decompressedCompilerSha256": "dff3a43c1f03c9f872a786ab79528966041bcef545787c495fc0aac7955530ad",
+    "independentReadOnlyGateRechecks": [
+      {
+        "gate": "scripts/ci/check-typecheck-gate.sh",
+        "exitCode": 0,
+        "result": "Completed exit2; no syntax/missingmodule/undefinedname errors"
+      },
+      {
+        "gate": "scripts/ci/check-typecheck-baseline.mjs",
+        "exitCode": 0,
+        "result": "64gatedpairs/64baseline/1153errors; exact accepted baseline match"
+      }
+    ],
+    "localWorkload": "Only small parsers on complete hosted logs; no fullcompiler/test/build/DB/browser run on Contabo. Resourceprecheck17229MiBavailable/281GiBfree/zero memorypressure"
+  },
+  "regressionEvidence": {
+    "freshHostedPostgresqlFiles": 4,
+    "freshHostedPostgresqlTests": 44,
+    "explicitLaneSkippedTests": 0,
+    "fullSuiteActualFailingFiles": 18,
+    "unchangedAcceptedKnownFailingFiles": 18,
+    "fullSuiteBaselineGate": "PASS_NO_NEW_OR_DISAPPEARED_ENTRIES",
+    "globalTestSuiteClean": false,
+    "schemaValidateGenerate": "PASS",
+    "runnerPolicy": "PASS",
+    "scopedSourceLint": "PASS",
+    "translationParity": "PASS"
+  },
+  "buildEvidence": {
+    "freshExactHeadProductionBundle": "PASS",
+    "isolatedInertFixtureConfiguration": true,
+    "actualCompiledSuccessfully": true,
+    "existingBuildSkipTypeValidation": "UNCHANGED; fullcompiler completed separately",
+    "productionDeployment": "NOT RUN, not authorized"
+  },
+  "browserEvidence": {
+    "independentReview": "docs/evidence/hrm-wf-c6-010-2026-10-07/independent-hosted-browser-review-9f3.json",
+    "reportCases": 9,
+    "classificationCases": 11,
+    "actualUi201Appends": 6,
+    "actualLedgerDecisions": 6,
+    "actualAuditRows": 6,
+    "verifiedMandatoryTotpSessions": 7,
+    "weakMfa403": true,
+    "actorTenantRevocation404": true,
+    "exactRetryZeroDelta": true,
+    "reopenedOutcomesReset": true,
+    "forcedRlsPopulatedBothTenants": true,
+    "allCleanup": "PASS",
+    "zipBindings": [
+      {
+        "artifactId": 11475593145,
+        "zipSha256": "aa30ce572ee13cbcc1aa663b9c8410151293d83ab43b0f7513bf2f7888d4cdb6"
+      },
+      {
+        "artifactId": 11475434208,
+        "zipSha256": "6e64ef8d567f22549943c635b33bab1f7759658d4f802dca10759922f0bc4d83"
+      }
+    ]
+  },
+  "criteriaAssessment": [
+    "Explicit HR-only FP/confirmed and FULL/PARTIAL/REJECTED are separately auditable current-resolved-cycle decisions; live scope/MFA/tenant authorization preserved, protected reason required, authoritative decision ledger append-only.",
+    "One record per independent dimension/currentcycle. Exact replay appends nothing; conflictingreason/stalerevision fail. Reopen invalidates previous finaloutcomes. Generic writer reservedcode denial and safequeueenum/token boundary retained; no automatic personnel/payroll/disciplinary actions.",
+    "CASE_RECORDED_AT/repeatable-read snapshot retained. Only validresolved explicitlyreviewed cases enter each final denominator; open/reopened/unclassified excluded, partial separate, sample/unfinished/unclassified/integrity counts separate, empty shares null. Correctionlink rate separate and doesnotinfer HRoutcome.",
+    "Fresh realDB/browser/fullregression/compiler/build gates bound exact final sourcePRhead9f3. Baselines/gates unchanged, independent source/artifact reviews exist, original missed defects and failed runs preserved."
+  ],
+  "logBindings": [
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/hosted-9f3-compiler-original.log.gz",
+      "decompressedBytes": 255253,
+      "decompressedSha256": "9b17957dd4a6f415ffe5d1092d9c3b0878516848926e6b7e9065d153ebf4262a",
+      "archivedLosslessly": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/hosted-9f3-regressions-original.log.gz",
+      "decompressedBytes": 157610,
+      "decompressedSha256": "e77dfca8134b586ba67ca4badd9fb914cd1d994c04808de747c2d4d449707e61",
+      "archivedLosslessly": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/hosted-9f3-build-original.log.gz",
+      "decompressedBytes": 130061,
+      "decompressedSha256": "e01e3ef373e6fd3596a25b68d1831d9e4c8444d01c32dc309a7b1b2e64afeb4a",
+      "archivedLosslessly": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/hosted-9f3-classification-original.log.gz",
+      "decompressedBytes": 100590,
+      "decompressedSha256": "35ad0e9e23bed2c21a933215d324cee1f16021c344d9df062c082086586aa786",
+      "archivedLosslessly": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/hosted-9f3-report-original.log.gz",
+      "decompressedBytes": 89576,
+      "decompressedSha256": "4484f65b0675f9b3031e9086a442b54191d3ffec666717167e26793e7907f551",
+      "archivedLosslessly": true
+    }
+  ],
+  "retainedOriginalReviewAndFailureBindings": [
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/independent-source-review-7400.json",
+      "bytes": 16510,
+      "sha256": "e810cc3fbdf33bba655fa863ce919f1fb7ebe4bf5e6d036dc2183a707909b066",
+      "unchangedFrom9f3Checkpoint": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/independent-source-review-supplement-5ead.json",
+      "bytes": 14763,
+      "sha256": "6a3fc39cb9d560a296116ac15cd8ac087ddd5a0bab689881e774c1ce4ad6cfa7",
+      "unchangedFrom9f3Checkpoint": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/independent-source-review-supplement-b416.json",
+      "bytes": 14959,
+      "sha256": "4a7c003bda2006a44fbce81f4e5177f135b5b8a55a090aadb068f78a95936b65",
+      "unchangedFrom9f3Checkpoint": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/independent-source-review-supplement-722.json",
+      "bytes": 15559,
+      "sha256": "307e85c4cf29707323119e47e9c6729df0d73478cd90569d2088add20211de9b",
+      "unchangedFrom9f3Checkpoint": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/independent-source-review-supplement-30677.json",
+      "bytes": 17370,
+      "sha256": "4c134a6dab2e84082bb20f63fc1b95954e0fbac8526daf8af8f574b99c18a7eb",
+      "unchangedFrom9f3Checkpoint": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/hosted-5ead-compiler/tsc-output.log.gz",
+      "bytes": 19058,
+      "sha256": "71e62e6caa9ac8f9bf2c0cdf40e0f298ba3978517fdf62108a1a7a1ba88f01be",
+      "unchangedFrom9f3Checkpoint": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/hosted-722-compiler/tsc-output.log.gz",
+      "bytes": 19084,
+      "sha256": "1d0cd6ea21cd0c067aac22734e303311e79444379a7841c1ba1f7ba9e729cd81",
+      "unchangedFrom9f3Checkpoint": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/hosted-30677-compiler/tsc-output.log.gz",
+      "bytes": 18977,
+      "sha256": "382177e8cd88f05e649491526479404b50ebaa576bc1556e2df188440bab98c9",
+      "unchangedFrom9f3Checkpoint": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/hosted-722-classification-original.log.gz",
+      "bytes": 21650,
+      "sha256": "3a762530f486cd0bf5ee968cdaa27f1ca659023139f6cdf20e002c74b0ca81a7",
+      "unchangedFrom9f3Checkpoint": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/hosted-30677-classification-original.log.gz",
+      "bytes": 21589,
+      "sha256": "bc14dae98bd13f5b1a839245b7c4df923ae97f6bcf54ee76fe6f30eeccc0bb08",
+      "unchangedFrom9f3Checkpoint": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/strict-receiver-original-fail.log.gz",
+      "bytes": 676,
+      "sha256": "1c4d4e3742149bf3ff4320724bfa9cf5ed28a6ac55024c53b5985ff1d073095e",
+      "unchangedFrom9f3Checkpoint": true
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/strict-receiver-repaired-regression.log.gz",
+      "bytes": 228,
+      "sha256": "4bdd5ce88de73acad42654a1a14a8d35b023461cccf286f03c3d99614047868a",
+      "unchangedFrom9f3Checkpoint": true
+    }
+  ],
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "reviewerArtifactCheckCorrection": {
+    "initial": "Read-only finalartifact generator expected ANSI-free rawVitest summary and raised AssertionError before writing finalJSON. This was a reviewerlog-formatting assumption, not product/test/gate failure.",
+    "recheck": "Strip ANSI color only for parsing original summary; exact source/assertions/fixtures/baselines/logs unchanged. All finalartifact assertions thenpassed; original generator failure is disclosed here."
+  },
+  "limitations": [
+    "Global repository NONCLEAN:1153compiler diagnostics/exit2 and18known-failingtestfiles. Exact unchanged gates passed with zero touchedallfamilydiagnostics/newtestfailures; baseline-qualified success is not globallygreen compiler/fulltests.",
+    "Synthetic disposable DB/history/developmentbrowser fixtures cannot replace liveHR operationalobservations, fullmigrationreplay, device/physical/pilot/load evidence or production activation. C12 remainsPARTIAL; this review doesnotautomaticallyadvance84of161/77open/60percent accounting.",
+    "Authoritative productiondecisionledger immutable; extra MtmAuditLog browser whitelist/append-only guard is synthetic and not proof of corresponding productionmigration.",
+    "EN metricsection PNG complete; AZfourpercentcards visiblebutbottom clipped; RUnestedscrollerPNG mostlyblank/clipped and doesnotprovefullmobilevisibility. ActualRU320DOM/geometry/nativecontrols/HRwrite checks passed; no globalWCAG/humanAT/pixelocclusion claim.",
+    "Standarddraft/main required PR workflows SKIPPED/NOTAPPLICABLE; actual exactworkflow_dispatch5lanes ran. No merge/protection/release/productioncredit.",
+    "No reviewer source/test edits, commits, pushes, merge/deploy/activation/access/secrets/Support actions. Final evidence-only localarchive separate from verified draft612head9f3."
+  ],
+  "nextAction": "Coordinator may finalize draft612description and checkpoint evidence separately on localarchivebranch parent9f3 while keeping draft612head exact9f3. User acceptance/review governs any future merge/deploy/activation; realoperationalobservations remainopen."
+}

@@ -1,0 +1,11 @@
+{
+  "lintExit": 0,
+  "lintErrors": 0,
+  "lintWarnings": 0,
+  "i18nExit": 0,
+  "paths": [
+    "src/components/workforce/workforce-workbench.tsx",
+    "src/components/workforce/workforce-manager-today.tsx",
+    "src/__tests__/workforce-today-session-isolation-ui.test.ts"
+  ]
+}

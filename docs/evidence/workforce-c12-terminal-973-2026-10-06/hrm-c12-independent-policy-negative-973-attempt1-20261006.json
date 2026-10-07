@@ -1,0 +1,97 @@
+{
+  "createdAt": "2026-10-06T23:01:15.651771+00:00",
+  "status": "FAILED_ATTEMPT_PRESERVED_ONE_UNCHANGED_DIAGNOSTIC_RETRY_SUPPORTED",
+  "head": "973241bacc296b71fe817d1af11187c32e8126af",
+  "synthetic": "ea2a86be4ca8b4b89aa4c067f9835d2e09f90c51",
+  "run": 37542951424,
+  "attempt": 1,
+  "job": 112540479450,
+  "artifact": 11449862043,
+  "artifactDigestAndSizeMatchIndependentApi": true,
+  "safeOriginalHashesVerified": 4,
+  "sourceBindingsVerified": {
+    "browser": 24,
+    "postgres": 4,
+    "localSha256AndExactHeadGitBlob": true
+  },
+  "observed": {
+    "browserPassed": 17,
+    "required": 18,
+    "pgPassed": 4,
+    "browserCleanup": "PASS",
+    "pgCleanup": [
+      {
+        "action": "isolated-owner-fixture-removal-and-absence",
+        "status": "PASS"
+      },
+      {
+        "action": "app-disconnect",
+        "status": "PASS"
+      },
+      {
+        "action": "owner-disconnect",
+        "status": "PASS"
+      }
+    ],
+    "failure": {
+      "line": 584,
+      "column": 10,
+      "expected": 401,
+      "actual": 200,
+      "error": "AssertionError"
+    },
+    "priorSourceAssertions": "Real signout200 then GET auth/session200 with null body completed before failing line.",
+    "unreached": "Logout denial body/headers, UI stale-state clear and reauthentication assertions, final facts and RLS-after checks are after line584 and not credited.",
+    "stageQualification": "Receipt stage future-window-selection is last helper-written stage; exact source position584 identifies logout assertion, not a future-window logic failure."
+  },
+  "diagnosis": {
+    "cause": "UNKNOWN",
+    "sourceChangeRequiredByEvidence": false,
+    "retry": "One unchanged samehead failed-job retry is appropriate to distinguish repeatable failure; no predicate/timeouts/source/auth weakening. A pass will not erase firstfailure or establish rootcause.",
+    "uncertainty": "waitForResponse binds origin/path/GET but not a newly initiated request identity; safe receipt lacks response body, request/cookie ordering needed to distinguish session race or matching-response ambiguity from product issue. These are hypotheses only.",
+    "freshRunMetadata": "Attempt2 already inprogress when independently fetched; this receipt validates originalattempt1 job metadata separately."
+  },
+  "boundaries": [
+    "Only four allowlisted safeJSON originals plus manifest and metadata read; no rawlogs or screenshots.",
+    "No independent fullZIP payload or image inspection; digest comparison uses independently fetched API and owner member manifest.",
+    "No remote writes/retry dispatch/source edits by reviewer.",
+    "Current failed workflow is not accepted until fresh terminal result; no wholeC12 closure."
+  ],
+  "supports": [
+    {
+      "path": "/tmp/hrm-c12-acceptance-20261006/terminal-archive/policy-version-attempt1/assessment.json",
+      "bytes": 791,
+      "sha256": "3217c93b80696f8f7fc058829affedd262ea50dcc62aefb573d5a0e4deaff042"
+    },
+    {
+      "path": "/tmp/hrm-c12-acceptance-20261006/terminal-archive/policy-version-attempt1/artifact-manifest.json",
+      "bytes": 828,
+      "sha256": "1782ce07622bcb7db16222cc31bb90f8b310c003e7b4361ed1a87a840718b297"
+    },
+    {
+      "path": "/tmp/hrm-c12-acceptance-20261006/terminal-archive/policy-version-attempt1/workflow-failure.json",
+      "bytes": 219,
+      "sha256": "f5b6fce36bbd9283f13eeac96763e3c09d506109e3b50e73fea3b7f225b7f13d"
+    },
+    {
+      "path": "/tmp/hrm-c12-acceptance-20261006/terminal-archive/policy-version-attempt1/workflow-context.json",
+      "bytes": 261,
+      "sha256": "3812355c8005fea72a3f8543d6e6b8c04771cc06529147245fa883df380e9b4b"
+    },
+    {
+      "path": "/tmp/hrm-c12-acceptance-20261006/terminal-archive/policy-version-attempt1/policy-version-receipt.json",
+      "bytes": 18750,
+      "sha256": "9811109e59e48e3df200a3670549597ccf0755a155d469206879a6af8a4368d9"
+    },
+    {
+      "path": "/tmp/hrm-c12-acceptance-20261006/terminal-archive/policy-version-attempt1/future-window-postgres-receipt.json",
+      "bytes": 1692,
+      "sha256": "88e80834f68a5923119c768cf2e82ee46628c00420a58307b6a7473ee3fa040f"
+    },
+    {
+      "path": "/tmp/hrm-c12-independent-publication/policy-negative-attempt1-metadata.json",
+      "bytes": 18236,
+      "sha256": "c5b7fa1fc5e082dd8cdc16e43a703a2fa67eee10fc3e85e63f325b0ac0ae19f1"
+    }
+  ]
+}

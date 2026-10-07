@@ -76,3 +76,16 @@ condition = "AND"
 paths = ['''^docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-a27681fc-independent-github\.json$''']
 regexTarget = "line"
 regexes = ['''^\s*"currentPrApiBaseSha":\s*"f62ab3a609a0461cbd14c264306df2d28325628f",?\s*$''']
+
+[[rules]]
+id = "generic-api-key"
+
+[[rules.allowlists]]
+description = "Synthetic lease owner marker in two immutable isolated C12 reproduction probes; not an authentication credential"
+condition = "AND"
+paths = [
+  '''^docs/evidence/workforce-c12-reader-profile-2026-10-06/probe\.mjs$''',
+  '''^docs/evidence/workforce-c12-reader-profile-2026-10-06/postfix-probe\.mjs$''',
+]
+regexTarget = "secret"
+regexes = ['''^synthetic-c12-owner$''']

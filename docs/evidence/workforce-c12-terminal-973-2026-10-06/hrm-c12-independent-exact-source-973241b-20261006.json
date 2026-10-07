@@ -1,0 +1,156 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-10-06T22:50:32.650856+00:00",
+  "status": "EXACT_HARNESS_SUCCESSOR_ACCEPTED_HOSTED_TERMINAL_PENDING",
+  "head": "973241bacc296b71fe817d1af11187c32e8126af",
+  "tree": "e29f1bd33104d6b3aab4bce30d1116cbd0c82b66",
+  "parent": "1d1741a73fb0e318b5e7a05f58fc5faf6b2678f2",
+  "main": "cb5a0453e7ead310e0515e265efee209be1c272b",
+  "synthetic": {
+    "sha": "ea2a86be4ca8b4b89aa4c067f9835d2e09f90c51",
+    "tree": "e29f1bd33104d6b3aab4bce30d1116cbd0c82b66",
+    "parents": [
+      "cb5a0453e7ead310e0515e265efee209be1c272b",
+      "973241bacc296b71fe817d1af11187c32e8126af"
+    ]
+  },
+  "pullRequests": {
+    "primary608": {
+      "head": "973241bacc296b71fe817d1af11187c32e8126af",
+      "base": "bf6ed11f2bba8c93e828fb044315794b44224741",
+      "draft": true
+    },
+    "validation609": {
+      "head": "973241bacc296b71fe817d1af11187c32e8126af",
+      "base": "cb5a0453e7ead310e0515e265efee209be1c272b",
+      "draft": false,
+      "mergeIndependently": false
+    }
+  },
+  "treeProof": {
+    "blobs": 8936,
+    "recomputedTreesIncludingRoot": 2822,
+    "tree": "e29f1bd33104d6b3aab4bce30d1116cbd0c82b66",
+    "allBlobModesAndHashesMatch": true,
+    "changedReadbacks": 14,
+    "allReadbacksByteExact": true,
+    "priorUnchanged": 8922,
+    "modified": [
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/README.md",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/manifest.json",
+      "docs/workforce-c12-reader-profile-acceptance-2026-10-06.md",
+      "scripts/workforce-reconciliation-reader-profile-evidence.mjs"
+    ],
+    "added": [
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/hosted-negative-7df-metadata.json",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/hrm-c12-independent-exact-source-1d1741-20261006.json",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/hrm-c12-independent-secret-rule-controls-20261006.json",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/profile-lint-final-harness.json",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/profile-matrix-attempt5-harness.mjs",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/profile-matrix-attempt6.json",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/published-source-1d-metadata.json",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/secret-scan-successor-metadata.json",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/social-regression-final.json",
+      "docs/evidence/workforce-c12-reader-profile-2026-10-06/social-regression-local.json"
+    ],
+    "removed": [],
+    "manifestOriginals": 46
+  },
+  "sourceReview": {
+    "findingCount": 0,
+    "guardOperationsSharedFactoryScannerClassifierUnchanged": true,
+    "onlyExecutableDelta": "Evidence harness uses existing makeRlsTestPrisma instead of direct PrismaClient, with process-local target restricted to owned fresh loopback container and prior environment restored. No bypass installation or gate/classifier relaxation.",
+    "matrix": "Owner35/35PASS current15bindings allrehashed; no reviewer DB run.",
+    "socialRegression": {
+      "tests": 883,
+      "pass": 883,
+      "failed": 0,
+      "skipped": 0,
+      "files": 52,
+      "all54BindingsRehashed": true,
+      "exitCode": 0
+    },
+    "lint": {
+      "exitCode": 0,
+      "errors": 0,
+      "warnings": 0,
+      "diagnostics": []
+    },
+    "ownerRegression152": "Previously accepted product-source evidence transfers because allproduct/test source remainsbyteidentical; not newhostedPG credit.",
+    "documentation": "Final matrix link updated attempt6/15bindings; original35attempt5 and failed33attempt4 preserved. Local882/883 classifiernegative retained separately from priorhostedSocial failurewhoseprecisecause remainsUNKNOWN withoutsafeartifact."
+  },
+  "durability": {
+    "remote14UTF8ReadbacksByteExact": true,
+    "manifestOriginals": 46,
+    "allHashesAndLengthsAndGitBlobsMatch": true,
+    "allPriorEvidenceOriginalsPreserved": true,
+    "priorEvidenceREADMEAndManifestUpdatedExplicitly": true
+  },
+  "ledger": {
+    "done": 84,
+    "total": 161,
+    "open": 77,
+    "gates": "14/15",
+    "weightedRounded": 60,
+    "WF-C12-008": "PARTIAL",
+    "noChangesInSuccessor": true
+  },
+  "hosted": {
+    "terminalAcceptance": false,
+    "snapshot": "Runnerpolicy bothPASS; remainingexacthead checks/workflows pending/inprogress at independentinitialsnapshot.",
+    "history": "7df scanFAIL and earlierSocial failures/cancellations stayhistorical; no borrowing theirpositivechecks or erasingnegatives.",
+    "optionalBuild": "No production-buildlabel expected; skippedisnotPASS.",
+    "artifactPayloadsInspected": false
+  },
+  "limits": [
+    "Supported readerprofile only, stableadminroleprecondition; nohistoricalschema/trigger/RLS/ACLstaging claim.",
+    "Other16facttables empty in35-caseprofilematrix; existingclosure/regressions separatelybound.",
+    "Historicalapi_keysbaseline,representativeload/controlvisibility,collectors/retention/alerts/drain andactivation remainseparate.",
+    "No globalcleancompiler/testclaim; baseline18testfiles/64typepairs remainunchanged.",
+    "No merge/deploy/runtimeactivation authorization; finalexacthead hostedmetadata and terminal evidencepublication remainpending."
+  ],
+  "supports": [
+    {
+      "path": "/tmp/hrm-c12-independent-publication/final973-tree.json",
+      "bytes": 3028103,
+      "sha256": "560a55b1ee43443e9d53b6204bbb045f3954e876abb8f7499891e2ede3ea2c17",
+      "availability": "LOCAL_ONLY independent support; referenced source originals separately committed"
+    },
+    {
+      "path": "/tmp/hrm-c12-independent-publication/final973-initial-metadata.json",
+      "bytes": 216986,
+      "sha256": "da2ee721ba8c79101f41e5b92b701211fd18abb41616c0eb870a99629979c372",
+      "availability": "LOCAL_ONLY independent support; referenced source originals separately committed"
+    },
+    {
+      "path": "/tmp/hrm-c12-independent-publication/final973-synthetic.json",
+      "bytes": 2644,
+      "sha256": "5d615b9c49b8d9ef8ba7aeae60929dac84491782aef7adbd54edbf13746805dd",
+      "availability": "LOCAL_ONLY independent support; referenced source originals separately committed"
+    },
+    {
+      "path": "/tmp/hrm-c12-independent-publication/final973-14-blob-readback.json",
+      "bytes": 125844,
+      "sha256": "5f7d1e9d5b83b080459dad9e30554c0027b019c53cb63f005f5f5131424e13da",
+      "availability": "LOCAL_ONLY independent support; referenced source originals separately committed"
+    },
+    {
+      "path": "/tmp/hrm-c12-independent-publication/final973-proof.json",
+      "bytes": 1576,
+      "sha256": "84ad5378125e01f17de10444536b2bc09e76873d6c91fa571478d530aef9b594",
+      "availability": "LOCAL_ONLY independent support; referenced source originals separately committed"
+    },
+    {
+      "path": "/tmp/hrm-c12-independent-harness-factory-review-20261006.json",
+      "bytes": 4333,
+      "sha256": "1ab2026247998911dfd48ccf18cdfe76d6d02b5b3f44a116052cb7e157e92d2f",
+      "availability": "LOCAL_ONLY independent support; referenced source originals separately committed"
+    },
+    {
+      "path": "/tmp/hrm-c12-independent-exact-source-1d1741-20261006.json",
+      "bytes": 7641,
+      "sha256": "8bd88b8e6e0f242a6d20459f969cc6a3d42abed23103e26057d492bd7712fd34",
+      "availability": "LOCAL_ONLY independent support; referenced source originals separately committed"
+    }
+  ]
+}

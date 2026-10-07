@@ -1,0 +1,31 @@
+# WF-C8-002 — manager Today whole-item acceptance
+
+Accepted finite product task on runtime 30c and tested main251. The incoming-main cb5 integration successor still requires its own hosted CI/build/browser and final source review before delivery readiness.
+
+The manager Today task is accepted on runtime `30c4185b41d85be43a588e71d8c74c5f34e63596`, tree `9302e6432c64e818d7859dae78977a35fc996749`, integrated main `251823a5b1b78818593e14be1a8ac8be47e321f4`. Accepted PR589 remains unchanged at `a856a9e533c4f3cec6f2313e69f5be0d5b4d4226`. PR605 owns this successor; PR606 supplies exact-head validation and must not be merged. Both remain subject to separate scoped release approval.
+
+The scheduled roster shows an absent employee with the appropriate plan, calendar state and explicit non-presence boundary. Persisted NO_SHOW, previous-open workdays and exceptions remain distinct facts; attendance-only readers receive no exception payload. Pagination retains a native, visible focus target and announces localized counts/end state. A principal/scope change clears old content while the new request is pending, and a late old page cannot append rows or clear new loading. Denied, expired and unavailable Today reads now use safe localized copy, including for self views.
+
+The finite acceptance matrix is linked in the [original evidence packet](https://github.com/rashadoni/leaddrive-v2/tree/9bb70b2b742deec13d225aded25a896a1393eb90/docs/evidence/workforce-c8-whole-item-2026-10-06/). That immutable preparation snapshot intentionally still says terminal CI pending; the terminal supplement below supersedes only that status, never its originals.
+
+- Source and targeted checks: 130/130 tests, zero skips; scoped ESLint and EN/RU/AZ parity pass; full source and incoming-main/C7 preservation independently verified.
+- Actual AT: 90/90 assertions in nine EN/RU/AZ scenarios, 3,697 original speech calls with returned dispatches. The frozen pre-MTM runtime is transferred by independently verified unchanged HRM/shared dependencies; it is not relabelled as a fresh final-head run.
+- Contrast on exact 30c source: 12 role/language/theme combinations, 174 checked text samples, minimum 4.574019684523154:1, no unsupported computed effects or exclusions.
+- Hosted browser/PG on exact 30c source: nine cases, six strict native-zoom focus checks, ten named snapshot database guards, 21 FORCE-RLS tables (16 populated and five empty), 20 unchanged business-fact hashes and 58 verified source bindings.
+- Hosted gates/build: all 15 unique applicable jobs pass (16 success records including the duplicate runner; seven draft skips remain separate). The full configured compiler and both blocking gates, static baseline gate, production build and output verification pass. [Terminal metadata](./evidence/workforce-c8-whole-item-2026-10-06/terminal-ci-30c.json) and [independent whole-item acceptance](./evidence/workforce-c8-whole-item-2026-10-06/independent-terminal-whole-30c.json) bind exact 30c/main251. Baselines and gate scripts remain byte-identical to main.
+
+Original 54/54 Orca, 100 owner tests, 14 independent tests, prior 178-file and 116-member archives, failed early attempts, and the original error/contrast/fractional-focus failures remain preserved. The new 223-member session/pagination and 24-member effects archives have local CRC/member verification and GitHub upload/tree identities. Remote binary payload readback was not performed; no roundtrip claim is made.
+
+The full compiler is judged by its completed run and both unchanged blocking gates; 18 known failing test files and 64 gated type pairs remain in the repository baselines. This is not global compiler/suite cleanliness, and uncollected diagnostics outside the gates are not claimed clean.
+
+Scope: actual Linux Orca with ALSA null establishes event processing/presentation, not human listening or pronunciation. Browser evidence uses Next development runtime; production build verifies the standalone bundle, not a production-runtime browser session. Disposable current schema plus selected SQL guards is not full historical migration replay. Seeded workdays are not physical START/presence. Android, physical devices, load, pilot and whole-site WCAG remain separate. No schema change belongs to this C8 delta.
+
+Support, bounded aggregate diagnostics and rollback are defined in the evidence packet: classify safe error states, retain no roster/proof/token payloads, and use a separately approved source rollback through the normal release route while preserving C7/MTM and immutable facts. No production collector, grant, cron, tenant activation, merge or deployment is performed by acceptance.
+
+Only WF-C8-002 changes to DONE. The ledger becomes 84/161 DONE, 77 open, C8 6/11 (55%), 14/15 phase gates, weighted raw 60.40579710144928%, rounded 60%; open P0/P1 is 73. The next prepared slice is [existing C12 worker acceptance](./workforce-c12-next-acceptance-slice-2026-10-06.md), with no C12 credit.
+
+## Incoming-main integration successor
+
+Main advanced to `cb5a0453e7ead310e0515e265efee209be1c272b` (MTM PR607) after the 30c run. Six incoming MTM files are exact main blobs; three catalogs add only five MTM keys each, preserving all existing values. All other prior source blobs, HRM/shared dependencies, accepted C7 and earlier evidence remain unchanged. This combined code/documentation successor passes 138/138 targeted tests, zero skips, i18n and scoped new-component lint locally. Its own full hosted checks, build and fresh browser receipt are mandatory and pending at publication; prior actual-AT/contrast evidence is source-qualified transfer, never relabelled as a new execution. The [source integration proof](./evidence/workforce-c8-whole-item-2026-10-06/maincb5-integration-source-proof.json) describes that boundary.
+
+The added 31-member [independent support archive](./evidence/workforce-c8-whole-item-2026-10-06/independent-support-originals.zip) preserves 30 original support files previously local or separately bound. [Independent support verification](./evidence/workforce-c8-whole-item-2026-10-06/independent-supplement-prose-prepared.json) verifies every original byte. This extends durable coverage without rewriting the older qualified receipt or claiming remote binary payload readback.

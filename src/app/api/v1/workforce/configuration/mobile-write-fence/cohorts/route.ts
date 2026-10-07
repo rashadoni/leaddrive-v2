@@ -1,3 +1,4 @@
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { NextRequest, NextResponse } from "next/server"
 import { withWorkforceSessionPilotFenceAuth } from "@/lib/with-workforce-rls-auth"
 import {
@@ -42,7 +43,7 @@ export const PUT = withWorkforceSessionPilotFenceAuth(async (req: NextRequest, a
     if (error instanceof WorkforceMobileWriteFenceError) {
       return NextResponse.json({ error: error.message, code: error.code }, { status: fenceErrorStatus(error) })
     }
-    console.error("[workforce/configuration/mobile-write-fence/cohorts PUT]", error)
+    logWorkforceSensitiveOperationFailure({ operation: "configuration-mobile-write-fence-cohorts-put" })
     return NextResponse.json({ error: "Failed to enable Workforce mobile write cohort" }, { status: 500 })
   }
 })
@@ -72,7 +73,7 @@ export const DELETE = withWorkforceSessionPilotFenceAuth(async (req: NextRequest
     if (error instanceof WorkforceMobileWriteFenceError) {
       return NextResponse.json({ error: error.message, code: error.code }, { status: fenceErrorStatus(error) })
     }
-    console.error("[workforce/configuration/mobile-write-fence/cohorts DELETE]", error)
+    logWorkforceSensitiveOperationFailure({ operation: "configuration-mobile-write-fence-cohorts-delete" })
     return NextResponse.json({ error: "Failed to disable Workforce mobile write cohort" }, { status: 500 })
   }
 })

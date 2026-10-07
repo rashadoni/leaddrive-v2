@@ -1,3 +1,4 @@
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { clientIp } from "@/lib/request-ip"
@@ -131,8 +132,8 @@ export const GET = withWorkforceRlsAuth("read", async (req: NextRequest, auth) =
         "x-content-type-options": "nosniff",
       },
     })
-  } catch (error) {
-    console.error("[workforce/attendance/security-triage GET]", error)
+  } catch {
+    logWorkforceSensitiveOperationFailure({ operation: "attendance-security-triage-get" })
     return NextResponse.json({ error: "Failed to triage Workforce attendance security" }, { status: 500 })
   }
 })

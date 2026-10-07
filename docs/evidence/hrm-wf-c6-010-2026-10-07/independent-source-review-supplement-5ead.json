@@ -1,0 +1,293 @@
+{
+  "version": 1,
+  "reviewId": "WF-C6-010-independent-source-supplement-5ead",
+  "createdAtUtc": "2026-10-07T09:13:15.943968+00:00",
+  "headSha": "5eadeb43f7406a96e3145e8b21b78a3708827ef4",
+  "gitTree": "a9fbddfdbf911feaf9049b1674d3cb6c9b85b3e8",
+  "previousSourceReview": "docs/evidence/hrm-wf-c6-010-2026-10-07/independent-source-review-7400.json",
+  "previousReviewedCommit": "de49d9bf72d1e49af4a30b1bbdf44becd9e7c63e",
+  "status": "TYPE_CONTRACT_CORRECTION_CONFIRMED_SOURCE_ONLY_COMPILER_PENDING",
+  "reviewer": "/root/inspect_outcome_contract",
+  "authorshipDisclosure": "Reviewer authored PostgreSQL report tests, report-browser extensions, separate classification SQL/browser harness and its refusal test. This artifact independently reviews root-authored production source/workflow. It is not independent test execution or independent review of reviewer-authored verification code.",
+  "findings": {
+    "P0": [],
+    "P1": [
+      {
+        "title": "Mutable HR authorization Map inferred from initializer cannot accept ReadonlyMap reader",
+        "path": "src/app/api/v1/workforce/exceptions/route.ts",
+        "initializationLine": 180,
+        "assignmentLine": 197,
+        "discoveredBy": "Root source inspection; independently confirmed by reviewer after initial source review missed it",
+        "affectedHeads": [
+          "7400af350e217e504f173639ddf7434e9f1ccc0a",
+          "de49d9bf72d1e49af4a30b1bbdf44becd9e7c63e"
+        ],
+        "observationBasis": "SOURCE_INSPECTION_NOT_ACTUAL_COMPILER_RESULT",
+        "explanation": "hrAuthorization inferred Map<string,{decidable:boolean}> from new Map initializer. authorizeWorkforceExceptionReadCandidates returns ReadonlyMap<string,WorkforceExceptionReadAuthorization>, whose interface intentionally does not expose set, delete or clear. Assigning it to mutable Map requires missing mutation members. Runtime unit tests can pass because transpilation does not establish TypeScript type correctness.",
+        "status": "FIXED_IN_REVIEWED_COMMIT",
+        "fixedHead": "5eadeb43f7406a96e3145e8b21b78a3708827ef4",
+        "correction": "Explicitly declare hrAuthorization: ReadonlyMap<string,{decidable:boolean}> = new Map(). No cast, permission change, weakened baseline or runtime alteration.",
+        "remainingGate": "Actual complete compiler diagnostics and unchanged blocking compiler/baseline checks on exact final commit remain required."
+      }
+    ],
+    "P2": [],
+    "P3": []
+  },
+  "activeUnresolvedFindingCounts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "bindings": [
+    {
+      "path": "src/lib/workforce/exception-outcome-classification.ts",
+      "bytes": 2447,
+      "sha256": "947410fb0687987a465c38ce0c9455d3923d62039d9030b43bda3e0afae99a23",
+      "gitBlob": "2b712f77b32be775a503a9e59efd2dcb56bd706e",
+      "changedSincePreviousReview": false,
+      "workingBytesMatchCommitted": true
+    },
+    {
+      "path": "src/lib/workforce/exception-policy-draft.ts",
+      "bytes": 8270,
+      "sha256": "f45f761e9c2e829351eb930c7e191f667327b3ed040338b4033b54381da59b6b",
+      "gitBlob": "db91eb7a7183c3316fc12cfbc2b1c0f718174015",
+      "changedSincePreviousReview": false,
+      "workingBytesMatchCommitted": true
+    },
+    {
+      "path": "src/lib/workforce/exception-workbench.ts",
+      "bytes": 12753,
+      "sha256": "17107791d3895fe0e66d4ed349c32f19eec21fc4bb42220060ff8989ebc3cd21",
+      "gitBlob": "e8f70fe15f1c77ab58939ce7a6e67b88491a6ed0",
+      "changedSincePreviousReview": false,
+      "workingBytesMatchCommitted": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-writer.ts",
+      "bytes": 19607,
+      "sha256": "61814e5d395143a6deacc9bd92e0aee1ffb508cc1c168724897dd9bf67da201f",
+      "gitBlob": "ab95d6368d252d7e780696fd5bd5fa88d8034ac1",
+      "changedSincePreviousReview": false,
+      "workingBytesMatchCommitted": true
+    },
+    {
+      "path": "src/lib/workforce/exception-decision-service.ts",
+      "bytes": 11815,
+      "sha256": "ade54fd701b1e0016b7e44a7664cb91b1c082d6a99dbc5ff36262650eb57bfa4",
+      "gitBlob": "41312a78826513f2be92aad9963ef1289645931f",
+      "changedSincePreviousReview": false,
+      "workingBytesMatchCommitted": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-report-recorded-outcomes.ts",
+      "bytes": 8338,
+      "sha256": "1d84daa28a7b21a8ad8545f5b494c1030c338cff75fc168f87153541d5f0321c",
+      "gitBlob": "192e9f00b988202f82663c2b0e616c4a87136c3b",
+      "changedSincePreviousReview": false,
+      "workingBytesMatchCommitted": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-report-read.ts",
+      "bytes": 3384,
+      "sha256": "b34a3ef9d52359a235040802c5ede11c03f128c7250b41f5b2a86d10860b82b5",
+      "gitBlob": "51bc463f9493c8149f1e2a823ebdb8ce2e982a06",
+      "changedSincePreviousReview": false,
+      "workingBytesMatchCommitted": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-ledger.ts",
+      "bytes": 9052,
+      "sha256": "da971cdfdc696085e40be8a35386e48a1746a3c92ebaa2ab9e0cedded25cc8ab",
+      "gitBlob": "bce584e8e4b791f670971fa8da4e29a030ac6c8c",
+      "changedSincePreviousReview": false,
+      "workingBytesMatchCommitted": true
+    },
+    {
+      "path": "src/lib/workforce/exception-workbench-token.ts",
+      "bytes": 5735,
+      "sha256": "4479cba8767dd4a8bb596ff8bf311ba139d1b417782035b13db92edef204fd1a",
+      "gitBlob": "fd1b73daac5fcd71c903921a95cf8c3aec680f7c",
+      "changedSincePreviousReview": false,
+      "workingBytesMatchCommitted": true
+    },
+    {
+      "path": "src/lib/workforce/access-control.ts",
+      "bytes": 10353,
+      "sha256": "b4915d133bb102251dccc94b9ba33a3a65905488135b00cb652f0e299cfa0b9f",
+      "gitBlob": "59f8d4e6aa5ec20c3819648bd8b0dce0ad6d5173",
+      "changedSincePreviousReview": false,
+      "workingBytesMatchCommitted": true
+    },
+    {
+      "path": "src/lib/workforce/access-grant-resolution.ts",
+      "bytes": 5664,
+      "sha256": "1720277ff37308894c9c3e3313a7235150350bcfa254ac4846905a5f9875e2c3",
+      "gitBlob": "48d9e9016d3b1882e2ff7f95e1970dafe24140df",
+      "changedSincePreviousReview": false,
+      "workingBytesMatchCommitted": true
+    },
+    {
+      "path": "src/lib/workforce/exception-read-access.ts",
+      "bytes": 2032,
+      "sha256": "adedcbd7844335ff63c2506c82c46fee240a473ba47974e90bcb8a8f62da69ae",
+      "gitBlob": "3a9099c3092fe8a976234b0ab69cd7513379fd69",
+      "changedSincePreviousReview": false,
+      "workingBytesMatchCommitted": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-read-scope.ts",
+      "bytes": 8461,
+      "sha256": "42ff417bb8afc67546b4cc57bfc0b6549a839c2ce293297b1f440e625093f9b5",
+      "gitBlob": "913a42caf076646e9ae380059aa8fdde90cd1afc",
+      "changedSincePreviousReview": false,
+      "workingBytesMatchCommitted": true
+    },
+    {
+      "path": "src/lib/workforce/team-membership.ts",
+      "bytes": 4282,
+      "sha256": "47fc2f92856ff8e8bc67a31bf9087c73faf673bc741fc58b76a4f5efac7723fb",
+      "gitBlob": "4d929406051c9048bba09c43e1203731d22e000f",
+      "changedSincePreviousReview": false,
+      "workingBytesMatchCommitted": true
+    },
+    {
+      "path": "src/lib/with-workforce-rls-auth.ts",
+      "bytes": 21653,
+      "sha256": "289aa253b4d8d3a25913136a545db598bf1a01c9b571b6c89e2689da2fe6d8ff",
+      "gitBlob": "fc6e31b5380acc3d7e34e51a71b5f02b6dca7676",
+      "changedSincePreviousReview": false,
+      "workingBytesMatchCommitted": true
+    },
+    {
+      "path": "src/app/api/v1/workforce/exceptions/route.ts",
+      "bytes": 13279,
+      "sha256": "5a33ec78dc7fe6b05e920cbdb22fecb46f85d45c74840486533ea56df68034ff",
+      "gitBlob": "15c9bb229abcc9b438356c3f377187116abd1877",
+      "changedSincePreviousReview": true,
+      "workingBytesMatchCommitted": true
+    },
+    {
+      "path": "src/app/api/v1/workforce/exception-decisions/route.ts",
+      "bytes": 4157,
+      "sha256": "eeeb1dda5d637fb0fdaa831021556a1200a1bd502e73df05838e850284db34c9",
+      "gitBlob": "ad2da46df064e7ac296823e1eb615220779d5633",
+      "changedSincePreviousReview": false,
+      "workingBytesMatchCommitted": true
+    },
+    {
+      "path": "src/app/api/v1/workforce/exception-reports/route.ts",
+      "bytes": 6162,
+      "sha256": "6d4935a3cd3adbbbb411619a813287a6ba8b7d58cc89dec888074130360233bf",
+      "gitBlob": "d8506dc1ec4788118e7f84640789bbf032c2edf7",
+      "changedSincePreviousReview": false,
+      "workingBytesMatchCommitted": true
+    },
+    {
+      "path": "src/components/workforce/workforce-exception-queue.tsx",
+      "bytes": 23064,
+      "sha256": "099c5b14c4ce598dce17bc614a4c3847b0fbc51f1108b6c0178b6fdde2c6f82a",
+      "gitBlob": "9a678cc73f6cbe94b9e1bd69673d051e4e5c38a5",
+      "changedSincePreviousReview": false,
+      "workingBytesMatchCommitted": true
+    },
+    {
+      "path": "src/components/workforce/workforce-exception-recorded-outcomes.tsx",
+      "bytes": 6293,
+      "sha256": "1039384b9a47e87b48a001b115300c7161cd3d144b376adce20276f5172cc386",
+      "gitBlob": "b97498e1325b0c74ff6db1c3a8380d59508ac478",
+      "changedSincePreviousReview": false,
+      "workingBytesMatchCommitted": true
+    },
+    {
+      "path": ".github/workflows/workforce-exception-report-browser-evidence.yml",
+      "bytes": 25256,
+      "sha256": "1dcd49d422fb212d4ee1eac6368de97837fe62fc5ca5975a7faa2b6c61dc18e7",
+      "gitBlob": "61b8a890269f3a083628de6df13ac508e4d0b19a",
+      "changedSincePreviousReview": false,
+      "workingBytesMatchCommitted": true
+    },
+    {
+      "path": "messages/en.json",
+      "bytes": 1352170,
+      "sha256": "be99a98fbe605f2f1d6af6f58dba7d2d4cddae6b51f5dc41bcc126777543c0dc",
+      "gitBlob": "79199e6423f4eddce00fd142bd9ad9bac6709451",
+      "changedSincePreviousReview": false,
+      "workingBytesMatchCommitted": true
+    },
+    {
+      "path": "messages/ru.json",
+      "bytes": 1997081,
+      "sha256": "883624ffb0c17fcd9d8151af99d9162b1bf69b1c7e3f3baf7ad3477d3e6fa98e",
+      "gitBlob": "13f3c8225267d43fc24358b2e5c1c4b5dab72e89",
+      "changedSincePreviousReview": false,
+      "workingBytesMatchCommitted": true
+    },
+    {
+      "path": "messages/az.json",
+      "bytes": 1495785,
+      "sha256": "c3974dfb5915ebc03186e87ceaadc6b74fb9124f65c1865fde052829ced85fdc",
+      "gitBlob": "fc0dc779a092b3810590d203b369f4da655d5583",
+      "changedSincePreviousReview": false,
+      "workingBytesMatchCommitted": true
+    },
+    {
+      "path": "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql",
+      "bytes": 9684,
+      "sha256": "314d4f0e83c81544a50633bceb977298ece24fff918923310671b07c0e8c5f2a",
+      "gitBlob": "c14b3aed36d12b40dcbbdcaa35745a8517006654",
+      "changedSincePreviousReview": false,
+      "workingBytesMatchCommitted": true
+    },
+    {
+      "path": "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql",
+      "bytes": 10851,
+      "sha256": "1deee0b735aee6ca3b055ee71b3663799daa71c3d6c6ef66c47a02dee7efecec",
+      "gitBlob": "e8cc7deb2f6bdb5024dc4cbb710c885f83fc8ce4",
+      "changedSincePreviousReview": false,
+      "workingBytesMatchCommitted": true
+    },
+    {
+      "path": "prisma/migrations/20260927014300_workforce_exception_case_revisions_contract/migration.sql",
+      "bytes": 1262,
+      "sha256": "418f1cf3c481c1624cd16a26c0aad49680a2430f75fe9e2f3dd22117f000fc7e",
+      "gitBlob": "f5268c37f2a85f887f9151ff949249ebdbe3d1f0",
+      "changedSincePreviousReview": false,
+      "workingBytesMatchCommitted": true
+    }
+  ],
+  "additionalContractInspection": [
+    {
+      "area": "Outcome/workbench/draft decision unions",
+      "result": "New readonly outcome tuple widens both accepted decision unions; action-token validator reads widened workbench list; lifecycle evaluator handles explicit outcomes before its legacy switch."
+    },
+    {
+      "area": "Permission helper input",
+      "result": "canRecordWorkforceExceptionOutcome supplies required selfAgentId and literal existing TEAM_EXCEPTION_DECIDE permission, retaining organization/resource/principal/readonly grant/date contract of decideWorkforceAccess."
+    },
+    {
+      "area": "Writer/context interfaces",
+      "result": "Scoped service supplies expected prior decisionCode/caseRevision shape. availableWorkforceExceptionOutcomeDecisions returns the existing readonly workbench-decision union. No new Prisma field/schema delegate is required."
+    },
+    {
+      "area": "Aggregate/report consumers",
+      "result": "All Workforce recorded-outcomes production consumers use finalClassification, and inspected existing read model retains createdAt/revision/string codes. No stale Workforce unavailable classification field references were found in src/scripts."
+    },
+    {
+      "area": "Queue UI types",
+      "result": "Known queue action union includes outcomes. Legacy generated-reason object is deliberately typed only for two legacy actions; outcome reason uses separate guarded path. Maps for string operation ids/reasons and selected-action references remain compatible."
+    }
+  ],
+  "limitations": [
+    "Original review is preserved unchanged. Its no-active-findings statement for7400/de49 was incomplete regarding this type contract and is superseded by this supplemental confirmed finding.",
+    "No compiler, test, browser or database execution performed by reviewer. Do not attribute an actual hosted compiler failure to this observation until that run reports it.",
+    "No additional concrete type mismatch found by source inspection; complete hosted typecheck remains necessary and may identify further issues.",
+    "PASS means independent source-review status only. Exact final-head PostgreSQL, authenticated browser, full regression, compiler and isolated build results remain to be collected/reviewed.",
+    "WorkforceExceptionDecision is the authoritative immutable HR audit envelope. No production append-only migration for ordinary MtmAuditLog was discovered. Browser audit whitelist/append-only guard is synthetic and cannot establish production MtmAuditLog immutability.",
+    "New findings can be recorded only for already resolved valid cases. No terminal writer/tenant policy/grant/feature activation, live case detector or backfill is introduced.",
+    "Source/test evidence does not replace real operational observations, staging history, physical/device/pilot acceptance or full production migration rehearsal. No roadmap completion or weighted progress credit inferred.",
+    "No merge, deployment, production, access, secret or Support mutation was performed or authorized by review."
+  ],
+  "nextAction": "Preserve original exact-de49 run results, run complete hosted gates for exact corrected final source, and independently review final evidence. No baseline weakening or production action authorized."
+}

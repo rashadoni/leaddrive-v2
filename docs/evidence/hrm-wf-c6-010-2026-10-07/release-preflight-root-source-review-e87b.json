@@ -1,0 +1,80 @@
+{
+  "head": "e87b0fca5665a92805541a3fb830f52b20a7bd2f",
+  "reviewer": "/root",
+  "author": "/root/inspect_outcome_contract",
+  "status": "ACCEPTED_ALIAS_ONLY_SOURCE_CORRECTION_HOSTED_SQL_PENDING",
+  "rootUnitTests": {
+    "passed": 14,
+    "failed": 0,
+    "hostedSQLSkipped": 1
+  },
+  "priorActualFailures": [
+    "293/37628952667 connection URI defect",
+    "0ceb/37631152301 reserved SQL alias collation at character6483"
+  ],
+  "aliasTransformationExact": true,
+  "productionHelperWorkflowUnchanged": true,
+  "testDiagnosticScope": "Finite pre-existing SQLSTATE only in already-fenced hosted fixture",
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "bindings": [
+    {
+      "path": ".github/workflows/hrm-migration-metadata-preflight.yml",
+      "bytes": 7131,
+      "sha256": "f90937ecda3b81e7dd017819cfaec1afdefc5fee58167fdfc2289ce012a1dcf1",
+      "blob": "f9c1ea00cb2e31f6f3290521b6e4787f14121132"
+    },
+    {
+      "path": "docs/evidence/hrm-release-preflight-2026-10-07/source-0ceb-second-failed.log.gz",
+      "bytes": 14421,
+      "sha256": "f9744fda7633f361d20633f523386caee128297d62359ee328980802187288f3",
+      "blob": "fcaa4e3c429eee4fa0ea37b69d2829c3f39722a3"
+    },
+    {
+      "path": "docs/evidence/hrm-release-preflight-2026-10-07/source-0ceb-second-failure.json",
+      "bytes": 933,
+      "sha256": "a5fd5249d11b945ca8062339622535bcc631ceed509a84e72b2bc95d6122a142",
+      "blob": "3c3bd576d0767ace821bb9664d1dc89963cc6891"
+    },
+    {
+      "path": "docs/evidence/hrm-release-preflight-2026-10-07/source-293-first-failed.log.gz",
+      "bytes": 2481,
+      "sha256": "8971284d39f574b9af3050d331d996d641419d344c25a2d22800dafdbe3d830b",
+      "blob": "e11cf97b82b1cf54198b797acdd2545aa05ff0f2"
+    },
+    {
+      "path": "docs/evidence/hrm-release-preflight-2026-10-07/source-293-first-failure.json",
+      "bytes": 1087,
+      "sha256": "cfd27ab449ae3a29db915432c54d2b928ca9f625223077b08b7611bd1baea0db",
+      "blob": "7375dc5828eaf2e55bcbe046314e20943057dd1c"
+    },
+    {
+      "path": "docs/hrm-release-preflight-session-log.md",
+      "bytes": 17047,
+      "sha256": "4a19a4898fb33671ebd8fa0b0c3b0a2cd8db04c6418ce7f72c8160cfc30531a5",
+      "blob": "9194e4142aa5a383d54f138af739d3dea8f259cf"
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.mjs",
+      "bytes": 20499,
+      "sha256": "ab31354e7beaaed42508511c74eb304f52c2a6353e8b80d41bac9d6d63212f8b",
+      "blob": "3c15b895edf7096b20474b1ea0928ca9d886c75d"
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.sql",
+      "bytes": 14734,
+      "sha256": "9fff72bc44e1e9d7fa5e552cdd56ab53d857b20dd1b8bdc1e1fcdb704bf74299",
+      "blob": "5a52af940fc735e294ae1ac482ddc50ba81a98cf"
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.test.mjs",
+      "bytes": 26338,
+      "sha256": "c2e546ead7b8ce1267e04a7a23e8094b36bbe29aa661fa58b052e927fe12d883",
+      "blob": "d3c42f006ad5028f7d3540f8157b4f1b5708dc28"
+    }
+  ]
+}

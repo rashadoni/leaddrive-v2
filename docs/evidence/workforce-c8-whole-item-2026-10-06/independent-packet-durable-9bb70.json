@@ -1,0 +1,458 @@
+{
+  "schema": "independent-c8-finite-packet-durability/v1",
+  "reviewedAt": "2026-10-06T21:28:11.271337+00:00",
+  "status": "IMMUTABLE_EVIDENCE_CHECKPOINT_ACCEPTED_WITH_BINARY_AND_SUPPORT_BOUNDARIES_R5_PENDING",
+  "commit": "9bb70b2b742deec13d225aded25a896a1393eb90",
+  "tree": "9eb9da388f51400f7ff97313d69f6dc253cd1e8c",
+  "parent": "30c4185b41d85be43a588e71d8c74c5f34e63596",
+  "sourceUnchanged": true,
+  "priorBlobsAndModesPreserved": 8844,
+  "totalBlobs": 8871,
+  "additions": 27,
+  "actualUtf8RemoteReadbacks": 25,
+  "binaryBlobsTreeAndLocalGitHashBound": 2,
+  "binaryRemotePayloadReadback": false,
+  "publishedIndependentSourceAndHostedReceiptsByteExact": true,
+  "packetPathManifestBindings": [
+    {
+      "relative": "README.md",
+      "path": "docs/evidence/workforce-c8-whole-item-2026-10-06/README.md",
+      "bytes": 6901,
+      "sha": "96181595dd13a048a409dc6563411792452911ea",
+      "sha256": "ef14b134a714940ea2079d3782bb6b04e829303183142840971cf68cfebf9a29",
+      "binary": false
+    },
+    {
+      "relative": "baseline-gate-identity.json",
+      "path": "docs/evidence/workforce-c8-whole-item-2026-10-06/baseline-gate-identity.json",
+      "bytes": 1604,
+      "sha": "5d71b7acff0de7c8857af183ff3caab5399f5ff0",
+      "sha256": "eedf7cf03af9b945c80b46be0226696aec444af101b520fba6a1b853099bd3c9",
+      "binary": false
+    },
+    {
+      "relative": "baseline-local-identities.json",
+      "path": "docs/evidence/workforce-c8-whole-item-2026-10-06/baseline-local-identities.json",
+      "bytes": 388,
+      "sha": "860f3904a5c337e3799069aa4725cc03f34a5e73",
+      "sha256": "c8c01e7a08aee7f65dcfdbf70d62b7fd7a154cd809dc062ac3b1389b56409b92",
+      "binary": false
+    },
+    {
+      "relative": "contrast-effects-summary.json",
+      "path": "docs/evidence/workforce-c8-whole-item-2026-10-06/contrast-effects-summary.json",
+      "bytes": 643,
+      "sha": "92ec1b1961fcc52b46aa3fc157e1dd1e3728f1f1",
+      "sha256": "582847a9ae67ea1c2444ee87b43aee639199b500edf150da97bc6710acdac012",
+      "binary": false
+    },
+    {
+      "relative": "contrast-effects-supplement.zip",
+      "path": "docs/evidence/workforce-c8-whole-item-2026-10-06/contrast-effects-supplement.zip",
+      "bytes": 902425,
+      "sha": "b941f441e5631092a75e17fbbb2ccc5d10b1f6f6",
+      "sha256": "27a308396a4e29a581ce660489e8c35ee46dfda245257ccafc5211ac5e66864e",
+      "binary": true
+    },
+    {
+      "relative": "historical-d97-prchecks.json",
+      "path": "docs/evidence/workforce-c8-whole-item-2026-10-06/historical-d97-prchecks.json",
+      "bytes": 19028,
+      "sha": "cdefbe2f7e2f5f27abd2a74942c30d367092c43d",
+      "sha256": "420d8e66679cfa1da1c0b536b5281f166a4879a3851fdff2895d5f68610e00e8",
+      "binary": false
+    },
+    {
+      "relative": "hosted-30c-manager/manager-today-receipt.json",
+      "path": "docs/evidence/workforce-c8-whole-item-2026-10-06/hosted-30c-manager/manager-today-receipt.json",
+      "bytes": 302572,
+      "sha": "06735ee68df09b67404cf222c6966bebba8d4918",
+      "sha256": "46d1a97f31971255a5afc884c54606023170cf2adf455f5c72f91dd83bd5cacf",
+      "binary": false
+    },
+    {
+      "relative": "hosted-30c-manager/member-inventory.json",
+      "path": "docs/evidence/workforce-c8-whole-item-2026-10-06/hosted-30c-manager/member-inventory.json",
+      "bytes": 5954,
+      "sha": "09310f301c781868e22529731e8ffd1a55e87a93",
+      "sha256": "d09182d3cb256bad9f3171256f043c8810464a19ec91e95cc963cf3eb025f85b",
+      "binary": false
+    },
+    {
+      "relative": "hosted-30c-manager/root-verification.json",
+      "path": "docs/evidence/workforce-c8-whole-item-2026-10-06/hosted-30c-manager/root-verification.json",
+      "bytes": 1589,
+      "sha": "345bbfa07c82e1e88980834cd8b27dc086c61108",
+      "sha256": "3ce46669f6ebce5bfd75852625d3382af9802d6a420ff9a0ceb763a21d1c69fb",
+      "binary": false
+    },
+    {
+      "relative": "hosted-30c-manager/workflow-context.json",
+      "path": "docs/evidence/workforce-c8-whole-item-2026-10-06/hosted-30c-manager/workflow-context.json",
+      "bytes": 261,
+      "sha": "202edae38b60fd969504eb4fa03137d9f148dedf",
+      "sha256": "cc18f31e6b98ee036e5fc359619730d35e429b6083b80910b749b484a0d79de4",
+      "binary": false
+    },
+    {
+      "relative": "hosted-d97-manager/manager-today-receipt.json",
+      "path": "docs/evidence/workforce-c8-whole-item-2026-10-06/hosted-d97-manager/manager-today-receipt.json",
+      "bytes": 114110,
+      "sha": "497540133c795d27c32b39087a7de9c830897534",
+      "sha256": "4d922e92b7d88b9a2724c5e611acea08b2a3f830318903928acae39941781fac",
+      "binary": false
+    },
+    {
+      "relative": "hosted-d97-manager/member-inventory.json",
+      "path": "docs/evidence/workforce-c8-whole-item-2026-10-06/hosted-d97-manager/member-inventory.json",
+      "bytes": 3091,
+      "sha": "272873d1ca5ba946f1019d9628aa5ab4bbefa673",
+      "sha256": "ece25921cc3258719fb0f0585da0224c2ffeaf1443d7aedd90a71b5495972217",
+      "binary": false
+    },
+    {
+      "relative": "hosted-d97-manager/workflow-context.json",
+      "path": "docs/evidence/workforce-c8-whole-item-2026-10-06/hosted-d97-manager/workflow-context.json",
+      "bytes": 261,
+      "sha": "b60b84e682bb0410b5fd968865e97277635d3c12",
+      "sha256": "c96f09a914451705b2d56ad7aba09331d967ad47f58e19b1a90451689eac08e4",
+      "binary": false
+    },
+    {
+      "relative": "hosted-d97-manager/workflow-failure.json",
+      "path": "docs/evidence/workforce-c8-whole-item-2026-10-06/hosted-d97-manager/workflow-failure.json",
+      "bytes": 219,
+      "sha": "6133955af23f7052ca0a57eabcb07c18574b6e87",
+      "sha256": "2f5c504b1658aad627cc610070d3f2a109a1303c8b0835c970e447e3aadb9136",
+      "binary": false
+    },
+    {
+      "relative": "hrm-c8-contrast-focus-proposal-independent-20261006.json",
+      "path": "docs/evidence/workforce-c8-whole-item-2026-10-06/hrm-c8-contrast-focus-proposal-independent-20261006.json",
+      "bytes": 3868,
+      "sha": "23408f8057cdf44aa0ece68e0f9a76ec90f95af6",
+      "sha256": "21f519d72dd2307691364c23bcfe5a5dc754611c637f16e8213e04f854dcf36f",
+      "binary": false
+    },
+    {
+      "relative": "hrm-c8-error-independent-review-20261006.json",
+      "path": "docs/evidence/workforce-c8-whole-item-2026-10-06/hrm-c8-error-independent-review-20261006.json",
+      "bytes": 10383,
+      "sha": "541f1456148a57f2e762945ad89feb3ba58f9fba",
+      "sha256": "ec78814a0670ef3e3fbdeaa30685d75edfa1d22c5f54854275a6c4ce547e8873",
+      "binary": false
+    },
+    {
+      "relative": "hrm-c8-r3-r4-independent-review-20261006.json",
+      "path": "docs/evidence/workforce-c8-whole-item-2026-10-06/hrm-c8-r3-r4-independent-review-20261006.json",
+      "bytes": 11191,
+      "sha": "eaf80909ae9d20e390992fbe05ea0c33e3332b18",
+      "sha256": "9afd5a136c6a4b63c694fb2204ee95921937435654edbe8f2161ac5c548fc858",
+      "binary": false
+    },
+    {
+      "relative": "hrm-c8-whole-item-remaining-independent-00ec-20261006.json",
+      "path": "docs/evidence/workforce-c8-whole-item-2026-10-06/hrm-c8-whole-item-remaining-independent-00ec-20261006.json",
+      "bytes": 20198,
+      "sha": "b54b560f919538875d49074ad987d94ee4e5b2d1",
+      "sha256": "60a602ca04166b5c140e10e8af53a7be48b48dee9a0411790f41d8e45fb82d95",
+      "binary": false
+    },
+    {
+      "relative": "independent-hosted-manager-30c.json",
+      "path": "docs/evidence/workforce-c8-whole-item-2026-10-06/independent-hosted-manager-30c.json",
+      "bytes": 17796,
+      "sha": "75a5682050c99a9c08746b21db6d15c756882f00",
+      "sha256": "2f73eba9829e83197cf27dedf6ba260513f90148e9f556cdcd7a2fd6408a9506",
+      "binary": false
+    },
+    {
+      "relative": "independent-source-transfer-30c.json",
+      "path": "docs/evidence/workforce-c8-whole-item-2026-10-06/independent-source-transfer-30c.json",
+      "bytes": 71109,
+      "sha": "8fd73cd79db37ff9f3fcb7763bcd2893f8a21de0",
+      "sha256": "a2dc4217b3b1ab1a3bd29cf1d82d23be86c5174ebe379fd10b22447c26142525",
+      "binary": false
+    },
+    {
+      "relative": "next-c12-prepared.json",
+      "path": "docs/evidence/workforce-c8-whole-item-2026-10-06/next-c12-prepared.json",
+      "bytes": 5790,
+      "sha": "6903432891f5c191f9e4a8b7ab4b57d43e4996cb",
+      "sha256": "c4f8e14fe18e9c0f2cf31ffb0e07230bec8ef9b8306ad6573341c9166e675632",
+      "binary": false
+    },
+    {
+      "relative": "session-and-pagination-originals-manifest.json",
+      "path": "docs/evidence/workforce-c8-whole-item-2026-10-06/session-and-pagination-originals-manifest.json",
+      "bytes": 35884,
+      "sha": "6134fdc09c59236a7999dc2399613cca3ca782c4",
+      "sha256": "ee39b91c0a42f41566d77f48ae12fb0392916181e63d104d372dc3b7bffd01f9",
+      "binary": false
+    },
+    {
+      "relative": "session-and-pagination-originals.zip",
+      "path": "docs/evidence/workforce-c8-whole-item-2026-10-06/session-and-pagination-originals.zip",
+      "bytes": 10844602,
+      "sha": "16ae0aaf8555d23826b44fa47b39faf2d7af8c84",
+      "sha256": "b7f5404e309a83cb28f5919d85233078c0d88bdfb98219d5309fbfccb33b8fa5",
+      "binary": true
+    },
+    {
+      "relative": "session-and-pagination-summary.json",
+      "path": "docs/evidence/workforce-c8-whole-item-2026-10-06/session-and-pagination-summary.json",
+      "bytes": 3674,
+      "sha": "9f4ca59476a88897cf8e5a00c05d467cb176eecb",
+      "sha256": "8f7f1b4a473aedaf390bbd144a08e5a00075755f8a01e98921a06a47492c95be",
+      "binary": false
+    },
+    {
+      "relative": "source-publication-30c.json",
+      "path": "docs/evidence/workforce-c8-whole-item-2026-10-06/source-publication-30c.json",
+      "bytes": 4198,
+      "sha": "1071be5cc4b117004f70cc9d5d3e0c5ff80b1350",
+      "sha256": "766de73eb77380d46279f3fe83de386a02193a49248d4fcd2de95b26172907b8",
+      "binary": false
+    },
+    {
+      "relative": "static-checks.json",
+      "path": "docs/evidence/workforce-c8-whole-item-2026-10-06/static-checks.json",
+      "bytes": 276,
+      "sha": "7da3480c4bdcc63e135ba477384d90c4f0100e5f",
+      "sha256": "5a7c2708f6d0a03b09320e95251c893febe405ed3cf107eb04585f1706055829",
+      "binary": false
+    },
+    {
+      "relative": "targeted-tests.json",
+      "path": "docs/evidence/workforce-c8-whole-item-2026-10-06/targeted-tests.json",
+      "bytes": 24587,
+      "sha": "95402ca1247c4fe2b83a29ee85ec3d79c3836a1a",
+      "sha256": "91043aa356d023956b63b73066c4d2fb6bf64cdaaa6b249a0be8161ad28a5981",
+      "binary": false
+    }
+  ],
+  "localOriginalArchiveVerification": [
+    {
+      "path": "/tmp/hrm-c8-acceptance-20261006/final-packet/session-and-pagination-originals.zip",
+      "bytes": 10844602,
+      "sha256": "b7f5404e309a83cb28f5919d85233078c0d88bdfb98219d5309fbfccb33b8fa5",
+      "members": 223,
+      "manifestRows": 222,
+      "CRCAndHashLengthsPass": true,
+      "memberBytesMatchOriginals": true,
+      "remoteGitBlob": "16ae0aaf8555d23826b44fa47b39faf2d7af8c84",
+      "remoteBinaryPayloadReadback": false
+    },
+    {
+      "path": "/tmp/hrm-c8-acceptance-20261006/final-packet/contrast-effects-supplement.zip",
+      "bytes": 902425,
+      "sha256": "27a308396a4e29a581ce660489e8c35ee46dfda245257ccafc5211ac5e66864e",
+      "members": 24,
+      "manifestRows": 23,
+      "CRCAndHashLengthsPass": true,
+      "memberBytesMatchOriginals": true,
+      "remoteGitBlob": "b941f441e5631092a75e17fbbb2ccc5d10b1f6f6",
+      "remoteBinaryPayloadReadback": false
+    }
+  ],
+  "preparedR6Terms": {
+    "path": "/tmp/hrm-c8-independent-r6-prepared-ledger-20261006.json",
+    "bytes": 10724,
+    "sha256": "bcbbe1dd8bbb7fdebcc1efc392f4c3b56050068393c2fd624240de7cba478295"
+  },
+  "recursiveSupportAudit": {
+    "allLocalOriginalHashesVerified": 178,
+    "newPacketRawHashCovered": 154,
+    "notAddedAsRawOriginalToThisPacket": [
+      {
+        "path": "/tmp/hrm-c8-30c-independent/verify-source.py",
+        "bytes": 4434,
+        "sha256": "3857e5196f64d7d844e17a63454f6dae90c8288cabba55a2f68b83b5063e852f",
+        "preservedInNewPacketByRawHash": false
+      },
+      {
+        "path": "/tmp/hrm-c8-30c-independent/source-validation.json",
+        "bytes": 4687,
+        "sha256": "389a7ca4df3d3021733de195ffe59bed98990cfd36453b5a0f280b441c85266b",
+        "preservedInNewPacketByRawHash": false
+      },
+      {
+        "path": "/tmp/hrm-c8-30c-independent/verify-at.py",
+        "bytes": 6117,
+        "sha256": "50e6a31303ec5114343cd97344dba85b521fa54d749946b2df06e9c690e5ae9f",
+        "preservedInNewPacketByRawHash": false
+      },
+      {
+        "path": "/tmp/hrm-c8-30c-independent/validation.json",
+        "bytes": 36039,
+        "sha256": "401f8303f650ec9663b8f0533bdc13a0a9fe1f4a0975fedb0a70041a71337eda",
+        "preservedInNewPacketByRawHash": false
+      },
+      {
+        "path": "/tmp/hrm-c8-30c-independent/at-validation-summary.json",
+        "bytes": 8477,
+        "sha256": "5983fb70767362a8dae6903cf80cbeb87d222e4b64b7a6d1375d12ebb26831f7",
+        "preservedInNewPacketByRawHash": false
+      },
+      {
+        "path": "/tmp/hrm-c8-30c-independent/verify-contrast-archive.py",
+        "bytes": 4930,
+        "sha256": "300baaaed44717cb21b6d82fd8ff76bea2c8a2030488c2b99c00cf302ac3ecc8",
+        "preservedInNewPacketByRawHash": false
+      },
+      {
+        "path": "/tmp/hrm-c8-30c-independent/contrast-archive-validation.json",
+        "bytes": 3913,
+        "sha256": "5bf224193a16942adae4dab6382f99b6ffe064528c099fd84d0d4120c31e7b26",
+        "preservedInNewPacketByRawHash": false
+      },
+      {
+        "path": "/tmp/hrm-c8-30c-independent/final-freshness.json",
+        "bytes": 62533,
+        "sha256": "5f5285fd65b43102af0730081c05d6fdfe4e63793044824052b1625f80466b09",
+        "preservedInNewPacketByRawHash": false
+      },
+      {
+        "path": "/tmp/hrm-c8-30c-independent-commit.json",
+        "bytes": 1457,
+        "sha256": "5b17875238234fb010383ea0199b75aadd348bb47de9323cc16b410a255a49df",
+        "preservedInNewPacketByRawHash": false
+      },
+      {
+        "path": "/tmp/hrm-c8-30c-independent-tree.json",
+        "bytes": 2999598,
+        "sha256": "34a69a5be80966b8c1a733b7cee5e8635a3e462035e63b959385af3bfe43a1d7",
+        "preservedInNewPacketByRawHash": false
+      },
+      {
+        "path": "/tmp/hrm-c8-30c-independent-main.json",
+        "bytes": 343,
+        "sha256": "b6822d0c555db7508156c256195c033b772d0eb255802b204c1023898756075d",
+        "preservedInNewPacketByRawHash": false
+      },
+      {
+        "path": "/tmp/hrm-c8-30c-independent-pr605.json",
+        "bytes": 37067,
+        "sha256": "7a3d52f7bb3b49413718733682948bc75d42c3a8c51c8c9488ab22241f0fa108",
+        "preservedInNewPacketByRawHash": false
+      },
+      {
+        "path": "/tmp/hrm-c8-30c-independent-pr606.json",
+        "bytes": 17433,
+        "sha256": "33b1f64921a8769ef1510a26caa6c9966e9d8d39b3f9942363b66c7dd7d4f866",
+        "preservedInNewPacketByRawHash": false
+      },
+      {
+        "path": "/tmp/hrm-c8-30c-independent-synthetic.json",
+        "bytes": 2644,
+        "sha256": "f96653a8407c62b12da2389fc3de5a178d74ef0a8597b502406ce3ad3af72053",
+        "preservedInNewPacketByRawHash": false
+      },
+      {
+        "path": "/tmp/hrm-c8-30c-independent-parent.json",
+        "bytes": 2995637,
+        "sha256": "976cba51268d9b05490a5daffbdb354e57b04a47fbdb1475bcfa4f529ed62cb0",
+        "preservedInNewPacketByRawHash": false
+      },
+      {
+        "path": "/tmp/hrm-c8-30c-independent-mainTree.json",
+        "bytes": 2967203,
+        "sha256": "842d6e44e91112fe38590d753be9347fb3a0585444a43dcf9b9a7d6e7c81f949",
+        "preservedInNewPacketByRawHash": false
+      },
+      {
+        "path": "/tmp/hrm-c8-30c-independent-oldMain.json",
+        "bytes": 2966181,
+        "sha256": "6ff9f2c17cc1002a23af19cdfdf503ce31686c0b9fe8aafe35b1f56623dd2d68",
+        "preservedInNewPacketByRawHash": false
+      },
+      {
+        "path": "/tmp/hrm-c8-30c-independent-remote-delta.json",
+        "bytes": 5500085,
+        "sha256": "464733e65283d6f732329a383a442ca71acb2f0d1c602d2f2a8f7f8e74bb7dcf",
+        "preservedInNewPacketByRawHash": false
+      },
+      {
+        "path": "/tmp/hrm-c8-30c-independent-catalog-mainTree.json",
+        "bytes": 5212349,
+        "sha256": "ab84157ccb4450c801eea0f98d19699d1e52d281b64a2bd0255df94f5865f406",
+        "preservedInNewPacketByRawHash": false
+      },
+      {
+        "path": "/tmp/hrm-c8-30c-independent-catalog-oldMain.json",
+        "bytes": 5211418,
+        "sha256": "c67707ecbbde88abfbccd831dc0fd886c8453659ffe1d586c62bb6a292f6977e",
+        "preservedInNewPacketByRawHash": false
+      },
+      {
+        "path": "/tmp/hrm-c8-acceptance-20261006/final-static-minimized.json",
+        "bytes": 73,
+        "sha256": "f0cc760fc53e6f5c38fd45a44b5e96d0c7041377b1db1342026b018fa51b19dd",
+        "preservedInNewPacketByRawHash": false
+      },
+      {
+        "path": "/tmp/hrm-c8-acceptance-20261006/final-source-expected-tree.json",
+        "bytes": 1321108,
+        "sha256": "a8548f4de3014052b500a9598ecae9af04ab4953077b9cb5e9a9e2961f420d9a",
+        "preservedInNewPacketByRawHash": false
+      },
+      {
+        "path": "/tmp/hrm-c8-30c-independent/manager-hosted-metadata.json",
+        "bytes": 22323,
+        "sha256": "7e0be347fa3192e67c4958c8c2d0f1d0f95397c4d8b472efae366b9be08310ef",
+        "preservedInNewPacketByRawHash": false
+      },
+      {
+        "path": "/tmp/hrm-c8-30c-independent/verify-manager.py",
+        "bytes": 8665,
+        "sha256": "42dfd62a4be719f2bfa89ce72878c162210caf3fc606458ac31d62f8d0700d9e",
+        "preservedInNewPacketByRawHash": false
+      }
+    ],
+    "qualification": "Remote source trees/metadata/verifier programs and some historical receipts remain local or previously archived; this receipt does not claim every hash-bound /tmp support file is newly durable. Independent receipts are verbatim, source objects immutable, both original safe archive member sets verified. Binary remote payload retrieval was not attempted."
+  },
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "pending": [
+    "Exact30c current full hosted compiler/build and complete applicable jobs acceptance.",
+    "Final whole-item acceptance and conditional sole C8-002 ledger change; current83/161 remains.",
+    "A subsequent closure head must retain this immutable checkpoint and receive its own applicable CI; this receipt does not move any branch."
+  ],
+  "supportBindings": [
+    {
+      "path": "/tmp/hrm-c8-30c-independent/archive-commit.json",
+      "bytes": 1350,
+      "sha256": "339f8c32b4b833c32b33798b61a2e676725e1b1f64cdc448f734087ae4fb3559"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent/archive-tree.json",
+      "bytes": 3664000,
+      "sha256": "04e3c2f399ff71c48e605d401cd527260d4d59706285ca66fdc5a66c0697cf04"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent/archive-text-readback.json",
+      "bytes": 739055,
+      "sha256": "adc80c3054cb5ba8e2bfccdd5f90f384bd7b97cff022fbe1e8601a9baa6ddcdd"
+    },
+    {
+      "path": "/tmp/hrm-c8-acceptance-20261006/packet-files.json",
+      "bytes": 9229,
+      "sha256": "bdd20f7be5b9094166ec3c77a698393a1e6f82b4aa1df1523f8a6915164c309b"
+    },
+    {
+      "path": "/tmp/hrm-c8-acceptance-20261006/packet-publication.json",
+      "bytes": 323,
+      "sha256": "6c3ac31bf77e0f516fb37070559b8238747683b74e710b8e8f148d89f00b1c2b"
+    },
+    {
+      "path": "/tmp/hrm-c8-30c-independent/verify-archive.py",
+      "bytes": 6191,
+      "sha256": "5fac3f3d5bf95a5dab52d2e62a9ba0c375a41b4a9d3d009c8f03c8fb43105340"
+    }
+  ],
+  "inspectionLimits": "No raw app/CI logs, PNG screenshots, private fixture, credentials or browser/process interaction. Only explicitly safe archive members parsed."
+}

@@ -1,0 +1,338 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-10-06T19:42:57.331721+00:00",
+  "reviewer": "existing independent reviewer /root/pr585_independent_review; root remains sole source and remote writer",
+  "status": "BOUNDED_SOURCE_AND_ACTUAL_AT_ACCEPTED_WHOLE_C8_PARTIAL_EXACT_REMOTE_HEAD_AND_HOSTED_CI_PENDING",
+  "scope": "Manager Today principal/scope isolation and request-bound accessible pagination; six local synthetic actual-Orca scenarios in EN/RU/AZ at native 100% and 200%.",
+  "source": {
+    "workspace": "/workspace/hrm-c8-completion-20261006",
+    "sourceManifest": {
+      "path": "/workspace/hrm-c8-at-fixed-20261006/source-manifest.json",
+      "bytes": 1723769,
+      "sha256": "70d8df80b30433225097fd76bef7afdae27b05c673989cac2867beb31ffc795d"
+    },
+    "listedFiles": 8817,
+    "allListedBytesLengthsAndExecutableModesMatchWorkingAndRuntimeCopies": true,
+    "acceptanceBoundToManifestNotUnpublishedGitHead": true,
+    "sourceReview": {
+      "path": "/tmp/hrm-c8-pagination-corrected-independent-review-20261006.json",
+      "bytes": 12726,
+      "sha256": "a3a782c86b6d86d709ef0452e25b080e15cc0c688c656acf1945c9911566ca9c"
+    },
+    "independentReactTestsActuallyPreviouslyRun": 14,
+    "independentTestsRerunInThisArtifactReview": 0,
+    "ownerReportedTargetedTests": 100,
+    "unlistedNewEvidenceFilesNotIncludedInSourceManifest": true
+  },
+  "artifact": {
+    "sha256": "1a76f41e5d6f9c0648b1a138327318895a494afa7b1fb0cf09b353780a49994b",
+    "bytes": 4558415,
+    "members": 116,
+    "manifestRows": 115,
+    "allHashesLengthsCRCAndDiskMatch": true,
+    "path": "/workspace/hrm-c8-completion-20261006/docs/evidence/workforce-c8-pagination-2026-10-06/fixed-orca-receipts.zip",
+    "uniqueSafeRelativeMemberNames": true,
+    "manifestExcludesOnlyItself": true,
+    "all115ManifestMembersReadAndHashChecked": true,
+    "all116ZipBytesReadIncludingManifest": true,
+    "sourceOrSanitizedSyntheticJSONOnlyNoScreenshotsOrRawLogsRead": true,
+    "stackSummaryMembersHashVerifiedOnlyNoDiagnosticInterpretation": true
+  },
+  "actualEvidence": {
+    "scenarios": [
+      {
+        "run": "run-msti0x38",
+        "locale": "en",
+        "zoom": 1,
+        "checks": 9,
+        "speechCalls": 298,
+        "receiptPresentationCount": 297,
+        "actualLocalizedResult": "Added: 1. Loaded: 26. End of employee list",
+        "focusBounds": {
+          "x": 723.203125,
+          "y": 852,
+          "width": 174.578125,
+          "height": 48
+        },
+        "viewport": [
+          1380,
+          900
+        ],
+        "ownChildrenReaped": 7
+      },
+      {
+        "run": "run-eoikemmr",
+        "locale": "ru",
+        "zoom": 1,
+        "checks": 9,
+        "speechCalls": 299,
+        "receiptPresentationCount": 298,
+        "actualLocalizedResult": "Добавлено: 1. Всего загружено: 26. Конец списка сотрудников",
+        "focusBounds": {
+          "x": 697.859375,
+          "y": 852,
+          "width": 225.265625,
+          "height": 48
+        },
+        "viewport": [
+          1380,
+          900
+        ],
+        "ownChildrenReaped": 7
+      },
+      {
+        "run": "run-v0md_r2n",
+        "locale": "az",
+        "zoom": 1,
+        "checks": 9,
+        "speechCalls": 299,
+        "receiptPresentationCount": 298,
+        "actualLocalizedResult": "Əlavə edildi: 1. Yüklənib: 26. Əməkdaş siyahısının sonu",
+        "focusBounds": {
+          "x": 704.21875,
+          "y": 852,
+          "width": 212.5625,
+          "height": 48
+        },
+        "viewport": [
+          1380,
+          900
+        ],
+        "ownChildrenReaped": 7
+      },
+      {
+        "run": "run-yhtzrz7y",
+        "locale": "en",
+        "zoom": 2,
+        "checks": 9,
+        "speechCalls": 304,
+        "receiptPresentationCount": 303,
+        "actualLocalizedResult": "Added: 1. Loaded: 26. End of employee list",
+        "focusBounds": {
+          "x": 285.9609375,
+          "y": 402,
+          "width": 174.5703125,
+          "height": 48
+        },
+        "viewport": [
+          690,
+          450
+        ],
+        "ownChildrenReaped": 7
+      },
+      {
+        "run": "run-da8hur6k",
+        "locale": "ru",
+        "zoom": 2,
+        "checks": 9,
+        "speechCalls": 309,
+        "receiptPresentationCount": 308,
+        "actualLocalizedResult": "Добавлено: 1. Всего загружено: 26. Конец списка сотрудников",
+        "focusBounds": {
+          "x": 260.6171875,
+          "y": 402,
+          "width": 225.265625,
+          "height": 48
+        },
+        "viewport": [
+          690,
+          450
+        ],
+        "ownChildrenReaped": 7
+      },
+      {
+        "run": "run-08oxommv",
+        "locale": "az",
+        "zoom": 2,
+        "checks": 9,
+        "speechCalls": 307,
+        "receiptPresentationCount": 306,
+        "actualLocalizedResult": "Əlavə edildi: 1. Yüklənib: 26. Əməkdaş siyahısının sonu",
+        "focusBounds": {
+          "x": 266.96875,
+          "y": 402,
+          "width": 212.5546875,
+          "height": 48
+        },
+        "viewport": [
+          690,
+          450
+        ],
+        "ownChildrenReaped": 7
+      }
+    ],
+    "assertions": 54,
+    "speechCalls": 1816,
+    "allUniqueSequentialOriginalSpeakReturnPairs": true,
+    "allReceiptPresentationsExactPrefixOfOriginalStreams": true,
+    "automaticResultSpeechExactContiguousOriginalStreamSegments": true,
+    "expectedMessagesIndependentlyRecomputedFromFrozenLocaleCatalogs": true,
+    "geometryIndependentlyRecomputedWithinViewport": true,
+    "actualAuth200AndTodayFirst25Then26": true,
+    "native200DprOneToTwoViewport1380x900To690x450ScaleOne": true,
+    "all42RecordedOwnedChildHandlesReaped": true
+  },
+  "mechanismReview": [
+    "Observer records actual SpeechServer.speak input, calls saved original with unchanged arguments, then records successful return; no speech stub.",
+    "Probe uses real authenticated app/Today API and actual Chromium accessibility bridge. xdotool sends system-native keyboard input; DOM only observes state and locates current control.",
+    "Automatic result stream is captured after native Return activation and before subsequent navigation; localized added=1,total=26,end appears without manual read-current-line.",
+    "Orca traversal independently reaches synthetic absent employee 01, localized not-started/planned UTC/non-presence boundary, distinct recorded no-show, and appended employee 26.",
+    "Retained original control is connected, focused, focus-visible, aria-disabled=true, native-disabled=false and geometrically inside viewport after completion.",
+    "Current frozen source has no programmatic focus call for pagination; nearest scroll occurs only if the retained control is still document.activeElement.",
+    "Per-run probe scripts match before/after hashes. Source manifests are identical across six final runs and all listed runtime/worktree files independently match at final review; supervisor does not itself rehash every source file before/after each run."
+  ],
+  "history": {
+    "priorOriginal178Archive": {
+      "path": "/tmp/hrm-c8-isolated-at-c4kelii3/c8-isolated-orca-receipts.zip",
+      "bytes": 918207,
+      "sha256": "c199f0f6328c6e774fef6af4933e6b1044bfbc7111e1e21eafd10eefea2fa6c7",
+      "verification": "raw digest rechecked; historical evidence, no new acceptance credit"
+    },
+    "firstFixedRun": {
+      "run": "run-0womgfpz",
+      "status": "8_OF_9_PASS_VIEWPORT_FAILED",
+      "buttonY": 936,
+      "buttonHeight": 48,
+      "viewportHeight": 900,
+      "includedUnchangedInArchive": true
+    },
+    "copyRaceRun": {
+      "run": "run-xj34tq0s",
+      "status": "DISQUALIFIED_DESPITE_9_CHECKS_PASS",
+      "reason": "Supervisor started before source-copy handle completion; explicit original disqualification retained.",
+      "includedUnchangedInArchive": true
+    },
+    "countTests": "Original 8/10 pass with two count defects preserved; corrected independent 14/14 pass bound separately.",
+    "fullTypecheck": "Owner default 4 GiB Node heap OOM retained, no full compiler PASS or baseline-comparison inference."
+  },
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": [
+      {
+        "id": "AT_SOURCE_FREEZE_WORDING",
+        "classification": "Evidence-description qualification, not observed product defect",
+        "detail": "Do not describe source hashes as independently rehashed after each run. Actual mechanism is per-run copied frozen manifest + probe before/after hashes + final full source verification. Parent notified."
+      }
+    ]
+  },
+  "limits": [
+    "Review validates original owner-run actual AT evidence; reviewer did not launch or interact with browser, Orca or application processes.",
+    "ALSA null confirms real text presentation and original dispatch returns, not audible playback completion, human listening, pronunciation quality or physical-human key operation.",
+    "Actual system-native input was synthesized with xdotool; not a DOM-only accessibility surrogate and not a human usability session.",
+    "Synthetic isolated fixture and development bundle. Chromium was launched with no-sandbox in isolated environment; not production-browser security acceptance.",
+    "Auxiliary /api/v1/users/me/preferences HTTP500 and unrelated capability403 occur in all six receipts; dev-tool/issue-overlay text occurs in speech. No whole-page clean network, production behavior or zero-error claim; no root cause inferred.",
+    "RLS/authorization broader negatives are not newly proved by these positive AT runs.",
+    "No actual denied-session or same-page live-session-transition AT here; no whole-page WCAG, complete contrast, physical START/presence, Android/device, load or pilot acceptance.",
+    "No new exact immutable Git head/full integration review, production build or hosted CI acceptance in this receipt.",
+    "prepare.py appears in stable script inventory and is verified locally but is absent from this 116-member ZIP; it is setup provenance, not invoked by the reviewed final supervisor. No claim every inventory file is archived.",
+    "No source, repo, remote, browser, process, credentials or permissions changes by reviewer. Only own /tmp receipt/validation written.",
+    "No merge, deployment, activation or whole-C8/whole-HRM closure."
+  ],
+  "ledger": {
+    "WF-C8-002": "PARTIAL",
+    "done": 83,
+    "total": 161,
+    "open": 78,
+    "weightedPercent": 60,
+    "noStatusChangeAuthorizedByReceipt": true
+  },
+  "supports": [
+    {
+      "path": "/tmp/hrm-c8-fixed-at-independent-validation.json",
+      "bytes": 11706,
+      "sha256": "e8d83e75ea22b949b2c1497465f580621797aeee66daabc913b7623be3fa4ce8"
+    },
+    {
+      "path": "/workspace/hrm-c8-at-fixed-20261006/fixed-at-summary.json",
+      "bytes": 13665,
+      "sha256": "89f926a70c60f0c206b3411484093d4f19667ae877a255bde100cd7dd7d70a35"
+    },
+    {
+      "path": "/workspace/hrm-c8-at-fixed-20261006/final-matrix.json",
+      "bytes": 1005,
+      "sha256": "cd8be92c615cd2a3b92b18171d87539b0ff46eb90b878a8665812491f8c29df5"
+    },
+    {
+      "path": "/workspace/hrm-c8-at-fixed-20261006/fixed-receipt-manifest.json",
+      "bytes": 18405,
+      "sha256": "a1c64d4687678214625e4385849fb8a9ba4e7a933cdfa60d3b1821432ee02107"
+    },
+    {
+      "path": "/workspace/hrm-c8-at-fixed-20261006/source-manifest.json",
+      "bytes": 1723769,
+      "sha256": "70d8df80b30433225097fd76bef7afdae27b05c673989cac2867beb31ffc795d"
+    },
+    {
+      "path": "/workspace/hrm-c8-at-fixed-20261006/final-source-freeze-check.json",
+      "bytes": 260,
+      "sha256": "56b3e8a605add5ca59b4218c2edbaa1d21c458e2d7adb79ba86e7916ecd19b69"
+    },
+    {
+      "path": "/workspace/hrm-c8-at-fixed-20261006/probe-origin.json",
+      "bytes": 1132,
+      "sha256": "8f7b89aebe644def3d93e2f3d17dc1d3d80655692ebb05990e7760c06b943708"
+    },
+    {
+      "path": "/workspace/hrm-c8-at-fixed-20261006/fixture-adaptation.json",
+      "bytes": 409,
+      "sha256": "9574f2c07f8ec663e138778618c6616b9a7a73a9e656cfeacdf1c3e8b95ece90"
+    },
+    {
+      "path": "/workspace/hrm-c8-at-fixed-20261006/supervisor.py",
+      "bytes": 7034,
+      "sha256": "732a34fa7eb338ef79d7aa5a5011e397a6bf20b1dc4b506dbd727b67ff683269"
+    },
+    {
+      "path": "/workspace/hrm-c8-at-fixed-20261006/observer.py",
+      "bytes": 1359,
+      "sha256": "e9b95bfd40018c0db3a9617bbd5f7300652d290e62a2dd19ebaa0138f6087d6e"
+    },
+    {
+      "path": "/workspace/hrm-c8-at-fixed-20261006/probe.mjs",
+      "bytes": 12210,
+      "sha256": "c3a570224979fb63231d1e2bba972969c296fcb1a592a9571d07d733e33dc0b8"
+    },
+    {
+      "path": "/workspace/hrm-c8-at-fixed-20261006/run-final-matrix.py",
+      "bytes": 811,
+      "sha256": "c0ca97d7b6b33c4129ec5f813fd10a29a1b46cd4dee6ee352bb40f596a6f1a8d"
+    },
+    {
+      "path": "/workspace/hrm-c8-at-fixed-20261006/next.cjs",
+      "bytes": 2102,
+      "sha256": "3b2e9bcd84e4beb31079ac36ae16a9adc071cab118f3784dfc6ef3dcb3254b4a"
+    },
+    {
+      "path": "/workspace/hrm-c8-at-fixed-20261006/backend-check.py",
+      "bytes": 759,
+      "sha256": "47fddebb6e93eb11724e551cb579a669da8d7cb19bd30fe6e9b1eae624250b94"
+    },
+    {
+      "path": "/workspace/hrm-c8-at-fixed-20261006/inspect-atspi.py",
+      "bytes": 588,
+      "sha256": "85c54ae4ce140b51622e6a663a160b47a71a3dc3c2b4cafaf3082b01c26f03fc"
+    },
+    {
+      "path": "/workspace/hrm-c8-at-fixed-20261006/prepare.py",
+      "bytes": 4998,
+      "sha256": "4769283fc38d9274401c58cdf5d2d1726df98339269e1c5bab439c10e22fa693"
+    },
+    {
+      "path": "/workspace/hrm-c8-at-fixed-20261006/source/scripts/c8-local-fixture.mjs",
+      "bytes": 23306,
+      "sha256": "f90ebe5b1fa68ff99bd83dec64c294fdfc999832cde3f3a15be98acf60d2359a"
+    },
+    {
+      "path": "/tmp/hrm-c8-pagination-corrected-independent-review-20261006.json",
+      "bytes": 12726,
+      "sha256": "a3a782c86b6d86d709ef0452e25b080e15cc0c688c656acf1945c9911566ca9c"
+    },
+    {
+      "path": "/tmp/hrm-c8-pagination-initial-independent-review-20261006.json",
+      "bytes": 4760,
+      "sha256": "5eb9835d0a546f5bee10c0c678cd236ffbc2b0632731916db6847434b362c42b"
+    }
+  ]
+}

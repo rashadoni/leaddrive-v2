@@ -1,0 +1,16 @@
+{
+  "runId": 37631152301,
+  "jobId": 112825447351,
+  "head": "0ceb35ecef649aad2ace9a5482fbc27f9420c6c2",
+  "conclusion": "FAILURE",
+  "unitPass": 14,
+  "hostedSQLFail": 1,
+  "skipped": 0,
+  "productionJob": "SKIPPED",
+  "rawBytes": 57862,
+  "rawSha256": "72b37cb9cfa4a432d3af3edeb8f11e4999deb268e1b61e1d22289dd2fb80fad8",
+  "gzipSha256": "f9744fda7633f361d20633f523386caee128297d62359ee328980802187288f3",
+  "firstFailurePreserved": "293aaf2036a4890f461b1e539f495cc33bbca461",
+  "cause": "Connection now passes fixture creation; first fixed query returns QUERY_FAILED; safe diagnosis pending",
+  "limitation": "Isolated GitHub PostgreSQL only; no production evidence"
+}

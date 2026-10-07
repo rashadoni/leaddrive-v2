@@ -1,0 +1,24 @@
+{
+  "atUtc": "2026-10-05T05:18:38.372011+00:00",
+  "mergedSha": "e26cb0a85168b623ea092fb3e81ece922de20718",
+  "ownMainRunId": 37264051695,
+  "actualGitHubMainTypecheckJob": {
+    "id": 111617069866,
+    "name": "typecheck",
+    "head_sha": "e26cb0a85168b623ea092fb3e81ece922de20718",
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-10-05T04:33:57Z",
+    "completed_at": "2026-10-05T04:50:13Z"
+  },
+  "originalWholeJobs": {
+    "path": "/tmp/workforce-pr583-own-main-additional-jobs-observed-primary.json",
+    "bytes": 6554,
+    "sha256": "80b79745e729ebc953f7acae4df2c7ae722dcc87d9e851e52dc7bfb9d32ad38f"
+  },
+  "clarification": "Earlier journal own main additional compiler NOT RUN described additional review/acceptance in the four-job deploy release audit. It does not claim GitHub never executed main compiler: actual main typecheck job SUCCESS is observed here.",
+  "separateMainCompilerLogWholeReviewed": false,
+  "originalReleasePacketsOverwritten": false,
+  "futureSuccessorCompilerRuntimeCredit": false,
+  "newRowClosure": false
+}

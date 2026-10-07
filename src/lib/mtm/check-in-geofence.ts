@@ -125,4 +125,3 @@ export function createOutsideZoneCheckInReader(organizationId: string) {
     return cached
   }
 }
-

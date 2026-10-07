@@ -1,0 +1,12 @@
+{
+  "pr": 606,
+  "reason": "validation-only user prohibition on merge; close without merge before another PR makes its commits reachable from main",
+  "beforeState": "open",
+  "afterState": "closed",
+  "merged": false,
+  "headSha": "ec2e7812e81abef94319a58818aeee22e56984df",
+  "headBranch": "codex/hrm-c8-pagination-at-20261006",
+  "baseBranch": "main",
+  "branchDeleted": false,
+  "reversibleClosure": true
+}

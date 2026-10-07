@@ -1,0 +1,39 @@
+{
+  "status": "ROOT_JSON_VERIFIED_PASS",
+  "head": "30c4185b41d85be43a588e71d8c74c5f34e63596",
+  "synthetic": "99009aff39ae1445e2f43eb3c748db3fe7a3e122",
+  "run": 37531925881,
+  "attempt": 1,
+  "job": 112503175669,
+  "artifact": 11444363837,
+  "artifactSha256": "3f96203115cf85d77ad2ccb8365a6fc2df23eb1ab8324f7f6ab7cde5721244c3",
+  "sourceBindingsVerified": 58,
+  "cases": 9,
+  "focusChecks": 6,
+  "snapshotGuards": 10,
+  "rlsTables": 21,
+  "populatedRlsTables": 16,
+  "emptyRlsTables": 5,
+  "unchangedFactTables": 20,
+  "cleanup": "PASS",
+  "limits": [
+    "Development bundle, not production build",
+    "Synthetic disposable data only",
+    "Positive workdays are synthetic admin-seeded facts, not a real accepted START workflow or physical presence",
+    "Frozen UTC plan/hashlinks do not prove historical template display-name immutability",
+    "No human AT/whole-page keyboard/Android/physical/load/pilot acceptance",
+    "Geometry/text checks do not prove pixel occlusion or whole-page accessibility",
+    "Native200 cases are fixture-extension automatic browser zoom, not a human browser-shortcut/AT session",
+    "Read-only manager Today; no production feature/grant activation"
+  ],
+  "readOnlyInspection": "JSON members only; PNGs/raw logs not opened; no screenshot visibility claim",
+  "context": {
+    "stage": "workflow-preparing",
+    "headSha": "30c4185b41d85be43a588e71d8c74c5f34e63596",
+    "ciSha": "99009aff39ae1445e2f43eb3c748db3fe7a3e122",
+    "runId": "37531925881",
+    "runAttempt": "1",
+    "runtime": "ephemeral-next-dev",
+    "productionMutation": false
+  }
+}
