@@ -1,0 +1,696 @@
+{
+  "version": 1,
+  "reviewedAtUtc": "2026-10-07T18:58:51.811666+00:00",
+  "reviewer": "/root/inspect_outcome_contract",
+  "status": "EXACT851_BROWSER_ARTIFACTS_ACCEPTED_WITH_EXPLICIT_VISUAL_AND_SYNTHETIC_LIMITS",
+  "head": "8513737b880623b2b62ab4721672a55b8101ba1a",
+  "tree": "e39def8eba7dd837e5700ac0526a563040b077ac",
+  "runId": 37667576332,
+  "attempt": 1,
+  "reportJob": 112951318668,
+  "classificationJob": 112951318525,
+  "findingsP0P1P2P3": [],
+  "authorship": "Reviewer authored these harnesses/fixtures; root independent source crossreview retained. Here independently evaluates received actual results and bytes against root production contract; no independent test-authorship or secondexecution claim.",
+  "originalArchives": [
+    {
+      "job": "report",
+      "artifactId": 11504090578,
+      "zip": {
+        "path": "/tmp/hrm-release-851-report-original.zip",
+        "bytes": 852275,
+        "sha256": "705d06e0f0d3985b64af45dd3338c6ab5e156eb10668944d53f24df7c6038bb1"
+      },
+      "githubDigestMatched": true,
+      "CRC": "PASS",
+      "members": [
+        {
+          "name": "exception-report-receipt.json",
+          "bytes": 27854,
+          "sha256": "c333ab9787843513269980cdbba44f5110d9e684c73f36134eca70e2b2452101"
+        },
+        {
+          "name": "report-az-768-nonempty.png",
+          "bytes": 86749,
+          "sha256": "2639155dbfe7a6a39b6d11d469f4b68cd85c6b5cbc975bb0fac8035dc2c9e463"
+        },
+        {
+          "name": "report-az-768-recorded-outcomes.png",
+          "bytes": 85625,
+          "sha256": "0e3ec8e13a659a9e7cebf6af1ff2f9f40b27d8debae29304ab21517f45825ee5"
+        },
+        {
+          "name": "report-denied-denied.png",
+          "bytes": 45895,
+          "sha256": "937f0f4182a824a7295314e62b1858b99e5544049c5774d06442d1ad1baf71ea"
+        },
+        {
+          "name": "report-denied-team.png",
+          "bytes": 45895,
+          "sha256": "937f0f4182a824a7295314e62b1858b99e5544049c5774d06442d1ad1baf71ea"
+        },
+        {
+          "name": "report-en-1440-nonempty.png",
+          "bytes": 133558,
+          "sha256": "40e235588eebf6d0be22257008da15588dbcade41799c76b85ab4099acb1dc38"
+        },
+        {
+          "name": "report-en-1440-recorded-outcomes.png",
+          "bytes": 77069,
+          "sha256": "6d23401346d2cb7122df1fbb4aa745ae0b082757ba2e8b3e4e571340ecf8ec5d"
+        },
+        {
+          "name": "report-foreign-positive.png",
+          "bytes": 81698,
+          "sha256": "654cb171023033c94fea2252967f11978a662239b615a29e54238920d604db3f"
+        },
+        {
+          "name": "report-ru-320-empty.png",
+          "bytes": 68331,
+          "sha256": "26976f227a580bda6e33fd212d6911529997a7865a3c140c3a8b72445a47a616"
+        },
+        {
+          "name": "report-ru-320-measured-zero.png",
+          "bytes": 68458,
+          "sha256": "a7acc060e7bb60ee1ddee38257096d36bbef8919cea112a8f5908fe8ede6f951"
+        },
+        {
+          "name": "report-ru-320-recorded-outcomes.png",
+          "bytes": 61369,
+          "sha256": "304b57489fbe9f7b735dd1ed5bc1d7e7c3ac2967fbb65df418fc2bdad36e82b2"
+        },
+        {
+          "name": "report-ru-320-nonempty.png",
+          "bytes": 65651,
+          "sha256": "ad0dd0ea0986732336bbdb01ec089972919738769f570874785401fba16c3b85"
+        },
+        {
+          "name": "report-ru-320-unresolved-no-sample.png",
+          "bytes": 67811,
+          "sha256": "6cc649049f82cf81d4504359d895644c28e7893267acd87b3ea8e0da6d17ea3f"
+        },
+        {
+          "name": "workflow-context.json",
+          "bytes": 261,
+          "sha256": "2465321a5af6bc3684b7f0c95f67d339c1b096f254805ea982a8bd677da6261a"
+        }
+      ]
+    },
+    {
+      "job": "classification",
+      "artifactId": 11502604984,
+      "zip": {
+        "path": "/tmp/hrm-release-851-classification-original.zip",
+        "bytes": 269421,
+        "sha256": "ead642f8a5fc3e87d310a9cf90f6437c35647948f879ade7f0d570fd2a6de8ee"
+      },
+      "githubDigestMatched": true,
+      "CRC": "PASS",
+      "members": [
+        {
+          "name": "classification-az-768.png",
+          "bytes": 103582,
+          "sha256": "50f3e25954baeaba277709a79d493b0914d28a32223a92dfa8f348a8224c2b4c"
+        },
+        {
+          "name": "classification-en-1440.png",
+          "bytes": 137147,
+          "sha256": "0e199d57efd13d8ba6bd0fe6307a5d684220ec9a819a40d11751832a1e6f115a"
+        },
+        {
+          "name": "classification-ru-320.png",
+          "bytes": 35017,
+          "sha256": "a1a442b40213a31d714b23e5546173831886e3ab9f5d38bec66ade49692dd2cf"
+        },
+        {
+          "name": "exception-classification-receipt.json",
+          "bytes": 15212,
+          "sha256": "fad45492c89845b6f7463dc259332ccd35ebe266d2157e1d6bf39992446f428f"
+        },
+        {
+          "name": "workflow-context.json",
+          "bytes": 261,
+          "sha256": "2465321a5af6bc3684b7f0c95f67d339c1b096f254805ea982a8bd677da6261a"
+        }
+      ]
+    }
+  ],
+  "receipts": [
+    {
+      "path": "/tmp/hrm-release-851-artifacts/report/exception-report-receipt.json",
+      "bytes": 27854,
+      "sha256": "c333ab9787843513269980cdbba44f5110d9e684c73f36134eca70e2b2452101"
+    },
+    {
+      "path": "/tmp/hrm-release-851-artifacts/classification/exception-classification-receipt.json",
+      "bytes": 15212,
+      "sha256": "fad45492c89845b6f7463dc259332ccd35ebe266d2157e1d6bf39992446f428f"
+    }
+  ],
+  "fullOriginalLogs": [
+    {
+      "path": "/tmp/hrm-release-851-report-original.log",
+      "bytes": 85751,
+      "sha256": "7af7cc71640d6b48cd228dbcfced02cb8b887fb81c5f8e469f273ca8f4d6f6d0"
+    },
+    {
+      "path": "/tmp/hrm-release-851-classification-original.log",
+      "bytes": 97105,
+      "sha256": "29aec6a1bad0a24bba46686ea3d249d7e4fe942df90fc30ea39e80726ee6cde3"
+    }
+  ],
+  "sourceBindings26": [
+    {
+      "job": "report",
+      "path": "scripts/workforce-exception-report-browser-evidence.mjs",
+      "bytes": 41827,
+      "sha256": "4216c6421088dc1b47e90ee1f4c68a43e740b80efbfdfc7337b31016d85a8458",
+      "verifiedExactGitHead": true
+    },
+    {
+      "job": "report",
+      "path": "scripts/ci/fixtures/workforce-exception-report-browser.sql",
+      "bytes": 4741,
+      "sha256": "85d4237ef3e2a9c1fb782d9ee70e8ed801d82fcc2703fd4932494fa2e3e344b3",
+      "verifiedExactGitHead": true
+    },
+    {
+      "job": "report",
+      "path": "scripts/ci/fixtures/workforce-manager-today-browser.sql",
+      "bytes": 33617,
+      "sha256": "448d08b65048f3692145d1d2d73d1f4b2f5973363172dddb959b4c9daf20a4fb",
+      "verifiedExactGitHead": true
+    },
+    {
+      "job": "report",
+      "path": ".github/workflows/workforce-exception-report-browser-evidence.yml",
+      "bytes": 25256,
+      "sha256": "1dcd49d422fb212d4ee1eac6368de97837fe62fc5ca5975a7faa2b6c61dc18e7",
+      "verifiedExactGitHead": true
+    },
+    {
+      "job": "report",
+      "path": "src/components/workforce/workforce-exception-report.tsx",
+      "bytes": 12570,
+      "sha256": "7e0ea96c737c7ca8a21bdbe5431b1ed859466e9bd93918d063e271c195b9c87f",
+      "verifiedExactGitHead": true
+    },
+    {
+      "job": "report",
+      "path": "src/components/workforce/workforce-exception-recorded-outcomes.tsx",
+      "bytes": 6293,
+      "sha256": "1039384b9a47e87b48a001b115300c7161cd3d144b376adce20276f5172cc386",
+      "verifiedExactGitHead": true
+    },
+    {
+      "job": "report",
+      "path": "src/app/api/v1/workforce/exception-reports/route.ts",
+      "bytes": 6162,
+      "sha256": "6d4935a3cd3adbbbb411619a813287a6ba8b7d58cc89dec888074130360233bf",
+      "verifiedExactGitHead": true
+    },
+    {
+      "job": "report",
+      "path": "src/lib/workforce/exception-case-report-read.ts",
+      "bytes": 3384,
+      "sha256": "b34a3ef9d52359a235040802c5ede11c03f128c7250b41f5b2a86d10860b82b5",
+      "verifiedExactGitHead": true
+    },
+    {
+      "job": "report",
+      "path": "src/lib/workforce/exception-case-report-recorded-outcomes.ts",
+      "bytes": 8338,
+      "sha256": "1d84daa28a7b21a8ad8545f5b494c1030c338cff75fc168f87153541d5f0321c",
+      "verifiedExactGitHead": true
+    },
+    {
+      "job": "report",
+      "path": "messages/en.json",
+      "bytes": 1353703,
+      "sha256": "968f55c77be76ef307a5d4b3d72f3ee9e1fd255bc6a37edc8632552892331244",
+      "verifiedExactGitHead": true
+    },
+    {
+      "job": "report",
+      "path": "messages/ru.json",
+      "bytes": 1999330,
+      "sha256": "f4401ef992a363e9c3d8deb5b158545016be2b5732db797227fb8517972be956",
+      "verifiedExactGitHead": true
+    },
+    {
+      "job": "report",
+      "path": "messages/az.json",
+      "bytes": 1497486,
+      "sha256": "d7bc057c39c526d58f88e99201371e1e508d14ebd82e490ada359d93dd06eddd",
+      "verifiedExactGitHead": true
+    },
+    {
+      "job": "classification",
+      "path": "scripts/workforce-exception-classification-browser-evidence.mjs",
+      "bytes": 35825,
+      "sha256": "216967516c60bab48390aefeebce651524130eefabc7c90cf4d00ee05e899025",
+      "verifiedExactGitHead": true
+    },
+    {
+      "job": "classification",
+      "path": "scripts/ci/fixtures/workforce-exception-classification-browser.sql",
+      "bytes": 8727,
+      "sha256": "41ecf5a96c0accb2469971042bf3f47f0e8d7e6fcfa65a8538e1cd7f4013d7e0",
+      "verifiedExactGitHead": true
+    },
+    {
+      "job": "classification",
+      "path": "scripts/ci/fixtures/workforce-manager-today-browser.sql",
+      "bytes": 33617,
+      "sha256": "448d08b65048f3692145d1d2d73d1f4b2f5973363172dddb959b4c9daf20a4fb",
+      "verifiedExactGitHead": true
+    },
+    {
+      "job": "classification",
+      "path": ".github/workflows/workforce-exception-report-browser-evidence.yml",
+      "bytes": 25256,
+      "sha256": "1dcd49d422fb212d4ee1eac6368de97837fe62fc5ca5975a7faa2b6c61dc18e7",
+      "verifiedExactGitHead": true
+    },
+    {
+      "job": "classification",
+      "path": "src/components/workforce/workforce-exception-queue.tsx",
+      "bytes": 23077,
+      "sha256": "5160dcc8b943d0caca712ae0dcad02725784fcb4c2401479c16dede00d0c3b1f",
+      "verifiedExactGitHead": true
+    },
+    {
+      "job": "classification",
+      "path": "src/app/api/v1/workforce/exceptions/route.ts",
+      "bytes": 13279,
+      "sha256": "5a33ec78dc7fe6b05e920cbdb22fecb46f85d45c74840486533ea56df68034ff",
+      "verifiedExactGitHead": true
+    },
+    {
+      "job": "classification",
+      "path": "src/app/api/v1/workforce/exception-decisions/route.ts",
+      "bytes": 4157,
+      "sha256": "eeeb1dda5d637fb0fdaa831021556a1200a1bd502e73df05838e850284db34c9",
+      "verifiedExactGitHead": true
+    },
+    {
+      "job": "classification",
+      "path": "src/lib/workforce/exception-outcome-classification.ts",
+      "bytes": 2447,
+      "sha256": "947410fb0687987a465c38ce0c9455d3923d62039d9030b43bda3e0afae99a23",
+      "verifiedExactGitHead": true
+    },
+    {
+      "job": "classification",
+      "path": "src/lib/workforce/exception-decision-service.ts",
+      "bytes": 11916,
+      "sha256": "dd10ffed0f37f80b79eae0e784918966033995283cafdbf6a4ec738b6275e21c",
+      "verifiedExactGitHead": true
+    },
+    {
+      "job": "classification",
+      "path": "src/lib/workforce/exception-case-writer.ts",
+      "bytes": 19607,
+      "sha256": "61814e5d395143a6deacc9bd92e0aee1ffb508cc1c168724897dd9bf67da201f",
+      "verifiedExactGitHead": true
+    },
+    {
+      "job": "classification",
+      "path": "src/lib/workforce/exception-policy-draft.ts",
+      "bytes": 8270,
+      "sha256": "f45f761e9c2e829351eb930c7e191f667327b3ed040338b4033b54381da59b6b",
+      "verifiedExactGitHead": true
+    },
+    {
+      "job": "classification",
+      "path": "messages/en.json",
+      "bytes": 1353703,
+      "sha256": "968f55c77be76ef307a5d4b3d72f3ee9e1fd255bc6a37edc8632552892331244",
+      "verifiedExactGitHead": true
+    },
+    {
+      "job": "classification",
+      "path": "messages/ru.json",
+      "bytes": 1999330,
+      "sha256": "f4401ef992a363e9c3d8deb5b158545016be2b5732db797227fb8517972be956",
+      "verifiedExactGitHead": true
+    },
+    {
+      "job": "classification",
+      "path": "messages/az.json",
+      "bytes": 1497486,
+      "sha256": "d7bc057c39c526d58f88e99201371e1e508d14ebd82e490ada359d93dd06eddd",
+      "verifiedExactGitHead": true
+    }
+  ],
+  "exactProductionRoutineStatements7": [
+    {
+      "path": "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql",
+      "sha256": "63fc383dc3e91776255c7a1cdd4bbfb09776ecefbe294f9d9a061dcd9f9f9b90",
+      "bytes": 240,
+      "start": "CREATE OR REPLACE FUNCTION workforce_reject_exception_case_mutation(",
+      "verifiedExactGitHead": true
+    },
+    {
+      "path": "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql",
+      "sha256": "5157c20909615422b8164d8aad673a4bae10ebe5ada406b43e0542b123ef7d41",
+      "bytes": 218,
+      "start": "CREATE OR REPLACE FUNCTION workforce_reject_exception_decision_mutation(",
+      "verifiedExactGitHead": true
+    },
+    {
+      "path": "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql",
+      "sha256": "e8b6fdc3224c3464ec24b9bfc383c38709a722382c77f51b83f7ad10edc63104",
+      "bytes": 910,
+      "start": "CREATE OR REPLACE FUNCTION workforce_next_exception_compatibility_timestamp(",
+      "verifiedExactGitHead": true
+    },
+    {
+      "path": "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql",
+      "sha256": "8117d9a40f4ec7e2f4a6b5b86b0c64f6b91f2cd21b60cd4d56ecbb8a7e78a950",
+      "bytes": 891,
+      "start": "CREATE OR REPLACE FUNCTION workforce_assign_exception_decision_revision(",
+      "verifiedExactGitHead": true
+    },
+    {
+      "path": "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql",
+      "sha256": "572b7638a7780f824b606692d1c5aaa37e153a41585abffee16f53cc84ff3329",
+      "bytes": 185,
+      "start": "CREATE TRIGGER workforce_exception_cases_append_only",
+      "verifiedExactGitHead": true
+    },
+    {
+      "path": "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql",
+      "sha256": "603a14021a0fd627d315f379667364b1d26f0b2358f00279d2d90b490f70ee09",
+      "bytes": 197,
+      "start": "CREATE TRIGGER workforce_exception_decisions_append_only",
+      "verifiedExactGitHead": true
+    },
+    {
+      "path": "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql",
+      "sha256": "01be9a08535c0b1cc832972cd0e57fb2bab8c1c087a551d6d7899f0b59839f24",
+      "bytes": 196,
+      "start": "CREATE TRIGGER workforce_exception_decisions_assign_case_revision",
+      "verifiedExactGitHead": true
+    }
+  ],
+  "decisionRejectStatementAlsoByteExactFinalBackfillDefinition": true,
+  "fixtureInstallation": {
+    "status": "COMMITTED",
+    "replacements": [
+      {
+        "table": "workforce_exception_cases",
+        "trigger": "workforce_exception_cases_append_only"
+      },
+      {
+        "table": "workforce_exception_decisions",
+        "trigger": "workforce_exception_decisions_append_only"
+      }
+    ]
+  },
+  "actualReport": {
+    "caseCount": 9,
+    "allPASS": true,
+    "cleanup": "PASS",
+    "cases": [
+      {
+        "name": "empty",
+        "status": "PASS",
+        "responseStatus": 200,
+        "cases": 0,
+        "sampleCount": 0,
+        "meanMs": null
+      },
+      {
+        "name": "unresolved-no-sample",
+        "status": "PASS",
+        "responseStatus": 200,
+        "cases": 1,
+        "sampleCount": 0,
+        "meanMs": null
+      },
+      {
+        "name": "measured-zero",
+        "status": "PASS",
+        "responseStatus": 200,
+        "cases": 1,
+        "sampleCount": 1,
+        "meanMs": 0
+      },
+      {
+        "name": "nonempty-ru-320",
+        "status": "PASS",
+        "responseStatus": 200,
+        "linkedShare": 0.125,
+        "meanMs": 3000000,
+        "integrityExcluded": 1,
+        "geometry": {
+          "left": 76,
+          "right": 308,
+          "width": 232,
+          "viewport": 320,
+          "scrollWidth": 230,
+          "clientWidth": 230
+        },
+        "recordedOutcomesScreenshot": "report-ru-320-recorded-outcomes.png",
+        "nativeApplyRefreshAndTableFocus": true,
+        "rawPrivateDataExcluded": true
+      },
+      {
+        "name": "nonempty-az-768",
+        "status": "PASS",
+        "responseStatus": 200,
+        "linkedShare": 0.125,
+        "meanMs": 3000000,
+        "integrityExcluded": 1,
+        "geometry": {
+          "left": 80,
+          "right": 752,
+          "width": 672,
+          "viewport": 768,
+          "scrollWidth": 670,
+          "clientWidth": 670
+        },
+        "recordedOutcomesScreenshot": "report-az-768-recorded-outcomes.png",
+        "nativeApplyRefreshAndTableFocus": false,
+        "rawPrivateDataExcluded": true
+      },
+      {
+        "name": "nonempty-en-1440",
+        "status": "PASS",
+        "responseStatus": 200,
+        "linkedShare": 0.125,
+        "meanMs": 3000000,
+        "integrityExcluded": 1,
+        "geometry": {
+          "left": 288,
+          "right": 1408,
+          "width": 1120,
+          "viewport": 1440,
+          "scrollWidth": 1118,
+          "clientWidth": 1118
+        },
+        "recordedOutcomesScreenshot": "report-en-1440-recorded-outcomes.png",
+        "nativeApplyRefreshAndTableFocus": false,
+        "rawPrivateDataExcluded": true
+      },
+      {
+        "name": "denied-team",
+        "status": "PASS",
+        "responseStatus": 403,
+        "metricsExcluded": true,
+        "successfulViewAuditDelta": 0
+      },
+      {
+        "name": "denied-denied",
+        "status": "PASS",
+        "responseStatus": 403,
+        "metricsExcluded": true,
+        "successfulViewAuditDelta": 0
+      },
+      {
+        "name": "two-tenant-positive-and-session-header-fence",
+        "status": "PASS",
+        "ownCases": 8,
+        "foreignOwnCases": 1,
+        "foreignHeaderSelectsOwnSession": true
+      }
+    ],
+    "contract": "CASE_RECORDED_AT cohorts; finalshares use current resolvedclassified/appeal dimensions separately; open/reopened/unclassified/integrityexcluded outsidefinalsample. Linkedapprovedcorrection share remains separate and doesnotimplyfalsepositive/appeal. Empty/unresolved-null/measuredzero tested.",
+    "fixtureSampleEvidence": "Falsepositive1/3+appealfully1/3+partial1/3+rejected1/3; classified andappealsamples3, unfinished2, eachunclassifiedresolved2, finalintegrityexcluded1; sourceassertions and currentEN screenshot agree.",
+    "RlsBeforeAndAfter": {
+      "fiveTables": true,
+      "forcedRlsNonowner": true,
+      "zeroUnscopedForeign": true,
+      "positiveBothTenants": true,
+      "exactFactsUnchanged": true,
+      "twoTenantSessionHeaderFence": true
+    },
+    "reportViewAudit": {
+      "results": [
+        {
+          "tenant": "a",
+          "auditedViews": 13,
+          "observedSuccessful200": 11,
+          "observedGetAttempts": 18,
+          "metadataWhitelist": true,
+          "everyAuditMatchesKnownAggregate": true
+        },
+        {
+          "tenant": "b",
+          "auditedViews": 2,
+          "observedSuccessful200": 2,
+          "observedGetAttempts": 3,
+          "metadataWhitelist": true,
+          "everyAuditMatchesKnownAggregate": true
+        }
+      ],
+      "appendOnlyAuditPrivilegeOnly": true,
+      "cancelledDevReadsMayCompleteTheirViewAudit": true,
+      "globallyZeroDatabaseWritesClaimed": false
+    },
+    "facts": "All22 fixturefact tables hashes unchanged; authentication metadata excluded and viewaudit inserts separatelywhitelisted, nevergloballyzeroDBwriteclaim.",
+    "aggregatePercentRealm": "Everyrender diagnostic actualText equalsbrowserExpected; actualAZ12.5% differsNode12,5%, inheritedICUrealm qualifier.",
+    "durationRealm": "ActualAZnonempty durationRealms equal=false; no all-realm-equality assertion or false localization claim."
+  },
+  "actualClassification": {
+    "caseCount": 11,
+    "allPASS": true,
+    "cases": [
+      {
+        "name": "real-ui-ru-320",
+        "status": "PASS",
+        "classificationCode": "CLASSIFY_FALSE_POSITIVE",
+        "appealCode": "APPEAL_FULLY_UPHELD",
+        "protectedReasonRequired": true,
+        "directCallerCaseOrCodeAbsent": true
+      },
+      {
+        "name": "real-ui-az-768",
+        "status": "PASS",
+        "classificationCode": "CLASSIFY_CONFIRMED_EXCEPTION",
+        "appealCode": "APPEAL_PARTIALLY_UPHELD",
+        "protectedReasonRequired": true,
+        "directCallerCaseOrCodeAbsent": true
+      },
+      {
+        "name": "exact-replay-and-conflicting-reason-and-stale-revision",
+        "status": "PASS",
+        "auditDeltaOnRetry": 0,
+        "decisionDeltaOnRetry": 0
+      },
+      {
+        "name": "real-ui-en-1440",
+        "status": "PASS",
+        "classificationCode": "CLASSIFY_CONFIRMED_EXCEPTION",
+        "appealCode": "APPEAL_REJECTED",
+        "protectedReasonRequired": true,
+        "directCallerCaseOrCodeAbsent": true
+      },
+      {
+        "name": "denied-hr-without-mandatory-enrolled-mfa",
+        "status": "PASS",
+        "writeStatus": 403,
+        "code": "WORKFORCE_ATTENDANCE_MFA_REQUIRED",
+        "recordedDelta": 0
+      },
+      {
+        "name": "denied-team-manager",
+        "status": "PASS",
+        "writeStatus": 404,
+        "recordedDelta": 0
+      },
+      {
+        "name": "denied-tenant-admin",
+        "status": "PASS",
+        "writeStatus": 404,
+        "recordedDelta": 0
+      },
+      {
+        "name": "denied-ungranted",
+        "status": "PASS",
+        "writeStatus": 404,
+        "recordedDelta": 0
+      },
+      {
+        "name": "denied-foreign-hr",
+        "status": "PASS",
+        "writeStatus": 404,
+        "recordedDelta": 0
+      },
+      {
+        "name": "reopen-invalidates-final-classification",
+        "status": "PASS"
+      },
+      {
+        "name": "live-hr-revocation-with-team-manager-still-effective",
+        "status": "PASS",
+        "writeStatus": 404,
+        "recordedDelta": 0
+      }
+    ],
+    "actualNewDecisionCount": 6,
+    "actualLinkedAuditCount": 6,
+    "realEnrolledMandatoryMfaSessions": 7,
+    "weakMfa403": true,
+    "teamManagerTenantAdminUngrantForeign404": true,
+    "liveHrRevocationPreservingManagerOnly404": true,
+    "allDenialsZeroRecordedDelta": true,
+    "exactRetry": "HTTP200 exactretry +0decision/+0audit; conflictingreason409 andstalerevision409 retained",
+    "protectedReasonAndNetworkPayload": "Mandatoryreason andno direct caller case/code areactualUI assertions; backendprivateactor/reason/audit link and UPDATE/DELETE decisionguard checked.",
+    "reopenedCurrentCycleExcluded": true,
+    "allFixedFactsUnchangedBeforeIntentionalFixtureRevocation": true,
+    "RlsNonownerForcedPositiveBothTenantDecisionControls": true,
+    "auditGuardQualification": "Audit append-only fixtureguard synthetic; exact productiondecisionguards sourcebound, no fullmigrationreplay/no TRUNCATE guarantee.",
+    "cleanup11Resources": "AllPASS"
+  },
+  "currentImagesViewed": [
+    {
+      "file": "report-en-1440-recorded-outcomes.png",
+      "seen": "All4percent33.33/sample3, separatepartial/full/rejected labels, footerunfinished2/unclassified2+2/integrity1 and manualboundary visible."
+    },
+    {
+      "file": "report-az-768-recorded-outcomes.png",
+      "seen": "All4percent33.33 visible; top andbottomclip, footerpartial; duration remains English50minutes/0seconds/2hours. No fullAZlocalization/globalviewportclaim."
+    },
+    {
+      "file": "report-ru-320-recorded-outcomes.png",
+      "seen": "Capturelargelyblank fromnestedscroll clipping; middleduration6/1/1+explicitHRheading/manualboundary visible, final4fractions/samplefooter NOTvisible."
+    },
+    {
+      "file": "classification-en-1440.png",
+      "seen": "Humanreviewonlyboundary, rejectedappeal successbanner, queuebuttons andresolvedrow visible; table/right/bottomclipped."
+    },
+    {
+      "file": "classification-az-768.png",
+      "seen": "Manualprivacyboundary andpartialupheld successbanner visible; queueactionbuttons partlyvisible; horizontal/bottomclip."
+    },
+    {
+      "file": "classification-ru-320.png",
+      "seen": "Onlycase/employee columns visible; actioncontrols NOTvisible inthiscapture. ActualRU DOM/network6write interaction comes fromreceipts, not screenshotvisibility."
+    }
+  ],
+  "limitations": [
+    "Development bundle, not production build",
+    "Synthetic disposable data only",
+    "Historical selected Prisma-schema imports, not canonical terminal/approval/workday correction writer acceptance",
+    "No human AT/native zoom/whole-page keyboard/Android/physical/load/pilot acceptance",
+    "Geometry/text checks do not prove pixel occlusion or whole-page accessibility",
+    "Aggregate report facts are SELECT-only; real view-audit INSERT and auth metadata writes are expected; no production feature/grant activation",
+    "Synthetic isolated tenants and imported historical terminal decisions only",
+    "Development bundle, not production build",
+    "Exact production decision revision and append-only routines; no full migration replay",
+    "Audit whitelist/append-only fixture guard is synthetic, not a production MtmAuditLog migration",
+    "No live HR observation, physical presence, device, pilot, payroll or disciplinary evidence",
+    "No production mutation, grants, activation, secret/access change or external message",
+    "No fullpagehumanAT/nativezoom/WCAG/fullmobile/wholekeyboard/physicaldevice orrealHRpilot claim.",
+    "Build/source44PG/fullcompiler/fullrequiredchecks areseparatecurrentacceptance; browserPASSalone notwholetechnical/releaseapproval.",
+    "No prior8fc/8d/5ed counts orPNG used ascurrent851evidence.",
+    "Noproductionquery/dispatch/mutation bypeer; actualdefaultACLrecipients remainpendingprotectedownreleaseinspection."
+  ],
+  "toolReadErrorRetained": {
+    "command": "gh run view --job completedreport --log",
+    "outcome": "Overallrun inprogress client refused logs; direct jobAPI fetchedcompletedjob original",
+    "productFailure": false,
+    "noRuntimeRerun": true
+  }
+}

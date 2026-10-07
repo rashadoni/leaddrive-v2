@@ -1,0 +1,56 @@
+{
+  "head": "8513737b880623b2b62ab4721672a55b8101ba1a",
+  "status": "PASS",
+  "statements": [
+    {
+      "path": "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql",
+      "sha256": "63fc383dc3e91776255c7a1cdd4bbfb09776ecefbe294f9d9a061dcd9f9f9b90",
+      "bytes": 240,
+      "startsWith": "CREATE OR REPLACE FUNCTION workforce_reject_exception_case_mutation(",
+      "status": "EXACT"
+    },
+    {
+      "path": "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql",
+      "sha256": "5157c20909615422b8164d8aad673a4bae10ebe5ada406b43e0542b123ef7d41",
+      "bytes": 218,
+      "startsWith": "CREATE OR REPLACE FUNCTION workforce_reject_exception_decision_mutation(",
+      "status": "EXACT"
+    },
+    {
+      "path": "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql",
+      "sha256": "e8b6fdc3224c3464ec24b9bfc383c38709a722382c77f51b83f7ad10edc63104",
+      "bytes": 910,
+      "startsWith": "CREATE OR REPLACE FUNCTION workforce_next_exception_compatibility_timestamp(",
+      "status": "EXACT"
+    },
+    {
+      "path": "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql",
+      "sha256": "8117d9a40f4ec7e2f4a6b5b86b0c64f6b91f2cd21b60cd4d56ecbb8a7e78a950",
+      "bytes": 891,
+      "startsWith": "CREATE OR REPLACE FUNCTION workforce_assign_exception_decision_revision(",
+      "status": "EXACT"
+    },
+    {
+      "path": "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql",
+      "sha256": "572b7638a7780f824b606692d1c5aaa37e153a41585abffee16f53cc84ff3329",
+      "bytes": 185,
+      "startsWith": "CREATE TRIGGER workforce_exception_cases_append_only",
+      "status": "EXACT"
+    },
+    {
+      "path": "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql",
+      "sha256": "603a14021a0fd627d315f379667364b1d26f0b2358f00279d2d90b490f70ee09",
+      "bytes": 197,
+      "startsWith": "CREATE TRIGGER workforce_exception_decisions_append_only",
+      "status": "EXACT"
+    },
+    {
+      "path": "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql",
+      "sha256": "01be9a08535c0b1cc832972cd0e57fb2bab8c1c087a551d6d7899f0b59839f24",
+      "bytes": 196,
+      "startsWith": "CREATE TRIGGER workforce_exception_decisions_assign_case_revision",
+      "status": "EXACT"
+    }
+  ],
+  "scope": "Exact production SQL routine extracts installed in isolated browser PG, not historical replay or production verification"
+}

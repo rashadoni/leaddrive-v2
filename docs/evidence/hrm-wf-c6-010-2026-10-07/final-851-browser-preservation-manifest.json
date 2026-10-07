@@ -1,0 +1,51 @@
+[
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-851-root-browser-proof.json",
+    "bytes": 6757,
+    "sha256": "f1d51169e04c771fdda57298ded4d2aedb826e6fbc010e1857b7416298678685"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-851-root-routine-proof.json",
+    "bytes": 2543,
+    "sha256": "4941ae2a476be45627549214bd5f094ebe2f49011036365a7d3d6f02bb1f7ac2"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-851-independent-browser-review.json",
+    "bytes": 25921,
+    "sha256": "2bf53cc150db6afc8038fd8ed49cf0fd530335c7bcf8cdbbe94376f08967b7a5"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-851-report-receipt.json",
+    "bytes": 27854,
+    "sha256": "c333ab9787843513269980cdbba44f5110d9e684c73f36134eca70e2b2452101"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-851-classification-receipt.json",
+    "bytes": 15212,
+    "sha256": "fad45492c89845b6f7463dc259332ccd35ebe266d2157e1d6bf39992446f428f"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-851-report-original-artifact.zip",
+    "bytes": 852275,
+    "sha256": "705d06e0f0d3985b64af45dd3338c6ab5e156eb10668944d53f24df7c6038bb1"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-851-classification-original-artifact.zip",
+    "bytes": 269421,
+    "sha256": "ead642f8a5fc3e87d310a9cf90f6437c35647948f879ade7f0d570fd2a6de8ee"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-851-report-original-job.log.gz",
+    "bytes": 18864,
+    "sha256": "ac82b3f8495b479d04876549e8622055889592cfb6cd04c53922f58f6541d48a",
+    "originalBytes": 85751,
+    "originalSha256": "7af7cc71640d6b48cd228dbcfced02cb8b887fb81c5f8e469f273ca8f4d6f6d0"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-851-classification-original-job.log.gz",
+    "bytes": 20904,
+    "sha256": "282309b376cfc0ae58f82b09915a95ea25f1218879de14ccf02a8b0a7d6ac939",
+    "originalBytes": 97105,
+    "originalSha256": "29aec6a1bad0a24bba46686ea3d249d7e4fe942df90fc30ea39e80726ee6cde3"
+  }
+]
