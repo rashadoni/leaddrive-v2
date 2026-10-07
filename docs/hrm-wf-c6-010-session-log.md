@@ -327,3 +327,10 @@
 - PR616 отмечен ready; обязательные5main gates запущены на546d, без изменения baseline/protection. Reviewed auxiliary источник включён обычным merge1576d447f4bb7396d00f3788859855e9f1858ddf в release worktree; source/helper/workflow и архивы сохранены.
 - Root проверил все product delta от9f: только byte-exact входящие main8301 и выделенный preflight. Все incoming product paths main сохранены.24C6 production/workflow bindings и5baseline/gate bindings прежние;3messages добавляют finance и сохраняют HR namespaces. Архив c123 имеет тот же directorytree. Source receipt сохранён.
 - Узкая i18n:check действительно PASS на текущем worktree; RAM13872MiBavailable,disk279GiB,pressure0. Full local compiler/build/browser/SQL NOT RUN по host contract; следующий source checkpoint публикуется в существующийdraft589, затем fresh5required+exact5runtime jobs и independentreview. Production preflight/main HRM merge/release остаются отдельными обязательными воротами. Учёт84/161,77open,60%,C12PARTIAL не меняется.
+
+
+## 2026-10-07 — финальный источник062 опубликован, проверки идут
+
+- Финальный source commit06254cbab837b1a0e3063708fc955fbd64a4f628/tree38b49b4cbe974a21e6a0f982dbbacab20aecf7da опубликован fast-forward в существующийPR589, прежняя цепочка/история и archivec123 сохранены. PR589 отмеченready после подготовки; финальная sourceветка/worktree остаётся чистой и неизменной во время CI.
+- Exact5lane workflowdispatch37635350493 получил expected_head062. Ready event запускает все5required checks и применимые Workforce UI regressions на062. Прежние9f результаты служат только доказательством неизменности исходника, не заменяют текущие проверки. PR616 five required checks тоже выполняются на546d; actualSQL16/16PASS отдельно сохранён.
+- Продолжение журнала и новые результаты хранятся в отдельном evidence worktree /mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-wf-c6-010-release-evidence-20261007, branchcodex/hrm-wf-c6-010-release-evidence-20261007, parent062. Это защищает точный sourcehead от движения при сохранении доказательств. Source independent review назначен; main/productionpreflight и HRMrelease пока pending.
