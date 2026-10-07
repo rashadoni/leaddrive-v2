@@ -243,3 +243,51 @@
   Last completed action: small sequential checks. Precise stopping point:
   correction checkpoint only. Next action: root publishes after byte review
   and runs the third hosted SQL attempt; no previous PASS transfers to it.
+
+## 2026-10-07 — third actual hosted result rejection, canonical catalog ordering
+
+- Exact e87 source run37632434312/job112829871580 executed the fixed SQL,
+  then rejected its initial relation projection with OUTPUT_INVALID at helper
+  line115. Actual result was 14 unit PASS, 1 hosted SQL FAIL, zero skips. The
+  original service reports database locale en_US.utf8; the rejected array itself
+  was not printed, so its exact original order is not claimed as observed.
+- Source inspection established an ordering-contract mismatch: all three finite
+  known-name JSON aggregates used the database's default ORDER BY name, while
+  the unchanged strict validator expects the helper's ASCII canonical arrays.
+  The narrow SQL correction adds COLLATE "C" to those three aggregates only.
+  [PostgreSQL 16 collation documentation](https://www.postgresql.org/docs/16/collation.html)
+  supports the explicit C byte ordering independent of the database default.
+- Helper, validator, role/tenant checks, output schema/privacy/error allowlist,
+  production workflow, transaction bounds, index semantics and all negative
+  assertions are unchanged. In particular, received arrays are not reordered
+  to obtain acceptance. A new unit regression proves all three reordered
+  arrays remain OUTPUT_INVALID.
+- Inside the existing already-fenced hosted-only disposable test, added exact
+  known-name order and declared schema/primitive/count diagnostics before the
+  initial assessment. Unknown names are replaced with a finite marker; unknown
+  fields, values, raw JSON, locale, credentials and role names are not printed.
+  The test also replays the exact e87 SQL (byte-bound SHA-256
+  9fff72bc44e1e9d7fa5e552cdd56ab53d857b20dd1b8bdc1e1fcdb704bf74299)
+  via the same read-only connection. It reports only whether legacy name order
+  is canonical and requires OUTPUT_INVALID when it differs. Actual confirmation
+  of that ordering cause is pending the next hosted run; no synthetic source
+  expectation is substituted for the original missing array evidence.
+- Original third complete synthetic job/service log is retained losslessly as
+  source-e87b-third-failed.log.gz, with a separate failure receipt. Original
+  SHA-256 cf984a99de0846133a33303eda5ae9c9d2bece0aaa389815e5d676920d4cda55;
+  gzip SHA-256 b68a5b89567573763aaf8c7bceb5340a5ede3f29e37f18184eb68edc6a7d805f.
+  The round trip was verified. Earlier first/second failures and checkpoints
+  remain intact; this is source fixture evidence, never production/HR evidence.
+- Sequential bounded checks after RAM/disk/pressure inspection: test syntax
+  PASS, 15 Node unit PASS, 1 hosted SQL SKIP, zero failures, whitespace PASS.
+  SQL bytes were proved equal to e87 plus exactly three C-order additions.
+  Helper SHA-256 ab31354e7beaaed42508511c74eb304f52c2a6353e8b80d41bac9d6d63212f8b
+  and workflow SHA-256 f90937ecda3b81e7dd017819cfaec1afdefc5fee58167fdfc2289ce012a1dcf1
+  are unchanged. No local SQL, build, browser run, production action, push or
+  dispatch occurred; actual fixed-SQL and production metadata are NOT RUN here.
+- Current result: canonical ordering repaired; actual cause reproduction and
+  full corrected catalog query still require hosted evidence. Last completed
+  action: bounded checks and lossless third-failure preservation. Precise
+  stopping point: auxiliary successor checkpoint only. Next action: root
+  independently reviews/publishes the successor and runs the fourth hosted
+  fixed-SQL job before any main-only production metadata inspection.

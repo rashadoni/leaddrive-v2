@@ -122,6 +122,18 @@ test("strict finite projection rejects secret fields, malformed counts and unkno
   }
 })
 
+test("finite catalog arrays must retain canonical order; the validator never repairs it", () => {
+  for (const select of [s => s.ledger.known, s => s.relations, s => s.indexes]) {
+    const s = snapshot()
+    const entries = select(s)
+    ;[entries[0], entries[1]] = [entries[1], entries[0]]
+    assert.throws(() => validateSnapshot(defaults(), s), { message: "OUTPUT_INVALID" })
+  }
+  assert.equal((sql.match(/ORDER BY name COLLATE "C"/g) ?? []).length, 3)
+  // Exact e87 source bytes, used only by the already-fenced hosted reproducer.
+  assert.equal(digest(sql.replaceAll(' ORDER BY name COLLATE "C")', ' ORDER BY name)')), "9fff72bc44e1e9d7fa5e552cdd56ab53d857b20dd1b8bdc1e1fcdb704bf74299")
+})
+
 test("remote inspection checks artifact before/after, canonical protected env, read-only outputs", () => {
   const reads = []
   const report = inspectRemote(sql, bindings, sha, { uid: 0, read: (path, limit, mode) => { reads.push({ path, limit, mode }); return fakeRead(path) }, query: (url, source) => { assert.equal(source, sql); assert.equal(new URL(url).hostname, "127.0.0.1"); return encoded() } })
@@ -215,7 +227,7 @@ test("runner validator retains valid original failures but never prints rejected
 
 // Only this hosted-only test writes a disposable SQL fixture. The production
 // helper has no test mode, privilege bypass or mutation path.
-test("hosted PostgreSQL executes the real fixed catalog query and rejects writes", { skip: !process.env.HRM_PREFLIGHT_TEST_DATABASE_URL }, async () => {
+test("hosted PostgreSQL executes the real fixed catalog query and rejects writes", { skip: !process.env.HRM_PREFLIGHT_TEST_DATABASE_URL }, async context => {
   const url = new URL(process.env.HRM_PREFLIGHT_TEST_DATABASE_URL)
   assert.equal(process.env.GITHUB_ACTIONS, "true")
   assert.equal(process.env.CI, "true")
@@ -248,15 +260,61 @@ test("hosted PostgreSQL executes the real fixed catalog query and rejects writes
   migrationUrl.username = "hrm_preflight_migration"
   migrationUrl.password = "isolated-preflight-migration"
   try {
-    const query = () => {
+    const query = (source = sql) => {
       let output
-      try { output = queryMetadata(migrationUrl.href, sql) }
+      try { output = queryMetadata(migrationUrl.href, source) }
       catch (error) { throw new Error("HOSTED_FIXED_SQL_QUERY_FAILED sqlState=" + (error?.sqlState ?? "unknown")) }
       const lines = output.trim().split("\n")
       assert.equal(lines.length, 2)
-      return lines.map(JSON.parse)
+      try { return lines.map(JSON.parse) }
+      catch { throw new Error("HOSTED_FIXED_SQL_OUTPUT_JSON_INVALID") }
     }
     let [d, s] = query()
+    // Diagnose only declared catalog names, fields and primitive predicates.
+    // Never place an unknown name/key/value or the raw snapshot in test output.
+    const record = (actual, declared, path) => assert.ok(actual && typeof actual === "object" && !Array.isArray(actual) && Object.keys(actual).sort().join(",") === Object.keys(declared).sort().join(","), "HOSTED_METADATA_SHAPE path=" + path)
+    const integer = (value, min, max, path) => assert.ok(Number.isSafeInteger(value) && value >= min && value <= max, "HOSTED_METADATA_INTEGER path=" + path)
+    const primitiveRecord = (actual, declared, path) => {
+      record(actual, declared, path)
+      for (const [field, value] of Object.entries(declared)) {
+        if (typeof value === "boolean") assert.equal(typeof actual[field], "boolean", "HOSTED_METADATA_TYPE path=" + path + "." + field)
+        if (typeof value === "number") integer(actual[field], field === "estimatedRows" ? -1 : 0, Number.MAX_SAFE_INTEGER, path + "." + field)
+      }
+    }
+    const names = (entries, declared, path) => {
+      assert.ok(Array.isArray(entries), "HOSTED_METADATA_TYPE path=" + path)
+      assert.deepEqual(entries.map(entry => declared.includes(entry?.name) ? entry.name : "UNDECLARED_NAME"), declared, "HOSTED_METADATA_CANONICAL_ORDER path=" + path)
+    }
+    const declared = snapshot()
+    primitiveRecord(d, defaults(), "defaults")
+    record(s, declared, "snapshot")
+    names(s.relations, RELATIONS, "relations.name")
+    names(s.indexes, INDEXES, "indexes.name")
+    record(s.ledger, declared.ledger, "ledger")
+    names(s.ledger.known, MIGRATIONS, "ledger.known.name")
+    for (const [array, entries, schema] of [["relations", s.relations, declared.relations], ["indexes", s.indexes, declared.indexes], ["ledger.known", s.ledger.known, declared.ledger.known]]) {
+      for (const [i, entry] of entries.entries()) primitiveRecord(entry, schema[i], array + "." + schema[i].name)
+    }
+    for (const field of ["roleProfile", "guard", "ledgerGuards", "defaultAcl", "activity"]) primitiveRecord(s[field], declared[field], field)
+    for (const field of ["readOnly", "repeatableRead"]) assert.equal(typeof s[field], "boolean", "HOSTED_METADATA_TYPE path=" + field)
+    integer(s.ledger.totalRows, 0, 5000, "ledger.totalRows")
+    integer(s.ledger.unresolvedRows, 0, s.ledger.totalRows, "ledger.unresolvedRows")
+    for (const entry of s.ledger.known) {
+      for (const field of ["rows", "applied", "unresolved", "rolledBack"]) integer(entry[field], 0, s.ledger.totalRows, "ledger.known." + entry.name + "." + field)
+      assert.ok(entry.applied + entry.unresolved + entry.rolledBack === entry.rows, "HOSTED_METADATA_COUNT_PARTITION migration=" + entry.name)
+    }
+    assert.ok(s.ledger.known.reduce((sum, entry) => sum + entry.rows, 0) <= s.ledger.totalRows, "HOSTED_METADATA_COUNT_PARTITION ledger")
+    assert.ok(s.guard.bodyMd5 === null || /^[0-9a-f]{32}$/.test(s.guard.bodyMd5), "HOSTED_METADATA_MD5 guard.bodyMd5")
+    for (const field of ["explicitPrivilegeRows", "publicPrivilegeRows", "nonOwnerWriteRows", "grantableRows"]) integer(s.defaultAcl[field], 0, 10000, "defaultAcl." + field)
+    for (const field of ["otherActiveSessions", "otherOpenTransactions", "lockWaitSessions"]) integer(s.activity[field], 0, 10000, "activity." + field)
+    // Replay the byte-bound previous query through the same read-only connection.
+    // The boolean is sufficient evidence; no raw locale/snapshot is exported.
+    const [legacyDefaults, legacy] = query(sql.replaceAll(' ORDER BY name COLLATE "C")', ' ORDER BY name)'))
+    const legacyOrderIsCanonical = [
+      [legacy.ledger.known, MIGRATIONS], [legacy.relations, RELATIONS], [legacy.indexes, INDEXES],
+    ].every(([entries, expected]) => Array.isArray(entries) && entries.length === expected.length && entries.every((entry, i) => entry?.name === expected[i]))
+    context.diagnostic("Legacy default catalog-name order canonical=" + legacyOrderIsCanonical)
+    if (!legacyOrderIsCanonical) assert.throws(() => validateSnapshot(legacyDefaults, legacy), { message: "OUTPUT_INVALID" })
     assert.deepEqual(assessMetadata(d, s), { status: "READY_FOR_REVIEW", reasons: [], migrationStates: ["pending", "pending"] })
     for (const [trigger, field] of [["workforce_exception_decisions_append_only", "appendTriggerBound"], ["workforce_exception_decisions_assign_case_revision", "revisionTriggerBound"]]) {
       execute(`ALTER TABLE workforce_exception_decisions DISABLE TRIGGER ${trigger};`)

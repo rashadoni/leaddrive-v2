@@ -159,10 +159,10 @@ SELECT pg_catalog.json_build_object(
   'ledger',pg_catalog.json_build_object(
     'totalRows',(SELECT count(*) FROM public._prisma_migrations),
     'unresolvedRows',(SELECT count(*) FROM public._prisma_migrations WHERE finished_at IS NULL AND rolled_back_at IS NULL),
-    'known',(SELECT json_agg(json_build_object('name',name,'rows',rows,'applied',applied,'unresolved',unresolved,'rolledBack',rolled_back,'checksumMatch',checksum_match) ORDER BY name) FROM migrations)
+    'known',(SELECT json_agg(json_build_object('name',name,'rows',rows,'applied',applied,'unresolved',unresolved,'rolledBack',rolled_back,'checksumMatch',checksum_match) ORDER BY name COLLATE "C") FROM migrations)
   ),
-  'relations',(SELECT json_agg(json_build_object('name',name,'present',present,'ordinaryTable',ordinary_table,'rls',rls,'forcedRls',forced_rls,'ownerAbility',owner_ability,'bytes',bytes,'estimatedRows',estimated_rows,'keyColumnsMatch',key_columns_match) ORDER BY name) FROM relations),
-  'indexes',(SELECT json_agg(json_build_object('name',name,'present',present,'shapeMatch',shape_match) ORDER BY name) FROM indexes),
+  'relations',(SELECT json_agg(json_build_object('name',name,'present',present,'ordinaryTable',ordinary_table,'rls',rls,'forcedRls',forced_rls,'ownerAbility',owner_ability,'bytes',bytes,'estimatedRows',estimated_rows,'keyColumnsMatch',key_columns_match) ORDER BY name COLLATE "C") FROM relations),
+  'indexes',(SELECT json_agg(json_build_object('name',name,'present',present,'shapeMatch',shape_match) ORDER BY name COLLATE "C") FROM indexes),
   'guard',pg_catalog.json_build_object(
     'present',EXISTS(SELECT 1 FROM guard),
     'shapeMatch',COALESCE((SELECT shape_match FROM guard),false),
