@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "result": "FAIL",
+  "headSha": "293aaf2036a4890f461b1e539f495cc33bbca461",
+  "runId": 37628952667,
+  "jobId": 112817905912,
+  "runUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37628952667",
+  "jobUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37628952667/job/112817905912",
+  "phase": "ISOLATED_FIXTURE_CONNECTION_BEFORE_FIXED_SQL",
+  "productionInspectionAttempted": false,
+  "sourceDefect": "URI_IN_PGDATABASE_ENV_DID_NOT_POPULATE_LIBPQ_HOST_PORT",
+  "productionHelperSameAssumptionFoundBySourceInspection": true,
+  "previousSourceReviewMissedThisRuntimeDefect": true,
+  "originalLog": {
+    "path": "source-293-first-failed.log.gz",
+    "bytes": 16393,
+    "sha256": "f6488981be43a123db86b3ec54a3bfb965ce3f2b83cb1318eecdf70285f416bb",
+    "gzipBytes": 2481,
+    "gzipSha256": "8971284d39f574b9af3050d331d996d641419d344c25a2d22800dafdbe3d830b",
+    "losslessRoundTripVerified": true
+  },
+  "privacy": "Source job had no production environment/secrets; isolated synthetic fixture failure only. No production/app/auth logs included."
+}

@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "result": "FAIL",
+  "headSha": "e87b0fca5665a92805541a3fb830f52b20a7bd2f",
+  "runId": 37632434312,
+  "jobId": 112829871580,
+  "runUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37632434312",
+  "phase": "INITIAL_FIXED_CATALOG_RESULT_VALIDATION_AFTER_SQL_SUCCESS",
+  "actualResult": {
+    "unitPass": 14,
+    "actualSqlFail": 1,
+    "skipped": 0
+  },
+  "actualValidatorError": "OUTPUT_INVALID",
+  "actualValidatorLine": 115,
+  "sourceContractViolation": "DEFAULT_DATABASE_COLLATION_USED_FOR_FINITE_CANONICAL_NAME_ARRAYS",
+  "originalRuntimeCauseStatus": "RELATION_PROJECTION_REJECTED; EXACT_NAME_ORDER_NOT_EXPORTED_IN_ORIGINAL_LOG",
+  "hostedReproductionRequired": true,
+  "productionInspectionAttempted": false,
+  "originalLog": {
+    "path": "source-e87b-third-failed.log.gz",
+    "bytes": 38597,
+    "sha256": "cf984a99de0846133a33303eda5ae9c9d2bece0aaa389815e5d676920d4cda55",
+    "gzipBytes": 9670,
+    "gzipSha256": "b68a5b89567573763aaf8c7bceb5340a5ede3f29e37f18184eb68edc6a7d805f",
+    "losslessRoundTripVerified": true
+  },
+  "privacy": "Only GitHub-hosted synthetic fixture/service log; no production/app/auth/HR payloads."
+}
