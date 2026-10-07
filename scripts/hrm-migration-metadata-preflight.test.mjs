@@ -3,7 +3,7 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 import { createHash } from "node:crypto"
 import { execFileSync } from "node:child_process"
-import { TARGET_SOURCE_SHA, MIGRATIONS, RELATIONS, INDEXES, GUARD_MD5, LEDGER_GUARD_MD5, databaseConnectionEnvironment, parseMigrationEnv, readRootFile, validateSnapshot, assessMetadata, validateReport, inspectRemote, queryMetadata } from "./hrm-migration-metadata-preflight.mjs"
+import { TARGET_SOURCE_SHA, MIGRATIONS, RELATIONS, INDEXES, GUARD_MD5, LEDGER_GUARD_MD5, ENV_DETAILS, databaseConnectionEnvironment, parseMigrationEnv, readRootFile, validateSnapshot, assessMetadata, validateReport, inspectRemote, queryMetadata } from "./hrm-migration-metadata-preflight.mjs"
 
 const sql = fs.readFileSync(new URL("./hrm-migration-metadata-preflight.sql", import.meta.url), "utf8")
 const helper = fs.readFileSync(new URL("./hrm-migration-metadata-preflight.mjs", import.meta.url), "utf8")
@@ -47,6 +47,120 @@ test("libpq receives explicit host/port/decoded identity and documented TLS fiel
   assert.equal(databaseConnectionEnvironment("postgresql://synthetic:protected@[::1]/fixture").PGHOST, "::1")
   assert.equal(databaseConnectionEnvironment("postgresql://synthetic:protected@127.0.0.1/fixture").PGPORT, "5432")
   for (const suffix of ["?sslpassword=secret", "?sslmode=invalid", "?sslkey=engine:unsafe", "?sslrootcert=relative.crt", "?sslmode=require&sslmode=disable", "?options=-c%20default_transaction_read_only=off", "?host=other", "?sslcert=%00"]) assert.throws(() => databaseConnectionEnvironment("postgresql://synthetic:protected@host/fixture" + suffix), { message: "ENV_INVALID" })
+})
+
+test("env rejection details stop before SQL and never reflect connection values or unknown parameter names", () => {
+  const privateMarker = "private-fixture-marker-31f1"
+  const base = "postgresql://synthetic:" + privateMarker + "@host/fixture"
+  const env = (connection = base, role = "synthetic") => "MIGRATION_DATABASE_URL='" + connection + "'\nMIGRATION_EXPECTED_DB_ROLE='" + role + "'\n"
+  const cases = [
+    ["CONTENT_INVALID", env() + "\0"],
+    ["CONTENT_INVALID", "#".repeat(32769)],
+    ["URL_DECLARATION_MISSING", "MIGRATION_EXPECTED_DB_ROLE=synthetic\n"],
+    ["URL_DECLARATION_DUPLICATED", env() + "MIGRATION_DATABASE_URL=" + base + "\n"],
+    ["ROLE_DECLARATION_MISSING", "MIGRATION_DATABASE_URL=" + base + "\n"],
+    ["ROLE_DECLARATION_DUPLICATED", env() + "MIGRATION_EXPECTED_DB_ROLE=synthetic\n"],
+    ["URL_QUOTES_INVALID", "MIGRATION_DATABASE_URL='" + base + "\nMIGRATION_EXPECTED_DB_ROLE=synthetic\n"],
+    ["ROLE_QUOTES_INVALID", "MIGRATION_DATABASE_URL=" + base + "\nMIGRATION_EXPECTED_DB_ROLE='synthetic\n"],
+    ["ROLE_PROFILE_INVALID", env(base, "invalid role " + privateMarker)],
+    ["URL_SYNTAX_INVALID", env("invalid-connection-" + privateMarker)],
+    ["URL_SCHEME_UNSUPPORTED", env(base.replace("postgresql:", "https:"))],
+    ["URL_HOST_REQUIRED", env("postgresql:///fixture")],
+    ["URL_DATABASE_REQUIRED", env(base.replace("/fixture", ""))],
+    ["URL_FRAGMENT_UNSUPPORTED", env(base + "#" + privateMarker)],
+    ["URL_CONTROL_INVALID", env(base.replace(privateMarker, "raw space"))],
+    ["USERNAME_ENCODING_INVALID", env(base.replace("synthetic:", "%:"))],
+    ["DATABASE_ENCODING_INVALID", env(base.replace("/fixture", "/%"))],
+    ["PASSWORD_ENCODING_INVALID", env(base.replace(privateMarker, "%"))],
+    ["TCP_HOST_INVALID", env(base.replace("@host/", "@host_name/"))],
+    ["TCP_PORT_INVALID", env(base.replace("@host/", "@host:0/"))],
+    ["ROLE_IDENTITY_MISMATCH", env(base, "another_fixture_role")],
+    ["SCHEMA_UNSUPPORTED", env(base + "?schema=" + privateMarker)],
+    ["POOL_HINT_INVALID", env(base + "?connection_limit=" + privateMarker)],
+    ["SSL_VALUE_INVALID", env(base + "?sslcert=%00")],
+    ["SSL_MODE_INVALID", env(base + "?sslmode=" + privateMarker)],
+    ["SSL_PATH_UNSUPPORTED", env(base + "?sslrootcert=" + privateMarker)],
+    ["PARAM_UNSUPPORTED_CONNECT_TIMEOUT", env(base + "?connect_timeout=10")],
+    ["PARAM_UNSUPPORTED_APPLICATION_NAME", env(base + "?application_name=" + privateMarker)],
+    ["PARAM_UNSUPPORTED_SESSION_OPTIONS", env(base + "?options=-c%20default_transaction_read_only=off")],
+    ["PARAM_UNSUPPORTED_HOST_OR_SOCKET", env(base + "?host=%2Fprivate-fixture-socket")],
+    ["PARAM_UNSUPPORTED_IDENTITY_OVERRIDE", env(base + "?user=" + privateMarker)],
+    ["PARAM_UNSUPPORTED_SSL", env(base + "?sslpassword=" + privateMarker)],
+    ["PARAM_UNSUPPORTED_PRISMA", env(base + "?pgbouncer=true")],
+    ["PARAM_UNSUPPORTED_OTHER", env(base + "?unknown_" + privateMarker + "=" + privateMarker)],
+    ["PARAM_DUPLICATED_SSL", env(base + "?sslmode=require&sslmode=disable")],
+    ["PARAM_DUPLICATED_PRISMA", env(base + "?schema=public&schema=public")],
+  ]
+  for (const [detail, text] of cases) {
+    const report = inspectRemote(sql, bindings, sha, { uid: 0, read: path => path.endsWith(".deploy-sha") ? sha : text, query: () => assert.fail("env rejection must never query SQL") })
+    assert.equal(report.version, 2)
+    assert.equal(report.status, "ERROR")
+    assert.equal(report.code, "ENV_INVALID")
+    assert.equal(report.envDetail, detail)
+    assert.equal(report.sqlState, null)
+    assert.equal(report.productionArtifactSha, null)
+    assert.equal(report.defaults, null)
+    assert.equal(report.snapshot, null)
+    assert.equal(validateReport(report, sha), report)
+    assert.doesNotMatch(JSON.stringify(report), /private-fixture-marker-31f1|unknown_|postgresql:\/\/|another_fixture_role|host_name|raw space/)
+  }
+  // This lower-level predicate is masked by the prior mandatory role check in
+  // parseMigrationEnv; it still retains the same connection rejection.
+  assert.throws(() => databaseConnectionEnvironment(base.replace("synthetic:", "invalid%20user:")), error => error.message === "ENV_INVALID" && error.envDetail === "USERNAME_PROFILE_INVALID")
+})
+
+test("v2 error report accepts only finite env details and forbids them outside ENV_INVALID", () => {
+  assert.equal(new Set(ENV_DETAILS).size, ENV_DETAILS.length)
+  assert.ok(Object.isFrozen(ENV_DETAILS))
+  assert.ok(ENV_DETAILS.every(detail => /^[A-Z_]+$/.test(detail)))
+  const failure = inspectRemote(sql, bindings, sha, { uid: 0, read: path => path.endsWith(".deploy-sha") ? sha : "", query: () => assert.fail("missing env must never query SQL") })
+  for (const envDetail of ENV_DETAILS) assert.equal(validateReport({ ...failure, envDetail }, sha).envDetail, envDetail)
+  for (const invalid of [
+    { ...failure, envDetail: "private-forged-detail" },
+    { ...failure, envDetail: null },
+    { ...failure, envDetail: { value: "private-forged-detail" } },
+    { ...failure, envDetail: 1 },
+    { ...failure, sqlState: "42501" },
+    { ...failure, version: 1 },
+    { ...failure, roleName: "private-forged-role" },
+    { ...failure, connectionParameter: "private-forged-name" },
+    { ...failure, bindings: { ...bindings, rawEnvironment: "private-forged-env" } },
+  ]) assert.throws(() => validateReport(invalid, sha), { message: "OUTPUT_INVALID" })
+  const missing = { ...failure }; delete missing.envDetail
+  assert.throws(() => validateReport(missing, sha), { message: "OUTPUT_INVALID" })
+  const nonEnvFailure = inspectRemote(sql, bindings, sha, { uid: 1 })
+  assert.equal(nonEnvFailure.envDetail, null)
+  assert.throws(() => validateReport({ ...nonEnvFailure, envDetail: "CONTENT_INVALID" }, sha), { message: "OUTPUT_INVALID" })
+  const ready = inspectRemote(sql, bindings, sha, { uid: 0, read: fakeRead, query: encoded })
+  assert.equal(ready.envDetail, null)
+  assert.throws(() => validateReport({ ...ready, envDetail: "CONTENT_INVALID" }, sha), { message: "OUTPUT_INVALID" })
+  const changed = snapshot(); changed.activity.visibilityComplete = false
+  const incomplete = inspectRemote(sql, bindings, sha, { uid: 0, read: fakeRead, query: () => JSON.stringify(defaults()) + "\n" + JSON.stringify(changed) + "\n" })
+  assert.equal(incomplete.status, "INCOMPLETE")
+  assert.equal(incomplete.envDetail, null)
+  assert.throws(() => validateReport({ ...incomplete, envDetail: "CONTENT_INVALID" }, sha), { message: "OUTPUT_INVALID" })
+})
+
+test("env error sanitization preserves only finite nested detail and never unknown error metadata", () => {
+  for (const [code, innerDetail, expectedDetail] of [
+    ["ENV_INVALID", "PARAM_UNSUPPORTED_OTHER", "PARAM_UNSUPPORTED_OTHER"],
+    ["ENV_INVALID", "private-unknown-env-key", "UNCLASSIFIED_ENV_REJECTION"],
+    ["ENV_INVALID", undefined, "UNCLASSIFIED_ENV_REJECTION"],
+    ["FILES_UNSAFE", "CONTENT_INVALID", null],
+    ["private-error-message", "CONTENT_INVALID", null],
+  ]) {
+    const report = inspectRemote(sql, bindings, sha, { uid: 0, read: path => {
+      if (path.endsWith(".deploy-sha")) return sha
+      const error = new Error(code)
+      error.envDetail = innerDetail
+      error.connection = "postgresql://private-secret@private-host/private-db"
+      error.stderr = "private-raw-env"
+      throw error
+    }, query: () => assert.fail("failed env read must never query SQL") })
+    assert.equal(report.envDetail, expectedDetail)
+    assert.equal(report.code, code === "private-error-message" ? "INSPECTION_FAILED" : code)
+    assert.doesNotMatch(JSON.stringify(report), /private-/)
+  }
 })
 
 test("pending metadata is reviewable while every unresolved prerequisite stays explicit", () => {
@@ -219,7 +333,9 @@ test("runner validator retains valid original failures but never prints rejected
   const report = inspectRemote(sql, bindings, sha, { uid: 1 })
   const run = input => execFileSync(process.execPath, ["scripts/hrm-migration-metadata-preflight.mjs", "--validate-output", sha], { input: JSON.stringify(input), encoding: "utf8", maxBuffer: 65536, stdio: ["pipe", "pipe", "pipe"] })
   assert.deepEqual(JSON.parse(run(report)), report)
-  for (const invalid of [{ ...report, rawEnvironment: "protected marker" }, { ...report, bindings: { ...bindings, sqlSha256: "b".repeat(64) } }]) {
+  const envReport = inspectRemote(sql, bindings, sha, { uid: 0, read: path => path.endsWith(".deploy-sha") ? sha : "", query: () => assert.fail("missing env must never query SQL") })
+  assert.deepEqual(JSON.parse(run(envReport)), envReport)
+  for (const invalid of [{ ...report, rawEnvironment: "protected marker" }, { ...report, bindings: { ...bindings, sqlSha256: "b".repeat(64) } }, { ...envReport, envDetail: "private-forged-parameter" }, { ...envReport, version: 1 }]) {
     try { run(invalid); assert.fail("invalid output must fail") }
     catch (error) { assert.equal(error.status, 1); assert.equal(error.stdout, ""); assert.equal(error.stderr, "HRM metadata output invalid; raw data withheld\n") }
   }
