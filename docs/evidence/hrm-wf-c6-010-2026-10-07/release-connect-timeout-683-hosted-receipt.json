@@ -1,0 +1,18 @@
+{
+  "source": "683bfa056ab1f81877de5b8a238658847f1f51e4",
+  "run": 37652297849,
+  "attempt": 1,
+  "job": 112898465892,
+  "conclusion": "success",
+  "tests": 22,
+  "pass": 22,
+  "fail": 0,
+  "skipped": 0,
+  "fixtureConnectTimeoutHint": 0,
+  "fixedConnectionBudget": 10,
+  "legacyOrderCanonical": false,
+  "originalBytes": 64601,
+  "originalSha256": "55a20ed900b4806d89ce0095014a81dfa76711c08d5c908a83b4f63fbeddaf42",
+  "storedSha256": "da51b421d2d0bf921e2667eac5dac1d83ea6a8e5c99ca175c77a52b336bdaf63",
+  "scope": "Actual isolated SQL with known synthetic hint; not live catalogue"
+}
