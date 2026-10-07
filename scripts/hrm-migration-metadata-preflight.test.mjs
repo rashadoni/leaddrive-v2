@@ -3,7 +3,7 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 import { createHash } from "node:crypto"
 import { execFileSync } from "node:child_process"
-import { TARGET_SOURCE_SHA, MIGRATIONS, RELATIONS, INDEXES, GUARD_MD5, LEDGER_GUARD_MD5, databaseConnectionEnvironment, parseMigrationEnv, readRootFile, validateSnapshot, assessMetadata, validateReport, inspectRemote, queryMetadata } from "./hrm-migration-metadata-preflight.mjs"
+import { TARGET_SOURCE_SHA, MIGRATIONS, RELATIONS, INDEXES, GUARD_MD5, LEDGER_GUARD_MD5, ENV_DETAILS, databaseConnectionEnvironment, parseMigrationEnv, readRootFile, validateSnapshot, assessMetadata, validateReport, inspectRemote, queryMetadata } from "./hrm-migration-metadata-preflight.mjs"
 
 const sql = fs.readFileSync(new URL("./hrm-migration-metadata-preflight.sql", import.meta.url), "utf8")
 const helper = fs.readFileSync(new URL("./hrm-migration-metadata-preflight.mjs", import.meta.url), "utf8")
@@ -47,6 +47,187 @@ test("libpq receives explicit host/port/decoded identity and documented TLS fiel
   assert.equal(databaseConnectionEnvironment("postgresql://synthetic:protected@[::1]/fixture").PGHOST, "::1")
   assert.equal(databaseConnectionEnvironment("postgresql://synthetic:protected@127.0.0.1/fixture").PGPORT, "5432")
   for (const suffix of ["?sslpassword=secret", "?sslmode=invalid", "?sslkey=engine:unsafe", "?sslrootcert=relative.crt", "?sslmode=require&sslmode=disable", "?options=-c%20default_transaction_read_only=off", "?host=other", "?sslcert=%00"]) assert.throws(() => databaseConnectionEnvironment("postgresql://synthetic:protected@host/fixture" + suffix), { message: "ENV_INVALID" })
+})
+
+test("env rejection details stop before SQL and never reflect connection values or unknown parameter names", () => {
+  const privateMarker = "private-fixture-marker-31f1"
+  const base = "postgresql://synthetic:" + privateMarker + "@host/fixture"
+  const env = (connection = base, role = "synthetic") => "MIGRATION_DATABASE_URL='" + connection + "'\nMIGRATION_EXPECTED_DB_ROLE='" + role + "'\n"
+  const cases = [
+    ["CONTENT_INVALID", env() + "\0"],
+    ["CONTENT_INVALID", "#".repeat(32769)],
+    ["URL_DECLARATION_MISSING", "MIGRATION_EXPECTED_DB_ROLE=synthetic\n"],
+    ["URL_DECLARATION_DUPLICATED", env() + "MIGRATION_DATABASE_URL=" + base + "\n"],
+    ["ROLE_DECLARATION_MISSING", "MIGRATION_DATABASE_URL=" + base + "\n"],
+    ["ROLE_DECLARATION_DUPLICATED", env() + "MIGRATION_EXPECTED_DB_ROLE=synthetic\n"],
+    ["URL_QUOTES_INVALID", "MIGRATION_DATABASE_URL='" + base + "\nMIGRATION_EXPECTED_DB_ROLE=synthetic\n"],
+    ["ROLE_QUOTES_INVALID", "MIGRATION_DATABASE_URL=" + base + "\nMIGRATION_EXPECTED_DB_ROLE='synthetic\n"],
+    ["ROLE_PROFILE_INVALID", env(base, "invalid role " + privateMarker)],
+    ["URL_SYNTAX_INVALID", env("invalid-connection-" + privateMarker)],
+    ["URL_SCHEME_UNSUPPORTED", env(base.replace("postgresql:", "https:"))],
+    ["URL_HOST_REQUIRED", env("postgresql:///fixture")],
+    ["URL_DATABASE_REQUIRED", env(base.replace("/fixture", ""))],
+    ["URL_FRAGMENT_UNSUPPORTED", env(base + "#" + privateMarker)],
+    ["URL_CONTROL_INVALID", env(base.replace(privateMarker, "raw space"))],
+    ["USERNAME_ENCODING_INVALID", env(base.replace("synthetic:", "%:"))],
+    ["DATABASE_ENCODING_INVALID", env(base.replace("/fixture", "/%"))],
+    ["PASSWORD_ENCODING_INVALID", env(base.replace(privateMarker, "%"))],
+    ["TCP_HOST_INVALID", env(base.replace("@host/", "@host_name/"))],
+    ["TCP_PORT_INVALID", env(base.replace("@host/", "@host:0/"))],
+    ["ROLE_IDENTITY_MISMATCH", env(base, "another_fixture_role")],
+    ["SCHEMA_UNSUPPORTED", env(base + "?schema=" + privateMarker)],
+    ["POOL_HINT_INVALID", env(base + "?connection_limit=" + privateMarker)],
+    ["SSL_VALUE_INVALID", env(base + "?sslcert=%00")],
+    ["SSL_MODE_INVALID", env(base + "?sslmode=" + privateMarker)],
+    ["SSL_PATH_UNSUPPORTED", env(base + "?sslrootcert=" + privateMarker)],
+    ["CONNECT_TIMEOUT_HINT_INVALID", env(base + "?connect_timeout=" + privateMarker)],
+    ["PARAM_UNSUPPORTED_APPLICATION_NAME", env(base + "?application_name=" + privateMarker)],
+    ["PARAM_UNSUPPORTED_SESSION_OPTIONS", env(base + "?options=-c%20default_transaction_read_only=off")],
+    ["PARAM_UNSUPPORTED_HOST_OR_SOCKET", env(base + "?host=%2Fprivate-fixture-socket")],
+    ["PARAM_UNSUPPORTED_IDENTITY_OVERRIDE", env(base + "?user=" + privateMarker)],
+    ["PARAM_UNSUPPORTED_SSL", env(base + "?sslpassword=" + privateMarker)],
+    ["PARAM_UNSUPPORTED_PRISMA", env(base + "?pgbouncer=true")],
+    ["PARAM_UNSUPPORTED_OTHER", env(base + "?unknown_" + privateMarker + "=" + privateMarker)],
+    ["PARAM_DUPLICATED_SSL", env(base + "?sslmode=require&sslmode=disable")],
+    ["PARAM_DUPLICATED_PRISMA", env(base + "?schema=public&schema=public")],
+  ]
+  for (const [detail, text] of cases) {
+    const report = inspectRemote(sql, bindings, sha, { uid: 0, read: path => path.endsWith(".deploy-sha") ? sha : text, query: () => assert.fail("env rejection must never query SQL") })
+    assert.equal(report.version, 2)
+    assert.equal(report.status, "ERROR")
+    assert.equal(report.code, "ENV_INVALID")
+    assert.equal(report.envDetail, detail)
+    assert.equal(report.sqlState, null)
+    assert.equal(report.productionArtifactSha, null)
+    assert.equal(report.defaults, null)
+    assert.equal(report.snapshot, null)
+    assert.equal(validateReport(report, sha), report)
+    assert.doesNotMatch(JSON.stringify(report), /private-fixture-marker-31f1|unknown_|postgresql:\/\/|another_fixture_role|host_name|raw space/)
+  }
+  // This lower-level predicate is masked by the prior mandatory role check in
+  // parseMigrationEnv; it still retains the same connection rejection.
+  assert.throws(() => databaseConnectionEnvironment(base.replace("synthetic:", "invalid%20user:")), error => error.message === "ENV_INVALID" && error.envDetail === "USERNAME_PROFILE_INVALID")
+})
+
+test("v2 error report accepts only finite env details and forbids them outside ENV_INVALID", () => {
+  assert.equal(new Set(ENV_DETAILS).size, ENV_DETAILS.length)
+  assert.ok(Object.isFrozen(ENV_DETAILS))
+  assert.ok(ENV_DETAILS.every(detail => /^[A-Z_]+$/.test(detail)))
+  const failure = inspectRemote(sql, bindings, sha, { uid: 0, read: path => path.endsWith(".deploy-sha") ? sha : "", query: () => assert.fail("missing env must never query SQL") })
+  for (const envDetail of ENV_DETAILS) assert.equal(validateReport({ ...failure, envDetail }, sha).envDetail, envDetail)
+  for (const invalid of [
+    { ...failure, envDetail: "private-forged-detail" },
+    { ...failure, envDetail: null },
+    { ...failure, envDetail: { value: "private-forged-detail" } },
+    { ...failure, envDetail: 1 },
+    { ...failure, sqlState: "42501" },
+    { ...failure, version: 1 },
+    { ...failure, roleName: "private-forged-role" },
+    { ...failure, connectionParameter: "private-forged-name" },
+    { ...failure, bindings: { ...bindings, rawEnvironment: "private-forged-env" } },
+  ]) assert.throws(() => validateReport(invalid, sha), { message: "OUTPUT_INVALID" })
+  const missing = { ...failure }; delete missing.envDetail
+  assert.throws(() => validateReport(missing, sha), { message: "OUTPUT_INVALID" })
+  const nonEnvFailure = inspectRemote(sql, bindings, sha, { uid: 1 })
+  assert.equal(nonEnvFailure.envDetail, null)
+  assert.throws(() => validateReport({ ...nonEnvFailure, envDetail: "CONTENT_INVALID" }, sha), { message: "OUTPUT_INVALID" })
+  const ready = inspectRemote(sql, bindings, sha, { uid: 0, read: fakeRead, query: encoded })
+  assert.equal(ready.envDetail, null)
+  assert.throws(() => validateReport({ ...ready, envDetail: "CONTENT_INVALID" }, sha), { message: "OUTPUT_INVALID" })
+  const changed = snapshot(); changed.activity.visibilityComplete = false
+  const incomplete = inspectRemote(sql, bindings, sha, { uid: 0, read: fakeRead, query: () => JSON.stringify(defaults()) + "\n" + JSON.stringify(changed) + "\n" })
+  assert.equal(incomplete.status, "INCOMPLETE")
+  assert.equal(incomplete.envDetail, null)
+  assert.throws(() => validateReport({ ...incomplete, envDetail: "CONTENT_INVALID" }, sha), { message: "OUTPUT_INVALID" })
+})
+
+test("env error sanitization preserves only finite nested detail and never unknown error metadata", () => {
+  for (const [code, innerDetail, expectedDetail] of [
+    ["ENV_INVALID", "PARAM_UNSUPPORTED_OTHER", "PARAM_UNSUPPORTED_OTHER"],
+    ["ENV_INVALID", "private-unknown-env-key", "UNCLASSIFIED_ENV_REJECTION"],
+    ["ENV_INVALID", undefined, "UNCLASSIFIED_ENV_REJECTION"],
+    ["FILES_UNSAFE", "CONTENT_INVALID", null],
+    ["private-error-message", "CONTENT_INVALID", null],
+  ]) {
+    const report = inspectRemote(sql, bindings, sha, { uid: 0, read: path => {
+      if (path.endsWith(".deploy-sha")) return sha
+      const error = new Error(code)
+      error.envDetail = innerDetail
+      error.connection = "postgresql://private-secret@private-host/private-db"
+      error.stderr = "private-raw-env"
+      throw error
+    }, query: () => assert.fail("failed env read must never query SQL") })
+    assert.equal(report.envDetail, expectedDetail)
+    assert.equal(report.code, code === "private-error-message" ? "INSPECTION_FAILED" : code)
+    assert.doesNotMatch(JSON.stringify(report), /private-/)
+  }
+})
+
+test("connect_timeout hints normalize away while every explicit psql budget and startup guard remains fixed", () => {
+  const base = "postgresql://synthetic:private-timeout-fixture@host/fixture?schema=public&sslmode=verify-full"
+  const normalized = "postgresql://synthetic:private-timeout-fixture@host/fixture?sslmode=verify-full"
+  for (const value of ["10", "1", "0", "-0", "-1", "-2147483648", "2147483647", "+10", "0000000010"]) {
+    const connection = base + "&connect_timeout=" + encodeURIComponent(value)
+    const text = "MIGRATION_DATABASE_URL='" + connection + "'\nMIGRATION_EXPECTED_DB_ROLE=synthetic\n"
+    assert.equal(parseMigrationEnv(text), normalized)
+    assert.deepEqual(databaseConnectionEnvironment(connection), databaseConnectionEnvironment(normalized))
+    let observed
+    assert.equal(queryMetadata(connection, sql, (binary, args, options) => { observed = { binary, args, options }; return "bounded" }), "bounded")
+    assert.equal(observed.options.env.PGCONNECT_TIMEOUT, "10")
+    assert.equal(observed.options.timeout, 30000)
+    assert.equal(observed.options.env.PGOPTIONS, "-c default_transaction_read_only=on -c application_name=hrm_migration_metadata_preflight -c hrm.preflight_expected_role=synthetic")
+    assert.equal(observed.options.env.PGSSLMODE, "verify-full")
+    assert.equal(observed.options.input, sql)
+    assert.deepEqual(observed.args, ["-X", "-qAt", "--no-password", "-v", "ON_ERROR_STOP=1", "-v", "VERBOSITY=sqlstate"])
+    assert.equal(Object.values(observed.options.env).some(field => field.includes("connect_timeout") || field.includes("postgresql://")), false)
+    const report = inspectRemote(sql, bindings, sha, { uid: 0, read: path => path.endsWith(".deploy-sha") ? sha : text, query: url => { assert.equal(url, normalized); return encoded() } })
+    assert.equal(report.status, "READY_FOR_REVIEW")
+    assert.equal(report.envDetail, null)
+    assert.doesNotMatch(JSON.stringify(report), /private-timeout-fixture|connect_timeout|postgresql:\/\//)
+  }
+})
+
+test("connect_timeout raw plus and percent-encoded plus retain the same libpq URI meaning", () => {
+  const base = "postgresql://synthetic:private-plus-fixture@host/fixture"
+  for (const suffix of ["?connect_timeout=+10", "?connect_timeout=%2B10"]) {
+    assert.equal(parseMigrationEnv("MIGRATION_DATABASE_URL='" + base + suffix + "'\nMIGRATION_EXPECTED_DB_ROLE=synthetic\n"), base)
+    assert.deepEqual(databaseConnectionEnvironment(base + suffix), databaseConnectionEnvironment(base))
+    queryMetadata(base + suffix, sql, (binary, args, options) => {
+      assert.equal(options.env.PGCONNECT_TIMEOUT, "10")
+      assert.equal(options.timeout, 30000)
+      assert.equal(options.env.PGOPTIONS, "-c default_transaction_read_only=on -c application_name=hrm_migration_metadata_preflight -c hrm.preflight_expected_role=synthetic")
+      return "bounded"
+    })
+  }
+})
+
+test("malformed or repeated connect_timeout fails privately before SQL and never enables other URL overrides", () => {
+  const base = "postgresql://synthetic:private-timeout-fixture@host/fixture"
+  const rejected = [
+    ...["", "2147483648", "-2147483649", "999999999999999999", "1.5", "1e2", "0x10", "10s", " 10", "10 ", "\n10", "+", "--1", "private-timeout-value"].map(value => ["CONNECT_TIMEOUT_HINT_INVALID", "?connect_timeout=" + encodeURIComponent(value)]),
+    ["CONNECT_TIMEOUT_HINT_INVALID", "?connect_timeout=%2B%2010"],
+    ["PARAM_DUPLICATED_CONNECT_TIMEOUT", "?connect_timeout=10&connect_timeout=10"],
+    ["PARAM_DUPLICATED_CONNECT_TIMEOUT", "?connect_timeout=0&%63onnect_timeout=-1"],
+    ["PARAM_UNSUPPORTED_SESSION_OPTIONS", "?connect_timeout=10&options=-c%20default_transaction_read_only=off"],
+    ["PARAM_UNSUPPORTED_APPLICATION_NAME", "?connect_timeout=10&application_name=private-app-name"],
+    ["PARAM_UNSUPPORTED_HOST_OR_SOCKET", "?connect_timeout=10&host=%2Fprivate-socket"],
+    ["PARAM_UNSUPPORTED_IDENTITY_OVERRIDE", "?connect_timeout=10&user=private-override"],
+    ["PARAM_UNSUPPORTED_SSL", "?connect_timeout=10&sslpassword=private-override"],
+    ["PARAM_UNSUPPORTED_PRISMA", "?connect_timeout=10&pgbouncer=true"],
+    ["PARAM_UNSUPPORTED_OTHER", "?connect_timeout=10&private-unknown-name=private-value"],
+  ]
+  for (const [detail, suffix] of rejected) {
+    const text = "MIGRATION_DATABASE_URL='" + base + suffix + "'\nMIGRATION_EXPECTED_DB_ROLE=synthetic\n"
+    assert.throws(() => parseMigrationEnv(text), error => error.message === "ENV_INVALID" && error.envDetail === detail)
+    const report = inspectRemote(sql, bindings, sha, { uid: 0, read: path => path.endsWith(".deploy-sha") ? sha : text, query: () => assert.fail("invalid hint or override must never query SQL") })
+    assert.equal(report.code, "ENV_INVALID")
+    assert.equal(report.envDetail, detail)
+    assert.equal(report.sqlState, null)
+    assert.equal(report.defaults, null)
+    assert.equal(report.snapshot, null)
+    assert.doesNotMatch(JSON.stringify(report), /private-|connect_timeout|postgresql:\/\//)
+  }
+  assert.ok(ENV_DETAILS.includes("PARAM_UNSUPPORTED_CONNECT_TIMEOUT"), "retain the original finite failure code for prior evidence")
 })
 
 test("pending metadata is reviewable while every unresolved prerequisite stays explicit", () => {
@@ -219,7 +400,9 @@ test("runner validator retains valid original failures but never prints rejected
   const report = inspectRemote(sql, bindings, sha, { uid: 1 })
   const run = input => execFileSync(process.execPath, ["scripts/hrm-migration-metadata-preflight.mjs", "--validate-output", sha], { input: JSON.stringify(input), encoding: "utf8", maxBuffer: 65536, stdio: ["pipe", "pipe", "pipe"] })
   assert.deepEqual(JSON.parse(run(report)), report)
-  for (const invalid of [{ ...report, rawEnvironment: "protected marker" }, { ...report, bindings: { ...bindings, sqlSha256: "b".repeat(64) } }]) {
+  const envReport = inspectRemote(sql, bindings, sha, { uid: 0, read: path => path.endsWith(".deploy-sha") ? sha : "", query: () => assert.fail("missing env must never query SQL") })
+  assert.deepEqual(JSON.parse(run(envReport)), envReport)
+  for (const invalid of [{ ...report, rawEnvironment: "protected marker" }, { ...report, bindings: { ...bindings, sqlSha256: "b".repeat(64) } }, { ...envReport, envDetail: "private-forged-parameter" }, { ...envReport, version: 1 }]) {
     try { run(invalid); assert.fail("invalid output must fail") }
     catch (error) { assert.equal(error.status, 1); assert.equal(error.stdout, ""); assert.equal(error.stderr, "HRM metadata output invalid; raw data withheld\n") }
   }
@@ -259,6 +442,10 @@ test("hosted PostgreSQL executes the real fixed catalog query and rejects writes
   const migrationUrl = new URL(url.href)
   migrationUrl.username = "hrm_preflight_migration"
   migrationUrl.password = "isolated-preflight-migration"
+  // Known synthetic URI hint only; the real fixed query retains our budget.
+  migrationUrl.searchParams.set("connect_timeout", "0")
+  assert.equal(databaseConnectionEnvironment(migrationUrl.href).PGCONNECT_TIMEOUT, "10")
+  assert.equal(new URL(parseMigrationEnv("MIGRATION_DATABASE_URL='" + migrationUrl.href + "'\nMIGRATION_EXPECTED_DB_ROLE=hrm_preflight_migration\n")).searchParams.has("connect_timeout"), false)
   try {
     const query = (source = sql) => {
       let output

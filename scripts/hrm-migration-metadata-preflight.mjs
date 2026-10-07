@@ -20,6 +20,37 @@ const SQL_STATES = new Set(["08001", "08003", "08004", "08006", "08P01", "22003"
 const REASONS = new Set(["TIMEOUT_DEFAULTS", "READ_ONLY_UNVERIFIED", "ROLE_PROFILE_UNVERIFIED", "LEDGER_UNRESOLVED", "LEDGER_AMBIGUOUS", "CHECKSUM_MISMATCH", "RELATION_SHAPE", "RLS_UNVERIFIED", "OWNER_ABILITY", "INDEX_SHAPE", "INDEX_LEDGER_MISMATCH", "FUNCTION_SHAPE", "LEDGER_GUARDS_UNVERIFIED", "DEFAULT_ACL_UNREVIEWED", "APPLIED_TABLE_CONSTRAINTS_NOT_PROVED", "ACTIVITY_VISIBILITY_UNVERIFIED"])
 const LIMITS = ["Metadata only; not a release, staging, full migration replay or C12 acceptance", "Relation rows are PostgreSQL estimates; live activity is one observation, not a reserved DDL quiet window", "Ordinary CREATE INDEX can block writes; elapsed time and future contention are not proved", "Decision guards cover row UPDATE/DELETE/INSERT; no TRUNCATE or privileged-bypass guarantee", "No business rows, role names, credentials, environment values or raw logs exported", "No production files, grants, role configuration, tenant activation or data mutated"]
 const TLS_ENV = { sslmode: "PGSSLMODE", sslrootcert: "PGSSLROOTCERT", sslcert: "PGSSLCERT", sslkey: "PGSSLKEY" }
+// Fixed failure classifications only. Never reflect an env key or value.
+const PARAMETER_CATEGORIES = ["CONNECT_TIMEOUT", "APPLICATION_NAME", "SESSION_OPTIONS", "HOST_OR_SOCKET", "IDENTITY_OVERRIDE", "SSL", "PRISMA", "OTHER"]
+export const ENV_DETAILS = Object.freeze([
+  "CONTENT_INVALID", "URL_DECLARATION_MISSING", "URL_DECLARATION_DUPLICATED",
+  "ROLE_DECLARATION_MISSING", "ROLE_DECLARATION_DUPLICATED", "URL_QUOTES_INVALID", "ROLE_QUOTES_INVALID",
+  "ROLE_PROFILE_INVALID", "URL_SYNTAX_INVALID", "URL_SCHEME_UNSUPPORTED", "URL_HOST_REQUIRED",
+  "URL_DATABASE_REQUIRED", "URL_FRAGMENT_UNSUPPORTED", "URL_CONTROL_INVALID",
+  "USERNAME_ENCODING_INVALID", "USERNAME_PROFILE_INVALID", "DATABASE_ENCODING_INVALID", "PASSWORD_ENCODING_INVALID",
+  "TCP_HOST_INVALID", "TCP_PORT_INVALID", "ROLE_IDENTITY_MISMATCH", "SCHEMA_UNSUPPORTED", "POOL_HINT_INVALID",
+  "SSL_VALUE_INVALID", "SSL_MODE_INVALID", "SSL_PATH_UNSUPPORTED", "UNCLASSIFIED_ENV_REJECTION",
+  ...PARAMETER_CATEGORIES.map(category => "PARAM_UNSUPPORTED_" + category),
+  "PARAM_DUPLICATED_SSL", "PARAM_DUPLICATED_PRISMA",
+  "CONNECT_TIMEOUT_HINT_INVALID", "PARAM_DUPLICATED_CONNECT_TIMEOUT",
+])
+const ENV_DETAIL_SET = new Set(ENV_DETAILS)
+const parameterCategory = key => {
+  if (key === "connect_timeout") return "CONNECT_TIMEOUT"
+  if (key === "application_name" || key === "fallback_application_name") return "APPLICATION_NAME"
+  if (key === "options") return "SESSION_OPTIONS"
+  if (["host", "hostaddr", "port", "service", "servicefile"].includes(key)) return "HOST_OR_SOCKET"
+  if (["user", "dbname", "password", "passfile"].includes(key)) return "IDENTITY_OVERRIDE"
+  if ([...Object.keys(TLS_ENV), "sslpassword", "ssl", "sslcrl", "sslcrldir"].includes(key)) return "SSL"
+  if (["schema", "connection_limit", "pool_timeout", "pgbouncer"].includes(key)) return "PRISMA"
+  return "OTHER"
+}
+const isDetailedEnvError = error => error?.message === "ENV_INVALID" && ENV_DETAIL_SET.has(error?.envDetail)
+const invalidEnv = detail => {
+  const error = new Error("ENV_INVALID")
+  error.envDetail = ENV_DETAIL_SET.has(detail) ? detail : "UNCLASSIFIED_ENV_REJECTION"
+  throw error
+}
 const fail = code => { throw new Error(code) }
 const digest = bytes => createHash("sha256").update(bytes).digest("hex")
 const exact = (value, keys) => value && typeof value === "object" && !Array.isArray(value) && Object.keys(value).sort().join(",") === keys.split(",").sort().join(",")
@@ -29,31 +60,52 @@ const booleans = (value, keys) => keys.split(",").every(key => typeof value[key]
 function connectionUrl(connection) {
   try {
     const url = new URL(connection)
-    if (!["postgres:", "postgresql:"].includes(url.protocol) || !url.hostname || url.pathname.length < 2 || url.hash || /[\x00-\x20\x7f]/.test(connection)) fail("ENV_INVALID")
-    const allowed = new Set(["schema", "connection_limit", "pool_timeout", ...Object.keys(TLS_ENV)])
-    for (const key of url.searchParams.keys()) if (!allowed.has(key) || url.searchParams.getAll(key).length !== 1) fail("ENV_INVALID")
-    if (url.searchParams.has("schema") && url.searchParams.get("schema") !== "public") fail("ENV_INVALID")
-    for (const key of ["connection_limit", "pool_timeout"]) if (url.searchParams.has(key) && !/^[0-9]{1,4}$/.test(url.searchParams.get(key))) fail("ENV_INVALID")
+    if (!["postgres:", "postgresql:"].includes(url.protocol)) invalidEnv("URL_SCHEME_UNSUPPORTED")
+    if (!url.hostname) invalidEnv("URL_HOST_REQUIRED")
+    if (url.pathname.length < 2) invalidEnv("URL_DATABASE_REQUIRED")
+    if (url.hash) invalidEnv("URL_FRAGMENT_UNSUPPORTED")
+    if (/[\x00-\x20\x7f]/.test(connection)) invalidEnv("URL_CONTROL_INVALID")
+    const allowed = new Set(["schema", "connection_limit", "pool_timeout", "connect_timeout", ...Object.keys(TLS_ENV)])
+    for (const key of url.searchParams.keys()) {
+      if (!allowed.has(key)) invalidEnv("PARAM_UNSUPPORTED_" + parameterCategory(key))
+      if (url.searchParams.getAll(key).length !== 1) invalidEnv("PARAM_DUPLICATED_" + parameterCategory(key))
+    }
+    if (url.searchParams.has("schema") && url.searchParams.get("schema") !== "public") invalidEnv("SCHEMA_UNSUPPORTED")
+    for (const key of ["connection_limit", "pool_timeout"]) if (url.searchParams.has(key) && !/^[0-9]{1,4}$/.test(url.searchParams.get(key))) invalidEnv("POOL_HINT_INVALID")
+    if (url.searchParams.has("connect_timeout")) {
+      let value
+      try {
+        // libpq URI percent-decoding preserves a literal '+'. URLSearchParams
+        // uses form decoding, so inspect only this known hint's raw value.
+        const entry = url.search.slice(1).split("&").find(part => decodeURIComponent(part.split("=")[0]) === "connect_timeout")
+        const separator = entry.indexOf("=")
+        value = separator < 0 ? "" : decodeURIComponent(entry.slice(separator + 1))
+      } catch { invalidEnv("CONNECT_TIMEOUT_HINT_INVALID") }
+      // libpq parses a signed decimal int. Validate this hint, then discard it:
+      // the inspector always supplies its own ten-second connection budget.
+      if (!/^[+-]?[0-9]{1,10}$/.test(value) || Number(value) < -2147483648 || Number(value) > 2147483647) invalidEnv("CONNECT_TIMEOUT_HINT_INVALID")
+    }
     for (const key of Object.keys(TLS_ENV)) if (url.searchParams.has(key)) {
       const value = url.searchParams.get(key)
-      if (!value || /[\0\r\n]/.test(value)) fail("ENV_INVALID")
-      if (key === "sslmode" ? !["disable", "allow", "prefer", "require", "verify-ca", "verify-full"].includes(value) : !(value.startsWith("/") || key === "sslrootcert" && value === "system")) fail("ENV_INVALID")
+      if (!value || /[\0\r\n]/.test(value)) invalidEnv("SSL_VALUE_INVALID")
+      if (key === "sslmode" ? !["disable", "allow", "prefer", "require", "verify-ca", "verify-full"].includes(value) : !(value.startsWith("/") || key === "sslrootcert" && value === "system")) invalidEnv(key === "sslmode" ? "SSL_MODE_INVALID" : "SSL_PATH_UNSUPPORTED")
     }
-    for (const key of ["schema", "connection_limit", "pool_timeout"]) url.searchParams.delete(key)
+    for (const key of ["schema", "connection_limit", "pool_timeout", "connect_timeout"]) url.searchParams.delete(key)
     return url
-  } catch { fail("ENV_INVALID") }
+  } catch (error) { if (isDetailedEnvError(error)) throw error; invalidEnv("URL_SYNTAX_INVALID") }
 }
 
 /** Explicit libpq defaults, not a URI in PGDATABASE. Values never leave child env. */
 export function databaseConnectionEnvironment(connection) {
   const url = connectionUrl(connection)
-  const decode = value => { try { const decoded = decodeURIComponent(value); if (!decoded || /[\0\r\n]/.test(decoded)) fail("ENV_INVALID"); return decoded } catch { fail("ENV_INVALID") } }
+  const decode = (value, detail) => { try { const decoded = decodeURIComponent(value); if (!decoded || /[\0\r\n]/.test(decoded)) invalidEnv(detail); return decoded } catch { invalidEnv(detail) } }
   const host = url.hostname.replace(/^\[|\]$/g, "")
   const port = url.port || "5432"
-  if (!/^[A-Za-z0-9.:-]+$/.test(host) || !/^[0-9]{1,5}$/.test(port) || Number(port) < 1 || Number(port) > 65535) fail("ENV_INVALID")
-  const user = decode(url.username)
-  if (!/^[A-Za-z_][A-Za-z0-9_$-]{0,62}$/.test(user)) fail("ENV_INVALID")
-  const env = { PATH: "/usr/local/bin:/usr/bin:/bin", LC_ALL: "C", PGHOST: host, PGPORT: port, PGDATABASE: decode(url.pathname.slice(1)), PGUSER: user, PGPASSWORD: url.password ? decode(url.password) : "", PGPASSFILE: "/dev/null", PGCONNECT_TIMEOUT: "10" }
+  if (!/^[A-Za-z0-9.:-]+$/.test(host)) invalidEnv("TCP_HOST_INVALID")
+  if (!/^[0-9]{1,5}$/.test(port) || Number(port) < 1 || Number(port) > 65535) invalidEnv("TCP_PORT_INVALID")
+  const user = decode(url.username, "USERNAME_ENCODING_INVALID")
+  if (!/^[A-Za-z_][A-Za-z0-9_$-]{0,62}$/.test(user)) invalidEnv("USERNAME_PROFILE_INVALID")
+  const env = { PATH: "/usr/local/bin:/usr/bin:/bin", LC_ALL: "C", PGHOST: host, PGPORT: port, PGDATABASE: decode(url.pathname.slice(1), "DATABASE_ENCODING_INVALID"), PGUSER: user, PGPASSWORD: url.password ? decode(url.password, "PASSWORD_ENCODING_INVALID") : "", PGPASSFILE: "/dev/null", PGCONNECT_TIMEOUT: "10" }
   for (const [key, variable] of Object.entries(TLS_ENV)) if (url.searchParams.has(key)) env[variable] = url.searchParams.get(key)
   return env
 }
@@ -78,28 +130,30 @@ export function readRootFile(file, limit, mode, io = fs) {
 }
 
 export function parseMigrationEnv(text) {
-  if (typeof text !== "string" || Buffer.byteLength(text) > 32_768 || text.includes("\0")) fail("ENV_INVALID")
+  if (typeof text !== "string" || Buffer.byteLength(text) > 32_768 || text.includes("\0")) invalidEnv("CONTENT_INVALID")
   const values = { MIGRATION_DATABASE_URL: [], MIGRATION_EXPECTED_DB_ROLE: [] }
   for (const line of text.split(/\r?\n/)) {
     const match = /^\s*(?:export\s+)?(MIGRATION_DATABASE_URL|MIGRATION_EXPECTED_DB_ROLE)\s*=\s*(.*?)\s*$/.exec(line)
     if (!match) continue
     let value = match[2]
     if (["'", '"'].includes(value[0])) {
-      if (value.at(-1) !== value[0]) fail("ENV_INVALID")
+      if (value.at(-1) !== value[0]) invalidEnv(match[1] === "MIGRATION_DATABASE_URL" ? "URL_QUOTES_INVALID" : "ROLE_QUOTES_INVALID")
       value = value.slice(1, -1)
     }
     values[match[1]].push(value)
   }
-  if (Object.values(values).some(entries => entries.length !== 1)) fail("ENV_INVALID")
+  for (const [key, entries] of Object.entries(values)) if (entries.length !== 1) invalidEnv((key === "MIGRATION_DATABASE_URL" ? "URL" : "ROLE") + (entries.length === 0 ? "_DECLARATION_MISSING" : "_DECLARATION_DUPLICATED"))
   const connection = values.MIGRATION_DATABASE_URL[0]
   const expectedRole = values.MIGRATION_EXPECTED_DB_ROLE[0]
-  if (!/^[A-Za-z_][A-Za-z0-9_$-]{0,62}$/.test(expectedRole)) fail("ENV_INVALID")
+  if (!/^[A-Za-z_][A-Za-z0-9_$-]{0,62}$/.test(expectedRole)) invalidEnv("ROLE_PROFILE_INVALID")
   try {
     const url = connectionUrl(connection)
-    if (decodeURIComponent(url.username) !== expectedRole) fail("ENV_INVALID")
+    let username
+    try { username = decodeURIComponent(url.username) } catch { invalidEnv("USERNAME_ENCODING_INVALID") }
+    if (username !== expectedRole) invalidEnv("ROLE_IDENTITY_MISMATCH")
     databaseConnectionEnvironment(url.href)
     return url.href
-  } catch { fail("ENV_INVALID") }
+  } catch (error) { if (isDetailedEnvError(error)) throw error; invalidEnv("URL_SYNTAX_INVALID") }
 }
 
 /** Reject unknown fields before any remote output is stored or printed. */
@@ -161,12 +215,13 @@ export function assessMetadata(defaults, snapshot) {
 }
 
 export function validateReport(value, expectedSha) {
-  if (!SHA.test(expectedSha) || !exact(value, "version,status,expectedMainSha,productionArtifactSha,targetSourceSha,bindings,reasons,migrationStates,defaults,snapshot,limits,code,sqlState") || value.version !== 1 || value.expectedMainSha !== expectedSha || value.targetSourceSha !== TARGET_SOURCE_SHA || !["ERROR", "INCOMPLETE", "READY_FOR_REVIEW"].includes(value.status) || !exact(value.bindings, "helperSha256,sqlSha256") || !Object.values(value.bindings).every(v => DIGEST.test(v)) || JSON.stringify(value.limits) !== JSON.stringify(LIMITS)) fail("OUTPUT_INVALID")
+  if (!SHA.test(expectedSha) || !exact(value, "version,status,expectedMainSha,productionArtifactSha,targetSourceSha,bindings,reasons,migrationStates,defaults,snapshot,limits,code,sqlState,envDetail") || value.version !== 2 || value.expectedMainSha !== expectedSha || value.targetSourceSha !== TARGET_SOURCE_SHA || !["ERROR", "INCOMPLETE", "READY_FOR_REVIEW"].includes(value.status) || !exact(value.bindings, "helperSha256,sqlSha256") || !Object.values(value.bindings).every(v => DIGEST.test(v)) || JSON.stringify(value.limits) !== JSON.stringify(LIMITS)) fail("OUTPUT_INVALID")
   if (value.status === "ERROR") {
     if (!CODES.has(value.code) || value.productionArtifactSha !== null || value.defaults !== null || value.snapshot !== null || JSON.stringify(value.reasons) !== "[]" || JSON.stringify(value.migrationStates) !== "[]") fail("OUTPUT_INVALID")
     if (!(value.sqlState === null || (value.code === "QUERY_FAILED" && SQL_STATES.has(value.sqlState)))) fail("OUTPUT_INVALID")
+    if (value.code === "ENV_INVALID" ? !ENV_DETAIL_SET.has(value.envDetail) : value.envDetail !== null) fail("OUTPUT_INVALID")
   } else {
-    if (value.productionArtifactSha !== expectedSha || value.code !== null || value.sqlState !== null) fail("OUTPUT_INVALID")
+    if (value.productionArtifactSha !== expectedSha || value.code !== null || value.sqlState !== null || value.envDetail !== null) fail("OUTPUT_INVALID")
     const assessment = assessMetadata(value.defaults, value.snapshot)
     if (JSON.stringify(value.reasons) !== JSON.stringify(assessment.reasons) || value.reasons.some(reason => !REASONS.has(reason)) || JSON.stringify(value.migrationStates) !== JSON.stringify(assessment.migrationStates) || value.status !== assessment.status) fail("OUTPUT_INVALID")
   }
@@ -193,7 +248,7 @@ export function queryMetadata(url, sql, execute = execFileSync) {
 }
 
 export function inspectRemote(sql, bindings, expectedSha, dependencies = {}) {
-  const report = { version: 1, status: "ERROR", expectedMainSha: expectedSha, productionArtifactSha: null, targetSourceSha: TARGET_SOURCE_SHA, bindings, reasons: [], migrationStates: [], defaults: null, snapshot: null, limits: LIMITS, code: "INSPECTION_FAILED", sqlState: null }
+  const report = { version: 2, status: "ERROR", expectedMainSha: expectedSha, productionArtifactSha: null, targetSourceSha: TARGET_SOURCE_SHA, bindings, reasons: [], migrationStates: [], defaults: null, snapshot: null, limits: LIMITS, code: "INSPECTION_FAILED", sqlState: null, envDetail: null }
   try {
     if (!SHA.test(expectedSha) || (dependencies.uid ?? process.getuid()) !== 0) fail("INPUT_INVALID")
     const read = dependencies.read ?? readRootFile
@@ -208,7 +263,11 @@ export function inspectRemote(sql, bindings, expectedSha, dependencies = {}) {
     const assessment = assessMetadata(defaults, snapshot)
     if (read(marker, 128).trim() !== expectedSha) fail("ARTIFACT_MISMATCH")
     Object.assign(report, assessment, { productionArtifactSha: expectedSha, defaults, snapshot, code: null })
-  } catch (error) { report.code = CODES.has(error?.message) ? error.message : "INSPECTION_FAILED"; report.sqlState = report.code === "QUERY_FAILED" && SQL_STATES.has(error?.sqlState) ? error.sqlState : null }
+  } catch (error) {
+    report.code = CODES.has(error?.message) ? error.message : "INSPECTION_FAILED"
+    report.sqlState = report.code === "QUERY_FAILED" && SQL_STATES.has(error?.sqlState) ? error.sqlState : null
+    report.envDetail = report.code === "ENV_INVALID" ? (isDetailedEnvError(error) ? error.envDetail : "UNCLASSIFIED_ENV_REJECTION") : null
+  }
   return validateReport(report, expectedSha)
 }
 

@@ -291,3 +291,158 @@
   stopping point: auxiliary successor checkpoint only. Next action: root
   independently reviews/publishes the successor and runs the fourth hosted
   fixed-SQL job before any main-only production metadata inspection.
+
+## 2026-10-07 — first actual production inspection refused env; finite diagnostics only
+
+- Root reported the fourth hosted fixed-SQL run37634692782 at exact546d
+  succeeded with16 PASS, zero FAIL and zero SKIP, including observed
+  noncanonical legacy catalog ordering and strict rejection. This is synthetic
+  disposable source validation, not production metadata or C12 evidence.
+- This separate clean auxiliary worktree starts from current main
+  8235c3b24ad12189e1ef95427ce7f192c077ae5c after reviewed PR616. Root verified
+  its deployment37638607825 and public immutable artifact8235. First actual
+  main-only metadata run37641215366 had source validation112860396402 PASS,
+  then production job112860690832 FAIL with code ENV_INVALID before SQL.
+  The protected file/marker read was reached; no catalog result is claimed.
+  Root retains original failure evidence separately. The original sanitized
+  artifact11492312014 ZIP SHA-256 is
+  a3f2d68839fac7e80fd0f86857252f38893fba241f3df461103a20b4f18b60c7.
+- Source-only compatibility review confirms server-deploy.sh loads literal
+  dotenv values, requires both MIGRATION_DATABASE_URL and
+  MIGRATION_EXPECTED_DB_ROLE, and verifies actual role identity. No fallback
+  role or missing field/default is inferred. The exact live rejection remains
+  unknown until a protected diagnostic rerun; no live config was read here.
+- Root authorized only a diagnostic extension. The helper report is now v2
+  with envDetail containing one of37 fixed codes only for ENV_INVALID, null
+  otherwise. Codes distinguish declaration cardinality, quotes, URI profile,
+  encoding, TCP/TLS, role mismatch and eight finite parameter categories;
+  unknown parameter names become OTHER. Coarse ENV_INVALID messages remain
+  unchanged. Known nested codes survive sanitization; unknown metadata becomes
+  UNCLASSIFIED_ENV_REJECTION without reflecting names or values.
+- No connection acceptance is widened: mandatory expected role, URL option
+  allowlist, clean libpq environment, TLS restrictions, read-only transaction,
+  default observations, SQLSTATE whitelist, SQL and workflow remain intact.
+  Root independently checked old8235/new parity on72 synthetic env cases
+  (11 accepted,61 rejected) and33 synthetic connection cases, all PASS.
+  This differential source proof does not establish live compatibility.
+- Tests preserve original negative assertions and add36 actual inspectRemote
+  env rejection cases: SQL must never run, report remains ERROR with no
+  snapshot/defaults, and connection values/unknown parameter names stay absent.
+  Further tests cover all37 accepted detail enums, forged enums/types/metadata,
+  version downgrade, detail absence, non-env/status misuse, nested error
+  sanitization and runner rejection with static withheld stderr only.
+- Bounded sequential checks after capacity inspection (14 GiB RAM available,
+  278 GiB disk available, memory pressure zero): helper/test syntax PASS,
+  18 Node unit PASS, zero FAIL,1 hosted SQL SKIP, whitespace PASS. No install,
+  local SQL, compiler, build, browser, production action or dispatch occurred.
+  Actual new hosted SQL and protected production diagnostic rerun: NOT RUN
+  here; coordinator must review/publish first.
+- SQL SHA-256 b174e32eb68a0dbcca98e8557fe8c716ed8277111e79ba822bce43f4e7023b6a
+  and workflow SHA-256 f90937ecda3b81e7dd017819cfaec1afdefc5fee58167fdfc2289ce012a1dcf1
+  exactly equal main8235. The unchanged workflow's separate transport-error
+  fallback stays v1; it is not a helper v2 report accepted by validateReport.
+  Only helper, owned tests and this append-only journal change. Support,
+  grants, roles, secrets, activation, baseline and product source stay intact.
+- Previously accepted HRM062 technical/runtime proof stays bound to062, not
+  this infrastructure successor. Root must integrate later main changes and
+  rerun required exact candidate checks before the HRM release. Actual catalog
+  prerequisites, production migration feasibility, real HR outcomes and C12
+  remain pending; no earlier FAIL or evidence is overwritten.
+- Current result: finite private env diagnostics prepared with unchanged
+  connection/security acceptance. Last completed action: small Node checks
+  and source-byte preservation. Precise stopping point: auxiliary source
+  checkpoint awaiting root review, without publication or live rerun.
+  Next action: root independently reviews and publishes the diagnostic change,
+  then reads the actual finite production rejection before any compatibility
+  correction or final HRM release.
+
+## 2026-10-07 — actual connect_timeout refusal, bounded hint normalization
+
+- Root supplied the second actual protected production metadata result:
+  run37650822335, source job112893388354, production job112893696118, main
+  5cebf61623c58ca65b66f2b58506157c097a1931. Validated v2 report remains FAIL
+  with ENV_INVALID/PARAM_UNSUPPORTED_CONNECT_TIMEOUT before SQL. Its actual
+  parameter value is unknown and is not inferred, read or exported here.
+  Original artifact11495729629 ZIP is887 bytes, SHA-256
+  ea62a225e6b65d835992beb6fbbe31e276c37afed6023c9e244c05b15355721d.
+  Root preserves the second original failure separately at checkpointf805e16;
+  first production failure and all three earlier hosted failures stay intact.
+- New clean main5ce-derived auxiliary branch/worktree prepares only the
+  diagnosed connect_timeout compatibility. Root explicitly approved a unique
+  signed decimal int32 hint, including zero/negative values, which is validated
+  and removed before libpq. No production configuration change is needed or
+  performed to prepare this source correction.
+- [PostgreSQL 16 documentation](https://www.postgresql.org/docs/16/libpq-connect.html)
+  specifies a decimal integer; zero/negative mean indefinite waiting. Its
+  [libpq source](https://github.com/postgres/postgres/blob/REL_16_STABLE/src/interfaces/libpq/fe-connect.c)
+  parses this option through base10 strtol with integer overflow rejection.
+  The inspector accepts only an optional sign and1–10 decimal digits within
+  signed int32 bounds; encoded plus is valid, whitespace/fractions/exponents/
+  hex/trailing text/overflow/duplicates are rejected. The validated hint is
+  always discarded: child PGCONNECT_TIMEOUT stays10 seconds and the process
+  bound30 seconds, even for zero, negative or the largest permitted value.
+- Added finite CONNECT_TIMEOUT_HINT_INVALID and
+  PARAM_DUPLICATED_CONNECT_TIMEOUT diagnostics. All37 prior codes, including
+  the original unsupported-connect-timeout code, remain valid for retained
+  evidence. No other URL key becomes accepted. Mandatory role identity,
+  clean child env, fixed read-only/startup options, TLS, fresh default
+  observations, SQL bounds, catalog predicates and output privacy are unchanged.
+- Tests add nine valid boundary/literal profiles proving identical normalized
+  connection fields, fixed child timeout/options/args and safe finite reports.
+  Twenty-four malformed/duplicate/other-forbidden profiles fail before SQL
+  and cannot leak parameter values. The earlier single unsupported-connect
+  regression now expects invalid-hint rejection for its private malformed
+  value; every other original negative assertion is preserved.
+- The existing GitHub-only isolated PostgreSQL fixture now supplies a known
+  synthetic URI hint0, proves it is removed and the child timeout remains10,
+  then runs the real unchanged catalog SQL. This does not claim anything about
+  the actual production value. Hosted execution of this successor is pending;
+  no local PostgreSQL, connection or fixture execution is performed.
+- Capacity before one sequential bounded Node phase:14 GiB RAM available,
+  278 GiB disk available, zero memory pressure. Helper/test syntax PASS,
+  20 Node unit PASS, zero FAIL,1 hosted SQL SKIP; whitespace PASS. No install,
+  compiler, build, browser, SSH, production mutation, push or dispatch occurs.
+- SQL SHA-256 b174e32eb68a0dbcca98e8557fe8c716ed8277111e79ba822bce43f4e7023b6a
+  and workflow SHA-256 f90937ecda3b81e7dd017819cfaec1afdefc5fee58167fdfc2289ce012a1dcf1
+  are byte-identical to main5ce. Only helper, owned tests and this appended
+  journal change. Support, product roles, grants, secrets, tenant activation,
+  baselines and frozen HRM source062 are untouched.
+- Actual successor hosted SQL and protected production metadata: NOT RUN here.
+  Production catalog/migration readiness, actual HR outcomes and C12 remain
+  unproved. Subsequent unrelated rejection is possible; no synthetic/local
+  result converts either original production FAIL into PASS.
+- Current result: diagnosed hint normalization prepared with fixed budgets.
+  Last completed action: bounded source/unit checks and byte-preservation proof.
+  Precise stopping point: auxiliary checkpoint awaiting independent root review,
+  without publication or live SQL. Next action: root reviews/publishes, runs
+  exact hosted source checks, and performs a protected current-main inspection
+  before deciding migration readiness or the final HRM release.
+
+## 2026-10-07 — review correction: raw URI plus preserved for known timeout hint
+
+- Initial local checkpoint d55110c4cfe2bc7ba7cc8c5444498d5531d53ad8 and
+  its20 PASS/1 hosted SQL SKIP are retained. Before publication, root review
+  identified that URLSearchParams form decoding treats raw plus as space,
+  making raw connect_timeout=+10 fail while encoded %2B10 passed. This was
+  a source compatibility concern, not an observed production SQL failure.
+- Primary PostgreSQL16 libpq conninfo_uri_decode copies non-percent bytes
+  unchanged, including plus. The successor extracts and RFC-percent-decodes
+  only the known connect_timeout raw value after the unchanged finite-key and
+  unique-parameter checks. No general URI parser/TLS/other-value behavior is
+  broadened and no whitespace is trimmed. Both raw plus and encoded plus now
+  satisfy the same signed int32 predicate and are discarded before libpq.
+- Added an explicit raw+10/%2B10 regression for identical normalized fields,
+  child PGCONNECT_TIMEOUT10, outer30-second bound and unchanged fixed read-only/
+  role/application startup options. The malformed '+ 10' case still fails
+  privately before SQL; duplicate/overflow/all-other-forbidden cases remain.
+- New bounded sequential repeat after14 GiB RAM/278 GiB disk/zero pressure:
+  helper/test syntax PASS,21 unit PASS, zero FAIL,1 hosted SQL SKIP, whitespace
+  PASS. The earlier20-test result is not retroactively altered. SQL/workflow
+  remain identical to main5ce; no production configuration, query, push,
+  dispatch, grants, role defaults, activation, Support or product source changes.
+- Current result: known timeout hint now follows libpq percent-decoding while
+  retaining fixed budgets. Last completed action: focused regression checks.
+  Precise stopping point: additive auxiliary checkpoint awaiting independent
+  root review/publication. Next action: root reviews the successor and runs
+  hosted exact source validation before the protected current-main metadata
+  inspection; actual catalog readiness remains unknown.
