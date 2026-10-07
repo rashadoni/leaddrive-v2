@@ -1,0 +1,527 @@
+{
+  "version": 1,
+  "candidateHead": "88c93978494dbbbcb3f97ca1378d884d7b594f42",
+  "checkedMergeSha": "88c93978494dbbbcb3f97ca1378d884d7b594f42",
+  "startedAt": "2026-10-07T19:45:27.097Z",
+  "environment": "hosted Chromium / real Auth.js / loopback Next dev / disposable PostgreSQL16 and Redis",
+  "status": "PASS",
+  "cases": [
+    {
+      "name": "real-ui-ru-320",
+      "status": "PASS",
+      "classificationCode": "CLASSIFY_FALSE_POSITIVE",
+      "appealCode": "APPEAL_FULLY_UPHELD",
+      "protectedReasonRequired": true,
+      "directCallerCaseOrCodeAbsent": true
+    },
+    {
+      "name": "real-ui-az-768",
+      "status": "PASS",
+      "classificationCode": "CLASSIFY_CONFIRMED_EXCEPTION",
+      "appealCode": "APPEAL_PARTIALLY_UPHELD",
+      "protectedReasonRequired": true,
+      "directCallerCaseOrCodeAbsent": true
+    },
+    {
+      "name": "exact-replay-and-conflicting-reason-and-stale-revision",
+      "status": "PASS",
+      "auditDeltaOnRetry": 0,
+      "decisionDeltaOnRetry": 0
+    },
+    {
+      "name": "real-ui-en-1440",
+      "status": "PASS",
+      "classificationCode": "CLASSIFY_CONFIRMED_EXCEPTION",
+      "appealCode": "APPEAL_REJECTED",
+      "protectedReasonRequired": true,
+      "directCallerCaseOrCodeAbsent": true
+    },
+    {
+      "name": "denied-hr-without-mandatory-enrolled-mfa",
+      "status": "PASS",
+      "writeStatus": 403,
+      "code": "WORKFORCE_ATTENDANCE_MFA_REQUIRED",
+      "recordedDelta": 0
+    },
+    {
+      "name": "denied-team-manager",
+      "status": "PASS",
+      "writeStatus": 404,
+      "recordedDelta": 0
+    },
+    {
+      "name": "denied-tenant-admin",
+      "status": "PASS",
+      "writeStatus": 404,
+      "recordedDelta": 0
+    },
+    {
+      "name": "denied-ungranted",
+      "status": "PASS",
+      "writeStatus": 404,
+      "recordedDelta": 0
+    },
+    {
+      "name": "denied-foreign-hr",
+      "status": "PASS",
+      "writeStatus": 404,
+      "recordedDelta": 0
+    },
+    {
+      "name": "reopen-invalidates-final-classification",
+      "status": "PASS"
+    },
+    {
+      "name": "live-hr-revocation-with-team-manager-still-effective",
+      "status": "PASS",
+      "writeStatus": 404,
+      "recordedDelta": 0
+    }
+  ],
+  "sources": [
+    {
+      "path": "scripts/workforce-exception-classification-browser-evidence.mjs",
+      "bytes": 35825,
+      "sha256": "216967516c60bab48390aefeebce651524130eefabc7c90cf4d00ee05e899025"
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-exception-classification-browser.sql",
+      "bytes": 8727,
+      "sha256": "41ecf5a96c0accb2469971042bf3f47f0e8d7e6fcfa65a8538e1cd7f4013d7e0"
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-manager-today-browser.sql",
+      "bytes": 33617,
+      "sha256": "448d08b65048f3692145d1d2d73d1f4b2f5973363172dddb959b4c9daf20a4fb"
+    },
+    {
+      "path": ".github/workflows/workforce-exception-report-browser-evidence.yml",
+      "bytes": 25256,
+      "sha256": "1dcd49d422fb212d4ee1eac6368de97837fe62fc5ca5975a7faa2b6c61dc18e7"
+    },
+    {
+      "path": "src/components/workforce/workforce-exception-queue.tsx",
+      "bytes": 23077,
+      "sha256": "5160dcc8b943d0caca712ae0dcad02725784fcb4c2401479c16dede00d0c3b1f"
+    },
+    {
+      "path": "src/app/api/v1/workforce/exceptions/route.ts",
+      "bytes": 13279,
+      "sha256": "5a33ec78dc7fe6b05e920cbdb22fecb46f85d45c74840486533ea56df68034ff"
+    },
+    {
+      "path": "src/app/api/v1/workforce/exception-decisions/route.ts",
+      "bytes": 4157,
+      "sha256": "eeeb1dda5d637fb0fdaa831021556a1200a1bd502e73df05838e850284db34c9"
+    },
+    {
+      "path": "src/lib/workforce/exception-outcome-classification.ts",
+      "bytes": 2447,
+      "sha256": "947410fb0687987a465c38ce0c9455d3923d62039d9030b43bda3e0afae99a23"
+    },
+    {
+      "path": "src/lib/workforce/exception-decision-service.ts",
+      "bytes": 11916,
+      "sha256": "dd10ffed0f37f80b79eae0e784918966033995283cafdbf6a4ec738b6275e21c"
+    },
+    {
+      "path": "src/lib/workforce/exception-case-writer.ts",
+      "bytes": 19607,
+      "sha256": "61814e5d395143a6deacc9bd92e0aee1ffb508cc1c168724897dd9bf67da201f"
+    },
+    {
+      "path": "src/lib/workforce/exception-policy-draft.ts",
+      "bytes": 8270,
+      "sha256": "f45f761e9c2e829351eb930c7e191f667327b3ed040338b4033b54381da59b6b"
+    },
+    {
+      "path": "messages/en.json",
+      "bytes": 1354142,
+      "sha256": "f3d7ffc0313de3bd12b63553f86fd5316e4734bfeb9ad5097d7c8119fcf2d78b"
+    },
+    {
+      "path": "messages/ru.json",
+      "bytes": 1999960,
+      "sha256": "42e7aab719d29444f7f42b75f1e66ce3e3450ec21870979d1a441b584549cbb3"
+    },
+    {
+      "path": "messages/az.json",
+      "bytes": 1497985,
+      "sha256": "354e16809d030e48e4a4fdfcd5aa4d7162a5ca669377f43f5d3e807d7421e3aa"
+    }
+  ],
+  "productionRoutines": [
+    {
+      "path": "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql",
+      "sha256": "63fc383dc3e91776255c7a1cdd4bbfb09776ecefbe294f9d9a061dcd9f9f9b90",
+      "bytes": 240
+    },
+    {
+      "path": "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql",
+      "sha256": "5157c20909615422b8164d8aad673a4bae10ebe5ada406b43e0542b123ef7d41",
+      "bytes": 218
+    },
+    {
+      "path": "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql",
+      "sha256": "e8b6fdc3224c3464ec24b9bfc383c38709a722382c77f51b83f7ad10edc63104",
+      "bytes": 910
+    },
+    {
+      "path": "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql",
+      "sha256": "8117d9a40f4ec7e2f4a6b5b86b0c64f6b91f2cd21b60cd4d56ecbb8a7e78a950",
+      "bytes": 891
+    },
+    {
+      "path": "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql",
+      "sha256": "572b7638a7780f824b606692d1c5aaa37e153a41585abffee16f53cc84ff3329",
+      "bytes": 185
+    },
+    {
+      "path": "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql",
+      "sha256": "603a14021a0fd627d315f379667364b1d26f0b2358f00279d2d90b490f70ee09",
+      "bytes": 197
+    },
+    {
+      "path": "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql",
+      "sha256": "01be9a08535c0b1cc832972cd0e57fb2bab8c1c087a551d6d7899f0b59839f24",
+      "bytes": 196
+    }
+  ],
+  "authenticationDiagnostics": [
+    {
+      "ordinal": 1,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "mandatoryTotp": true,
+      "verificationStatus": 200,
+      "sessionUpdateStatus": 200,
+      "nonceConsumed": true,
+      "pacingWaitMs": 0,
+      "verificationWarmupStatus": 405
+    },
+    {
+      "ordinal": 2,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "mandatoryTotp": true,
+      "verificationStatus": 200,
+      "sessionUpdateStatus": 200,
+      "nonceConsumed": true,
+      "pacingWaitMs": 0,
+      "verificationWarmupStatus": 405
+    },
+    {
+      "ordinal": 3,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "mandatoryTotp": true,
+      "verificationStatus": 200,
+      "sessionUpdateStatus": 200,
+      "nonceConsumed": true,
+      "pacingWaitMs": 24580,
+      "verificationWarmupStatus": 405
+    },
+    {
+      "ordinal": 4,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "mandatoryTotp": false,
+      "verificationStatus": null,
+      "sessionUpdateStatus": null,
+      "nonceConsumed": null,
+      "pacingWaitMs": 0
+    },
+    {
+      "ordinal": 5,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "mandatoryTotp": true,
+      "verificationStatus": 200,
+      "sessionUpdateStatus": 200,
+      "nonceConsumed": true,
+      "pacingWaitMs": 24271,
+      "verificationWarmupStatus": 405
+    },
+    {
+      "ordinal": 6,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "mandatoryTotp": true,
+      "verificationStatus": 200,
+      "sessionUpdateStatus": 200,
+      "nonceConsumed": true,
+      "pacingWaitMs": 4453,
+      "verificationWarmupStatus": 405
+    },
+    {
+      "ordinal": 7,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "mandatoryTotp": true,
+      "verificationStatus": 200,
+      "sessionUpdateStatus": 200,
+      "nonceConsumed": true,
+      "pacingWaitMs": 30326,
+      "verificationWarmupStatus": 405
+    },
+    {
+      "ordinal": 8,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "mandatoryTotp": true,
+      "verificationStatus": 200,
+      "sessionUpdateStatus": 200,
+      "nonceConsumed": true,
+      "pacingWaitMs": 24281,
+      "verificationWarmupStatus": 405
+    }
+  ],
+  "writeDiagnostics": [
+    {
+      "stage": "ui-ru-CLASSIFY_FALSE_POSITIVE",
+      "decisionCode": "CLASSIFY_FALSE_POSITIVE",
+      "status": 201,
+      "code": null,
+      "jsonObject": true,
+      "success": true
+    },
+    {
+      "stage": "ui-ru-APPEAL_FULLY_UPHELD",
+      "decisionCode": "APPEAL_FULLY_UPHELD",
+      "status": 201,
+      "code": null,
+      "jsonObject": true,
+      "success": true
+    },
+    {
+      "stage": "ui-az-CLASSIFY_CONFIRMED_EXCEPTION",
+      "decisionCode": "CLASSIFY_CONFIRMED_EXCEPTION",
+      "status": 201,
+      "code": null,
+      "jsonObject": true,
+      "success": true
+    },
+    {
+      "stage": "ui-az-APPEAL_PARTIALLY_UPHELD",
+      "decisionCode": "APPEAL_PARTIALLY_UPHELD",
+      "status": 201,
+      "code": null,
+      "jsonObject": true,
+      "success": true
+    },
+    {
+      "stage": "ui-en-CLASSIFY_CONFIRMED_EXCEPTION",
+      "decisionCode": "CLASSIFY_CONFIRMED_EXCEPTION",
+      "status": 201,
+      "code": null,
+      "jsonObject": true,
+      "success": true
+    },
+    {
+      "stage": "ui-en-CLASSIFY_CONFIRMED_EXCEPTION",
+      "decisionCode": null,
+      "status": 200,
+      "code": null,
+      "jsonObject": true,
+      "success": true
+    },
+    {
+      "stage": "ui-en-CLASSIFY_CONFIRMED_EXCEPTION",
+      "decisionCode": null,
+      "status": 409,
+      "code": "WORKFORCE_EXCEPTION_DECISION_WRITE_CONFLICT",
+      "jsonObject": true,
+      "success": false
+    },
+    {
+      "stage": "ui-en-CLASSIFY_CONFIRMED_EXCEPTION",
+      "decisionCode": null,
+      "status": 409,
+      "code": "WORKFORCE_EXCEPTION_ACTION_TOKEN_STALE",
+      "jsonObject": true,
+      "success": false
+    },
+    {
+      "stage": "ui-en-APPEAL_REJECTED",
+      "decisionCode": "APPEAL_REJECTED",
+      "status": 201,
+      "code": null,
+      "jsonObject": true,
+      "success": true
+    },
+    {
+      "stage": "denied-hr-without-mandatory-enrolled-mfa",
+      "decisionCode": null,
+      "status": 403,
+      "code": "WORKFORCE_ATTENDANCE_MFA_REQUIRED",
+      "jsonObject": true,
+      "success": false
+    },
+    {
+      "stage": "denied-team-manager",
+      "decisionCode": null,
+      "status": 404,
+      "code": "WORKFORCE_EXCEPTION_DECISION_UNAVAILABLE",
+      "jsonObject": true,
+      "success": false
+    },
+    {
+      "stage": "denied-tenant-admin",
+      "decisionCode": null,
+      "status": 404,
+      "code": "WORKFORCE_EXCEPTION_DECISION_UNAVAILABLE",
+      "jsonObject": true,
+      "success": false
+    },
+    {
+      "stage": "denied-ungranted",
+      "decisionCode": null,
+      "status": 404,
+      "code": "WORKFORCE_EXCEPTION_DECISION_UNAVAILABLE",
+      "jsonObject": true,
+      "success": false
+    },
+    {
+      "stage": "denied-foreign-hr",
+      "decisionCode": null,
+      "status": 404,
+      "code": "WORKFORCE_EXCEPTION_DECISION_UNAVAILABLE",
+      "jsonObject": true,
+      "success": false
+    },
+    {
+      "stage": "revoked-hr-preserves-manager-only",
+      "decisionCode": null,
+      "status": 404,
+      "code": "WORKFORCE_EXCEPTION_DECISION_UNAVAILABLE",
+      "jsonObject": true,
+      "success": false
+    }
+  ],
+  "limitations": [
+    "Synthetic isolated tenants and imported historical terminal decisions only",
+    "Development bundle, not production build",
+    "Exact production decision revision and append-only routines; no full migration replay",
+    "Audit whitelist/append-only fixture guard is synthetic, not a production MtmAuditLog migration",
+    "No live HR observation, physical presence, device, pilot, payroll or disciplinary evidence",
+    "No production mutation, grants, activation, secret/access change or external message"
+  ],
+  "productionRoutineInstallation": {
+    "status": "COMMITTED",
+    "replacements": [
+      {
+        "table": "workforce_exception_cases",
+        "trigger": "workforce_exception_cases_append_only"
+      },
+      {
+        "table": "workforce_exception_decisions",
+        "trigger": "workforce_exception_decisions_append_only"
+      }
+    ]
+  },
+  "fixedFacts": {
+    "phase": "after-six-ui-appends-before-intentional-fixture-revocation",
+    "unchanged": true,
+    "tables": [
+      {
+        "table": "workforce_exception_cases",
+        "rows": 6,
+        "sha256": "1d8a4c19e6023aee0c4865c41b5362c054fd533085cdb22f25ca184b4e673259"
+      },
+      {
+        "table": "mtm_agents",
+        "rows": 2,
+        "sha256": "de6298d13aedc20b500060be06251c75b851a675450931975918c1bebfdb1170"
+      },
+      {
+        "table": "mtm_agent_workdays",
+        "rows": 2,
+        "sha256": "525bf4040fbbf50d449779e1a0e77e601134b62f88b402f131f643dacd5a3e74"
+      },
+      {
+        "table": "workforce_employee_team_memberships",
+        "rows": 2,
+        "sha256": "d057f8443de2e1676f27165cf3550aa073856b911008b3ba0ef47a57e617869f"
+      },
+      {
+        "table": "workforce_access_grants",
+        "rows": 6,
+        "sha256": "572bbf92731f61a47c3ab2c02f179dfdeec01e67c739465e20708f3bf208d643"
+      },
+      {
+        "table": "mtm_hrm_requests",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "workforce_time_corrections",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "workforce_exception_employee_responses",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      }
+    ]
+  },
+  "database": {
+    "nonownerForcedRls": true,
+    "populatedTwoTenantDecisionControls": true,
+    "unscopedRows": 0,
+    "foreignRows": 0,
+    "actualNewDecisionCount": 6,
+    "actualAuditCount": 6,
+    "exactActorReasonAndAuditLink": true,
+    "exactProductionDecisionImmutability": true,
+    "syntheticAuditGuard": true
+  },
+  "cleanupDiagnostics": [
+    {
+      "resource": "browser-context-1",
+      "status": "PASS"
+    },
+    {
+      "resource": "browser-context-2",
+      "status": "PASS"
+    },
+    {
+      "resource": "browser-context-3",
+      "status": "PASS"
+    },
+    {
+      "resource": "browser-context-4",
+      "status": "PASS"
+    },
+    {
+      "resource": "browser-context-5",
+      "status": "PASS"
+    },
+    {
+      "resource": "browser-context-6",
+      "status": "PASS"
+    },
+    {
+      "resource": "browser-context-7",
+      "status": "PASS"
+    },
+    {
+      "resource": "browser-context-8",
+      "status": "PASS"
+    },
+    {
+      "resource": "browser",
+      "status": "PASS"
+    },
+    {
+      "resource": "app-prisma",
+      "status": "PASS"
+    },
+    {
+      "resource": "admin-prisma",
+      "status": "PASS"
+    }
+  ],
+  "cleanup": "PASS",
+  "completedAt": "2026-10-07T19:48:04.462Z"
+}

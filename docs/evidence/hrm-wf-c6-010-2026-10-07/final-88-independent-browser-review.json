@@ -1,0 +1,750 @@
+{
+  "version": 1,
+  "reviewedAtUtc": "2026-10-07T19:53:37.484769+00:00",
+  "reviewer": "/root/inspect_outcome_contract",
+  "status": "CURRENT88_BROWSER_REPORT9_CLASSIFICATION11_ACCEPTED_FINITE_SCOPE",
+  "headSha": "88c93978494dbbbcb3f97ca1378d884d7b594f42",
+  "tree": "4e0b96f38676e964da5b9c8b3caa3f8c4e029bff",
+  "runId": 37676068436,
+  "attempt": 1,
+  "reportJob": 112980095840,
+  "classificationJob": 112980095708,
+  "findingsP0P1P2P3": [],
+  "authorship": "Reviewer authored verification fixture/harness; root independently cross-reviewed. Independent current evidence/source binding review is not independent test authorship. Root production source reviewed independently.",
+  "archives": [
+    {
+      "role": "report",
+      "artifactId": 11506249598,
+      "GitHubDigestMatched": true,
+      "CRC": "PASS",
+      "archive": {
+        "path": "/tmp/hrm-release-88-peer-report-original.zip",
+        "bytes": 853123,
+        "sha256": "3737d7a9977174451d81e451356e13915c4205e53e2147c0f42d1c26ceb69628"
+      },
+      "members": [
+        {
+          "name": "exception-report-receipt.json",
+          "bytes": 27854,
+          "sha256": "3ec4df612219ed57775dc7291c8d830ceea03eb1a4cc455b3798c6bbc44ff7b6"
+        },
+        {
+          "name": "report-az-768-nonempty.png",
+          "bytes": 86786,
+          "sha256": "cba279755eebe573ffbf70c39f5c14b501d52eda20a52a2c443b8e1284844a5b"
+        },
+        {
+          "name": "report-az-768-recorded-outcomes.png",
+          "bytes": 85625,
+          "sha256": "0e3ec8e13a659a9e7cebf6af1ff2f9f40b27d8debae29304ab21517f45825ee5"
+        },
+        {
+          "name": "report-denied-denied.png",
+          "bytes": 45895,
+          "sha256": "937f0f4182a824a7295314e62b1858b99e5544049c5774d06442d1ad1baf71ea"
+        },
+        {
+          "name": "report-denied-team.png",
+          "bytes": 45895,
+          "sha256": "937f0f4182a824a7295314e62b1858b99e5544049c5774d06442d1ad1baf71ea"
+        },
+        {
+          "name": "report-en-1440-recorded-outcomes.png",
+          "bytes": 77069,
+          "sha256": "6d23401346d2cb7122df1fbb4aa745ae0b082757ba2e8b3e4e571340ecf8ec5d"
+        },
+        {
+          "name": "report-en-1440-nonempty.png",
+          "bytes": 133637,
+          "sha256": "791831fdb30fc00545ff082d0faebc40942154387eda3d61f31133760c13f504"
+        },
+        {
+          "name": "report-foreign-positive.png",
+          "bytes": 81627,
+          "sha256": "e8a7bc90539995b6ad0681fbcba24e8b7e98a8a87d22aeaf2265f5098c1cf105"
+        },
+        {
+          "name": "report-ru-320-empty.png",
+          "bytes": 68297,
+          "sha256": "0ae5c77d58c0f330bff957f2cc8291497726168eda14bf7b877dc893028f848b"
+        },
+        {
+          "name": "report-ru-320-measured-zero.png",
+          "bytes": 68455,
+          "sha256": "c64edde935f83efc27ec8dbcbe1dcefad6e4be373dfa5401ca65b2423a0a38c5"
+        },
+        {
+          "name": "report-ru-320-nonempty.png",
+          "bytes": 65576,
+          "sha256": "844ce044c7face1f28fc9dcec01c8a70a625a8b832ee03a52dde64b4cbf22cf8"
+        },
+        {
+          "name": "report-ru-320-recorded-outcomes.png",
+          "bytes": 61369,
+          "sha256": "304b57489fbe9f7b735dd1ed5bc1d7e7c3ac2967fbb65df418fc2bdad36e82b2"
+        },
+        {
+          "name": "report-ru-320-unresolved-no-sample.png",
+          "bytes": 67987,
+          "sha256": "66ca64bd5427fdedd0bcaec46201d56e814b0caed40925bc7cd1b9ff54e856b7"
+        },
+        {
+          "name": "workflow-context.json",
+          "bytes": 261,
+          "sha256": "fa2829956a22b99d07bc37098162feb9f875edb181d1eb56aa9d3ca9437cad75"
+        }
+      ]
+    },
+    {
+      "role": "classification",
+      "artifactId": 11506109913,
+      "GitHubDigestMatched": true,
+      "CRC": "PASS",
+      "archive": {
+        "path": "/tmp/hrm-release-88-peer-classification-original.zip",
+        "bytes": 268098,
+        "sha256": "d7f9ef9dbae61729e89257ef17dfe7a5b7a05de78dbb7561554f53c7927ad8df"
+      },
+      "members": [
+        {
+          "name": "classification-az-768.png",
+          "bytes": 103066,
+          "sha256": "58d0f86a304c4adef67c25c369e0c9435d4a78d44dfb95303bdfb2ca145936bb"
+        },
+        {
+          "name": "classification-en-1440.png",
+          "bytes": 137615,
+          "sha256": "ba24bf71d1394cc6deb81977f47376abaa688a4fe188fa28faf622182981fdec"
+        },
+        {
+          "name": "classification-ru-320.png",
+          "bytes": 34986,
+          "sha256": "4cd3de901a6d8c79f89d27bea2928c4e49eafa6993883ada180f6d0015ac4a27"
+        },
+        {
+          "name": "exception-classification-receipt.json",
+          "bytes": 15212,
+          "sha256": "64b1c69285e4c17719d89fc2bda488adbafdd212bde8514c412d6ba3797e93a8"
+        },
+        {
+          "name": "workflow-context.json",
+          "bytes": 261,
+          "sha256": "fa2829956a22b99d07bc37098162feb9f875edb181d1eb56aa9d3ca9437cad75"
+        }
+      ]
+    }
+  ],
+  "receipts": [
+    {
+      "path": "/tmp/hrm-release-88-peer-artifacts/report/exception-report-receipt.json",
+      "bytes": 27854,
+      "sha256": "3ec4df612219ed57775dc7291c8d830ceea03eb1a4cc455b3798c6bbc44ff7b6"
+    },
+    {
+      "path": "/tmp/hrm-release-88-peer-artifacts/classification/exception-classification-receipt.json",
+      "bytes": 15212,
+      "sha256": "64b1c69285e4c17719d89fc2bda488adbafdd212bde8514c412d6ba3797e93a8"
+    }
+  ],
+  "fullOriginalLogs": [
+    {
+      "path": "/tmp/hrm-release-88-peer-report-original.log",
+      "bytes": 89081,
+      "sha256": "0b0f71ec7ee373b961ccc269119265aa9bbf5c860063865c2ff4bc6f10935dbd"
+    },
+    {
+      "path": "/tmp/hrm-release-88-peer-classification-original.log",
+      "bytes": 100189,
+      "sha256": "b2140f3d0aa1b2b693bc9ecaaad0bece67330880b389f692a80efea313c48bed"
+    }
+  ],
+  "jobMetadata": {
+    "path": "/tmp/hrm-release-88-peer-exact-jobs-browserpg.json",
+    "bytes": 16466,
+    "sha256": "857d3d7a367841cfbce41b6898bc9a0b507969247f2dec715ebe4531c39bc6c7"
+  },
+  "sourceBindings26": [
+    {
+      "path": "scripts/workforce-exception-report-browser-evidence.mjs",
+      "bytes": 41827,
+      "sha256": "4216c6421088dc1b47e90ee1f4c68a43e740b80efbfdfc7337b31016d85a8458",
+      "role": "report",
+      "exactGit88": true
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-exception-report-browser.sql",
+      "bytes": 4741,
+      "sha256": "85d4237ef3e2a9c1fb782d9ee70e8ed801d82fcc2703fd4932494fa2e3e344b3",
+      "role": "report",
+      "exactGit88": true
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-manager-today-browser.sql",
+      "bytes": 33617,
+      "sha256": "448d08b65048f3692145d1d2d73d1f4b2f5973363172dddb959b4c9daf20a4fb",
+      "role": "report",
+      "exactGit88": true
+    },
+    {
+      "path": ".github/workflows/workforce-exception-report-browser-evidence.yml",
+      "bytes": 25256,
+      "sha256": "1dcd49d422fb212d4ee1eac6368de97837fe62fc5ca5975a7faa2b6c61dc18e7",
+      "role": "report",
+      "exactGit88": true
+    },
+    {
+      "path": "src/components/workforce/workforce-exception-report.tsx",
+      "bytes": 12570,
+      "sha256": "7e0ea96c737c7ca8a21bdbe5431b1ed859466e9bd93918d063e271c195b9c87f",
+      "role": "report",
+      "exactGit88": true
+    },
+    {
+      "path": "src/components/workforce/workforce-exception-recorded-outcomes.tsx",
+      "bytes": 6293,
+      "sha256": "1039384b9a47e87b48a001b115300c7161cd3d144b376adce20276f5172cc386",
+      "role": "report",
+      "exactGit88": true
+    },
+    {
+      "path": "src/app/api/v1/workforce/exception-reports/route.ts",
+      "bytes": 6162,
+      "sha256": "6d4935a3cd3adbbbb411619a813287a6ba8b7d58cc89dec888074130360233bf",
+      "role": "report",
+      "exactGit88": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-report-read.ts",
+      "bytes": 3384,
+      "sha256": "b34a3ef9d52359a235040802c5ede11c03f128c7250b41f5b2a86d10860b82b5",
+      "role": "report",
+      "exactGit88": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-report-recorded-outcomes.ts",
+      "bytes": 8338,
+      "sha256": "1d84daa28a7b21a8ad8545f5b494c1030c338cff75fc168f87153541d5f0321c",
+      "role": "report",
+      "exactGit88": true
+    },
+    {
+      "path": "messages/en.json",
+      "bytes": 1354142,
+      "sha256": "f3d7ffc0313de3bd12b63553f86fd5316e4734bfeb9ad5097d7c8119fcf2d78b",
+      "role": "report",
+      "exactGit88": true
+    },
+    {
+      "path": "messages/ru.json",
+      "bytes": 1999960,
+      "sha256": "42e7aab719d29444f7f42b75f1e66ce3e3450ec21870979d1a441b584549cbb3",
+      "role": "report",
+      "exactGit88": true
+    },
+    {
+      "path": "messages/az.json",
+      "bytes": 1497985,
+      "sha256": "354e16809d030e48e4a4fdfcd5aa4d7162a5ca669377f43f5d3e807d7421e3aa",
+      "role": "report",
+      "exactGit88": true
+    },
+    {
+      "path": "scripts/workforce-exception-classification-browser-evidence.mjs",
+      "bytes": 35825,
+      "sha256": "216967516c60bab48390aefeebce651524130eefabc7c90cf4d00ee05e899025",
+      "role": "classification",
+      "exactGit88": true
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-exception-classification-browser.sql",
+      "bytes": 8727,
+      "sha256": "41ecf5a96c0accb2469971042bf3f47f0e8d7e6fcfa65a8538e1cd7f4013d7e0",
+      "role": "classification",
+      "exactGit88": true
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-manager-today-browser.sql",
+      "bytes": 33617,
+      "sha256": "448d08b65048f3692145d1d2d73d1f4b2f5973363172dddb959b4c9daf20a4fb",
+      "role": "classification",
+      "exactGit88": true
+    },
+    {
+      "path": ".github/workflows/workforce-exception-report-browser-evidence.yml",
+      "bytes": 25256,
+      "sha256": "1dcd49d422fb212d4ee1eac6368de97837fe62fc5ca5975a7faa2b6c61dc18e7",
+      "role": "classification",
+      "exactGit88": true
+    },
+    {
+      "path": "src/components/workforce/workforce-exception-queue.tsx",
+      "bytes": 23077,
+      "sha256": "5160dcc8b943d0caca712ae0dcad02725784fcb4c2401479c16dede00d0c3b1f",
+      "role": "classification",
+      "exactGit88": true
+    },
+    {
+      "path": "src/app/api/v1/workforce/exceptions/route.ts",
+      "bytes": 13279,
+      "sha256": "5a33ec78dc7fe6b05e920cbdb22fecb46f85d45c74840486533ea56df68034ff",
+      "role": "classification",
+      "exactGit88": true
+    },
+    {
+      "path": "src/app/api/v1/workforce/exception-decisions/route.ts",
+      "bytes": 4157,
+      "sha256": "eeeb1dda5d637fb0fdaa831021556a1200a1bd502e73df05838e850284db34c9",
+      "role": "classification",
+      "exactGit88": true
+    },
+    {
+      "path": "src/lib/workforce/exception-outcome-classification.ts",
+      "bytes": 2447,
+      "sha256": "947410fb0687987a465c38ce0c9455d3923d62039d9030b43bda3e0afae99a23",
+      "role": "classification",
+      "exactGit88": true
+    },
+    {
+      "path": "src/lib/workforce/exception-decision-service.ts",
+      "bytes": 11916,
+      "sha256": "dd10ffed0f37f80b79eae0e784918966033995283cafdbf6a4ec738b6275e21c",
+      "role": "classification",
+      "exactGit88": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-writer.ts",
+      "bytes": 19607,
+      "sha256": "61814e5d395143a6deacc9bd92e0aee1ffb508cc1c168724897dd9bf67da201f",
+      "role": "classification",
+      "exactGit88": true
+    },
+    {
+      "path": "src/lib/workforce/exception-policy-draft.ts",
+      "bytes": 8270,
+      "sha256": "f45f761e9c2e829351eb930c7e191f667327b3ed040338b4033b54381da59b6b",
+      "role": "classification",
+      "exactGit88": true
+    },
+    {
+      "path": "messages/en.json",
+      "bytes": 1354142,
+      "sha256": "f3d7ffc0313de3bd12b63553f86fd5316e4734bfeb9ad5097d7c8119fcf2d78b",
+      "role": "classification",
+      "exactGit88": true
+    },
+    {
+      "path": "messages/ru.json",
+      "bytes": 1999960,
+      "sha256": "42e7aab719d29444f7f42b75f1e66ce3e3450ec21870979d1a441b584549cbb3",
+      "role": "classification",
+      "exactGit88": true
+    },
+    {
+      "path": "messages/az.json",
+      "bytes": 1497985,
+      "sha256": "354e16809d030e48e4a4fdfcd5aa4d7162a5ca669377f43f5d3e807d7421e3aa",
+      "role": "classification",
+      "exactGit88": true
+    }
+  ],
+  "exactProductionRoutineStatements7": [
+    {
+      "path": "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql",
+      "sha256": "63fc383dc3e91776255c7a1cdd4bbfb09776ecefbe294f9d9a061dcd9f9f9b90",
+      "bytes": 240,
+      "start": "CREATE OR REPLACE FUNCTION workforce_reject_exception_case_mutation(",
+      "exactCurrent88Statement": true
+    },
+    {
+      "path": "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql",
+      "sha256": "5157c20909615422b8164d8aad673a4bae10ebe5ada406b43e0542b123ef7d41",
+      "bytes": 218,
+      "start": "CREATE OR REPLACE FUNCTION workforce_reject_exception_decision_mutation(",
+      "exactCurrent88Statement": true
+    },
+    {
+      "path": "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql",
+      "sha256": "e8b6fdc3224c3464ec24b9bfc383c38709a722382c77f51b83f7ad10edc63104",
+      "bytes": 910,
+      "start": "CREATE OR REPLACE FUNCTION workforce_next_exception_compatibility_timestamp(",
+      "exactCurrent88Statement": true
+    },
+    {
+      "path": "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql",
+      "sha256": "8117d9a40f4ec7e2f4a6b5b86b0c64f6b91f2cd21b60cd4d56ecbb8a7e78a950",
+      "bytes": 891,
+      "start": "CREATE OR REPLACE FUNCTION workforce_assign_exception_decision_revision(",
+      "exactCurrent88Statement": true
+    },
+    {
+      "path": "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql",
+      "sha256": "572b7638a7780f824b606692d1c5aaa37e153a41585abffee16f53cc84ff3329",
+      "bytes": 185,
+      "start": "CREATE TRIGGER workforce_exception_cases_append_only",
+      "exactCurrent88Statement": true
+    },
+    {
+      "path": "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql",
+      "sha256": "603a14021a0fd627d315f379667364b1d26f0b2358f00279d2d90b490f70ee09",
+      "bytes": 197,
+      "start": "CREATE TRIGGER workforce_exception_decisions_append_only",
+      "exactCurrent88Statement": true
+    },
+    {
+      "path": "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql",
+      "sha256": "01be9a08535c0b1cc832972cd0e57fb2bab8c1c087a551d6d7899f0b59839f24",
+      "bytes": 196,
+      "start": "CREATE TRIGGER workforce_exception_decisions_assign_case_revision",
+      "exactCurrent88Statement": true
+    }
+  ],
+  "finalUnconditionalBackfillDecisionRejectAlsoExact": {
+    "path": "prisma/migrations/20260927014100_workforce_exception_case_revisions_backfill/migration.sql",
+    "verified": true
+  },
+  "actualReport": {
+    "cases": [
+      {
+        "name": "empty",
+        "status": "PASS",
+        "responseStatus": 200,
+        "cases": 0,
+        "sampleCount": 0,
+        "meanMs": null
+      },
+      {
+        "name": "unresolved-no-sample",
+        "status": "PASS",
+        "responseStatus": 200,
+        "cases": 1,
+        "sampleCount": 0,
+        "meanMs": null
+      },
+      {
+        "name": "measured-zero",
+        "status": "PASS",
+        "responseStatus": 200,
+        "cases": 1,
+        "sampleCount": 1,
+        "meanMs": 0
+      },
+      {
+        "name": "nonempty-ru-320",
+        "status": "PASS",
+        "responseStatus": 200,
+        "linkedShare": 0.125,
+        "meanMs": 3000000,
+        "integrityExcluded": 1,
+        "geometry": {
+          "left": 76,
+          "right": 308,
+          "width": 232,
+          "viewport": 320,
+          "scrollWidth": 230,
+          "clientWidth": 230
+        },
+        "recordedOutcomesScreenshot": "report-ru-320-recorded-outcomes.png",
+        "nativeApplyRefreshAndTableFocus": true,
+        "rawPrivateDataExcluded": true
+      },
+      {
+        "name": "nonempty-az-768",
+        "status": "PASS",
+        "responseStatus": 200,
+        "linkedShare": 0.125,
+        "meanMs": 3000000,
+        "integrityExcluded": 1,
+        "geometry": {
+          "left": 80,
+          "right": 752,
+          "width": 672,
+          "viewport": 768,
+          "scrollWidth": 670,
+          "clientWidth": 670
+        },
+        "recordedOutcomesScreenshot": "report-az-768-recorded-outcomes.png",
+        "nativeApplyRefreshAndTableFocus": false,
+        "rawPrivateDataExcluded": true
+      },
+      {
+        "name": "nonempty-en-1440",
+        "status": "PASS",
+        "responseStatus": 200,
+        "linkedShare": 0.125,
+        "meanMs": 3000000,
+        "integrityExcluded": 1,
+        "geometry": {
+          "left": 288,
+          "right": 1408,
+          "width": 1120,
+          "viewport": 1440,
+          "scrollWidth": 1118,
+          "clientWidth": 1118
+        },
+        "recordedOutcomesScreenshot": "report-en-1440-recorded-outcomes.png",
+        "nativeApplyRefreshAndTableFocus": false,
+        "rawPrivateDataExcluded": true
+      },
+      {
+        "name": "denied-team",
+        "status": "PASS",
+        "responseStatus": 403,
+        "metricsExcluded": true,
+        "successfulViewAuditDelta": 0
+      },
+      {
+        "name": "denied-denied",
+        "status": "PASS",
+        "responseStatus": 403,
+        "metricsExcluded": true,
+        "successfulViewAuditDelta": 0
+      },
+      {
+        "name": "two-tenant-positive-and-session-header-fence",
+        "status": "PASS",
+        "ownCases": 8,
+        "foreignOwnCases": 1,
+        "foreignHeaderSelectsOwnSession": true
+      }
+    ],
+    "finalClassifiedFixtureAssertion": "Bound current fullDTOassert sample3classification/3appeal;falsepositive/full/partial/rejected1/3each;unfinished2/unclassified2eachdimension/integrity1. Emptysharesnull;correctionlink independent1/8, firstduration50minutes/min0/max2h/valid6/unresolved1/integrity1. Actual API+DOM assertions PASS in currentboundharness.",
+    "percentActualBrowserRealmExact": true,
+    "azNodeBrowserIcuDifferenceActuallyObserved": true,
+    "durationRealms": [
+      {
+        "locale": "ru",
+        "equal": true
+      },
+      {
+        "locale": "ru",
+        "equal": true
+      },
+      {
+        "locale": "ru",
+        "equal": true
+      },
+      {
+        "locale": "ru",
+        "equal": true
+      },
+      {
+        "locale": "ru",
+        "equal": true
+      },
+      {
+        "locale": "ru",
+        "equal": true
+      },
+      {
+        "locale": "az",
+        "equal": true
+      },
+      {
+        "locale": "az",
+        "equal": false
+      },
+      {
+        "locale": "en",
+        "equal": true
+      },
+      {
+        "locale": "en",
+        "equal": true
+      },
+      {
+        "locale": "en",
+        "equal": true
+      }
+    ],
+    "forcedRlsBeforeAfterNonownerPositiveTwoTenants": "PASS;unscoped/foreignvisible0",
+    "fixedFacts22Unchanged": true,
+    "allowedViewAudits": {
+      "results": [
+        {
+          "tenant": "a",
+          "auditedViews": 12,
+          "observedSuccessful200": 11,
+          "observedGetAttempts": 18,
+          "metadataWhitelist": true,
+          "everyAuditMatchesKnownAggregate": true
+        },
+        {
+          "tenant": "b",
+          "auditedViews": 2,
+          "observedSuccessful200": 2,
+          "observedGetAttempts": 3,
+          "metadataWhitelist": true,
+          "everyAuditMatchesKnownAggregate": true
+        }
+      ],
+      "appendOnlyAuditPrivilegeOnly": true,
+      "cancelledDevReadsMayCompleteTheirViewAudit": true,
+      "globallyZeroDatabaseWritesClaimed": false
+    },
+    "globalZeroDatabaseWritesClaimed": false
+  },
+  "actualClassification": {
+    "cases": [
+      {
+        "name": "real-ui-ru-320",
+        "status": "PASS",
+        "classificationCode": "CLASSIFY_FALSE_POSITIVE",
+        "appealCode": "APPEAL_FULLY_UPHELD",
+        "protectedReasonRequired": true,
+        "directCallerCaseOrCodeAbsent": true
+      },
+      {
+        "name": "real-ui-az-768",
+        "status": "PASS",
+        "classificationCode": "CLASSIFY_CONFIRMED_EXCEPTION",
+        "appealCode": "APPEAL_PARTIALLY_UPHELD",
+        "protectedReasonRequired": true,
+        "directCallerCaseOrCodeAbsent": true
+      },
+      {
+        "name": "exact-replay-and-conflicting-reason-and-stale-revision",
+        "status": "PASS",
+        "auditDeltaOnRetry": 0,
+        "decisionDeltaOnRetry": 0
+      },
+      {
+        "name": "real-ui-en-1440",
+        "status": "PASS",
+        "classificationCode": "CLASSIFY_CONFIRMED_EXCEPTION",
+        "appealCode": "APPEAL_REJECTED",
+        "protectedReasonRequired": true,
+        "directCallerCaseOrCodeAbsent": true
+      },
+      {
+        "name": "denied-hr-without-mandatory-enrolled-mfa",
+        "status": "PASS",
+        "writeStatus": 403,
+        "code": "WORKFORCE_ATTENDANCE_MFA_REQUIRED",
+        "recordedDelta": 0
+      },
+      {
+        "name": "denied-team-manager",
+        "status": "PASS",
+        "writeStatus": 404,
+        "recordedDelta": 0
+      },
+      {
+        "name": "denied-tenant-admin",
+        "status": "PASS",
+        "writeStatus": 404,
+        "recordedDelta": 0
+      },
+      {
+        "name": "denied-ungranted",
+        "status": "PASS",
+        "writeStatus": 404,
+        "recordedDelta": 0
+      },
+      {
+        "name": "denied-foreign-hr",
+        "status": "PASS",
+        "writeStatus": 404,
+        "recordedDelta": 0
+      },
+      {
+        "name": "reopen-invalidates-final-classification",
+        "status": "PASS"
+      },
+      {
+        "name": "live-hr-revocation-with-team-manager-still-effective",
+        "status": "PASS",
+        "writeStatus": 404,
+        "recordedDelta": 0
+      }
+    ],
+    "actualMandatoryMfaSessions": 7,
+    "allMfaVerified200Updated200NonceConsumed": true,
+    "weakMfa403AndNoAppend": true,
+    "real201Decisions": 6,
+    "linkedAudits": 6,
+    "exactActorPrivateReasonAuditLink": true,
+    "fixedFacts8UnchangedBeforeIntentionalRevocation": true,
+    "sourceRoutinesInstallation": {
+      "status": "COMMITTED",
+      "replacements": [
+        {
+          "table": "workforce_exception_cases",
+          "trigger": "workforce_exception_cases_append_only"
+        },
+        {
+          "table": "workforce_exception_decisions",
+          "trigger": "workforce_exception_decisions_append_only"
+        }
+      ]
+    },
+    "decisionUpdateDeleteImmutabilityExactSource": true,
+    "auditGuardFixtureOnly": true,
+    "retryAndConflict": "Actual200/+0decisions/+0audits, conflictingreason409,stalerevision409",
+    "actorTenantRevocation": "TEAM_MANAGER/TENANT_ADMIN/ungranted/foreignHR/revokedHR404+0records;managergrant stillpresent",
+    "reopenCurrentCycleInvalidatesFinalOutcomes": "PASS",
+    "nonownerForcedRlsTwoTenants": "PASS;unscoped/foreign0",
+    "all11ResourcesCleanupPass": true
+  },
+  "actualSixPngsViewed": [
+    {
+      "file": {
+        "path": "/tmp/hrm-release-88-peer-artifacts/report/report-en-1440-recorded-outcomes.png",
+        "bytes": 77069,
+        "sha256": "6d23401346d2cb7122df1fbb4aa745ae0b082757ba2e8b3e4e571340ecf8ec5d"
+      },
+      "view": "Allfour33.33/sample3/unfinished2/unclassified2+2/integrity1/manualboundary visible. Boundedsection, notwholepage."
+    },
+    {
+      "file": {
+        "path": "/tmp/hrm-release-88-peer-artifacts/report/report-az-768-recorded-outcomes.png",
+        "bytes": 85625,
+        "sha256": "0e3ec8e13a659a9e7cebf6af1ff2f9f40b27d8debae29304ab21517f45825ee5"
+      },
+      "view": "Allfour33.33 visible;top/bottomclip/footerpartial; inherited English50minutes/0seconds/2hours visible."
+    },
+    {
+      "file": {
+        "path": "/tmp/hrm-release-88-peer-artifacts/report/report-ru-320-recorded-outcomes.png",
+        "bytes": 61369,
+        "sha256": "304b57489fbe9f7b735dd1ed5bc1d7e7c3ac2967fbb65df418fc2bdad36e82b2"
+      },
+      "view": "Mostlyblank tallnestedscroller;durationcounts6/1/1 and explicitHRmanualboundary visible;finalfourfractions/samplefooter NOTvisible."
+    },
+    {
+      "file": {
+        "path": "/tmp/hrm-release-88-peer-artifacts/classification/classification-en-1440.png",
+        "bytes": 137615,
+        "sha256": "ba24bf71d1394cc6deb81977f47376abaa688a4fe188fa28faf622182981fdec"
+      },
+      "view": "ManualHR/privacyboundary,rejectedappealsuccessbanner andqueueactionbuttons/resolvedrow visible;right/bottomtable clipped/devbadge."
+    },
+    {
+      "file": {
+        "path": "/tmp/hrm-release-88-peer-artifacts/classification/classification-az-768.png",
+        "bytes": 103066,
+        "sha256": "58d0f86a304c4adef67c25c369e0c9435d4a78d44dfb95303bdfb2ca145936bb"
+      },
+      "view": "ManualHR/privacyboundary,partialappealsuccessbanner andsomeactionbuttons visible;right/bottomclipped/devbadge."
+    },
+    {
+      "file": {
+        "path": "/tmp/hrm-release-88-peer-artifacts/classification/classification-ru-320.png",
+        "bytes": 34986,
+        "sha256": "4cd3de901a6d8c79f89d27bea2928c4e49eafa6993883ada180f6d0015ac4a27"
+      },
+      "view": "Onlycase/employee columns visible;actioncontrols NOTvisible. ActualRU DOM/network receipt evidence separate."
+    }
+  ],
+  "toolReadMistakesRetained": [
+    "Initial read used singular case_revision_backfill path; corrected using rg to actualcase_revisions_backfill. No producttest/runtimefailure or sourcechange.",
+    "One metadata JS call syntax typo rejected before shelltool; corrected. No runtimeexecution."
+  ],
+  "remaining": "Build/fullcompiler/currentrequired+allapplicable pending as ofthisreview; real productionidentity/ACLrecipientmanual review andownHRMrelease notcredited.",
+  "limits": [
+    "No prior851/091 execution credit borrowed;current88 actualrun/artifact/receipts/source hashes bound.",
+    "ActualHTTP/MFA/PG only in isolatedCIfixtures;notproduction HRappeals/C12operationalobservations.",
+    "No fullmobile/globalWCAG/pixelocclusion/nativezoom/AT/device/pilot claim;geometry/DOM/network proof distinctfrom clippedPNG.",
+    "Syntheticextraauditguard andselectedsource productionroutine installation are notfullhistoricalmigrationreplay/TRUNCATE/securityclaim.",
+    "No source/roles/grants/secrets/production modifications orlocalruntime reruns byreviewer."
+  ]
+}

@@ -1,0 +1,1227 @@
+{
+  "version": 1,
+  "candidateHead": "88c93978494dbbbcb3f97ca1378d884d7b594f42",
+  "checkedMergeSha": "88c93978494dbbbcb3f97ca1378d884d7b594f42",
+  "harnessSha256": "4216c6421088dc1b47e90ee1f4c68a43e740b80efbfdfc7337b31016d85a8458",
+  "startedAt": "2026-10-07T19:46:58.299Z",
+  "date": "2026-10-07",
+  "environment": "hosted Chromium / loopback Next dev / disposable PostgreSQL16",
+  "authentication": "real CSRF, credentials provider and session; no auth mocks",
+  "authenticationDiagnostics": [
+    {
+      "ordinal": 1,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-07T19:47:01.034Z"
+    },
+    {
+      "ordinal": 2,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-07T19:47:21.179Z"
+    },
+    {
+      "ordinal": 3,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-07T19:47:23.770Z"
+    },
+    {
+      "ordinal": 4,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-07T19:47:26.479Z"
+    },
+    {
+      "ordinal": 5,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-07T19:47:28.631Z"
+    },
+    {
+      "ordinal": 6,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-07T19:47:31.022Z"
+    },
+    {
+      "ordinal": 7,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-07T19:47:33.483Z"
+    }
+  ],
+  "sources": [
+    {
+      "path": "scripts/workforce-exception-report-browser-evidence.mjs",
+      "bytes": 41827,
+      "sha256": "4216c6421088dc1b47e90ee1f4c68a43e740b80efbfdfc7337b31016d85a8458"
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-exception-report-browser.sql",
+      "bytes": 4741,
+      "sha256": "85d4237ef3e2a9c1fb782d9ee70e8ed801d82fcc2703fd4932494fa2e3e344b3"
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-manager-today-browser.sql",
+      "bytes": 33617,
+      "sha256": "448d08b65048f3692145d1d2d73d1f4b2f5973363172dddb959b4c9daf20a4fb"
+    },
+    {
+      "path": ".github/workflows/workforce-exception-report-browser-evidence.yml",
+      "bytes": 25256,
+      "sha256": "1dcd49d422fb212d4ee1eac6368de97837fe62fc5ca5975a7faa2b6c61dc18e7"
+    },
+    {
+      "path": "src/components/workforce/workforce-exception-report.tsx",
+      "bytes": 12570,
+      "sha256": "7e0ea96c737c7ca8a21bdbe5431b1ed859466e9bd93918d063e271c195b9c87f"
+    },
+    {
+      "path": "src/components/workforce/workforce-exception-recorded-outcomes.tsx",
+      "bytes": 6293,
+      "sha256": "1039384b9a47e87b48a001b115300c7161cd3d144b376adce20276f5172cc386"
+    },
+    {
+      "path": "src/app/api/v1/workforce/exception-reports/route.ts",
+      "bytes": 6162,
+      "sha256": "6d4935a3cd3adbbbb411619a813287a6ba8b7d58cc89dec888074130360233bf"
+    },
+    {
+      "path": "src/lib/workforce/exception-case-report-read.ts",
+      "bytes": 3384,
+      "sha256": "b34a3ef9d52359a235040802c5ede11c03f128c7250b41f5b2a86d10860b82b5"
+    },
+    {
+      "path": "src/lib/workforce/exception-case-report-recorded-outcomes.ts",
+      "bytes": 8338,
+      "sha256": "1d84daa28a7b21a8ad8545f5b494c1030c338cff75fc168f87153541d5f0321c"
+    },
+    {
+      "path": "messages/en.json",
+      "bytes": 1354142,
+      "sha256": "f3d7ffc0313de3bd12b63553f86fd5316e4734bfeb9ad5097d7c8119fcf2d78b"
+    },
+    {
+      "path": "messages/ru.json",
+      "bytes": 1999960,
+      "sha256": "42e7aab719d29444f7f42b75f1e66ce3e3450ec21870979d1a441b584549cbb3"
+    },
+    {
+      "path": "messages/az.json",
+      "bytes": 1497985,
+      "sha256": "354e16809d030e48e4a4fdfcd5aa4d7162a5ca669377f43f5d3e807d7421e3aa"
+    }
+  ],
+  "cases": [
+    {
+      "name": "empty",
+      "status": "PASS",
+      "responseStatus": 200,
+      "cases": 0,
+      "sampleCount": 0,
+      "meanMs": null
+    },
+    {
+      "name": "unresolved-no-sample",
+      "status": "PASS",
+      "responseStatus": 200,
+      "cases": 1,
+      "sampleCount": 0,
+      "meanMs": null
+    },
+    {
+      "name": "measured-zero",
+      "status": "PASS",
+      "responseStatus": 200,
+      "cases": 1,
+      "sampleCount": 1,
+      "meanMs": 0
+    },
+    {
+      "name": "nonempty-ru-320",
+      "status": "PASS",
+      "responseStatus": 200,
+      "linkedShare": 0.125,
+      "meanMs": 3000000,
+      "integrityExcluded": 1,
+      "geometry": {
+        "left": 76,
+        "right": 308,
+        "width": 232,
+        "viewport": 320,
+        "scrollWidth": 230,
+        "clientWidth": 230
+      },
+      "recordedOutcomesScreenshot": "report-ru-320-recorded-outcomes.png",
+      "nativeApplyRefreshAndTableFocus": true,
+      "rawPrivateDataExcluded": true
+    },
+    {
+      "name": "nonempty-az-768",
+      "status": "PASS",
+      "responseStatus": 200,
+      "linkedShare": 0.125,
+      "meanMs": 3000000,
+      "integrityExcluded": 1,
+      "geometry": {
+        "left": 80,
+        "right": 752,
+        "width": 672,
+        "viewport": 768,
+        "scrollWidth": 670,
+        "clientWidth": 670
+      },
+      "recordedOutcomesScreenshot": "report-az-768-recorded-outcomes.png",
+      "nativeApplyRefreshAndTableFocus": false,
+      "rawPrivateDataExcluded": true
+    },
+    {
+      "name": "nonempty-en-1440",
+      "status": "PASS",
+      "responseStatus": 200,
+      "linkedShare": 0.125,
+      "meanMs": 3000000,
+      "integrityExcluded": 1,
+      "geometry": {
+        "left": 288,
+        "right": 1408,
+        "width": 1120,
+        "viewport": 1440,
+        "scrollWidth": 1118,
+        "clientWidth": 1118
+      },
+      "recordedOutcomesScreenshot": "report-en-1440-recorded-outcomes.png",
+      "nativeApplyRefreshAndTableFocus": false,
+      "rawPrivateDataExcluded": true
+    },
+    {
+      "name": "denied-team",
+      "status": "PASS",
+      "responseStatus": 403,
+      "metricsExcluded": true,
+      "successfulViewAuditDelta": 0
+    },
+    {
+      "name": "denied-denied",
+      "status": "PASS",
+      "responseStatus": 403,
+      "metricsExcluded": true,
+      "successfulViewAuditDelta": 0
+    },
+    {
+      "name": "two-tenant-positive-and-session-header-fence",
+      "status": "PASS",
+      "ownCases": 8,
+      "foreignOwnCases": 1,
+      "foreignHeaderSelectsOwnSession": true
+    }
+  ],
+  "status": "PASS",
+  "limitations": [
+    "Development bundle, not production build",
+    "Synthetic disposable data only",
+    "Historical selected Prisma-schema imports, not canonical terminal/approval/workday correction writer acceptance",
+    "No human AT/native zoom/whole-page keyboard/Android/physical/load/pilot acceptance",
+    "Geometry/text checks do not prove pixel occlusion or whole-page accessibility",
+    "Aggregate report facts are SELECT-only; real view-audit INSERT and auth metadata writes are expected; no production feature/grant activation"
+  ],
+  "rlsBefore": {
+    "phase": "BEFORE",
+    "rows": [
+      {
+        "table": "workforce_exception_cases",
+        "forcedRls": true,
+        "nonowner": true,
+        "unscopedVisible": 0,
+        "positive": [
+          {
+            "tenant": "a",
+            "rows": 10,
+            "foreignVisible": 0
+          },
+          {
+            "tenant": "b",
+            "rows": 1,
+            "foreignVisible": 0
+          }
+        ]
+      },
+      {
+        "table": "workforce_exception_decisions",
+        "forcedRls": true,
+        "nonowner": true,
+        "unscopedVisible": 0,
+        "positive": [
+          {
+            "tenant": "a",
+            "rows": 28,
+            "foreignVisible": 0
+          },
+          {
+            "tenant": "b",
+            "rows": 4,
+            "foreignVisible": 0
+          }
+        ]
+      },
+      {
+        "table": "workforce_exception_employee_responses",
+        "forcedRls": true,
+        "nonowner": true,
+        "unscopedVisible": 0,
+        "positive": [
+          {
+            "tenant": "a",
+            "rows": 1,
+            "foreignVisible": 0
+          },
+          {
+            "tenant": "b",
+            "rows": 1,
+            "foreignVisible": 0
+          }
+        ]
+      },
+      {
+        "table": "mtm_hrm_requests",
+        "forcedRls": true,
+        "nonowner": true,
+        "unscopedVisible": 0,
+        "positive": [
+          {
+            "tenant": "a",
+            "rows": 1,
+            "foreignVisible": 0
+          },
+          {
+            "tenant": "b",
+            "rows": 1,
+            "foreignVisible": 0
+          }
+        ]
+      },
+      {
+        "table": "workforce_time_corrections",
+        "forcedRls": true,
+        "nonowner": true,
+        "unscopedVisible": 0,
+        "positive": [
+          {
+            "tenant": "a",
+            "rows": 1,
+            "foreignVisible": 0
+          },
+          {
+            "tenant": "b",
+            "rows": 1,
+            "foreignVisible": 0
+          }
+        ]
+      }
+    ],
+    "noBypass": true,
+    "positiveBothTenants": true
+  },
+  "aggregateRenderDiagnostics": [
+    {
+      "locale": "ru",
+      "numericShare": null,
+      "actualText": "В этом периоде нет случаев",
+      "nodeExpected": "В этом периоде нет случаев",
+      "browserExpected": "В этом периоде нет случаев",
+      "actualCodePoints": [
+        1042,
+        32,
+        1101,
+        1090,
+        1086,
+        1084,
+        32,
+        1087,
+        1077,
+        1088,
+        1080,
+        1086,
+        1076,
+        1077,
+        32,
+        1085,
+        1077,
+        1090,
+        32,
+        1089,
+        1083,
+        1091,
+        1095,
+        1072,
+        1077,
+        1074
+      ],
+      "nodeCodePoints": [
+        1042,
+        32,
+        1101,
+        1090,
+        1086,
+        1084,
+        32,
+        1087,
+        1077,
+        1088,
+        1080,
+        1086,
+        1076,
+        1077,
+        32,
+        1085,
+        1077,
+        1090,
+        32,
+        1089,
+        1083,
+        1091,
+        1095,
+        1072,
+        1077,
+        1074
+      ],
+      "browserCodePoints": [
+        1042,
+        32,
+        1101,
+        1090,
+        1086,
+        1084,
+        32,
+        1087,
+        1077,
+        1088,
+        1080,
+        1086,
+        1076,
+        1077,
+        32,
+        1085,
+        1077,
+        1090,
+        32,
+        1089,
+        1083,
+        1091,
+        1095,
+        1072,
+        1077,
+        1074
+      ]
+    },
+    {
+      "locale": "ru",
+      "numericShare": 0.125,
+      "actualText": "12,5 %",
+      "nodeExpected": "12,5 %",
+      "browserExpected": "12,5 %",
+      "actualCodePoints": [
+        49,
+        50,
+        44,
+        53,
+        160,
+        37
+      ],
+      "nodeCodePoints": [
+        49,
+        50,
+        44,
+        53,
+        160,
+        37
+      ],
+      "browserCodePoints": [
+        49,
+        50,
+        44,
+        53,
+        160,
+        37
+      ]
+    },
+    {
+      "locale": "ru",
+      "numericShare": 0.125,
+      "actualText": "12,5 %",
+      "nodeExpected": "12,5 %",
+      "browserExpected": "12,5 %",
+      "actualCodePoints": [
+        49,
+        50,
+        44,
+        53,
+        160,
+        37
+      ],
+      "nodeCodePoints": [
+        49,
+        50,
+        44,
+        53,
+        160,
+        37
+      ],
+      "browserCodePoints": [
+        49,
+        50,
+        44,
+        53,
+        160,
+        37
+      ]
+    },
+    {
+      "locale": "ru",
+      "numericShare": null,
+      "actualText": "В этом периоде нет случаев",
+      "nodeExpected": "В этом периоде нет случаев",
+      "browserExpected": "В этом периоде нет случаев",
+      "actualCodePoints": [
+        1042,
+        32,
+        1101,
+        1090,
+        1086,
+        1084,
+        32,
+        1087,
+        1077,
+        1088,
+        1080,
+        1086,
+        1076,
+        1077,
+        32,
+        1085,
+        1077,
+        1090,
+        32,
+        1089,
+        1083,
+        1091,
+        1095,
+        1072,
+        1077,
+        1074
+      ],
+      "nodeCodePoints": [
+        1042,
+        32,
+        1101,
+        1090,
+        1086,
+        1084,
+        32,
+        1087,
+        1077,
+        1088,
+        1080,
+        1086,
+        1076,
+        1077,
+        32,
+        1085,
+        1077,
+        1090,
+        32,
+        1089,
+        1083,
+        1091,
+        1095,
+        1072,
+        1077,
+        1074
+      ],
+      "browserCodePoints": [
+        1042,
+        32,
+        1101,
+        1090,
+        1086,
+        1084,
+        32,
+        1087,
+        1077,
+        1088,
+        1080,
+        1086,
+        1076,
+        1077,
+        32,
+        1085,
+        1077,
+        1090,
+        32,
+        1089,
+        1083,
+        1091,
+        1095,
+        1072,
+        1077,
+        1074
+      ]
+    },
+    {
+      "locale": "ru",
+      "numericShare": 0,
+      "actualText": "0 %",
+      "nodeExpected": "0 %",
+      "browserExpected": "0 %",
+      "actualCodePoints": [
+        48,
+        160,
+        37
+      ],
+      "nodeCodePoints": [
+        48,
+        160,
+        37
+      ],
+      "browserCodePoints": [
+        48,
+        160,
+        37
+      ]
+    },
+    {
+      "locale": "ru",
+      "numericShare": 0,
+      "actualText": "0 %",
+      "nodeExpected": "0 %",
+      "browserExpected": "0 %",
+      "actualCodePoints": [
+        48,
+        160,
+        37
+      ],
+      "nodeCodePoints": [
+        48,
+        160,
+        37
+      ],
+      "browserCodePoints": [
+        48,
+        160,
+        37
+      ]
+    },
+    {
+      "locale": "az",
+      "numericShare": null,
+      "actualText": "Bu dövrdə hal yoxdur",
+      "nodeExpected": "Bu dövrdə hal yoxdur",
+      "browserExpected": "Bu dövrdə hal yoxdur",
+      "actualCodePoints": [
+        66,
+        117,
+        32,
+        100,
+        246,
+        118,
+        114,
+        100,
+        601,
+        32,
+        104,
+        97,
+        108,
+        32,
+        121,
+        111,
+        120,
+        100,
+        117,
+        114
+      ],
+      "nodeCodePoints": [
+        66,
+        117,
+        32,
+        100,
+        246,
+        118,
+        114,
+        100,
+        601,
+        32,
+        104,
+        97,
+        108,
+        32,
+        121,
+        111,
+        120,
+        100,
+        117,
+        114
+      ],
+      "browserCodePoints": [
+        66,
+        117,
+        32,
+        100,
+        246,
+        118,
+        114,
+        100,
+        601,
+        32,
+        104,
+        97,
+        108,
+        32,
+        121,
+        111,
+        120,
+        100,
+        117,
+        114
+      ]
+    },
+    {
+      "locale": "az",
+      "numericShare": 0.125,
+      "actualText": "12.5%",
+      "nodeExpected": "12,5%",
+      "browserExpected": "12.5%",
+      "actualCodePoints": [
+        49,
+        50,
+        46,
+        53,
+        37
+      ],
+      "nodeCodePoints": [
+        49,
+        50,
+        44,
+        53,
+        37
+      ],
+      "browserCodePoints": [
+        49,
+        50,
+        46,
+        53,
+        37
+      ]
+    },
+    {
+      "locale": "en",
+      "numericShare": null,
+      "actualText": "No cases in this range",
+      "nodeExpected": "No cases in this range",
+      "browserExpected": "No cases in this range",
+      "actualCodePoints": [
+        78,
+        111,
+        32,
+        99,
+        97,
+        115,
+        101,
+        115,
+        32,
+        105,
+        110,
+        32,
+        116,
+        104,
+        105,
+        115,
+        32,
+        114,
+        97,
+        110,
+        103,
+        101
+      ],
+      "nodeCodePoints": [
+        78,
+        111,
+        32,
+        99,
+        97,
+        115,
+        101,
+        115,
+        32,
+        105,
+        110,
+        32,
+        116,
+        104,
+        105,
+        115,
+        32,
+        114,
+        97,
+        110,
+        103,
+        101
+      ],
+      "browserCodePoints": [
+        78,
+        111,
+        32,
+        99,
+        97,
+        115,
+        101,
+        115,
+        32,
+        105,
+        110,
+        32,
+        116,
+        104,
+        105,
+        115,
+        32,
+        114,
+        97,
+        110,
+        103,
+        101
+      ]
+    },
+    {
+      "locale": "en",
+      "numericShare": 0.125,
+      "actualText": "12.5%",
+      "nodeExpected": "12.5%",
+      "browserExpected": "12.5%",
+      "actualCodePoints": [
+        49,
+        50,
+        46,
+        53,
+        37
+      ],
+      "nodeCodePoints": [
+        49,
+        50,
+        46,
+        53,
+        37
+      ],
+      "browserCodePoints": [
+        49,
+        50,
+        46,
+        53,
+        37
+      ]
+    },
+    {
+      "locale": "en",
+      "numericShare": 1,
+      "actualText": "100%",
+      "nodeExpected": "100%",
+      "browserExpected": "100%",
+      "actualCodePoints": [
+        49,
+        48,
+        48,
+        37
+      ],
+      "nodeCodePoints": [
+        49,
+        48,
+        48,
+        37
+      ],
+      "browserCodePoints": [
+        49,
+        48,
+        48,
+        37
+      ]
+    }
+  ],
+  "durationRealms": [
+    {
+      "locale": "ru",
+      "equal": true
+    },
+    {
+      "locale": "ru",
+      "equal": true
+    },
+    {
+      "locale": "ru",
+      "equal": true
+    },
+    {
+      "locale": "ru",
+      "equal": true
+    },
+    {
+      "locale": "ru",
+      "equal": true
+    },
+    {
+      "locale": "ru",
+      "equal": true
+    },
+    {
+      "locale": "az",
+      "equal": true
+    },
+    {
+      "locale": "az",
+      "equal": false
+    },
+    {
+      "locale": "en",
+      "equal": true
+    },
+    {
+      "locale": "en",
+      "equal": true
+    },
+    {
+      "locale": "en",
+      "equal": true
+    }
+  ],
+  "factImmutability": {
+    "tenantCount": 2,
+    "tables": [
+      {
+        "table": "mtm_teams",
+        "count": 2,
+        "sha256": "36225c0b835f2f7f1839daad7e8e94005a0ca9f9aa6f1f60640b6e4f5c206e2d",
+        "afterSha256": "36225c0b835f2f7f1839daad7e8e94005a0ca9f9aa6f1f60640b6e4f5c206e2d",
+        "unchanged": true
+      },
+      {
+        "table": "mtm_agents",
+        "count": 2,
+        "sha256": "51bc335a76f9fa67f67fb736d07fa2765b1f2e4f6f9da159d31793d6aebddea9",
+        "afterSha256": "51bc335a76f9fa67f67fb736d07fa2765b1f2e4f6f9da159d31793d6aebddea9",
+        "unchanged": true
+      },
+      {
+        "table": "mtm_settings",
+        "count": 2,
+        "sha256": "d8a91dbd4e874e1df2073cb977650e30ea26bf3ccee076dcceccf6c44689e482",
+        "afterSha256": "d8a91dbd4e874e1df2073cb977650e30ea26bf3ccee076dcceccf6c44689e482",
+        "unchanged": true
+      },
+      {
+        "table": "mtm_work_calendar_days",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "workforce_employee_team_memberships",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "mtm_agent_workdays",
+        "count": 2,
+        "sha256": "439bacebfe268d0aa319d3f52a3ddcb8242abf571f77ad8c02d7750c9721a44a",
+        "afterSha256": "439bacebfe268d0aa319d3f52a3ddcb8242abf571f77ad8c02d7750c9721a44a",
+        "unchanged": true
+      },
+      {
+        "table": "mtm_agent_workday_events",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "workforce_access_grants",
+        "count": 3,
+        "sha256": "329f6acbc3324b35280dd0d51fedd824badce815ddb41f23c45bc98e21c8a145",
+        "afterSha256": "329f6acbc3324b35280dd0d51fedd824badce815ddb41f23c45bc98e21c8a145",
+        "unchanged": true
+      },
+      {
+        "table": "workforce_access_grant_revocations",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "workforce_shift_templates",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "workforce_shift_segments",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "workforce_shift_assignments",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "workforce_shift_default_assignments",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "workforce_shift_team_default_assignments",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "workforce_policy_snapshots",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "workforce_shift_snapshots",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "workforce_workday_schedule_snapshots",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "workforce_exception_cases",
+        "count": 11,
+        "sha256": "6f2b2a39f147da415a2980676fc6e091092289ba3d1cc0804c6fc27f49c39d17",
+        "afterSha256": "6f2b2a39f147da415a2980676fc6e091092289ba3d1cc0804c6fc27f49c39d17",
+        "unchanged": true
+      },
+      {
+        "table": "workforce_exception_decisions",
+        "count": 32,
+        "sha256": "b74b472e0e9a239b8076b4d8d4e24c1d34e88af1b4fb2ecc995789b62c2da4c7",
+        "afterSha256": "b74b472e0e9a239b8076b4d8d4e24c1d34e88af1b4fb2ecc995789b62c2da4c7",
+        "unchanged": true
+      },
+      {
+        "table": "workforce_exception_employee_responses",
+        "count": 2,
+        "sha256": "811a600ae2859c74368682a3de93be46c7a80944a7bcd847b41e658ec4bd56e3",
+        "afterSha256": "811a600ae2859c74368682a3de93be46c7a80944a7bcd847b41e658ec4bd56e3",
+        "unchanged": true
+      },
+      {
+        "table": "mtm_hrm_requests",
+        "count": 2,
+        "sha256": "33c9f968e356bfe9a28bf5b7e4deb87fa41caac89f9401044320fa065ee0087b",
+        "afterSha256": "33c9f968e356bfe9a28bf5b7e4deb87fa41caac89f9401044320fa065ee0087b",
+        "unchanged": true
+      },
+      {
+        "table": "workforce_time_corrections",
+        "count": 2,
+        "sha256": "0da08ad2d3b307d3899f2633d2c7e8704694645d4a4172ebe94308bb5761bced",
+        "afterSha256": "0da08ad2d3b307d3899f2633d2c7e8704694645d4a4172ebe94308bb5761bced",
+        "unchanged": true
+      }
+    ],
+    "userAuthenticationMetadataExcluded": true,
+    "permittedAuditDeltaSeparate": true
+  },
+  "rlsAfter": {
+    "phase": "AFTER",
+    "rows": [
+      {
+        "table": "workforce_exception_cases",
+        "forcedRls": true,
+        "nonowner": true,
+        "unscopedVisible": 0,
+        "positive": [
+          {
+            "tenant": "a",
+            "rows": 10,
+            "foreignVisible": 0
+          },
+          {
+            "tenant": "b",
+            "rows": 1,
+            "foreignVisible": 0
+          }
+        ]
+      },
+      {
+        "table": "workforce_exception_decisions",
+        "forcedRls": true,
+        "nonowner": true,
+        "unscopedVisible": 0,
+        "positive": [
+          {
+            "tenant": "a",
+            "rows": 28,
+            "foreignVisible": 0
+          },
+          {
+            "tenant": "b",
+            "rows": 4,
+            "foreignVisible": 0
+          }
+        ]
+      },
+      {
+        "table": "workforce_exception_employee_responses",
+        "forcedRls": true,
+        "nonowner": true,
+        "unscopedVisible": 0,
+        "positive": [
+          {
+            "tenant": "a",
+            "rows": 1,
+            "foreignVisible": 0
+          },
+          {
+            "tenant": "b",
+            "rows": 1,
+            "foreignVisible": 0
+          }
+        ]
+      },
+      {
+        "table": "mtm_hrm_requests",
+        "forcedRls": true,
+        "nonowner": true,
+        "unscopedVisible": 0,
+        "positive": [
+          {
+            "tenant": "a",
+            "rows": 1,
+            "foreignVisible": 0
+          },
+          {
+            "tenant": "b",
+            "rows": 1,
+            "foreignVisible": 0
+          }
+        ]
+      },
+      {
+        "table": "workforce_time_corrections",
+        "forcedRls": true,
+        "nonowner": true,
+        "unscopedVisible": 0,
+        "positive": [
+          {
+            "tenant": "a",
+            "rows": 1,
+            "foreignVisible": 0
+          },
+          {
+            "tenant": "b",
+            "rows": 1,
+            "foreignVisible": 0
+          }
+        ]
+      }
+    ],
+    "noBypass": true,
+    "positiveBothTenants": true
+  },
+  "viewAudit": {
+    "results": [
+      {
+        "tenant": "a",
+        "auditedViews": 12,
+        "observedSuccessful200": 11,
+        "observedGetAttempts": 18,
+        "metadataWhitelist": true,
+        "everyAuditMatchesKnownAggregate": true
+      },
+      {
+        "tenant": "b",
+        "auditedViews": 2,
+        "observedSuccessful200": 2,
+        "observedGetAttempts": 3,
+        "metadataWhitelist": true,
+        "everyAuditMatchesKnownAggregate": true
+      }
+    ],
+    "appendOnlyAuditPrivilegeOnly": true,
+    "cancelledDevReadsMayCompleteTheirViewAudit": true,
+    "globallyZeroDatabaseWritesClaimed": false
+  },
+  "cleanupActions": [
+    {
+      "action": "context-1",
+      "status": "PASS"
+    },
+    {
+      "action": "context-2",
+      "status": "PASS"
+    },
+    {
+      "action": "context-3",
+      "status": "PASS"
+    },
+    {
+      "action": "context-4",
+      "status": "PASS"
+    },
+    {
+      "action": "context-5",
+      "status": "PASS"
+    },
+    {
+      "action": "context-6",
+      "status": "PASS"
+    },
+    {
+      "action": "context-7",
+      "status": "PASS"
+    },
+    {
+      "action": "browser",
+      "status": "PASS"
+    },
+    {
+      "action": "application-database",
+      "status": "PASS"
+    },
+    {
+      "action": "fixture-database",
+      "status": "PASS"
+    }
+  ],
+  "cleanup": "PASS",
+  "completedAt": "2026-10-07T19:47:33.866Z"
+}

@@ -1,0 +1,60 @@
+[
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-88-root-browser-and-routine-proof.json",
+    "bytes": 8168,
+    "sha256": "f5a6823a1c953de88cf43cd52ff7760547fe5d4ef279e33db7e0eae39cb02802"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-88-independent-browser-review.json",
+    "bytes": 26128,
+    "sha256": "baaef9063b39762fb77ee9d88fb897236baec9b464597fb76d5a865129d1713e"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-88-report-original-artifact.zip",
+    "bytes": 853123,
+    "sha256": "3737d7a9977174451d81e451356e13915c4205e53e2147c0f42d1c26ceb69628"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-88-classification-original-artifact.zip",
+    "bytes": 268098,
+    "sha256": "d7f9ef9dbae61729e89257ef17dfe7a5b7a05de78dbb7561554f53c7927ad8df"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-88-report-receipt.json",
+    "bytes": 27854,
+    "sha256": "3ec4df612219ed57775dc7291c8d830ceea03eb1a4cc455b3798c6bbc44ff7b6"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-88-classification-receipt.json",
+    "bytes": 15212,
+    "sha256": "64b1c69285e4c17719d89fc2bda488adbafdd212bde8514c412d6ba3797e93a8"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-88-report-original-job.log.gz",
+    "bytes": 19406,
+    "sha256": "c35537f47fa62980d1759955ef2743e9549dfca441f27d911cbaed6d4856392c",
+    "originalBytes": 89081,
+    "originalSha256": "0b0f71ec7ee373b961ccc269119265aa9bbf5c860063865c2ff4bc6f10935dbd"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-88-classification-original-job.log.gz",
+    "bytes": 21445,
+    "sha256": "4d735687972a37bbc12af5ef1cf1116abafeca48a8683954617aaeb2a9ac99b8",
+    "originalBytes": 100189,
+    "originalSha256": "b2140f3d0aa1b2b693bc9ecaaad0bece67330880b389f692a80efea313c48bed"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-88-pg-regression-original-job.log.gz",
+    "bytes": 27551,
+    "sha256": "c49b742719bdbaf943c5e3412e9a65d0946d63a6da73ad2db6546db67e0e9a14",
+    "originalBytes": 158777,
+    "originalSha256": "8a1de58c036bec8e44c42539359a55f9c3f825e7dd007c70b1ece0a118e2d372"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-88-build-original-job.log.gz",
+    "bytes": 24649,
+    "sha256": "bc733a8afc468c2caea29949a1beab54ccd2cca94f9e7e027df406801f49dfc4",
+    "originalBytes": 129917,
+    "originalSha256": "11560fa72f2749afd1fd8865dfa26fd3c5422937c24bbb7222872832c367e99a"
+  }
+]
