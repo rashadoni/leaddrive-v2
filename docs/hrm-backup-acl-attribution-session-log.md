@@ -33,3 +33,32 @@ required checks precede normal auxiliary release; then exact protected main and
 artifact bound observation. Full build/browser/install/typecheck runs are NOT
 RUN on Contabo; hosted Linux CI owns them. Accounting84/161/77open/60%, C6/C12
 remain partial until all their criteria. No baselines/checks are weakened.
+
+
+## 2026-10-07 — cross-review and first bounded checks
+
+Root reviewed the peer-authored complete SQL, workflow and tests. The SQL
+preserves the old guarded live snapshot and catalog-only ACL scope, adds finite
+configured-role attribution and explicit role/database read-only override
+precedence. Positive hosted fixture uses the actual default production helper
+transport with real held runtime and observing migration sessions. Negative
+fixtures cover mismatch/missing identity, precedence/absence, memberships and
+unsafe role profiles, multiple scopes/recipients, writes/PUBLIC/grant options,
+wrong PID and forbidden read-only DDL. Unsafe observations stay finite evidence
+without automatic approval. Only the disposable fixture admin forces ROoff for
+cleanup; the production observer remains mandatory RRRO.
+
+Peer found a validator counter-coherence gap (OTHER rows could be nonzero with
+zero recipients); root tightened zero equivalence and explicit absent-role
+matched-row guard, retaining the original finding. Root rejected a copied
+adapter unit test because it tested a copy rather than actual production
+transport; removed before any execution, full actual hosted helper test remains.
+Copied artifact name/error text corrected in the new workflow only.
+
+Pre-check Contabo RAM13GiB available, disk274GiB free, memory pressure0. One
+sequential Node20 check:13 unit PASS,1 hosted PG SKIP,0 fail. Original full log
+/tmp/hrm-backup-acl-first-local-original.log retained. Runner policy50 and diff
+check PASS. Actual PostgreSQL NOT RUN locally by host contract; hosted test is
+mandatory with no skip. Full builds/compiler/browser/install NOT RUN on Contabo.
+Old14 inspector paths and baseline/gates unchanged. Current role-purpose hold
+is not resolved until protected actual catalog observation and manual review.

@@ -89,7 +89,7 @@ function validateBackupAcl(a,acl) {
 
 function validateBackupAttribution(a) {
   if(!backupExact(a,backupBools+","+backupCounts) || backupBools.split(",").some(k=>typeof a[k]!=="boolean") || backupCounts.split(",").some(k=>!Number.isSafeInteger(a[k]) || a[k]<0 || a[k]>10000))backupFail("OUTPUT_INVALID")
-  if(a.matchedOtherPrivilegeRows>a.otherPrivilegeRows || a.otherSelectRows>a.otherPrivilegeRows || a.otherWriteRows>a.otherPrivilegeRows || a.otherGrantableRows>a.otherPrivilegeRows || a.matchedOtherRecipientCount>a.otherRecipientCount || a.matchedOtherRecipientCount>1 || a.otherRecipientCount>a.otherPrivilegeRows || (a.matchedOtherRecipientCount===0)!==(a.matchedOtherPrivilegeRows===0) || !a.declaredRolePresent && (a.matchedOtherRecipientCount!==0 || a.defaultReadOnly))backupFail("OUTPUT_INVALID")
+  if(a.matchedOtherPrivilegeRows>a.otherPrivilegeRows || a.otherSelectRows>a.otherPrivilegeRows || a.otherWriteRows>a.otherPrivilegeRows || a.otherGrantableRows>a.otherPrivilegeRows || a.matchedOtherRecipientCount>a.otherRecipientCount || a.matchedOtherRecipientCount>1 || a.otherRecipientCount>a.otherPrivilegeRows || (a.otherRecipientCount===0)!==(a.otherPrivilegeRows===0) || (a.matchedOtherRecipientCount===0)!==(a.matchedOtherPrivilegeRows===0) || !a.declaredRolePresent && (a.matchedOtherRecipientCount!==0 || a.matchedOtherPrivilegeRows!==0 || a.defaultReadOnly))backupFail("OUTPUT_INVALID")
   return a
 }
 
