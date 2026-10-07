@@ -1,0 +1,28 @@
+
+ RUN  v4.1.2 /mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-release-integration-20261007
+
+ ✓ src/__tests__/workforce-exception-recorded-outcomes-ui.test.ts > recorded outcome presentation with real report builder and locale catalogs > distinguishes empty samples and an observed zero in en 156ms
+ ✓ src/__tests__/workforce-exception-recorded-outcomes-ui.test.ts > recorded outcome presentation with real report builder and locale catalogs > distinguishes empty samples and an observed zero in ru 46ms
+ ✓ src/__tests__/workforce-exception-recorded-outcomes-ui.test.ts > recorded outcome presentation with real report builder and locale catalogs > distinguishes empty samples and an observed zero in az 54ms
+ ✓ src/__tests__/workforce-exception-recorded-outcomes-ui.test.ts > recorded outcome presentation with real report builder and locale catalogs > renders link, unresolved and integrity counts without classifying an outcome 45ms
+ ✓ src/__tests__/workforce-exception-recorded-outcomes-ui.test.ts > recorded outcome presentation with real report builder and locale catalogs > reserves percentages for the reviewed final HR sample in en 28ms
+ ✓ src/__tests__/workforce-exception-recorded-outcomes-ui.test.ts > recorded outcome presentation with real report builder and locale catalogs > reserves percentages for the reviewed final HR sample in ru 44ms
+ ✓ src/__tests__/workforce-exception-recorded-outcomes-ui.test.ts > recorded outcome presentation with real report builder and locale catalogs > reserves percentages for the reviewed final HR sample in az 28ms
+ ✓ src/__tests__/workforce-exception-recorded-outcomes-ui.test.ts > elapsed duration formatting > formats 0 milliseconds without wrapping at 24 hours 1ms
+ ✓ src/__tests__/workforce-exception-recorded-outcomes-ui.test.ts > elapsed duration formatting > formats 1 milliseconds without wrapping at 24 hours 1ms
+ ✓ src/__tests__/workforce-exception-recorded-outcomes-ui.test.ts > elapsed duration formatting > formats 59999 milliseconds without wrapping at 24 hours 1ms
+ ✓ src/__tests__/workforce-exception-recorded-outcomes-ui.test.ts > elapsed duration formatting > formats 60000 milliseconds without wrapping at 24 hours 1ms
+ ✓ src/__tests__/workforce-exception-recorded-outcomes-ui.test.ts > elapsed duration formatting > formats 3600000 milliseconds without wrapping at 24 hours 1ms
+ ✓ src/__tests__/workforce-exception-recorded-outcomes-ui.test.ts > elapsed duration formatting > formats 90000000 milliseconds without wrapping at 24 hours 1ms
+ ✓ src/__tests__/workforce-exception-recorded-outcomes-ui.test.ts > elapsed duration formatting > rejects unavailable or invalid elapsed values null 1ms
+ ✓ src/__tests__/workforce-exception-recorded-outcomes-ui.test.ts > elapsed duration formatting > rejects unavailable or invalid elapsed values -1 1ms
+ ✓ src/__tests__/workforce-exception-recorded-outcomes-ui.test.ts > elapsed duration formatting > rejects unavailable or invalid elapsed values NaN 1ms
+ ✓ src/__tests__/workforce-exception-recorded-outcomes-ui.test.ts > elapsed duration formatting > rejects unavailable or invalid elapsed values Infinity 2ms
+ ✓ src/__tests__/workforce-exception-recorded-outcomes-ui.test.ts > elapsed duration formatting > rejects unavailable or invalid elapsed values 9007199254740992 1ms
+ ✓ src/__tests__/workforce-exception-recorded-outcomes-ui.test.ts > elapsed duration formatting > rejects unavailable or invalid elapsed values 0.5 0ms
+
+ Test Files  1 passed (1)
+      Tests  19 passed (19)
+   Start at  00:10:46
+   Duration  2.97s (transform 300ms, setup 59ms, import 433ms, tests 416ms, environment 1.56s)
+

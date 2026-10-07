@@ -1,0 +1,44 @@
+{
+  "artifacts": [
+    {
+      "path": "hrm-pr627-root-premerge-check.py",
+      "bytes": 4160,
+      "sha256": "b0166fc5b3ab1fc8ca786cc10fa90f23c86ff1037347288717699b39004d2a46"
+    },
+    {
+      "path": "hrm-pr627-root-premerge-proof.json",
+      "bytes": 3698,
+      "sha256": "4e13706ced373f9bccd45ab12f52ab60fbe63958b6dfe478f8115589053576c3"
+    },
+    {
+      "path": "hrm-pr627-normal-merge-input.json",
+      "bytes": 76,
+      "sha256": "5b15b497863f00ca4061792765176f580280c3398b735d90200be3268b473094"
+    },
+    {
+      "path": "hrm-pr627-normal-merge-result.json",
+      "bytes": 123,
+      "sha256": "fb241a9913d586238164523914b6ee7660441a611cf008b7275aba7a2c2839b0"
+    },
+    {
+      "path": "hrm-pr627-normal-merge-commit-proof.json",
+      "bytes": 3435,
+      "sha256": "80db40b39939df27145c87787359cc3746b51eda47bfbff56f4a1b349e1a30ad"
+    },
+    {
+      "path": "hrm-backup-acl-independent-postmerge-60efe238.json",
+      "bytes": 8279,
+      "sha256": "5b93d8e85840527d6de671308f2c07658e99e5d85380d2b093f351da0d036504"
+    },
+    {
+      "path": "hrm-backup-main392-first-runs.json",
+      "bytes": 49725,
+      "sha256": "4531d255be5a8614784ce140ddef61dcaa7541f0cec362cabd6453b10ea16639"
+    }
+  ],
+  "currentFinalHead": "33f93325599e883973c4c71c256cce8ad91168b3",
+  "currentRuntime": "PENDING_FRESH12_MANUAL5_REQUIRED5",
+  "c7Status": "ALL5_ACTUAL_PASS_BUT_ADDITIVE_POLICY_P2_HOLD",
+  "auxMain": "392e0a38e37b9f3915e5ceb2d3b5caf8cd0698ad",
+  "actualProductionAttribution": "NOT RUN"
+}

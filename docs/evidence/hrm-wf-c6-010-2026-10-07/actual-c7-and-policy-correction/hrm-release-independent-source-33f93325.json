@@ -1,0 +1,599 @@
+{
+  "version": 1,
+  "status": "SOURCE_ACCEPTED_P2_SOURCE_RESOLVED_FRESH_RUNTIME_PENDING",
+  "head": "33f93325599e883973c4c71c256cce8ad91168b3",
+  "tree": "225f13aa65017f2901ccc6309674cb948cf11957",
+  "reviewedAtUtc": "2026-10-07T22:15:22.728582+00:00",
+  "sourcePublished": false,
+  "cleanObserved": true,
+  "worktree": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-release-integration-20261007",
+  "onlyChangedPathsVsC7": [
+    "docs/hrm-wf-c6-010-session-log.md",
+    "scripts/workforce-exception-report-browser-evidence.mjs",
+    "src/__tests__/workforce-exception-recorded-outcomes-ui.test.ts",
+    "src/components/workforce/workforce-exception-recorded-outcomes.tsx"
+  ],
+  "bindings": [
+    {
+      "path": "src/components/workforce/workforce-exception-recorded-outcomes.tsx",
+      "bytes": 6319,
+      "sha256": "f661501fc64ff73a91652f30bdf4638374622db21e3ef107748a248b0fb0ada1"
+    },
+    {
+      "path": "src/__tests__/workforce-exception-recorded-outcomes-ui.test.ts",
+      "bytes": 10479,
+      "sha256": "8c1991b1d8a04ddf67e1795f176d7482210c83c0b754e241072ff49d1d5b7ac9"
+    },
+    {
+      "path": "scripts/workforce-exception-report-browser-evidence.mjs",
+      "bytes": 42367,
+      "sha256": "6f6e80a3a8a882f8b1abf26ae9b99cef121f5e416eb7317229c1ee15ccb339ab"
+    },
+    {
+      "path": "docs/hrm-wf-c6-010-session-log.md",
+      "bytes": 92454,
+      "sha256": "1eb8ba166cb9f2c20da6736415d8574b5cbf3bbe1b6052f3f59d977467dd3411"
+    }
+  ],
+  "P2Correction": {
+    "originalFindingStatus": "SOURCE_RESOLVED_AFTER_ROOT_TARGETED_VERIFICATION; NEW_FULLHEAD_RUNTIME_PENDING",
+    "path": "src/components/workforce/workforce-exception-recorded-outcomes.tsx",
+    "actualForegroundLine": 34,
+    "oneProductionLineChanged": true,
+    "exactMeaning": "All-recorded correction linkage shown as localized count+unchanged count/denominator subtitle; no percentage. Final four reviewed outcome percentages unchanged. Emptycohort noCases vs existingcohort link0 distinguished. Backend all-recorded immutable ratio/time/cohort/API remains historical descriptive data, no classification inferred.",
+    "priorFindingLocationCorrection": "Original P2 JSON mistakenly referenced line36; actual affected foreground is line34. Whole exact source/code binding and finding interpretation unaffected. Additive correction only; previous review not rewritten.",
+    "testBehavior": "19 actual root realbuilder UI cases PASS, including3locale reviewed3/cohort4 final33.33% and correction-only nullshares; browserharness exact APIcohort/share/facts/privacy/RLS preserved plus strict localizedcount/no%-foreground/countsubtitle/no oldshare anchor assertions for all existing9scenarios. Hosted browser new head not yet run."
+  },
+  "unchangedCoreToolBaselineLocaleBindings": [
+    {
+      "path": "src/lib/workforce/exception-outcome-classification.ts",
+      "sha256": "947410fb0687987a465c38ce0c9455d3923d62039d9030b43bda3e0afae99a23",
+      "unchangedC7": true
+    },
+    {
+      "path": "src/lib/workforce/exception-policy-draft.ts",
+      "sha256": "f45f761e9c2e829351eb930c7e191f667327b3ed040338b4033b54381da59b6b",
+      "unchangedC7": true
+    },
+    {
+      "path": "src/lib/workforce/exception-workbench.ts",
+      "sha256": "17107791d3895fe0e66d4ed349c32f19eec21fc4bb42220060ff8989ebc3cd21",
+      "unchangedC7": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-writer.ts",
+      "sha256": "61814e5d395143a6deacc9bd92e0aee1ffb508cc1c168724897dd9bf67da201f",
+      "unchangedC7": true
+    },
+    {
+      "path": "src/lib/workforce/exception-decision-service.ts",
+      "sha256": "dd10ffed0f37f80b79eae0e784918966033995283cafdbf6a4ec738b6275e21c",
+      "unchangedC7": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-report-recorded-outcomes.ts",
+      "sha256": "1d84daa28a7b21a8ad8545f5b494c1030c338cff75fc168f87153541d5f0321c",
+      "unchangedC7": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-report-read.ts",
+      "sha256": "b34a3ef9d52359a235040802c5ede11c03f128c7250b41f5b2a86d10860b82b5",
+      "unchangedC7": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-ledger.ts",
+      "sha256": "da971cdfdc696085e40be8a35386e48a1746a3c92ebaa2ab9e0cedded25cc8ab",
+      "unchangedC7": true
+    },
+    {
+      "path": "src/lib/workforce/exception-workbench-token.ts",
+      "sha256": "4479cba8767dd4a8bb596ff8bf311ba139d1b417782035b13db92edef204fd1a",
+      "unchangedC7": true
+    },
+    {
+      "path": "src/lib/workforce/access-control.ts",
+      "sha256": "b4915d133bb102251dccc94b9ba33a3a65905488135b00cb652f0e299cfa0b9f",
+      "unchangedC7": true
+    },
+    {
+      "path": "src/lib/workforce/access-grant-resolution.ts",
+      "sha256": "1720277ff37308894c9c3e3313a7235150350bcfa254ac4846905a5f9875e2c3",
+      "unchangedC7": true
+    },
+    {
+      "path": "src/lib/workforce/exception-read-access.ts",
+      "sha256": "adedcbd7844335ff63c2506c82c46fee240a473ba47974e90bcb8a8f62da69ae",
+      "unchangedC7": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-read-scope.ts",
+      "sha256": "42ff417bb8afc67546b4cc57bfc0b6549a839c2ce293297b1f440e625093f9b5",
+      "unchangedC7": true
+    },
+    {
+      "path": "src/lib/workforce/team-membership.ts",
+      "sha256": "47fc2f92856ff8e8bc67a31bf9087c73faf673bc741fc58b76a4f5efac7723fb",
+      "unchangedC7": true
+    },
+    {
+      "path": "src/lib/with-workforce-rls-auth.ts",
+      "sha256": "289aa253b4d8d3a25913136a545db598bf1a01c9b571b6c89e2689da2fe6d8ff",
+      "unchangedC7": true
+    },
+    {
+      "path": "src/app/api/v1/workforce/exceptions/route.ts",
+      "sha256": "5a33ec78dc7fe6b05e920cbdb22fecb46f85d45c74840486533ea56df68034ff",
+      "unchangedC7": true
+    },
+    {
+      "path": "src/app/api/v1/workforce/exception-decisions/route.ts",
+      "sha256": "eeeb1dda5d637fb0fdaa831021556a1200a1bd502e73df05838e850284db34c9",
+      "unchangedC7": true
+    },
+    {
+      "path": "src/app/api/v1/workforce/exception-reports/route.ts",
+      "sha256": "6d4935a3cd3adbbbb411619a813287a6ba8b7d58cc89dec888074130360233bf",
+      "unchangedC7": true
+    },
+    {
+      "path": "src/components/workforce/workforce-exception-queue.tsx",
+      "sha256": "5160dcc8b943d0caca712ae0dcad02725784fcb4c2401479c16dede00d0c3b1f",
+      "unchangedC7": true
+    },
+    {
+      "path": ".github/workflows/workforce-exception-report-browser-evidence.yml",
+      "sha256": "1dcd49d422fb212d4ee1eac6368de97837fe62fc5ca5975a7faa2b6c61dc18e7",
+      "unchangedC7": true
+    },
+    {
+      "path": "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql",
+      "sha256": "314d4f0e83c81544a50633bceb977298ece24fff918923310671b07c0e8c5f2a",
+      "unchangedC7": true
+    },
+    {
+      "path": "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql",
+      "sha256": "1deee0b735aee6ca3b055ee71b3663799daa71c3d6c6ef66c47a02dee7efecec",
+      "unchangedC7": true
+    },
+    {
+      "path": "prisma/migrations/20260927014300_workforce_exception_case_revisions_contract/migration.sql",
+      "sha256": "418f1cf3c481c1624cd16a26c0aad49680a2430f75fe9e2f3dd22117f000fc7e",
+      "unchangedC7": true
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-exception-classification-browser.sql",
+      "sha256": "41ecf5a96c0accb2469971042bf3f47f0e8d7e6fcfa65a8538e1cd7f4013d7e0",
+      "unchangedC7": true
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-exception-report-browser.sql",
+      "sha256": "85d4237ef3e2a9c1fb782d9ee70e8ed801d82fcc2703fd4932494fa2e3e344b3",
+      "unchangedC7": true
+    },
+    {
+      "path": "scripts/workforce-exception-classification-browser-evidence.mjs",
+      "sha256": "216967516c60bab48390aefeebce651524130eefabc7c90cf4d00ee05e899025",
+      "unchangedC7": true
+    },
+    {
+      "path": "test-baseline.json",
+      "sha256": "8f0fc568274f9fd8c0c741db618d6e4d81025de7112a315cd93e6b92bbd5a4b1",
+      "unchangedC7": true
+    },
+    {
+      "path": "typecheck-baseline.json",
+      "sha256": "919fa9d0212b18ee685af4f08680ebbc34e8c4969294054447df03147bf0fc53",
+      "unchangedC7": true
+    },
+    {
+      "path": "scripts/ci/check-typecheck-gate.sh",
+      "sha256": "a18608d9297c039380481fb27d6200d9ebbcc731e9ec23dd40b5e3a2c5a40937",
+      "unchangedC7": true
+    },
+    {
+      "path": "scripts/ci/check-typecheck-baseline.mjs",
+      "sha256": "8b8a2472a1c813e85c4177c24c6df5fb5907d981b5b43e6870a04cbbba2b812a",
+      "unchangedC7": true
+    },
+    {
+      "path": "scripts/check-test-baseline.mjs",
+      "sha256": "6c3380718fd71061d2efe4aa396fcb9cc998336c5c95a3bbd2de05230058027e",
+      "unchangedC7": true
+    },
+    {
+      "path": ".github/workflows/hrm-default-acl-inspection.yml",
+      "sha256": "954c6d042bf00420f1ecd3c9ed0c378bc41305c0af08c30cdc3a97f06f81df2a",
+      "unchangedC7": true
+    },
+    {
+      "path": "scripts/hrm-default-acl-inspection.mjs",
+      "sha256": "a6aa4f3526fd5edf29bd2b3a1309f7703e85acad70c0e683cba69dbb281c2027",
+      "unchangedC7": true
+    },
+    {
+      "path": "scripts/hrm-default-acl-inspection.sql",
+      "sha256": "524bc02f34a75f445aff6b3834df6e02aa86665dee9acd835b2b5fc621127e2a",
+      "unchangedC7": true
+    },
+    {
+      "path": "scripts/hrm-default-acl-inspection.test.mjs",
+      "sha256": "402a2dde20443676d6bac430ab4e80a74f507c2dd3828b920c278cafcf0c7c3c",
+      "unchangedC7": true
+    },
+    {
+      "path": "docs/hrm-default-acl-inspection-session-log.md",
+      "sha256": "8d3af68cc9a724374a30d5eba1e06d37537473cef61ca4d89549adced5500a5f",
+      "unchangedC7": true
+    },
+    {
+      "path": ".github/workflows/hrm-migration-metadata-preflight.yml",
+      "sha256": "f90937ecda3b81e7dd017819cfaec1afdefc5fee58167fdfc2289ce012a1dcf1",
+      "unchangedC7": true
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.mjs",
+      "sha256": "46b417da7bbe763960b8ede8fa0e9dbd98543d090d54f73979289504bfe35771",
+      "unchangedC7": true
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.sql",
+      "sha256": "b174e32eb68a0dbcca98e8557fe8c716ed8277111e79ba822bce43f4e7023b6a",
+      "unchangedC7": true
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.test.mjs",
+      "sha256": "39c947982f5e7dc2ca1e96307ac5314518bfe748ec58a3cf217f8f09194c0eef",
+      "unchangedC7": true
+    },
+    {
+      "path": ".github/workflows/hrm-loopback-acl-inspection.yml",
+      "sha256": "bfbcb2b83fab53817ce71ae1e511389cbab7f9ca6aeff0785801b24aee76a116",
+      "unchangedC7": true
+    },
+    {
+      "path": "docs/hrm-loopback-acl-inspection-session-log.md",
+      "sha256": "36658d86a3a32d577e1284c3f0ca7bdd38221d64237903c74ddcc5fa60969d72",
+      "unchangedC7": true
+    },
+    {
+      "path": "scripts/hrm-loopback-acl-inspection.mjs",
+      "sha256": "e8d5fb47eddfb0d7e371943f2d3b3459b66e9d17927161bf9233bd6189074dbf",
+      "unchangedC7": true
+    },
+    {
+      "path": "scripts/hrm-loopback-acl-inspection.sql",
+      "sha256": "7a4a9d79534e40cf7672c31797f2015a543f7061c1522ee30a7cfb9e147f8c58",
+      "unchangedC7": true
+    },
+    {
+      "path": "scripts/hrm-loopback-acl-inspection.test.mjs",
+      "sha256": "7e1264a6a754b655306b936c971a28584532b6921a005012f5d2769d522c8993",
+      "unchangedC7": true
+    },
+    {
+      "path": "messages/az.json",
+      "sha256": "1aaff0ddb6086e97e22a50a4b88597d4ec02096cbbf2a38ecfcae6c07c6719cb",
+      "unchangedC7": true
+    },
+    {
+      "path": "messages/en.json",
+      "sha256": "b92bd59be9e84c9d44678d5261cccf9b13af40f620c1bddc672dc54eac9696a8",
+      "unchangedC7": true
+    },
+    {
+      "path": "messages/ru.json",
+      "sha256": "71dea36553c01a3d6e39ec796a242d8afc0b52be41bcb61ac0c43399053c2571",
+      "unchangedC7": true
+    },
+    {
+      "path": "src/__tests__/lib-mtm-visit-action-switches.test.ts",
+      "sha256": "4db528520a78d67c4227ca643b0bfe81c5e94abcd9244281e5c1c02bbbefdb4f",
+      "unchangedC7": true
+    },
+    {
+      "path": "src/__tests__/mtm-visit-action-switches-ui.test.ts",
+      "sha256": "550d1f9e56205d5d022c51cc5b12c6c828d0ff8dd743d283e4717c39492b2243",
+      "unchangedC7": true
+    },
+    {
+      "path": "src/app/(dashboard)/mtm/settings/visit-action-switches.tsx",
+      "sha256": "bb0cf8747d76d48fc9b96a913f254326c0e4aba0c89de16a340de7bd9cc2fb4c",
+      "unchangedC7": true
+    },
+    {
+      "path": "src/app/(dashboard)/mtm/settings/visit-policy-settings.tsx",
+      "sha256": "1c6805c3a137f356d7dfa7d769c2107ee1d19b52a1b869f46a346e170d8d65c8",
+      "unchangedC7": true
+    },
+    {
+      "path": "src/lib/mtm/visit-action-switches.ts",
+      "sha256": "946e908611fd87f5cf95f9d8f9021bc804ed5b587db0430a6d33e92e9970e671",
+      "unchangedC7": true
+    },
+    {
+      "path": "scripts/hrm-backup-acl-attribution.mjs",
+      "sha256": "479a0e652da1125b41d3bce824a18f2a520d4a4801e60b44db1a8dc6021be0bd",
+      "exactReviewedAux60": true
+    },
+    {
+      "path": "scripts/hrm-backup-acl-attribution.sql",
+      "sha256": "d9f5591952fc872b8ca9c2681e073955c1cd1c249757e173e64360d4a5796818",
+      "exactReviewedAux60": true
+    },
+    {
+      "path": "scripts/hrm-backup-acl-attribution.test.mjs",
+      "sha256": "dab727f980849548003e5164d2739ad01e82ead170765e2472350d8a3d0aa80c",
+      "exactReviewedAux60": true
+    },
+    {
+      "path": ".github/workflows/hrm-backup-acl-attribution.yml",
+      "sha256": "b739bd0393c05721aaf7141ddbbf6aeced78866125abd868198e1fc52eebe77f",
+      "exactReviewedAux60": true
+    },
+    {
+      "path": "docs/hrm-backup-acl-attribution-session-log.md",
+      "sha256": "d751bb167e59ab4afd5085176950696d916d8b55976991f42a6ced913a3ab5f1",
+      "exactReviewedAux60": true
+    },
+    {
+      "path": "messages/en.json",
+      "sha256": "b92bd59be9e84c9d44678d5261cccf9b13af40f620c1bddc672dc54eac9696a8",
+      "all14WorkforceNamespacesAndWholeFileUnchanged": true
+    },
+    {
+      "path": "messages/ru.json",
+      "sha256": "71dea36553c01a3d6e39ec796a242d8afc0b52be41bcb61ac0c43399053c2571",
+      "all14WorkforceNamespacesAndWholeFileUnchanged": true
+    },
+    {
+      "path": "messages/az.json",
+      "sha256": "1aaff0ddb6086e97e22a50a4b88597d4ec02096cbbf2a38ecfcae6c07c6719cb",
+      "all14WorkforceNamespacesAndWholeFileUnchanged": true
+    }
+  ],
+  "protectedAncestors": [
+    {
+      "label": "acceptedPR589",
+      "sha": "a856a9e533c4f3cec6f2313e69f5be0d5b4d4226",
+      "isAncestor": true
+    },
+    {
+      "label": "acceptedPR605",
+      "sha": "bf6ed11f2bba8c93e828fb044315794b44224741",
+      "isAncestor": true
+    },
+    {
+      "label": "acceptedPR608",
+      "sha": "973241bacc296b71fe817d1af11187c32e8126af",
+      "isAncestor": true
+    },
+    {
+      "label": "acceptedPR612",
+      "sha": "9f3cc73dcdb8c4ccea1fdac9dfae29570339abc5",
+      "isAncestor": true
+    },
+    {
+      "label": "C7AcceptedRuntime",
+      "sha": "d303ae3aac6a2ddb62439e433c08bca29c0befb9",
+      "isAncestor": true
+    },
+    {
+      "label": "C8AcceptedRuntime",
+      "sha": "30c4185b41d85be43a588e71d8c74c5f34e63596",
+      "isAncestor": true
+    },
+    {
+      "label": "acceptedC12EvidenceArchive",
+      "sha": "c123556e7a758b7eb5264137dcaf85504b07e471",
+      "isAncestor": true
+    },
+    {
+      "label": "C6EvidenceArchive",
+      "sha": "2cbfe2981578520edc9def5fa3c681ab5fb55536",
+      "isAncestor": true
+    },
+    {
+      "label": "incomingMain8301",
+      "sha": "8301f6ce0925cf1b8f9ddaa004ea31c26d1e6982",
+      "isAncestor": true
+    },
+    {
+      "label": "reviewedAuxPreflight",
+      "sha": "546d67c1efe7e145e1bfa9a19e9eea7c108b5e57",
+      "isAncestor": true
+    },
+    {
+      "label": "acceptedPriorFinalSource062",
+      "sha": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+      "isAncestor": true
+    },
+    {
+      "label": "acceptedIncomingMain8235",
+      "sha": "8235c3b24ad12189e1ef95427ce7f192c077ae5c",
+      "isAncestor": true
+    },
+    {
+      "label": "currentIncomingMain5ce",
+      "sha": "5cebf61623c58ca65b66f2b58506157c097a1931",
+      "isAncestor": true
+    },
+    {
+      "label": "reviewedDiagnostics3fc",
+      "sha": "3fc77196bdc7b6582b3fbcb32e9155004702de69",
+      "isAncestor": true
+    },
+    {
+      "label": "preservedInitialHintCheckpoint",
+      "sha": "d55110c4cfe2bc7ba7cc8c5444498d5531d53ad8",
+      "isAncestor": true
+    },
+    {
+      "label": "reviewedHintSuccessor683",
+      "sha": "683bfa056ab1f81877de5b8a238658847f1f51e4",
+      "isAncestor": true
+    },
+    {
+      "label": "reviewed8fc",
+      "sha": "8fcf51b8a600c49c34c2d7e87e25b7eae952aa69",
+      "isAncestor": true
+    },
+    {
+      "label": "reviewed8d",
+      "sha": "8d6088440a13bc308bf20ea05b46cf4e6cd4d2fb",
+      "isAncestor": true
+    },
+    {
+      "label": "reviewed5ed",
+      "sha": "5ed4dcffae03dce7e76709a5f610a351dfc5cd06",
+      "isAncestor": true
+    },
+    {
+      "label": "reviewedTool2fb",
+      "sha": "2fb474a7842034ab7e845f5bf553fd94c6301481",
+      "isAncestor": true
+    },
+    {
+      "label": "protectedMainFinanceEbb",
+      "sha": "ebb48f83a02474cc616ec3c3a421c3c77fcbcf0f",
+      "isAncestor": true
+    },
+    {
+      "label": "protectedMainTool777",
+      "sha": "777d6daa0e902ebd28a369694e235accf44ad3eb",
+      "isAncestor": true
+    },
+    {
+      "label": "acceptedArchival851",
+      "sha": "8513737b880623b2b62ab4721672a55b8101ba1a",
+      "isAncestor": true
+    },
+    {
+      "label": "superseded091",
+      "sha": "09190249b5e13b405ac95d06aa9dcc6c9a0f17ce",
+      "isAncestor": true
+    },
+    {
+      "label": "reviewedTool05",
+      "sha": "05deed0368ec6f4001c04508c95742623fb5a4f5",
+      "isAncestor": true
+    },
+    {
+      "label": "protectedIncomingMain4c",
+      "sha": "4c1e3d29dc492254978f0d0ff303d91957b26f2c",
+      "isAncestor": true
+    },
+    {
+      "label": "currentMain7bf",
+      "sha": "7bfcca6b5b53a33fca926786718f8a80037e2809",
+      "isAncestor": true
+    },
+    {
+      "label": "auxLiveLoopbackTool",
+      "sha": "5f1437559afd5e1f2f8a2ebcf5aa4123c687e6db",
+      "isAncestor": true
+    },
+    {
+      "label": "currentAcceptedMainMTM625",
+      "sha": "cecb5a7d80895d9f41d7c2b7ddcc43a2e6057938",
+      "isAncestor": true
+    },
+    {
+      "label": "lastAcceptedWholeTechnical5638",
+      "sha": "5638f1ea63c2818aef8be1b0c497eff718303388",
+      "isAncestor": true
+    },
+    {
+      "label": "reviewedBackupAttributionAux60",
+      "sha": "60efe23846fddc7deea16c48ba3a90bd962aae35",
+      "isAncestor": true
+    },
+    {
+      "label": "policyFindingC7ArchivedOriginal",
+      "sha": "c7deecf8c86672204434c157f7be2f0e85566fc7"
+    }
+  ],
+  "C12": {
+    "status": "PARTIAL",
+    "archiveTree": "ce32912ddbab58e5e287930a446ba690531ead09",
+    "originalArchiveTree": "ce32912ddbab58e5e287930a446ba690531ead09",
+    "exactOriginalc123": true,
+    "newRealOperationalCredit": false
+  },
+  "journalPrefixExactC7": true,
+  "prospectiveMerge": {
+    "observedMain": "f8dd20c7a849643087ee31969c2f582a96c8bab3",
+    "tree": "225f13aa65017f2901ccc6309674cb948cf11957",
+    "exactNewFinalCandidateTree": true,
+    "rootWaitsForOriginalC7CompilerBeforePublishing": true
+  },
+  "rootActualTargetedVerification": {
+    "uiFiles": 1,
+    "uiTests": 19,
+    "uiPass": 19,
+    "lintTouchedPaths": 2,
+    "lintRules": [
+      {
+        "path": "/tmp/hrm-c6-count-component-eslint-config.json",
+        "configuredRuleCount": 113
+      },
+      {
+        "path": "/tmp/hrm-c6-count-ui-test-eslint-config.json",
+        "configuredRuleCount": 113
+      }
+    ],
+    "rootReportedLintNodeSyntaxAndDiff": "PASS",
+    "originalBindings": [
+      {
+        "path": "/tmp/hrm-c6-count-correction-first-ui-original.log",
+        "bytes": 3667,
+        "sha256": "5f153a217d2326d0b79d21490a8195b7e271fa303ee853a3e7542094cefb56f5"
+      },
+      {
+        "path": "/tmp/hrm-c6-count-correction-first-lint-original.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "/tmp/hrm-c6-count-component-eslint-config.json",
+        "bytes": 45075,
+        "sha256": "071d811c3769d601882611fe3cc12a17c4754751e3ae64daff93dd9fb66495a2"
+      },
+      {
+        "path": "/tmp/hrm-c6-count-ui-test-eslint-config.json",
+        "bytes": 45075,
+        "sha256": "071d811c3769d601882611fe3cc12a17c4754751e3ae64daff93dd9fb66495a2"
+      }
+    ],
+    "reviewerNoDuplicateExecution": true
+  },
+  "authorshipDisclosure": "Root owns production component, peer independently reviews exactone-line correction. Peer owns updated UI tests/reportharness, root independently cross-reviewed their complete diff and ran targeted UI/lint/syntax. No independent own-test authorship claim. Prior backend/roles/tenant/private-audit/CASE_RECORDED_AT/no personnel automation bytes unchanged acceptedC7/5638.",
+  "findingsP0P1P2P3": [],
+  "sourceLimit": "This exact new source has no fresh CI/runtime yet. Current C7 successful factual runtime remains archived before-fix history, not borrowed whole-semantic acceptance.",
+  "originalProofs": [
+    {
+      "path": "/tmp/hrm-release-independent-source-c7deecf8.json",
+      "bytes": 27066,
+      "sha256": "995bfa5dca34a575979ea0dfade1715c2ecc0f9370c63594b3c534732cbbf4b1"
+    },
+    {
+      "path": "/tmp/hrm-release-c7-percentage-policy-peer-finding.json",
+      "bytes": 4163,
+      "sha256": "30ffb9da5c88cd02a79bde7af6c572bd480947c6d1230f337b02926d7ed3028a"
+    },
+    {
+      "path": "/tmp/hrm-release-p2-count-correction-source-peer-working.json",
+      "bytes": 3156,
+      "sha256": "3c43762241eb50e4be7f9b0ed789fa391afd6e1e867e0bd85344b545a68cf1fd"
+    },
+    {
+      "path": "/tmp/hrm-release-independent-browser-c7deecf8.json",
+      "bytes": 48309,
+      "sha256": "4256fd4bcb37d46ccf56a97979f9da2e34996e71e792306eadaa5cd05ee37bfd"
+    }
+  ],
+  "remaining": [
+    "Finish/preserve originalC7 fullcompiler attempt; then root publish new33 and run exact fullmanual5/required5/allapplicable13.",
+    "Actual deployed-main backup recipient attribution and manual scope acceptance still pending; no productionHRM merge/deploy/activation/grants/secrets changes by peer.",
+    "No synthetic C12, fullmobile/WCAG/backup commissioning or actual HR rate credit."
+  ]
+}

@@ -795,3 +795,44 @@ manual5/13requiredcurrentCI andindependentacceptance. Auxiliary60/627 unaffected
 frozen, cannormalrelease/protectedreadonlyroleattribution independently.
 Accounting84/161/77/60,C6/C12PARTIAL; no grant/role/config/access/secret/
 activation/personnelautomation/Support/Mac changes.
+
+
+## 2026-10-08 Europe/Berlin — originalC7 complete and immutable; final33 published/ownaux392 release
+
+All5 originalC7manual37692949528 firstattemptSUCCESS preserved before newpush:
+class113037420086/report113037420435/PG113037420308/build113037420302/
+compiler113037420360. Actualfreshbrowser class11/report9/6HR201+6audit/7MFA/
+22facts/RLS/cleanupPASS, root+peer6currentPNG views withRUactions/finalrates
+NOTVISIBLE/AZfooterclip+EnglishIntl durations/devIssue qualifications. ZIPclass
+11514133211/268652/SHA298ce072.../CRC5, report11513514648/852763/SHA09ee06b2.../
+CRC14; fulloriginals retained. PG44noskip/18strictbaselineeveryentryfailing/
+Prisma/i18n24632PASS; build6.8min/static968/standalonePASS inheritedENOENT trace
+warning/typevalidationSKIP retained. Compiler11514304539/19685/CRC2 raw177767
+SHAfd626333... actuallyfreshbyteexact5638; exit2/1153/35families/owned18zero/
+64pairs exactbaseline973. No globallyclean claim. These runtimefacts remain
+immutable; C7 semanticpolicyP2 specifically prevents wholeacceptance/closure.
+
+Sourcefix33f93325599e883973c4c71c256cce8ad91168b3/tree225f13aa65017f2901ccc6309674cb948cf11957
+publishedFF589 after alloriginalmanualterminal/archivebranchC7policyP2published.
+Independent source83c222c6... exactone productionline + meaningfulharness/test
+changes/journalappend; allbackend/locale/19tool/gates exact, root19UI+scoped
+113rule lint2paths/syntax/diffPASS. Fresh manual37695306591/compiler113045459878/
+PG113045460004/build113045460030/report113045460101/class113045460165 running.
+Currentactualapplicable12=11auto+manual, supersedesprevious13count: source-only
+backupfilter correctly doesnottrigger becauseall5toolpaths nowalreadyaccepted
+onmain392; all19toolbytes exactreviewed60/main392. No oldruntimeborrow, current
+fullrequired5 andownHRMrelease stillpending. Evidenceordinarymerge source33
+retainsentirepriorjournalprefix plus exactnewsourceappend, no historyloss.
+
+Aux627fullrequired5 App15368 SUCCESS runner113036666355/scan113036666715/
+scope113037038431/static113037158500/type113037158519. Rootfresh mainf8/protection
+unchanged/currenthead60/old14+5gates/source66noskip/WHOLEe575 guardsPASS, then
+normalmatchedPUTmerge noadmin/force. Main392e0a38e37b9f3915e5ceb2d3b5caf8cd0698ad
+parents[f8,60], WHOLEe575exacttested60. Independentpostmerge5b93d8e8... confirms
+actualparents/tree/checks; first localobjectmissing resolvedbyreadonlyfetch
+andrecorded, no falsepremergeclaim. OwnDeploy37694967642 quality/buildrunning,
+protectedactualbackupattribution NOTRUN untilfullownrelease+pinnedSHAproof.
+No ACLapproval/HRMmerge/deploy/activation/personnelautomation/Support/access/
+role/grant/config/secret/Mac changes. Accounting84/161/77/60,C6/C12PARTIAL.
+Next final33wholefreshacceptance inparallel own392release/readonlycatalogmanual
+assessment, then onlynormal589release ifallcriteria.

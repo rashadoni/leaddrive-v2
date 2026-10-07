@@ -1,0 +1,1880 @@
+﻿2026-10-07T21:57:14.7625606Z Current runner version: '2.337.0'
+2026-10-07T21:57:14.7650581Z ##[group]Runner Image Provisioner
+2026-10-07T21:57:14.7651585Z Hosted Compute Agent
+2026-10-07T21:57:14.7652298Z Version: 20260901.588
+2026-10-07T21:57:14.7653263Z Commit: f88ec8081b781fac6c440065ac7ff9e710ce3d0b
+2026-10-07T21:57:14.7654098Z Build Date: 2026-09-01T19:56:44Z
+2026-10-07T21:57:14.7654777Z Worker ID: {1a24b372-873f-4bb2-a497-d58640732d46}
+2026-10-07T21:57:14.7655534Z Azure Region: centralus
+2026-10-07T21:57:14.7656163Z ##[endgroup]
+2026-10-07T21:57:14.7657633Z ##[group]Operating System
+2026-10-07T21:57:14.7658356Z Ubuntu
+2026-10-07T21:57:14.7658870Z 24.04.5
+2026-10-07T21:57:14.7659466Z LTS
+2026-10-07T21:57:14.7660032Z ##[endgroup]
+2026-10-07T21:57:14.7660577Z ##[group]Runner Image
+2026-10-07T21:57:14.7661213Z Image: ubuntu-24.04
+2026-10-07T21:57:14.7661781Z Version: 20260927.320.1
+2026-10-07T21:57:14.7663331Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260927.320/images/ubuntu/Ubuntu2404-Readme.md
+2026-10-07T21:57:14.7664985Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260927.320
+2026-10-07T21:57:14.7666002Z ##[endgroup]
+2026-10-07T21:57:14.7667087Z ##[group]GITHUB_TOKEN Permissions
+2026-10-07T21:57:14.7669681Z Contents: read
+2026-10-07T21:57:14.7670310Z Metadata: read
+2026-10-07T21:57:14.7670948Z ##[endgroup]
+2026-10-07T21:57:14.7673538Z Secret source: Actions
+2026-10-07T21:57:14.7674627Z Cache mode: write
+2026-10-07T21:57:14.7675584Z Prepare workflow directory
+2026-10-07T21:57:14.8077078Z Prepare all required actions
+2026-10-07T21:57:14.8124212Z Getting action download info
+2026-10-07T21:57:15.0758007Z Download action repository 'actions/checkout@v6' (SHA:d23441a48e516b6c34aea4fa41551a30e30af803)
+2026-10-07T21:57:15.1914833Z Download action repository 'actions/setup-node@v6' (SHA:249970729cb0ef3589644e2896645e5dc5ba9c38)
+2026-10-07T21:57:15.4181584Z Complete job name: Exact WF-C6-010 isolated production bundle build
+2026-10-07T21:57:15.4969009Z ##[group]Run actions/checkout@v6
+2026-10-07T21:57:15.4969907Z with:
+2026-10-07T21:57:15.4970358Z   repository: rashadoni/leaddrive-v2
+2026-10-07T21:57:15.4974293Z   token: ***
+2026-10-07T21:57:15.4974747Z   ssh-strict: true
+2026-10-07T21:57:15.4975180Z   ssh-user: git
+2026-10-07T21:57:15.4975624Z   persist-credentials: true
+2026-10-07T21:57:15.4976112Z   clean: true
+2026-10-07T21:57:15.4976568Z   sparse-checkout-cone-mode: true
+2026-10-07T21:57:15.4977109Z   fetch-depth: 1
+2026-10-07T21:57:15.4977545Z   fetch-tags: false
+2026-10-07T21:57:15.4977986Z   show-progress: true
+2026-10-07T21:57:15.4978431Z   lfs: false
+2026-10-07T21:57:15.4978899Z   submodules: false
+2026-10-07T21:57:15.4979358Z   set-safe-directory: true
+2026-10-07T21:57:15.4979874Z   allow-unsafe-pr-checkout: false
+2026-10-07T21:57:15.4980661Z env:
+2026-10-07T21:57:15.4981084Z   NEXT_TELEMETRY_DISABLED: 1
+2026-10-07T21:57:15.4981577Z ##[endgroup]
+2026-10-07T21:57:15.6041021Z Syncing repository: rashadoni/leaddrive-v2
+2026-10-07T21:57:15.6043530Z ##[group]Getting Git version info
+2026-10-07T21:57:15.6044583Z Working directory is '/home/runner/work/leaddrive-v2/leaddrive-v2'
+2026-10-07T21:57:15.6045713Z [command]/usr/bin/git version
+2026-10-07T21:57:15.6116983Z git version 2.55.0
+2026-10-07T21:57:15.6146990Z ##[endgroup]
+2026-10-07T21:57:15.6165224Z Temporarily overriding HOME='/home/runner/work/_temp/7a326e23-4815-4d81-8225-47e1eafeda42' before making global git config changes
+2026-10-07T21:57:15.6166921Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-07T21:57:15.6172025Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/leaddrive-v2/leaddrive-v2
+2026-10-07T21:57:15.6228809Z Deleting the contents of '/home/runner/work/leaddrive-v2/leaddrive-v2'
+2026-10-07T21:57:15.6234438Z ##[group]Determining repository object format
+2026-10-07T21:57:15.6236843Z ##[endgroup]
+2026-10-07T21:57:15.6237784Z ##[group]Initializing the repository
+2026-10-07T21:57:15.6241916Z [command]/usr/bin/git init /home/runner/work/leaddrive-v2/leaddrive-v2
+2026-10-07T21:57:15.6378497Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-10-07T21:57:15.6380271Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-10-07T21:57:15.6381982Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-10-07T21:57:15.6383549Z hint: call:
+2026-10-07T21:57:15.6384111Z hint:
+2026-10-07T21:57:15.6384944Z hint: 	git config --global init.defaultBranch <name>
+2026-10-07T21:57:15.6385799Z hint:
+2026-10-07T21:57:15.6386543Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-10-07T21:57:15.6388038Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-10-07T21:57:15.6388959Z hint:
+2026-10-07T21:57:15.6389387Z hint: 	git branch -m <name>
+2026-10-07T21:57:15.6389881Z hint:
+2026-10-07T21:57:15.6390544Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-10-07T21:57:15.6391611Z Initialized empty Git repository in /home/runner/work/leaddrive-v2/leaddrive-v2/.git/
+2026-10-07T21:57:15.6396121Z [command]/usr/bin/git remote add origin https://github.com/rashadoni/leaddrive-v2
+2026-10-07T21:57:15.6457155Z ##[endgroup]
+2026-10-07T21:57:15.6458508Z ##[group]Disabling automatic garbage collection
+2026-10-07T21:57:15.6461057Z [command]/usr/bin/git config --local gc.auto 0
+2026-10-07T21:57:15.6497533Z ##[endgroup]
+2026-10-07T21:57:15.6498342Z ##[group]Setting up auth
+2026-10-07T21:57:15.6498958Z Removing SSH command configuration
+2026-10-07T21:57:15.6506995Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-07T21:57:15.6542422Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-07T21:57:15.6939795Z Removing HTTP extra header
+2026-10-07T21:57:15.6948277Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-07T21:57:15.6985120Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-07T21:57:15.7197607Z Removing includeIf entries pointing to credentials config files
+2026-10-07T21:57:15.7203548Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-07T21:57:15.7236707Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-07T21:57:15.7473614Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-5c508e94-5abc-4c96-8728-6ece51d62b6c.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-10-07T21:57:15.7514585Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/leaddrive-v2/leaddrive-v2/.git.path /home/runner/work/_temp/git-credentials-5c508e94-5abc-4c96-8728-6ece51d62b6c.config
+2026-10-07T21:57:15.7550162Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/leaddrive-v2/leaddrive-v2/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-5c508e94-5abc-4c96-8728-6ece51d62b6c.config
+2026-10-07T21:57:15.7587398Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-5c508e94-5abc-4c96-8728-6ece51d62b6c.config
+2026-10-07T21:57:15.7625047Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-5c508e94-5abc-4c96-8728-6ece51d62b6c.config
+2026-10-07T21:57:15.7658910Z ##[endgroup]
+2026-10-07T21:57:15.7660321Z ##[group]Fetching the repository
+2026-10-07T21:57:15.7668907Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +c7deecf8c86672204434c157f7be2f0e85566fc7:refs/remotes/origin/codex/hrm-588-validation-20261005
+2026-10-07T21:57:23.3075361Z From https://github.com/rashadoni/leaddrive-v2
+2026-10-07T21:57:23.3079035Z  * [new ref]         c7deecf8c86672204434c157f7be2f0e85566fc7 -> origin/codex/hrm-588-validation-20261005
+2026-10-07T21:57:23.3088228Z [command]/usr/bin/git branch --list --remote origin/codex/hrm-588-validation-20261005
+2026-10-07T21:57:23.3115944Z   origin/codex/hrm-588-validation-20261005
+2026-10-07T21:57:23.3126530Z [command]/usr/bin/git rev-parse refs/remotes/origin/codex/hrm-588-validation-20261005
+2026-10-07T21:57:23.3153184Z c7deecf8c86672204434c157f7be2f0e85566fc7
+2026-10-07T21:57:23.3158219Z ##[endgroup]
+2026-10-07T21:57:23.3160169Z ##[group]Determining the checkout info
+2026-10-07T21:57:23.3162414Z ##[endgroup]
+2026-10-07T21:57:23.3164089Z [command]/usr/bin/git sparse-checkout disable
+2026-10-07T21:57:23.3215242Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-10-07T21:57:23.3248815Z ##[group]Checking out the ref
+2026-10-07T21:57:23.3252467Z [command]/usr/bin/git checkout --progress --force -B codex/hrm-588-validation-20261005 refs/remotes/origin/codex/hrm-588-validation-20261005
+2026-10-07T21:57:24.5925276Z Updating files:  98% (9010/9143)
+2026-10-07T21:57:24.9974311Z Updating files:  99% (9052/9143)
+2026-10-07T21:57:24.9984178Z Updating files: 100% (9143/9143)
+2026-10-07T21:57:24.9984911Z Updating files: 100% (9143/9143), done.
+2026-10-07T21:57:25.0153826Z Switched to a new branch 'codex/hrm-588-validation-20261005'
+2026-10-07T21:57:25.0161223Z branch 'codex/hrm-588-validation-20261005' set up to track 'origin/codex/hrm-588-validation-20261005'.
+2026-10-07T21:57:25.0214445Z ##[endgroup]
+2026-10-07T21:57:25.0267167Z [command]/usr/bin/git log -1 --format=%H
+2026-10-07T21:57:25.0295873Z c7deecf8c86672204434c157f7be2f0e85566fc7
+2026-10-07T21:57:25.0504910Z ##[group]Run [[ "$EXPECTED_HEAD" =~ ^[0-9a-f]{40}$ ]]
+2026-10-07T21:57:25.0505421Z [36;1m[[ "$EXPECTED_HEAD" =~ ^[0-9a-f]{40}$ ]][0m
+2026-10-07T21:57:25.0505853Z [36;1mtest "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"[0m
+2026-10-07T21:57:25.0506288Z [36;1mtest "$GITHUB_SHA" = "$EXPECTED_HEAD"[0m
+2026-10-07T21:57:25.0813097Z shell: /usr/bin/bash -e {0}
+2026-10-07T21:57:25.0813446Z env:
+2026-10-07T21:57:25.0813705Z   NEXT_TELEMETRY_DISABLED: 1
+2026-10-07T21:57:25.0814088Z   EXPECTED_HEAD: c7deecf8c86672204434c157f7be2f0e85566fc7
+2026-10-07T21:57:25.0814497Z ##[endgroup]
+2026-10-07T21:57:25.1106420Z ##[group]Run actions/setup-node@v6
+2026-10-07T21:57:25.1106814Z with:
+2026-10-07T21:57:25.1107067Z   node-version: 20
+2026-10-07T21:57:25.1107331Z   cache: npm
+2026-10-07T21:57:25.1107579Z   check-latest: false
+2026-10-07T21:57:25.1110105Z   token: ***
+2026-10-07T21:57:25.1110378Z   package-manager-cache: true
+2026-10-07T21:57:25.1110671Z env:
+2026-10-07T21:57:25.1110912Z   NEXT_TELEMETRY_DISABLED: 1
+2026-10-07T21:57:25.1111224Z ##[endgroup]
+2026-10-07T21:57:25.2498092Z Attempting to download 20...
+2026-10-07T21:57:25.9772409Z Acquiring 20.20.2 - x64 from https://github.com/actions/node-versions/releases/download/20.20.2-23521894959/node-20.20.2-linux-x64.tar.gz
+2026-10-07T21:57:26.4450861Z Extracting ...
+2026-10-07T21:57:26.4581369Z [command]/usr/bin/tar xz --strip 1 --warning=no-unknown-keyword --overwrite -C /home/runner/work/_temp/abd362ec-0d99-435e-ba9b-9c23d99c0a62 -f /home/runner/work/_temp/5fc5e67e-a849-42cc-bbd2-cd4aab58ef7f
+2026-10-07T21:57:27.4159819Z Adding to the cache ...
+2026-10-07T21:57:29.2029994Z ##[group]Environment details
+2026-10-07T21:57:29.4169447Z node: v20.20.2
+2026-10-07T21:57:29.4169839Z npm: 10.8.2
+2026-10-07T21:57:29.4170475Z yarn: 1.22.22
+2026-10-07T21:57:29.4171150Z ##[endgroup]
+2026-10-07T21:57:29.4192095Z [command]/opt/hostedtoolcache/node/20.20.2/x64/bin/npm config get cache
+2026-10-07T21:57:29.5209845Z /home/runner/.npm
+2026-10-07T21:57:29.7198295Z Cache hit for: node-cache-Linux-x64-npm-88234482b20d7f7ee4d4f3291a8380559029a8e8cdd4d9981970afb493db5986
+2026-10-07T21:57:30.8508218Z Received 104857600 of 408425166 (25.7%), 99.9 MBs/sec
+2026-10-07T21:57:31.8544090Z Received 297795584 of 408425166 (72.9%), 141.9 MBs/sec
+2026-10-07T21:57:32.3985388Z Received 408425166 of 408425166 (100.0%), 152.8 MBs/sec
+2026-10-07T21:57:32.3986536Z Cache Size: ~390 MB (408425166 B)
+2026-10-07T21:57:32.4093734Z [command]/usr/bin/tar -xf /home/runner/work/_temp/d82e378f-86b8-4a71-9ae8-f6d1d13cd46e/cache.tzst -P -C /home/runner/work/leaddrive-v2/leaddrive-v2 --use-compress-program unzstd
+2026-10-07T21:57:33.2423354Z Cache restored successfully
+2026-10-07T21:57:33.2602388Z Cache restored from key: node-cache-Linux-x64-npm-88234482b20d7f7ee4d4f3291a8380559029a8e8cdd4d9981970afb493db5986
+2026-10-07T21:57:33.2785541Z ##[group]Run bash scripts/ci/prepare-hosted-build-runner.sh
+2026-10-07T21:57:33.2786045Z [36;1mbash scripts/ci/prepare-hosted-build-runner.sh[0m
+2026-10-07T21:57:33.2855422Z shell: /usr/bin/bash -e {0}
+2026-10-07T21:57:33.2855702Z env:
+2026-10-07T21:57:33.2855922Z   NEXT_TELEMETRY_DISABLED: 1
+2026-10-07T21:57:33.2856177Z ##[endgroup]
+2026-10-07T21:57:33.4235070Z                total        used        free      shared  buff/cache   available
+2026-10-07T21:57:33.4235850Z Mem:            15Gi       1.8Gi        10Gi        43Mi       4.2Gi        13Gi
+2026-10-07T21:57:33.4236334Z Swap:          7.0Gi          0B       7.0Gi
+2026-10-07T21:57:33.4240265Z Filesystem      Size  Used Avail Use% Mounted on
+2026-10-07T21:57:33.4240771Z /dev/root       145G   64G   81G  45% /
+2026-10-07T21:57:33.4241468Z /dev/root       145G   64G   81G  45% /
+2026-10-07T21:57:33.4242102Z /dev/root       145G   64G   81G  45% /
+2026-10-07T21:57:33.4244455Z GitHub-hosted production-build budget ready: ram_kib=14511672 swap_free_kib=7340024 workspace_free_mib=82355 temp_free_mib=82355
+2026-10-07T21:57:33.4281013Z ##[group]Run npm ci
+2026-10-07T21:57:33.4281308Z [36;1mnpm ci[0m
+2026-10-07T21:57:33.4346666Z shell: /usr/bin/bash -e {0}
+2026-10-07T21:57:33.4346932Z env:
+2026-10-07T21:57:33.4347142Z   NEXT_TELEMETRY_DISABLED: 1
+2026-10-07T21:57:33.4347392Z ##[endgroup]
+2026-10-07T21:57:34.3115618Z npm warn EBADENGINE Unsupported engine {
+2026-10-07T21:57:34.3116711Z npm warn EBADENGINE   package: '@mapbox/jsonlint-lines-primitives@2.0.3',
+2026-10-07T21:57:34.3117690Z npm warn EBADENGINE   required: { node: '>= 22' },
+2026-10-07T21:57:34.3118593Z npm warn EBADENGINE   current: { node: 'v20.20.2', npm: '10.8.2' }
+2026-10-07T21:57:34.3119313Z npm warn EBADENGINE }
+2026-10-07T21:57:42.4797408Z npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+2026-10-07T21:57:42.6296997Z npm warn deprecated rimraf@2.7.1: Rimraf versions prior to v4 are no longer supported
+2026-10-07T21:57:42.7215308Z npm warn deprecated lodash.isequal@4.5.0: This package is deprecated. Use require('node:util').isDeepStrictEqual instead.
+2026-10-07T21:57:42.7963108Z npm warn deprecated backbone-undo@0.2.6: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+2026-10-07T21:57:42.9705242Z npm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+2026-10-07T21:57:43.0667223Z npm warn deprecated scmp@2.1.0: Just use Node.js's crypto.timingSafeEqual()
+2026-10-07T21:57:43.7684171Z npm warn deprecated fstream@1.0.12: This package is no longer supported.
+2026-10-07T21:57:44.4017095Z npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+2026-10-07T22:00:12.9909669Z 
+2026-10-07T22:00:12.9910416Z added 1264 packages, and audited 1265 packages in 3m
+2026-10-07T22:00:12.9910876Z 
+2026-10-07T22:00:12.9911229Z 260 packages are looking for funding
+2026-10-07T22:00:12.9911574Z   run `npm fund` for details
+2026-10-07T22:00:13.3097365Z 
+2026-10-07T22:00:13.3098181Z 82 vulnerabilities (46 moderate, 35 high, 1 critical)
+2026-10-07T22:00:13.3099068Z 
+2026-10-07T22:00:13.3099351Z To address issues that do not require attention, run:
+2026-10-07T22:00:13.3101873Z   npm audit fix
+2026-10-07T22:00:13.3102144Z 
+2026-10-07T22:00:13.3102951Z To address all issues possible (including breaking changes), run:
+2026-10-07T22:00:13.3103714Z   npm audit fix --force
+2026-10-07T22:00:13.3104004Z 
+2026-10-07T22:00:13.3104374Z Some issues need review, and may require choosing
+2026-10-07T22:00:13.3105025Z a different dependency.
+2026-10-07T22:00:13.3105312Z 
+2026-10-07T22:00:13.3105560Z Run `npm audit` for details.
+2026-10-07T22:00:13.4412162Z ##[group]Run npx prisma generate
+2026-10-07T22:00:13.4412506Z [36;1mnpx prisma generate[0m
+2026-10-07T22:00:13.4485074Z shell: /usr/bin/bash -e {0}
+2026-10-07T22:00:13.4485349Z env:
+2026-10-07T22:00:13.4485554Z   NEXT_TELEMETRY_DISABLED: 1
+2026-10-07T22:00:13.4485800Z ##[endgroup]
+2026-10-07T22:00:14.7792355Z Prisma schema loaded from prisma/schema.prisma
+2026-10-07T22:01:36.9179421Z ┌─────────────────────────────────────────────────────────┐
+2026-10-07T22:01:36.9180801Z │  Update available 6.19.3 -> 8.0.0-rc.21                 │
+2026-10-07T22:01:36.9181121Z 
+2026-10-07T22:01:36.9181523Z │                                                         │
+2026-10-07T22:01:36.9182024Z │  This is a major update - please follow the guide at    │
+2026-10-07T22:01:36.9184876Z │  https://pris.ly/d/major-version-upgrade                │
+2026-10-07T22:01:36.9185739Z │                                                         │
+2026-10-07T22:01:36.9186635Z │  Run the following to update                            │
+2026-10-07T22:01:36.9187511Z │    npm i --save-dev prisma@latest                       │
+2026-10-07T22:01:36.9188380Z │    npm i @prisma/client@latest                          │
+2026-10-07T22:01:36.9189242Z └─────────────────────────────────────────────────────────┘
+2026-10-07T22:01:36.9190323Z ✔ Generated Prisma Client (v6.19.3) to ./node_modules/@prisma/client in 71.17s
+2026-10-07T22:01:36.9190943Z 
+2026-10-07T22:01:36.9191542Z Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+2026-10-07T22:01:36.9192142Z 
+2026-10-07T22:01:36.9193313Z Tip: Need your database queries to be 1000x faster? Accelerate offers you that and more: https://pris.ly/tip-2-accelerate
+2026-10-07T22:01:36.9194230Z 
+2026-10-07T22:01:37.0499692Z ##[group]Run ulimit -c 0
+2026-10-07T22:01:37.0500012Z [36;1mulimit -c 0[0m
+2026-10-07T22:01:37.0500261Z [36;1mnpx next build --webpack[0m
+2026-10-07T22:01:37.0500569Z [36;1mtest -f .next/standalone/server.js[0m
+2026-10-07T22:01:37.0500886Z [36;1mtest -d .next/static[0m
+2026-10-07T22:01:37.0564026Z shell: /usr/bin/bash -e {0}
+2026-10-07T22:01:37.0564300Z env:
+2026-10-07T22:01:37.0564511Z   NEXT_TELEMETRY_DISABLED: 1
+2026-10-07T22:01:37.0564833Z   NODE_OPTIONS: --max-old-space-size=8192
+2026-10-07T22:01:37.0565126Z   NEXT_BUILD_CPUS: 1
+2026-10-07T22:01:37.0565353Z   NEXT_WEBPACK_PARALLELISM: 1
+2026-10-07T22:01:37.0565611Z   LEADDRIVE_COLD_PRODUCTION_BUILD: 1
+2026-10-07T22:01:37.0566041Z   NEXTAUTH_SECRET: isolated-hrm-build-c7deecf8c86672204434c157f7be2f0e85566fc7
+2026-10-07T22:01:37.0566507Z   NEXTAUTH_URL: https://build.invalid
+2026-10-07T22:01:37.0566879Z   NEXT_PUBLIC_CARTO_BASEMAPS_API_KEY: isolated-hrm-build-placeholder
+2026-10-07T22:01:37.0567264Z ##[endgroup]
+2026-10-07T22:01:38.3209438Z ⚠ No build cache found. Please configure build caching for faster rebuilds. Read more: https://nextjs.org/docs/messages/no-cache
+2026-10-07T22:01:38.3318998Z ▲ Next.js 16.2.11 (webpack)
+2026-10-07T22:01:38.3320093Z - Experiments (use with caution):
+2026-10-07T22:01:38.3320927Z   · clientTraceMetadata
+2026-10-07T22:01:38.3321316Z   · cpus: 1
+2026-10-07T22:01:38.3321577Z   ✓ webpackBuildWorker
+2026-10-07T22:01:38.3321890Z   ✓ webpackMemoryOptimizations
+2026-10-07T22:01:38.3322208Z 
+2026-10-07T22:01:38.5142304Z   Creating an optimized production build ...
+2026-10-07T22:01:44.4268785Z [32m[1m✓[22m[39m (serwist) Bundling the service worker script with the URL '/sw.js' and the scope '/'...
+2026-10-07T22:01:44.5674140Z [@sentry/nextjs - Node.js] Info: Sending telemetry data on issues and performance to Sentry. To disable telemetry, set `options.telemetry` to `false`.
+2026-10-07T22:07:13.9193880Z [@sentry/nextjs - Node.js] Warning: No auth token provided. Will not create release. Please set the `authToken` option. You can find information on how to generate a Sentry auth token here: https://docs.sentry.io/api/auth/
+2026-10-07T22:07:27.5089966Z [32m[1m✓[22m[39m (serwist) Bundling the service worker script with the URL '/sw.js' and the scope '/'...
+2026-10-07T22:07:27.6098250Z [@sentry/nextjs - Edge] Info: Sending telemetry data on issues and performance to Sentry. To disable telemetry, set `options.telemetry` to `false`.
+2026-10-07T22:07:27.6530974Z [@sentry/nextjs - Edge] Warning: No auth token provided. Will not create release. Please set the `authToken` option. You can find information on how to generate a Sentry auth token here: https://docs.sentry.io/api/auth/
+2026-10-07T22:07:33.9063273Z [32m[1m✓[22m[39m (serwist) Bundling the service worker script with the URL '/sw.js' and the scope '/'...
+2026-10-07T22:07:34.0489818Z [@sentry/nextjs - Client] Info: Sending telemetry data on issues and performance to Sentry. To disable telemetry, set `options.telemetry` to `false`.
+2026-10-07T22:08:53.5535276Z [@sentry/nextjs - Client] Warning: No auth token provided. Will not create release. Please set the `authToken` option. You can find information on how to generate a Sentry auth token here: https://docs.sentry.io/api/auth/
+2026-10-07T22:08:54.4059990Z ✓ Compiled successfully in 6.8min
+2026-10-07T22:08:54.4082727Z   Skipping validation of types
+2026-10-07T22:08:54.4125895Z   Finished TypeScript config validation in 4ms ...
+2026-10-07T22:08:54.4141452Z   Collecting page data using 1 worker ...
+2026-10-07T22:09:31.5234847Z   Generating static pages using 1 worker (0/968) ...
+2026-10-07T22:09:39.5983796Z   Generating static pages using 1 worker (242/968) 
+2026-10-07T22:09:43.0223673Z   Generating static pages using 1 worker (484/968) 
+2026-10-07T22:09:44.2998220Z   Generating static pages using 1 worker (726/968) 
+2026-10-07T22:09:44.9983945Z ✓ Generating static pages using 1 worker (968/968) in 13.5s
+2026-10-07T22:10:07.5705681Z   Finalizing page optimization ...
+2026-10-07T22:10:07.5708933Z   Collecting build traces ...
+2026-10-07T22:11:07.1853282Z ⚠ Failed to copy traced files for /home/runner/work/leaddrive-v2/leaddrive-v2/.next/server/app/(dashboard)/page.js Error: ENOENT: no such file or directory, copyfile '/home/runner/work/leaddrive-v2/leaddrive-v2/.next/server/app/(dashboard)/page_client-reference-manifest.js' -> '/home/runner/work/leaddrive-v2/leaddrive-v2/.next/standalone/.next/server/app/(dashboard)/page_client-reference-manifest.js'
+2026-10-07T22:11:07.1855198Z     at ignore-listed frames {
+2026-10-07T22:11:07.1855471Z   errno: -2,
+2026-10-07T22:11:07.1855685Z   code: 'ENOENT',
+2026-10-07T22:11:07.1855907Z   syscall: 'copyfile',
+2026-10-07T22:11:07.1856508Z   path: '/home/runner/work/leaddrive-v2/leaddrive-v2/.next/server/app/(dashboard)/page_client-reference-manifest.js',
+2026-10-07T22:11:07.1857511Z   dest: '/home/runner/work/leaddrive-v2/leaddrive-v2/.next/standalone/.next/server/app/(dashboard)/page_client-reference-manifest.js'
+2026-10-07T22:11:07.1858127Z }
+2026-10-07T22:11:13.1579735Z 
+2026-10-07T22:11:13.1839496Z Route (app)
+2026-10-07T22:11:13.1840048Z ┌ ƒ /
+2026-10-07T22:11:13.1840290Z ├ ƒ /_not-found
+2026-10-07T22:11:13.1840540Z ├ ƒ /about
+2026-10-07T22:11:13.1840804Z ├ ƒ /accounts/engagement
+2026-10-07T22:11:13.1841079Z ├ ƒ /admin
+2026-10-07T22:11:13.1841326Z ├ ƒ /admin/demo-requests
+2026-10-07T22:11:13.1841642Z ├ ƒ /admin/demo-requests/[id]
+2026-10-07T22:11:13.1841917Z ├ ƒ /admin/plans
+2026-10-07T22:11:13.1842160Z ├ ƒ /admin/tenants
+2026-10-07T22:11:13.1842422Z ├ ƒ /admin/tenants/[id]
+2026-10-07T22:11:13.1843143Z ├ ƒ /admin/tenants/[id]/edit
+2026-10-07T22:11:13.1843461Z ├ ƒ /admin/tenants/new
+2026-10-07T22:11:13.1843731Z ├ ƒ /ai-command-center
+2026-10-07T22:11:13.1843981Z ├ ƒ /ai-scoring
+2026-10-07T22:11:13.1844756Z ├ ƒ /ai/actions
+2026-10-07T22:11:13.1844986Z ├ ƒ /ai/advisor
+2026-10-07T22:11:13.1845208Z ├ ƒ /ai/voice
+2026-10-07T22:11:13.1845455Z ├ ƒ /api/auth/[...nextauth]
+2026-10-07T22:11:13.1845845Z ├ ƒ /api/budgeting/departments
+2026-10-07T22:11:13.1846304Z ├ ƒ /api/budgeting/sales-forecast
+2026-10-07T22:11:13.1846684Z ├ ƒ /api/budgeting/sales-forecast/export
+2026-10-07T22:11:13.1847068Z ├ ƒ /api/budgeting/sales-forecast/import
+2026-10-07T22:11:13.1847386Z ├ ƒ /api/chat/messages
+2026-10-07T22:11:13.1847649Z ├ ƒ /api/chat/send
+2026-10-07T22:11:13.1847908Z ├ ƒ /api/chat/webhook
+2026-10-07T22:11:13.1848210Z ├ ƒ /api/cost-model/ai-analysis
+2026-10-07T22:11:13.1848519Z ├ ƒ /api/cost-model/analytics
+2026-10-07T22:11:13.1848866Z ├ ƒ /api/cost-model/client-analytics/[id]
+2026-10-07T22:11:13.1849234Z ├ ƒ /api/cost-model/client-costs
+2026-10-07T22:11:13.1849639Z ├ ƒ /api/cost-model/client-services/[id]
+2026-10-07T22:11:13.1850270Z ├ ƒ /api/cost-model/employees
+2026-10-07T22:11:13.1850635Z ├ ƒ /api/cost-model/employees/[id]
+2026-10-07T22:11:13.1850960Z ├ ƒ /api/cost-model/log
+2026-10-07T22:11:13.1851248Z ├ ƒ /api/cost-model/overhead
+2026-10-07T22:11:13.1851572Z ├ ƒ /api/cost-model/overhead/[id]
+2026-10-07T22:11:13.1851907Z ├ ƒ /api/cost-model/parameters
+2026-10-07T22:11:13.1852304Z ├ ƒ /api/cost-model/seed-clients
+2026-10-07T22:11:13.1853089Z ├ ƒ /api/cost-model/snapshot
+2026-10-07T22:11:13.1853637Z ├ ƒ /api/cost-model/snapshots
+2026-10-07T22:11:13.1854253Z ├ ƒ /api/cost-model/snapshots/[month]
+2026-10-07T22:11:13.1854890Z ├ ƒ /api/cost-model/sync-pricing-services
+2026-10-07T22:11:13.1855244Z ├ ƒ /api/cron/ab-test-winner
+2026-10-07T22:11:13.1855763Z ├ ƒ /api/cron/account-engagement-recompute
+2026-10-07T22:11:13.1856530Z ├ ƒ /api/cron/activity-capture-calendar
+2026-10-07T22:11:13.1858259Z ├ ƒ /api/cron/adaptive-ai-refresh
+2026-10-07T22:11:13.1858900Z ├ ƒ /api/cron/advisor-alert-sync
+2026-10-07T22:11:13.1859532Z ├ ƒ /api/cron/ai-anomaly-detection
+2026-10-07T22:11:13.1860107Z ├ ƒ /api/cron/ai-auto-actions
+2026-10-07T22:11:13.1860708Z ├ ƒ /api/cron/ai-daily-briefing
+2026-10-07T22:11:13.1861238Z ├ ƒ /api/cron/ai-renewal
+2026-10-07T22:11:13.1861788Z ├ ƒ /api/cron/attribution-drain
+2026-10-07T22:11:13.1862392Z ├ ƒ /api/cron/attribution-recompute
+2026-10-07T22:11:13.1864224Z ├ ƒ /api/cron/campaign-scheduled-send
+2026-10-07T22:11:13.1864842Z ├ ƒ /api/cron/cdp-identity-scan
+2026-10-07T22:11:13.1865379Z ├ ƒ /api/cron/cdp-profile-refresh
+2026-10-07T22:11:13.1865892Z ├ ƒ /api/cron/chatwoot-inbound-poll
+2026-10-07T22:11:13.1866365Z ├ ƒ /api/cron/cobrowse-reaper
+2026-10-07T22:11:13.1866820Z ├ ƒ /api/cron/commitment-escalation
+2026-10-07T22:11:13.1867255Z ├ ƒ /api/cron/content-perf-refresh
+2026-10-07T22:11:13.1867735Z ├ ƒ /api/cron/contract-approval-escalations
+2026-10-07T22:11:13.1868190Z ├ ƒ /api/cron/contract-embeddings
+2026-10-07T22:11:13.1868612Z ├ ƒ /api/cron/contract-milestone-reminders
+2026-10-07T22:11:13.1869412Z ├ ƒ /api/cron/customer-insights-snapshot
+2026-10-07T22:11:13.1870191Z ├ ƒ /api/cron/demo-call-retention
+2026-10-07T22:11:13.1870921Z ├ ƒ /api/cron/engagement-decay
+2026-10-07T22:11:13.1871709Z ├ ƒ /api/cron/esign-reminders
+2026-10-07T22:11:13.1872380Z ├ ƒ /api/cron/finance-deadlines
+2026-10-07T22:11:13.1873305Z ├ ƒ /api/cron/inbox-autonomous-agent
+2026-10-07T22:11:13.1874011Z ├ ƒ /api/cron/inbox-followup
+2026-10-07T22:11:13.1874697Z ├ ƒ /api/cron/lead-scoring
+2026-10-07T22:11:13.1875107Z ├ ƒ /api/cron/leaderboard-snapshot
+2026-10-07T22:11:13.1875496Z ├ ƒ /api/cron/loyalty-birthday
+2026-10-07T22:11:13.1875881Z ├ ƒ /api/cron/loyalty-expiry
+2026-10-07T22:11:13.1876339Z ├ ƒ /api/cron/missed-inbound-reconciliation
+2026-10-07T22:11:13.1876814Z ├ ƒ /api/cron/mtm-auto-checkout
+2026-10-07T22:11:13.1877193Z ├ ƒ /api/cron/mtm-cleanup
+2026-10-07T22:11:13.1877590Z ├ ƒ /api/cron/mtm-demo-pulse
+2026-10-07T22:11:13.1878007Z ├ ƒ /api/cron/mtm-latest-location-reconcile
+2026-10-07T22:11:13.1878503Z ├ ƒ /api/cron/mtm-route-day-close
+2026-10-07T22:11:13.1878960Z ├ ƒ /api/cron/mtm-route-notification-outbox
+2026-10-07T22:11:13.1879392Z ├ ƒ /api/cron/otp-cleanup
+2026-10-07T22:11:13.1880127Z ├ ƒ /api/cron/pii-blind-index-backfill
+2026-10-07T22:11:13.1880615Z ├ ƒ /api/cron/post-resolution-survey
+2026-10-07T22:11:13.1881023Z ├ ƒ /api/cron/proactive-alerts-trigger
+2026-10-07T22:11:13.1881640Z ├ ƒ /api/cron/proactive-refresh
+2026-10-07T22:11:13.1882256Z ├ ƒ /api/cron/purge-tenants
+2026-10-07T22:11:13.1883050Z ├ ƒ /api/cron/renewal-alerts
+2026-10-07T22:11:13.1883739Z ├ ƒ /api/cron/retention-purge
+2026-10-07T22:11:13.1884123Z ├ ƒ /api/cron/revenue-recognition
+2026-10-07T22:11:13.1884832Z ├ ƒ /api/cron/run-scheduled-actions
+2026-10-07T22:11:13.1885568Z ├ ƒ /api/cron/scheduled-reports
+2026-10-07T22:11:13.1886058Z ├ ƒ /api/cron/sequences
+2026-10-07T22:11:13.1886512Z ├ ƒ /api/cron/sla-escalation
+2026-10-07T22:11:13.1887140Z ├ ƒ /api/cron/social-monitoring-run-jobs
+2026-10-07T22:11:13.1887796Z ├ ƒ /api/cron/social-monitoring-sources
+2026-10-07T22:11:13.1888295Z ├ ƒ /api/cron/social-poll
+2026-10-07T22:11:13.1888792Z ├ ƒ /api/cron/social-relevance-judge
+2026-10-07T22:11:13.1889317Z ├ ƒ /api/cron/social-web-news
+2026-10-07T22:11:13.1889843Z ├ ƒ /api/cron/ticket-closure-requests
+2026-10-07T22:11:13.1890375Z ├ ƒ /api/cron/voice-call-queues
+2026-10-07T22:11:13.1890911Z ├ ƒ /api/cron/voice-session-reaper
+2026-10-07T22:11:13.1891500Z ├ ƒ /api/cron/web-tracking-cleanup
+2026-10-07T22:11:13.1892073Z ├ ƒ /api/cron/workforce-no-show-review
+2026-10-07T22:11:13.1892927Z ├ ƒ /api/finance/bank-accounts
+2026-10-07T22:11:13.1893495Z ├ ƒ /api/finance/bank-accounts/[id]
+2026-10-07T22:11:13.1894032Z ├ ƒ /api/finance/dashboard
+2026-10-07T22:11:13.1894548Z ├ ƒ /api/finance/dashboard/export
+2026-10-07T22:11:13.1895016Z ├ ƒ /api/finance/funds
+2026-10-07T22:11:13.1895484Z ├ ƒ /api/finance/funds/[id]
+2026-10-07T22:11:13.1895999Z ├ ƒ /api/finance/funds/[id]/rules
+2026-10-07T22:11:13.1896560Z ├ ƒ /api/finance/funds/[id]/transactions
+2026-10-07T22:11:13.1897084Z ├ ƒ /api/finance/payables
+2026-10-07T22:11:13.1897577Z ├ ƒ /api/finance/payables/[id]
+2026-10-07T22:11:13.1898058Z ├ ƒ /api/finance/payables/[id]/payments
+2026-10-07T22:11:13.1898564Z ├ ƒ /api/finance/payables/stats
+2026-10-07T22:11:13.1899014Z ├ ƒ /api/finance/payment-orders
+2026-10-07T22:11:13.1899481Z ├ ƒ /api/finance/payment-orders/[id]
+2026-10-07T22:11:13.1900011Z ├ ƒ /api/finance/payment-orders/[id]/approve
+2026-10-07T22:11:13.1901455Z ├ ƒ /api/finance/payment-orders/[id]/execute
+2026-10-07T22:11:13.1902560Z ├ ƒ /api/finance/payment-orders/[id]/reject
+2026-10-07T22:11:13.1903940Z ├ ƒ /api/finance/payment-orders/[id]/submit
+2026-10-07T22:11:13.1904961Z ├ ƒ /api/finance/payment-orders/check-deadlines
+2026-10-07T22:11:13.1905844Z ├ ƒ /api/finance/payment-orders/next-number
+2026-10-07T22:11:13.1906935Z ├ ƒ /api/finance/payment-orders/notification-settings
+2026-10-07T22:11:13.1907881Z ├ ƒ /api/finance/payment-orders/notification-settings/test
+2026-10-07T22:11:13.1908865Z ├ ƒ /api/finance/payment-orders/numbering-gaps
+2026-10-07T22:11:13.1909479Z ├ ƒ /api/finance/payment-orders/stats
+2026-10-07T22:11:13.1909970Z ├ ƒ /api/finance/receivables
+2026-10-07T22:11:13.1910435Z ├ ƒ /api/finance/registry
+2026-10-07T22:11:13.1910816Z ├ ƒ /api/health
+2026-10-07T22:11:13.1911196Z ├ ƒ /api/help-videos/[file]
+2026-10-07T22:11:13.1911711Z ├ ƒ /api/internal/asterisk/call-lifecycle
+2026-10-07T22:11:13.1912345Z ├ ƒ /api/internal/asterisk/inbound-browser-ready
+2026-10-07T22:11:13.1913217Z ├ ƒ /api/internal/softphone/verify-ticket
+2026-10-07T22:11:13.1913837Z ├ ƒ /api/internal/voice-agent/call-continuation
+2026-10-07T22:11:13.1914434Z ├ ƒ /api/internal/voice-agent/call-result
+2026-10-07T22:11:13.1914997Z ├ ƒ /api/internal/voice-agent/call-source
+2026-10-07T22:11:13.1915609Z ├ ƒ /api/internal/voice-agent/control-plane-test
+2026-10-07T22:11:13.1916295Z ├ ƒ /api/internal/voice-agent/maintenance-attestation
+2026-10-07T22:11:13.1916940Z ├ ƒ /api/internal/voice-agent/runtime-config
+2026-10-07T22:11:13.1917513Z ├ ƒ /api/v1/account-engagement
+2026-10-07T22:11:13.1918117Z ├ ƒ /api/v1/account-engagement/[id]
+2026-10-07T22:11:13.1918776Z ├ ƒ /api/v1/account-intent-signals/import
+2026-10-07T22:11:13.1919680Z ├ ƒ /api/v1/account-score-snapshots
+2026-10-07T22:11:13.1920225Z ├ ƒ /api/v1/activities
+2026-10-07T22:11:13.1920763Z ├ ƒ /api/v1/admin/demo-grants/[id]/revoke
+2026-10-07T22:11:13.1921409Z ├ ƒ /api/v1/admin/demo-requests/[id]/issue
+2026-10-07T22:11:13.1922088Z ├ ƒ /api/v1/admin/demo-requests/[id]/reject
+2026-10-07T22:11:13.1922969Z ├ ƒ /api/v1/admin/plans
+2026-10-07T22:11:13.1923483Z ├ ƒ /api/v1/admin/plans/[id]
+2026-10-07T22:11:13.1923976Z ├ ƒ /api/v1/admin/tenants
+2026-10-07T22:11:13.1924503Z ├ ƒ /api/v1/admin/tenants/[id]
+2026-10-07T22:11:13.1925127Z ├ ƒ /api/v1/admin/tenants/[id]/cancel-deletion
+2026-10-07T22:11:13.1925824Z ├ ƒ /api/v1/admin/tenants/[id]/capabilities
+2026-10-07T22:11:13.1926509Z ├ ƒ /api/v1/admin/tenants/[id]/clear-demo
+2026-10-07T22:11:13.1927132Z ├ ƒ /api/v1/admin/tenants/[id]/dns
+2026-10-07T22:11:13.1927726Z ├ ƒ /api/v1/admin/tenants/[id]/export
+2026-10-07T22:11:13.1928375Z ├ ƒ /api/v1/admin/tenants/[id]/provisioning
+2026-10-07T22:11:13.1929093Z ├ ƒ /api/v1/admin/tenants/[id]/support-ux-canary
+2026-10-07T22:11:13.1929937Z ├ ƒ /api/v1/admin/tenants/[id]/users/[userId]/reset-password
+2026-10-07T22:11:13.1930612Z ├ ƒ /api/v1/admin/upload-logo
+2026-10-07T22:11:13.1931123Z ├ ƒ /api/v1/agent-sessions
+2026-10-07T22:11:13.1931674Z ├ ƒ /api/v1/agent-sessions/[id]
+2026-10-07T22:11:13.1932265Z ├ ƒ /api/v1/agent-sessions/[id]/steps
+2026-10-07T22:11:13.1933002Z ├ ƒ /api/v1/ai
+2026-10-07T22:11:13.1933411Z ├ ƒ /api/v1/ai-alerts
+2026-10-07T22:11:13.1933864Z ├ ƒ /api/v1/ai-configs
+2026-10-07T22:11:13.1934342Z ├ ƒ /api/v1/ai-configs/[id]
+2026-10-07T22:11:13.1934905Z ├ ƒ /api/v1/ai-configs/[id]/export
+2026-10-07T22:11:13.1935493Z ├ ƒ /api/v1/ai-configs/[id]/test
+2026-10-07T22:11:13.1936022Z ├ ƒ /api/v1/ai-configs/import
+2026-10-07T22:11:13.1936547Z ├ ƒ /api/v1/ai-configs/stats
+2026-10-07T22:11:13.1937094Z ├ ƒ /api/v1/ai-configs/transfer
+2026-10-07T22:11:13.1937583Z ├ ƒ /api/v1/ai-feedback
+2026-10-07T22:11:13.1938115Z ├ ƒ /api/v1/ai-feedback/aggregate
+2026-10-07T22:11:13.1938644Z ├ ƒ /api/v1/ai-guardrails
+2026-10-07T22:11:13.1939209Z ├ ƒ /api/v1/ai-interaction-logs
+2026-10-07T22:11:13.1939802Z ├ ƒ /api/v1/ai-interaction-logs/[id]
+2026-10-07T22:11:13.1940361Z ├ ƒ /api/v1/ai-observations
+2026-10-07T22:11:13.1940850Z ├ ƒ /api/v1/ai-sessions
+2026-10-07T22:11:13.1941524Z ├ ƒ /api/v1/ai-sessions/[id]
+2026-10-07T22:11:13.1942058Z ├ ƒ /api/v1/ai-sessions/stats
+2026-10-07T22:11:13.1942574Z ├ ƒ /api/v1/ai-shadow-actions
+2026-10-07T22:11:13.1943308Z ├ ƒ /api/v1/ai/advisor/actions
+2026-10-07T22:11:13.1943939Z ├ ƒ /api/v1/ai/advisor/briefing-snapshot
+2026-10-07T22:11:13.1944584Z ├ ƒ /api/v1/ai/advisor/capabilities
+2026-10-07T22:11:13.1945130Z ├ ƒ /api/v1/ai/advisor/query
+2026-10-07T22:11:13.1945673Z ├ ƒ /api/v1/ai/advisor/signals
+2026-10-07T22:11:13.1946187Z ├ ƒ /api/v1/ai/approve-action
+2026-10-07T22:11:13.1946670Z ├ ƒ /api/v1/ai/chat
+2026-10-07T22:11:13.1947119Z ├ ƒ /api/v1/ai/next-actions
+2026-10-07T22:11:13.1947606Z ├ ƒ /api/v1/ai/recommend
+2026-10-07T22:11:13.1948098Z ├ ƒ /api/v1/ai/voice/access
+2026-10-07T22:11:13.1948663Z ├ ƒ /api/v1/ai/voice/actions/[id]
+2026-10-07T22:11:13.1949286Z ├ ƒ /api/v1/ai/voice/actions/[id]/cancel
+2026-10-07T22:11:13.1949926Z ├ ƒ /api/v1/ai/voice/actions/[id]/commit
+2026-10-07T22:11:13.1950609Z ├ ƒ /api/v1/ai/voice/actions/[id]/confirmation
+2026-10-07T22:11:13.1951283Z ├ ƒ /api/v1/ai/voice/actions/active
+2026-10-07T22:11:13.1951882Z ├ ƒ /api/v1/ai/voice/actions/draft
+2026-10-07T22:11:13.1952493Z ├ ƒ /api/v1/ai/voice/actions/propose
+2026-10-07T22:11:13.1953186Z ├ ƒ /api/v1/ai/voice/read
+2026-10-07T22:11:13.1953664Z ├ ƒ /api/v1/ai/voice/session
+2026-10-07T22:11:13.1954262Z ├ ƒ /api/v1/ai/voice/session/connected
+2026-10-07T22:11:13.1954874Z ├ ƒ /api/v1/ai/voice/session/end
+2026-10-07T22:11:13.1955471Z ├ ƒ /api/v1/ai/voice/session/heartbeat
+2026-10-07T22:11:13.1956073Z ├ ƒ /api/v1/ai/voice/session/token
+2026-10-07T22:11:13.1956598Z ├ ƒ /api/v1/ai/voice/trace
+2026-10-07T22:11:13.1957120Z ├ ƒ /api/v1/analytics/churn-risk
+2026-10-07T22:11:13.1957696Z ├ ƒ /api/v1/analytics/deal-prediction
+2026-10-07T22:11:13.1958520Z ├ ƒ /api/v1/analytics/deal-velocity
+2026-10-07T22:11:13.1959102Z ├ ƒ /api/v1/analytics/forecast
+2026-10-07T22:11:13.1959671Z ├ ƒ /api/v1/analytics/late-callbacks
+2026-10-07T22:11:13.1960228Z ├ ƒ /api/v1/analytics/segments
+2026-10-07T22:11:13.1960833Z ├ ƒ /api/v1/analytics/segments/ai-summary
+2026-10-07T22:11:13.1961371Z ├ ƒ /api/v1/api-keys
+2026-10-07T22:11:13.1961829Z ├ ƒ /api/v1/api-keys/[id]
+2026-10-07T22:11:13.1962321Z ├ ƒ /api/v1/api-keys/scopes
+2026-10-07T22:11:13.1962942Z ├ ƒ /api/v1/apps
+2026-10-07T22:11:13.1963394Z ├ ƒ /api/v1/apps/[id]/install
+2026-10-07T22:11:13.1963958Z ├ ƒ /api/v1/attribution-models
+2026-10-07T22:11:13.1964544Z ├ ƒ /api/v1/attribution-models/[id]
+2026-10-07T22:11:13.1965215Z ├ ƒ /api/v1/attribution-models/[id]/influences
+2026-10-07T22:11:13.1965922Z ├ ƒ /api/v1/attribution-models/[id]/recompute
+2026-10-07T22:11:13.1966492Z ├ ƒ /api/v1/audit-log
+2026-10-07T22:11:13.1966919Z ├ ƒ /api/v1/auth/2fa
+2026-10-07T22:11:13.1967421Z ├ ƒ /api/v1/auth/forgot-password
+2026-10-07T22:11:13.1967988Z ├ ƒ /api/v1/auth/resend-sms-2fa
+2026-10-07T22:11:13.1968537Z ├ ƒ /api/v1/auth/reset-password
+2026-10-07T22:11:13.1969098Z ├ ƒ /api/v1/auth/sms-2fa/disable
+2026-10-07T22:11:13.1969700Z ├ ƒ /api/v1/auth/sms-2fa/enable
+2026-10-07T22:11:13.1970284Z ├ ƒ /api/v1/auth/sms-2fa/status
+2026-10-07T22:11:13.1970861Z ├ ƒ /api/v1/auth/sms-otp/send
+2026-10-07T22:11:13.1971429Z ├ ƒ /api/v1/auth/sms-otp/verify
+2026-10-07T22:11:13.1971947Z ├ ƒ /api/v1/auth/totp/disable
+2026-10-07T22:11:13.1972457Z ├ ƒ /api/v1/auth/totp/setup
+2026-10-07T22:11:13.1973125Z ├ ƒ /api/v1/auth/totp/status
+2026-10-07T22:11:13.1973619Z ├ ƒ /api/v1/auth/totp/verify
+2026-10-07T22:11:13.1974105Z ├ ƒ /api/v1/auth/verify-2fa
+2026-10-07T22:11:13.1974640Z ├ ƒ /api/v1/auth/verify-sms-2fa
+2026-10-07T22:11:13.1975148Z ├ ƒ /api/v1/beneficiaries
+2026-10-07T22:11:13.1975682Z ├ ƒ /api/v1/beneficiaries/[id]
+2026-10-07T22:11:13.1976251Z ├ ƒ /api/v1/beneficiaries/lookup
+2026-10-07T22:11:13.1976795Z ├ ƒ /api/v1/board-permissions
+2026-10-07T22:11:13.1977332Z ├ ƒ /api/v1/business-hours
+2026-10-07T22:11:13.1977819Z ├ ƒ /api/v1/buyer-accounts
+2026-10-07T22:11:13.1978349Z ├ ƒ /api/v1/calculated-insights
+2026-10-07T22:11:13.1978845Z ├ ƒ /api/v1/calendar/agent
+2026-10-07T22:11:13.1979573Z ├ ƒ /api/v1/calendar/feed/[token]
+2026-10-07T22:11:13.1980179Z ├ ƒ /api/v1/calendar/generate-token
+2026-10-07T22:11:13.1980726Z ├ ƒ /api/v1/calendar/token
+2026-10-07T22:11:13.1981186Z ├ ƒ /api/v1/calls
+2026-10-07T22:11:13.1981673Z ├ ƒ /api/v1/calls/[id]/analyze
+2026-10-07T22:11:13.1982304Z ├ ƒ /api/v1/calls/[id]/browser-answer
+2026-10-07T22:11:13.1983042Z ├ ƒ /api/v1/calls/[id]/claim
+2026-10-07T22:11:13.1983615Z ├ ƒ /api/v1/calls/[id]/disposition
+2026-10-07T22:11:13.1984141Z ├ ƒ /api/v1/calls/[id]/end
+2026-10-07T22:11:13.1984680Z ├ ƒ /api/v1/calls/[id]/lead-claim
+2026-10-07T22:11:13.1985205Z ├ ƒ /api/v1/calls/[id]/notes
+2026-10-07T22:11:13.1985755Z ├ ƒ /api/v1/calls/[id]/recording
+2026-10-07T22:11:13.1986338Z ├ ƒ /api/v1/calls/[id]/transcribe
+2026-10-07T22:11:13.1987041Z ├ ƒ /api/v1/calls/active
+2026-10-07T22:11:13.1987676Z ├ ƒ /api/v1/calls/missed-inbound-queue
+2026-10-07T22:11:13.1988428Z ├ ƒ /api/v1/calls/missed-inbound-queue/[taskId]/claim
+2026-10-07T22:11:13.1989067Z ├ ƒ /api/v1/calls/providers
+2026-10-07T22:11:13.1989566Z ├ ƒ /api/v1/calls/test
+2026-10-07T22:11:13.1990086Z ├ ƒ /api/v1/calls/threecx/lookup
+2026-10-07T22:11:13.1990659Z ├ ƒ /api/v1/calls/threecx/setup
+2026-10-07T22:11:13.1991237Z ├ ƒ /api/v1/calls/threecx/template
+2026-10-07T22:11:13.1991760Z ├ ƒ /api/v1/calls/twiml
+2026-10-07T22:11:13.1992228Z ├ ƒ /api/v1/calls/webhook
+2026-10-07T22:11:13.1992933Z ├ ƒ /api/v1/calls/webhook/threecx
+2026-10-07T22:11:13.1993556Z ├ ƒ /api/v1/calls/whatsapp/[id]/action
+2026-10-07T22:11:13.1994207Z ├ ƒ /api/v1/calls/whatsapp/[id]/session
+2026-10-07T22:11:13.1994834Z ├ ƒ /api/v1/calls/whatsapp/outbound
+2026-10-07T22:11:13.1995444Z ├ ƒ /api/v1/calls/whatsapp/permissions
+2026-10-07T22:11:13.1996045Z ├ ƒ /api/v1/calls/whatsapp/smoke
+2026-10-07T22:11:13.1996576Z ├ ƒ /api/v1/campaign-roi
+2026-10-07T22:11:13.1997064Z ├ ƒ /api/v1/campaigns
+2026-10-07T22:11:13.1997528Z ├ ƒ /api/v1/campaigns/[id]
+2026-10-07T22:11:13.1998066Z ├ ƒ /api/v1/campaigns/[id]/send
+2026-10-07T22:11:13.1998632Z ├ ƒ /api/v1/campaigns/[id]/variants
+2026-10-07T22:11:13.1999317Z ├ ƒ /api/v1/campaigns/[id]/variants/[variantId]
+2026-10-07T22:11:13.1999983Z ├ ƒ /api/v1/campaigns/eligibility
+2026-10-07T22:11:13.2000491Z ├ ƒ /api/v1/channels
+2026-10-07T22:11:13.2000931Z ├ ƒ /api/v1/channels/[id]
+2026-10-07T22:11:13.2001430Z ├ ƒ /api/v1/channels/sms/test
+2026-10-07T22:11:13.2001991Z ├ ƒ /api/v1/channels/tiktok-hub
+2026-10-07T22:11:13.2002783Z ├ ƒ /api/v1/channels/whatsapp/embedded-signup
+2026-10-07T22:11:13.2003380Z ├ ƒ /api/v1/charts/advanced
+2026-10-07T22:11:13.2003857Z ├ ƒ /api/v1/citizens
+2026-10-07T22:11:13.2004305Z ├ ƒ /api/v1/citizens/[id]
+2026-10-07T22:11:13.2004788Z ├ ƒ /api/v1/citizens/lookup
+2026-10-07T22:11:13.2005257Z ├ ƒ /api/v1/claims
+2026-10-07T22:11:13.2005702Z ├ ƒ /api/v1/claims/[id]
+2026-10-07T22:11:13.2006200Z ├ ƒ /api/v1/cobrowse/sessions
+2026-10-07T22:11:13.2006776Z ├ ƒ /api/v1/cobrowse/sessions/[id]
+2026-10-07T22:11:13.2007411Z ├ ƒ /api/v1/cobrowse/sessions/[id]/signal
+2026-10-07T22:11:13.2008067Z ├ ƒ /api/v1/cobrowse/sessions/[id]/stream
+2026-10-07T22:11:13.2008642Z ├ ƒ /api/v1/code-modules
+2026-10-07T22:11:13.2009220Z ├ ƒ /api/v1/code-modules/[id]/execute
+2026-10-07T22:11:13.2009775Z ├ ƒ /api/v1/companies
+2026-10-07T22:11:13.2010283Z ├ ƒ /api/v1/companies/[id]
+2026-10-07T22:11:13.2010855Z ├ ƒ /api/v1/companies/[id]/timeline
+2026-10-07T22:11:13.2011399Z ├ ƒ /api/v1/companies/bulk
+2026-10-07T22:11:13.2011874Z ├ ƒ /api/v1/complaints
+2026-10-07T22:11:13.2012348Z ├ ƒ /api/v1/complaints/[id]
+2026-10-07T22:11:13.2013107Z ├ ƒ /api/v1/complaints/ai-categorize
+2026-10-07T22:11:13.2013732Z ├ ƒ /api/v1/complaints/export-xlsx
+2026-10-07T22:11:13.2014276Z ├ ƒ /api/v1/complaints/facets
+2026-10-07T22:11:13.2014849Z ├ ƒ /api/v1/complaints/import-xlsx
+2026-10-07T22:11:13.2015356Z ├ ƒ /api/v1/contacts
+2026-10-07T22:11:13.2015837Z ├ ƒ /api/v1/contacts/[id]
+2026-10-07T22:11:13.2016398Z ├ ƒ /api/v1/contacts/[id]/engagement
+2026-10-07T22:11:13.2017010Z ├ ƒ /api/v1/contacts/[id]/timeline
+2026-10-07T22:11:13.2017633Z ├ ƒ /api/v1/contacts/[id]/web-activity
+2026-10-07T22:11:13.2018396Z ├ ƒ /api/v1/contacts/bulk
+2026-10-07T22:11:13.2018963Z ├ ƒ /api/v1/contacts/bulk-delete
+2026-10-07T22:11:13.2019486Z ├ ƒ /api/v1/content-scores
+2026-10-07T22:11:13.2020015Z ├ ƒ /api/v1/contract-analytics
+2026-10-07T22:11:13.2020620Z ├ ƒ /api/v1/contract-analytics/export
+2026-10-07T22:11:13.2021259Z ├ ƒ /api/v1/contract-approval-rules
+2026-10-07T22:11:13.2021908Z ├ ƒ /api/v1/contract-approval-rules/[id]
+2026-10-07T22:11:13.2022497Z ├ ƒ /api/v1/contract-clauses
+2026-10-07T22:11:13.2023243Z ├ ƒ /api/v1/contract-clauses/[id]
+2026-10-07T22:11:13.2023849Z ├ ƒ /api/v1/contract-clauses/draft
+2026-10-07T22:11:13.2024452Z ├ ƒ /api/v1/contract-intake-forms
+2026-10-07T22:11:13.2025073Z ├ ƒ /api/v1/contract-intake-forms/[id]
+2026-10-07T22:11:13.2025964Z ├ ƒ /api/v1/contract-intake-forms/[id]/submit
+2026-10-07T22:11:13.2026665Z ├ ƒ /api/v1/contract-intake-submissions
+2026-10-07T22:11:13.2027291Z ├ ƒ /api/v1/contract-lifecycle
+2026-10-07T22:11:13.2027864Z ├ ƒ /api/v1/contract-milestones
+2026-10-07T22:11:13.2028404Z ├ ƒ /api/v1/contract-tags
+2026-10-07T22:11:13.2028951Z ├ ƒ /api/v1/contract-tags/[id]
+2026-10-07T22:11:13.2029511Z ├ ƒ /api/v1/contract-templates
+2026-10-07T22:11:13.2030097Z ├ ƒ /api/v1/contract-templates/[id]
+2026-10-07T22:11:13.2030759Z ├ ƒ /api/v1/contract-templates/[id]/generate
+2026-10-07T22:11:13.2031342Z ├ ƒ /api/v1/contracts
+2026-10-07T22:11:13.2031809Z ├ ƒ /api/v1/contracts/[id]
+2026-10-07T22:11:13.2032353Z ├ ƒ /api/v1/contracts/[id]/amend
+2026-10-07T22:11:13.2033182Z ├ ƒ /api/v1/contracts/[id]/approvals/[order]
+2026-10-07T22:11:13.2033820Z ├ ƒ /api/v1/contracts/[id]/body
+2026-10-07T22:11:13.2034427Z ├ ƒ /api/v1/contracts/[id]/create-invoice
+2026-10-07T22:11:13.2035080Z ├ ƒ /api/v1/contracts/[id]/deviations
+2026-10-07T22:11:13.2035749Z ├ ƒ /api/v1/contracts/[id]/deviations/[flagId]
+2026-10-07T22:11:13.2036474Z ├ ƒ /api/v1/contracts/[id]/deviations/rescan
+2026-10-07T22:11:13.2037120Z ├ ƒ /api/v1/contracts/[id]/editor
+2026-10-07T22:11:13.2037696Z ├ ƒ /api/v1/contracts/[id]/esign
+2026-10-07T22:11:13.2038383Z ├ ƒ /api/v1/contracts/[id]/esign/[envelopeId]/send
+2026-10-07T22:11:13.2039055Z ├ ƒ /api/v1/contracts/[id]/extract
+2026-10-07T22:11:13.2039618Z ├ ƒ /api/v1/contracts/[id]/files
+2026-10-07T22:11:13.2040214Z ├ ƒ /api/v1/contracts/[id]/files/[fileId]
+2026-10-07T22:11:13.2040849Z ├ ƒ /api/v1/contracts/[id]/import-docx
+2026-10-07T22:11:13.2041470Z ├ ƒ /api/v1/contracts/[id]/milestones
+2026-10-07T22:11:13.2042155Z ├ ƒ /api/v1/contracts/[id]/milestones/[milestoneId]
+2026-10-07T22:11:13.2042967Z ├ ƒ /api/v1/contracts/[id]/pdf
+2026-10-07T22:11:13.2043655Z ├ ƒ /api/v1/contracts/[id]/performance-obligations
+2026-10-07T22:11:13.2044486Z ├ ƒ /api/v1/contracts/[id]/performance-obligations/[poId]
+2026-10-07T22:11:13.2045426Z ├ ƒ /api/v1/contracts/[id]/performance-obligations/[poId]/schedules
+2026-10-07T22:11:13.2046407Z ├ ƒ /api/v1/contracts/[id]/performance-obligations/recalculate
+2026-10-07T22:11:13.2047108Z ├ ƒ /api/v1/contracts/[id]/redline
+2026-10-07T22:11:13.2047681Z ├ ƒ /api/v1/contracts/[id]/reindex
+2026-10-07T22:11:13.2048438Z ├ ƒ /api/v1/contracts/[id]/score-risk
+2026-10-07T22:11:13.2049132Z ├ ƒ /api/v1/contracts/[id]/submit-for-approval
+2026-10-07T22:11:13.2049855Z ├ ƒ /api/v1/contracts/[id]/versions
+2026-10-07T22:11:13.2050403Z ├ ƒ /api/v1/contracts/export
+2026-10-07T22:11:13.2050986Z ├ ƒ /api/v1/contracts/search/semantic
+2026-10-07T22:11:13.2051604Z ├ ƒ /api/v1/contracts/upload-image
+2026-10-07T22:11:13.2052197Z ├ ƒ /api/v1/conversation-flows
+2026-10-07T22:11:13.2052966Z ├ ƒ /api/v1/conversation-flows/[id]
+2026-10-07T22:11:13.2053602Z ├ ƒ /api/v1/conversation-flows/runs
+2026-10-07T22:11:13.2054207Z ├ ƒ /api/v1/conversation-insights
+2026-10-07T22:11:13.2054732Z ├ ƒ /api/v1/cost-model
+2026-10-07T22:11:13.2055247Z ├ ƒ /api/v1/cost-model/clients
+2026-10-07T22:11:13.2055773Z ├ ƒ /api/v1/custom-domains
+2026-10-07T22:11:13.2056316Z ├ ƒ /api/v1/custom-domains/[id]
+2026-10-07T22:11:13.2056927Z ├ ƒ /api/v1/custom-domains/[id]/verify
+2026-10-07T22:11:13.2057493Z ├ ƒ /api/v1/custom-fields
+2026-10-07T22:11:13.2058047Z ├ ƒ /api/v1/custom-fields/[id]
+2026-10-07T22:11:13.2058540Z ├ ƒ /api/v1/dashboard
+2026-10-07T22:11:13.2059053Z ├ ƒ /api/v1/dashboard/executive
+2026-10-07T22:11:13.2059574Z ├ ƒ /api/v1/dashboard/layout
+2026-10-07T22:11:13.2060143Z ├ ƒ /api/v1/dashboard/widget-config
+2026-10-07T22:11:13.2060699Z ├ ƒ /api/v1/dashboard/widgets
+2026-10-07T22:11:13.2061274Z ├ ƒ /api/v1/dashboard/widgets/validate
+2026-10-07T22:11:13.2061816Z ├ ƒ /api/v1/deal-velocity
+2026-10-07T22:11:13.2062280Z ├ ƒ /api/v1/deals
+2026-10-07T22:11:13.2062868Z ├ ƒ /api/v1/deals/[id]
+2026-10-07T22:11:13.2077273Z ├ ƒ /api/v1/deals/[id]/add-to-pricing
+2026-10-07T22:11:13.2078034Z ├ ƒ /api/v1/deals/[id]/competitors
+2026-10-07T22:11:13.2078657Z ├ ƒ /api/v1/deals/[id]/contact-roles
+2026-10-07T22:11:13.2079511Z ├ ƒ /api/v1/deals/[id]/engagement
+2026-10-07T22:11:13.2080115Z ├ ƒ /api/v1/deals/[id]/meddpicc/suggest
+2026-10-07T22:11:13.2080713Z ├ ƒ /api/v1/deals/[id]/next-steps
+2026-10-07T22:11:13.2081239Z ├ ƒ /api/v1/deals/[id]/offers
+2026-10-07T22:11:13.2081808Z ├ ƒ /api/v1/deals/[id]/products
+2026-10-07T22:11:13.2082369Z ├ ƒ /api/v1/deals/[id]/send-email
+2026-10-07T22:11:13.2083099Z ├ ƒ /api/v1/deals/[id]/team
+2026-10-07T22:11:13.2083599Z ├ ƒ /api/v1/deals/ai-analysis
+2026-10-07T22:11:13.2084156Z ├ ƒ /api/v1/deals/ai-suggestions
+2026-10-07T22:11:13.2084660Z ├ ƒ /api/v1/deals/bulk
+2026-10-07T22:11:13.2085112Z ├ ƒ /api/v1/demo-request
+2026-10-07T22:11:13.2085634Z ├ ƒ /api/v1/digest-subscriptions
+2026-10-07T22:11:13.2086248Z ├ ƒ /api/v1/digest-subscriptions/test
+2026-10-07T22:11:13.2086781Z ├ ƒ /api/v1/divisions
+2026-10-07T22:11:13.2087237Z ├ ƒ /api/v1/divisions/[id]
+2026-10-07T22:11:13.2087865Z ├ ƒ /api/v1/divisions/[id]/analytics
+2026-10-07T22:11:13.2088501Z ├ ƒ /api/v1/divisions/[id]/analytics/pptx
+2026-10-07T22:11:13.2089126Z ├ ƒ /api/v1/divisions/[id]/columns
+2026-10-07T22:11:13.2089732Z ├ ƒ /api/v1/divisions/[id]/import-tasks
+2026-10-07T22:11:13.2090256Z ├ ƒ /api/v1/donations
+2026-10-07T22:11:13.2090692Z ├ ƒ /api/v1/donors
+2026-10-07T22:11:13.2091221Z ├ ƒ /api/v1/dunning-attempts
+2026-10-07T22:11:13.2091728Z ├ ƒ /api/v1/email-log
+2026-10-07T22:11:13.2092243Z ├ ƒ /api/v1/email-log/[id]/analyze
+2026-10-07T22:11:13.2092983Z ├ ƒ /api/v1/email-log/ai-analysis
+2026-10-07T22:11:13.2093512Z ├ ƒ /api/v1/email-templates
+2026-10-07T22:11:13.2094092Z ├ ƒ /api/v1/email-templates/[id]
+2026-10-07T22:11:13.2094710Z ├ ƒ /api/v1/email-templates/upload-image
+2026-10-07T22:11:13.2095092Z ├ ƒ /api/v1/entitlement-templates
+2026-10-07T22:11:13.2095415Z ├ ƒ /api/v1/entitlements
+2026-10-07T22:11:13.2095736Z ├ ƒ /api/v1/entitlements/[id]
+2026-10-07T22:11:13.2096093Z ├ ƒ /api/v1/entitlements/[id]/milestones
+2026-10-07T22:11:13.2096541Z ├ ƒ /api/v1/entitlements/[id]/milestones/[milestoneId]
+2026-10-07T22:11:13.2096929Z ├ ƒ /api/v1/escalation-rules
+2026-10-07T22:11:13.2097279Z ├ ƒ /api/v1/escalation-rules/[id]
+2026-10-07T22:11:13.2097585Z ├ ƒ /api/v1/event-types
+2026-10-07T22:11:13.2097879Z ├ ƒ /api/v1/event-types/[id]
+2026-10-07T22:11:13.2098156Z ├ ƒ /api/v1/events
+2026-10-07T22:11:13.2098567Z ├ ƒ /api/v1/events/[id]
+2026-10-07T22:11:13.2098904Z ├ ƒ /api/v1/events/[id]/confirm-all
+2026-10-07T22:11:13.2099271Z ├ ƒ /api/v1/events/[id]/participants
+2026-10-07T22:11:13.2099588Z ├ ƒ /api/v1/foia-export
+2026-10-07T22:11:13.2099896Z ├ ƒ /api/v1/forecast-snapshots
+2026-10-07T22:11:13.2100239Z ├ ƒ /api/v1/forecast-snapshots/[id]
+2026-10-07T22:11:13.2100548Z ├ ƒ /api/v1/forms
+2026-10-07T22:11:13.2100801Z ├ ƒ /api/v1/forms/[id]
+2026-10-07T22:11:13.2101101Z ├ ƒ /api/v1/forms/[id]/publish
+2026-10-07T22:11:13.2101408Z ├ ƒ /api/v1/health-care-plans
+2026-10-07T22:11:13.2101742Z ├ ƒ /api/v1/health-care-plans/[id]
+2026-10-07T22:11:13.2102065Z ├ ƒ /api/v1/health-encounters
+2026-10-07T22:11:13.2102396Z ├ ƒ /api/v1/health-encounters/[id]
+2026-10-07T22:11:13.2103074Z ├ ƒ /api/v1/health-medical-records
+2026-10-07T22:11:13.2103459Z ├ ƒ /api/v1/health-medical-records/[id]
+2026-10-07T22:11:13.2103798Z ├ ƒ /api/v1/health-patients
+2026-10-07T22:11:13.2104125Z ├ ƒ /api/v1/health-patients/[id]
+2026-10-07T22:11:13.2104482Z ├ ƒ /api/v1/health-patients/lookup
+2026-10-07T22:11:13.2104806Z ├ ƒ /api/v1/health-providers
+2026-10-07T22:11:13.2105133Z ├ ƒ /api/v1/health-providers/[id]
+2026-10-07T22:11:13.2105473Z ├ ƒ /api/v1/health-scores
+2026-10-07T22:11:13.2105795Z ├ ƒ /api/v1/identity-merge-queue
+2026-10-07T22:11:13.2106182Z ├ ƒ /api/v1/identity-merge-queue/[id]/resolve
+2026-10-07T22:11:13.2106524Z ├ ƒ /api/v1/inbox
+2026-10-07T22:11:13.2106806Z ├ ƒ /api/v1/inbox/ai-assist
+2026-10-07T22:11:13.2107097Z ├ ƒ /api/v1/inbox/analytics
+2026-10-07T22:11:13.2107449Z ├ ƒ /api/v1/inbox/analytics/conversations
+2026-10-07T22:11:13.2107807Z ├ ƒ /api/v1/inbox/analytics/frt
+2026-10-07T22:11:13.2108147Z ├ ƒ /api/v1/inbox/analytics/handoff
+2026-10-07T22:11:13.2108488Z ├ ƒ /api/v1/inbox/analytics/team
+2026-10-07T22:11:13.2109010Z ├ ƒ /api/v1/inbox/analytics/temporal
+2026-10-07T22:11:13.2109361Z ├ ƒ /api/v1/inbox/chatbot-rules
+2026-10-07T22:11:13.2109697Z ├ ƒ /api/v1/inbox/chatbot-rules/[id]
+2026-10-07T22:11:13.2110033Z ├ ƒ /api/v1/inbox/conversations
+2026-10-07T22:11:13.2110376Z ├ ƒ /api/v1/inbox/conversations/[id]
+2026-10-07T22:11:13.2110758Z ├ ƒ /api/v1/inbox/conversations/[id]/ai-draft
+2026-10-07T22:11:13.2111198Z ├ ƒ /api/v1/inbox/conversations/[id]/convert-to-lead
+2026-10-07T22:11:13.2111693Z ├ ƒ /api/v1/inbox/conversations/[id]/delivery-reconciliation
+2026-10-07T22:11:13.2112139Z ├ ƒ /api/v1/inbox/conversations/[id]/messages
+2026-10-07T22:11:13.2112529Z ├ ƒ /api/v1/inbox/conversations/[id]/notes
+2026-10-07T22:11:13.2113332Z ├ ƒ /api/v1/inbox/conversations/[id]/participants
+2026-10-07T22:11:13.2113838Z ├ ƒ /api/v1/inbox/conversations/[id]/participants/[userId]
+2026-10-07T22:11:13.2114258Z ├ ƒ /api/v1/inbox/conversations/bulk
+2026-10-07T22:11:13.2114575Z ├ ƒ /api/v1/inbox/folders
+2026-10-07T22:11:13.2114900Z ├ ƒ /api/v1/inbox/folders/[id]
+2026-10-07T22:11:13.2115221Z ├ ƒ /api/v1/inbox/stats/channels
+2026-10-07T22:11:13.2115518Z ├ ƒ /api/v1/inbox/stream
+2026-10-07T22:11:13.2115793Z ├ ƒ /api/v1/inbox/upload
+2026-10-07T22:11:13.2116140Z ├ ƒ /api/v1/insurance-service-team-members
+2026-10-07T22:11:13.2116563Z ├ ƒ /api/v1/insurance-service-team-members/[id]
+2026-10-07T22:11:13.2116965Z ├ ƒ /api/v1/integrations/esign-provider
+2026-10-07T22:11:13.2117372Z ├ ƒ /api/v1/integrations/google-calendar
+2026-10-07T22:11:13.2117778Z ├ ƒ /api/v1/integrations/google-calendar/callback
+2026-10-07T22:11:13.2118202Z ├ ƒ /api/v1/integrations/google-calendar/connect
+2026-10-07T22:11:13.2118626Z ├ ƒ /api/v1/integrations/google-calendar/status
+2026-10-07T22:11:13.2119001Z ├ ƒ /api/v1/integrations/slack
+2026-10-07T22:11:13.2119323Z ├ ƒ /api/v1/integrations/teams
+2026-10-07T22:11:13.2119610Z ├ ƒ /api/v1/invoices
+2026-10-07T22:11:13.2119873Z ├ ƒ /api/v1/invoices/[id]
+2026-10-07T22:11:13.2120156Z ├ ƒ /api/v1/invoices/[id]/act
+2026-10-07T22:11:13.2120491Z ├ ƒ /api/v1/invoices/[id]/chain
+2026-10-07T22:11:13.2120825Z ├ ƒ /api/v1/invoices/[id]/duplicate
+2026-10-07T22:11:13.2121171Z ├ ƒ /api/v1/invoices/[id]/payments
+2026-10-07T22:11:13.2121552Z ├ ƒ /api/v1/invoices/[id]/payments/[paymentId]
+2026-10-07T22:11:13.2122069Z ├ ƒ /api/v1/invoices/[id]/pdf
+2026-10-07T22:11:13.2122443Z ├ ƒ /api/v1/invoices/[id]/send
+2026-10-07T22:11:13.2123035Z ├ ƒ /api/v1/invoices/fix-balances
+2026-10-07T22:11:13.2123398Z ├ ƒ /api/v1/invoices/from-offer
+2026-10-07T22:11:13.2123731Z ├ ƒ /api/v1/invoices/next-number
+2026-10-07T22:11:13.2124035Z ├ ƒ /api/v1/invoices/overdue
+2026-10-07T22:11:13.2124328Z ├ ƒ /api/v1/invoices/stats
+2026-10-07T22:11:13.2124596Z ├ ƒ /api/v1/journeys
+2026-10-07T22:11:13.2124861Z ├ ƒ /api/v1/journeys/[id]
+2026-10-07T22:11:13.2125140Z ├ ƒ /api/v1/journeys/enroll
+2026-10-07T22:11:13.2125475Z ├ ƒ /api/v1/journeys/enrollments/[id]
+2026-10-07T22:11:13.2125799Z ├ ƒ /api/v1/journeys/process
+2026-10-07T22:11:13.2126058Z ├ ƒ /api/v1/kb
+2026-10-07T22:11:13.2126327Z ├ ƒ /api/v1/kb-categories
+2026-10-07T22:11:13.2126637Z ├ ƒ /api/v1/kb-categories/[id]
+2026-10-07T22:11:13.2126917Z ├ ƒ /api/v1/kb/[id]
+2026-10-07T22:11:13.2127170Z ├ ƒ /api/v1/kb/embed-all
+2026-10-07T22:11:13.2127451Z ├ ƒ /api/v1/lead-rules
+2026-10-07T22:11:13.2127733Z ├ ƒ /api/v1/lead-rules/[id]
+2026-10-07T22:11:13.2128018Z ├ ƒ /api/v1/lead-scoring
+2026-10-07T22:11:13.2128349Z ├ ƒ /api/v1/leaderboard/agent-items
+2026-10-07T22:11:13.2128675Z ├ ƒ /api/v1/leaderboard/arena
+2026-10-07T22:11:13.2128990Z ├ ƒ /api/v1/leaderboard/config
+2026-10-07T22:11:13.2129304Z ├ ƒ /api/v1/leaderboard/groups
+2026-10-07T22:11:13.2129612Z ├ ƒ /api/v1/leaderboard/history
+2026-10-07T22:11:13.2129888Z ├ ƒ /api/v1/leads
+2026-10-07T22:11:13.2130133Z ├ ƒ /api/v1/leads/[id]
+2026-10-07T22:11:13.2130421Z ├ ƒ /api/v1/leads/[id]/ai-call
+2026-10-07T22:11:13.2130778Z ├ ƒ /api/v1/leads/[id]/ai-call/resolve-unknown
+2026-10-07T22:11:13.2131159Z ├ ƒ /api/v1/leads/[id]/call-insights
+2026-10-07T22:11:13.2131499Z ├ ƒ /api/v1/leads/[id]/convert
+2026-10-07T22:11:13.2131980Z ├ ƒ /api/v1/leads/[id]/timeline
+2026-10-07T22:11:13.2132316Z ├ ƒ /api/v1/leads/[id]/voice-permission
+2026-10-07T22:11:13.2132839Z ├ ƒ /api/v1/leads/bulk
+2026-10-07T22:11:13.2133136Z ├ ƒ /api/v1/loyalty-accounts
+2026-10-07T22:11:13.2133526Z ├ ƒ /api/v1/loyalty-accounts/[id]
+2026-10-07T22:11:13.2133956Z ├ ƒ /api/v1/loyalty-accounts/[id]/earn
+2026-10-07T22:11:13.2134334Z ├ ƒ /api/v1/loyalty-accounts/[id]/redeem
+2026-10-07T22:11:13.2134694Z ├ ƒ /api/v1/loyalty-accounts/award
+2026-10-07T22:11:13.2135043Z ├ ƒ /api/v1/loyalty-accounts/resolve
+2026-10-07T22:11:13.2135387Z ├ ƒ /api/v1/loyalty-earn-rules
+2026-10-07T22:11:13.2135719Z ├ ƒ /api/v1/loyalty-earn-rules/[id]
+2026-10-07T22:11:13.2136034Z ├ ƒ /api/v1/loyalty-overview
+2026-10-07T22:11:13.2136327Z ├ ƒ /api/v1/loyalty-rewards
+2026-10-07T22:11:13.2136655Z ├ ƒ /api/v1/loyalty-rewards/[id]
+2026-10-07T22:11:13.2136959Z ├ ƒ /api/v1/loyalty-settings
+2026-10-07T22:11:13.2137280Z ├ ƒ /api/v1/loyalty-storefront/earn
+2026-10-07T22:11:13.2137625Z ├ ƒ /api/v1/loyalty-templates
+2026-10-07T22:11:13.2137914Z ├ ƒ /api/v1/loyalty-tiers
+2026-10-07T22:11:13.2138218Z ├ ƒ /api/v1/loyalty-tiers/[id]
+2026-10-07T22:11:13.2138533Z ├ ƒ /api/v1/marketing-accounts
+2026-10-07T22:11:13.2138877Z ├ ƒ /api/v1/marketing-accounts/promote
+2026-10-07T22:11:13.2139250Z ├ ƒ /api/v1/marketing-accounts/rescore
+2026-10-07T22:11:13.2139591Z ├ ƒ /api/v1/media-ad-campaigns
+2026-10-07T22:11:13.2139917Z ├ ƒ /api/v1/media-ad-campaigns/[id]
+2026-10-07T22:11:13.2140249Z ├ ƒ /api/v1/media-ad-placements
+2026-10-07T22:11:13.2140595Z ├ ƒ /api/v1/media-ad-placements/[id]
+2026-10-07T22:11:13.2140957Z ├ ƒ /api/v1/media-consumption-events
+2026-10-07T22:11:13.2141517Z ├ ƒ /api/v1/media-consumption-events/[id]
+2026-10-07T22:11:13.2141934Z ├ ƒ /api/v1/media-content-inventory
+2026-10-07T22:11:13.2142302Z ├ ƒ /api/v1/media-content-inventory/[id]
+2026-10-07T22:11:13.2142866Z ├ ƒ /api/v1/media-subscribers
+2026-10-07T22:11:13.2143230Z ├ ƒ /api/v1/media-subscribers/[id]
+2026-10-07T22:11:13.2143565Z ├ ƒ /api/v1/message-snippets
+2026-10-07T22:11:13.2143890Z ├ ƒ /api/v1/message-snippets/[id]
+2026-10-07T22:11:13.2144236Z ├ ƒ /api/v1/message-snippets/[id]/use
+2026-10-07T22:11:13.2144551Z ├ ƒ /api/v1/meter-readings
+2026-10-07T22:11:13.2145028Z ├ ƒ /api/v1/meter-readings/[id]
+2026-10-07T22:11:13.2145340Z ├ ƒ /api/v1/metering-points
+2026-10-07T22:11:13.2145656Z ├ ƒ /api/v1/metering-points/[id]
+2026-10-07T22:11:13.2145970Z ├ ƒ /api/v1/mtm/activity
+2026-10-07T22:11:13.2146246Z ├ ƒ /api/v1/mtm/agent-period
+2026-10-07T22:11:13.2146527Z ├ ƒ /api/v1/mtm/agents
+2026-10-07T22:11:13.2146795Z ├ ƒ /api/v1/mtm/agents/[id]
+2026-10-07T22:11:13.2147104Z ├ ƒ /api/v1/mtm/agents/push-token
+2026-10-07T22:11:13.2147395Z ├ ƒ /api/v1/mtm/alerts
+2026-10-07T22:11:13.2147656Z ├ ƒ /api/v1/mtm/alerts/[id]
+2026-10-07T22:11:13.2147961Z ├ ƒ /api/v1/mtm/alerts/resolve
+2026-10-07T22:11:13.2148246Z ├ ƒ /api/v1/mtm/analytics
+2026-10-07T22:11:13.2148552Z ├ ƒ /api/v1/mtm/analytics/export
+2026-10-07T22:11:13.2148891Z ├ ƒ /api/v1/mtm/contact-assignments
+2026-10-07T22:11:13.2149535Z ├ ƒ /api/v1/mtm/contact-assignments/preview
+2026-10-07T22:11:13.2149942Z ├ ƒ /api/v1/mtm/contact-categories
+2026-10-07T22:11:13.2150358Z ├ ƒ /api/v1/mtm/contact-change-requests/[id]/decision
+2026-10-07T22:11:13.2150774Z ├ ƒ /api/v1/mtm/contact-create-requests
+2026-10-07T22:11:13.2151194Z ├ ƒ /api/v1/mtm/contact-create-requests/[id]/decision
+2026-10-07T22:11:13.2151597Z ├ ƒ /api/v1/mtm/contact-dictionaries
+2026-10-07T22:11:13.2152081Z ├ ƒ /api/v1/mtm/contact-dictionaries/[id]/activate
+2026-10-07T22:11:13.2152856Z ├ ƒ /api/v1/mtm/contact-transfers
+2026-10-07T22:11:13.2153464Z ├ ƒ /api/v1/mtm/contact-transfers/preview
+2026-10-07T22:11:13.2153824Z ├ ƒ /api/v1/mtm/contacts
+2026-10-07T22:11:13.2154111Z ├ ƒ /api/v1/mtm/contacts/[id]
+2026-10-07T22:11:13.2154455Z ├ ƒ /api/v1/mtm/contacts/[id]/assessments
+2026-10-07T22:11:13.2154858Z ├ ƒ /api/v1/mtm/contacts/[id]/brand-potentials
+2026-10-07T22:11:13.2155266Z ├ ƒ /api/v1/mtm/contacts/[id]/change-requests
+2026-10-07T22:11:13.2155895Z ├ ƒ /api/v1/mtm/contacts/[id]/dictionary-assignments
+2026-10-07T22:11:13.2156308Z ├ ƒ /api/v1/mtm/contacts/[id]/workplaces
+2026-10-07T22:11:13.2156731Z ├ ƒ /api/v1/mtm/contacts/[id]/workplaces/[workplaceId]
+2026-10-07T22:11:13.2157112Z ├ ƒ /api/v1/mtm/contacts/facets
+2026-10-07T22:11:13.2157443Z ├ ƒ /api/v1/mtm/contacts/views
+2026-10-07T22:11:13.2157767Z ├ ƒ /api/v1/mtm/contacts/views/[id]
+2026-10-07T22:11:13.2158074Z ├ ƒ /api/v1/mtm/coverage
+2026-10-07T22:11:13.2158387Z ├ ƒ /api/v1/mtm/coverage-policies
+2026-10-07T22:11:13.2158769Z ├ ƒ /api/v1/mtm/coverage-policies/[id]/activate
+2026-10-07T22:11:13.2159150Z ├ ƒ /api/v1/mtm/coverage-snapshots
+2026-10-07T22:11:13.2159518Z ├ ƒ /api/v1/mtm/coverage-snapshots/[id]/rows
+2026-10-07T22:11:13.2159901Z ├ ƒ /api/v1/mtm/customer-create-request
+2026-10-07T22:11:13.2160291Z ├ ƒ /api/v1/mtm/customer-create-request/[id]
+2026-10-07T22:11:13.2160681Z ├ ƒ /api/v1/mtm/customer-create-requests
+2026-10-07T22:11:13.2161083Z ├ ƒ /api/v1/mtm/customer-create-requests/[id]
+2026-10-07T22:11:13.2161533Z ├ ƒ /api/v1/mtm/customer-create-requests/[id]/decision
+2026-10-07T22:11:13.2162011Z ├ ƒ /api/v1/mtm/customer-create-requests/[id]/route-offer
+2026-10-07T22:11:13.2162384Z ├ ƒ /api/v1/mtm/customers
+2026-10-07T22:11:13.2162990Z ├ ƒ /api/v1/mtm/customers/[id]
+2026-10-07T22:11:13.2163311Z ├ ƒ /api/v1/mtm/dashboard
+2026-10-07T22:11:13.2163671Z ├ ƒ /api/v1/mtm/doctor-assessments/[id]/decision
+2026-10-07T22:11:13.2164071Z ├ ƒ /api/v1/mtm/doctor-scoring/formulas
+2026-10-07T22:11:13.2164484Z ├ ƒ /api/v1/mtm/doctor-scoring/formulas/[id]/activate
+2026-10-07T22:11:13.2164875Z ├ ƒ /api/v1/mtm/excel/exports/[type]
+2026-10-07T22:11:13.2165200Z ├ ƒ /api/v1/mtm/excel/imports
+2026-10-07T22:11:13.2165523Z ├ ƒ /api/v1/mtm/excel/imports/[id]
+2026-10-07T22:11:13.2165877Z ├ ƒ /api/v1/mtm/excel/imports/[id]/apply
+2026-10-07T22:11:13.2166248Z ├ ƒ /api/v1/mtm/excel/imports/[id]/errors
+2026-10-07T22:11:13.2166612Z ├ ƒ /api/v1/mtm/excel/templates/[type]
+2026-10-07T22:11:13.2166960Z ├ ƒ /api/v1/mtm/field-assignments
+2026-10-07T22:11:13.2167320Z ├ ƒ /api/v1/mtm/field-assignments/[id]
+2026-10-07T22:11:13.2167678Z ├ ƒ /api/v1/mtm/field-potentials
+2026-10-07T22:11:13.2168024Z ├ ƒ /api/v1/mtm/field-potentials/[id]
+2026-10-07T22:11:13.2168407Z ├ ƒ /api/v1/mtm/field-potentials/[id]/decision
+2026-10-07T22:11:13.2168945Z ├ ƒ /api/v1/mtm/field-potentials/[id]/end
+2026-10-07T22:11:13.2169279Z ├ ƒ /api/v1/mtm/geocode
+2026-10-07T22:11:13.2169580Z ├ ƒ /api/v1/mtm/geocode/reverse
+2026-10-07T22:11:13.2169864Z ├ ƒ /api/v1/mtm/kpi
+2026-10-07T22:11:13.2170129Z ├ ƒ /api/v1/mtm/kpi-policies
+2026-10-07T22:11:13.2170473Z ├ ƒ /api/v1/mtm/kpi-policies/[id]/activate
+2026-10-07T22:11:13.2170800Z ├ ƒ /api/v1/mtm/kpi/export
+2026-10-07T22:11:13.2171089Z ├ ƒ /api/v1/mtm/leaderboard
+2026-10-07T22:11:13.2171401Z ├ ƒ /api/v1/mtm/location-history
+2026-10-07T22:11:13.2171703Z ├ ƒ /api/v1/mtm/locations
+2026-10-07T22:11:13.2172019Z ├ ƒ /api/v1/mtm/management-reports
+2026-10-07T22:11:13.2172419Z ├ ƒ /api/v1/mtm/mobile/attendance/devices/enrollments
+2026-10-07T22:11:13.2173227Z ├ ƒ /api/v1/mtm/mobile/attendance/devices/enrollments/[id]/proof
+2026-10-07T22:11:13.2173784Z ├ ƒ /api/v1/mtm/mobile/attendance/devices/enrollments/[id]/revoke
+2026-10-07T22:11:13.2174405Z ├ ƒ /api/v1/mtm/mobile/attendance/devices/enrollments/attestation-challenge
+2026-10-07T22:11:13.2174858Z ├ ƒ /api/v1/mtm/mobile/auth
+2026-10-07T22:11:13.2175171Z ├ ƒ /api/v1/mtm/mobile/bootstrap
+2026-10-07T22:11:13.2175499Z ├ ƒ /api/v1/mtm/mobile/commitments
+2026-10-07T22:11:13.2175802Z ├ ƒ /api/v1/mtm/mobile/config
+2026-10-07T22:11:13.2176119Z ├ ƒ /api/v1/mtm/mobile/documents
+2026-10-07T22:11:13.2176515Z ├ ƒ /api/v1/mtm/mobile/documents/[documentId]/download
+2026-10-07T22:11:13.2176919Z ├ ƒ /api/v1/mtm/mobile/documents/upload
+2026-10-07T22:11:13.2177236Z ├ ƒ /api/v1/mtm/mobile/hrm
+2026-10-07T22:11:13.2177563Z ├ ƒ /api/v1/mtm/mobile/hrm/exceptions
+2026-10-07T22:11:13.2177953Z ├ ƒ /api/v1/mtm/mobile/hrm/exceptions/[id]/response
+2026-10-07T22:11:13.2178296Z ├ ƒ /api/v1/mtm/mobile/kpi
+2026-10-07T22:11:13.2178614Z ├ ƒ /api/v1/mtm/mobile/location
+2026-10-07T22:11:13.2178953Z ├ ƒ /api/v1/mtm/mobile/manager/approvals
+2026-10-07T22:11:13.2179319Z ├ ƒ /api/v1/mtm/mobile/manager/locations
+2026-10-07T22:11:13.2179680Z ├ ƒ /api/v1/mtm/mobile/manager/planning
+2026-10-07T22:11:13.2180048Z ├ ƒ /api/v1/mtm/mobile/manager/team
+2026-10-07T22:11:13.2180396Z ├ ƒ /api/v1/mtm/mobile/media/preflight
+2026-10-07T22:11:13.2180736Z ├ ƒ /api/v1/mtm/mobile/messages
+2026-10-07T22:11:13.2181087Z ├ ƒ /api/v1/mtm/mobile/messages/[threadId]
+2026-10-07T22:11:13.2181449Z ├ ƒ /api/v1/mtm/mobile/notifications
+2026-10-07T22:11:13.2181799Z ├ ƒ /api/v1/mtm/mobile/ping
+2026-10-07T22:11:13.2182152Z ├ ƒ /api/v1/mtm/mobile/presentation-sessions
+2026-10-07T22:11:13.2182709Z ├ ƒ /api/v1/mtm/mobile/presentation-sessions/[id]
+2026-10-07T22:11:13.2183234Z ├ ƒ /api/v1/mtm/mobile/products
+2026-10-07T22:11:13.2183575Z ├ ƒ /api/v1/mtm/mobile/profile
+2026-10-07T22:11:13.2183909Z ├ ƒ /api/v1/mtm/mobile/route-commands
+2026-10-07T22:11:13.2184268Z ├ ƒ /api/v1/mtm/mobile/routes/targets
+2026-10-07T22:11:13.2184632Z ├ ƒ /api/v1/mtm/mobile/sync/pull
+2026-10-07T22:11:13.2184962Z ├ ƒ /api/v1/mtm/mobile/sync/push
+2026-10-07T22:11:13.2185259Z ├ ƒ /api/v1/mtm/mobile/tasks
+2026-10-07T22:11:13.2185576Z ├ ƒ /api/v1/mtm/mobile/tasks/[id]
+2026-10-07T22:11:13.2185945Z ├ ƒ /api/v1/mtm/mobile/tasks/[id]/documents
+2026-10-07T22:11:13.2186329Z ├ ƒ /api/v1/mtm/mobile/tasks/[id]/duplicate
+2026-10-07T22:11:13.2186699Z ├ ƒ /api/v1/mtm/mobile/tasks/[id]/progress
+2026-10-07T22:11:13.2187071Z ├ ƒ /api/v1/mtm/mobile/tasks/[id]/return
+2026-10-07T22:11:13.2187437Z ├ ƒ /api/v1/mtm/mobile/tasks/bulk-reassign
+2026-10-07T22:11:13.2187837Z ├ ƒ /api/v1/mtm/mobile/team-schedule
+2026-10-07T22:11:13.2188226Z ├ ƒ /api/v1/mtm/mobile/visits/[id]/workspace
+2026-10-07T22:11:13.2188566Z ├ ƒ /api/v1/mtm/mobile/week
+2026-10-07T22:11:13.2188874Z ├ ƒ /api/v1/mtm/mobile/workday
+2026-10-07T22:11:13.2189169Z ├ ƒ /api/v1/mtm/notifications
+2026-10-07T22:11:13.2189465Z ├ ƒ /api/v1/mtm/onboarding
+2026-10-07T22:11:13.2189814Z ├ ƒ /api/v1/mtm/operational-announcement
+2026-10-07T22:11:13.2190137Z ├ ƒ /api/v1/mtm/operations
+2026-10-07T22:11:13.2190455Z ├ ƒ /api/v1/mtm/operations/documents
+2026-10-07T22:11:13.2190886Z ├ ƒ /api/v1/mtm/operations/documents/[documentId]/download
+2026-10-07T22:11:13.2191470Z ├ ƒ /api/v1/mtm/operations/hrm/[id]/decision
+2026-10-07T22:11:13.2191861Z ├ ƒ /api/v1/mtm/operations/messages
+2026-10-07T22:11:13.2192225Z ├ ƒ /api/v1/mtm/organization-assignments
+2026-10-07T22:11:13.2192898Z ├ ƒ /api/v1/mtm/organization-assignments/preview
+2026-10-07T22:11:13.2193435Z ├ ƒ /api/v1/mtm/organization-attribute-packages
+2026-10-07T22:11:13.2193940Z ├ ƒ /api/v1/mtm/organization-attribute-packages/[id]/activate
+2026-10-07T22:11:13.2194492Z ├ ƒ /api/v1/mtm/organizations
+2026-10-07T22:11:13.2195079Z ├ ƒ /api/v1/mtm/organizations/[id]
+2026-10-07T22:11:13.2195896Z ├ ƒ /api/v1/mtm/organizations/[id]/coordinate-verifications
+2026-10-07T22:11:13.2196565Z ├ ƒ /api/v1/mtm/organizations/[id]/departments
+2026-10-07T22:11:13.2197237Z ├ ƒ /api/v1/mtm/organizations/[id]/departments/[departmentId]
+2026-10-07T22:11:13.2197703Z ├ ƒ /api/v1/mtm/organizations/[id]/documents
+2026-10-07T22:11:13.2198205Z ├ ƒ /api/v1/mtm/organizations/[id]/documents/[documentId]/download
+2026-10-07T22:11:13.2198664Z ├ ƒ /api/v1/mtm/organizations/facets
+2026-10-07T22:11:13.2199016Z ├ ƒ /api/v1/mtm/organizations/views
+2026-10-07T22:11:13.2199378Z ├ ƒ /api/v1/mtm/organizations/views/[id]
+2026-10-07T22:11:13.2199768Z ├ ƒ /api/v1/mtm/pharmacy-approval-policies
+2026-10-07T22:11:13.2200227Z ├ ƒ /api/v1/mtm/pharmacy-approval-policies/[id]/activate
+2026-10-07T22:11:13.2200650Z ├ ƒ /api/v1/mtm/pharmacy-points-formulas
+2026-10-07T22:11:13.2201086Z ├ ƒ /api/v1/mtm/pharmacy-points-formulas/[id]/activate
+2026-10-07T22:11:13.2201524Z ├ ƒ /api/v1/mtm/pharmacy-promotion-executions
+2026-10-07T22:11:13.2201963Z ├ ƒ /api/v1/mtm/pharmacy-promotion-executions/[id]
+2026-10-07T22:11:13.2202458Z ├ ƒ /api/v1/mtm/pharmacy-promotion-executions/[id]/evidence
+2026-10-07T22:11:13.2203259Z ├ ƒ /api/v1/mtm/pharmacy-promotion-executions/[id]/evidence/[evidenceId]/download
+2026-10-07T22:11:13.2203864Z ├ ƒ /api/v1/mtm/pharmacy-promotion-executions/[id]/reviews
+2026-10-07T22:11:13.2204406Z ├ ƒ /api/v1/mtm/pharmacy-promotion-executions/[id]/reviews/preview
+2026-10-07T22:11:13.2204936Z ├ ƒ /api/v1/mtm/pharmacy-promotion-executions/[id]/submit
+2026-10-07T22:11:13.2205431Z ├ ƒ /api/v1/mtm/pharmacy-promotion-executions/bulk/reviews
+2026-10-07T22:11:13.2205965Z ├ ƒ /api/v1/mtm/pharmacy-promotion-executions/bulk/reviews/preview
+2026-10-07T22:11:13.2206470Z ├ ƒ /api/v1/mtm/pharmacy-promotion-executions/export
+2026-10-07T22:11:13.2206950Z ├ ƒ /api/v1/mtm/pharmacy-promotion-executions/sync-context
+2026-10-07T22:11:13.2207429Z ├ ƒ /api/v1/mtm/pharmacy-promotion-executions/views
+2026-10-07T22:11:13.2207909Z ├ ƒ /api/v1/mtm/pharmacy-promotion-executions/views/[id]
+2026-10-07T22:11:13.2208338Z ├ ƒ /api/v1/mtm/pharmacy-promotion-targets
+2026-10-07T22:11:13.2208849Z ├ ƒ /api/v1/mtm/pharmacy-promotion-targets/[id]/eligibility-override
+2026-10-07T22:11:13.2209330Z ├ ƒ /api/v1/mtm/pharmacy-promotion-types
+2026-10-07T22:11:13.2209763Z ├ ƒ /api/v1/mtm/pharmacy-promotion-types/[id]/activate
+2026-10-07T22:11:13.2210163Z ├ ƒ /api/v1/mtm/pharmacy-promotions
+2026-10-07T22:11:13.2210692Z ├ ƒ /api/v1/mtm/pharmacy-promotions/[id]/versions
+2026-10-07T22:11:13.2211226Z ├ ƒ /api/v1/mtm/pharmacy-promotions/[id]/versions/[versionId]/publish
+2026-10-07T22:11:13.2211840Z ├ ƒ /api/v1/mtm/pharmacy-promotions/[id]/versions/[versionId]/retire
+2026-10-07T22:11:13.2212254Z ├ ƒ /api/v1/mtm/photos
+2026-10-07T22:11:13.2212525Z ├ ƒ /api/v1/mtm/photos/[id]
+2026-10-07T22:11:13.2212968Z ├ ƒ /api/v1/mtm/product-groups
+2026-10-07T22:11:13.2213325Z ├ ƒ /api/v1/mtm/product-groups/[id]/members
+2026-10-07T22:11:13.2213655Z ├ ƒ /api/v1/mtm/products
+2026-10-07T22:11:13.2213960Z ├ ƒ /api/v1/mtm/products/upload
+2026-10-07T22:11:13.2214251Z ├ ƒ /api/v1/mtm/regions
+2026-10-07T22:11:13.2214523Z ├ ƒ /api/v1/mtm/regions/[id]
+2026-10-07T22:11:13.2214808Z ├ ƒ /api/v1/mtm/reports
+2026-10-07T22:11:13.2215144Z ├ ƒ /api/v1/mtm/route-change-requests
+2026-10-07T22:11:13.2215563Z ├ ƒ /api/v1/mtm/route-change-requests/[id]/decision
+2026-10-07T22:11:13.2215914Z ├ ƒ /api/v1/mtm/routes
+2026-10-07T22:11:13.2216183Z ├ ƒ /api/v1/mtm/routes/[id]
+2026-10-07T22:11:13.2216539Z ├ ƒ /api/v1/mtm/routes/[id]/change-request
+2026-10-07T22:11:13.2216921Z ├ ƒ /api/v1/mtm/routes/[id]/change-requests
+2026-10-07T22:11:13.2217287Z ├ ƒ /api/v1/mtm/routes/[id]/publish
+2026-10-07T22:11:13.2217653Z ├ ƒ /api/v1/mtm/routes/[id]/travel/preview
+2026-10-07T22:11:13.2218027Z ├ ƒ /api/v1/mtm/routes/assignable-catalog
+2026-10-07T22:11:13.2218381Z ├ ƒ /api/v1/mtm/routes/candidates
+2026-10-07T22:11:13.2218742Z ├ ƒ /api/v1/mtm/routes/meeting-availability
+2026-10-07T22:11:13.2219123Z ├ ƒ /api/v1/mtm/routes/needs-attention
+2026-10-07T22:11:13.2219433Z ├ ƒ /api/v1/mtm/settings
+2026-10-07T22:11:13.2219710Z ├ ƒ /api/v1/mtm/sync/push
+2026-10-07T22:11:13.2219984Z ├ ƒ /api/v1/mtm/tasks
+2026-10-07T22:11:13.2220249Z ├ ƒ /api/v1/mtm/tasks/[id]
+2026-10-07T22:11:13.2220715Z ├ ƒ /api/v1/mtm/tasks/[id]/documents
+2026-10-07T22:11:13.2221144Z ├ ƒ /api/v1/mtm/tasks/[id]/documents/[documentId]/download
+2026-10-07T22:11:13.2221552Z ├ ƒ /api/v1/mtm/tasks/[id]/duplicate
+2026-10-07T22:11:13.2221896Z ├ ƒ /api/v1/mtm/tasks/[id]/events
+2026-10-07T22:11:13.2222220Z ├ ƒ /api/v1/mtm/tasks/[id]/review
+2026-10-07T22:11:13.2222555Z ├ ƒ /api/v1/mtm/tasks/bulk-reassign
+2026-10-07T22:11:13.2223153Z ├ ƒ /api/v1/mtm/teams
+2026-10-07T22:11:13.2223424Z ├ ƒ /api/v1/mtm/teams/[id]
+2026-10-07T22:11:13.2223738Z ├ ƒ /api/v1/mtm/visit-policies
+2026-10-07T22:11:13.2224070Z ├ ƒ /api/v1/mtm/visit-policies/[id]
+2026-10-07T22:11:13.2224423Z ├ ƒ /api/v1/mtm/visit-policies/preview
+2026-10-07T22:11:13.2224739Z ├ ƒ /api/v1/mtm/visits
+2026-10-07T22:11:13.2225008Z ├ ƒ /api/v1/mtm/visits/[id]
+2026-10-07T22:11:13.2225323Z ├ ƒ /api/v1/mtm/visits/[id]/actions
+2026-10-07T22:11:13.2225655Z ├ ƒ /api/v1/mtm/visits/[id]/result
+2026-10-07T22:11:13.2225996Z ├ ƒ /api/v1/mtm/visits/[id]/review
+2026-10-07T22:11:13.2226348Z ├ ƒ /api/v1/mtm/visits/[id]/workspace
+2026-10-07T22:11:13.2226667Z ├ ƒ /api/v1/mtm/visits/active
+2026-10-07T22:11:13.2226949Z ├ ƒ /api/v1/mtm/week
+2026-10-07T22:11:13.2227208Z ├ ƒ /api/v1/mtm/week/team
+2026-10-07T22:11:13.2227504Z ├ ƒ /api/v1/mtm/week/workday
+2026-10-07T22:11:13.2227801Z ├ ƒ /api/v1/mtm/work-calendar
+2026-10-07T22:11:13.2228127Z ├ ƒ /api/v1/mtm/work-calendar/[id]
+2026-10-07T22:11:13.2228443Z ├ ƒ /api/v1/named-credentials
+2026-10-07T22:11:13.2228771Z ├ ƒ /api/v1/named-credentials/[id]
+2026-10-07T22:11:13.2229129Z ├ ƒ /api/v1/named-credentials/[id]/test
+2026-10-07T22:11:13.2229449Z ├ ƒ /api/v1/notifications
+2026-10-07T22:11:13.2229710Z ├ ƒ /api/v1/offers
+2026-10-07T22:11:13.2229967Z ├ ƒ /api/v1/offers/[id]
+2026-10-07T22:11:13.2230244Z ├ ƒ /api/v1/offers/[id]/pdf
+2026-10-07T22:11:13.2230530Z ├ ƒ /api/v1/offers/[id]/send
+2026-10-07T22:11:13.2230817Z ├ ƒ /api/v1/order-returns
+2026-10-07T22:11:13.2231145Z ├ ƒ /api/v1/order-returns/[id]/transition
+2026-10-07T22:11:13.2231487Z ├ ƒ /api/v1/order-shipments
+2026-10-07T22:11:13.2231831Z ├ ƒ /api/v1/order-shipments/[id]/transition
+2026-10-07T22:11:13.2232229Z ├ ƒ /api/v1/organization/default-currency
+2026-10-07T22:11:13.2232564Z ├ ƒ /api/v1/organization/plan
+2026-10-07T22:11:13.2233336Z ├ ƒ /api/v1/outages
+2026-10-07T22:11:13.2233632Z ├ ƒ /api/v1/outages/[id]
+2026-10-07T22:11:13.2233921Z ├ ƒ /api/v1/payment-intents
+2026-10-07T22:11:13.2234243Z ├ ƒ /api/v1/payment-intents/[id]
+2026-10-07T22:11:13.2234566Z ├ ƒ /api/v1/payment-providers
+2026-10-07T22:11:13.2234899Z ├ ƒ /api/v1/payment-providers/[id]
+2026-10-07T22:11:13.2235216Z ├ ƒ /api/v1/payment-refunds
+2026-10-07T22:11:13.2235530Z ├ ƒ /api/v1/payment-refunds/[id]
+2026-10-07T22:11:13.2235889Z ├ ƒ /api/v1/payment-webhooks/[provider]
+2026-10-07T22:11:13.2236189Z ├ ƒ /api/v1/ping
+2026-10-07T22:11:13.2236448Z ├ ƒ /api/v1/pipeline-stages
+2026-10-07T22:11:13.2236769Z ├ ƒ /api/v1/pipeline-stages/[id]
+2026-10-07T22:11:13.2237114Z ├ ƒ /api/v1/pipeline-stages/[id]/rules
+2026-10-07T22:11:13.2237483Z ├ ƒ /api/v1/pipeline-waterfall
+2026-10-07T22:11:13.2237773Z ├ ƒ /api/v1/pipelines
+2026-10-07T22:11:13.2238041Z ├ ƒ /api/v1/pipelines/[id]
+2026-10-07T22:11:13.2238321Z ├ ƒ /api/v1/plan-requests
+2026-10-07T22:11:13.2238647Z ├ ƒ /api/v1/platform-events/definitions
+2026-10-07T22:11:13.2239024Z ├ ƒ /api/v1/platform-events/publish
+2026-10-07T22:11:13.2239323Z ├ ƒ /api/v1/policies
+2026-10-07T22:11:13.2239585Z ├ ƒ /api/v1/policies/[id]
+2026-10-07T22:11:13.2239865Z ├ ƒ /api/v1/policy-holders
+2026-10-07T22:11:13.2240172Z ├ ƒ /api/v1/policy-holders/[id]
+2026-10-07T22:11:13.2240503Z ├ ƒ /api/v1/policy-holders/lookup
+2026-10-07T22:11:13.2240805Z ├ ƒ /api/v1/portal-users
+2026-10-07T22:11:13.2241141Z ├ ƒ /api/v1/prediction-models
+2026-10-07T22:11:13.2241495Z ├ ƒ /api/v1/prediction-models/[id]/predict
+2026-10-07T22:11:13.2241878Z ├ ƒ /api/v1/prediction-models/[id]/train
+2026-10-07T22:11:13.2242209Z ├ ƒ /api/v1/price-changes
+2026-10-07T22:11:13.2242515Z ├ ƒ /api/v1/price-changes/batch
+2026-10-07T22:11:13.2242992Z ├ ƒ /api/v1/pricing/additional-sales
+2026-10-07T22:11:13.2243569Z ├ ƒ /api/v1/pricing/additional-sales/[id]
+2026-10-07T22:11:13.2243934Z ├ ƒ /api/v1/pricing/categories
+2026-10-07T22:11:13.2244263Z ├ ƒ /api/v1/pricing/company/[code]
+2026-10-07T22:11:13.2244576Z ├ ƒ /api/v1/pricing/data
+2026-10-07T22:11:13.2244892Z ├ ƒ /api/v1/pricing/delete/[code]
+2026-10-07T22:11:13.2245191Z ├ ƒ /api/v1/pricing/export
+2026-10-07T22:11:13.2245469Z ├ ƒ /api/v1/pricing/groups
+2026-10-07T22:11:13.2245758Z ├ ƒ /api/v1/pricing/groups-db
+2026-10-07T22:11:13.2246055Z ├ ƒ /api/v1/pricing/profiles
+2026-10-07T22:11:13.2246378Z ├ ƒ /api/v1/pricing/profiles/[id]
+2026-10-07T22:11:13.2246750Z ├ ƒ /api/v1/pricing/profiles/[id]/categories
+2026-10-07T22:11:13.2247142Z ├ ƒ /api/v1/pricing/profiles/[id]/services
+2026-10-07T22:11:13.2247501Z ├ ƒ /api/v1/pricing/unit-types
+2026-10-07T22:11:13.2247800Z ├ ƒ /api/v1/proactive-alerts
+2026-10-07T22:11:13.2248131Z ├ ƒ /api/v1/proactive-alerts/[id]
+2026-10-07T22:11:13.2248422Z ├ ƒ /api/v1/products
+2026-10-07T22:11:13.2248697Z ├ ƒ /api/v1/products/[id]
+2026-10-07T22:11:13.2248991Z ├ ƒ /api/v1/programs
+2026-10-07T22:11:13.2249241Z ├ ƒ /api/v1/projects
+2026-10-07T22:11:13.2249495Z ├ ƒ /api/v1/projects/[id]
+2026-10-07T22:11:13.2249806Z ├ ƒ /api/v1/projects/[id]/members
+2026-10-07T22:11:13.2250395Z ├ ƒ /api/v1/projects/[id]/milestones
+2026-10-07T22:11:13.2250769Z ├ ƒ /api/v1/projects/[id]/tasks
+2026-10-07T22:11:13.2251071Z ├ ƒ /api/v1/projects/bulk
+2026-10-07T22:11:13.2251353Z ├ ƒ /api/v1/promo-codes
+2026-10-07T22:11:13.2251634Z ├ ƒ /api/v1/promo-codes/[id]
+2026-10-07T22:11:13.2251957Z ├ ƒ /api/v1/promo-codes/[id]/redeem
+2026-10-07T22:11:13.2252309Z ├ ƒ /api/v1/ps-cloud/skill-match
+2026-10-07T22:11:13.2252784Z ├ ƒ /api/v1/ps-cloud/utilization
+2026-10-07T22:11:13.2253127Z ├ ƒ /api/v1/public-sector-cases
+2026-10-07T22:11:13.2253471Z ├ ƒ /api/v1/public-sector-cases/[id]
+2026-10-07T22:11:13.2253816Z ├ ƒ /api/v1/public-sector-grants
+2026-10-07T22:11:13.2254163Z ├ ƒ /api/v1/public-sector-grants/[id]
+2026-10-07T22:11:13.2254533Z ├ ƒ /api/v1/public-sector-licenses
+2026-10-07T22:11:13.2254900Z ├ ƒ /api/v1/public-sector-licenses/[id]
+2026-10-07T22:11:13.2255265Z ├ ƒ /api/v1/public-sector-officials
+2026-10-07T22:11:13.2255630Z ├ ƒ /api/v1/public-sector-officials/[id]
+2026-10-07T22:11:13.2256117Z ├ ƒ /api/v1/public/build-info
+2026-10-07T22:11:13.2256461Z ├ ƒ /api/v1/public/cobrowse/consent
+2026-10-07T22:11:13.2256796Z ├ ƒ /api/v1/public/cobrowse/join
+2026-10-07T22:11:13.2257130Z ├ ƒ /api/v1/public/cobrowse/signal
+2026-10-07T22:11:13.2257467Z ├ ƒ /api/v1/public/cobrowse/stream
+2026-10-07T22:11:13.2257849Z ├ ƒ /api/v1/public/commerce/storefronts/[slug]
+2026-10-07T22:11:13.2258306Z ├ ƒ /api/v1/public/commerce/storefronts/[slug]/products
+2026-10-07T22:11:13.2258691Z ├ ƒ /api/v1/public/csp-report
+2026-10-07T22:11:13.2259029Z ├ ƒ /api/v1/public/demo-access/[token]
+2026-10-07T22:11:13.2259422Z ├ ƒ /api/v1/public/demo-access/[token]/assistant
+2026-10-07T22:11:13.2259829Z ├ ƒ /api/v1/public/demo-access/[token]/call
+2026-10-07T22:11:13.2260233Z ├ ƒ /api/v1/public/demo-access/[token]/events
+2026-10-07T22:11:13.2260623Z ├ ƒ /api/v1/public/demo-access/[token]/otp
+2026-10-07T22:11:13.2261019Z ├ ƒ /api/v1/public/demo-access/[token]/phone
+2026-10-07T22:11:13.2261455Z ├ ƒ /api/v1/public/demo-access/[token]/phone/telegram
+2026-10-07T22:11:13.2261896Z ├ ƒ /api/v1/public/demo-access/[token]/phone/verify
+2026-10-07T22:11:13.2262420Z ├ ƒ /api/v1/public/demo-access/[token]/start
+2026-10-07T22:11:13.2263136Z ├ ƒ /api/v1/public/demo-access/[token]/verify
+2026-10-07T22:11:13.2263568Z ├ ƒ /api/v1/public/demo-access/[token]/video/[file]
+2026-10-07T22:11:13.2263999Z ├ ƒ /api/v1/public/demo-access/[token]/whatsapp
+2026-10-07T22:11:13.2264383Z ├ ƒ /api/v1/public/demo-clips/[file]
+2026-10-07T22:11:13.2264731Z ├ ƒ /api/v1/public/demo-requests
+2026-10-07T22:11:13.2265061Z ├ ƒ /api/v1/public/email-inbound
+2026-10-07T22:11:13.2265407Z ├ ƒ /api/v1/public/events/[id]/register
+2026-10-07T22:11:13.2265749Z ├ ƒ /api/v1/public/form-submit
+2026-10-07T22:11:13.2266069Z ├ ƒ /api/v1/public/forms/[slug]
+2026-10-07T22:11:13.2266603Z ├ ƒ /api/v1/public/forms/[slug]/submit
+2026-10-07T22:11:13.2266917Z ├ ƒ /api/v1/public/leads
+2026-10-07T22:11:13.2267220Z ├ ƒ /api/v1/public/portal-auth
+2026-10-07T22:11:13.2267611Z ├ ƒ /api/v1/public/portal-auth/forgot-password
+2026-10-07T22:11:13.2268005Z ├ ƒ /api/v1/public/portal-auth/register
+2026-10-07T22:11:13.2268383Z ├ ƒ /api/v1/public/portal-auth/set-password
+2026-10-07T22:11:13.2268745Z ├ ƒ /api/v1/public/portal-chat
+2026-10-07T22:11:13.2269068Z ├ ƒ /api/v1/public/portal-config
+2026-10-07T22:11:13.2269377Z ├ ƒ /api/v1/public/portal-kb
+2026-10-07T22:11:13.2269700Z ├ ƒ /api/v1/public/portal-loyalty
+2026-10-07T22:11:13.2270093Z ├ ƒ /api/v1/public/portal-push-register
+2026-10-07T22:11:13.2270450Z ├ ƒ /api/v1/public/portal-redeem
+2026-10-07T22:11:13.2270775Z ├ ƒ /api/v1/public/portal-tickets
+2026-10-07T22:11:13.2271129Z ├ ƒ /api/v1/public/portal-tickets/[id]
+2026-10-07T22:11:13.2271508Z ├ ƒ /api/v1/public/portal-tickets/[id]/files
+2026-10-07T22:11:13.2271951Z ├ ƒ /api/v1/public/portal-tickets/[id]/files/[fileId]
+2026-10-07T22:11:13.2272360Z ├ ƒ /api/v1/public/portal-unsubscribe
+2026-10-07T22:11:13.2273027Z ├ ƒ /api/v1/public/resend-webhook
+2026-10-07T22:11:13.2273414Z ├ ƒ /api/v1/public/sequence-unsubscribe
+2026-10-07T22:11:13.2273777Z ├ ƒ /api/v1/public/surveys/[slug]
+2026-10-07T22:11:13.2274118Z ├ ƒ /api/v1/public/tenant-branding
+2026-10-07T22:11:13.2274491Z ├ ƒ /api/v1/public/ticket-closure/[token]
+2026-10-07T22:11:13.2274824Z ├ ƒ /api/v1/public/track
+2026-10-07T22:11:13.2275145Z ├ ƒ /api/v1/public/web-chat/config
+2026-10-07T22:11:13.2275484Z ├ ƒ /api/v1/public/web-chat/message
+2026-10-07T22:11:13.2275829Z ├ ƒ /api/v1/public/web-chat/messages
+2026-10-07T22:11:13.2276177Z ├ ƒ /api/v1/public/web-chat/session
+2026-10-07T22:11:13.2276512Z ├ ƒ /api/v1/public/web-chat/typing
+2026-10-07T22:11:13.2276844Z ├ ƒ /api/v1/public/web-chat/upload
+2026-10-07T22:11:13.2277169Z ├ ƒ /api/v1/public/web-tracking
+2026-10-07T22:11:13.2277528Z ├ ƒ /api/v1/public/web-tracking/identify
+2026-10-07T22:11:13.2277862Z ├ ƒ /api/v1/push/subscribe
+2026-10-07T22:11:13.2278147Z ├ ƒ /api/v1/push/vapid-key
+2026-10-07T22:11:13.2278415Z ├ ƒ /api/v1/quotes
+2026-10-07T22:11:13.2278670Z ├ ƒ /api/v1/quotes/[id]
+2026-10-07T22:11:13.2278942Z ├ ƒ /api/v1/quotes/[id]/pdf
+2026-10-07T22:11:13.2279409Z ├ ƒ /api/v1/recurring-invoices
+2026-10-07T22:11:13.2279759Z ├ ƒ /api/v1/recurring-invoices/[id]
+2026-10-07T22:11:13.2280122Z ├ ƒ /api/v1/recurring-invoices/generate
+2026-10-07T22:11:13.2280429Z ├ ƒ /api/v1/reports
+2026-10-07T22:11:13.2280728Z ├ ƒ /api/v1/reports/ai-narrative
+2026-10-07T22:11:13.2281028Z ├ ƒ /api/v1/reports/builder
+2026-10-07T22:11:13.2281340Z ├ ƒ /api/v1/reports/builder/[id]
+2026-10-07T22:11:13.2281672Z ├ ƒ /api/v1/reports/builder/export
+2026-10-07T22:11:13.2282008Z ├ ƒ /api/v1/reports/builder/preview
+2026-10-07T22:11:13.2282342Z ├ ƒ /api/v1/reports/date-presets
+2026-10-07T22:11:13.2282780Z ├ ƒ /api/v1/rollup-fields
+2026-10-07T22:11:13.2283123Z ├ ƒ /api/v1/rollup-fields/[id]/recompute
+2026-10-07T22:11:13.2283590Z ├ ƒ /api/v1/sales-quotas
+2026-10-07T22:11:13.2283875Z ├ ƒ /api/v1/sales-quotas/[id]
+2026-10-07T22:11:13.2284220Z ├ ƒ /api/v1/sales-quotas/[id]/attainment
+2026-10-07T22:11:13.2284577Z ├ ƒ /api/v1/sales-quotas/leaderboard
+2026-10-07T22:11:13.2284895Z ├ ƒ /api/v1/saved-views
+2026-10-07T22:11:13.2285178Z ├ ƒ /api/v1/saved-views/[id]
+2026-10-07T22:11:13.2285497Z ├ ƒ /api/v1/schema-builder/graph
+2026-10-07T22:11:13.2285780Z ├ ƒ /api/v1/search
+2026-10-07T22:11:13.2286039Z ├ ƒ /api/v1/search/semantic
+2026-10-07T22:11:13.2286351Z ├ ƒ /api/v1/search/semantic/index
+2026-10-07T22:11:13.2286642Z ├ ƒ /api/v1/segments
+2026-10-07T22:11:13.2286904Z ├ ƒ /api/v1/segments/[id]
+2026-10-07T22:11:13.2287189Z ├ ƒ /api/v1/segments/preview
+2026-10-07T22:11:13.2287464Z ├ ƒ /api/v1/sequences
+2026-10-07T22:11:13.2287785Z ├ ƒ /api/v1/sequences/[id]
+2026-10-07T22:11:13.2288118Z ├ ƒ /api/v1/sequences/[id]/enroll
+2026-10-07T22:11:13.2288462Z ├ ƒ /api/v1/sequences/[id]/enroll-bulk
+2026-10-07T22:11:13.2288822Z ├ ƒ /api/v1/sequences/[id]/enrollments
+2026-10-07T22:11:13.2289249Z ├ ƒ /api/v1/sequences/[id]/enrollments/[enrollmentId]
+2026-10-07T22:11:13.2289634Z ├ ƒ /api/v1/sequences/analytics
+2026-10-07T22:11:13.2290073Z ├ ƒ /api/v1/sequences/enrollments/[enrollmentId]/complete-step
+2026-10-07T22:11:13.2290598Z ├ ƒ /api/v1/sequences/enrollments/[enrollmentId]/send-email
+2026-10-07T22:11:13.2291007Z ├ ƒ /api/v1/sequences/settings
+2026-10-07T22:11:13.2291306Z ├ ƒ /api/v1/sequences/touches
+2026-10-07T22:11:13.2291593Z ├ ƒ /api/v1/service-calls
+2026-10-07T22:11:13.2291903Z ├ ƒ /api/v1/service-calls/[id]
+2026-10-07T22:11:13.2292220Z ├ ƒ /api/v1/settings/ai-advisor
+2026-10-07T22:11:13.2292534Z ├ ƒ /api/v1/settings/ai-budget
+2026-10-07T22:11:13.2292987Z ├ ƒ /api/v1/settings/ai-delivery
+2026-10-07T22:11:13.2293314Z ├ ƒ /api/v1/settings/ai-features
+2026-10-07T22:11:13.2293617Z ├ ƒ /api/v1/settings/ai-stats
+2026-10-07T22:11:13.2293929Z ├ ƒ /api/v1/settings/call-tasks
+2026-10-07T22:11:13.2294258Z ├ ƒ /api/v1/settings/capabilities
+2026-10-07T22:11:13.2294637Z ├ ƒ /api/v1/settings/channel-reply
+2026-10-07T22:11:13.2294986Z ├ ƒ /api/v1/settings/field-permissions
+2026-10-07T22:11:13.2295346Z ├ ƒ /api/v1/settings/inbox-followup
+2026-10-07T22:11:13.2295653Z ├ ƒ /api/v1/settings/invoice
+2026-10-07T22:11:13.2295979Z ├ ƒ /api/v1/settings/organization
+2026-10-07T22:11:13.2296312Z ├ ƒ /api/v1/settings/permissions
+2026-10-07T22:11:13.2296610Z ├ ƒ /api/v1/settings/roles
+2026-10-07T22:11:13.2296925Z ├ ƒ /api/v1/settings/sharing-rules
+2026-10-07T22:11:13.2297270Z ├ ƒ /api/v1/settings/sharing-rules/[id]
+2026-10-07T22:11:13.2297601Z ├ ƒ /api/v1/settings/smtp
+2026-10-07T22:11:13.2297899Z ├ ƒ /api/v1/settings/smtp/test
+2026-10-07T22:11:13.2298218Z ├ ƒ /api/v1/settings/voice-budget
+2026-10-07T22:11:13.2298581Z ├ ƒ /api/v1/settings/web-tracking
+2026-10-07T22:11:13.2298880Z ├ ƒ /api/v1/sign/[token]
+2026-10-07T22:11:13.2299181Z ├ ƒ /api/v1/sign/[token]/decline
+2026-10-07T22:11:13.2299506Z ├ ƒ /api/v1/skill-routing/agents
+2026-10-07T22:11:13.2299797Z ├ ƒ /api/v1/sla-policies
+2026-10-07T22:11:13.2300095Z ├ ƒ /api/v1/sla-policies/[id]
+2026-10-07T22:11:13.2300419Z ├ ƒ /api/v1/sla-policies/calendar
+2026-10-07T22:11:13.2300725Z ├ ƒ /api/v1/social/accounts
+2026-10-07T22:11:13.2301037Z ├ ƒ /api/v1/social/accounts/[id]
+2026-10-07T22:11:13.2301500Z ├ ƒ /api/v1/social/accounts/[id]/poll
+2026-10-07T22:11:13.2301842Z ├ ƒ /api/v1/social/agent
+2026-10-07T22:11:13.2302168Z ├ ƒ /api/v1/social/ai-reply-settings
+2026-10-07T22:11:13.2302490Z ├ ƒ /api/v1/social/analytics
+2026-10-07T22:11:13.2303114Z ├ ƒ /api/v1/social/coverage-alerts
+2026-10-07T22:11:13.2303469Z ├ ƒ /api/v1/social/coverage-contract
+2026-10-07T22:11:13.2303809Z ├ ƒ /api/v1/social/cron/poll-all
+2026-10-07T22:11:13.2304157Z ├ ƒ /api/v1/social/cron/process-media
+2026-10-07T22:11:13.2304527Z ├ ƒ /api/v1/social/cron/process-outbound
+2026-10-07T22:11:13.2304988Z ├ ƒ /api/v1/social/cron/purge-observations
+2026-10-07T22:11:13.2305486Z ├ ƒ /api/v1/social/cron/reconcile-providers
+2026-10-07T22:11:13.2305952Z ├ ƒ /api/v1/social/enable-inbox
+2026-10-07T22:11:13.2306813Z ├ ƒ /api/v1/social/google-alerts
+2026-10-07T22:11:13.2307304Z ├ ƒ /api/v1/social/import-conversations
+2026-10-07T22:11:13.2307792Z ├ ƒ /api/v1/social/ingest
+2026-10-07T22:11:13.2308219Z ├ ƒ /api/v1/social/ingest-envelopes
+2026-10-07T22:11:13.2308792Z ├ ƒ /api/v1/social/ingest-envelopes/[id]/replay
+2026-10-07T22:11:13.2309389Z ├ ƒ /api/v1/social/ingest-envelopes/[id]/resolve
+2026-10-07T22:11:13.2309905Z ├ ƒ /api/v1/social/legal-actions/[id]/approval
+2026-10-07T22:11:13.2310472Z ├ ƒ /api/v1/social/legal-candidates
+2026-10-07T22:11:13.2310936Z ├ ƒ /api/v1/social/legal-candidates/[id]
+2026-10-07T22:11:13.2311472Z ├ ƒ /api/v1/social/legal-cases
+2026-10-07T22:11:13.2320747Z ├ ƒ /api/v1/social/legal-policy
+2026-10-07T22:11:13.2321152Z ├ ƒ /api/v1/social/legal-reports
+2026-10-07T22:11:13.2321539Z ├ ƒ /api/v1/social/legal-reports/[id]
+2026-10-07T22:11:13.2321946Z ├ ƒ /api/v1/social/manual-engagement-tasks
+2026-10-07T22:11:13.2322384Z ├ ƒ /api/v1/social/manual-engagement-tasks/[id]
+2026-10-07T22:11:13.2322980Z ├ ƒ /api/v1/social/media-discovery
+2026-10-07T22:11:13.2323379Z ├ ƒ /api/v1/social/media-observations/[id]/run
+2026-10-07T22:11:13.2323772Z ├ ƒ /api/v1/social/media-policy
+2026-10-07T22:11:13.2324130Z ├ ƒ /api/v1/social/media-preview/[id]
+2026-10-07T22:11:13.2324471Z ├ ƒ /api/v1/social/mentions
+2026-10-07T22:11:13.2324818Z ├ ƒ /api/v1/social/mentions/[id]/ai-drafts
+2026-10-07T22:11:13.2325238Z ├ ƒ /api/v1/social/mentions/[id]/convert-to-lead
+2026-10-07T22:11:13.2325666Z ├ ƒ /api/v1/social/mentions/[id]/convert-to-task
+2026-10-07T22:11:13.2326092Z ├ ƒ /api/v1/social/mentions/[id]/convert-to-ticket
+2026-10-07T22:11:13.2326499Z ├ ƒ /api/v1/social/mentions/[id]/escalate
+2026-10-07T22:11:13.2326881Z ├ ƒ /api/v1/social/mentions/[id]/legal-case
+2026-10-07T22:11:13.2327254Z ├ ƒ /api/v1/social/mentions/[id]/reply
+2026-10-07T22:11:13.2327675Z ├ ƒ /api/v1/social/mentions/[id]/whatsapp-group/retry
+2026-10-07T22:11:13.2328070Z ├ ƒ /api/v1/social/mentions/triage
+2026-10-07T22:11:13.2328463Z ├ ƒ /api/v1/social/monitoring-profiles
+2026-10-07T22:11:13.2328861Z ├ ƒ /api/v1/social/monitoring-profiles/[id]
+2026-10-07T22:11:13.2329089Z ├ ƒ /api/v1/social/monitoring-profiles/[id]/company
+2026-10-07T22:11:13.2329306Z ├ ƒ /api/v1/social/monitoring-profiles/[id]/logo
+2026-10-07T22:11:13.2329750Z ├ ƒ /api/v1/social/monitoring-profiles/[id]/review-apply
+2026-10-07T22:11:13.2330099Z ├ ƒ /api/v1/social/monitoring-profiles/[id]/review-apply/[runId]/rollback
+2026-10-07T22:11:13.2330367Z ├ ƒ /api/v1/social/monitoring-profiles/[id]/review-dry-run
+2026-10-07T22:11:13.2330586Z ├ ƒ /api/v1/social/monitoring-profiles/[id]/run
+2026-10-07T22:11:13.2330769Z ├ ƒ /api/v1/social/monitoring-run-jobs
+2026-10-07T22:11:13.2330968Z ├ ƒ /api/v1/social/monitoring-run-jobs/[id]
+2026-10-07T22:11:13.2331196Z ├ ƒ /api/v1/social/monitoring-run-jobs/[id]/cancel
+2026-10-07T22:11:13.2331420Z ├ ƒ /api/v1/social/monitoring-run-jobs/[id]/resume
+2026-10-07T22:11:13.2331605Z ├ ƒ /api/v1/social/monitoring-scenarios
+2026-10-07T22:11:13.2331811Z ├ ƒ /api/v1/social/monitoring-scenarios/[id]
+2026-10-07T22:11:13.2332003Z ├ ƒ /api/v1/social/monitoring-settings
+2026-10-07T22:11:13.2332181Z ├ ƒ /api/v1/social/monitoring-sources
+2026-10-07T22:11:13.2332378Z ├ ƒ /api/v1/social/monitoring-sources/[id]
+2026-10-07T22:11:13.2332742Z ├ ƒ /api/v1/social/monitoring-sources/[id]/run
+2026-10-07T22:11:13.2332938Z ├ ƒ /api/v1/social/monitoring-subjects
+2026-10-07T22:11:13.2333132Z ├ ƒ /api/v1/social/monitoring-subjects/[id]
+2026-10-07T22:11:13.2333323Z ├ ƒ /api/v1/social/oauth/facebook/callback
+2026-10-07T22:11:13.2333507Z ├ ƒ /api/v1/social/oauth/facebook/start
+2026-10-07T22:11:13.2333693Z ├ ƒ /api/v1/social/oauth/instagram/callback
+2026-10-07T22:11:13.2333882Z ├ ƒ /api/v1/social/oauth/instagram/start
+2026-10-07T22:11:13.2334058Z ├ ƒ /api/v1/social/oauth/preflight
+2026-10-07T22:11:13.2334224Z ├ ƒ /api/v1/social/oauth/providers
+2026-10-07T22:11:13.2334391Z ├ ƒ /api/v1/social/oauth/subscribe
+2026-10-07T22:11:13.2334614Z ├ ƒ /api/v1/social/oauth/tiktok-business/callback
+2026-10-07T22:11:13.2334963Z ├ ƒ /api/v1/social/oauth/tiktok-business/start
+2026-10-07T22:11:13.2335143Z ├ ƒ /api/v1/social/oauth/tiktok/callback
+2026-10-07T22:11:13.2335321Z ├ ƒ /api/v1/social/oauth/tiktok/start
+2026-10-07T22:11:13.2335517Z ├ ƒ /api/v1/social/oauth/twitter/callback
+2026-10-07T22:11:13.2335694Z ├ ƒ /api/v1/social/oauth/twitter/start
+2026-10-07T22:11:13.2335882Z ├ ƒ /api/v1/social/oauth/youtube/callback
+2026-10-07T22:11:13.2336060Z ├ ƒ /api/v1/social/oauth/youtube/start
+2026-10-07T22:11:13.2336231Z ├ ƒ /api/v1/social/outbound-policy
+2026-10-07T22:11:13.2336413Z ├ ƒ /api/v1/social/outbound-replies
+2026-10-07T22:11:13.2336631Z ├ ƒ /api/v1/social/outbound-replies/[id]/resolve
+2026-10-07T22:11:13.2336843Z ├ ƒ /api/v1/social/outbound-replies/[id]/review
+2026-10-07T22:11:13.2337017Z ├ ƒ /api/v1/social/paid-run-policy
+2026-10-07T22:11:13.2337211Z ├ ƒ /api/v1/social/provider-capabilities
+2026-10-07T22:11:13.2337424Z ├ ƒ /api/v1/social/provider-capabilities/[id]
+2026-10-07T22:11:13.2337657Z ├ ƒ /api/v1/social/provider-capabilities/[id]/verify
+2026-10-07T22:11:13.2337853Z ├ ƒ /api/v1/social/provider-runs
+2026-10-07T22:11:13.2338047Z ├ ƒ /api/v1/social/providers/apify/webhook
+2026-10-07T22:11:13.2338270Z ├ ƒ /api/v1/social/providers/bright-data/webhook
+2026-10-07T22:11:13.2338548Z ├ ƒ /api/v1/social/providers/facebook-native-search/jobs
+2026-10-07T22:11:13.2338827Z ├ ƒ /api/v1/social/providers/facebook-native-search/results
+2026-10-07T22:11:13.2339016Z ├ ƒ /api/v1/social/relevance-feedback
+2026-10-07T22:11:13.2339187Z ├ ƒ /api/v1/social/reports/export
+2026-10-07T22:11:13.2339369Z ├ ƒ /api/v1/social/reports/incremental
+2026-10-07T22:11:13.2339539Z ├ ƒ /api/v1/social/reports/visual
+2026-10-07T22:11:13.2339728Z ├ ƒ /api/v1/social/sentiment-corrections
+2026-10-07T22:11:13.2339907Z ├ ƒ /api/v1/social/visual-references
+2026-10-07T22:11:13.2340103Z ├ ƒ /api/v1/social/visual-references/[id]
+2026-10-07T22:11:13.2340307Z ├ ƒ /api/v1/social/whatsapp-group-settings
+2026-10-07T22:11:13.2340439Z ├ ƒ /api/v1/storefronts
+2026-10-07T22:11:13.2340622Z ├ ƒ /api/v1/subscription-plans
+2026-10-07T22:11:13.2340762Z ├ ƒ /api/v1/subscriptions
+2026-10-07T22:11:13.2340934Z ├ ƒ /api/v1/subscriptions-overview
+2026-10-07T22:11:13.2341132Z ├ ƒ /api/v1/subscriptions/[id]/plan-change
+2026-10-07T22:11:13.2341474Z ├ ƒ /api/v1/subscriptions/[id]/schedule-cancel
+2026-10-07T22:11:13.2341671Z ├ ƒ /api/v1/subscriptions/[id]/transition
+2026-10-07T22:11:13.2341848Z ├ ƒ /api/v1/support/agent-desktop
+2026-10-07T22:11:13.2342019Z ├ ƒ /api/v1/support/ai-settings
+2026-10-07T22:11:13.2342182Z ├ ƒ /api/v1/support/ux-rollout
+2026-10-07T22:11:13.2342305Z ├ ƒ /api/v1/surveys
+2026-10-07T22:11:13.2342442Z ├ ƒ /api/v1/surveys/[id]
+2026-10-07T22:11:13.2342862Z ├ ƒ /api/v1/surveys/[id]/analytics
+2026-10-07T22:11:13.2343078Z ├ ƒ /api/v1/surveys/[id]/export
+2026-10-07T22:11:13.2343306Z ├ ƒ /api/v1/surveys/[id]/responses/[responseId]
+2026-10-07T22:11:13.2343464Z ├ ƒ /api/v1/surveys/[id]/send
+2026-10-07T22:11:13.2343647Z ├ ƒ /api/v1/surveys/[id]/unsubscribes
+2026-10-07T22:11:13.2343807Z ├ ƒ /api/v1/task-templates
+2026-10-07T22:11:13.2343977Z ├ ƒ /api/v1/task-templates/[id]
+2026-10-07T22:11:13.2344172Z ├ ƒ /api/v1/task-templates/[id]/instantiate
+2026-10-07T22:11:13.2344308Z ├ ƒ /api/v1/task-types
+2026-10-07T22:11:13.2344463Z ├ ƒ /api/v1/task-types/[id]
+2026-10-07T22:11:13.2344589Z ├ ƒ /api/v1/tasks
+2026-10-07T22:11:13.2344713Z ├ ƒ /api/v1/tasks/[id]
+2026-10-07T22:11:13.2344881Z ├ ƒ /api/v1/tasks/[id]/checklist
+2026-10-07T22:11:13.2345043Z ├ ƒ /api/v1/tasks/[id]/comments
+2026-10-07T22:11:13.2345184Z ├ ƒ /api/v1/tasks/[id]/files
+2026-10-07T22:11:13.2345363Z ├ ƒ /api/v1/tasks/[id]/files/[fileId]
+2026-10-07T22:11:13.2345537Z ├ ƒ /api/v1/tasks/[id]/stop-series
+2026-10-07T22:11:13.2345663Z ├ ƒ /api/v1/tasks/bulk
+2026-10-07T22:11:13.2345801Z ├ ƒ /api/v1/tasks/export
+2026-10-07T22:11:13.2345938Z ├ ƒ /api/v1/tasks/report
+2026-10-07T22:11:13.2346074Z ├ ƒ /api/v1/team-queues
+2026-10-07T22:11:13.2346213Z ├ ƒ /api/v1/team-queues/[id]
+2026-10-07T22:11:13.2346347Z ├ ƒ /api/v1/territories
+2026-10-07T22:11:13.2346645Z ├ ƒ /api/v1/territories/[id]
+2026-10-07T22:11:13.2346819Z ├ ƒ /api/v1/territories/[id]/members
+2026-10-07T22:11:13.2347026Z ├ ƒ /api/v1/territories/[id]/members/[userId]
+2026-10-07T22:11:13.2347176Z ├ ƒ /api/v1/ticket-categories
+2026-10-07T22:11:13.2347356Z ├ ƒ /api/v1/ticket-categories/[id]
+2026-10-07T22:11:13.2347498Z ├ ƒ /api/v1/ticket-macros
+2026-10-07T22:11:13.2347665Z ├ ƒ /api/v1/ticket-macros/[id]
+2026-10-07T22:11:13.2347844Z ├ ƒ /api/v1/ticket-macros/[id]/apply
+2026-10-07T22:11:13.2348019Z ├ ƒ /api/v1/ticket-macros/categories
+2026-10-07T22:11:13.2348159Z ├ ƒ /api/v1/ticket-queues
+2026-10-07T22:11:13.2348325Z ├ ƒ /api/v1/ticket-queues/[id]
+2026-10-07T22:11:13.2348446Z ├ ƒ /api/v1/tickets
+2026-10-07T22:11:13.2348583Z ├ ƒ /api/v1/tickets/[id]
+2026-10-07T22:11:13.2348753Z ├ ƒ /api/v1/tickets/[id]/comments
+2026-10-07T22:11:13.2348916Z ├ ƒ /api/v1/tickets/[id]/context
+2026-10-07T22:11:13.2349125Z ├ ƒ /api/v1/tickets/[id]/convert-to-complaint
+2026-10-07T22:11:13.2349441Z ├ ƒ /api/v1/tickets/[id]/entitlement-milestones/[milestoneId]/waive
+2026-10-07T22:11:13.2349616Z ├ ƒ /api/v1/tickets/[id]/files
+2026-10-07T22:11:13.2349796Z ├ ƒ /api/v1/tickets/[id]/files/[fileId]
+2026-10-07T22:11:13.2349966Z ├ ƒ /api/v1/tickets/[id]/siblings
+2026-10-07T22:11:13.2350108Z ├ ƒ /api/v1/tickets/ai
+2026-10-07T22:11:13.2350276Z ├ ƒ /api/v1/tickets/ai-categorize
+2026-10-07T22:11:13.2350424Z ├ ƒ /api/v1/tickets/new-count
+2026-10-07T22:11:13.2350570Z ├ ƒ /api/v1/tickets/take-next
+2026-10-07T22:11:13.2350695Z ├ ƒ /api/v1/timezones
+2026-10-07T22:11:13.2350839Z ├ ƒ /api/v1/tracking/ad-click
+2026-10-07T22:11:13.2350981Z ├ ƒ /api/v1/tracking/click
+2026-10-07T22:11:13.2351115Z ├ ƒ /api/v1/tracking/open
+2026-10-07T22:11:13.2351278Z ├ ƒ /api/v1/tracking/sms-click
+2026-10-07T22:11:13.2351426Z ├ ƒ /api/v1/trade-promotions
+2026-10-07T22:11:13.2351620Z ├ ƒ /api/v1/trade-promotions/[id]/audits
+2026-10-07T22:11:13.2351764Z ├ ƒ /api/v1/uploads/[...path]
+2026-10-07T22:11:13.2351889Z ├ ƒ /api/v1/users
+2026-10-07T22:11:13.2352021Z ├ ƒ /api/v1/users/[id]
+2026-10-07T22:11:13.2352219Z ├ ƒ /api/v1/users/[id]/reset-password
+2026-10-07T22:11:13.2352363Z ├ ƒ /api/v1/users/assignable
+2026-10-07T22:11:13.2352490Z ├ ƒ /api/v1/users/me
+2026-10-07T22:11:13.2352950Z ├ ƒ /api/v1/users/me/approval-delegates
+2026-10-07T22:11:13.2353384Z ├ ƒ /api/v1/users/me/approval-delegates/[id]
+2026-10-07T22:11:13.2353575Z ├ ƒ /api/v1/users/me/availability
+2026-10-07T22:11:13.2353723Z ├ ƒ /api/v1/users/me/avatar
+2026-10-07T22:11:13.2353900Z ├ ƒ /api/v1/users/me/change-password
+2026-10-07T22:11:13.2354116Z ├ ƒ /api/v1/users/me/notification-preferences
+2026-10-07T22:11:13.2354289Z ├ ƒ /api/v1/users/me/preferences
+2026-10-07T22:11:13.2354462Z ├ ƒ /api/v1/users/me/revoke-sessions
+2026-10-07T22:11:13.2354612Z ├ ƒ /api/v1/utility-customers
+2026-10-07T22:11:13.2354792Z ├ ƒ /api/v1/utility-customers/[id]
+2026-10-07T22:11:13.2354934Z ├ ƒ /api/v1/validation-rules
+2026-10-07T22:11:13.2355112Z ├ ƒ /api/v1/validation-rules/[id]
+2026-10-07T22:11:13.2355286Z ├ ƒ /api/v1/validation-rules/test
+2026-10-07T22:11:13.2355446Z ├ ƒ /api/v1/voice-call-queues
+2026-10-07T22:11:13.2355615Z ├ ƒ /api/v1/voice-call-queues/[id]
+2026-10-07T22:11:13.2355810Z ├ ƒ /api/v1/voice-call-queues/[id]/cancel
+2026-10-07T22:11:13.2356064Z ├ ƒ /api/v1/voice-call-queues/[id]/items/[itemId]/skip
+2026-10-07T22:11:13.2356256Z ├ ƒ /api/v1/voice-call-queues/[id]/pause
+2026-10-07T22:11:13.2356495Z ├ ƒ /api/v1/voice-call-queues/[id]/resolve-uncertain
+2026-10-07T22:11:13.2356685Z ├ ƒ /api/v1/voice-call-queues/[id]/resume
+2026-10-07T22:11:13.2356866Z ├ ƒ /api/v1/voice-call-queues/[id]/start
+2026-10-07T22:11:13.2357050Z ├ ƒ /api/v1/voice-call-queues/preview
+2026-10-07T22:11:13.2357221Z ├ ƒ /api/v1/voip/business-hours
+2026-10-07T22:11:13.2357369Z ├ ƒ /api/v1/voip/capabilities
+2026-10-07T22:11:13.2357500Z ├ ƒ /api/v1/voip/config
+2026-10-07T22:11:13.2357679Z ├ ƒ /api/v1/web-chat/config
+2026-10-07T22:11:13.2357824Z ├ ƒ /api/v1/web-chat/sessions
+2026-10-07T22:11:13.2357990Z ├ ƒ /api/v1/web-chat/sessions/[id]
+2026-10-07T22:11:13.2358325Z ├ ƒ /api/v1/web-chat/sessions/[id]/escalate
+2026-10-07T22:11:13.2358523Z ├ ƒ /api/v1/web-chat/sessions/[id]/messages
+2026-10-07T22:11:13.2358706Z ├ ƒ /api/v1/web-chat/sessions/[id]/typing
+2026-10-07T22:11:13.2358900Z ├ ƒ /api/v1/web-chat/sessions/unread-count
+2026-10-07T22:11:13.2359056Z ├ ƒ /api/v1/webhooks/chatwoot
+2026-10-07T22:11:13.2359201Z ├ ƒ /api/v1/webhooks/facebook
+2026-10-07T22:11:13.2359360Z ├ ƒ /api/v1/webhooks/instagram
+2026-10-07T22:11:13.2359566Z ├ ƒ /api/v1/webhooks/instagram/data-deletion
+2026-10-07T22:11:13.2359761Z ├ ƒ /api/v1/webhooks/instagram/deauthorize
+2026-10-07T22:11:13.2359901Z ├ ƒ /api/v1/webhooks/manage
+2026-10-07T22:11:13.2360069Z ├ ƒ /api/v1/webhooks/manage/[id]
+2026-10-07T22:11:13.2360243Z ├ ƒ /api/v1/webhooks/meeting-recap
+2026-10-07T22:11:13.2360406Z ├ ƒ /api/v1/webhooks/meta-social
+2026-10-07T22:11:13.2360573Z ├ ƒ /api/v1/webhooks/sms-inbound
+2026-10-07T22:11:13.2360719Z ├ ƒ /api/v1/webhooks/telegram
+2026-10-07T22:11:13.2360896Z ├ ƒ /api/v1/webhooks/tiktok-business
+2026-10-07T22:11:13.2361080Z ├ ƒ /api/v1/webhooks/tiktok-organic
+2026-10-07T22:11:13.2361241Z ├ ƒ /api/v1/webhooks/vkontakte
+2026-10-07T22:11:13.2361385Z ├ ƒ /api/v1/webhooks/whatsapp
+2026-10-07T22:11:13.2361577Z ├ ƒ /api/v1/whatsapp/notification-settings
+2026-10-07T22:11:13.2361725Z ├ ƒ /api/v1/whatsapp/send
+2026-10-07T22:11:13.2361891Z ├ ƒ /api/v1/whatsapp/templates
+2026-10-07T22:11:13.2362023Z ├ ƒ /api/v1/whatsapp/test
+2026-10-07T22:11:13.2362170Z ├ ƒ /api/v1/whatsapp/validate
+2026-10-07T22:11:13.2362300Z ├ ƒ /api/v1/workflows
+2026-10-07T22:11:13.2362441Z ├ ƒ /api/v1/workflows/[id]
+2026-10-07T22:11:13.2362739Z ├ ƒ /api/v1/workflows/templates
+2026-10-07T22:11:13.2362938Z ├ ƒ /api/v1/workforce/attendance/devices
+2026-10-07T22:11:13.2363184Z ├ ƒ /api/v1/workforce/attendance/devices/[id]/approve
+2026-10-07T22:11:13.2363415Z ├ ƒ /api/v1/workforce/attendance/devices/[id]/revoke
+2026-10-07T22:11:13.2363638Z ├ ƒ /api/v1/workforce/attendance/security-triage
+2026-10-07T22:11:13.2363827Z ├ ƒ /api/v1/workforce/attendance/stations
+2026-10-07T22:11:13.2364071Z ├ ƒ /api/v1/workforce/attendance/stations/[id]/disable
+2026-10-07T22:11:13.2364290Z ├ ƒ /api/v1/workforce/attendance/stations/[id]/qr
+2026-10-07T22:11:13.2364520Z ├ ƒ /api/v1/workforce/attendance/stations/[id]/replace
+2026-10-07T22:11:13.2364897Z ├ ƒ /api/v1/workforce/configuration/access/grant-targets
+2026-10-07T22:11:13.2365119Z ├ ƒ /api/v1/workforce/configuration/access/grants
+2026-10-07T22:11:13.2365353Z ├ ƒ /api/v1/workforce/configuration/access/grants/[id]
+2026-10-07T22:11:13.2365568Z ├ ƒ /api/v1/workforce/configuration/access/review
+2026-10-07T22:11:13.2365776Z ├ ƒ /api/v1/workforce/configuration/assignments
+2026-10-07T22:11:13.2366047Z ├ ƒ /api/v1/workforce/configuration/assignments/bulk/publish
+2026-10-07T22:11:13.2366289Z ├ ƒ /api/v1/workforce/configuration/assignments/preview
+2026-10-07T22:11:13.2366493Z ├ ƒ /api/v1/workforce/configuration/calendar
+2026-10-07T22:11:13.2366733Z ├ ƒ /api/v1/workforce/configuration/employment-events
+2026-10-07T22:11:13.2367028Z ├ ƒ /api/v1/workforce/configuration/exception-policy/revisions
+2026-10-07T22:11:13.2367342Z ├ ƒ /api/v1/workforce/configuration/exception-response-cycle-audit
+2026-10-07T22:11:13.2367580Z ├ ƒ /api/v1/workforce/configuration/mobile-write-fence
+2026-10-07T22:11:13.2367871Z ├ ƒ /api/v1/workforce/configuration/mobile-write-fence/cohorts
+2026-10-07T22:11:13.2368081Z ├ ƒ /api/v1/workforce/configuration/policies
+2026-10-07T22:11:13.2368294Z ├ ƒ /api/v1/workforce/configuration/policies/[id]
+2026-10-07T22:11:13.2368554Z ├ ƒ /api/v1/workforce/configuration/policies/[id]/activate
+2026-10-07T22:11:13.2368850Z ├ ƒ /api/v1/workforce/configuration/policies/[id]/employee-impact
+2026-10-07T22:11:13.2369133Z ├ ƒ /api/v1/workforce/configuration/policies/[id]/restore-draft
+2026-10-07T22:11:13.2369414Z ├ ƒ /api/v1/workforce/configuration/policies/[id]/window-preview
+2026-10-07T22:11:13.2369648Z ├ ƒ /api/v1/workforce/configuration/policies/compare
+2026-10-07T22:11:13.2369876Z ├ ƒ /api/v1/workforce/configuration/policies/search
+2026-10-07T22:11:13.2370209Z ├ ƒ /api/v1/workforce/configuration/shifts
+2026-10-07T22:11:13.2370429Z ├ ƒ /api/v1/workforce/configuration/shifts/[id]
+2026-10-07T22:11:13.2370680Z ├ ƒ /api/v1/workforce/configuration/shifts/[id]/activate
+2026-10-07T22:11:13.2370914Z ├ ƒ /api/v1/workforce/configuration/shifts/default
+2026-10-07T22:11:13.2371151Z ├ ƒ /api/v1/workforce/configuration/shifts/team-default
+2026-10-07T22:11:13.2371382Z ├ ƒ /api/v1/workforce/configuration/site-assignments
+2026-10-07T22:11:13.2371678Z ├ ƒ /api/v1/workforce/configuration/site-assignments/bulk/publish
+2026-10-07T22:11:13.2371953Z ├ ƒ /api/v1/workforce/configuration/site-assignments/preview
+2026-10-07T22:11:13.2372148Z ├ ƒ /api/v1/workforce/configuration/sites
+2026-10-07T22:11:13.2372387Z ├ ƒ /api/v1/workforce/configuration/sites/[id]/archive
+2026-10-07T22:11:13.2372755Z ├ ƒ /api/v1/workforce/configuration/sites/[id]/geofences
+2026-10-07T22:11:13.2372946Z ├ ƒ /api/v1/workforce/evidence/targets
+2026-10-07T22:11:13.2373138Z ├ ƒ /api/v1/workforce/evidence/timeline
+2026-10-07T22:11:13.2373344Z ├ ƒ /api/v1/workforce/exception-decisions
+2026-10-07T22:11:13.2373527Z ├ ƒ /api/v1/workforce/exception-reports
+2026-10-07T22:11:13.2373703Z ├ ƒ /api/v1/workforce/exceptions
+2026-10-07T22:11:13.2373923Z ├ ƒ /api/v1/workforce/exceptions/[id]/decisions
+2026-10-07T22:11:13.2374127Z ├ ƒ /api/v1/workforce/exceptions/[id]/response
+2026-10-07T22:11:13.2374314Z ├ ƒ /api/v1/workforce/exceptions/mine
+2026-10-07T22:11:13.2374465Z ├ ƒ /api/v1/workforce/reports
+2026-10-07T22:11:13.2374630Z ├ ƒ /api/v1/workforce/requests
+2026-10-07T22:11:13.2374821Z ├ ƒ /api/v1/workforce/requests/[id]/cancel
+2026-10-07T22:11:13.2375022Z ├ ƒ /api/v1/workforce/requests/[id]/decision
+2026-10-07T22:11:13.2375226Z ├ ƒ /api/v1/workforce/retention/raw-location
+2026-10-07T22:11:13.2375446Z ├ ƒ /api/v1/workforce/site-transition-reports
+2026-10-07T22:11:13.2375613Z ├ ƒ /api/v1/workforce/timesheet
+2026-10-07T22:11:13.2375803Z ├ ƒ /api/v1/workforce/timesheet/approvals
+2026-10-07T22:11:13.2376035Z ├ ƒ /api/v1/workforce/timesheet/approvals/[id]/export
+2026-10-07T22:11:13.2376287Z ├ ƒ /api/v1/workforce/timesheet/approvals/[id]/preview
+2026-10-07T22:11:13.2376431Z ├ ƒ /api/v1/workforce/today
+2026-10-07T22:11:13.2376609Z ├ ƒ /api/v1/workforce/today/action
+2026-10-07T22:11:13.2376940Z ├ ƒ /api/v1/workforce/workdays/[id]/corrections
+2026-10-07T22:11:13.2377144Z ├ ƒ /api/v1/workforce/workdays/[id]/reopen
+2026-10-07T22:11:13.2377356Z ├ ƒ /api/v1/workforce/workdays/[id]/reopen/undo
+2026-10-07T22:11:13.2377486Z ├ ƒ /api/v1/zapier/me
+2026-10-07T22:11:13.2377669Z ├ ƒ /api/v1/zapier/samples/[trigger]
+2026-10-07T22:11:13.2377818Z ├ ƒ /api/v1/zapier/subscribe
+2026-10-07T22:11:13.2377993Z ├ ƒ /api/v1/zapier/subscribe/[id]
+2026-10-07T22:11:13.2378129Z ├ ƒ /api/v1/zapier/triggers
+2026-10-07T22:11:13.2378315Z ├ ƒ /api/v2/mtm/mobile/location/batch
+2026-10-07T22:11:13.2378581Z ├ ƒ /api/v2/mtm/mobile/route-field/contact-create-requests
+2026-10-07T22:11:13.2378774Z ├ ƒ /api/v2/mtm/mobile/route-field/contacts
+2026-10-07T22:11:13.2379116Z ├ ƒ /api/v2/mtm/mobile/route-field/contacts/[id]
+2026-10-07T22:11:13.2379405Z ├ ƒ /api/v2/mtm/mobile/route-field/contacts/[id]/change-requests
+2026-10-07T22:11:13.2379616Z ├ ƒ /api/v2/mtm/mobile/route-field/device-tokens
+2026-10-07T22:11:13.2379838Z ├ ƒ /api/v2/mtm/mobile/route-field/organizations
+2026-10-07T22:11:13.2380073Z ├ ƒ /api/v2/mtm/mobile/route-field/organizations/[id]
+2026-10-07T22:11:13.2380303Z ├ ƒ /api/v2/mtm/mobile/route-field/planning-targets
+2026-10-07T22:11:13.2380473Z ├ ƒ /api/v2/mtm/mobile/sync/routes
+2026-10-07T22:11:13.2380643Z ├ ƒ /api/v2/mtm/mobile/sync/tasks
+2026-10-07T22:11:13.2380813Z ├ ƒ /api/v2/mtm/mobile/sync/visits
+2026-10-07T22:11:13.2380990Z ├ ƒ /api/v2/mtm/mobile/sync/workforce
+2026-10-07T22:11:13.2381129Z ├ ƒ /attribution/models
+2026-10-07T22:11:13.2381274Z ├ ƒ /billing/subscriptions
+2026-10-07T22:11:13.2381378Z ├ ƒ /boards
+2026-10-07T22:11:13.2381517Z ├ ƒ /boards/[divisionId]
+2026-10-07T22:11:13.2381686Z ├ ƒ /boards/[divisionId]/settings
+2026-10-07T22:11:13.2381797Z ├ ƒ /c/[token]
+2026-10-07T22:11:13.2381931Z ├ ƒ /campaign-roi
+2026-10-07T22:11:13.2382044Z ├ ƒ /campaigns
+2026-10-07T22:11:13.2382172Z ├ ƒ /campaigns/[id]
+2026-10-07T22:11:13.2382289Z ├ ƒ /cdp/insights
+2026-10-07T22:11:13.2382418Z ├ ƒ /cdp/merge-queue
+2026-10-07T22:11:13.2382535Z ├ ƒ /cobrowse
+2026-10-07T22:11:13.2382935Z ├ ƒ /cobrowse/[id]
+2026-10-07T22:11:13.2383063Z ├ ƒ /companies
+2026-10-07T22:11:13.2383192Z ├ ƒ /companies/[id]
+2026-10-07T22:11:13.2383300Z ├ ƒ /complaints
+2026-10-07T22:11:13.2383430Z ├ ƒ /complaints/[id]
+2026-10-07T22:11:13.2383566Z ├ ƒ /complaints/import
+2026-10-07T22:11:13.2383693Z ├ ƒ /complaints/new
+2026-10-07T22:11:13.2383795Z ├ ƒ /contact
+2026-10-07T22:11:13.2383911Z ├ ƒ /contacts
+2026-10-07T22:11:13.2384038Z ├ ƒ /contacts/[id]
+2026-10-07T22:11:13.2384158Z ├ ƒ /contacts/list
+2026-10-07T22:11:13.2384289Z ├ ƒ /contacts/segments
+2026-10-07T22:11:13.2384399Z ├ ƒ /contracts
+2026-10-07T22:11:13.2384519Z ├ ƒ /contracts/[id]
+2026-10-07T22:11:13.2384660Z ├ ƒ /contracts/[id]/editor
+2026-10-07T22:11:13.2384836Z ├ ƒ /contracts/analytics
+2026-10-07T22:11:13.2384965Z ├ ƒ /contracts/lifecycle
+2026-10-07T22:11:13.2385108Z ├ ƒ /contracts/milestones
+2026-10-07T22:11:13.2385239Z ├ ƒ /contracts/request
+2026-10-07T22:11:13.2385375Z ├ ƒ /contracts/templates
+2026-10-07T22:11:13.2385488Z ├ ƒ /dashboard
+2026-10-07T22:11:13.2385596Z ├ ƒ /deals
+2026-10-07T22:11:13.2385706Z ├ ƒ /deals/[id]
+2026-10-07T22:11:13.2385804Z ├ ƒ /demo
+2026-10-07T22:11:13.2385941Z ├ ƒ /demo-access/[token]
+2026-10-07T22:11:13.2386052Z ├ ƒ /demo-open
+2026-10-07T22:11:13.2386181Z ├ ƒ /demo-preview/[id]
+2026-10-07T22:11:13.2386306Z ├ ƒ /design-check
+2026-10-07T22:11:13.2386417Z ├ ƒ /email-log
+2026-10-07T22:11:13.2386546Z ├ ƒ /email-templates
+2026-10-07T22:11:13.2386676Z ├ ƒ /embed/chat/[key]
+2026-10-07T22:11:13.2386781Z ├ ƒ /energy
+2026-10-07T22:11:13.2386888Z ├ ƒ /energy/[id]
+2026-10-07T22:11:13.2387014Z ├ ƒ /energy/metering
+2026-10-07T22:11:13.2387138Z ├ ƒ /energy/outages
+2026-10-07T22:11:13.2387307Z ├ ƒ /energy/service-calls
+2026-10-07T22:11:13.2387440Z ├ ƒ /events
+2026-10-07T22:11:13.2387582Z ├ ƒ /events/[id]
+2026-10-07T22:11:13.2387721Z ├ ƒ /events/[id]/register
+2026-10-07T22:11:13.2387825Z ├ ƒ /f/[slug]
+2026-10-07T22:11:13.2387931Z ├ ƒ /finance
+2026-10-07T22:11:13.2388038Z ├ ƒ /forecast
+2026-10-07T22:11:13.2388313Z ├ ƒ /forecast/snapshots
+2026-10-07T22:11:13.2388452Z ├ ƒ /forecast/velocity
+2026-10-07T22:11:13.2388589Z ├ ƒ /forecast/waterfall
+2026-10-07T22:11:13.2388718Z ├ ƒ /forgot-password
+2026-10-07T22:11:13.2388825Z ├ ƒ /forms
+2026-10-07T22:11:13.2388937Z ├ ƒ /forms/[id]
+2026-10-07T22:11:13.2389041Z ├ ƒ /health
+2026-10-07T22:11:13.2389148Z ├ ƒ /health/[id]
+2026-10-07T22:11:13.2389280Z ├ ƒ /health/care-plans
+2026-10-07T22:11:13.2389411Z ├ ƒ /health/encounters
+2026-10-07T22:11:13.2389538Z ├ ƒ /health/providers
+2026-10-07T22:11:13.2389644Z ├ ƒ /home
+2026-10-07T22:11:13.2389747Z ├ ƒ /inbox
+2026-10-07T22:11:13.2389869Z ├ ƒ /inbox/ai-agent
+2026-10-07T22:11:13.2389996Z ├ ƒ /inbox/analytics
+2026-10-07T22:11:13.2390125Z ├ ƒ /inbox/automation
+2026-10-07T22:11:13.2390385Z ├ ƒ /inbox/business-hours
+2026-10-07T22:11:13.2390522Z ├ ƒ /inbox/chatbot-rules
+2026-10-07T22:11:13.2390644Z ├ ƒ /inbox/legacy
+2026-10-07T22:11:13.2390755Z ├ ƒ /inbox/voip
+2026-10-07T22:11:13.2390876Z ├ ƒ /inbox/web-chat
+2026-10-07T22:11:13.2390998Z ├ ƒ /industries
+2026-10-07T22:11:13.2391108Z ├ ƒ /insurance
+2026-10-07T22:11:13.2391231Z ├ ƒ /insurance/[id]
+2026-10-07T22:11:13.2391379Z ├ ƒ /insurance/beneficiaries
+2026-10-07T22:11:13.2391508Z ├ ƒ /insurance/claims
+2026-10-07T22:11:13.2391638Z ├ ƒ /insurance/policies
+2026-10-07T22:11:13.2391745Z ├ ƒ /invoices
+2026-10-07T22:11:13.2391868Z ├ ƒ /invoices/[id]
+2026-10-07T22:11:13.2391994Z ├ ƒ /invoices/[id]/edit
+2026-10-07T22:11:13.2392122Z ├ ƒ /invoices/create
+2026-10-07T22:11:13.2392252Z ├ ƒ /invoices/recurring
+2026-10-07T22:11:13.2392360Z ├ ƒ /journeys
+2026-10-07T22:11:13.2392482Z ├ ƒ /knowledge-base
+2026-10-07T22:11:13.2392848Z ├ ƒ /knowledge-base/[id]
+2026-10-07T22:11:13.2393044Z ├ ƒ /landing
+2026-10-07T22:11:13.2393172Z ├ ƒ /lead-scoring
+2026-10-07T22:11:13.2393298Z ├ ƒ /leaderboard
+2026-10-07T22:11:13.2393402Z ├ ƒ /leads
+2026-10-07T22:11:13.2393508Z ├ ƒ /leads/[id]
+2026-10-07T22:11:13.2393645Z ├ ƒ /legal/data-deletion
+2026-10-07T22:11:13.2393769Z ├ ƒ /legal/privacy
+2026-10-07T22:11:13.2393885Z ├ ƒ /legal/terms
+2026-10-07T22:11:13.2393991Z ├ ƒ /login
+2026-10-07T22:11:13.2394119Z ├ ƒ /login/setup-2fa
+2026-10-07T22:11:13.2394250Z ├ ƒ /login/verify-2fa
+2026-10-07T22:11:13.2394387Z ├ ƒ /loyalty/accounts/[id]
+2026-10-07T22:11:13.2394511Z ├ ƒ /loyalty/builder
+2026-10-07T22:11:13.2394638Z ├ ƒ /loyalty/dashboard
+2026-10-07T22:11:13.2394765Z ├ ƒ /loyalty/earn-rules
+2026-10-07T22:11:13.2394876Z ├ ƒ /loyalty/pos
+2026-10-07T22:11:13.2395014Z ├ ƒ /loyalty/promo-codes
+2026-10-07T22:11:13.2395133Z ├ ƒ /loyalty/tiers
+2026-10-07T22:11:13.2395245Z ├ ƒ /marketplace
+2026-10-07T22:11:13.2395387Z ├ ƒ /marketplace/demo/[id]
+2026-10-07T22:11:13.2395487Z ├ ƒ /media
+2026-10-07T22:11:13.2395601Z ├ ƒ /media/[id]
+2026-10-07T22:11:13.2395738Z ├ ƒ /media/ad-campaigns
+2026-10-07T22:11:13.2395875Z ├ ƒ /media/content
+2026-10-07T22:11:13.2395975Z ├ ƒ /mtm
+2026-10-07T22:11:13.2396085Z ├ ƒ /mtm/access
+2026-10-07T22:11:13.2396210Z ├ ƒ /mtm/activity
+2026-10-07T22:11:13.2396315Z ├ ƒ /mtm/agents
+2026-10-07T22:11:13.2396442Z ├ ƒ /mtm/agents/[id]
+2026-10-07T22:11:13.2396694Z ├ ƒ /mtm/alerts
+2026-10-07T22:11:13.2396824Z ├ ƒ /mtm/analytics
+2026-10-07T22:11:13.2396945Z ├ ƒ /mtm/calendar
+2026-10-07T22:11:13.2397070Z ├ ƒ /mtm/contacts
+2026-10-07T22:11:13.2397195Z ├ ƒ /mtm/contacts/[id]
+2026-10-07T22:11:13.2397320Z ├ ƒ /mtm/customers
+2026-10-07T22:11:13.2397455Z ├ ƒ /mtm/customers/[id]
+2026-10-07T22:11:13.2397581Z ├ ƒ /mtm/leaderboard
+2026-10-07T22:11:13.2397684Z ├ ƒ /mtm/map
+2026-10-07T22:11:13.2397821Z ├ ƒ /mtm/operations
+2026-10-07T22:11:13.2397932Z ├ ƒ /mtm/photos
+2026-10-07T22:11:13.2398053Z ├ ƒ /mtm/products
+2026-10-07T22:11:13.2398179Z ├ ƒ /mtm/promotions
+2026-10-07T22:11:13.2398319Z ├ ƒ /mtm/promotions/[id]
+2026-10-07T22:11:13.2398425Z ├ ƒ /mtm/reports
+2026-10-07T22:11:13.2398536Z ├ ƒ /mtm/routes
+2026-10-07T22:11:13.2398674Z ├ ƒ /mtm/settings
+2026-10-07T22:11:13.2398778Z ├ ƒ /mtm/tasks
+2026-10-07T22:11:13.2398902Z ├ ƒ /mtm/tasks/[id]
+2026-10-07T22:11:13.2399012Z ├ ƒ /mtm/visits
+2026-10-07T22:11:13.2399134Z ├ ƒ /notifications
+2026-10-07T22:11:13.2399249Z ├ ƒ /offers
+2026-10-07T22:11:13.2399361Z ├ ƒ /offers/[id]
+2026-10-07T22:11:13.2399466Z ├ ○ /offline
+2026-10-07T22:11:13.2399568Z ├ ƒ /plans
+2026-10-07T22:11:13.2399675Z ├ ƒ /portal
+2026-10-07T22:11:13.2399786Z ├ ƒ /portal/chat
+2026-10-07T22:11:13.2399929Z ├ ƒ /portal/forgot-password
+2026-10-07T22:11:13.2400071Z ├ ƒ /portal/knowledge-base
+2026-10-07T22:11:13.2400196Z ├ ƒ /portal/login
+2026-10-07T22:11:13.2400317Z ├ ƒ /portal/loyalty
+2026-10-07T22:11:13.2400447Z ├ ƒ /portal/register
+2026-10-07T22:11:13.2400589Z ├ ƒ /portal/set-password
+2026-10-07T22:11:13.2400709Z ├ ƒ /portal/tickets
+2026-10-07T22:11:13.2400845Z ├ ƒ /portal/tickets/[id]
+2026-10-07T22:11:13.2400981Z ├ ƒ /portal/unsubscribe
+2026-10-07T22:11:13.2401090Z ├ ƒ /pricing
+2026-10-07T22:11:13.2401329Z ├ ƒ /products
+2026-10-07T22:11:13.2401455Z ├ ƒ /products/[id]
+2026-10-07T22:11:13.2401562Z ├ ƒ /profile
+2026-10-07T22:11:13.2401682Z ├ ƒ /profitability
+2026-10-07T22:11:13.2401790Z ├ ƒ /projects
+2026-10-07T22:11:13.2401917Z ├ ƒ /projects/[id]
+2026-10-07T22:11:13.2402048Z ├ ƒ /public-sector
+2026-10-07T22:11:13.2402190Z ├ ƒ /public-sector/cases
+2026-10-07T22:11:13.2402330Z ├ ƒ /public-sector/grants
+2026-10-07T22:11:13.2402468Z ├ ƒ /public-sector/licenses
+2026-10-07T22:11:13.2402709Z ├ ƒ /quotes
+2026-10-07T22:11:13.2402825Z ├ ƒ /quotes/[id]
+2026-10-07T22:11:13.2402932Z ├ ƒ /reports
+2026-10-07T22:11:13.2403055Z ├ ƒ /reports/builder
+2026-10-07T22:11:13.2403182Z ├ ƒ /reset-password
+2026-10-07T22:11:13.2403291Z ├ ƒ /s/[slug]
+2026-10-07T22:11:13.2403409Z ├ ƒ /s/unsubscribe
+2026-10-07T22:11:13.2403516Z ├ ƒ /segments
+2026-10-07T22:11:13.2403625Z ├ ƒ /sequences
+2026-10-07T22:11:13.2403727Z ├ ƒ /settings
+2026-10-07T22:11:13.2403870Z ├ ƒ /settings/ai-automation
+2026-10-07T22:11:13.2404003Z ├ ƒ /settings/api-keys
+2026-10-07T22:11:13.2404191Z ├ ƒ /settings/approval-delegates
+2026-10-07T22:11:13.2404340Z ├ ƒ /settings/approval-rules
+2026-10-07T22:11:13.2404478Z ├ ƒ /settings/audit-log
+2026-10-07T22:11:13.2404610Z ├ ƒ /settings/billing
+2026-10-07T22:11:13.2404752Z ├ ƒ /settings/call-tasks
+2026-10-07T22:11:13.2404884Z ├ ƒ /settings/channels
+2026-10-07T22:11:13.2405083Z ├ ƒ /settings/channels/connect/[channel]
+2026-10-07T22:11:13.2405252Z ├ ƒ /settings/channels/whatsapp
+2026-10-07T22:11:13.2405401Z ├ ƒ /settings/custom-domains
+2026-10-07T22:11:13.2405545Z ├ ƒ /settings/custom-fields
+2026-10-07T22:11:13.2405674Z ├ ƒ /settings/dashboard
+2026-10-07T22:11:13.2405824Z ├ ƒ /settings/email-templates
+2026-10-07T22:11:13.2406010Z ├ ƒ /settings/entitlement-templates
+2026-10-07T22:11:13.2406146Z ├ ƒ /settings/escalation
+2026-10-07T22:11:13.2406318Z ├ ƒ /settings/field-permissions
+2026-10-07T22:11:13.2406498Z ├ ƒ /settings/finance-notifications
+2026-10-07T22:11:13.2406640Z ├ ƒ /settings/intake-forms
+2026-10-07T22:11:13.2406785Z ├ ƒ /settings/integrations
+2026-10-07T22:11:13.2406950Z ├ ƒ /settings/invoice-settings
+2026-10-07T22:11:13.2407085Z ├ ƒ /settings/lead-rules
+2026-10-07T22:11:13.2407216Z ├ ƒ /settings/leaderboard
+2026-10-07T22:11:13.2407342Z ├ ƒ /settings/macros
+2026-10-07T22:11:13.2407658Z ├ ƒ /settings/notifications
+2026-10-07T22:11:13.2407803Z ├ ƒ /settings/organization
+2026-10-07T22:11:13.2407940Z ├ ƒ /settings/pipelines
+2026-10-07T22:11:13.2408080Z ├ ƒ /settings/portal-users
+2026-10-07T22:11:13.2408207Z ├ ƒ /settings/quotas
+2026-10-07T22:11:13.2408327Z ├ ƒ /settings/roles
+2026-10-07T22:11:13.2408471Z ├ ƒ /settings/sales-forecast
+2026-10-07T22:11:13.2408602Z ├ ƒ /settings/security
+2026-10-07T22:11:13.2408738Z ├ ƒ /settings/sla-policies
+2026-10-07T22:11:13.2408879Z ├ ƒ /settings/smtp-settings
+2026-10-07T22:11:13.2409012Z ├ ƒ /settings/snippets
+2026-10-07T22:11:13.2409151Z ├ ƒ /settings/task-templates
+2026-10-07T22:11:13.2409290Z ├ ƒ /settings/territories
+2026-10-07T22:11:13.2409460Z ├ ƒ /settings/ticket-categories
+2026-10-07T22:11:13.2409610Z ├ ƒ /settings/ticket-queues
+2026-10-07T22:11:13.2409737Z ├ ƒ /settings/users
+2026-10-07T22:11:13.2409862Z ├ ƒ /settings/voip
+2026-10-07T22:11:13.2409991Z ├ ƒ /settings/web-chat
+2026-10-07T22:11:13.2410122Z ├ ƒ /settings/web-to-lead
+2026-10-07T22:11:13.2410264Z ├ ƒ /settings/workflows
+2026-10-07T22:11:13.2410439Z ├ ƒ /settings/workflows/templates
+2026-10-07T22:11:13.2410559Z ├ ƒ /sign/[token]
+2026-10-07T22:11:13.2410692Z ├ ƒ /social-monitoring
+2026-10-07T22:11:13.2410858Z ├ ƒ /social/monitoring-sources
+2026-10-07T22:11:13.2410996Z ├ ƒ /support/agent-desktop
+2026-10-07T22:11:13.2411135Z ├ ƒ /support/ai-settings
+2026-10-07T22:11:13.2411266Z ├ ƒ /support/calendar
+2026-10-07T22:11:13.2411405Z ├ ƒ /support/entitlements
+2026-10-07T22:11:13.2411540Z ├ ƒ /support/skill-routing
+2026-10-07T22:11:13.2411664Z ├ ƒ /support/voip
+2026-10-07T22:11:13.2411772Z ├ ƒ /surveys
+2026-10-07T22:11:13.2411888Z ├ ƒ /surveys/[id]
+2026-10-07T22:11:13.2411991Z ├ ƒ /tasks
+2026-10-07T22:11:13.2412102Z ├ ƒ /tasks/[id]
+2026-10-07T22:11:13.2412401Z ├ ƒ /ticket-closure/[token]
+2026-10-07T22:11:13.2412508Z ├ ƒ /tickets
+2026-10-07T22:11:13.2412755Z ├ ƒ /tickets/[id]
+2026-10-07T22:11:13.2412868Z ├ ƒ /unsubscribe
+2026-10-07T22:11:13.2413002Z ├ ƒ /voip/call-queues
+2026-10-07T22:11:13.2413155Z ├ ƒ /voip/call-queues/[id]
+2026-10-07T22:11:13.2413277Z ├ ƒ /voip/insights
+2026-10-07T22:11:13.2413386Z ├ ƒ /workforce
+2026-10-07T22:11:13.2413520Z ├ ƒ /workforce/calendar
+2026-10-07T22:11:13.2413666Z ├ ƒ /workforce/configuration
+2026-10-07T22:11:13.2413878Z ├ ƒ /workforce/configuration/policy-versions
+2026-10-07T22:11:13.2414018Z ├ ƒ /workforce/evidence
+2026-10-07T22:11:13.2414159Z ├ ƒ /workforce/exceptions
+2026-10-07T22:11:13.2414321Z ├ ƒ /workforce/exceptions/mine
+2026-10-07T22:11:13.2414495Z ├ ƒ /workforce/exceptions/report
+2026-10-07T22:11:13.2414626Z ├ ƒ /workforce/reports
+2026-10-07T22:11:13.2414814Z ├ ƒ /workforce/reports/site-transitions
+2026-10-07T22:11:13.2414949Z ├ ƒ /workforce/requests
+2026-10-07T22:11:13.2415085Z └ ƒ /workforce/timesheet
+2026-10-07T22:11:13.2415107Z 
+2026-10-07T22:11:13.2415113Z 
+2026-10-07T22:11:13.2415250Z ƒ Proxy (Middleware)
+2026-10-07T22:11:13.2415259Z 
+2026-10-07T22:11:13.2415457Z ○  (Static)   prerendered as static content
+2026-10-07T22:11:13.2415659Z ƒ  (Dynamic)  server-rendered on demand
+2026-10-07T22:11:13.2415667Z 
+2026-10-07T22:11:13.3501969Z ##[group]Run bash scripts/ci/prepare-hosted-build-runner.sh cleanup
+2026-10-07T22:11:13.3502486Z [36;1mbash scripts/ci/prepare-hosted-build-runner.sh cleanup[0m
+2026-10-07T22:11:13.3623995Z shell: /usr/bin/bash -e {0}
+2026-10-07T22:11:13.3624242Z env:
+2026-10-07T22:11:13.3624433Z   NEXT_TELEMETRY_DISABLED: 1
+2026-10-07T22:11:13.3624673Z ##[endgroup]
+2026-10-07T22:11:13.4087741Z GitHub-hosted production-build swap cleaned: /home/runner/work/_temp/leaddrive-production-build.swap
+2026-10-07T22:11:13.4184753Z Post job cleanup.
+2026-10-07T22:11:13.5380736Z Cache hit occurred on the primary key node-cache-Linux-x64-npm-88234482b20d7f7ee4d4f3291a8380559029a8e8cdd4d9981970afb493db5986, not saving cache.
+2026-10-07T22:11:13.5518877Z Post job cleanup.
+2026-10-07T22:11:13.6533542Z [command]/usr/bin/git version
+2026-10-07T22:11:13.6571836Z git version 2.55.0
+2026-10-07T22:11:13.6627043Z Temporarily overriding HOME='/home/runner/work/_temp/200d3f91-5c24-499a-ab86-fcaa81324da9' before making global git config changes
+2026-10-07T22:11:13.6628854Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-07T22:11:13.6633842Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/leaddrive-v2/leaddrive-v2
+2026-10-07T22:11:13.6674573Z Removing SSH command configuration
+2026-10-07T22:11:13.6683896Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-07T22:11:13.6730618Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-07T22:11:13.7139160Z Removing HTTP extra header
+2026-10-07T22:11:13.7140660Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-07T22:11:13.7223188Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-07T22:11:13.7555365Z Removing includeIf entries pointing to credentials config files
+2026-10-07T22:11:13.7584013Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-07T22:11:13.7606422Z includeif.gitdir:/home/runner/work/leaddrive-v2/leaddrive-v2/.git.path
+2026-10-07T22:11:13.7607759Z includeif.gitdir:/home/runner/work/leaddrive-v2/leaddrive-v2/.git/worktrees/*.path
+2026-10-07T22:11:13.7608919Z includeif.gitdir:/github/workspace/.git.path
+2026-10-07T22:11:13.7609902Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-10-07T22:11:13.7616713Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/leaddrive-v2/leaddrive-v2/.git.path
+2026-10-07T22:11:13.7647432Z /home/runner/work/_temp/git-credentials-5c508e94-5abc-4c96-8728-6ece51d62b6c.config
+2026-10-07T22:11:13.7660962Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/leaddrive-v2/leaddrive-v2/.git.path /home/runner/work/_temp/git-credentials-5c508e94-5abc-4c96-8728-6ece51d62b6c.config
+2026-10-07T22:11:13.7706168Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/leaddrive-v2/leaddrive-v2/.git/worktrees/*.path
+2026-10-07T22:11:13.7739317Z /home/runner/work/_temp/git-credentials-5c508e94-5abc-4c96-8728-6ece51d62b6c.config
+2026-10-07T22:11:13.7750619Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/leaddrive-v2/leaddrive-v2/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-5c508e94-5abc-4c96-8728-6ece51d62b6c.config
+2026-10-07T22:11:13.7789158Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-10-07T22:11:13.7818324Z /github/runner_temp/git-credentials-5c508e94-5abc-4c96-8728-6ece51d62b6c.config
+2026-10-07T22:11:13.7827246Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-5c508e94-5abc-4c96-8728-6ece51d62b6c.config
+2026-10-07T22:11:13.7865818Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-10-07T22:11:13.7891525Z /github/runner_temp/git-credentials-5c508e94-5abc-4c96-8728-6ece51d62b6c.config
+2026-10-07T22:11:13.7901973Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-5c508e94-5abc-4c96-8728-6ece51d62b6c.config
+2026-10-07T22:11:13.7943397Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-07T22:11:13.8208689Z Removing credentials config '/home/runner/work/_temp/git-credentials-5c508e94-5abc-4c96-8728-6ece51d62b6c.config'
+2026-10-07T22:11:13.8374543Z Cleaning up orphan processes
