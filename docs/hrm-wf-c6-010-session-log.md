@@ -42,3 +42,8 @@
 - Дополнительные текущие scoped regressions: 4 файла/36 тестов PASS. Исходный schedule-only review finding superseded: независимый агент повторно подтвердил, что актуальный whitelist включает outcome коды; focused sequential test PASS.
 - Отдельный browser write fixture использует disposable PG+Redis, exact production decision revision/timestamp/append-only routines и узкие синтетические guard grants. Это проверка API/ledger на синтетических tenants, не production permissions и не operational evidence.
 - Подготовка первого checkpoint: production source/UI/API/metrics и тесты реализованы; full hosted review/PG/browser/CI/build ещё PENDING, WF-C6-010 не закрыт и 84/161/60% не изменены.
+
+## 2026-10-07 — сохранение первых оригиналов
+
+- Первый implementation checkpoint `0e549fc07` создан. Первоначальный staged diff check вернул2 из-за заключительных пустых строк в четырёх неизменённых Vitest log originals; shell продолжил commit. Это первоначальная ошибка workflow, не PASS diff check.
+- Исправление: эти4 оригинала сохраняются как `.log.gz` с точным byte-for-byte roundtrip (mtime=0), чтобы хранить исходные результаты без переформатирования log bytes. Первые сырые файлы также остаются в истории первого checkpoint. Source/baseline/test assertions не ослабляются. Повторная diff-проверка должна PASS до push.
