@@ -1,0 +1,38 @@
+{
+  "head": "85234153841e8afab8d47befd98336db6827bc3e",
+  "run": 37684410685,
+  "job": 113008402774,
+  "status": "ORIGINAL_FAILURE_RETAINED",
+  "actualRuntimeFlags": {
+    "expectedIdentity": true,
+    "sessionIdentityUnchanged": true,
+    "primary": true,
+    "readOnly": true,
+    "repeatableRead": true,
+    "probeNameVerified": false,
+    "liveRuntimeSeen": false
+  },
+  "migrationObservation": "NOT RUN",
+  "files": [
+    {
+      "file": "hrm-loopback-acl-852-finite-diagnostic-original.log",
+      "bytes": 57198,
+      "sha256": "4efd515fd8b82612805c18fec110af23a8489f82b77dd5cdeaf21965d82686a8"
+    },
+    {
+      "file": "hrm-loopback-852-second-run.json",
+      "bytes": 12925,
+      "sha256": "3509cee877c66be14841593b76c005e3d6ac856eb0a3c574ed7d9ebb853ad5bb"
+    },
+    {
+      "file": "hrm-loopback-852-second-jobs.json",
+      "bytes": 3629,
+      "sha256": "18c9b5f74cd0829eae85308613b915bb1cdc6d905e81cfec5986e300d892c0bd"
+    },
+    {
+      "file": "hrm-loopback-acl-d2-first-hosted-peer-assessment.json",
+      "bytes": 2305,
+      "sha256": "9b86716f9549759c5628f7a9e0d75f6fbd924b77600c8a670beca85186d09afb"
+    }
+  ]
+}
