@@ -330,7 +330,20 @@ async function assertRendered(view, truth) {
   const block = view.page.getByTestId("workforce-exception-recorded-outcomes")
   await block.waitFor({ state: "visible" })
   const value = async testId => (await view.page.getByTestId(testId).innerText()).trim()
-  assert.equal(await value("workforce-exception-recorded-link-share"), truth.share === null ? view.ui.recordedOutcomes.noCases : new Intl.NumberFormat(view.locale, { style: "percent", maximumFractionDigits: 2 }).format(truth.share))
+  const linkedShareActual = await value("workforce-exception-recorded-link-share")
+  const linkedShareNodeExpected = truth.share === null ? view.ui.recordedOutcomes.noCases : new Intl.NumberFormat(view.locale, { style: "percent", maximumFractionDigits: 2 }).format(truth.share)
+  const linkedShareBrowserExpected = truth.share === null ? view.ui.recordedOutcomes.noCases : await view.page.evaluate(([share, locale]) => new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 2 }).format(share), [truth.share, view.locale])
+  receipts.aggregateRenderDiagnostics ??= []
+  receipts.aggregateRenderDiagnostics.push({
+    locale: view.locale, numericShare: truth.share, actualText: linkedShareActual,
+    nodeExpected: linkedShareNodeExpected, browserExpected: linkedShareBrowserExpected,
+    actualCodePoints: Array.from(linkedShareActual, character => character.codePointAt(0)),
+    nodeCodePoints: Array.from(linkedShareNodeExpected, character => character.codePointAt(0)),
+    browserCodePoints: Array.from(linkedShareBrowserExpected, character => character.codePointAt(0)),
+  })
+  // Preserve the original equality until actual diagnostics establish the
+  // cause. Numeric fixture/API truth and all semantic assertions stay exact.
+  assert.equal(linkedShareActual, linkedShareNodeExpected)
   const expected = await view.page.evaluate(expectedDuration, [truth.mean, view.locale])
   receipts.durationRealms ??= []; receipts.durationRealms.push({ locale: view.locale, equal: expectedDuration([truth.mean, view.locale]) === expected })
   assert.equal(await value("workforce-exception-recorded-resolution-mean"), expected ?? view.ui.recordedOutcomes.noSamples)
@@ -522,6 +535,10 @@ try {
   receipts.failure = { stage, name: ["AssertionError", "TimeoutError", "PrismaClientKnownRequestError", "PrismaClientValidationError"].includes(error?.name) ? error.name : "Error", sourcePosition: position ? { line: Number(position[1]), column: Number(position[2]) } : null, diagnostic: "Original failure preserved; no raw error, stack, body, credentials, cookie or session uploaded" }
   if (activePage && !activePage.isClosed()) {
     try { await activePage.screenshot({ path: `${outputDirectory}/failure-original.png`, fullPage: true }); receipts.failure.screenshot = "failure-original.png" } catch { receipts.failure.screenshot = "NOT_CAPTURED" }
+    try {
+      await activePage.getByTestId("workforce-exception-recorded-outcomes").screenshot({ path: `${outputDirectory}/failure-outcomes.png` })
+      receipts.failure.outcomesScreenshot = "failure-outcomes.png"
+    } catch { receipts.failure.outcomesScreenshot = "NOT_CAPTURED" }
   }
 } finally {
   const closedContexts = await Promise.allSettled(contexts.map(context => context.close()))

@@ -411,3 +411,33 @@ describe("Workforce exception review-action UI", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 })
+
+describe("separate explicit HR findings in the exception queue", () => {
+  it("requires a protected HR reason and freezes it for an exact retry after a lost response", async () => {
+    const item = { ...queueItem("WF-HR", []), stage: "RESOLVED", outcomeContext: { classification: null, appeal: null, actions: [{ decisionCode: "APPEAL_PARTIALLY_UPHELD", actionToken: "v1:hr-outcome-private-token" }] } }
+    const fetchMock = vi.fn().mockImplementationOnce(() => queueResponse([item])).mockRejectedValueOnce(new Error("lost response")).mockImplementationOnce(() => response(201, { success: true, data: { decisionCode: "APPEAL_PARTIALLY_UPHELD" } })).mockImplementationOnce(() => queueResponse([{ ...item, outcomeContext: { ...item.outcomeContext, actions: [] } }]))
+    vi.stubGlobal("fetch",fetchMock)
+    await renderQueue()
+    await act(async () => button("actions.APPEAL_PARTIALLY_UPHELD").click())
+    const textarea = container.querySelector<HTMLTextAreaElement>('textarea[name="reason"]')!
+    expect(textarea.required).toBe(true)
+    expect(container.innerHTML).not.toContain("v1:hr-outcome-private-token")
+    await act(async () => {
+      const nativeSetter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value")!.set!
+      nativeSetter.call(textarea,"Private reviewed reason.")
+      textarea.dispatchEvent(new Event("input",{ bubbles: true }))
+    })
+    await act(async () => { container.querySelector("form")!.dispatchEvent(new Event("submit",{ bubbles: true, cancelable: true })) })
+    await flush()
+    expect(textarea.disabled).toBe(true)
+    expect(container.textContent).toContain("actionFailed")
+    await act(async () => { container.querySelector("form")!.dispatchEvent(new Event("submit",{ bubbles: true, cancelable: true })) })
+    await flush()
+    const first = JSON.parse(fetchMock.mock.calls[1][1].body)
+    const retry = JSON.parse(fetchMock.mock.calls[2][1].body)
+    expect(first).toEqual({ actionToken: "v1:hr-outcome-private-token", operationId: FIXED_OPERATION_ID, reason: "Private reviewed reason." })
+    expect(retry).toEqual(first)
+    expect(container.querySelector('textarea[name="reason"]')).toBeNull()
+    expect(container.innerHTML).not.toContain("Private reviewed reason.")
+  })
+})

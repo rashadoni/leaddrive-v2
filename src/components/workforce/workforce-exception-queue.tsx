@@ -11,9 +11,9 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { workforceExceptionQueueLabelKey } from "@/lib/workforce/exception-queue-labels"
 
-const QUEUE_DECISION_CODES = ["ACKNOWLEDGE", "REQUEST_TIME_CORRECTION", ...WORKFORCE_EXCEPTION_OUTCOME_DECISIONS] as const
+const QUEUE_DECISION_CODES = ["ACKNOWLEDGE", "REQUEST_TIME_CORRECTION"] as const
 
-type QueueDecisionCode = typeof QUEUE_DECISION_CODES[number]
+type QueueDecisionCode = typeof QUEUE_DECISION_CODES[number] | typeof WORKFORCE_EXCEPTION_OUTCOME_DECISIONS[number]
 const DECISION_REASONS = {
   ACKNOWLEDGE: "MANAGER_ACKNOWLEDGED_FOR_HUMAN_REVIEW",
   REQUEST_TIME_CORRECTION: "MANAGER_REQUESTED_TIME_CORRECTION_FOR_REVIEW",

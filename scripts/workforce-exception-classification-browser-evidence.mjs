@@ -119,12 +119,32 @@ async function installProductionRoutines() {
     [lifecyclePath, extract(lifecycle, "CREATE TRIGGER workforce_exception_decisions_append_only")],
     [revisionsPath, extract(revisions, "CREATE TRIGGER workforce_exception_decisions_assign_case_revision")],
   ]
-  await admin.$transaction(async tx => {
-    for (const [path, statement] of statements) {
-      await tx.$executeRawUnsafe(statement)
-      receipts.productionRoutines.push({ path, sha256: createHash("sha256").update(statement).digest("hex"), bytes: Buffer.byteLength(statement) })
-    }
-  })
+  receipts.productionRoutineInstallation = { status: "PENDING", replacements: [] }
+  try {
+    await admin.$transaction(async tx => {
+      // The unmodified Today fixture already creates these exact named
+      // append-only triggers. Replace only those fixture-owned objects inside
+      // one disposable transaction; failure restores the original guards.
+      const [target] = await tx.$queryRaw`SELECT current_database() AS name, current_user AS role`
+      assert.equal(target.name, "workforce_manager_today_browser")
+      assert.equal(target.role, "postgres")
+      for (const [table, trigger] of [["workforce_exception_cases", "workforce_exception_cases_append_only"], ["workforce_exception_decisions", "workforce_exception_decisions_append_only"]]) {
+        const [existing] = await tx.$queryRawUnsafe("SELECT t.tgenabled::text AS enabled, t.tgisinternal AS internal FROM pg_trigger t WHERE t.tgrelid=$1::regclass AND t.tgname=$2", `public.${table}`, trigger)
+        assert.ok(existing && existing.enabled === "O" && existing.internal === false, "Existing fixture append-only guard required")
+        // Names are the two fixed identifiers above; no user input enters DDL.
+        await tx.$executeRawUnsafe(`DROP TRIGGER "${trigger}" ON public."${table}"`)
+        receipts.productionRoutineInstallation.replacements.push({ table, trigger })
+      }
+      for (const [path, statement] of statements) {
+        await tx.$executeRawUnsafe(statement)
+        receipts.productionRoutines.push({ path, sha256: createHash("sha256").update(statement).digest("hex"), bytes: Buffer.byteLength(statement) })
+      }
+    })
+    receipts.productionRoutineInstallation.status = "COMMITTED"
+  } catch (error) {
+    receipts.productionRoutineInstallation.status = "ROLLED_BACK"
+    throw error
+  }
 }
 async function seed() {
   const passwordHash = await bcrypt.hash(password, 4)
@@ -366,7 +386,9 @@ try {
   receipts.status="FAIL";process.exitCode=1
   const sourceFrame=String(error?.stack||"").split("\n").find(line=>line.includes(import.meta.url))
   const position=sourceFrame?.match(/:(\d+):(\d+)\)?$/)
-  receipts.failure={stage,name:["AssertionError","TimeoutError","PrismaClientKnownRequestError","PrismaClientValidationError"].includes(error?.name)?error.name:"Error",sourcePosition:position?{line:Number(position[1]),column:Number(position[2])}:null,diagnostic:"Original failure retained; protected raw bodies, tokens, reason, credentials and cookies omitted"}
+  const sqlState = typeof error?.meta?.code === "string" && /^[A-Z0-9]{5}$/.test(error.meta.code) ? error.meta.code : null
+  const prismaCode = typeof error?.code === "string" && /^P\d{4}$/.test(error.code) ? error.code : null
+  receipts.failure={stage,name:["AssertionError","TimeoutError","PrismaClientKnownRequestError","PrismaClientValidationError"].includes(error?.name)?error.name:"Error",sourcePosition:position?{line:Number(position[1]),column:Number(position[2])}:null,sqlState,prismaCode,diagnostic:"Original failure retained; protected raw bodies, tokens, reason, credentials and cookies omitted"}
   if(activePage&&!activePage.isClosed())try{
     await activePage.locator('textarea[name="reason"]').evaluateAll(elements=>{for(const element of elements)element.value=""})
     await activePage.screenshot({path:`${outputDirectory}/failure-original.png`,fullPage:true});receipts.failure.screenshot="failure-original.png";receipts.failure.syntheticReasonRedacted=true

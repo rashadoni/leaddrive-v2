@@ -61,3 +61,35 @@
 - Независимый source-review artifact для7400 с byte-equivalence кde49 сохранён, active findings0 в момент его записи. Это source review, не compiler acceptance.
 - Последующая root inspection обнаружила missed type-level issue: новая hrAuthorization была inferred mutable Map, а authorizeWorkforceExceptionReadCandidates возвращает ReadonlyMap. Исправлена явная ReadonlyMap-аннотация без cast/assertion/baseline change. Фактический compiler ещё не вернул диагностик; ошибка подтверждена source signatures, не выдаётся за исполненный compiler FAIL. Агенту поручен отдельный supplement, прежний review не переписывается.
 - Новый checkpoint и CI нового fullSHA необходимы. de49-run будет superseded, не засчитывается final acceptance.
+
+## 2026-10-07 — текущий точный hosted candidate
+
+- Current PR612 draft head `5eadeb43f7406a96e3145e8b21b78a3708827ef4`, base неизменный PR608/973.
+- Full exact-ref dispatch run37598967356: https://github.com/rashadoni/leaddrive-v2/actions/runs/37598967356. Все5 jobs успешно прошли fullSHA guard, dependency/schema/build preparations выполняются. Это PENDING, не PASS.
+- Superseded de49 run37598596183 отменён workflow concurrency; первоначальная metadata сохраняется gzip, успех его тестов не заимствуется для current head.
+- Independent supplement `independent-source-review-supplement-5ead.json` привязан к exact5ead/tree27bindings; подтверждает найденное root ReadonlyMap исправление, раскрывает missed P1 и не переписывает первоначальный review. Нерешённых source findings0, compiler pending.
+- Workflow dispatch и ephemeral PG/Redis не используют production environment/secrets. Draft-triggered skipped jobs не считаются исполненными gates. Локальный полный compiler/build/browser/database workload NOT RUN по host contract; будут приняты только текущие hosted результаты.
+
+Точка: PR612 опубликован, exact5ead hosted run37598967356 исполняется; source review+supplement сохранены, окончательной приёмки ещё нет. Следующий шаг: получить реальные результаты jobs/artifacts, исправить выявленное и подтвердить точный финальный head.
+
+## 2026-10-07 — первый actual hosted browser FAIL
+
+- Exact5ead run37598967356 report job112718756474 FAILED. Safe artifact11471929231 digest `sha256:d394eaefe7e6652751f902af562099d48b6dad24ffc8420f5b05574b5585ed49` получен через GitHub. Original safe JSON и failure screenshot сохранены под hosted-5ead-report-attempt1; не переписаны.
+- 4 сценария RU PASS: empty, unresolved/no sample, measured zero, nonempty(8cases, linkedshare0.125). FAIL stage report-az-nonempty-range, source333 compare linked percentage. Cause ещё UNKNOWN; Node/browser Intl и render scheduling — только hypotheses. Нельзя называть transient или source fix без доказательств. Independent investigator анализирует owned harness; full compiler/PG/build/HR write jobs продолжаются и не отменены.
+- Root просмотрел фактический failure PNG: отображён AZ report для8случаев; screenshot viewport не содержит область процентной строки, поэтому из него нельзя утверждать фактический процент или его ошибочность.
+
+## 2026-10-07 — actual write-browser fixture FAIL и установленная причина
+
+- Classification job112718756562 FAILED до authentication/UI; safe artifact11471869403 digest `sha256:769cde68b1962ec718cb1b4ed64191877619a153cf1d21bfd54819ecb7f2ac0e` сохранён hosted-5ead-classification-attempt1, cases0.
+- Установленная причина: unmodified Today fixture уже создаёт workforce_exception_cases_append_only и workforce_exception_decisions_append_only; installer повторно выполнил CREATE TRIGGER тех же имён на строке124. Transaction rollback; четыре productionRoutines entries означают попытки, не committed install. Требуется отдельно маркировать COMMITTED после success.
+- Исправление только disposable harness: атомарно заменить эти два known fixture triggers exact production statements, не менять source/baseline/production. Additive safe diagnostic codes; fixture fences остаются.
+- AZ percent FAIL остаётся UNKNOWN: investigator подтвердил отсутствие actualText/expectedText в original receipt и невозможность вывести причину из viewport PNG. Следующая попытка сохраняет прежний strict equality и добавляет aggregate-only Node/browser/actual percent strings/codepoints + focused screenshot. Повторный PASS не станет доказательством transient cause.
+- В actual5ead CI: schema validate/generate, scoped lint/i18n/runner policy и PostgreSQL step прошли; full regressions, full compiler и build ещё выполняются. Пока без final acceptance.
+
+## 2026-10-07 — полный regression FAIL и исправление границы менеджера
+
+- Exact5ead PG:4files/44tests PASS, zero skip в explicit lane. Schema validate/generate, lint, i18n и runnerpolicy PASS. Bundle build job112718756211 SUCCESS. Это текущие5ead результаты, не финальная acceptance будущего head.
+- Full suite:19failingfiles против unchanged18baseline; новый failure `workforce-exception-queue-action-ui.test.ts`, privacy/accessibility locale contract at162 expects original manager-only QUEUE_DECISION_CODES constant. Исходный full job log сохранён gzip; baseline не менялся.
+- Исправлена source структура: менеджерский allowlist по-прежнему ACKNOWLEDGE/REQUEST_TIME_CORRECTION, outcome type union отдельный, HR outcomeContext отдельный. Existing assertion не удалён и не ослаблен. Added protected-reason/lost-response exact-retry UI test. Targeted queue suite9/9 PASS.
+- Modified browser refusal guards повторно19/19 PASS; оба harness syntax PASS. Новые diagnostic fields не меняют AZ equality. Duplicate-trigger fix ограничен atomic replacement двух known guards в fenced disposable owner transaction и COMMITTED/ROLLED_BACK metadata.
+- Initial errors и original reviews сохранены; новая independent correction review ожидается. Full5ead compiler ещё выполняется; следующая попытка должна быть на новом checkpoint с точным fullSHA.
