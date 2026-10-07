@@ -1,0 +1,97 @@
+{
+  "archivedAtUtc": "2026-10-07T23:16:51.550523+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-final-f308-five-run-terminal.json.gz",
+      "originalBytes": 12460,
+      "originalSha256": "8d4afa06e6b23500710506b4a80877e5ebe518c6a04fdf354b834551459861df",
+      "storedBytes": 1583,
+      "storedSha256": "c6245d1533156d0deb945b3917cb28b8dca2bc86fea1afe259a96fca21a096ec"
+    },
+    {
+      "path": "hrm-final-f308-five-jobs-terminal.json.gz",
+      "originalBytes": 17057,
+      "originalSha256": "19535fd02af050a9f9ead8cded771415803f4445e8661ae9e148bd7c60b1fb12",
+      "storedBytes": 1967,
+      "storedSha256": "fc66d91393250370d1fcf667b6352538984dab8f19bf27bdaed0d6b5b31bbd74"
+    },
+    {
+      "path": "hrm-final-f308-five-artifacts-terminal.json.gz",
+      "originalBytes": 2281,
+      "originalSha256": "bbcaa5c1dcda494520d34278b2e68e11907f74f6c77d119507ce6fa9501c2c2b",
+      "storedBytes": 663,
+      "storedSha256": "a471165e631824340f5746c8ca1d7cb51ae809f4f73a74dffbc5d50084660a2e"
+    },
+    {
+      "path": "hrm-final-f308-build-first-original.log.gz",
+      "originalBytes": 129506,
+      "originalSha256": "3e58b29e506e590221d15afe68bd6dd0b6e2d4577f23c309d7dcc1fcbb2f83c3",
+      "storedBytes": 24727,
+      "storedSha256": "1d235e7e7fe080338b9dee1f71cd7b4df112252f338d6a647fe82a67ee137561"
+    },
+    {
+      "path": "hrm-final-f308-compiler-first.zip",
+      "originalBytes": 19685,
+      "originalSha256": "3cd294f8e1182d6f2ce51f15f7acb872003530b47c5738d4474c9c34138cb492",
+      "storedBytes": 19685,
+      "storedSha256": "3cd294f8e1182d6f2ce51f15f7acb872003530b47c5738d4474c9c34138cb492"
+    },
+    {
+      "path": "hrm-final-f308-compiler-first-original.log.gz",
+      "originalBytes": 254176,
+      "originalSha256": "bce8e62ab66d481082866ac9e15fc48910a5a762bbb9056a2dcef177a719b59f",
+      "storedBytes": 34787,
+      "storedSha256": "aac9efcda88834a846fc7ba0c270bc463e747de329aa598055d87adba593f6c7"
+    },
+    {
+      "path": "hrm-final-f308-root-compiler/tsc-exit-code",
+      "originalBytes": 2,
+      "originalSha256": "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3",
+      "storedBytes": 2,
+      "storedSha256": "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3"
+    },
+    {
+      "path": "hrm-final-f308-root-compiler/tsc-output.log.gz",
+      "originalBytes": 177767,
+      "originalSha256": "fd626333ee46182254dc6a8b0a012af831b4e2781cc1a21f6ca373886ec9b4ba",
+      "storedBytes": 18983,
+      "storedSha256": "6a44e1f036f9e8ef18da3a97f315363fb1905796110ffcf54aec5dd716bbabf4"
+    },
+    {
+      "path": "hrm-final-f308-root-compiler-parse-proof.json.gz",
+      "originalBytes": 1926,
+      "originalSha256": "cc07510fe8690e93b37d33fe85ae6c4da3503552ac27e1a36a52f7181b44e51c",
+      "storedBytes": 713,
+      "storedSha256": "0f3f1b3fed26a0ef1ab0176637e8660c901084964d5e7495b38eb9d0db74c777"
+    },
+    {
+      "path": "hrm-final-main-compiler-parse.py",
+      "originalBytes": 2811,
+      "originalSha256": "6bf6f294d2146948adecfb193dac8fc92168fb36b1057f025b0a7995077738b7",
+      "storedBytes": 2811,
+      "storedSha256": "6bf6f294d2146948adecfb193dac8fc92168fb36b1057f025b0a7995077738b7"
+    },
+    {
+      "path": "hrm-release-independent-compiler-f3085e5c.json.gz",
+      "originalBytes": 10654,
+      "originalSha256": "5021c312e8981f1e9d1dece24b2472b56085225ff7afee44ff61b843bfce3333",
+      "storedBytes": 3152,
+      "storedSha256": "ee7a57b29c2ee709902c947f5495a79be81915a41f9698af6d321561b156e842"
+    },
+    {
+      "path": "hrm-release-independent-pg-f3085e5c.json.gz",
+      "originalBytes": 1547,
+      "originalSha256": "30a83a69dbb086544be87e4af5c73ec2fea6bb133856055ec561418cfa30bd96",
+      "storedBytes": 930,
+      "storedSha256": "ef7e9faf6129ee15ec8f2ca9b303dc73dfec23a8448e5efc58465827f77c8ab3"
+    },
+    {
+      "path": "hrm-release-independent-pg-build-f3085e5c.json.gz",
+      "originalBytes": 5348,
+      "originalSha256": "37009dea4bcaaa551e614befe671768a5214408fd02ad1f6f254498fd64af461",
+      "storedBytes": 1893,
+      "storedSha256": "f3ad4d2b871dc39c589dbfb41b4b9e6eba96b152159dfcc4021ebb777c892832"
+    }
+  ]
+}
