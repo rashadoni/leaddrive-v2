@@ -342,3 +342,10 @@
 - Current exact workflow37635350493 reportjob112839990999 и classificationjob112839991015 SUCCESS. Root скачал оригинальные ZIP; GitHub digest, CRC, безопасные memberpaths, оба receipts SHA и26sourcebindings к062 проверены.9report+11classification PASS,6реальных201 fixture appends+6auditrows, canonicalAuth.js/TOTP/nonce, HRrole/tenant/revocation denial, exact retry0delta, reopenedreset, populated2tenantFORCERLS и cleanupPASS. Это синтетическая isolatedPG/Redis среда, не настоящие кадровые решения.
 - Root фактически просмотрел6current PNG. EN metrics четыре33.33%,sample3/unfinished2/unclassified2/integrity1 видимы; AZ процентов4видимы, верх/низ обрезан; RU nestedscroller screenshot почтипустой/обрезанный. EN/AZ queue showsmanualHRboundary/appealfeedback; RU leftcolumns, действиеконтролов подтверждено DOM/network201, не полной screenshotvisibility. AZ duration English units50minutes/seconds/hours inheritedfrom973; actualcrossrealm equalityfalseодинраз, числовые/API/browserassertionsPASS. Не утверждается полнаяAZunitlocalization/WCAG/AT/mobilevisual acceptance.
 - Все исходные browserZIP/logs сохранены. Compiler/build/fullregression и requiredchecks pending; actualproductionmetadata pending616. Учёт84/161/77/60,C12PARTIAL unchanged.
+
+
+## 2026-10-07 — финальные PG/regression и bundle062 PASS
+
+- Exact workflow37635350493 sourcejob112839991260 SUCCESS: currentPrisma validate/generate PASS, translation parity/scopedlint PASS, actual4PGfiles44/44tests PASS безskips. Fullregression завершена: неизменный strictbaseline18failingfiles/18known,everybaselineentry stillfails, no newfailingfiles; gatePASS. Это не globallyclean suite. Originalfull157668bytes log retainedlossless.
+- Exact buildjob112839991063 SUCCESS: Nextwebpack compiledsuccessfully4.8min, standalone server/staticexistenceassertionsPASS. Existing build skiptypevalidation unchanged; отдельный полныйcompiler/gates ещё выполняется. Original129333bytes log retainedlossless.
+- PR616 static-checks и3cheaprequired PASS, typecheck stillrunning. Productionmetadata/mainmerge pending; источник062 frozen, evidencebranchcheckpoint лишьdocs. Учёт84/161/77/60/C12PARTIAL прежний.

@@ -1,0 +1,40 @@
+{
+  "runId": 37635350493,
+  "head": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+  "jobs": [
+    {
+      "name": "source-regression",
+      "jobId": 112839991260,
+      "head": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+      "rawBytes": 157668,
+      "rawSHA256": "94aca1ede4784737bb68b7874c6a2e3e9a54859fe20c25752493b0719e5d6820",
+      "gzipSHA256": "c452eb8e022a6280435f1d222dbdcd06675862304af78f82ac79c568098b813b",
+      "conclusion": "SUCCESS"
+    },
+    {
+      "name": "build",
+      "jobId": 112839991063,
+      "head": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+      "rawBytes": 129333,
+      "rawSHA256": "96da9c3345da06009889f3760e5d63e65387545a6e0a8460ee8ac0b8384868c1",
+      "gzipSHA256": "5bb2d61cca1d1e97bb980d1af21c63ad00260c8cd806889da120abd61da46f40",
+      "conclusion": "SUCCESS"
+    }
+  ],
+  "schemaValidateGenerate": "PASS",
+  "postgresTests": {
+    "files": 4,
+    "passed": 44,
+    "failed": 0,
+    "skipped": 0
+  },
+  "regressionBaseline": {
+    "knownFailingFiles": 18,
+    "observedFailingFiles": 18,
+    "everyBaselineEntryStillFails": true,
+    "unchangedAccepted973": true,
+    "globallyClean": false
+  },
+  "bundle": "compiled successfully4.8min, standalone/static asserted; existing build typevalidation skip unchanged, separate fullcompiler pending",
+  "compilerGate": "PENDING"
+}
