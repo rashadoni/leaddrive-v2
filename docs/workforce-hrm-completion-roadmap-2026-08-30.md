@@ -7412,3 +7412,34 @@ replay, tenant activation or production readiness. Accounting remains84/161 DONE
 activation, production, access and secrets changes require separate approval.
 Support and HRHub personnel-document work are outside this implementation.
 Continuation: docs/hrm-wf-c6-010-session-log.md records exact heads and each attempt.
+
+
+### 2026-10-07 — WF-C6-010 exact9f3 technical verification complete
+
+Supersedes the earlier pending technical acceptance at722/30677; earlier entries
+and original failures remain preserved. Draft
+[PR612](https://github.com/rashadoni/leaddrive-v2/pull/612) retains accepted PR608
+base973241bacc296b71fe817d1af11187c32e8126af and final source
+9f3cc73dcdb8c4ccea1fdac9dfae29570339abc5. All five jobs in exact-head
+[hosted run37607239591](https://github.com/rashadoni/leaddrive-v2/actions/runs/37607239591)
+completed successfully: production bundle, full compiler gates, source/PostgreSQL
+regressions, report browser and HR recording browser. Actual44 PostgreSQL tests
+and20 authenticated RU/AZ/EN browser scenarios passed, including6 decision appends,
+MFA, actor/tenant/RLS, immutable ledger, reopened cycles and idempotent conflicts.
+Independent final source/artifact review has zero active P0-P3 findings; test
+harness authorship and cross-review are explicitly disclosed in the evidence.
+
+Both baseline files and all existing gate scripts remain unchanged from accepted
+PR608. Global historical1153 compiler diagnostics and18 failing test files still
+exist; all touched-file diagnostic families are empty, both compiler gates and
+unchanged18/18 full regression gate passed. Initial failures and retries remain
+preserved. RU320 DOM/actions passed, while its clipped metrics screenshot is not
+whole-panel visual evidence. Synthetic isolated tests do not replace live HR
+observations or activation/production readiness; ordinary audit fixture protection
+is distinguished from the authoritative production immutable decision ledger.
+
+Final evidence/journal are checkpointed separately on local evidence branch
+codex/hrm-wf-c6-010-evidence-20261007, parent9f3, keeping verified PR source head
+unchanged. WF-C6-010 remains PARTIAL pending owner acceptance. Accounting remains
+84/161 DONE,77 open,weighted60%; C7-007/C8-002 DONE,C12 PARTIAL. No merge, deploy,
+activation, production/access/secrets changes, Support or HRHub document work.

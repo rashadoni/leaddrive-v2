@@ -1,0 +1,164 @@
+{
+  "headSha": "9f3cc73dcdb8c4ccea1fdac9dfae29570339abc5",
+  "runId": 37607239591,
+  "status": "BROWSER_DATABASE_PASS_FULL_CI_PENDING",
+  "artifacts": [
+    {
+      "kind": "report",
+      "artifactId": 11475593145,
+      "zipSha256": "aa30ce572ee13cbcc1aa663b9c8410151293d83ab43b0f7513bf2f7888d4cdb6",
+      "zipBytes": 853371,
+      "members": [
+        {
+          "name": "exception-report-receipt.json",
+          "bytes": 27854,
+          "sha256": "ebbfd9a6564a1e399f85b49d08ab5c9d9cd7fbdae508f05c18a2de94c54b0c90"
+        },
+        {
+          "name": "report-az-768-recorded-outcomes.png",
+          "bytes": 85625,
+          "sha256": "0e3ec8e13a659a9e7cebf6af1ff2f9f40b27d8debae29304ab21517f45825ee5"
+        },
+        {
+          "name": "report-az-768-nonempty.png",
+          "bytes": 86832,
+          "sha256": "8b2607cbee8a34df31edc76fdcaf532d480390013935658f83436eace085058e"
+        },
+        {
+          "name": "report-denied-denied.png",
+          "bytes": 45895,
+          "sha256": "937f0f4182a824a7295314e62b1858b99e5544049c5774d06442d1ad1baf71ea"
+        },
+        {
+          "name": "report-denied-team.png",
+          "bytes": 45895,
+          "sha256": "937f0f4182a824a7295314e62b1858b99e5544049c5774d06442d1ad1baf71ea"
+        },
+        {
+          "name": "report-en-1440-nonempty.png",
+          "bytes": 133601,
+          "sha256": "40689992e024649cc3b13cdb68161d09f59d752c6d6ec66f81132604b22863f5"
+        },
+        {
+          "name": "report-en-1440-recorded-outcomes.png",
+          "bytes": 77069,
+          "sha256": "6d23401346d2cb7122df1fbb4aa745ae0b082757ba2e8b3e4e571340ecf8ec5d"
+        },
+        {
+          "name": "report-foreign-positive.png",
+          "bytes": 81676,
+          "sha256": "e98703a0ac13d5a3bc158dd363c33b9ae99782e002cef29ed24d9fedc22d8b2c"
+        },
+        {
+          "name": "report-ru-320-empty.png",
+          "bytes": 68297,
+          "sha256": "0ae5c77d58c0f330bff957f2cc8291497726168eda14bf7b877dc893028f848b"
+        },
+        {
+          "name": "report-ru-320-measured-zero.png",
+          "bytes": 68458,
+          "sha256": "e0c3c75abe6b0ba0b2f88315a3a6c0a3a94b78152673cbd168b6ffd616e03cda"
+        },
+        {
+          "name": "report-ru-320-nonempty.png",
+          "bytes": 65633,
+          "sha256": "d8e0f67bae33ba030bf664636df62b3e21a6495d73603fe8128f9b49ea0c7708"
+        },
+        {
+          "name": "report-ru-320-recorded-outcomes.png",
+          "bytes": 61369,
+          "sha256": "304b57489fbe9f7b735dd1ed5bc1d7e7c3ac2967fbb65df418fc2bdad36e82b2"
+        },
+        {
+          "name": "report-ru-320-unresolved-no-sample.png",
+          "bytes": 67978,
+          "sha256": "c0d1690d14343ac283fe531dc6f265631557106e05142cb1974b1e7a3eba48bc"
+        },
+        {
+          "name": "workflow-context.json",
+          "bytes": 261,
+          "sha256": "4975ccbbd7cbdba1307beefd900fe7c827551cf4702aea837e0dd27c178d2e79"
+        }
+      ],
+      "status": "PASS",
+      "cases": 9,
+      "sources": 12,
+      "cleanup": "PASS"
+    },
+    {
+      "kind": "classification",
+      "artifactId": 11475434208,
+      "zipSha256": "6e64ef8d567f22549943c635b33bab1f7759658d4f802dca10759922f0bc4d83",
+      "zipBytes": 268753,
+      "members": [
+        {
+          "name": "classification-az-768.png",
+          "bytes": 103133,
+          "sha256": "177ced4c17649007b6b8271b873fd9d38226286489f182e871c92a0f4ad1c09c"
+        },
+        {
+          "name": "classification-en-1440.png",
+          "bytes": 137375,
+          "sha256": "cd023708ee176aa23182099f08570e8c15cc809e836ffd461acfe844181ea95f"
+        },
+        {
+          "name": "classification-ru-320.png",
+          "bytes": 34808,
+          "sha256": "64fa7844b66a4033c71eee1c54f90cf0eb0227277c7a5bdbf98e488fffdf82c2"
+        },
+        {
+          "name": "exception-classification-receipt.json",
+          "bytes": 15212,
+          "sha256": "de33983f903429ce0e218ba613dbbf6df2d21d881ea45a0de282b5ab7bd84c24"
+        },
+        {
+          "name": "workflow-context.json",
+          "bytes": 261,
+          "sha256": "4975ccbbd7cbdba1307beefd900fe7c827551cf4702aea837e0dd27c178d2e79"
+        }
+      ],
+      "status": "PASS",
+      "cases": 11,
+      "sources": 14,
+      "cleanup": "PASS"
+    }
+  ],
+  "actualClassification": {
+    "newDecisions": 6,
+    "newAuditRows": 6,
+    "codes": [
+      "CLASSIFY_FALSE_POSITIVE",
+      "CLASSIFY_CONFIRMED_EXCEPTION",
+      "APPEAL_FULLY_UPHELD",
+      "APPEAL_PARTIALLY_UPHELD",
+      "APPEAL_REJECTED"
+    ],
+    "realMandatoryMfaSessions": 7,
+    "weakHrWithoutMfa403": true,
+    "actorTenantGrant404": true,
+    "replay200ZeroDelta": true,
+    "staleConflict409ZeroDelta": true,
+    "reopenedNullContext": true,
+    "revokedHrStillManagerDenied": true,
+    "nonownerPopulatedTwoTenantDecisionRls": true,
+    "productionDecisionUpdateDelete55000": true,
+    "auditAppendGuardIsSynthetic": true,
+    "fixedBusinessFactsUnchangedBeforeFixtureRevocation": true
+  },
+  "actualVisualInspection": {
+    "viewed": [
+      "report-ru-320-recorded-outcomes.png",
+      "report-az-768-recorded-outcomes.png",
+      "report-en-1440-recorded-outcomes.png",
+      "classification-en-1440.png",
+      "classification-ru-320.png"
+    ],
+    "AZENMetrics": "Allfour33.33% visible, sample3 perdimension; ENunfinished2/unclassified2/integrity1 visible",
+    "RUReportCapture": "Nestedscrollcontainer clip/blank area: no whole-panel/mobile screenshot credit; exact browser DOM/geometry assertions passed",
+    "Queue": "ENhumanreviewhint/successbanner/actions visible; RUhorizontal-table viewport limited; realbrowser writes201 inRU320/AZ768/EN1440 passed",
+    "limitations": [
+      "DevelopmentIssuebadge present; no globalnonocclusion/WCAG/humanAT claim",
+      "Syntheticfixture UI and DB, not operationalHR observation or migrationreplay or productionactivation"
+    ]
+  }
+}
