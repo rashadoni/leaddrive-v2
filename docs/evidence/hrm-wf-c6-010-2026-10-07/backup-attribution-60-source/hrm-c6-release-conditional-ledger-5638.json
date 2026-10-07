@@ -1,0 +1,18 @@
+{
+  "head": "5638f1ea63c2818aef8be1b0c497eff718303388",
+  "method": "last complete task-row override wins; DONE only; phase gates unchanged14/15",
+  "current": {
+    "tasks": 161,
+    "done": 84,
+    "open": 77,
+    "weightedRaw": 60.40579710144928,
+    "weightedRounded": 60
+  },
+  "conditionalOnlyC6_010Accepted": {
+    "done": 85,
+    "open": 76,
+    "weightedRaw": 60.90269151138716,
+    "weightedRounded": 61
+  },
+  "status": "CALCULATION_ONLY_NO_CLOSURE_NO_ROADMAP_WRITE"
+}

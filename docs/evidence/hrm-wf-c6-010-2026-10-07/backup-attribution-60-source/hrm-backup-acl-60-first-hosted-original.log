@@ -1,0 +1,826 @@
+﻿2026-10-07T21:55:15.8808625Z Current runner version: '2.337.0'
+2026-10-07T21:55:15.8830068Z ##[group]Runner Image Provisioner
+2026-10-07T21:55:15.8830795Z Hosted Compute Agent
+2026-10-07T21:55:15.8831268Z Version: 20260901.588
+2026-10-07T21:55:15.8831862Z Commit: f88ec8081b781fac6c440065ac7ff9e710ce3d0b
+2026-10-07T21:55:15.8832464Z Build Date: 2026-09-01T19:56:44Z
+2026-10-07T21:55:15.8833047Z Worker ID: {c85420c5-3f2e-4ce6-b552-220b379cbdf1}
+2026-10-07T21:55:15.8833679Z Azure Region: eastus
+2026-10-07T21:55:15.8834150Z ##[endgroup]
+2026-10-07T21:55:15.8835284Z ##[group]Operating System
+2026-10-07T21:55:15.8835825Z Ubuntu
+2026-10-07T21:55:15.8836468Z 24.04.5
+2026-10-07T21:55:15.8836941Z LTS
+2026-10-07T21:55:15.8837376Z ##[endgroup]
+2026-10-07T21:55:15.8837869Z ##[group]Runner Image
+2026-10-07T21:55:15.8838394Z Image: ubuntu-24.04
+2026-10-07T21:55:15.8838846Z Version: 20260927.320.1
+2026-10-07T21:55:15.8839947Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260927.320/images/ubuntu/Ubuntu2404-Readme.md
+2026-10-07T21:55:15.8841261Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260927.320
+2026-10-07T21:55:15.8842061Z ##[endgroup]
+2026-10-07T21:55:15.8843113Z ##[group]GITHUB_TOKEN Permissions
+2026-10-07T21:55:15.8844846Z Actions: read
+2026-10-07T21:55:15.8845329Z Contents: read
+2026-10-07T21:55:15.8845904Z Metadata: read
+2026-10-07T21:55:15.8846660Z ##[endgroup]
+2026-10-07T21:55:15.8848611Z Secret source: Actions
+2026-10-07T21:55:15.8849364Z Cache mode: write
+2026-10-07T21:55:15.8850261Z Prepare workflow directory
+2026-10-07T21:55:15.9183084Z Prepare all required actions
+2026-10-07T21:55:15.9222992Z Getting action download info
+2026-10-07T21:55:16.0918187Z Download action repository 'actions/checkout@v6' (SHA:d23441a48e516b6c34aea4fa41551a30e30af803)
+2026-10-07T21:55:16.5119486Z Download action repository 'actions/setup-node@v4' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+2026-10-07T21:55:16.7062253Z Complete job name: source-validation
+2026-10-07T21:55:16.7494146Z ##[group]Checking docker version
+2026-10-07T21:55:16.7505009Z ##[command]/usr/bin/docker version --format '{{.Server.APIVersion}}'
+2026-10-07T21:55:16.9591006Z '1.48'
+2026-10-07T21:55:16.9599955Z Docker daemon API version: '1.48'
+2026-10-07T21:55:16.9600634Z ##[command]/usr/bin/docker version --format '{{.Client.APIVersion}}'
+2026-10-07T21:55:16.9743993Z '1.48'
+2026-10-07T21:55:16.9756547Z Docker client API version: '1.48'
+2026-10-07T21:55:16.9762060Z ##[endgroup]
+2026-10-07T21:55:16.9764438Z ##[group]Clean up resources from previous jobs
+2026-10-07T21:55:16.9769979Z ##[command]/usr/bin/docker ps --all --quiet --no-trunc --filter "label=927ba9"
+2026-10-07T21:55:16.9893641Z ##[command]/usr/bin/docker network prune --force --filter "label=927ba9"
+2026-10-07T21:55:17.0010651Z ##[endgroup]
+2026-10-07T21:55:17.0011189Z ##[group]Create local container network
+2026-10-07T21:55:17.0020915Z ##[command]/usr/bin/docker network create --label 927ba9 github_network_fa0be576842c433a91bebded9eb78fdd
+2026-10-07T21:55:17.0525838Z f815397aea8e882e1d1063ae2e24e3556258e1c92c0475517c634f5047f11f0f
+2026-10-07T21:55:17.0542969Z ##[endgroup]
+2026-10-07T21:55:17.0564393Z ##[group]Starting postgres service container
+2026-10-07T21:55:17.0582739Z ##[command]/usr/bin/docker pull postgres:16
+2026-10-07T21:55:17.4380942Z 16: Pulling from library/postgres
+2026-10-07T21:55:17.5136442Z ecc510c1e359: Pulling fs layer
+2026-10-07T21:55:17.5137232Z 79faf13a8736: Pulling fs layer
+2026-10-07T21:55:17.5137852Z 6456bfbf35e7: Pulling fs layer
+2026-10-07T21:55:17.5138484Z b353db459ed1: Pulling fs layer
+2026-10-07T21:55:17.5139278Z 99f49de4fe2b: Pulling fs layer
+2026-10-07T21:55:17.5140150Z 83d1a2a3917c: Pulling fs layer
+2026-10-07T21:55:17.5140830Z 715ea0948cb1: Pulling fs layer
+2026-10-07T21:55:17.5141451Z 486e8305f56f: Pulling fs layer
+2026-10-07T21:55:17.5142081Z e7d675f11ded: Pulling fs layer
+2026-10-07T21:55:17.5142748Z c49864c27f35: Pulling fs layer
+2026-10-07T21:55:17.5143381Z 770ef8b308ea: Pulling fs layer
+2026-10-07T21:55:17.5144083Z 50c25daa0302: Pulling fs layer
+2026-10-07T21:55:17.5145158Z 8309db3ae5b6: Pulling fs layer
+2026-10-07T21:55:17.5145837Z 9731e27f2541: Pulling fs layer
+2026-10-07T21:55:17.5146949Z e7d675f11ded: Waiting
+2026-10-07T21:55:17.5147698Z c49864c27f35: Waiting
+2026-10-07T21:55:17.5148292Z 770ef8b308ea: Waiting
+2026-10-07T21:55:17.5148881Z b353db459ed1: Waiting
+2026-10-07T21:55:17.5149469Z 50c25daa0302: Waiting
+2026-10-07T21:55:17.5150076Z 99f49de4fe2b: Waiting
+2026-10-07T21:55:17.5150757Z 8309db3ae5b6: Waiting
+2026-10-07T21:55:17.5151645Z 83d1a2a3917c: Waiting
+2026-10-07T21:55:17.5152519Z 9731e27f2541: Waiting
+2026-10-07T21:55:17.5153397Z 486e8305f56f: Waiting
+2026-10-07T21:55:17.5401999Z 79faf13a8736: Download complete
+2026-10-07T21:55:17.5714661Z 6456bfbf35e7: Verifying Checksum
+2026-10-07T21:55:17.5717935Z 6456bfbf35e7: Download complete
+2026-10-07T21:55:17.5750497Z b353db459ed1: Verifying Checksum
+2026-10-07T21:55:17.5753688Z b353db459ed1: Download complete
+2026-10-07T21:55:17.6188750Z ecc510c1e359: Verifying Checksum
+2026-10-07T21:55:17.6190949Z ecc510c1e359: Download complete
+2026-10-07T21:55:17.6193020Z 83d1a2a3917c: Verifying Checksum
+2026-10-07T21:55:17.6194111Z 83d1a2a3917c: Download complete
+2026-10-07T21:55:17.6239426Z 99f49de4fe2b: Verifying Checksum
+2026-10-07T21:55:17.6241233Z 99f49de4fe2b: Download complete
+2026-10-07T21:55:17.6460344Z 715ea0948cb1: Verifying Checksum
+2026-10-07T21:55:17.6463122Z 715ea0948cb1: Download complete
+2026-10-07T21:55:17.6473089Z 486e8305f56f: Verifying Checksum
+2026-10-07T21:55:17.6475417Z 486e8305f56f: Download complete
+2026-10-07T21:55:17.6744965Z 770ef8b308ea: Verifying Checksum
+2026-10-07T21:55:17.6746585Z 770ef8b308ea: Download complete
+2026-10-07T21:55:17.6747987Z c49864c27f35: Download complete
+2026-10-07T21:55:17.7025854Z 50c25daa0302: Verifying Checksum
+2026-10-07T21:55:17.7028605Z 50c25daa0302: Download complete
+2026-10-07T21:55:17.7042258Z 8309db3ae5b6: Verifying Checksum
+2026-10-07T21:55:17.7043318Z 8309db3ae5b6: Download complete
+2026-10-07T21:55:17.7328813Z 9731e27f2541: Verifying Checksum
+2026-10-07T21:55:17.7330266Z 9731e27f2541: Download complete
+2026-10-07T21:55:17.9837674Z e7d675f11ded: Verifying Checksum
+2026-10-07T21:55:18.9208347Z e7d675f11ded: Download complete
+2026-10-07T21:55:18.9208762Z ecc510c1e359: Pull complete
+2026-10-07T21:55:20.3217546Z 79faf13a8736: Pull complete
+2026-10-07T21:55:21.0378198Z 6456bfbf35e7: Pull complete
+2026-10-07T21:55:21.2102871Z b353db459ed1: Pull complete
+2026-10-07T21:55:21.6180249Z 99f49de4fe2b: Pull complete
+2026-10-07T21:55:21.7215809Z 83d1a2a3917c: Pull complete
+2026-10-07T21:55:21.7314439Z 715ea0948cb1: Pull complete
+2026-10-07T21:55:21.7393342Z 486e8305f56f: Pull complete
+2026-10-07T21:55:25.6282563Z e7d675f11ded: Pull complete
+2026-10-07T21:55:25.6375575Z c49864c27f35: Pull complete
+2026-10-07T21:55:25.6458893Z 770ef8b308ea: Pull complete
+2026-10-07T21:55:25.6540784Z 50c25daa0302: Pull complete
+2026-10-07T21:55:25.7017564Z 8309db3ae5b6: Pull complete
+2026-10-07T21:55:25.7079227Z 9731e27f2541: Pull complete
+2026-10-07T21:55:25.7309857Z Digest: sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
+2026-10-07T21:55:25.7321045Z Status: Downloaded newer image for postgres:16
+2026-10-07T21:55:25.7329154Z docker.io/library/postgres:16
+2026-10-07T21:55:25.7378922Z ##[command]/usr/bin/docker create --name f76bea319e9d4bd0b11295397a289eb5_postgres16_1749db --label 927ba9 --network github_network_fa0be576842c433a91bebded9eb78fdd --network-alias postgres -p 5432/tcp --health-cmd "pg_isready -U postgres -d hrm_preflight_test" --health-interval 5s --health-timeout 5s --health-retries 10 -e "POSTGRES_DB=hrm_preflight_test" -e "POSTGRES_USER=postgres" -e "POSTGRES_PASSWORD=isolated-preflight-only" -e GITHUB_ACTIONS=true -e CI=true postgres:16
+2026-10-07T21:55:25.7795222Z 9b1aafc3a7fb9b7bf3b1c2534a17cf2adaaef1b39c1ccd30d87f7a46bffcce91
+2026-10-07T21:55:25.7816202Z ##[command]/usr/bin/docker start 9b1aafc3a7fb9b7bf3b1c2534a17cf2adaaef1b39c1ccd30d87f7a46bffcce91
+2026-10-07T21:55:26.1172073Z 9b1aafc3a7fb9b7bf3b1c2534a17cf2adaaef1b39c1ccd30d87f7a46bffcce91
+2026-10-07T21:55:26.1193400Z ##[command]/usr/bin/docker ps --all --filter id=9b1aafc3a7fb9b7bf3b1c2534a17cf2adaaef1b39c1ccd30d87f7a46bffcce91 --filter status=running --no-trunc --format "{{.ID}} {{.Status}}"
+2026-10-07T21:55:26.1393408Z 9b1aafc3a7fb9b7bf3b1c2534a17cf2adaaef1b39c1ccd30d87f7a46bffcce91 Up Less than a second (health: starting)
+2026-10-07T21:55:26.1411738Z ##[command]/usr/bin/docker port 9b1aafc3a7fb9b7bf3b1c2534a17cf2adaaef1b39c1ccd30d87f7a46bffcce91
+2026-10-07T21:55:26.1521727Z 5432/tcp -> 0.0.0.0:32768
+2026-10-07T21:55:26.1526667Z 5432/tcp -> [::]:32768
+2026-10-07T21:55:26.1561449Z ##[endgroup]
+2026-10-07T21:55:26.1568455Z ##[group]Waiting for all services to be ready
+2026-10-07T21:55:26.1579567Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" 9b1aafc3a7fb9b7bf3b1c2534a17cf2adaaef1b39c1ccd30d87f7a46bffcce91
+2026-10-07T21:55:26.1695346Z starting
+2026-10-07T21:55:26.1713035Z postgres service is starting, waiting 2 seconds before checking again.
+2026-10-07T21:55:28.1711165Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" 9b1aafc3a7fb9b7bf3b1c2534a17cf2adaaef1b39c1ccd30d87f7a46bffcce91
+2026-10-07T21:55:28.1813753Z starting
+2026-10-07T21:55:28.1825284Z postgres service is starting, waiting 4 seconds before checking again.
+2026-10-07T21:55:32.5697867Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" 9b1aafc3a7fb9b7bf3b1c2534a17cf2adaaef1b39c1ccd30d87f7a46bffcce91
+2026-10-07T21:55:32.5807863Z healthy
+2026-10-07T21:55:32.5824449Z postgres service is healthy.
+2026-10-07T21:55:32.5824983Z ##[endgroup]
+2026-10-07T21:55:32.6115908Z ##[group]Run actions/checkout@v6
+2026-10-07T21:55:32.6116515Z with:
+2026-10-07T21:55:32.6116708Z   repository: rashadoni/leaddrive-v2
+2026-10-07T21:55:32.6118913Z   token: ***
+2026-10-07T21:55:32.6119091Z   ssh-strict: true
+2026-10-07T21:55:32.6119263Z   ssh-user: git
+2026-10-07T21:55:32.6119431Z   persist-credentials: true
+2026-10-07T21:55:32.6119637Z   clean: true
+2026-10-07T21:55:32.6119814Z   sparse-checkout-cone-mode: true
+2026-10-07T21:55:32.6120020Z   fetch-depth: 1
+2026-10-07T21:55:32.6120181Z   fetch-tags: false
+2026-10-07T21:55:32.6120347Z   show-progress: true
+2026-10-07T21:55:32.6120511Z   lfs: false
+2026-10-07T21:55:32.6120654Z   submodules: false
+2026-10-07T21:55:32.6120822Z   set-safe-directory: true
+2026-10-07T21:55:32.6121020Z   allow-unsafe-pr-checkout: false
+2026-10-07T21:55:32.6121357Z ##[endgroup]
+2026-10-07T21:55:32.6970696Z Syncing repository: rashadoni/leaddrive-v2
+2026-10-07T21:55:32.6972247Z ##[group]Getting Git version info
+2026-10-07T21:55:32.6972856Z Working directory is '/home/runner/work/leaddrive-v2/leaddrive-v2'
+2026-10-07T21:55:32.6973601Z [command]/usr/bin/git version
+2026-10-07T21:55:32.7927379Z git version 2.55.0
+2026-10-07T21:55:32.7946261Z ##[endgroup]
+2026-10-07T21:55:32.7958299Z Temporarily overriding HOME='/home/runner/work/_temp/87afa4f0-23b8-48b7-b495-7dce0e050949' before making global git config changes
+2026-10-07T21:55:32.7959248Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-07T21:55:32.7963045Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/leaddrive-v2/leaddrive-v2
+2026-10-07T21:55:32.8046284Z Deleting the contents of '/home/runner/work/leaddrive-v2/leaddrive-v2'
+2026-10-07T21:55:32.8049996Z ##[group]Determining repository object format
+2026-10-07T21:55:32.8051933Z ##[endgroup]
+2026-10-07T21:55:32.8052366Z ##[group]Initializing the repository
+2026-10-07T21:55:32.8055412Z [command]/usr/bin/git init /home/runner/work/leaddrive-v2/leaddrive-v2
+2026-10-07T21:55:32.8124904Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-10-07T21:55:32.8125705Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-10-07T21:55:32.8126580Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-10-07T21:55:32.8127182Z hint: call:
+2026-10-07T21:55:32.8127439Z hint:
+2026-10-07T21:55:32.8127795Z hint: 	git config --global init.defaultBranch <name>
+2026-10-07T21:55:32.8128248Z hint:
+2026-10-07T21:55:32.8128643Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-10-07T21:55:32.8129286Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-10-07T21:55:32.8129765Z hint:
+2026-10-07T21:55:32.8130034Z hint: 	git branch -m <name>
+2026-10-07T21:55:32.8130337Z hint:
+2026-10-07T21:55:32.8130756Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-10-07T21:55:32.8131298Z Initialized empty Git repository in /home/runner/work/leaddrive-v2/leaddrive-v2/.git/
+2026-10-07T21:55:32.8136607Z [command]/usr/bin/git remote add origin https://github.com/rashadoni/leaddrive-v2
+2026-10-07T21:55:32.8177340Z ##[endgroup]
+2026-10-07T21:55:32.8180555Z ##[group]Disabling automatic garbage collection
+2026-10-07T21:55:32.8180893Z [command]/usr/bin/git config --local gc.auto 0
+2026-10-07T21:55:32.8208429Z ##[endgroup]
+2026-10-07T21:55:32.8209826Z ##[group]Setting up auth
+2026-10-07T21:55:32.8210103Z Removing SSH command configuration
+2026-10-07T21:55:32.8214940Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-07T21:55:32.8244895Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-07T21:55:32.8513589Z Removing HTTP extra header
+2026-10-07T21:55:32.8519231Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-07T21:55:32.8552140Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-07T21:55:32.8740982Z Removing includeIf entries pointing to credentials config files
+2026-10-07T21:55:32.8747782Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-07T21:55:32.8781101Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-07T21:55:32.8975071Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-60a4e01b-8e99-44a4-9b7a-c88c77eb9056.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-10-07T21:55:32.9011156Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/leaddrive-v2/leaddrive-v2/.git.path /home/runner/work/_temp/git-credentials-60a4e01b-8e99-44a4-9b7a-c88c77eb9056.config
+2026-10-07T21:55:32.9042366Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/leaddrive-v2/leaddrive-v2/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-60a4e01b-8e99-44a4-9b7a-c88c77eb9056.config
+2026-10-07T21:55:32.9098499Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-60a4e01b-8e99-44a4-9b7a-c88c77eb9056.config
+2026-10-07T21:55:32.9128499Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-60a4e01b-8e99-44a4-9b7a-c88c77eb9056.config
+2026-10-07T21:55:32.9153809Z ##[endgroup]
+2026-10-07T21:55:32.9154188Z ##[group]Fetching the repository
+2026-10-07T21:55:32.9161058Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +b4ea3f3e47d010f8a778e4a05c86b0ba17ec8e5b:refs/remotes/pull/627/merge
+2026-10-07T21:55:40.1605909Z From https://github.com/rashadoni/leaddrive-v2
+2026-10-07T21:55:40.1606515Z  * [new ref]         b4ea3f3e47d010f8a778e4a05c86b0ba17ec8e5b -> pull/627/merge
+2026-10-07T21:55:40.1611261Z ##[endgroup]
+2026-10-07T21:55:40.1611871Z ##[group]Determining the checkout info
+2026-10-07T21:55:40.1617342Z ##[endgroup]
+2026-10-07T21:55:40.1617887Z [command]/usr/bin/git sparse-checkout disable
+2026-10-07T21:55:40.1666302Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-10-07T21:55:40.1694083Z ##[group]Checking out the ref
+2026-10-07T21:55:40.1697583Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/627/merge
+2026-10-07T21:55:41.2518543Z Updating files:  98% (8683/8776)
+2026-10-07T21:55:41.6002519Z Updating files:  99% (8689/8776)
+2026-10-07T21:55:41.6002883Z Updating files: 100% (8776/8776)
+2026-10-07T21:55:41.6003161Z Updating files: 100% (8776/8776), done.
+2026-10-07T21:55:41.6401781Z Note: switching to 'refs/remotes/pull/627/merge'.
+2026-10-07T21:55:41.6402074Z 
+2026-10-07T21:55:41.6402277Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-10-07T21:55:41.6402647Z changes and commit them, and you can discard any commits you make in this
+2026-10-07T21:55:41.6403011Z state without impacting any branches by switching back to a branch.
+2026-10-07T21:55:41.6403223Z 
+2026-10-07T21:55:41.6403368Z If you want to create a new branch to retain commits you create, you may
+2026-10-07T21:55:41.6403723Z do so (now or later) by using -c with the switch command. Example:
+2026-10-07T21:55:41.6403916Z 
+2026-10-07T21:55:41.6404005Z   git switch -c <new-branch-name>
+2026-10-07T21:55:41.6404201Z 
+2026-10-07T21:55:41.6404291Z Or undo this operation with:
+2026-10-07T21:55:41.6404416Z 
+2026-10-07T21:55:41.6404493Z   git switch -
+2026-10-07T21:55:41.6404587Z 
+2026-10-07T21:55:41.6404762Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-10-07T21:55:41.6404989Z 
+2026-10-07T21:55:41.6405509Z HEAD is now at b4ea3f3 Merge 60efe23846fddc7deea16c48ba3a90bd962aae35 into f8dd20c7a849643087ee31969c2f582a96c8bab3
+2026-10-07T21:55:41.6455381Z ##[endgroup]
+2026-10-07T21:55:41.6498639Z [command]/usr/bin/git log -1 --format=%H
+2026-10-07T21:55:41.6524734Z b4ea3f3e47d010f8a778e4a05c86b0ba17ec8e5b
+2026-10-07T21:55:41.6744371Z ##[group]Run actions/setup-node@v4
+2026-10-07T21:55:41.6744630Z with:
+2026-10-07T21:55:41.6744798Z   node-version: 20
+2026-10-07T21:55:41.6744991Z   always-auth: false
+2026-10-07T21:55:41.6745166Z   check-latest: false
+2026-10-07T21:55:41.6747492Z   token: ***
+2026-10-07T21:55:41.6747667Z ##[endgroup]
+2026-10-07T21:55:41.7893103Z Attempting to download 20...
+2026-10-07T21:55:41.7977567Z (node:2556) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-10-07T21:55:41.7978228Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-10-07T21:55:42.3870878Z Acquiring 20.20.2 - x64 from https://github.com/actions/node-versions/releases/download/20.20.2-23521894959/node-20.20.2-linux-x64.tar.gz
+2026-10-07T21:55:42.6893789Z Extracting ...
+2026-10-07T21:55:42.6980138Z [command]/usr/bin/tar xz --strip 1 --warning=no-unknown-keyword --overwrite -C /home/runner/work/_temp/1ff2ef21-0efb-4326-8ae0-5dcd1f6e7e68 -f /home/runner/work/_temp/6fee0b57-524f-441e-842e-efbc6a5e9223
+2026-10-07T21:55:43.5462032Z Adding to the cache ...
+2026-10-07T21:55:45.2509208Z ##[group]Environment details
+2026-10-07T21:55:45.4235914Z node: v20.20.2
+2026-10-07T21:55:45.4236476Z npm: 10.8.2
+2026-10-07T21:55:45.4236723Z yarn: 1.22.22
+2026-10-07T21:55:45.4237279Z ##[endgroup]
+2026-10-07T21:55:45.4432601Z ##[group]Run set -euo pipefail
+2026-10-07T21:55:45.4432916Z [36;1mset -euo pipefail[0m
+2026-10-07T21:55:45.4433214Z [36;1mnode --check scripts/hrm-migration-metadata-preflight.mjs[0m
+2026-10-07T21:55:45.4433609Z [36;1mnode --check scripts/hrm-migration-metadata-preflight.test.mjs[0m
+2026-10-07T21:55:45.4433998Z [36;1mnode --test scripts/hrm-migration-metadata-preflight.test.mjs[0m
+2026-10-07T21:55:45.4434356Z [36;1mnode --check scripts/hrm-default-acl-inspection.mjs[0m
+2026-10-07T21:55:45.4434693Z [36;1mnode --check scripts/hrm-default-acl-inspection.test.mjs[0m
+2026-10-07T21:55:45.4435025Z [36;1mnode --test scripts/hrm-default-acl-inspection.test.mjs[0m
+2026-10-07T21:55:45.4435341Z [36;1mnode --check scripts/hrm-loopback-acl-inspection.mjs[0m
+2026-10-07T21:55:45.4435841Z [36;1mnode --check scripts/hrm-loopback-acl-inspection.test.mjs[0m
+2026-10-07T21:55:45.4436420Z [36;1mnode --test scripts/hrm-loopback-acl-inspection.test.mjs[0m
+2026-10-07T21:55:45.4436771Z [36;1mnode --check scripts/hrm-backup-acl-attribution.mjs[0m
+2026-10-07T21:55:45.4437080Z [36;1mnode --check scripts/hrm-backup-acl-attribution.test.mjs[0m
+2026-10-07T21:55:45.4437399Z [36;1mnode --test scripts/hrm-backup-acl-attribution.test.mjs[0m
+2026-10-07T21:55:45.4437712Z [36;1mnode scripts/ci/check-github-runner-policy.mjs[0m
+2026-10-07T21:55:45.4437965Z [36;1mgit diff --check[0m
+2026-10-07T21:55:45.5075226Z shell: /usr/bin/bash -e {0}
+2026-10-07T21:55:45.5075470Z env:
+2026-10-07T21:55:45.5075636Z   CI: true
+2026-10-07T21:55:45.5076496Z   HRM_PREFLIGHT_TEST_DATABASE_URL: ***127.0.0.1:32768/hrm_preflight_test
+2026-10-07T21:55:45.5077043Z   HRM_BACKUP_ACL_TEST_DATABASE_URL: ***127.0.0.1:32768/hrm_preflight_test
+2026-10-07T21:55:45.5077562Z   HRM_LOOPBACK_ACL_TEST_DATABASE_URL: ***127.0.0.1:32768/hrm_preflight_test
+2026-10-07T21:55:45.5078072Z   HRM_DEFAULT_ACL_TEST_DATABASE_URL: ***127.0.0.1:32768/hrm_preflight_test
+2026-10-07T21:55:45.5078353Z ##[endgroup]
+2026-10-07T21:55:45.5866343Z TAP version 13
+2026-10-07T21:55:47.1209430Z # Subtest: static env parser never sources shell and rejects ambiguous/session overrides
+2026-10-07T21:55:47.1215021Z ok 1 - static env parser never sources shell and rejects ambiguous/session overrides
+2026-10-07T21:55:47.1215839Z   ---
+2026-10-07T21:55:47.1216701Z   duration_ms: 3.716584
+2026-10-07T21:55:47.1219234Z   ...
+2026-10-07T21:55:47.1222018Z # Subtest: libpq receives explicit host/port/decoded identity and documented TLS fields without URI fallback
+2026-10-07T21:55:47.1223382Z ok 2 - libpq receives explicit host/port/decoded identity and documented TLS fields without URI fallback
+2026-10-07T21:55:47.1224314Z   ---
+2026-10-07T21:55:47.1225562Z   duration_ms: 0.878827
+2026-10-07T21:55:47.1226286Z   ...
+2026-10-07T21:55:47.1227235Z # Subtest: env rejection details stop before SQL and never reflect connection values or unknown parameter names
+2026-10-07T21:55:47.1241557Z ok 3 - env rejection details stop before SQL and never reflect connection values or unknown parameter names
+2026-10-07T21:55:47.1242495Z   ---
+2026-10-07T21:55:47.1248588Z   duration_ms: 3.320089
+2026-10-07T21:55:47.1249167Z   ...
+2026-10-07T21:55:47.1265478Z # Subtest: v2 error report accepts only finite env details and forbids them outside ENV_INVALID
+2026-10-07T21:55:47.1266810Z ok 4 - v2 error report accepts only finite env details and forbids them outside ENV_INVALID
+2026-10-07T21:55:47.1267618Z   ---
+2026-10-07T21:55:47.1268051Z   duration_ms: 2.522102
+2026-10-07T21:55:47.1268515Z   ...
+2026-10-07T21:55:47.1269384Z # Subtest: env error sanitization preserves only finite nested detail and never unknown error metadata
+2026-10-07T21:55:47.1270602Z ok 5 - env error sanitization preserves only finite nested detail and never unknown error metadata
+2026-10-07T21:55:47.1271410Z   ---
+2026-10-07T21:55:47.1271818Z   duration_ms: 0.373611
+2026-10-07T21:55:47.1272222Z   ...
+2026-10-07T21:55:47.1273541Z # Subtest: connect_timeout hints normalize away while every explicit psql budget and startup guard remains fixed
+2026-10-07T21:55:47.1274755Z ok 6 - connect_timeout hints normalize away while every explicit psql budget and startup guard remains fixed
+2026-10-07T21:55:47.1275525Z   ---
+2026-10-07T21:55:47.1275928Z   duration_ms: 5.520086
+2026-10-07T21:55:47.1276634Z   ...
+2026-10-07T21:55:47.1277461Z # Subtest: connect_timeout raw plus and percent-encoded plus retain the same libpq URI meaning
+2026-10-07T21:55:47.1283317Z ok 7 - connect_timeout raw plus and percent-encoded plus retain the same libpq URI meaning
+2026-10-07T21:55:47.1284129Z   ---
+2026-10-07T21:55:47.1284564Z   duration_ms: 0.420831
+2026-10-07T21:55:47.1285021Z   ...
+2026-10-07T21:55:47.1285941Z # Subtest: malformed or repeated connect_timeout fails privately before SQL and never enables other URL overrides
+2026-10-07T21:55:47.1287622Z ok 8 - malformed or repeated connect_timeout fails privately before SQL and never enables other URL overrides
+2026-10-07T21:55:47.1288776Z   ---
+2026-10-07T21:55:47.1289206Z   duration_ms: 2.169662
+2026-10-07T21:55:47.1289674Z   ...
+2026-10-07T21:55:47.1290477Z # Subtest: pending metadata is reviewable while every unresolved prerequisite stays explicit
+2026-10-07T21:55:47.1291577Z ok 9 - pending metadata is reviewable while every unresolved prerequisite stays explicit
+2026-10-07T21:55:47.1292306Z   ---
+2026-10-07T21:55:47.1292730Z   duration_ms: 1.802931
+2026-10-07T21:55:47.1293283Z   ...
+2026-10-07T21:55:47.1294210Z # Subtest: applied/manual new table is incomplete until all table constraints/policy are independently proved
+2026-10-07T21:55:47.1337016Z ok 10 - applied/manual new table is incomplete until all table constraints/policy are independently proved
+2026-10-07T21:55:47.1338162Z   ---
+2026-10-07T21:55:47.1339175Z   duration_ms: 0.321635
+2026-10-07T21:55:47.1339506Z   ...
+2026-10-07T21:55:47.1340141Z # Subtest: organizations FK target permits its existing RLS state while every tenant-owned relation requires FORCE RLS
+2026-10-07T21:55:47.1340978Z ok 11 - organizations FK target permits its existing RLS state while every tenant-owned relation requires FORCE RLS
+2026-10-07T21:55:47.1341528Z   ---
+2026-10-07T21:55:47.1363356Z   duration_ms: 1.334219
+2026-10-07T21:55:47.1363686Z   ...
+2026-10-07T21:55:47.1364431Z # Subtest: decision guard catalog booleans fail closed individually and bind exact committed function bodies
+2026-10-07T21:55:47.1365550Z ok 12 - decision guard catalog booleans fail closed individually and bind exact committed function bodies
+2026-10-07T21:55:47.1366332Z   ---
+2026-10-07T21:55:47.1366579Z   duration_ms: 0.995489
+2026-10-07T21:55:47.1366868Z   ...
+2026-10-07T21:55:47.1367588Z # Subtest: strict finite projection rejects secret fields, malformed counts and unknown names
+2026-10-07T21:55:47.1368605Z ok 13 - strict finite projection rejects secret fields, malformed counts and unknown names
+2026-10-07T21:55:47.1369235Z   ---
+2026-10-07T21:55:47.1369524Z   duration_ms: 0.406791
+2026-10-07T21:55:47.1369827Z   ...
+2026-10-07T21:55:47.1370530Z # Subtest: finite catalog arrays must retain canonical order; the validator never repairs it
+2026-10-07T21:55:47.1371521Z ok 14 - finite catalog arrays must retain canonical order; the validator never repairs it
+2026-10-07T21:55:47.1372118Z   ---
+2026-10-07T21:55:47.1372400Z   duration_ms: 0.504895
+2026-10-07T21:55:47.1372724Z   ...
+2026-10-07T21:55:47.1373476Z # Subtest: remote inspection checks artifact before/after, canonical protected env, read-only outputs
+2026-10-07T21:55:47.1374680Z ok 15 - remote inspection checks artifact before/after, canonical protected env, read-only outputs
+2026-10-07T21:55:47.1375246Z   ---
+2026-10-07T21:55:47.1375473Z   duration_ms: 1.22658
+2026-10-07T21:55:47.1375712Z   ...
+2026-10-07T21:55:47.1376567Z # Subtest: psql receives connection only in a clean child environment, bounded read-only options, no raw error
+2026-10-07T21:55:47.1377567Z ok 16 - psql receives connection only in a clean child environment, bounded read-only options, no raw error
+2026-10-07T21:55:47.1378158Z   ---
+2026-10-07T21:55:47.1378355Z   duration_ms: 0.376155
+2026-10-07T21:55:47.1378896Z   ...
+2026-10-07T21:55:47.1379555Z # Subtest: only whitelisted SQLSTATE survives query failures; messages and unknown codes are withheld
+2026-10-07T21:55:47.1380406Z ok 17 - only whitelisted SQLSTATE survives query failures; messages and unknown codes are withheld
+2026-10-07T21:55:47.1380914Z   ---
+2026-10-07T21:55:47.1381132Z   duration_ms: 0.721435
+2026-10-07T21:55:47.1381374Z   ...
+2026-10-07T21:55:47.1381849Z # Subtest: root file read refuses symlink, weak ownership/mode and race changes
+2026-10-07T21:55:47.1382552Z ok 18 - root file read refuses symlink, weak ownership/mode and race changes
+2026-10-07T21:55:47.1382969Z   ---
+2026-10-07T21:55:47.1383172Z   duration_ms: 0.553106
+2026-10-07T21:55:47.1383404Z   ...
+2026-10-07T21:55:47.1384065Z # Subtest: fixed SQL observes defaults before bounded read-only snapshot and exports no HR rows or identities
+2026-10-07T21:55:47.1385170Z ok 19 - fixed SQL observes defaults before bounded read-only snapshot and exports no HR rows or identities
+2026-10-07T21:55:47.1385702Z   ---
+2026-10-07T21:55:47.1385918Z   duration_ms: 0.366491
+2026-10-07T21:55:47.1386334Z   ...
+2026-10-07T21:55:47.1386952Z # Subtest: stdin remote bundle leaves CLI inactive, emits only a validated static error outside root
+2026-10-07T21:55:47.1387823Z ok 20 - stdin remote bundle leaves CLI inactive, emits only a validated static error outside root
+2026-10-07T21:55:47.1388293Z   ---
+2026-10-07T21:55:47.1388534Z   duration_ms: 61.659108
+2026-10-07T21:55:47.1388821Z   ...
+2026-10-07T21:55:47.1389448Z # Subtest: runner validator retains valid original failures but never prints rejected private fields
+2026-10-07T21:55:47.1390359Z ok 21 - runner validator retains valid original failures but never prints rejected private fields
+2026-10-07T21:55:47.1390854Z   ---
+2026-10-07T21:55:47.1391085Z   duration_ms: 198.443291
+2026-10-07T21:55:47.1391336Z   ...
+2026-10-07T21:55:47.1391867Z # Subtest: hosted PostgreSQL executes the real fixed catalog query and rejects writes
+2026-10-07T21:55:47.1392610Z ok 22 - hosted PostgreSQL executes the real fixed catalog query and rejects writes
+2026-10-07T21:55:47.1393101Z   ---
+2026-10-07T21:55:47.1393354Z   duration_ms: 1209.188908
+2026-10-07T21:55:47.1393626Z   ...
+2026-10-07T21:55:47.1393991Z # Legacy default catalog-name order canonical=false
+2026-10-07T21:55:47.1423248Z 1..22
+2026-10-07T21:55:47.1423508Z # tests 22
+2026-10-07T21:55:47.1423972Z # suites 0
+2026-10-07T21:55:47.1424255Z # pass 22
+2026-10-07T21:55:47.1424572Z # fail 0
+2026-10-07T21:55:47.1424960Z # cancelled 0
+2026-10-07T21:55:47.1425350Z # skipped 0
+2026-10-07T21:55:47.1425667Z # todo 0
+2026-10-07T21:55:47.1429544Z # duration_ms 1563.299305
+2026-10-07T21:55:47.2150891Z TAP version 13
+2026-10-07T21:55:48.3962727Z # Subtest: application env reads one literal canonical URL and never sources other declarations
+2026-10-07T21:55:48.3973423Z ok 1 - application env reads one literal canonical URL and never sources other declarations
+2026-10-07T21:55:48.3976513Z   ---
+2026-10-07T21:55:48.4016622Z   duration_ms: 3.256455
+2026-10-07T21:55:48.4016945Z   ...
+2026-10-07T21:55:48.4026340Z # Subtest: actual two-session proof exports finite evidence without granting ACL approval
+2026-10-07T21:55:48.4027680Z ok 2 - actual two-session proof exports finite evidence without granting ACL approval
+2026-10-07T21:55:48.4028417Z   ---
+2026-10-07T21:55:48.4028747Z   duration_ms: 2.211193
+2026-10-07T21:55:48.4029078Z   ...
+2026-10-07T21:55:48.4029580Z # Subtest: root, artifact, env and exact endpoint failures occur before SQL
+2026-10-07T21:55:48.4030352Z ok 3 - root, artifact, env and exact endpoint failures occur before SQL
+2026-10-07T21:55:48.4030808Z   ---
+2026-10-07T21:55:48.4031060Z   duration_ms: 1.36869
+2026-10-07T21:55:48.4031329Z   ...
+2026-10-07T21:55:48.4031966Z # Subtest: session, primary, read-only, catalog identity and protected role profiles fail closed
+2026-10-07T21:55:48.4032916Z ok 4 - session, primary, read-only, catalog identity and protected role profiles fail closed
+2026-10-07T21:55:48.4033450Z   ---
+2026-10-07T21:55:48.4034066Z   duration_ms: 5.146815
+2026-10-07T21:55:48.4034343Z   ...
+2026-10-07T21:55:48.4034929Z # Subtest: artifact or either private env changing during observation discards all evidence
+2026-10-07T21:55:48.4035801Z ok 5 - artifact or either private env changing during observation discards all evidence
+2026-10-07T21:55:48.4036475Z   ---
+2026-10-07T21:55:48.4036723Z   duration_ms: 0.599174
+2026-10-07T21:55:48.4036991Z   ...
+2026-10-07T21:55:48.4037680Z # Subtest: unsafe and unknown ACL entries remain visible evidence rather than automatic rejection or approval
+2026-10-07T21:55:48.4038740Z ok 6 - unsafe and unknown ACL entries remain visible evidence rather than automatic rejection or approval
+2026-10-07T21:55:48.4039341Z   ---
+2026-10-07T21:55:48.4039581Z   duration_ms: 0.46767
+2026-10-07T21:55:48.4040065Z   ...
+2026-10-07T21:55:48.4040760Z # Subtest: strict ACL projection rejects raw identities, malformed totals, unknown enums and duplicate groups
+2026-10-07T21:55:48.4041848Z ok 7 - strict ACL projection rejects raw identities, malformed totals, unknown enums and duplicate groups
+2026-10-07T21:55:48.4042519Z   ---
+2026-10-07T21:55:48.4042768Z   duration_ms: 0.696317
+2026-10-07T21:55:48.4043044Z   ...
+2026-10-07T21:55:48.4043775Z # Subtest: internal snapshots reject unknown fields and runtime ACL output; private identifiers never enter report
+2026-10-07T21:55:48.4044870Z ok 8 - internal snapshots reject unknown fields and runtime ACL output; private identifiers never enter report
+2026-10-07T21:55:48.4045493Z   ---
+2026-10-07T21:55:48.4045766Z   duration_ms: 1.037231
+2026-10-07T21:55:48.4046169Z   ...
+2026-10-07T21:55:48.4046914Z # Subtest: report refuses readiness claims, missing proofs, protected profile contradictions and private additions
+2026-10-07T21:55:48.4048029Z ok 9 - report refuses readiness claims, missing proofs, protected profile contradictions and private additions
+2026-10-07T21:55:48.4048749Z   ---
+2026-10-07T21:55:48.4048982Z   duration_ms: 1.724394
+2026-10-07T21:55:48.4049169Z   ...
+2026-10-07T21:55:48.4049614Z # Subtest: both query modes retain fixed clean libpq startup and bounds without credentials in argv
+2026-10-07T21:55:48.4050233Z ok 10 - both query modes retain fixed clean libpq startup and bounds without credentials in argv
+2026-10-07T21:55:48.4050574Z   ---
+2026-10-07T21:55:48.4050745Z   duration_ms: 0.851557
+2026-10-07T21:55:48.4050920Z   ...
+2026-10-07T21:55:48.4051323Z # Subtest: fixed SQL is bounded catalog-only read evidence and original strict metadata source remains exact
+2026-10-07T21:55:48.4051920Z ok 11 - fixed SQL is bounded catalog-only read evidence and original strict metadata source remains exact
+2026-10-07T21:55:48.4052265Z   ---
+2026-10-07T21:55:48.4052419Z   duration_ms: 0.667715
+2026-10-07T21:55:48.4052592Z   ...
+2026-10-07T21:55:48.4052980Z # Subtest: stdin bundle binds unchanged base and supplemental bytes, while non-root emits only a safe error
+2026-10-07T21:55:48.4053586Z ok 12 - stdin bundle binds unchanged base and supplemental bytes, while non-root emits only a safe error
+2026-10-07T21:55:48.4053934Z   ---
+2026-10-07T21:55:48.4054089Z   duration_ms: 64.166098
+2026-10-07T21:55:48.4054272Z   ...
+2026-10-07T21:55:48.4054644Z # Subtest: runner validation preserves original safe errors and withholds forged private receipts
+2026-10-07T21:55:48.4055193Z ok 13 - runner validation preserves original safe errors and withholds forged private receipts
+2026-10-07T21:55:48.4055522Z   ---
+2026-10-07T21:55:48.4055677Z   duration_ms: 174.834367
+2026-10-07T21:55:48.4055852Z   ...
+2026-10-07T21:55:48.4056515Z # Subtest: hosted PostgreSQL proves real runtime/default-ACL catalog projection and read-only enforcement
+2026-10-07T21:55:48.4057111Z ok 14 - hosted PostgreSQL proves real runtime/default-ACL catalog projection and read-only enforcement
+2026-10-07T21:55:48.4057466Z   ---
+2026-10-07T21:55:48.4057622Z   duration_ms: 886.018786
+2026-10-07T21:55:48.4057794Z   ...
+2026-10-07T21:55:48.4058004Z # HOSTED_ACL_MILESTONE initialCatalog=PASS
+2026-10-07T21:55:48.4058447Z # HOSTED_ACL_MILESTONE unsafeCatalog=PASS
+2026-10-07T21:55:48.4058723Z # HOSTED_ACL_MILESTONE runtimeSetGuard=PASS
+2026-10-07T21:55:48.4058956Z # HOSTED_ACL_BODY=PASS
+2026-10-07T21:55:48.4059243Z # HOSTED_ACL_CLEANUP action=DROP_OWNED slot=RUNTIME status=PASS
+2026-10-07T21:55:48.4059616Z # HOSTED_ACL_CLEANUP action=DROP_OWNED slot=MIGRATION status=PASS
+2026-10-07T21:55:48.4059979Z # HOSTED_ACL_CLEANUP action=DROP_OWNED slot=OTHER status=PASS
+2026-10-07T21:55:48.4060350Z # HOSTED_ACL_CLEANUP action=DROP_OWNED slot=PRIVILEGED status=PASS
+2026-10-07T21:55:48.4060716Z # HOSTED_ACL_CLEANUP action=DROP_ROLE slot=RUNTIME status=PASS
+2026-10-07T21:55:48.4078139Z # HOSTED_ACL_CLEANUP action=DROP_ROLE slot=MIGRATION status=PASS
+2026-10-07T21:55:48.4078737Z # HOSTED_ACL_CLEANUP action=DROP_ROLE slot=OTHER status=PASS
+2026-10-07T21:55:48.4079501Z # HOSTED_ACL_CLEANUP action=DROP_ROLE slot=PRIVILEGED status=PASS
+2026-10-07T21:55:48.4079993Z # HOSTED_ACL_CLEANUP residue=PASS
+2026-10-07T21:55:48.4080336Z # HOSTED_ACL_CLEANUP=PASS
+2026-10-07T21:55:48.4135944Z 1..14
+2026-10-07T21:55:48.4136563Z # tests 14
+2026-10-07T21:55:48.4136824Z # suites 0
+2026-10-07T21:55:48.4137065Z # pass 14
+2026-10-07T21:55:48.4137258Z # fail 0
+2026-10-07T21:55:48.4137621Z # cancelled 0
+2026-10-07T21:55:48.4137913Z # skipped 0
+2026-10-07T21:55:48.4138340Z # todo 0
+2026-10-07T21:55:48.4142338Z # duration_ms 1206.801774
+2026-10-07T21:55:48.4885917Z TAP version 13
+2026-10-07T21:55:48.9568017Z # Subtest: one held runtime backend is observed before rollback, with finite public evidence only
+2026-10-07T21:55:48.9587581Z ok 1 - one held runtime backend is observed before rollback, with finite public evidence only
+2026-10-07T21:55:48.9588199Z   ---
+2026-10-07T21:55:48.9588467Z   duration_ms: 4.817789
+2026-10-07T21:55:48.9588763Z   ...
+2026-10-07T21:55:48.9589442Z # Subtest: topology is limited to unchanged loopback hosts, distinct roles and equal port/database
+2026-10-07T21:55:48.9590404Z ok 2 - topology is limited to unchanged loopback hosts, distinct roles and equal port/database
+2026-10-07T21:55:48.9590963Z   ---
+2026-10-07T21:55:48.9591218Z   duration_ms: 1.066214
+2026-10-07T21:55:48.9591485Z   ...
+2026-10-07T21:55:48.9592102Z # Subtest: root, artifact, private files, canonical parser and topology failures never start SQL
+2026-10-07T21:55:48.9592991Z ok 3 - root, artifact, private files, canonical parser and topology failures never start SQL
+2026-10-07T21:55:48.9593521Z   ---
+2026-10-07T21:55:48.9593771Z   duration_ms: 2.765741
+2026-10-07T21:55:48.9594047Z   ...
+2026-10-07T21:55:48.9594739Z # Subtest: session identity, primary/read-only isolation, private probe and database correlation fail closed
+2026-10-07T21:55:48.9595811Z ok 4 - session identity, primary/read-only isolation, private probe and database correlation fail closed
+2026-10-07T21:55:48.9596637Z   ---
+2026-10-07T21:55:48.9596915Z   duration_ms: 5.175237
+2026-10-07T21:55:48.9597178Z   ...
+2026-10-07T21:55:48.9597884Z # Subtest: runtime remains NOSUPERUSER/NOBYPASSRLS/no privileged SET and migration remains bounded expected profile
+2026-10-07T21:55:48.9598959Z ok 5 - runtime remains NOSUPERUSER/NOBYPASSRLS/no privileged SET and migration remains bounded expected profile
+2026-10-07T21:55:48.9599568Z   ---
+2026-10-07T21:55:48.9599799Z   duration_ms: 1.893394
+2026-10-07T21:55:48.9600051Z   ...
+2026-10-07T21:55:48.9600647Z # Subtest: strict private snapshots reject identifier/shape/type injection and runtime ACL output
+2026-10-07T21:55:48.9601550Z ok 6 - strict private snapshots reject identifier/shape/type injection and runtime ACL output
+2026-10-07T21:55:48.9602078Z   ---
+2026-10-07T21:55:48.9602307Z   duration_ms: 0.639704
+2026-10-07T21:55:48.9602574Z   ...
+2026-10-07T21:55:48.9603214Z # Subtest: changes to artifact or either private file during cleanup discard all successful observation
+2026-10-07T21:55:48.9604172Z ok 7 - changes to artifact or either private file during cleanup discard all successful observation
+2026-10-07T21:55:48.9604726Z   ---
+2026-10-07T21:55:48.9604958Z   duration_ms: 1.157618
+2026-10-07T21:55:48.9605585Z   ...
+2026-10-07T21:55:48.9606315Z # Subtest: cleanup is mandatory and secondary failures retain the original primary error
+2026-10-07T21:55:48.9607087Z ok 8 - cleanup is mandatory and secondary failures retain the original primary error
+2026-10-07T21:55:48.9607582Z   ---
+2026-10-07T21:55:48.9607822Z   duration_ms: 1.423491
+2026-10-07T21:55:48.9608091Z   ...
+2026-10-07T21:55:48.9609301Z # Subtest: malformed/raw output and private process errors never enter the public receipt
+2026-10-07T21:55:48.9617015Z ok 9 - malformed/raw output and private process errors never enter the public receipt
+2026-10-07T21:55:48.9617592Z   ---
+2026-10-07T21:55:48.9617853Z   duration_ms: 1.155375
+2026-10-07T21:55:48.9618143Z   ...
+2026-10-07T21:55:48.9618807Z # Subtest: reports reject readiness/secret fields, forged enums, invalid proof and role contradictions
+2026-10-07T21:55:48.9620084Z ok 10 - reports reject readiness/secret fields, forged enums, invalid proof and role contradictions
+2026-10-07T21:55:48.9620641Z   ---
+2026-10-07T21:55:48.9620895Z   duration_ms: 2.091236
+2026-10-07T21:55:48.9621160Z   ...
+2026-10-07T21:55:48.9621904Z # Subtest: PUBLIC, OTHER write privileges and grant options remain finite observations without automatic ACL approval
+2026-10-07T21:55:48.9623019Z ok 11 - PUBLIC, OTHER write privileges and grant options remain finite observations without automatic ACL approval
+2026-10-07T21:55:48.9623667Z   ---
+2026-10-07T21:55:48.9623910Z   duration_ms: 0.73165
+2026-10-07T21:55:48.9624179Z   ...
+2026-10-07T21:55:48.9624881Z # Subtest: clean libpq transport holds runtime stdin until explicit rollback and keeps credentials out of argv
+2026-10-07T21:55:48.9625945Z ok 12 - clean libpq transport holds runtime stdin until explicit rollback and keeps credentials out of argv
+2026-10-07T21:55:48.9626745Z   ---
+2026-10-07T21:55:48.9626983Z   duration_ms: 2.095553
+2026-10-07T21:55:48.9627355Z   ...
+2026-10-07T21:55:48.9628058Z # Subtest: transport rejects already-dead/error/oversize processes and proves failed rollback cannot pass
+2026-10-07T21:55:48.9629109Z ok 13 - transport rejects already-dead/error/oversize processes and proves failed rollback cannot pass
+2026-10-07T21:55:48.9629717Z   ---
+2026-10-07T21:55:48.9629956Z   duration_ms: 1.231067
+2026-10-07T21:55:48.9630223Z   ...
+2026-10-07T21:55:48.9630939Z # Subtest: fixed SQL proves only live PID/name/user/database catalogs and original nine source files remain exact
+2026-10-07T21:55:48.9631979Z ok 14 - fixed SQL proves only live PID/name/user/database catalogs and original nine source files remain exact
+2026-10-07T21:55:48.9632606Z   ---
+2026-10-07T21:55:48.9632832Z   duration_ms: 1.03672
+2026-10-07T21:55:48.9633098Z   ...
+2026-10-07T21:55:48.9633803Z # Subtest: stdin source bindings and output validation reject forged private receipts without database access
+2026-10-07T21:55:48.9634803Z ok 15 - stdin source bindings and output validation reject forged private receipts without database access
+2026-10-07T21:55:48.9635388Z   ---
+2026-10-07T21:55:48.9635647Z   duration_ms: 211.294886
+2026-10-07T21:55:48.9635914Z   ...
+2026-10-07T21:55:50.2891464Z # Subtest: hosted PostgreSQL proves one live runtime backend, exact nonce/PID, read-only ACL projection and complete cleanup
+2026-10-07T21:55:50.2893718Z ok 16 - hosted PostgreSQL proves one live runtime backend, exact nonce/PID, read-only ACL projection and complete cleanup
+2026-10-07T21:55:50.2903046Z   ---
+2026-10-07T21:55:50.2922820Z   duration_ms: 1520.90381
+2026-10-07T21:55:50.2923316Z   ...
+2026-10-07T21:55:50.2924597Z # HOSTED_LIVE_OBSERVATION mode=runtime expectedIdentity=true sessionIdentityUnchanged=true primary=true readOnly=true repeatableRead=true probeNameVerified=true liveRuntimeSeen=false
+2026-10-07T21:55:50.2926871Z # HOSTED_LIVE_OBSERVATION mode=migration expectedIdentity=true sessionIdentityUnchanged=true primary=true readOnly=true repeatableRead=true probeNameVerified=true liveRuntimeSeen=true
+2026-10-07T21:55:50.2928662Z # HOSTED_LIVE_CORRELATION databaseOidEqual=true databaseNameEqual=true distinctBackendPids=true
+2026-10-07T21:55:50.2929435Z # HOSTED_LIVE_MILESTONE liveBackendAndOriginalGuard=PASS
+2026-10-07T21:55:50.2929954Z # HOSTED_LIVE_MILESTONE wrongPidAndNonce=PASS
+2026-10-07T21:55:50.2930447Z # HOSTED_LIVE_MILESTONE otherDatabaseGuard=PASS
+2026-10-07T21:55:50.2931748Z # HOSTED_LIVE_OBSERVATION mode=runtime expectedIdentity=true sessionIdentityUnchanged=true primary=true readOnly=true repeatableRead=true probeNameVerified=true liveRuntimeSeen=false
+2026-10-07T21:55:50.2933658Z # HOSTED_LIVE_OBSERVATION mode=migration expectedIdentity=true sessionIdentityUnchanged=true primary=true readOnly=true repeatableRead=true probeNameVerified=true liveRuntimeSeen=true
+2026-10-07T21:55:50.2935045Z # HOSTED_LIVE_CORRELATION databaseOidEqual=true databaseNameEqual=true distinctBackendPids=true
+2026-10-07T21:55:50.2936322Z # HOSTED_LIVE_MILESTONE unsafeAclIsEvidenceOnly=PASS
+2026-10-07T21:55:50.2936831Z # HOSTED_LIVE_MILESTONE runtimeSetGuard=PASS
+2026-10-07T21:55:50.2937241Z # HOSTED_LIVE_BODY=PASS
+2026-10-07T21:55:50.2937626Z # HOSTED_LIVE_CLEANUP otherDatabase=PASS
+2026-10-07T21:55:50.2938177Z # HOSTED_LIVE_CLEANUP action=DROP_OWNED slot=RUNTIME status=PASS
+2026-10-07T21:55:50.2938847Z # HOSTED_LIVE_CLEANUP action=DROP_OWNED slot=MIGRATION status=PASS
+2026-10-07T21:55:50.2939491Z # HOSTED_LIVE_CLEANUP action=DROP_OWNED slot=OTHER status=PASS
+2026-10-07T21:55:50.2940148Z # HOSTED_LIVE_CLEANUP action=DROP_OWNED slot=PRIVILEGED status=PASS
+2026-10-07T21:55:50.2940789Z # HOSTED_LIVE_CLEANUP action=DROP_ROLE slot=RUNTIME status=PASS
+2026-10-07T21:55:50.2941414Z # HOSTED_LIVE_CLEANUP action=DROP_ROLE slot=MIGRATION status=PASS
+2026-10-07T21:55:50.2942011Z # HOSTED_LIVE_CLEANUP action=DROP_ROLE slot=OTHER status=PASS
+2026-10-07T21:55:50.2942466Z # HOSTED_LIVE_CLEANUP action=DROP_ROLE slot=PRIVILEGED status=PASS
+2026-10-07T21:55:50.2942806Z # HOSTED_LIVE_CLEANUP residue=PASS
+2026-10-07T21:55:50.2943036Z # HOSTED_LIVE_CLEANUP=PASS
+2026-10-07T21:55:50.3008459Z 1..16
+2026-10-07T21:55:50.3008714Z # tests 16
+2026-10-07T21:55:50.3008958Z # suites 0
+2026-10-07T21:55:50.3009317Z # pass 16
+2026-10-07T21:55:50.3009790Z # fail 0
+2026-10-07T21:55:50.3010138Z # cancelled 0
+2026-10-07T21:55:50.3010605Z # skipped 0
+2026-10-07T21:55:50.3010908Z # todo 0
+2026-10-07T21:55:50.3014557Z # duration_ms 1819.270455
+2026-10-07T21:55:50.3753250Z TAP version 13
+2026-10-07T21:55:50.7817994Z # Subtest: static canonical declarations require unique matching role and database without evaluation
+2026-10-07T21:55:50.7846931Z ok 1 - static canonical declarations require unique matching role and database without evaluation
+2026-10-07T21:55:50.7877293Z   ---
+2026-10-07T21:55:50.7877621Z   duration_ms: 2.401735
+2026-10-07T21:55:50.7880468Z   ...
+2026-10-07T21:55:50.7881043Z # Subtest: protected reader accepts only root0600 or stable root backup0640 with exact group
+2026-10-07T21:55:50.7881891Z ok 2 - protected reader accepts only root0600 or stable root backup0640 with exact group
+2026-10-07T21:55:50.7882411Z   ---
+2026-10-07T21:55:50.7882647Z   duration_ms: 0.829344
+2026-10-07T21:55:50.7882919Z   ...
+2026-10-07T21:55:50.7883522Z # Subtest: backup attribution wraps the unchanged held live observer and rolls back before file rereads
+2026-10-07T21:55:50.7884713Z ok 3 - backup attribution wraps the unchanged held live observer and rolls back before file rereads
+2026-10-07T21:55:50.7885094Z   ---
+2026-10-07T21:55:50.7885267Z   duration_ms: 4.764331
+2026-10-07T21:55:50.7885451Z   ...
+2026-10-07T21:55:50.7885799Z # Subtest: private declaration/database/file failures are rejected before any connection
+2026-10-07T21:55:50.7886649Z ok 4 - private declaration/database/file failures are rejected before any connection
+2026-10-07T21:55:50.7887136Z   ---
+2026-10-07T21:55:50.7887361Z   duration_ms: 1.052203
+2026-10-07T21:55:50.7887622Z   ...
+2026-10-07T21:55:50.7888334Z # Subtest: strict attribution rejects raw names, unexpected fields, malformed counters and mismatched ACL counts
+2026-10-07T21:55:50.7889718Z ok 5 - strict attribution rejects raw names, unexpected fields, malformed counters and mismatched ACL counts
+2026-10-07T21:55:50.7890314Z   ---
+2026-10-07T21:55:50.7890533Z   duration_ms: 1.307479
+2026-10-07T21:55:50.7890777Z   ...
+2026-10-07T21:55:50.7891446Z # Subtest: missing declared identity and unsafe profile/default/memberships remain observations without approval
+2026-10-07T21:55:50.7892475Z ok 6 - missing declared identity and unsafe profile/default/memberships remain observations without approval
+2026-10-07T21:55:50.7893069Z   ---
+2026-10-07T21:55:50.7893309Z   duration_ms: 4.792633
+2026-10-07T21:55:50.7893632Z   ...
+2026-10-07T21:55:50.7894186Z # Subtest: source changes inside rollback or final backup reread discard successful evidence
+2026-10-07T21:55:50.7895016Z ok 7 - source changes inside rollback or final backup reread discard successful evidence
+2026-10-07T21:55:50.7895811Z   ---
+2026-10-07T21:55:50.7896216Z   duration_ms: 3.119854
+2026-10-07T21:55:50.7896486Z   ...
+2026-10-07T21:55:50.7897096Z # Subtest: malformed query and cleanup failures never export private errors or approve evidence
+2026-10-07T21:55:50.7897981Z ok 8 - malformed query and cleanup failures never export private errors or approve evidence
+2026-10-07T21:55:50.7898518Z   ---
+2026-10-07T21:55:50.7898775Z   duration_ms: 2.691462
+2026-10-07T21:55:50.7899027Z   ...
+2026-10-07T21:55:50.7899682Z # Subtest: PUBLIC and OTHER write/grantable rows remain catalog facts rather than automatic ACL acceptance
+2026-10-07T21:55:50.7900683Z ok 9 - PUBLIC and OTHER write/grantable rows remain catalog facts rather than automatic ACL acceptance
+2026-10-07T21:55:50.7901267Z   ---
+2026-10-07T21:55:50.7901501Z   duration_ms: 0.927469
+2026-10-07T21:55:50.7901777Z   ...
+2026-10-07T21:55:50.7902427Z # Subtest: public reports reject readiness, injected secrets, invalid bindings and forged observed counters
+2026-10-07T21:55:50.7905023Z ok 10 - public reports reject readiness, injected secrets, invalid bindings and forged observed counters
+2026-10-07T21:55:50.7905598Z   ---
+2026-10-07T21:55:50.7905890Z   duration_ms: 1.645839
+2026-10-07T21:55:50.7906283Z   ...
+2026-10-07T21:55:50.7906817Z # Subtest: SQL preserves original guarded snapshot and reads only finite role/default ACL/settings catalogs
+2026-10-07T21:55:50.7907691Z ok 11 - SQL preserves original guarded snapshot and reads only finite role/default ACL/settings catalogs
+2026-10-07T21:55:50.7946621Z   ---
+2026-10-07T21:55:50.7948165Z   duration_ms: 0.447681
+2026-10-07T21:55:50.7948431Z   ...
+2026-10-07T21:55:50.7948893Z # Subtest: all previous fourteen observer source files remain byte exact
+2026-10-07T21:55:50.7949391Z ok 12 - all previous fourteen observer source files remain byte exact
+2026-10-07T21:55:50.7949670Z   ---
+2026-10-07T21:55:50.7949830Z   duration_ms: 1.124098
+2026-10-07T21:55:50.7949999Z   ...
+2026-10-07T21:55:50.7950351Z # Subtest: stdin emitter and validator bind all six sources without reading any private files
+2026-10-07T21:55:50.7950908Z ok 13 - stdin emitter and validator bind all six sources without reading any private files
+2026-10-07T21:55:50.7951223Z   ---
+2026-10-07T21:55:50.7951387Z   duration_ms: 215.30732
+2026-10-07T21:55:50.7951565Z   ...
+2026-10-07T21:55:52.5045784Z # Subtest: hosted PostgreSQL attributes configured backup with real default spawn, live guards and complete cleanup
+2026-10-07T21:55:52.5047529Z ok 14 - hosted PostgreSQL attributes configured backup with real default spawn, live guards and complete cleanup
+2026-10-07T21:55:52.5048403Z   ---
+2026-10-07T21:55:52.5048795Z   duration_ms: 1850.678994
+2026-10-07T21:55:52.5049184Z   ...
+2026-10-07T21:55:52.5049589Z # HOSTED_BACKUP_MILESTONE defaultAdapterLiveAndAttribution=PASS
+2026-10-07T21:55:52.5050117Z # HOSTED_BACKUP_MILESTONE mismatchedOrMissingIsObservation=PASS
+2026-10-07T21:55:52.5050714Z # HOSTED_BACKUP_MILESTONE roleDatabaseOverRoleOverDatabaseAndAbsent=PASS
+2026-10-07T21:55:52.5051322Z # HOSTED_BACKUP_MILESTONE membershipAndUnsafeProfileAreObservation=PASS
+2026-10-07T21:55:52.5051986Z # HOSTED_BACKUP_MILESTONE crossScopeMultipleRecipientWritePublicGrantableAreObservation=PASS
+2026-10-07T21:55:52.5052888Z # HOSTED_BACKUP_BODY=PASS
+2026-10-07T21:55:52.5053254Z # HOSTED_BACKUP_CLEANUP databaseDefault=PASS
+2026-10-07T21:55:52.5054890Z # HOSTED_BACKUP_CLEANUP action=DROP_OWNED slot=RUNTIME status=PASS
+2026-10-07T21:55:52.5055700Z # HOSTED_BACKUP_CLEANUP action=DROP_OWNED slot=MIGRATION status=PASS
+2026-10-07T21:55:52.5056653Z # HOSTED_BACKUP_CLEANUP action=DROP_OWNED slot=BACKUP status=PASS
+2026-10-07T21:55:52.5057434Z # HOSTED_BACKUP_CLEANUP action=DROP_OWNED slot=OTHER status=PASS
+2026-10-07T21:55:52.5058245Z # HOSTED_BACKUP_CLEANUP action=DROP_OWNED slot=PRIVILEGED status=PASS
+2026-10-07T21:55:52.5059030Z # HOSTED_BACKUP_CLEANUP action=DROP_ROLE slot=RUNTIME status=PASS
+2026-10-07T21:55:52.5059809Z # HOSTED_BACKUP_CLEANUP action=DROP_ROLE slot=MIGRATION status=PASS
+2026-10-07T21:55:52.5060938Z # HOSTED_BACKUP_CLEANUP action=DROP_ROLE slot=BACKUP status=PASS
+2026-10-07T21:55:52.5061845Z # HOSTED_BACKUP_CLEANUP action=DROP_ROLE slot=OTHER status=PASS
+2026-10-07T21:55:52.5062556Z # HOSTED_BACKUP_CLEANUP action=DROP_ROLE slot=PRIVILEGED status=PASS
+2026-10-07T21:55:52.5063105Z # HOSTED_BACKUP_CLEANUP residue=PASS
+2026-10-07T21:55:52.5063489Z # HOSTED_BACKUP_CLEANUP=PASS
+2026-10-07T21:55:52.5149687Z 1..14
+2026-10-07T21:55:52.5149973Z # tests 14
+2026-10-07T21:55:52.5150229Z # suites 0
+2026-10-07T21:55:52.5150477Z # pass 14
+2026-10-07T21:55:52.5150738Z # fail 0
+2026-10-07T21:55:52.5151000Z # cancelled 0
+2026-10-07T21:55:52.5151270Z # skipped 0
+2026-10-07T21:55:52.5151600Z # todo 0
+2026-10-07T21:55:52.5154889Z # duration_ms 2146.558144
+2026-10-07T21:55:52.5576208Z Runner policy passed for 50 workflow files.
+2026-10-07T21:55:53.0689885Z Post job cleanup.
+2026-10-07T21:55:53.1697364Z (node:3382) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-10-07T21:55:53.1698020Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-10-07T21:55:53.1839640Z Post job cleanup.
+2026-10-07T21:55:53.2573318Z [command]/usr/bin/git version
+2026-10-07T21:55:53.2610215Z git version 2.55.0
+2026-10-07T21:55:53.2645660Z Temporarily overriding HOME='/home/runner/work/_temp/f785f3fb-dc86-421f-a698-ea13031670c7' before making global git config changes
+2026-10-07T21:55:53.2646496Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-07T21:55:53.2651106Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/leaddrive-v2/leaddrive-v2
+2026-10-07T21:55:53.2679079Z Removing SSH command configuration
+2026-10-07T21:55:53.2684918Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-07T21:55:53.2714463Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-07T21:55:53.2939452Z Removing HTTP extra header
+2026-10-07T21:55:53.2945344Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-07T21:55:53.2977562Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-07T21:55:53.3248952Z Removing includeIf entries pointing to credentials config files
+2026-10-07T21:55:53.3251392Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-07T21:55:53.3280556Z includeif.gitdir:/home/runner/work/leaddrive-v2/leaddrive-v2/.git.path
+2026-10-07T21:55:53.3281533Z includeif.gitdir:/home/runner/work/leaddrive-v2/leaddrive-v2/.git/worktrees/*.path
+2026-10-07T21:55:53.3282356Z includeif.gitdir:/github/workspace/.git.path
+2026-10-07T21:55:53.3283046Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-10-07T21:55:53.3289268Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/leaddrive-v2/leaddrive-v2/.git.path
+2026-10-07T21:55:53.3313109Z /home/runner/work/_temp/git-credentials-60a4e01b-8e99-44a4-9b7a-c88c77eb9056.config
+2026-10-07T21:55:53.3328864Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/leaddrive-v2/leaddrive-v2/.git.path /home/runner/work/_temp/git-credentials-60a4e01b-8e99-44a4-9b7a-c88c77eb9056.config
+2026-10-07T21:55:53.3363348Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/leaddrive-v2/leaddrive-v2/.git/worktrees/*.path
+2026-10-07T21:55:53.3386794Z /home/runner/work/_temp/git-credentials-60a4e01b-8e99-44a4-9b7a-c88c77eb9056.config
+2026-10-07T21:55:53.3395281Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/leaddrive-v2/leaddrive-v2/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-60a4e01b-8e99-44a4-9b7a-c88c77eb9056.config
+2026-10-07T21:55:53.3430259Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-10-07T21:55:53.3454489Z /github/runner_temp/git-credentials-60a4e01b-8e99-44a4-9b7a-c88c77eb9056.config
+2026-10-07T21:55:53.3462205Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-60a4e01b-8e99-44a4-9b7a-c88c77eb9056.config
+2026-10-07T21:55:53.3495275Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-10-07T21:55:53.3518715Z /github/runner_temp/git-credentials-60a4e01b-8e99-44a4-9b7a-c88c77eb9056.config
+2026-10-07T21:55:53.3525724Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-60a4e01b-8e99-44a4-9b7a-c88c77eb9056.config
+2026-10-07T21:55:53.3582956Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-07T21:55:53.3810469Z Removing credentials config '/home/runner/work/_temp/git-credentials-60a4e01b-8e99-44a4-9b7a-c88c77eb9056.config'
+2026-10-07T21:55:53.3930720Z Print service container logs: f76bea319e9d4bd0b11295397a289eb5_postgres16_1749db
+2026-10-07T21:55:53.3934813Z ##[command]/usr/bin/docker logs --details 9b1aafc3a7fb9b7bf3b1c2534a17cf2adaaef1b39c1ccd30d87f7a46bffcce91
+2026-10-07T21:55:53.4045417Z  The files belonging to this database system will be owned by user "postgres".
+2026-10-07T21:55:53.4047492Z  initdb: warning: enabling "trust" authentication for local connections
+2026-10-07T21:55:53.4048017Z  This user must also own the server process.
+2026-10-07T21:55:53.4048304Z  
+2026-10-07T21:55:53.4049177Z  initdb: hint: You can change this by editing pg_hba.conf or using the option -A, or --auth-local and --auth-host, the next time you run initdb.
+2026-10-07T21:55:53.4050234Z  2026-10-07 21:55:27.354 UTC [1] LOG:  starting PostgreSQL 16.15 (Debian 16.15-1.pgdg13+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+2026-10-07T21:55:53.4050889Z  2026-10-07 21:55:27.355 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2026-10-07T21:55:53.4051290Z  2026-10-07 21:55:27.355 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2026-10-07T21:55:53.4051689Z  2026-10-07 21:55:27.355 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2026-10-07T21:55:53.4052123Z  2026-10-07 21:55:27.357 UTC [64] LOG:  database system was shut down at 2026-10-07 21:55:27 UTC
+2026-10-07T21:55:53.4052513Z  2026-10-07 21:55:27.361 UTC [1] LOG:  database system is ready to accept connections
+2026-10-07T21:55:53.4052906Z  2026-10-07 21:55:47.051 UTC [129] ERROR:  cannot execute INSERT in a read-only transaction
+2026-10-07T21:55:53.4053380Z  2026-10-07 21:55:47.051 UTC [129] STATEMENT:  INSERT INTO _prisma_migrations VALUES ('write','synthetic','no',NULL,NULL);
+2026-10-07T21:55:53.4053855Z  2026-10-07 21:55:47.971 UTC [146] ERROR:  cannot execute CREATE TABLE in a read-only transaction
+2026-10-07T21:55:53.4054259Z  2026-10-07 21:55:47.971 UTC [146] STATEMENT:  CREATE TABLE hrm_acl_forbidden(id integer);
+2026-10-07T21:55:53.4054627Z  2026-10-07 21:55:49.562 UTC [176] WARNING:  there is no transaction in progress
+2026-10-07T21:55:53.4055000Z  2026-10-07 21:55:49.591 UTC [177] ERROR:  cannot execute CREATE TABLE in a read-only transaction
+2026-10-07T21:55:53.4055400Z  2026-10-07 21:55:49.591 UTC [177] STATEMENT:  CREATE TABLE hrm_live_forbidden(id integer);
+2026-10-07T21:55:53.4055769Z  2026-10-07 21:55:49.648 UTC [62] LOG:  checkpoint starting: immediate force wait
+2026-10-07T21:55:53.4057076Z  2026-10-07 21:55:49.894 UTC [62] LOG:  checkpoint complete: wrote 132 buffers (0.8%); 1 WAL file(s) added, 0 removed, 0 recycled; write=0.003 s, sync=0.006 s, total=0.246 s; sync files=124, longest=0.005 s, average=0.001 s; distance=4816 kB, estimate=4816 kB; lsn=0/1DD34D0, redo lsn=0/1DD3498
+2026-10-07T21:55:53.4058358Z  2026-10-07 21:55:52.097 UTC [239] WARNING:  there is no transaction in progress
+2026-10-07T21:55:53.4059201Z  The database cluster will be initialized with locale "en_US.utf8".
+2026-10-07T21:55:53.4059744Z  The default database encoding has accordingly been set to "UTF8".
+2026-10-07T21:55:53.4060361Z  The default text search configuration will be set to "english".
+2026-10-07T21:55:53.4060736Z  
+2026-10-07T21:55:53.4060954Z  Data page checksums are disabled.
+2026-10-07T21:55:53.4061223Z  
+2026-10-07T21:55:53.4061556Z  fixing permissions on existing directory /var/lib/postgresql/data ... ok
+2026-10-07T21:55:53.4062027Z  creating subdirectories ... ok
+2026-10-07T21:55:53.4062396Z  selecting dynamic shared memory implementation ... posix
+2026-10-07T21:55:53.4062789Z  selecting default max_connections ... 100
+2026-10-07T21:55:53.4063129Z  selecting default shared_buffers ... 128MB
+2026-10-07T21:55:53.4063475Z  selecting default time zone ... Etc/UTC
+2026-10-07T21:55:53.4063818Z  creating configuration files ... ok
+2026-10-07T21:55:53.4064144Z  running bootstrap script ... ok
+2026-10-07T21:55:53.4064529Z  performing post-bootstrap initialization ... ok
+2026-10-07T21:55:53.4064923Z  syncing data to disk ... ok
+2026-10-07T21:55:53.4065435Z  
+2026-10-07T21:55:53.4065640Z  
+2026-10-07T21:55:53.4065923Z  Success. You can now start the database server using:
+2026-10-07T21:55:53.4066423Z  
+2026-10-07T21:55:53.4066701Z      pg_ctl -D /var/lib/postgresql/data -l logfile start
+2026-10-07T21:55:53.4067056Z  
+2026-10-07T21:55:53.4067938Z  waiting for server to start....2026-10-07 21:55:27.007 UTC [48] LOG:  starting PostgreSQL 16.15 (Debian 16.15-1.pgdg13+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+2026-10-07T21:55:53.4068828Z  2026-10-07 21:55:27.008 UTC [48] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2026-10-07T21:55:53.4069255Z  2026-10-07 21:55:27.011 UTC [51] LOG:  database system was shut down at 2026-10-07 21:55:26 UTC
+2026-10-07T21:55:53.4069633Z  2026-10-07 21:55:27.014 UTC [48] LOG:  database system is ready to accept connections
+2026-10-07T21:55:53.4069937Z   done
+2026-10-07T21:55:53.4070088Z  server started
+2026-10-07T21:55:53.4070335Z  CREATE DATABASE
+2026-10-07T21:55:53.4070505Z  
+2026-10-07T21:55:53.4070639Z  
+2026-10-07T21:55:53.4070886Z  /usr/local/bin/docker-entrypoint.sh: ignoring /docker-entrypoint-initdb.d/*
+2026-10-07T21:55:53.4071186Z  
+2026-10-07T21:55:53.4071451Z  waiting for server to shut down...2026-10-07 21:55:27.136 UTC [48] LOG:  received fast shutdown request
+2026-10-07T21:55:53.4071836Z  .2026-10-07 21:55:27.136 UTC [48] LOG:  aborting any active transactions
+2026-10-07T21:55:53.4072269Z  2026-10-07 21:55:27.138 UTC [48] LOG:  background worker "logical replication launcher" (PID 54) exited with exit code 1
+2026-10-07T21:55:53.4072661Z  2026-10-07 21:55:27.138 UTC [49] LOG:  shutting down
+2026-10-07T21:55:53.4072953Z  2026-10-07 21:55:27.181 UTC [49] LOG:  checkpoint starting: shutdown immediate
+2026-10-07T21:55:53.4073732Z  2026-10-07 21:55:27.295 UTC [49] LOG:  checkpoint complete: wrote 926 buffers (5.7%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.071 s, sync=0.017 s, total=0.158 s; sync files=301, longest=0.015 s, average=0.001 s; distance=4273 kB, estimate=4273 kB; lsn=0/191F0F8, redo lsn=0/191F0F8
+2026-10-07T21:55:53.4074480Z  2026-10-07 21:55:27.302 UTC [48] LOG:  database system is shut down
+2026-10-07T21:55:53.4074733Z   done
+2026-10-07T21:55:53.4074879Z  server stopped
+2026-10-07T21:55:53.4075038Z  
+2026-10-07T21:55:53.4075225Z  PostgreSQL init process complete; ready for start up.
+2026-10-07T21:55:53.4075457Z  
+2026-10-07T21:55:53.4075729Z  2026-10-07 21:55:52.124 UTC [240] ERROR:  cannot execute CREATE TABLE in a read-only transaction
+2026-10-07T21:55:53.4076302Z  2026-10-07 21:55:52.124 UTC [240] STATEMENT:  CREATE TABLE hrm_backup_forbidden(id integer);
+2026-10-07T21:55:53.4081620Z Stop and remove container: f76bea319e9d4bd0b11295397a289eb5_postgres16_1749db
+2026-10-07T21:55:53.4085936Z ##[command]/usr/bin/docker rm --force 9b1aafc3a7fb9b7bf3b1c2534a17cf2adaaef1b39c1ccd30d87f7a46bffcce91
+2026-10-07T21:55:57.1938508Z 9b1aafc3a7fb9b7bf3b1c2534a17cf2adaaef1b39c1ccd30d87f7a46bffcce91
+2026-10-07T21:55:57.1965231Z Remove container network: github_network_fa0be576842c433a91bebded9eb78fdd
+2026-10-07T21:55:57.1969023Z ##[command]/usr/bin/docker network rm github_network_fa0be576842c433a91bebded9eb78fdd
+2026-10-07T21:55:57.2916714Z github_network_fa0be576842c433a91bebded9eb78fdd
+2026-10-07T21:55:57.2979742Z Cleaning up orphan processes
+2026-10-07T21:55:57.4399464Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/setup-node@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

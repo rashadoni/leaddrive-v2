@@ -729,3 +729,12 @@ personnelautomation/Support/Mac changes. Accounting84/161/77open/60%, C6/C12
 PARTIAL; configuredbackupcatalogidentity does not claim freshbackupservice,
 commissioning, restore or realHRoperations. Next currentheadfulltechnicalgates
 inparallel normalauxrelease/protectedcatalogassessment, then589release ifsafe.
+
+
+## 2026-10-07 — auxiliary627 published; frozenC7 fresh13/manual5 acceptance
+
+Exactaux60efe238/treee575 PR627draftpublished/attached, source37692727660/113036666929 first66/66PASS/no skips actualfullDEFAULTadapter+realPG milestones/12cleanupPASS, productionpull_requestjob correctlySKIP. Rootfulloriginallog and independentwhole-source98188ffb.../hostedda8435a8... losslesslyarchived, working/prep finding+counters correction retained. READY afteractualsourcePASS; currentfullrequiredstatic113037158500/type113037158519 running, other3SUCCESS. No draftskip credit. Old14+5gates exactf8. Ownauxnormalmainrelease/protectedactualpurpose notyetdone.
+
+FinalHRM589 headc7deecf8c86672204434c157f7be2f0e85566fc7/treea3be6ea7f6fd48ef63aba0e0f6245ba95872f404 publishedFF; diff5638 only identicalaux5newpaths+overarchingjournal append. Frozen5638 actualtechnicalPASS retainedpublishedarchive. Freshmanual5 run37692949528 and12actualapplicableautomaticworkflows (newbackupsource replacesoldlivepathnowalreadymain) =13 currentgates running. No oldruntimecredit borrowed. Evidenceordinarymerge importsnewC7source; onlyjournalconflict resolved entireimmutableprior evidenceprefix + exactnewC7append beyondshared5638, no historyloss.
+
+Ledger parserlastfulltask-row override yields161unique/84DONE/77open; formula80*84/161+20*14/15=60.405797%=60. ConditionalONLYC6closure85/161/76/61 remainscalculationonly, no rowstatus/gatewrite. C6/C12PARTIAL. No grants/roles/config/access/secrets/activation/personnelautomation/Support/Mac change. Next freshC7fulltechnicalreview inparallel ownauxrelease/read-only purposeassessment, thennormal589release onlysafeallcriteria.
