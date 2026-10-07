@@ -1,0 +1,84 @@
+{
+  "head": "3fc77196bdc7b6582b3fbcb32e9155004702de69",
+  "rootIndependentReview": "PASS source privacy/safety review; exact source hosted SQL and required gates pending",
+  "changedPaths": [
+    "docs/hrm-release-preflight-session-log.md",
+    "scripts/hrm-migration-metadata-preflight.mjs",
+    "scripts/hrm-migration-metadata-preflight.test.mjs"
+  ],
+  "unchangedBindings": [
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.sql",
+      "sha256": "b174e32eb68a0dbcca98e8557fe8c716ed8277111e79ba822bce43f4e7023b6a",
+      "unchanged": true
+    },
+    {
+      "path": ".github/workflows/hrm-migration-metadata-preflight.yml",
+      "sha256": "f90937ecda3b81e7dd017819cfaec1afdefc5fee58167fdfc2289ce012a1dcf1",
+      "unchanged": true
+    },
+    {
+      "path": "scripts/ci/check-typecheck-baseline.mjs",
+      "sha256": "8b8a2472a1c813e85c4177c24c6df5fb5907d981b5b43e6870a04cbbba2b812a",
+      "unchanged": true
+    },
+    {
+      "path": "scripts/ci/check-typecheck-gate.sh",
+      "sha256": "a18608d9297c039380481fb27d6200d9ebbcc731e9ec23dd40b5e3a2c5a40937",
+      "unchanged": true
+    },
+    {
+      "path": "scripts/check-test-baseline.mjs",
+      "sha256": "6c3380718fd71061d2efe4aa396fcb9cc998336c5c95a3bbd2de05230058027e",
+      "unchanged": true
+    },
+    {
+      "path": "prisma/schema.prisma",
+      "sha256": "e065f343c9f31c4e7523f6102a5ffa62e56fd9cee1946e78bab0f64e6da58e57",
+      "unchanged": true
+    },
+    {
+      "path": "test-baseline.json",
+      "sha256": "8f0fc568274f9fd8c0c741db618d6e4d81025de7112a315cd93e6b92bbd5a4b1",
+      "unchanged": true
+    },
+    {
+      "path": "typecheck-baseline.json",
+      "sha256": "919fa9d0212b18ee685af4f08680ebbc34e8c4969294054447df03147bf0fc53",
+      "unchanged": true
+    }
+  ],
+  "sourceFindings": {
+    "finiteDetail": true,
+    "unknownKeyCategory": "OTHER only",
+    "noCredentialValues": true,
+    "errorVersion": 2,
+    "detailOnlyOnENV_INVALID": true,
+    "nestedCatchPreservesOnlyFiniteDetail": true,
+    "connectionAllowlistUnchanged": true,
+    "libpqFieldsAndReadOnlyOptionsUnchanged": true,
+    "SQLAndWorkflowUnchanged": true,
+    "productionOrAccessMutations": false
+  },
+  "parityExecutedOnExactHead": {
+    "environmentCases": 72,
+    "accepted": 11,
+    "rejected": 61,
+    "connectionCases": 33,
+    "pass": true
+  },
+  "unitExecutedByImplementingAgent": {
+    "pass": 18,
+    "fail": 0,
+    "hostedSQLskip": 1,
+    "actualNoQueryPrivateRejections": 36
+  },
+  "rootReviewAttemptCorrection": {
+    "firstAttempt": "Receipt generation attempted nonexistent scripts/ci/test-baseline.json and failed path lookup before writing receipt",
+    "correction": "Used actual scripts/check-test-baseline.mjs; exact bytes verified; not a product test failure or false pass"
+  },
+  "limits": [
+    "Finite synthetic source verification is not actual environment diagnosis or database catalogue acceptance",
+    "No local database/compiler/build/browser check run"
+  ]
+}
