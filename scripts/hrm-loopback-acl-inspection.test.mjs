@@ -130,10 +130,12 @@ test("clean libpq transport holds runtime stdin until explicit rollback and keep
   const probe = { runtimeRole: "live_runtime", nonce: probeName, pid: 0 }, runtime = fakeChild(JSON.stringify(snapshot("runtime"))); let call
   const held = await startLiveRuntime(appUrl + "?connect_timeout=-10", sql, probe, (binary, args, options) => { call = { binary, args, options }; return runtime.child })
   assert.equal(call.binary, "psql"); assert.doesNotMatch(call.args.join(" "), /postgresql:\/\/|private-live|live_runtime|live_migration|hrm_loopback_acl_/); assert.equal(call.options.env.PGCONNECT_TIMEOUT, "10"); assert.equal(call.options.env.PGPASSFILE, "/dev/null"); assert.equal(call.options.env.HOME, undefined); assert.equal(call.options.env.PGSERVICE, undefined); assert.equal(call.options.env.PGSERVICEFILE, undefined); assert.equal(call.options.env.PGSYSCONFDIR, undefined); assert.equal(call.options.stdio[2], "ignore"); assert.equal(runtime.input.length, 1); assert.equal(runtime.input[0], sql + "\n"); assert.equal(call.options.env.PGOPTIONS, "-c default_transaction_read_only=on -c application_name=" + probeName + " -c hrm.live_expected_role=live_runtime -c hrm.live_runtime_role=live_runtime -c hrm.live_mode=runtime -c hrm.live_probe_name=" + probeName + " -c hrm.live_expected_pid=0")
+  assert.equal(call.options.env.PGAPPNAME, probeName)
   await held.finish(); assert.equal(runtime.input[1], "ROLLBACK;\n\\q\n"); await assert.rejects(held.finish(), { message: "CLEANUP_UNPROVED" })
   const migration = fakeChild(JSON.stringify(snapshot())); let migrationCall
   await queryLiveMigration(migrationUrl, sql, { ...probe, pid: 12345 }, (binary, args, options) => { migrationCall = { binary, args, options }; return migration.child })
   assert.equal(migration.input[0], sql + "\nROLLBACK;\n"); assert.equal(migrationCall.options.stdio[2], "ignore"); assert.match(migrationCall.options.env.PGOPTIONS, /application_name=hrm_loopback_acl_inspection /); assert.match(migrationCall.options.env.PGOPTIONS, /hrm.live_expected_pid=12345$/)
+  assert.equal(migrationCall.options.env.PGAPPNAME, "hrm_loopback_acl_inspection")
   await assert.rejects(startLiveRuntime(appUrl, sql, { ...probe, nonce: marker }, () => assert.fail("invalid probe must not spawn")), { message: "QUERY_FAILED" })
   await assert.rejects(queryLiveMigration(migrationUrl, sql, probe, () => { throw new Error(marker) }), { message: "QUERY_FAILED" })
 })

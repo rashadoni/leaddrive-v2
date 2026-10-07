@@ -62,7 +62,7 @@ function liveParse(raw,mode) {
 function liveConnection(connection,probe,mode) {
   const env=databaseConnectionEnvironment(connection)
   if (!probe || !/^[A-Za-z_][A-Za-z0-9_$-]{0,62}$/.test(probe.runtimeRole) || !/^hrm_loopback_acl_[0-9a-f]{32}$/.test(probe.nonce) || !liveInt(probe.pid,0,2147483647)) liveFail("INPUT_INVALID")
-  return {...env,PGOPTIONS:"-c default_transaction_read_only=on -c application_name="+(mode==="runtime"?probe.nonce:"hrm_loopback_acl_inspection")+" -c hrm.live_expected_role="+env.PGUSER+" -c hrm.live_runtime_role="+probe.runtimeRole+" -c hrm.live_mode="+mode+" -c hrm.live_probe_name="+probe.nonce+" -c hrm.live_expected_pid="+probe.pid}
+  return {...env,PGAPPNAME:mode==="runtime"?probe.nonce:"hrm_loopback_acl_inspection",PGOPTIONS:"-c default_transaction_read_only=on -c application_name="+(mode==="runtime"?probe.nonce:"hrm_loopback_acl_inspection")+" -c hrm.live_expected_role="+env.PGUSER+" -c hrm.live_runtime_role="+probe.runtimeRole+" -c hrm.live_mode="+mode+" -c hrm.live_probe_name="+probe.nonce+" -c hrm.live_expected_pid="+probe.pid}
 }
 const liveArgs=["-X","-qAt","--no-password","-v","ON_ERROR_STOP=1","-v","VERBOSITY=sqlstate"]
 
