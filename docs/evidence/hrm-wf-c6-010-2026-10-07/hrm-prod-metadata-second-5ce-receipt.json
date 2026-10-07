@@ -1,0 +1,30 @@
+{
+  "run": 37650822335,
+  "attempt": 1,
+  "head": "5cebf61623c58ca65b66f2b58506157c097a1931",
+  "sourceJob": 112893388354,
+  "sourceConclusion": "success",
+  "productionJob": 112893696118,
+  "productionConclusion": "failure",
+  "artifact": 11495729629,
+  "version": 2,
+  "code": "ENV_INVALID",
+  "envDetail": "PARAM_UNSUPPORTED_CONNECT_TIMEOUT",
+  "SQLExecuted": false,
+  "actualConnectionParameterValue": "UNKNOWN and deliberately not exported",
+  "bindings": {
+    "hrm-prod-metadata-second-5ce.zip": {
+      "bytes": 887,
+      "sha256": "ea62a225e6b65d835992beb6fbbe31e276c37afed6023c9e244c05b15355721d"
+    },
+    "hrm-prod-metadata-second-5ce.json": {
+      "bytes": 1167,
+      "sha256": "68069519d62d29d6cccae5d6797cceb0bc12050941b7846ee9c8b34555c6c262"
+    },
+    "hrm-prod-metadata-second-5ce.log.gz": {
+      "rawBytes": 50007,
+      "rawSha256": "db53b93bd245d00854114b8ba53a379eef56735340bf6de6742a7b72cbfec88c",
+      "storedSha256": "47ec01c138ba9bacc95f50e3b0fb64be2925c7aa2efd43c4a0da33b943784fd1"
+    }
+  }
+}
