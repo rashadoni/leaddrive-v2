@@ -32,6 +32,7 @@ export const ENV_DETAILS = Object.freeze([
   "SSL_VALUE_INVALID", "SSL_MODE_INVALID", "SSL_PATH_UNSUPPORTED", "UNCLASSIFIED_ENV_REJECTION",
   ...PARAMETER_CATEGORIES.map(category => "PARAM_UNSUPPORTED_" + category),
   "PARAM_DUPLICATED_SSL", "PARAM_DUPLICATED_PRISMA",
+  "CONNECT_TIMEOUT_HINT_INVALID", "PARAM_DUPLICATED_CONNECT_TIMEOUT",
 ])
 const ENV_DETAIL_SET = new Set(ENV_DETAILS)
 const parameterCategory = key => {
@@ -64,19 +65,32 @@ function connectionUrl(connection) {
     if (url.pathname.length < 2) invalidEnv("URL_DATABASE_REQUIRED")
     if (url.hash) invalidEnv("URL_FRAGMENT_UNSUPPORTED")
     if (/[\x00-\x20\x7f]/.test(connection)) invalidEnv("URL_CONTROL_INVALID")
-    const allowed = new Set(["schema", "connection_limit", "pool_timeout", ...Object.keys(TLS_ENV)])
+    const allowed = new Set(["schema", "connection_limit", "pool_timeout", "connect_timeout", ...Object.keys(TLS_ENV)])
     for (const key of url.searchParams.keys()) {
       if (!allowed.has(key)) invalidEnv("PARAM_UNSUPPORTED_" + parameterCategory(key))
       if (url.searchParams.getAll(key).length !== 1) invalidEnv("PARAM_DUPLICATED_" + parameterCategory(key))
     }
     if (url.searchParams.has("schema") && url.searchParams.get("schema") !== "public") invalidEnv("SCHEMA_UNSUPPORTED")
     for (const key of ["connection_limit", "pool_timeout"]) if (url.searchParams.has(key) && !/^[0-9]{1,4}$/.test(url.searchParams.get(key))) invalidEnv("POOL_HINT_INVALID")
+    if (url.searchParams.has("connect_timeout")) {
+      let value
+      try {
+        // libpq URI percent-decoding preserves a literal '+'. URLSearchParams
+        // uses form decoding, so inspect only this known hint's raw value.
+        const entry = url.search.slice(1).split("&").find(part => decodeURIComponent(part.split("=")[0]) === "connect_timeout")
+        const separator = entry.indexOf("=")
+        value = separator < 0 ? "" : decodeURIComponent(entry.slice(separator + 1))
+      } catch { invalidEnv("CONNECT_TIMEOUT_HINT_INVALID") }
+      // libpq parses a signed decimal int. Validate this hint, then discard it:
+      // the inspector always supplies its own ten-second connection budget.
+      if (!/^[+-]?[0-9]{1,10}$/.test(value) || Number(value) < -2147483648 || Number(value) > 2147483647) invalidEnv("CONNECT_TIMEOUT_HINT_INVALID")
+    }
     for (const key of Object.keys(TLS_ENV)) if (url.searchParams.has(key)) {
       const value = url.searchParams.get(key)
       if (!value || /[\0\r\n]/.test(value)) invalidEnv("SSL_VALUE_INVALID")
       if (key === "sslmode" ? !["disable", "allow", "prefer", "require", "verify-ca", "verify-full"].includes(value) : !(value.startsWith("/") || key === "sslrootcert" && value === "system")) invalidEnv(key === "sslmode" ? "SSL_MODE_INVALID" : "SSL_PATH_UNSUPPORTED")
     }
-    for (const key of ["schema", "connection_limit", "pool_timeout"]) url.searchParams.delete(key)
+    for (const key of ["schema", "connection_limit", "pool_timeout", "connect_timeout"]) url.searchParams.delete(key)
     return url
   } catch (error) { if (isDetailedEnvError(error)) throw error; invalidEnv("URL_SYNTAX_INVALID") }
 }
