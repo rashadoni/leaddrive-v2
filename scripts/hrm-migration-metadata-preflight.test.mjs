@@ -162,7 +162,7 @@ test("psql receives connection only in a clean child environment, bounded read-o
 })
 
 test("only whitelisted SQLSTATE survives query failures; messages and unknown codes are withheld", () => {
-  for (const [state, expected] of [["42501", "42501"], ["42P01", "42P01"], ["57014", "57014"], ["25006", "25006"], ["99999", null]]) {
+  for (const [state, expected] of [["42501", "42501"], ["42601", "42601"], ["42P01", "42P01"], ["57014", "57014"], ["25006", "25006"], ["99999", null]]) {
     const query = () => queryMetadata("postgresql://synthetic:protected@host/fixture", sql, () => { const error = new Error("protected credentials"); error.stderr = `psql:<stdin>:23: ERROR:  ${state}\nprotected raw details\n`; throw error })
     const report = inspectRemote(sql, bindings, sha, { uid: 0, read: fakeRead, query })
     assert.equal(report.status, "ERROR")
@@ -248,7 +248,14 @@ test("hosted PostgreSQL executes the real fixed catalog query and rejects writes
   migrationUrl.username = "hrm_preflight_migration"
   migrationUrl.password = "isolated-preflight-migration"
   try {
-    const query = () => { const lines = queryMetadata(migrationUrl.href, sql).trim().split("\n"); assert.equal(lines.length, 2); return lines.map(JSON.parse) }
+    const query = () => {
+      let output
+      try { output = queryMetadata(migrationUrl.href, sql) }
+      catch (error) { throw new Error("HOSTED_FIXED_SQL_QUERY_FAILED sqlState=" + (error?.sqlState ?? "unknown")) }
+      const lines = output.trim().split("\n")
+      assert.equal(lines.length, 2)
+      return lines.map(JSON.parse)
+    }
     let [d, s] = query()
     assert.deepEqual(assessMetadata(d, s), { status: "READY_FOR_REVIEW", reasons: [], migrationStates: ["pending", "pending"] })
     for (const [trigger, field] of [["workforce_exception_decisions_append_only", "appendTriggerBound"], ["workforce_exception_decisions_assign_case_revision", "revisionTriggerBound"]]) {

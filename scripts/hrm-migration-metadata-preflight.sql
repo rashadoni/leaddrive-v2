@@ -108,10 +108,10 @@ indexes AS (
       AND (SELECT array_agg(a.attname::text ORDER BY k.n) FROM unnest(i.indkey::smallint[]) WITH ORDINALITY k(attnum,n)
         LEFT JOIN pg_catalog.pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum)=p.keys
       AND (SELECT bool_and(k.option=0) FROM unnest(i.indoption::smallint[]) k(option))
-      AND (SELECT bool_and(CASE WHEN a.attname=ANY(p.c_keys) THEN col.collname='C' ELSE k.collation=a.attcollation END)
-        FROM unnest(i.indkey::smallint[],i.indcollation::oid[]) WITH ORDINALITY k(attnum,collation,n)
+      AND (SELECT bool_and(CASE WHEN a.attname=ANY(p.c_keys) THEN col.collname='C' ELSE k.collation_oid=a.attcollation END)
+        FROM unnest(i.indkey::smallint[],i.indcollation::oid[]) WITH ORDINALITY k(attnum,collation_oid,n)
         LEFT JOIN pg_catalog.pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum
-        LEFT JOIN pg_catalog.pg_collation col ON col.oid=k.collation AND col.collnamespace='pg_catalog'::regnamespace)
+        LEFT JOIN pg_catalog.pg_collation col ON col.oid=k.collation_oid AND col.collnamespace='pg_catalog'::regnamespace)
       AND (SELECT bool_and(opc.opcdefault AND opc.opcintype=a.atttypid AND opc.opcmethod=ic.relam AND opc.opcnamespace='pg_catalog'::regnamespace)
         FROM unnest(i.indkey::smallint[],i.indclass::oid[]) k(attnum,opclass)
         LEFT JOIN pg_catalog.pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum

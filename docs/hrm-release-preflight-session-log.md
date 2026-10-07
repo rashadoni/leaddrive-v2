@@ -206,3 +206,40 @@
   auxiliary branch, with hosted SQL and production metadata still unproved.
   Next action: coordinator reviews/publishes exact successor and reruns hosted
   source validation before the separate main-only production inspection.
+
+## 2026-10-07 — second actual hosted SQL failure, reserved alias corrected
+
+- Actual successor run 37631152301/job112825447351 at exact0ceb reached
+  PostgreSQL after creating the fenced fixture, then failed the initial fixed
+  catalog query. Original result: 14 unit PASS, 1 actual SQL FAIL, zero skips.
+  This is not credited as success by the previous local 14 PASS/1 SKIP.
+- Original synthetic PostgreSQL service log records `syntax error at or near
+  collation` at fixed-statement character6483. Source inspection located the
+  reserved column alias `k(attnum,collation,n)`. This established a SQL source
+  defect; no permission/isolation hypothesis or transient retry is substituted.
+- The original complete log and separate receipt are preserved losslessly in
+  `source-0ceb-second-failed.log.gz` and `source-0ceb-second-failure.json`
+  under this auxiliary evidence folder. Root also retains its separate original
+  evidence checkpoint. No production inspection was attempted.
+- Narrow correction renames that alias to collation_oid and preserves the
+  exact index collation comparison, operator/column/owner/RLS/guard checks,
+  transaction/timeouts and all production workflow/privacy boundaries.
+- Added a diagnostic only inside the existing already-fenced hosted fixture:
+  query failures show the helper's existing finite SQLSTATE or unknown, with no
+  stderr/credentials/private rows. The production helper, allowlist and error
+  projection remain unchanged. Existing SQLSTATE unit cases now include42601.
+- The corrected real PostgreSQL fixed-query gate must run again on hosted CI.
+  No local SQL execution, production connection, push or dispatch is performed.
+- Root independently confirmed the exact original service error and approved
+  alias-only SQL correction plus the fenced existing-SQLSTATE diagnostic before
+  checkpoint. Original log SHA-256 is
+  `72b37cb9cfa4a432d3af3edeb8f11e4999deb268e1b61e1d22289dd2fb80fad8`;
+  gzip SHA-256 is
+  `f9744fda7633f361d20633f523386caee128297d62359ee328980802187288f3`.
+- Bounded repeat: test syntax PASS, 14 Node unit PASS, 1 hosted SQL SKIP,
+  whitespace PASS. Production helper/workflow/allowlist bytes and all checks
+  are unchanged; actual corrected fixed SQL remains pending hosted execution.
+  Current result: second source defect repaired with original FAIL retained.
+  Last completed action: small sequential checks. Precise stopping point:
+  correction checkpoint only. Next action: root publishes after byte review
+  and runs the third hosted SQL attempt; no previous PASS transfers to it.

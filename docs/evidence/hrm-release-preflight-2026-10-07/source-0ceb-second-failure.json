@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "result": "FAIL",
+  "headSha": "0ceb35ecef649aad2ace9a5482fbc27f9420c6c2",
+  "runId": 37631152301,
+  "jobId": 112825447351,
+  "runUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37631152301",
+  "phase": "INITIAL_FIXED_CATALOG_SQL_AFTER_ISOLATED_FIXTURE_CREATION",
+  "productionInspectionAttempted": false,
+  "sourceDefect": "RESERVED_COLLATION_COLUMN_ALIAS_IN_FIXED_SQL",
+  "actualServerError": "syntax error at or near collation",
+  "actualServerStatementCharacter": 6483,
+  "originalLog": {
+    "path": "source-0ceb-second-failed.log.gz",
+    "bytes": 57862,
+    "sha256": "72b37cb9cfa4a432d3af3edeb8f11e4999deb268e1b61e1d22289dd2fb80fad8",
+    "gzipBytes": 14421,
+    "gzipSha256": "f9744fda7633f361d20633f523386caee128297d62359ee328980802187288f3",
+    "losslessRoundTripVerified": true
+  },
+  "privacy": "Only GitHub-hosted synthetic fixture/service log; no production/app/auth/HR payloads."
+}
