@@ -1,0 +1,41 @@
+{
+  "head": "5638f1ea63c2818aef8be1b0c497eff718303388",
+  "status": "COMPLETE_TECHNICAL_PASS_PRODUCTION_ACL_REVIEW_PENDING",
+  "auxMain": "f8dd20c7a849643087ee31969c2f582a96c8bab3",
+  "auxDeploy": 37687183717,
+  "readonlyDispatch": 37690299054,
+  "rootActuallyViewedCurrent6PNGs": true,
+  "rootSmallScreenVisibilityQualified": true,
+  "files": [
+    {
+      "file": "hrm-final-5638-classification-attempt2.zip",
+      "bytes": 268941,
+      "sha256": "381d3e0dfedc1387bd40a4ef7246914810efede4d72d81653d2fde495d9870d8"
+    },
+    {
+      "file": "hrm-final-5638-classification-attempt2-original.log",
+      "bytes": 97424,
+      "sha256": "a5f54847294d36f2ae1380c895b888ca5fb0f1303b470076d113401e58470ef2"
+    },
+    {
+      "file": "hrm-final-5638-classification-attempt2-artifact.json",
+      "bytes": 786,
+      "sha256": "d16adfe80104139764e038227497b36d13f5af20619820431cdc4be98b2fd70c"
+    },
+    {
+      "file": "hrm-release-independent-browser-5638f1ea.json",
+      "bytes": 18949,
+      "sha256": "56bfb7566d8959e81886aae8df45a5fac34cd2d5514d161bc10e4e149501cef0"
+    },
+    {
+      "file": "hrm-release-independent-technical-acceptance-5638f1ea.json",
+      "bytes": 19243,
+      "sha256": "f4f79a2fedeb0e12c2626768b6984f6a5fae4776909b0c60ba38ccbf7c67380f"
+    },
+    {
+      "file": "hrm-release-f8-public-proof.json",
+      "bytes": 1363,
+      "sha256": "371690f3dfa56d5ac7b9e394165f4bcb690c2d732dfc1e4194f77264538731e6"
+    }
+  ]
+}
