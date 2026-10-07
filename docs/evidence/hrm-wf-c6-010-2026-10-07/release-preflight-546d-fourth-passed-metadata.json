@@ -1,0 +1,20 @@
+{
+  "runId": 37634692782,
+  "jobId": 112837694367,
+  "head": "546d67c1efe7e145e1bfa9a19e9eea7c108b5e57",
+  "conclusion": "SUCCESS",
+  "unitPlusActualHostedTests": 16,
+  "failed": 0,
+  "skipped": 0,
+  "legacyDefaultOrderCanonical": false,
+  "sourceCauseProved": "Byte-bound e87 legacy fixed SQL executes but canonical-order validation rejects; explicit C order passes",
+  "rawSha256": "56d80d71bbdcd950186b85be5f540659294a5fb82570d0e1eed686c620ec5050",
+  "gzipSha256": "e0a5e9061c07ee7c21bb0e446aff57102d1e6c0222e44e707759d84f9e896067",
+  "productionJob": "SKIPPED",
+  "limitation": "Isolated PostgreSQL metadata fixture, not actual production/staging/C12 observations",
+  "priorActualFailuresRetained": [
+    37628952667,
+    37631152301,
+    37632434312
+  ]
+}
