@@ -93,3 +93,10 @@
 - Исправлена source структура: менеджерский allowlist по-прежнему ACKNOWLEDGE/REQUEST_TIME_CORRECTION, outcome type union отдельный, HR outcomeContext отдельный. Existing assertion не удалён и не ослаблен. Added protected-reason/lost-response exact-retry UI test. Targeted queue suite9/9 PASS.
 - Modified browser refusal guards повторно19/19 PASS; оба harness syntax PASS. Новые diagnostic fields не меняют AZ equality. Duplicate-trigger fix ограничен atomic replacement двух known guards в fenced disposable owner transaction и COMMITTED/ROLLED_BACK metadata.
 - Initial errors и original reviews сохранены; новая independent correction review ожидается. Full5ead compiler ещё выполняется; следующая попытка должна быть на новом checkpoint с точным fullSHA.
+
+## 2026-10-07 — полный первый hosted result сохранён
+
+- Run37598967356 exact5ead завершён FAILURE: build SUCCESS, full compiler blocking gates SUCCESS_BASELINE_QUALIFIED; report-browser FAIL, classification fixture FAIL, full regressions FAIL19/18. Никакой blanket CI-green claim.
+- Actual full compiler и exit-code originals сохранены gzip; assessment содержит точный diagnostics count/hash и owned all-family result. Полный compiler остаётся globally NONCLEAN; unchanged gated baseline принят, это не чистая компиляция.
+- Новая implementation/harness checkpoint `b416827b4ce28f633378bb166955ec8ee99d3124` опубликована в draft612. Independent supplement b41627bindings сохранён: no unresolved confirmed source findings, original errors retained, next exact-head runtime gates PENDING.
+- Документальный checkpoint сейчас сохраняет эти receipts без изменения production/source/test/harness bytes. Следующее действие: full exact-ref dispatch нового fullSHA; strict AZ comparison с расширенной диагностикой остаётся.
