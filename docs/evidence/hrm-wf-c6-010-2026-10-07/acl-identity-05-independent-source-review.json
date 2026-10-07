@@ -1,0 +1,144 @@
+{
+  "version": 1,
+  "reviewedAtUtc": "2026-10-07T19:12:27.490704+00:00",
+  "reviewer": "/root/inspect_outcome_contract",
+  "status": "SOURCE_REVIEW_ACCEPTED_RUNTIME_PENDING",
+  "headSha": "05deed0368ec6f4001c04508c95742623fb5a4f5",
+  "tree": "b7cf18d6cc81482f2be1ccda5568a704bac10502",
+  "parentMain": "777d6daa0e902ebd28a369694e235accf44ad3eb",
+  "worktree": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-release-acl-identity-diagnostic-20261007",
+  "cleanObserved": true,
+  "authorship": {
+    "newHelperAndSql": "Authored by root; this source review is independent of that implementation.",
+    "testsWorkflowJournal": "Reviewer authored original fixture/workflow; root authored only current finite-category assertion changes and independently reviewed original fixture. No claim of independent verification-code authorship."
+  },
+  "findingsP0P1P2P3": [],
+  "changedPaths": [
+    "docs/hrm-default-acl-inspection-session-log.md",
+    "scripts/hrm-default-acl-inspection.mjs",
+    "scripts/hrm-default-acl-inspection.test.mjs"
+  ],
+  "bindings": [
+    {
+      "path": "scripts/hrm-default-acl-inspection.mjs",
+      "sha256": "a6aa4f3526fd5edf29bd2b3a1309f7703e85acad70c0e683cba69dbb281c2027",
+      "bytes": 15455,
+      "unchangedFromMain777": false
+    },
+    {
+      "path": "scripts/hrm-default-acl-inspection.test.mjs",
+      "sha256": "402a2dde20443676d6bac430ab4e80a74f507c2dd3828b920c278cafcf0c7c3c",
+      "bytes": 27522,
+      "unchangedFromMain777": false
+    },
+    {
+      "path": "scripts/hrm-default-acl-inspection.sql",
+      "sha256": "524bc02f34a75f445aff6b3834df6e02aa86665dee9acd835b2b5fc621127e2a",
+      "bytes": 4320,
+      "unchangedFromMain777": true
+    },
+    {
+      "path": ".github/workflows/hrm-default-acl-inspection.yml",
+      "sha256": "954c6d042bf00420f1ecd3c9ed0c378bc41305c0af08c30cdc3a97f06f81df2a",
+      "bytes": 7352,
+      "unchangedFromMain777": true
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.mjs",
+      "sha256": "46b417da7bbe763960b8ede8fa0e9dbd98543d090d54f73979289504bfe35771",
+      "bytes": 24904,
+      "unchangedFromMain777": true
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.sql",
+      "sha256": "b174e32eb68a0dbcca98e8557fe8c716ed8277111e79ba822bce43f4e7023b6a",
+      "bytes": 14770,
+      "unchangedFromMain777": true
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.test.mjs",
+      "sha256": "39c947982f5e7dc2ca1e96307ac5314518bfe748ec58a3cf217f8f09194c0eef",
+      "bytes": 44730,
+      "unchangedFromMain777": true
+    },
+    {
+      "path": ".github/workflows/hrm-migration-metadata-preflight.yml",
+      "sha256": "f90937ecda3b81e7dd017819cfaec1afdefc5fee58167fdfc2289ce012a1dcf1",
+      "bytes": 7131,
+      "unchangedFromMain777": true
+    },
+    {
+      "path": "docs/hrm-default-acl-inspection-session-log.md",
+      "sha256": "8d3af68cc9a724374a30d5eba1e06d37537473cef61ca4d89549adced5500a5f",
+      "bytes": 12649,
+      "unchangedFromMain777": false
+    }
+  ],
+  "sourceReview": {
+    "rejectionPredicates": "Existing principal inequality, PGHOST/PGPORT/PGDATABASE exact equalities, five all-true session booleans per mode and systemIdentifier/databaseOid/databaseName equalities preserved. Only finite error category changes.",
+    "newCategories": [
+      "IDENTITY_PRINCIPALS_EQUAL",
+      "IDENTITY_ENDPOINT_HOST_MISMATCH",
+      "IDENTITY_ENDPOINT_PORT_MISMATCH",
+      "IDENTITY_ENDPOINT_DATABASE_MISMATCH",
+      "IDENTITY_RUNTIME_SESSION_UNPROVED",
+      "IDENTITY_MIGRATION_SESSION_UNPROVED",
+      "IDENTITY_CATALOG_MISMATCH"
+    ],
+    "historicalGenericCodeRetained": true,
+    "strictReportErrorProofNull": true,
+    "strictReportErrorArtifactNull": true,
+    "unknownCodeNotReflected": true,
+    "noNewPrivateValueFields": true,
+    "noSourceAcceptanceBroadening": true,
+    "prequeryGuardTestsStillAssertNoQuery": true,
+    "protectedFixtureSqlBodyByteUnchanged": true
+  },
+  "originalRealProductionFailure": {
+    "run": 37671423864,
+    "sourceJob": 112963857433,
+    "productionJob": 112964196919,
+    "sourceHead": "777d6daa0e902ebd28a369694e235accf44ad3eb",
+    "receipt": {
+      "path": "/tmp/hrm-default-acl-real-777-validated.json",
+      "bytes": 1303,
+      "sha256": "df80195b412dbffa846fcdf0cdae7a7ffb3c2e1489bbe35d384cc11ef47956b3"
+    },
+    "archive": {
+      "path": "/tmp/hrm-default-acl-real-777.zip",
+      "bytes": 948,
+      "sha256": "5cc023e49b7c409261ccb9ad5f2184f4ca4fc8ad910c2a7820459bd8c366e16c"
+    },
+    "archiveProof": {
+      "crc": "PASS",
+      "members": [
+        {
+          "name": "hrm-default-acl-result.json",
+          "bytes": 1303,
+          "sha256": "df80195b412dbffa846fcdf0cdae7a7ffb3c2e1489bbe35d384cc11ef47956b3"
+        }
+      ]
+    },
+    "originalJobLog": {
+      "path": "/tmp/hrm-default-acl-real-777-job.log",
+      "bytes": 29050,
+      "sha256": "2d9f38adbaa219952e8c92a02fa2140a9f01b9247db0c2c64acf9069644746f3"
+    },
+    "status": "ERROR",
+    "code": "IDENTITY_UNPROVED",
+    "meaning": "At least one identity guard rejected. The original category does not identify the guard or establish whether catalog queries completed. No recipient or ACL fact is available; no raw private configuration used to choose a fix.",
+    "sourceBindingsIndependentlyVerified": true
+  },
+  "verification": {
+    "byReviewer": "Read-only bytes/source/receipt/archive inspection; no Node test, SQL, production query, deployment, permissions or GitHub mutation performed.",
+    "rootReportedCurrentLocalChecks": "Syntax/emitted stdin PASS;14total13PASS1hosted SQL SKIP;runner48PASS. These are root-reported checks, not reviewer reruns.",
+    "currentHostedSql": "PENDING; no claim of current PostgreSQL execution or production diagnosis."
+  },
+  "limits": [
+    "No actual cause beyond IDENTITY_UNPROVED is inferred from the archived report.",
+    "Original preflight DEFAULT_ACL_UNREVIEWED/INCOMPLETE remains unchanged.",
+    "A later READ_COMPLETE report remains catalog evidence and requires manual ACL recipient review; it never approves release.",
+    "No grants, roles, secrets, production configuration, tenant activation or Support changes.",
+    "Fresh main/ref/prospective release tree and exact final CI remain required for HRM release."
+  ]
+}

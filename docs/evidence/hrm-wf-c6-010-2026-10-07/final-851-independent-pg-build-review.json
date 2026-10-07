@@ -1,0 +1,206 @@
+{
+  "version": 1,
+  "reviewedAtUtc": "2026-10-07T19:05:59.773360+00:00",
+  "reviewer": "/root/inspect_outcome_contract",
+  "status": "EXACT851_CURRENT_PG_FULL_REGRESSION_BUILD_PREREQUISITES_ACCEPTED_WITH_NONCLEAN_BUILD_TRACE_LIMITS",
+  "head": "8513737b880623b2b62ab4721672a55b8101ba1a",
+  "tree": "e39def8eba7dd837e5700ac0526a563040b077ac",
+  "runId": 37667576332,
+  "attempt": 1,
+  "actualJobData": [
+    {
+      "id": 112951318806,
+      "head": "8513737b880623b2b62ab4721672a55b8101ba1a",
+      "conclusion": "success",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Initialize containers",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/checkout@v6",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verify exact head and preserved PR608 ancestor",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-node@v6",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npm ci",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Validate and generate existing schema clients",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Unchanged runner policy and translation parity",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Scoped production source lint",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Actual shared-lock and aggregate PostgreSQL gates",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Full regression suite against unchanged baseline",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/setup-node@v6",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/checkout@v6",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Stop containers",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 112951318309,
+      "head": "8513737b880623b2b62ab4721672a55b8101ba1a",
+      "conclusion": "success",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/checkout@v6",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verify exact head",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-node@v6",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run bash scripts/ci/prepare-hosted-build-runner.sh",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npm ci",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npx prisma generate",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Build isolated bundle with inert fixture configuration",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Cleanup bounded build swap",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/setup-node@v6",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/checkout@v6",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    }
+  ],
+  "originalJobMetadata": {
+    "path": "/tmp/hrm-final-851-exact-jobs-final.json",
+    "bytes": 17202,
+    "sha256": "0dd5c7cec503d6288ef1940dae3d21a29c191c410db089cba8e9195de89f6067"
+  },
+  "fullOriginalLogs": [
+    {
+      "path": "/tmp/hrm-release-851-pg-regressions-original.log",
+      "bytes": 159424,
+      "sha256": "56e66646c1d017123a50bd8a2b18968d0ba5d9b29f8dda555b5ef648ee0261c9"
+    },
+    {
+      "path": "/tmp/hrm-release-851-build-original.log",
+      "bytes": 130046,
+      "sha256": "6db2d78a4de5a25ad45821e8df96ca223e2d0e049afde15952b8a7d667e810fe"
+    }
+  ],
+  "actualSourceAndPg": {
+    "PrismaValidate": "PASS",
+    "PrismaClientsGenerated": "Current6.19.3 and legacy client actualPASS",
+    "runnerPolicy": "PASS",
+    "i18n": "PASS missing0/extra0 per source parity successfulstep",
+    "scopedSourceLint": "PASS",
+    "actualPg": "4files/44testsPASS; no skip in44actualtestcount",
+    "coverage": "Existing sharedlocked canonicalterminal/correctionpostgres gates + newrecordedoutcome report fixtures; classification/reopen/null/tenant/historysnapshot/immutable decisionsource checks. No productionDDL execution/fullhistoricalmigrationreplay/pilot credit.",
+    "fullRegressionBaseline": "18observedfailfiles/18unchangedknown; no newfail and everybaselineentry stillfails, strictgatePASS. Suite globallynotclean.",
+    "originalBaselinesAndGates": "Current851 source proof rehashed5paths directlybyteexactaccepted973; no updates or relaxation."
+  },
+  "actualBuild": {
+    "compiled": "PASS6.7min currentisolatedproductionNextbundle",
+    "existingTypeValidationSkipped": true,
+    "separateCurrentFullCompilerRequired": true,
+    "standaloneServerAndStaticAssertionsPassed": "Sourceworkflow step contains .next/standalone/server.js and .next/static checks; successfulstep+no hiddencontinue indicates actualPASS",
+    "traceWarning": "ActualcurrentENOENT copying dashboard page_client-reference-manifest.js. Inherited source warning stillpresent; not warningfree/alltracedfilescomplete and not provedharmless onallroutes.",
+    "productionDeploymentClaimed": false
+  },
+  "authorship": "Peer authored meaningful reportpostgres/browser verification; rootcrossreview retained. Here reads currentlogs/GH steps/sourcebindings, not independently authored tests or secondexecution.",
+  "findingsP0P1P2P3": [],
+  "limits": [
+    "Received exactcurrentlogs only, no compiler/build/test/DBrerun.",
+    "44PG/full18baseline controlled acceptance doesnotclaimwhole-suitegreen/globalcleanness; inheritedfailures retained.",
+    "BuildPASS is isolatedcompiledbundle/minimalstandalone/static, notownproductionrelease or fulltrace completeness; actualwarningretained.",
+    "Currentbrowser9/11 and fullcompiler/gates/requiredAppchecks acceptedseparately; actualdefaultACLrecipient review and ownHRMdeploy/smoke stillpending.",
+    "No realHRsample/pilot/device/operations/C12closure or production role/grant/config/tenant/secret mutation."
+  ]
+}

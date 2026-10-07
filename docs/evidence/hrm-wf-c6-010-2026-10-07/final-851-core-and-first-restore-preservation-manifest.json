@@ -1,0 +1,80 @@
+[
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-851-independent-core-technical-acceptance-held.json",
+    "bytes": 30098,
+    "sha256": "3eb56c45f58fad40f942652c29908c595996168b5c317f086731dc8da0cc6482"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-851-independent-pg-build-review.json",
+    "bytes": 7380,
+    "sha256": "af9304285e9f6f6b1f469a59f78f4defa52ad968741571512c447e1e679c1ec4"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-851-compiler-original-artifact.zip",
+    "bytes": 19675,
+    "sha256": "b62c9bf170ed6f42215d42c66dedf287cc8c7d17d6c2f6c9f5593844a3699f60"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/acl-identity-05-independent-source-review.json",
+    "bytes": 6277,
+    "sha256": "03ac37d47ab6bc270ac982a6a68b631c67482e49558415de634b9898d42eb436"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/acl-identity-05-independent-hosted-review.json",
+    "bytes": 4121,
+    "sha256": "79925008f6fbf9dfe88ccb2a7d2fe6c363a668713d3d636ec30a2b5d93b9d9b3"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-851-policyrestore-first-original-artifact.zip",
+    "bytes": 10830,
+    "sha256": "d398c6a380e254ca89fa3ee09f22ce783e02d9e5f01117de4bbea38f4c9c44ab"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-851-policyrestore-first-original-check.json",
+    "bytes": 3616,
+    "sha256": "3eda1dc30af8c549dfb77da5e98777d712ccd84e510ee411a8477f2428f0b7d7"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-851-policyrestore-first-original-annotations.json",
+    "bytes": 1134,
+    "sha256": "261293ce63c30c24e17ae0423d56632234615eb6b1d1f3d396c2ff931bd67b0f"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-851-policyrestore-first-original-jobs.json",
+    "bytes": 3916,
+    "sha256": "f9927747cf9c772365ba85543d6a7d03596cd019493a57f05978c0c8648260a0"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-851-policyrestore-first-original-run.json",
+    "bytes": 12923,
+    "sha256": "a13b1fef6bed1270fb63233234df3708b6de08400cf2fb4e0f552a7441e66dec"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-851-compiler-raw-original.log.gz",
+    "bytes": 18980,
+    "sha256": "5d546d3aa73bc07f002864c3eace4bfbb50efae58721614a16e2189c078a289f",
+    "originalBytes": 177767,
+    "originalSha256": "4ba2582a30f0eb51aad260ecb79715b6ce02e5dd8f70aafd33a98e38d4886bde"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-851-compiler-original-job.log.gz",
+    "bytes": 35225,
+    "sha256": "033d370e3ca47d414aa8e5c081ee868a3027a794cc81bad9fcf16b11c3d9a6a6",
+    "originalBytes": 254922,
+    "originalSha256": "5881a03926eb1147878bf81f0f4aff0e8494f23a2602c4f27dd87a5e2105cd0e"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-851-build-original-job.log.gz",
+    "bytes": 24849,
+    "sha256": "17cdf7664552d988d56c461e22ac86782f498e71734935c978e80ced7cbbeaf6",
+    "originalBytes": 130046,
+    "originalSha256": "6db2d78a4de5a25ad45821e8df96ca223e2d0e049afde15952b8a7d667e810fe"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-851-policyrestore-first-original-job.log.gz",
+    "bytes": 29376,
+    "sha256": "07d31d47b7d60de708d433c378db7bf586b07f82610a1d8cbe8a3a9e631cbfa6",
+    "originalBytes": 165452,
+    "originalSha256": "1fef0632d6602f043c6a083825ada0127af4333a56612230a73afb2d8d8296dd"
+  }
+]

@@ -1,0 +1,126 @@
+{
+  "version": 1,
+  "reviewedAtUtc": "2026-10-07T19:17:18.632455+00:00",
+  "reviewer": "/root/inspect_outcome_contract",
+  "status": "EXACT_HOSTED36_PASS_REQUIRED_CHECKS_PENDING_PRODUCTION_DIAGNOSIS_PENDING",
+  "headSha": "05deed0368ec6f4001c04508c95742623fb5a4f5",
+  "sourceReview": {
+    "path": "/tmp/hrm-default-acl-identity-peer-review-05deed.json",
+    "bytes": 6277,
+    "sha256": "03ac37d47ab6bc270ac982a6a68b631c67482e49558415de634b9898d42eb436"
+  },
+  "run": {
+    "id": 37672370513,
+    "attempt": 1,
+    "event": "pull_request",
+    "conclusion": "success",
+    "head": "05deed0368ec6f4001c04508c95742623fb5a4f5",
+    "metadata": {
+      "path": "/tmp/hrm-acl-identity-05-peer-source-run.json",
+      "bytes": 12911,
+      "sha256": "e76ddcbb8d9aa58127dea68e6fc4cbe6cacab15475aac664fb9dbc7796b84d19"
+    }
+  },
+  "jobs": {
+    "metadata": {
+      "path": "/tmp/hrm-acl-identity-05-peer-source-jobs.json",
+      "bytes": 3616,
+      "sha256": "d7580a6a5892f8253c5d085f1a4075d92bf8d2610dfae83ec189d71f8ae09258"
+    },
+    "sourceJob": 112967102986,
+    "sourceConclusion": "success",
+    "productionJob": 112967450398,
+    "productionConclusion": "skipped",
+    "productionSkippedByProtectedDispatchGuard": true
+  },
+  "actualOriginalSourceLog": {
+    "path": "/tmp/hrm-acl-identity-05-hosted-source.log",
+    "bytes": 47856,
+    "sha256": "4c7b3131673745342561e9327b678dcfc6c2a2896000e2829d3c4470cce22bf1"
+  },
+  "observedTests": [
+    {
+      "source": "unchanged original metadata helper/SQL",
+      "total": 22,
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "source": "supplemental ACL finite identity diagnostics",
+      "total": 14,
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0
+    }
+  ],
+  "actualPostgresMilestones": [
+    "initialCatalogPASS",
+    "unsafeCatalogPASS",
+    "runtimeSetGuardPASS",
+    "BODY_PASS",
+    "8separateDROP_OWNED/DROP_ROLE_cleanupPASS",
+    "positive role/defaultACL residuePASS"
+  ],
+  "currentRequiredApp15368": [
+    {
+      "id": 112967528873,
+      "name": "pr-scope",
+      "head": "05deed0368ec6f4001c04508c95742623fb5a4f5",
+      "appId": 15368,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 112967696807,
+      "name": "static-checks",
+      "head": "05deed0368ec6f4001c04508c95742623fb5a4f5",
+      "appId": 15368,
+      "status": "in_progress",
+      "conclusion": null
+    },
+    {
+      "id": 112967696773,
+      "name": "typecheck",
+      "head": "05deed0368ec6f4001c04508c95742623fb5a4f5",
+      "appId": 15368,
+      "status": "in_progress",
+      "conclusion": null
+    },
+    {
+      "id": 112967102928,
+      "name": "runner-policy",
+      "head": "05deed0368ec6f4001c04508c95742623fb5a4f5",
+      "appId": 15368,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 112967102490,
+      "name": "scan",
+      "head": "05deed0368ec6f4001c04508c95742623fb5a4f5",
+      "appId": 15368,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "requiredSetAllSuccess": false,
+  "pending": [
+    "static-checks",
+    "typecheck"
+  ],
+  "checkMetadata": {
+    "path": "/tmp/hrm-acl-identity-05-peer-checks.json",
+    "bytes": 42914,
+    "sha256": "9c25dcb1e177ccdde3499283dee2d52415d9e205eea3354928670fbe6fae362d"
+  },
+  "authorship": "Root authored diagnostic helper/SQL change; source and actual hosted results independently assessed. Reviewer authored original synthetic fixture/workflow, root cross-review retained; no independent verification-code authorship claim.",
+  "findingsP0P1P2P3": [],
+  "limits": [
+    "No actual production identity category is known yet; old777 ERROR IDENTITY_UNPROVED/proofnull remains unchanged.",
+    "No ACL recipient approval or READY credit from synthetic fixture PASS.",
+    "No code/config/grant/role/secrets changes or production query by reviewer.",
+    "No local PostgreSQL, compiler, browser, build or repeat unit execution.",
+    "Future source main merge requires fresh refs/prospective-tree/current required terminal checks; HRM final whole-tree CI must be on its new frozen head."
+  ]
+}
