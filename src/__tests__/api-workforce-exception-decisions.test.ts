@@ -474,4 +474,22 @@ describe("Explicit HR outcome recording", () => {
     vi.mocked(prisma.workforceExceptionDecision.findMany).mockResolvedValue([...history, { decisionCode: "REOPEN_FOR_REVIEW", caseRevision: 4 }, { decisionCode: "RESOLVE_NO_CHANGE", caseRevision: 5 }] as never)
     expect((await callPost(request({ ...body, actionToken: actionToken(5, "CLASSIFY_CONFIRMED_EXCEPTION") }),auth)).status).toBe(201)
   })
+
+  it("retains the transaction receiver for both advisory locks before recording an HR outcome", async () => {
+    for (let index = 0; index < 2; index++) {
+      vi.mocked(prisma.$executeRaw).mockImplementationOnce(function (this: unknown) {
+        expect(this).toBe(prisma)
+        return Promise.resolve(0)
+      })
+    }
+    const response = await callPost(request({
+      actionToken: actionToken(2, "CLASSIFY_FALSE_POSITIVE"),
+      operationId: "hr-receiver-lock-1",
+      reason: "Reviewed explicitly by HR.",
+    }), auth)
+    expect(response.status).toBe(201)
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(2)
+    expect(prisma.workforceExceptionDecision.create).toHaveBeenCalledTimes(1)
+    expect(prisma.mtmAuditLog.create).toHaveBeenCalledTimes(1)
+  })
 })

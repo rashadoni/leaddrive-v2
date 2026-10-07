@@ -382,6 +382,8 @@ async function localeScenario(tenant, locale, width) {
   const selected = await applyRange(view, "2025-01-01", locale === "ru")
   const geometry = await assertRendered(view, selected.truth)
   await view.page.screenshot({ path: `${outputDirectory}/report-${locale}-${width}-nonempty.png`, fullPage: true })
+  const recordedOutcomesScreenshot = `report-${locale}-${width}-recorded-outcomes.png`
+  await view.page.getByTestId("workforce-exception-recorded-outcomes").screenshot({ path: `${outputDirectory}/${recordedOutcomesScreenshot}` })
   assert.ok((await view.page.locator('section[aria-labelledby="workforce-exception-report-summary"]').innerText()).includes(view.ui.summaryTitle))
   assert.equal(await view.page.getByTestId("workforce-exception-report-boundary").count(), 1)
   const region = view.page.locator('section[aria-labelledby="workforce-exception-report-types"]').getByRole("region", { name: view.ui.typesTitle, exact: true })
@@ -408,7 +410,7 @@ async function localeScenario(tenant, locale, width) {
     }
   }
   assert.deepEqual(view.writes, [])
-  receipts.cases.push({ name: `nonempty-${locale}-${width}`, status: "PASS", responseStatus: 200, linkedShare: selected.truth.share, meanMs: selected.truth.mean, integrityExcluded: selected.truth.excluded, geometry, nativeApplyRefreshAndTableFocus: keyboardControls, rawPrivateDataExcluded: true })
+  receipts.cases.push({ name: `nonempty-${locale}-${width}`, status: "PASS", responseStatus: 200, linkedShare: selected.truth.share, meanMs: selected.truth.mean, integrityExcluded: selected.truth.excluded, geometry, recordedOutcomesScreenshot, nativeApplyRefreshAndTableFocus: keyboardControls, rawPrivateDataExcluded: true })
   await assertSession(view.context, tenant.hr)
   await view.context.close()
 }

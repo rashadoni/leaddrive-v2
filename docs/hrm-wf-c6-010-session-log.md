@@ -156,3 +156,34 @@
 - Narrow исправление: явный optional outcomeContext в типе test response fixture; runtime response/expectations/source/baselines не меняются. Independent review и узкий повтор теста обязательны до checkpoint. Затем exact newhead полный hosted cycle, не borrowing722pass.
 
 - Explicit optional testfixture outcomeContext correction: queue UI9/9 PASS; resourcecheck16830MiBavailable/281GiBfree/pressure0. Independent reviewer confirmed runtimeassertions unchanged, full original1163→1154 delta exactly removed10/added1,27production/workflow/dependency bindings byte-identical722. Both baselines unchanged. Next checkpoint binds correctedharness+testtype and preservedoriginals; all5 exactnewhead hosted gates required.
+
+## 2026-10-07 — третий exact-head hosted attempt
+
+- Published PR612 draft head30677bbbbe1bbaa6143830326fdb48027cffa69c, base608/973 unchanged. Source/API/UI bytes match722; changed only explicit testfixture type, three independently-reviewed harness files, docs/evidence. Both baseline bytes unchanged.
+- FullSHA dispatch37605059926: https://github.com/rashadoni/leaddrive-v2/actions/runs/37605059926. All5 hosted lanes required again on thishead; initial stateQUEUED. Previous722overallFAIL and exactcompiler1154/65vs64 preserved; original5eadfailures also remain. Draft-triggered37605050208SKIPPED is not verification credit.
+- Следующий шаг: independent exactsource supplement30677, actualauthenticatedbrowser/database artifacts +fullcompiler/build/regressions and final evidence review. No merge/deploy/activation/production/access/secrets/Support actions.
+
+Точка: correctedimplementation in draft612/30677, thirdexactheadCIqueued; finalacceptancePENDING.
+
+- Independent exact30677 supplement received; root rehashed27 production/workflow/dependency files and confirmed equality to committedHEAD. Correctedqueue test and immutable baselines/gate scripts independently verified. FindingsP0–P3=0; runtimeevidencePENDING.
+
+## 2026-10-07 — третий report PASS, HR write500 остаётся
+
+- Exact30677 report job112738408289 SUCCESS:9 actualauthenticated scenarios, RU320/AZ768/EN1440, empty/unresolved/measuredzero, positiveforeign tenant and deniedscopes; cleanupPASS. Artifact11474981548 ZIPdigest169a84d0bef4ff6a29164385d8b3b0977154e7a86ec39ee194f2f3f4dced9c68 verifiedagainstactualdownload, everymemberCRC/hash/sourcebindingchecked. InitialAZfailsnoterased; correctbrowserIntl establishes diagnostic repair.
+- Classification job112738408200 FAILED. Real TOTPverification200, CSRFsessionupdate200, nonceconsumedtrue; exactproductionroutinesCOMMITTED. FirstRUCLASSIFY_FALSE_POSITIVE returns500/no code, safe diagnostic nowretained. No written-scenario acceptance; cleanupFAILalso preserved.
+- Artifact11474254342 ZIPdigestffcf8853055c5ebc77fd5b1141b4aaeb9384e1c63bdd0d68f3ed262faf485d41 verified; safeJSON/PNG/originaljoblog archived hosted-30677-classification-attempt3. PrimarycauseUNKNOWN; no permission widening or MFA/source guard bypass. Independent investigator examining rollback-only actualapp-role probes and orderedcleanupdiagnostics.
+- Current30677 fullregression/compiler/build stillrunning and notcancelled. ReportPASS cannot substitute missing HRwrite500acceptance.
+
+## 2026-10-07 — установленный receiver defect и новый regression
+
+- Root read exactPrisma6runtime: $executeRaw uses this._createPrismaPromise; servicefacade copied unbound tx.$executeRaw, and writer called it on facade. ActualcachedPrisma constructed with explicitdummy127.0.0.1:1 and0awaitedqueries: unboundfacade synchronously TypeError exactly missingreceiverfactory; boundfacade createslazyPrismaPromise. No DB connection/execution used. Runtime version/hash and sanitized result preserved prisma-receiver-reproduction.json.
+- Added meaningful APIregression requires actualmocktransactionreceiver for bothadvisorylocks,201,oneledgerdecision/oneaudit. Oldsource reproduced500 FAIL in1selectedtest/24intentionalfilter-skips; originalfailurelog preserved. Sourcefixonly tx.$executeRaw.bind(tx).
+- RepairedAPI/writer41tests2filesPASS, source ESLintPASS, diffcheckPASS. Resourcecheck16595MiBavailable/pressure0. Reviewer independently confirmed receiver/tenanttransaction retained and originalruntimeassertions unchanged. Original30677hosted500 has no capturedrawTypeErrorstack; reproduction is separateestablishedsource/runtimeevidence, notinventedserverlog. Nextrealbrowserwrite201stillrequired.
+- Cleanupharness now closes contexts→browser→Prisma in order with safeperresourcestatus/class/code, stillfailsjob onanycleanupfailure. OriginalcleanupcauseUNKNOWN. Report adds metrics-section-only positivePNG captures besideexistingviewportshots; original9passassertions unchanged.
+- Initialindependentsourcereviews missed inherited unboundmethodbinding; theirartifacts retained, new exact-head supplement will supersede activefindingafterfix. Current30677compiler/buildcontinue; no cancellation orbaselineweakening.
+
+## 2026-10-07 — третий terminal CI и zero-owned compiler
+
+- Exact30677 run37605059926 завершён FAILURE толькоclassificationwrite/cleanup. Report9scenariosSUCCESS, actualPG44/schema/lint/i18n/runnerpolicy/fullregressionSUCCESS_BASELINE_QUALIFIED, isolatedbundleSUCCESS, fullcompilerSUCCESS_BASELINE_QUALIFIED.
+- Actual fullcompiler1153diagnostics/exit2,0diagnostics во всех touchedpaths/families. Entire1154→1153difference is exactlyremovedqueuefixtureTS2353; added0. Bothblockingcompiler gatesPASS and unchanged64baselinepairs. Это globallyNONCLEANcompiler, no blanketcleanclaim. Fulloriginalcompiler/exit/joblogs/terminal/artifactmetadata byte-preservedgzip+assessment.
+- Nextsourcechanges receiverbind+meaningfultest and verificationcleanup/metricsPNG await independentexactheadrenewal;30677passes notborrowed fornexthead. Initial500/cleanupFAIL retained. Следующийcheckpoint thenall5 freshhosted gates necessary.

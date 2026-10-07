@@ -113,7 +113,7 @@ export async function recordScopedWorkforceExceptionDecision(
 
     return appendAuthorizedPolicyWorkforceExceptionDecision({
       db: {
-        $executeRaw: tx.$executeRaw,
+        $executeRaw: tx.$executeRaw.bind(tx),
         workforceExceptionCase: tx.workforceExceptionCase,
         workforceExceptionDecision: tx.workforceExceptionDecision,
         workforceExceptionCaseLookup: {

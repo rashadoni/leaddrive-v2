@@ -285,6 +285,13 @@ function observeWaiter(waiter) {
   void waiter.catch(() => {})
   return waiter
 }
+function safeFailure(error) {
+  return {
+    name: ["AssertionError", "TypeError", "TimeoutError", "PrismaClientKnownRequestError", "PrismaClientValidationError"].includes(error?.name) ? error.name : "Error",
+    sqlState: typeof error?.meta?.code === "string" && /^[A-Z0-9]{5}$/.test(error.meta.code) ? error.meta.code : null,
+    prismaCode: typeof error?.code === "string" && /^P\d{4}$/.test(error.code) ? error.code : null,
+  }
+}
 async function decisionCounts() {
   return { decisions: await admin.workforceExceptionDecision.count(), audit: await admin.mtmAuditLog.count() }
 }
@@ -466,8 +473,18 @@ try {
     await activePage.screenshot({path:`${outputDirectory}/failure-original.png`,fullPage:true});receipts.failure.screenshot="failure-original.png";receipts.failure.syntheticReasonRedacted=true
   }catch{receipts.failure.screenshot="NOT_CAPTURED"}
 }finally{
-  const closed=await Promise.allSettled([...contexts.map(context=>context.close()),...(browser?[browser.close()]:[]),app.$disconnect(),admin.$disconnect()])
-  receipts.cleanup=closed.every(result=>result.status==="fulfilled")?"PASS":"FAIL"
+  // Close contexts before their browser. Preserve safe per-resource failure
+  // metadata; concurrent parent/context closure previously left only FAIL.
+  receipts.cleanupDiagnostics = []
+  async function closeResource(resource, operation) {
+    try { await operation(); receipts.cleanupDiagnostics.push({ resource, status: "PASS" }) }
+    catch (error) { receipts.cleanupDiagnostics.push({ resource, status: "FAIL", ...safeFailure(error) }) }
+  }
+  for (const [index,context] of contexts.entries()) await closeResource(`browser-context-${index+1}`, () => context.close())
+  if (browser) await closeResource("browser", () => browser.close())
+  await closeResource("app-prisma", () => app.$disconnect())
+  await closeResource("admin-prisma", () => admin.$disconnect())
+  receipts.cleanup=receipts.cleanupDiagnostics.every(result=>result.status==="PASS")?"PASS":"FAIL"
   if(receipts.cleanup==="FAIL"){receipts.status="FAIL";process.exitCode=1}
   receipts.completedAt=new Date().toISOString()
   noProtected(JSON.stringify(receipts))

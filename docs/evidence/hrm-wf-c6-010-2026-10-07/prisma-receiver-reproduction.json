@@ -1,0 +1,35 @@
+{
+  "reviewId": "WF-C6-010-Prisma-receiver-reproduction",
+  "candidateWithObservedHosted500": "30677bbbbe1bbaa6143830326fdb48027cffa69c",
+  "productionPath": "src/lib/workforce/exception-decision-service.ts",
+  "before": "$executeRaw: tx.$executeRaw",
+  "after": "$executeRaw: tx.$executeRaw.bind(tx)",
+  "actualPrismaRuntime": {
+    "version": "6.19.2",
+    "runtimeSha256": "d3b39c8cb5863206a16cf8b255b1a1bf9ccaef1d18e4164002c9b21c3ffdd658",
+    "dummyLoopbackPort": 1,
+    "databaseQueriesAwaited": 0,
+    "unboundFacade": {
+      "syncFailed": true,
+      "errorName": "TypeError",
+      "missingReceiverFactory": true
+    },
+    "boundFacade": {
+      "syncFailed": false,
+      "lazyPrismaPromise": true
+    }
+  },
+  "targetedRegression": {
+    "initial": "FAIL expected201 received500;1selectedtest/24intentionalfilter-skips",
+    "after": "PASS41tests2files includingstrictreceiver/2locks/1decision/1audit",
+    "sourceLint": "PASS",
+    "diffCheck": "PASS"
+  },
+  "independentReview": "Agent confirmed exact receiver preservation; role/grants/context/lifecycle unchanged; new exact-head supplement pending",
+  "limitations": [
+    "Hosted30677 server did not expose raw exception and actualTypeError stack was not captured there",
+    "ActualPrisma library and exactfacade reproduce receiver defect; nextauthenticatedUI must independently provewrite201",
+    "No local database/fullcompiler/build/browser workload executed",
+    "Prior hosted500 and cleanupFAIL remain originalfailures"
+  ]
+}

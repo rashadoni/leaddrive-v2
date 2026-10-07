@@ -1,0 +1,112 @@
+{
+  "headSha": "30677bbbbe1bbaa6143830326fdb48027cffa69c",
+  "runId": 37605059926,
+  "artifactArchiveIntegrity": "ZIP digest/CRC/members/receipt source hashes verified",
+  "artifacts": [
+    {
+      "kind": "report",
+      "artifactId": 11474981548,
+      "zipSha256": "169a84d0bef4ff6a29164385d8b3b0977154e7a86ec39ee194f2f3f4dced9c68",
+      "zipBytes": 652269,
+      "members": [
+        {
+          "name": "exception-report-receipt.json",
+          "bytes": 27628,
+          "sha256": "ae0b0dcb7929ec3874a150e7b30900df5b3a236693995780878afab80b00386f"
+        },
+        {
+          "name": "report-az-768-nonempty.png",
+          "bytes": 86804,
+          "sha256": "fb32d57d47a2a0f06f1f192a48bc23e3df978fcc64b78b02df1cbabed9fbf716"
+        },
+        {
+          "name": "report-denied-denied.png",
+          "bytes": 45895,
+          "sha256": "937f0f4182a824a7295314e62b1858b99e5544049c5774d06442d1ad1baf71ea"
+        },
+        {
+          "name": "report-denied-team.png",
+          "bytes": 45895,
+          "sha256": "937f0f4182a824a7295314e62b1858b99e5544049c5774d06442d1ad1baf71ea"
+        },
+        {
+          "name": "report-en-1440-nonempty.png",
+          "bytes": 133632,
+          "sha256": "0a61a7423169c5a37d14aaddbf9882e965dfb1f54f507bc73cdc0a934d6efe0d"
+        },
+        {
+          "name": "report-foreign-positive.png",
+          "bytes": 81698,
+          "sha256": "ace586050cc0fe5cc0b3bb1b28dd42d53dd9fda368d1ae61f80069f5c5ca93df"
+        },
+        {
+          "name": "report-ru-320-empty.png",
+          "bytes": 68380,
+          "sha256": "ea3213db4c4c01891e14324696214456831a2443ea90f28ffc62fab844fff9a3"
+        },
+        {
+          "name": "report-ru-320-measured-zero.png",
+          "bytes": 68459,
+          "sha256": "1a52f5131ccae02ff8b5953cba8da110b34a0750988edac68b86a685e857f224"
+        },
+        {
+          "name": "report-ru-320-nonempty.png",
+          "bytes": 65619,
+          "sha256": "304a18cf5e8f745a49b42d71e09a89eeb2cb6474875af251776bd516e6863165"
+        },
+        {
+          "name": "report-ru-320-unresolved-no-sample.png",
+          "bytes": 68018,
+          "sha256": "25a615f2274d47c4b415783436add8fdaeb796fc057bb2fbb316802f3bedef3e"
+        },
+        {
+          "name": "workflow-context.json",
+          "bytes": 261,
+          "sha256": "af3e27e447b9fcb02aa6571a2e1455ab19f646499d9979bf146b671790cda449"
+        }
+      ],
+      "status": "PASS",
+      "caseCount": 9,
+      "cleanup": "PASS",
+      "verifiedReceiptSourceBindings": 12
+    },
+    {
+      "kind": "classification",
+      "artifactId": 11474254342,
+      "zipSha256": "ffcf8853055c5ebc77fd5b1141b4aaeb9384e1c63bdd0d68f3ed262faf485d41",
+      "zipBytes": 70654,
+      "members": [
+        {
+          "name": "exception-classification-receipt.json",
+          "bytes": 6324,
+          "sha256": "164c3261ac0d9f4d8d72432b4dc2ce9aa08d3b9cf5fac282fcced0b6b4ac64c5"
+        },
+        {
+          "name": "failure-original.png",
+          "bytes": 69879,
+          "sha256": "d30ffe32d69965c03607dc4cf502934912cde89be1cdd0561636bb72bdc20c44"
+        },
+        {
+          "name": "workflow-context.json",
+          "bytes": 261,
+          "sha256": "af3e27e447b9fcb02aa6571a2e1455ab19f646499d9979bf146b671790cda449"
+        },
+        {
+          "name": "workflow-failure.json",
+          "bytes": 219,
+          "sha256": "9b108914d0bbb81f0e68ed0a6922ac599b5b5e47f2b6ecfe07862a278ad46d6c"
+        }
+      ],
+      "status": "FAIL",
+      "caseCount": 0,
+      "cleanup": "FAIL",
+      "verifiedReceiptSourceBindings": 14
+    }
+  ],
+  "classificationFailure": {
+    "MFA": "verification200/session-update200/nonce-consumedtrue",
+    "write": "FirstCLASSIFY_FALSE_POSITIVE500, code null; cause not established",
+    "cleanup": "FAIL, cause not established; ordered cleanup diagnostics proposed"
+  },
+  "finalAcceptance": "PENDING_FULL_CI_AND_CLASSIFICATION_REPAIR"
+}
