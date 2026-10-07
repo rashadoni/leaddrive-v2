@@ -1,0 +1,55 @@
+{
+  "pr": 616,
+  "head": "546d67c1efe7e145e1bfa9a19e9eea7c108b5e57",
+  "main": "8301f6ce0925cf1b8f9ddaa004ea31c26d1e6982",
+  "sourceTree": "cef964f579d15e8ab4da91c8b3a824533f955bc0",
+  "prospectiveMergeTree": "cef964f579d15e8ab4da91c8b3a824533f955bc0",
+  "requiredChecks": [
+    {
+      "name": "static-checks",
+      "id": 112838819950,
+      "head": "546d67c1efe7e145e1bfa9a19e9eea7c108b5e57",
+      "app": 15368,
+      "conclusion": "success",
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37634968360/job/112838819950"
+    },
+    {
+      "name": "typecheck",
+      "id": 112838819834,
+      "head": "546d67c1efe7e145e1bfa9a19e9eea7c108b5e57",
+      "app": 15368,
+      "conclusion": "success",
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37634968360/job/112838819834"
+    },
+    {
+      "name": "pr-scope",
+      "id": 112838658962,
+      "head": "546d67c1efe7e145e1bfa9a19e9eea7c108b5e57",
+      "app": 15368,
+      "conclusion": "success",
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37634968360/job/112838658962"
+    },
+    {
+      "name": "scan",
+      "id": 112837693933,
+      "head": "546d67c1efe7e145e1bfa9a19e9eea7c108b5e57",
+      "app": 15368,
+      "conclusion": "success",
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37634692678/job/112837693933"
+    },
+    {
+      "name": "runner-policy",
+      "id": 112837691945,
+      "head": "546d67c1efe7e145e1bfa9a19e9eea7c108b5e57",
+      "app": 15368,
+      "conclusion": "success",
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37634692639/job/112837691945"
+    }
+  ],
+  "protectedMain": true,
+  "actualHostedSQL": "37634692782/112837694367 sixteenPASS zeroFAIL/SKIP; priorthreeFAIL preserved",
+  "rootSourceReview": "546d exact-source binding, actual unit and SQL proof preserved",
+  "route": "main PR merge -> deploy.yml ->13.140.132.245:/opt/leaddrive-v2",
+  "scope": "internal read-only metadata tool, no new WF migrations/activation/grants",
+  "readyToMerge": true
+}
