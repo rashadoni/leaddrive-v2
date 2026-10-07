@@ -394,3 +394,10 @@
 
 - Exact3fc workflow37644146534 attempt1/sourcejob112870404228 SUCCESS. Root получил оригинальный лог и подтвердил19tests/19PASS/0FAIL/0SKIP, actualisolatedSQL и legacyquerynoncanonical=false reproduction, runnerpolicy47mainworkflowsPASS. Log сохранёнlosslessgzip+hash receipt; это не actualproductionметаданные.
 - PR618 отмеченready толькопослеrootreview иactualsourcePASS; ready запускает обычные5requiredmainchecks на3fc. Source/helper/SQL/workflow больше не меняются во времяCI. Mainmerge ждётактуальных5App15368greenchecks/prospective-treeproof. Actualmain8235/live8235, первоеmetadataENV_INVALID остаётсяFAIL; preciseenvcauseневыдуман, originalfailureсохранён. HRM589 held062, noC6DONEcredit.
+
+
+## 2026-10-07 — diagnosticPR618 штатно слит; ownmain5ce deploy запущен
+
+- Все5requiredApp15368 наexact3fc SUCCESS: scope112871150344/runner112870394129/scan112870399661/static112871350645/type112871350905. Exactnode/source/SQL19/19 предыдущегоrun остаётсятемжеhead. Baseline/gates unchanged; fullstrictregression всёещёknownfailures, typegatebaseline matches, неgloballyclean. Оба originalrequiredfulljoblogs315607/342465bytes сохраненыlossless+receipts. Первый gh downloadstaticлог былNOTAVAILABLE, таккакoverallrunещёrunning; emptytempфайлневыданзаevidence. Retryпослеcompleted получилнастоящиеoriginals.
+- Freshmain8235 и reviewed3fc/51bbf05 подтверждены root, protected5Appcontexts/enforceadmins/normalmergeonly проверены. Matchedsha normalRESTmerge безadmin/force: PR618→main5cebf61623c58ca65b66f2b58506157c097a1931, parents8235+3fc, tree51bbf05exactreviewedsource. Proof/requestresult сохранены. Это внутренний diagnostic source, не HRM589 и не WFmigration/activation/accesschange.
+- Own documented Deploy37647487361 наexact5ce IN_PROGRESS. Realdiagnosticrerun ждётsuccessfulown5cedeploy иpublic artifact/pingproof; первый8235preflightFAILENV_INVALID покаединственныйфактическийрезультат. Послеnewmain интеграцияисточникаHRM должнаобновить062 и зановорunCI наfinalcommit; старый062невыдаётсязаcurrentfinalacceptance. Accounting84/161/77/60,C12PARTIAL/WF-C6-010PARTIAL unchanged.

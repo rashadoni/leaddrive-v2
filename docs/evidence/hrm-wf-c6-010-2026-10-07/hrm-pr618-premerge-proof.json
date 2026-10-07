@@ -1,0 +1,53 @@
+{
+  "pr": 618,
+  "head": "3fc77196bdc7b6582b3fbcb32e9155004702de69",
+  "mainBeforeMerge": "8235c3b24ad12189e1ef95427ce7f192c077ae5c",
+  "prospectiveTree": "51bbf05c0dd6703c63e83c0db81077bf3e1f03c9",
+  "sourceReviewReceipt": "release-root-diagnostic-source-3fc77196.json",
+  "requiredChecks": [
+    {
+      "name": "pr-scope",
+      "id": 112871150344,
+      "head": "3fc77196bdc7b6582b3fbcb32e9155004702de69",
+      "app": 15368,
+      "conclusion": "success"
+    },
+    {
+      "name": "runner-policy",
+      "id": 112870394129,
+      "head": "3fc77196bdc7b6582b3fbcb32e9155004702de69",
+      "app": 15368,
+      "conclusion": "success"
+    },
+    {
+      "name": "scan",
+      "id": 112870399661,
+      "head": "3fc77196bdc7b6582b3fbcb32e9155004702de69",
+      "app": 15368,
+      "conclusion": "success"
+    },
+    {
+      "name": "static-checks",
+      "id": 112871350645,
+      "head": "3fc77196bdc7b6582b3fbcb32e9155004702de69",
+      "app": 15368,
+      "conclusion": "success"
+    },
+    {
+      "name": "typecheck",
+      "id": 112871350905,
+      "head": "3fc77196bdc7b6582b3fbcb32e9155004702de69",
+      "app": 15368,
+      "conclusion": "success"
+    }
+  ],
+  "enforceAdmins": true,
+  "strict": false,
+  "normalMergeOnly": true,
+  "hostedSourceTests": {
+    "run": 37644146534,
+    "job": 112870404228,
+    "pass": 19,
+    "skip": 0
+  }
+}
