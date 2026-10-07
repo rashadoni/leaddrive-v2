@@ -101,3 +101,43 @@
   Next action: root publishes the draft infrastructure PR, marks it ready after
   review, runs all required gates plus real disposable SQL and obtains the
   finite actual recipient evidence without altering the original FAIL/checker.
+
+## 2026-10-07 — first actual hosted SQL failure and fixture-only correction
+
+- Published source549bddb2080bc71271f837f95463c33410642368 ran in
+  hosted workflow37662175182, source job112932190777. Original22 metadata
+  tests PASS with zero skips; supplemental14 total:13 PASS,1 actual SQL FAIL,
+  zero skips. This is a new real failure, not a local SQL result or a transient.
+- Full original output is retained at
+  /tmp/hrm-default-acl-first-hosted-549.log,48,111 bytes, SHA256
+  cfc701a45f593ff41769e65df79637cf3207e734301d497878bc242c174780b1.
+  The test's finally cleanup raised “could not find tuple for default ACL”
+  in a multirole DROP OWNED command. PostgreSQL service evidence reached the
+  read-only CREATE TABLE denial, but all body assertions remain NOT PROVEN:
+  finally may have masked an earlier body failure. Original source review,
+  old549 required-check history and this FAIL are preserved, not rewritten.
+- PR621 became ready before the failure was known. That triggered required PR
+  checks37662503123, not a second dedicated SQL workflow. No second identical
+  hosted SQL failure is claimed. Any later actual rerun must be retained with
+  its own exact head/result and cannot replace this first failure.
+- Narrow peer fixture correction only: each of four declared synthetic roles
+  receives DROP OWNED in a separate psql command/session/snapshot, then separate
+  DROP ROLE. Each operation receives PASS only after actual success; explicit
+  role/default-ACL residue checks must pass before total cleanup PASS.
+- Body catch preserves the primary error and reports a finite stage/kind/
+  whitelisted SQLSTATE. Cleanup errors are separately retained and cannot mask
+  the primary error; cleanup still fails the test if the body passed. Bounded
+  psql errors omit raw stderr, environment/URL/password and database identifiers.
+  Full-body PASS is emitted only after the unchanged final assertions succeed.
+- New helper, fixed production SQL, workflow and original four metadata source
+  files remain unchanged. SQL writes exist only in the GitHub16 loopback
+  disposable fixture; no skip, expected value, role safety or readiness guard
+  was weakened. Contabo PostgreSQL: NOT RUN. Local units: NOT RERUN by peer;
+  root will review syntax and publish the exact corrected hosted successor.
+- Current result: established fixture cleanup defect patched, actual body/cleanup
+  acceptance still pending. Last completed action: original failure analysis and
+  bounded fixture correction. Precise stopping point: working owned test/journal
+  diff awaits root review before checkpoint/publication; no production query or
+  change occurred. Next action: root reviews the diff, publishes a new exact
+  checkpoint and runs hosted SQL with explicit body/cleanup milestones; retain
+  all errors and do not infer production ACL approval from synthetic evidence.

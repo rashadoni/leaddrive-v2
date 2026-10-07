@@ -213,12 +213,22 @@ test("runner validation preserves original safe errors and withholds forged priv
 
 // Only GitHub-hosted disposable PostgreSQL can create these synthetic roles and
 // ACLs. The production helper has no fixture mode or security exception.
-test("hosted PostgreSQL proves real runtime/default-ACL catalog projection and read-only enforcement", { skip: !process.env.HRM_DEFAULT_ACL_TEST_DATABASE_URL }, () => {
+test("hosted PostgreSQL proves real runtime/default-ACL catalog projection and read-only enforcement", { skip: !process.env.HRM_DEFAULT_ACL_TEST_DATABASE_URL }, context => {
   assert.equal(process.env.GITHUB_ACTIONS, "true"); assert.equal(process.env.CI, "true")
   const url = new URL(process.env.HRM_DEFAULT_ACL_TEST_DATABASE_URL)
   assert.equal(url.hostname, "127.0.0.1"); assert.equal(url.pathname, "/hrm_preflight_test"); assert.equal(url.username, "postgres")
   const adminEnv = databaseConnectionEnvironment(url.href)
-  const execute = statement => execFileSync("psql", ["-X", "-qAt", "--no-password", "-v", "ON_ERROR_STOP=1"], { input: statement, encoding: "utf8", env: adminEnv, timeout: 20000, maxBuffer: 65536, stdio: ["pipe", "pipe", "pipe"] })
+  const sqlStates = new Set(["08001", "08006", "25006", "28000", "28P01", "42501", "42601", "42704", "42P01", "2BP01", "55P03", "57014", "XX000"])
+  const execute = statement => {
+    try { return execFileSync("psql", ["-X", "-qAt", "--no-password", "-v", "ON_ERROR_STOP=1", "-v", "VERBOSITY=sqlstate"], { input: statement, encoding: "utf8", env: adminEnv, timeout: 20000, maxBuffer: 65536, stdio: ["pipe", "pipe", "pipe"] }) }
+    catch (error) {
+      const state = String(error?.stderr ?? "").match(/ERROR:\s+([0-9A-Z]{5})(?:\s|$)/)?.[1]
+      const failure = new Error("HOSTED_ACL_PSQL_FAILED sqlState=" + (sqlStates.has(state) ? state : "UNAVAILABLE"))
+      failure.fixtureSqlState = sqlStates.has(state) ? state : "UNAVAILABLE"
+      throw failure
+    }
+  }
+  const failureDetail = error => "kind=" + (error?.fixtureSqlState ? "PSQL" : error?.code === "ERR_ASSERTION" ? "ASSERTION" : "OTHER") + " sqlState=" + (sqlStates.has(error?.fixtureSqlState) ? error.fixtureSqlState : "UNAVAILABLE")
   assert.equal(execute("SELECT current_database()='hrm_preflight_test' AND (SELECT rolsuper FROM pg_catalog.pg_roles WHERE rolname=current_user);").trim(), "t")
   assert.equal(execute("SELECT count(*) FROM pg_catalog.pg_class WHERE relnamespace='public'::regnamespace AND relkind='r';").trim(), "0")
   const runtime = new URL(url.href); runtime.username = "hrm_acl_runtime"; runtime.password = "isolated-acl-runtime"
@@ -233,26 +243,65 @@ test("hosted PostgreSQL proves real runtime/default-ACL catalog projection and r
     return report
   }
   execute("BEGIN; CREATE ROLE hrm_acl_runtime LOGIN NOSUPERUSER NOBYPASSRLS PASSWORD 'isolated-acl-runtime'; CREATE ROLE hrm_acl_migration LOGIN NOSUPERUSER BYPASSRLS PASSWORD 'isolated-acl-migration'; CREATE ROLE hrm_acl_other NOLOGIN NOSUPERUSER NOBYPASSRLS; CREATE ROLE hrm_acl_privileged NOLOGIN NOSUPERUSER BYPASSRLS; GRANT USAGE,CREATE ON SCHEMA public TO hrm_acl_migration; GRANT EXECUTE ON FUNCTION pg_catalog.pg_control_system() TO hrm_acl_runtime,hrm_acl_migration; ALTER DEFAULT PRIVILEGES FOR ROLE hrm_acl_migration IN SCHEMA public GRANT SELECT,INSERT,UPDATE,DELETE ON TABLES TO hrm_acl_runtime; ALTER DEFAULT PRIVILEGES FOR ROLE hrm_acl_migration IN SCHEMA public GRANT SELECT ON TABLES TO hrm_acl_other; COMMIT;")
+  let stage = "FIXTURE_IDENTITY", bodyError = null, cleanupError = null, migrationFixtureOid
   try {
+    migrationFixtureOid = execute("SELECT oid::text FROM pg_catalog.pg_roles WHERE rolname='hrm_acl_migration';").trim()
+    assert.ok(/^[1-9][0-9]{0,9}$/.test(migrationFixtureOid), "HOSTED_ACL_FIXTURE_IDENTITY_UNPROVED")
+    stage = "INITIAL_CATALOG"
     let report = observe()
     assert.equal(report.proof.acl.explicitPrivilegeRows, 5); assert.equal(report.proof.acl.nonOwnerWriteRows, 3); assert.equal(report.proof.acl.publicPrivilegeRows, 0)
     assert.deepEqual(report.proof.acl.entries.filter(e => e.recipient === "EXPECTED_RUNTIME").map(e => e.privilege).sort(), ["DELETE", "INSERT", "SELECT", "UPDATE"])
     assert.equal(report.proof.acl.entries.find(e => e.recipient === "OTHER").privilege, "SELECT")
     assert.equal(report.proof.acl.entries.find(e => e.recipient === "OTHER").recipientProfile.canLogin, false)
+    context.diagnostic("HOSTED_ACL_MILESTONE initialCatalog=PASS")
+    stage = "UNSAFE_CATALOG"
     execute("ALTER DEFAULT PRIVILEGES FOR ROLE hrm_acl_migration GRANT SELECT ON TABLES TO PUBLIC; ALTER DEFAULT PRIVILEGES FOR ROLE hrm_acl_migration IN SCHEMA public GRANT TRUNCATE,TRIGGER,REFERENCES ON TABLES TO hrm_acl_other; ALTER DEFAULT PRIVILEGES FOR ROLE hrm_acl_migration IN SCHEMA public GRANT INSERT ON TABLES TO hrm_acl_other WITH GRANT OPTION;")
     report = observe()
     assert.equal(report.proof.acl.publicPrivilegeRows, 1); assert.equal(report.proof.acl.nonOwnerWriteRows, 7); assert.equal(report.proof.acl.grantableRows, 1)
     assert.ok(report.proof.acl.entries.some(e => e.scope === "GLOBAL" && e.recipient === "OWNER"))
     assert.ok(report.proof.acl.entries.some(e => e.recipient === "PUBLIC" && e.recipientProfile.present === false))
     assert.deepEqual(report.proof.acl.entries.filter(e => e.recipient === "OTHER" && ["TRUNCATE", "TRIGGER", "REFERENCES"].includes(e.privilege)).map(e => e.privilege).sort(), ["REFERENCES", "TRIGGER", "TRUNCATE"])
+    context.diagnostic("HOSTED_ACL_MILESTONE unsafeCatalog=PASS")
+    stage = "RUNTIME_SET_GUARD"
     execute("GRANT hrm_acl_privileged TO hrm_acl_runtime;")
     const denied = inspectAclRemote(sql, bindings, sha, { uid: 0, read: privateRead })
     assert.equal(denied.status, "ERROR"); assert.equal(denied.code, "PROFILE_UNPROVED"); assert.equal(denied.proof, null)
     execute("REVOKE hrm_acl_privileged FROM hrm_acl_runtime;")
+    context.diagnostic("HOSTED_ACL_MILESTONE runtimeSetGuard=PASS")
+    stage = "READ_ONLY_GUARD"
     assert.equal(queryAclMetadata(migration.href, "SELECT current_setting('transaction_read_only');", "hrm_acl_runtime", "migration").trim(), "on")
     assert.throws(() => queryAclMetadata(migration.href, "CREATE TABLE hrm_acl_forbidden(id integer);", "hrm_acl_runtime", "migration"), { message: "QUERY_FAILED" })
     assert.equal(execute("SELECT to_regclass('public.hrm_acl_forbidden') IS NULL;").trim(), "t")
+    context.diagnostic("HOSTED_ACL_BODY=PASS")
+  } catch (error) {
+    bodyError = error
+    context.diagnostic("HOSTED_ACL_BODY=FAIL stage=" + stage + " " + failureDetail(error))
   } finally {
-    execute("DROP OWNED BY hrm_acl_runtime,hrm_acl_migration,hrm_acl_other,hrm_acl_privileged; DROP ROLE hrm_acl_runtime,hrm_acl_migration,hrm_acl_other,hrm_acl_privileged;")
+    // Each command uses a new psql session/catalog snapshot. A multirole DROP
+    // OWNED can revisit a default ACL tuple removed by a previous role's pass.
+    const roles = [["RUNTIME", "hrm_acl_runtime"], ["MIGRATION", "hrm_acl_migration"], ["OTHER", "hrm_acl_other"], ["PRIVILEGED", "hrm_acl_privileged"]]
+    for (const command of ["DROP OWNED BY", "DROP ROLE"]) for (const [slot, role] of roles) {
+      const action = command === "DROP OWNED BY" ? "DROP_OWNED" : "DROP_ROLE"
+      try {
+        execute(command + " " + role + ";")
+        context.diagnostic("HOSTED_ACL_CLEANUP action=" + action + " slot=" + slot + " status=PASS")
+      } catch (error) {
+        cleanupError ??= error
+        context.diagnostic("HOSTED_ACL_CLEANUP action=" + action + " slot=" + slot + " status=FAIL " + failureDetail(error))
+      }
+    }
+    try {
+      assert.ok(/^[1-9][0-9]{0,9}$/.test(migrationFixtureOid), "HOSTED_ACL_CLEANUP_IDENTITY_UNPROVED")
+      assert.equal(execute("SELECT NOT EXISTS(SELECT 1 FROM pg_catalog.pg_roles WHERE rolname IN ('hrm_acl_runtime','hrm_acl_migration','hrm_acl_other','hrm_acl_privileged')) AND NOT EXISTS(SELECT 1 FROM pg_catalog.pg_default_acl WHERE defaclrole=" + migrationFixtureOid + ");").trim(), "t")
+      context.diagnostic("HOSTED_ACL_CLEANUP residue=PASS")
+    } catch (error) {
+      cleanupError ??= error
+      context.diagnostic("HOSTED_ACL_CLEANUP residue=FAIL " + failureDetail(error))
+    }
+    if (!cleanupError) context.diagnostic("HOSTED_ACL_CLEANUP=PASS")
   }
+  // Preserve the primary body failure even if cleanup also failed. A cleanup
+  // failure still fails the test when all unchanged body assertions succeeded.
+  if (bodyError) throw bodyError
+  if (cleanupError) throw cleanupError
 })
