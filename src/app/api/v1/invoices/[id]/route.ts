@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
@@ -222,7 +223,7 @@ export const DELETE = withRls(async (_req, { orgId }, { params }: { params: Prom
   const { id } = await params
 
   try {
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // The invoice goes first: deleting it waits for a payment that is being
       // recorded on it right now, so the registry rows removed below include
       // that payment's.
