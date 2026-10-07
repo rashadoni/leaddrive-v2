@@ -70,10 +70,27 @@ export function specialVisitRuleCount(rules: readonly VisitSwitchRule[], now: Da
   return rules.filter((rule) => rule !== company && inEffect(rule, now)).length
 }
 
-/** What the two switches of an action show. An action no rule mentions is optional — the server's default. */
-export function visitSwitchState(rule: VisitSwitchRule | null, actionKey: string): { shown: boolean; required: boolean; conditional: boolean } {
+/**
+ * What the server falls back to while an organization has no rule at all.
+ * `photoRequired` is the setting older than the rules («photo required on
+ * every visit»): the resolver still honours it then, and only then. Its own
+ * switch is gone from the settings page, so the photo row must show it —
+ * otherwise the row would read «not required» for a photo the server requires.
+ */
+export interface VisitSwitchDefaults { legacyPhotoRequired?: boolean }
+
+function modeWithoutRule(actionKey: string, defaults: VisitSwitchDefaults | undefined): VisitSwitchMode {
+  return actionKey === "PHOTO" && defaults?.legacyPhotoRequired === true ? "REQUIRED" : "OPTIONAL"
+}
+
+/** What the two switches of an action show. An action a rule does not mention is optional — the server's default. */
+export function visitSwitchState(
+  rule: VisitSwitchRule | null,
+  actionKey: string,
+  defaults?: VisitSwitchDefaults,
+): { shown: boolean; required: boolean; conditional: boolean } {
   const action = rule?.actions.find((candidate) => candidate.actionKey === actionKey)
-  const mode = action?.mode ?? "OPTIONAL"
+  const mode = action?.mode ?? (rule ? "OPTIONAL" : modeWithoutRule(actionKey, defaults))
   const conditions = action?.conditions
   return {
     shown: mode !== "HIDDEN",
@@ -98,14 +115,17 @@ export function visitActionsAfterSwitch(
   rule: VisitSwitchRule | null,
   actionKey: VisitSwitchActionKey,
   change: { shown?: boolean; required?: boolean },
+  defaults?: VisitSwitchDefaults,
 ): VisitSwitchAction[] {
   const stored = rule?.actions ?? []
   const keys = [...new Set<string>([...VISIT_SWITCH_ACTION_KEYS, ...stored.map((action) => action.actionKey)])]
   return keys.map((key) => {
     const current: VisitSwitchAction = stored.find((action) => action.actionKey === key)
-      ?? { actionKey: key, mode: "OPTIONAL", minCount: 1, conditions: null, allowWaiver: false }
+      // The first rule of an organization starts from what applied without one,
+      // so creating it by one switch does not quietly lift a required photo.
+      ?? { actionKey: key, mode: rule ? "OPTIONAL" : modeWithoutRule(key, defaults), minCount: 1, conditions: null, allowWaiver: false }
     if (key !== actionKey) return current
-    const before = visitSwitchState(rule, key)
+    const before = visitSwitchState(rule, key, defaults)
     const shown = change.shown ?? before.shown
     // Switching «shown» back on returns an optional action, not the required one it may once have been.
     const required = change.shown !== undefined ? false : (change.required ?? before.required)

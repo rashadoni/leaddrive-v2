@@ -9,7 +9,7 @@ import { toast } from "sonner"
 import { PageDescription } from "@/components/page-description"
 import { HelpButton } from "@/components/help/help-button"
 import {
-  Settings, Save, Satellite, MapPin, Camera, BellRing, Route, Clock3, LifeBuoy, LayoutGrid, Radar, UserCog,
+  Settings, Save, Satellite, Lock, MapPin, Camera, BellRing, Route, Clock3, LifeBuoy, LayoutGrid, Radar, UserCog,
   AlertTriangle, RotateCcw, ChevronDown,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -52,7 +52,16 @@ type SettingItem = {
   // Plain explanatory sub-blocks rendered in the switch's row.
   notes?: { titleKey: string; hintKey: string; thresholds?: Threshold[] }[]
 }
-type SettingGroup = { titleKey: string; icon: typeof Settings; hintKey?: string; items: SettingItem[] }
+/**
+ * The page is six tabs, not one ten-screen scroll. What a manager changes in
+ * daily work comes first; what only an implementer touches is last.
+ */
+const SETTINGS_TABS = ["visit", "routes", "alerts", "clients", "company", "admin"] as const
+type SettingsTab = typeof SETTINGS_TABS[number]
+const SETTINGS_TAB_LABEL: Record<SettingsTab, string> = {
+  visit: "tabVisit", routes: "tabRoutes", alerts: "tabAlerts", clients: "tabClients", company: "tabCompany", admin: "tabAdmin",
+}
+type SettingGroup = { titleKey: string; icon: typeof Settings; hintKey?: string; items: SettingItem[]; tab?: SettingsTab }
 
 function stringSettingValue(value: SettingValue, fallback: string): string {
   return typeof value === "string" ? value : fallback
@@ -114,11 +123,11 @@ export default function MtmSettingsPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, MtmSettingFieldError | { key: string; code: "required" }>>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [activeVisitPolicies, setActiveVisitPolicies] = useState(0)
   const [policyPhotoMinimum, setPolicyPhotoMinimum] = useState(0)
   // Bumped after a save that changes how visit rules apply, so the rule
   // editor below remounts and reloads (its internals stay untouched).
   const [visitPolicyEditorKey, setVisitPolicyEditorKey] = useState(0)
+  const [tab, setTab] = useState<SettingsTab>("visit")
   // Loading and the leave warning must not re-run when the translator's
   // identity changes; they read the latest one through this ref.
   const tsRef = useRef(ts)
@@ -147,16 +156,16 @@ export default function MtmSettingsPage() {
     loadSettings().finally(() => setLoading(false))
   }, [loadSettings])
 
-  // Active rules decide two warnings: the photo switch is only a fallback
-  // when no rule matches, and a rule's photo minimum above the per-visit
-  // limit is capped at that limit.
+  // Active rules decide one warning: a rule's photo minimum above the
+  // per-visit limit is capped at that limit. (The old «photo required» switch
+  // and its «rules exist» warning are gone: the visit switches show that
+  // setting and carry it into the rule their first press creates.)
   const loadVisitPolicies = useCallback(() => {
     fetch("/api/v1/mtm/visit-policies", { cache: "no-store" })
       .then(async (r) => {
         const body = await r.json().catch(() => null)
         if (!r.ok || !body?.success) return
         const active = activePolicies(body.data?.policies)
-        setActiveVisitPolicies(active.length)
         setPolicyPhotoMinimum(highestRequiredPhotoMinimum(active))
       })
       .catch(() => undefined)
@@ -294,6 +303,7 @@ export default function MtmSettingsPage() {
 
   const handleSave = async () => {
     if (hasFieldErrors) {
+      openTabWithMistake(Object.keys(fieldErrors))
       toast.error(ts("saveInvalid"))
       return
     }
@@ -313,6 +323,7 @@ export default function MtmSettingsPage() {
         const errors = Array.isArray(body?.errors) ? body.errors as MtmSettingFieldError[] : []
         if (errors.length > 0) {
           setFieldErrors((prev) => ({ ...prev, ...Object.fromEntries(errors.map((error) => [error.key, error])) }))
+          openTabWithMistake(errors.map((error) => error.key))
           toast.error(ts("saveInvalid"))
         } else {
           toast.error(ts("saveFailed"))
@@ -348,6 +359,7 @@ export default function MtmSettingsPage() {
   const settingGroups: SettingGroup[] = [
     {
       titleKey: "groupScheduling",
+      tab: "company",
       icon: Clock3,
       items: [
         { key: "timezone", labelKey: "lblTimezone", hintKey: "hintTimezone", type: "timezone" },
@@ -355,6 +367,7 @@ export default function MtmSettingsPage() {
     },
     {
       titleKey: "groupSupport",
+      tab: "company",
       icon: LifeBuoy,
       items: [
         { key: "supportEmail", labelKey: "lblSupportEmail", hintKey: "hintSupportEmail", type: "text" },
@@ -365,6 +378,7 @@ export default function MtmSettingsPage() {
       // Whole-feature switches: hide a surface from menus and the agent app,
       // never delete data. Administrator-only, mirrored by the PUT guard.
       titleKey: "groupModules",
+      tab: "company",
       icon: LayoutGrid,
       items: [
         { key: "fieldContactsEnabled", labelKey: "lblFieldContacts", hintKey: "hintFieldContacts", type: "boolean", adminOnly: true },
@@ -373,24 +387,29 @@ export default function MtmSettingsPage() {
     },
     {
       titleKey: "groupVisits",
+      tab: "visit",
       icon: Camera,
       items: [
-        { key: "photoRequired", labelKey: "lblPhotoRequired", hintKey: "hintPhotoRequired", type: "boolean" },
-        { key: "visitPoliciesEnabled", labelKey: "lblVisitPolicies", hintKey: "hintVisitPolicies", type: "boolean" },
         { key: "maxPhotosPerVisit", labelKey: "lblMaxPhotosPerVisit", hintKey: "hintMaxPhotos", type: "number", unitKey: "unitPhotos" },
         { key: "photoWatermarkEnabled", labelKey: "lblPhotoWatermark", hintKey: "hintPhotoWatermark", type: "boolean" },
       ],
     },
     {
       titleKey: "groupGeofence",
+      tab: "visit",
       icon: MapPin,
       items: [
         { key: "geofenceRadius", labelKey: "lblGeofenceRadius", hintKey: "hintGeofenceRadius", type: "number", unitKey: "unitMeters" },
+        // Beside the radius it lifts, and changed by whoever may change the
+        // radius: on «Access & permissions» alone it was out of reach of the
+        // people who run the field module (owner's own account, 2026-10-08).
+        { key: "agentCheckInOutsideZone", labelKey: "lblCheckInOutsideZone", hintKey: "hintCheckInOutsideZone", type: "boolean" },
       ],
     },
     {
       // One row per alert: the switch and the numbers it uses live together.
       titleKey: "groupAlerts",
+      tab: "alerts",
       icon: BellRing,
       items: [
         {
@@ -416,6 +435,7 @@ export default function MtmSettingsPage() {
     },
     {
       titleKey: "groupLiveMap",
+      tab: "alerts",
       icon: Radar,
       items: [
         { key: "lateAfterHour", labelKey: "lblLateAfterHour", hintKey: "hintLateAfterHour", type: "number", unitKey: "unitHour" },
@@ -424,6 +444,7 @@ export default function MtmSettingsPage() {
     },
     {
       titleKey: "groupRoutePlanning",
+      tab: "routes",
       icon: Route,
       items: [
         { key: "routeAssignmentsEnabled", labelKey: "lblRouteAssignments", hintKey: "hintRouteAssignments", type: "boolean" },
@@ -434,11 +455,23 @@ export default function MtmSettingsPage() {
     },
     {
       titleKey: "groupAgentCapabilities",
+      tab: "company",
       icon: UserCog,
       items: [
         { key: "taskSelfCreate", labelKey: "lblTaskSelfCreate", hintKey: "hintTaskSelfCreate", type: "boolean" },
         { key: "taskSelfRecurring", labelKey: "lblTaskSelfRecurring", hintKey: "hintTaskSelfRecurring", type: "boolean" },
         { key: "teamScheduleVisibilityEnabled", labelKey: "lblTeamScheduleVisibility", hintKey: "hintTeamScheduleVisibility", type: "boolean" },
+      ],
+    },
+    {
+      // Set once when the module is rolled out and then left alone: the kill
+      // switch of the visit rules and two switches about data, none of which
+      // is something an agent does. They used to sit among the daily settings.
+      titleKey: "groupRare",
+      tab: "admin",
+      icon: Settings,
+      items: [
+        { key: "visitPoliciesEnabled", labelKey: "lblVisitPolicies", hintKey: "hintVisitPolicies", type: "boolean" },
         { key: "brandPotentialPerAgentEnabled", labelKey: "lblBrandPotentialPerAgent", hintKey: "hintBrandPotentialPerAgent", type: "boolean" },
         { key: "excelImportsEnabled", labelKey: "lblExcelImports", hintKey: "hintExcelImports", type: "boolean" },
       ],
@@ -460,6 +493,25 @@ export default function MtmSettingsPage() {
     ],
   }
 
+  // Which tab holds a setting. A change or a mistake in a tab that is not
+  // open must not be invisible: its tab carries a mark, and a refused save
+  // opens the tab with the first mistake instead of pointing at nothing.
+  const tabByKey = new Map<string, SettingsTab>([["routeTargetTypes", "routes"]])
+  for (const group of [...settingGroups, { ...advancedGroup, tab: "admin" as const }]) {
+    if (!group.tab) continue
+    for (const item of group.items) {
+      const thresholds = [...(item.thresholds ?? []), ...(item.notes ?? []).flatMap((note) => note.thresholds ?? [])]
+      for (const key of [item.key, ...thresholds.map((threshold) => threshold.key)]) tabByKey.set(key, group.tab)
+    }
+  }
+  const tabsOf = (keys: string[]) => new Set(keys.map((key) => tabByKey.get(key)).filter((name): name is SettingsTab => Boolean(name)))
+  const tabsWithErrors = tabsOf(Object.keys(fieldErrors))
+  const tabsWithChanges = tabsOf(changedKeys)
+  const openTabWithMistake = (keys: string[]) => {
+    const withMistake = tabsOf(keys)
+    if (withMistake.size > 0 && !withMistake.has(tab)) setTab(SETTINGS_TABS.find((name) => withMistake.has(name)) ?? tab)
+  }
+
   const renderNumber = (key: string, labelKey: string, unitKey: UnitKey, disabled = false) => {
     const error = fieldErrorText(key)
     const range = isMtmNumericSettingKey(key) ? MTM_SETTING_NUMBER_RANGES[key] : undefined
@@ -467,6 +519,7 @@ export default function MtmSettingsPage() {
     const value = key in numberDrafts ? numberDrafts[key] : (typeof stored === "number" ? String(stored) : "")
     return (
       <div className="flex shrink-0 flex-col items-end gap-1">
+        <div className="flex items-center gap-1.5">
         <input
           type="number"
           inputMode="numeric"
@@ -481,6 +534,10 @@ export default function MtmSettingsPage() {
           onChange={(e) => updateNumber(key, e.target.value)}
           className={`w-24 rounded-md border bg-background px-2 py-1 text-right text-sm disabled:cursor-not-allowed disabled:opacity-50 ${error ? "border-destructive" : "border-zinc-200 dark:border-zinc-700"}`}
         />
+        {/* The unit used to live only in the screen-reader label and in a
+            «(м)» glued to some titles; a number without it is a guess. */}
+        <span aria-hidden="true" className="min-w-8 text-xs text-muted-foreground">{ts(`${unitKey}Short`)}</span>
+        </div>
         {error ? <span id={`mtm-setting-error-${key}`} role="alert" className="max-w-[12rem] text-right text-xs text-destructive">{error}</span> : null}
       </div>
     )
@@ -516,7 +573,9 @@ export default function MtmSettingsPage() {
   const showThresholds = (thresholds: Threshold[] | undefined, switchOn: boolean): thresholds is Threshold[] =>
     !!thresholds && (switchOn || thresholds.some((threshold) => threshold.key in fieldErrors))
 
-  const renderItem = (item: SettingItem) => {
+  // `lockNote`: a switch that cannot be pressed says why. The advanced block
+  // says it once for all of its rows instead.
+  const renderItem = (item: SettingItem, lockNote = true) => {
     const disabled = item.adminOnly === true && !canChangeAdminOnly
     const switchOn = settings[item.key] === true
     return (
@@ -525,6 +584,11 @@ export default function MtmSettingsPage() {
           <div className="min-w-0">
             <div className="text-sm font-medium">{ts(item.labelKey)}</div>
             <div className="text-xs text-muted-foreground mt-0.5">{ts(item.hintKey)}</div>
+            {disabled && lockNote ? (
+              <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground" data-testid={`mtm-setting-locked-${item.key}`}>
+                <Lock className="h-3 w-3 shrink-0" aria-hidden="true" />{ts("adminOnlyNote")}
+              </div>
+            ) : null}
           </div>
           {item.type === "boolean" ? (
             renderSwitch(item, disabled)
@@ -557,12 +621,6 @@ export default function MtmSettingsPage() {
             <span>{ts("maxPhotosBelowPolicyMinimum")}</span>
           </div>
         ) : null}
-        {item.key === "photoRequired" && activeVisitPolicies > 0 ? (
-          <div data-testid="photo-required-policy-warning" className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
-            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            <span>{ts("photoPoliciesWarning")}</span>
-          </div>
-        ) : null}
         {showThresholds(item.thresholds, switchOn) ? (
           <div className="border-l-2 border-muted pl-3">{renderThresholds(item.thresholds, disabled)}</div>
         ) : null}
@@ -583,7 +641,31 @@ export default function MtmSettingsPage() {
     )
   }
 
-  const cardClass = "mb-3 break-inside-avoid rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4"
+  const cardClass = "rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4"
+
+  // Every tab is one grid of two equal columns (owner, 2026-10-08, shown a
+  // half-width card with nothing beside it: «симметрично делай… половинчатые
+  // блоки»). A card is either half of a pair — the pair shares one height —
+  // or, when it would stand alone, the whole row with its settings laid out
+  // in columns of its own. There is no third kind.
+  const groupsOf = (name: SettingsTab) => settingGroups.filter((group) => group.tab === name)
+  const renderGroup = (group: SettingGroup, span: "half" | "full", extraClass = "") => {
+    const GroupIcon = group.icon
+    const columns = span === "half" ? "space-y-4" : `grid gap-x-8 gap-y-4 ${group.items.length % 3 === 0 ? "lg:grid-cols-3" : "lg:grid-cols-2"}`
+    return (
+      <section
+        key={group.titleKey}
+        data-settings-group={group.titleKey}
+        data-span={span}
+        className={`${cardClass} ${span === "full" ? "lg:col-span-2" : ""} ${extraClass}`}
+      >
+        <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
+          <GroupIcon className="h-4 w-4 text-muted-foreground" /> {ts(group.titleKey)}
+        </h3>
+        <div className={columns}>{group.items.map((item) => renderItem(item))}</div>
+      </section>
+    )
+  }
 
   if (loading) return (
     <div className="space-y-6">
@@ -599,42 +681,119 @@ export default function MtmSettingsPage() {
         <HelpButton slug="mtm-settings" variant="label" />
       </div>
 
-      <RouteTargetTypeSettings
-        value={settings.routeTargetTypes}
-        onChange={(value) => updateSetting("routeTargetTypes", value)}
-      />
-
-      {/* Masonry via CSS columns: cards of different heights pack without the
-          empty hole a two-column grid left next to the tall cards. The page
-          scrolls as one; no card has its own scroll. */}
-      <div className="columns-1 gap-3 lg:columns-2">
-        {settingGroups.map((group) => {
-          const GroupIcon = group.icon
-          return (
-            <section key={group.titleKey} data-settings-group={group.titleKey} className={cardClass}>
-              <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                <GroupIcon className="h-4 w-4 text-muted-foreground" /> {ts(group.titleKey)}
-              </h3>
-              <div className="space-y-4">{group.items.map(renderItem)}</div>
-            </section>
-          )
-        })}
+      {/* Six tabs instead of one ten-screen page (owner, 2026-10-08: «сделай
+          компактнее… сама структура какая-то непонятная»). Every panel stays
+          mounted and is only hidden, so an unsaved change in one tab is still
+          there after a look at another. */}
+      <div role="tablist" aria-label={ts("tabsLabel")} className="flex flex-wrap gap-2" data-testid="mtm-settings-tabs">
+        {SETTINGS_TABS.map((name) => (
+          <button
+            key={name}
+            type="button"
+            role="tab"
+            id={`mtm-settings-tab-${name}`}
+            aria-selected={tab === name}
+            aria-controls={`mtm-settings-panel-${name}`}
+            onClick={() => setTab(name)}
+            className={`min-h-11 rounded-full border px-4 text-sm font-medium transition-colors ${tab === name
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-zinc-200 bg-card text-muted-foreground hover:text-foreground dark:border-zinc-700"}`}
+          >
+            {ts(SETTINGS_TAB_LABEL[name])}
+            {tabsWithErrors.has(name) || tabsWithChanges.has(name) ? (
+              <span
+                data-testid={`mtm-settings-tab-mark-${name}`}
+                data-mark={tabsWithErrors.has(name) ? "mistake" : "unsaved"}
+                className={`ml-2 inline-block h-2 w-2 rounded-full ${tabsWithErrors.has(name) ? "bg-rose-500" : "bg-amber-400"}`}
+              >
+                <span className="sr-only">{ts(tabsWithErrors.has(name) ? "tabMarkMistake" : "tabMarkUnsaved")}</span>
+              </span>
+            ) : null}
+          </button>
+        ))}
       </div>
 
-      <details data-settings-group="groupAdvanced" className="group rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card">
-        <summary className="flex cursor-pointer list-none items-center gap-2 p-4 text-sm font-semibold">
-          <Satellite className="h-4 w-4 text-muted-foreground" /> {ts(advancedGroup.titleKey)}
-          <ChevronDown className="ml-auto h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" />
-        </summary>
-        <div className="space-y-4 px-4 pb-4">
-          <p className="text-xs text-muted-foreground">{ts("hintAdvanced")}</p>
-          {advancedGroup.items.map(renderItem)}
-        </div>
-      </details>
+      {SETTINGS_TABS.map((name) => (
+        <div
+          key={name}
+          role="tabpanel"
+          id={`mtm-settings-panel-${name}`}
+          aria-labelledby={`mtm-settings-tab-${name}`}
+          hidden={tab !== name}
+          className="space-y-3"
+        >
+          {/* What an agent does in a visit comes first on the first tab; the
+              photo and zone cards are the second column of the same row. */}
+          {name === "visit" ? (
+            <VisitPolicySettings
+              key={visitPolicyEditorKey}
+              legacyPhotoRequired={loaded.photoRequired === true}
+              aside={groupsOf("visit").map((group) => renderGroup(group, "half", "flex-1"))}
+            />
+          ) : null}
 
-      {/* Sticky save bar for everything above; the sections below save themselves. */}
+          {name === "routes" ? (
+            <RouteTargetTypeSettings
+              value={settings.routeTargetTypes}
+              onChange={(value) => updateSetting("routeTargetTypes", value)}
+            />
+          ) : null}
+
+          {name === "admin" ? <p className="max-w-2xl text-sm text-muted-foreground">{ts("adminIntro")}</p> : null}
+
+          {name !== "visit" && groupsOf(name).length > 0 ? (
+            <div className="grid gap-3 lg:grid-cols-2" data-settings-grid={name}>
+              {groupsOf(name).map((group, index, all) => renderGroup(group, all.length % 2 === 1 && index === all.length - 1 ? "full" : "half"))}
+            </div>
+          ) : null}
+
+          {/* Everything about the client card — categories, fields, specialties —
+              in one block with its own save buttons. It describes field contacts
+              and means nothing while those are turned off; the stored values stay
+              and return when contacts are switched back on. It works from what the
+              server holds (`loaded`), not from this page's unsaved draft. */}
+          {name === "clients" ? (
+            settings.fieldContactsEnabled !== false ? (
+              <ContactCardSettings
+                requiredFields={loaded.contactRequiredFields}
+                hiddenFields={loaded.contactHiddenFields}
+                specialties={loaded.contactSpecialties}
+                classes={loaded.contactClasses}
+                onSaved={applySavedSettings}
+              />
+            ) : <p className="text-sm text-muted-foreground" data-testid="mtm-settings-clients-off">{ts("clientsOff")}</p>
+          ) : null}
+
+          {name === "admin" ? (
+            <>
+              <details data-settings-group="groupAdvanced" className="group rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card">
+                <summary className="flex cursor-pointer list-none items-center gap-2 p-4 text-sm font-semibold">
+                  <Satellite className="h-4 w-4 text-muted-foreground" /> {ts(advancedGroup.titleKey)}
+                  <ChevronDown className="ml-auto h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" />
+                </summary>
+                <div className="space-y-4 px-4 pb-4">
+                  <p className="text-xs text-muted-foreground">{ts("hintAdvanced")}</p>
+                  {advancedGroup.items.map((item) => renderItem(item, false))}
+                </div>
+              </details>
+              <ContactDictionarySettings />
+              <OrganizationAttributePackageSettings />
+              <CoveragePolicyAdmin />
+              <KpiPolicyAdmin />
+              <ScoringFormulaSettings />
+            </>
+          ) : null}
+        </div>
+      ))}
+
+      {/* Sticky save bar for the fields of the form. It is there only while
+          there is something to save: a strip saying «everything is saved»
+          under every tab covered the last card and answered a question nobody
+          asked, and appearing on the first change is what tells a person that
+          this change — unlike the visit switches above — waits for «Save». */}
       <div
         data-testid="mtm-settings-save-bar"
+        hidden={!dirty && !saving}
         className="sticky bottom-0 z-20 -mx-1 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-200 bg-card/95 px-4 py-2 shadow-sm backdrop-blur dark:border-zinc-700"
       >
         <span role="status" aria-live="polite" className={`text-sm ${dirty ? "font-medium text-amber-700 dark:text-amber-300" : "text-muted-foreground"}`}>
@@ -650,26 +809,6 @@ export default function MtmSettingsPage() {
         </div>
       </div>
 
-      {/* Everything about the client card — categories, fields, specialties —
-          in one block with its own save buttons. It describes field contacts
-          and means nothing while those are turned off; the stored values stay
-          and return when contacts are switched back on. It works from what the
-          server holds (`loaded`), not from this page's unsaved draft. */}
-      {settings.fieldContactsEnabled !== false ? (
-        <ContactCardSettings
-          requiredFields={loaded.contactRequiredFields}
-          hiddenFields={loaded.contactHiddenFields}
-          specialties={loaded.contactSpecialties}
-          classes={loaded.contactClasses}
-          onSaved={applySavedSettings}
-        />
-      ) : null}
-      <ContactDictionarySettings />
-      <OrganizationAttributePackageSettings />
-      <CoveragePolicyAdmin />
-      <KpiPolicyAdmin />
-      <ScoringFormulaSettings />
-      <VisitPolicySettings key={visitPolicyEditorKey} />
     </div>
   )
 }

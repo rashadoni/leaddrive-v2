@@ -248,6 +248,19 @@ describe("PUT /api/v1/mtm/settings — safe save", () => {
     expect((await adminRes.json()).data.ignoredKeys).toEqual([])
   })
 
+  // «Allow check-in outside the zone» stands beside the zone radius on the
+  // settings page. The radius is a manager's to set, and set wide enough it
+  // lifts the zone just as well — so the switch is not an administrator-only
+  // one. On «Access & permissions» alone it was out of reach of the account
+  // that runs the field module for the client (owner, 2026-10-08).
+  it("lets whoever may set the zone radius allow a check-in outside the zone", async () => {
+    as("manager")
+    const res = await UpdateSettings(put({ geofenceRadius: 250, agentCheckInOutsideZone: true, agentContactCreateRequests: false }))
+    expect(res.status).toBe(200)
+    expect(upsertedKeys().sort()).toEqual(["agentCheckInOutsideZone", "geofenceRadius"])
+    expect((await res.json()).data.ignoredKeys).toEqual(["agentContactCreateRequests"])
+  })
+
   it("refuses a non-boolean value for an agent switch", async () => {
     const res = await UpdateSettings(put({ agentContactCreateRequests: "no" }))
     expect(res.status).toBe(400)
@@ -325,11 +338,32 @@ describe("settings page contract", () => {
   it("splits route planning from agent capabilities", () => {
     const routes = group("groupRoutePlanning")
     const agent = group("groupAgentCapabilities")
-    for (const key of ["taskSelfCreate", "taskSelfRecurring", "brandPotentialPerAgentEnabled", "teamScheduleVisibilityEnabled", "excelImportsEnabled"]) {
+    for (const key of ["taskSelfCreate", "taskSelfRecurring", "teamScheduleVisibilityEnabled"]) {
       expect(agent).toContain(`key: "${key}"`)
       expect(routes).not.toContain(`key: "${key}"`)
     }
     expect(page).not.toContain("groupRollout")
+  })
+
+  // «Agent capabilities» held two switches no agent ever uses, and the daily
+  // visit card held the kill switch of the visit rules. They are set once at
+  // rollout: they live in the last tab, away from what a manager changes.
+  it("keeps what is set once at rollout in the administrator tab", () => {
+    const rare = group("groupRare")
+    expect(rare).toContain('tab: "admin"')
+    for (const key of ["visitPoliciesEnabled", "brandPotentialPerAgentEnabled", "excelImportsEnabled"]) {
+      expect(rare).toContain(`key: "${key}"`)
+      for (const daily of ["groupVisits", "groupGeofence", "groupAgentCapabilities", "groupRoutePlanning"]) {
+        expect(group(daily), `${key} in ${daily}`).not.toContain(`key: "${key}"`)
+      }
+    }
+    // The notice that replaces the visit switches while the rules are off
+    // names the switch by the words on it, in every language.
+    for (const locale of ["en", "ru", "az"]) {
+      const messages = JSON.parse(source(`messages/${locale}.json`))
+      expect(messages.mtmVisitPolicies.featureDisabledAdminHint, locale).toContain(messages.mtmSettingsPage.lblVisitPolicies)
+      expect(messages.mtmVisitPolicies.featureDisabledAdminHint, locale).toContain(messages.mtmSettingsPage.tabAdmin)
+    }
   })
 
   it("has a sticky save bar with a dirty indicator, cancel and leave warnings", () => {
@@ -357,7 +391,7 @@ describe("settings page contract", () => {
   it("refreshes visit-rule warnings and the rule editor after rule-related saves", () => {
     const save = page.slice(page.indexOf("const handleSave"), page.indexOf("const settingGroups"))
     expect(save).toMatch(/if \("visitPoliciesEnabled" in changes \|\| "photoRequired" in changes\) \{\s*loadVisitPolicies\(\)\s*setVisitPolicyEditorKey/)
-    expect(page).toContain("<VisitPolicySettings key={visitPolicyEditorKey} />")
+    expect(page).toMatch(/<VisitPolicySettings\s+key=\{visitPolicyEditorKey\}\s+legacyPhotoRequired=\{loaded\.photoRequired === true\}/)
   })
 
   it("warns when the photo limit drops below a rule's required photo minimum", () => {
@@ -374,10 +408,18 @@ describe("settings page contract", () => {
     expect(page).toContain('aria-label={ts("ariaNumber", { label: ts(labelKey), unit: ts(unitKey) })}')
   })
 
-  it("warns under the photo switch when visit rules exist", () => {
+  // The «photo required on every visit» switch applied only while no visit
+  // rule matched, and warned about that under itself. 2026-10-08 it left the
+  // page: «Что агент делает в визите» shows that setting on the photo row and
+  // carries it into the rule its first press creates, so there is one place
+  // to require a photo and nothing to warn about.
+  it("has no second place to require a photo, and hands the old setting to the visit switches", () => {
     expect(page).toContain('fetch("/api/v1/mtm/visit-policies", { cache: "no-store" })')
-    expect(page).toMatch(/item\.key === "photoRequired" && activeVisitPolicies > 0 \?/)
-    expect(page).toContain('ts("photoPoliciesWarning")')
+    expect(page).not.toContain('key: "photoRequired"')
+    expect(page).not.toContain("photoPoliciesWarning")
+    expect(page).toContain("legacyPhotoRequired={loaded.photoRequired === true}")
+    // The server still reads the stored value while an organization has no rule.
+    expect(source("src/lib/mtm/visit-policies.ts")).toContain('key: "photoRequired"')
   })
 
   it("shows localized toasts, never the English fallbacks", () => {
@@ -398,10 +440,14 @@ describe("settings page contract", () => {
     })
     expect(offenders).toEqual([])
     expect(az.mtmSettingsPage.lblGpsInterval).toBe("GPS tarixçəsində gözlənilən interval (san)")
-    expect(az.mtmSettingsPage.photoPoliciesWarning).toBe("Ziyarət qaydaları mövcuddur — bu açar yalnız heç bir qayda uyğun gəlmədikdə işləyir.")
+    // Neither text may send the reader to a switch that is no longer on the
+    // page («Hər vizit üçün foto tələb olunur» left it on 2026-10-08): with no
+    // special rule, the switches of «Agent ziyarətdə nə edir» are what applies.
     for (const key of ["empty", "previewDefault"]) {
       expect(az.mtmVisitPolicies[key]).not.toContain("məcburi deyil")
-      expect(az.mtmVisitPolicies[key]).toContain("Hər vizit üçün foto")
+      expect(az.mtmVisitPolicies[key]).not.toContain("Hər vizit üçün foto")
+      expect(az.mtmVisitPolicies[key]).toMatch(/açar/)
     }
+    expect(az.mtmSettingsPage.photoPoliciesWarning).toBeUndefined()
   })
 })

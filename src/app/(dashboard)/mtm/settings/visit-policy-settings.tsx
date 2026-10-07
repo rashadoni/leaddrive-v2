@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
 import { MTM_CONTACT_CLASS_PRIORITY } from "@/lib/mtm/contact-classes"
 import { useTranslations } from "next-intl"
 import { AlertCircle, Check, ChevronDown, Eye, EyeOff, Info, LockKeyhole, Plus, RefreshCw, Save, Settings2, Trash2 } from "lucide-react"
@@ -115,7 +115,20 @@ function modeIcon(mode: Mode) {
   return Eye
 }
 
-export function VisitPolicySettings() {
+export function VisitPolicySettings({ legacyPhotoRequired = false, aside }: {
+  /**
+   * The old «photo required on every visit» setting. It applies only while no
+   * rule matches, and its own switch is gone from the page — the switches
+   * below show it and carry it into the rule their first press creates.
+   */
+  legacyPhotoRequired?: boolean
+  /**
+   * The settings cards that stand beside the switches as the second, equal
+   * column of the row (owner, 2026-10-08: «симметрично делай… половинчатые
+   * блоки»). They do not depend on the rules, so they are drawn either way.
+   */
+  aside?: ReactNode
+} = {}) {
   const t = useTranslations("mtmVisitPolicies")
   const explainError = useMtmApiError()
   const [access, setAccess] = useState<VisitPolicyUiAccess | null>(null)
@@ -332,15 +345,21 @@ export function VisitPolicySettings() {
   }
 
   const editorHidden = !advancedOpen && !featureDisabled && !loadError
+  const switchesShown = !featureDisabled && !loadError
 
   return (
-    <section className="border-t border-zinc-200 pt-6 dark:border-zinc-800">
+    <section>
       {/* What an agent is shown in a visit, and what he must do: two switches
           per action. Not drawn while the rules are switched off or unread —
           the notice below says why instead. */}
-      {featureDisabled || loadError ? null : (
+      {!switchesShown ? (
+        aside ? <div className="mb-4 grid gap-3 lg:grid-cols-2">{aside}</div> : null
+      ) : (
         <>
-          <VisitActionSwitches rules={policies} access={access} loading={loading} onSaved={() => load(true)} />
+          <div className={aside ? "grid gap-3 lg:grid-cols-2" : undefined} data-testid="visit-switches-row">
+            <VisitActionSwitches rules={policies} access={access} loading={loading} onSaved={() => load(true)} legacyPhotoRequired={legacyPhotoRequired} />
+            {aside ? <div className="flex flex-col gap-3">{aside}</div> : null}
+          </div>
           <button
             type="button"
             aria-expanded={advancedOpen}

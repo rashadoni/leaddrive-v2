@@ -64,16 +64,19 @@ function Switch({ on, tone, disabled, label, onToggle }: {
  * organization without one creates it. The row then shows what the server
  * holds after the reload, not what was pressed.
  */
-export function VisitActionSwitches({ rules, access, loading, onSaved }: {
+export function VisitActionSwitches({ rules, access, loading, onSaved, legacyPhotoRequired = false }: {
   rules: VisitSwitchRule[]
   access: VisitPolicyUiAccess | null
   loading: boolean
   onSaved: () => Promise<void>
+  /** The older «photo required on every visit» setting; see VisitSwitchDefaults. */
+  legacyPhotoRequired?: boolean
 }) {
   const t = useTranslations("mtmVisitPolicies")
   const explainError = useMtmApiError()
   const [status, setStatus] = useState<Status>({ kind: "idle" })
   const rule = companyVisitRule(rules)
+  const defaults = { legacyPhotoRequired }
   // No access block means the feature answered without one: the server decides.
   const readOnly = access ? !access.canWriteOrganizationWide : false
   const busy = loading || status.kind === "saving"
@@ -81,7 +84,7 @@ export function VisitActionSwitches({ rules, access, loading, onSaved }: {
   const move = async (actionKey: VisitSwitchActionKey, change: { shown?: boolean; required?: boolean }) => {
     if (busy || readOnly) return
     setStatus({ kind: "saving" })
-    const actions = visitActionsAfterSwitch(rule, actionKey, change)
+    const actions = visitActionsAfterSwitch(rule, actionKey, change, defaults)
     try {
       const response = rule?.id
         ? await fetch(`/api/v1/mtm/visit-policies/${rule.id}`, {
@@ -116,7 +119,7 @@ export function VisitActionSwitches({ rules, access, loading, onSaved }: {
   }
 
   return (
-    <div className="max-w-2xl rounded-xl border border-zinc-200 bg-background p-4 dark:border-zinc-800" data-testid="visit-action-switches">
+    <div className="h-full rounded-lg border border-zinc-200 bg-card p-4 dark:border-zinc-700" data-testid="visit-action-switches">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 className="text-base font-semibold">{t("simpleTitle")}</h2>
         <p className="min-h-5 text-sm" role="status" data-testid="visit-action-switches-status">
@@ -147,7 +150,7 @@ export function VisitActionSwitches({ rules, access, loading, onSaved }: {
         <span className="text-center text-xs font-medium text-muted-foreground">{t("colRequired")}</span>
 
         {VISIT_SWITCH_ACTION_KEYS.map((actionKey) => {
-          const state = visitSwitchState(rule, actionKey)
+          const state = visitSwitchState(rule, actionKey, defaults)
           const Icon = ICONS[actionKey]
           const name = t(`actions.${actionKey}`)
           return (

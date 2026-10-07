@@ -43,12 +43,15 @@ export type AgentPermissionSettings = Record<AgentPermissionSettingKey, boolean>
  * The switches this matrix introduced. Only an administrator changes them —
  * the three older ones keep the rule they always had (the settings page lets a
  * CRM manager change them too).
+ *
+ * `agentCheckInOutsideZone` is deliberately not here: it sits beside the zone
+ * radius on the settings page, and whoever may set that radius — which lifts
+ * the zone just as well when set wide enough — may lift the zone outright.
  */
 export const AGENT_PERMISSION_ADMIN_ONLY_KEYS = [
   "agentContactCreateRequests",
   "agentContactChangeRequests",
   "agentCustomerCreateRequests",
-  "agentCheckInOutsideZone",
 ] as const satisfies readonly AgentPermissionSettingKey[]
 
 /** A grant that lives on the employee card (`MtmAgent`). */

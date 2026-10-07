@@ -132,3 +132,41 @@ describe("what one switch writes", () => {
     expect(next.length).toBeLessThanOrEqual(8)
   })
 })
+
+/**
+ * «Photo required on every visit» is a setting older than the rules: the
+ * resolver honours it only while no rule is selected. Its own switch left the
+ * settings page on 2026-10-08 — two places to require a photo, and the page
+ * had to warn that one of them might not apply. What it holds must not be lost
+ * with it: the photo row shows it, and the first rule starts from it.
+ */
+describe("the older «photo required» setting, for an organization with no rule yet", () => {
+  const legacy = { legacyPhotoRequired: true }
+
+  it("shows on the photo row, so the row does not say «optional» for a photo the server requires", () => {
+    expect(visitSwitchState(null, "PHOTO", legacy)).toEqual({ shown: true, required: true, conditional: false })
+    expect(visitSwitchState(null, "PHOTO", { legacyPhotoRequired: false })).toEqual({ shown: true, required: false, conditional: false })
+    // It was only ever about the photo.
+    expect(visitSwitchState(null, "SIGNATURE", legacy)).toEqual({ shown: true, required: false, conditional: false })
+  })
+
+  it("is carried into the rule the first switch creates, whichever action that switch is about", () => {
+    const next = visitActionsAfterSwitch(null, "SIGNATURE", { required: true }, legacy)
+    expect(next.map((item) => [item.actionKey, item.mode])).toEqual([
+      ["PHOTO", "REQUIRED"], ["PRESENTATION", "OPTIONAL"], ["SIGNATURE", "REQUIRED"],
+      ["VISIT_NOTE", "OPTIONAL"], ["STOCK_CHECK", "OPTIONAL"], ["FEEDBACK", "OPTIONAL"],
+    ])
+  })
+
+  it("can be lifted with the photo row's own switch", () => {
+    const next = visitActionsAfterSwitch(null, "PHOTO", { required: false }, legacy)
+    expect(next.find((item) => item.actionKey === "PHOTO")?.mode).toBe("OPTIONAL")
+  })
+
+  it("means nothing once a rule exists: the rule is what the server reads then", () => {
+    const company = rule({ actions: [action("SIGNATURE", "REQUIRED")] })
+    expect(visitSwitchState(company, "PHOTO", legacy)).toEqual({ shown: true, required: false, conditional: false })
+    expect(visitActionsAfterSwitch(company, "SIGNATURE", { required: false }, legacy).find((item) => item.actionKey === "PHOTO")?.mode)
+      .toBe("OPTIONAL")
+  })
+})
