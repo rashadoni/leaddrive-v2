@@ -187,11 +187,25 @@ test("connect_timeout hints normalize away while every explicit psql budget and 
   }
 })
 
+test("connect_timeout raw plus and percent-encoded plus retain the same libpq URI meaning", () => {
+  const base = "postgresql://synthetic:private-plus-fixture@host/fixture"
+  for (const suffix of ["?connect_timeout=+10", "?connect_timeout=%2B10"]) {
+    assert.equal(parseMigrationEnv("MIGRATION_DATABASE_URL='" + base + suffix + "'\nMIGRATION_EXPECTED_DB_ROLE=synthetic\n"), base)
+    assert.deepEqual(databaseConnectionEnvironment(base + suffix), databaseConnectionEnvironment(base))
+    queryMetadata(base + suffix, sql, (binary, args, options) => {
+      assert.equal(options.env.PGCONNECT_TIMEOUT, "10")
+      assert.equal(options.timeout, 30000)
+      assert.equal(options.env.PGOPTIONS, "-c default_transaction_read_only=on -c application_name=hrm_migration_metadata_preflight -c hrm.preflight_expected_role=synthetic")
+      return "bounded"
+    })
+  }
+})
+
 test("malformed or repeated connect_timeout fails privately before SQL and never enables other URL overrides", () => {
   const base = "postgresql://synthetic:private-timeout-fixture@host/fixture"
   const rejected = [
     ...["", "2147483648", "-2147483649", "999999999999999999", "1.5", "1e2", "0x10", "10s", " 10", "10 ", "\n10", "+", "--1", "private-timeout-value"].map(value => ["CONNECT_TIMEOUT_HINT_INVALID", "?connect_timeout=" + encodeURIComponent(value)]),
-    ["CONNECT_TIMEOUT_HINT_INVALID", "?connect_timeout=+10"],
+    ["CONNECT_TIMEOUT_HINT_INVALID", "?connect_timeout=%2B%2010"],
     ["PARAM_DUPLICATED_CONNECT_TIMEOUT", "?connect_timeout=10&connect_timeout=10"],
     ["PARAM_DUPLICATED_CONNECT_TIMEOUT", "?connect_timeout=0&%63onnect_timeout=-1"],
     ["PARAM_UNSUPPORTED_SESSION_OPTIONS", "?connect_timeout=10&options=-c%20default_transaction_read_only=off"],

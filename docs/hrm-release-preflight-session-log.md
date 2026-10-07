@@ -417,3 +417,32 @@
   without publication or live SQL. Next action: root reviews/publishes, runs
   exact hosted source checks, and performs a protected current-main inspection
   before deciding migration readiness or the final HRM release.
+
+## 2026-10-07 — review correction: raw URI plus preserved for known timeout hint
+
+- Initial local checkpoint d55110c4cfe2bc7ba7cc8c5444498d5531d53ad8 and
+  its20 PASS/1 hosted SQL SKIP are retained. Before publication, root review
+  identified that URLSearchParams form decoding treats raw plus as space,
+  making raw connect_timeout=+10 fail while encoded %2B10 passed. This was
+  a source compatibility concern, not an observed production SQL failure.
+- Primary PostgreSQL16 libpq conninfo_uri_decode copies non-percent bytes
+  unchanged, including plus. The successor extracts and RFC-percent-decodes
+  only the known connect_timeout raw value after the unchanged finite-key and
+  unique-parameter checks. No general URI parser/TLS/other-value behavior is
+  broadened and no whitespace is trimmed. Both raw plus and encoded plus now
+  satisfy the same signed int32 predicate and are discarded before libpq.
+- Added an explicit raw+10/%2B10 regression for identical normalized fields,
+  child PGCONNECT_TIMEOUT10, outer30-second bound and unchanged fixed read-only/
+  role/application startup options. The malformed '+ 10' case still fails
+  privately before SQL; duplicate/overflow/all-other-forbidden cases remain.
+- New bounded sequential repeat after14 GiB RAM/278 GiB disk/zero pressure:
+  helper/test syntax PASS,21 unit PASS, zero FAIL,1 hosted SQL SKIP, whitespace
+  PASS. The earlier20-test result is not retroactively altered. SQL/workflow
+  remain identical to main5ce; no production configuration, query, push,
+  dispatch, grants, role defaults, activation, Support or product source changes.
+- Current result: known timeout hint now follows libpq percent-decoding while
+  retaining fixed budgets. Last completed action: focused regression checks.
+  Precise stopping point: additive auxiliary checkpoint awaiting independent
+  root review/publication. Next action: root reviews the successor and runs
+  hosted exact source validation before the protected current-main metadata
+  inspection; actual catalog readiness remains unknown.

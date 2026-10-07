@@ -73,7 +73,14 @@ function connectionUrl(connection) {
     if (url.searchParams.has("schema") && url.searchParams.get("schema") !== "public") invalidEnv("SCHEMA_UNSUPPORTED")
     for (const key of ["connection_limit", "pool_timeout"]) if (url.searchParams.has(key) && !/^[0-9]{1,4}$/.test(url.searchParams.get(key))) invalidEnv("POOL_HINT_INVALID")
     if (url.searchParams.has("connect_timeout")) {
-      const value = url.searchParams.get("connect_timeout")
+      let value
+      try {
+        // libpq URI percent-decoding preserves a literal '+'. URLSearchParams
+        // uses form decoding, so inspect only this known hint's raw value.
+        const entry = url.search.slice(1).split("&").find(part => decodeURIComponent(part.split("=")[0]) === "connect_timeout")
+        const separator = entry.indexOf("=")
+        value = separator < 0 ? "" : decodeURIComponent(entry.slice(separator + 1))
+      } catch { invalidEnv("CONNECT_TIMEOUT_HINT_INVALID") }
       // libpq parses a signed decimal int. Validate this hint, then discard it:
       // the inspector always supplies its own ten-second connection budget.
       if (!/^[+-]?[0-9]{1,10}$/.test(value) || Number(value) < -2147483648 || Number(value) > 2147483647) invalidEnv("CONNECT_TIMEOUT_HINT_INVALID")
