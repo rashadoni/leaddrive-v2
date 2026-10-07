@@ -1,0 +1,60 @@
+{
+  "head": "293aaf2036a4890f461b1e539f495cc33bbca461",
+  "parentBase": "62f74eb1a2666f3d3bc4e1d8147b7786516478e0",
+  "reviewer": "/root",
+  "author": "/root/inspect_outcome_contract",
+  "status": "ACCEPTED_SOURCE_PREPARATION_NOT_PRODUCTION",
+  "sourceBindings": [
+    {
+      "path": ".github/workflows/hrm-migration-metadata-preflight.yml",
+      "bytes": 7131,
+      "sha256": "f90937ecda3b81e7dd017819cfaec1afdefc5fee58167fdfc2289ce012a1dcf1",
+      "blob": "f9c1ea00cb2e31f6f3290521b6e4787f14121132"
+    },
+    {
+      "path": "docs/hrm-release-preflight-session-log.md",
+      "bytes": 10870,
+      "sha256": "a07565c698f8a22211d5ab62abaf6b5cff21a98b339c1173b19cd24ccedf47d7",
+      "blob": "287714e913be942cf35a9b27299d91de4278f74f"
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.mjs",
+      "bytes": 19055,
+      "sha256": "9b159a8c098fc52cc219a981194e34eb8d132fab2e6e2da8c7a508a71b51b313",
+      "blob": "f6938f4c013162f809d832bf5b433c2b44baa4de"
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.sql",
+      "bytes": 14722,
+      "sha256": "90a76d2b41d6afef1933d4592fc438fe9692f286414aa723e37cd6f4d141c10c",
+      "blob": "2a3a6eb599d2a01505677b348363a93fb57dc8e0"
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.test.mjs",
+      "bytes": 24347,
+      "sha256": "cbaa2df3e63636be06ad8777625c55a97f21c62f54d7b72720c5af41c2bbed13",
+      "blob": "ae1d633a7eeae309c9a76eeb0a6978aa69114f19"
+    }
+  ],
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "rootNodeChecks": {
+    "passed": 13,
+    "hostedSQLNotRunLocally": true,
+    "hostedSQLSkipped": 1
+  },
+  "sourceScope": "5 dedicated new files; existing workflows, gates, baselines, Support unchanged",
+  "boundFrozenMigrationAndGuardSources": true,
+  "limitations": [
+    "Host contract: full local SQL/compiler/build/browser NOT RUN",
+    "Actual production metadata NOT RUN until protected currentmain workflow is reviewed and published",
+    "READY_FOR_REVIEW is metadata only, not full staging/C12 acceptance or a reserved quiet window",
+    "Applied new tenant-state table remains INCOMPLETE without full constraint/policy proof",
+    "Unreviewed default ACLs remain blockers; no grant/roleconfig repair",
+    "Existing ledger UPDATE/DELETE and revision INSERT contract only; no TRUNCATE or privileged tampering claim"
+  ]
+}
