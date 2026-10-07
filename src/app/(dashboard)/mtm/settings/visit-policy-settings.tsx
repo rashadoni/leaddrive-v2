@@ -3,10 +3,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { MTM_CONTACT_CLASS_PRIORITY } from "@/lib/mtm/contact-classes"
 import { useTranslations } from "next-intl"
-import { AlertCircle, Check, Eye, EyeOff, Info, LockKeyhole, Plus, RefreshCw, Save, Settings2, Trash2 } from "lucide-react"
+import { AlertCircle, Check, ChevronDown, Eye, EyeOff, Info, LockKeyhole, Plus, RefreshCw, Save, Settings2, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { cn } from "@/lib/utils"
+import { specialVisitRuleCount } from "@/lib/mtm/visit-action-switches"
+import { VisitActionSwitches } from "./visit-action-switches"
 import { explainMtmApiErrorOr, useMtmApiError } from "@/components/mtm/use-mtm-api-error"
 import {
   canCreateVisitPolicy,
@@ -130,8 +133,12 @@ export function VisitPolicySettings() {
   const [previewCustomerId, setPreviewCustomerId] = useState("")
   const [preview, setPreview] = useState<{ sourcePolicyName: string | null; requirements: PolicyAction[] } | null>(null)
   const [previewing, setPreviewing] = useState(false)
+  // The full editor — groups, visit types, dates, conditions — is one click
+  // below the switches. Open, it was the whole section, and nobody could tell
+  // at a glance what an agent is shown (owner, 2026-10-07).
+  const [advancedOpen, setAdvancedOpen] = useState(false)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (refreshDraft = false) => {
     setLoading(true)
     try {
       const [policyRes, teamRes, agentRes, customerRes] = await Promise.all([
@@ -165,6 +172,11 @@ export function VisitPolicySettings() {
       if (nextPolicies.length && selectedId === "new") {
         setSelectedId(nextPolicies[0].id as string)
         setDraft(nextPolicies[0])
+      } else if (refreshDraft) {
+        // A switch above just rewrote a rule. The editor below must not keep
+        // the copy it loaded before: saving that copy would undo the switch.
+        const current = nextPolicies.find((policy: Policy) => policy.id === selectedId)
+        if (current) setDraft(current)
       }
     } catch {
       setFeatureDisabled(false)
@@ -319,8 +331,34 @@ export function VisitPolicySettings() {
     return t("agentOptional")
   }
 
+  const editorHidden = !advancedOpen && !featureDisabled && !loadError
+
   return (
     <section className="border-t border-zinc-200 pt-6 dark:border-zinc-800">
+      {/* What an agent is shown in a visit, and what he must do: two switches
+          per action. Not drawn while the rules are switched off or unread —
+          the notice below says why instead. */}
+      {featureDisabled || loadError ? null : (
+        <>
+          <VisitActionSwitches rules={policies} access={access} loading={loading} onSaved={() => load(true)} />
+          <button
+            type="button"
+            aria-expanded={advancedOpen}
+            aria-controls="visit-policy-advanced"
+            onClick={() => setAdvancedOpen((open) => !open)}
+            className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-medium text-primary"
+            data-testid="visit-policy-advanced-toggle"
+          >
+            <ChevronDown className={cn("h-4 w-4 transition-transform", advancedOpen && "rotate-180")} aria-hidden="true" />
+            {t("advancedToggle")}
+            {specialVisitRuleCount(policies) > 0 ? (
+              <span className="text-xs font-normal text-muted-foreground">· {t("advancedCount", { count: specialVisitRuleCount(policies) })}</span>
+            ) : null}
+          </button>
+        </>
+      )}
+
+      <div id="visit-policy-advanced" hidden={editorHidden} className={editorHidden ? undefined : "mt-2"}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="max-w-2xl">
           <h2 className="flex items-center gap-2 text-base font-semibold">
@@ -598,6 +636,7 @@ export function VisitPolicySettings() {
         </div>
       </div>
       )}
+      </div>
     </section>
   )
 }
