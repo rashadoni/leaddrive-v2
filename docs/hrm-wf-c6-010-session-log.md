@@ -390,3 +390,33 @@
 - Frozen88 whole technical PASS retained on published codex/hrm-release-88-technical-archive-20261007. Ordinary featuremerge021a852db1f3de986b226059cb721675abc5ed6c brings acceptedmaincecb/owner6258MTMpaths and auxiliary observer5f1437559afd5e1f2f8a2ebcf5aa4123c687e6db into existing589 ancestry. All24 C6production/workflow files and4harness files byteexact88;14Workforce namespaces×3locales semanticallyexact88; incomingMTM keys retained, original sharedmobile/C12/973/c123 preserved. Strictwhole diff973...HEAD PASS; no baseline/gate relaxed. Initialrootcontinuityprobe used wrong uppercaseWorkforce prefix andfailednonemptycount beforecommit/push; corrected usingactualreceipt14lowercasenames/exactkeyset, originaltrace/correction retained in rootproof. No falseempty-key allPASS.
 - Auxiliary5f actualhosted37684879260/source113010010492 ALL52PASS/no skips (old22+14/new16). Runtime/migration actualappname identity nowtrue, migrationliveRuntimeSeentrue, DBname/OIDequal/distinctPID. RealwrongPID/nonce/otherDB guards, unsafeACL projectionwithoutapproval, privilegedSETdenial, read-onlyDDLdenial, allcleanup/residuePASS. Previousd2 and852 originalFAILs remain durablyarchived, no fakegreen/relabel. ExplicitPGAPPNAME narrowfix requiresalloriginalguards, no productionconfig/grantchange. Independentcrossreview/authorship retained; newaux626fullrequired5 nowrunning.
 - New finalHRMhead must receive freshall5manual/fullrequired/currentapplicable CI and exact independent source/browser/PG/build/compiler acceptance; old88runtimePASS is historicalonly. Production HRM notmerged/deployed. Own auxiliary protectedmainrelease and actual liveACLrecipientassessment stillrequired. READ_COMPLETEonlycatalogevidence neverapproval. No activation/personnelautomation/access/secret/role/Support/Mac change. Accounting84/161/77open/60%; C6/C12 remainpartial. Next freeze/publish existing589, freshwholetree acceptance inparallel auxiliary release/readonlyobservation, thenonlynormal589releaseifallcriteria.
+
+
+## 2026-10-07 — frozen5638 archived; actual66-tested attribution tool integrated
+
+Technical5638/tree8743 fully accepted and preserved on published archive branch
+codex/hrm-release-5638-technical-archive-20261007. Actualmainf8 loopback catalog
+read37690299054/113028735948 proved same liveDB/expectedruntimeIUD/PUBLIC0/
+grantable0, but OTHER1SELECT NOSUPER/BYPASS/LOGIN purpose remainsunattributed.
+Oldstrictmetadata/defaultACL failures remain unchanged, READ_COMPLETE notapproval.
+
+Separate reviewed source60efe23846fddc7deea16c48ba3a90bd962aae35/treee57592a08
+PR627 adds5newpaths only, old14+5gates byteexact. Roothelper/peerSQL-tests-
+workflow crossreview; original counter gap and correction retained, no active
+findings. Actualsource37692727660/113036666929 firstattempt66/66PASS/noskips
+(old22+14+16/new14), full DEFAULT production helper transport throughactual
+held runtime + migration metadata observations, wrong/missingrole, ROsetting
+precedence/absence, memberships/unsafeprofile, globalPUBLIC/multirecipients/
+writes/grantoptions, wrongPID/ROguard; BODY/DBsetting+10drop+residuecleanupPASS.
+Local13unitPASS/1hostedSKIP/runner50/diffPASS; heavychecks NOTRUN onContabo.
+
+Ordinarymerge ofidentical5toolpaths into existing589 source preserves ALLold
+5638source and accepted973/c123/PRchain. Freshnewfrozenhead requires full5manual
+lanes/allcurrentapplicable+5required CI and exactindependent source/runtime
+acceptance; 5638 results are historical, notborrowed. Auxiliary627 ownnormal
+release and protectedmain actualbackup-attribution manualassessment mustfinish
+beforeHRM589normalrelease. No grant/role/access/config/secret/activation/
+personnelautomation/Support/Mac changes. Accounting84/161/77open/60%, C6/C12
+PARTIAL; configuredbackupcatalogidentity does not claim freshbackupservice,
+commissioning, restore or realHRoperations. Next currentheadfulltechnicalgates
+inparallel normalauxrelease/protectedcatalogassessment, then589release ifsafe.
