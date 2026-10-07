@@ -163,3 +163,72 @@ export function coerceMtmRouteTargetTypes(raw: unknown): MtmRouteTargetType[] {
     ...configured.filter((entry) => entry.id !== MTM_ROUTE_TARGET_TYPE_ALL_CUSTOMERS.id),
   ]
 }
+
+/**
+ * Who a planner button shows, as one plain choice.
+ *
+ * A button is stored as a data source, an organization category and an
+ * optional exact kind, and the settings screen used to ask for those three
+ * one by one — «Источник данных», «Категория организации», «Дополнительный
+ * точный тип» — on a card titled «Тип 1». Owner, 2026-10-08, looking at it:
+ * «переводы какие-то непонятные и сама структура какая-то непонятная».
+ * To the person setting it up there is one question: whom does this button
+ * list?
+ */
+export const MTM_ROUTE_TARGET_AUDIENCES = ["all", "doctors", "pharmacies", "clinics", "stores", "others"] as const
+export type MtmRouteTargetAudience = typeof MTM_ROUTE_TARGET_AUDIENCES[number]
+
+const AUDIENCE_STORAGE: Record<MtmRouteTargetAudience, Pick<MtmRouteTargetType, "direction" | "objectType">> = {
+  all: { direction: "ORGANIZATION", objectType: null },
+  doctors: { direction: "DOCTOR", objectType: null },
+  pharmacies: { direction: "PHARMACY", objectType: "PHARMACY" },
+  clinics: { direction: "ORGANIZATION", objectType: "CLINIC" },
+  stores: { direction: "ORGANIZATION", objectType: "STORE" },
+  others: { direction: "ORGANIZATION", objectType: "OTHER" },
+}
+
+/**
+ * The plain choice a stored button amounts to. `custom` is a combination the
+ * list does not offer (a pharmacy source narrowed to clinics, say): it is
+ * shown as it is and left alone until somebody picks a choice.
+ */
+export function routeTargetAudience(
+  target: Pick<MtmRouteTargetType, "direction" | "objectType">,
+): MtmRouteTargetAudience | "custom" {
+  if (target.direction === "DOCTOR") return "doctors"
+  if (target.direction === "PHARMACY") {
+    return target.objectType === null || target.objectType === "PHARMACY" ? "pharmacies" : "custom"
+  }
+  if (target.objectType === null) return "all"
+  if (target.objectType === "PHARMACY") return "pharmacies"
+  if (target.objectType === "CLINIC") return "clinics"
+  if (target.objectType === "STORE") return "stores"
+  return "others"
+}
+
+/** What picking a choice stores. Doctors have no organization kind to narrow by. */
+export function routeTargetAudiencePatch(
+  audience: MtmRouteTargetAudience,
+): Pick<MtmRouteTargetType, "direction" | "objectType"> & Partial<Pick<MtmRouteTargetType, "organizationKind">> {
+  return audience === "doctors" ? { ...AUDIENCE_STORAGE.doctors, organizationKind: null } : { ...AUDIENCE_STORAGE[audience] }
+}
+
+/**
+ * A button renamed in one language. Another language that still carried the
+ * very same text was never translated, so it follows — otherwise a button
+ * named in Russian stayed «Новый тип» for an agent whose phone is in
+ * Azerbaijani. A translation somebody actually wrote is not touched.
+ */
+export function renameRouteTarget(
+  labels: MtmRouteTargetType["labels"],
+  locale: keyof MtmRouteTargetType["labels"],
+  value: string,
+): MtmRouteTargetType["labels"] {
+  const previous = labels[locale]
+  const next = { ...labels, [locale]: value }
+  for (const other of ["az", "ru", "en"] as const) {
+    if (other !== locale && labels[other] === previous) next[other] = value
+  }
+  return next
+}
+
