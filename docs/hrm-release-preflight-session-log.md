@@ -1,0 +1,115 @@
+# HRM release metadata preflight — append-only session journal
+
+## 2026-10-07 — authorized preparation
+
+- User authorized the release after WF-C6-010 acceptance. Root authorized this
+  separate, minimal read-only preparation; no push, PR, merge, dispatch, deploy,
+  production mutation, tenant activation, grant/key/secret change or Support work.
+- Worktree was absent, so created the requested dedicated worktree and
+  `codex/hrm-release-preflight-20261007` from exact current main
+  `62f74eb1a2666f3d3bc4e1d8147b7786516478e0`. Frozen HRM source remains
+  `9f3cc73dcdb8c4ccea1fdac9dfae29570339abc5`; evidence archive is separate.
+- Routing confirmed by `codex-project-context` and repository instructions:
+  Contabo remote-alt development host, origin `rashadoni/leaddrive-v2`,
+  production `13.140.132.245:/opt/leaddrive-v2`, GitHub Actions main route only.
+- Direct sanctioned read-only SSH preflight was rejected by public-key auth in
+  the coordinator's earlier attempt. Existing backup-readiness workflow does
+  not prove the two HRM migration catalogs, defaults or index risk.
+- Implement a separate dispatch-only main-bound production metadata workflow,
+  fixed SQL and Node builtins helper. Canonical root-only migration.env is read
+  statically in memory; connection URL goes only to child environment, never
+  argv, runner storage or output. Remote program travels through stdin and
+  writes no production file. PostgreSQL is forced read-only before queries;
+  fresh migration-role timeout defaults are observed before local bounds.
+- Output is a strict finite metadata projection: known migration checksums,
+  unresolved ledger count, relation/index/function/ACL/owner facts and aggregate
+  estimated size/activity. Unknown state is incomplete or blocked, never a
+  production-ready claim. Full staging, historical provenance and C12 criteria
+  remain outside this preparation.
+- First three tool reads failed because the requested path did not yet exist;
+  creation corrected routing. No runtime or production checks were attempted.
+
+## 2026-10-07 — implementation and independent source observations
+
+- Added a separate narrowly triggered PR source-validation job with no
+  production environment or credentials. Its real catalog-query test is
+  GitHub-hosted only, fenced to loopback database `hrm_preflight_test`; it uses a
+  disposable NOSUPERUSER/BYPASSRLS migration principal with the same identity
+  and read-only requirements as the production helper. No Contabo database,
+  dependency install, full build or compiler run was used.
+- The production job remains explicit workflow_dispatch, exact/current main,
+  independently protected production environment, existing pinned SSH action
+  and production-deploy serialization. A dispatch outside main fails before
+  inspection. Both current main and the root-owned immutable artifact marker
+  are checked; the remote program and fixed SQL travel through stdin in memory.
+- Canonical migration.env parsing now requires one URL and one expected
+  migration role. The private identity is checked against the URL and actual
+  PostgreSQL session; only NOSUPER/BYPASS/login/identity booleans are exported.
+  No URL, password, role name, HR row, raw query error or log reaches artifacts.
+- Root's preliminary review found that owner ability alone could accept a
+  superuser. Corrected with the explicit migration-role profile above; the
+  disposable test principal also satisfies the production profile.
+- Root found that demanding pg_read_all_stats would imply an unnecessary
+  monitoring grant. Superseded by actual snapshot coverage: any unreadable
+  other-session state is explicitly incomplete. No grant is requested or made.
+- Own inspection found that index/guard dependency columns and the organization
+  FK target could be missing before DDL. The fixed query now checks those
+  column types/nullability, exact enum labels and the existing unique text id
+  FK target, as well as the ten index definitions, collation/opclass shape,
+  function body fingerprint, RLS and FORCE RLS, owner ability and default ACL.
+- Root's early organizations-RLS concern was superseded by rereading the
+  existing predicate: the organization FK target preserves its existing RLS
+  state; every tenant-owned Workforce/MTM dependency still requires FORCE RLS.
+  Added an explicit test using the real organizations RLS=false fixture shape
+  and checking each tenant-owned dependency independently.
+- Known migration SHA-256 hashes are frozen to accepted HRM source
+  `9f3cc73dcdb8c4ccea1fdac9dfae29570339abc5`:
+  reconciliation operations `c452e7f6d13dca1e5257d8353c252745d05cd4f18eae83cd45501f61664ef719`;
+  transferred assignment window `239c19f1a973fd0687fc0d558d628befa50cbe3ce9e6a3a0b24c02361a7e533f`.
+- Empty pending metadata may be READY_FOR_REVIEW, which is not release
+  acceptance. An existing/applied new state table remains INCOMPLETE because
+  every CHECK/FK/default/policy body is not proved by this bounded projection.
+  Unresolved/ambiguous ledger, mismatched checksum, unknown shape, unproved
+  ACL/role/visibility and changed artifact fail closed or stay INCOMPLETE.
+- Ordinary CREATE INDEX can block writes. Relation bytes/row estimates and one
+  activity observation do not prove elapsed time or reserve a future quiet
+  window. Production metadata, full staging and C12 remain unproved.
+
+## 2026-10-07 — bounded checks and current stopping point
+
+- Checked development host capacity before Node checks: approximately 14 GiB
+  available RAM, 280 GiB free disk and no immediate memory pressure.
+- Node 20 syntax checks passed. Original test attempt: 9 PASS, 1 hosted-DB
+  SKIP; after role/identity/visibility changes: 9 PASS, 1 SKIP; after actual
+  runner validator coverage: 10 PASS, 1 SKIP; final organizations FORCE-RLS
+  coverage: 11 PASS, 1 SKIP. No failing test result was replaced or hidden.
+- Runner policy passed for 47 workflow files; YAML parsed successfully with
+  exactly two jobs. Final whitespace/source checks are recorded below.
+- Hosted PostgreSQL catalog execution: NOT RUN here, intentionally fenced to
+  GitHub-hosted CI. Production inspection: NOT RUN; credentials were not
+  accessed and no workflow was dispatched. Full build/full compiler/browser:
+  NOT RUN, outside this narrow preparation and forbidden on this host.
+- Current result: dedicated read-only preparation implemented; independent
+  final source review and hosted source/SQL verification remain pending.
+  Last completed action: bounded Node checks. Precise stopping point: prepare
+  a path-scoped checkpoint only. Next action: root independently reviews and,
+  when authorized, publishes the infrastructure PR; actual production metadata
+  is collected only after reviewed infrastructure reaches deployed main.
+
+## 2026-10-07 — finite original-error diagnostics
+
+- Root requested a safe SQLSTATE discriminator so a permission, missing schema
+  or timeout error is not reduced to an opaque query failure. Added psql
+  VERBOSITY=sqlstate and a finite allowed SQLSTATE projection only on
+  QUERY_FAILED. Stderr is inspected only in memory; messages, identifiers,
+  private details, unknown codes and oversized stderr are never exported.
+- The strict runner validator accepts that field only for the permitted error
+  code; other reports require null. Unit checks prove that known 42501/42P01/
+  57014/25006 survive while protected text and unknown 99999 are withheld.
+- Latest bounded Node result: 12 PASS, 1 hosted-PostgreSQL SKIP, 0 failures.
+  All previous attempts remain recorded above. Production and hosted SQL are
+  still NOT RUN; synthetic Node cases do not replace real metadata evidence.
+- Final Node syntax, parsed YAML environment/concurrency boundaries, runner
+  policy and cached whitespace checks passed. Only the five dedicated task
+  paths are staged for the preparation checkpoint. No existing workflow,
+  baseline, gate, Support or application source was modified.
