@@ -47,3 +47,10 @@
 
 - Первый implementation checkpoint `0e549fc07` создан. Первоначальный staged diff check вернул2 из-за заключительных пустых строк в четырёх неизменённых Vitest log originals; shell продолжил commit. Это первоначальная ошибка workflow, не PASS diff check.
 - Исправление: эти4 оригинала сохраняются как `.log.gz` с точным byte-for-byte roundtrip (mtime=0), чтобы хранить исходные результаты без переформатирования log bytes. Первые сырые файлы также остаются в истории первого checkpoint. Source/baseline/test assertions не ослабляются. Повторная diff-проверка должна PASS до push.
+
+## 2026-10-07 — draft publication и первая dispatch ошибка
+
+- Draft PR612: https://github.com/rashadoni/leaddrive-v2/pull/612; base PR608 branch `codex/hrm-c12-reader-profile-20261006`, initial head `7400af350e217e504f173639ddf7434e9f1ccc0a`; artifact attached. PR589/605/608 refs повторно совпали перед push.
+- Browser environment refusal guards: 2 файла/19 тестов PASS; output оригинал `/tmp/hrm-c6-browser-guards-attempt1.log` будет сохранён gzip.
+- Первый workflow_dispatch ошибочно получил сокращённый expected_head `7400af350`, вместо40символов. Run37598425072 на фактическом full7400; strict guards не признают такой input. Root отменил собственный ошибочный run, чтобы не расходовать hosted runtime. Это ошибка вызова CI, не дефект продукта и не PASS verification. Original metadata сохраняется отдельно; повтор будет с точным fullSHA.
+- Agent уточнил подписи proof metadata в своём browser harness (new-decision count, phase before intentional fixture revocation, workflow source hash); source/UI/API не менялись. Нужен новый checkpoint перед корректным dispatch.

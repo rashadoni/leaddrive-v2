@@ -346,10 +346,10 @@ async function databaseProof(tenants) {
     try {await admin.$executeRawUnsafe(statement,statement.includes("mtm_audit_logs")?decision.id:expectedWrites[0].operationId)}catch(error){code=error.meta?.code}
     assert.equal(code,expected)
   }
-  receipts.database={nonownerForcedRls:true,populatedTwoTenantDecisionControls:true,unscopedRows:0,foreignRows:0,actualDecisionCount:expectedWrites.length,actualAuditCount:audits.length,exactActorReasonAndAuditLink:true,exactProductionDecisionImmutability:true,syntheticAuditGuard:true}
+  receipts.database={nonownerForcedRls:true,populatedTwoTenantDecisionControls:true,unscopedRows:0,foreignRows:0,actualNewDecisionCount:expectedWrites.length,actualAuditCount:audits.length,exactActorReasonAndAuditLink:true,exactProductionDecisionImmutability:true,syntheticAuditGuard:true}
 }
 try {
-  for(const path of ["scripts/workforce-exception-classification-browser-evidence.mjs","scripts/ci/fixtures/workforce-exception-classification-browser.sql","scripts/ci/fixtures/workforce-manager-today-browser.sql","src/components/workforce/workforce-exception-queue.tsx","src/app/api/v1/workforce/exceptions/route.ts","src/app/api/v1/workforce/exception-decisions/route.ts","src/lib/workforce/exception-outcome-classification.ts","src/lib/workforce/exception-decision-service.ts","src/lib/workforce/exception-case-writer.ts","src/lib/workforce/exception-policy-draft.ts","messages/en.json","messages/ru.json","messages/az.json"]) {
+  for(const path of ["scripts/workforce-exception-classification-browser-evidence.mjs","scripts/ci/fixtures/workforce-exception-classification-browser.sql","scripts/ci/fixtures/workforce-manager-today-browser.sql",".github/workflows/workforce-exception-report-browser-evidence.yml","src/components/workforce/workforce-exception-queue.tsx","src/app/api/v1/workforce/exceptions/route.ts","src/app/api/v1/workforce/exception-decisions/route.ts","src/lib/workforce/exception-outcome-classification.ts","src/lib/workforce/exception-decision-service.ts","src/lib/workforce/exception-case-writer.ts","src/lib/workforce/exception-policy-draft.ts","messages/en.json","messages/ru.json","messages/az.json"]) {
     const raw=await readFile(new URL(`../${path}`,import.meta.url));receipts.sources.push({path,bytes:raw.length,sha256:createHash("sha256").update(raw).digest("hex")})
   }
   const tenants=await seed(),before=await fixedFacts(tenants)
@@ -357,7 +357,7 @@ try {
   let hrContext
   for(const [locale,width,classification,appeal] of [["ru",320,"CLASSIFY_FALSE_POSITIVE","APPEAL_FULLY_UPHELD"],["az",768,"CLASSIFY_CONFIRMED_EXCEPTION","APPEAL_PARTIALLY_UPHELD"],["en",1440,"CLASSIFY_CONFIRMED_EXCEPTION","APPEAL_REJECTED"]]) hrContext=await uiScenario(tenants[0],locale,width,classification,appeal)
   assert.deepEqual(await fixedFacts(tenants),before,"Classification may append decisions/audit, but cannot change original business facts, grants or corrections")
-  receipts.fixedFacts={unchanged:true,tables:before}
+  receipts.fixedFacts={phase:"after-six-ui-appends-before-intentional-fixture-revocation",unchanged:true,tables:before}
   await denials(tenants,hrContext)
   await databaseProof(tenants)
   assert.equal(expectedWrites.length,6);assert.equal(receipts.cases.length,10)
