@@ -497,3 +497,21 @@ instructions URL is set and was accepted in the first review.
   reviewer login opens contains real third-party conversations; `whatsapp_business_messaging`,
   `instagram_manage_comments` and `business_management` are not requested.
 
+## 2026-10-07 — status check and a Direct Support case for submission 2592383921221617
+
+- Submission `2592383921221617` is still "Идет проверка" (day 5). No question from Meta: the
+  alerts inbox holds only the submission notices (03.10), the "app switched to live mode"
+  notice (03.10) and the round-1 result (01.10). The five round-1 permissions show "Готов к
+  публикации" in the Messenger use case and are in live use (66 API calls on `pages_messaging`).
+- At the owner's request ("запушь через поддержку") a **Direct Support** case was opened for the
+  Lead Drive business: topic **App Review**, case **38945235988453604**, created 2026-10-07 22:06
+  Baku, status Open, queue "Agent Connect", related app CRM (2414060595720618), subscriber
+  `info@leaddrivecrm.org`. It asks Meta to confirm the request is queued and to give an estimated
+  decision date, and explains that the `whatsapp_business_messaging` request is blocked behind it.
+  Before this there had never been a Direct Support case for this business (all statuses,
+  including Closed); the other portfolio has none open and Fanum Sec has no Direct Support access.
+  Expectation: this topic is meant for rejections; a status question usually gets the "within 20
+  days" template. Replies land in the case and at `info@leaddrivecrm.org`.
+- Developer Support (`developers.facebook.com/support/`) offers no App Review channel — only the
+  AI assistant, the community forum and the bug tracker.
+
