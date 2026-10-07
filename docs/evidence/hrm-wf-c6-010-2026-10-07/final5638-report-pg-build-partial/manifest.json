@@ -1,0 +1,48 @@
+{
+  "head": "5638f1ea63c2818aef8be1b0c497eff718303388",
+  "status": "REPORT_PG_BUILD_PASS_CLASSIFICATION_HELD_COMPILER_PENDING",
+  "reportArtifact": 11512045557,
+  "reportCRC": "PASS",
+  "rootActuallyViewed": [
+    "report-en-1440-recorded-outcomes.png",
+    "report-az-768-recorded-outcomes.png",
+    "report-ru-320-recorded-outcomes.png"
+  ],
+  "rootVisibilityLimits": [
+    "ENall4fractions/footer visible",
+    "AZ4fractions/footerclipped/inheritedEnglishIntl durations",
+    "RU232x2683nestedcapture mid6/1/1+manualboundary only; finalrates/footerNOTVISIBLE"
+  ],
+  "files": [
+    {
+      "file": "hrm-final-5638-report.zip",
+      "bytes": 852905,
+      "sha256": "0433552bc576143166e7c476614874a6200c1d23ea2c72f660809829e05509ad"
+    },
+    {
+      "file": "hrm-final-5638-build-original.log",
+      "bytes": 130096,
+      "sha256": "8f7666c32999921fd9961f545ad39751b5cf168e9248aca6d750ad95f8efdb85"
+    },
+    {
+      "file": "hrm-final-5638-pg-original.log",
+      "bytes": 159979,
+      "sha256": "cd97bcceb6803f7131bd090a0984acb9ae5f4593ec954aeffbbc07c757ec000d"
+    },
+    {
+      "file": "hrm-release-independent-pg-build-5638f1ea.json",
+      "bytes": 7751,
+      "sha256": "a3c65eb3e784a285219fd2adc4f5d98faa37072451fc267944383e554ff6160d"
+    },
+    {
+      "file": "hrm-release-independent-browser-partial-5638f1ea.json",
+      "bytes": 26994,
+      "sha256": "c3d0ca7940157c588dc3f1306fcbe50cd9c4bc1f80c8235ff4431903efe58bbe"
+    },
+    {
+      "file": "hrm-loopback-acl-independent-postmerge-5f143755.json",
+      "bytes": 4965,
+      "sha256": "a48b13dfae92eecccf9d97b7d9044f8a266fd3ad392d60747545b8709149b827"
+    }
+  ]
+}

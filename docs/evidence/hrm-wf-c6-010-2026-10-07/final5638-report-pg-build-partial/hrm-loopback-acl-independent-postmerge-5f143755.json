@@ -1,0 +1,138 @@
+{
+  "version": 1,
+  "status": "AUX626_ACTUAL_NORMAL_MERGE_INDEPENDENTLY_VERIFIED_SOURCE52_AND_FIVE_REQUIRED_PASS",
+  "observedAtUtc": "2026-10-07T21:11:41.231476+00:00",
+  "head": "5f1437559afd5e1f2f8a2ebcf5aa4123c687e6db",
+  "sourceTree": "1c3464637a17643d1b1c601af7c4b7f8a691c9d9",
+  "currentMain": "f8dd20c7a849643087ee31969c2f582a96c8bab3",
+  "actualMainParents": [
+    "cecb5a7d80895d9f41d7c2b7ddcc43a2e6057938",
+    "5f1437559afd5e1f2f8a2ebcf5aa4123c687e6db"
+  ],
+  "actualMainTree": "1c3464637a17643d1b1c601af7c4b7f8a691c9d9",
+  "wholeMainTreeEqualsTestedSource": true,
+  "PR626": {
+    "url": "https://github.com/rashadoni/leaddrive-v2/pull/626",
+    "head": "5f1437559afd5e1f2f8a2ebcf5aa4123c687e6db",
+    "merged": true,
+    "state": "closed",
+    "mergeCommit": "f8dd20c7a849643087ee31969c2f582a96c8bab3"
+  },
+  "remoteRefs": "5f1437559afd5e1f2f8a2ebcf5aa4123c687e6db\trefs/heads/codex/hrm-release-loopback-acl-evidence-20261007\nf8dd20c7a849643087ee31969c2f582a96c8bab3\trefs/heads/main\n",
+  "fiveRequired": [
+    {
+      "id": 113010505144,
+      "name": "pr-scope",
+      "head": "5f1437559afd5e1f2f8a2ebcf5aa4123c687e6db",
+      "app": 15368,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 113010631553,
+      "name": "static-checks",
+      "head": "5f1437559afd5e1f2f8a2ebcf5aa4123c687e6db",
+      "app": 15368,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 113010631472,
+      "name": "typecheck",
+      "head": "5f1437559afd5e1f2f8a2ebcf5aa4123c687e6db",
+      "app": 15368,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 113010010146,
+      "name": "runner-policy",
+      "head": "5f1437559afd5e1f2f8a2ebcf5aa4123c687e6db",
+      "app": 15368,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 113010010075,
+      "name": "scan",
+      "head": "5f1437559afd5e1f2f8a2ebcf5aa4123c687e6db",
+      "app": 15368,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "protection": {
+    "strict": false,
+    "enforceAdmins": true,
+    "checks": [
+      {
+        "context": "pr-scope",
+        "app_id": 15368
+      },
+      {
+        "context": "static-checks",
+        "app_id": 15368
+      },
+      {
+        "context": "typecheck",
+        "app_id": 15368
+      },
+      {
+        "context": "runner-policy",
+        "app_id": 15368
+      },
+      {
+        "context": "scan",
+        "app_id": 15368
+      }
+    ]
+  },
+  "rootPremergeProof": "/tmp/hrm-pr626-root-premerge-proof.json",
+  "peerPremergeAttempt": "Fresh read after root authorized merge detected mainf8 changed fromcecb, so expected-old-main assertion stopped before any peer receipt/mutation; postmerge review follows actual current graph instead. No concurrent independent merge occurred.",
+  "currentHRMProspective": {
+    "head": "5638f1ea63c2818aef8be1b0c497eff718303388",
+    "headTree": "8743c6aa6b338efde65d8f24a04ee0ec5650fb46",
+    "main": "f8dd20c7a849643087ee31969c2f582a96c8bab3",
+    "prospectiveTree": "8743c6aa6b338efde65d8f24a04ee0ec5650fb46",
+    "wholeTreeEqualsCurrentFrozenSource": true
+  },
+  "actualSource52": "Original22+originalACL14+newlive16 total52/52PASS0skip, independently bound current5f/syntheticmerge tree prior receipt.",
+  "origins": [
+    {
+      "path": "/tmp/hrm-loopback-acl-independent-source-5f143755.json",
+      "bytes": 7890,
+      "sha256": "785c830b98d4672d293324daf08d7e8a482db408dc29cd6c556c86cf47c62f72"
+    },
+    {
+      "path": "/tmp/hrm-loopback-acl-independent-hosted-5f143755.json",
+      "bytes": 7194,
+      "sha256": "6326bd6a251cdbf6d952ec868ff01776b1f53185243faea35c13ca4e023c476d"
+    },
+    {
+      "path": "/tmp/hrm-loopback-5f-current-check-runs.json",
+      "bytes": 36942,
+      "sha256": "4161355fa8440c40611ec04df50e386cc428c7a0b92485f14ab2095be03e635b"
+    },
+    {
+      "path": "/tmp/hrm-loopback-5f-current-pr626.json",
+      "bytes": 18996,
+      "sha256": "5f318594738476c21c3d89db4b91a232f738b549940cb0c62c340fb57246857d"
+    },
+    {
+      "path": "/tmp/hrm-loopback-5f-current-main-protection.json",
+      "bytes": 1488,
+      "sha256": "94ff741b8943f63ab310fba375af5e9750114361b5fc10e5ff98c29f8e8c6f76"
+    },
+    {
+      "path": "/tmp/hrm-loopback-5f-current-remote-refs.txt",
+      "bytes": 158,
+      "sha256": "117d92f8cfa45c1b437707fe9b3bf534f05e6fb6688889e2ecf00e97dfd2f3b9"
+    }
+  ],
+  "authorship": "Independent root-helper and graph/evidence review; reviewer-authored SQL/tests/workflow separately cross-reviewed by root. No independent own-test authorship claim.",
+  "limits": [
+    "Reviewer performed no merge/push/deploy/production query.",
+    "Ownf8 deploy and actual source-bound supplemental production observation/manual recipient review remain pending; no READY/ACLapproval.",
+    "CurrentHRM5638 initialclassification stillFAIL; othermanualjobs pending. No wholetechnical acceptance from this auxiliary review."
+  ]
+}

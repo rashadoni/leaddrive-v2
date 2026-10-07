@@ -1,0 +1,1474 @@
+﻿2026-10-07T20:52:54.4397441Z Current runner version: '2.337.0'
+2026-10-07T20:52:54.4423239Z ##[group]Runner Image Provisioner
+2026-10-07T20:52:54.4424238Z Hosted Compute Agent
+2026-10-07T20:52:54.4424911Z Version: 20260901.588
+2026-10-07T20:52:54.4425651Z Commit: f88ec8081b781fac6c440065ac7ff9e710ce3d0b
+2026-10-07T20:52:54.4426522Z Build Date: 2026-09-01T19:56:44Z
+2026-10-07T20:52:54.4427278Z Worker ID: {77a637de-a8e1-42d9-9d6c-15b17a0a428b}
+2026-10-07T20:52:54.4428052Z Azure Region: westus3
+2026-10-07T20:52:54.4428766Z ##[endgroup]
+2026-10-07T20:52:54.4430695Z ##[group]Operating System
+2026-10-07T20:52:54.4431525Z Ubuntu
+2026-10-07T20:52:54.4432120Z 24.04.5
+2026-10-07T20:52:54.4432655Z LTS
+2026-10-07T20:52:54.4433322Z ##[endgroup]
+2026-10-07T20:52:54.4433927Z ##[group]Runner Image
+2026-10-07T20:52:54.4434922Z Image: ubuntu-24.04
+2026-10-07T20:52:54.4435585Z Version: 20260927.320.1
+2026-10-07T20:52:54.4436970Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260927.320/images/ubuntu/Ubuntu2404-Readme.md
+2026-10-07T20:52:54.4438633Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260927.320
+2026-10-07T20:52:54.4439687Z ##[endgroup]
+2026-10-07T20:52:54.4441102Z ##[group]GITHUB_TOKEN Permissions
+2026-10-07T20:52:54.4443347Z Contents: read
+2026-10-07T20:52:54.4444054Z Metadata: read
+2026-10-07T20:52:54.4444667Z ##[endgroup]
+2026-10-07T20:52:54.4446852Z Secret source: Actions
+2026-10-07T20:52:54.4447905Z Cache mode: write
+2026-10-07T20:52:54.4448770Z Prepare workflow directory
+2026-10-07T20:52:54.4948168Z Prepare all required actions
+2026-10-07T20:52:54.4996449Z Getting action download info
+2026-10-07T20:52:54.7967658Z Download action repository 'actions/checkout@v6' (SHA:d23441a48e516b6c34aea4fa41551a30e30af803)
+2026-10-07T20:52:54.9023377Z Download action repository 'actions/setup-node@v6' (SHA:249970729cb0ef3589644e2896645e5dc5ba9c38)
+2026-10-07T20:52:55.1068238Z Complete job name: Exact WF-C6-010 source and PostgreSQL regressions
+2026-10-07T20:52:55.1611529Z ##[group]Checking docker version
+2026-10-07T20:52:55.1625001Z ##[command]/usr/bin/docker version --format '{{.Server.APIVersion}}'
+2026-10-07T20:52:55.2523158Z '1.48'
+2026-10-07T20:52:55.2535293Z Docker daemon API version: '1.48'
+2026-10-07T20:52:55.2536094Z ##[command]/usr/bin/docker version --format '{{.Client.APIVersion}}'
+2026-10-07T20:52:55.2701534Z '1.48'
+2026-10-07T20:52:55.2713487Z Docker client API version: '1.48'
+2026-10-07T20:52:55.2718782Z ##[endgroup]
+2026-10-07T20:52:55.2722746Z ##[group]Clean up resources from previous jobs
+2026-10-07T20:52:55.2728271Z ##[command]/usr/bin/docker ps --all --quiet --no-trunc --filter "label=9a1453"
+2026-10-07T20:52:55.2875842Z ##[command]/usr/bin/docker network prune --force --filter "label=9a1453"
+2026-10-07T20:52:55.3008369Z ##[endgroup]
+2026-10-07T20:52:55.3008921Z ##[group]Create local container network
+2026-10-07T20:52:55.3019293Z ##[command]/usr/bin/docker network create --label 9a1453 github_network_63719356b4b8428d84a864b079ea965c
+2026-10-07T20:52:55.3524797Z dd86fa08349162dd5387ebe9dad6a31b03d0ebe3cb344ac5358337aa99e94425
+2026-10-07T20:52:55.3541695Z ##[endgroup]
+2026-10-07T20:52:55.3565830Z ##[group]Starting postgres service container
+2026-10-07T20:52:55.3586770Z ##[command]/usr/bin/docker pull pgvector/pgvector:pg16
+2026-10-07T20:52:56.1451202Z pg16: Pulling from pgvector/pgvector
+2026-10-07T20:52:56.3791048Z 774043ccc8cc: Pulling fs layer
+2026-10-07T20:52:56.3792778Z f2455d5db1ca: Pulling fs layer
+2026-10-07T20:52:56.3795850Z 8445317dd84f: Pulling fs layer
+2026-10-07T20:52:56.3797284Z 2dd9b1a67dcf: Pulling fs layer
+2026-10-07T20:52:56.3798550Z e0d7eb465374: Pulling fs layer
+2026-10-07T20:52:56.3799897Z 1a60cdc4b8b6: Pulling fs layer
+2026-10-07T20:52:56.3801522Z 00ea30b13a58: Pulling fs layer
+2026-10-07T20:52:56.3802752Z 708679827647: Pulling fs layer
+2026-10-07T20:52:56.3804027Z 3e13d544cd35: Pulling fs layer
+2026-10-07T20:52:56.3805234Z 639aa37fe549: Pulling fs layer
+2026-10-07T20:52:56.3806488Z b3e09271b721: Pulling fs layer
+2026-10-07T20:52:56.3807739Z aae3fa55f377: Pulling fs layer
+2026-10-07T20:52:56.3809434Z 50a212ffc5a1: Pulling fs layer
+2026-10-07T20:52:56.3811197Z e9cc823db10f: Pulling fs layer
+2026-10-07T20:52:56.3812342Z 003442b28249: Pulling fs layer
+2026-10-07T20:52:56.3813381Z 2ede25b7c579: Pulling fs layer
+2026-10-07T20:52:56.3814393Z e0d7eb465374: Waiting
+2026-10-07T20:52:56.3815334Z 1a60cdc4b8b6: Waiting
+2026-10-07T20:52:56.3816278Z 00ea30b13a58: Waiting
+2026-10-07T20:52:56.3817247Z 708679827647: Waiting
+2026-10-07T20:52:56.3818187Z 3e13d544cd35: Waiting
+2026-10-07T20:52:56.3819259Z 2dd9b1a67dcf: Waiting
+2026-10-07T20:52:56.3820857Z 639aa37fe549: Waiting
+2026-10-07T20:52:56.3822246Z b3e09271b721: Waiting
+2026-10-07T20:52:56.3823606Z 003442b28249: Waiting
+2026-10-07T20:52:56.3824992Z aae3fa55f377: Waiting
+2026-10-07T20:52:56.3826393Z 2ede25b7c579: Waiting
+2026-10-07T20:52:56.3827783Z 50a212ffc5a1: Waiting
+2026-10-07T20:52:56.3829199Z e9cc823db10f: Waiting
+2026-10-07T20:52:56.5544544Z f2455d5db1ca: Verifying Checksum
+2026-10-07T20:52:56.5547430Z f2455d5db1ca: Download complete
+2026-10-07T20:52:56.5736939Z 8445317dd84f: Verifying Checksum
+2026-10-07T20:52:56.5743313Z 8445317dd84f: Download complete
+2026-10-07T20:52:56.6584069Z 774043ccc8cc: Verifying Checksum
+2026-10-07T20:52:56.6584844Z 774043ccc8cc: Download complete
+2026-10-07T20:52:56.7332314Z 2dd9b1a67dcf: Verifying Checksum
+2026-10-07T20:52:56.7333299Z 2dd9b1a67dcf: Download complete
+2026-10-07T20:52:56.7872119Z e0d7eb465374: Verifying Checksum
+2026-10-07T20:52:56.8508766Z e0d7eb465374: Download complete
+2026-10-07T20:52:56.8509293Z 1a60cdc4b8b6: Verifying Checksum
+2026-10-07T20:52:56.8509956Z 1a60cdc4b8b6: Download complete
+2026-10-07T20:52:56.9159739Z 00ea30b13a58: Verifying Checksum
+2026-10-07T20:52:56.9162276Z 00ea30b13a58: Download complete
+2026-10-07T20:52:56.9535431Z 708679827647: Verifying Checksum
+2026-10-07T20:52:56.9536935Z 708679827647: Download complete
+2026-10-07T20:52:57.0852517Z 639aa37fe549: Verifying Checksum
+2026-10-07T20:52:57.0870362Z 639aa37fe549: Download complete
+2026-10-07T20:52:57.1271526Z b3e09271b721: Verifying Checksum
+2026-10-07T20:52:57.1272216Z b3e09271b721: Download complete
+2026-10-07T20:52:57.2575834Z aae3fa55f377: Verifying Checksum
+2026-10-07T20:52:57.2576581Z aae3fa55f377: Download complete
+2026-10-07T20:52:57.2997888Z 50a212ffc5a1: Verifying Checksum
+2026-10-07T20:52:57.3000468Z 50a212ffc5a1: Download complete
+2026-10-07T20:52:57.4111615Z 3e13d544cd35: Verifying Checksum
+2026-10-07T20:52:57.4112135Z 3e13d544cd35: Download complete
+2026-10-07T20:52:57.4506102Z e9cc823db10f: Verifying Checksum
+2026-10-07T20:52:57.4507198Z e9cc823db10f: Download complete
+2026-10-07T20:52:57.4701992Z 003442b28249: Download complete
+2026-10-07T20:52:57.6168881Z 2ede25b7c579: Verifying Checksum
+2026-10-07T20:52:57.6169535Z 2ede25b7c579: Download complete
+2026-10-07T20:52:57.9468466Z 774043ccc8cc: Pull complete
+2026-10-07T20:53:00.3568455Z f2455d5db1ca: Pull complete
+2026-10-07T20:53:00.4950821Z 8445317dd84f: Pull complete
+2026-10-07T20:53:00.5399804Z 2dd9b1a67dcf: Pull complete
+2026-10-07T20:53:00.8446589Z e0d7eb465374: Pull complete
+2026-10-07T20:53:00.9266040Z 1a60cdc4b8b6: Pull complete
+2026-10-07T20:53:00.9340163Z 00ea30b13a58: Pull complete
+2026-10-07T20:53:00.9434814Z 708679827647: Pull complete
+2026-10-07T20:53:03.9021855Z 3e13d544cd35: Pull complete
+2026-10-07T20:53:03.9157388Z 639aa37fe549: Pull complete
+2026-10-07T20:53:03.9260497Z b3e09271b721: Pull complete
+2026-10-07T20:53:03.9451847Z aae3fa55f377: Pull complete
+2026-10-07T20:53:03.9534476Z 50a212ffc5a1: Pull complete
+2026-10-07T20:53:03.9624564Z e9cc823db10f: Pull complete
+2026-10-07T20:53:04.0137951Z 003442b28249: Pull complete
+2026-10-07T20:53:04.1287410Z 2ede25b7c579: Pull complete
+2026-10-07T20:53:04.1326694Z Digest: sha256:7b822b0aac60967beb1ea5e576b8602c94c300a157d187f385ae3e0da199b90a
+2026-10-07T20:53:04.1337892Z Status: Downloaded newer image for pgvector/pgvector:pg16
+2026-10-07T20:53:04.1348916Z docker.io/pgvector/pgvector:pg16
+2026-10-07T20:53:04.1411136Z ##[command]/usr/bin/docker create --name 9220e73cbff74da2af47b5e3acf43b3b_pgvectorpgvectorpg16_df4bbe --label 9a1453 --network github_network_63719356b4b8428d84a864b079ea965c --network-alias postgres -p 5432 --health-cmd "pg_isready -U postgres -d event_platform_test" --health-interval 5s --health-timeout 5s --health-retries 20 -e "POSTGRES_DB=event_platform_test" -e "POSTGRES_USER=postgres" -e "POSTGRES_PASSWORD=postgres" -e GITHUB_ACTIONS=true -e CI=true pgvector/pgvector:pg16
+2026-10-07T20:53:04.1662272Z 004bc125b7429f6dd3c98576a0188476e4e8bef874213261845953c624cdd83e
+2026-10-07T20:53:04.1687210Z ##[command]/usr/bin/docker start 004bc125b7429f6dd3c98576a0188476e4e8bef874213261845953c624cdd83e
+2026-10-07T20:53:04.3802797Z 004bc125b7429f6dd3c98576a0188476e4e8bef874213261845953c624cdd83e
+2026-10-07T20:53:04.3847268Z ##[command]/usr/bin/docker ps --all --filter id=004bc125b7429f6dd3c98576a0188476e4e8bef874213261845953c624cdd83e --filter status=running --no-trunc --format "{{.ID}} {{.Status}}"
+2026-10-07T20:53:04.4006280Z 004bc125b7429f6dd3c98576a0188476e4e8bef874213261845953c624cdd83e Up Less than a second (health: starting)
+2026-10-07T20:53:04.4028270Z ##[command]/usr/bin/docker port 004bc125b7429f6dd3c98576a0188476e4e8bef874213261845953c624cdd83e
+2026-10-07T20:53:04.4168937Z 5432/tcp -> 0.0.0.0:32768
+2026-10-07T20:53:04.4170353Z 5432/tcp -> [::]:32768
+2026-10-07T20:53:04.4217290Z ##[endgroup]
+2026-10-07T20:53:04.4226501Z ##[group]Waiting for all services to be ready
+2026-10-07T20:53:04.4239412Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" 004bc125b7429f6dd3c98576a0188476e4e8bef874213261845953c624cdd83e
+2026-10-07T20:53:04.4392149Z starting
+2026-10-07T20:53:04.4413994Z postgres service is starting, waiting 2 seconds before checking again.
+2026-10-07T20:53:06.4412417Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" 004bc125b7429f6dd3c98576a0188476e4e8bef874213261845953c624cdd83e
+2026-10-07T20:53:06.4539447Z starting
+2026-10-07T20:53:06.4552446Z postgres service is starting, waiting 3 seconds before checking again.
+2026-10-07T20:53:10.2665616Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" 004bc125b7429f6dd3c98576a0188476e4e8bef874213261845953c624cdd83e
+2026-10-07T20:53:10.2797111Z healthy
+2026-10-07T20:53:10.2814252Z postgres service is healthy.
+2026-10-07T20:53:10.2814777Z ##[endgroup]
+2026-10-07T20:53:10.3192632Z ##[group]Run actions/checkout@v6
+2026-10-07T20:53:10.3193197Z with:
+2026-10-07T20:53:10.3193396Z   fetch-depth: 0
+2026-10-07T20:53:10.3193618Z   repository: rashadoni/leaddrive-v2
+2026-10-07T20:53:10.3195963Z   token: ***
+2026-10-07T20:53:10.3196164Z   ssh-strict: true
+2026-10-07T20:53:10.3196367Z   ssh-user: git
+2026-10-07T20:53:10.3196569Z   persist-credentials: true
+2026-10-07T20:53:10.3196797Z   clean: true
+2026-10-07T20:53:10.3196997Z   sparse-checkout-cone-mode: true
+2026-10-07T20:53:10.3197241Z   fetch-tags: false
+2026-10-07T20:53:10.3197445Z   show-progress: true
+2026-10-07T20:53:10.3197661Z   lfs: false
+2026-10-07T20:53:10.3197843Z   submodules: false
+2026-10-07T20:53:10.3198053Z   set-safe-directory: true
+2026-10-07T20:53:10.3198296Z   allow-unsafe-pr-checkout: false
+2026-10-07T20:53:10.3198718Z env:
+2026-10-07T20:53:10.3198896Z   CI: true
+2026-10-07T20:53:10.3199081Z   VITEST_MAX_WORKERS: 4
+2026-10-07T20:53:10.3199293Z ##[endgroup]
+2026-10-07T20:53:10.4244786Z Syncing repository: rashadoni/leaddrive-v2
+2026-10-07T20:53:10.4246804Z ##[group]Getting Git version info
+2026-10-07T20:53:10.4247463Z Working directory is '/home/runner/work/leaddrive-v2/leaddrive-v2'
+2026-10-07T20:53:10.4248388Z [command]/usr/bin/git version
+2026-10-07T20:53:10.4323833Z git version 2.55.0
+2026-10-07T20:53:10.4349319Z ##[endgroup]
+2026-10-07T20:53:10.4371547Z Temporarily overriding HOME='/home/runner/work/_temp/668aab1c-9f17-40cd-babd-7a5d5cba43c7' before making global git config changes
+2026-10-07T20:53:10.4373205Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-07T20:53:10.4374898Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/leaddrive-v2/leaddrive-v2
+2026-10-07T20:53:10.4430708Z Deleting the contents of '/home/runner/work/leaddrive-v2/leaddrive-v2'
+2026-10-07T20:53:10.4435232Z ##[group]Determining repository object format
+2026-10-07T20:53:10.4438582Z ##[endgroup]
+2026-10-07T20:53:10.4439291Z ##[group]Initializing the repository
+2026-10-07T20:53:10.4443812Z [command]/usr/bin/git init /home/runner/work/leaddrive-v2/leaddrive-v2
+2026-10-07T20:53:10.4594375Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-10-07T20:53:10.4595054Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-10-07T20:53:10.4595566Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-10-07T20:53:10.4595954Z hint: call:
+2026-10-07T20:53:10.4596138Z hint:
+2026-10-07T20:53:10.4596444Z hint: 	git config --global init.defaultBranch <name>
+2026-10-07T20:53:10.4596756Z hint:
+2026-10-07T20:53:10.4597066Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-10-07T20:53:10.4597566Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-10-07T20:53:10.4597956Z hint:
+2026-10-07T20:53:10.4598171Z hint: 	git branch -m <name>
+2026-10-07T20:53:10.4598394Z hint:
+2026-10-07T20:53:10.4598716Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-10-07T20:53:10.4602982Z Initialized empty Git repository in /home/runner/work/leaddrive-v2/leaddrive-v2/.git/
+2026-10-07T20:53:10.4618000Z [command]/usr/bin/git remote add origin https://github.com/rashadoni/leaddrive-v2
+2026-10-07T20:53:10.4683187Z ##[endgroup]
+2026-10-07T20:53:10.4683675Z ##[group]Disabling automatic garbage collection
+2026-10-07T20:53:10.4689194Z [command]/usr/bin/git config --local gc.auto 0
+2026-10-07T20:53:10.4724131Z ##[endgroup]
+2026-10-07T20:53:10.4726211Z ##[group]Setting up auth
+2026-10-07T20:53:10.4726504Z Removing SSH command configuration
+2026-10-07T20:53:10.4733948Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-07T20:53:10.4770750Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-07T20:53:10.5179576Z Removing HTTP extra header
+2026-10-07T20:53:10.5189271Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-07T20:53:10.5228219Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-07T20:53:10.5452197Z Removing includeIf entries pointing to credentials config files
+2026-10-07T20:53:10.5459548Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-07T20:53:10.5495806Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-07T20:53:10.5724652Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-a64062b2-db91-436f-84bb-60691fb8cfc6.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-10-07T20:53:10.5765371Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/leaddrive-v2/leaddrive-v2/.git.path /home/runner/work/_temp/git-credentials-a64062b2-db91-436f-84bb-60691fb8cfc6.config
+2026-10-07T20:53:10.5801982Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/leaddrive-v2/leaddrive-v2/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-a64062b2-db91-436f-84bb-60691fb8cfc6.config
+2026-10-07T20:53:10.5846831Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-a64062b2-db91-436f-84bb-60691fb8cfc6.config
+2026-10-07T20:53:10.5883601Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-a64062b2-db91-436f-84bb-60691fb8cfc6.config
+2026-10-07T20:53:10.5922571Z ##[endgroup]
+2026-10-07T20:53:10.5923201Z ##[group]Fetching the repository
+2026-10-07T20:53:10.5931678Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules origin +refs/heads/*:refs/remotes/origin/* +refs/tags/*:refs/tags/*
+2026-10-07T20:53:22.0908276Z From https://github.com/rashadoni/leaddrive-v2
+2026-10-07T20:53:22.0911685Z  * [new branch]        claude/advisory-lock-execute-raw -> origin/claude/advisory-lock-execute-raw
+2026-10-07T20:53:22.0912800Z  * [new branch]        claude/agent-client-assignments -> origin/claude/agent-client-assignments
+2026-10-07T20:53:22.0914064Z  * [new branch]        claude/anonymize-user-instead-of-delete -> origin/claude/anonymize-user-instead-of-delete
+2026-10-07T20:53:22.0915154Z  * [new branch]        claude/az-hot-lead-term -> origin/claude/az-hot-lead-term
+2026-10-07T20:53:22.0916127Z  * [new branch]        claude/bootstrap-workday-today -> origin/claude/bootstrap-workday-today
+2026-10-07T20:53:22.0917159Z  * [new branch]        claude/campaign-roi-currencies -> origin/claude/campaign-roi-currencies
+2026-10-07T20:53:22.0918194Z  * [new branch]        claude/campaign-scheduled-send -> origin/claude/campaign-scheduled-send
+2026-10-07T20:53:22.0919349Z  * [new branch]        claude/campaigns-analytics-real-figures -> origin/claude/campaigns-analytics-real-figures
+2026-10-07T20:53:22.0920804Z  * [new branch]        claude/campaigns-screens-real-figures -> origin/claude/campaigns-screens-real-figures
+2026-10-07T20:53:22.0922045Z  * [new branch]        claude/channel-claimed-elsewhere -> origin/claude/channel-claimed-elsewhere
+2026-10-07T20:53:22.0923400Z  * [new branch]        claude/channel-form-keeps-server-settings-all-types -> origin/claude/channel-form-keeps-server-settings-all-types
+2026-10-07T20:53:22.0924904Z  * [new branch]        claude/channel-reply-conversation-channels -> origin/claude/channel-reply-conversation-channels
+2026-10-07T20:53:22.0926235Z  * [new branch]        claude/channels-catalog-dedicated-rows -> origin/claude/channels-catalog-dedicated-rows
+2026-10-07T20:53:22.0927517Z  * [new branch]        claude/channels-catalog-voip-delete -> origin/claude/channels-catalog-voip-delete
+2026-10-07T20:53:22.0928838Z  * [new branch]        claude/channels-icon-grid -> origin/claude/channels-icon-grid
+2026-10-07T20:53:22.0929805Z  * [new branch]        claude/channels-one-click-tiles -> origin/claude/channels-one-click-tiles
+2026-10-07T20:53:22.0931069Z  * [new branch]        claude/channels-tiles-polish -> origin/claude/channels-tiles-polish
+2026-10-07T20:53:22.0931846Z  * [new branch]        claude/client-agent-binding-check-ab7942 -> origin/claude/client-agent-binding-check-ab7942
+2026-10-07T20:53:22.0932629Z  * [new branch]        claude/clients-filter-specialties-00213a -> origin/claude/clients-filter-specialties-00213a
+2026-10-07T20:53:22.0933314Z  * [new branch]        claude/coach-card-full-height -> origin/claude/coach-card-full-height
+2026-10-07T20:53:22.0933945Z  * [new branch]        claude/contacts-default-to-list -> origin/claude/contacts-default-to-list
+2026-10-07T20:53:22.0934626Z  * [new branch]        claude/correct-artifact-storage-claim -> origin/claude/correct-artifact-storage-claim
+2026-10-07T20:53:22.0935273Z  * [new branch]        claude/crm-layout-fit-screen -> origin/claude/crm-layout-fit-screen
+2026-10-07T20:53:22.0935940Z  * [new branch]        claude/dashboard-campaign-rates-recorded -> origin/claude/dashboard-campaign-rates-recorded
+2026-10-07T20:53:22.0936701Z  * [new branch]        claude/deal-detail-anchor-row-dedupe -> origin/claude/deal-detail-anchor-row-dedupe
+2026-10-07T20:53:22.0937387Z  * [new branch]        claude/deal-detail-drop-next-steps -> origin/claude/deal-detail-drop-next-steps
+2026-10-07T20:53:22.0938095Z  * [new branch]        claude/deal-detail-next-steps-center -> origin/claude/deal-detail-next-steps-center
+2026-10-07T20:53:22.0938971Z  * [new branch]        claude/deal-feed-two-forms -> origin/claude/deal-feed-two-forms
+2026-10-07T20:53:22.0939642Z  * [new branch]        claude/deals-screen-undefined-stages -> origin/claude/deals-screen-undefined-stages
+2026-10-07T20:53:22.0940840Z  * [new branch]        claude/deals-screen-visual-rework -> origin/claude/deals-screen-visual-rework
+2026-10-07T20:53:22.0941757Z  * [new branch]        claude/demo-any-email   -> origin/claude/demo-any-email
+2026-10-07T20:53:22.0942648Z  * [new branch]        claude/demo-arrow-tall-regions -> origin/claude/demo-arrow-tall-regions
+2026-10-07T20:53:22.0943670Z  * [new branch]        claude/demo-arrows-and-dead-ends -> origin/claude/demo-arrows-and-dead-ends
+2026-10-07T20:53:22.0944647Z  * [new branch]        claude/demo-auto-issue  -> origin/claude/demo-auto-issue
+2026-10-07T20:53:22.0945512Z  * [new branch]        claude/demo-call-from-card -> origin/claude/demo-call-from-card
+2026-10-07T20:53:22.0946391Z  * [new branch]        claude/demo-call-outcome -> origin/claude/demo-call-outcome
+2026-10-07T20:53:22.0947307Z  * [new branch]        claude/demo-call-prompt-by-burst -> origin/claude/demo-call-prompt-by-burst
+2026-10-07T20:53:22.0948410Z  * [new branch]        claude/demo-call-request-phone-only -> origin/claude/demo-call-request-phone-only
+2026-10-07T20:53:22.0949509Z  * [new branch]        claude/demo-call-retention -> origin/claude/demo-call-retention
+2026-10-07T20:53:22.0950835Z  * [new branch]        claude/demo-campaign-and-limits -> origin/claude/demo-campaign-and-limits
+2026-10-07T20:53:22.0952123Z  * [new branch]        claude/demo-center-tails -> origin/claude/demo-center-tails
+2026-10-07T20:53:22.0953028Z  * [new branch]        claude/demo-clip-truth  -> origin/claude/demo-clip-truth
+2026-10-07T20:53:22.0954024Z  * [new branch]        claude/demo-clips-stand-seed -> origin/claude/demo-clips-stand-seed
+2026-10-07T20:53:22.0955011Z  * [new branch]        claude/demo-coach-close -> origin/claude/demo-coach-close
+2026-10-07T20:53:22.0955902Z  * [new branch]        claude/demo-copy-lid    -> origin/claude/demo-copy-lid
+2026-10-07T20:53:22.0956845Z  * [new branch]        claude/demo-fits-the-screen -> origin/claude/demo-fits-the-screen
+2026-10-07T20:53:22.0957851Z  * [new branch]        claude/demo-free-sections -> origin/claude/demo-free-sections
+2026-10-07T20:53:22.0959332Z  * [new branch]        claude/demo-guide-prepared-answers -> origin/claude/demo-guide-prepared-answers
+2026-10-07T20:53:22.0960929Z  * [new branch]        claude/demo-guide-voice -> origin/claude/demo-guide-voice
+2026-10-07T20:53:22.0962030Z  * [new branch]        claude/demo-issue-actually-works -> origin/claude/demo-issue-actually-works
+2026-10-07T20:53:22.0963300Z  * [new branch]        claude/demo-issue-readiness-copy -> origin/claude/demo-issue-readiness-copy
+2026-10-07T20:53:22.0964395Z  * [new branch]        claude/demo-journey-clips -> origin/claude/demo-journey-clips
+2026-10-07T20:53:22.0965423Z  * [new branch]        claude/demo-journey-telemetry -> origin/claude/demo-journey-telemetry
+2026-10-07T20:53:22.0966446Z  * [new branch]        claude/demo-layout-fit  -> origin/claude/demo-layout-fit
+2026-10-07T20:53:22.0967358Z  * [new branch]        claude/demo-live-call   -> origin/claude/demo-live-call
+2026-10-07T20:53:22.0968302Z  * [new branch]        claude/demo-live-call-gated -> origin/claude/demo-live-call-gated
+2026-10-07T20:53:22.0969431Z  * [new branch]        claude/demo-live-call-needs-phone -> origin/claude/demo-live-call-needs-phone
+2026-10-07T20:53:22.0970888Z  * [new branch]        claude/demo-live-whatsapp -> origin/claude/demo-live-whatsapp
+2026-10-07T20:53:22.0971909Z  * [new branch]        claude/demo-nav-and-clip-cta -> origin/claude/demo-nav-and-clip-cta
+2026-10-07T20:53:22.0973001Z  * [new branch]        claude/demo-numbers-truth -> origin/claude/demo-numbers-truth
+2026-10-07T20:53:22.0973921Z  * [new branch]        claude/demo-open-clips  -> origin/claude/demo-open-clips
+2026-10-07T20:53:22.0974965Z  * [new branch]        claude/demo-otp-alternatives -> origin/claude/demo-otp-alternatives
+2026-10-07T20:53:22.0976340Z  * [new branch]        claude/demo-owner-decisions -> origin/claude/demo-owner-decisions
+2026-10-07T20:53:22.0977334Z  * [new branch]        claude/demo-phone-polish -> origin/claude/demo-phone-polish
+2026-10-07T20:53:22.0978389Z  * [new branch]        claude/demo-phone-verification -> origin/claude/demo-phone-verification
+2026-10-07T20:53:22.0979419Z  * [new branch]        claude/demo-phone-width -> origin/claude/demo-phone-width
+2026-10-07T20:53:22.0980617Z  * [new branch]        claude/demo-self-lead   -> origin/claude/demo-self-lead
+2026-10-07T20:53:22.0981723Z  * [new branch]        claude/demo-stand-recorded-counters -> origin/claude/demo-stand-recorded-counters
+2026-10-07T20:53:22.0982871Z  * [new branch]        claude/demo-stand-working-hours -> origin/claude/demo-stand-working-hours
+2026-10-07T20:53:22.0983861Z  * [new branch]        claude/demo-telegram-only -> origin/claude/demo-telegram-only
+2026-10-07T20:53:22.0984839Z  * [new branch]        claude/demo-telegram-test-flake -> origin/claude/demo-telegram-test-flake
+2026-10-07T20:53:22.0985861Z  * [new branch]        claude/demo-voice-in-coach -> origin/claude/demo-voice-in-coach
+2026-10-07T20:53:22.0986856Z  * [new branch]        claude/demo-won-stage-in-view -> origin/claude/demo-won-stage-in-view
+2026-10-07T20:53:22.0987974Z  * [new branch]        claude/deploy-queue-no-starvation -> origin/claude/deploy-queue-no-starvation
+2026-10-07T20:53:22.0989143Z  * [new branch]        claude/drop-client-legal-names -> origin/claude/drop-client-legal-names
+2026-10-07T20:53:22.0990607Z  * [new branch]        claude/drop-unused-csv-parse -> origin/claude/drop-unused-csv-parse
+2026-10-07T20:53:22.0991634Z  * [new branch]        claude/field-ux-b19-accepted -> origin/claude/field-ux-b19-accepted
+2026-10-07T20:53:22.0992602Z  * [new branch]        claude/field-ux-b20-accepted -> origin/claude/field-ux-b20-accepted
+2026-10-07T20:53:22.0993554Z  * [new branch]        claude/field-ux-b4-accepted -> origin/claude/field-ux-b4-accepted
+2026-10-07T20:53:22.0994611Z  * [new branch]        claude/field-ux-b5-b7-b16-accepted -> origin/claude/field-ux-b5-b7-b16-accepted
+2026-10-07T20:53:22.0995785Z  * [new branch]        claude/field-ux-b5-b7-fixes-record -> origin/claude/field-ux-b5-b7-fixes-record
+2026-10-07T20:53:22.0997206Z  * [new branch]        claude/field-ux-c15-planner-sheet -> origin/claude/field-ux-c15-planner-sheet
+2026-10-07T20:53:22.0998342Z  * [new branch]        claude/field-ux-c8-c15-accepted -> origin/claude/field-ux-c8-c15-accepted
+2026-10-07T20:53:22.0999557Z  * [new branch]        claude/field-ux-c8-untimed-publish-confirm -> origin/claude/field-ux-c8-untimed-publish-confirm
+2026-10-07T20:53:22.1000979Z  * [new branch]        claude/field-ux-d1-closed -> origin/claude/field-ux-d1-closed
+2026-10-07T20:53:22.1001941Z  * [new branch]        claude/field-ux-d2-az-dom-pass -> origin/claude/field-ux-d2-az-dom-pass
+2026-10-07T20:53:22.1003023Z  * [new branch]        claude/field-ux-d2-closed-manual -> origin/claude/field-ux-d2-closed-manual
+2026-10-07T20:53:22.1004248Z  * [new branch]        claude/field-ux-device-acceptance-0913 -> origin/claude/field-ux-device-acceptance-0913
+2026-10-07T20:53:22.1005332Z  * [new branch]        claude/field-ux-next    -> origin/claude/field-ux-next
+2026-10-07T20:53:22.1006173Z  * [new branch]        claude/field-ux-next10  -> origin/claude/field-ux-next10
+2026-10-07T20:53:22.1007070Z  * [new branch]        claude/field-ux-next11  -> origin/claude/field-ux-next11
+2026-10-07T20:53:22.1007933Z  * [new branch]        claude/field-ux-next12  -> origin/claude/field-ux-next12
+2026-10-07T20:53:22.1008780Z  * [new branch]        claude/field-ux-next13  -> origin/claude/field-ux-next13
+2026-10-07T20:53:22.1009608Z  * [new branch]        claude/field-ux-next14  -> origin/claude/field-ux-next14
+2026-10-07T20:53:22.1010707Z  * [new branch]        claude/field-ux-next2   -> origin/claude/field-ux-next2
+2026-10-07T20:53:22.1011539Z  * [new branch]        claude/field-ux-next3   -> origin/claude/field-ux-next3
+2026-10-07T20:53:22.1012717Z  * [new branch]        claude/field-ux-next4   -> origin/claude/field-ux-next4
+2026-10-07T20:53:22.1013652Z  * [new branch]        claude/field-ux-next5   -> origin/claude/field-ux-next5
+2026-10-07T20:53:22.1014502Z  * [new branch]        claude/field-ux-next6   -> origin/claude/field-ux-next6
+2026-10-07T20:53:22.1015349Z  * [new branch]        claude/field-ux-next7   -> origin/claude/field-ux-next7
+2026-10-07T20:53:22.1016196Z  * [new branch]        claude/field-ux-next8   -> origin/claude/field-ux-next8
+2026-10-07T20:53:22.1016812Z  * [new branch]        claude/field-ux-next9   -> origin/claude/field-ux-next9
+2026-10-07T20:53:22.1017354Z  * [new branch]        claude/field-ux-t5-visits-reason -> origin/claude/field-ux-t5-visits-reason
+2026-10-07T20:53:22.1018040Z  * [new branch]        claude/field-ux-tracker-shipped-gh -> origin/claude/field-ux-tracker-shipped-gh
+2026-10-07T20:53:22.1018750Z  * [new branch]        claude/finance-api-role-module-gate -> origin/claude/finance-api-role-module-gate
+2026-10-07T20:53:22.1019421Z  * [new branch]        claude/finance-approve-own-order -> origin/claude/finance-approve-own-order
+2026-10-07T20:53:22.1020105Z  * [new branch]        claude/finance-registry-payment-delete -> origin/claude/finance-registry-payment-delete
+2026-10-07T20:53:22.1021147Z  * [new branch]        claude/finance-telegram-escape-html -> origin/claude/finance-telegram-escape-html
+2026-10-07T20:53:22.1021800Z  * [new branch]        claude/finance-telegram-per-org -> origin/claude/finance-telegram-per-org
+2026-10-07T20:53:22.1022390Z  * [new branch]        claude/geofence-radius-to-app -> origin/claude/geofence-radius-to-app
+2026-10-07T20:53:22.1023057Z  * [new branch]        claude/google-alerts-cursor-null-params -> origin/claude/google-alerts-cursor-null-params
+2026-10-07T20:53:22.1023759Z  * [new branch]        claude/inbox-whatsapp-reply-channel -> origin/claude/inbox-whatsapp-reply-channel
+2026-10-07T20:53:22.1024446Z  * [new branch]        claude/instagram-connect-reviewer-path -> origin/claude/instagram-connect-reviewer-path
+2026-10-07T20:53:22.1025343Z  * [new branch]        claude/instagram-deauthorize-data-deletion -> origin/claude/instagram-deauthorize-data-deletion
+2026-10-07T20:53:22.1026735Z  * [new branch]        claude/instagram-inbox-reply-username -> origin/claude/instagram-inbox-reply-username
+2026-10-07T20:53:22.1028048Z  * [new branch]        claude/invoices-header-wraps -> origin/claude/invoices-header-wraps
+2026-10-07T20:53:22.1028775Z  * [new branch]        claude/invoices-leads-analytics-real-figures -> origin/claude/invoices-leads-analytics-real-figures
+2026-10-07T20:53:22.1029514Z  * [new branch]        claude/invoices-stats-by-currency -> origin/claude/invoices-stats-by-currency
+2026-10-07T20:53:22.1030706Z  * [new branch]        claude/kanban-board-visual-rework -> origin/claude/kanban-board-visual-rework
+2026-10-07T20:53:22.1031373Z  * [new branch]        claude/lead-conversion-probability -> origin/claude/lead-conversion-probability
+2026-10-07T20:53:22.1032436Z  * [new branch]        claude/lead-scoring-copy-tour-preview -> origin/claude/lead-scoring-copy-tour-preview
+2026-10-07T20:53:22.1033768Z  * [new branch]        claude/leaddrivecrm-meta-app-review-43a0d8 -> origin/claude/leaddrivecrm-meta-app-review-43a0d8
+2026-10-07T20:53:22.1035147Z  * [new branch]        claude/leads-tip-current-scoring-model -> origin/claude/leads-tip-current-scoring-model
+2026-10-07T20:53:22.1036488Z  * [new branch]        claude/leads-tour-no-invented-figures -> origin/claude/leads-tour-no-invented-figures
+2026-10-07T20:53:22.1037584Z  * [new branch]        claude/live-map-audit   -> origin/claude/live-map-audit
+2026-10-07T20:53:22.1038658Z  * [new branch]        claude/meta-app-review-journal-0921 -> origin/claude/meta-app-review-journal-0921
+2026-10-07T20:53:22.1039989Z  * [new branch]        claude/meta-app-review-leaddrive-d17c8b -> origin/claude/meta-app-review-leaddrive-d17c8b
+2026-10-07T20:53:22.1041443Z  * [new branch]        claude/meta-flb-config-id -> origin/claude/meta-flb-config-id
+2026-10-07T20:53:22.1043255Z  * [new branch]        claude/meta-form-save-keeps-server-settings -> origin/claude/meta-form-save-keeps-server-settings
+2026-10-07T20:53:22.1044492Z  * [new branch]        claude/meta-oauth-return-channel -> origin/claude/meta-oauth-return-channel
+2026-10-07T20:53:22.1045791Z  * [new branch]        claude/meta-review-instagram-resubmitted -> origin/claude/meta-review-instagram-resubmitted
+2026-10-07T20:53:22.1046996Z  * [new branch]        claude/meta-security-hardening -> origin/claude/meta-security-hardening
+2026-10-07T20:53:22.1048121Z  * [new branch]        claude/meta-security-privacy-gate -> origin/claude/meta-security-privacy-gate
+2026-10-07T20:53:22.1049341Z  * [new branch]        claude/meta-staged-no-social-account -> origin/claude/meta-staged-no-social-account
+2026-10-07T20:53:22.1050952Z  * [new branch]        claude/meta-staged-subscription-pending -> origin/claude/meta-staged-subscription-pending
+2026-10-07T20:53:22.1052188Z  * [new branch]        claude/mobile-org-contact-person -> origin/claude/mobile-org-contact-person
+2026-10-07T20:53:22.1053223Z  * [new branch]        claude/mtm-access-section -> origin/claude/mtm-access-section
+2026-10-07T20:53:22.1054233Z  * [new branch]        claude/mtm-activity-in-words -> origin/claude/mtm-activity-in-words
+2026-10-07T20:53:22.1055176Z  * [new branch]        claude/mtm-admin-ux-audit -> origin/claude/mtm-admin-ux-audit
+2026-10-07T20:53:22.1056171Z  * [new branch]        claude/mtm-agent-period-no-agent -> origin/claude/mtm-agent-period-no-agent
+2026-10-07T20:53:22.1057292Z  * [new branch]        claude/mtm-agent-period-real-data -> origin/claude/mtm-agent-period-real-data
+2026-10-07T20:53:22.1058408Z  * [new branch]        claude/mtm-agent-period-report -> origin/claude/mtm-agent-period-report
+2026-10-07T20:53:22.1059524Z  * [new branch]        claude/mtm-agent-permission-matrix -> origin/claude/mtm-agent-permission-matrix
+2026-10-07T20:53:22.1060834Z  * [new branch]        claude/mtm-agent-week-calm -> origin/claude/mtm-agent-week-calm
+2026-10-07T20:53:22.1061925Z  * [new branch]        claude/mtm-agents-page-managers -> origin/claude/mtm-agents-page-managers
+2026-10-07T20:53:22.1063014Z  * [new branch]        claude/mtm-agents-tasks-policies -> origin/claude/mtm-agents-tasks-policies
+2026-10-07T20:53:22.1064391Z  * [new branch]        claude/mtm-alerts-activity-useful -> origin/claude/mtm-alerts-activity-useful
+2026-10-07T20:53:22.1065493Z  * [new branch]        claude/mtm-alerts-import-fix -> origin/claude/mtm-alerts-import-fix
+2026-10-07T20:53:22.1066610Z  * [new branch]        claude/mtm-analytics-for-managers -> origin/claude/mtm-analytics-for-managers
+2026-10-07T20:53:22.1067803Z  * [new branch]        claude/mtm-calendar-day-numbers -> origin/claude/mtm-calendar-day-numbers
+2026-10-07T20:53:22.1068859Z  * [new branch]        claude/mtm-calendar-section -> origin/claude/mtm-calendar-section
+2026-10-07T20:53:22.1070381Z  * [new branch]        claude/mtm-categories-gate-plain-postgres -> origin/claude/mtm-categories-gate-plain-postgres
+2026-10-07T20:53:22.1071711Z  * [new branch]        claude/mtm-categories-save-lock-fix -> origin/claude/mtm-categories-save-lock-fix
+2026-10-07T20:53:22.1072997Z  * [new branch]        claude/mtm-category-fields-excel-and-card -> origin/claude/mtm-category-fields-excel-and-card
+2026-10-07T20:53:22.1074242Z  * [new branch]        claude/mtm-checkin-outside-zone -> origin/claude/mtm-checkin-outside-zone
+2026-10-07T20:53:22.1075326Z  * [new branch]        claude/mtm-client-owner-status -> origin/claude/mtm-client-owner-status
+2026-10-07T20:53:22.1076416Z  * [new branch]        claude/mtm-client-several-agents -> origin/claude/mtm-client-several-agents
+2026-10-07T20:53:22.1077481Z  * [new branch]        claude/mtm-clients-vs-sites -> origin/claude/mtm-clients-vs-sites
+2026-10-07T20:53:22.1078302Z  * [new branch]        claude/mtm-compact-filters -> origin/claude/mtm-compact-filters
+2026-10-07T20:53:22.1078852Z  * [new branch]        claude/mtm-compact-filters-2 -> origin/claude/mtm-compact-filters-2
+2026-10-07T20:53:22.1079605Z  * [new branch]        claude/mtm-compact-filters-3 -> origin/claude/mtm-compact-filters-3
+2026-10-07T20:53:22.1080610Z  * [new branch]        claude/mtm-contact-card-plain -> origin/claude/mtm-contact-card-plain
+2026-10-07T20:53:22.1081556Z  * [new branch]        claude/mtm-contact-history-labels -> origin/claude/mtm-contact-history-labels
+2026-10-07T20:53:22.1082238Z  * [new branch]        claude/mtm-contacts-excel-import -> origin/claude/mtm-contacts-excel-import
+2026-10-07T20:53:22.1082921Z  * [new branch]        claude/mtm-contacts-manager-forbidden -> origin/claude/mtm-contacts-manager-forbidden
+2026-10-07T20:53:22.1083600Z  * [new branch]        claude/mtm-contacts-refusal-toast -> origin/claude/mtm-contacts-refusal-toast
+2026-10-07T20:53:22.1084203Z  * [new branch]        claude/mtm-dashboard-compact -> origin/claude/mtm-dashboard-compact
+2026-10-07T20:53:22.1084736Z  * [new branch]        claude/mtm-day-route-merge -> origin/claude/mtm-day-route-merge
+2026-10-07T20:53:22.1085271Z  * [new branch]        claude/mtm-day-route-polish -> origin/claude/mtm-day-route-polish
+2026-10-07T20:53:22.1085802Z  * [new branch]        claude/mtm-day-timeline -> origin/claude/mtm-day-timeline
+2026-10-07T20:53:22.1086412Z  * [new branch]        claude/mtm-delete-agent-without-history -> origin/claude/mtm-delete-agent-without-history
+2026-10-07T20:53:22.1087031Z  * [new branch]        claude/mtm-demo-pulse   -> origin/claude/mtm-demo-pulse
+2026-10-07T20:53:22.1087492Z  * [new branch]        claude/mtm-demo-roads   -> origin/claude/mtm-demo-roads
+2026-10-07T20:53:22.1087993Z  * [new branch]        claude/mtm-doctor-class-vip -> origin/claude/mtm-doctor-class-vip
+2026-10-07T20:53:22.1088584Z  * [new branch]        claude/mtm-empty-period-fallback -> origin/claude/mtm-empty-period-fallback
+2026-10-07T20:53:22.1089226Z  * [new branch]        claude/mtm-field-contacts-toggle -> origin/claude/mtm-field-contacts-toggle
+2026-10-07T20:53:22.1089826Z  * [new branch]        claude/mtm-field-scope-by-team -> origin/claude/mtm-field-scope-by-team
+2026-10-07T20:53:22.1090729Z  * [new branch]        claude/mtm-history-date-range -> origin/claude/mtm-history-date-range
+2026-10-07T20:53:22.1091720Z  * [new branch]        claude/mtm-history-end-date-stays -> origin/claude/mtm-history-end-date-stays
+2026-10-07T20:53:22.1093135Z  * [new branch]        claude/mtm-history-map-legend -> origin/claude/mtm-history-map-legend
+2026-10-07T20:53:22.1093942Z  * [new branch]        claude/mtm-institutions-naming -> origin/claude/mtm-institutions-naming
+2026-10-07T20:53:22.1094586Z  * [new branch]        claude/mtm-location-picker-resize -> origin/claude/mtm-location-picker-resize
+2026-10-07T20:53:22.1095240Z  * [new branch]        claude/mtm-location-picker-search -> origin/claude/mtm-location-picker-search
+2026-10-07T20:53:22.1095866Z  * [new branch]        claude/mtm-location-pin-address -> origin/claude/mtm-location-pin-address
+2026-10-07T20:53:22.1096485Z  * [new branch]        claude/mtm-location-search-timeout -> origin/claude/mtm-location-search-timeout
+2026-10-07T20:53:22.1097138Z  * [new branch]        claude/mtm-location-search-tolerant -> origin/claude/mtm-location-search-tolerant
+2026-10-07T20:53:22.1097760Z  * [new branch]        claude/mtm-login-issue-bc9bb1 -> origin/claude/mtm-login-issue-bc9bb1
+2026-10-07T20:53:22.1098336Z  * [new branch]        claude/mtm-manager-close-shift -> origin/claude/mtm-manager-close-shift
+2026-10-07T20:53:22.1098900Z  * [new branch]        claude/mtm-map-routes-photos -> origin/claude/mtm-map-routes-photos
+2026-10-07T20:53:22.1099563Z  * [new branch]        claude/mtm-mobile-change-request-gateway -> origin/claude/mtm-mobile-change-request-gateway
+2026-10-07T20:53:22.1100621Z  * [new branch]        claude/mtm-mobile-contact-change-request -> origin/claude/mtm-mobile-contact-change-request
+2026-10-07T20:53:22.1101326Z  * [new branch]        claude/mtm-mobile-contact-classes -> origin/claude/mtm-mobile-contact-classes
+2026-10-07T20:53:22.1101929Z  * [new branch]        claude/mtm-one-geofence-rule -> origin/claude/mtm-one-geofence-rule
+2026-10-07T20:53:22.1102962Z  * [new branch]        claude/mtm-osrm-map-matching -> origin/claude/mtm-osrm-map-matching
+2026-10-07T20:53:22.1103533Z  * [new branch]        claude/mtm-osrm-package-perms -> origin/claude/mtm-osrm-package-perms
+2026-10-07T20:53:22.1104111Z  * [new branch]        claude/mtm-panel-no-flicker -> origin/claude/mtm-panel-no-flicker
+2026-10-07T20:53:22.1104646Z  * [new branch]        claude/mtm-panel-truthful -> origin/claude/mtm-panel-truthful
+2026-10-07T20:53:22.1105155Z  * [new branch]        claude/mtm-panel-where-now -> origin/claude/mtm-panel-where-now
+2026-10-07T20:53:22.1105798Z  * [new branch]        claude/mtm-photo-thumbnails -> origin/claude/mtm-photo-thumbnails
+2026-10-07T20:53:22.1106324Z  * [new branch]        claude/mtm-photos-audit -> origin/claude/mtm-photos-audit
+2026-10-07T20:53:22.1106879Z  * [new branch]        claude/mtm-ping-unknown-company -> origin/claude/mtm-ping-unknown-company
+2026-10-07T20:53:22.1107467Z  * [new branch]        claude/mtm-promotions-toggle -> origin/claude/mtm-promotions-toggle
+2026-10-07T20:53:22.1108139Z  * [new branch]        claude/mtm-quiet-empty-cells -> origin/claude/mtm-quiet-empty-cells
+2026-10-07T20:53:22.1108685Z  * [new branch]        claude/mtm-remove-hint-lines -> origin/claude/mtm-remove-hint-lines
+2026-10-07T20:53:22.1109286Z  * [new branch]        claude/mtm-remove-instruction-copy -> origin/claude/mtm-remove-instruction-copy
+2026-10-07T20:53:22.1109862Z  * [new branch]        claude/mtm-reports-small -> origin/claude/mtm-reports-small
+2026-10-07T20:53:22.1110728Z  * [new branch]        claude/mtm-road-km      -> origin/claude/mtm-road-km
+2026-10-07T20:53:22.1111229Z  * [new branch]        claude/mtm-road-km-speed -> origin/claude/mtm-road-km-speed
+2026-10-07T20:53:22.1111806Z  * [new branch]        claude/mtm-route-builder-adds-agent -> origin/claude/mtm-route-builder-adds-agent
+2026-10-07T20:53:22.1112414Z  * [new branch]        claude/mtm-route-points-city -> origin/claude/mtm-route-points-city
+2026-10-07T20:53:22.1113050Z  * [new branch]        claude/mtm-route-update-published -> origin/claude/mtm-route-update-published
+2026-10-07T20:53:22.1113760Z  * [new branch]        claude/mtm-routes-awaiting-approval -> origin/claude/mtm-routes-awaiting-approval
+2026-10-07T20:53:22.1114525Z  * [new branch]        claude/mtm-routes-header-rows -> origin/claude/mtm-routes-header-rows
+2026-10-07T20:53:22.1115274Z  * [new branch]        claude/mtm-routes-title-week -> origin/claude/mtm-routes-title-week
+2026-10-07T20:53:22.1115790Z  * [new branch]        claude/mtm-routes-views -> origin/claude/mtm-routes-views
+2026-10-07T20:53:22.1116382Z  * [new branch]        claude/mtm-self-publish-in-one-place -> origin/claude/mtm-self-publish-in-one-place
+2026-10-07T20:53:22.1117293Z  * [new branch]        claude/mtm-settings-honest-safe-save -> origin/claude/mtm-settings-honest-safe-save
+2026-10-07T20:53:22.1117954Z  * [new branch]        claude/mtm-switches-take-effect -> origin/claude/mtm-switches-take-effect
+2026-10-07T20:53:22.1118577Z  * [new branch]        claude/mtm-tasks-awaiting-review -> origin/claude/mtm-tasks-awaiting-review
+2026-10-07T20:53:22.1119130Z  * [new branch]        claude/mtm-tasks-chips  -> origin/claude/mtm-tasks-chips
+2026-10-07T20:53:22.1119873Z  * [new branch]        claude/mtm-tasks-contact-name -> origin/claude/mtm-tasks-contact-name
+2026-10-07T20:53:22.1120759Z  * [new branch]        claude/mtm-tasks-keep-rows -> origin/claude/mtm-tasks-keep-rows
+2026-10-07T20:53:22.1121307Z  * [new branch]        claude/mtm-tasks-open-first -> origin/claude/mtm-tasks-open-first
+2026-10-07T20:53:22.1121819Z  * [new branch]        claude/mtm-tasks-overdue -> origin/claude/mtm-tasks-overdue
+2026-10-07T20:53:22.1122650Z  * [new branch]        claude/mtm-tasks-row-click -> origin/claude/mtm-tasks-row-click
+2026-10-07T20:53:22.1123419Z  * [new branch]        claude/mtm-tasks-search-agent -> origin/claude/mtm-tasks-search-agent
+2026-10-07T20:53:22.1124023Z  * [new branch]        claude/mtm-visit-actions-switches -> origin/claude/mtm-visit-actions-switches
+2026-10-07T20:53:22.1124854Z  * [new branch]        claude/mtm-visit-close-by-agent-only -> origin/claude/mtm-visit-close-by-agent-only
+2026-10-07T20:53:22.1125503Z  * [new branch]        claude/mtm-visit-duration-median -> origin/claude/mtm-visit-duration-median
+2026-10-07T20:53:22.1126219Z  * [new branch]        claude/mtm-visit-edit-integrity -> origin/claude/mtm-visit-edit-integrity
+2026-10-07T20:53:22.1127226Z  * [new branch]        claude/mtm-visit-review-office -> origin/claude/mtm-visit-review-office
+2026-10-07T20:53:22.1127801Z  * [new branch]        claude/mtm-visit-signature -> origin/claude/mtm-visit-signature
+2026-10-07T20:53:22.1128341Z  * [new branch]        claude/mtm-visits-load-more -> origin/claude/mtm-visits-load-more
+2026-10-07T20:53:22.1128901Z  * [new branch]        claude/mtm-week-planner-rename -> origin/claude/mtm-week-planner-rename
+2026-10-07T20:53:22.1129473Z  * [new branch]        claude/mtm-week-stops-wording -> origin/claude/mtm-week-stops-wording
+2026-10-07T20:53:22.1130026Z  * [new branch]        claude/no-ai-review-gate-0926 -> origin/claude/no-ai-review-gate-0926
+2026-10-07T20:53:22.1130910Z  * [new branch]        claude/notes-voice-provider -> origin/claude/notes-voice-provider
+2026-10-07T20:53:22.1131513Z  * [new branch]        claude/oauth-return-to-catalog -> origin/claude/oauth-return-to-catalog
+2026-10-07T20:53:22.1132073Z  * [new branch]        claude/omnichannel-reel-docs -> origin/claude/omnichannel-reel-docs
+2026-10-07T20:53:22.1132668Z  * [new branch]        claude/omnichannel-reel-hero-text -> origin/claude/omnichannel-reel-hero-text
+2026-10-07T20:53:22.1133411Z  * [new branch]        claude/omnichannel-reel-overlay-clicks -> origin/claude/omnichannel-reel-overlay-clicks
+2026-10-07T20:53:22.1134194Z  * [new branch]        claude/omnichannel-reel-recorder -> origin/claude/omnichannel-reel-recorder
+2026-10-07T20:53:22.1134820Z  * [new branch]        claude/omnichannel-reel-seed-fix -> origin/claude/omnichannel-reel-seed-fix
+2026-10-07T20:53:22.1135467Z  * [new branch]        claude/omnichannel-reel-team-thread -> origin/claude/omnichannel-reel-team-thread
+2026-10-07T20:53:22.1136161Z  * [new branch]        claude/omnichannel-reel-team-thread-2 -> origin/claude/omnichannel-reel-team-thread-2
+2026-10-07T20:53:22.1136945Z  * [new branch]        claude/omnichannel-reel-work -> origin/claude/omnichannel-reel-work
+2026-10-07T20:53:22.1137519Z  * [new branch]        claude/omnichannel-reel2-seed -> origin/claude/omnichannel-reel2-seed
+2026-10-07T20:53:22.1138115Z  * [new branch]        claude/omnichannel-reel2-seed-fix -> origin/claude/omnichannel-reel2-seed-fix
+2026-10-07T20:53:22.1138693Z  * [new branch]        claude/org-default-currency -> origin/claude/org-default-currency
+2026-10-07T20:53:22.1139324Z  * [new branch]        claude/organization-contact-data-ea623b -> origin/claude/organization-contact-data-ea623b
+2026-10-07T20:53:22.1139946Z  * [new branch]        claude/page-headers-wrap -> origin/claude/page-headers-wrap
+2026-10-07T20:53:22.1140723Z  * [new branch]        claude/password-reset-session-expired -> origin/claude/password-reset-session-expired
+2026-10-07T20:53:22.1141433Z  * [new branch]        claude/privacy-subprocessor-hetzner -> origin/claude/privacy-subprocessor-hetzner
+2026-10-07T20:53:22.1142061Z  * [new branch]        claude/product-create-failure -> origin/claude/product-create-failure
+2026-10-07T20:53:22.1142602Z  * [new branch]        claude/push-delivery-log -> origin/claude/push-delivery-log
+2026-10-07T20:53:22.1143118Z  * [new branch]        claude/push-device-registry -> origin/claude/push-device-registry
+2026-10-07T20:53:22.1143644Z  * [new branch]        claude/push-status-visible -> origin/claude/push-status-visible
+2026-10-07T20:53:22.1144221Z  * [new branch]        claude/remove-manager-shift-close -> origin/claude/remove-manager-shift-close
+2026-10-07T20:53:22.1144789Z  * [new branch]        claude/require-2fa-toggle -> origin/claude/require-2fa-toggle
+2026-10-07T20:53:22.1145407Z  * [new branch]        claude/roles-page-honest -> origin/claude/roles-page-honest
+2026-10-07T20:53:22.1146006Z  * [new branch]        claude/route-command-start-constraint -> origin/claude/route-command-start-constraint
+2026-10-07T20:53:22.1146742Z  * [new branch]        claude/route-module-settings-access-14e774 -> origin/claude/route-module-settings-access-14e774
+2026-10-07T20:53:22.1147542Z  * [new branch]        claude/routes-categories-custom-fields-d26a1d -> origin/claude/routes-categories-custom-fields-d26a1d
+2026-10-07T20:53:22.1148324Z  * [new branch]        claude/score-leads-on-every-create-path -> origin/claude/score-leads-on-every-create-path
+2026-10-07T20:53:22.1149053Z  * [new branch]        claude/search-field-organization-93f409 -> origin/claude/search-field-organization-93f409
+2026-10-07T20:53:22.1149692Z  * [new branch]        claude/session-log-2026-09-20 -> origin/claude/session-log-2026-09-20
+2026-10-07T20:53:22.1150408Z  * [new branch]        claude/session-log-2026-09-20-push -> origin/claude/session-log-2026-09-20-push
+2026-10-07T20:53:22.1151044Z  * [new branch]        claude/session-log-push-verified -> origin/claude/session-log-push-verified
+2026-10-07T20:53:22.1151693Z  * [new branch]        claude/social-secrets-facebook-keys -> origin/claude/social-secrets-facebook-keys
+2026-10-07T20:53:22.1152334Z  * [new branch]        claude/support-acceptance-fixes -> origin/claude/support-acceptance-fixes
+2026-10-07T20:53:22.1153232Z  * [new branch]        claude/support-escalation-schedule -> origin/claude/support-escalation-schedule
+2026-10-07T20:53:22.1153878Z  * [new branch]        claude/user-card-effective-access -> origin/claude/user-card-effective-access
+2026-10-07T20:53:22.1154448Z  * [new branch]        claude/user-module-access -> origin/claude/user-module-access
+2026-10-07T20:53:22.1154970Z  * [new branch]        claude/visit-place-snapshot -> origin/claude/visit-place-snapshot
+2026-10-07T20:53:22.1155483Z  * [new branch]        claude/visit-roadmap-web -> origin/claude/visit-roadmap-web
+2026-10-07T20:53:22.1156016Z  * [new branch]        claude/voice-dispatch-extract -> origin/claude/voice-dispatch-extract
+2026-10-07T20:53:22.1156781Z  * [new branch]        claude/voice-per-call-prompt -> origin/claude/voice-per-call-prompt
+2026-10-07T20:53:22.1158109Z  * [new branch]        claude/wallpaper-sunrise-clouds -> origin/claude/wallpaper-sunrise-clouds
+2026-10-07T20:53:22.1159226Z  * [new branch]        claude/whatsapp-embedded-signup -> origin/claude/whatsapp-embedded-signup
+2026-10-07T20:53:22.1159973Z  * [new branch]        claude/whatsapp-es-keep-tenant-secret -> origin/claude/whatsapp-es-keep-tenant-secret
+2026-10-07T20:53:22.1161135Z  * [new branch]        claude/whatsapp-reply-from-receiving-number -> origin/claude/whatsapp-reply-from-receiving-number
+2026-10-07T20:53:22.1161864Z  * [new branch]        claude/whatsapp-templates-no-502 -> origin/claude/whatsapp-templates-no-502
+2026-10-07T20:53:22.1162539Z  * [new branch]        claude/workday-actions-mfa-recommended -> origin/claude/workday-actions-mfa-recommended
+2026-10-07T20:53:22.1163609Z  * [new branch]        claude/workday-reopen   -> origin/claude/workday-reopen
+2026-10-07T20:53:22.1164182Z  * [new branch]        claude/workday-reopen-ui -> origin/claude/workday-reopen-ui
+2026-10-07T20:53:22.1164738Z  * [new branch]        claude/workflow-email-variables -> origin/claude/workflow-email-variables
+2026-10-07T20:53:22.1165350Z  * [new branch]        claude/zod-locale-in-prod-bundle -> origin/claude/zod-locale-in-prod-bundle
+2026-10-07T20:53:22.1165963Z  * [new branch]        codex/backup-monitoring-20260912 -> origin/codex/backup-monitoring-20260912
+2026-10-07T20:53:22.1166555Z  * [new branch]        codex/client-person-directory -> origin/codex/client-person-directory
+2026-10-07T20:53:22.1167094Z  * [new branch]        codex/crm-command-parity -> origin/codex/crm-command-parity
+2026-10-07T20:53:22.1167626Z  * [new branch]        codex/crm-parity-verification -> origin/codex/crm-parity-verification
+2026-10-07T20:53:22.1168394Z  * [new branch]        codex/crm-side-effect-parity -> origin/codex/crm-side-effect-parity
+2026-10-07T20:53:22.1168994Z  * [new branch]        codex/crm-voice-assistant-roadmap -> origin/codex/crm-voice-assistant-roadmap
+2026-10-07T20:53:22.1169661Z  * [new branch]        codex/crm-voice-receipt-ui -> origin/codex/crm-voice-receipt-ui
+2026-10-07T20:53:22.1170712Z  * [new branch]        codex/crm-voice-receipt-ui-verification -> origin/codex/crm-voice-receipt-ui-verification
+2026-10-07T20:53:22.1171346Z  * [new branch]        codex/demo-center       -> origin/codex/demo-center
+2026-10-07T20:53:22.1171834Z  * [new branch]        codex/demo-guide-duplication -> origin/codex/demo-guide-duplication
+2026-10-07T20:53:22.1172383Z  * [new branch]        codex/demo-journey-assistant -> origin/codex/demo-journey-assistant
+2026-10-07T20:53:22.1172914Z  * [new branch]        codex/demo-journey-renderer -> origin/codex/demo-journey-renderer
+2026-10-07T20:53:22.1173422Z  * [new branch]        codex/demo-journey-scenes -> origin/codex/demo-journey-scenes
+2026-10-07T20:53:22.1173918Z  * [new branch]        codex/demo-journey-video -> origin/codex/demo-journey-video
+2026-10-07T20:53:22.1174399Z  * [new branch]        codex/demo-locale-at-root -> origin/codex/demo-locale-at-root
+2026-10-07T20:53:22.1174900Z  * [new branch]        codex/demo-open-access  -> origin/codex/demo-open-access
+2026-10-07T20:53:22.1175367Z  * [new branch]        codex/demo-open-badge   -> origin/codex/demo-open-badge
+2026-10-07T20:53:22.1175819Z  * [new branch]        codex/demo-open-route   -> origin/codex/demo-open-route
+2026-10-07T20:53:22.1176278Z  * [new branch]        codex/demo-request-cors -> origin/codex/demo-request-cors
+2026-10-07T20:53:22.1176837Z  * [new branch]        codex/demo-selected-sales-journey -> origin/codex/demo-selected-sales-journey
+2026-10-07T20:53:22.1177510Z  * [new branch]        codex/e2e-verification-20261003-111fea48 -> origin/codex/e2e-verification-20261003-111fea48
+2026-10-07T20:53:22.1178285Z  * [new branch]        codex/fix-scratch-role-verification-20260913 -> origin/codex/fix-scratch-role-verification-20260913
+2026-10-07T20:53:22.1179006Z  * [new branch]        codex/fix-ticket-attachments-rls -> origin/codex/fix-ticket-attachments-rls
+2026-10-07T20:53:22.1179826Z  * [new branch]        codex/fix-workforce-schedule-auth-export -> origin/codex/fix-workforce-schedule-auth-export
+2026-10-07T20:53:22.1180742Z  * [new branch]        codex/help-ai-guides    -> origin/codex/help-ai-guides
+2026-10-07T20:53:22.1181288Z  * [new branch]        codex/hrm-585-integration-20261005 -> origin/codex/hrm-585-integration-20261005
+2026-10-07T20:53:22.1181897Z  * [new branch]        codex/hrm-585-recovery-20261005 -> origin/codex/hrm-585-recovery-20261005
+2026-10-07T20:53:22.1182513Z  * [new branch]        codex/hrm-588-validation-20261005 -> origin/codex/hrm-588-validation-20261005
+2026-10-07T20:53:22.1183224Z  * [new branch]        codex/hrm-c12-acceptance-evidence-973-20261006 -> origin/codex/hrm-c12-acceptance-evidence-973-20261006
+2026-10-07T20:53:22.1183991Z  * [new branch]        codex/hrm-c12-reader-profile-20261006 -> origin/codex/hrm-c12-reader-profile-20261006
+2026-10-07T20:53:22.1184747Z  * [new branch]        codex/hrm-c8-acceptance-evidence-bf6-20261006 -> origin/codex/hrm-c8-acceptance-evidence-bf6-20261006
+2026-10-07T20:53:22.1185484Z  * [new branch]        codex/hrm-c8-pagination-at-20261006 -> origin/codex/hrm-c8-pagination-at-20261006
+2026-10-07T20:53:22.1186249Z  * [new branch]        codex/hrm-release-88-technical-archive-20261007 -> origin/codex/hrm-release-88-technical-archive-20261007
+2026-10-07T20:53:22.1187125Z  * [new branch]        codex/hrm-release-acl-identity-diagnostic-20261007 -> origin/codex/hrm-release-acl-identity-diagnostic-20261007
+2026-10-07T20:53:22.1187954Z  * [new branch]        codex/hrm-release-acl-inspection-20261007 -> origin/codex/hrm-release-acl-inspection-20261007
+2026-10-07T20:53:22.1188771Z  * [new branch]        codex/hrm-release-loopback-acl-evidence-20261007 -> origin/codex/hrm-release-loopback-acl-evidence-20261007
+2026-10-07T20:53:22.1189806Z  * [new branch]        codex/hrm-release-preflight-20261007 -> origin/codex/hrm-release-preflight-20261007
+2026-10-07T20:53:22.1190910Z  * [new branch]        codex/hrm-release-preflight-connect-timeout-20261007 -> origin/codex/hrm-release-preflight-connect-timeout-20261007
+2026-10-07T20:53:22.1192080Z  * [new branch]        codex/hrm-release-preflight-env-diagnostics-20261007 -> origin/codex/hrm-release-preflight-env-diagnostics-20261007
+2026-10-07T20:53:22.1193251Z  * [new branch]        codex/hrm-wf-c6-010-recorded-decisions-20261007 -> origin/codex/hrm-wf-c6-010-recorded-decisions-20261007
+2026-10-07T20:53:22.1194241Z  * [new branch]        codex/hrm-wf-c6-010-release-evidence-20261007 -> origin/codex/hrm-wf-c6-010-release-evidence-20261007
+2026-10-07T20:53:22.1195055Z  * [new branch]        codex/jev-relevance-judge -> origin/codex/jev-relevance-judge
+2026-10-07T20:53:22.1195575Z  * [new branch]        codex/jev-relevance-replay -> origin/codex/jev-relevance-replay
+2026-10-07T20:53:22.1196250Z  * [new branch]        codex/judge-queue-widen -> origin/codex/judge-queue-widen
+2026-10-07T20:53:22.1196806Z  * [new branch]        codex/judge-second-signal-revert -> origin/codex/judge-second-signal-revert
+2026-10-07T20:53:22.1197669Z  * [new branch]        codex/judge-skip-without-geo -> origin/codex/judge-skip-without-geo
+2026-10-07T20:53:22.1198270Z  * [new branch]        codex/legal-links-footer -> origin/codex/legal-links-footer
+2026-10-07T20:53:22.1198882Z  * [new branch]        codex/meta-app-review   -> origin/codex/meta-app-review
+2026-10-07T20:53:22.1199511Z  * [new branch]        codex/meta-app-review-language -> origin/codex/meta-app-review-language
+2026-10-07T20:53:22.1200476Z  * [new branch]        codex/normalize-backup-owned-scratch-pgpass-20260913 -> origin/codex/normalize-backup-owned-scratch-pgpass-20260913
+2026-10-07T20:53:22.1201548Z  * [new branch]        codex/normalize-scratch-pgpass-20260913 -> origin/codex/normalize-scratch-pgpass-20260913
+2026-10-07T20:53:22.1202473Z  * [new branch]        codex/provision-backup-scratch-20260913 -> origin/codex/provision-backup-scratch-20260913
+2026-10-07T20:53:22.1203413Z  * [new branch]        codex/read-only-postgres-san-scratch-audit -> origin/codex/read-only-postgres-san-scratch-audit
+2026-10-07T20:53:22.1204488Z  * [new branch]        codex/read-only-postgres-san-scratch-detail -> origin/codex/read-only-postgres-san-scratch-detail
+2026-10-07T20:53:22.1205360Z  * [new branch]        codex/read-only-postgres-tls-diagnostics -> origin/codex/read-only-postgres-tls-diagnostics
+2026-10-07T20:53:22.1206347Z  * [new branch]        codex/remove-social-monitoring-deploy-gates -> origin/codex/remove-social-monitoring-deploy-gates
+2026-10-07T20:53:22.1207309Z  * [new branch]        codex/scratch-config-diagnostics-20260913 -> origin/codex/scratch-config-diagnostics-20260913
+2026-10-07T20:53:22.1208027Z  * [new branch]        codex/social-judge-cron -> origin/codex/social-judge-cron
+2026-10-07T20:53:22.1208711Z  * [new branch]        codex/source-tls-client-remediation -> origin/codex/source-tls-client-remediation
+2026-10-07T20:53:22.1209596Z  * [new branch]        codex/source-tls-config-read-diagnostics -> origin/codex/source-tls-config-read-diagnostics
+2026-10-07T20:53:22.1210826Z  * [new branch]        codex/source-tls-controlled-client-transition -> origin/codex/source-tls-controlled-client-transition
+2026-10-07T20:53:22.1211696Z  * [new branch]        codex/source-tls-invocation-detail -> origin/codex/source-tls-invocation-detail
+2026-10-07T20:53:22.1212515Z  * [new branch]        codex/source-tls-maintenance-failure-stage -> origin/codex/source-tls-maintenance-failure-stage
+2026-10-07T20:53:22.1213490Z  * [new branch]        codex/source-tls-missing-client-fields -> origin/codex/source-tls-missing-client-fields
+2026-10-07T20:53:22.1214362Z  * [new branch]        codex/source-tls-passfile-selector -> origin/codex/source-tls-passfile-selector
+2026-10-07T20:53:22.1215045Z  * [new branch]        codex/source-tls-pgpass-diagnostics -> origin/codex/source-tls-pgpass-diagnostics
+2026-10-07T20:53:22.1216143Z  * [new branch]        codex/source-tls-pgpass-read-diagnostics -> origin/codex/source-tls-pgpass-read-diagnostics
+2026-10-07T20:53:22.1217109Z  * [new branch]        codex/source-tls-precommission-invocation -> origin/codex/source-tls-precommission-invocation
+2026-10-07T20:53:22.1218114Z  * [new branch]        codex/source-tls-quarantine-uncommissioned-unit -> origin/codex/source-tls-quarantine-uncommissioned-unit
+2026-10-07T20:53:22.1219000Z  * [new branch]        codex/source-tls-service-owned-pgpass -> origin/codex/source-tls-service-owned-pgpass
+2026-10-07T20:53:22.1219844Z  * [new branch]        codex/split-scratch-verify-stages-20260913 -> origin/codex/split-scratch-verify-stages-20260913
+2026-10-07T20:53:22.1220890Z  * [new branch]        codex/support-audit-copy-followup-20261006 -> origin/codex/support-audit-copy-followup-20261006
+2026-10-07T20:53:22.1221849Z  * [new branch]        codex/support-entitlements-mobile-49f81ff3 -> origin/codex/support-entitlements-mobile-49f81ff3
+2026-10-07T20:53:22.1222846Z  * [new branch]        codex/support-entitlements-responsive-filters -> origin/codex/support-entitlements-responsive-filters
+2026-10-07T20:53:22.1223608Z  * [new branch]        codex/support-portal-audit-fix -> origin/codex/support-portal-audit-fix
+2026-10-07T20:53:22.1224432Z  * [new branch]        codex/support-real-backend-evidence -> origin/codex/support-real-backend-evidence
+2026-10-07T20:53:22.1225283Z  * [new branch]        codex/support-ticket-attachments-rls -> origin/codex/support-ticket-attachments-rls
+2026-10-07T20:53:22.1226030Z  * [new branch]        codex/support-ux-agent-desktop-rashadoni -> origin/codex/support-ux-agent-desktop-rashadoni
+2026-10-07T20:53:22.1226883Z  * [new branch]        codex/support-ux-audit-20261004 -> origin/codex/support-ux-audit-20261004
+2026-10-07T20:53:22.1227770Z  * [new branch]        codex/support-ux-complaint-registry-rashadoni -> origin/codex/support-ux-complaint-registry-rashadoni
+2026-10-07T20:53:22.1228563Z  * [new branch]        codex/support-ux-foundation-rashadoni -> origin/codex/support-ux-foundation-rashadoni
+2026-10-07T20:53:22.1229402Z  * [new branch]        codex/support-ux-rashadoni-main -> origin/codex/support-ux-rashadoni-main
+2026-10-07T20:53:22.1230499Z  * [new branch]        codex/support-ux-service-desk-rashadoni -> origin/codex/support-ux-service-desk-rashadoni
+2026-10-07T20:53:22.1231353Z  * [new branch]        codex/support-ux-voip-rashadoni -> origin/codex/support-ux-voip-rashadoni
+2026-10-07T20:53:22.1232067Z  * [new branch]        codex/typesafe-key-operator-workflow -> origin/codex/typesafe-key-operator-workflow
+2026-10-07T20:53:22.1232904Z  * [new branch]        codex/voice-actions-verification -> origin/codex/voice-actions-verification
+2026-10-07T20:53:22.1233497Z  * [new branch]        codex/voice-audit-provenance -> origin/codex/voice-audit-provenance
+2026-10-07T20:53:22.1234223Z  * [new branch]        codex/voice-command-outbox -> origin/codex/voice-command-outbox
+2026-10-07T20:53:22.1234814Z  * [new branch]        codex/voice-confirm-by-voice -> origin/codex/voice-confirm-by-voice
+2026-10-07T20:53:22.1235569Z  * [new branch]        codex/voice-confirm-deployed-evidence -> origin/codex/voice-confirm-deployed-evidence
+2026-10-07T20:53:22.1236340Z  * [new branch]        codex/voice-convert-lead -> origin/codex/voice-convert-lead
+2026-10-07T20:53:22.1236897Z  * [new branch]        codex/voice-convert-verification -> origin/codex/voice-convert-verification
+2026-10-07T20:53:22.1237622Z  * [new branch]        codex/voice-create-deal -> origin/codex/voice-create-deal
+2026-10-07T20:53:22.1238103Z  * [new branch]        codex/voice-deal-stage  -> origin/codex/voice-deal-stage
+2026-10-07T20:53:22.1238822Z  * [new branch]        codex/voice-injection-hardening -> origin/codex/voice-injection-hardening
+2026-10-07T20:53:22.1239466Z  * [new branch]        codex/voice-kill-switch-operations -> origin/codex/voice-kill-switch-operations
+2026-10-07T20:53:22.1240605Z  * [new branch]        codex/voice-kill-switch-verification -> origin/codex/voice-kill-switch-verification
+2026-10-07T20:53:22.1241443Z  * [new branch]        codex/voice-navigation-keeps-mic -> origin/codex/voice-navigation-keeps-mic
+2026-10-07T20:53:22.1241996Z  * [new branch]        codex/voice-noisy-room  -> origin/codex/voice-noisy-room
+2026-10-07T20:53:22.1242705Z  * [new branch]        codex/voice-noisy-verification -> origin/codex/voice-noisy-verification
+2026-10-07T20:53:22.1243269Z  * [new branch]        codex/voice-receipt-actions -> origin/codex/voice-receipt-actions
+2026-10-07T20:53:22.1243979Z  * [new branch]        codex/voice-receipt-edit -> origin/codex/voice-receipt-edit
+2026-10-07T20:53:22.1244467Z  * [new branch]        codex/voice-show-result -> origin/codex/voice-show-result
+2026-10-07T20:53:22.1245182Z  * [new branch]        codex/voice-show-result-deployed -> origin/codex/voice-show-result-deployed
+2026-10-07T20:53:22.1245818Z  * [new branch]        codex/voice-three-verification -> origin/codex/voice-three-verification
+2026-10-07T20:53:22.1246539Z  * [new branch]        codex/voice-tool-call-ceilings -> origin/codex/voice-tool-call-ceilings
+2026-10-07T20:53:22.1247250Z  * [new branch]        codex/voice-update-task-deal -> origin/codex/voice-update-task-deal
+2026-10-07T20:53:22.1247927Z  * [new branch]        codex/voice-update-task-deal-deployed -> origin/codex/voice-update-task-deal-deployed
+2026-10-07T20:53:22.1248776Z  * [new branch]        codex/voice-v1-close-verification -> origin/codex/voice-v1-close-verification
+2026-10-07T20:53:22.1249381Z  * [new branch]        codex/voice-write-kill-switch -> origin/codex/voice-write-kill-switch
+2026-10-07T20:53:22.1250438Z  * [new branch]        codex/workforce-access-grant-api-v1 -> origin/codex/workforce-access-grant-api-v1
+2026-10-07T20:53:22.1251376Z  * [new branch]        codex/workforce-access-grant-inventory-v1 -> origin/codex/workforce-access-grant-inventory-v1
+2026-10-07T20:53:22.1252307Z  * [new branch]        codex/workforce-access-grant-ledger-v1 -> origin/codex/workforce-access-grant-ledger-v1
+2026-10-07T20:53:22.1253030Z  * [new branch]        codex/workforce-access-grant-writer-v1 -> origin/codex/workforce-access-grant-writer-v1
+2026-10-07T20:53:22.1253863Z  * [new branch]        codex/workforce-access-review-v1 -> origin/codex/workforce-access-review-v1
+2026-10-07T20:53:22.1254723Z  * [new branch]        codex/workforce-actorless-read-grants-v1 -> origin/codex/workforce-actorless-read-grants-v1
+2026-10-07T20:53:22.1255423Z  * [new branch]        codex/workforce-agent-review-gate -> origin/codex/workforce-agent-review-gate
+2026-10-07T20:53:22.1256285Z  * [new branch]        codex/workforce-agent-review-readback -> origin/codex/workforce-agent-review-readback
+2026-10-07T20:53:22.1257038Z  * [new branch]        codex/workforce-android-exception-response -> origin/codex/workforce-android-exception-response
+2026-10-07T20:53:22.1257846Z  * [new branch]        codex/workforce-android-foundation-v2-part1 -> origin/codex/workforce-android-foundation-v2-part1
+2026-10-07T20:53:22.1258675Z  * [new branch]        codex/workforce-android-foundation-v2-part2 -> origin/codex/workforce-android-foundation-v2-part2
+2026-10-07T20:53:22.1259463Z  * [new branch]        codex/workforce-android-foundation-v2-part3 -> origin/codex/workforce-android-foundation-v2-part3
+2026-10-07T20:53:22.1260710Z  * [new branch]        codex/workforce-android-foundation-v2-part4 -> origin/codex/workforce-android-foundation-v2-part4
+2026-10-07T20:53:22.1261427Z  * [new branch]        codex/workforce-c11-boundary-v3 -> origin/codex/workforce-c11-boundary-v3
+2026-10-07T20:53:22.1262118Z  * [new branch]        codex/workforce-c11-calculation-evidence-v2 -> origin/codex/workforce-c11-calculation-evidence-v2
+2026-10-07T20:53:22.1262857Z  * [new branch]        codex/workforce-c11-export-preview-v2 -> origin/codex/workforce-c11-export-preview-v2
+2026-10-07T20:53:22.1263491Z  * [new branch]        codex/workforce-c11-report-v2 -> origin/codex/workforce-c11-report-v2
+2026-10-07T20:53:22.1264383Z  * [new branch]        codex/workforce-c12-approval-group-draft -> origin/codex/workforce-c12-approval-group-draft
+2026-10-07T20:53:22.1265132Z  * [new branch]        codex/workforce-c12-cursor-fencing-draft -> origin/codex/workforce-c12-cursor-fencing-draft
+2026-10-07T20:53:22.1265855Z  * [new branch]        codex/workforce-c12-observability-v2 -> origin/codex/workforce-c12-observability-v2
+2026-10-07T20:53:22.1266540Z  * [new branch]        codex/workforce-c12-reconciliation-v2 -> origin/codex/workforce-c12-reconciliation-v2
+2026-10-07T20:53:22.1267428Z  * [new branch]        codex/workforce-c12-slo-contract-v2 -> origin/codex/workforce-c12-slo-contract-v2
+2026-10-07T20:53:22.1268098Z  * [new branch]        codex/workforce-c13-compatibility-v2 -> origin/codex/workforce-c13-compatibility-v2
+2026-10-07T20:53:22.1268722Z  * [new branch]        codex/workforce-c2a-github-pr -> origin/codex/workforce-c2a-github-pr
+2026-10-07T20:53:22.1269288Z  * [new branch]        codex/workforce-c2b-github-pr -> origin/codex/workforce-c2b-github-pr
+2026-10-07T20:53:22.1269852Z  * [new branch]        codex/workforce-c2c-github-pr -> origin/codex/workforce-c2c-github-pr
+2026-10-07T20:53:22.1270618Z  * [new branch]        codex/workforce-c3-release-contract-v3 -> origin/codex/workforce-c3-release-contract-v3
+2026-10-07T20:53:22.1271258Z  * [new branch]        codex/workforce-c3a-github-pr -> origin/codex/workforce-c3a-github-pr
+2026-10-07T20:53:22.1271816Z  * [new branch]        codex/workforce-c3b-github-pr -> origin/codex/workforce-c3b-github-pr
+2026-10-07T20:53:22.1272370Z  * [new branch]        codex/workforce-c3c-github-pr -> origin/codex/workforce-c3c-github-pr
+2026-10-07T20:53:22.1272922Z  * [new branch]        codex/workforce-c4a-github-pr -> origin/codex/workforce-c4a-github-pr
+2026-10-07T20:53:22.1273573Z  * [new branch]        codex/workforce-c5-recovery-playbooks-v2 -> origin/codex/workforce-c5-recovery-playbooks-v2
+2026-10-07T20:53:22.1274228Z  * [new branch]        codex/workforce-c5a-github-pr -> origin/codex/workforce-c5a-github-pr
+2026-10-07T20:53:22.1274799Z  * [new branch]        codex/workforce-c6-db-proof-v1 -> origin/codex/workforce-c6-db-proof-v1
+2026-10-07T20:53:22.1275362Z  * [new branch]        codex/workforce-c6a-github-pr -> origin/codex/workforce-c6a-github-pr
+2026-10-07T20:53:22.1276048Z  * [new branch]        codex/workforce-c6c-github-pr -> origin/codex/workforce-c6c-github-pr
+2026-10-07T20:53:22.1276606Z  * [new branch]        codex/workforce-c6d-github-pr -> origin/codex/workforce-c6d-github-pr
+2026-10-07T20:53:22.1277169Z  * [new branch]        codex/workforce-c6e-github-pr -> origin/codex/workforce-c6e-github-pr
+2026-10-07T20:53:22.1277718Z  * [new branch]        codex/workforce-c6f-github-pr -> origin/codex/workforce-c6f-github-pr
+2026-10-07T20:53:22.1278275Z  * [new branch]        codex/workforce-c6g-github-pr -> origin/codex/workforce-c6g-github-pr
+2026-10-07T20:53:22.1278823Z  * [new branch]        codex/workforce-c6h-github-pr -> origin/codex/workforce-c6h-github-pr
+2026-10-07T20:53:22.1279434Z  * [new branch]        codex/workforce-c6i-final-github-pr -> origin/codex/workforce-c6i-final-github-pr
+2026-10-07T20:53:22.1280261Z  * [new branch]        codex/workforce-c7-bulk-review-github-pr -> origin/codex/workforce-c7-bulk-review-github-pr
+2026-10-07T20:53:22.1281206Z  * [new branch]        codex/workforce-c7-publish-github-pr -> origin/codex/workforce-c7-publish-github-pr
+2026-10-07T20:53:22.1281932Z  * [new branch]        codex/workforce-c8-employee-timeline-v3 -> origin/codex/workforce-c8-employee-timeline-v3
+2026-10-07T20:53:22.1282593Z  * [new branch]        codex/workforce-c9-ios-scope-v3 -> origin/codex/workforce-c9-ios-scope-v3
+2026-10-07T20:53:22.1283216Z  * [new branch]        codex/workforce-completion-part10 -> origin/codex/workforce-completion-part10
+2026-10-07T20:53:22.1283856Z  * [new branch]        codex/workforce-completion-part11 -> origin/codex/workforce-completion-part11
+2026-10-07T20:53:22.1284486Z  * [new branch]        codex/workforce-completion-part12 -> origin/codex/workforce-completion-part12
+2026-10-07T20:53:22.1285258Z  * [new branch]        codex/workforce-completion-part13 -> origin/codex/workforce-completion-part13
+2026-10-07T20:53:22.1285883Z  * [new branch]        codex/workforce-completion-part14 -> origin/codex/workforce-completion-part14
+2026-10-07T20:53:22.1286540Z  * [new branch]        codex/workforce-completion-part15 -> origin/codex/workforce-completion-part15
+2026-10-07T20:53:22.1287176Z  * [new branch]        codex/workforce-completion-part16 -> origin/codex/workforce-completion-part16
+2026-10-07T20:53:22.1287809Z  * [new branch]        codex/workforce-completion-part17 -> origin/codex/workforce-completion-part17
+2026-10-07T20:53:22.1288435Z  * [new branch]        codex/workforce-completion-part18 -> origin/codex/workforce-completion-part18
+2026-10-07T20:53:22.1289061Z  * [new branch]        codex/workforce-completion-part19 -> origin/codex/workforce-completion-part19
+2026-10-07T20:53:22.1289691Z  * [new branch]        codex/workforce-completion-part20 -> origin/codex/workforce-completion-part20
+2026-10-07T20:53:22.1290612Z  * [new branch]        codex/workforce-completion-part21 -> origin/codex/workforce-completion-part21
+2026-10-07T20:53:22.1291393Z  * [new branch]        codex/workforce-completion-part21-release-records -> origin/codex/workforce-completion-part21-release-records
+2026-10-07T20:53:22.1292181Z  * [new branch]        codex/workforce-completion-part22 -> origin/codex/workforce-completion-part22
+2026-10-07T20:53:22.1292811Z  * [new branch]        codex/workforce-completion-part23 -> origin/codex/workforce-completion-part23
+2026-10-07T20:53:22.1293437Z  * [new branch]        codex/workforce-completion-part24 -> origin/codex/workforce-completion-part24
+2026-10-07T20:53:22.1294072Z  * [new branch]        codex/workforce-completion-part25 -> origin/codex/workforce-completion-part25
+2026-10-07T20:53:22.1294698Z  * [new branch]        codex/workforce-completion-part26 -> origin/codex/workforce-completion-part26
+2026-10-07T20:53:22.1295329Z  * [new branch]        codex/workforce-completion-part29 -> origin/codex/workforce-completion-part29
+2026-10-07T20:53:22.1295958Z  * [new branch]        codex/workforce-completion-part30 -> origin/codex/workforce-completion-part30
+2026-10-07T20:53:22.1296587Z  * [new branch]        codex/workforce-completion-part31 -> origin/codex/workforce-completion-part31
+2026-10-07T20:53:22.1317882Z  * [new branch]        codex/workforce-completion-part32 -> origin/codex/workforce-completion-part32
+2026-10-07T20:53:22.1318735Z  * [new branch]        codex/workforce-completion-part33 -> origin/codex/workforce-completion-part33
+2026-10-07T20:53:22.1319427Z  * [new branch]        codex/workforce-completion-part34 -> origin/codex/workforce-completion-part34
+2026-10-07T20:53:22.1320223Z  * [new branch]        codex/workforce-completion-part35 -> origin/codex/workforce-completion-part35
+2026-10-07T20:53:22.1320903Z  * [new branch]        codex/workforce-completion-part36 -> origin/codex/workforce-completion-part36
+2026-10-07T20:53:22.1321565Z  * [new branch]        codex/workforce-completion-part38 -> origin/codex/workforce-completion-part38
+2026-10-07T20:53:22.1322204Z  * [new branch]        codex/workforce-completion-part41 -> origin/codex/workforce-completion-part41
+2026-10-07T20:53:22.1322854Z  * [new branch]        codex/workforce-completion-part43 -> origin/codex/workforce-completion-part43
+2026-10-07T20:53:22.1323481Z  * [new branch]        codex/workforce-completion-part45 -> origin/codex/workforce-completion-part45
+2026-10-07T20:53:22.1324113Z  * [new branch]        codex/workforce-completion-part47 -> origin/codex/workforce-completion-part47
+2026-10-07T20:53:22.1324739Z  * [new branch]        codex/workforce-completion-part7 -> origin/codex/workforce-completion-part7
+2026-10-07T20:53:22.1325369Z  * [new branch]        codex/workforce-completion-part8 -> origin/codex/workforce-completion-part8
+2026-10-07T20:53:22.1325984Z  * [new branch]        codex/workforce-completion-part9 -> origin/codex/workforce-completion-part9
+2026-10-07T20:53:22.1326835Z  * [new branch]        codex/workforce-config-grant-wrapper-v1 -> origin/codex/workforce-config-grant-wrapper-v1
+2026-10-07T20:53:22.1327583Z  * [new branch]        codex/workforce-correction-grants-v1 -> origin/codex/workforce-correction-grants-v1
+2026-10-07T20:53:22.1328377Z  * [new branch]        codex/workforce-exception-correction-request-ui -> origin/codex/workforce-exception-correction-request-ui
+2026-10-07T20:53:22.1329298Z  * [new branch]        codex/workforce-exception-policy-revision-foundation -> origin/codex/workforce-exception-policy-revision-foundation
+2026-10-07T20:53:22.1330499Z  * [new branch]        codex/workforce-exception-policy-revision-read -> origin/codex/workforce-exception-policy-revision-read
+2026-10-07T20:53:22.1331389Z  * [new branch]        codex/workforce-exception-response-cycle-audit -> origin/codex/workforce-exception-response-cycle-audit
+2026-10-07T20:53:22.1332235Z  * [new branch]        codex/workforce-exception-response-cycle-dedup -> origin/codex/workforce-exception-response-cycle-dedup
+2026-10-07T20:53:22.1333172Z  * [new branch]        codex/workforce-exception-response-cycle-unique-index -> origin/codex/workforce-exception-response-cycle-unique-index
+2026-10-07T20:53:22.1334121Z  * [new branch]        codex/workforce-exception-response-rollout-fence -> origin/codex/workforce-exception-response-rollout-fence
+2026-10-07T20:53:22.1335039Z  * [new branch]        codex/workforce-exception-self-response-projection -> origin/codex/workforce-exception-self-response-projection
+2026-10-07T20:53:22.1335932Z  * [new branch]        codex/workforce-exception-shared-lock-cutover -> origin/codex/workforce-exception-shared-lock-cutover
+2026-10-07T20:53:22.1336747Z  * [new branch]        codex/workforce-exception-terminal-actions -> origin/codex/workforce-exception-terminal-actions
+2026-10-07T20:53:22.1337565Z  * [new branch]        codex/workforce-exception-workbench-backend -> origin/codex/workforce-exception-workbench-backend
+2026-10-07T20:53:22.1338326Z  * [new branch]        codex/workforce-final-roadmap-status -> origin/codex/workforce-final-roadmap-status
+2026-10-07T20:53:22.1339041Z  * [new branch]        codex/workforce-granular-read-fences-v1 -> origin/codex/workforce-granular-read-fences-v1
+2026-10-07T20:53:22.1339852Z  * [new branch]        codex/workforce-hr-acceptance-v1 -> origin/codex/workforce-hr-acceptance-v1
+2026-10-07T20:53:22.1340805Z  * [new branch]        codex/workforce-hrm-github-delivery -> origin/codex/workforce-hrm-github-delivery
+2026-10-07T20:53:22.1341589Z  * [new branch]        codex/workforce-migration-role-timeout-reconcile -> origin/codex/workforce-migration-role-timeout-reconcile
+2026-10-07T20:53:22.1342426Z  * [new branch]        codex/workforce-mobile-acknowledgement-api -> origin/codex/workforce-mobile-acknowledgement-api
+2026-10-07T20:53:22.1343266Z  * [new branch]        codex/workforce-mobile-self-response-projection -> origin/codex/workforce-mobile-self-response-projection
+2026-10-07T20:53:22.1344116Z  * [new branch]        codex/workforce-mobile-version-write-gate-v1 -> origin/codex/workforce-mobile-version-write-gate-v1
+2026-10-07T20:53:22.1344830Z  * [new branch]        codex/workforce-pilot-grants-v1 -> origin/codex/workforce-pilot-grants-v1
+2026-10-07T20:53:22.1345568Z  * [new branch]        codex/workforce-policy-revision-fk-validation -> origin/codex/workforce-policy-revision-fk-validation
+2026-10-07T20:53:22.1346409Z  * [new branch]        codex/workforce-policy-revision-session-api -> origin/codex/workforce-policy-revision-session-api
+2026-10-07T20:53:22.1347209Z  * [new branch]        codex/workforce-policy-revision-status-ui -> origin/codex/workforce-policy-revision-status-ui
+2026-10-07T20:53:22.1347976Z  * [new branch]        codex/workforce-policy-revision-writer -> origin/codex/workforce-policy-revision-writer
+2026-10-07T20:53:22.1348730Z  * [new branch]        codex/workforce-request-decision-grants-v1 -> origin/codex/workforce-request-decision-grants-v1
+2026-10-07T20:53:22.1349473Z  * [new branch]        codex/workforce-request-read-grants-v1 -> origin/codex/workforce-request-read-grants-v1
+2026-10-07T20:53:22.1350443Z  * [new branch]        codex/workforce-retention-grants-v1 -> origin/codex/workforce-retention-grants-v1
+2026-10-07T20:53:22.1351127Z  * [new branch]        codex/workforce-role-management-ui-v1 -> origin/codex/workforce-role-management-ui-v1
+2026-10-07T20:53:22.1351864Z  * [new branch]        codex/workforce-session-read-boundary-v1 -> origin/codex/workforce-session-read-boundary-v1
+2026-10-07T20:53:22.1352650Z  * [new branch]        codex/workforce-site-transition-order-part5 -> origin/codex/workforce-site-transition-order-part5
+2026-10-07T20:53:22.1353470Z  * [new branch]        codex/workforce-timesheet-approval-grants-v1 -> origin/codex/workforce-timesheet-approval-grants-v1
+2026-10-07T20:53:22.1354277Z  * [new branch]        codex/workforce-timesheet-rehydration-part6 -> origin/codex/workforce-timesheet-rehydration-part6
+2026-10-07T20:53:22.1355092Z  * [new branch]        codex/workforce-web-response-revision-binding -> origin/codex/workforce-web-response-revision-binding
+2026-10-07T20:53:22.1355901Z  * [new branch]        dependabot/github_actions/actions-1d928e8337 -> origin/dependabot/github_actions/actions-1d928e8337
+2026-10-07T20:53:22.1356651Z  * [new branch]        dependabot/npm_and_yarn/csv-parse-7.0.2 -> origin/dependabot/npm_and_yarn/csv-parse-7.0.2
+2026-10-07T20:53:22.1357357Z  * [new branch]        dependabot/npm_and_yarn/eslint-10.10.0 -> origin/dependabot/npm_and_yarn/eslint-10.10.0
+2026-10-07T20:53:22.1358049Z  * [new branch]        dependabot/npm_and_yarn/multi-54f77fb17b -> origin/dependabot/npm_and_yarn/multi-54f77fb17b
+2026-10-07T20:53:22.1358763Z  * [new branch]        dependabot/npm_and_yarn/routine-697143bedd -> origin/dependabot/npm_and_yarn/routine-697143bedd
+2026-10-07T20:53:22.1359492Z  * [new branch]        dependabot/npm_and_yarn/types/node-26.4.1 -> origin/dependabot/npm_and_yarn/types/node-26.4.1
+2026-10-07T20:53:22.1360029Z  * [new branch]        main                    -> origin/main
+2026-10-07T20:53:22.1360621Z  * [new tag]           support-ux-voip-evidence-323b5ab -> support-ux-voip-evidence-323b5ab
+2026-10-07T20:53:22.1361988Z [command]/usr/bin/git branch --list --remote origin/codex/hrm-588-validation-20261005
+2026-10-07T20:53:22.1362420Z   origin/codex/hrm-588-validation-20261005
+2026-10-07T20:53:22.1363296Z [command]/usr/bin/git rev-parse refs/remotes/origin/codex/hrm-588-validation-20261005
+2026-10-07T20:53:22.1363735Z 5638f1ea63c2818aef8be1b0c497eff718303388
+2026-10-07T20:53:22.1364450Z ##[endgroup]
+2026-10-07T20:53:22.1364807Z ##[group]Determining the checkout info
+2026-10-07T20:53:22.1365181Z ##[endgroup]
+2026-10-07T20:53:22.1365396Z [command]/usr/bin/git sparse-checkout disable
+2026-10-07T20:53:22.1366101Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-10-07T20:53:22.1366890Z ##[group]Checking out the ref
+2026-10-07T20:53:22.1367491Z [command]/usr/bin/git checkout --progress --force -B codex/hrm-588-validation-20261005 refs/remotes/origin/codex/hrm-588-validation-20261005
+2026-10-07T20:53:23.4846292Z Updating files:  98% (8995/9138)
+2026-10-07T20:53:23.8990492Z Updating files:  99% (9047/9138)
+2026-10-07T20:53:23.8990982Z Updating files: 100% (9138/9138)
+2026-10-07T20:53:23.8995537Z Updating files: 100% (9138/9138), done.
+2026-10-07T20:53:23.9128237Z Switched to a new branch 'codex/hrm-588-validation-20261005'
+2026-10-07T20:53:23.9133925Z branch 'codex/hrm-588-validation-20261005' set up to track 'origin/codex/hrm-588-validation-20261005'.
+2026-10-07T20:53:23.9209349Z ##[endgroup]
+2026-10-07T20:53:23.9258098Z [command]/usr/bin/git log -1 --format=%H
+2026-10-07T20:53:23.9293086Z 5638f1ea63c2818aef8be1b0c497eff718303388
+2026-10-07T20:53:23.9497646Z ##[group]Run [[ "$EXPECTED_HEAD" =~ ^[0-9a-f]{40}$ ]]
+2026-10-07T20:53:23.9498054Z [36;1m[[ "$EXPECTED_HEAD" =~ ^[0-9a-f]{40}$ ]][0m
+2026-10-07T20:53:23.9498433Z [36;1mtest "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"[0m
+2026-10-07T20:53:23.9498789Z [36;1mtest "$GITHUB_SHA" = "$EXPECTED_HEAD"[0m
+2026-10-07T20:53:23.9499424Z [36;1mgit merge-base --is-ancestor 973241bacc296b71fe817d1af11187c32e8126af HEAD[0m
+2026-10-07T20:53:23.9500380Z [36;1mgit diff --exit-code 973241bacc296b71fe817d1af11187c32e8126af -- test-baseline.json typecheck-baseline.json[0m
+2026-10-07T20:53:23.9501173Z [36;1mgit diff --check 973241bacc296b71fe817d1af11187c32e8126af...HEAD[0m
+2026-10-07T20:53:23.9711779Z shell: /usr/bin/bash -e {0}
+2026-10-07T20:53:23.9712060Z env:
+2026-10-07T20:53:23.9712257Z   CI: true
+2026-10-07T20:53:23.9712467Z   VITEST_MAX_WORKERS: 4
+2026-10-07T20:53:23.9712779Z   EXPECTED_HEAD: 5638f1ea63c2818aef8be1b0c497eff718303388
+2026-10-07T20:53:23.9713130Z ##[endgroup]
+2026-10-07T20:53:24.1042896Z ##[group]Run actions/setup-node@v6
+2026-10-07T20:53:24.1043185Z with:
+2026-10-07T20:53:24.1043377Z   node-version: 20
+2026-10-07T20:53:24.1043579Z   cache: npm
+2026-10-07T20:53:24.1043769Z   check-latest: false
+2026-10-07T20:53:24.1045982Z   token: ***
+2026-10-07T20:53:24.1046216Z   package-manager-cache: true
+2026-10-07T20:53:24.1046453Z env:
+2026-10-07T20:53:24.1046624Z   CI: true
+2026-10-07T20:53:24.1046820Z   VITEST_MAX_WORKERS: 4
+2026-10-07T20:53:24.1047039Z ##[endgroup]
+2026-10-07T20:53:24.2436705Z Attempting to download 20...
+2026-10-07T20:53:25.2527371Z Acquiring 20.20.2 - x64 from https://github.com/actions/node-versions/releases/download/20.20.2-23521894959/node-20.20.2-linux-x64.tar.gz
+2026-10-07T20:53:25.6981412Z Extracting ...
+2026-10-07T20:53:25.7097522Z [command]/usr/bin/tar xz --strip 1 --warning=no-unknown-keyword --overwrite -C /home/runner/work/_temp/e1f66d13-cfe4-4fd7-af05-e012c2190ec6 -f /home/runner/work/_temp/6a7208bb-8331-4e8c-b617-dcb37c6f11b5
+2026-10-07T20:53:26.7577309Z Adding to the cache ...
+2026-10-07T20:53:28.6505307Z ##[group]Environment details
+2026-10-07T20:53:28.8710343Z node: v20.20.2
+2026-10-07T20:53:28.8710751Z npm: 10.8.2
+2026-10-07T20:53:28.8711421Z yarn: 1.22.22
+2026-10-07T20:53:28.8712087Z ##[endgroup]
+2026-10-07T20:53:28.8733643Z [command]/opt/hostedtoolcache/node/20.20.2/x64/bin/npm config get cache
+2026-10-07T20:53:28.9746186Z /home/runner/.npm
+2026-10-07T20:53:29.1769739Z Cache hit for: node-cache-Linux-x64-npm-88234482b20d7f7ee4d4f3291a8380559029a8e8cdd4d9981970afb493db5986
+2026-10-07T20:53:30.4150761Z Received 33554432 of 408425166 (8.2%), 32.0 MBs/sec
+2026-10-07T20:53:31.4127358Z Received 167772160 of 408425166 (41.1%), 80.0 MBs/sec
+2026-10-07T20:53:32.4132463Z Received 339738624 of 408425166 (83.2%), 108.0 MBs/sec
+2026-10-07T20:53:32.8972908Z Received 408425166 of 408425166 (100.0%), 111.8 MBs/sec
+2026-10-07T20:53:32.8974133Z Cache Size: ~390 MB (408425166 B)
+2026-10-07T20:53:32.9081114Z [command]/usr/bin/tar -xf /home/runner/work/_temp/3288d649-5444-4a25-b256-3f925d2c876d/cache.tzst -P -C /home/runner/work/leaddrive-v2/leaddrive-v2 --use-compress-program unzstd
+2026-10-07T20:53:33.8558864Z Cache restored successfully
+2026-10-07T20:53:33.8736052Z Cache restored from key: node-cache-Linux-x64-npm-88234482b20d7f7ee4d4f3291a8380559029a8e8cdd4d9981970afb493db5986
+2026-10-07T20:53:33.8931675Z ##[group]Run npm ci
+2026-10-07T20:53:33.8931930Z [36;1mnpm ci[0m
+2026-10-07T20:53:33.8998698Z shell: /usr/bin/bash -e {0}
+2026-10-07T20:53:33.8998974Z env:
+2026-10-07T20:53:33.8999169Z   CI: true
+2026-10-07T20:53:33.8999360Z   VITEST_MAX_WORKERS: 4
+2026-10-07T20:53:33.8999581Z ##[endgroup]
+2026-10-07T20:53:34.7879259Z npm warn EBADENGINE Unsupported engine {
+2026-10-07T20:53:34.7880963Z npm warn EBADENGINE   package: '@mapbox/jsonlint-lines-primitives@2.0.3',
+2026-10-07T20:53:34.7882054Z npm warn EBADENGINE   required: { node: '>= 22' },
+2026-10-07T20:53:34.7883081Z npm warn EBADENGINE   current: { node: 'v20.20.2', npm: '10.8.2' }
+2026-10-07T20:53:34.7883902Z npm warn EBADENGINE }
+2026-10-07T20:53:43.3122154Z npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+2026-10-07T20:53:43.4557406Z npm warn deprecated rimraf@2.7.1: Rimraf versions prior to v4 are no longer supported
+2026-10-07T20:53:43.5393856Z npm warn deprecated lodash.isequal@4.5.0: This package is deprecated. Use require('node:util').isDeepStrictEqual instead.
+2026-10-07T20:53:43.6293742Z npm warn deprecated backbone-undo@0.2.6: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+2026-10-07T20:53:43.8064763Z npm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+2026-10-07T20:53:43.8982468Z npm warn deprecated scmp@2.1.0: Just use Node.js's crypto.timingSafeEqual()
+2026-10-07T20:53:44.6107963Z npm warn deprecated fstream@1.0.12: This package is no longer supported.
+2026-10-07T20:53:45.3547746Z npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+2026-10-07T20:56:21.1169033Z 
+2026-10-07T20:56:21.1169781Z added 1264 packages, and audited 1265 packages in 3m
+2026-10-07T20:56:21.1170602Z 
+2026-10-07T20:56:21.1172858Z 260 packages are looking for funding
+2026-10-07T20:56:21.1173457Z   run `npm fund` for details
+2026-10-07T20:56:21.4670830Z 
+2026-10-07T20:56:21.4671914Z 82 vulnerabilities (46 moderate, 35 high, 1 critical)
+2026-10-07T20:56:21.4672374Z 
+2026-10-07T20:56:21.4672738Z To address issues that do not require attention, run:
+2026-10-07T20:56:21.4673289Z   npm audit fix
+2026-10-07T20:56:21.4673503Z 
+2026-10-07T20:56:21.4673946Z To address all issues possible (including breaking changes), run:
+2026-10-07T20:56:21.4674585Z   npm audit fix --force
+2026-10-07T20:56:21.4674839Z 
+2026-10-07T20:56:21.4675096Z Some issues need review, and may require choosing
+2026-10-07T20:56:21.4675704Z a different dependency.
+2026-10-07T20:56:21.4675939Z 
+2026-10-07T20:56:21.4676127Z Run `npm audit` for details.
+2026-10-07T20:56:21.6096566Z ##[group]Run npx prisma validate
+2026-10-07T20:56:21.6097101Z [36;1mnpx prisma validate[0m
+2026-10-07T20:56:21.6097502Z [36;1mnpx prisma generate[0m
+2026-10-07T20:56:21.6098059Z [36;1mnpx prisma generate --schema scripts/ci/fixtures/event-platform-legacy-client/schema.prisma[0m
+2026-10-07T20:56:21.6163834Z shell: /usr/bin/bash -e {0}
+2026-10-07T20:56:21.6164083Z env:
+2026-10-07T20:56:21.6164265Z   CI: true
+2026-10-07T20:56:21.6164450Z   VITEST_MAX_WORKERS: 4
+2026-10-07T20:56:21.6164969Z   DATABASE_URL: ***127.0.0.1:32768/event_platform_test
+2026-10-07T20:56:21.6165274Z ##[endgroup]
+2026-10-07T20:56:23.0179961Z Prisma schema loaded from prisma/schema.prisma
+2026-10-07T20:56:23.3823665Z ┌─────────────────────────────────────────────────────────┐
+2026-10-07T20:56:23.3824719Z │  Update available 6.19.3 -> 8.0.0-rc.21                 │
+2026-10-07T20:56:23.3825708Z The schema at prisma/schema.prisma is valid 🚀
+2026-10-07T20:56:23.3827448Z │                                                         │
+2026-10-07T20:56:23.3828741Z │  This is a major update - please follow the guide at    │
+2026-10-07T20:56:23.3829334Z │  https://pris.ly/d/major-version-upgrade                │
+2026-10-07T20:56:23.3829812Z │                                                         │
+2026-10-07T20:56:23.3830776Z │  Run the following to update                            │
+2026-10-07T20:56:23.3831308Z │    npm i --save-dev prisma@latest                       │
+2026-10-07T20:56:23.3832095Z │    npm i @prisma/client@latest                          │
+2026-10-07T20:56:23.3832913Z └─────────────────────────────────────────────────────────┘
+2026-10-07T20:56:24.7496921Z Prisma schema loaded from prisma/schema.prisma
+2026-10-07T20:58:39.5595593Z 
+2026-10-07T20:58:39.5596986Z ✔ Generated Prisma Client (v6.19.3) to ./node_modules/@prisma/client in 123.33s
+2026-10-07T20:58:39.5597695Z 
+2026-10-07T20:58:39.5598473Z Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+2026-10-07T20:58:39.5599313Z 
+2026-10-07T20:58:39.5601099Z Tip: Interested in query caching in just a few lines of code? Try Accelerate today! https://pris.ly/tip-3-accelerate
+2026-10-07T20:58:39.5601880Z 
+2026-10-07T20:58:40.8173726Z Prisma schema loaded from scripts/ci/fixtures/event-platform-legacy-client/schema.prisma
+2026-10-07T20:58:41.0502963Z 
+2026-10-07T20:58:41.0504489Z ✔ Generated Prisma Client (v6.19.3) to ./node_modules/.event-platform-legacy-client in 67ms
+2026-10-07T20:58:41.0505004Z 
+2026-10-07T20:58:41.0505444Z Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+2026-10-07T20:58:41.0505874Z 
+2026-10-07T20:58:41.0506236Z Tip: Want to turn off tips and other hints? https://pris.ly/tip-4-nohints
+2026-10-07T20:58:41.0506616Z 
+2026-10-07T20:58:41.0789430Z ##[group]Run node scripts/ci/check-github-runner-policy.mjs
+2026-10-07T20:58:41.0789904Z [36;1mnode scripts/ci/check-github-runner-policy.mjs[0m
+2026-10-07T20:58:41.0790652Z [36;1mnpm run i18n:check[0m
+2026-10-07T20:58:41.0854380Z shell: /usr/bin/bash -e {0}
+2026-10-07T20:58:41.0854649Z env:
+2026-10-07T20:58:41.0854833Z   CI: true
+2026-10-07T20:58:41.0855018Z   VITEST_MAX_WORKERS: 4
+2026-10-07T20:58:41.0855234Z ##[endgroup]
+2026-10-07T20:58:41.1399345Z Runner policy passed for 50 workflow files.
+2026-10-07T20:58:41.2469666Z 
+2026-10-07T20:58:41.2470517Z > leaddrive-v2@0.1.0 i18n:check
+2026-10-07T20:58:41.2471174Z > node scripts/check-translations.js
+2026-10-07T20:58:41.4381084Z 
+2026-10-07T20:58:41.4381969Z Source: en.json — 24632 leaf keys
+2026-10-07T20:58:41.4382331Z 
+2026-10-07T20:58:41.4382531Z [ru.json] missing=0 extra=0
+2026-10-07T20:58:41.4382800Z 
+2026-10-07T20:58:41.4382989Z [az.json] missing=0 extra=0
+2026-10-07T20:58:41.4383255Z 
+2026-10-07T20:58:41.4383757Z ✅ Translation parity OK
+2026-10-07T20:58:41.4631910Z ##[group]Run npx eslint src/lib/workforce/exception-outcome-classification.ts src/lib/workforce/exception-policy-draft.ts src/lib/workforce/exception-case-writer.ts src/lib/workforce/exception-workbench.ts src/lib/workforce/exception-decision-service.ts src/lib/workforce/exception-case-report-recorded-outcomes.ts src/app/api/v1/workforce/exceptions/route.ts src/components/workforce/workforce-exception-queue.tsx src/components/workforce/workforce-exception-recorded-outcomes.tsx
+2026-10-07T20:58:41.4638368Z [36;1mnpx eslint src/lib/workforce/exception-outcome-classification.ts src/lib/workforce/exception-policy-draft.ts src/lib/workforce/exception-case-writer.ts src/lib/workforce/exception-workbench.ts src/lib/workforce/exception-decision-service.ts src/lib/workforce/exception-case-report-recorded-outcomes.ts src/app/api/v1/workforce/exceptions/route.ts src/components/workforce/workforce-exception-queue.tsx src/components/workforce/workforce-exception-recorded-outcomes.tsx[0m
+2026-10-07T20:58:41.4727742Z shell: /usr/bin/bash -e {0}
+2026-10-07T20:58:41.4728152Z env:
+2026-10-07T20:58:41.4728447Z   CI: true
+2026-10-07T20:58:41.4728760Z   VITEST_MAX_WORKERS: 4
+2026-10-07T20:58:41.4729113Z ##[endgroup]
+2026-10-07T20:58:44.5065207Z ##[group]Run npx vitest run src/__tests__/lib-workforce-calendar-configuration-lock-postgres.test.ts src/__tests__/lib-workforce-exception-lock-postgres.test.ts src/__tests__/lib-workforce-exception-policy-revision-postgres.test.ts src/__tests__/lib-workforce-exception-report-postgres.test.ts
+2026-10-07T20:58:44.5067437Z [36;1mnpx vitest run src/__tests__/lib-workforce-calendar-configuration-lock-postgres.test.ts src/__tests__/lib-workforce-exception-lock-postgres.test.ts src/__tests__/lib-workforce-exception-policy-revision-postgres.test.ts src/__tests__/lib-workforce-exception-report-postgres.test.ts[0m
+2026-10-07T20:58:44.5130799Z shell: /usr/bin/bash -e {0}
+2026-10-07T20:58:44.5131051Z env:
+2026-10-07T20:58:44.5131235Z   CI: true
+2026-10-07T20:58:44.5131428Z   VITEST_MAX_WORKERS: 1
+2026-10-07T20:58:44.5132178Z   WORKFORCE_CALENDAR_LOCK_TEST_DATABASE_URL: ***127.0.0.1:32768/event_platform_test
+2026-10-07T20:58:44.5132922Z   WORKFORCE_EXCEPTION_LOCK_TEST_DATABASE_URL: ***127.0.0.1:32768/event_platform_test
+2026-10-07T20:58:44.5133321Z ##[endgroup]
+2026-10-07T20:58:45.1258510Z 
+2026-10-07T20:58:45.1262963Z [1m[46m RUN [49m[22m [36mv4.1.2 [39m[90m/home/runner/work/leaddrive-v2/leaddrive-v2[39m
+2026-10-07T20:58:45.1263655Z 
+2026-10-07T20:58:57.6331443Z  [32m✓[39m src/__tests__/lib-workforce-exception-lock-postgres.test.ts [2m([22m[2m15 tests[22m[2m)[22m[33m 11832[2mms[22m[39m
+2026-10-07T20:58:57.6332656Z      [33m[2m✓[22m[39m fails closed, recovers exactly, and enforces one non-NULL response per cycle [33m 3467[2mms[22m[39m
+2026-10-07T20:58:59.1801593Z  [32m✓[39m src/__tests__/lib-workforce-calendar-configuration-lock-postgres.test.ts [2m([22m[2m12 tests[22m[2m)[22m[33m 989[2mms[22m[39m
+2026-10-07T20:59:06.0835190Z  [32m✓[39m src/__tests__/lib-workforce-exception-report-postgres.test.ts [2m([22m[2m11 tests[22m[2m)[22m[33m 6568[2mms[22m[39m
+2026-10-07T20:59:06.0836663Z      [33m[2m✓[22m[39m fails closed at the 5001-case sentinel without returning a truncated aggregate [33m 546[2mms[22m[39m
+2026-10-07T20:59:06.0837755Z      [33m[2m✓[22m[39m fails closed at 5001 exact valid request proofs even when all belong to one case [33m 5093[2mms[22m[39m
+2026-10-07T20:59:10.4450611Z  [32m✓[39m src/__tests__/lib-workforce-exception-policy-revision-postgres.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 3988[2mms[22m[39m
+2026-10-07T20:59:10.4476253Z 
+2026-10-07T20:59:10.4479621Z [2m Test Files [22m [1m[32m4 passed[39m[22m[90m (4)[39m
+2026-10-07T20:59:10.4480933Z [2m      Tests [22m [1m[32m44 passed[39m[22m[90m (44)[39m
+2026-10-07T20:59:10.4481686Z [2m   Start at [22m 20:58:45
+2026-10-07T20:59:10.4483313Z [2m   Duration [22m 25.18s[2m (transform 402ms, setup 34ms, import 1.24s, tests 23.38s, environment 0ms)[22m
+2026-10-07T20:59:10.4485298Z 
+2026-10-07T20:59:10.4820338Z ##[group]Run node scripts/check-test-baseline.mjs
+2026-10-07T20:59:10.4820971Z [36;1mnode scripts/check-test-baseline.mjs[0m
+2026-10-07T20:59:10.4882762Z shell: /usr/bin/bash -e {0}
+2026-10-07T20:59:10.4883035Z env:
+2026-10-07T20:59:10.4883218Z   CI: true
+2026-10-07T20:59:10.4883405Z   VITEST_MAX_WORKERS: 4
+2026-10-07T20:59:10.4883617Z ##[endgroup]
+2026-10-07T21:04:02.5051813Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.5081439Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.5123105Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.5125831Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.5127537Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.5130542Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.5131907Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.5150763Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.5181106Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.5184262Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.5185453Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.5186607Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.5187734Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.5196206Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.5210830Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.5212407Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.5331877Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.5333327Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.6355025Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.6493576Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.6541123Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.6542719Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.6543905Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.6545072Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.6546260Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.6547415Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.6585039Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.6612051Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.6624025Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.6642064Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.6673382Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.6701205Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.6731122Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.6761145Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.6791094Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.6845244Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.7453644Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.7458083Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.7491833Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.7531526Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.7560029Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.7647512Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.7701212Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.7731015Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.7861722Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.7903528Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.7911286Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.7912405Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.7913493Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.7914576Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.7915623Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.7916669Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.7917694Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.7918725Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.8526008Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.8527175Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.8551067Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.8581122Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.8641181Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.8781605Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.8848917Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.8881308Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.8882842Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.8911279Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.8941118Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.8942508Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.8971236Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.9021478Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.9022889Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.9024180Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.9025525Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.9026833Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.9712278Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.9750099Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.9761184Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.9791627Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.9816022Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:02.9928000Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.0008778Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.0067438Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.0072862Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.0076164Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.0077579Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.0078815Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.0080098Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.0081653Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.0082923Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.0084107Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.0085295Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.0086463Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.0701592Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.0731365Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.0791325Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.0805069Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.0851117Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.0881129Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.0988040Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.0990756Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.1011944Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.1048292Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.1051260Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.1052668Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.1054228Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.1055632Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.1057018Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.1058518Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.1059846Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.1061589Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.1629961Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.1671302Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.1672948Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.1701256Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.1966982Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.2011330Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.2013255Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.2041805Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.2063784Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.2091688Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.2119632Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.2121000Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.2122061Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.2123008Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.2123673Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.2124340Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.2125016Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.2125683Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.2575958Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.2644026Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.2691516Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.2761219Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.2793836Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.2864946Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.2921213Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.2931909Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.2933273Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.2934643Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.2935813Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.2937012Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.2938646Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.2939871Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.2941438Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.2942793Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.2944013Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.2945225Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.3586395Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.3632048Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.3653146Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.3681266Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.3684047Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.3685390Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.3686726Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.3688046Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.3689358Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.3690954Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.3692304Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.3693905Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.3695134Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.3696404Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.3697783Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.3699089Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.3716717Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:04:03.3718151Z Not implemented: Window's getComputedStyle() method: with pseudo-elements
+2026-10-07T21:06:17.5397496Z check-test-baseline: 18 failing file(s), 18 in baseline.
+2026-10-07T21:06:17.5402682Z ✅ No new failures, and every baseline entry still fails. Gate passed.
+2026-10-07T21:06:17.5566521Z Post job cleanup.
+2026-10-07T21:06:17.6719059Z Cache hit occurred on the primary key node-cache-Linux-x64-npm-88234482b20d7f7ee4d4f3291a8380559029a8e8cdd4d9981970afb493db5986, not saving cache.
+2026-10-07T21:06:17.6851203Z Post job cleanup.
+2026-10-07T21:06:17.7712857Z [command]/usr/bin/git version
+2026-10-07T21:06:17.7755356Z git version 2.55.0
+2026-10-07T21:06:17.7795889Z Temporarily overriding HOME='/home/runner/work/_temp/6e1e7480-be20-4ef6-b3f2-6e84073b9e53' before making global git config changes
+2026-10-07T21:06:17.7797391Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-07T21:06:17.7801612Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/leaddrive-v2/leaddrive-v2
+2026-10-07T21:06:17.7834803Z Removing SSH command configuration
+2026-10-07T21:06:17.7842290Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-07T21:06:17.7878714Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-07T21:06:17.8143272Z Removing HTTP extra header
+2026-10-07T21:06:17.8151212Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-07T21:06:17.8190903Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-07T21:06:17.8489130Z Removing includeIf entries pointing to credentials config files
+2026-10-07T21:06:17.8496524Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-07T21:06:17.8588694Z includeif.gitdir:/home/runner/work/leaddrive-v2/leaddrive-v2/.git.path
+2026-10-07T21:06:17.8600874Z includeif.gitdir:/home/runner/work/leaddrive-v2/leaddrive-v2/.git/worktrees/*.path
+2026-10-07T21:06:17.8602363Z includeif.gitdir:/github/workspace/.git.path
+2026-10-07T21:06:17.8603352Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-10-07T21:06:17.8606095Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/leaddrive-v2/leaddrive-v2/.git.path
+2026-10-07T21:06:17.8667240Z /home/runner/work/_temp/git-credentials-a64062b2-db91-436f-84bb-60691fb8cfc6.config
+2026-10-07T21:06:17.8726285Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/leaddrive-v2/leaddrive-v2/.git.path /home/runner/work/_temp/git-credentials-a64062b2-db91-436f-84bb-60691fb8cfc6.config
+2026-10-07T21:06:17.8792618Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/leaddrive-v2/leaddrive-v2/.git/worktrees/*.path
+2026-10-07T21:06:17.8841293Z /home/runner/work/_temp/git-credentials-a64062b2-db91-436f-84bb-60691fb8cfc6.config
+2026-10-07T21:06:17.8897613Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/leaddrive-v2/leaddrive-v2/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-a64062b2-db91-436f-84bb-60691fb8cfc6.config
+2026-10-07T21:06:17.8951579Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-10-07T21:06:17.8954110Z /github/runner_temp/git-credentials-a64062b2-db91-436f-84bb-60691fb8cfc6.config
+2026-10-07T21:06:17.8957182Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-a64062b2-db91-436f-84bb-60691fb8cfc6.config
+2026-10-07T21:06:17.9012837Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-10-07T21:06:17.9045073Z /github/runner_temp/git-credentials-a64062b2-db91-436f-84bb-60691fb8cfc6.config
+2026-10-07T21:06:17.9073446Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-a64062b2-db91-436f-84bb-60691fb8cfc6.config
+2026-10-07T21:06:17.9127530Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-07T21:06:17.9499382Z Removing credentials config '/home/runner/work/_temp/git-credentials-a64062b2-db91-436f-84bb-60691fb8cfc6.config'
+2026-10-07T21:06:17.9805495Z Print service container logs: 9220e73cbff74da2af47b5e3acf43b3b_pgvectorpgvectorpg16_df4bbe
+2026-10-07T21:06:17.9813106Z ##[command]/usr/bin/docker logs --details 004bc125b7429f6dd3c98576a0188476e4e8bef874213261845953c624cdd83e
+2026-10-07T21:06:17.9988736Z  initdb: warning: enabling "trust" authentication for local connections
+2026-10-07T21:06:17.9991967Z  The files belonging to this database system will be owned by user "postgres".
+2026-10-07T21:06:17.9993640Z  initdb: hint: You can change this by editing pg_hba.conf or using the option -A, or --auth-local and --auth-host, the next time you run initdb.
+2026-10-07T21:06:17.9995411Z  2026-10-07 20:53:05.352 UTC [1] LOG:  starting PostgreSQL 16.15 (Debian 16.15-1.pgdg12+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14+deb12u1) 12.2.0, 64-bit
+2026-10-07T21:06:18.0011849Z  2026-10-07 20:53:05.352 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2026-10-07T21:06:18.0013457Z  2026-10-07 20:53:05.352 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2026-10-07T21:06:18.0014228Z  2026-10-07 20:53:05.353 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2026-10-07T21:06:18.0015122Z  2026-10-07 20:53:05.356 UTC [64] LOG:  database system was shut down at 2026-10-07 20:53:05 UTC
+2026-10-07T21:06:18.0015668Z  2026-10-07 20:53:05.360 UTC [1] LOG:  database system is ready to accept connections
+2026-10-07T21:06:18.0016138Z  2026-10-07 20:58:05.455 UTC [62] LOG:  checkpoint starting: time
+2026-10-07T21:06:18.0017193Z  2026-10-07 20:58:09.666 UTC [62] LOG:  checkpoint complete: wrote 45 buffers (0.3%); 0 WAL file(s) added, 0 removed, 0 recycled; write=4.210 s, sync=0.001 s, total=4.212 s; sync files=12, longest=0.001 s, average=0.001 s; distance=261 kB, estimate=261 kB; lsn=0/1953578, redo lsn=0/1953540
+2026-10-07T21:06:18.0018356Z  2026-10-07 20:58:47.787 UTC [632] ERROR:  relation "_prisma_migrations" does not exist at character 126
+2026-10-07T21:06:18.0019317Z  2026-10-07 20:58:47.787 UTC [632] STATEMENT:  SELECT "id", "checksum", "finished_at", "migration_name", "logs", "rolled_back_at", "started_at", "applied_steps_count" FROM "_prisma_migrations" ORDER BY "started_at" ASC
+2026-10-07T21:06:18.0020623Z  2026-10-07 20:58:51.166 UTC [646] ERROR:  could not create unique index "workforce_exception_decisions_org_case_revision_key"
+2026-10-07T21:06:18.0021221Z  2026-10-07 20:58:51.166 UTC [646] DETAIL:  Duplicate keys exist.
+2026-10-07T21:06:18.0021782Z  2026-10-07 20:58:51.166 UTC [646] STATEMENT:  -- C6 case-revision phase 3/5: build the uniqueness index online. This file
+2026-10-07T21:06:18.0022395Z  	-- deliberately contains exactly one SQL statement: Prisma submits a
+2026-10-07T21:06:18.0022915Z  	-- multi-statement PostgreSQL migration in an implicit transaction block, where
+2026-10-07T21:06:18.0023440Z  	-- CONCURRENTLY is prohibited. A failed build can leave this exact index
+2026-10-07T21:06:18.0023925Z  	-- invalid; verify/drop only that artifact outside a transaction, mark this
+2026-10-07T21:06:18.0024353Z  	-- exact ledger row rolled back, then replay it.
+2026-10-07T21:06:18.0024644Z  	
+2026-10-07T21:06:18.0024991Z  	CREATE UNIQUE INDEX CONCURRENTLY "workforce_exception_decisions_org_case_revision_key"
+2026-10-07T21:06:18.0025540Z  	  ON "workforce_exception_decisions"("organizationId", "caseId", "caseRevision");
+2026-10-07T21:06:18.0025923Z  	
+2026-10-07T21:06:18.0026223Z  2026-10-07 20:58:53.607 UTC [621] ERROR:  Workforce exception decisions are append-only
+2026-10-07T21:06:18.0026859Z  2026-10-07 20:58:53.607 UTC [621] CONTEXT:  PL/pgSQL function workforce_reject_exception_decision_mutation() line 3 at RAISE
+2026-10-07T21:06:18.0027395Z  2026-10-07 20:58:53.607 UTC [621] STATEMENT:  
+2026-10-07T21:06:18.0027886Z  	        UPDATE "workforce_exception_lock_4264ada8cec64113826d051344d0d789"."workforce_exception_decisions"
+2026-10-07T21:06:18.0028360Z  	           SET "reason" = 'mutated'
+2026-10-07T21:06:18.0028630Z  	         WHERE "id" = 'migration-decision-a'
+2026-10-07T21:06:18.0029142Z  	      
+2026-10-07T21:06:18.0029486Z  2026-10-07 20:58:53.622 UTC [621] ERROR:  Workforce exception decision case revision is stale
+2026-10-07T21:06:18.0030363Z  2026-10-07 20:58:53.622 UTC [621] CONTEXT:  PL/pgSQL function workforce_assign_exception_decision_revision() line 18 at RAISE
+2026-10-07T21:06:18.0030913Z  2026-10-07 20:58:53.622 UTC [621] STATEMENT:  
+2026-10-07T21:06:18.0031420Z  	        INSERT INTO "workforce_exception_lock_4264ada8cec64113826d051344d0d789"."workforce_exception_decisions" (
+2026-10-07T21:06:18.0032017Z  	          "id", "organizationId", "caseId", "operationId", "decisionCode", "reason",
+2026-10-07T21:06:18.0032399Z  	          "actorUserId", "caseRevision"
+2026-10-07T21:06:18.0032817Z  	        ) VALUES ('migration-decision-stale', $1, 'migration-case', 'migration-op-stale',
+2026-10-07T21:06:18.0033263Z  	                  'ACKNOWLEDGE', 'stale', 'manager', 3)
+2026-10-07T21:06:18.0033536Z  	      
+2026-10-07T21:06:18.0034003Z  2026-10-07 20:58:53.634 UTC [621] ERROR:  Workforce correction request must belong to the exact employee case and response workday
+2026-10-07T21:06:18.0034836Z  2026-10-07 20:58:53.634 UTC [621] CONTEXT:  PL/pgSQL function workforce_validate_exception_employee_response_insert() line 37 at RAISE
+2026-10-07T21:06:18.0035560Z  2026-10-07 20:58:53.634 UTC [621] STATEMENT:  
+2026-10-07T21:06:18.0036093Z  	          INSERT INTO "workforce_exception_lock_4264ada8cec64113826d051344d0d789"."workforce_exception_employee_responses" (
+2026-10-07T21:06:18.0036717Z  	            "id", "organizationId", "caseId", "agentId", "workdayId", "segmentId",
+2026-10-07T21:06:18.0037203Z  	            "correctionRequestId", "responseCode", "clientResponseId", "actorUserId",
+2026-10-07T21:06:18.0037608Z  	            "observedCaseRevision"
+2026-10-07T21:06:18.0037961Z  	          ) VALUES ($1, $2, 'migration-case', 'migration-agent', 'migration-workday',
+2026-10-07T21:06:18.0038458Z  	                    'migration-segment', $3, 'CORRECTION_REQUESTED', $1, 'migration-user', 5)
+2026-10-07T21:06:18.0038849Z  	        
+2026-10-07T21:06:18.0039299Z  2026-10-07 20:58:53.637 UTC [621] ERROR:  Workforce correction request must belong to the exact employee case and response workday
+2026-10-07T21:06:18.0040614Z  2026-10-07 20:58:53.637 UTC [621] CONTEXT:  PL/pgSQL function workforce_validate_exception_employee_response_insert() line 37 at RAISE
+2026-10-07T21:06:18.0041709Z  2026-10-07 20:58:53.637 UTC [621] STATEMENT:  
+2026-10-07T21:06:18.0042594Z  	          INSERT INTO "workforce_exception_lock_4264ada8cec64113826d051344d0d789"."workforce_exception_employee_responses" (
+2026-10-07T21:06:18.0043609Z  	            "id", "organizationId", "caseId", "agentId", "workdayId", "segmentId",
+2026-10-07T21:06:18.0044399Z  	            "correctionRequestId", "responseCode", "clientResponseId", "actorUserId",
+2026-10-07T21:06:18.0045045Z  	            "observedCaseRevision"
+2026-10-07T21:06:18.0045619Z  	          ) VALUES ($1, $2, 'migration-case', 'migration-agent', 'migration-workday',
+2026-10-07T21:06:18.0046443Z  	                    'migration-segment', $3, 'CORRECTION_REQUESTED', $1, 'migration-user', 5)
+2026-10-07T21:06:18.0047059Z  	        
+2026-10-07T21:06:18.0047609Z  2026-10-07 20:58:53.641 UTC [621] ERROR:  Workforce employee response observed a stale case revision
+2026-10-07T21:06:18.0048739Z  2026-10-07 20:58:53.641 UTC [621] CONTEXT:  PL/pgSQL function workforce_validate_exception_employee_response_insert() line 55 at RAISE
+2026-10-07T21:06:18.0049635Z  2026-10-07 20:58:53.641 UTC [621] STATEMENT:  
+2026-10-07T21:06:18.0050711Z  	        INSERT INTO "workforce_exception_lock_4264ada8cec64113826d051344d0d789"."workforce_exception_employee_responses" (
+2026-10-07T21:06:18.0051514Z  	          "id", "organizationId", "caseId", "agentId", "workdayId", "segmentId",
+2026-10-07T21:06:18.0052010Z  	          "correctionRequestId", "responseCode", "clientResponseId", "actorUserId",
+2026-10-07T21:06:18.0052413Z  	          "observedCaseRevision"
+2026-10-07T21:06:18.0053023Z  	        ) VALUES ('migration-response-stale', $1, 'migration-case', 'migration-agent',
+2026-10-07T21:06:18.0053532Z  	                  'migration-workday', 'migration-segment', NULL, 'ACKNOWLEDGED',
+2026-10-07T21:06:18.0053959Z  	                  'migration-response-stale', 'migration-user', 4)
+2026-10-07T21:06:18.0054276Z  	      
+2026-10-07T21:06:18.0054628Z  2026-10-07 20:58:53.660 UTC [621] ERROR:  Workforce correction request observed a stale case revision
+2026-10-07T21:06:18.0055312Z  2026-10-07 20:58:53.660 UTC [621] CONTEXT:  PL/pgSQL function workforce_validate_hrm_request_exception_link() line 49 at RAISE
+2026-10-07T21:06:18.0055857Z  2026-10-07 20:58:53.660 UTC [621] STATEMENT:  
+2026-10-07T21:06:18.0056307Z  	        INSERT INTO "workforce_exception_lock_4264ada8cec64113826d051344d0d789"."mtm_hrm_requests" (
+2026-10-07T21:06:18.0056852Z  	          "id", "organizationId", "agentId", "type", "correctionWorkdayId",
+2026-10-07T21:06:18.0057249Z  	          "exceptionCaseId", "exceptionCaseRevision"
+2026-10-07T21:06:18.0057674Z  	        ) VALUES ('migration-request-stale', $1, 'migration-agent', 'TIME_CORRECTION',
+2026-10-07T21:06:18.0058257Z  	                  'migration-workday', 'migration-case', 4)
+2026-10-07T21:06:18.0058550Z  	      
+2026-10-07T21:06:18.0058889Z  2026-10-07 20:58:53.676 UTC [621] ERROR:  Workforce correction exception case revision is immutable
+2026-10-07T21:06:18.0059567Z  2026-10-07 20:58:53.676 UTC [621] CONTEXT:  PL/pgSQL function workforce_validate_hrm_request_exception_link() line 11 at RAISE
+2026-10-07T21:06:18.0060336Z  2026-10-07 20:58:53.676 UTC [621] STATEMENT:  
+2026-10-07T21:06:18.0060812Z  	        UPDATE "workforce_exception_lock_4264ada8cec64113826d051344d0d789"."mtm_hrm_requests"
+2026-10-07T21:06:18.0061249Z  	           SET "exceptionCaseRevision" = 4
+2026-10-07T21:06:18.0061553Z  	         WHERE "id" = 'migration-request-exact'
+2026-10-07T21:06:18.0061826Z  	      
+2026-10-07T21:06:18.0062303Z  2026-10-07 20:58:54.905 UTC [662] ERROR:  could not create unique index "workforce_exception_employee_responses_org_case_revision_key"
+2026-10-07T21:06:18.0062929Z  2026-10-07 20:58:54.905 UTC [662] DETAIL:  Duplicate keys exist.
+2026-10-07T21:06:18.0063501Z  2026-10-07 20:58:54.905 UTC [662] STATEMENT:  -- C6 employee-response cycle safety: enforce at most one non-legacy response
+2026-10-07T21:06:18.0064126Z  	-- for an exact tenant/case/revision without blocking normal reads or writes.
+2026-10-07T21:06:18.0064620Z  	-- Keep this file to exactly one executable statement: Prisma must submit
+2026-10-07T21:06:18.0065108Z  	-- CREATE INDEX CONCURRENTLY outside a transaction block. PostgreSQL's default
+2026-10-07T21:06:18.0065613Z  	-- NULLS DISTINCT semantics deliberately preserve multiple pre-cutover rows
+2026-10-07T21:06:18.0066013Z  	-- whose observed revision is unknown.
+2026-10-07T21:06:18.0066265Z  	
+2026-10-07T21:06:18.0066628Z  	CREATE UNIQUE INDEX CONCURRENTLY "workforce_exception_employee_responses_org_case_revision_key"
+2026-10-07T21:06:18.0067277Z  	  ON "workforce_exception_employee_responses"("organizationId", "caseId", "observedCaseRevision");
+2026-10-07T21:06:18.0067727Z  	
+2026-10-07T21:06:18.0068252Z  2026-10-07 20:58:57.200 UTC [621] ERROR:  duplicate key value violates unique constraint "workforce_exception_employee_responses_org_case_revision_key"
+2026-10-07T21:06:18.0069243Z  2026-10-07 20:58:57.200 UTC [621] DETAIL:  Key ("organizationId", "caseId", "observedCaseRevision")=(org-workforce-cycle-audit-a, cycle-a-case-1, 1) already exists.
+2026-10-07T21:06:18.0069922Z  2026-10-07 20:58:57.200 UTC [621] STATEMENT:  
+2026-10-07T21:06:18.0070701Z  	        INSERT INTO "workforce_exception_lock_4264ada8cec64113826d051344d0d789"."workforce_exception_employee_responses" (
+2026-10-07T21:06:18.0071293Z  	          "id", "organizationId", "caseId", "agentId", "workdayId",
+2026-10-07T21:06:18.0071672Z  	          "segmentId", "correctionRequestId", "responseCode",
+2026-10-07T21:06:18.0072054Z  	          "clientResponseId", "actorUserId", "observedCaseRevision"
+2026-10-07T21:06:18.0072528Z  	        ) VALUES (
+2026-10-07T21:06:18.0072844Z  	          'cycle-a-r1-after-index', $1, 'cycle-a-case-1', 'cycle-a-agent',
+2026-10-07T21:06:18.0073241Z  	          'cycle-a-day', NULL, NULL, 'ACKNOWLEDGED',
+2026-10-07T21:06:18.0073584Z  	          'cycle-a-client-r1-after-index', 'cycle-a-user', 1
+2026-10-07T21:06:18.0073888Z  	        )
+2026-10-07T21:06:18.0074063Z  	      
+2026-10-07T21:06:18.0074338Z  2026-10-07 20:58:58.853 UTC [672] ERROR:  calendar reversal audit failure proof
+2026-10-07T21:06:18.0074989Z  2026-10-07 20:58:58.853 UTC [672] CONTEXT:  PL/pgSQL function calendar_proof_d548c99ff88448e7a0e6b75a2db365d4() line 5 at RAISE
+2026-10-07T21:06:18.0080299Z  2026-10-07 20:58:58.853 UTC [672] STATEMENT:  INSERT INTO "workforce_calendar_lock_5bae13d5578b453382ad992ce557381b"."mtm_audit_logs" ("id","organizationId","agentId","actorUserId","action","entity","entityId","metadataKind","oldData","newData","ipAddress","userAgent","createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING "workforce_calendar_lock_5bae13d5578b453382ad992ce557381b"."mtm_audit_logs"."id", "workforce_calendar_lock_5bae13d5578b453382ad992ce557381b"."mtm_audit_logs"."organizationId", "workforce_calendar_lock_5bae13d5578b453382ad992ce557381b"."mtm_audit_logs"."agentId", "workforce_calendar_lock_5bae13d5578b453382ad992ce557381b"."mtm_audit_logs"."actorUserId", "workforce_calendar_lock_5bae13d5578b453382ad992ce557381b"."mtm_audit_logs"."action", "workforce_calendar_lock_5bae13d5578b453382ad992ce557381b"."mtm_audit_logs"."entity", "workforce_calendar_lock_5bae13d5578b453382ad992ce557381b"."mtm_audit_logs"."entityId", "workforce_calendar_lock_5bae13d5578b453382ad992ce557381b"."mtm_audit_logs"."metadataKind", "workforce_calendar_lock_5bae13d5578b453382ad992ce557381b"."mtm_audit_logs"."oldData", "workforce_calendar_lock_5bae13d5578b453382ad992ce557381b"."mtm_audit_logs"."newData", "workforce_calendar_lock_5bae13d5578b453382ad992ce557381b"."mtm_audit_logs"."ipAddress", "workforce_calendar_lock_5bae13d5578b453382ad992ce557381b"."mtm_audit_logs"."userAgent", "workforce_calendar_lock_5bae13d5578b453382ad992ce557381b"."mtm_audit_logs"."createdAt"
+2026-10-07T21:06:18.0085773Z  2026-10-07 20:59:00.036 UTC [682] ERROR:  Workforce exception link must match the employee and exact correction workday
+2026-10-07T21:06:18.0086532Z  2026-10-07 20:59:00.036 UTC [682] CONTEXT:  PL/pgSQL function workforce_validate_hrm_request_exception_link() line 32 at RAISE
+2026-10-07T21:06:18.0087142Z  2026-10-07 20:59:00.036 UTC [682] STATEMENT:  INSERT INTO mtm_hrm_requests
+2026-10-07T21:06:18.0087654Z  	    ("id","organizationId","agentId","clientRequestId","type","status","startDate","endDate",
+2026-10-07T21:06:18.0088269Z  	     "correctionWorkdayId","exceptionCaseId","requestedStartAt","reason","submittedAt","updatedAt")
+2026-10-07T21:06:18.0088748Z  	    VALUES ($1,$2,$3,$4,
+2026-10-07T21:06:18.0089015Z  	      $5::"MtmHrmRequestType",$6::"MtmHrmRequestStatus",
+2026-10-07T21:06:18.0089362Z  	      '2025-01-01','2025-01-01',$7,$8,'2025-01-01T08:00:00',
+2026-10-07T21:06:18.0089745Z  	      'PRIVATE_FIXTURE_REASON',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+2026-10-07T21:06:18.0090553Z  2026-10-07 20:59:00.043 UTC [682] ERROR:  Workforce exception link must match the employee and exact correction workday
+2026-10-07T21:06:18.0091296Z  2026-10-07 20:59:00.043 UTC [682] CONTEXT:  PL/pgSQL function workforce_validate_hrm_request_exception_link() line 32 at RAISE
+2026-10-07T21:06:18.0091899Z  2026-10-07 20:59:00.043 UTC [682] STATEMENT:  INSERT INTO mtm_hrm_requests
+2026-10-07T21:06:18.0092396Z  	    ("id","organizationId","agentId","clientRequestId","type","status","startDate","endDate",
+2026-10-07T21:06:18.0092994Z  	     "correctionWorkdayId","exceptionCaseId","requestedStartAt","reason","submittedAt","updatedAt")
+2026-10-07T21:06:18.0093454Z  	    VALUES ($1,$2,$3,$4,
+2026-10-07T21:06:18.0093712Z  	      $5::"MtmHrmRequestType",$6::"MtmHrmRequestStatus",
+2026-10-07T21:06:18.0094044Z  	      '2025-01-01','2025-01-01',$7,$8,'2025-01-01T08:00:00',
+2026-10-07T21:06:18.0094556Z  	      'PRIVATE_FIXTURE_REASON',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+2026-10-07T21:06:18.0095100Z  2026-10-07 20:59:00.047 UTC [682] ERROR:  Workforce exception link requires a time correction and exact workday
+2026-10-07T21:06:18.0095818Z  2026-10-07 20:59:00.047 UTC [682] CONTEXT:  PL/pgSQL function workforce_validate_hrm_request_exception_link() line 22 at RAISE
+2026-10-07T21:06:18.0096415Z  2026-10-07 20:59:00.047 UTC [682] STATEMENT:  INSERT INTO mtm_hrm_requests
+2026-10-07T21:06:18.0096911Z  	    ("id","organizationId","agentId","clientRequestId","type","status","startDate","endDate",
+2026-10-07T21:06:18.0097504Z  	     "correctionWorkdayId","exceptionCaseId","requestedStartAt","reason","submittedAt","updatedAt")
+2026-10-07T21:06:18.0097961Z  	    VALUES ($1,$2,$3,$4,
+2026-10-07T21:06:18.0098214Z  	      $5::"MtmHrmRequestType",$6::"MtmHrmRequestStatus",
+2026-10-07T21:06:18.0098542Z  	      '2025-01-01','2025-01-01',$7,$8,'2025-01-01T08:00:00',
+2026-10-07T21:06:18.0098914Z  	      'PRIVATE_FIXTURE_REASON',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+2026-10-07T21:06:18.0099477Z  2026-10-07 20:59:00.051 UTC [682] ERROR:  Workforce exception link must match the employee and exact correction workday
+2026-10-07T21:06:18.0100578Z  2026-10-07 20:59:00.051 UTC [682] CONTEXT:  PL/pgSQL function workforce_validate_hrm_request_exception_link() line 32 at RAISE
+2026-10-07T21:06:18.0101182Z  2026-10-07 20:59:00.051 UTC [682] STATEMENT:  INSERT INTO mtm_hrm_requests
+2026-10-07T21:06:18.0101676Z  	    ("id","organizationId","agentId","clientRequestId","type","status","startDate","endDate",
+2026-10-07T21:06:18.0102442Z  	     "correctionWorkdayId","exceptionCaseId","requestedStartAt","reason","submittedAt","updatedAt")
+2026-10-07T21:06:18.0103084Z  	    VALUES ($1,$2,$3,$4,
+2026-10-07T21:06:18.0103434Z  	      $5::"MtmHrmRequestType",$6::"MtmHrmRequestStatus",
+2026-10-07T21:06:18.0103995Z  	      '2025-01-01','2025-01-01',$7,$8,'2025-01-01T08:00:00',
+2026-10-07T21:06:18.0104478Z  	      'PRIVATE_FIXTURE_REASON',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+2026-10-07T21:06:18.0105053Z  2026-10-07 20:59:00.054 UTC [682] ERROR:  Workforce correction request is missing
+2026-10-07T21:06:18.0105815Z  2026-10-07 20:59:00.054 UTC [682] CONTEXT:  PL/pgSQL function workforce_validate_h3_insert() line 152 at RAISE
+2026-10-07T21:06:18.0106473Z  2026-10-07 20:59:00.054 UTC [682] STATEMENT:  INSERT INTO workforce_time_corrections
+2026-10-07T21:06:18.0107210Z  	    ("id","organizationId","agentId","workdayId","requestId","source","requestHash","operationId",
+2026-10-07T21:06:18.0107864Z  	      "actorUserId","reason","beforeFacts","afterFacts","occurredAt","createdAt")
+2026-10-07T21:06:18.0108425Z  	    VALUES ($1,$2,$3,$4,$5,
+2026-10-07T21:06:18.0108794Z  	      $6::"WorkforceTimeCorrectionSource",$7,$8,
+2026-10-07T21:06:18.0109428Z  	      $9,'PRIVATE_FIXTURE_LEDGER_REASON','{"fixtureBoundary":0}'::jsonb,'{"fixtureBoundary":1}'::jsonb,
+2026-10-07T21:06:18.0110007Z  	      CURRENT_TIMESTAMP,$10)
+2026-10-07T21:06:18.0111017Z  2026-10-07 20:59:00.064 UTC [682] ERROR:  insert or update on table "workforce_time_corrections" violates foreign key constraint "workforce_time_corrections_actor_fkey"
+2026-10-07T21:06:18.0112211Z  2026-10-07 20:59:00.064 UTC [682] DETAIL:  Key (organizationId, actorUserId)=(report-org-a, report-org-b-actor) is not present in table "users".
+2026-10-07T21:06:18.0113001Z  2026-10-07 20:59:00.064 UTC [682] STATEMENT:  INSERT INTO workforce_time_corrections
+2026-10-07T21:06:18.0113725Z  	    ("id","organizationId","agentId","workdayId","requestId","source","requestHash","operationId",
+2026-10-07T21:06:18.0114381Z  	      "actorUserId","reason","beforeFacts","afterFacts","occurredAt","createdAt")
+2026-10-07T21:06:18.0114840Z  	    VALUES ($1,$2,$3,$4,$5,
+2026-10-07T21:06:18.0115326Z  	      $6::"WorkforceTimeCorrectionSource",$7,$8,
+2026-10-07T21:06:18.0115886Z  	      $9,'PRIVATE_FIXTURE_LEDGER_REASON','{"fixtureBoundary":0}'::jsonb,'{"fixtureBoundary":1}'::jsonb,
+2026-10-07T21:06:18.0116478Z  	      CURRENT_TIMESTAMP,$10)
+2026-10-07T21:06:18.0117260Z  2026-10-07 20:59:00.072 UTC [682] ERROR:  Workforce request correction must use an approved matching time-correction request
+2026-10-07T21:06:18.0118169Z  2026-10-07 20:59:00.072 UTC [682] CONTEXT:  PL/pgSQL function workforce_validate_h3_insert() line 158 at RAISE
+2026-10-07T21:06:18.0118865Z  2026-10-07 20:59:00.072 UTC [682] STATEMENT:  INSERT INTO workforce_time_corrections
+2026-10-07T21:06:18.0119531Z  	    ("id","organizationId","agentId","workdayId","requestId","source","requestHash","operationId",
+2026-10-07T21:06:18.0120516Z  	      "actorUserId","reason","beforeFacts","afterFacts","occurredAt","createdAt")
+2026-10-07T21:06:18.0121011Z  	    VALUES ($1,$2,$3,$4,$5,
+2026-10-07T21:06:18.0121506Z  	      $6::"WorkforceTimeCorrectionSource",$7,$8,
+2026-10-07T21:06:18.0122077Z  	      $9,'PRIVATE_FIXTURE_LEDGER_REASON','{"fixtureBoundary":0}'::jsonb,'{"fixtureBoundary":1}'::jsonb,
+2026-10-07T21:06:18.0122612Z  	      CURRENT_TIMESTAMP,$10)
+2026-10-07T21:06:18.0123181Z  2026-10-07 20:59:00.076 UTC [682] ERROR:  Workforce correction must match its workday agent
+2026-10-07T21:06:18.0123901Z  2026-10-07 20:59:00.076 UTC [682] CONTEXT:  PL/pgSQL function workforce_validate_h3_insert() line 144 at RAISE
+2026-10-07T21:06:18.0124769Z  2026-10-07 20:59:00.076 UTC [682] STATEMENT:  INSERT INTO workforce_time_corrections
+2026-10-07T21:06:18.0125451Z  	    ("id","organizationId","agentId","workdayId","requestId","source","requestHash","operationId",
+2026-10-07T21:06:18.0126123Z  	      "actorUserId","reason","beforeFacts","afterFacts","occurredAt","createdAt")
+2026-10-07T21:06:18.0126616Z  	    VALUES ($1,$2,$3,$4,$5,
+2026-10-07T21:06:18.0127027Z  	      $6::"WorkforceTimeCorrectionSource",$7,$8,
+2026-10-07T21:06:18.0127639Z  	      $9,'PRIVATE_FIXTURE_LEDGER_REASON','{"fixtureBoundary":0}'::jsonb,'{"fixtureBoundary":1}'::jsonb,
+2026-10-07T21:06:18.0128188Z  	      CURRENT_TIMESTAMP,$10)
+2026-10-07T21:06:18.0128867Z  2026-10-07 20:59:00.079 UTC [682] ERROR:  duplicate key value violates unique constraint "workforce_time_corrections_request_key"
+2026-10-07T21:06:18.0129789Z  2026-10-07 20:59:00.079 UTC [682] DETAIL:  Key ("organizationId", "requestId")=(report-org-a, report-org-a-request) already exists.
+2026-10-07T21:06:18.0130913Z  2026-10-07 20:59:00.079 UTC [682] STATEMENT:  INSERT INTO workforce_time_corrections
+2026-10-07T21:06:18.0131600Z  	    ("id","organizationId","agentId","workdayId","requestId","source","requestHash","operationId",
+2026-10-07T21:06:18.0132248Z  	      "actorUserId","reason","beforeFacts","afterFacts","occurredAt","createdAt")
+2026-10-07T21:06:18.0132806Z  	    VALUES ($1,$2,$3,$4,$5,
+2026-10-07T21:06:18.0133196Z  	      $6::"WorkforceTimeCorrectionSource",$7,$8,
+2026-10-07T21:06:18.0133789Z  	      $9,'PRIVATE_FIXTURE_LEDGER_REASON','{"fixtureBoundary":0}'::jsonb,'{"fixtureBoundary":1}'::jsonb,
+2026-10-07T21:06:18.0134396Z  	      CURRENT_TIMESTAMP,$10)
+2026-10-07T21:06:18.0134830Z  2026-10-07 20:59:00.083 UTC [682] ERROR:  Workforce immutable records cannot be UPDATE
+2026-10-07T21:06:18.0135629Z  2026-10-07 20:59:00.083 UTC [682] CONTEXT:  PL/pgSQL function workforce_reject_immutable_mutation() line 3 at RAISE
+2026-10-07T21:06:18.0136546Z  2026-10-07 20:59:00.083 UTC [682] STATEMENT:  UPDATE workforce_time_corrections SET reason='changed' WHERE id='report-org-a-correction'
+2026-10-07T21:06:18.0137366Z  2026-10-07 20:59:00.087 UTC [682] ERROR:  Workforce immutable records cannot be DELETE
+2026-10-07T21:06:18.0138053Z  2026-10-07 20:59:00.087 UTC [682] CONTEXT:  PL/pgSQL function workforce_reject_immutable_mutation() line 3 at RAISE
+2026-10-07T21:06:18.0138933Z  2026-10-07 20:59:00.087 UTC [682] STATEMENT:  DELETE FROM workforce_time_corrections WHERE id='report-org-a-correction'
+2026-10-07T21:06:18.0139713Z  2026-10-07 20:59:00.090 UTC [682] ERROR:  Workforce correction exception link is immutable
+2026-10-07T21:06:18.0140735Z  2026-10-07 20:59:00.090 UTC [682] CONTEXT:  PL/pgSQL function workforce_validate_hrm_request_exception_link() line 8 at RAISE
+2026-10-07T21:06:18.0141879Z  2026-10-07 20:59:00.090 UTC [682] STATEMENT:  UPDATE mtm_hrm_requests SET "exceptionCaseId"=NULL WHERE id='report-org-a-request'
+2026-10-07T21:06:18.0142775Z  2026-10-07 20:59:00.111 UTC [682] ERROR:  Workforce request correction must use an approved matching time-correction request
+2026-10-07T21:06:18.0143699Z  2026-10-07 20:59:00.111 UTC [682] CONTEXT:  PL/pgSQL function workforce_validate_h3_insert() line 158 at RAISE
+2026-10-07T21:06:18.0144368Z  2026-10-07 20:59:00.111 UTC [682] STATEMENT:  INSERT INTO workforce_time_corrections
+2026-10-07T21:06:18.0144994Z  	    ("id","organizationId","agentId","workdayId","requestId","source","requestHash","operationId",
+2026-10-07T21:06:18.0145741Z  	      "actorUserId","reason","beforeFacts","afterFacts","occurredAt","createdAt")
+2026-10-07T21:06:18.0146216Z  	    VALUES ($1,$2,$3,$4,$5,
+2026-10-07T21:06:18.0146653Z  	      $6::"WorkforceTimeCorrectionSource",$7,$8,
+2026-10-07T21:06:18.0147268Z  	      $9,'PRIVATE_FIXTURE_LEDGER_REASON','{"fixtureBoundary":0}'::jsonb,'{"fixtureBoundary":1}'::jsonb,
+2026-10-07T21:06:18.0147845Z  	      CURRENT_TIMESTAMP,$10)
+2026-10-07T21:06:18.0148640Z  2026-10-07 20:59:00.199 UTC [682] ERROR:  duplicate key value violates unique constraint "workforce_exception_decisions_org_case_revision_key"
+2026-10-07T21:06:18.0149667Z  2026-10-07 20:59:00.199 UTC [682] DETAIL:  Key ("organizationId", "caseId", "caseRevision")=(report-org-a, timing-second, 1) already exists.
+2026-10-07T21:06:18.0151704Z  2026-10-07 20:59:00.199 UTC [682] STATEMENT:  INSERT INTO workforce_exception_decisions("id","organizationId","caseId","caseRevision","operationId","decisionCode","reason","actorUserId","createdAt") VALUES ('timing-second-distinct-duplicate-revision',$1,'timing-second',1,'distinct-operation-duplicate-revision','ACKNOWLEDGE','PRIVATE_FIXTURE_REASON',$2,$3)
+2026-10-07T21:06:18.0153304Z  2026-10-07 20:59:00.367 UTC [682] ERROR:  Workforce exception decisions are append-only
+2026-10-07T21:06:18.0154089Z  2026-10-07 20:59:00.367 UTC [682] CONTEXT:  PL/pgSQL function workforce_reject_exception_decision_mutation() line 3 at RAISE
+2026-10-07T21:06:18.0155069Z  2026-10-07 20:59:00.367 UTC [682] STATEMENT:  UPDATE workforce_exception_decisions SET "decisionCode"='APPEAL_REJECTED' WHERE id='classified-full-decision-3'
+2026-10-07T21:06:18.0156017Z  2026-10-07 20:59:00.371 UTC [682] ERROR:  Workforce exception decisions are append-only
+2026-10-07T21:06:18.0156759Z  2026-10-07 20:59:00.371 UTC [682] CONTEXT:  PL/pgSQL function workforce_reject_exception_decision_mutation() line 3 at RAISE
+2026-10-07T21:06:18.0157617Z  2026-10-07 20:59:00.371 UTC [682] STATEMENT:  DELETE FROM workforce_exception_decisions WHERE id='classified-full-decision-3'
+2026-10-07T21:06:18.0158717Z  2026-10-07 20:59:00.375 UTC [682] ERROR:  insert or update on table "workforce_exception_decisions" violates foreign key constraint "workforce_exception_decisions_actor_fkey"
+2026-10-07T21:06:18.0159851Z  2026-10-07 20:59:00.375 UTC [682] DETAIL:  Key (organizationId, actorUserId)=(report-org-a, report-org-b-actor) is not present in table "users".
+2026-10-07T21:06:18.0161866Z  2026-10-07 20:59:00.375 UTC [682] STATEMENT:  INSERT INTO workforce_exception_decisions("id","organizationId","caseId","operationId","decisionCode","reason","actorUserId") VALUES ('classified-foreign-actor',$1,'classified-unclassified','classified-foreign-actor-operation','CLASSIFY_FALSE_POSITIVE','PRIVATE_FIXTURE_REASON',$2)
+2026-10-07T21:06:18.0163382Z  2026-10-07 20:59:07.750 UTC [694] ERROR:  relation "_prisma_migrations" does not exist at character 126
+2026-10-07T21:06:18.0164490Z  2026-10-07 20:59:07.750 UTC [694] STATEMENT:  SELECT "id", "checksum", "finished_at", "migration_name", "logs", "rolled_back_at", "started_at", "applied_steps_count" FROM "_prisma_migrations" ORDER BY "started_at" ASC
+2026-10-07T21:06:18.0165666Z  2026-10-07 20:59:10.269 UTC [697] ERROR:  new row violates row-level security policy for table "workforce_exception_policy_revisions"
+2026-10-07T21:06:18.0166365Z  2026-10-07 20:59:10.269 UTC [697] STATEMENT:  
+2026-10-07T21:06:18.0167027Z  	    INSERT INTO "workforce_exception_policy_revisions" (
+2026-10-07T21:06:18.0167554Z  	      "id", "organizationId", "revision", "operationId", "policyVersion",
+2026-10-07T21:06:18.0168164Z  	      "definition", "definitionHash", "recordedByUserId", "recordReasonCode"
+2026-10-07T21:06:18.0168784Z  	    ) VALUES ($1, $2, $3, $4, 'recommended-v1', $5::jsonb, $6, $7,
+2026-10-07T21:06:18.0169202Z  	              'OWNER_APPROVED_DRAFT')
+2026-10-07T21:06:18.0169606Z  	  
+2026-10-07T21:06:18.0170665Z  2026-10-07 20:59:10.275 UTC [697] ERROR:  insert or update on table "workforce_exception_policy_revisions" violates foreign key constraint "workforce_exception_policy_revisions_recorded_by_fk"
+2026-10-07T21:06:18.0171665Z  2026-10-07 20:59:10.275 UTC [697] DETAIL:  Key is not present in table "users".
+2026-10-07T21:06:18.0172181Z  2026-10-07 20:59:10.275 UTC [697] STATEMENT:  
+2026-10-07T21:06:18.0172668Z  	    INSERT INTO "workforce_exception_policy_revisions" (
+2026-10-07T21:06:18.0173194Z  	      "id", "organizationId", "revision", "operationId", "policyVersion",
+2026-10-07T21:06:18.0173741Z  	      "definition", "definitionHash", "recordedByUserId", "recordReasonCode"
+2026-10-07T21:06:18.0174521Z  	    ) VALUES ($1, $2, $3, $4, 'recommended-v1', $5::jsonb, $6, $7,
+2026-10-07T21:06:18.0174951Z  	              'OWNER_APPROVED_DRAFT')
+2026-10-07T21:06:18.0175318Z  	  
+2026-10-07T21:06:18.0176101Z  2026-10-07 20:59:10.285 UTC [697] ERROR:  insert or update on table "workforce_exception_decisions" violates foreign key constraint "workforce_exception_decisions_policy_revision_fk"
+2026-10-07T21:06:18.0177075Z  2026-10-07 20:59:10.285 UTC [697] DETAIL:  Key is not present in table "workforce_exception_policy_revisions".
+2026-10-07T21:06:18.0177736Z  2026-10-07 20:59:10.285 UTC [697] STATEMENT:  
+2026-10-07T21:06:18.0178186Z  	        INSERT INTO "workforce_exception_decisions" (
+2026-10-07T21:06:18.0178710Z  	          "id", "organizationId", "caseId", "caseRevision", "operationId",
+2026-10-07T21:06:18.0179234Z  	          "decisionCode", "reason", "policyRevisionId", "actorUserId"
+2026-10-07T21:06:18.0179738Z  	        ) VALUES (
+2026-10-07T21:06:18.0180463Z  	          'cross-tenant-policy-decision', 'org-policy-a', 'case-policy-a', 5,
+2026-10-07T21:06:18.0181055Z  	          'cross-tenant-policy-operation', 'ACKNOWLEDGE', 'cross tenant',
+2026-10-07T21:06:18.0181639Z  	          'policy-revision-b', 'user-policy-a'
+2026-10-07T21:06:18.0182011Z  	        )
+2026-10-07T21:06:18.0182338Z  	      
+2026-10-07T21:06:18.0182972Z  2026-10-07 20:59:10.336 UTC [708] ERROR:  workforce_exception_policy_revisions is append-only; UPDATE rejected (id=policy-revision-a)
+2026-10-07T21:06:18.0183893Z  2026-10-07 20:59:10.336 UTC [708] CONTEXT:  PL/pgSQL function workforce_exception_policy_revisions_append_only_fn() line 11 at RAISE
+2026-10-07T21:06:18.0184617Z  2026-10-07 20:59:10.336 UTC [708] STATEMENT:  
+2026-10-07T21:06:18.0185067Z  	      UPDATE "workforce_exception_policy_revisions"
+2026-10-07T21:06:18.0185568Z  	         SET "recordReasonCode" = 'MUTATED'
+2026-10-07T21:06:18.0185960Z  	       WHERE "id" = 'policy-revision-a'
+2026-10-07T21:06:18.0186386Z  	    
+2026-10-07T21:06:18.0186967Z  2026-10-07 20:59:10.338 UTC [708] ERROR:  workforce_exception_policy_revisions is append-only; DELETE rejected (id=policy-revision-a)
+2026-10-07T21:06:18.0187879Z  2026-10-07 20:59:10.338 UTC [708] CONTEXT:  PL/pgSQL function workforce_exception_policy_revisions_append_only_fn() line 14 at RAISE
+2026-10-07T21:06:18.0188644Z  2026-10-07 20:59:10.338 UTC [708] STATEMENT:  
+2026-10-07T21:06:18.0189067Z  	      DELETE FROM "workforce_exception_policy_revisions"
+2026-10-07T21:06:18.0189509Z  	       WHERE "id" = 'policy-revision-a'
+2026-10-07T21:06:18.0189911Z  	    
+2026-10-07T21:06:18.0190613Z  2026-10-07 20:59:10.339 UTC [708] ERROR:  cannot truncate a table referenced in a foreign key constraint
+2026-10-07T21:06:18.0191652Z  2026-10-07 20:59:10.339 UTC [708] DETAIL:  Table "workforce_exception_decisions" references "workforce_exception_policy_revisions".
+2026-10-07T21:06:18.0192603Z  2026-10-07 20:59:10.339 UTC [708] HINT:  Truncate table "workforce_exception_decisions" at the same time, or use TRUNCATE ... CASCADE.
+2026-10-07T21:06:18.0193458Z  2026-10-07 20:59:10.339 UTC [708] STATEMENT:  TRUNCATE TABLE "workforce_exception_policy_revisions"
+2026-10-07T21:06:18.0194107Z  2026-10-07 21:03:05.767 UTC [62] LOG:  checkpoint starting: time
+2026-10-07T21:06:18.0195286Z  2026-10-07 21:03:26.427 UTC [62] LOG:  checkpoint complete: wrote 207 buffers (1.3%); 0 WAL file(s) added, 0 removed, 1 recycled; write=20.647 s, sync=0.003 s, total=20.661 s; sync files=261, longest=0.002 s, average=0.001 s; distance=13464 kB, estimate=13464 kB; lsn=0/2679698, redo lsn=0/2679660
+2026-10-07T21:06:18.0196417Z  This user must also own the server process.
+2026-10-07T21:06:18.0196798Z  
+2026-10-07T21:06:18.0197217Z  The database cluster will be initialized with locale "en_US.utf8".
+2026-10-07T21:06:18.0197780Z  The default database encoding has accordingly been set to "UTF8".
+2026-10-07T21:06:18.0198241Z  The default text search configuration will be set to "english".
+2026-10-07T21:06:18.0198684Z  
+2026-10-07T21:06:18.0198875Z  Data page checksums are disabled.
+2026-10-07T21:06:18.0199110Z  
+2026-10-07T21:06:18.0199392Z  fixing permissions on existing directory /var/lib/postgresql/data ... ok
+2026-10-07T21:06:18.0199777Z  creating subdirectories ... ok
+2026-10-07T21:06:18.0200315Z  selecting dynamic shared memory implementation ... posix
+2026-10-07T21:06:18.0200686Z  selecting default max_connections ... 100
+2026-10-07T21:06:18.0200977Z  selecting default shared_buffers ... 128MB
+2026-10-07T21:06:18.0201256Z  selecting default time zone ... Etc/UTC
+2026-10-07T21:06:18.0201526Z  creating configuration files ... ok
+2026-10-07T21:06:18.0201789Z  running bootstrap script ... ok
+2026-10-07T21:06:18.0202087Z  performing post-bootstrap initialization ... ok
+2026-10-07T21:06:18.0202390Z  syncing data to disk ... ok
+2026-10-07T21:06:18.0202607Z  
+2026-10-07T21:06:18.0202780Z  
+2026-10-07T21:06:18.0202996Z  Success. You can now start the database server using:
+2026-10-07T21:06:18.0203291Z  
+2026-10-07T21:06:18.0203515Z      pg_ctl -D /var/lib/postgresql/data -l logfile start
+2026-10-07T21:06:18.0203816Z  
+2026-10-07T21:06:18.0204513Z  waiting for server to start....2026-10-07 20:53:05.044 UTC [48] LOG:  starting PostgreSQL 16.15 (Debian 16.15-1.pgdg12+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14+deb12u1) 12.2.0, 64-bit
+2026-10-07T21:06:18.0205410Z  2026-10-07 20:53:05.045 UTC [48] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2026-10-07T21:06:18.0205975Z  2026-10-07 20:53:05.047 UTC [51] LOG:  database system was shut down at 2026-10-07 20:53:04 UTC
+2026-10-07T21:06:18.0206478Z  2026-10-07 20:53:05.051 UTC [48] LOG:  database system is ready to accept connections
+2026-10-07T21:06:18.0206845Z   done
+2026-10-07T21:06:18.0207028Z  server started
+2026-10-07T21:06:18.0207220Z  CREATE DATABASE
+2026-10-07T21:06:18.0207405Z  
+2026-10-07T21:06:18.0207580Z  
+2026-10-07T21:06:18.0207888Z  /usr/local/bin/docker-entrypoint.sh: ignoring /docker-entrypoint-initdb.d/*
+2026-10-07T21:06:18.0208276Z  
+2026-10-07T21:06:18.0208520Z  2026-10-07 20:53:05.230 UTC [48] LOG:  received fast shutdown request
+2026-10-07T21:06:18.0209040Z  waiting for server to shut down....2026-10-07 20:53:05.231 UTC [48] LOG:  aborting any active transactions
+2026-10-07T21:06:18.0209718Z  2026-10-07 20:53:05.234 UTC [48] LOG:  background worker "logical replication launcher" (PID 54) exited with exit code 1
+2026-10-07T21:06:18.0210491Z  2026-10-07 20:53:05.234 UTC [49] LOG:  shutting down
+2026-10-07T21:06:18.0210880Z  2026-10-07 20:53:05.234 UTC [49] LOG:  checkpoint starting: shutdown immediate
+2026-10-07T21:06:18.0212089Z  2026-10-07 20:53:05.249 UTC [49] LOG:  checkpoint complete: wrote 922 buffers (5.6%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.012 s, sync=0.003 s, total=0.016 s; sync files=301, longest=0.002 s, average=0.001 s; distance=4255 kB, estimate=4255 kB; lsn=0/1912120, redo lsn=0/1912120
+2026-10-07T21:06:18.0213144Z  2026-10-07 20:53:05.256 UTC [48] LOG:  database system is shut down
+2026-10-07T21:06:18.0213470Z   done
+2026-10-07T21:06:18.0213646Z  server stopped
+2026-10-07T21:06:18.0213837Z  
+2026-10-07T21:06:18.0214058Z  PostgreSQL init process complete; ready for start up.
+2026-10-07T21:06:18.0214350Z  
+2026-10-07T21:06:18.0221611Z Stop and remove container: 9220e73cbff74da2af47b5e3acf43b3b_pgvectorpgvectorpg16_df4bbe
+2026-10-07T21:06:18.0226813Z ##[command]/usr/bin/docker rm --force 004bc125b7429f6dd3c98576a0188476e4e8bef874213261845953c624cdd83e
+2026-10-07T21:06:18.1463761Z 004bc125b7429f6dd3c98576a0188476e4e8bef874213261845953c624cdd83e
+2026-10-07T21:06:18.1491853Z Remove container network: github_network_63719356b4b8428d84a864b079ea965c
+2026-10-07T21:06:18.1496298Z ##[command]/usr/bin/docker network rm github_network_63719356b4b8428d84a864b079ea965c
+2026-10-07T21:06:18.2517443Z github_network_63719356b4b8428d84a864b079ea965c
+2026-10-07T21:06:18.2590029Z Cleaning up orphan processes
