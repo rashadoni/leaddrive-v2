@@ -883,3 +883,93 @@ First actual production readonly smoke helper FAILED before catalog dispatch: ro
 Protected exact deployed-main metadata37700706462 source113063206584 PASS/production113063447824 FAIL. Strict finite ZIP11517690873/1895B/SHAf51fca70.../CRC1 result8240B retains INCOMPLETE and exact reasons APPLIED_TABLE_CONSTRAINTS_NOT_PROVED and DEFAULT_ACL_UNREVIEWED; never relabeledREADY. Actual ledger531/unresolved0/two applied once with correct checksums, ten indexes present+shape, assignmentguard currentbody65a426...+binding, relevant C6case/decision keyshape/FORCERLS and all four append/revision function+trigger proofs true. NewC12 state relation FORCE RLS observed, full constraints remain unproved; generic “id” keyshape false because canonical state table has organizationId PK, not a C6relation failure. PostgreSQL relation estimates are not business counts/real outcomes. Current production backup37700709192 source113063216462/production113063604347 SUCCESS, strict ZIP11517501743/1987B/SHA13bfd9d6.../CRC1 same fullf308/six helper bindings. Held same liveDB/runtime+migration RRRO/sessionidentity/cleanup and statically protected declaredbackup identity/profile match remain proven: one nongrantable OTHER SELECT, no OTHERwrites/PUBLIC/defaultgrantoption/membership/privilegedSET path; manual final current assessment pending peer. No backup authentication/service/commissioning/dump/restore, future reserved quiet window, full C12 or privileged/TRUNCATE immunity claim.
 
 Immutable archives actual-f308-complete-compiler-build, actual-f308-own-normal-release-smoke and actual-f308-production-catalog-originals retain all original statuses/logs/ZIPs/receipts, including first failed preparation smoke and current global metadata FAIL. C6 functional DoD final independent catalog/whole assessment pending; C6/C12 PARTIAL and accounting84/161/77/60 unchanged at this entry. Next finite scoped current catalog/backup manual assessment and final independent DoD, then update only accepted C6 accounting if all criteria complete; C12 remains PARTIAL.
+
+
+## 2026-10-08 Europe/Berlin — WF-C6-010 functional DONE accepted; only one row and accounting advance
+
+Independent exact own released-f308 whole technical acceptance e4550920...,
+final functional DoD df73f922..., and scoped actual production C6/backup review
+f88062fa... are accepted by root. All finite row935/user functional criteria
+are satisfied by explicit manual HR decisions/full-partial-rejected independent
+appeals, immutable authoritative decision audit, role/MFA/tenant/revision/privacy
+and empty/reopened/unclassified/sample rules, CASE_RECORDED_AT, preserved
+historical first recorded resolution and correction association semantics.
+Fresh exact-main five lanes and own four-job production artifact/deploy/smoke,
+real critical catalog/ledger/checksum/RLS/four guards and both exact anonymous
+API contracts are complete. No minimum realN is invented; empty data intentionally
+has no percentage. Production authenticated HR read and actual outcome rates
+NOT RUN without a legitimate existing HR session; no personnel cases/users/
+tokens/grants manufactured. This closes functional measurement, not C12 operating
+acceptance, deployment activation, all generic MtmAuditLog/TRUNCATE/DBA immunity,
+backup authentication/service/restore or complete mobile/WCAG/human AT.
+
+Root acceptance receipt records ONLY WF-C6-010 DONE. Roadmap receives append-only
+latest acceptance entry and one full task-row override; every older byte/entry
+remains a prefix. Root last-full-row audit verifies exactly161 IDs, only
+WF-C6-010 status PARTIAL→DONE, same priority/owner/task, all C12 full rows and
+C7-007/C8-002 DONE unchanged. Accounting85/161 DONE,76open,14/15phasegates;
+80×85/161+20×14/15=60.902691511...%, rounded61%. No other partial row closes.
+Standalone docs/workforce-c6-recorded-outcomes-acceptance-2026-10-08.md details
+scope/evidence/limits. Docs peer caught “first recorded decision” wording too
+broad; corrected beforecheckpoint to first decision closing the case (resolution)
+and states seven actual MFA checks among20 scenarios. No runtime/source change.
+
+Global metadata workflow remains actual FAIL/INCOMPLETE with original two
+APPLIED_TABLE_CONSTRAINTS_NOT_PROVED and DEFAULT_ACL_UNREVIEWED reasons; no READY
+rewrite or baseline weakening. Canonical protected declaredbackup recipient
+purpose is accepted manually using new finite observations, not automatic
+READ_COMPLETE. C12 stays PARTIAL; its table full CHECK/FK/default/policy proof
+and real operating/physical/pilot/load/restore criteria stay open. First actual
+smoke preparation failure (incorrect401/noSec-Fetch-Mode), diagnosis and exact
+307 plus script401 positive checks remain unchanged in the archive. All prior
+implementation/CI failures and retries preserved. Current four final-main phase
+archives roundtrip/hash verification76payloads PASS.
+
+External PR628 normally merged at23:14:49UTC while finalreview continued,
+advancing repositorymain to e041d8a1b90ae80e81667bf5b6263636406d91d2. Child and
+root readonly comparison confirm C6/backend/auth/report/decision/tool/baseline
+and42 Workforce translation namespaces preserved. Its16 MTMsettings/locale/test
+files include a separate agentCheckInOutsideZone ADMIN_ONLY_KEYS permission
+change; whole successor and that MTM policy are OUTSIDE this HRM acceptance,
+not “all repository roles unchanged” or fresh f308-CI credit. No mutation or
+approval of628 by this task. Own f308 actual runtime observations predate its
+successor; additional pinned public bracket still served fullf308 aftermain
+advance. That reusable auxiliary helper's residual “auxiliary” scope caption
+is imprecise for this call; finite URL/TLS/fullSHA observations refer to actual
+own HRM releasef308, original caption retained, correct own smoke/peer receipts
+provide actual scope. No chasing/restarting or modifying external work.
+
+Durable final-f308-functional-acceptance archive binds root/peer DoD, current
+catalog assessment, incomingdelta and actual refs/public observations. Evidence
+remains on dependent draftPR617; sourcePR589 is merged/released and its exact
+verified source frozen. No incidental evidence-PR merge/deploy. Stop at verified
+functional C6 acceptance; next resume must re-read current refs/journal, verify
+any external main/release drift, then choose the next permitted HRM/C12 criterion.
+C12 activation and any new access/secret/production mutation require separate
+approval; HRHub personnel-document work stays after HRM acceptance. Support and
+Mac work untouched. Final docs integrity/peer and checkpoint/publication next.
+
+
+## 2026-10-08 Europe/Berlin — final documentation peer PASS; final evidence checkpoint publication
+
+Final documentation peer d06c5b26... accepts corrected first-closing-resolution
+wording/seven MFA checks among20 scenarios, exact old roadmap/journal byte
+prefixes,161uniqueIDs/85DONE/76open/weighted61/14of15gates, only C6 status change,
+all other rows and C12 unchanged, entire non-docs source equal releasedf308,
+five original gates/baselines exact973. Independently roundtripped four current
+runtime archives76payloads plus separate10 functional originals; no archive
+failure. No new tests/build/production reads or source edit. Root accounting
+proof and final PR descriptions archived separately, preserving earlier bodies.
+
+Final task result: functional WF-C6-010 DONE at verified own releasedf308;
+C12 PARTIAL/globalmetadata INCOMPLETE unchanged and realHR/authenticatedprodHR/
+backup service/restore observations NOT RUN. Externalmain e041/PR628 remains
+outside own HRM acceptance, including its separate MTM permission change.
+Last completed action: independent final documents/counts/source/archive review.
+Precise stopping point: own HRM source released and verified, only final
+append-only documentation/evidence checkpoint publication to existing dependent
+DRAFT PR617 pending at this entry. Next action: explicit-path docs-only commit,
+normal push to existing evidence branch, verify PR617 draft/head and PR589 merged
+state; no merge/deploy of evidence or external code. Next task resumes by fresh
+refs+journal and then next permitted remaining HRM/C12 criterion; activation/
+newproduction/access/secrets changes require separate approval.

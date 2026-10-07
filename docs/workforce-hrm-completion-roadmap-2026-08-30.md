@@ -7443,3 +7443,41 @@ codex/hrm-wf-c6-010-evidence-20261007, parent9f3, keeping verified PR source hea
 unchanged. WF-C6-010 remains PARTIAL pending owner acceptance. Accounting remains
 84/161 DONE,77 open,weighted60%; C7-007/C8-002 DONE,C12 PARTIAL. No merge, deploy,
 activation, production/access/secrets changes, Support or HRHub document work.
+
+
+### 2026-10-08 — WF-C6-010 functional acceptance of exact own releasedf308
+
+Supersedes only the earlier WF-C6-010 PARTIAL/pending-owner technical entries;
+all prior records and errors remain unchanged. User-authorized normal PR589
+releasef3085e5cdf80879bee2e65d06df4e88698afa3e4/tree225f13aa65017f2901ccc6309674cb948cf11957
+has fresh five exact-final-commit hosted lanes, its own four-job normal
+SHA-bound production release, actual production critical ledger/RLS/guard
+catalogs and exact public/anonymous API contracts. Independent finite technical,
+functional DoD and scoped production reviews accept only WF-C6-010. Approved HR
+findings/full-partial-rejected appeals are explicit and independent; final
+percentages use reviewed classified resolved current-cycle samples only, empty
+rates are null, open/reopened/unclassified counts separate. Correction links
+show counts/cohort, never inferred HR outcomes; CASE_RECORDED_AT retained.
+
+| ID | Priority | Status | Owner | Task | Definition of done / acceptance evidence |
+|---|---|---|---|---|---|
+| WF-C6-010 | P2 | DONE | HR/Analytics | Measure false positives, correction rate, appeal overturn rate and time-to-resolution | [Functional acceptance](./workforce-c6-recorded-outcomes-acceptance-2026-10-08.md): explicit scoped HR outcomes, immutable decision audit, independent partial appeals, reviewed-only final percentages/null empty samples and private CASE_RECORDED_AT aggregates accepted on exact releasedf308; historical correction associations remain count/cohort with descriptive API ratio. Real production HR rates, activation and C12 operating criteria are not credited. |
+
+Accounting85/161 DONE,76open,14/15gates,weighted61% (unrounded60.9026915…);
+only one P2 row closes. C7-007/C8-002 remain DONE. C12 and all other partial items
+remain open. Global compiler1153/exit2 and18 historical failing baseline files
+remain; all five baseline/gate files unchanged. Global metadata remains
+FAIL/INCOMPLETE(APPLIED_TABLE_CONSTRAINTS_NOT_PROVED,DEFAULT_ACL_UNREVIEWED),
+not rewrittenREADY. New finite backup-purpose assessment accepts one known
+protected declared default SELECT recipient without access changes; no backup
+service/restore, full C12 constraints, real HR/pilot/physical/load or reserved
+future DDL window claim. Production authenticated HR read NOT RUN, no legitimate
+existing session provided; no fabricated users/tokens/grants/personnel cases.
+
+Subsequent external maine041/PR628 retains C6 source but has separate MTM
+settings/permission changes outside this acceptance. Own HRM evidence remains
+bound to releasedf308, not borrowed for the whole successor. Original failed
+smoke preparation401/noSec-Fetch-Mode, actual307 diagnosis and exact307 plus
+script401 successful checks are retained. No HRM activation, role/access/config/
+secret changes, Support or HRHub document work. Latest continuity and originals:
+[session journal](./hrm-wf-c6-010-session-log.md), dependent evidence draftPR617.
