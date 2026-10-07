@@ -1,0 +1,12 @@
+{
+  "number": 612,
+  "url": "https://github.com/rashadoni/leaddrive-v2/pull/612",
+  "headSha": "9f3cc73dcdb8c4ccea1fdac9dfae29570339abc5",
+  "baseRef": "codex/hrm-c12-reader-profile-20261006",
+  "draft": true,
+  "state": "open",
+  "bodySha256": "0f844f264f6aead14ea69738728376a4939c3fa700a086ea6b45f4a65d4ecfb8",
+  "updatedAt": "2026-10-07T10:49:20Z",
+  "descriptionUpdate": "RESTPATCH200 verifiedbody afterGraphQLclientfailure",
+  "noMergeDeploy": true
+}

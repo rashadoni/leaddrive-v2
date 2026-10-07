@@ -1,0 +1,403 @@
+{
+  "version": 1,
+  "reviewId": "WF-C6-010-independent-hosted-browser-review-9f3",
+  "createdAtUtc": "2026-10-07T10:39:38.326645+00:00",
+  "headSha": "9f3cc73dcdb8c4ccea1fdac9dfae29570339abc5",
+  "gitTree": "1ffe09e8f370c65e487316ce3db775abc0ec0b1c",
+  "reviewer": "/root/inspect_outcome_contract",
+  "authorshipDisclosure": "Reviewer authored the PostgreSQL report test extensions, report browser extensions, separate classification fixture/harness and refusal tests, including MFA/Intl/cleanup fixes. Root independently reviewed those verification changes. This is independent inspection of actual hosted artifacts against root-authored production contracts, not independent test authorship or a second independent execution.",
+  "status": "PASS_EXACT_HOSTED_BROWSER_EVIDENCE_FULL_HOSTED_GATES_PENDING",
+  "artifacts": [
+    {
+      "kind": "report",
+      "artifactId": 11475593145,
+      "zipSha256": "aa30ce572ee13cbcc1aa663b9c8410151293d83ab43b0f7513bf2f7888d4cdb6",
+      "zipBytes": 853371,
+      "crcAndExpandedMembersVerified": true,
+      "members": [
+        {
+          "path": "exception-report-receipt.json",
+          "bytes": 27854,
+          "sha256": "ebbfd9a6564a1e399f85b49d08ab5c9d9cd7fbdae508f05c18a2de94c54b0c90",
+          "zipCrc32": "526651a8"
+        },
+        {
+          "path": "report-az-768-recorded-outcomes.png",
+          "bytes": 85625,
+          "sha256": "0e3ec8e13a659a9e7cebf6af1ff2f9f40b27d8debae29304ab21517f45825ee5",
+          "zipCrc32": "86c70594"
+        },
+        {
+          "path": "report-az-768-nonempty.png",
+          "bytes": 86832,
+          "sha256": "8b2607cbee8a34df31edc76fdcaf532d480390013935658f83436eace085058e",
+          "zipCrc32": "9adf57e3"
+        },
+        {
+          "path": "report-denied-denied.png",
+          "bytes": 45895,
+          "sha256": "937f0f4182a824a7295314e62b1858b99e5544049c5774d06442d1ad1baf71ea",
+          "zipCrc32": "32fb9fd0"
+        },
+        {
+          "path": "report-denied-team.png",
+          "bytes": 45895,
+          "sha256": "937f0f4182a824a7295314e62b1858b99e5544049c5774d06442d1ad1baf71ea",
+          "zipCrc32": "32fb9fd0"
+        },
+        {
+          "path": "report-en-1440-nonempty.png",
+          "bytes": 133601,
+          "sha256": "40689992e024649cc3b13cdb68161d09f59d752c6d6ec66f81132604b22863f5",
+          "zipCrc32": "c9c13ce7"
+        },
+        {
+          "path": "report-en-1440-recorded-outcomes.png",
+          "bytes": 77069,
+          "sha256": "6d23401346d2cb7122df1fbb4aa745ae0b082757ba2e8b3e4e571340ecf8ec5d",
+          "zipCrc32": "f1e4502b"
+        },
+        {
+          "path": "report-foreign-positive.png",
+          "bytes": 81676,
+          "sha256": "e98703a0ac13d5a3bc158dd363c33b9ae99782e002cef29ed24d9fedc22d8b2c",
+          "zipCrc32": "d1ee1a07"
+        },
+        {
+          "path": "report-ru-320-empty.png",
+          "bytes": 68297,
+          "sha256": "0ae5c77d58c0f330bff957f2cc8291497726168eda14bf7b877dc893028f848b",
+          "zipCrc32": "3a33bbb8"
+        },
+        {
+          "path": "report-ru-320-measured-zero.png",
+          "bytes": 68458,
+          "sha256": "e0c3c75abe6b0ba0b2f88315a3a6c0a3a94b78152673cbd168b6ffd616e03cda",
+          "zipCrc32": "ccdc11c5"
+        },
+        {
+          "path": "report-ru-320-nonempty.png",
+          "bytes": 65633,
+          "sha256": "d8e0f67bae33ba030bf664636df62b3e21a6495d73603fe8128f9b49ea0c7708",
+          "zipCrc32": "9bcc84d3"
+        },
+        {
+          "path": "report-ru-320-recorded-outcomes.png",
+          "bytes": 61369,
+          "sha256": "304b57489fbe9f7b735dd1ed5bc1d7e7c3ac2967fbb65df418fc2bdad36e82b2",
+          "zipCrc32": "d188409e"
+        },
+        {
+          "path": "report-ru-320-unresolved-no-sample.png",
+          "bytes": 67978,
+          "sha256": "c0d1690d14343ac283fe531dc6f265631557106e05142cb1974b1e7a3eba48bc",
+          "zipCrc32": "74bbc06f"
+        },
+        {
+          "path": "workflow-context.json",
+          "bytes": 261,
+          "sha256": "4975ccbbd7cbdba1307beefd900fe7c827551cf4702aea837e0dd27c178d2e79",
+          "zipCrc32": "451a7346"
+        }
+      ],
+      "sourceBindings": [
+        {
+          "path": "scripts/workforce-exception-report-browser-evidence.mjs",
+          "bytes": 41827,
+          "sha256": "4216c6421088dc1b47e90ee1f4c68a43e740b80efbfdfc7337b31016d85a8458",
+          "matchesExactCommittedHead": true
+        },
+        {
+          "path": "scripts/ci/fixtures/workforce-exception-report-browser.sql",
+          "bytes": 4741,
+          "sha256": "85d4237ef3e2a9c1fb782d9ee70e8ed801d82fcc2703fd4932494fa2e3e344b3",
+          "matchesExactCommittedHead": true
+        },
+        {
+          "path": "scripts/ci/fixtures/workforce-manager-today-browser.sql",
+          "bytes": 33617,
+          "sha256": "448d08b65048f3692145d1d2d73d1f4b2f5973363172dddb959b4c9daf20a4fb",
+          "matchesExactCommittedHead": true
+        },
+        {
+          "path": ".github/workflows/workforce-exception-report-browser-evidence.yml",
+          "bytes": 25256,
+          "sha256": "1dcd49d422fb212d4ee1eac6368de97837fe62fc5ca5975a7faa2b6c61dc18e7",
+          "matchesExactCommittedHead": true
+        },
+        {
+          "path": "src/components/workforce/workforce-exception-report.tsx",
+          "bytes": 12570,
+          "sha256": "7e0ea96c737c7ca8a21bdbe5431b1ed859466e9bd93918d063e271c195b9c87f",
+          "matchesExactCommittedHead": true
+        },
+        {
+          "path": "src/components/workforce/workforce-exception-recorded-outcomes.tsx",
+          "bytes": 6293,
+          "sha256": "1039384b9a47e87b48a001b115300c7161cd3d144b376adce20276f5172cc386",
+          "matchesExactCommittedHead": true
+        },
+        {
+          "path": "src/app/api/v1/workforce/exception-reports/route.ts",
+          "bytes": 6162,
+          "sha256": "6d4935a3cd3adbbbb411619a813287a6ba8b7d58cc89dec888074130360233bf",
+          "matchesExactCommittedHead": true
+        },
+        {
+          "path": "src/lib/workforce/exception-case-report-read.ts",
+          "bytes": 3384,
+          "sha256": "b34a3ef9d52359a235040802c5ede11c03f128c7250b41f5b2a86d10860b82b5",
+          "matchesExactCommittedHead": true
+        },
+        {
+          "path": "src/lib/workforce/exception-case-report-recorded-outcomes.ts",
+          "bytes": 8338,
+          "sha256": "1d84daa28a7b21a8ad8545f5b494c1030c338cff75fc168f87153541d5f0321c",
+          "matchesExactCommittedHead": true
+        },
+        {
+          "path": "messages/en.json",
+          "bytes": 1352170,
+          "sha256": "be99a98fbe605f2f1d6af6f58dba7d2d4cddae6b51f5dc41bcc126777543c0dc",
+          "matchesExactCommittedHead": true
+        },
+        {
+          "path": "messages/ru.json",
+          "bytes": 1997081,
+          "sha256": "883624ffb0c17fcd9d8151af99d9162b1bf69b1c7e3f3baf7ad3477d3e6fa98e",
+          "matchesExactCommittedHead": true
+        },
+        {
+          "path": "messages/az.json",
+          "bytes": 1495785,
+          "sha256": "c3974dfb5915ebc03186e87ceaadc6b74fb9124f65c1865fde052829ced85fdc",
+          "matchesExactCommittedHead": true
+        }
+      ],
+      "caseCount": 9,
+      "status": "PASS",
+      "cleanup": "PASS"
+    },
+    {
+      "kind": "classification",
+      "artifactId": 11475434208,
+      "zipSha256": "6e64ef8d567f22549943c635b33bab1f7759658d4f802dca10759922f0bc4d83",
+      "zipBytes": 268753,
+      "crcAndExpandedMembersVerified": true,
+      "members": [
+        {
+          "path": "classification-az-768.png",
+          "bytes": 103133,
+          "sha256": "177ced4c17649007b6b8271b873fd9d38226286489f182e871c92a0f4ad1c09c",
+          "zipCrc32": "2c757b2e"
+        },
+        {
+          "path": "classification-en-1440.png",
+          "bytes": 137375,
+          "sha256": "cd023708ee176aa23182099f08570e8c15cc809e836ffd461acfe844181ea95f",
+          "zipCrc32": "c19685d9"
+        },
+        {
+          "path": "classification-ru-320.png",
+          "bytes": 34808,
+          "sha256": "64fa7844b66a4033c71eee1c54f90cf0eb0227277c7a5bdbf98e488fffdf82c2",
+          "zipCrc32": "4e4b5f7c"
+        },
+        {
+          "path": "exception-classification-receipt.json",
+          "bytes": 15212,
+          "sha256": "de33983f903429ce0e218ba613dbbf6df2d21d881ea45a0de282b5ab7bd84c24",
+          "zipCrc32": "5dd0b164"
+        },
+        {
+          "path": "workflow-context.json",
+          "bytes": 261,
+          "sha256": "4975ccbbd7cbdba1307beefd900fe7c827551cf4702aea837e0dd27c178d2e79",
+          "zipCrc32": "451a7346"
+        }
+      ],
+      "sourceBindings": [
+        {
+          "path": "scripts/workforce-exception-classification-browser-evidence.mjs",
+          "bytes": 35825,
+          "sha256": "216967516c60bab48390aefeebce651524130eefabc7c90cf4d00ee05e899025",
+          "matchesExactCommittedHead": true
+        },
+        {
+          "path": "scripts/ci/fixtures/workforce-exception-classification-browser.sql",
+          "bytes": 8727,
+          "sha256": "41ecf5a96c0accb2469971042bf3f47f0e8d7e6fcfa65a8538e1cd7f4013d7e0",
+          "matchesExactCommittedHead": true
+        },
+        {
+          "path": "scripts/ci/fixtures/workforce-manager-today-browser.sql",
+          "bytes": 33617,
+          "sha256": "448d08b65048f3692145d1d2d73d1f4b2f5973363172dddb959b4c9daf20a4fb",
+          "matchesExactCommittedHead": true
+        },
+        {
+          "path": ".github/workflows/workforce-exception-report-browser-evidence.yml",
+          "bytes": 25256,
+          "sha256": "1dcd49d422fb212d4ee1eac6368de97837fe62fc5ca5975a7faa2b6c61dc18e7",
+          "matchesExactCommittedHead": true
+        },
+        {
+          "path": "src/components/workforce/workforce-exception-queue.tsx",
+          "bytes": 23077,
+          "sha256": "5160dcc8b943d0caca712ae0dcad02725784fcb4c2401479c16dede00d0c3b1f",
+          "matchesExactCommittedHead": true
+        },
+        {
+          "path": "src/app/api/v1/workforce/exceptions/route.ts",
+          "bytes": 13279,
+          "sha256": "5a33ec78dc7fe6b05e920cbdb22fecb46f85d45c74840486533ea56df68034ff",
+          "matchesExactCommittedHead": true
+        },
+        {
+          "path": "src/app/api/v1/workforce/exception-decisions/route.ts",
+          "bytes": 4157,
+          "sha256": "eeeb1dda5d637fb0fdaa831021556a1200a1bd502e73df05838e850284db34c9",
+          "matchesExactCommittedHead": true
+        },
+        {
+          "path": "src/lib/workforce/exception-outcome-classification.ts",
+          "bytes": 2447,
+          "sha256": "947410fb0687987a465c38ce0c9455d3923d62039d9030b43bda3e0afae99a23",
+          "matchesExactCommittedHead": true
+        },
+        {
+          "path": "src/lib/workforce/exception-decision-service.ts",
+          "bytes": 11916,
+          "sha256": "dd10ffed0f37f80b79eae0e784918966033995283cafdbf6a4ec738b6275e21c",
+          "matchesExactCommittedHead": true
+        },
+        {
+          "path": "src/lib/workforce/exception-case-writer.ts",
+          "bytes": 19607,
+          "sha256": "61814e5d395143a6deacc9bd92e0aee1ffb508cc1c168724897dd9bf67da201f",
+          "matchesExactCommittedHead": true
+        },
+        {
+          "path": "src/lib/workforce/exception-policy-draft.ts",
+          "bytes": 8270,
+          "sha256": "f45f761e9c2e829351eb930c7e191f667327b3ed040338b4033b54381da59b6b",
+          "matchesExactCommittedHead": true
+        },
+        {
+          "path": "messages/en.json",
+          "bytes": 1352170,
+          "sha256": "be99a98fbe605f2f1d6af6f58dba7d2d4cddae6b51f5dc41bcc126777543c0dc",
+          "matchesExactCommittedHead": true
+        },
+        {
+          "path": "messages/ru.json",
+          "bytes": 1997081,
+          "sha256": "883624ffb0c17fcd9d8151af99d9162b1bf69b1c7e3f3baf7ad3477d3e6fa98e",
+          "matchesExactCommittedHead": true
+        },
+        {
+          "path": "messages/az.json",
+          "bytes": 1495785,
+          "sha256": "c3974dfb5915ebc03186e87ceaadc6b74fb9124f65c1865fde052829ced85fdc",
+          "matchesExactCommittedHead": true
+        }
+      ],
+      "caseCount": 11,
+      "status": "PASS",
+      "cleanup": "PASS"
+    }
+  ],
+  "productionRoutineBindings": [
+    {
+      "path": "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql",
+      "sha256": "63fc383dc3e91776255c7a1cdd4bbfb09776ecefbe294f9d9a061dcd9f9f9b90",
+      "bytes": 240,
+      "statementPrefix": "CREATE OR REPLACE FUNCTION workforce_reject_exception_case_mutation(",
+      "matchesExactProductionStatement": true
+    },
+    {
+      "path": "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql",
+      "sha256": "5157c20909615422b8164d8aad673a4bae10ebe5ada406b43e0542b123ef7d41",
+      "bytes": 218,
+      "statementPrefix": "CREATE OR REPLACE FUNCTION workforce_reject_exception_decision_mutation(",
+      "matchesExactProductionStatement": true
+    },
+    {
+      "path": "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql",
+      "sha256": "e8b6fdc3224c3464ec24b9bfc383c38709a722382c77f51b83f7ad10edc63104",
+      "bytes": 910,
+      "statementPrefix": "CREATE OR REPLACE FUNCTION workforce_next_exception_compatibility_timestamp(",
+      "matchesExactProductionStatement": true
+    },
+    {
+      "path": "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql",
+      "sha256": "8117d9a40f4ec7e2f4a6b5b86b0c64f6b91f2cd21b60cd4d56ecbb8a7e78a950",
+      "bytes": 891,
+      "statementPrefix": "CREATE OR REPLACE FUNCTION workforce_assign_exception_decision_revision(",
+      "matchesExactProductionStatement": true
+    },
+    {
+      "path": "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql",
+      "sha256": "572b7638a7780f824b606692d1c5aaa37e153a41585abffee16f53cc84ff3329",
+      "bytes": 185,
+      "statementPrefix": "CREATE TRIGGER workforce_exception_cases_append_only",
+      "matchesExactProductionStatement": true
+    },
+    {
+      "path": "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql",
+      "sha256": "603a14021a0fd627d315f379667364b1d26f0b2358f00279d2d90b490f70ee09",
+      "bytes": 197,
+      "statementPrefix": "CREATE TRIGGER workforce_exception_decisions_append_only",
+      "matchesExactProductionStatement": true
+    },
+    {
+      "path": "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql",
+      "sha256": "01be9a08535c0b1cc832972cd0e57fb2bab8c1c087a551d6d7899f0b59839f24",
+      "bytes": 196,
+      "statementPrefix": "CREATE TRIGGER workforce_exception_decisions_assign_case_revision",
+      "matchesExactProductionStatement": true
+    }
+  ],
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "productionContractAssessment": {
+    "hrDecisions": "Six actual browser201 appends acrossRU320/AZ768/EN1440 include explicitFP/confirmed and FULL/PARTIAL/REJECTED; reasons required and request body only token/operation/reason. Exact DB actor/reason/audit links checked with6newdecisions/6audits.",
+    "authenticationAndRoles": "Seven actual mandatory enrolledTOTP sessions verify200/session-update200 with consumed server nonce; weakHR session produces403/noappend. Existing manager/TENANT_ADMIN/ungranted/foreign actors404/noappend, liveHRrevocation leaves manager reads but nooutcome write.",
+    "idempotencyAndReopen": "Exactsameoperation replay200 causes0ledger/auditdelta; modifiedreason409, staleoperation409; reopened priorclassifiedcase hasnulloutcomes/noofferedoutcomeactions. Denials all0delta.",
+    "immutablePersistence": "Exact production decision and case append-only/revision routines imported atomically and hashed; decision UPDATE/DELETE negatives raise55000. Browser audit guard is synthetic and clearly distinguished from authoritative immutable decision reason ledger.",
+    "aggregates": "Exactselected8-case cohort includes3classification/3appeal samples, FP1/confirmed2, FULL1/PARTIAL1/REJECTED1: each relevant share1/3;2unclassifiedeachdimension,2unfinished,1integrityexcluded. Correctionlinked1/8 is separate and unclassified; reopened/re-resolved prioroutcomes excluded. API basisCASE_RECORDED_AT checked exactly.",
+    "emptyAndZero": "Empty/open/noexplicitclassification samples keepnull finalshares and translatedno-classified-sampletext; measuredzero-resolutionduration remains0 while classification empty. No false0percent substituted for empty denominator.",
+    "privacyAndIsolation": "RealreportGETs haveprivate/no-store envelope and protected payload absence. Positivepopulated2tenant/nonownerFORCERLS controls show0unscoped/foreign rows before/after. Header cannotselectother tenant. Report22facttables unchanged; permittedviewaudit/authmetadata writes separated, not falsely globallywritefree.",
+    "sourceBindings": "Every source entry in both actual receipts matches exactgit9f3 bytes/hash; all7 exact importedproduction statements separately checked. ZIP SHA/CRC, everyexpandedmember byte/SHA verified independently."
+  },
+  "actualVisualInspection": [
+    {
+      "file": "report-en-1440-recorded-outcomes.png",
+      "observed": "Complete metricsection displaysFP/FULL/PARTIAL/REJECTED each33.33%,1of3; bothsamples3,unfinished2,unclassified2each,integrity1. Separatecorrection12.5%1of8 and firstresolution50minutes6samples visible."
+    },
+    {
+      "file": "report-az-768-recorded-outcomes.png",
+      "observed": "All4finalpercent33.33% visible withsample3; imageincludes fixedheader and clips part ofsection/bottomcounts. No wholepage/tablet occlusion or WCAG claim."
+    },
+    {
+      "file": "report-ru-320-recorded-outcomes.png",
+      "observed": "Nestedscroller capture is tall/mostlyblank; titleandpartialtext visible but finalpercentcards notvisuallyestablished bythisPNG. ActualRU320DOM/text/width/nativecontrols and realHRwrite assertions passed; screenshot doesnotgrantfullmobilevisibility/globalaccessibility acceptance."
+    }
+  ],
+  "priorFailureClosure": [
+    "OriginalAZNode/browserIntl mismatch preserved;9f3actualDOM matchesChromium realm exactly while exact numeric fixtures unchanged. Duration diagnostics maystilldifferNode/browser inAZ; browser-formatted semantic equality is asserted.",
+    "Duplicate fixturetriggers, missingmandatoryMFA, unobservedwaiter cleanupcrash, inheritedunboundPrismareceiver500 and priorcleanupFAIL originals allpreserved.9f3realUI6writes201 and all11orderedcleanupresourcesPASS provide freshruntime closure, not invented originalserver stack."
+  ],
+  "limitations": [
+    "These2browser jobs only; final9f3fullcompiler/fullsuite/PostgreSQL/build outcomes stillpending and must be reviewed separately. No overallWF-C6-010acceptance yet.",
+    "Synthetic disposable tenants/history and development browserbundle; no liveHR operationalobservation, production activation, device/physical/pilot/load orfullmigrationreplay evidence.",
+    "Productiondecisionledger immutability is authoritative; syntheticMtmAuditLog guard doesnotestablish productionMtmAuditLog append-only migration.",
+    "BoundedDOM/geometry/nativeRUcontrols are not fullWCAG/humanAT/globalkeyboard/mobilepixelocclusion acceptance. RU sectionPNG capturelimitation retained.",
+    "No source/test edits, commits, merge/deploy/activation/access/secrets/Support actions byreviewer inthisphase. ExistingC12partial/84of161/77open/60percent accounting remains."
+  ],
+  "nextAction": "Independently inspect finalexact9f3compiler/fullregression/PostgreSQL/build evidence; renewexactbinding ifsource/headchanges and preserve earlier originals."
+}
