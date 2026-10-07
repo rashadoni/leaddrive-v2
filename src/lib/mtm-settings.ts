@@ -40,6 +40,12 @@ export const MTM_SETTING_DEFAULTS = {
 
   // Geofence (POST /visits)
   geofenceRadius: 100,                       // meters; per-customer override via MtmCustomer.geofenceRadius (F-22)
+  // Lets a field agent check in from outside the customer's zone (matrix
+  // "what an agent may do", row checkInOutsideZone). OFF by default: the zone
+  // stays the hard rule it was. When on, the visit is stored like any other —
+  // with both positions and the zone it was measured against — and the
+  // OUT_OF_ZONE alert still fires, so a manager can review where it was made.
+  agentCheckInOutsideZone: false,
 
   // Field-status logic (/locations dashboard)
   offlineThresholdSeconds: 300,              // 5min — agent considered OFFLINE if lastSeenAt older

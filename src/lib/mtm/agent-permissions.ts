@@ -34,6 +34,7 @@ export const AGENT_PERMISSION_SETTING_KEYS = [
   "agentContactCreateRequests",
   "agentContactChangeRequests",
   "agentCustomerCreateRequests",
+  "agentCheckInOutsideZone",
 ] as const
 export type AgentPermissionSettingKey = typeof AGENT_PERMISSION_SETTING_KEYS[number]
 export type AgentPermissionSettings = Record<AgentPermissionSettingKey, boolean>
@@ -47,6 +48,7 @@ export const AGENT_PERMISSION_ADMIN_ONLY_KEYS = [
   "agentContactCreateRequests",
   "agentContactChangeRequests",
   "agentCustomerCreateRequests",
+  "agentCheckInOutsideZone",
 ] as const satisfies readonly AgentPermissionSettingKey[]
 
 /** A grant that lives on the employee card (`MtmAgent`). */
@@ -89,6 +91,12 @@ export const AGENT_PERMISSION_ROWS = [
 
   // --- Visits
   { id: "visitExecute", group: "visits", kind: "always" },
+  // Off unless the organization says otherwise: a check-in is refused outside
+  // the customer's zone. On, it is accepted and left for a manager to review.
+  {
+    id: "checkInOutsideZone", group: "visits", kind: "switch", setting: "agentCheckInOutsideZone",
+    surfaces: ["app"],
+  },
   { id: "visitPhotos", group: "visits", kind: "always" },
   { id: "presentations", group: "visits", kind: "always" },
   { id: "brandPotential", group: "visits", kind: "always" },
