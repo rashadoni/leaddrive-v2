@@ -1,0 +1,55 @@
+{
+  "archivedAtUtc": "2026-10-07T22:45:36.724620+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-release-independent-compiler-33f93325.json.gz",
+      "originalBytes": 9849,
+      "originalSha256": "9b881d3953136aa92d94eb79ea2cebaf45f5147e9f87445106701aed51bf7050",
+      "storedBytes": 2878,
+      "storedSha256": "a4100780422b783a76f063a6b19ca21c1afaee39d6a7b9bcdafc376431b6f5b3"
+    },
+    {
+      "path": "hrm-release-independent-technical-acceptance-33f93325.json.gz",
+      "originalBytes": 14105,
+      "originalSha256": "67f22fe154de02ef75c98dde8f4b8bf9beac34b0d13979e15c1ebb727701279d",
+      "storedBytes": 4260,
+      "storedSha256": "ef2a8df315e829f14f9002f4a2340aead182d1ec8f4b52677cf5feb679aca76e"
+    },
+    {
+      "path": "hrm-final-33-required5-root-fresh.json.gz",
+      "originalBytes": 122652,
+      "originalSha256": "f22f2ddf7e9d5acf447887d534dfced132ae3da4ba18cc5b6dd6f798b05436e9",
+      "storedBytes": 4357,
+      "storedSha256": "23b1670637a08272fb8e9258ddbb647ff06d543001464b8cc7f921938dd7ced2"
+    },
+    {
+      "path": "hrm-pr589-root-premerge-check.py",
+      "originalBytes": 6173,
+      "originalSha256": "254489616cd24eafe659eb39f999abe665f3e73c050081d632b2cbb7d5c84a67",
+      "storedBytes": 6173,
+      "storedSha256": "254489616cd24eafe659eb39f999abe665f3e73c050081d632b2cbb7d5c84a67"
+    },
+    {
+      "path": "hrm-pr589-root-premerge-proof.json.gz",
+      "originalBytes": 9380,
+      "originalSha256": "3630e7c5faf8228cab622011dd2e9c6b53abbc82132e0f730c84980486c60661",
+      "storedBytes": 2140,
+      "storedSha256": "bdb31eecd52c84aac172fb956d9e9addd5182b26a3d8f3aac84b734a39072693"
+    },
+    {
+      "path": "hrm-pr589-root-premerge-original.log.gz",
+      "originalBytes": 313,
+      "originalSha256": "b39db67fe1089f4786eb30e8fe957104da4c6850bb9c7b8f1ed4c8624653bfef",
+      "storedBytes": 256,
+      "storedSha256": "16e6d16fd41c4bd45ac15904444e8b7c5d0b337b6037eece1746c81e96c70cf8"
+    },
+    {
+      "path": "hrm-pr589-final33-reviewed-body.json.gz",
+      "originalBytes": 2992,
+      "originalSha256": "8b79acf2c58348846079e6ef5b2d38786a0ee45114c90bf7f6a52bdab81083d4",
+      "storedBytes": 1628,
+      "storedSha256": "40c032b6cb56fe9eb166ce41861a30ff3d415715f01928609e54189b5d25f801"
+    }
+  ]
+}
