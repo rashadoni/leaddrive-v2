@@ -420,3 +420,39 @@ personnelautomation/Support/Mac changes. Accounting84/161/77open/60%, C6/C12
 PARTIAL; configuredbackupcatalogidentity does not claim freshbackupservice,
 commissioning, restore or realHRoperations. Next currentheadfulltechnicalgates
 inparallel normalauxrelease/protectedcatalogassessment, then589release ifsafe.
+
+
+## 2026-10-08 Europe/Berlin — inherited all-cohort percentage P2 found and corrected
+
+Root actually inspected six freshC7 report/classification screenshots and
+flagged historical correction-association12.5%=1/8ALLrecordedcases againstthe
+user's unqualified reviewed-only percentage rule. Independentsemanticreview
+30ffb9da... confirms P2: inherited973 APIratio is historicallylabelledassociation,
+but no user exception authorizes displaying this all-cohort percentage. Earlier
+source/browser receipts remain immutable factual checks; their zero-findings
+semantic acceptance is superseded by this additive P2. CurrentC7 classfirst11/
+report9/6HR201/6immutableaudits/7MFA/facts-RLS/cleanupPASS andrealPG44/18baseline
+PASS remain historicalfacts, no globalpolicygreen or old5638borrowed acceptance.
+
+Narrowroot production correction changes one foregroundline/testanchor only:
+historicalapproved-correction links display localizedcount (emptycohort shows
+noCases), retains localizednumerator/cohort subtitle andentiresection. Backend
+API/cohort/historicalassociationratio/privateinterpretation/timing unchanged;
+allfour final classified reviewed-only percentages/nulls remain exact. Peer
+updates existing meaningful realbuilder UI tests and actualbrowser expectations
+for all9states/foreignscope, retains exactAPI/finalfraction/network/privacy/RLS/
+geometry/cleanup assertions, adds no-percent/count/subtitle guards. Newreceipt
+records legacyApiShare as metadata and displayedAsCOUNT. No inference of system
+error/appeal satisfaction fromcorrection.
+
+Independentproduction one-line sourcecorrection3c437622... accepted sourceonly;
+rootfullcross-review harness/tests. SmallsequentialNode20 after12GiBavailable/
+274GiBdisk/pressure0: actual1UIfile19PASS, configured113+rule scopedESLint2paths
+PASS/noignoredwarning, harnessNode syntax/diffPASS. Original logs/workingpatch/
+firstP2 preserved. Full build/compiler/browser/PG NOTRUN onContabo. Logical
+checkpoint staysunpublished until originalC7manual5 terminal+artifacts saved,
+toavoidcancel/replacing originalresults. Newfinalhead thenrequiresfreshfull
+manual5/13requiredcurrentCI andindependentacceptance. Auxiliary60/627 unaffected
+frozen, cannormalrelease/protectedreadonlyroleattribution independently.
+Accounting84/161/77/60,C6/C12PARTIAL; no grant/role/config/access/secret/
+activation/personnelautomation/Support/Mac changes.

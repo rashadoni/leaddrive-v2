@@ -330,21 +330,29 @@ async function assertRendered(view, truth) {
   const block = view.page.getByTestId("workforce-exception-recorded-outcomes")
   await block.waitFor({ state: "visible" })
   const value = async testId => (await view.page.getByTestId(testId).innerText()).trim()
-  const linkedShareActual = await value("workforce-exception-recorded-link-share")
-  const linkedShareNodeExpected = truth.share === null ? view.ui.recordedOutcomes.noCases : new Intl.NumberFormat(view.locale, { style: "percent", maximumFractionDigits: 2 }).format(truth.share)
-  const linkedShareBrowserExpected = truth.share === null ? view.ui.recordedOutcomes.noCases : await view.page.evaluate(([share, locale]) => new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 2 }).format(share), [truth.share, view.locale])
+  const linkedCountActual = await value("workforce-exception-recorded-link-count")
+  const linkedCountNodeExpected = truth.cases === 0 ? view.ui.recordedOutcomes.noCases : new Intl.NumberFormat(view.locale).format(truth.linked)
+  const linkedCountBrowserExpected = truth.cases === 0 ? view.ui.recordedOutcomes.noCases : await view.page.evaluate(([count, locale]) => new Intl.NumberFormat(locale).format(count), [truth.linked, view.locale])
   receipts.aggregateRenderDiagnostics ??= []
   receipts.aggregateRenderDiagnostics.push({
-    locale: view.locale, numericShare: truth.share, actualText: linkedShareActual,
-    nodeExpected: linkedShareNodeExpected, browserExpected: linkedShareBrowserExpected,
-    actualCodePoints: Array.from(linkedShareActual, character => character.codePointAt(0)),
-    nodeCodePoints: Array.from(linkedShareNodeExpected, character => character.codePointAt(0)),
-    browserCodePoints: Array.from(linkedShareBrowserExpected, character => character.codePointAt(0)),
+    locale: view.locale, linkedCases: truth.linked, cohortCases: truth.cases,
+    legacyApiShare: truth.share, displayedAs: "COUNT", actualText: linkedCountActual,
+    nodeExpected: linkedCountNodeExpected, browserExpected: linkedCountBrowserExpected,
+    actualCodePoints: Array.from(linkedCountActual, character => character.codePointAt(0)),
+    nodeCodePoints: Array.from(linkedCountNodeExpected, character => character.codePointAt(0)),
+    browserCodePoints: Array.from(linkedCountBrowserExpected, character => character.codePointAt(0)),
   })
-  // Actual hosted AZ diagnostics proved different decimal symbols in Node
-  // and Chromium. Compare exact known numeric truth in the rendering realm;
-  // retain both original formatter diagnostics without normalizing text.
-  assert.equal(linkedShareActual, linkedShareBrowserExpected)
+  // Historical correction links retain their exact all-recorded API cohort.
+  // Only reviewed final HR outcomes are displayed as percentages.
+  assert.equal(linkedCountActual, linkedCountBrowserExpected)
+  assert.doesNotMatch(linkedCountActual, /[%\u066a\uff05]/)
+  assert.equal(await view.page.getByTestId("workforce-exception-recorded-link-share").count(), 0)
+  const linkedTerm = block.locator("dt").filter({ hasText: view.ui.recordedOutcomes.linkedCorrection })
+  assert.equal(await linkedTerm.count(), 1)
+  const linkedSubtitle = view.ui.recordedOutcomes.linkedCount
+    .replace("{linked}", new Intl.NumberFormat(view.locale).format(truth.linked))
+    .replace("{cases}", new Intl.NumberFormat(view.locale).format(truth.cases))
+  assert.equal((await linkedTerm.locator("xpath=..").locator("dd").nth(1).innerText()).trim(), linkedSubtitle)
   const expected = await view.page.evaluate(expectedDuration, [truth.mean, view.locale])
   receipts.durationRealms ??= []; receipts.durationRealms.push({ locale: view.locale, equal: expectedDuration([truth.mean, view.locale]) === expected })
   assert.equal(await value("workforce-exception-recorded-resolution-mean"), expected ?? view.ui.recordedOutcomes.noSamples)
