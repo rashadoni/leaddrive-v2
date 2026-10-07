@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-10-06T22:26:50.259715+00:00",
+  "status": "PRELIMINARY_REVIEW_PENDING_PROFILE_DEPENDENCY_BOUNDARY",
+  "baseHead": "bf6ed11f2bba8c93e828fb044315794b44224741",
+  "reviewedSourceBindings": [
+    {
+      "path": "src/lib/workforce/reconciliation-reader-profile.ts",
+      "bytes": 4536,
+      "sha256": "b2f4e2e1f5d1e886f536ecbda31b8a84fb68baa0d9eb2223242cbf653b62df20"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-operations.ts",
+      "bytes": 11784,
+      "sha256": "2031a6dc00b16c508120d584f6b9c4f038a36aa78068e1161c99de06a5f919de"
+    },
+    {
+      "path": "scripts/workforce-reconciliation-reader-profile-evidence.mjs",
+      "bytes": 18461,
+      "sha256": "2b828ba5c14c0be338bff6b28fe1647ab1fe37cc4fdb470e6f90200e781c85a5"
+    }
+  ],
+  "supports": [
+    {
+      "path": "/tmp/hrm-c12-acceptance-20261006/profile-matrix-attempt2.json",
+      "bytes": 18288,
+      "sha256": "aa62d9c4afb4ff5ad7fcc1a7a099122598a49daecbf783a47639a571d27baff6"
+    },
+    {
+      "path": "/tmp/hrm-c12-acceptance-20261006/postfix-probe-result.json",
+      "bytes": 309,
+      "sha256": "4879aede6ab007ce96e0d4fd4f32e955c465cc565bf2853098127b5e8690bca4"
+    }
+  ],
+  "scope": "Read-only source and whole sanitized 30-case receipt review. No independent test/DB execution. Working source not frozen and not immutable accepted head.",
+  "positiveFindings": [
+    "Profile executes inside same sweep read-only RepeatableRead transaction before root enumeration. Refusal maps to INCOMPLETE; existing checkpoint/fact fencing preserved.",
+    "All 18 direct fact/schedule tables included; public ordinary relation resolution, RLS FORCE/active, non-owner, effective SELECT and no DML table/column ACLs checked.",
+    "Exactly one applicable permissive SELECT/ALL policy required; exact canonical expression variants supported; INSERT-only policies correctly excluded.",
+    "Explicit public relation ACCESS SHARE NOWAIT lock before checks; owner real concurrent ALTER POLICY lock-timeout case passed.",
+    "Fixture owns unique loopback Docker container from locally resolved image digest, generated current Prisma schema then exact C12 migration. No connection argument, production blocked, private temporary password removed; finite error categories only."
+  ],
+  "findings": [
+    {
+      "id": "PROFILE-SEMANTIC-DEPENDENCIES",
+      "priority": "P2 candidate-hardening concern, not independently reproduced",
+      "detail": "pg_get_expr compares deparsed text while custom-dependency check only inspects pg_proc. Custom operator/type/cast/collation identity is not bound by this check; printable canonical syntax alone is not a universal expression-semantic proof.",
+      "recommendation": "Add a bounded operator/type dependency negative and reject unsupported expression object identities or bind allowed built-in operators and organizationId scalar type. Do not claim exploit reproduced solely from this source review."
+    },
+    {
+      "id": "PROFILE-ROLE-STABILITY",
+      "priority": "P3 contract qualification",
+      "detail": "Relation locks and concurrent ALTER POLICY test do not prove stable pg_auth_members/pg_roles or all administrative ACL changes. Existing report already excludes administrative role changes.",
+      "recommendation": "Document stable authorized role/administrative configuration precondition, narrow lock comment to relation/policy DDL; no invented role-lock mechanism required for this slice."
+    }
+  ],
+  "ownerEvidenceReview": {
+    "casesPassed": 30,
+    "independentCasesExecuted": 0,
+    "postfixHidden": "INCOMPLETE",
+    "postfixGood": "MATCHED examined1",
+    "profileCases": "18 hidden source/dependency policies plus narrowed policy, supported variants, ACLs, FORCE, shadow/view/missing, command-specific policy, concurrent policy DDL",
+    "facts": "18 tables fingerprinted unchanged; only workdays and agents populated, one row each per tenant",
+    "historicalTriggersApplied": false,
+    "catalogUserTriggers": "all 18 recorded as zero",
+    "limits": "Synthetic supported RLS profile; not restored historical policies, complete schema triggers/ACLs, all dependency behavior, representative staging or production role proof."
+  },
+  "acceptance": "Do not freeze overall source acceptance from this preliminary receipt; parent adding inherited-role cases and regressions. WF-C12-008 remains PARTIAL."
+}

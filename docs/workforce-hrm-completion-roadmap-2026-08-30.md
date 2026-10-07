@@ -932,7 +932,7 @@ than a hidden calculation or direct data overwrite.
 | WF-C6-007 | P1 | PARTIAL | Backend | Constrain manager corrections to configured date/duration/range rules; mark derived records as manual | [`workforce-c6-correction-bounds-foundation-evidence-2026-08-30.md`](./workforce-c6-correction-bounds-foundation-evidence-2026-08-30.md): the session-only correction route has mandatory MFA, strict input validation, a fail-closed shared rate guard, generic conflict containment and immutable service handoff; tenant bounds-policy selection and escalation ownership remain open |
 | WF-C6-008 | P1 | DONE | Backend | Make correction affect calculation/approval through a new ledger revision, preserving original evidence/verdict | Workforce C6 correction-to-approval evidence: rehydration, correction revision/hash and no-evidence-mutation tests |
 | WF-C6-009 | P1 | PARTIAL | Notifications | Add reminders/escalations for missed actions and aging cases without exposing reasons/location in unsafe channels | [`workforce-c6-exception-notification-boundary-evidence-2026-08-31.md`](./workforce-c6-exception-notification-boundary-evidence-2026-08-31.md): pure private in-app planner suppresses unsafe/ineligible/duplicate delivery and emits no raw HRM proof; durable outbox, retry worker, policy/recipient mapping and delivery evidence remain open |
-| WF-C6-010 | P2 | PLANNED | HR/Analytics | Measure false positives, correction rate, appeal overturn rate and time-to-resolution | Aggregated metrics exclude raw coordinates/reasons |
+| WF-C6-010 | P2 | PARTIAL | HR/Analytics | Measure false positives, correction rate, appeal overturn rate and time-to-resolution | Aggregated metrics exclude raw coordinates/reasons |
 
 **Gate C6:** every uncertain attendance outcome has an accountable lifecycle,
 employee visibility and immutable resolution; no-show and corrections are
@@ -7359,3 +7359,56 @@ exact-head hosted checks, build, browser and final source review remain pending
 at this publication. No global compiler cleanliness, historical migration replay,
 production activation or additional task/gate credit is inferred.
 Next prepared dependency slice is [existing C12 worker acceptance](./workforce-c12-next-acceptance-slice-2026-10-06.md); C12 remains PARTIAL.
+
+
+### 2026-10-06 — WF-C12-008 whole-tenant reader admission, bounded successor
+
+The prepared C12 slice reproduced an actual hidden-root false MATCHED/cursor
+advance on exact bf6 source. The dormant tick now checks the supported complete
+tenant reader profile inside the protected snapshot and refuses unknown
+RLS/ACL/relation/operator/collation configurations without advancing progress.
+[Bounded acceptance](./workforce-c12-reader-profile-acceptance-2026-10-06.md)
+preserves the original negative, all intermediate FAILs, 35/35 final matrix,
+152/152 existing PostgreSQL regression (zero skips), scoped lint and explicit
+synthetic-schema provenance. No business facts, real grants or runtime schedule
+were changed. Historical staging/control visibility/collectors/retention/load
+and separately scoped activation remain open; WF-C12-008 stays PARTIAL.
+
+Ledger unchanged:84/161 DONE,77 open,C8 6/11,14/15 gates,weighted60%,P0/P1 open73.
+C8 exact bf6 terminal acceptance is preserved in archive382b6e7; PR589 → PR605
+lineage and validation-only606 remain frozen. New exact-head hosted gates and
+independent publication review are tracked separately, with no global-clean or
+production-readiness claim. No merge, deployment or activation is authorized.
+
+
+### 2026-10-07 — WF-C6-010 explicit HR outcomes, dependent draft implementation
+
+WF-C6-010 changes from PLANNED to PARTIAL, with no DONE credit. Draft
+[PR612](https://github.com/rashadoni/leaddrive-v2/pull/612) depends on accepted
+PR608 head973241bacc296b71fe817d1af11187c32e8126af and preserves PR589→605→608.
+PR606/609 remain validation-only and cannot be merged. Explicit scoped HR_ADMIN
+findings append the existing immutable decision ledger with actor, reason,
+operation and revision. False-positive classification is independent of appeal
+FULLY_UPHELD/PARTIALLY_UPHELD/REJECTED; partial appeals are shown separately.
+Only classified cases in the current RESOLVED cycle enter each final-outcome
+denominator. Open/reopened and closed-unclassified samples remain separate,
+empty samples yield null, and approved corrections do not imply either finding.
+CASE_RECORDED_AT and existing snapshot/tenant/privacy/role guards are retained.
+No automated employment, payroll or disciplinary decision is introduced.
+
+Actual722 hosted PostgreSQL44 tests, schema validation, lint, translation parity,
+unchanged full regression18/18 baseline gate and isolated bundle build passed.
+The first5ead and second722 browser failures and all intermediate source/compiler
+findings are preserved under docs/evidence/hrm-wf-c6-010-2026-10-07. AZ rendered
+percent equality was diagnosed as Node/Chromium Intl difference; classification
+fixture lacked mandatory MFA. Harness corrections preserve exact API values and
+use real canonical TOTP/nonce authentication, retaining MFA and actor/tenant
+denials. Full next-head browser/compiler/regression/build acceptance remains
+PENDING here; no old-head verification is credited to a future commit.
+
+This is synthetic isolated verification, not live HR observation, full migration
+replay, tenant activation or production readiness. Accounting remains84/161 DONE,
+77open, weighted60%; C7-007/C8-002 stay DONE and C12 stays PARTIAL. Merge, deploy,
+activation, production, access and secrets changes require separate approval.
+Support and HRHub personnel-document work are outside this implementation.
+Continuation: docs/hrm-wf-c6-010-session-log.md records exact heads and each attempt.

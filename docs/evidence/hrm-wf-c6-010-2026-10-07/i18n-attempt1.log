@@ -1,0 +1,11 @@
+
+> leaddrive-v2@0.1.0 i18n:check
+> node scripts/check-translations.js
+
+Source: en.json — 24587 leaf keys
+
+[ru.json] missing=0 extra=0
+
+[az.json] missing=0 extra=0
+
+✅ Translation parity OK

@@ -1,8 +1,10 @@
+import { canRecordWorkforceExceptionOutcome, isWorkforceExceptionOutcomeDecision } from "@/lib/workforce/exception-outcome-classification"
 import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { isTenantCapabilityEnabled } from "@/lib/tenant-capabilities"
 import {
   decidePersistedWorkforceAccess,
+  readPersistedWorkforceAccessGrants,
   type WorkforceAccessGrantReaderDb,
 } from "@/lib/workforce/access-grant-resolution"
 import {
@@ -12,6 +14,7 @@ import {
 import { resolveWorkforceHistoricalTeamMembership } from "@/lib/workforce/team-membership"
 import {
   evaluateWorkforceExceptionWorkbenchContext,
+  availableWorkforceExceptionOutcomeDecisions,
   MAX_WORKFORCE_EXCEPTION_CORRECTION_REQUESTS,
   requireWorkforceExceptionWorkbenchDecision,
   WorkforceExceptionWorkbenchContextError,
@@ -89,23 +92,32 @@ export async function recordScopedWorkforceExceptionDecision(
       teamId: historicalTeam?.teamId ?? null,
       siteId: exceptionCase.segment?.siteId ?? null,
     }
-    const canDecide = async (candidateResource: typeof resource) => (await decidePersistedWorkforceAccess({
-      db: tx as unknown as WorkforceAccessGrantReaderDb,
-      organizationId: input.organizationId,
-      principalUserId: input.principalUserId,
-      selfAgentId: null,
-      permission: "TEAM_EXCEPTION_DECIDE",
-      resource: candidateResource,
-    })).allowed
+    const canDecide = async (candidateResource: typeof resource) => {
+      if (isWorkforceExceptionOutcomeDecision(input.decisionCode)) {
+        const grants = await readPersistedWorkforceAccessGrants({
+          db: tx as unknown as WorkforceAccessGrantReaderDb,
+          organizationId: input.organizationId, principalUserId: input.principalUserId,
+        })
+        return grants !== null && canRecordWorkforceExceptionOutcome({
+          organizationId: input.organizationId, principalUserId: input.principalUserId,
+          resource: candidateResource, grants,
+        })
+      }
+      return (await decidePersistedWorkforceAccess({
+        db: tx as unknown as WorkforceAccessGrantReaderDb,
+        organizationId: input.organizationId, principalUserId: input.principalUserId,
+        selfAgentId: null, permission: "TEAM_EXCEPTION_DECIDE", resource: candidateResource,
+      })).allowed
+    }
     if (!await canDecide(resource)) return null
 
     return appendAuthorizedPolicyWorkforceExceptionDecision({
       db: {
-        $executeRaw: tx.$executeRaw,
+        $executeRaw: tx.$executeRaw.bind(tx),
         workforceExceptionCase: tx.workforceExceptionCase,
         workforceExceptionDecision: tx.workforceExceptionDecision,
         workforceExceptionCaseLookup: {
-          findFirst: (args) => tx.workforceExceptionCase.findFirst(args),
+          findFirst: (args: Parameters<WorkforceExceptionCaseWriterDb["workforceExceptionCaseLookup"]["findFirst"]>[0]) => tx.workforceExceptionCase.findFirst(args),
         },
         mtmAuditLog: tx.mtmAuditLog,
       } as unknown as WorkforceExceptionCaseWriterDb,
@@ -225,7 +237,9 @@ export async function recordScopedWorkforceExceptionDecision(
             )),
         })
         requireWorkforceExceptionWorkbenchDecision({
-          context,
+          context: isWorkforceExceptionOutcomeDecision(draft.decisionCode)
+            ? { ...context, availableDecisions: availableWorkforceExceptionOutcomeDecisions({ context, priorDecisions }) }
+            : context,
           decisionCode: draft.decisionCode,
         })
       },

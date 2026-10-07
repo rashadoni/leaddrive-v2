@@ -1,3 +1,4 @@
+import { WORKFORCE_EXCEPTION_OUTCOME_DECISIONS, currentWorkforceExceptionOutcomes } from "@/lib/workforce/exception-outcome-classification"
 import {
   evaluateWorkforceExceptionDraftLifecycle,
   type WorkforceExceptionDraftStage,
@@ -9,6 +10,7 @@ export const MAX_WORKFORCE_EXCEPTION_DECISIONS = 64
 export const MAX_WORKFORCE_EXCEPTION_CORRECTION_REQUESTS = 20
 
 export const WORKFORCE_EXCEPTION_WORKBENCH_DECISIONS = [
+  ...WORKFORCE_EXCEPTION_OUTCOME_DECISIONS,
   "ACKNOWLEDGE",
   "REQUEST_EMPLOYEE_RESPONSE",
   "REQUEST_TIME_CORRECTION",
@@ -231,6 +233,7 @@ export function evaluateWorkforceExceptionWorkbenchContext(input: {
   if (scheduleOnlyNoShow) {
     const invalidHistory = input.priorDecisions.some(({ decisionCode }) => ![
       "ACKNOWLEDGE", "ESCALATE_TO_HR", "RESOLVE_NO_CHANGE", "REOPEN_FOR_REVIEW",
+      ...WORKFORCE_EXCEPTION_OUTCOME_DECISIONS,
     ].includes(decisionCode))
     if (input.employeeResponses.length > 0 || input.correctionRequests.length > 0
       || invalidHistory || lifecycle.stage === "AWAITING_EMPLOYEE_RESPONSE") {
@@ -304,4 +307,15 @@ export function requireWorkforceExceptionWorkbenchDecision(input: {
   if (!input.context.availableDecisions.includes(input.decisionCode as WorkforceExceptionWorkbenchDecision)) {
     throw new WorkforceExceptionWorkbenchContextError()
   }
+}
+
+/** HR-only recording preview; existing terminal/reopen action rollout is unchanged. */
+export function availableWorkforceExceptionOutcomeDecisions(input: {
+  context: WorkforceExceptionWorkbenchContext
+  priorDecisions: readonly WorkforceExceptionDecisionFact[]
+}): readonly WorkforceExceptionWorkbenchDecision[] {
+  if (input.context.stage !== "RESOLVED" || input.priorDecisions.length >= MAX_WORKFORCE_EXCEPTION_DECISIONS) return []
+  const outcomes = currentWorkforceExceptionOutcomes(input.priorDecisions)
+  return WORKFORCE_EXCEPTION_OUTCOME_DECISIONS.filter((code) => code.startsWith("CLASSIFY_")
+    ? outcomes.classification === null : outcomes.appeal === null)
 }

@@ -38,10 +38,8 @@ describe("recorded exception outcomes without outcome-policy inference", () => {
     const result = analyze([]).recordedOutcomes
     expect(result.linkedCorrection).toMatchObject({ cohortCases: 0, recordedLinkedCorrectionCases: 0, share: null })
     expect(result.firstResolution).toMatchObject({ sampleCount: 0, unresolvedCases: 0, integrityExcludedCases: 0, minMs: null, maxMs: null, meanMs: null })
-    expect(result.unavailable).toEqual({
-      falsePositiveRate: "UNAVAILABLE_NO_APPROVED_OUTCOME_CLASSIFICATION",
-      appealOverturnRate: "UNAVAILABLE_NO_APPROVED_OUTCOME_CLASSIFICATION",
-    })
+    expect(result.finalClassification.falsePositive).toMatchObject({ sampleCount: 0, share: null })
+    expect(result.finalClassification.appeal).toMatchObject({ sampleCount: 0, fullyUpheldShare: null, partiallyUpheldShare: null, rejectedShare: null })
   })
 
   it("counts a case once across multiple exact links and retains valid links after an invalid first link", () => {
@@ -137,5 +135,52 @@ describe("recorded exception outcomes without outcome-policy inference", () => {
       { caseRevision: 2, decisionCode: "RESOLVE_NO_CHANGE", createdAt: new Date(duration) },
     ] })
     expect(analyze([overflow]).recordedOutcomes.firstResolution.integrityExcludedCases).toBe(1)
+  })
+})
+
+function outcomeCase(id: string, codes: string[]) {
+  return caseRecord({ id, decisions: codes.map((decisionCode,index) => ({ decisionCode, caseRevision: index+1, createdAt: at(index * 1000) })) })
+}
+describe("final HR classifications in the current resolution cycle", () => {
+  const resolved = ["ACKNOWLEDGE", "RESOLVE_NO_CHANGE"]
+  it("keeps independent denominators and excludes unfinished, reopened and unclassified cases", () => {
+    const result = analyze([
+      outcomeCase("full", [...resolved,"CLASSIFY_FALSE_POSITIVE","APPEAL_FULLY_UPHELD"]),
+      outcomeCase("partial", [...resolved,"CLASSIFY_CONFIRMED_EXCEPTION","APPEAL_PARTIALLY_UPHELD"]),
+      outcomeCase("rejected", [...resolved,"CLASSIFY_CONFIRMED_EXCEPTION","APPEAL_REJECTED"]),
+      outcomeCase("classification-only", [...resolved,"CLASSIFY_CONFIRMED_EXCEPTION"]),
+      outcomeCase("unclassified", resolved),
+      outcomeCase("reopened", [...resolved,"CLASSIFY_FALSE_POSITIVE","APPEAL_FULLY_UPHELD","REOPEN_FOR_REVIEW"]),
+      outcomeCase("reresolved", [...resolved,"CLASSIFY_FALSE_POSITIVE","REOPEN_FOR_REVIEW","RESOLVE_NO_CHANGE"]),
+      outcomeCase("open", []),
+    ]).recordedOutcomes.finalClassification
+    expect(result).toEqual({
+      basis: "EXPLICIT_HR_CLASSIFICATION_OF_CURRENT_RESOLVED_CYCLE",
+      falsePositive: { sampleCount: 4, falsePositiveCases: 1, confirmedCases: 3, share: 0.25, unclassifiedResolvedCases: 2 },
+      appeal: { sampleCount: 3, fullyUpheldCases: 1, partiallyUpheldCases: 1, rejectedCases: 1, fullyUpheldShare: 1/3, partiallyUpheldShare: 1/3, rejectedShare: 1/3, unclassifiedResolvedCases: 3 },
+      unfinishedCases: 2, integrityExcludedCases: 0,
+    })
+  })
+  it("does not infer false positives or successful appeals from a recorded correction", () => {
+    const result = analyze([resolvedCase(0)], [proof()]).recordedOutcomes
+    expect(result.linkedCorrection.share).toBe(1)
+    expect(result.finalClassification.falsePositive.share).toBeNull()
+    expect(result.finalClassification.appeal.fullyUpheldShare).toBeNull()
+  })
+  it.each([
+    ["CLASSIFY_FALSE_POSITIVE"],
+    [...resolved,"CLASSIFY_FALSE_POSITIVE","CLASSIFY_CONFIRMED_EXCEPTION"],
+    [...resolved,"APPEAL_FULLY_UPHELD","APPEAL_REJECTED"],
+    [...resolved,"REOPEN_FOR_REVIEW","APPEAL_PARTIALLY_UPHELD"],
+  ])("excludes invalid classifications %j", (...codes) => {
+    const result = analyze([outcomeCase("bad",codes as string[])]).recordedOutcomes.finalClassification
+    expect(result.integrityExcludedCases).toBe(1)
+    expect(result.falsePositive.share).toBeNull()
+    expect(result.appeal.partiallyUpheldShare).toBeNull()
+  })
+  it("excludes a foreign tenant from the final outcome sample", () => {
+    const result = analyze([{ ...outcomeCase("foreign",[...resolved,"CLASSIFY_FALSE_POSITIVE"]), organizationId: "foreign" }]).recordedOutcomes.finalClassification
+    expect(result.falsePositive.sampleCount).toBe(0)
+    expect(result.integrityExcludedCases).toBe(1)
   })
 })

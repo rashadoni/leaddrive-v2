@@ -1,3 +1,4 @@
+import { currentWorkforceExceptionOutcomes } from "@/lib/workforce/exception-outcome-classification"
 import { evaluateWorkforceExceptionDraftLifecycle } from "@/lib/workforce/exception-policy-draft"
 
 export type RecordedExceptionReportCase = {
@@ -45,9 +46,27 @@ export type WorkforceExceptionRecordedOutcomes = {
     meanMs: number | null
     meanRounding: "NEAREST_MILLISECOND"
   }
-  unavailable: {
-    falsePositiveRate: "UNAVAILABLE_NO_APPROVED_OUTCOME_CLASSIFICATION"
-    appealOverturnRate: "UNAVAILABLE_NO_APPROVED_OUTCOME_CLASSIFICATION"
+  finalClassification: {
+    basis: "EXPLICIT_HR_CLASSIFICATION_OF_CURRENT_RESOLVED_CYCLE"
+    falsePositive: {
+      sampleCount: number
+      falsePositiveCases: number
+      confirmedCases: number
+      share: number | null
+      unclassifiedResolvedCases: number
+    }
+    appeal: {
+      sampleCount: number
+      fullyUpheldCases: number
+      partiallyUpheldCases: number
+      rejectedCases: number
+      fullyUpheldShare: number | null
+      partiallyUpheldShare: number | null
+      rejectedShare: number | null
+      unclassifiedResolvedCases: number
+    }
+    unfinishedCases: number
+    integrityExcludedCases: number
   }
 }
 
@@ -109,8 +128,11 @@ export function buildWorkforceExceptionRecordedOutcomes(input: {
   const durations: number[] = []
   let unresolvedCases = 0
   let totalMs = BigInt(0)
+  let falsePositiveCases = 0, confirmedCases = 0, unclassifiedCases = 0
+  let fullyUpheldCases = 0, partiallyUpheldCases = 0, rejectedCases = 0, unclassifiedAppeals = 0
+  let unfinishedCases = 0
   for (const item of input.cases) {
-    const result = firstResolution(item)
+    const result = item.organizationId === input.organizationId ? firstResolution(item) : { valid: false as const }
     if (!result.valid) {
       integrityCaseIds.add(item.id)
     } else if (result.elapsedMs === null) {
@@ -119,9 +141,22 @@ export function buildWorkforceExceptionRecordedOutcomes(input: {
       durations.push(result.elapsedMs)
       totalMs += BigInt(result.elapsedMs)
     }
+    if (!result.valid) continue
+    const lifecycle = evaluateWorkforceExceptionDraftLifecycle(item.decisions)
+    if (!lifecycle.valid || lifecycle.stage !== "RESOLVED") { unfinishedCases += 1; continue }
+    const outcomes = currentWorkforceExceptionOutcomes(item.decisions)
+    if (outcomes.classification === "FALSE_POSITIVE") falsePositiveCases += 1
+    else if (outcomes.classification === "CONFIRMED_EXCEPTION") confirmedCases += 1
+    else unclassifiedCases += 1
+    if (outcomes.appeal === "FULLY_UPHELD") fullyUpheldCases += 1
+    else if (outcomes.appeal === "PARTIALLY_UPHELD") partiallyUpheldCases += 1
+    else if (outcomes.appeal === "REJECTED") rejectedCases += 1
+    else unclassifiedAppeals += 1
   }
   const sampleCount = durations.length
   const samples = BigInt(sampleCount)
+  const classifiedCount = falsePositiveCases + confirmedCases
+  const appealCount = fullyUpheldCases + partiallyUpheldCases + rejectedCases
   return {
     integrityCaseIds,
     recordedOutcomes: {
@@ -144,9 +179,21 @@ export function buildWorkforceExceptionRecordedOutcomes(input: {
         meanMs: sampleCount === 0 ? null : Number((totalMs + samples / BigInt(2)) / samples),
         meanRounding: "NEAREST_MILLISECOND",
       },
-      unavailable: {
-        falsePositiveRate: "UNAVAILABLE_NO_APPROVED_OUTCOME_CLASSIFICATION",
-        appealOverturnRate: "UNAVAILABLE_NO_APPROVED_OUTCOME_CLASSIFICATION",
+      finalClassification: {
+        basis: "EXPLICIT_HR_CLASSIFICATION_OF_CURRENT_RESOLVED_CYCLE",
+        falsePositive: {
+          sampleCount: classifiedCount, falsePositiveCases, confirmedCases,
+          share: classifiedCount === 0 ? null : falsePositiveCases / classifiedCount,
+          unclassifiedResolvedCases: unclassifiedCases,
+        },
+        appeal: {
+          sampleCount: appealCount, fullyUpheldCases, partiallyUpheldCases, rejectedCases,
+          fullyUpheldShare: appealCount === 0 ? null : fullyUpheldCases / appealCount,
+          partiallyUpheldShare: appealCount === 0 ? null : partiallyUpheldCases / appealCount,
+          rejectedShare: appealCount === 0 ? null : rejectedCases / appealCount,
+          unclassifiedResolvedCases: unclassifiedAppeals,
+        },
+        unfinishedCases, integrityExcludedCases: integrityCaseIds.size,
       },
     },
   }

@@ -1,0 +1,325 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-10-06T22:33:22.932394+00:00",
+  "reviewer": "independent read-only reviewer",
+  "status": "ACCEPTED_BOUNDED_LOCAL_SOURCE_AND_OWNER_PG_PROFILE_MATRIX",
+  "baseHead": "bf6ed11f2bba8c93e828fb044315794b44224741",
+  "immutableCandidateHead": null,
+  "acceptanceBoundary": "Current exact local source bytes and 35-case owner fixture; final regression/lint, immutable commit/full delta, hosted CI and durable publication are separate. Not whole C12 acceptance.",
+  "sourceBindings": [
+    {
+      "path": "prisma/schema.prisma",
+      "bytes": 958771,
+      "sha256": "fd2e0a5b835669dafa736943fd9e5ee403a81dd0dd28d127e895e1f19232eae7"
+    },
+    {
+      "path": "prisma/migrations/20261005193000_workforce_reconciliation_operations/migration.sql",
+      "bytes": 2721,
+      "sha256": "c452e7f6d13dca1e5257d8353c252745d05cd4f18eae83cd45501f61664ef719"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-reader-profile.ts",
+      "bytes": 5391,
+      "sha256": "c336446067a9e4e6a26bdf0403579317b34e2615983aa29640325569b552342e"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-operations.ts",
+      "bytes": 11784,
+      "sha256": "2031a6dc00b16c508120d584f6b9c4f038a36aa78068e1161c99de06a5f919de"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-sweep.ts",
+      "bytes": 3049,
+      "sha256": "309ce1eabde967c795c47bb4a123f7c4cfd73a2a13638d8937327d8db4b0024c"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-dense.ts",
+      "bytes": 8490,
+      "sha256": "500f3f9b68cb68a0ab0ee6085814961b359b46ceb3b18a5ba38d9cafbd175959"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-source-page.ts",
+      "bytes": 5013,
+      "sha256": "7c45f9b7d1b621d7418e4ce18cdbace2bfed1a9a3a522944c5504c1259da03fe"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-snapshot.ts",
+      "bytes": 9679,
+      "sha256": "bdba98ef3f2d18b916200673038b4ad3eb523f2a5e3d12c864198eac26f490a3"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-approval-group.ts",
+      "bytes": 4263,
+      "sha256": "aa45ab91f54678c457d066a9a8bc044acabbd5cd29df4bad1b1924f7c0632a05"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-export-audit.ts",
+      "bytes": 7445,
+      "sha256": "38094ed52225428eb46eae6247f4a618a98d66e4e83151b7ba217168c6722409"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-schedule-subject.ts",
+      "bytes": 9921,
+      "sha256": "6ef11cc56e3132e4e48ba99cb57e021b9fed425488aea11c12864e9025eae9d9"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation.ts",
+      "bytes": 10678,
+      "sha256": "292720bc88e8484dd173e6ed50d7616f008e5524201dc756f40ab3fabca20a27"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-cursor-store.ts",
+      "bytes": 6533,
+      "sha256": "8b04ef4d1c7ea5cca424ef13e7c0d80e949271523a22cf4d43a545049949a6bd"
+    },
+    {
+      "path": "scripts/workforce-reconciliation-reader-profile-evidence.mjs",
+      "bytes": 20955,
+      "sha256": "768bf3fb8434117d541a72bb15e4aac48dc8367b9c61492fd2588ed761e0c507"
+    }
+  ],
+  "supports": [
+    {
+      "path": "/tmp/hrm-c12-acceptance-20261006/profile-matrix-attempt1.json",
+      "bytes": 3033,
+      "sha256": "32fd9f47cc6f2ea8f05180d4efeb415468d8d4aafbeaa063532658a845562c19"
+    },
+    {
+      "path": "/tmp/hrm-c12-acceptance-20261006/profile-matrix-attempt2.json",
+      "bytes": 18288,
+      "sha256": "aa62d9c4afb4ff5ad7fcc1a7a099122598a49daecbf783a47639a571d27baff6"
+    },
+    {
+      "path": "/tmp/hrm-c12-acceptance-20261006/profile-matrix-attempt3.json",
+      "bytes": 18694,
+      "sha256": "6152b5266261d4932164f7894c1c6018b3ce269a4d0f14f7a180f9882eddc570"
+    },
+    {
+      "path": "/tmp/hrm-c12-acceptance-20261006/profile-matrix-attempt4.json",
+      "bytes": 8040,
+      "sha256": "cf9471952b3ab019b388d137d00ac8a8ce125dad47d8a1b0f3b06c5fa344cbea"
+    },
+    {
+      "path": "/tmp/hrm-c12-acceptance-20261006/profile-matrix-attempt5.json",
+      "bytes": 19136,
+      "sha256": "770f2133adea25fe3ecf569406c24836f6a949fb1bb23531ba45ba222ca5b9b9"
+    },
+    {
+      "path": "/tmp/hrm-c12-acceptance-20261006/profile-matrix-attempt1-harness.mjs",
+      "bytes": 16342,
+      "sha256": "fc18a5873d332ab4661e44c1376ae8863d04701e7256badd3c99ef82e17acd11"
+    },
+    {
+      "path": "/tmp/hrm-c12-acceptance-20261006/profile-matrix-attempt4-workforce-reconciliation-reader-profile-evidence.mjs",
+      "bytes": 20413,
+      "sha256": "114b047baa5190f7e0d2db949cfc2d8e52317a978876ccca0d6e0ebcda37003e"
+    },
+    {
+      "path": "/tmp/hrm-c12-acceptance-20261006/profile-matrix-attempt4-reconciliation-reader-profile.ts",
+      "bytes": 5391,
+      "sha256": "c336446067a9e4e6a26bdf0403579317b34e2615983aa29640325569b552342e"
+    },
+    {
+      "path": "/tmp/hrm-c12-acceptance-20261006/initial-visibility-probe.json",
+      "bytes": 4063,
+      "sha256": "11e2c406221657b859ba556cc1cee5cb17ee13b3ccf1f4fd2af2362969c108a6"
+    },
+    {
+      "path": "/tmp/hrm-c12-acceptance-20261006/probe.mjs",
+      "bytes": 5878,
+      "sha256": "ea4a6a71083f0e66f08a3c9a5b12d6476a091cbcbbd16ebbea64ea6a6133cfab"
+    },
+    {
+      "path": "/tmp/hrm-c12-acceptance-20261006/postfix-probe-result.json",
+      "bytes": 309,
+      "sha256": "4879aede6ab007ce96e0d4fd4f32e955c465cc565bf2853098127b5e8690bca4"
+    },
+    {
+      "path": "/tmp/hrm-c12-independent-reader-profile-preliminary-20261006.json",
+      "bytes": 4398,
+      "sha256": "a865bd85d55a468ef90ebd21654d9cd67a4d95afdc92b9c6a16116cdd50e3e5e"
+    },
+    {
+      "path": "/tmp/hrm-c12-independent-profile-semantic-revision-20261006.json",
+      "bytes": 2437,
+      "sha256": "c64945bb304ea7ecb2f19aab196af198f7a0ebb676e8cfbe5289a4a8b8fef169"
+    }
+  ],
+  "findings": {
+    "unresolvedP0": [],
+    "unresolvedP1": [],
+    "unresolvedP2": [],
+    "unresolvedP3": [],
+    "resolved": [
+      "PROFILE-SEMANTIC-DEPENDENCIES",
+      "PROFILE-ROLE-STABILITY"
+    ]
+  },
+  "sourceReview": {
+    "integration": "One preflight call inside operations authorizeSnapshot after context check and before entitlement/read sweep, in the same read-only RepeatableRead transaction. Existing refusal catches map to INCOMPLETE; cursor completion remains after successful scan transaction and existing lease/version/attempt fence.",
+    "profile": "18 public ordinary relations; actual unqualified-resolution OID equality; RLS enabled/FORCE/active; non-super/non-BYPASS/non-owner role; table SELECT and effective absence of table/column write/reference/trigger privileges; exact text/default-collation tenant column.",
+    "policy": "Exactly one applicable permissive SELECT/ALL policy with one of two explicit canonical tenant forms. Role applicability includes inherited/PUBLIC. Extra applicable policy or untrusted policy object dependency refuses. INSERT-only/nonapplicable policies remain permitted.",
+    "semanticIdentity": "SET LOCAL search_path=pg_catalog,public before verification/adapter queries. Deny-by-default pg_depend allowlist accepts only same relation/tenant column and built-in current_setting; built-in pinned objects need no dependency entries. Unknown custom operator rejected despite canonical deparsed display in fixture.",
+    "concurrency": "ACCESS SHARE NOWAIT relation locks retained for scan transaction; actual concurrent ALTER POLICY attempt times out. Administrative role attributes/membership stability explicitly remains a caller/environment precondition. No claim of role-DDL locking.",
+    "productionMutation": "No schema migration, role grant/revoke, runtime entrypoint or scheduler added by product helper. Test harness mutates only its newly owned loopback fixture."
+  },
+  "ownerMatrix": {
+    "status": "PASS_SUPPORTED_READER_PROFILE_ACCEPTANCE_ONLY",
+    "casesPassed": 35,
+    "casesFailed": 0,
+    "all18FactAndScheduleTablesHaveRestrictivePolicyNegative": true,
+    "caseNames": [
+      "supported-current-policy-sees-one-tenant-root-and-excludes-foreign-root",
+      "hidden-roots-or-dependencies-refused:mtm_agent_workdays",
+      "hidden-roots-or-dependencies-refused:mtm_agent_workday_events",
+      "hidden-roots-or-dependencies-refused:workforce_site_transitions",
+      "hidden-roots-or-dependencies-refused:workforce_attendance_evidence",
+      "hidden-roots-or-dependencies-refused:workforce_evidence_assessments",
+      "hidden-roots-or-dependencies-refused:workforce_exception_cases",
+      "hidden-roots-or-dependencies-refused:workforce_timesheet_approvals",
+      "hidden-roots-or-dependencies-refused:mtm_audit_logs",
+      "hidden-roots-or-dependencies-refused:mtm_agents",
+      "hidden-roots-or-dependencies-refused:workforce_employee_team_memberships",
+      "hidden-roots-or-dependencies-refused:workforce_shift_templates",
+      "hidden-roots-or-dependencies-refused:workforce_shift_segments",
+      "hidden-roots-or-dependencies-refused:workforce_shift_assignments",
+      "hidden-roots-or-dependencies-refused:workforce_shift_default_assignments",
+      "hidden-roots-or-dependencies-refused:workforce_shift_team_default_assignments",
+      "hidden-roots-or-dependencies-refused:workforce_workday_schedule_snapshots",
+      "hidden-roots-or-dependencies-refused:workforce_shift_snapshots",
+      "hidden-roots-or-dependencies-refused:workforce_policy_snapshots",
+      "narrowed-permissive-policy-refused",
+      "supported-tenant-only-policy",
+      "public-column-write-grant-refused",
+      "table-write-grant-refused",
+      "inherited-column-write-grant-refused",
+      "inherited-restrictive-select-policy-refused",
+      "non-applicable-select-policy-does-not-narrow-reader",
+      "missing-select-refused",
+      "disabled-force-rls-refused",
+      "temporary-shadow-relation-refused",
+      "view-replacement-refused",
+      "missing-table-refused",
+      "unrelated-insert-policy-does-not-narrow-select",
+      "custom-equality-operator-policy-refused-despite-canonical-display",
+      "nondefault-tenant-column-collation-refused",
+      "checked-policy-ddl-cannot-change-before-snapshot-finishes"
+    ],
+    "refusalAssertions": "Harness checks INCOMPLETE, examined0, exact unchanged cursor row, finite output excluding names/org field/SQL; after each case all18 business-fact fingerprints equal initial snapshot.",
+    "positive": "One selected-tenant root examined; foreign tenant root excluded; canonical tenant-only and bypass-off tenant form admitted.",
+    "dependencyAndACL": "Inherited column write and restrictive policy refused; nonapplicable role policy permitted; PUBLIC column and table writes refused; custom operator canonical display confirmed and refused; nondefault collation refused.",
+    "ddlAndResolution": "Missing SELECT/FORCE/table, temporary shadow and view replacement refuse; concurrent ALTER POLICY blocked.",
+    "catalog": {
+      "server": [
+        {
+          "version": "160015",
+          "encoding": "UTF8"
+        }
+      ],
+      "relations": 18,
+      "userTriggerCounts": [
+        0
+      ],
+      "validCCollatedIndexes": 9,
+      "historicalTriggersApplied": false,
+      "policyProvenance": "Synthetic explicit supported tenant policy; not production policy/ACL acceptance"
+    },
+    "fixture": "Full current Prisma db push plus exact C12 operational-state/index migration and synthetic RLS; no historical migration ledger modification or replay.",
+    "populatedTables": [
+      {
+        "table": "mtm_agent_workdays",
+        "count": 2
+      },
+      {
+        "table": "mtm_agents",
+        "count": 2
+      }
+    ],
+    "cleanup": [
+      {
+        "action": "disconnect",
+        "status": "PASS"
+      },
+      {
+        "action": "disconnect",
+        "status": "PASS"
+      },
+      {
+        "action": "remove-owned-disposable-container-and-volumes",
+        "status": "PASS"
+      }
+    ],
+    "independentDbExecution": false
+  },
+  "history": [
+    {
+      "attempt": 1,
+      "status": "FAIL",
+      "passedCases": 0,
+      "stage": null,
+      "failure": {
+        "name": "Error",
+        "code": null
+      },
+      "scope": "owner-executed isolated PostgreSQL; exact per-attempt bindings retained"
+    },
+    {
+      "attempt": 2,
+      "status": "PASS_SUPPORTED_READER_PROFILE_ACCEPTANCE_ONLY",
+      "passedCases": 30,
+      "stage": "checked-policy-ddl-cannot-change-before-snapshot-finishes",
+      "failure": null,
+      "scope": "owner-executed isolated PostgreSQL; exact per-attempt bindings retained"
+    },
+    {
+      "attempt": 3,
+      "status": "PASS_SUPPORTED_READER_PROFILE_ACCEPTANCE_ONLY",
+      "passedCases": 33,
+      "stage": "checked-policy-ddl-cannot-change-before-snapshot-finishes",
+      "failure": null,
+      "scope": "owner-executed isolated PostgreSQL; exact per-attempt bindings retained"
+    },
+    {
+      "attempt": 4,
+      "status": "FAIL",
+      "passedCases": 33,
+      "stage": "nondefault-tenant-column-collation-refused",
+      "failure": {
+        "name": "PrismaClientKnownRequestError",
+        "code": "P2010"
+      },
+      "scope": "owner-executed isolated PostgreSQL; exact per-attempt bindings retained"
+    },
+    {
+      "attempt": 5,
+      "status": "PASS_SUPPORTED_READER_PROFILE_ACCEPTANCE_ONLY",
+      "passedCases": 35,
+      "stage": "checked-policy-ddl-cannot-change-before-snapshot-finishes",
+      "failure": null,
+      "scope": "owner-executed isolated PostgreSQL; exact per-attempt bindings retained"
+    }
+  ],
+  "attempt4Resolution": {
+    "productHelperByteIdentical": true,
+    "harnessChange": "Drop/recreate canonical tenant policy before/after fixture organizationId collation ALTER, plus finite five-character SQLSTATE diagnostic field; no product predicate weakening.",
+    "harnessUnifiedDiff": "--- attempt4-harness\n+++ attempt5-harness\n@@ -212,9 +212,13 @@\n     await db.$executeRaw`DROP SCHEMA wf_c12_operator CASCADE`\n   })\n   await mutation(\"nondefault-tenant-column-collation-refused\", async () => {\n+    await db.$executeRaw`DROP POLICY tenant_isolation ON workforce_shift_segments`\n     await db.$executeRaw`ALTER TABLE workforce_shift_segments ALTER COLUMN \"organizationId\" TYPE text COLLATE \"C\"`\n-  }, () => refusal(), async () => {\n+    await db.$executeRaw`CREATE POLICY tenant_isolation ON workforce_shift_segments USING (\"organizationId\"=current_setting('app.org_id',true))`\n+  }, () => refusal(), async () => {\n+    await db.$executeRaw`DROP POLICY tenant_isolation ON workforce_shift_segments`\n     await db.$executeRaw`ALTER TABLE workforce_shift_segments ALTER COLUMN \"organizationId\" TYPE text COLLATE \"default\"`\n+    await db.$executeRaw`CREATE POLICY tenant_isolation ON workforce_shift_segments USING (\"organizationId\"=current_setting('app.org_id',true))`\n   })\n   await pass(\"checked-policy-ddl-cannot-change-before-snapshot-finishes\", async () => {\n     await reader(tenant.id).$transaction(async tx => {\n@@ -253,7 +257,8 @@\n     \"Control-client visibility, collector/retention/alerts, representative density and production staging remain separate.\"]\n } catch (error) {\n   receipt.status = \"FAIL\"\n-  receipt.failure = { name: error?.name ?? \"Error\", code: typeof error?.code === \"string\" ? error.code : null }\n+  receipt.failure = { name: error?.name ?? \"Error\", code: typeof error?.code === \"string\" ? error.code : null,\n+    sqlState: /^[A-Z0-9]{5}$/.test(error?.meta?.code ?? \"\") ? error.meta.code : null }\n   process.exitCode = 1\n } finally {\n   for (const client of [db, other]) if (client) {\n",
+    "firstUnknownFailure": "Attempt1 zero-case failure preserved; no root-cause claim from this review."
+  },
+  "remainingGates": [
+    "Immutable candidate/tree and exact diff review, root final regression/lint and required exact-head hosted checks remain outside this local receipt.",
+    "Canonical historical migration chain still blocked by missing api_keys; no replay/trigger restoration credit from generated schema.",
+    "Full actual deployment schema/policies/ACLs/control-client visibility and stable administrative configuration must be verified separately; no live role grants or production access were performed.",
+    "Only two tenants with one workday/agent each; other16 tables empty. Per-table negatives prove preflight refusal coverage, not populated behavioral coverage of every dependency; unchanged dense/closure suites remain distinct.",
+    "Representative staging density/timeouts/query plans, operational monitoring/alert delivery, collector destinations/retention/ACLs, scheduling/activation and rollback/drain remain separate acceptance criteria.",
+    "WF-C12-008 remains PARTIAL; no ledger status change or whole-HRM readiness inferred."
+  ],
+  "reviewerActions": {
+    "sourceAndHarnessRead": true,
+    "wholeSanitizedAttempt5ReceiptParsed": true,
+    "all14SourceBindingsRehashed": true,
+    "attempt4ProductAndHarnessDeltaChecked": true,
+    "ownDbOrTestsExecuted": false,
+    "repoOrRemoteWrites": false,
+    "rawLogsScreenshotsCredentialsRead": false
+  }
+}

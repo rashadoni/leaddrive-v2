@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-10-06T22:17:33.005456+00:00",
+  "sourceHead": "bf6ed11f2bba8c93e828fb044315794b44224741",
+  "status": "OWNER_REPRO_VALIDATED_AND_MINIMAL_PREFLIGHT_CONTRACT_RECOMMENDED",
+  "supports": [
+    {
+      "path": "/tmp/hrm-c12-acceptance-20261006/initial-visibility-probe.json",
+      "bytes": 4063,
+      "sha256": "11e2c406221657b859ba556cc1cee5cb17ee13b3ccf1f4fd2af2362969c108a6"
+    },
+    {
+      "path": "/tmp/hrm-c12-acceptance-20261006/probe.mjs",
+      "bytes": 5878,
+      "sha256": "ea4a6a71083f0e66f08a3c9a5b12d6476a091cbcbbd16ebbea64ea6a6133cfab"
+    },
+    {
+      "path": "/tmp/hrm-c12-independent-reader-visibility-assessment-20261006.json",
+      "bytes": 18068,
+      "sha256": "25cb3be974b2f92f780ca6f91cb45fc400114076affff9bab40db0f01576b694"
+    }
+  ],
+  "independentActions": "Whole sanitized owner receipt parsed; five source bindings rehashed; relevant probe code inspected. No reviewer DB execution or source edit.",
+  "observedOwnerResult": {
+    "positiveExamined": 1,
+    "restrictiveNegativeExamined": 0,
+    "bothStatus": "MATCHED",
+    "negativeCheckpointAdvanced": true,
+    "factTables": 18,
+    "populatedFactTables": [
+      "mtm_agent_workdays",
+      "mtm_agents"
+    ],
+    "factsUnchanged": true
+  },
+  "qualification": "Full current Prisma schema plus synthetic policies and SELECT-only role; not actual historical policy/trigger/ACL staging replay. Earlier independent assessment correctly stated no DB reproduction by reviewer; this additive receipt records later owner reproduction.",
+  "implementationAdvice": [
+    "Finite exact approved applicable SELECT/ALL policy profiles, including inherited/PUBLIC roles. Additional INSERT/UPDATE-only policies are not visibility restrictions; do not reject canonical command-specific mutation policies merely because they exist.",
+    "Org-only and org OR bypass-on are two explicit canonical variants equivalent under verified bypass=off; no arbitrary SQL simplification or regex-based expression equivalence.",
+    "Reject extra applicable SELECT/ALL policies, restrictive or permissive, narrowed canonical permissive policy, missing FORCE/ENABLE, unsupported roles/ACLs or shadowed/nonordinary relation.",
+    "Bind actual query-resolved OIDs to intended public tables for all 18 fact/schedule tables. Organizations entitlement and authorized control roster/state/lease/cursor remain distinct profiles.",
+    "Non-owner restriction is conservative supported-contract narrowing, not evidence that every FORCE-RLS owner bypasses RLS. Effective table/column ACL checks must include inherited and PUBLIC privileges. No grants/revocations.",
+    "Evaluate within same authorized read-only RR transaction before enumeration; treat refusal as INCOMPLETE without cursor/fact mutation. Do not assert RR alone freezes DDL/role changes; explicitly test or disclose profile-change concurrency.",
+    "Next positive/negative isolated tests should verify real canonical migration policy variants and preserve current hidden-root negative. Keep empty tenant positive and foreign tenant excluded."
+  ],
+  "noClosure": "WF-C12-008 stays PARTIAL; no historical baseline, collector/retention, representative staging, activation or full HRM acceptance inferred."
+}

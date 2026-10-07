@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   evaluateWorkforceExceptionWorkbenchContext,
+  availableWorkforceExceptionOutcomeDecisions,
   MAX_WORKFORCE_EXCEPTION_DECISIONS,
   projectWorkforceExceptionSelfResponseState,
 } from "@/lib/workforce/exception-workbench"
@@ -269,5 +270,22 @@ describe("Workforce employee self-response projection", () => {
         caseRevision: MAX_WORKFORCE_EXCEPTION_DECISIONS + 1,
       }],
     })).toBe("UNAVAILABLE")
+  })
+})
+
+describe("HR outcome preview for resolved schedule-only no-show", () => {
+  it("retains resolved state after a classification and offers only the unrecorded dimension", () => {
+    const priorDecisions = [
+      { decisionCode: "ACKNOWLEDGE", caseRevision: 1 },
+      { decisionCode: "RESOLVE_NO_CHANGE", caseRevision: 2 },
+      { decisionCode: "CLASSIFY_FALSE_POSITIVE", caseRevision: 3 },
+    ]
+    const context = evaluate({ kind: "NO_SHOW", workdayId: null, priorDecisions })
+    expect(context).toMatchObject({ stage: "RESOLVED", availableDecisions: [] })
+    expect(availableWorkforceExceptionOutcomeDecisions({ context, priorDecisions })).toEqual(["APPEAL_FULLY_UPHELD", "APPEAL_PARTIALLY_UPHELD", "APPEAL_REJECTED"])
+    const complete = [...priorDecisions, { decisionCode: "APPEAL_PARTIALLY_UPHELD", caseRevision: 4 }]
+    const completedContext = evaluate({ kind: "NO_SHOW", workdayId: null, priorDecisions: complete })
+    expect(completedContext.stage).toBe("RESOLVED")
+    expect(availableWorkforceExceptionOutcomeDecisions({ context: completedContext, priorDecisions: complete })).toEqual([])
   })
 })

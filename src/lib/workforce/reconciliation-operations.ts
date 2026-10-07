@@ -4,6 +4,7 @@ import { isTenantCapabilityEnabled } from "@/lib/tenant-capabilities"
 import { runWorkforceReconciliationSweep } from "@/lib/workforce/reconciliation-sweep"
 import { workforceReconciliationCursorStore } from "@/lib/workforce/reconciliation-cursor-store"
 import { readWorkforceEligibleRosterHealth } from "@/lib/workforce/reconciliation-roster-health"
+import { assertWorkforceReconciliationReaderProfile } from "@/lib/workforce/reconciliation-reader-profile"
 
 const JOB="workforce-claim-reconciliation-v1"
 type Control=Pick<PrismaClient,"$transaction"|"$queryRaw">
@@ -130,6 +131,7 @@ export async function runWorkforceReconciliationTick(input:{
         (current_setting('app.org_id',true)=${selected.claim.organizationId} AND current_setting('app.rls_bypass',true)='off'
           AND NOT rolsuper AND NOT rolbypassrls) AS valid FROM pg_roles WHERE rolname=current_user`
       if (context.length!==1 || context[0].valid!==true) throw refused()
+      await assertWorkforceReconciliationReaderProfile(tx,selected.claim.organizationId)
       const rows=await tx.$queryRaw<Array<{value:{isActive:boolean;plan:string;addons:unknown;features:unknown;modules:unknown}|null}>>`
         WITH selected AS MATERIALIZED (SELECT jsonb_build_object('isActive',"isActive",'plan',plan,'addons',addons,'features',features,'modules',modules) AS value
           FROM organizations WHERE id=${selected.claim.organizationId})

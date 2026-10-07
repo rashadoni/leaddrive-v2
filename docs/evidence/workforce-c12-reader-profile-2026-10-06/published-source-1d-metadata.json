@@ -1,0 +1,26 @@
+{
+  "sourceHead": "1d1741a73fb0e318b5e7a05f58fc5faf6b2678f2",
+  "sourceTree": "07f994edab248886dea877ec11b74ed7102b886b",
+  "parent": "7df38080839440f2ede9671e9aac01fee5436cd0",
+  "primaryPr": 608,
+  "validationOnlyPr": 609,
+  "main": "cb5a0453e7ead310e0515e265efee209be1c272b",
+  "syntheticMerge": "e4aa6e5e32abbe33bee0b0b600f7ee6241f9c1ab",
+  "originalCandidateUtf8Readbacks": 35,
+  "successorUtf8Readbacks": 12,
+  "totalBlobs": 8926,
+  "runtimeAndHarnessUnchanged": true,
+  "ledger": {
+    "done": 84,
+    "total": 161,
+    "open": 77,
+    "phaseGates": "14/15",
+    "weightedPercent": 60,
+    "c12_008": "PARTIAL"
+  },
+  "permissionBoundary": {
+    "merge": false,
+    "deploy": false,
+    "activation": false
+  }
+}
