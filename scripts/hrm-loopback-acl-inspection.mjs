@@ -74,7 +74,13 @@ export function startLiveRuntime(connection,sql,probe,spawn=liveSpawn) {
     let output="",ready=false,finishing=false,closed=false,exitCode=null,fault=false,settled=false
     let resolveClose
     const closePromise=new Promise(r => { resolveClose=r })
-    const kill=() => { child.kill("SIGKILL") }
+    const kill=() => {
+      child.kill("SIGKILL")
+      if (!ready) {
+        rejectFirst();clearTimeout(startup);clearTimeout(watchdog)
+        child.stdin.destroy();child.stdout.destroy();child.unref()
+      }
+    }
     // Entire held connection is bounded even if the observing connection stalls.
     const watchdog=setTimeout(() => { fault=true; kill() },55000)
     const startup=setTimeout(() => { fault=true; kill() },25000)
@@ -96,7 +102,13 @@ export function startLiveRuntime(connection,sql,probe,spawn=liveSpawn) {
           let timeout
           const ended=await Promise.race([closePromise.then(() => true),new Promise(r => { timeout=setTimeout(() => r(false),5000) })])
           clearTimeout(timeout)
-          if (!ended) { fault=true; kill(); await closePromise }
+          if (!ended) {
+            fault=true;kill()
+            let killTimeout
+            await Promise.race([closePromise,new Promise(r => { killTimeout=setTimeout(r,1000) })])
+            clearTimeout(killTimeout)
+            if (!closed) { child.stdin.destroy();child.stdout.destroy();child.unref() }
+          }
           clearTimeout(watchdog)
           if (wasClosed || fault || !ended || exitCode!==0 || output.trim().split("\n").length!==1) liveFail("CLEANUP_UNPROVED")
         }})
@@ -113,11 +125,12 @@ export function queryLiveMigration(connection,sql,probe,spawn=liveSpawn) {
     let child
     try { child=spawn("psql",liveArgs,{env:liveConnection(connection,probe,"migration"),stdio:["pipe","pipe","ignore"]}) } catch { reject(new Error("QUERY_FAILED"));return }
     let output="",fault=false
-    const timer=setTimeout(() => { fault=true;child.kill("SIGKILL") },25000)
-    child.on("error",() => { fault=true;reject(new Error("QUERY_FAILED")) })
+    const abort=() => { fault=true;child.kill("SIGKILL");clearTimeout(timer);child.stdin.destroy();child.stdout.destroy();child.unref();reject(new Error("QUERY_FAILED")) }
+    const timer=setTimeout(abort,25000)
+    child.on("error",() => { fault=true;clearTimeout(timer);reject(new Error("QUERY_FAILED")) })
     child.stdin.on("error",() => { fault=true })
     child.stdout.setEncoding("utf8")
-    child.stdout.on("data",chunk => { output+=chunk;if(Buffer.byteLength(output)>LIVE_MAX){fault=true;child.kill("SIGKILL")} })
+    child.stdout.on("data",chunk => { output+=chunk;if(Buffer.byteLength(output)>LIVE_MAX)abort() })
     child.on("close",code => { clearTimeout(timer);if(fault || code!==0)reject(new Error("QUERY_FAILED"));else resolve(output) })
     child.stdin.end(sql+"\nROLLBACK;\n")
   })
@@ -139,12 +152,16 @@ export function validateLiveReport(v,sha) {
 
 export async function inspectLiveAclRemote(sql,bindings,sha,deps={}) {
   const report={version:1,status:"ERROR",expectedMainSha:sha,productionArtifactSha:null,bindings,proof:null,cleanup:"NOT_STARTED",limits:LIVE_LIMITS,code:"INSPECTION_FAILED"}
-  let held,bodyFailure=null
+  let held,recheck,bodyFailure=null
   try {
     if (!LIVE_SHA.test(sha) || (deps.uid??process.getuid())!==0) liveFail("INPUT_INVALID")
     const read=deps.read??readRootFile,marker="/opt/leaddrive-v2/.next/standalone/.deploy-sha"
     if (read(marker,128).trim()!==sha) liveFail("ARTIFACT_MISMATCH")
     const appText=read("/etc/leaddrive/app.env",LIVE_MAX,0o600),migrationText=read("/etc/leaddrive/migration.env",32768,0o600)
+    recheck=() => {
+      if (read(marker,128).trim()!==sha) liveFail("ARTIFACT_MISMATCH")
+      if (read("/etc/leaddrive/app.env",LIVE_MAX,0o600)!==appText || read("/etc/leaddrive/migration.env",32768,0o600)!==migrationText) liveFail("SOURCE_CHANGED")
+    }
     let runtimeConnection,migrationConnection,runtimeEnv,migrationEnv
     try { runtimeConnection=parseApplicationEnv(appText);migrationConnection=parseMigrationEnv(migrationText);runtimeEnv=databaseConnectionEnvironment(runtimeConnection);migrationEnv=databaseConnectionEnvironment(migrationConnection) } catch { liveFail("ENV_INVALID") }
     await verifyLoopbackEndpoints(runtimeEnv,migrationEnv,deps.lookup??liveLookup)
@@ -159,12 +176,13 @@ export async function inspectLiveAclRemote(sql,bindings,sha,deps={}) {
     for (const k of ["expectedIdentity","sessionIdentityUnchanged","primary","readOnly","repeatableRead","probeNameVerified","liveRuntimeSeen"]) if (!migration.identity[k]) liveFail("IDENTITY_UNPROVED")
     if (runtime.identity.backendPid===migration.identity.backendPid || runtime.identity.databaseOid!==migration.identity.databaseOid || runtime.identity.databaseName!==migration.identity.databaseName || runtime.identity.databaseName!==runtimeEnv.PGDATABASE) liveFail("IDENTITY_UNPROVED")
     if (!liveMigrationSafe(migration.roleProfile)) liveFail("PROFILE_UNPROVED")
-    if (read(marker,128).trim()!==sha) liveFail("ARTIFACT_MISMATCH")
-    if (read("/etc/leaddrive/app.env",LIVE_MAX,0o600)!==appText || read("/etc/leaddrive/migration.env",32768,0o600)!==migrationText) liveFail("SOURCE_CHANGED")
     report.proof={readOnlyBoth:true,repeatableReadBoth:true,expectedRuntimeSession:true,expectedMigrationSession:true,separatePrincipals:true,configuredHostsVerifiedLoopback:true,matchingPortAndDatabase:true,sameLiveDatabaseBackend:true,primaryBoth:true,businessRowsRead:false,declaredHostsEqual:runtimeEnv.PGHOST===migrationEnv.PGHOST,runtimeProfile:runtime.roleProfile,migrationProfile:migration.roleProfile,acl:migration.acl}
   } catch (error) { bodyFailure=LIVE_CODES.includes(error?.message)?error.message:"INSPECTION_FAILED" }
   if (held && typeof held.finish==="function") {
     try { await held.finish();report.cleanup="PASS" } catch { report.cleanup="FAILED";bodyFailure??="CLEANUP_UNPROVED" }
+  }
+  if (!bodyFailure && recheck) {
+    try { recheck() } catch (error) { bodyFailure=LIVE_CODES.includes(error?.message)?error.message:"INSPECTION_FAILED" }
   }
   if (bodyFailure || !report.proof) Object.assign(report,{code:bodyFailure??"INSPECTION_FAILED",proof:null})
   else Object.assign(report,{status:"READ_COMPLETE",productionArtifactSha:sha,code:null})
