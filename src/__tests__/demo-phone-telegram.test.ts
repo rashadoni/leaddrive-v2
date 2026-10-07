@@ -12,6 +12,7 @@
  */
 import { createHash } from "node:crypto"
 import bcrypt from "bcryptjs"
+import QRCode from "qrcode"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
 
@@ -513,10 +514,25 @@ describe("the public Telegram route", () => {
     const body = await response.json()
 
     expect(response.status).toBe(200)
-    expect(body).toMatchObject({ success: true, state: "link" })
-    expect(body.url).toMatch(/^https:\/\/t\.me\/LeadDrivebot\?start=d_/)
-    expect(body.qr).toMatch(/^data:image\/png;base64,/)
-    expect(JSON.stringify({ ...body, qr: null })).not.toMatch(/994|501234567/)
+    // «Never with the number» is held field by field, not by a pattern run over
+    // the whole answer. It used to be /994|501234567/ over everything but `qr`,
+    // and a bare "994" is also the milliseconds of `expiresAt` in one answer
+    // out of 1,000 and three characters of the random link in one out of
+    // 8,700. On 2026-10-07 that failed a finance pull request (#611) which
+    // never touched the demo.
+    const { url, qr, expiresAt, ...rest } = body
+    // Nothing else is in the answer: a new field is where a number would arrive.
+    expect(rest).toEqual({ success: true, state: "link" })
+    // The link ends with its one-time token, and the token is not the number
+    // under another name: every unbroken spelling of it has these nine digits.
+    const token = /^https:\/\/t\.me\/LeadDrivebot\?start=d_([A-Za-z0-9_-]+)$/.exec(url)?.[1]
+    expect(token, url).toBeDefined()
+    expect(token).not.toContain("501234567")
+    // A moment in time, and nothing after it.
+    expect(expiresAt).toMatch(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/)
+    // The picture is that link and nothing else. It is the one field nobody
+    // reads by eye, and the old check skipped it altogether.
+    expect(qr, "the QR code is not the picture of the link").toBe(await QRCode.toDataURL(url, { margin: 1, width: 220 }))
   })
 
   it("refuses a browser that names a number", async () => {
