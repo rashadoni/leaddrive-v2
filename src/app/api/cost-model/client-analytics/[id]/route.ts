@@ -1,12 +1,11 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getOrgId } from "@/lib/api-auth"
+import { NextResponse } from "next/server"
+import { withRlsAuth } from "@/lib/with-rls"
 import { loadAndCompute } from "@/lib/cost-model/db"
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    const orgId = await getOrgId(req)
-    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+type RouteContext = { params: Promise<{ id: string }> }
 
+export const GET = withRlsAuth<RouteContext>("profitability", "read", async (_req, { orgId }, { params }) => {
+  try {
     const { id } = await params
     const result = await loadAndCompute(orgId)
 
@@ -20,4 +19,4 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     console.error("Client analytics error:", error)
     return NextResponse.json({ error: "Failed to load client analytics" }, { status: 500 })
   }
-}
+})

@@ -187,7 +187,17 @@ export const navItems: NavItem[] = [
   // they're gated by `sales` and shown at the bottom of the Sales group.
   { module: "sales", href: "/settings/pipelines", icon: GitBranch, tKey: "pipelines", group: "Sales" },
   { module: "sales", href: "/settings/quotas", icon: Target, tKey: "quotas", group: "Sales" },
-  { module: "sales", href: "/settings/sales-forecast", icon: TrendingUp, tKey: "salesForecastSettings", group: "Sales" },
+  // The plan is entered per budget department and saved through
+  // /api/budgeting, which the server gates on the `budgeting` scope — a sales
+  // rep has none, and was offered a page whose every request is refused.
+  //
+  // The server also asks for the Finance module there, which this entry cannot
+  // say: `module` is what files a module under its menu group (the first entry
+  // carrying a module names its section — notifications and the user card both
+  // read that), so `module: "finance"` here would move all of Finance under
+  // Sales. A tenant with Sales and without Finance would see this entry and get
+  // "module not enabled" from the API; no such tenant existed on 2026-10-07.
+  { module: "sales", href: "/settings/sales-forecast", icon: TrendingUp, tKey: "salesForecastSettings", group: "Sales", permissionScope: "budgeting" },
   { module: "sales", href: "/settings/territories", icon: MapPin, tKey: "territories", group: "Sales" },
   { module: "sales", href: "/settings/lead-rules", icon: Filter, tKey: "leadRules", group: "Sales" },
   { module: "sales", href: "/settings/web-to-lead", icon: Globe, tKey: "webToLead", group: "Sales" },
@@ -293,8 +303,12 @@ export const navItems: NavItem[] = [
   { module: "support", href: "/support/ai-settings", icon: Bot, tKey: "supportAiNav", group: "Support", addon: "ai", allowedRoles: ["admin", "superadmin"], supportSection: "rules" },
   { module: "finance", href: "/invoices", icon: FileSpreadsheet, tKey: "invoices", group: "Finance" },
   { module: "finance", href: "/billing/subscriptions", icon: RefreshCw, tKey: "subscriptionsOverview", group: "Finance" },
-  { module: "finance", href: "/finance", icon: Wallet, tKey: "finance", group: "Finance" },
-  { module: "finance", href: "/profitability", icon: Calculator, tKey: "profitability", group: "Finance" },
+  // The scopes are the ones the APIs behind these two pages are gated by
+  // (/api/finance → `finance`, /api/cost-model → `profitability`). Sales and
+  // support have neither, and a menu entry whose every request is refused is
+  // worse than no entry.
+  { module: "finance", href: "/finance", icon: Wallet, tKey: "finance", group: "Finance", permissionScope: "finance" },
+  { module: "finance", href: "/profitability", icon: Calculator, tKey: "profitability", group: "Finance", permissionScope: "profitability" },
   { module: "finance", href: "/pricing", icon: DollarSign, tKey: "pricing", group: "Finance" },
   { module: "analytics", href: "/reports", icon: BarChart3, tKey: "reports", group: "Analytics" },
   { module: "analytics", href: "/reports/builder", icon: FileSpreadsheet, tKey: "reportBuilder", group: "Analytics" },
@@ -392,7 +406,7 @@ export const navItems: NavItem[] = [
   // has crm/finance but not the settings module.
   // Finance
   { module: "finance", href: "/settings/invoice-settings", icon: FileSpreadsheet, tKey: "invoiceSettingsNav", group: "Finance" },
-  { module: "finance", href: "/settings/finance-notifications", icon: Bell, tKey: "financeNotificationsNav", group: "Finance" },
+  { module: "finance", href: "/settings/finance-notifications", icon: Bell, tKey: "financeNotificationsNav", group: "Finance", permissionScope: "finance" },
   // Support settings live inside the Support group next to /tickets above.
   // Communication
   { module: "omnichannel", href: "/settings/web-chat", icon: MessageCircle, tKey: "webChatNav", group: "Communication" },
@@ -636,19 +650,28 @@ export function matchNavItem(pathname: string): NavItem | undefined {
 }
 
 /**
+ * The permission scopes behind /api/finance, /api/cost-model and
+ * /api/budgeting. A page gated by one of them is refused by URL to a role that
+ * cannot read it, wherever the page sits in the menu.
+ */
+const URL_REFUSED_SCOPES: ReadonlySet<string> = new Set(["finance", "profitability", "budgeting"])
+
+/**
  * Whether the dashboard layout must refuse this URL to this person on ROLE
  * grounds — the page guard's second question, after "does the tenant have the
  * module".
  *
- * Only the organization-administration block (the Settings group) is refused
- * by URL. Elsewhere the role rule hides the menu entry and nothing more, on
- * purpose: Workforce admits people through per-person grants the role matrix
- * knows nothing about, so a page its menu does not offer may still be theirs to
- * open. Settings has no such grants — what the menu withholds there, the API
- * answers 403 to, and a page built out of 403s still draws its buttons.
+ * Only the organization-administration block (the Settings group) and the
+ * finance pages are refused by URL. Elsewhere the role rule hides the menu
+ * entry and nothing more, on purpose: Workforce admits people through
+ * per-person grants the role matrix knows nothing about, so a page its menu
+ * does not offer may still be theirs to open. Settings and finance have no such
+ * grants — what the menu withholds there, the API answers 403 to, and a page
+ * built out of 403s still draws its buttons.
  */
 export function isNavPathRoleBlocked(org: OrgNavContext, pathname: string): boolean {
   const item = matchNavItem(pathname)
-  if (!item || item.group !== "Settings") return false
+  if (!item) return false
+  if (item.group !== "Settings" && !URL_REFUSED_SCOPES.has(item.permissionScope ?? "")) return false
   return !isNavItemRoleAllowed(org, item)
 }

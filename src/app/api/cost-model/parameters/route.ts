@@ -1,8 +1,7 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { z } from "zod"
-import { requireAuth, isAuthError, getOrgId } from "@/lib/api-auth"
+import { withRlsAuth } from "@/lib/with-rls"
 import { prisma } from "@/lib/prisma"
-import { runWithTenant } from "@/lib/rls-context"
 import { writeCostModelLog, invalidateAiCache } from "@/lib/cost-model/db"
 
 const parametersSchema = z.object({
@@ -19,30 +18,21 @@ const parametersSchema = z.object({
   updatedBy: z.string().max(100).optional(),
 })
 
-export async function GET(req: NextRequest) {
+export const GET = withRlsAuth("profitability", "read", async (_req, { orgId }) => {
   try {
-    const orgId = await getOrgId(req)
-    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
-    return runWithTenant(orgId, async () => {
-      const params = await prisma.pricingParameters.findUnique({
-        where: { organizationId: orgId },
-      })
-
-      return NextResponse.json({ success: true, data: params })
+    const params = await prisma.pricingParameters.findUnique({
+      where: { organizationId: orgId },
     })
+
+    return NextResponse.json({ success: true, data: params })
   } catch (error) {
     console.error("Get parameters error:", error)
     return NextResponse.json({ error: "Failed to load parameters" }, { status: 500 })
   }
-}
+})
 
-export async function PUT(req: NextRequest) {
+export const PUT = withRlsAuth("profitability", "write", async (req, { orgId }) => {
   try {
-    const authResult = await requireAuth(req, "settings", "write")
-    if (isAuthError(authResult)) return authResult
-    const orgId = authResult.orgId
-
     const body = await req.json()
     const parsed = parametersSchema.safeParse(body)
     if (!parsed.success) {
@@ -50,33 +40,31 @@ export async function PUT(req: NextRequest) {
     }
     const validData = { ...parsed.data }
 
-    return runWithTenant(orgId, async () => {
-      const oldParams = await prisma.pricingParameters.findUnique({
-        where: { organizationId: orgId },
-      })
-
-      // If totalUsers not manually set, recalculate from companies
-      if (validData.totalUsers === undefined || validData.totalUsers === null) {
-        const agg = await prisma.company.aggregate({
-          where: { organizationId: orgId, category: "client" },
-          _sum: { userCount: true },
-        })
-        validData.totalUsers = agg._sum.userCount ?? oldParams?.totalUsers ?? 0
-      }
-
-      const updated = await prisma.pricingParameters.upsert({
-        where: { organizationId: orgId },
-        update: { ...validData, updatedAt: new Date() },
-        create: { organizationId: orgId, ...validData },
-      })
-
-      await writeCostModelLog(orgId, "pricing_parameters", updated.id, "update", oldParams, updated)
-      invalidateAiCache()
-
-      return NextResponse.json({ success: true, data: updated })
+    const oldParams = await prisma.pricingParameters.findUnique({
+      where: { organizationId: orgId },
     })
+
+    // If totalUsers not manually set, recalculate from companies
+    if (validData.totalUsers === undefined || validData.totalUsers === null) {
+      const agg = await prisma.company.aggregate({
+        where: { organizationId: orgId, category: "client" },
+        _sum: { userCount: true },
+      })
+      validData.totalUsers = agg._sum.userCount ?? oldParams?.totalUsers ?? 0
+    }
+
+    const updated = await prisma.pricingParameters.upsert({
+      where: { organizationId: orgId },
+      update: { ...validData, updatedAt: new Date() },
+      create: { organizationId: orgId, ...validData },
+    })
+
+    await writeCostModelLog(orgId, "pricing_parameters", updated.id, "update", oldParams, updated)
+    invalidateAiCache()
+
+    return NextResponse.json({ success: true, data: updated })
   } catch (error) {
     console.error("Update parameters error:", error)
     return NextResponse.json({ error: "Failed to update parameters" }, { status: 500 })
   }
-}
+})

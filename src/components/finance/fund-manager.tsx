@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useTranslations, useLocale } from "next-intl"
 import { formatDate } from "@/lib/format-date"
-import { useFunds, useCreateFund, useDeleteFund, useFundTransactions, useCreateFundTransaction, useFundRules, useCreateFundRule, useDeleteFundRule, useFinanceDashboard } from "@/lib/finance/hooks"
+import { useFunds, useCreateFund, useDeleteFund, useFundTransactions, useCreateFundTransaction, useFundRules, useCreateFundRule, useDeleteFundRule, useFinanceDashboard, useFinanceAccess } from "@/lib/finance/hooks"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -27,6 +27,7 @@ export function FundManager() {
   const { data: dashboard } = useFinanceDashboard(new Date().getFullYear())
   const createFund = useCreateFund()
   const deleteFund = useDeleteFund()
+  const { canWrite, canDelete } = useFinanceAccess()
   const [showCreate, setShowCreate] = useState(false)
   const [selectedFund, setSelectedFund] = useState<string | null>(null)
   const [showTx, setShowTx] = useState(false)
@@ -47,9 +48,11 @@ export function FundManager() {
           <p className="text-sm text-muted-foreground">{t("totalBalance")}</p>
           <p className="text-2xl font-bold tabular-nums">{fmt(totalBalance)} {getCurrencySymbol()}</p>
         </div>
-        <Button size="sm" onClick={() => setShowCreate(true)}>
-          <Plus className="w-4 h-4 mr-1" /> {t("newFund")}
-        </Button>
+        {canWrite && (
+          <Button size="sm" onClick={() => setShowCreate(true)}>
+            <Plus className="w-4 h-4 mr-1" /> {t("newFund")}
+          </Button>
+        )}
       </div>
 
       {/* Fund Coverage Warning */}
@@ -117,9 +120,11 @@ export function FundManager() {
                     <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setSelectedFund(fund.id); setShowRules(true) }}>
                       <Settings2 className="w-3 h-3" />
                     </Button>
-                    <Button size="sm" variant="ghost" className="h-7 text-xs text-red-500" onClick={() => { if (confirm(t("confirmDelete", { name: fund.name }))) deleteFund.mutate(fund.id) }}>
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
+                    {canDelete && (
+                      <Button size="sm" variant="ghost" className="h-7 text-xs text-red-500" onClick={() => { if (confirm(t("confirmDelete", { name: fund.name }))) deleteFund.mutate(fund.id) }}>
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -207,6 +212,7 @@ function TransactionDialog({ fundId, onClose }: { fundId: string; onClose: () =>
   // Keep the key after a transport/server error so a manual retry cannot
   // double-apply a command whose first response was lost.
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID())
+  const { canWrite } = useFinanceAccess()
 
   const commandEdited = () => {
     if (!createTx.isPending) setIdempotencyKey(crypto.randomUUID())
@@ -238,19 +244,21 @@ function TransactionDialog({ fundId, onClose }: { fundId: string; onClose: () =>
         <DialogHeader><DialogTitle>{t("txTitle")}</DialogTitle></DialogHeader>
 
         {/* Add transaction form */}
-        <div className="grid gap-2 p-3 bg-muted/50 rounded-lg">
-          <div className="flex gap-2">
-            <select value={type} onChange={(e) => { commandEdited(); setType(e.target.value) }} className="h-9 rounded-md border border-input bg-background px-2 text-sm">
-              <option value="deposit">{t("txDeposit")}</option>
-              <option value="withdrawal">{t("txWithdrawal")}</option>
-            </select>
-            <Input type="number" step="0.0001" value={amount} onChange={(e) => { commandEdited(); setAmount(e.target.value) }} placeholder={t("txAmount")} className="flex-1" />
-            <Button size="sm" onClick={handleAdd} disabled={createTx.isPending}>
-              {type === "deposit" ? <ArrowDownToLine className="w-4 h-4" /> : <ArrowUpFromLine className="w-4 h-4" />}
-            </Button>
+        {canWrite && (
+          <div className="grid gap-2 p-3 bg-muted/50 rounded-lg">
+            <div className="flex gap-2">
+              <select value={type} onChange={(e) => { commandEdited(); setType(e.target.value) }} className="h-9 rounded-md border border-input bg-background px-2 text-sm">
+                <option value="deposit">{t("txDeposit")}</option>
+                <option value="withdrawal">{t("txWithdrawal")}</option>
+              </select>
+              <Input type="number" step="0.0001" value={amount} onChange={(e) => { commandEdited(); setAmount(e.target.value) }} placeholder={t("txAmount")} className="flex-1" />
+              <Button size="sm" onClick={handleAdd} disabled={createTx.isPending}>
+                {type === "deposit" ? <ArrowDownToLine className="w-4 h-4" /> : <ArrowUpFromLine className="w-4 h-4" />}
+              </Button>
+            </div>
+            <Input value={desc} onChange={(e) => { commandEdited(); setDesc(e.target.value) }} placeholder={t("txDescription")} />
           </div>
-          <Input value={desc} onChange={(e) => { commandEdited(); setDesc(e.target.value) }} placeholder={t("txDescription")} />
-        </div>
+        )}
 
         {txError && (
           <div className="p-3 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/30 text-sm text-red-700 dark:text-red-400">
@@ -304,6 +312,7 @@ function RulesDialog({ fundId, onClose }: { fundId: string; onClose: () => void 
   const { data: rules, isLoading } = useFundRules(fundId)
   const createRule = useCreateFundRule()
   const deleteRule = useDeleteFundRule()
+  const { canWrite, canDelete } = useFinanceAccess()
   const [name, setName] = useState("")
   const [trigger, setTrigger] = useState("revenue_percentage")
   const [pct, setPct] = useState("")
@@ -329,23 +338,25 @@ function RulesDialog({ fundId, onClose }: { fundId: string; onClose: () => void 
         <DialogHeader><DialogTitle>{t("rulesTitle")}</DialogTitle></DialogHeader>
 
         {/* Add rule form */}
-        <div className="grid gap-2 p-3 bg-muted/50 rounded-lg">
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("ruleName")} />
-          <div className="flex gap-2">
-            <select value={trigger} onChange={(e) => setTrigger(e.target.value)} className="h-9 rounded-md border border-input bg-background px-2 text-sm flex-1">
-              <option value="revenue_percentage">{t("ruleRevenue")}</option>
-              <option value="fixed_monthly">{t("ruleFixed")}</option>
-              <option value="invoice_paid">{t("ruleInvoice")}</option>
-            </select>
-            {trigger === "revenue_percentage" && (
-              <Input type="number" value={pct} onChange={(e) => setPct(e.target.value)} placeholder="%" className="w-20" />
-            )}
-            {trigger === "fixed_monthly" && (
-              <Input type="number" value={fixed} onChange={(e) => setFixed(e.target.value)} placeholder={getCurrencySymbol()} className="w-24" />
-            )}
-            <Button size="sm" onClick={handleAdd} disabled={createRule.isPending}><Plus className="w-4 h-4" /></Button>
+        {canWrite && (
+          <div className="grid gap-2 p-3 bg-muted/50 rounded-lg">
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("ruleName")} />
+            <div className="flex gap-2">
+              <select value={trigger} onChange={(e) => setTrigger(e.target.value)} className="h-9 rounded-md border border-input bg-background px-2 text-sm flex-1">
+                <option value="revenue_percentage">{t("ruleRevenue")}</option>
+                <option value="fixed_monthly">{t("ruleFixed")}</option>
+                <option value="invoice_paid">{t("ruleInvoice")}</option>
+              </select>
+              {trigger === "revenue_percentage" && (
+                <Input type="number" value={pct} onChange={(e) => setPct(e.target.value)} placeholder="%" className="w-20" />
+              )}
+              {trigger === "fixed_monthly" && (
+                <Input type="number" value={fixed} onChange={(e) => setFixed(e.target.value)} placeholder={getCurrencySymbol()} className="w-24" />
+              )}
+              <Button size="sm" onClick={handleAdd} disabled={createRule.isPending}><Plus className="w-4 h-4" /></Button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Rules list */}
         <div className="space-y-1">
@@ -364,9 +375,11 @@ function RulesDialog({ fundId, onClose }: { fundId: string; onClose: () => void 
                 <Badge variant={rule.isActive ? "default" : "secondary"} className="text-[10px]">
                   {rule.isActive ? t("active") : t("inactive")}
                 </Badge>
-                <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-red-500" onClick={() => deleteRule.mutate({ id: rule.id, fundId })}>
-                  <Trash2 className="w-3 h-3" />
-                </Button>
+                {canDelete && (
+                  <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-red-500" onClick={() => deleteRule.mutate({ id: rule.id, fundId })}>
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                )}
               </div>
             </div>
           )) : (

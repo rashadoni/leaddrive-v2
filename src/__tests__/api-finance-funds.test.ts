@@ -22,11 +22,24 @@ vi.mock("@/lib/prisma", () => ({
     $transaction: vi.fn(),
   },
 }))
-vi.mock("@/lib/api-auth", () => ({
-  getOrgId: vi.fn(),
-  requireAuth: vi.fn(),
-  isAuthError: vi.fn().mockReturnValue(false),
-}))
+// The routes are built with withRlsAuth, which asks `requireAuth` who is calling.
+// These tests are about what a handler does once someone is let in, so
+// `requireAuth` answers from one switch (`getOrgId`): an organization id means
+// "signed in, allowed", null means 401. Who is refused, and on what grounds,
+// is finance-api-authorization.test.ts — that one runs the real `requireAuth`.
+vi.mock("@/lib/api-auth", () => {
+  const getOrgId = vi.fn()
+  return {
+    getOrgId,
+    requireAuth: vi.fn(async (req: unknown) => {
+      const orgId = await getOrgId(req)
+      return orgId
+        ? { orgId, userId: "u-1", role: "admin", email: "", name: "", principalType: "session" }
+        : new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 })
+    }),
+    isAuthError: vi.fn((value: unknown) => value instanceof Response),
+  }
+})
 vi.mock("@/lib/finance/telegram-notify", () => ({
   notifyBillPaymentRecorded: vi.fn(),
 }))
@@ -37,7 +50,7 @@ vi.mock("@/lib/constants", () => ({
 }))
 
 import { prisma } from "@/lib/prisma"
-import { getOrgId, requireAuth, isAuthError } from "@/lib/api-auth"
+import { getOrgId } from "@/lib/api-auth"
 import { NextRequest } from "next/server"
 
 /* ------------------------------------------------------------------ */
@@ -60,9 +73,8 @@ const params = (id = "fund-1") => Promise.resolve({ id })
 beforeEach(() => {
   vi.resetAllMocks()
   vi.mocked(prisma.$transaction).mockImplementation(async (callback) => callback(prisma))
-  // Default requireAuth mock to return valid auth
-  vi.mocked(requireAuth).mockResolvedValue({ orgId: "org-1", userId: "u-1" } as any)
-  vi.mocked(isAuthError).mockReturnValue(false)
+  // Signed in unless a test says otherwise
+  vi.mocked(getOrgId).mockResolvedValue("org-1")
   vi.mocked(prisma.$transaction).mockImplementation(async (callback: any) => callback(prisma))
   vi.mocked(prisma.eventCommandReceipt.findUnique).mockResolvedValue(null as any)
   vi.mocked(prisma.eventCommandReceipt.create).mockImplementation(async (args: any) => ({
@@ -197,8 +209,7 @@ import { GET as fundGet, PUT as fundPut, DELETE as fundDelete } from "@/app/api/
 
 describe("GET /api/finance/funds/[id]", () => {
   it("returns 401 when unauthenticated", async () => {
-    vi.mocked(requireAuth).mockResolvedValue(new Response(null, { status: 401 }) as any)
-    vi.mocked(isAuthError).mockReturnValue(true)
+    vi.mocked(getOrgId).mockResolvedValue(null as any)
     const res = await fundGet(makeReq(), { params: params() })
     expect(res.status).toBe(401)
   })
@@ -343,7 +354,7 @@ describe("POST /api/finance/funds/[id]/rules", () => {
 
 describe("PUT /api/finance/funds/[id]/rules", () => {
   it("rejects a rule outside the requested fund and organization", async () => {
-    vi.mocked(requireAuth).mockResolvedValue({ orgId: "org-1", userId: "u-1" } as any)
+    vi.mocked(getOrgId).mockResolvedValue("org-1")
     vi.mocked(prisma.fund.findFirst).mockResolvedValue({ id: "fund-1" } as any)
     vi.mocked(prisma.fundRule.findFirst).mockResolvedValue(null)
     const res = await rulesPut(
@@ -357,7 +368,7 @@ describe("PUT /api/finance/funds/[id]/rules", () => {
 
 describe("DELETE /api/finance/funds/[id]/rules", () => {
   it("deletes only a rule scoped to the fund and organization", async () => {
-    vi.mocked(requireAuth).mockResolvedValue({ orgId: "org-1", userId: "u-1" } as any)
+    vi.mocked(getOrgId).mockResolvedValue("org-1")
     vi.mocked(prisma.fundRule.deleteMany).mockResolvedValue({ count: 0 } as any)
     const res = await rulesDelete(
       makeReq("http://localhost/x", "DELETE", { id: "foreign-rule" }),
@@ -589,24 +600,11 @@ describe("POST /api/finance/payables/[id]/payments", () => {
     expect(res.status).toBe(400)
   })
 
-  it("creates a payment and updates bill totals", async () => {
-    vi.mocked(getOrgId).mockResolvedValue("org-1")
-    vi.mocked(prisma.billPayment.create).mockResolvedValue({ id: "bp-2", amount: 300 } as any)
-    vi.mocked(prisma.bill.findUnique).mockResolvedValue({
-      id: "bill-1", billNumber: "AP-001", vendorName: "AWS", vendorId: null,
-      totalAmount: 1000, paidAmount: 200, balanceDue: 800, status: "pending", category: "cloud",
-    } as any)
-    vi.mocked(prisma.bill.update).mockResolvedValue({} as any)
-    vi.mocked(prisma.paymentRegistryEntry.create).mockResolvedValue({} as any)
-
-    const res = await paymentsPost(
-      makeReq("http://localhost/x", "POST", { amount: 300 }),
-      { params: params("bill-1") },
-    )
-    expect(res.status).toBe(201)
-    expect(prisma.bill.update).toHaveBeenCalled()
-    expect(prisma.paymentRegistryEntry.create).toHaveBeenCalled()
-  })
+  // Recording a payment — the row, the bill's totals and the registry entry
+  // moving together, exact sums, and what a failure half-way leaves behind — is
+  // checked on rows in finance-api-authorization.test.ts ("paying a vendor
+  // bill"). The test that stood here stubbed each Prisma call and asserted the
+  // stubs had been called.
 })
 
 /* ================================================================== */

@@ -1,9 +1,12 @@
-import { NextRequest, NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
+import { NextResponse } from "next/server"
 import { z, ZodError } from "zod"
-import { requireAuth, isAuthError, getOrgId } from "@/lib/api-auth"
+import { withRlsAuth } from "@/lib/with-rls"
 import { prisma } from "@/lib/prisma"
-import { runWithTenant } from "@/lib/rls-context"
+import { parseMoneyAmount } from "@/lib/finance/bill-payment"
 import { normalizeBillRow, normalizeBillPaymentRow } from "@/lib/prisma-decimal"
+
+type RouteContext = { params: Promise<{ id: string }> }
 
 const updateBillSchema = z.object({
   billNumber: z.string().max(50).optional(),
@@ -20,90 +23,92 @@ const updateBillSchema = z.object({
 })
 
 // GET — single bill
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const orgId = await getOrgId(req)
-  if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+export const GET = withRlsAuth<RouteContext>("finance", "read", async (_req, { orgId }, { params }) => {
   const { id } = await params
 
-  return runWithTenant(orgId, async () => {
-    const bill = await prisma.bill.findFirst({
-      where: { id, organizationId: orgId },
-      include: { payments: true, vendor: { select: { id: true, name: true } } },
-    })
-    if (!bill) return NextResponse.json({ error: "Not found" }, { status: 404 })
-
-    return NextResponse.json({
-      data: {
-        ...normalizeBillRow(bill),
-        payments: bill.payments.map(normalizeBillPaymentRow),
-      },
-    })
+  const bill = await prisma.bill.findFirst({
+    where: { id, organizationId: orgId },
+    include: { payments: true, vendor: { select: { id: true, name: true } } },
   })
-}
+  if (!bill) return NextResponse.json({ error: "Not found" }, { status: 404 })
+
+  return NextResponse.json({
+    data: {
+      ...normalizeBillRow(bill),
+      payments: bill.payments.map(normalizeBillPaymentRow),
+    },
+  })
+})
 
 // PUT — update bill
-export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const authResult = await requireAuth(req, "finance", "write")
-  if (isAuthError(authResult)) return authResult
-  const orgId = authResult.orgId
+export const PUT = withRlsAuth<RouteContext>("finance", "write", async (req, { orgId }, { params }) => {
   const { id } = await params
 
-  return runWithTenant(orgId, async () => {
-    const existing = await prisma.bill.findFirst({ where: { id, organizationId: orgId } })
-    if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 })
+  const existing = await prisma.bill.findFirst({ where: { id, organizationId: orgId } })
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
-    let body
-    try {
-      body = await req.json()
-    } catch {
-      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 })
+  let body
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 })
+  }
+
+  let data
+  try {
+    data = updateBillSchema.parse(body)
+  } catch (e) {
+    if (e instanceof ZodError) {
+      return NextResponse.json({ error: "Validation failed", details: e.flatten().fieldErrors }, { status: 400 })
     }
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 })
+  }
 
-    let data
+  const { billNumber, vendorName, vendorId, title, totalAmount, currency, issueDate, dueDate, category, notes, status } = data
+
+  // A new total changes what is still owed, not what was already paid: the
+  // balance is the new total less the payments on record. It used to be reset
+  // to the full total, so correcting the amount of a half-paid bill made it
+  // look unpaid again.
+  let totals: { totalAmount: Prisma.Decimal; balanceDue: Prisma.Decimal } | undefined
+  if (totalAmount !== undefined) {
+    let total: Prisma.Decimal
     try {
-      data = updateBillSchema.parse(body)
+      total = parseMoneyAmount(totalAmount, { allowZero: true })
     } catch (e) {
-      if (e instanceof ZodError) {
-        return NextResponse.json({ error: "Validation failed", details: e.flatten().fieldErrors }, { status: 400 })
-      }
-      return NextResponse.json({ error: "Invalid request" }, { status: 400 })
+      return NextResponse.json({ error: e instanceof Error ? e.message : "Invalid amount" }, { status: 400 })
     }
+    const remaining = total.minus(String(existing.paidAmount))
+    totals = { totalAmount: total, balanceDue: remaining.lt(0) ? new Prisma.Decimal(0) : remaining }
+  }
 
-    const { billNumber, vendorName, vendorId, title, totalAmount, currency, issueDate, dueDate, category, notes, status } = data
-
-    const bill = await prisma.bill.update({
-      where: { id },
-      data: {
-        ...(billNumber !== undefined && { billNumber }),
-        ...(vendorName !== undefined && { vendorName }),
-        ...(vendorId !== undefined && { vendorId }),
-        ...(title !== undefined && { title }),
-        ...(totalAmount !== undefined && { totalAmount: parseFloat(String(totalAmount)), balanceDue: parseFloat(String(totalAmount)) }),
-        ...(currency !== undefined && { currency }),
-        ...(issueDate !== undefined && { issueDate: new Date(issueDate) }),
-        ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
-        ...(category !== undefined && { category }),
-        ...(notes !== undefined && { notes }),
-        ...(status !== undefined && { status }),
-      },
-    })
-
-    return NextResponse.json({ data: normalizeBillRow(bill) })
+  const bill = await prisma.bill.update({
+    where: { id },
+    data: {
+      ...(billNumber !== undefined && { billNumber }),
+      ...(vendorName !== undefined && { vendorName }),
+      ...(vendorId !== undefined && { vendorId }),
+      ...(title !== undefined && { title }),
+      ...(totals !== undefined && totals),
+      ...(currency !== undefined && { currency }),
+      ...(issueDate !== undefined && { issueDate: new Date(issueDate) }),
+      ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
+      ...(category !== undefined && { category }),
+      ...(notes !== undefined && { notes }),
+      ...(status !== undefined && { status }),
+    },
   })
-}
+
+  return NextResponse.json({ data: normalizeBillRow(bill) })
+})
 
 // DELETE — delete bill
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const authResult = await requireAuth(req, "finance", "delete")
-  if (isAuthError(authResult)) return authResult
-  const orgId = authResult.orgId
+export const DELETE = withRlsAuth<RouteContext>("finance", "delete", async (_req, { orgId }, { params }) => {
   const { id } = await params
 
-  return runWithTenant(orgId, async () => {
-    const existing = await prisma.bill.findFirst({ where: { id, organizationId: orgId } })
-    if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 })
+  const existing = await prisma.bill.findFirst({ where: { id, organizationId: orgId } })
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
-    await prisma.bill.delete({ where: { id } })
-    return NextResponse.json({ data: { success: true } })
-  })
-}
+  await prisma.bill.delete({ where: { id } })
+  return NextResponse.json({ data: { success: true } })
+})

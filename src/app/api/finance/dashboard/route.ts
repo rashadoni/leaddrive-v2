@@ -1,6 +1,5 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getOrgId } from "@/lib/api-auth"
-import { runWithTenant } from "@/lib/rls-context"
+import { NextResponse } from "next/server"
+import { withRlsAuth } from "@/lib/with-rls"
 import { prisma } from "@/lib/prisma"
 import { getCurrencySymbol } from "@/lib/constants"
 import { decimalToNumber } from "@/lib/prisma-decimal"
@@ -15,11 +14,7 @@ type FundRow = { currentBalance: unknown }
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 const EXPENSE_COLORS = ["#ef4444", "#f59e0b", "#3b82f6", "#8b5cf6", "#ec4899", "#14b8a6", "#64748b"]
 
-export async function GET(req: NextRequest) {
-  const orgId = await getOrgId(req)
-  if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
-  return runWithTenant(orgId, async () => {
+export const GET = withRlsAuth("finance", "read", async (req, { orgId }) => {
   // E-4: Date range filter (shared parser handles all validation + UTC normalisation)
   const rangeResult = parseOptionalDateRange(req)
   if (rangeResult.errorResponse) return rangeResult.errorResponse
@@ -331,8 +326,7 @@ export async function GET(req: NextRequest) {
       dateTo: dateToStr ?? null,
     },
   })
-  })
-}
+})
 
 function fmt(n: number): string {
   return n.toLocaleString(undefined, { maximumFractionDigits: 0 })

@@ -8,6 +8,16 @@ export type Module =
   | "reports" | "profitability" | "ai" | "settings" | "users" | "audit"
   // ERP modules
   | "projects" | "budgeting" | "invoices" | "events" | "pricing"
+  // Treasury — everything under /api/finance: vendor bills and their payments,
+  // payment orders and their approval, bank accounts, funds, the payment
+  // registry and the cash dashboard. A permission scope of its own because the
+  // neighbouring ones do not describe it: `invoices` is what the customer owes
+  // us, `payments` is the card-provider integration, and both are readable by
+  // sales and support, who have no business in the company's bank accounts.
+  // Deliberately NOT a member of MODULES: an API key is the organization's
+  // credential and always acts as admin, and nothing should approve a payment
+  // order without a person behind it.
+  | "finance"
   | "inbox" | "journeys" | "segments" | "voip"
   // Social Monitoring — its own scope since the 2026-08-01 module split. It
   // shares the `social` name with the group-module it bridges to (identity entry
@@ -236,6 +246,16 @@ const ROLE_PERMISSIONS: Record<Role, Record<string, Action[]>> = {
     reports: ["read", "export"],
     profitability: ["read"],
     budgeting: ["read", "write"],
+    // Treasury. Same level as `invoices`, its receivables-side sibling: the
+    // manager runs the day-to-day (enters vendor bills, records payments,
+    // approves and executes payment orders) and does not delete — a deleted
+    // bill takes its payment history with it (onDelete: Cascade).
+    //
+    // Until 2026-10-07 this scope had no row at all, which made it admin-only
+    // by accident on the eleven handlers that named it (funds, bill edit) while
+    // every other /api/finance route checked no role whatsoever — so a manager
+    // could approve a payment order but not rename a fund.
+    finance: ["read", "write", "export"],
     projects: ["read", "write", "delete"],
     events: ["read", "write"],
     pricing: ["read"],
@@ -321,6 +341,10 @@ const ROLE_PERMISSIONS: Record<Role, Record<string, Action[]>> = {
     reports: ["read"],
     profitability: [],
     budgeting: [],
+    // Sales sees what a customer owes (`invoices`) and whether it was paid
+    // (`payments`), not the company's own bank accounts and vendor bills —
+    // the same line `profitability` and `budgeting` already draw.
+    finance: [],
     projects: ["read"],
     events: ["read"],
     pricing: [],
@@ -416,6 +440,7 @@ const ROLE_PERMISSIONS: Record<Role, Record<string, Action[]>> = {
     reports: ["read"],
     profitability: [],
     budgeting: [],
+    finance: [],
     projects: ["read"],
     events: ["read"],
     pricing: [],
@@ -497,6 +522,7 @@ const ROLE_PERMISSIONS: Record<Role, Record<string, Action[]>> = {
     reports: ["read"],
     profitability: [],
     budgeting: [],
+    finance: [],
     projects: [],
     events: [],
     pricing: [],
@@ -670,8 +696,15 @@ export const ROUTE_MODULE_MAP: Record<string, Module> = {
   "/api/v1/pipeline-stages": "settings",
   "/api/v1/inbox": "inbox",
   "/api/v1/channels": "inbox",
+  // The three finance namespaces that live OUTSIDE /api/v1. Their handlers name
+  // the scope themselves (withRlsAuth), so these entries are not what gates a
+  // role — they are what lets the proxy's tenant module gate see the path, and
+  // what `getOrgId` reads to refuse an API key without the matching scope.
+  // (`/api/cost-model` was listed as `/api/v1/cost-model`, a path that has
+  // never existed, so the cost model resolved to no module at all.)
+  "/api/finance": "finance",
   "/api/budgeting": "budgeting",
-  "/api/v1/cost-model": "profitability",
+  "/api/cost-model": "profitability",
   "/api/v1/pricing": "pricing",
   "/api/v1/ai": "ai",
   "/api/v1/ai-configs": "ai",
@@ -1010,6 +1043,7 @@ export const ALL_MODULES: { id: Module; group: string }[] = [
   // Projects is grouped with CRM (not ERP) so admin module-toggle UI
   // matches the sidebar IA — see src/components/sidebar.tsx Phase 2 note.
   { id: "projects", group: "CRM" },
+  { id: "finance", group: "Finance" },
   { id: "revenue-recognition", group: "Finance" },
   { id: "education", group: "Industry" },
   { id: "financial-services", group: "Industry" },

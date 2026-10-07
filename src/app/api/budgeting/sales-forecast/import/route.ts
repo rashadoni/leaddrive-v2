@@ -1,14 +1,9 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getOrgId } from "@/lib/api-auth"
+import { NextResponse } from "next/server"
+import { withRlsAuth } from "@/lib/with-rls"
 import { prisma } from "@/lib/prisma"
-import { runWithTenant } from "@/lib/rls-context"
 import ExcelJS from "exceljs"
 
-export async function POST(req: NextRequest) {
-  const orgId = await getOrgId(req)
-  if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
-  return runWithTenant(orgId, async () => {
+export const POST = withRlsAuth("budgeting", "write", async (req, { orgId }) => {
   const formData = await req.formData()
   const file = formData.get("file") as File | null
   const year = Number(formData.get("year") || new Date().getFullYear())
@@ -97,5 +92,4 @@ export async function POST(req: NextRequest) {
   )
 
   return NextResponse.json({ success: true, count: results.length })
-  })
-}
+})

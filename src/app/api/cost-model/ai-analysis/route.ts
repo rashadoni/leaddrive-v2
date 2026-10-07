@@ -1,14 +1,15 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getOrgId } from "@/lib/api-auth"
+import { NextResponse } from "next/server"
+import { withRlsAuth } from "@/lib/with-rls"
 import { loadAndCompute } from "@/lib/cost-model/db"
 import { getAiCache, setAiCache, invalidateAiCache } from "@/lib/cost-model/db"
 import { analyzeTab } from "@/lib/cost-model/ai-analysis"
 
-export async function POST(req: NextRequest) {
+// "read", though the verb is POST: the request only carries which tab to
+// analyse, and nothing of the tenant's is written — the analysis is cached in
+// memory. Gating it on "write" would take the button away from a manager, who
+// reads the cost model and does not edit it.
+export const POST = withRlsAuth("profitability", "read", async (req, { orgId }) => {
   try {
-    const orgId = await getOrgId(req)
-    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
     let body
     try {
       body = await req.json()
@@ -60,4 +61,4 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
-}
+})

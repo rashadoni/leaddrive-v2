@@ -34,7 +34,7 @@ const MODULE_GROUPS: { label: string; modules: string[] }[] = [
   { label: "loyalty",   modules: ["loyalty"] },
   { label: "comm",      modules: ["inbox", "voip", "social"] },
   { label: "support",   modules: ["tickets", "kb"] },
-  { label: "finance",   modules: ["invoices", "budgeting", "profitability"] },
+  { label: "finance",   modules: ["invoices", "finance", "budgeting", "profitability"] },
   { label: "erp",       modules: ["projects"] },
   { label: "field",     modules: ["mtm", "workforce"] },
   { label: "ai",        modules: ["ai"] },
@@ -49,6 +49,9 @@ const MODULE_HINT_KEYS: Partial<Record<string, string>> = {
   // table says "Users — View" about a page the manager cannot open.
   settings: "moduleHint_settings",
   users: "moduleHint_users",
+  // The row is named after its menu entry, which says nothing about payment
+  // orders or bank accounts — the things an admin is actually deciding about.
+  finance: "moduleHint_finance",
 }
 
 // The matrix asks `enforcedAccessLevel` — `checkPermission` underneath, the

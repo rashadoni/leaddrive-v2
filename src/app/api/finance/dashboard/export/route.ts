@@ -1,6 +1,5 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getOrgId } from "@/lib/api-auth"
-import { runWithTenant } from "@/lib/rls-context"
+import { NextResponse } from "next/server"
+import { withRlsAuth } from "@/lib/with-rls"
 import { prisma } from "@/lib/prisma"
 import { decimalToNumber } from "@/lib/prisma-decimal"
 import { parseOptionalDateRange } from "@/lib/finance/date-range"
@@ -56,11 +55,7 @@ function setMoney(cell: ExcelJS.Cell, value: number): void {
   cell.alignment = { horizontal: "right", vertical: "middle" }
 }
 
-export async function GET(req: NextRequest) {
-  const orgId = await getOrgId(req)
-  if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
-  return runWithTenant(orgId, async () => {
+export const GET = withRlsAuth("finance", "read", async (req, { orgId }) => {
   // Shared date range parser (same validation as dashboard + receivables)
   const rangeResult = parseOptionalDateRange(req)
   if (rangeResult.errorResponse) return rangeResult.errorResponse
@@ -298,5 +293,4 @@ export async function GET(req: NextRequest) {
       "Content-Disposition": `attachment; filename="finance-${filenameSuffix}.xlsx"`,
     },
   })
-  })
-}
+})

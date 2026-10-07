@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useTranslations } from "next-intl"
-import { useBankAccounts, useCreateBankAccount, useUpdateBankAccount, useDeleteBankAccount } from "@/lib/finance/hooks"
+import { useBankAccounts, useCreateBankAccount, useUpdateBankAccount, useDeleteBankAccount, useFinanceAccess } from "@/lib/finance/hooks"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -19,6 +19,7 @@ export function BankAccountsManager() {
   const createAccount = useCreateBankAccount()
   const updateAccount = useUpdateBankAccount()
   const deleteAccount = useDeleteBankAccount()
+  const { canWrite, canDelete } = useFinanceAccess()
   const [showCreate, setShowCreate] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
 
@@ -33,9 +34,11 @@ export function BankAccountsManager() {
           <h3 className="text-lg font-semibold">{t("title")}</h3>
           <p className="text-sm text-muted-foreground">{t("description")}</p>
         </div>
-        <Button size="sm" onClick={() => setShowCreate(true)}>
-          <Plus className="w-4 h-4 mr-1" /> {t("addAccount")}
-        </Button>
+        {canWrite && (
+          <Button size="sm" onClick={() => setShowCreate(true)}>
+            <Plus className="w-4 h-4 mr-1" /> {t("addAccount")}
+          </Button>
+        )}
       </div>
 
       {accounts && accounts.length > 0 ? (
@@ -91,19 +94,25 @@ export function BankAccountsManager() {
                   </div>
                 </div>
 
-                <div className="flex gap-1 pt-1 border-t">
-                  {!acc.isDefault && acc.isActive && (
-                    <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => updateAccount.mutate({ id: acc.id, isDefault: true })}>
-                      <Star className="w-3 h-3 mr-1" /> {t("setDefault")}
-                    </Button>
-                  )}
-                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditId(acc.id)}>
-                    <Edit2 className="w-3 h-3 mr-1" /> {t("edit")}
-                  </Button>
-                  <Button size="sm" variant="ghost" className="h-7 text-xs text-red-500" onClick={() => { if (confirm(t("confirmDelete"))) deleteAccount.mutate(acc.id) }}>
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
-                </div>
+                {(canWrite || canDelete) && (
+                  <div className="flex gap-1 pt-1 border-t">
+                    {canWrite && !acc.isDefault && acc.isActive && (
+                      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => updateAccount.mutate({ id: acc.id, isDefault: true })}>
+                        <Star className="w-3 h-3 mr-1" /> {t("setDefault")}
+                      </Button>
+                    )}
+                    {canWrite && (
+                      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditId(acc.id)}>
+                        <Edit2 className="w-3 h-3 mr-1" /> {t("edit")}
+                      </Button>
+                    )}
+                    {canDelete && (
+                      <Button size="sm" variant="ghost" className="h-7 text-xs text-red-500" onClick={() => { if (confirm(t("confirmDelete"))) deleteAccount.mutate(acc.id) }}>
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}

@@ -13,6 +13,7 @@ import {
   useCreateOverhead,
   useUpdateOverhead,
   useDeleteOverhead,
+  useCostModelAccess,
 } from "@/lib/cost-model/hooks"
 import type { OverheadItem } from "@/lib/cost-model/types"
 import { OVERHEAD_CATEGORIES } from "@/lib/cost-model/types"
@@ -36,6 +37,7 @@ export function OverheadTab() {
   const createMutation = useCreateOverhead()
   const updateMutation = useUpdateOverhead()
   const deleteMutation = useDeleteOverhead()
+  const { canWrite, canDelete } = useCostModelAccess()
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<Partial<OverheadItem>>({})
@@ -184,14 +186,16 @@ export function OverheadTab() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">{t("ohCostItems", { count: items.length })}</CardTitle>
-          <Button size="sm" onClick={addItem} disabled={isMutating}>
-            {createMutation.isPending ? (
-              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-            ) : (
-              <Plus className="h-4 w-4 mr-1" />
-            )}
-            {t("ohAddItem")}
-          </Button>
+          {canWrite && (
+            <Button size="sm" onClick={addItem} disabled={isMutating}>
+              {createMutation.isPending ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <Plus className="h-4 w-4 mr-1" />
+              )}
+              {t("ohAddItem")}
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -345,18 +349,22 @@ export function OverheadTab() {
                             {calculateMonthly(item).toLocaleString("en", { minimumFractionDigits: 2 })} {getCurrencySymbol()}
                           </td>
                           <td className="py-2 flex gap-1">
-                            <Button variant="ghost" size="sm" onClick={() => startEdit(item)} className="h-7 w-7 p-0">
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => deleteItem(itemId)}
-                              disabled={deleteMutation.isPending}
-                              className="h-7 w-7 p-0"
-                            >
-                              <Trash2 className="h-3.5 w-3.5 text-red-600" />
-                            </Button>
+                            {canWrite && (
+                              <Button variant="ghost" size="sm" onClick={() => startEdit(item)} className="h-7 w-7 p-0">
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                            {canDelete && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => deleteItem(itemId)}
+                                disabled={deleteMutation.isPending}
+                                className="h-7 w-7 p-0"
+                              >
+                                <Trash2 className="h-3.5 w-3.5 text-red-600" />
+                              </Button>
+                            )}
                           </td>
                         </>
                       )}

@@ -4989,6 +4989,8 @@
     "module_pricing": "Qiymətləndirmə",
     "module_budgeting": "Büdcələmə",
     "module_profitability": "Rentabellik",
+    "module_finance": "Maliyyə icmalı",
+    "moduleHint_finance": "Təchizatçı hesabları və onların ödənişi, ödəniş tapşırıqları və onların təsdiqi, bank hesabları, fondlar.",
     "module_users": "İstifadəçilər",
     "module_audit": "Audit log",
     "module_settings": "Parametrlər",

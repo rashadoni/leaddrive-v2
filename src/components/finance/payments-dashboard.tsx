@@ -16,6 +16,7 @@ import {
   useUpdatePaymentOrder,
   usePayables,
   useBankAccounts,
+  useFinanceAccess,
 } from "@/lib/finance/hooks"
 import { FinanceKpiCard } from "./finance-kpi-card"
 import { BankAccountsManager } from "./bank-accounts"
@@ -67,6 +68,7 @@ export function PaymentsDashboard() {
   const [editOrderId, setEditOrderId] = useState<string | null>(null)
   const [showReject, setShowReject] = useState<string | null>(null)
   const [rejectReason, setRejectReason] = useState("")
+  const { canWrite, canDelete } = useFinanceAccess()
 
   const { data: registryData, isLoading: registryLoading } = usePaymentRegistry(filters, registryPage)
   const { data: orders, isLoading: ordersLoading } = usePaymentOrders()
@@ -137,9 +139,11 @@ export function PaymentsDashboard() {
         <TabsContent value="orders" className="space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{t("orders")}</h3>
-            <Button size="sm" onClick={() => setShowCreate(true)}>
-              <Plus className="w-4 h-4 mr-1" /> {t("newOrder")}
-            </Button>
+            {canWrite && (
+              <Button size="sm" onClick={() => setShowCreate(true)}>
+                <Plus className="w-4 h-4 mr-1" /> {t("newOrder")}
+              </Button>
+            )}
           </div>
 
           {ordersLoading ? (
@@ -182,7 +186,7 @@ export function PaymentsDashboard() {
                               <td className="p-3 text-xs text-muted-foreground">{formatDate(o.createdAt, locale)}</td>
                               <td className="p-3 text-right">
                                 <div className="flex justify-end gap-1">
-                                  {o.status === "draft" && (
+                                  {o.status === "draft" && canWrite && (
                                     <>
                                       <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditOrderId(o.id)}>
                                         <Edit2 className="w-3 h-3 mr-1" /> {t("edit")}
@@ -190,12 +194,14 @@ export function PaymentsDashboard() {
                                       <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => submitOrder.mutate(o.id)}>
                                         <Send className="w-3 h-3 mr-1" /> {t("submit")}
                                       </Button>
-                                      <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" onClick={() => deleteOrder.mutate(o.id)}>
-                                        <Trash2 className="w-3 h-3" />
-                                      </Button>
                                     </>
                                   )}
-                                  {o.status === "pending_approval" && (
+                                  {o.status === "draft" && canDelete && (
+                                    <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" onClick={() => deleteOrder.mutate(o.id)}>
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  )}
+                                  {o.status === "pending_approval" && canWrite && (
                                     <>
                                       <Button size="sm" variant="outline" className="h-7 text-xs text-green-700" onClick={() => approveOrder.mutate(o.id)}>
                                         <Check className="w-3 h-3 mr-1" /> {t("approveBtn")}
@@ -205,7 +211,7 @@ export function PaymentsDashboard() {
                                       </Button>
                                     </>
                                   )}
-                                  {o.status === "approved" && (
+                                  {o.status === "approved" && canWrite && (
                                     <Button size="sm" variant="outline" className="h-7 text-xs text-blue-700" onClick={() => executeOrder.mutate(o.id)}>
                                       <Play className="w-3 h-3 mr-1" /> {t("executeBtn")}
                                     </Button>

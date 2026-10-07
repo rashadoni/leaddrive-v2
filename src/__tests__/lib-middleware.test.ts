@@ -1410,6 +1410,49 @@ describe("middleware", async () => {
     expect(res.status).not.toBe(403)
   })
 
+  // Finance, the cost model and budgeting live outside /api/v1. The gate named
+  // only `/api/v1/`, so a tenant without the Finance module could call all
+  // three as long as the handler did not check for itself — and until
+  // 2026-10-07 forty of the forty-five did not.
+  it.each([
+    "/api/finance/payment-orders/po-1/approve",
+    "/api/finance/dashboard",
+    "/api/cost-model/employees",
+    "/api/budgeting/sales-forecast",
+  ])("403s %s for a tenant without the Finance module", async (pathname) => {
+    const req = makeReq({
+      pathname,
+      method: "POST",
+      host: "app.leaddrivecrm.org",
+      auth: { user: { id: "u1", organizationId: "org-1", role: "admin", plan: "tier-25", addons: [], modules: { crm: true, sales: true, finance: false } } },
+    })
+    const res = await authMiddleware(req)
+    expect(res.status).toBe(403)
+    expect((await res.json()).message).toBe('Module "finance" is not enabled for your organization.')
+  })
+
+  it.each([
+    "/api/finance/payment-orders/po-1/approve",
+    "/api/cost-model/employees",
+    "/api/budgeting/sales-forecast",
+  ])("lets %s through when the tenant has the Finance module", async (pathname) => {
+    const req = makeReq({
+      pathname,
+      host: "app.leaddrivecrm.org",
+      auth: { user: { id: "u1", organizationId: "org-1", role: "admin", plan: "tier-25", addons: [], modules: { crm: true, finance: true } } },
+    })
+    const res = await authMiddleware(req)
+    expect(res.status).not.toBe(403)
+  })
+
+  it("leaves the finance namespaces to the route for a caller with no session", async () => {
+    // An API key or a stray request: no JWT to read modules from. The route's
+    // own requireAuth answers it (401, or the key's scope and module check).
+    const req = makeReq({ pathname: "/api/finance/dashboard", host: "app.leaddrivecrm.org", auth: null })
+    const res = await authMiddleware(req)
+    expect(res.status).not.toBe(403)
+  })
+
   // MTM early-returns before the central gate, so it has its own field-suite gate.
   it("403s MTM API when the tenant has neither Route & Field nor Workforce HRM", async () => {
     const req = makeReq({

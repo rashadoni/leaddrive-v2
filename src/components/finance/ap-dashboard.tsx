@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { useTranslations, useLocale } from "next-intl"
 import { formatDate } from "@/lib/format-date"
-import { usePayables, usePayablesStats, useCreateBill, useUpdateBill, useDeleteBill, useCreateBillPayment } from "@/lib/finance/hooks"
+import { usePayables, usePayablesStats, useCreateBill, useUpdateBill, useDeleteBill, useCreateBillPayment, useFinanceAccess } from "@/lib/finance/hooks"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
@@ -52,6 +52,10 @@ export function APDashboard() {
   const updateBill = useUpdateBill()
   const deleteBill = useDeleteBill()
   const createPayment = useCreateBillPayment()
+  const { canWrite, canDelete } = useFinanceAccess()
+  // Selecting rows is only a way into the bulk actions; with none available
+  // there is nothing to select for.
+  const canSelect = canWrite || canDelete
   const [showCreate, setShowCreate] = useState(false)
   const [showPayment, setShowPayment] = useState<string | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -127,9 +131,11 @@ export function APDashboard() {
 
       <div className="flex justify-between items-center">
         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{t("billsTitle")}</h3>
-        <Button size="sm" onClick={() => setShowCreate(true)}>
-          <Plus className="w-4 h-4 mr-1" /> {t("newBill")}
-        </Button>
+        {canWrite && (
+          <Button size="sm" onClick={() => setShowCreate(true)}>
+            <Plus className="w-4 h-4 mr-1" /> {t("newBill")}
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -188,25 +194,27 @@ export function APDashboard() {
       </div>
 
       {/* Bulk Actions Bar */}
-      {selected.size > 0 && (
+      {canSelect && selected.size > 0 && (
         <div className="flex items-center gap-3 p-3 rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800">
           <span className="text-sm font-medium text-blue-800 dark:text-blue-300">
             {t("selected", { count: selected.size })}
           </span>
           <div className="flex gap-2 ml-auto">
-            {canBulkPending && (
+            {canWrite && canBulkPending && (
               <Button size="sm" variant="outline" className="h-7 text-xs text-blue-700" onClick={() => bulkUpdateStatus("pending")}>
                 <ArrowRight className="w-3 h-3 mr-1" /> {t("toWork")}
               </Button>
             )}
-            {canBulkCancel && (
+            {canWrite && canBulkCancel && (
               <Button size="sm" variant="outline" className="h-7 text-xs text-amber-700" onClick={() => bulkUpdateStatus("cancelled")}>
                 <XCircle className="w-3 h-3 mr-1" /> {t("bulkCancel")}
               </Button>
             )}
-            <Button size="sm" variant="outline" className="h-7 text-xs text-red-700" onClick={bulkDelete}>
-              <Trash2 className="w-3 h-3 mr-1" /> {t("bulkDelete")}
-            </Button>
+            {canDelete && (
+              <Button size="sm" variant="outline" className="h-7 text-xs text-red-700" onClick={bulkDelete}>
+                <Trash2 className="w-3 h-3 mr-1" /> {t("bulkDelete")}
+              </Button>
+            )}
             <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={clearSelection}>
               {t("bulkDeselect")}
             </Button>
@@ -224,7 +232,9 @@ export function APDashboard() {
                 <thead>
                   <tr className="border-b text-left">
                     <th className="py-2 px-2 w-8">
-                      <input type="checkbox" checked={bills.length > 0 && selected.size === bills.length} onChange={toggleAll} className="rounded border-zinc-200 dark:border-zinc-700" />
+                      {canSelect && (
+                        <input type="checkbox" checked={bills.length > 0 && selected.size === bills.length} onChange={toggleAll} className="rounded border-zinc-200 dark:border-zinc-700" />
+                      )}
                     </th>
                     <th className="py-2 px-2 font-medium text-muted-foreground">{t("colBillNumber")}</th>
                     <th className="py-2 px-2 font-medium text-muted-foreground">{t("colVendor")}</th>
@@ -243,7 +253,9 @@ export function APDashboard() {
                     return (
                     <tr key={bill.id} className={`border-b last:border-0 hover:bg-muted/50 ${isOverdue ? "bg-red-50/50 dark:bg-red-950/20" : ""} ${selected.has(bill.id) ? "bg-blue-50/50 dark:bg-blue-950/20" : ""} ${isFocused ? "outline outline-1 outline-primary/40" : ""}`}>
                       <td className="py-2 px-2">
-                        <input type="checkbox" checked={selected.has(bill.id)} onChange={() => toggleSelect(bill.id)} className="rounded border-zinc-200 dark:border-zinc-700" />
+                        {canSelect && (
+                          <input type="checkbox" checked={selected.has(bill.id)} onChange={() => toggleSelect(bill.id)} className="rounded border-zinc-200 dark:border-zinc-700" />
+                        )}
                       </td>
                       <td className="py-2 px-2 font-medium">{bill.billNumber}</td>
                       <td className="py-2 px-2">{bill.vendorName}</td>
@@ -260,19 +272,21 @@ export function APDashboard() {
                       </td>
                       <td className="py-2 px-2 text-right">
                         <div className="flex gap-1 justify-end">
-                          {bill.status === "draft" && (
+                          {canWrite && bill.status === "draft" && (
                             <Button size="sm" variant="outline" className="h-7 text-xs text-blue-700" onClick={() => updateBill.mutate({ id: bill.id, status: "pending" })}>
                               <ArrowRight className="w-3 h-3 mr-1" /> {t("toWork")}
                             </Button>
                           )}
-                          {bill.status !== "paid" && bill.status !== "cancelled" && (
+                          {canWrite && bill.status !== "paid" && bill.status !== "cancelled" && (
                             <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowPayment(bill.id)}>
                               <DollarSign className="w-3 h-3 mr-1" /> {t("pay")}
                             </Button>
                           )}
-                          <Button size="sm" variant="ghost" className="h-7 text-xs text-red-500" onClick={() => { if (confirm(t("confirmDelete"))) deleteBill.mutate(bill.id) }}>
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
+                          {canDelete && (
+                            <Button size="sm" variant="ghost" className="h-7 text-xs text-red-500" onClick={() => { if (confirm(t("confirmDelete"))) deleteBill.mutate(bill.id) }}>
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>

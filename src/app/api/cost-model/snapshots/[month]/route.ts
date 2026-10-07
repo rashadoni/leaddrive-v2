@@ -1,47 +1,43 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getOrgId } from "@/lib/api-auth"
+import { NextResponse } from "next/server"
+import { withRlsAuth } from "@/lib/with-rls"
 import { prisma } from "@/lib/prisma"
-import { runWithTenant } from "@/lib/rls-context"
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ month: string }> }) {
+type RouteContext = { params: Promise<{ month: string }> }
+
+export const GET = withRlsAuth<RouteContext>("profitability", "read", async (_req, { orgId }, { params }) => {
   try {
-    const orgId = await getOrgId(req)
-    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const { month } = await params
 
-    return runWithTenant(orgId, async () => {
-      const { month } = await params
-
-      const snapshot = await prisma.costModelSnapshot.findUnique({
-        where: {
-          organizationId_snapshotMonth: {
-            organizationId: orgId,
-            snapshotMonth: month,
-          },
+    const snapshot = await prisma.costModelSnapshot.findUnique({
+      where: {
+        organizationId_snapshotMonth: {
+          organizationId: orgId,
+          snapshotMonth: month,
         },
-      })
+      },
+    })
 
-      if (!snapshot) {
-        return NextResponse.json({ error: "Snapshot not found" }, { status: 404 })
-      }
+    if (!snapshot) {
+      return NextResponse.json({ error: "Snapshot not found" }, { status: 404 })
+    }
 
-      // Parse dataJson and return the full data
-      let data: unknown = null
-      try {
-        data = typeof snapshot.dataJson === "string" ? JSON.parse(snapshot.dataJson) : snapshot.dataJson
-      } catch {
-        data = snapshot.dataJson
-      }
+    // Parse dataJson and return the full data
+    let data: unknown = null
+    try {
+      data = typeof snapshot.dataJson === "string" ? JSON.parse(snapshot.dataJson) : snapshot.dataJson
+    } catch {
+      data = snapshot.dataJson
+    }
 
-      return NextResponse.json({
-        success: true,
-        data: {
-          ...snapshot,
-          dataJson: data,
-        },
-      })
+    return NextResponse.json({
+      success: true,
+      data: {
+        ...snapshot,
+        dataJson: data,
+      },
     })
   } catch (error) {
     console.error("Get snapshot error:", error)
     return NextResponse.json({ error: "Failed to load snapshot" }, { status: 500 })
   }
-}
+})

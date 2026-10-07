@@ -1,6 +1,7 @@
 "use client"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
+import { checkPermission, type Role } from "@/lib/permissions"
 import type {
   FinanceDashboardData,
   ReceivablesData,
@@ -30,6 +31,24 @@ import type {
 function useOrgId() {
   const { data: session } = useSession()
   return (session?.user as any)?.organizationId || ""
+}
+
+/**
+ * What the signed-in person may do in treasury — asked of `checkPermission` on
+ * the `finance` scope, the same question the server asks of every request to
+ * /api/finance. These screens do not show a refused request: a mutation that
+ * fails simply does nothing. So a control the server would refuse is not drawn,
+ * rather than left as a button that does not work.
+ *
+ * Read-only until the session has loaded.
+ */
+export function useFinanceAccess(): { canWrite: boolean; canDelete: boolean } {
+  const { data: session } = useSession()
+  const role = ((session?.user as { role?: string } | undefined)?.role || "viewer") as Role
+  return {
+    canWrite: checkPermission(role, "finance", "write"),
+    canDelete: checkPermission(role, "finance", "delete"),
+  }
 }
 
 async function apiFetch<T>(url: string, orgId: string, options?: RequestInit): Promise<T> {

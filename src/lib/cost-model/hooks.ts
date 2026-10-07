@@ -2,11 +2,29 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
+import { checkPermission, type Role } from "@/lib/permissions"
 import type { CostModelResult, OverheadItem, EmployeeRow, CostModelParams } from "./types"
 
 function useOrgId() {
   const { data: session } = useSession()
   return session?.user?.organizationId || ""
+}
+
+/**
+ * What the signed-in person may do to the cost model — asked of
+ * `checkPermission` on the `profitability` scope, the same question the server
+ * asks of every request to /api/cost-model. A manager reads the model and does
+ * not maintain it, so the controls that would only be refused are not drawn.
+ *
+ * Read-only until the session has loaded.
+ */
+export function useCostModelAccess(): { canWrite: boolean; canDelete: boolean } {
+  const { data: session } = useSession()
+  const role = ((session?.user as { role?: string } | undefined)?.role || "viewer") as Role
+  return {
+    canWrite: checkPermission(role, "profitability", "write"),
+    canDelete: checkPermission(role, "profitability", "delete"),
+  }
 }
 
 function apiHeaders(orgId: string): HeadersInit {

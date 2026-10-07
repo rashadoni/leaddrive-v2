@@ -4989,6 +4989,8 @@
     "module_pricing": "Ценообразование",
     "module_budgeting": "Бюджетирование",
     "module_profitability": "Прибыльность",
+    "module_finance": "Обзор финансов",
+    "moduleHint_finance": "Счета поставщиков и их оплата, платёжные поручения и их согласование, банковские счета, фонды.",
     "module_users": "Пользователи",
     "module_audit": "Audit log",
     "module_settings": "Настройки",

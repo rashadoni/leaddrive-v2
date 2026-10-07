@@ -16,10 +16,26 @@ vi.mock("@/lib/prisma", () => ({
   },
 }))
 
-vi.mock("@/lib/api-auth", () => ({
-  getOrgId: vi.fn(),
-  getSession: vi.fn().mockResolvedValue(null),
-}))
+// The routes are built with withRlsAuth, which asks `requireAuth` who is calling.
+// These tests are about what a handler does once someone is let in, so
+// `requireAuth` answers from the same switch the tests already flip
+// (`getOrgId`): an organization id means "signed in, allowed", null means 401.
+// Who is refused, and on what grounds, is finance-api-authorization.test.ts —
+// that one runs the real `requireAuth`.
+vi.mock("@/lib/api-auth", () => {
+  const getOrgId = vi.fn()
+  return {
+    getOrgId,
+    getSession: vi.fn().mockResolvedValue(null),
+    requireAuth: vi.fn(async (req: unknown) => {
+      const orgId = await getOrgId(req)
+      return orgId
+        ? { orgId, userId: "user-1", role: "admin", email: "", name: "", principalType: "session" }
+        : new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 })
+    }),
+    isAuthError: vi.fn((value: unknown) => value instanceof Response),
+  }
+})
 
 vi.mock("@/lib/cost-model/db", () => ({
   loadAndCompute: vi.fn(() => Promise.resolve(null)),

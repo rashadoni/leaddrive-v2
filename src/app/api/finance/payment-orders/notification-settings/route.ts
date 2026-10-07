@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { z } from "zod"
-import { getOrgId } from "@/lib/api-auth"
+import { withRlsAuth } from "@/lib/with-rls"
 import { prisma } from "@/lib/prisma"
 
 const channelSchema = z.array(z.enum(["inApp", "email", "telegram"])).default(["telegram"])
@@ -37,10 +37,7 @@ const DEFAULTS: FinanceNotifSettings = {
 }
 
 // GET — fetch notification settings
-export async function GET(req: NextRequest) {
-  const orgId = await getOrgId(req)
-  if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
+export const GET = withRlsAuth("finance", "read", async (_req, { orgId }) => {
   const org = await prisma.organization.findUnique({
     where: { id: orgId },
     select: { settings: true },
@@ -50,13 +47,10 @@ export async function GET(req: NextRequest) {
   const notifSettings = settings.financeNotifications || DEFAULTS
 
   return NextResponse.json({ data: notifSettings })
-}
+})
 
 // PUT — update notification settings
-export async function PUT(req: NextRequest) {
-  const orgId = await getOrgId(req)
-  if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
+export const PUT = withRlsAuth("finance", "write", async (req, { orgId }) => {
   let body
   try { body = await req.json() } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 })
@@ -81,4 +75,4 @@ export async function PUT(req: NextRequest) {
   })
 
   return NextResponse.json({ data: parsed.data })
-}
+})

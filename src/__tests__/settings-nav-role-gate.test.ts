@@ -195,3 +195,45 @@ describe("the Settings block cannot drift back to module-only gating", () => {
     expect(hub).toContain("visibleSections.map(")
   })
 })
+
+// 2026-10-07: the finance APIs started checking the role (they had checked only
+// that someone was signed in). The menu has to say the same thing the server
+// does, or a sales rep keeps a "Finance overview" entry that opens a page made
+// of refused requests.
+describe("Finance pages follow the role the finance APIs are gated by", () => {
+  const FINANCE_PAGES = ["/finance", "/profitability", "/settings/finance-notifications", "/settings/sales-forecast"]
+  const hrefs = (role: Role) => accessibleNavItems(navFor(role)).map((item) => item.href)
+
+  it.each(["sales", "support", "ticketing"] as const)("%s is not offered them and cannot open them by URL", (role) => {
+    const org = navFor(role)
+    expect(hrefs(role).filter((href) => FINANCE_PAGES.includes(href))).toEqual([])
+    for (const path of FINANCE_PAGES) {
+      expect([path, isNavPathRoleBlocked(org, path)]).toEqual([path, true])
+    }
+  })
+
+  it.each(["manager", "viewer", "admin"] as const)("%s keeps all of them", (role) => {
+    const org = navFor(role)
+    expect(FINANCE_PAGES.filter((path) => !hrefs(role).includes(path))).toEqual([])
+    for (const path of FINANCE_PAGES) {
+      expect([path, isNavPathRoleBlocked(org, path)]).toEqual([path, false])
+    }
+  })
+
+  it("sales and support keep what the matrix does give them in Finance: invoices", () => {
+    expect(hrefs("sales")).toContain("/invoices")
+    expect(hrefs("support")).toContain("/invoices")
+    expect(isNavPathRoleBlocked(navFor("sales"), "/invoices")).toBe(false)
+  })
+
+  it("each entry names the scope its API is gated by", () => {
+    const scopeOf = (href: string) => navItems.find((item) => item.href === href)?.permissionScope
+    expect(FINANCE_PAGES.map(scopeOf)).toEqual(["finance", "profitability", "finance", "budgeting"])
+    // …and the menu's answer is the server's: the same function, the same scope.
+    for (const role of ["manager", "sales", "support", "ticketing", "viewer"] as const) {
+      for (const href of FINANCE_PAGES) {
+        expect([role, href, hrefs(role).includes(href)]).toEqual([role, href, checkPermission(role, scopeOf(href)!, "read")])
+      }
+    }
+  })
+})
