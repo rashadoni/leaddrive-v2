@@ -1,0 +1,46 @@
+{
+  "source": "8fcf51b8a600c49c34c2d7e87e25b7eae952aa69",
+  "checks": [
+    {
+      "appId": 15368,
+      "conclusion": "success",
+      "head_sha": "8fcf51b8a600c49c34c2d7e87e25b7eae952aa69",
+      "id": 112900348793,
+      "name": "pr-scope",
+      "status": "completed"
+    },
+    {
+      "appId": 15368,
+      "conclusion": "success",
+      "head_sha": "8fcf51b8a600c49c34c2d7e87e25b7eae952aa69",
+      "id": 112900348184,
+      "name": "runner-policy",
+      "status": "completed"
+    },
+    {
+      "appId": 15368,
+      "conclusion": "success",
+      "head_sha": "8fcf51b8a600c49c34c2d7e87e25b7eae952aa69",
+      "id": 112900347944,
+      "name": "scan",
+      "status": "completed"
+    },
+    {
+      "appId": 15368,
+      "conclusion": "success",
+      "head_sha": "8fcf51b8a600c49c34c2d7e87e25b7eae952aa69",
+      "id": 112900523901,
+      "name": "static-checks",
+      "status": "completed"
+    },
+    {
+      "appId": 15368,
+      "conclusion": "success",
+      "head_sha": "8fcf51b8a600c49c34c2d7e87e25b7eae952aa69",
+      "id": 112900523940,
+      "name": "typecheck",
+      "status": "completed"
+    }
+  ],
+  "scope": "Fresh individual GitHub check-run observations after actual production catalog INCOMPLETE; no gate waived"
+}

@@ -1,0 +1,312 @@
+{
+  "version": 2,
+  "status": "INCOMPLETE",
+  "expectedMainSha": "50466e3fce9f23eaba8079a51be914fe6a6eff07",
+  "productionArtifactSha": "50466e3fce9f23eaba8079a51be914fe6a6eff07",
+  "targetSourceSha": "9f3cc73dcdb8c4ccea1fdac9dfae29570339abc5",
+  "bindings": {
+    "helperSha256": "46b417da7bbe763960b8ede8fa0e9dbd98543d090d54f73979289504bfe35771",
+    "sqlSha256": "b174e32eb68a0dbcca98e8557fe8c716ed8277111e79ba822bce43f4e7023b6a"
+  },
+  "reasons": [
+    "DEFAULT_ACL_UNREVIEWED"
+  ],
+  "migrationStates": [
+    "pending",
+    "pending"
+  ],
+  "defaults": {
+    "lockTimeoutMs": 10000,
+    "statementTimeoutMs": 840000,
+    "readOnlyForced": true
+  },
+  "snapshot": {
+    "readOnly": true,
+    "repeatableRead": true,
+    "roleProfile": {
+      "noSuperuser": true,
+      "bypassRls": true,
+      "canLogin": true,
+      "sessionIdentityUnchanged": true,
+      "expectedIdentity": true
+    },
+    "ledger": {
+      "totalRows": 529,
+      "unresolvedRows": 0,
+      "known": [
+        {
+          "name": "20261005193000_workforce_reconciliation_operations",
+          "rows": 0,
+          "applied": 0,
+          "unresolved": 0,
+          "rolledBack": 0,
+          "checksumMatch": true
+        },
+        {
+          "name": "20261006150000_workforce_transferred_assignment_window",
+          "rows": 0,
+          "applied": 0,
+          "unresolved": 0,
+          "rolledBack": 0,
+          "checksumMatch": true
+        }
+      ]
+    },
+    "relations": [
+      {
+        "name": "mtm_agent_workday_events",
+        "present": true,
+        "ordinaryTable": true,
+        "rls": true,
+        "forcedRls": true,
+        "ownerAbility": true,
+        "bytes": 499712,
+        "estimatedRows": 252,
+        "keyColumnsMatch": true
+      },
+      {
+        "name": "mtm_agent_workdays",
+        "present": true,
+        "ordinaryTable": true,
+        "rls": true,
+        "forcedRls": true,
+        "ownerAbility": true,
+        "bytes": 229376,
+        "estimatedRows": 141,
+        "keyColumnsMatch": true
+      },
+      {
+        "name": "mtm_agents",
+        "present": true,
+        "ordinaryTable": true,
+        "rls": true,
+        "forcedRls": true,
+        "ownerAbility": true,
+        "bytes": 155648,
+        "estimatedRows": 37,
+        "keyColumnsMatch": true
+      },
+      {
+        "name": "mtm_audit_logs",
+        "present": true,
+        "ordinaryTable": true,
+        "rls": true,
+        "forcedRls": true,
+        "ownerAbility": true,
+        "bytes": 2269184,
+        "estimatedRows": 3177,
+        "keyColumnsMatch": true
+      },
+      {
+        "name": "organizations",
+        "present": true,
+        "ordinaryTable": true,
+        "rls": false,
+        "forcedRls": false,
+        "ownerAbility": true,
+        "bytes": 1490944,
+        "estimatedRows": 6,
+        "keyColumnsMatch": true
+      },
+      {
+        "name": "workforce_attendance_evidence",
+        "present": true,
+        "ordinaryTable": true,
+        "rls": true,
+        "forcedRls": true,
+        "ownerAbility": true,
+        "bytes": 57344,
+        "estimatedRows": -1,
+        "keyColumnsMatch": true
+      },
+      {
+        "name": "workforce_evidence_assessments",
+        "present": true,
+        "ordinaryTable": true,
+        "rls": true,
+        "forcedRls": true,
+        "ownerAbility": true,
+        "bytes": 49152,
+        "estimatedRows": -1,
+        "keyColumnsMatch": true
+      },
+      {
+        "name": "workforce_exception_cases",
+        "present": true,
+        "ordinaryTable": true,
+        "rls": true,
+        "forcedRls": true,
+        "ownerAbility": true,
+        "bytes": 81920,
+        "estimatedRows": -1,
+        "keyColumnsMatch": true
+      },
+      {
+        "name": "workforce_exception_decisions",
+        "present": true,
+        "ordinaryTable": true,
+        "rls": true,
+        "forcedRls": true,
+        "ownerAbility": true,
+        "bytes": 57344,
+        "estimatedRows": -1,
+        "keyColumnsMatch": true
+      },
+      {
+        "name": "workforce_reconciliation_tenant_states",
+        "present": false,
+        "ordinaryTable": false,
+        "rls": false,
+        "forcedRls": false,
+        "ownerAbility": false,
+        "bytes": 0,
+        "estimatedRows": 0,
+        "keyColumnsMatch": false
+      },
+      {
+        "name": "workforce_shift_assignments",
+        "present": true,
+        "ordinaryTable": true,
+        "rls": true,
+        "forcedRls": true,
+        "ownerAbility": true,
+        "bytes": 57344,
+        "estimatedRows": 0,
+        "keyColumnsMatch": true
+      },
+      {
+        "name": "workforce_shift_snapshots",
+        "present": true,
+        "ordinaryTable": true,
+        "rls": true,
+        "forcedRls": true,
+        "ownerAbility": true,
+        "bytes": 65536,
+        "estimatedRows": 0,
+        "keyColumnsMatch": true
+      },
+      {
+        "name": "workforce_shift_templates",
+        "present": true,
+        "ordinaryTable": true,
+        "rls": true,
+        "forcedRls": true,
+        "ownerAbility": true,
+        "bytes": 114688,
+        "estimatedRows": 0,
+        "keyColumnsMatch": true
+      },
+      {
+        "name": "workforce_site_transitions",
+        "present": true,
+        "ordinaryTable": true,
+        "rls": true,
+        "forcedRls": true,
+        "ownerAbility": true,
+        "bytes": 73728,
+        "estimatedRows": -1,
+        "keyColumnsMatch": true
+      },
+      {
+        "name": "workforce_timesheet_approvals",
+        "present": true,
+        "ordinaryTable": true,
+        "rls": true,
+        "forcedRls": true,
+        "ownerAbility": true,
+        "bytes": 65536,
+        "estimatedRows": 0,
+        "keyColumnsMatch": true
+      }
+    ],
+    "indexes": [
+      {
+        "name": "wf_recon_approval_group_c_idx",
+        "present": false,
+        "shapeMatch": false
+      },
+      {
+        "name": "wf_recon_approvals_c_idx",
+        "present": false,
+        "shapeMatch": false
+      },
+      {
+        "name": "wf_recon_assessments_c_idx",
+        "present": false,
+        "shapeMatch": false
+      },
+      {
+        "name": "wf_recon_events_c_idx",
+        "present": false,
+        "shapeMatch": false
+      },
+      {
+        "name": "wf_recon_evidence_c_idx",
+        "present": false,
+        "shapeMatch": false
+      },
+      {
+        "name": "wf_recon_exceptions_c_idx",
+        "present": false,
+        "shapeMatch": false
+      },
+      {
+        "name": "wf_recon_exports_c_idx",
+        "present": false,
+        "shapeMatch": false
+      },
+      {
+        "name": "wf_recon_transitions_c_idx",
+        "present": false,
+        "shapeMatch": false
+      },
+      {
+        "name": "wf_recon_workdays_c_idx",
+        "present": false,
+        "shapeMatch": false
+      },
+      {
+        "name": "wf_reconciliation_due_attempt_org_idx",
+        "present": false,
+        "shapeMatch": false
+      }
+    ],
+    "guard": {
+      "present": true,
+      "shapeMatch": true,
+      "bodyMd5": "712f178455a49648664dba800c9f52d8",
+      "ownerAbility": true,
+      "triggerBound": true
+    },
+    "ledgerGuards": {
+      "appendFunctionMatches": true,
+      "revisionFunctionMatches": true,
+      "appendTriggerBound": true,
+      "revisionTriggerBound": true
+    },
+    "defaultAcl": {
+      "canCreatePublicSchema": true,
+      "explicitPrivilegeRows": 5,
+      "publicPrivilegeRows": 0,
+      "nonOwnerWriteRows": 3,
+      "grantableRows": 0
+    },
+    "activity": {
+      "visibilityComplete": true,
+      "otherActiveSessions": 1,
+      "otherOpenTransactions": 1,
+      "lockWaitSessions": 0
+    }
+  },
+  "limits": [
+    "Metadata only; not a release, staging, full migration replay or C12 acceptance",
+    "Relation rows are PostgreSQL estimates; live activity is one observation, not a reserved DDL quiet window",
+    "Ordinary CREATE INDEX can block writes; elapsed time and future contention are not proved",
+    "Decision guards cover row UPDATE/DELETE/INSERT; no TRUNCATE or privileged-bypass guarantee",
+    "No business rows, role names, credentials, environment values or raw logs exported",
+    "No production files, grants, role configuration, tenant activation or data mutated"
+  ],
+  "code": null,
+  "sqlState": null,
+  "envDetail": null
+}

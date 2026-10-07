@@ -1,0 +1,418 @@
+{
+  "reviewVersion": 1,
+  "reviewedAtUtc": "2026-10-07T17:29:03.217869+00:00",
+  "reviewer": "/root/inspect_outcome_contract",
+  "scope": "Read-only independent evaluation of one received actual production catalog snapshot and accepted source contracts. No new production query or mutations; no source/test edits.",
+  "authorshipDisclosure": {
+    "reviewerAuthoredPreflightHelperSqlAndVerificationHarnesses": true,
+    "ownSourceReviewIsNotIndependentAuthorshipReview": true,
+    "rootReviewedOwnHelperSqlWorkflowAndHarnessesAtPublishedCheckpoints": true,
+    "independentHere": "Interpretation of received runtime outcomes, bindings, precise blockers and source contract limits; original root review remains applicable."
+  },
+  "decision": {
+    "status": "ACTUAL_METADATA_VALID_BUT_INCOMPLETE_RELEASE_HELD_FOR_DEFAULT_ACL_RECIPIENT_REVIEW",
+    "originalReportStatus": "INCOMPLETE",
+    "originalProductionJobConclusion": "failure",
+    "exactReleaseBlocker": "DEFAULT_ACL_UNREVIEWED",
+    "sourceDefectEstablishedByThisSnapshot": false,
+    "unsafeActualRecipientEstablished": false,
+    "accessChangeEstablishedNecessary": false,
+    "overallTaskExternallyBlocked": false,
+    "safeIndependentContinuation": "Prepare separate strictly sanitized read-only recipient/profile evidence; preserve original helper/SQL/predicate/tests and original FAIL. No approval or grants modification inferred."
+  },
+  "frozenCandidate": {
+    "cwd": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-release-integration-20261007",
+    "head": "8fcf51b8a600c49c34c2d7e87e25b7eae952aa69",
+    "tree": "c4398c5aecbb5064fd26db692672cb982adf80b6",
+    "cleanWorktreeObserved": true,
+    "productionArtifactAndExpectedMainSha": "50466e3fce9f23eaba8079a51be914fe6a6eff07",
+    "targetWorkforceSourceSha": "9f3cc73dcdb8c4ccea1fdac9dfae29570339abc5"
+  },
+  "actualRun": {
+    "id": 37657755660,
+    "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37657755660",
+    "attempt": 1,
+    "event": "workflow_dispatch",
+    "head": "50466e3fce9f23eaba8079a51be914fe6a6eff07",
+    "status": "completed",
+    "conclusion": "failure",
+    "jobs": [
+      {
+        "id": 112917119418,
+        "head_sha": "50466e3fce9f23eaba8079a51be914fe6a6eff07",
+        "name": "source-validation",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37657755660/job/112917119418"
+      },
+      {
+        "id": 112917468249,
+        "head_sha": "50466e3fce9f23eaba8079a51be914fe6a6eff07",
+        "name": "production-metadata",
+        "status": "completed",
+        "conclusion": "failure",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37657755660/job/112917468249"
+      }
+    ],
+    "sourceValidationTestCount": {
+      "count": 22,
+      "origin": "Root supplied actual source lane result; received job metadata independently confirms SUCCESS. No second test execution."
+    }
+  },
+  "originalEvidence": {
+    "files": [
+      {
+        "path": "/tmp/hrm-prod-metadata-third-504.json",
+        "bytes": 8216,
+        "sha256": "cf5a799abb9cb1208b5a37d791b75f12af4714c30d9de4b2a8c6d842005abc1c"
+      },
+      {
+        "path": "/tmp/hrm-prod-metadata-third-504.zip",
+        "bytes": 1877,
+        "sha256": "2c02763719aa5e441929c39c67a5cf5091a6406ddfb71aaad10299aaea8aa2c5"
+      },
+      {
+        "path": "/tmp/hrm-prod-metadata-third-504.log",
+        "bytes": 115002,
+        "sha256": "574fb5d774b3662793468d032c50f803a6406bb508879f31953f322b21a8cf96"
+      },
+      {
+        "path": "/tmp/hrm-prod-metadata-third-504-run.json",
+        "bytes": 12413,
+        "sha256": "8959779d8fd278a4f4613f7559b9f4e56051d2b049b187592d032a517ad6caba"
+      },
+      {
+        "path": "/tmp/hrm-prod-metadata-third-504-jobs.json",
+        "bytes": 5692,
+        "sha256": "1778aaedffba16ea524f889a0db18771b1c9641b548e05431d792d8f0a00b4ad"
+      },
+      {
+        "path": "/tmp/hrm-peer-third-504-validated.json",
+        "bytes": 8216,
+        "sha256": "cf5a799abb9cb1208b5a37d791b75f12af4714c30d9de4b2a8c6d842005abc1c"
+      }
+    ],
+    "artifactId": 11499222056,
+    "artifactIdOrigin": "Root supplied GitHub artifact metadata; digest independently matched retained ZIP",
+    "zipCrcBadMember": null,
+    "zipMembers": [
+      {
+        "name": "hrm-metadata-result.json",
+        "bytes": 8216,
+        "sha256": "cf5a799abb9cb1208b5a37d791b75f12af4714c30d9de4b2a8c6d842005abc1c"
+      }
+    ],
+    "memberEqualsStandaloneSanitizedReport": true,
+    "rawProductionLogContentsNotExported": true
+  },
+  "receivedOutputValidation": {
+    "operation": "Node CLI --validate-output over received JSON only; no SQL/SSH/production connection",
+    "fullExpectedSha": "50466e3fce9f23eaba8079a51be914fe6a6eff07",
+    "exitCode": 0,
+    "sourceBindingsMatchedCurrentAndGitMain": true,
+    "returnedStatus": "INCOMPLETE",
+    "returnedBytesSameOriginal": true,
+    "interpretation": "Exit0 proves schema/source/assessment consistency of an INCOMPLETE report, never readiness or production job PASS. Remote inspect deliberately exits1 unless READY_FOR_REVIEW.",
+    "capacityBeforeSmallCheck": {
+      "ramAvailableGiB": 14,
+      "diskAvailableGiB": 276,
+      "memoryPressureAvg10": 0
+    }
+  },
+  "sourceBindings": [
+    {
+      "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-release-integration-20261007/scripts/hrm-migration-metadata-preflight.mjs",
+      "bytes": 24904,
+      "sha256": "46b417da7bbe763960b8ede8fa0e9dbd98543d090d54f73979289504bfe35771",
+      "repositoryPath": "scripts/hrm-migration-metadata-preflight.mjs",
+      "verifiedAgainstGitRef": "50466e3fce9f23eaba8079a51be914fe6a6eff07",
+      "gitBytesIdentical": true
+    },
+    {
+      "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-release-integration-20261007/scripts/hrm-migration-metadata-preflight.sql",
+      "bytes": 14770,
+      "sha256": "b174e32eb68a0dbcca98e8557fe8c716ed8277111e79ba822bce43f4e7023b6a",
+      "repositoryPath": "scripts/hrm-migration-metadata-preflight.sql",
+      "verifiedAgainstGitRef": "50466e3fce9f23eaba8079a51be914fe6a6eff07",
+      "gitBytesIdentical": true
+    },
+    {
+      "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-release-integration-20261007/.github/workflows/hrm-migration-metadata-preflight.yml",
+      "bytes": 7131,
+      "sha256": "f90937ecda3b81e7dd017819cfaec1afdefc5fee58167fdfc2289ce012a1dcf1",
+      "repositoryPath": ".github/workflows/hrm-migration-metadata-preflight.yml",
+      "verifiedAgainstGitRef": "50466e3fce9f23eaba8079a51be914fe6a6eff07",
+      "gitBytesIdentical": true
+    },
+    {
+      "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-release-integration-20261007/prisma/migrations/20261005193000_workforce_reconciliation_operations/migration.sql",
+      "bytes": 2721,
+      "sha256": "c452e7f6d13dca1e5257d8353c252745d05cd4f18eae83cd45501f61664ef719",
+      "repositoryPath": "prisma/migrations/20261005193000_workforce_reconciliation_operations/migration.sql",
+      "verifiedAgainstGitRef": "9f3cc73dcdb8c4ccea1fdac9dfae29570339abc5",
+      "gitBytesIdentical": true
+    },
+    {
+      "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-release-integration-20261007/prisma/migrations/20261006150000_workforce_transferred_assignment_window/migration.sql",
+      "bytes": 3664,
+      "sha256": "239c19f1a973fd0687fc0d558d628befa50cbe3ce9e6a3a0b24c02361a7e533f",
+      "repositoryPath": "prisma/migrations/20261006150000_workforce_transferred_assignment_window/migration.sql",
+      "verifiedAgainstGitRef": "9f3cc73dcdb8c4ccea1fdac9dfae29570339abc5",
+      "gitBytesIdentical": true
+    },
+    {
+      "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-release-integration-20261007/docs/MIGRATION_RUNBOOK.md",
+      "bytes": 8110,
+      "sha256": "6496508994f74a1c65e1b308d9e6812dad436ff2efc9935d41d4d6b564a42d14",
+      "repositoryPath": "docs/MIGRATION_RUNBOOK.md"
+    },
+    {
+      "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-release-integration-20261007/scripts/server-deploy.sh",
+      "bytes": 505103,
+      "sha256": "9fbeede30d3ba9f032202c1e435a8b44c14372c6a19725f160bc188641829f52",
+      "repositoryPath": "scripts/server-deploy.sh"
+    },
+    {
+      "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-release-integration-20261007/clients/registry.json",
+      "bytes": 3777,
+      "sha256": "4bf46474fe28f4d7c424d747189f9bbf04cee89dbc15f8436d5226f7a4eb6044",
+      "repositoryPath": "clients/registry.json"
+    },
+    {
+      "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-release-integration-20261007/prisma/migrations/20260712210000_grant_app_role_social_relevance_feedback/migration.sql",
+      "bytes": 1774,
+      "sha256": "c6128eb0526a524b2254418f7f6ca5b843fde86e662d8b53f1a721f517fb74a7",
+      "repositoryPath": "prisma/migrations/20260712210000_grant_app_role_social_relevance_feedback/migration.sql"
+    },
+    {
+      "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-release-integration-20261007/scripts/backup/bootstrap-backup-role.sql",
+      "bytes": 3743,
+      "sha256": "3762224949c9bc2e30f52a4e221c547c9c68c90d86c8ef9e84aca5914b4bdc75",
+      "repositoryPath": "scripts/backup/bootstrap-backup-role.sql"
+    },
+    {
+      "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-release-integration-20261007/prisma/migrations/20260907160000_event_platform_cutover_gate_owner_only_acl/migration.sql",
+      "bytes": 1986,
+      "sha256": "e3ecae3e282942c0a93ed8e80d0d0d9cd75aa003c7b38421c19a5678cf27b683",
+      "repositoryPath": "prisma/migrations/20260907160000_event_platform_cutover_gate_owner_only_acl/migration.sql"
+    }
+  ],
+  "actualPositiveCatalogFacts": {
+    "sourceAndProductionCoupled": true,
+    "readOnlyRepeatableRead": true,
+    "freshMigrationRoleDefaults": {
+      "lockTimeoutMs": 10000,
+      "statementTimeoutMs": 840000,
+      "readOnlyForced": true
+    },
+    "migrationRoleBooleanProfile": {
+      "noSuperuser": true,
+      "bypassRls": true,
+      "canLogin": true,
+      "sessionIdentityUnchanged": true,
+      "expectedIdentity": true
+    },
+    "migrationLedger": {
+      "totalRows": 529,
+      "unresolvedRows": 0,
+      "bothKnownMigrationsPending": true,
+      "knownMigrationRows": [
+        {
+          "name": "20261005193000_workforce_reconciliation_operations",
+          "rows": 0,
+          "applied": 0,
+          "unresolved": 0,
+          "rolledBack": 0,
+          "checksumMatch": true
+        },
+        {
+          "name": "20261006150000_workforce_transferred_assignment_window",
+          "rows": 0,
+          "applied": 0,
+          "unresolved": 0,
+          "rolledBack": 0,
+          "checksumMatch": true
+        }
+      ],
+      "checksumQualification": "checksumMatch=true with zero rows means no recorded checksum mismatch; not proof that pending migrations were applied, nor a replay of all529 historical migrations."
+    },
+    "expectedExistingRelationsOrdinaryOwnerAbilityKeyTypesAndForceRls": true,
+    "organizationsException": "Ordinary table and unique nonnullTEXT key/owner ability proved; absent RLS is explicitly permitted for this FK-only dependency.",
+    "pendingDormantStateTableAndAll10PlannedIndexesAbsentAsExpected": true,
+    "existingAssignmentGuard": {
+      "present": true,
+      "shapeMatch": true,
+      "bodyMd5": "712f178455a49648664dba800c9f52d8",
+      "ownerAbility": true,
+      "triggerBound": true
+    },
+    "existingDecisionLedgerPhysicalGuards": {
+      "appendFunctionMatches": true,
+      "revisionFunctionMatches": true,
+      "appendTriggerBound": true,
+      "revisionTriggerBound": true
+    },
+    "decisionLedgerQualification": "Proves current declared key/caseRevision type+nullability, FORCE RLS and enabled source-body-bound BEFORE UPDATE/DELETE append guard plus BEFORE INSERT revision guard. Does not prove TRUNCATE protection, future role access, actual human HR writes/outcomes or operational rates."
+  },
+  "blockingAclFact": {
+    "observed": {
+      "canCreatePublicSchema": true,
+      "explicitPrivilegeRows": 5,
+      "publicPrivilegeRows": 0,
+      "nonOwnerWriteRows": 3,
+      "grantableRows": 0
+    },
+    "predicate": {
+      "path": "scripts/hrm-migration-metadata-preflight.mjs",
+      "line": 212,
+      "condition": "publicPrivilegeRows > 0 OR nonOwnerWriteRows > 0",
+      "actualEvaluation": true,
+      "unchanged": true
+    },
+    "sqlScope": "Exploded explicit TABLE default ACL entries for current migration creator role, global or public schema. Nonowner write means INSERT/UPDATE/DELETE/TRUNCATE/TRIGGER/REFERENCES.",
+    "threeMeans": "Three privilege entries, not three roles, not necessarily exactly INSERT+UPDATE+DELETE; recipient/type grouping not exported.",
+    "factsNotInSnapshot": [
+      "Recipient identity or equality to canonical application principal",
+      "Each actual write privilege type",
+      "Recipient NOSUPERUSER/NOBYPASSRLS and effective SET ROLE capability",
+      "Actual source/approval of these default grants",
+      "Effective ACL on the not-yet-created state table"
+    ],
+    "positiveButInsufficient": [
+      "PUBLIC privilege entries0",
+      "grant options0",
+      "migration creator ability to CREATE public true",
+      "planned state table FORCE RLS"
+    ],
+    "alreadyProvableSourceFacts": [
+      {
+        "path": "prisma/migrations/20260712210000_grant_app_role_social_relevance_feedback/migration.sql",
+        "fact": "An earlier source migration intentionally grants future creator-role public TABLE SELECT/INSERT/UPDATE/DELETE to dynamically derived social_mentions owner. This is a possible normal explanation, not a proof of actual current ACL recipients or application equality."
+      },
+      {
+        "path": "scripts/backup/bootstrap-backup-role.sql",
+        "fact": "Existing backup setup intentionally grants future-table SELECT only to configured backup principal. This could explain another SELECT row; current snapshot does not identify it and setup must not be executed to resolve this review."
+      },
+      {
+        "path": "prisma/migrations/20260907160000_event_platform_cutover_gate_owner_only_acl/migration.sql",
+        "fact": "Existing incident/source explicitly shows new tables inherit default privileges even when migration has no GRANT. Owner-only countermeasures in that separate migration are not authority to revoke HRM access."
+      },
+      {
+        "path": "scripts/server-deploy.sh:919 and docs/MIGRATION_RUNBOOK.md:64",
+        "fact": "Existing route validates canonical app/migrator role separation, same live database and application privileged SET role exclusions. It does not join actual default-ACL write recipients to the canonical app identity; registry/runbook approve no finite recipient list."
+      }
+    ],
+    "currentEvidenceOnlyResolutionAvailable": false,
+    "noAutomaticResolution": [
+      "Do not erase/replace the original INCOMPLETE/FAIL",
+      "Do not drop nonOwnerWriteRows condition or exclude dangerous types for green",
+      "Do not infer safe recipients from count3 or FORCE RLS",
+      "Do not assume a need to revoke/alter unknown production roles",
+      "Do not modify actual grants/role config/secrets/tenant activation"
+    ]
+  },
+  "migrationDdlSafetyAssessment": {
+    "firstMigration": "Creates one dormant organization-owned table and10 ordinary indexes total, FORCE RLS plus explicit tenant policy; no explicit grants/backfill/activation. Existing creator default ACL still applies automatically to the new table.",
+    "secondMigration": "Only reviewed source-bound INVOKER trigger function replacement with SET lock_timeout3s; historical assignment closing remains limited to unchanged identity and narrowing end, snapshot immutability retained. No row/grant/activation writes.",
+    "plannedIndexedTableSizes": {
+      "largestExistingIndexedRelation": "mtm_audit_logs",
+      "largestBytes": 2269184,
+      "largestEstimatedRows": 3177,
+      "negativeEstimatedRowsMeaning": "Unknown catalog statistics, not empty-table proof"
+    },
+    "snapshotActivity": {
+      "visibilityComplete": true,
+      "otherActiveSessions": 1,
+      "otherOpenTransactions": 1,
+      "lockWaitSessions": 0
+    },
+    "activityAndSizeAreNotAdditionalProvenBlockers": true,
+    "qualification": "Ordinary CREATE INDEX can block writers; single observed active/open transaction and few-MB catalog estimates neither prove future quiet nor require an invented reserved maintenance window. No DDL timing/lock rehearsal or query-age/relation-lock classification was performed.",
+    "existingNormalDeployProtections": {
+      "pendingMigrationCheck": "server-deploy.sh:4089 identifies pending incoming migrations and enforces quiet check; unreadable falls back to wait. Both known migrations are pending.",
+      "quietWindowActualSource": "server-deploy.sh:1066 default60 attempts with5s waits, bounded about5min; requires active DB sessions and live system/collector/outbound leases all0. No forced termination.",
+      "runbookQualification": "MIGRATION_RUNBOOK.md:74 still describes60s. Executable source explicitly records replacement with5min polling. This documentation drift is not a new source readiness defect or a changed gate.",
+      "freshDefaults": "10s lock/14min statement validated; helper own observation transaction separately bounded2s lock/10s statement. Second migration uses3s lock limit.",
+      "remaining": "Normal deployment must actually run its current quiet/backup/migration/postcondition path and retain failures; this received observation reserves no future quiet window."
+    }
+  },
+  "proposedSafeContinuationNotExecuted": {
+    "existingEvidenceOnlyPathNow": false,
+    "newTool": "Separate source-reviewed main-only protected read-only catalog inspector; old generic helper/SQL/assessMetadata/tests byte unchanged.",
+    "finiteEvidence": "Default ACL grouping GLOBAL/PUBLIC and OWNER/EXPECTED_RUNTIME/PUBLIC/OTHER, finite privilege types/counts, role super/bypass/login booleans and effective privileged SET count. Internal canonical runtime identity comparison; no names/OIDs/URI/env values/business rows/raw errors exported.",
+    "identityAuthority": "Privately parsed exact canonical app connection identity must match migration database connection; actual app session/profile/liveness reliance on already SHA-bound fresh deploy validation disclosed or new explicitly bounded read-only proof supplied. URL username alone is not fresh authenticated app-session proof.",
+    "outcome": "READ_COMPLETE catalog receipt only, no READY or automated ACL approval. Separate independent manual review may establish that all disputed nonowner WRITE entries are existing canonical runtime I/U/D with safe protected profile and reviewed new-table tenant policy; retain original generic INCOMPLETE and job FAIL.",
+    "scopeBoundary": "Old disputed predicate does not reject unrelated non-PUBLIC SELECT alone. Preserve such entry classification/unknown identity limits; do not invent an additional automatic SELECT blocker or claim a backup identity without proof. PUBLIC/unknown writes, privileged SET/profile or TRUNCATE/TRIGGER/REFERENCES must retain release hold.",
+    "requires": "New source checkpoint, normal reviewed infrastructure PR/current-source CI and protected-route actual diagnostic before an ACL decision; no current production access change demonstrated necessary."
+  },
+  "retainedOriginalFailures": [
+    {
+      "runId": 37641215366,
+      "status": "ERROR/production jobFAIL",
+      "code": "ENV_INVALID",
+      "catalogNeverRead": true,
+      "files": [
+        {
+          "path": "/tmp/hrm-prod-metadata-first-8235.json",
+          "bytes": 1115,
+          "sha256": "cc6afea47d3d56984aac556ddadb0337eb9941b9b7c4c769e38783f352e42fc3"
+        },
+        {
+          "path": "/tmp/hrm-prod-metadata-first-8235.zip",
+          "bytes": 847,
+          "sha256": "a3f2d68839fac7e80fd0f86857252f38893fba241f3df461103a20b4f18b60c7"
+        }
+      ]
+    },
+    {
+      "runId": 37650822335,
+      "status": "ERROR/production jobFAIL",
+      "code": "ENV_INVALID",
+      "envDetail": "PARAM_UNSUPPORTED_CONNECT_TIMEOUT",
+      "actualValueUnknown": true,
+      "catalogNeverRead": true,
+      "files": [
+        {
+          "path": "/tmp/hrm-prod-metadata-second-5ce.json",
+          "bytes": 1167,
+          "sha256": "68069519d62d29d6cccae5d6797cceb0bc12050941b7846ee9c8b34555c6c262"
+        },
+        {
+          "path": "/tmp/hrm-prod-metadata-second-5ce.zip",
+          "bytes": 887,
+          "sha256": "ea62a225e6b65d835992beb6fbbe31e276c37afed6023c9e244c05b15355721d"
+        }
+      ]
+    },
+    {
+      "runId": 37657755660,
+      "status": "INCOMPLETE/production jobFAIL",
+      "code": null,
+      "catalogActuallyRead": true,
+      "reason": "DEFAULT_ACL_UNREVIEWED",
+      "retained": true
+    }
+  ],
+  "limits": [
+    "No source changes, production dispatch/query/SSH, database/role/config/grant writes, tenant activation, secret changes, deployment or merge by reviewer.",
+    "No second runtime execution; received-output validation only.",
+    "Functional C6 candidate8fc current technicalCI remains accepted separately; catalog snapshot is pre-release metadata and does not prove own HRM production release or feature smoke.",
+    "No actual HR sample/rate/outcome or sustained operations observed; no synthetic C12 credit and no task/roadmap closure.",
+    "No full historical ledger replay, new table post-migration policy/constraint proof or actual DDL-duration bound.",
+    "Reviewer authored verification code; root independent source review retained, independent here is runtime evidence interpretation."
+  ],
+  "primaryReferences": [
+    {
+      "url": "https://www.postgresql.org/docs/16/sql-alterdefaultprivileges.html",
+      "claim": "Default privileges affect future creator-role objects; global and schema defaults can contribute to new table ACL."
+    },
+    {
+      "url": "https://www.postgresql.org/docs/16/ddl-rowsecurity.html",
+      "claim": "FORCE RLS does not constrain TRUNCATE/REFERENCES; superuser/BYPASSRLS principals bypass row policies."
+    },
+    {
+      "url": "https://www.postgresql.org/docs/16/sql-createindex.html",
+      "claim": "Ordinary index construction allows reads but blocks table writes; catalog size alone does not establish elapsed lock duration."
+    }
+  ]
+}
