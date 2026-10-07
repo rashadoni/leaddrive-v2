@@ -67,15 +67,15 @@ test("root, artifact, env and exact endpoint failures occur before SQL", () => {
   const cases = [
     [{ uid: 1 }, "INPUT_INVALID"],
     [{ read: () => "b".repeat(40) }, "ARTIFACT_MISMATCH"],
-    [{ read: path => path.endsWith("app.env") ? "DATABASE_URL='" + migrationUrl + "'" : read(path) }, "IDENTITY_UNPROVED"],
+    [{ read: path => path.endsWith("app.env") ? "DATABASE_URL='" + migrationUrl + "'" : read(path) }, "IDENTITY_PRINCIPALS_EQUAL"],
     [{ read: path => path.endsWith("app.env") ? "" : read(path) }, "APP_ENV_INVALID"],
     [{ read: path => path.endsWith("migration.env") ? "" : read(path) }, "MIGRATION_ENV_INVALID"],
     [{ read: path => { if (path.endsWith("app.env")) throw new Error("FILES_UNSAFE"); return read(path) } }, "FILES_UNSAFE"],
     [{ read: path => { if (path.endsWith("app.env")) throw new Error("SOURCE_CHANGED"); return read(path) } }, "SOURCE_CHANGED"],
   ]
-  for (const [key, value] of [["hostname", "other.example.invalid"], ["port", "5433"], ["pathname", "/other-fixture"]]) {
+  for (const [key, value, code] of [["hostname", "other.example.invalid", "IDENTITY_ENDPOINT_HOST_MISMATCH"], ["port", "5433", "IDENTITY_ENDPOINT_PORT_MISMATCH"], ["pathname", "/other-fixture", "IDENTITY_ENDPOINT_DATABASE_MISMATCH"]]) {
     const url = new URL(appUrl); url[key] = value
-    cases.push([{ read: path => path.endsWith("app.env") ? "DATABASE_URL='" + url.href + "'" : read(path) }, "IDENTITY_UNPROVED"])
+    cases.push([{ read: path => path.endsWith("app.env") ? "DATABASE_URL='" + url.href + "'" : read(path) }, code])
   }
   for (const [overrides, code] of cases) {
     const report = inspect({ ...overrides, query: () => assert.fail("rejected configuration must not query SQL") })
@@ -87,8 +87,8 @@ test("root, artifact, env and exact endpoint failures occur before SQL", () => {
 
 test("session, primary, read-only, catalog identity and protected role profiles fail closed", () => {
   const cases = []
-  for (const mode of ["runtime", "migration"]) for (const field of ["expectedIdentity", "sessionIdentityUnchanged", "primary", "readOnly", "repeatableRead"]) cases.push([mode, s => { s.identity[field] = false }, "IDENTITY_UNPROVED"])
-  for (const field of ["systemIdentifier", "databaseOid", "databaseName"]) cases.push(["migration", s => { s.identity[field] = field === "databaseName" ? "other-private-database" : "98765" }, "IDENTITY_UNPROVED"])
+  for (const mode of ["runtime", "migration"]) for (const field of ["expectedIdentity", "sessionIdentityUnchanged", "primary", "readOnly", "repeatableRead"]) cases.push([mode, s => { s.identity[field] = false }, mode === "runtime" ? "IDENTITY_RUNTIME_SESSION_UNPROVED" : "IDENTITY_MIGRATION_SESSION_UNPROVED"])
+  for (const field of ["systemIdentifier", "databaseOid", "databaseName"]) cases.push(["migration", s => { s.identity[field] = field === "databaseName" ? "other-private-database" : "98765" }, "IDENTITY_CATALOG_MISMATCH"])
   for (const mode of ["runtime", "migration"]) for (const field of ["present", "noSuperuser", "canLogin"]) cases.push([mode, s => { s.roleProfile[field] = false }, "PROFILE_UNPROVED"])
   cases.push(["runtime", s => { s.roleProfile.noBypassRls = false }, "PROFILE_UNPROVED"], ["runtime", s => { s.roleProfile.setPrivilegedCount = 1 }, "PROFILE_UNPROVED"], ["migration", s => { s.roleProfile.noBypassRls = true }, "PROFILE_UNPROVED"])
   for (const [target, mutate, code] of cases) {
