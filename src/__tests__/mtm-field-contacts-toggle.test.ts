@@ -86,9 +86,12 @@ describe("field contacts organization switch", () => {
       }
     }
     const az = JSON.parse(source("messages/az.json"))
-    expect(az.mtmSettingsPage.lblFieldContacts).toBe("Sahə kontaktları (həkim, əczaçı və s.)")
+    // The switch is named after the menu item it hides («Müştərilər»), not
+    // after the internal «field contacts» (owner, 2026-10-08: «переводы
+    // какие-то непонятные»), and still says that nothing is deleted.
+    expect(az.mtmSettingsPage.lblFieldContacts).toBe(`${az.nav.mtmContacts} (həkim, əczaçı və s.)`)
     expect(az.mtmSettingsPage.hintFieldContacts)
-      .toBe("Söndürüldükdə menyudan və agent tətbiqindən kontaktlar gizlədilir; məlumatlar silinmir.")
+      .toBe("Söndürüləndə bölmə menyudan və agent tətbiqindən itir. Məlumatlar silinmir.")
   })
 
   it("holds a neutral placeholder until the switch is known", () => {

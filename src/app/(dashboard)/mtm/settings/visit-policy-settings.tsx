@@ -115,7 +115,14 @@ function modeIcon(mode: Mode) {
   return Eye
 }
 
-export function VisitPolicySettings() {
+export function VisitPolicySettings({ legacyPhotoRequired = false }: {
+  /**
+   * The old «photo required on every visit» setting. It applies only while no
+   * rule matches, and its own switch is gone from the page — the switches
+   * below show it and carry it into the rule their first press creates.
+   */
+  legacyPhotoRequired?: boolean
+} = {}) {
   const t = useTranslations("mtmVisitPolicies")
   const explainError = useMtmApiError()
   const [access, setAccess] = useState<VisitPolicyUiAccess | null>(null)
@@ -334,13 +341,13 @@ export function VisitPolicySettings() {
   const editorHidden = !advancedOpen && !featureDisabled && !loadError
 
   return (
-    <section className="border-t border-zinc-200 pt-6 dark:border-zinc-800">
+    <section>
       {/* What an agent is shown in a visit, and what he must do: two switches
           per action. Not drawn while the rules are switched off or unread —
           the notice below says why instead. */}
       {featureDisabled || loadError ? null : (
         <>
-          <VisitActionSwitches rules={policies} access={access} loading={loading} onSaved={() => load(true)} />
+          <VisitActionSwitches rules={policies} access={access} loading={loading} onSaved={() => load(true)} legacyPhotoRequired={legacyPhotoRequired} />
           <button
             type="button"
             aria-expanded={advancedOpen}

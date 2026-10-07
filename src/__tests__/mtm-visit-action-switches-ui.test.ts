@@ -153,6 +153,21 @@ describe("«Что агент делает в визите»", () => {
     expect(states("SIGNATURE")).toEqual([["true", false], ["true", false]])
   })
 
+  // The older «photo required on every visit» setting has no switch of its
+  // own any more: the settings page hands it to this block.
+  it("shows the older «photo required» setting on the photo row and keeps it in the first rule", async () => {
+    policies = []
+    await act(async () => { root.render(createElement(VisitPolicySettings, { legacyPhotoRequired: true })) })
+    await settle()
+    expect(states("PHOTO")).toEqual([["true", false], ["true", false]])
+
+    await press("SIGNATURE", 1)
+    expect((writes[0].body.actions as Action[]).map((item) => [item.actionKey, item.mode]).slice(0, 3)).toEqual([
+      ["PHOTO", "REQUIRED"], ["PRESENTATION", "OPTIONAL"], ["SIGNATURE", "REQUIRED"],
+    ])
+    expect(states("PHOTO")).toEqual([["true", false], ["true", false]])
+  })
+
   it("stays as it was and says so when the server refuses", async () => {
     await open()
     refuse = { status: 409, body: { error: "Visit policies are disabled", code: "MTM_VISIT_POLICIES_DISABLED" } }
