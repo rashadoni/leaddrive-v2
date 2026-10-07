@@ -117,7 +117,7 @@ export async function recordScopedWorkforceExceptionDecision(
         workforceExceptionCase: tx.workforceExceptionCase,
         workforceExceptionDecision: tx.workforceExceptionDecision,
         workforceExceptionCaseLookup: {
-          findFirst: (args) => tx.workforceExceptionCase.findFirst(args),
+          findFirst: (args: Parameters<WorkforceExceptionCaseWriterDb["workforceExceptionCaseLookup"]["findFirst"]>[0]) => tx.workforceExceptionCase.findFirst(args),
         },
         mtmAuditLog: tx.mtmAuditLog,
       } as unknown as WorkforceExceptionCaseWriterDb,

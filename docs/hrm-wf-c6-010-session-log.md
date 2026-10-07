@@ -100,3 +100,11 @@
 - Actual full compiler и exit-code originals сохранены gzip; assessment содержит точный diagnostics count/hash и owned all-family result. Полный compiler остаётся globally NONCLEAN; unchanged gated baseline принят, это не чистая компиляция.
 - Новая implementation/harness checkpoint `b416827b4ce28f633378bb166955ec8ee99d3124` опубликована в draft612. Independent supplement b41627bindings сохранён: no unresolved confirmed source findings, original errors retained, next exact-head runtime gates PENDING.
 - Документальный checkpoint сейчас сохраняет эти receipts без изменения production/source/test/harness bytes. Следующее действие: full exact-ref dispatch нового fullSHA; strict AZ comparison с расширенной диагностикой остаётся.
+
+## 2026-10-07 — квалифицированный compiler результат и узкое устранение diagnostics
+
+- Actual5ead full compiler:1163diagnostics, exit2, both unchanged blocking gates SUCCESS. Changed-file all-family assessment нашёл10diagnostics: API test2TS2502 self-referencing auth parameter type, writer test7TS2558 invalid Vitest generic matcher arguments, service1TS7006 implicit args in inherited facade arrow. Это не zero-owned-compiler; original assessment сохранён точно.
+- Исправления ограничены этими уже затронутыми paths: type-only authContext parameter name; убрать неподдерживаемые type args на toMatchObject с сохранением всех runtime assertions; derive arrow input from exact facade Parameters signature. Роль/grants/SQL/payload/runtime semantics не меняются. Test/type baselines неизменны.
+- Документальный checkpoint bc22188f07fda9555ede63a79ab288f9e7ec3a97 сохранил terminal5eadresults и b416source supplement; теперь требуется новый code checkpoint и exact full hosted verification.
+
+- Точечные type-only corrections: API/writer2files/40tests PASS; scoped source lint PASS; оба baseline byte-unchanged и git diff --check PASS. Independent review подтвердил exact facade Parameters и сохранение runtime assertions; final compiler rerun обязателен.

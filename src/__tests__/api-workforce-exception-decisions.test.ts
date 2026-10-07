@@ -25,7 +25,7 @@ import type { WorkforceExceptionWorkbenchDecision } from "@/lib/workforce/except
 import { issueWorkforceExceptionActionToken } from "@/lib/workforce/exception-workbench-token"
 
 const auth = { orgId: "org_1", userId: "user_1", role: "admin" }
-type Handler = (req: NextRequest, auth: typeof auth) => Promise<Response>
+type Handler = (req: NextRequest, authContext: typeof auth) => Promise<Response>
 const callPost = POST as unknown as Handler
 
 function actionToken(
@@ -410,7 +410,7 @@ describe("Workforce action-token exception-decision API", () => {
   it("leaves the legacy database-id endpoint as a non-oracular tombstone", async () => {
     const legacy = LEGACY_POST as unknown as (
       req: NextRequest,
-      auth: typeof auth,
+      authContext: typeof auth,
       context: { params: Promise<{ id: string }> },
     ) => Promise<Response>
     const response = await legacy(request({}), auth, { params: Promise.resolve({ id: "case_1" }) })
