@@ -83,7 +83,11 @@ function deferred<T>() {
   return { promise, resolve, reject }
 }
 
-function queueResponse(items: ReturnType<typeof queueItem>[]) {
+type QueueResponseItem = ReturnType<typeof queueItem> & {
+  outcomeContext?: { classification: string | null; appeal: string | null; actions: DecisionAction[] }
+}
+
+function queueResponse(items: QueueResponseItem[]) {
   return response(200, { success: true, data: { cases: items } })
 }
 

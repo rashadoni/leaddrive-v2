@@ -108,3 +108,51 @@
 - Документальный checkpoint bc22188f07fda9555ede63a79ab288f9e7ec3a97 сохранил terminal5eadresults и b416source supplement; теперь требуется новый code checkpoint и exact full hosted verification.
 
 - Точечные type-only corrections: API/writer2files/40tests PASS; scoped source lint PASS; оба baseline byte-unchanged и git diff --check PASS. Independent review подтвердил exact facade Parameters и сохранение runtime assertions; final compiler rerun обязателен.
+
+## 2026-10-07 — второй полный exact-head hosted attempt
+
+- Current published source head `722259bebbdda8ba6bd47bb4326c70b5460a319e`, draft612/base608 unchanged.
+- Run37601997137 https://github.com/rashadoni/leaddrive-v2/actions/runs/37601997137 выполняет все5 jobs. Это новый source candidate, не rerun старого head и не PASS.
+- Independent source supplement722 сохранён27bindings +root testtype hashes; оба baseline byte-identical973. Initial5ead compiler1163/10touched/exit2 подтверждён независимо; current722 zero-owned/fullgate acceptance PENDING.
+- Исправлены менеджерский source contract, transaction-only fixture trigger install и touched type diagnostics. Для unresolved AZ FAIL исходный equality сохранён, добавлены safe actual/Node/browser values. Следующий failure/Pass должен оцениваться отдельно; firstFAIL не стирается.
+
+Точка: source/API/UI/metrics реализованы в PR612, latest722 exact hosted gates inprogress, source review сохранён; await actual artifacts и доведение финальной проверки.
+
+## 2026-10-07 — второй browser FAIL и причины
+
+- Exact722 report job112728347528 FAILED на AZ percentage assertion. Новая actual diagnostic receipt показывает DOM/browser `12.5%`, Node `12,5%`, exact share0.125; codepoint46/44. Это подтверждённое расхождение Intl realms в harness expectation, не ошибка числителя/знаменателя. Все API numeric/null/sample assertions сохраняются, rendered expectation будет вычислен в actual browser realm.
+- Classification job112728347866 FAILED при первой UI записи; actual PNG показывает обязательную MFA. Fixture principals имеют TOTP disabled. Mandatory MFA source guard сохраняется: положительная проверка должна пройти canonical real synthetic TOTP verify/session flow.
+- Pending refreshed GET waiter rejected during cleanup and prevented classification receipt write. Original safe workflow JSON, PNG и job log сохраняются без изменения. Исправление observer lifecycle должно сохранять failure/status/code и ждать original promises, не превращать ошибки в PASS.
+- Artifact11473247825 digestsha256:df766f0b00efcdd0df43b6223ad7d341faa8a8d69a20a167bcfa7cba4a756388; artifact11473227805 digestsha256:cd777a39e5bfca9d02575e8c32f133e05f1c424f13671d7ac08f08290fe858cf. Originals сохранены hosted-722-*-attempt2; first5ead artifacts остаются.
+- PostgreSQL current722 gate прошёл; полный compiler/regression/build ещё исполняются, не отменены и не считаются принятыми. Независимая разрешённая часть: доработка fenced disposable browser fixtures и evidence lifecycle.
+
+## 2026-10-07 — второй full regression gate PASS без baseline change
+
+- Exact722 job112728347857 завершён SUCCESS. Actual PostgreSQL4files/44tests PASS; validate/generate, i18n, runner policy, scoped lint PASS. Полный suite вернул ровно18known failing files/18unchangedbaseline; новых failures нет, все baseline entries по-прежнему воспроизводятся. Это baseline-qualified gate, не globally clean suite.
+- Original full hosted regression job log сохранён byte-for-byte gzip `hosted-722-regressions-original.log.gz`. Initial5ead19/18failure остаётся. Compiler/build722 продолжают выполняться; browser722 FAIL остаётся, final acceptance отсутствует.
+
+## 2026-10-07 — повторная сверка refs перед следующим checkpoint
+
+- Remote PR589/605/608 heads остаются a856a9e533c4f3cec6f2313e69f5be0d5b4d4226 / bf6ed11f2bba8c93e828fb044315794b44224741 /973241bacc296b71fe817d1af11187c32e8126af; dependent bases589→605→608 неизменны. PR606/609 по-прежнему validation-only, OPEN, не сливались. PR612 draft base608/head722.
+- origin/main продвинулся с5d71a9a616f9749a6245e211b4f687af7ef8aa8f до62f74eb1a2666f3d3bc4e1d8147b7786516478e0: изменения finance/notification +shared messages/workflows, без HRM implementation paths. Не cherry-pick/rebase и не смешивать с approved608 chain.
+- Current origin/main registry/DEPLOYMENT подтверждают13.140.132.245:/opt/leaddrive-v2 и reviewedmain→GitHubActions SHA artifact. Нет routing conflict. Worktree remains dedicated codex/hrm-wf-c6-010-recorded-decisions-20261007; originhttps://github.com/rashadoni/leaddrive-v2.git; production actions не разрешены и не выполнялись.
+
+- Exact722 isolated bundle build job112728347743 SUCCESS; original log сохранён gzip. `next build --webpack` и standalone/static postconditions исполнились в hosted runner, без production deploy. Next skips type validation by existing config; независимый full compiler job остаётся обязательным и PENDING. Повторная app-thread snapshot: только текущий HRM chat ACTIVE; прежние HRM chats IDLE, external parallel writer не обнаружен.
+
+## 2026-10-07 — исправления browser harness независимо проверены
+
+- Agent-authored3file patch: browserIntl exact percentages; mandatory enrolled TOTP + real verify-2fa/CSRF session update + consumed nonce; all actor/tenant guards keep404; extra authorizedHR withoutMFA403/zero writes. Production MFA/auth/role/tenant guards unchanged.
+- Separate disposable classification SQL grants только users.twoFactorNonce UPDATE к существующим lastLogin/loginCount/updatedAt; фактор/пароль/роль/доступы/recovery columns недоступны app role. SQL enclosed in existing loopbackdb/owner transaction. Это synthetic fixture access, не production access change.
+- Root independently inspected3harness paths and canonical MFA/session source; findings0. Source review artifact root-independent-harness-review-attempt3.json binds currentworkingbytes; runtimePENDING. Every pending response promise observed immediately, sameoriginal promise awaited; safe HTTPstatus/code preserved beforeassert; all secrets/reasons including issuednonce excluded fromreceipt.
+- Local scoped refusal19tests2files PASS, Node20syntax2files PASS, diffcheck PASS after resourcecheck16712MiBavailable/281GiBfree/pressure0. Full local DB/browser/compiler/build NOT RUN per hostcontract. Originalattempt3log preserved gzip. Wait722compiler beforepush to avoid concurrency cancelling its original result.
+
+- Roadmap WF-C6-010 отмечен PARTIAL вместо PLANNED и добавлен отдельный chronological checkpoint: draft implementation, approved rules, exact722 tested scope, browser causes и future acceptancePENDING. DONE count84/161,77open,weighted60% не изменён. Старые roadmap entries не удалялись; live observations/activation не выводятся из synthetic tests.
+
+## 2026-10-07 — второй compiler FAIL, оригинал сохранён
+
+- Exact722 run37601997137 завершён FAILURE: actual buildSUCCESS, schema/lint/i18n/PG/fullregressionsSUCCESS_BASELINE_QUALIFIED; bothbrowserFAIL; compilerFAIL_NEW_GATED_PAIR.
+- Full compiler1154diagnostics/exit2,65gatedpairs против64unchangedbaseline. Previous10 touched diagnostics устранены; остался новый единственный owned TS2353 в queue-action-ui.test.ts:418:302 — добавленный outcomeContext отсутствует в типе queueResponse testfixture.
+- Полный compiler output/exit/joblog/terminalmetadata byte-preserved gzip; artifact11474605533 digestsha256:8f608922f21d41387b9d946d3aa79cf730a571576c0c3ec6097164767d56656b. Assessment сохраняет actualfailure, неPASS.
+- Narrow исправление: явный optional outcomeContext в типе test response fixture; runtime response/expectations/source/baselines не меняются. Independent review и узкий повтор теста обязательны до checkpoint. Затем exact newhead полный hosted cycle, не borrowing722pass.
+
+- Explicit optional testfixture outcomeContext correction: queue UI9/9 PASS; resourcecheck16830MiBavailable/281GiBfree/pressure0. Independent reviewer confirmed runtimeassertions unchanged, full original1163→1154 delta exactly removed10/added1,27production/workflow/dependency bindings byte-identical722. Both baselines unchanged. Next checkpoint binds correctedharness+testtype and preservedoriginals; all5 exactnewhead hosted gates required.

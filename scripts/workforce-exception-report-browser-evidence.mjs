@@ -341,9 +341,10 @@ async function assertRendered(view, truth) {
     nodeCodePoints: Array.from(linkedShareNodeExpected, character => character.codePointAt(0)),
     browserCodePoints: Array.from(linkedShareBrowserExpected, character => character.codePointAt(0)),
   })
-  // Preserve the original equality until actual diagnostics establish the
-  // cause. Numeric fixture/API truth and all semantic assertions stay exact.
-  assert.equal(linkedShareActual, linkedShareNodeExpected)
+  // Actual hosted AZ diagnostics proved different decimal symbols in Node
+  // and Chromium. Compare exact known numeric truth in the rendering realm;
+  // retain both original formatter diagnostics without normalizing text.
+  assert.equal(linkedShareActual, linkedShareBrowserExpected)
   const expected = await view.page.evaluate(expectedDuration, [truth.mean, view.locale])
   receipts.durationRealms ??= []; receipts.durationRealms.push({ locale: view.locale, equal: expectedDuration([truth.mean, view.locale]) === expected })
   assert.equal(await value("workforce-exception-recorded-resolution-mean"), expected ?? view.ui.recordedOutcomes.noSamples)
@@ -354,11 +355,11 @@ async function assertRendered(view, truth) {
     assert.equal((await term.locator("xpath=..").locator("dd").innerText()).trim(), new Intl.NumberFormat(view.locale).format(count))
   }
   const text = await block.innerText()
-  const percentage = share => share === null ? view.ui.recordedOutcomes.noClassifiedSamples : new Intl.NumberFormat(view.locale, { style: "percent", maximumFractionDigits: 2 }).format(share)
-  assert.equal(await value("workforce-exception-false-positive-share"), percentage(truth.classified.falsePositive.share))
-  assert.equal(await value("workforce-exception-appeal-full-share"), percentage(truth.classified.appeal.fullyUpheldShare))
-  assert.equal(await value("workforce-exception-appeal-partial-share"), percentage(truth.classified.appeal.partiallyUpheldShare))
-  assert.equal(await value("workforce-exception-appeal-rejected-share"), percentage(truth.classified.appeal.rejectedShare))
+  const percentage = async share => share === null ? view.ui.recordedOutcomes.noClassifiedSamples : view.page.evaluate(([share, locale]) => new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 2 }).format(share), [share, view.locale])
+  assert.equal(await value("workforce-exception-false-positive-share"), await percentage(truth.classified.falsePositive.share))
+  assert.equal(await value("workforce-exception-appeal-full-share"), await percentage(truth.classified.appeal.fullyUpheldShare))
+  assert.equal(await value("workforce-exception-appeal-partial-share"), await percentage(truth.classified.appeal.partiallyUpheldShare))
+  assert.equal(await value("workforce-exception-appeal-rejected-share"), await percentage(truth.classified.appeal.rejectedShare))
   assert.ok(text.includes(view.ui.recordedOutcomes.linkedHint))
   assert.ok(text.includes(view.ui.recordedOutcomes.resolutionHint))
   noPrivate(await view.page.locator("body").innerText())

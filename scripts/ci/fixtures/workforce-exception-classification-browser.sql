@@ -1,7 +1,9 @@
 -- Separate disposable hosted classification job only. Apply AFTER the
 -- unmodified Today fixture, NEVER with the report-browser extension.
 -- The report fixture remains SELECT-only. This separate job grants only
--- decision/audit INSERT and the existing three authentication UPDATE columns.
+-- decision/audit INSERT, the existing three login UPDATE columns and the
+-- server-issued/consumed MFA nonce column. Factor enrollment is owner seeding;
+-- the app role cannot change factors, credentials, recovery codes or grants.
 -- The harness imports exact production decision revision/append-only routines
 -- after synthetic historical seeding. This is not a full migration replay.
 \set ON_ERROR_STOP on
@@ -39,6 +41,20 @@ BEGIN
   END LOOP;
 END $$;
 GRANT INSERT ON workforce_exception_decisions,mtm_audit_logs TO wf_manager_today_browser;
+GRANT UPDATE ("twoFactorNonce") ON users TO wf_manager_today_browser;
+CREATE FUNCTION wf_classification_browser_mfa_nonce_only() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF current_user='wf_manager_today_browser'
+    AND NEW."twoFactorNonce" IS DISTINCT FROM OLD."twoFactorNonce"
+    AND (NOT OLD."isActive" OR NOT OLD."require2fa" OR NOT OLD."totpEnabled"
+      OR OLD."totpSecret" IS NULL
+      OR (NEW."twoFactorNonce" IS NOT NULL AND NEW."twoFactorNonce" !~ '^[0-9a-f]{64}$')) THEN
+    RAISE EXCEPTION 'Classification browser MFA nonce requires an enrolled synthetic principal' USING ERRCODE='23514';
+  END IF;
+  RETURN NEW;
+END $$;
+CREATE TRIGGER wf_classification_browser_mfa_nonce_only BEFORE UPDATE ON users
+  FOR EACH ROW EXECUTE FUNCTION wf_classification_browser_mfa_nonce_only();
 -- PostgreSQL SELECT ... FOR SHARE requires an UPDATE privilege. The real
 -- historical-membership resolver locks the agent row; this one-column grant
 -- permits that lock while the unconditional trigger rejects every mutation.
@@ -117,6 +133,12 @@ BEGIN
     OR has_any_column_privilege(app_oid,'mtm_audit_logs','UPDATE')
     OR has_table_privilege(app_oid,'mtm_audit_logs','DELETE,TRUNCATE')
     OR has_table_privilege(app_oid,'mtm_agents','UPDATE,DELETE,TRUNCATE')
+    OR has_table_privilege(app_oid,'users','UPDATE,INSERT,DELETE,TRUNCATE')
+    OR NOT has_column_privilege(app_oid,'users','twoFactorNonce','UPDATE')
+    OR EXISTS (SELECT 1 FROM pg_attribute a WHERE a.attrelid='users'::regclass
+      AND a.attnum>0 AND NOT a.attisdropped
+      AND a.attname<>ALL(ARRAY['lastLogin','loginCount','updatedAt','twoFactorNonce'])
+      AND has_column_privilege(app_oid,a.attrelid,a.attname,'UPDATE'))
     OR EXISTS (SELECT 1 FROM pg_attribute a WHERE a.attrelid='mtm_agents'::regclass
       AND a.attnum>0 AND NOT a.attisdropped AND a.attname<>'id'
       AND has_column_privilege(app_oid,a.attrelid,a.attname,'UPDATE')) THEN

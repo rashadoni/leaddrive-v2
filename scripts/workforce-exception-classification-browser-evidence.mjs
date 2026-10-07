@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import { createHash, randomUUID } from "node:crypto"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import bcrypt from "bcryptjs"
+import { generateSecret, generateSync } from "otplib"
 import { chromium } from "playwright"
 import { makeRlsTestPrisma } from "./_rls.mjs"
 
@@ -47,42 +48,52 @@ const at = new Date("2025-01-01T00:00:00Z")
 const now = new Date()
 const endpoint = "/api/v1/workforce/exception-decisions"
 const queueEndpoint = "/api/v1/workforce/exceptions"
-const contexts = [], expectedWrites = [], protectedMarkers = [reason]
+const contexts = [], expectedWrites = [], protectedMarkers = [reason, password]
 let browser, activePage, stage = "fixture-preparing"
 const receipts = {
   version: 1, candidateHead: process.env.WF_EXCEPTION_CLASSIFICATION_BROWSER_HEAD_SHA,
   checkedMergeSha: process.env.GITHUB_SHA, startedAt: now.toISOString(),
   environment: "hosted Chromium / real Auth.js / loopback Next dev / disposable PostgreSQL16 and Redis",
-  status: "RUNNING", cases: [], sources: [], productionRoutines: [], authenticationDiagnostics: [],
+  status: "RUNNING", cases: [], sources: [], productionRoutines: [], authenticationDiagnostics: [], writeDiagnostics: [],
   limitations: ["Synthetic isolated tenants and imported historical terminal decisions only", "Development bundle, not production build", "Exact production decision revision and append-only routines; no full migration replay", "Audit whitelist/append-only fixture guard is synthetic, not a production MtmAuditLog migration", "No live HR observation, physical presence, device, pilot, payroll or disciplinary evidence", "No production mutation, grants, activation, secret/access change or external message"],
 }
 function noProtected(value) {
   for (const marker of protectedMarkers) assert.equal(value.includes(marker), false, "Protected reason or database subject leaked")
 }
 const authenticationPostTimes = []
+async function paceAuthenticationPost(diagnostic) {
+  // Credential, verification and canonical session-update POSTs share the
+  // real proxy's auth IP budget. Exercise that policy without bypass headers.
+  const windowMs = 61_000
+  const prune = () => { while (authenticationPostTimes.length && authenticationPostTimes[0] <= Date.now() - windowMs) authenticationPostTimes.shift() }
+  prune()
+  if (authenticationPostTimes.length >= 8) {
+    const waitMs = Math.max(0, authenticationPostTimes[0] + windowMs - Date.now()) + 25
+    assert.ok(waitMs <= 62_000)
+    diagnostic.pacingWaitMs += waitMs
+    for (let remaining = waitMs; remaining > 0; remaining -= 30_000) await new Promise(resolve => setTimeout(resolve, Math.min(remaining, 30_000)))
+    prune()
+  }
+  assert.ok(authenticationPostTimes.length < 8)
+  authenticationPostTimes.push(Date.now())
+}
 async function assertSession(context, principal) {
   const response = await context.request.get("/api/auth/session", { timeout: 120_000 })
   assert.equal(response.status(), 200)
   const session = await response.json()
   assert.equal(session.user.id, principal.id)
   assert.equal(session.user.organizationId, principal.organizationId)
+  assert.notEqual(session.user.needs2fa, true)
+  assert.notEqual(session.user.needsSetup2fa, true)
+  return session
 }
 async function authenticate(context, principal) {
-  const diagnostic = { ordinal: receipts.authenticationDiagnostics.length + 1, csrfStatus: null, callbackStatus: null, pacingWaitMs: 0 }
+  const diagnostic = { ordinal: receipts.authenticationDiagnostics.length + 1, csrfStatus: null, callbackStatus: null, mandatoryTotp: principal.require2fa && principal.totpEnabled, verificationStatus: null, sessionUpdateStatus: null, nonceConsumed: null, pacingWaitMs: 0 }
   receipts.authenticationDiagnostics.push(diagnostic)
   const csrf = await context.request.get("/api/auth/csrf", { timeout: 120_000 })
   diagnostic.csrfStatus = csrf.status(); assert.equal(csrf.status(), 200)
   const { csrfToken } = await csrf.json(); assert.equal(typeof csrfToken, "string")
-  const windowMs = 61_000
-  const prune = () => { while (authenticationPostTimes.length && authenticationPostTimes[0] <= Date.now() - windowMs) authenticationPostTimes.shift() }
-  prune()
-  if (authenticationPostTimes.length >= 8) {
-    diagnostic.pacingWaitMs = Math.max(0, authenticationPostTimes[0] + windowMs - Date.now()) + 25
-    assert.ok(diagnostic.pacingWaitMs <= 62_000)
-    await new Promise(resolve => setTimeout(resolve, diagnostic.pacingWaitMs)); prune()
-  }
-  assert.ok(authenticationPostTimes.length < 8)
-  authenticationPostTimes.push(Date.now())
+  await paceAuthenticationPost(diagnostic)
   const response = await context.request.post("/api/auth/callback/credentials", {
     timeout: 120_000, headers: { "X-Auth-Return-Redirect": "1" },
     form: { csrfToken, email: principal.email, password, organizationSlug: principal.slug, callbackUrl: `${origin.href}workforce/exceptions` },
@@ -91,6 +102,39 @@ async function authenticate(context, principal) {
   const redirect = new URL((await response.json()).url, origin.href)
   assert.equal(redirect.origin, origin.origin); assert.equal(redirect.searchParams.get("error"), null)
   assert.ok((await context.cookies()).some(cookie => cookie.name.endsWith("authjs.session-token")))
+  if (diagnostic.mandatoryTotp) {
+    const pendingResponse = await context.request.get("/api/auth/session", { timeout: 120_000 })
+    assert.equal(pendingResponse.status(), 200)
+    const pending = await pendingResponse.json()
+    assert.equal(pending.user.id, principal.id)
+    assert.equal(pending.user.needs2fa, true)
+    assert.equal(pending.user.twoFactorMethod, "totp")
+    // Compile the existing route before generating the short-lived token.
+    // GET has no mutation and must remain unsupported by this POST-only API.
+    const warmup = await context.request.get("/api/v1/auth/verify-2fa", { timeout: 120_000 })
+    diagnostic.verificationWarmupStatus = warmup.status(); assert.equal(warmup.status(), 405)
+    await paceAuthenticationPost(diagnostic)
+    const verification = await context.request.post("/api/v1/auth/verify-2fa", {
+      data: { code: generateSync({ secret: principal.totpSecret }) }, timeout: 120_000,
+    })
+    diagnostic.verificationStatus = verification.status(); assert.equal(verification.status(), 200)
+    const verified = await verification.json()
+    assert.equal(verified.success, true); assert.equal(verified.data.verified, true)
+    assert.match(verified.data.twoFactorNonce, /^[0-9a-f]{64}$/)
+    protectedMarkers.push(verified.data.twoFactorNonce)
+    const updateCsrf = await context.request.get("/api/auth/csrf", { timeout: 120_000 })
+    assert.equal(updateCsrf.status(), 200)
+    const { csrfToken: updateCsrfToken } = await updateCsrf.json()
+    assert.equal(typeof updateCsrfToken, "string")
+    await paceAuthenticationPost(diagnostic)
+    const updated = await context.request.post("/api/auth/session", {
+      data: { csrfToken: updateCsrfToken, data: { needs2fa: false, twoFactorNonce: verified.data.twoFactorNonce } }, timeout: 120_000,
+    })
+    diagnostic.sessionUpdateStatus = updated.status(); assert.equal(updated.status(), 200)
+    const consumed = await admin.user.findUnique({ where: { id: principal.id }, select: { twoFactorNonce: true } })
+    diagnostic.nonceConsumed = consumed?.twoFactorNonce === null
+    assert.equal(diagnostic.nonceConsumed, true, "Canonical session update must consume the server-issued nonce")
+  }
   await assertSession(context, principal)
 }
 async function contextFor(principal, locale = "en", width = 1280) {
@@ -148,6 +192,7 @@ async function installProductionRoutines() {
 }
 async function seed() {
   const passwordHash = await bcrypt.hash(password, 4)
+  protectedMarkers.push(passwordHash)
   const tenants = []
   for (const key of ["a", "b"]) {
     const organization = await admin.organization.create({ data: {
@@ -155,10 +200,12 @@ async function seed() {
       modules: { "workforce-hrm": true }, features: ["workforce-hrm", "workforce-granular-access-v1"], settings: {},
     } })
     const principals = {}
-    for (const name of ["issuer", "hr", ...(key === "a" ? ["team", "tenant", "denied"] : [])]) {
+    for (const name of ["issuer", "hr", ...(key === "a" ? ["team", "tenant", "denied", "weak"] : [])]) {
+      const totpSecret = name === "weak" ? null : generateSecret()
+      if (totpSecret) protectedMarkers.push(totpSecret)
       const user = await admin.user.create({ data: {
         organizationId: organization.id, email: `classification-${suffix}-${key}-${name}@example.test`, name: `Fixture ${key} ${name}`,
-        passwordHash, role: name === "issuer" ? "admin" : "manager", require2fa: false, totpEnabled: false, smsAuthEnabled: false,
+        passwordHash, role: name === "issuer" ? "admin" : "manager", require2fa: name !== "weak", totpEnabled: name !== "weak", totpSecret, smsAuthEnabled: false,
       } })
       principals[name] = { ...user, slug: organization.slug }
     }
@@ -168,14 +215,14 @@ async function seed() {
     const workday = await admin.mtmAgentWorkday.create({ data: { organizationId: organization.id, agentId: agent.id, workDate: at, status: "COMPLETED", startedAt: new Date(at.getTime() + 28_800_000), completedAt: new Date(at.getTime() + 61_200_000), totalPausedSeconds: 0 } })
     await admin.mtmSetting.create({ data: { organizationId: organization.id, key: "timezone", value: "UTC" } })
     let hrGrant
-    for (const [name, role, scopeKind] of [["hr", "HR_ADMIN", "ORGANIZATION"], ...(key === "a" ? [["hr", "TEAM_MANAGER", "TEAM"], ["team", "TEAM_MANAGER", "TEAM"], ["tenant", "TENANT_ADMIN", "ORGANIZATION"]] : [])]) {
+    for (const [name, role, scopeKind] of [["hr", "HR_ADMIN", "ORGANIZATION"], ...(key === "a" ? [["hr", "TEAM_MANAGER", "TEAM"], ["team", "TEAM_MANAGER", "TEAM"], ["tenant", "TENANT_ADMIN", "ORGANIZATION"], ["weak", "HR_ADMIN", "ORGANIZATION"]] : [])]) {
       const grant = await admin.workforceAccessGrant.create({ data: {
         organizationId: organization.id, principalUserId: principals[name].id, role, scopeKind,
         scopeTeamId: scopeKind === "TEAM" ? team.id : null, scopeSiteId: null, scopeAgentId: null,
         effectiveFrom: new Date(now.getTime() - 86_400_000), operationId: `class-${suffix}-${key}-${name}-${role}`,
         grantedByUserId: principals.issuer.id, grantReasonCode: "BROWSER_FIXTURE_ONLY",
       } })
-      if (role === "HR_ADMIN") hrGrant = grant
+      if (role === "HR_ADMIN" && name === "hr") hrGrant = grant
     }
     const cases = {}
     for (const label of key === "a" ? ["ru", "az", "en", "stale", "reopened"] : ["foreign"]) {
@@ -220,10 +267,23 @@ function actionFor(item, decisionCode) {
 }
 async function post(context, data, status) {
   const response = await context.request.post(endpoint, { data, timeout: 120_000 })
+  const body = await response.json().catch(() => null)
+  recordWriteDiagnostic(response, body)
   assert.equal(response.status(), status)
   assert.match(response.headers()["cache-control"] || "", /no-store/)
-  const body = await response.json(); noProtected(JSON.stringify(body))
+  assert.ok(body && typeof body === "object"); noProtected(JSON.stringify(body))
   return body
+}
+function recordWriteDiagnostic(response, body, decisionCode = null) {
+  const safeCode = typeof body?.code === "string" && /^[A-Z][A-Z0-9_]{0,99}$/.test(body.code) ? body.code : null
+  receipts.writeDiagnostics.push({ stage, decisionCode, status: response.status(), code: safeCode, jsonObject: Boolean(body && typeof body === "object"), success: body?.success === true })
+}
+function observeWaiter(waiter) {
+  // Observe rejection immediately so failure cleanup cannot crash Node before
+  // the original receipt is written. Await the same original promise below:
+  // navigation, response and timeout assertions are unchanged.
+  void waiter.catch(() => {})
+  return waiter
 }
 async function decisionCounts() {
   return { decisions: await admin.workforceExceptionDecision.count(), audit: await admin.mtmAuditLog.count() }
@@ -244,7 +304,7 @@ async function uiScenario(tenant, locale, width, classificationCode, appealCode)
   const context = await contextFor(tenant.hr, locale, width)
   const page = await context.newPage(); activePage = page
   page.setDefaultTimeout(30_000); page.setDefaultNavigationTimeout(120_000)
-  const response = page.waitForResponse(r => new URL(r.url()).pathname === queueEndpoint && r.request().method() === "GET", { timeout: 120_000 })
+  const response = observeWaiter(page.waitForResponse(r => new URL(r.url()).pathname === queueEndpoint && r.request().method() === "GET", { timeout: 120_000 }))
   await page.goto("/workforce/exceptions", { waitUntil: "domcontentloaded" })
   assert.equal((await response).status(), 200)
   const record = tenant.cases[locale]
@@ -264,12 +324,14 @@ async function uiScenario(tenant, locale, width, classificationCode, appealCode)
     await panel.getByRole("button", { name: ui.recordAction, exact: true }).click()
     assert.equal(posts, 0, "Empty reason cannot submit")
     await textarea.fill(reason)
-    const committed = page.waitForResponse(r => new URL(r.url()).pathname === endpoint && r.request().method() === "POST", { timeout: 120_000 })
-    const refreshed = page.waitForResponse(r => new URL(r.url()).pathname === queueEndpoint && r.request().method() === "GET", { timeout: 120_000 })
+    const committed = observeWaiter(page.waitForResponse(r => new URL(r.url()).pathname === endpoint && r.request().method() === "POST", { timeout: 120_000 }))
+    const refreshed = observeWaiter(page.waitForResponse(r => new URL(r.url()).pathname === queueEndpoint && r.request().method() === "GET", { timeout: 120_000 }))
     await panel.getByRole("button", { name: ui.recordAction, exact: true }).click()
     const writeResponse = await committed
+    const body = await writeResponse.json().catch(() => null)
+    recordWriteDiagnostic(writeResponse, body, code)
     assert.equal(writeResponse.status(), 201)
-    const body = await writeResponse.json(); noProtected(JSON.stringify(body)); assert.equal(body.data.decisionCode, code)
+    assert.ok(body && typeof body === "object"); noProtected(JSON.stringify(body)); assert.equal(body.data.decisionCode, code)
     const payload = writeResponse.request().postDataJSON()
     assert.deepEqual(Object.keys(payload).sort(), ["actionToken", "operationId", "reason"])
     assert.equal(payload.reason, reason)
@@ -300,6 +362,16 @@ async function uiScenario(tenant, locale, width, classificationCode, appealCode)
 }
 async function denials(tenants, hrContext) {
   const [a,b] = tenants
+  stage = "denied-hr-without-mandatory-enrolled-mfa"
+  const weakContext = await contextFor(a.weak)
+  const weakItem = itemFor(await queue(weakContext), a.cases.stale)
+  const weakToken = actionFor(weakItem, "CLASSIFY_FALSE_POSITIVE").actionToken
+  const weakBefore = await decisionCounts()
+  const weakResult = await post(weakContext, { actionToken: weakToken, operationId: randomUUID(), reason }, 403)
+  assert.equal(weakResult.code, "WORKFORCE_ATTENDANCE_MFA_REQUIRED")
+  assert.deepEqual(await decisionCounts(), weakBefore)
+  receipts.cases.push({ name: "denied-hr-without-mandatory-enrolled-mfa", status: "PASS", writeStatus: 403, code: "WORKFORCE_ATTENDANCE_MFA_REQUIRED", recordedDelta: 0 })
+  await weakContext.close()
   const token = actionFor(itemFor(await queue(hrContext), a.cases.stale), "CLASSIFY_FALSE_POSITIVE").actionToken
   const data = { actionToken: token, operationId: randomUUID(), reason }
   for (const [name, principal, queueStatus] of [["team-manager",a.team,200],["tenant-admin",a.tenant,403],["ungranted",a.denied,403],["foreign-hr",b.hr,200]]) {
@@ -380,7 +452,7 @@ try {
   receipts.fixedFacts={phase:"after-six-ui-appends-before-intentional-fixture-revocation",unchanged:true,tables:before}
   await denials(tenants,hrContext)
   await databaseProof(tenants)
-  assert.equal(expectedWrites.length,6);assert.equal(receipts.cases.length,10)
+  assert.equal(expectedWrites.length,6);assert.equal(receipts.cases.length,11)
   receipts.status="PASS"
 }catch(error){
   receipts.status="FAIL";process.exitCode=1
@@ -398,6 +470,7 @@ try {
   receipts.cleanup=closed.every(result=>result.status==="fulfilled")?"PASS":"FAIL"
   if(receipts.cleanup==="FAIL"){receipts.status="FAIL";process.exitCode=1}
   receipts.completedAt=new Date().toISOString()
+  noProtected(JSON.stringify(receipts))
   await writeFile(`${outputDirectory}/exception-classification-receipt.json`,JSON.stringify(receipts,null,2)+"\n",{flag:"wx"})
   console.log(JSON.stringify({status:receipts.status,completedCases:receipts.cases.length,cleanup:receipts.cleanup}))
 }
