@@ -17,7 +17,7 @@ import {
 import { calculateDistance } from "@/lib/geo-utils"
 import { MTM_CHECK_IN_ERROR, checkInConflict, type MtmCheckInErrorCode, type MtmCheckInErrorDetails } from "@/lib/mtm/check-in-errors"
 import { hasMtmCoordinates } from "@/lib/mtm/geo-coordinates"
-import { clampCheckInGeofenceRadius as geofenceRadius, createAlertOutOfZoneReader, mtmVisitPlaceSnapshot } from "@/lib/mtm/check-in-geofence"
+import { clampCheckInGeofenceRadius as geofenceRadius, createAlertOutOfZoneReader, createOutsideZoneCheckInReader, mtmVisitPlaceSnapshot } from "@/lib/mtm/check-in-geofence"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { BrandPotentialCreateSchema, BrandPotentialEndSchema, VisitActionResultSchema } from "@/lib/mtm-validators"
 import { brandPotentialRequestHash, utcBrandPotentialDate } from "@/lib/mtm/brand-potential"
@@ -569,6 +569,7 @@ export const POST = withMobileRls(async (req, auth) => {
   // alertOutOfZone gates only the OUT_OF_ZONE alert row, never the refusal.
   // Read lazily, once per request, the first time a check-in is out of zone.
   const alertOutOfZoneEnabled = createAlertOutOfZoneReader(orgId)
+  const outsideZoneCheckInEnabled = createOutsideZoneCheckInReader(orgId)
 
   for (const op of operations) {
     // `op ?? {}`: a null/undefined array element must fail as a malformed op,
@@ -1084,6 +1085,7 @@ export const POST = withMobileRls(async (req, auth) => {
               let distanceMeters: number | null = null
               let radius = customer.geofenceRadius
               let forceOverrideMeta: { distanceMeters: number; geofenceRadius: number } | null = null
+              let outsideZoneMeta: { distanceMeters: number; geofenceRadius: number } | null = null
               if (
                 validCoordinate(data.checkInLat, -90, 90) &&
                 validCoordinate(data.checkInLng, -180, 180)
@@ -1106,6 +1108,9 @@ export const POST = withMobileRls(async (req, auth) => {
               if (distanceMeters != null && distanceMeters > geofenceRadius(radius)) {
                 const roundedDistance = Math.round(distanceMeters)
                 const allowedRadius = geofenceRadius(radius)
+                // The organization's switch `checkInOutsideZone`: accepted, not
+                // forced — the agent asked for nothing special, the rule is off.
+                const outsideAllowed = !forceAuthorized && await outsideZoneCheckInEnabled(tx)
                 if (await alertOutOfZoneEnabled(tx)) await tx.mtmAlert.create({
                   data: {
                     organizationId: orgId,
@@ -1115,7 +1120,9 @@ export const POST = withMobileRls(async (req, auth) => {
                     title: "Out of zone check-in",
                     description: forceAuthorized
                       ? `Privileged check-in accepted ${roundedDistance}m away (max ${allowedRadius}m)`
-                      : `Agent attempted check-in ${roundedDistance}m away (max ${allowedRadius}m)`,
+                      : outsideAllowed
+                        ? `Check-in accepted ${roundedDistance}m away by organization setting (max ${allowedRadius}m)`
+                        : `Agent attempted check-in ${roundedDistance}m away (max ${allowedRadius}m)`,
                     metadata: {
                       customerId,
                       routeId: routePoint?.routeId ?? null,
@@ -1123,12 +1130,13 @@ export const POST = withMobileRls(async (req, auth) => {
                       distanceMeters: roundedDistance,
                       geofenceRadius: allowedRadius,
                       forceOverride: forceAuthorized,
+                      outsideZoneAllowed: outsideAllowed,
                       actorRole: auth.role,
                       // Two different events, two keys: a refused check-in and
                       // one a privileged actor pushed through read differently
                       // to whoever opens the list.
                       ...mtmAlertMessage(
-                        forceAuthorized ? "outOfZoneCheckInForced" : "outOfZoneCheckIn",
+                        forceAuthorized ? "outOfZoneCheckInForced" : outsideAllowed ? "outOfZoneCheckInAllowed" : "outOfZoneCheckIn",
                         { distanceMeters: roundedDistance, geofenceRadius: allowedRadius },
                       ),
                     },
@@ -1136,6 +1144,8 @@ export const POST = withMobileRls(async (req, auth) => {
                 })
                 if (forceAuthorized) {
                   forceOverrideMeta = { distanceMeters: roundedDistance, geofenceRadius: allowedRadius }
+                } else if (outsideAllowed) {
+                  outsideZoneMeta = { distanceMeters: roundedDistance, geofenceRadius: allowedRadius }
                 } else {
                   rejectCheckIn(MTM_CHECK_IN_ERROR.TOO_FAR, { distanceMeters: roundedDistance, geofenceRadius: allowedRadius })
                 }
@@ -1226,7 +1236,17 @@ export const POST = withMobileRls(async (req, auth) => {
                           ...forceOverrideMeta,
                         },
                       }
-                    : {}),
+                    : outsideZoneMeta
+                      ? {
+                          extra: {
+                            routePointId: routePoint?.id ?? null,
+                            actorRole: auth.role,
+                            outOfZone: true,
+                            allowedBy: "organization_setting",
+                            ...outsideZoneMeta,
+                          },
+                        }
+                      : {}),
                 }])
                 if (routePoint) {
                   const participants = routePoint.route.assignments.filter((assignment) => assignment.agentId !== agentId)
