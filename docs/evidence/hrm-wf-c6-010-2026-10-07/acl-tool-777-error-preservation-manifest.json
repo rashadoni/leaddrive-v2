@@ -1,0 +1,53 @@
+[
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/acl-tool-777-public-release-proof.json",
+    "bytes": 1363,
+    "sha256": "be5880bfc3680617169ee1f8ed4014a2a16f413b1aa0665801898b0a586371b5"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/acl-tool-777-real-validated-error.json",
+    "bytes": 1303,
+    "sha256": "df80195b412dbffa846fcdf0cdae7a7ffb3c2e1489bbe35d384cc11ef47956b3"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/acl-tool-777-real-original-result.json",
+    "bytes": 1303,
+    "sha256": "df80195b412dbffa846fcdf0cdae7a7ffb3c2e1489bbe35d384cc11ef47956b3"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/acl-tool-777-real-original-artifact.zip",
+    "bytes": 948,
+    "sha256": "5cc023e49b7c409261ccb9ad5f2184f4ca4fc8ad910c2a7820459bd8c366e16c"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/acl-tool-777-real-original-run.json",
+    "bytes": 12394,
+    "sha256": "79a1c83f77c22c674df086f6b93d0d16babba19938c12b567938d77440e21838"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/acl-tool-777-real-original-jobs.json",
+    "bytes": 5671,
+    "sha256": "8657e6ec3bc9481f63242df15d2cb3c328f5a492d4648986da1ba86fedd2a32c"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/acl-tool-777-real-original-job.log.gz",
+    "bytes": 7206,
+    "sha256": "6749a528e6fcd7e10cbec822bebf1186538b350a0bb47c8f135a68cf6640759b",
+    "originalBytes": 29050,
+    "originalSha256": "2d9f38adbaa219952e8c92a02fa2140a9f01b9247db0c2c64acf9069644746f3"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/acl-identity-05-unit-original.log.gz",
+    "bytes": 1054,
+    "sha256": "eefad068cc45cd7457403e97ef882d55204c8290ae61f404ed97ecaedb019933",
+    "originalBytes": 3429,
+    "originalSha256": "6be70e0e53ba494c110898072b9ffe8b39e490b859c56feead44a136ffd20ec7"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/acl-identity-05-hosted-source-original.log.gz",
+    "bytes": 11655,
+    "sha256": "2e632b24f04fe5291833012413f78b721d95c243537f3bde598a27777383f840",
+    "originalBytes": 47856,
+    "originalSha256": "4c7b3131673745342561e9327b678dcfc6c2a2896000e2829d3c4470cce22bf1"
+  }
+]
