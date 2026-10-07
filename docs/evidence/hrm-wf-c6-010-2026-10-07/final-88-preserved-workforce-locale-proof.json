@@ -1,0 +1,70 @@
+{
+  "oldSource": "8513737b880623b2b62ab4721672a55b8101ba1a",
+  "newSource": "09190249b5e13b405ac95d06aa9dcc6c9a0f17ce",
+  "status": "PASS",
+  "locales": [
+    {
+      "locale": "en",
+      "namespaceCount": 14,
+      "namespaces": [
+        "workforceAccessManagement",
+        "workforceAttendanceAdmin",
+        "workforceCalendarConfiguration",
+        "workforceConfigurationPage",
+        "workforceEvidenceTimeline",
+        "workforceExceptionQueue",
+        "workforceExceptionReport",
+        "workforceMyExceptions",
+        "workforcePage",
+        "workforcePolicyEmployeeImpact",
+        "workforcePolicyFutureWindowPreview",
+        "workforcePolicyRestoreDraft",
+        "workforcePolicyVersionComparison",
+        "workforceSiteTransitionReport"
+      ],
+      "allExactPrevious851": true
+    },
+    {
+      "locale": "ru",
+      "namespaceCount": 14,
+      "namespaces": [
+        "workforceAccessManagement",
+        "workforceAttendanceAdmin",
+        "workforceCalendarConfiguration",
+        "workforceConfigurationPage",
+        "workforceEvidenceTimeline",
+        "workforceExceptionQueue",
+        "workforceExceptionReport",
+        "workforceMyExceptions",
+        "workforcePage",
+        "workforcePolicyEmployeeImpact",
+        "workforcePolicyFutureWindowPreview",
+        "workforcePolicyRestoreDraft",
+        "workforcePolicyVersionComparison",
+        "workforceSiteTransitionReport"
+      ],
+      "allExactPrevious851": true
+    },
+    {
+      "locale": "az",
+      "namespaceCount": 14,
+      "namespaces": [
+        "workforceAccessManagement",
+        "workforceAttendanceAdmin",
+        "workforceCalendarConfiguration",
+        "workforceConfigurationPage",
+        "workforceEvidenceTimeline",
+        "workforceExceptionQueue",
+        "workforceExceptionReport",
+        "workforceMyExceptions",
+        "workforcePage",
+        "workforcePolicyEmployeeImpact",
+        "workforcePolicyFutureWindowPreview",
+        "workforcePolicyRestoreDraft",
+        "workforcePolicyVersionComparison",
+        "workforceSiteTransitionReport"
+      ],
+      "allExactPrevious851": true
+    }
+  ]
+}

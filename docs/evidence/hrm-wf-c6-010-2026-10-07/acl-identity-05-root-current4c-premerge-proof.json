@@ -1,0 +1,126 @@
+{
+  "at": "2026-10-07T19:33:55.714896+00:00",
+  "main": "4c1e3d29dc492254978f0d0ff303d91957b26f2c",
+  "head": "05deed0368ec6f4001c04508c95742623fb5a4f5",
+  "prospectiveTree": "8c182af3c86da193af24bf05f9c27c574a441939",
+  "wholeTreeEqualsSource05": false,
+  "owned3BytesEqualTested05": true,
+  "incoming16BytesEqualAcceptedMain4c": true,
+  "guardAndBaselineBindingsUnchanged": true,
+  "requiredChecks": [
+    {
+      "id": 112967102490,
+      "context": "scan",
+      "head": "05deed0368ec6f4001c04508c95742623fb5a4f5",
+      "appId": 15368,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 112967102928,
+      "context": "runner-policy",
+      "head": "05deed0368ec6f4001c04508c95742623fb5a4f5",
+      "appId": 15368,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 112967528873,
+      "context": "pr-scope",
+      "head": "05deed0368ec6f4001c04508c95742623fb5a4f5",
+      "appId": 15368,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 112967696773,
+      "context": "typecheck",
+      "head": "05deed0368ec6f4001c04508c95742623fb5a4f5",
+      "appId": 15368,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 112967696807,
+      "context": "static-checks",
+      "head": "05deed0368ec6f4001c04508c95742623fb5a4f5",
+      "appId": 15368,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "protection": {
+    "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/branches/main/protection",
+    "required_status_checks": {
+      "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/branches/main/protection/required_status_checks",
+      "strict": false,
+      "contexts": [
+        "pr-scope",
+        "static-checks",
+        "typecheck",
+        "runner-policy",
+        "scan"
+      ],
+      "contexts_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/branches/main/protection/required_status_checks/contexts",
+      "checks": [
+        {
+          "context": "pr-scope",
+          "app_id": 15368
+        },
+        {
+          "context": "static-checks",
+          "app_id": 15368
+        },
+        {
+          "context": "typecheck",
+          "app_id": 15368
+        },
+        {
+          "context": "runner-policy",
+          "app_id": 15368
+        },
+        {
+          "context": "scan",
+          "app_id": 15368
+        }
+      ]
+    },
+    "required_pull_request_reviews": {
+      "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/branches/main/protection/required_pull_request_reviews",
+      "dismiss_stale_reviews": false,
+      "require_code_owner_reviews": false,
+      "require_last_push_approval": false,
+      "required_approving_review_count": 0
+    },
+    "required_signatures": {
+      "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/branches/main/protection/required_signatures",
+      "enabled": false
+    },
+    "enforce_admins": {
+      "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/branches/main/protection/enforce_admins",
+      "enabled": true
+    },
+    "required_linear_history": {
+      "enabled": false
+    },
+    "allow_force_pushes": {
+      "enabled": false
+    },
+    "allow_deletions": {
+      "enabled": false
+    },
+    "block_creations": {
+      "enabled": false
+    },
+    "required_conversation_resolution": {
+      "enabled": false
+    },
+    "lock_branch": {
+      "enabled": false
+    },
+    "allow_fork_syncing": {
+      "enabled": false
+    }
+  },
+  "scope": "Auxiliary source-only diagnostic; normalstrictfalseprotectedcontract, ownmainbuild/quality/deploy gate remainsrequired; finalHRM exactWHOLEtreefreshCI separatelyrequired"
+}

@@ -1,0 +1,93 @@
+[
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-851-independent-restoreretry2-archival-supplement.json",
+    "bytes": 32062,
+    "sha256": "5d940148c445863a40e818ccc1b263dab744483f9a87ca0dd2087735b49ccadd"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-851-policyrestore-rerun2-original-artifact.zip",
+    "bytes": 881756,
+    "sha256": "0fdfbc732a5eba12ed9f5a9bab7ddc6e829ff572dd37556917c3cb8fe9df40f2"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-851-policyrestore-rerun2-original-run.json",
+    "bytes": 13006,
+    "sha256": "df78f7cbed4b4761fc1a658f36ac24b22c00c711fb96fdc1f9e73552dca1ffed"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-851-policyrestore-rerun2-original-jobs.json",
+    "bytes": 7802,
+    "sha256": "9ee3502253325eaa04d56a63b787e3472d35a6f1fc4f9f36cc8ddc7966ac1328"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/acl-identity-05-independent-acceptance-777-superseded.json",
+    "bytes": 6887,
+    "sha256": "1f45adda9759a7f2be6ccad197e0ad4f2a500df3731985ce6161247b7c0f34c0"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/acl-identity-05-independent-current4c-prospective-review.json",
+    "bytes": 13469,
+    "sha256": "460e0924d497d28d43d3895be74a2d367d087a4a39c2fa9e8c0468696ef73ed7"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/acl-identity-05-root-current4c-premerge-proof.json",
+    "bytes": 3708,
+    "sha256": "711d3a69b9ed42f91b13c04c7c3562a650b9d12b070f179389e316ed10a44b91"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/acl-identity-05-normal-main7bf-merge-result.json",
+    "bytes": 109,
+    "sha256": "c7acc6ee73df17030c1690a7596f9a191435ce7a75478f2f1fb12305266271ac"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/acl-identity-05-normal-main7bf-parent-tree-proof.json",
+    "bytes": 2960,
+    "sha256": "1599005188406cece754111616c31a28778163d4194f040a0ca2e560f86f3dfb"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/superseded-091-first-source-guard-original-job.json",
+    "bytes": 3383,
+    "sha256": "5537f9f51b7934f68d41764ba9c4beed9469d6126d62e71546b7aaf90307378c"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/superseded-091-before-cancellation-original-run.json",
+    "bytes": 12908,
+    "sha256": "aaae52887d8c0f2c73445955ec9768a41bc518bd31ee0003e81719680c4a0281"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/superseded-091-before-cancellation-original-jobs.json",
+    "bytes": 15128,
+    "sha256": "bf6096aa74982913ebe16e5cb5c819efacced7cf23a1f8b02ba41861c5c47fa6"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-88-preserved-shared-mobile-edit-proof.json",
+    "bytes": 504,
+    "sha256": "4383e1a7eac79115d6254b18e0b1bcf1e317b9f044588435fdb98d214077ee88"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-88-preserved-workforce-locale-proof.json",
+    "bytes": 2131,
+    "sha256": "f350e77db431bda7e4ac05e751f0d07f881d3c6116f7ccf5c633f336566e1f43"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-851-policyrestore-rerun2-original-job.log.gz",
+    "bytes": 34576,
+    "sha256": "02611d63f14677c5f8217285883cbfeec766d6facf2f8a9d7e87fd25e1e5c898",
+    "originalBytes": 201996,
+    "originalSha256": "a8e9a90415efe187ba830d412cffd06c12647d19b9a867dfb835f8710af0c83b"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-851-source-pg-regression-original-job.log.gz",
+    "bytes": 28103,
+    "sha256": "510151fcdadaf664d14fcd4227859034f7c5b885e66739df888853fe28271030",
+    "originalBytes": 159424,
+    "originalSha256": "56e66646c1d017123a50bd8a2b18968d0ba5d9b29f8dda555b5ef648ee0261c9"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/superseded-091-first-source-guard-original-job.log.gz",
+    "bytes": 17505,
+    "sha256": "e0ae2484a653a9d2c14c9a07911f7e34956fca250146b0a182692bddd6e8fbd5",
+    "originalBytes": 96498,
+    "originalSha256": "f30ac8a12bf216b99fe233b353de04ef8e08d602db7892363a0499853c781676"
+  }
+]

@@ -1,0 +1,766 @@
+{
+  "version": 1,
+  "reviewedAtUtc": "2026-10-07T19:38:19.600826+00:00",
+  "reviewer": "/root/inspect_outcome_contract",
+  "status": "ARCHIVAL851_WHOLE_APPLICABLE_CI_ACCEPTED_RELEASE_STILL_HELD_NEW_HEAD091_REQUIRES_FRESH_CI",
+  "headSha": "8513737b880623b2b62ab4721672a55b8101ba1a",
+  "tree": "e39def8eba7dd837e5700ac0526a563040b077ac",
+  "findingsP0P1P2P3": [],
+  "originalHeldReviewPreserved": {
+    "path": "/tmp/hrm-release-independent-technical-acceptance-8513737b.json",
+    "bytes": 30098,
+    "sha256": "3eb56c45f58fad40f942652c29908c595996168b5c317f086731dc8da0cc6482"
+  },
+  "coreExactFiveLaneAndCompilerPgBuildBrowserReview": "Unchanged current851 original evidence bound in held receipt; here only restore retry/all applicable statuses are supplemented.",
+  "firstAttemptFailureRetained": {
+    "run": 37667588026,
+    "attempt": 1,
+    "job": 112950673393,
+    "conclusion": "cancelled",
+    "cause": "Actual max40m timeout during Chromium installation; renderedUI notrun",
+    "originalLog": {
+      "path": "/tmp/hrm-final-851-policyrestore-first-original.log",
+      "bytes": 165452,
+      "sha256": "1fef0632d6602f043c6a083825ada0127af4333a56612230a73afb2d8d8296dd"
+    },
+    "originalArchive": {
+      "path": "/tmp/hrm-final-851-policyrestore-first-original.zip",
+      "bytes": 10830,
+      "sha256": "d398c6a380e254ca89fa3ee09f22ce783e02d9e5f01117de4bbea38f4c9c44ab"
+    },
+    "annotations": {
+      "path": "/tmp/hrm-final-851-policyrestore-first-annotations.json",
+      "bytes": 1134,
+      "sha256": "261293ce63c30c24e17ae0423d56632234615eb6b1d1f3d396c2ff931bd67b0f"
+    },
+    "noRetrospectiveUiPassCredit": true
+  },
+  "successfulUnchangedRetry": {
+    "runId": 37667588026,
+    "attempt": 2,
+    "job": 112969763361,
+    "conclusion": "success",
+    "candidateHead": "8513737b880623b2b62ab4721672a55b8101ba1a",
+    "checkedMergeSha": "4cf8dbacaf59121222ef427abcd6f767bcbe0aac",
+    "syntheticTreeExactly851": true,
+    "noSourceWorkflowTimeoutOrGateChange": true,
+    "runMetadata": {
+      "path": "/tmp/hrm-final-851-policyrestore-rerun2-terminal.json",
+      "bytes": 13006,
+      "sha256": "df78f7cbed4b4761fc1a658f36ac24b22c00c711fb96fdc1f9e73552dca1ffed"
+    },
+    "jobsMetadata": {
+      "path": "/tmp/hrm-final-851-policyrestore-rerun2-terminal-jobs.json",
+      "bytes": 7802,
+      "sha256": "9ee3502253325eaa04d56a63b787e3472d35a6f1fc4f9f36cc8ddc7966ac1328"
+    },
+    "fullOriginalLog": {
+      "path": "/tmp/hrm-final-851-policyrestore-rerun2-original.log",
+      "bytes": 201996,
+      "sha256": "a8e9a90415efe187ba830d412cffd06c12647d19b9a867dfb835f8710af0c83b"
+    },
+    "artifactId": 11506101934,
+    "githubDigestMatched": true,
+    "CRC": "PASS",
+    "archive": {
+      "path": "/tmp/hrm-final-851-policyrestore-rerun2-original.zip",
+      "bytes": 881756,
+      "sha256": "0fdfbc732a5eba12ed9f5a9bab7ddc6e829ff572dd37556917c3cb8fe9df40f2"
+    },
+    "members": [
+      {
+        "name": "additive-existing-row-after.json",
+        "bytes": 615,
+        "sha256": "85001b21d1c2a03ba9a3b2697209959c6cddd7f93101aebc6bb3f9c9497f212e"
+      },
+      {
+        "name": "additive-existing-row-before.json",
+        "bytes": 3586,
+        "sha256": "d003bf5004183179556504e827250fd5eef5eda430b1e7b02ba9e2fa61bcfa21"
+      },
+      {
+        "name": "restore-authorized-api-receipt.json",
+        "bytes": 9164,
+        "sha256": "539a1bb0bae5872a9dca3419a1d70a15b7402efb63d743ee428e305d754b8563"
+      },
+      {
+        "name": "restore-postgres-receipt.json",
+        "bytes": 3619,
+        "sha256": "44dbeb1f3c8a3fce7075396e07a3f81e564d3260a4cba0dbea8f8662c8ffde57"
+      },
+      {
+        "name": "restore-rendered-ui-receipt.json",
+        "bytes": 15958,
+        "sha256": "79cc022f89d4b10f17b9bf824ddd24ec9541b2e908961820f9805e9c43023252"
+      },
+      {
+        "name": "restore-ui-az-1440.png",
+        "bytes": 123784,
+        "sha256": "6732852231e18ee093cbf00efe877a38c31d2702d603678a1c36c8f1de8bf05e"
+      },
+      {
+        "name": "restore-ui-az-320.png",
+        "bytes": 62214,
+        "sha256": "efd696938b8aed60c7db2bc525a8e82443f6f12e422746a92d44003726c4d3cd"
+      },
+      {
+        "name": "restore-ui-az-768.png",
+        "bytes": 93699,
+        "sha256": "e35af28c54078f6cb62e9cffb55676008343214582584bfd0b09afc0a72b6f58"
+      },
+      {
+        "name": "restore-ui-en-1440.png",
+        "bytes": 117156,
+        "sha256": "8981164df929b2c3e82f7d5a6220cd8bda02b472a62ed9b0185673d9bd1ef09e"
+      },
+      {
+        "name": "restore-ui-en-320.png",
+        "bytes": 60693,
+        "sha256": "56a669322efff0124016464fda11146f015d9f5c9b2ebd6b1ffc57129affd330"
+      },
+      {
+        "name": "restore-ui-en-768.png",
+        "bytes": 88413,
+        "sha256": "a425bf33cbe068cacbc782d19442db13e4f598f8aac2359077ffa51d24a1e851"
+      },
+      {
+        "name": "restore-ui-ru-1440.png",
+        "bytes": 157622,
+        "sha256": "4e57871f2492eb65cc4bc4b963f58f92b2d8d7747c7486a66aa17633d14d7e5d"
+      },
+      {
+        "name": "restore-ui-ru-320.png",
+        "bytes": 74371,
+        "sha256": "0f497450fd6ec2ed31a398bc3737d8657809e9266ed0d9ff49c0f2f3d75a8b2b"
+      },
+      {
+        "name": "restore-ui-ru-768.png",
+        "bytes": 121350,
+        "sha256": "fd38dbe8de5d7e987344fe3c95681e44b2ab4efb385d889969992d7102f9216a"
+      },
+      {
+        "name": "selected-baseline-source-bindings.json",
+        "bytes": 2612,
+        "sha256": "b217f15f1435caa6861e480abc09711ae263f45726fe9171bc7a15988e403d8c"
+      },
+      {
+        "name": "selected-pre-anchor-conversion.json",
+        "bytes": 38497,
+        "sha256": "17be89aa2bec5033a1daade70067072e651dc5c248d78f813de45d67a62c6149"
+      },
+      {
+        "name": "selected-canonical-guards.sql",
+        "bytes": 2742,
+        "sha256": "52d7efe5d0f1ebfb4e36a3124bfd2a62b1cde3f68c3e97d2286d87deb1fa054f"
+      }
+    ],
+    "receipts": [
+      {
+        "file": {
+          "path": "/tmp/hrm-final-851-policyrestore-rerun2-artifacts/restore-postgres-receipt.json",
+          "bytes": 3619,
+          "sha256": "44dbeb1f3c8a3fce7075396e07a3f81e564d3260a4cba0dbea8f8662c8ffde57"
+        },
+        "requiredCases": 11,
+        "cleanup": "PASS",
+        "boundary": "Actual shared prisma+runWithTenant restore/legacy-create transactions on nonowner FORCE-RLS PostgreSQL. Owner canonical edit/activation tests only guard compatibility. Snapshots are populated owner fixtures with unchanged full-row assertions, not canonical resolver/snapshot writer acceptance. Date-only fake clock in expiry case; real PostgreSQL timers/queries. Extra audit immutability is fixture-only; audit removal deliberately verifies durable production anchor fail-closed."
+      },
+      {
+        "file": {
+          "path": "/tmp/hrm-final-851-policyrestore-rerun2-artifacts/restore-authorized-api-receipt.json",
+          "bytes": 9164,
+          "sha256": "539a1bb0bae5872a9dca3419a1d70a15b7402efb63d743ee428e305d754b8563"
+        },
+        "requiredCases": 9,
+        "cleanup": "PASS",
+        "boundary": "Actual credentials/CSRF/JWT session/proxy/granular grants/API/canonical restore transactions on disposable hosted Next dev/PostgreSQL. APIRequestContext only: no rendered UI or browser/keyboard/a11y credit. Auth login metadata writes expected and excluded from stable facts. Anonymous proxy307 is distinct from handler401; no private-header credit for its redirect. Fixture audit immutability is not production global immutability."
+      },
+      {
+        "file": {
+          "path": "/tmp/hrm-final-851-policyrestore-rerun2-artifacts/restore-rendered-ui-receipt.json",
+          "bytes": 15958,
+          "sha256": "79cc022f89d4b10f17b9bf824ddd24ec9541b2e908961820f9805e9c43023252"
+        },
+        "requiredCases": 15,
+        "cleanup": "PASS",
+        "boundary": "Real hosted Chromium/credentials/session/canonical restore writer and PostgreSQL on disposable data. EN/RU/AZ at320/768/1440, bounded native controls/reflow, real201 loss/replay200, audit rollback503/retry201 and session/grant changes. Controlled transport loss is distinct from server failure. Existing policy read-only-role lane unchanged. Geometry is not pixel occlusion/whole-page WCAG/AT/native zoom. No production authenticated write/activation/employee impact/Android/load/pilot credit. Auth metadata and explicitly expected new draft/audit writes are excluded from preserved source/employee facts."
+      }
+    ],
+    "sourceBindingsRehashed": [
+      {
+        "path": "src/__tests__/lib-workforce-policy-restore-postgres.test.ts",
+        "bytes": 30992,
+        "sha256": "3315747edccab132712d58da328bd67af72962b9772dd1d0ad0a1622fc5b2e3a",
+        "receipt": "restore-postgres-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/lib/workforce/policy-restore-draft.ts",
+        "bytes": 11084,
+        "sha256": "b7dda97c1764aaa3eff9e2257db2a47dd8c82720943f9bcea05f2f521922e50e",
+        "receipt": "restore-postgres-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/lib/workforce/policy-draft-write.ts",
+        "bytes": 1937,
+        "sha256": "d49f39f52170ddd4c5f12de6834879fcc7609f8f6366d6002af1556fb35dc7c3",
+        "receipt": "restore-postgres-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/lib/workforce/configuration-management.ts",
+        "bytes": 92626,
+        "sha256": "1c3c0d31bf4f22f02999c72304a1935531a14964627419633893c01d4195c06c",
+        "receipt": "restore-postgres-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/lib/prisma.ts",
+        "bytes": 14015,
+        "sha256": "e13b0a9561945eef531b4dbabc9193bb5b6fbcfc3297dfce54fbf219ee3275a1",
+        "receipt": "restore-postgres-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/lib/rls-context.ts",
+        "bytes": 5099,
+        "sha256": "3ca4e34c3d94ba361fc2452b56f2b9a500b7487ee2402d436bc476786e3a53fd",
+        "receipt": "restore-postgres-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "prisma/schema.prisma",
+        "bytes": 958771,
+        "sha256": "fd2e0a5b835669dafa736943fd9e5ee403a81dd0dd28d127e895e1f19232eae7",
+        "receipt": "restore-postgres-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "prisma/migrations/20261004073000_workforce_policy_restore_operation_anchor/migration.sql",
+        "bytes": 2624,
+        "sha256": "00cf1e477a5071e74698a42554f5ae69d49b2ff806ebb768bf3d4faa9386303f",
+        "receipt": "restore-postgres-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "scripts/ci/fixtures/workforce-policy-restore-writer.sql",
+        "bytes": 1735,
+        "sha256": "01c468b09e9f915490f196330ff9df19b5e9d429ce616a0aab036e5f78c133e3",
+        "receipt": "restore-postgres-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "scripts/workforce-policy-restore-api-evidence.mjs",
+        "bytes": 20867,
+        "sha256": "51d37446f46e2f916e6667686562f1caba8a30f5f4379a9fda7f5c9b88e0244d",
+        "receipt": "restore-authorized-api-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "scripts/_rls.mjs",
+        "bytes": 2250,
+        "sha256": "fae67dd4467cfd14667236a570ee4884100d8236496f64e31984305146ad7266",
+        "receipt": "restore-authorized-api-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/policies/[id]/restore-draft/route.ts",
+        "bytes": 2580,
+        "sha256": "332c851ebda2c7191af6c834394cd8b12b5e091879821f9a1acbd08fd7bb514f",
+        "receipt": "restore-authorized-api-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/lib/workforce/policy-restore-draft.ts",
+        "bytes": 11084,
+        "sha256": "b7dda97c1764aaa3eff9e2257db2a47dd8c82720943f9bcea05f2f521922e50e",
+        "receipt": "restore-authorized-api-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/lib/workforce/policy-draft-write.ts",
+        "bytes": 1937,
+        "sha256": "d49f39f52170ddd4c5f12de6834879fcc7609f8f6366d6002af1556fb35dc7c3",
+        "receipt": "restore-authorized-api-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/lib/workforce/configuration-management.ts",
+        "bytes": 92626,
+        "sha256": "1c3c0d31bf4f22f02999c72304a1935531a14964627419633893c01d4195c06c",
+        "receipt": "restore-authorized-api-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/lib/with-workforce-rls-auth.ts",
+        "bytes": 21653,
+        "sha256": "289aa253b4d8d3a25913136a545db598bf1a01c9b571b6c89e2689da2fe6d8ff",
+        "receipt": "restore-authorized-api-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/lib/auth.ts",
+        "bytes": 26606,
+        "sha256": "a0cd1185fe0db3b543998dacbf815322c84010a75f539fc6d9631679a32907bd",
+        "receipt": "restore-authorized-api-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/proxy.ts",
+        "bytes": 50300,
+        "sha256": "9d3fe10f167e964101aaf7e1f455bebb71ae05024f7e91fb20c0f2c48049f40d",
+        "receipt": "restore-authorized-api-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/lib/prisma.ts",
+        "bytes": 14015,
+        "sha256": "e13b0a9561945eef531b4dbabc9193bb5b6fbcfc3297dfce54fbf219ee3275a1",
+        "receipt": "restore-authorized-api-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/lib/rls-context.ts",
+        "bytes": 5099,
+        "sha256": "3ca4e34c3d94ba361fc2452b56f2b9a500b7487ee2402d436bc476786e3a53fd",
+        "receipt": "restore-authorized-api-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "scripts/ci/fixtures/workforce-policy-restore-writer.sql",
+        "bytes": 1735,
+        "sha256": "01c468b09e9f915490f196330ff9df19b5e9d429ce616a0aab036e5f78c133e3",
+        "receipt": "restore-authorized-api-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "prisma/migrations/20261004073000_workforce_policy_restore_operation_anchor/migration.sql",
+        "bytes": 2624,
+        "sha256": "00cf1e477a5071e74698a42554f5ae69d49b2ff806ebb768bf3d4faa9386303f",
+        "receipt": "restore-authorized-api-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "scripts/workforce-policy-restore-browser-evidence.mjs",
+        "bytes": 33364,
+        "sha256": "52bbe381303e0adf2631713bbcb49af795e62d81647d4d24a9fc237200abe530",
+        "receipt": "restore-rendered-ui-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "scripts/_rls.mjs",
+        "bytes": 2250,
+        "sha256": "fae67dd4467cfd14667236a570ee4884100d8236496f64e31984305146ad7266",
+        "receipt": "restore-rendered-ui-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": ".github/workflows/workforce-policy-restore-evidence.yml",
+        "bytes": 10266,
+        "sha256": "2c3409c2afeb5898659263e4de1a2a6731a81ffd481ef4932b3e10d762129286",
+        "receipt": "restore-rendered-ui-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "scripts/ci/workforce-policy-restore-pre-anchor.mjs",
+        "bytes": 15698,
+        "sha256": "6cb5b7f0cf62558596995522bbe883b3d4bfa091e2a7888836d27b602dd27440",
+        "receipt": "restore-rendered-ui-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "scripts/ci/fixtures/workforce-policy-restore-writer.sql",
+        "bytes": 1735,
+        "sha256": "01c468b09e9f915490f196330ff9df19b5e9d429ce616a0aab036e5f78c133e3",
+        "receipt": "restore-rendered-ui-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "scripts/ci/fixtures/workforce-manager-today-browser.sql",
+        "bytes": 33617,
+        "sha256": "448d08b65048f3692145d1d2d73d1f4b2f5973363172dddb959b4c9daf20a4fb",
+        "receipt": "restore-rendered-ui-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "scripts/ci/fixtures/workforce-policy-version-browser.sql",
+        "bytes": 4634,
+        "sha256": "8f97329849dbb6d06181fed07ca9df50c4f2bcd202956861be53f610989765cb",
+        "receipt": "restore-rendered-ui-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/components/workforce/workforce-policy-restore-draft.tsx",
+        "bytes": 11062,
+        "sha256": "db72dd17f27c517cd7697c99e585d6d5353f06d23ca05119bb2a05a61f1566af",
+        "receipt": "restore-rendered-ui-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/components/workforce/workforce-policy-version-comparison.tsx",
+        "bytes": 16003,
+        "sha256": "52272ba626f24dad98051cbb8df052e40c586a78162aafa912125b1d852f9d60",
+        "receipt": "restore-rendered-ui-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/components/workforce/workforce-policy-future-window-preview.tsx",
+        "bytes": 8629,
+        "sha256": "678c2fffa97096748c56c25a015a9032f331a31a90bfa4852a065aed07f49cbc",
+        "receipt": "restore-rendered-ui-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/lib/workforce/policy-restore-receipt.ts",
+        "bytes": 2863,
+        "sha256": "970fefe5a93dc70ced0f3bf0eed5bf85aa270351f8c5c9959ad401fe090a6cec",
+        "receipt": "restore-rendered-ui-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/lib/workforce/policy-restore-draft.ts",
+        "bytes": 11084,
+        "sha256": "b7dda97c1764aaa3eff9e2257db2a47dd8c82720943f9bcea05f2f521922e50e",
+        "receipt": "restore-rendered-ui-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/lib/workforce/policy-draft-write.ts",
+        "bytes": 1937,
+        "sha256": "d49f39f52170ddd4c5f12de6834879fcc7609f8f6366d6002af1556fb35dc7c3",
+        "receipt": "restore-rendered-ui-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/lib/workforce/policy-version-comparison.ts",
+        "bytes": 4685,
+        "sha256": "3aabfe54002086898529bea2cd1b73006b7be6da1d50a2cb90281cc11eb343d4",
+        "receipt": "restore-rendered-ui-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/policies/[id]/restore-draft/route.ts",
+        "bytes": 2580,
+        "sha256": "332c851ebda2c7191af6c834394cd8b12b5e091879821f9a1acbd08fd7bb514f",
+        "receipt": "restore-rendered-ui-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/policies/search/route.ts",
+        "bytes": 1753,
+        "sha256": "d88f101dd55588d5f39edfa7ece192211e710a179b1360b04d1811d7abe6f1f9",
+        "receipt": "restore-rendered-ui-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/policies/compare/route.ts",
+        "bytes": 2794,
+        "sha256": "9bacf8bc38287bd8a061bedf60b70733fcc623f22a59d434d306462ba7788461",
+        "receipt": "restore-rendered-ui-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/lib/with-workforce-rls-auth.ts",
+        "bytes": 21653,
+        "sha256": "289aa253b4d8d3a25913136a545db598bf1a01c9b571b6c89e2689da2fe6d8ff",
+        "receipt": "restore-rendered-ui-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/lib/auth.ts",
+        "bytes": 26606,
+        "sha256": "a0cd1185fe0db3b543998dacbf815322c84010a75f539fc6d9631679a32907bd",
+        "receipt": "restore-rendered-ui-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/lib/rls-context.ts",
+        "bytes": 5099,
+        "sha256": "3ca4e34c3d94ba361fc2452b56f2b9a500b7487ee2402d436bc476786e3a53fd",
+        "receipt": "restore-rendered-ui-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/lib/prisma.ts",
+        "bytes": 14015,
+        "sha256": "e13b0a9561945eef531b4dbabc9193bb5b6fbcfc3297dfce54fbf219ee3275a1",
+        "receipt": "restore-rendered-ui-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/proxy.ts",
+        "bytes": 50300,
+        "sha256": "9d3fe10f167e964101aaf7e1f455bebb71ae05024f7e91fb20c0f2c48049f40d",
+        "receipt": "restore-rendered-ui-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/lib/rate-limit.ts",
+        "bytes": 4011,
+        "sha256": "71fb22a8831b4a01a0ad46a9af7e6660ea70caf5a8ae0c63158170fd6ff797ac",
+        "receipt": "restore-rendered-ui-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/components/ui/button.tsx",
+        "bytes": 2099,
+        "sha256": "2d401bc2999487316df2b5319e28bd3fb5077cb0f625e272ca9a4bf100e6771a",
+        "receipt": "restore-rendered-ui-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/components/ui/input.tsx",
+        "bytes": 833,
+        "sha256": "f114d3bfb7b66f7ae843119f34bd32b91bf2f9a2fcf6123c962038f98cadee90",
+        "receipt": "restore-rendered-ui-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/components/ui/select.tsx",
+        "bytes": 1025,
+        "sha256": "9289ce86e4ea159cf5a12a5ae5a51ed3798e9cf041eb584fad40c242be119f9c",
+        "receipt": "restore-rendered-ui-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/app/(dashboard)/workforce/configuration/policy-versions/page.tsx",
+        "bytes": 223,
+        "sha256": "1a3dde6eda05b7af914455f9c08e1c5ce6e10975b0373d54b442c0298f9b779f",
+        "receipt": "restore-rendered-ui-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/components/providers.tsx",
+        "bytes": 1890,
+        "sha256": "3d82c0cf34677754f2e4d80e0978d2583bded1daa1d476ba59f2e0524242526d",
+        "receipt": "restore-rendered-ui-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "src/app/(dashboard)/layout.tsx",
+        "bytes": 13392,
+        "sha256": "be2ef432d60a19e8ea930becd30894b76c7bda5875a81246a95cb4cdfe4b6e3f",
+        "receipt": "restore-rendered-ui-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "messages/en.json",
+        "bytes": 1353703,
+        "sha256": "968f55c77be76ef307a5d4b3d72f3ee9e1fd255bc6a37edc8632552892331244",
+        "receipt": "restore-rendered-ui-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "messages/ru.json",
+        "bytes": 1999330,
+        "sha256": "f4401ef992a363e9c3d8deb5b158545016be2b5732db797227fb8517972be956",
+        "receipt": "restore-rendered-ui-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "messages/az.json",
+        "bytes": 1497486,
+        "sha256": "d7bc057c39c526d58f88e99201371e1e508d14ebd82e490ada359d93dd06eddd",
+        "receipt": "restore-rendered-ui-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "prisma/schema.prisma",
+        "bytes": 958771,
+        "sha256": "fd2e0a5b835669dafa736943fd9e5ee403a81dd0dd28d127e895e1f19232eae7",
+        "receipt": "restore-rendered-ui-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      },
+      {
+        "path": "prisma/migrations/20261004073000_workforce_policy_restore_operation_anchor/migration.sql",
+        "bytes": 2624,
+        "sha256": "00cf1e477a5071e74698a42554f5ae69d49b2ff806ebb768bf3d4faa9386303f",
+        "receipt": "restore-rendered-ui-receipt.json",
+        "byteExactHead851AndActualSyntheticCheckout": true
+      }
+    ],
+    "actualCases": {
+      "PostgreSQL": 11,
+      "authorizedApi": 9,
+      "renderedUi": 15
+    }
+  },
+  "current851AllApplicableLatestAttempts": {
+    "metadata": {
+      "path": "/tmp/hrm-final-851-runs-latest-after-restore2.json",
+      "bytes": 155039,
+      "sha256": "e0e57a7836749166776446dac06fc0cd8c989ee8d08e35b1c6231488cb8578ff"
+    },
+    "count": 12,
+    "allCompletedSuccess": true,
+    "runs": [
+      {
+        "id": 37667588086,
+        "name": "Social Monitoring queue E2E",
+        "event": "pull_request",
+        "attempt": 1,
+        "head": "8513737b880623b2b62ab4721672a55b8101ba1a",
+        "conclusion": "success"
+      },
+      {
+        "id": 37667588084,
+        "name": "Workforce calendar browser evidence",
+        "event": "pull_request",
+        "attempt": 1,
+        "head": "8513737b880623b2b62ab4721672a55b8101ba1a",
+        "conclusion": "success"
+      },
+      {
+        "id": 37667588103,
+        "name": "Workforce bulk assignment acceptance",
+        "event": "pull_request",
+        "attempt": 1,
+        "head": "8513737b880623b2b62ab4721672a55b8101ba1a",
+        "conclusion": "success"
+      },
+      {
+        "id": 37667587953,
+        "name": "Workforce policy employee impact evidence",
+        "event": "pull_request",
+        "attempt": 1,
+        "head": "8513737b880623b2b62ab4721672a55b8101ba1a",
+        "conclusion": "success"
+      },
+      {
+        "id": 37667587967,
+        "name": "Workforce policy version browser evidence",
+        "event": "pull_request",
+        "attempt": 1,
+        "head": "8513737b880623b2b62ab4721672a55b8101ba1a",
+        "conclusion": "success"
+      },
+      {
+        "id": 37667588045,
+        "name": "Workforce manager Today browser evidence",
+        "event": "pull_request",
+        "attempt": 1,
+        "head": "8513737b880623b2b62ab4721672a55b8101ba1a",
+        "conclusion": "success"
+      },
+      {
+        "id": 37667588002,
+        "name": "Workforce exception report browser evidence",
+        "event": "pull_request",
+        "attempt": 1,
+        "head": "8513737b880623b2b62ab4721672a55b8101ba1a",
+        "conclusion": "success"
+      },
+      {
+        "id": 37667588080,
+        "name": "PR checks",
+        "event": "pull_request",
+        "attempt": 1,
+        "head": "8513737b880623b2b62ab4721672a55b8101ba1a",
+        "conclusion": "success"
+      },
+      {
+        "id": 37667588128,
+        "name": "Secret scan",
+        "event": "pull_request",
+        "attempt": 1,
+        "head": "8513737b880623b2b62ab4721672a55b8101ba1a",
+        "conclusion": "success"
+      },
+      {
+        "id": 37667588100,
+        "name": "Runner policy",
+        "event": "pull_request",
+        "attempt": 1,
+        "head": "8513737b880623b2b62ab4721672a55b8101ba1a",
+        "conclusion": "success"
+      },
+      {
+        "id": 37667588026,
+        "name": "Workforce policy restore writer evidence",
+        "event": "pull_request",
+        "attempt": 2,
+        "head": "8513737b880623b2b62ab4721672a55b8101ba1a",
+        "conclusion": "success"
+      },
+      {
+        "id": 37667576332,
+        "name": "Workforce exception report browser evidence",
+        "event": "workflow_dispatch",
+        "attempt": 1,
+        "head": "8513737b880623b2b62ab4721672a55b8101ba1a",
+        "conclusion": "success"
+      }
+    ],
+    "allRequiredFiveApp15368": [
+      {
+        "id": 112951136682,
+        "name": "pr-scope",
+        "appId": 15368,
+        "head": "8513737b880623b2b62ab4721672a55b8101ba1a",
+        "conclusion": "success"
+      },
+      {
+        "id": 112951326300,
+        "name": "static-checks",
+        "appId": 15368,
+        "head": "8513737b880623b2b62ab4721672a55b8101ba1a",
+        "conclusion": "success"
+      },
+      {
+        "id": 112951326145,
+        "name": "typecheck",
+        "appId": 15368,
+        "head": "8513737b880623b2b62ab4721672a55b8101ba1a",
+        "conclusion": "success"
+      },
+      {
+        "id": 112950673298,
+        "name": "runner-policy",
+        "appId": 15368,
+        "head": "8513737b880623b2b62ab4721672a55b8101ba1a",
+        "conclusion": "success"
+      },
+      {
+        "id": 112950673947,
+        "name": "scan",
+        "appId": 15368,
+        "head": "8513737b880623b2b62ab4721672a55b8101ba1a",
+        "conclusion": "success"
+      }
+    ],
+    "checksMetadata": {
+      "path": "/tmp/hrm-final-851-checks-latest-after-restore2.json",
+      "bytes": 86087,
+      "sha256": "eb05fd78f5cba76c7af185c20013c989c7349be29bf0d36a360d12dccb88a953"
+    }
+  },
+  "restoreActualImagesViewed": [
+    {
+      "path": "restore-ui-en-1440.png",
+      "sha256": "8981164df929b2c3e82f7d5a6220cd8bda02b472a62ed9b0185673d9bd1ef09e",
+      "view": "Draft creation confirmation and separate activation/employee-impact boundary visible; screenshot starts inside scrollable content, not whole page."
+    },
+    {
+      "path": "restore-ui-ru-320.png",
+      "sha256": "0f497450fd6ec2ed31a398bc3737d8657809e9266ed0d9ff49c0f2f3d75a8b2b",
+      "view": "Narrow layout draft creation confirmation/source/manualboundary visible; bottom activation text clipped, development issuebadge present. No wholepage/no-error/globalWCAG claim."
+    }
+  ],
+  "authorship": "Reviewer independently assessed received root/earlier restore source-bindings and runtime evidence. Original C6harness/metadata helper reviewer authorship and root cross-review remain disclosed; no independent test authorship claim for those.",
+  "releaseStatus": {
+    "851IsNowArchived": true,
+    "parentReportedSuccessor": "09190249b5e13b405ac95d06aa9dcc6c9a0f17ce",
+    "incomingMain4cAndAux05": "Protected normal main7bf accepted after independent4c+05 prospective proof; old851 prospective777 proof is historical",
+    "actualAclRecipients": "NOT PROVEN. Old777 IDENTITY_UNPROVED/proofnull andold504 DEFAULT_ACL_UNREVIEWED unchanged; next protected real diagnostic needed afterownnewmain deployment",
+    "new091Runtime": "PENDING; no851 execution credit borrowed for091"
+  },
+  "limits": [
+    "Compiler exit2/1153 inherited diagnostics and18 inherited failfiles remain; unchanged baselines/gates were never weakened.",
+    "Original restore attempt1 failure and attempt2 successful result both retained.",
+    "C6 current851 screenshotRU/AZ clipping/Intl and inherited bundle-manifest warning remain as bound in prior851 browser/build reviews.",
+    "Restoregeometry is bounded native controls/reflow; not pixel occlusion/nativezoom/AT/wholepageWCAG.",
+    "Actual isolated PG/browser/API fixture execution is not production HR observation/tenantactivation or C12operational credit.",
+    "No source/runtime rerun/merge/push/deploy/production query or permissions changes by reviewer."
+  ]
+}

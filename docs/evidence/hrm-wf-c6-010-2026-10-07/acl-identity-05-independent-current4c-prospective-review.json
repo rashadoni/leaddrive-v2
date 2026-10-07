@@ -1,0 +1,334 @@
+{
+  "version": 1,
+  "reviewedAtUtc": "2026-10-07T19:33:10.923027+00:00",
+  "reviewer": "/root/inspect_outcome_contract",
+  "status": "SOURCE_TOOL_BUCKETS_AND_ACCEPTED_INCOMING_MAIN_PROSPECTIVE_ACCEPTED_WHOLE_TREE_DIFFERS05",
+  "mainSha": "4c1e3d29dc492254978f0d0ff303d91957b26f2c",
+  "mainParents": [
+    "777d6daa0e902ebd28a369694e235accf44ad3eb",
+    "29ab04497363a1a1d422d84a16b88f42cf2c6d73"
+  ],
+  "auxHead": "05deed0368ec6f4001c04508c95742623fb5a4f5",
+  "tested05Tree": "b7cf18d6cc81482f2be1ccda5568a704bac10502",
+  "prospectiveTree": "8c182af3c86da193af24bf05f9c27c574a441939",
+  "wholeTreeExactlyTested05": false,
+  "findingsP0P1P2P3": [],
+  "sourceAndCurrentChecks05": {
+    "path": "/tmp/hrm-default-acl-identity-peer-acceptance-05deed.json",
+    "bytes": 6887,
+    "sha256": "1f45adda9759a7f2be6ccad197e0ad4f2a500df3731985ce6161247b7c0f34c0"
+  },
+  "nineToolPathBindings": [
+    {
+      "path": ".github/workflows/hrm-default-acl-inspection.yml",
+      "sha256": "954c6d042bf00420f1ecd3c9ed0c378bc41305c0af08c30cdc3a97f06f81df2a",
+      "prospectiveByteExactTested05": true
+    },
+    {
+      "path": "scripts/hrm-default-acl-inspection.mjs",
+      "sha256": "a6aa4f3526fd5edf29bd2b3a1309f7703e85acad70c0e683cba69dbb281c2027",
+      "prospectiveByteExactTested05": true
+    },
+    {
+      "path": "scripts/hrm-default-acl-inspection.sql",
+      "sha256": "524bc02f34a75f445aff6b3834df6e02aa86665dee9acd835b2b5fc621127e2a",
+      "prospectiveByteExactTested05": true
+    },
+    {
+      "path": "scripts/hrm-default-acl-inspection.test.mjs",
+      "sha256": "402a2dde20443676d6bac430ab4e80a74f507c2dd3828b920c278cafcf0c7c3c",
+      "prospectiveByteExactTested05": true
+    },
+    {
+      "path": "docs/hrm-default-acl-inspection-session-log.md",
+      "sha256": "8d3af68cc9a724374a30d5eba1e06d37537473cef61ca4d89549adced5500a5f",
+      "prospectiveByteExactTested05": true
+    },
+    {
+      "path": ".github/workflows/hrm-migration-metadata-preflight.yml",
+      "sha256": "f90937ecda3b81e7dd017819cfaec1afdefc5fee58167fdfc2289ce012a1dcf1",
+      "prospectiveByteExactTested05": true
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.mjs",
+      "sha256": "46b417da7bbe763960b8ede8fa0e9dbd98543d090d54f73979289504bfe35771",
+      "prospectiveByteExactTested05": true
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.sql",
+      "sha256": "b174e32eb68a0dbcca98e8557fe8c716ed8277111e79ba822bce43f4e7023b6a",
+      "prospectiveByteExactTested05": true
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.test.mjs",
+      "sha256": "39c947982f5e7dc2ca1e96307ac5314518bfe748ec58a3cf217f8f09194c0eef",
+      "prospectiveByteExactTested05": true
+    }
+  ],
+  "fiveBaselinesGates": [
+    {
+      "path": "test-baseline.json",
+      "sha256": "8f0fc568274f9fd8c0c741db618d6e4d81025de7112a315cd93e6b92bbd5a4b1",
+      "exact05Main4cAccepted973": true
+    },
+    {
+      "path": "typecheck-baseline.json",
+      "sha256": "919fa9d0212b18ee685af4f08680ebbc34e8c4969294054447df03147bf0fc53",
+      "exact05Main4cAccepted973": true
+    },
+    {
+      "path": "scripts/check-test-baseline.mjs",
+      "sha256": "6c3380718fd71061d2efe4aa396fcb9cc998336c5c95a3bbd2de05230058027e",
+      "exact05Main4cAccepted973": true
+    },
+    {
+      "path": "scripts/ci/check-typecheck-baseline.mjs",
+      "sha256": "8b8a2472a1c813e85c4177c24c6df5fb5907d981b5b43e6870a04cbbba2b812a",
+      "exact05Main4cAccepted973": true
+    },
+    {
+      "path": "scripts/ci/check-typecheck-gate.sh",
+      "sha256": "a18608d9297c039380481fb27d6200d9ebbcc731e9ec23dd40b5e3a2c5a40937",
+      "exact05Main4cAccepted973": true
+    }
+  ],
+  "incomingAcceptedMain": {
+    "pr": 623,
+    "normalMergeSha": "4c1e3d29dc492254978f0d0ff303d91957b26f2c",
+    "headSha": "29ab04497363a1a1d422d84a16b88f42cf2c6d73",
+    "parentsPreserved": true,
+    "incomingChangedPaths": 16,
+    "protectedMainTreeExact623Head": true,
+    "currentRequiredChecks": [
+      {
+        "id": 112963021693,
+        "name": "pr-scope",
+        "head": "29ab04497363a1a1d422d84a16b88f42cf2c6d73",
+        "appId": 15368,
+        "conclusion": "success"
+      },
+      {
+        "id": 112963200134,
+        "name": "static-checks",
+        "head": "29ab04497363a1a1d422d84a16b88f42cf2c6d73",
+        "appId": 15368,
+        "conclusion": "success"
+      },
+      {
+        "id": 112963200135,
+        "name": "typecheck",
+        "head": "29ab04497363a1a1d422d84a16b88f42cf2c6d73",
+        "appId": 15368,
+        "conclusion": "success"
+      },
+      {
+        "id": 112963022180,
+        "name": "runner-policy",
+        "head": "29ab04497363a1a1d422d84a16b88f42cf2c6d73",
+        "appId": 15368,
+        "conclusion": "success"
+      },
+      {
+        "id": 112963022863,
+        "name": "scan",
+        "head": "29ab04497363a1a1d422d84a16b88f42cf2c6d73",
+        "appId": 15368,
+        "conclusion": "success"
+      }
+    ],
+    "PRMetadata": {
+      "path": "/tmp/hrm-acl-identity-05-peer-incoming-pr623.json",
+      "bytes": 20617,
+      "sha256": "10f42604040899bdfc771dae331cd280cdbde214506c79110c7ff1d4652d145e"
+    },
+    "checkMetadata": {
+      "path": "/tmp/hrm-acl-identity-05-peer-incoming-pr623-checks.json",
+      "bytes": 37189,
+      "sha256": "7dc6c79f4698fbeb9858829eba003481d7990edecfdb58fa3e9374976cb5e70f"
+    },
+    "pathBindings": [
+      {
+        "path": "messages/az.json",
+        "sha256": "a40ebce5ac6fd591a5203c99489bdc2a467e760b0b08625f6813d6c27d4eb93a",
+        "prospectiveExactProtectedMainAndMerged623Head": true
+      },
+      {
+        "path": "messages/en.json",
+        "sha256": "56aded2b9c01ee5a868c8d682c2ea5784ee75ee808a194e8a5458eb4e28c2eb0",
+        "prospectiveExactProtectedMainAndMerged623Head": true
+      },
+      {
+        "path": "messages/ru.json",
+        "sha256": "8c199fc06fa2ee78077a8f549e2ae32a4e955041bc01d8acd5ec642f2594f66d",
+        "prospectiveExactProtectedMainAndMerged623Head": true
+      },
+      {
+        "path": "src/__tests__/api-mtm-mobile-bootstrap.test.ts",
+        "sha256": "543a142d14cb3850e09a40a406a218f6e5d5010d35c73575ba47ebeb30421be8",
+        "prospectiveExactProtectedMainAndMerged623Head": true
+      },
+      {
+        "path": "src/__tests__/api-mtm-mobile-sync.test.ts",
+        "sha256": "3f332a5a3863882001c5f191c6795e246b4d6c752364fa620c5262ac724fc2c0",
+        "prospectiveExactProtectedMainAndMerged623Head": true
+      },
+      {
+        "path": "src/__tests__/api-mtm-visits.test.ts",
+        "sha256": "24ea71361671c1aab28a45e135ddd56f63ade47be748b1b9528ba6143f416e37",
+        "prospectiveExactProtectedMainAndMerged623Head": true
+      },
+      {
+        "path": "src/__tests__/lib-mtm-agent-permissions.test.ts",
+        "sha256": "7e3aad65cad7b51af80e35d4c1067bd164989eb0ed0e34a2515c6ce6bdaba2ce",
+        "prospectiveExactProtectedMainAndMerged623Head": true
+      },
+      {
+        "path": "src/__tests__/mtm-offline-outbox.test.ts",
+        "sha256": "8870429cf57949e25e187d32062692157e5a3307bb4d9f2d07f84fabcc5f4e8e",
+        "prospectiveExactProtectedMainAndMerged623Head": true
+      },
+      {
+        "path": "src/app/api/v1/mtm/mobile/sync/push/route.ts",
+        "sha256": "cdf5af8d5b99adae09fdf60c6b3a52f80d462ca12c27cc20983292ee428d35cd",
+        "prospectiveExactProtectedMainAndMerged623Head": true
+      },
+      {
+        "path": "src/app/api/v1/mtm/sync/push/route.ts",
+        "sha256": "c9ec470d9e773be07827cc24eaddb5b8ba1a13210fb8c139867e597f2e3832df",
+        "prospectiveExactProtectedMainAndMerged623Head": true
+      },
+      {
+        "path": "src/app/api/v1/mtm/visits/route.ts",
+        "sha256": "f6776ac53b337a5a4b66aed63f1763846ae45c45f3ea02922109d7f12cca6706",
+        "prospectiveExactProtectedMainAndMerged623Head": true
+      },
+      {
+        "path": "src/lib/mtm-settings.ts",
+        "sha256": "a980bf06fecb2c018b84282a8075607abfcb1a2b2117fd0313ab67d0bd4ae95b",
+        "prospectiveExactProtectedMainAndMerged623Head": true
+      },
+      {
+        "path": "src/lib/mtm/agent-permissions.ts",
+        "sha256": "e3918f0956b5319db5f17c259ba9cfcebb8a350b94a76f98fa469331c392e44d",
+        "prospectiveExactProtectedMainAndMerged623Head": true
+      },
+      {
+        "path": "src/lib/mtm/alert-messages.ts",
+        "sha256": "a5db96c87a506063783347d8918dc255e9585fe9562aefb8b31d3c89c530f35b",
+        "prospectiveExactProtectedMainAndMerged623Head": true
+      },
+      {
+        "path": "src/lib/mtm/check-in-geofence.ts",
+        "sha256": "1de87c357b64c419968a49ceef189a17c0ef862968bc883e7c4bfc2359faa28a",
+        "prospectiveExactProtectedMainAndMerged623Head": true
+      },
+      {
+        "path": "src/lib/mtm/live-feed-alerts.ts",
+        "sha256": "a4891540efc75b382490b7a1d1f488fc3f18e6781feffc56f56a151ac9d044ad",
+        "prospectiveExactProtectedMainAndMerged623Head": true
+      }
+    ]
+  },
+  "prospectiveMergeProof": {
+    "cleanMerge": true,
+    "diffFrom05ExactlyAccepted16MainPaths": true,
+    "diffFromMain4cExactlyReviewed3DiagnosticPaths": true,
+    "allOtherPathsByteExactProtectedMain": true,
+    "allToolSourcesByteExactActualTested05": true,
+    "overlappingChangedPaths": [],
+    "sourceHasNoImportsIntoMtmApp": true,
+    "workflowProtectedMainDispatchAndPredicatesUnchanged": true
+  },
+  "scopeReview": {
+    "mtmDelta": "Accepted owner MTM feature: outside-zone check-in only when explicit organization setting enabled; defaultfalse/admin-onlysetting registry, own visit scope and deferred alerts/audit retained. No setting activation or production grant change performed by this HRM task.",
+    "workforceLocaleNamespaces": [
+      {
+        "path": "messages/en.json",
+        "workforceNamespaces": [
+          "workforcePage",
+          "workforceExceptionQueue",
+          "workforceExceptionReport",
+          "workforceMyExceptions",
+          "workforceConfigurationPage",
+          "workforceSiteTransitionReport",
+          "workforceEvidenceTimeline",
+          "workforceCalendarConfiguration",
+          "workforceAccessManagement",
+          "workforceAttendanceAdmin",
+          "workforcePolicyVersionComparison",
+          "workforcePolicyFutureWindowPreview",
+          "workforcePolicyRestoreDraft",
+          "workforcePolicyEmployeeImpact"
+        ],
+        "all14UnchangedFrom05": true,
+        "wholeFileIncomingMainChangePreserved": true
+      },
+      {
+        "path": "messages/ru.json",
+        "workforceNamespaces": [
+          "workforcePage",
+          "workforceExceptionQueue",
+          "workforceExceptionReport",
+          "workforceMyExceptions",
+          "workforceConfigurationPage",
+          "workforceSiteTransitionReport",
+          "workforceEvidenceTimeline",
+          "workforceCalendarConfiguration",
+          "workforceAccessManagement",
+          "workforceAttendanceAdmin",
+          "workforcePolicyVersionComparison",
+          "workforcePolicyFutureWindowPreview",
+          "workforcePolicyRestoreDraft",
+          "workforcePolicyEmployeeImpact"
+        ],
+        "all14UnchangedFrom05": true,
+        "wholeFileIncomingMainChangePreserved": true
+      },
+      {
+        "path": "messages/az.json",
+        "workforceNamespaces": [
+          "workforcePage",
+          "workforceExceptionQueue",
+          "workforceExceptionReport",
+          "workforceMyExceptions",
+          "workforceConfigurationPage",
+          "workforceSiteTransitionReport",
+          "workforceEvidenceTimeline",
+          "workforceCalendarConfiguration",
+          "workforceAccessManagement",
+          "workforceAttendanceAdmin",
+          "workforcePolicyVersionComparison",
+          "workforcePolicyFutureWindowPreview",
+          "workforcePolicyRestoreDraft",
+          "workforcePolicyEmployeeImpact"
+        ],
+        "all14UnchangedFrom05": true,
+        "wholeFileIncomingMainChangePreserved": true
+      }
+    ],
+    "noChangesToWorkforceProductionSchemaMigrationsRolesCaseRecordedAtOrSupportPaths": true,
+    "MTMWholeSourceReviewLimit": "Incomingprotected-main acceptance/provenance and nonoverlap reviewed for integration; not claimed as independent full MTM feature acceptance or current HRM runtime."
+  },
+  "protection": {
+    "strict": false,
+    "enforceAdmins": true,
+    "metadata": {
+      "path": "/tmp/hrm-acl-identity-05-peer-protection-4c-fresh.json",
+      "bytes": 1488,
+      "sha256": "94ff741b8943f63ab310fba375af5e9750114361b5fc10e5ff98c29f8e8c6f76"
+    }
+  },
+  "freshRefSnapshot": {
+    "path": "/tmp/hrm-acl-identity-05-peer-main-4c-fresh.json",
+    "bytes": 342,
+    "sha256": "621dfb25c5a4b9117d2ec0909947ce923ab77df7bd3ceae125005dce96f796bd"
+  },
+  "authorship": "Root diagnostic helper/SQL independently source-reviewed; reviewer authored original synthetic fixture/workflow, root cross-review disclosed. No independent test authorship claim.",
+  "limits": [
+    "Source36/required5 execution remains bound05 and its b7cf tree; no claim that full prospective tree was tested as05.",
+    "Normalprotectedmain nonoverlap preserves incoming MTM feature; no rebase/forcepush/checks weakening. Root must recheck fresh refs/protection before normal merge.",
+    "Final HRM successor must include all currentmain bytes and run fresh WHOLE-tree5lanes/currentrequired/applicable CI; no851 or05 runtime borrowed for the new HRM head.",
+    "Actual production identity/ACL recipients still unknown; old777ERROR andold504INCOMPLETE retained.",
+    "No runtime/SQL/localheavychecks/dispatch/merge/source mutation by reviewer."
+  ]
+}
