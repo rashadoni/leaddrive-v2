@@ -68,7 +68,7 @@ export function PaymentsDashboard() {
   const [editOrderId, setEditOrderId] = useState<string | null>(null)
   const [showReject, setShowReject] = useState<string | null>(null)
   const [rejectReason, setRejectReason] = useState("")
-  const { canWrite, canDelete } = useFinanceAccess()
+  const { canWrite, canDelete, canApprove } = useFinanceAccess()
 
   const { data: registryData, isLoading: registryLoading } = usePaymentRegistry(filters, registryPage)
   const { data: orders, isLoading: ordersLoading } = usePaymentOrders()
@@ -203,9 +203,15 @@ export function PaymentsDashboard() {
                                   )}
                                   {o.status === "pending_approval" && canWrite && (
                                     <>
-                                      <Button size="sm" variant="outline" className="h-7 text-xs text-green-700" onClick={() => approveOrder.mutate(o.id)}>
-                                        <Check className="w-3 h-3 mr-1" /> {t("approveBtn")}
-                                      </Button>
+                                      {canApprove(o) ? (
+                                        <Button size="sm" variant="outline" className="h-7 text-xs text-green-700" onClick={() => approveOrder.mutate(o.id)}>
+                                          <Check className="w-3 h-3 mr-1" /> {t("approveBtn")}
+                                        </Button>
+                                      ) : (
+                                        // Said in words rather than by a missing button: the author
+                                        // would otherwise look for "Approve" and conclude it is broken.
+                                        <span className="self-center text-xs text-muted-foreground">{t("awaitsAnotherApprover")}</span>
+                                      )}
                                       <Button size="sm" variant="outline" className="h-7 text-xs text-red-700" onClick={() => { setShowReject(o.id); setRejectReason("") }}>
                                         <X className="w-3 h-3 mr-1" /> {t("rejectBtn")}
                                       </Button>

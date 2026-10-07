@@ -9463,6 +9463,7 @@
     "pod": {
       "accountShort": "Account",
       "approveBtn": "Approve",
+      "awaitsAnotherApprover": "Awaiting another approver",
       "approvedAt": "Approved",
       "approving": "Approving...",
       "balance": "Balance",

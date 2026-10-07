@@ -9459,6 +9459,7 @@
     "pod": {
       "accountShort": "Hesab",
       "approveBtn": "Təsdiq et",
+      "awaitsAnotherApprover": "Başqa əməkdaşın təsdiqini gözləyir",
       "approvedAt": "Təsdiqlənib",
       "approving": "Təsdiqlənir...",
       "balance": "Balans",

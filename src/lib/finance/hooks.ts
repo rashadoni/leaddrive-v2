@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
 import { checkPermission, type Role } from "@/lib/permissions"
+import { isOwnOrderToApprove } from "./payment-order-approval"
 import type {
   FinanceDashboardData,
   ReceivablesData,
@@ -42,12 +43,20 @@ function useOrgId() {
  *
  * Read-only until the session has loaded.
  */
-export function useFinanceAccess(): { canWrite: boolean; canDelete: boolean } {
+export function useFinanceAccess(): {
+  canWrite: boolean
+  canDelete: boolean
+  /** A pending order this person may approve — not their own, unless they are an administrator. */
+  canApprove: (order: { createdBy?: string | null }) => boolean
+} {
   const { data: session } = useSession()
-  const role = ((session?.user as { role?: string } | undefined)?.role || "viewer") as Role
+  const user = session?.user as { id?: string; role?: string } | undefined
+  const role = (user?.role || "viewer") as Role
+  const canWrite = checkPermission(role, "finance", "write")
   return {
-    canWrite: checkPermission(role, "finance", "write"),
+    canWrite,
     canDelete: checkPermission(role, "finance", "delete"),
+    canApprove: (order) => canWrite && !isOwnOrderToApprove(order, { userId: user?.id || "", role }),
   }
 }
 

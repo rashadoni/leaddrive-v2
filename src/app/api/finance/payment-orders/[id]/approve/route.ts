@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { withRlsAuth } from "@/lib/with-rls"
 import { prisma } from "@/lib/prisma"
+import { isOwnOrderToApprove } from "@/lib/finance/payment-order-approval"
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -21,6 +22,12 @@ export const POST = withRlsAuth<RouteContext>("finance", "write", async (_req, a
   const order = await prisma.paymentOrder.findFirst({ where: { id, organizationId: orgId } })
   if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 })
   if (order.status !== "pending_approval") return NextResponse.json({ error: "Only pending orders can be approved" }, { status: 400 })
+  if (isOwnOrderToApprove(order, auth)) {
+    return NextResponse.json(
+      { error: "Forbidden", message: "A payment order is approved by someone other than the person who created it" },
+      { status: 403 },
+    )
+  }
 
   // Compare-and-set on the status: an approval that lost a race with a
   // rejection (or with a second approval) changes nothing, instead of

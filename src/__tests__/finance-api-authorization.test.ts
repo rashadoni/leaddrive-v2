@@ -471,6 +471,69 @@ describe("approving a payment order", () => {
     expect(json.data).toMatchObject({ id: "po-1", status: "approved", approvedBy: `user-${role}` })
   })
 
+  // Owner's rule, 2026-10-07: a manager does not approve their own order; an
+  // administrator may, or a one-person finance team could approve nothing.
+  it("a manager cannot approve the order they created themselves", async () => {
+    seedOrder({ createdBy: "user-manager" })
+    signIn("manager")
+    const before = snapshot()
+
+    const res = await approve(post("/api/finance/payment-orders/po-1/approve"), idParams("po-1"))
+
+    expect(res.status).toBe(403)
+    expect(snapshot()).toEqual(before)
+    expect(order()).toMatchObject({ status: "pending_approval", approvedBy: null, approvedAt: null })
+  })
+
+  it("the same order is approved by an administrator, and by them only", async () => {
+    seedOrder({ createdBy: "user-manager" })
+    signIn("admin")
+
+    const res = await approve(post("/api/finance/payment-orders/po-1/approve"), idParams("po-1"))
+
+    expect(res.status).toBe(200)
+    expect(order()).toMatchObject({ status: "approved", approvedBy: "user-admin", createdBy: "user-manager" })
+  })
+
+  it("an administrator may approve their own order", async () => {
+    seedOrder({ createdBy: "user-admin" })
+    signIn("admin")
+
+    const res = await approve(post("/api/finance/payment-orders/po-1/approve"), idParams("po-1"))
+
+    expect(res.status).toBe(200)
+    expect(order()).toMatchObject({ status: "approved", approvedBy: "user-admin" })
+  })
+
+  it("an order with no recorded author is nobody's own", async () => {
+    // Every order created before the author was recorded.
+    seedOrder({ createdBy: null })
+    signIn("manager")
+
+    const res = await approve(post("/api/finance/payment-orders/po-1/approve"), idParams("po-1"))
+
+    expect(res.status).toBe(200)
+    expect(order()).toMatchObject({ status: "approved", approvedBy: "user-manager" })
+  })
+
+  it("a manager's own order, created through the API, cannot be approved by them", async () => {
+    // The whole path rather than a seeded row: create, submit, try to approve.
+    signIn("manager")
+    await createOrder(post("/api/finance/payment-orders", { counterpartyName: "Acme", amount: 100, purpose: "Rent" }))
+    Object.assign(order(), { status: "pending_approval" })
+
+    const own = await approve(post(`/api/finance/payment-orders/${order().id}/approve`), idParams(order().id))
+    expect(own.status).toBe(403)
+    // The stand-in database fills no column defaults, so "not approved" is an
+    // absent approver rather than a null one.
+    expect([order().status, order().approvedBy ?? null]).toEqual(["pending_approval", null])
+
+    signIn("admin")
+    const other = await approve(post(`/api/finance/payment-orders/${order().id}/approve`), idParams(order().id))
+    expect(other.status).toBe(200)
+    expect(order()).toMatchObject({ status: "approved", approvedBy: "user-admin", createdBy: "user-manager" })
+  })
+
   it("does not approve twice", async () => {
     seedOrder()
     signIn("admin")

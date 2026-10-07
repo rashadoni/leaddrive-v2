@@ -50,11 +50,17 @@ vi.mock("@/components/ai/advisor-record-widget", () => ({ AdvisorRecordWidget: (
 
 import { PaymentsDashboard } from "@/components/finance/payments-dashboard"
 
-const order = (id: string, status: string) => ({
+const order = (id: string, status: string, createdBy: string | null = "u-someone-else") => ({
   id, orderNumber: id, counterpartyName: "Acme", amount: 100, currency: "AZN",
-  purpose: "Rent", paymentMethod: "bank_transfer", status, createdAt: "2026-10-01T10:00:00Z",
+  purpose: "Rent", paymentMethod: "bank_transfer", status, createdBy, createdAt: "2026-10-01T10:00:00Z",
 })
-const ORDERS = [order("PO-DRAFT", "draft"), order("PO-PENDING", "pending_approval"), order("PO-APPROVED", "approved")]
+// The signed-in person is "u-1" (see `session`): PO-OWN is the order they raised.
+const ORDERS = [
+  order("PO-DRAFT", "draft"),
+  order("PO-PENDING", "pending_approval"),
+  order("PO-OWN", "pending_approval", "u-1"),
+  order("PO-APPROVED", "approved"),
+]
 
 let root: Root
 let container: HTMLDivElement
@@ -70,6 +76,8 @@ function actions(): Record<string, string[]> {
     return [number, buttons]
   }))
 }
+const rowText = (orderNumber: string) =>
+  [...container.querySelectorAll("tbody tr")].find((row) => row.textContent?.includes(orderNumber))?.textContent ?? ""
 const hasButton = (text: string) => [...container.querySelectorAll("button")].some((b) => b.textContent?.trim() === text)
 
 async function render(role: string) {
@@ -109,8 +117,11 @@ describe("payment orders — actions by role", () => {
     expect(actions()).toEqual({
       "PO-DRAFT": [label("edit"), label("submit"), "🗑"],
       "PO-PENDING": [label("approveBtn"), label("rejectBtn")],
+      // An administrator approves their own order too.
+      "PO-OWN": [label("approveBtn"), label("rejectBtn")],
       "PO-APPROVED": [label("executeBtn")],
     })
+    expect(rowText("PO-OWN")).not.toContain(label("awaitsAnotherApprover"))
   })
 
   it("a manager runs the orders and is not offered a delete the server would refuse", async () => {
@@ -120,14 +131,19 @@ describe("payment orders — actions by role", () => {
     expect(actions()).toEqual({
       "PO-DRAFT": [label("edit"), label("submit")],
       "PO-PENDING": [label("approveBtn"), label("rejectBtn")],
+      // Their own order: no "Approve", and the row says why in words. They can
+      // still take it back.
+      "PO-OWN": [label("rejectBtn")],
       "PO-APPROVED": [label("executeBtn")],
     })
+    expect(rowText("PO-OWN")).toContain(label("awaitsAnotherApprover"))
+    expect(rowText("PO-PENDING")).not.toContain(label("awaitsAnotherApprover"))
   })
 
   it("a viewer reads the orders and is offered nothing to press", async () => {
     await render("viewer")
 
     expect(hasButton(label("newOrder"))).toBe(false)
-    expect(actions()).toEqual({ "PO-DRAFT": [], "PO-PENDING": [], "PO-APPROVED": [] })
+    expect(actions()).toEqual({ "PO-DRAFT": [], "PO-PENDING": [], "PO-OWN": [], "PO-APPROVED": [] })
   })
 })
