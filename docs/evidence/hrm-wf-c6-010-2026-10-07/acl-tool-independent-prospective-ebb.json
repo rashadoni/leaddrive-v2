@@ -1,0 +1,269 @@
+{
+  "version": 1,
+  "reviewedAtUtc": "2026-10-07T18:25:25.618335+00:00",
+  "reviewer": "/root/inspect_outcome_contract",
+  "decision": "CURRENT_AUX_SOURCE_PREREQUISITES_ACCEPTED_WITH_PROTECTED_UPSTREAM_SCOPE_PRESERVATION",
+  "head": "2fb474a7842034ab7e845f5bf553fd94c6301481",
+  "testedTree": "f3d8be850e835ded02ccded8be57c28d800854f7",
+  "freshProtectedMain": "ebb48f83a02474cc616ec3c3a421c3c77fcbcf0f",
+  "prospectiveTree": "d996563b42bf2bef7d80abcac37da0dd6f399ab8",
+  "cleanMergeComputed": true,
+  "wholeProspectiveTreeEqualsTestedHead": false,
+  "deltaFromCurrentMainExactly5TestedToolPaths": [
+    ".github/workflows/hrm-default-acl-inspection.yml",
+    "docs/hrm-default-acl-inspection-session-log.md",
+    "scripts/hrm-default-acl-inspection.mjs",
+    "scripts/hrm-default-acl-inspection.sql",
+    "scripts/hrm-default-acl-inspection.test.mjs"
+  ],
+  "allOtherTreeBytesExactCurrentMain": true,
+  "all5ToolBytesExactTested2fb": true,
+  "newToolBindings": [
+    {
+      "path": ".github/workflows/hrm-default-acl-inspection.yml",
+      "sha256": "954c6d042bf00420f1ecd3c9ed0c378bc41305c0af08c30cdc3a97f06f81df2a",
+      "byteExactTested2fb": true
+    },
+    {
+      "path": "scripts/hrm-default-acl-inspection.mjs",
+      "sha256": "9b87021c9bbed0162bb5d05dbc3cf16f845012e53717a26d192aa0c14148df16",
+      "byteExactTested2fb": true
+    },
+    {
+      "path": "scripts/hrm-default-acl-inspection.sql",
+      "sha256": "524bc02f34a75f445aff6b3834df6e02aa86665dee9acd835b2b5fc621127e2a",
+      "byteExactTested2fb": true
+    },
+    {
+      "path": "scripts/hrm-default-acl-inspection.test.mjs",
+      "sha256": "6aad06c5505b81d2860e15a7fef9ab990ef32ca53fb7a1d1f7fc66ee4085e877",
+      "byteExactTested2fb": true
+    },
+    {
+      "path": "docs/hrm-default-acl-inspection-session-log.md",
+      "sha256": "12a55fe50908cb15a164f8c413a6901a0a1aa7dc60120ea3d8490397bd62b3ba",
+      "byteExactTested2fb": true
+    }
+  ],
+  "oldMetadataAndBaselineBindings": [
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.mjs",
+      "sha256": "46b417da7bbe763960b8ede8fa0e9dbd98543d090d54f73979289504bfe35771",
+      "byteExactTestedHeadAndCurrentMain": true
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.sql",
+      "sha256": "b174e32eb68a0dbcca98e8557fe8c716ed8277111e79ba822bce43f4e7023b6a",
+      "byteExactTestedHeadAndCurrentMain": true
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.test.mjs",
+      "sha256": "39c947982f5e7dc2ca1e96307ac5314518bfe748ec58a3cf217f8f09194c0eef",
+      "byteExactTestedHeadAndCurrentMain": true
+    },
+    {
+      "path": ".github/workflows/hrm-migration-metadata-preflight.yml",
+      "sha256": "f90937ecda3b81e7dd017819cfaec1afdefc5fee58167fdfc2289ce012a1dcf1",
+      "byteExactTestedHeadAndCurrentMain": true
+    },
+    {
+      "path": "test-baseline.json",
+      "sha256": "8f0fc568274f9fd8c0c741db618d6e4d81025de7112a315cd93e6b92bbd5a4b1",
+      "byteExactTestedHeadAndCurrentMain": true
+    },
+    {
+      "path": "typecheck-baseline.json",
+      "sha256": "919fa9d0212b18ee685af4f08680ebbc34e8c4969294054447df03147bf0fc53",
+      "byteExactTestedHeadAndCurrentMain": true
+    },
+    {
+      "path": "scripts/ci/check-typecheck-gate.sh",
+      "sha256": "a18608d9297c039380481fb27d6200d9ebbcc731e9ec23dd40b5e3a2c5a40937",
+      "byteExactTestedHeadAndCurrentMain": true
+    },
+    {
+      "path": "scripts/ci/check-typecheck-baseline.mjs",
+      "sha256": "8b8a2472a1c813e85c4177c24c6df5fb5907d981b5b43e6870a04cbbba2b812a",
+      "byteExactTestedHeadAndCurrentMain": true
+    },
+    {
+      "path": "scripts/check-test-baseline.mjs",
+      "sha256": "6c3380718fd71061d2efe4aa396fcb9cc998336c5c95a3bbd2de05230058027e",
+      "byteExactTestedHeadAndCurrentMain": true
+    }
+  ],
+  "upstreamMainDeltaBindings": [
+    {
+      "path": "CLAUDE.md",
+      "sha256": "ee63e7c5908d381f208d359565ef27400ec16a8d903f47f08916060eed61fb94",
+      "byteExactProtectedMainEbb": true
+    },
+    {
+      "path": "docs/meta-app-review-session-log.md",
+      "sha256": "3f192b5a4ca5efe039d04f6e35225b71a301fb200c49e4ce4c9053f1b479d474",
+      "byteExactProtectedMainEbb": true
+    },
+    {
+      "path": "src/__tests__/api-finance-funds.test.ts",
+      "sha256": "107f93e888b14ac858ad5f1eb6ba35ab8d5255002220fbfa2ca7072eafe44413",
+      "byteExactProtectedMainEbb": true
+    },
+    {
+      "path": "src/__tests__/api-invoices-sub.test.ts",
+      "sha256": "ce9c5cc08bcb05c99eb22327b2db986a46156077d77eb0675294a9a12f750dcd",
+      "byteExactProtectedMainEbb": true
+    },
+    {
+      "path": "src/__tests__/api-invoices.test.ts",
+      "sha256": "687688fe7f9a9b917b69fabfaa1e0dfe21d319627050914b517dcd11c608fef3",
+      "byteExactProtectedMainEbb": true
+    },
+    {
+      "path": "src/__tests__/finance-bill-payment-postgres.test.ts",
+      "sha256": "09d8dc059a8717b842273e76347bb6c02ff8bd1502bfb18796e66456da7afd4c",
+      "byteExactProtectedMainEbb": true
+    },
+    {
+      "path": "src/app/api/finance/payables/[id]/route.ts",
+      "sha256": "5b568539391ff6b533a41ea42391ebfce9f05d5d3b0ceb60beff7e9a7b3d111e",
+      "byteExactProtectedMainEbb": true
+    },
+    {
+      "path": "src/app/api/v1/invoices/[id]/payments/[paymentId]/route.ts",
+      "sha256": "4672f85fde67f510ffcf71f7ffbb504ef0ce9714562e6b3dd786f37d70f4e181",
+      "byteExactProtectedMainEbb": true
+    },
+    {
+      "path": "src/app/api/v1/invoices/[id]/route.ts",
+      "sha256": "8712adb9d02a1dc6aedd90dd4d8165ceebe201afcb95e7d34deb2d9ee6872d09",
+      "byteExactProtectedMainEbb": true
+    }
+  ],
+  "mainEbb": {
+    "normalMerge": "PR620 finance",
+    "parents": [
+      "22c94b45949dece8c6fb0e5c414c8569263ab6f8",
+      "842d502c54429d40febafc6a966fd61840daba74"
+    ],
+    "files": [
+      "CLAUDE.md",
+      "src/__tests__/api-finance-funds.test.ts",
+      "src/__tests__/api-invoices-sub.test.ts",
+      "src/__tests__/api-invoices.test.ts",
+      "src/__tests__/finance-bill-payment-postgres.test.ts",
+      "src/app/api/finance/payables/[id]/route.ts",
+      "src/app/api/v1/invoices/[id]/payments/[paymentId]/route.ts",
+      "src/app/api/v1/invoices/[id]/route.ts"
+    ],
+    "source": "protected acceptedcurrentmain",
+    "predicate": "8PR620 paths CLAUDE+3financeAPI+4financetests plus prior22c Meta doc are incoming-main bytes, not peer source edits or new tool app imports"
+  },
+  "sourceCoupling": "Readonly supplemental helper imports only Node builtins and unchanged standalone base metadata helper. No Finance/app modules imported. Currentmain unrelatedAPI/test deltas are preserved by merge; new source hosted36 and requiredhead checks are not automatically rerun for protected upstream files when repositorystrict=false. No current HRMwhole-tree equality/runtime credit inferred.",
+  "requiredCurrentHeadChecks": [
+    {
+      "name": "pr-scope",
+      "id": 112936980411,
+      "head": "2fb474a7842034ab7e845f5bf553fd94c6301481",
+      "app": 15368,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "static-checks",
+      "id": 112937169338,
+      "head": "2fb474a7842034ab7e845f5bf553fd94c6301481",
+      "app": 15368,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "typecheck",
+      "id": 112937169404,
+      "head": "2fb474a7842034ab7e845f5bf553fd94c6301481",
+      "app": 15368,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "runner-policy",
+      "id": 112936789907,
+      "head": "2fb474a7842034ab7e845f5bf553fd94c6301481",
+      "app": 15368,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "scan",
+      "id": 112936789939,
+      "head": "2fb474a7842034ab7e845f5bf553fd94c6301481",
+      "app": 15368,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "mainProtection": {
+    "strict": false,
+    "enforceAdmins": true,
+    "requiredContextAppPairs": [
+      {
+        "context": "pr-scope",
+        "app_id": 15368
+      },
+      {
+        "context": "static-checks",
+        "app_id": 15368
+      },
+      {
+        "context": "typecheck",
+        "app_id": 15368
+      },
+      {
+        "context": "runner-policy",
+        "app_id": 15368
+      },
+      {
+        "context": "scan",
+        "app_id": 15368
+      }
+    ],
+    "noBypassOrCheckRelaxation": true
+  },
+  "observedEvidence": [
+    {
+      "path": "/tmp/hrm-default-acl-ebb-main-ref.json",
+      "bytes": 342,
+      "sha256": "d87876bfc009cb9cfe892044fb2484bb47299e5f1a7746ff7417e16d7f6402cc"
+    },
+    {
+      "path": "/tmp/hrm-default-acl-ebb-main-commit.json",
+      "bytes": 34181,
+      "sha256": "60cb7d3ed6e8f75a357d0b73accdb171ff38f0b91983c6462bb959973ff52cec"
+    },
+    {
+      "path": "/tmp/hrm-default-acl-2fb-check-runs-at-ebb.json",
+      "bytes": 28574,
+      "sha256": "7b91b7946b39c065b50d6b1648dbec938efd3f1ef3650f1e1562a141f5c5a241"
+    },
+    {
+      "path": "/tmp/hrm-default-acl-ebb-protection.json",
+      "bytes": 1488,
+      "sha256": "94ff741b8943f63ab310fba375af5e9750114361b5fc10e5ff98c29f8e8c6f76"
+    },
+    {
+      "path": "/tmp/hrm-default-acl-peer-acceptance-2fb.json",
+      "bytes": 11680,
+      "sha256": "717d8044dea4f9efeaded7613c12f200060fc5ed67a4314b0d32100de95d350e"
+    }
+  ],
+  "old22cProspectiveProof": "Historical only after incomingFinance620; not reused as currentpremergeproof",
+  "authorship": "Peer authored own tests/workflow/fixture; root crossreview retained. New root helper/SQL independently reviewed. Actual source36/cleanup/sourcebindings accepted; no secondexecution or independenttestauthorship claim.",
+  "limits": [
+    "Currentmain/head must be re-read immediately before coordinator normalmerge; newerincoming source requiresnewproof.",
+    "No peer merge/push/deploy/productionSQL/dispatch or source edits.",
+    "Aux code/tool buckets exacttested2fb; wholemergedtree includes legitimateprotectedmainFinance+Meta bytes and is not claimed exact2fb tree.",
+    "HRM final source separatelymust includeebb/future621wrapper, freezewhole-tree and runallfreshrequired/exact5runtime lanes; prior5ed/8d/8fc runtime remains historical only.",
+    "Actualprotected ownrelease/publicSHA+recipient snapshot/manualACLdecision still required; oldINCOMPLETE/FAIL retained, no rights/config/activation change or automatedapproval.",
+    "No C12 realoperational or realHRoutcome/rate credit from synthetic source tests."
+  ],
+  "findingsP0P1P2P3": []
+}

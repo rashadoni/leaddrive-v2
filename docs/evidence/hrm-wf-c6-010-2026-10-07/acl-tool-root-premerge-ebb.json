@@ -1,0 +1,23 @@
+{
+  "main": "ebb48f83a02474cc616ec3c3a421c3c77fcbcf0f",
+  "source": "2fb474a7842034ab7e845f5bf553fd94c6301481",
+  "sourceTree": "f3d8be850e835ded02ccded8be57c28d800854f7",
+  "prospectiveTree": "d996563b42bf2bef7d80abcac37da0dd6f399ab8",
+  "owned5AndOldMetadata4ExactTestedSource": true,
+  "prospectiveOtherDeltaExactAcceptedProtectedMain620622": true,
+  "incomingPaths": [
+    "CLAUDE.md",
+    "docs/meta-app-review-session-log.md",
+    "src/__tests__/api-finance-funds.test.ts",
+    "src/__tests__/api-invoices-sub.test.ts",
+    "src/__tests__/api-invoices.test.ts",
+    "src/__tests__/finance-bill-payment-postgres.test.ts",
+    "src/app/api/finance/payables/[id]/route.ts",
+    "src/app/api/v1/invoices/[id]/payments/[paymentId]/route.ts",
+    "src/app/api/v1/invoices/[id]/route.ts"
+  ],
+  "wholeProspectiveEqualsSourceTree": false,
+  "qualification": "Normal strict=false protected PR merge preserves already accepted incoming main. New read-only tool does not import or modify Finance/Meta paths. Final HRM must separately test its complete integrated final tree.",
+  "currentProtectionUnchanged": true,
+  "normalMergeExpectedMatchedHead": "2fb474a7842034ab7e845f5bf553fd94c6301481"
+}

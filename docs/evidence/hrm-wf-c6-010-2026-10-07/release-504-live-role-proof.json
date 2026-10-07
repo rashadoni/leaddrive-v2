@@ -1,0 +1,15 @@
+{
+  "main": "50466e3fce9f23eaba8079a51be914fe6a6eff07",
+  "deploymentRun": 37655470317,
+  "productionJob": 112914520246,
+  "logBytes": 116762,
+  "logSha256": "dcb05346a209250fb4248b56239336998aff2b750b0c52a167c86218e636f2e5",
+  "actualVerifiedRoleSuccessLog": true,
+  "canonicalSourceRequiresObservedUniqueLiveApplicationBackendBeforeSuccessLog": true,
+  "canonicalRoleChecksUnconditional": true,
+  "serverDeploySha256": "9fbeede30d3ba9f032202c1e435a8b44c14372c6a19725f160bc188641829f52",
+  "scope": "Prior SHA-bound own504 deployment observed app/migration roles and live instance; not a new simultaneous liveness assertion by supplemental two-session inspector",
+  "noRoleNamesExportedByReceipt": true,
+  "quietWindowAppliedThisAuxRelease": false,
+  "quietWindowQualification": "Own504 had no pending migrations; future HRM migrations require existing bounded quiet-window gate."
+}
