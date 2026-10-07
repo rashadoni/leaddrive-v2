@@ -973,3 +973,37 @@ normal push to existing evidence branch, verify PR617 draft/head and PR589 merge
 state; no merge/deploy of evidence or external code. Next task resumes by fresh
 refs+journal and then next permitted remaining HRM/C12 criterion; activation/
 newproduction/access/secrets changes require separate approval.
+
+
+## 2026-10-08 Europe/Berlin — final checkpoint published; verified stopping state
+
+Final acceptance/accounting/docs checkpoint3cb81fe937e23cf36787cc769b01cf8c63fd66c3
+published normally to existing codex/hrm-wf-c6-010-release-evidence-20261007.
+GitHub verification confirms PR617 OPEN/DRAFT at that checkpoint with preserved
+basecodex/hrm-588-validation-20261005, PR589 merged at accepted ownf308, branch
+clean and final descriptions updated. Both PRs attached to the task. No evidence
+merge/deploy or external628 action. Publication finite proof archived. This
+entry supersedes the preceding “publication pending” stopping point; earlier
+entries remain unchanged.
+
+Last readonly TLS/address-pinned build→ping→build observation: production still
+serves fullf3085e5cdf80879bee2e65d06df4e88698afa3e4, matching before/after builtAt,
+while repositorymain is external e041d8a1b90ae80e81667bf5b6263636406d91d2. This
+is a current public state observation only, not approval of the successor's
+whole release/MTM permission changes. C6 code and its HR access preserved by
+independent source comparison; f308 evidence not borrowed as wholee041CI.
+
+Current result/status: WF-C6-010 functional DONE, own HRM releasef308 verified;
+85/161DONE,76open,weighted61%,14/15gates; C12 PARTIAL and original globalmetadata
+FAIL/INCOMPLETE retained. Last completed action: normal publication and remote
+PR/head/draft verification plus final public SHA/state observation, with all
+source/runtime/production/functional/docs reviews and original failures archived.
+Precise stopping point: after own verified functional HRM acceptance and its
+published dependent evidence; no application changes or release work pending for
+WF-C6-010. Next action on resume: first compare current refs/live artifact and
+read this journal, then work on the next permitted remaining HRM/C12 criterion.
+Real HR authenticated observation remains NOT RUN without a legitimate existing
+HR session; do not manufacture identities/outcomes. Full C12 constraints,
+operating/physical/pilot/load and backup service/restore acceptance remain open;
+activation and new production/access/secret mutations need separate approval.
+Support and HRHub personnel-document work remain outside this completed slice.
