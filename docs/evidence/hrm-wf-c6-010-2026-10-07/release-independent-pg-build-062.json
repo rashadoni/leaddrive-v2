@@ -1,0 +1,373 @@
+{
+  "version": 1,
+  "reviewId": "HRM-release-independent-pg-regressions-build-06254",
+  "createdAtUtc": "2026-10-07T14:44:05.031167+00:00",
+  "reviewer": "/root/inspect_outcome_contract",
+  "headSha": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+  "gitTree": "38b49b4cbe974a21e6a0f982dbbacab20aecf7da",
+  "runId": 37635350493,
+  "status": "ACCEPTED_FRESH_EXACT062_PG_STRICT_REGRESSION_GATE_AND_COMPILED_BUNDLE_WITH_RETAINED_WARNINGS_FULL_COMPILER_AND_RELEASE_PROOF_PENDING",
+  "authorshipDisclosure": "Reviewer authored C6 report PostgreSQL extension and browser/classification/preflight verification code; root independently reviewed those changes. Production implementation, workflow opt-in jobs, shared-lock/revision tests and final integration were root/prior authors. This is independent read-only inspection of actual hosted job metadata/logs and exact source contracts, not independent test authorship or second execution.",
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "jobs": [
+    {
+      "family": "source-regression",
+      "jobId": 112839991260,
+      "name": "Exact WF-C6-010 source and PostgreSQL regressions",
+      "headSha": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+      "runId": 37635350493,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-07T14:16:47Z",
+      "completedAt": "2026-10-07T14:30:18Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "conclusion": "success"
+        },
+        {
+          "number": 2,
+          "name": "Initialize containers",
+          "conclusion": "success"
+        },
+        {
+          "number": 3,
+          "name": "Run actions/checkout@v6",
+          "conclusion": "success"
+        },
+        {
+          "number": 4,
+          "name": "Verify exact head and preserved PR608 ancestor",
+          "conclusion": "success"
+        },
+        {
+          "number": 5,
+          "name": "Run actions/setup-node@v6",
+          "conclusion": "success"
+        },
+        {
+          "number": 6,
+          "name": "Run npm ci",
+          "conclusion": "success"
+        },
+        {
+          "number": 7,
+          "name": "Validate and generate existing schema clients",
+          "conclusion": "success"
+        },
+        {
+          "number": 8,
+          "name": "Unchanged runner policy and translation parity",
+          "conclusion": "success"
+        },
+        {
+          "number": 9,
+          "name": "Scoped production source lint",
+          "conclusion": "success"
+        },
+        {
+          "number": 10,
+          "name": "Actual shared-lock and aggregate PostgreSQL gates",
+          "conclusion": "success"
+        },
+        {
+          "number": 11,
+          "name": "Full regression suite against unchanged baseline",
+          "conclusion": "success"
+        },
+        {
+          "number": 20,
+          "name": "Post Run actions/setup-node@v6",
+          "conclusion": "success"
+        },
+        {
+          "number": 21,
+          "name": "Post Run actions/checkout@v6",
+          "conclusion": "success"
+        },
+        {
+          "number": 22,
+          "name": "Stop containers",
+          "conclusion": "success"
+        },
+        {
+          "number": 23,
+          "name": "Complete job",
+          "conclusion": "success"
+        }
+      ],
+      "originalLog": {
+        "path": "/tmp/hrm-release-final-source-regression-062.log",
+        "bytes": 157668,
+        "sha256": "94aca1ede4784737bb68b7874c6a2e3e9a54859fe20c25752493b0719e5d6820"
+      }
+    },
+    {
+      "family": "build",
+      "jobId": 112839991063,
+      "name": "Exact WF-C6-010 isolated production bundle build",
+      "headSha": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+      "runId": 37635350493,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-07T14:16:47Z",
+      "completedAt": "2026-10-07T14:27:15Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "conclusion": "success"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@v6",
+          "conclusion": "success"
+        },
+        {
+          "number": 3,
+          "name": "Verify exact head",
+          "conclusion": "success"
+        },
+        {
+          "number": 4,
+          "name": "Run actions/setup-node@v6",
+          "conclusion": "success"
+        },
+        {
+          "number": 5,
+          "name": "Run bash scripts/ci/prepare-hosted-build-runner.sh",
+          "conclusion": "success"
+        },
+        {
+          "number": 6,
+          "name": "Run npm ci",
+          "conclusion": "success"
+        },
+        {
+          "number": 7,
+          "name": "Run npx prisma generate",
+          "conclusion": "success"
+        },
+        {
+          "number": 8,
+          "name": "Build isolated bundle with inert fixture configuration",
+          "conclusion": "success"
+        },
+        {
+          "number": 9,
+          "name": "Cleanup bounded build swap",
+          "conclusion": "success"
+        },
+        {
+          "number": 17,
+          "name": "Post Run actions/setup-node@v6",
+          "conclusion": "success"
+        },
+        {
+          "number": 18,
+          "name": "Post Run actions/checkout@v6",
+          "conclusion": "success"
+        },
+        {
+          "number": 19,
+          "name": "Complete job",
+          "conclusion": "success"
+        }
+      ],
+      "originalLog": {
+        "path": "/tmp/hrm-release-final-build-062.log",
+        "bytes": 129333,
+        "sha256": "96da9c3345da06009889f3760e5d63e65387545a6e0a8460ee8ac0b8384868c1"
+      }
+    }
+  ],
+  "workflowSourceBinding": {
+    "path": ".github/workflows/workforce-exception-report-browser-evidence.yml",
+    "bytes": 25256,
+    "sha256": "1dcd49d422fb212d4ee1eac6368de97837fe62fc5ca5975a7faa2b6c61dc18e7",
+    "blob": "61b8a890269f3a083628de6df13ac508e4d0b19a"
+  },
+  "sourceAndPgAssessment": {
+    "actualFiles": 4,
+    "actualPassedTests": 44,
+    "actualSkippedTests": 0,
+    "selectedTestBindings": [
+      {
+        "path": "src/__tests__/lib-workforce-calendar-configuration-lock-postgres.test.ts",
+        "bytes": 46209,
+        "sha256": "7174be0a5908c720e3edc7b252aa8f4a1dc6de3bc256a25243a0a7be9cf885c7",
+        "blob": "ec210f9bc6563e64e9ca28262d879f685084cae9",
+        "passedTests": 12
+      },
+      {
+        "path": "src/__tests__/lib-workforce-exception-lock-postgres.test.ts",
+        "bytes": 113586,
+        "sha256": "7724e6a3a9a53a221b0dba3a6024fdb9bf6a24d41c67e91b3fe1d2c65ecd2e21",
+        "blob": "c9f6e2c8f0a4948d967aa43cd02e850842186669",
+        "passedTests": 15
+      },
+      {
+        "path": "src/__tests__/lib-workforce-exception-policy-revision-postgres.test.ts",
+        "bytes": 29427,
+        "sha256": "95a530f05d065e34cd055297db080fe1b30a982ccef682029cfd35838bf6b637",
+        "blob": "f29f001c0e7853320d53f180183dbd2dbd9f0d6e",
+        "passedTests": 6
+      },
+      {
+        "path": "src/__tests__/lib-workforce-exception-report-postgres.test.ts",
+        "bytes": 43001,
+        "sha256": "ee7e6aaafa17545f1c77130a537745407ad133e1e503fbb71b6b7d50639114e1",
+        "blob": "e2edcbca912606655672d5b946951e3f5368cf2f",
+        "passedTests": 11
+      }
+    ],
+    "existingPrismaSchemaValidated": true,
+    "mainAndSelectedLegacyPrismaClientsGenerated": true,
+    "scopedProductionLintStepSucceeded": true,
+    "runnerPolicy48WorkflowsPassed": true,
+    "RUAZTranslationMissingExtraBothZero": true,
+    "strictHeadAnd973AncestorVerificationStepSucceeded": true,
+    "scope": "Actual isolated PostgreSQL lock/revision/aggregate tests, not production DB, complete historical migration replay, staging or C12 operational observations."
+  },
+  "fullRegressionAssessment": {
+    "observedFailingFiles": 18,
+    "immutableKnownFailingFiles": 18,
+    "newFailingFiles": 0,
+    "allBaselineEntriesStillFail": true,
+    "gate": "PASS",
+    "globallyClean": false,
+    "baselineFile": {
+      "path": "test-baseline.json",
+      "bytes": 1139,
+      "sha256": "8f0fc568274f9fd8c0c741db618d6e4d81025de7112a315cd93e6b92bbd5a4b1",
+      "blob": "fcdde20b245a686642676341f01cb39e73e42ffa"
+    },
+    "blockingImplementation": {
+      "path": "scripts/check-test-baseline.mjs",
+      "bytes": 10188,
+      "sha256": "6c3380718fd71061d2efe4aa396fcb9cc998336c5c95a3bbd2de05230058027e",
+      "blob": "7c27358c48c09131ce7966b2f4938490591c3cd1"
+    },
+    "basis": "Actual completed hosted gate log reports18/18 and no-new/everyentry-fails. Unchanged script parses the complete Vitest JSON, rejects missing reports, regressions and unexpected fixed entries. Per-file raw Vitest JSON is temporary and not retained; no independent raw-name counter or globally clean suite is claimed."
+  },
+  "buildAssessment": {
+    "actualCompiledSuccessfully": true,
+    "reportedCompileMinutes": 4.8,
+    "standaloneServerFileAndStaticDirectoryAssertionsPassed": true,
+    "isolatedInertBuildConfiguration": true,
+    "typescriptValidationSkippedByExistingUnchangedConfig": true,
+    "separateCompleteCompilerStillPending": true,
+    "completeTracedBundleOrRouteRuntimeProven": false,
+    "productionDeploymentOrRuntimeBrowserProven": false,
+    "cleanupBuildSwapStepSucceeded": true,
+    "preservedWarning": {
+      "kind": "NEXT_STANDALONE_TRACE_COPY_ENOENT",
+      "route": "app/(dashboard)/page.js",
+      "missingTraceFile": "page_client-reference-manifest.js",
+      "currentLogContainsWarning": true,
+      "alsoInOriginal9fBuildLog": true,
+      "priorOriginalBinding": {
+        "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/hosted-9f3-build-original.log.gz",
+        "compressedSha256": "111e3349891250b494d77b3bbc3ed332b4fee0ce81e2bd12755a0e0a1eef8cf0",
+        "decompressedSha256": "e01e3ef373e6fd3596a25b68d1831d9e4c8444d01c32dc309a7b1b2e64afeb4a"
+      },
+      "unchangedBuildInputs": [
+        {
+          "path": "next.config.ts",
+          "bytes": 8010,
+          "sha256": "0c0724cf9386a556257f8d2f104ed35c93d072b9e6debba9e08a1d45582b239f",
+          "blob": "88e50c680d5035c2f301f091decf13a301e8c1bb",
+          "unchangedFrom9fAndMain8301": true
+        },
+        {
+          "path": "src/app/(dashboard)/page.tsx",
+          "bytes": 11251,
+          "sha256": "6d201abd41cde359700c231564d1708ec527033d5f1d76d83431f1532ddf81cd",
+          "blob": "16787a88db8b2a0c740acdfe1e06259b1ef91a75",
+          "unchangedFrom9fAndMain8301": true
+        },
+        {
+          "path": "package-lock.json",
+          "bytes": 707003,
+          "sha256": "54c9be2264ef8e1ec5f8b0d9c545ba868c24de938ee0cf3734f4c475e62c816f",
+          "blob": "8978100a336d148176e210444d4e44060cf26132",
+          "unchangedFrom9fAndMain8301": true
+        },
+        {
+          "path": "scripts/ci/prepare-hosted-build-runner.sh",
+          "bytes": 4907,
+          "sha256": "f37a2565878c7c2b7b4882cc33fb90736903d834c5519ea90145f01ccef25b6c",
+          "blob": "a071bccd1abdf6f0aa3a119e37ff3635958a2efe",
+          "unchangedFrom9fAndMain8301": true
+        }
+      ],
+      "qualification": "Inherited observed warning, not a new source regression or a proved harmless condition. Next build catches app trace-copy errors as warnings. The current success proves compilation and explicit minimal bundle paths only; not every traced file/production route. No gate weakened, warning hidden or fix/rerun applied during review."
+    }
+  },
+  "immutableBaselineAndGateBindings": [
+    {
+      "path": "test-baseline.json",
+      "bytes": 1139,
+      "sha256": "8f0fc568274f9fd8c0c741db618d6e4d81025de7112a315cd93e6b92bbd5a4b1",
+      "blob": "fcdde20b245a686642676341f01cb39e73e42ffa",
+      "unchangedFromAccepted973": true
+    },
+    {
+      "path": "typecheck-baseline.json",
+      "bytes": 3907,
+      "sha256": "919fa9d0212b18ee685af4f08680ebbc34e8c4969294054447df03147bf0fc53",
+      "blob": "10afff7f7fa1d2d4ea79f2bce53e2b7ca29e484a",
+      "unchangedFromAccepted973": true
+    },
+    {
+      "path": "scripts/check-test-baseline.mjs",
+      "bytes": 10188,
+      "sha256": "6c3380718fd71061d2efe4aa396fcb9cc998336c5c95a3bbd2de05230058027e",
+      "blob": "7c27358c48c09131ce7966b2f4938490591c3cd1",
+      "unchangedFromAccepted973": true
+    },
+    {
+      "path": "scripts/ci/check-typecheck-gate.sh",
+      "bytes": 3468,
+      "sha256": "a18608d9297c039380481fb27d6200d9ebbcc731e9ec23dd40b5e3a2c5a40937",
+      "blob": "e6c3c4a836424b834e90f4192ad81513c9541b9c",
+      "unchangedFromAccepted973": true
+    },
+    {
+      "path": "scripts/ci/check-typecheck-baseline.mjs",
+      "bytes": 5909,
+      "sha256": "8b8a2472a1c813e85c4177c24c6df5fb5907d981b5b43e6870a04cbbba2b812a",
+      "blob": "034bfd1f18061bad8291f505367e84c74ec510ae",
+      "unchangedFromAccepted973": true
+    }
+  ],
+  "priorCurrentHeadReviews": [
+    {
+      "path": "/tmp/hrm-release-independent-source-06254.json",
+      "sha256": "026f4c33cccd8c1676e149fe64658bb4f7a982dbd84e17f19dd604d67e8e8b2c"
+    },
+    {
+      "path": "/tmp/hrm-release-independent-browser-06254.json",
+      "sha256": "ba5fa8cc8d8db0d761a916b0863ce4d395f483f405fa6bfadb4c4cc727afb8d1"
+    }
+  ],
+  "remainingAcceptance": [
+    "Complete actual062 full compiler output/exit and all diagnostic-family/touched-file analysis with unchanged type gates, original stdout/exit/ZIP and both blocking checks. No borrowed9f totals or clean compiler claim.",
+    "Five required App15368 contexts and all applicable completed PR workflows, all attempts/current PR589 head or exact synthetic-parent/tree proof; no admin bypass or agent-review status.",
+    "Auxiliary616 merged main8235 deployment is coordinator-reported and not attested by this supplement. Fresh current refs/prospective main8235+062 merge tree must equal tested38b49...; any additional incoming source requires normal integration and rerun.",
+    "Actual protected-main read-only production metadata bound to deployed main8235/artifact/helper/SQL; migration-role defaults/ledger/checksums/ACL/ownership/RLS/indexes/physical immutable-revision guards and ordinary index DDL risk assessed. INCOMPLETE or ERROR remains explicit.",
+    "Final authorized normal merge, documented SHA-bound deployment and exact public build-info/ping plus scoped feature smoke. Keep606/609closed/unmerged and no tenant/grant/access/secret/runtime activation.",
+    "Real HR rates/physical/mobile/pilot/load/historical replay/global accessibility and C12 remain unproved; roadmap counts must not advance from these synthetic gate results alone."
+  ],
+  "limitations": [
+    "No source/repository edits, local tests/reruns/DB/build/browser/compiler, commit/push/check-status publication or production access during this review; JSON only/tmp.",
+    "Fresh actual build warning and global18known failures explicitly retained; build success is not warning-free or whole repository/production readiness.",
+    "GitHub job metadata and original logs read now, source bytes bound exact062; current refs/merge readiness and actual production preflight are intentionally separate pending review."
+  ]
+}

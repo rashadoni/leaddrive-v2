@@ -1,0 +1,215 @@
+{
+  "version": 1,
+  "reviewedAtUtc": "2026-10-07T19:55:58.592507+00:00",
+  "reviewer": "/root/inspect_outcome_contract",
+  "status": "CURRENT88_POSTGRES44_FULLBASELINE18_BUILD_ACCEPTED_COMPILER_REQUIRED_PENDING",
+  "headSha": "88c93978494dbbbcb3f97ca1378d884d7b594f42",
+  "tree": "4e0b96f38676e964da5b9c8b3caa3f8c4e029bff",
+  "runId": 37676068436,
+  "attempt": 1,
+  "findingsP0P1P2P3": [],
+  "actualJobMetadata": {
+    "file": {
+      "path": "/tmp/hrm-release-88-peer-exact-jobs-state4.json",
+      "bytes": 16791,
+      "sha256": "908c45230bab2837563116f9e8c6318794ba369a8273021b2a90c7df793cf05f"
+    },
+    "jobs": [
+      {
+        "id": 112980095481,
+        "name": "Exact WF-C6-010 isolated production bundle build",
+        "head": "88c93978494dbbbcb3f97ca1378d884d7b594f42",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v6",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify exact head",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@v6",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run bash scripts/ci/prepare-hosted-build-runner.sh",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm ci",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npx prisma generate",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Build isolated bundle with inert fixture configuration",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Cleanup bounded build swap",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@v6",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v6",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 112980096123,
+        "name": "Exact WF-C6-010 source and PostgreSQL regressions",
+        "head": "88c93978494dbbbcb3f97ca1378d884d7b594f42",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Initialize containers",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v6",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify exact head and preserved PR608 ancestor",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@v6",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm ci",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Validate and generate existing schema clients",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Unchanged runner policy and translation parity",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Scoped production source lint",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Actual shared-lock and aggregate PostgreSQL gates",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Full regression suite against unchanged baseline",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@v6",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v6",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Stop containers",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      }
+    ]
+  },
+  "fullOriginalLogs": [
+    {
+      "path": "/tmp/hrm-release-88-peer-pg-original.log",
+      "bytes": 158777,
+      "sha256": "8a1de58c036bec8e44c42539359a55f9c3f825e7dd007c70b1ece0a118e2d372"
+    },
+    {
+      "path": "/tmp/hrm-release-88-peer-build-original.log",
+      "bytes": 129917,
+      "sha256": "11560fa72f2749afd1fd8865dfa26fd3c5422937c24bbb7222872832c367e99a"
+    }
+  ],
+  "workflowBinding": {
+    "path": ".github/workflows/workforce-exception-report-browser-evidence.yml",
+    "sha256": "1dcd49d422fb212d4ee1eac6368de97837fe62fc5ca5975a7faa2b6c61dc18e7",
+    "exact88": true
+  },
+  "actualSourceAndPg": {
+    "exactExpectedHeadAnd973AncestorAndWholeDiffGuard": "Successful unchanged step;091firstEOFfailure retained,88correctedsource succeeds.",
+    "PrismaValidate": "PASS",
+    "PrismaGenerate": "Actual current6.19.3+legacyclientPASS",
+    "runnerPolicy": "PASS49workflowfiles",
+    "i18n": "PASS24608ENleafkeys/RU+AZmissing0extra0",
+    "scopedProductionSourceLint": "Actualsuccessfulstep",
+    "postgres": "4files44testsPASS0skip",
+    "fullRegressionBaseline": "18observedfailfiles/18unchangedknown;none newandeverybaselineentrystillfails, strictgatePASS",
+    "globalSuiteClean": false,
+    "baselinesGates": "Exactaccepted973sourcebytebindings separatelyverified incurrent88sourceJSON; no update/relaxation."
+  },
+  "actualBuild": {
+    "compiled": "PASS6.4minisolatedproductionNextbundle",
+    "standaloneServerAndStaticAssertions": "Boundsourcecontainsbothassertionsandsuccessfulbuildstep provescommandcompletion",
+    "existingTypeValidationSkip": true,
+    "separateCurrentFullCompiler": "PENDING asofmetadata; no cleancompilecredit",
+    "currentInheritedWarning": "ActualENOENT copyingdashboard page_client-reference-manifest.js; no warningfree/fulltrace completeness/allroutes harmless claim",
+    "productionDeployClaimed": false
+  },
+  "authorship": "Independent root production/workflow source review and received current hosted results; reviewer C6verification/basehelper authorship and rootcrossreview disclosed; no independent own-test authorship.",
+  "limits": [
+    "Current88actualexecutionbound,notold851/091PASSborrow.",
+    "4focusedPGfiles are meaningfulsharedlocks/aggregate/revision/snapshotguards, notfullhistoricalmigrationreplay,productionDDL/HRpilot/C12observations.",
+    "Compiler/currentrequired/allapplicable andrealcatalogACLmanualreview/release remainseparate.",
+    "No localbuild/compiler/test/browser/SQL rerun orsource/productionmutation byreviewer."
+  ]
+}

@@ -1,0 +1,371 @@
+{
+  "version": 1,
+  "reviewKind": "INDEPENDENT_EXACT_HOSTED_POSTGRES_SOURCE_ACCEPTANCE",
+  "createdAt": "2026-10-07T21:57:26.531319+00:00",
+  "head": "60efe23846fddc7deea16c48ba3a90bd962aae35",
+  "tree": "e57592a08b458c5bfd815029d93fa6a7ae1969b1",
+  "pullRequest": 627,
+  "run": {
+    "id": 37692727660,
+    "runAttempt": 1,
+    "headSha": "60efe23846fddc7deea16c48ba3a90bd962aae35",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "success",
+    "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37692727660"
+  },
+  "job": {
+    "id": 113036666929,
+    "headSha": "60efe23846fddc7deea16c48ba3a90bd962aae35",
+    "name": "source-validation",
+    "startedAt": "2026-10-07T21:55:15Z",
+    "completedAt": "2026-10-07T21:55:58Z",
+    "conclusion": "success",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Initialize containers",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run actions/checkout@v6",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run actions/setup-node@v4",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Reject dispatch outside exact main before any inspection",
+        "status": "completed",
+        "conclusion": "skipped"
+      },
+      {
+        "name": "Check bounded Node sources and isolated SQL contracts",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Post Run actions/setup-node@v4",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Post Run actions/checkout@v6",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Stop containers",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success"
+      }
+    ]
+  },
+  "actualCheckout": {
+    "syntheticMerge": "b4ea3f3e47d010f8a778e4a05c86b0ba17ec8e5b",
+    "tree": "e57592a08b458c5bfd815029d93fa6a7ae1969b1",
+    "parents": [
+      "f8dd20c7a849643087ee31969c2f582a96c8bab3",
+      "60efe23846fddc7deea16c48ba3a90bd962aae35"
+    ],
+    "exactHeadWholeTree": true,
+    "sourceLogContainsCheckoutCommit": true
+  },
+  "bindings": [
+    {
+      "path": "scripts/hrm-backup-acl-attribution.mjs",
+      "bytes": 13997,
+      "sha256": "479a0e652da1125b41d3bce824a18f2a520d4a4801e60b44db1a8dc6021be0bd",
+      "workingBytesMatchCommit": true
+    },
+    {
+      "path": "scripts/hrm-backup-acl-attribution.sql",
+      "bytes": 8538,
+      "sha256": "d9f5591952fc872b8ca9c2681e073955c1cd1c249757e173e64360d4a5796818",
+      "workingBytesMatchCommit": true
+    },
+    {
+      "path": "scripts/hrm-backup-acl-attribution.test.mjs",
+      "bytes": 31126,
+      "sha256": "dab727f980849548003e5164d2739ad01e82ead170765e2472350d8a3d0aa80c",
+      "workingBytesMatchCommit": true
+    },
+    {
+      "path": ".github/workflows/hrm-backup-acl-attribution.yml",
+      "bytes": 8668,
+      "sha256": "b739bd0393c05721aaf7141ddbbf6aeced78866125abd868198e1fc52eebe77f",
+      "workingBytesMatchCommit": true
+    },
+    {
+      "path": "docs/hrm-backup-acl-attribution-session-log.md",
+      "bytes": 4119,
+      "sha256": "d751bb167e59ab4afd5085176950696d916d8b55976991f42a6ced913a3ab5f1",
+      "workingBytesMatchCommit": true
+    }
+  ],
+  "previousFourteenSources": [
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.mjs",
+      "sha256": "46b417da7bbe763960b8ede8fa0e9dbd98543d090d54f73979289504bfe35771",
+      "acceptedSha256": "46b417da7bbe763960b8ede8fa0e9dbd98543d090d54f73979289504bfe35771",
+      "byteExact": true,
+      "currentCommittedSha256": "46b417da7bbe763960b8ede8fa0e9dbd98543d090d54f73979289504bfe35771",
+      "exactAcceptedMain": true
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.sql",
+      "sha256": "b174e32eb68a0dbcca98e8557fe8c716ed8277111e79ba822bce43f4e7023b6a",
+      "acceptedSha256": "b174e32eb68a0dbcca98e8557fe8c716ed8277111e79ba822bce43f4e7023b6a",
+      "byteExact": true,
+      "currentCommittedSha256": "b174e32eb68a0dbcca98e8557fe8c716ed8277111e79ba822bce43f4e7023b6a",
+      "exactAcceptedMain": true
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.test.mjs",
+      "sha256": "39c947982f5e7dc2ca1e96307ac5314518bfe748ec58a3cf217f8f09194c0eef",
+      "acceptedSha256": "39c947982f5e7dc2ca1e96307ac5314518bfe748ec58a3cf217f8f09194c0eef",
+      "byteExact": true,
+      "currentCommittedSha256": "39c947982f5e7dc2ca1e96307ac5314518bfe748ec58a3cf217f8f09194c0eef",
+      "exactAcceptedMain": true
+    },
+    {
+      "path": ".github/workflows/hrm-migration-metadata-preflight.yml",
+      "sha256": "f90937ecda3b81e7dd017819cfaec1afdefc5fee58167fdfc2289ce012a1dcf1",
+      "acceptedSha256": "f90937ecda3b81e7dd017819cfaec1afdefc5fee58167fdfc2289ce012a1dcf1",
+      "byteExact": true,
+      "currentCommittedSha256": "f90937ecda3b81e7dd017819cfaec1afdefc5fee58167fdfc2289ce012a1dcf1",
+      "exactAcceptedMain": true
+    },
+    {
+      "path": "scripts/hrm-default-acl-inspection.mjs",
+      "sha256": "a6aa4f3526fd5edf29bd2b3a1309f7703e85acad70c0e683cba69dbb281c2027",
+      "acceptedSha256": "a6aa4f3526fd5edf29bd2b3a1309f7703e85acad70c0e683cba69dbb281c2027",
+      "byteExact": true,
+      "currentCommittedSha256": "a6aa4f3526fd5edf29bd2b3a1309f7703e85acad70c0e683cba69dbb281c2027",
+      "exactAcceptedMain": true
+    },
+    {
+      "path": "scripts/hrm-default-acl-inspection.sql",
+      "sha256": "524bc02f34a75f445aff6b3834df6e02aa86665dee9acd835b2b5fc621127e2a",
+      "acceptedSha256": "524bc02f34a75f445aff6b3834df6e02aa86665dee9acd835b2b5fc621127e2a",
+      "byteExact": true,
+      "currentCommittedSha256": "524bc02f34a75f445aff6b3834df6e02aa86665dee9acd835b2b5fc621127e2a",
+      "exactAcceptedMain": true
+    },
+    {
+      "path": "scripts/hrm-default-acl-inspection.test.mjs",
+      "sha256": "402a2dde20443676d6bac430ab4e80a74f507c2dd3828b920c278cafcf0c7c3c",
+      "acceptedSha256": "402a2dde20443676d6bac430ab4e80a74f507c2dd3828b920c278cafcf0c7c3c",
+      "byteExact": true,
+      "currentCommittedSha256": "402a2dde20443676d6bac430ab4e80a74f507c2dd3828b920c278cafcf0c7c3c",
+      "exactAcceptedMain": true
+    },
+    {
+      "path": ".github/workflows/hrm-default-acl-inspection.yml",
+      "sha256": "954c6d042bf00420f1ecd3c9ed0c378bc41305c0af08c30cdc3a97f06f81df2a",
+      "acceptedSha256": "954c6d042bf00420f1ecd3c9ed0c378bc41305c0af08c30cdc3a97f06f81df2a",
+      "byteExact": true,
+      "currentCommittedSha256": "954c6d042bf00420f1ecd3c9ed0c378bc41305c0af08c30cdc3a97f06f81df2a",
+      "exactAcceptedMain": true
+    },
+    {
+      "path": "docs/hrm-default-acl-inspection-session-log.md",
+      "sha256": "8d3af68cc9a724374a30d5eba1e06d37537473cef61ca4d89549adced5500a5f",
+      "acceptedSha256": "8d3af68cc9a724374a30d5eba1e06d37537473cef61ca4d89549adced5500a5f",
+      "byteExact": true,
+      "currentCommittedSha256": "8d3af68cc9a724374a30d5eba1e06d37537473cef61ca4d89549adced5500a5f",
+      "exactAcceptedMain": true
+    },
+    {
+      "path": "scripts/hrm-loopback-acl-inspection.mjs",
+      "sha256": "e8d5fb47eddfb0d7e371943f2d3b3459b66e9d17927161bf9233bd6189074dbf",
+      "acceptedSha256": "e8d5fb47eddfb0d7e371943f2d3b3459b66e9d17927161bf9233bd6189074dbf",
+      "byteExact": true,
+      "currentCommittedSha256": "e8d5fb47eddfb0d7e371943f2d3b3459b66e9d17927161bf9233bd6189074dbf",
+      "exactAcceptedMain": true
+    },
+    {
+      "path": "scripts/hrm-loopback-acl-inspection.sql",
+      "sha256": "7a4a9d79534e40cf7672c31797f2015a543f7061c1522ee30a7cfb9e147f8c58",
+      "acceptedSha256": "7a4a9d79534e40cf7672c31797f2015a543f7061c1522ee30a7cfb9e147f8c58",
+      "byteExact": true,
+      "currentCommittedSha256": "7a4a9d79534e40cf7672c31797f2015a543f7061c1522ee30a7cfb9e147f8c58",
+      "exactAcceptedMain": true
+    },
+    {
+      "path": "scripts/hrm-loopback-acl-inspection.test.mjs",
+      "sha256": "7e1264a6a754b655306b936c971a28584532b6921a005012f5d2769d522c8993",
+      "acceptedSha256": "7e1264a6a754b655306b936c971a28584532b6921a005012f5d2769d522c8993",
+      "byteExact": true,
+      "currentCommittedSha256": "7e1264a6a754b655306b936c971a28584532b6921a005012f5d2769d522c8993",
+      "exactAcceptedMain": true
+    },
+    {
+      "path": ".github/workflows/hrm-loopback-acl-inspection.yml",
+      "sha256": "bfbcb2b83fab53817ce71ae1e511389cbab7f9ca6aeff0785801b24aee76a116",
+      "acceptedSha256": "bfbcb2b83fab53817ce71ae1e511389cbab7f9ca6aeff0785801b24aee76a116",
+      "byteExact": true,
+      "currentCommittedSha256": "bfbcb2b83fab53817ce71ae1e511389cbab7f9ca6aeff0785801b24aee76a116",
+      "exactAcceptedMain": true
+    },
+    {
+      "path": "docs/hrm-loopback-acl-inspection-session-log.md",
+      "sha256": "36658d86a3a32d577e1284c3f0ca7bdd38221d64237903c74ddcc5fa60969d72",
+      "acceptedSha256": "36658d86a3a32d577e1284c3f0ca7bdd38221d64237903c74ddcc5fa60969d72",
+      "byteExact": true,
+      "currentCommittedSha256": "36658d86a3a32d577e1284c3f0ca7bdd38221d64237903c74ddcc5fa60969d72",
+      "exactAcceptedMain": true
+    }
+  ],
+  "results": {
+    "oldBaseMetadataTests": 22,
+    "oldAclTests": 14,
+    "oldLiveLoopbackTests": 16,
+    "newBackupAttributionTests": 14,
+    "totalActualTests": 66,
+    "pass": 66,
+    "fail": 0,
+    "skip": 0,
+    "newActualPostgresIntegration": 1,
+    "actualNamedMilestones": [
+      "defaultAdapterLiveAndAttribution=PASS",
+      "mismatchedOrMissingIsObservation=PASS",
+      "roleDatabaseOverRoleOverDatabaseAndAbsent=PASS",
+      "membershipAndUnsafeProfileAreObservation=PASS",
+      "crossScopeMultipleRecipientWritePublicGrantableAreObservation=PASS"
+    ],
+    "fullHostedBody": "PASS",
+    "cleanup": {
+      "databaseDefault": "PASS",
+      "sequentialDropOwnedAndDropRole": [
+        [
+          "DROP_OWNED",
+          "RUNTIME",
+          "PASS"
+        ],
+        [
+          "DROP_OWNED",
+          "MIGRATION",
+          "PASS"
+        ],
+        [
+          "DROP_OWNED",
+          "BACKUP",
+          "PASS"
+        ],
+        [
+          "DROP_OWNED",
+          "OTHER",
+          "PASS"
+        ],
+        [
+          "DROP_OWNED",
+          "PRIVILEGED",
+          "PASS"
+        ],
+        [
+          "DROP_ROLE",
+          "RUNTIME",
+          "PASS"
+        ],
+        [
+          "DROP_ROLE",
+          "MIGRATION",
+          "PASS"
+        ],
+        [
+          "DROP_ROLE",
+          "BACKUP",
+          "PASS"
+        ],
+        [
+          "DROP_ROLE",
+          "OTHER",
+          "PASS"
+        ],
+        [
+          "DROP_ROLE",
+          "PRIVILEGED",
+          "PASS"
+        ]
+      ],
+      "residue": "PASS",
+      "overall": "PASS"
+    },
+    "runnerPolicy": "PASS in original hosted log; 50 current source workflows",
+    "diffCheck": "PASS hosted source step"
+  },
+  "runtimeAssertionsProved": [
+    "Full default inspectBackupAclRemote real psql start/query adapter adds backup role GUC and observes unchanged expected PID/nonce/user/currentDB guarded held runtime before cleanup. No injected startRuntime/queryMigration in positive cases.",
+    "Positive configured OTHER backup matches actual declared role and profile/defaultRO/membership counters with runtime I/U/D, no PUBLIC or grantable rows.",
+    "Wrong existing and missing backup roles retain finite unmatched/absent evidence, not fabricated recipient identity or approval.",
+    "Actual role+database off overrides role-on; role override overrides database-on; absent explicit overrides stays false despite forced migration RO.",
+    "Actual outbound/inbound and privileged SET memberships and SUPERUSER/CREATEDB/CREATEROLE/INHERIT/REPLICATION settings are observed as unsafe finite facts rather than auto approved.",
+    "Actual global/public same-backup and distinct-other recipients, SELECT/write/TRUNCATE/TRIGGER/REFERENCES/INSERT-grant-option/PUBLIC rights produce exact independent row and recipient counts.",
+    "Wrong live PID remains rejected with cleanup; unchanged forced read-only migration rejects DDL and fixture table remains absent.",
+    "Primary body errors cannot be masked by cleanup; actual full body and all ten role cleanup commands, DB setting and catalog residue assertions passed."
+  ],
+  "authorship": {
+    "rootOwnedIndependentReview": [
+      "scripts/hrm-backup-acl-attribution.mjs"
+    ],
+    "reviewerOwnedCrossReviewByRoot": [
+      "scripts/hrm-backup-acl-attribution.sql",
+      "scripts/hrm-backup-acl-attribution.test.mjs",
+      ".github/workflows/hrm-backup-acl-attribution.yml"
+    ],
+    "disclosure": "Reviewer authored prior report/classification harnesses and prior diagnostic tests/SQL/workflows; no independent own-code claim. Root reviewed own-scope new SQL/workflow/tests separately."
+  },
+  "independentAssessment": "ACCEPT exact hosted source verification. Root cross-reviewed reviewer-authored SQL/tests/workflow; reviewer independently reviewed root helper and actual source log/metadata/checkout binding. No independent test-authorship claim.",
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "retainedOriginalBindings": [
+    {
+      "path": "/tmp/hrm-backup-60-first-hosted-source-original.log",
+      "bytes": 66323,
+      "sha256": "63df358af048af45f4f6986a141685c5a90dec991382100f52cdcfd4a89c44de"
+    },
+    {
+      "path": "/tmp/hrm-backup-60-source-run-terminal.json",
+      "bytes": 12938,
+      "sha256": "95d45124c049eab444625bf4f93da78d935655d06ea6a6a58a417a44dca116e1"
+    },
+    {
+      "path": "/tmp/hrm-backup-60-source-jobs-terminal.json",
+      "bytes": 3644,
+      "sha256": "0c75f6214497fc4668ff888bc003357f3792a2065bad0ace15afba6d17a250ab"
+    },
+    {
+      "path": "/tmp/hrm-backup-60-pr-current.json",
+      "bytes": 17475,
+      "sha256": "13eca2ac26e143b2d5d14d2b4a61fbb2cfd7e3ecb28b8953164ae578c62c24b0"
+    },
+    {
+      "path": "/tmp/hrm-backup-acl-independent-source-60efe238.json",
+      "bytes": 14922,
+      "sha256": "98188ffb46bc83834937f8e754be1274f4bae45af2daf58bb2cdad333edbdfa6"
+    }
+  ],
+  "remaining": [
+    "Five current required App15368 checks must complete and current remote refs/protection/prospective tree must be rechecked before root normal auxiliary merge.",
+    "Actual production backup recipient attribution NOT RUN; previous production unidentified OTHER BYPASS SELECT still held.",
+    "Synthetic fixture does not provide real HR operational observations, backup commissioning/restore or C12 completion. Existing original metadata/ACL failures and all unchanged checks remain intact."
+  ]
+}

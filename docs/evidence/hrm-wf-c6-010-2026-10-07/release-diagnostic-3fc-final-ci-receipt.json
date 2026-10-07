@@ -1,0 +1,32 @@
+{
+  "head": "3fc77196bdc7b6582b3fbcb32e9155004702de69",
+  "readyRun": 37644360192,
+  "requiredApp": 15368,
+  "staticJob": 112871350645,
+  "typeJob": 112871350905,
+  "allFiveRequired": "SUCCESS",
+  "mergedMain": "5cebf61623c58ca65b66f2b58506157c097a1931",
+  "treeEqualsReviewedSource": true,
+  "logRetrievalAttempts": [
+    "First gh static job-log fetch unavailable while overall run still in progress; empty temporary file not accepted as evidence",
+    "Repeated only once full run completed; both originals nonempty and preserved"
+  ],
+  "bindings": {
+    "release-diagnostic-3fc-static-original.log.gz": {
+      "rawBytes": 315607,
+      "rawSha256": "cc9837c81cf7848048bc0836741bcb56a2be5fda019c8e4d14ddcac99cd5022b",
+      "storedSha256": "b8f148300b15b128300fa822a27882f56d29f7688575a328bdce0317886c423f"
+    },
+    "release-diagnostic-3fc-typecheck-original.log.gz": {
+      "rawBytes": 342465,
+      "rawSha256": "bf0013cdb8a3d125209fa7de5a7d31470e8d0f462bc25b2211fd844ed1748b7f",
+      "storedSha256": "7859d75c515c856908a530952ee91f5997a3e56529edb1732f3e40dcc1fafb6a"
+    },
+    "hrm-pr618-premerge-proof.json": {
+      "sha256": "98f3dc8f91a8a360a877b965e6c42a518f25cfd3b021fe50280c931ff39b4d2f"
+    },
+    "hrm-pr618-normal-merge-result.json": {
+      "sha256": "89d6a9888bdb233fb8826343e9e156c1a7b28a66e2fb2b8c1f967930a6962ec4"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "source": "d55110c4cfe2bc7ba7cc8c5444498d5531d53ad8",
+  "test": "Both documented libpq URI plus variants must normalize and retain fixed budget",
+  "pass": false,
+  "outcomes": [
+    {
+      "syntheticHint": "+10",
+      "accepted": false,
+      "code": "ENV_INVALID",
+      "detail": "CONNECT_TIMEOUT_HINT_INVALID"
+    },
+    {
+      "syntheticHint": "%2B10",
+      "accepted": true,
+      "hintStripped": true,
+      "fixedBudget": true
+    }
+  ],
+  "scope": "Synthetic source-only root review; no actual config, SQL or production"
+}

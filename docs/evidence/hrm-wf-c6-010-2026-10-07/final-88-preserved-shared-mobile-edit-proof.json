@@ -1,0 +1,9 @@
+{
+  "oldSource": "8513737b880623b2b62ab4721672a55b8101ba1a",
+  "newSource": "09190249b5e13b405ac95d06aa9dcc6c9a0f17ce",
+  "acceptedMain": "7bfcca6b5b53a33fca926786718f8a80037e2809",
+  "sharedMobileSyncPath": "src/app/api/v1/mtm/mobile/sync/push/route.ts",
+  "exactIncomingAddedRemovedLines": 28,
+  "status": "PASS",
+  "scope": "Only accepted incoming MTM edits modify shared mobile sync file; existing Workforce changes retained; independent whole-source and current runtime gates separately required"
+}

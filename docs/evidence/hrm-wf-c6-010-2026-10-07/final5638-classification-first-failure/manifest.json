@@ -1,0 +1,49 @@
+{
+  "head": "5638f1ea63c2818aef8be1b0c497eff718303388",
+  "run": 37685323552,
+  "attempt": 1,
+  "classificationJob": 113011546243,
+  "artifact": 11510779991,
+  "crc": "PASS",
+  "status": "ORIGINAL_FAILURE_RETAINED",
+  "completedCases": 7,
+  "failureStage": "denied-ungranted authentication",
+  "failurePosition": {
+    "line": 120,
+    "column": 67
+  },
+  "cleanup": "PASS",
+  "limits": [
+    "Six successfulHR UI201 and seven completed cases are partial firstattempt evidence only",
+    "No remaining ungranted/foreign/revocation/reopen/ledger/RLS whole acceptance credited",
+    "TOTP rollover is plausible timing inference, not proven response cause",
+    "No secret/error body/token/cookies exported; no baseline/MFA guard weakened"
+  ],
+  "files": [
+    {
+      "file": "hrm-final-5638-classification-first-failure.zip",
+      "bytes": 400878,
+      "sha256": "7f9084c21257d49db4aacce71eae75216aca6d2ba3b86d810679e303c3a8cf12"
+    },
+    {
+      "file": "hrm-final-5638-classification-first-failure-original.log",
+      "bytes": 102000,
+      "sha256": "cef162439e314ba0bb0b1c3925de71ec54d9e3ddda43447ef7b821ef4810ff19"
+    },
+    {
+      "file": "hrm-final-5638-first-artifacts.json",
+      "bytes": 1597,
+      "sha256": "68db75f064b2e432d5f1ade8e9976fd200eb63927f0b117042328449b80aa3bb"
+    },
+    {
+      "file": "hrm-final-5638-classification-failure-run.json",
+      "bytes": 12911,
+      "sha256": "e15844ec10b546ac4965b8a2a2c2252854beeaa3535dd307516380a99fc4a862"
+    },
+    {
+      "file": "hrm-final-5638-classification-failure-jobs.json",
+      "bytes": 16141,
+      "sha256": "0555e36a0c43af642e015919fec272f8900e9f969a1e4016fce41cdd5775c07a"
+    }
+  ]
+}

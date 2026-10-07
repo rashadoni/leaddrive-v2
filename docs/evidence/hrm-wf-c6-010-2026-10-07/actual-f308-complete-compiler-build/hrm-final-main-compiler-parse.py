@@ -1,0 +1,14 @@
+import json,pathlib,zipfile,hashlib,re,collections,subprocess
+sha='f3085e5cdf80879bee2e65d06df4e88698afa3e4';run=json.load(open('/tmp/hrm-final-f308-five-run-terminal.json'));jobs=json.load(open('/tmp/hrm-final-f308-five-jobs-terminal.json'))['jobs'];a=next(a for a in json.load(open('/tmp/hrm-final-f308-five-artifacts-terminal.json'))['artifacts'] if a['id']==11517820417);p=pathlib.Path('/tmp/hrm-final-f308-compiler-first.zip')
+assert run['head_sha']==sha and run['run_attempt']==1 and run['status']=='completed' and run['conclusion']=='success'
+assert len(jobs)==5 and all(j['status']=='completed' and j['conclusion']=='success' for j in jobs)
+assert a['name']=='workforce-outcomes-compiler-'+sha+'-1' and a['size_in_bytes']==p.stat().st_size and a['digest']=='sha256:'+hashlib.sha256(p.read_bytes()).hexdigest()
+dest=pathlib.Path('/tmp/hrm-final-f308-root-compiler');assert not dest.exists();dest.mkdir()
+with zipfile.ZipFile(p) as z:
+ assert z.testzip() is None and set(z.namelist())=={'tsc-output.log','tsc-exit-code'};z.extractall(dest)
+raw=(dest/'tsc-output.log').read_bytes();exit=int((dest/'tsc-exit-code').read_text());rows=re.findall(r'^(.+?)\((\d+),(\d+)\): error (TS\d+):',raw.decode(),re.M);counts=collections.Counter(path+' '+code for path,_,_,code in rows);baseline=json.load(open('typecheck-baseline.json'))['gated'];families={key.rsplit(' ',1)[1] for key in baseline};gated={key:count for key,count in counts.items() if key.rsplit(' ',1)[1] in families}
+assert gated==baseline and len(baseline)==64
+for ref in [sha,'973241bacc296b71fe817d1af11187c32e8126af']:assert json.loads(subprocess.check_output(['git','show',ref+':typecheck-baseline.json']))['gated']==baseline
+owned={key:sum(path==key for path,_,_,_ in rows) for key in json.load(open('/tmp/hrm-final-33-root-compiler-parse-proof.json'))['owned18CurrentPathCounts']};assert len(owned)==18 and set(owned.values())=={0}
+proof={'head':sha,'run':run['id'],'attempt':1,'artifactId':a['id'],'artifactBytes':p.stat().st_size,'artifactSha256':hashlib.sha256(p.read_bytes()).hexdigest(),'crc':'PASS','rawBytes':len(raw),'rawSha256':hashlib.sha256(raw).hexdigest(),'actualExit':exit,'diagnostics':len(rows),'families':len({r[3] for r in rows}),'owned18CurrentPathCounts':owned,'gated64ExactUnchanged973Baseline':True,'manual5ActualSuccess':True,'scope':'Actual fresh final-main full compiler execution and complete root raw parse. No prior33 runtime credit or baseline relaxation. Historical globally nonclean diagnostics/exit retained.'}
+pathlib.Path('/tmp/hrm-final-f308-root-compiler-parse-proof.json').write_text(json.dumps(proof,indent=2)+'\n');print(json.dumps({k:proof[k] for k in ['head','run','artifactId','artifactBytes','rawBytes','actualExit','diagnostics','families','gated64ExactUnchanged973Baseline','manual5ActualSuccess']}))

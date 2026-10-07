@@ -1,0 +1,32 @@
+{
+  "head": "8513737b880623b2b62ab4721672a55b8101ba1a",
+  "run": 37667576332,
+  "attempt": 1,
+  "rawBytes": 177767,
+  "rawSha256": "4ba2582a30f0eb51aad260ecb79715b6ce02e5dd8f70aafd33a98e38d4886bde",
+  "diagnostics": 1153,
+  "families": 35,
+  "exit": 2,
+  "ownedTypedPathsCounts": {
+    "src/__tests__/api-workforce-exception-decisions.test.ts": 0,
+    "src/__tests__/api-workforce-exception-reports.test.ts": 0,
+    "src/__tests__/lib-workforce-exception-case-writer.test.ts": 0,
+    "src/__tests__/lib-workforce-exception-report-postgres.test.ts": 0,
+    "src/__tests__/lib-workforce-exception-workbench.test.ts": 0,
+    "src/__tests__/workforce-exception-case-report-recorded-outcomes.test.ts": 0,
+    "src/__tests__/workforce-exception-classification-browser-evidence-guard.test.ts": 0,
+    "src/__tests__/workforce-exception-queue-action-ui.test.ts": 0,
+    "src/__tests__/workforce-exception-recorded-outcomes-ui.test.ts": 0,
+    "src/app/api/v1/workforce/exceptions/route.ts": 0,
+    "src/components/workforce/workforce-exception-queue.tsx": 0,
+    "src/components/workforce/workforce-exception-recorded-outcomes.tsx": 0,
+    "src/lib/workforce/exception-case-report-recorded-outcomes.ts": 0,
+    "src/lib/workforce/exception-case-writer.ts": 0,
+    "src/lib/workforce/exception-decision-service.ts": 0,
+    "src/lib/workforce/exception-outcome-classification.ts": 0,
+    "src/lib/workforce/exception-policy-draft.ts": 0,
+    "src/lib/workforce/exception-workbench.ts": 0
+  },
+  "status": "Current diagnostics independently parsed; hosted unchanged baseline gates passed; global compiler NOT CLEAN",
+  "scope": "Downloaded actual current851 compiler original, no local compiler rerun"
+}

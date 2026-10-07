@@ -1,0 +1,203 @@
+{
+  "version": 1,
+  "reviewedAtUtc": "2026-10-07T17:49:36.375351+00:00",
+  "reviewer": "/root/inspect_outcome_contract",
+  "decision": "SOURCE_REVIEW_ACCEPTED_FOR_PROTECTED_HOSTED_VALIDATION_ONLY",
+  "head": "549bddb2080bc71271f837f95463c33410642368",
+  "tree": "d8743b880069feff303fdb901c962ca8e31adc44",
+  "cwd": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-release-acl-inspection-20261007",
+  "branch": "codex/hrm-release-acl-inspection-20261007",
+  "cleanWorktreeObserved": true,
+  "rootSourceCheckpoint": "f31408d2675033e55fae08298c0ce21c4d514ef7",
+  "currentMainBase": "50466e3fce9f23eaba8079a51be914fe6a6eff07",
+  "sourceBindings": [
+    {
+      "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-release-acl-inspection-20261007/scripts/hrm-default-acl-inspection.mjs",
+      "bytes": 14944,
+      "sha256": "9b87021c9bbed0162bb5d05dbc3cf16f845012e53717a26d192aa0c14148df16",
+      "repositoryPath": "scripts/hrm-default-acl-inspection.mjs",
+      "gitRef": "549bddb2080bc71271f837f95463c33410642368",
+      "sameCommittedBytes": true
+    },
+    {
+      "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-release-acl-inspection-20261007/scripts/hrm-default-acl-inspection.sql",
+      "bytes": 4320,
+      "sha256": "524bc02f34a75f445aff6b3834df6e02aa86665dee9acd835b2b5fc621127e2a",
+      "repositoryPath": "scripts/hrm-default-acl-inspection.sql",
+      "gitRef": "549bddb2080bc71271f837f95463c33410642368",
+      "sameCommittedBytes": true
+    },
+    {
+      "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-release-acl-inspection-20261007/.github/workflows/hrm-default-acl-inspection.yml",
+      "bytes": 7352,
+      "sha256": "954c6d042bf00420f1ecd3c9ed0c378bc41305c0af08c30cdc3a97f06f81df2a",
+      "repositoryPath": ".github/workflows/hrm-default-acl-inspection.yml",
+      "gitRef": "549bddb2080bc71271f837f95463c33410642368",
+      "sameCommittedBytes": true
+    },
+    {
+      "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-release-acl-inspection-20261007/scripts/hrm-default-acl-inspection.test.mjs",
+      "bytes": 24177,
+      "sha256": "1811ab794707892e65050afdc9b7fad69c1eb89e578dc4d89d10d5a48962e13c",
+      "repositoryPath": "scripts/hrm-default-acl-inspection.test.mjs",
+      "gitRef": "549bddb2080bc71271f837f95463c33410642368",
+      "sameCommittedBytes": true
+    },
+    {
+      "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-release-acl-inspection-20261007/docs/hrm-default-acl-inspection-session-log.md",
+      "bytes": 7208,
+      "sha256": "e643582716341b5386a96bdb9a3bc322fb3ec67fcdf05cae65942b61e74d7b1f",
+      "repositoryPath": "docs/hrm-default-acl-inspection-session-log.md",
+      "gitRef": "549bddb2080bc71271f837f95463c33410642368",
+      "sameCommittedBytes": true
+    }
+  ],
+  "independence": {
+    "independentReviewedRootFiles": [
+      "scripts/hrm-default-acl-inspection.mjs",
+      "scripts/hrm-default-acl-inspection.sql"
+    ],
+    "reviewerAuthored": [
+      ".github/workflows/hrm-default-acl-inspection.yml",
+      "scripts/hrm-default-acl-inspection.test.mjs",
+      "docs/hrm-default-acl-inspection-session-log.md"
+    ],
+    "ownVerificationNotIndependentlyAuthored": true,
+    "rootCrossReviewOwnVerificationReportedAccepted": true,
+    "reviewerAlsoAuthoredPriorMetadataHelperSqlAndBrowserHarnesses": true,
+    "rootIndependentPriorSourceReviewRetained": true
+  },
+  "oldMetadataBytePreservation": {
+    "all4PathsIdenticalToMain504": true,
+    "bindings": [
+      {
+        "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-release-acl-inspection-20261007/scripts/hrm-migration-metadata-preflight.mjs",
+        "bytes": 24904,
+        "sha256": "46b417da7bbe763960b8ede8fa0e9dbd98543d090d54f73979289504bfe35771",
+        "repositoryPath": "scripts/hrm-migration-metadata-preflight.mjs",
+        "gitRef": "50466e3fce9f23eaba8079a51be914fe6a6eff07",
+        "sameCommittedBytes": true
+      },
+      {
+        "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-release-acl-inspection-20261007/scripts/hrm-migration-metadata-preflight.sql",
+        "bytes": 14770,
+        "sha256": "b174e32eb68a0dbcca98e8557fe8c716ed8277111e79ba822bce43f4e7023b6a",
+        "repositoryPath": "scripts/hrm-migration-metadata-preflight.sql",
+        "gitRef": "50466e3fce9f23eaba8079a51be914fe6a6eff07",
+        "sameCommittedBytes": true
+      },
+      {
+        "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-release-acl-inspection-20261007/scripts/hrm-migration-metadata-preflight.test.mjs",
+        "bytes": 44730,
+        "sha256": "39c947982f5e7dc2ca1e96307ac5314518bfe748ec58a3cf217f8f09194c0eef",
+        "repositoryPath": "scripts/hrm-migration-metadata-preflight.test.mjs",
+        "gitRef": "50466e3fce9f23eaba8079a51be914fe6a6eff07",
+        "sameCommittedBytes": true
+      },
+      {
+        "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-release-acl-inspection-20261007/.github/workflows/hrm-migration-metadata-preflight.yml",
+        "bytes": 7131,
+        "sha256": "f90937ecda3b81e7dd017819cfaec1afdefc5fee58167fdfc2289ce012a1dcf1",
+        "repositoryPath": ".github/workflows/hrm-migration-metadata-preflight.yml",
+        "gitRef": "50466e3fce9f23eaba8079a51be914fe6a6eff07",
+        "sameCommittedBytes": true
+      }
+    ],
+    "oldAssessorPredicateUntouched": "publicPrivilegeRows OR nonOwnerWriteRows causes DEFAULT_ACL_UNREVIEWED",
+    "originalActualThirdReport": {
+      "path": "/tmp/hrm-prod-metadata-third-504.json",
+      "bytes": 8216,
+      "sha256": "cf5a799abb9cb1208b5a37d791b75f12af4714c30d9de4b2a8c6d842005abc1c"
+    },
+    "originalThirdStatus": "INCOMPLETE",
+    "originalThirdProductionJob": "FAIL",
+    "originalPeerActualAssessment": {
+      "path": "/tmp/rootpeer-thirdmetadata-review.json",
+      "bytes": 22557,
+      "sha256": "8ff79acdc7b1a57cc7b2f1f7c553b6a8a31544421eca34a6e1747790e76f3343"
+    }
+  },
+  "reviewedRootSourceContract": [
+    {
+      "area": "Root-private fixed inputs",
+      "accepted": "Only root uid; canonical marker exact expectedSHA before/after. Literal private600 non-symlink stable migration.env and app.env read through unchanged base readRootFile; both exact text rechecked after observation. No source/env execution or secret files outside this finite scope."
+    },
+    {
+      "area": "Connection and actor identity",
+      "accepted": "Mandatory canonical migration expected role; exact declared PGHOST/PGPORT/PGDATABASE equality and separate principals checked before query. Actual app and migration role sessions observed, expected current/session identity, primary/readOnly/repeatableRead checked; database catalog identity compared only internally. Runtime profile NOSUPERUSER/NOBYPASSRLS/LOGIN/effective privileged SET0 required; migrator NOSUPERUSER/BYPASSRLS/LOGIN required."
+    },
+    {
+      "area": "Physical-instance qualification",
+      "accepted": "Public proof uses sameDeclaredEndpoint and sameDatabaseCatalogIdentity; two sequential sessions explicitly do not prove simultaneous liveness against a promoted clone. Fresh prior504 own deploy live-instance validation may support release review separately; it is not borrowed as a new supplemental liveness execution."
+    },
+    {
+      "area": "Production query bounds/privacy",
+      "accepted": "Clean explicit libpq child env only, no URI/password command argv, no inherited HOME/PGSERVICE/options, fixed startup readOnly/mode/expected identities. Fixed SQL catalog-only repeatable-read/read-only/2s lock/10s statement/ROLLBACK; child30s/max64KiB, connect10s. No business tables read. Internal database/role identifiers never emitted or stored in runner evidence; unknown raw errors withheld."
+    },
+    {
+      "area": "ACL projection",
+      "accepted": "Only creator-role TABLE defaults global/public schema. Recipient categories OWNER/EXPECTED_RUNTIME/PUBLIC/OTHER and finite privilege types; boolean profiles/effective SET counts; finite entry counts/totals reconcile and duplicate grouping uses canonical primitive values. Unknown/privileged ACL evidence is emitted as READ_COMPLETE metadata, never an approval."
+    },
+    {
+      "area": "Output/binding",
+      "accepted": "Exact report schema, finite ERROR enums, source/helper/base SQL SHA bindings; no READY/automatic ACL judgment. Source-bound remote stdin bundle retains inactive normal CLI guards and streams known reviewed modules/SQL in memory. Source validator rejects unknown private fields and mismatched source bindings before evidence writes."
+    }
+  ],
+  "supersededPreparationFindings": [
+    {
+      "priority": "P1",
+      "initial": "No prequery declared endpoint equality and samePhysicalDatabase label could overclaim compared catalog identity on promoted clone.",
+      "resolution": "Root added exact PGHOST/PORT/DB prequery check; renamed proof fields and precise liveness qualifier before checkpointf314; actual corrected bytes reviewed, negative no-query/correct-label tests authored.",
+      "status": "SUPERSEDED_FIXED_BEFORE_HOSTED_VALIDATION"
+    },
+    {
+      "priority": "P2",
+      "initial": "Duplicate-group/profile equality depended on JSON property order.",
+      "resolution": "Root canonical primitive-field key/equality beforef314; reordered duplicate rejected and same-value reordered profile accepted by new tests.",
+      "status": "SUPERSEDED_FIXED_BEFORE_HOSTED_VALIDATION"
+    }
+  ],
+  "currentFindingsP0P1P2P3": [],
+  "sourceVerificationReceived": {
+    "executor": "root coordinator, one bounded local Node run",
+    "nodeResult": {
+      "total": 14,
+      "pass": 13,
+      "fail": 0,
+      "hostedSqlSkip": 1
+    },
+    "originalLog": {
+      "path": "/tmp/hrm-default-acl-first-node-unit.log",
+      "bytes": 3430,
+      "sha256": "d2d51caecfb2a536f68f4cabc6fe78ff77d9f5fcae06d03df4751eaaced1aba2"
+    },
+    "independentlyReadActualTapSummary": true,
+    "sourceTestBytesBoundToFinalHead": true,
+    "syntaxAndEmittedStdin": "Root actual PASS",
+    "runnerPolicy": "Root actual PASS48workflows",
+    "whitespace": "Root actual PASS before docs-only actual-count append",
+    "noPeerDuplicateTestExecution": true,
+    "hostedPostgres": "NOT_RUN_ON_CONTABO_HOST_CONTRACT"
+  },
+  "independentWorkflowAuthorshipLimit": {
+    "workflowWrittenByReviewer": true,
+    "rootReadWholeWorkflowAndAccepted": true,
+    "fences": "Narrow path-triggered PR Linux/PG16 source tests sequential with old22+new14; no production env/secrets. Production dispatch only exact current protectedmain, productionenvironmentassertion, existing pinnedSSH, production-deploy concurrency, exact artifact/latehead checks and safe evidence/errors retained; no deploy commands."
+  },
+  "actualRuntimeStillRequired": [
+    "Exact final hosted PostgreSQL16 test execution with0skip using existing production source invariants",
+    "All five requiredApp15368 contexts on exact current infrastructure PR head and applicable source workflow",
+    "Reviewed normal infrastructure main merge/own deploy/public exactSHA before protected supplemental dispatch",
+    "Actual finite recipient/profile catalog snapshot on exact released main; READ_COMPLETE is metadata only",
+    "Independent actual ACL recipient decision; old generic INCOMPLETE/FAIL must remain visible, unknown write/PUBLIC/dangerous privileges retain release hold",
+    "Reconcile newmain into frozen HRM release candidate and repeat exact required/full lanes if source integration changes, preserving tested tree/accepted ancestry"
+  ],
+  "limits": [
+    "No production query/SSH/dispatch or access/config/role/grant/tenant/data mutation by reviewer.",
+    "No independent authorship claim for own workflows/tests/base helper; parent source cross-review required and supplied.",
+    "No local DB/build/compiler/browser run, no second Node unit execution; current actual tests13PASS+hostedSKIP only.",
+    "No current ACL recipients inferred safe from original counts, no automatic approval or readiness; original productionfail retained.",
+    "No production HR case writes/outcomes/realrates or C12 operations credit; release smoke/postmigration guard checks remain.",
+    "Protection of future DDL writers is normal deployment quiet/timeout/postcondition path, not reserved by two sessions."
+  ]
+}

@@ -1,0 +1,199 @@
+{
+  "version": 1,
+  "status": "C7_ACTUAL_PG_BUILD_FACTUAL_ACCEPTED_POLICY_P2_HELD_SUPERSEDED_SOURCE",
+  "head": "c7deecf8c86672204434c157f7be2f0e85566fc7",
+  "tree": "a3be6ea7f6fd48ef63aba0e0f6245ba95872f404",
+  "reviewedAtUtc": "2026-10-07T22:16:07.058446+00:00",
+  "manualRunId": 37692949528,
+  "runAttempt": 1,
+  "actualJobs": [
+    {
+      "kind": "pg",
+      "id": 113037420308,
+      "headSha": "c7deecf8c86672204434c157f7be2f0e85566fc7",
+      "conclusion": "success",
+      "startedAt": "2026-10-07T21:57:13Z",
+      "completedAt": "2026-10-07T22:07:56Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success"
+        },
+        {
+          "name": "Initialize containers",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/checkout@v6",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verify exact head and preserved PR608 ancestor",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-node@v6",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npm ci",
+          "conclusion": "success"
+        },
+        {
+          "name": "Validate and generate existing schema clients",
+          "conclusion": "success"
+        },
+        {
+          "name": "Unchanged runner policy and translation parity",
+          "conclusion": "success"
+        },
+        {
+          "name": "Scoped production source lint",
+          "conclusion": "success"
+        },
+        {
+          "name": "Actual shared-lock and aggregate PostgreSQL gates",
+          "conclusion": "success"
+        },
+        {
+          "name": "Full regression suite against unchanged baseline",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/setup-node@v6",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/checkout@v6",
+          "conclusion": "success"
+        },
+        {
+          "name": "Stop containers",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "kind": "build",
+      "id": 113037420302,
+      "headSha": "c7deecf8c86672204434c157f7be2f0e85566fc7",
+      "conclusion": "success",
+      "startedAt": "2026-10-07T21:57:13Z",
+      "completedAt": "2026-10-07T22:11:16Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/checkout@v6",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verify exact head",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-node@v6",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run bash scripts/ci/prepare-hosted-build-runner.sh",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npm ci",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npx prisma generate",
+          "conclusion": "success"
+        },
+        {
+          "name": "Build isolated bundle with inert fixture configuration",
+          "conclusion": "success"
+        },
+        {
+          "name": "Cleanup bounded build swap",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/setup-node@v6",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/checkout@v6",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success"
+        }
+      ]
+    }
+  ],
+  "workflowBinding": {
+    "path": ".github/workflows/workforce-exception-report-browser-evidence.yml",
+    "bytes": 25256,
+    "sha256": "1dcd49d422fb212d4ee1eac6368de97837fe62fc5ca5975a7faa2b6c61dc18e7"
+  },
+  "actualPostgres": {
+    "fileCount": 4,
+    "passedTests": 44,
+    "skippedTests": 0,
+    "gates": "Actual shared-lock, tenant/role/replay/revision aggregate cases passed on hosted PostgreSQL16; source exactC7",
+    "fullRegression": "18 actual failing files/18 baseline, everybaseline entry still fails, blocking gate PASS; not a globally clean suite.",
+    "prisma": "Current and legacy Prisma validate/generate PASS in hosted source step",
+    "lint": "Scoped touched-source ESLint PASS hosted source step",
+    "i18n": "24632 English leafkeys, ru/azmissing-extra0, hosted PASS"
+  },
+  "actualBuild": {
+    "compiled": "6.8min",
+    "generatedStaticPages": 968,
+    "standaloneServerAndStaticAssertions": "PASS via completed successful set-euo pipefail step",
+    "typeValidation": "Existing build validation SKIP unchanged; separatefullcompiler pending",
+    "actualWarning": "Dashboard page_client-reference-manifest.js ENOENT traced-file copy warning inherited and current observed; no warning-free/full traced-bundle/all-route harmlessness claim."
+  },
+  "baselineBindings": [
+    {
+      "path": "test-baseline.json",
+      "sha256": "8f0fc568274f9fd8c0c741db618d6e4d81025de7112a315cd93e6b92bbd5a4b1",
+      "unchangedAccepted973": true
+    },
+    {
+      "path": "typecheck-baseline.json",
+      "sha256": "919fa9d0212b18ee685af4f08680ebbc34e8c4969294054447df03147bf0fc53",
+      "unchangedAccepted973": true
+    }
+  ],
+  "originalBindings": [
+    {
+      "path": "/tmp/hrm-release-c7-pg-original.log",
+      "bytes": 160204,
+      "sha256": "1960b0dde34fd869135042a73b7ef38ef8f8a85b24eace63119d1bd8aa8367a6"
+    },
+    {
+      "path": "/tmp/hrm-release-c7-build-original.log",
+      "bytes": 130015,
+      "sha256": "81026f6e561e33dae086ed0d81e668e2e8b9817a0e00a231b91b49ac799ef59b"
+    },
+    {
+      "path": "/tmp/hrm-release-c7-pg-job-terminal.json",
+      "sha256": "fd381bdcc13cb8f446ce3e87dcb48ef6a1e7f56535ffc4a0e4c44766f01967a0"
+    },
+    {
+      "path": "/tmp/hrm-release-c7-build-job-terminal.json",
+      "sha256": "fb642cf0da71b75e95a65c05ad9c414a9dbe81ecd6eedc367fdd9274ffb0a525"
+    }
+  ],
+  "policyAcceptance": "Before-fix C7 displayed historic all-case percentage. Newly found P2 held semantic acceptance; fixedsource33 requires entirely fresh runtime. These actualC7checks are factual archived history, never current33runtime credit.",
+  "authorship": "Reviewer authored browser/diagnostic verification. Root production/sourceworkflow reviewed independently; hosted existing tests performed by GitHub, peer reads immutable originals and metadata rather than locally rerunning.",
+  "remaining": [
+    "Original C7 fullcompiler must reach terminal and be retained before new33publish/dispatch; no current33whole-runtime evidence yet.",
+    "Actualproductionbackuprecipient/read-only-attribution remains pending and C12/realHR operational counts unchanged."
+  ]
+}

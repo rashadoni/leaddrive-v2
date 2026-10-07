@@ -1,0 +1,195 @@
+{
+  "version": 1,
+  "status": "CURRENT_SOURCE_AND_HOSTED_CATALOG_VERIFICATION_ACCEPTED_AUX_REQUIRED_CHECKS_PENDING",
+  "head": "5f1437559afd5e1f2f8a2ebcf5aa4123c687e6db",
+  "tree": "1c3464637a17643d1b1c601af7c4b7f8a691c9d9",
+  "run": {
+    "id": 37684879260,
+    "attempt": 1,
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "success",
+    "headSha": "5f1437559afd5e1f2f8a2ebcf5aa4123c687e6db"
+  },
+  "job": {
+    "id": 113010010492,
+    "headSha": "5f1437559afd5e1f2f8a2ebcf5aa4123c687e6db",
+    "name": "source-validation",
+    "conclusion": "success",
+    "runnerName": "GitHub Actions 1000011284",
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "number": 2,
+        "name": "Initialize containers",
+        "conclusion": "success"
+      },
+      {
+        "number": 3,
+        "name": "Run actions/checkout@v6",
+        "conclusion": "success"
+      },
+      {
+        "number": 4,
+        "name": "Run actions/setup-node@v4",
+        "conclusion": "success"
+      },
+      {
+        "number": 5,
+        "name": "Reject dispatch outside exact main before any inspection",
+        "conclusion": "skipped"
+      },
+      {
+        "number": 6,
+        "name": "Check bounded Node sources and isolated SQL contracts",
+        "conclusion": "success"
+      },
+      {
+        "number": 10,
+        "name": "Post Run actions/setup-node@v4",
+        "conclusion": "success"
+      },
+      {
+        "number": 11,
+        "name": "Post Run actions/checkout@v6",
+        "conclusion": "success"
+      },
+      {
+        "number": 12,
+        "name": "Stop containers",
+        "conclusion": "success"
+      },
+      {
+        "number": 13,
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ]
+  },
+  "actualTestedPullMerge": {
+    "sha": "f58c40c248b7dbb01cb3a8ffb9224db2dd9fe5f3",
+    "tree": "1c3464637a17643d1b1c601af7c4b7f8a691c9d9",
+    "parents": [
+      "cecb5a7d80895d9f41d7c2b7ddcc43a2e6057938",
+      "5f1437559afd5e1f2f8a2ebcf5aa4123c687e6db"
+    ],
+    "wholeTreeExactReviewedHead": true
+  },
+  "actualCounts": [
+    {
+      "suite": "Original migration metadata",
+      "total": 22,
+      "pass": 22,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "suite": "Original default ACL",
+      "total": 14,
+      "pass": 14,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "suite": "New live loopback observer",
+      "total": 16,
+      "pass": 16,
+      "fail": 0,
+      "skip": 0
+    }
+  ],
+  "total": {
+    "tests": 52,
+    "pass": 52,
+    "fail": 0,
+    "skip": 0
+  },
+  "actualLiveProof": {
+    "runtimeExpectedIdentity": true,
+    "runtimeSessionUnchanged": true,
+    "runtimePrimary": true,
+    "runtimeReadOnly": true,
+    "runtimeRepeatableRead": true,
+    "runtimePrivateProbeNameVerified": true,
+    "migrationExpectedIdentity": true,
+    "migrationPrivateProbeNameVerified": true,
+    "migrationLiveRuntimeSeen": true,
+    "databaseOidEqual": true,
+    "databaseNameEqual": true,
+    "distinctBackendPids": true,
+    "declaredHostsEqual": false,
+    "oldStrictDeclaredHostGuardStillRejectsBeforeSql": true,
+    "safeRuntimeProfile": true,
+    "safeMigrationProfile": true,
+    "cleanup": "PASS"
+  },
+  "actualMeaningfulNegativeAndFiniteCatalogProofs": {
+    "wrongPidAndNonce": "PASS: each actual migration query gets IDENTITY_UNPROVED/proofnull/cleanupPASS",
+    "otherDatabase": "PASS: actual separate disposable database query fails identity and is dropped with residuePASS",
+    "initialAcl": "PASS: finite5entries/3nonownerwrites, runtimeS/I/U/D, OTHER SELECT, PUBLIC0/grantable0",
+    "unsafeAcl": "PASS: PUBLICSELECT, OTHER TRUNCATE/TRIGGER/REFERENCES plus INSERT grant option are finite evidence, not automatic approval",
+    "runtimePrivilegedSet": "PASS: actual granted isolated privileged role produces PROFILE_UNPROVED/proofnull/cleanupPASS; revoked only fixture",
+    "readOnly": "PASS: actual startup transaction_read_only=on, attempted CREATE denied QUERY_FAILED and forbidden relation absent",
+    "fixtureBody": "PASS",
+    "fixtureCleanup": "PASS: other database drop/residue, 4 separately snapshotted DROP OWNED,4 DROP ROLE,roles/defaultACL residue absent"
+  },
+  "origins": [
+    {
+      "path": "/tmp/hrm-loopback-5f-source-run-current.json",
+      "bytes": 12926,
+      "sha256": "d05f01f78ed7bc4e10b2e7ecd169f30a4873794cda6ee1e76f14b3128da68dc5"
+    },
+    {
+      "path": "/tmp/hrm-loopback-5f-source-jobs-current.json",
+      "bytes": 3629,
+      "sha256": "e0ff9bf7564e5b84f2a0c839276a67d50ef69ff2bda14895656dd5d919bc82b7"
+    },
+    {
+      "path": "/tmp/hrm-loopback-5f-source-job-original.json",
+      "bytes": 2654,
+      "sha256": "80c6b05bca0f17cc2de538b978683c9926cf8f263b6df6d115e758d72753abfc"
+    },
+    {
+      "path": "/tmp/hrm-loopback-5f-tested-merge-commit.json",
+      "bytes": 2643,
+      "sha256": "287ae6b6a0ea3a47b4871e043745e40a21ccd265d526efa4e64d1f40e2345732"
+    },
+    {
+      "path": "/tmp/hrm-loopback-5f-third-hosted-source-original.log",
+      "bytes": 58343,
+      "sha256": "99208b4c92c91c562129f3fb6bf2ab1b7392c59fdd399fba63fdc40053202a8a"
+    },
+    {
+      "path": "/tmp/hrm-loopback-acl-independent-source-5f143755.json",
+      "bytes": 7890,
+      "sha256": "785c830b98d4672d293324daf08d7e8a482db408dc29cd6c556c86cf47c62f72"
+    },
+    {
+      "path": "/tmp/hrm-loopback-d2-first-hosted-source-original.log",
+      "bytes": 56800,
+      "sha256": "0aec81b9bc133977758c36c6d596b949790c52e592a0a3c0653bf1560cd4555e"
+    },
+    {
+      "path": "/tmp/hrm-loopback-852-second-hosted-source-original.log",
+      "bytes": 57198,
+      "sha256": "4efd515fd8b82612805c18fec110af23a8489f82b77dd5cdeaf21965d82686a8"
+    }
+  ],
+  "oldFailuresRetained": {
+    "d2": "initial actualIDENTITY_UNPROVED with private failing flag unknown then; old36pass/new15unitpass1realFail/cleanupPASS",
+    "852": "diagnostic actualruntime probeNameVerified=false, other mandatory identity/isolation flags true; migration not reached; cleanupPASS",
+    "5f": "explicit PGAPPNAME startup correction, all SQL/identity assertions unchanged, now actualpositive live proof"
+  },
+  "authorship": "Reviewer authored new SQL/tests/workflow and prior C6 verification harnesses; root authored helper, reviewed independently here. Root cross-reviewed owned verification. Evidence evaluation is independent of root result interpretation; test authorship is not independent.",
+  "limits": [
+    "Hosted synthetic catalog sessions prove implementation, not production recipient identities or grants. No production query run by this reviewer.",
+    "No actual production READ_COMPLETE or manual recipient approval; original7bf ERROR host mismatch and504 INCOMPLETE remain retained.",
+    "All5 App15368 required checks still need fresh terminal success plus fresh main/ref/protection/prospective tree before root normal merge.",
+    "HRM whole source requires new exact-head C6 runtime gates after integration; old88 technical success is historical only for successor.",
+    "No synthetic C12 credit, no automatic personnel decision, no global clean compiler/test baseline or complete WCAG/mobile visual proof."
+  ]
+}

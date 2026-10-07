@@ -1,0 +1,29 @@
+{
+  "atUtc": "2026-10-07T22:00:34.243407+00:00",
+  "head": "c7deecf8c86672204434c157f7be2f0e85566fc7",
+  "tree": "a3be6ea7f6fd48ef63aba0e0f6245ba95872f404",
+  "main": "f8dd20c7a849643087ee31969c2f582a96c8bab3",
+  "reviewDigest": "995bfa5dca34a575979ea0dfade1715c2ecc0f9370c63594b3c534732cbbf4b1",
+  "verifiedUnchangedBindings": 55,
+  "new5ExactAux60": true,
+  "all42LocaleNamespacesExact": true,
+  "ancestorCount": 31,
+  "originalReceipts": 4,
+  "journalPrefixExact": true,
+  "excludedValidationPRs": [
+    {
+      "pr": 606,
+      "merged": false,
+      "head": "ec2e7812e81abef94319a58818aeee22e56984df"
+    },
+    {
+      "pr": 609,
+      "merged": false,
+      "head": "100a381b90a52690899f6a1eded38494eea050e4"
+    }
+  ],
+  "prospectiveWholeTreeExact": true,
+  "diffCheck973": "PASS",
+  "currentRuntime": "PENDING fresh all13/manual5/required5",
+  "productionHRM": "NOT RELEASED"
+}

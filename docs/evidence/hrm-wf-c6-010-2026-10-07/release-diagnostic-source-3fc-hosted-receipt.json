@@ -1,0 +1,17 @@
+{
+  "source": "3fc77196bdc7b6582b3fbcb32e9155004702de69",
+  "run": 37644146534,
+  "attempt": 1,
+  "job": 112870404228,
+  "conclusion": "success",
+  "tests": 19,
+  "pass": 19,
+  "fail": 0,
+  "skipped": 0,
+  "legacyDefaultCatalogCanonical": false,
+  "runnerPolicyWorkflowCount": 47,
+  "originalBytes": 61588,
+  "originalSha256": "ad1d2ce7954bb83d91add43643d426b2e85fcd63100518946ae459415e08a889",
+  "storedSha256": "cfd6a4b732ae7979258d7104f1a2d0b7173ba775404d1a088a5de5ee984d88bb",
+  "scope": "Actual isolated PostgreSQL fixture and source tests; no production inspection"
+}

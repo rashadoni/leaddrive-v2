@@ -1,0 +1,69 @@
+{
+  "archivedAtUtc": "2026-10-07T22:38:27.145375+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-release-main392-ref-before-read.json.gz",
+      "originalBytes": 342,
+      "originalSha256": "f6e16f9ad092602e48a1fc9700c0a19823ca8d9dd6b940cd24442c3217273a05",
+      "storedBytes": 215,
+      "storedSha256": "aea739befe2c1a6e1030b7d1fcbe07ff4c256e0a0c9b476cc2558a1927a43d4c"
+    },
+    {
+      "path": "hrm-release-main392-deploy-run.json.gz",
+      "originalBytes": 12426,
+      "originalSha256": "00ddef4be87013f5b18266b57853a494bb803177208c434188460f700de35e0c",
+      "storedBytes": 1577,
+      "storedSha256": "b27826561d4cf635aad7cc2ae6cf6ad5b8182aeb5474b5e2e0fef56b41b6408c"
+    },
+    {
+      "path": "hrm-release-main392-deploy-jobs.json.gz",
+      "originalBytes": 20733,
+      "originalSha256": "6d4ddfb346420d40e938ac65e213337f6e5e18da286a58406473de1e6c71df95",
+      "storedBytes": 2632,
+      "storedSha256": "dd132ac56e0b798f375710538d7f5293ab7f67f0eaa417a10756e8aea3cea599"
+    },
+    {
+      "path": "hrm-release-main392-deploy-artifacts.json.gz",
+      "originalBytes": 762,
+      "originalSha256": "939f91126ae3e5d44805d95de2dab08de393c8319a9c59b709e1ccbfc5401c32",
+      "storedBytes": 431,
+      "storedSha256": "05427a0e97ffdc2154261ed5fd13e162a3c030a0936947e9ea7bf2c8d90580f4"
+    },
+    {
+      "path": "hrm-release-main392-quality-original.log.gz",
+      "originalBytes": 345005,
+      "originalSha256": "ed3c543736c53904683087ce6670160442a021715df05a2ffc3a51ae63b6b237",
+      "storedBytes": 57951,
+      "storedSha256": "3c1c920fe39ecfbb53162cc94ad4ae6ff2b0bd259a74b72ddfde26ce78b8e9f7"
+    },
+    {
+      "path": "hrm-release-main392-build-original.log.gz",
+      "originalBytes": 161672,
+      "originalSha256": "0464f9a70d2f614f532f6fd9b7b52ba22cc0b552e3cf51b6e256a47de0b7f22d",
+      "storedBytes": 32173,
+      "storedSha256": "bb3f4dbe220005eac833d157a5fe30e7e615a4deb345a67058bbd613d209865b"
+    },
+    {
+      "path": "hrm-release-main392-deploy-original.log.gz",
+      "originalBytes": 116786,
+      "originalSha256": "473692cba11df60438a59eb6231a17e2b56ee9557c0d858bc5288d14db1ce8e2",
+      "storedBytes": 24472,
+      "storedSha256": "d0dbcec66463b67100f1f11de23d307df85c4acc67c7627e81cf2ed92e39a903"
+    },
+    {
+      "path": "hrm-release-main392-retention-original.log.gz",
+      "originalBytes": 7217,
+      "originalSha256": "d09af26d1dc53ce27e63876c050d57b233f8d95add1b0906609ea30f4f768aba",
+      "storedBytes": 2619,
+      "storedSha256": "8bb4432bee02562f8274f9474d6fdd786c0e74428b223c7da3e3bb972ede928d"
+    },
+    {
+      "path": "hrm-release-main392-public-proof.json.gz",
+      "originalBytes": 1363,
+      "originalSha256": "018c4c0549ed456e03b1cf7909bf959f63c378ffc2ac5b4b445cfd9bb253cd17",
+      "storedBytes": 457,
+      "storedSha256": "917951e9c7feb5d00fc7cfa7343e55fc273aef09af9ca8160287fc859376ef71"
+    }
+  ]
+}

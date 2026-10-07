@@ -1,0 +1,13 @@
+{
+  "oldRows": 1153,
+  "newRows": 1153,
+  "wholeFileCodeMessageMultisetEqual": false,
+  "removedIdentityCounts": 1,
+  "addedIdentityCounts": 1,
+  "coordinateChangedPaths": [
+    "src/__tests__/api-mtm-mobile-sync.test.ts",
+    "src/app/api/v1/mtm/mobile/sync/push/route.ts",
+    "src/app/api/v1/mtm/sync/push/route.ts",
+    "src/app/api/v1/mtm/visits/route.ts"
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "reviewKind": "ADDITIVE_P2_SOURCE_CORRECTION_WORKING_BYTES_REVIEW",
+  "createdAt": "2026-10-07T22:10:31.685020+00:00",
+  "checkpointHead": "c7deecf8c86672204434c157f7be2f0e85566fc7",
+  "sourceState": "Working component/harness/unit changes not yet checkpointed; final exact-head runtime pending",
+  "bindings": [
+    {
+      "path": "src/components/workforce/workforce-exception-recorded-outcomes.tsx",
+      "bytes": 6319,
+      "sha256": "f661501fc64ff73a91652f30bdf4638374622db21e3ef107748a248b0fb0ada1"
+    },
+    {
+      "path": "scripts/workforce-exception-report-browser-evidence.mjs",
+      "bytes": 42367,
+      "sha256": "6f6e80a3a8a882f8b1abf26ae9b99cef121f5e416eb7317229c1ee15ccb339ab"
+    },
+    {
+      "path": "src/__tests__/workforce-exception-recorded-outcomes-ui.test.ts",
+      "bytes": 10479,
+      "sha256": "8c1991b1d8a04ddf67e1795f176d7482210c83c0b754e241072ff49d1d5b7ac9"
+    }
+  ],
+  "finding": {
+    "priority": "P2",
+    "status": "SOURCE_CORRECTED_CURRENT_RUNTIME_PENDING",
+    "originalFindingBinding": {
+      "path": "/tmp/hrm-release-c7-percentage-policy-peer-finding.json",
+      "sha256": "30ffb9da5c88cd02a79bde7af6c572bd480947c6d1230f337b02926d7ed3028a"
+    },
+    "independentRootUiReview": "Exactly one component foreground line changes inherited all-cohort percent to localized linked count. Cohort0 retains noCases; otherwise linked0/1 shown as count. Existing count/denominator subtitle, explanation, CASE_RECORDED_AT historic meaning and all other section bytes including final four percentages/samples/null behavior preserved. No section removed.",
+    "legacyBackendContract": "Byte exact C7 recordedOutcomes API; link numerator/all-cohort legacy share retained as descriptive API data and not displayed as percentage. No denominator redefinition or automatic correction/false-positive/appeal inference.",
+    "verificationCodeOwnership": "Peer authored narrow harness/unit updates, root cross-review pending. Existing exact API/facts/RLS/privacy/no writes/geometry and all four classified percentage assertions preserved. Added exact count/no historical %/localized subtitle assertions for9existing scenarios includingempty/unresolved/measuredzero/foreign, plus EN/RU/AZ realbuilder reviewed3/cohort4 UI and correction-alone null outcomes.",
+    "authorship": "Independent root production component review; reviewer-owned tests/harness not claimed independently authored/reviewed."
+  },
+  "verification": {
+    "reviewerChecks": "NOT RUN; source-only reads as authorized",
+    "rootTargetedChecks": "PENDING current source; no old C7 run borrowed",
+    "wholeCurrentCI": "PENDING new final checkpoint; old C7 runtime retained historical/factual, no reruns/source relaxation"
+  },
+  "limits": [
+    "Current before-fix C7 snapshot still displays historical percentage and remains held semantic acceptance; this working-byte source correction is not final runtime acceptance.",
+    "Real production backup attribution and HRM normal release/postdeploy observations remain pending.",
+    "No production/Mac/Support/role/access/grant/secret/tenant mutation or automated personnel action."
+  ]
+}

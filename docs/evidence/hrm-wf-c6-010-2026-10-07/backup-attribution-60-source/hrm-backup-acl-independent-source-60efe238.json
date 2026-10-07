@@ -1,0 +1,290 @@
+{
+  "version": 1,
+  "reviewKind": "INDEPENDENT_EXACT_ROOT_HELPER_SOURCE_AND_AUXILIARY_SCOPE_ACCEPTANCE",
+  "createdAt": "2026-10-07T21:56:12.307237+00:00",
+  "head": "60efe23846fddc7deea16c48ba3a90bd962aae35",
+  "tree": "e57592a08b458c5bfd815029d93fa6a7ae1969b1",
+  "currentMainReadOnlyRemote": "f8dd20c7a849643087ee31969c2f582a96c8bab3",
+  "prospectiveNormalMergeTree": "e57592a08b458c5bfd815029d93fa6a7ae1969b1",
+  "prospectiveTreeExactReviewedHead": true,
+  "worktreeClean": true,
+  "bindings": [
+    {
+      "path": "scripts/hrm-backup-acl-attribution.mjs",
+      "bytes": 13997,
+      "sha256": "479a0e652da1125b41d3bce824a18f2a520d4a4801e60b44db1a8dc6021be0bd",
+      "workingBytesMatchCommit": true
+    },
+    {
+      "path": "scripts/hrm-backup-acl-attribution.sql",
+      "bytes": 8538,
+      "sha256": "d9f5591952fc872b8ca9c2681e073955c1cd1c249757e173e64360d4a5796818",
+      "workingBytesMatchCommit": true
+    },
+    {
+      "path": "scripts/hrm-backup-acl-attribution.test.mjs",
+      "bytes": 31126,
+      "sha256": "dab727f980849548003e5164d2739ad01e82ead170765e2472350d8a3d0aa80c",
+      "workingBytesMatchCommit": true
+    },
+    {
+      "path": ".github/workflows/hrm-backup-acl-attribution.yml",
+      "bytes": 8668,
+      "sha256": "b739bd0393c05721aaf7141ddbbf6aeced78866125abd868198e1fc52eebe77f",
+      "workingBytesMatchCommit": true
+    },
+    {
+      "path": "docs/hrm-backup-acl-attribution-session-log.md",
+      "bytes": 4119,
+      "sha256": "d751bb167e59ab4afd5085176950696d916d8b55976991f42a6ced913a3ab5f1",
+      "workingBytesMatchCommit": true
+    }
+  ],
+  "onlyChangedPathsVsMain": [
+    ".github/workflows/hrm-backup-acl-attribution.yml",
+    "docs/hrm-backup-acl-attribution-session-log.md",
+    "scripts/hrm-backup-acl-attribution.mjs",
+    "scripts/hrm-backup-acl-attribution.sql",
+    "scripts/hrm-backup-acl-attribution.test.mjs"
+  ],
+  "priorPreparationComparison": [
+    {
+      "path": "scripts/hrm-backup-acl-attribution.mjs",
+      "preparationSha256": "479a0e652da1125b41d3bce824a18f2a520d4a4801e60b44db1a8dc6021be0bd",
+      "finalSha256": "479a0e652da1125b41d3bce824a18f2a520d4a4801e60b44db1a8dc6021be0bd",
+      "unchanged": true
+    },
+    {
+      "path": "scripts/hrm-backup-acl-attribution.sql",
+      "preparationSha256": "d9f5591952fc872b8ca9c2681e073955c1cd1c249757e173e64360d4a5796818",
+      "finalSha256": "d9f5591952fc872b8ca9c2681e073955c1cd1c249757e173e64360d4a5796818",
+      "unchanged": true
+    },
+    {
+      "path": "scripts/hrm-backup-acl-attribution.test.mjs",
+      "preparationSha256": "dab727f980849548003e5164d2739ad01e82ead170765e2472350d8a3d0aa80c",
+      "finalSha256": "dab727f980849548003e5164d2739ad01e82ead170765e2472350d8a3d0aa80c",
+      "unchanged": true
+    },
+    {
+      "path": ".github/workflows/hrm-backup-acl-attribution.yml",
+      "preparationSha256": "b739bd0393c05721aaf7141ddbbf6aeced78866125abd868198e1fc52eebe77f",
+      "finalSha256": "b739bd0393c05721aaf7141ddbbf6aeced78866125abd868198e1fc52eebe77f",
+      "unchanged": true
+    },
+    {
+      "path": "docs/hrm-backup-acl-attribution-session-log.md",
+      "preparationSha256": "d751bb167e59ab4afd5085176950696d916d8b55976991f42a6ced913a3ab5f1",
+      "finalSha256": "d751bb167e59ab4afd5085176950696d916d8b55976991f42a6ced913a3ab5f1",
+      "unchanged": true
+    }
+  ],
+  "previousFourteenSourceRetention": [
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.mjs",
+      "sha256": "46b417da7bbe763960b8ede8fa0e9dbd98543d090d54f73979289504bfe35771",
+      "acceptedSha256": "46b417da7bbe763960b8ede8fa0e9dbd98543d090d54f73979289504bfe35771",
+      "byteExact": true,
+      "currentCommittedSha256": "46b417da7bbe763960b8ede8fa0e9dbd98543d090d54f73979289504bfe35771",
+      "exactAcceptedMain": true
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.sql",
+      "sha256": "b174e32eb68a0dbcca98e8557fe8c716ed8277111e79ba822bce43f4e7023b6a",
+      "acceptedSha256": "b174e32eb68a0dbcca98e8557fe8c716ed8277111e79ba822bce43f4e7023b6a",
+      "byteExact": true,
+      "currentCommittedSha256": "b174e32eb68a0dbcca98e8557fe8c716ed8277111e79ba822bce43f4e7023b6a",
+      "exactAcceptedMain": true
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.test.mjs",
+      "sha256": "39c947982f5e7dc2ca1e96307ac5314518bfe748ec58a3cf217f8f09194c0eef",
+      "acceptedSha256": "39c947982f5e7dc2ca1e96307ac5314518bfe748ec58a3cf217f8f09194c0eef",
+      "byteExact": true,
+      "currentCommittedSha256": "39c947982f5e7dc2ca1e96307ac5314518bfe748ec58a3cf217f8f09194c0eef",
+      "exactAcceptedMain": true
+    },
+    {
+      "path": ".github/workflows/hrm-migration-metadata-preflight.yml",
+      "sha256": "f90937ecda3b81e7dd017819cfaec1afdefc5fee58167fdfc2289ce012a1dcf1",
+      "acceptedSha256": "f90937ecda3b81e7dd017819cfaec1afdefc5fee58167fdfc2289ce012a1dcf1",
+      "byteExact": true,
+      "currentCommittedSha256": "f90937ecda3b81e7dd017819cfaec1afdefc5fee58167fdfc2289ce012a1dcf1",
+      "exactAcceptedMain": true
+    },
+    {
+      "path": "scripts/hrm-default-acl-inspection.mjs",
+      "sha256": "a6aa4f3526fd5edf29bd2b3a1309f7703e85acad70c0e683cba69dbb281c2027",
+      "acceptedSha256": "a6aa4f3526fd5edf29bd2b3a1309f7703e85acad70c0e683cba69dbb281c2027",
+      "byteExact": true,
+      "currentCommittedSha256": "a6aa4f3526fd5edf29bd2b3a1309f7703e85acad70c0e683cba69dbb281c2027",
+      "exactAcceptedMain": true
+    },
+    {
+      "path": "scripts/hrm-default-acl-inspection.sql",
+      "sha256": "524bc02f34a75f445aff6b3834df6e02aa86665dee9acd835b2b5fc621127e2a",
+      "acceptedSha256": "524bc02f34a75f445aff6b3834df6e02aa86665dee9acd835b2b5fc621127e2a",
+      "byteExact": true,
+      "currentCommittedSha256": "524bc02f34a75f445aff6b3834df6e02aa86665dee9acd835b2b5fc621127e2a",
+      "exactAcceptedMain": true
+    },
+    {
+      "path": "scripts/hrm-default-acl-inspection.test.mjs",
+      "sha256": "402a2dde20443676d6bac430ab4e80a74f507c2dd3828b920c278cafcf0c7c3c",
+      "acceptedSha256": "402a2dde20443676d6bac430ab4e80a74f507c2dd3828b920c278cafcf0c7c3c",
+      "byteExact": true,
+      "currentCommittedSha256": "402a2dde20443676d6bac430ab4e80a74f507c2dd3828b920c278cafcf0c7c3c",
+      "exactAcceptedMain": true
+    },
+    {
+      "path": ".github/workflows/hrm-default-acl-inspection.yml",
+      "sha256": "954c6d042bf00420f1ecd3c9ed0c378bc41305c0af08c30cdc3a97f06f81df2a",
+      "acceptedSha256": "954c6d042bf00420f1ecd3c9ed0c378bc41305c0af08c30cdc3a97f06f81df2a",
+      "byteExact": true,
+      "currentCommittedSha256": "954c6d042bf00420f1ecd3c9ed0c378bc41305c0af08c30cdc3a97f06f81df2a",
+      "exactAcceptedMain": true
+    },
+    {
+      "path": "docs/hrm-default-acl-inspection-session-log.md",
+      "sha256": "8d3af68cc9a724374a30d5eba1e06d37537473cef61ca4d89549adced5500a5f",
+      "acceptedSha256": "8d3af68cc9a724374a30d5eba1e06d37537473cef61ca4d89549adced5500a5f",
+      "byteExact": true,
+      "currentCommittedSha256": "8d3af68cc9a724374a30d5eba1e06d37537473cef61ca4d89549adced5500a5f",
+      "exactAcceptedMain": true
+    },
+    {
+      "path": "scripts/hrm-loopback-acl-inspection.mjs",
+      "sha256": "e8d5fb47eddfb0d7e371943f2d3b3459b66e9d17927161bf9233bd6189074dbf",
+      "acceptedSha256": "e8d5fb47eddfb0d7e371943f2d3b3459b66e9d17927161bf9233bd6189074dbf",
+      "byteExact": true,
+      "currentCommittedSha256": "e8d5fb47eddfb0d7e371943f2d3b3459b66e9d17927161bf9233bd6189074dbf",
+      "exactAcceptedMain": true
+    },
+    {
+      "path": "scripts/hrm-loopback-acl-inspection.sql",
+      "sha256": "7a4a9d79534e40cf7672c31797f2015a543f7061c1522ee30a7cfb9e147f8c58",
+      "acceptedSha256": "7a4a9d79534e40cf7672c31797f2015a543f7061c1522ee30a7cfb9e147f8c58",
+      "byteExact": true,
+      "currentCommittedSha256": "7a4a9d79534e40cf7672c31797f2015a543f7061c1522ee30a7cfb9e147f8c58",
+      "exactAcceptedMain": true
+    },
+    {
+      "path": "scripts/hrm-loopback-acl-inspection.test.mjs",
+      "sha256": "7e1264a6a754b655306b936c971a28584532b6921a005012f5d2769d522c8993",
+      "acceptedSha256": "7e1264a6a754b655306b936c971a28584532b6921a005012f5d2769d522c8993",
+      "byteExact": true,
+      "currentCommittedSha256": "7e1264a6a754b655306b936c971a28584532b6921a005012f5d2769d522c8993",
+      "exactAcceptedMain": true
+    },
+    {
+      "path": ".github/workflows/hrm-loopback-acl-inspection.yml",
+      "sha256": "bfbcb2b83fab53817ce71ae1e511389cbab7f9ca6aeff0785801b24aee76a116",
+      "acceptedSha256": "bfbcb2b83fab53817ce71ae1e511389cbab7f9ca6aeff0785801b24aee76a116",
+      "byteExact": true,
+      "currentCommittedSha256": "bfbcb2b83fab53817ce71ae1e511389cbab7f9ca6aeff0785801b24aee76a116",
+      "exactAcceptedMain": true
+    },
+    {
+      "path": "docs/hrm-loopback-acl-inspection-session-log.md",
+      "sha256": "36658d86a3a32d577e1284c3f0ca7bdd38221d64237903c74ddcc5fa60969d72",
+      "acceptedSha256": "36658d86a3a32d577e1284c3f0ca7bdd38221d64237903c74ddcc5fa60969d72",
+      "byteExact": true,
+      "currentCommittedSha256": "36658d86a3a32d577e1284c3f0ca7bdd38221d64237903c74ddcc5fa60969d72",
+      "exactAcceptedMain": true
+    }
+  ],
+  "reviewer": "inspect_outcome_contract",
+  "authorship": {
+    "rootOwnedIndependentReview": [
+      "scripts/hrm-backup-acl-attribution.mjs"
+    ],
+    "reviewerOwnedCrossReviewByRoot": [
+      "scripts/hrm-backup-acl-attribution.sql",
+      "scripts/hrm-backup-acl-attribution.test.mjs",
+      ".github/workflows/hrm-backup-acl-attribution.yml"
+    ],
+    "disclosure": "Reviewer authored prior report/classification harnesses and prior diagnostic tests/SQL/workflows; no independent own-code claim. Root reviewed own-scope new SQL/workflow/tests separately."
+  },
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "supersededFindings": [
+    {
+      "priority": "P2",
+      "status": "CORRECTED_IN_BOUND_WORKING_BYTES",
+      "issue": "Attribution allowed positive OTHER privilege rows with zero OTHER recipients",
+      "correction": "Root added exact zero/nonzero correspondence and explicit absent-role matched count constraint; negative unit assertions present; runtime not yet checked."
+    },
+    {
+      "priority": "P3",
+      "status": "CORRECTED_BEFORE_TARGETED_CHECK",
+      "scope": "Reviewer-owned tests",
+      "issue": "Copied adapter unit reconstructed production adapter rather than testing production behavior",
+      "correction": "Removed fake transport duplicate; mandatory hosted positive uses full default inspectBackupAclRemote startRuntime/queryMigration real adapter without overrides"
+    },
+    {
+      "priority": "P3",
+      "status": "CORRECTED_BEFORE_TARGETED_CHECK",
+      "scope": "Reviewer-owned new workflow",
+      "issue": "Copied artifact prefix and transport error label referenced previous loopback tool",
+      "correction": "New artifact/result names and error text use backup ACL attribution; old workflow untouched"
+    }
+  ],
+  "sourceObservations": [
+    "Static declaration reader never sources backup.env and requires exactly one PGUSER/BACKUP_EXPECTED_DB_ROLE/PGDATABASE with explicit matching expected role. Unknown static literal assignments remain private and no backup password file is read.",
+    "Root-owned no-follow stable private file reader permits deployment-contracted root0600 or root:leaddrive-backup0640 only, bounded group lookup and postcleanup text/profile stability.",
+    "New SQL is supplied only for migration query; held runtime uses unchanged live SQL and root helper delegates same expected role/primary/RRRO/livePID+nonce+user+datid guard and finite cleanup to unchanged observer.",
+    "Root default adapter adds only known declared safe role GUC through libpq environment; no backup connection or production fixture mode. Protected backup DB must equal canonical app URL DB before SQL.",
+    "Root rechecks backup text/profile, deployed artifact marker and canonical app/migration texts only after old observer cleanup. Original live/body failure remains visible in nested strict report.",
+    "Public report binds six exact sources, exports finite booleans/counts/profile/limits only and cannot return READY/ACL approval; observed unsafe backup profiles, missing role, memberships, write/PUBLIC/grantable catalog facts are not silently promoted to approval.",
+    "Explicit defaultReadOnly is role+DB > role > database catalog override; absence maps false with explicit limit that server-wide default is not proved. It never infers backup default from forced migration RO.",
+    "Old fourteen production/tool source paths remain byte exact accepted production f8; no grants/access/config/tenant/business rows/Support changes."
+  ],
+  "verification": {
+    "rootExecutedCurrentTargetedUnit": {
+      "status": "PASS_WITH_EXPLICIT_HOSTED_SQL_NOT_RUN",
+      "tests": 14,
+      "pass": 13,
+      "fail": 0,
+      "skipped": 1,
+      "originalLog": "/tmp/hrm-backup-acl-first-local-original.log",
+      "bytes": 3402,
+      "sha256": "8a0cbd14bcb322b59d9ef783c6f9f72070f2ab6f3cd9897b70b1094b1ea19803"
+    },
+    "rootExecutedRunnerPolicy": "PASS; root reports 50 workflow files",
+    "rootExecutedDiffCheck": "PASS reported by root",
+    "reviewerLocalTests": "NOT RUN; no duplicate execution credit",
+    "localPostgres": "NOT RUN; prohibited on Contabo. Hosted old52 +new14 actual PostgreSQL16/no skips required and pending",
+    "productionAttribution": "NOT RUN; previous f8 unknown OTHER BYPASS SELECT purpose remains review hold"
+  },
+  "pendingHostedSource": {
+    "runId": 37692727660,
+    "runAttempt": 1,
+    "headSha": "60efe23846fddc7deea16c48ba3a90bd962aae35",
+    "status": "in_progress",
+    "conclusion": null,
+    "requiredCombinedTests": 66,
+    "requiredNoSkips": true
+  },
+  "approvalBoundary": "Source accepted for exact head only. Actual hosted old52/new14 PostgreSQL source validation and current five required App15368 checks pending. No production recipient attribution, ACL approval, HRM merge/deploy/DONE or operational C12 credit.",
+  "limits": [
+    "READ_COMPLETE establishes finite catalog evidence, not ACL approval, actual backup authentication/commissioning/service operation/restore or C12 real operational completion.",
+    "Actual production recipient attribution pending reviewed normal main release plus protected exact artifact-bound production read; no real role names/URLs/passwords/PIDs/OIDs/probes/config values exported.",
+    "Existing original metadata INCOMPLETE/defaultACL-unreviewed and old host mismatch failures retained unchanged; no gate weakening."
+  ],
+  "retainedOriginalReviews": [
+    {
+      "path": "/tmp/hrm-backup-acl-root-helper-peer-review-working.json",
+      "bytes": 8884,
+      "sha256": "a75955bf722f35dd736d837c905c4c6258d48e9134b2c9a1c90055d710a0d7ed"
+    },
+    {
+      "path": "/tmp/hrm-backup-acl-root-helper-peer-review-preparation.json",
+      "bytes": 10579,
+      "sha256": "914886fe5957b4cbf5b784a8f8f6645adbf9fd0b8b712572f1cd1a08e337b034"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "status": "ERROR",
+  "expectedMainSha": "7bfcca6b5b53a33fca926786718f8a80037e2809",
+  "productionArtifactSha": null,
+  "bindings": {
+    "baseHelperSha256": "46b417da7bbe763960b8ede8fa0e9dbd98543d090d54f73979289504bfe35771",
+    "helperSha256": "a6aa4f3526fd5edf29bd2b3a1309f7703e85acad70c0e683cba69dbb281c2027",
+    "sqlSha256": "524bc02f34a75f445aff6b3834df6e02aa86665dee9acd835b2b5fc621127e2a"
+  },
+  "proof": null,
+  "limits": [
+    "Supplemental catalog evidence only; READ_COMPLETE is not ACL approval or release readiness",
+    "The original HRM preflight result and DEFAULT_ACL_UNREVIEWED check remain unchanged",
+    "Expected runtime identity is proven through an actual bounded read-only application connection",
+    "No role names, database identifiers, credentials, environment values or business rows exported",
+    "OTHER recipients remain unidentified; no backup identity or authorization is inferred",
+    "Two sequential sessions prove matching endpoint/catalog identity, not simultaneous liveness against a promoted physical clone",
+    "No reserved DDL quiet window, index duration or simultaneous database snapshot is proved",
+    "No production files, grants, role configuration, tenant activation or business data mutated"
+  ],
+  "code": "IDENTITY_ENDPOINT_HOST_MISMATCH"
+}

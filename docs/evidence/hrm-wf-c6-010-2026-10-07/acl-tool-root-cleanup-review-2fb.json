@@ -1,0 +1,11 @@
+{
+  "before": "549bddb2080bc71271f837f95463c33410642368",
+  "old13UnitCasesByteExact": true,
+  "allOldHostedBodyAssertionLinesRetained": true,
+  "onlyHostedFixtureAndJournalChanged": true,
+  "newTestSyntax": "PASS",
+  "localPG": "NOT RUN: prohibited on Contabo; hosted successor mandatory",
+  "oldHostedOutcome": "FAIL: cleanup tuple error; body completeness unproved because finally could mask",
+  "interpretation": "Sequential eight cleanup commands, positive residue checks and preservation of first body error; no assertion or old check weakened",
+  "newTestSha256": "6aad06c5505b81d2860e15a7fef9ab990ef32ca53fb7a1d1f7fc66ee4085e877"
+}

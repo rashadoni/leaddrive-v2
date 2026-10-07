@@ -1,0 +1,208 @@
+{
+  "version": 1,
+  "status": "CURRENT5638_CLASSIFICATION_FIRST_ATTEMPT_FAIL_RETAINED_CAUSE_NOT_CONFIRMED",
+  "head": "5638f1ea63c2818aef8be1b0c497eff718303388",
+  "tree": "8743c6aa6b338efde65d8f24a04ee0ec5650fb46",
+  "manualRun": 37685323552,
+  "attempt": 1,
+  "failedJob": 113011546243,
+  "artifact": {
+    "id": 11510779991,
+    "path": "/tmp/hrm-release-5638-peer-classification-first-original.zip",
+    "bytes": 400878,
+    "sha256": "7f9084c21257d49db4aacce71eae75216aca6d2ba3b86d810679e303c3a8cf12",
+    "GitHubDigestMatched": true,
+    "crc": "PASS",
+    "members": [
+      {
+        "name": "exception-classification-receipt.json",
+        "bytes": 13799,
+        "sha256": "b212b22d900383bf9034b3a711e7090d685b44c36a27111f316a1ef1ebbbf5ec"
+      },
+      {
+        "name": "classification-az-768.png",
+        "bytes": 102912,
+        "sha256": "d6cdc7397a7a5d5dafd7172743e30cd415b43502f1821067d68cdc3c9b69ee2a"
+      },
+      {
+        "name": "workflow-failure.json",
+        "bytes": 219,
+        "sha256": "b781331af9db29dd955e3c959a767eecae6387c49ad9d77ad1c2196b681d50c2"
+      },
+      {
+        "name": "workflow-context.json",
+        "bytes": 261,
+        "sha256": "6082cdb9ecb1ca35be3043670686ed8356f91b9af97d85e8326d6b72d729607b"
+      },
+      {
+        "name": "classification-ru-320.png",
+        "bytes": 34944,
+        "sha256": "2df8b234728ba617b05fb65ed351d60b54c076c85ab739a29ed0801e7422f54e"
+      },
+      {
+        "name": "classification-en-1440.png",
+        "bytes": 137280,
+        "sha256": "d37010ab47a670ea19f67781f346785f773c38f3ccf268ca4aff36cc6df46636"
+      },
+      {
+        "name": "failure-original.png",
+        "bytes": 137280,
+        "sha256": "d37010ab47a670ea19f67781f346785f773c38f3ccf268ca4aff36cc6df46636"
+      }
+    ]
+  },
+  "originalJobLog": {
+    "path": "/tmp/hrm-release-5638-peer-classification-first-original.log",
+    "bytes": 102000,
+    "sha256": "cef162439e314ba0bb0b1c3925de71ec54d9e3ddda43447ef7b821ef4810ff19"
+  },
+  "receiptHeadBinding": {
+    "candidate": "5638f1ea63c2818aef8be1b0c497eff718303388",
+    "checkedMerge": "5638f1ea63c2818aef8be1b0c497eff718303388",
+    "context": {
+      "stage": "workflow-preparing",
+      "headSha": "5638f1ea63c2818aef8be1b0c497eff718303388",
+      "ciSha": "5638f1ea63c2818aef8be1b0c497eff718303388",
+      "runId": "37685323552",
+      "runAttempt": "1",
+      "runtime": "ephemeral-next-dev",
+      "productionMutation": false
+    }
+  },
+  "actualPartialProof": {
+    "casesCompletedPass": 7,
+    "realUiLocales": [
+      "real-ui-ru-320",
+      "real-ui-az-768",
+      "real-ui-en-1440"
+    ],
+    "HRHttp201AppendCount": 6,
+    "exactRetry": "PASS200/no audit ordecision delta",
+    "conflictingReason": "PASS409",
+    "staleRevision": "PASS409",
+    "weakMfa": "PASS403/zero delta",
+    "teamManagerAndTenantAdmin": "PASS404/zero delta",
+    "successfulMandatoryTotpSessions": 5,
+    "cleanup": "PASS",
+    "cleanupDiagnostics": [
+      {
+        "resource": "browser-context-1",
+        "status": "PASS"
+      },
+      {
+        "resource": "browser-context-2",
+        "status": "PASS"
+      },
+      {
+        "resource": "browser-context-3",
+        "status": "PASS"
+      },
+      {
+        "resource": "browser-context-4",
+        "status": "PASS"
+      },
+      {
+        "resource": "browser-context-5",
+        "status": "PASS"
+      },
+      {
+        "resource": "browser-context-6",
+        "status": "PASS"
+      },
+      {
+        "resource": "browser-context-7",
+        "status": "PASS"
+      },
+      {
+        "resource": "browser",
+        "status": "PASS"
+      },
+      {
+        "resource": "app-prisma",
+        "status": "PASS"
+      },
+      {
+        "resource": "admin-prisma",
+        "status": "PASS"
+      }
+    ]
+  },
+  "actualFirstFailure": {
+    "stage": "denied-ungranted",
+    "sourcePosition": {
+      "line": 120,
+      "column": 67
+    },
+    "authenticationOrdinal": 7,
+    "callbackStatus": 200,
+    "verificationStatus": 400,
+    "mandatoryTotp": true,
+    "pendingSessionTotpMethodChecks": "Passed before POST: existing source asserts expected id, needs2fa=true and methodtotp",
+    "sessionUpdateStatus": null,
+    "nonceConsumed": null,
+    "completedAt": "2026-10-07T21:00:00.181Z",
+    "failedUnGrantedWorkforcePost": "NOT REACHED"
+  },
+  "notRunAfterFailure": [
+    "ungranted actor404/zero write",
+    "foreign tenant HR404/zero write",
+    "grant revocation/captured-token denial",
+    "final ledger+audit/source-read-only/RLS/reopened final assertions after these stages"
+  ],
+  "sourceAndOrderReview": {
+    "exactAuthHarnessAndLockfileBindings": [
+      {
+        "path": "scripts/workforce-exception-classification-browser-evidence.mjs",
+        "sha256": "216967516c60bab48390aefeebce651524130eefabc7c90cf4d00ee05e899025",
+        "exactAccepted88": true
+      },
+      {
+        "path": "scripts/ci/fixtures/workforce-exception-classification-browser.sql",
+        "sha256": "41ecf5a96c0accb2469971042bf3f47f0e8d7e6fcfa65a8538e1cd7f4013d7e0",
+        "exactAccepted88": true
+      },
+      {
+        "path": "src/app/api/v1/auth/verify-2fa/route.ts",
+        "sha256": "548fb519a43b5f9914731ebe38da5c0550b666106a0fac7fba6c605bf461a7a0",
+        "exactAccepted88": true
+      },
+      {
+        "path": "src/lib/auth.ts",
+        "sha256": "a0cd1185fe0db3b543998dacbf815322c84010a75f539fc6d9631679a32907bd",
+        "exactAccepted88": true
+      },
+      {
+        "path": "src/lib/two-factor-nonce.ts",
+        "sha256": "46766bd2f2bafe6628a2bcf3a57622450acad1bc145a239ed1f2617a646d8fac",
+        "exactAccepted88": true
+      },
+      {
+        "path": "package.json",
+        "sha256": "a813b2f20f55afcdd2b5c73b00a4c5d242b1525bd8c8824aa12a56f4f8c892cf",
+        "exactAccepted88": true
+      },
+      {
+        "path": "package-lock.json",
+        "sha256": "54c9be2264ef8e1ec5f8b0d9c545ba868c24de938ee0cf3734f4c475e62c816f",
+        "exactAccepted88": true
+      }
+    ],
+    "order": "Warm up POST-only verify route with GET405, pace existing auth rate budget, THEN generateSync same stored principalSecret and POST. No code is generated before pacing wait.",
+    "route400Categories": [
+      "Code required",
+      "2FA not enabled",
+      "Invalid code"
+    ],
+    "rawAuthBodyNotRetained": true,
+    "rolloverHypothesis": "Completion21:00:00.181 is at a 30-second boundary. Generate/verify instant differences could cross current TOTP period, but receipt does not record generation/server time or finite failure category, so this is inference and not established cause.",
+    "confirmedC6OrAuthRegression": false
+  },
+  "actualVisualInspection": "Viewed failure-original.png: shows prior successful EN HR queue, manual privacy warning and appeal-rejected success banner. It does not depict the failed MFA response or prove TOTP failure category.",
+  "recommendation": "After every manual job is terminal, root may rerun the unchanged failed classification job once, preserving original artifact/job metadata/log and each run attempt. No authentication/window/grant/assertion relaxation. Repeated failure requires finite sanitized diagnostics or proved source fix rather than blind repeated retries.",
+  "authorship": "Reviewer authored classification harness/fixtures, cross-reviewed by root; independent current artifact/source assessment does not claim independent test authorship.",
+  "limits": [
+    "Partial actual sixwrites/sevencases are not full eleven-case classification acceptance.",
+    "All current5638 wholetechnical gates still pending; historical88 cannot substitute this actual failed run.",
+    "No actual production HR observations or C12 credit, no production role/config changes."
+  ]
+}

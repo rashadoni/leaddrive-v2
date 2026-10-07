@@ -1,0 +1,74 @@
+{
+  "source": "60efe23846fddc7deea16c48ba3a90bd962aae35",
+  "tree": "e57592a08b458c5bfd815029d93fa6a7ae1969b1",
+  "pr": 627,
+  "actual66NoSkips": "PASS",
+  "run": 37692727660,
+  "sourceJob": 113036666929,
+  "artifacts": [
+    {
+      "path": "hrm-backup-acl-first-local-original.log",
+      "bytes": 3402,
+      "sha256": "8a0cbd14bcb322b59d9ef783c6f9f72070f2ab6f3cd9897b70b1094b1ea19803"
+    },
+    {
+      "path": "hrm-backup-acl-root-helper-peer-review-working.json",
+      "bytes": 8884,
+      "sha256": "a75955bf722f35dd736d837c905c4c6258d48e9134b2c9a1c90055d710a0d7ed"
+    },
+    {
+      "path": "hrm-backup-acl-root-helper-peer-review-preparation.json",
+      "bytes": 10579,
+      "sha256": "914886fe5957b4cbf5b784a8f8f6645adbf9fd0b8b712572f1cd1a08e337b034"
+    },
+    {
+      "path": "hrm-backup-acl-independent-source-60efe238.json",
+      "bytes": 14922,
+      "sha256": "98188ffb46bc83834937f8e754be1274f4bae45af2daf58bb2cdad333edbdfa6"
+    },
+    {
+      "path": "hrm-backup-acl-independent-hosted-60efe238.json",
+      "bytes": 14743,
+      "sha256": "da8435a8202e957540d3e1a17c731f68370bbb087a21dc6ba7d4578962da2bb5"
+    },
+    {
+      "path": "hrm-backup-acl-60-first-hosted-original.log",
+      "bytes": 66323,
+      "sha256": "63df358af048af45f4f6986a141685c5a90dec991382100f52cdcfd4a89c44de"
+    },
+    {
+      "path": "hrm-backup-acl-60-first-runs.json",
+      "bytes": 51642,
+      "sha256": "e3d6356da4d8147fef5c3f8296976f7cc54833fb0c1514697b110c7f5c16f975"
+    },
+    {
+      "path": "hrm-backup-acl-60-first-jobs.json",
+      "bytes": 3644,
+      "sha256": "0c75f6214497fc4668ff888bc003357f3792a2065bad0ace15afba6d17a250ab"
+    },
+    {
+      "path": "hrm-backup-acl-60-checks-current.json",
+      "bytes": 42910,
+      "sha256": "efadab39fe11c3833d9b841f9c6b3fd126703b8391ae430e1ee96f99bd67595d"
+    },
+    {
+      "path": "hrm-pr627-source-body.json",
+      "bytes": 1702,
+      "sha256": "cb83bb13688d22e3fa78af1a938ef3285022c3834238a00d24a919ef5f3babc8"
+    },
+    {
+      "path": "hrm-evidence-c7-merge-original.log",
+      "bytes": 185,
+      "sha256": "51176bdeaef0673fe0faf8137f309e46a7f57deae200b5a181f04386b37011b4"
+    },
+    {
+      "path": "hrm-c6-release-conditional-ledger-5638.json",
+      "bytes": 480,
+      "sha256": "7e0a7dac954d0de0d07b5033be647defc08aab7a95dee71939ba49eb6bd2f867"
+    }
+  ],
+  "productionAttribution": "NOT RUN",
+  "newHrmHead": "c7deecf8c86672204434c157f7be2f0e85566fc7",
+  "newHrmManual5": 37692949528,
+  "qualification": "Old5638 acceptance historical; current fresh all13/manual5/required5 pending; accounting84/161/77/60 unchanged"
+}

@@ -1,0 +1,62 @@
+{
+  "archivedAtUtc": "2026-10-07T22:43:10.149804+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-final-33-run-terminal.json.gz",
+      "originalBytes": 12907,
+      "originalSha256": "73bd441af134a0b012d198e127ccf418312574624b7c4ffde6ca2ad3a8960f4a",
+      "storedBytes": 1638,
+      "storedSha256": "11974a810c889397e464843a7a2805d0aba2192e0a71c67e46007c554ddf5944"
+    },
+    {
+      "path": "hrm-final-33-jobs-terminal.json.gz",
+      "originalBytes": 17202,
+      "originalSha256": "5b3a1db9e5c8de1d79cb21ec7bc6fb2438e924962ad9635df8925f087892fce7",
+      "storedBytes": 1968,
+      "storedSha256": "fb8b69db141b515abb965b7cfb6a4a6c0e8add187d244988bc1955aea0522b8d"
+    },
+    {
+      "path": "hrm-final-33-artifacts-terminal.json.gz",
+      "originalBytes": 2368,
+      "originalSha256": "d2802ce42bb57a329e547009d9d01d47534c1f828bfe0bbd33e70953e9342af1",
+      "storedBytes": 683,
+      "storedSha256": "f7ff3eedefd5bb4a84dab27ed581c7a559d32f36f83ab1e12444c78d24620898"
+    },
+    {
+      "path": "hrm-final-33-compiler-first.zip",
+      "originalBytes": 19685,
+      "originalSha256": "f5cab98b1811c629c8f731bfbd012ff9975c065466da47b36eef4081da65cdcb",
+      "storedBytes": 19685,
+      "storedSha256": "f5cab98b1811c629c8f731bfbd012ff9975c065466da47b36eef4081da65cdcb"
+    },
+    {
+      "path": "hrm-final-33-compiler-first-original.log.gz",
+      "originalBytes": 255039,
+      "originalSha256": "e6f5a24ca7a29981282ef6930a2fee9499c2aad1b6b1bfce2eea583be14da7d2",
+      "storedBytes": 34999,
+      "storedSha256": "46033099cdb6dd698e7626d8a1ab40d940bade95cb5668bc92994658d5104e7c"
+    },
+    {
+      "path": "hrm-final-33-root-compiler/tsc-exit-code",
+      "originalBytes": 2,
+      "originalSha256": "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3",
+      "storedBytes": 2,
+      "storedSha256": "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3"
+    },
+    {
+      "path": "hrm-final-33-root-compiler/tsc-output.log.gz",
+      "originalBytes": 177767,
+      "originalSha256": "fd626333ee46182254dc6a8b0a012af831b4e2781cc1a21f6ca373886ec9b4ba",
+      "storedBytes": 18983,
+      "storedSha256": "6a44e1f036f9e8ef18da3a97f315363fb1905796110ffcf54aec5dd716bbabf4"
+    },
+    {
+      "path": "hrm-final-33-root-compiler-parse-proof.json.gz",
+      "originalBytes": 1930,
+      "originalSha256": "6670250e3059b112c8cc40c309ab1a2d02d2c7d2622a458335492dd2a28d6a6b",
+      "storedBytes": 713,
+      "storedSha256": "16f2c1e733b1fa355c47c91e21ea80c8486c59eefcc9dc17650d2e887371e317"
+    }
+  ]
+}

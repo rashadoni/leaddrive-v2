@@ -1,0 +1,12 @@
+{
+  "atUtc": "2026-10-07T21:07:52.219288+00:00",
+  "mainSha": "f8dd20c7a849643087ee31969c2f582a96c8bab3",
+  "parents": [
+    "cecb5a7d80895d9f41d7c2b7ddcc43a2e6057938",
+    "5f1437559afd5e1f2f8a2ebcf5aa4123c687e6db"
+  ],
+  "tree": "1c3464637a17643d1b1c601af7c4b7f8a691c9d9",
+  "wholeTreeExactReviewedTested5f": true,
+  "normalProtectedMerge": true,
+  "scope": "Auxiliary source only; own main quality/build/deploy/public proof required before readonly observation; not finalHRM release/ACLapproval"
+}

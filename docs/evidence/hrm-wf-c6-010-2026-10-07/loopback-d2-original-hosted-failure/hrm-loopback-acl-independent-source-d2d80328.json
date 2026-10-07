@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "status": "SOURCE_ACCEPTED_RUNTIME_PENDING",
+  "reviewedHead": "d2d8032891967bef45b43109bfaa9a0b1ea7760c",
+  "reviewedTree": "11c71b85a68d0b1044af788e96df9448e38e95fa",
+  "baseAcceptedMain": "7bfcca6b5b53a33fca926786718f8a80037e2809",
+  "sourceBindings": [
+    {
+      "path": "scripts/hrm-loopback-acl-inspection.mjs",
+      "sha256": "b576187c9bf33195b0996d3b7454311323489d7e5005873b68dee097aada79c9",
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "scripts/hrm-loopback-acl-inspection.sql",
+      "sha256": "7a4a9d79534e40cf7672c31797f2015a543f7061c1522ee30a7cfb9e147f8c58",
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "scripts/hrm-loopback-acl-inspection.test.mjs",
+      "sha256": "970b39f0f49f2815e51a390a524c806a648607f107dbfa98c4fd74cf59a18989",
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": ".github/workflows/hrm-loopback-acl-inspection.yml",
+      "sha256": "bfbcb2b83fab53817ce71ae1e511389cbab7f9ca6aeff0785801b24aee76a116",
+      "workingBytesExactCommit": true
+    },
+    {
+      "path": "docs/hrm-loopback-acl-inspection-session-log.md",
+      "sha256": "0e95666d9f3b19956b8ef81b56beff18c3d2a96640d170d9aaccaf87bb0bcd7a",
+      "workingBytesExactCommit": true
+    }
+  ],
+  "baseIsAncestor": true,
+  "scopeDelta": [
+    ".github/workflows/hrm-loopback-acl-inspection.yml",
+    "docs/hrm-loopback-acl-inspection-session-log.md",
+    "scripts/hrm-loopback-acl-inspection.mjs",
+    "scripts/hrm-loopback-acl-inspection.sql",
+    "scripts/hrm-loopback-acl-inspection.test.mjs"
+  ],
+  "priorHelperReview": {
+    "path": "/tmp/hrm-loopback-acl-root-helper-peer-review.json",
+    "sha256": "98167bb3e3f02eb3e293faa900bb8de7e33bcfdc4935d433ce558e898bc936d8",
+    "bytes": 7457
+  },
+  "retainedOpenFindings": [],
+  "retainedSupersededFindings": [
+    {
+      "priority": "P2",
+      "finding": "Runtime finish waited unbounded for close after timeout/SIGKILL",
+      "resolution": "Bounded 5s close followed by at most 1s kill wait; detached broken streams fail CLEANUP_UNPROVED. Startup/migration timeout rejects, kills and detaches without waiting indefinitely. Re-read current checkpoint bytes."
+    },
+    {
+      "priority": "P2",
+      "finding": "Final marker/private file check preceded runtime cleanup",
+      "resolution": "Captured initial literal files and deployed SHA now rechecked after finish; tests actually verify mutations during finish discard all proof."
+    }
+  ],
+  "oldNineExactAcceptedMain": true,
+  "authorship": {
+    "helper": "root-authored independently reviewed here",
+    "sqlTestsWorkflow": "authored here, independently cross-reviewed by root",
+    "journal": "root-authored; not an independent runtime result"
+  },
+  "runtime": "GitHub-hosted source run37683900450 pending; no new SQL execution credit from 15 local unit passes/1 hosted SQL skip",
+  "production": "Actual7bf strict declared-host inspector remains ERROR IDENTITY_ENDPOINT_HOST_MISMATCH/proofnull before SQL. Supplemental tool has not been queried on production. No mutations or activation approved by this receipt."
+}

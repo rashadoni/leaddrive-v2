@@ -1,0 +1,509 @@
+{
+  "version": 1,
+  "status": "CURRENT5638_WHOLE_FINITE_TECHNICAL_ACCEPTANCE_PRODUCTION_RECIPIENT_REVIEW_AND_HRM_RELEASE_PENDING",
+  "head": "5638f1ea63c2818aef8be1b0c497eff718303388",
+  "tree": "8743c6aa6b338efde65d8f24a04ee0ec5650fb46",
+  "reviewedAtUtc": "2026-10-07T21:33:45.445588+00:00",
+  "findingsP0P1P2P3": [],
+  "authorship": "Root production/workflow/helper code independently reviewed. Reviewer authored C6 browser/DB fixtures and new loopback SQL/test/workflow, independently cross-reviewed by root. Evidence interpretation independent; no independent own-test authorship claim.",
+  "acceptedCurrentReviewBindings": [
+    {
+      "path": "/tmp/hrm-release-independent-source-5638f1ea.json",
+      "bytes": 32345,
+      "sha256": "29ecb1a0a818b84a995df442341d8a52d74120a1d5bafd1b466bcbda7db5be27"
+    },
+    {
+      "path": "/tmp/hrm-release-independent-browser-5638f1ea.json",
+      "bytes": 18949,
+      "sha256": "56bfb7566d8959e81886aae8df45a5fac34cd2d5514d161bc10e4e149501cef0"
+    },
+    {
+      "path": "/tmp/hrm-release-independent-pg-build-5638f1ea.json",
+      "bytes": 7751,
+      "sha256": "a3c65eb3e784a285219fd2adc4f5d98faa37072451fc267944383e554ff6160d"
+    },
+    {
+      "path": "/tmp/hrm-release-independent-compiler-5638f1ea.json",
+      "bytes": 10479,
+      "sha256": "db33a43e329d0aa2c36f9398a457322fc50cda7418c1e39deb5afd2b5ffc3eb1"
+    },
+    {
+      "path": "/tmp/hrm-release-5638-compiler-gated-counts-independent.json",
+      "bytes": 4290,
+      "sha256": "f8ece57b0795edff3c480720e9e76f9a5e4f2dbdf89aeca95f5ada321b261229"
+    }
+  ],
+  "freshExactFiveLaneRun": {
+    "run": 37685323552,
+    "latestAttempt": 2,
+    "latestConclusion": "success",
+    "head": "5638f1ea63c2818aef8be1b0c497eff718303388",
+    "actualExecutions": [
+      {
+        "name": "Exact WF-C6-010 authenticated HR recording browser",
+        "logicalAttempt2JobId": 113022259873,
+        "actualExecutedJobId": 113022259873,
+        "actualExecutionAttempt": 2,
+        "actualStartedAt": "2026-10-07T21:18:39Z",
+        "actualCompletedAt": "2026-10-07T21:27:00Z",
+        "carryForwardNoSecondExecution": false
+      },
+      {
+        "name": "Exact WF-C6-010 isolated production bundle build",
+        "logicalAttempt2JobId": 113022261536,
+        "actualExecutedJobId": 113011546505,
+        "actualExecutionAttempt": 1,
+        "actualStartedAt": "2026-10-07T20:52:39Z",
+        "actualCompletedAt": "2026-10-07T21:07:44Z",
+        "carryForwardNoSecondExecution": true
+      },
+      {
+        "name": "Authenticated Workforce exception report browser evidence",
+        "logicalAttempt2JobId": 113022263065,
+        "actualExecutedJobId": 113011546713,
+        "actualExecutionAttempt": 1,
+        "actualStartedAt": "2026-10-07T20:52:58Z",
+        "actualCompletedAt": "2026-10-07T21:02:27Z",
+        "carryForwardNoSecondExecution": true
+      },
+      {
+        "name": "Exact WF-C6-010 full compiler gates",
+        "logicalAttempt2JobId": 113022312693,
+        "actualExecutedJobId": 113011546626,
+        "actualExecutionAttempt": 1,
+        "actualStartedAt": "2026-10-07T20:52:57Z",
+        "actualCompletedAt": "2026-10-07T21:17:29Z",
+        "carryForwardNoSecondExecution": true
+      },
+      {
+        "name": "Exact WF-C6-010 source and PostgreSQL regressions",
+        "logicalAttempt2JobId": 113022314549,
+        "actualExecutedJobId": 113011546572,
+        "actualExecutionAttempt": 1,
+        "actualStartedAt": "2026-10-07T20:52:53Z",
+        "actualCompletedAt": "2026-10-07T21:06:21Z",
+        "carryForwardNoSecondExecution": true
+      }
+    ]
+  },
+  "actualCurrentFiniteResults": {
+    "postgres": "4files44PASS0skip",
+    "fullRegression": "18observed/18knownallbaselineentrystillfails/gatePASS/globalnonclean",
+    "Prisma": "6.19.3current+legacygenerate/validatePASS",
+    "scopedLint": "PASS",
+    "i18n": "24632leafkeys/ruazmissingextra0",
+    "runner": "PASS50workflows",
+    "bundle": "Compiled7.4min/968static/standalone+staticassertPASS",
+    "bundleLimit": "InheriteddashboardclientmanifestENOENT traced-copywarning/existingtypevalidationSKIP; no warningfree/fullytraced claim",
+    "compiler": "Actual1153diagnostics35families/exit2/owned18all0/unchanged64gatedpairs/bothblockinggatesPASS/rawexact88freshlyreceived",
+    "report": "9PASS/cleanupPASS actualattempt1",
+    "classification": "11PASS/6HR201+6linkedimmutableaudit/7realmandatoryTOTPcanonicalnonceconsume/weak403/actor-tenant-revoke404zero/retry200zero/conflictstale409/reopen/nonownerRLS/8fixedfacts/11cleanupPASS actualattempt2",
+    "newLoopbackSource": "Current5638 dedicatedPRsourceworkflow37685317699SUCCESS; no productionrecipient credit from synthetic catalog"
+  },
+  "requiredFiveApp15368": [
+    {
+      "id": 113011520598,
+      "name": "pr-scope",
+      "head": "5638f1ea63c2818aef8be1b0c497eff718303388",
+      "app": 15368,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 113011673151,
+      "name": "static-checks",
+      "head": "5638f1ea63c2818aef8be1b0c497eff718303388",
+      "app": 15368,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 113011673272,
+      "name": "typecheck",
+      "head": "5638f1ea63c2818aef8be1b0c497eff718303388",
+      "app": 15368,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 113011519597,
+      "name": "runner-policy",
+      "head": "5638f1ea63c2818aef8be1b0c497eff718303388",
+      "app": 15368,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 113011520813,
+      "name": "scan",
+      "head": "5638f1ea63c2818aef8be1b0c497eff718303388",
+      "app": 15368,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "mainProtection": {
+    "strict": false,
+    "enforceAdmins": true,
+    "checks": [
+      {
+        "context": "pr-scope",
+        "app_id": 15368
+      },
+      {
+        "context": "static-checks",
+        "app_id": 15368
+      },
+      {
+        "context": "typecheck",
+        "app_id": 15368
+      },
+      {
+        "context": "runner-policy",
+        "app_id": 15368
+      },
+      {
+        "context": "scan",
+        "app_id": 15368
+      }
+    ]
+  },
+  "all13LatestApplicableWorkflows": [
+    {
+      "id": 37685323552,
+      "name": "Workforce exception report browser evidence",
+      "path": ".github/workflows/workforce-exception-report-browser-evidence.yml",
+      "event": "workflow_dispatch",
+      "attempt": 2,
+      "head": "5638f1ea63c2818aef8be1b0c497eff718303388",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 37685317684,
+      "name": "Workforce calendar browser evidence",
+      "path": ".github/workflows/workforce-calendar-browser-evidence.yml",
+      "event": "pull_request",
+      "attempt": 1,
+      "head": "5638f1ea63c2818aef8be1b0c497eff718303388",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 37685317944,
+      "name": "Workforce policy employee impact evidence",
+      "path": ".github/workflows/workforce-policy-employee-impact-evidence.yml",
+      "event": "pull_request",
+      "attempt": 1,
+      "head": "5638f1ea63c2818aef8be1b0c497eff718303388",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 37685317685,
+      "name": "Workforce exception report browser evidence",
+      "path": ".github/workflows/workforce-exception-report-browser-evidence.yml",
+      "event": "pull_request",
+      "attempt": 1,
+      "head": "5638f1ea63c2818aef8be1b0c497eff718303388",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 37685317708,
+      "name": "Workforce policy restore writer evidence",
+      "path": ".github/workflows/workforce-policy-restore-evidence.yml",
+      "event": "pull_request",
+      "attempt": 1,
+      "head": "5638f1ea63c2818aef8be1b0c497eff718303388",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 37685317676,
+      "name": "Workforce policy version browser evidence",
+      "path": ".github/workflows/workforce-policy-version-browser-evidence.yml",
+      "event": "pull_request",
+      "attempt": 1,
+      "head": "5638f1ea63c2818aef8be1b0c497eff718303388",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 37685317699,
+      "name": "HRM live loopback ACL evidence",
+      "path": ".github/workflows/hrm-loopback-acl-inspection.yml",
+      "event": "pull_request",
+      "attempt": 1,
+      "head": "5638f1ea63c2818aef8be1b0c497eff718303388",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 37685317667,
+      "name": "Runner policy",
+      "path": ".github/workflows/runner-policy.yml",
+      "event": "pull_request",
+      "attempt": 1,
+      "head": "5638f1ea63c2818aef8be1b0c497eff718303388",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 37685318030,
+      "name": "Secret scan",
+      "path": ".github/workflows/gitleaks.yml",
+      "event": "pull_request",
+      "attempt": 1,
+      "head": "5638f1ea63c2818aef8be1b0c497eff718303388",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 37685317884,
+      "name": "Workforce manager Today browser evidence",
+      "path": ".github/workflows/workforce-manager-today-browser-evidence.yml",
+      "event": "pull_request",
+      "attempt": 1,
+      "head": "5638f1ea63c2818aef8be1b0c497eff718303388",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 37685318029,
+      "name": "Workforce bulk assignment acceptance",
+      "path": ".github/workflows/workforce-bulk-assignment-evidence.yml",
+      "event": "pull_request",
+      "attempt": 1,
+      "head": "5638f1ea63c2818aef8be1b0c497eff718303388",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 37685317877,
+      "name": "Social Monitoring queue E2E",
+      "path": ".github/workflows/social-monitoring-queue-e2e.yml",
+      "event": "pull_request",
+      "attempt": 1,
+      "head": "5638f1ea63c2818aef8be1b0c497eff718303388",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 37685317654,
+      "name": "PR checks",
+      "path": ".github/workflows/pr-checks.yml",
+      "event": "pull_request",
+      "attempt": 1,
+      "head": "5638f1ea63c2818aef8be1b0c497eff718303388",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "firstFailureRetained": {
+    "originalJob": 113011546243,
+    "originalArtifact": 11510779991,
+    "originalStatus": "FAIL ordinal7MFA400/partial7cases/6writes/cleanupPASS",
+    "cause": "Responsecategory/timeunknown;30-secondrolloveronlyinference",
+    "rootRetry": "Oneunchangedfailedjob-only afterall5terminal",
+    "retryJob": 113022259873,
+    "retryArtifact": 11512248814,
+    "retryStatus": "PASSfull11",
+    "sourceMfaWindowGrantAssertionsBaselineChanged": false,
+    "fourOriginalPassJobs": "Copied identicalexecutiontimestamps/steps into newlogical IDs, no actual secondexecution credited"
+  },
+  "freshRefsProspective": {
+    "main": "f8dd20c7a849643087ee31969c2f582a96c8bab3",
+    "PR589Head": "5638f1ea63c2818aef8be1b0c497eff718303388",
+    "PR589Url": "https://github.com/rashadoni/leaddrive-v2/pull/589",
+    "draft": false,
+    "merged": false,
+    "prospectiveTree": "8743c6aa6b338efde65d8f24a04ee0ec5650fb46",
+    "wholeTreeExactlyTestedSource": true,
+    "reverifyImmediatelyBeforeMerge": true
+  },
+  "retainedOriginalReviewAndFailureBindings": [
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/independent-source-review-7400.json",
+      "sha256": "e810cc3fbdf33bba655fa863ce919f1fb7ebe4bf5e6d036dc2183a707909b066",
+      "originalByteExact": true,
+      "bytes": 16510
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/independent-source-review-supplement-5ead.json",
+      "sha256": "6a3fc39cb9d560a296116ac15cd8ac087ddd5a0bab689881e774c1ce4ad6cfa7",
+      "originalByteExact": true,
+      "bytes": 14763
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/independent-source-review-supplement-b416.json",
+      "sha256": "4a7c003bda2006a44fbce81f4e5177f135b5b8a55a090aadb068f78a95936b65",
+      "originalByteExact": true,
+      "bytes": 14959
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/independent-source-review-supplement-722.json",
+      "sha256": "307e85c4cf29707323119e47e9c6729df0d73478cd90569d2088add20211de9b",
+      "originalByteExact": true,
+      "bytes": 15559
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/independent-source-review-supplement-30677.json",
+      "sha256": "4c134a6dab2e84082bb20f63fc1b95954e0fbac8526daf8af8f574b99c18a7eb",
+      "originalByteExact": true,
+      "bytes": 17370
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/hosted-5ead-compiler/tsc-output.log.gz",
+      "sha256": "71e62e6caa9ac8f9bf2c0cdf40e0f298ba3978517fdf62108a1a7a1ba88f01be",
+      "originalByteExact": true,
+      "bytes": 19058
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/hosted-722-compiler/tsc-output.log.gz",
+      "sha256": "1d0cd6ea21cd0c067aac22734e303311e79444379a7841c1ba1f7ba9e729cd81",
+      "originalByteExact": true,
+      "bytes": 19084
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/hosted-30677-compiler/tsc-output.log.gz",
+      "sha256": "382177e8cd88f05e649491526479404b50ebaa576bc1556e2df188440bab98c9",
+      "originalByteExact": true,
+      "bytes": 18977
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/hosted-722-classification-original.log.gz",
+      "sha256": "3a762530f486cd0bf5ee968cdaa27f1ca659023139f6cdf20e002c74b0ca81a7",
+      "originalByteExact": true,
+      "bytes": 21650
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/hosted-30677-classification-original.log.gz",
+      "sha256": "bc14dae98bd13f5b1a839245b7c4df923ae97f6bcf54ee76fe6f30eeccc0bb08",
+      "originalByteExact": true,
+      "bytes": 21589
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/strict-receiver-original-fail.log.gz",
+      "sha256": "1c4d4e3742149bf3ff4320724bfa9cf5ed28a6ac55024c53b5985ff1d073095e",
+      "originalByteExact": true,
+      "bytes": 676
+    },
+    {
+      "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/strict-receiver-repaired-regression.log.gz",
+      "sha256": "4bdd5ce88de73acad42654a1a14a8d35b023461cccf286f03c3d99614047868a",
+      "originalByteExact": true,
+      "bytes": 228
+    }
+  ],
+  "currentOriginMetadataAndFailures": [
+    {
+      "path": "/tmp/hrm-release-5638-peer-attempt1-terminal-run.json",
+      "bytes": 12936,
+      "sha256": "d7f794e95a7e98f420fcf486e9ac24c177a7cad16d631e49edacccaeb5569767"
+    },
+    {
+      "path": "/tmp/hrm-release-5638-peer-attempt1-terminal-jobs.json",
+      "bytes": 17202,
+      "sha256": "b1d6b1d581bcfd91aae4beb4704a7e3403b489b1760e4ac0d804d8ecf65e0f23"
+    },
+    {
+      "path": "/tmp/hrm-release-5638-manual-attempt2-run-current.json",
+      "bytes": 12999,
+      "sha256": "0866037734d7a1baff7947abd8e0841e0f026b76d773e233261889ee1994c9d1"
+    },
+    {
+      "path": "/tmp/hrm-release-5638-manual-attempt2-jobs-current.json",
+      "bytes": 17214,
+      "sha256": "16899616af0ffa5c01acbfa5f92a20a3bae2d3ca2e7a44c820a80ffce2e73afd"
+    },
+    {
+      "path": "/tmp/hrm-release-5638-final-runs-current.json",
+      "bytes": 168036,
+      "sha256": "5a85a2c3372e659b7959e419ea71efccbeb5769843540e38e8481a91e6655878"
+    },
+    {
+      "path": "/tmp/hrm-release-5638-final-required-current.json",
+      "bytes": 93225,
+      "sha256": "3a620dbe2e2b7376d9497bc33c5af0512e88f463d75e97a454ba0a36398b8bef"
+    },
+    {
+      "path": "/tmp/hrm-release-5638-final-main-protection.json",
+      "bytes": 1488,
+      "sha256": "94ff741b8943f63ab310fba375af5e9750114361b5fc10e5ff98c29f8e8c6f76"
+    },
+    {
+      "path": "/tmp/hrm-release-5638-final-refs-current.txt",
+      "bytes": 143,
+      "sha256": "ee91a4bdad1ed1a89e40eda3e7b529a4bca0485deb1bdd8a03c9f10acd7e4da3"
+    },
+    {
+      "path": "/tmp/hrm-release-5638-final-pr589-current.json",
+      "bytes": 19230,
+      "sha256": "74a04817010cea78735314f00558dfefaa56cc0baa83a7b95219ad047cebd557"
+    },
+    {
+      "path": "/tmp/hrm-release-5638-peer-classification-first-original.zip",
+      "bytes": 400878,
+      "sha256": "7f9084c21257d49db4aacce71eae75216aca6d2ba3b86d810679e303c3a8cf12"
+    },
+    {
+      "path": "/tmp/hrm-release-5638-peer-classification-first-original.log",
+      "bytes": 102000,
+      "sha256": "cef162439e314ba0bb0b1c3925de71ec54d9e3ddda43447ef7b821ef4810ff19"
+    },
+    {
+      "path": "/tmp/hrm-release-5638-classification-first-failure-peer-review.json",
+      "bytes": 7687,
+      "sha256": "6bc5e4351697fe4cdbb592a13cbd4b4d76df83b8b3dbc51eb057bc40d69e9d39"
+    },
+    {
+      "path": "/tmp/hrm-loopback-d2-first-hosted-source-original.log",
+      "bytes": 56800,
+      "sha256": "0aec81b9bc133977758c36c6d596b949790c52e592a0a3c0653bf1560cd4555e"
+    },
+    {
+      "path": "/tmp/hrm-loopback-852-second-hosted-source-original.log",
+      "bytes": 57198,
+      "sha256": "4efd515fd8b82612805c18fec110af23a8489f82b77dd5cdeaf21965d82686a8"
+    }
+  ],
+  "verificationOnly606609": [
+    {
+      "PR": 606,
+      "url": "https://github.com/rashadoni/leaddrive-v2/pull/606",
+      "state": "closed",
+      "merged": false,
+      "head": "ec2e7812e81abef94319a58818aeee22e56984df",
+      "reverifyAfterMainRelease": true
+    },
+    {
+      "PR": 609,
+      "url": "https://github.com/rashadoni/leaddrive-v2/pull/609",
+      "state": "closed",
+      "merged": false,
+      "head": "100a381b90a52690899f6a1eded38494eea050e4",
+      "reverifyAfterMainRelease": true
+    }
+  ],
+  "C12": {
+    "status": "PARTIAL",
+    "archiveTree": "ce32912ddbab58e5e287930a446ba690531ead09",
+    "files": 28,
+    "exactOriginalc123": true,
+    "newRealOperationalCredit": false
+  },
+  "actualProductionPending": [
+    "Old504 actualINCOMPLETE DEFAULT_ACL_UNREVIEWED andold7bf strictERROR IDENTITY_ENDPOINT_HOST_MISMATCHbeforeSQL/proofnull retained.",
+    "Ownf8normalauxdeployment/publicfullSHA thenprotectedsource-bound simultaneouslivecatalog/manualrecipientreview pending.",
+    "HRM source5638 is notmerged/deployed/DONE by this technical receipt; no tenantactivation/grants/secrets changed."
+  ],
+  "limits": [
+    "Global inheritedcompiler1153exit2 andfull18knownfailfiles remain nonclean underunchangedexplicitbaselines; CIgreen denotes finiteblockinggates PASS.",
+    "ActualENreportfourpercent/footer visible;AZ top/footerclip+inheritedEnglishIntl duration;RU tallnested finalfractions/footer notvisible/RUclasscontrols outsidecapture. Separate actualDOM/network proof doesnot establishfullWCAG/mobile/AT/device.",
+    "Devbundle/disposablecatalog/two-tenantsyntheticfixtures do not replace actualHRoperations/pilot/physical/payroll or C12 evidence.",
+    "ProductionMtmAuditLog physicalimmutability/fullmigrationreplay notproved bysyntheticauditguard; originaldecisionphysicalguards old504 retained.",
+    "SuccessfulunchangedMFArerun doesnot establishexactoriginal400cause.",
+    "No reviewer sourceedit/commit/push/merge/deploy/productionquery in this acceptance."
+  ]
+}

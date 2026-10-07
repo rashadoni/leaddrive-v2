@@ -1,0 +1,97 @@
+{
+  "archivedAtUtc": "2026-10-07T22:43:10.091266+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-backup-real-392-run-observed-2243.json.gz",
+      "originalBytes": 12439,
+      "originalSha256": "4c6da033ce16572fa34d4a09bbb7b3618bde3d6c13b2e063823bd7a3e28e5599",
+      "storedBytes": 1578,
+      "storedSha256": "b18132196225d42c9c3015c4cacd550964b4d2f9670f43a15f38e41fc57bf5f4"
+    },
+    {
+      "path": "hrm-backup-real-392-jobs-observed-2243.json.gz",
+      "originalBytes": 5710,
+      "originalSha256": "e47d22c39e69f60b61a639aa22b4ce1e5de50605ea12997f747a5d460b292c17",
+      "storedBytes": 1076,
+      "storedSha256": "ceb11af2e8722cc44b7ca44adf1f94936a70c9f3f33f7d6a212998def189e022"
+    },
+    {
+      "path": "hrm-backup-real-392-artifacts-observed-2243.json.gz",
+      "originalBytes": 742,
+      "originalSha256": "5f4643e9371f1cb9894a194974cbbad457d905166c9e288509d4f07a8258f794",
+      "storedBytes": 441,
+      "storedSha256": "4ec19c3debd8941e4795c95917ffadcf3a8bd20cf5b31a3ca49526089ca84d60"
+    },
+    {
+      "path": "hrm-backup-real-392-first.zip",
+      "originalBytes": 1986,
+      "originalSha256": "6ce73e9ed71c65a51c4b45000327f835fd4eca42cfea838de926575207adc383",
+      "storedBytes": 1986,
+      "storedSha256": "6ce73e9ed71c65a51c4b45000327f835fd4eca42cfea838de926575207adc383"
+    },
+    {
+      "path": "hrm-backup-real-392-original-result.json.gz",
+      "originalBytes": 6801,
+      "originalSha256": "7da539a8ebbfb37abf152080dc4253167c5965cca5e620f31f8a1f2108386b16",
+      "storedBytes": 1804,
+      "storedSha256": "c58f22e6061931ff9b2225ef75338e5d6edbc779c3bf9eb20a164292053ff884"
+    },
+    {
+      "path": "hrm-backup-real-392-validated.json.gz",
+      "originalBytes": 6801,
+      "originalSha256": "7da539a8ebbfb37abf152080dc4253167c5965cca5e620f31f8a1f2108386b16",
+      "storedBytes": 1804,
+      "storedSha256": "c58f22e6061931ff9b2225ef75338e5d6edbc779c3bf9eb20a164292053ff884"
+    },
+    {
+      "path": "hrm-backup-real-392-production-original.log.gz",
+      "originalBytes": 29353,
+      "originalSha256": "1bf54ed073672f977b2a2929fcccc01d26ef900a9ceab1390239619051ac33c6",
+      "storedBytes": 7247,
+      "storedSha256": "8d630456eab78faa0e733f0110d6f215d49a044098486980d64a0a7c7f650fb1"
+    },
+    {
+      "path": "hrm-backup-real-392-source-original.log.gz",
+      "originalBytes": 66505,
+      "originalSha256": "389ff1ee7ae57e8af90aa4afdf93813ba2bdbae0c55daa699ebc993513b680d3",
+      "storedBytes": 15364,
+      "storedSha256": "a0ae54ae0c177229876b894d52b2e58d8cb0c0d2b61dcfed9bcee8437bd91125"
+    },
+    {
+      "path": "hrm-backup-real-392-root-manual-assessment.py",
+      "originalBytes": 4260,
+      "originalSha256": "b3e86ef5e61fd6be560c98b9069b18bb3d709490f7f9f8c26e960dfaf1a97dac",
+      "storedBytes": 4260,
+      "storedSha256": "b3e86ef5e61fd6be560c98b9069b18bb3d709490f7f9f8c26e960dfaf1a97dac"
+    },
+    {
+      "path": "hrm-backup-real-392-root-manual-assessment.json.gz",
+      "originalBytes": 2457,
+      "originalSha256": "133b6b596240a2f9222a501a627014636abafac206fa95df637b0ec2574e593e",
+      "storedBytes": 1343,
+      "storedSha256": "578800a099d4d0367a0c5304fe0d01c30bbdbf611e3c4ec4fbd69878eaef5a08"
+    },
+    {
+      "path": "hrm-backup-real-392-independent-review.json.gz",
+      "originalBytes": 14967,
+      "originalSha256": "e64331c3ea76c53a968203b39f71f7999b316fa7ed3ccd238fad9293a965de86",
+      "storedBytes": 4573,
+      "storedSha256": "b9ebed9477fe27c4ee26682a358694131bb5da32931a37deacd55b613bc9c590"
+    },
+    {
+      "path": "hrm-backup-real-392-root-final-assessment.json.gz",
+      "originalBytes": 1851,
+      "originalSha256": "317703d51d8c9f5401e4a1f8745c9299dfdd7063d301a44bad2796923d4845b4",
+      "storedBytes": 1082,
+      "storedSha256": "02546a0ce21da737f880f383da6da8b5ff845ff5a5f80bb6f0fced2a97ccf99b"
+    },
+    {
+      "path": "hrm-release-main392-root-artifact-proof.json.gz",
+      "originalBytes": 1027,
+      "originalSha256": "1a5d99a95fd4f432d981bc86fafa360de17e8c3ef85fe54635be206418196a3a",
+      "storedBytes": 592,
+      "storedSha256": "01b4bbabf2fffcea808f668509eefd3a046a4f47f9681a60099c21de21714dc5"
+    }
+  ]
+}

@@ -1,0 +1,132 @@
+{
+  "version": 1,
+  "reviewedAtUtc": "2026-10-07T20:25:56.709670+00:00",
+  "reviewer": "/root/inspect_outcome_contract",
+  "status": "ACTUAL_DECLARED_HOST_MISMATCH_BEFORE_SQL_CONFIRMED_IDENTITY_ACL_UNPROVEN_SAFE_SUPPLEMENT_DESIGN_PROPOSED",
+  "mainSha": "7bfcca6b5b53a33fca926786718f8a80037e2809",
+  "findingsP0P1P2P3": [],
+  "actualRun": {
+    "id": 37679666604,
+    "attempt": 1,
+    "sourceJob": 112992085959,
+    "sourceConclusion": "success",
+    "productionJob": 112992399449,
+    "productionConclusion": "failure",
+    "runMetadata": {
+      "path": "/tmp/hrm-acl-7bf-peer-run-state2.json",
+      "bytes": 12405,
+      "sha256": "e911a1ae957f30a8c3e320232fd8fe4298c998b06b1666378dccf2878fd76263"
+    },
+    "jobsMetadata": {
+      "path": "/tmp/hrm-acl-7bf-peer-jobs-state2.json",
+      "bytes": 5671,
+      "sha256": "1e73c745af6c9856e0d0c47babb984062709bb8bdbdd640f31f56d84ddcfeced"
+    }
+  },
+  "actualSanitizedError": {
+    "receipt": {
+      "path": "/tmp/hrm-acl-identity-real-7bf-validated.json",
+      "bytes": 1317,
+      "sha256": "f60634a3f0432c5bd8eb936b6dcdbac2a92fbed7974ef43ce36a71677cfbfcb9"
+    },
+    "code": "IDENTITY_ENDPOINT_HOST_MISMATCH",
+    "proof": null,
+    "productionArtifactSha": null,
+    "archive": {
+      "path": "/tmp/hrm-acl-identity-real-7bf.zip",
+      "bytes": 962,
+      "sha256": "2e75dab9f0b7962328de8cdfd5b9fb03159a4e12b661b9d9f25766b5f58ee0a4"
+    },
+    "artifactId": 11508058045,
+    "crc": "PASS",
+    "GitHubDigestReportedByRootMatchedArchive": true,
+    "members": [
+      {
+        "name": "hrm-default-acl-result.json",
+        "bytes": 1317,
+        "sha256": "f60634a3f0432c5bd8eb936b6dcdbac2a92fbed7974ef43ce36a71677cfbfcb9"
+      }
+    ],
+    "sourceBindings": [
+      {
+        "path": "scripts/hrm-migration-metadata-preflight.mjs",
+        "sha256": "46b417da7bbe763960b8ede8fa0e9dbd98543d090d54f73979289504bfe35771",
+        "exactOwnReleasedMain7bf": true
+      },
+      {
+        "path": "scripts/hrm-default-acl-inspection.mjs",
+        "sha256": "a6aa4f3526fd5edf29bd2b3a1309f7703e85acad70c0e683cba69dbb281c2027",
+        "exactOwnReleasedMain7bf": true
+      },
+      {
+        "path": "scripts/hrm-default-acl-inspection.sql",
+        "sha256": "524bc02f34a75f445aff6b3834df6e02aa86665dee9acd835b2b5fc621127e2a",
+        "exactOwnReleasedMain7bf": true
+      }
+    ],
+    "rootValidatedBeforePeerRead": true
+  },
+  "preciseSourceFailure": {
+    "path": "scripts/hrm-default-acl-inspection.mjs",
+    "phase": "FirstPGHOST comparison in identityendpointloop beforequery/observe",
+    "proved": "ParseddeclaredPGHOSTstrings differ. Priorparsedprincipalinequality guardpassed; noactualDBsession role identity observed.",
+    "notProved": [
+      "Whichhosts/addresses wereconfigured",
+      "Eitherhostisloopback or an alias",
+      "PGPORTorPGDATABASEequalities (laterinloop)",
+      "Same/differentphysicaldatabaseoractivebackend",
+      "Currentruntime/migrationroleprofiles/primary/RRRO",
+      "ACLrecipient/privilegegroupsafety",
+      "Finalmarker/privatefilebeforeafterstability (postqueryguardsnotreached)"
+    ],
+    "noSqlAttempted": true,
+    "oldErrorRetained": "OriginalstrictcheckerERROR/proofnull remains; noPASS/READ_COMPLETE inferred."
+  },
+  "ownAuxiliaryReleasePublicProof": {
+    "file": {
+      "path": "/tmp/hrm-release-7bf-public-proof.json",
+      "bytes": 1363,
+      "sha256": "e3a018f52d3738e843b6ddb5e179207ba526ce47af7a9b8836400e6b170c3958"
+    },
+    "ownRun": 37675446449,
+    "actualPinnedTLSBeforeAfterFullShaAndPing200": true,
+    "scope": "Auxiliarymainrelease;notHRM88deployment"
+  },
+  "existingSourcePattern": {
+    "path": "scripts/server-deploy.sh",
+    "sha256": "9fbeede30d3ba9f032202c1e435a8b44c14372c6a19725f160bc188641829f52",
+    "function": "validate_database_roles",
+    "lines": "919-1046",
+    "pattern": "Observedcatalogidentity+protectedroleprofiles,thenholdsuniquelynamedruntimebackend andmigrationpg_stat_activity count1in currentDB/expectedruntimeuser/clientbackend. Same-live proof handlespromotedphysicalclones.",
+    "reuse": "Reuseidentitycriterion, not legacyURIargv/tempfile/pg_sleep polling implementation; newobservermustkeepcleanenv/inmemoryprivacy/read-onlybounds."
+  },
+  "safeSeparateObserverProposal": {
+    "preserveOldNineFilesBytesAndAllChecks": true,
+    "configuredEndpoints": "OnlyactualPGHOSTexactlocalhost/127.0.0.1/::1;strictsamePGPORT+decodedDB/distinctparsedroles. Rejectanyotherhostcategorywithoutnames. Do not normalize/substitutePGHOST.",
+    "dns": "Boundedlocalhost lookup(ifused), nonemptyallanswersonly127.0.0.1or::1;notarbitraryhostnamealias acceptance.",
+    "runtimeConnection": "Interactivepsqlcleanlibpqenv/stdin withfixedBEGINRRREADONLY+2slock/10sstatement/startupRO. Validateowncatalog/profile/session andprivatepg_backend_pid snapshot in memory; keepstdin/openbackend until migration observation. Avoidpg_sleep/polling/tempfiles/URI/passwordargv.",
+    "migrationConnection": "FreshRRREADONLY fixedcatalogquery provesexactruntimePID+generatedprivateapplication_name+expectedruntimeuser+datid=currentDB+clientbackend hascount1 while runtimechild alive. Retainprotectedroles/primary/catalog andsameDBconstraints andfiniteACLprojection.",
+    "statistics": "Usefirstactivitylookupin freshmigrationtransaction orpg_stat_clear_snapshot if retries; do not require state/query/xact_start visibility or addmonitoringgrants.",
+    "cleanup": "ExplicitROLLBACK/orderedstdinclose, boundedwaitforexit0;error pathsdisposebothchildren and withholdrawstdout/stderr/PID/nonce/names. READ_COMPLETEonlyaftercleanup+stableprivatefiles/markerbeforeafter.",
+    "report": "NewsourceboundfiniteREAD_COMPLETEorERROR,metadataonly/neverREADYorautomaticACLapproval. Booleanactualsame-livebackend proof+protectedprofiles+existingfiniteACLgroups; neveridentifiers/nonce/addresses/URLs/credentials.",
+    "newTests": "Rootcrossreview+safefencedhostedPG16: sameactualbackend via distinctconfiguredloopbacks; wrongDB/port/unknownhostname/DNSnonloopback/terminatedruntime/forgedPIDnonce/profile/hiddenactivity failclosed; realinheritedACLprofile projection; readonlyDDLrejected; cleanup andprivateoutput assertions. No actualprodcredituntilapprovedprotectedrealrun."
+  },
+  "primaryDocumentation": {
+    "url": "https://www.postgresql.org/docs/16/monitoring-stats.html",
+    "supportedFacts": "pg_stat_activity exposesbackendPID/databaseOID/user/application_name; transactionstats views can cacheobservations; someother-sessiondetailsrestricted.",
+    "interpretation": "Liveheldbackend correlation isstrongerphysicalsameDBevidence thanhostnameequality. Existingstrict hostname toolstillfails; supplementalmanualreview closesmissingfactonlyafteractualproof,withoutchangingoldpredicate."
+  },
+  "remaining": [
+    "Rootreviewsdesign andassignsnewsourceimplementationin cleanmain-basedworktree; noedits performedhere.",
+    "Actualknownloopbackcompatibilityisnotassumed;newfiniteobservermayrejectunsupportedconfiguredhosts.",
+    "Onlyactualvalidsame-live/ACLreceiptmayinformmanualrecipientreview;UNKNOWN/PUBLIC/dangerouswriteprofilesretainhold.",
+    "Futureauxownrelease/newHRMfinalheadfreshwhole-treeCI required;current88technicalPASSretainedhistoricallyafterheadadvance."
+  ],
+  "authorship": "Actual7bfnewhelperdiagnostic authoredbyroot independentlysource-reviewed; peeroriginalbasehelper/fixture/workflowauthorship/rootcrossreviews disclosed.",
+  "limits": [
+    "No actualproduction SQL/recipientprofile observed in thisrun;old504INCOMPLETEandold777identityERROR retained.",
+    "No newproductionquery/dispatch/config/role/grant/secret/sourcechangesbyreviewer.",
+    "No localtargetedcheck/run; read-onlysource/artifact/hash/primarydocsinspectiononly.",
+    "No C12/realHRpilot/quietwindow/DDLduration credit from newdesign or synthetic tests."
+  ]
+}

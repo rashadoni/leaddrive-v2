@@ -1,0 +1,10 @@
+{
+  "main": "8235c3b24ad12189e1ef95427ce7f192c077ae5c",
+  "head": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+  "tree": "38b49b4cbe974a21e6a0f982dbbacab20aecf7da",
+  "matchTestedCandidate": true,
+  "mainCommitInfo": "8235c3b24ad12189e1ef95427ce7f192c077ae5c 8301f6ce0925cf1b8f9ddaa004ea31c26d1e6982 546d67c1efe7e145e1bfa9a19e9eea7c108b5e57 cef964f579d15e8ab4da91c8b3a824533f955bc0",
+  "scope": "Current main616 already-reviewed auxiliary source is included in candidate; no other incoming changes",
+  "requiredGates": "still pending finalcompiler/currentchecks",
+  "realMetadata": "pending main8235deploy"
+}

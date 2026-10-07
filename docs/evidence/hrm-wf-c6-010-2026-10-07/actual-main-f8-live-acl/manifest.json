@@ -1,0 +1,49 @@
+{
+  "main": "f8dd20c7a849643087ee31969c2f582a96c8bab3",
+  "run": 37690299054,
+  "sourceJob": 113028449941,
+  "productionJob": 113028735948,
+  "artifacts": [
+    {
+      "path": "hrm-loopback-real-f8-run.json",
+      "bytes": 12423,
+      "sha256": "bf5dc9b590affa6cbb4712cde166f9972a711df6ced4cdbc2b94414e4eb669e7"
+    },
+    {
+      "path": "hrm-loopback-real-f8-jobs.json",
+      "bytes": 5684,
+      "sha256": "aec80fbfa50140f759251348fc84646d1f00795453b62bc192a5f97bfac5cd7d"
+    },
+    {
+      "path": "hrm-loopback-real-f8-artifacts.json",
+      "bytes": 743,
+      "sha256": "1a4e8f95355e65cc899448d5cef7e7ce05beedd91e70e4e80134252ef950d573"
+    },
+    {
+      "path": "hrm-loopback-real-f8.zip",
+      "bytes": 1367,
+      "sha256": "b1a9c80d6d294cbeea3c35f1792df00824f16b92cf3c54be385270a623e4d823"
+    },
+    {
+      "path": "hrm-loopback-real-f8-original-result.json",
+      "bytes": 4162,
+      "sha256": "5d4caefaf864d6a4b7f5387d4c77d1c7a59f3606aeb17a8cca2f2642b8cc8374"
+    },
+    {
+      "path": "hrm-loopback-real-f8-validated.json",
+      "bytes": 4162,
+      "sha256": "5d4caefaf864d6a4b7f5387d4c77d1c7a59f3606aeb17a8cca2f2642b8cc8374"
+    },
+    {
+      "path": "hrm-loopback-real-f8-production-original.log",
+      "bytes": 29327,
+      "sha256": "08880180b714da075f0ffa4c3925948a3c93fc4f92828c9c18ef564d02152142"
+    },
+    {
+      "path": "hrm-loopback-real-f8-independent-review.json",
+      "bytes": 9552,
+      "sha256": "c84cfd7113b7904c7ee3201956a89b526f027128ad08519872cb18bbffb7cd81"
+    }
+  ],
+  "result": "READ_COMPLETE, independently reviewed; ACL purpose attribution remains pending; not approval"
+}

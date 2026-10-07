@@ -1,0 +1,144 @@
+{
+  "artifacts": [
+    {
+      "path": "hrm-final-c7de-classification-first.zip",
+      "bytes": 268652,
+      "sha256": "298ce072995c4bb2058274d3feb66dc98c8a7c0053c6d5de78ee5ec9cd695329"
+    },
+    {
+      "path": "hrm-final-c7de-report-first.zip",
+      "bytes": 852763,
+      "sha256": "09ee06b21f462306cbcd3e54f696d71b6c8ebe1d93967744da4875a94d0d14d5"
+    },
+    {
+      "path": "hrm-final-c7de-compiler-first.zip",
+      "bytes": 19685,
+      "sha256": "a6adcd0bc02abe5ddbee692f59f3e02202c72f9362bec79ec5372f5040c97d65"
+    },
+    {
+      "path": "hrm-final-c7de-classification-first-original.log",
+      "bytes": 97309,
+      "sha256": "0a6650a403d8fc41fefd859ffe36b5072928e19f3a403711818ffb1a482af309"
+    },
+    {
+      "path": "hrm-final-c7de-report-first-original.log",
+      "bytes": 85748,
+      "sha256": "b8d3466a8bab717e7b2a60bf72f177f0de6cc18c769fbf685cafffaf258aaef5"
+    },
+    {
+      "path": "hrm-final-c7de-pg-first-original.log",
+      "bytes": 160204,
+      "sha256": "1960b0dde34fd869135042a73b7ef38ef8f8a85b24eace63119d1bd8aa8367a6"
+    },
+    {
+      "path": "hrm-final-c7de-build-first-original.log",
+      "bytes": 130015,
+      "sha256": "81026f6e561e33dae086ed0d81e668e2e8b9817a0e00a231b91b49ac799ef59b"
+    },
+    {
+      "path": "hrm-final-c7de-compiler-first-original.log",
+      "bytes": 255073,
+      "sha256": "a16115b953ef2f97a8892eeac0ad0a446eeead8a10bfe7e38782c93a8e1e045a"
+    },
+    {
+      "path": "hrm-final-c7de-manual-original-terminal-run.json",
+      "bytes": 12917,
+      "sha256": "ba6a4f91b78f6a1c316c89848fa13a675e7b9901f1c7ffce9f6b22f60722a317"
+    },
+    {
+      "path": "hrm-final-c7de-manual-original-terminal-jobs.json",
+      "bytes": 17202,
+      "sha256": "8512fb07f901c784c87460eff13e4189b737ff602989ebf4e2b3540f1fc8fbc8"
+    },
+    {
+      "path": "hrm-final-c7de-current-artifacts.json",
+      "bytes": 1597,
+      "sha256": "9d507a85281545e1b76f5db9d5a66f2f09806b6ebac2560914f0a396d81d3364"
+    },
+    {
+      "path": "hrm-final-c7de-root-compiler-parse-proof.json",
+      "bytes": 1976,
+      "sha256": "7b58bfdd05ae3fb8af16a50a7c0d4adc2d17307dd1ae19003b46ee0af85ce088"
+    },
+    {
+      "path": "hrm-final-c7-last-checks.json",
+      "bytes": 93226,
+      "sha256": "fdbde8168e85e84d8718308438af03b22bcd0cf18b0a9d281ffea2db24965df7"
+    },
+    {
+      "path": "hrm-release-independent-browser-c7deecf8.json",
+      "bytes": 48309,
+      "sha256": "4256fd4bcb37d46ccf56a97979f9da2e34996e71e792306eadaa5cd05ee37bfd"
+    },
+    {
+      "path": "hrm-release-independent-pg-build-c7deecf8.json",
+      "bytes": 6790,
+      "sha256": "a8140bcb4454638e62c6df3854c7bc3be74c114b42a2ff1331da53d8be984a1c"
+    },
+    {
+      "path": "hrm-release-c7-percentage-policy-peer-finding.json",
+      "bytes": 4163,
+      "sha256": "30ffb9da5c88cd02a79bde7af6c572bd480947c6d1230f337b02926d7ed3028a"
+    },
+    {
+      "path": "hrm-release-p2-count-correction-source-peer-working.json",
+      "bytes": 3156,
+      "sha256": "3c43762241eb50e4be7f9b0ed789fa391afd6e1e867e0bd85344b545a68cf1fd"
+    },
+    {
+      "path": "hrm-c6-count-correction-first-ui-original.log",
+      "bytes": 3667,
+      "sha256": "5f153a217d2326d0b79d21490a8195b7e271fa303ee853a3e7542094cefb56f5"
+    },
+    {
+      "path": "hrm-c6-count-correction-first-lint-original.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "hrm-c6-count-component-eslint-config.json",
+      "bytes": 45075,
+      "sha256": "071d811c3769d601882611fe3cc12a17c4754751e3ae64daff93dd9fb66495a2"
+    },
+    {
+      "path": "hrm-c6-count-ui-test-eslint-config.json",
+      "bytes": 45075,
+      "sha256": "071d811c3769d601882611fe3cc12a17c4754751e3ae64daff93dd9fb66495a2"
+    },
+    {
+      "path": "hrm-c6-count-correction-working.patch",
+      "bytes": 13527,
+      "sha256": "719e806c42ecad59cbb806906627dea61502efb76388040509ad230581fa3d32"
+    },
+    {
+      "path": "hrm-release-independent-source-33f93325.json",
+      "bytes": 22104,
+      "sha256": "83c222c602e56b9e9d2a3bc354c0c1e01a1e39e042e41c5d474792439ae9fa13"
+    },
+    {
+      "path": "hrm-final-33-first-runs.json",
+      "bytes": 154922,
+      "sha256": "bb5681773d504b974a0fcb0b8b9fb55a88f6e22097d6cde45fc44e27cb83edc1"
+    },
+    {
+      "path": "hrm-final-33-first-manual-jobs.json",
+      "bytes": 14631,
+      "sha256": "c32be9eed845c56bda45c531ca149f646f32c3be5f3e3d3a7cada3851b5fe598"
+    },
+    {
+      "path": "hrm-evidence-33-merge-original.log",
+      "bytes": 185,
+      "sha256": "51176bdeaef0673fe0faf8137f309e46a7f57deae200b5a181f04386b37011b4"
+    },
+    {
+      "path": "hrm-pr589-additive-policy-p2-body.json",
+      "bytes": 3970,
+      "sha256": "7d707c798472084b76753b0d8f460ae2740093514123b9ac969df97992b1bc46"
+    }
+  ],
+  "currentFinalHead": "33f93325599e883973c4c71c256cce8ad91168b3",
+  "currentRuntime": "PENDING_FRESH12_MANUAL5_REQUIRED5",
+  "c7Status": "ALL5_ACTUAL_PASS_BUT_ADDITIVE_POLICY_P2_HOLD",
+  "auxMain": "392e0a38e37b9f3915e5ceb2d3b5caf8cd0698ad",
+  "actualProductionAttribution": "NOT RUN"
+}

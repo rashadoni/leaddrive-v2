@@ -1,0 +1,216 @@
+{
+  "archivedAtUtc": "2026-10-07T22:59:16.853704+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-final-f308-report-first.zip",
+      "originalBytes": 849374,
+      "originalSha256": "714a46a8c01caa2cd75db2271b8a922bc8bda6b04b5e21ab199e9991aa5d0505",
+      "storedBytes": 849374,
+      "storedSha256": "714a46a8c01caa2cd75db2271b8a922bc8bda6b04b5e21ab199e9991aa5d0505"
+    },
+    {
+      "path": "hrm-final-f308-classification-first.zip",
+      "originalBytes": 269603,
+      "originalSha256": "dd6e82739bb36749687db4b438b7d3fd88312f143fd307ac06ba57f473f44cc5",
+      "storedBytes": 269603,
+      "storedSha256": "dd6e82739bb36749687db4b438b7d3fd88312f143fd307ac06ba57f473f44cc5"
+    },
+    {
+      "path": "hrm-final-f308-report-first-original.log.gz",
+      "originalBytes": 85102,
+      "originalSha256": "c31c906b9e2b9333b16bda43dea1a66373f69189984c9f37585648c44d9a9868",
+      "storedBytes": 18733,
+      "storedSha256": "ac0d75b0f4bb48e1338dc5147e824f3f5eb5bf2b95f557149c848f42a5c10ed7"
+    },
+    {
+      "path": "hrm-final-f308-classification-first-original.log.gz",
+      "originalBytes": 98204,
+      "originalSha256": "8bf159f66e0837e946dcc7b2f27573aa9160840c9e2a59d569b6951703659f0d",
+      "storedBytes": 20827,
+      "storedSha256": "a4bf36a03eb7246779e622a6a52aec3d50af83a99baa47abc013f473ce4eb879"
+    },
+    {
+      "path": "hrm-final-f308-pg-first-original.log.gz",
+      "originalBytes": 159615,
+      "originalSha256": "ec1f0748cd8cb4bd7fbdd429ab8296df29f59c53fa90501ee25422ea70049c50",
+      "storedBytes": 27884,
+      "storedSha256": "8db1a541998d7c2c04cefeed77007b7efb2bb315d3e40b9b54311e88081ebbc2"
+    },
+    {
+      "path": "hrm-final-f308-quality-first-original.log.gz",
+      "originalBytes": 358938,
+      "originalSha256": "1c5ddaf9319f0e40679a963c104fb3e13318c20a0ee80ea9dfdc77fcaf3fb1e7",
+      "storedBytes": 58351,
+      "storedSha256": "c6733df367ff3552919e057d907d2dd302483b1568d79d3883216d7765bc9c8b"
+    },
+    {
+      "path": "hrm-final-f308-root-artifacts/classification/classification-az-768.png",
+      "originalBytes": 103335,
+      "originalSha256": "a0bea1f69b05c83879650a94f737c57c2b7be64bf386c4c34292177b296f355e",
+      "storedBytes": 103335,
+      "storedSha256": "a0bea1f69b05c83879650a94f737c57c2b7be64bf386c4c34292177b296f355e"
+    },
+    {
+      "path": "hrm-final-f308-root-artifacts/classification/classification-en-1440.png",
+      "originalBytes": 137575,
+      "originalSha256": "14950aadf74f87af907a044a75f05e523f9af2358b6210d809c255c9b5d41450",
+      "storedBytes": 137575,
+      "storedSha256": "14950aadf74f87af907a044a75f05e523f9af2358b6210d809c255c9b5d41450"
+    },
+    {
+      "path": "hrm-final-f308-root-artifacts/classification/classification-ru-320.png",
+      "originalBytes": 35070,
+      "originalSha256": "1cef5201c227fa9c19dd104c4b7ff4186f3ba76c01e11b24c3a6647ae4c1a384",
+      "storedBytes": 35070,
+      "storedSha256": "1cef5201c227fa9c19dd104c4b7ff4186f3ba76c01e11b24c3a6647ae4c1a384"
+    },
+    {
+      "path": "hrm-final-f308-root-artifacts/classification/exception-classification-receipt.json.gz",
+      "originalBytes": 15212,
+      "originalSha256": "7b8029178f01c03105e08fdbc97bc1ad615f2185d16907dc3b2fb47ac2555bb3",
+      "storedBytes": 3481,
+      "storedSha256": "0f389f8d742e85603e68f8e3c79b86de01779838330f96689b21ca9673236539"
+    },
+    {
+      "path": "hrm-final-f308-root-artifacts/classification/workflow-context.json.gz",
+      "originalBytes": 261,
+      "originalSha256": "05288e93505e747d36ba9d0a04f46ed5a39d6e8776ad0204c2a71f2db95910ff",
+      "storedBytes": 178,
+      "storedSha256": "c2b6de4b95b55a5289f214af0bf95727155856f51467bf2aadfa7680c6cf5ab6"
+    },
+    {
+      "path": "hrm-final-f308-root-artifacts/report/exception-report-receipt.json.gz",
+      "originalBytes": 27735,
+      "originalSha256": "703df0779672947920bcf1701af6534d91ee235602bdea0b5896473c6f3c6abe",
+      "storedBytes": 4065,
+      "storedSha256": "3d1d7ab30d7d02f234f6739d9fb7d50c937725b6bfb28441f2734029beedb59b"
+    },
+    {
+      "path": "hrm-final-f308-root-artifacts/report/report-az-768-nonempty.png",
+      "originalBytes": 86669,
+      "originalSha256": "f6bb26917d0e8bdf607cb2581dbe2bec84417de9f4cb2807403898e0dee59994",
+      "storedBytes": 86669,
+      "storedSha256": "f6bb26917d0e8bdf607cb2581dbe2bec84417de9f4cb2807403898e0dee59994"
+    },
+    {
+      "path": "hrm-final-f308-root-artifacts/report/report-az-768-recorded-outcomes.png",
+      "originalBytes": 84245,
+      "originalSha256": "df354c5ea2a6e331f746019c4f44c8c9d1088f4eca35347e941432289157e538",
+      "storedBytes": 84245,
+      "storedSha256": "df354c5ea2a6e331f746019c4f44c8c9d1088f4eca35347e941432289157e538"
+    },
+    {
+      "path": "hrm-final-f308-root-artifacts/report/report-denied-denied.png",
+      "originalBytes": 45895,
+      "originalSha256": "937f0f4182a824a7295314e62b1858b99e5544049c5774d06442d1ad1baf71ea",
+      "storedBytes": 45895,
+      "storedSha256": "937f0f4182a824a7295314e62b1858b99e5544049c5774d06442d1ad1baf71ea"
+    },
+    {
+      "path": "hrm-final-f308-root-artifacts/report/report-denied-team.png",
+      "originalBytes": 45895,
+      "originalSha256": "937f0f4182a824a7295314e62b1858b99e5544049c5774d06442d1ad1baf71ea",
+      "storedBytes": 45895,
+      "storedSha256": "937f0f4182a824a7295314e62b1858b99e5544049c5774d06442d1ad1baf71ea"
+    },
+    {
+      "path": "hrm-final-f308-root-artifacts/report/report-en-1440-nonempty.png",
+      "originalBytes": 132578,
+      "originalSha256": "f6092cfd912f2cd5f2fd1f19e47a606b323de533387f42d99c8d40e0b59c9744",
+      "storedBytes": 132578,
+      "storedSha256": "f6092cfd912f2cd5f2fd1f19e47a606b323de533387f42d99c8d40e0b59c9744"
+    },
+    {
+      "path": "hrm-final-f308-root-artifacts/report/report-en-1440-recorded-outcomes.png",
+      "originalBytes": 75993,
+      "originalSha256": "4bb8afce67e80bfb55248628048a721ba08a29fac30ddd5aa03d1e2eb20c6977",
+      "storedBytes": 75993,
+      "storedSha256": "4bb8afce67e80bfb55248628048a721ba08a29fac30ddd5aa03d1e2eb20c6977"
+    },
+    {
+      "path": "hrm-final-f308-root-artifacts/report/report-foreign-positive.png",
+      "originalBytes": 81627,
+      "originalSha256": "e8a7bc90539995b6ad0681fbcba24e8b7e98a8a87d22aeaf2265f5098c1cf105",
+      "storedBytes": 81627,
+      "storedSha256": "e8a7bc90539995b6ad0681fbcba24e8b7e98a8a87d22aeaf2265f5098c1cf105"
+    },
+    {
+      "path": "hrm-final-f308-root-artifacts/report/report-ru-320-empty.png",
+      "originalBytes": 68297,
+      "originalSha256": "0ae5c77d58c0f330bff957f2cc8291497726168eda14bf7b877dc893028f848b",
+      "storedBytes": 68297,
+      "storedSha256": "0ae5c77d58c0f330bff957f2cc8291497726168eda14bf7b877dc893028f848b"
+    },
+    {
+      "path": "hrm-final-f308-root-artifacts/report/report-ru-320-measured-zero.png",
+      "originalBytes": 68455,
+      "originalSha256": "c64edde935f83efc27ec8dbcbe1dcefad6e4be373dfa5401ca65b2423a0a38c5",
+      "storedBytes": 68455,
+      "storedSha256": "c64edde935f83efc27ec8dbcbe1dcefad6e4be373dfa5401ca65b2423a0a38c5"
+    },
+    {
+      "path": "hrm-final-f308-root-artifacts/report/report-ru-320-nonempty.png",
+      "originalBytes": 65589,
+      "originalSha256": "961aae94fdbbc4bc5a929211fedbc433faee24d62a14cba0bd1f76484d4f18c4",
+      "storedBytes": 65589,
+      "storedSha256": "961aae94fdbbc4bc5a929211fedbc433faee24d62a14cba0bd1f76484d4f18c4"
+    },
+    {
+      "path": "hrm-final-f308-root-artifacts/report/report-ru-320-recorded-outcomes.png",
+      "originalBytes": 61369,
+      "originalSha256": "304b57489fbe9f7b735dd1ed5bc1d7e7c3ac2967fbb65df418fc2bdad36e82b2",
+      "storedBytes": 61369,
+      "storedSha256": "304b57489fbe9f7b735dd1ed5bc1d7e7c3ac2967fbb65df418fc2bdad36e82b2"
+    },
+    {
+      "path": "hrm-final-f308-root-artifacts/report/report-ru-320-unresolved-no-sample.png",
+      "originalBytes": 67987,
+      "originalSha256": "66ca64bd5427fdedd0bcaec46201d56e814b0caed40925bc7cd1b9ff54e856b7",
+      "storedBytes": 67987,
+      "storedSha256": "66ca64bd5427fdedd0bcaec46201d56e814b0caed40925bc7cd1b9ff54e856b7"
+    },
+    {
+      "path": "hrm-final-f308-root-artifacts/report/workflow-context.json.gz",
+      "originalBytes": 261,
+      "originalSha256": "05288e93505e747d36ba9d0a04f46ed5a39d6e8776ad0204c2a71f2db95910ff",
+      "storedBytes": 178,
+      "storedSha256": "c2b6de4b95b55a5289f214af0bf95727155856f51467bf2aadfa7680c6cf5ab6"
+    },
+    {
+      "path": "hrm-final-f308-root-browser-policy-proof.json.gz",
+      "originalBytes": 10113,
+      "originalSha256": "31d1477cabe0eff45cdf57ff6ed51aa0f9925220e1b38f7f7d90dcbf51e94e28",
+      "storedBytes": 1383,
+      "storedSha256": "272784b4e78745afb05305c76b846399d71430a1af726bc3ae5149b4f00244c4"
+    },
+    {
+      "path": "hrm-release-independent-browser-f3085e5c.json.gz",
+      "originalBytes": 57063,
+      "originalSha256": "2c009fb339406fb0eaff0c97e3972e7460b4a03f0c458433c8798a960e059709",
+      "storedBytes": 9847,
+      "storedSha256": "034ce97a525c8ddc12d6ffddaab52f67df79b88d2e626b37606f488477707951"
+    },
+    {
+      "path": "hrm-release-independent-postmerge-f3085e5c.json.gz",
+      "originalBytes": 19803,
+      "originalSha256": "8a19da018d1a1de04fcccd7231755bfe43769c2b69a040c70a3aba414ddb6839",
+      "storedBytes": 5852,
+      "storedSha256": "2c58736d5d92c34c39d33c5253a83c4db50ad933fe2f296d994a16a7c7328118"
+    },
+    {
+      "path": "hrm-wf-c6-010-prospective-dod-f3085e5c.json.gz",
+      "originalBytes": 6106,
+      "originalSha256": "42026580cfa3eb13165ddc6b1bbbb6bb9caa02879f3d73c764782ac525efe288",
+      "storedBytes": 2651,
+      "storedSha256": "c9a970378dfb701e30d7a8ea7b7304b2298be7ecc816c2a5e02ea85829c962db"
+    },
+    {
+      "path": "hrm-final-f308-conditional-accounting-proof.json.gz",
+      "originalBytes": 2837,
+      "originalSha256": "52788ee8ecc2b657e28154d55efe21b604742f444340e2e05fbc7b14e4cb1798",
+      "storedBytes": 1438,
+      "storedSha256": "e7577c8bb19656652075cc0f70e94efb174b740839fd124db5ce5b67153f3eaa"
+    }
+  ]
+}

@@ -1,0 +1,248 @@
+{
+  "version": 1,
+  "status": "CURRENT5638_PG_AND_BUILD_ACCEPTED_FULLCOMPILER_AND_CLASSIFICATION_RETRY_PENDING",
+  "head": "5638f1ea63c2818aef8be1b0c497eff718303388",
+  "tree": "8743c6aa6b338efde65d8f24a04ee0ec5650fb46",
+  "manualRun": 37685323552,
+  "attempt": 1,
+  "postgres": {
+    "job": 113011546572,
+    "conclusion": "success",
+    "files": 4,
+    "testsPass": 44,
+    "skip": 0,
+    "PrismaValidate": "PASS current schema",
+    "PrismaGenerate": "PASS6.19.3currentandlegacyfixture",
+    "scopedLint": "PASS actual hosted step",
+    "runnerPolicy": "PASS50workflows",
+    "i18n": {
+      "sourceLeafKeys": 24632,
+      "ruMissing": 0,
+      "ruExtra": 0,
+      "azMissing": 0,
+      "azExtra": 0
+    },
+    "fullRegression": {
+      "knownFailFiles": 18,
+      "observedFailFiles": 18,
+      "allKnownStillFail": true,
+      "gate": "PASS",
+      "globallyClean": false
+    },
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "number": 2,
+        "name": "Initialize containers",
+        "conclusion": "success"
+      },
+      {
+        "number": 3,
+        "name": "Run actions/checkout@v6",
+        "conclusion": "success"
+      },
+      {
+        "number": 4,
+        "name": "Verify exact head and preserved PR608 ancestor",
+        "conclusion": "success"
+      },
+      {
+        "number": 5,
+        "name": "Run actions/setup-node@v6",
+        "conclusion": "success"
+      },
+      {
+        "number": 6,
+        "name": "Run npm ci",
+        "conclusion": "success"
+      },
+      {
+        "number": 7,
+        "name": "Validate and generate existing schema clients",
+        "conclusion": "success"
+      },
+      {
+        "number": 8,
+        "name": "Unchanged runner policy and translation parity",
+        "conclusion": "success"
+      },
+      {
+        "number": 9,
+        "name": "Scoped production source lint",
+        "conclusion": "success"
+      },
+      {
+        "number": 10,
+        "name": "Actual shared-lock and aggregate PostgreSQL gates",
+        "conclusion": "success"
+      },
+      {
+        "number": 11,
+        "name": "Full regression suite against unchanged baseline",
+        "conclusion": "success"
+      },
+      {
+        "number": 20,
+        "name": "Post Run actions/setup-node@v6",
+        "conclusion": "success"
+      },
+      {
+        "number": 21,
+        "name": "Post Run actions/checkout@v6",
+        "conclusion": "success"
+      },
+      {
+        "number": 22,
+        "name": "Stop containers",
+        "conclusion": "success"
+      },
+      {
+        "number": 23,
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ]
+  },
+  "build": {
+    "job": 113011546505,
+    "conclusion": "success",
+    "compiled": "PASS7.4minutes",
+    "staticGeneration": "PASS968/968",
+    "standaloneServerAndStaticDirAssertions": "PASS actual existing step",
+    "existingTypeValidationSkipped": true,
+    "separateFullCompilerGate": "Still pending at this observation, no compileclean claim",
+    "actualWarning": "ENOENT copying (dashboard)/page_client-reference-manifest.js into standalone traced bundle. Same inherited warning class/path as current accepted88 original; not proof warning-free/fulltraced/allroutes harmless.",
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "number": 2,
+        "name": "Run actions/checkout@v6",
+        "conclusion": "success"
+      },
+      {
+        "number": 3,
+        "name": "Verify exact head",
+        "conclusion": "success"
+      },
+      {
+        "number": 4,
+        "name": "Run actions/setup-node@v6",
+        "conclusion": "success"
+      },
+      {
+        "number": 5,
+        "name": "Run bash scripts/ci/prepare-hosted-build-runner.sh",
+        "conclusion": "success"
+      },
+      {
+        "number": 6,
+        "name": "Run npm ci",
+        "conclusion": "success"
+      },
+      {
+        "number": 7,
+        "name": "Run npx prisma generate",
+        "conclusion": "success"
+      },
+      {
+        "number": 8,
+        "name": "Build isolated bundle with inert fixture configuration",
+        "conclusion": "success"
+      },
+      {
+        "number": 9,
+        "name": "Cleanup bounded build swap",
+        "conclusion": "success"
+      },
+      {
+        "number": 17,
+        "name": "Post Run actions/setup-node@v6",
+        "conclusion": "success"
+      },
+      {
+        "number": 18,
+        "name": "Post Run actions/checkout@v6",
+        "conclusion": "success"
+      },
+      {
+        "number": 19,
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ]
+  },
+  "baselineAndGateBindings": [
+    {
+      "path": "test-baseline.json",
+      "sha256": "8f0fc568274f9fd8c0c741db618d6e4d81025de7112a315cd93e6b92bbd5a4b1",
+      "exactAccepted973": true
+    },
+    {
+      "path": "typecheck-baseline.json",
+      "sha256": "919fa9d0212b18ee685af4f08680ebbc34e8c4969294054447df03147bf0fc53",
+      "exactAccepted973": true
+    },
+    {
+      "path": "scripts/ci/check-typecheck-gate.sh",
+      "sha256": "a18608d9297c039380481fb27d6200d9ebbcc731e9ec23dd40b5e3a2c5a40937",
+      "exactAccepted973": true
+    },
+    {
+      "path": "scripts/ci/check-typecheck-baseline.mjs",
+      "sha256": "8b8a2472a1c813e85c4177c24c6df5fb5907d981b5b43e6870a04cbbba2b812a",
+      "exactAccepted973": true
+    },
+    {
+      "path": "scripts/check-test-baseline.mjs",
+      "sha256": "6c3380718fd71061d2efe4aa396fcb9cc998336c5c95a3bbd2de05230058027e",
+      "exactAccepted973": true
+    }
+  ],
+  "originBindings": [
+    {
+      "path": "/tmp/hrm-release-5638-peer-pg-original.log",
+      "bytes": 159979,
+      "sha256": "cd97bcceb6803f7131bd090a0984acb9ae5f4593ec954aeffbbc07c757ec000d"
+    },
+    {
+      "path": "/tmp/hrm-release-5638-peer-build-original.log",
+      "bytes": 130096,
+      "sha256": "8f7666c32999921fd9961f545ad39751b5cf168e9248aca6d750ad95f8efdb85"
+    },
+    {
+      "path": "/tmp/hrm-release-5638-manual-jobs-current.json",
+      "bytes": 16791,
+      "sha256": "ed2f23f292d2157be664b3bd72a10d9bfce0b215318f8dec26d6a72568219598"
+    },
+    {
+      "path": "/tmp/hrm-release-independent-source-5638f1ea.json",
+      "bytes": 32345,
+      "sha256": "29ecb1a0a818b84a995df442341d8a52d74120a1d5bafd1b466bcbda7db5be27"
+    },
+    {
+      "path": "/tmp/hrm-release-5638-classification-first-failure-peer-review.json",
+      "bytes": 7687,
+      "sha256": "6bc5e4351697fe4cdbb592a13cbd4b4d76df83b8b3dbc51eb057bc40d69e9d39"
+    }
+  ],
+  "authorship": "Production/root workflow source independent review. Reviewer authored report PostgreSQL/browser fixtures and new loopback verification; root cross-review preserved. Current log/artifact review is not independent test authorship.",
+  "remaining": [
+    "Complete exact-current fullcompiler original/raw artifact/allfamily/owned18/baseline64+bothgate assessment.",
+    "Original classificationfirstMFA400 retained; full11case acceptance not met. Root unchanged failedjob-only retry onceall5terminal; noauth/source/assertion relaxation.",
+    "Allcurrent5required+13applicable terminalchecks and finalsourceprospective/ref verification.",
+    "Actual auxiliary f8 release/publicSHA and source-bound live production recipient observation/manual review still pending; no HRM production/DONE/C12 credit."
+  ],
+  "limits": [
+    "Actual current PG/build only; no local heavy check or second execution.",
+    "Full regression globallynonclean18known preserved; bundletypevalidation remains existing skip, compilerseparate pending.",
+    "Currentdev browserreport9PASS does not prove production bundle feature smokes, completeWCAG/mobile/device or realHRoperations."
+  ]
+}

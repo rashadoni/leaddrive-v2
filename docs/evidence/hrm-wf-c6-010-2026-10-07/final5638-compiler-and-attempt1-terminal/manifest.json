@@ -1,0 +1,47 @@
+{
+  "head": "5638f1ea63c2818aef8be1b0c497eff718303388",
+  "scope": "Fresh currentcompiler PASSwithinbaseline, actualattempt1fourPASS plusclassificationFAIL retained before oneunchangedretry",
+  "globalCompilerClean": false,
+  "files": [
+    {
+      "file": "hrm-final-5638-compiler.zip",
+      "bytes": 19685,
+      "sha256": "b5ab4bffd6bfee28ff159dc9cbb335cfba93730227606f9af89e117238723643"
+    },
+    {
+      "file": "hrm-final-5638-compiler-original.log",
+      "bytes": 255101,
+      "sha256": "f96c4293dd160ef2b9cb591351d6bbc906dd0f949402bbf66fee33ec8504c688"
+    },
+    {
+      "file": "hrm-release-5638-root-compiler-parse-proof.json",
+      "bytes": 1900,
+      "sha256": "9ded1f95a4e9a78c2463be144a4be52fbf87118c800ecb32fba948a2080aadae"
+    },
+    {
+      "file": "hrm-release-independent-compiler-5638f1ea.json",
+      "bytes": 10479,
+      "sha256": "db33a43e329d0aa2c36f9398a457322fc50cda7418c1e39deb5afd2b5ffc3eb1"
+    },
+    {
+      "file": "hrm-release-5638-compiler-gated-counts-independent.json",
+      "bytes": 4290,
+      "sha256": "f8ece57b0795edff3c480720e9e76f9a5e4f2dbdf89aeca95f5ada321b261229"
+    },
+    {
+      "file": "hrm-final-5638-attempt1-terminal-run.json",
+      "bytes": 12914,
+      "sha256": "7116b14adc13fb5beb5aee6e4e9a27167e588184b88cc26361ed1fcdf19fa832"
+    },
+    {
+      "file": "hrm-final-5638-attempt1-terminal-jobs.json",
+      "bytes": 17202,
+      "sha256": "b1d6b1d581bcfd91aae4beb4704a7e3403b489b1760e4ac0d804d8ecf65e0f23"
+    },
+    {
+      "file": "hrm-final-5638-failed-job-only-rerun-response.txt",
+      "bytes": 2,
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    }
+  ]
+}

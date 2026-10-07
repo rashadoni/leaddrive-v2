@@ -1,0 +1,58 @@
+{
+  "pr": 619,
+  "head": "683bfa056ab1f81877de5b8a238658847f1f51e4",
+  "mainBeforeMerge": "5cebf61623c58ca65b66f2b58506157c097a1931",
+  "prospectiveTree": "4605bd097afd951fba96ece89a62a7172a438252",
+  "rootReview": "release-connect-timeout-root-review-683.json",
+  "requiredChecks": [
+    {
+      "name": "pr-scope",
+      "id": 112899079473,
+      "head": "683bfa056ab1f81877de5b8a238658847f1f51e4",
+      "app": 15368,
+      "conclusion": "success"
+    },
+    {
+      "name": "runner-policy",
+      "id": 112898465953,
+      "head": "683bfa056ab1f81877de5b8a238658847f1f51e4",
+      "app": 15368,
+      "conclusion": "success"
+    },
+    {
+      "name": "scan",
+      "id": 112898466547,
+      "head": "683bfa056ab1f81877de5b8a238658847f1f51e4",
+      "app": 15368,
+      "conclusion": "success"
+    },
+    {
+      "name": "static-checks",
+      "id": 112899235621,
+      "head": "683bfa056ab1f81877de5b8a238658847f1f51e4",
+      "app": 15368,
+      "conclusion": "success"
+    },
+    {
+      "name": "typecheck",
+      "id": 112899235504,
+      "head": "683bfa056ab1f81877de5b8a238658847f1f51e4",
+      "app": 15368,
+      "conclusion": "success"
+    }
+  ],
+  "enforceAdmins": true,
+  "strict": false,
+  "normalMergeOnly": true,
+  "hostedSource": {
+    "run": 37652297849,
+    "job": 112898465892,
+    "pass": 22,
+    "skip": 0
+  },
+  "oldFailuresPreserved": [
+    "original8235ENV_INVALID",
+    "5cePARAM_UNSUPPORTED_CONNECT_TIMEOUT",
+    "d551rawplusrootFAIL"
+  ]
+}

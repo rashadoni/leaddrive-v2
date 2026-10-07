@@ -1,0 +1,41 @@
+[
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-88-independent-technical-acceptance.json",
+    "bytes": 26854,
+    "sha256": "11697f9688f1f0e17f5965a48fd05018462a18e42dc02a6baf8a73e6f9dc52b3"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-88-independent-pg-build-review.json",
+    "bytes": 7601,
+    "sha256": "a6e03f59edd955b823279aed91d7be4ab3649ccaa6b07a5fc19ba9df39036973"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-88-independent-compiler-identity-delta.json",
+    "bytes": 367,
+    "sha256": "5445fb91d83ae8d6d4e0196037f421d0dd574cd1b2337e118b24cdadd8fef283"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-88-root-compiler-parse-proof.json",
+    "bytes": 1810,
+    "sha256": "26853372cffdb9c77fc06692c51db58002164a32aff0c9f909bbd87bc6db898e"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-88-compiler-original-artifact.zip",
+    "bytes": 19685,
+    "sha256": "6edcc41d3211dca6698aee4a1cdd36d29e1b3b8a7f6fbb6b242f5f11664b5edd"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-88-compiler-original-job.log.gz",
+    "bytes": 34858,
+    "sha256": "5f4dbc908b9c747b643ce31c793c36399fcf46a3ffad5ebc316c475da3d6930e",
+    "originalBytes": 254899,
+    "originalSha256": "b6d2be9d6deeaf63bca752f2a0eb0bf34d263efd3edc1b4acb7fa25e7b9695e9"
+  },
+  {
+    "path": "docs/evidence/hrm-wf-c6-010-2026-10-07/final-88-compiler-raw-original.log.gz",
+    "bytes": 18983,
+    "sha256": "6a44e1f036f9e8ef18da3a97f315363fb1905796110ffcf54aec5dd716bbabf4",
+    "originalBytes": 177767,
+    "originalSha256": "fd626333ee46182254dc6a8b0a012af831b4e2781cc1a21f6ca373886ec9b4ba"
+  }
+]

@@ -1,0 +1,16 @@
+{
+  "status": "PASS",
+  "previousEvidenceBytes": 150622,
+  "previousEvidenceSha256": "b8a33585c8a73193b12b39f429ccf26c870ee2e0e851da190d5330d353176909",
+  "newSourceTailBytes": 2084,
+  "newSourceTailSha256": "d6b743c6a6ee2b539c1dbe15bfe933db385abec2ba368a727876c1db4264ae4e",
+  "entirePreviousEvidencePrefixRetained": true,
+  "new5638SourceSuffixRetainedVerbatim": true,
+  "old88Last3000BytesAlreadyRetained": true,
+  "supersededRootGuardError": {
+    "trace": "File <stdin>, line4; AssertionError before file resolution/stage/commit/push",
+    "cause": "Wrong assumption previous append-only evidence journal must start with entire88 source journal; previousc7 merge preserved earlier evidenceprefix and imported88 suffix instead",
+    "correction": "Use immutable complete premerge evidenceprefix plus exact append-only5638 suffix beyond88; verify prior88 source tail independently",
+    "productOrHistoryLoss": false
+  }
+}

@@ -1,0 +1,80 @@
+TAP version 13
+# Subtest: static canonical declarations require unique matching role and database without evaluation
+ok 1 - static canonical declarations require unique matching role and database without evaluation
+  ---
+  duration_ms: 3.018888
+  ...
+# Subtest: protected reader accepts only root0600 or stable root backup0640 with exact group
+ok 2 - protected reader accepts only root0600 or stable root backup0640 with exact group
+  ---
+  duration_ms: 0.961309
+  ...
+# Subtest: backup attribution wraps the unchanged held live observer and rolls back before file rereads
+ok 3 - backup attribution wraps the unchanged held live observer and rolls back before file rereads
+  ---
+  duration_ms: 7.776981
+  ...
+# Subtest: private declaration/database/file failures are rejected before any connection
+ok 4 - private declaration/database/file failures are rejected before any connection
+  ---
+  duration_ms: 1.725552
+  ...
+# Subtest: strict attribution rejects raw names, unexpected fields, malformed counters and mismatched ACL counts
+ok 5 - strict attribution rejects raw names, unexpected fields, malformed counters and mismatched ACL counts
+  ---
+  duration_ms: 2.259432
+  ...
+# Subtest: missing declared identity and unsafe profile/default/memberships remain observations without approval
+ok 6 - missing declared identity and unsafe profile/default/memberships remain observations without approval
+  ---
+  duration_ms: 8.361965
+  ...
+# Subtest: source changes inside rollback or final backup reread discard successful evidence
+ok 7 - source changes inside rollback or final backup reread discard successful evidence
+  ---
+  duration_ms: 4.678132
+  ...
+# Subtest: malformed query and cleanup failures never export private errors or approve evidence
+ok 8 - malformed query and cleanup failures never export private errors or approve evidence
+  ---
+  duration_ms: 3.598886
+  ...
+# Subtest: PUBLIC and OTHER write/grantable rows remain catalog facts rather than automatic ACL acceptance
+ok 9 - PUBLIC and OTHER write/grantable rows remain catalog facts rather than automatic ACL acceptance
+  ---
+  duration_ms: 7.593655
+  ...
+# Subtest: public reports reject readiness, injected secrets, invalid bindings and forged observed counters
+ok 10 - public reports reject readiness, injected secrets, invalid bindings and forged observed counters
+  ---
+  duration_ms: 2.921674
+  ...
+# Subtest: SQL preserves original guarded snapshot and reads only finite role/default ACL/settings catalogs
+ok 11 - SQL preserves original guarded snapshot and reads only finite role/default ACL/settings catalogs
+  ---
+  duration_ms: 0.804284
+  ...
+# Subtest: all previous fourteen observer source files remain byte exact
+ok 12 - all previous fourteen observer source files remain byte exact
+  ---
+  duration_ms: 3.324466
+  ...
+# Subtest: stdin emitter and validator bind all six sources without reading any private files
+ok 13 - stdin emitter and validator bind all six sources without reading any private files
+  ---
+  duration_ms: 338.740068
+  ...
+# Subtest: hosted PostgreSQL attributes configured backup with real default spawn, live guards and complete cleanup
+ok 14 - hosted PostgreSQL attributes configured backup with real default spawn, live guards and complete cleanup # SKIP
+  ---
+  duration_ms: 0.374401
+  ...
+1..14
+# tests 14
+# suites 0
+# pass 13
+# fail 0
+# cancelled 0
+# skipped 1
+# todo 0
+# duration_ms 482.096548

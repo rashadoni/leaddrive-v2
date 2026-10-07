@@ -1,0 +1,312 @@
+{
+  "version": 1,
+  "reviewedAtUtc": "2026-10-07T18:21:38.925882+00:00",
+  "reviewer": "/root/inspect_outcome_contract",
+  "decision": "AUXILIARY_SOURCE_HOSTED_VALIDATION_ACCEPTED_FOR_NORMAL_REVIEWED_MERGE_WITH_DOCS_ONLY_MAIN_QUALIFICATION",
+  "head": "2fb474a7842034ab7e845f5bf553fd94c6301481",
+  "tree": "f3d8be850e835ded02ccded8be57c28d800854f7",
+  "findingsP0P1P2P3": [],
+  "authorship": "Peer authored tests/workflow/fixture correction/journal and prior metadata helper; root cross-reviewed those files. Root new supplemental helper/SQL independently reviewed by peer. Current actual runtime receipts/source bindings reviewed here; no independent test-authorship or second execution claim.",
+  "sourceBindings": [
+    {
+      "path": "scripts/hrm-default-acl-inspection.mjs",
+      "sha256": "9b87021c9bbed0162bb5d05dbc3cf16f845012e53717a26d192aa0c14148df16",
+      "workingBytesMatchCommit": true
+    },
+    {
+      "path": "scripts/hrm-default-acl-inspection.sql",
+      "sha256": "524bc02f34a75f445aff6b3834df6e02aa86665dee9acd835b2b5fc621127e2a",
+      "workingBytesMatchCommit": true
+    },
+    {
+      "path": ".github/workflows/hrm-default-acl-inspection.yml",
+      "sha256": "954c6d042bf00420f1ecd3c9ed0c378bc41305c0af08c30cdc3a97f06f81df2a",
+      "workingBytesMatchCommit": true
+    },
+    {
+      "path": "scripts/hrm-default-acl-inspection.test.mjs",
+      "sha256": "6aad06c5505b81d2860e15a7fef9ab990ef32ca53fb7a1d1f7fc66ee4085e877",
+      "workingBytesMatchCommit": true
+    },
+    {
+      "path": "docs/hrm-default-acl-inspection-session-log.md",
+      "sha256": "12a55fe50908cb15a164f8c413a6901a0a1aa7dc60120ea3d8490397bd62b3ba",
+      "workingBytesMatchCommit": true
+    }
+  ],
+  "independentRootSourceReview": {
+    "path": "/tmp/hrm-default-acl-root-source-peer-review.json",
+    "bytes": 12370,
+    "sha256": "c3010835cd3c5f6aecb603054dbf6790183b194d9a4a0e9b6330561cb908e34f"
+  },
+  "rootLatestFixtureCrossReview": {
+    "path": "/tmp/hrm-default-acl-fixture-cleanup-root-review.json",
+    "bytes": 640,
+    "sha256": "1601571fb9699db35c9ac4cdbe3d2fc36eef7a7abffb1ec8724fa6bae040ead2"
+  },
+  "sourcePreservation": {
+    "rootHelperSqlExactF314": true,
+    "workflowExact549": true,
+    "old4MetadataPathsExact504": true,
+    "old13UnitPrefixByteExact549": true,
+    "all12OldBodyAssertionLinesRetained": true,
+    "sourceCodeGateRelaxed": false,
+    "hostedScope": "Only isolated GitHub16 loopbackfixture writes syntheticrole/defaultACL; no productionwrite/sourcefallback/testmode"
+  },
+  "requiredMainChecks": {
+    "all5CurrentHeadSuccess": true,
+    "app": 15368,
+    "checks": [
+      {
+        "name": "pr-scope",
+        "id": 112936980411,
+        "head": "2fb474a7842034ab7e845f5bf553fd94c6301481",
+        "app": 15368,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "static-checks",
+        "id": 112937169338,
+        "head": "2fb474a7842034ab7e845f5bf553fd94c6301481",
+        "app": 15368,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "typecheck",
+        "id": 112937169404,
+        "head": "2fb474a7842034ab7e845f5bf553fd94c6301481",
+        "app": 15368,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "runner-policy",
+        "id": 112936789907,
+        "head": "2fb474a7842034ab7e845f5bf553fd94c6301481",
+        "app": 15368,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "scan",
+        "id": 112936789939,
+        "head": "2fb474a7842034ab7e845f5bf553fd94c6301481",
+        "app": 15368,
+        "status": "completed",
+        "conclusion": "success"
+      }
+    ],
+    "sourceIndexMetadata": {
+      "path": "/tmp/hrm-default-acl-2fb-check-runs-final.json",
+      "bytes": 28574,
+      "sha256": "7b91b7946b39c065b50d6b1648dbec938efd3f1ef3650f1e1562a141f5c5a241"
+    },
+    "individualFinalStatic": {
+      "path": "/tmp/hrm-default-acl-2fb-static-latest.json",
+      "bytes": 3564,
+      "sha256": "f608efa69b035a7f202e65af9f9a7dea2dbadf8a356cfc6a666368cf9deeb83b"
+    },
+    "individualFinalType": {
+      "path": "/tmp/hrm-default-acl-2fb-type-latest.json",
+      "bytes": 3561,
+      "sha256": "8e0cdaa4a9d2132e7a37c3ba200c6854e918a6bd5b32076cb880b19bcb708d00"
+    },
+    "protection": {
+      "path": "/tmp/hrm-default-acl-2fb-main-protection.json",
+      "bytes": 1488,
+      "sha256": "94ff741b8943f63ab310fba375af5e9750114361b5fc10e5ff98c29f8e8c6f76"
+    },
+    "strict": false,
+    "enforceAdmins": true,
+    "noBypass": true
+  },
+  "actualHostedSourceRun": {
+    "id": 37663524025,
+    "head": "2fb474a7842034ab7e845f5bf553fd94c6301481",
+    "attempt": 1,
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "id": 112936789261,
+        "head_sha": "2fb474a7842034ab7e845f5bf553fd94c6301481",
+        "name": "source-validation",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 112937080772,
+        "head_sha": "2fb474a7842034ab7e845f5bf553fd94c6301481",
+        "name": "production-acl-inspection",
+        "status": "completed",
+        "conclusion": "skipped"
+      }
+    ],
+    "originalMetadata": [
+      {
+        "path": "/tmp/hrm-default-acl-2fb-source-run.json",
+        "bytes": 12893,
+        "sha256": "48b2b19434fee55b07ad2df0ea869c38b596e8ec622b6f8691a60e6a06d3dc5e"
+      },
+      {
+        "path": "/tmp/hrm-default-acl-2fb-source-jobs.json",
+        "bytes": 3598,
+        "sha256": "6210810065f3b8edea7bf202141ea6620c9048a7ea1c44eaa9a7bb5d76d35468"
+      }
+    ],
+    "fullOriginalLog": {
+      "path": "/tmp/hrm-default-acl-2fb-source-full-original.log",
+      "bytes": 78904,
+      "sha256": "827601d07ca2a0b8ba12511a7be3bea03b7f15f4d971187ad465d015ab995eb2"
+    },
+    "productionLaneSkippedOnPRCorrectly": true,
+    "artifacts": {
+      "total_count": 0,
+      "artifacts": []
+    },
+    "noStructuredProductionReceiptClaimed": true
+  },
+  "actual36Tests": {
+    "old22": {
+      "pass": 22,
+      "fail": 0,
+      "skip": 0
+    },
+    "new14": {
+      "pass": 14,
+      "fail": 0,
+      "skip": 0
+    },
+    "totalPass": 36,
+    "newBodyComplete": true,
+    "milestones": [
+      "initialCatalog=PASS",
+      "unsafeCatalog=PASS",
+      "runtimeSetGuard=PASS",
+      "BODY=PASS"
+    ],
+    "cleanup8CommandsPassed": [
+      {
+        "action": "DROP_OWNED",
+        "slot": "RUNTIME"
+      },
+      {
+        "action": "DROP_OWNED",
+        "slot": "MIGRATION"
+      },
+      {
+        "action": "DROP_OWNED",
+        "slot": "OTHER"
+      },
+      {
+        "action": "DROP_OWNED",
+        "slot": "PRIVILEGED"
+      },
+      {
+        "action": "DROP_ROLE",
+        "slot": "RUNTIME"
+      },
+      {
+        "action": "DROP_ROLE",
+        "slot": "MIGRATION"
+      },
+      {
+        "action": "DROP_ROLE",
+        "slot": "OTHER"
+      },
+      {
+        "action": "DROP_ROLE",
+        "slot": "PRIVILEGED"
+      }
+    ],
+    "cleanupResiduePassed": true,
+    "totalCleanupPassed": true,
+    "strictOriginalMetadataLegacyCOrderNegative": "Observed canonical=false and rejection retained",
+    "runtimeCoverage": "Actual synthetic app/migration bounded sessions,5entries/3runtimeIUD; GLOBAL/OWNER/PUBLIC/OTHER dangerousprivileges/grantoption remain READ_COMPLETE-only; runtime effective privileged SET rejected; read-onlyDDLrejected and no createdtable. No productionprincipal or grant inference."
+  },
+  "testedCheckout": {
+    "syntheticSha": "29719432a2e1e374f3d4f163a53b0eab064cf41f",
+    "parents": [
+      "50466e3fce9f23eaba8079a51be914fe6a6eff07",
+      "2fb474a7842034ab7e845f5bf553fd94c6301481"
+    ],
+    "tree": "f3d8be850e835ded02ccded8be57c28d800854f7",
+    "treeExactlyMatches2fb": true,
+    "metadata": {
+      "path": "/tmp/hrm-default-acl-2fb-synthetic-merge.json",
+      "bytes": 2643,
+      "sha256": "d0c3b3d80f1ead1cb7f43d8b376696f8de6fe0131dcf1c0588c3dc4c7b92c186"
+    }
+  },
+  "freshMainAndProspectiveMerge": {
+    "currentMain": "22c94b45949dece8c6fb0e5c414c8569263ab6f8",
+    "refMetadata": {
+      "path": "/tmp/hrm-default-acl-2fb-main-ref-latest.json",
+      "bytes": 342,
+      "sha256": "87b40ad5408556a66a2e40b3cc4409dfe7da6bb83e75703babb2bf3e21dd9cef"
+    },
+    "prospectiveProof": {
+      "main": "22c94b45949dece8c6fb0e5c414c8569263ab6f8",
+      "head": "2fb474a7842034ab7e845f5bf553fd94c6301481",
+      "prospectiveTree": "af7bc22d59d0924386415bc244aa8bc7c848160b",
+      "mergeClean": true,
+      "changedFromTestedHeadOnly": [
+        "docs/meta-app-review-session-log.md"
+      ],
+      "sameAllOtherTreeBytes": true,
+      "notEqualWholeTreeToTestedHead": true
+    },
+    "proofBinding": {
+      "path": "/tmp/hrm-default-acl-2fb-main22c-prospective-proof.json",
+      "bytes": 352,
+      "sha256": "1c88bfbc83507fb06943200ba354aa19ff21ed74db9ee90779db02b0167beaee"
+    },
+    "incomingApprovedMainPR622": "Only18lines docs/meta-app-review-session-log.md. Entire aux source/tool/oldmetadata/baseline tree exact2fb; prospectiveWHOLETREE differsbythatdoc and not mislabeled identical. Support document not read/edited by reviewer.",
+    "mergeDecisionQualified": "Allrequiredcurrent2fb checks terminal; freshmaincodebuckets exacttested2fb with protectedincoming docs-only delta. Re-read currentmain/head immediately before coordinator normalmerge; futuremain/sourcechange requires newproof.",
+    "PRSnapshot": {
+      "number": 621,
+      "head": "2fb474a7842034ab7e845f5bf553fd94c6301481",
+      "state": "open",
+      "isDraft": false,
+      "merged": false,
+      "apiBaseShaMayLagGitRef": true
+    },
+    "PRMetadata": {
+      "path": "/tmp/hrm-default-acl-2fb-pr621-final.json",
+      "bytes": 17771,
+      "sha256": "3219fdc1fef1031b7161e345fc1d12604812d1b25e9eb16ad9cbb1010cd10129"
+    }
+  },
+  "retainedFirstActualHostedFail": {
+    "head": "549bddb2080bc71271f837f95463c33410642368",
+    "run": 37662175182,
+    "sourceJob": 112932190777,
+    "old22PASS": true,
+    "new14": "13PASS/1actualSQLFAIL/0SKIP",
+    "bodyCompleteness": "NOT PROVEN: finally multirolecleanup error may have masked bodyfailure",
+    "cleanupDefect": "Could not find tuple for default ACL during combined DROP OWNED",
+    "originalFullLog": {
+      "path": "/tmp/hrm-default-acl-first-hosted-549.log",
+      "bytes": 48111,
+      "sha256": "cfc701a45f593ff41769e65df79637cf3207e734301d497878bc242c174780b1"
+    },
+    "laterReadyPRChecks37662503123": "Cancelled; not a second dedicated SQL failure",
+    "notRetroactivelyPromoted": true
+  },
+  "nonProductObservationError": {
+    "tool": "gh pr view --json baseRefOid",
+    "result": "Client unsupportedfield beforeAPIquery; usedRESTpullendpoint instead",
+    "interpretation": "NoCI/productfailure and noautomaticPASS inferred; no privatevalues involved"
+  },
+  "limits": [
+    "Source-hosted prerequisite acceptance only, not actual production ACL approval or HRMrelease readiness.",
+    "Noproductionquery/dispatch/SSH/config/grant/secret/activation by peer, no localDB/build/compiler/browser/testrepeat.",
+    "Original real metadata INCOMPLETE DEFAULT_ACL_UNREVIEWED and productionFAIL remain retained; actualrecipient supplemental stillpending.",
+    "READ_COMPLETE never automaticapproval; expectedruntimeIUD/profile could be independently reviewed onlyafter actualsourcebound snapshot; unknownwrite/PUBLIC/dangerous privilegeshold.",
+    "HRM exact finalhead CI and currentmain prospective whole-tree requirement remain separate; old8fc/8d results cannot be credited to newhead.",
+    "No actualHRsample/rate/pilot/operations or C12 closure; sequentialcatalogidentity is not simultaneous cloneproof."
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "sha": "7bfcca6b5b53a33fca926786718f8a80037e2809",
+  "node_id": "C_kwDOUTPB8doAKDdiZmNjYTZiNWI1M2EzM2ZjYTkyNjc4NjcxOGY4YTgwMDM3ZTI4MDk",
+  "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/git/commits/7bfcca6b5b53a33fca926786718f8a80037e2809",
+  "html_url": "https://github.com/rashadoni/leaddrive-v2/commit/7bfcca6b5b53a33fca926786718f8a80037e2809",
+  "author": {
+    "name": "rashadoni",
+    "email": "rashadrahimsoy@gmail.com",
+    "date": "2026-10-07T19:33:57Z"
+  },
+  "committer": {
+    "name": "GitHub",
+    "email": "noreply@github.com",
+    "date": "2026-10-07T19:33:57Z"
+  },
+  "tree": {
+    "sha": "8c182af3c86da193af24bf05f9c27c574a441939",
+    "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/git/trees/8c182af3c86da193af24bf05f9c27c574a441939"
+  },
+  "message": "Merge pull request #624 from rashadoni/codex/hrm-release-acl-identity-diagnostic-20261007\n\nfix(hrm): diagnose read-only ACL identity failures safely",
+  "parents": [
+    {
+      "sha": "4c1e3d29dc492254978f0d0ff303d91957b26f2c",
+      "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/git/commits/4c1e3d29dc492254978f0d0ff303d91957b26f2c",
+      "html_url": "https://github.com/rashadoni/leaddrive-v2/commit/4c1e3d29dc492254978f0d0ff303d91957b26f2c"
+    },
+    {
+      "sha": "05deed0368ec6f4001c04508c95742623fb5a4f5",
+      "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/git/commits/05deed0368ec6f4001c04508c95742623fb5a4f5",
+      "html_url": "https://github.com/rashadoni/leaddrive-v2/commit/05deed0368ec6f4001c04508c95742623fb5a4f5"
+    }
+  ],
+  "verification": {
+    "verified": true,
+    "reason": "valid",
+    "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsFcBAABCAAQBQJqxp6lCRC1aQ7uu5UhlAAAPyMQAGG6Sqmqd9aO/q/ZjLWnby0r\nNWgvohqh5sdYDJMqr5hSLx8RgP/R0u5kgTjacyboj66NRqztpHxQkXSsQ4UpQu06\nUVPJJ+Ncak9Y73gnxgO5u7yoxPSr+n5fASCBCsdDoiJRh16bPPS3eziPL5u6ZnXh\nFp2GTOD1W5eU1Sb3lSqz93xJwTHgRzr9H+ohwic1M4uJZ2ndTjj5aY+/tbvf1y5N\nFhW89n+AitCxB0gYQ8i5lkkhyCFjeyKlD0eXzCQzU19xH7U4znQNi08Hy5BjYPFi\nQlOsxiMY5TZPvmeJR0gk6QE+ux1HY24g91yL69UsbqjDlKrUUC8NvucrKQ6ExePW\n9T3iyk3k8Cdb8PRpA04dpkUuM7trppfDPuoQoyqtFABPiT6GC0R60uE64iHkmiuQ\naU5bHyQgW1EhPGy1LFJRaJANrs3Q/JTvx3/m+k465HT33Dhg8syMRY1oFwgLh/7k\ncg/C65K9HXzr8AlxZDAK50pfplqpr256vjFsAg7Ntt2VZBsfDkmm5g7wVqp0uXmK\nQQDwAZEjnMV4VBb4TzkKfv06K89ceRfYaNx+e57CRKFSfRPe1UTMYUcFD10lRmP1\nIDjBLS3CMCJTpBowbkZuFuNGD3mMvN/PWDDTvToU8X1DvBMaYUa/T5Bhf2aRohLl\nYB7zazK/7fAp/hO4M/er\n=9L1m\n-----END PGP SIGNATURE-----\n",
+    "payload": "tree 8c182af3c86da193af24bf05f9c27c574a441939\nparent 4c1e3d29dc492254978f0d0ff303d91957b26f2c\nparent 05deed0368ec6f4001c04508c95742623fb5a4f5\nauthor rashadoni <rashadrahimsoy@gmail.com> 1791401637 +0400\ncommitter GitHub <noreply@github.com> 1791401637 +0400\n\nMerge pull request #624 from rashadoni/codex/hrm-release-acl-identity-diagnostic-20261007\n\nfix(hrm): diagnose read-only ACL identity failures safely",
+    "verified_at": "2026-10-07T19:33:57Z"
+  }
+}

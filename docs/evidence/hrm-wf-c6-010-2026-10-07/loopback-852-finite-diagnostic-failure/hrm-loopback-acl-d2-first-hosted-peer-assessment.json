@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "status": "CURRENT_SOURCE_RUNTIME_FAIL_RETAINED",
+  "head": "d2d8032891967bef45b43109bfaa9a0b1ea7760c",
+  "run": 37683900450,
+  "attempt": 1,
+  "conclusion": "failure",
+  "sourceJob": 113006643759,
+  "productionJob": {
+    "id": 113007018759,
+    "conclusion": "skipped"
+  },
+  "originalLog": {
+    "path": "/tmp/hrm-loopback-d2-first-hosted-source-original.log",
+    "bytes": 56800,
+    "sha256": "0aec81b9bc133977758c36c6d596b949790c52e592a0a3c0653bf1560cd4555e"
+  },
+  "actualResults": {
+    "oldMetadata": {
+      "total": 22,
+      "pass": 22,
+      "fail": 0,
+      "skip": 0
+    },
+    "oldAcl": {
+      "total": 14,
+      "pass": 14,
+      "fail": 0,
+      "skip": 0
+    },
+    "newLive": {
+      "total": 16,
+      "pass": 15,
+      "fail": 1,
+      "skip": 0
+    },
+    "newRealSql": {
+      "status": "FAIL",
+      "stage": "LIVE_CATALOG",
+      "code": "IDENTITY_UNPROVED",
+      "cleanup": "PASS",
+      "publicProof": null
+    },
+    "fixtureCleanup": {
+      "dropOwnedCommands": 4,
+      "dropRoleCommands": 4,
+      "allPass": true,
+      "roleAndDefaultAclResidue": "PASS"
+    },
+    "subsequentMilestones": "NOT RUN: wrong nonce/PID/otherDB/unsafeACL/runtimeSET/readOnly guard assertions lie after failing initial observation"
+  },
+  "diagnosis": "Exact failed private identity boolean not recorded yet. No actual flag, different database or unsafe recipient conclusion is supported. Application-name visibility hypothesis rejected by primary PostgreSQL16 implementation: appname public fields precede HAS_PGSTAT_PERMISSIONS; psql startup fallback override remains hypothesis pending finite fixture-only diagnostic.",
+  "newChangePending": "Only hosted test observer emits fixed boolean fields, returns raw snapshots unchanged; helper/SQL/workflow/old9 remain byte unchanged. No assertion skipped or weakened; original FAIL remains original.",
+  "authorship": "Reviewer authored new fixture/SQL/workflow, root authored helper and cross-reviewed owned verification. This is evidence evaluation, not independent test authorship.",
+  "limits": [
+    "No production query performed by reviewer",
+    "No production catalog or ACL recipients observed",
+    "No successful live proof or release readiness claimed",
+    "No grants/config/secret changes or local SQL"
+  ]
+}

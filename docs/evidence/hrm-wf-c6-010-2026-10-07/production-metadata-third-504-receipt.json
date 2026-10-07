@@ -1,0 +1,75 @@
+{
+  "observedAtUtc": "2026-10-07T17:36:40.873828+00:00",
+  "run": 37657755660,
+  "runAttempt": 1,
+  "expectedAndDeployedMain": "50466e3fce9f23eaba8079a51be914fe6a6eff07",
+  "sourceJob": {
+    "id": 112917119418,
+    "conclusion": "success",
+    "actualTests": 22,
+    "pass": 22,
+    "fail": 0,
+    "skip": 0
+  },
+  "productionJob": {
+    "id": 112917468249,
+    "conclusion": "failure",
+    "reportStatus": "INCOMPLETE",
+    "reasons": [
+      "DEFAULT_ACL_UNREVIEWED"
+    ]
+  },
+  "artifact": {
+    "id": 11499222056,
+    "size": 1877,
+    "digest": "2c02763719aa5e441929c39c67a5cf5091a6406ddfb71aaad10299aaea8aa2c5",
+    "crc": "PASS",
+    "memberAllowlist": "PASS",
+    "strictSourceBoundCliValidation": "PASS"
+  },
+  "originals": [
+    {
+      "file": "production-metadata-third-504.zip",
+      "bytes": 1877,
+      "sha256": "2c02763719aa5e441929c39c67a5cf5091a6406ddfb71aaad10299aaea8aa2c5"
+    },
+    {
+      "file": "production-metadata-third-504-artifact.json",
+      "bytes": 8216,
+      "sha256": "cf5a799abb9cb1208b5a37d791b75f12af4714c30d9de4b2a8c6d842005abc1c"
+    },
+    {
+      "file": "production-metadata-third-504-validated.json",
+      "bytes": 8216,
+      "sha256": "cf5a799abb9cb1208b5a37d791b75f12af4714c30d9de4b2a8c6d842005abc1c"
+    },
+    {
+      "file": "production-metadata-third-504-independent-review.json",
+      "bytes": 22557,
+      "sha256": "8ff79acdc7b1a57cc7b2f1f7c553b6a8a31544421eca34a6e1747790e76f3343"
+    },
+    {
+      "file": "production-metadata-third-504-original-log.gz",
+      "originalBytes": 115002,
+      "originalSha256": "574fb5d774b3662793468d032c50f803a6406bb508879f31953f322b21a8cf96",
+      "losslessGzipBytes": 17948,
+      "losslessGzipSha256": "7fb1b12d8a0ce1b57dec864234d6ce8c5842ccaad98431ff75d621d0c92fe65c"
+    },
+    {
+      "file": "production-metadata-third-504-run.json.gz",
+      "originalBytes": 12413,
+      "originalSha256": "8959779d8fd278a4f4613f7559b9f4e56051d2b049b187592d032a517ad6caba",
+      "losslessGzipBytes": 1542,
+      "losslessGzipSha256": "6653e4aaae82e3b6257743d1c3ff6113fbddce09636e92ad97ef5c5122937fc1"
+    },
+    {
+      "file": "production-metadata-third-504-jobs.json.gz",
+      "originalBytes": 5692,
+      "originalSha256": "1778aaedffba16ea524f889a0db18771b1c9641b548e05431d792d8f0a00b4ad",
+      "losslessGzipBytes": 1086,
+      "losslessGzipSha256": "150a9d4224ed711354971e64b77853434efa00468b4515672721557be43bb02d"
+    }
+  ],
+  "interpretation": "Three write privilege entries, not three roles; recipients/types not established by this aggregate report. No unsafe-grant or required access-change inference.",
+  "continuation": "Additional supplemental read-only recipient/profile inspection; existing metadata helper/SQL/tests/checks unchanged; READ_COMPLETE will not mean ACL approval."
+}

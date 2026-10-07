@@ -1,0 +1,162 @@
+{
+  "version": 1,
+  "reviewedAtUtc": "2026-10-07T19:29:00.112016+00:00",
+  "reviewer": "/root/inspect_outcome_contract",
+  "status": "AUXILIARY_SOURCE_CURRENT36_REQUIRED5_PROSPECTIVE_TREE_ACCEPTED_PRODUCTION_DIAGNOSIS_PENDING",
+  "headSha": "05deed0368ec6f4001c04508c95742623fb5a4f5",
+  "tree": "b7cf18d6cc81482f2be1ccda5568a704bac10502",
+  "mainAtReview": "777d6daa0e902ebd28a369694e235accf44ad3eb",
+  "pr": 624,
+  "findingsP0P1P2P3": [],
+  "sourceReview": {
+    "path": "/tmp/hrm-default-acl-identity-peer-review-05deed.json",
+    "bytes": 6277,
+    "sha256": "03ac37d47ab6bc270ac982a6a68b631c67482e49558415de634b9898d42eb436"
+  },
+  "hostedSourceReview": {
+    "path": "/tmp/hrm-default-acl-identity-peer-ci-05deed.json",
+    "bytes": 4121,
+    "sha256": "79925008f6fbf9dfe88ccb2a7d2fe6c363a668713d3d636ec30a2b5d93b9d9b3"
+  },
+  "actualSourceRun": {
+    "id": 37672370513,
+    "attempt": 1,
+    "job": 112967102986,
+    "conclusion": "success",
+    "checkoutSyntheticSha": "d9e8b8b827d76a7ed161a4c2a4355d5eacbf4084",
+    "checkoutTree": "b7cf18d6cc81482f2be1ccda5568a704bac10502",
+    "checkoutParents": [
+      "777d6daa0e902ebd28a369694e235accf44ad3eb",
+      "05deed0368ec6f4001c04508c95742623fb5a4f5"
+    ],
+    "syntheticTreeEqualsReviewedHead": true,
+    "originalLog": {
+      "path": "/tmp/hrm-acl-identity-05-hosted-source.log",
+      "bytes": 47856,
+      "sha256": "4c7b3131673745342561e9327b678dcfc6c2a2896000e2829d3c4470cce22bf1"
+    },
+    "oldTests22": "22PASS0FAIL0SKIP",
+    "newTests14": "14PASS0FAIL0SKIP",
+    "actualPgBodyCleanupResidue": "PASS;8separatecleanup commands andpositive residueproof",
+    "productionLane": "SKIPPED onPR; no production inspection credit"
+  },
+  "currentRequiredChecks": {
+    "allFiveSuccess": true,
+    "checks": [
+      {
+        "id": 112967528873,
+        "name": "pr-scope",
+        "head_sha": "05deed0368ec6f4001c04508c95742623fb5a4f5",
+        "status": "completed",
+        "conclusion": "success",
+        "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37672493922/job/112967528873",
+        "appId": 15368
+      },
+      {
+        "id": 112967696807,
+        "name": "static-checks",
+        "head_sha": "05deed0368ec6f4001c04508c95742623fb5a4f5",
+        "status": "completed",
+        "conclusion": "success",
+        "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37672493922/job/112967696807",
+        "appId": 15368
+      },
+      {
+        "id": 112967696773,
+        "name": "typecheck",
+        "head_sha": "05deed0368ec6f4001c04508c95742623fb5a4f5",
+        "status": "completed",
+        "conclusion": "success",
+        "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37672493922/job/112967696773",
+        "appId": 15368
+      },
+      {
+        "id": 112967102928,
+        "name": "runner-policy",
+        "head_sha": "05deed0368ec6f4001c04508c95742623fb5a4f5",
+        "status": "completed",
+        "conclusion": "success",
+        "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37672370608/job/112967102928",
+        "appId": 15368
+      },
+      {
+        "id": 112967102490,
+        "name": "scan",
+        "head_sha": "05deed0368ec6f4001c04508c95742623fb5a4f5",
+        "status": "completed",
+        "conclusion": "success",
+        "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37672370516/job/112967102490",
+        "appId": 15368
+      }
+    ],
+    "mainStrict": false,
+    "enforceAdmins": true,
+    "metadata": {
+      "path": "/tmp/hrm-acl-identity-05-peer-checks-terminal.json",
+      "bytes": 42957,
+      "sha256": "93966ec75d34d6a8b1dd900ac23f2b97007cfa1dfa9c0721a33ea486c3fd8a62"
+    },
+    "readyRun": {
+      "id": 37672493922,
+      "attempt": 1,
+      "head": "05deed0368ec6f4001c04508c95742623fb5a4f5",
+      "conclusion": "success",
+      "metadata": {
+        "path": "/tmp/hrm-acl-identity-05-peer-ready-terminal.json",
+        "bytes": 12880,
+        "sha256": "37f9e27e6aba3a9d78ae29dfeef20b7455fc3b09053135cd69da3350b4db49cd"
+      }
+    },
+    "appBuild": "SKIPPED as script-only auxiliarychange; not claimed as actual build/deploy."
+  },
+  "freshRefsProspectiveMerge": {
+    "main": "777d6daa0e902ebd28a369694e235accf44ad3eb",
+    "head": "05deed0368ec6f4001c04508c95742623fb5a4f5",
+    "prospectiveTree": "b7cf18d6cc81482f2be1ccda5568a704bac10502",
+    "exactReviewedSourceTree": true,
+    "sourceWorktreeCleanObserved": true,
+    "PR624": "OPEN/READY/UNMERGED",
+    "mainRef": {
+      "path": "/tmp/hrm-acl-identity-05-peer-main-terminal.json",
+      "bytes": 342,
+      "sha256": "75ca579c9ab144fde19146f9027764dbdf91ccf9c2f1b1936d4dc223c1343219"
+    },
+    "prMetadata": {
+      "path": "/tmp/hrm-acl-identity-05-peer-pr624-terminal.json",
+      "bytes": 17044,
+      "sha256": "1e385b27f3653fddb8b5a05d8376f8259f7d1daa9e410d73a8bc2375cb899bda"
+    },
+    "protection": {
+      "path": "/tmp/hrm-acl-identity-05-peer-protection-terminal.json",
+      "bytes": 1488,
+      "sha256": "94ff741b8943f63ab310fba375af5e9750114361b5fc10e5ff98c29f8e8c6f76"
+    },
+    "rootMustRecheckImmediatelyBeforeMerge": true
+  },
+  "sourceAndSecurityScope": {
+    "onlyChanges": [
+      "scripts/hrm-default-acl-inspection.mjs",
+      "scripts/hrm-default-acl-inspection.test.mjs",
+      "docs/hrm-default-acl-inspection-session-log.md"
+    ],
+    "finiteCategoryChangeOnly": true,
+    "oldAcceptancePredicates": "Unchanged exact endpoint/principal/session/catalog guards",
+    "sqlWorkflowOriginal4Files": "BYTEUNCHANGED main777",
+    "existingHostedFixtureBody": "BYTEUNCHANGED; original body/assertion/cleanup proof retained",
+    "noPermissionsConfigSecretsChanges": true,
+    "oldGenericCodeRetained": true,
+    "metadataOnlyNoAutomaticApproval": true
+  },
+  "authorship": "Root authored new helper/SQL and05finite diagnostics; production source independently reviewed. Reviewer authored original fixture/workflow; root cross-review retained and no independent test authorship claimed.",
+  "remaining": [
+    "Root ordinary protected merge after immediate fresh refs/protection/checks; reviewer performs no merge/push/dispatch.",
+    "Own documented main deployment and exact public artifact before next protected read-only production diagnosis.",
+    "Actual finite identity category and ACL recipient metadata/manual review remain unproved; old777 ERROR andold504 INCOMPLETE preserved.",
+    "New HRM source finalhead must include new protected main bytes and receive fresh whole-tree exact CI;851 results retained historically afterhead advances."
+  ],
+  "limits": [
+    "36PASS proves actual isolated PostgreSQL source behavior, not real production recipients/ACL approval or C12operations.",
+    "No source/SQL/role/grant/config/secret/production mutation or localheavychecks by reviewer.",
+    "No READY or release approval inferred from catalog evidence."
+  ]
+}

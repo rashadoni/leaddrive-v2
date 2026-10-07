@@ -1,0 +1,185 @@
+{
+  "head": "8513737b880623b2b62ab4721672a55b8101ba1a",
+  "runId": 37667576332,
+  "runAttempt": 1,
+  "status": "PASS",
+  "sourceBindings": [
+    {
+      "lane": "report",
+      "path": "scripts/workforce-exception-report-browser-evidence.mjs",
+      "bytes": 41827,
+      "sha256": "4216c6421088dc1b47e90ee1f4c68a43e740b80efbfdfc7337b31016d85a8458"
+    },
+    {
+      "lane": "report",
+      "path": "scripts/ci/fixtures/workforce-exception-report-browser.sql",
+      "bytes": 4741,
+      "sha256": "85d4237ef3e2a9c1fb782d9ee70e8ed801d82fcc2703fd4932494fa2e3e344b3"
+    },
+    {
+      "lane": "report",
+      "path": "scripts/ci/fixtures/workforce-manager-today-browser.sql",
+      "bytes": 33617,
+      "sha256": "448d08b65048f3692145d1d2d73d1f4b2f5973363172dddb959b4c9daf20a4fb"
+    },
+    {
+      "lane": "report",
+      "path": ".github/workflows/workforce-exception-report-browser-evidence.yml",
+      "bytes": 25256,
+      "sha256": "1dcd49d422fb212d4ee1eac6368de97837fe62fc5ca5975a7faa2b6c61dc18e7"
+    },
+    {
+      "lane": "report",
+      "path": "src/components/workforce/workforce-exception-report.tsx",
+      "bytes": 12570,
+      "sha256": "7e0ea96c737c7ca8a21bdbe5431b1ed859466e9bd93918d063e271c195b9c87f"
+    },
+    {
+      "lane": "report",
+      "path": "src/components/workforce/workforce-exception-recorded-outcomes.tsx",
+      "bytes": 6293,
+      "sha256": "1039384b9a47e87b48a001b115300c7161cd3d144b376adce20276f5172cc386"
+    },
+    {
+      "lane": "report",
+      "path": "src/app/api/v1/workforce/exception-reports/route.ts",
+      "bytes": 6162,
+      "sha256": "6d4935a3cd3adbbbb411619a813287a6ba8b7d58cc89dec888074130360233bf"
+    },
+    {
+      "lane": "report",
+      "path": "src/lib/workforce/exception-case-report-read.ts",
+      "bytes": 3384,
+      "sha256": "b34a3ef9d52359a235040802c5ede11c03f128c7250b41f5b2a86d10860b82b5"
+    },
+    {
+      "lane": "report",
+      "path": "src/lib/workforce/exception-case-report-recorded-outcomes.ts",
+      "bytes": 8338,
+      "sha256": "1d84daa28a7b21a8ad8545f5b494c1030c338cff75fc168f87153541d5f0321c"
+    },
+    {
+      "lane": "report",
+      "path": "messages/en.json",
+      "bytes": 1353703,
+      "sha256": "968f55c77be76ef307a5d4b3d72f3ee9e1fd255bc6a37edc8632552892331244"
+    },
+    {
+      "lane": "report",
+      "path": "messages/ru.json",
+      "bytes": 1999330,
+      "sha256": "f4401ef992a363e9c3d8deb5b158545016be2b5732db797227fb8517972be956"
+    },
+    {
+      "lane": "report",
+      "path": "messages/az.json",
+      "bytes": 1497486,
+      "sha256": "d7bc057c39c526d58f88e99201371e1e508d14ebd82e490ada359d93dd06eddd"
+    },
+    {
+      "lane": "classification",
+      "path": "scripts/workforce-exception-classification-browser-evidence.mjs",
+      "bytes": 35825,
+      "sha256": "216967516c60bab48390aefeebce651524130eefabc7c90cf4d00ee05e899025"
+    },
+    {
+      "lane": "classification",
+      "path": "scripts/ci/fixtures/workforce-exception-classification-browser.sql",
+      "bytes": 8727,
+      "sha256": "41ecf5a96c0accb2469971042bf3f47f0e8d7e6fcfa65a8538e1cd7f4013d7e0"
+    },
+    {
+      "lane": "classification",
+      "path": "scripts/ci/fixtures/workforce-manager-today-browser.sql",
+      "bytes": 33617,
+      "sha256": "448d08b65048f3692145d1d2d73d1f4b2f5973363172dddb959b4c9daf20a4fb"
+    },
+    {
+      "lane": "classification",
+      "path": ".github/workflows/workforce-exception-report-browser-evidence.yml",
+      "bytes": 25256,
+      "sha256": "1dcd49d422fb212d4ee1eac6368de97837fe62fc5ca5975a7faa2b6c61dc18e7"
+    },
+    {
+      "lane": "classification",
+      "path": "src/components/workforce/workforce-exception-queue.tsx",
+      "bytes": 23077,
+      "sha256": "5160dcc8b943d0caca712ae0dcad02725784fcb4c2401479c16dede00d0c3b1f"
+    },
+    {
+      "lane": "classification",
+      "path": "src/app/api/v1/workforce/exceptions/route.ts",
+      "bytes": 13279,
+      "sha256": "5a33ec78dc7fe6b05e920cbdb22fecb46f85d45c74840486533ea56df68034ff"
+    },
+    {
+      "lane": "classification",
+      "path": "src/app/api/v1/workforce/exception-decisions/route.ts",
+      "bytes": 4157,
+      "sha256": "eeeb1dda5d637fb0fdaa831021556a1200a1bd502e73df05838e850284db34c9"
+    },
+    {
+      "lane": "classification",
+      "path": "src/lib/workforce/exception-outcome-classification.ts",
+      "bytes": 2447,
+      "sha256": "947410fb0687987a465c38ce0c9455d3923d62039d9030b43bda3e0afae99a23"
+    },
+    {
+      "lane": "classification",
+      "path": "src/lib/workforce/exception-decision-service.ts",
+      "bytes": 11916,
+      "sha256": "dd10ffed0f37f80b79eae0e784918966033995283cafdbf6a4ec738b6275e21c"
+    },
+    {
+      "lane": "classification",
+      "path": "src/lib/workforce/exception-case-writer.ts",
+      "bytes": 19607,
+      "sha256": "61814e5d395143a6deacc9bd92e0aee1ffb508cc1c168724897dd9bf67da201f"
+    },
+    {
+      "lane": "classification",
+      "path": "src/lib/workforce/exception-policy-draft.ts",
+      "bytes": 8270,
+      "sha256": "f45f761e9c2e829351eb930c7e191f667327b3ed040338b4033b54381da59b6b"
+    },
+    {
+      "lane": "classification",
+      "path": "messages/en.json",
+      "bytes": 1353703,
+      "sha256": "968f55c77be76ef307a5d4b3d72f3ee9e1fd255bc6a37edc8632552892331244"
+    },
+    {
+      "lane": "classification",
+      "path": "messages/ru.json",
+      "bytes": 1999330,
+      "sha256": "f4401ef992a363e9c3d8deb5b158545016be2b5732db797227fb8517972be956"
+    },
+    {
+      "lane": "classification",
+      "path": "messages/az.json",
+      "bytes": 1497486,
+      "sha256": "d7bc057c39c526d58f88e99201371e1e508d14ebd82e490ada359d93dd06eddd"
+    }
+  ],
+  "reportCases": 9,
+  "classificationCases": 11,
+  "reportRlsRelationsBeforeAndAfter": 5,
+  "populatedTenants": 2,
+  "unchangedFactTables": 22,
+  "actualNewDecisionsAndLinkedAudits": 6,
+  "mandatoryTotpAndConsumedNonceSessions": 7,
+  "scope": "Isolated hosted actual browser/PG execution; synthetic tenants, not live HR observation",
+  "visualQualifications": {
+    "reportEn1440": "Final fractions and sample footer visible",
+    "reportAz768": "Fractions visible; clipped capture; inherited English duration terms",
+    "reportRu320": "Mostly blank nested-scroller capture; final fractions/footer NOT visible",
+    "classificationEn1440": "Manual boundary, feedback and controls visible",
+    "classificationAz768": "Manual boundary, partial outcome feedback and controls visible",
+    "classificationRu320": "Case columns visible; controls NOT visible; DOM/network interactions independently recorded"
+  },
+  "limitations": [
+    "Development bundles, separate production builds checked elsewhere",
+    "Synthetic audit guard not production MtmAuditLog guard",
+    "No human AT/full mobile/physical/pilot/load or actual HR acceptance"
+  ]
+}

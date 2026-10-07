@@ -1,0 +1,268 @@
+{
+  "version": 1,
+  "status": "CURRENT5638_FULLCOMPILER_ACCEPTED_UNCHANGED_GATES_GLOBAL_NONCLEAN_CLASSIFICATION_RETRY_PENDING",
+  "head": "5638f1ea63c2818aef8be1b0c497eff718303388",
+  "tree": "8743c6aa6b338efde65d8f24a04ee0ec5650fb46",
+  "manualRun": 37685323552,
+  "actualExecutedAttempt": 1,
+  "job": 113011546626,
+  "jobConclusion": "success",
+  "artifactId": 11512132811,
+  "archive": {
+    "path": "/tmp/hrm-release-5638-peer-compiler-original.zip",
+    "bytes": 19685,
+    "sha256": "b5ab4bffd6bfee28ff159dc9cbb335cfba93730227606f9af89e117238723643",
+    "GitHubDigestMatched": true,
+    "CRC": "PASS"
+  },
+  "rawLog": {
+    "path": "/tmp/hrm-release-5638-peer-artifacts/compiler/tsc-output.log",
+    "bytes": 177767,
+    "sha256": "fd626333ee46182254dc6a8b0a012af831b4e2781cc1a21f6ca373886ec9b4ba"
+  },
+  "exitArtifact": {
+    "path": "/tmp/hrm-release-5638-peer-artifacts/compiler/tsc-exit-code",
+    "bytes": 2,
+    "sha256": "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3",
+    "actualExit": 2
+  },
+  "actualAllFamilyDiagnostics": {
+    "total": 1153,
+    "familyCount": 35,
+    "counts": {
+      "TS18046": 89,
+      "TS18047": 2,
+      "TS18048": 14,
+      "TS18049": 1,
+      "TS2305": 1,
+      "TS2322": 54,
+      "TS2339": 75,
+      "TS2345": 29,
+      "TS2347": 8,
+      "TS2352": 12,
+      "TS2353": 5,
+      "TS2367": 6,
+      "TS2459": 1,
+      "TS2488": 1,
+      "TS2493": 14,
+      "TS2502": 2,
+      "TS2532": 6,
+      "TS2540": 1,
+      "TS2551": 1,
+      "TS2558": 50,
+      "TS2559": 1,
+      "TS2561": 1,
+      "TS2677": 1,
+      "TS2698": 4,
+      "TS2737": 148,
+      "TS2739": 3,
+      "TS2741": 9,
+      "TS2769": 9,
+      "TS2783": 1,
+      "TS2820": 1,
+      "TS4104": 1,
+      "TS7006": 580,
+      "TS7016": 1,
+      "TS7022": 2,
+      "TS7031": 19
+    }
+  },
+  "owned18AllFamilyErrors": {
+    "src/__tests__/api-workforce-exception-decisions.test.ts": 0,
+    "src/__tests__/api-workforce-exception-reports.test.ts": 0,
+    "src/__tests__/lib-workforce-exception-case-writer.test.ts": 0,
+    "src/__tests__/lib-workforce-exception-report-postgres.test.ts": 0,
+    "src/__tests__/lib-workforce-exception-workbench.test.ts": 0,
+    "src/__tests__/workforce-exception-case-report-recorded-outcomes.test.ts": 0,
+    "src/__tests__/workforce-exception-classification-browser-evidence-guard.test.ts": 0,
+    "src/__tests__/workforce-exception-queue-action-ui.test.ts": 0,
+    "src/__tests__/workforce-exception-recorded-outcomes-ui.test.ts": 0,
+    "src/app/api/v1/workforce/exceptions/route.ts": 0,
+    "src/components/workforce/workforce-exception-queue.tsx": 0,
+    "src/components/workforce/workforce-exception-recorded-outcomes.tsx": 0,
+    "src/lib/workforce/exception-case-report-recorded-outcomes.ts": 0,
+    "src/lib/workforce/exception-case-writer.ts": 0,
+    "src/lib/workforce/exception-decision-service.ts": 0,
+    "src/lib/workforce/exception-outcome-classification.ts": 0,
+    "src/lib/workforce/exception-policy-draft.ts": 0,
+    "src/lib/workforce/exception-workbench.ts": 0
+  },
+  "gated64PairCounts": {
+    "src/__tests__/api-account-engagement-handoff.test.ts TS2353": 1,
+    "src/__tests__/api-mtm-locations.test.ts TS2322": 3,
+    "src/__tests__/api-mtm-route-candidates.test.ts TS2322": 1,
+    "src/__tests__/api-social-facebook-native-search-worker.test.ts TS2353": 1,
+    "src/__tests__/api-social-monitoring-profile-logo.test.ts TS2322": 1,
+    "src/__tests__/api-users-me-avatar.test.ts TS2322": 1,
+    "src/__tests__/auth-session-invalidation.test.ts TS2345": 1,
+    "src/__tests__/lib-inbound-name-sanitization.test.ts TS2345": 4,
+    "src/__tests__/lib-safe-raster-upload.test.ts TS2322": 1,
+    "src/__tests__/lib-social-ai-draft-service.test.ts TS2322": 1,
+    "src/__tests__/lib-social-ai-draft-service.test.ts TS2353": 3,
+    "src/__tests__/lib-social-ingest-mention.test.ts TS2345": 1,
+    "src/__tests__/lib-social-monitoring-import-fence.test.ts TS2345": 1,
+    "src/__tests__/lib-social-relevance-confidence-policy.test.ts TS2345": 1,
+    "src/__tests__/lib-voice-agent-post-call.test.ts TS2339": 1,
+    "src/__tests__/mtm-module-navigation.test.ts TS2322": 1,
+    "src/__tests__/softphone-end-to-end.test.ts TS2322": 1,
+    "src/app/api/cron/social-poll/route.ts TS2345": 7,
+    "src/app/api/cron/social-web-news/route.ts TS2322": 1,
+    "src/app/api/v1/audit-log/route.ts TS2339": 2,
+    "src/app/api/v1/deal-velocity/route.ts TS2339": 7,
+    "src/app/api/v1/leads/[id]/route.ts TS2339": 1,
+    "src/app/api/v1/mtm/contacts/route.ts TS2322": 1,
+    "src/app/api/v1/mtm/contacts/route.ts TS2339": 8,
+    "src/app/api/v1/mtm/customer-create-requests/[id]/decision/route.ts TS2322": 1,
+    "src/app/api/v1/mtm/kpi/route.ts TS2339": 6,
+    "src/app/api/v1/mtm/kpi/route.ts TS2345": 4,
+    "src/app/api/v1/mtm/mobile/sync/push/route.ts TS2322": 20,
+    "src/app/api/v1/mtm/mobile/sync/push/route.ts TS2339": 1,
+    "src/app/api/v1/mtm/mobile/sync/push/route.ts TS2345": 3,
+    "src/app/api/v1/mtm/mobile/sync/push/route.ts TS2551": 1,
+    "src/app/api/v1/mtm/mobile/tasks/[id]/route.ts TS2339": 1,
+    "src/app/api/v1/mtm/organization-attribute-packages/route.ts TS2322": 1,
+    "src/app/api/v1/mtm/tasks/[id]/route.ts TS2339": 7,
+    "src/app/api/v1/mtm/visits/[id]/actions/route.ts TS2322": 1,
+    "src/app/api/v1/mtm/week/route.ts TS2339": 11,
+    "src/app/api/v1/mtm/week/route.ts TS2345": 1,
+    "src/app/api/v1/social/ingest-envelopes/route.ts TS2322": 1,
+    "src/app/api/v1/social/manual-engagement-tasks/route.ts TS2339": 11,
+    "src/components/mtm/contact-detail.tsx TS2322": 2,
+    "src/components/mtm/contact-duplicate-dialog.tsx TS2322": 2,
+    "src/components/mtm/contact-workplace-dialog.tsx TS2322": 1,
+    "src/components/mtm/operational-week-home.tsx TS2345": 1,
+    "src/components/mtm/organization-detail.tsx TS2322": 1,
+    "src/components/mtm/organization-explorer.tsx TS2322": 1,
+    "src/components/mtm/route-planning-matrix.tsx TS2322": 1,
+    "src/components/mtm/task-form.tsx TS2322": 2,
+    "src/components/mtm/task-workspace.tsx TS2345": 1,
+    "src/components/tasks/task-detail-view.tsx TS2339": 1,
+    "src/lib/ai/voice/execute-read-tool.ts TS2345": 1,
+    "src/lib/commitments/late-callbacks.ts TS2339": 4,
+    "src/lib/inbox/lead-qualification.ts TS2345": 1,
+    "src/lib/inbox/send-conversation-reply.ts TS2339": 6,
+    "src/lib/social/automatic-review-backfill.ts TS2339": 1,
+    "src/lib/social/legal-workflow.ts TS2322": 2,
+    "src/lib/social/monitoring-collector.ts TS2322": 1,
+    "src/lib/social/monitoring-import-fence.ts TS2322": 1,
+    "src/lib/social/social-monitoring-pdf.ts TS2345": 1,
+    "src/lib/social/twitter-poller.ts TS2322": 1,
+    "src/lib/social/visual-monitoring-report.ts TS2322": 1,
+    "src/lib/social/visual-monitoring-report.ts TS2339": 7,
+    "src/lib/social/youtube-comments-adapter.ts TS2322": 1,
+    "src/lib/voice-agent/place-callback.ts TS2322": 1,
+    "src/lib/voice-agent/place-callback.ts TS2345": 1
+  },
+  "gatedPairsExactlyHistoricalAndUnchangedBaseline": true,
+  "actualHostedGates": {
+    "checkTypecheckGate": "PASS completed actual job step",
+    "checkTypecheckBaseline": "PASS actual log64gatednow/64baseline/1153errors; no newshape errors andbaseline stillmatches"
+  },
+  "allRawCompilerBytesExactlyAccepted88": true,
+  "globalCompilerClean": false,
+  "jobSteps": [
+    {
+      "number": 1,
+      "name": "Set up job",
+      "conclusion": "success"
+    },
+    {
+      "number": 2,
+      "name": "Run actions/checkout@v6",
+      "conclusion": "success"
+    },
+    {
+      "number": 3,
+      "name": "Verify exact head",
+      "conclusion": "success"
+    },
+    {
+      "number": 4,
+      "name": "Run actions/setup-node@v6",
+      "conclusion": "success"
+    },
+    {
+      "number": 5,
+      "name": "Run npm ci",
+      "conclusion": "success"
+    },
+    {
+      "number": 6,
+      "name": "Run npx prisma generate",
+      "conclusion": "success"
+    },
+    {
+      "number": 7,
+      "name": "Prepare bounded hosted compiler memory",
+      "conclusion": "success"
+    },
+    {
+      "number": 8,
+      "name": "Complete compiler diagnostics with preserved exit",
+      "conclusion": "success"
+    },
+    {
+      "number": 9,
+      "name": "Unchanged blocking compiler gates",
+      "conclusion": "success"
+    },
+    {
+      "number": 10,
+      "name": "Preserve complete compiler originals",
+      "conclusion": "success"
+    },
+    {
+      "number": 11,
+      "name": "Cleanup bounded compiler swap",
+      "conclusion": "success"
+    },
+    {
+      "number": 21,
+      "name": "Post Run actions/setup-node@v6",
+      "conclusion": "success"
+    },
+    {
+      "number": 22,
+      "name": "Post Run actions/checkout@v6",
+      "conclusion": "success"
+    },
+    {
+      "number": 23,
+      "name": "Complete job",
+      "conclusion": "success"
+    }
+  ],
+  "originBindings": [
+    {
+      "path": "/tmp/hrm-release-5638-peer-compiler-original.log",
+      "bytes": 255101,
+      "sha256": "f96c4293dd160ef2b9cb591351d6bbc906dd0f949402bbf66fee33ec8504c688"
+    },
+    {
+      "path": "/tmp/hrm-release-5638-peer-compiler-artifact.json",
+      "bytes": 770,
+      "sha256": "b7448bf45bf37a0eb9d15c292d8c599b084141980f6f53f6b492429e3ce638d4"
+    },
+    {
+      "path": "/tmp/hrm-release-5638-peer-attempt1-terminal-run.json",
+      "bytes": 12936,
+      "sha256": "d7f794e95a7e98f420fcf486e9ac24c177a7cad16d631e49edacccaeb5569767"
+    },
+    {
+      "path": "/tmp/hrm-release-5638-peer-attempt1-terminal-jobs.json",
+      "bytes": 17202,
+      "sha256": "b1d6b1d581bcfd91aae4beb4704a7e3403b489b1760e4ac0d804d8ecf65e0f23"
+    },
+    {
+      "path": "/tmp/hrm-release-independent-source-5638f1ea.json",
+      "bytes": 32345,
+      "sha256": "29ecb1a0a818b84a995df442341d8a52d74120a1d5bafd1b466bcbda7db5be27"
+    }
+  ],
+  "authorship": "Root production source/workflow independently reviewed; reviewer-authored tests/harnesses disclosed/root cross-review retained. This assessment parses received artifacts only; no local compiler or gate rerun.",
+  "remaining": [
+    "Root unchanged failed-classification-only job rerun nowauthorizedafterall5terminal. Preserve original failed1 and actual successful4; only retryjob executesagain, no claimed secondexecutionofcompiler/report/PG/build.",
+    "Five required PR checks and all13applicable status-current/sourcehead need finalmetadata snapshot.",
+    "Production live recipient read remains pending ownf8deployment/publicmatch; no HRMmerge/release/DONE/C12 credit."
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "reviewKind": "ADDITIVE_ADVERSARIAL_APPROVED_PERCENTAGE_POLICY_REVIEW",
+  "createdAt": "2026-10-07T22:07:20.104750+00:00",
+  "head": "c7deecf8c86672204434c157f7be2f0e85566fc7",
+  "tree": "a3be6ea7f6fd48ef63aba0e0f6245ba95872f404",
+  "bindings": [
+    {
+      "path": "src/lib/workforce/exception-case-report-recorded-outcomes.ts",
+      "bytes": 8338,
+      "sha256": "1d84daa28a7b21a8ad8545f5b494c1030c338cff75fc168f87153541d5f0321c"
+    },
+    {
+      "path": "src/components/workforce/workforce-exception-recorded-outcomes.tsx",
+      "bytes": 6293,
+      "sha256": "1039384b9a47e87b48a001b115300c7161cd3d144b376adce20276f5172cc386"
+    },
+    {
+      "path": "docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+      "bytes": 1170059,
+      "sha256": "5979c1914642c784589f5c742c283f2d23aab7250b99211dc3cc37b22f8ef68a"
+    }
+  ],
+  "finding": {
+    "priority": "P2",
+    "status": "OPEN_POLICY_UI_ACCEPTANCE_GAP",
+    "path": "src/components/workforce/workforce-exception-recorded-outcomes.tsx",
+    "line": 36,
+    "issue": "Inherited linkedCorrection percentage displays one approved-request ledger link divided by all8 recorded cases, including unfinished/integrity/unclassified cases, despite user unqualified reviewed-only percentage rule. Current four final HR outcome percentages have correct classified/resolved current-cycle denominators.",
+    "userRule": "Проценты считаются только по рассмотренным случаям; незавершённые случаи и размер выборки показываются отдельно.",
+    "otherUserRule": "Открытые, повторно открытые и неклассифицированные случаи не включай в знаменатель окончательных исходов.",
+    "sourceEvidence": "Accepted973 linkedCorrection.share intentionally uses all recorded cohort cases and explicitly states recorded-approved-request link, not current workday correction. Current C7 unchanged historical linkage API and accurately labelled screenshot12.5%=1of8. Roadmap WF-C6-010 includes correction rate among aggregate metrics.",
+    "interpretation": "Inherited descriptive association is not a false-positive or appeal outcome, and its all-case denominator is internally coherent. However, no explicit user exception authorizes that displayed percentage after broader newly approved reviewed-only percentage rule; prior implementation/synthetic acceptance cannot establish such exception.",
+    "recommendedMinimalCorrection": "Retain historical-link section, immutable all-recorded CASE_RECORDED_AT cohort and current API contract; replace historical percentage UI with localized linked count/total denominator. Leave final false-positive and full/partial/rejected percentage samples unchanged. Do not redefine historical denominator or infer correction approval means erroneous system outcome.",
+    "requiredVerification": "Update meaningful UI text/absence-of-historical-percent assertions; preserve exact historical numerator/denominator/API assertions, all final percent/null/sample/range/tenant/privacy/immutable tests and unchanged baseline gates. New final commit/fresh whole CI/browser/PG/review required."
+  },
+  "priorReviewScope": "Previous source/browser receipts remain immutable factual source/runtime bindings. This additive policy finding holds semantic whole acceptance; no old receipt rewritten or runtime failure invented.",
+  "editsPerformed": false,
+  "productionMutationsPerformed": false,
+  "authorship": "Reviewer authored browser harness verification and diagnostic SQL/tests/workflows; this independent product-policy finding reviews root UI against user instructions and inherited source.",
+  "limitations": [
+    "No user clarification or explicit waiver exists for historical all-cohort displayed percentage; recommendation uses authorized minimal implementation choice rather than inventing waiver.",
+    "Existing historical API linked ratio is descriptive and not automatically a personnel outcome. No actual production percentage/HR operational observation was collected."
+  ]
+}

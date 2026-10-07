@@ -1,0 +1,34 @@
+{
+  "archivedAtUtc": "2026-10-07T23:33:39.825711+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-wf-c6-010-final-root-accounting-proof.json.gz",
+      "originalBytes": 644,
+      "originalSha256": "452732e9cc6d603760bf6f81bb4ccb71e96769234dbf38f31b3c65097a07ae10",
+      "storedBytes": 406,
+      "storedSha256": "0d1de22c5a8f17aeda66a6218b0e33bcaa7bc261b36d73d3c178b41d38bc6cff"
+    },
+    {
+      "path": "hrm-wf-c6-010-final-docs-peer-review.json.gz",
+      "originalBytes": 5249,
+      "originalSha256": "d06c5b26e829b67b76f7d2ab7ce7f73f0d2b24ca6b50d0ba1b4800f33c7dbd9e",
+      "storedBytes": 2384,
+      "storedSha256": "4205adea90940342a91c9d326b6abc6bc5ad971265c148c3bd272157596ff97a"
+    },
+    {
+      "path": "hrm-pr589-final-released-description.json.gz",
+      "originalBytes": 2976,
+      "originalSha256": "d79b99ef1643ea3cbf450605d131e708176e616daa9d3930471983e496dab337",
+      "storedBytes": 1691,
+      "storedSha256": "6de8884ca0cf07dbb6856c57f5da2addd65f515cd19753d09d41ac4b9c674612"
+    },
+    {
+      "path": "hrm-pr617-final-accepted-description.json.gz",
+      "originalBytes": 1509,
+      "originalSha256": "9211b8d113f7c191f32fa2349030482f9d7eb1907971272d248ab8aee2121150",
+      "storedBytes": 911,
+      "storedSha256": "43bbda1d85d19b08e22735c267c9b227af0bdf62924986172869afe3b6564f24"
+    }
+  ]
+}

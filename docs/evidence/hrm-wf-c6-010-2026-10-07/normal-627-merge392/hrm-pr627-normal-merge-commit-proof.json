@@ -1,0 +1,54 @@
+{
+  "merge": {
+    "sha": "392e0a38e37b9f3915e5ceb2d3b5caf8cd0698ad",
+    "merged": true,
+    "message": "Pull Request successfully merged"
+  },
+  "commit": {
+    "sha": "392e0a38e37b9f3915e5ceb2d3b5caf8cd0698ad",
+    "node_id": "C_kwDOUTPB8doAKDM5MmUwYTM4ZTM3YjlmMzkxNWU1Y2ViMmQzYjVjYWY4Y2QwNjk4YWQ",
+    "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/git/commits/392e0a38e37b9f3915e5ceb2d3b5caf8cd0698ad",
+    "html_url": "https://github.com/rashadoni/leaddrive-v2/commit/392e0a38e37b9f3915e5ceb2d3b5caf8cd0698ad",
+    "author": {
+      "name": "rashadoni",
+      "email": "rashadrahimsoy@gmail.com",
+      "date": "2026-10-07T22:15:09Z"
+    },
+    "committer": {
+      "name": "GitHub",
+      "email": "noreply@github.com",
+      "date": "2026-10-07T22:15:09Z"
+    },
+    "tree": {
+      "sha": "e57592a08b458c5bfd815029d93fa6a7ae1969b1",
+      "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/git/trees/e57592a08b458c5bfd815029d93fa6a7ae1969b1"
+    },
+    "message": "Merge pull request #627 from rashadoni/codex/hrm-release-backup-acl-attribution-20261007\n\nchore(hrm): attribute default SELECT to protected declared backup role",
+    "parents": [
+      {
+        "sha": "f8dd20c7a849643087ee31969c2f582a96c8bab3",
+        "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/git/commits/f8dd20c7a849643087ee31969c2f582a96c8bab3",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/commit/f8dd20c7a849643087ee31969c2f582a96c8bab3"
+      },
+      {
+        "sha": "60efe23846fddc7deea16c48ba3a90bd962aae35",
+        "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/git/commits/60efe23846fddc7deea16c48ba3a90bd962aae35",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/commit/60efe23846fddc7deea16c48ba3a90bd962aae35"
+      }
+    ],
+    "verification": {
+      "verified": true,
+      "reason": "valid",
+      "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsFcBAABCAAQBQJqxsRtCRC1aQ7uu5UhlAAAO4oQAEO/92UNNJ0n825k73el5sy6\nqVNb+uy3DgSmcfrc89SSK0+GmSAda3fA/iW/+IOkbE+/W/ZG5ZKQ6QTRLrEBOrFT\n5FPo3HkbgGHi1qCEmwcg5lEGN2KvfBQXSBoQYG999iZqF8dv0tQXtjYV72hwB2+E\nvsEGTzcZ00u9OVssNdkx+Fx5cgKUfWrUxu6PI9NJ7+gUTSpKmVIyGVAyfISGtvqa\nOifCNYwTX0Taj1hv2yfvNPLJK8ZsyNoxTGKB4Bo1cTShfrGmA4R4w6pw7Gb/VwL6\nRmEwYsT08HsXKM4+tLhBSzQjaQ80xyy4VCSBcvHCEF1ozLqaQkh1FZsmU01o5k15\nDCRO4Encd2CSKRMxr5J9jjhOxIUr9D0IEB7VfoXWVD7Q2nTvZs4scoe1/o6IFAJp\nLqgRzO+UIgwliNyuX7DubZRHT6nij7TyqsA8QPfms/ay+yin646RpiHQsyi49uGu\ny3+ShVcgFi3F4EEpWRHp6rK0CR6+by86irEhfR66k2KKIgqS1oiILZ7Al5K7IluI\nKF7hzpOeS+1AWB5hakSyqltXDgcHupYJrK6UGSD/DxO3MpyVzZCcrOvWeEs1+T2o\n+N5vlICYN1H/5KedsMklgGpdXY2Su7t9tTOX3P0HmOBRXCijKNZXDonwtUBZbHu+\n1hFuhsS8+G15PikznZZN\n=cmsA\n-----END PGP SIGNATURE-----\n",
+      "payload": "tree e57592a08b458c5bfd815029d93fa6a7ae1969b1\nparent f8dd20c7a849643087ee31969c2f582a96c8bab3\nparent 60efe23846fddc7deea16c48ba3a90bd962aae35\nauthor rashadoni <rashadrahimsoy@gmail.com> 1791411309 +0400\ncommitter GitHub <noreply@github.com> 1791411309 +0400\n\nMerge pull request #627 from rashadoni/codex/hrm-release-backup-acl-attribution-20261007\n\nchore(hrm): attribute default SELECT to protected declared backup role",
+      "verified_at": "2026-10-07T22:15:10Z"
+    }
+  },
+  "expectedParents": [
+    "f8dd20c7a849643087ee31969c2f582a96c8bab3",
+    "60efe23846fddc7deea16c48ba3a90bd962aae35"
+  ],
+  "testedWholeTreeExact": true,
+  "deployPending": true,
+  "productionAclApproval": false
+}

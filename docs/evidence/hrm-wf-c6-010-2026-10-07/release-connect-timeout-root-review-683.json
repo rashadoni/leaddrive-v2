@@ -1,0 +1,57 @@
+{
+  "head": "683bfa056ab1f81877de5b8a238658847f1f51e4",
+  "pass": true,
+  "syntheticValidGrammarCases": 7,
+  "rawAndEncodedPlusEqual": true,
+  "fixedTenSecondBudget": true,
+  "outerThirtySecondBudget": true,
+  "forcedReadOnlyAndIdentityUnchanged": true,
+  "noConnectionUriInArgs": true,
+  "scope": "Root independent bounded source review, no actual SQL or config",
+  "changedPaths": [
+    "docs/hrm-release-preflight-session-log.md",
+    "scripts/hrm-migration-metadata-preflight.mjs",
+    "scripts/hrm-migration-metadata-preflight.test.mjs"
+  ],
+  "unchangedBindings": [
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.sql",
+      "sha256": "b174e32eb68a0dbcca98e8557fe8c716ed8277111e79ba822bce43f4e7023b6a"
+    },
+    {
+      "path": ".github/workflows/hrm-migration-metadata-preflight.yml",
+      "sha256": "f90937ecda3b81e7dd017819cfaec1afdefc5fee58167fdfc2289ce012a1dcf1"
+    },
+    {
+      "path": "test-baseline.json",
+      "sha256": "8f0fc568274f9fd8c0c741db618d6e4d81025de7112a315cd93e6b92bbd5a4b1"
+    },
+    {
+      "path": "typecheck-baseline.json",
+      "sha256": "919fa9d0212b18ee685af4f08680ebbc34e8c4969294054447df03147bf0fc53"
+    },
+    {
+      "path": "scripts/ci/check-typecheck-gate.sh",
+      "sha256": "a18608d9297c039380481fb27d6200d9ebbcc731e9ec23dd40b5e3a2c5a40937"
+    },
+    {
+      "path": "scripts/ci/check-typecheck-baseline.mjs",
+      "sha256": "8b8a2472a1c813e85c4177c24c6df5fb5907d981b5b43e6870a04cbbba2b812a"
+    },
+    {
+      "path": "scripts/check-test-baseline.mjs",
+      "sha256": "6c3380718fd71061d2efe4aa396fcb9cc998336c5c95a3bbd2de05230058027e"
+    },
+    {
+      "path": "prisma/schema.prisma",
+      "sha256": "e065f343c9f31c4e7523f6102a5ffa62e56fd9cee1946e78bab0f64e6da58e57"
+    }
+  ],
+  "initialRawPlusFailurePreserved": true,
+  "agentUnitResult": {
+    "pass": 21,
+    "fail": 0,
+    "hostedSQLskip": 1
+  },
+  "sourceReview": "PASS narrow known non-startup connection hint normalizes; arbitrary options remain forbidden; guarded SQL/default observations unchanged; actual catalogue NOT RUN"
+}

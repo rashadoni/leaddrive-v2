@@ -1,0 +1,42 @@
+{
+  "scope": "Auxiliary5f actual52/52/no skips; frozenHRM5638 independent sourcePASS/runtimepending",
+  "auxHead": "5f1437559afd5e1f2f8a2ebcf5aa4123c687e6db",
+  "hrmHead": "5638f1ea63c2818aef8be1b0c497eff718303388",
+  "files": [
+    {
+      "file": "hrm-loopback-acl-5f-hosted-original.log",
+      "bytes": 58343,
+      "sha256": "99208b4c92c91c562129f3fb6bf2ab1b7392c59fdd399fba63fdc40053202a8a"
+    },
+    {
+      "file": "hrm-loopback-acl-independent-source-5f143755.json",
+      "bytes": 7890,
+      "sha256": "785c830b98d4672d293324daf08d7e8a482db408dc29cd6c556c86cf47c62f72"
+    },
+    {
+      "file": "hrm-loopback-acl-independent-hosted-5f143755.json",
+      "bytes": 7194,
+      "sha256": "6326bd6a251cdbf6d952ec868ff01776b1f53185243faea35c13ca4e023c476d"
+    },
+    {
+      "file": "hrm-loopback-pgappname-correction-node-unit.log",
+      "bytes": 4023,
+      "sha256": "b1c95283dde4743af005462438bfdb4f4fa746653e3acf47543fead6a55a75da"
+    },
+    {
+      "file": "hrm-release-independent-source-5638f1ea.json",
+      "bytes": 32345,
+      "sha256": "29ecb1a0a818b84a995df442341d8a52d74120a1d5bafd1b466bcbda7db5be27"
+    },
+    {
+      "file": "hrm-final-source-continuity-root-provisional021.json",
+      "bytes": 7102,
+      "sha256": "ee5eb68e2121ba681f301e80ad0d06226a2259997d4eec25b3225a40224bea98"
+    },
+    {
+      "file": "hrm-evidence-5638-merge-root-proof.json",
+      "bytes": 926,
+      "sha256": "b5b4c47cee201e2ed9bd3129ed36652a46483106a9f349652c332a9bd16a96aa"
+    }
+  ]
+}

@@ -1,0 +1,571 @@
+{
+  "version": 1,
+  "reviewId": "HRM-release-independent-whole-technical-06254",
+  "createdAtUtc": "2026-10-07T15:01:24.659826+00:00",
+  "reviewer": "/root/inspect_outcome_contract",
+  "headSha": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+  "gitTree": "38b49b4cbe974a21e6a0f982dbbacab20aecf7da",
+  "status": "ACCEPTED_COMPLETE_FRESH_EXACT062_FINITE_TECHNICAL_IMPLEMENTATION_PRODUCTION_PREFLIGHT_AND_RELEASE_PENDING",
+  "acceptanceScope": "Approved WF-C6-010 explicit human outcomes/storage/API/UI/validation/private immutable decision ledger/current-cycle aggregate contract and all fresh technical gates; preserves prior C7/C8/C12 stack and incoming main. No production migration/release/activation, real HR observations, globally clean repository or whole roadmap acceptance.",
+  "authorshipDisclosure": "Reviewer authored C6 report DB/browser extensions, classification fixture/harness and auxiliary metadata helper/workflow/SQL tests; root independently reviewed those exact verification sources. Reviewer independently evaluated root-authored production/integration/workflow source and actual fresh GitHub artifacts. Not independent test authorship or second runtime execution. Source/runtime defects previously missed and original failed attempts remain retained.",
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "acceptedCurrentHeadReviewBindings": [
+    {
+      "path": "/tmp/hrm-release-independent-source-06254.json",
+      "bytes": 28190,
+      "sha256": "026f4c33cccd8c1676e149fe64658bb4f7a982dbd84e17f19dd604d67e8e8b2c"
+    },
+    {
+      "path": "/tmp/hrm-release-independent-browser-06254.json",
+      "bytes": 30173,
+      "sha256": "ba5fa8cc8d8db0d761a916b0863ce4d395f483f405fa6bfadb4c4cc727afb8d1"
+    },
+    {
+      "path": "/tmp/hrm-release-independent-pg-build-06254.json",
+      "bytes": 15080,
+      "sha256": "1f8cfcf5e7546149cfaec0c0016816710d3ecbb00558cf34e154f0e95dae619c"
+    }
+  ],
+  "freshExact5LaneRun": {
+    "id": 37635350493,
+    "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37635350493",
+    "event": "workflow_dispatch",
+    "headSha": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+    "runAttempt": 1,
+    "status": "completed",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "id": 112839990595,
+        "name": "Exact WF-C6-010 full compiler gates",
+        "headSha": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+        "conclusion": "success",
+        "completedAt": "2026-10-07T14:38:49Z"
+      },
+      {
+        "id": 112839990999,
+        "name": "Authenticated Workforce exception report browser evidence",
+        "headSha": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+        "conclusion": "success",
+        "completedAt": "2026-10-07T14:23:59Z"
+      },
+      {
+        "id": 112839991015,
+        "name": "Exact WF-C6-010 authenticated HR recording browser",
+        "headSha": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+        "conclusion": "success",
+        "completedAt": "2026-10-07T14:24:31Z"
+      },
+      {
+        "id": 112839991063,
+        "name": "Exact WF-C6-010 isolated production bundle build",
+        "headSha": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+        "conclusion": "success",
+        "completedAt": "2026-10-07T14:27:15Z"
+      },
+      {
+        "id": 112839991260,
+        "name": "Exact WF-C6-010 source and PostgreSQL regressions",
+        "headSha": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+        "conclusion": "success",
+        "completedAt": "2026-10-07T14:30:18Z"
+      }
+    ]
+  },
+  "compiler": {
+    "jobId": 112839990595,
+    "actualExitCode": 2,
+    "actualDiagnostics": 1153,
+    "actualFamilies": {
+      "TS18046": 89,
+      "TS18047": 2,
+      "TS18048": 14,
+      "TS18049": 1,
+      "TS2305": 1,
+      "TS2322": 54,
+      "TS2339": 75,
+      "TS2345": 29,
+      "TS2347": 8,
+      "TS2352": 12,
+      "TS2353": 5,
+      "TS2367": 6,
+      "TS2459": 1,
+      "TS2488": 1,
+      "TS2493": 14,
+      "TS2502": 2,
+      "TS2532": 6,
+      "TS2540": 1,
+      "TS2551": 1,
+      "TS2558": 50,
+      "TS2559": 1,
+      "TS2561": 1,
+      "TS2677": 1,
+      "TS2698": 4,
+      "TS2737": 148,
+      "TS2739": 3,
+      "TS2741": 9,
+      "TS2769": 9,
+      "TS2783": 1,
+      "TS2820": 1,
+      "TS4104": 1,
+      "TS7006": 580,
+      "TS7016": 1,
+      "TS7022": 2,
+      "TS7031": 19
+    },
+    "all18C6OwnedTypedPaths": [
+      "src/__tests__/api-workforce-exception-decisions.test.ts",
+      "src/__tests__/api-workforce-exception-reports.test.ts",
+      "src/__tests__/lib-workforce-exception-case-writer.test.ts",
+      "src/__tests__/lib-workforce-exception-report-postgres.test.ts",
+      "src/__tests__/lib-workforce-exception-workbench.test.ts",
+      "src/__tests__/workforce-exception-case-report-recorded-outcomes.test.ts",
+      "src/__tests__/workforce-exception-classification-browser-evidence-guard.test.ts",
+      "src/__tests__/workforce-exception-queue-action-ui.test.ts",
+      "src/__tests__/workforce-exception-recorded-outcomes-ui.test.ts",
+      "src/app/api/v1/workforce/exceptions/route.ts",
+      "src/components/workforce/workforce-exception-queue.tsx",
+      "src/components/workforce/workforce-exception-recorded-outcomes.tsx",
+      "src/lib/workforce/exception-case-report-recorded-outcomes.ts",
+      "src/lib/workforce/exception-case-writer.ts",
+      "src/lib/workforce/exception-decision-service.ts",
+      "src/lib/workforce/exception-outcome-classification.ts",
+      "src/lib/workforce/exception-policy-draft.ts",
+      "src/lib/workforce/exception-workbench.ts"
+    ],
+    "ownedAllFamilyDiagnostics": 0,
+    "gatedPairs": 64,
+    "unchangedBaselineCountMapExact": true,
+    "blockingFourDigitSyntaxMissingModuleUndefinedNameDiagnostics": 0,
+    "bothActualHostedBlockingGates": "PASS",
+    "globallyClean": false,
+    "artifact": {
+      "id": 11489674547,
+      "zip": "/tmp/hrm-release-final-compiler-062.zip",
+      "bytes": 19675,
+      "sha256": "e434b786069d247caf44ff560e84a94cde6b5861df63b16dceb88e8e58b0afdc",
+      "GitHubDigestMatches": true,
+      "allCRCAndExpandedMembersMatch": true,
+      "members": [
+        {
+          "name": "tsc-output.log",
+          "bytes": 177767,
+          "sha256": "4ba2582a30f0eb51aad260ecb79715b6ce02e5dd8f70aafd33a98e38d4886bde"
+        },
+        {
+          "name": "tsc-exit-code",
+          "bytes": 2,
+          "sha256": "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3"
+        }
+      ]
+    },
+    "originalJobLog": {
+      "path": "/tmp/hrm-release-final-compiler-062.log",
+      "bytes": 254423,
+      "sha256": "f693d00c95dd55c6d54028178d4c4b17913a12f9af1d044bb2cf60d3b0daa99d"
+    },
+    "prior9fComparison": {
+      "rawBytesEqual": false,
+      "fullDiagnosticIdentityMultisetIgnoringPositionEqual": true,
+      "onlyFivePositionChanges": {
+        "file": "src/__tests__/api-finance-funds.test.ts",
+        "oldLines": [
+          138,
+          260,
+          280,
+          491,
+          62
+        ],
+        "currentLines": [
+          150,
+          271,
+          291,
+          502,
+          75
+        ]
+      },
+      "priorOriginalRawSha256": "dff3a43c1f03c9f872a786ab79528966041bcef545787c495fc0aac7955530ad",
+      "currentOriginalRawSha256": "4ba2582a30f0eb51aad260ecb79715b6ce02e5dd8f70aafd33a98e38d4886bde",
+      "incomingFinanceSourceExactMainVerifiedInSourceReview": true
+    }
+  },
+  "regressionBuildBrowserSummary": {
+    "freshSelectedPgTests": 44,
+    "freshSelectedPgFiles": 4,
+    "explicitLaneSkippedPgTests": 0,
+    "fullSuiteActualFailingFiles": 18,
+    "unchangedKnownFailingFiles": 18,
+    "strictNoNewEveryBaselineStillFails": "PASS",
+    "globalSuiteClean": false,
+    "prismaValidateGenerateLintI18nRunner": "PASS",
+    "compiledInertProductionBundle": "PASS",
+    "existingTypeValidationSkip": "Unchanged; separate complete compiler above required",
+    "inheritedDashboardTraceCopyENOENT": "Retained from9f, compilation/minimalbundle passed; full traced-route runtime/warning-free not claimed",
+    "reportBrowserCases": 9,
+    "classificationBrowserCases": 11,
+    "realUi201Appends": 6,
+    "actualLedgerDecisions": 6,
+    "actualAuditRows": 6,
+    "mandatoryVerifiedTotpSessions": 7,
+    "cleanupAllResources": "PASS",
+    "visualAndLocaleLimits": "Actual viewed ENcomplete/AZpartlyclipped/RUnestedclipped; inheritedAZEnglishdurationunits and oneNode/browserformatterdifference disclosed; no globalWCAG/nativezoom/humanAT/realHR production claim"
+  },
+  "currentRequiredChecks": {
+    "actualProtectedMainConfiguration": {
+      "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/branches/main/protection/required_status_checks",
+      "strict": false,
+      "contexts": [
+        "pr-scope",
+        "static-checks",
+        "typecheck",
+        "runner-policy",
+        "scan"
+      ],
+      "contexts_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/branches/main/protection/required_status_checks/contexts",
+      "checks": [
+        {
+          "context": "pr-scope",
+          "app_id": 15368
+        },
+        {
+          "context": "static-checks",
+          "app_id": 15368
+        },
+        {
+          "context": "typecheck",
+          "app_id": 15368
+        },
+        {
+          "context": "runner-policy",
+          "app_id": 15368
+        },
+        {
+          "context": "scan",
+          "app_id": 15368
+        }
+      ]
+    },
+    "allFiveApp15368PassedCurrentHead": [
+      {
+        "id": 112840499444,
+        "name": "pr-scope",
+        "head_sha": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+        "status": "completed",
+        "conclusion": "success",
+        "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37635351166/job/112840499444"
+      },
+      {
+        "id": 112839730301,
+        "name": "runner-policy",
+        "head_sha": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+        "status": "completed",
+        "conclusion": "success",
+        "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37635278690/job/112839730301"
+      },
+      {
+        "id": 112839731666,
+        "name": "scan",
+        "head_sha": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+        "status": "completed",
+        "conclusion": "success",
+        "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37635278901/job/112839731666"
+      },
+      {
+        "id": 112840697965,
+        "name": "static-checks",
+        "head_sha": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+        "status": "completed",
+        "conclusion": "success",
+        "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37635351166/job/112840697965"
+      },
+      {
+        "id": 112840698026,
+        "name": "typecheck",
+        "head_sha": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+        "status": "completed",
+        "conclusion": "success",
+        "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37635351166/job/112840698026"
+      }
+    ],
+    "noAgentReviewContext": true,
+    "noAdminBypassBaselineUpdateOrStatusForgery": true
+  },
+  "allApplicableWorkflowMetadata": {
+    "paginatedCompleteRuns": 21,
+    "paginatedCompleteCheckRecords": 41,
+    "runAttemptsAll1": true,
+    "checkConclusions": {
+      "success": 22,
+      "skipped": 18,
+      "cancelled": 1
+    },
+    "latestPerWorkflowAndEventAllSuccess": true,
+    "latestApplicableRuns": [
+      {
+        "id": 37635351301,
+        "name": "Workforce policy restore writer evidence",
+        "event": "pull_request",
+        "workflowId": 374471253,
+        "headSha": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+        "conclusion": "success"
+      },
+      {
+        "id": 37635351234,
+        "name": "Workforce policy version browser evidence",
+        "event": "pull_request",
+        "workflowId": 374324434,
+        "headSha": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+        "conclusion": "success"
+      },
+      {
+        "id": 37635351202,
+        "name": "Workforce manager Today browser evidence",
+        "event": "pull_request",
+        "workflowId": 374060138,
+        "headSha": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+        "conclusion": "success"
+      },
+      {
+        "id": 37635351380,
+        "name": "Workforce exception report browser evidence",
+        "event": "pull_request",
+        "workflowId": 374242321,
+        "headSha": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+        "conclusion": "success"
+      },
+      {
+        "id": 37635351262,
+        "name": "Workforce policy employee impact evidence",
+        "event": "pull_request",
+        "workflowId": 374632212,
+        "headSha": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+        "conclusion": "success"
+      },
+      {
+        "id": 37635351242,
+        "name": "Workforce calendar browser evidence",
+        "event": "pull_request",
+        "workflowId": 373358281,
+        "headSha": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+        "conclusion": "success"
+      },
+      {
+        "id": 37635351325,
+        "name": "Workforce bulk assignment acceptance",
+        "event": "pull_request",
+        "workflowId": 376563997,
+        "headSha": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+        "conclusion": "success"
+      },
+      {
+        "id": 37635350493,
+        "name": "Workforce exception report browser evidence",
+        "event": "workflow_dispatch",
+        "workflowId": 374242321,
+        "headSha": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+        "conclusion": "success"
+      },
+      {
+        "id": 37635351166,
+        "name": "PR checks",
+        "event": "pull_request",
+        "workflowId": 353805361,
+        "headSha": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+        "conclusion": "success"
+      },
+      {
+        "id": 37635278715,
+        "name": "Social Monitoring queue E2E",
+        "event": "pull_request",
+        "workflowId": 353805385,
+        "headSha": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+        "conclusion": "success"
+      },
+      {
+        "id": 37635278818,
+        "name": "HRM migration metadata preflight",
+        "event": "pull_request",
+        "workflowId": 377463185,
+        "headSha": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+        "conclusion": "success"
+      },
+      {
+        "id": 37635278690,
+        "name": "Runner policy",
+        "event": "pull_request",
+        "workflowId": 353805369,
+        "headSha": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+        "conclusion": "success"
+      },
+      {
+        "id": 37635278901,
+        "name": "Secret scan",
+        "event": "pull_request",
+        "workflowId": 353805359,
+        "headSha": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+        "conclusion": "success"
+      }
+    ],
+    "retainedPreviousCancelledOrSkippedRuns": [
+      {
+        "id": 37635278767,
+        "name": "PR checks",
+        "conclusion": "cancelled",
+        "headSha": "06254cbab837b1a0e3063708fc955fbd64a4f628"
+      },
+      {
+        "id": 37635278934,
+        "name": "Workforce bulk assignment acceptance",
+        "conclusion": "skipped",
+        "headSha": "06254cbab837b1a0e3063708fc955fbd64a4f628"
+      },
+      {
+        "id": 37635278883,
+        "name": "Workforce policy version browser evidence",
+        "conclusion": "skipped",
+        "headSha": "06254cbab837b1a0e3063708fc955fbd64a4f628"
+      },
+      {
+        "id": 37635278925,
+        "name": "Workforce manager Today browser evidence",
+        "conclusion": "skipped",
+        "headSha": "06254cbab837b1a0e3063708fc955fbd64a4f628"
+      },
+      {
+        "id": 37635278974,
+        "name": "Workforce policy restore writer evidence",
+        "conclusion": "skipped",
+        "headSha": "06254cbab837b1a0e3063708fc955fbd64a4f628"
+      },
+      {
+        "id": 37635278730,
+        "name": "Workforce calendar browser evidence",
+        "conclusion": "skipped",
+        "headSha": "06254cbab837b1a0e3063708fc955fbd64a4f628"
+      },
+      {
+        "id": 37635279220,
+        "name": "Workforce exception report browser evidence",
+        "conclusion": "skipped",
+        "headSha": "06254cbab837b1a0e3063708fc955fbd64a4f628"
+      },
+      {
+        "id": 37635278724,
+        "name": "Workforce policy employee impact evidence",
+        "conclusion": "skipped",
+        "headSha": "06254cbab837b1a0e3063708fc955fbd64a4f628"
+      }
+    ],
+    "qualification": "Initialdraft/UIskips and cancelled initialPRbuild remain history. PRopt-in extraC6 jobs and main-onlyproductionmetadata are correctly skipped; actual opt-in five jobs succeeded independently. Additional C7/calendar/Today/policyversion/impact/restore/social workflows verified at completed metadata level, not a new artifact-by-artifact reenactment of all historical criteria."
+  },
+  "currentRefsAndMergeSourceProof": {
+    "originMain": "8235c3b24ad12189e1ef95427ce7f192c077ae5c",
+    "PR589": {
+      "state": "open",
+      "draft": false,
+      "headSha": "06254cbab837b1a0e3063708fc955fbd64a4f628",
+      "headBranch": "codex/hrm-588-validation-20261005",
+      "baseRef": "main",
+      "apiCachedBaseSha": "8301f6ce0925cf1b8f9ddaa004ea31c26d1e6982",
+      "mergeableAtRead": true,
+      "mergeableStateAtRead": "clean"
+    },
+    "realMain8235Commit": {
+      "parents": [
+        "8301f6ce0925cf1b8f9ddaa004ea31c26d1e6982",
+        "546d67c1efe7e145e1bfa9a19e9eea7c108b5e57"
+      ],
+      "tree": "cef964f579d15e8ab4da91c8b3a824533f955bc0",
+      "matchesReviewedAux546Tree": true
+    },
+    "testedPRSynthetic": {
+      "sha": "a731d25469b7e0f12b41a89b36f9834a2d799787",
+      "parents": [
+        "8301f6ce0925cf1b8f9ddaa004ea31c26d1e6982",
+        "06254cbab837b1a0e3063708fc955fbd64a4f628"
+      ],
+      "tree": "38b49b4cbe974a21e6a0f982dbbacab20aecf7da",
+      "sourceTreeExact062": true
+    },
+    "prospectiveMain8235Plus062Tree": {
+      "expectedTree": "38b49b4cbe974a21e6a0f982dbbacab20aecf7da",
+      "independentProof": "git merge-base(main8235,head062)=reviewed546; actual main8235 tree/bytes exactly546 and empty diff from merge base. Therefore main contributes zero additional content and conflict-free normal merge retains candidate tree38b49. Root separate merge-tree receipt agrees. No Git object/source mutation performed here.",
+      "matchesTestedCandidate": true,
+      "strictRequiredStatusChecksFalseIsExistingProtection": true
+    },
+    "validationOnlyPRs": [
+      {
+        "number": 606,
+        "state": "closed",
+        "merged": false,
+        "headSha": "ec2e7812e81abef94319a58818aeee22e56984df"
+      },
+      {
+        "number": 609,
+        "state": "closed",
+        "merged": false,
+        "headSha": "100a381b90a52690899f6a1eded38494eea050e4"
+      }
+    ],
+    "scope": "Snapshot while source062 remains frozen; recheck remote main/head and GitHub mergeability after actual production metadata before merge. The PR API may briefly show oldbase8301 or unknown mergeability aftermain616; this supplement uses authoritative gitref8235/treeproof and does not claim merge action readiness."
+  },
+  "immutableBaselineAndGateBindings": [
+    {
+      "path": "test-baseline.json",
+      "bytes": 1139,
+      "sha256": "8f0fc568274f9fd8c0c741db618d6e4d81025de7112a315cd93e6b92bbd5a4b1",
+      "unchangedFromAccepted973": true
+    },
+    {
+      "path": "typecheck-baseline.json",
+      "bytes": 3907,
+      "sha256": "919fa9d0212b18ee685af4f08680ebbc34e8c4969294054447df03147bf0fc53",
+      "unchangedFromAccepted973": true
+    },
+    {
+      "path": "scripts/ci/check-typecheck-gate.sh",
+      "bytes": 3468,
+      "sha256": "a18608d9297c039380481fb27d6200d9ebbcc731e9ec23dd40b5e3a2c5a40937",
+      "unchangedFromAccepted973": true
+    },
+    {
+      "path": "scripts/ci/check-typecheck-baseline.mjs",
+      "bytes": 5909,
+      "sha256": "8b8a2472a1c813e85c4177c24c6df5fb5907d981b5b43e6870a04cbbba2b812a",
+      "unchangedFromAccepted973": true
+    },
+    {
+      "path": "scripts/check-test-baseline.mjs",
+      "bytes": 10188,
+      "sha256": "6c3380718fd71061d2efe4aa396fcb9cc998336c5c95a3bbd2de05230058027e",
+      "unchangedFromAccepted973": true
+    }
+  ],
+  "retainedOriginalEvidence": {
+    "sourceReviewPreserved12OldReviewFailureBindings": true,
+    "earlier1154/1163compilerAndBrowserMfaIntlTriggerUnboundReceiverFailures": "Original retained, superseded only by fresh062 full technical receipts; no overwritten original or borrowed PASS",
+    "preflightOriginalThreeActualFailuresAndFourth16Pass": "Lossless retained; known default-order cause reproduced. Source062 source-validation success is separate. Not production metadata."
+  },
+  "reviewerAnalysisCorrection": {
+    "initialReadOnlyAnalysis": "startswithTS1 erroneously counted106five-digitTS180xx as syntax; no real gate failure was inferred",
+    "correctedExactSourceRule": "Existing regex TS1[0-9]{3}|TS2307|TS2304|TS2552 with code delimiter matches0 blocking diagnostics; original tool output remains conversation history"
+  },
+  "remainingReleaseCriteria": [
+    "Complete currentmain8235 SHA-bound deploy, then actual protected read-only metadata report bound deployedartifact/main/helper/SQL and both originalsuccess/error metadata receipts. Required production role/defaults/ledgerchecksums/owner/ACL/RLS/physicaldecisionguards/index state and DDL-blocking risk remain unverified here.",
+    "Any actual metadata INCOMPLETE/ERROR is an explicit blocker until safely resolved within separately authorized scope; do not grant roles, change secrets/flags/grants or weaken metadata projection/gates to force READY.",
+    "After actualproductionpreflight, freshorigin/headref and prospective merge tree proof must still match accepted062source. Newincoming source requires integration plus renewed runtime checks. GitHub mergeability/protection readiness must be current.",
+    "Normal authorized589->main merge and documented immutable artifact deployment; exact publicbuild-info/ping plus scopedfeature smoke; preserveoriginalacceptedheads and closedunmerged606/609. No tenant/runtime/grant/secret activation.",
+    "C6 DONE/accounting change requires completed defined release/acceptance criteria; current84/161done77open60percentC12PARTIAL retained. RealHRcase rates/pilot/physical/historicalreplay/load/fullWCAG are separate unproved observations."
+  ],
+  "limitations": [
+    "Technical acceptance only, not releasedartifact/actualproductionmetadata/C12/wholeHRM completion.",
+    "Globalfullcompiler1153diagnostics/exit2 and18knownsuitefailfiles remain; immutable baseline-qualified success is not globallyclean.",
+    "Read-only repository/GitHub/artifact analysis; no local compiler/build/browser/DB/runtime test/gate rerun or source/repo edit, commit/push/status publication/production access. JSON only/tmp.",
+    "Additional nonrequired currentworkflow status/source-merge metadata verified; no claim every ancillary artifact payload was newly independently deep-reviewed."
+  ]
+}
