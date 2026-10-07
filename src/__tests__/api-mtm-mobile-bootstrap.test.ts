@@ -496,6 +496,7 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
       contactCreateRequest: true,
       contactChangeRequest: true,
       customerCreateRequest: true,
+      checkInOutsideZone: false,
       taskSelfCreate: true,
       taskSelfRecurring: true,
     })

@@ -59,6 +59,8 @@ describe("agent permission registry", () => {
   it("changes nothing for an organization that never opened the matrix", () => {
     expect(agentPermissionStates(MTM_SETTING_DEFAULTS)).toEqual({
       teamSchedule: false,
+      // The zone stays a hard rule until the organization lifts it.
+      checkInOutsideZone: false,
       contactCreateRequest: true,
       contactChangeRequest: true,
       customerCreateRequest: true,
@@ -240,8 +242,28 @@ describe("switch rows are enforced where the agent asks", () => {
     expect(source(file)).toContain(guard)
   })
 
+  // Owner, 2026-10-07: «нужна возможность отключения из настроек — если агент
+  // не на месте, но мог делать чек-ин, и потом проверить». This switch lifts a
+  // refusal instead of adding one, so its three readers are the three writers
+  // of a check-in: the direct POST, the native engine and the PWA outbox.
+  it.each([
+    ["src/app/api/v1/mtm/visits/route.ts", 'const outsideAllowed = !force && agentPermissionEnabled(orgSettings, "checkInOutsideZone")', "if (!force && !outsideAllowed) {"],
+    ["src/app/api/v1/mtm/mobile/sync/push/route.ts", "const outsideAllowed = !forceAuthorized && await outsideZoneCheckInEnabled(tx)", "} else if (outsideAllowed) {"],
+    ["src/app/api/v1/mtm/sync/push/route.ts", "const outsideAllowed = await outsideZoneCheckInEnabled(tx)", "if (!outsideAllowed) {"],
+  ])("checkInOutsideZone is read by the check-in writer %s, which refuses without it", (file, read, refusal) => {
+    expect(source(file)).toContain(read)
+    expect(source(file)).toContain(refusal)
+  })
+
+  it("reads checkInOutsideZone for the two sync writers through the matrix, off unless stored as true", () => {
+    const reader = source("src/lib/mtm/check-in-geofence.ts")
+    expect(reader).toContain('where: { organizationId, key: "agentCheckInOutsideZone" }')
+    expect(reader).toContain('{ agentCheckInOutsideZone: coerceMtmBooleanSetting(row?.value, false) },\n      "checkInOutsideZone",')
+  })
+
   it("covers every switch row", () => {
     expect(AGENT_SWITCH_ROWS.map((row) => row.id).sort()).toEqual([
+      "checkInOutsideZone",
       "contactChangeRequest", "contactCreateRequest", "customerCreateRequest",
       "taskSelfCreate", "taskSelfRecurring", "teamSchedule",
     ])

@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client"
 import { coerceMtmBooleanSetting } from "@/lib/mtm/setting-values"
+import { agentPermissionEnabled } from "@/lib/mtm/agent-permissions"
 
 /**
  * One geofence rule for every check-in writer: web POST /visits, the PWA
@@ -94,6 +95,33 @@ export function createAlertOutOfZoneReader(organizationId: string) {
       select: { value: true },
     })
     cached = coerceMtmBooleanSetting(row?.value, true)
+    return cached
+  }
+}
+
+/**
+ * Per-request memo of the organization's switch that lets a field agent check
+ * in from outside the customer's zone (matrix row `checkInOutsideZone`).
+ *
+ * Owner, 2026-10-07: «нужна возможность отключения из настроек — если агент
+ * не на месте, но мог делать чек-ин, и потом проверить». Read like
+ * `alertOutOfZone`: lazily, only when a check-in actually lands outside the
+ * zone, once per request, through whichever client is current. Anything but a
+ * stored `true` keeps the zone a hard rule — a failed or odd read never opens
+ * it.
+ */
+export function createOutsideZoneCheckInReader(organizationId: string) {
+  let cached: boolean | undefined
+  return async (client: SettingReader): Promise<boolean> => {
+    if (cached !== undefined) return cached
+    const row = await client.mtmSetting.findFirst({
+      where: { organizationId, key: "agentCheckInOutsideZone" },
+      select: { value: true },
+    })
+    cached = agentPermissionEnabled(
+      { agentCheckInOutsideZone: coerceMtmBooleanSetting(row?.value, false) },
+      "checkInOutsideZone",
+    )
     return cached
   }
 }

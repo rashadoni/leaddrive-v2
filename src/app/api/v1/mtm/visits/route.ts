@@ -7,6 +7,7 @@ import { hasMtmCoordinates } from "@/lib/mtm/geo-coordinates"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { VisitCreateSchema, parseBody } from "@/lib/mtm-validators"
 import { notifyAgent } from "@/lib/mtm-notify"
+import { agentPermissionEnabled } from "@/lib/mtm/agent-permissions"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { checkInGeofenceRadius, mtmVisitPlaceSnapshot } from "@/lib/mtm/check-in-geofence"
 import { addDateKeyDays, currentDateKey, localDateKeyToUtc } from "@/lib/mtm/mobile-week"
@@ -267,6 +268,9 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
 
     // Track whether the geofence was bypassed so audit log can reflect it.
     let forceOverrideMeta: { distanceMeters: number; geofenceRadius: number } | null = null
+    // The same facts for a check-in the organization lets through outside the
+    // zone (switch `checkInOutsideZone`): nobody forced it, the rule was lifted.
+    let outsideZoneMeta: { distanceMeters: number; geofenceRadius: number } | null = null
     let deferredForceAlert: {
       customerName: string
       distanceMeters: number
@@ -292,6 +296,10 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
       )
 
       if (distanceMeters > geofenceRadius) {
+        // Off by default. An organization that turns the switch on accepts its
+        // agents' check-ins from outside the zone; the alert below still
+        // fires, and the visit keeps both positions for the review page.
+        const outsideAllowed = !force && agentPermissionEnabled(orgSettings, "checkInOutsideZone")
         // Create an OUT_OF_ZONE alert regardless of force flag —
         // unless the org turned geofence alerts off (alertOutOfZone).
         if (!force && agentId && orgSettings.alertOutOfZone) {
@@ -337,16 +345,18 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
           }).catch((err: unknown) => console.warn("[MTM/visits POST] notify failed", err))
         }
 
-        // Block unless force override
-        if (!force) {
+        // Block unless force override, or unless the organization lets its
+        // agents check in from outside the zone.
+        if (!force && !outsideAllowed) {
           return checkInErrorResponse(MTM_CHECK_IN_ERROR.TOO_FAR, {
             distanceMeters: Math.round(distanceMeters),
             geofenceRadius,
           })
         }
         // F-17: remember override metadata for audit log below
-        forceOverrideMeta = { distanceMeters: Math.round(distanceMeters), geofenceRadius }
-        if (orgSettings.alertOutOfZone) {
+        if (outsideAllowed) outsideZoneMeta = { distanceMeters: Math.round(distanceMeters), geofenceRadius }
+        else forceOverrideMeta = { distanceMeters: Math.round(distanceMeters), geofenceRadius }
+        if (force && orgSettings.alertOutOfZone) {
           deferredForceAlert = {
             customerName: customer.name,
             distanceMeters: Math.round(distanceMeters),
@@ -547,6 +557,7 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
         longitude,
         notes,
         ...(forceOverrideMeta ? { forceOverride: true, ...forceOverrideMeta } : {}),
+        ...(outsideZoneMeta ? { outOfZone: true, allowedBy: "organization_setting", ...outsideZoneMeta } : {}),
       },
       req,
     }).catch((err) => console.warn("[MTM/visits POST] audit failed", err))

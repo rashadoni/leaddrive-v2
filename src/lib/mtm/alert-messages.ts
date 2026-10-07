@@ -30,6 +30,8 @@ export const MTM_ALERT_MESSAGE_KEYS = [
   "outOfZoneCheckIn",
   /** A privileged actor forced that same check-in through. */
   "outOfZoneCheckInForced",
+  /** The organization lets agents check in outside the zone; this one was accepted. */
+  "outOfZoneCheckInAllowed",
   /** A stored visit landed outside the geofence (web write paths). */
   "geofenceViolation",
   /** Same, for a customer row that carries no name. */
@@ -56,6 +58,7 @@ export const MTM_ALERT_MESSAGE_PARAMS: Record<MtmAlertMessageKey, readonly strin
   visitStillOpenUnnamed: ["minutes", "thresholdMinutes"],
   outOfZoneCheckIn: ["distanceMeters", "geofenceRadius"],
   outOfZoneCheckInForced: ["distanceMeters", "geofenceRadius"],
+  outOfZoneCheckInAllowed: ["distanceMeters", "geofenceRadius"],
   geofenceViolation: ["customerName", "distanceMeters", "geofenceRadius"],
   geofenceViolationUnnamed: ["distanceMeters", "geofenceRadius"],
   routeDeviation: ["deviationMeters", "thresholdMeters"],
