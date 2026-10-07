@@ -31,7 +31,7 @@ export function WorkforceExceptionRecordedOutcomesSummary({ outcomes }: { outcom
     <dl className="mt-4 grid gap-6 lg:grid-cols-2">
       <div className="min-w-0">
         <dt className="text-sm font-medium">{t("linkedCorrection")}</dt>
-        <dd data-testid="workforce-exception-recorded-link-share" className="mt-1 text-xl font-semibold tabular-nums">{correction.share === null ? t("noCases") : percent.format(correction.share)}</dd>
+        <dd data-testid="workforce-exception-recorded-link-count" className="mt-1 text-xl font-semibold tabular-nums">{correction.cohortCases === 0 ? t("noCases") : number.format(correction.recordedLinkedCorrectionCases)}</dd>
         <dd className="mt-1 text-sm tabular-nums">{t("linkedCount", { linked: number.format(correction.recordedLinkedCorrectionCases), cases: number.format(correction.cohortCases) })}</dd>
         <dd className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">{t("linkedHint")}</dd>
       </div>
