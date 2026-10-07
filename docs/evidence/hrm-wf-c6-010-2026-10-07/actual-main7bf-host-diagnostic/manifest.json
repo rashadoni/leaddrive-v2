@@ -1,0 +1,56 @@
+{
+  "status": "ORIGINAL_ERROR_RETAINED",
+  "scope": "Exactmain7bf diagnostic preSQL; not ACL or final HRM acceptance",
+  "files": [
+    {
+      "file": "hrm-acl-identity-real-7bf-validated.json",
+      "bytes": 1317,
+      "sha256": "f60634a3f0432c5bd8eb936b6dcdbac2a92fbed7974ef43ce36a71677cfbfcb9"
+    },
+    {
+      "file": "hrm-acl-identity-real-7bf.zip",
+      "bytes": 962,
+      "sha256": "2e75dab9f0b7962328de8cdfd5b9fb03159a4e12b661b9d9f25766b5f58ee0a4"
+    },
+    {
+      "file": "hrm-acl-identity-real-7bf-jobs.json",
+      "bytes": 5671,
+      "sha256": "1e73c745af6c9856e0d0c47babb984062709bb8bdbdd640f31f56d84ddcfeced"
+    },
+    {
+      "file": "hrm-acl-identity-real-7bf-artifacts.json",
+      "bytes": 741,
+      "sha256": "eba1233108e2f60d8830117174f3594a2fc57b53fcd4ab634da96590d568e9f7"
+    },
+    {
+      "file": "hrm-acl-identity-real-7bf-original-result.json",
+      "bytes": 1317,
+      "sha256": "f60634a3f0432c5bd8eb936b6dcdbac2a92fbed7974ef43ce36a71677cfbfcb9"
+    },
+    {
+      "file": "hrm-acl-identity-real-7bf-job.log",
+      "bytes": 29049,
+      "sha256": "569f6d1f7f96cabad6d8e4e4219a70907b4536ef91dd557466a6dc455cfbf024"
+    },
+    {
+      "file": "hrm-acl-identity-real-7bf-run.json",
+      "bytes": 12405,
+      "sha256": "e911a1ae957f30a8c3e320232fd8fe4298c998b06b1666378dccf2878fd76263"
+    },
+    {
+      "file": "hrm-release-7bf-public-proof.json",
+      "bytes": 1363,
+      "sha256": "e3a018f52d3738e843b6ddb5e179207ba526ce47af7a9b8836400e6b170c3958"
+    },
+    {
+      "file": "hrm-default-acl-host-mismatch-peer-review-7bf.json",
+      "bytes": 7788,
+      "sha256": "a3d5c506f7a276db956b5a8fb07a134b3abbde8860dccd9a1fda164c860b45b1"
+    },
+    {
+      "file": "hrm-acl-diagnostic-05-source-original.log",
+      "bytes": 47856,
+      "sha256": "4c7b3131673745342561e9327b678dcfc6c2a2896000e2829d3c4470cce22bf1"
+    }
+  ]
+}
