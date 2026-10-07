@@ -109,6 +109,18 @@ export const DELETE = withRlsAuth<RouteContext>("finance", "delete", async (_req
   const existing = await prisma.bill.findFirst({ where: { id, organizationId: orgId } })
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
-  await prisma.bill.delete({ where: { id } })
+  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    // The bill goes first: deleting it waits for a payment that is being
+    // recorded on it right now, so the registry rows removed below include
+    // that payment's.
+    await tx.bill.delete({ where: { id } })
+    // The database deletes the bill's payments with it. Their registry rows
+    // have no foreign key and would stay, still counted as money paid out.
+    // An executed payment order's row is not one of them: the order outlives
+    // the bill and its row describes the order.
+    await tx.paymentRegistryEntry.deleteMany({
+      where: { organizationId: orgId, sourceType: "bill_payment", billId: id },
+    })
+  })
   return NextResponse.json({ data: { success: true } })
 })

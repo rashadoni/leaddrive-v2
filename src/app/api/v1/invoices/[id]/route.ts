@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
@@ -222,7 +223,17 @@ export const DELETE = withRls(async (_req, { orgId }, { params }: { params: Prom
   const { id } = await params
 
   try {
-    await prisma.invoice.deleteMany({ where: { id, organizationId: orgId } })
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // The invoice goes first: deleting it waits for a payment that is being
+      // recorded on it right now, so the registry rows removed below include
+      // that payment's.
+      await tx.invoice.deleteMany({ where: { id, organizationId: orgId } })
+      // The database deletes the invoice's payments with it. Their registry
+      // rows have no foreign key and would stay, still counted as money received.
+      await tx.paymentRegistryEntry.deleteMany({
+        where: { organizationId: orgId, sourceType: "invoice_payment", invoiceId: id },
+      })
+    })
     return NextResponse.json({ success: true })
   } catch (e) {
     console.error(e)

@@ -22,6 +22,12 @@ export const DELETE = withRlsAuth("invoices", "delete", async (_req, authResult,
       if (!payment) return null
 
       await tx.invoicePayment.delete({ where: { id: paymentId } })
+      // The registry row written with the payment has no foreign key to it, so
+      // nothing takes it out but this. Left behind, it kept the payment listed
+      // as received and counted in the registry's totals.
+      await tx.paymentRegistryEntry.deleteMany({
+        where: { organizationId: orgId, sourceType: "invoice_payment", sourceId: paymentId },
+      })
       const newPaidAmount = decimalToNumber(invoice.paidAmount) - decimalToNumber(payment.amount)
       const newBalanceDue = calculateBalance(decimalToNumber(invoice.totalAmount), newPaidAmount)
       const remainsFullyPaid = newBalanceDue <= 0
