@@ -9,7 +9,7 @@ import { toast } from "sonner"
 import { PageDescription } from "@/components/page-description"
 import { HelpButton } from "@/components/help/help-button"
 import {
-  Settings, Save, Satellite, Lock, MapPin, Camera, BellRing, Route, Clock3, LifeBuoy, LayoutGrid, Radar, UserCog,
+  Settings, Save, Satellite, Lock, Wrench, MapPin, Camera, BellRing, Route, Clock3, LifeBuoy, LayoutGrid, Radar, UserCog,
   AlertTriangle, RotateCcw, ChevronDown,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -128,6 +128,7 @@ export default function MtmSettingsPage() {
   // editor below remounts and reloads (its internals stay untouched).
   const [visitPolicyEditorKey, setVisitPolicyEditorKey] = useState(0)
   const [tab, setTab] = useState<SettingsTab>("visit")
+  const [implementerToolsOpened, setImplementerToolsOpened] = useState(false)
   // Loading and the leave warning must not re-run when the translator's
   // identity changes; they read the latest one through this ref.
   const tsRef = useRef(ts)
@@ -776,11 +777,38 @@ export default function MtmSettingsPage() {
                   {advancedGroup.items.map((item) => renderItem(item, false))}
                 </div>
               </details>
-              <ContactDictionarySettings />
-              <OrganizationAttributePackageSettings />
-              <CoveragePolicyAdmin />
-              <KpiPolicyAdmin />
-              <ScoringFormulaSettings />
+              {/* Loaders of signed settings files — dictionaries, field sets,
+                  coverage rules, KPI and scoring formulas. A person rolling the
+                  system out uses them once; to anybody else they were five
+                  screens of «JSON», «hash» and «snapshot» (owner, 2026-10-08:
+                  «я сам не понимаю, как буду объяснять клиенту»). So they are
+                  one closed line, for an administrator only, and they are not
+                  even loaded until it is opened. */}
+              {canChangeAdminOnly ? (
+                <details
+                  data-settings-group="groupImplementerTools"
+                  data-testid="mtm-settings-implementer-tools"
+                  className="group rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card"
+                  onToggle={(event) => { if ((event.currentTarget as HTMLDetailsElement).open) setImplementerToolsOpened(true) }}
+                >
+                  <summary className="flex cursor-pointer list-none items-center gap-2 p-4 text-sm font-semibold">
+                    <Wrench className="h-4 w-4 text-muted-foreground" /> {ts("groupImplementerTools")}
+                    <ChevronDown className="ml-auto h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" />
+                  </summary>
+                  <div className="space-y-3 px-4 pb-4">
+                    <p className="max-w-3xl text-sm text-muted-foreground">{ts("hintImplementerTools")}</p>
+                    {implementerToolsOpened ? (
+                      <>
+                        <ContactDictionarySettings />
+                        <OrganizationAttributePackageSettings />
+                        <CoveragePolicyAdmin />
+                        <KpiPolicyAdmin />
+                        <ScoringFormulaSettings />
+                      </>
+                    ) : null}
+                  </div>
+                </details>
+              ) : null}
             </>
           ) : null}
         </div>

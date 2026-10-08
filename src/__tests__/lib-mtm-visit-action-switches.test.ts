@@ -2,9 +2,15 @@ import { describe, expect, it } from "vitest"
 import {
   VISIT_SWITCH_ACTION_KEYS,
   companyVisitRule,
+  listedSpecialVisitRules,
   specialVisitRuleCount,
+  teamsWithoutSpecialVisitRule,
+  visitActionDetail,
+  visitActionRefined,
+  visitActionsAfterDetail,
   visitActionsAfterSwitch,
   visitModeFromSwitches,
+  visitRuleActions,
   visitSwitchState,
   type VisitSwitchAction,
   type VisitSwitchRule,
@@ -168,5 +174,89 @@ describe("the older «photo required» setting, for an organization with no rule
     expect(visitSwitchState(company, "PHOTO", legacy)).toEqual({ shown: true, required: false, conditional: false })
     expect(visitActionsAfterSwitch(company, "SIGNATURE", { required: false }, legacy).find((item) => item.actionKey === "PHOTO")?.mode)
       .toBe("OPTIONAL")
+  })
+})
+
+/**
+ * Owner, 2026-10-08, shown the old editor under the switches: «эту часть ты
+ * оставил без изменений». It went; a group of agents gets the same table. What
+ * the old editor offered per action is kept where the server acts on it: the
+ * photo minimum and the two «only at institutions of…» conditions.
+ */
+describe("the refinements of an action", () => {
+  const company = rule({
+    actions: [
+      action("PHOTO", "REQUIRED", { minCount: 3, allowWaiver: true }),
+      action("PRESENTATION", "OPTIONAL", { conditions: { objectTypes: ["PHARMACY"], customerCategories: ["A"] } }),
+      action("SIGNATURE", "OPTIONAL", { minCount: 4 }),
+    ],
+  })
+
+  it("reads the minimum and the two conditions off the rule, and «any» where there is none", () => {
+    expect(visitActionDetail(company, "PHOTO")).toEqual({ minCount: 3, customerClass: null, clientKind: null })
+    expect(visitActionDetail(company, "PRESENTATION")).toEqual({ minCount: 1, customerClass: "A", clientKind: "PHARMACY" })
+    expect(visitActionDetail(null, "PHOTO")).toEqual({ minCount: 1, customerClass: null, clientKind: null })
+  })
+
+  it("marks a row as refined only for what the server acts on: a count is a photo's", () => {
+    expect(visitActionRefined(company, "PHOTO")).toBe(true)
+    expect(visitActionRefined(company, "PRESENTATION")).toBe(true)
+    // A stored minimum of 4 signatures binds nobody: the server counts one.
+    expect(visitActionRefined(company, "SIGNATURE")).toBe(false)
+    expect(visitActionRefined(company, "VISIT_NOTE")).toBe(false)
+  })
+
+  it("changes the one thing it names and leaves the mode, the waiver and every other action", () => {
+    const next = visitActionsAfterDetail(company, "PHOTO", { clientKind: "CLINIC" })
+    expect(next.find((item) => item.actionKey === "PHOTO"))
+      .toEqual(action("PHOTO", "REQUIRED", { minCount: 3, allowWaiver: true, conditions: { objectTypes: ["CLINIC"] } }))
+    expect(next.find((item) => item.actionKey === "PRESENTATION")).toEqual(company.actions[1])
+    expect(next.find((item) => item.actionKey === "SIGNATURE")).toEqual(company.actions[2])
+  })
+
+  it("takes one condition off without touching the other, and stores no empty condition", () => {
+    const withoutKind = visitActionsAfterDetail(company, "PRESENTATION", { clientKind: null })
+    expect(withoutKind.find((item) => item.actionKey === "PRESENTATION")?.conditions).toEqual({ customerCategories: ["A"] })
+    const bare = visitActionsAfterDetail(rule({ actions: withoutKind }), "PRESENTATION", { customerClass: null })
+    expect(bare.find((item) => item.actionKey === "PRESENTATION")?.conditions).toBeNull()
+  })
+
+  it("keeps a minimum a whole number between 1 and 100, and ignores what is not a number", () => {
+    const minimum = (value: number) => visitActionsAfterDetail(company, "PHOTO", { minCount: value }).find((item) => item.actionKey === "PHOTO")?.minCount
+    expect([minimum(5), minimum(0), minimum(-3), minimum(2.9), minimum(1000), minimum(Number.NaN)]).toEqual([5, 1, 1, 2, 100, 3])
+  })
+
+  it("lists what a rule says about all six actions, for a copy into a group's new rule", () => {
+    expect(visitRuleActions(company).map((item) => [item.actionKey, item.mode])).toEqual([
+      ["PHOTO", "REQUIRED"], ["PRESENTATION", "OPTIONAL"], ["SIGNATURE", "OPTIONAL"],
+      ["VISIT_NOTE", "OPTIONAL"], ["STOCK_CHECK", "OPTIONAL"], ["FEEDBACK", "OPTIONAL"],
+    ])
+    // With no company rule yet, the copy starts from what applies without one.
+    expect(visitRuleActions(null, { legacyPhotoRequired: true })[0]).toEqual(action("PHOTO", "REQUIRED"))
+  })
+})
+
+describe("the rules «own rules for groups» lists", () => {
+  const company = rule({ id: "company" })
+  const rules = [
+    company,
+    rule({ id: "team", teamId: "team-1" }),
+    rule({ id: "later", teamId: "team-2", effectiveFrom: "2099-01-01" }),
+    rule({ id: "off", teamId: "team-3", isActive: false }),
+    rule({ id: "ended", teamId: "team-4", effectiveTo: "2026-10-05" }),
+    rule({ id: "audit", visitType: "AUDIT" }),
+  ]
+
+  it("is every rule that is on and has not ended, except the company rule — one that starts later included", () => {
+    expect(listedSpecialVisitRules(rules, NOW).map((item) => item.id)).toEqual(["team", "later", "audit"])
+  })
+
+  it("offers a group a rule only while it has none the server would refuse a second of", () => {
+    const teams = ["team-1", "team-2", "team-3", "team-4", "team-5"].map((id) => ({ id }))
+    // team-1 and team-2 have a listed rule; the rules of team-3 and team-4 are gone.
+    expect(teamsWithoutSpecialVisitRule(teams, rules, NOW).map((team) => team.id)).toEqual(["team-3", "team-4", "team-5"])
+    // A rule at another priority or for another visit type does not collide with a new default one.
+    const other = [rule({ id: "p50", teamId: "team-1", priority: 50 }), rule({ id: "audit", teamId: "team-2", visitType: "AUDIT" })]
+    expect(teamsWithoutSpecialVisitRule(teams.slice(0, 2), other, NOW).map((team) => team.id)).toEqual(["team-1", "team-2"])
   })
 })
