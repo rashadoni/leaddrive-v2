@@ -16406,6 +16406,23 @@
   },
   "mtmMap": {
     "visitOpenedAt": "ziyarət açılıb: {time}",
+    "layers": {
+      "title": "Laylar",
+      "agents": "Əməkdaşlar",
+      "agentsHint": "son mövqe nişanları",
+      "route": "Günün marşrutu",
+      "routeHint": "seçilmiş əməkdaşın nöqtələri və xətti",
+      "zones": "Müştəri zonaları",
+      "zonesHint": "gəlişin qəbul olunduğu dairə",
+      "heat": "İstilik xəritəsi",
+      "heatHint": "əməkdaşların ən çox olduğu yerlər",
+      "hiddenAgents": "Gizlədilmiş əməkdaş: {count}",
+      "showAll": "Hamısını göstər",
+      "hideAgent": "{name}: xəritədən gizlət",
+      "showAgent": "{name}: xəritədə göstər",
+      "onlyThis": "Xəritədə yalnız o",
+      "hiddenBadge": "xəritədən gizlədilib"
+    },
     "follow": "İzlə",
     "followHint": "Əməkdaş hərəkət etdikcə xəritə onu mərkəzdə saxlayır",
     "fieldStatus": {
@@ -16468,8 +16485,6 @@
     "clusterZoomHint": "Bu sahəni yaxınlaşdırmaq üçün seçin",
     "offlineCachedRoute": "Oflayn — əməkdaşın marşrutu cihazdakı keşdən göstərilir",
     "lastUpdate": "Son yenilənmə",
-    "additionalControls": "Əlavə xəritə alətləri",
-    "additionalControlsHint": "Geozona və istilik xəritəsi — ilkin olaraq bağlıdır",
     "historyOnlyExplicit": "Tam günlük GPS izi yalnız Tarixçəni açıq şəkildə seçdikdən sonra yüklənir.",
     "selectForDetails": "Detallar üçün seçin",
     "geofence": "Geozona",

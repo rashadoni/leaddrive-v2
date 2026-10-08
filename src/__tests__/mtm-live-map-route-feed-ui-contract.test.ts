@@ -44,11 +44,15 @@ describe("MTM live map: route, statuses and feed", () => {
     expect(page).not.toContain("max-h-[180px]")
     expect(page).not.toContain("overflow-y-auto")
     expect(page).toContain("lg:sticky")
+    // The feed is the last block of the page flow, after the map and the
+    // list. (Until 2026-10-09 a closed «additional tools» panel followed it;
+    // those tools are «Слои» on the map now.)
+    const canvas = page.indexOf('data-testid="mtm-map-canvas"')
     const feed = page.indexOf('data-testid="mtm-map-live-feed"')
-    const details = page.indexOf('<details className="group rounded-lg border bg-card">')
-    expect(feed).toBeGreaterThan(-1)
-    expect(feed).toBeLessThan(details)
-    expect(page.slice(details)).not.toContain("liveFeed.map")
+    expect(canvas).toBeGreaterThan(-1)
+    expect(feed).toBeGreaterThan(canvas)
+    expect(page.match(/liveFeed\.map\(/g) ?? []).toHaveLength(1)
+    expect(page).not.toContain("<details")
   })
 
   it("renders alerts from their key and distance, grouped, and links them to the history at that time", () => {

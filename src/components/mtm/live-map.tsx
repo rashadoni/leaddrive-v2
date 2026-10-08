@@ -30,6 +30,8 @@ export interface RouteStop {
   checkInAt?: string | null
   checkOutAt?: string | null
   visitId?: string | null
+  /** The radius a check-in at this client is accepted in: the client's own, or the organization's. */
+  zoneRadiusMeters?: number | null
 }
 
 // F-38: shared type. `AgentLocation` previously lived here too, conflicting
@@ -72,15 +74,6 @@ interface Props {
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
-
-const statusColors: Record<string, string> = {
-  CHECKED_IN: "#22c55e",
-  ON_ROAD: "#3b82f6",
-  STOPPED: "#f59e0b",
-  ROUTE_FINISHED: "#047857",
-  LATE: "#ef4444",
-  OFFLINE: "#94a3b8",
-}
 
 // Field-status label keys come from the shared dictionary at
 // src/lib/mtm-types.ts so map page + live map can't drift. Resolved
@@ -500,7 +493,6 @@ export default function MtmLiveMap({
     })),
     [markerSelection.markers],
   )
-  const renderedAgents = markerSelection.markers.flatMap((marker) => marker.kind === "AGENT" ? [marker.agent] : [])
   const renderedAgentIds = markerSelection.markers.flatMap((marker) => (
     marker.kind === "AGENT" ? [marker.agent.agentId] : marker.agents.map((agent) => agent.agentId)
   ))
@@ -561,19 +553,23 @@ export default function MtmLiveMap({
             <Polyline positions={replayPath} pathOptions={{ color: "#f59e0b", weight: 3, opacity: 0.85 }} />
           )}
 
-          {/* Geofence rings around each agent */}
+          {/* Client zones: the circle a check-in is accepted in, around each stop
+              of the selected employee's day. It used to be drawn around the
+              employee himself, with a fixed 100 m — a ring that followed the
+              person and said nothing about any client. */}
           {showGeofence &&
-            renderedAgents.map((a) => (
+            plannedRoute.map((stop) => (
               <Circle
-                key={`geo-${a.agentId}`}
-                center={[a.latitude, a.longitude]}
-                radius={geofenceRadius}
+                key={`zone-${stop.orderIndex}`}
+                center={[stop.latitude, stop.longitude]}
+                radius={stop.zoneRadiusMeters && stop.zoneRadiusMeters > 0 ? stop.zoneRadiusMeters : geofenceRadius}
+                interactive={false}
                 pathOptions={{
-                  color: statusColors[a.fieldStatus || "OFFLINE"] ?? statusColors.OFFLINE,
+                  color: routeStopColors[stop.status] ?? routeStopColors.PENDING,
                   weight: 1.5,
-                  opacity: 0.6,
-                  fillColor: statusColors[a.fieldStatus || "OFFLINE"] ?? statusColors.OFFLINE,
-                  fillOpacity: 0.08,
+                  opacity: 0.7,
+                  fillColor: routeStopColors[stop.status] ?? routeStopColors.PENDING,
+                  fillOpacity: 0.1,
                 }}
               />
             ))}
