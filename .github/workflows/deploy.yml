@@ -1608,6 +1608,37 @@ jobs:
                fi
              fi'
 
+      # The voice assistant is pinned to a provider model, and Google retires
+      # models on its own calendar: a retired id fails every session and no test
+      # of ours can see it, because every test stops at the request we send.
+      # This one sends it. The server mints the console's own token with its
+      # own key and opens a real Gemini Live session; setup only, so nothing is
+      # said and nothing is billed. Three attempts, because one dropped socket
+      # is not a verdict - but three refusals are.
+      - name: Verify Gemini Live accepts the voice assistant setup
+        if: ${{ !cancelled() && steps.deploy_atomic.outcome == 'success' && env.DEPLOYMENT_MODE == 'normal' }}
+        run: |
+          ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            'set -euo pipefail
+             CHECK_OUTPUT=""
+             for attempt in 1 2 3; do
+               # A trigger that exits non-zero is an attempt that failed, not a
+               # reason to stop trying: its output is still judged below.
+               CHECK_OUTPUT="$(CRON_TRIGGER_LOCK_WAIT_SECONDS=120 /usr/local/lib/leaddrive-v2/ops/current/cron-scripts/cron-trigger.sh /api/cron/voice-provider-check || true)"
+               printf "%s\n" "$CHECK_OUTPUT"
+               if printf "%s\n" "$CHECK_OUTPUT" | grep -Fq '\''"configured":false'\''; then
+                 echo "Voice assistant is not configured on this host; nothing to verify."
+                 exit 0
+               fi
+               if printf "%s\n" "$CHECK_OUTPUT" | grep -Fq '\''"ok":true'\''; then
+                 exit 0
+               fi
+               [ "$attempt" -lt 3 ] && sleep 10
+             done
+             echo "FATAL: Gemini Live did not accept the voice assistant setup (see failure above)"
+             exit 1'
+
       - name: Verify the Chatwoot inbound backstop scheduler
         if: ${{ !cancelled() && steps.deploy_atomic.outcome == 'success' && env.DEPLOYMENT_MODE == 'normal' }}
         run: |

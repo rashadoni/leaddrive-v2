@@ -340,6 +340,126 @@ or neural dependency before the hotfix has been evaluated.
       `POST /api/cron/voice-provider-check?model=<id>&turn=1` opens a real
       session with a candidate on production's own key before anyone is moved
       to it. Both were built for a change nobody chose: Google shuts
+      `gemini-3.1-flash-live-preview` down no earlier than 2026-11-17.
+      `gemini-3.8-live` passed that check on production (setup, and four
+      tool-first turns out of four) and is the default since 2026-10-08; every
+      deploy now re-checks the default's setup. Open until the owner has heard
+      the new model in a real session.
+
+### Exit gate
+
+An approved matrix exists for every planned action:
+
+```text
+action -> allowed fields -> required permission -> resolvers
+       -> duplicate policy -> warnings -> confirmation -> audit result
+```
+
+## 7. Phase 1 — Browser audio baseline and observability
+
+### Tasks
+
+- [x] A1.1 Add a deterministic AudioWorklet/session test harness.
+- [ ] A1.2 Build fixtures for silence, clean RU/AZ/EN speech, instrumental
+      music, vocal music, ringtone, television, keyboard, cough, office noise,
+      and real speech over assistant playback.
+- [x] A1.3 Capture requested and applied microphone settings with
+      `getCapabilities()` and `getSettings()`.
+- [x] A1.4 Record technical session events without raw audio or full transcript
+      storage.
+- [x] A1.5 Distinguish local level activity, provider speech activity, provider
+      interruption, playback stop, and state transition telemetry.
+- [ ] A1.6 Establish a false-interruption baseline for each supported browser,
+      device type, microphone, speakers, and headphones.
+- [ ] A1.7 Add a reproducible manual QA script.
+
+The deterministic harness currently covers synthetic silence, instrumental
+tone, ringtone, keyboard impulses, and seeded office noise. These fixtures
+prove that the local capture path cannot emit an interruption. A1.2 remains
+open until consented real RU/AZ/EN speech and mixed-background recordings are
+available; generated test signals are not presented as real-language evidence.
+
+### Exit gate
+
+- A baseline report identifies where and how often false interruptions occur.
+- Applied browser media settings are observable without collecting user audio.
+- The same fixture set can be rerun after every audio change.
+
+## 8. Phase 2 — P0 false-interruption hotfix
+
+### Tasks
+
+- [x] A2.1 Rename the worklet event from generic `activity` to a name that
+      clearly describes an unconfirmed signal level.
+- [x] A2.2 Keep local RMS activity for the microphone visualization only.
+- [x] A2.3 Remove playback interruption from the local RMS event handler.
+- [x] A2.4 Remove speaking-state changes, watchdog clearing, and new-turn state
+      transitions from the local RMS event handler.
+- [x] A2.5 Make Gemini `serverContent.interrupted` the only initial authority for
+      provider-controlled barge-in.
+- [x] A2.6 Separate `signal_detected`, `candidate_speech`, confirmed speech, and
+      confirmed interruption in the client state machine.
+- [x] A2.7 Verify reconnect and watchdog behavior after removing the local
+      functional interruption.
+- [x] A2.8 Add unit tests for AudioWorklet events and session transitions.
+- [ ] A2.9 Run the fixture matrix and manual browser checks.
+
+### Exit gate
+
+- A local RMS event cannot send an `interrupt` command.
+- The fixture report contains zero interruptions caused by the removed local
+  RMS control path. Provider-side false interruptions are measured separately
+  and become Phase 3 inputs rather than being hidden by this hotfix gate.
+- Real user speech still interrupts the assistant after confirmed barge-in.
+- The first phoneme is not clipped.
+- The session never remains stuck in `speaking` or `processing`.
+
+## 9. Phase 3 — Robust browser audio front end
+
+This phase is driven by measurements from Phases 1 and 2. Do not add a large DSP
+or neural dependency before the hotfix has been evaluated.
+
+### Tasks
+
+- [x] A3.1 Centralize audio thresholds and provider activity settings in a
+      typed configuration module (`src/lib/ai/voice/audio-policy.ts`).
+- [ ] A3.2 Add an adaptive noise floor instead of relying on one fixed RMS
+      threshold.
+- [ ] A3.3 Add a candidate/confirmed/rejected speech state machine.
+- [ ] A3.4 Add a short pre-roll ring buffer to preserve the start of speech.
+- [ ] A3.5 Select one authoritative interruption path from measured canaries:
+      provider automatic VAD when it meets the SLO; a client-confirmed speech
+      gate with pre-roll/manual activity control; or explicit push-to-talk.
+- [ ] A3.6 Do not run provider and client interruption controllers as two
+      independent authorities.
+- [ ] A3.7 If client confirmation is required, evaluate a neural VAD in a Web
+      Worker/WASM runtime.
+- [ ] A3.8 If denoising is required for provider recognition, process the PCM
+      before it is transmitted; a local-only meter cannot improve server VAD.
+- [ ] A3.9 Keep heavy inference outside the AudioWorklet callback.
+- [ ] A3.10 Measure whether denoising such as RNNoise is still required after
+      VAD and browser processing are correct.
+- [x] A3.11 Add a noisy-room mode. One field: `activityHandling` becomes
+      `NO_INTERRUPTION`, so nothing the microphone hears can cut the assistant
+      off. Detection is deliberately NOT loosened with it — the detector is
+      what tells the assistant the user has finished speaking, and relaxing it
+      would trade interruptions for half-heard questions.
+- [x] A3.12 Provide a fallback that disables automatic barge-in in very noisy
+      conditions. Chosen over push-to-talk because it keeps the conversation
+      hands-free; the cost is that the user cannot interrupt by voice either,
+      and the UI says so.
+- [x] A3.13 Add a UI indicator for unapplied browser noise processing. Only a
+      reported `off` warns; `unknown` is the common answer from browsers that
+      do not report the setting back, and warning on it would cry wolf.
+- [ ] A3.14 Verify CPU, memory, battery, and latency on real desktop and mobile
+      devices.
+- [ ] A3.15 Evaluate any Gemini Live model change behind a separate canary flag;
+      never use a model change as the P0 audio fix. The flag exists since
+      2026-10-08: `VOICE_GEMINI_LIVE_MODEL` selects the model per token mint and
+      carries the setup that model needs, and
+      `POST /api/cron/voice-provider-check?model=<id>&turn=1` opens a real
+      session with a candidate on production's own key before anyone is moved
+      to it. Both were built for a change nobody chose: Google shuts
       `gemini-3.1-flash-live-preview` down no earlier than 2026-11-17. Open
       until `gemini-3.8-live` is the default and the owner has heard it in a
       real session.

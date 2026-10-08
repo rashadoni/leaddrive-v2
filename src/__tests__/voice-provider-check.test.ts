@@ -300,18 +300,20 @@ describe("POST /api/cron/voice-provider-check", () => {
   it("reports a refused token mint as a failed check, with the server key kept out of the answer", async () => {
     // The mint is the first thing that reaches Google; refuse it there and the
     // route must say so rather than throw.
+    // Sessions on this host run one model; the check is asked about another.
+    vi.stubEnv("VOICE_GEMINI_LIVE_MODEL", "gemini-3.8-live")
     const fetchMock = vi.fn<typeof fetch>(async () => new Response("{}", { status: 403 }))
     vi.stubGlobal("fetch", fetchMock)
     const { POST } = await import("@/app/api/cron/voice-provider-check/route")
-    const response = await POST(request("?model=gemini-3.8-live&turn=1"))
+    const response = await POST(request("?model=gemini-3.1-flash-live-preview&turn=1"))
     const body = await response.json()
 
     expect(response.status).toBe(200)
     expect(body).toMatchObject({
       configured: true,
       ok: false,
-      model: "gemini-3.8-live",
-      // Nobody's session opens with this model yet: it was asked for by name.
+      model: "gemini-3.1-flash-live-preview",
+      // Nobody's session opens with this model: it was asked for by name.
       current: false,
       setupComplete: false,
       failure: "Gemini Live token mint failed (403)",
@@ -319,8 +321,8 @@ describe("POST /api/cron/voice-provider-check", () => {
     expect(JSON.stringify(body)).not.toContain("server-only-key")
     // And it asked Google about the model it was told to, with that model's setup.
     const sent = JSON.parse(String(fetchMock.mock.calls[0]![1]?.body))
-    expect(sent.bidiGenerateContentSetup.model).toBe("models/gemini-3.8-live")
-    expect(sent.bidiGenerateContentSetup.generationConfig).not.toHaveProperty("thinkingConfig")
+    expect(sent.bidiGenerateContentSetup.model).toBe("models/gemini-3.1-flash-live-preview")
+    expect(sent.bidiGenerateContentSetup.generationConfig.thinkingConfig).toEqual({ thinkingLevel: "LOW" })
   })
 
   it("checks the model sessions get now when none is named", async () => {
