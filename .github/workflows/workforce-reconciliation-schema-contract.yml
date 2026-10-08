@@ -1,0 +1,60 @@
+name: Workforce C12 schema contract
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - scripts/workforce-reconciliation-schema-contract.*
+      - prisma/migrations/20261005193000_workforce_reconciliation_operations/migration.sql
+      - .github/workflows/workforce-reconciliation-schema-contract.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: workforce-c12-schema-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  isolated-schema-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: hrm_c12_schema_contract_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: isolated-c12-contract-only
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd "pg_isready -U postgres -d hrm_c12_schema_contract_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Exact-source isolated catalog and drift acceptance
+        env:
+          CI: 'true'
+          C12_SCHEMA_TEST_DATABASE_URL: postgresql://postgres:isolated-c12-contract-only@127.0.0.1:${{ job.services.postgres.ports[5432] }}/hrm_c12_schema_contract_test
+          C12_SCHEMA_RECEIPT: ${{ runner.temp }}/c12-schema-contract.json
+          C12_EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$C12_EXPECTED_HEAD_SHA"
+          node --test scripts/workforce-reconciliation-schema-contract.test.mjs
+          node scripts/ci/check-github-runner-policy.mjs
+          git diff --check
+      - name: Preserve original finite receipt including failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: workforce-c12-schema-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/c12-schema-contract.json
+          if-no-files-found: error
+          retention-days: 30
