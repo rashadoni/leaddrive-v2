@@ -144,6 +144,17 @@ export type ConfirmationGate = Readonly<{
    * treats this turn as the new question an answer may follow.
    */
   assistantFinishedTurn: (now: number) => ConfirmationDecision
+  /**
+   * The user spoke and the assistant chose not to answer - speech that was not
+   * meant for it. Forgets those words and decides nothing.
+   *
+   * Without this they would wait for the next turn and be judged together with
+   * whatever the user says next: a later "да" arrives glued to a sentence said
+   * to someone else, and is refused as "not an answer". It deliberately does
+   * not move the moment the assistant last asked - silence is not a question,
+   * and must not reopen the window in which a "да" counts.
+   */
+  userSpeechUnanswered: () => void
 }>
 
 type Utterance = {
@@ -223,6 +234,9 @@ export function createConfirmationGate(): ConfirmationGate {
       utterance = null
       lastTurnFinishedAt = now
       return decision
+    },
+    userSpeechUnanswered: () => {
+      utterance = null
     },
   }
 }
