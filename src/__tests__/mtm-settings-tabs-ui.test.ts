@@ -161,9 +161,6 @@ describe("the settings page as six tabs", () => {
       .toEqual(["company", "company", "company", "company", "company"])
     expect(["visitPoliciesEnabled", "brandPotentialPerAgentEnabled", "excelImportsEnabled", "gpsInterval"].map(where))
       .toEqual(["admin", "admin", "admin", "admin"])
-    for (const section of ["contact-dictionary", "attribute-packages", "coverage", "kpi", "scoring"]) {
-      expect(tabOf(container.querySelector(`[data-section="${section}"]`)), section).toBe("admin")
-    }
     // One place to require a photo: the switches. The older page-level switch is gone.
     expect(settingRow("photoRequired")).toBeNull()
   })
@@ -283,6 +280,42 @@ describe("the settings page as six tabs", () => {
     await open()
     expect(locked("fieldContactsEnabled")).toBeNull()
     expect((settingRow("fieldContactsEnabled").querySelector('[role="switch"]') as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  // Owner, 2026-10-08, on the administrator tab, shown «coverage policies and
+  // baseline snapshots» with its JSON fields and hashes: «что это такое, я сам
+  // не понимаю, как буду объяснять клиенту». These five loaders of signed
+  // settings files are for the person rolling the system out. No tenant on
+  // production had loaded anything through four of them.
+  it("keeps the rollout loaders away from everybody but an administrator, closed and unloaded until opened", async () => {
+    const loaders = () => ["contact-dictionary", "attribute-packages", "coverage", "kpi", "scoring"]
+      .filter((name) => container.querySelector(`[data-section="${name}"]`) !== null)
+    const block = () => container.querySelector('[data-testid="mtm-settings-implementer-tools"]') as HTMLDetailsElement | null
+
+    await open()
+    await openTab("admin")
+    // The account that runs the field module day to day never meets them.
+    expect(block()).toBeNull()
+    expect(loaders()).toEqual([])
+
+    act(() => root.unmount())
+    root = createRoot(container)
+    viewer.role = "admin"
+    await open()
+    await openTab("admin")
+    expect(tabOf(block())).toBe("admin")
+    expect(block()?.open).toBe(false)
+    expect(block()?.querySelector("summary")?.textContent).toContain(page.groupImplementerTools)
+    // Closed, they are not even mounted: five sections do not load their data for nobody.
+    expect(loaders()).toEqual([])
+
+    await act(async () => {
+      const details = block() as HTMLDetailsElement
+      details.open = true
+      details.dispatchEvent(new Event("toggle"))
+    })
+    expect(block()?.textContent).toContain(page.hintImplementerTools)
+    expect(loaders()).toEqual(["contact-dictionary", "attribute-packages", "coverage", "kpi", "scoring"])
   })
 
   it("says where the client section went when it is switched off, instead of an empty tab", async () => {

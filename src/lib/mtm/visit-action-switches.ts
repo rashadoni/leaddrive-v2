@@ -11,8 +11,16 @@
  * сделай… обычные переключатели ставь, ползунки».
  *
  * The switches read and write the same rules through the same API: the
- * organization-wide rule for the default visit type. Rules for one group or a
- * special visit type stay in the full editor, one click below.
+ * organization-wide rule for the default visit type. A rule for one group of
+ * agents is the same table of switches, one click below («special rules»).
+ *
+ * 2026-10-08 the old editor went altogether (owner, shown it once more: «эту
+ * часть ты оставил без изменений»). Of what it offered per action, the table
+ * keeps what somebody acts on — the minimum number of photos, and «only at
+ * clients of this class / this kind», both applied by the server. It does not
+ * offer «a reason may replace it» (the app has no way to give that reason) and
+ * a minimum for anything but photos (the server counts one of each); a rule
+ * that already stores them keeps them untouched.
  *
  * Pure: no React, no fetch.
  */
@@ -71,6 +79,41 @@ export function specialVisitRuleCount(rules: readonly VisitSwitchRule[], now: Da
 }
 
 /**
+ * The rules «special rules» lists: every rule that is switched on and has not
+ * ended, except the company rule (that one is the switches above). A rule that
+ * starts later is listed too — somebody wrote it and must be able to find it.
+ */
+export function listedSpecialVisitRules<T extends VisitSwitchRule>(rules: readonly T[], now: Date = new Date()): T[] {
+  const company = companyVisitRule(rules, now)
+  return rules.filter((rule) => {
+    if (rule === company || !rule.isActive) return false
+    if (!rule.effectiveTo) return true
+    const to = new Date(rule.effectiveTo).getTime()
+    return !Number.isFinite(to) || to >= now.getTime()
+  })
+}
+
+/** The priority every rule written from the settings page gets. Among equals the resolver prefers a group's own rule. */
+export const SPECIAL_RULE_PRIORITY = 100
+
+/**
+ * The server refuses two active rules for the same group, visit type and
+ * priority whose dates overlap (`MTM_POLICY_WINDOW_CONFLICT`). A new special
+ * rule is always for the default visit type at the default priority, so a
+ * group that already has such a rule is not offered again.
+ */
+export function teamsWithoutSpecialVisitRule<T extends { id: string }>(
+  teams: readonly T[],
+  rules: readonly VisitSwitchRule[],
+  now: Date = new Date(),
+): T[] {
+  const taken = new Set(listedSpecialVisitRules(rules, now)
+    .filter((rule) => rule.teamId !== null && rule.visitType.toUpperCase() === "DEFAULT" && rule.priority === SPECIAL_RULE_PRIORITY)
+    .map((rule) => rule.teamId as string))
+  return teams.filter((team) => !taken.has(team.id))
+}
+
+/**
  * What the server falls back to while an organization has no rule at all.
  * `photoRequired` is the setting older than the rules («photo required on
  * every visit»): the resolver still honours it then, and only then. Its own
@@ -117,18 +160,78 @@ export function visitActionsAfterSwitch(
   change: { shown?: boolean; required?: boolean },
   defaults?: VisitSwitchDefaults,
 ): VisitSwitchAction[] {
-  const stored = rule?.actions ?? []
-  const keys = [...new Set<string>([...VISIT_SWITCH_ACTION_KEYS, ...stored.map((action) => action.actionKey)])]
-  return keys.map((key) => {
-    const current: VisitSwitchAction = stored.find((action) => action.actionKey === key)
-      // The first rule of an organization starts from what applied without one,
-      // so creating it by one switch does not quietly lift a required photo.
-      ?? { actionKey: key, mode: rule ? "OPTIONAL" : modeWithoutRule(key, defaults), minCount: 1, conditions: null, allowWaiver: false }
+  // The first rule of an organization starts from what applied without one
+  // (`visitRuleActions`), so creating it by one switch does not quietly lift
+  // a required photo.
+  return visitRuleActions(rule, defaults).map((current) => {
+    const key = current.actionKey
     if (key !== actionKey) return current
     const before = visitSwitchState(rule, key, defaults)
     const shown = change.shown ?? before.shown
     // Switching «shown» back on returns an optional action, not the required one it may once have been.
     const required = change.shown !== undefined ? false : (change.required ?? before.required)
     return { ...current, mode: visitModeFromSwitches(shown, shown && required) }
+  })
+}
+
+
+/** What a rule says about every action the table lists: stored, or the default an unlisted action gets. */
+export function visitRuleActions(rule: VisitSwitchRule | null, defaults?: VisitSwitchDefaults): VisitSwitchAction[] {
+  const stored = rule?.actions ?? []
+  const keys = [...new Set<string>([...VISIT_SWITCH_ACTION_KEYS, ...stored.map((action) => action.actionKey)])]
+  return keys.map((key) => stored.find((action) => action.actionKey === key)
+    ?? { actionKey: key, mode: rule ? "OPTIONAL" : modeWithoutRule(key, defaults), minCount: 1, conditions: null, allowWaiver: false })
+}
+
+/** The refinements of one action that the server acts on. */
+export interface VisitActionDetail {
+  /** Only photos are counted; every other action is done once. */
+  minCount: number
+  /** «Only at clients of this class» — null for any. */
+  customerClass: string | null
+  /** «Only at clients of this kind» — null for any. */
+  clientKind: string | null
+}
+
+export function visitActionDetail(rule: VisitSwitchRule | null, actionKey: string): VisitActionDetail {
+  const action = rule?.actions.find((candidate) => candidate.actionKey === actionKey)
+  return {
+    minCount: Math.max(1, Math.trunc(action?.minCount ?? 1)),
+    customerClass: action?.conditions?.customerCategories?.[0] ?? null,
+    clientKind: action?.conditions?.objectTypes?.[0] ?? null,
+  }
+}
+
+/** Whether a refinement is set at all, so a row can say so without being opened. */
+export function visitActionRefined(rule: VisitSwitchRule | null, actionKey: string): boolean {
+  const detail = visitActionDetail(rule, actionKey)
+  return detail.customerClass !== null || detail.clientKind !== null || (actionKey === "PHOTO" && detail.minCount > 1)
+}
+
+/**
+ * The actions to store after one refinement changed. Like a switch, it changes
+ * the one thing it names: the mode, the waiver and every other action stay.
+ */
+export function visitActionsAfterDetail(
+  rule: VisitSwitchRule | null,
+  actionKey: VisitSwitchActionKey,
+  change: Partial<VisitActionDetail>,
+  defaults?: VisitSwitchDefaults,
+): VisitSwitchAction[] {
+  return visitRuleActions(rule, defaults).map((current) => {
+    if (current.actionKey !== actionKey) return current
+    const conditions: NonNullable<VisitSwitchAction["conditions"]> = { ...(current.conditions ?? {}) }
+    if (change.customerClass !== undefined) {
+      if (change.customerClass) conditions.customerCategories = [change.customerClass]
+      else delete conditions.customerCategories
+    }
+    if (change.clientKind !== undefined) {
+      if (change.clientKind) conditions.objectTypes = [change.clientKind]
+      else delete conditions.objectTypes
+    }
+    const minCount = change.minCount === undefined || !Number.isFinite(change.minCount)
+      ? current.minCount
+      : Math.min(100, Math.max(1, Math.trunc(change.minCount)))
+    return { ...current, minCount, conditions: Object.keys(conditions).length ? conditions : null }
   })
 }

@@ -48,13 +48,19 @@ describe("visit policy settings: what may be edited (GET data.access contract)",
   it("is wired into the settings screen", () => {
     const source = readFileSync("src/app/(dashboard)/mtm/settings/visit-policy-settings.tsx", "utf8")
     expect(source).toContain("parseVisitPolicyUiAccess(policyBody.data?.access)")
-    expect(source).toContain("<fieldset disabled={readOnly")
+    // Since 2026-10-08 a rule is a table of switches. One somebody may not
+    // change is the same table with every switch off and the reason said
+    // above it, and it has no delete button.
+    expect(source).toContain("readOnly={readOnly}")
+    expect(source).toContain("readOnlyNote={readOnlyText(readOnlyReason)}")
     expect(source).toContain("{readOnly ? null : (")
-    expect(source).toContain('data-testid="visit-policy-read-only"')
     expect(source).toContain('data-testid="visit-policy-no-team-hint"')
-    // 400/409 answers are explained too, never printed as the server's English.
+    // 400/409 answers are explained too, never printed as the server's English:
+    // adding a rule, deleting one and the check all go through one `send`.
     expect(source).not.toContain("body?.error")
-    expect(source.match(/explainMtmApiErrorOr\(explainError, body, response\.status/g) ?? []).toHaveLength(3)
+    expect(source.match(/explainMtmApiErrorOr\(explainError, body, response\.status/g) ?? []).toHaveLength(1)
+    expect(source.match(/await send\(/g) ?? []).toHaveLength(3)
+    expect(source.match(/await fetch\(/g) ?? []).toHaveLength(1)
     for (const locale of ["en", "ru", "az"]) {
       const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).mtmVisitPolicies
       for (const key of ["readOnlySupervisor", "readOnlyAdminOnly", "readOnlyOtherTeam", "managerNoTeamHint"]) {
