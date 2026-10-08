@@ -67,6 +67,8 @@ export interface MtmDashboardAgent extends Omit<LiveMapAgent, "latitude" | "long
   workdayDate?: string | null
   workdayStartedAt?: string | null
   workdayCarryover?: boolean
+  /** When the visit the agent is in was opened — it may be an earlier day. Only with CHECKED_IN. */
+  openVisitSince?: string | null
 }
 
 export interface LiveMapViewportBounds {

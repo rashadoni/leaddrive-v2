@@ -16409,6 +16409,7 @@
     "distanceDetail": "{distance} from the customer (allowed {radius})"
   },
   "mtmMap": {
+    "visitOpenedAt": "visit opened: {time}",
     "fieldStatus": {
       "checkedIn": "Check-in",
       "onRoad": "On Road",

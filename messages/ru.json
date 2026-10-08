@@ -16409,6 +16409,7 @@
     "distanceDetail": "{distance} от клиента (допустимо {radius})"
   },
   "mtmMap": {
+    "visitOpenedAt": "визит открыт: {time}",
     "fieldStatus": {
       "checkedIn": "На точке",
       "onRoad": "В пути",

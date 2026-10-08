@@ -94,7 +94,7 @@ type TodayRouteRow = Prisma.MtmRouteGetPayload<{
   select: { agentId: true; totalPoints: true; visitedPoints: true; status: true }
 }>
 
-type ActiveVisitRow = Prisma.MtmVisitGetPayload<{ select: { agentId: true } }>
+type ActiveVisitRow = Prisma.MtmVisitGetPayload<{ select: { agentId: true; checkInAt: true } }>
 
 export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
   const orgId = auth.orgId
@@ -291,12 +291,27 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
         .map((row) => [row.agentId, row._max?.recordedAt ?? null]),
     )
 
-    // Get today's active visits (checked in but not out) for check-in status
+    // Every visit that is open right now, whatever day it was opened on.
+    // Until 2026-10-08 only visits opened today counted. The owner's agent
+    // checked in at 22:14 and was still in that visit the next morning: his
+    // app showed the open visit, the server refused him any other check-in
+    // because of it (that check has no date in it) — and the map counted him
+    // «Gecikir», with zero on «Yerində». A visit does not close at midnight,
+    // so the map may not pretend it did; when it was opened goes out with it.
     const activeVisits = await prisma.mtmVisit.findMany({
-      where: { organizationId: orgId, status: "CHECKED_IN", checkInAt: { gte: activityToday, lt: activityTomorrow }, deletedAt: null, ...scopedWhere },
-      select: { agentId: true },
+      where: { organizationId: orgId, status: "CHECKED_IN", deletedAt: null, ...scopedWhere },
+      select: { agentId: true, checkInAt: true },
     })
-    const checkedInAgents = new Set(activeVisits.map((v: ActiveVisitRow) => v.agentId))
+    const openVisitSinceByAgent = new Map<string, Date | null>()
+    for (const visit of activeVisits as ActiveVisitRow[]) {
+      const known = openVisitSinceByAgent.get(visit.agentId)
+      const opened = visit.checkInAt instanceof Date ? visit.checkInAt : null
+      // One open visit per agent is the rule; should there be two, the older says how long.
+      if (!openVisitSinceByAgent.has(visit.agentId) || (opened && (!known || opened < known))) {
+        openVisitSinceByAgent.set(visit.agentId, opened)
+      }
+    }
+    const checkedInAgents = new Set(openVisitSinceByAgent.keys())
 
     // Determine field status per agent
     const agentLocations = (agents as AgentWithLocations[]).map((a) => {
@@ -356,6 +371,9 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
         workdayCarryover,
         locationState: explainMissingLocation({ hasLocation: Boolean(loc), lastSeenAt: a.lastSeenAt }),
         routeCompletion: dayRoutes?.completion ?? 0,
+        // Only with the status it explains: an old GPS point says «offline»
+        // first, and then nothing is claimed about a visit either.
+        openVisitSince: fieldStatus === "CHECKED_IN" ? openVisitSinceByAgent.get(a.id) ?? null : null,
         ...(loc ? {
           latitude: loc.latitude,
           longitude: loc.longitude,

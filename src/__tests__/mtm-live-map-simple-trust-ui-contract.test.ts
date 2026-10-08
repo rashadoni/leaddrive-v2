@@ -24,6 +24,26 @@ describe("SWM-12 simple and trustworthy live map UI contract", () => {
     expect(page).not.toContain("const [showFeed, setShowFeed]")
   })
 
+  // Owner, 2026-10-08, counted under «Gecikir (1)» and looking at zeros on the
+  // other chips: «почему тут по нулям, я же в приложении?» — his card said he
+  // was online with fresh GPS and an active workday, and which chip counted
+  // him was told only after a click on the card.
+  it("says on every card what the employee is doing, in the chip's own word, without a click", () => {
+    const status = page.indexOf("data-testid={`live-map-agent-status-${agent.agentId}`}")
+    expect(status).toBeGreaterThan(-1)
+    expect(status).toBeLessThan(page.indexOf("{isSelected ? ("))
+    const line = page.slice(status, page.indexOf("tMap(`presence.", status))
+    expect(line).toContain("tMap(`fieldStatus.${cfg.labelKey}`)")
+    // The status is said once: not again in the detail a click opens.
+    expect(page.match(/tMap\(`fieldStatus\.\$\{cfg\.labelKey\}`\)/g) ?? []).toHaveLength(1)
+    // «On site» in a visit opened on an earlier day says when it was opened, with the date.
+    expect(line).toContain('agent.fieldStatus === "CHECKED_IN" && agent.openVisitSince')
+    expect(line).toContain("visitOpenedOnAnotherDay(agent.openVisitSince, contract?.timezone)")
+    for (const messages of locales) {
+      expect(messages.mtmMap.visitOpenedAt).toContain("{time}")
+    }
+  })
+
   it("shows presence, GPS and workday truth before expanding optional detail", () => {
     expect(page).toContain('tMap(`presence.${appPresent ? "online" : "offline"}`)')
     expect(page).toContain('tMap(`freshness.${agent.freshness.toLowerCase()}`)')

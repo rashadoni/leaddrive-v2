@@ -301,12 +301,15 @@ describe("GET /api/v1/mtm/locations", () => {
         gte: new Date("2026-08-02T00:00:00.000Z"),
         lt: new Date("2026-08-03T00:00:00.000Z"),
       })
-      for (const call of vi.mocked(prisma.mtmVisit.findMany).mock.calls) {
-        expect((call[0] as any).where.checkInAt).toEqual({
-          gte: new Date("2026-08-01T12:00:00.000Z"),
-          lt: new Date("2026-08-02T12:00:00.000Z"),
-        })
-      }
+      const [openVisits, visitFeed] = vi.mocked(prisma.mtmVisit.findMany).mock.calls.map((call: unknown[]) => (call[0] as any).where)
+      // The day's feed is the tenant's day. A visit that is open is open
+      // whatever day it was opened on, so that query has no date in it.
+      expect(visitFeed.checkInAt).toEqual({
+        gte: new Date("2026-08-01T12:00:00.000Z"),
+        lt: new Date("2026-08-02T12:00:00.000Z"),
+      })
+      expect(openVisits).toMatchObject({ status: "CHECKED_IN", deletedAt: null })
+      expect(openVisits.checkInAt).toBeUndefined()
       expect((vi.mocked(prisma.mtmAlert.findMany).mock.calls[0]?.[0] as any).where.createdAt).toEqual({
         gte: new Date("2026-08-01T12:00:00.000Z"),
         lt: new Date("2026-08-02T12:00:00.000Z"),
@@ -397,6 +400,47 @@ describe("GET /api/v1/mtm/locations", () => {
         workdayCarryover: true,
         workdayDate: "2026-07-31T00:00:00.000Z",
       })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  // Owner's own agent, 2026-10-08: checked in at 22:14, still in that visit
+  // the next morning. The app showed the open visit and the server refused any
+  // other check-in because of it, while the map counted him «Gecikir» and
+  // showed zero on «Yerində» — it only looked at visits opened today.
+  it("keeps an agent «on site» in a visit he opened before midnight instead of calling him late", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-08-01T12:00:00.000Z"))
+    try {
+      const now = new Date()
+      const agent = {
+        id: "agent-1", name: "Ali", isOnline: true, lastSeenAt: now, teamId: null, team: null,
+        workdays: [{ status: "STARTED", workDate: new Date("2026-08-01T00:00:00.000Z"), startedAt: now }],
+        locations: [{ latitude: 40.41, longitude: 49.87, accuracy: 5, speed: 0, heading: 0, battery: 80, isMoving: false, recordedAt: now }],
+      }
+      // Today's route is published and untouched, and it is past the late hour.
+      const todaysRoute = [{ agentId: "agent-1", totalPoints: 3, visitedPoints: 0, status: "PLANNED" }]
+      const ask = async (openVisits: unknown[]) => {
+        vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([agent] as any)
+        vi.mocked(prisma.mtmRoute.findMany).mockResolvedValue(todaysRoute as any)
+        vi.mocked(prisma.mtmVisit.findMany).mockResolvedValueOnce(openVisits as any).mockResolvedValueOnce([] as any)
+        vi.mocked(prisma.mtmAlert.findMany).mockResolvedValue([] as any)
+        const json = await (await GET(makeReq())).json()
+        return { row: json.data.agentLocations[0], counts: json.data.statusCounts }
+      }
+
+      // With no visit open he really is late: this is what the map said.
+      const without = await ask([])
+      expect(without.row.fieldStatus).toBe("LATE")
+      expect(without.row.openVisitSince).toBeNull()
+
+      // The visit opened yesterday evening is still open.
+      const openedYesterday = new Date("2026-07-31T18:14:00.000Z")
+      const within = await ask([{ agentId: "agent-1", checkInAt: openedYesterday }])
+      expect(within.row.fieldStatus).toBe("CHECKED_IN")
+      expect(within.row.openVisitSince).toBe(openedYesterday.toISOString())
+      expect(within.counts).toMatchObject({ checkedIn: 1, late: 0 })
     } finally {
       vi.useRealTimers()
     }
