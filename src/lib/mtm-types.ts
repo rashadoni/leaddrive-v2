@@ -33,6 +33,8 @@ export interface MtmLiveMapContract {
   polling: { minimumIntervalSeconds: number }
   freshnessThresholds: MtmLiveMapFreshnessThresholds
   maxAccuracyMeters: number
+  /** The organization's check-in radius, for clients without one of their own. */
+  geofenceRadiusMeters?: number
 }
 
 export interface LiveMapAgent {

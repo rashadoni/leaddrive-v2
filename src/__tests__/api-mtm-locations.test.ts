@@ -235,6 +235,8 @@ describe("GET /api/v1/mtm/locations", () => {
       timezone: "Asia/Baku",
       freshnessThresholds: { onlineSeconds: 300, delayedSeconds: 600 },
       maxAccuracyMeters: 100,
+      // The organization's check-in radius, for the client zones on the map.
+      geofenceRadiusMeters: 100,
     })
 
     // live feed merges visit + alert events

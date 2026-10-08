@@ -490,6 +490,9 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
           ).length,
           workforceEnabled,
           fieldSessionEnabled,
+          // The radius a check-in is accepted in where the client has none of
+          // its own: the live map draws client zones with it.
+          geofenceRadiusMeters: settings.geofenceRadius,
           generatedAt: now,
           polling: { minimumIntervalSeconds: 15 },
           freshnessThresholds: {

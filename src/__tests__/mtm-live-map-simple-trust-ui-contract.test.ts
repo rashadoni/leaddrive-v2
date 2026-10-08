@@ -16,12 +16,19 @@ describe("SWM-12 simple and trustworthy live map UI contract", () => {
     expect(page).toContain("mode=history&agentId=")
   })
 
-  it("keeps the primary header focused and puts optional tools in a closed details panel", () => {
-    expect(page).toContain('<details className="group rounded-lg border bg-card">')
-    expect(page).toContain('tMap("additionalControls")')
-    expect(page).toContain('tMap("historyOnlyExplicit")')
-    expect(page).toContain('data-testid="mtm-map-heatmap-toggle"')
+  // 2026-10-09 the optional tools left the closed panel under the page for
+  // «Слои» on the map itself (owner: «как убирать на карте объекты, агентов»).
+  // What the rule protects is unchanged: the header stays for the status
+  // chips, and the tools are closed until somebody opens them.
+  it("keeps the primary header focused and puts optional tools in a control that is closed until opened", () => {
+    expect(page).toContain("<LiveMapLayersControl")
+    expect(page).not.toContain('tMap("additionalControls")')
+    expect(page).toContain('note={tMap("historyOnlyExplicit")}')
+    expect(page).toContain('testId: "mtm-map-heatmap-toggle"')
     expect(page).not.toContain("const [showFeed, setShowFeed]")
+    const control = readFileSync(resolve("src/components/mtm/live-map-layers-control.tsx"), "utf8")
+    expect(control).toContain("const [open, setOpen] = useState(false)")
+    expect(control).toContain("{open ? (")
   })
 
   // Owner, 2026-10-08, counted under «Gecikir (1)» and looking at zeros on the
@@ -69,8 +76,15 @@ describe("SWM-12 simple and trustworthy live map UI contract", () => {
           closed: expect.any(String),
           not_started: expect.any(String),
         },
-        additionalControls: expect.any(String),
-        additionalControlsHint: expect.any(String),
+        layers: {
+          title: expect.any(String),
+          agents: expect.any(String),
+          route: expect.any(String),
+          zones: expect.any(String),
+          heat: expect.any(String),
+          hiddenAgents: expect.stringContaining("{count}"),
+          showAll: expect.any(String),
+        },
         historyOnlyExplicit: expect.any(String),
         selectForDetails: expect.any(String),
         mapBackgroundUnavailable: expect.any(String),
