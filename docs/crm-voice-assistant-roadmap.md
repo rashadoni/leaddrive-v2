@@ -334,7 +334,13 @@ or neural dependency before the hotfix has been evaluated.
 - [ ] A3.14 Verify CPU, memory, battery, and latency on real desktop and mobile
       devices.
 - [ ] A3.15 Evaluate any Gemini Live model change behind a separate canary flag;
-      never use a model change as the P0 audio fix.
+      never use a model change as the P0 audio fix. The flag exists since
+      2026-10-08: `VOICE_GEMINI_LIVE_MODEL` selects the model per token mint and
+      carries the setup that model needs. It was built for a change nobody
+      chose - Google shuts `gemini-3.1-flash-live-preview` down no earlier than
+      2026-11-17 - so the default is already `gemini-3.8-live` and the flag is
+      the way back while 3.1 still exists. Open until the owner has heard the
+      new model in a real session.
 
 ### Exit gate
 
@@ -1028,7 +1034,8 @@ Provider references:
 
 - [Gemini Live API capabilities](https://ai.google.dev/gemini-api/docs/live-api/capabilities)
 - [Gemini API reference](https://ai.google.dev/api/generate-content)
-- [Gemini Live model documentation](https://ai.google.dev/gemini-api/docs/models/gemini-3.1-flash-live-preview)
+- [Gemini 3.8 Live model documentation and migration notes](https://ai.google.dev/gemini-api/docs/models/gemini-3.8-live)
+- [Gemini API deprecation schedule](https://ai.google.dev/gemini-api/docs/deprecations)
 
 ## 22. Execution model decision
 

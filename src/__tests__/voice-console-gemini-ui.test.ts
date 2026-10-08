@@ -202,7 +202,7 @@ describe("VoiceConsole Gemini Live lifecycle", () => {
         return json({ data: {
           token: "ephemeral-only",
           expiresAt: "2026-08-14T11:02:00.000Z",
-          model: "gemini-3.1-flash-live-preview",
+          model: "gemini-3.8-live",
           apiVersion: "v1beta",
           connectionId: "17de9868-8f83-4baf-85dc-5e6ac5eb3622",
         } })

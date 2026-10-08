@@ -11,7 +11,6 @@ import { MAX_SESSION_SECONDS, readVoicePilotConfig, voiceWritesEnabled } from "@
 import {
   createGeminiLiveToken,
   GEMINI_LIVE_API_VERSION,
-  GEMINI_LIVE_MODEL,
 } from "@/lib/ai/voice/gemini-live"
 import { guardInteractiveJsonMutation } from "@/lib/social/review-apply-request"
 import { geminiVoiceMarker } from "@/lib/ai/voice/session-marker"
@@ -125,7 +124,8 @@ export const POST = withRlsAuth("ai", "read", async (req, auth) => {
         data: {
           token: credential.token,
           expiresAt: credential.expiresAt,
-          model: GEMINI_LIVE_MODEL,
+          // The id sealed into this token, not a second read of the env.
+          model: credential.model,
           apiVersion: GEMINI_LIVE_API_VERSION,
           connectionId: nonce,
         },

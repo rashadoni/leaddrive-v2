@@ -1,4 +1,5 @@
 import {
+  Behavior,
   Modality,
   ThinkingLevel,
   type FunctionDeclaration,
@@ -12,7 +13,80 @@ import {
   type VoiceAudioMode,
 } from "./audio-policy"
 
-export const GEMINI_LIVE_MODEL = "gemini-3.1-flash-live-preview"
+/**
+ * Which Live model the console talks to, and what its setup must look like.
+ *
+ * Google retires Live models on its own calendar, and a retired id does not
+ * degrade: every session fails to open. `gemini-3.1-flash-live-preview` is
+ * listed for shutdown no earlier than 2026-11-17 with `gemini-3.8-live` as its
+ * replacement (ai.google.dev/gemini-api/docs/deprecations, read 2026-10-08).
+ *
+ * The two are not the same setup with a different name, so the id travels with
+ * the two fields that differ. Sending either model the other one's setup is a
+ * rejected session, not a quality difference:
+ *
+ * - 3.8 Live does its own interleaved reasoning; `thinkingLevel` "is not
+ *   supported and must be omitted in setup". 3.1 defaults to MINIMAL, and
+ *   MINIMAL is how "five boards" happened, so there it stays pinned to LOW.
+ * - 3.8 Live runs function calls asynchronously unless told otherwise: the
+ *   model keeps talking while the tool runs. Every rule in the prompt below
+ *   rests on the opposite - nothing is said about CRM data until the tool has
+ *   answered - so BLOCKING is requested explicitly. 3.1 is sequential and has
+ *   no such field.
+ *
+ * The rest of the 3.8 migration notes need nothing here: proactive audio is
+ * always on (never configured), affective dialogue is gone (never used), the
+ * new turn-coverage default includes video (audio-policy.ts sets its own).
+ */
+export type GeminiLiveModel = Readonly<{
+  id: string
+  /** `null` where the model rejects the field. */
+  thinkingLevel: ThinkingLevel | null
+  /** `null` where the model has no such field. */
+  toolBehavior: Behavior | null
+}>
+
+export const DEFAULT_GEMINI_LIVE_MODEL = "gemini-3.8-live"
+const LEGACY_GEMINI_LIVE_FAMILY = "gemini-3.1-flash-live"
+
+const MODEL_ID_SHAPE = /^gemini-[a-z0-9][a-z0-9.-]{0,62}$/
+
+/**
+ * `gemini-3.8-live-extended-thinking` is a Live model and cannot be used here.
+ * It runs tools asynchronously only, and its `turnComplete` no longer means
+ * the assistant has finished - the one signal voice confirmation waits for
+ * before it decides what the user answered (voice-confirmation.ts).
+ */
+function usableLiveModelId(id: string): boolean {
+  return MODEL_ID_SHAPE.test(id) && id.includes("-live") && !id.includes("extended-thinking")
+}
+
+/**
+ * `VOICE_GEMINI_LIVE_MODEL` moves the console to another Live model without a
+ * release: back to 3.1 while it still exists, or forward to the next id.
+ *
+ * Read per call, like the rest of the voice env, so a recreated PM2 process is
+ * enough. Empty means default, not "no model": the deploy tooling exports
+ * unset variables as empty strings (see `envNumber` in config.ts). A value
+ * that cannot work falls back to the default and says so in the log, because
+ * the alternative is a typo that turns voice off for everyone.
+ */
+export function geminiLiveModel(
+  raw: string | undefined = process.env.VOICE_GEMINI_LIVE_MODEL,
+): GeminiLiveModel {
+  const requested = (raw ?? "").trim()
+  let id = requested || DEFAULT_GEMINI_LIVE_MODEL
+  if (!usableLiveModelId(id)) {
+    console.error(
+      `[voice] VOICE_GEMINI_LIVE_MODEL=${JSON.stringify(requested.slice(0, 80))} is not a usable Live model; using ${DEFAULT_GEMINI_LIVE_MODEL}`,
+    )
+    id = DEFAULT_GEMINI_LIVE_MODEL
+  }
+  return id.startsWith(LEGACY_GEMINI_LIVE_FAMILY)
+    ? { id, thinkingLevel: ThinkingLevel.LOW, toolBehavior: null }
+    : { id, thinkingLevel: null, toolBehavior: Behavior.BLOCKING }
+}
+
 // Chosen by the owner on 2026-08-17 after listening to every preset speak the
 // same Azerbaijani sentence. The console assistant and the phone agent are
 // deliberately different voices: the phone line is a stranger calling a
@@ -110,11 +184,13 @@ function functionDeclarations(
   allowedSections: readonly string[],
   locale: string,
   writesEnabled: boolean,
+  behavior: Behavior | null,
 ): FunctionDeclaration[] {
   return voiceTools(allowedSections, locale, writesEnabled).map((tool) => ({
     name: tool.name,
     description: tool.description,
     parametersJsonSchema: tool.parameters,
+    ...(behavior ? { behavior } : {}),
   }))
 }
 
@@ -131,7 +207,10 @@ export function geminiLiveConfig(input: {
   audioMode?: VoiceAudioMode
   /** The write kill switch, resolved server-side and sealed into the token. */
   writesEnabled?: boolean
+  /** Resolved once per mint, so the setup and the id cannot disagree. */
+  model?: GeminiLiveModel
 }): LiveConnectConfig {
+  const model = input.model ?? geminiLiveModel()
   return {
     responseModalities: [Modality.AUDIO],
     speechConfig: {
@@ -139,8 +218,9 @@ export function geminiLiveConfig(input: {
     },
     // MINIMAL made the assistant answer before deciding whether it needed a
     // tool, which is exactly how "five boards" happened. LOW leaves it enough
-    // room to notice that a question is about data it cannot see.
-    thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+    // room to notice that a question is about data it cannot see. Where the
+    // model takes no level, the field is absent, not MINIMAL.
+    ...(model.thinkingLevel ? { thinkingConfig: { thinkingLevel: model.thinkingLevel } } : {}),
     systemInstruction: geminiLiveSystemInstruction(
       input.locale,
       input.firstName,
@@ -152,6 +232,7 @@ export function geminiLiveConfig(input: {
         input.allowedSections,
         input.locale,
         input.writesEnabled ?? true,
+        model.toolBehavior,
       ),
     }],
     sessionResumption: {},
@@ -178,12 +259,18 @@ export function geminiLiveTokenConfig(input: {
   audioMode?: VoiceAudioMode
   /** The write kill switch, resolved server-side and sealed into the token. */
   writesEnabled?: boolean
+  model?: GeminiLiveModel
 }): LiveConnectConfig {
   const locked = { ...geminiLiveConfig(input) }
   delete locked.sessionResumption
   return locked
 }
 
+/**
+ * Returns the model id next to the token on purpose. The browser must connect
+ * with exactly the id sealed into its token, so the caller reports this one
+ * instead of resolving the env a second time and risking a different answer.
+ */
 export async function createGeminiLiveToken(input: {
   apiKey: string
   locale: string
@@ -192,13 +279,15 @@ export async function createGeminiLiveToken(input: {
   maxSessionSeconds: number
   audioMode?: VoiceAudioMode
   writesEnabled?: boolean
+  model?: GeminiLiveModel
   now?: Date
-}): Promise<{ token: string; expiresAt: string }> {
+}): Promise<{ token: string; expiresAt: string; model: string }> {
   const now = input.now ?? new Date()
   const requestedLifetimeMs = Math.max(1, input.maxSessionSeconds) * 1000 + TOKEN_EXPIRY_GRACE_MS
   const expiresAt = new Date(now.getTime() + Math.min(requestedLifetimeMs, MAX_TOKEN_LIFETIME_MS))
   const newSessionExpiresAt = new Date(now.getTime() + TOKEN_CONNECT_WINDOW_MS)
-  const config = geminiLiveConfig(input)
+  const model = input.model ?? geminiLiveModel()
+  const config = geminiLiveConfig({ ...input, model })
   const response = await fetch(
     `https://generativelanguage.googleapis.com/${GEMINI_LIVE_API_VERSION}/auth_tokens`,
     {
@@ -212,11 +301,11 @@ export async function createGeminiLiveToken(input: {
         newSessionExpireTime: newSessionExpiresAt.toISOString(),
         uses: 1,
         bidiGenerateContentSetup: {
-          model: `models/${GEMINI_LIVE_MODEL}`,
+          model: `models/${model.id}`,
           generationConfig: {
             responseModalities: config.responseModalities,
             speechConfig: config.speechConfig,
-            thinkingConfig: config.thinkingConfig,
+            ...(config.thinkingConfig ? { thinkingConfig: config.thinkingConfig } : {}),
           },
           systemInstruction: {
             parts: [{ text: String(config.systemInstruction ?? "") }],
@@ -249,5 +338,5 @@ export async function createGeminiLiveToken(input: {
   if (typeof token.name !== "string" || token.name.length === 0) {
     throw new Error("Gemini Live token response had no token")
   }
-  return { token: token.name, expiresAt: expiresAt.toISOString() }
+  return { token: token.name, expiresAt: expiresAt.toISOString(), model: model.id }
 }
