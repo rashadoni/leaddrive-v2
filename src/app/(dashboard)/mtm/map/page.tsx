@@ -27,7 +27,7 @@ import { LocationHistoryPanel } from "@/components/mtm/location-history-panel"
 import {
   MapPin, RefreshCw, Clock, WifiOff, Navigation,
   Radio, AlertTriangle, History,
-  Battery, ShieldAlert, ArrowLeft, PauseCircle, Flag, Crosshair, Eye, EyeOff,
+  Battery, ShieldAlert, ArrowLeft, PauseCircle, Flag, Crosshair, Eye,
 } from "lucide-react"
 
 const MtmLiveMap = dynamic(() => import("@/components/mtm/live-map"), { ssr: false })
@@ -182,7 +182,7 @@ export default function MtmMapPage() {
   const [followSelected, setFollowSelected] = useState(false)
   // What is drawn on the map (owner, 2026-10-09: «как убирать на карте
   // объекты, агентов»): whole layers — the markers, the selected employee's
-  // route — and single employees taken off with the eye on their card.
+  // route — and single employees, ticked or unticked on their card.
   const [showAgentMarkers, setShowAgentMarkers] = useState(true)
   const [showDayRoute, setShowDayRoute] = useState(true)
   const [hiddenAgentIds, setHiddenAgentIds] = useState<ReadonlySet<string>>(() => new Set())
@@ -540,7 +540,7 @@ export default function MtmMapPage() {
     handleAgentClick(agentId)
   }
 
-  // The eye on a card takes that one employee off the map, or puts him back.
+  // The tick on a card takes that one employee off the map, or puts him back.
   // Taking off the selected one would leave his route there with no marker, so
   // the selection goes with him.
   const toggleAgentOnMap = (agentId: string) => {
@@ -552,6 +552,11 @@ export default function MtmMapPage() {
       return next
     })
     if (hide && selectedAgentRef.current === agentId) handleAgentClick(agentId)
+  }
+  // «Nobody»: the starting point for ticking just the few one wants to compare.
+  const hideAllAgentsOnMap = () => {
+    setHiddenAgentIds(new Set(agents.map((agent) => agent.agentId)))
+    if (selectedAgentRef.current) handleAgentClick(selectedAgentRef.current)
   }
   // «Only this one»: everybody else in the roster is taken off; he stays selected.
   const showOnlyAgentOnMap = (agentId: string) => {
@@ -934,6 +939,18 @@ export default function MtmMapPage() {
               <h4 className="text-xs font-semibold uppercase text-muted-foreground">{tMap("agents")} ({filteredAgents.length})</h4>
               <span className="text-[11px] text-muted-foreground">{tMap("selectForDetails")}</span>
             </div>
+            {/* Who is on the map: all, nobody, or the ones ticked below. */}
+            <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]" data-testid="live-map-on-map-bar">
+              <span className="text-muted-foreground">
+                {tMap("layers.onMapCount", { shown: agents.filter((agent) => !hiddenAgentIds.has(agent.agentId)).length, total: agents.length })}
+              </span>
+              <button type="button" data-testid="live-map-on-map-all" onClick={() => setHiddenAgentIds(new Set())} className="inline-flex min-h-8 items-center font-semibold text-primary underline-offset-2 hover:underline">
+                {tMap("layers.selectAll")}
+              </button>
+              <button type="button" data-testid="live-map-on-map-none" onClick={hideAllAgentsOnMap} className="inline-flex min-h-8 items-center font-semibold text-primary underline-offset-2 hover:underline">
+                {tMap("layers.selectNone")}
+              </button>
+            </div>
             <div data-testid="mtm-map-agent-list" className="space-y-2">
               {filteredAgents.length === 0 ? (
                 <div className="py-8 text-center text-xs text-muted-foreground">{tMap("noAgentsMatch")}</div>
@@ -1045,17 +1062,22 @@ export default function MtmMapPage() {
                           ) : null}
                         </span>
                       </button>
-                      <button
-                        type="button"
-                        aria-pressed={hiddenOnMap}
-                        aria-label={tMap(hiddenOnMap ? "layers.showAgent" : "layers.hideAgent", { name: agent.name })}
-                        title={tMap(hiddenOnMap ? "layers.showAgent" : "layers.hideAgent", { name: agent.name })}
-                        data-testid={`live-map-agent-eye-${agent.agentId}`}
-                        onClick={() => toggleAgentOnMap(agent.agentId)}
-                        className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted/60"
+                      {/* «Галочкой выбирать»: tick the employees to see on the map
+                          at the same time (owner, 2026-10-09). A real checkbox,
+                          with the hit area of a button. */}
+                      <label
+                        className="inline-flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center rounded-md hover:bg-muted/60"
+                        title={tMap("layers.agentOnMap", { name: agent.name })}
                       >
-                        {hiddenOnMap ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
-                      </button>
+                        <input
+                          type="checkbox"
+                          checked={!hiddenOnMap}
+                          onChange={() => toggleAgentOnMap(agent.agentId)}
+                          aria-label={tMap("layers.agentOnMap", { name: agent.name })}
+                          data-testid={`live-map-agent-on-map-${agent.agentId}`}
+                          className="h-5 w-5 cursor-pointer accent-[hsl(var(--primary))]"
+                        />
+                      </label>
                       {tenantToday ? (
                         <Button variant="ghost" size="sm" className="h-auto min-h-11 min-w-11 shrink-0 px-2 text-[10px]" asChild>
                           <Link

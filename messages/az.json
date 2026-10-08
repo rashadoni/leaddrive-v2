@@ -16418,8 +16418,10 @@
       "heatHint": "əməkdaşların ən çox olduğu yerlər",
       "hiddenAgents": "Gizlədilmiş əməkdaş: {count}",
       "showAll": "Hamısını göstər",
-      "hideAgent": "{name}: xəritədən gizlət",
-      "showAgent": "{name}: xəritədə göstər",
+      "agentOnMap": "{name} — xəritədə göstər",
+      "onMapCount": "Xəritədə: {shown} / {total}",
+      "selectAll": "Hamısı",
+      "selectNone": "Heç kim",
       "onlyThis": "Xəritədə yalnız o",
       "hiddenBadge": "xəritədən gizlədilib"
     },

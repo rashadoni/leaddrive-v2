@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Live map → «Слои» and the eye on an employee's card.
+ * Live map → «Слои» and the tick on an employee's card.
  *
  * Owner, 2026-10-09: «надеюсь, по карте ты многие фичи учёл, например как
  * убирать на карте объекты, агентов… динамичная интерактивная карта». Until
@@ -112,16 +112,31 @@ describe("what the page takes off the map", () => {
   const page = readFileSync("src/app/(dashboard)/mtm/map/page.tsx", "utf8")
   const map = readFileSync("src/components/mtm/live-map.tsx", "utf8")
 
-  it("removes markers for the whole layer and for each employee hidden with the eye", () => {
+  it("removes markers for the whole layer and for each employee who is not ticked", () => {
     expect(page).toContain("if (!showAgentMarkers || hiddenAgentIds.has(agent.agentId)) return []")
     // The list keeps everybody: hiding is about the map, not the roster.
     expect(page).toMatch(/const filteredAgents = agents\.filter\(a => \{\s*if \(activeFilter === "all"\) return true/)
-    expect(page).toContain("onClick={() => toggleAgentOnMap(agent.agentId)}")
-    expect(page).toContain("aria-pressed={hiddenOnMap}")
+    // A tick per employee (owner, 2026-10-09: «галочкой выбирать… некоторых
+    // конкретных видеть одновременно, кто где находится»): a real checkbox.
+    expect(page).toMatch(/<input\s+type="checkbox"\s+checked=\{!hiddenOnMap\}\s+onChange=\{\(\) => toggleAgentOnMap\(agent\.agentId\)\}/)
+    expect(page).toContain('aria-label={tMap("layers.agentOnMap", { name: agent.name })}')
   })
 
   it("lets go of the selection when the selected employee is the one hidden", () => {
     expect(page).toMatch(/const toggleAgentOnMap = \(agentId: string\) => \{[\s\S]{0,400}if \(hide && selectedAgentRef\.current === agentId\) handleAgentClick\(agentId\)/)
+  })
+
+  it("starts a comparison from nobody, or from everybody, in one press, and says how many are on the map", () => {
+    expect(page).toMatch(/const hideAllAgentsOnMap = \(\) => \{\s*setHiddenAgentIds\(new Set\(agents\.map\(\(agent\) => agent\.agentId\)\)\)/)
+    expect(page).toContain('data-testid="live-map-on-map-none" onClick={hideAllAgentsOnMap}')
+    expect(page).toContain('data-testid="live-map-on-map-all" onClick={() => setHiddenAgentIds(new Set())}')
+    expect(page).toContain('tMap("layers.onMapCount", { shown: agents.filter((agent) => !hiddenAgentIds.has(agent.agentId)).length, total: agents.length })')
+    for (const locale of ["ru", "az", "en"]) {
+      const layers = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).mtmMap.layers
+      expect(layers.onMapCount, locale).toMatch(/\{shown\}.*\{total\}/)
+      expect(layers.agentOnMap, locale).toContain("{name}")
+      expect([typeof layers.selectAll, typeof layers.selectNone]).toEqual(["string", "string"])
+    }
   })
 
   it("leaves only one employee on the map on request, and can bring everybody back", () => {

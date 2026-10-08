@@ -16422,8 +16422,10 @@
       "heatHint": "где сотрудников больше всего",
       "hiddenAgents": "Скрыто сотрудников: {count}",
       "showAll": "Показать всех",
-      "hideAgent": "Убрать {name} с карты",
-      "showAgent": "Вернуть {name} на карту",
+      "agentOnMap": "{name} — показывать на карте",
+      "onMapCount": "На карте: {shown} из {total}",
+      "selectAll": "Все",
+      "selectNone": "Никого",
       "onlyThis": "Только он на карте",
       "hiddenBadge": "скрыт с карты"
     },
