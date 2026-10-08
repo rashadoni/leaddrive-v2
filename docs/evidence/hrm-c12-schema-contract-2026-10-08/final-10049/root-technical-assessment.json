@@ -66,6 +66,10 @@
   "productionObserved": false,
   "historicalReplay": false,
   "globalC12Done": false,
-  "mandatoryCurrentHeadChecks": "RUNNING_NOT_YET_ACCEPTED",
-  "hostedSummaryReference": "hosted-log-finite-summary.json"
+  "mandatoryCurrentHeadChecks": "PASS_ACTUAL_FIVE_APP15368_AT_SOURCE10049",
+  "hostedSummaryReference": "hosted-log-finite-summary.json",
+  "globalCompilerClean": false,
+  "globalSuiteClean": false,
+  "currentMain": "227e2110e8cc60183daf2dc0ae154060e32e0ae6",
+  "wholeIncomingMainAccepted": false
 }

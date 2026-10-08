@@ -1,0 +1,15 @@
+{
+  "status": "PASS_UNCHANGED_STRICT_BASELINE",
+  "sourceSha": "10049d31ff02482085b180d2d65ab942ea1beb64",
+  "mergeTree": "568bb061c4a891d3d9d268dbb7b546ead156da3c",
+  "run": 37739926801,
+  "job": 113188124791,
+  "originalLogBytes": 226667,
+  "originalLogSha256": "0379e5dc09d1c44646d8e773420a058422ef672ed6337a40717d028c857bd078",
+  "rawLogArchived": false,
+  "knownFailingFiles": 18,
+  "actualFailingFiles": 18,
+  "noNewFailuresAndAllBaselineEntriesStillFail": true,
+  "globallyCleanSuite": false,
+  "scope": "Actual full static/database/security/unit gates; unchanged baseline accepted, not a globally clean suite"
+}

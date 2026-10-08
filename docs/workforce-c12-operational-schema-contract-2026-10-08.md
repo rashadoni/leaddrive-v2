@@ -138,3 +138,38 @@ authenticate a supplied JSON's database/execution origin. Actual catalog proof
 requires the authorized operator, fixed-query execution and separately verified
 source/connection/provenance packet. The hosted receipt above supplies its
 explicit synthetic execution origin; no other input is promoted to that proof.
+
+
+## Terminal mandatory checks on the frozen source
+
+All five required GitHub App15368 contexts SUCCESS at exactsource10049:
+pr-scope,static-checks,typecheck,runner-policy,scan. Actual ready-event run
+37739926801 completedSUCCESS; PR631 is restoredDRAFT with no newsourcecommit.
+Actual staticregression retains18failing/18baseline files; no newlyfailingfiles
+and everybaselineentrystillfails. Actual compiler exits2 with1153historical
+diagnostics/35families,64gatedpairs matching unchanged64baseline; both blocking
+gates PASS. Neither globalcompiler nor globalsuite is claimed clean.
+
+[Five-check proof](./evidence/hrm-c12-schema-contract-2026-10-08/final-10049/mandatory-five-exact-head.json),
+[static summary](./evidence/hrm-c12-schema-contract-2026-10-08/final-10049/mandatory-static-finite-summary.json)
+and [compiler summary](./evidence/hrm-c12-schema-contract-2026-10-08/final-10049/mandatory-typecheck-finite-summary.json)
+retain exactsource, jobs, hashes and limits. There was no fullbuild/browser or
+actualproduction/restoredcatalog run for this source-only supplement. Local
+ESLint couldnotstart without installeddependency; syntax/Node/PG/mandatorygates
+ran. No check is described as passed merely because another step was green.
+
+While reviewing, main advanced externally to227e2110 throughPR630. Its eight
+MTM/API/types/locale/test paths preserve these C12/C6 paths and42Workforce
+translation namespaces, but wholeincoming release/integration is outside this
+source acceptance. Own checked merge94c has the exact10049 tree; frozen10049
+proof doesnotqualify any futureintegrationtree. Evidence is dependent draftPR632;
+no newC12 merge, deployment, activation or accesschange. FullC12 constraints,
+realobservations and restoredbaseline criteria listed above stay open.
+
+
+Final independent [terminal review](./evidence/hrm-c12-schema-contract-2026-10-08/final-10049/independent-final-acceptance.json)
+accepts this bounded source10049/isolatedPG/unchangedmandatory-gate result,
+including complete64compilerpair identities/counts, immutableoriginals and85-task
+accounting. It adds no newtask or C12phase credit. Fullactual/restoredcatalog,
+historicalbaseline/density/operation/physical/restore criteria remain NOTRUN/open.
+SourcePR631 and dependent documentationPR632 remainDRAFT/unmerged.

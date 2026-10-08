@@ -173,3 +173,91 @@ authentication of external JSON's origin; actual current/isolated catalog needs
 authorized fixed-query execution and independently verified provenance. No such
 actual restored baseline/operator/service was supplied. Partial evidence-only
 checkpoint now preserves work while hosted full gates continue.
+
+
+## 2026-10-08 Asia/Baku — all five actual gates PASS; frozen source restored DRAFT
+
+Actual terminal PR run37739926801 SUCCESS at10049 (07:11:23UTC). Required
+App15368 checks pr-scope113188034354,static-checks113188124791,
+typecheck113188124797,runner-policy113187557699,scan113187558201 allSUCCESS
+on exact10049. Both mandatory compiler gates actually passed: advisory full
+compilerexit2/1153diagnostics/35families,64gatedpairs/64unchangedbaseline,
+zero syntax/missingmodule/undefinedname diagnostics. This is not globally clean
+TypeScript. Actual fullstatic database/security/unit gate SUCCESS; strict test
+baseline18failingfiles/18known, everyentrystillfails/no newlyfailingfiles.
+No baseline/gate update/relabel/bypass/rerun. Finite hashed original-log summaries
+retained; no rawconnectionenvironment or rawstderr published. Final actual
+GitHub merge94c42aed076efabb45fbe2a7676dec8995385c7d tree equals frozen10049
+tree568bb061c4a891d3d9d268dbb7b546ead156da3c. Ownsourceunchanged/clean.
+
+PR631 restoredOPEN/DRAFT at10049 after actualgates. DependentPR632 OPEN/DRAFT
+published at73c0394d81ef5e4d455a392c21894eacad3123b0,basecodex/hrm-c12-schema-contract-20261008;
+onlydocs/evidence difference. PR631 attached successfully. The app'sPR632
+attachment RPC stayed unresponsive for more than90seconds; exec cell53 stopped
+without running its dependent repository reads. This metadata issue did not
+block sourceCI or publication; GitHub PR632 independently verified. Call was
+made asrequired; attachment completion is not claimed until separately confirmed.
+
+Fresh mainadvanced externally viaPR630 to227e2110e8cc60183daf2dc0ae154060e32e0ae6
+(eightMTM/API/types/locale/testpaths). Independent rootcomparison confirms
+C12/C6source/migration/gates unchanged and all42Workforce locale namespaces equal
+bde. Whole227 or its externalMTMbehavior/release is NOT accepted using own10049
+CI. Its normalDeploy37741765297 was IN_PROGRESS whenobserved. Current PR API
+still reports basebde/merge94c atthissnapshot; re-readfreshrefs before anyfuture
+integration ratherthan asserting227integration-treequalification. No new main
+push/rebase/merge/deploy or external630 actionbythis task.
+
+This supersedes previous “mandatory gates pending” entries for frozen10049 only.
+Bounded C12schema supplement verified; C12PARTIAL/85of161/76open/weighted61/
+14of15gates unchanged. Actual authorized current/restoredcatalog observation,
+fullhistoricalbaseline, representativeload/timeouts, collectors/retention/alerts,
+realphysical/pilot/restorecriteria stillopen/NOTRUN. UI/browser/productionbuild
+NOTRUN foruntouchedclient/app/config; localESLint NOTRUN missingdependency,
+actual syntax+unit+PG+fivegates verified. No support/personnel-document work.
+Next: final independentgate/docsreview and explicit docs-only evidence checkpoint
+to632. Source10049 stays frozen; no release or activation ofnewC12scope.
+
+PR631 final body update via old ghpr GraphQL failed before mutation because
+projectCards endpoint is deprecated. Exact original metadata error retained;
+normal REST PATCH with body-file succeeded, preserving draft/head10049. This
+was publication metadata, not product/test/CI failure; no source/gate change.
+
+
+## 2026-10-08 Asia/Baku — independent terminal acceptance PASS; final evidence publication
+
+Final independent review01ba262a6fde074733a7970696c78bf3bce35d108e7f97a061a6dbb021e87e72
+accepts frozen10049 source/tree, all4P2corrected/no remainingfindings, actual37PG+
+4Node/42reportedinclparent/0skips, all5requiredApp15368 actualSUCCESS, exact old
+merge-treeequality, unchanged64file/codeidentitiesANDcounts/1153historicalcompiler
+diagnostics and18knownfailures, immutable first/current receipts, append-only
+docprefixes/source equality,161tasks/85DONE/76open/61weighted and C12PARTIAL.
+Reviewer did notexecute a secondtest/runtime/productionrun. Originalsource-phase
+review and actualhosted-phase receipts remain separate; finalreviewretainsphase
+history and the stale docsmetadata-audit race explicitly as non-product metadata.
+
+Root finalarchivehash/CRC/source/doc/count integrity PASS. Existing sourcePR631
+remainsDRAFT/unmerged/head10049. EvidencePR632 remainsDRAFT/basecodex/hrm-c12-schema-contract-20261008.
+A second app attachment632 call also remained unresponsive and its isolated
+exec cell70 was stopped; attachment completion remains UNCONFIRMED, while the
+GitHub PR link/body/ref and publication are confirmed. No repository orproduction
+action was chained behind that call. Link is directly supplied in user report.
+
+Final source/test result: independent bounded operational-schema supplement
+verified. No newtask/phase credit:85/161DONE,76open,14/15gates,weighted61%,
+C12PARTIAL. Source10049 preserved; source/mainproduction are notbeingmodified.
+Full historicalstaging blocked by missing approved reproducible restored baseline
+and its authorizedoperator/read-onlyservice/provenance; prior391migration
+api_keys/P3018/42P01 failure staysunresolved. Actualcurrent/restored tableproof
+NOTRUN; realdensity/timeouts/collector/retention/alerts/device/pilot/backup/restore
+keep separateopen criteria. Do notreplace them with syntheticpass or closeC12.
+AuthenticatedproductionHR NOTRUN withoutlegitimateexistingHRsession; no invented
+identities/grants/outcomes. Support and HRHubresearch untouched; no Macsession.
+
+Current stoppingpoint: after verified source10049 and independentterminalreview,
+before final docs-only publication to existing evidencePR632. Next immediateaction:
+explicit-pathdocs checkpoint/push, verify bothdrafts/heads and documentpublication.
+Next substantiveaction: obtain the defined minimized schema/provenance package
+from one approved already-restored isolatedcopy before extending actualC12
+acceptance; no newproductionmutation/activation/secret/accesschange isauthorized
+by this synthetictest evidence. Currentexternalmain227/PR630whole release is
+outside ouracceptance and must bere-readbefore anynextintegration.
