@@ -261,3 +261,35 @@ from one approved already-restored isolatedcopy before extending actualC12
 acceptance; no newproductionmutation/activation/secret/accesschange isauthorized
 by this synthetictest evidence. Currentexternalmain227/PR630whole release is
 outside ouracceptance and must bere-readbefore anynextintegration.
+
+
+## 2026-10-08 Asia/Baku — final evidence published; verified continuing-task stop
+
+Finalreview/evidence checkpoint5a094e57963362b8bcb18af356e531e55b3cd4b1 normally
+published to632; GitHub verifies632OPEN/DRAFT/basecodex/hrm-c12-schema-contract-20261008
+and source631OPEN/DRAFT/frozen10049. Both finaldescriptions updated normally
+through REST body-files. Sourcebranch clean/head10049 unchanged; evidencebranch
+onlydocs differs fromsource. FinalarchiveCRC/hashes/docprefix integrity PASS;
+manifestself excluded, first/current/source/hosted/finalreview and originalfailures
+allretained. This supersedes prior publicationpending stoppingpoint. The app
+632attachment remainsUNCONFIRMED after two bounded unresponsive calls; direct
+GitHubpublication/link isconfirmed and supplied to user, no appfailure used to
+change source orchecks. One final journal/manifest-only checkpoint retains this
+verified stop without altering testedsource or restarting its completedgates.
+
+Current result/status: C12operational-schema supplement independentlyverified
+on exactsource10049; accepted overall85/161DONE,76open,weighted61%,14/15gates;
+C12PARTIAL, originalproductionmetadataINCOMPLETE retained.
+Last completed action: normal publication and remotehead/draft verification of
+final independentlyreviewed source/evidence631→632; no merge/deploy/activation.
+Precise stopping point: verified frozen source10049 in sourceDRAFT631 and
+published dependentdocsDRAFT632, before actualauthorized restored/currentcatalog
+and fullhistorical/operational acceptance; no applicationcode work pending for
+this bounded schema-contract slice.
+Next substantive action: obtain existing approvedrestoredcopy/operator/read-only
+service and minimized baselineprovenance package under the existing schema-only
+contract, then source-bind actualschema/history checks. Re-read main/ref/live
+state (lastmain227 outside ownCI) first. Density/timeouts/collector/retention/
+alerts/physical/pilot/backup/restore criteria remain separate; do not use this
+syntheticpass to close them. No newproduction/access/secret/activation actions
+without separatelyauthorizedscope. Support and HRHubdocs remain untouched.

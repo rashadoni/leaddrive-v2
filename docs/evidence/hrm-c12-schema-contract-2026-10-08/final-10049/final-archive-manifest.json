@@ -1,0 +1,125 @@
+{
+  "status": "PASS_FINAL_ARCHIVE_MANIFEST",
+  "sourceSha": "10049d31ff02482085b180d2d65ab942ea1beb64",
+  "publishedEvidenceCheckpoint": "5a094e57963362b8bcb18af356e531e55b3cd4b1",
+  "docsOnlyVsSource": true,
+  "prefixesPreserved": true,
+  "entries": [
+    {
+      "path": "final-10049/hosted-log-finite-summary.json",
+      "bytes": 780,
+      "sha256": "87bdde3e0518a4d6f7b815b3fc0ada35a63cf0ccce851ffe5ce65145532ee6ac"
+    },
+    {
+      "path": "final-10049/hosted-receipt-original.zip",
+      "bytes": 1608,
+      "sha256": "e375f0929a733b409d0f7319e00892b0a7bef3c11e793cbfbae6f0d1e24b912f"
+    },
+    {
+      "path": "final-10049/hosted-receipt-parsed.json",
+      "bytes": 6826,
+      "sha256": "7b86cab7c099d77231b07edeeb941244b06ed8000ed1631fe6f93d29b6e4d995"
+    },
+    {
+      "path": "final-10049/incoming-main-227-preservation.json",
+      "bytes": 1113,
+      "sha256": "1d747968aa19a35268fdfa8c02e3094d06252694e92cc8c26aaa7df54058c0df"
+    },
+    {
+      "path": "final-10049/independent-final-acceptance.json",
+      "bytes": 21325,
+      "sha256": "01ba262a6fde074733a7970696c78bf3bce35d108e7f97a061a6dbb021e87e72"
+    },
+    {
+      "path": "final-10049/independent-review-hosted-phase.json",
+      "bytes": 12969,
+      "sha256": "f9953d1039f2465723e9c783f84327894bd48fab264f4f0c5f3cdfed8c4c6211"
+    },
+    {
+      "path": "final-10049/independent-review-source-phase.json",
+      "bytes": 9050,
+      "sha256": "d36fe130087a861301fc4ab9ec8ddbb28b2463ab5470ada71e746cd9a3bf2f22"
+    },
+    {
+      "path": "final-10049/mandatory-five-exact-head.json",
+      "bytes": 2066,
+      "sha256": "6c66d58ac368f6abfce7834bc1bc11439fa734101a38696afcf267bd521d1def"
+    },
+    {
+      "path": "final-10049/mandatory-static-finite-summary.json",
+      "bytes": 620,
+      "sha256": "f02199a24a8a44e35acffc7a0cfa0f43a0d364f984f14ecd7ec7bd2fdd8a2894"
+    },
+    {
+      "path": "final-10049/mandatory-typecheck-finite-summary.json",
+      "bytes": 1155,
+      "sha256": "e4fd6c8bdf74b40791977a4d30e30c1ced10cf9570960dd69458e71fcd936aec"
+    },
+    {
+      "path": "final-10049/publication-metadata-original-errors.json",
+      "bytes": 441,
+      "sha256": "00a0ea9a6228e5e16c8567efb13f172e53999cb69c753a6a1d6e4c826bcf74d1"
+    },
+    {
+      "path": "final-10049/root-docs-integrity-before-final-checkpoint.json",
+      "bytes": 4054,
+      "sha256": "31c91ff57ec3bf4eaabc4d9cad37fdaadeb8b569f46c71710536046552c8810e"
+    },
+    {
+      "path": "final-10049/root-technical-assessment.json",
+      "bytes": 2929,
+      "sha256": "d456c86fb63ec01c4ce4b60aaced8a54ca7a4eaac8eda41c4eb435a23e132052"
+    },
+    {
+      "path": "first-hosted/local-correction-original-failures.json",
+      "bytes": 471,
+      "sha256": "763ae60f8bc67620657d91c3e7951f5a64167f46272cf3409f95cd970ce11912"
+    },
+    {
+      "path": "first-hosted/receipt-original.json",
+      "bytes": 5676,
+      "sha256": "60a0f7bd2d108196c20b247fb173526948cb955b305edda44e9f2961950d82f0"
+    },
+    {
+      "path": "first-hosted/receipt-original.zip",
+      "bytes": 1459,
+      "sha256": "837572fd5b0774740dcdeaea919d911d0b2be72b1f5ded0ee5c2b6a6e38bba22"
+    },
+    {
+      "path": "first-hosted/run-original.json",
+      "bytes": 12886,
+      "sha256": "2684aadbfaef174796e405c80b26e218f6918a225363201188922f254961adf4"
+    },
+    {
+      "path": "first-hosted/targeted-node-reviewed.tap",
+      "bytes": 1077,
+      "sha256": "1b86889f0b37b9de526e00e166c600421847918f25fea11ab150fd8501213817"
+    },
+    {
+      "path": "initial/accounting-corrected.json",
+      "bytes": 1971,
+      "sha256": "e2c0acbf674dbad313acbd7c5edb2cd0ea39562d50a081269e27b70be21057f8"
+    },
+    {
+      "path": "initial/accounting-initial-failure.json",
+      "bytes": 335,
+      "sha256": "e087895aa2b26b9e5aa2f6266009a30f14f8fe1cba51370a730444b39050de4e"
+    },
+    {
+      "path": "initial/public-bde-original.json",
+      "bytes": 1363,
+      "sha256": "c9ee6767c53775bd552189eca8dce241b50ae400083303934d7ca56d97c53083"
+    },
+    {
+      "path": "initial/targeted-node-current.tap",
+      "bytes": 1078,
+      "sha256": "052c4b5585f5ba50948ca2f78571c68752536a75d1944418b32fa5ee3b4c2e1c"
+    },
+    {
+      "path": "initial/targeted-node-original.tap",
+      "bytes": 1076,
+      "sha256": "ccbf676d01368dcf92992c3eb78f205842d5fdc04798b174a98f680fe0ef35d7"
+    }
+  ],
+  "manifestSelfExcluded": true
+}
