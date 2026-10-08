@@ -1,0 +1,55 @@
+{
+  "status": "PASS_FIVE_UNCHANGED_REQUIRED_APP15368",
+  "sourceSha": "10049d31ff02482085b180d2d65ab942ea1beb64",
+  "checks": [
+    {
+      "id": 113188034354,
+      "name": "pr-scope",
+      "head_sha": "10049d31ff02482085b180d2d65ab942ea1beb64",
+      "status": "completed",
+      "conclusion": "success",
+      "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37739926801/job/113188034354",
+      "completed_at": "2026-10-08T06:51:30Z"
+    },
+    {
+      "id": 113188124791,
+      "name": "static-checks",
+      "head_sha": "10049d31ff02482085b180d2d65ab942ea1beb64",
+      "status": "completed",
+      "conclusion": "success",
+      "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37739926801/job/113188124791",
+      "completed_at": "2026-10-08T07:06:46Z"
+    },
+    {
+      "id": 113188124797,
+      "name": "typecheck",
+      "head_sha": "10049d31ff02482085b180d2d65ab942ea1beb64",
+      "status": "completed",
+      "conclusion": "success",
+      "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37739926801/job/113188124797",
+      "completed_at": "2026-10-08T07:11:22Z"
+    },
+    {
+      "id": 113187557699,
+      "name": "runner-policy",
+      "head_sha": "10049d31ff02482085b180d2d65ab942ea1beb64",
+      "status": "completed",
+      "conclusion": "success",
+      "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37739776686/job/113187557699",
+      "completed_at": "2026-10-08T06:49:52Z"
+    },
+    {
+      "id": 113187558201,
+      "name": "scan",
+      "head_sha": "10049d31ff02482085b180d2d65ab942ea1beb64",
+      "status": "completed",
+      "conclusion": "success",
+      "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37739776617/job/113187558201",
+      "completed_at": "2026-10-08T06:49:59Z"
+    }
+  ],
+  "actualMandatoryMergeSha": "94c42aed076efabb45fbe2a7676dec8995385c7d",
+  "actualMandatoryMergeTree": "568bb061c4a891d3d9d268dbb7b546ead156da3c",
+  "actualMergeTreeEqualsSourceTree": true,
+  "noNewProductBuildOrUiRun": true
+}

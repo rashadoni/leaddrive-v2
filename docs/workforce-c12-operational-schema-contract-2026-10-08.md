@@ -101,3 +101,75 @@ misbound internal trigger only in the owned disposable fixture. No privileged
 catalog tampering resistance or production defect is claimed. Nine synthetic
 business-fact table hashes are checked after every case; behavior writes roll
 back. Final-source hosted execution and mandatory CI/review are pending here.
+
+
+## Final-source isolated acceptance
+
+Source10049d31ff02482085b180d2d65ab942ea1beb64/tree568bb061c4a891d3d9d268dbb7b546ead156da3c
+passed actual GitHub run37739776660/job113187557841 at the exact source checkout.
+Receipt37/37 schema/behavior/drift cases PASS, plus four Node unit cases PASS;
+TAP reports42 including the parent container test, zero failures/skips/cancellations.
+Do not count that parent as an extra behavioral case. Artifact11533336298/ZIP
+SHA256e375f0929a733b409d0f7319e00892b0a7bef3c11e793cbfbae6f0d1e24b912f
+CRC and all five source byte/size bindings verified. Nine before/after hashes
+match; eight root tables are empty and two synthetic organization rows exist.
+This is actual isolated schema enforcement, not real operating/production data.
+
+[evidence](./evidence/hrm-c12-schema-contract-2026-10-08/final-10049/hosted-receipt-parsed.json)
+and the [finite hosted summary](./evidence/hrm-c12-schema-contract-2026-10-08/final-10049/hosted-log-finite-summary.json)
+retain separate case provenance and zero-skip totals. The raw synthetic job log
+was read only to derive whitelisted summary/hash; no connection environment or
+raw stderr is published. Its receipt and original ZIP remain immutable. GitHub
+service cleanup step SUCCESS. Earlier first35-case receipt/source and original
+local harness failures remain separate.
+
+Independent source review accepts the inheritance, descriptor, receipt retention
+and exact FK trigger corrections with no current P0–P3 findings. Final hosted
+evidence and unchanged mandatory gates are still being reviewed at this entry.
+PR631's checked merge94c42aed076efabb45fbe2a7676dec8995385c7d has the exact
+same tree as the frozen source10049; source review/CI are not credited to a
+future source edit. The dependent evidence branch contains documentation only.
+
+The TAP count1 above is the parent PostgreSQL Node test group; container service
+teardown is a separately successful GitHub step, not a counted test case.
+
+The stdin validator verifies shape and local source bindings only; it cannot
+authenticate a supplied JSON's database/execution origin. Actual catalog proof
+requires the authorized operator, fixed-query execution and separately verified
+source/connection/provenance packet. The hosted receipt above supplies its
+explicit synthetic execution origin; no other input is promoted to that proof.
+
+
+## Terminal mandatory checks on the frozen source
+
+All five required GitHub App15368 contexts SUCCESS at exactsource10049:
+pr-scope,static-checks,typecheck,runner-policy,scan. Actual ready-event run
+37739926801 completedSUCCESS; PR631 is restoredDRAFT with no newsourcecommit.
+Actual staticregression retains18failing/18baseline files; no newlyfailingfiles
+and everybaselineentrystillfails. Actual compiler exits2 with1153historical
+diagnostics/35families,64gatedpairs matching unchanged64baseline; both blocking
+gates PASS. Neither globalcompiler nor globalsuite is claimed clean.
+
+[Five-check proof](./evidence/hrm-c12-schema-contract-2026-10-08/final-10049/mandatory-five-exact-head.json),
+[static summary](./evidence/hrm-c12-schema-contract-2026-10-08/final-10049/mandatory-static-finite-summary.json)
+and [compiler summary](./evidence/hrm-c12-schema-contract-2026-10-08/final-10049/mandatory-typecheck-finite-summary.json)
+retain exactsource, jobs, hashes and limits. There was no fullbuild/browser or
+actualproduction/restoredcatalog run for this source-only supplement. Local
+ESLint couldnotstart without installeddependency; syntax/Node/PG/mandatorygates
+ran. No check is described as passed merely because another step was green.
+
+While reviewing, main advanced externally to227e2110 throughPR630. Its eight
+MTM/API/types/locale/test paths preserve these C12/C6 paths and42Workforce
+translation namespaces, but wholeincoming release/integration is outside this
+source acceptance. Own checked merge94c has the exact10049 tree; frozen10049
+proof doesnotqualify any futureintegrationtree. Evidence is dependent draftPR632;
+no newC12 merge, deployment, activation or accesschange. FullC12 constraints,
+realobservations and restoredbaseline criteria listed above stay open.
+
+
+Final independent [terminal review](./evidence/hrm-c12-schema-contract-2026-10-08/final-10049/independent-final-acceptance.json)
+accepts this bounded source10049/isolatedPG/unchangedmandatory-gate result,
+including complete64compilerpair identities/counts, immutableoriginals and85-task
+accounting. It adds no newtask or C12phase credit. Fullactual/restoredcatalog,
+historicalbaseline/density/operation/physical/restore criteria remain NOTRUN/open.
+SourcePR631 and dependent documentationPR632 remainDRAFT/unmerged.

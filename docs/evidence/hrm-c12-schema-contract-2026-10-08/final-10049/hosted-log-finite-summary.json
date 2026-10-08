@@ -1,0 +1,30 @@
+{
+  "sourceSha": "10049d31ff02482085b180d2d65ab942ea1beb64",
+  "run": 37739776660,
+  "job": 113187557841,
+  "originalLogBytes": 47786,
+  "originalLogSha256": "71d2b11eb54503a379ecfcdfefac7bd01552cd8b80ee9c5491d1ecf16132b95d",
+  "rawLogArchived": false,
+  "projection": "Whitelisted TAP totals and runner-policy line only; no connection/runtime environment or raw stderr",
+  "summary": [
+    "# tests 42",
+    "# suites 0",
+    "# pass 42",
+    "# fail 0",
+    "# cancelled 0",
+    "# skipped 0",
+    "# todo 0",
+    "# duration_ms 19544.904979",
+    "Runner policy passed for 52 workflow files."
+  ],
+  "counts": {
+    "tests": 42,
+    "pass": 42,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0
+  },
+  "pgReceiptCases": 37,
+  "nodeUnitCases": 4,
+  "parentContainerTest": 1
+}

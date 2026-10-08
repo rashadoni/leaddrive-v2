@@ -1,0 +1,36 @@
+{
+  "status": "PASS_BOUNDED_INCOMING_DELTA",
+  "previousBase": "bde637cb72c765d2fa81f519d164e8c931ce511e",
+  "incomingMain": "227e2110e8cc60183daf2dc0ae154060e32e0ae6",
+  "externalPr": 630,
+  "files": [
+    "messages/az.json",
+    "messages/en.json",
+    "messages/ru.json",
+    "src/__tests__/api-mtm-locations.test.ts",
+    "src/__tests__/mtm-live-map-simple-trust-ui-contract.test.ts",
+    "src/app/(dashboard)/mtm/map/page.tsx",
+    "src/app/api/v1/mtm/locations/route.ts",
+    "src/lib/mtm-types.ts"
+  ],
+  "C12SourceAndMigrationAndGatesUnchanged": true,
+  "C6WorkforceSourceAndApisUnchanged": true,
+  "workforceLocaleNamespaces": [
+    {
+      "locale": "en",
+      "unchangedWorkforceTopLevelNamespaces": 14
+    },
+    {
+      "locale": "az",
+      "unchangedWorkforceTopLevelNamespaces": 14
+    },
+    {
+      "locale": "ru",
+      "unchangedWorkforceTopLevelNamespaces": 14
+    }
+  ],
+  "wholeIncomingMergeOrReleaseAcceptedByThisTask": false,
+  "ownCIIsOnlyFrozenSource10049AndItsExactOldMergeTree": true,
+  "incomingDeployRun": 37741765297,
+  "incomingDeployObservedState": "IN_PROGRESS_NOT_ACCEPTED"
+}
