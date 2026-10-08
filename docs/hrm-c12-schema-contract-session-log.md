@@ -124,3 +124,52 @@ then briefly mark ready to execute the unchanged five mandatory GitHub gates,
 restore final draft status. No automatic merge, deploy or new production access.
 Keep tested source frozen; final append-only evidence/journal will live in a
 dependent documentation checkpoint, without borrowing earlier-head CI.
+
+
+## 2026-10-08 Asia/Baku — final-source PostgreSQL PASS and evidence branch
+
+Frozen source10049d31ff02482085b180d2d65ab942ea1beb64/tree568bb061c4a891d3d9d268dbb7b546ead156da3c:
+actual hosted run37739776660/job113187557841 all steps SUCCESS including service
+cleanup, receipt37/37PASS and nine unchanged fact fingerprints, five byte/size
+bindings verified. Eight fixture root tables are empty; two synthetic organization
+rows exist. No representative business density/production/full history claim.
+Artifact11533336298/ZIP SHAe375f0929a733b409d0f7319e00892b0a7bef3c11e793cbfbae6f0d1e24b912f
+CRC and parsed bindings PASS. First35-case original stays separate. Final
+independent source review accepts all four P2 corrections with no current P0–P3
+findings, checks unchanged metadata/gates and accepted ancestry/counts. Hosted
+evidence independently being reviewed; reviewer has not executed tests.
+
+PR631 temporarily ready ONLY to execute unmodified mandatory checks at frozen
+10049. Full gate run37739926801 ongoing; static/typecheck NOT YET accepted.
+GitHub PR merge94c42aed076efabb45fbe2a7676dec8995385c7d has parents[bde,10049]
+and exact same tree568bb061c4a891d3d9d268dbb7b546ead156da3c, so its checked
+merge tree equals own exact source. Production-build job SKIPPED because this
+source/test-only change has no production-build label; UI/build NOT RUN justified
+by untouched application/client/config. Full compiler runs only hosted Linux.
+
+Evidence-only worktree /mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-c12-schema-evidence-20261008,
+branchcodex/hrm-c12-schema-evidence-20261008 from frozen10049. Same activeorigin
+and registered productionroute verified by codex-project-context. All final
+evidence/journal append-only changes go here; source631 remains frozen. Next:
+finish current gates/evidence review, restore631DRAFT, publish only dependent
+documentation draft. No merge/deploy/activation or actual catalog run.
+
+
+## 2026-10-08 Asia/Baku — independent actual evidence PASS; mandatory gates ongoing
+
+Reviewer independently fetched exact10049 run/job/artifact/log; actual37PG+4Node
+PASS, reported42 incl parent PostgreSQL Node test group,0skip/0fail. Source-phase
+review d36fe130... retained separately from updated hosted-phase f9953d1039...
+with source-phase history. Initial35 source cannot borrow37 scope. Finite root
+log summary verifies42/42/0fail/0skip; raw47786-byte synthetic joblog read privately
+only for this summary/hash71d2b11eb54503a379ecfcdfefac7bd01552cd8b80ee9c5491d1ecf16132b95d.
+No connection environment/rawstderr archived. Container teardown is a separate
+GitHub step, not an extra test. Source/evidence docs preliminary peer review PASS
+for byte prefixes,85account,synthetic limits, immutable originals and exactsource.
+
+Mandatory static/type gates37739926801 are still RUNNING after dependencies;
+currentmain remains bde, no new source edit. CLI boolean validation is not
+authentication of external JSON's origin; actual current/isolated catalog needs
+authorized fixed-query execution and independently verified provenance. No such
+actual restored baseline/operator/service was supplied. Partial evidence-only
+checkpoint now preserves work while hosted full gates continue.
