@@ -16405,6 +16405,7 @@
     "distanceDetail": "Müştəridən {distance} (icazə {radius})"
   },
   "mtmMap": {
+    "visitOpenedAt": "ziyarət açılıb: {time}",
     "fieldStatus": {
       "checkedIn": "Yerində",
       "onRoad": "Yolda",

@@ -12,7 +12,7 @@ import { HelpButton } from "@/components/help/help-button"
 import { Button } from "@/components/ui/button"
 import dynamic from "next/dynamic"
 import { calculateDistance } from "@/lib/geo-utils"
-import { formatDateTime, formatTime } from "@/lib/format-date"
+import { createDateFormatter, formatDateTime, formatTime } from "@/lib/format-date"
 import { formatMtmDistance } from "@/lib/mtm/visit-place-check"
 import { mtmLiveFeedHistoryHref, type MtmLiveFeedAlertGroup } from "@/lib/mtm/live-feed-alerts"
 import { summarizeMtmRouteExecution } from "@/lib/mtm/route-point-execution"
@@ -112,6 +112,14 @@ const STATUS_DOT_CLASS: Record<string, string> = {
 const statusConfig: Record<string, { labelKey: string; dotClass: string }> = Object.fromEntries(
   Object.entries(FIELD_STATUS_LABEL_KEYS).map(([k, labelKey]) => [k, { labelKey, dotClass: STATUS_DOT_CLASS[k] || "bg-muted" }])
 )
+
+/** A visit opened on an earlier day says its date too: «22:14» alone would read as today. */
+function visitOpenedOnAnotherDay(openedAt: string, timeZone: string | undefined): boolean {
+  const opened = new Date(openedAt)
+  if (!Number.isFinite(opened.getTime())) return false
+  const day = createDateFormatter("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" })
+  return day.format(opened) !== day.format(new Date())
+}
 
 function hasRenderableLivePosition(
   freshness: AgentLocation["freshness"],
@@ -866,6 +874,24 @@ export default function MtmMapPage() {
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-sm font-semibold">{agent.name}</span>
+                          {/* What the employee is doing — the same word as the chip
+                              that counts him. It used to be shown only after a
+                              click on the card, so a person counted under
+                              «Gecikir» read the zeros on the other chips as «the
+                              map does not see me» (owner, 2026-10-08). */}
+                          <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs font-medium" data-testid={`live-map-agent-status-${agent.agentId}`}>
+                            <span className="inline-flex items-center gap-1.5">
+                              <span className={`h-2 w-2 rounded-full ${cfg.dotClass}`} aria-hidden="true" />
+                              {tMap(`fieldStatus.${cfg.labelKey}`)}
+                            </span>
+                            {agent.fieldStatus === "CHECKED_IN" && agent.openVisitSince ? (
+                              <span className="font-normal text-muted-foreground">
+                                {tMap("visitOpenedAt", { time: formatDateTime(agent.openVisitSince, locale, visitOpenedOnAnotherDay(agent.openVisitSince, contract?.timezone)
+                                  ? { dateStyle: "medium", timeStyle: "short", timeZone: contract?.timezone }
+                                  : { timeStyle: "short", timeZone: contract?.timezone }) })}
+                              </span>
+                            ) : null}
+                          </span>
                           <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
                             <span className={appPresent ? "font-medium text-green-600" : "text-muted-foreground"}>
                               {tMap(`presence.${appPresent ? "online" : "offline"}`)}
@@ -883,10 +909,6 @@ export default function MtmMapPage() {
                           {isSelected ? (
                             <span className="mt-2 block rounded-md bg-background/80 p-2 text-[11px] text-muted-foreground">
                               <span className="flex flex-wrap gap-x-3 gap-y-1">
-                                <span className="inline-flex items-center gap-1">
-                                  <span className={`h-1.5 w-1.5 rounded-full ${cfg.dotClass}`} />
-                                  {tMap(`fieldStatus.${cfg.labelKey}`)}
-                                </span>
                                 {agent.speed != null && agent.speed > 0 ? <span>{agent.speed.toFixed(0)} km/h</span> : null}
                                 {agent.routeCompletion > 0 ? <span><Navigation className="inline h-3 w-3" /> {agent.routeCompletion}%</span> : null}
                                 {agent.accuracy != null ? <span>±{Math.round(agent.accuracy)} m</span> : null}
