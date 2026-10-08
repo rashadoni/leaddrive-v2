@@ -16410,6 +16410,8 @@
   },
   "mtmMap": {
     "visitOpenedAt": "visit opened: {time}",
+    "follow": "Follow",
+    "followHint": "The map keeps the employee centred while they move",
     "fieldStatus": {
       "checkedIn": "Check-in",
       "onRoad": "On Road",
@@ -16496,6 +16498,7 @@
     "liveMode": "Live",
     "historyMode": "History",
     "routeStopStatus": {
+      "inVisit": "Visit in progress",
       "label": "Status",
       "visited": "Visited",
       "skipped": "Skipped",
@@ -16698,6 +16701,11 @@
       "openVisit": "{name}: open visit"
     },
     "routeStop": {
+      "showOnMap": "Show stop {number} on the map",
+      "noCoordinates": "no coordinates",
+      "overdue": "{minutes} min overdue",
+      "startedLate": "started {minutes} min late",
+      "progress": "{done} of {total}",
       "title": "Today's route",
       "loading": "Loading route…",
       "none": "No route for today",

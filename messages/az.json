@@ -16406,6 +16406,8 @@
   },
   "mtmMap": {
     "visitOpenedAt": "ziyarət açılıb: {time}",
+    "follow": "İzlə",
+    "followHint": "Əməkdaş hərəkət etdikcə xəritə onu mərkəzdə saxlayır",
     "fieldStatus": {
       "checkedIn": "Yerində",
       "onRoad": "Yolda",
@@ -16492,6 +16494,7 @@
     "liveMode": "İndi",
     "historyMode": "Tarixçə",
     "routeStopStatus": {
+      "inVisit": "Ziyarət davam edir",
       "label": "Status",
       "visited": "Ziyarət edilib",
       "skipped": "Buraxılıb",
@@ -16694,6 +16697,11 @@
       "openVisit": "{name}: ziyarəti aç"
     },
     "routeStop": {
+      "showOnMap": "Nöqtə {number}: xəritədə göstər",
+      "noCoordinates": "koordinat yoxdur",
+      "overdue": "{minutes} dəq gecikir",
+      "startedLate": "{minutes} dəq gec başlanıb",
+      "progress": "{done} / {total}",
       "title": "Bugünkü marşrut",
       "loading": "Marşrut yüklənir…",
       "none": "Bu gün üçün marşrut yoxdur",

@@ -371,6 +371,10 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
         workdayCarryover,
         locationState: explainMissingLocation({ hasLocation: Boolean(loc), lastSeenAt: a.lastSeenAt }),
         routeCompletion: dayRoutes?.completion ?? 0,
+        // «2 of 4» on the card, before anybody is selected: the day's stops
+        // across all of the agent's routes that count (no drafts, no cancelled).
+        routeVisited: dayRoutes ? Math.min(dayRoutes.visitedPoints, dayRoutes.totalPoints) : 0,
+        routeTotal: dayRoutes?.totalPoints ?? 0,
         // Only with the status it explains: an old GPS point says «offline»
         // first, and then nothing is claimed about a visit either.
         openVisitSince: fieldStatus === "CHECKED_IN" ? openVisitSinceByAgent.get(a.id) ?? null : null,
