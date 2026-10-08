@@ -46,11 +46,11 @@ export type GeminiLiveModel = Readonly<{
   toolBehavior: Behavior | null
 }>
 
-// Still the retiring preview, deliberately, for one release. The setup 3.8 needs
-// is written from Google's migration notes, and notes are not a session: the
-// default moves only after /api/cron/voice-provider-check has opened a real
-// 3.8 session with production's own key and seen it wait for a tool.
-export const DEFAULT_GEMINI_LIVE_MODEL = "gemini-3.1-flash-live-preview"
+// Moved here from the retiring 3.1 preview only after
+// /api/cron/voice-provider-check opened a real 3.8 session with production's
+// own key and saw it wait for a tool (2026-10-08). The next move earns its
+// place the same way: try the candidate with ?model= first.
+export const DEFAULT_GEMINI_LIVE_MODEL = "gemini-3.8-live"
 const LEGACY_GEMINI_LIVE_FAMILY = "gemini-3.1-flash-live"
 
 const MODEL_ID_SHAPE = /^gemini-[a-z0-9][a-z0-9.-]{0,62}$/

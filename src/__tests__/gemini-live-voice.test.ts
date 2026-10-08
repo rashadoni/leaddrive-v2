@@ -87,11 +87,11 @@ describe("Gemini Live CRM voice", () => {
 
   it("locks the native audio model, Algieba voice, low-latency VAD, and read-only CRM tools", () => {
     const config = geminiLiveConfig({ locale: "az", firstName: "Rəşad", allowedSections: ["leads"] })
-    // Google retires this preview no earlier than 2026-11-17. It stays the
-    // default until the provider check has opened a real 3.8 session on
-    // production; moving it is one constant and this line.
-    expect(DEFAULT_GEMINI_LIVE_MODEL).toBe(LEGACY_MODEL)
-    expect(geminiLiveModel().id).toBe(LEGACY_MODEL)
+    // Google retires the 3.1 preview no earlier than 2026-11-17. The default
+    // moved off it after the provider check opened a real 3.8 session on
+    // production; moving it again is one constant and this line.
+    expect(DEFAULT_GEMINI_LIVE_MODEL).toBe(NEXT_MODEL)
+    expect(geminiLiveModel().id).toBe(NEXT_MODEL)
     // Owner picked this by ear on 2026-08-17 from side-by-side Azerbaijani
     // samples of every preset. Pinned so the console voice cannot drift back
     // silently; changing it is a decision, not a refactor.
@@ -99,10 +99,11 @@ describe("Gemini Live CRM voice", () => {
     expect(GEMINI_LIVE_API_VERSION).toBe("v1beta")
     expect(config.responseModalities).toEqual(["AUDIO"])
     expect(config.speechConfig?.voiceConfig?.prebuiltVoiceConfig?.voiceName).toBe("Algieba")
-    // Raised from MINIMAL after the assistant answered "five boards" without
-    // calling a tool: it needs room to notice a question is about data it
-    // cannot see. Pinned so latency tuning cannot quietly reintroduce guessing.
-    expect(config.thinkingConfig?.thinkingLevel).toBe("LOW")
+    // 3.8 Live takes no thinking level at all ("must be omitted in setup").
+    // What keeps "five boards" from coming back there is the next line: the
+    // model may not go on talking while a tool is still running.
+    expect(config).not.toHaveProperty("thinkingConfig")
+    expect(declarationsOf(config).every((declaration) => declaration.behavior === "BLOCKING")).toBe(true)
     expect(config.inputAudioTranscription).toEqual({})
     expect(config.sessionResumption).toEqual({})
     expect(config.realtimeInputConfig?.automaticActivityDetection).toMatchObject({
