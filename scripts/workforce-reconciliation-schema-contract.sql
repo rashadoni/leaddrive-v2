@@ -50,7 +50,8 @@ SELECT pg_catalog.json_build_object(
   'readOnly',pg_catalog.current_setting('transaction_read_only')='on',
   'repeatableRead',pg_catalog.current_setting('transaction_isolation')='repeatable read',
   'postgres16',pg_catalog.current_setting('server_version_num')::integer BETWEEN 160000 AND 169999,
-  'ordinaryTable',COALESCE((SELECT relkind='r' AND NOT relispartition AND relpersistence='p' FROM target),false),
+  'ordinaryTable',COALESCE((SELECT relkind='r' AND NOT relispartition AND relpersistence='p' FROM target),false)
+    AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_inherits WHERE inhrelid=(SELECT oid FROM target) OR inhparent=(SELECT oid FROM target)),
   'columnShape',COALESCE((SELECT count(*)=11 AND bool_and(
     a.attnum=c.position AND a.atttypid=c.type_oid AND a.atttypmod=c.typmod
     AND a.attnotnull=c.not_null AND a.attidentity='' AND a.attgenerated=''
@@ -81,9 +82,22 @@ SELECT pg_catalog.json_build_object(
       AND k.conppeqop=k.conpfeqop AND k.conffeqop=k.conpfeqop
       AND i.indrelid=r.oid AND i.indisunique AND i.indisvalid AND i.indisready
       AND i.indnatts=1 AND i.indnkeyatts=1 AND i.indkey[0]=a.attnum AND i.indpred IS NULL AND i.indexprs IS NULL
-      AND (SELECT count(*)=4 AND bool_and(t.tgisinternal AND t.tgenabled='O' AND NOT t.tgdeferrable AND NOT t.tginitdeferred
-        AND p.pronamespace='pg_catalog'::regnamespace AND p.proname IN ('RI_FKey_check_ins','RI_FKey_check_upd','RI_FKey_cascade_del','RI_FKey_noaction_upd'))
-        FROM pg_catalog.pg_trigger t JOIN pg_catalog.pg_proc p ON p.oid=t.tgfoid WHERE t.tgconstraint=k.oid)),
+      AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_inherits WHERE inhrelid=r.oid OR inhparent=r.oid)
+      AND (SELECT count(*)=4 FROM pg_catalog.pg_trigger WHERE tgconstraint=k.oid)
+      AND NOT EXISTS (
+        SELECT 1 FROM (VALUES
+          ('pg_catalog."RI_FKey_check_ins"()'::regprocedure,5,true),
+          ('pg_catalog."RI_FKey_check_upd"()'::regprocedure,17,true),
+          ('pg_catalog."RI_FKey_cascade_del"()'::regprocedure,9,false),
+          ('pg_catalog."RI_FKey_noaction_upd"()'::regprocedure,17,false)
+        ) expected(function_oid,event_type,on_target)
+        WHERE (SELECT count(*) FROM pg_catalog.pg_trigger t WHERE t.tgconstraint=k.oid
+          AND t.tgfoid=expected.function_oid AND t.tgtype=expected.event_type
+          AND t.tgrelid=CASE WHEN expected.on_target THEN k.conrelid ELSE k.confrelid END
+          AND t.tgconstrrelid=CASE WHEN expected.on_target THEN k.confrelid ELSE k.conrelid END
+          AND t.tgconstrindid=k.conindid AND t.tgisinternal AND t.tgenabled='O'
+          AND NOT t.tgdeferrable AND NOT t.tginitdeferred AND t.tgnargs=0 AND t.tgqual IS NULL
+          AND cardinality(t.tgattr::smallint[])=0)<>1)),
   'checks',(SELECT count(*)=7 FROM constraints)
     AND COALESCE((SELECT count(*)=5 AND bool_and(k.convalidated AND NOT k.connoinherit
       AND pg_catalog.pg_get_constraintdef(k.oid)=ANY(ARRAY(SELECT definition FROM expected_checks))) FROM constraints k WHERE k.contype='c'),false)

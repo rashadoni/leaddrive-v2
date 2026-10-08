@@ -14,10 +14,12 @@ const invalid = () => { throw new Error("C12_SCHEMA_OUTPUT_INVALID") }
 /** Validate an identifier-free catalog projection; never repair unknown fields. */
 export function assessSchemaContract(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)
-    || Object.getPrototypeOf(value) !== Object.prototype
-    || Object.keys(value).sort().join(",") !== [...FIELDS].sort().join(",")
-    || FIELDS.some(key => typeof Object.getOwnPropertyDescriptor(value, key)?.value !== "boolean")) invalid()
-  const snapshot = Object.fromEntries(FIELDS.map(key => [key, value[key]]))
+    || Object.getPrototypeOf(value) !== Object.prototype) invalid()
+  const descriptors = Object.getOwnPropertyDescriptors(value)
+  const keys = Reflect.ownKeys(descriptors)
+  if (keys.some(key => typeof key !== "string") || keys.sort().join(",") !== [...FIELDS].sort().join(",")
+    || FIELDS.some(key => typeof descriptors[key]?.value !== "boolean")) invalid()
+  const snapshot = Object.fromEntries(FIELDS.map(key => [key, descriptors[key].value]))
   const failed = FIELDS.filter(key => snapshot[key] !== true)
   return { status: failed.length ? "INCOMPLETE" : "MATCHED_CATALOG_CONTRACT_ONLY", failed, snapshot }
 }

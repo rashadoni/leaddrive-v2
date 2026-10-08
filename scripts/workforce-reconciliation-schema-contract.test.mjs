@@ -26,6 +26,16 @@ test("unknown/private fields, coercible dimensions, nulls and over-bound input r
   const accessor = valid()
   Object.defineProperty(accessor, "checks", { enumerable: true, get() { assert.fail("private accessor must never execute") } })
   assert.throws(() => assessSchemaContract(accessor), { message: "C12_SCHEMA_OUTPUT_INVALID" })
+  const proxied = new Proxy(valid(), { get() { assert.fail("untrusted Proxy getter must never execute") } })
+  assert.equal(assessSchemaContract(proxied).status, "MATCHED_CATALOG_CONTRACT_ONLY")
+  const descriptorCalls = {}
+  const racing = new Proxy(valid(), { getOwnPropertyDescriptor(target, key) {
+    descriptorCalls[key] = (descriptorCalls[key] ?? 0) + 1
+    assert.equal(descriptorCalls[key], 1, "same untrusted descriptor must never be read twice")
+    return Reflect.getOwnPropertyDescriptor(target, key)
+  } })
+  assert.equal(assessSchemaContract(racing).status, "MATCHED_CATALOG_CONTRACT_ONLY")
+  assert.throws(() => assessSchemaContract({ ...valid(), [Symbol("PRIVATE_SCHEMA_CANARY")]: true }), { message: "C12_SCHEMA_OUTPUT_INVALID" })
 })
 test("CLI withholds rejected raw input and refuses incomplete proof", () => {
   const run = input => spawnSync(process.execPath, [new URL("./workforce-reconciliation-schema-contract.mjs", import.meta.url).pathname], { input, encoding: "utf8", timeout: 5000 })
@@ -65,8 +75,13 @@ test("isolated PostgreSQL16 catalog and drift acceptance", { skip: !process.env.
     PGDATABASE: "hrm_c12_schema_contract_test", PGUSER: "postgres", PGPASSWORD: decodeURIComponent(url.password),
     PGPASSFILE: "/dev/null", PGCONNECT_TIMEOUT: "5" }
   const execute = text => {
-    try { return execFileSync("psql", ["-X", "-qAt", "--no-password", "-v", "ON_ERROR_STOP=1"], { input: text, encoding: "utf8", env, timeout: 20000, maxBuffer: 65536, stdio: ["pipe", "pipe", "pipe"] }).trim() }
-    catch { throw new Error("C12_ISOLATED_QUERY_FAILED") }
+    try { return execFileSync("psql", ["-X", "-qAt", "--no-password", "-v", "ON_ERROR_STOP=1", "-v", "VERBOSITY=sqlstate"], { input: text, encoding: "utf8", env, timeout: 20000, maxBuffer: 65536, stdio: ["pipe", "pipe", "pipe"] }).trim() }
+    catch (failure) {
+      const error = new Error("C12_ISOLATED_QUERY_FAILED")
+      const state = String(failure.stderr ?? "").match(/ERROR:\s+([A-Z0-9]{5})\b/)?.[1]
+      error.sqlState = ["2BP01","25006","42501","42601","42703","42704","42804","42883","42P01","55P03","57014"].includes(state) ? state : null
+      throw error
+    }
   }
   const reader = "wf_c12_schema_catalog_reader"
   const target = "workforce_reconciliation_tenant_states"
@@ -74,24 +89,31 @@ test("isolated PostgreSQL16 catalog and drift acceptance", { skip: !process.env.
     "workforce_evidence_assessments", "workforce_exception_cases", "workforce_timesheet_approvals", "mtm_audit_logs"]
   const indexes = [...migration.matchAll(/CREATE INDEX "(wf_recon_[a-z_]+)"/g)].map(match => match[1])
   assert.equal(indexes.length, 9)
-  assert.equal(execute("SELECT current_database()='hrm_c12_schema_contract_test' AND (SELECT rolsuper FROM pg_roles WHERE rolname=current_user);"), "t")
-  assert.equal(execute("SELECT count(*) FROM pg_class WHERE relnamespace='public'::regnamespace AND relkind IN ('r','v','p','f');"), "0")
-  execute(`CREATE ROLE ${reader} NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOREPLICATION NOINHERIT;
-    GRANT USAGE ON SCHEMA public TO ${reader}; CREATE TABLE organizations(id text PRIMARY KEY);
-    INSERT INTO organizations VALUES ('PRIVATE_SCHEMA_CANARY_A'),('PRIVATE_SCHEMA_CANARY_B');
-    ${roots.map(name => `CREATE TABLE ${name} ("organizationId" text NOT NULL,id text NOT NULL${name === "workforce_timesheet_approvals" ? ',"agentId" text NOT NULL,"periodStart" date NOT NULL,"periodEnd" date NOT NULL' : ""});`).join("\n")}`)
   const beforeBindings = sourceBindings()
   const facts = () => roots.concat("organizations").map(name => execute(`SELECT md5(COALESCE(string_agg(row_to_json(t)::text,'' ORDER BY ${name === "organizations" ? "id" : '"organizationId",id'}),'')) FROM ${name} t;`))
-  const originalFacts = facts()
   const reset = () => execute(`DROP TABLE IF EXISTS ${target} CASCADE; ${indexes.map(name => `DROP INDEX IF EXISTS "${name}";`).join("\n")} ${migration}`)
   const observe = () => parseSchemaContract(execute(`SET ROLE ${reader}; ${sql}`))
   const receipt = { fixture: "SELECTED_SYNTHETIC_DEPENDENCY_DDL_PLUS_COMPLETE_UNMODIFIED_C12_MIGRATION",
     sourceSha: process.env.C12_EXPECTED_HEAD_SHA, sourceBindings: beforeBindings, productionObserved: false, historicalReplay: false,
-    status: "RUNNING", cases: [], limitations: ["No actual production catalog observation or old metadata-gate replacement", "No complete current/history schema, actual grants, density, timeout benchmark, scheduler, collectors or restore acceptance"] }
+    status: "RUNNING", stage: "fixture-admission", failure: null, cases: [], limitations: ["No actual production catalog observation or old metadata-gate replacement", "No complete current/history schema, actual grants, density, timeout benchmark, scheduler, collectors or restore acceptance"] }
   async function check(name, fn) {
-    await context.test(name, async () => { await fn(); assert.deepEqual(facts(), originalFacts); receipt.cases.push({ name, status: "PASS", businessFactsUnchanged: true }) })
+    receipt.stage = name
+    await context.test(name, async () => {
+      try { await fn(); assert.deepEqual(facts(), originalFacts); receipt.cases.push({ name, status: "PASS", businessFactsUnchanged: true }) }
+      catch (error) { receipt.cases.push({ name, status: "FAIL", code: error.message === "C12_ISOLATED_QUERY_FAILED" ? error.message : "ASSERTION_FAILED", sqlState: error.sqlState ?? null }); throw error }
+    })
   }
+  let originalFacts
   try {
+    assert.equal(execute("SELECT current_database()='hrm_c12_schema_contract_test' AND (SELECT rolsuper FROM pg_roles WHERE rolname=current_user);"), "t")
+    assert.equal(execute("SELECT count(*) FROM pg_class WHERE relnamespace='public'::regnamespace AND relkind IN ('r','v','p','f');"), "0")
+    receipt.stage = "synthetic-fixture-setup"
+    execute(`BEGIN; CREATE ROLE ${reader} NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOREPLICATION NOINHERIT;
+      GRANT USAGE ON SCHEMA public TO ${reader}; CREATE TABLE organizations(id text PRIMARY KEY);
+      INSERT INTO organizations VALUES ('PRIVATE_SCHEMA_CANARY_A'),('PRIVATE_SCHEMA_CANARY_B');
+      ${roots.map(name => `CREATE TABLE ${name} ("organizationId" text NOT NULL,id text NOT NULL${name === "workforce_timesheet_approvals" ? ',"agentId" text NOT NULL,"periodStart" date NOT NULL,"periodEnd" date NOT NULL' : ""});`).join("\n")} COMMIT;`)
+    originalFacts = facts()
+    receipt.factFingerprintsBefore = originalFacts
     reset()
     await check("exact migration matches as nonsuperuser with no business-table SELECT", () => {
       assert.equal(execute(`SET ROLE ${reader}; SELECT NOT rolsuper AND NOT rolbypassrls AND NOT has_table_privilege(current_user,'organizations','SELECT') AND NOT has_table_privilege(current_user,'${target}','SELECT') FROM pg_roles WHERE rolname=current_user;`), "t")
@@ -140,6 +162,7 @@ test("isolated PostgreSQL16 catalog and drift acceptance", { skip: !process.env.
       ["wrong foreign delete action", `ALTER TABLE ${target} DROP CONSTRAINT "workforce_reconciliation_tenant_states_organizationId_fkey"; ALTER TABLE ${target} ADD FOREIGN KEY ("organizationId") REFERENCES organizations(id) ON DELETE RESTRICT`, "foreignKey"],
       ["unvalidated foreign key", `ALTER TABLE ${target} DROP CONSTRAINT "workforce_reconciliation_tenant_states_organizationId_fkey"; ALTER TABLE ${target} ADD FOREIGN KEY ("organizationId") REFERENCES organizations(id) ON DELETE CASCADE NOT VALID`, "foreignKey"],
       ["disabled foreign key triggers", `ALTER TABLE ${target} DISABLE TRIGGER ALL`, "foreignKey"],
+      ["misbound internal foreign trigger event", `UPDATE pg_catalog.pg_trigger SET tgtype=17 WHERE tgconstraint=(SELECT oid FROM pg_constraint WHERE conrelid='${target}'::regclass AND contype='f') AND tgfoid='pg_catalog."RI_FKey_check_ins"()'::regprocedure`, "foreignKey"],
       ["missing range check", `ALTER TABLE ${target} DROP CONSTRAINT "workforce_reconciliation_tenant_states_durationMs_check"`, "checks"],
       ["weakened range check", `ALTER TABLE ${target} DROP CONSTRAINT "workforce_reconciliation_tenant_states_durationMs_check"; ALTER TABLE ${target} ADD CHECK ("durationMs" BETWEEN 0 AND 3600001)`, "checks"],
       ["unvalidated check", `ALTER TABLE ${target} DROP CONSTRAINT "workforce_reconciliation_tenant_states_durationMs_check"; ALTER TABLE ${target} ADD CHECK ("durationMs" BETWEEN 0 AND 3600000) NOT VALID`, "checks"],
@@ -157,6 +180,7 @@ test("isolated PostgreSQL16 catalog and drift acceptance", { skip: !process.env.
       ["descending due index", `DROP INDEX wf_reconciliation_due_attempt_org_idx; CREATE INDEX wf_reconciliation_due_attempt_org_idx ON ${target} ("dueAt" DESC,"lastAttemptAt","organizationId")`, "indexes"],
       ["partial due index", `DROP INDEX wf_reconciliation_due_attempt_org_idx; CREATE INDEX wf_reconciliation_due_attempt_org_idx ON ${target} ("dueAt","lastAttemptAt","organizationId") WHERE "durationMs"=0`, "indexes"],
       ["extra index", `CREATE INDEX private_extra_index ON ${target} ("attemptToken")`, "indexes"],
+      ["inheriting child changes parent row population", `CREATE TABLE public.c12_fixture_child () INHERITS (${target})`, "ordinaryTable"],
       ["additional user trigger", `CREATE FUNCTION public.c12_fixture_trigger() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RETURN NEW; END $$; CREATE TRIGGER c12_fixture_trigger BEFORE INSERT ON ${target} FOR EACH ROW EXECUTE FUNCTION public.c12_fixture_trigger()`, "noUserTriggers"],
     ]
     for (const [name, change, field] of mutations) await check(name, () => {
@@ -167,8 +191,13 @@ test("isolated PostgreSQL16 catalog and drift acceptance", { skip: !process.env.
     })
     await check("missing table gives finite refusal", () => { reset(); execute(`DROP TABLE ${target}`); assert.equal(observe().status, "INCOMPLETE") })
     await check("all checks restored without changing original business facts", () => { reset(); assert.equal(observe().status, "MATCHED_CATALOG_CONTRACT_ONLY"); assert.deepEqual(sourceBindings(), beforeBindings) })
-    receipt.status = context.signal.aborted || receipt.cases.length !== mutations.length + 6 ? "FAIL" : "PASS_ISOLATED_SCHEMA_CONTRACT_ONLY"
+    receipt.factFingerprintsAfter = facts()
+    receipt.status = context.signal.aborted || receipt.cases.length !== mutations.length + 6 || receipt.cases.some(entry => entry.status !== "PASS") ? "FAIL" : "PASS_ISOLATED_SCHEMA_CONTRACT_ONLY"
     assert.equal(receipt.status, "PASS_ISOLATED_SCHEMA_CONTRACT_ONLY")
+  } catch (error) {
+    receipt.status = "FAIL"
+    receipt.failure = { code: error.message === "C12_ISOLATED_QUERY_FAILED" ? error.message : "ASSERTION_FAILED", sqlState: error.sqlState ?? null }
+    throw error
   } finally {
     if (receipt.status === "RUNNING") receipt.status = "FAIL"
     if (process.env.C12_SCHEMA_RECEIPT) fs.writeFileSync(process.env.C12_SCHEMA_RECEIPT, JSON.stringify(receipt, null, 2) + "\n", { flag: "wx", mode: 0o600 })

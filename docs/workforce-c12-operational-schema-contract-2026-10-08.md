@@ -84,3 +84,20 @@ scheduling/activation, physical device/pilot/load and backup/restore evidence
 keep their distinct open criteria. Synthetic tests do not substitute for them.
 Support and HRHub personnel-document research are untouched. Accepted accounting
 stays85/161 DONE,76 open,14/15 gates,weighted61%; no new task is closed.
+
+
+## Independent source corrections after the first hosted run
+
+Original source36c0a26f9a8c40e5f5fea76c007fdc367e1112f1/run37739012389
+passed35 isolated cases. Its original ZIP/receipt remains in
+[evidence](./evidence/hrm-c12-schema-contract-2026-10-08/first-hosted/receipt-original.json).
+This narrower pass does not accept the later corrections. Independent review
+identified inheritance, descriptor-copy race, early failure retention and exact
+FK-trigger binding omissions. The corrected contract forbids parent/child
+inheritance, uses one cached descriptor snapshot, retains setup/admission failures
+with finite diagnostics, and requires each builtin FK trigger/event/relation and
+index tuple once. Two new actual drift cases cover inheritance and a deliberately
+misbound internal trigger only in the owned disposable fixture. No privileged
+catalog tampering resistance or production defect is claimed. Nine synthetic
+business-fact table hashes are checked after every case; behavior writes roll
+back. Final-source hosted execution and mandatory CI/review are pending here.

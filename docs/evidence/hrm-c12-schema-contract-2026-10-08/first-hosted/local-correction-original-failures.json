@@ -1,0 +1,13 @@
+{
+  "syntaxOriginal": {
+    "status": "FAIL",
+    "code": "DUPLICATE_BINDING",
+    "message": "SyntaxError: Identifier 'originalFacts' has already been declared",
+    "cause": "Old eager const declaration retained while moving fixture setup under try; removed before publication"
+  },
+  "localEslintOriginal": {
+    "status": "NOT_RUN",
+    "code": "MODULE_NOT_FOUND",
+    "cause": "Canonical checkout has no installed ESLint; no install or broad retry on Contabo"
+  }
+}

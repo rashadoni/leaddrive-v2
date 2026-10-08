@@ -88,3 +88,39 @@ actual hosted PG/mandatory exact-head CI remain pending. Next action: normal
 checkpoint/push and new DRAFT PR against main (all accepted589→605→608 ancestry
 already present in that base), then diagnose actual CI and finish review.
 No merge/deploy/activation of this new C12 scope is being performed.
+
+
+## 2026-10-08 Asia/Baku — original hosted PASS retained; independent omissions fixed
+
+Published DRAFT PR631 against current main, attached to task. Initial source
+36c0a26f9a8c40e5f5fea76c007fdc367e1112f1: actual GitHub PG run37739012389
+PASS, receipt35cases, zero failed entries. Original artifact11533081895/ZIP
+SHA256837572fd5b0774740dcdeaea919d911d0b2be72b1f5ded0ee5c2b6a6e38bba22
+roundtripped/CRC verified and archived separately. First three small required
+checks PASS; static/typecheck skipped because draft, explicitly NOT RUN.
+No whole-current-head/full-history/production acceptance inferred.
+
+Independent read-only review found four source omissions despite that first
+green result: inheritance can broaden parent query rows; descriptor validation
+and copy can race through a Proxy; setup errors could precede finite receipt;
+FK trigger count/name subset did not prove each exact binding. Source corrected
+with no parent/child inheritance, one cached descriptor snapshot/copied data
+values, atomic fixture setup under try/finally plus finite SQLSTATE and fallback
+receipt, and four exact builtin FK trigger/event/relation/index/argument tuples.
+Actual child-inheritance and deliberately misbound fixture-only internal trigger
+negatives added. Proxy/getter/accessor/Symbol regressions remain Node-only. These
+are source findings, not claims an original production defect was observed.
+First35-case proof retains its narrower coverage and is not overwritten.
+
+A temporary local syntax FAIL while moving setup retained duplicate originalFacts
+binding; corrected before publication. Local ESLint did not start because
+installed dependency absent (MODULE_NOT_FOUND); no install/broad retry on Contabo.
+Both originals are retained in first-hosted/local-correction-original-failures.json.
+Current targeted four Node cases PASS, hosted PG SKIPPED/NOT RUN here; syntax,
+whitespace and runner policy PASS. Existing metadata gate/baselines untouched.
+
+Next: exact corrected source checkpoint, hosted PG rerun and independent review;
+then briefly mark ready to execute the unchanged five mandatory GitHub gates,
+restore final draft status. No automatic merge, deploy or new production access.
+Keep tested source frozen; final append-only evidence/journal will live in a
+dependent documentation checkpoint, without borrowing earlier-head CI.

@@ -50,6 +50,24 @@ jobs:
           node --test scripts/workforce-reconciliation-schema-contract.test.mjs
           node scripts/ci/check-github-runner-policy.mjs
           git diff --check
+      - name: Retain finite failure when tests cannot create a receipt
+        if: always()
+        env:
+          C12_EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          C12_SCHEMA_RECEIPT: ${{ runner.temp }}/c12-schema-contract.json
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          const sourceSha = process.env.C12_EXPECTED_HEAD_SHA;
+          if (!/^[0-9a-f]{40}$/.test(sourceSha)) process.exit(1);
+          if (!fs.existsSync(process.env.C12_SCHEMA_RECEIPT)) {
+            fs.writeFileSync(process.env.C12_SCHEMA_RECEIPT, JSON.stringify({
+              status: 'FAIL_BEFORE_FINITE_RECEIPT', sourceSha,
+              productionObserved: false, historicalReplay: false,
+              code: 'TEST_ADMISSION_OR_LOAD_FAILED_CAUSE_UNVERIFIED'
+            }) + '\n', {flag: 'wx', mode: 0o600});
+          }
+          JS
       - name: Preserve original finite receipt including failures
         if: always()
         uses: actions/upload-artifact@v4
