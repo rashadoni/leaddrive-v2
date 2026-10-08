@@ -46,7 +46,11 @@ export type GeminiLiveModel = Readonly<{
   toolBehavior: Behavior | null
 }>
 
-export const DEFAULT_GEMINI_LIVE_MODEL = "gemini-3.8-live"
+// Still the retiring preview, deliberately, for one release. The setup 3.8 needs
+// is written from Google's migration notes, and notes are not a session: the
+// default moves only after /api/cron/voice-provider-check has opened a real
+// 3.8 session with production's own key and seen it wait for a tool.
+export const DEFAULT_GEMINI_LIVE_MODEL = "gemini-3.1-flash-live-preview"
 const LEGACY_GEMINI_LIVE_FAMILY = "gemini-3.1-flash-live"
 
 const MODEL_ID_SHAPE = /^gemini-[a-z0-9][a-z0-9.-]{0,62}$/
@@ -57,7 +61,7 @@ const MODEL_ID_SHAPE = /^gemini-[a-z0-9][a-z0-9.-]{0,62}$/
  * the assistant has finished - the one signal voice confirmation waits for
  * before it decides what the user answered (voice-confirmation.ts).
  */
-function usableLiveModelId(id: string): boolean {
+export function usableGeminiLiveModelId(id: string): boolean {
   return MODEL_ID_SHAPE.test(id) && id.includes("-live") && !id.includes("extended-thinking")
 }
 
@@ -76,7 +80,7 @@ export function geminiLiveModel(
 ): GeminiLiveModel {
   const requested = (raw ?? "").trim()
   let id = requested || DEFAULT_GEMINI_LIVE_MODEL
-  if (!usableLiveModelId(id)) {
+  if (!usableGeminiLiveModelId(id)) {
     console.error(
       `[voice] VOICE_GEMINI_LIVE_MODEL=${JSON.stringify(requested.slice(0, 80))} is not a usable Live model; using ${DEFAULT_GEMINI_LIVE_MODEL}`,
     )

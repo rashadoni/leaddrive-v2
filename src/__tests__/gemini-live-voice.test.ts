@@ -10,10 +10,12 @@ import {
   geminiLiveSystemInstruction,
   GEMINI_LIVE_API_VERSION,
   GEMINI_LIVE_VOICE,
+  usableGeminiLiveModelId,
 } from "@/lib/ai/voice/gemini-live"
 import { voiceTools } from "@/lib/ai/voice/realtime-tool-contract"
 
 const LEGACY_MODEL = "gemini-3.1-flash-live-preview"
+const NEXT_MODEL = "gemini-3.8-live"
 
 type Declaration = { name?: string; behavior?: string }
 
@@ -85,9 +87,11 @@ describe("Gemini Live CRM voice", () => {
 
   it("locks the native audio model, Algieba voice, low-latency VAD, and read-only CRM tools", () => {
     const config = geminiLiveConfig({ locale: "az", firstName: "Rəşad", allowedSections: ["leads"] })
-    // The preview this was first pinned to is retired by Google on 2026-11-17.
-    expect(DEFAULT_GEMINI_LIVE_MODEL).toBe("gemini-3.8-live")
-    expect(geminiLiveModel().id).toBe("gemini-3.8-live")
+    // Google retires this preview no earlier than 2026-11-17. It stays the
+    // default until the provider check has opened a real 3.8 session on
+    // production; moving it is one constant and this line.
+    expect(DEFAULT_GEMINI_LIVE_MODEL).toBe(LEGACY_MODEL)
+    expect(geminiLiveModel().id).toBe(LEGACY_MODEL)
     // Owner picked this by ear on 2026-08-17 from side-by-side Azerbaijani
     // samples of every preset. Pinned so the console voice cannot drift back
     // silently; changing it is a decision, not a refactor.
@@ -95,11 +99,10 @@ describe("Gemini Live CRM voice", () => {
     expect(GEMINI_LIVE_API_VERSION).toBe("v1beta")
     expect(config.responseModalities).toEqual(["AUDIO"])
     expect(config.speechConfig?.voiceConfig?.prebuiltVoiceConfig?.voiceName).toBe("Algieba")
-    // 3.8 Live takes no thinking level at all ("must be omitted in setup").
-    // What keeps "five boards" from coming back there is the next line: the
-    // model may not go on talking while a tool is still running.
-    expect(config).not.toHaveProperty("thinkingConfig")
-    expect(declarationsOf(config).every((declaration) => declaration.behavior === "BLOCKING")).toBe(true)
+    // Raised from MINIMAL after the assistant answered "five boards" without
+    // calling a tool: it needs room to notice a question is about data it
+    // cannot see. Pinned so latency tuning cannot quietly reintroduce guessing.
+    expect(config.thinkingConfig?.thinkingLevel).toBe("LOW")
     expect(config.inputAudioTranscription).toEqual({})
     expect(config.sessionResumption).toEqual({})
     expect(config.realtimeInputConfig?.automaticActivityDetection).toMatchObject({
@@ -160,7 +163,7 @@ describe("Gemini Live CRM voice", () => {
     expect(result).toEqual({
       token: "ephemeral-token",
       expiresAt: "2026-08-14T11:02:00.000Z",
-      model: "gemini-3.8-live",
+      model: DEFAULT_GEMINI_LIVE_MODEL,
     })
     expect(fetchMock).toHaveBeenCalledTimes(1)
     const [url, init] = fetchMock.mock.calls[0]!
@@ -172,7 +175,7 @@ describe("Gemini Live CRM voice", () => {
       expireTime: "2026-08-14T11:02:00.000Z",
       newSessionExpireTime: "2026-08-14T10:01:00.000Z",
       bidiGenerateContentSetup: {
-        model: "models/gemini-3.8-live",
+        model: `models/${DEFAULT_GEMINI_LIVE_MODEL}`,
         generationConfig: expect.objectContaining({ responseModalities: ["AUDIO"] }),
       },
     })
@@ -226,15 +229,17 @@ describe("Gemini Live CRM voice", () => {
 
 describe("Gemini Live model selection", () => {
   it("sends 3.8 Live a setup it accepts: no thinking level, every tool blocking", async () => {
+    vi.stubEnv("VOICE_GEMINI_LIVE_MODEL", NEXT_MODEL)
     const { result, body } = await mintedSetup()
     const setup = body.bidiGenerateContentSetup
 
-    expect(result.model).toBe("gemini-3.8-live")
-    expect(setup.model).toBe("models/gemini-3.8-live")
+    expect(result.model).toBe(NEXT_MODEL)
+    expect(setup.model).toBe(`models/${NEXT_MODEL}`)
     // Absent, not null and not MINIMAL: the provider rejects the field itself.
     expect(setup.generationConfig).not.toHaveProperty("thinkingConfig")
     expect(JSON.stringify(body)).not.toContain("thinkingLevel")
-    // One tool left on the async default is one answer spoken before its data.
+    // 3.8 keeps talking while a tool runs unless told otherwise. One tool left
+    // on that default is one answer spoken before its data.
     const declarations = setup.tools[0]!.functionDeclarations
     expect(declarations.length).toBeGreaterThan(10)
     expect(declarations.filter((declaration) => declaration.behavior !== "BLOCKING")).toEqual([])
@@ -242,24 +247,26 @@ describe("Gemini Live model selection", () => {
     expect(body.fieldMask.split(",")).toEqual(expect.arrayContaining(["model", "generationConfig", "tools"]))
   })
 
-  it("can be moved back to 3.1 by env, with the setup 3.1 was running on", async () => {
+  it("sends 3.1 the setup it has been running on", async () => {
     vi.stubEnv("VOICE_GEMINI_LIVE_MODEL", LEGACY_MODEL)
     const { result, body } = await mintedSetup()
     const setup = body.bidiGenerateContentSetup
 
     expect(result.model).toBe(LEGACY_MODEL)
     expect(setup.model).toBe(`models/${LEGACY_MODEL}`)
-    // Raised from MINIMAL after the assistant answered "five boards" without
-    // calling a tool. A rollback must not quietly lose that.
+    // Raised from MINIMAL after "five boards". Going back to 3.1 by env must
+    // not quietly lose that.
     expect(setup.generationConfig.thinkingConfig).toEqual({ thinkingLevel: "LOW" })
     // 3.1 has no async mode and was never sent this field.
     expect(JSON.stringify(body)).not.toContain("behavior")
   })
 
   it("reads the switch on every mint, not once at start-up", () => {
-    expect(geminiLiveModel().id).toBe("gemini-3.8-live")
+    expect(geminiLiveModel().id).toBe(DEFAULT_GEMINI_LIVE_MODEL)
+    vi.stubEnv("VOICE_GEMINI_LIVE_MODEL", NEXT_MODEL)
+    expect(geminiLiveModel()).toEqual({ id: NEXT_MODEL, thinkingLevel: null, toolBehavior: "BLOCKING" })
     vi.stubEnv("VOICE_GEMINI_LIVE_MODEL", LEGACY_MODEL)
-    expect(geminiLiveModel().id).toBe(LEGACY_MODEL)
+    expect(geminiLiveModel()).toEqual({ id: LEGACY_MODEL, thinkingLevel: "LOW", toolBehavior: null })
     vi.stubEnv("VOICE_GEMINI_LIVE_MODEL", "gemini-3.9-live")
     // A later id gets the current setup; nobody has to release code to try it.
     expect(geminiLiveModel()).toEqual({ id: "gemini-3.9-live", thinkingLevel: null, toolBehavior: "BLOCKING" })
@@ -270,7 +277,7 @@ describe("Gemini Live model selection", () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => {})
     for (const empty of ["", "   "]) {
       vi.stubEnv("VOICE_GEMINI_LIVE_MODEL", empty)
-      expect(geminiLiveModel().id).toBe("gemini-3.8-live")
+      expect(geminiLiveModel().id).toBe(DEFAULT_GEMINI_LIVE_MODEL)
     }
     expect(log).not.toHaveBeenCalled()
   })
@@ -290,18 +297,15 @@ describe("Gemini Live model selection", () => {
     ]
     for (const value of unusable) {
       vi.stubEnv("VOICE_GEMINI_LIVE_MODEL", value)
-      expect(geminiLiveModel(), value).toEqual({
-        id: "gemini-3.8-live",
-        thinkingLevel: null,
-        toolBehavior: "BLOCKING",
-      })
+      expect(usableGeminiLiveModelId(value), value).toBe(false)
+      expect(geminiLiveModel(), value).toEqual(geminiLiveModel(DEFAULT_GEMINI_LIVE_MODEL))
     }
     expect(log).toHaveBeenCalledTimes(unusable.length)
 
     vi.stubEnv("VOICE_GEMINI_LIVE_MODEL", "gemini-3.8-live-extended-thinking")
     const { result, body } = await mintedSetup()
-    expect(result.model).toBe("gemini-3.8-live")
-    expect(body.bidiGenerateContentSetup.model).toBe("models/gemini-3.8-live")
+    expect(result.model).toBe(DEFAULT_GEMINI_LIVE_MODEL)
+    expect(body.bidiGenerateContentSetup.model).toBe(`models/${DEFAULT_GEMINI_LIVE_MODEL}`)
   })
 
   it("keeps the id and its setup together when a caller passes the model in", () => {
@@ -310,13 +314,14 @@ describe("Gemini Live model selection", () => {
     expect(legacy.thinkingConfig).toEqual({ thinkingLevel: "LOW" })
     expect(declarationsOf(legacy).some((declaration) => "behavior" in declaration)).toBe(false)
 
-    const current = geminiLiveConfig({ ...base, model: geminiLiveModel("gemini-3.8-live") })
-    expect(current).not.toHaveProperty("thinkingConfig")
+    const next = geminiLiveConfig({ ...base, model: geminiLiveModel(NEXT_MODEL) })
+    expect(next).not.toHaveProperty("thinkingConfig")
+    expect(declarationsOf(next).every((declaration) => declaration.behavior === "BLOCKING")).toBe(true)
     // The model changes two fields and nothing else: same tools, same prompt.
-    expect(declarationsOf(current).map((declaration) => declaration.name))
+    expect(declarationsOf(next).map((declaration) => declaration.name))
       .toEqual(declarationsOf(legacy).map((declaration) => declaration.name))
-    expect(current.systemInstruction).toBe(legacy.systemInstruction)
-    expect(current.realtimeInputConfig).toEqual(legacy.realtimeInputConfig)
-    expect(current.speechConfig).toEqual(legacy.speechConfig)
+    expect(next.systemInstruction).toBe(legacy.systemInstruction)
+    expect(next.realtimeInputConfig).toEqual(legacy.realtimeInputConfig)
+    expect(next.speechConfig).toEqual(legacy.speechConfig)
   })
 })
