@@ -12,6 +12,8 @@ import { HelpButton } from "@/components/help/help-button"
 import { Button } from "@/components/ui/button"
 import dynamic from "next/dynamic"
 import { calculateDistance } from "@/lib/geo-utils"
+import { LiveMapDaySteps } from "@/components/mtm/live-map-day-steps"
+import { liveMapDaySteps } from "@/lib/mtm/live-map-day-steps"
 import { createDateFormatter, formatDateTime, formatTime } from "@/lib/format-date"
 import { formatMtmDistance } from "@/lib/mtm/visit-place-check"
 import { mtmLiveFeedHistoryHref, type MtmLiveFeedAlertGroup } from "@/lib/mtm/live-feed-alerts"
@@ -24,7 +26,7 @@ import { LocationHistoryPanel } from "@/components/mtm/location-history-panel"
 import {
   MapPin, RefreshCw, Clock, WifiOff, Navigation,
   Radio, AlertTriangle, Circle, Flame, History,
-  Battery, ShieldAlert, ArrowLeft, SlidersHorizontal, PauseCircle, Flag,
+  Battery, ShieldAlert, ArrowLeft, SlidersHorizontal, PauseCircle, Flag, Crosshair,
 } from "lucide-react"
 
 const MtmLiveMap = dynamic(() => import("@/components/mtm/live-map"), { ssr: false })
@@ -170,6 +172,11 @@ export default function MtmMapPage() {
   const [showGeofence, setShowGeofence] = useState(false)
   const [showHeatmap, setShowHeatmap] = useState(false)
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null)
+  // The stop of the selected employee's day that is in focus (its order in the
+  // route), and whether the map keeps following him. Both belong to one
+  // selection and are dropped with it.
+  const [selectedStop, setSelectedStop] = useState<number | null>(null)
+  const [followSelected, setFollowSelected] = useState(false)
   const [routeSnapshot, setRouteSnapshot] = useState<AgentRouteSnapshot | null>(null)
   const [freshnessNow, setFreshnessNow] = useState<number | null>(null)
   const selectedAgentRef = useRef<string | null>(null)
@@ -501,6 +508,8 @@ export default function MtmMapPage() {
   }
 
   const handleAgentClick = (agentId: string) => {
+    setSelectedStop(null)
+    setFollowSelected(false)
     if (selectedAgent === agentId) {
       selectedAgentRef.current = null
       routeRequestRef.current.controller?.abort()
@@ -512,6 +521,14 @@ export default function MtmMapPage() {
     selectedAgentRef.current = agentId
     setSelectedAgent(agentId)
     void fetchAgentRoute(agentId, tenantToday)
+  }
+
+  // A marker pressed on the map selects the employee like his card does. It
+  // never deselects: a second press on the same marker is somebody reading
+  // its balloon, not asking for the route to go away.
+  const handleMapAgentSelect = (agentId: string) => {
+    if (selectedAgentRef.current === agentId) return
+    handleAgentClick(agentId)
   }
 
   useEffect(() => {
@@ -571,6 +588,32 @@ export default function MtmMapPage() {
     return true
   })
 
+  // A status chip narrows the list and the map together. A selection the chip
+  // has just hidden would leave a route on the map that belongs to nobody on
+  // screen, so the selection goes with it.
+  const shownAgentIdsRef = useRef<Set<string>>(new Set())
+  shownAgentIdsRef.current = new Set(filteredAgents.map((agent) => agent.agentId))
+  useEffect(() => {
+    const selected = selectedAgentRef.current
+    if (!selected || shownAgentIdsRef.current.has(selected)) return
+    selectedAgentRef.current = null
+    routeRequestRef.current.controller?.abort()
+    setSelectedAgent(null)
+    setRouteSnapshot(null)
+  }, [activeFilter])
+
+  // The stop in focus and «follow» belong to one selection.
+  useEffect(() => {
+    setSelectedStop(null)
+    if (!selectedAgent) setFollowSelected(false)
+  }, [selectedAgent])
+
+  // An employee chosen on the map may be below the fold of the list.
+  const selectedCardRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (selectedAgent) selectedCardRef.current?.scrollIntoView?.({ block: "nearest" })
+  }, [selectedAgent])
+
   // Employees without an admissible coordinate remain in the roster, but the
   // map only receives finite, bounded coordinates with an evidence timestamp.
   const mapAgents: LiveMapAgent[] = filteredAgents.flatMap((agent) => {
@@ -620,6 +663,13 @@ export default function MtmMapPage() {
       }]
     })
   }, [agentRoute, routeExecution])
+  // The same day as steps for the list under the card: what each stop is right
+  // now (visited, visit in progress, next, planned, skipped), its times, and
+  // whether it is overdue. `presentationNow` is the server-anchored clock.
+  const daySteps = useMemo(
+    () => liveMapDaySteps(agentRoute?.points ?? [], routeExecution?.points ?? [], presentationNow),
+    [agentRoute, routeExecution, presentationNow],
+  )
   const routeStopsWithoutCoordinates = (agentRoute?.points ?? [])
     .filter((point) => !hasMtmCoordinates(point.customer)).length
   const formatTenantTime = (value: string | null | undefined) =>
@@ -827,6 +877,10 @@ export default function MtmMapPage() {
               etaSeconds={etaSeconds}
               timeZone={contract?.timezone}
               showWorkdayStatus={workforceEnabled}
+              onAgentSelect={handleMapAgentSelect}
+              focusStopOrder={selectedStop}
+              onStopSelect={setSelectedStop}
+              followAgent={followSelected}
             />
           )}
         </div>
@@ -857,7 +911,13 @@ export default function MtmMapPage() {
                       : "text-muted-foreground"
                   const isSelected = selectedAgent === agent.agentId
                   return (
-                    <div key={agent.agentId} className={`rounded-lg border p-1 ${isSelected ? "border-blue-300 bg-blue-50/80 dark:border-blue-800 dark:bg-blue-950/30" : "border-transparent"}`}>
+                    <div
+                      key={agent.agentId}
+                      ref={isSelected ? selectedCardRef : undefined}
+                      data-testid={`live-map-agent-card-${agent.agentId}`}
+                      data-selected={isSelected ? "true" : "false"}
+                      className={`rounded-lg border p-1 ${isSelected ? "border-blue-300 bg-blue-50/80 dark:border-blue-800 dark:bg-blue-950/30" : "border-transparent"}`}
+                    >
                     <div className="flex items-stretch gap-1">
                       <button
                         type="button"
@@ -884,6 +944,11 @@ export default function MtmMapPage() {
                               <span className={`h-2 w-2 rounded-full ${cfg.dotClass}`} aria-hidden="true" />
                               {tMap(`fieldStatus.${cfg.labelKey}`)}
                             </span>
+                            {(agent.routeTotal ?? 0) > 0 ? (
+                              <span className="font-normal tabular-nums text-muted-foreground" data-testid={`live-map-agent-progress-${agent.agentId}`}>
+                                {tMap("routeStop.progress", { done: agent.routeVisited ?? 0, total: agent.routeTotal ?? 0 })}
+                              </span>
+                            ) : null}
                             {agent.fieldStatus === "CHECKED_IN" && agent.openVisitSince ? (
                               <span className="font-normal text-muted-foreground">
                                 {tMap("visitOpenedAt", { time: formatDateTime(agent.openVisitSince, locale, visitOpenedOnAnotherDay(agent.openVisitSince, contract?.timezone)
@@ -947,43 +1012,32 @@ export default function MtmMapPage() {
                     </div>
                     {isSelected ? (
                       <div data-testid="mtm-map-selected-route" className="mt-1 rounded-md bg-background/80 p-2 text-[11px]">
-                        <div className="mb-1 font-semibold text-foreground">{tMap("routeStop.title")}</div>
+                        <div className="mb-1 flex items-center justify-between gap-2">
+                          <span className="font-semibold text-foreground">{tMap("routeStop.title")}</span>
+                          <button
+                            type="button"
+                            aria-pressed={followSelected}
+                            title={tMap("followHint")}
+                            onClick={() => setFollowSelected((on) => !on)}
+                            data-testid="live-map-follow"
+                            className={`inline-flex min-h-8 items-center gap-1 rounded-full border px-2.5 text-[11px] font-medium transition-colors ${followSelected
+                              ? "border-blue-600 bg-blue-600 text-white"
+                              : "border-zinc-300 text-foreground hover:bg-muted dark:border-zinc-600"}`}
+                          >
+                            <Crosshair className="h-3 w-3" aria-hidden="true" />{tMap("follow")}
+                          </button>
+                        </div>
                         {!visibleRouteSnapshot ? (
                           <div className="text-muted-foreground">{tMap("routeStop.loading")}</div>
                         ) : !agentRoute || !routeExecution || routeExecution.totalCount === 0 ? (
                           <div className="text-muted-foreground">{tMap("routeStop.none")}</div>
                         ) : (
-                          <ol className="space-y-1">
-                            {[...(agentRoute.points ?? [])].sort((a, b) => a.orderIndex - b.orderIndex).map((point) => {
-                              const fact = routeExecution.points.find((item) => item.pointId === point.id)
-                              const done = point.status === "VISITED" || Boolean(fact?.checkInAt)
-                              return (
-                                <li key={point.id} className="flex items-start gap-2">
-                                  <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${done ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-300" : point.status === "SKIPPED" ? "bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-300" : "bg-muted text-muted-foreground"}`}>
-                                    {fact?.plannedSequence ?? point.orderIndex + 1}
-                                  </span>
-                                  <span className="min-w-0 flex-1">
-                                    <span className="block truncate font-medium text-foreground">{point.customer?.name || "—"}</span>
-                                    <span className="flex flex-wrap gap-x-2 text-muted-foreground">
-                                      {point.plannedTime ? <span>{tMap("routeStop.planned", { time: formatTenantTime(point.plannedTime) })}</span> : null}
-                                      {fact?.checkInAt ? (
-                                        <span className="text-foreground">
-                                          {fact.checkOutAt && fact.visit
-                                            ? tMap("routeStop.fact", { from: formatTenantTime(fact.checkInAt), to: formatTenantTime(fact.checkOutAt) })
-                                            : tMap("routeStop.factOpen", { from: formatTenantTime(fact.checkInAt) })}
-                                        </span>
-                                      ) : null}
-                                    </span>
-                                  </span>
-                                  {fact?.visit ? (
-                                    <Link className="shrink-0 text-primary hover:underline" href={`/mtm/visits?visitId=${encodeURIComponent(fact.visit.id)}`}>
-                                      {tMap("routeStop.openVisit")}
-                                    </Link>
-                                  ) : null}
-                                </li>
-                              )
-                            })}
-                          </ol>
+                          <LiveMapDaySteps
+                            steps={daySteps}
+                            selectedOrder={selectedStop}
+                            onSelect={setSelectedStop}
+                            formatTime={formatTenantTime}
+                          />
                         )}
                         {routeStopsWithoutCoordinates > 0 ? (
                           <div className="mt-1 text-amber-700 dark:text-amber-300">{tMap("routeStop.missingCoordinates", { count: routeStopsWithoutCoordinates })}</div>

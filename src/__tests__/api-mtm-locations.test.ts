@@ -209,6 +209,9 @@ describe("GET /api/v1/mtm/locations", () => {
     const byId = Object.fromEntries(json.data.agentLocations.map((a: any) => [a.agentId, a]))
     expect(byId["agent-1"].fieldStatus).toBe("CHECKED_IN")
     expect(byId["agent-1"].routeCompletion).toBe(50)
+    // «5 of 10» goes out with every card, not only for a selected employee.
+    expect([byId["agent-1"].routeVisited, byId["agent-1"].routeTotal]).toEqual([5, 10])
+    expect([byId["agent-2"].routeVisited, byId["agent-2"].routeTotal]).toEqual([0, 0])
     expect(byId["agent-1"].latitude).toBe(40.41)
     expect(byId["agent-1"].freshness).toBe("ONLINE")
     expect(byId["agent-1"].workdayState).toBe("ACTIVE")

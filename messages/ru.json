@@ -16410,6 +16410,8 @@
   },
   "mtmMap": {
     "visitOpenedAt": "визит открыт: {time}",
+    "follow": "Следить",
+    "followHint": "Карта держит сотрудника в центре, пока он движется",
     "fieldStatus": {
       "checkedIn": "На точке",
       "onRoad": "В пути",
@@ -16496,6 +16498,7 @@
     "liveMode": "Сейчас",
     "historyMode": "История",
     "routeStopStatus": {
+      "inVisit": "Идёт визит",
       "label": "Статус",
       "visited": "Посещена",
       "skipped": "Пропущена",
@@ -16698,6 +16701,11 @@
       "openVisit": "{name}: открыть визит"
     },
     "routeStop": {
+      "showOnMap": "Показать точку {number} на карте",
+      "noCoordinates": "нет координат",
+      "overdue": "опаздывает на {minutes} мин",
+      "startedLate": "начат позже на {minutes} мин",
+      "progress": "{done} из {total}",
       "title": "Маршрут на сегодня",
       "loading": "Маршрут загружается…",
       "none": "На сегодня маршрута нет",
