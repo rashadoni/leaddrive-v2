@@ -210,7 +210,6 @@ export function LiveMapRosterColumnMenu(props: RosterColumnMenuProps & { classNa
         sideOffset={beside ? 8 : 4}
         collisionPadding={8}
         aria-label={label}
-        data-side-wanted={beside ? "left" : "bottom"}
         className="flex max-h-[var(--radix-popover-content-available-height)] w-64 max-w-[calc(100vw-2rem)] flex-col p-0"
       >
         <RosterColumnMenuPanel {...props} />

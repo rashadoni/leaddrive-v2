@@ -174,9 +174,20 @@ describe("a column's filter: tick what to show", () => {
     expect(teams).toHaveLength(3)
     expect(Object.fromEntries(teams.map((option) => [option.value, option.count])))
       .toEqual({ "t-south": 1, "t-north": 0, [rosterValue(TEAM[5], "team")]: 0 })
-    // With a filter that leaves nobody at all, the managers are all still there to press.
+    // With a filter that leaves nobody at all, the teams and the managers are all still there to press.
     const nobody: RosterFilters = { status: onlyRosterFilterValue("ROUTE_FINISHED") }
     expect(rosterFilterOptions(TEAM, nobody, "team").map((option) => option.count)).toEqual([0, 0, 0])
+    const withBosses = TEAM.map((agent, index) => (index < 2 ? { ...agent, managerId: "boss-1", managerName: "Старший" } : agent))
+    expect(rosterFilterOptions(withBosses, nobody, "manager")).toEqual([{ value: "boss-1", count: 0 }, { value: ROSTER_NO_MANAGER, count: 0 }])
+    expect(Object.fromEntries(rosterFilterOptions(withBosses, { status: onlyRosterFilterValue("LATE") }, "manager").map((option) => [option.value, option.count])))
+      .toEqual({ "boss-1": 0, [ROSTER_NO_MANAGER]: 1 })
+  })
+
+  it("does not drop a value that is there though the column's own vocabulary does not know it", () => {
+    const odd = [TEAM[0], { ...TEAM[1], workdayState: "ON_LEAVE" } as unknown as MtmDashboardAgent]
+    const workday = rosterFilterOptions(odd, {}, "workday").map((option) => [option.value, option.count])
+    expect(workday.slice(-1)).toEqual([["ON_LEAVE", 1]])
+    expect(workday.slice(0, -1).map(([value]) => value)).toEqual(rosterFilterOptions(TEAM, {}, "workday").map((option) => option.value))
   })
 
   it("lists by name only who is there under the other filters, plus whoever is ticked — so a tick can always be taken off", () => {
@@ -435,6 +446,7 @@ describe("the list on the page", () => {
       view: state.view,
       onViewChange: (view: RosterView) => update(() => { state.view = view }),
       onHide: () => update(() => { state.hiddenList = true }),
+      hiddenOnWide: state.hiddenList,
       hiddenAgentIds: state.hidden,
       onToggleAgentOnMap: (agentId: string) => update(() => {
         const next = new Set(state.hidden)
@@ -865,6 +877,9 @@ describe("the list on the page", () => {
 
     await press(byTestId("live-map-roster-filters-value-battery-LOW"))
     expect(rowIds()).toEqual(["a1"])
+    // The other columns' numbers follow: they are counted inside what is already filtered.
+    expect(byTestId("live-map-roster-filters-value-team-t-south")?.textContent).toBe("Cənub0")
+    expect(byTestId("live-map-roster-filters-value-team-t-north")?.textContent).toBe("Şimal1")
     // The panel stays open and says what the press did.
     expect(byTestId("live-map-roster-filters-value-battery-LOW")?.getAttribute("aria-pressed")).toBe("true")
     expect(byTestId("live-map-roster-filters-count")?.textContent).toBe("1 из 6")
@@ -875,7 +890,7 @@ describe("the list on the page", () => {
     await press(byTestId("live-map-roster-filters-value-team-t-south"))
     expect(state.filters).toEqual({ battery: { mode: "only", values: ["LOW", "HIGH"] }, team: { mode: "only", values: ["t-south"] } })
     expect(byTestId("live-map-roster-filters-button")?.textContent).toBe("Фильтры· 2")
-    // The other columns' numbers follow: they are counted inside what is already filtered.
+    // The panel's own counter is the rows drawn.
     expect(byTestId("live-map-roster-filters-count")?.textContent).toBe(`${rowIds().length} из 6`)
     // Pressed again, a value is let go of.
     await press(byTestId("live-map-roster-filters-value-team-t-south"))
@@ -907,56 +922,106 @@ describe("the list on the page", () => {
   })
 
   describe("where the menus open", () => {
-    // jsdom has no media queries: the width of the screen is said by the stub.
+    // jsdom has no media queries and no layout: the width of the screen is said
+    // by the stub, and the list's heading is given a place to stand. What is
+    // asserted is what the menu was really placed against — the side the
+    // positioning engine chose and the width of the thing it measured — not a
+    // flag the component sets about itself. Once, the anchor line stood before
+    // the trigger and every menu opened in the corner of the screen.
     const screen = { besideMap: true, roomForTable: true }
-    const sideWanted = () => document.body.querySelector("[data-side-wanted]")?.getAttribute("data-side-wanted")
+    const listeners = new Map<string, Set<() => void>>()
+    const resize = async (next: Partial<typeof screen>) => {
+      Object.assign(screen, next)
+      await act(async () => { for (const group of listeners.values()) for (const listener of group) listener() })
+    }
+    const settle = async () => { await act(async () => { await new Promise((resolve) => setTimeout(resolve, 30)) }) }
+    const HEADING = { left: 600, top: 100, width: 400, height: 160 }
+    const placeHeading = () => {
+      byTestId("live-map-roster-heading")!.getBoundingClientRect = () => ({
+        ...HEADING, right: HEADING.left + HEADING.width, bottom: HEADING.top + HEADING.height, x: HEADING.left, y: HEADING.top, toJSON: () => ({}),
+      }) as DOMRect
+    }
+    /** Where an open menu really stands: the side chosen and the width of what it was anchored to. */
+    const placed = (testId: string) => {
+      const content = byTestId(testId)?.closest("[data-side]")
+      const wrapper = byTestId(testId)?.closest<HTMLElement>("[data-radix-popper-content-wrapper]")
+      return { side: content?.getAttribute("data-side") ?? null, anchorWidth: wrapper?.style.getPropertyValue("--radix-popper-anchor-width") ?? null }
+    }
+    const BESIDE_THE_LIST = { side: "left", anchorWidth: `${HEADING.width}px` }
+    const UNDER_ITS_OWN_HEADING = { side: "bottom", anchorWidth: "0px" }
     const floating = () => byTestId("live-map-roster-filters-menu")?.closest("[data-radix-popper-content-wrapper]") != null
     beforeEach(() => {
       screen.besideMap = true
       screen.roomForTable = true
+      listeners.clear()
       vi.stubGlobal("matchMedia", (query: string) => ({
-        matches: query === "(min-width: 1024px)" ? screen.besideMap : query === "(min-width: 85rem)" ? screen.roomForTable : false,
-        media: query, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, onchange: null, dispatchEvent: () => false,
+        get matches() { return query === "(min-width: 1024px)" ? screen.besideMap : query === "(min-width: 85rem)" ? screen.roomForTable : false },
+        media: query,
+        addEventListener(_type: string, listener: () => void) { listeners.set(query, (listeners.get(query) ?? new Set()).add(listener)) },
+        removeEventListener(_type: string, listener: () => void) { listeners.get(query)?.delete(listener) },
+        addListener() {}, removeListener() {}, onchange: null, dispatchEvent: () => false,
       }))
+      // Without a screen of some size the engine has no room anywhere and flips every menu.
+      Object.defineProperty(document.documentElement, "clientWidth", { configurable: true, value: 1440 })
+      Object.defineProperty(document.documentElement, "clientHeight", { configurable: true, value: 900 })
+    })
+    afterEach(() => {
+      Reflect.deleteProperty(document.documentElement, "clientWidth")
+      Reflect.deleteProperty(document.documentElement, "clientHeight")
     })
 
     it("beside the map: to the left of the list, over the map — the rows being filtered stay in sight", async () => {
       await draw()
+      placeHeading()
       await openMenu("status")
-      expect(sideWanted()).toBe("left")
+      await settle()
+      expect(placed("roster-column-menu-status")).toEqual(BESIDE_THE_LIST)
       await closeMenu()
       await press(byTestId("live-map-roster-filters-button"))
+      await settle()
       expect(floating()).toBe(true)
+      expect(placed("live-map-roster-filters-menu")).toEqual(BESIDE_THE_LIST)
       // A floating panel is closed by Escape or a press outside: it needs no «Готово».
       expect(byTestId("live-map-roster-filters-done")).toBeNull()
       expect(byTestId("live-map-roster-heading")?.className).toContain("sticky")
+      // It is bounded by the room to the left of the list, so it is never cut by the edge of the screen.
+      expect(byTestId("live-map-roster-filters-menu")?.className).toContain("var(--radix-popover-content-available-width)")
     })
 
     it("in the wide table: a column's menu drops under its own heading, «Фильтры» still stands beside the list", async () => {
       await draw()
+      placeHeading()
       await press(byTestId("live-map-roster-width"))
       expect(state.view.width).toBe("wide")
       await openMenu("status")
-      expect(sideWanted()).toBe("bottom")
+      await settle()
+      expect(placed("roster-column-menu-status")).toEqual(UNDER_ITS_OWN_HEADING)
       await closeMenu()
       await press(byTestId("live-map-roster-filters-button"))
+      await settle()
       expect(floating()).toBe(true)
+      expect(placed("live-map-roster-filters-menu")).toEqual(BESIDE_THE_LIST)
     })
 
     it("«Таблица» remembered on a screen with no room for it: the list is narrow, so its menus open to the left", async () => {
       screen.roomForTable = false
       state.view = { ...state.view, width: "wide" }
       await draw()
+      placeHeading()
       await openMenu("status")
-      expect(sideWanted()).toBe("left")
+      await settle()
+      expect(placed("roster-column-menu-status")).toEqual(BESIDE_THE_LIST)
     })
 
     it("under the map, on a phone: «Фильтры» opens in the list itself, and «Готово» says how many are left and puts it away", async () => {
       screen.besideMap = false
       screen.roomForTable = false
       await draw()
+      const scrolled: Array<unknown> = []
+      byTestId("live-map-roster")!.scrollIntoView = (options?: unknown) => { scrolled.push(options) }
       await openMenu("status")
-      expect(sideWanted()).toBe("bottom")
+      await settle()
+      expect(placed("roster-column-menu-status")).toEqual(UNDER_ITS_OWN_HEADING)
       await closeMenu()
       const button = byTestId("live-map-roster-filters-button")!
       expect(button.getAttribute("aria-expanded")).toBe("false")
@@ -964,19 +1029,63 @@ describe("the list on the page", () => {
       expect(button.getAttribute("aria-expanded")).toBe("true")
       // In the list, not floating over it: nothing is covered and the page scrolls as one.
       expect(floating()).toBe(false)
-      expect(container.contains(byTestId("live-map-roster-filters-menu"))).toBe(true)
-      // A heading that holds the open panel can be taller than the screen: it does not follow the scroll.
+      const panel = byTestId("live-map-roster-filters-menu")!
+      expect(container.contains(panel)).toBe(true)
+      // No part of it is a frame with a scrollbar of its own (owner rule, 2026-09-14).
+      for (const node of [panel, ...panel.querySelectorAll("*")]) {
+        expect(node.getAttribute("class") ?? "", node.getAttribute("data-testid") ?? node.tagName).not.toMatch(/overflow-(y-)?(auto|scroll)|(^|\s)max-h-/)
+      }
+      // A heading that holds the open panel can be taller than the screen: it
+      // does not follow the scroll. Pressed from a list scrolled to row forty
+      // the panel would open far above the screen — so the top of the list is
+      // brought into view with it.
       expect(byTestId("live-map-roster-heading")?.className).not.toContain("sticky")
+      expect(scrolled).toEqual([{ block: "start" }])
       await press(byTestId("live-map-roster-filters-value-status-OFFLINE"))
       expect(byTestId("live-map-roster-filters-done")?.textContent).toBe("Готово · показано 2 из 6")
+      // «Готово» stands at the foot of a tall panel: with the panel gone the
+      // page is brought back to the list, and the focus goes to «Фильтры».
       await press(byTestId("live-map-roster-filters-done"))
       expect(byTestId("live-map-roster-filters-menu")).toBeNull()
       expect(byTestId("live-map-roster-heading")?.className).toContain("sticky")
       expect(rowIds()).toEqual(["a6", "a5"])
-      // The same button opens and closes it.
+      expect(scrolled).toEqual([{ block: "start" }, { block: "start" }])
+      expect(document.activeElement).toBe(button)
+      // The same button opens and closes it; closing it that way moves nothing — it is on the screen already.
       await press(button)
       expect(byTestId("live-map-roster-filters-menu")).not.toBeNull()
+      expect(scrolled).toHaveLength(3)
       await press(button)
+      expect(byTestId("live-map-roster-filters-menu")).toBeNull()
+      expect(scrolled).toHaveLength(3)
+    })
+
+    it("a floating panel never moves the page", async () => {
+      await draw()
+      const scrolled: Array<unknown> = []
+      byTestId("live-map-roster")!.scrollIntoView = (options?: unknown) => { scrolled.push(options) }
+      await press(byTestId("live-map-roster-filters-button"))
+      await press(byTestId("live-map-roster-filters-value-status-OFFLINE"))
+      await closeMenu()
+      expect(scrolled).toEqual([])
+    })
+
+    it("the list put away on a wide screen takes its open filters with it: they do not open by themselves when it comes back", async () => {
+      // Under the map a list that was «put away» is still shown, with its filters open.
+      screen.besideMap = false
+      screen.roomForTable = false
+      state.hiddenList = true
+      await draw()
+      await press(byTestId("live-map-roster-filters-button"))
+      expect(byTestId("live-map-roster-filters-menu")).not.toBeNull()
+      // The window is made wide: the list is put away, and its panel with it.
+      await resize({ besideMap: true, roomForTable: true })
+      expect(byTestId("live-map-roster-filters-menu")).toBeNull()
+      expect(byTestId("live-map-roster-filters-button")?.getAttribute("aria-expanded")).toBe("false")
+      // The list is brought back: nothing opens over the map.
+      state.hiddenList = false
+      await draw()
+      await settle()
       expect(byTestId("live-map-roster-filters-menu")).toBeNull()
     })
   })
@@ -1112,7 +1221,7 @@ describe("the page behind the list", () => {
     // The offsets are <main>'s own padding; without them rows show through above the heading.
     expect(roster).toContain('"-top-3 z-20 rounded-t-lg border-b border-zinc-200 bg-card sm:-top-4 lg:-top-8 dark:border-zinc-700",')
     // It follows the screen — except while it holds the open filters under the map, when it can be taller than the screen.
-    expect(roster).toContain('!(filtersOpen && !filtersFloat) && "[@media(min-height:600px)]:sticky",')
+    expect(roster).toContain('!filtersInList && "[@media(min-height:600px)]:sticky",')
     expect(readFileSync("src/app/(dashboard)/layout.tsx", "utf8")).toMatch(/<main className=\{`[^`]*overflow-y-auto[^`]* p-3 sm:p-4 lg:p-8 /)
     expect(page).toContain("lg:sticky")
   })

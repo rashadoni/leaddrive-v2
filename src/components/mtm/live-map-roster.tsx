@@ -1,6 +1,6 @@
 "use client"
 
-import { Fragment, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode, type Ref, type RefObject } from "react"
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode, type Ref, type RefObject } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { AlertTriangle, Check, ChevronDown, ChevronRight, Download, Filter, Loader2, Maximize2, Minimize2, PanelRightClose, SlidersHorizontal, X } from "lucide-react"
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -190,7 +190,11 @@ export function LiveMapRoster({
     const aside = asideRef.current
     const heading = headingRef.current
     if (!aside || !heading || typeof ResizeObserver === "undefined") return
-    const measure = () => aside.style.setProperty("--roster-head", `${Math.ceil(heading.getBoundingClientRect().height)}px`)
+    // Only a heading that follows the screen covers rows. Where it stays in
+    // its place — a short screen, or the filters open in the list — a row
+    // brought into view needs no room left for it.
+    const followsTheScreen = () => getComputedStyle(heading).position === "sticky"
+    const measure = () => aside.style.setProperty("--roster-head", followsTheScreen() ? `${Math.ceil(heading.getBoundingClientRect().height)}px` : "0px")
     measure()
     const observer = new ResizeObserver(measure)
     observer.observe(heading)
@@ -314,6 +318,36 @@ export function LiveMapRoster({
     ? { side: "left", anchor: headingRef }
     : { side: "bottom", anchor: null }
   const filtersFloat = besideMap && !hiddenOnWide
+  // The list put away on a wide screen takes its open filters with it: they
+  // must not open by themselves over the map when the list comes back.
+  const listPutAway = besideMap && hiddenOnWide
+  const [wasPutAway, setWasPutAway] = useState(listPutAway)
+  if (wasPutAway !== listPutAway) {
+    setWasPutAway(listPutAway)
+    if (listPutAway) setFiltersOpen(false)
+  }
+  /** «Фильтры» open in the list itself (under the map), not floating beside it. */
+  const filtersInList = filtersOpen && !filtersFloat
+  const filtersButtonRef = useRef<HTMLButtonElement | null>(null)
+  const closedByDoneRef = useRef(false)
+  // The panel opens inside the heading, and a heading that holds it stops
+  // following the screen (it can be taller than the screen). Pressed from a
+  // list scrolled to row forty, «Фильтры» would open two thousand pixels
+  // above — the bar just pressed gone, nothing in its place. So the top of
+  // the list is brought into view with it. «Готово» stands at the foot of a
+  // panel up to two screens tall: with the panel gone the page would stay
+  // scrolled past a short list, so it brings the list back as well and hands
+  // the focus to «Фильтры». The button itself, pressed again, moves nothing.
+  useLayoutEffect(() => {
+    if (filtersInList) {
+      asideRef.current?.scrollIntoView?.({ block: "start" })
+      return
+    }
+    if (!closedByDoneRef.current) return
+    closedByDoneRef.current = false
+    asideRef.current?.scrollIntoView?.({ block: "start" })
+    filtersButtonRef.current?.focus({ preventScroll: true })
+  }, [filtersInList])
   const filterSummary = (column: RosterColumnId) => tMap("roster.filter.chip", { column: columnLabel(column), values: filterValuesText(column) })
   const menuProps = (column: RosterColumnId) => ({
     column,
@@ -329,6 +363,7 @@ export function LiveMapRoster({
   })
   const filtersButton = (
     <button
+      ref={filtersButtonRef}
       type="button"
       data-testid="live-map-roster-filters-button"
       aria-expanded={filtersOpen}
@@ -570,7 +605,7 @@ export function LiveMapRoster({
       <div ref={headingRef} role="none" data-testid="live-map-roster-heading" className={cn(
           "-top-3 z-20 rounded-t-lg border-b border-zinc-200 bg-card sm:-top-4 lg:-top-8 dark:border-zinc-700",
           // With the filters open in it the heading can be taller than the screen: then it stays in its place.
-          !(filtersOpen && !filtersFloat) && "[@media(min-height:600px)]:sticky",
+          !filtersInList && "[@media(min-height:600px)]:sticky",
         )}>
         <div role="caption">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 pt-2">
@@ -632,7 +667,9 @@ export function LiveMapRoster({
                 sideOffset={8}
                 collisionPadding={8}
                 aria-label={tMap("roster.filters")}
-                className="flex max-h-[var(--radix-popover-content-available-height)] w-[34rem] max-w-[calc(100vw-2rem)] flex-col p-0"
+                // Never wider than the room there is to the left of the list:
+                // in «Таблица» with the menu folded the list starts early.
+                className="flex max-h-[var(--radix-popover-content-available-height)] w-[34rem] max-w-[min(calc(100vw-2rem),var(--radix-popover-content-available-width))] flex-col p-0"
                 data-testid="live-map-roster-filters-menu"
               >
                 {filtersPanel("grid-cols-2", "min-h-0 flex-1 overflow-y-auto")}
@@ -729,11 +766,11 @@ export function LiveMapRoster({
         {/* Under the map «Фильтры» opens here, in the list: the rows move down
             instead of being covered, and the page scrolls as one — no frame
             with a scrollbar of its own. */}
-        {filtersOpen && !filtersFloat ? (
+        {filtersInList ? (
           <div role="region" aria-label={tMap("roster.filters")} className="mx-3 mt-2 rounded-lg border border-zinc-200 bg-muted/30 dark:border-zinc-700" data-testid="live-map-roster-filters-menu">
             {filtersPanel("grid-cols-1 @md:grid-cols-2 @2xl:grid-cols-3 @5xl:grid-cols-4", "")}
             <div className="border-t border-zinc-200 p-2 dark:border-zinc-700">
-              <button type="button" onClick={() => setFiltersOpen(false)} data-testid="live-map-roster-filters-done" className="inline-flex min-h-9 w-full items-center justify-center rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90 [@media(pointer:coarse)]:min-h-11">
+              <button type="button" onClick={() => { closedByDoneRef.current = true; setFiltersOpen(false) }} data-testid="live-map-roster-filters-done" className="inline-flex min-h-9 w-full items-center justify-center rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90 [@media(pointer:coarse)]:min-h-11">
                 {tMap("roster.filter.done", { shown: rows.length, total: agents.length })}
               </button>
             </div>
