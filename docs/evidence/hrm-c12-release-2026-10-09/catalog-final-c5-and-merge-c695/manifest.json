@@ -1,0 +1,125 @@
+{
+  "archivedAtUtc": "2026-10-09T22:24:48.089936+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-c12-catalog-full-gates-c5/five-gates-finite.json.gz",
+      "originalBytes": 3033,
+      "originalSha256": "d92879b04e64793e901131128362b0d8e4c2abc1f16dbecc05c3c47c74c4aa2d",
+      "storedBytes": 797,
+      "storedSha256": "b9fa63494277c8b003c1be4b4274e6a5b05061364fbb0b93499f155349780323"
+    },
+    {
+      "path": "hrm-c12-catalog-full-gates-c5/pr-scope.log.gz",
+      "originalBytes": 91073,
+      "originalSha256": "97b5e803b086258bc4f6202de335360079cc771075ef901c2a32b7c2c897d1c6",
+      "storedBytes": 15543,
+      "storedSha256": "9a3e280230c831589236e3928dca30718a64230cfc3418aa351f5103ed62eecc"
+    },
+    {
+      "path": "hrm-c12-catalog-full-gates-c5/runner-policy.log.gz",
+      "originalBytes": 11438,
+      "originalSha256": "bd2a10271b0a92e35d2e804f3ee4ae8449cccddc308d53cff6f3aac40e73752c",
+      "storedBytes": 3328,
+      "storedSha256": "fc8b209fd40c6a1b02a0e693b353a2a5afe54cb96fd82aa7ef1268b8e95fbb59"
+    },
+    {
+      "path": "hrm-c12-catalog-full-gates-c5/scan.log.gz",
+      "originalBytes": 95478,
+      "originalSha256": "f5ef15c6a466eb99a5736b316b924e8c9f7d97efd2d4b2477c3beb57384a74d5",
+      "storedBytes": 16066,
+      "storedSha256": "0ed1452970090b57dfd6bcfb56d628b942daceac0643e07de8229a65a60c4e5b"
+    },
+    {
+      "path": "hrm-c12-catalog-full-gates-c5/static-checks.log.gz",
+      "originalBytes": 227150,
+      "originalSha256": "1256cea37708cd0ff456db149ac36950fe44fe29650ce40a4e31572dc5d13104",
+      "storedBytes": 44013,
+      "storedSha256": "f27a1450e5624cbe4174c6d014a47565a61f36ce1b5ab9ae4ca89af18abafc18"
+    },
+    {
+      "path": "hrm-c12-catalog-full-gates-c5/static-finite.json.gz",
+      "originalBytes": 3650,
+      "originalSha256": "cee9d397d46c063bbd02ba88c61a6e923ae90ed9ffa128c703be90b0715e3aaf",
+      "storedBytes": 848,
+      "storedSha256": "a9942103485af0a7e407ab9912e07d0f95e4ac95f0015db09bfb28dd9eb85bc2"
+    },
+    {
+      "path": "hrm-c12-catalog-full-gates-c5/typecheck-finite.json.gz",
+      "originalBytes": 1243,
+      "originalSha256": "a2d7b649cb758fe5bcff81e51710e2ededd1fa6af62d06a274ee67440dcaf11b",
+      "storedBytes": 566,
+      "storedSha256": "aef3a7bc15cb739810cb03acecbd0bfe86693a9e02cc36d18151d3ae9f289cb7"
+    },
+    {
+      "path": "hrm-c12-catalog-full-gates-c5/typecheck.log.gz",
+      "originalBytes": 252208,
+      "originalSha256": "ad4cb573ebdfe2db690cfc148e051381590e20d95649f730b1b39df1bdc16ce0",
+      "storedBytes": 33728,
+      "storedSha256": "84e8db471af50c3d0f88e05c76aba03c2e645f4651548041eda0deb6ad9590c5"
+    },
+    {
+      "path": "hrm-c12-catalog-premerge-c5.json.gz",
+      "originalBytes": 2682,
+      "originalSha256": "b2facca1895c088a40b924af7e786ccb5c04e8b4d3914e50da20280aeb3f1cae",
+      "storedBytes": 1116,
+      "storedSha256": "c17c24183fc7e040ea81a570d24972bf39708d108973ce8c17db8059a2eff158"
+    },
+    {
+      "path": "hrm-c12-catalog-actual-merge-c695.json.gz",
+      "originalBytes": 703,
+      "originalSha256": "8042d3218739801274073cb4d56d65e44200c2218105725fc7a6719807cbeced",
+      "storedBytes": 437,
+      "storedSha256": "7ac11265ab30b910937746cdf4a094edcebfd3696989823dd87fe43a513b9cd7"
+    },
+    {
+      "path": "hrm-c12-catalog-final-peer-review-c5.json.gz",
+      "originalBytes": 75817,
+      "originalSha256": "20812a5ccc07237998b0b0f295b6e4219be6958bc1ffacf76843a76d462bac18",
+      "storedBytes": 17142,
+      "storedSha256": "6f2087a1a7df4dd0e05719edb42f2fc63f268328d71b7f5820d3dc47fe9885fa"
+    },
+    {
+      "path": "hrm-c12-catalog-static-peer-review-c5.json.gz",
+      "originalBytes": 2252,
+      "originalSha256": "cac3a822f72be738887eb77cb248864d628402a67478fc81909c541da9d61f15",
+      "storedBytes": 1067,
+      "storedSha256": "a2ac78846f2b43d859e5a5405932d5d7e5eb2f47deebaa84fa70b0f60d540cb8"
+    },
+    {
+      "path": "hrm-c12-catalog-c5-static/finite-summary.json.gz",
+      "originalBytes": 466,
+      "originalSha256": "9cc062668d48517ca47e7560db80bb177579ace442021660127c0c6dd8c303c0",
+      "storedBytes": 335,
+      "storedSha256": "ac6874d9a97e240f09e971375faec25a94dfd46fa459a4cf70758dfdbcc6fa11"
+    },
+    {
+      "path": "hrm-c12-catalog-c5-static/job-api.gz",
+      "originalBytes": 1148,
+      "originalSha256": "719e3198e51738917d90820a6dc17fe4bd5b84a27a7dde031c34c43e358cde53",
+      "storedBytes": 1148,
+      "storedSha256": "719e3198e51738917d90820a6dc17fe4bd5b84a27a7dde031c34c43e358cde53"
+    },
+    {
+      "path": "hrm-c12-catalog-c5-static/original-job-log.gz",
+      "originalBytes": 44013,
+      "originalSha256": "f27a1450e5624cbe4174c6d014a47565a61f36ce1b5ab9ae4ca89af18abafc18",
+      "storedBytes": 44013,
+      "storedSha256": "f27a1450e5624cbe4174c6d014a47565a61f36ce1b5ab9ae4ca89af18abafc18"
+    },
+    {
+      "path": "hrm-c12-catalog-c5-static/run-api.gz",
+      "originalBytes": 1634,
+      "originalSha256": "67438e1a8e5f20f53a9f3da7d7e655299ac91ee85d43e86ca6a3cdd1bd29d15a",
+      "storedBytes": 1634,
+      "storedSha256": "67438e1a8e5f20f53a9f3da7d7e655299ac91ee85d43e86ca6a3cdd1bd29d15a"
+    },
+    {
+      "path": "hrm-c12-catalog-evidence-scan-c5.txt",
+      "originalBytes": 179,
+      "originalSha256": "4a53d2d2d9523fdb3eeff1498854521b94d5dde2a4764576cbc4cd2da6d81800",
+      "storedBytes": 179,
+      "storedSha256": "4a53d2d2d9523fdb3eeff1498854521b94d5dde2a4764576cbc4cd2da6d81800"
+    }
+  ]
+}
