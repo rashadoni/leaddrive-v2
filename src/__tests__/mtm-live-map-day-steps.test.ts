@@ -184,7 +184,9 @@ describe("the wiring between the list, the card and the map", () => {
   const page = readFileSync("src/app/(dashboard)/mtm/map/page.tsx", "utf8")
 
   it("selects an employee from his marker and shows who he is on hover", () => {
-    expect(map).toContain("eventHandlers={{ click: () => onAgentSelect?.(agent.agentId) }}")
+    // (While a tool on the map waits for a press — the ruler, «point on the
+    // map» — the press is the tool's; otherwise it selects.)
+    expect(map).toContain("eventHandlers={{ click: () => pressMode ? onMapPress?.(agent.latitude, agent.longitude) : onAgentSelect?.(agent.agentId) }}")
     expect(map).toMatch(/<Tooltip direction="top"[\s\S]{0,200}\{agent\.name\}/)
     expect(page).toContain("onAgentSelect={handleMapAgentSelect}")
     // A second press on the same marker reads its balloon; it must not drop the selection.
@@ -195,7 +197,7 @@ describe("the wiring between the list, the card and the map", () => {
     expect(page).toContain("focusStopOrder={selectedStop}")
     expect(page).toContain("onStopSelect={setSelectedStop}")
     expect(page).toContain("followAgent={followSelected}")
-    expect(map).toContain("eventHandlers={{ click: () => onStopSelect?.(stop.orderIndex) }}")
+    expect(map).toContain("eventHandlers={{ click: () => pressMode ? onMapPress?.(stop.latitude, stop.longitude) : onStopSelect?.(stop.orderIndex) }}")
     expect(map).toContain("<FocusStop stops={plannedRoute} focusStopOrder={focusStopOrder} markers={stopMarkersRef} />")
     expect(map).toContain("<FollowAgent agents={agents} focusAgentId={focusAgentId} enabled={followAgent} />")
   })

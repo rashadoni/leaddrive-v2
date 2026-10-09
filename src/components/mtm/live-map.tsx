@@ -1,13 +1,15 @@
 "use client"
 
 import "leaflet/dist/leaflet.css"
-import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type MutableRefObject } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { Circle, CircleMarker, MapContainer, Marker, Polyline, Popup, Tooltip, useMap, useMapEvents } from "react-leaflet"
 import L from "leaflet"
 import Link from "next/link"
 import { CartoVectorBasemap } from "./carto-vector-basemap"
 import { formatDateTime, formatTime } from "@/lib/format-date"
+import { calculateDistance } from "@/lib/geo-utils"
+import { liveMapTrailSegments, type LiveMapTrails } from "@/lib/mtm/live-map-trails"
 
 // F-24: rewritten on Leaflet. Google Maps + AdvancedMarker had been the
 // source of 5 hotfixes in a month — Vector tiles need a real Map ID, the React
@@ -71,6 +73,29 @@ interface Props {
   onStopSelect?: (orderIndex: number) => void
   /** Keep the selected employee in the middle of the map as his position updates. */
   followAgent?: boolean
+  /** Names beside the markers all the time, not only under the pointer. */
+  showLabels?: boolean
+  /** Where each employee has just been: positions this page has itself seen (live-map-trails.ts). */
+  trails?: LiveMapTrails | null
+  /** Markers glide to a new position instead of jumping there. */
+  glideMarkers?: boolean
+  /**
+   * A tool is waiting for a press on the map itself — the ruler for its next
+   * point, «point on the map» for its one. The page decides what the press
+   * means; the map only reports it and shows a crosshair while it waits.
+   */
+  pressMode?: "ruler" | "point" | null
+  onMapPress?: (latitude: number, longitude: number) => void
+  /** The ruler's points so far, in the order they were pressed. */
+  rulerPoints?: ReadonlyArray<{ latitude: number; longitude: number }>
+  /** A place the dispatcher picked — an address that was found, a point pressed on the map. */
+  referencePoint?: LiveMapReferencePoint | null
+}
+
+export interface LiveMapReferencePoint {
+  latitude: number
+  longitude: number
+  label: string
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -162,6 +187,121 @@ function routeStopIcon(orderIndex: number, status: string, focused = false) {
   })
 }
 
+function referenceIcon() {
+  return L.divIcon({
+    className: "mtm-reference-point-marker",
+    html: `<div style="
+      width:22px;height:22px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);
+      background:#be123c;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4);
+    "></div>`,
+    iconSize: [22, 22],
+    iconAnchor: [11, 22],
+  })
+}
+
+const NO_RULER_POINTS: ReadonlyArray<{ latitude: number; longitude: number }> = []
+
+/** A step further than this is not a move to watch: the first fix after a silence, a jump across town. */
+const GLIDE_MAX_METERS = 3_000
+const GLIDE_MS = 1_200
+
+/**
+ * A marker that glides to its new position. The roster answers every thirty
+ * seconds, and a marker that jumps reads as two different people; one that
+ * moves reads as somebody driving. Nothing is invented between two fixes
+ * except the straight line the marker travels for a second.
+ */
+function useGlidingPosition(latitude: number, longitude: number, enabled: boolean): L.LatLngTuple {
+  const [position, setPosition] = useState<L.LatLngTuple>([latitude, longitude])
+  const shownRef = useRef<L.LatLngTuple>([latitude, longitude])
+  useEffect(() => {
+    const from = shownRef.current
+    const to: L.LatLngTuple = [latitude, longitude]
+    const meters = calculateDistance(from[0], from[1], to[0], to[1])
+    const still = typeof window === "undefined" || document.visibilityState !== "visible" ||
+      (typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+    if (!enabled || still || meters < 1 || meters > GLIDE_MAX_METERS) {
+      // Straight there, on the next frame the browser paints.
+      const jump = window.requestAnimationFrame(() => {
+        shownRef.current = to
+        setPosition(to)
+      })
+      return () => window.cancelAnimationFrame(jump)
+    }
+    const startedAt = window.performance.now()
+    let frame = 0
+    const step = (now: number) => {
+      const progress = Math.min(1, (now - startedAt) / GLIDE_MS)
+      const eased = progress * (2 - progress)
+      const current: L.LatLngTuple = [from[0] + (to[0] - from[0]) * eased, from[1] + (to[1] - from[1]) * eased]
+      shownRef.current = current
+      setPosition(current)
+      if (progress < 1) frame = window.requestAnimationFrame(step)
+    }
+    frame = window.requestAnimationFrame(step)
+    return () => window.cancelAnimationFrame(frame)
+  }, [latitude, longitude, enabled])
+  return position
+}
+
+function GlidingMarker({ latitude, longitude, glide, ...props }: Omit<ComponentProps<typeof Marker>, "position"> & {
+  latitude: number
+  longitude: number
+  glide: boolean
+}) {
+  const position = useGlidingPosition(latitude, longitude, glide)
+  return <Marker {...props} position={position} />
+}
+
+/**
+ * The ruler and «point on the map» both read presses on the map itself. A
+ * press on a marker is still that marker's own: Leaflet does not pass it on.
+ */
+function MapPresses({ active, onPress }: { active: boolean; onPress: (latitude: number, longitude: number) => void }) {
+  const map = useMap()
+  useMapEvents({
+    click: (event) => {
+      if (active) onPress(event.latlng.lat, event.latlng.lng)
+    },
+  })
+  useEffect(() => {
+    const container = map.getContainer()
+    if (!active) return
+    container.style.cursor = "crosshair"
+    // Two quick presses are two points, not a zoom that also drops two points.
+    const zoomedByDoubleClick = map.doubleClickZoom.enabled()
+    map.doubleClickZoom.disable()
+    return () => {
+      container.style.cursor = ""
+      if (zoomedByDoubleClick) map.doubleClickZoom.enable()
+    }
+  }, [map, active])
+  return null
+}
+
+/** A place that was just picked comes into view once; the dispatcher may then look elsewhere. */
+function ShowReferencePoint({ point }: { point: LiveMapReferencePoint | null }) {
+  const map = useMap()
+  const shownRef = useRef("")
+  const latitude = point?.latitude
+  const longitude = point?.longitude
+  useEffect(() => {
+    if (typeof latitude !== "number" || typeof longitude !== "number") {
+      shownRef.current = ""
+      return
+    }
+    const key = `${latitude},${longitude}`
+    if (shownRef.current === key) return
+    shownRef.current = key
+    // A point pressed on the map is on the screen already, with the people it
+    // was asked about around it: flying in on it would push them out of view.
+    // An address found somewhere else is flown to.
+    if (map.getBounds().contains([latitude, longitude])) return
+    map.flyTo([latitude, longitude], Math.max(map.getZoom(), 14), { duration: 0.5 })
+  }, [map, latitude, longitude])
+  return null
+}
+
 // ── Sub-components ───────────────────────────────────────────────────────────
 
 function InvalidateSize() {
@@ -188,10 +328,21 @@ function InvalidateSize() {
   return null
 }
 
-function FitBounds({ agents, plannedRoute, focusAgentId }: { agents: LiveMapAgent[]; plannedRoute: RouteStop[]; focusAgentId: string | null }) {
+function FitBounds({ agents, plannedRoute, focusAgentId, hold }: {
+  agents: LiveMapAgent[]
+  plannedRoute: RouteStop[]
+  focusAgentId: string | null
+  /** A tool is in use on the map — a ruler, a picked point: the view is the dispatcher's, not ours. */
+  hold: boolean
+}) {
   const map = useMap()
   const lastFitRef = useRef("")
   useEffect(() => {
+    // Nothing is recorded while held, so what changed meanwhile is framed once
+    // the tool is put down. Held is the framing of the whole team only: an
+    // employee selected meanwhile still gets his day's stops in view — that
+    // frame changes on a selection, never on a movement.
+    if (hold && !(focusAgentId && plannedRoute.length > 0)) return
     // With an employee selected and their day's stops loaded, frame that
     // employee and those stops — not the whole fleet, which zoomed back out
     // and hid the route the manager had just asked for.
@@ -210,9 +361,15 @@ function FitBounds({ agents, plannedRoute, focusAgentId }: { agents: LiveMapAgen
     // live position: refitting every time the marker moved ~11 m kept undoing
     // the manager's own zoom (review of #205). Fit again only when the
     // selection, the stops, or the agent's visibility change.
+    // Without a selection the frame belongs to WHO is on the map, not to where
+    // each of them is this minute. It used to be re-fitted whenever anybody
+    // moved eleven metres — and whenever the list was merely re-sorted — which
+    // undid the dispatcher's own zoom every half a minute and carried the map
+    // away from an address he had just found. Now: when the set of people on
+    // the map changes (a filter, a tick, somebody new).
     const sig = focusMode
       ? `focus:${focusAgentId}:${focusedAgent ? "agent" : "no-agent"}:${plannedRoute.map((s) => `${s.orderIndex}@${s.latitude.toFixed(4)},${s.longitude.toFixed(4)}`).join("|")}`
-      : points.map((p) => `${p[0].toFixed(4)},${p[1].toFixed(4)}`).join("|")
+      : `all:${framedAgents.map((agent) => agent.agentId).sort().join("|")}:${plannedRoute.map((s) => `${s.orderIndex}@${s.latitude.toFixed(4)},${s.longitude.toFixed(4)}`).join("|")}`
     if (focusMode && points.length === 1) {
       if (sig === lastFitRef.current) return
       lastFitRef.current = sig
@@ -224,7 +381,7 @@ function FitBounds({ agents, plannedRoute, focusAgentId }: { agents: LiveMapAgen
     if (sig === lastFitRef.current) return
     lastFitRef.current = sig
     map.fitBounds(L.latLngBounds(points), { padding: [60, 60], maxZoom: 16 })
-  }, [map, agents, plannedRoute, focusAgentId])
+  }, [map, agents, plannedRoute, focusAgentId, hold])
   return null
 }
 
@@ -351,6 +508,13 @@ export default function MtmLiveMap({
   focusStopOrder = null,
   onStopSelect,
   followAgent = false,
+  showLabels = false,
+  trails = null,
+  glideMarkers = false,
+  pressMode = null,
+  onMapPress,
+  rulerPoints = NO_RULER_POINTS,
+  referencePoint = null,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const stopMarkersRef = useRef(new Map<number, L.Marker>())
@@ -365,6 +529,9 @@ export default function MtmLiveMap({
   const [zoom, setZoom] = useState(12)
   const locale = useLocale()
   const tMap = useTranslations("mtmMap")
+  const handleMapPress = useCallback((latitude: number, longitude: number) => {
+    onMapPress?.(latitude, longitude)
+  }, [onMapPress])
 
   const handleViewportChange = useCallback((next: LiveMapViewportBounds, nextZoom: number) => {
     setViewport((current) => current &&
@@ -514,11 +681,13 @@ export default function MtmLiveMap({
           scrollWheelZoom
         >
           <InvalidateSize />
-          <FitBounds agents={agents} plannedRoute={plannedRoute} focusAgentId={focusAgentId} />
+          <FitBounds agents={agents} plannedRoute={plannedRoute} focusAgentId={focusAgentId} hold={pressMode != null || rulerPoints.length > 0 || referencePoint != null} />
           <FocusAgent agents={agents} focusAgentId={focusAgentId} />
           <FocusStop stops={plannedRoute} focusStopOrder={focusStopOrder} markers={stopMarkersRef} />
           <FollowAgent agents={agents} focusAgentId={focusAgentId} enabled={followAgent} />
           <ViewportReporter onChange={handleViewportChange} />
+          <MapPresses active={pressMode != null} onPress={handleMapPress} />
+          <ShowReferencePoint point={referencePoint} />
 
           <CartoVectorBasemap
             key={`carto-${baseMapRevision}`}
@@ -587,9 +756,11 @@ export default function MtmLiveMap({
                 if (marker) stopMarkersRef.current.set(stop.orderIndex, marker)
                 else stopMarkersRef.current.delete(stop.orderIndex)
               }}
-              eventHandlers={{ click: () => onStopSelect?.(stop.orderIndex) }}
+              // While a tool waits for a press, a press on a stop is the tool's:
+              // «measure from this client», not «open this client».
+              eventHandlers={{ click: () => pressMode ? onMapPress?.(stop.latitude, stop.longitude) : onStopSelect?.(stop.orderIndex) }}
             >
-              <Popup>
+              {pressMode ? null : <Popup>
                 <div style={{ fontFamily: "system-ui,sans-serif", minWidth: 140 }}>
                   <div style={{ fontWeight: 700, fontSize: 13 }}>
                     #{stop.orderIndex + 1} {stop.name}
@@ -618,9 +789,51 @@ export default function MtmLiveMap({
                     </div>
                   ) : null}
                 </div>
-              </Popup>
+              </Popup>}
             </Marker>
           ))}
+
+          {/* «След»: where each employee drawn on his own has just been. Nobody
+              in a cluster has one — a cluster is a count, not a person. */}
+          {trails ? markerSelection.markers.flatMap((marker) => {
+            if (marker.kind !== "AGENT") return []
+            return liveMapTrailSegments(trails.get(marker.agent.agentId) ?? []).map((segment, index) => (
+              <Polyline
+                key={`trail-${marker.agent.agentId}-${index}`}
+                positions={segment.map((point) => [point.latitude, point.longitude] as L.LatLngTuple)}
+                interactive={false}
+                pathOptions={{ color: marker.agent.agentId === focusAgentId ? "#1d4ed8" : "#2563eb", weight: marker.agent.agentId === focusAgentId ? 4 : 3, opacity: 0.55, lineCap: "round", lineJoin: "round" }}
+              />
+            ))
+          }) : null}
+
+          {/* The ruler: a line through the points pressed, and the place they add up to. */}
+          {rulerPoints.length >= 2 ? (
+            <Polyline positions={rulerPoints.map((point) => [point.latitude, point.longitude] as L.LatLngTuple)} interactive={false} pathOptions={{ color: "#0f172a", weight: 2.5, opacity: 0.9, dashArray: "2 6" }} />
+          ) : null}
+          {rulerPoints.map((point, index) => (
+            <CircleMarker
+              key={`ruler-${index}`}
+              center={[point.latitude, point.longitude]}
+              radius={5}
+              interactive={false}
+              pathOptions={{ color: "#0f172a", weight: 2, fillColor: "#ffffff", fillOpacity: 1 }}
+            />
+          ))}
+
+          {/* The place the dispatcher picked: an address found, a point pressed. */}
+          {referencePoint ? (
+            <Marker position={[referencePoint.latitude, referencePoint.longitude]} icon={referenceIcon()} zIndexOffset={1200} alt={referencePoint.label} interactive={false}>
+              {/* An address can run to a hundred letters — district, city, postcode,
+                  country. On the map it is the street and the house; the whole
+                  of it stays in the chip beside the tools. */}
+              <Tooltip direction="top" offset={[0, -22]} opacity={1} permanent>
+                <span style={{ display: "inline-block", width: "max-content", maxWidth: 220, whiteSpace: "normal", fontWeight: 700 }}>
+                  {referencePoint.label.split(",").slice(0, 2).join(",")}
+                </span>
+              </Tooltip>
+            </Marker>
+          ) : null}
 
           {/* Agent markers */}
           {markerSelection.markers.map((marker) => {
@@ -642,20 +855,25 @@ export default function MtmLiveMap({
             const statusKey: MtmFieldStatus = isMtmFieldStatus(status) ? status : "OFFLINE"
             const isFocused = agent.agentId === focusAgentId
             return (
-              <Marker
+              <GlidingMarker
                 key={marker.id}
-                position={[agent.latitude, agent.longitude]}
+                latitude={agent.latitude}
+                longitude={agent.longitude}
+                glide={glideMarkers}
                 icon={agentIcon(agent.name, agent.freshness, isFocused)}
                 zIndexOffset={isFocused ? 1000 : 500}
                 alt={agent.name}
-                eventHandlers={{ click: () => onAgentSelect?.(agent.agentId) }}
+                // …and so is a press on an employee: the ruler starts from where he is.
+                eventHandlers={{ click: () => pressMode ? onMapPress?.(agent.latitude, agent.longitude) : onAgentSelect?.(agent.agentId) }}
               >
-                {/* Who this is and what he is doing, without a click. */}
-                <Tooltip direction="top" offset={[0, -16]} opacity={1}>
+                {/* Who this is and what he is doing, without a click — and, with
+                    «Подписи» on, his name beside the marker all the time. Leaflet
+                    reads `permanent` once, so the two are different tooltips. */}
+                <Tooltip direction="top" key={showLabels ? "label" : "hover"} permanent={showLabels} offset={[0, -16]} opacity={showLabels ? 0.92 : 1}>
                   <span style={{ fontWeight: 700 }}>{agent.name}</span>
-                  {" · "}{tMap(`fieldStatus.${statusLabelKeys[statusKey]}`)}
+                  {showLabels ? null : <>{" · "}{tMap(`fieldStatus.${statusLabelKeys[statusKey]}`)}</>}
                 </Tooltip>
-                <Popup>
+                {pressMode ? null : <Popup>
                   <div style={{ fontFamily: "system-ui,sans-serif", minWidth: 170 }}>
                     <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4, color: "#0B0B1E" }}>
                       {agent.name}
@@ -682,8 +900,8 @@ export default function MtmLiveMap({
                       {agent.battery != null ? ` · ${tMap("battery")}: ${Math.round(agent.battery)}%` : ""}
                     </div>
                   </div>
-                </Popup>
-              </Marker>
+                </Popup>}
+              </GlidingMarker>
             )
           })}
         </MapContainer>
@@ -725,7 +943,7 @@ export default function MtmLiveMap({
       ) : null}
       {ready && markerSelection.truncated ? (
         <div
-          className="pointer-events-none absolute bottom-7 left-3 z-[500] max-w-[min(320px,calc(100%-24px))] rounded-md border border-zinc-300 bg-background/95 px-2.5 py-1.5 text-[11px] font-medium text-foreground shadow-sm dark:border-zinc-700"
+          className="pointer-events-none absolute bottom-8 right-3 z-[500] max-w-[min(320px,calc(100%-24px))] rounded-md border border-zinc-300 bg-background/95 px-2.5 py-1.5 text-[11px] font-medium text-foreground shadow-sm dark:border-zinc-700"
           role="status"
         >
           {tMap("markerWindowLimited", {

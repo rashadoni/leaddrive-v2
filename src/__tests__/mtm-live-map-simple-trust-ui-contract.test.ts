@@ -46,7 +46,9 @@ describe("SWM-12 simple and trustworthy live map UI contract", () => {
     // («Опаздывает») off an unselected row.
     const lib = readFileSync(resolve("src/lib/mtm/live-map-roster.ts"), "utf8")
     expect(lib).toContain('export const ROSTER_LOCKED_COLUMNS: readonly RosterColumnId[] = ["name", "status"]')
-    expect(roster).toContain("const narrowColumns = ROSTER_NARROW_COLUMNS")
+    // …also while a point is picked on the map and the distance takes the signal's place.
+    expect(lib).toContain('export const ROSTER_NARROW_COLUMNS_WITH_POINT: readonly RosterColumnId[] = ["name", "status", "distance"]')
+    expect(roster).toContain("const narrowColumns = hasPoint ? ROSTER_NARROW_COLUMNS_WITH_POINT : ROSTER_NARROW_COLUMNS")
     expect(lib).toContain('export const ROSTER_NARROW_COLUMNS: readonly RosterColumnId[] = ["name", "status", "signal"]')
     const status = roster.slice(roster.indexOf('case "status": {'), roster.indexOf('case "signal": {'))
     expect(status).toContain("data-testid={`live-map-agent-status-${agent.agentId}`}")

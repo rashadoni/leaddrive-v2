@@ -61,6 +61,18 @@ describe("the layers control on the map", () => {
     container.remove()
   })
 
+  it("stays inside the map's frame however many layers there are: the open panel scrolls, the button does not shrink", async () => {
+    // Seven switches made the panel 493 px tall on a phone map of 360: the last two could not be reached.
+    await draw()
+    const control = container.querySelector('[data-testid="live-map-layers"]') as HTMLElement
+    expect(control.className).toContain("bottom-3 right-3 top-3")
+    expect(control.className).toContain("z-[1200]")
+    expect(opener().className).toContain("shrink-0")
+    await press(opener())
+    expect(panel()?.className).toContain("min-h-0")
+    expect(panel()?.className).toContain("overflow-y-auto")
+  })
+
   it("stays out of the way until asked for", async () => {
     await draw()
     expect([opener().textContent, opener().getAttribute("aria-expanded")]).toEqual(["Слои", "false"])
@@ -121,7 +133,7 @@ describe("what the page takes off the map", () => {
     expect(page).toContain("if (!showAgentMarkers || hiddenAgentIds.has(agent.agentId)) return []")
     // The list keeps everybody: hiding is about the map, not the roster — the
     // rows are decided by the filters alone, with no look at who is hidden.
-    expect(page).toMatch(/const filteredAgents = useMemo\(\s*\(\) => sortRoster\(applyRosterFilters\(agents, rosterFilters\), rosterView\.sort, locale\)/)
+    expect(page).toMatch(/const filteredAgents = useMemo\(\s*\(\) => sortRoster\(applyRosterFilters\(agents, rosterFilters\), rosterSort, locale\)/)
     // A tick per employee (owner, 2026-10-09: «галочкой выбирать… некоторых
     // конкретных видеть одновременно, кто где находится»): a real checkbox.
     expect(roster).toMatch(/<input\s+type="checkbox"\s+checked=\{!hiddenAgentIds\.has\(agent\.agentId\)\}\s+onChange=\{\(\) => onToggleAgentOnMap\(agent\.agentId\)\}/)

@@ -40,13 +40,16 @@ export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents
   const offCount = layers.filter((layer) => layer.shownByDefault && !layer.on).length + (hiddenAgentCount > 0 ? 1 : 0)
 
   return (
-    <div className="pointer-events-none absolute right-3 top-3 z-[1100] flex flex-col items-end gap-2" data-testid="live-map-layers">
+    // Bounded by the map's frame (top and bottom) and above the tools: with
+    // seven switches the open panel was taller than a phone's map, and the last
+    // ones were cut off with no way to reach them. Now it scrolls inside itself.
+    <div className="pointer-events-none absolute bottom-3 right-3 top-3 z-[1200] flex flex-col items-end gap-2" data-testid="live-map-layers">
       <button
         type="button"
         aria-expanded={open}
         aria-controls="live-map-layers-panel"
         onClick={() => setOpen((value) => !value)}
-        className="pointer-events-auto inline-flex min-h-11 items-center gap-2 rounded-lg border border-zinc-300 bg-card px-3 text-sm font-medium shadow-md dark:border-zinc-600"
+        className="pointer-events-auto inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-zinc-300 bg-card px-3 text-sm font-medium shadow-md dark:border-zinc-600"
       >
         {open ? <X className="h-4 w-4" aria-hidden="true" /> : <Layers className="h-4 w-4" aria-hidden="true" />}
         {tMap("layers.title")}
@@ -54,7 +57,7 @@ export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents
         {!open && offCount > 0 ? <span className="h-2 w-2 rounded-full bg-amber-500" data-testid="live-map-layers-mark" aria-hidden="true" /> : null}
       </button>
       {open ? (
-        <div id="live-map-layers-panel" className="pointer-events-auto w-72 max-w-[calc(100vw-3rem)] rounded-lg border border-zinc-300 bg-card p-2 shadow-lg dark:border-zinc-600">
+        <div id="live-map-layers-panel" className="pointer-events-auto min-h-0 w-72 max-w-[calc(100vw-3rem)] overflow-y-auto rounded-lg border border-zinc-300 bg-card p-2 shadow-lg dark:border-zinc-600">
           <ul className="divide-y divide-zinc-200 dark:divide-zinc-700">
             {layers.map((layer) => (
               <li key={layer.id} className="flex items-center gap-3 px-1 py-1.5">

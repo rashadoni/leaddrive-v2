@@ -13,6 +13,7 @@ import {
   ROSTER_GROUPINGS,
   ROSTER_LOCKED_COLUMNS,
   ROSTER_NARROW_COLUMNS,
+  ROSTER_NARROW_COLUMNS_WITH_POINT,
   ROSTER_NO_TEAM,
   rosterFilterOptions,
   rosterSignalAge,
@@ -46,7 +47,7 @@ export const ROSTER_STATUS_DOT_CLASS: Record<string, string> = {
 const STATUS_LABEL_KEYS: Record<string, string> = FIELD_STATUS_LABEL_KEYS
 
 const SORT_KIND: Record<RosterColumnId, RosterSortKind> = {
-  name: "text", status: "order", signal: "time", team: "text", app: "order", workday: "order", route: "number", speed: "number", battery: "number",
+  name: "text", status: "order", signal: "time", distance: "number", team: "text", app: "order", workday: "order", route: "number", speed: "number", battery: "number",
 }
 
 /**
@@ -57,6 +58,7 @@ const WIDE_TRACK: Record<RosterColumnId, string> = {
   name: "minmax(0,1.6fr)",
   status: "minmax(0,1.2fr)",
   signal: "5rem",
+  distance: "7.5rem",
   team: "minmax(0,1.1fr)",
   app: "minmax(0,0.9fr)",
   workday: "minmax(0,1.2fr)",
@@ -71,6 +73,8 @@ const TICK_TRACK = "2.25rem"
  * column took its full width first and left a phone five letters of a name.
  */
 const NARROW_TRACKS = `${TICK_TRACK} minmax(0,1.4fr) minmax(0,1fr) 5rem`
+/** With a point picked the last column is the distance, sorted by default: its heading carries an arrow as well. */
+const NARROW_TRACKS_WITH_POINT = `${TICK_TRACK} minmax(0,1.4fr) minmax(0,1fr) 6.5rem`
 
 /**
  * The wide table starts where its default columns have room to be read
@@ -117,6 +121,8 @@ export interface LiveMapRosterProps {
   formatVisitOpened: (value: string) => string
   /** Whether a moment was on an earlier day than today, in the organization's time zone. */
   isEarlierDay: (value: string) => boolean
+  /** «450 m», «7,8 km» — for the distance to the point picked on the map. */
+  formatDistance?: (meters: number) => string
 }
 
 /**
@@ -139,6 +145,7 @@ export function LiveMapRoster({
   agents, rows, searchSlot, filters, onFiltersChange, view, onViewChange, onHide, hiddenOnWide = false,
   hiddenAgentIds, onToggleAgentOnMap, onSetAgentsOnMap, selectedAgentId, onSelect, selectedDetailRef,
   renderDetail, nowMs, workforceEnabled, formatClock, formatVisitOpened, isEarlierDay,
+  formatDistance = (meters) => `${Math.round(meters)} m`,
 }: LiveMapRosterProps) {
   const tMap = useTranslations("mtmMap")
   const locale = useLocale()
@@ -160,14 +167,38 @@ export function LiveMapRoster({
     return () => observer.disconnect()
   }, [])
 
+  // A filter or a search can leave three rows where there were a hundred.
+  // The page stays scrolled where it was, the heading goes on following the
+  // screen — and the few rows that are left end up behind it: the list looks
+  // empty (seen on production, 2026-10-09). When the list has got shorter, its
+  // heading is away from its place and its end is already on the screen, the
+  // top of the list is brought back into view. Somebody reading row sixty of a
+  // hundred is not moved: the end of his list is far below.
+  const shownRows = rows.length
+  const previousRowsRef = useRef(shownRows)
+  useEffect(() => {
+    const shorter = shownRows < previousRowsRef.current
+    previousRowsRef.current = shownRows
+    const aside = asideRef.current
+    const heading = headingRef.current
+    if (!shorter || !aside || !heading) return
+    const list = aside.getBoundingClientRect()
+    const followingTheScreen = heading.getBoundingClientRect().top - list.top > 1
+    if (followingTheScreen && list.bottom < window.innerHeight) aside.scrollIntoView?.({ block: "start" })
+  }, [shownRows])
+
   const available = useMemo(() => availableRosterColumns(agents, { workforceEnabled }), [agents, workforceEnabled])
-  const wideColumns = available.filter((column) => ROSTER_LOCKED_COLUMNS.includes(column) || view.columns.includes(column))
-  const narrowColumns = ROSTER_NARROW_COLUMNS
+  // The distance exists only while a point is picked on the map, and then it
+  // is what is being asked: it is shown without being chosen, and beside the
+  // map it takes the place of the signal's age.
+  const hasPoint = available.includes("distance")
+  const wideColumns = available.filter((column) => ROSTER_LOCKED_COLUMNS.includes(column) || column === "distance" || view.columns.includes(column))
+  const narrowColumns = hasPoint ? ROSTER_NARROW_COLUMNS_WITH_POINT : ROSTER_NARROW_COLUMNS
   const drawnColumns = available.filter((column) => narrowColumns.includes(column) || wideColumns.includes(column))
   // A layout remembered from another organization may name a column this roster does not have.
   const groupBy: RosterGroupBy = view.groupBy === "none" || available.includes(view.groupBy) ? view.groupBy : "none"
   const trackStyle = {
-    "--roster-narrow": NARROW_TRACKS,
+    "--roster-narrow": hasPoint ? NARROW_TRACKS_WITH_POINT : NARROW_TRACKS,
     "--roster-wide": [TICK_TRACK, ...wideColumns.map((column) => WIDE_TRACK[column])].join(" "),
   } as CSSProperties
   /** A column lives in the narrow list, in the wide table, or in both. */
@@ -196,6 +227,7 @@ export function LiveMapRoster({
       case "route": return tMap(`roster.route.${value}`)
       case "speed": return tMap(`roster.speed.${value}`)
       case "battery": return tMap(`roster.battery.${value}`)
+      case "distance": return tMap(`roster.distance.${value}`)
     }
   }
   const columnLabel = (column: RosterColumnId) => tMap(`roster.columns.${column}`)
@@ -347,6 +379,25 @@ export function LiveMapRoster({
         return typeof agent.battery === "number" && Number.isFinite(agent.battery)
           ? <span className={cn("block truncate tabular-nums", agent.battery < 20 && "font-medium text-red-600 dark:text-red-400")}>{Math.round(agent.battery)}%</span>
           : <span className="text-muted-foreground">—</span>
+      case "distance": {
+        if (typeof agent.distanceMeters !== "number" || !Number.isFinite(agent.distanceMeters)) {
+          return <span className="text-muted-foreground" title={tMap("roster.distance.UNKNOWN")}>—</span>
+        }
+        // Beside the map the distance stands where the signal's age stood, so it
+        // carries the signal's truth: measured from a delayed coordinate, it
+        // looks delayed and says from when.
+        const freshness = tMap(`freshness.${agent.freshness.toLowerCase()}`)
+        return (
+          <span
+            className={cn("block truncate tabular-nums font-medium", agent.freshness === "DELAYED" && "text-amber-700 dark:text-amber-300")}
+            title={agent.recordedAt ? `${tMap("gpsFreshness")}: ${freshness} · ${formatClock(agent.recordedAt)}` : `${tMap("gpsFreshness")}: ${freshness}`}
+            data-testid={`live-map-agent-distance-${agent.agentId}`}
+          >
+            {formatDistance(agent.distanceMeters)}
+            <span className="sr-only"> · {freshness}</span>
+          </span>
+        )
+      }
     }
   }
 
@@ -356,7 +407,7 @@ export function LiveMapRoster({
       data-testid="live-map-roster"
       data-width={view.width}
       style={trackStyle}
-      className={cn("@container order-2 min-w-0 rounded-lg border border-zinc-200 bg-card text-[13px] dark:border-zinc-700", hiddenOnWide && "lg:hidden")}
+      className={cn("@container order-2 min-w-0 scroll-mt-3 rounded-lg border border-zinc-200 bg-card text-[13px] sm:scroll-mt-4 lg:scroll-mt-8 dark:border-zinc-700", hiddenOnWide && "lg:hidden")}
     >
       <div role="table" aria-label={tMap("agents")}>
       {/* The heading follows the screen while the page scrolls: with a hundred
@@ -378,7 +429,7 @@ export function LiveMapRoster({
             type="button"
             onClick={() => onViewChange({ ...view, width: view.width === "wide" ? "narrow" : "wide" })}
             data-testid="live-map-roster-width"
-            className={cn(TOOL_BUTTON, "ml-auto hidden min-[1360px]:inline-flex")}
+            className={cn(TOOL_BUTTON, "ml-auto hidden min-[85rem]:inline-flex")}
           >
             {view.width === "wide"
               ? <><Minimize2 className="h-3.5 w-3.5" aria-hidden="true" />{tMap("roster.narrow")}</>
@@ -450,7 +501,7 @@ export function LiveMapRoster({
                 <legend className="px-1 text-[11px] font-semibold uppercase text-muted-foreground">{tMap("roster.columnsTitle")}</legend>
                 <p className="px-1 pb-1 text-[11px] text-muted-foreground">{tMap("roster.columnsHint")}</p>
                 <div className="grid grid-cols-2 gap-x-2">
-                {available.map((column) => (
+                {available.filter((column) => column !== "distance").map((column) => (
                   <label key={column} className={MENU_ROW}>
                     <input
                       type="checkbox"
