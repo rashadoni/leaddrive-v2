@@ -16,7 +16,7 @@ import { LiveMapDaySteps } from "@/components/mtm/live-map-day-steps"
 import { LiveMapLayersControl } from "@/components/mtm/live-map-layers-control"
 import { LiveMapRoster } from "@/components/mtm/live-map-roster"
 import { LiveMapTools } from "@/components/mtm/live-map-tools"
-import { extendLiveMapTrails, pathLengthMeters, type LiveMapTrails } from "@/lib/mtm/live-map-trails"
+import { extendLiveMapTrails, pathLengthMeters, polygonAreaSquareMeters, type LiveMapTrails } from "@/lib/mtm/live-map-trails"
 import {
   applyRosterFilters,
   parseRosterView,
@@ -34,8 +34,14 @@ import {
 } from "@/lib/mtm/live-map-roster"
 import { liveMapDaySteps } from "@/lib/mtm/live-map-day-steps"
 import { createDateFormatter, formatDateTime, formatTime } from "@/lib/format-date"
-import { effectiveGeofenceRadius, formatMtmDistance } from "@/lib/mtm/visit-place-check"
+import { effectiveGeofenceRadius, formatMtmArea, formatMtmDistance } from "@/lib/mtm/visit-place-check"
 import { mtmLiveFeedHistoryHref, type MtmLiveFeedAlertGroup } from "@/lib/mtm/live-feed-alerts"
+import { LiveMapAgentEvents } from "@/components/mtm/live-map-agent-events"
+import { LiveMapAgentPlace } from "@/components/mtm/live-map-agent-place"
+import { liveMapAgentEventsRefreshKey } from "@/lib/mtm/live-map-agent-events"
+import type { LiveMapPlaceStop } from "@/lib/mtm/live-map-place"
+import { rosterExportFileName } from "@/lib/mtm/live-map-roster-export"
+import { liveMapDuration, liveMapStateSince } from "@/lib/mtm/live-map-state-since"
 import { summarizeMtmRouteExecution } from "@/lib/mtm/route-point-execution"
 import { hasMtmCoordinates } from "@/lib/mtm/geo-coordinates"
 import { saveRouteCache, loadRouteCache, routeCacheKey } from "@/lib/mtm/route-cache"
@@ -339,6 +345,7 @@ export default function MtmMapPage() {
     setRulerPoints([])
   }, [])
   const rulerMeters = useMemo(() => pathLengthMeters(rulerPoints), [rulerPoints])
+  const rulerSquareMeters = useMemo(() => polygonAreaSquareMeters(rulerPoints), [rulerPoints])
   // A point picked: the list turns to «nearest first» until another order is asked for.
   const changeReferencePoint = useCallback((point: LiveMapReferencePoint | null) => {
     setReferencePoint(point)
@@ -906,6 +913,25 @@ export default function MtmMapPage() {
   )
   const routeStopsWithoutCoordinates = (agentRoute?.points ?? [])
     .filter((point) => !hasMtmCoordinates(point.customer)).length
+  // The same stops for «где сейчас»: the one he is in a visit at, and the
+  // circles his coordinate can be inside. A stop without coordinates still
+  // counts for the visit — he pressed «начать визит» there.
+  const placeStops: LiveMapPlaceStop[] = useMemo(() => {
+    const inVisit = new Set(daySteps.filter((step) => step.state === "IN_VISIT").map((step) => step.pointId))
+    return (agentRoute?.points ?? []).flatMap((point: MtmRoutePoint): LiveMapPlaceStop[] => {
+      const customer = point.customer
+      if (!customer?.name) return []
+      const placed = hasMtmCoordinates(customer)
+      return [{
+        name: customer.name,
+        address: customer.address ?? null,
+        latitude: placed ? customer.latitude : Number.NaN,
+        longitude: placed ? customer.longitude : Number.NaN,
+        zoneRadiusMeters: effectiveGeofenceRadius(customer.geofenceRadius, contract?.geofenceRadiusMeters),
+        inVisit: inVisit.has(point.id),
+      }]
+    })
+  }, [agentRoute, daySteps, contract?.geofenceRadiusMeters])
   // One formatted clock per moment: the list asks for five hundred of them on
   // every render, and building a formatter each time is what would be felt.
   const clockCacheRef = useRef<{ key: string; values: Map<string, string> }>({ key: "", values: new Map() })
@@ -975,9 +1001,26 @@ export default function MtmMapPage() {
             <span className="text-muted-foreground">{tMap("recordedAt")}: {formatDateTime(agent.recordedAt, locale, { timeStyle: "short", timeZone: contract?.timezone })}</span>
           ) : null}
         </div>
-        {agent.fieldStatus === "CHECKED_IN" && agent.openVisitSince ? (
-          <div className="text-muted-foreground">{tMap("visitOpenedAt", { time: formatVisitOpened(agent.openVisitSince) })}</div>
-        ) : null}
+        {/* Since when — only for what was recorded when it began: the visit, the break, the closed shift. */}
+        {liveMapStateSince(agent).map((fact) => {
+          const lasted = fact.ongoing ? liveMapDuration(fact.since, presentationNow) : null
+          return (
+            <div key={fact.basis} className="text-muted-foreground" data-testid={`live-map-since-${fact.basis}`}>
+              {tMap(`since.${fact.basis}`, { time: formatVisitOpened(fact.since) })}
+              {lasted ? <span className="font-medium text-foreground"> · {tMap(`since.duration.${lasted.unit}`, { ...lasted })}</span> : null}
+            </div>
+          )
+        })}
+        <LiveMapAgentPlace
+          key={`place-${agent.agentId}`}
+          position={agent.latitude != null && agent.longitude != null
+            && hasRenderableLivePosition(agent.freshness, agent.workdayState, workforceEnabled)
+            ? { latitude: agent.latitude, longitude: agent.longitude, accuracy: agent.accuracy ?? null }
+            : null}
+          inVisit={agent.fieldStatus === "CHECKED_IN"}
+          stops={placeStops}
+          stopsReady={Boolean(visibleRouteSnapshot)}
+        />
         <div className="flex flex-wrap gap-x-3 gap-y-1 text-muted-foreground">
           {agent.teamName ? <span>{tMap("teamFilter")}: {agent.teamName}</span> : null}
           {agent.speed != null && agent.speed > 0 ? <span>{tMap("roster.kmh", { value: agent.speed.toFixed(0) })}</span> : null}
@@ -1033,6 +1076,14 @@ export default function MtmMapPage() {
             <Crosshair className="h-3 w-3" aria-hidden="true" />{tMap("follow")}
           </button>
         </div>
+        <LiveMapAgentEvents
+          key={`events-${agent.agentId}`}
+          agentId={agent.agentId}
+          refreshKey={liveMapAgentEventsRefreshKey(agent)}
+          workdayStartedAt={workforceEnabled && !agent.workdayCarryover ? agent.workdayStartedAt ?? null : null}
+          formatTime={formatTenantTime}
+          alertText={feedAlertText}
+        />
         <div data-testid="mtm-map-selected-route" className="rounded-md bg-background/80 p-2">
           <div className="mb-1 font-semibold text-foreground">{tMap("routeStop.title")}</div>
           {!visibleRouteSnapshot ? (
@@ -1275,6 +1326,9 @@ export default function MtmMapPage() {
               onRulerToggle={() => { switchRuler(!rulerActive); setPickingPoint(false) }}
               rulerMeters={rulerMeters}
               rulerPointCount={rulerPoints.length}
+              rulerArea={rulerPoints.length >= 3
+                ? formatMtmArea(rulerSquareMeters, locale, (unit, value) => tMap(`areaUnits.${unit}`, { value }))
+                : null}
               onRulerUndo={() => setRulerPoints((points) => points.slice(0, -1))}
               formatDistance={(meters) => formatMtmDistance(meters, locale, (unit, value) => tUnits(unit, { value }))}
               fullscreen={mapFullscreen}
@@ -1331,6 +1385,7 @@ export default function MtmMapPage() {
             formatVisitOpened={formatVisitOpened}
             isEarlierDay={(value) => visitOpenedOnAnotherDay(value, contract?.timezone)}
             formatDistance={(meters) => formatMtmDistance(meters, locale, (unit, value) => tUnits(unit, { value }))}
+            exportFileName={() => rosterExportFileName(contract?.today, new Date(), contract?.timezone)}
           />
       </div>
 

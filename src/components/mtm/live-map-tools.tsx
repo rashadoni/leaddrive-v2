@@ -33,7 +33,7 @@ const TOOL_ON = "border-primary bg-primary text-primary-foreground"
  */
 export function LiveMapTools({
   near, referencePoint, onReferencePointChange, pickingPoint, onPickingPointChange,
-  rulerActive, onRulerToggle, rulerMeters, rulerPointCount, onRulerUndo, formatDistance,
+  rulerActive, onRulerToggle, rulerMeters, rulerPointCount, onRulerUndo, formatDistance, rulerArea = null,
   fullscreen, onFullscreenToggle, fullscreenSupported,
 }: {
   /** Roughly where the map is looking, so nearby places come first. */
@@ -49,6 +49,8 @@ export function LiveMapTools({
   rulerPointCount: number
   onRulerUndo: () => void
   formatDistance: (meters: number) => string
+  /** The area inside the ruler's line, already in words; null until it has three points. */
+  rulerArea?: string | null
   fullscreen: boolean
   onFullscreenToggle: () => void
   fullscreenSupported: boolean
@@ -148,6 +150,7 @@ export function LiveMapTools({
       {rulerActive ? (
         <div role="status" className="pointer-events-auto flex max-w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-zinc-300 bg-card px-2.5 py-1.5 text-xs shadow-md dark:border-zinc-600" data-testid="live-map-ruler">
           <span className="font-semibold" data-testid="live-map-ruler-total">{tMap("tools.rulerTotal", { distance: formatDistance(rulerMeters) })}</span>
+          {rulerArea ? <span className="font-semibold" data-testid="live-map-ruler-area">{tMap("tools.rulerArea", { area: rulerArea })}</span> : null}
           <span className="text-muted-foreground">{tMap(rulerPointCount === 0 ? "tools.rulerStart" : "tools.rulerHint")}</span>
           {rulerPointCount > 0 ? (
             <button type="button" onClick={onRulerUndo} data-testid="live-map-ruler-undo" className="inline-flex min-h-8 items-center font-semibold underline underline-offset-2">

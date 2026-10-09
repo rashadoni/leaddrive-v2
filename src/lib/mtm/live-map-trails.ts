@@ -127,3 +127,22 @@ export function pathLengthMeters(points: readonly { latitude: number; longitude:
   }
   return total
 }
+
+/**
+ * Square metres inside the line of points when it is closed back to its
+ * first point — the ruler's area, from three points on. The sum of spherical
+ * trapezoids under each edge: exact enough for a district or a field, and it
+ * does not care which way round the points were put.
+ */
+export function polygonAreaSquareMeters(points: readonly { latitude: number; longitude: number }[]): number {
+  if (points.length < 3) return 0
+  const radians = (degrees: number) => (degrees * Math.PI) / 180
+  const earthRadiusMeters = 6_371_000
+  let sum = 0
+  for (let index = 0; index < points.length; index += 1) {
+    const from = points[index]
+    const to = points[(index + 1) % points.length]
+    sum += radians(to.longitude - from.longitude) * (2 + Math.sin(radians(from.latitude)) + Math.sin(radians(to.latitude)))
+  }
+  return Math.abs((sum * earthRadiusMeters * earthRadiusMeters) / 2)
+}

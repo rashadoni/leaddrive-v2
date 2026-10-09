@@ -86,6 +86,9 @@ const northOf = (meters: number) => ({ latitude: CENTRE.latitude + meters / METE
 interface Row { agentId: string; name: string; fieldStatus: string; meters: number | null; minutesAgo: number; battery?: number; workdayState?: string }
 let rosterRows: Row[]
 let requests: string[]
+/** What the journal and the road server answer for the selected employee's card. */
+let activityLogs: Array<Record<string, unknown>>
+let street: string | null
 
 function answer(now: number) {
   const iso = (minutesAgo: number) => new Date(now - minutesAgo * 60_000).toISOString()
@@ -96,6 +99,7 @@ function answer(now: number) {
         agentId: row.agentId, name: row.name, isOnline: true, lastSeenAt: iso(0), teamId: null, teamName: null,
         fieldStatus: row.fieldStatus, freshness: row.meters == null ? "NO_LOCATION" : "ONLINE",
         workdayState: row.workdayState ?? "ACTIVE", workdayDate: "2026-10-09", workdayStartedAt: iso(120), workdayCarryover: false,
+        workdayPausedAt: row.workdayState === "PAUSED" ? iso(35) : null, workdayCompletedAt: null,
         locationState: row.meters == null ? "NO_LOCATION_REPORTED" : "AVAILABLE",
         routeCompletion: 0, routeVisited: 0, routeTotal: 0, openVisitSince: null,
         ...(row.meters == null ? {} : { ...northOf(row.meters), accuracy: 10, speed: 20, battery: row.battery ?? 70, recordedAt: iso(row.minutesAgo) }),
@@ -150,6 +154,8 @@ describe("the live map page, end to end", () => {
     window.localStorage.clear()
     hoisted.map.props = null
     requests = []
+    activityLogs = []
+    street = "Nizami küçəsi"
     rosterRows = [
       { agentId: "far", name: "Fərid", fieldStatus: "ON_ROAD", meters: 7_400, minutesAgo: 1 },
       { agentId: "near", name: "Nigar", fieldStatus: "STOPPED", meters: 450, minutesAgo: 1, battery: 12 },
@@ -161,6 +167,9 @@ describe("the live map page, end to end", () => {
       requests.push(url.pathname + url.search)
       if (url.pathname === "/api/v1/mtm/locations") return Response.json(answer(Date.now()))
       if (url.pathname === "/api/v1/mtm/routes") return Response.json({ success: true, data: { routes: [] } })
+      if (url.pathname === "/api/v1/mtm/activity") return Response.json({ success: true, data: { logs: activityLogs } })
+      if (url.pathname === "/api/v1/mtm/alerts") return Response.json({ success: true, data: { groups: [] } })
+      if (url.pathname === "/api/v1/mtm/geocode/street") return Response.json({ success: true, data: { available: true, street, distanceMeters: 9 } })
       throw new Error(`unexpected request: ${url.pathname}`)
     }))
     container = document.createElement("div")
@@ -419,4 +428,55 @@ describe("the live map page, end to end", () => {
     expect(byTestId("mtm-map-canvas")?.getAttribute("data-roster")).toBe("narrow")
     expect(byTestId("live-map-roster")?.className).not.toContain("lg:hidden")
   })
+
+  it("opens the selected employee's card with where he is, since when, and his own events of today", async () => {
+    rosterRows[1] = { agentId: "near", name: "Nigar", fieldStatus: "STOPPED", meters: 450, minutesAgo: 1, workdayState: "PAUSED" }
+    activityLogs = [
+      { id: "2", action: "WORKDAY_PAUSE", agentId: "near", createdAt: new Date(Date.now() - 35 * 60_000).toISOString() },
+      { id: "1", action: "CHECK_OUT", agentId: "near", createdAt: new Date(Date.now() - 50 * 60_000).toISOString(), subject: { customerName: "Аптека на углу", visitId: "v1", routeId: null } },
+      // The office editing his card is not his event.
+      { id: "0", action: "AGENT_UPDATE", agentId: "near", createdAt: new Date(Date.now() - 55 * 60_000).toISOString() },
+    ]
+    await open()
+    await press(byTestId("live-map-agent-card-near"))
+    // The street is asked once the position has rested (the picker's rhythm).
+    await settle(700)
+    const detail = byTestId("live-map-agent-detail")!
+    expect(detail.querySelector('[data-testid="live-map-agent-place-text"]')?.textContent).toBe("Nizami küçəsi")
+    expect(detail.querySelector('[data-testid="live-map-since-BREAK"]')?.textContent).toMatch(/^Перерыв с \d{2}:\d{2} · 35 мин$/)
+    const events = [...detail.querySelectorAll('[data-testid="live-map-agent-event"]')].map((row) => row.textContent?.replace(/^\d{2}:\d{2}/, ""))
+    expect(events).toEqual(["Перерыв", "Завершил визит · Аптека на углу", "Рабочий день начат"])
+    // Asked for him, for today — his own journal, not the team's feed under the map.
+    const card = requests.filter((request) => !request.startsWith("/api/v1/mtm/locations") && !request.startsWith("/api/v1/mtm/routes"))
+    expect(card.filter((request) => request.startsWith("/api/v1/mtm/activity"))).toEqual(["/api/v1/mtm/activity?agentId=near&period=today&limit=50"])
+    expect(card.filter((request) => request.startsWith("/api/v1/mtm/alerts"))).toEqual(["/api/v1/mtm/alerts?view=groups&agentId=near&status=all"])
+    expect(card.filter((request) => request.startsWith("/api/v1/mtm/geocode/street"))).toHaveLength(1)
+    // The list above it can be taken away as a file.
+    expect(byTestId("live-map-roster-export")?.textContent).toBe("Excel")
+  })
+
+  it("says nothing about a place for somebody the map shows no live position for", async () => {
+    await open()
+    await press(byTestId("live-map-agent-card-none"))
+    await settle(700)
+    expect(byTestId("live-map-agent-detail")).not.toBeNull()
+    expect(byTestId("live-map-agent-place")).toBeNull()
+    expect(requests.some((request) => request.startsWith("/api/v1/mtm/geocode/street"))).toBe(false)
+  })
+
+  it("reads an area from the ruler once it has three points", async () => {
+    await open()
+    await press(byTestId("live-map-tool-ruler"))
+    const pressMap = async (latitude: number, longitude: number) => {
+      await act(async () => { mapProp<(lat: number, lng: number) => void>("onMapPress")(latitude, longitude) })
+      await settle()
+    }
+    await pressMap(40.4, 49.8)
+    await pressMap(40.409, 49.8)
+    expect(byTestId("live-map-ruler-area")).toBeNull()
+    await pressMap(40.409, 49.8118)
+    // About a kilometre by a kilometre, halved: a triangle of some fifty hectares.
+    expect(byTestId("live-map-ruler-area")?.textContent).toMatch(/^Площадь: \d{2},\d га$/)
+  })
+
 })

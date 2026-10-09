@@ -15110,6 +15110,8 @@
       "ROUTE_COMPLETE": "Marşrutu bitirdi",
       "ROUTE_PUBLISH": "Marşrut dərc edildi",
       "ROUTE_DAY_CLOSE": "Marşrut gün sonunda bağlandı",
+      "ROUTE_REMOVAL_REQUEST": "Nöqtənin marşrutdan çıxarılmasını istəyir",
+      "ROUTE_ADDITION_REQUEST": "Marşruta nöqtə əlavə edilməsini istəyir",
       "VISIT_COMPLETE": "Ziyarət tamamlandı",
       "VISIT_ACTION_COMPLETE": "Ziyarət addımı icra edildi",
       "VISIT_RESULT_UPDATE": "Ziyarətin nəticəsi dəyişdirildi",
@@ -16451,6 +16453,7 @@
       "nearestTo": "Bu nöqtəyə ən yaxınlar: {label}",
       "clearPoint": "Sil",
       "rulerTotal": "Xətkeş: {distance}",
+      "rulerArea": "Sahə: {area}",
       "rulerStart": "İlk nöqtəni qoymaq üçün xəritəyə basın",
       "rulerHint": "Hər basış bir hissə əlavə edir",
       "rulerUndo": "Sonuncunu sil",
@@ -16492,6 +16495,11 @@
       "collapseGroup": "«{name}» qrupunu yığ",
       "expandGroup": "«{name}» qrupunu aç",
       "noTeam": "Şöbəsiz",
+      "export": {
+        "button": "Excel",
+        "hint": "Siyahını Excel-ə yüklə: sətirlər və sıra ekrandakı kimi",
+        "failed": "Siyahını yükləmək alınmadı. Yenidən cəhd edin."
+      },
       "historyToday": "Günün tarixçəsi",
       "kmh": "{value} km/saat",
       "age": {
@@ -16866,6 +16874,38 @@
       "factOpen": "Fakt {from} — davam edir",
       "openVisit": "Ziyarəti aç",
       "missingCoordinates": "{count} dayanacağın koordinatı yoxdur — xəritədə göstərilmir"
+    },
+    "areaUnits": {
+      "m2": "{value} m²",
+      "ha": "{value} ha",
+      "km2": "{value} km²"
+    },
+    "place": {
+      "title": "İndi haradadır",
+      "atClientVisit": "{name} müştərisində, ziyarət gedir",
+      "atClientZone": "{name} müştərisinin zonasında",
+      "approximately": "təxminən {place}",
+      "loading": "küçə müəyyən edilir…",
+      "coordinates": "küçə müəyyən edilmədi · {coordinates}"
+    },
+    "since": {
+      "VISIT": "Ziyarət {time}-dən gedir",
+      "BREAK": "Fasilə {time}-dən",
+      "SHIFT_CLOSED": "İş günü {time}-də bağlanıb",
+      "duration": {
+        "moment": "indicə",
+        "minutes": "{minutes} dəq",
+        "hours": "{hours} saat {minutes} dəq",
+        "days": "{days} gün {hours} saat"
+      }
+    },
+    "events": {
+      "title": "Bu günün hadisələri",
+      "loading": "Hadisələr yüklənir…",
+      "empty": "Bu gün hələ hadisə yoxdur",
+      "failed": "Hadisələri yeniləmək alınmadı",
+      "more": "Daha {count} göstər",
+      "fewer": "Yığ"
     },
     "distanceUnits": {
       "m": "{value} m",
