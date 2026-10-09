@@ -102,57 +102,54 @@ export function rosterValue(agent: MtmDashboardAgent, column: RosterColumnId): s
 }
 
 /**
- * One column's filter, the way a spreadsheet's tick list means it.
+ * One column's filter: the values to show.
  *
- * Two modes, because «everybody except the offline» and «only these two» are
- * different questions on a list that changes every thirty seconds: somebody
- * who joins the roster later belongs to the first and not to the second. A
- * list of allowed values alone could not tell them apart.
+ * A tick means «show these»; nothing ticked means no filter — the list is
+ * whole. The first version copied a spreadsheet to the letter (everything
+ * ticked, untick what you do not want), and the owner called it unusable
+ * (2026-10-09: «фильтр кажется не юзабилити… сравни с ТМС примером»): to see
+ * only the late ones a dispatcher unticked five lines or hunted for a small
+ * «только». The tracking product he named as the model does it the other way
+ * round, in its list and in its tables alike, and so does this.
  */
 export interface RosterColumnFilter {
-  mode: "only" | "except"
+  mode: "only"
   values: readonly string[]
 }
 export type RosterFilters = Partial<Record<RosterColumnId, RosterColumnFilter>>
 
+/** Does the column's filter let this value through? No filter lets everything through. */
 export function rosterFilterAllows(filter: RosterColumnFilter | undefined, value: string): boolean {
-  if (!filter) return true
-  const listed = filter.values.includes(value)
-  return filter.mode === "only" ? listed : !listed
+  return !filter || filter.values.length === 0 || filter.values.includes(value)
 }
 
-/** A filter that lets everything through is no filter. */
-function normalizedFilter(filter: RosterColumnFilter): RosterColumnFilter | undefined {
-  const values = [...new Set(filter.values)]
-  if (filter.mode === "except" && values.length === 0) return undefined
-  return { mode: filter.mode, values }
+/** Is this value ticked in the column's list? */
+export function rosterFilterTicked(filter: RosterColumnFilter | undefined, value: string): boolean {
+  return Boolean(filter?.values.includes(value))
 }
 
-/** A tick put on or taken off one value. */
-export function toggleRosterFilterValue(filter: RosterColumnFilter | undefined, value: string): RosterColumnFilter | undefined {
-  if (!filter) return { mode: "except", values: [value] }
-  const listed = filter.values.includes(value)
-  const values = listed ? filter.values.filter((entry) => entry !== value) : [...filter.values, value]
-  return normalizedFilter({ mode: filter.mode, values })
+/** A tick put on or taken off one value. The last tick taken off is the filter taken off. */
+export function tickRosterFilterValue(filter: RosterColumnFilter | undefined, value: string): RosterColumnFilter | undefined {
+  const ticked = filter?.values ?? []
+  const values = ticked.includes(value) ? ticked.filter((entry) => entry !== value) : [...ticked, value]
+  return values.length > 0 ? { mode: "only", values } : undefined
 }
 
-/** «Only this one» — the one press that isolates a value. */
+/** One value alone — what a status chip above the map asks for. */
 export function onlyRosterFilterValue(value: string): RosterColumnFilter {
   return { mode: "only", values: [value] }
 }
 
-/** Every tick taken off: nothing is allowed until something is ticked. */
-export const ROSTER_FILTER_NOTHING: RosterColumnFilter = { mode: "only", values: [] }
-
 export function withRosterFilter(filters: RosterFilters, column: RosterColumnId, filter: RosterColumnFilter | undefined): RosterFilters {
   const next: RosterFilters = { ...filters }
-  if (filter) next[column] = filter
+  // A filter with nothing ticked is no filter.
+  if (filter && filter.values.length > 0) next[column] = filter
   else delete next[column]
   return next
 }
 
 export function activeRosterFilterColumns(filters: RosterFilters): RosterColumnId[] {
-  return ROSTER_COLUMNS.filter((column) => filters[column] != null)
+  return ROSTER_COLUMNS.filter((column) => (filters[column]?.values.length ?? 0) > 0)
 }
 
 /**
@@ -166,9 +163,9 @@ export function pickRosterStatus(filters: RosterFilters, status: string | null):
   return withRosterFilter(filters, "status", status == null || alone === status ? undefined : onlyRosterFilterValue(status))
 }
 
-/** A chip is lit while a status filter is on and lets its status through; with no filter only «Все» is. */
+/** A chip is lit while its status is ticked; with no filter only «Все» is. */
 export function rosterStatusChipOn(filters: RosterFilters, status: string): boolean {
-  return filters.status != null && rosterFilterAllows(filters.status, status)
+  return rosterFilterTicked(filters.status, status)
 }
 
 /**
@@ -192,10 +189,7 @@ export function applyRosterFilters(
   if (columns.length === 0) return [...agents]
   // A filter that names two hundred people is looked up, not scanned, per row.
   const listed = new Map(columns.map((column) => [column, new Set(filters[column]?.values ?? [])]))
-  return agents.filter((agent) => columns.every((column) => {
-    const has = listed.get(column)?.has(rosterValue(agent, column)) ?? false
-    return filters[column]?.mode === "only" ? has : !has
-  }))
+  return agents.filter((agent) => columns.every((column) => listed.get(column)?.has(rosterValue(agent, column)) ?? false))
 }
 
 export interface RosterFilterOption {
@@ -205,10 +199,19 @@ export interface RosterFilterOption {
 }
 
 /**
- * The tick list of one column: its values with how many rows each would give.
- * Counted against the other columns' filters, as a spreadsheet does, so the
- * list never offers a value that the rest of the filters have already emptied
- * — except a value that is ticked right now, which stays so it can be unticked.
+ * The tick list of one column: its values with how many rows each would give,
+ * counted against the other columns' filters.
+ *
+ * A column with a vocabulary of its own — the statuses, the freshness of the
+ * signal, the battery's three levels — lists all of it, always, in its own
+ * order: at nine in the evening nobody is «в пути», and a list that showed
+ * only what is there now offered a dispatcher a single line to choose from.
+ * A value nobody has says 0; it can still be ticked — the list is alive, and
+ * in a minute somebody will. Teams and managers are a vocabulary too — the
+ * roster's own: every one of them is listed whatever the other filters leave,
+ * so a filter on status never empties the list of managers. Names alone list
+ * who is there under the other filters (a hundred people, of whom three are
+ * late), plus whoever is ticked, so a tick can always be taken off.
  */
 export function rosterFilterOptions(
   agents: readonly MtmDashboardAgent[],
@@ -223,10 +226,18 @@ export function rosterFilterOptions(
   const own = filters[column]
   if (own) for (const value of own.values) if (!counts.has(value)) counts.set(value, 0)
   const fixed = FIXED_ORDER[column]
-  const values = fixed
-    ? fixed.filter((value) => counts.has(value))
-    : [...counts.keys()]
-  return values.map((value) => ({ value, count: counts.get(value) ?? 0 }))
+  if (fixed) {
+    // Anything outside the vocabulary that is nevertheless there is not dropped.
+    const values = [...fixed, ...[...counts.keys()].filter((value) => !fixed.includes(value))]
+    return values.map((value) => ({ value, count: counts.get(value) ?? 0 }))
+  }
+  if (column === "team" || column === "manager") {
+    for (const agent of agents) {
+      const value = rosterValue(agent, column)
+      if (!counts.has(value)) counts.set(value, 0)
+    }
+  }
+  return [...counts.keys()].map((value) => ({ value, count: counts.get(value) ?? 0 }))
 }
 
 export interface RosterSort {

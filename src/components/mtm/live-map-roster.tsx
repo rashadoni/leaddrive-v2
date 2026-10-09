@@ -1,9 +1,9 @@
 "use client"
 
-import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type Ref } from "react"
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode, type Ref, type RefObject } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { AlertTriangle, ArrowLeft, ChevronDown, ChevronRight, Download, Filter, Loader2, Maximize2, Minimize2, PanelRightClose, SlidersHorizontal, X } from "lucide-react"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { AlertTriangle, Check, ChevronDown, ChevronRight, Download, Filter, Loader2, Maximize2, Minimize2, PanelRightClose, SlidersHorizontal, X } from "lucide-react"
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import { FIELD_STATUS_LABEL_KEYS, type MtmDashboardAgent } from "@/lib/mtm-types"
 import { rosterExportTable } from "@/lib/mtm/live-map-roster-export"
@@ -18,9 +18,11 @@ import {
   ROSTER_NO_MANAGER,
   ROSTER_NO_TEAM,
   rosterFilterOptions,
+  rosterFilterTicked,
   rosterSignalAge,
   rosterTickState,
   rosterValue,
+  tickRosterFilterValue,
   withRosterFilter,
   type RosterColumnFilter,
   type RosterColumnId,
@@ -31,8 +33,8 @@ import {
 import {
   LiveMapRosterColumnMenu,
   ROSTER_ACTION_TEXT,
-  RosterColumnMenuPanel,
   type RosterColumnMenuOption,
+  type RosterMenuPlacement,
   type RosterSortKind,
 } from "@/components/mtm/live-map-roster-column-menu"
 
@@ -134,6 +136,25 @@ export interface LiveMapRosterProps {
   exportFileName?: () => string
 }
 
+/** The list stands beside the map from the `lg` breakpoint; narrower than that it is under it. */
+const BESIDE_MAP_QUERY = "(min-width: 1024px)"
+/** From here «Таблица» really widens the list — the page's grid and the button use the same width. */
+const ROOM_FOR_TABLE_QUERY = "(min-width: 85rem)"
+function mediaStore(query: string) {
+  const supported = () => typeof window !== "undefined" && typeof window.matchMedia === "function"
+  return {
+    subscribe(onChange: () => void): () => void {
+      if (!supported()) return () => {}
+      const media = window.matchMedia(query)
+      media.addEventListener("change", onChange)
+      return () => media.removeEventListener("change", onChange)
+    },
+    read: () => supported() && window.matchMedia(query).matches,
+  }
+}
+const BESIDE_MAP = mediaStore(BESIDE_MAP_QUERY)
+const ROOM_FOR_TABLE = mediaStore(ROOM_FOR_TABLE_QUERY)
+
 /**
  * The employee list beside the live map as a compact table with a filter in
  * every column heading (owner, 2026-10-09: «список должен быть компактным,
@@ -159,9 +180,8 @@ export function LiveMapRoster({
   const tMap = useTranslations("mtmMap")
   const locale = useLocale()
   const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<string>>(() => new Set())
-  /** The column whose tick list is open inside «Фильтры»; null is the list of columns. */
-  const [filtersColumn, setFiltersColumn] = useState<RosterColumnId | null>(null)
   const [exporting, setExporting] = useState<"idle" | "busy" | "failed">("idle")
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const asideRef = useRef<HTMLElement | null>(null)
   const headingRef = useRef<HTMLDivElement | null>(null)
 
@@ -170,7 +190,11 @@ export function LiveMapRoster({
     const aside = asideRef.current
     const heading = headingRef.current
     if (!aside || !heading || typeof ResizeObserver === "undefined") return
-    const measure = () => aside.style.setProperty("--roster-head", `${Math.ceil(heading.getBoundingClientRect().height)}px`)
+    // Only a heading that follows the screen covers rows. Where it stays in
+    // its place — a short screen, or the filters open in the list — a row
+    // brought into view needs no room left for it.
+    const followsTheScreen = () => getComputedStyle(heading).position === "sticky"
+    const measure = () => aside.style.setProperty("--roster-head", followsTheScreen() ? `${Math.ceil(heading.getBoundingClientRect().height)}px` : "0px")
     measure()
     const observer = new ResizeObserver(measure)
     observer.observe(heading)
@@ -273,15 +297,57 @@ export function LiveMapRoster({
   const filteredColumns = activeRosterFilterColumns(filters)
 
   const setFilter = (column: RosterColumnId, filter: RosterColumnFilter | undefined) => onFiltersChange(withRosterFilter(filters, column, filter))
-  /** A filter in words: «все, кроме GPS неактивен» — with its column's name in front for a chip. */
+  /** A filter in words — «В пути, Стоит» — with its column's name in front for a chip. */
   const filterValuesText = (column: RosterColumnId): string => {
     const filter = filters[column]
     if (!filter) return ""
-    if (filter.values.length === 0) return tMap("roster.filter.nothing")
     const shown = filter.values.slice(0, 2).map((value) => valueLabel(column, value)).join(", ")
-    const values = filter.values.length > 2 ? `${shown}, ${tMap("roster.filter.more", { count: filter.values.length - 2 })}` : shown
-    return filter.mode === "only" ? values : tMap("roster.filter.except", { values })
+    return filter.values.length > 2 ? `${shown}, ${tMap("roster.filter.more", { count: filter.values.length - 2 })}` : shown
   }
+  // Beside the map the list is narrow, and a menu dropped over it hides the
+  // rows it filters: there the menus open to the left, over the map, next to
+  // the list's heading. «Фильтры» does so in the wide table as well — it is
+  // wide enough to cover half of it. A column's menu in the wide table drops
+  // under its own heading, as a spreadsheet's does. Under the map (a phone)
+  // «Фильтры» opens in the list itself, above the rows: nothing is covered
+  // and nothing scrolls inside.
+  const besideMap = useSyncExternalStore(BESIDE_MAP.subscribe, BESIDE_MAP.read, () => false)
+  const roomForTable = useSyncExternalStore(ROOM_FOR_TABLE.subscribe, ROOM_FOR_TABLE.read, () => false)
+  const tableShown = view.width === "wide" && roomForTable
+  const menuPlacement: RosterMenuPlacement = besideMap && !tableShown && !hiddenOnWide
+    ? { side: "left", anchor: headingRef }
+    : { side: "bottom", anchor: null }
+  const filtersFloat = besideMap && !hiddenOnWide
+  // The list put away on a wide screen takes its open filters with it: they
+  // must not open by themselves over the map when the list comes back.
+  const listPutAway = besideMap && hiddenOnWide
+  const [wasPutAway, setWasPutAway] = useState(listPutAway)
+  if (wasPutAway !== listPutAway) {
+    setWasPutAway(listPutAway)
+    if (listPutAway) setFiltersOpen(false)
+  }
+  /** «Фильтры» open in the list itself (under the map), not floating beside it. */
+  const filtersInList = filtersOpen && !filtersFloat
+  const filtersButtonRef = useRef<HTMLButtonElement | null>(null)
+  const closedByDoneRef = useRef(false)
+  // The panel opens inside the heading, and a heading that holds it stops
+  // following the screen (it can be taller than the screen). Pressed from a
+  // list scrolled to row forty, «Фильтры» would open two thousand pixels
+  // above — the bar just pressed gone, nothing in its place. So the top of
+  // the list is brought into view with it. «Готово» stands at the foot of a
+  // panel up to two screens tall: with the panel gone the page would stay
+  // scrolled past a short list, so it brings the list back as well and hands
+  // the focus to «Фильтры». The button itself, pressed again, moves nothing.
+  useLayoutEffect(() => {
+    if (filtersInList) {
+      asideRef.current?.scrollIntoView?.({ block: "start" })
+      return
+    }
+    if (!closedByDoneRef.current) return
+    closedByDoneRef.current = false
+    asideRef.current?.scrollIntoView?.({ block: "start" })
+    filtersButtonRef.current?.focus({ preventScroll: true })
+  }, [filtersInList])
   const filterSummary = (column: RosterColumnId) => tMap("roster.filter.chip", { column: columnLabel(column), values: filterValuesText(column) })
   const menuProps = (column: RosterColumnId) => ({
     column,
@@ -293,7 +359,70 @@ export function LiveMapRoster({
     sortKind: SORT_KIND[column],
     onSort: (direction: "asc" | "desc") => onViewChange({ ...view, sort: { column, direction } }),
     showCounts: column !== "name",
+    placement: menuPlacement,
   })
+  const filtersButton = (
+    <button
+      ref={filtersButtonRef}
+      type="button"
+      data-testid="live-map-roster-filters-button"
+      aria-expanded={filtersOpen}
+      onClick={filtersFloat ? undefined : () => setFiltersOpen((open) => !open)}
+      className={cn(TOOL_BUTTON, (filteredColumns.length > 0 || filtersOpen) && "border-primary/50 bg-primary/5")}
+    >
+      <Filter className={cn("h-3.5 w-3.5", filteredColumns.length > 0 && "fill-current")} aria-hidden="true" />{tMap("roster.filters")}
+      {filteredColumns.length > 0 ? <span className="tabular-nums">· {filteredColumns.length}</span> : null}
+    </button>
+  )
+  /** The panel of «Фильтры»: the same in the floating menu and in the list itself. */
+  const filtersPanel = (gridClass: string, bodyClass: string) => (
+    <>
+      <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-zinc-200 px-3 py-2 dark:border-zinc-700">
+        <span className="text-sm font-semibold">{tMap("roster.filters")}</span>
+        <span role="status" className="text-xs tabular-nums text-muted-foreground" data-testid="live-map-roster-filters-count">
+          {tMap("roster.shownCount", { shown: rows.length, total: agents.length })}
+        </span>
+        {filteredColumns.length > 0 ? (
+          <button type="button" onClick={() => onFiltersChange({})} data-testid="live-map-roster-filters-menu-reset" className="ml-auto inline-flex min-h-8 items-center rounded-md border border-zinc-200 px-2 text-xs font-semibold hover:bg-muted dark:border-zinc-700 [@media(pointer:coarse)]:min-h-11">
+            {tMap("roster.filter.resetAll")}
+          </button>
+        ) : null}
+      </div>
+      <p className="shrink-0 px-3 pt-2 text-[11px] text-muted-foreground">{tMap("roster.filter.hint")}</p>
+      <div className={cn("grid gap-x-5 px-3 pb-3", gridClass, bodyClass)}>
+        {available.filter((column) => column !== "name").map((column) => (
+          <div key={column} role="group" aria-label={columnLabel(column)} className="min-w-0 pt-2.5" data-testid={`live-map-roster-filters-group-${column}`}>
+            <div className={cn("text-[11px] font-semibold uppercase tracking-wide", filters[column] ? ROSTER_ACTION_TEXT : "text-muted-foreground")} data-testid={`live-map-roster-filters-title-${column}`}>{columnLabel(column)}</div>
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              {(options[column] ?? []).map((option) => {
+                const on = rosterFilterTicked(filters[column], option.value)
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => setFilter(column, tickRosterFilterValue(filters[column], option.value))}
+                    data-testid={`live-map-roster-filters-value-${column}-${option.value}`}
+                    className={cn(
+                      "inline-flex min-h-7 max-w-full items-center gap-1.5 rounded-full border px-2.5 text-xs transition-colors [@media(pointer:coarse)]:min-h-11",
+                      on ? "border-primary bg-primary/10 font-semibold text-foreground" : "border-zinc-300 hover:bg-muted dark:border-zinc-600",
+                      option.count === 0 && !on && "text-muted-foreground",
+                    )}
+                  >
+                    {on
+                      ? <Check className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
+                      : option.dotClass ? <span className={cn("h-2 w-2 shrink-0 rounded-full", option.dotClass)} aria-hidden="true" /> : null}
+                    <span className="min-w-0 truncate">{option.label}</span>
+                    <span className="shrink-0 tabular-nums text-muted-foreground">{option.count}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  )
   const toggleGroup = (groupId: string, memberIds: string[], shownCollapsed: boolean) => {
     // Folding away the group the selected employee is in lets go of him: his
     // day cannot stay open inside a closed group.
@@ -473,7 +602,11 @@ export function LiveMapRoster({
           <main>): a sticky block rests at the padding's inner edge, and rows
           would show through the band above it. Not on a screen too short to
           spare the room. */}
-      <div ref={headingRef} role="none" data-testid="live-map-roster-heading" className="-top-3 z-20 rounded-t-lg border-b border-zinc-200 bg-card sm:-top-4 lg:-top-8 dark:border-zinc-700 [@media(min-height:600px)]:sticky">
+      <div ref={headingRef} role="none" data-testid="live-map-roster-heading" className={cn(
+          "-top-3 z-20 rounded-t-lg border-b border-zinc-200 bg-card sm:-top-4 lg:-top-8 dark:border-zinc-700",
+          // With the filters open in it the heading can be taller than the screen: then it stays in its place.
+          !filtersInList && "[@media(min-height:600px)]:sticky",
+        )}>
         <div role="caption">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 pt-2">
           <h4 className="text-xs font-semibold uppercase text-muted-foreground">{tMap("agents")}</h4>
@@ -518,42 +651,31 @@ export function LiveMapRoster({
         ) : null}
         <div className="flex items-center gap-1.5 px-3 pt-2">
           <div className="min-w-0 flex-1">{searchSlot}</div>
-          {/* Every column's filter in one place — also the columns this width has no room to draw. */}
-          <Popover onOpenChange={(open) => { if (!open) setFiltersColumn(null) }}>
-            <PopoverTrigger asChild>
-              <button type="button" data-testid="live-map-roster-filters-button" className={cn(TOOL_BUTTON, filteredColumns.length > 0 && "border-primary/50 bg-primary/5")}>
-                <Filter className={cn("h-3.5 w-3.5", filteredColumns.length > 0 && "fill-current")} aria-hidden="true" />{tMap("roster.filters")}
-                {filteredColumns.length > 0 ? <span className="tabular-nums">· {filteredColumns.length}</span> : null}
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="end" collisionPadding={8} aria-label={tMap("roster.filters")} className="flex max-h-[var(--radix-popover-content-available-height)] w-72 max-w-[calc(100vw-2rem)] flex-col p-0" data-testid="live-map-roster-filters-menu">
-              {filtersColumn == null ? (
-                <div className="min-h-0 flex-1 overflow-y-auto p-2">
-                  {available.map((column) => (
-                    <button key={column} type="button" onClick={() => setFiltersColumn(column)} data-testid={`live-map-roster-filters-column-${column}`} className={cn(MENU_ROW, "w-full text-left")}>
-                      <span className="shrink-0 font-medium">{columnLabel(column)}</span>
-                      <span className={cn("min-w-0 flex-1 truncate text-right text-xs", ROSTER_ACTION_TEXT)}>{filterValuesText(column)}</span>
-                      <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-                    </button>
-                  ))}
-                  {filteredColumns.length > 0 ? (
-                    <button type="button" onClick={() => onFiltersChange({})} data-testid="live-map-roster-filters-menu-reset" className="mt-1 inline-flex min-h-9 w-full items-center justify-center rounded-md border border-zinc-200 text-xs font-semibold hover:bg-muted dark:border-zinc-700 [@media(pointer:coarse)]:min-h-11">
-                      {tMap("roster.filter.resetAll")}
-                    </button>
-                  ) : null}
-                </div>
-              ) : (
-                <>
-                  <button type="button" onClick={() => setFiltersColumn(null)} data-testid="live-map-roster-filters-back" className="flex min-h-9 shrink-0 items-center gap-1.5 border-b border-zinc-200 px-3 text-left text-sm font-semibold hover:bg-muted/60 dark:border-zinc-700 [@media(pointer:coarse)]:min-h-11">
-                    <ArrowLeft className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                    <span className="min-w-0 truncate">{columnLabel(filtersColumn)}</span>
-                    <span className="ml-auto shrink-0 text-xs font-normal text-muted-foreground">{tMap("roster.filtersBack")}</span>
-                  </button>
-                  <RosterColumnMenuPanel {...menuProps(filtersColumn)} />
-                </>
-              )}
-            </PopoverContent>
-          </Popover>
+          {/* Every filter in one place and at one level: each column a row of
+              values to press — pressed means «show these». Also the columns
+              this width has no room to draw. */}
+          {filtersFloat ? (
+            <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
+              <PopoverTrigger asChild>{filtersButton}</PopoverTrigger>
+              {/* After the trigger, not before it: the trigger names itself the
+                  anchor when it mounts, and the last one to speak is the one
+                  the panel stands beside. */}
+              <PopoverAnchor virtualRef={headingRef as RefObject<HTMLElement>} />
+              <PopoverContent
+                side="left"
+                align="start"
+                sideOffset={8}
+                collisionPadding={8}
+                aria-label={tMap("roster.filters")}
+                // Never wider than the room there is to the left of the list:
+                // in «Таблица» with the menu folded the list starts early.
+                className="flex max-h-[var(--radix-popover-content-available-height)] w-[34rem] max-w-[min(calc(100vw-2rem),var(--radix-popover-content-available-width))] flex-col p-0"
+                data-testid="live-map-roster-filters-menu"
+              >
+                {filtersPanel("grid-cols-2", "min-h-0 flex-1 overflow-y-auto")}
+              </PopoverContent>
+            </Popover>
+          ) : filtersButton}
           <Popover>
             <PopoverTrigger asChild>
               <button type="button" data-testid="live-map-roster-view" className={TOOL_BUTTON}>
@@ -576,6 +698,39 @@ export function LiveMapRoster({
                     {tMap(`roster.grouping.${option}`)}
                   </label>
                 ))}
+              </fieldset>
+              {/* The order of the list — by any column, also the ones this width
+                  has no room to draw a heading for. */}
+              <fieldset className="border-b border-zinc-200 p-2 dark:border-zinc-700">
+                <legend className="px-1 text-[11px] font-semibold uppercase text-muted-foreground">{tMap("roster.sortBy")}</legend>
+                <select
+                  value={view.sort.column}
+                  onChange={(event) => onViewChange({ ...view, sort: { column: event.target.value as RosterColumnId, direction: view.sort.direction } })}
+                  aria-label={tMap("roster.sortBy")}
+                  data-testid="live-map-roster-sort-column"
+                  className="mt-1 h-9 w-full rounded-md border border-zinc-200 bg-background px-2 text-sm dark:border-zinc-700 [@media(pointer:coarse)]:h-11"
+                >
+                  {(available.includes(view.sort.column) ? available : [view.sort.column, ...available]).map((column) => (
+                    <option key={column} value={column}>{columnLabel(column)}</option>
+                  ))}
+                </select>
+                <div className="mt-1 grid grid-cols-2 gap-1">
+                  {(["asc", "desc"] as const).map((direction) => (
+                    <button
+                      key={direction}
+                      type="button"
+                      aria-pressed={view.sort.direction === direction}
+                      onClick={() => onViewChange({ ...view, sort: { column: view.sort.column, direction } })}
+                      data-testid={`live-map-roster-sort-${direction}`}
+                      className={cn(
+                        "inline-flex min-h-9 items-center justify-center rounded-md border px-2 text-xs font-medium transition-colors [@media(pointer:coarse)]:min-h-11",
+                        view.sort.direction === direction ? "border-primary bg-primary/10" : "border-zinc-200 hover:bg-muted dark:border-zinc-700",
+                      )}
+                    >
+                      {tMap(`roster.sort.${SORT_KIND[view.sort.column]}.${direction}`)}
+                    </button>
+                  ))}
+                </div>
               </fieldset>
               <fieldset className="border-b border-zinc-200 p-2 dark:border-zinc-700">
                 <legend className="px-1 text-[11px] font-semibold uppercase text-muted-foreground">{tMap("roster.columnsTitle")}</legend>
@@ -608,6 +763,19 @@ export function LiveMapRoster({
             </PopoverContent>
           </Popover>
         </div>
+        {/* Under the map «Фильтры» opens here, in the list: the rows move down
+            instead of being covered, and the page scrolls as one — no frame
+            with a scrollbar of its own. */}
+        {filtersInList ? (
+          <div role="region" aria-label={tMap("roster.filters")} className="mx-3 mt-2 rounded-lg border border-zinc-200 bg-muted/30 dark:border-zinc-700" data-testid="live-map-roster-filters-menu">
+            {filtersPanel("grid-cols-1 @md:grid-cols-2 @2xl:grid-cols-3 @5xl:grid-cols-4", "")}
+            <div className="border-t border-zinc-200 p-2 dark:border-zinc-700">
+              <button type="button" onClick={() => { closedByDoneRef.current = true; setFiltersOpen(false) }} data-testid="live-map-roster-filters-done" className="inline-flex min-h-9 w-full items-center justify-center rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90 [@media(pointer:coarse)]:min-h-11">
+                {tMap("roster.filter.done", { shown: rows.length, total: agents.length })}
+              </button>
+            </div>
+          </div>
+        ) : null}
         {/* Who is on the map: all of the list, nobody, or the ones ticked below. */}
         <div className="flex flex-wrap items-center gap-x-3 px-3 pt-1 text-[11px]" data-testid="live-map-on-map-bar">
           <span className="text-muted-foreground">{tMap("layers.onMapCount", { shown: tick.onMap, total: tick.total })}</span>

@@ -16470,12 +16470,12 @@
       "show": "Employee list ({count})",
       "showFiltered": "List: {shown} of {total} · filtered",
       "filters": "Filters",
-      "filtersBack": "All columns",
       "hide": "Hide the list",
       "view": "View",
       "wide": "Table",
       "narrow": "List",
       "groupBy": "Group",
+      "sortBy": "Sort by",
       "grouping": {
         "none": "No groups",
         "team": "By team",
@@ -16567,16 +16567,14 @@
       },
       "filter": {
         "open": "{column}: sort and filter",
-        "selectAll": "Select all",
-        "only": "only",
+        "hint": "Tick who to show. Nothing ticked — everybody is shown.",
+        "done": "Done · showing {shown} of {total}",
         "search": "Search the list",
         "nothingFound": "Nothing found",
         "reset": "Clear this filter",
         "resetAll": "Clear filters",
         "remove": "Remove the «{column}» filter",
         "chip": "{column}: {values}",
-        "except": "all except {values}",
-        "nothing": "nothing selected",
         "unknownValue": "not in the list",
         "more": "{count} more"
       }
