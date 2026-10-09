@@ -45,6 +45,7 @@ import { LiveMapAgentEvents } from "@/components/mtm/live-map-agent-events"
 import { LiveMapAgentPlace, resetLiveMapPlaceCacheForTests } from "@/components/mtm/live-map-agent-place"
 import { LiveMapRoster } from "@/components/mtm/live-map-roster"
 import {
+  LIVE_MAP_AGENT_EVENTS_REFRESH_MS,
   liveMapAgentEventHref,
   liveMapAgentEvents,
   liveMapAgentEventsRefreshKey,
@@ -61,7 +62,7 @@ import {
 import { ROSTER_DEFAULT_VIEW, availableRosterColumns } from "@/lib/mtm/live-map-roster"
 import { rosterCellText, rosterExportFileName, rosterExportTable, type RosterExportWords } from "@/lib/mtm/live-map-roster-export"
 import { liveMapDuration, liveMapStateSince } from "@/lib/mtm/live-map-state-since"
-import { pathLengthMeters, polygonAreaSquareMeters } from "@/lib/mtm/live-map-trails"
+import { outlineCrossesItself, pathLengthMeters, polygonAreaSquareMeters } from "@/lib/mtm/live-map-trails"
 import { formatMtmArea } from "@/lib/mtm/visit-place-check"
 import type { MtmDashboardAgent } from "@/lib/mtm-types"
 
@@ -93,13 +94,28 @@ describe("where the employee is, in words", () => {
     expect(liveMapPlace({ position: northOf(99), inVisit: false, stops: [pharmacy] }).kind).toBe("client")
   })
 
-  it("the visit he is in names the client even when the phone's coordinate is somewhere else, or nowhere", () => {
-    const inVisit = { ...clinic, inVisit: true }
-    expect(liveMapPlace({ position: northOf(60), inVisit: true, stops: [pharmacy, inVisit] }))
-      .toEqual({ kind: "client", basis: "visit", name: "Клиника", address: null })
-    expect(liveMapPlace({ position: null, inVisit: true, stops: [inVisit] }).kind).toBe("client")
+  it("the visit he is in names the client without a coordinate, without a pin, and through indoor drift", () => {
+    const inVisit = { ...pharmacy, inVisit: true }
+    const visit = { kind: "client", basis: "visit", name: "Аптека на углу", address: "ул. Низами, 10" }
+    expect(liveMapPlace({ position: null, inVisit: true, stops: [inVisit] })).toEqual(visit)
+    // 100 m circle, a fix ±30 m that has wandered 250 m off inside a building: still at the client.
+    expect(liveMapPlace({ position: { ...northOf(250), accuracy: 30 }, inVisit: true, stops: [inVisit] })).toEqual(visit)
+    // The client has no pin: there is nothing to measure against, and he did press the button there.
+    const unpinned = { ...inVisit, latitude: Number.NaN, longitude: Number.NaN }
+    expect(liveMapPlace({ position: northOf(5_000), inVisit: true, stops: [unpinned] })).toMatchObject({ kind: "client", basis: "visit" })
     // A visit at a client that is not on today's route: the circle or the street answers.
     expect(liveMapPlace({ position: northOf(60), inVisit: true, stops: [pharmacy] })).toMatchObject({ basis: "zone" })
+  })
+
+  it("a visit left open by a man who has plainly driven away is said as that — both facts, and the street is asked", () => {
+    const inVisit = { ...pharmacy, inVisit: true }
+    const away = liveMapPlace({ position: { ...northOf(2_100), accuracy: 15 }, inVisit: true, stops: [inVisit] })
+    expect(away).toMatchObject({ kind: "away", name: "Аптека на углу", distanceMeters: 2_100 })
+    // The edge does not flicker on jitter: radius + the fix's error + a margin is still «у клиента».
+    expect(liveMapPlace({ position: { ...northOf(100 + 15 + 150 - 5), accuracy: 15 }, inVisit: true, stops: [inVisit] }).kind).toBe("client")
+    expect(liveMapPlace({ position: { ...northOf(100 + 15 + 150 + 5), accuracy: 15 }, inVisit: true, stops: [inVisit] }).kind).toBe("away")
+    // A coarse fix earns a wider reach, not a quicker accusation.
+    expect(liveMapPlace({ position: { ...northOf(500), accuracy: 400 }, inVisit: true, stops: [inVisit] }).kind).toBe("client")
   })
 
   it("claims nothing without a live coordinate", () => {
@@ -124,6 +140,10 @@ describe("where the employee is, in words", () => {
     // ±120 m: sixty metres is inside the noise.
     expect(placeMovedFromAnchor(CENTRE, { ...northOf(60), accuracy: 120 })).toBe(false)
     expect(placeMovedFromAnchor(CENTRE, { ...northOf(130), accuracy: 120 })).toBe(true)
+    // However poor the fix, three hundred metres is a move: past that the old
+    // street is no longer shown, so a question has to be on its way.
+    expect(placeMovedFromAnchor(CENTRE, { ...northOf(290), accuracy: 900 })).toBe(false)
+    expect(placeMovedFromAnchor(CENTRE, { ...northOf(310), accuracy: 900 })).toBe(true)
   })
 
   it("says «примерно» only for a fix worse than fifty metres", () => {
@@ -267,13 +287,41 @@ describe("the employee's own events of today", () => {
     expect(liveMapAgentEvents({ agentId: "a1", activity: [activityRow("1", "CHECK_IN", "")], alerts: [alertGroup("g", "")] })).toEqual([])
   })
 
-  it("asks again when the row says he did something, not when he merely moved", () => {
+  it("a shift event pressed yesterday and heard of today is not an event of today, and is not today's shift start", () => {
+    const events = liveMapAgentEvents({
+      agentId: "a1",
+      activity: [
+        activityRow("2", "WORKDAY_FINISH", "2026-10-09T05:10:00.000Z", { newData: { claimedAt: "2026-10-08T18:14:00.000Z" } }),
+        activityRow("1", "WORKDAY_START", "2026-10-09T05:10:00.000Z", { newData: { claimedAt: "2026-10-08T05:00:00.000Z" } }),
+        activityRow("3", "WORKDAY_START", "2026-10-09T05:20:00.000Z", { newData: { claimedAt: "2026-10-09T05:15:00.000Z" } }),
+      ],
+      alerts: [],
+      isEarlierDay: (iso) => iso < "2026-10-09",
+    })
+    expect(events.map((event) => event.id)).toEqual(["action-3"])
+    // With only yesterday's start in the journal, today's start comes from the row.
+    const today = liveMapAgentEvents({
+      agentId: "a1",
+      activity: [activityRow("1", "WORKDAY_START", "2026-10-09T05:10:00.000Z", { newData: { claimedAt: "2026-10-08T05:00:00.000Z" } })],
+      alerts: [],
+      workdayStartedAt: "2026-10-09T05:15:00.000Z",
+      isEarlierDay: (iso) => iso < "2026-10-09",
+    })
+    expect(today.map((event) => [event.id, event.at])).toEqual([["action-shift-start", "2026-10-09T05:15:00.000Z"]])
+  })
+
+  it("asks again at once when the row says he did something, and otherwise every couple of minutes — not on every refresh of the map", () => {
     const row = { fieldStatus: "ON_ROAD", workdayState: "ACTIVE", openVisitSince: null, routeVisited: 2, routeTotal: 5 }
-    expect(liveMapAgentEventsRefreshKey({ ...row })).toBe(liveMapAgentEventsRefreshKey({ ...row }))
-    expect(liveMapAgentEventsRefreshKey({ ...row, fieldStatus: "CHECKED_IN", openVisitSince: "2026-10-09T10:05:00.000Z" }))
-      .not.toBe(liveMapAgentEventsRefreshKey(row))
-    expect(liveMapAgentEventsRefreshKey({ ...row, routeVisited: 3 })).not.toBe(liveMapAgentEventsRefreshKey(row))
-    expect(liveMapAgentEventsRefreshKey({ ...row, workdayState: "PAUSED" })).not.toBe(liveMapAgentEventsRefreshKey(row))
+    const now = 1_000 * LIVE_MAP_AGENT_EVENTS_REFRESH_MS
+    const key = liveMapAgentEventsRefreshKey(row, now)
+    // Four refreshes of the map, thirty seconds apart, nothing about him changed: the same key.
+    expect([30_000, 60_000, 90_000].map((later) => liveMapAgentEventsRefreshKey({ ...row }, now + later))).toEqual([key, key, key])
+    // An alert about him is raised while his row stands still: the next turn of the clock reads again.
+    expect(liveMapAgentEventsRefreshKey(row, now + LIVE_MAP_AGENT_EVENTS_REFRESH_MS)).not.toBe(key)
+    // He did something: at once.
+    expect(liveMapAgentEventsRefreshKey({ ...row, fieldStatus: "CHECKED_IN", openVisitSince: "2026-10-09T10:05:00.000Z" }, now)).not.toBe(key)
+    expect(liveMapAgentEventsRefreshKey({ ...row, routeVisited: 3 }, now)).not.toBe(key)
+    expect(liveMapAgentEventsRefreshKey({ ...row, workdayState: "PAUSED" }, now)).not.toBe(key)
   })
 })
 
@@ -349,6 +397,20 @@ describe("the ruler's area", () => {
     expect(pathLengthMeters([CENTRE, northOf(500)])).toBeCloseTo(500, 0)
   })
 
+  it("a line that crosses itself has no one area: the ruler is told so instead of being given the difference of the loops", () => {
+    const corner = { latitude: northOf(1_000).latitude, longitude: eastOf(1_000).longitude }
+    const square = [CENTRE, northOf(1_000), corner, eastOf(1_000)]
+    const bowTie = [CENTRE, corner, northOf(1_000), eastOf(1_000)]
+    expect(outlineCrossesItself(square)).toBe(false)
+    expect(outlineCrossesItself([...square].reverse())).toBe(false)
+    expect(outlineCrossesItself(bowTie)).toBe(true)
+    // What the sum would have read under a shape that is plainly not empty.
+    expect(polygonAreaSquareMeters(bowTie)).toBeLessThan(5_000)
+    // A triangle cannot cross itself; a zig-zag path of five points can.
+    expect(outlineCrossesItself([CENTRE, northOf(500), eastOf(500)])).toBe(false)
+    expect(outlineCrossesItself([CENTRE, northOf(1_000), eastOf(300), { latitude: northOf(700).latitude, longitude: eastOf(900).longitude }, eastOf(100)])).toBe(true)
+  })
+
   it("is said in the unit a person would use for that size", () => {
     expect(formatMtmArea(850.4, "ru")).toBe("850 m²")
     expect(formatMtmArea(24_000, "ru")).toBe("2,4 ha")
@@ -370,7 +432,16 @@ describe("the card's pieces on screen", () => {
   const place = (position: { latitude: number; longitude: number; accuracy?: number } | null, extra: Record<string, unknown> = {}) =>
     createElement(LiveMapAgentPlace, { position, inVisit: false, stops: [pharmacy], stopsReady: true, ...extra } as never)
   /** Longer than the component's own settle time. */
-  const STREET_WAIT_MS = 700
+  const STREET_WAIT_MS = 800
+  /**
+   * Past the component's settle time, and then for as long as an answer is
+   * still on its way: a loaded runner is slow to hand a response over, and a
+   * fixed pause would read the line a moment too early.
+   */
+  const settleStreet = async () => {
+    await settle(STREET_WAIT_MS)
+    for (let turn = 0; turn < 150 && byTestId("live-map-agent-place-text")?.textContent === "определяю улицу…"; turn += 1) await settle(20)
+  }
 
   beforeEach(() => {
     ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -398,7 +469,7 @@ describe("the card's pieces on screen", () => {
 
     it("inside a client's circle it names the client and asks for no street", async () => {
       await render(place(northOf(40)))
-      await settle(STREET_WAIT_MS)
+      await settleStreet()
       expect(byTestId("live-map-agent-place-text")?.textContent).toBe("в зоне клиента Аптека на углу")
       expect(byTestId("live-map-agent-place")?.textContent).toContain("ул. Низами, 10")
       expect(requests).toEqual([])
@@ -407,7 +478,7 @@ describe("the card's pieces on screen", () => {
     it("outside it asks our own road server once and shows the street", async () => {
       await render(place(northOf(500)))
       expect(byTestId("live-map-agent-place-text")?.textContent).toBe("определяю улицу…")
-      await settle(STREET_WAIT_MS)
+      await settleStreet()
       expect(requests).toHaveLength(1)
       // The rounded coordinate is what travels.
       expect(requests[0]).toMatch(/^\/api\/v1\/mtm\/geocode\/street\?lat=40\.\d{1,4}&lng=49\.\d{1,4}$/)
@@ -416,61 +487,119 @@ describe("the card's pieces on screen", () => {
 
     it("standing still through five refreshes of the map is one question, not five", async () => {
       await render(place(northOf(500)))
-      await settle(STREET_WAIT_MS)
+      await settleStreet()
       for (const wander of [505, 512, 495, 520, 508]) {
         await render(place({ ...northOf(wander), accuracy: 12 }))
-        await settle(STREET_WAIT_MS)
+        await settleStreet()
       }
       expect(requests).toHaveLength(1)
       // Sixty metres on: a second one.
       await render(place(northOf(570)))
-      await settle(STREET_WAIT_MS)
+      await settleStreet()
       expect(requests).toHaveLength(2)
     })
 
-    it("a fix worse than fifty metres says «примерно»", async () => {
+    it("a fix worse than fifty metres says «примерно» — for a street and for a client's circle alike", async () => {
       await render(place({ ...northOf(500), accuracy: 80 }))
-      await settle(STREET_WAIT_MS)
+      await settleStreet()
       expect(byTestId("live-map-agent-place-text")?.textContent).toBe("примерно Nizami küçəsi")
+      await render(place({ ...northOf(40), accuracy: 80 }))
+      expect(byTestId("live-map-agent-place-text")?.textContent).toBe("примерно в зоне клиента Аптека на углу")
+      await render(place({ ...northOf(40), accuracy: 10 }))
+      expect(byTestId("live-map-agent-place-text")?.textContent).toBe("в зоне клиента Аптека на углу")
+    })
+
+    it("a visit left open by a man who has driven away: both are said, with the street he is on", async () => {
+      const open = [{ ...pharmacy, inVisit: true }]
+      await render(place({ ...northOf(2_100), accuracy: 15 }, { inVisit: true, stops: open, formatDistance: (meters: number) => `${(meters / 1000).toFixed(1)} км` }))
+      expect(byTestId("live-map-agent-place")?.getAttribute("data-place")).toBe("away")
+      expect(byTestId("live-map-agent-place-text")?.textContent).toBe("визит у клиента Аптека на углу не закрыт, а сам в 2.1 км оттуда")
+      await settleStreet()
+      expect(requests).toHaveLength(1)
+      expect(byTestId("live-map-agent-place")?.textContent).toContain("· Nizami küçəsi")
+      // Standing in the client's doorway with the visit open asks nothing.
+      requests.length = 0
+      await render(place({ ...northOf(20), accuracy: 15 }, { inVisit: true, stops: open }))
+      await settleStreet()
+      expect(byTestId("live-map-agent-place-text")?.textContent).toBe("у клиента Аптека на углу, идёт визит")
+      expect(requests).toEqual([])
+    })
+
+    it("a place read from a coordinate a few minutes old is toned like the signal and says so", async () => {
+      await render(place(northOf(40), { delayed: true }))
+      const line = byTestId("live-map-agent-place")!
+      expect(line.className).toContain("text-amber-700")
+      expect(line.getAttribute("title")).toBe("по координате с задержкой — время в строке выше")
+      await render(place(northOf(40)))
+      expect(byTestId("live-map-agent-place")!.className).not.toContain("text-amber-700")
     })
 
     it("no street there, or the road server silent: the coordinates, not a guess", async () => {
       streetAnswer = () => Response.json({ success: true, data: { available: true, street: null, distanceMeters: 400 } })
       await render(place(northOf(500)))
-      await settle(STREET_WAIT_MS)
+      await settleStreet()
       expect(byTestId("live-map-agent-place-text")?.textContent).toMatch(/^улица не определена · 40\.\d{5}, 49\.\d{5}$/)
     })
 
-    it("after «too many requests» it asks nothing for a while, and a silent road server is asked again on the next move", async () => {
+    it("after «too many requests» it asks nothing for a minute, wherever he moves", async () => {
       streetAnswer = () => new Response("{}", { status: 429 })
       await render(place(northOf(500)))
-      await settle(STREET_WAIT_MS)
+      await settleStreet()
       expect(requests).toHaveLength(1)
       await render(place(northOf(700)))
-      await settle(STREET_WAIT_MS)
+      await settleStreet()
       expect(requests).toHaveLength(1)
       expect(byTestId("live-map-agent-place-text")?.textContent).toMatch(/^улица не определена/)
     })
 
-    it("does not remember «the road server is down» as the street of that corner", async () => {
-      streetAnswer = () => Response.json({ success: true, data: { available: false, street: null, distanceMeters: null } })
-      await render(place(northOf(500)))
-      await settle(STREET_WAIT_MS)
-      streetAnswer = () => Response.json({ success: true, data: { available: true, street: "Nizami küçəsi", distanceMeters: 9 } })
-      // Another card at the same corner (a new selection) asks again.
-      await render(createElement("div"))
-      await render(place(northOf(500)))
-      await settle(STREET_WAIT_MS)
-      expect(requests).toHaveLength(2)
-      expect(byTestId("live-map-agent-place-text")?.textContent).toBe("Nizami küçəsi")
+    describe("a road server that did not answer", () => {
+      const unavailable = () => Response.json({ success: true, data: { available: false, street: null, distanceMeters: null } })
+      // A second at a time: React applies what a timer set when the `act` it
+      // fired in ends, as a browser does when the timer's own task ends.
+      const forward = async (ms: number) => {
+        for (let passed = 0; passed < ms; passed += 1_000) {
+          await act(async () => { await vi.advanceTimersByTimeAsync(Math.min(1_000, ms - passed)) })
+        }
+      }
+      // The pause and the retry are a minute long: the clock is driven by hand.
+      beforeEach(() => { vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] }) })
+      afterEach(() => { vi.useRealTimers() })
+
+      it("is not the street of that corner: a man who has not moved is asked about again after the pause, by the card itself", async () => {
+        streetAnswer = unavailable
+        await render(place(northOf(500)))
+        await forward(700)
+        expect(requests).toHaveLength(1)
+        expect(byTestId("live-map-agent-place-text")?.textContent).toMatch(/^улица не определена/)
+        streetAnswer = () => Response.json({ success: true, data: { available: true, street: "Nizami küçəsi", distanceMeters: 9 } })
+        // Half a minute on, with two refreshes of the map in between: nothing is asked yet.
+        await render(place({ ...northOf(503), accuracy: 12 }))
+        await forward(30_000)
+        expect(requests).toHaveLength(1)
+        await forward(36_000)
+        expect(requests).toHaveLength(2)
+        expect(byTestId("live-map-agent-place-text")?.textContent).toBe("Nizami küçəsi")
+        // An answer at last: it stands, and nothing more is asked while he stands.
+        await forward(5 * 60_000)
+        expect(requests).toHaveLength(2)
+      })
+
+      it("is asked a bounded number of times while it stays silent, not once a minute for ever", async () => {
+        streetAnswer = unavailable
+        await render(place(northOf(500)))
+        await forward(30 * 60_000)
+        // The first question and three more by the card itself.
+        expect(requests).toHaveLength(4)
+        expect(byTestId("live-map-agent-place-text")?.textContent).toMatch(/^улица не определена/)
+      })
     })
 
     it("two cards at the same corner share one answer", async () => {
       await render(place(northOf(500)))
-      await settle(STREET_WAIT_MS)
+      await settleStreet()
       await render(createElement("div"))
       await render(place(northOf(500)))
-      await settle(STREET_WAIT_MS)
+      await settleStreet()
       expect(requests).toHaveLength(1)
       expect(byTestId("live-map-agent-place-text")?.textContent).toBe("Nizami küçəsi")
     })
@@ -484,7 +613,7 @@ describe("the card's pieces on screen", () => {
 
     it("draws nothing for a person the map shows no live position for", async () => {
       await render(place(null))
-      await settle(STREET_WAIT_MS)
+      await settleStreet()
       expect(byTestId("live-map-agent-place")).toBeNull()
       expect(requests).toEqual([])
     })
@@ -494,6 +623,8 @@ describe("the card's pieces on screen", () => {
     let activity: LiveMapActivityRow[]
     let alerts: LiveMapAlertGroupRow[]
     let fail: boolean
+    /** What the journal says it has in all, when that is more than the page it sent. */
+    let journalTotal: number | null
     const events = (extra: Record<string, unknown> = {}) => createElement(LiveMapAgentEvents, {
       agentId: "a1", refreshKey: "k1", workdayStartedAt: null,
       formatTime: (value: string) => value.slice(11, 16),
@@ -504,6 +635,7 @@ describe("the card's pieces on screen", () => {
 
     beforeEach(() => {
       fail = false
+      journalTotal = null
       activity = [
         activityRow("2", "CHECK_OUT", "2026-10-09T10:40:00.000Z", { subject: { customerName: "Аптека на углу", visitId: "v1" } }),
         activityRow("1", "CHECK_IN", "2026-10-09T10:05:00.000Z", { subject: { customerName: "Аптека на углу", visitId: "v1" } }),
@@ -514,17 +646,40 @@ describe("the card's pieces on screen", () => {
         const url = new URL(String(input), "http://localhost")
         requests.push(url.pathname + url.search)
         if (fail) return new Response("{}", { status: 500 })
-        if (url.pathname === "/api/v1/mtm/activity") return Response.json({ success: true, data: { logs: activity } })
+        if (url.pathname === "/api/v1/mtm/activity") return Response.json({ success: true, data: { logs: activity, total: journalTotal ?? activity.length } })
         if (url.pathname === "/api/v1/mtm/alerts") return Response.json({ success: true, data: { groups: alerts } })
         throw new Error(`unexpected request: ${url.pathname}`)
       }))
     })
 
+    it("says so when the day has more of his events than one page holds — the list is not passed off as the whole day", async () => {
+      alerts = []
+      await render(events())
+      await settle(10)
+      expect(byTestId("live-map-agent-events-cut")).toBeNull()
+      journalTotal = 140
+      await render(events({ refreshKey: "k2" }))
+      await settle(10)
+      expect(byTestId("live-map-agent-events-cut")?.textContent).toBe("Показаны последние 100 событий дня — более ранние смотрите в «Истории за день»")
+    })
+
+    it("leaves out a shift event pressed on an earlier day, by the organization's calendar", async () => {
+      activity = [
+        activityRow("2", "CHECK_IN", "2026-10-09T10:05:00.000Z"),
+        activityRow("1", "WORKDAY_FINISH", "2026-10-09T05:10:00.000Z", { newData: { claimedAt: "2026-10-08T18:14:00.000Z" } }),
+      ]
+      alerts = []
+      await render(events({ isEarlierDay: (iso: string) => iso < "2026-10-09" }))
+      await settle(10)
+      expect(rowTexts()).toEqual(["10:05Начал визит"])
+    })
+
     it("reads his journal and his alerts — for him, for today — and lists them newest first in words", async () => {
       await render(events())
       await settle(10)
+      // His own events are picked out by the server (type=FIELD_DAY), so the page counts them and not his photos.
       expect(requests.sort()).toEqual([
-        "/api/v1/mtm/activity?agentId=a1&period=today&limit=50",
+        "/api/v1/mtm/activity?agentId=a1&period=today&type=FIELD_DAY&limit=100",
         "/api/v1/mtm/alerts?view=groups&agentId=a1&status=all",
       ])
       const texts = rowTexts()
@@ -609,7 +764,8 @@ describe("the card's pieces on screen", () => {
       exportStatus = 200
       vi.stubGlobal("fetch", vi.fn(async (input: string, init?: RequestInit) => {
         posted.push({ url: String(input), body: JSON.parse(String(init?.body)) })
-        return new Response(new Blob(["xlsx"]), { status: exportStatus })
+        // A plain string: a jsdom Blob is not a body Node 20's Response accepts.
+        return new Response("xlsx", { status: exportStatus })
       }))
       Object.assign(URL, { createObjectURL: () => "blob:test", revokeObjectURL: () => {} })
       downloads = []

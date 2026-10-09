@@ -15110,8 +15110,8 @@
       "ROUTE_COMPLETE": "Marşrutu bitirdi",
       "ROUTE_PUBLISH": "Marşrut dərc edildi",
       "ROUTE_DAY_CLOSE": "Marşrut gün sonunda bağlandı",
-      "ROUTE_REMOVAL_REQUEST": "Nöqtənin marşrutdan çıxarılmasını istəyir",
-      "ROUTE_ADDITION_REQUEST": "Marşruta nöqtə əlavə edilməsini istəyir",
+      "ROUTE_REMOVAL_REQUEST": "Nöqtənin marşrutdan çıxarılmasını istədi",
+      "ROUTE_ADDITION_REQUEST": "Marşruta nöqtə əlavə edilməsini istədi",
       "VISIT_COMPLETE": "Ziyarət tamamlandı",
       "VISIT_ACTION_COMPLETE": "Ziyarət addımı icra edildi",
       "VISIT_RESULT_UPDATE": "Ziyarətin nəticəsi dəyişdirildi",
@@ -16453,7 +16453,7 @@
       "nearestTo": "Bu nöqtəyə ən yaxınlar: {label}",
       "clearPoint": "Sil",
       "rulerTotal": "Xətkeş: {distance}",
-      "rulerArea": "Sahə: {area}",
+      "rulerArea": "Daxili sahə: {area}",
       "rulerStart": "İlk nöqtəni qoymaq üçün xəritəyə basın",
       "rulerHint": "Hər basış bir hissə əlavə edir",
       "rulerUndo": "Sonuncunu sil",
@@ -16497,8 +16497,8 @@
       "noTeam": "Şöbəsiz",
       "export": {
         "button": "Excel",
-        "hint": "Siyahını Excel-ə yüklə: sətirlər və sıra ekrandakı kimi",
-        "failed": "Siyahını yükləmək alınmadı. Yenidən cəhd edin."
+        "hint": "Siyahını Excel-ə ixrac et: sətirlər və sıra ekrandakı kimi",
+        "failed": "Siyahını Excel-ə ixrac etmək alınmadı. Yenidən cəhd edin."
       },
       "historyToday": "Günün tarixçəsi",
       "kmh": "{value} km/saat",
@@ -16884,14 +16884,16 @@
       "title": "İndi haradadır",
       "atClientVisit": "{name} müştərisində, ziyarət gedir",
       "atClientZone": "{name} müştərisinin zonasında",
+      "visitAway": "{name} müştərisində ziyarət bağlanmayıb, özü isə oradan {distance} aralıdadır",
+      "delayedHint": "gecikmiş koordinata görə — vaxtı yuxarıdakı sətirdədir",
       "approximately": "təxminən {place}",
       "loading": "küçə müəyyən edilir…",
       "coordinates": "küçə müəyyən edilmədi · {coordinates}"
     },
     "since": {
-      "VISIT": "Ziyarət {time}-dən gedir",
-      "BREAK": "Fasilə {time}-dən",
-      "SHIFT_CLOSED": "İş günü {time}-də bağlanıb",
+      "VISIT": "Ziyarət gedir, başlayıb: {time}",
+      "BREAK": "Fasilədədir, başlayıb: {time}",
+      "SHIFT_CLOSED": "İş günü bitib: {time}",
       "duration": {
         "moment": "indicə",
         "minutes": "{minutes} dəq",
@@ -16904,6 +16906,7 @@
       "loading": "Hadisələr yüklənir…",
       "empty": "Bu gün hələ hadisə yoxdur",
       "failed": "Hadisələri yeniləmək alınmadı",
+      "cut": "Günün son {count} hadisəsi göstərilir — əvvəlkilər «Günün tarixçəsi» bölməsindədir",
       "more": "Daha {count} göstər",
       "fewer": "Yığ"
     },

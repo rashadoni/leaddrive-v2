@@ -16457,7 +16457,7 @@
       "nearestTo": "Nearest to: {label}",
       "clearPoint": "Remove",
       "rulerTotal": "Ruler: {distance}",
-      "rulerArea": "Area: {area}",
+      "rulerArea": "Area inside: {area}",
       "rulerStart": "Press the map to put the first point",
       "rulerHint": "Every press adds a segment",
       "rulerUndo": "Remove the last one",
@@ -16888,6 +16888,8 @@
       "title": "Where now",
       "atClientVisit": "at client {name}, visit in progress",
       "atClientZone": "inside the zone of client {name}",
+      "visitAway": "the visit at client {name} is still open, and he is {distance} away from it",
+      "delayedHint": "from a delayed coordinate — its time is in the line above",
       "approximately": "approximately {place}",
       "loading": "finding the street…",
       "coordinates": "street not found · {coordinates}"
@@ -16908,6 +16910,7 @@
       "loading": "Loading events…",
       "empty": "No events yet today",
       "failed": "Events could not be refreshed",
+      "cut": "The latest {count} events of the day are shown — see «Today's history» for earlier ones",
       "more": "Show {count} more",
       "fewer": "Show fewer"
     },

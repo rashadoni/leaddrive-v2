@@ -36,6 +36,13 @@ export interface LiveMapPlacePosition {
 export type LiveMapPlace =
   /** `visit` — he checked in there; `zone` — his coordinate is inside the client's circle. */
   | { kind: "client"; basis: "visit" | "zone"; name: string; address: string | null }
+  /**
+   * The visit at this client is still open, and a live coordinate puts him
+   * clearly somewhere else: he left without finishing it. Both are said — the
+   * open visit and how far from it he is — and the street is asked as for
+   * anybody on the road.
+   */
+  | { kind: "away"; name: string; distanceMeters: number; latitude: number; longitude: number }
   /** Not at a client of today's route: the street is to be asked for this coordinate. */
   | { kind: "street"; latitude: number; longitude: number }
   /** No live coordinate, so nothing is said about a place. */
@@ -45,6 +52,17 @@ export type LiveMapPlace =
 export const PLACE_APPROXIMATE_ACCURACY_METERS = 50
 /** The street is asked again only after the employee has moved at least this far. */
 export const PLACE_MIN_MOVE_METERS = 50
+/**
+ * …and however poor the fix, a move of this much always asks again: beyond it
+ * the street on screen is no longer shown, so a question must be on its way.
+ */
+export const PLACE_MAX_MOVE_METERS = 300
+/**
+ * How far outside the client's circle, beyond the fix's own error, a live
+ * coordinate must be before «he is in a visit there» stops being the answer.
+ * Indoors a phone drifts by a building or two; that is still «у клиента».
+ */
+export const PLACE_VISIT_AWAY_MARGIN_METERS = 150
 /** A road farther than this from the fix is not «his street» (a yard, a field, the sea). */
 export const PLACE_MAX_ROAD_DISTANCE_METERS = 75
 
@@ -60,25 +78,40 @@ export function liveMapPlace(input: {
   stops: readonly LiveMapPlaceStop[]
 }): LiveMapPlace {
   const { position, stops } = input
+  const located = position && usable(position.latitude) && usable(position.longitude) ? position : null
   // The open visit is evidence on its own: he pressed «начать визит» there.
+  // It stays the answer without a live coordinate, without a pin to measure
+  // from, and through indoor drift — but not against a coordinate that is
+  // plainly somewhere else.
   if (input.inVisit) {
     const open = stops.find((stop) => stop.inVisit)
-    if (open) return { kind: "client", basis: "visit", name: open.name, address: open.address?.trim() || null }
+    if (open) {
+      const measurable = located && usable(open.latitude) && usable(open.longitude)
+        && usable(open.zoneRadiusMeters) && open.zoneRadiusMeters > 0
+      if (measurable) {
+        const meters = calculateDistance(located.latitude, located.longitude, open.latitude, open.longitude)
+        const reach = (open.zoneRadiusMeters as number) + (usable(located.accuracy) ? Math.max(0, located.accuracy) : 0) + PLACE_VISIT_AWAY_MARGIN_METERS
+        if (meters > reach) {
+          return { kind: "away", name: open.name, distanceMeters: Math.round(meters), latitude: located.latitude, longitude: located.longitude }
+        }
+      }
+      return { kind: "client", basis: "visit", name: open.name, address: open.address?.trim() || null }
+    }
   }
-  if (!position || !usable(position.latitude) || !usable(position.longitude)) return { kind: "unknown" }
+  if (!located) return { kind: "unknown" }
 
   let nearest: { stop: LiveMapPlaceStop; meters: number } | null = null
   for (const stop of stops) {
     if (!usable(stop.latitude) || !usable(stop.longitude)) continue
     if (!usable(stop.zoneRadiusMeters) || stop.zoneRadiusMeters <= 0) continue
-    const meters = calculateDistance(position.latitude, position.longitude, stop.latitude, stop.longitude)
+    const meters = calculateDistance(located.latitude, located.longitude, stop.latitude, stop.longitude)
     if (meters > stop.zoneRadiusMeters) continue
     if (!nearest || meters < nearest.meters) nearest = { stop, meters }
   }
   if (nearest) {
     return { kind: "client", basis: "zone", name: nearest.stop.name, address: nearest.stop.address?.trim() || null }
   }
-  return { kind: "street", latitude: position.latitude, longitude: position.longitude }
+  return { kind: "street", latitude: located.latitude, longitude: located.longitude }
 }
 
 /**
@@ -103,7 +136,7 @@ export function placeMovedFromAnchor(
   position: LiveMapPlacePosition,
 ): boolean {
   if (!anchor) return true
-  const threshold = Math.max(PLACE_MIN_MOVE_METERS, usable(position.accuracy) ? position.accuracy : 0)
+  const threshold = Math.min(PLACE_MAX_MOVE_METERS, Math.max(PLACE_MIN_MOVE_METERS, usable(position.accuracy) ? position.accuracy : 0))
   return calculateDistance(anchor.latitude, anchor.longitude, position.latitude, position.longitude) >= threshold
 }
 

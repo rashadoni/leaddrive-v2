@@ -440,6 +440,20 @@ describe("GET /api/v1/mtm/locations", () => {
       expect([byId.working.workdayPausedAt, byId.working.workdayCompletedAt]).toEqual([null, null])
       const rosterQuery = vi.mocked(prisma.mtmAgent.findMany).mock.calls[0]?.[0] as any
       expect(rosterQuery.select.workdays.select).toMatchObject({ pausedAt: true, completedAt: true })
+
+      // A Routes-only tenant's field session discloses its state, date and
+      // start — the break and the closing time are Workforce facts, and the
+      // card of such a tenant says nothing of the workday anywhere else.
+      vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+        plan: "pro", addons: [], features: ["mtm"], modules: { mtm: true, "workforce-hrm": false },
+      } as never)
+      const routesOnly = await (await GET(makeReq())).json()
+      expect(routesOnly.data.contract.workforceEnabled).toBe(false)
+      expect(routesOnly.data.agentLocations.map((agent: any) => [agent.workdayState, agent.workdayPausedAt, agent.workdayCompletedAt])).toEqual([
+        ["PAUSED", null, null],
+        ["CLOSED", null, null],
+        ["ACTIVE", null, null],
+      ])
     } finally {
       vi.useRealTimers()
     }

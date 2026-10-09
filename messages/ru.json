@@ -15114,8 +15114,8 @@
       "ROUTE_COMPLETE": "Маршрут завершён",
       "ROUTE_PUBLISH": "Маршрут опубликован",
       "ROUTE_DAY_CLOSE": "Маршрут закрыт в конце дня",
-      "ROUTE_REMOVAL_REQUEST": "Просит убрать точку из маршрута",
-      "ROUTE_ADDITION_REQUEST": "Просит добавить точку в маршрут",
+      "ROUTE_REMOVAL_REQUEST": "Попросил убрать точку из маршрута",
+      "ROUTE_ADDITION_REQUEST": "Попросил добавить точку в маршрут",
       "VISIT_COMPLETE": "Визит завершён",
       "VISIT_ACTION_COMPLETE": "Шаг визита выполнен",
       "VISIT_RESULT_UPDATE": "Итог визита изменён",
@@ -16457,7 +16457,7 @@
       "nearestTo": "Ближайшие к: {label}",
       "clearPoint": "Убрать",
       "rulerTotal": "Линейка: {distance}",
-      "rulerArea": "Площадь: {area}",
+      "rulerArea": "Площадь внутри: {area}",
       "rulerStart": "Нажмите на карту, чтобы поставить первую точку",
       "rulerHint": "Каждое нажатие добавляет отрезок",
       "rulerUndo": "Убрать последнюю",
@@ -16888,6 +16888,8 @@
       "title": "Где сейчас",
       "atClientVisit": "у клиента {name}, идёт визит",
       "atClientZone": "в зоне клиента {name}",
+      "visitAway": "визит у клиента {name} не закрыт, а сам в {distance} оттуда",
+      "delayedHint": "по координате с задержкой — время в строке выше",
       "approximately": "примерно {place}",
       "loading": "определяю улицу…",
       "coordinates": "улица не определена · {coordinates}"
@@ -16895,7 +16897,7 @@
     "since": {
       "VISIT": "Визит идёт с {time}",
       "BREAK": "Перерыв с {time}",
-      "SHIFT_CLOSED": "Рабочий день закрыт в {time}",
+      "SHIFT_CLOSED": "Рабочий день завершён в {time}",
       "duration": {
         "moment": "только что",
         "minutes": "{minutes} мин",
@@ -16908,6 +16910,7 @@
       "loading": "Загружаю события…",
       "empty": "Сегодня событий пока нет",
       "failed": "Не удалось обновить события",
+      "cut": "Показаны последние {count} событий дня — более ранние смотрите в «Истории за день»",
       "more": "Показать ещё {count}",
       "fewer": "Свернуть"
     },

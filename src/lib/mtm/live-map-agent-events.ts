@@ -88,16 +88,16 @@ function instant(value: unknown): number | null {
  * journal when the phone syncs, and carries the moment the employee pressed
  * the button inside the row: 09:00, not the 11:30 the server heard of it.
  */
-function actionTime(row: LiveMapActivityRow): string | null {
+function actionTime(row: LiveMapActivityRow): { at: string; claimed: boolean } | null {
   if (row.action.startsWith("WORKDAY_")) {
     const data = row.newData && typeof row.newData === "object" && !Array.isArray(row.newData)
       ? row.newData as Record<string, unknown>
       : null
     const claimed = instant(data?.claimedAt)
-    if (claimed !== null) return new Date(claimed).toISOString()
+    if (claimed !== null) return { at: new Date(claimed).toISOString(), claimed: true }
   }
   const created = instant(row.createdAt)
-  return created === null ? null : new Date(created).toISOString()
+  return created === null ? null : { at: new Date(created).toISOString(), claimed: false }
 }
 
 export function liveMapAgentEvents(input: {
@@ -110,6 +110,12 @@ export function liveMapAgentEvents(input: {
    * and the card must not say «на смене» above a day with no beginning.
    */
   workdayStartedAt?: string | null
+  /**
+   * Was this moment on an earlier day than today, in the organization's time
+   * zone? A shift event pressed yesterday without a network reaches the
+   * journal today; under «события сегодня» its «22:14» would read as tonight.
+   */
+  isEarlierDay?: (iso: string) => boolean
 }): LiveMapAgentEvent[] {
   const events: LiveMapAgentEvent[] = []
   let hasShiftStart = false
@@ -118,13 +124,15 @@ export function liveMapAgentEvents(input: {
     // The journal answers for the employee asked about; a stray row is not his event.
     if (row.agentId != null && row.agentId !== input.agentId) continue
     if (!OWN_ACTIONS.has(row.action)) continue
-    const at = actionTime(row)
-    if (!at) continue
+    const time = actionTime(row)
+    if (!time) continue
+    // Yesterday's press, heard of today: not an event of today (and not today's shift start).
+    if (time.claimed && input.isEarlierDay?.(time.at)) continue
     if (row.action === "WORKDAY_START") hasShiftStart = true
     events.push({
       kind: "action",
       id: `action-${row.id}`,
-      at,
+      at: time.at,
       action: row.action,
       customerName: row.subject?.customerName?.trim() || null,
       visitId: row.subject?.visitId ?? null,
@@ -174,11 +182,16 @@ export function liveMapAgentEventHref(event: LiveMapAgentEvent): string | null {
   return null
 }
 
+/** While a card is open its events are read again at least this often. */
+export const LIVE_MAP_AGENT_EVENTS_REFRESH_MS = 2 * 60_000
+
 /**
- * The facts of a roster row that change when the employee does something. The
- * card asks for his events again when this changes — not on every refresh of
- * the map: the journal read is the heavier request, and nothing new is in it
- * while he is driving.
+ * When the card asks for the employee's events again: at once when his row
+ * says he did something (a visit, the shift, a stop counted), and otherwise
+ * every couple of minutes — an alert about him is raised exactly while his
+ * row stands still (he keeps driving off the route, the visit stays open),
+ * and a request to change the route moves nothing on the row at all. Not on
+ * every refresh of the map: two reads a minute would be asked for nothing.
  */
 export function liveMapAgentEventsRefreshKey(agent: {
   fieldStatus: string
@@ -186,6 +199,7 @@ export function liveMapAgentEventsRefreshKey(agent: {
   openVisitSince?: string | null
   routeVisited?: number
   routeTotal?: number
-}): string {
-  return [agent.fieldStatus, agent.workdayState, agent.openVisitSince ?? "", agent.routeVisited ?? 0, agent.routeTotal ?? 0].join("|")
+}, nowMs: number): string {
+  const turn = Number.isFinite(nowMs) ? Math.floor(nowMs / LIVE_MAP_AGENT_EVENTS_REFRESH_MS) : 0
+  return [agent.fieldStatus, agent.workdayState, agent.openVisitSince ?? "", agent.routeVisited ?? 0, agent.routeTotal ?? 0, turn].join("|")
 }

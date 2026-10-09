@@ -78,6 +78,7 @@ vi.mock("@/lib/mtm/route-cache", () => ({
 
 import MtmMapPage from "@/app/(dashboard)/mtm/map/page"
 import { ROSTER_VIEW_STORAGE_KEY } from "@/lib/mtm/live-map-roster"
+import { resetLiveMapPlaceCacheForTests } from "@/components/mtm/live-map-agent-place"
 
 const METERS_PER_DEGREE = (Math.PI * 6_371_000) / 180
 const CENTRE = { latitude: 40.4093, longitude: 49.8671 }
@@ -89,6 +90,12 @@ let requests: string[]
 /** What the journal and the road server answer for the selected employee's card. */
 let activityLogs: Array<Record<string, unknown>>
 let street: string | null
+/** Today's routes of whoever is asked about. */
+let routes: Array<Record<string, unknown>>
+/** A tenant with Route & Field only says nothing of the workday. */
+let workforceEnabled: boolean
+/** How long the day's route takes to come back, as over a real network. */
+let routeDelayMs: number
 
 function answer(now: number) {
   const iso = (minutesAgo: number) => new Date(now - minutesAgo * 60_000).toISOString()
@@ -99,7 +106,7 @@ function answer(now: number) {
         agentId: row.agentId, name: row.name, isOnline: true, lastSeenAt: iso(0), teamId: null, teamName: null,
         fieldStatus: row.fieldStatus, freshness: row.meters == null ? "NO_LOCATION" : "ONLINE",
         workdayState: row.workdayState ?? "ACTIVE", workdayDate: "2026-10-09", workdayStartedAt: iso(120), workdayCarryover: false,
-        workdayPausedAt: row.workdayState === "PAUSED" ? iso(35) : null, workdayCompletedAt: null,
+        workdayPausedAt: workforceEnabled && row.workdayState === "PAUSED" ? iso(35) : null, workdayCompletedAt: null,
         locationState: row.meters == null ? "NO_LOCATION_REPORTED" : "AVAILABLE",
         routeCompletion: 0, routeVisited: 0, routeTotal: 0, openVisitSince: null,
         ...(row.meters == null ? {} : { ...northOf(row.meters), accuracy: 10, speed: 20, battery: row.battery ?? 70, recordedAt: iso(row.minutesAgo) }),
@@ -108,7 +115,7 @@ function answer(now: number) {
       teams: [],
       contract: {
         scope: "ORGANIZATION", today: "2026-10-09", timezone: "Asia/Baku", maxRosterSize: 500, returnedAgents: rosterRows.length,
-        rosterTruncated: false, markerCount: rosterRows.filter((row) => row.meters != null).length, workforceEnabled: true,
+        rosterTruncated: false, markerCount: rosterRows.filter((row) => row.meters != null).length, workforceEnabled,
         generatedAt: new Date(now).toISOString(), polling: { minimumIntervalSeconds: 15 },
         freshnessThresholds: { onlineSeconds: 300, delayedSeconds: 600 }, maxAccuracyMeters: 100, geofenceRadiusMeters: 150,
       },
@@ -152,10 +159,15 @@ describe("the live map page, end to end", () => {
     ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
     vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} })
     window.localStorage.clear()
+    // The streets the tab remembers are the tab's: every case starts with none.
+    resetLiveMapPlaceCacheForTests()
     hoisted.map.props = null
     requests = []
     activityLogs = []
     street = "Nizami küçəsi"
+    routes = []
+    workforceEnabled = true
+    routeDelayMs = 0
     rosterRows = [
       { agentId: "far", name: "Fərid", fieldStatus: "ON_ROAD", meters: 7_400, minutesAgo: 1 },
       { agentId: "near", name: "Nigar", fieldStatus: "STOPPED", meters: 450, minutesAgo: 1, battery: 12 },
@@ -166,7 +178,10 @@ describe("the live map page, end to end", () => {
       const url = new URL(String(input), "http://localhost")
       requests.push(url.pathname + url.search)
       if (url.pathname === "/api/v1/mtm/locations") return Response.json(answer(Date.now()))
-      if (url.pathname === "/api/v1/mtm/routes") return Response.json({ success: true, data: { routes: [] } })
+      if (url.pathname === "/api/v1/mtm/routes") {
+        if (routeDelayMs > 0) await new Promise((resolve) => setTimeout(resolve, routeDelayMs))
+        return Response.json({ success: true, data: { routes } })
+      }
       if (url.pathname === "/api/v1/mtm/activity") return Response.json({ success: true, data: { logs: activityLogs } })
       if (url.pathname === "/api/v1/mtm/alerts") return Response.json({ success: true, data: { groups: [] } })
       if (url.pathname === "/api/v1/mtm/geocode/street") return Response.json({ success: true, data: { available: true, street, distanceMeters: 9 } })
@@ -439,16 +454,24 @@ describe("the live map page, end to end", () => {
     ]
     await open()
     await press(byTestId("live-map-agent-card-near"))
-    // The street is asked once the position has rested (the picker's rhythm).
-    await settle(700)
+    // The street is asked once the position has rested (the picker's rhythm);
+    // then for as long as the answers are on their way — a loaded runner is slow.
+    await settle(800)
+    for (let turn = 0; turn < 150; turn += 1) {
+      const waiting = byTestId("live-map-agent-place-text")?.textContent === "определяю улицу…"
+        || document.querySelectorAll('[data-testid="live-map-agent-event"]').length === 0
+      if (!waiting) break
+      await settle(20)
+    }
     const detail = byTestId("live-map-agent-detail")!
     expect(detail.querySelector('[data-testid="live-map-agent-place-text"]')?.textContent).toBe("Nizami küçəsi")
-    expect(detail.querySelector('[data-testid="live-map-since-BREAK"]')?.textContent).toMatch(/^Перерыв с \d{2}:\d{2} · 35 мин$/)
+    // (Run in the first half-hour after the organization's midnight, the break began «вчера» and carries its date.)
+    expect(detail.querySelector('[data-testid="live-map-since-BREAK"]')?.textContent).toMatch(/^Перерыв с .*\d{2}:\d{2} · 35 мин$/)
     const events = [...detail.querySelectorAll('[data-testid="live-map-agent-event"]')].map((row) => row.textContent?.replace(/^\d{2}:\d{2}/, ""))
     expect(events).toEqual(["Перерыв", "Завершил визит · Аптека на углу", "Рабочий день начат"])
     // Asked for him, for today — his own journal, not the team's feed under the map.
     const card = requests.filter((request) => !request.startsWith("/api/v1/mtm/locations") && !request.startsWith("/api/v1/mtm/routes"))
-    expect(card.filter((request) => request.startsWith("/api/v1/mtm/activity"))).toEqual(["/api/v1/mtm/activity?agentId=near&period=today&limit=50"])
+    expect(card.filter((request) => request.startsWith("/api/v1/mtm/activity"))).toEqual(["/api/v1/mtm/activity?agentId=near&period=today&type=FIELD_DAY&limit=100"])
     expect(card.filter((request) => request.startsWith("/api/v1/mtm/alerts"))).toEqual(["/api/v1/mtm/alerts?view=groups&agentId=near&status=all"])
     expect(card.filter((request) => request.startsWith("/api/v1/mtm/geocode/street"))).toHaveLength(1)
     // The list above it can be taken away as a file.
@@ -476,7 +499,102 @@ describe("the live map page, end to end", () => {
     expect(byTestId("live-map-ruler-area")).toBeNull()
     await pressMap(40.409, 49.8118)
     // About a kilometre by a kilometre, halved: a triangle of some fifty hectares.
-    expect(byTestId("live-map-ruler-area")?.textContent).toMatch(/^Площадь: \d{2},\d га$/)
+    expect(byTestId("live-map-ruler-area")?.textContent).toMatch(/^Площадь внутри: \d{2},\d га$/)
+    // A fourth point that takes the line back across itself: a figure of eight has no one area.
+    await pressMap(40.4, 49.806)
+    await pressMap(40.412, 49.806)
+    expect(mapProp<unknown[]>("rulerPoints")).toHaveLength(5)
+    expect(byTestId("live-map-ruler-area")).toBeNull()
+    expect(byTestId("live-map-ruler-total")).not.toBeNull()
+  })
+
+  it("a tenant without the Workforce module is told nothing of a break in the card, as nowhere else on the page", async () => {
+    workforceEnabled = false
+    rosterRows[1] = { agentId: "near", name: "Nigar", fieldStatus: "STOPPED", meters: 450, minutesAgo: 1, workdayState: "PAUSED" }
+    await open()
+    await press(byTestId("live-map-agent-card-near"))
+    await settle(700)
+    expect(byTestId("live-map-agent-detail")).not.toBeNull()
+    expect(byTestId("live-map-since-BREAK")).toBeNull()
+    // The journal gave no shift rows and the row's shift start is not offered either.
+    expect([...document.querySelectorAll('[data-testid="live-map-agent-event"]')]).toHaveLength(0)
+  })
+
+  describe("while the map refreshes itself", () => {
+    // Half a minute between refreshes: the clock is driven by hand, a second at
+    // a time (React applies what a timer set when the `act` it fired in ends).
+    const forward = async (ms: number, step = 1_000) => {
+      for (let passed = 0; passed < ms; passed += step) {
+        await act(async () => { await vi.advanceTimersByTimeAsync(Math.min(step, ms - passed)) })
+      }
+    }
+    const count = (prefix: string) => requests.filter((request) => request.startsWith(prefix)).length
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date", "performance"] })
+      // Ten seconds into a two-minute turn of the events' own clock.
+      vi.setSystemTime(new Date("2026-10-09T10:00:10.000Z"))
+      // «Nigar» stands 450 m north of the centre — inside the circle of the first stop of her route.
+      routes = [{
+        id: "route-1", status: "IN_PROGRESS", date: "2026-10-09",
+        points: [
+          { id: "p1", orderIndex: 0, status: "PENDING", plannedTime: null, visitedAt: null, visits: [],
+            customer: { id: "c1", name: "Аптека на углу", address: "ул. Низами, 10", ...northOf(430), geofenceRadius: 150 } },
+          { id: "p2", orderIndex: 1, status: "PENDING", plannedTime: null, visitedAt: null, visits: [],
+            customer: { id: "c2", name: "Клиника", address: null, ...northOf(5_000), geofenceRadius: null } },
+        ],
+      }]
+    })
+    afterEach(() => { vi.useRealTimers() })
+
+    it("the card stays as it is — the same place, never «определяю улицу…» — and asks nobody again", async () => {
+      await act(async () => { root.render(createElement(MtmMapPage)) })
+      await forward(1_000)
+      await act(async () => { byTestId("live-map-agent-card-near")!.click() })
+      await forward(2_000)
+      const placeText = () => byTestId("live-map-agent-place-text")?.textContent ?? "<нет строки>"
+      expect(placeText()).toBe("в зоне клиента Аптека на углу")
+      expect(byTestId("mtm-map-selected-route")?.textContent).toContain("Аптека на углу")
+      // At a client of today's route: no street is asked of anyone.
+      expect(count("/api/v1/mtm/geocode/street")).toBe(0)
+      expect([count("/api/v1/mtm/activity"), count("/api/v1/mtm/alerts")]).toEqual([1, 1])
+
+      // Everything the line and the day's steps say while two refreshes go by.
+      const said = new Set<string>([placeText()])
+      const steps = new Set<boolean>()
+      const observer = new MutationObserver(() => {
+        said.add(placeText())
+        steps.add(Boolean(byTestId("mtm-map-selected-route")?.textContent?.includes("Аптека на углу")))
+      })
+      observer.observe(container, { subtree: true, childList: true, characterData: true })
+      const polls = count("/api/v1/mtm/locations")
+      // The route takes half a second to come back, and the screen is looked at
+      // ten times a second: what it shows while the answer is on its way counts.
+      routeDelayMs = 500
+      await forward(65_000, 100)
+      observer.disconnect()
+      expect(count("/api/v1/mtm/locations")).toBeGreaterThanOrEqual(polls + 2)
+      expect([...said]).toEqual(["в зоне клиента Аптека на углу"])
+      expect([...steps]).not.toContain(false)
+      expect(count("/api/v1/mtm/geocode/street")).toBe(0)
+      // The map refreshed twice and nothing about her changed: her events were not asked for again…
+      expect([count("/api/v1/mtm/activity"), count("/api/v1/mtm/alerts")]).toEqual([1, 1])
+      // …until the events' own clock turns: an alert about her is raised exactly while her row stands still.
+      await forward(60_000)
+      expect([count("/api/v1/mtm/activity"), count("/api/v1/mtm/alerts")]).toEqual([2, 2])
+    })
+
+    it("on the road the street is asked once, however many times the map refreshes", async () => {
+      routes = []
+      await act(async () => { root.render(createElement(MtmMapPage)) })
+      await forward(1_000)
+      await act(async () => { byTestId("live-map-agent-card-near")!.click() })
+      await forward(2_000)
+      expect(byTestId("live-map-agent-place-text")?.textContent).toBe("Nizami küçəsi")
+      await forward(95_000)
+      expect(count("/api/v1/mtm/locations")).toBeGreaterThanOrEqual(3)
+      expect(count("/api/v1/mtm/geocode/street")).toBe(1)
+      expect(byTestId("live-map-agent-place-text")?.textContent).toBe("Nizami küçəsi")
+    })
   })
 
 })

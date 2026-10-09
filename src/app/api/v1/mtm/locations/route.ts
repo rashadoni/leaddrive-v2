@@ -370,8 +370,10 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
         workdayStartedAt: fieldSessionEnabled ? effectiveWorkday?.startedAt ?? null : null,
         // When the break began and when the shift was closed: the card says
         // «перерыв с 13:05», not only that the map went quiet (src/lib/mtm/live-map-state-since.ts).
-        workdayPausedAt: fieldSessionEnabled && effectiveWorkday?.status === "PAUSED" ? effectiveWorkday.pausedAt ?? null : null,
-        workdayCompletedAt: fieldSessionEnabled && effectiveWorkday?.status === "COMPLETED" ? effectiveWorkday.completedAt ?? null : null,
+        // Workforce facts: a Routes-only tenant's field session discloses its
+        // state, date and start, and nothing more of the workday.
+        workdayPausedAt: workforceEnabled && effectiveWorkday?.status === "PAUSED" ? effectiveWorkday.pausedAt ?? null : null,
+        workdayCompletedAt: workforceEnabled && effectiveWorkday?.status === "COMPLETED" ? effectiveWorkday.completedAt ?? null : null,
         workdayCarryover,
         locationState: explainMissingLocation({ hasLocation: Boolean(loc), lastSeenAt: a.lastSeenAt }),
         routeCompletion: dayRoutes?.completion ?? 0,
