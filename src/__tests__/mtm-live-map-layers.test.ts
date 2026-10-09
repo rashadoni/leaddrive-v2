@@ -31,6 +31,7 @@ describe("the layers control on the map", () => {
   let container: HTMLDivElement
   let state: Record<string, boolean>
   let hidden: number
+  let baseMaps: { value: string; options: Array<{ id: string; label: string }>; onChange: (id: string) => void } | null
   const layers = (): LiveMapLayer[] => [
     { id: "agents", label: "Сотрудники", hint: "метки с последним положением", on: state.agents, onToggle: () => { state.agents = !state.agents }, shownByDefault: true },
     { id: "route", label: "Маршрут дня", on: state.route, onToggle: () => { state.route = !state.route }, shownByDefault: true },
@@ -40,6 +41,7 @@ describe("the layers control on the map", () => {
     await act(async () => {
       root.render(createElement(LiveMapLayersControl, {
         layers: layers(), hiddenAgentCount: hidden, onShowAllAgents: () => { hidden = 0 }, note: "Полный трек — в «Истории».",
+        baseMaps,
       }))
     })
   }
@@ -52,6 +54,7 @@ describe("the layers control on the map", () => {
     ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
     state = { agents: true, route: true, heat: false }
     hidden = 0
+    baseMaps = null
     container = document.createElement("div")
     document.body.appendChild(container)
     root = createRoot(container)
@@ -92,6 +95,38 @@ describe("the layers control on the map", () => {
     expect(layerSwitch("live-map-layer-agents").getAttribute("aria-checked")).toBe("false")
     await press(layerSwitch("mtm-map-heatmap-toggle"))
     expect(state.heat).toBe(true)
+  })
+
+  it("offers the map's backgrounds as worded choices of which exactly one is on — and only when there is a choice", async () => {
+    await draw()
+    await press(opener())
+    // A page that offers none: nothing is drawn about backgrounds.
+    expect(container.querySelector('[data-testid="live-map-base-maps"]')).toBeNull()
+
+    const chosen: string[] = []
+    const offer = (value: string) => ({
+      value,
+      options: [{ id: "voyager", label: "Карта" }, { id: "light", label: "Светлая" }, { id: "dark", label: "Тёмная" }],
+      onChange: (id: string) => { chosen.push(id); baseMaps = offer(id) },
+    })
+    baseMaps = offer("voyager")
+    await draw()
+    const choices = () => [...container.querySelectorAll('[data-testid="live-map-base-maps"] [role="radio"]')] as HTMLButtonElement[]
+    expect(container.querySelector('[data-testid="live-map-base-maps"] [role="radiogroup"]')?.getAttribute("aria-labelledby")).toBe("live-map-base-maps-title")
+    expect(container.querySelector("#live-map-base-maps-title")?.textContent).toBe("Вид карты")
+    expect(choices().map((choice) => [choice.textContent, choice.getAttribute("aria-checked")])).toEqual([["Карта", "true"], ["Светлая", "false"], ["Тёмная", "false"]])
+    await press(container.querySelector('[data-testid="live-map-base-map-dark"]'))
+    expect(chosen).toEqual(["dark"])
+    expect(choices().map((choice) => choice.getAttribute("aria-checked"))).toEqual(["false", "false", "true"])
+    // A background is not a layer taken off the map: the closed button shows no «something is hidden» mark for it.
+    await press(opener())
+    expect(container.querySelector('[data-testid="live-map-layers-mark"]')).toBeNull()
+
+    // One background only (a build without the others): no choice to draw.
+    baseMaps = { value: "voyager", options: [{ id: "voyager", label: "Карта" }], onChange: () => {} }
+    await draw()
+    await press(opener())
+    expect(container.querySelector('[data-testid="live-map-base-maps"]')).toBeNull()
   })
 
   it("says, while closed, that something has been taken off the map", async () => {

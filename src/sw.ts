@@ -27,9 +27,10 @@ const serwist = new Serwist({
   runtimeCaching: [
     // Map tiles — always fetch from network, never cache via SW. CARTO's
     // raster tiles are the only CARTO resource the app requests
-    // (src/components/mtm/carto-basemap.tsx).
+    // (src/components/mtm/carto-basemap.tsx): Voyager on every map, and the
+    // live map's light and dark backgrounds.
     {
-      matcher: /^https:\/\/(?:(?:[a-z0-9-]+\.)?basemaps\.cartocdn\.com\/rastertiles\/|.*\.tile\.openstreetmap\.org\/.*\.png(?:\?.*)?$)/i,
+      matcher: /^https:\/\/(?:(?:[a-z0-9-]+\.)?basemaps\.cartocdn\.com\/(?:rastertiles|light_all|dark_all)\/|.*\.tile\.openstreetmap\.org\/.*\.png(?:\?.*)?$)/i,
       handler: new NetworkOnly(),
     },
     // Anything whose response depends on auth/tenant state — ALWAYS from the

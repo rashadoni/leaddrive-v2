@@ -28,8 +28,13 @@ export interface LiveMapLayer {
  * be taken off at all, and a single employee could not be hidden. The control
  * is closed until asked for, so the map itself stays clear.
  */
-export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents, note, alert = null }: {
+export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents, note, alert = null, baseMaps = null }: {
   layers: LiveMapLayer[]
+  /**
+   * The map's background, when there is more than one to choose from. Not a
+   * layer: exactly one is always on, and choosing one hides nothing.
+   */
+  baseMaps?: { value: string; options: Array<{ id: string; label: string }>; onChange: (id: string) => void } | null
   /** Employees taken off the map one by one with the eye on their card. */
   hiddenAgentCount: number
   onShowAllAgents: () => void
@@ -74,6 +79,32 @@ export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents
       ) : null}
       {open ? (
         <div id="live-map-layers-panel" className="pointer-events-auto min-h-0 w-72 max-w-[calc(100vw-3rem)] overflow-y-auto rounded-lg border border-zinc-300 bg-card p-2 shadow-lg dark:border-zinc-600">
+          {baseMaps && baseMaps.options.length > 1 ? (
+            <div className="mb-1 border-b border-zinc-200 px-1 pb-2 dark:border-zinc-700" data-testid="live-map-base-maps">
+              <div id="live-map-base-maps-title" className="text-xs font-semibold uppercase text-muted-foreground">{tMap("layers.base")}</div>
+              <div role="radiogroup" aria-labelledby="live-map-base-maps-title" className="mt-1 flex flex-wrap gap-1.5">
+                {baseMaps.options.map((option) => {
+                  const chosen = option.id === baseMaps.value
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={chosen}
+                      onClick={() => baseMaps.onChange(option.id)}
+                      data-testid={`live-map-base-map-${option.id}`}
+                      className={cn(
+                        "inline-flex min-h-9 items-center rounded-full border px-3 text-xs font-medium transition-colors [@media(pointer:coarse)]:min-h-11",
+                        chosen ? "border-primary bg-primary/10 font-semibold" : "border-zinc-300 hover:bg-muted dark:border-zinc-600",
+                      )}
+                    >
+                      {option.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ) : null}
           <ul className="divide-y divide-zinc-200 dark:divide-zinc-700">
             {layers.map((layer) => (
               <li key={layer.id} className="flex items-center gap-3 px-1 py-1.5">
