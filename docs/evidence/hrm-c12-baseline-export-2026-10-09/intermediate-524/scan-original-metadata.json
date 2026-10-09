@@ -1,0 +1,14 @@
+{
+  "originalSourceSha": "524313c1995336db77f64c8d50078c6433a7d97f",
+  "runId": 37895996404,
+  "jobId": 113707357147,
+  "conclusion": "failure",
+  "findings": 18,
+  "cause": "SYNTHETIC_ROW_MD5_FIELDS_MISLABELLED_API",
+  "rawOriginalLogBytes": 92879,
+  "rawOriginalLogSha256": "a1fb9659967e49e23dbb76bd2f5c87ffb23fd099e7c6217f77dee1340addfdc4",
+  "rawLogPublished": false,
+  "configOrBaselineChanged": false,
+  "historyRewritten": false,
+  "originalCheckpointAndDraftRetained": true
+}

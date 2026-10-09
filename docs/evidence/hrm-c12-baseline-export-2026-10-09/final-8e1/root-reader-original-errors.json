@@ -1,0 +1,11 @@
+{
+  "sourceSha": "8e1c7e10013eb6d4e5ed273775b3f6d896841065",
+  "status": "INSPECTION_READER_ERROR_RETAINED",
+  "firstError": "ASSERTION_EXPECTED_COMMIT_PREFIX_UNSUPPORTED_BY_CHECKOUT_LOG",
+  "secondError": "MISSING_SUMMARY_AFTER_PRIOR_READER_ABORT",
+  "actualStaticJobConclusions": "SUCCESS",
+  "actualLogBytes": 227026,
+  "actualLogSha256": "aed37ecaf40365e5281ce9ac8f0cd634dcb23b0377289b385743e3dbd2098bc6",
+  "correction": "Require exact standalone checkout SHA line and immutable Git whole-tree identity; no gate relaxed",
+  "productOrCIFailure": false
+}

@@ -1,0 +1,73 @@
+{
+  "sourceSha": "8e1c7e10013eb6d4e5ed273775b3f6d896841065",
+  "phase": "SOURCE_AND_HOSTED_PASS_MANDATORY_PENDING",
+  "files": [
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/accounting-and-scope.json",
+      "bytes": 514,
+      "sha256": "169cbb3915cc66f164437bf79d8b088f2ff3dd6da9df9e7f7b875ded74fb4d24"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/baseline-export-metadata.json",
+      "bytes": 2920,
+      "sha256": "a6bbe0dd24156babe03da7d8e1ef42434645a690a0cde14199636bf1cb959d51"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/baseline-export-receipt-original.json.gz",
+      "bytes": 1175,
+      "sha256": "289936278855d01f07a09ffe27cfbda7ec07770491a837541c4982150e12e004"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/baseline-export-receipt-original.zip",
+      "bytes": 1329,
+      "sha256": "609ff7698f96cd0636a4b2c4947c41c390fdd78ee1043caa550c0b11f24c0a7a"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/independent-hosted-review-524313-original.json.gz",
+      "bytes": 2600,
+      "sha256": "1af706251af48d5ac52b1f557301734e324bee2a82b35f22fb2be27111072e6d"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/independent-hosted-review-8e1c7e-original.json.gz",
+      "bytes": 2608,
+      "sha256": "7d81736e2bf4733e6c72f25d577676f115a7e7d21f4c4a932d90c3d4cacbabec"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/independent-source-review-2cb343-original.json.gz",
+      "bytes": 2974,
+      "sha256": "866d17cd5e08b66e94804b5eb5cba83d1de10ea21bbb4cf3fe88b40edca401fe"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/independent-source-review-524313-original.json.gz",
+      "bytes": 2766,
+      "sha256": "507c4b799d710fcac5fda3320898d79390fc4856122c3ae48aff22a919f5beed"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/independent-source-review-8e1c7e-original.json.gz",
+      "bytes": 3084,
+      "sha256": "0d078d0b8144d4d08afe323f15ee0602468024a574a67fb5153c7bb5e71ba740"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/reconciliation-schema-metadata.json",
+      "bytes": 2944,
+      "sha256": "39778aedb8e80ae40a7f6205ab676c7a5b8e02f61ff4608ca029ed8b4854d746"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/reconciliation-schema-receipt-original.json.gz",
+      "bytes": 1466,
+      "sha256": "e9f3f9634f3f05f651624838a5e310d12d64712edff338119d3196d8e81e9dac"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/reconciliation-schema-receipt-original.zip",
+      "bytes": 1609,
+      "sha256": "129d9fac916a0c7be22963e47e2abe0a5c90312d24ebecde1e328a59c63d3581"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/root-source-preservation.json",
+      "bytes": 3432,
+      "sha256": "02b2dfc4a16efca6d83603816a52e76e342b7e8444d99abacbae5922dcf2c581"
+    }
+  ],
+  "rawSensitivePayloadsPublished": false,
+  "productionObserved": false
+}

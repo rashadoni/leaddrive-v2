@@ -216,3 +216,152 @@ main is necessary before unchanged mandatory CI so its checked merge tree
 equals the final source.647 remains DRAFT while integrating; no old source
 result borrowed, no force/history rewrite, no gate or baseline weakening.
 Next: freeze integrated head, fresh exact runtime/source review and full gates.
+
+
+## 2026-10-09 — integrated exact source frozen; full mandatory CI started
+
+Final source647 is8e1c7e10013eb6d4e5ed273775b3f6d896841065, parents2cb/e6.
+All five exporter source bindings remain byte-identical to reviewed2cb; latest
+CI/AGENTS/draft resolver/baselines/config equal accepted main e6. The bounded
+pinned scanner's exact e6..8e1 range PASS/0findings. Publication remained draft
+during integration. The evidence branch fast-forwarded normally to8e1; no
+source edits will follow frozen verification.
+
+647 was marked ready only after source completion to run the existing mandatory
+static-checks/typecheck at this exact head. No production-build label applies
+to this catalog/Node-only slice. No merge is requested or executed; restore
+draft once all five real SUCCESS results and independent acceptance are retained.
+Original final-head draft run37897379637 skipped heavy jobs and is NOT full
+gate acceptance. Exact8e exporter37897379633 PASS; schema37897379635, source
+review and whole new ready_for_review gates remain pending here.
+Next: final exact artifacts/merge-tree and real static/compiler gates, independent
+review, docs-only dependent evidence draft and final continuity report.
+
+Final8e1 original artifacts retained and root-verified: exporter37897379633/
+113711717300/artifact11600494428, digest609ff7698f96cd0636a4b2c4947c41c390fdd78ee1043caa550c0b11f24c0a7a,
+11actualPG+9oldNode+1parent=21PASS/0FAIL/0SKIP; schema37897379635/
+113711716987/artifact11601360596, digest129d9fac916a0c7be22963e47e2abe0a5c90312d24ebecde1e328a59c63d3581,
+37actualPG+4Node+1parent=42PASS. BothZIP CRC/member/JSON-gzip byte equality,
+all10source bindings, unchanged fingerprints and all3owned cleanupcommands
+verified. No broad residue/production/historical/density credit.
+
+Independent8e1 source review zeroopenP0–P3. Actual tested merge75ba8c4f86c9a9d2a489fd9d5dac41a07fc0d1fb
+parents[e6,8e1], whole tree3eb1c00b2acae92f152f89221084e24895243b47 equals finalsource.
+Rootsrc/prisma/messages/clients whole trees equalcurrentbasee6;11protected
+files/baselines/gates/config/helper9unit unchanged. Accepted973/c123/f308/
+10049/632/4ef/e6 ancestors verified. Accounting latestcanonical161/85/76,
+statuscounts includeBLOCKED3 andPARTIAL OWNERATTESTATION1; no closure.
+Current ready full static/typecheck stillrunning; mandatoryGREEN not claimed.
+
+All original524 corrected-run results are now copied into durable evidence:
+originalZIP+JSON-gzip byte equality/CRC and finite metadata for both workflows,
+plus scanner refusal metadata. The old source worktree remains untouched,
+including its own untracked copies; no evidence is removed or rewritten.
+
+
+## 2026-10-09 — independent exact source and hosted acceptance checkpoint
+
+Independent8e1 source and actual hosted packet review have no openP0–P3.
+Original reports retained compressed with hashes: source SHA256
+2699e761bb93e22d43e665af37c92e2668192fd218a54e594b778722d3ecee5f, hosted SHA256
+b4f963aece187de8fcccc79655730890307a292778363b24c7502f4e1e7b425c.
+Peer independently fetched current6 run/job/artifact endpoints, complete both
+logs, original11/37cases, all10 source bindings, expectedservice, ordinaryprivate
+output/nooverwrite/canary, freshadmission, ownedcleanup and equalwholemerge tree.
+No synthetic proof is credited to actualbaseline/production/restore/density.
+
+Evidence publication is a docs-only checkpoint while ready-source full static
+and typecheck gates remain PENDING. Source647 stays frozen8e1. No merge/deploy
+or furthercodepush. Next: complete actual fivechecks and independent final
+gate acceptance, append results and restore sourceDRAFT;C12PARTIAL/85unchanged.
+
+Docs-only checkpoint2fac8287ec529d7b3b0d7a8570de96c54f79005d published as
+dependent draft PR648 https://github.com/rashadoni/leaddrive-v2/pull/648, base
+codex/hrm-c12-baseline-export-final-20261009. App attachment confirmed. Its
+verified pinned commit-range scan PASS/0findings. Source647 remains exact8e1,
+ready only for final CI, with body corrected to actual8e1/e6 and current scoped
+PG/peerPASS. Full static/type gates stillPENDING, no merge/deploy. Final
+post-gate journal/receipts will append to648 without changing frozen source.
+
+Initial root static reader expected an unsupported "Commit: SHA" prefix and
+aborted; follow-up summaryread naturally FileNotFound. Both inspection errors
+are retained separately from actual CI. Corrected reader requires exact standalone
+checkoutSHA fromgitlog and the immutablewhole tree, without relaxing the guard.
+Root successful complete-log reread227026bytes/SHA256
+aed37ecaf40365e5281ce9ac8f0cd634dcb23b0377289b385743e3dbd2098bc6 confirms26/26
+staticsteps SUCCESS and strict18/18. Independentstatic review byte/hash-equal
+wholeoriginal and same bound source/currentbaseline PASS. Compiler remains pending.
+
+
+## 2026-10-09 — exact final mandatory checks PASS, global baseline retained
+
+Frozen source8e1 real five GitHubActions/App15368 checks completedSUCCESS:
+readyrun37897461306 scope113711978832/static113712083820/type113712083724,
+runner37897379631/job113711717316 andscan37897379667/job113711717340.
+Originaldraft heavySKIP remains historical/NOTCHECKED, not reused. Protection
+freshly reread: exactlyfivecontexts boundApp15368/enforceadmins/force/deletion
+unchanged. No manualstatus, bypass, detector exception or baseline edit.
+
+Root whole currentcompiler log252502bytes/SHA256
+edd5cfdf41637888da79f2368450c1c85681c9f25363df93c7166eb66ddc4545: actual1154
+diagnostics, tsc exit2, zero syntax/missingmodule/undefinedname families; exact
+64gatedfile/code counts equal64unchangedbaseline. Source has no changed TS
+files relativecurrentbasee6. Current static whole227026bytes/hash above remains
+strict18/18. Globalcompiler/suite NONCLEAN, not repaired or called clean.
+Actualcheckout standalone75ba and equalWHOLEsource3eb1 verified forbothlogs.
+
+Independent final type/five-check acceptance is now being completed. Next:
+archive peer/root final receipt, restore647DRAFT, publish final648docs-only
+checkpoint, fresh refs/integrity and concise finalreport. No merge/deploy/
+activation/access/secret/Support/personnel action;85/161/76/61/C12PARTIAL.
+
+
+## 2026-10-09 — final technical acceptance; release and real baseline held
+
+Supersedes all earlier pending technical observations for final source8e1.
+Independent final acceptance PASS, original report SHA256
+5a316f424be761c87d3419d13a66b22cf0b9243b00203cd09236276ef5fd4465. Peer
+independently fetched every required check/App15368/protection, complete current
+compiler/static/scope/runner/scan logs and compared all1154diagnostics/35families,
+exact64gatedcounts, strict18/18 and testedwhole75ba/3eb1. Alltype13stepsPASS.
+One historical10049-to-currentmain difference is externalci-pr-draft-state.test.ts
+TS2769; it remains recorded, is not C12 source delta or a baseline exception.
+Global compiler/suite remain NONCLEAN; actual source647 never changed after
+verification and is now OPEN DRAFT/unmerged/head8e1,auto_merge null.
+
+Source PR647 https://github.com/rashadoni/leaddrive-v2/pull/647 is technically
+verified, with11actualCLI+9oldNode and37PG+4Node, zero skips, current independent
+source/hosted/fullgate review and five realSUCCESS checks. Evidence PR648
+https://github.com/rashadoni/leaddrive-v2/pull/648 preserves first4ef negatives,
+first524 scanner refusal, all524/2cb/8e1 reruns, reader inspection errors,
+byte-identical ZIP/gzip originals and finite manifests. No detector exception,
+baseline/gate weakening, force push, history rewrite or task closure. Final
+append-only evidence checkpoint remains on648; source8e1 stays frozen.
+
+Fresh refs remain main e6b882ab33cee41d907525bfec601dd6ad4ed12f. PR606/609
+CLOSED/unmerged;646validation OPEN DRAFT/frozen524. Accepted973/c123 and
+589→605→608/631→632 ancestry, original journals and archives remain. Accepted
+C6 core libraries are byte-identical to releasedf308. Support/personnel-doc
+work is untouched. No merge/deploy/activation/production/access/secret action.
+
+Current result: bounded C12 exporter admission fix verified and left in draft;
+C12 PARTIAL,85/161DONE,76open,weighted61%,14/15gates. Last completed acceptance:
+independent exact8e1 source/PostgreSQL/regression/compiler/five-check review,
+source restoredDRAFT. Precise stopping point: no approved already-restored
+copy/operator/read-only-service/provenance package is available. Full historical
+replay still retains original missingapi_keys/P3018/42P01 after391 migrations;
+real density/device/collector/pilot/restore observations remain open. Next action:
+identify the already approved isolated copy and operator, then perform only the
+committed read-only catalog/ledger package within its authorized scope; never
+restore, guessDDL, repair migrations, grant access or activate production by
+inference. Until then those real criteria are NOT RUN and receive no synthetic
+credit. UI/browser/build NOT RUN for this catalog/Node-only slice; original
+accepted C6 UI evidence is preserved, not claimed as a new run.
+
+Final docs integrity rootPASS: all43manifest files rehashed, gzip/ZIP CRC
+verified, peer final original bytes equal, source executables exact8e1 and
+older journal/roadmap prefixes preserved. Optional extra independent docs-only
+follow-up could not start: collaboration reported "agent thread limit reached".
+This is NOT a product/CI blocker; mandatory independent source/hosted/static/
+type/five-check acceptance is already completed and preserved. No extra review
+is falsely claimed. Root checked final docs integrity before publication.
