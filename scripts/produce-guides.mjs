@@ -69,6 +69,7 @@ import {
   existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync,
 } from "node:fs";
 import { dirname, resolve } from "node:path";
+import { GEMINI_TTS_SUCCESSOR, geminiTtsModelRetired, geminiTtsPcm, geminiTtsRequest, geminiTtsTooShort } from "./lib/gemini-tts.mjs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { chromium, request } from "playwright";
 import { requireHelpVideoAuth } from "./help-video/auth-config.mjs";
@@ -194,7 +195,9 @@ const geminiKeys = (() => {
 const geminiKey = geminiKeys[0] || ""; // back-compat: preflight check + single refs
 let gKeyIdx = 0;                        // which key is in use right now
 const gExhausted = new Set();           // key indices that hit their DAILY quota
-const geminiModel = process.env.GEMINI_TTS_MODEL || "gemini-2.5-flash-preview-tts";
+// `let`: when Google has shut the configured preview model down, narration
+// continues on its successor instead of stopping (scripts/lib/gemini-tts.mjs).
+let geminiModel = process.env.GEMINI_TTS_MODEL || "gemini-2.5-flash-preview-tts";
 const geminiVoice = process.env.GEMINI_TTS_VOICE || "Kore";
 const geminiMaxRetries = Number(process.env.GEMINI_MAX_RETRIES || 10);
 const geminiWindowMs = Number(process.env.GEMINI_WINDOW_MS || 60000);
@@ -692,13 +695,6 @@ async function tts(text, lang, outMp3) {
 // preview-model window on 429 (short back-offs are useless — the window is
 // fixed), retrying up to geminiMaxRetries.
 async function geminiTTS(text, outMp3) {
-  const body = {
-    contents: [{ parts: [{ text }] }],
-    generationConfig: {
-      responseModalities: ["AUDIO"],
-      speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: geminiVoice } } },
-    },
-  };
   const nKeys = Math.max(1, geminiKeys.length);
   const throwIfAllExhausted = () => {
     if (gExhausted.size >= nKeys) {
@@ -713,7 +709,7 @@ async function geminiTTS(text, outMp3) {
     throwIfAllExhausted();
     while (gExhausted.has(gKeyIdx)) gKeyIdx = (gKeyIdx + 1) % nKeys;
     const keyNo = gKeyIdx + 1;
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKeys[gKeyIdx]}`;
+    const { url, body } = geminiTtsRequest({ model: geminiModel, key: geminiKeys[gKeyIdx], text, voice: geminiVoice });
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -745,15 +741,28 @@ async function geminiTTS(text, outMp3) {
       const detail = (await res.text?.().catch(() => "")) || "";
       // Retry transient 5xx a couple of times; otherwise fail (no local fallback).
       if (res.status >= 500 && attempt < maxAttempts) { await sleep(3000); continue; }
+      // The preview model is gone for good, not busy: carry on with the model
+      // Google replaced it with, and say so where the operator will read it.
+      if (geminiTtsModelRetired(geminiModel, res.status)) {
+        console.log(`      ! ${geminiModel} has been shut down by Google — narrating with ${GEMINI_TTS_SUCCESSOR} from here on`);
+        geminiModel = GEMINI_TTS_SUCCESSOR;
+        continue;
+      }
       throw new Error(`Gemini TTS ${res.status} (key #${keyNo}): ${String(detail).slice(0, 300)}`);
     }
 
     const json = await res.json();
-    const part = json?.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data);
-    const b64 = part?.inlineData?.data;
-    if (!b64) throw new Error(`Gemini TTS returned no audio: ${JSON.stringify(json).slice(0, 300)}`);
+    const audio = geminiTtsPcm(json, geminiModel);
+    if (!audio) throw new Error(`Gemini TTS returned no audio: ${JSON.stringify(json).slice(0, 300)}`);
+    // A tenth of a second for a whole sentence is the preview model's way of
+    // failing without an error; narrating a step with it would leave it mute.
+    if (geminiTtsTooShort(audio, text) && attempt < maxAttempts) {
+      console.log(`      ⏳ Gemini returned audio far too short for the text — asking again (attempt ${attempt}/${maxAttempts})`);
+      await sleep(3000);
+      continue;
+    }
     const pcm = resolve(dirname(outMp3), `${basename(outMp3)}.pcm`);
-    writeFileSync(pcm, Buffer.from(b64, "base64"));
+    writeFileSync(pcm, audio);
     execFileSync("ffmpeg", ["-y", "-hide_banner", "-loglevel", "error",
       "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", pcm,
       "-codec:a", "libmp3lame", "-q:a", "3", outMp3], { stdio: "inherit" });

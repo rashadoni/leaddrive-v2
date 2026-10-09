@@ -213,6 +213,15 @@ Keep the guards that exist:
   expensive `static-checks` and `typecheck` jobs skip drafts. Mark the PR ready
   for review when the branch is finished; that fires `ready_for_review` and the
   gate runs once, before the merge it guards.
+  Whether a pull request is a draft is decided by `pr-scope` from the live pull
+  request (`scripts/ci/pr-draft-state.sh`), not from
+  `github.event.pull_request.draft`, which is a snapshot. On 2026-10-09 (#639) a
+  push followed at once by "ready for review" produced a run whose event still
+  said draft, while the `ready_for_review` run carried the previous commit and
+  was cancelled: both heavy jobs were skipped and a ready pull request showed
+  `CLEAN` with no test run. Hence the rule at merge time: on a pull request that
+  changes code, `static-checks` and `typecheck` must be `success`. `skipped`
+  there means "not checked", not "passed".
 - Documentation-only changes (`**/*.md`, `docs/**`, `.agents/**`) do not start
   `pr-checks.yml`. Do not add code to a docs PR to make CI run.
 - Any new `pull_request` workflow must declare a `paths:` filter narrower than

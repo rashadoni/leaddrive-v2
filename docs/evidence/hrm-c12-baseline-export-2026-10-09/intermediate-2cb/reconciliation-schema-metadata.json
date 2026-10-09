@@ -1,0 +1,21 @@
+{
+  "sourceSha": "2cb343ab18f436165c6aa7dddacd2d2b80bb9b99",
+  "runId": 37896910132,
+  "runAttempt": 1,
+  "jobId": 113710232214,
+  "conclusion": "success",
+  "artifact": {
+    "id": 11600164655,
+    "digest": "sha256:95bcf1637fa178bceb51d59c1b8e5eb408a4fa6ea580a22ce0612f64fb2af644",
+    "size_in_bytes": 1607,
+    "name": "workforce-c12-schema-2cb343ab18f436165c6aa7dddacd2d2b80bb9b99-37896910132-1"
+  },
+  "receiptSha256": "38eb8d7d4727376266dc6dfc2aa47b6ca7b5fe6d8f190f4397c03b8c19f4dcc1",
+  "receiptBytes": 6826,
+  "cases": 37,
+  "allPassed": true,
+  "allSourceBindingsExact": true,
+  "originalBytesPreserved": true,
+  "productionObserved": false,
+  "historicalReplay": false
+}

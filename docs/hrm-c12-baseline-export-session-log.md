@@ -172,3 +172,47 @@ runner53/diff PASS. Bounded verified8.30.1 scan of10 own publication files
 PASS/0findings; full actual commit-range and hosted final gates remain pending.
 Helper,9unit,both baselines,gitleaks config and pr-checks exactmainf97. RAM
 available10895MiB,disk266GiB,memoryavg10zero before checks. No heavy localgate.
+
+
+## 2026-10-09 — final source published and frozen
+
+Draft PR647 https://github.com/rashadoni/leaddrive-v2/pull/647 is published at
+2cb343ab18f436165c6aa7dddacd2d2b80bb9b99, base mainf97, with app attachment
+confirmed. The verified pinned8.30.1 complete commit-range scan is PASS/0findings.
+Original646/524 stays OPEN DRAFT and is explicitly validation-only/DO NOT MERGE.
+No force push, history rewrite, lost product change or detector exception.
+
+Source647 remains frozen while this worktree uses the separate evidence branch
+codex/hrm-c12-baseline-export-evidence-20261009, initially parent2cb. Final
+receipts/journal will be committed here so CI stays bound to exact final source.
+Actual hosted final runs: exporter37896910158, schema37896910132,
+runner37896910167, scan37896910143, draftPRchecks37896910173. Completion and
+independent source/hosted acceptance are still pending at this entry; draft
+skips are not acceptance of full static/compiler gates. Next: verify actual
+final artifacts, mark source briefly ready for the unchanged mandatory gates,
+restore draft after technical acceptance, publish dependent evidence draft.
+
+UI/browser/production bundle NOT RUN for this Node/catalog/test-only slice;
+no app,clientboundary,nextconfig or Prisma schema change. Actual approved
+restored-copy, authenticated HR production and real operating criteria NOT RUN.
+Those gaps receive no synthetic task credit.85/161DONE,76open,61%,C12PARTIAL.
+
+
+## 2026-10-09 — fresh main advances; final freeze superseded before full gates
+
+Fresh refs before READY found main e6b882ab33cee41d907525bfec601dd6ad4ed12f,
+with externalPR645 draft-race CI fix and644 Gemini TTS generator changes (17
+paths). Read fresh AGENTS/CI contract: static/typecheck SUCCESS is required;
+skipped on a code PR is NOT checked. HRM/Support/Prisma/locales/routing unchanged.
+No external provider behavior or production acceptance is claimed by this task.
+
+Historical source2cb actual exporter37896910158 (11PG+9Node), schema37896910132
+(37PG+4Node), scan37896910143 and runner37896910167 PASS; independent source
+review has no open findings. Original ZIP/JSON-gzip receipts are retained with
+SHA/CRC/source bindings underintermediate-2cb. These do not verify the next head.
+
+Earlier2cb final-freeze statement is superseded: normal integration of fresh
+main is necessary before unchanged mandatory CI so its checked merge tree
+equals the final source.647 remains DRAFT while integrating; no old source
+result borrowed, no force/history rewrite, no gate or baseline weakening.
+Next: freeze integrated head, fresh exact runtime/source review and full gates.

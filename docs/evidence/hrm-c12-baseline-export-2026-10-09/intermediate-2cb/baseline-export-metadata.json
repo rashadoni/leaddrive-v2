@@ -1,0 +1,21 @@
+{
+  "sourceSha": "2cb343ab18f436165c6aa7dddacd2d2b80bb9b99",
+  "runId": 37896910158,
+  "runAttempt": 1,
+  "jobId": 113710237383,
+  "conclusion": "success",
+  "artifact": {
+    "id": 11600671898,
+    "digest": "sha256:2a74c3b890ee6e8b5eb4f05d96a73f38b45c73daed5ff4479d2f724811ce3fcf",
+    "size_in_bytes": 1330,
+    "name": "workforce-baseline-export-2cb343ab18f436165c6aa7dddacd2d2b80bb9b99-37896910158-1"
+  },
+  "receiptSha256": "d071a9d22aafe8f3a84e475c386fd7e4e5a83da4e2b6ef62112b6d1d33bac66c",
+  "receiptBytes": 7554,
+  "cases": 11,
+  "allPassed": true,
+  "allSourceBindingsExact": true,
+  "originalBytesPreserved": true,
+  "productionObserved": false,
+  "historicalReplay": false
+}
