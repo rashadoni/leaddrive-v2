@@ -103,6 +103,11 @@
       "sha256": "04ffcd8cbc41614706ad4f373ae7b0ddb836934b52f5f721a6f1e419581bfe4f"
     },
     {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/root-final-docs-integrity.json",
+      "bytes": 492,
+      "sha256": "2cfb495b354b62d33eb3d55e0be1862825ce7d223b0afd5873c18771ebe75424"
+    },
+    {
       "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/root-reader-original-errors.json",
       "bytes": 559,
       "sha256": "68095d3a1d368a993cc7b36105974d7a11e78c7c0eb2e8f115c0cd0926dbc6fb"

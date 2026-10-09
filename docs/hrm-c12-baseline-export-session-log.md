@@ -357,3 +357,11 @@ restore, guessDDL, repair migrations, grant access or activate production by
 inference. Until then those real criteria are NOT RUN and receive no synthetic
 credit. UI/browser/build NOT RUN for this catalog/Node-only slice; original
 accepted C6 UI evidence is preserved, not claimed as a new run.
+
+Final docs integrity rootPASS: all43manifest files rehashed, gzip/ZIP CRC
+verified, peer final original bytes equal, source executables exact8e1 and
+older journal/roadmap prefixes preserved. Optional extra independent docs-only
+follow-up could not start: collaboration reported "agent thread limit reached".
+This is NOT a product/CI blocker; mandatory independent source/hosted/static/
+type/five-check acceptance is already completed and preserved. No extra review
+is falsely claimed. Root checked final docs integrity before publication.

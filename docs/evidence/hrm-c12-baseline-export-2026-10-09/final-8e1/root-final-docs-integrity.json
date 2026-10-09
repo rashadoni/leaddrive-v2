@@ -1,0 +1,11 @@
+{
+  "status": "PASS_FINAL_DOCS_ROOT_INTEGRITY",
+  "sourceSha": "8e1c7e10013eb6d4e5ed273775b3f6d896841065",
+  "checkedDocsCheckpoint": "f790770ebc0eadb90eb9955770a5c6e5e4d4cf62",
+  "verifiedManifestFiles": 43,
+  "sourceExecutablesChanged": false,
+  "oldJournalAndRoadmapPrefixesPreserved": true,
+  "optionalExtraIndependentDocsReview": "NOT_RUN_COLLABORATION_THREAD_LIMIT",
+  "mandatoryIndependentSourceHostedAndFiveCheckReview": "PASS_ALREADY_COMPLETE",
+  "notASourceOrCIGateFailure": true
+}
