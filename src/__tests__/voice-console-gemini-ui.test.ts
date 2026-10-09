@@ -202,7 +202,7 @@ describe("VoiceConsole Gemini Live lifecycle", () => {
         return json({ data: {
           token: "ephemeral-only",
           expiresAt: "2026-08-14T11:02:00.000Z",
-          model: "gemini-3.1-flash-live-preview",
+          model: "gemini-3.8-live",
           apiVersion: "v1beta",
           connectionId: "17de9868-8f83-4baf-85dc-5e6ac5eb3622",
         } })
@@ -821,6 +821,196 @@ describe("VoiceConsole Gemini Live lifecycle", () => {
     }))
     expect(gemini.session.sendRealtimeInput).toHaveBeenLastCalledWith({
       text: expect.stringContaining("ask them to repeat only their last sentence"),
+    })
+  })
+
+  // Gemini 3.8 Live may decide speech was not meant for it and answer with
+  // nothing at all. Shapes below are the ones a live session sent on
+  // 2026-10-08, including `type` where the SDK's typings say
+  // `voiceActivityType`.
+  describe("an assistant that chooses not to answer", () => {
+    const SPEECH = { serverContent: { inputTranscription: { text: "Мам, я перезвоню вечером", finished: false } } }
+    const STOPPED_SPEAKING = { voiceActivity: { type: "ACTIVITY_END", audioOffset: "6.120s" } }
+    const AUDIO = { serverContent: { modelTurn: { parts: [{ inlineData: { data: "AAA=", mimeType: "audio/pcm;rate=24000" } }] } } }
+
+    const ended = () => fetchMock.mock.calls.some(([input]) => String(input).endsWith("/session/end"))
+    const traced = (outcome: string) => fetchMock.mock.calls.filter(([input, init]) =>
+      String(input).endsWith("/voice/trace") && JSON.parse(String(init?.body)).outcome === outcome,
+    ).length
+    const saidToModel = () => gemini.session.sendRealtimeInput.mock.calls
+      .map(([input]) => (input as { text?: string }).text)
+      .filter(Boolean)
+    const advance = async (ms: number) => {
+      await act(async () => {
+        vi.advanceTimersByTime(ms)
+        await flush()
+      })
+    }
+    /** A session past its greeting: the assistant has spoken and is listening. */
+    async function listening() {
+      await start()
+      act(() => {
+        gemini.callbacks!.onmessage(AUDIO)
+        gemini.callbacks!.onmessage({ serverContent: { turnComplete: true } })
+        FakeWorkletNode.nodes.get("gemini-live-playback")!.port.emit({ type: "drained", generation: 1 })
+      })
+      expect(container.textContent).toContain("Listening")
+    }
+
+    it("goes back to listening instead of calling it a failure", async () => {
+      await listening()
+      act(() => gemini.callbacks!.onmessage(SPEECH))
+      expect(container.textContent).toContain("I can hear you")
+
+      act(() => gemini.callbacks!.onmessage(STOPPED_SPEAKING))
+      // The user is done: the orb is thinking, not still hearing them.
+      expect(container.textContent).toContain("Preparing an answer")
+
+      await advance(9_900)
+      expect(container.textContent).toContain("Preparing an answer")
+      await advance(200)
+      expect(container.textContent).toContain("Listening")
+      expect(traced("assistant_stayed_silent")).toBe(1)
+
+      // Nobody speaks again. That is an idle session, and it ends the way one
+      // does - not with the "Response timeout" this used to end in at 90 s.
+      await advance(40_000)
+      expect(ended()).toBe(false)
+      await advance(60_000)
+      expect(container.textContent).toContain("Stopped after a minute of silence")
+      expect(container.textContent).not.toContain("Response timeout")
+    })
+
+    it("says nothing to the model about it", async () => {
+      // A nudge would make it answer a sentence said to someone else.
+      await listening()
+      const before = saidToModel().length
+      act(() => {
+        gemini.callbacks!.onmessage(SPEECH)
+        gemini.callbacks!.onmessage(STOPPED_SPEAKING)
+      })
+      await advance(45_000)
+      expect(saidToModel()).toHaveLength(before)
+    })
+
+    it("reads the signal under the name the SDK documents too", async () => {
+      await listening()
+      act(() => {
+        gemini.callbacks!.onmessage(SPEECH)
+        gemini.callbacks!.onmessage({ voiceActivity: { voiceActivityType: "ACTIVITY_END" } })
+      })
+      await advance(10_100)
+      expect(container.textContent).toContain("Listening")
+      expect(traced("assistant_stayed_silent")).toBe(1)
+    })
+
+    it("still ends a conversation whose speech never ends and is never answered", async () => {
+      // No end-of-speech signal: the old guard is still the only one, and it
+      // still fires. This is also what proves the tests above can see a kill.
+      await listening()
+      act(() => gemini.callbacks!.onmessage(SPEECH))
+      await advance(89_000)
+      expect(ended()).toBe(false)
+      await advance(2_000)
+      expect(container.textContent).toContain("Response timeout")
+      expect(ended()).toBe(true)
+    })
+
+    it("stands down the moment the assistant starts to answer", async () => {
+      await listening()
+      act(() => {
+        gemini.callbacks!.onmessage(SPEECH)
+        gemini.callbacks!.onmessage(STOPPED_SPEAKING)
+      })
+      await advance(4_000)
+      act(() => gemini.callbacks!.onmessage(AUDIO))
+      expect(container.textContent).toContain("Speaking")
+      await advance(20_000)
+      expect(container.textContent).toContain("Speaking")
+      expect(traced("assistant_stayed_silent")).toBe(0)
+    })
+
+    it("does not mistake a tool call in progress for silence", async () => {
+      await listening()
+      toolReadBarrier = new Promise<Response>(() => {})
+      act(() => {
+        gemini.callbacks!.onmessage(SPEECH)
+        gemini.callbacks!.onmessage(STOPPED_SPEAKING)
+      })
+      await act(async () => {
+        gemini.callbacks!.onmessage({ toolCall: { functionCalls: [{ id: "slow-read", name: "get_leads_summary", args: {} }] } })
+        await flush()
+      })
+      await advance(15_000)
+      expect(container.textContent).toContain("Preparing an answer")
+      expect(traced("assistant_stayed_silent")).toBe(0)
+    })
+
+    it("does not call it silence while a tool the assistant asked for is still running", async () => {
+      // The user adds something while the CRM is still answering. The
+      // assistant is not ignoring them - it has not got its data yet.
+      await listening()
+      toolReadBarrier = new Promise<Response>(() => {})
+      await act(async () => {
+        gemini.callbacks!.onmessage({ toolCall: { functionCalls: [{ id: "slow-read", name: "get_leads_summary", args: {} }] } })
+        await flush()
+      })
+      act(() => {
+        gemini.callbacks!.onmessage(SPEECH)
+        gemini.callbacks!.onmessage(STOPPED_SPEAKING)
+      })
+      await advance(15_000)
+      expect(traced("assistant_stayed_silent")).toBe(0)
+      expect(container.textContent).not.toContain("Listening")
+    })
+
+    it("waits for the assistant to finish what it is saying before calling it silence", async () => {
+      // Noisy-room mode: speech cannot interrupt, so the user's words arrive
+      // while an answer is still playing and are dealt with after it.
+      await listening()
+      const playback = FakeWorkletNode.nodes.get("gemini-live-playback")!
+      act(() => {
+        gemini.callbacks!.onmessage(AUDIO)
+        gemini.callbacks!.onmessage({ serverContent: { turnComplete: true } })
+        gemini.callbacks!.onmessage(SPEECH)
+        gemini.callbacks!.onmessage(STOPPED_SPEAKING)
+      })
+      await advance(25_000)
+      expect(container.textContent).toContain("Speaking")
+      expect(traced("assistant_stayed_silent")).toBe(0)
+
+      act(() => playback.port.emit({ type: "drained", generation: 1 }))
+      await advance(10_100)
+      expect(traced("assistant_stayed_silent")).toBe(1)
+      expect(container.textContent).toContain("Listening")
+    })
+
+    it("starts over when the user speaks again before the wait is out", async () => {
+      await listening()
+      act(() => {
+        gemini.callbacks!.onmessage(SPEECH)
+        gemini.callbacks!.onmessage(STOPPED_SPEAKING)
+      })
+      await advance(8_000)
+      act(() => {
+        gemini.callbacks!.onmessage({ voiceActivity: { type: "ACTIVITY_START", audioOffset: "14.000s" } })
+        gemini.callbacks!.onmessage({ serverContent: { inputTranscription: { text: " Сколько лидов?", finished: false } } })
+      })
+      // The first wait would have run out here, mid-sentence.
+      await advance(4_000)
+      expect(traced("assistant_stayed_silent")).toBe(0)
+      expect(container.textContent).toContain("I can hear you")
+    })
+
+    it("ignores a noise the provider heard but never transcribed", async () => {
+      await listening()
+      act(() => {
+        gemini.callbacks!.onmessage({ voiceActivity: { type: "ACTIVITY_START", audioOffset: "2.000s" } })
+        gemini.callbacks!.onmessage({ voiceActivity: { type: "ACTIVITY_END", audioOffset: "2.400s" } })
+      })
+      await advance(30_000)
+      expect(traced("assistant_stayed_silent")).toBe(0)
+      expect(container.textContent).toContain("Listening")
     })
   })
 })

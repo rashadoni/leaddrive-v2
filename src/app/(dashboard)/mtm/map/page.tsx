@@ -12,8 +12,11 @@ import { HelpButton } from "@/components/help/help-button"
 import { Button } from "@/components/ui/button"
 import dynamic from "next/dynamic"
 import { calculateDistance } from "@/lib/geo-utils"
-import { formatDateTime, formatTime } from "@/lib/format-date"
-import { formatMtmDistance } from "@/lib/mtm/visit-place-check"
+import { LiveMapDaySteps } from "@/components/mtm/live-map-day-steps"
+import { LiveMapLayersControl } from "@/components/mtm/live-map-layers-control"
+import { liveMapDaySteps } from "@/lib/mtm/live-map-day-steps"
+import { createDateFormatter, formatDateTime, formatTime } from "@/lib/format-date"
+import { effectiveGeofenceRadius, formatMtmDistance } from "@/lib/mtm/visit-place-check"
 import { mtmLiveFeedHistoryHref, type MtmLiveFeedAlertGroup } from "@/lib/mtm/live-feed-alerts"
 import { summarizeMtmRouteExecution } from "@/lib/mtm/route-point-execution"
 import { hasMtmCoordinates } from "@/lib/mtm/geo-coordinates"
@@ -23,8 +26,8 @@ import type { MtmRoutePoint, MtmRouteRecord } from "@/components/mtm/route-types
 import { LocationHistoryPanel } from "@/components/mtm/location-history-panel"
 import {
   MapPin, RefreshCw, Clock, WifiOff, Navigation,
-  Radio, AlertTriangle, Circle, Flame, History,
-  Battery, ShieldAlert, ArrowLeft, SlidersHorizontal, PauseCircle, Flag,
+  Radio, AlertTriangle, History,
+  Battery, ShieldAlert, ArrowLeft, PauseCircle, Flag, Crosshair, Eye,
 } from "lucide-react"
 
 const MtmLiveMap = dynamic(() => import("@/components/mtm/live-map"), { ssr: false })
@@ -82,6 +85,8 @@ interface AgentRouteSnapshot {
   fromCache: boolean
 }
 
+/** The «day route» layer switched off: one stable empty list, so the map does not refit on every render. */
+const NO_ROUTE_STOPS: RouteStop[] = []
 const EMPTY_STATUS_COUNTS = { total: 0, checkedIn: 0, onRoad: 0, stopped: 0, routeFinished: 0, late: 0, offline: 0 }
 const EMPTY_FRESHNESS_COUNTS = { online: 0, delayed: 0, stale: 0, noLocation: 0 }
 const EMPTY_WORKDAY_COUNTS = { active: 0, paused: 0, closed: 0, notStarted: 0 }
@@ -112,6 +117,14 @@ const STATUS_DOT_CLASS: Record<string, string> = {
 const statusConfig: Record<string, { labelKey: string; dotClass: string }> = Object.fromEntries(
   Object.entries(FIELD_STATUS_LABEL_KEYS).map(([k, labelKey]) => [k, { labelKey, dotClass: STATUS_DOT_CLASS[k] || "bg-muted" }])
 )
+
+/** A visit opened on an earlier day says its date too: «22:14» alone would read as today. */
+function visitOpenedOnAnotherDay(openedAt: string, timeZone: string | undefined): boolean {
+  const opened = new Date(openedAt)
+  if (!Number.isFinite(opened.getTime())) return false
+  const day = createDateFormatter("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" })
+  return day.format(opened) !== day.format(new Date())
+}
 
 function hasRenderableLivePosition(
   freshness: AgentLocation["freshness"],
@@ -162,6 +175,17 @@ export default function MtmMapPage() {
   const [showGeofence, setShowGeofence] = useState(false)
   const [showHeatmap, setShowHeatmap] = useState(false)
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null)
+  // The stop of the selected employee's day that is in focus (its order in the
+  // route), and whether the map keeps following him. Both belong to one
+  // selection and are dropped with it.
+  const [selectedStop, setSelectedStop] = useState<number | null>(null)
+  const [followSelected, setFollowSelected] = useState(false)
+  // What is drawn on the map (owner, 2026-10-09: «как убирать на карте
+  // объекты, агентов»): whole layers — the markers, the selected employee's
+  // route — and single employees, ticked or unticked on their card.
+  const [showAgentMarkers, setShowAgentMarkers] = useState(true)
+  const [showDayRoute, setShowDayRoute] = useState(true)
+  const [hiddenAgentIds, setHiddenAgentIds] = useState<ReadonlySet<string>>(() => new Set())
   const [routeSnapshot, setRouteSnapshot] = useState<AgentRouteSnapshot | null>(null)
   const [freshnessNow, setFreshnessNow] = useState<number | null>(null)
   const selectedAgentRef = useRef<string | null>(null)
@@ -493,6 +517,8 @@ export default function MtmMapPage() {
   }
 
   const handleAgentClick = (agentId: string) => {
+    setSelectedStop(null)
+    setFollowSelected(false)
     if (selectedAgent === agentId) {
       selectedAgentRef.current = null
       routeRequestRef.current.controller?.abort()
@@ -504,6 +530,38 @@ export default function MtmMapPage() {
     selectedAgentRef.current = agentId
     setSelectedAgent(agentId)
     void fetchAgentRoute(agentId, tenantToday)
+  }
+
+  // A marker pressed on the map selects the employee like his card does. It
+  // never deselects: a second press on the same marker is somebody reading
+  // its balloon, not asking for the route to go away.
+  const handleMapAgentSelect = (agentId: string) => {
+    if (selectedAgentRef.current === agentId) return
+    handleAgentClick(agentId)
+  }
+
+  // The tick on a card takes that one employee off the map, or puts him back.
+  // Taking off the selected one would leave his route there with no marker, so
+  // the selection goes with him.
+  const toggleAgentOnMap = (agentId: string) => {
+    const hide = !hiddenAgentIds.has(agentId)
+    setHiddenAgentIds((current) => {
+      const next = new Set(current)
+      if (hide) next.add(agentId)
+      else next.delete(agentId)
+      return next
+    })
+    if (hide && selectedAgentRef.current === agentId) handleAgentClick(agentId)
+  }
+  // «Nobody»: the starting point for ticking just the few one wants to compare.
+  const hideAllAgentsOnMap = () => {
+    setHiddenAgentIds(new Set(agents.map((agent) => agent.agentId)))
+    if (selectedAgentRef.current) handleAgentClick(selectedAgentRef.current)
+  }
+  // «Only this one»: everybody else in the roster is taken off; he stays selected.
+  const showOnlyAgentOnMap = (agentId: string) => {
+    setShowAgentMarkers(true)
+    setHiddenAgentIds(new Set(agents.filter((agent) => agent.agentId !== agentId).map((agent) => agent.agentId)))
   }
 
   useEffect(() => {
@@ -563,9 +621,36 @@ export default function MtmMapPage() {
     return true
   })
 
+  // A status chip narrows the list and the map together. A selection the chip
+  // has just hidden would leave a route on the map that belongs to nobody on
+  // screen, so the selection goes with it.
+  const shownAgentIdsRef = useRef<Set<string>>(new Set())
+  shownAgentIdsRef.current = new Set(filteredAgents.map((agent) => agent.agentId))
+  useEffect(() => {
+    const selected = selectedAgentRef.current
+    if (!selected || shownAgentIdsRef.current.has(selected)) return
+    selectedAgentRef.current = null
+    routeRequestRef.current.controller?.abort()
+    setSelectedAgent(null)
+    setRouteSnapshot(null)
+  }, [activeFilter])
+
+  // The stop in focus and «follow» belong to one selection.
+  useEffect(() => {
+    setSelectedStop(null)
+    if (!selectedAgent) setFollowSelected(false)
+  }, [selectedAgent])
+
+  // An employee chosen on the map may be below the fold of the list.
+  const selectedCardRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (selectedAgent) selectedCardRef.current?.scrollIntoView?.({ block: "nearest" })
+  }, [selectedAgent])
+
   // Employees without an admissible coordinate remain in the roster, but the
   // map only receives finite, bounded coordinates with an evidence timestamp.
   const mapAgents: LiveMapAgent[] = filteredAgents.flatMap((agent) => {
+    if (!showAgentMarkers || hiddenAgentIds.has(agent.agentId)) return []
     const freshness = agent.freshness
     const lastKnown = showLastKnown && freshness === "STALE"
     if ((!hasRenderableLivePosition(freshness, agent.workdayState, workforceEnabled) && !lastKnown) ||
@@ -609,9 +694,17 @@ export default function MtmMapPage() {
         checkInAt: fact?.checkInAt ?? null,
         checkOutAt: fact?.visit ? fact.checkOutAt : null,
         visitId: fact?.visit?.id ?? null,
+        zoneRadiusMeters: effectiveGeofenceRadius(customer.geofenceRadius, contract?.geofenceRadiusMeters),
       }]
     })
-  }, [agentRoute, routeExecution])
+  }, [agentRoute, routeExecution, contract?.geofenceRadiusMeters])
+  // The same day as steps for the list under the card: what each stop is right
+  // now (visited, visit in progress, next, planned, skipped), its times, and
+  // whether it is overdue. `presentationNow` is the server-anchored clock.
+  const daySteps = useMemo(
+    () => liveMapDaySteps(agentRoute?.points ?? [], routeExecution?.points ?? [], presentationNow),
+    [agentRoute, routeExecution, presentationNow],
+  )
   const routeStopsWithoutCoordinates = (agentRoute?.points ?? [])
     .filter((point) => !hasMtmCoordinates(point.customer)).length
   const formatTenantTime = (value: string | null | undefined) =>
@@ -814,11 +907,28 @@ export default function MtmMapPage() {
               agents={mapAgents}
               showGeofence={showGeofence}
               showHeatmap={showHeatmap}
-              plannedRoute={routeStops}
+              plannedRoute={showDayRoute ? routeStops : NO_ROUTE_STOPS}
               focusAgentId={selectedAgent}
               etaSeconds={etaSeconds}
               timeZone={contract?.timezone}
               showWorkdayStatus={workforceEnabled}
+              onAgentSelect={handleMapAgentSelect}
+              focusStopOrder={selectedStop}
+              onStopSelect={setSelectedStop}
+              followAgent={followSelected}
+            />
+          )}
+          {showRosterLoading ? null : (
+            <LiveMapLayersControl
+              layers={[
+                { id: "agents", label: tMap("layers.agents"), hint: tMap("layers.agentsHint"), on: showAgentMarkers, onToggle: () => setShowAgentMarkers((on) => !on), shownByDefault: true },
+                { id: "route", label: tMap("layers.route"), hint: tMap("layers.routeHint"), on: showDayRoute, onToggle: () => setShowDayRoute((on) => !on), shownByDefault: true },
+                { id: "zones", label: tMap("layers.zones"), hint: tMap("layers.zonesHint"), on: showGeofence, onToggle: () => setShowGeofence((on) => !on) },
+                { id: "heat", label: tMap("layers.heat"), hint: tMap("layers.heatHint"), on: showHeatmap, onToggle: () => setShowHeatmap((current) => !current), testId: "mtm-map-heatmap-toggle" },
+              ]}
+              hiddenAgentCount={hiddenAgentIds.size}
+              onShowAllAgents={() => setHiddenAgentIds(new Set())}
+              note={tMap("historyOnlyExplicit")}
             />
           )}
         </div>
@@ -828,6 +938,18 @@ export default function MtmMapPage() {
             <div className="mb-2 flex items-center justify-between gap-2">
               <h4 className="text-xs font-semibold uppercase text-muted-foreground">{tMap("agents")} ({filteredAgents.length})</h4>
               <span className="text-[11px] text-muted-foreground">{tMap("selectForDetails")}</span>
+            </div>
+            {/* Who is on the map: all, nobody, or the ones ticked below. */}
+            <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]" data-testid="live-map-on-map-bar">
+              <span className="text-muted-foreground">
+                {tMap("layers.onMapCount", { shown: agents.filter((agent) => !hiddenAgentIds.has(agent.agentId)).length, total: agents.length })}
+              </span>
+              <button type="button" data-testid="live-map-on-map-all" onClick={() => setHiddenAgentIds(new Set())} className="inline-flex min-h-8 items-center font-semibold text-primary underline-offset-2 hover:underline">
+                {tMap("layers.selectAll")}
+              </button>
+              <button type="button" data-testid="live-map-on-map-none" onClick={hideAllAgentsOnMap} className="inline-flex min-h-8 items-center font-semibold text-primary underline-offset-2 hover:underline">
+                {tMap("layers.selectNone")}
+              </button>
             </div>
             <div data-testid="mtm-map-agent-list" className="space-y-2">
               {filteredAgents.length === 0 ? (
@@ -848,8 +970,15 @@ export default function MtmMapPage() {
                       ? "font-medium text-amber-700 dark:text-amber-300"
                       : "text-muted-foreground"
                   const isSelected = selectedAgent === agent.agentId
+                  const hiddenOnMap = hiddenAgentIds.has(agent.agentId)
                   return (
-                    <div key={agent.agentId} className={`rounded-lg border p-1 ${isSelected ? "border-blue-300 bg-blue-50/80 dark:border-blue-800 dark:bg-blue-950/30" : "border-transparent"}`}>
+                    <div
+                      key={agent.agentId}
+                      ref={isSelected ? selectedCardRef : undefined}
+                      data-testid={`live-map-agent-card-${agent.agentId}`}
+                      data-selected={isSelected ? "true" : "false"}
+                      className={`rounded-lg border p-1 ${isSelected ? "border-blue-300 bg-blue-50/80 dark:border-blue-800 dark:bg-blue-950/30" : "border-transparent"}`}
+                    >
                     <div className="flex items-stretch gap-1">
                       <button
                         type="button"
@@ -865,7 +994,33 @@ export default function MtmMapPage() {
                           {appPresent && <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-green-500" />}
                         </span>
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-semibold">{agent.name}</span>
+                          <span className={`block truncate text-sm font-semibold ${hiddenOnMap ? "text-muted-foreground" : ""}`}>
+                            {agent.name}
+                            {hiddenOnMap ? <span className="ml-2 text-[11px] font-normal">{tMap("layers.hiddenBadge")}</span> : null}
+                          </span>
+                          {/* What the employee is doing — the same word as the chip
+                              that counts him. It used to be shown only after a
+                              click on the card, so a person counted under
+                              «Gecikir» read the zeros on the other chips as «the
+                              map does not see me» (owner, 2026-10-08). */}
+                          <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs font-medium" data-testid={`live-map-agent-status-${agent.agentId}`}>
+                            <span className="inline-flex items-center gap-1.5">
+                              <span className={`h-2 w-2 rounded-full ${cfg.dotClass}`} aria-hidden="true" />
+                              {tMap(`fieldStatus.${cfg.labelKey}`)}
+                            </span>
+                            {(agent.routeTotal ?? 0) > 0 ? (
+                              <span className="font-normal tabular-nums text-muted-foreground" data-testid={`live-map-agent-progress-${agent.agentId}`}>
+                                {tMap("routeStop.progress", { done: agent.routeVisited ?? 0, total: agent.routeTotal ?? 0 })}
+                              </span>
+                            ) : null}
+                            {agent.fieldStatus === "CHECKED_IN" && agent.openVisitSince ? (
+                              <span className="font-normal text-muted-foreground">
+                                {tMap("visitOpenedAt", { time: formatDateTime(agent.openVisitSince, locale, visitOpenedOnAnotherDay(agent.openVisitSince, contract?.timezone)
+                                  ? { dateStyle: "medium", timeStyle: "short", timeZone: contract?.timezone }
+                                  : { timeStyle: "short", timeZone: contract?.timezone }) })}
+                              </span>
+                            ) : null}
+                          </span>
                           <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
                             <span className={appPresent ? "font-medium text-green-600" : "text-muted-foreground"}>
                               {tMap(`presence.${appPresent ? "online" : "offline"}`)}
@@ -883,10 +1038,6 @@ export default function MtmMapPage() {
                           {isSelected ? (
                             <span className="mt-2 block rounded-md bg-background/80 p-2 text-[11px] text-muted-foreground">
                               <span className="flex flex-wrap gap-x-3 gap-y-1">
-                                <span className="inline-flex items-center gap-1">
-                                  <span className={`h-1.5 w-1.5 rounded-full ${cfg.dotClass}`} />
-                                  {tMap(`fieldStatus.${cfg.labelKey}`)}
-                                </span>
                                 {agent.speed != null && agent.speed > 0 ? <span>{agent.speed.toFixed(0)} km/h</span> : null}
                                 {agent.routeCompletion > 0 ? <span><Navigation className="inline h-3 w-3" /> {agent.routeCompletion}%</span> : null}
                                 {agent.accuracy != null ? <span>±{Math.round(agent.accuracy)} m</span> : null}
@@ -911,6 +1062,22 @@ export default function MtmMapPage() {
                           ) : null}
                         </span>
                       </button>
+                      {/* «Галочкой выбирать»: tick the employees to see on the map
+                          at the same time (owner, 2026-10-09). A real checkbox,
+                          with the hit area of a button. */}
+                      <label
+                        className="inline-flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center rounded-md hover:bg-muted/60"
+                        title={tMap("layers.agentOnMap", { name: agent.name })}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={!hiddenOnMap}
+                          onChange={() => toggleAgentOnMap(agent.agentId)}
+                          aria-label={tMap("layers.agentOnMap", { name: agent.name })}
+                          data-testid={`live-map-agent-on-map-${agent.agentId}`}
+                          className="h-5 w-5 cursor-pointer accent-[hsl(var(--primary))]"
+                        />
+                      </label>
                       {tenantToday ? (
                         <Button variant="ghost" size="sm" className="h-auto min-h-11 min-w-11 shrink-0 px-2 text-[10px]" asChild>
                           <Link
@@ -925,43 +1092,40 @@ export default function MtmMapPage() {
                     </div>
                     {isSelected ? (
                       <div data-testid="mtm-map-selected-route" className="mt-1 rounded-md bg-background/80 p-2 text-[11px]">
-                        <div className="mb-1 font-semibold text-foreground">{tMap("routeStop.title")}</div>
+                        <div className="mb-1 flex items-center justify-between gap-2">
+                          <span className="font-semibold text-foreground">{tMap("routeStop.title")}</span>
+                          <button
+                            type="button"
+                            onClick={() => showOnlyAgentOnMap(agent.agentId)}
+                            data-testid="live-map-only-this"
+                            className="ml-auto inline-flex min-h-8 items-center gap-1 rounded-full border border-zinc-300 px-2.5 text-[11px] font-medium text-foreground hover:bg-muted dark:border-zinc-600"
+                          >
+                            <Eye className="h-3 w-3" aria-hidden="true" />{tMap("layers.onlyThis")}
+                          </button>
+                          <button
+                            type="button"
+                            aria-pressed={followSelected}
+                            title={tMap("followHint")}
+                            onClick={() => setFollowSelected((on) => !on)}
+                            data-testid="live-map-follow"
+                            className={`inline-flex min-h-8 items-center gap-1 rounded-full border px-2.5 text-[11px] font-medium transition-colors ${followSelected
+                              ? "border-blue-600 bg-blue-600 text-white"
+                              : "border-zinc-300 text-foreground hover:bg-muted dark:border-zinc-600"}`}
+                          >
+                            <Crosshair className="h-3 w-3" aria-hidden="true" />{tMap("follow")}
+                          </button>
+                        </div>
                         {!visibleRouteSnapshot ? (
                           <div className="text-muted-foreground">{tMap("routeStop.loading")}</div>
                         ) : !agentRoute || !routeExecution || routeExecution.totalCount === 0 ? (
                           <div className="text-muted-foreground">{tMap("routeStop.none")}</div>
                         ) : (
-                          <ol className="space-y-1">
-                            {[...(agentRoute.points ?? [])].sort((a, b) => a.orderIndex - b.orderIndex).map((point) => {
-                              const fact = routeExecution.points.find((item) => item.pointId === point.id)
-                              const done = point.status === "VISITED" || Boolean(fact?.checkInAt)
-                              return (
-                                <li key={point.id} className="flex items-start gap-2">
-                                  <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${done ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-300" : point.status === "SKIPPED" ? "bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-300" : "bg-muted text-muted-foreground"}`}>
-                                    {fact?.plannedSequence ?? point.orderIndex + 1}
-                                  </span>
-                                  <span className="min-w-0 flex-1">
-                                    <span className="block truncate font-medium text-foreground">{point.customer?.name || "—"}</span>
-                                    <span className="flex flex-wrap gap-x-2 text-muted-foreground">
-                                      {point.plannedTime ? <span>{tMap("routeStop.planned", { time: formatTenantTime(point.plannedTime) })}</span> : null}
-                                      {fact?.checkInAt ? (
-                                        <span className="text-foreground">
-                                          {fact.checkOutAt && fact.visit
-                                            ? tMap("routeStop.fact", { from: formatTenantTime(fact.checkInAt), to: formatTenantTime(fact.checkOutAt) })
-                                            : tMap("routeStop.factOpen", { from: formatTenantTime(fact.checkInAt) })}
-                                        </span>
-                                      ) : null}
-                                    </span>
-                                  </span>
-                                  {fact?.visit ? (
-                                    <Link className="shrink-0 text-primary hover:underline" href={`/mtm/visits?visitId=${encodeURIComponent(fact.visit.id)}`}>
-                                      {tMap("routeStop.openVisit")}
-                                    </Link>
-                                  ) : null}
-                                </li>
-                              )
-                            })}
-                          </ol>
+                          <LiveMapDaySteps
+                            steps={daySteps}
+                            selectedOrder={selectedStop}
+                            onSelect={setSelectedStop}
+                            formatTime={formatTenantTime}
+                          />
                         )}
                         {routeStopsWithoutCoordinates > 0 ? (
                           <div className="mt-1 text-amber-700 dark:text-amber-300">{tMap("routeStop.missingCoordinates", { count: routeStopsWithoutCoordinates })}</div>
@@ -1038,36 +1202,6 @@ export default function MtmMapPage() {
         )}
       </section>
 
-      <details className="group rounded-lg border bg-card">
-        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3 px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-          <SlidersHorizontal className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-semibold">{tMap("additionalControls")}</span>
-            <span className="block text-xs text-muted-foreground">{tMap("additionalControlsHint")}</span>
-          </span>
-          <span aria-hidden="true" className="text-muted-foreground transition-transform group-open:rotate-180">⌄</span>
-        </summary>
-        <div className="flex flex-wrap content-start gap-2 border-t p-3">
-          <Button className="min-h-11" variant={showGeofence ? "default" : "outline"} size="sm" onClick={() => setShowGeofence(!showGeofence)}>
-            <Circle className="mr-1 h-3.5 w-3.5" /> {tMap("geofence")}
-          </Button>
-          <Button
-            data-testid="mtm-map-heatmap-toggle"
-            type="button"
-            aria-pressed={showHeatmap}
-            className="min-h-11"
-            variant={showHeatmap ? "default" : "outline"}
-            size="sm"
-            onClick={() => setShowHeatmap((current) => !current)}
-          >
-            <Flame className="mr-1 h-3.5 w-3.5" /> {tMap("heatmap")}
-          </Button>
-          <div className="flex basis-full items-start gap-2 rounded-md bg-muted/40 p-2 text-xs text-muted-foreground">
-            <History className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            {tMap("historyOnlyExplicit")}
-          </div>
-        </div>
-      </details>
 
       </>
       )}

@@ -148,6 +148,50 @@ describe("when an answer is accepted", () => {
       .toEqual({ action: "ignore", reason: "too_late" })
   })
 
+  // Gemini 3.8 Live may not answer speech that was not meant for it, so those
+  // words never meet a finished turn. They must not wait for the next one.
+  describe("speech the assistant chose not to answer", () => {
+    it("is forgotten, so a later yes is judged on its own", () => {
+      const gate = asked()
+      gate.userSpeech("Мам, я перезвоню вечером, хорошо?", 6_000)
+      gate.userSpeechUnanswered()
+      expect(answer(gate, "да", 12_000)).toEqual({ action: "confirm", receiptId: RECEIPT })
+    })
+
+    it("would otherwise glue itself to that yes and get it refused", () => {
+      // The fault this exists for, kept as a test so the reason stays visible.
+      const gate = asked()
+      gate.userSpeech("Мам, я перезвоню вечером, хорошо?", 6_000)
+      expect(answer(gate, " да", 12_000)).toEqual({ action: "ignore", reason: "not_an_answer" })
+    })
+
+    it("decides nothing by itself, even when the forgotten words were a yes", () => {
+      // An unanswered yes is not a confirmation: only a finished turn decides.
+      const gate = asked()
+      gate.userSpeech("да", 6_000)
+      gate.userSpeechUnanswered()
+      expect(gate.assistantFinishedTurn(7_000)).toEqual({ action: "ignore", reason: "no_utterance" })
+    })
+
+    it("does not reopen the window in which a yes counts", () => {
+      // Silence is not a question. If forgetting moved the clock, background
+      // speech every few seconds would keep a draft confirmable for ever.
+      const gate = asked()
+      gate.userSpeech("посторонняя речь", 4_000 + VOICE_CONFIRMATION_WINDOW_MS - 5_000)
+      gate.userSpeechUnanswered()
+      expect(answer(gate, "да", 4_000 + VOICE_CONFIRMATION_WINDOW_MS + 1))
+        .toEqual({ action: "ignore", reason: "too_late" })
+    })
+
+    it("keeps the once-only rule for the receipt", () => {
+      const gate = asked()
+      expect(answer(gate, "да")).toEqual({ action: "confirm", receiptId: RECEIPT })
+      gate.userSpeech("ой, кто там", 9_000)
+      gate.userSpeechUnanswered()
+      expect(answer(gate, "да", 12_000)).toEqual({ action: "ignore", reason: "already_answered" })
+    })
+  })
+
   it("ignores a yes before the assistant has asked anything", () => {
     const gate = createConfirmationGate()
     gate.setPendingReceipt(RECEIPT, 1_000)

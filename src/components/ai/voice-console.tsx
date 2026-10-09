@@ -67,6 +67,7 @@ import {
   geminiFunctionCalls,
   geminiFunctionResponse,
   geminiInputTranscript,
+  geminiVoiceActivity,
   GEMINI_CAPTURE_WORKLET_URL,
   GEMINI_INPUT_SAMPLE_RATE,
   GEMINI_OUTPUT_SAMPLE_RATE,
@@ -93,6 +94,19 @@ const FIRST_RESPONSE_TIMEOUT_MS = 18_000
 const RESPONSE_PROGRESS_TIMEOUT_MS = 30_000
 const RESPONSE_STALL_GRACE_MS = 12_000
 const MAX_UTTERANCE_MS = 45_000
+// How long after the provider says the user stopped speaking the assistant may
+// stay quiet before the console stops waiting for it.
+//
+// Gemini 3.8 Live may decide that speech was not meant for it and say nothing
+// at all - no audio, no tool call, no turnComplete. That is the model working
+// as designed, and on a live session (2026-10-08) it happened on half of the
+// side-talk tried: once in total silence, once after a fragment of an answer.
+// The utterance watchdog below was written for a model that always answers, so
+// it read that silence as a hung provider and ended the conversation 90 s
+// later with "no response". Ten seconds is far beyond a real answer's start
+// (under one second in every measured turn) and short enough that the orb is
+// back to listening before the user wonders what it is doing.
+const ASSISTANT_SILENCE_GRACE_MS = 10_000
 const IDLE_STOP_MS = 60_000
 const IDLE_CHECK_MS = 5_000
 const MIC_SILENCE_WARN_MS = 10_000
@@ -306,6 +320,7 @@ function ConsoleInner({
   const confirmedSpeechActiveRef = useRef(false)
   const responseWatchdogRef = useRef<number | null>(null)
   const utteranceWatchdogRef = useRef<number | null>(null)
+  const assistantSilenceTimerRef = useRef<number | null>(null)
   const nudgedRef = useRef(false)
   const transcriptDraftRef = useRef("")
   const handledToolCallsRef = useRef(new Set<string>())
@@ -538,6 +553,11 @@ function ConsoleInner({
     utteranceWatchdogRef.current = null
   }, [])
 
+  const clearAssistantSilenceTimer = useCallback(() => {
+    if (assistantSilenceTimerRef.current !== null) window.clearTimeout(assistantSilenceTimerRef.current)
+    assistantSilenceTimerRef.current = null
+  }, [])
+
   const stopMicMeter = useCallback(() => {
     const meter = micMeterRef.current
     if (meter) {
@@ -581,6 +601,7 @@ function ConsoleInner({
   const closeMedia = useCallback(() => {
     clearResponseWatchdog()
     clearUtteranceWatchdog()
+    clearAssistantSilenceTimer()
     stopMicMeter()
     try { liveSessionRef.current?.sendRealtimeInput({ audioStreamEnd: true }) } catch { /* socket already closed */ }
     try { liveSessionRef.current?.close() } catch { /* socket already closed */ }
@@ -621,7 +642,7 @@ function ConsoleInner({
     setPhase("listening")
     setLastTranscript(null)
     setTranscriptionWarning(false)
-  }, [clearResponseWatchdog, clearUtteranceWatchdog, stopMicMeter])
+  }, [clearAssistantSilenceTimer, clearResponseWatchdog, clearUtteranceWatchdog, stopMicMeter])
 
   const stop = useCallback(async (reason: string, stopNotice?: string) => {
     const current = sessionRef.current
@@ -675,6 +696,37 @@ function ConsoleInner({
       }
     }, MAX_UTTERANCE_MS * 2)
   }, [clearUtteranceWatchdog, failConversation, t])
+
+  /**
+   * The user has stopped speaking, by the provider's own account. If the
+   * assistant then says and does nothing, that was speech it chose not to
+   * answer: go back to listening instead of waiting for a turn that will not
+   * come. Nothing is sent to the model - a nudge here would make it answer a
+   * sentence that was said to someone else.
+   */
+  const armAssistantSilenceTimer = useCallback(() => {
+    clearAssistantSilenceTimer()
+    const generation = generationRef.current
+    assistantSilenceTimerRef.current = window.setTimeout(() => {
+      assistantSilenceTimerRef.current = null
+      if (generationRef.current !== generation || !sessionRef.current) return
+      // Only speech the provider transcribed is waiting on anything. A cough
+      // trips the detector too, and has nothing to clean up or report.
+      if (!confirmedSpeechActiveRef.current) return
+      // Still speaking or still working: it may yet get to these words, so
+      // look again later. A turn that hangs has its own watchdog; this one is
+      // only for an assistant that is idle and has nothing to say.
+      if (playbackActiveRef.current || generationInProgressRef.current) {
+        armAssistantSilenceTimer()
+        return
+      }
+      trace("voice_audio_event", { event: "assistant_stayed_silent" }, "assistant_stayed_silent")
+      confirmedSpeechActiveRef.current = false
+      clearUtteranceWatchdog()
+      confirmationGateRef.current.userSpeechUnanswered()
+      setPhase("listening")
+    }, ASSISTANT_SILENCE_GRACE_MS)
+  }, [clearAssistantSilenceTimer, clearUtteranceWatchdog, trace])
 
   const runToolCalls = useCallback(async (
     calls: FunctionCall[],
@@ -803,6 +855,27 @@ function ConsoleInner({
       }
     }
 
+    // The assistant doing anything at all - speaking, calling a tool, ending
+    // or abandoning a turn - means it is not silently ignoring the user.
+    if (
+      message.serverContent?.modelTurn
+      || (message.toolCall?.functionCalls?.length ?? 0) > 0
+      || message.serverContent?.interrupted
+      || message.serverContent?.generationComplete
+      || message.serverContent?.turnComplete
+    ) {
+      clearAssistantSilenceTimer()
+    }
+    const voiceActivity = geminiVoiceActivity(message)
+    if (voiceActivity === "start") {
+      clearAssistantSilenceTimer()
+    } else if (voiceActivity === "end") {
+      armAssistantSilenceTimer()
+      // The user is done; what the orb shows until the assistant reacts is
+      // "thinking", not "still hearing you".
+      if (!playbackActiveRef.current && confirmedSpeechActiveRef.current) setPhase("processing")
+    }
+
     if (message.serverContent?.interrupted) {
       trace("voice_audio_event", { event: "provider_interrupted" }, "provider_interrupted")
       audioPipelineRef.current?.playbackNode.port.postMessage({ type: "interrupt", generation })
@@ -920,8 +993,10 @@ function ConsoleInner({
       tryDeferredReconnectRef.current()
     }
   }, [
+    armAssistantSilenceTimer,
     armResponseWatchdog,
     armUtteranceWatchdog,
+    clearAssistantSilenceTimer,
     clearResponseWatchdog,
     clearUtteranceWatchdog,
     failConversation,

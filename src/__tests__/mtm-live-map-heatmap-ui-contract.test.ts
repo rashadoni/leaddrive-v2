@@ -7,10 +7,15 @@ const map = readFileSync(resolve("src/components/mtm/live-map.tsx"), "utf8")
 
 describe("SWM-12 live heatmap UI contract", () => {
   it("exposes an accessible stateful toggle and passes its state to the map", () => {
-    expect(page).toContain('data-testid="mtm-map-heatmap-toggle"')
-    expect(page).toContain("aria-pressed={showHeatmap}")
-    expect(page).toContain("setShowHeatmap((current) => !current)")
+    // Since 2026-10-09 the toggle is one of the switches of «Слои» on the map
+    // (src/components/mtm/live-map-layers-control.tsx): a real switch with
+    // its state, under the same test id.
+    expect(page).toContain('on: showHeatmap, onToggle: () => setShowHeatmap((current) => !current), testId: "mtm-map-heatmap-toggle"')
     expect(page).toContain("showHeatmap={showHeatmap}")
+    const control = readFileSync(resolve("src/components/mtm/live-map-layers-control.tsx"), "utf8")
+    expect(control).toContain('role="switch"')
+    expect(control).toContain("aria-checked={layer.on}")
+    expect(control).toContain("data-testid={layer.testId ?? `live-map-layer-${layer.id}`}")
   })
 
   it("reuses the bounded viewport cluster selection for density", () => {

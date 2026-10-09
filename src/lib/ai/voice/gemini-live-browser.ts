@@ -78,3 +78,20 @@ export function geminiInputTranscript(message: LiveServerMessage): {
     finished: transcription.finished === true,
   }
 }
+
+/**
+ * The provider's own word on when the user started and stopped speaking.
+ *
+ * The transcript never says it: `inputTranscription.finished` has not arrived
+ * once, on either model. This signal does, on both. The field is read under
+ * two names because the SDK types it `voiceActivityType` while the wire - and
+ * therefore the object the SDK hands over - says `type` (captured from live
+ * 3.1 and 3.8 sessions, 2026-10-08).
+ */
+export function geminiVoiceActivity(message: LiveServerMessage): "start" | "end" | null {
+  const activity = message.voiceActivity as { type?: unknown; voiceActivityType?: unknown } | undefined
+  const kind = activity?.type ?? activity?.voiceActivityType
+  if (kind === "ACTIVITY_START") return "start"
+  if (kind === "ACTIVITY_END") return "end"
+  return null
+}

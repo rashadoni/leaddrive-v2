@@ -15,6 +15,7 @@ const deps = vi.hoisted(() => ({
   createGeminiLiveToken: vi.fn(async () => ({
     token: "short-lived-token",
     expiresAt: "2026-08-14T11:02:00.000Z",
+    model: "gemini-sealed-into-this-token",
   })),
   updateMany: vi.fn(async (args: {
     where: { status?: string; elevenlabsConversationId?: Marker }
@@ -61,7 +62,6 @@ vi.mock("@/lib/ai/voice/config", () => ({
 }))
 vi.mock("@/lib/ai/voice/gemini-live", () => ({
   createGeminiLiveToken: deps.createGeminiLiveToken,
-  GEMINI_LIVE_MODEL: "gemini-3.1-flash-live-preview",
   GEMINI_LIVE_API_VERSION: "v1beta",
 }))
 vi.mock("@/lib/social/review-apply-request", () => ({ guardInteractiveJsonMutation: vi.fn(() => null) }))
@@ -84,6 +84,9 @@ beforeEach(() => {
   deps.createGeminiLiveToken.mockResolvedValue({
     token: "short-lived-token",
     expiresAt: "2026-08-14T11:02:00.000Z",
+    // Whatever the mint sealed into the token. Deliberately not a real id: the
+    // route must report this one, not resolve a model of its own.
+    model: "gemini-sealed-into-this-token",
   })
 })
 
@@ -97,7 +100,7 @@ describe("Gemini Live ephemeral token one-shot lifecycle", () => {
       data: expect.objectContaining({
         token: "short-lived-token",
         expiresAt: "2026-08-14T11:02:00.000Z",
-        model: "gemini-3.1-flash-live-preview",
+        model: "gemini-sealed-into-this-token",
         apiVersion: "v1beta",
         connectionId: expect.any(String),
       }),
@@ -119,7 +122,11 @@ describe("Gemini Live ephemeral token one-shot lifecycle", () => {
       deps.createGeminiLiveToken.mockImplementationOnce(async () => {
         resolve()
         await new Promise<void>((release) => { releaseProvider = release })
-        return { token: "short-lived-token", expiresAt: "2026-08-14T11:02:00.000Z" }
+        return {
+          token: "short-lived-token",
+          expiresAt: "2026-08-14T11:02:00.000Z",
+          model: "gemini-sealed-into-this-token",
+        }
       })
     })
     const firstPromise = POST(request())

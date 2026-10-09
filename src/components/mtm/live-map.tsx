@@ -1,9 +1,9 @@
 "use client"
 
 import "leaflet/dist/leaflet.css"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { Circle, CircleMarker, MapContainer, Marker, Polyline, Popup, useMap, useMapEvents } from "react-leaflet"
+import { Circle, CircleMarker, MapContainer, Marker, Polyline, Popup, Tooltip, useMap, useMapEvents } from "react-leaflet"
 import L from "leaflet"
 import Link from "next/link"
 import { CartoVectorBasemap } from "./carto-vector-basemap"
@@ -30,6 +30,8 @@ export interface RouteStop {
   checkInAt?: string | null
   checkOutAt?: string | null
   visitId?: string | null
+  /** The radius a check-in at this client is accepted in: the client's own, or the organization's. */
+  zoneRadiusMeters?: number | null
 }
 
 // F-38: shared type. `AgentLocation` previously lived here too, conflicting
@@ -58,18 +60,20 @@ interface Props {
   etaSeconds?: number | null
   timeZone?: string
   showWorkdayStatus?: boolean
+  /**
+   * A marker is the employee, not a picture of him: pressing it selects him
+   * exactly as pressing his card does (owner, 2026-10-08: «по карте нужно
+   * больше интерактивности»). Until then a marker only opened a balloon.
+   */
+  onAgentSelect?: (agentId: string) => void
+  /** The stop of the selected employee's day that is in focus, by its order in the route. */
+  focusStopOrder?: number | null
+  onStopSelect?: (orderIndex: number) => void
+  /** Keep the selected employee in the middle of the map as his position updates. */
+  followAgent?: boolean
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
-
-const statusColors: Record<string, string> = {
-  CHECKED_IN: "#22c55e",
-  ON_ROAD: "#3b82f6",
-  STOPPED: "#f59e0b",
-  ROUTE_FINISHED: "#047857",
-  LATE: "#ef4444",
-  OFFLINE: "#94a3b8",
-}
 
 // Field-status label keys come from the shared dictionary at
 // src/lib/mtm-types.ts so map page + live map can't drift. Resolved
@@ -139,20 +143,22 @@ function clusterIcon(marker: LiveMapClusterMarker) {
   })
 }
 
-function routeStopIcon(orderIndex: number, status: string) {
+function routeStopIcon(orderIndex: number, status: string, focused = false) {
   const color = routeStopColors[status] || routeStopColors.PENDING
-  const opacity = status === "VISITED" ? 0.5 : 1
+  // The stop in focus is never faded, whatever its status.
+  const opacity = status === "VISITED" && !focused ? 0.5 : 1
+  const size = focused ? 30 : 22
   return L.divIcon({
     className: "mtm-route-stop-marker",
     html: `<div style="
-      width:22px;height:22px;border-radius:50%;
-      background:${color};border:2px solid white;opacity:${opacity};
+      width:${size}px;height:${size}px;border-radius:50%;
+      background:${color};border:${focused ? 3 : 2}px solid white;opacity:${opacity};
       display:flex;align-items:center;justify-content:center;
-      font:700 10px system-ui,sans-serif;color:white;
-      box-shadow:0 1px 4px rgba(0,0,0,0.25);
+      font:700 ${focused ? 12 : 10}px system-ui,sans-serif;color:white;
+      box-shadow:${focused ? "0 0 0 3px #4f46e5, 0 2px 8px rgba(0,0,0,0.35)" : "0 1px 4px rgba(0,0,0,0.25)"};
     ">${orderIndex + 1}</div>`,
-    iconSize: [22, 22],
-    iconAnchor: [11, 11],
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
   })
 }
 
@@ -241,6 +247,44 @@ function FocusAgent({ agents, focusAgentId }: { agents: LiveMapAgent[]; focusAge
   return null
 }
 
+/** A step pressed in the list: go to that stop and open what the map knows about it. */
+function FocusStop({ stops, focusStopOrder, markers }: {
+  stops: RouteStop[]
+  focusStopOrder: number | null
+  markers: MutableRefObject<Map<number, L.Marker>>
+}) {
+  const map = useMap()
+  const lastRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (focusStopOrder === null) {
+      lastRef.current = null
+      map.closePopup()
+      return
+    }
+    // Once per choice: a poll hands a new stops array every half a minute.
+    if (lastRef.current === focusStopOrder) return
+    const stop = stops.find((candidate) => candidate.orderIndex === focusStopOrder)
+    if (!stop) return
+    lastRef.current = focusStopOrder
+    map.flyTo([stop.latitude, stop.longitude], Math.max(map.getZoom(), 15), { duration: 0.4 })
+    markers.current.get(focusStopOrder)?.openPopup()
+  }, [map, stops, focusStopOrder, markers])
+  return null
+}
+
+/** «Follow»: the selected employee stays in the middle while his position updates. */
+function FollowAgent({ agents, focusAgentId, enabled }: { agents: LiveMapAgent[]; focusAgentId: string | null; enabled: boolean }) {
+  const map = useMap()
+  const agent = enabled && focusAgentId ? agents.find((candidate) => candidate.agentId === focusAgentId) : undefined
+  const latitude = agent?.latitude
+  const longitude = agent?.longitude
+  useEffect(() => {
+    if (typeof latitude !== "number" || typeof longitude !== "number") return
+    map.panTo([latitude, longitude], { animate: true, duration: 0.5 })
+  }, [map, latitude, longitude])
+  return null
+}
+
 function stopTime(value: string | null | undefined, locale: string, timeZone?: string): string {
   return value ? formatTime(new Date(value), locale, timeZone ? { hour: "2-digit", minute: "2-digit", timeZone } : undefined) : ""
 }
@@ -303,8 +347,13 @@ export default function MtmLiveMap({
   etaSeconds = null,
   timeZone,
   showWorkdayStatus = true,
+  onAgentSelect,
+  focusStopOrder = null,
+  onStopSelect,
+  followAgent = false,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const stopMarkersRef = useRef(new Map<number, L.Marker>())
   const baseMapTileErrorCountRef = useRef(0)
   const baseMapTileSuccessCountRef = useRef(0)
   const baseMapUnavailableRef = useRef(false)
@@ -444,7 +493,6 @@ export default function MtmLiveMap({
     })),
     [markerSelection.markers],
   )
-  const renderedAgents = markerSelection.markers.flatMap((marker) => marker.kind === "AGENT" ? [marker.agent] : [])
   const renderedAgentIds = markerSelection.markers.flatMap((marker) => (
     marker.kind === "AGENT" ? [marker.agent.agentId] : marker.agents.map((agent) => agent.agentId)
   ))
@@ -468,6 +516,8 @@ export default function MtmLiveMap({
           <InvalidateSize />
           <FitBounds agents={agents} plannedRoute={plannedRoute} focusAgentId={focusAgentId} />
           <FocusAgent agents={agents} focusAgentId={focusAgentId} />
+          <FocusStop stops={plannedRoute} focusStopOrder={focusStopOrder} markers={stopMarkersRef} />
+          <FollowAgent agents={agents} focusAgentId={focusAgentId} enabled={followAgent} />
           <ViewportReporter onChange={handleViewportChange} />
 
           <CartoVectorBasemap
@@ -503,19 +553,23 @@ export default function MtmLiveMap({
             <Polyline positions={replayPath} pathOptions={{ color: "#f59e0b", weight: 3, opacity: 0.85 }} />
           )}
 
-          {/* Geofence rings around each agent */}
+          {/* Client zones: the circle a check-in is accepted in, around each stop
+              of the selected employee's day. It used to be drawn around the
+              employee himself, with a fixed 100 m — a ring that followed the
+              person and said nothing about any client. */}
           {showGeofence &&
-            renderedAgents.map((a) => (
+            plannedRoute.map((stop) => (
               <Circle
-                key={`geo-${a.agentId}`}
-                center={[a.latitude, a.longitude]}
-                radius={geofenceRadius}
+                key={`zone-${stop.orderIndex}`}
+                center={[stop.latitude, stop.longitude]}
+                radius={stop.zoneRadiusMeters && stop.zoneRadiusMeters > 0 ? stop.zoneRadiusMeters : geofenceRadius}
+                interactive={false}
                 pathOptions={{
-                  color: statusColors[a.fieldStatus || "OFFLINE"] ?? statusColors.OFFLINE,
+                  color: routeStopColors[stop.status] ?? routeStopColors.PENDING,
                   weight: 1.5,
-                  opacity: 0.6,
-                  fillColor: statusColors[a.fieldStatus || "OFFLINE"] ?? statusColors.OFFLINE,
-                  fillOpacity: 0.08,
+                  opacity: 0.7,
+                  fillColor: routeStopColors[stop.status] ?? routeStopColors.PENDING,
+                  fillOpacity: 0.1,
                 }}
               />
             ))}
@@ -525,10 +579,15 @@ export default function MtmLiveMap({
             <Marker
               key={`stop-${stop.orderIndex}`}
               position={[stop.latitude, stop.longitude]}
-              icon={routeStopIcon(stop.orderIndex, stop.status)}
-              zIndexOffset={100}
+              icon={routeStopIcon(stop.orderIndex, stop.status, stop.orderIndex === focusStopOrder)}
+              zIndexOffset={stop.orderIndex === focusStopOrder ? 900 : 100}
               title={stop.name}
               alt={stop.name}
+              ref={(marker) => {
+                if (marker) stopMarkersRef.current.set(stop.orderIndex, marker)
+                else stopMarkersRef.current.delete(stop.orderIndex)
+              }}
+              eventHandlers={{ click: () => onStopSelect?.(stop.orderIndex) }}
             >
               <Popup>
                 <div style={{ fontFamily: "system-ui,sans-serif", minWidth: 140 }}>
@@ -588,9 +647,14 @@ export default function MtmLiveMap({
                 position={[agent.latitude, agent.longitude]}
                 icon={agentIcon(agent.name, agent.freshness, isFocused)}
                 zIndexOffset={isFocused ? 1000 : 500}
-                title={agent.name}
                 alt={agent.name}
+                eventHandlers={{ click: () => onAgentSelect?.(agent.agentId) }}
               >
+                {/* Who this is and what he is doing, without a click. */}
+                <Tooltip direction="top" offset={[0, -16]} opacity={1}>
+                  <span style={{ fontWeight: 700 }}>{agent.name}</span>
+                  {" · "}{tMap(`fieldStatus.${statusLabelKeys[statusKey]}`)}
+                </Tooltip>
                 <Popup>
                   <div style={{ fontFamily: "system-ui,sans-serif", minWidth: 170 }}>
                     <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4, color: "#0B0B1E" }}>

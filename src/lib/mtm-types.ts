@@ -33,6 +33,8 @@ export interface MtmLiveMapContract {
   polling: { minimumIntervalSeconds: number }
   freshnessThresholds: MtmLiveMapFreshnessThresholds
   maxAccuracyMeters: number
+  /** The organization's check-in radius, for clients without one of their own. */
+  geofenceRadiusMeters?: number
 }
 
 export interface LiveMapAgent {
@@ -67,6 +69,11 @@ export interface MtmDashboardAgent extends Omit<LiveMapAgent, "latitude" | "long
   workdayDate?: string | null
   workdayStartedAt?: string | null
   workdayCarryover?: boolean
+  /** When the visit the agent is in was opened — it may be an earlier day. Only with CHECKED_IN. */
+  openVisitSince?: string | null
+  /** Stops visited and stops in all of today's routes that count; 0 of 0 = no route. */
+  routeVisited?: number
+  routeTotal?: number
 }
 
 export interface LiveMapViewportBounds {
