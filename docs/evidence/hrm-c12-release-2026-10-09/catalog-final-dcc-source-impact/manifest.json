@@ -1,0 +1,300 @@
+{
+  "archivedAtUtc": "2026-10-09T23:21:15.506199+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer-review.json.gz",
+      "originalBytes": 22944,
+      "originalSha256": "a518ce6a340dac76335244c69ff1e29cf51f8fc9f14615fe544513edbf380baf",
+      "storedBytes": 6870,
+      "storedSha256": "e0bf1cc62d810549b0616a57338790aa8dd33f8b15e08f02546bf726437e7b99"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/.github__workflows__hrm-backup-acl-attribution.yml-current-contents-original-api.json.gz",
+      "originalBytes": 15344,
+      "originalSha256": "936c5c5ade024219d29195fd4cd17d46c0883b4bda116252cb37bec539f5e176",
+      "storedBytes": 5777,
+      "storedSha256": "e3a65ab90967321cd6769c570b16978377e7853739abdcde9289a17b98a54837"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/.github__workflows__hrm-c12-operational-schema-inspection.yml-current-contents-original-api.json.gz",
+      "originalBytes": 22947,
+      "originalSha256": "e66fe89176990ce15c7b353bf8688fc3ed4903e0f5ba3372fe702e890757e5aa",
+      "storedBytes": 8210,
+      "storedSha256": "a3387903a43edfc000f7524df6e6549530bbb6c63e2acd82aff37eb80ecb795b"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/.github__workflows__hrm-default-acl-inspection.yml-current-contents-original-api.json.gz",
+      "originalBytes": 13529,
+      "originalSha256": "285173d9da318a0fa532c99b88204d2cb1002ab435fc04209129f399081b89cb",
+      "storedBytes": 5265,
+      "storedSha256": "d09e6cee0e068cfbf61df74294a7c56c6b4372c902681ff4e60207193c77a4de"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/.github__workflows__hrm-loopback-acl-inspection.yml-current-contents-original-api.json.gz",
+      "originalBytes": 14432,
+      "originalSha256": "cc19bceb67dd99a728abf5fdcd5ce16a51a47fedbca9f21378afbd7362ba7a51",
+      "storedBytes": 5367,
+      "storedSha256": "214e176c8c2039d1830aa0df33b36e87e66604f566a91d3bb1d02b81f6ff5fac"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/.github__workflows__hrm-migration-metadata-preflight.yml-current-contents-original-api.json.gz",
+      "originalBytes": 13269,
+      "originalSha256": "fa8882ffa73974182a51ccb7a54c8d681aab993e969c83453042f7acc38b2115",
+      "storedBytes": 5311,
+      "storedSha256": "143f27c1bc56803df2a40c64e1e31cd8d886407d61d4b0fb38f64a4a633d4ffb"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/clients__registry.json-current-contents-original-api.json.gz",
+      "originalBytes": 6256,
+      "originalSha256": "297d7276fb7e85657e606a7597c8e4590f11ddf53bcc6ed6cee43e7ce0d0b35f",
+      "storedBytes": 2714,
+      "storedSha256": "d1d9ee3ac5a99045a0ed63ec48f6cbad00788e99259ab7ae49b87d0336d6f0a5"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/compare-a1-dcc-original-api.json.gz",
+      "originalBytes": 283713,
+      "originalSha256": "044a407da3bfb28cfc59c4da0824232fad1783f321d10939a4bb2a2720501558",
+      "storedBytes": 71170,
+      "storedSha256": "a27062df9206711e7b94a53214f1a9673b24901cd503f45af29a269a3a86e3ae"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/default-acl-contracts-binding.json.gz",
+      "originalBytes": 3059,
+      "originalSha256": "6dfc92b5f071d7f7b8155ac80df71edcf80cd31bdc0bd551806c945923e397c5",
+      "storedBytes": 1078,
+      "storedSha256": "487699fa401977bc652db16b9cfa25a3b3e2fe2088e9ca878d15e18cb7450708"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/docs__DEPLOYMENT.md-current-contents-original-api.json.gz",
+      "originalBytes": 21115,
+      "originalSha256": "7a5e0bf450660e9ec715bb27f472f07bfdec4e98b8c6ce54c107c73c060246ff",
+      "storedBytes": 10263,
+      "storedSha256": "f1f24de79f20c7ce2304337bccb6e7ca90745efc3a496d47abe6e155160b5746"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/exact-core-contracts-binding.json.gz",
+      "originalBytes": 4322,
+      "originalSha256": "d029430e4574aa0f37aa083a249e6854a2184624be30671c0a3c67bd6eba28e7",
+      "storedBytes": 1436,
+      "storedSha256": "0266017c175491fe02e7a28b9a57dc19a70c8ca6a5111616d846d87d630ddd99"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/main-after-peer-original-api.json.gz",
+      "originalBytes": 342,
+      "originalSha256": "a5ddedc423f3f47842ed5b8ac43435ac2001bd9e5b4968eb6a85839863521605",
+      "storedBytes": 214,
+      "storedSha256": "f9f265cc130ea792f1b1d5466ac48f23e239f231708e77880dcc9574eef939ab"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/main-original-api.json.gz",
+      "originalBytes": 342,
+      "originalSha256": "a5ddedc423f3f47842ed5b8ac43435ac2001bd9e5b4968eb6a85839863521605",
+      "storedBytes": 214,
+      "storedSha256": "f9f265cc130ea792f1b1d5466ac48f23e239f231708e77880dcc9574eef939ab"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/pr670-original-api.json.gz",
+      "originalBytes": 20599,
+      "originalSha256": "24fe51b57282ddaaed29d21af41c772caad2cbdc3f341aed3a09c9e5f8ff35a7",
+      "storedBytes": 3690,
+      "storedSha256": "d6cff885be5bf71444103ae8330dcabadb843b77a8ad1360ad877e4c9073c239"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/prisma__migrations__20261010090000_mtm_agent_tags_map_color__migration.sql-contents-original-api.json.gz",
+      "originalBytes": 3212,
+      "originalSha256": "f83ab3765ab981a363fa6ef2dfa19f712e0b72d84b36662be3752d0b74044cd6",
+      "storedBytes": 1494,
+      "storedSha256": "d7ad41b75b97804e1a54902ce8853a2aa8dba9daff5300abaeb27a1e67700d2b"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/prisma__migrations__20261010090000_mtm_agent_tags_map_color__migration.sql-current-original.txt.gz",
+      "originalBytes": 1348,
+      "originalSha256": "7c59cc0a27b3379f2eeacaa755b30ace1e183838631b0f795c3029b943004c56",
+      "storedBytes": 788,
+      "storedSha256": "5e7ab8bca587ab6a1618675bc59add79db11c9e67a570042bb135e4d0229c073"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/prisma__schema.prisma-contents-original-api.json.gz",
+      "originalBytes": 1323844,
+      "originalSha256": "99ce4eba5d1bac1172d550fe2bc99e65c7dd53bdbf442d5276f5d6c851137891",
+      "storedBytes": 354994,
+      "storedSha256": "460c9dc3cdf48acc41836a098b53c4e8ffeac8c439a62b4173e59d10e5b7b617"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/prisma__schema.prisma-current-original.txt.gz",
+      "originalBytes": 960091,
+      "originalSha256": "157b3ff96109b8840bbc6fdb495386b3bb41cd998da968b971a8a9912610a4a6",
+      "storedBytes": 200921,
+      "storedSha256": "dbb84a1bb30be307b9a158e6f7ddbf01ceae7d26eecfd51729ccd8af26454f75"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/scripts__check-test-baseline.mjs-current-contents-original-api.json.gz",
+      "originalBytes": 15161,
+      "originalSha256": "049cf03a940bd8b752b8830e242b0118e6326bb063ee830f1b81f3d3075e3c7f",
+      "storedBytes": 7096,
+      "storedSha256": "d40e367028db0e7b29a89ffb7b222f00c7c74f966b79be0ab604a460926c7abd"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/scripts__ci__check-typecheck-baseline.mjs-current-contents-original-api.json.gz",
+      "originalBytes": 9319,
+      "originalSha256": "ee8a90214a9d9b6fd0a3a7039286224f2ec82b53a5c35df65ba1f692175e080b",
+      "storedBytes": 4556,
+      "storedSha256": "55b41ab71d8d0487f0ed42270e47179c53ee038a13c9e5675acd361689f6d079"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/scripts__ci__check-typecheck-gate.sh-current-contents-original-api.json.gz",
+      "originalBytes": 5920,
+      "originalSha256": "994e911a01b0a9b5dc23c8c6c1eb31dc29fbee225b03f614a49be50da4f227bf",
+      "storedBytes": 2941,
+      "storedSha256": "505bd57a0a577cc31b2e7f30cb9942d5fa59d5183fe1132c3ea3d490dda3f585"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/scripts__hrm-backup-acl-attribution.mjs-current-contents-original-api.json.gz",
+      "originalBytes": 20460,
+      "originalSha256": "2129691b94fe555315db59e528453dfaa694edf0fe0cfd770cff953ef3c773cb",
+      "storedBytes": 8634,
+      "storedSha256": "241256a4889f2167a4704976ee0f6280f4baffe6c977beb8855427ce331c28c3"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/scripts__hrm-backup-acl-attribution.sql-current-contents-original-api.json.gz",
+      "originalBytes": 12935,
+      "originalSha256": "b43c66f130f2a5e75bd98538bd0fd564e672e929122338c0a85a9cd0eacbd177",
+      "storedBytes": 4657,
+      "storedSha256": "025e6bade59c5b145095f35ca6f60cc28249112df519a32c58586b8899d336bc"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/scripts__hrm-backup-acl-attribution.test.mjs-current-contents-original-api.json.gz",
+      "originalBytes": 44249,
+      "originalSha256": "0496efff4a1c0c83fd9f17ea687709c023692038eb538d69b6df05442db17c97",
+      "storedBytes": 17595,
+      "storedSha256": "cfd19a159d70839354e5807cc73d6bed8c547e262e4a6f278d7d64f3509bb732"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/scripts__hrm-c12-operational-schema-inspection.mjs-current-contents-original-api.json.gz",
+      "originalBytes": 17313,
+      "originalSha256": "149125c75dba85421593086ec6b30ab2a4749f200b5909650bf490e21fc65247",
+      "storedBytes": 7313,
+      "storedSha256": "fbc0290a1917eef56a499d010303db07304e867403102bc6c093f7140dc378b8"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/scripts__hrm-c12-operational-schema-inspection.test.mjs-current-contents-original-api.json.gz",
+      "originalBytes": 15160,
+      "originalSha256": "02acab272ef281c029f4a46c6ff1329433a3956cc249104b06e99633ad768c70",
+      "storedBytes": 6098,
+      "storedSha256": "a5c2b061670cf42b24d730ede65ef98f085939ffbe3697b4d32d5eac090e7ae1"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/scripts__hrm-default-acl-inspection.mjs-current-contents-original-api.json.gz",
+      "originalBytes": 22468,
+      "originalSha256": "0bce4031973ca731b623cde1ad691a6357cd0f8c0ceec44ca494f98ef4f00d30",
+      "storedBytes": 9219,
+      "storedSha256": "0f1ce962cccf3b8c6aae0309ad0c3bb33324b23ce72e695d0b6ed5cc92ebaed4"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/scripts__hrm-default-acl-inspection.sql-current-contents-original-api.json.gz",
+      "originalBytes": 7123,
+      "originalSha256": "37a1756e3b0af5ddcb21cf7edc79640ac261a5d4ef7006fea5b30341b404ccdd",
+      "storedBytes": 2911,
+      "storedSha256": "5df9895e64fd1497e791b2c023aaf46cc11321cfd24c333fc3448dfa54cc858d"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/scripts__hrm-default-acl-inspection.test.mjs-current-contents-original-api.json.gz",
+      "originalBytes": 39285,
+      "originalSha256": "27cc3896709f284373babf750ea076cbe88883bdd1638020795ab099af100eb7",
+      "storedBytes": 15048,
+      "storedSha256": "08d83254e8057d4584d539939aa26194ab26be69ec47f1b58dd5c5a8c93a7b9c"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/scripts__hrm-loopback-acl-inspection.mjs-current-contents-original-api.json.gz",
+      "originalBytes": 25559,
+      "originalSha256": "402ed12dec8adbd7a74698dd2a287bdfb0c08a944841bf38a82704a9da7807bc",
+      "storedBytes": 10611,
+      "storedSha256": "621774452deb4402371eb47675ff2f3c070e99683ce4c8b7d3eed67604caa276"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/scripts__hrm-loopback-acl-inspection.sql-current-contents-original-api.json.gz",
+      "originalBytes": 8308,
+      "originalSha256": "99b3b57dfcd2b441cfde1a773a196a49d8bc5b7af2a5f2205f957080c8750efc",
+      "storedBytes": 3319,
+      "storedSha256": "8ba8cc7e7ad673a9622633e86d9e4b65f4bb3e2a1d95daf7891e447ea15a780e"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/scripts__hrm-loopback-acl-inspection.test.mjs-current-contents-original-api.json.gz",
+      "originalBytes": 51464,
+      "originalSha256": "88cf4aa96754c04d5da0df63a28065881320a01eb2780b04f678c18d326ab688",
+      "storedBytes": 19061,
+      "storedSha256": "ce75c53d3f860e4a8a121ab9228a242301959dfb011165ebfac3a1bba462dcba"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/scripts__hrm-migration-metadata-preflight.mjs-current-contents-original-api.json.gz",
+      "originalBytes": 35530,
+      "originalSha256": "ac6422297736026789472c39da815254f9711e08972e0c60bb3edf32bc9d2e56",
+      "storedBytes": 14622,
+      "storedSha256": "16bb898d5d3a5e50e4c15b56cb1659086c69f0c07942bf4a6fd50535f524a49c"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/scripts__hrm-migration-metadata-preflight.sql-current-contents-original-api.json.gz",
+      "originalBytes": 21708,
+      "originalSha256": "93735e3b851862c554ca24f66a84f51d5363ab792d7af96df8ca24161a74a67b",
+      "storedBytes": 8243,
+      "storedSha256": "623fb2e829707f968bbdda5ea4261fc1debcde54d1c6b39380f6188b8ecfd168"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/scripts__workforce-reconciliation-schema-contract.mjs-current-contents-original-api.json.gz",
+      "originalBytes": 5615,
+      "originalSha256": "a222cc562fb0cabcd33319dfebe1d7abe243685e4e9acbae0887694e032b6e8d",
+      "storedBytes": 2823,
+      "storedSha256": "35b7e4e95fe2d062152a19c1594d0f06cd8d8a3bc5bd79ef829e713bf1a795e1"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/scripts__workforce-reconciliation-schema-contract.sql-current-contents-original-api.json.gz",
+      "originalBytes": 14653,
+      "originalSha256": "4b0c3b2249b38959fd73d9fd726e5dbfa2464220f8da1d28f15dfb255486241b",
+      "storedBytes": 5677,
+      "storedSha256": "3153c480118ad80cb94a0367a18d1a869ecadcbde07461113d717b3044f25878"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/src__lib__mtm__agent-tags.ts-contents-original-api.json.gz",
+      "originalBytes": 12882,
+      "originalSha256": "9adb836bb97d456eddbaaa5772e527fbc46b3d2e37cab0ca5b097ac59a2b1fcd",
+      "storedBytes": 6042,
+      "storedSha256": "a6d17bb98c68d7657683b954a162de31395d3195fe5da0d4770d58d8fe86ef8a"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/src__lib__mtm__agent-tags.ts-current-original.txt.gz",
+      "originalBytes": 8568,
+      "originalSha256": "22778f066bff549ae03cc32334838ebd028c2111066d6b530b98400ae98aaf4b",
+      "storedBytes": 3656,
+      "storedSha256": "ad07e494aae3554b6dfaf0da57f860c72b7c586a53534debf33a7a9ee60002bc"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/test-baseline.json-current-contents-original-api.json.gz",
+      "originalBytes": 2611,
+      "originalSha256": "84586311e3d1b7cf0348abc1c50384cdbea61e21227ba4342ded81402a2c9d6b",
+      "storedBytes": 987,
+      "storedSha256": "e45a9b4f842d11b6b4e4a3a5662988275f044b3b045cb2b8dbe200aadf2b1004"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-dcc-peer/typecheck-baseline.json-current-contents-original-api.json.gz",
+      "originalBytes": 6460,
+      "originalSha256": "89a78300fb73d4acc4dbadb90e314bf97f33e062fc87f0f14aaf8c83f9e99a6f",
+      "storedBytes": 2132,
+      "storedSha256": "53de0001c31c2719f89e5aa90ffdf125d25733132c9643c268a24278b87aa3c0"
+    },
+    {
+      "path": "hrm-c12-incoming-dcc-final-root-checks/peer-schema-reader-initial-error.json.gz",
+      "originalBytes": 281,
+      "originalSha256": "d14679c326245a3deb2aad37099e73fe51c5e35d3ff470ebb64a10ef71c91393",
+      "storedBytes": 211,
+      "storedSha256": "700c64ca6a4aa8eff2ae06c7a4be8f70fcfba73b2af3569e00756e16e2c99671"
+    },
+    {
+      "path": "hrm-c12-incoming-dcc-final-root-checks/verified-peer-and-git-bindings.json.gz",
+      "originalBytes": 7991,
+      "originalSha256": "c380b8ca496dc86bf80362ed2f225240e485c3bfdf89020d66a0e3947ea24728",
+      "storedBytes": 2511,
+      "storedSha256": "b7e51d0852aa91ee9a7a8343f8d7b77113eaa2ecb96e320a4f1dc7b5c7ff2573"
+    }
+  ]
+}
