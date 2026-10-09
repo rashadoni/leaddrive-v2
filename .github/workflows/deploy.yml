@@ -174,7 +174,14 @@ jobs:
     if: ${{ always() && !(github.event_name == 'workflow_dispatch' && inputs.recovery_sha != '') && (github.event_name != 'workflow_dispatch' || needs.dispatch_input_preflight.result == 'success') && (inputs.deployment_mode != 'recovery-bootstrap-resume' || needs.resume_build_admission.result == 'success') }}
     needs: [dispatch_input_preflight, resume_build_admission]
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    # The same cap as `static-checks` in pr-checks.yml, which runs the same
+    # full unit suite as this job's last step. At 15 minutes the job had been
+    # finishing in 12:43–13:18 all day and on 2026-10-09 (run 37937179476)
+    # went over while the suite was still running: GitHub cancelled the job,
+    # the deploy was skipped, and a merge that was green everywhere did not
+    # reach production. A cap is there to stop a hung job, not a healthy one
+    # two minutes from its end.
+    timeout-minutes: 30
     services:
       event-platform-postgres:
         image: postgres:16

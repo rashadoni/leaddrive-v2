@@ -83,6 +83,8 @@ type AgentWithLocations = Prisma.MtmAgentGetPayload<{
     lastSeenAt: true
     teamId: true
     team: { select: { name: true } }
+    managerId: true
+    manager: { select: { name: true } }
     locations: true
     workdays: { select: { status: true; workDate: true; startedAt: true; pausedAt: true; completedAt: true } }
   }
@@ -218,6 +220,11 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
         lastSeenAt: true,
         teamId: true,
         team: { select: { name: true } },
+        // Whom he reports to — the grouping a dispatcher can actually use:
+        // the card has a «Руководитель» field, and nothing in the product
+        // fills in a team.
+        managerId: true,
+        manager: { select: { name: true } },
         // The live marker is the newest admissible coordinate. Accuracy is a
         // quality gate/metadata field, never a reason to replace a newer point
         // with an older, prettier one. Defensive JS validation below also
@@ -363,6 +370,8 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
         lastSeenAt: a.lastSeenAt,
         teamId: a.teamId,
         teamName: a.team?.name ?? null,
+        managerId: a.managerId ?? null,
+        managerName: a.manager?.name ?? null,
         fieldStatus,
         freshness,
         workdayState,

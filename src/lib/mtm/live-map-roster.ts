@@ -17,7 +17,7 @@
 import { calculateDistance } from "@/lib/geo-utils"
 import { isLiveMapPositionVisible, type MtmDashboardAgent } from "@/lib/mtm-types"
 
-export const ROSTER_COLUMNS = ["name", "status", "signal", "distance", "team", "app", "workday", "route", "speed", "battery"] as const
+export const ROSTER_COLUMNS = ["name", "status", "signal", "distance", "team", "manager", "app", "workday", "route", "speed", "battery"] as const
 export type RosterColumnId = typeof ROSTER_COLUMNS[number]
 
 /** What fits beside the map. A narrow list always has these, whatever the wide table shows. */
@@ -29,6 +29,9 @@ export const ROSTER_NARROW_COLUMNS: readonly RosterColumnId[] = ["name", "status
  */
 export const ROSTER_NARROW_COLUMNS_WITH_POINT: readonly RosterColumnId[] = ["name", "status", "distance"]
 /** The wide table, until somebody chooses otherwise. */
+// «Руководитель» is not among them: the wide table was sized without it, and
+// on a laptop it cut the status word and the names. It is one tick away in
+// «Вид», and its filter and grouping work without the column being drawn.
 export const ROSTER_DEFAULT_COLUMNS: readonly RosterColumnId[] = ["name", "status", "signal", "distance", "team", "workday", "route", "battery"]
 /**
  * Columns nobody can switch off. The name is the row. The status is what the
@@ -47,6 +50,8 @@ export const ROSTER_BATTERY_ORDER = ["LOW", "MID", "HIGH", "UNKNOWN"] as const
 export const ROSTER_DISTANCE_ORDER = ["NEAR", "CLOSE", "FAR", "VERY_FAR", "UNKNOWN"] as const
 /** The value of the team column for somebody who is in no team. */
 export const ROSTER_NO_TEAM = "__none__"
+/** …and of «Руководитель» for somebody whose card names nobody. */
+export const ROSTER_NO_MANAGER = "__none__"
 
 const FIXED_ORDER: Partial<Record<RosterColumnId, readonly string[]>> = {
   status: ROSTER_STATUS_ORDER,
@@ -72,6 +77,7 @@ export function rosterValue(agent: MtmDashboardAgent, column: RosterColumnId): s
     case "status": return (ROSTER_STATUS_ORDER as readonly string[]).includes(agent.fieldStatus) ? agent.fieldStatus : "OFFLINE"
     case "signal": return agent.freshness
     case "team": return agent.teamId || ROSTER_NO_TEAM
+    case "manager": return agent.managerId || ROSTER_NO_MANAGER
     case "app": return agent.isOnline ? "ONLINE" : "OFFLINE"
     case "workday": return agent.workdayState
     case "route": {
@@ -245,6 +251,7 @@ function sortKey(agent: MtmDashboardAgent, column: RosterColumnId): number | str
       return Number.isFinite(recordedAt) ? -recordedAt : null
     }
     case "team": return agent.teamId ? (agent.teamName ?? "") : null
+    case "manager": return agent.managerId ? (agent.managerName ?? "") : null
     case "app": return orderIndex(ROSTER_APP_ORDER, rosterValue(agent, "app"))
     case "workday": return orderIndex(ROSTER_WORKDAY_ORDER, agent.workdayState)
     case "route": {
@@ -277,7 +284,7 @@ export function sortRoster(agents: readonly MtmDashboardAgent[], sort: RosterSor
   })
 }
 
-export const ROSTER_GROUPINGS = ["none", "team", "status", "workday"] as const
+export const ROSTER_GROUPINGS = ["none", "team", "manager", "status", "workday"] as const
 export type RosterGroupBy = typeof ROSTER_GROUPINGS[number]
 
 export interface RosterGroup {
@@ -286,23 +293,48 @@ export interface RosterGroup {
   agents: MtmDashboardAgent[]
 }
 
-/** Rows keep the order they came in; groups come in the column's own order. */
-export function groupRoster(agents: readonly MtmDashboardAgent[], groupBy: RosterGroupBy, locale: string): RosterGroup[] {
+/**
+ * Rows keep the order they came in; groups come in the column's own order.
+ *
+ * By manager, a person who is somebody's manager heads his own group instead
+ * of sinking into «без руководителя» (or into his own boss's group) away from
+ * his people: «Иванов» then reads Ivanov and, under him, those who report to
+ * him. Who is a manager is read from `everybody` — the whole roster, not the
+ * rows a filter left — or he would jump groups whenever a filter hid his people.
+ */
+export function groupRoster(
+  agents: readonly MtmDashboardAgent[],
+  groupBy: RosterGroupBy,
+  locale: string,
+  everybody: readonly MtmDashboardAgent[] = agents,
+): RosterGroup[] {
   if (groupBy === "none") return [{ key: "", agents: [...agents] }]
+  const leaders = groupBy === "manager"
+    ? new Set(everybody.flatMap((agent) => (agent.managerId ? [agent.managerId] : [])))
+    : null
   const groups = new Map<string, MtmDashboardAgent[]>()
   for (const agent of agents) {
-    const key = rosterValue(agent, groupBy)
+    const leads = Boolean(leaders?.has(agent.agentId))
+    const key = leads ? agent.agentId : rosterValue(agent, groupBy)
     const members = groups.get(key)
-    if (members) members.push(agent)
+    // The one the group is named after stands first in it.
+    if (members) { if (leads) members.unshift(agent); else members.push(agent) }
     else groups.set(key, [agent])
   }
   const fixed = FIXED_ORDER[groupBy]
   const collator = new Intl.Collator(locale, { sensitivity: "base", numeric: true })
   const keys = [...groups.keys()].sort((a, b) => {
     if (fixed) return orderIndex(fixed, a) - orderIndex(fixed, b)
-    // Teams by name; «no team» closes the list.
+    // Teams and managers by name; «no team», «no manager» close the list.
     if (a === ROSTER_NO_TEAM || b === ROSTER_NO_TEAM) return a === b ? 0 : a === ROSTER_NO_TEAM ? 1 : -1
-    return collator.compare(groups.get(a)?.[0]?.teamName ?? "", groups.get(b)?.[0]?.teamName ?? "")
+    const name = (key: string) => {
+      const first = groups.get(key)?.[0]
+      if (groupBy !== "manager") return first?.teamName ?? ""
+      // The head of the group is the manager himself; otherwise his name is on his people's rows.
+      return (first?.agentId === key ? first.name : first?.managerName) ?? ""
+    }
+    // Two managers of one name stay in one order from refresh to refresh.
+    return collator.compare(name(a), name(b)) || (a < b ? -1 : a > b ? 1 : 0)
   })
   return keys.map((key) => ({ key, agents: groups.get(key) ?? [] }))
 }
@@ -353,10 +385,13 @@ export function availableRosterColumns(
   options: { workforceEnabled: boolean },
 ): RosterColumnId[] {
   const hasTeams = agents.some((agent) => Boolean(agent.teamId))
+  // A column of dashes is not a column: «Руководитель» is shown once somebody has one.
+  const hasManagers = agents.some((agent) => Boolean(agent.managerId))
   // The distance exists only while a point is picked on the map.
   const hasPoint = agents.some((agent) => agent.distanceMeters !== undefined)
   return ROSTER_COLUMNS.filter((column) =>
-    (column !== "team" || hasTeams) && (column !== "workday" || options.workforceEnabled) && (column !== "distance" || hasPoint))
+    (column !== "team" || hasTeams) && (column !== "manager" || hasManagers)
+    && (column !== "workday" || options.workforceEnabled) && (column !== "distance" || hasPoint))
 }
 
 /**
@@ -382,6 +417,18 @@ export const ROSTER_DEFAULT_VIEW: RosterView = {
   columns: [...ROSTER_DEFAULT_COLUMNS],
 }
 
+/**
+ * The columns the list had when views were first remembered (2026-10-09).
+ * (A tab still running a build from before `seen` rewrites the view without
+ * it; the worst that does is bring a newly arrived default column back once.)
+ */
+const ROSTER_COLUMNS_FIRST_SET: readonly RosterColumnId[] = ["name", "status", "signal", "distance", "team", "app", "workday", "route", "speed", "battery"]
+
+/** The view as it is remembered: with the columns this build knows, so a later one can tell what is new. */
+export function serializeRosterView(view: RosterView): string {
+  return JSON.stringify({ ...view, seen: ROSTER_COLUMNS })
+}
+
 /** Whatever was stored — by an older build, by hand — comes back as a valid view. */
 export function parseRosterView(raw: unknown): RosterView {
   let input: unknown = raw
@@ -392,8 +439,14 @@ export function parseRosterView(raw: unknown): RosterView {
   const sortInput = record.sort != null && typeof record.sort === "object" ? record.sort as Record<string, unknown> : {}
   const isColumn = (value: unknown): value is RosterColumnId => (ROSTER_COLUMNS as readonly unknown[]).includes(value)
   const stored = Array.isArray(record.columns) ? record.columns.filter(isColumn) : []
+  // A column that did not exist when the view was saved was never switched
+  // off by anybody: it comes in as it would for a new person. What the saving
+  // build knew is written beside the view; a view saved before that was kept
+  // knew the first set.
+  const seen = Array.isArray(record.seen) ? record.seen.filter(isColumn) : ROSTER_COLUMNS_FIRST_SET
+  const arrived = ROSTER_DEFAULT_COLUMNS.filter((column) => !seen.includes(column))
   const columns = stored.length > 0
-    ? ROSTER_COLUMNS.filter((column) => ROSTER_LOCKED_COLUMNS.includes(column) || stored.includes(column))
+    ? ROSTER_COLUMNS.filter((column) => ROSTER_LOCKED_COLUMNS.includes(column) || stored.includes(column) || arrived.includes(column))
     : [...ROSTER_DEFAULT_COLUMNS]
   return {
     width: record.width === "wide" ? "wide" : "narrow",

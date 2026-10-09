@@ -363,9 +363,10 @@ describe("the list as an Excel file", () => {
     const empty = agent({ agentId: "a", name: "A", speed: null, battery: null, teamId: null, distanceMeters: null })
     expect((["team", "route", "speed", "battery", "distance"] as const).map((column) => rosterCellText(empty, column, words)))
       .toEqual(["—", "—", "—", "—", "—"])
-    const full = agent({ agentId: "a", name: "A", speed: 41.6, battery: 12.4, teamId: "t", teamName: "Север", routeVisited: 2, routeTotal: 5, distanceMeters: 450.2 })
-    expect((["team", "route", "speed", "battery", "distance", "app"] as const).map((column) => rosterCellText(full, column, words)))
-      .toEqual(["Север", "2 из 5", "42 км/ч", "12%", "450 м", "в сети"])
+    const full = agent({ agentId: "a", name: "A", speed: 41.6, battery: 12.4, teamId: "t", teamName: "Север", managerId: "m", managerName: "Старший", routeVisited: 2, routeTotal: 5, distanceMeters: 450.2 })
+    expect((["team", "manager", "route", "speed", "battery", "distance", "app"] as const).map((column) => rosterCellText(full, column, words)))
+      .toEqual(["Север", "Старший", "2 из 5", "42 км/ч", "12%", "450 м", "в сети"])
+    expect(rosterCellText(empty, "manager", words)).toBe("—")
   })
 
   it("has every column the roster can show, in the roster's order, for the rows in the order given", () => {
@@ -429,10 +430,14 @@ describe("the card's pieces on screen", () => {
   const byTestId = (testId: string) => container.querySelector<HTMLElement>(`[data-testid="${testId}"]`)
   const settle = async (ms = 0) => { await act(async () => { await new Promise((resolve) => setTimeout(resolve, ms)) }) }
   const render = async (element: ReturnType<typeof createElement>) => { await act(async () => { root.render(element) }) }
+  // The position rests a twentieth of a second here, not the page's 600 ms:
+  // sixteen cases at the page's own rhythm were eleven seconds of the suite
+  // spent standing still. (The page-level cases keep the real rhythm.)
+  const SETTLE_FOR_TESTS_MS = 50
   const place = (position: { latitude: number; longitude: number; accuracy?: number } | null, extra: Record<string, unknown> = {}) =>
-    createElement(LiveMapAgentPlace, { position, inVisit: false, stops: [pharmacy], stopsReady: true, ...extra } as never)
-  /** Longer than the component's own settle time. */
-  const STREET_WAIT_MS = 800
+    createElement(LiveMapAgentPlace, { position, inVisit: false, stops: [pharmacy], stopsReady: true, settleMs: SETTLE_FOR_TESTS_MS, ...extra } as never)
+  /** Longer than the settle time the cases give the component. */
+  const STREET_WAIT_MS = 120
   /**
    * Past the component's settle time, and then for as long as an answer is
    * still on its way: a loaded runner is slow to hand a response over, and a

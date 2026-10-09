@@ -23,6 +23,7 @@ import {
   pickRosterStatus,
   ROSTER_DEFAULT_VIEW,
   ROSTER_VIEW_STORAGE_KEY,
+  serializeRosterView,
   rosterDistanceToPoint,
   rosterStatusChipOn,
   rosterValue,
@@ -894,7 +895,7 @@ export default function MtmMapPage() {
       // The distance is never the remembered order: tomorrow there is no point to be near to.
       const stored: RosterView = view.sort.column === "distance" ? { ...view, sort: storedSortRef.current } : view
       storedSortRef.current = stored.sort
-      window.localStorage.setItem(ROSTER_VIEW_STORAGE_KEY, JSON.stringify(stored))
+      window.localStorage.setItem(ROSTER_VIEW_STORAGE_KEY, serializeRosterView(stored))
     } catch { /* not remembered; still applied */ }
   }
   const hiddenOnMapCount = useMemo(
@@ -1128,6 +1129,8 @@ export default function MtmMapPage() {
         />
         <div className="flex flex-wrap gap-x-3 gap-y-1 text-muted-foreground">
           {agent.teamName ? <span>{tMap("teamFilter")}: {agent.teamName}</span> : null}
+          {/* The list has room for it only as a column somebody switched on; here it is always said. */}
+          {agent.managerName ? <span data-testid="live-map-agent-manager">{tMap("roster.columns.manager")}: {agent.managerName}</span> : null}
           {agent.speed != null && agent.speed > 0 ? <span>{tMap("roster.kmh", { value: agent.speed.toFixed(0) })}</span> : null}
           {agent.routeCompletion > 0 ? <span><Navigation className="inline h-3 w-3" /> {agent.routeCompletion}%</span> : null}
           {agent.accuracy != null ? <span>±{Math.round(agent.accuracy)} m</span> : null}

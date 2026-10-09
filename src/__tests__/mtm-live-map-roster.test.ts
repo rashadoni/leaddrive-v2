@@ -36,6 +36,7 @@ import {
   pickRosterStatus,
   ROSTER_DEFAULT_VIEW,
   ROSTER_FILTER_NOTHING,
+  ROSTER_NO_MANAGER,
   ROSTER_NO_TEAM,
   rosterFilterAllows,
   rosterFilterOptions,
@@ -43,6 +44,7 @@ import {
   rosterStatusChipOn,
   rosterTickState,
   rosterValue,
+  serializeRosterView,
   sortRoster,
   toggleRosterFilterValue,
   type RosterFilters,
@@ -245,11 +247,90 @@ describe("order and groups", () => {
   })
 })
 
+// «Отдел» is a column nobody can fill in: no screen of the product assigns a
+// team. The card does have «Руководитель» — the grouping a dispatcher with a
+// hundred people can actually use («покажи только людей Иванова»).
+describe("«Руководитель»: the grouping the cards really hold", () => {
+  const CREW = [
+    person("m1", "Zaur", { managerId: "boss-b", managerName: "Bəhruz Rəhimov" }),
+    person("m2", "Aynur", { managerId: "boss-a", managerName: "Əli Həsənov" }),
+    person("m3", "Çingiz", { managerId: "boss-b", managerName: "Bəhruz Rəhimov" }),
+    person("m4", "İlqar", { managerId: null, managerName: null }),
+    person("m5", "Vüqar", { managerId: "boss-a", managerName: "Əli Həsənov" }),
+  ]
+
+  it("is a column only once somebody has a manager — a column of dashes is not a column", () => {
+    expect(availableRosterColumns(TEAM, { workforceEnabled: true })).not.toContain("manager")
+    expect(availableRosterColumns(CREW, { workforceEnabled: true })).toContain("manager")
+  })
+
+  it("holds the manager, or «nobody», as the value the filter and the groups work on", () => {
+    expect(CREW.map((agent) => rosterValue(agent, "manager"))).toEqual(["boss-b", "boss-a", "boss-b", ROSTER_NO_MANAGER, "boss-a"])
+    expect(ids(applyRosterFilters(CREW, { manager: onlyRosterFilterValue("boss-a") }))).toEqual(["m2", "m5"])
+    expect(ids(applyRosterFilters(CREW, { manager: onlyRosterFilterValue(ROSTER_NO_MANAGER) }))).toEqual(["m4"])
+    expect(rosterFilterOptions(CREW, {}, "manager").map((option) => [option.value, option.count]).sort())
+      .toEqual([[ROSTER_NO_MANAGER, 1], ["boss-a", 2], ["boss-b", 2]].sort())
+  })
+
+  it("groups by manager in the order of the managers' names, with the people of nobody last", () => {
+    const groups = groupRoster(sortRoster(CREW, { column: "name", direction: "asc" }, "az"), "manager", "az")
+    expect(groups.map((group) => [group.key, ids(group.agents)])).toEqual([
+      ["boss-b", ["m3", "m1"]],
+      ["boss-a", ["m2", "m5"]],
+      [ROSTER_NO_MANAGER, ["m4"]],
+    ])
+  })
+
+  // Owner, 2026-09-15, of the employees screen: a manager listed apart from his
+  // own people reads as «he is nobody's». The same here: he heads his group.
+  it("a manager who is in the list himself heads his own group — not «без руководителя», not his own boss's group", () => {
+    const office = [
+      person("boss-a", "Əli Həsənov", { managerId: null, managerName: null }),
+      person("lead", "Kamran Lider", { managerId: "boss-a", managerName: "Əli Həsənov" }),
+      person("w1", "Aynur", { managerId: "boss-a", managerName: "Əli Həsənov" }),
+      person("w2", "Zaur", { managerId: "lead", managerName: "Kamran Lider" }),
+      person("w3", "Babək", { managerId: "lead", managerName: "Kamran Lider" }),
+      person("free", "Vüqar", { managerId: null, managerName: null }),
+    ]
+    const rows = sortRoster(office, { column: "name", direction: "asc" }, "az")
+    expect(groupRoster(rows, "manager", "az").map((group) => [group.key, ids(group.agents)])).toEqual([
+      // The manager first, then his people in the list's order.
+      ["boss-a", ["boss-a", "w1"]],
+      // A lead under him with people of his own is a group of his own.
+      ["lead", ["lead", "w3", "w2"]],
+      [ROSTER_NO_MANAGER, ["free"]],
+    ])
+    // A filter that hides his people does not send him to «без руководителя»: who leads is read from everybody.
+    const onlyBosses = rows.filter((agent) => agent.agentId === "boss-a" || agent.agentId === "free")
+    expect(groupRoster(onlyBosses, "manager", "az", office).map((group) => [group.key, ids(group.agents)])).toEqual([
+      ["boss-a", ["boss-a"]],
+      [ROSTER_NO_MANAGER, ["free"]],
+    ])
+  })
+
+  it("two managers of one name are two groups that keep one order, whatever order the rows come in", () => {
+    const twins = [
+      person("t1", "Aynur", { managerId: "boss-z", managerName: "Əli Həsənov" }),
+      person("t2", "Zaur", { managerId: "boss-y", managerName: "Əli Həsənov" }),
+    ]
+    const order = (rows: MtmDashboardAgent[]) => groupRoster(rows, "manager", "az").map((group) => group.key)
+    expect(order(twins)).toEqual(["boss-y", "boss-z"])
+    expect(order([...twins].reverse())).toEqual(["boss-y", "boss-z"])
+  })
+
+  it("sorts by the manager's name, the people of nobody last either way", () => {
+    expect(ids(sortRoster(CREW, { column: "manager", direction: "asc" }, "az")).slice(-1)).toEqual(["m4"])
+    expect(ids(sortRoster(CREW, { column: "manager", direction: "desc" }, "az")).slice(-1)).toEqual(["m4"])
+    expect(ids(sortRoster(CREW, { column: "manager", direction: "asc" }, "az")).slice(0, 2).sort()).toEqual(["m1", "m3"])
+  })
+})
+
 describe("the layout remembered in the browser", () => {
   it("comes back valid whatever was stored", () => {
     expect(parseRosterView(null)).toEqual(ROSTER_DEFAULT_VIEW)
     expect(parseRosterView("{not json")).toEqual(ROSTER_DEFAULT_VIEW)
-    expect(parseRosterView(JSON.stringify({ width: "wide", sort: { column: "battery", direction: "desc" }, groupBy: "team", columns: ["battery", "status"] }))).toEqual({
+    const chosen = { width: "wide", sort: { column: "battery", direction: "desc" }, groupBy: "team", columns: ["battery", "status"] } as RosterView
+    expect(parseRosterView(serializeRosterView(chosen))).toEqual({
       width: "wide",
       sort: { column: "battery", direction: "desc" },
       groupBy: "team",
@@ -257,6 +338,25 @@ describe("the layout remembered in the browser", () => {
       columns: ["name", "status", "battery"],
     })
     expect(parseRosterView({ width: "enormous", sort: { column: "salary" }, groupBy: "mood", columns: ["nonsense"] })).toEqual(ROSTER_DEFAULT_VIEW)
+  })
+
+  // The list will get columns after views began to be remembered. A view
+  // saved before a column existed never switched it off — it simply was not
+  // there; one saved by a build that knew it, without it, was a choice.
+  it("a default column the saving build did not know comes in as for a new person; one the person switched off stays off", () => {
+    const view = { width: "wide", sort: { column: "name", direction: "asc" }, groupBy: "none", columns: ["name", "status", "signal"] }
+    // Saved by a build that knew only these six: the defaults it had never heard of arrive, in the table's own order.
+    const knewLittle = JSON.stringify({ ...view, seen: ["name", "status", "signal", "team", "workday", "nonsense"] })
+    expect(parseRosterView(knewLittle).columns).toEqual(["name", "status", "signal", "distance", "route", "battery"])
+    // Saved by this build: it knew them all, so their absence is what the person chose.
+    expect(parseRosterView(serializeRosterView(view as RosterView)).columns).toEqual(["name", "status", "signal"])
+    expect(JSON.parse(serializeRosterView(view as RosterView)).seen).toEqual(expect.arrayContaining(["manager", "battery", "distance"]))
+    // Saved before anything was written beside the view: it knew the first ten, and nothing new is a default yet.
+    expect(parseRosterView(JSON.stringify(view)).columns).toEqual(["name", "status", "signal"])
+    // «Руководитель» is one tick away, not a default: the wide table was sized without it.
+    expect(ROSTER_DEFAULT_VIEW.columns).not.toContain("manager")
+    // A grouping by it is remembered like any other.
+    expect(parseRosterView(serializeRosterView({ ...ROSTER_DEFAULT_VIEW, groupBy: "manager" })).groupBy).toBe("manager")
   })
 
   it("does not carry filters: yesterday's filter must not hide somebody today", () => {
@@ -641,6 +741,44 @@ describe("the list on the page", () => {
     expect(byTestId("live-map-roster-group-status")).not.toBeNull()
   })
 
+  it("offers «По руководителю» where the cards name managers, and heads each group with his name", async () => {
+    // Nobody here has a manager: neither the column nor the grouping is offered.
+    await draw()
+    await press(byTestId("live-map-roster-view"))
+    expect(byTestId("live-map-roster-group-manager")).toBeNull()
+    expect(byTestId("live-map-roster-column-toggle-manager")).toBeNull()
+    await closeMenu()
+
+    agents = TEAM.map((agent, index) => index < 2
+      ? { ...agent, managerId: "boss-1", managerName: "Старший Первый" }
+      : index < 4 ? { ...agent, managerId: "boss-2", managerName: "Старший Второй" } : agent)
+    await draw()
+    // Not drawn until asked for: the wide table was sized without it.
+    expect(row("a1").querySelector('[data-column="manager"]')).toBeNull()
+    await press(byTestId("live-map-roster-view"))
+    await press(byTestId("live-map-roster-column-toggle-manager"))
+    expect(cell("a1", "manager").textContent).toBe("Старший Первый")
+    expect(cell("a5", "manager").textContent).toBe("—")
+    await press(byTestId("live-map-roster-group-manager"))
+    expect(state.view.groupBy).toBe("manager")
+    const heads = [...container.querySelectorAll('[data-testid^="live-map-roster-group-row-"]')].map((head) => head.textContent ?? "")
+    expect(heads).toHaveLength(3)
+    expect(heads[0]).toContain("Старший Второй")
+    expect(heads[1]).toContain("Старший Первый")
+    // The people whose card names nobody close the list, under their own words.
+    expect(heads[2]).toContain("Без руководителя")
+    await closeMenu()
+    // «Only his people», from the column's own menu.
+    await press(byTestId("live-map-roster-filters-button"))
+    await press(byTestId("live-map-roster-filters-column-manager"))
+    // The tick list: managers by name, the people of nobody last.
+    const offered = [...document.body.querySelectorAll('[data-testid="roster-filter-values-manager"] li')]
+      .map((option) => option.querySelector("label span.truncate")?.textContent)
+    expect(offered).toEqual(["Старший Второй", "Старший Первый", "Без руководителя"])
+    await press(byTestId("roster-filter-only-manager-boss-1"))
+    expect(rowIds().sort()).toEqual(["a1", "a2"])
+  })
+
   it("does not group by a column this roster does not have, whatever layout was remembered", async () => {
     // Remembered in another organization, where there were teams.
     agents = TEAM.map((agent) => ({ ...agent, teamId: null, teamName: null }))
@@ -787,7 +925,7 @@ describe("the page behind the list", () => {
   })
 
   it("remembers the layout in the browser and forgets the filters with the visit", () => {
-    expect(page).toContain("window.localStorage.setItem(ROSTER_VIEW_STORAGE_KEY, JSON.stringify(stored))")
+    expect(page).toContain("window.localStorage.setItem(ROSTER_VIEW_STORAGE_KEY, serializeRosterView(stored))")
     expect(page).toContain("const view = parseRosterView(stored)")
     expect(page).not.toMatch(/localStorage\.setItem\([^)]*rosterFilters/)
     // Another organization or viewer starts with no filter and nobody hidden.

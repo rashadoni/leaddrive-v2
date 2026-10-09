@@ -52,6 +52,9 @@ export interface LiveMapAgent {
   workdayState: "ACTIVE" | "PAUSED" | "CLOSED" | "NOT_STARTED"
   teamId?: string | null
   teamName?: string | null
+  /** Whom the employee reports to, as his card says («Руководитель»). */
+  managerId?: string | null
+  managerName?: string | null
   /** Optional — dashboard passes it for the route-completion ring overlay. */
   routeCompletion?: number
 }
