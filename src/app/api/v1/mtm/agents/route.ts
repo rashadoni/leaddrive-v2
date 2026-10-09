@@ -30,11 +30,22 @@ import { checkPermission } from "@/lib/permissions"
 import { isTenantCapabilityEnabled } from "@/lib/tenant-capabilities"
 import { passwordPolicyError } from "@/lib/password-policy"
 import {
+  MTM_AGENT_WEB_ONLY_SELECT,
+  mtmAgentNotesReader,
+  readsMtmAgentNotes,
+  validateMtmAgentTags,
+  type MtmAgentNotesReader,
+} from "@/lib/mtm/agent-tags"
+import {
   mtmAgentActivityWindow,
   mtmAgentAppActivity,
   mtmAgentCardActivity,
 } from "@/lib/mtm/agent-card-activity"
 
+// Also read for the employee's own phone and for integration keys — which is
+// why the card's labels and map colour are NOT in it. They are the managers'
+// notes about the person; whoever reads them (mtmAgentNotesReader) gets them
+// through MTM_AGENT_WEB_ONLY_SELECT, added behind that check in each handler.
 const AGENT_RESPONSE_SELECT = {
   id: true,
   organizationId: true,
@@ -123,7 +134,13 @@ export const GET = withRls(async (req, auth) => {
     // The linked web login's email is for the web page's search only: a phone
     // token or an integration key has no reason to learn anyone's sign-in
     // address (review of #214).
-    const exposeLoginEmail = Boolean(session) && !mobileAuth?.agentId
+    const webSession = Boolean(session) && !mobileAuth?.agentId
+    // The labels and the map colour a manager put on a card are narrower
+    // still: a browser session is necessary and not enough. An employee must
+    // not read what his manager wrote about him — on his phone, or by signing
+    // in on the web with the same email. Nobody reads them until the web
+    // branch below has resolved who is asking.
+    let notesReader: MtmAgentNotesReader = { kind: "nobody" }
     if (mobileAuth?.agentId) {
       const callerAgent = await prisma.mtmAgent.findFirst({
         where: { id: mobileAuth.agentId, organizationId: orgId },
@@ -160,7 +177,9 @@ export const GET = withRls(async (req, auth) => {
       })
       if (scope.kind === "none") return mtmFieldScopeRequiredResponse()
       if (scope.kind === "agents") where.id = { in: scope.agentIds }
+      notesReader = mtmAgentNotesReader({ webSession, actor: scope.actor })
     }
+    const readsNotes = notesReader.kind !== "nobody"
 
     const [agents, total] = await Promise.all([
       prisma.mtmAgent.findMany({
@@ -178,7 +197,8 @@ export const GET = withRls(async (req, auth) => {
           // address they sign in with (prod 2026-09-15: «rashad@guven.az» lived
           // only on the login). Web sessions only; flattened below, the user
           // row never leaves.
-          ...(exposeLoginEmail ? { user: { select: { email: true } } } : {}),
+          ...(webSession ? { user: { select: { email: true } } } : {}),
+          ...(readsNotes ? MTM_AGENT_WEB_ONLY_SELECT : {}),
         },
       }),
       prisma.mtmAgent.count({ where }),
@@ -309,11 +329,22 @@ export const GET = withRls(async (req, auth) => {
       data: {
         agents: agents.map((row) => {
           const { expoPushToken, latestLocation, ...rest } = row
-          const { user, ...agent } = rest as typeof rest & { user?: { email: string | null } | null }
+          // Taken out of the row whoever asks, and put back only for whoever
+          // reads them: the select already leaves them out for everyone else,
+          // and this is the second lock for the day the select grows.
+          const { user, tags, mapColor, ...agent } = rest as typeof rest & {
+            user?: { email: string | null } | null
+            tags?: string[] | null
+            mapColor?: string | null
+          }
           const presence = mtmAgentPresence(dayByAgent.get(agent.id))
+          // A manager's or a supervisor's own card goes out blank — the same
+          // shape as his people's cards, without what was noted about him.
+          const notesOfThisCard = readsMtmAgentNotes(notesReader, agent.id)
           return {
             ...agent,
-            ...(exposeLoginEmail ? { userEmail: user?.email ?? null } : {}),
+            ...(webSession ? { userEmail: user?.email ?? null } : {}),
+            ...(readsNotes ? { tags: notesOfThisCard ? tags ?? [] : [], mapColor: notesOfThisCard ? mapColor ?? null : null } : {}),
             presence: showTimes ? presence : withoutTimes(presence),
             breaks: showTimes ? (breaksByAgent.get(agent.id) ?? []) : [],
             activity: activityAvailable ? mtmAgentCardActivity(activityByAgent.get(agent.id) ?? {}) : null,
@@ -347,6 +378,10 @@ export const POST = withRls(async (req, auth) => {
     const parsed = parseBody(AgentCreateSchema, raw)
     if (!parsed.ok) return parsed.response
     const body = parsed.data
+    // What is stored is the validator's answer, not the body: trimmed, without
+    // repeats, and refused as a whole if one label would not be kept as sent.
+    const labels = validateMtmAgentTags(body.tags ?? [])
+    if (!labels.ok) return NextResponse.json({ error: labels.error, code: "MTM_AGENT_TAGS_INVALID" }, { status: 400 })
 
     if (administration.kind === "scoped") {
       // A manager hires into their own team line: field roles only, no web
@@ -356,6 +391,10 @@ export const POST = withRls(async (req, auth) => {
       // A supervisor's scope is their team. A new card has no team yet, so it
       // cannot be shown to sit in the manager's territory — administrator work.
       if (body.role === "SUPERVISOR") return mtmScopedAgentTerritoryForbidden()
+      // Also what keeps a manager from labelling himself through a new card:
+      // a card is «his own» by its link to his web login, and only an
+      // administrator makes that link. So the labels and the colour saved
+      // below are always about somebody else.
       if (body.userId) return mtmScopedAgentLinkForbidden()
       if (body.managerId && !administration.agentIds.includes(body.managerId)) {
         return NextResponse.json({ error: "Manager is outside your field scope", code: "MTM_AGENT_OUT_OF_SCOPE" }, { status: 403 })
@@ -403,8 +442,14 @@ export const POST = withRls(async (req, auth) => {
         canSelfPublishRoutes: body.canSelfPublishRoutes ?? false,
         managerId: body.managerId ?? null,
         userId: body.userId ?? null,
+        tags: labels.tags,
+        mapColor: body.mapColor ?? null,
       },
-      select: AGENT_RESPONSE_SELECT,
+      // Only somebody who administers cards on the web gets this far
+      // (resolveMtmAgentAdministration): an administrator, who reads every
+      // card, or a manager, whose new card is never his own (the link check
+      // above). So the answer may carry the labels and the colour just saved.
+      select: { ...AGENT_RESPONSE_SELECT, ...MTM_AGENT_WEB_ONLY_SELECT },
     })
 
     await writeMtmAudit({
@@ -420,6 +465,8 @@ export const POST = withRls(async (req, auth) => {
         role: agent.role,
         canPlanOwnRoutes: agent.canPlanOwnRoutes,
         canSelfPublishRoutes: agent.canSelfPublishRoutes,
+        tags: labels.tags,
+        mapColor: body.mapColor ?? null,
       },
       req,
     }).catch((e) => console.warn("[MTM/agents POST] audit failed", e))

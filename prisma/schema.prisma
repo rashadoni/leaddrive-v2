@@ -5749,6 +5749,15 @@ model MtmAgent {
   /// This grant is the whole rule: the organization-wide routeSelfPublish switch was removed on 2026-10-06.
   canSelfPublishRoutes Boolean   @default(false)
   avatar         String?
+  /// Labels («метки») a manager puts on the card: free text, at most 10 of 24 characters,
+  /// normalized and validated by src/lib/mtm/agent-tags.ts. The managers' own notes about
+  /// the person: read by his managers at a browser (mtmAgentNotesReader there) — never by
+  /// an integration key, his phone, or the employee himself under his own web login.
+  tags           String[]       @default([])
+  /// The employee's personal colour on the live map, set by a manager. A KEY of the fixed
+  /// palette in src/lib/mtm/agent-tags.ts (never a hex); null is «no colour». Read by the
+  /// same people as the labels above.
+  mapColor       String?
   teamId         String?
   team           MtmTeam?       @relation(fields: [teamId], references: [id], onDelete: SetNull)
   managerId      String?

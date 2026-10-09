@@ -60,6 +60,10 @@ vi.mock("@/lib/api-auth", () => ({
     role: "admin",
     email: "admin@example.com",
     name: "Admin",
+    // A person at a browser, as requireAuth marks one: the live map gives an
+    // employee's labels and colour to nobody else (an integration key comes
+    // through the same wrapper as role «admin»).
+    principalType: "session",
   })),
   isAuthError: (value: unknown) => value instanceof Response,
 }))
@@ -669,11 +673,9 @@ pgDescribe("client categories on a real Postgres", () => {
     /** About this many metres north of the place. */
     const north = (meters: number) => 40.4 + meters / 111_195
     let agentId = ""
-    let serial = 0
     type Point = { minutes: number; latitude?: number; isMoving?: boolean; speed?: number | null; accuracy?: number | null }
     async function gps(point: Point) {
       const { advanceMtmAgentLatestLocation } = await import("@/lib/mtm/mobile-location-latest")
-      serial += 1
       await bypass(() => prisma.$transaction((tx) => advanceMtmAgentLatestLocation(tx, {
         organizationId: ORG, agentId, sourceLocationId: null, payloadSha256: null,
         latitude: point.latitude ?? 40.4, longitude: 49.85, accuracy: point.accuracy === undefined ? 10 : point.accuracy,
@@ -807,6 +809,95 @@ pgDescribe("client categories on a real Postgres", () => {
       } finally {
         vi.useRealTimers()
       }
+    })
+  })
+
+  // Labels and a personal map colour on an employee's card (owner, 2026-10-09:
+  // «добей до 100 %»). A text array is the kind of column a mocked Prisma
+  // proves nothing about: the default, the round trip and «has any of these»
+  // are decided by Postgres. The two columns are taken away and put back by
+  // the real migration file, then written and searched through the real routes.
+  describe("labels and a map colour on an employee", () => {
+    const params = (id: string) => ({ params: Promise.resolve({ id }) })
+    const asWebAdmin = async () => {
+      const { getSession } = await import("@/lib/api-auth")
+      vi.mocked(getSession).mockResolvedValue({ orgId: ORG, userId: "admin-user", role: "admin", email: "admin@example.com", name: "Admin" } as never)
+    }
+    let labelled = ""
+    let plain = ""
+
+    beforeAll(async () => {
+      const run = (sql: string) => prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, sql)
+      // Production as it stood before the migration…
+      run(`ALTER TABLE "mtm_agents" DROP COLUMN "tags", DROP COLUMN "mapColor";`)
+      // …an employee hired by the build that knew neither column…
+      run(`INSERT INTO "mtm_agents" ("id", "organizationId", "name", "updatedAt") VALUES ('agent-before-labels', '${ORG}', 'Hired Before Labels', now());`)
+      // …then the migration itself, the very file the deploy applies. Twice: it must be safe to re-run.
+      const migration = readFileSync(path.join(ROOT, "prisma/migrations/20261010090000_mtm_agent_tags_map_color/migration.sql"), "utf8")
+      run(migration)
+      run(migration)
+      labelled = (await bypass(() => prisma.mtmAgent.create({ data: { organizationId: ORG, name: "Labelled Person" }, select: { id: true } }))).id
+      plain = "agent-before-labels"
+    }, 120_000)
+
+    afterAll(async () => {
+      const { getSession } = await import("@/lib/api-auth")
+      vi.mocked(getSession).mockResolvedValue(null)
+    })
+
+    it("everybody starts with no labels and no colour — also the people hired before the columns existed", async () => {
+      const rows = await bypass(() => prisma.mtmAgent.findMany({
+        where: { id: { in: [labelled, plain] } }, orderBy: { name: "asc" }, select: { name: true, tags: true, mapColor: true },
+      }))
+      expect(rows).toEqual([
+        { name: "Hired Before Labels", tags: [], mapColor: null },
+        { name: "Labelled Person", tags: [], mapColor: null },
+      ])
+    })
+
+    it("stores what the manager typed, tidied, and gives it back to the web — the array comes back as it went in", async () => {
+      await asWebAdmin()
+      const { GET, PUT } = await import("@/app/api/v1/mtm/agents/[id]/route")
+      const saved = await PUT(put(`/api/v1/mtm/agents/${labelled}`, { tags: ["  стажёр ", "Север", "север", "VIP №1"], mapColor: "teal" }), params(labelled))
+      const savedBody = await saved.json()
+      expect(saved.status, JSON.stringify(savedBody).slice(0, 300)).toBe(200)
+      const stored = await bypass(() => prisma.mtmAgent.findUniqueOrThrow({ where: { id: labelled }, select: { tags: true, mapColor: true, name: true } }))
+      expect(stored).toEqual({ name: "Labelled Person", tags: ["стажёр", "Север", "VIP №1"], mapColor: "teal" })
+      const read = await (await GET(new NextRequest(`http://localhost:3000/api/v1/mtm/agents/${labelled}`), params(labelled))).json()
+      expect(read.data).toMatchObject({ tags: ["стажёр", "Север", "VIP №1"], mapColor: "teal" })
+
+      // A label that could start a spreadsheet formula is refused, and nothing is written.
+      const refused = await PUT(put(`/api/v1/mtm/agents/${labelled}`, { tags: ["=cmd"] }), params(labelled))
+      expect(refused.status).toBe(400)
+      expect((await bypass(() => prisma.mtmAgent.findUniqueOrThrow({ where: { id: labelled }, select: { tags: true } }))).tags).toEqual(["стажёр", "Север", "VIP №1"])
+      // Saving something else leaves the labels alone; an empty list takes them all off.
+      await PUT(put(`/api/v1/mtm/agents/${labelled}`, { name: "Labelled Person" }), params(labelled))
+      expect((await bypass(() => prisma.mtmAgent.findUniqueOrThrow({ where: { id: labelled }, select: { tags: true, mapColor: true } }))))
+        .toEqual({ tags: ["стажёр", "Север", "VIP №1"], mapColor: "teal" })
+    })
+
+    it("the live map's list carries them, and its search finds an employee by a label as well as by name", async () => {
+      await asWebAdmin()
+      const { GET } = await import("@/app/api/v1/mtm/locations/route")
+      const roster = async (query = "") => {
+        const response = await GET(new NextRequest(`http://localhost:3000/api/v1/mtm/locations${query}`))
+        const body = await response.json()
+        expect(response.status, JSON.stringify(body).slice(0, 300)).toBe(200)
+        return body.data.agentLocations as Array<{ agentId: string; name: string; tags: string[]; mapColor: string | null }>
+      }
+      const everybody = await roster()
+      expect(everybody.find((row) => row.agentId === labelled)).toMatchObject({ tags: ["стажёр", "Север", "VIP №1"], mapColor: "teal" })
+      expect(everybody.find((row) => row.agentId === plain)).toMatchObject({ tags: [], mapColor: null })
+      // By a part of a label, in any case; by a name as before; and a word that is neither finds nobody.
+      expect((await roster(`?employee=${encodeURIComponent("СЕВ")}`)).map((row) => row.agentId)).toEqual([labelled])
+      // From the middle of a label too: «a part» is not «the beginning».
+      expect((await roster(`?employee=${encodeURIComponent("евер")}`)).map((row) => row.agentId)).toEqual([labelled])
+      expect((await roster(`?employee=${encodeURIComponent("vip")}`)).map((row) => row.agentId)).toEqual([labelled])
+      expect((await roster(`?employee=${encodeURIComponent("Before Labels")}`)).map((row) => row.agentId)).toEqual([plain])
+      expect(await roster(`?employee=${encodeURIComponent("нет-такого")}`)).toEqual([])
+
+      await bypass(() => prisma.mtmAgent.update({ where: { id: labelled }, data: { tags: [], mapColor: null } }))
+      expect((await roster(`?employee=${encodeURIComponent("сев")}`)).map((row) => row.agentId)).toEqual([])
     })
   })
 })

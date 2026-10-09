@@ -509,3 +509,115 @@ describe("GET /api/v1/mtm/activity — who acted (2026-09-21)", () => {
     })
   })
 })
+
+/**
+ * Review of 2026-10-10. A saved employee card leaves its labels and its map
+ * colour in the journal: «before» of every save — even one that changed only a
+ * phone number — and «after» when they were set. They are the managers' notes
+ * about a person, so the journal is a second door to them, and it is opened by
+ * the same wrapper that lets an integration key in.
+ */
+describe("GET /api/v1/mtm/activity — the labels and the map colour in a saved card's row", () => {
+  type Shown = { entityId: string; oldData: Record<string, unknown> | null; newData: Record<string, unknown> | null }
+  const person = (auth: typeof AUTH) => ({ ...auth, principalType: "session" as const })
+  const cardSaved = (agentId: string, overrides: Record<string, unknown> = {}) => ({
+    id: `log-${agentId}`,
+    action: "AGENT_UPDATE",
+    entity: "agent",
+    entityId: agentId,
+    agentId,
+    metadataKind: "agent_update",
+    actorUserId: null,
+    agent: { id: agentId, name: "Field Agent", avatar: null },
+    oldData: { name: "Field Agent", phone: "+10000000000", tags: ["стажёр", "ночная смена"], mapColor: "teal" },
+    newData: { phone: "+10000000001", tags: ["резерв"], mapColor: "pink" },
+    createdAt: new Date("2026-10-10T08:00:00.000Z"),
+    ...overrides,
+  })
+  const shown = async (): Promise<{ logs: Shown[]; text: string }> => {
+    const res = await GET(makeReq("/api/v1/mtm/activity?period=all"))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    return { logs: body.data.logs as Shown[], text: JSON.stringify(body) }
+  }
+  const NOTES = ["стажёр", "ночная смена", "резерв", "teal", "pink"]
+
+  it("shows an administrator at a browser what they were and what they became", async () => {
+    vi.mocked(requireAuth).mockResolvedValue(person(AUTH) as never)
+    vi.mocked(prisma.mtmAuditLog.findMany).mockResolvedValue([cardSaved("agent-1")] as never)
+
+    const { logs } = await shown()
+
+    expect(logs[0].oldData).toMatchObject({ tags: ["стажёр", "ночная смена"], mapColor: "teal" })
+    expect(logs[0].newData).toMatchObject({ tags: ["резерв"], mapColor: "pink" })
+  })
+
+  it.each([
+    ["an integration key", { ...AUTH, principalType: "api_key" as const }],
+    // requireAuth always says what it authenticated; without the word it is not a person.
+    ["a caller the route cannot tell from one", AUTH],
+  ])("leaves them out of the row for %s, and keeps the rest of it", async (_who, auth) => {
+    vi.mocked(requireAuth).mockResolvedValue(auth as never)
+    vi.mocked(prisma.mtmAuditLog.findMany).mockResolvedValue([
+      cardSaved("agent-1"),
+      cardSaved("agent-2", { action: "AGENT_CREATE", oldData: null, newData: { name: "New Agent", role: "AGENT", tags: ["резерв"], mapColor: "pink" } }),
+    ] as never)
+
+    const { logs, text } = await shown()
+
+    // The keys are gone, not emptied: «tags: []» would read as «the labels were taken off».
+    expect(logs[0].oldData).toEqual({ name: "Field Agent", phone: "+10000000000" })
+    expect(logs[0].newData).toEqual({ phone: "+10000000001" })
+    expect(logs[1].oldData).toBeNull()
+    expect(logs[1].newData).toEqual({ name: "New Agent", role: "AGENT" })
+    for (const note of NOTES) expect(text, note).not.toContain(note)
+  })
+
+  it("shows a manager the rows about his people in full, and the rows about himself without them", async () => {
+    linkManagerCard()
+    vi.mocked(requireAuth).mockResolvedValue(person(MANAGER_AUTH) as never)
+    vi.mocked(prisma.mtmAuditLog.findMany).mockResolvedValue([
+      cardSaved("agent-1"),
+      cardSaved("mgr-1", {
+        oldData: { name: "Team Manager", tags: ["на испытательном сроке"], mapColor: "navy" },
+        newData: { name: "Team Manager", tags: ["выговор"], mapColor: "black" },
+      }),
+    ] as never)
+
+    const { logs, text } = await shown()
+
+    expect(logs[0].oldData).toMatchObject({ tags: ["стажёр", "ночная смена"], mapColor: "teal" })
+    expect(logs[0].newData).toMatchObject({ tags: ["резерв"], mapColor: "pink" })
+    expect(logs[1].oldData).toEqual({ name: "Team Manager" })
+    expect(logs[1].newData).toEqual({ name: "Team Manager" })
+    for (const note of ["на испытательном сроке", "выговор", "navy", "black"]) expect(text, note).not.toContain(note)
+  })
+
+  it("shows a field employee signed in on the web the rows about himself without them", async () => {
+    // His phone sign-in linked the card to his web login; his feed is his own rows.
+    vi.mocked(requireAuth).mockResolvedValue(person({ ...AUTH, userId: "field-user", role: "sales" }) as never)
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({
+      id: "agent-1", role: "AGENT", canPlanOwnRoutes: true, canSelfPublishRoutes: false,
+    } as never)
+    vi.mocked(prisma.mtmAuditLog.findMany).mockResolvedValue([cardSaved("agent-1")] as never)
+
+    const { logs, text } = await shown()
+
+    const feedQuery = vi.mocked(prisma.mtmAuditLog.findMany).mock.calls[0][0] as unknown as { where: { agentId: unknown } }
+    expect(feedQuery.where.agentId).toEqual({ in: ["agent-1"] })
+    expect(logs[0].oldData).toEqual({ name: "Field Agent", phone: "+10000000000" })
+    expect(logs[0].newData).toEqual({ phone: "+10000000001" })
+    for (const note of NOTES) expect(text, note).not.toContain(note)
+  })
+
+  it("touches only the rows of an employee card — another record's own «tags» stay", async () => {
+    vi.mocked(requireAuth).mockResolvedValue({ ...AUTH, principalType: "api_key" } as never)
+    vi.mocked(prisma.mtmAuditLog.findMany).mockResolvedValue([
+      cardSaved("cust-1", { action: "CUSTOMER_UPDATE", entity: "customer", agentId: null, agent: null, oldData: null, newData: { tags: ["аптека"], mapColor: "n/a" } }),
+    ] as never)
+
+    const { logs } = await shown()
+
+    expect(logs[0].newData).toEqual({ tags: ["аптека"], mapColor: "n/a" })
+  })
+})

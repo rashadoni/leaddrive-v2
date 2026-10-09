@@ -13,6 +13,7 @@ import {
   MTM_SCOPED_MANAGEABLE_AGENT_ROLES,
   managerAssignmentCreatesCycle,
   mtmAgentManagerCycleResponse,
+  mtmAgentOwnNotesForbidden,
   mtmScopedAgentLinkForbidden,
   mtmScopedAgentRoleForbidden,
   mtmScopedAgentTerritoryForbidden,
@@ -21,7 +22,18 @@ import {
 } from "@/lib/mtm/agent-administration"
 import { checkPermission } from "@/lib/permissions"
 import { passwordPolicyError } from "@/lib/password-policy"
+import {
+  MTM_AGENT_WEB_ONLY_SELECT,
+  mtmAgentNotesReader,
+  readsMtmAgentNotes,
+  validateMtmAgentTags,
+  type MtmAgentNotesReader,
+} from "@/lib/mtm/agent-tags"
 
+// Also read for the employee's own phone and for integration keys — which is
+// why the card's labels and map colour are NOT in it. They are the managers'
+// notes about the person; whoever reads them (mtmAgentNotesReader) gets them
+// through MTM_AGENT_WEB_ONLY_SELECT, added behind that check in the handler.
 const AGENT_RESPONSE_SELECT = {
   id: true,
   organizationId: true,
@@ -110,6 +122,14 @@ export const GET = withRls(async (req, auth, { params }: { params: Promise<{ id:
     if (session && !checkPermission(session.role, "mtm", "read")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
+    // An employee opens his own card with the phone's token — or, with the
+    // same email and password, in a browser. The labels and the map colour are
+    // what his manager noted about him, so a browser session is necessary and
+    // not enough: who reads them is decided from the person behind it, the
+    // same rule as the list. A phone token sent along with a cookie is still
+    // the phone.
+    const webSession = Boolean(session) && !getMobileAuth(req)?.agentId
+    let notesReader: MtmAgentNotesReader = { kind: "nobody" }
     let visibleAgentIds = await mobileVisibleAgentIds(req, orgId)
     if (visibleAgentIds === null && session) {
       // A web user opens only a card inside their field scope; others are a 404.
@@ -120,16 +140,29 @@ export const GET = withRls(async (req, auth, { params }: { params: Promise<{ id:
       })
       if (scope.kind === "none") return mtmFieldScopeRequiredResponse()
       if (scope.kind === "agents") visibleAgentIds = scope.agentIds
+      notesReader = mtmAgentNotesReader({ webSession, actor: scope.actor })
     }
+    const readsNotes = notesReader.kind !== "nobody"
     const agent = await prisma.mtmAgent.findFirst({
       where: {
         id: visibleAgentIds === null ? id : { equals: id, in: [...visibleAgentIds] },
         organizationId: orgId,
       },
-      select: AGENT_RESPONSE_SELECT,
+      select: { ...AGENT_RESPONSE_SELECT, ...(readsNotes ? MTM_AGENT_WEB_ONLY_SELECT : {}) },
     })
     if (!agent) return NextResponse.json({ error: "Not found" }, { status: 404 })
-    return NextResponse.json({ success: true, data: agent })
+    // Taken out of the row whoever asks and put back only for whoever reads
+    // them: the second lock, for the day the select above grows. A manager's
+    // or a supervisor's own card goes out blank — the shape of the cards of
+    // his people, without what was noted about him.
+    const { tags, mapColor, ...card } = agent as typeof agent & { tags?: string[] | null; mapColor?: string | null }
+    const notesOfThisCard = readsMtmAgentNotes(notesReader, card.id)
+    return NextResponse.json({
+      success: true,
+      data: readsNotes
+        ? { ...card, tags: notesOfThisCard ? tags ?? [] : [], mapColor: notesOfThisCard ? mapColor ?? null : null }
+        : card,
+    })
   } catch (e) {
     console.error("[MTM/agents/[id] GET]", e)
     return NextResponse.json({ error: "Failed to fetch agent" }, { status: 500 })
@@ -148,6 +181,23 @@ export const PUT = withRls(async (req, auth, { params }: { params: Promise<{ id:
     const parsed = parseBody(AgentUpdateSchema, raw)
     if (!parsed.ok) return parsed.response
     const body = parsed.data
+    // Who may write the labels and the colour follows who reads them: a
+    // manager is not shown what is noted about himself, and does not set it.
+    // An administrator of the organization may — his own card included.
+    if (
+      administration.kind === "scoped"
+      && id === administration.actor.agentId
+      && (body.tags !== undefined || body.mapColor !== undefined)
+    ) {
+      return mtmAgentOwnNotesForbidden()
+    }
+    // Checked only when the labels were sent: the other callers of this route
+    // (a permission switch, a status change, an open tab from before the
+    // labels) send a partial body, and theirs must leave the labels alone.
+    const labels = body.tags === undefined ? null : validateMtmAgentTags(body.tags)
+    if (labels && !labels.ok) {
+      return NextResponse.json({ error: labels.error, code: "MTM_AGENT_TAGS_INVALID" }, { status: 400 })
+    }
 
     // Scope first, existence second: a manager probing ids outside their scope
     // gets the same 404/403 whether the linked user or manager exists or not.
@@ -164,6 +214,9 @@ export const PUT = withRls(async (req, auth, { params }: { params: Promise<{ id:
         managerId: true,
         userId: true,
         teamId: true,
+        // For the audit trail only: what the labels and the colour were before.
+        tags: true,
+        mapColor: true,
       },
     })
     if (!before) return NextResponse.json({ error: "Not found" }, { status: 404 })
@@ -229,6 +282,10 @@ export const PUT = withRls(async (req, auth, { params }: { params: Promise<{ id:
     if (body.canSelfPublishRoutes !== undefined) data.canSelfPublishRoutes = body.canSelfPublishRoutes
     if (body.managerId !== undefined) data.managerId = body.managerId ?? null
     if (body.userId !== undefined) data.userId = body.userId ?? null
+    // Whoever may edit this card may label and colour it: the scope checks
+    // above fence whom that is, and the caller's own card was refused first.
+    if (labels?.ok) data.tags = labels.tags
+    if (body.mapColor !== undefined) data.mapColor = body.mapColor ?? null
     if (body.password) {
       const passwordError = passwordPolicyError(body.password)
       if (passwordError) return NextResponse.json({ error: passwordError }, { status: 400 })
