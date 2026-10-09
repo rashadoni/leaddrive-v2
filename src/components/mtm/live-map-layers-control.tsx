@@ -28,12 +28,18 @@ export interface LiveMapLayer {
  * be taken off at all, and a single employee could not be hidden. The control
  * is closed until asked for, so the map itself stays clear.
  */
-export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents, note }: {
+export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents, note, alert = null }: {
   layers: LiveMapLayer[]
   /** Employees taken off the map one by one with the eye on their card. */
   hiddenAgentCount: number
   onShowAllAgents: () => void
   note?: string
+  /**
+   * Something about a layer that must be seen with the panel closed — a layer
+   * that is on and could not be read looks, on the map, exactly like «there
+   * is nothing here». Said in words on the map, with what to do about it.
+   */
+  alert?: { text: string; actionLabel: string | null; onAction: (() => void) | null } | null
 }) {
   const tMap = useTranslations("mtmMap")
   const [open, setOpen] = useState(false)
@@ -56,6 +62,16 @@ export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents
         {/* Something is hidden: say so while the panel is closed. */}
         {!open && offCount > 0 ? <span className="h-2 w-2 rounded-full bg-amber-500" data-testid="live-map-layers-mark" aria-hidden="true" /> : null}
       </button>
+      {alert && !open ? (
+        <div role="status" className="pointer-events-auto flex max-w-[min(18rem,calc(100vw-3rem))] flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900 shadow-md dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200" data-testid="live-map-layers-alert">
+          <span>{alert.text}</span>
+          {alert.actionLabel && alert.onAction ? (
+            <button type="button" onClick={alert.onAction} data-testid="live-map-layers-alert-action" className="inline-flex min-h-8 items-center font-semibold underline underline-offset-2 [@media(pointer:coarse)]:min-h-11">
+              {alert.actionLabel}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       {open ? (
         <div id="live-map-layers-panel" className="pointer-events-auto min-h-0 w-72 max-w-[calc(100vw-3rem)] overflow-y-auto rounded-lg border border-zinc-300 bg-card p-2 shadow-lg dark:border-zinc-600">
           <ul className="divide-y divide-zinc-200 dark:divide-zinc-700">
@@ -63,7 +79,7 @@ export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents
               <li key={layer.id} className="flex items-center gap-3 px-1 py-1.5">
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-medium">{layer.label}</span>
-                  {layer.hint ? <span className="block text-xs text-muted-foreground">{layer.hint}</span> : null}
+                  {layer.hint ? <span className="block text-xs text-muted-foreground" data-testid={`live-map-layer-hint-${layer.id}`}>{layer.hint}</span> : null}
                 </span>
                 <button
                   type="button"

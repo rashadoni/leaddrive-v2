@@ -96,6 +96,8 @@ let routes: Array<Record<string, unknown>>
 let workforceEnabled: boolean
 /** How long the day's route takes to come back, as over a real network. */
 let routeDelayMs: number
+/** What the server says of the client base, or a status when it fails. */
+let clientBase: Record<string, unknown> | number
 
 function answer(now: number) {
   const iso = (minutesAgo: number) => new Date(now - minutesAgo * 60_000).toISOString()
@@ -168,6 +170,13 @@ describe("the live map page, end to end", () => {
     routes = []
     workforceEnabled = true
     routeDelayMs = 0
+    clientBase = {
+      clients: [
+        { id: "c-near", name: "Аптека на углу", ...northOf(500), category: "A", objectType: "PHARMACY", geofenceRadius: 150 },
+        { id: "c-far", name: "Клиника", ...northOf(7_000), category: "B", objectType: "CLINIC", geofenceRadius: null },
+      ],
+      total: 5, withoutCoordinates: 3, truncated: false,
+    }
     rosterRows = [
       { agentId: "far", name: "Fərid", fieldStatus: "ON_ROAD", meters: 7_400, minutesAgo: 1 },
       { agentId: "near", name: "Nigar", fieldStatus: "STOPPED", meters: 450, minutesAgo: 1, battery: 12 },
@@ -185,6 +194,9 @@ describe("the live map page, end to end", () => {
       if (url.pathname === "/api/v1/mtm/activity") return Response.json({ success: true, data: { logs: activityLogs } })
       if (url.pathname === "/api/v1/mtm/alerts") return Response.json({ success: true, data: { groups: [] } })
       if (url.pathname === "/api/v1/mtm/geocode/street") return Response.json({ success: true, data: { available: true, street, distanceMeters: 9 } })
+      if (url.pathname === "/api/v1/mtm/locations/clients") {
+        return typeof clientBase === "number" ? new Response("{}", { status: clientBase }) : Response.json({ success: true, data: clientBase })
+      }
       throw new Error(`unexpected request: ${url.pathname}`)
     }))
     container = document.createElement("div")
@@ -426,7 +438,7 @@ describe("the live map page, end to end", () => {
     await press(byTestId("live-map-layer-glide"))
     expect([mapProp("showLabels"), trails(), mapProp("glideMarkers")]).toEqual([true, null, false])
     // The look of the map is remembered in the browser.
-    expect(JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v1") ?? "{}")).toEqual({ labels: true, trails: false, glide: false })
+    expect(JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v1") ?? "{}")).toEqual({ labels: true, trails: false, glide: false, clients: false })
   })
 
   it("puts the list away on a wide screen without touching what the map draws, and says when a filter is narrowing it", async () => {
@@ -520,6 +532,104 @@ describe("the live map page, end to end", () => {
     expect([...document.querySelectorAll('[data-testid="live-map-agent-event"]')]).toHaveLength(0)
   })
 
+  describe("«Клиенты»: the client base as a layer", () => {
+    const openLayers = async () => { await press(container.querySelector('[data-testid="live-map-layers"] > button')) }
+    const clientRequests = () => requests.filter((request) => request.startsWith("/api/v1/mtm/locations/clients")).length
+    const hint = () => byTestId("live-map-layer-hint-clients")?.textContent
+
+    it("is off until asked for: nothing is read and the map is given no clients", async () => {
+      await open()
+      expect(clientRequests()).toBe(0)
+      expect(mapProp<unknown[]>("clients")).toEqual([])
+      await openLayers()
+      expect(byTestId("live-map-layer-clients")?.getAttribute("aria-checked")).toBe("false")
+      expect(hint()).toBe("учреждения из базы, у которых есть координаты")
+    })
+
+    it("switched on, reads the base once, hands the points to the map and says what it does not show", async () => {
+      await open()
+      await openLayers()
+      await press(byTestId("live-map-layer-clients"))
+      await settle(20)
+      expect(clientRequests()).toBe(1)
+      expect(mapProp<Array<{ id: string }>>("clients").map((client) => client.id)).toEqual(["c-near", "c-far"])
+      // Five in the base, two with a place: the other three are not on any map, and the layer says so.
+      expect(hint()).toMatch(/^на карте 2 .+ · \S/)
+      expect(hint()).not.toContain("не удалось")
+      // The organization's check-in radius goes with them, for clients without one of their own.
+      expect(mapProp("geofenceRadius")).toBe(150)
+      // The employees on the map are who they were: clients take no marker from anybody.
+      expect(onMap().sort()).toEqual(["far", "mid", "near"])
+      // Remembered in this browser like the other looks of the map.
+      expect(JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v1") ?? "{}")).toMatchObject({ clients: true })
+      // Off again: the map is given none, and nothing is read.
+      await press(byTestId("live-map-layer-clients"))
+      expect(mapProp<unknown[]>("clients")).toEqual([])
+      expect(clientRequests()).toBe(1)
+      // And on again: the base that was read is still the base — nothing is asked for anew.
+      await press(byTestId("live-map-layer-clients"))
+      await settle(20)
+      expect(mapProp<unknown[]>("clients")).toHaveLength(2)
+      expect(clientRequests()).toBe(1)
+    })
+
+    it("«Кто ближе всех» in a client's balloon turns the list to that client — nearest employee first", async () => {
+      await open()
+      await openLayers()
+      await press(byTestId("live-map-layer-clients"))
+      await settle(20)
+      const [nearClient] = mapProp<Array<{ id: string; name: string; latitude: number; longitude: number }>>("clients")
+      await act(async () => { mapProp<(client: unknown) => void>("onClientNearest")(nearClient) })
+      await settle()
+      expect(mapProp<{ label: string }>("referencePoint")).toMatchObject({ label: "Аптека на углу", latitude: nearClient.latitude, longitude: nearClient.longitude })
+      // «Nigar» stands 450 m north of the centre, the client 500 m: she is fifty metres from it.
+      expect(rowIds().slice(0, 3)).toEqual(["near", "mid", "far"])
+      expect(byTestId("live-map-agent-distance-near")?.textContent).toContain("50")
+    })
+
+    it("a layer that is on and could not be read says so on the map itself, with a way to try again", async () => {
+      clientBase = 500
+      await open()
+      await openLayers()
+      await press(byTestId("live-map-layer-clients"))
+      await settle(20)
+      expect(hint()).toBe("не удалось загрузить клиентов — нажмите «Обновить»")
+      expect(mapProp<unknown[]>("clients")).toEqual([])
+      // With «Слои» closed the map would look exactly like «no clients here».
+      await openLayers()
+      const alert = byTestId("live-map-layers-alert")
+      expect(alert?.textContent).toContain("Клиенты не загрузились")
+      clientBase = { clients: [{ id: "c-near", name: "Аптека на углу", ...northOf(500), category: "A", objectType: "PHARMACY", geofenceRadius: null }], total: 1, withoutCoordinates: 0, truncated: false }
+      await press(byTestId("live-map-layers-alert-action"))
+      await settle(20)
+      expect(clientRequests()).toBe(2)
+      expect(mapProp<unknown[]>("clients")).toHaveLength(1)
+      expect(byTestId("live-map-layers-alert")).toBeNull()
+    })
+
+    it("a base cut by the server says so on the map as well: part of it is not the whole", async () => {
+      clientBase = { ...(clientBase as Record<string, unknown>), truncated: true, total: 12_000 }
+      await open()
+      await openLayers()
+      await press(byTestId("live-map-layer-clients"))
+      await settle(20)
+      expect(hint()).toContain("показана только часть базы")
+      await openLayers()
+      expect(byTestId("live-map-layers-alert")?.textContent).toBe("показана только часть базы")
+      expect(byTestId("live-map-layers-alert-action")).toBeNull()
+    })
+
+    it("a malformed answer draws nothing rather than made-up points", async () => {
+      clientBase = { clients: "not a list", total: 3 }
+      await open()
+      await openLayers()
+      await press(byTestId("live-map-layer-clients"))
+      await settle(20)
+      expect(mapProp<unknown[]>("clients")).toEqual([])
+      expect(hint()).toBe("не удалось загрузить клиентов — нажмите «Обновить»")
+    })
+  })
+
   describe("while the map refreshes itself", () => {
     // Half a minute between refreshes: the clock is driven by hand, a second at
     // a time (React applies what a timer set when the `act` it fired in ends).
@@ -581,6 +691,65 @@ describe("the live map page, end to end", () => {
       // …until the events' own clock turns: an alert about her is raised exactly while her row stands still.
       await forward(60_000)
       expect([count("/api/v1/mtm/activity"), count("/api/v1/mtm/alerts")]).toEqual([2, 2])
+    })
+
+    it("«Обновить» reads the base again; while it is on its way, and if it fails, the points already on the map stay", async () => {
+      window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ labels: false, trails: true, glide: true, clients: true }))
+      await act(async () => { root.render(createElement(MtmMapPage)) })
+      await forward(2_000)
+      expect(count("/api/v1/mtm/locations/clients")).toBe(1)
+      expect(mapProp<unknown[]>("clients")).toHaveLength(2)
+      // Inside the roster's own cooldown «Обновить» asks for nothing.
+      await act(async () => { byTestId("mtm-map-refresh")!.click() })
+      await forward(1_000)
+      expect(count("/api/v1/mtm/locations/clients")).toBe(1)
+
+      // Past it: the base is read again — and this time the read fails.
+      await forward(16_000)
+      clientBase = 500
+      const shown = new Set<number>()
+      const observer = new MutationObserver(() => shown.add(mapProp<unknown[]>("clients").length))
+      observer.observe(container, { subtree: true, childList: true, characterData: true, attributes: true })
+      await act(async () => { byTestId("mtm-map-refresh")!.click() })
+      await forward(2_000, 100)
+      observer.disconnect()
+      expect(count("/api/v1/mtm/locations/clients")).toBe(2)
+      // Never taken off the map: not while the read was out, not when it failed.
+      expect(mapProp<unknown[]>("clients")).toHaveLength(2)
+      expect([...shown]).not.toContain(0)
+      await act(async () => { container.querySelector<HTMLElement>('[data-testid="live-map-layers"] > button')!.click() })
+      expect(byTestId("live-map-layer-hint-clients")?.textContent).toMatch(/^на карте 2 .+не удалось обновить$/)
+      // A failed read is tried again by itself a minute later, without anybody pressing anything.
+      clientBase = { clients: [], total: 0, withoutCoordinates: 0, truncated: false }
+      await forward(61_000)
+      expect(count("/api/v1/mtm/locations/clients")).toBe(3)
+      expect(mapProp<unknown[]>("clients")).toEqual([])
+      expect(byTestId("live-map-layer-hint-clients")?.textContent).not.toContain("не удалось")
+    })
+
+    it("a remembered layer that fails when the page opens is tried again by itself, a bounded number of times", async () => {
+      window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ labels: false, trails: true, glide: true, clients: true }))
+      clientBase = 500
+      await act(async () => { root.render(createElement(MtmMapPage)) })
+      await forward(2_000)
+      expect(count("/api/v1/mtm/locations/clients")).toBe(1)
+      expect(byTestId("live-map-layers-alert")?.textContent).toContain("Клиенты не загрузились")
+      await forward(10 * 60_000, 5_000)
+      // The first read and three more by the page itself — not one a minute for ever.
+      expect(count("/api/v1/mtm/locations/clients")).toBe(4)
+    })
+
+    it("the client base is read when its layer is switched on, not on the map's timer", async () => {
+      window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ labels: false, trails: true, glide: true, clients: true }))
+      await act(async () => { root.render(createElement(MtmMapPage)) })
+      await forward(2_000)
+      expect(count("/api/v1/mtm/locations/clients")).toBe(1)
+      expect(mapProp<unknown[]>("clients")).toHaveLength(2)
+      const polls = requests.filter((request) => request === "/api/v1/mtm/locations").length
+      await forward(95_000)
+      expect(requests.filter((request) => request === "/api/v1/mtm/locations").length).toBeGreaterThanOrEqual(polls + 3)
+      expect(count("/api/v1/mtm/locations/clients")).toBe(1)
+      expect(mapProp<unknown[]>("clients")).toHaveLength(2)
     })
 
     it("on the road the street is asked once, however many times the map refreshes", async () => {

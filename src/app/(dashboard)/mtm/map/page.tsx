@@ -42,6 +42,7 @@ import { liveMapAgentEventsRefreshKey } from "@/lib/mtm/live-map-agent-events"
 import type { LiveMapPlaceStop } from "@/lib/mtm/live-map-place"
 import { rosterExportFileName } from "@/lib/mtm/live-map-roster-export"
 import { liveMapDuration, liveMapStateSince } from "@/lib/mtm/live-map-state-since"
+import { parseLiveMapClients, type LiveMapClient, type LiveMapClientsAnswer } from "@/lib/mtm/live-map-clients"
 import { summarizeMtmRouteExecution } from "@/lib/mtm/route-point-execution"
 import { hasMtmCoordinates } from "@/lib/mtm/geo-coordinates"
 import { saveRouteCache, loadRouteCache, routeCacheKey } from "@/lib/mtm/route-cache"
@@ -110,7 +111,7 @@ interface AgentRouteSnapshot {
 
 /** How the map is drawn — remembered in the browser like the list's layout. */
 const MAP_LOOK_STORAGE_KEY = "leaddrive.mtm.live-map.look.v1"
-const DEFAULT_MAP_LOOK = { labels: false, trails: true, glide: true }
+const DEFAULT_MAP_LOOK = { labels: false, trails: true, glide: true, clients: false }
 /** With a point picked the list answers «who is nearest» — until another order is asked for. */
 const NEAREST_FIRST: RosterSort = { column: "distance", direction: "asc" }
 
@@ -121,6 +122,7 @@ function parseMapLook(raw: string | null): typeof DEFAULT_MAP_LOOK {
       labels: typeof stored.labels === "boolean" ? stored.labels : DEFAULT_MAP_LOOK.labels,
       trails: typeof stored.trails === "boolean" ? stored.trails : DEFAULT_MAP_LOOK.trails,
       glide: typeof stored.glide === "boolean" ? stored.glide : DEFAULT_MAP_LOOK.glide,
+      clients: typeof stored.clients === "boolean" ? stored.clients : DEFAULT_MAP_LOOK.clients,
     }
   } catch {
     return DEFAULT_MAP_LOOK
@@ -129,6 +131,7 @@ function parseMapLook(raw: string | null): typeof DEFAULT_MAP_LOOK {
 
 /** The «day route» layer switched off: one stable empty list, so the map does not refit on every render. */
 const NO_ROUTE_STOPS: RouteStop[] = []
+const NO_CLIENTS: readonly LiveMapClient[] = []
 const EMPTY_STATUS_COUNTS = { total: 0, checkedIn: 0, onRoad: 0, stopped: 0, routeFinished: 0, late: 0, offline: 0 }
 const EMPTY_FRESHNESS_COUNTS = { online: 0, delayed: 0, stale: 0, noLocation: 0 }
 const EMPTY_WORKDAY_COUNTS = { active: 0, paused: 0, closed: 0, notStarted: 0 }
@@ -241,6 +244,15 @@ export default function MtmMapPage() {
   // tail of where each has just been, a glide instead of a jump.
   const [mapLook, setMapLook] = useState(DEFAULT_MAP_LOOK)
   const [trails, setTrails] = useState<LiveMapTrails>(() => new Map())
+  // «Клиенты»: the client base as a layer. Read when the layer is switched on
+  // and on «Обновить» — never on the roster's timer: a base does not move.
+  // What is kept is the last base that was read for this viewer, and which
+  // turn of reading has ended and how: a refresh that fails, or is still on
+  // its way, never takes the points already on the map away.
+  const [clientsRead, setClientsRead] = useState<{ identity: string; data: LiveMapClientsAnswer | null; settledKey: string; failed: boolean } | null>(null)
+  const [clientsRevision, setClientsRevision] = useState(0)
+  const clientsSettledRef = useRef<{ key: string; ok: boolean }>({ key: "", ok: false })
+  const clientsRetriesRef = useRef(0)
   // The tools on the map: a ruler, and a point — an address found or a place
   // pressed — that the list then measures everybody against.
   const [rulerActive, setRulerActive] = useState(false)
@@ -662,6 +674,80 @@ export default function MtmMapPage() {
     }
   }, [contract, roster])
 
+  // The client base for «Клиенты». The key names the viewer and the turn of
+  // reading («Обновить», a retry): switching the layer off and on again asks
+  // for nothing new — the base that was read is still the base.
+  const clientsKey = mapLook.clients && mapMode === "live" && identityKey ? `${identityKey}::${clientsRevision}` : ""
+  useEffect(() => {
+    if (!clientsKey) return
+    if (clientsSettledRef.current.key === clientsKey && clientsSettledRef.current.ok) return
+    const controller = new AbortController()
+    let retryTimer: number | null = null
+    void fetch("/api/v1/mtm/locations/clients", { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        const body = response.ok ? await response.json().catch(() => null) as { data?: unknown } | null : null
+        return parseLiveMapClients(body?.data)
+      })
+      .catch(() => null)
+      .then((data) => {
+        if (controller.signal.aborted) return
+        clientsSettledRef.current = { key: clientsKey, ok: data !== null }
+        setClientsRead((held) => ({
+          identity: identityKey,
+          // A read that failed keeps what this viewer was last given.
+          data: data ?? (held?.identity === identityKey ? held.data : null),
+          settledKey: clientsKey,
+          failed: data === null,
+        }))
+        if (data !== null) {
+          clientsRetriesRef.current = 0
+        } else if (clientsRetriesRef.current < 3) {
+          // Tried again by itself, a few times, a minute apart (the server
+          // answers a handful of these a minute): a blip when the page opened
+          // must not leave the layer empty until somebody thinks to refresh.
+          clientsRetriesRef.current += 1
+          retryTimer = window.setTimeout(() => setClientsRevision((turn) => turn + 1), 60_000)
+        }
+      })
+    return () => {
+      controller.abort()
+      if (retryTimer != null) window.clearTimeout(retryTimer)
+    }
+  }, [clientsKey, identityKey])
+  const clientsHeld = clientsRead && clientsRead.identity === identityKey ? clientsRead : null
+  const clientsLoading = Boolean(clientsKey) && clientsHeld?.settledKey !== clientsKey
+  const clientsFailed = Boolean(clientsKey) && clientsHeld?.settledKey === clientsKey && clientsHeld.failed
+  const mapClients = clientsKey && clientsHeld?.data ? clientsHeld.data.clients : NO_CLIENTS
+  const retryClients = useCallback(() => {
+    clientsRetriesRef.current = 0
+    setClientsRevision((turn) => turn + 1)
+  }, [])
+  // What the layer's line says: what it is, and — once read — what it shows
+  // and what it cannot (a client without coordinates is not on any map).
+  const clientsHint = !clientsKey
+    ? tMap("layers.clientsHint")
+    : clientsHeld?.data
+      ? [
+        tMap("clients.onMap", { shown: clientsHeld.data.clients.length, total: clientsHeld.data.total }),
+        clientsHeld.data.withoutCoordinates > 0 ? tMap("clients.withoutCoordinates", { count: clientsHeld.data.withoutCoordinates }) : "",
+        clientsHeld.data.truncated ? tMap("clients.truncated") : "",
+        clientsFailed ? tMap("clients.refreshFailed") : "",
+      ].filter(Boolean).join(" · ")
+      : clientsLoading ? tMap("clients.loading") : tMap("clients.failed")
+  // The line above is inside «Слои». What must be seen with that panel closed
+  // goes onto the map itself: a layer that is on and has nothing to show for
+  // it, or shows only a part.
+  const clientsAlert = !clientsKey || clientsLoading
+    ? null
+    : !clientsHeld?.data
+      ? { text: tMap("clients.failedShort"), actionLabel: tMap("clients.retry"), onAction: retryClients }
+      : clientsHeld.data.truncated
+        ? { text: tMap("clients.truncated"), actionLabel: null, onAction: null }
+        : null
+  const nearestToClient = useCallback((client: LiveMapClient) => {
+    changeReferencePoint({ latitude: client.latitude, longitude: client.longitude, label: client.name })
+  }, [changeReferencePoint])
+
   const manualRefresh = () => {
     const minimumIntervalSeconds = contract?.polling.minimumIntervalSeconds ?? 15
     const nextAllowedAt = Math.max(
@@ -677,6 +763,8 @@ export default function MtmMapPage() {
     }
     if (rosterRequestRef.current.controller && !rosterRequestRef.current.controller.signal.aborted) return
     void fetchLocations()
+    // «Обновить» is also how a client added a minute ago gets onto the map.
+    if (mapLook.clients) retryClients()
   }
 
   const handleAgentClick = (agentId: string) => {
@@ -1186,7 +1274,7 @@ export default function MtmMapPage() {
               <Clock className="h-3 w-3" /> {tMap("lastUpdate")}: {formatDateTime(lastUpdate, locale, { timeStyle: "short", timeZone: contract?.timezone })}
             </span>
           )}
-          {mapMode === "live" && <Button className="min-h-11" variant="outline" size="sm" onClick={manualRefresh} disabled={refreshing || loading}>
+          {mapMode === "live" && <Button className="min-h-11" variant="outline" size="sm" onClick={manualRefresh} disabled={refreshing || loading} data-testid="mtm-map-refresh">
             <RefreshCw className={`mr-1 h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} /> {tc("refresh")}
           </Button>}
         </div>
@@ -1315,6 +1403,9 @@ export default function MtmMapPage() {
               onMapPress={handleMapPress}
               rulerPoints={rulerPoints}
               referencePoint={referencePoint}
+              clients={mapClients}
+              onClientNearest={nearestToClient}
+              geofenceRadius={effectiveGeofenceRadius(null, contract?.geofenceRadiusMeters)}
             />
           )}
           {showRosterLoading ? null : (
@@ -1325,12 +1416,14 @@ export default function MtmMapPage() {
                 { id: "labels", label: tMap("layers.labels"), hint: tMap("layers.labelsHint"), on: mapLook.labels, onToggle: () => changeMapLook({ labels: !mapLook.labels }) },
                 { id: "trails", label: tMap("layers.trails"), hint: tMap("layers.trailsHint"), on: mapLook.trails, onToggle: () => changeMapLook({ trails: !mapLook.trails }), shownByDefault: true },
                 { id: "glide", label: tMap("layers.glide"), hint: tMap("layers.glideHint"), on: mapLook.glide, onToggle: () => changeMapLook({ glide: !mapLook.glide }) },
+                { id: "clients", label: tMap("layers.clients"), hint: clientsHint, on: mapLook.clients, onToggle: () => changeMapLook({ clients: !mapLook.clients }) },
                 { id: "zones", label: tMap("layers.zones"), hint: tMap("layers.zonesHint"), on: showGeofence, onToggle: () => setShowGeofence((on) => !on) },
                 { id: "heat", label: tMap("layers.heat"), hint: tMap("layers.heatHint"), on: showHeatmap, onToggle: () => setShowHeatmap((current) => !current), testId: "mtm-map-heatmap-toggle" },
               ]}
               hiddenAgentCount={hiddenOnMapCount}
               onShowAllAgents={() => setHiddenAgentIds(new Set())}
               note={tMap("historyOnlyExplicit")}
+              alert={clientsAlert}
             />
           )}
           {showRosterLoading ? null : (

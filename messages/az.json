@@ -16416,6 +16416,8 @@
       "routeHint": "seçilmiş əməkdaşın nöqtələri və xətti",
       "zones": "Müştəri zonaları",
       "zonesHint": "gəlişin qəbul olunduğu dairə",
+      "clients": "Müştərilər",
+      "clientsHint": "bazadakı koordinatı olan müəssisələr",
       "heat": "İstilik xəritəsi",
       "heatHint": "əməkdaşların ən çox olduğu yerlər",
       "hiddenAgents": "Gizlədilmiş əməkdaş: {count}",
@@ -16874,6 +16876,22 @@
       "factOpen": "Fakt {from} — davam edir",
       "openVisit": "Ziyarəti aç",
       "missingCoordinates": "{count} dayanacağın koordinatı yoxdur — xəritədə göstərilmir"
+    },
+    "clients": {
+      "loading": "müştərilər yüklənir…",
+      "failed": "müştəriləri yükləmək alınmadı — «Yenilə» düyməsini basın",
+      "failedShort": "Müştərilər yüklənmədi",
+      "retry": "Təkrar et",
+      "refreshFailed": "yeniləmək alınmadı",
+      "onMap": "xəritədə {total} müəssisədən {shown}",
+      "withoutCoordinates": "{count, plural, one {# müəssisənin koordinatı yoxdur} other {# müəssisənin koordinatı yoxdur}}",
+      "truncated": "bazanın yalnız bir hissəsi göstərilir",
+      "group": "Burada müştəri: {count}. Yaxınlaşdırmaq üçün basın",
+      "stack": "Bu nöqtədə müştəri: {count}",
+      "stackMore": "və daha {count}",
+      "class": "sinif {category}",
+      "open": "Kart yeni vərəqdə",
+      "nearest": "Kim daha yaxındır"
     },
     "areaUnits": {
       "m2": "{value} m²",
