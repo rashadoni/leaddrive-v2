@@ -16429,6 +16429,106 @@
       "onlyThis": "Только он на карте",
       "hiddenBadge": "скрыт с карты"
     },
+    "roster": {
+      "shownCount": "{shown} из {total}",
+      "show": "Список сотрудников ({count})",
+      "showFiltered": "Список: {shown} из {total} · фильтр",
+      "filters": "Фильтры",
+      "filtersBack": "Все колонки",
+      "hide": "Скрыть список",
+      "view": "Вид",
+      "wide": "Таблица",
+      "narrow": "Список",
+      "groupBy": "Группировать",
+      "grouping": {
+        "none": "Без групп",
+        "team": "По отделам",
+        "status": "По статусу",
+        "workday": "По рабочему дню"
+      },
+      "columnsTitle": "Колонки таблицы",
+      "columnsHint": "Видны в широкой таблице",
+      "columns": {
+        "name": "Сотрудник",
+        "status": "Статус",
+        "signal": "Сигнал",
+        "team": "Отдел",
+        "app": "Приложение",
+        "workday": "Рабочий день",
+        "route": "Маршрут",
+        "speed": "Скорость",
+        "battery": "Батарея"
+      },
+      "masterTick": "Показывать на карте всех из списка",
+      "groupTick": "{name} — показывать группу на карте",
+      "collapseGroup": "Свернуть группу «{name}»",
+      "expandGroup": "Развернуть группу «{name}»",
+      "noTeam": "Без отдела",
+      "historyToday": "История за день",
+      "kmh": "{value} км/ч",
+      "age": {
+        "now": "сейчас",
+        "minutes": "{count} мин",
+        "hours": "{count} ч",
+        "days": "{count} дн"
+      },
+      "workday": {
+        "ACTIVE": "Идёт",
+        "PAUSED": "Пауза",
+        "NOT_STARTED": "Не начат",
+        "CLOSED": "Завершён"
+      },
+      "route": {
+        "NONE": "Нет маршрута",
+        "NOT_STARTED": "Не начат",
+        "IN_PROGRESS": "В работе",
+        "DONE": "Пройден"
+      },
+      "speed": {
+        "MOVING": "Едет",
+        "STILL": "Стоит",
+        "UNKNOWN": "Нет данных"
+      },
+      "battery": {
+        "LOW": "Ниже 20%",
+        "MID": "20–50%",
+        "HIGH": "Выше 50%",
+        "UNKNOWN": "Нет данных"
+      },
+      "sort": {
+        "text": {
+          "asc": "От А до Я",
+          "desc": "От Я до А"
+        },
+        "order": {
+          "asc": "По порядку",
+          "desc": "Обратный порядок"
+        },
+        "time": {
+          "asc": "Сначала свежие",
+          "desc": "Сначала давние"
+        },
+        "number": {
+          "asc": "Сначала меньшие",
+          "desc": "Сначала большие"
+        }
+      },
+      "filter": {
+        "open": "{column}: сортировка и фильтр",
+        "selectAll": "Выбрать все",
+        "only": "только",
+        "search": "Поиск в списке",
+        "nothingFound": "Ничего не найдено",
+        "reset": "Сбросить этот фильтр",
+        "resetAll": "Сбросить фильтры",
+        "remove": "Убрать фильтр «{column}»",
+        "chip": "{column}: {values}",
+        "except": "все, кроме {values}",
+        "nothing": "ничего не выбрано",
+        "unknownValue": "нет в списке",
+        "more": "ещё {count}"
+      }
+    },
     "follow": "Следить",
     "followHint": "Карта держит сотрудника в центре, пока он движется",
     "fieldStatus": {

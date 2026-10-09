@@ -16429,6 +16429,106 @@
       "onlyThis": "Only this one on the map",
       "hiddenBadge": "hidden from the map"
     },
+    "roster": {
+      "shownCount": "{shown} of {total}",
+      "show": "Employee list ({count})",
+      "showFiltered": "List: {shown} of {total} · filtered",
+      "filters": "Filters",
+      "filtersBack": "All columns",
+      "hide": "Hide the list",
+      "view": "View",
+      "wide": "Table",
+      "narrow": "List",
+      "groupBy": "Group",
+      "grouping": {
+        "none": "No groups",
+        "team": "By team",
+        "status": "By status",
+        "workday": "By workday"
+      },
+      "columnsTitle": "Table columns",
+      "columnsHint": "Shown in the wide table",
+      "columns": {
+        "name": "Employee",
+        "status": "Status",
+        "signal": "Signal",
+        "team": "Team",
+        "app": "App",
+        "workday": "Workday",
+        "route": "Route",
+        "speed": "Speed",
+        "battery": "Battery"
+      },
+      "masterTick": "Show everybody in the list on the map",
+      "groupTick": "{name} — show the group on the map",
+      "collapseGroup": "Collapse group {name}",
+      "expandGroup": "Expand group {name}",
+      "noTeam": "No team",
+      "historyToday": "Today's history",
+      "kmh": "{value} km/h",
+      "age": {
+        "now": "now",
+        "minutes": "{count} min",
+        "hours": "{count} h",
+        "days": "{count} d"
+      },
+      "workday": {
+        "ACTIVE": "Running",
+        "PAUSED": "Paused",
+        "NOT_STARTED": "Not started",
+        "CLOSED": "Finished"
+      },
+      "route": {
+        "NONE": "No route",
+        "NOT_STARTED": "Not started",
+        "IN_PROGRESS": "In progress",
+        "DONE": "Completed"
+      },
+      "speed": {
+        "MOVING": "Moving",
+        "STILL": "Standing",
+        "UNKNOWN": "No data"
+      },
+      "battery": {
+        "LOW": "Below 20%",
+        "MID": "20–50%",
+        "HIGH": "Above 50%",
+        "UNKNOWN": "No data"
+      },
+      "sort": {
+        "text": {
+          "asc": "A to Z",
+          "desc": "Z to A"
+        },
+        "order": {
+          "asc": "In order",
+          "desc": "Reversed"
+        },
+        "time": {
+          "asc": "Newest first",
+          "desc": "Oldest first"
+        },
+        "number": {
+          "asc": "Smallest first",
+          "desc": "Largest first"
+        }
+      },
+      "filter": {
+        "open": "{column}: sort and filter",
+        "selectAll": "Select all",
+        "only": "only",
+        "search": "Search the list",
+        "nothingFound": "Nothing found",
+        "reset": "Clear this filter",
+        "resetAll": "Clear filters",
+        "remove": "Remove the «{column}» filter",
+        "chip": "{column}: {values}",
+        "except": "all except {values}",
+        "nothing": "nothing selected",
+        "unknownValue": "not in the list",
+        "more": "{count} more"
+      }
+    },
     "follow": "Follow",
     "followHint": "The map keeps the employee centred while they move",
     "fieldStatus": {

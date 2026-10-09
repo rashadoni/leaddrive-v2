@@ -112,6 +112,7 @@ export function parseMtmLiveMapContract(value: unknown): MtmLiveMapContract | nu
   const returnedAgents = finiteNumber(input.returnedAgents)
   const markerCount = finiteNumber(input.markerCount)
   const maxAccuracyMeters = finiteNumber(input.maxAccuracyMeters)
+  const geofenceRadiusMeters = finiteNumber(input.geofenceRadiusMeters)
   const generatedAt = typeof input.generatedAt === "string" ? input.generatedAt : ""
   const today = typeof input.today === "string" ? input.today : ""
   const timezone = typeof input.timezone === "string" ? input.timezone : ""
@@ -149,6 +150,9 @@ export function parseMtmLiveMapContract(value: unknown): MtmLiveMapContract | nu
     polling: { minimumIntervalSeconds },
     freshnessThresholds: { onlineSeconds, delayedSeconds },
     maxAccuracyMeters,
+    // Optional: an answer cached before the field existed has none, and the
+    // zones then fall back to each client's own radius.
+    ...(geofenceRadiusMeters != null && geofenceRadiusMeters > 0 ? { geofenceRadiusMeters } : {}),
   }
 }
 
