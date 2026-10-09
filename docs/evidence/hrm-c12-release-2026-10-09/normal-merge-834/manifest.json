@@ -1,0 +1,20 @@
+{
+  "archivedAtUtc": "2026-10-09T20:41:27.678983+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-c12-release-merge-guards-525.json.gz",
+      "originalBytes": 1073,
+      "originalSha256": "35e982ff13126311e2d096a8954cd1f3fbbbaf0c339836eb308dcef439149466",
+      "storedBytes": 520,
+      "storedSha256": "e3afa9026db38df997437786adaf9ffd165d321087c5625e794f0b0a3e54123e"
+    },
+    {
+      "path": "hrm-c12-release-main834-merge-proof.json.gz",
+      "originalBytes": 608,
+      "originalSha256": "2763af956896c7f281ef7598db6fcd1912106aaa690317c5d421fd6621f02513",
+      "storedBytes": 391,
+      "storedSha256": "207cb0e8535a012147cfa051a0773af8d12672a4cbc7003c76325f51a73bcd46"
+    }
+  ]
+}
