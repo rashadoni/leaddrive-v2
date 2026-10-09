@@ -1388,6 +1388,68 @@ def scenario_git(box: Box):
     check("…а отметка, поставленная самим чужим PR, по-прежнему красная",
           merged and rc == 1 and "u2-B-1.10: новая отметка поставлена вне" in out
           and "u1-A-01: новая отметка" not in out, out)
+    # --- состояние в main оказалось неисправным (здесь: хэш отметки А-01 не тот). Чужой PR,
+    #     который scripts/erp не менял, за это не отвечает; ветка карточки и PR, менявший
+    #     scripts/erp, — отвечают
+    def rev(name):
+        return subprocess.run(["git", "rev-parse", name], cwd=str(b), capture_output=True,
+                              text=True).stdout.strip()
+
+    def pr_merge(base, name, path, body):
+        """Коммит слияния, как refs/pull/N/merge: первый родитель — base, второй — ветка PR."""
+        git_at(b, "switch", "-q", "-c", name, old_main)
+        (b / path).parent.mkdir(parents=True, exist_ok=True)
+        (b / path).write_text(body, encoding="utf-8")
+        git_at(b, "add", path); git_at(b, "commit", "-q", "-m", f"{name}: правка")
+        git_at(b, "switch", "-q", "--detach", base)
+        return git_at(b, "merge", "-q", "--no-ff", "--no-edit", name)
+
+    git_at(b, "switch", "-q", "--detach", "origin/main")
+    box.edit_reg(lambda by, _: by["u1-A-01"]["done"].update(hash="0" * 64), dir=fstate)
+    git_at(b, "commit", "-q", "-am", "main: состояние неисправно")
+    broken = rev("HEAD")
+    ok1 = pr_merge(broken, "claude/other", "OTHER.md", "чужая правка\n")
+    rc, out = in_b("check_progress.py", "--branch", "claude/other", "--base-ref", broken,
+                   "--workflow", str(wf_ok), env=ci)
+    rc2, out2 = in_b("check_progress.py", "--branch", "erp/2-stock", "--base-ref", broken,
+                     "--workflow", str(wf_ok), env=ci)
+    rc3, out3 = in_b("check_progress.py", "--base-ref", broken, "--workflow", str(wf_ok), env=ci)
+    check("состояние в main неисправно: чужой PR, не менявший scripts/erp, не задержан (код 0, "
+          "предупреждение с причиной); ветка карточки и запуск без имени ветки — красные",
+          ok1 and rc == 0 and "не задержан" in out and "::warning" in out and "u1-A-01" in out
+          and rc2 == 1 and "ОШИБКА: правило u1-A-01" in out2 and rc3 == 1, out + out2 + out3)
+    rep_ok = box.report("r_foreign_ok.json", green=ALL)
+    rep_red = box.report("r_foreign_red.json", green=[A01], red=[A02])
+    rc, out = in_b("check_progress.py", "--branch", "claude/other", "--tests-report", rep_ok,
+                   "--workflow", str(wf_ok))
+    rc2, out2 = in_b("check_progress.py", "--branch", "claude/other", "--tests-report", rep_red,
+                     "--workflow", str(wf_ok))
+    rc3, out3 = in_b("check_progress.py", "--branch", "erp/2-stock", "--tests-report", rep_ok,
+                     "--workflow", str(wf_ok))
+    rc4, out4 = in_b("check_progress.py", "--branch", "claude/other", "--tests-report",
+                     str(box.root / "no-such-report.json"), "--workflow", str(wf_ok))
+    check("шаг static-checks у чужой ветки: неисправное состояние main не задерживает, а красный "
+          "тест сделанного правила и отсутствие отчёта — задерживают; ветка карточки — строго",
+          rc == 0 and "pr-scope" in out and rc2 == 1 and "u1-A-02" in out2 and "красный" in out2
+          and rc3 == 1 and rc4 == 1 and "нет отчёта" in out4, out + out2 + out3 + out4)
+    ok2 = pr_merge(broken, "claude/touch", "scripts/erp/NOTE.txt", "правка внутри scripts/erp\n")
+    rc, out = in_b("check_progress.py", "--branch", "claude/touch", "--base-ref", broken,
+                   "--workflow", str(wf_ok), env=ci)
+    check("…а чужой PR, менявший scripts/erp, проверяется строго — красный",
+          ok2 and rc == 1 and "ОШИБКА: правило u1-A-01" in out and "не задержан" not in out, out)
+    # состояние не читается вовсе (registry.json — не JSON): чужой PR всё равно не задержан
+    git_at(b, "switch", "-q", "--detach", broken)
+    (fstate / "registry.json").write_text("{ это не JSON", encoding="utf-8")
+    git_at(b, "commit", "-q", "-am", "main: реестр не читается")
+    unread = rev("HEAD")
+    ok3 = pr_merge(unread, "claude/third", "THIRD.md", "чужая правка\n")
+    rc, out = in_b("check_progress.py", "--branch", "claude/third", "--base-ref", unread,
+                   "--workflow", str(wf_ok), env=ci)
+    rc2, out2 = in_b("check_progress.py", "--branch", "erp/2-stock", "--base-ref", unread,
+                     "--workflow", str(wf_ok), env=ci)
+    check("реестр в main не читается: чужой PR не задержан, ветка карточки падает — проверка не "
+          "зелёная на собственном сбое",
+          ok3 and rc == 0 and "не задержан" in out and rc2 != 0, out + out2)
     git_at(b, "switch", "-q", "main")
     # документ изменили: текст правила А-01 другой, реестр пересобран и выложен в main
     h = box.text("u1-A-01", "А-01", "Меню настроек учёта состоит из СЕМИ пунктов", "как в 1С")

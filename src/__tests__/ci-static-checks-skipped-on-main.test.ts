@@ -97,7 +97,24 @@ describe("pr-checks static-checks is redundant on a main push", () => {
 
     // The PII lint is a named step here and one line of a shell block there,
     // so it is covered by command rather than by step name.
-    expect(uncovered).toEqual(["PII column-wrap lint guard"])
+    //
+    // The three ERP steps are the one deliberate exception, and they are named
+    // here so that the exception is a decision somebody can read rather than a
+    // step that slipped through. They do not prove anything about the code a
+    // deploy ships: they prove that every "done" mark in scripts/erp is backed
+    // by a test that passed in the run of the pull request that set it. A mark
+    // can only reach main through a pull request, so on a main push there is
+    // no new mark to judge — and a bookkeeping error in that register must not
+    // be able to hold up a production deploy of somebody else's fix. The rule
+    // tests themselves are ordinary `src/__tests__/erp-*.test.ts` files, so
+    // the deploy still runs them inside "Unit tests vs baseline (BLOCKING)".
+    expect(uncovered).toEqual([
+      "PII column-wrap lint guard",
+      "ERP rule tests",
+      "ERP marks vs test report",
+      "Upload ERP test report",
+    ])
     expect(deploy).toContain("npm run lint:pii-columns")
+    expect(stepNames(jobBlock(deploy, "checks"))).toContain("Unit tests vs baseline (BLOCKING)")
   })
 })

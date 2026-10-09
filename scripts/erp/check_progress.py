@@ -52,12 +52,25 @@
      реестре при любом хэше и любом состоянии правила: на месте или в журнале
      (evidence_log, problem_cleared_log; у правила, ушедшего из документа, — retired).
 
+Чужие PR (ветка не erp/<номер>-<slug> и не erp-docs/<дата>). Проверка сторожит отметки, а
+отметки попадают в main только через PR, который их меняет. Поэтому:
+  - джоба pr-scope: PR, который не менял ни scripts/erp/, ни src/__tests__/erp-*, ни
+    pr-checks.yml, ни test-baseline.json, эта проверка не задерживает никогда: всё, что она
+    нашла, уже лежит в main и чинится веткой erp/…, — печатается предупреждением, код 0.
+    PR, который эти пути менял, проверяется строго, как ветка карточки;
+  - джоба static-checks (сравнивать не с чем, история там не скачана): у чужой ветки
+    красным считается только отчёт тестов — тест сделанного правила в этом прогоне красный,
+    пропущен или не выполнялся. Состояние в том же прогоне судит pr-scope.
+Ветка erp/… и erp-docs/… падает при любой ошибке, в том числе при сбое самой проверки.
+
   python3 check_progress.py [--branch erp/003-slug] [--base-ref <sha>] [--tests-report erp-tests.json]
 Только стандартная библиотека.
 """
 import json
 import os
+import re
 import sys
+import traceback
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -68,21 +81,52 @@ STATE_KEYS = ("status", "done", "parts_done", "prelook", "problem", "problem_cle
               "problem_cleared_log", "evidence_log", "text_hash", "mark")
 
 
-def changed_files(ctx, base_ref):
-    """Файлы, которые меняет этот PR, или None, если git спросить нельзя. В GitHub HEAD —
-    коммит слияния ветки с main: тогда PR — это разница с его первым родителем."""
-    if not base_ref or not ctx.use_git:
+class ReportFail(L.Fail):
+    """Отчёт тестов не читается: это ошибка прогона, она красная для любой ветки."""
+
+
+ERP_FILE = re.compile(r"^(?:scripts/erp/|src/__tests__/erp-)")
+ERP_ALSO = (L.WORKFLOW, "test-baseline.json")
+
+
+def is_foreign(branch: str) -> bool:
+    """Ветка чужого PR: не карточка, не ворота и не выкладка документа."""
+    return bool(branch) and not branch.startswith(("erp/", L.DOCS_BRANCH))
+
+
+def touches_erp(files) -> bool:
+    """PR меняет то, на чём держатся отметки: состояние и команды, тесты правил, workflow
+    проверки или список известных красных тестов."""
+    return any(ERP_FILE.match(f) or f in ERP_ALSO for f in files)
+
+
+def pr_files(repo, base_ref):
+    """Файлы, которые меняет этот PR, или None, если узнать нельзя. В GitHub HEAD — коммит
+    слияния ветки с main: тогда PR — это разница с его первым родителем. Состояние не
+    читается: ответ нужен и тогда, когда оно не читается вовсе."""
+    if not base_ref or repo is None:
         return None
-    parents = (ctx.git("rev-list", "--parents", "-n", "1", "HEAD") or "").split()[1:]
+
+    def git(*a):
+        return L._git_at(Path(repo), *a)
+
+    parents = (git("rev-list", "--parents", "-n", "1", "HEAD") or "").split()[1:]
     start = None
-    if len(parents) == 2 and ctx.git_ok("merge-base", "--is-ancestor", base_ref, parents[0]):
+    if len(parents) == 2 and git("merge-base", "--is-ancestor", base_ref, parents[0]) is not None:
         start = parents[0]
     else:
-        start = (ctx.git("merge-base", base_ref, "HEAD") or "").strip() or None
+        start = (git("merge-base", base_ref, "HEAD") or "").strip() or None
     if not start:
         return None
-    out = ctx.git("diff", "--name-only", start, "HEAD")
+    out = git("diff", "--name-only", start, "HEAD")
     return None if out is None else [ln.strip() for ln in out.splitlines() if ln.strip()]
+
+
+def changed_files(ctx, base_ref):
+    """То же по уже прочитанному состоянию; None, если git спросить нельзя."""
+    if not base_ref or not ctx.use_git:
+        return None
+    return pr_files(ctx.repo, base_ref)
 
 
 def effective_base(ctx, base_ref):
@@ -156,18 +200,12 @@ def workflow_errors(ctx, args, in_ci):
             for must in L.WORKFLOW_MUST if not any(must in ln for ln in live)]
 
 
-def main():
-    p = L.common_parser(__doc__)
-    p.add_argument("--branch", help="имя ветки PR (по умолчанию GITHUB_HEAD_REF)")
-    p.add_argument("--base-ref", help="коммит main, с которым сравнить отметки")
-    p.add_argument("--base-dir", help="папка с registry.json и progress/ из main")
-    p.add_argument("--baseline", help="test-baseline.json (по умолчанию в корне репозитория)")
-    p.add_argument("--tests-report", help="отчёт прогона тестов правил (erp-tests.json)")
-    p.add_argument("--workflow", help="файл workflow (по умолчанию .github/workflows/pr-checks.yml)")
-    args = p.parse_args()
+def run(args, branch, soft):
+    """Сама проверка. Возвращает код: 0 — в порядке, 1 — есть ошибки. soft — причина, по
+    которой ошибки состояния этот PR не задерживают (чужой PR), или None."""
     ctx = L.Ctx(args)
     errors, warns = L.validate_order(ctx)
-    branch = args.branch or os.environ.get("GITHUB_HEAD_REF") or os.environ.get("ERP_BRANCH") or ""
+    report_errors = []  # отчёт тестов этого прогона: красные для любой ветки
     in_ci = bool(os.environ.get("GITHUB_ACTIONS"))
     if in_ci and not (args.base_ref or args.base_dir or args.tests_report):
         errors.append("нет базы для сравнения: в GitHub проверка запускается с --base-ref "
@@ -181,13 +219,16 @@ def main():
 
     report = None
     if args.tests_report:
-        report = L.load_report(args.tests_report)
+        try:
+            report = L.load_report(args.tests_report)
+        except L.Fail as e:
+            raise ReportFail(str(e))
         want_sha = os.environ.get("HEAD_SHA") or ""
         if in_ci and not report["meta"].get("head_sha"):
-            errors.append("отчёт тестов не помечен ci_report.py: неизвестно, какого он коммита")
+            report_errors.append("отчёт тестов не помечен ci_report.py: неизвестно, какого он коммита")
         elif want_sha and report["meta"].get("head_sha") != want_sha:
-            errors.append(f"отчёт тестов собран по коммиту {str(report['meta'].get('head_sha'))[:10]}, "
-                          f"а проверяется {want_sha[:10]}")
+            report_errors.append(f"отчёт тестов собран по коммиту {str(report['meta'].get('head_sha'))[:10]}, "
+                                 f"а проверяется {want_sha[:10]}")
 
     known_red = set()
     bl = Path(args.baseline) if args.baseline else ctx.repo / "test-baseline.json"
@@ -224,13 +265,13 @@ def main():
         if report is not None:
             green, red, skipped = L.green_for(report["results"], slug, want)
             if red:
-                errors.append(f"правило {slug} отмечено «{name}», а его тест в этом прогоне "
-                              f"красный: {red[0][:100]}")
+                report_errors.append(f"правило {slug} отмечено «{name}», а его тест в этом прогоне "
+                                     f"красный: {red[0][:100]}")
                 return False
             if not green:
                 why = "пропущен (skipped) — он не выполнялся" if skipped else "не выполнялся вовсе"
-                errors.append(f"правило {slug} отмечено «{name}», а тест с номером {label} в "
-                              f"этом прогоне {why}")
+                report_errors.append(f"правило {slug} отмечено «{name}», а тест с номером {label} в "
+                                     f"этом прогоне {why}")
                 return False
         return True
 
@@ -501,6 +542,13 @@ def main():
         print("предупреждение: " + w)
     if len(warns) > 20:
         print(f"предупреждение: … и ещё {len(warns) - 20}")
+    if soft and errors:
+        # чужой PR: это состояние main, а не его правка — показать и не задерживать
+        for e in errors:
+            print("в main (не этот PR): " + e)
+        not_mine(soft, f"ошибок состояния {len(errors)}")
+        errors = []
+    errors += report_errors
     for e in errors:
         print("ОШИБКА: " + e)
     if errors:
@@ -512,6 +560,53 @@ def main():
           + (f", ветка {branch} — карточка {mine.key}" if mine is not None else "")
           + (f", отчёт прогона: тестов {len(report['results'])}" if report is not None else ""))
     return 0
+
+
+def not_mine(soft, what):
+    line = (f"scripts/erp в main неисправен ({what}), но этот PR не задержан: {soft}. "
+            f"Чинит ветка erp/<номер>-<slug>.")
+    if os.environ.get("GITHUB_ACTIONS"):
+        print("::warning title=ERP progress::" + line)
+    print("check_progress: " + line)
+
+
+def main():
+    p = L.common_parser(__doc__)
+    p.add_argument("--branch", help="имя ветки PR (по умолчанию GITHUB_HEAD_REF)")
+    p.add_argument("--base-ref", help="коммит main, с которым сравнить отметки")
+    p.add_argument("--base-dir", help="папка с registry.json и progress/ из main")
+    p.add_argument("--baseline", help="test-baseline.json (по умолчанию в корне репозитория)")
+    p.add_argument("--tests-report", help="отчёт прогона тестов правил (erp-tests.json)")
+    p.add_argument("--workflow", help="файл workflow (по умолчанию .github/workflows/pr-checks.yml)")
+    args = p.parse_args()
+    branch = args.branch or os.environ.get("GITHUB_HEAD_REF") or os.environ.get("ERP_BRANCH") or ""
+    # Чей это PR — решается до чтения состояния: ответ нужен и тогда, когда оно не читается.
+    soft = None
+    if is_foreign(branch):
+        repo = args.repo or os.environ.get("ERP_REPO") or os.getcwd()
+        files = None if args.no_git else pr_files(repo, args.base_ref)
+        if files is not None and not touches_erp(files):
+            soft = (f"ветка {branch} не меняла scripts/erp/, тесты правил, pr-checks.yml и "
+                    f"test-baseline.json")
+        elif args.tests_report and not (args.base_ref or args.base_dir):
+            soft = (f"у чужой ветки {branch} шаг static-checks судит только отчёт тестов, "
+                    f"состояние в этом же прогоне судит pr-scope")
+    try:
+        return run(args, branch, soft)
+    except ReportFail:
+        raise
+    except L.Fail as e:
+        if not soft:
+            raise
+        print(f"в main (не этот PR): ОТКАЗ: {e}")
+        not_mine(soft, "состояние не читается")
+        return 0
+    except Exception:  # noqa: BLE001 — сбой самой проверки: чужой PR за него не отвечает
+        if not soft:
+            raise
+        traceback.print_exc()
+        not_mine(soft, "проверка упала")
+        return 0
 
 
 if __name__ == "__main__":
