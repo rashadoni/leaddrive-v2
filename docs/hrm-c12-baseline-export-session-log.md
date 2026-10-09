@@ -88,3 +88,87 @@ inspection-only observation, not a new feature/test failure.
 Next: publish source-bound first regression asDRAFT, actual isolatedPG proof,
 then refuse unsupportedlayouts only after retaining initial results. Prior
 631/632 and all accepted ancestry preserved; no merge/deploy/activation/Support.
+
+
+## 2026-10-09 Asia/Baku — original PostgreSQL failure retained; narrow correction
+
+Published draftPR646, source4efcda96f8e541c8689f87f0a0a1ce77dc98c659,
+base mainf97. Newsource retains631/632 ancestry and their frozen heads. App
+attachment646 succeeded. Mainprotection reread: unchanged fiveApp15368 required
+contexts, enforceadmins true, forcepush/deletion false. No protection mutation.
+
+Actual original isolatedPG16 run37895087632/job113704518706 FAILED: two
+ordinary/absent positivecases and three existingroot/RLS refusals PASS; SIX
+unsupported parent/child/leaf layouts wrongly returnedCLI0 and createdfiles.
+Originalreceipt artifact11599689645 ZIP digest
+2deb54dd1524546a4c7f9c8493bcbd20be7c2567db664a3d9414755e9d802ed9
+verified againstGitHub, copied unchanged with originalJSON and finite run/job
+metadata underoriginal-4ef. Raw CLI catalog/privateoutput/credentials not
+published. This reproduces sourcewrongadmission, not actual production
+leakage or a restoredhistorical baseline. Originalsource9unit bytes unchanged.
+
+Correction adds onlypg_inherits participation guard for either namedrelation
+before anyledger selection, with trustedpg_catalog. Helper/minimizer/schema
+format/provenance/limits staybyte-identical. IndependentreviewP2 testfixture
+comments resolved: admitfresh publicnamespace includingnon-table objects,
+requireprivatenamespace/readerrole absent, neverDROP publicschema, reset/drop
+onlytask-owned tables/private namespace/role. Actualserviceprincipal mustequal
+wf_baseline_catalog_reader. Cleanuprecordsfinite failures separately and
+preservesoriginal assertions/receipt instead of maskingthem. No claim of
+concurrentadministrativeDDL freeze, fullrestored baseline or realrestoreproof.
+
+Next: narrowNode/runnerchecks, correctedsource checkpoint and actual11casePG
+rerun, independentexact-source review, thenunchanged fiveCI gatecontexts.
+C12 remainsPARTIAL,85/161DONE,76open,weighted61%,14/15gates. Actualbaseline
+restore/operationalobservations and authenticatedproductionHR remainNOTRUN;
+no merge/deploy/activation/Support/access/secrets operations.
+
+Corrected narrowNode result:9PASS,1hostedPGSKIPPED/NOTRUNlocally; syntax,
+runner53 anddiffwhitespacePASS. Inspectionfirstattempt guessedincorrect
+scripts/ci/typecheck-baseline.json path (FileNotFoundError), so noNode check
+raninside thatattempt. Kept asinspectionerror; correctedpathsroot
+typecheck-baseline.json/test-baseline.json, actual9case rerunPASS. Original
+helper9unit andbothbaselines/pr-checks bytes equalmainf97; no weakening.
+
+
+## 2026-10-09 — preserve first scanner refusal without changing the gate
+
+Corrected source524313c1995336db77f64c8d50078c6433a7d97f passed actual
+11 PostgreSQL cases +9 unchanged Node cases in37895996445, and the inherited
+37PG+4Node schema contract in37895996459. Independent source review found no
+open P0–P3. These are historical524 results, not acceptance of the successor.
+
+Mandatory scan37895996404/job113707357147 failed with18 generic-api-key hits.
+Pinned verifiedGitleaks8.30.1 reproduced the exact18: every hit is an "api"
+field containing an MD5 of synthetic fixture rows in the newly copied original
+receipt, not a credential. Raw redacted log92879bytes/SHA256
+a1fb9659967e49e23dbb76bd2f5c87ffb23fd099e7c6217f77dee1340addfdc4 is retained
+privately; finite rule/file/line/commit metadata is published. No scanner config,
+allowlist, baseline or existing CI guard changes. No force push or history rewrite.
+
+PR646/source524 remains OPEN DRAFT as the validation original. A separate clean
+successor worktree/branch codex/hrm-c12-baseline-export-final-20261009 starts from
+original4ef and copies all corrected source and append-only journal. Accepted
+589→605→608,631→632 and currentmainf97 ancestry is preserved. The invalid
+scanner checkpoint524 remains reachable unchanged via646; it is not a source
+ancestor of the successor. No accumulated product change is discarded.
+
+Original first-failure receipt bytes remain identical in ZIP and deterministic
+gzip, with SHA256/CRC and a finite readable summary. New test receipt names are
+explicit targetTableDataMd5/ledgerDataMd5. This changes test evidence labels only;
+SQL/helper/exported API format remain identical to reviewed524. It avoids an
+ambiguous label without exempting any data from the scanner. The source regression
+and initial scanner refusal remain reviewable. Next: exact successor source/PG
+review and all five mandatory checks, then separate final evidence draft.
+
+Root is the dedicated Contabo worktree under /mnt/HC_Volume_106454338; origin
+https://github.com/rashadoni/leaddrive-v2.git; production13.140.132.245:/opt/leaddrive-v2
+uses reviewedmain→GitHub Actions. No production work, Mac sessions, merge,
+deploy, activation, grants, secret changes or Support edits. Accounting stays
+85/161 DONE,76 open,weighted61%; C12 PARTIAL.
+
+Successor precheckpoint checks:9 original Node PASS/PG SKIPPED locally, syntax,
+runner53/diff PASS. Bounded verified8.30.1 scan of10 own publication files
+PASS/0findings; full actual commit-range and hosted final gates remain pending.
+Helper,9unit,both baselines,gitleaks config and pr-checks exactmainf97. RAM
+available10895MiB,disk266GiB,memoryavg10zero before checks. No heavy localgate.

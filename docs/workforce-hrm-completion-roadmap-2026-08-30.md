@@ -7465,3 +7465,20 @@ C12 remains PARTIAL. Original production metadata INCOMPLETE, unresolved
 historical api_keys baseline, real density/collector/device/pilot/restore criteria
 are preserved. This source/test supplement does not authorize activation, grants,
 production execution or new personnel decisions.
+
+
+### 2026-10-09 — bounded C12 baseline exporter continuation
+
+The prepared schema-only exporter now refuses inheritance parents/children and
+partition leaves before reading ledger metadata. Six original wrong admissions
+were reproduced in isolated PostgreSQL; original failures and scanner results
+remain preserved. Exact successor technical acceptance is recorded separately
+in `docs/hrm-c12-baseline-export-session-log.md` and its evidence directory.
+This supplements the existing C12 schema contract and changes no application,
+roles, tenant isolation, HR outcomes, immutable audit or CASE_RECORDED_AT behavior.
+
+No task or phase gate closes: 85/161 DONE,76 open,weighted61%,14/15 gates;
+C6-010/C7-007/C8-002 stay DONE and C12 remains PARTIAL. Approved restored-copy
+provenance, full historical replay and real operational/physical/pilot/restore
+observations remain outstanding. Synthetic tests do not replace those criteria.
+No merge, deploy, activation, production/access/secret or Support changes.
