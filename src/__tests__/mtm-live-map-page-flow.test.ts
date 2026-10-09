@@ -198,6 +198,17 @@ describe("the live map page, end to end", () => {
       if (url.pathname === "/api/v1/mtm/locations/clients") {
         return typeof clientBase === "number" ? new Response("{}", { status: clientBase }) : Response.json({ success: true, data: clientBase })
       }
+      // The card's own two blocks: the day counted on the server, and what the phone registered with.
+      if (url.pathname === "/api/v1/mtm/locations/day-totals") {
+        return Response.json({ success: true, data: {
+          date: "2026-10-09", timezone: "Asia/Baku", distanceMeters: 18_400, distanceBasis: "ROADS", movingSeconds: 2_700, unknownSeconds: 0,
+          firstPointAt: new Date(Date.now() - 4 * 3_600_000).toISOString(), lastPointAt: new Date(Date.now() - 60_000).toISOString(), complete: true,
+          generatedAt: new Date().toISOString(),
+        } })
+      }
+      if (url.pathname === "/api/v1/mtm/locations/device") {
+        return Response.json({ success: true, data: { notificationsConnected: true, platform: "android", appVersion: "2.4.1", registeredAt: null } })
+      }
       throw new Error(`unexpected request: ${url.pathname}`)
     }))
     container = document.createElement("div")
@@ -316,6 +327,41 @@ describe("the live map page, end to end", () => {
     expect(byTestId("roster-column-name")?.closest('[role="columnheader"]')?.getAttribute("aria-sort")).toBe("descending")
     expect(byTestId("mtm-map-canvas")?.getAttribute("data-roster")).toBe("wide")
     expect([mapProp("showLabels"), mapProp("trails"), mapProp("glideMarkers")]).toEqual([true, null, false])
+  })
+
+  it("the card comes back as it was laid out in this browser: a folded block stays folded and asks nothing, a hidden one is not drawn", async () => {
+    window.localStorage.setItem("leaddrive.mtm.live-map.card.v1", JSON.stringify({ order: ["route", "events", "day", "device"], collapsed: ["day"], hidden: ["device"] }))
+    await open()
+    await press(byTestId("live-map-agent-card-near"))
+    await settle(700)
+    const blocks = [...document.querySelectorAll('[data-testid^="live-map-card-block-"]')]
+      .map((block) => block.getAttribute("data-testid")!)
+      .filter((id) => /^live-map-card-block-(events|route|day|device)$/.test(id))
+    expect(blocks).toEqual(["live-map-card-block-route", "live-map-card-block-events", "live-map-card-block-day"])
+    expect(byTestId("live-map-card-block-toggle-day")?.getAttribute("aria-expanded")).toBe("false")
+    // Folded and hidden blocks ask the server for nothing.
+    expect(requests.filter((request) => request.startsWith("/api/v1/mtm/locations/day-totals") || request.startsWith("/api/v1/mtm/locations/device"))).toEqual([])
+    // Unfolded, the block asks once — and the choice is remembered.
+    await press(byTestId("live-map-card-block-toggle-day"))
+    await settle(700)
+    expect(requests.filter((request) => request.startsWith("/api/v1/mtm/locations/day-totals"))).toEqual(["/api/v1/mtm/locations/day-totals?agentId=near"])
+    expect(JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.card.v1") ?? "{}")).toMatchObject({ collapsed: [], hidden: ["device"] })
+  })
+
+  it("the printed sheet is headed with the page's name and the organization's own clock, not the browser's", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    try {
+      // 21:30 UTC on the 9th is half past one at night on the 10th in Baku.
+      vi.setSystemTime(new Date("2026-10-09T21:30:00.000Z"))
+      await open()
+      await press(byTestId("live-map-roster-print"))
+      const frame = document.querySelector<HTMLIFrameElement>('iframe[data-testid="live-map-roster-print-frame"]')!
+      const heading = new DOMParser().parseFromString(frame.srcdoc, "text/html").querySelector("h1")?.textContent ?? ""
+      expect(heading).toMatch(/^Живая карта · 10 окт\. 2026 г\., 01:30$/)
+      frame.remove()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it("selects an employee from his marker, and a second press on the same marker does not let go of him", async () => {
@@ -491,6 +537,41 @@ describe("the live map page, end to end", () => {
     expect(byTestId("roster-column-manager")).toBeNull()
     // The list above it can be taken away as a file.
     expect(byTestId("live-map-roster-export")?.textContent).toBe("Excel")
+  })
+
+  it("the card also carries the day in numbers, the phone, and worded links to the other screens already narrowed to him", async () => {
+    await open()
+    await press(byTestId("live-map-agent-card-near"))
+    for (let turn = 0; turn < 150; turn += 1) {
+      if (byTestId("live-map-agent-day-distance") && byTestId("live-map-device-notifications")) break
+      await settle(20)
+    }
+    const detail = byTestId("live-map-agent-detail")!
+    // Counted on the server for him, for the organization's today: the page sends who, never which day.
+    expect(requests.filter((request) => request.startsWith("/api/v1/mtm/locations/day-totals"))).toEqual(["/api/v1/mtm/locations/day-totals?agentId=near"])
+    expect(detail.querySelector('[data-testid="live-map-agent-day-distance"]')?.textContent).toContain("18,4 км")
+    expect(detail.querySelector('[data-testid="live-map-agent-day-distance"]')?.textContent).toContain("по дорогам")
+    expect(detail.querySelector('[data-testid="live-map-agent-day-moving"]')?.textContent).toContain("45 мин")
+    // The phone: what the list already knew, and the two things one small read adds.
+    expect(requests.filter((request) => request.startsWith("/api/v1/mtm/locations/device"))).toEqual(["/api/v1/mtm/locations/device?agentId=near"])
+    expect(detail.querySelector('[data-testid="live-map-device-battery"]')?.textContent).toMatch(/^Батарея: 12%/)
+    expect(detail.querySelector('[data-testid="live-map-device-app-version"]')?.textContent).toBe("Версия приложения: 2.4.1")
+    expect(detail.querySelector('[data-testid="live-map-device-notifications"]')?.textContent).toBe("Уведомления: Подключены")
+    // A default the server fills in is not shown as the phone's own word.
+    expect(detail.textContent).not.toMatch(/android/i)
+    // The other screens, in words, each opened on him.
+    const links = [...detail.querySelectorAll('[data-testid^="live-map-agent-link-"]')].map((link) => [link.textContent, link.getAttribute("href")])
+    expect(links).toEqual([
+      ["Оповещения", "/mtm/alerts?agentId=near"],
+      ["Отчёт за период", "/mtm/calendar?view=agent&agentId=near"],
+      ["Задачи", "/mtm/tasks?agentId=near"],
+      ["Профиль сотрудника", "/mtm/agents/near"],
+      ["Настройки оповещений", "/mtm/settings?tab=alerts"],
+    ])
+    // «История за день» stays the pill it was, with today's date.
+    expect(byTestId("live-map-open-history")?.getAttribute("href")).toBe("/mtm/map?mode=history&agentId=near&date=2026-10-09")
+    // The list above the card can be printed as it stands.
+    expect(byTestId("live-map-roster-print")?.textContent).toBe("Печать")
   })
 
   it("says nothing about a place for somebody the map shows no live position for", async () => {
@@ -670,6 +751,8 @@ describe("the live map page, end to end", () => {
       // At a client of today's route: no street is asked of anyone.
       expect(count("/api/v1/mtm/geocode/street")).toBe(0)
       expect([count("/api/v1/mtm/activity"), count("/api/v1/mtm/alerts")]).toEqual([1, 1])
+      // Her day in numbers and her phone: asked for once, when the card was opened.
+      expect([count("/api/v1/mtm/locations/day-totals"), count("/api/v1/mtm/locations/device")]).toEqual([1, 1])
 
       // Everything the line and the day's steps say while two refreshes go by.
       const said = new Set<string>([placeText()])
@@ -691,9 +774,13 @@ describe("the live map page, end to end", () => {
       expect(count("/api/v1/mtm/geocode/street")).toBe(0)
       // The map refreshed twice and nothing about her changed: her events were not asked for again…
       expect([count("/api/v1/mtm/activity"), count("/api/v1/mtm/alerts")]).toEqual([1, 1])
+      // …nor the day's kilometres, nor the phone: none of the card rides on the list's thirty-second timer.
+      expect([count("/api/v1/mtm/locations/day-totals"), count("/api/v1/mtm/locations/device")]).toEqual([1, 1])
       // …until the events' own clock turns: an alert about her is raised exactly while her row stands still.
       await forward(60_000)
       expect([count("/api/v1/mtm/activity"), count("/api/v1/mtm/alerts")]).toEqual([2, 2])
+      // The day is counted again on the same two-minute turn; what the phone registered with is not.
+      expect([count("/api/v1/mtm/locations/day-totals"), count("/api/v1/mtm/locations/device")]).toEqual([2, 1])
     })
 
     it("«Обновить» reads the base again; while it is on its way, and if it fails, the points already on the map stay", async () => {

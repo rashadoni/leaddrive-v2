@@ -16,7 +16,7 @@
  * what was written. The self-contained sections that load their own data are
  * replaced by named placeholders: where they stand is what is tested here.
  */
-import { act, createElement } from "react"
+import { act, createElement, useInsertionEffect } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { readFileSync } from "node:fs"
@@ -96,6 +96,22 @@ async function open() {
   await act(async () => { root.render(createElement(MtmSettingsPage)) })
   await settle()
 }
+/** The page opened anew, as a reload or a typed address opens it. */
+async function openAt(address: string) {
+  act(() => root.unmount())
+  root = createRoot(container)
+  window.history.replaceState(null, "", address)
+  await open()
+}
+/**
+ * The page reached by a link inside the application. The router writes the
+ * new address while the new page is being put on screen — after the page was
+ * first drawn, with the address of the page that was left still in the bar.
+ */
+function ArrivingByLink({ address }: { address: string }) {
+  useInsertionEffect(() => { window.history.replaceState(null, "", address) }, [address])
+  return createElement(MtmSettingsPage)
+}
 
 beforeEach(() => {
   ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -129,6 +145,7 @@ afterEach(() => {
   act(() => root.unmount())
   container.remove()
   vi.unstubAllGlobals()
+  window.history.replaceState(null, "", "/")
 })
 
 describe("the settings page as six tabs", () => {
@@ -146,6 +163,40 @@ describe("the settings page as six tabs", () => {
       expect(shownTabs()).toEqual([name])
       expect(TABS.filter((other) => tabButton(other).getAttribute("aria-selected") === "true")).toEqual([name])
     }
+  })
+
+  // The live map's «Настройки оповещений» leads here for the alert rules
+  // (2026-10-09). Every link to this page used to land on the first tab, and
+  // the rules are on the third.
+  it("opens on the tab the address names, and on the first tab when it names none or one that does not exist", async () => {
+    await openAt("/mtm/settings?tab=alerts")
+    expect(shownTabs()).toEqual(["alerts"])
+    expect(TABS.filter((name) => tabButton(name).getAttribute("aria-selected") === "true")).toEqual(["alerts"])
+    // What the link promised is on screen, not behind a tab still to be found.
+    expect(tabOf(settingRow("alertOutOfZone"))).toBe("alerts")
+    // It is where the page opens, not where it is stuck: the other tabs answer as before.
+    await openTab("company")
+    expect(shownTabs()).toEqual(["company"])
+
+    await openAt("/mtm/settings")
+    expect(shownTabs()).toEqual(["visit"])
+    for (const unknown of ["/mtm/settings?tab=reports", "/mtm/settings?tab=", "/mtm/settings?tab=ALERTS", "/mtm/settings?section=alerts"]) {
+      await openAt(unknown)
+      expect(shownTabs(), unknown).toEqual(["visit"])
+    }
+    // Every tab can be named, not only the one the map needs today.
+    for (const name of TABS) {
+      await openAt(`/mtm/settings?tab=${name}`)
+      expect(shownTabs()).toEqual([name])
+    }
+  })
+
+  it("opens the named tab for a link pressed inside the application, where the address changes only as the page appears", async () => {
+    window.history.replaceState(null, "", "/mtm/map?agentId=agent-7")
+    await act(async () => { root.render(createElement(ArrivingByLink, { address: "/mtm/settings?tab=alerts" })) })
+    await settle()
+    expect(window.location.search).toBe("?tab=alerts")
+    expect(shownTabs()).toEqual(["alerts"])
   })
 
   it("puts every setting where its tab says it is", async () => {

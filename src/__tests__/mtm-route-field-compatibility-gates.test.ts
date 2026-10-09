@@ -17,6 +17,8 @@ describe("MTM Route & Field compatibility gates", () => {
       ["src/app/api/v1/mtm/geocode/street/route.ts", ["GET"]],
       ["src/app/api/v1/mtm/locations/export/route.ts", ["POST"]],
       ["src/app/api/v1/mtm/locations/clients/route.ts", ["GET"]],
+      ["src/app/api/v1/mtm/locations/day-totals/route.ts", ["GET"]],
+      ["src/app/api/v1/mtm/locations/device/route.ts", ["GET"]],
     ] as const) {
       const route = source(path)
       expect(route).toContain('import { withRouteFieldWebRlsAuth } from "@/lib/with-mtm-rls-auth"')

@@ -42,7 +42,7 @@ async function readJson(url: string, signal: AbortSignal): Promise<Record<string
  * every refresh of the map.
  */
 export function LiveMapAgentEvents({
-  agentId, refreshKey, workdayStartedAt, formatTime, alertText, isEarlierDay,
+  agentId, refreshKey, workdayStartedAt, formatTime, alertText, isEarlierDay, framed = true,
 }: {
   agentId: string
   /** Changes when the employee's row changes in a way that means a new event. */
@@ -53,6 +53,8 @@ export function LiveMapAgentEvents({
   alertText: (alert: AlertEvent) => string
   /** Was this moment on an earlier day than today, in the organization's time zone? */
   isEarlierDay?: (iso: string) => boolean
+  /** Its own frame and heading. Off inside the card's blocks, which give it both. */
+  framed?: boolean
 }) {
   const tMap = useTranslations("mtmMap")
   const tActivity = useTranslations("mtmActivity")
@@ -111,8 +113,8 @@ export function LiveMapAgentEvents({
   const hidden = events.length - shown.length
 
   return (
-    <div data-testid="live-map-agent-events" className="rounded-md bg-background/80 p-2">
-      <div className="mb-1 font-semibold text-foreground">{tMap("events.title")}</div>
+    <div data-testid="live-map-agent-events" className={framed ? "rounded-md bg-background/80 p-2" : undefined}>
+      {framed ? <div className="mb-1 font-semibold text-foreground">{tMap("events.title")}</div> : null}
       {!known ? (
         <div className="text-muted-foreground">{tMap("events.loading")}</div>
       ) : (
