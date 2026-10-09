@@ -127,10 +127,17 @@ describe("the live map page, end to end", () => {
   const onMap = () => (hoisted.map.props?.agents as Array<{ agentId: string }>).map((agent) => agent.agentId)
   const mapProp = <T,>(name: string) => hoisted.map.props?.[name] as T
   const closeMenu = async () => {
-    // First the menu is really gone; then the tick in which it hands the focus
-    // back to its heading — two steps, so the next press never races it.
+    // Escape, then wait for what a person would see before pressing anything
+    // else: the menu is gone and the focus is back on the heading that opened
+    // it (Radix hands it back a tick after the menu unmounts). A fixed pause
+    // lost that race on a loaded CI runner — the focus landed after the next
+    // press and closed the menu that press had just opened (static-checks went
+    // red on it, 2026-10-09).
     await act(async () => { document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })) })
-    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)) })
+    for (let turn = 0; turn < 150; turn += 1) {
+      if (!document.body.querySelector("[data-radix-popper-content-wrapper]") && document.activeElement !== document.body) break
+      await act(async () => { await new Promise((resolve) => setTimeout(resolve, 2)) })
+    }
   }
   const open = async () => {
     await act(async () => { root.render(createElement(MtmMapPage)) })
@@ -235,25 +242,59 @@ describe("the live map page, end to end", () => {
     expect(mapProp("pressMode")).toBeNull()
     expect(mapProp<{ label: string }>("referencePoint")).toEqual({ ...CENTRE, label: "Точка на карте" })
     expect(rowIds()).toEqual(["near", "mid", "far", "none"])
-    const distance = (agentId: string) => container.querySelector(`[data-testid="live-map-agent-card-${agentId}"] [data-column="distance"]`)?.textContent
+    // What a sighted person reads in the cell: the words kept for a screen reader are left out.
+    const distance = (agentId: string) => {
+      const copy = container.querySelector(`[data-testid="live-map-agent-card-${agentId}"] [data-column="distance"]`)?.cloneNode(true) as Element | undefined
+      for (const hidden of copy?.querySelectorAll(".sr-only") ?? []) hidden.remove()
+      return copy?.textContent
+    }
     expect([distance("near"), distance("mid"), distance("far"), distance("none")]).toEqual(["450 м", "3,0 км", "7,4 км", "—"])
     expect(byTestId("roster-column-distance")?.closest('[role="columnheader"]')?.getAttribute("aria-sort")).toBe("ascending")
     expect(byTestId("live-map-point-chip")?.textContent).toBe("Ближайшие к: Точка на картеУбрать")
 
-    // Another order asked for in a column menu: «nearest first» steps aside, the distance stays in view.
+    // Another order asked for in a column menu — the very one that is remembered,
+    // by name A to Z, which is not the order of the distances: «nearest first»
+    // steps aside, the distance stays in view.
+    const sortOf = (column: string) => byTestId(`roster-column-${column}`)?.closest('[role="columnheader"]')?.getAttribute("aria-sort")
     await press(byTestId("roster-column-name"))
-    await press(byTestId("roster-sort-name-desc"))
+    await press(byTestId("roster-sort-name-asc"))
     await closeMenu()
-    expect(rowIds()).toEqual(["near", "mid", "far", "none"].sort((a, b) => ({ near: "Nigar", mid: "Murad", far: "Fərid", none: "Aynur" } as Record<string, string>)[b].localeCompare(({ near: "Nigar", mid: "Murad", far: "Fərid", none: "Aynur" } as Record<string, string>)[a], "ru")))
+    expect(rowIds()).toEqual(["none", "far", "mid", "near"])
+    expect([sortOf("name"), sortOf("distance")]).toEqual(["ascending", "none"])
     expect(distance("near")).toBe("450 м")
     // What is remembered for tomorrow is the order by name, never the distance.
-    expect(JSON.parse(window.localStorage.getItem(ROSTER_VIEW_STORAGE_KEY) ?? "{}").sort).toEqual({ column: "name", direction: "desc" })
+    expect(JSON.parse(window.localStorage.getItem(ROSTER_VIEW_STORAGE_KEY) ?? "{}").sort).toEqual({ column: "name", direction: "asc" })
 
     // The point removed: no distance column, the list in the order last asked for.
     await press(byTestId("live-map-point-clear"))
     expect(mapProp("referencePoint")).toBeNull()
     expect(byTestId("roster-column-distance")).toBeNull()
-    expect(rowIds()[0]).toBe("near")
+    expect(rowIds()).toEqual(["none", "far", "mid", "near"])
+  })
+
+  it("comes back as it was left in this browser: the order of the list and the look of the map", async () => {
+    window.localStorage.setItem(ROSTER_VIEW_STORAGE_KEY, JSON.stringify({ width: "wide", sort: { column: "name", direction: "desc" }, groupBy: "none", columns: ["name", "status", "battery"] }))
+    window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ labels: true, trails: false, glide: false }))
+    await open()
+    expect(rowIds()).toEqual(["near", "mid", "far", "none"])
+    expect(byTestId("roster-column-name")?.closest('[role="columnheader"]')?.getAttribute("aria-sort")).toBe("descending")
+    expect(byTestId("mtm-map-canvas")?.getAttribute("data-roster")).toBe("wide")
+    expect([mapProp("showLabels"), mapProp("trails"), mapProp("glideMarkers")]).toEqual([true, null, false])
+  })
+
+  it("selects an employee from his marker, and a second press on the same marker does not let go of him", async () => {
+    await open()
+    const selectOnMap = async (agentId: string) => {
+      await act(async () => { mapProp<(agentId: string) => void>("onAgentSelect")(agentId) })
+      await settle()
+    }
+    await selectOnMap("mid")
+    expect(mapProp("focusAgentId")).toBe("mid")
+    expect(requests).toContain("/api/v1/mtm/routes?agentId=mid&date=2026-10-09")
+    expect(byTestId("live-map-agent-card-mid")?.getAttribute("data-selected")).toBe("true")
+    // The second press is somebody reading his balloon.
+    await selectOnMap("mid")
+    expect(mapProp("focusAgentId")).toBe("mid")
   })
 
   it("does not count among «the nearest» somebody the map itself does not draw, and drops a distance filter with the point", async () => {

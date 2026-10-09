@@ -189,7 +189,7 @@ describe("«who is nearest» — the distance to the point picked on the map", (
           view: { ...ROSTER_DEFAULT_VIEW, sort: { column: "distance", direction: "asc" } }, onViewChange: () => {}, onHide: () => {},
           hiddenAgentIds: new Set<string>(), onToggleAgentOnMap: () => {}, onSetAgentsOnMap: () => {},
           selectedAgentId: null, onSelect: () => {}, renderDetail: () => null, nowMs: NOW, workforceEnabled: true,
-          formatClock: () => "", formatVisitOpened: () => "", isEarlierDay: () => false,
+          formatClock: (value: string | null | undefined) => value ? value.slice(11, 16) : "", formatVisitOpened: () => "", isEarlierDay: () => false,
           formatDistance: (meters: number) => meters < 1_000 ? `${Math.round(meters)} м` : `${(meters / 1_000).toFixed(1).replace(".", ",")} км`,
         }))
       })
@@ -211,8 +211,20 @@ describe("«who is nearest» — the distance to the point picked on the map", (
 
     it("takes the place of the signal's age beside the map, says the distance in words, and a dash for nobody to measure", async () => {
       await draw(measured)
-      expect([cell("near", "distance")?.textContent, cell("mid", "distance")?.textContent, cell("far", "distance")?.textContent, cell("stale", "distance")?.textContent])
-        .toEqual(["450 м", "3,0 км", "7,4 км", "—"])
+      const shown = (agentId: string) => {
+        const copy = cell(agentId, "distance")!.cloneNode(true) as Element
+        for (const hidden of copy.querySelectorAll(".sr-only")) hidden.remove()
+        return copy.textContent
+      }
+      expect([shown("near"), shown("mid"), shown("far"), shown("stale")]).toEqual(["450 м", "3,0 км", "7,4 км", "—"])
+      // The distance has taken the signal's place, so it carries the signal's
+      // truth: a distance measured from a delayed coordinate looks delayed and
+      // says so, with the time of that coordinate.
+      const mid = cell("mid", "distance")!.firstElementChild as HTMLElement
+      expect(mid.className).toContain("text-amber-700")
+      expect(mid.getAttribute("title")).toBe("Свежесть GPS: С задержкой · 09:59")
+      expect(mid.querySelector(".sr-only")?.textContent).toBe(" · С задержкой")
+      expect((cell("near", "distance")!.firstElementChild as HTMLElement).className).not.toContain("text-amber-700")
       // Beside the map: name, status, distance. The signal waits for the wide table.
       expect(cell("near", "distance")?.className).not.toContain("hidden")
       expect(cell("near", "signal")?.className).toContain("hidden @2xl:block")
@@ -317,7 +329,10 @@ describe("the tools on the map, in words", () => {
     expect(byTestId("live-map-point-panel")).toBeNull()
     await press(byTestId("live-map-tool-point"))
     await type("Zərdabi 79")
-    // The search service allows one request a second: typing alone asks nothing.
+    // The search service allows one request a second: typing alone asks nothing —
+    // not at once, and not after a pause either (a search-as-you-type would wait for one).
+    expect(requests).toEqual([])
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 700)) })
     expect(requests).toEqual([])
     await submit()
     expect(requests).toHaveLength(1)
@@ -426,6 +441,10 @@ describe("the wiring of the tools", () => {
     expect(page).not.toContain("replayTrack=")
     // Drawn for people shown on their own; a cluster is a count, not a person.
     expect(map).toMatch(/trails \? markerSelection\.markers\.flatMap\(\(marker\) => \{\s*if \(marker\.kind !== "AGENT"\) return \[\]/)
+    // …and drawn as the segments, so never across a silence.
+    expect(map).toContain("return liveMapTrailSegments(trails.get(marker.agent.agentId) ?? []).map((segment, index) => (")
+    // Another organization or viewer starts with no tails, no point, no ruler.
+    expect(page).toMatch(/setTrails\(new Map\(\)\)\s*setReferencePoint\(null\)\s*setNearestFirst\(false\)\s*setPickingPoint\(false\)\s*setRulerActive\(false\)\s*setRulerPoints\(\[\]\)/)
   })
 
   it("keeps a name beside every marker when asked, and says who it is under the pointer otherwise", () => {

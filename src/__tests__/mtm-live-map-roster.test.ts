@@ -342,12 +342,17 @@ describe("the list on the page", () => {
   }
   const openMenu = async (column: string) => { await press(byTestId(`roster-column-${column}`)) }
   const closeMenu = async () => {
-    // Two steps, each finished before the next: first the menu is really gone;
-    // then the tick in which it hands the focus back to its heading. Waiting
-    // inside the same step raced the unmount on a loaded machine, and the focus
-    // landed after the next press — closing the menu that press had opened.
+    // Escape, then wait for what a person would see before pressing anything
+    // else: the menu is gone and the focus is back on the heading that opened
+    // it (Radix hands it back a tick after the menu unmounts). A fixed pause
+    // lost that race on a loaded CI runner — the focus landed after the next
+    // press and closed the menu that press had just opened (static-checks went
+    // red on it, 2026-10-09).
     await act(async () => { document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })) })
-    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)) })
+    for (let turn = 0; turn < 150; turn += 1) {
+      if (!document.body.querySelector("[data-radix-popper-content-wrapper]") && document.activeElement !== document.body) break
+      await act(async () => { await new Promise((resolve) => setTimeout(resolve, 2)) })
+    }
   }
 
   beforeEach(() => {

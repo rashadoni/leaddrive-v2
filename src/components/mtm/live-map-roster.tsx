@@ -379,10 +379,25 @@ export function LiveMapRoster({
         return typeof agent.battery === "number" && Number.isFinite(agent.battery)
           ? <span className={cn("block truncate tabular-nums", agent.battery < 20 && "font-medium text-red-600 dark:text-red-400")}>{Math.round(agent.battery)}%</span>
           : <span className="text-muted-foreground">—</span>
-      case "distance":
-        return typeof agent.distanceMeters === "number" && Number.isFinite(agent.distanceMeters)
-          ? <span className="block truncate tabular-nums font-medium" data-testid={`live-map-agent-distance-${agent.agentId}`}>{formatDistance(agent.distanceMeters)}</span>
-          : <span className="text-muted-foreground" title={tMap("roster.distance.UNKNOWN")}>—</span>
+      case "distance": {
+        if (typeof agent.distanceMeters !== "number" || !Number.isFinite(agent.distanceMeters)) {
+          return <span className="text-muted-foreground" title={tMap("roster.distance.UNKNOWN")}>—</span>
+        }
+        // Beside the map the distance stands where the signal's age stood, so it
+        // carries the signal's truth: measured from a delayed coordinate, it
+        // looks delayed and says from when.
+        const freshness = tMap(`freshness.${agent.freshness.toLowerCase()}`)
+        return (
+          <span
+            className={cn("block truncate tabular-nums font-medium", agent.freshness === "DELAYED" && "text-amber-700 dark:text-amber-300")}
+            title={agent.recordedAt ? `${tMap("gpsFreshness")}: ${freshness} · ${formatClock(agent.recordedAt)}` : `${tMap("gpsFreshness")}: ${freshness}`}
+            data-testid={`live-map-agent-distance-${agent.agentId}`}
+          >
+            {formatDistance(agent.distanceMeters)}
+            <span className="sr-only"> · {freshness}</span>
+          </span>
+        )
+      }
     }
   }
 
