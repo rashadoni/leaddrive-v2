@@ -3,6 +3,10 @@ import { resolve } from "node:path"
 import { describe, expect, it } from "vitest"
 
 const page = readFileSync(resolve("src/app/(dashboard)/mtm/map/page.tsx"), "utf8")
+// 2026-10-09 the employee cards became a compact table with its own component
+// (owner: «список должен быть компактным, завтра будут например 100
+// пользователей»). What every row says without a click is asserted there.
+const roster = readFileSync(resolve("src/components/mtm/live-map-roster.tsx"), "utf8")
 const locales = ["en", "ru", "az"].map((locale) =>
   JSON.parse(readFileSync(resolve(`messages/${locale}.json`), "utf8"))
 )
@@ -35,29 +39,50 @@ describe("SWM-12 simple and trustworthy live map UI contract", () => {
   // other chips: «почему тут по нулям, я же в приложении?» — his card said he
   // was online with fresh GPS and an active workday, and which chip counted
   // him was told only after a click on the card.
-  it("says on every card what the employee is doing, in the chip's own word, without a click", () => {
-    const status = page.indexOf("data-testid={`live-map-agent-status-${agent.agentId}`}")
-    expect(status).toBeGreaterThan(-1)
-    expect(status).toBeLessThan(page.indexOf("{isSelected ? ("))
-    const line = page.slice(status, page.indexOf("tMap(`presence.", status))
-    expect(line).toContain("tMap(`fieldStatus.${cfg.labelKey}`)")
-    // The status is said once: not again in the detail a click opens.
-    expect(page.match(/tMap\(`fieldStatus\.\$\{cfg\.labelKey\}`\)/g) ?? []).toHaveLength(1)
+  it("says on every row what the employee is doing, in the chip's own word, without a click", () => {
+    // The status is a column of the narrow list — the one beside the map — and
+    // cannot be switched off in the wide table either, so it is on every row
+    // whatever the width; mtm-live-map-roster.test.ts reads the rendered word
+    // («Опаздывает») off an unselected row.
+    const lib = readFileSync(resolve("src/lib/mtm/live-map-roster.ts"), "utf8")
+    expect(lib).toContain('export const ROSTER_LOCKED_COLUMNS: readonly RosterColumnId[] = ["name", "status"]')
+    expect(roster).toContain("const narrowColumns = ROSTER_NARROW_COLUMNS")
+    expect(lib).toContain('export const ROSTER_NARROW_COLUMNS: readonly RosterColumnId[] = ["name", "status", "signal"]')
+    const status = roster.slice(roster.indexOf('case "status": {'), roster.indexOf('case "signal": {'))
+    expect(status).toContain("data-testid={`live-map-agent-status-${agent.agentId}`}")
+    expect(status).toContain('valueLabel("status", status)')
+    // The status is said once: the detail a click opens does not repeat it.
+    expect(page).not.toContain("fieldStatus.${")
     // «On site» in a visit opened on an earlier day says when it was opened, with the date.
-    expect(line).toContain('agent.fieldStatus === "CHECKED_IN" && agent.openVisitSince')
-    expect(line).toContain("visitOpenedOnAnotherDay(agent.openVisitSince, contract?.timezone)")
+    expect(status).toContain('const openedAt = status === "CHECKED_IN" && agent.openVisitSince ? agent.openVisitSince : null')
+    expect(status).toContain("const since = openedAt ? formatVisitOpened(openedAt) : \"\"")
+    // …and on the narrow list, where the time does not fit, an earlier day is marked on the row.
+    expect(status).toContain("const stale = openedAt != null && isEarlierDay(openedAt)")
+    expect(page).toContain("isEarlierDay={(value) => visitOpenedOnAnotherDay(value, contract?.timezone)}")
+    expect(page).toMatch(/const formatVisitOpened = \(value: string\) => formatDateTime\(value, locale, visitOpenedOnAnotherDay\(value, contract\?\.timezone\)/)
+    expect(page).toContain("formatVisitOpened={formatVisitOpened}")
     for (const messages of locales) {
       expect(messages.mtmMap.visitOpenedAt).toContain("{time}")
     }
   })
 
-  it("shows presence, GPS and workday truth before expanding optional detail", () => {
+  // What changed on 2026-10-09, deliberately: a row is one line, so the three
+  // truths are no longer three phrases on every card. Each row still carries
+  // them — the application as the dot before the name, the GPS as the age of
+  // the signal in the freshness colour, both with the words in a tooltip — the
+  // wide table has a column for each, and the detail spells all three out.
+  it("shows presence, GPS and workday truth on the row, in the table and in words in the detail", () => {
+    const name = roster.slice(roster.indexOf('case "name": {'), roster.indexOf('case "status": {'))
+    expect(name).toContain('agent.isOnline ? "bg-green-500"')
+    expect(name).toContain('tMap(`presence.${agent.isOnline ? "online" : "offline"}`)')
+    const signal = roster.slice(roster.indexOf('case "signal": {'), roster.indexOf('case "team": return <span'))
+    expect(signal).toContain("rosterSignalAge(agent.recordedAt, nowMs)")
+    expect(signal).toContain("tMap(`freshness.${agent.freshness.toLowerCase()}`)")
+    expect(roster).toContain("tMap(`workday.${agent.workdayState.toLowerCase()}`)")
+    expect(roster).toContain('case "app": return')
     expect(page).toContain('tMap(`presence.${appPresent ? "online" : "offline"}`)')
     expect(page).toContain('tMap(`freshness.${agent.freshness.toLowerCase()}`)')
     expect(page).toContain('tMap(`workday.${agent.workdayState.toLowerCase()}`)')
-    expect(page.indexOf('tMap(`workday.${agent.workdayState.toLowerCase()}`)')).toBeLessThan(
-      page.indexOf("{isSelected ? (")
-    )
     expect(page).toContain('tMap("workdayState")')
     // The helper keeps the independent capability boundary explicit: a
     // Routes-only tenant must not filter its map by a Workforce workday, while

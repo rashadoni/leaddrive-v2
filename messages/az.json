@@ -16425,6 +16425,106 @@
       "onlyThis": "Xəritədə yalnız o",
       "hiddenBadge": "xəritədən gizlədilib"
     },
+    "roster": {
+      "shownCount": "{shown} / {total}",
+      "show": "Əməkdaşlar siyahısı ({count})",
+      "showFiltered": "Siyahı: {shown} / {total} · filtr",
+      "filters": "Filtrlər",
+      "filtersBack": "Bütün sütunlar",
+      "hide": "Siyahını gizlət",
+      "view": "Görünüş",
+      "wide": "Cədvəl",
+      "narrow": "Siyahı",
+      "groupBy": "Qruplaşdır",
+      "grouping": {
+        "none": "Qrupsuz",
+        "team": "Şöbələr üzrə",
+        "status": "Status üzrə",
+        "workday": "İş günü üzrə"
+      },
+      "columnsTitle": "Cədvəl sütunları",
+      "columnsHint": "Geniş cədvəldə görünür",
+      "columns": {
+        "name": "Əməkdaş",
+        "status": "Status",
+        "signal": "Siqnal",
+        "team": "Şöbə",
+        "app": "Tətbiq",
+        "workday": "İş günü",
+        "route": "Marşrut",
+        "speed": "Sürət",
+        "battery": "Batareya"
+      },
+      "masterTick": "Siyahıdakıların hamısını xəritədə göstər",
+      "groupTick": "{name} — qrupu xəritədə göstər",
+      "collapseGroup": "«{name}» qrupunu yığ",
+      "expandGroup": "«{name}» qrupunu aç",
+      "noTeam": "Şöbəsiz",
+      "historyToday": "Günün tarixçəsi",
+      "kmh": "{value} km/saat",
+      "age": {
+        "now": "indi",
+        "minutes": "{count} dəq",
+        "hours": "{count} saat",
+        "days": "{count} gün"
+      },
+      "workday": {
+        "ACTIVE": "Aktiv",
+        "PAUSED": "Fasilə",
+        "NOT_STARTED": "Başlamayıb",
+        "CLOSED": "Bitib"
+      },
+      "route": {
+        "NONE": "Marşrut yoxdur",
+        "NOT_STARTED": "Başlanmayıb",
+        "IN_PROGRESS": "Davam edir",
+        "DONE": "Tamamlanıb"
+      },
+      "speed": {
+        "MOVING": "Hərəkətdədir",
+        "STILL": "Dayanıb",
+        "UNKNOWN": "Məlumat yoxdur"
+      },
+      "battery": {
+        "LOW": "20%-dən aşağı",
+        "MID": "20–50%",
+        "HIGH": "50%-dən yuxarı",
+        "UNKNOWN": "Məlumat yoxdur"
+      },
+      "sort": {
+        "text": {
+          "asc": "A-dan Z-yə",
+          "desc": "Z-dən A-ya"
+        },
+        "order": {
+          "asc": "Sıra ilə",
+          "desc": "Əks sıra ilə"
+        },
+        "time": {
+          "asc": "Əvvəl ən yenilər",
+          "desc": "Əvvəl ən köhnələr"
+        },
+        "number": {
+          "asc": "Əvvəl kiçiklər",
+          "desc": "Əvvəl böyüklər"
+        }
+      },
+      "filter": {
+        "open": "{column}: sıralama və filtr",
+        "selectAll": "Hamısını seç",
+        "only": "yalnız bu",
+        "search": "Siyahıda axtar",
+        "nothingFound": "Heç nə tapılmadı",
+        "reset": "Bu filtri sıfırla",
+        "resetAll": "Filtrləri sıfırla",
+        "remove": "«{column}» filtrini sil",
+        "chip": "{column}: {values}",
+        "except": "{values} istisna olmaqla hamısı",
+        "nothing": "heç nə seçilməyib",
+        "unknownValue": "siyahıda yoxdur",
+        "more": "daha {count}"
+      }
+    },
     "follow": "İzlə",
     "followHint": "Əməkdaş hərəkət etdikcə xəritə onu mərkəzdə saxlayır",
     "fieldStatus": {

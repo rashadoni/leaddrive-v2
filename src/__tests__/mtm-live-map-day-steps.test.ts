@@ -200,8 +200,12 @@ describe("the wiring between the list, the card and the map", () => {
     expect(map).toContain("<FollowAgent agents={agents} focusAgentId={focusAgentId} enabled={followAgent} />")
   })
 
-  it("drops a selection that a status chip has just hidden, and the stop and «follow» with any selection", () => {
-    expect(page).toMatch(/if \(!selected \|\| shownAgentIdsRef\.current\.has\(selected\)\) return[\s\S]{0,200}setSelectedAgent\(null\)[\s\S]{0,80}\}, \[activeFilter\]\)/)
+  // 2026-10-09 the status chips became one of the list's column filters, and
+  // the rule was widened: whatever takes the selected employee out of the list
+  // — a filter, a poll that changes his status, a signal that ages — lets go
+  // of him. The effect is keyed on whether he is shown, not on the filter.
+  it("drops a selection that has left the list, and the stop and «follow» with any selection", () => {
+    expect(page).toMatch(/if \(selectedShown\) return[\s\S]{0,200}setSelectedAgent\(null\)[\s\S]{0,80}\}, \[selectedShown\]\)/)
     expect(page).toMatch(/setSelectedStop\(null\)\s*if \(!selectedAgent\) setFollowSelected\(false\)\s*\}, \[selectedAgent\]\)/)
   })
 })
