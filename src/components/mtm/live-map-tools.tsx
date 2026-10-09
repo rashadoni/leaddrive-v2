@@ -12,6 +12,8 @@ interface SearchHit {
   longitude: number
 }
 
+const MAX_HITS_SHOWN = 3
+
 const TOOL = "pointer-events-auto inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm font-medium shadow-md transition-colors"
 const TOOL_IDLE = "border-zinc-300 bg-card hover:bg-muted dark:border-zinc-600"
 const TOOL_ON = "border-primary bg-primary text-primary-foreground"
@@ -119,11 +121,13 @@ export function LiveMapTools({
           {notice ? <p role="status" className="mt-1.5 px-1 text-xs text-amber-800 dark:text-amber-300" data-testid="live-map-address-notice">{notice}</p> : null}
           {hits.length > 0 ? (
             <ul className="mt-1.5 divide-y divide-zinc-200 dark:divide-zinc-700" data-testid="live-map-address-hits">
-              {hits.map((hit) => (
+              {/* The best three, two lines each: on a phone the map is 360 px
+                  tall, and five wrapped addresses pushed the search field out of it. */}
+              {hits.slice(0, MAX_HITS_SHOWN).map((hit) => (
                 <li key={`${hit.latitude},${hit.longitude},${hit.label}`}>
-                  <button type="button" onClick={() => choose(hit)} className="flex min-h-11 w-full items-start gap-2 rounded px-1 py-1.5 text-left text-sm hover:bg-muted">
+                  <button type="button" onClick={() => choose(hit)} title={hit.label} className="flex min-h-11 w-full items-start gap-2 rounded px-1 py-1.5 text-left text-sm hover:bg-muted">
                     <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-rose-700" aria-hidden="true" />
-                    <span className="min-w-0">{hit.label}</span>
+                    <span className="line-clamp-2 min-w-0">{hit.label}</span>
                   </button>
                 </li>
               ))}
@@ -137,7 +141,7 @@ export function LiveMapTools({
           >
             <MousePointerClick className="h-4 w-4" aria-hidden="true" />{tMap("tools.pickOnMap")}
           </button>
-          <p className="mt-1.5 px-1 text-[11px] text-muted-foreground">{tMap("tools.pointHint")}</p>
+          {hits.length === 0 ? <p className="mt-1.5 px-1 text-[11px] text-muted-foreground">{tMap("tools.pointHint")}</p> : null}
         </div>
       ) : null}
       {/* The ruler's reading, in words: what it measures so far and how to go on. */}

@@ -121,6 +121,28 @@ describe("«След»: where an employee has just been", () => {
     expect(liveMapTrailSegments([])).toEqual([])
   })
 
+  it("is not broken by a stop: the phone was not silent while he stood at a client", () => {
+    // Drives, stands for eight minutes reporting every half minute, drives on.
+    let trails: LiveMapTrails = new Map()
+    const report = (meters: number, secondsFromStart: number) => {
+      const when = NOW - 20 * 60_000 + secondsFromStart * 1_000
+      trails = extendLiveMapTrails(trails, [{ agentId: "a", ...north(meters), recordedAt: new Date(when).toISOString() }], when)
+    }
+    report(0, 0)
+    report(300, 30)
+    for (let second = 60; second <= 540; second += 30) report(300 + (second % 60 === 0 ? 4 : -3), second)
+    report(700, 570)
+    report(1_100, 600)
+    const points = trails.get("a") ?? []
+    // Standing added no points — but the place he stood at was heard from until he left.
+    expect(points.map((point) => Math.round((point.latitude - BAKU.latitude) * METERS_PER_DEGREE))).toEqual([0, 300, 700, 1_100])
+    expect(Date.parse(points[1].heardAt ?? "") - Date.parse(points[1].recordedAt)).toBe(510_000)
+    expect(liveMapTrailSegments(points).map((segment) => segment.length)).toEqual([4])
+    // A point he is still standing on does not age out from under him.
+    const stillThere = extendLiveMapTrails(new Map([["a", [{ ...north(0), recordedAt: at(50), heardAt: at(1) }]]]), [], NOW)
+    expect(stillThere.get("a")).toHaveLength(1)
+  })
+
   it("measures a ruler's line as the sum of its segments", () => {
     expect(pathLengthMeters([])).toBe(0)
     expect(pathLengthMeters([north(0)])).toBe(0)
@@ -312,6 +334,19 @@ describe("the tools on the map, in words", () => {
     expect(byTestId("live-map-point-chip")).toBeNull()
   })
 
+  it("shows the best three results, so the search field stays inside a phone's map", async () => {
+    answer = () => Response.json({ success: true, data: { results: Array.from({ length: 5 }, (_unused, index) => ({ label: `Nizami küçəsi ${index + 1}, Bakı`, latitude: 40.37 + index / 1_000, longitude: 49.83 })) } })
+    await draw()
+    await press(byTestId("live-map-tool-point"))
+    await type("Nizami")
+    await submit()
+    const hits = [...byTestId("live-map-address-hits")!.querySelectorAll("button")]
+    expect(hits.map((hit) => hit.textContent)).toEqual(["Nizami küçəsi 1, Bakı", "Nizami küçəsi 2, Bakı", "Nizami küçəsi 3, Bakı"])
+    // A long address is cut to two lines here; the whole of it is in the tooltip.
+    expect(hits[0].getAttribute("title")).toBe("Nizami küçəsi 1, Bakı")
+    expect(hits[0].querySelector("span")?.className).toContain("line-clamp-2")
+  })
+
   it("says in words why a search gave nothing", async () => {
     await draw()
     await press(byTestId("live-map-tool-point"))
@@ -377,7 +412,9 @@ describe("the wiring of the tools", () => {
 
   it("makes the tail of the roster's own answers and loads nothing for it", () => {
     // SWM-12: live mode never loads a day's GPS. One position per employee per answer.
-    expect(page).toContain("setTrails((current) => extendLiveMapTrails(current, nextAgents, Date.parse(nextContract.generatedAt)))")
+    // …and only a position the map itself would draw at that moment: not a
+    // coordinate shared with the workday closed, not a stale one.
+    expect(page).toMatch(/setTrails\(\(current\) => extendLiveMapTrails\(\s*current,\s*nextAgents\.filter\(\(agent\) => hasRenderableLivePosition\(agent\.freshness, agent\.workdayState, nextContract\.workforceEnabled\)\),\s*Date\.parse\(nextContract\.generatedAt\),/)
     expect(page.match(/setTrails\(/g) ?? []).toHaveLength(2)
     expect(page).toContain("trails={mapLook.trails ? trails : null}")
     expect(page).not.toContain("replayTrack=")
@@ -421,7 +458,15 @@ describe("the wiring of the tools", () => {
     expect(page).toContain("const rosterSort: RosterSort = referencePoint && nearestFirst")
     expect(page).toContain("if (sortChosen) setNearestFirst(false)")
     expect(page).toContain('const stored: RosterView = view.sort.column === "distance" ? { ...view, sort: storedSortRef.current } : view')
-    expect(page).toContain("referencePoint ? { ...presented, distanceMeters: rosterDistanceToPoint(presented, referencePoint) } : presented")
+    // Measured only from a position the map itself would draw (see the page-flow test for the behaviour).
+    expect(page).toContain("return { ...presented, distanceMeters: drawn ? rosterDistanceToPoint(presented, referencePoint) : null }")
+  })
+
+  it("leaves the view to the dispatcher while a tool is in use, and frames who is on the map — not every move they make", () => {
+    expect(map).toContain("hold={pressMode != null || rulerPoints.length > 0 || referencePoint != null}")
+    expect(map).toMatch(/useEffect\(\(\) => \{\s*\/\/ Nothing is recorded while held[^\n]*\n\s*if \(hold\) return/)
+    // The frame without a selection is keyed on the people, sorted: a move of eleven metres or a re-sorted list is not a new frame.
+    expect(map).toContain('`all:${framedAgents.map((agent) => agent.agentId).sort().join("|")}:')
   })
 
   it("gives the map the whole screen through the browser's own full screen, on the map's frame", () => {

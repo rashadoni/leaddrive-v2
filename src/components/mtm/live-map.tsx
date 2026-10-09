@@ -324,10 +324,18 @@ function InvalidateSize() {
   return null
 }
 
-function FitBounds({ agents, plannedRoute, focusAgentId }: { agents: LiveMapAgent[]; plannedRoute: RouteStop[]; focusAgentId: string | null }) {
+function FitBounds({ agents, plannedRoute, focusAgentId, hold }: {
+  agents: LiveMapAgent[]
+  plannedRoute: RouteStop[]
+  focusAgentId: string | null
+  /** A tool is in use on the map — a ruler, a picked point: the view is the dispatcher's, not ours. */
+  hold: boolean
+}) {
   const map = useMap()
   const lastFitRef = useRef("")
   useEffect(() => {
+    // Nothing is recorded while held, so what changed meanwhile is framed once the tool is put down.
+    if (hold) return
     // With an employee selected and their day's stops loaded, frame that
     // employee and those stops — not the whole fleet, which zoomed back out
     // and hid the route the manager had just asked for.
@@ -346,9 +354,15 @@ function FitBounds({ agents, plannedRoute, focusAgentId }: { agents: LiveMapAgen
     // live position: refitting every time the marker moved ~11 m kept undoing
     // the manager's own zoom (review of #205). Fit again only when the
     // selection, the stops, or the agent's visibility change.
+    // Without a selection the frame belongs to WHO is on the map, not to where
+    // each of them is this minute. It used to be re-fitted whenever anybody
+    // moved eleven metres — and whenever the list was merely re-sorted — which
+    // undid the dispatcher's own zoom every half a minute and carried the map
+    // away from an address he had just found. Now: when the set of people on
+    // the map changes (a filter, a tick, somebody new).
     const sig = focusMode
       ? `focus:${focusAgentId}:${focusedAgent ? "agent" : "no-agent"}:${plannedRoute.map((s) => `${s.orderIndex}@${s.latitude.toFixed(4)},${s.longitude.toFixed(4)}`).join("|")}`
-      : points.map((p) => `${p[0].toFixed(4)},${p[1].toFixed(4)}`).join("|")
+      : `all:${framedAgents.map((agent) => agent.agentId).sort().join("|")}:${plannedRoute.map((s) => `${s.orderIndex}@${s.latitude.toFixed(4)},${s.longitude.toFixed(4)}`).join("|")}`
     if (focusMode && points.length === 1) {
       if (sig === lastFitRef.current) return
       lastFitRef.current = sig
@@ -360,7 +374,7 @@ function FitBounds({ agents, plannedRoute, focusAgentId }: { agents: LiveMapAgen
     if (sig === lastFitRef.current) return
     lastFitRef.current = sig
     map.fitBounds(L.latLngBounds(points), { padding: [60, 60], maxZoom: 16 })
-  }, [map, agents, plannedRoute, focusAgentId])
+  }, [map, agents, plannedRoute, focusAgentId, hold])
   return null
 }
 
@@ -660,7 +674,7 @@ export default function MtmLiveMap({
           scrollWheelZoom
         >
           <InvalidateSize />
-          <FitBounds agents={agents} plannedRoute={plannedRoute} focusAgentId={focusAgentId} />
+          <FitBounds agents={agents} plannedRoute={plannedRoute} focusAgentId={focusAgentId} hold={pressMode != null || rulerPoints.length > 0 || referencePoint != null} />
           <FocusAgent agents={agents} focusAgentId={focusAgentId} />
           <FocusStop stops={plannedRoute} focusStopOrder={focusStopOrder} markers={stopMarkersRef} />
           <FollowAgent agents={agents} focusAgentId={focusAgentId} enabled={followAgent} />

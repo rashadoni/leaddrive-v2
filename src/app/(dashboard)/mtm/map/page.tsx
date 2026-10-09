@@ -27,6 +27,7 @@ import {
   rosterStatusChipOn,
   rosterValue,
   sortRoster,
+  withRosterFilter,
   type RosterFilters,
   type RosterSort,
   type RosterView,
@@ -274,8 +275,13 @@ export default function MtmMapPage() {
   const agents = useMemo(
     () => (roster?.agents ?? []).map((agent) => {
       const presented = presentMtmDashboardAgent(agent, contract?.freshnessThresholds, presentationNow)
-      // With a point picked on the map every row says how far its employee is from it.
-      return referencePoint ? { ...presented, distanceMeters: rosterDistanceToPoint(presented, referencePoint) } : presented
+      if (!referencePoint) return presented
+      // With a point picked on the map every row says how far its employee is
+      // from it — measured only from a position the map itself would draw. A
+      // workday that is closed, a signal gone stale: no marker, and no place
+      // among «the nearest».
+      const drawn = hasRenderableLivePosition(presented.freshness, presented.workdayState, contract?.workforceEnabled !== false)
+      return { ...presented, distanceMeters: drawn ? rosterDistanceToPoint(presented, referencePoint) : null }
     }),
     [contract, presentationNow, referencePoint, roster?.agents],
   )
@@ -338,8 +344,16 @@ export default function MtmMapPage() {
     setReferencePoint(point)
     setNearestFirst(point != null)
     setPickingPoint(false)
-    // The point gone, an order «by distance» has nothing to measure: back to the remembered one.
-    if (!point) setRosterView((view) => view.sort.column === "distance" ? { ...view, sort: storedSortRef.current } : view)
+    if (point) {
+      // The answer to «who is nearest» is in the list: bring it back if it was put away.
+      setRosterHidden(false)
+      return
+    }
+    // The point gone, an order «by distance» has nothing to measure: back to
+    // the remembered one. And a filter on the distance goes with it — left
+    // behind, it would match nobody and empty the list and the map.
+    setRosterView((view) => view.sort.column === "distance" ? { ...view, sort: storedSortRef.current } : view)
+    setRosterFilters((filters) => withRosterFilter(filters, "distance", undefined))
   }, [])
   // A press on the map itself belongs to the tool that is waiting for it: the
   // ruler takes one more point, «point on the map» takes its one. With neither
@@ -526,8 +540,13 @@ export default function MtmMapPage() {
       }
       rosterSnapshotRef.current = nextSnapshot
       setRosterSnapshot(nextSnapshot)
-      // «След»: one more position per employee, from this answer and no other source.
-      setTrails((current) => extendLiveMapTrails(current, nextAgents, Date.parse(nextContract.generatedAt)))
+      // «След»: one more position per employee, from this answer and no other
+      // source — and only a position the map itself would draw at this moment.
+      setTrails((current) => extendLiveMapTrails(
+        current,
+        nextAgents.filter((agent) => hasRenderableLivePosition(agent.freshness, agent.workdayState, nextContract.workforceEnabled)),
+        Date.parse(nextContract.generatedAt),
+      ))
       setFreshnessNow(Date.parse(nextContract.generatedAt))
       setLoadError(null)
       const focusedAgentId = selectedAgentRef.current

@@ -22,6 +22,12 @@ export interface LiveMapTrailPoint {
   longitude: number
   /** When the phone recorded it — not when the page received it. */
   recordedAt: string
+  /**
+   * The latest fix that was still at this place. Somebody standing at a client
+   * for ten minutes adds no points, but his phone was not silent: the line on
+   * from here is drawn, and the point does not age while he stands on it.
+   */
+  heardAt?: string
 }
 
 export type LiveMapTrails = ReadonlyMap<string, readonly LiveMapTrailPoint[]>
@@ -45,6 +51,11 @@ interface TrailSource {
   recordedAt?: string | null
 }
 
+/** The last moment the phone is known to have been at this point. */
+function lastHeardMs(point: LiveMapTrailPoint): number {
+  return Date.parse(point.heardAt ?? point.recordedAt)
+}
+
 function admissible(agent: TrailSource): LiveMapTrailPoint | null {
   const { latitude, longitude, recordedAt } = agent
   if (typeof latitude !== "number" || !Number.isFinite(latitude) || latitude < -90 || latitude > 90) return null
@@ -65,19 +76,25 @@ function admissible(agent: TrailSource): LiveMapTrailPoint | null {
 export function extendLiveMapTrails(trails: LiveMapTrails, agents: readonly TrailSource[], nowMs: number): LiveMapTrails {
   const next = new Map<string, readonly LiveMapTrailPoint[]>()
   for (const [agentId, points] of trails) {
-    const kept = points.filter((point) => nowMs - Date.parse(point.recordedAt) <= TRAIL_MAX_AGE_MS)
+    const kept = points.filter((point) => nowMs - lastHeardMs(point) <= TRAIL_MAX_AGE_MS)
     if (kept.length > 0) next.set(agentId, kept)
   }
   for (const agent of agents) {
     const kept = next.get(agent.agentId) ?? []
     const point = admissible(agent)
+    if (!point || nowMs - Date.parse(point.recordedAt) > TRAIL_MAX_AGE_MS) continue
     const last = kept[kept.length - 1]
-    const fresh = point != null && nowMs - Date.parse(point.recordedAt) <= TRAIL_MAX_AGE_MS
-    const moved = point != null && (last == null || (
-      Date.parse(point.recordedAt) > Date.parse(last.recordedAt) &&
-      calculateDistance(last.latitude, last.longitude, point.latitude, point.longitude) >= TRAIL_MIN_STEP_METERS
-    ))
-    if (fresh && moved && point) next.set(agent.agentId, [...kept, point].slice(-TRAIL_MAX_POINTS))
+    if (!last) {
+      next.set(agent.agentId, [point])
+      continue
+    }
+    // Older than what is already known, or the same answer again: nothing new.
+    if (Date.parse(point.recordedAt) <= lastHeardMs(last)) continue
+    const moved = calculateDistance(last.latitude, last.longitude, point.latitude, point.longitude) >= TRAIL_MIN_STEP_METERS
+    next.set(agent.agentId, moved
+      ? [...kept, point].slice(-TRAIL_MAX_POINTS)
+      // Still standing where he was: the place is the same, the time moves on.
+      : [...kept.slice(0, -1), { ...last, heardAt: point.recordedAt }])
   }
   return next
 }
@@ -88,7 +105,7 @@ export function liveMapTrailSegments(points: readonly LiveMapTrailPoint[]): Live
   let current: LiveMapTrailPoint[] = []
   for (const point of points) {
     const previous = current[current.length - 1]
-    if (previous && Date.parse(point.recordedAt) - Date.parse(previous.recordedAt) > TRAIL_MAX_GAP_MS) {
+    if (previous && Date.parse(point.recordedAt) - lastHeardMs(previous) > TRAIL_MAX_GAP_MS) {
       if (current.length >= 2) segments.push(current)
       current = []
     }

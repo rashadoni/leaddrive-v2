@@ -83,7 +83,7 @@ const METERS_PER_DEGREE = (Math.PI * 6_371_000) / 180
 const CENTRE = { latitude: 40.4093, longitude: 49.8671 }
 const northOf = (meters: number) => ({ latitude: CENTRE.latitude + meters / METERS_PER_DEGREE, longitude: CENTRE.longitude })
 
-interface Row { agentId: string; name: string; fieldStatus: string; meters: number | null; minutesAgo: number; battery?: number }
+interface Row { agentId: string; name: string; fieldStatus: string; meters: number | null; minutesAgo: number; battery?: number; workdayState?: string }
 let rosterRows: Row[]
 let requests: string[]
 
@@ -95,7 +95,7 @@ function answer(now: number) {
       agentLocations: rosterRows.map((row) => ({
         agentId: row.agentId, name: row.name, isOnline: true, lastSeenAt: iso(0), teamId: null, teamName: null,
         fieldStatus: row.fieldStatus, freshness: row.meters == null ? "NO_LOCATION" : "ONLINE",
-        workdayState: "ACTIVE", workdayDate: "2026-10-09", workdayStartedAt: iso(120), workdayCarryover: false,
+        workdayState: row.workdayState ?? "ACTIVE", workdayDate: "2026-10-09", workdayStartedAt: iso(120), workdayCarryover: false,
         locationState: row.meters == null ? "NO_LOCATION_REPORTED" : "AVAILABLE",
         routeCompletion: 0, routeVisited: 0, routeTotal: 0, openVisitSince: null,
         ...(row.meters == null ? {} : { ...northOf(row.meters), accuracy: 10, speed: 20, battery: row.battery ?? 70, recordedAt: iso(row.minutesAgo) }),
@@ -253,6 +253,45 @@ describe("the live map page, end to end", () => {
     await press(byTestId("live-map-point-clear"))
     expect(mapProp("referencePoint")).toBeNull()
     expect(byTestId("roster-column-distance")).toBeNull()
+    expect(rowIds()[0]).toBe("near")
+  })
+
+  it("does not count among «the nearest» somebody the map itself does not draw, and drops a distance filter with the point", async () => {
+    // Fresh coordinate, two hundred metres away — but his workday is closed, so the map has no marker for him.
+    rosterRows = [...rosterRows, { agentId: "home", name: "Vüqar", fieldStatus: "ON_ROAD", meters: 200, minutesAgo: 1, workdayState: "CLOSED" }]
+    await open()
+    expect(onMap().sort()).toEqual(["far", "mid", "near"])
+    // His earlier positions are not in anybody's tail either.
+    expect(mapProp<Map<string, unknown[]>>("trails").has("home")).toBe(false)
+    await press(byTestId("live-map-tool-point"))
+    await press(byTestId("live-map-pick-point"))
+    await act(async () => { mapProp<(latitude: number, longitude: number) => void>("onMapPress")(CENTRE.latitude, CENTRE.longitude) })
+    await settle()
+    expect(rowIds().slice(0, 3)).toEqual(["near", "mid", "far"])
+    expect(container.querySelector('[data-testid="live-map-agent-card-home"] [data-column="distance"]')?.textContent).toBe("—")
+
+    // «Only within a kilometre», then the point is removed: the filter goes with it instead of emptying the list.
+    await press(byTestId("roster-column-distance"))
+    await press(byTestId("roster-filter-only-distance-NEAR"))
+    await closeMenu()
+    expect(rowIds()).toEqual(["near"])
+    await press(byTestId("live-map-point-clear"))
+    expect(rowIds()).toHaveLength(5)
+    expect(byTestId("live-map-roster-filter-chip-distance")).toBeNull()
+    expect(onMap().sort()).toEqual(["far", "mid", "near"])
+  })
+
+  it("brings the list back when a point is picked while it is put away: the answer is in the list", async () => {
+    await open()
+    await press(byTestId("live-map-roster-view"))
+    await press(byTestId("live-map-roster-hide"))
+    await closeMenu()
+    expect(byTestId("mtm-map-canvas")?.getAttribute("data-roster")).toBe("hidden")
+    await press(byTestId("live-map-tool-point"))
+    await press(byTestId("live-map-pick-point"))
+    await act(async () => { mapProp<(latitude: number, longitude: number) => void>("onMapPress")(CENTRE.latitude, CENTRE.longitude) })
+    await settle()
+    expect(byTestId("mtm-map-canvas")?.getAttribute("data-roster")).toBe("narrow")
     expect(rowIds()[0]).toBe("near")
   })
 
