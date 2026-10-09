@@ -1,0 +1,65 @@
+# HRM report accessibility continuation — 2026-10-10
+
+## Resume and authorization
+
+User instructs autonomous continuation: after each completed task move to the
+next permitted step. Existing merge/deploy authorization persists for verified
+own HRM changes via reviewed main and GitHub Actions. No Mac sessions, direct
+server release, production activation, access/secret/grant changes, Support or
+HRHub personnel-document work. PR606/609 and validation-only PR646 never merge.
+Preserve accepted589→605→608 (608 head973241bacc296b71fe817d1af11187c32e8126af)
+and original terminal archivec123556e7a758b7eb5264137dcaf85504b07e471.
+
+Saved stopping point: own662/669 releases complete, actual A1 C12 catalog13/13
+validated, original metadata INCOMPLETE with
+APPLIED_TABLE_CONSTRAINTS_NOT_PROVED and DEFAULT_ACL_UNREVIEWED. Approved
+restored-copy provenance, production HR session and actual operational criteria
+remain absent. The original391-migration/api_keys replay failure is preserved;
+no extra source wrapper can replace that external requirement. Prior originals
+and append-only journal are in evidence draftPR663, final published head
+f38ca034ed27c19ece6d8832efe5ceac423e54ae.
+
+Fresh main50669da053c5da2bf1166404d03decbb13dc7958 includes foreign MTM PR671
+after670; no root merge/rerun of those changes. Repo instructions read from
+current main. Dedicated clean Contabo worktree:
+/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-report-accessibility-20261010,
+branchcodex/hrm-report-accessibility-20261010. codex-project-context confirms
+originhttps://github.com/rashadoni/leaddrive-v2.git, production13.140.132.245:
+/opt/leaddrive-v2 and GitHub-main release route. Dirty canonical checkout and
+older frozen C5/A1 worktrees untouched. No active parallel HRM writer found;
+older585/588/590/617/632/646/648/657/658 are frozen history/drafts, not new work.
+
+## Next bounded criterion
+
+C14-003 report browser coverage is genuinely incomplete: existing report and
+classification harnesses run RU320/AZ768/EN1440 only, and report keyboard
+Apply/Refresh/table focus only in RU. The original report receipt explicitly
+excludes native browser zoom. Extend the report's existing real authenticated,
+isolated PostgreSQL/browser harness to all9 AZ/RU/EN×320/768/1440 cells, then
+three genuine native200% contexts at fixed physical640→CSS320. Cover keyboard
+report controls, empty samples, unfinished-only samples and measured-zero
+duration at320/native200 without introducing false percentages or personnel
+decisions. Preserve existing denied-role/foreign-tenant cases, private-payload
+refusal, immutable fact fingerprints and separately allowed audit/auth writes.
+
+Reuse the existing hosted-only native zoom extension and exact route guards.
+Discovery initially inferred the wrong report route; actual openReport/page is
+/workforce/exceptions/report. Preserve the original discovery and its explicit
+correction. No alternate app route is added. Source ownership: root owns report
+harness/workflow/journal; independent child owns fixed native-helper fixture and
+existing runtime guard test. Each reviews the other's final paths.
+
+This is report-only C14 evidence, not the whole employee/manager/HR/security
+matrix, human assistive technology, physical mobile, production HR session,
+load/pilot, historical replay or C12 completion. Accounting stays85/161 DONE,
+76 open,weighted61%,14/15 gates until whole-task criteria actually close.
+
+## Verification placement and current state
+
+No browser, full build/install/typecheck/database workload runs on Contabo or
+Mac. Those gates run on hosted Ubuntu24.04 against exact source/merge SHA;
+initial errors and changed/unchanged reruns stay distinct. Baselines, detector
+config, roles, tenant isolation, CASE_RECORDED_AT and existing production
+workflows are preserved. Small syntax/whitespace checks only after resource
+inspection. Implementation, independent final review, browser/PG artifacts,
+required five CI gates and release remain PENDING at this initial entry.
