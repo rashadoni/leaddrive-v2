@@ -184,6 +184,24 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
+/** The card's six numbers, and where «История за день» shows each of them. */
+const onTheCard = (card: Row) => ({
+  distanceMeters: card.distanceMeters,
+  distanceBasis: card.distanceBasis,
+  movingSeconds: card.movingSeconds,
+  unknownSeconds: card.unknownSeconds,
+  firstPointAt: card.firstPointAt,
+  lastPointAt: card.lastPointAt,
+})
+const inHistory = (history: { summary: Row; trip: { summary: Row } }) => ({
+  distanceMeters: history.summary.distanceMeters,
+  distanceBasis: history.summary.distanceBasis,
+  movingSeconds: history.trip.summary.movingSeconds,
+  unknownSeconds: history.trip.summary.unknownSeconds,
+  firstPointAt: history.summary.firstPointAt,
+  lastPointAt: history.summary.lastPointAt,
+})
+
 describe("GET /api/v1/mtm/locations/day-totals", () => {
   it("counts today's kilometres along the roads, the time he was driving and the time the phone said nothing", async () => {
     const { status, body } = await read()
@@ -236,26 +254,38 @@ describe("GET /api/v1/mtm/locations/day-totals", () => {
     expect(response.status).toBe(200)
     const history = (await response.json()).data
     expect(history.quality).toMatchObject({ rejectedByAccuracy: 1, rawTruncated: false })
-    expect({
-      distanceMeters: card.distanceMeters,
-      distanceBasis: card.distanceBasis,
-      movingSeconds: card.movingSeconds,
-      unknownSeconds: card.unknownSeconds,
-      firstPointAt: card.firstPointAt,
-      lastPointAt: card.lastPointAt,
-    }).toEqual({
-      distanceMeters: history.summary.distanceMeters,
-      distanceBasis: history.summary.distanceBasis,
-      movingSeconds: history.trip.summary.movingSeconds,
-      unknownSeconds: history.trip.summary.unknownSeconds,
-      firstPointAt: history.summary.firstPointAt,
-      lastPointAt: history.summary.lastPointAt,
-    })
+    expect(onTheCard(card)).toEqual(inHistory(history))
     // Not two empty answers agreeing: there was a day to count.
     expect(card.distanceMeters).toBeGreaterThan(4_000)
     expect(card.movingSeconds).toBeGreaterThan(20 * 60)
     // Opening History is still written down; the card's numbers were not.
     expect(vi.mocked(writeMtmAudit).mock.calls.map(([row]) => row.action)).toEqual(["GPS_HISTORY_VIEW"])
+  })
+
+  // The day the two screens used to tell differently: History began the trip
+  // at the forgotten check-in and showed days «в пути» (2026-10-09).
+  it("the two still agree on a day with a visit forgotten open three days earlier — and History still lists that visit", async () => {
+    // Ten minutes on the road, and nothing else today.
+    fixes = drive(utc("05:00:00"), 40.40)
+    visits = [{
+      id: "forgotten", organizationId: ORG, agentId: AGENT, customerId: "c9", routeId: null, routePointId: null, status: "CHECKED_IN", deletedAt: null,
+      checkInAt: utc("10:00:00", "2026-10-06"), checkOutAt: null, checkInLat: 40.39, checkInLng: 49.85,
+      checkOutLat: null, checkOutLng: null, checkInCustomerLat: 40.39, checkInCustomerLng: 49.85, checkInGeofenceRadius: 100,
+      customer: { name: "Клиника", address: null, latitude: 40.39, longitude: 49.85, geofenceRadius: 100 },
+    }]
+
+    const card = (await read()).body.data
+    const response = await historyGET(historyRequest(`?agentId=${AGENT}&date=2026-10-09`))
+    expect(response.status).toBe(200)
+    const history = (await response.json()).data
+
+    expect(onTheCard(card)).toEqual(inHistory(history))
+    // Not two wrong answers agreeing: the drive, and only the drive.
+    expect(card.movingSeconds).toBe(10 * 60)
+    expect(card.distanceMeters).toBe(20 * 70)
+    // The visit is open and somebody has to close it: History shows it, as before.
+    expect(history.visits.map((visit: { id: string }) => visit.id)).toEqual(["forgotten"])
+    expect(history.summary.visitCount).toBe(1)
   })
 
   it("lets only numbers leave the server: no coordinate, no point, no stop, no client — and does not even read what it has no use for", async () => {

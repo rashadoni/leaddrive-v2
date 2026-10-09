@@ -420,10 +420,16 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
   // The day as legs: drove / stood / no signal. Counted on the full accepted
   // track, not the downsampled map payload; withheld when the raw read was cut
   // short, for the same reason the distance is.
+  //
+  // Of the visits, only those begun inside the window. The trip starts at its
+  // earliest anchor, and the list above also holds a visit begun on an earlier
+  // day — still open, or closed only today: one forgotten open three days ago
+  // turned fifty minutes on the road into «В пути 70 ч 20 мин» (2026-10-09).
+  // The visit stays in the day's table and timeline; it is not a leg of it.
   const trip = rawTruncated ? null : buildDayTrip({
     points: prepared.points,
     stops,
-    visits: visits as HistoryVisit[],
+    visits: (visits as HistoryVisit[]).filter((visit) => visit.checkInAt >= from),
     gaps,
     workday: workday ? { startedAt: workday.startedAt, completedAt: workday.completedAt } : null,
     roadSteps: road?.stepMeters,
