@@ -1,0 +1,80 @@
+{
+  "sourceHeadSha": "3da6e4b5e809e5bc9cf1641df47b4e2b3a3d85f3",
+  "sourceTree": "1e752eb27ecfa1978675439eb2ce542c5533580b",
+  "validationEventBaseSha": "729b4579a652ee24cf867487ab026d00e67a875f",
+  "contexts": [
+    {
+      "name": "pr-scope",
+      "runId": 37969838236,
+      "jobId": 113953949200,
+      "checkRunId": 113953949200,
+      "appId": 15368,
+      "headSha": "3da6e4b5e809e5bc9cf1641df47b4e2b3a3d85f3",
+      "actualCheckoutSha": "8b6c06576ab5ae2f01400f82aaef2336b17c8fd7",
+      "checkoutTree": "1e752eb27ecfa1978675439eb2ce542c5533580b",
+      "checkoutTreeMatchesSource": true,
+      "conclusion": "success",
+      "logBytes": 89572,
+      "logSha256": "9ea9d817bada3a5c13fdd0b57ce9754ddf5b8be6afe633252865af0fc6d33b4d"
+    },
+    {
+      "name": "static-checks",
+      "runId": 37969838236,
+      "jobId": 113954075718,
+      "checkRunId": 113954075718,
+      "appId": 15368,
+      "headSha": "3da6e4b5e809e5bc9cf1641df47b4e2b3a3d85f3",
+      "actualCheckoutSha": "8b6c06576ab5ae2f01400f82aaef2336b17c8fd7",
+      "checkoutTree": "1e752eb27ecfa1978675439eb2ce542c5533580b",
+      "checkoutTreeMatchesSource": true,
+      "conclusion": "success",
+      "logBytes": 226827,
+      "logSha256": "92f35ebdee443f815988be8bebd5fae7db8d1b30cd238084e15924c406ec72fc"
+    },
+    {
+      "name": "typecheck",
+      "runId": 37969838236,
+      "jobId": 113954075759,
+      "checkRunId": 113954075759,
+      "appId": 15368,
+      "headSha": "3da6e4b5e809e5bc9cf1641df47b4e2b3a3d85f3",
+      "actualCheckoutSha": "8b6c06576ab5ae2f01400f82aaef2336b17c8fd7",
+      "checkoutTree": "1e752eb27ecfa1978675439eb2ce542c5533580b",
+      "checkoutTreeMatchesSource": true,
+      "conclusion": "success",
+      "logBytes": 252489,
+      "logSha256": "f71d7f4f7938fccb3037159a4dc4fd7114cb1e91a6a2268b4cb27e1e157e3ac7"
+    },
+    {
+      "name": "runner-policy",
+      "runId": 37969838283,
+      "jobId": 113953342994,
+      "checkRunId": 113953342994,
+      "appId": 15368,
+      "headSha": "3da6e4b5e809e5bc9cf1641df47b4e2b3a3d85f3",
+      "actualCheckoutSha": "8b6c06576ab5ae2f01400f82aaef2336b17c8fd7",
+      "checkoutTree": "1e752eb27ecfa1978675439eb2ce542c5533580b",
+      "checkoutTreeMatchesSource": true,
+      "conclusion": "success",
+      "logBytes": 11438,
+      "logSha256": "b2041d5aaa9cdf3a7d3d49bdca9d7ae9fc5fd5fcd0046b0c5d1bd3cca6260155"
+    },
+    {
+      "name": "scan",
+      "runId": 37969838433,
+      "jobId": 113953345161,
+      "checkRunId": 113953345161,
+      "appId": 15368,
+      "headSha": "3da6e4b5e809e5bc9cf1641df47b4e2b3a3d85f3",
+      "actualCheckoutSha": "8b6c06576ab5ae2f01400f82aaef2336b17c8fd7",
+      "checkoutTree": "1e752eb27ecfa1978675439eb2ce542c5533580b",
+      "checkoutTreeMatchesSource": true,
+      "conclusion": "success",
+      "logBytes": 93893,
+      "logSha256": "eb37d4acf4c02e5650f563eb7d4ab409adff1d244e25d3eb229fa11fe9db6d7e"
+    }
+  ],
+  "allFiveActualSuccess": true,
+  "productionBuild": "SKIPPED_SOURCE_ONLY_NO_CLIENT_CONFIG_OR_SCHEMA_CHANGE",
+  "productionObserved": false
+}
