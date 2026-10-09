@@ -23,6 +23,7 @@ import {
   pickRosterStatus,
   ROSTER_DEFAULT_VIEW,
   ROSTER_VIEW_STORAGE_KEY,
+  serializeRosterView,
   rosterDistanceToPoint,
   rosterStatusChipOn,
   rosterValue,
@@ -894,7 +895,7 @@ export default function MtmMapPage() {
       // The distance is never the remembered order: tomorrow there is no point to be near to.
       const stored: RosterView = view.sort.column === "distance" ? { ...view, sort: storedSortRef.current } : view
       storedSortRef.current = stored.sort
-      window.localStorage.setItem(ROSTER_VIEW_STORAGE_KEY, JSON.stringify(stored))
+      window.localStorage.setItem(ROSTER_VIEW_STORAGE_KEY, serializeRosterView(stored))
     } catch { /* not remembered; still applied */ }
   }
   const hiddenOnMapCount = useMemo(

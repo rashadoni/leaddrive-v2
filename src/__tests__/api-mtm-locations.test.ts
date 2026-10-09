@@ -410,6 +410,25 @@ describe("GET /api/v1/mtm/locations", () => {
     }
   })
 
+  // «Отдел» cannot be filled in from the product; the card's «Руководитель»
+  // can. The list groups and filters by him, so he goes out with each row.
+  it("sends whom each employee reports to, or nobody", async () => {
+    const now = new Date("2026-08-01T12:00:00.000Z")
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([
+      { id: "agent-1", name: "Ali", isOnline: false, lastSeenAt: null, teamId: null, team: null, managerId: "mgr-1", manager: { name: "Старший" }, workdays: [], locations: [] },
+      { id: "agent-2", name: "Vali", isOnline: false, lastSeenAt: now, teamId: null, team: null, managerId: null, manager: null, workdays: [], locations: [] },
+    ] as any)
+
+    const json = await (await GET(makeReq())).json()
+
+    expect(json.data.agentLocations.map((agent: any) => [agent.agentId, agent.managerId, agent.managerName])).toEqual([
+      ["agent-1", "mgr-1", "Старший"],
+      ["agent-2", null, null],
+    ])
+    const rosterQuery = vi.mocked(prisma.mtmAgent.findMany).mock.calls[0]?.[0] as any
+    expect(rosterQuery.select).toMatchObject({ managerId: true, manager: { select: { name: true } } })
+  })
+
   // The card on the live map says «перерыв с 13:05» and «рабочий день закрыт
   // в 18:02» (2026-10-09). Each time goes out only with the state it explains:
   // a break that was ended leaves `pausedAt` behind on the row, and a shift

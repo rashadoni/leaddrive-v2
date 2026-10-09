@@ -16475,6 +16475,7 @@
       "grouping": {
         "none": "Qrupsuz",
         "team": "Şöbələr üzrə",
+        "manager": "Rəhbərə görə",
         "status": "Status üzrə",
         "workday": "İş günü üzrə"
       },
@@ -16486,6 +16487,7 @@
         "signal": "Siqnal",
         "distance": "Məsafə",
         "team": "Şöbə",
+        "manager": "Rəhbər",
         "app": "Tətbiq",
         "workday": "İş günü",
         "route": "Marşrut",
@@ -16497,6 +16499,7 @@
       "collapseGroup": "«{name}» qrupunu yığ",
       "expandGroup": "«{name}» qrupunu aç",
       "noTeam": "Şöbəsiz",
+      "noManager": "Rəhbərsiz",
       "export": {
         "button": "Excel",
         "hint": "Siyahını Excel-ə ixrac et: sətirlər və sıra ekrandakı kimi",

@@ -363,9 +363,10 @@ describe("the list as an Excel file", () => {
     const empty = agent({ agentId: "a", name: "A", speed: null, battery: null, teamId: null, distanceMeters: null })
     expect((["team", "route", "speed", "battery", "distance"] as const).map((column) => rosterCellText(empty, column, words)))
       .toEqual(["—", "—", "—", "—", "—"])
-    const full = agent({ agentId: "a", name: "A", speed: 41.6, battery: 12.4, teamId: "t", teamName: "Север", routeVisited: 2, routeTotal: 5, distanceMeters: 450.2 })
-    expect((["team", "route", "speed", "battery", "distance", "app"] as const).map((column) => rosterCellText(full, column, words)))
-      .toEqual(["Север", "2 из 5", "42 км/ч", "12%", "450 м", "в сети"])
+    const full = agent({ agentId: "a", name: "A", speed: 41.6, battery: 12.4, teamId: "t", teamName: "Север", managerId: "m", managerName: "Старший", routeVisited: 2, routeTotal: 5, distanceMeters: 450.2 })
+    expect((["team", "manager", "route", "speed", "battery", "distance", "app"] as const).map((column) => rosterCellText(full, column, words)))
+      .toEqual(["Север", "Старший", "2 из 5", "42 км/ч", "12%", "450 м", "в сети"])
+    expect(rosterCellText(empty, "manager", words)).toBe("—")
   })
 
   it("has every column the roster can show, in the roster's order, for the rows in the order given", () => {

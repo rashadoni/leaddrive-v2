@@ -16479,6 +16479,7 @@
       "grouping": {
         "none": "No groups",
         "team": "By team",
+        "manager": "By manager",
         "status": "By status",
         "workday": "By workday"
       },
@@ -16490,6 +16491,7 @@
         "signal": "Signal",
         "distance": "Distance",
         "team": "Team",
+        "manager": "Manager",
         "app": "App",
         "workday": "Workday",
         "route": "Route",
@@ -16501,6 +16503,7 @@
       "collapseGroup": "Collapse group {name}",
       "expandGroup": "Expand group {name}",
       "noTeam": "No team",
+      "noManager": "No manager",
       "export": {
         "button": "Excel",
         "hint": "Download the list as Excel: rows and order as on screen",

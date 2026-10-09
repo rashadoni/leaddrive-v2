@@ -15,6 +15,7 @@ import {
   ROSTER_LOCKED_COLUMNS,
   ROSTER_NARROW_COLUMNS,
   ROSTER_NARROW_COLUMNS_WITH_POINT,
+  ROSTER_NO_MANAGER,
   ROSTER_NO_TEAM,
   rosterFilterOptions,
   rosterSignalAge,
@@ -48,7 +49,7 @@ export const ROSTER_STATUS_DOT_CLASS: Record<string, string> = {
 const STATUS_LABEL_KEYS: Record<string, string> = FIELD_STATUS_LABEL_KEYS
 
 const SORT_KIND: Record<RosterColumnId, RosterSortKind> = {
-  name: "text", status: "order", signal: "time", distance: "number", team: "text", app: "order", workday: "order", route: "number", speed: "number", battery: "number",
+  name: "text", status: "order", signal: "time", distance: "number", team: "text", manager: "text", app: "order", workday: "order", route: "number", speed: "number", battery: "number",
 }
 
 /**
@@ -61,6 +62,7 @@ const WIDE_TRACK: Record<RosterColumnId, string> = {
   signal: "5rem",
   distance: "7.5rem",
   team: "minmax(0,1.1fr)",
+  manager: "minmax(0,1.1fr)",
   app: "minmax(0,0.9fr)",
   workday: "minmax(0,1.2fr)",
   route: "5.5rem",
@@ -219,10 +221,11 @@ export function LiveMapRoster({
   // Names of people and teams, kept for the visit: the name search narrows
   // `agents`, and a filter set on somebody who is no longer in the answer
   // still has to be called by name.
-  const knownLabels = useRef({ names: new Map<string, string>(), teams: new Map<string, string>() })
+  const knownLabels = useRef({ names: new Map<string, string>(), teams: new Map<string, string>(), managers: new Map<string, string>() })
   for (const agent of agents) {
     knownLabels.current.names.set(agent.agentId, agent.name)
     if (agent.teamId && agent.teamName) knownLabels.current.teams.set(agent.teamId, agent.teamName)
+    if (agent.managerId && agent.managerName) knownLabels.current.managers.set(agent.managerId, agent.managerName)
   }
   const valueLabel = (column: RosterColumnId, value: string): string => {
     switch (column) {
@@ -230,6 +233,7 @@ export function LiveMapRoster({
       case "status": return tMap(`fieldStatus.${STATUS_LABEL_KEYS[value] ?? STATUS_LABEL_KEYS.OFFLINE}`)
       case "signal": return tMap(`freshness.${value.toLowerCase()}`)
       case "team": return value === ROSTER_NO_TEAM ? tMap("roster.noTeam") : knownLabels.current.teams.get(value) ?? tMap("roster.filter.unknownValue")
+      case "manager": return value === ROSTER_NO_MANAGER ? tMap("roster.noManager") : knownLabels.current.managers.get(value) ?? tMap("roster.filter.unknownValue")
       case "app": return tMap(`presence.${value.toLowerCase()}`)
       case "workday": return tMap(`roster.workday.${value}`)
       case "route": return tMap(`roster.route.${value}`)
@@ -249,8 +253,8 @@ export function LiveMapRoster({
         label: valueLabel(column, option.value),
         dotClass: column === "status" ? ROSTER_STATUS_DOT_CLASS[option.value] : undefined,
       }))
-      // Names and teams have no order of their own: alphabetical, «no team» last.
-      if (column === "name" || column === "team") {
+      // Names, teams and managers have no order of their own: alphabetical, «no team», «no manager» last.
+      if (column === "name" || column === "team" || column === "manager") {
         list.sort((a, b) => (a.value === ROSTER_NO_TEAM ? 1 : 0) - (b.value === ROSTER_NO_TEAM ? 1 : 0) || collator.compare(a.label, b.label))
       }
       byColumn[column] = list
@@ -402,6 +406,7 @@ export function LiveMapRoster({
         )
       }
       case "team": return <span className="block truncate" title={agent.teamName ?? undefined}>{agent.teamId ? agent.teamName || "—" : "—"}</span>
+      case "manager": return <span className="block truncate" title={agent.managerName ?? undefined}>{agent.managerId ? agent.managerName || "—" : "—"}</span>
       case "app": return <span className={cn("block truncate", agent.isOnline ? "text-green-700 dark:text-green-400" : "text-muted-foreground")}>{tMap(`presence.${agent.isOnline ? "online" : "offline"}`)}</span>
       case "workday": {
         const running = agent.workdayState === "ACTIVE" || agent.workdayState === "PAUSED"

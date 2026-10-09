@@ -59,6 +59,8 @@ export function rosterCellText(agent: MtmDashboardAgent, column: RosterColumnId,
       return finite(agent.distanceMeters) ? words.distance(agent.distanceMeters) : EMPTY
     case "team":
       return agent.teamId ? agent.teamName?.trim() || EMPTY : EMPTY
+    case "manager":
+      return agent.managerId ? agent.managerName?.trim() || EMPTY : EMPTY
     case "app":
       return words.presence(agent.isOnline)
     case "workday": {
