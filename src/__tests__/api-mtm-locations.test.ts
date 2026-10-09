@@ -5,6 +5,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { NextRequest } from "next/server"
+import { readFileSync } from "node:fs"
 
 vi.mock("@/lib/prisma", async () => {
   const { makeMtmPrismaMock } = await import("./mocks/mtm-prisma")
@@ -36,6 +37,8 @@ import { prisma } from "@/lib/prisma"
 import { getOrgId, getSession, requireAuth } from "@/lib/api-auth"
 import { getMobileAuth, resolveMobileAuth } from "@/lib/mobile-auth"
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
+import { isMtmWebOnlyPath } from "@/lib/mtm-web-only"
+import { resetRateLimit } from "@/lib/rate-limit"
 
 const ORG = "org-1"
 
@@ -53,6 +56,9 @@ function makePostReq(body: unknown): NextRequest {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // The roster refuses the thirty-first read of a minute from one person, and
+  // this file reads it more often than that; each test starts a fresh minute.
+  for (const userId of ["user-admin", "key-creator"]) resetRateLimit(`mtm-live-map:${ORG}:${userId}`)
   vi.mocked(getOrgId).mockResolvedValue(ORG)
   vi.mocked(getSession).mockResolvedValue({ orgId: ORG, userId: "user-admin", role: "admin" } as any)
   vi.mocked(getMobileAuth).mockReturnValue(null)
@@ -63,6 +69,10 @@ beforeEach(() => {
     role: "admin",
     email: "admin@example.com",
     name: "Admin",
+    // A person at a browser, as requireAuth marks one. The labels on an
+    // employee's card are given to nobody else, and the route compares this
+    // to its exact value.
+    principalType: "session",
   })
   vi.mocked(resolveMtmRouteActor).mockResolvedValue({
     agentId: null,
@@ -427,6 +437,301 @@ describe("GET /api/v1/mtm/locations", () => {
     ])
     const rosterQuery = vi.mocked(prisma.mtmAgent.findMany).mock.calls[0]?.[0] as any
     expect(rosterQuery.select).toMatchObject({ managerId: true, manager: { select: { name: true } } })
+  })
+
+  // Owner, 2026-10-09: a manager puts labels («стажёр», «ночная смена») and a
+  // personal colour on an employee; the list beside the map shows and filters
+  // by the labels, and the marker is ringed with the colour. Both are the
+  // managers' notes about a person: this route gives them to a manager at a
+  // browser about his people — not to an integration key, which the same
+  // wrapper lets in, and not to anybody about himself.
+  describe("the labels and the map colour on an employee's card", () => {
+    type SentRow = { agentId: string; tags: string[]; mapColor: string | null }
+    /** The part of a roster query that a search touches. */
+    type Where = {
+      organizationId?: string
+      status?: string
+      id?: { in: string[] } | string
+      teamId?: string
+      name?: { contains: string; mode?: string }
+      tags?: { isEmpty?: boolean; hasSome?: string[] }
+      OR?: Where[]
+      NOT?: Where
+    }
+    type RosterQuery = { where: Where; select: Record<string, unknown> }
+    const sent = async (qs = ""): Promise<SentRow[]> => {
+      const json = await (await GET(makeReq(qs))).json() as { data: { agentLocations: SentRow[] } }
+      return json.data.agentLocations
+    }
+    const queries = () => vi.mocked(prisma.mtmAgent.findMany).mock.calls.map((call) => call[0] as unknown as RosterQuery)
+    const card = (id: string, name: string, over: Record<string, unknown> = {}) => ({
+      id, name, isOnline: false, lastSeenAt: null, teamId: null, team: null, managerId: null, manager: null, workdays: [], locations: [], ...over,
+    })
+
+    afterEach(() => {
+      vi.mocked(prisma.mtmAgent.findMany).mockReset()
+      vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([] as never)
+    })
+
+    it("go out with each row — a list and a key, or an empty list and nothing", async () => {
+      vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([
+        card("agent-1", "Ali", { tags: ["стажёр", "ночная смена"], mapColor: "pink" }),
+        card("agent-2", "Vali", { tags: [], mapColor: null }),
+        // A row without the two columns still goes out in one shape.
+        card("agent-3", "Nigar"),
+      ] as never)
+
+      expect((await sent()).map((agent) => [agent.agentId, agent.tags, agent.mapColor])).toEqual([
+        ["agent-1", ["стажёр", "ночная смена"], "pink"],
+        ["agent-2", [], null],
+        ["agent-3", [], null],
+      ])
+      const [rosterQuery] = queries()
+      expect(rosterQuery.select).toMatchObject({ tags: true, mapColor: true })
+      // Nothing is searched: the roster is the one read of the employees it always was.
+      expect(prisma.mtmAgent.findMany).toHaveBeenCalledTimes(1)
+      expect(rosterQuery.where).not.toHaveProperty("OR")
+      expect(rosterQuery.where).not.toHaveProperty("name")
+    })
+
+    it("never reach a phone: the handler takes no phone token, and the path is on the list a phone token is refused on", () => {
+      // Who is let in is decided outside the handler (requireAuth, mocked in
+      // this file; the list is tested in lib-mtm-web-only-paths.test.ts). What
+      // is pinned here is that this route stays behind both — the day it is
+      // given a second, mobile branch, the labels would go out through it.
+      const route = readFileSync("src/app/api/v1/mtm/locations/route.ts", "utf8")
+      expect(route).toContain('export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {')
+      expect(route).not.toMatch(/getMobileAuth|resolveMobileAuth|withMobileRls/)
+      expect(isMtmWebOnlyPath("/api/v1/mtm/locations")).toBe(true)
+    })
+
+    // The wrapper of this route also lets an integration key in: requireAuth
+    // answers it as role «admin», and the actor resolved for it is the whole
+    // organization. What tells it from a person is `principalType` alone.
+    const LABELLED = [
+      card("agent-1", "Ali", { tags: ["стажёр", "ночная смена"], mapColor: "pink" }),
+      card("agent-2", "Vali", { tags: ["VIP"], mapColor: "teal" }),
+    ]
+    const asPrincipal = (principalType: "api_key" | undefined) => vi.mocked(requireAuth).mockResolvedValue({
+      orgId: ORG, userId: "key-creator", role: "admin", email: "", name: "Integration", ...(principalType ? { principalType } : {}),
+    })
+
+    it.each([
+      ["an integration key", "api_key" as const],
+      // requireAuth always says what it authenticated; an answer without the
+      // field is not «a person» either.
+      ["a caller the route cannot tell from one", undefined],
+    ])("are not given to %s — the rows keep their shape, empty", async (_who, principalType) => {
+      asPrincipal(principalType)
+      vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue(LABELLED as never)
+
+      const res = await GET(makeReq())
+      expect(res.status).toBe(200)
+      const json = await res.json() as { data: { agentLocations: SentRow[] } }
+
+      expect(json.data.agentLocations.map((agent) => [agent.agentId, agent.tags, agent.mapColor])).toEqual([
+        ["agent-1", [], null],
+        ["agent-2", [], null],
+      ])
+      const drawn = JSON.stringify(json)
+      for (const note of ["стажёр", "ночная смена", "VIP", "pink", "teal"]) expect(drawn, note).not.toContain(note)
+      // Not read at all, rather than read and dropped.
+      const [rosterQuery] = queries()
+      expect(rosterQuery.select).not.toHaveProperty("tags")
+      expect(rosterQuery.select).not.toHaveProperty("mapColor")
+    })
+
+    it("does not let an integration key learn a label by searching for it", async () => {
+      asPrincipal("api_key")
+      vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([] as never)
+
+      await GET(makeReq(`?employee=${encodeURIComponent("стаж")}`))
+
+      // One read, of the roster, by name — the labels in use are never asked for.
+      expect(prisma.mtmAgent.findMany).toHaveBeenCalledTimes(1)
+      const [rosterQuery] = queries()
+      expect(rosterQuery.where).toMatchObject({ name: { contains: "стаж", mode: "insensitive" } })
+      expect(rosterQuery.where).not.toHaveProperty("OR")
+      expect(JSON.stringify(rosterQuery.where)).not.toContain("tags")
+    })
+
+    // A supervisor and a manager are on their own roster. What an
+    // administrator noted about them is not theirs to read — neither beside
+    // their name, nor by the ring on their marker.
+    it.each([
+      ["a supervisor", "SUPERVISOR" as const],
+      ["a manager", "MANAGER" as const],
+    ])("leaves %s's own row blank and keeps the rows of his people", async (_who, role) => {
+      vi.mocked(resolveMtmRouteActor).mockResolvedValue({ agentId: "lead-1", role, scopedAgentIds: ["lead-1", "agent-1"] })
+      vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([
+        card("agent-1", "Ali", { tags: ["стажёр"], mapColor: "pink" }),
+        card("lead-1", "Samir", { tags: ["на испытательном сроке"], mapColor: "navy" }),
+      ] as never)
+
+      const res = await GET(makeReq())
+      const json = await res.json() as { data: { agentLocations: SentRow[] } }
+
+      expect(json.data.agentLocations.map((agent) => [agent.agentId, agent.tags, agent.mapColor])).toEqual([
+        ["agent-1", ["стажёр"], "pink"],
+        ["lead-1", [], null],
+      ])
+      expect(JSON.stringify(json)).not.toContain("на испытательном сроке")
+      expect(JSON.stringify(json)).not.toContain("navy")
+    })
+
+    it("gives a field employee signed in on the web no roster at all — so none of its labels, his own included", async () => {
+      // His card was linked to a web login by his phone sign-in. The live map
+      // is the managers' screen; the labels are one more reason it stays so.
+      vi.mocked(resolveMtmRouteActor).mockResolvedValue({ agentId: "agent-1", role: "AGENT", scopedAgentIds: ["agent-1"] })
+      vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue(LABELLED as never)
+
+      for (const query of ["", `?employee=${encodeURIComponent("стаж")}`]) {
+        const res = await GET(makeReq(query))
+        expect(res.status, query).toBe(403)
+        expect(JSON.stringify(await res.json()), query).not.toMatch(/стажёр|pink/)
+      }
+      expect(prisma.mtmAgent.findMany).not.toHaveBeenCalled()
+    })
+
+    it("gives an administrator with a card of his own every row, his own included", async () => {
+      // He administers every card, his own too: these notes are his to keep,
+      // so there is nobody to keep them from.
+      vi.mocked(resolveMtmRouteActor).mockResolvedValue({ agentId: "admin-card", role: "ADMIN", scopedAgentIds: null })
+      vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([
+        card("admin-card", "Head Office", { tags: ["офис"], mapColor: "black" }),
+      ] as never)
+
+      expect((await sent()).map((agent) => [agent.agentId, agent.tags, agent.mapColor])).toEqual([
+        ["admin-card", ["офис"], "black"],
+      ])
+    })
+
+    // The search above the list. The database compares a label letter for
+    // letter, and people type «стаж», «VIP» as «vip», «Bakı» as «baki» — so
+    // the labels in use are read first and the ones that read like the search
+    // are asked for by their exact words. The stand-in below answers a query
+    // the way the database would: a name by `contains` without regard to
+    // case, a label only when it is exactly one of the words asked for.
+    describe("the search above the list also finds a label", () => {
+      type CardRow = { id: string; name: string; teamId: string | null; tags: string[]; mapColor: string | null }
+      const CARDS: CardRow[] = [
+        { id: "agent-1", name: "Ali", teamId: "team-1", tags: ["стажёр", "ночная смена"], mapColor: "pink" },
+        { id: "agent-2", name: "Vali", teamId: "team-1", tags: ["VIP", "Bakı"], mapColor: null },
+        { id: "agent-3", name: "Стас", teamId: "team-2", tags: [], mapColor: null },
+        { id: "agent-4", name: "Nigar", teamId: "team-2", tags: ["стажёр"], mapColor: "teal" },
+        { id: "agent-5", name: "Kamran", teamId: null, tags: [], mapColor: null },
+      ]
+      const answers = (row: CardRow, where: Where): boolean => {
+        if (typeof where.id === "string" && where.id !== row.id) return false
+        if (typeof where.id === "object" && !where.id.in.includes(row.id)) return false
+        if (where.NOT && answers(row, where.NOT)) return false
+        if (where.teamId && row.teamId !== where.teamId) return false
+        if (where.name && !row.name.toLowerCase().includes(where.name.contains.toLowerCase())) return false
+        if (where.tags?.isEmpty === false && row.tags.length === 0) return false
+        if (where.tags?.hasSome && !where.tags.hasSome.some((label) => row.tags.includes(label))) return false
+        if (where.OR && !where.OR.some((branch) => answers(row, branch))) return false
+        return true
+      }
+      const found = async (qs: string) => (await sent(qs)).map((agent) => agent.agentId)
+
+      /** The employees the stand-in database holds. */
+      const employees = (cards: CardRow[]) => {
+        vi.mocked(prisma.mtmAgent.findMany).mockImplementation((async (query: RosterQuery) => cards
+          .filter((row) => answers(row, query.where))
+          .map((row) => card(row.id, row.name, row))) as never)
+      }
+
+      beforeEach(() => employees(CARDS))
+
+      it("finds by a part of a label, typed in any case and without its dots", async () => {
+        expect(await found(`?employee=${encodeURIComponent("СТАЖ")}`)).toEqual(["agent-1", "agent-4"])
+        expect(await found("?employee=vip")).toEqual(["agent-2"])
+        expect(await found("?employee=baki")).toEqual(["agent-2"])
+        expect(await found(`?employee=${encodeURIComponent("ночная")}`)).toEqual(["agent-1"])
+        // From the middle of a label as well: «a part» is not «the beginning».
+        expect(await found(`?employee=${encodeURIComponent("смена")}`)).toEqual(["agent-1"])
+        expect(await found("?employee=ak")).toEqual(["agent-2"])
+      })
+
+      it("still finds by name, and brings both when the word is in one person's name and on another's label", async () => {
+        expect(await found("?employee=kam")).toEqual(["agent-5"])
+        // «ста»: Стас by his name, the two trainees by their label.
+        expect(await found(`?employee=${encodeURIComponent("ста")}`)).toEqual(["agent-1", "agent-3", "agent-4"])
+        expect(await found("?employee=nobody-like-this")).toEqual([])
+      })
+
+      it("with no label like the word it is the name search it has always been", async () => {
+        expect(await found("?employee=ali")).toEqual(["agent-1", "agent-2"])
+        const rosterQuery = queries()[1]
+        expect(rosterQuery.where).toMatchObject({ name: { contains: "ali", mode: "insensitive" } })
+        expect(rosterQuery.where).not.toHaveProperty("OR")
+      })
+
+      it("reads the labels in use only while something is searched, and only the labels", async () => {
+        await found("")
+        expect(prisma.mtmAgent.findMany).toHaveBeenCalledTimes(1)
+
+        vi.mocked(prisma.mtmAgent.findMany).mockClear()
+        await found("?employee=vip")
+        expect(prisma.mtmAgent.findMany).toHaveBeenCalledTimes(2)
+        const [labelsQuery] = queries()
+        expect(labelsQuery.select).toEqual({ tags: true })
+        expect(labelsQuery.where).toMatchObject({ organizationId: ORG, status: "ACTIVE" })
+      })
+
+      it("searches inside the chosen team", async () => {
+        expect(await found(`?teamId=team-2&employee=${encodeURIComponent("стаж")}`)).toEqual(["agent-4"])
+      })
+
+      it("a manager's search brings back nobody outside his scope, whatever label they share", async () => {
+        vi.mocked(getSession).mockResolvedValue({ orgId: ORG, userId: "manager-user", role: "user" } as never)
+        vi.mocked(resolveMtmRouteActor).mockResolvedValue({
+          agentId: "manager-1",
+          role: "MANAGER",
+          scopedAgentIds: ["agent-1", "agent-2", "agent-3"],
+        })
+
+        // agent-4 is a trainee too, and not his.
+        expect(await found(`?employee=${encodeURIComponent("стаж")}`)).toEqual(["agent-1"])
+        expect(queries().map((query) => query.where.id)).toEqual([
+          { in: ["agent-1", "agent-2", "agent-3"] },
+          { in: ["agent-1", "agent-2", "agent-3"] },
+        ])
+      })
+
+      // A search is a way to read: typing words and watching whether one's
+      // own row comes back would spell out the labels that row is not shown.
+      describe("and cannot be used by a manager to read the labels on his own card", () => {
+        // agent-2 («VIP», «Bakı») is the manager himself; agent-1 and agent-4 are his people.
+        beforeEach(() => {
+          vi.mocked(resolveMtmRouteActor).mockResolvedValue({
+            agentId: "agent-2",
+            role: "MANAGER",
+            scopedAgentIds: ["agent-1", "agent-2", "agent-4"],
+          })
+        })
+
+        it("a label only he carries finds nobody, and is never among the words asked of the roster", async () => {
+          expect(await found("?employee=vip")).toEqual([])
+          expect(await found("?employee=baki")).toEqual([])
+
+          // His card is left out of the labels in use, so the roster is asked by name alone.
+          expect(JSON.stringify(queries().map((query) => query.where))).not.toMatch(/VIP|Bakı/)
+        })
+
+        it("a label he shares with one of his people brings them back, and not him", async () => {
+          employees(CARDS.map((row) => (row.id === "agent-2" ? { ...row, tags: [...row.tags, "стажёр"] } : row)))
+
+          expect(await found(`?employee=${encodeURIComponent("стаж")}`)).toEqual(["agent-1", "agent-4"])
+        })
+
+        it("he is still found by his name, with his row blank", async () => {
+          expect((await sent("?employee=val")).map((agent) => [agent.agentId, agent.tags, agent.mapColor])).toEqual([
+            ["agent-2", [], null],
+          ])
+        })
+      })
+    })
   })
 
   // The card on the live map says «перерыв с 13:05» and «рабочий день закрыт

@@ -20,6 +20,8 @@ import {
 } from "@/lib/mtm/live-field-status"
 import { groupMtmLiveFeedAlerts } from "@/lib/mtm/live-feed-alerts"
 import { shownMtmStationarySince } from "@/lib/mtm/stationary-anchor"
+import { MTM_AGENT_WEB_ONLY_SELECT, mtmAgentNotesReader, readsMtmAgentNotes } from "@/lib/mtm/agent-tags"
+import { foldRosterText } from "@/lib/mtm/live-map-roster"
 
 const MAX_FUTURE_LOCATION_SKEW_MS = 5 * 60 * 1000
 const MAX_WEB_LOCATION_AGE_MS = 5 * 60 * 1000
@@ -86,6 +88,8 @@ type AgentWithLocations = Prisma.MtmAgentGetPayload<{
     team: { select: { name: true } }
     managerId: true
     manager: { select: { name: true } }
+    tags: true
+    mapColor: true
     locations: true
     workdays: { select: { status: true; workDate: true; startedAt: true; pausedAt: true; completedAt: true } }
   }
@@ -131,6 +135,15 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
       )
     }
     const scopedAgentIds = actor.scopedAgentIds
+    // The labels and the map colour on a card are the managers' notes about
+    // the person. This wrapper also admits an integration key, so they are
+    // behind an exact «browser session» check (as on the leaderboard: a key,
+    // or a fixture without the field, reads none) — and behind the person:
+    // a manager or a supervisor is on his own roster, and what was noted
+    // about him is not his to read. An administrator reads every row.
+    const notesReader = mtmAgentNotesReader({ webSession: auth.principalType === "session", actor })
+    const readsNotes = notesReader.kind !== "nobody"
+    const ownCardId = notesReader.kind === "all-but-own" ? notesReader.ownAgentId : null
 
     // Single agent history (for replay)
     if (agentId) {
@@ -202,6 +215,47 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
 
     const maxAccuracyMeters = Math.min(1_000, Math.max(5, settings.historyMaxAccuracyMeters))
 
+    // The search above the list finds a person by his name — or by a label on
+    // his card («стажёр», «ночная смена»). The database matches a label only
+    // letter for letter, and people type «vip» for «VIP» and «sukur» for
+    // «Şükür». So, only while something is being searched, the labels in use
+    // among the people this viewer may see are read first, the ones that read
+    // like the search are picked here, and the roster is asked for those
+    // exact words beside the name.
+    //
+    // A search is also a way to read: whoever is not shown the labels would
+    // learn them by typing words and watching who comes back. So a caller who
+    // reads none gets the name search alone, and a manager's own card is left
+    // out of the words that can match and of the label match itself — he is
+    // still found by his name.
+    const notOwnCard = ownCardId ? { NOT: { id: ownCardId } } : {}
+    let labelsLikeSearch: string[] = []
+    const sought = employeeQuery ? foldRosterText(employeeQuery) : ""
+    if (sought && readsNotes) {
+      const labelled = await prisma.mtmAgent.findMany({
+        where: {
+          organizationId: orgId,
+          status: "ACTIVE",
+          ...(scopedAgentIds ? { id: { in: scopedAgentIds } } : {}),
+          ...(teamId ? { teamId } : {}),
+          tags: { isEmpty: false },
+          ...notOwnCard,
+        },
+        select: { tags: true },
+      })
+      const inUse = new Set<string>()
+      for (const row of labelled) {
+        for (const label of row.tags ?? []) inUse.add(label)
+      }
+      labelsLikeSearch = [...inUse].filter((label) => foldRosterText(label).includes(sought))
+    }
+    // With no label like it the search is the name search it has always been.
+    const searchWhere: Prisma.MtmAgentWhereInput = !employeeQuery
+      ? {}
+      : labelsLikeSearch.length === 0
+        ? { name: { contains: employeeQuery, mode: "insensitive" } }
+        : { OR: [{ name: { contains: employeeQuery, mode: "insensitive" } }, { tags: { hasSome: labelsLikeSearch }, ...notOwnCard }] }
+
     // Fetch one extra row so the response can disclose a bounded large-team
     // result without ever claiming that a 500-row roster is complete.
     const rosterCandidates = await prisma.mtmAgent.findMany({
@@ -210,7 +264,7 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
         status: "ACTIVE",
         ...(scopedAgentIds ? { id: { in: scopedAgentIds } } : {}),
         ...(teamId ? { teamId } : {}),
-        ...(employeeQuery ? { name: { contains: employeeQuery, mode: "insensitive" } } : {}),
+        ...searchWhere,
       },
       orderBy: { name: "asc" },
       take: MAX_LIVE_ROSTER_SIZE + 1,
@@ -226,6 +280,13 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
         // fills in a team.
         managerId: true,
         manager: { select: { name: true } },
+        // The labels and the map colour a manager put on the card: the list
+        // shows and filters by them, the marker is ringed with the colour.
+        // The phone never reads them here (requireAuth refuses its token, and
+        // the path is in MTM_WEB_ONLY_PREFIXES), but an integration key does
+        // reach this handler — so they are read only for somebody who is
+        // given them (notesReader above).
+        ...(readsNotes ? MTM_AGENT_WEB_ONLY_SELECT : {}),
         // The live marker is the newest admissible coordinate. Accuracy is a
         // quality gate/metadata field, never a reason to replace a newer point
         // with an older, prettier one. Defensive JS validation below also
@@ -397,6 +458,12 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
         teamName: a.team?.name ?? null,
         managerId: a.managerId ?? null,
         managerName: a.manager?.name ?? null,
+        // Always a list and always a key or null, so the page never has to
+        // guess what an absent field means — also for a caller who is not
+        // given them, and on the viewer's own row. The colour goes out as the
+        // stored key: the palette that turns it into a hex is the browser's.
+        tags: readsMtmAgentNotes(notesReader, a.id) ? a.tags ?? [] : [],
+        mapColor: readsMtmAgentNotes(notesReader, a.id) ? a.mapColor ?? null : null,
         fieldStatus,
         freshness,
         workdayState,

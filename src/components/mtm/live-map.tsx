@@ -11,6 +11,7 @@ import { formatDateTime, formatTime } from "@/lib/format-date"
 import { calculateDistance } from "@/lib/geo-utils"
 import { liveMapTrailSegments, outlineCrossesItself, type LiveMapTrails } from "@/lib/mtm/live-map-trails"
 import { clusterLiveMapClients, liveMapClientColor, type LiveMapClient, type LiveMapClientNode } from "@/lib/mtm/live-map-clients"
+import { liveMapAgentMarker } from "@/lib/mtm/live-map-agent-marker"
 
 // F-24: rewritten on Leaflet. Google Maps + AdvancedMarker had been the
 // source of 5 hotfixes in a month — Vector tiles need a real Map ID, the React
@@ -128,28 +129,14 @@ const BASE_MAP_TILE_ERROR_THRESHOLD = 3
 
 // ── Icon factories (Leaflet uses HTML divIcon, no AdvancedMarker hassle) ─────
 
-function agentIcon(name: string, freshness: LiveMapAgent["freshness"], focused: boolean) {
-  const size = focused ? 38 : 32
-  const border = focused ? 3.5 : 2.5
-  const initial = (name?.charAt(0) || "?").toUpperCase()
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;")
-  const color = freshness === "ONLINE" ? "#15803d" : freshness === "DELAYED" ? "#b45309" : "#64748b"
-  const radius = freshness === "ONLINE" ? "50%" : freshness === "DELAYED" ? "30% 70% 30% 70%" : "6px"
-  const opacity = freshness === "STALE" ? 0.72 : 1
+// What the marker looks like — the freshness of the GPS point in its fill and
+// shape, the employee's own colour as a ring around it — is written down, and
+// tested, in src/lib/mtm/live-map-agent-marker.ts.
+function agentIcon(name: string, freshness: LiveMapAgent["freshness"], focused: boolean, mapColor?: string | null) {
+  const { html, size } = liveMapAgentMarker({ name, freshness, focused, mapColor })
   return L.divIcon({
     className: "mtm-agent-marker",
-    html: `<div style="
-      width:${size}px;height:${size}px;border-radius:${radius};opacity:${opacity};
-      background:${color};border:${border}px solid white;
-      display:flex;align-items:center;justify-content:center;
-      font:700 14px system-ui,sans-serif;color:white;
-      box-shadow:0 2px 8px rgba(0,0,0,0.3);
-      cursor:pointer;transition:transform 0.2s;
-    ">${initial}</div>`,
+    html,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
   })
@@ -1081,7 +1068,7 @@ export default function MtmLiveMap({
                 latitude={agent.latitude}
                 longitude={agent.longitude}
                 glide={glideMarkers}
-                icon={agentIcon(agent.name, agent.freshness, isFocused)}
+                icon={agentIcon(agent.name, agent.freshness, isFocused, agent.mapColor)}
                 zIndexOffset={isFocused ? 1000 : 500}
                 alt={agent.name}
                 // …and so is a press on an employee: the ruler starts from where he is.

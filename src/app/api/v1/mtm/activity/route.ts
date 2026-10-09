@@ -14,6 +14,7 @@ import {
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { isValidTimezone } from "@/lib/timezone"
 import { LIVE_MAP_AGENT_EVENT_ACTIONS } from "@/lib/mtm/live-map-agent-events"
+import { mtmAgentNotesReader, readsMtmAgentNotes, withoutMtmAgentNotes } from "@/lib/mtm/agent-tags"
 
 const CHECK_IN_ACTIONS = ["CHECK_IN", "CHECK_IN_FORCED"] as const
 // Compliance lens: geofence bypasses + failed mobile logins. Kept in sync with
@@ -240,11 +241,23 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
 
     const [subjects, actors] = await Promise.all([activitySubjects(orgId, logs), activityActors(orgId, logs)])
 
+    // A saved employee card leaves its labels and its map colour in the
+    // journal — the «before» of every save, even one that changed only a phone
+    // number. They are the managers' notes about the person, so the journal
+    // gives them to exactly whom the card itself does: never to an integration
+    // key (this wrapper admits one), never to a field employee, and never to a
+    // manager or a supervisor about himself. The rest of the row stays.
+    const notesReader = mtmAgentNotesReader({ webSession: auth.principalType === "session", actor: scope.actor })
+    const shownLogs = logs.map((log: (typeof logs)[number]) => {
+      if (log.entity !== "agent" || readsMtmAgentNotes(notesReader, log.entityId ?? log.agentId)) return log
+      return { ...log, oldData: withoutMtmAgentNotes(log.oldData), newData: withoutMtmAgentNotes(log.newData) }
+    })
+
     return NextResponse.json({
       success: true,
       data: {
         kpi: { totalActivities, totalCheckIns, totalCheckOuts, totalPhotos, totalViolations },
-        logs: logs.map((log: (typeof logs)[number], index: number) => ({ ...log, subject: subjects[index], actor: actors[index] })),
+        logs: shownLogs.map((log: (typeof shownLogs)[number], index: number) => ({ ...log, subject: subjects[index], actor: actors[index] })),
         timezone,
         total,
         page,

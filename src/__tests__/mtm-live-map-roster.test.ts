@@ -27,6 +27,7 @@ vi.mock("next-intl", () => ({
 
 import type { MtmDashboardAgent } from "@/lib/mtm-types"
 import { parseMtmLiveMapContract } from "@/lib/mtm-types"
+import { MTM_AGENT_MAP_COLOR_KEYS } from "@/lib/mtm/agent-tags"
 import {
   applyRosterFilters,
   availableRosterColumns,
@@ -35,7 +36,9 @@ import {
   parseRosterView,
   pickRosterStatus,
   ROSTER_DEFAULT_VIEW,
+  ROSTER_GROUPINGS,
   ROSTER_NO_MANAGER,
+  ROSTER_NO_TAGS,
   ROSTER_NO_TEAM,
   rosterFilterAllows,
   rosterFilterOptions,
@@ -44,6 +47,7 @@ import {
   rosterStatusChipOn,
   rosterTickState,
   rosterValue,
+  rosterValues,
   serializeRosterView,
   sortRoster,
   tickRosterFilterValue,
@@ -81,6 +85,17 @@ const EDGES = [
   person("e2", "Anar", { battery: 20, speed: 2.1, routeVisited: 1, routeTotal: 4, workdayState: "PAUSED", isOnline: false }),
   person("e3", "Bəhruz", { battery: 49.9, speed: 0, routeVisited: 0, routeTotal: 4 }),
   person("e4", "Anar", { battery: 50, speed: 60, routeVisited: 2, routeTotal: 4, workdayState: "NOT_STARTED" }),
+]
+// Labels are the managers' own words about a person. One card carries two,
+// one carries five, one has none, and one came in an answer that had no such
+// field yet.
+const LABELLED = [
+  person("l1", "Aynur Rzayeva", { tags: ["стажёр", "ночная смена"], fieldStatus: "ON_ROAD" }),
+  person("l2", "Bəhruz Rəhimov", { tags: ["стажёр"], fieldStatus: "LATE" }),
+  person("l3", "Çingiz Əliyev", { tags: ["резерв"], fieldStatus: "ON_ROAD" }),
+  person("l4", "Zaur Babayev", { tags: [], fieldStatus: "LATE" }),
+  person("l5", "İlqar Məmmədov", { fieldStatus: "OFFLINE" }),
+  person("l6", "Vüqar Quliyev", { tags: ["стажёр", "резерв", "аптеки", "север", "наставник"], fieldStatus: "ON_ROAD" }),
 ]
 const ids = (agents: MtmDashboardAgent[]) => agents.map((agent) => agent.agentId)
 
@@ -371,6 +386,97 @@ describe("«Руководитель»: the grouping the cards really hold", () 
   })
 })
 
+// Owner, 2026-10-09, of the tracking product shown as the model: a manager puts
+// labels on a person («стажёр», «ночная смена») and the list beside the map
+// shows, filters and searches by them. A person carries several, so this is
+// the one column where a row has more than one value.
+describe("«Метки»: the labels a manager put on the cards", () => {
+  const counts = (filters: RosterFilters, agents: MtmDashboardAgent[] = LABELLED) =>
+    Object.fromEntries(rosterFilterOptions(agents, filters, "tags").map((option) => [option.value, option.count]))
+  const lastOption = (filters: RosterFilters, agents: MtmDashboardAgent[] = LABELLED) =>
+    rosterFilterOptions(agents, filters, "tags").slice(-1)[0]
+
+  it("is a column only once somebody carries a label — never one a new person starts with, and never a grouping", () => {
+    expect(availableRosterColumns(TEAM, { workforceEnabled: true })).not.toContain("tags")
+    expect(availableRosterColumns(LABELLED, { workforceEnabled: true })).toContain("tags")
+    // Cards that only ever held an empty list are a roster without labels too.
+    expect(availableRosterColumns(TEAM.map((agent) => ({ ...agent, tags: [] })), { workforceEnabled: true })).not.toContain("tags")
+    // The wide table was sized without it, like «Руководитель»: it is one tick away in «Вид».
+    expect(ROSTER_DEFAULT_VIEW.columns).not.toContain("tags")
+    // A person with two labels would have to stand in two groups.
+    expect(ROSTER_GROUPINGS as readonly string[]).not.toContain("tags")
+  })
+
+  it("a tick on a label shows everybody who carries it, whatever else he carries", () => {
+    expect(ids(applyRosterFilters(LABELLED, { tags: onlyRosterFilterValue("стажёр") }))).toEqual(["l1", "l2", "l6"])
+    // A second tick adds the people of the second label: one ticked label is enough to be shown.
+    expect(ids(applyRosterFilters(LABELLED, { tags: { mode: "only", values: ["ночная смена", "резерв"] } }))).toEqual(["l1", "l3", "l6"])
+    // Somebody who carries both is one row, not two.
+    expect(ids(applyRosterFilters(LABELLED, { tags: { mode: "only", values: ["стажёр", "резерв"] } }))).toEqual(["l1", "l2", "l3", "l6"])
+    // A label nobody carries leaves nobody; nothing ticked is the whole list.
+    expect(applyRosterFilters(LABELLED, { tags: onlyRosterFilterValue("уволен") })).toEqual([])
+    expect(applyRosterFilters(LABELLED, { tags: { mode: "only", values: [] } })).toHaveLength(LABELLED.length)
+  })
+
+  it("«без меток» is a value of its own: the people with no label — also from an answer that had no such field", () => {
+    expect(ids(applyRosterFilters(LABELLED, { tags: onlyRosterFilterValue(ROSTER_NO_TAGS) }))).toEqual(["l4", "l5"])
+    expect(ids(applyRosterFilters(LABELLED, { tags: { mode: "only", values: [ROSTER_NO_TAGS, "резерв"] } }))).toEqual(["l3", "l4", "l5", "l6"])
+    expect(LABELLED.map((agent) => rosterValues(agent, "tags"))).toEqual([
+      ["стажёр", "ночная смена"], ["стажёр"], ["резерв"], [ROSTER_NO_TAGS], [ROSTER_NO_TAGS], ["стажёр", "резерв", "аптеки", "север", "наставник"],
+    ])
+    // Every other column has the one value it always had.
+    expect(rosterValues(LABELLED[0], "status")).toEqual([rosterValue(LABELLED[0], "status")])
+  })
+
+  it("narrows together with the other columns' filters", () => {
+    const filters: RosterFilters = { tags: onlyRosterFilterValue("стажёр"), status: onlyRosterFilterValue("LATE") }
+    expect(ids(applyRosterFilters(LABELLED, filters))).toEqual(["l2"])
+    // Counting the statuses leaves the status filter out and keeps the labels' one.
+    expect(ids(applyRosterFilters(LABELLED, filters, "status"))).toEqual(["l1", "l2", "l6"])
+  })
+
+  it("lists every label of the roster with how many carry it under the other filters, «без меток» last", () => {
+    expect(counts({})).toEqual({ "стажёр": 3, "ночная смена": 1, "резерв": 2, "аптеки": 1, "север": 1, "наставник": 1, [ROSTER_NO_TAGS]: 2 })
+    expect(lastOption({})).toEqual({ value: ROSTER_NO_TAGS, count: 2 })
+    // Somebody with five labels is counted under each of the five: the numbers add up to more than the six rows.
+    expect(Object.values(counts({})).reduce((sum, count) => sum + count, 0)).toBe(11)
+    // Inside «опаздывает» there is one trainee and one person without labels —
+    // and every other label is still there to press, with a zero.
+    expect(counts({ status: onlyRosterFilterValue("LATE") }))
+      .toEqual({ "стажёр": 1, "ночная смена": 0, "резерв": 0, "аптеки": 0, "север": 0, "наставник": 0, [ROSTER_NO_TAGS]: 1 })
+    expect(lastOption({ status: onlyRosterFilterValue("LATE") })).toEqual({ value: ROSTER_NO_TAGS, count: 1 })
+    // Its own ticks do not move its own numbers: they say what a press would add.
+    expect(counts({ tags: onlyRosterFilterValue("резерв") })).toEqual(counts({}))
+    // Everybody labelled: «без меток» stays, with a zero — tomorrow's new card will have none.
+    expect(lastOption({}, LABELLED.filter((agent) => (agent.tags?.length ?? 0) > 0))).toEqual({ value: ROSTER_NO_TAGS, count: 0 })
+  })
+
+  it("keeps a ticked label nobody carries any more in the list, so the tick can be taken off", () => {
+    const gone: RosterFilters = { tags: { mode: "only", values: ["стажёр", "уволен"] } }
+    expect(counts(gone)["уволен"]).toBe(0)
+    expect(lastOption(gone).value).toBe(ROSTER_NO_TAGS)
+  })
+
+  it("sorts by the labels as the cell reads them, the people without any last either way", () => {
+    const shelf = [
+      person("s1", "Zaur", { tags: ["резерв"] }),
+      person("s2", "Aynur", { tags: ["аптеки", "резерв"] }),
+      person("s3", "Çingiz", { tags: [] }),
+      person("s4", "Bəhruz", { tags: ["стажёр"] }),
+      person("s5", "Anar"),
+    ]
+    // «аптеки, резерв», «резерв», «стажёр» — then the two without labels, by name.
+    expect(ids(sortRoster(shelf, { column: "tags", direction: "asc" }, "ru"))).toEqual(["s2", "s1", "s4", "s5", "s3"])
+    expect(ids(sortRoster(shelf, { column: "tags", direction: "desc" }, "ru"))).toEqual(["s4", "s1", "s2", "s5", "s3"])
+  })
+
+  it("still has one word for the whole cell, for whoever asks for one", () => {
+    expect(rosterValue(LABELLED[0], "tags")).toBe("стажёр, ночная смена")
+    expect(rosterValue(LABELLED[3], "tags")).toBe(ROSTER_NO_TAGS)
+    expect(rosterValue(LABELLED[4], "tags")).toBe(ROSTER_NO_TAGS)
+  })
+})
+
 describe("the layout remembered in the browser", () => {
   it("comes back valid whatever was stored", () => {
     expect(parseRosterView(null)).toEqual(ROSTER_DEFAULT_VIEW)
@@ -403,6 +509,26 @@ describe("the layout remembered in the browser", () => {
     expect(ROSTER_DEFAULT_VIEW.columns).not.toContain("manager")
     // A grouping by it is remembered like any other.
     expect(parseRosterView(serializeRosterView({ ...ROSTER_DEFAULT_VIEW, groupBy: "manager" })).groupBy).toBe("manager")
+  })
+
+  // «Метки» arrived after views began to be remembered, and it is not a
+  // column a new person starts with: nobody's table may grow one by itself.
+  it("a layout remembered before labels existed does not gain «Метки»; ticked on, it is remembered like any other column", () => {
+    const view = { width: "wide", sort: { column: "name", direction: "asc" }, groupBy: "none", columns: ["name", "status", "signal", "team", "battery"] }
+    const knownBeforeLabels = ["name", "status", "signal", "distance", "team", "manager", "app", "workday", "route", "speed", "battery"]
+    expect(parseRosterView(JSON.stringify({ ...view, seen: knownBeforeLabels })).columns).toEqual(["name", "status", "signal", "team", "battery"])
+    // …nor does one saved before anything was written beside the view.
+    expect(parseRosterView(JSON.stringify(view)).columns).toEqual(["name", "status", "signal", "team", "battery"])
+    // Ticked on in «Вид», it comes back where the table has it — and so does a sort by it.
+    const chosen = parseRosterView(serializeRosterView({
+      ...ROSTER_DEFAULT_VIEW, columns: [...ROSTER_DEFAULT_VIEW.columns, "tags"], sort: { column: "tags", direction: "desc" },
+    }))
+    expect(chosen.columns).toEqual(["name", "status", "signal", "distance", "team", "tags", "workday", "route", "battery"])
+    expect(chosen.sort).toEqual({ column: "tags", direction: "desc" })
+    // This build knows the column: left unticked from now on, that is a choice.
+    expect(JSON.parse(serializeRosterView(ROSTER_DEFAULT_VIEW)).seen).toContain("tags")
+    // A grouping by labels does not exist, whatever was stored.
+    expect(parseRosterView({ groupBy: "tags" }).groupBy).toBe("none")
   })
 
   it("does not carry filters: yesterday's filter must not hide somebody today", () => {
@@ -1210,6 +1336,128 @@ describe("the list on the page", () => {
     expect(dot("a1")).toContain("bg-green-500")
     expect(dot("a5")).toContain("border")
     expect(dot("a5")).not.toContain("bg-")
+  })
+
+  describe("«Метки» and the employee's colour", () => {
+    const chips = (agentId: string) => [...cell(agentId, "tags").querySelectorAll("span.truncate")].map((chip) => chip.textContent)
+
+    it("is not drawn until it is ticked in «Вид»; then a row shows the first two labels, how many more, and all of them in its tooltip", async () => {
+      agents = LABELLED
+      await draw()
+      expect(row("l1").querySelector('[data-column="tags"]')).toBeNull()
+      await press(byTestId("live-map-roster-view"))
+      // A person with two labels cannot stand in two groups: the list is not grouped by them.
+      expect(byTestId("live-map-roster-group-tags")).toBeNull()
+      await press(byTestId("live-map-roster-column-toggle-tags"))
+      expect(state.view.columns).toContain("tags")
+
+      expect(chips("l1")).toEqual(["стажёр", "ночная смена"])
+      expect(visibleText(cell("l1", "tags"))).toBe("стажёрночная смена")
+      // Five labels on a row one line high: two, and «+3».
+      expect(chips("l6")).toEqual(["стажёр", "резерв"])
+      expect(visibleText(cell("l6", "tags"))).toBe("стажёррезерв+3")
+      expect(byTestId("live-map-agent-tags-l6")?.getAttribute("title")).toBe("стажёр, резерв, аптеки, север, наставник")
+      // What a sighted person finds in the tooltip is read out to a screen reader.
+      expect(cell("l6", "tags").querySelector(".sr-only")?.textContent).toBe(", аптеки, север, наставник")
+      // No labels — and an answer that had no such field — is a dash, not an empty cell.
+      expect([cell("l4", "tags").textContent, cell("l5", "tags").textContent]).toEqual(["—", "—"])
+      expect(document.body.textContent).not.toContain("mtmMap.")
+    })
+
+    it("its heading opens the same tick list as every column: the labels by the alphabet with how many carry each, «Без меток» last", async () => {
+      agents = LABELLED
+      state.view = { ...state.view, columns: [...state.view.columns, "tags"] }
+      await draw()
+      await openMenu("tags")
+      expect([...byTestId("roster-filter-values-tags")!.querySelectorAll("li")].map((item) => item.textContent))
+        .toEqual(["аптеки1", "наставник1", "ночная смена1", "резерв2", "север1", "стажёр3", "Без меток2"])
+      expect(byTestId("roster-sort-tags-asc")?.textContent).toBe("От А до Я")
+
+      await press(byTestId("roster-filter-value-tags-стажёр"))
+      expect(rowIds().sort()).toEqual(["l1", "l2", "l6"])
+      expect(byTestId("live-map-roster-filter-chip-tags")?.textContent).toBe("Метки: стажёр")
+      // «Без меток» beside it adds the people with none.
+      await press(byTestId(`roster-filter-value-tags-${ROSTER_NO_TAGS}`))
+      expect(rowIds().sort()).toEqual(["l1", "l2", "l4", "l5", "l6"])
+      expect(byTestId("live-map-roster-filter-chip-tags")?.textContent).toBe("Метки: стажёр, Без меток")
+
+      await press(byTestId("roster-sort-tags-asc"))
+      expect(state.view.sort).toEqual({ column: "tags", direction: "asc" })
+      // «стажёр», then «стажёр, ночная смена», then «стажёр, резерв, …» — and the two without labels last.
+      expect(rowIds()).toEqual(["l2", "l1", "l6", "l5", "l4"])
+    })
+
+    it("«Фильтры» has a «Метки» group whether or not the column is drawn: a press shows who carries the label, and the other groups count inside it", async () => {
+      agents = LABELLED
+      await draw()
+      await press(byTestId("live-map-roster-filters-button"))
+      const panel = byTestId("live-map-roster-filters-menu")!
+      // Nobody here has a team or a manager; the labels stand where the table has them.
+      expect([...panel.querySelectorAll('[data-testid^="live-map-roster-filters-title-"]')].map((title) => title.textContent))
+        .toEqual(["Статус", "Сигнал", "Метки", "Приложение", "Рабочий день", "Маршрут", "Скорость", "Батарея"])
+      expect([...byTestId("live-map-roster-filters-group-tags")!.querySelectorAll("button")].map((value) => value.textContent))
+        .toEqual(["аптеки1", "наставник1", "ночная смена1", "резерв2", "север1", "стажёр3", "Без меток2"])
+
+      await press(byTestId("live-map-roster-filters-value-tags-резерв"))
+      expect(rowIds().sort()).toEqual(["l3", "l6"])
+      expect(byTestId("live-map-roster-filters-value-tags-резерв")?.getAttribute("aria-pressed")).toBe("true")
+      expect(byTestId("live-map-roster-filters-count")?.textContent).toBe("2 из 6")
+      // Neither of the two in reserve is late.
+      expect(byTestId("live-map-roster-filters-value-status-LATE")?.textContent).toBe("Опаздывает0")
+      // The labels' own numbers stay: they say what one more press would add.
+      expect(byTestId("live-map-roster-filters-value-tags-стажёр")?.textContent).toBe("стажёр3")
+
+      await press(byTestId("live-map-roster-filters-value-tags-ночная смена"))
+      expect(state.filters).toEqual({ tags: { mode: "only", values: ["резерв", "ночная смена"] } })
+      expect(rowIds().sort()).toEqual(["l1", "l3", "l6"])
+      expect(byTestId("live-map-roster-filters-button")?.textContent).toBe("Фильтры· 1")
+      expect(document.body.textContent).not.toContain("mtmMap.")
+    })
+
+    it("a roster where nobody carries a label has neither the column nor the group — also under a layout that remembers the column", async () => {
+      state.view = { ...state.view, columns: [...state.view.columns, "tags"] }
+      await draw()
+      expect(row("a1").querySelector('[data-column="tags"]')).toBeNull()
+      expect(byTestId("roster-column-tags")).toBeNull()
+      await press(byTestId("live-map-roster-view"))
+      expect(byTestId("live-map-roster-column-toggle-tags")).toBeNull()
+      await closeMenu()
+      await press(byTestId("live-map-roster-filters-button"))
+      expect(byTestId("live-map-roster-filters-group-tags")).toBeNull()
+    })
+
+    it("marks a row with the colour its marker is ringed with on the map: a square beside the name, named in its tooltip", async () => {
+      agents = [
+        person("c1", "Aynur Rzayeva", { mapColor: "pink" }),
+        person("c2", "Bəhruz Rəhimov", { mapColor: null }),
+        person("c3", "Çingiz Əliyev"),
+        // A colour dropped from the palette later, and text that is no key at all.
+        person("c4", "Zaur Babayev", { mapColor: "ultraviolet" }),
+        person("c5", "İlqar Məmmədov", { mapColor: "red;background:url(//example.invalid/x)" }),
+      ]
+      await draw()
+      const swatch = byTestId("live-map-agent-color-c1")!
+      expect(cell("c1", "name").contains(swatch)).toBe(true)
+      expect(swatch.style.backgroundColor).toBe("rgb(219, 39, 119)")
+      expect(swatch.getAttribute("title")).toBe("Цвет на карте: Розовый")
+      expect(swatch.getAttribute("aria-hidden")).toBe("true")
+      // A square: the round dots of a row already say «in the network» and the status.
+      expect(swatch.className).not.toContain("rounded-full")
+      // The name is still all the cell says, and the application's round dot still comes first.
+      expect(visibleText(cell("c1", "name"))).toBe("Aynur Rzayeva")
+      expect(cell("c1", "name").querySelector('[aria-hidden="true"]')?.className).toContain("rounded-full")
+      // No colour, or one this build does not know, draws nothing — and text from a card never reaches the page's styles.
+      for (const agentId of ["c2", "c3", "c4", "c5"]) expect(byTestId(`live-map-agent-color-${agentId}`), agentId).toBeNull()
+      expect(container.innerHTML).not.toContain("example.invalid")
+    })
+
+    it("has a name in words for each of the eight colours", async () => {
+      agents = MTM_AGENT_MAP_COLOR_KEYS.map((key, index) => person(`k${index}`, `Сотрудник ${index + 1}`, { mapColor: key }))
+      await draw()
+      const titles = agents.map((agent) => byTestId(`live-map-agent-color-${agent.agentId}`)?.getAttribute("title") ?? "")
+      expect(titles.every((title) => title.startsWith("Цвет на карте: ") && !title.includes("mtmForms."))).toBe(true)
+      expect(new Set(titles).size).toBe(8)
+    })
   })
 
   it("has a word for everything it can show, in every language", async () => {

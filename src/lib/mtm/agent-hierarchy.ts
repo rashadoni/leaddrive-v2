@@ -150,18 +150,20 @@ export type MtmSearchableAgent = {
   phone?: string | null
   externalCode?: string | null
   userEmail?: string | null
+  tags?: readonly string[] | null
 }
 
 /**
  * Search over what a manager actually types: the name, the card email, the
  * phone (with or without spaces and dashes), the agent code and the email of
  * the linked web login — the owner searched for «rashad@guven.az», which lives
- * only on the login, not on the card.
+ * only on the login, not on the card. And the labels a manager put on the
+ * card: typing «стажёр» finds everyone labelled so.
  */
 export function mtmAgentMatchesSearch(agent: MtmSearchableAgent, query: string): boolean {
   const q = query.trim().toLocaleLowerCase()
   if (!q) return true
-  const texts = [agent.name, agent.email, agent.phone, agent.externalCode, agent.userEmail]
+  const texts = [agent.name, agent.email, agent.phone, agent.externalCode, agent.userEmail, ...(agent.tags ?? [])]
   if (texts.some((value) => typeof value === "string" && value.toLocaleLowerCase().includes(q))) return true
   if (/^[\d\s()+-]+$/.test(q)) {
     const qDigits = mtmLocalPhoneDigits(q)

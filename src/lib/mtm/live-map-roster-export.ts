@@ -1,5 +1,5 @@
 import type { MtmDashboardAgent } from "@/lib/mtm-types"
-import { ROSTER_COLUMNS, rosterValue, type RosterColumnId } from "@/lib/mtm/live-map-roster"
+import { ROSTER_COLUMNS, rosterLabels, rosterValue, type RosterColumnId } from "@/lib/mtm/live-map-roster"
 
 /**
  * The live map's list as a table of words, for the Excel file.
@@ -63,6 +63,11 @@ export function rosterCellText(agent: MtmDashboardAgent, column: RosterColumnId,
       return agent.teamId ? agent.teamName?.trim() || EMPTY : EMPTY
     case "manager":
       return agent.managerId ? agent.managerName?.trim() || EMPTY : EMPTY
+    case "tags":
+      // All of them, where the screen has room for two. A label holds no
+      // comma, so the cell reads as a list; ten of the longest make 258
+      // characters, inside what the file accepts for a cell (agent-tags.ts).
+      return rosterLabels(agent).join(", ") || EMPTY
     case "app":
       return words.presence(agent.isOnline)
     case "workday": {

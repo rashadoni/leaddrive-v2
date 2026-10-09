@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { MTM_AGENT_MAP_COLOR_KEYS } from "@/lib/mtm/agent-tags"
 import { MTM_CONTACT_CLASS_VALUES } from "@/lib/mtm/contact-classes"
 import { GovernedDoctorScoringDefinitionSchema } from "@/lib/mtm/professional-glossary"
 
@@ -61,6 +62,14 @@ export const AgentCreateSchema = z.object({
   canSelfPublishRoutes: z.boolean().optional(),
   managerId: cuid.optional().nullable(),
   userId: cuid.optional().nullable(),
+  // Only the outer bound, so a huge body is refused before anything reads it.
+  // The rule itself — how many labels, how long, which characters — is
+  // validateMtmAgentTags, which both agent routes call and whose answer is
+  // what they store. The schema strips a key it does not list: without these
+  // two lines a card saved with labels would answer 200 and keep nothing.
+  tags: z.array(z.string().max(100)).max(50).optional(),
+  // A key of the fixed palette. The form's «Без цвета» arrives as "" or null.
+  mapColor: z.preprocess(emptyStringAsNull, z.enum(MTM_AGENT_MAP_COLOR_KEYS).optional().nullable()),
 })
 export const AgentUpdateSchema = AgentCreateSchema.partial().extend({
   status: MtmAgentStatus.optional(),

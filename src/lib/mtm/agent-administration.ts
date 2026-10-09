@@ -81,6 +81,23 @@ export function mtmScopedAgentRoleForbidden() {
   )
 }
 
+/**
+ * The labels and the map colour are the managers' notes about a person, and
+ * nobody but an administrator keeps notes about himself: a manager is not
+ * shown what is on his own card, so he does not set it either. His own card
+ * is already administrator work as a whole (the role check); this refusal
+ * names the reason, and still stands on the day that check is relaxed.
+ */
+export function mtmAgentOwnNotesForbidden() {
+  return NextResponse.json(
+    {
+      error: "Only an administrator can set the tags or the map colour on your own card",
+      code: "MTM_AGENT_OWN_NOTES_ADMIN_REQUIRED",
+    },
+    { status: 403 },
+  )
+}
+
 export function mtmScopedAgentLinkForbidden() {
   return NextResponse.json(
     { error: "Only an administrator can link an employee card to a web user", code: "MTM_AGENT_LINK_ADMIN_REQUIRED" },
