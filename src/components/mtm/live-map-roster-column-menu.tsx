@@ -1,16 +1,14 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, type RefObject } from "react"
 import { useTranslations } from "next-intl"
 import { ArrowDown, ArrowUp, ChevronDown, Filter, Search } from "lucide-react"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import {
   foldRosterText,
-  onlyRosterFilterValue,
-  rosterFilterAllows,
-  ROSTER_FILTER_NOTHING,
-  toggleRosterFilterValue,
+  rosterFilterTicked,
+  tickRosterFilterValue,
   type RosterColumnFilter,
   type RosterColumnId,
 } from "@/lib/mtm/live-map-roster"
@@ -47,27 +45,86 @@ const SEARCH_FROM_OPTIONS = 9
 export const ROSTER_ACTION_TEXT = "text-orange-700 dark:text-primary"
 
 /**
- * What a column's menu holds: sort one way or the other, and a tick list of
- * the column's values with how many rows each gives. Everything is ticked
- * until something is taken off; «только» leaves one value in a single press,
- * because «show me only the late ones» should not take five unticks. A change
- * applies at once — the list and the map behind the menu are the preview.
- *
- * Used from a column heading and, for the columns a narrow list has no room
- * to draw, from «Фильтры» above it.
+ * Where a menu of the list opens. Beside the map the list is four hundred
+ * pixels wide, and a menu dropped under its own heading covered the very rows
+ * it was filtering — nobody could see what a tick did. There it opens to the
+ * left of the list, over the map, as the tracking product named as the model
+ * does; under the map (a phone) and in the wide table it opens downwards.
  */
-export function RosterColumnMenuPanel({
-  column, options, filter, onFilterChange, sortDirection, sortKind, onSort, showCounts = true,
-}: RosterColumnMenuProps) {
+export interface RosterMenuPlacement {
+  side: "left" | "bottom"
+  /** What the menu stands beside when it opens to the left: the list's heading. */
+  anchor: RefObject<HTMLElement | null> | null
+}
+
+/**
+ * The tick list of one column's values with how many rows each gives. A tick
+ * means «show these»; nothing ticked is no filter. Every value the column can
+ * have is listed, also the ones nobody has right now. A change applies at
+ * once — the list and the map beside the menu are the preview.
+ */
+export function RosterColumnValueList({
+  column, options, filter, onFilterChange, showCounts = true,
+}: Pick<RosterColumnMenuProps, "column" | "options" | "filter" | "onFilterChange" | "showCounts">) {
   const tMap = useTranslations("mtmMap")
   const [query, setQuery] = useState("")
   const visible = useMemo(() => {
     const folded = foldRosterText(query)
     return folded ? options.filter((option) => foldRosterText(option.label).includes(folded)) : options
   }, [options, query])
-  const ticked = options.filter((option) => rosterFilterAllows(filter, option.value)).length
-  const allTicked = !filter
 
+  return (
+    <>
+      {options.length >= SEARCH_FROM_OPTIONS ? (
+        <label className="flex shrink-0 items-center gap-2 border-b border-zinc-200 px-3 dark:border-zinc-700">
+          <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={tMap("roster.filter.search")}
+            aria-label={tMap("roster.filter.search")}
+            data-testid={`roster-filter-search-${column}`}
+            className="h-9 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
+          />
+        </label>
+      ) : null}
+      {/* The one part that may scroll inside the menu: a list of two hundred names. */}
+      <ul className="max-h-64 min-h-9 flex-1 overflow-y-auto py-1" data-testid={`roster-filter-values-${column}`}>
+        {visible.length === 0 ? (
+          <li className="px-3 py-2 text-xs text-muted-foreground">{tMap("roster.filter.nothingFound")}</li>
+        ) : visible.map((option) => {
+          const ticked = rosterFilterTicked(filter, option.value)
+          return (
+            <li key={option.value}>
+              <label className={cn("flex min-h-9 cursor-pointer items-center gap-2 px-3 text-sm hover:bg-muted/60 [@media(pointer:coarse)]:min-h-11", ticked && "bg-primary/5 font-medium")}>
+                <input
+                  type="checkbox"
+                  checked={ticked}
+                  onChange={() => onFilterChange(tickRosterFilterValue(filter, option.value))}
+                  data-testid={`roster-filter-value-${column}-${option.value}`}
+                  className="h-4 w-4 shrink-0 cursor-pointer accent-[hsl(var(--primary))]"
+                />
+                {option.dotClass ? <span className={cn("h-2 w-2 shrink-0 rounded-full", option.dotClass)} aria-hidden="true" /> : null}
+                <span className={cn("min-w-0 flex-1 truncate", option.count === 0 && !ticked && "text-muted-foreground")}>{option.label}</span>
+                {showCounts ? <span className="shrink-0 tabular-nums text-xs text-muted-foreground">{option.count}</span> : null}
+              </label>
+            </li>
+          )
+        })}
+      </ul>
+    </>
+  )
+}
+
+/**
+ * What a column's menu holds: sort one way or the other, and the tick list
+ * of the column's values.
+ */
+export function RosterColumnMenuPanel({
+  column, options, filter, onFilterChange, sortDirection, sortKind, onSort, showCounts = true,
+}: RosterColumnMenuProps) {
+  const tMap = useTranslations("mtmMap")
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-testid={`roster-column-menu-${column}`}>
       <div className="grid shrink-0 grid-cols-2 gap-1 border-b border-zinc-200 p-2 dark:border-zinc-700">
@@ -92,61 +149,8 @@ export function RosterColumnMenuPanel({
           )
         })}
       </div>
-      {options.length >= SEARCH_FROM_OPTIONS ? (
-        <label className="flex shrink-0 items-center gap-2 border-b border-zinc-200 px-3 dark:border-zinc-700">
-          <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <input
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={tMap("roster.filter.search")}
-            aria-label={tMap("roster.filter.search")}
-            data-testid={`roster-filter-search-${column}`}
-            className="h-9 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
-          />
-        </label>
-      ) : null}
-      <label className="flex min-h-9 shrink-0 cursor-pointer items-center gap-2 border-b border-zinc-200 px-3 text-sm font-medium hover:bg-muted/60 dark:border-zinc-700 [@media(pointer:coarse)]:min-h-11">
-        <input
-          type="checkbox"
-          checked={allTicked}
-          ref={(element) => { if (element) element.indeterminate = !allTicked && ticked > 0 }}
-          onChange={() => onFilterChange(allTicked ? ROSTER_FILTER_NOTHING : undefined)}
-          data-testid={`roster-filter-all-${column}`}
-          className="h-4 w-4 shrink-0 cursor-pointer accent-[hsl(var(--primary))]"
-        />
-        {tMap("roster.filter.selectAll")}
-      </label>
-      {/* The one part that may scroll inside the menu: a list of two hundred names. */}
-      <ul className="max-h-64 min-h-16 flex-1 overflow-y-auto py-1" data-testid={`roster-filter-values-${column}`}>
-        {visible.length === 0 ? (
-          <li className="px-3 py-2 text-xs text-muted-foreground">{tMap("roster.filter.nothingFound")}</li>
-        ) : visible.map((option) => (
-          <li key={option.value} className="flex items-center gap-1 pr-2 hover:bg-muted/60">
-            <label className="flex min-h-9 min-w-0 flex-1 cursor-pointer items-center gap-2 pl-3 text-sm [@media(pointer:coarse)]:min-h-11">
-              <input
-                type="checkbox"
-                checked={rosterFilterAllows(filter, option.value)}
-                onChange={() => onFilterChange(toggleRosterFilterValue(filter, option.value))}
-                data-testid={`roster-filter-value-${column}-${option.value}`}
-                className="h-4 w-4 shrink-0 cursor-pointer accent-[hsl(var(--primary))]"
-              />
-              {option.dotClass ? <span className={cn("h-2 w-2 shrink-0 rounded-full", option.dotClass)} aria-hidden="true" /> : null}
-              <span className="min-w-0 flex-1 truncate">{option.label}</span>
-              {showCounts ? <span className="shrink-0 tabular-nums text-xs text-muted-foreground">{option.count}</span> : null}
-            </label>
-            <button
-              type="button"
-              onClick={() => onFilterChange(onlyRosterFilterValue(option.value))}
-              data-testid={`roster-filter-only-${column}-${option.value}`}
-              aria-label={`${option.label}: ${tMap("roster.filter.only")}`}
-              className={cn("inline-flex min-h-8 shrink-0 items-center rounded px-1.5 text-[11px] font-semibold hover:underline [@media(pointer:coarse)]:min-h-11", ROSTER_ACTION_TEXT)}
-            >
-              {tMap("roster.filter.only")}
-            </button>
-          </li>
-        ))}
-      </ul>
+      <p className="shrink-0 px-3 pt-2 text-[11px] text-muted-foreground">{tMap("roster.filter.hint")}</p>
+      <RosterColumnValueList column={column} options={options} filter={filter} onFilterChange={onFilterChange} showCounts={showCounts} />
       {filter ? (
         <div className="shrink-0 border-t border-zinc-200 p-2 dark:border-zinc-700">
           <button
@@ -167,10 +171,11 @@ export function RosterColumnMenuPanel({
  * A column heading that is also its menu — the spreadsheet's filter arrow
  * (owner, 2026-10-09: «нужны фильтры прямо в списке, как в Excel»).
  */
-export function LiveMapRosterColumnMenu(props: RosterColumnMenuProps & { className?: string }) {
-  const { column, label, filter, sortDirection, className } = props
+export function LiveMapRosterColumnMenu(props: RosterColumnMenuProps & { className?: string; placement: RosterMenuPlacement }) {
+  const { column, label, filter, sortDirection, className, placement } = props
   const tMap = useTranslations("mtmMap")
   const SortIcon = sortDirection === "desc" ? ArrowDown : ArrowUp
+  const beside = placement.side === "left" && placement.anchor != null
 
   return (
     <Popover>
@@ -193,9 +198,21 @@ export function LiveMapRosterColumnMenu(props: RosterColumnMenuProps & { classNa
             : <ChevronDown className="h-3 w-3 shrink-0 opacity-60" aria-hidden="true" />}
         </button>
       </PopoverTrigger>
+      {/* After the trigger, not before it: the trigger names itself the anchor
+          when it mounts, and the last one to speak is the one the menu stands
+          beside. Put first, this line left the menu in the corner of the screen. */}
+      {beside && placement.anchor ? <PopoverAnchor virtualRef={placement.anchor as RefObject<HTMLElement>} /> : null}
       {/* Never taller than the room the screen has left: under a heading that
           follows the scroll, a menu cut off by the screen cannot be scrolled to. */}
-      <PopoverContent align="start" collisionPadding={8} aria-label={label} className="flex max-h-[var(--radix-popover-content-available-height)] w-64 max-w-[calc(100vw-2rem)] flex-col p-0">
+      <PopoverContent
+        side={beside ? "left" : "bottom"}
+        align="start"
+        sideOffset={beside ? 8 : 4}
+        collisionPadding={8}
+        aria-label={label}
+        data-side-wanted={beside ? "left" : "bottom"}
+        className="flex max-h-[var(--radix-popover-content-available-height)] w-64 max-w-[calc(100vw-2rem)] flex-col p-0"
+      >
         <RosterColumnMenuPanel {...props} />
       </PopoverContent>
     </Popover>
