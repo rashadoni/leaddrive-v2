@@ -185,10 +185,19 @@ describe("the card's blocks on screen", () => {
     expect(customize.textContent).toBe("Настроить карточку")
     await press(customize)
     // The first cannot go higher, the last cannot go lower.
-    expect((byTestId("live-map-card-block-up-events") as HTMLButtonElement).disabled).toBe(true)
-    expect((byTestId("live-map-card-block-down-route") as HTMLButtonElement).disabled).toBe(true)
-    await press(byTestId("live-map-card-block-up-route"))
+    expect(byTestId("live-map-card-block-up-events")?.getAttribute("aria-disabled")).toBe("true")
+    expect(byTestId("live-map-card-block-down-route")?.getAttribute("aria-disabled")).toBe("true")
+    // Pressed at the edge, an arrow does nothing.
+    await press(byTestId("live-map-card-block-up-events"))
+    expect(blockIds()).toEqual(["events", "route"])
+    const up = byTestId("live-map-card-block-up-route")!
+    up.focus()
+    await press(up)
     expect(blockIds()).toEqual(["route", "events"])
+    // The block is at the top now and its arrow has nothing more to do — but
+    // the keyboard is still on it, not dropped to the page.
+    expect(byTestId("live-map-card-block-up-route")?.getAttribute("aria-disabled")).toBe("true")
+    expect(document.activeElement).toBe(byTestId("live-map-card-block-up-route"))
     await press(byTestId("live-map-card-block-shown-events"))
     expect(blockIds()).toEqual(["route"])
     expect(byTestId("live-map-card-customize")?.textContent).toBe("Настроить карточку· скрыто: 1")

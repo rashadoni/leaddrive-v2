@@ -138,6 +138,8 @@ export interface LiveMapRosterProps {
   exportFileName?: () => string
   /** The heading of the printed sheet; without it there is no «Печать». */
   printTitle?: () => string
+  /** What narrowed the list before it reached this component (a name search, a team) — said on the sheet. */
+  printNote?: () => string
 }
 
 /** The list stands beside the map from the `lg` breakpoint; narrower than that it is under it. */
@@ -195,7 +197,7 @@ export function LiveMapRoster({
   agents, rows, searchSlot, filters, onFiltersChange, view, onViewChange, onHide, hiddenOnWide = false,
   hiddenAgentIds, onToggleAgentOnMap, onSetAgentsOnMap, selectedAgentId, onSelect, selectedDetailRef,
   renderDetail, nowMs, workforceEnabled, formatClock, formatVisitOpened, isEarlierDay,
-  formatDistance = (meters) => `${Math.round(meters)} m`, exportFileName, printTitle,
+  formatDistance = (meters) => `${Math.round(meters)} m`, exportFileName, printTitle, printNote,
 }: LiveMapRosterProps) {
   const tMap = useTranslations("mtmMap")
   const locale = useLocale()
@@ -497,10 +499,14 @@ export function LiveMapRoster({
   })
   const printList = () => {
     if (!printTitle) return
+    // A sheet is read away from the screen: it says how many of how many it
+    // holds, and what narrowed it — a bare «3 из 3» under a search would read
+    // as the whole team.
+    const narrowedBy = [...filteredColumns.map(filterSummary), printNote?.() ?? ""].filter(Boolean)
     printRosterHtml(rosterPrintHtml({
       lang: locale,
       title: printTitle(),
-      subtitle: tMap("roster.shownCount", { shown: rows.length, total: agents.length }),
+      subtitle: [tMap("roster.print.shown", { shown: rows.length, total: agents.length }), ...narrowedBy].join(" · "),
       table: exportTable(),
     }))
   }

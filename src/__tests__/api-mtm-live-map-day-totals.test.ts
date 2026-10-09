@@ -382,13 +382,47 @@ describe("GET /api/v1/mtm/locations/day-totals", () => {
     expect(third.distanceMeters).toBeGreaterThan(first.distanceMeters as number)
   })
 
-  it("a kept day is each employee's own, and each organization's", async () => {
+  it("a kept day is each employee's own, each organization's, and each day's", async () => {
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "any" } as never)
     fixes = [...MORNING(), ...drive(utc("06:00:00"), 40.50, { agentId: "agent-2" })]
     const one = (await read()).body.data
     const two = (await read("?agentId=agent-2")).body.data
     expect([one.distanceMeters, two.distanceMeters]).toEqual([7_000, 20 * 70])
     expect(daysRead()).toBe(2)
+
+    // The same id asked for from another organization is another day's reading, never the kept one.
+    resetRateLimit(`mtm-live-map-day-totals:org-2:${USER}`)
+    vi.mocked(getOrgId).mockResolvedValue("org-2")
+    vi.mocked(requireAuth).mockResolvedValue({ orgId: "org-2", userId: USER, role: "manager", email: "manager@example.com", name: "Manager" })
+    fixes = [...fixes, ...drive(utc("07:00:00"), 40.60, { organizationId: "org-2" })]
+    const elsewhere = (await read()).body.data
+    expect(daysRead()).toBe(3)
+    expect(elsewhere.distanceMeters).toBe(20 * 70)
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(requireAuth).mockResolvedValue({ orgId: ORG, userId: USER, role: "manager", email: "manager@example.com", name: "Manager" })
+
+    // Past the organization's midnight (20:00 UTC in Baku) it is a new day with nothing in it yet —
+    // yesterday's kilometres are not carried into it by the kept answer.
+    vi.setSystemTime(new Date("2026-10-09T20:00:30.000Z"))
+    const nextDay = (await read()).body.data
+    expect(nextDay).toMatchObject({ date: "2026-10-10", distanceMeters: 0, firstPointAt: null })
+  })
+
+  it("straight lines counted while the road server was down are not kept: once it is back, the next look says what «История за день» says", async () => {
+    // The road server refuses the connection: straight lines, and a minute's rest before it is asked again.
+    roadServer = () => { throw new Error("connect ECONNREFUSED") }
+    const down = (await read()).body.data
+    expect(down.distanceBasis).toBe("STRAIGHT")
+    expect(down.distanceMeters).toBeLessThan(7_000)
+
+    // Half a minute later it is still resting; the card is still not handed a kept figure for the next minute…
+    roadServer = roads
+    vi.setSystemTime(new Date(NOW.getTime() + 30_000))
+    expect((await read()).body.data.distanceBasis).toBe("STRAIGHT")
+    // …so that the moment the rest is over — still inside the minute an answer is kept for — the roads are back.
+    vi.setSystemTime(new Date(NOW.getTime() + 61_000))
+    expect((await read()).body.data).toMatchObject({ distanceBasis: "ROADS", distanceMeters: 7_000 })
+    expect(daysRead()).toBe(3)
   })
 
   it("a day the road server answered only in part is not kept: the next look asks again and gets the whole", async () => {
@@ -504,12 +538,22 @@ describe("GET /api/v1/mtm/locations/day-totals", () => {
     expect((await read()).body.data.distanceMeters).toBe(7_000)
   })
 
-  it("is asked for when a card is opened and every couple of minutes, not on the map's timer: thirty a minute", async () => {
+  it("a day already counted costs nothing to look at again: a hundred looks in a minute are one reading and no refusal", async () => {
     let last: Response | null = null
-    for (let turn = 0; turn < 31; turn += 1) last = await GET(request())
+    for (let turn = 0; turn < 100; turn += 1) last = await GET(request())
+    expect(last?.status).toBe(200)
+    expect(daysRead()).toBe(1)
+  })
+
+  it("counting is what is rationed: sixty days a minute for one dispatcher, the sixty-first is told to wait", async () => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "any" } as never)
+    let last: Response | null = null
+    for (let turn = 0; turn < 61; turn += 1) last = await GET(request(`?agentId=agent-${turn}`))
     expect(last?.status).toBe(429)
     expect(last?.headers.get("retry-after")).toBe("60")
-    // Thirty looks, one reading of the day.
-    expect(daysRead()).toBe(1)
+    expect(daysRead()).toBe(60)
+    // An employee outside his team is refused before the allowance is even looked at.
+    vi.mocked(resolveMtmRouteActor).mockResolvedValue({ agentId: "sup", role: "SUPERVISOR", scopedAgentIds: ["agent-1"] } as never)
+    expect((await GET(request("?agentId=agent-99"))).status).toBe(404)
   })
 })

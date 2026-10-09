@@ -95,23 +95,25 @@ export function LiveMapCardBlocks({ blocks, layout, onLayoutChange }: {
                   </label>
                   <button
                     type="button"
-                    disabled={index === 0}
-                    onClick={() => onLayoutChange(moveCardBlock(layout, id, "up", available))}
+                    // Not `disabled`: a block moved to the edge would drop the keyboard's focus to the page.
+                    aria-disabled={index === 0}
+                    onClick={() => { if (!(index === 0)) onLayoutChange(moveCardBlock(layout, id, "up", available)) }}
                     aria-label={tMap("card.moveUp", { name: block.title })}
                     title={tMap("card.moveUp", { name: block.title })}
                     data-testid={`live-map-card-block-up-${id}`}
-                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded border border-zinc-200 hover:bg-muted disabled:opacity-40 dark:border-zinc-700 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11"
+                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded border border-zinc-200 hover:bg-muted aria-disabled:cursor-default aria-disabled:opacity-40 aria-disabled:hover:bg-transparent dark:border-zinc-700 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11"
                   >
                     <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" />
                   </button>
                   <button
                     type="button"
-                    disabled={index === offered.length - 1}
-                    onClick={() => onLayoutChange(moveCardBlock(layout, id, "down", available))}
+                    // Not `disabled`: a block moved to the edge would drop the keyboard's focus to the page.
+                    aria-disabled={index === offered.length - 1}
+                    onClick={() => { if (!(index === offered.length - 1)) onLayoutChange(moveCardBlock(layout, id, "down", available)) }}
                     aria-label={tMap("card.moveDown", { name: block.title })}
                     title={tMap("card.moveDown", { name: block.title })}
                     data-testid={`live-map-card-block-down-${id}`}
-                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded border border-zinc-200 hover:bg-muted disabled:opacity-40 dark:border-zinc-700 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11"
+                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded border border-zinc-200 hover:bg-muted aria-disabled:cursor-default aria-disabled:opacity-40 aria-disabled:hover:bg-transparent dark:border-zinc-700 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11"
                   >
                     <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />
                   </button>

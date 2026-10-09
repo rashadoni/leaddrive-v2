@@ -85,6 +85,9 @@ describe("«Пробег сегодня» in the selected employee's card", () =
     refreshKey: "k1",
     // The page hands a new function on every refresh of the map.
     formatDistance: (meters: number) => `${(meters / 1_000).toFixed(1)} км`,
+    // The wait for the selection to rest, and the wait after «too many at once», have their own cases below.
+    settleMs: 0,
+    busyRetryMs: 30,
     ...extra,
   } as never)
 
@@ -117,6 +120,7 @@ describe("«Пробег сегодня» in the selected employee's card", () =
     answer = () => new Promise<Response>((resolve) => { release = resolve })
     await render(day())
     expect(text("live-map-agent-day-loading")).toBe("Считаю день…")
+    await settle()
     await act(async () => { release(totals(MORNING)) })
     await settle()
     // Only who — the day is the organization's own «today», worked out on the server.
@@ -214,10 +218,53 @@ describe("«Пробег сегодня» in the selected employee's card", () =
     expect(text("live-map-agent-day-distance")).toBe("Пробег сегодня15.0 км · по дорогам")
   })
 
-  it("when the first read fails — refused, too many requests, or an answer that is not the day — it shows no number and does not call the day empty", async () => {
+  it("a row passed through on the way down the list asks for nobody's day; the one the selection rests on is asked once", async () => {
+    // Five employees, each selected for a moment shorter than the wait.
+    for (const agentId of ["a1", "a2", "a3", "a4"]) {
+      await render(day({ agentId, settleMs: 60 }))
+      await settle(15)
+    }
+    await render(day({ agentId: "a5", settleMs: 60 }))
+    expect(requests).toEqual([])
+    await settle(90)
+    expect(requests).toEqual(["/api/v1/mtm/locations/day-totals?agentId=a5"])
+    expect(text("live-map-agent-day-distance")).toBe("Пробег сегодня12.4 км · по дорогам")
+  })
+
+  it("«too many at once» is waited out, not shown as a failure — and after a few more refusals it says so", async () => {
+    let refusals = 2
+    answer = () => (refusals-- > 0 ? new Response("{}", { status: 429 }) : totals(MORNING))
+    await render(day())
+    await settle()
+    // Refused: still counting, no word of failure, nothing made up.
+    expect(text("live-map-agent-day-loading")).toBe("Считаю день…")
+    expect(byTestId("live-map-agent-day-failed")).toBeNull()
+    await settle(120)
+    expect(requests).toHaveLength(3)
+    expect(text("live-map-agent-day-distance")).toBe("Пробег сегодня12.4 км · по дорогам")
+
+    // The server goes on refusing: after the bounded turns the block says it could not refresh.
+    answer = () => new Response("{}", { status: 429 })
+    await render(day({ refreshKey: "busy" }))
+    await settle(250)
+    expect(requests).toHaveLength(3 + 4)
+    expect(text("live-map-agent-day-failed")).toBe("Не удалось обновить цифры за день")
+    // What was read before stays on screen under that word.
+    expect(text("live-map-agent-day-distance")).toBe("Пробег сегодня12.4 км · по дорогам")
+    // He is let go of while a wait is on: nobody is asked for him again.
+    answer = () => new Response("{}", { status: 429 })
+    await render(day({ refreshKey: "busy-2", busyRetryMs: 60 }))
+    await settle()
+    const asked = requests.length
+    await act(async () => { root.unmount() })
+    root = createRoot(container)
+    await settle(150)
+    expect(requests).toHaveLength(asked)
+  })
+
+  it("when the first read fails — refused, or an answer that is not the day — it shows no number and does not call the day empty", async () => {
     const failures: Array<() => Response> = [
       () => new Response("{}", { status: 500 }),
-      () => new Response("{}", { status: 429 }),
       () => new Response("{}", { status: 404 }),
       () => Response.json({ success: true, data: {} }),
       () => Response.json({ success: true, data: { complete: true, distanceMeters: "many" } }),
@@ -245,6 +292,8 @@ describe("«Пробег сегодня» in the selected employee's card", () =
     await render(day({ agentId: "a2" }))
     expect(text("live-map-agent-day-loading")).toBe("Считаю день…")
     expect(byTestId("live-map-agent-day-distance")).toBeNull()
+    // The selection rests on him long enough for the question to go out.
+    await settle()
     const lateForSecond = release
 
     // The dispatcher clicks on to a third before the second has answered.
@@ -269,6 +318,7 @@ describe("«Пробег сегодня» in the selected employee's card", () =
     let release: (response: Response) => void = () => {}
     answer = () => new Promise<Response>((resolve) => { release = resolve })
     await render(day())
+    await settle()
     const lateForFirst = release
 
     answer = () => totals({ ...MORNING, distanceMeters: 3_000 })

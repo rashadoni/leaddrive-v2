@@ -21,8 +21,22 @@ type DayTotals =
 const amount = (value: unknown): number | null =>
   typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null
 
+/** The server is asked to count too many days at once: not a failure, a reason to wait. */
+class TooManyDayReads extends Error {}
+
+/**
+ * A row passed through on the way down the list is not a card somebody is
+ * reading: the day is asked for once the selection has rested this long, so
+ * walking the list counts nobody's day.
+ */
+const SETTLE_MS = 400
+/** After «too many at once» the same employee is asked again this much later, a bounded number of times. */
+const BUSY_RETRY_MS = 15_000
+const BUSY_RETRIES = 3
+
 async function readDayTotals(agentId: string, signal: AbortSignal): Promise<DayTotals> {
   const response = await fetch(`/api/v1/mtm/locations/day-totals?agentId=${encodeURIComponent(agentId)}`, { signal, cache: "no-store" })
+  if (response.status === 429) throw new TooManyDayReads()
   if (!response.ok) throw new Error(`HTTP ${response.status}`)
   const body = await response.json() as { data?: unknown }
   const data = body.data && typeof body.data === "object" ? body.data as Record<string, unknown> : {}
@@ -64,11 +78,15 @@ function wholeMinutes(seconds: number): number {
  * never folded into «стоял»; and a day too long to count says so instead of
  * showing the kilometres of its beginning.
  */
-export function LiveMapAgentDay({ agentId, refreshKey, formatDistance }: {
+export function LiveMapAgentDay({ agentId, refreshKey, formatDistance, settleMs = SETTLE_MS, busyRetryMs = BUSY_RETRY_MS }: {
   agentId: string
   /** Changes when the employee's row changes in a way worth counting again, and every couple of minutes. */
   refreshKey: string
   formatDistance: (meters: number) => string
+  /** How long the selection must rest before the day is asked for (tests pass 0). */
+  settleMs?: number
+  /** How long to wait after «too many at once» before asking again (tests pass a short one). */
+  busyRetryMs?: number
 }) {
   // Named `t`, not `tMap` as in the neighbouring blocks: the key-existence gate
   // (lib-i18n-keys.test.ts) only follows translators called `t` or `tXy`, and
@@ -78,18 +96,34 @@ export function LiveMapAgentDay({ agentId, refreshKey, formatDistance }: {
 
   useEffect(() => {
     const controller = new AbortController()
-    void readDayTotals(agentId, controller.signal)
-      .then((totals) => {
-        if (controller.signal.aborted) return
-        setState({ agentId, totals, failed: false })
-      })
-      .catch(() => {
-        if (controller.signal.aborted) return
-        // What was read before stays on screen, with a word that it is not fresh.
-        setState((previous) => ({ agentId, failed: true, totals: previous?.agentId === agentId ? previous.totals : null }))
-      })
-    return () => controller.abort()
-  }, [agentId, refreshKey])
+    let timer: ReturnType<typeof setTimeout> | null = null
+    let busyTurns = 0
+    const ask = () => {
+      timer = null
+      void readDayTotals(agentId, controller.signal)
+        .then((totals) => {
+          if (controller.signal.aborted) return
+          setState({ agentId, totals, failed: false })
+        })
+        .catch((error: unknown) => {
+          if (controller.signal.aborted) return
+          // Too many days asked for at once: what is on screen stays as it
+          // is — «считаю…» or the last figures — and he is asked again soon.
+          if (error instanceof TooManyDayReads && busyTurns < BUSY_RETRIES) {
+            busyTurns += 1
+            timer = setTimeout(ask, busyRetryMs)
+            return
+          }
+          // What was read before stays on screen, with a word that it is not fresh.
+          setState((previous) => ({ agentId, failed: true, totals: previous?.agentId === agentId ? previous.totals : null }))
+        })
+    }
+    timer = setTimeout(ask, settleMs)
+    return () => {
+      controller.abort()
+      if (timer != null) clearTimeout(timer)
+    }
+  }, [agentId, refreshKey, settleMs, busyRetryMs])
 
   // Another employee's numbers are never shown under this one's name.
   const known = state?.agentId === agentId ? state : null

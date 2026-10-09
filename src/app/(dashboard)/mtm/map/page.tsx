@@ -1189,7 +1189,8 @@ export default function MtmMapPage() {
             {tMap(`workday.${agent.workdayState.toLowerCase()}`)}
           </span> : null}
           {agent.recordedAt ? (
-            <span className="text-muted-foreground">{tMap("recordedAt")}: {formatDateTime(agent.recordedAt, locale, { timeStyle: "short", timeZone: contract?.timezone })}</span>
+            // With the date when it is not today's — as the «Телефон и приложение» block below says the same moment.
+            <span className="text-muted-foreground">{tMap("recordedAt")}: {formatVisitOpened(agent.recordedAt)}</span>
           ) : null}
         </div>
         {/* Since when — only for what was recorded when it began: the visit, the break, the closed shift. */}
@@ -1572,6 +1573,12 @@ export default function MtmMapPage() {
             formatDistance={(meters) => formatMtmDistance(meters, locale, (unit, value) => tUnits(unit, { value }))}
             exportFileName={() => rosterExportFileName(contract?.today, new Date(), contract?.timezone)}
             printTitle={() => `${t("mtmMap")} · ${formatDateTime(new Date(), locale, { dateStyle: "medium", timeStyle: "short", timeZone: contract?.timezone })}`}
+            // What the server itself narrowed the list by: the sheet must not read as the whole team.
+            printNote={() => [
+              debouncedEmployeeFilter ? tMap("roster.print.search", { query: debouncedEmployeeFilter }) : "",
+              teamFilter ? `${tMap("teamFilter")}: ${teams.find((team) => team.id === teamFilter)?.name ?? teamFilter}` : "",
+              contract?.rosterTruncated ? tMap("rosterTruncated", { shown: contract.returnedAgents }) : "",
+            ].filter(Boolean).join(" · ")}
           />
       </div>
 

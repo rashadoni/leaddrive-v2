@@ -16507,7 +16507,9 @@
       "standingSince": "since {time}",
       "print": {
         "button": "Print",
-        "hint": "Print the list: rows and order as on screen"
+        "hint": "Print the list: rows and order as on screen",
+        "shown": "Employees on the sheet: {shown} of {total}",
+        "search": "Name search: {query}"
       },
       "export": {
         "button": "Excel",

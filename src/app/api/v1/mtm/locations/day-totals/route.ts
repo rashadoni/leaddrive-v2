@@ -10,14 +10,14 @@ import { checkRateLimit } from "@/lib/rate-limit"
 import { isValidTimezone } from "@/lib/timezone"
 import { workforceEnabledForMixedSurface } from "@/lib/workforce-capability"
 import { LOCATION_HISTORY_MAX_RAW_POINTS, type HistoryLocationPoint, type HistoryVisit } from "@/lib/mtm/location-history"
-import { matchRoads } from "@/lib/mtm/map-matching"
+import { mapMatchingBaseUrl, matchRoads } from "@/lib/mtm/map-matching"
 import { distanceBasis, type DistanceBasis } from "@/lib/mtm/road-distance"
 import { liveMapDayPauses, liveMapDayPolicy, liveMapDayTotals, liveMapDayTrack } from "@/lib/mtm/live-map-day-totals"
 
 // Asked for when an employee is selected and then every couple of minutes
 // while his card is open — never on the roster's timer. Thirty a minute lets a
 // dispatcher click down the list.
-const RATE_LIMIT = { maxRequests: 30, windowMs: 60_000 }
+const RATE_LIMIT = { maxRequests: 60, windowMs: 60_000 }
 /**
  * How long the road server may take. History waits five seconds for a page
  * somebody opened on purpose; a block of a card waits half of that. What the
@@ -109,12 +109,6 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
     if (!actor || actor.role === "AGENT") {
       return NextResponse.json({ error: "Manager access required" }, { status: 403 })
     }
-    if (!checkRateLimit(`mtm-live-map-day-totals:${orgId}:${auth.userId}`, RATE_LIMIT)) {
-      return NextResponse.json(
-        { error: "Refresh rate limit exceeded", retryAfterSeconds: 60 },
-        { status: 429, headers: { "Retry-After": "60" } },
-      )
-    }
 
     const agentId = new URL(req.url).searchParams.get("agentId")?.trim() ?? ""
     if (!agentId) {
@@ -137,6 +131,15 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
     const cacheKey = liveMapDayTotalsCacheKey(orgId, agentId, todayKey)
     const known = readLiveMapDayTotalsCache<DayTotalsAnswer>(cacheKey, now.getTime())
     if (known) return NextResponse.json({ success: true, data: known })
+    // The allowance is spent on days that are really counted, not on answers
+    // already kept: a dispatcher going down the list and back does not lock
+    // himself out of the block.
+    if (!checkRateLimit(`mtm-live-map-day-totals:${orgId}:${auth.userId}`, RATE_LIMIT)) {
+      return NextResponse.json(
+        { error: "Refresh rate limit exceeded", retryAfterSeconds: 60 },
+        { status: 429, headers: { "Retry-After": "60" } },
+      )
+    }
 
     const dayStart = localDateKeyToUtc(todayKey, timezone)
     const dayEnd = localDateKeyToUtc(addDateKeyDays(todayKey, 1), timezone)
@@ -220,9 +223,9 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
     // without them the card would show a second, smaller figure for the day
     // History shows. Its answers are kept per stretch of a hundred fixes, so
     // a day that grew since the last question costs one request.
-    const road = truncated
-      ? null
-      : await matchRoads(liveMapDayTrack(rows, policy.maxAccuracyMeters), { deadlineMs: ROAD_DEADLINE_MS }).catch(() => null)
+    const track = liveMapDayTrack(rows, policy.maxAccuracyMeters)
+    const road = truncated ? null : await matchRoads(track, { deadlineMs: ROAD_DEADLINE_MS }).catch(() => null)
+    const roadServerSilent = !truncated && road === null && track.length >= 2 && mapMatchingBaseUrl() !== null
     const totals = liveMapDayTotals({
       rows,
       visits,
@@ -248,8 +251,11 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
 
     // A day the road server answered only in part is not kept: the next
     // question finds more of its stretches already answered, and a minute of
-    // the smaller figure would be shown to everybody who opens the card.
-    if (answer.distanceBasis !== "PARTIAL") writeLiveMapDayTotalsCache(cacheKey, answer, now.getTime())
+    // the smaller figure would be shown to everybody who opens the card. The
+    // same goes for a day it did not answer at all though it was there to be
+    // asked — down, or resting after a failure: those straight lines are a
+    // failed answer, and «История за день» a minute later would show more.
+    if (answer.distanceBasis !== "PARTIAL" && !roadServerSilent) writeLiveMapDayTotalsCache(cacheKey, answer, now.getTime())
 
     return NextResponse.json({ success: true, data: answer })
   } catch (e) {

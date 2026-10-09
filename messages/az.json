@@ -16503,7 +16503,9 @@
       "standingSince": "başlayıb: {time}",
       "print": {
         "button": "Çap et",
-        "hint": "Siyahını çap et: sətirlər və sıra ekrandakı kimi"
+        "hint": "Siyahını çap et: sətirlər və sıra ekrandakı kimi",
+        "shown": "Vərəqdə əməkdaş sayı: {shown} / {total}",
+        "search": "Ad üzrə axtarış: {query}"
       },
       "export": {
         "button": "Excel",
