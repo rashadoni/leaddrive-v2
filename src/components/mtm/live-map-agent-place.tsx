@@ -44,6 +44,7 @@ export function resetLiveMapPlaceCacheForTests(): void {
  */
 export function LiveMapAgentPlace({
   position, inVisit, stops, stopsReady, delayed = false, formatDistance = (meters) => `${Math.round(meters)} m`,
+  settleMs = SETTLE_MS,
 }: {
   /** Null when the live map shows no current position for him. */
   position: LiveMapPlacePosition | null
@@ -54,6 +55,8 @@ export function LiveMapAgentPlace({
   /** The coordinate is a few minutes old: the place is where he was then, and is toned like the signal. */
   delayed?: boolean
   formatDistance?: (meters: number) => string
+  /** How long the position must rest before the street is asked for. */
+  settleMs?: number
 }) {
   const tMap = useTranslations("mtmMap")
   const place = useMemo(() => liveMapPlace({ position, inVisit, stops }), [position, inVisit, stops])
@@ -118,13 +121,13 @@ export function LiveMapAgentPlace({
         })
         .then(settle)
         .catch(() => settle({ available: false, street: null }))
-    }, SETTLE_MS)
+    }, settleMs)
     return () => {
       clearTimeout(timer)
       if (retryTimer) clearTimeout(retryTimer)
       controller.abort()
     }
-  }, [askLatitude, askLongitude, accuracy, retry])
+  }, [askLatitude, askLongitude, accuracy, retry, settleMs])
 
   if (place.kind === "unknown") return null
 

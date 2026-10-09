@@ -430,10 +430,14 @@ describe("the card's pieces on screen", () => {
   const byTestId = (testId: string) => container.querySelector<HTMLElement>(`[data-testid="${testId}"]`)
   const settle = async (ms = 0) => { await act(async () => { await new Promise((resolve) => setTimeout(resolve, ms)) }) }
   const render = async (element: ReturnType<typeof createElement>) => { await act(async () => { root.render(element) }) }
+  // The position rests a twentieth of a second here, not the page's 600 ms:
+  // sixteen cases at the page's own rhythm were eleven seconds of the suite
+  // spent standing still. (The page-level cases keep the real rhythm.)
+  const SETTLE_FOR_TESTS_MS = 50
   const place = (position: { latitude: number; longitude: number; accuracy?: number } | null, extra: Record<string, unknown> = {}) =>
-    createElement(LiveMapAgentPlace, { position, inVisit: false, stops: [pharmacy], stopsReady: true, ...extra } as never)
-  /** Longer than the component's own settle time. */
-  const STREET_WAIT_MS = 800
+    createElement(LiveMapAgentPlace, { position, inVisit: false, stops: [pharmacy], stopsReady: true, settleMs: SETTLE_FOR_TESTS_MS, ...extra } as never)
+  /** Longer than the settle time the cases give the component. */
+  const STREET_WAIT_MS = 120
   /**
    * Past the component's settle time, and then for as long as an answer is
    * still on its way: a loaded runner is slow to hand a response over, and a
