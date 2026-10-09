@@ -274,3 +274,20 @@ Evidence publication is a docs-only checkpoint while ready-source full static
 and typecheck gates remain PENDING. Source647 stays frozen8e1. No merge/deploy
 or furthercodepush. Next: complete actual fivechecks and independent final
 gate acceptance, append results and restore sourceDRAFT;C12PARTIAL/85unchanged.
+
+Docs-only checkpoint2fac8287ec529d7b3b0d7a8570de96c54f79005d published as
+dependent draft PR648 https://github.com/rashadoni/leaddrive-v2/pull/648, base
+codex/hrm-c12-baseline-export-final-20261009. App attachment confirmed. Its
+verified pinned commit-range scan PASS/0findings. Source647 remains exact8e1,
+ready only for final CI, with body corrected to actual8e1/e6 and current scoped
+PG/peerPASS. Full static/type gates stillPENDING, no merge/deploy. Final
+post-gate journal/receipts will append to648 without changing frozen source.
+
+Initial root static reader expected an unsupported "Commit: SHA" prefix and
+aborted; follow-up summaryread naturally FileNotFound. Both inspection errors
+are retained separately from actual CI. Corrected reader requires exact standalone
+checkoutSHA fromgitlog and the immutablewhole tree, without relaxing the guard.
+Root successful complete-log reread227026bytes/SHA256
+aed37ecaf40365e5281ce9ac8f0cd634dcb23b0377289b385743e3dbd2098bc6 confirms26/26
+staticsteps SUCCESS and strict18/18. Independentstatic review byte/hash-equal
+wholeoriginal and same bound source/currentbaseline PASS. Compiler remains pending.
