@@ -1,0 +1,174 @@
+{
+  "archivedAtUtc": "2026-10-09T23:02:24.526565+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-c12-catalog-deploy-peer-review-c695.json.gz",
+      "originalBytes": 21580,
+      "originalSha256": "d9a50647ddc3bee498e3dc05c1b99be7138df74801059521709c1170129049d4",
+      "storedBytes": 5606,
+      "storedSha256": "e580b30a73a97344a07d09e23fa4597904f718bc61eb492c62c0b5cdcdb34b37"
+    },
+    {
+      "path": "hrm-c12-catalog-deploy-peer-c695/cancelled-type-finite.json.gz",
+      "originalBytes": 1144,
+      "originalSha256": "d938355f6085f941a3517bcd0f6638b7a487189b94ac884e67b3d62b6b45d982",
+      "storedBytes": 637,
+      "storedSha256": "10e42fe83ec71664d327a0264275c73d53bac48e6668049f3b2f55497d2e3a1e"
+    },
+    {
+      "path": "hrm-c12-catalog-deploy-peer-c695/cancelled-type-jobs-original-api.json.gz",
+      "originalBytes": 6736,
+      "originalSha256": "7929d5d0b699785e586960741d370cf376ce1e7d141eb684eb4f071f7c0341a3",
+      "storedBytes": 1082,
+      "storedSha256": "29f56298bc4439f0dbfa7576e76dcde45a87c38941db9f351b7d3fbd7ab2b26b"
+    },
+    {
+      "path": "hrm-c12-catalog-deploy-peer-c695/cancelled-type-original-log.txt.gz",
+      "originalBytes": 4520,
+      "originalSha256": "bccf1ca2e26f31021e7ae62f25be850b89d1a1249f309eaed6f651becd22abf0",
+      "storedBytes": 4520,
+      "storedSha256": "bccf1ca2e26f31021e7ae62f25be850b89d1a1249f309eaed6f651becd22abf0"
+    },
+    {
+      "path": "hrm-c12-catalog-deploy-peer-c695/erp-associated-pr-api.json.gz",
+      "originalBytes": 20001,
+      "originalSha256": "053c5777b0f4958ce0776941cddcff03ff0d567f309093193ae5b3da6c40b81f",
+      "storedBytes": 3651,
+      "storedSha256": "171c4c679d2cf0f2ea69460598afc12a3d51d880d3e8d707161696002cc0663d"
+    },
+    {
+      "path": "hrm-c12-catalog-deploy-peer-c695/erp-merge-commit-api.json.gz",
+      "originalBytes": 2811,
+      "originalSha256": "77b1f96e937dadfab1f0cefcb381a3fb6919004e5e5adaae7cab5b368223474f",
+      "storedBytes": 1381,
+      "storedSha256": "83247b17f9026f3e9552ad8ebf2de01a45a859a178e0a36b3b3bed1da3baa169"
+    },
+    {
+      "path": "hrm-c12-catalog-deploy-peer-c695/incoming-.github_workflows_deploy.yml.patch.txt",
+      "originalBytes": 729,
+      "originalSha256": "c97bd1f45a04dea46dbe372414395f5e9b7ebc1bf18af06a7bf59321045658d4",
+      "storedBytes": 729,
+      "storedSha256": "c97bd1f45a04dea46dbe372414395f5e9b7ebc1bf18af06a7bf59321045658d4"
+    },
+    {
+      "path": "hrm-c12-catalog-deploy-peer-c695/incoming-.github_workflows_pr-checks.yml.patch.txt",
+      "originalBytes": 5327,
+      "originalSha256": "9bf6ed7065e7b586b0c4dd93283edc3c22de06726bd999be917865f20f4be97c",
+      "storedBytes": 5327,
+      "storedSha256": "9bf6ed7065e7b586b0c4dd93283edc3c22de06726bd999be917865f20f4be97c"
+    },
+    {
+      "path": "hrm-c12-catalog-deploy-peer-c695/incoming-AGENTS.md.patch.txt",
+      "originalBytes": 866,
+      "originalSha256": "fc066d8ea8d1e8bd021e4db49ba31d72a46a8da816aa8b738471c1d921a51943",
+      "storedBytes": 866,
+      "storedSha256": "fc066d8ea8d1e8bd021e4db49ba31d72a46a8da816aa8b738471c1d921a51943"
+    },
+    {
+      "path": "hrm-c12-catalog-deploy-peer-c695/incoming-CLAUDE.md.patch.txt",
+      "originalBytes": 1313,
+      "originalSha256": "1ab599f7c2008cbcdc35b866c07da2573e1352642ca86c6d0a8f8d8d74d27ace",
+      "storedBytes": 1313,
+      "storedSha256": "1ab599f7c2008cbcdc35b866c07da2573e1352642ca86c6d0a8f8d8d74d27ace"
+    },
+    {
+      "path": "hrm-c12-catalog-deploy-peer-c695/incoming-src_sw.ts.patch.txt",
+      "originalBytes": 818,
+      "originalSha256": "fd35b7a5fdc65d75f2706b8ba9f0322b5945dd69d3665108642651d771018d1e",
+      "storedBytes": 818,
+      "storedSha256": "fd35b7a5fdc65d75f2706b8ba9f0322b5945dd69d3665108642651d771018d1e"
+    },
+    {
+      "path": "hrm-c12-catalog-deploy-peer-c695/inspection-correction-erp-pr.json.gz",
+      "originalBytes": 414,
+      "originalSha256": "3cf73da6763518af77d01b06c568d068f2019679d582feb6d4cd8d93280b9ae9",
+      "storedBytes": 293,
+      "storedSha256": "0b6bb1798231c5d3968004c1c35c9ba3efd10e6f89312dadf16e93888639f5a8"
+    },
+    {
+      "path": "hrm-c12-catalog-deploy-peer-c695/jobs-initial-api.json.gz",
+      "originalBytes": 11972,
+      "originalSha256": "b0d0052f18afa7d6b8c4f56f2a43c145f5ab5c7028fb4e8c2e917324d06afc9e",
+      "storedBytes": 1770,
+      "storedSha256": "96163cffdbad830cab6ab0810f8e004db426c5c2c23cea7e63c1644b0f508810"
+    },
+    {
+      "path": "hrm-c12-catalog-deploy-peer-c695/main-initial-api.json.gz",
+      "originalBytes": 342,
+      "originalSha256": "cf3c8105493db8869ae12a80416d756b04253be5365a2c5a94f93474a31c83b5",
+      "storedBytes": 216,
+      "storedSha256": "d1f6110b176595c6f453932fd573d268a38028b1fffd26599d8bafdab4480b73"
+    },
+    {
+      "path": "hrm-c12-catalog-deploy-peer-c695/merge-commit-api.json.gz",
+      "originalBytes": 2731,
+      "originalSha256": "17c6afcf0bb030fb1a1c9dd26b8910d5bcb5b81f53dae93d4568cb731bbe3543",
+      "storedBytes": 1323,
+      "storedSha256": "2198dbbecc7699bff8fc821330aaebca5a335547a50680aeae4a8611d5fdcae8"
+    },
+    {
+      "path": "hrm-c12-catalog-deploy-peer-c695/own-deploy-current-api.json.gz",
+      "originalBytes": 12398,
+      "originalSha256": "53d4916673a4cf4d9a3ea8b11a8078c6ce70dbf1dabc8e581bbda37d2fe85c75",
+      "storedBytes": 1548,
+      "storedSha256": "69a86db734de1f70c26e84b306269318f0f598767ecf343a025c09ba1468895d"
+    },
+    {
+      "path": "hrm-c12-catalog-deploy-peer-c695/own-deploy-jobs-current-api.json.gz",
+      "originalBytes": 12402,
+      "originalSha256": "a1da0b9e48051a63a1ac06a95c9ebb64ccaa3d0cce88909c1df37bf4780ea577",
+      "storedBytes": 1829,
+      "storedSha256": "c8c975c8a2f70e60df00e6de88c427eb8e2e929fd3da5578dcbb95c32f8eeb2f"
+    },
+    {
+      "path": "hrm-c12-catalog-deploy-peer-c695/own-type-current-api.json.gz",
+      "originalBytes": 12396,
+      "originalSha256": "a1b93f2e950a949b8888a772138a0a1847889e080d57fc0b0d9a3ce4ab1a2425",
+      "storedBytes": 1547,
+      "storedSha256": "2ade4deadda497e06be3481e6e2fedc7ea6a3cc85c5d417a456b39897fd50745"
+    },
+    {
+      "path": "hrm-c12-catalog-deploy-peer-c695/pr-initial-api.json.gz",
+      "originalBytes": 19826,
+      "originalSha256": "1d760cdaeae4d96a810db6613e5090f5a1c9ab103c8754086d5206f2e2bc1be8",
+      "storedBytes": 3413,
+      "storedSha256": "f33b0326598cf1479f3ee42bd4b1e380e173c4976166aef31e201d120b67b655"
+    },
+    {
+      "path": "hrm-c12-catalog-deploy-peer-c695/run-initial-api.json.gz",
+      "originalBytes": 12398,
+      "originalSha256": "53d4916673a4cf4d9a3ea8b11a8078c6ce70dbf1dabc8e581bbda37d2fe85c75",
+      "storedBytes": 1548,
+      "storedSha256": "69a86db734de1f70c26e84b306269318f0f598767ecf343a025c09ba1468895d"
+    },
+    {
+      "path": "hrm-c12-catalog-deploy-peer-c695/superseding-associated-prs-api.json.gz",
+      "originalBytes": 18574,
+      "originalSha256": "a7e2fe7d01a42c09b96767d92b7449a3a773d16f225d7a85551d40bd1179362e",
+      "storedBytes": 3185,
+      "storedSha256": "3d951afd1e9afcebbc221e69cc353d529a09d797de16eccb1a0ed88098fec0f0"
+    },
+    {
+      "path": "hrm-c12-catalog-deploy-peer-c695/superseding-commit-api.json.gz",
+      "originalBytes": 2921,
+      "originalSha256": "e3b42d87ed84b4c7bc58dea3db64de72b700f8f1894084d51fc9959e4510c9e5",
+      "storedBytes": 1436,
+      "storedSha256": "668081dcee1f3e17eb54c5333fa0b5a8db080c38874adb56a1575488679a4b08"
+    },
+    {
+      "path": "hrm-c12-catalog-deploy-peer-c695/superseding-compare-api.json.gz",
+      "originalBytes": 400141,
+      "originalSha256": "58795750d308addcfc6beec69bddf50bc85aaa3a9964eccb105e99688cbbc14a",
+      "storedBytes": 91117,
+      "storedSha256": "fa2eebb7d7f84f22ff1b45b854c672cb8fb2e7e90f1a05f760b8cd02fda59721"
+    },
+    {
+      "path": "hrm-c12-catalog-deploy-peer-c695/superseding-runs-api.json.gz",
+      "originalBytes": 49985,
+      "originalSha256": "bc5f4c41f78169ce61c7d3d76c9442eb7642f08a99a174c6725cfe35d1ae4352",
+      "storedBytes": 2334,
+      "storedSha256": "c40082c44fbb7bc3cd34bfe463c03df5ccf86c178d74e631263f50f2d3bf7768"
+    }
+  ]
+}
