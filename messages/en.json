@@ -16427,7 +16427,38 @@
       "selectAll": "All",
       "selectNone": "None",
       "onlyThis": "Only this one on the map",
-      "hiddenBadge": "hidden from the map"
+      "hiddenBadge": "hidden from the map",
+      "labels": "Name labels",
+      "labelsHint": "the name beside the marker all the time, not only under the pointer",
+      "trails": "Trail",
+      "trailsHint": "where the employee has been in the last half hour, while the map is open",
+      "glide": "Smooth movement",
+      "glideHint": "the marker glides to its new place instead of jumping"
+    },
+    "tools": {
+      "point": "Address or point",
+      "ruler": "Ruler",
+      "fullscreen": "Full screen",
+      "exitFullscreen": "Normal size",
+      "searchPlaceholder": "Address or place",
+      "searchButton": "Find",
+      "searching": "Searching…",
+      "searchTooShort": "Type at least 3 letters",
+      "noResults": "Nothing found. Spell the street the way the map names it.",
+      "searchFailed": "Address search is unavailable right now",
+      "rateLimited": "Too many searches. Try again in a minute.",
+      "pickOnMap": "Mark a point on the map",
+      "cancel": "Cancel",
+      "pickingHint": "Press the map at the place you need",
+      "pointPicked": "Point on the map",
+      "pointHint": "The list will show the distance from every employee to this point — the nearest first.",
+      "nearestTo": "Nearest to: {label}",
+      "clearPoint": "Remove",
+      "rulerTotal": "Ruler: {distance}",
+      "rulerStart": "Press the map to put the first point",
+      "rulerHint": "Every press adds a segment",
+      "rulerUndo": "Remove the last one",
+      "rulerDone": "Done"
     },
     "roster": {
       "shownCount": "{shown} of {total}",
@@ -16452,6 +16483,7 @@
         "name": "Employee",
         "status": "Status",
         "signal": "Signal",
+        "distance": "To the point",
         "team": "Team",
         "app": "App",
         "workday": "Workday",
@@ -16494,6 +16526,13 @@
         "MID": "20–50%",
         "HIGH": "Above 50%",
         "UNKNOWN": "No data"
+      },
+      "distance": {
+        "NEAR": "Under 1 km",
+        "CLOSE": "1–5 km",
+        "FAR": "5–20 km",
+        "VERY_FAR": "Over 20 km",
+        "UNKNOWN": "No fresh coordinate"
       },
       "sort": {
         "text": {

@@ -14,15 +14,22 @@
  *
  * Pure data and pure functions — imported by the page in the browser.
  */
-import type { MtmDashboardAgent } from "@/lib/mtm-types"
+import { calculateDistance } from "@/lib/geo-utils"
+import { isLiveMapPositionVisible, type MtmDashboardAgent } from "@/lib/mtm-types"
 
-export const ROSTER_COLUMNS = ["name", "status", "signal", "team", "app", "workday", "route", "speed", "battery"] as const
+export const ROSTER_COLUMNS = ["name", "status", "signal", "distance", "team", "app", "workday", "route", "speed", "battery"] as const
 export type RosterColumnId = typeof ROSTER_COLUMNS[number]
 
 /** What fits beside the map. A narrow list always has these, whatever the wide table shows. */
 export const ROSTER_NARROW_COLUMNS: readonly RosterColumnId[] = ["name", "status", "signal"]
+/**
+ * …and while a point is picked on the map — «who is nearest to this address» —
+ * the distance to it takes the place of the signal's age: it is the question
+ * being asked.
+ */
+export const ROSTER_NARROW_COLUMNS_WITH_POINT: readonly RosterColumnId[] = ["name", "status", "distance"]
 /** The wide table, until somebody chooses otherwise. */
-export const ROSTER_DEFAULT_COLUMNS: readonly RosterColumnId[] = ["name", "status", "signal", "team", "workday", "route", "battery"]
+export const ROSTER_DEFAULT_COLUMNS: readonly RosterColumnId[] = ["name", "status", "signal", "distance", "team", "workday", "route", "battery"]
 /**
  * Columns nobody can switch off. The name is the row. The status is what the
  * chips above the map count: a row that does not say it leaves a person counted
@@ -37,6 +44,7 @@ export const ROSTER_WORKDAY_ORDER = ["ACTIVE", "PAUSED", "NOT_STARTED", "CLOSED"
 export const ROSTER_ROUTE_ORDER = ["IN_PROGRESS", "NOT_STARTED", "DONE", "NONE"] as const
 export const ROSTER_SPEED_ORDER = ["MOVING", "STILL", "UNKNOWN"] as const
 export const ROSTER_BATTERY_ORDER = ["LOW", "MID", "HIGH", "UNKNOWN"] as const
+export const ROSTER_DISTANCE_ORDER = ["NEAR", "CLOSE", "FAR", "VERY_FAR", "UNKNOWN"] as const
 /** The value of the team column for somebody who is in no team. */
 export const ROSTER_NO_TEAM = "__none__"
 
@@ -48,6 +56,7 @@ const FIXED_ORDER: Partial<Record<RosterColumnId, readonly string[]>> = {
   route: ROSTER_ROUTE_ORDER,
   speed: ROSTER_SPEED_ORDER,
   battery: ROSTER_BATTERY_ORDER,
+  distance: ROSTER_DISTANCE_ORDER,
 }
 
 /** Below this the phone is «standing»: GPS noise reads as one or two km/h. */
@@ -78,6 +87,11 @@ export function rosterValue(agent: MtmDashboardAgent, column: RosterColumnId): s
     case "battery":
       if (typeof agent.battery !== "number" || !Number.isFinite(agent.battery)) return "UNKNOWN"
       return agent.battery < 20 ? "LOW" : agent.battery < 50 ? "MID" : "HIGH"
+    case "distance": {
+      const meters = agent.distanceMeters
+      if (typeof meters !== "number" || !Number.isFinite(meters)) return "UNKNOWN"
+      return meters < 1_000 ? "NEAR" : meters < 5_000 ? "CLOSE" : meters < 20_000 ? "FAR" : "VERY_FAR"
+    }
   }
 }
 
@@ -239,6 +253,7 @@ function sortKey(agent: MtmDashboardAgent, column: RosterColumnId): number | str
     }
     case "speed": return typeof agent.speed === "number" && Number.isFinite(agent.speed) ? agent.speed : null
     case "battery": return typeof agent.battery === "number" && Number.isFinite(agent.battery) ? agent.battery : null
+    case "distance": return typeof agent.distanceMeters === "number" && Number.isFinite(agent.distanceMeters) ? agent.distanceMeters : null
   }
 }
 
@@ -292,6 +307,22 @@ export function groupRoster(agents: readonly MtmDashboardAgent[], groupBy: Roste
   return keys.map((key) => ({ key, agents: groups.get(key) ?? [] }))
 }
 
+/**
+ * Metres from an employee to the point picked on the map — «who is nearest to
+ * this address». Asked of where people are now: a position that is no longer
+ * live gives `null`, or somebody who left that street yesterday would head the
+ * list of the nearest.
+ */
+export function rosterDistanceToPoint(
+  agent: MtmDashboardAgent,
+  point: { latitude: number; longitude: number },
+): number | null {
+  const { latitude, longitude } = agent
+  if (!isLiveMapPositionVisible(agent.freshness)) return null
+  if (typeof latitude !== "number" || !Number.isFinite(latitude) || typeof longitude !== "number" || !Number.isFinite(longitude)) return null
+  return calculateDistance(latitude, longitude, point.latitude, point.longitude)
+}
+
 export type RosterTickState = "all" | "some" | "none"
 
 /** The tick above a set of rows: are they all on the map, some of them, or none. */
@@ -322,8 +353,10 @@ export function availableRosterColumns(
   options: { workforceEnabled: boolean },
 ): RosterColumnId[] {
   const hasTeams = agents.some((agent) => Boolean(agent.teamId))
+  // The distance exists only while a point is picked on the map.
+  const hasPoint = agents.some((agent) => agent.distanceMeters !== undefined)
   return ROSTER_COLUMNS.filter((column) =>
-    (column !== "team" || hasTeams) && (column !== "workday" || options.workforceEnabled))
+    (column !== "team" || hasTeams) && (column !== "workday" || options.workforceEnabled) && (column !== "distance" || hasPoint))
 }
 
 /**

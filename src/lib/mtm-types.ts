@@ -74,6 +74,12 @@ export interface MtmDashboardAgent extends Omit<LiveMapAgent, "latitude" | "long
   /** Stops visited and stops in all of today's routes that count; 0 of 0 = no route. */
   routeVisited?: number
   routeTotal?: number
+  /**
+   * Metres to the point the dispatcher picked on the live map. Set by the
+   * page, never by the API: `null` — a point is picked but this employee has
+   * no coordinate to measure from; absent — no point is picked.
+   */
+  distanceMeters?: number | null
 }
 
 export interface LiveMapViewportBounds {

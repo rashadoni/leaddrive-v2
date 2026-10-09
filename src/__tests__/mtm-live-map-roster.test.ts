@@ -571,7 +571,7 @@ describe("the list on the page", () => {
     expect((byTestId("live-map-roster-column-toggle-status") as HTMLInputElement).disabled).toBe(true)
     await press(byTestId("live-map-roster-column-toggle-speed"))
     await press(byTestId("live-map-roster-column-toggle-signal"))
-    expect(state.view.columns).toEqual(["name", "status", "team", "workday", "route", "battery", "speed"])
+    expect(state.view.columns).toEqual(["name", "status", "distance", "team", "workday", "route", "battery", "speed"])
     expect(cell("a2", "speed").textContent).toBe("30 км/ч")
     // The signal left the wide table but not the narrow list.
     expect(cell("a1", "signal").className).toContain("@2xl:hidden")
@@ -711,7 +711,7 @@ describe("the page behind the list", () => {
   const roster = readFileSync("src/components/mtm/live-map-roster.tsx", "utf8")
 
   it("draws on the map only the rows the list shows", () => {
-    expect(page).toMatch(/const filteredAgents = useMemo\(\s*\(\) => sortRoster\(applyRosterFilters\(agents, rosterFilters\), rosterView\.sort, locale\)/)
+    expect(page).toMatch(/const filteredAgents = useMemo\(\s*\(\) => sortRoster\(applyRosterFilters\(agents, rosterFilters\), rosterSort, locale\)/)
     expect(page).toContain("const mapAgents: LiveMapAgent[] = filteredAgents.flatMap((agent) => {")
     expect(page).toContain("rows={filteredAgents}")
   })
@@ -742,8 +742,8 @@ describe("the page behind the list", () => {
   })
 
   it("remembers the layout in the browser and forgets the filters with the visit", () => {
-    expect(page).toContain("window.localStorage.setItem(ROSTER_VIEW_STORAGE_KEY, JSON.stringify(next))")
-    expect(page).toContain("setRosterView(parseRosterView(stored))")
+    expect(page).toContain("window.localStorage.setItem(ROSTER_VIEW_STORAGE_KEY, JSON.stringify(stored))")
+    expect(page).toContain("const view = parseRosterView(stored)")
     expect(page).not.toMatch(/localStorage\.setItem\([^)]*rosterFilters/)
     // Another organization or viewer starts with no filter and nobody hidden.
     expect(page).toMatch(/setRosterFilters\(\{\}\)\s*setHiddenAgentIds\(new Set\(\)\)/)
@@ -787,7 +787,7 @@ describe("the page behind the list", () => {
   })
 
   it("keeps the map's own layer order inside the map, so a menu of the list is never drawn behind it", () => {
-    expect(page).toContain('<div className="relative isolate order-1 h-[54vh]')
+    expect(page).toContain('className="relative isolate order-1 h-[54vh]')
   })
 
   it("lets the signal go on ageing in the list while polls fail", () => {

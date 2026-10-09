@@ -13,6 +13,7 @@ import {
   ROSTER_GROUPINGS,
   ROSTER_LOCKED_COLUMNS,
   ROSTER_NARROW_COLUMNS,
+  ROSTER_NARROW_COLUMNS_WITH_POINT,
   ROSTER_NO_TEAM,
   rosterFilterOptions,
   rosterSignalAge,
@@ -46,7 +47,7 @@ export const ROSTER_STATUS_DOT_CLASS: Record<string, string> = {
 const STATUS_LABEL_KEYS: Record<string, string> = FIELD_STATUS_LABEL_KEYS
 
 const SORT_KIND: Record<RosterColumnId, RosterSortKind> = {
-  name: "text", status: "order", signal: "time", team: "text", app: "order", workday: "order", route: "number", speed: "number", battery: "number",
+  name: "text", status: "order", signal: "time", distance: "number", team: "text", app: "order", workday: "order", route: "number", speed: "number", battery: "number",
 }
 
 /**
@@ -57,6 +58,7 @@ const WIDE_TRACK: Record<RosterColumnId, string> = {
   name: "minmax(0,1.6fr)",
   status: "minmax(0,1.2fr)",
   signal: "5rem",
+  distance: "6rem",
   team: "minmax(0,1.1fr)",
   app: "minmax(0,0.9fr)",
   workday: "minmax(0,1.2fr)",
@@ -117,6 +119,8 @@ export interface LiveMapRosterProps {
   formatVisitOpened: (value: string) => string
   /** Whether a moment was on an earlier day than today, in the organization's time zone. */
   isEarlierDay: (value: string) => boolean
+  /** «450 m», «7,8 km» — for the distance to the point picked on the map. */
+  formatDistance?: (meters: number) => string
 }
 
 /**
@@ -139,6 +143,7 @@ export function LiveMapRoster({
   agents, rows, searchSlot, filters, onFiltersChange, view, onViewChange, onHide, hiddenOnWide = false,
   hiddenAgentIds, onToggleAgentOnMap, onSetAgentsOnMap, selectedAgentId, onSelect, selectedDetailRef,
   renderDetail, nowMs, workforceEnabled, formatClock, formatVisitOpened, isEarlierDay,
+  formatDistance = (meters) => `${Math.round(meters)} m`,
 }: LiveMapRosterProps) {
   const tMap = useTranslations("mtmMap")
   const locale = useLocale()
@@ -161,8 +166,12 @@ export function LiveMapRoster({
   }, [])
 
   const available = useMemo(() => availableRosterColumns(agents, { workforceEnabled }), [agents, workforceEnabled])
-  const wideColumns = available.filter((column) => ROSTER_LOCKED_COLUMNS.includes(column) || view.columns.includes(column))
-  const narrowColumns = ROSTER_NARROW_COLUMNS
+  // The distance exists only while a point is picked on the map, and then it
+  // is what is being asked: it is shown without being chosen, and beside the
+  // map it takes the place of the signal's age.
+  const hasPoint = available.includes("distance")
+  const wideColumns = available.filter((column) => ROSTER_LOCKED_COLUMNS.includes(column) || column === "distance" || view.columns.includes(column))
+  const narrowColumns = hasPoint ? ROSTER_NARROW_COLUMNS_WITH_POINT : ROSTER_NARROW_COLUMNS
   const drawnColumns = available.filter((column) => narrowColumns.includes(column) || wideColumns.includes(column))
   // A layout remembered from another organization may name a column this roster does not have.
   const groupBy: RosterGroupBy = view.groupBy === "none" || available.includes(view.groupBy) ? view.groupBy : "none"
@@ -196,6 +205,7 @@ export function LiveMapRoster({
       case "route": return tMap(`roster.route.${value}`)
       case "speed": return tMap(`roster.speed.${value}`)
       case "battery": return tMap(`roster.battery.${value}`)
+      case "distance": return tMap(`roster.distance.${value}`)
     }
   }
   const columnLabel = (column: RosterColumnId) => tMap(`roster.columns.${column}`)
@@ -347,6 +357,10 @@ export function LiveMapRoster({
         return typeof agent.battery === "number" && Number.isFinite(agent.battery)
           ? <span className={cn("block truncate tabular-nums", agent.battery < 20 && "font-medium text-red-600 dark:text-red-400")}>{Math.round(agent.battery)}%</span>
           : <span className="text-muted-foreground">—</span>
+      case "distance":
+        return typeof agent.distanceMeters === "number" && Number.isFinite(agent.distanceMeters)
+          ? <span className="block truncate tabular-nums font-medium" data-testid={`live-map-agent-distance-${agent.agentId}`}>{formatDistance(agent.distanceMeters)}</span>
+          : <span className="text-muted-foreground" title={tMap("roster.distance.UNKNOWN")}>—</span>
     }
   }
 
@@ -450,7 +464,7 @@ export function LiveMapRoster({
                 <legend className="px-1 text-[11px] font-semibold uppercase text-muted-foreground">{tMap("roster.columnsTitle")}</legend>
                 <p className="px-1 pb-1 text-[11px] text-muted-foreground">{tMap("roster.columnsHint")}</p>
                 <div className="grid grid-cols-2 gap-x-2">
-                {available.map((column) => (
+                {available.filter((column) => column !== "distance").map((column) => (
                   <label key={column} className={MENU_ROW}>
                     <input
                       type="checkbox"

@@ -16423,7 +16423,38 @@
       "selectAll": "Hamısı",
       "selectNone": "Heç kim",
       "onlyThis": "Xəritədə yalnız o",
-      "hiddenBadge": "xəritədən gizlədilib"
+      "hiddenBadge": "xəritədən gizlədilib",
+      "labels": "Ad yazıları",
+      "labelsHint": "ad nişanın yanında həmişə görünür, yalnız kursorun altında yox",
+      "trails": "İz",
+      "trailsHint": "xəritə açıq olduğu müddətdə əməkdaşın son yarım saatda olduğu yerlər",
+      "glide": "Səlis hərəkət",
+      "glideHint": "nişan yeni yerə tullanmır, sürüşür"
+    },
+    "tools": {
+      "point": "Ünvan və ya nöqtə",
+      "ruler": "Xətkeş",
+      "fullscreen": "Tam ekran",
+      "exitFullscreen": "Adi ölçü",
+      "searchPlaceholder": "Ünvan və ya yer",
+      "searchButton": "Tap",
+      "searching": "Axtarılır…",
+      "searchTooShort": "Ən azı 3 hərf yazın",
+      "noResults": "Heç nə tapılmadı. Küçənin adını xəritədəki kimi yazın.",
+      "searchFailed": "Ünvan axtarışı hazırda əlçatan deyil",
+      "rateLimited": "Çox sayda sorğu. Bir dəqiqədən sonra yenidən cəhd edin.",
+      "pickOnMap": "Xəritədə nöqtə göstər",
+      "cancel": "Ləğv et",
+      "pickingHint": "Xəritədə lazım olan yerə basın",
+      "pointPicked": "Xəritədəki nöqtə",
+      "pointHint": "Siyahı hər əməkdaşdan bu nöqtəyə qədər məsafəni göstərəcək — ən yaxınlar yuxarıda.",
+      "nearestTo": "Ən yaxınlar: {label}",
+      "clearPoint": "Sil",
+      "rulerTotal": "Xətkeş: {distance}",
+      "rulerStart": "İlk nöqtəni qoymaq üçün xəritəyə basın",
+      "rulerHint": "Hər basış bir hissə əlavə edir",
+      "rulerUndo": "Sonuncunu sil",
+      "rulerDone": "Hazırdır"
     },
     "roster": {
       "shownCount": "{shown} / {total}",
@@ -16448,6 +16479,7 @@
         "name": "Əməkdaş",
         "status": "Status",
         "signal": "Siqnal",
+        "distance": "Nöqtəyədək",
         "team": "Şöbə",
         "app": "Tətbiq",
         "workday": "İş günü",
@@ -16490,6 +16522,13 @@
         "MID": "20–50%",
         "HIGH": "50%-dən yuxarı",
         "UNKNOWN": "Məlumat yoxdur"
+      },
+      "distance": {
+        "NEAR": "1 km-ə qədər",
+        "CLOSE": "1–5 km",
+        "FAR": "5–20 km",
+        "VERY_FAR": "20 km-dən uzaq",
+        "UNKNOWN": "Yeni koordinat yoxdur"
       },
       "sort": {
         "text": {

@@ -121,7 +121,7 @@ describe("what the page takes off the map", () => {
     expect(page).toContain("if (!showAgentMarkers || hiddenAgentIds.has(agent.agentId)) return []")
     // The list keeps everybody: hiding is about the map, not the roster — the
     // rows are decided by the filters alone, with no look at who is hidden.
-    expect(page).toMatch(/const filteredAgents = useMemo\(\s*\(\) => sortRoster\(applyRosterFilters\(agents, rosterFilters\), rosterView\.sort, locale\)/)
+    expect(page).toMatch(/const filteredAgents = useMemo\(\s*\(\) => sortRoster\(applyRosterFilters\(agents, rosterFilters\), rosterSort, locale\)/)
     // A tick per employee (owner, 2026-10-09: «галочкой выбирать… некоторых
     // конкретных видеть одновременно, кто где находится»): a real checkbox.
     expect(roster).toMatch(/<input\s+type="checkbox"\s+checked=\{!hiddenAgentIds\.has\(agent\.agentId\)\}\s+onChange=\{\(\) => onToggleAgentOnMap\(agent\.agentId\)\}/)

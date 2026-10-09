@@ -15,16 +15,20 @@ import { calculateDistance } from "@/lib/geo-utils"
 import { LiveMapDaySteps } from "@/components/mtm/live-map-day-steps"
 import { LiveMapLayersControl } from "@/components/mtm/live-map-layers-control"
 import { LiveMapRoster } from "@/components/mtm/live-map-roster"
+import { LiveMapTools } from "@/components/mtm/live-map-tools"
+import { extendLiveMapTrails, pathLengthMeters, type LiveMapTrails } from "@/lib/mtm/live-map-trails"
 import {
   applyRosterFilters,
   parseRosterView,
   pickRosterStatus,
   ROSTER_DEFAULT_VIEW,
   ROSTER_VIEW_STORAGE_KEY,
+  rosterDistanceToPoint,
   rosterStatusChipOn,
   rosterValue,
   sortRoster,
   type RosterFilters,
+  type RosterSort,
   type RosterView,
 } from "@/lib/mtm/live-map-roster"
 import { liveMapDaySteps } from "@/lib/mtm/live-map-day-steps"
@@ -34,7 +38,7 @@ import { mtmLiveFeedHistoryHref, type MtmLiveFeedAlertGroup } from "@/lib/mtm/li
 import { summarizeMtmRouteExecution } from "@/lib/mtm/route-point-execution"
 import { hasMtmCoordinates } from "@/lib/mtm/geo-coordinates"
 import { saveRouteCache, loadRouteCache, routeCacheKey } from "@/lib/mtm/route-cache"
-import type { RouteStop } from "@/components/mtm/live-map"
+import type { LiveMapReferencePoint, RouteStop } from "@/components/mtm/live-map"
 import type { MtmRoutePoint, MtmRouteRecord } from "@/components/mtm/route-types"
 import { LocationHistoryPanel } from "@/components/mtm/location-history-panel"
 import {
@@ -95,6 +99,25 @@ interface AgentRouteSnapshot {
   identity: string
   route: MtmRouteRecord | null
   fromCache: boolean
+}
+
+/** How the map is drawn — remembered in the browser like the list's layout. */
+const MAP_LOOK_STORAGE_KEY = "leaddrive.mtm.live-map.look.v1"
+const DEFAULT_MAP_LOOK = { labels: false, trails: true, glide: true }
+/** With a point picked the list answers «who is nearest» — until another order is asked for. */
+const NEAREST_FIRST: RosterSort = { column: "distance", direction: "asc" }
+
+function parseMapLook(raw: string | null): typeof DEFAULT_MAP_LOOK {
+  try {
+    const stored = raw ? JSON.parse(raw) as Record<string, unknown> : {}
+    return {
+      labels: typeof stored.labels === "boolean" ? stored.labels : DEFAULT_MAP_LOOK.labels,
+      trails: typeof stored.trails === "boolean" ? stored.trails : DEFAULT_MAP_LOOK.trails,
+      glide: typeof stored.glide === "boolean" ? stored.glide : DEFAULT_MAP_LOOK.glide,
+    }
+  } catch {
+    return DEFAULT_MAP_LOOK
+  }
 }
 
 /** The «day route» layer switched off: one stable empty list, so the map does not refit on every render. */
@@ -200,6 +223,23 @@ export default function MtmMapPage() {
   const [showAgentMarkers, setShowAgentMarkers] = useState(true)
   const [showDayRoute, setShowDayRoute] = useState(true)
   const [hiddenAgentIds, setHiddenAgentIds] = useState<ReadonlySet<string>>(() => new Set())
+  // How the markers are drawn (owner, 2026-10-09, of the tracker shown to him
+  // as the model: «бери почти всё, чего нет у нас»): names beside them, the
+  // tail of where each has just been, a glide instead of a jump.
+  const [mapLook, setMapLook] = useState(DEFAULT_MAP_LOOK)
+  const [trails, setTrails] = useState<LiveMapTrails>(() => new Map())
+  // The tools on the map: a ruler, and a point — an address found or a place
+  // pressed — that the list then measures everybody against.
+  const [rulerActive, setRulerActive] = useState(false)
+  const [rulerPoints, setRulerPoints] = useState<Array<{ latitude: number; longitude: number }>>([])
+  const [pickingPoint, setPickingPoint] = useState(false)
+  const [referencePoint, setReferencePoint] = useState<LiveMapReferencePoint | null>(null)
+  const [nearestFirst, setNearestFirst] = useState(false)
+  const [mapFullscreen, setMapFullscreen] = useState(false)
+  const [fullscreenSupported, setFullscreenSupported] = useState(false)
+  const mapFrameRef = useRef<HTMLDivElement | null>(null)
+  /** The order that is remembered in the browser — never the distance to a point. */
+  const storedSortRef = useRef<RosterSort>(ROSTER_DEFAULT_VIEW.sort)
   const [routeSnapshot, setRouteSnapshot] = useState<AgentRouteSnapshot | null>(null)
   const [freshnessNow, setFreshnessNow] = useState<number | null>(null)
   const selectedAgentRef = useRef<string | null>(null)
@@ -226,12 +266,12 @@ export default function MtmMapPage() {
   const tenantToday = contract?.today ?? ""
   const presentationNow = freshnessNow ?? (contract ? Date.parse(contract.generatedAt) : 0)
   const agents = useMemo(
-    () => (roster?.agents ?? []).map((agent) => presentMtmDashboardAgent(
-      agent,
-      contract?.freshnessThresholds,
-      presentationNow,
-    )),
-    [contract, presentationNow, roster?.agents],
+    () => (roster?.agents ?? []).map((agent) => {
+      const presented = presentMtmDashboardAgent(agent, contract?.freshnessThresholds, presentationNow)
+      // With a point picked on the map every row says how far its employee is from it.
+      return referencePoint ? { ...presented, distanceMeters: rosterDistanceToPoint(presented, referencePoint) } : presented
+    }),
+    [contract, presentationNow, referencePoint, roster?.agents],
   )
   const teams = roster?.teams ?? []
   const liveFeed = roster?.liveFeed ?? []
@@ -251,19 +291,58 @@ export default function MtmMapPage() {
     const timer = window.setTimeout(() => setDebouncedEmployeeFilter(employeeFilter.trim()), 400)
     return () => window.clearTimeout(timer)
   }, [employeeFilter])
-  // The layout of the list comes back as it was left in this browser.
+  // The layout of the list and the look of the map come back as they were left in this browser.
   useEffect(() => {
     try {
       const stored = window.localStorage.getItem(ROSTER_VIEW_STORAGE_KEY)
-      if (stored) setRosterView(parseRosterView(stored))
-    } catch { /* storage closed to the page: the default layout */ }
+      if (stored) {
+        const view = parseRosterView(stored)
+        storedSortRef.current = view.sort
+        setRosterView(view)
+      }
+      setMapLook(parseMapLook(window.localStorage.getItem(MAP_LOOK_STORAGE_KEY)))
+    } catch { /* storage closed to the page: the defaults */ }
   }, [])
-  const changeRosterView = useCallback((next: RosterView) => {
-    setRosterView(next)
+  const changeMapLook = (change: Partial<typeof DEFAULT_MAP_LOOK>) => {
+    const next = { ...mapLook, ...change }
+    setMapLook(next)
     try {
-      window.localStorage.setItem(ROSTER_VIEW_STORAGE_KEY, JSON.stringify(next))
+      window.localStorage.setItem(MAP_LOOK_STORAGE_KEY, JSON.stringify(next))
     } catch { /* not remembered; still applied */ }
+  }
+  // The whole screen for the map: the browser's own full screen, on the map's frame.
+  useEffect(() => {
+    setFullscreenSupported(typeof document !== "undefined" && typeof document.documentElement.requestFullscreen === "function")
+    const onChange = () => setMapFullscreen(document.fullscreenElement != null && document.fullscreenElement === mapFrameRef.current)
+    document.addEventListener("fullscreenchange", onChange)
+    return () => document.removeEventListener("fullscreenchange", onChange)
   }, [])
+  const toggleMapFullscreen = useCallback(() => {
+    if (document.fullscreenElement) void document.exitFullscreen?.()
+    else void mapFrameRef.current?.requestFullscreen?.()?.catch?.(() => undefined)
+  }, [])
+  // The ruler measures while it is on; switched off, it forgets its points.
+  const switchRuler = useCallback((on: boolean) => {
+    setRulerActive(on)
+    setRulerPoints([])
+  }, [])
+  const rulerMeters = useMemo(() => pathLengthMeters(rulerPoints), [rulerPoints])
+  // A point picked: the list turns to «nearest first» until another order is asked for.
+  const changeReferencePoint = useCallback((point: LiveMapReferencePoint | null) => {
+    setReferencePoint(point)
+    setNearestFirst(point != null)
+    setPickingPoint(false)
+    // The point gone, an order «by distance» has nothing to measure: back to the remembered one.
+    if (!point) setRosterView((view) => view.sort.column === "distance" ? { ...view, sort: storedSortRef.current } : view)
+  }, [])
+  // A press on the map itself belongs to the tool that is waiting for it: the
+  // ruler takes one more point, «point on the map» takes its one. With neither
+  // on, the map does not report presses at all.
+  const pickedPointLabel = tMap("tools.pointPicked")
+  const handleMapPress = useCallback((latitude: number, longitude: number) => {
+    if (rulerActive) setRulerPoints((points) => [...points, { latitude, longitude }])
+    else if (pickingPoint) changeReferencePoint({ latitude, longitude, label: pickedPointLabel })
+  }, [changeReferencePoint, pickedPointLabel, pickingPoint, rulerActive])
   const switchMapMode = useCallback((next: "live" | "history") => {
     const params = new URLSearchParams(searchParams.toString())
     // Live mode carries no history window and no employee from a history
@@ -299,6 +378,12 @@ export default function MtmMapPage() {
     // Another organization or viewer: its people are not the ones filtered or hidden here.
     setRosterFilters({})
     setHiddenAgentIds(new Set())
+    setTrails(new Map())
+    setReferencePoint(null)
+    setNearestFirst(false)
+    setPickingPoint(false)
+    setRulerActive(false)
+    setRulerPoints([])
     setLoadError(null)
     setFreshnessNow(null)
     setRefreshBlockedUntil(0)
@@ -435,6 +520,8 @@ export default function MtmMapPage() {
       }
       rosterSnapshotRef.current = nextSnapshot
       setRosterSnapshot(nextSnapshot)
+      // «След»: one more position per employee, from this answer and no other source.
+      setTrails((current) => extendLiveMapTrails(current, nextAgents, Date.parse(nextContract.generatedAt)))
       setFreshnessNow(Date.parse(nextContract.generatedAt))
       setLoadError(null)
       const focusedAgentId = selectedAgentRef.current
@@ -654,10 +741,31 @@ export default function MtmMapPage() {
   // name search is the server's (it narrows `agents` itself), so a roster too
   // long to load whole is searched whole. The map draws nobody outside these
   // rows; hiding somebody with his tick is about the map, not the list.
+  // The order of the list. With a point picked on the map it is «nearest
+  // first» until somebody asks for another order; with no point there is no
+  // distance to sort by.
+  const rosterSort: RosterSort = referencePoint && nearestFirst
+    ? NEAREST_FIRST
+    : rosterView.sort.column === "distance" && !referencePoint ? ROSTER_DEFAULT_VIEW.sort : rosterView.sort
   const filteredAgents = useMemo(
-    () => sortRoster(applyRosterFilters(agents, rosterFilters), rosterView.sort, locale),
-    [agents, locale, rosterFilters, rosterView.sort],
+    () => sortRoster(applyRosterFilters(agents, rosterFilters), rosterSort, locale),
+    // The order is two plain words; the object is new on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [agents, locale, rosterFilters, rosterSort.column, rosterSort.direction],
   )
+  const changeRosterView = (next: RosterView) => {
+    // The list hands back the order it was shown. Only a different one is a choice.
+    const sortChosen = next.sort.column !== rosterSort.column || next.sort.direction !== rosterSort.direction
+    if (sortChosen) setNearestFirst(false)
+    const view: RosterView = { ...next, sort: sortChosen ? next.sort : rosterView.sort }
+    setRosterView(view)
+    try {
+      // The distance is never the remembered order: tomorrow there is no point to be near to.
+      const stored: RosterView = view.sort.column === "distance" ? { ...view, sort: storedSortRef.current } : view
+      storedSortRef.current = stored.sort
+      window.localStorage.setItem(ROSTER_VIEW_STORAGE_KEY, JSON.stringify(stored))
+    } catch { /* not remembered; still applied */ }
+  }
   const hiddenOnMapCount = useMemo(
     () => agents.reduce((count, agent) => count + (hiddenAgentIds.has(agent.agentId) ? 1 : 0), 0),
     [agents, hiddenAgentIds],
@@ -1089,7 +1197,7 @@ export default function MtmMapPage() {
         {/* Map. `isolate` keeps Leaflet's own layer order (its panes go up to
             z-index 1000) inside the map: a menu opened from the list — above the
             map on a phone, where the list stands under it — is not drawn behind it. */}
-        <div className="relative isolate order-1 h-[54vh] min-h-[360px] overflow-hidden rounded-lg border border-zinc-200 bg-card lg:sticky lg:top-3 lg:h-[calc(100vh-7rem)] lg:min-h-[480px] dark:border-zinc-700">
+        <div ref={mapFrameRef} data-testid="mtm-map-frame" className="relative isolate order-1 h-[54vh] min-h-[360px] overflow-hidden rounded-lg border border-zinc-200 bg-card lg:sticky lg:top-3 lg:h-[calc(100vh-7rem)] lg:min-h-[480px] dark:border-zinc-700">
           {showRosterLoading ? (
             <div className="h-full flex items-center justify-center text-muted-foreground text-sm">{tMap("loadingMap")}</div>
           ) : (
@@ -1106,6 +1214,13 @@ export default function MtmMapPage() {
               focusStopOrder={selectedStop}
               onStopSelect={setSelectedStop}
               followAgent={followSelected}
+              showLabels={mapLook.labels}
+              trails={mapLook.trails ? trails : null}
+              glideMarkers={mapLook.glide}
+              pressMode={rulerActive ? "ruler" : pickingPoint ? "point" : null}
+              onMapPress={handleMapPress}
+              rulerPoints={rulerPoints}
+              referencePoint={referencePoint}
             />
           )}
           {showRosterLoading ? null : (
@@ -1113,12 +1228,33 @@ export default function MtmMapPage() {
               layers={[
                 { id: "agents", label: tMap("layers.agents"), hint: tMap("layers.agentsHint"), on: showAgentMarkers, onToggle: () => setShowAgentMarkers((on) => !on), shownByDefault: true },
                 { id: "route", label: tMap("layers.route"), hint: tMap("layers.routeHint"), on: showDayRoute, onToggle: () => setShowDayRoute((on) => !on), shownByDefault: true },
+                { id: "labels", label: tMap("layers.labels"), hint: tMap("layers.labelsHint"), on: mapLook.labels, onToggle: () => changeMapLook({ labels: !mapLook.labels }) },
+                { id: "trails", label: tMap("layers.trails"), hint: tMap("layers.trailsHint"), on: mapLook.trails, onToggle: () => changeMapLook({ trails: !mapLook.trails }), shownByDefault: true },
+                { id: "glide", label: tMap("layers.glide"), hint: tMap("layers.glideHint"), on: mapLook.glide, onToggle: () => changeMapLook({ glide: !mapLook.glide }) },
                 { id: "zones", label: tMap("layers.zones"), hint: tMap("layers.zonesHint"), on: showGeofence, onToggle: () => setShowGeofence((on) => !on) },
                 { id: "heat", label: tMap("layers.heat"), hint: tMap("layers.heatHint"), on: showHeatmap, onToggle: () => setShowHeatmap((current) => !current), testId: "mtm-map-heatmap-toggle" },
               ]}
               hiddenAgentCount={hiddenOnMapCount}
               onShowAllAgents={() => setHiddenAgentIds(new Set())}
               note={tMap("historyOnlyExplicit")}
+            />
+          )}
+          {showRosterLoading ? null : (
+            <LiveMapTools
+              near={mapAgents[0] ? { latitude: mapAgents[0].latitude, longitude: mapAgents[0].longitude } : null}
+              referencePoint={referencePoint}
+              onReferencePointChange={changeReferencePoint}
+              pickingPoint={pickingPoint}
+              onPickingPointChange={(picking) => { setPickingPoint(picking); if (picking) switchRuler(false) }}
+              rulerActive={rulerActive}
+              onRulerToggle={() => { switchRuler(!rulerActive); setPickingPoint(false) }}
+              rulerMeters={rulerMeters}
+              rulerPointCount={rulerPoints.length}
+              onRulerUndo={() => setRulerPoints((points) => points.slice(0, -1))}
+              formatDistance={(meters) => formatMtmDistance(meters, locale, (unit, value) => tUnits(unit, { value }))}
+              fullscreen={mapFullscreen}
+              onFullscreenToggle={toggleMapFullscreen}
+              fullscreenSupported={fullscreenSupported}
             />
           )}
           {/* The list put away leaves the whole width to the map; this brings it
@@ -1154,7 +1290,7 @@ export default function MtmMapPage() {
             }
             filters={rosterFilters}
             onFiltersChange={setRosterFilters}
-            view={rosterView}
+            view={{ ...rosterView, sort: rosterSort }}
             onViewChange={changeRosterView}
             onHide={() => setRosterHidden(true)}
             hiddenAgentIds={hiddenAgentIds}
@@ -1169,6 +1305,7 @@ export default function MtmMapPage() {
             formatClock={formatTenantTime}
             formatVisitOpened={formatVisitOpened}
             isEarlierDay={(value) => visitOpenedOnAnotherDay(value, contract?.timezone)}
+            formatDistance={(meters) => formatMtmDistance(meters, locale, (unit, value) => tUnits(unit, { value }))}
           />
       </div>
 
