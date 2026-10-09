@@ -101,6 +101,30 @@ jobs:
             echo "только документация — тяжёлые проверки будут пропущены"
           fi
 
+      - name: ERP progress marks vs main
+        # Отметки «сделано» по модулям «Склад» и «Бухгалтерия» (scripts/erp):
+        # карточка взята по порядку, чужих отметок нет, запись о воротах не
+        # переписана. Шаг стоит здесь, потому что pr-scope идёт на каждом PR, в
+        # том числе на черновике, и уже скачивает всю историю.
+        #
+        # Строго проверяются ветка erp/<номер>-<slug> (любая ошибка, в том
+        # числе сбой самой проверки) и чужой PR, менявший scripts/erp или
+        # тесты правил. Остальные PR шаг за состояние не задерживает никогда:
+        # всё, что он найдёт, уже лежит в main, и он печатает это
+        # предупреждением. Менял этот файл — красным будет только пропажа
+        # обязательных строк шага; менял test-baseline.json — только тест
+        # сделанного правила в списке известных красных.
+        #
+        # База сравнения — первый родитель коммита слияния PR (тот main, с
+        # которым GitHub слил ветку), а не BASE_SHA: BASE_SHA отстаёт у
+        # старого PR, а у PR, открытого поверх чужой ветки, это вообще не
+        # коммит main. Строка команды сторожит сама себя: check_progress.py
+        # краснеет, если её отсюда убрать.
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: python3 scripts/erp/check_progress.py --branch "$GITHUB_HEAD_REF" --base-ref "$BASE_SHA" --repo "$GITHUB_WORKSPACE"
+
   static-checks:
     needs: pr-scope
     # Pull requests only. On a push to main this job proves nothing that
@@ -286,6 +310,35 @@ jobs:
         # BLOCKING — this is the one check architect explicitly called
         # out as required.
         run: npm run lint:pii-columns
+
+      - name: ERP rule tests
+        # Тесты правил «Склада» и «Бухгалтерии» (src/__tests__/erp-*.test.ts)
+        # отдельным шагом и с отчётом: отметку «сделано» в scripts/erp даёт
+        # только статус passed в этом отчёте. Пока таких тестов нет, шаг
+        # проходит пустым. Адрес настоящей базы тест берёт только отсюда;
+        # тест, пропущенный без неё, получает skipped и отметку не даёт.
+        run: npx vitest run src/__tests__/erp- --reporter=json --outputFile=erp-tests.json --passWithNoTests
+        env:
+          ERP_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+
+      - name: ERP marks vs test report
+        # Каждое «сделано» обязано иметь в отчёте ЭТОГО прогона зелёный тест со
+        # своим номером. Идёт и после красного шага выше: красный тест
+        # сделанного правила должен быть назван по номеру правила.
+        if: ${{ !cancelled() }}
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 scripts/erp/ci_report.py erp-tests.json
+          python3 scripts/erp/check_progress.py --tests-report erp-tests.json --branch "$GITHUB_HEAD_REF" --repo "$GITHUB_WORKSPACE"
+
+      - name: Upload ERP test report
+        # `mark.py rule --run <прогон>` скачивает именно этот артефакт.
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: erp-tests
+          path: erp-tests.json
 
       - name: Unit tests vs baseline (BLOCKING)
         # Was `npm test` with continue-on-error, carrying a TODO to make it

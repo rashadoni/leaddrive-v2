@@ -251,6 +251,16 @@ is an incident** — find the workflow that produced it and report it.
 
 Measured numbers and the reasoning are in `docs/ci-cost-policy.md`.
 
+## Warehouse and Accounting modules: work goes card by card
+
+Any work on the Warehouse («Склад») and Accounting («Бухгалтерия») modules
+starts with `python3 scripts/erp/next_card.py`: it names exactly one card, no
+other card may be taken, and a rule becomes "done" only through the check
+against a GitHub run report, never by the session's own word. The process rules
+are in `/home/rashad/projects/erp-private/reports/exec/EXECUTION.md` (a private
+folder on the server; the text of the rules and cards never enters this
+repository — only numbers and short titles do). Commands: `scripts/erp/README.md`.
+
 ## Project references
 
 - Architecture: `docs/ARCHITECTURE.md`
