@@ -86,3 +86,26 @@ run: retain firstcasefailure/sqlState, record restoration PASS/FAIL separately
 and throw only after cleanup; originalquery SQLSTATE retained as finiteproperty.
 Sourcebindings also cover all3 immutable migrationbodies used byfixture. No
 runtime SQLfix yet. Baseline tests/sourcehistoricalSHA/productionjob stayintact.
+
+
+## 2026-10-09 — original hosted false readiness retained; narrow fix applied
+
+Draft PR657 published and attached at0d1f85e6555d7f461041515d9ddc541ab6318749.
+Actual first PG16 run37967873542/sourcejob113946698418 FAILED:25TAP,
+21PASS/4FAIL/0SKIP (three triggercases plus aggregateparent). Every incorrect
+trigger was observed triggerBoundtrue/READY_FOR_REVIEW; WHEN(false) also bypassed
+actual missing-agent guard inside rolledback transaction. Unconditional guard
+23514, restoredhealthy, all priorledger/index/timeout/write-refusal and cleanup
+passed. Productionjob113946965773SKIPPED, no runtime inspection/replay credit.
+Original artifact11633563769 ZIP/JSON/log gzip retained byte-bound under
+original-0d1; originalZIP SHA c4075b2614887a9ed35eb5b24026df9adedd08a4f5014f373436809595e0d479,
+receiptSHA a7a8ee582537150d5dbca39e4dba2ca680e3f2857f11f81d3dc4729e68426d87.
+Read-only independent0d1review confirms firsterror/restoration/sqlState fixes,
+no new blockingP0/P1/P2 and endorses narrowplannedpredicates. No tests byreviewer.
+
+Only actualassignmenttrigger catalogpredicate now adds tgqualNULL/tgnargs0/
+emptytgattr/tgconstraint0, matching existingdecisionguardproof. Samefunction,
+event23/helper/roles/timeouts/schema/history/migrations/output preserved. Current
+main729 unchanged atfreshcheck; concurrentotheractivechat is MetaAppReview on
+its ownproject, no secondHRMwriter. Source fullCI/review stillPENDING. C12PARTIAL,
+85/161DONE/76open/61%; no production/access/Support or personnel documents.
