@@ -130,3 +130,22 @@ synthetic077d parentscdaf/607/tree995a equals actual607 reviewedtree.
 about futurefinalhead. Final source/review/hostedfullchecks stillPENDING.
 
 Original explicitstage pathguess failed128 before anyfiles staged; corrected with exactowned archivefile list. No history/data modified by failedstage.
+
+
+## 2026-10-09 — historical checksum chain preserved with current continuation
+
+d751 actualallfour preflight PGfixtures passed25/25/0fail/0skip. Subsequent
+threeACLjobs failed historical wholeSQL hash expectation (oldb174 vs current64ad)
+before later linkedtest/workflow hashes. Allthreeoriginalfailures/logs retained
+caller-checksum-d751; no productionjobran. Read-only d751review is intermediate,
+not finalacceptance, and cannot replace currentCI. All linkedfrozenchecksum
+constants remain unchanged: six main729 historicaltest/workflow snapshots added
+beside existingoldSQLfixture. Minimal3testcalls use strictsource-continuityguard:
+originalhistoricalhash AND exactreviewedcurrenthash bothrequired; unchangedsources
+still directcurrentchecksum. CorrectedSQL also must be exactoldSQL plus only
+fourpredicates; allworkflow productionblocks mustremain exacthistoricalbytes.
+No baseline/gitleaks/roles/helper/ACLproductionSQL or oldfunctionalchecks deleted,
+no repinninghistoricalSHA. Four sourceworkflow pathfilters now include bounded
+fixture directory. Final review/PG/fullfivechecks PENDING; ownsourcechanges only.
+
+Actual sequential narrow Node checks: default13PASS/1PGSKIP, loopback15PASS/1PGSKIP, backup13PASS/1PGSKIP; originalTAPretained. ResourceRAMavailable11248MiB,disk265GiB; no fullcompiler/build/install/browser/PG onContabo. Runner53/diff/syntax PASS. Independent reviewer confirms original7-sourcechecksumchain and no extra frozenchecksum consumers; sixsnapshots .txt prevent testdiscovery, exactcurrentbindings and SQLdelta/prodblock proof required.

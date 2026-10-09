@@ -1,15 +1,10 @@
-name: HRM live loopback ACL evidence
+name: HRM default ACL inspection
 
 # Supplemental read-only evidence. No ACL approval and no changes to the original metadata gate.
 # Production access is explicitly dispatched from the exact protected main head.
 on:
   pull_request:
     paths:
-      - .github/workflows/hrm-loopback-acl-inspection.yml
-      - scripts/hrm-loopback-acl-inspection.mjs
-      - scripts/hrm-loopback-acl-inspection.sql
-      - scripts/hrm-loopback-acl-inspection.test.mjs
-      - docs/hrm-loopback-acl-inspection-session-log.md
       - .github/workflows/hrm-default-acl-inspection.yml
       - scripts/hrm-default-acl-inspection.mjs
       - scripts/hrm-default-acl-inspection.sql
@@ -18,7 +13,6 @@ on:
       - scripts/hrm-migration-metadata-preflight.mjs
       - scripts/hrm-migration-metadata-preflight.sql
       - scripts/hrm-migration-metadata-preflight.test.mjs
-      - scripts/ci/fixtures/hrm-metadata-preflight/**
   workflow_dispatch:
     inputs:
       expected_main_sha:
@@ -36,7 +30,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     concurrency:
-      group: hrm-loopback-acl-source-${{ github.event.pull_request.number || github.ref }}
+      group: hrm-default-acl-source-${{ github.event.pull_request.number || github.ref }}
       cancel-in-progress: true
     services:
       postgres:
@@ -52,8 +46,6 @@ jobs:
           --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -72,10 +64,7 @@ jobs:
       - name: Check bounded Node sources and isolated SQL contracts
         env:
           CI: 'true'
-          HRM_PREFLIGHT_TEST_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          HRM_PREFLIGHT_TEST_RECEIPT: ${{ runner.temp }}/hrm-assignment-trigger-source.json
           HRM_PREFLIGHT_TEST_DATABASE_URL: postgresql://postgres:isolated-preflight-only@127.0.0.1:${{ job.services.postgres.ports[5432] }}/hrm_preflight_test
-          HRM_LOOPBACK_ACL_TEST_DATABASE_URL: postgresql://postgres:isolated-preflight-only@127.0.0.1:${{ job.services.postgres.ports[5432] }}/hrm_preflight_test
           HRM_DEFAULT_ACL_TEST_DATABASE_URL: postgresql://postgres:isolated-preflight-only@127.0.0.1:${{ job.services.postgres.ports[5432] }}/hrm_preflight_test
         run: |
           set -euo pipefail
@@ -85,34 +74,10 @@ jobs:
           node --check scripts/hrm-default-acl-inspection.mjs
           node --check scripts/hrm-default-acl-inspection.test.mjs
           node --test scripts/hrm-default-acl-inspection.test.mjs
-          node --check scripts/hrm-loopback-acl-inspection.mjs
-          node --check scripts/hrm-loopback-acl-inspection.test.mjs
-          node --test scripts/hrm-loopback-acl-inspection.test.mjs
           node scripts/ci/check-github-runner-policy.mjs
           git diff --check
-      - name: Retain finite early source failure
-        if: always()
-        env:
-          HRM_PREFLIGHT_TEST_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          HRM_PREFLIGHT_TEST_RECEIPT: ${{ runner.temp }}/hrm-assignment-trigger-source.json
-        run: |
-          node --input-type=module <<'JS'
-          import fs from 'node:fs';
-          if (!/^[0-9a-f]{40}$/.test(process.env.HRM_PREFLIGHT_TEST_HEAD_SHA)) process.exit(1);
-          if (!fs.existsSync(process.env.HRM_PREFLIGHT_TEST_RECEIPT)) fs.writeFileSync(process.env.HRM_PREFLIGHT_TEST_RECEIPT,
-            JSON.stringify({status:'FAIL_BEFORE_RECEIPT',sourceSha:process.env.HRM_PREFLIGHT_TEST_HEAD_SHA,
-            code:'EARLY_FAILURE_CAUSE_UNVERIFIED',productionObserved:false,historicalReplay:false})+'\n',{mode:0o600,flag:'wx'});
-          JS
-      - name: Preserve original source success or failure
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: hrm-assignment-trigger-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/hrm-assignment-trigger-source.json
-          if-no-files-found: error
-          retention-days: 30
 
-  production-loopback-acl-inspection:
+  production-acl-inspection:
     needs: source-validation
     if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-24.04
@@ -155,7 +120,7 @@ jobs:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
           server-host: ${{ secrets.SERVER_HOST }}
           known-hosts: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
-      - name: Observe one live runtime backend and fixed ACL metadata in memory
+      - name: Inspect fixed ACL metadata in memory and retain only validated output
         env:
           EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
           PRODUCTION_SSH_USER: ${{ secrets.SERVER_USER }}
@@ -165,7 +130,7 @@ jobs:
           umask 077
           set +e
           DIAGNOSTIC_OUTPUT="$(
-            node scripts/hrm-loopback-acl-inspection.mjs --emit-remote \
+            node scripts/hrm-default-acl-inspection.mjs --emit-remote \
               | timeout 70s ssh -T -o ConnectTimeout=10 -o LogLevel=ERROR -i ~/.ssh/deploy_key \
                   "$PRODUCTION_SSH_USER@$PRODUCTION_SSH_HOST" \
                   "EXPECTED_MAIN_SHA='$EXPECTED_MAIN_SHA' NODE_NO_WARNINGS=1 node --input-type=module -" 2>/dev/null
@@ -175,11 +140,11 @@ jobs:
           # The URL, environment file, raw query output and stderr never reach
           # runner files or logs. Reject unknown fields before writing evidence.
           if ! printf '%s' "$DIAGNOSTIC_OUTPUT" \
-            | node scripts/hrm-loopback-acl-inspection.mjs --validate-output "$EXPECTED_MAIN_SHA" \
-                > "$RUNNER_TEMP/hrm-loopback-acl-result.json"; then
+            | node scripts/hrm-default-acl-inspection.mjs --validate-output "$EXPECTED_MAIN_SHA" \
+                > "$RUNNER_TEMP/hrm-default-acl-result.json"; then
             printf '{"version":1,"status":"ERROR","code":"TRANSPORT_OR_OUTPUT_INVALID","expectedMainSha":"%s"}\n' \
-              "$EXPECTED_MAIN_SHA" > "$RUNNER_TEMP/hrm-loopback-acl-result.json"
-            echo '::error::Read-only live loopback inspection transport or sanitized output validation failed'
+              "$EXPECTED_MAIN_SHA" > "$RUNNER_TEMP/hrm-default-acl-result.json"
+            echo '::error::Read-only ACL inspection transport or sanitized output validation failed'
             exit 1
           fi
           [ "$DIAGNOSTIC_STATUS" -eq 0 ] || {
@@ -195,8 +160,8 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: hrm-loopback-acl-inspection-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/hrm-loopback-acl-result.json
+          name: hrm-default-acl-inspection-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/hrm-default-acl-result.json
           if-no-files-found: warn
           retention-days: 30
       - name: Remove ephemeral runner SSH material

@@ -23,7 +23,7 @@ on:
       - scripts/hrm-migration-metadata-preflight.mjs
       - scripts/hrm-migration-metadata-preflight.sql
       - scripts/hrm-migration-metadata-preflight.test.mjs
-      - scripts/ci/fixtures/hrm-metadata-preflight/assignment-trigger-before.sql
+      - scripts/ci/fixtures/hrm-metadata-preflight/**
   workflow_dispatch:
     inputs:
       expected_main_sha:

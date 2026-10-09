@@ -1,4 +1,3 @@
-import { assertMetadataSourceContinuity } from "./ci/fixtures/hrm-metadata-preflight/source-continuity.mjs"
 import test from "node:test"
 import assert from "node:assert/strict"
 import fs from "node:fs"
@@ -188,9 +187,9 @@ test("fixed SQL is bounded catalog-only read evidence and original strict metada
   assert.doesNotMatch(sql, /\b(?:FROM|JOIN)\s+public\./i)
   assert.match(sql, /scope COLLATE "C",recipient COLLATE "C",privilege_type COLLATE "C"/)
   assert.equal(digest(source("./hrm-migration-metadata-preflight.mjs")), "46b417da7bbe763960b8ede8fa0e9dbd98543d090d54f73979289504bfe35771")
-  assertMetadataSourceContinuity("./hrm-migration-metadata-preflight.sql", "b174e32eb68a0dbcca98e8557fe8c716ed8277111e79ba822bce43f4e7023b6a")
-  assertMetadataSourceContinuity("./hrm-migration-metadata-preflight.test.mjs", "39c947982f5e7dc2ca1e96307ac5314518bfe748ec58a3cf217f8f09194c0eef")
-  assertMetadataSourceContinuity("../.github/workflows/hrm-migration-metadata-preflight.yml", "f90937ecda3b81e7dd017819cfaec1afdefc5fee58167fdfc2289ce012a1dcf1")
+  assert.equal(digest(source("./hrm-migration-metadata-preflight.sql")), "b174e32eb68a0dbcca98e8557fe8c716ed8277111e79ba822bce43f4e7023b6a")
+  assert.equal(digest(source("./hrm-migration-metadata-preflight.test.mjs")), "39c947982f5e7dc2ca1e96307ac5314518bfe748ec58a3cf217f8f09194c0eef")
+  assert.equal(digest(source("../.github/workflows/hrm-migration-metadata-preflight.yml")), "f90937ecda3b81e7dd017819cfaec1afdefc5fee58167fdfc2289ce012a1dcf1")
 })
 
 test("stdin bundle binds unchanged base and supplemental bytes, while non-root emits only a safe error", () => {

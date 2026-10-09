@@ -9,7 +9,7 @@ on:
       - scripts/hrm-migration-metadata-preflight.mjs
       - scripts/hrm-migration-metadata-preflight.sql
       - scripts/hrm-migration-metadata-preflight.test.mjs
-      - scripts/ci/fixtures/hrm-metadata-preflight/assignment-trigger-before.sql
+      - scripts/ci/fixtures/hrm-metadata-preflight/**
       - docs/hrm-release-preflight-session-log.md
       - prisma/migrations/20260829114500_workforce_future_only_lifecycle/migration.sql
       - prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql
