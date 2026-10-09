@@ -171,14 +171,19 @@ export function RosterColumnMenuPanel({
  * A column heading that is also its menu — the spreadsheet's filter arrow
  * (owner, 2026-10-09: «нужны фильтры прямо в списке, как в Excel»).
  */
-export function LiveMapRosterColumnMenu(props: RosterColumnMenuProps & { className?: string; placement: RosterMenuPlacement }) {
-  const { column, label, filter, sortDirection, className, placement } = props
+export function LiveMapRosterColumnMenu(props: RosterColumnMenuProps & {
+  className?: string
+  placement: RosterMenuPlacement
+  /** Told when the menu opens and closes: the list holds still while a menu floats beside it. */
+  onOpenChange?: (open: boolean) => void
+}) {
+  const { column, label, filter, sortDirection, className, placement, onOpenChange } = props
   const tMap = useTranslations("mtmMap")
   const SortIcon = sortDirection === "desc" ? ArrowDown : ArrowUp
   const beside = placement.side === "left" && placement.anchor != null
 
   return (
-    <Popover>
+    <Popover onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
         <button
           type="button"
