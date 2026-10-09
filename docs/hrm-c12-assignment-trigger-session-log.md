@@ -228,3 +228,25 @@ mustbind wholecheckouttree1e752. FinaldependentPRbase648 unchangedsourcechain,
 any futurerelease needsfreshintegration/review/CI/authorization. No currentmerge,
 deploy, activation, secrets/access/Support/personneldoc changes. This evidence
 checkpoint has full5PENDING truthfully and sourceheadremainsfrozen.
+
+
+## 2026-10-09 — независимая приёмка общего тестового gate
+
+PR658 опубликован как зависимый draft и прикреплён к задаче. Исходный PR657
+сохраняет head 3da6e4b5e809e5bc9cf1641df47b4e2b3a3d85f3. Обязательный
+static-checks (run37969838236, job113954075718) завершился SUCCESS. Все 26 шагов
+прошли, включая прежние проверки базы. Строгий guard подтвердил 18 ошибочных
+файлов и те же 18 записей baseline; глобально набор тестов не чистый.
+Независимый отчёт11949bytes/SHA9e680d6f466d1dfc7eff5ba80a0a911f8ad375fb392365eef367d7b78c127322
+и полный исходный лог226827bytes/SHA92f35ebdee443f815988be8bebd5fae7db8d1b30cd238084e15924c406ec72fc
+сохранены без изменения байтов в gzip. Реальный checkout —8b6c, родители729/3da,
+дерево1e752 совпадает с финальным исходником. Финальная типизация ещё выполняется;
+её прохождение и приёмка всех пяти проверок не заявляются заранее.
+
+Уточнение прежней записи: «ordinary13sourceSHA» — ошибочная текстовая метка,
+не количество доказательств. Реальные привязки: 8 исходников в metadata receipt,
+9 в schema receipt, 11 в exporter receipt; точные checkout подтверждены логами.
+UI/build/реальная восстановленная копия/полный replay/эксплуатация — NOT RUN
+для текущего среза, без переноса прежней C6 приёмки на этот результат. C12 остаётся
+PARTIAL:85/161DONE,76открыты,61%,14/15gates. Production, доступы, секреты, Support
+и кадровые документы в текущем продолжении не изменялись этим исполнителем.
