@@ -1,0 +1,75 @@
+TAP version 13
+# Subtest: complete authenticated transport and both literal artifact markers admit only the catalog contract
+ok 1 - complete authenticated transport and both literal artifact markers admit only the catalog contract
+  ---
+  duration_ms: 8.370121
+  ...
+# Subtest: every missing prerequisite stays individually INCOMPLETE with its actual boolean
+ok 2 - every missing prerequisite stays individually INCOMPLETE with its actual boolean
+  ---
+  duration_ms: 22.393364
+  ...
+# Subtest: neither failed transport nor a changed deployed marker can claim production observation
+ok 3 - neither failed transport nor a changed deployed marker can claim production observation
+  ---
+  duration_ms: 8.740876
+  ...
+# Subtest: unknown private fields, role data, wrong flags and SQL error text are withheld
+ok 4 - unknown private fields, role data, wrong flags and SQL error text are withheld
+  ---
+  duration_ms: 5.464108
+  ...
+# Subtest: oversized, duplicate-key, truncated, appended and non-JSON wire data never reach an artifact
+ok 5 - oversized, duplicate-key, truncated, appended and non-JSON wire data never reach an artifact
+  ---
+  duration_ms: 3.217299
+  ...
+# Subtest: finite original query and admission errors stay errors without raw values
+ok 6 - finite original query and admission errors stay errors without raw values
+  ---
+  duration_ms: 4.013348
+  ...
+# Subtest: source bindings reject another HEAD, changed worktree bytes and changed approved dependencies
+ok 7 - source bindings reject another HEAD, changed worktree bytes and changed approved dependencies
+  ---
+  duration_ms: 4.740105
+  ...
+# Subtest: a source HEAD changed during binding is rejected before a remote program is emitted
+ok 8 - a source HEAD changed during binding is rejected before a remote program is emitted
+  ---
+  duration_ms: 0.434891
+  ...
+# Subtest: wire binding drift is rejected even when all thirteen catalog flags are true
+ok 9 - wire binding drift is rejected even when all thirteen catalog flags are true
+  ---
+  duration_ms: 2.96326
+  ...
+# Subtest: emitted stdin module rejects a different expected SHA before credentials or filesystem access
+ok 10 - emitted stdin module rejects a different expected SHA before credentials or filesystem access
+  ---
+  duration_ms: 56.16029
+  ...
+# Subtest: CLI denies URL/SQL overrides and invalid expected SHA without reflecting private input
+ok 11 - CLI denies URL/SQL overrides and invalid expected SHA without reflecting private input
+  ---
+  duration_ms: 176.29521
+  ...
+# Subtest: real repository mismatch is refused without needing a database or production credential
+ok 12 - real repository mismatch is refused without needing a database or production credential
+  ---
+  duration_ms: 17.706598
+  ...
+# Subtest: failed transport retains only a validated identifier-free original, never a private invalid snapshot
+ok 13 - failed transport retains only a validated identifier-free original, never a private invalid snapshot
+  ---
+  duration_ms: 1.964025
+  ...
+1..13
+# tests 13
+# suites 0
+# pass 13
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 413.878374

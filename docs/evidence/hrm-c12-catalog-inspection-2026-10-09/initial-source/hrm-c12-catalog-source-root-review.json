@@ -1,0 +1,138 @@
+{
+  "status": "ALLOW_EXACT_THREE_PATH_SOURCE_AFTER_CHECKPOINT_AND_HOSTED_GATES",
+  "reviewer": "root-independent-of-child-source-author",
+  "baseSha": "070f1fe5a1cb56957f84c1a81faf862289d381b6",
+  "sourceFiles": [
+    {
+      "path": "scripts/hrm-c12-operational-schema-inspection.mjs",
+      "bytes": 11658,
+      "sha256": "f1696e36916af8cd204a6bc38886e962d9a467554a0006021cdd4e7e055b1ce8"
+    },
+    {
+      "path": "scripts/hrm-c12-operational-schema-inspection.test.mjs",
+      "bytes": 10070,
+      "sha256": "3ea621fd7948502a605779110f4b7bda255b614a504a1ee2d5479a7c6f30b9df"
+    },
+    {
+      "path": ".github/workflows/hrm-c12-operational-schema-inspection.yml",
+      "bytes": 15703,
+      "sha256": "5197360c3216c4bd131cab4d850542f4cfbef047bfa8423026fb36cbd84a90cb"
+    }
+  ],
+  "resolvedFindings": [
+    {
+      "priority": "P2",
+      "finding": "Validated original wire and safe before-marker were omitted from normalized error/success outcomes",
+      "resolution": "Canonical known-field original retained only after source and snapshot validation; unsafe original withheld"
+    },
+    {
+      "priority": "P2",
+      "finding": "ENV_INVALID omitted existing finite safe envDetail",
+      "resolution": "Exact existing ENV_DETAILS whitelist; known code/detail pairing; negative private/mismatched detail cases"
+    }
+  ],
+  "remainingP0P1P2": [],
+  "checks": [
+    "Source SHA/working-vs-committed/head-before-and-after binding",
+    "Exact unchanged helper/SQL prefix and read-only executor",
+    "Root-safe non-symlink credential and deployment-marker reads",
+    "Fixed catalog SQL; no data/roles/grants/files/activation mutation",
+    "Strict ten-field original envelope; bounded JSON; no private input retained",
+    "Protected exact-main production environment and registered pinned SSH setup",
+    "Deployment concurrency, exact main before/after, exact artifact before/after",
+    "Own hosted installed-PG16 private cluster, actual tests mandatory, early/final failures preserved",
+    "No existing gate or baseline source changed"
+  ],
+  "unchangedContracts": [
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.mjs",
+      "bytes": 24904,
+      "sha256": "46b417da7bbe763960b8ede8fa0e9dbd98543d090d54f73979289504bfe35771",
+      "equalToBase": true
+    },
+    {
+      "path": "scripts/workforce-reconciliation-schema-contract.sql",
+      "bytes": 9713,
+      "sha256": "9bb45ba8cc38afdba046e3bd761875c043731203de8dab18bfdce420c8aab49f",
+      "equalToBase": true
+    },
+    {
+      "path": "scripts/workforce-reconciliation-schema-contract.mjs",
+      "bytes": 3153,
+      "sha256": "8ffa59f87d927a8afc463988ba30ab6a9ec3f1a3ca253b5f9841fefddc1b0279",
+      "equalToBase": true
+    },
+    {
+      "path": ".github/workflows/hrm-migration-metadata-preflight.yml",
+      "bytes": 8704,
+      "sha256": "655131b726192799f08d92f1d22c5bec2a38d19b662c0344cad1bbf65c6b8c69",
+      "equalToBase": true
+    },
+    {
+      "path": ".github/workflows/hrm-default-acl-inspection.yml",
+      "bytes": 8925,
+      "sha256": "c95f583b3bbbc87ff1c741e10afc9110b93fc672f88d601cc19ea764ff89ff98",
+      "equalToBase": true
+    },
+    {
+      "path": ".github/workflows/hrm-loopback-acl-inspection.yml",
+      "bytes": 9574,
+      "sha256": "8b2241decbcd6280021930fe7aa13f508533740de2122efc903bb2a2367dfefc",
+      "equalToBase": true
+    },
+    {
+      "path": ".github/workflows/hrm-backup-acl-attribution.yml",
+      "bytes": 10241,
+      "sha256": "427cd4b677c0e0edbfb98de78cd7d918259c7e252df3daf5c899b90d250083b8",
+      "equalToBase": true
+    },
+    {
+      "path": ".github/workflows/deploy.yml",
+      "bytes": 113056,
+      "sha256": "0e8b23d3811072dd3b54f7546b66745adda4608c31272c05e5bd3d629e87ab9e",
+      "equalToBase": true
+    },
+    {
+      "path": ".github/workflows/pr-checks.yml",
+      "bytes": 22829,
+      "sha256": "a6fe9dc99094a4d4cbd3eeebf5a2242e692d3dbbb5adeb4e3a2a8f226c7b3247",
+      "equalToBase": true
+    },
+    {
+      "path": "test-baseline.json",
+      "bytes": 1139,
+      "sha256": "8f0fc568274f9fd8c0c741db618d6e4d81025de7112a315cd93e6b92bbd5a4b1",
+      "equalToBase": true
+    },
+    {
+      "path": "typecheck-baseline.json",
+      "bytes": 3907,
+      "sha256": "919fa9d0212b18ee685af4f08680ebbc34e8c4969294054447df03147bf0fc53",
+      "equalToBase": true
+    },
+    {
+      "path": "scripts/check-test-baseline.mjs",
+      "bytes": 10188,
+      "sha256": "6c3380718fd71061d2efe4aa396fcb9cc998336c5c95a3bbd2de05230058027e",
+      "equalToBase": true
+    },
+    {
+      "path": "scripts/ci/check-typecheck-gate.sh",
+      "bytes": 3468,
+      "sha256": "a18608d9297c039380481fb27d6200d9ebbcc731e9ec23dd40b5e3a2c5a40937",
+      "equalToBase": true
+    },
+    {
+      "path": "scripts/ci/check-typecheck-baseline.mjs",
+      "bytes": 5909,
+      "sha256": "8b8a2472a1c813e85c4177c24c6df5fb5907d981b5b43e6870a04cbbba2b812a",
+      "equalToBase": true
+    }
+  ],
+  "unitFirst": "13/13 PASS, 0 FAIL, 0 SKIP; original TAP retained",
+  "unitAfterEnvDetail": "14/14 PASS, 0 FAIL, 0 SKIP; separate TAP retained",
+  "hostedPg16": "NOT_RUN_PENDING_PUBLICATION",
+  "productionObserved": false,
+  "historicalReplay": false,
+  "observedAtUtc": "2026-10-09T21:50:27.748834+00:00"
+}

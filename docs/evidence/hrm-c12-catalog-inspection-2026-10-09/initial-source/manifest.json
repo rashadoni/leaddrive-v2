@@ -1,0 +1,22 @@
+{
+  "status": "ORIGINAL_LOCAL_TESTS_AND_INDEPENDENT_REVIEW_ONLY",
+  "productionObserved": false,
+  "historicalReplay": false,
+  "files": [
+    {
+      "path": "hrm-c12-catalog-source-root-review.json",
+      "bytes": 5224,
+      "sha256": "cc76d9897f4856f6328d9cbab9f832240b9641d26d6b47c75215640423c89688"
+    },
+    {
+      "path": "hrm-c12-catalog-new-unit-first.txt",
+      "bytes": 3108,
+      "sha256": "e5cf62bd6ca243a2df1e439cb392416ed18e5afaf88f813f7c00a25320993247"
+    },
+    {
+      "path": "hrm-c12-catalog-new-unit-second-envdetail.txt",
+      "bytes": 3416,
+      "sha256": "732d53b463a174d70acf5af4239a2f314133307f7a2638364d58dee79adc9448"
+    }
+  ]
+}
