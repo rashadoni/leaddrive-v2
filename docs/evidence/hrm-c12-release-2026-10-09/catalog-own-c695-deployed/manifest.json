@@ -1,0 +1,90 @@
+{
+  "archivedAtUtc": "2026-10-09T22:47:40.742632+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-c12-catalog-own-c695-root/artifact-original.json.gz",
+      "originalBytes": 463,
+      "originalSha256": "68393b7f9b4e6d90db3f13e13d3aa961d6cd0010f390caaef7b8eb63f009cd15",
+      "storedBytes": 463,
+      "storedSha256": "68393b7f9b4e6d90db3f13e13d3aa961d6cd0010f390caaef7b8eb63f009cd15"
+    },
+    {
+      "path": "hrm-c12-catalog-own-c695-root/build-original-log.txt.gz",
+      "originalBytes": 32226,
+      "originalSha256": "29f44de5404b84b7b0a8b9ac9603912856c0d1ab43d0cbc95610ea51aea65a78",
+      "storedBytes": 32226,
+      "storedSha256": "29f44de5404b84b7b0a8b9ac9603912856c0d1ab43d0cbc95610ea51aea65a78"
+    },
+    {
+      "path": "hrm-c12-catalog-own-c695-root/checks-original-log.txt.gz",
+      "originalBytes": 59533,
+      "originalSha256": "7273bc54b26af652c267555f3a18269ffbfb846a713185f688d55bb5ff28c306",
+      "storedBytes": 59533,
+      "storedSha256": "7273bc54b26af652c267555f3a18269ffbfb846a713185f688d55bb5ff28c306"
+    },
+    {
+      "path": "hrm-c12-catalog-own-c695-root/deploy-finite-summary.json.gz",
+      "originalBytes": 11811,
+      "originalSha256": "da80a58911d67a4900a892c0251e4409c33fd02607ea8661ff055408f26cb443",
+      "storedBytes": 2219,
+      "storedSha256": "d3dc89daeb93adc4d376dc2320c1ff6f92020d0bc35edd4a12a679b10e5b4d33"
+    },
+    {
+      "path": "hrm-c12-catalog-own-c695-root/deploy-original-log.txt.gz",
+      "originalBytes": 25045,
+      "originalSha256": "30056e88b58940c65e1f7c3629f61c2d7556524c4244eadf8a18c4372226537b",
+      "storedBytes": 25045,
+      "storedSha256": "30056e88b58940c65e1f7c3629f61c2d7556524c4244eadf8a18c4372226537b"
+    },
+    {
+      "path": "hrm-c12-catalog-own-c695-root/jobs-original.json.gz",
+      "originalBytes": 2803,
+      "originalSha256": "0aa45f4ba2d22bb5354f2a02993482798640557effaf1c693ced33878062ee22",
+      "storedBytes": 2803,
+      "storedSha256": "0aa45f4ba2d22bb5354f2a02993482798640557effaf1c693ced33878062ee22"
+    },
+    {
+      "path": "hrm-c12-catalog-own-c695-root/retention-original-log.txt.gz",
+      "originalBytes": 2628,
+      "originalSha256": "328f6722116787cd6785f7960ae7da51738cfd951fea82f0a96bee3c5eb9ed26",
+      "storedBytes": 2628,
+      "storedSha256": "328f6722116787cd6785f7960ae7da51738cfd951fea82f0a96bee3c5eb9ed26"
+    },
+    {
+      "path": "hrm-c12-catalog-own-c695-root/run-original.json.gz",
+      "originalBytes": 1666,
+      "originalSha256": "be420113c37a5650d207a2a021e1fd5c916e83e68d4629b3d5ebf7c9d6b1d58d",
+      "storedBytes": 1666,
+      "storedSha256": "be420113c37a5650d207a2a021e1fd5c916e83e68d4629b3d5ebf7c9d6b1d58d"
+    },
+    {
+      "path": "hrm-c12-catalog-own-c695-public-before.json.gz",
+      "originalBytes": 1342,
+      "originalSha256": "0f28bbed31baa6b0198e553f304cbc9857f200f6019e698750762fbc04ae908a",
+      "storedBytes": 455,
+      "storedSha256": "dbda0bb303f4d2d9925bb16d3f45c685a7d8b260f27327dd94d647e12aa57e11"
+    },
+    {
+      "path": "hrm-c12-catalog-own-c695-anonymous-smoke.json.gz",
+      "originalBytes": 1761,
+      "originalSha256": "3e83ae1917f950de87f5e14a1fc57315b98a99956f9e5fe08e84ab6bd71909ef",
+      "storedBytes": 532,
+      "storedSha256": "157dd9ada3bd9851b26c55dd012250560c1631a5457e867679a5dc97b729e963"
+    },
+    {
+      "path": "hrm-c12-catalog-own-c695-public-after.json.gz",
+      "originalBytes": 1342,
+      "originalSha256": "65fdd26e3f01df8c6ada337e392c69575ecb0cdb5f55fa8c5b8b5a5b41833dfe",
+      "storedBytes": 455,
+      "storedSha256": "b76f879919f606cc72a6cae3d3d617c386e7053a487208331b739630f1041768"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming-a1-peer-review.json.gz",
+      "originalBytes": 3407,
+      "originalSha256": "60f3f3b04286100bba1384035dad113b06c0e454255716375817f4e3b1f3c4de",
+      "storedBytes": 1392,
+      "storedSha256": "f3e3815f5cad88ae477274d0cdcabe5d08a8f699ccbca001e776f01a08e0244b"
+    }
+  ]
+}
