@@ -16895,6 +16895,13 @@
       "open": "Kart yeni vərəqdə",
       "nearest": "Kim daha yaxındır"
     },
+    "card": {
+      "customize": "Kartı tənzimlə",
+      "customizeHint": "Kartda nə göstərilsin və hansı sıra ilə. Bloku yığmaq üçün başlığına basın.",
+      "hiddenCount": "gizlədilib: {count}",
+      "moveUp": "{name}: yuxarı",
+      "moveDown": "{name}: aşağı"
+    },
     "areaUnits": {
       "m2": "{value} m²",
       "ha": "{value} ha",

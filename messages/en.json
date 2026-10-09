@@ -16899,6 +16899,13 @@
       "open": "Card in a new tab",
       "nearest": "Who is nearest"
     },
+    "card": {
+      "customize": "Customize the card",
+      "customizeHint": "What the card shows and in what order. Press a block's heading to fold it.",
+      "hiddenCount": "hidden: {count}",
+      "moveUp": "{name}: up",
+      "moveDown": "{name}: down"
+    },
     "areaUnits": {
       "m2": "{value} m²",
       "ha": "{value} ha",

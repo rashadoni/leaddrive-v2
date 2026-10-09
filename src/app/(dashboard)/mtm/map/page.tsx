@@ -38,6 +38,8 @@ import { createDateFormatter, formatDateTime, formatTime } from "@/lib/format-da
 import { effectiveGeofenceRadius, formatMtmArea, formatMtmDistance } from "@/lib/mtm/visit-place-check"
 import { mtmLiveFeedHistoryHref, type MtmLiveFeedAlertGroup } from "@/lib/mtm/live-feed-alerts"
 import { LiveMapAgentEvents } from "@/components/mtm/live-map-agent-events"
+import { LiveMapCardBlocks, type LiveMapCardBlock } from "@/components/mtm/live-map-card-blocks"
+import { CARD_LAYOUT_STORAGE_KEY, DEFAULT_CARD_LAYOUT, parseCardLayout, serializeCardLayout, type CardLayout } from "@/lib/mtm/live-map-card-layout"
 import { LiveMapAgentPlace } from "@/components/mtm/live-map-agent-place"
 import { liveMapAgentEventsRefreshKey } from "@/lib/mtm/live-map-agent-events"
 import type { LiveMapPlaceStop } from "@/lib/mtm/live-map-place"
@@ -244,6 +246,8 @@ export default function MtmMapPage() {
   // as the model: «бери почти всё, чего нет у нас»): names beside them, the
   // tail of where each has just been, a glide instead of a jump.
   const [mapLook, setMapLook] = useState(DEFAULT_MAP_LOOK)
+  // The card's blocks — folded, reordered, switched off — as this browser left them.
+  const [cardLayout, setCardLayout] = useState<CardLayout>(DEFAULT_CARD_LAYOUT)
   const [trails, setTrails] = useState<LiveMapTrails>(() => new Map())
   // «Клиенты»: the client base as a layer. Read when the layer is switched on
   // and on «Обновить» — never on the roster's timer: a base does not move.
@@ -332,8 +336,15 @@ export default function MtmMapPage() {
         setRosterView(view)
       }
       setMapLook(parseMapLook(window.localStorage.getItem(MAP_LOOK_STORAGE_KEY)))
+      setCardLayout(parseCardLayout(window.localStorage.getItem(CARD_LAYOUT_STORAGE_KEY)))
     } catch { /* storage closed to the page: the defaults */ }
   }, [])
+  const changeCardLayout = (next: CardLayout) => {
+    setCardLayout(next)
+    try {
+      window.localStorage.setItem(CARD_LAYOUT_STORAGE_KEY, serializeCardLayout(next))
+    } catch { /* not remembered; still applied */ }
+  }
   const changeMapLook = (change: Partial<typeof DEFAULT_MAP_LOOK>) => {
     const next = { ...mapLook, ...change }
     setMapLook(next)
@@ -1083,6 +1094,50 @@ export default function MtmMapPage() {
       : agent.workdayState === "PAUSED"
         ? "font-medium text-amber-700 dark:text-amber-300"
         : "text-muted-foreground"
+    // The card's blocks: each under a heading that folds it, in the order the
+    // dispatcher chose (src/lib/mtm/live-map-card-layout.ts). A folded block
+    // is not rendered, so it asks the server for nothing.
+    const cardBlocks: LiveMapCardBlock[] = [
+      {
+        id: "events",
+        title: tMap("events.title"),
+        render: () => (
+          <LiveMapAgentEvents
+            key={`events-${agent.agentId}`}
+            agentId={agent.agentId}
+            refreshKey={liveMapAgentEventsRefreshKey(agent, presentationNow)}
+            workdayStartedAt={workforceEnabled && !agent.workdayCarryover ? agent.workdayStartedAt ?? null : null}
+            formatTime={formatTenantTime}
+            alertText={feedAlertText}
+            isEarlierDay={(value) => visitOpenedOnAnotherDay(value, contract?.timezone)}
+            framed={false}
+          />
+        ),
+      },
+      {
+        id: "route",
+        title: tMap("routeStop.title"),
+        render: () => (
+          <div data-testid="mtm-map-selected-route">
+            {!visibleRouteSnapshot ? (
+              <div className="text-muted-foreground">{tMap("routeStop.loading")}</div>
+            ) : !agentRoute || !routeExecution || routeExecution.totalCount === 0 ? (
+              <div className="text-muted-foreground">{tMap("routeStop.none")}</div>
+            ) : (
+              <LiveMapDaySteps
+                steps={daySteps}
+                selectedOrder={selectedStop}
+                onSelect={setSelectedStop}
+                formatTime={formatTenantTime}
+              />
+            )}
+            {routeStopsWithoutCoordinates > 0 ? (
+              <div className="mt-1 text-amber-700 dark:text-amber-300">{tMap("routeStop.missingCoordinates", { count: routeStopsWithoutCoordinates })}</div>
+            ) : null}
+          </div>
+        ),
+      },
+    ]
     return (
       <div className="space-y-2 text-[11px]" data-testid="live-map-agent-detail">
         {/* On a phone the row has room for about fifteen letters of a name. */}
@@ -1185,33 +1240,7 @@ export default function MtmMapPage() {
             <Crosshair className="h-3 w-3" aria-hidden="true" />{tMap("follow")}
           </button>
         </div>
-        <LiveMapAgentEvents
-          key={`events-${agent.agentId}`}
-          agentId={agent.agentId}
-          refreshKey={liveMapAgentEventsRefreshKey(agent, presentationNow)}
-          workdayStartedAt={workforceEnabled && !agent.workdayCarryover ? agent.workdayStartedAt ?? null : null}
-          formatTime={formatTenantTime}
-          alertText={feedAlertText}
-          isEarlierDay={(value) => visitOpenedOnAnotherDay(value, contract?.timezone)}
-        />
-        <div data-testid="mtm-map-selected-route" className="rounded-md bg-background/80 p-2">
-          <div className="mb-1 font-semibold text-foreground">{tMap("routeStop.title")}</div>
-          {!visibleRouteSnapshot ? (
-            <div className="text-muted-foreground">{tMap("routeStop.loading")}</div>
-          ) : !agentRoute || !routeExecution || routeExecution.totalCount === 0 ? (
-            <div className="text-muted-foreground">{tMap("routeStop.none")}</div>
-          ) : (
-            <LiveMapDaySteps
-              steps={daySteps}
-              selectedOrder={selectedStop}
-              onSelect={setSelectedStop}
-              formatTime={formatTenantTime}
-            />
-          )}
-          {routeStopsWithoutCoordinates > 0 ? (
-            <div className="mt-1 text-amber-700 dark:text-amber-300">{tMap("routeStop.missingCoordinates", { count: routeStopsWithoutCoordinates })}</div>
-          ) : null}
-        </div>
+        <LiveMapCardBlocks blocks={cardBlocks} layout={cardLayout} onLayoutChange={changeCardLayout} />
       </div>
     )
   }
