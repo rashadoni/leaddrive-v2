@@ -7,7 +7,7 @@ import { HISTORY_MAP_COLORS, splitHistoryPathAtGaps } from "@/lib/mtm/history-pa
 import L from "leaflet"
 import { useTranslations } from "next-intl"
 import { formatInTimezone } from "@/lib/timezone"
-import { CartoVectorBasemap } from "./carto-vector-basemap"
+import { CartoBasemap } from "./carto-basemap"
 
 type Point = {
   id: string
@@ -262,7 +262,7 @@ export default function LocationHistoryMap({
       {ready && (
         <MapContainer center={center} zoom={12} className="h-full w-full" scrollWheelZoom>
           <ResizeAndFit coordinates={focusFrame ?? coordinates} maxZoom={focusFrame ? 16 : undefined} />
-          <CartoVectorBasemap />
+          <CartoBasemap />
           {actualRuns.map((run, index) => (
             <Polyline key={`actual-${index}`} positions={run} pathOptions={roadRuns.length
               ? { color: HISTORY_MAP_COLORS.raw, weight: 2, opacity: 0.7, dashArray: "2 6" }

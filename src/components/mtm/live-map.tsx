@@ -6,7 +6,7 @@ import { useLocale, useTranslations } from "next-intl"
 import { Circle, CircleMarker, MapContainer, Marker, Polygon, Polyline, Popup, Tooltip, useMap, useMapEvents } from "react-leaflet"
 import L from "leaflet"
 import Link from "next/link"
-import { CartoVectorBasemap } from "./carto-vector-basemap"
+import { CartoBasemap } from "./carto-basemap"
 import { formatDateTime, formatTime } from "@/lib/format-date"
 import { calculateDistance } from "@/lib/geo-utils"
 import { liveMapTrailSegments, outlineCrossesItself, type LiveMapTrails } from "@/lib/mtm/live-map-trails"
@@ -15,8 +15,8 @@ import { clusterLiveMapClients, liveMapClientColor, type LiveMapClient, type Liv
 // F-24: rewritten on Leaflet. Google Maps + AdvancedMarker had been the
 // source of 5 hotfixes in a month — Vector tiles need a real Map ID, the React
 // wrapper crashed on marker mount, and the API key needed a separate
-// build-time pipeline. Leaflet keeps all MTM overlays on one renderer; CARTO's
-// vector layer is supplied through carto-vector-basemap.tsx.
+// build-time pipeline. Leaflet keeps all MTM overlays on one renderer; the
+// background is CARTO's raster tiles, mounted by carto-basemap.tsx.
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -847,7 +847,7 @@ export default function MtmLiveMap({
           <MapPresses active={pressMode != null} onPress={handleMapPress} />
           <ShowReferencePoint point={referencePoint} />
 
-          <CartoVectorBasemap
+          <CartoBasemap
             key={`carto-${baseMapRevision}`}
             onLoading={handleBaseMapLoading}
             onError={handleBaseMapTileError}
