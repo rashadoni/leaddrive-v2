@@ -194,3 +194,16 @@ weakenedchecks or substitutedlocalgreen. Restore dependent648baseandDRAFT only
 once actualfiveApp15368contexts SUCCESS and independenthosted/compilerreview.
 Mandatoryfullcompiler/static/schema/export finalchecks stillPENDING. No build,
 browser/realrestore/load/physical/pilot/productionHR credit from thissource-onlyslice.
+
+
+## 2026-10-09 — independent hosted PASS; mandatory run queue
+
+Independent hostedreport18993bytes/SHA e6048edf2535bf5cffb1946ce1e4321c3f95cd9160cb25ea8e7b38eec1ec777a
+confirms all4GitHubAPI runs/jobs, exacthead/log/sourcebytes/ZIP CRC/equality,
+69distinctsuiteentries and188executedTAP entriesincludingrepeat, nofailure/skip.
+Newreopened-main run37969838236 pendingbehindinitialREADY37969645905 (install
+stepsactive); ownsource unchanged and allrequiredheavy gates remainPENDING,
+no SKIPPED passclaim. Currentexactsource reopenedrunner37969838283/scan37969838433
+SUCCESS, schema37969838300/export37969838252 actualjobs PASS, pending capture.
+Fourmetadata/ACL repeatedreopenedruns alsoSUCCESS/no productionjobs. No previous
+C6/browser/build/deploy evidence borrowed for thissource-onlyslice.
