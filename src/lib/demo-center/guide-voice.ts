@@ -18,7 +18,15 @@ import { PROSPECT_TO_CLOSED_WON, withLiveCall, type DemoJourneyManifest, type De
  * text the guide can say has no recording.
  */
 
-/** Change either and every recording is regenerated under new names. */
+/**
+ * Change either and every recording is regenerated under new names.
+ *
+ * The model is a preview Google shuts down no earlier than 2026-11-17. The
+ * recordings already shipped are files and keep playing; what stops is making
+ * a new one, so the first edited sentence after that date means re-recording
+ * all of them with the successor - the generator says so and does not pick a
+ * model on its own.
+ */
 export const DEMO_GUIDE_VOICE = { model: "gemini-2.5-flash-preview-tts", voice: "Kore" } as const
 
 /** Under public/sounds, which the proxy serves without a session. */

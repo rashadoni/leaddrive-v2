@@ -1,0 +1,100 @@
+{
+  "status": "PASS_SOURCE_PRESERVATION_AND_WHOLE_TEST_TREE",
+  "sourceSha": "8e1c7e10013eb6d4e5ed273775b3f6d896841065",
+  "currentBaseSha": "e6b882ab33cee41d907525bfec601dd6ad4ed12f",
+  "sourceTreeSha": "3eb1c00b2acae92f152f89221084e24895243b47",
+  "sourceParents": [
+    "2cb343ab18f436165c6aa7dddacd2d2b80bb9b99",
+    "e6b882ab33cee41d907525bfec601dd6ad4ed12f"
+  ],
+  "testedMergeSha": "75ba8c4f86c9a9d2a489fd9d5dac41a07fc0d1fb",
+  "testedMergeTreeSha": "3eb1c00b2acae92f152f89221084e24895243b47",
+  "testedMergeParents": [
+    "e6b882ab33cee41d907525bfec601dd6ad4ed12f",
+    "8e1c7e10013eb6d4e5ed273775b3f6d896841065"
+  ],
+  "wholeTreesEqual": true,
+  "protected": [
+    {
+      "path": "AGENTS.md",
+      "bytes": 13647,
+      "sha256": "2e35eb912549b092628a8402f889e1360a0511f8554667705a949d5a5eea1624",
+      "equalCurrentBase": true
+    },
+    {
+      "path": ".github/workflows/pr-checks.yml",
+      "bytes": 22829,
+      "sha256": "a6fe9dc99094a4d4cbd3eeebf5a2242e692d3dbbb5adeb4e3a2a8f226c7b3247",
+      "equalCurrentBase": true
+    },
+    {
+      "path": ".gitleaks.toml",
+      "bytes": 3361,
+      "sha256": "911d757d734149b9a5ca5938f0a5bf66afe70b6e2d0e7db1f7199961ac681325",
+      "equalCurrentBase": true
+    },
+    {
+      "path": "typecheck-baseline.json",
+      "bytes": 3907,
+      "sha256": "919fa9d0212b18ee685af4f08680ebbc34e8c4969294054447df03147bf0fc53",
+      "equalCurrentBase": true
+    },
+    {
+      "path": "test-baseline.json",
+      "bytes": 1139,
+      "sha256": "8f0fc568274f9fd8c0c741db618d6e4d81025de7112a315cd93e6b92bbd5a4b1",
+      "equalCurrentBase": true
+    },
+    {
+      "path": "scripts/ci/pr-draft-state.sh",
+      "bytes": 3565,
+      "sha256": "064f761b5860e7427930f8a0e3f767bc121cafe41c1663fb1181f68440b9458f",
+      "equalCurrentBase": true
+    },
+    {
+      "path": "scripts/ci/check-typecheck-baseline.mjs",
+      "bytes": 5909,
+      "sha256": "8b8a2472a1c813e85c4177c24c6df5fb5907d981b5b43e6870a04cbbba2b812a",
+      "equalCurrentBase": true
+    },
+    {
+      "path": "scripts/check-test-baseline.mjs",
+      "bytes": 10188,
+      "sha256": "6c3380718fd71061d2efe4aa396fcb9cc998336c5c95a3bbd2de05230058027e",
+      "equalCurrentBase": true
+    },
+    {
+      "path": "scripts/ci/check-github-runner-policy.mjs",
+      "bytes": 1908,
+      "sha256": "d0133dc3d1f3e1642f05209be4436751a69a5bf2dd56c8854bbf256179bed3b0",
+      "equalCurrentBase": true
+    },
+    {
+      "path": "scripts/workforce-baseline-schema-export.mjs",
+      "bytes": 10957,
+      "sha256": "f975b54de6fda8bcef088334dadeefa5d39bbcc81fba408297999739787adfbb",
+      "equalCurrentBase": true
+    },
+    {
+      "path": "scripts/workforce-baseline-schema-export.test.mjs",
+      "bytes": 4689,
+      "sha256": "f07cd5ca7ada24c9070b58206f7e4a1dbdfc05cc9ed528e0554c55f5e54580fc",
+      "equalCurrentBase": true
+    }
+  ],
+  "applicationTreesEqualCurrentBase": [
+    "src",
+    "prisma",
+    "messages",
+    "clients"
+  ],
+  "acceptedAncestryPreserved": true,
+  "original524HistoryRetainedInValidationPR646": true,
+  "original524AncestorOfFinal": false,
+  "globalCleanlinessClaimed": false,
+  "productionMutation": false,
+  "UIAndBuild": "NOT_RUN_NO_APP_OR_CLIENT_BOUNDARY_CHANGE",
+  "actualRestoredBaseline": "NOT_RUN_NO_APPROVED_COPY_OPERATOR_PROVENANCE",
+  "fullHistoricalReplay": "NOT_RUN_ORIGINAL_MISSING_API_KEYS_P3018_42P01_REMAINS",
+  "realOperationalObservations": "NOT_RUN_NOT_REPLACED_BY_SYNTHETIC"
+}

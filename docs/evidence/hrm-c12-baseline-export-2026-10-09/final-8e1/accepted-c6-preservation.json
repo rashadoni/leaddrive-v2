@@ -1,0 +1,20 @@
+{
+  "sourceSha": "8e1c7e10013eb6d4e5ed273775b3f6d896841065",
+  "acceptedC6Release": "f3085e5cdf80879bee2e65d06df4e88698afa3e4",
+  "files": [
+    {
+      "path": "src/lib/workforce/exception-case-report-recorded-outcomes.ts",
+      "bytes": 8338,
+      "sha256": "1d84daa28a7b21a8ad8545f5b494c1030c338cff75fc168f87153541d5f0321c",
+      "equalAcceptedC6Source": true
+    },
+    {
+      "path": "src/lib/workforce/exception-policy-draft.ts",
+      "bytes": 8270,
+      "sha256": "f45f761e9c2e829351eb930c7e191f667327b3ed040338b4033b54381da59b6b",
+      "equalAcceptedC6Source": true
+    }
+  ],
+  "newC6RuntimeClaim": false,
+  "accountingChanged": false
+}

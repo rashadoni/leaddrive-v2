@@ -19,8 +19,10 @@ vi.mock("@/lib/auth", () => ({
 
 import { checkRateLimit } from "@/lib/rate-limit"
 import { NextRequest } from "next/server"
+import { CARTO_VOYAGER_RASTER_SUBDOMAINS, getCartoVoyagerRasterTileUrl } from "@/lib/carto-basemap"
 import { buildCsp } from "@/lib/csp"
 import authMiddleware from "@/proxy"
+import { cspAdmits } from "./helpers/csp-admits"
 
 type RequestWithAuth = NextRequest & { auth?: unknown }
 
@@ -70,6 +72,26 @@ describe("buildCsp policy content", () => {
     expect(connect).toContain("https://generativelanguage.googleapis.com")
     expect(connect).toContain("wss://generativelanguage.googleapis.com")
     expect(connect).not.toContain("*.generativelanguage.googleapis.com")
+  })
+
+  // The MTM maps draw their background from CARTO raster tiles and from
+  // nothing else (src/components/mtm/carto-basemap.tsx). Asked of the policy,
+  // not of its text: on 2026-10-09 connect-src listed
+  // https://*.basemaps.cartocdn.com and still refused the one document the
+  // maps then fetched, because it lived on the bare host.
+  it("admits the MTM basemap's tiles as images, on every host the layer rotates through", () => {
+    const template = getCartoVoyagerRasterTileUrl("referrer-restricted-key")
+    for (const subdomain of CARTO_VOYAGER_RASTER_SUBDOMAINS) {
+      for (const retina of ["", "@2x"]) {
+        const url = template
+          .replace("{s}", subdomain)
+          .replace("{z}", "12")
+          .replace("{x}", "2615")
+          .replace("{y}", "1552")
+          .replace("{r}", retina)
+        expect(cspAdmits(csp, "img-src", url), url).toBe(true)
+      }
+    }
   })
 
   it("allows YouTube/TikTok video players in frame-src (mention-card embeds)", () => {

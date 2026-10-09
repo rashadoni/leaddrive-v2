@@ -3,7 +3,7 @@
  *
  * Route file: src/app/api/v1/mtm/locations/route.ts
  */
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { NextRequest } from "next/server"
 
 vi.mock("@/lib/prisma", async () => {
@@ -410,6 +410,74 @@ describe("GET /api/v1/mtm/locations", () => {
     }
   })
 
+  // «Отдел» cannot be filled in from the product; the card's «Руководитель»
+  // can. The list groups and filters by him, so he goes out with each row.
+  it("sends whom each employee reports to, or nobody", async () => {
+    const now = new Date("2026-08-01T12:00:00.000Z")
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([
+      { id: "agent-1", name: "Ali", isOnline: false, lastSeenAt: null, teamId: null, team: null, managerId: "mgr-1", manager: { name: "Старший" }, workdays: [], locations: [] },
+      { id: "agent-2", name: "Vali", isOnline: false, lastSeenAt: now, teamId: null, team: null, managerId: null, manager: null, workdays: [], locations: [] },
+    ] as any)
+
+    const json = await (await GET(makeReq())).json()
+
+    expect(json.data.agentLocations.map((agent: any) => [agent.agentId, agent.managerId, agent.managerName])).toEqual([
+      ["agent-1", "mgr-1", "Старший"],
+      ["agent-2", null, null],
+    ])
+    const rosterQuery = vi.mocked(prisma.mtmAgent.findMany).mock.calls[0]?.[0] as any
+    expect(rosterQuery.select).toMatchObject({ managerId: true, manager: { select: { name: true } } })
+  })
+
+  // The card on the live map says «перерыв с 13:05» and «рабочий день закрыт
+  // в 18:02» (2026-10-09). Each time goes out only with the state it explains:
+  // a break that was ended leaves `pausedAt` behind on the row, and a shift
+  // that is still open must not be given a closing time.
+  it("sends when the break began and when the shift was closed — each only with its own state", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-08-01T12:00:00.000Z"))
+    try {
+      const day = new Date("2026-08-01T00:00:00.000Z")
+      const startedAt = new Date("2026-08-01T05:00:00.000Z")
+      const pausedAt = new Date("2026-08-01T09:05:00.000Z")
+      const completedAt = new Date("2026-08-01T11:30:00.000Z")
+      const row = (id: string, workday: Record<string, unknown>) => ({
+        id, name: id, isOnline: false, lastSeenAt: null, teamId: null, team: null, locations: [],
+        workdays: [{ workDate: day, startedAt, ...workday }],
+      })
+      vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([
+        row("on-break", { status: "PAUSED", pausedAt, completedAt: null }),
+        row("closed", { status: "COMPLETED", pausedAt, completedAt }),
+        row("working", { status: "STARTED", pausedAt, completedAt: null }),
+      ] as any)
+
+      const json = await (await GET(makeReq())).json()
+      const byId = Object.fromEntries(json.data.agentLocations.map((agent: any) => [agent.agentId, agent]))
+
+      expect([byId["on-break"].workdayPausedAt, byId["on-break"].workdayCompletedAt]).toEqual([pausedAt.toISOString(), null])
+      expect([byId.closed.workdayPausedAt, byId.closed.workdayCompletedAt]).toEqual([null, completedAt.toISOString()])
+      expect([byId.working.workdayPausedAt, byId.working.workdayCompletedAt]).toEqual([null, null])
+      const rosterQuery = vi.mocked(prisma.mtmAgent.findMany).mock.calls[0]?.[0] as any
+      expect(rosterQuery.select.workdays.select).toMatchObject({ pausedAt: true, completedAt: true })
+
+      // A Routes-only tenant's field session discloses its state, date and
+      // start — the break and the closing time are Workforce facts, and the
+      // card of such a tenant says nothing of the workday anywhere else.
+      vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+        plan: "pro", addons: [], features: ["mtm"], modules: { mtm: true, "workforce-hrm": false },
+      } as never)
+      const routesOnly = await (await GET(makeReq())).json()
+      expect(routesOnly.data.contract.workforceEnabled).toBe(false)
+      expect(routesOnly.data.agentLocations.map((agent: any) => [agent.workdayState, agent.workdayPausedAt, agent.workdayCompletedAt])).toEqual([
+        ["PAUSED", null, null],
+        ["CLOSED", null, null],
+        ["ACTIVE", null, null],
+      ])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   // Owner's own agent, 2026-10-08: checked in at 22:14, still in that visit
   // the next morning. The app showed the open visit and the server refused any
   // other check-in because of it, while the map counted him «Gecikir» and
@@ -553,6 +621,117 @@ describe("GET /api/v1/mtm/locations", () => {
     }
   })
 
+  // «Стоит N минут» (owner, 2026-10-09). The anchor of the stop is kept with
+  // the latest position by every GPS write; the roster shows it only for a
+  // standing employee and only when it is about the very point on the map.
+  describe("since when a standing employee has stood", () => {
+    const NOW = new Date("2026-09-14T11:00:00.000Z")
+    const minutesAgo = (minutes: number) => new Date(NOW.getTime() - minutes * 60_000)
+    const point = { latitude: 40.41, longitude: 49.87, accuracy: 5, speed: 0, heading: 0, battery: 70, isMoving: false, recordedAt: NOW }
+    // A position is on the map only during the working day: so is everything said about it.
+    const working = [{ status: "STARTED", workDate: new Date("2026-09-14T00:00:00.000Z"), startedAt: minutesAgo(180), pausedAt: null, completedAt: null }]
+    const agent = (id: string, over: Record<string, unknown> = {}) =>
+      ({ id, name: id, isOnline: true, lastSeenAt: NOW, teamId: null, team: null, workdays: working, locations: [point], ...over })
+    const anchor = (agentId: string, over: Record<string, unknown> = {}) =>
+      ({ agentId, recordedAt: NOW, stationarySince: minutesAgo(42), stationaryLatitude: 40.41, stationaryLongitude: 49.87, stationaryConfirmedAt: NOW, ...over })
+    async function roster(agents: unknown[], anchors: unknown[], moving: string[] = []) {
+      vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue(agents as never)
+      vi.mocked(prisma.mtmRoute.findMany).mockResolvedValue([] as never)
+      vi.mocked(prisma.mtmVisit.findMany).mockResolvedValue([] as never)
+      vi.mocked(prisma.mtmAlert.findMany).mockResolvedValue([] as never)
+      vi.mocked(prisma.mtmAgentLocation.groupBy).mockResolvedValue(
+        moving.map((agentId) => ({ agentId, _max: { recordedAt: minutesAgo(1) } })) as never,
+      )
+      vi.mocked(prisma.mtmAgentLatestLocation.findMany).mockResolvedValue(anchors as never)
+      const res = await GET(makeReq())
+      expect(res.status).toBe(200)
+      const json = await res.json()
+      return Object.fromEntries(json.data.agentLocations.map((row: { agentId: string }) => [row.agentId, row])) as Record<string, { fieldStatus: string; stationarySince: string | null }>
+    }
+    beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(NOW) })
+    afterEach(() => { vi.useRealTimers() })
+
+    it("says it for somebody who is standing, from the anchor kept with his latest position", async () => {
+      const byId = await roster([agent("stands")], [anchor("stands")])
+      expect(byId.stands.fieldStatus).toBe("STOPPED")
+      expect(byId.stands.stationarySince).toBe(minutesAgo(42).toISOString())
+      // One narrow read, inside the organization, for the people on this roster who have an anchor.
+      const query = vi.mocked(prisma.mtmAgentLatestLocation.findMany).mock.calls[0]?.[0] as { where: unknown; select: Record<string, boolean> }
+      expect(query.where).toEqual({ organizationId: ORG, agentId: { in: ["stands"] }, stationarySince: { not: null } })
+      expect(Object.keys(query.select).sort()).toEqual(["agentId", "recordedAt", "stationaryConfirmedAt", "stationaryLatitude", "stationaryLongitude", "stationarySince"])
+    })
+
+    it("says nothing for anybody who is not standing, whatever his row holds", async () => {
+      const byId = await roster(
+        [agent("drives"), agent("silent", { locations: [{ ...point, recordedAt: minutesAgo(180) }] }), agent("no-anchor")],
+        [anchor("drives"), anchor("silent", { recordedAt: minutesAgo(180), stationarySince: minutesAgo(400) })],
+        ["drives"],
+      )
+      expect(byId.drives.fieldStatus).toBe("ON_ROAD")
+      expect(byId.drives.stationarySince).toBeNull()
+      expect(byId.silent.fieldStatus).toBe("OFFLINE")
+      expect(byId.silent.stationarySince).toBeNull()
+      expect(byId["no-anchor"].fieldStatus).toBe("STOPPED")
+      expect(byId["no-anchor"].stationarySince).toBeNull()
+    })
+
+    it("says nothing about somebody whose position the map does not show — the working day is over or has not begun", async () => {
+      const closed = [{ ...working[0], status: "COMPLETED", completedAt: minutesAgo(20) }]
+      const byId = await roster(
+        [agent("went-home", { workdays: closed }), agent("not-started", { workdays: [] })],
+        [anchor("went-home"), anchor("not-started")],
+      )
+      expect(byId["went-home"].stationarySince).toBeNull()
+      expect(byId["not-started"].stationarySince).toBeNull()
+    })
+
+    it("leaves it out whenever the anchor is not about the point on the map — a missing duration, never a wrong one", async () => {
+      const byId = await roster(
+        [agent("far"), agent("behind"), agent("ahead"), agent("half"), agent("stale")],
+        [
+          // The anchor says he stands about eighty metres from where the map shows him.
+          anchor("far", { stationaryLatitude: 40.41072 }),
+          // The projection has not caught up with the point on the map.
+          anchor("behind", { recordedAt: minutesAgo(3) }),
+          // The stop «began» after the point on the map was recorded.
+          anchor("ahead", { recordedAt: new Date(NOW.getTime() + 60_000), stationarySince: new Date(NOW.getTime() + 30_000) }),
+          // A row with half an anchor.
+          anchor("half", { stationaryLongitude: null }),
+          // A stop nobody has confirmed for hours: its build was rolled back, or only vague points came since.
+          anchor("stale", { stationaryConfirmedAt: minutesAgo(11) }),
+        ],
+      )
+      for (const id of ["far", "behind", "ahead", "half", "stale"]) {
+        expect(byId[id].fieldStatus, id).toBe("STOPPED")
+        expect(byId[id].stationarySince, id).toBeNull()
+      }
+    })
+
+    it("does not count a phone's silence as standing, whatever the organization calls a fresh position", async () => {
+      // «Свежая» for half an hour here: a phone silent for twenty-five minutes is still «стоит» on the map.
+      vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([
+        { key: "offlineThresholdSeconds", value: "1800" },
+        { key: "locationWindowMinutes", value: "30" },
+      ] as never)
+      const quiet = { ...point, recordedAt: minutesAgo(25) }
+      const byId = await roster(
+        [agent("silent-25", { locations: [quiet] }), agent("heard-9", { locations: [{ ...point, recordedAt: minutesAgo(9) }] })],
+        [
+          anchor("silent-25", { recordedAt: minutesAgo(25), stationaryConfirmedAt: minutesAgo(25), stationarySince: minutesAgo(90) }),
+          anchor("heard-9", { recordedAt: minutesAgo(9), stationaryConfirmedAt: minutesAgo(9), stationarySince: minutesAgo(90) }),
+        ],
+      )
+      expect(byId["silent-25"].fieldStatus).toBe("STOPPED")
+      expect(byId["silent-25"].stationarySince).toBeNull()
+      expect(byId["heard-9"].stationarySince).toBe(minutesAgo(90).toISOString())
+    })
+
+    it("does not ask at all when the roster is empty", async () => {
+      await roster([], [])
+      expect(prisma.mtmAgentLatestLocation.findMany).not.toHaveBeenCalled()
+    })
+  })
+
   it("fetches one sentinel row and explicitly marks a roster over the 500-person contract", async () => {
     vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue(Array.from({ length: 501 }, (_, index) => ({
       id: `agent-${index.toString().padStart(3, "0")}`,
@@ -654,6 +833,22 @@ describe("POST /api/v1/mtm/locations", () => {
     expect(updateArgs.data.isOnline).toBe(true)
     expect(updateArgs.data.lastSeenAt).toBeInstanceOf(Date)
     expect(prisma.$transaction).toHaveBeenCalledTimes(1)
+  })
+
+  it("a still coordinate looks at the row once, to tell the same stop from a new one, and is written all the same", async () => {
+    vi.mocked(prisma.mtmAgentLocation.create).mockResolvedValue({ id: "loc-1" } as any)
+    vi.mocked(prisma.mtmAgent.updateMany).mockResolvedValue({ count: 1 } as any)
+    vi.mocked(prisma.mtmAgentLatestLocation.findUnique).mockResolvedValue(null as any)
+    vi.mocked(prisma.mtmAgentLatestLocation.updateMany).mockResolvedValue({ count: 1 } as any)
+
+    const res = await POST(makePostReq({ agentId: "agent-1", latitude: 40.4093, longitude: 49.8671, accuracy: 8.5, isMoving: false }))
+    expect(res.status).toBe(201)
+    const recordedAt = (vi.mocked(prisma.mtmAgentLocation.create).mock.calls[0][0] as any).data.recordedAt
+    expect(prisma.mtmAgentLatestLocation.findUnique).toHaveBeenCalledTimes(1)
+    expect(prisma.mtmAgentLatestLocation.updateMany).toHaveBeenCalledWith({
+      where: { organizationId: ORG, agentId: "agent-1", recordedAt: { lte: recordedAt } },
+      data: expect.objectContaining({ stationarySince: recordedAt, stationaryLatitude: 40.4093, stationaryLongitude: 49.8671, stationaryConfirmedAt: recordedAt }),
+    })
   })
 
   it("rejects a valid mobile principal on the web-only writer without touching GPS rows", async () => {

@@ -62,10 +62,28 @@ describe("pr-checks static-checks is redundant on a main push", () => {
     // Пропуск засчитывается как успех — поэтому сам детектор тоже обязателен
     // (см. scripts/ci/configure-main-protection.sh).
     expect(jobIf(staticChecks)).toBe(
-      "${{ github.event_name == 'pull_request' && github.event.pull_request.draft == false && needs.pr-scope.outputs.code == 'true' }}",
+      "${{ github.event_name == 'pull_request' && needs.pr-scope.outputs.draft != 'true' && needs.pr-scope.outputs.code == 'true' }}",
     )
     expect(staticChecks).toMatch(/^ {4}needs: pr-scope$/m)
     expect(prChecks).toMatch(/types:\s*\[[^\]]*ready_for_review[^\]]*\]/)
+  })
+
+  it("lets only pr-scope say that a pull request is a draft", () => {
+    // 2026-10-09, #639: пуш в черновик и сразу «ready for review». Прогон по
+    // новому коммиту получил в событии `draft: true` и пропустил обе тяжёлые
+    // джобы на готовом PR; пропуск GitHub засчитал как успех. Поэтому джобы
+    // спрашивают pr-scope, который читает живой PR (поведение —
+    // ci-pr-draft-state.test.ts), а событию на слово не верит ни одна.
+    const jobIfs = jobNames(prChecks).map((name) => jobIf(jobBlock(prChecks, name)))
+    expect(jobIfs.filter((condition) => condition.includes("github.event.pull_request.draft"))).toEqual([])
+    expect(jobIf(typecheck)).toBe(
+      "${{ (github.event_name == 'push' || needs.pr-scope.outputs.draft != 'true') && needs.pr-scope.outputs.code == 'true' }}",
+    )
+
+    const prScope = jobBlock(prChecks, "pr-scope")
+    expect(prScope).toContain("draft: ${{ steps.draft.outputs.draft }}")
+    expect(prScope).toMatch(/^ {6}- id: draft$[\s\S]*?^ {8}run: bash scripts\/ci\/pr-draft-state\.sh$/m)
+    expect(prScope).toMatch(/^ {6}pull-requests: read$/m)
   })
 
   it("leaves typecheck running on a main push", () => {

@@ -9,7 +9,7 @@
  */
 import {
   Activity, AlertTriangle, Camera, CheckCircle2, Eye, Flag, Link2, ListChecks, ListPlus, LogIn, LogOut,
-  Building2, FileUp, Megaphone, MessageSquare, Pause, PencilLine, Play, RotateCcw, Route, Send, Settings, ShieldAlert, ShieldCheck, ShoppingCart, Store,
+  Building2, FileUp, ListMinus, Megaphone, MessageSquare, Pause, PencilLine, Play, RotateCcw, Route, Send, Settings, ShieldAlert, ShieldCheck, ShoppingCart, Store,
   Trash2, UserCog, UserMinus, UserPlus, type LucideIcon,
 } from "lucide-react"
 
@@ -69,6 +69,10 @@ const META: Record<string, ActionMeta> = {
   ROUTE_COMPLETE:      { icon: Flag,          tone: "teal" },
   ROUTE_PUBLISH:       { icon: Send,          tone: "sky" },
   ROUTE_DAY_CLOSE:     { icon: Flag,          tone: "amber" },
+  // 2026-10-09: the employee asking to change today's route — shown in his
+  // card on the live map, and no longer «Действие» in the journal.
+  ROUTE_REMOVAL_REQUEST:  { icon: ListMinus,  tone: "amber" },
+  ROUTE_ADDITION_REQUEST: { icon: ListPlus,   tone: "sky" },
   VISIT_COMPLETE:      { icon: CheckCircle2,  tone: "teal" },
   VISIT_ACTION_COMPLETE: { icon: ListChecks,  tone: "teal" },
   VISIT_RESULT_UPDATE: { icon: PencilLine,    tone: "sky" },

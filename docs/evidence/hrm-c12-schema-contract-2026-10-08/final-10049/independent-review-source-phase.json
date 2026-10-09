@@ -1,0 +1,231 @@
+{
+  "version": 1,
+  "status": "PASS_INDEPENDENT_EXACT_SOURCE_REVIEW_ONLY",
+  "sourceSha": "10049d31ff02482085b180d2d65ab942ea1beb64",
+  "sourceTree": "568bb061c4a891d3d9d268dbb7b546ead156da3c",
+  "baseSha": "bde637cb72c765d2fa81f519d164e8c931ce511e",
+  "checkedAtUtc": "2026-10-08T06:52:11.014714+00:00",
+  "reviewer": {
+    "agent": "/root/inspect_outcome_contract",
+    "scope": "Read-only source and durable-history review; no verifier code authorship. Older C6/auxiliary verification authorship disclosed; no tests executed in this review."
+  },
+  "sourceBindings": [
+    {
+      "path": "prisma/migrations/20261005193000_workforce_reconciliation_operations/migration.sql",
+      "bytes": 2721,
+      "sha256": "c452e7f6d13dca1e5257d8353c252745d05cd4f18eae83cd45501f61664ef719",
+      "exactCommittedSource": true
+    },
+    {
+      "path": "scripts/workforce-reconciliation-schema-contract.sql",
+      "bytes": 9713,
+      "sha256": "9bb45ba8cc38afdba046e3bd761875c043731203de8dab18bfdce420c8aab49f",
+      "exactCommittedSource": true
+    },
+    {
+      "path": "scripts/workforce-reconciliation-schema-contract.mjs",
+      "bytes": 3153,
+      "sha256": "8ffa59f87d927a8afc463988ba30ab6a9ec3f1a3ca253b5f9841fefddc1b0279",
+      "exactCommittedSource": true
+    },
+    {
+      "path": "scripts/workforce-reconciliation-schema-contract.test.mjs",
+      "bytes": 18665,
+      "sha256": "f9fb707a30c3725a5ba5777a8e58ccd7cb61aea4205240817e4f122a9b121f41",
+      "exactCommittedSource": true
+    },
+    {
+      "path": ".github/workflows/workforce-reconciliation-schema-contract.yml",
+      "bytes": 3124,
+      "sha256": "f736a302df806206ae4a76de0e9907885fddd5357b46c10030737fcd322d3d4e",
+      "exactCommittedSource": true
+    }
+  ],
+  "preservedGateAndMetadataBindings": [
+    {
+      "path": "typecheck-baseline.json",
+      "sha256": "919fa9d0212b18ee685af4f08680ebbc34e8c4969294054447df03147bf0fc53",
+      "byteExactBase": true
+    },
+    {
+      "path": "test-baseline.json",
+      "sha256": "8f0fc568274f9fd8c0c741db618d6e4d81025de7112a315cd93e6b92bbd5a4b1",
+      "byteExactBase": true
+    },
+    {
+      "path": "scripts/ci/check-typecheck-baseline.mjs",
+      "sha256": "8b8a2472a1c813e85c4177c24c6df5fb5907d981b5b43e6870a04cbbba2b812a",
+      "byteExactBase": true
+    },
+    {
+      "path": "scripts/ci/check-typecheck-gate.sh",
+      "sha256": "a18608d9297c039380481fb27d6200d9ebbcc731e9ec23dd40b5e3a2c5a40937",
+      "byteExactBase": true
+    },
+    {
+      "path": "scripts/check-test-baseline.mjs",
+      "sha256": "6c3380718fd71061d2efe4aa396fcb9cc998336c5c95a3bbd2de05230058027e",
+      "byteExactBase": true
+    },
+    {
+      "path": "scripts/ci/check-github-runner-policy.mjs",
+      "sha256": "d0133dc3d1f3e1642f05209be4436751a69a5bf2dd56c8854bbf256179bed3b0",
+      "byteExactBase": true
+    },
+    {
+      "path": ".github/workflows/pr-checks.yml",
+      "sha256": "7de832432ad7e36758ca793205bfe84aa0ead2be0bea82f58a8be3be24e0f834",
+      "byteExactBase": true
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.mjs",
+      "sha256": "46b417da7bbe763960b8ede8fa0e9dbd98543d090d54f73979289504bfe35771",
+      "byteExactBase": true
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.sql",
+      "sha256": "b174e32eb68a0dbcca98e8557fe8c716ed8277111e79ba822bce43f4e7023b6a",
+      "byteExactBase": true
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.test.mjs",
+      "sha256": "39c947982f5e7dc2ca1e96307ac5314518bfe748ec58a3cf217f8f09194c0eef",
+      "byteExactBase": true
+    },
+    {
+      "path": ".github/workflows/hrm-migration-metadata-preflight.yml",
+      "sha256": "f90937ecda3b81e7dd017819cfaec1afdefc5fee58167fdfc2289ce012a1dcf1",
+      "byteExactBase": true
+    }
+  ],
+  "acceptedAncestors": {
+    "acceptedPR608": {
+      "sha": "973241bacc296b71fe817d1af11187c32e8126af",
+      "ancestor": true
+    },
+    "originalC12TerminalArchive": {
+      "sha": "c123556e7a758b7eb5264137dcaf85504b07e471",
+      "ancestor": true
+    },
+    "acceptedC6Release": {
+      "sha": "f3085e5cdf80879bee2e65d06df4e88698afa3e4",
+      "ancestor": true
+    },
+    "acceptedC6Source": {
+      "sha": "33f93325599e883973c4c71c256cce8ad91168b3",
+      "ancestor": true
+    },
+    "initialSupplement": {
+      "sha": "36c0a26f9a8c40e5f5fea76c007fdc367e1112f1",
+      "ancestor": true
+    },
+    "currentMainBase": {
+      "sha": "bde637cb72c765d2fa81f519d164e8c931ce511e",
+      "ancestor": true
+    }
+  },
+  "findings": {
+    "currentP0": [],
+    "currentP1": [],
+    "currentP2": [],
+    "currentP3": [],
+    "resolvedP2": [
+      {
+        "id": "C12_INHERITANCE_FALSE_MATCH",
+        "originalPath": "scripts/workforce-reconciliation-schema-contract.sql",
+        "originalLine": 53,
+        "currentSourceClosure": "Reject both incoming/outgoing pg_inherits edges for state and FK dependency; actual isolated child negative authored, not independently executed here."
+      },
+      {
+        "id": "C12_DESCRIPTOR_COPY_RACE",
+        "originalPath": "scripts/workforce-reconciliation-schema-contract.mjs",
+        "originalLine": 20,
+        "currentSourceClosure": "Single cached descriptor snapshot; exact own string field set, data booleans, no input get access/copy race. Prototype/accessor/Proxy reread/Symbol regressions authored."
+      },
+      {
+        "id": "C12_SETUP_FAILURE_LOSS",
+        "originalPath": "scripts/workforce-reconciliation-schema-contract.test.mjs",
+        "originalLine": 79,
+        "currentSourceClosure": "Atomic fixture setup inside receipt-backed try/finally; finite SQLSTATE whitelist and failure cases; workflow fallback explicitly records unverified pre-receipt cause."
+      },
+      {
+        "id": "C12_FK_TRIGGER_BINDING_INCOMPLETE",
+        "originalPath": "scripts/workforce-reconciliation-schema-contract.sql",
+        "originalLine": 84,
+        "currentSourceClosure": "Exactly one of each four builtin regprocedures, correct AFTER ROW types 5/9/17, target/counterpart/index links, origin-enabled, no deferred/arguments/qual/column restrictions; isolated misbound-event negative authored."
+      }
+    ]
+  },
+  "reviewedContract": {
+    "catalogOnlyReadOnlyRepeatableRead": true,
+    "statementTimeout": "10s",
+    "lockTimeout": "2s",
+    "trustedSearchPath": true,
+    "fixedBooleanProjection13": true,
+    "businessRowsReadByObserver": false,
+    "stdinOnlyCliBounded4096Bytes": true,
+    "noProductionWorkflowOrSecrets": true,
+    "exactHeadCheckoutAndFixtureGuard": true,
+    "fixedLoopbackFreshPostgres16Fixture": true,
+    "wholeUnmodifiedMigration": true,
+    "columnsDefaultsPkFkChecksRlsPolicyIndexAndTriggerShape": true,
+    "builtinPolicyDefaultCheckDependencies": true,
+    "realIsolatedBehaviorCasesAuthored": [
+      "defaults",
+      "CHECK rejection",
+      "orphan FK rejection",
+      "rolled-back cascade",
+      "tenant SELECT and INSERT separation"
+    ],
+    "currentRuntimeCredit": false
+  },
+  "accounting": {
+    "roadmapPrefixByteExactBase": true,
+    "lastFullRows": 161,
+    "done": 85,
+    "open": 76,
+    "weightedPercent": 61,
+    "gatesAcceptedUnchanged": "14/15",
+    "C6": "DONE",
+    "C7_007": "DONE",
+    "C8_002": "DONE",
+    "C12": {
+      "WF-C12-001": "DONE",
+      "WF-C12-002": "PARTIAL",
+      "WF-C12-003": "PLANNED",
+      "WF-C12-004": "PARTIAL",
+      "WF-C12-005": "PARTIAL",
+      "WF-C12-006": "PARTIAL",
+      "WF-C12-007": "PARTIAL",
+      "WF-C12-008": "PARTIAL",
+      "WF-C12-009": "PARTIAL",
+      "WF-C12-010": "DONE"
+    },
+    "newCompletedTaskCredit": 0
+  },
+  "historyRetained": {
+    "initial36c0HostedRun": 37739012389,
+    "status": "SUCCESS_WITH_NARROWER_35_CASE_COVERAGE",
+    "initialReceipt35Pass": true,
+    "localTemporaryDuplicateBindingFailureRetained": true,
+    "missingLocalEslintNotRunRetained": true,
+    "oldProductionMetadataRemainsIncomplete": [
+      "APPLIED_TABLE_CONSTRAINTS_NOT_PROVED",
+      "DEFAULT_ACL_UNREVIEWED"
+    ]
+  },
+  "limitations": [
+    "Exact10049 hosted PostgreSQL and five mandatory checks are pending; no historical36c0 runtime is borrowed for current head.",
+    "No production/restored-copy observation, complete current/history migration replay, actual grants, activation, density, timeout benchmark, collector/device/pilot/load or restore acceptance.",
+    "Catalog contract describes a snapshot, not administrative DDL freeze or admission authorization.",
+    "stdin-only CLI validates caller-supplied finite projection; it does not itself establish database-observation provenance.",
+    "No independent local unit/PG/build/compiler/browser execution by this reviewer.",
+    "C12 remains PARTIAL and accepted85-task accounting is unchanged."
+  ],
+  "primaryReferences": [
+    "https://www.postgresql.org/docs/16/ddl-inherit.html",
+    "https://www.postgresql.org/docs/16/catalog-pg-trigger.html",
+    "https://raw.githubusercontent.com/postgres/postgres/REL_16_STABLE/src/include/catalog/pg_trigger.h",
+    "https://raw.githubusercontent.com/postgres/postgres/REL_16_STABLE/src/backend/commands/tablecmds.c"
+  ]
+}

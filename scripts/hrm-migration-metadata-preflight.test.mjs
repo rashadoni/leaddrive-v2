@@ -6,6 +6,7 @@ import { execFileSync } from "node:child_process"
 import { TARGET_SOURCE_SHA, MIGRATIONS, RELATIONS, INDEXES, GUARD_MD5, LEDGER_GUARD_MD5, ENV_DETAILS, databaseConnectionEnvironment, parseMigrationEnv, readRootFile, validateSnapshot, assessMetadata, validateReport, inspectRemote, queryMetadata } from "./hrm-migration-metadata-preflight.mjs"
 
 const sql = fs.readFileSync(new URL("./hrm-migration-metadata-preflight.sql", import.meta.url), "utf8")
+const historicalSql = fs.readFileSync(new URL("./ci/fixtures/hrm-metadata-preflight/assignment-trigger-before.sql", import.meta.url), "utf8")
 const helper = fs.readFileSync(new URL("./hrm-migration-metadata-preflight.mjs", import.meta.url), "utf8")
 const sha = "a".repeat(40)
 const digest = text => createHash("sha256").update(text).digest("hex")
@@ -312,7 +313,7 @@ test("finite catalog arrays must retain canonical order; the validator never rep
   }
   assert.equal((sql.match(/ORDER BY name COLLATE "C"/g) ?? []).length, 3)
   // Exact e87 source bytes, used only by the already-fenced hosted reproducer.
-  assert.equal(digest(sql.replaceAll(' ORDER BY name COLLATE "C")', ' ORDER BY name)')), "9fff72bc44e1e9d7fa5e552cdd56ab53d857b20dd1b8bdc1e1fcdb704bf74299")
+  assert.equal(digest(historicalSql.replaceAll(' ORDER BY name COLLATE "C")', ' ORDER BY name)')), "9fff72bc44e1e9d7fa5e552cdd56ab53d857b20dd1b8bdc1e1fcdb704bf74299")
 })
 
 test("remote inspection checks artifact before/after, canonical protected env, read-only outputs", () => {
@@ -411,16 +412,46 @@ test("runner validator retains valid original failures but never prints rejected
 // Only this hosted-only test writes a disposable SQL fixture. The production
 // helper has no test mode, privilege bypass or mutation path.
 test("hosted PostgreSQL executes the real fixed catalog query and rejects writes", { skip: !process.env.HRM_PREFLIGHT_TEST_DATABASE_URL }, async context => {
+  const receipt = { status: "RUNNING", sourceSha: process.env.HRM_PREFLIGHT_TEST_HEAD_SHA,
+    fixture: "SYNTHETIC_SELECTED_DDL_NOT_RESTORED_BASELINE", productionObserved: false, historicalReplay: false,
+    cases: [], cleanup: [], sourceBindings: [], originalFailure: null }
+  const sourcePaths = ["scripts/hrm-migration-metadata-preflight.sql", "scripts/hrm-migration-metadata-preflight.mjs",
+    "scripts/hrm-migration-metadata-preflight.test.mjs", ".github/workflows/hrm-migration-metadata-preflight.yml",
+    "scripts/ci/fixtures/hrm-metadata-preflight/assignment-trigger-before.sql",
+    "prisma/migrations/20260829114500_workforce_future_only_lifecycle/migration.sql",
+    "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql",
+    "prisma/migrations/20260927014100_workforce_exception_case_revisions_backfill/migration.sql"]
+  const sourceBindings = () => sourcePaths.map(path => { const bytes = fs.readFileSync(path); return { path, bytes: bytes.length, sha256: digest(bytes) } })
+  let execute, ownsRole = false, originalFailure
+  try {
   const url = new URL(process.env.HRM_PREFLIGHT_TEST_DATABASE_URL)
   assert.equal(process.env.GITHUB_ACTIONS, "true")
   assert.equal(process.env.CI, "true")
+  assert.match(receipt.sourceSha, /^[0-9a-f]{40}$/)
+  assert.equal(execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(), receipt.sourceSha)
+  receipt.sourceBindings = sourceBindings()
+  assert.equal(url.protocol, "postgresql:")
+  assert.equal(url.search, ""); assert.equal(url.hash, "")
   assert.equal(url.hostname, "127.0.0.1")
   assert.equal(url.pathname, "/hrm_preflight_test")
   assert.equal(url.username, "postgres")
   const env = databaseConnectionEnvironment(url.href)
-  const execute = text => execFileSync("psql", ["-X", "-qAt", "--no-password", "-v", "ON_ERROR_STOP=1"], { input: text, encoding: "utf8", env, timeout: 20000, maxBuffer: 65536, stdio: ["pipe", "pipe", "pipe"] })
+  execute = text => {
+    try { return execFileSync("psql", ["-X", "-qAt", "--no-password", "-v", "ON_ERROR_STOP=1", "-v", "VERBOSITY=sqlstate"], { input: text, encoding: "utf8", env, timeout: 20000, maxBuffer: 65536, stdio: ["pipe", "pipe", "pipe"] }) }
+    catch (failure) {
+      const error = new Error("HOSTED_FIXTURE_SQL_QUERY_FAILED")
+      const state = String(failure.stderr ?? "").match(/ERROR:\s+([A-Z0-9]{5})\b/)?.[1]
+      error.sqlState = ["23514", "25006", "2BP01", "42501", "42601", "42703", "42704", "42710", "42804", "42883", "42P01", "55P03", "57014"].includes(state) ? state : null
+      throw error
+    }
+  }
   assert.equal(execute("SELECT current_database()='hrm_preflight_test' AND (SELECT rolsuper FROM pg_roles WHERE rolname=current_user);\n").trim(), "t")
-  assert.equal(execute("SELECT count(*) FROM pg_catalog.pg_class WHERE relnamespace='public'::regnamespace AND relkind='r';\n").trim(), "0")
+  assert.equal(execute(`SELECT NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='hrm_preflight_migration')
+    AND NOT EXISTS (SELECT 1 FROM pg_depend WHERE refclassid='pg_namespace'::regclass AND refobjid='public'::regnamespace)
+    AND NOT EXISTS (SELECT 1 FROM pg_class WHERE relnamespace='public'::regnamespace)
+    AND NOT EXISTS (SELECT 1 FROM pg_proc WHERE pronamespace='public'::regnamespace)
+    AND NOT EXISTS (SELECT 1 FROM pg_type WHERE typnamespace='public'::regnamespace);`).trim(), "t")
+  receipt.pristineFixtureAdmission = true
   const oldMigration = fs.readFileSync(new URL("../prisma/migrations/20260829114500_workforce_future_only_lifecycle/migration.sql", import.meta.url), "utf8")
   const guard = /CREATE OR REPLACE FUNCTION workforce_guard_shift_assignment\(\)[\s\S]*?AS \$\$([\s\S]*?)\$\$;/.exec(oldMigration)
   assert.ok(guard)
@@ -438,7 +469,9 @@ test("hosted PostgreSQL executes the real fixed catalog query and rejects writes
     : `CREATE TABLE "${name}" ("organizationId" text NOT NULL,"id" text NOT NULL${extra[name] ?? ""}); ALTER TABLE "${name}" ENABLE ROW LEVEL SECURITY; ALTER TABLE "${name}" FORCE ROW LEVEL SECURITY;`).join("\n")
   const append = sourceFunction("20260927014100_workforce_exception_case_revisions_backfill", "workforce_reject_exception_decision_mutation")
   const revision = sourceFunction("20260927014000_workforce_exception_case_revisions", "workforce_assign_exception_decision_revision")
-  execute(`BEGIN; CREATE ROLE hrm_preflight_migration LOGIN NOSUPERUSER BYPASSRLS PASSWORD 'isolated-preflight-migration'; GRANT USAGE,CREATE ON SCHEMA public TO hrm_preflight_migration; SET ROLE hrm_preflight_migration; CREATE TABLE _prisma_migrations(id text NOT NULL,migration_name text NOT NULL,checksum text NOT NULL,finished_at timestamptz,rolled_back_at timestamptz); CREATE TYPE "WorkforceDefinitionStatus" AS ENUM ('ACTIVE','DRAFT','RETIRED'); ${tables}\n${guard[0]}\n${append[0]}\n${revision[0]}\nCREATE TRIGGER workforce_shift_assignments_guard BEFORE INSERT OR UPDATE ON workforce_shift_assignments FOR EACH ROW EXECUTE FUNCTION workforce_guard_shift_assignment(); CREATE TRIGGER workforce_exception_decisions_append_only BEFORE UPDATE OR DELETE ON workforce_exception_decisions FOR EACH ROW EXECUTE FUNCTION workforce_reject_exception_decision_mutation(); CREATE TRIGGER workforce_exception_decisions_assign_case_revision BEFORE INSERT ON workforce_exception_decisions FOR EACH ROW EXECUTE FUNCTION workforce_assign_exception_decision_revision(); COMMIT; RESET ROLE; ALTER ROLE hrm_preflight_migration SET lock_timeout='10s'; ALTER ROLE hrm_preflight_migration SET statement_timeout='14min';`)
+  execute(`BEGIN; CREATE ROLE hrm_preflight_migration LOGIN NOSUPERUSER BYPASSRLS PASSWORD 'isolated-preflight-migration'; GRANT USAGE,CREATE ON SCHEMA public TO hrm_preflight_migration; SET ROLE hrm_preflight_migration; CREATE TABLE _prisma_migrations(id text NOT NULL,migration_name text NOT NULL,checksum text NOT NULL,finished_at timestamptz,rolled_back_at timestamptz); CREATE TYPE "WorkforceDefinitionStatus" AS ENUM ('ACTIVE','DRAFT','RETIRED'); ${tables}\n${guard[0]}\n${append[0]}\n${revision[0]}\nCREATE TRIGGER workforce_shift_assignments_guard BEFORE INSERT OR UPDATE ON workforce_shift_assignments FOR EACH ROW EXECUTE FUNCTION workforce_guard_shift_assignment(); CREATE TRIGGER workforce_exception_decisions_append_only BEFORE UPDATE OR DELETE ON workforce_exception_decisions FOR EACH ROW EXECUTE FUNCTION workforce_reject_exception_decision_mutation(); CREATE TRIGGER workforce_exception_decisions_assign_case_revision BEFORE INSERT ON workforce_exception_decisions FOR EACH ROW EXECUTE FUNCTION workforce_assign_exception_decision_revision(); COMMIT;`)
+  ownsRole = true
+  execute("ALTER ROLE hrm_preflight_migration SET lock_timeout='10s'; ALTER ROLE hrm_preflight_migration SET statement_timeout='14min';")
   const migrationUrl = new URL(url.href)
   migrationUrl.username = "hrm_preflight_migration"
   migrationUrl.password = "isolated-preflight-migration"
@@ -446,11 +479,10 @@ test("hosted PostgreSQL executes the real fixed catalog query and rejects writes
   migrationUrl.searchParams.set("connect_timeout", "0")
   assert.equal(databaseConnectionEnvironment(migrationUrl.href).PGCONNECT_TIMEOUT, "10")
   assert.equal(new URL(parseMigrationEnv("MIGRATION_DATABASE_URL='" + migrationUrl.href + "'\nMIGRATION_EXPECTED_DB_ROLE=hrm_preflight_migration\n")).searchParams.has("connect_timeout"), false)
-  try {
     const query = (source = sql) => {
       let output
       try { output = queryMetadata(migrationUrl.href, source) }
-      catch (error) { throw new Error("HOSTED_FIXED_SQL_QUERY_FAILED sqlState=" + (error?.sqlState ?? "unknown")) }
+      catch (error) { const failure = new Error("HOSTED_FIXED_SQL_QUERY_FAILED"); failure.sqlState = error?.sqlState ?? null; throw failure }
       const lines = output.trim().split("\n")
       assert.equal(lines.length, 2)
       try { return lines.map(JSON.parse) }
@@ -496,13 +528,61 @@ test("hosted PostgreSQL executes the real fixed catalog query and rejects writes
     for (const field of ["otherActiveSessions", "otherOpenTransactions", "lockWaitSessions"]) integer(s.activity[field], 0, 10000, "activity." + field)
     // Replay the byte-bound previous query through the same read-only connection.
     // The boolean is sufficient evidence; no raw locale/snapshot is exported.
-    const [legacyDefaults, legacy] = query(sql.replaceAll(' ORDER BY name COLLATE "C")', ' ORDER BY name)'))
+    const [legacyDefaults, legacy] = query(historicalSql.replaceAll(' ORDER BY name COLLATE "C")', ' ORDER BY name)'))
     const legacyOrderIsCanonical = [
       [legacy.ledger.known, MIGRATIONS], [legacy.relations, RELATIONS], [legacy.indexes, INDEXES],
     ].every(([entries, expected]) => Array.isArray(entries) && entries.length === expected.length && entries.every((entry, i) => entry?.name === expected[i]))
     context.diagnostic("Legacy default catalog-name order canonical=" + legacyOrderIsCanonical)
     if (!legacyOrderIsCanonical) assert.throws(() => validateSnapshot(legacyDefaults, legacy), { message: "OUTPUT_INVALID" })
     assert.deepEqual(assessMetadata(d, s), { status: "READY_FOR_REVIEW", reasons: [], migrationStates: ["pending", "pending"] })
+    receipt.cases.push({ name: "healthy original catalog contract", status: "PASS", observed: "READY_FOR_REVIEW" })
+    const trigger = (events, condition = "", args = "") => execute(`DROP TRIGGER workforce_shift_assignments_guard ON workforce_shift_assignments;
+      CREATE TRIGGER workforce_shift_assignments_guard BEFORE ${events} ON workforce_shift_assignments FOR EACH ROW ${condition} EXECUTE FUNCTION workforce_guard_shift_assignment(${args});`)
+    const probe = `BEGIN; INSERT INTO workforce_shift_assignments ("organizationId",id,"agentId","templateId","assignedByUserId","effectiveFrom")
+      VALUES ('synthetic-org','synthetic-assignment','synthetic-missing-agent','synthetic-template','synthetic-actor','2026-10-09'); ROLLBACK;`
+    assert.throws(() => execute(probe), error => error.sqlState === "23514")
+    assert.equal(execute('SELECT count(*) FROM workforce_shift_assignments;').trim(), "0")
+    receipt.cases.push({ name: "unconditional guard rejects missing-agent insert", status: "PASS", sqlState: "23514", rollbackRows: 0 })
+    for (const [name, events, condition, args] of [
+      ["conditional assignment trigger", "INSERT OR UPDATE", "WHEN (false)", ""],
+      ["column-restricted assignment trigger", 'INSERT OR UPDATE OF "agentId"', "", ""],
+      ["argument-bearing assignment trigger", "INSERT OR UPDATE", "", "'synthetic-unused-argument'"],
+    ]) {
+      await context.test(name, () => {
+        const entry = { name, status: "RUNNING" }; receipt.cases.push(entry)
+        let caseFailure
+        try {
+          trigger(events, condition, args)
+          const [observedDefaults, observedSnapshot] = query()
+          const assessment = assessMetadata(observedDefaults, observedSnapshot)
+          entry.triggerBound = observedSnapshot.guard.triggerBound; entry.observed = assessment.status
+          entry.reasons = assessment.reasons
+          if (condition) {
+            const before = execute('SELECT count(*) FROM workforce_shift_assignments;').trim()
+            execute(probe)
+            const after = execute('SELECT count(*) FROM workforce_shift_assignments;').trim()
+            assert.equal(before, "0"); assert.equal(after, before)
+            entry.syntheticBypassProved = true; entry.rollbackRowsUnchanged = true
+          }
+          assert.equal(observedSnapshot.guard.triggerBound, false)
+          assert.equal(assessment.status, "INCOMPLETE")
+          assert.ok(assessment.reasons.includes("FUNCTION_SHAPE"))
+          entry.status = "PASS"
+        } catch (error) { entry.status = "FAIL"; entry.code = "TRIGGER_BINDING_ASSERTION_FAILED"; entry.sqlState = error.sqlState ?? null; caseFailure = error }
+        finally {
+          try { trigger("INSERT OR UPDATE"); entry.restoration = { status: "PASS" } }
+          catch (error) {
+            entry.status = "FAIL"; entry.restoration = { status: "FAIL", code: "HOSTED_TRIGGER_RESTORE_FAILED", sqlState: error.sqlState ?? null }
+            if (!caseFailure) caseFailure = new Error("HOSTED_TRIGGER_RESTORE_FAILED")
+          }
+        }
+        if (caseFailure) throw caseFailure
+      })
+    }
+    ;[d, s] = query()
+    assert.equal(s.guard.triggerBound, true)
+    assert.equal(assessMetadata(d, s).status, "READY_FOR_REVIEW")
+    receipt.cases.push({ name: "restored unconditional trigger", status: "PASS", observed: "READY_FOR_REVIEW" })
     for (const [trigger, field] of [["workforce_exception_decisions_append_only", "appendTriggerBound"], ["workforce_exception_decisions_assign_case_revision", "revisionTriggerBound"]]) {
       execute(`ALTER TABLE workforce_exception_decisions DISABLE TRIGGER ${trigger};`)
       ;[d, s] = query()
@@ -541,7 +621,29 @@ test("hosted PostgreSQL executes the real fixed catalog query and rejects writes
     assert.ok(assessMetadata(d, s).reasons.includes("TIMEOUT_DEFAULTS"))
     assert.throws(() => queryMetadata(migrationUrl.href, "INSERT INTO _prisma_migrations VALUES ('write','synthetic','no',NULL,NULL);"), { message: "QUERY_FAILED" })
     assert.equal(execute("SELECT count(*) FROM _prisma_migrations;").trim(), "0")
+    receipt.cases.push({ name: "original ledger, index, timeout and write-refusal contracts", status: "PASS" })
+    assert.deepEqual(sourceBindings(), receipt.sourceBindings)
+    assert.ok(receipt.cases.every(entry => entry.status === "PASS"))
+    receipt.status = "PASS_ISOLATED_ASSIGNMENT_TRIGGER_METADATA_ONLY"
+  } catch (error) {
+    originalFailure = error; receipt.status = "FAIL"
+    receipt.originalFailure = { code: error.message === "HOSTED_FIXTURE_SQL_QUERY_FAILED" ? error.message : "FIXTURE_OR_ASSERTION_FAILED", sqlState: error.sqlState ?? null }
   } finally {
-    execute("DROP SCHEMA public CASCADE; CREATE SCHEMA public; DROP ROLE hrm_preflight_migration;")
+    if (ownsRole) {
+      try {
+        // The principal was absent before admission; every fixture object is
+        // owned by that principal. Preserve public itself and unrelated roles.
+        execute("DROP OWNED BY hrm_preflight_migration; DROP ROLE hrm_preflight_migration;")
+        receipt.cleanup.push({ action: "owned-fixture-role-and-objects", status: "PASS" })
+      } catch (error) {
+        receipt.status = "FAIL"; receipt.cleanup.push({ action: "owned-fixture-role-and-objects", status: "FAIL", sqlState: error.sqlState ?? null })
+        if (!originalFailure) originalFailure = new Error("HOSTED_OWNED_FIXTURE_CLEANUP_FAILED")
+      }
+    }
+    if (process.env.HRM_PREFLIGHT_TEST_RECEIPT) {
+      try { fs.writeFileSync(process.env.HRM_PREFLIGHT_TEST_RECEIPT, JSON.stringify(receipt, null, 2) + "\n", { mode: 0o600, flag: "wx" }) }
+      catch { if (!originalFailure) originalFailure = new Error("HOSTED_RECEIPT_WRITE_FAILED") }
+    }
   }
+  if (originalFailure) throw originalFailure
 })

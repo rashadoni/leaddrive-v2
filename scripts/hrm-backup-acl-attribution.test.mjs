@@ -1,3 +1,4 @@
+import { assertMetadataSourceContinuity } from "./ci/fixtures/hrm-metadata-preflight/source-continuity.mjs"
 import test from "node:test"
 import assert from "node:assert/strict"
 import fs from "node:fs"
@@ -118,7 +119,7 @@ test("all previous fourteen observer source files remain byte exact",()=>{
     ["./hrm-loopback-acl-inspection.test.mjs","7e1264a6a754b655306b936c971a28584532b6921a005012f5d2769d522c8993"],
     ["../.github/workflows/hrm-loopback-acl-inspection.yml","bfbcb2b83fab53817ce71ae1e511389cbab7f9ca6aeff0785801b24aee76a116"],
     ["../docs/hrm-loopback-acl-inspection-session-log.md","36658d86a3a32d577e1284c3f0ca7bdd38221d64237903c74ddcc5fa60969d72"],
-  ])assert.equal(digest(source(path)),hash)
+  ])assertMetadataSourceContinuity(path, hash)
 })
 
 test("stdin emitter and validator bind all six sources without reading any private files",async()=>{

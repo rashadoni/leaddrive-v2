@@ -1,0 +1,26 @@
+{
+  "validationSourceSha": "3da6e4b5e809e5bc9cf1641df47b4e2b3a3d85f3",
+  "validationEventMainSha": "729b4579a652ee24cf867487ab026d00e67a875f",
+  "laterMainSha": "a791be2f5581e70bf4887800866b4406c789b09a",
+  "externalPr": 656,
+  "sourceUnchanged": true,
+  "externalPaths": [
+    "package-lock.json",
+    "package.json",
+    "src/__tests__/carto-basemap.test.ts",
+    "src/__tests__/csp.test.ts",
+    "src/__tests__/helpers/csp-admits.ts",
+    "src/__tests__/mtm-carto-basemap-requests.test.ts",
+    "src/__tests__/mtm-location-picker-ui.test.ts",
+    "src/components/mtm/carto-basemap.tsx",
+    "src/components/mtm/carto-vector-basemap.tsx",
+    "src/components/mtm/live-map.tsx",
+    "src/components/mtm/location-history-map.tsx",
+    "src/components/mtm/location-picker-map.tsx",
+    "src/components/mtm/route-map.tsx",
+    "src/lib/carto-basemap.ts",
+    "src/sw.ts"
+  ],
+  "laterMainIntegratedOrVerified": false,
+  "reason": "source frozen; final draft depends on frozen648, no release or merge authorized"
+}

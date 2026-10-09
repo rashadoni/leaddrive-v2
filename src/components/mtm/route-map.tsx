@@ -6,7 +6,7 @@ import { useLocale, useTranslations } from "next-intl"
 import { CircleMarker, MapContainer, Marker, Popup, Polyline, useMap } from "react-leaflet"
 import L from "leaflet"
 import { hasMtmCoordinates } from "@/lib/mtm/geo-coordinates"
-import { CartoVectorBasemap } from "./carto-vector-basemap"
+import { CartoBasemap } from "./carto-basemap"
 import { formatTime } from "@/lib/format-date"
 import { summarizeMtmRouteExecution, type MtmRoutePointVisitFact } from "@/lib/mtm/route-point-execution"
 
@@ -207,7 +207,7 @@ export default function MtmRouteMap({ points, timezone }: Props) {
           <MapContainer center={center} zoom={13} style={{ height: "100%", width: "100%" }}>
             <InvalidateSize />
             <FitRouteBounds positions={framedPositions} />
-            <CartoVectorBasemap />
+            <CartoBasemap />
             {/* Route line */}
             <Polyline positions={polylinePositions} color="#6366f1" weight={3} opacity={0.7} dashArray="8 4" />
             {/* Point markers */}

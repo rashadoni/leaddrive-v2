@@ -38,7 +38,7 @@ const map = vi.hoisted(() => ({
 
 vi.mock("leaflet/dist/leaflet.css", () => ({}))
 vi.mock("leaflet", () => ({ default: { divIcon: () => ({}) } }))
-vi.mock("@/components/mtm/carto-vector-basemap", () => ({ CartoVectorBasemap: () => null }))
+vi.mock("@/components/mtm/carto-basemap", () => ({ CartoBasemap: () => null }))
 vi.mock("react-leaflet", () => {
   const mapApi = {
     getCenter: () => map.center,

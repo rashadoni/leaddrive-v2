@@ -374,6 +374,101 @@ describe("GET /api/v1/mtm/activity — manager feed (2026-09-14)", () => {
     expect(json.data.timezone).toBe("Asia/Baku")
   })
 
+  // The live map's card shows one employee's own events of today. Asked for as
+  // «the newest fifty rows of any kind» and filtered in the browser, a morning
+  // of visits was pushed off the page by the afternoon's photos and visit
+  // steps — and the card called what was left «события сегодня» (review of the
+  // card, 2026-10-09). The filter is the server's, so the page counts his events.
+  describe("type=FIELD_DAY — one employee's own day for the live map's card", () => {
+    /** The journal query as far as these cases read it. */
+    type FieldDayWhere = {
+      action?: string | { in?: string[] }
+      agentId?: string
+      organizationId?: string
+      createdAt?: { gte?: unknown }
+      NOT?: unknown
+    }
+    const at = (minute: number) => new Date(Date.UTC(2026, 9, 9, 6, minute))
+    const OWN = [
+      { id: "own-1", action: "WORKDAY_START", createdAt: at(0) },
+      { id: "own-2", action: "CHECK_IN", createdAt: at(5) },
+      { id: "own-3", action: "CHECK_OUT", createdAt: at(30) },
+      { id: "own-4", action: "ROUTE_ADDITION_REQUEST", createdAt: at(40) },
+    ]
+    // Seventy newer rows that are his too, but not «what he did»: photos, visit steps, an office edit.
+    const NOISE = Array.from({ length: 70 }, (_unused, index) => ({
+      id: `noise-${index}`,
+      action: ["PHOTO_UPLOAD", "VISIT_ACTION_COMPLETE", "ROUTE_UPDATE", "MOBILE_LOGIN"][index % 4],
+      createdAt: at(60 + index),
+    }))
+    const JOURNAL = [...OWN, ...NOISE].map((row) => ({ ...row, organizationId: ORG, agentId: "agent-1", entity: null, entityId: null, newData: null, oldData: null }))
+
+    /** The journal as the database would answer the route's own query: its action filter, newest first, its page. */
+    type JournalQuery = { where?: FieldDayWhere; skip?: number; take?: number }
+    function answerFromJournal() {
+      const allowed = (where: FieldDayWhere | undefined, row: { action: string }) => {
+        const filter = where?.action
+        if (!filter) return true
+        if (typeof filter === "string") return row.action === filter
+        return Array.isArray(filter.in) ? filter.in.includes(row.action) : true
+      }
+      vi.mocked(prisma.mtmAuditLog.findMany).mockImplementation((async (args: JournalQuery) =>
+        JOURNAL.filter((row) => allowed(args.where, row))
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+          .slice(args.skip ?? 0, (args.skip ?? 0) + (args.take ?? JOURNAL.length))) as never)
+      vi.mocked(prisma.mtmAuditLog.count).mockImplementation((async (args: JournalQuery) =>
+        JOURNAL.filter((row) => allowed(args.where, row)).length) as never)
+    }
+    const queriedWhere = () => vi.mocked(prisma.mtmAuditLog.findMany).mock.calls[0]?.[0]?.where as unknown as FieldDayWhere
+
+    it("returns the morning's own events although seventy newer rows of other kinds are in the journal", async () => {
+      answerFromJournal()
+      const json = await (await GET(makeReq("/api/v1/mtm/activity?agentId=agent-1&period=today&type=FIELD_DAY&limit=50"))).json()
+      expect(json.data.logs.map((log: { id: string }) => log.id)).toEqual(["own-4", "own-3", "own-2", "own-1"])
+      expect(json.data.total).toBe(4)
+
+      // The same page without the filter is what the card used to be given: none of his own events.
+      const unfiltered = await (await GET(makeReq("/api/v1/mtm/activity?agentId=agent-1&period=today&limit=50"))).json()
+      expect(unfiltered.data.logs.filter((log: { id: string }) => log.id.startsWith("own-"))).toEqual([])
+    })
+
+    it("picks exactly the card's own list of actions, and keeps the agent, the period and the scope in the query", async () => {
+      const { LIVE_MAP_AGENT_EVENT_ACTIONS } = await import("@/lib/mtm/live-map-agent-events")
+      await GET(makeReq("/api/v1/mtm/activity?agentId=agent-1&period=today&type=FIELD_DAY"))
+      const where = queriedWhere()
+      expect(where.action).toEqual({ in: [...LIVE_MAP_AGENT_EVENT_ACTIONS] })
+      expect(where.agentId).toBe("agent-1")
+      expect(where.organizationId).toBe(ORG)
+      expect(where.createdAt?.gte).toBeInstanceOf(Date)
+      // Office actions about him are not in the list.
+      expect(LIVE_MAP_AGENT_EVENT_ACTIONS).not.toContain("ROUTE_UPDATE")
+      expect(LIVE_MAP_AGENT_EVENT_ACTIONS).not.toContain("WORKDAY_REOPEN")
+    })
+
+    it("draws no cards, so it runs no card counts — one page and its total", async () => {
+      const json = await (await GET(makeReq("/api/v1/mtm/activity?agentId=agent-1&period=today&type=FIELD_DAY"))).json()
+      expect(vi.mocked(prisma.mtmAuditLog.count)).toHaveBeenCalledTimes(1)
+      expect(json.data.kpi).toEqual({ totalActivities: 0, totalCheckIns: 0, totalCheckOuts: 0, totalPhotos: 0, totalViolations: 0 })
+      // The journal page itself is charged as before.
+      vi.mocked(prisma.mtmAuditLog.count).mockClear()
+      await GET(makeReq("/api/v1/mtm/activity?agentId=agent-1&period=today"))
+      expect(vi.mocked(prisma.mtmAuditLog.count)).toHaveBeenCalledTimes(6)
+    })
+
+    it("still withholds shift events from a tenant without Workforce, and still refuses an agent of another team", async () => {
+      vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+        plan: "starter", addons: [], features: ["mtm"], modules: { mtm: true, "workforce-hrm": false },
+      } as never)
+      await GET(makeReq("/api/v1/mtm/activity?agentId=agent-1&period=today&type=FIELD_DAY"))
+      expect(JSON.stringify(queriedWhere().NOT)).toContain("WORKDAY_START")
+
+      vi.mocked(prisma.organization.findUnique).mockResolvedValue(BOTH_PRODUCTS as never)
+      linkManagerCard()
+      const refused = await GET(makeReq("/api/v1/mtm/activity?agentId=agent-9&period=today&type=FIELD_DAY"))
+      expect(refused.status).toBe(403)
+    })
+  })
+
   it("type=ROUTE filters route start/completion", async () => {
     await GET(makeReq("/api/v1/mtm/activity?type=ROUTE"))
     expect((vi.mocked(prisma.mtmAuditLog.findMany).mock.calls[0][0] as any).where.action).toEqual({ in: ["ROUTE_START", "ROUTE_COMPLETE"] })

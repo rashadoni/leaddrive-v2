@@ -1,0 +1,94 @@
+{
+  "originalSourceSha": "4efcda96f8e541c8689f87f0a0a1ce77dc98c659",
+  "originalReceiptSha256": "3a40b6e4cbb2a7a7eb7029d87f862610fc3b04b5c9cb51e062efd369a7fff76f",
+  "originalJsonBytes": 6968,
+  "gzipSha256": "c7a875e61624a272192952362010c12e620dc52e9212b336c503f3de4e3140dd",
+  "zipSha256": "2deb54dd1524546a4c7f9c8493bcbd20be7c2567db664a3d9414755e9d802ed9",
+  "originalRetainedByteIdentical": true,
+  "status": "FAIL",
+  "failure": {
+    "code": "ASSERTION_FAILED",
+    "sqlState": null
+  },
+  "cases": [
+    {
+      "name": "ordinary schema private output",
+      "status": "PASS",
+      "cliExit": 0,
+      "outputCreated": true,
+      "observed": "OUTPUT_CREATED"
+    },
+    {
+      "name": "api_keys absent",
+      "status": "PASS",
+      "cliExit": 0,
+      "outputCreated": true,
+      "observed": "OUTPUT_CREATED"
+    },
+    {
+      "name": "api_keys parent with descendant",
+      "status": "FAIL",
+      "cliExit": 0,
+      "outputCreated": true,
+      "observed": "OUTPUT_CREATED"
+    },
+    {
+      "name": "api_keys inheriting child",
+      "status": "FAIL",
+      "cliExit": 0,
+      "outputCreated": true,
+      "observed": "OUTPUT_CREATED"
+    },
+    {
+      "name": "ledger parent with descendant",
+      "status": "FAIL",
+      "cliExit": 0,
+      "outputCreated": true,
+      "observed": "OUTPUT_CREATED"
+    },
+    {
+      "name": "ledger inheriting child",
+      "status": "FAIL",
+      "cliExit": 0,
+      "outputCreated": true,
+      "observed": "OUTPUT_CREATED"
+    },
+    {
+      "name": "api_keys partition leaf",
+      "status": "FAIL",
+      "cliExit": 0,
+      "outputCreated": true,
+      "observed": "OUTPUT_CREATED"
+    },
+    {
+      "name": "ledger partition leaf",
+      "status": "FAIL",
+      "cliExit": 0,
+      "outputCreated": true,
+      "observed": "OUTPUT_CREATED"
+    },
+    {
+      "name": "api_keys partition root",
+      "status": "PASS",
+      "cliExit": 1,
+      "outputCreated": false,
+      "observed": "REFUSED"
+    },
+    {
+      "name": "ledger partition root",
+      "status": "PASS",
+      "cliExit": 1,
+      "outputCreated": false,
+      "observed": "REFUSED"
+    },
+    {
+      "name": "filtered ledger",
+      "status": "PASS",
+      "cliExit": 1,
+      "outputCreated": false,
+      "observed": "REFUSED"
+    }
+  ],
+  "original524DraftRetained": "https://github.com/rashadoni/leaddrive-v2/pull/646",
+  "noSecurityRuleOrBaselineChange": true
+}

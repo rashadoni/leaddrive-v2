@@ -15114,6 +15114,8 @@
       "ROUTE_COMPLETE": "Route completed",
       "ROUTE_PUBLISH": "Route published",
       "ROUTE_DAY_CLOSE": "Route closed at day end",
+      "ROUTE_REMOVAL_REQUEST": "Asked to remove a route stop",
+      "ROUTE_ADDITION_REQUEST": "Asked to add a route stop",
       "VISIT_COMPLETE": "Visit completed",
       "VISIT_ACTION_COMPLETE": "Visit step done",
       "VISIT_RESULT_UPDATE": "Visit result updated",
@@ -16418,6 +16420,8 @@
       "routeHint": "stops and line of the selected employee",
       "zones": "Client zones",
       "zonesHint": "the circle a check-in is accepted in",
+      "clients": "Clients",
+      "clientsHint": "institutions of the base that have coordinates",
       "heat": "Heat map",
       "heatHint": "where employees are densest",
       "hiddenAgents": "Hidden employees: {count}",
@@ -16427,7 +16431,160 @@
       "selectAll": "All",
       "selectNone": "None",
       "onlyThis": "Only this one on the map",
-      "hiddenBadge": "hidden from the map"
+      "hiddenBadge": "hidden from the map",
+      "labels": "Name labels",
+      "labelsHint": "the name beside the marker all the time, not only under the pointer",
+      "trails": "Trail",
+      "trailsHint": "where the employee has been in the last half hour, while the map is open",
+      "glide": "Smooth movement",
+      "glideHint": "the marker glides to its new place instead of jumping"
+    },
+    "tools": {
+      "point": "Address or point",
+      "ruler": "Ruler",
+      "fullscreen": "Full screen",
+      "exitFullscreen": "Normal size",
+      "searchPlaceholder": "Address or place",
+      "searchButton": "Find",
+      "searching": "Searching…",
+      "searchTooShort": "Type at least 3 letters",
+      "noResults": "Nothing found. Spell the street the way the map names it.",
+      "searchFailed": "Address search is unavailable right now",
+      "rateLimited": "Too many searches. Try again in a minute.",
+      "pickOnMap": "Mark a point on the map",
+      "cancel": "Cancel",
+      "pickingHint": "Press the map at the place you need",
+      "pointPicked": "Point on the map",
+      "pointHint": "The list will show the distance from every employee to this point — the nearest first.",
+      "nearestTo": "Nearest to: {label}",
+      "clearPoint": "Remove",
+      "rulerTotal": "Ruler: {distance}",
+      "rulerArea": "Area inside: {area}",
+      "rulerStart": "Press the map to put the first point",
+      "rulerHint": "Every press adds a segment",
+      "rulerUndo": "Remove the last one",
+      "rulerDone": "Done"
+    },
+    "roster": {
+      "shownCount": "{shown} of {total}",
+      "show": "Employee list ({count})",
+      "showFiltered": "List: {shown} of {total} · filtered",
+      "filters": "Filters",
+      "hide": "Hide the list",
+      "view": "View",
+      "wide": "Table",
+      "narrow": "List",
+      "groupBy": "Group",
+      "sortBy": "Sort by",
+      "grouping": {
+        "none": "No groups",
+        "team": "By team",
+        "manager": "By manager",
+        "status": "By status",
+        "workday": "By workday"
+      },
+      "columnsTitle": "Table columns",
+      "columnsHint": "Shown in the wide table",
+      "columns": {
+        "name": "Employee",
+        "status": "Status",
+        "signal": "Signal",
+        "distance": "Distance",
+        "team": "Team",
+        "manager": "Manager",
+        "app": "App",
+        "workday": "Workday",
+        "route": "Route",
+        "speed": "Speed",
+        "battery": "Battery"
+      },
+      "masterTick": "Show everybody in the list on the map",
+      "groupTick": "{name} — show the group on the map",
+      "collapseGroup": "Collapse group {name}",
+      "expandGroup": "Expand group {name}",
+      "noTeam": "No team",
+      "noManager": "No manager",
+      "standingSince": "since {time}",
+      "print": {
+        "button": "Print",
+        "hint": "Print the list: rows and order as on screen",
+        "shown": "Employees on the sheet: {shown} of {total}",
+        "search": "Name search: {query}"
+      },
+      "export": {
+        "button": "Excel",
+        "hint": "Download the list as Excel: rows and order as on screen",
+        "failed": "The list could not be exported. Try again."
+      },
+      "historyToday": "Today's history",
+      "kmh": "{value} km/h",
+      "age": {
+        "now": "now",
+        "minutes": "{count} min",
+        "hours": "{count} h",
+        "days": "{count} d"
+      },
+      "workday": {
+        "ACTIVE": "Running",
+        "PAUSED": "Paused",
+        "NOT_STARTED": "Not started",
+        "CLOSED": "Finished"
+      },
+      "route": {
+        "NONE": "No route",
+        "NOT_STARTED": "Not started",
+        "IN_PROGRESS": "In progress",
+        "DONE": "Completed"
+      },
+      "speed": {
+        "MOVING": "Moving",
+        "STILL": "Standing",
+        "UNKNOWN": "No data"
+      },
+      "battery": {
+        "LOW": "Below 20%",
+        "MID": "20–50%",
+        "HIGH": "Above 50%",
+        "UNKNOWN": "No data"
+      },
+      "distance": {
+        "NEAR": "Under 1 km",
+        "CLOSE": "1–5 km",
+        "FAR": "5–20 km",
+        "VERY_FAR": "Over 20 km",
+        "UNKNOWN": "No fresh coordinate"
+      },
+      "sort": {
+        "text": {
+          "asc": "A to Z",
+          "desc": "Z to A"
+        },
+        "order": {
+          "asc": "In order",
+          "desc": "Reversed"
+        },
+        "time": {
+          "asc": "Newest first",
+          "desc": "Oldest first"
+        },
+        "number": {
+          "asc": "Smallest first",
+          "desc": "Largest first"
+        }
+      },
+      "filter": {
+        "open": "{column}: sort and filter",
+        "hint": "Tick who to show. Nothing ticked — everybody is shown.",
+        "done": "Done · showing {shown} of {total}",
+        "search": "Search the list",
+        "nothingFound": "Nothing found",
+        "reset": "Clear this filter",
+        "resetAll": "Clear filters",
+        "remove": "Remove the «{column}» filter",
+        "chip": "{column}: {values}",
+        "unknownValue": "not in the list",
+        "more": "{count} more"
+      }
     },
     "follow": "Follow",
     "followHint": "The map keeps the employee centred while they move",
@@ -16731,6 +16888,98 @@
       "factOpen": "Actual {from} — in progress",
       "openVisit": "Open visit",
       "missingCoordinates": "{count, plural, one {# stop has no coordinates and is} other {# stops have no coordinates and are}} not on the map"
+    },
+    "clients": {
+      "loading": "loading clients…",
+      "failed": "clients could not be loaded — press «Refresh»",
+      "failedShort": "Clients did not load",
+      "retry": "Try again",
+      "refreshFailed": "could not be refreshed",
+      "onMap": "{shown} {total, plural, one {of # institution} other {of # institutions}} on the map",
+      "withoutCoordinates": "{count, plural, one {# has no coordinates} other {# have no coordinates}}",
+      "truncated": "only part of the base is shown",
+      "group": "Clients here: {count}. Press to zoom in",
+      "stack": "Clients at this point: {count}",
+      "stackMore": "and {count} more",
+      "class": "class {category}",
+      "open": "Card in a new tab",
+      "nearest": "Who is nearest"
+    },
+    "day": {
+      "title": "The day in numbers",
+      "distance": "Distance today",
+      "moving": "In motion",
+      "byRoads": "by road",
+      "unknown": "No data from the phone",
+      "notCalculated": "Not calculated: too many GPS points today. Press «Today's history» and pick a part of the day.",
+      "empty": "No accurate coordinates from the phone yet today",
+      "loading": "Counting the day…",
+      "failed": "The day's numbers could not be refreshed",
+      "note": "Counted from the phone's GPS while the workday is on. Where the phone was silent, the path is not known."
+    },
+    "device": {
+      "title": "Phone and app",
+      "lastContact": "Last contact",
+      "accuracy": "GPS accuracy",
+      "asOf": "as of {time}",
+      "appVersion": "App version",
+      "notifications": "Notifications",
+      "notificationsOn": "Connected",
+      "notificationsOff": "Not connected",
+      "failed": "The app version and notifications could not be refreshed"
+    },
+    "links": {
+      "history": "Today's history",
+      "alerts": "Alerts",
+      "period": "Report for a period",
+      "tasks": "Tasks",
+      "card": "Employee profile",
+      "alertRules": "Alert settings",
+      "alertRulesHint": "Alert rules are the same for the whole organization: there are no separate rules for one employee",
+      "forEmployee": "{label}: {name}"
+    },
+    "card": {
+      "customize": "Customize the card",
+      "customizeHint": "What the card shows and in what order. Press a block's heading to fold it.",
+      "hiddenCount": "hidden: {count}",
+      "moveUp": "{name}: up",
+      "moveDown": "{name}: down"
+    },
+    "areaUnits": {
+      "m2": "{value} m²",
+      "ha": "{value} ha",
+      "km2": "{value} km²"
+    },
+    "place": {
+      "title": "Where now",
+      "atClientVisit": "at client {name}, visit in progress",
+      "atClientZone": "inside the zone of client {name}",
+      "visitAway": "the visit at client {name} is still open, and he is {distance} away from it",
+      "delayedHint": "from a delayed coordinate — its time is in the line above",
+      "approximately": "approximately {place}",
+      "loading": "finding the street…",
+      "coordinates": "street not found · {coordinates}"
+    },
+    "since": {
+      "VISIT": "Visit in progress since {time}",
+      "STANDING": "Standing since {time}",
+      "BREAK": "On a break since {time}",
+      "SHIFT_CLOSED": "Workday closed at {time}",
+      "duration": {
+        "moment": "just now",
+        "minutes": "{minutes} min",
+        "hours": "{hours} h {minutes} min",
+        "days": "{days} d {hours} h"
+      }
+    },
+    "events": {
+      "title": "Events today",
+      "loading": "Loading events…",
+      "empty": "No events yet today",
+      "failed": "Events could not be refreshed",
+      "cut": "The latest {count} events of the day are shown — see «Today's history» for earlier ones",
+      "more": "Show {count} more",
+      "fewer": "Show fewer"
     },
     "distanceUnits": {
       "m": "{value} m",

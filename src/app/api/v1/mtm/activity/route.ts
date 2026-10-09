@@ -13,6 +13,7 @@ import {
 } from "@/lib/mtm/field-access"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { isValidTimezone } from "@/lib/timezone"
+import { LIVE_MAP_AGENT_EVENT_ACTIONS } from "@/lib/mtm/live-map-agent-events"
 
 const CHECK_IN_ACTIONS = ["CHECK_IN", "CHECK_IN_FORCED"] as const
 // Compliance lens: geofence bypasses + failed mobile logins. Kept in sync with
@@ -166,7 +167,7 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
   if (scope.kind === "none") return mtmFieldScopeRequiredResponse()
 
   const { searchParams } = new URL(req.url)
-  const type = searchParams.get("type") || "" // CHECK_IN, CHECK_OUT, PHOTO, TASK, CHECK_IN_FORCED
+  const type = searchParams.get("type") || "" // CHECK_IN, CHECK_OUT, PHOTO, TASK, CHECK_IN_FORCED, FIELD_DAY
   const agentId = searchParams.get("agentId") || ""
   const violations = searchParams.get("violations") === "1"
   const period = searchParams.get("period") || "today"
@@ -189,8 +190,12 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
     if (start) kpiWhere.createdAt = { gte: start }
     if (agentId) kpiWhere.agentId = agentId
 
-    const [totalCheckIns, totalCheckOuts, totalPhotos, totalActivities, totalViolations] =
-      await Promise.all([
+    // The live map's card asks for one employee's own day (FIELD_DAY) and
+    // draws no cards: it is not charged five counts for numbers it never shows.
+    const fieldDay = type === "FIELD_DAY" && !violations
+    const [totalCheckIns, totalCheckOuts, totalPhotos, totalActivities, totalViolations] = fieldDay
+      ? [0, 0, 0, 0, 0]
+      : await Promise.all([
         prisma.mtmAuditLog.count({ where: { ...kpiWhere, action: { in: [...CHECK_IN_ACTIONS] } } }),
         prisma.mtmAuditLog.count({ where: { ...kpiWhere, action: "CHECK_OUT" } }),
         prisma.mtmAuditLog.count({ where: { ...kpiWhere, action: "PHOTO_UPLOAD" } }),
@@ -204,6 +209,12 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
     if (start) auditWhere.createdAt = { gte: start }
     if (agentId) auditWhere.agentId = agentId
     if (violations) auditWhere.action = { in: [...VIOLATION_ACTIONS] }
+    // What the employee did himself — visits, the shift, the route, his
+    // requests to change it. Filtered here, so the page limit counts his own
+    // events: picked out in the browser from «the newest fifty rows of any
+    // kind», a morning of visits was pushed off the page by the photos and
+    // visit steps of the afternoon. The Workforce exclusion above still holds.
+    else if (type === "FIELD_DAY") auditWhere.action = { in: [...LIVE_MAP_AGENT_EVENT_ACTIONS] }
     else if (type === "CHECK_IN") auditWhere.action = { in: [...CHECK_IN_ACTIONS] }
     // F-31 compliance lens: forced check-ins on their own so an auditor can see
     // geofence-bypass events without the regular check-in noise.

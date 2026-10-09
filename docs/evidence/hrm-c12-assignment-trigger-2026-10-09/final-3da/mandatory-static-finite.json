@@ -1,0 +1,144 @@
+{
+  "sourceHeadSha": "3da6e4b5e809e5bc9cf1641df47b4e2b3a3d85f3",
+  "actualCheckoutSha": "8b6c06576ab5ae2f01400f82aaef2336b17c8fd7",
+  "sourceTree": "1e752eb27ecfa1978675439eb2ce542c5533580b",
+  "failingFileCount": 18,
+  "baselineFileCount": 18,
+  "globallyClean": false,
+  "strictBaselineGuardPassed": true,
+  "baselineSha256": "8f0fc568274f9fd8c0c741db618d6e4d81025de7112a315cd93e6b92bbd5a4b1",
+  "logBytes": 226827,
+  "logSha256": "92f35ebdee443f815988be8bebd5fae7db8d1b30cd238084e15924c406ec72fc",
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Initialize containers",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Checkout code",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Setup Node.js",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Install dependencies",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Support UX read-only readiness diagnostic tests",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Generate Prisma client",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Resolve the per-job Postgres port",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Support UX canary atomic PostgreSQL gate",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Generate frozen pre-pilot Prisma client",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Event-platform Kafka and schema asset gate",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "PostgreSQL maintenance safety unit tests",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Event-platform migration and database invariant gate",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Event-platform SDK PostgreSQL concurrency gate",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Workforce shared-lock PostgreSQL race gate",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Demo Center database constraints gate",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "MTM client categories database gate",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Finance bill payment database gate",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Finance Telegram recipient database gate",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Previous Prisma client rollback-window gate",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "PII column-wrap lint guard",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Unit tests vs baseline (BLOCKING)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Post Setup Node.js",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Post Checkout code",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Stop containers",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ]
+}

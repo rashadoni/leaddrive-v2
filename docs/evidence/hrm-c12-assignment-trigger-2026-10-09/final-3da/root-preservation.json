@@ -1,0 +1,43 @@
+{
+  "sourceSha": "3da6e4b5e809e5bc9cf1641df47b4e2b3a3d85f3",
+  "baseSha": "cdaf3c17e259ebf2ffe5bc467d4961da950db3ca",
+  "gitleaksExit": 0,
+  "reportSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+  "protectedPaths": [
+    {
+      "path": "typecheck-baseline.json",
+      "sha256": "919fa9d0212b18ee685af4f08680ebbc34e8c4969294054447df03147bf0fc53",
+      "unchanged": true
+    },
+    {
+      "path": "test-baseline.json",
+      "sha256": "8f0fc568274f9fd8c0c741db618d6e4d81025de7112a315cd93e6b92bbd5a4b1",
+      "unchanged": true
+    },
+    {
+      "path": ".gitleaks.toml",
+      "sha256": "911d757d734149b9a5ca5938f0a5bf66afe70b6e2d0e7db1f7199961ac681325",
+      "unchanged": true
+    },
+    {
+      "path": ".github/workflows/pr-checks.yml",
+      "sha256": "a6fe9dc99094a4d4cbd3eeebf5a2242e692d3dbbb5adeb4e3a2a8f226c7b3247",
+      "unchanged": true
+    },
+    {
+      "path": "src/lib/workforce/exception-case-report-recorded-outcomes.ts",
+      "sha256": "1d84daa28a7b21a8ad8545f5b494c1030c338cff75fc168f87153541d5f0321c",
+      "unchanged": true
+    },
+    {
+      "path": "src/lib/workforce/exception-policy-draft.ts",
+      "sha256": "f45f761e9c2e829351eb930c7e191f667327b3ed040338b4033b54381da59b6b",
+      "unchanged": true
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.mjs",
+      "sha256": "46b417da7bbe763960b8ede8fa0e9dbd98543d090d54f73979289504bfe35771",
+      "unchanged": true
+    }
+  ]
+}

@@ -329,6 +329,151 @@
 - Узкая i18n:check действительно PASS на текущем worktree; RAM13872MiBavailable,disk279GiB,pressure0. Full local compiler/build/browser/SQL NOT RUN по host contract; следующий source checkpoint публикуется в существующийdraft589, затем fresh5required+exact5runtime jobs и independentreview. Production preflight/main HRM merge/release остаются отдельными обязательными воротами. Учёт84/161,77open,60%,C12PARTIAL не меняется.
 
 
+## 2026-10-07 — финальный источник062 опубликован, проверки идут
+
+- Финальный source commit06254cbab837b1a0e3063708fc955fbd64a4f628/tree38b49b4cbe974a21e6a0f982dbbacab20aecf7da опубликован fast-forward в существующийPR589, прежняя цепочка/история и archivec123 сохранены. PR589 отмеченready после подготовки; финальная sourceветка/worktree остаётся чистой и неизменной во время CI.
+- Exact5lane workflowdispatch37635350493 получил expected_head062. Ready event запускает все5required checks и применимые Workforce UI regressions на062. Прежние9f результаты служат только доказательством неизменности исходника, не заменяют текущие проверки. PR616 five required checks тоже выполняются на546d; actualSQL16/16PASS отдельно сохранён.
+- Продолжение журнала и новые результаты хранятся в отдельном evidence worktree /mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-wf-c6-010-release-evidence-20261007, branchcodex/hrm-wf-c6-010-release-evidence-20261007, parent062. Это защищает точный sourcehead от движения при сохранении доказательств. Source independent review назначен; main/productionpreflight и HRMrelease пока pending.
+
+
+## 2026-10-07 — независимый source062 и свежие браузерные результаты
+
+- Independent SOURCE review06254cbab837b1a0e3063708fc955fbd64a4f628: P0–P3=0, не полная release acceptance. JSON28190bytes/SHA026f4c33cccd8c1676e149fe64658bb4f7a982dbd84e17f19dd604d67e8e8b2c сохранён. Проверены10ancestors, весь Workforce/Prisma domain unchanged9f,24production/5baseline bindings,14HR namespaces perlocale/18finance leaves и89incoming main paths, exact c123tree и12 прежних review/failurebindings. Авторство тестов/preflight reviewer раскрыто, собственный preflight он не выдаёт за независимый source review; root review сохранён отдельно.
+- Current exact workflow37635350493 reportjob112839990999 и classificationjob112839991015 SUCCESS. Root скачал оригинальные ZIP; GitHub digest, CRC, безопасные memberpaths, оба receipts SHA и26sourcebindings к062 проверены.9report+11classification PASS,6реальных201 fixture appends+6auditrows, canonicalAuth.js/TOTP/nonce, HRrole/tenant/revocation denial, exact retry0delta, reopenedreset, populated2tenantFORCERLS и cleanupPASS. Это синтетическая isolatedPG/Redis среда, не настоящие кадровые решения.
+- Root фактически просмотрел6current PNG. EN metrics четыре33.33%,sample3/unfinished2/unclassified2/integrity1 видимы; AZ процентов4видимы, верх/низ обрезан; RU nestedscroller screenshot почтипустой/обрезанный. EN/AZ queue showsmanualHRboundary/appealfeedback; RU leftcolumns, действиеконтролов подтверждено DOM/network201, не полной screenshotvisibility. AZ duration English units50minutes/seconds/hours inheritedfrom973; actualcrossrealm equalityfalseодинраз, числовые/API/browserassertionsPASS. Не утверждается полнаяAZunitlocalization/WCAG/AT/mobilevisual acceptance.
+- Все исходные browserZIP/logs сохранены. Compiler/build/fullregression и requiredchecks pending; actualproductionmetadata pending616. Учёт84/161/77/60,C12PARTIAL unchanged.
+
+
+## 2026-10-07 — финальные PG/regression и bundle062 PASS
+
+- Exact workflow37635350493 sourcejob112839991260 SUCCESS: currentPrisma validate/generate PASS, translation parity/scopedlint PASS, actual4PGfiles44/44tests PASS безskips. Fullregression завершена: неизменный strictbaseline18failingfiles/18known,everybaselineentry stillfails, no newfailingfiles; gatePASS. Это не globallyclean suite. Originalfull157668bytes log retainedlossless.
+- Exact buildjob112839991063 SUCCESS: Nextwebpack compiledsuccessfully4.8min, standalone server/staticexistenceassertionsPASS. Existing build skiptypevalidation unchanged; отдельный полныйcompiler/gates ещё выполняется. Original129333bytes log retainedlossless.
+- PR616 static-checks и3cheaprequired PASS, typecheck stillrunning. Productionmetadata/mainmerge pending; источник062 frozen, evidencebranchcheckpoint лишьdocs. Учёт84/161/77/60/C12PARTIAL прежний.
+
+
+## 2026-10-07 — внутренний PR616 слит штатно; actualproductionpreflight ещё pending
+
+- На546d все5requiredApp15368 checks действительноSUCCESS:static112838819950,type112838819834,scope112838658962,scan112837693933,runner112837691945. Freshmain8301, exacthead546d, enforceadmins/protection и prospective merge treecef964 проверены; tree равен independentlyrootreviewedauxsource. Normal RESTmerge matchedsha безadmin/force/bypass: PR616→main8235c3b24ad12189e1ef95427ce7f192c077ae5c, parents8301+546d. Это внутренний инструмент, не mainmerge589 и неWFDDL/activation.
+- Documented deploy.yml run37638607825 стартовал наexact8235. Productionmetadata ждёт ownsuccessfuldeploy/public artifact8235; old8301releaseнеподменяетэто. DirectSSH отказ сохраняется, credentials/grants не менялись.
+- Fresh fetch main8235; rootmerge-tree main8235+source062 =38b49b4cbe974a21e6a0f982dbbacab20aecf7da, exact testedsource tree. Main adds onlyreviewedauxbytesalreadyincluded; candidate062непереписывается радиmergewrapper. Futureothermain source requiresnewintegration/reverification.
+- Independent browserreviewba5fa8cc8d8db0d761a916b0863ce4d395f483f405fa6bfadb4c4cc727afb8d1 сохранён:actualGitHubjob/artifact/head/19members/26sourcebindings/7selectedSQLstatements/9+11cases/6UI201+6ledger+6audits/7MFA/22facts/cleanupPASS; authoredharness/rootcrossreview disclosed. PNG/clipping/inheritedAZIntlunitgap qualifiersexplicit. Fullfinalcompiler/requiredtype589/prodmetadata remainpending.
+- Agent заметил вactual062bundle warning Failedtocopytracedfiles/ENOENT dashboardpage_client-reference-manifest.js; source comparison withprior9f pending. BuildPASS не трактуется какwarning-free/fulltraced-fileproof, prior receiptlimits correctedadditivelyhere.
+
+
+## 2026-10-07 — весь финальный CI062 SUCCESS, realproductionpreflight ждёт8235deploy
+
+- Все5required checks на062 отApp15368 SUCCESS (root проверилhead/app/conclusion); exact5lanes run37635350493 attempt1 completedSUCCESS/all5jobsSUCCESS. Compilerjob112839990595/ZIP11489674547digest e434b786069d247caf44ff560e84a94cde6b5861df63b16dceb88e8e58b0afdc провереныCRC/GitHubdigest. Actual configuredfullcompiler завершён: exit2/1153diagnostics,18ownedtypedpaths zeroerrors acrossallfamilies, оба неизменённыхcompiler gates PASS/64pairs=64baseline. Root повторил только gateanalysis на скачанномoriginal, не запускалcompilerнаContabo.
+- Rawcompiler177767bytes отличается9f SHA из-за5linepositions в incomingfinance api-finance-funds.test; complete(file,column,code,message) multiset identical1153 при исключении lineoffset. Не заявлена byteidentity. Source/testsWF byteunchanged и обаbaseline/gates exact973; globallyclean compiler не заявлен. ZIP/fulljoboriginal retainedlossless, originaldeltas separatelyrecorded.
+- IndependentPG/buildsupplement1f8cfcf5e7546149cfaec0c0016816710d3ecbb00558cf34e154f0e95dae619c сохранён. DashboardmanifestENOENTwarning действительно присутствовал в original9f build; nextconfig/dashboardpage/lock/buildrunner byteunchanged9f/main8301. Warning не объявлен harmless/absent, сборка не выдаётся заполнуюпроверкуtracedbundle. Source062build/44PG/strict18/18previouslypassed currentevidence.
+- IndependentwholecurrentCI review выполняется. Realmetadata workflow ещёне запущен: documented8235deployment37638607825 build/quality inprogress. Доactuallivecatalog нельзяслитьHRM589, count84/161/77/60/C12PARTIAL остаётся.
+
+
+## 2026-10-07 — техническая приёмка062 завершена; реальный preflight остановлен до SQL
+
+- Независимая итоговая technical acceptance062 сохранена: JSON22898bytes/SHA3dba5a71e5e0ef913aa1cb98a03f727f704aafbbfe5f40f3c83b8a6afe40a16f. Все текущие обязательные checks, five-lane CI, isolated44PG/20browser cases и review приняты с указанными compiler1153/strict18 baseline и manifest/AZ/RU evidence ограничениями. Это technical acceptance, не release acceptance/real HR observations.
+- Собственный штатный Deploy37638607825 attempt1 наmain8235c3b24ad12189e1ef95427ce7f192c077ae5c SUCCESS: build112851306835,quality112851306850,deploy+smoke112856964735 и retention112859720613 SUCCESS. Root отдельно выполнил pinned TLS public build→ping→build: все200 и exact8235. Это выпуск внутреннего preflight инструмента, HRM589 ещё не слит.
+- Реальный read-only metadata workflow37641215366 attempt1 FAILURE: sourcevalidation112860396402 SUCCESS (16fenced tests), production112860690832 FAILURE. Оригинальный ZIP11492312014/digesta3f2d68839fac7e80fd0f86857252f38893fba241f3df461103a20b4f18b60c7 проверен; конечный JSON возвращает ENV_INVALID до SQL. Root/файловые проверки проходят до разбора existing migration.env; валидатор не сообщает точную причину. Это не доказанная ошибка каталога/роли и не полный preflight PASS. Original log losslessgz, ZIP, finite JSON и receipts сохранены.
+- Исследуется исходная совместимость strict parser с действующим server-deploy.sh, который требует ОБА connectionURL/expectedrole и читает статические literal values без shell eval. Нет основания использовать fallback role, менять production config/гранты/секреты или ослаблять read-only. Нужен безопасный конечный диагностический код без URI/пользователя/базы/неизвестных имён параметров. Независимое source исследование назначено; источник062 frozen. Следующая разрешённая работа: reviewed source-only preflight diagnostic fix и fresh CI; HRM merge ждёт actual catalogue preflight. Учёт84/161,77open,60%,C12PARTIAL/WF-C6-010PARTIAL остаётся.
+
+
+## 2026-10-07 — текущие refs и отдельная публикация доказательств
+
+- Fresh origin/main8235 и source589062 сверены; PR606/609 CLOSED/mergedfalse. App snapshot: текущий HRM chat ACTIVE, прочие HRM cloud chats IDLE; независимый reviewer относится к этой задаче. Иного активного HRM исполнителя в этом snapshot нет. Canonical dirty checkout и чужие worktrees сохраняются.
+- PR589 description обновлён вокруг итоговой реализации, exact062CI/knownbaseline/evidence limits и actualpreflightENV_INVALID. Журнал и новые оригинальные release доказательства отделены от frozen source062 на branchcodex/hrm-wf-c6-010-release-evidence-20261007; публикуются как dependent evidence draft без main merge/production deployment. Исходный source не движется ради сохранения журналов. Следующая независимая source работа: конечные безопасные diagnostics parser до realcatalogretry; никакие production настройки/доступы не меняются.
+
+
+## 2026-10-07 — evidencePR617 и diagnosticPR618 опубликованы
+
+- Evidence branch опубликована без force; dependentdraftPR617 https://github.com/rashadoni/leaddrive-v2/pull/617 (base589) прикреплён к задаче. Docs-only, не mainmerge и не incidental appdeploy. Exact062 source/CI сохраняются отдельно от journal6ab13f40a.
+- Независимый root source review диагностического checkpoint3fc77196bdc7b6582b3fbcb32e9155004702de69/tree51bbf05c0dd6703c63e83c0db81077bf3e1f03c9 PASS. Только helper/test/append auxiliaryjournal. Version2 добавляет37finiteenvDetailcodes только при ENV_INVALID; unknownkeys⇒OTHER, unknownerror metadata⇒UNCLASSIFIED, no user/host/db/URI/value reflection. URL allowlist/explicitlibpqenv/read-onlySQL и workflow,8baseline/schema/SQL/workflow bindings byteunchangedmain8235. Root exact-head syntheticparity72envcases(11accept61reject)+33connectioncases PASS; agent boundedunit18PASS/0FAIL/1hostedSQLSKIP and36 actualnorequery/privacyrejections PASS. SQL наContabo не запускался.
+- Root первый receipt lookup ошибочно использовал отсутствующий scripts/ci/test-baseline.json, generationfailed до записиreceipt; исправлен на реальный scripts/check-test-baseline.mjs/rootbaselinefiles. Это ошибка review receipt, не product/CI failure; originalcorrectionexplicitlyretainedJSON. Никакой falsePASS не заимствован.
+- Authorizedsource-onlydraftPR618 https://github.com/rashadoni/leaddrive-v2/pull/618 создан/прикреплён; hostedpreflight37644146534 наexact3fc запущен. Requiredheavychecks покаdraftSKIP и неPASSverification. Послеactual19testhostedPASS и ready required5 требуется штатный protectedmainmerge/ownexactdeploy и finiteproductionretry. Acceptanceprofileнерасширен, actuallivecause всёещёunknown; любыеcompatibilityfix зависятот реальногоfiniteрезультата. Source062 frozen, HRM589 held; accounting84/161/77/60/C12PARTIAL unchanged.
+
+
+## 2026-10-07 — diagnostic3fc hosted SQL/source19/19PASS; mandatorychecks pending
+
+- Exact3fc workflow37644146534 attempt1/sourcejob112870404228 SUCCESS. Root получил оригинальный лог и подтвердил19tests/19PASS/0FAIL/0SKIP, actualisolatedSQL и legacyquerynoncanonical=false reproduction, runnerpolicy47mainworkflowsPASS. Log сохранёнlosslessgzip+hash receipt; это не actualproductionметаданные.
+- PR618 отмеченready толькопослеrootreview иactualsourcePASS; ready запускает обычные5requiredmainchecks на3fc. Source/helper/SQL/workflow больше не меняются во времяCI. Mainmerge ждётактуальных5App15368greenchecks/prospective-treeproof. Actualmain8235/live8235, первоеmetadataENV_INVALID остаётсяFAIL; preciseenvcauseневыдуман, originalfailureсохранён. HRM589 held062, noC6DONEcredit.
+
+
+## 2026-10-07 — diagnosticPR618 штатно слит; ownmain5ce deploy запущен
+
+- Все5requiredApp15368 наexact3fc SUCCESS: scope112871150344/runner112870394129/scan112870399661/static112871350645/type112871350905. Exactnode/source/SQL19/19 предыдущегоrun остаётсятемжеhead. Baseline/gates unchanged; fullstrictregression всёещёknownfailures, typegatebaseline matches, неgloballyclean. Оба originalrequiredfulljoblogs315607/342465bytes сохраненыlossless+receipts. Первый gh downloadstaticлог былNOTAVAILABLE, таккакoverallrunещёrunning; emptytempфайлневыданзаevidence. Retryпослеcompleted получилнастоящиеoriginals.
+- Freshmain8235 и reviewed3fc/51bbf05 подтверждены root, protected5Appcontexts/enforceadmins/normalmergeonly проверены. Matchedsha normalRESTmerge безadmin/force: PR618→main5cebf61623c58ca65b66f2b58506157c097a1931, parents8235+3fc, tree51bbf05exactreviewedsource. Proof/requestresult сохранены. Это внутренний diagnostic source, не HRM589 и не WFmigration/activation/accesschange.
+- Own documented Deploy37647487361 наexact5ce IN_PROGRESS. Realdiagnosticrerun ждётsuccessfulown5cedeploy иpublic artifact/pingproof; первый8235preflightFAILENV_INVALID покаединственныйфактическийрезультат. Послеnewmain интеграцияисточникаHRM должнаобновить062 и зановорunCI наfinalcommit; старый062невыдаётсязаcurrentfinalacceptance. Accounting84/161/77/60,C12PARTIAL/WF-C6-010PARTIAL unchanged.
+
+
+## 2026-10-07 — own5ce deployment/publicproof PASS; real finiteenv retry запущен
+
+- Exactmain5ce Deploy37647487361 attempt1 completedSUCCESS: build112881946723/quality112881946869/deploy+publicsmoke112889986933/retention112892583348 SUCCESS. Root отдельно pinnedTLS canonicalIP13.140.132.245 publicbuild→ping→build: все200/TLSverify0/fullartifactSHA5ce; safe3observations сохранены. Это internaldiagnosticrelease, не HRM589.
+- Freshactualmain5ce проверен перед dispatch. Protectedread-onlymetadata workflow37650822335 attempt1 запущенexpected_main_sha5ce. Currenthelper SHA3e5de3e2d15d0a484831c3597f69aefc2343c210d9c12e512035b456a7eae681, SQLb174e32eb68a0dbcca98e8557fe8c716ed8277111e79ba822bce43f4e7023b6a. Результат actualquery/finiteenvDetail ещёpending; исходный8235ENV_INVALIDFAIL не заменяетсяsource19PASS.
+- Productintegration preparedlocally: archivebranch062 retained, ordinarymerge60cefb6b89071524e697590a5aaadead0c67c1e5 includesreviewedmain5ce; sourcejournalcheckpoint60a12949b57a1b3b9a5fec3be2a13caf8a467f6c/tree9ce68afff03e8711528aef7765ba62777b82ee0c. Всеbusiness/Prisma/locale/baselinepaths exact062; толькоreviewedhelper/tests/auxjournal плюсappendC6sourcejournal differ. Accepted chain and c123ancestors preserved. Newsource notpublishedto589 untilactualdiagnosis determinesfinalsource; finalfreshCI remainsrequired. Source062historicalCI notcreditedto60a.
+- UserresultstillpendingHRMrelease; accounting84/161,77open,60%,C12/WF-C6-010PARTIAL. Next realfiniteenv/catalognarrowresult, then scoped sourcecompatibility or preciseexternalblocker plus all independent finalchecks. No productionconfig/grants/roles/secrets/activation changes were introduced.
+
+
+## 2026-10-07 — точныйactualENVblocker установлен; scopedcompatibility разрешена
+
+- Realmetadata37650822335 attempt1 completedFAILURE: source112893388354 SUCCESS, production112893696118 FAILURE. Artifact11495729629/ZIP887bytes/SHAea62a225e6b65d835992beb6fbbe31e276c37afed6023c9e244c05b15355721d CRC/knownmember/strictCLIversion2/expected5ce/helper3e5/SQLb174 bindings провереныroot. ActualenvDetail PARAM_UNSUPPORTED_CONNECT_TIMEOUT, codeENV_INVALID доSQL; actualparamvalueunknown, deliberatelywithheld. Defaults/snapshotnull, нетcatalog/rolegrants/DDL readiness credit. OriginalJSON/ZIP/fulljobloglosslessgzip/receipt сохранены; исходный8235ENVFAIL остаётся.
+- Root назначил единственную подтверждённую sourcecompatibilityrepair connect_timeout: документированноецелоеliteral/uniqueparameter проверяется, hint удаляетсяпередlibpq, фиксированный PGCONNECT_TIMEOUT10 и outer30sec остаются. Никакого arbitraryoptions/otherURLallowlist widening/defaultrolefallback, productionconfig/grants/secretschanges. Собственныеsettingпрофиль иreadonlySQL остаютсяпроверками, не маскируются. Дляvalid0/negative documentedlibpqhint не допускаетсяотключениеinspectorbudget, он всёравноfixed10. Actualvalueнеугадывается.
+- Newcleanmain5ce worktree /mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-release-preflight-connect-timeout-20261007 branchcodex/hrm-release-preflight-connect-timeout-20261007; agentownsminimalhelper/test/appendauxjournal. Root independentlyreviews beforepublication; hostedSQLactualprofilefixture/all5required + ownrelease + actualmetadataretry remainnecessary. Canonicaldirtycheckout/otherworktrees preserved; noMac.
+- HRMsource60a preparedunpublished, PR589remote062held; source062CIисторический, неfinal60a. Accounting84/161/77open/60,C12/WF-C6-010PARTIAL unchanged. Precise stoppingpoint: narrowconnect_timeout sourcefix inprogress, actualdatabasecatalognotyetread. Next compatibilityreview/CI thenrealtargetedcatalog result andfinalHRMexactheadverification/release.
+
+
+## 2026-10-07 — initialconnectcompat checkpoint иrootraw-plus failure сохранены
+
+- Initialsource d55110c4cfe2bc7ba7cc8c5444498d5531d53ad8/tree8fe5c0c492f5d0225ab7faa03d8ba00bf612a600 содержиттолькоhelper/test/auxjournal. Agent20NodeunitPASS/0FAIL/1hostedSQLSKIP: signedint32 hint validated/discarded, fixedPGCONNECT_TIMEOUT10 preserved; actualnewhostedSQL NOT RUN. Источникнеопубликован/неслит.
+- Independentrootreview primaryPostgreSQL16 fe-connect.c URIdecoder copies nonpercent bytes, includingliteralplus; URLSearchParams form-decodesraw+ asspace. Root actualbounded source test onimmutable d551 producedFAIL: raw+10 rejected CONNECT_TIMEOUT_HINT_INVALID whileencoded%2B10 accepted/stripped/fixed10. OriginalFAILJSON сохранён; initial20unitPASS не скрывает этот новыйконтроль. НикакогоSQL/actualparamvalueprobe не было.
+- Additivesuccessor requested: decode ONLY knownraw connect_timeout value withRFCpercent semantics, preserve duplicate-key/role/read-only/default/timebounds/otherforbiddenparams; raw+10 и%2B10 должныоба нормализоваться/удаляться/fixed10, encodedwhitespace остаётсяclosed. Initialcheckpoint/failure retained, noamend/force. Actualproductionparamvalueunknown; this proves sourcegrammar edge, неlivecause beyondknownconnect_timeoutcategory.
+
+
+## 2026-10-07 — connecttimeout successor683 reviewed/published draft619
+
+- Additivesuccessor683bfa056ab1f81877de5b8a238658847f1f51e4/tree4605bd097afd951fba96ece89a62a7172a438252 retainsinitiald551 parent. Rawknownhint RFCpercentdecode afterunique/keyguards, signedint32 boundedliteralvalidated, hintdeleted beforelibpq. Raw+10/%2B10 bothsame; malformed/duplicates/otherforbiddenstartup/profileparams remainERROR. Historicalunsupporteddetail retained,2finite newcodes; sourceSQL/workflow/baseline/schema8bindings byteexactmain5ce. Agent21NodePASS0FAIL/1hostedSQLSKIP, actualSQLNOTRUN.
+- Rootindependentsource reviewPASS +actual7synthetic signed-boundary/rawpluscases PASS againstexact683: same normalizedURI, fixedPGCONNECT_TIMEOUT10, exec30s, forcedreadonly/applicationname/expectedidentity same, no URI inpsqlargs. Mockexecuteonly,norealSQL/configvalueobservation. OriginalrootrawplusFAIL retained; nofalsegreen/force/amend. Currentactualparamvalueunknown; actualcatalog/roles/defaults notyetread.
+- AuthorizeddraftPR619 https://github.com/rashadoni/leaddrive-v2/pull/619 published/attached, base5ce; sourcehostedSQL/required5 pending. Onlyprovedconnect_timeoutfieldnowcompatible, notbroaderoptions/TLS/roleprofilechanges. Sourcehelper/test/appendauxjournal only; noSupport/product/config/grants/secrets/activation changes. Remote589still062held, localHRM60auntestedcurrentfinal. Afterrealcatalogresult requiresfinalsourceintegration/fresh5required+five-laneCI/independentreview/exactruntime release. Accounting84/161/77/60,C12/C6PARTIAL unchanged.
+
+
+## 2026-10-07 — actual683SQL22PASS; newHRMfinalsource8fc published/freshCI
+
+- Source683 actualhosted37652297849/job112898465892 SUCCESS22/22/no skips, completefixedcatalogSQL testedwithknownsyntheticconnect_timeout0 strippedandfixed10, oldnoncanonicalSQL reproducefalse. Fulloriginalsavedlossless+receipt. PR619ready required5 on683started; actualproductioncatalogretry waitsauxnormalmain/ownrelease. First2productionFAIL androotd551edgeFAILremain.
+- Reviewed683 included in existingreleaseworktree ordinarymerge; finalcheckpoint8fcf51b8a600c49c34c2d7e87e25b7eae952aa69/treec4398c5aecbb5064fd26db692672cb982adf80b6 cleanandfrozen. Source8fc fast-forwardpublished toexisting589/codex/hrm-588-validation-20261005; previous062 remainsancestor/archivebranch. Relative062 onlyhelper/tests/aux+C6journals differ; allproduct/Prisma/locales/baselines/harnesses byteexact, archivec123/acceptedchain preserved. No othermain source atpreparation5ce.
+- Freshmanualfive-lane run37652828448 expected_headfull8fc plusreadyPRrequired37652839017/currentapplicableUI/regression workflowsstarted. No old062 CI creditedto8fc. Independentreadonlyproductsource/currentCIreview assigned; ownhelper/harness authorship/rootcrossreview limits preserved. Rootactualcurrentcompiler/build/SQL/browseronContabo NOT RUN percontract.
+- Finalmain589merge stillheld atactualrealcatalogread+current5gates/fivelanes/review/futuremain prospective-treeequal8fc. Parallelverificationauthorized nowtoolsourcefinished; anyfurtherdifferentmain/helper source requiresnewhead/CI, originalsupersededruns retained. No activation/access/secrets/Support/personnelautomaticdecisions. Accounting84/161/77/60; C6/C12PARTIAL unchanged.
+
+
+## 2026-10-07 — exact8fc independentproductsource accepted; currentruntime pending
+
+- Independent product/source supplement8fc saved29283bytes/SHAba491f4c303bc344c6382ad3ccc2b3650009e3a1afa75f1252e4f463d9ed15af, P0–P3none.27sourcebindings:24exact9f+3wholelocaleexact062/14WFnamespacesexact9f;5gatesexact973;16acceptedancestors/c123archive treeexact. Relative062 only4authorizedhelper/tests/twojournals differ; preflight4bindings exactrootreviewed683. Roles/privacy/CASE_RECORDED_AT/manualdecisions/productsourceunchanged; authoredhelper+harness androotcrossreviewdisclosed. Этоsourceacceptance, неcurrentruntime/catalog/releaseacceptance.
+- Fresh8fcmanualrun37652828448 currentjobs report112900332621/classification112900333028/build112900333112/PG+strictregress112900333125/compiler112900333133 IN_PROGRESS; requiredPR37652839017 иlatestapplicableUIruns IN_PROGRESS. Readerassignedfullcurrentartifactproof, notsecondexecution. PR589descriptionrewritten current8fc/freshgates pending/provenconnect_timeout/block/nooperationalcredit. PR606/609snapshotCLOSED/mergedfalse.
+- PR619 exact683 scope/runner/scanPASS, static112899235621/type112899235504 IN_PROGRESS. Currentmain5ce unchanged. ActualproductioncatalogstillNOTREAD duefirst2ENVFAIL; newnormalizedhelpercurrentisolatedSQL22PASS separate. Frozen8fc remainsunchanged, evidencebranchonlyappend. Accounting84/161/77/60,C6/C12PARTIAL remains.
+
+
+## 2026-10-07 — весьcurrent8fc technical acceptance PASS; own504release/preflight pending
+
+- Exact8fc currentmanualrun37652828448 attempt1 ALL5SUCCESS; all5requiredApp15368 fullhead8fc completedSUCCESS individuallyverifiedroot/peer: scope112900348793/runner112900348184/scan112900347944/static112900523901/type112900523940.13currentheadworkflowruns/allattempt1SUCCESS;26checks21success/5intentionalSKIP. IndexcheckrunsAPIreturned500/malformedJSON(notCI/productfailure), initial/retryerrorsretainedpeerreceipt; individual26endpoints completefields/head/app/outcome verified, nowaiver/fakePASS.
+- Peerwholetechnical8fc accepted27141bytes/SHA8c3fc1c67ae9067fc26dfb3ed827303c94b681c38f20549533c382a83ffd62ae. Browser38613/SHA5dee324ea94361bd302925e4cff2ab79fe4325a356427b46979a980442e0ba4a;PG/build15891/SHAea926979672b988cfdb54e312bcab6e31c4d84f783da0c89a17620b8248b0efe. Currentreport9/class11PASS,6actualUI201+6ledger+6audits,7mandatoryrealTOTP/nonce +weak403/scoped404/liveRevocation/retry0delta/stale409/reopenReset/FORCERLS2tenants/22facthashesunchanged/cleanup. Rootactual26sourcebindings/ZIPdigestsCRC and6currentPNGs independentlyviewed; ENall4fractions/sample3 etcvisible, AZclipped/Englishdurations inherited, RUreportheading/duration6/1/1 only/finalfractionsfooterNOTvisible;RUclassificationleftcolumns only, controlsprovedactualDOM/network. Nofullmobile/WCAG/humanAT/liveHRobservationsclaim.
+- Actual4PGfiles44/44/no skip,Prismavalidate/generate/legacy/scopedlint/i18n/runner PASS. Fullstrictsuite18failingfiles=18baseline, everyentrystillfails/no-new gatePASS, notgloballyclean. Actualbuildcompiled7min/standalone server+static assertionsPASS, inheriteddashboardmanifestENOENT warningobserved andprior9frechecked, notwarningfree/fulltraceguarantee. Fullcurrentcompiler1153/35families/exit2,18ownedtypedpaths0allfamilyerrors/64exactbaselinepair/twohostedgatesPASS. Raw177767bytesSHA4ba2582a exactprevious062; currentZIP11497588885/digestc9457c4f... verified. Rootranonlyunchangedgateanalysis onactualdownloaded log PASS andindependentlyparsedfamilies/owned0, no localcompiler/build/SQL/browser. AlloriginalZIP/joblogs retainedlossless+receipts.
+- PR619 exact683 all5requiredSUCCESS; freshmain5ce/protection/source4605/22actualsourceSQLtestsgreen verified, matchedsha normalRESTmerge →main50466e3fce9f23eaba8079a51be914fe6a6eff07 parents5ce+683/tree4605exactreview. OwnDeploy37655470317 build112909361592/quality112909361814 IN_PROGRESS. HRM589notmerged. Root+peer prospective504+8fc treec439exactcurrenttestedsource; frozen8fcunchanged.
+- Currenttechnicalacceptancecomplete, actualproductioncatalogstillunread atfirsttwoENV failures. Nextown504successfuldeploy/pinnedpublicSHA/realread-onlymetadata retry, reviewactualschema/ledger/defaultACL/roles/DDLtimingbounds thennormal589release+exactsmoke ONLYifaccepted. NoC6DONEcredit beforeallcriteria; accounting84/161/77open/60,C12PARTIAL unchanged. Activation/access/secrets/Support/personnelautomation untouched.
+
+
+## 2026-10-07 — evidencewhitespace check correction preserved
+
+- Initialevidence ef00b700e preparation gitdiffcheck reportedone trailingwhitespace at newjournal line456; shellsequence mistakenlycontinued docsevidencecommit/push. This was NOT a passedcheck andnot a source8fc/CI/productionfailure. Originalcommithistoryretained,noamend/force. Onlynewentrytrailingblank removed; olderjournalinformation/artifacts remain. Correctivesequence nowfailclosed(set-e) and recheckscomplete newevidence diff before explicitdocspath checkpoint; frozen8fc source untouched.
+
+
+## 2026-10-07 — own504 release complete; third actual metadata dispatched
+
+- Normal auxiliary PR619 main50466e3fce9f23eaba8079a51be914fe6a6eff07 ownDeploy37655470317 completed SUCCESS: build112909361592, quality112909361814, atomic deploy/smoke112914520246 and retention112916563948 all SUCCESS. Protected production route unchanged; no direct main push/manual copy/access/config changes.
+- Root pinned verified TLS public build-before/ping/build-after all HTTP200; both full artifact SHA exactly504, ping ok. Sanitized proof stored release-504-public-proof.json SHAff95a3671efee94ec10e654e57a3cf729fdf39bbc7196161eaf033cbbf92c0ee. No headers/cookies/raw configuration stored. Fresh actual main504 reverified before authorized read-only dispatch37657755660 expected_main_sha504. Current source-validation112917119418 IN_PROGRESS; actual real metadata not yet received.
+- Source8fc/treec439 remains frozen, all current technical acceptance PASS. App main PR589 still unmerged pending real catalog review. No other active HRM executor in fresh app snapshot; unrelated active heartbeat not identified as repository executor. Accounting84/161,77open,60%; C6/C12 PARTIAL. Next: sanitized exact504 real metadata plus independent schema/DDL review, then normal PR589 own release if accepted.
+
+
+## 2026-10-07 — source journal continuity imported by normal8fc merge
+
+The following previously frozen source entries are retained verbatim after the evidence journal. Their dates precede later evidence above; this append does not supersede actual source8fc technical acceptance or production metadata failure.
+
+
 ## 2026-10-07 — reviewed diagnostic main5ce integrated; next exact release source pending
 
 - Previous exact062 technical acceptance remains archived with source ancestry and separate evidence PR617; source archive branchcodex/hrm-release-062-technical-archive-20261007 retains that commit. The current release integration worktree incorporates reviewed main5cebf61623c58ca65b66f2b58506157c097a1931 through ordinary merge60cefb6b89071524e697590a5aaadead0c67c1e5. Only diagnostic helper/tests and auxiliary journal differ from062 before this source-journal entry; all HRM/Prisma/locale/baseline/product paths are unchanged. Accepted589→605→608→612 and archivec123 ancestry remain present.
@@ -343,6 +488,29 @@
 - Reviewed683 included by ordinary merge into release integration before main wrapper so independent final source CI can run inparallel with auxiliaryprotectedrelease. Relative toprior062 allproduct/Prisma/locales/baselines/harnesses unchanged; onlyreviewedhelper/tests/auxjournal plusappendC6journal differ. Exacthelper/SQL/workflow boundto683; allacceptedchain/c123 ancestry retained. Main atpreparation5ce.
 - Publishthispreparedsourcefast-forward toexisting589 and dispatchfreshfive-lane expected_headfullSHA; runallrequiredcurrentchecks, DB/browser/build/compiler/fullstrictregression andindependentsource/currentartifactreviews. This doesnotclaimprior062CI fornewhead. Finalmainmergehelduntilactualproductionmetadata andfuturemain+source prospective treeequalsnewtestedsource; anydifferentincomingmain source requiresupdatedintegration/CI. NoBaseline/gatewaivers.
 - Userreleaseapproved, noactivation/access/secrets/Support/personnelautomation. FunctionalWF-C6-010/C12remainPARTIAL and accounting84/161/77/60 untilallactualacceptancecriteria; realHR/C12observationsnotreplacedbyisolatedtests. Nextnewsourcechecks/aux619normalrelease/realcatalogretry, thenHRMmainmergeandownexactrelease/smoke ifallgatesaccepted.
+
+
+## 2026-10-07 — first actual production SQL result retained; narrow recipient review continues
+
+- Actual read-only run37657755660/main504 source112917119418 SUCCESS22/22/no skips; production112917468249 FAILURE with strictly source-bound sanitized INCOMPLETE / DEFAULT_ACL_UNREVIEWED, not PASS. Artifact11499222056/1877bytes/digest2c02763719aa5e441929c39c67a5cf5091a6406ddfb71aaad10299aaea8aa2c5 and originalmember/validatedJSON/fulljoblog/run/jobs preserved losslessly with byte hashes. Deployed marker exactly504; actual ledger529/0unresolved, both pending migrations, guard/ledger triggers match, relevantFORCERLS/keyprofile verified,10s/14min defaults. DefaultACL5entries/PUBLIC0/nonOwnerWRITE3/grantable0. These are three privilege entries, NOT three roles; recipients and exact types remain unknown.
+- Independent actualcatalog/DDL review22557bytes/SHA8ff79acdc7b1a57cc7b2f1f7c553b6a8a31544421eca34a6e1747790e76f3343 retains originalFAIL/INCOMPLETE and requires recipient review. No proven unsafe grant or necessity to mutate access. Activity1/transaction1/no lockwait is one observation; deploy quiet check is current source default60attempts*5seconds, not stale runbook60seconds. Relation sizes are estimates, not elapsed index/maintenance-window proof.
+- Safe independent continuation: new504-derived codex/hrm-release-acl-inspection-20261007 worktree, supplemental bounded read-only canonical app/migration sessions plus finite recipient/privilege/profile projection. Original metadata helper/SQL/tests/workflow byte-unchanged; supplemental READ_COMPLETE will mean evidence read, never ACL approval or fake oldPASS. No grants/config/secrets/activation/Support changes. New source syntax/emitted-stdin syntax checks PASS; hosted actualPG/new requiredCI and source crossreview PENDING. Heavy checks NOT RUN onContabo perhostcontract.
+- Evidence branch normally merged frozen8fc to preserve currentsource ancestry; onlyjournal conflicted. Resolved by preserving every prior evidencejournal byte as prefix and appending entire frozen source suffix verbatim. Initial resolver Python Unicodebytes syntax error stopped before any write; corrected encoding, both diffchecks actualPASS, normal merge2a2b96e8e, no force/destructive operations. Source8fc unaffected. PR589 description now states completed currentCI and realACL hold; old ghpr-edit failed on GitHub classicProject GraphQL, structured RESTPATCH succeeded; no source or review gate change.
+- Fresh5individualApp15368 checks still SUCCESS on8fc; main protection unchanged; actualmain504 and source8fc unchanged; PR606/609 CLOSED/mergedfalse. All authorized technical independent HRM work done; additional permitted read-only recipient diagnostic continues because unknown ACL is not yet proof of an external access-change blocker. Accounting84/161/77open/60,C6/C12PARTIAL stays. Next supplementalreview/tests/normal tool release/real recipient inspection, then explicit independent ACL decision before normal HRM release.
+
+
+## 2026-10-07 — ACL tool independently verified/merged; final851 freshCI running
+
+- Supplemental PR621 authoredroothelper/SQL f314 andpeerworkflow/tests549; source crossreview12370bytes/c3010835... preserves preliminaryfixed endpoint/clone label and normalized duplicateprofilekey findings. Root actualNode14total/13PASS/0FAIL/1hostedSQLSKIP; no raw private output/automaticACLapproval. Currenthelper/SQL and oldmetadata4/gates immutable. Firsthosted54937662175182 FAILED cleanup defaultACL tuple; old22PASS/new13PASS1SQLFAIL/zero skips, bodycompletion NOTPROVEN becausefinally couldmask. Fulloriginal48,111bytes/cfc701a4... retainedlossless.
+- Narrow fixture2fb cleanup retainsall13unitprefix andEVERYoldSQLbodyassertion; eightseparatecleanupcommand+residuecheck preservesfirstbodyError andfiniteSQLSTATE/stagemarkers. Root syntax/diff actualPASS, no redundant unchangedunit/localPG. Newhosted37663524025/source112936789261 actual22+14ALLPASS/zero skips, initial+unsafe ACL/runtimeSET/readOnly guard/body/all8cleanup/residuePASS; full47,805bytes/d5561362... losslesslyretained, independententireacceptance11680/717d8044... All5requiredApp15368 current2fbSUCCESS. OldreadyPR549requiredrun37662503123 CANCELLED afternewhead; not secondSQLfailure.
+- Incoming protected main22cMetaDoc18lines followedebbFinance6208paths preserved; auxroot+peer currentebbpresetd996 tree: new5tool+old4metadata/gates byteexacttested2fb, remaining9incomingpaths byteexactalreadyacceptedmain. Wholeauxtree explicitlyNOT2fb, no borrowfullmergeCI. Freshmain/head/protection rechecked andnormal matchedSHA REST621merge777d6daa0e902ebd28a369694e235accf44ad3eb parentsebb+2fb/treed996matchesactual. OwnDeploy37666807495 quality/buildstillrunning; realrecipientquery NOTRUN until ownsuccessfuldeploy+publicexactSHA. No grant/role/secret/config/tenantactivation/Support/personnelautomation change.
+- FinalHRM source8513737b880623b2b62ab4721672a55b8101ba1a/treee39def8eba7dd837e5700ac0526a563040b077ac normally preserves allcurrent777code+Finance/Metaand16acceptedstack/archiveancestors; C123archivetreeexact. Independent source24976/SHA21ee2a7e... has noP0-P3finding,27WFprod/workflow+4harness+oldmetadata+Prisma/locales exact8fc,5gatesdirectlyexact973, newtool5exact2fb andFinance8/Meta bytesexact777. Wholecurrent777+851 prospective EXACTe39. Authorship/rootcrossreview disclosed. PublishedFF existing589 andfresh exactfive-lane37667576332/allcurrentrequired/applicableCI. Earlier8d37664604740/5ed37665612164 endedCANCELLED afterlegitimateincomingmain reconciliation; originalpre-cancelsnapshot retained. Explicitold8dcancelrequest wasrejectedalreadycompleted; doNOTclaimsuccessfulmanualcanceloroldruntimePASS.
+- Fresh851 reportlane112951318668 SUCCESS atlatest; classification112951318525/build112951318309/compiler112951318758/PG+fullregress112951318806 stillIN_PROGRESS, so wholeacceptance PENDING. Newsource frozen; old8fc fullPASS historicalonly, no creditborrowed. Currentmain777 stable atlatest. Apprelease589 remainsheldatactualrecipientreview andcurrentallCI. Accounting84/161/77open/60%,C6/C12PARTIAL; realoperationalcohorts/C12fullhistoricalreplay notclosed. Next own777fullrelease/pinnedpublicSHA/newactualreadonlyrecipientmetadata, independentACLdecision andfinal851technicalacceptance thennormalHRMrelease/smokeifallcriteria.
+
+
+## 2026-10-07 — frozen source851 continuity imported by ordinary merge
+
+The following frozen source entries are appended verbatim; all earlier evidence journal bytes remain. Older pending statuses remain historical, and current evidence follows separately.
 
 
 ## 2026-10-07 — actual catalog recipient evidence tool added; fresh final source required
@@ -369,6 +537,38 @@
 - Accounting84/161/77open/60%,C6/C12PARTIAL; realcohort/operational criteria stayopen. Next publish exactnewheadexisting589+freshCI, wait own777tooldeployment/pinnedpublicSHA and read actualrecipientcatalog, independent evidence-basedACLdecision, thennormal ownHRMrelease/qualifiedsmoke onlyafterallcriteria.
 
 
+## 2026-10-07 — final851 five-lane gates and current browser evidence preserved
+
+- Actual frozen851 run37667576332 all5SUCCESS: isolated bundle112951318309, HR classification112951318525, report112951318668, fullcompiler112951318758, sourcePG/fullregression112951318806. Required PR37667588080 alljobsSUCCESS including hosted standalone112951136249 and scope/static/type. Separate actual compiler originals/baseline replay and whole-current independent technical acceptance still under review; do not infer globally clean compiler/suite. Applicable policyrestore37667588026 stillIN_PROGRESS; allotherlistedcurrentrunsSUCCESS. Old8fc evidence remains historical only.
+- Root verified both CURRENT851 browserZIPs size/SHA/CRC/extract plus26 sourcebytebindings to851, context/run37667576332/attempt1, report9/class11PASS, two populated tenants and5 forced/nonownerRLS relations before/after withunscoped0/foreign0,22 facttablehashesunchanged, actual6newdecisions/6linkedactorreasonaudits,7mandatoryactualTOTP+consumednonce/weak403/role+foreign+revoked404/retry/stale/conflict/reopen/cleanup. All7exactSQL statementhashes rederived directly from851. Independent currentbrowserreview25921/SHA2bf53cc150db6afc8038fd8ed49cf0fd530335c7bcf8cdbbe94376f08967b7a5 independentlychecks samecurrentartifact, authoredharness relationship disclosed.
+- Root actually viewed all6CURRENT851 PNGs: EN report finalfractions/samplefooter visible; AZ fractionsvisible butclipped/Englishdurationunits inherited; RUreport mostlyblank nestedscroller capture, middlehistoricduration+manualboundary visible, finalfractions/footer NOTVISIBLE. EN/AZ classificationmanualboundary/feedback/controls visible, RU onlycasecolumns, controls NOTVISIBLE; actualDOM/network interactions separatelyprove recording. No fullmobile/humanAT/WCAG/liveHR/pilot/load orC12 operating credit. Synthetic auditfixtureguard is not production MtmAuditLog acceptance.
+- Currentbrowserreceipts/originalZIPs (report11504090578/852275/SHA705d06e0f0d3985b64af45dd3338c6ab5e156eb10668944d53f24df7c6038bb1; classification11502604984/269421/SHAead642f8a5fc3e87d310a9cf90f6437c35647948f879ade7f0d570fd2a6de8ee), originaljoblogs losslessgzip/reviews/rootproof and byte-manifest preserved. This evidence append does not move frozen source851.
+- Ordinary source851→evidence merge3e17e8543 preserves currenttool/Finance/main ancestry and entire prior evidencejournal byteprefix plus frozen851 suffix verbatim. First resolver command stopped on Python non-ASCII bytesliteral SyntaxError beforewrites/stage/commit; corrected string.encode, actual cached+working diffcheckPASS then normalmergecommit, no force/reset/cleanup. Originalhistory remains.
+- Auxiliary own777 Deploy37666807495 quality/buildSUCCESS; actualdeploy112961234217 running. Recipientproductioninspection remains NOTRUN until successful ownrelease/exactpublicSHA; previous504INCOMPLETE DEFAULT_ACL_UNREVIEWED retained, no fakePASS or accessmutation. Accounting84/161/77open/60%,C6/C12PARTIAL unchanged. Next actual777 release/pinnedproof/supplementalreadonlyACL recipientreview + final851fulltechnicalacceptance before normal589 merge/release.
+
+
+## 2026-10-07 — own777 complete; original real ACL identity error retained
+
+- Auxiliary ownmain777 Deploy37666807495 all quality112948024689/build112948024998/atomic+smoke112961234217/retention112963373916 SUCCESS. Actual normal role gate success preceded own app swap; applicable553 tenant tables enforced553/leaks0/unreadable0/warnings0. Pinned verified TLS independent public build/ping/build HTTP200/fullartifact exactly777; originals retained. This is tool release, NOT HRM release, no new pending migrations were applied and futureHRMquiet/migration proof still required.
+- Exactly one authorized protected ACL dispatch37671423864/main777 ran. Source112963857433 actual36ALLPASS/no skips; production112964196919FAIL original sanitized ERROR IDENTITY_UNPROVED/proofnull/artifactShanull. Original948byte ZIP11504697852/SHA5cc023e49b7c409261ccb9ad5f2184f4ca4fc8ad910c2a7820459bd8c366e16c CRC/member/exacthelper9b87021c+base46b417da+SQL524bc02f validated before display/storage. No evidence which principal/endpoint/session/catalog check failed, nor query completion or recipients; no unsafe grant/config inference and no READ_COMPLETE/ACL approval. Old504INCOMPLETE remains unchanged; originalrun/jobs/member/ZIP/fulljob preserved losslessly.
+- Safe next source05deed0368ec6f4001c04508c95742623fb5a4f5/treeb7cf18d6cc81482f2be1ccda5568a704bac10502 (new777-based clean worktree) onlythree paths: finite7failurecategories replacing labels, existing exact failureexpectations and appendauxjournal. Originalguards/SQL/workflow/privateoutput/queryorder/budgets/allgates byteunchanged; no config/ACL/accessmutation or alternative routing. Generichistoricalcode retained. Initialeditingassert stoppedafterhelper write before tests/commit; explicittestpatch andactualNodeunit14/13PASS0FAIL1SQLSKIP/syntax/emittedstdin/runner48/diffPASS corrected fully. Hosted37672370513/source112967102986 actual22+14ALLPASS/0skip, realSQLbody+8cleanup+residuePASS, production appropriatelySKIPPED onPR, no livecredit.
+- Actual created draftPR624 thenready triggers37672493922 requiredstatic/type pending; initialdraft37672370676 heavyjobsSKIPPED correctly notrequiredfullcredit. Initial mistakenartifactattach623 corrected immediately remove623/attachactual624; unrelated open623MTM is referenceonly. Peerpreliminary05source noP0-P3, boundfinalreview pending. Fresh40threads shows onlycurrentHRMactive; cloudACLthread idle afterrepository_authentication environmentfailure andnoinspection, noduplicateproductionrun. No Mac sessions or new userthread created here.
+- Current851 allfive dedicatedCI PASS; remainingpolicyrestore851 hostedbrowserinstall stillpending, so wholeapplicableacceptance notyetcomplete. Source unchanged while originalerrors/alloweddiagnosis continue; finalHRM integration aftercurrentacceptedmain will require fresh exactCI. Accounting84/161/77open/60,C6/C12PARTIAL. Next ready624 requiredchecks+independentreview/normaltoolrelease/actualfiniteidentitydiagnosis, then evidence-based safecontinuation or exact external configuration blocker; no blind accesschange.
+
+
+## 2026-10-07 — final851 core independent acceptance; first restore timeout and unchanged retry
+
+- Independent current851 coretechnical receipt30098/SHA3eb56c45f58fad40f942652c29908c595996168b5c317f086731dc8da0cc6482 accepts exact5dedicated+required5 but explicitly HELDS wholeapplicable/production. PG/buildsupplement SHAaf930428... actual44PG/Prisma/lint/i18n/bundleassertionsPASS; inheritedmanifest-copywarning retained. Actualfullstrict18failingfiles matchedexact18baseline, no globally clean suite. ActualcompilerZIP11504034762/19675/SHAb62c9bf170ed6f42215d42c66dedf287cc8c7d17d6c2f6c9f5593844a3699f60 CRC2members verified; raw177767/SHA4ba2582a30f0eb51aad260ecb79715b6ce02e5dd8f70aafd33a98e38d4886bde/exit2. Independent unchangedblocking+64pairgates actualreceivedlog replayPASS; rootparsedcurrent1153/35families/18ownedtypedpaths0. Rawhashsameprior doesNOT borrowcurrentexecution; currenthostedrun bound. Originallogs/artifact/reviews retainedlosslessly.
+- Actual851 applicablepolicyrestore37667588026 attempt1CANCELLED with checkannotation proving sourceunchanged40-minute maximum. Job112950673393 browserinstall18:37:48→19:12:37CANCELLED; renderedUIstepSKIPPED, API+PGstepsPASS; upload+containercleanupPASS. Original165452bytejobSHA1fef0632d6602f043c6a083825ada0127af4333a56612230a73afb2d8d8296dd and ZIP11505113961/10830/SHA d398c6a380e254ca89fa3ee09f22ce783e02d9e5f01117de4bbea38f4c9c44ab/CRC plusrun/jobs/checkannotation preserved BEFORE retry. Its syntheticcheckout4cf8dbaca parents777+851/treee39byteexactfrozen851. No renderedUIclaim fromfirstattempt.
+- Root authorized one unchanged gh-run-rerun37667588026 afterorigpreservation; nowattempt2/job112969763361 ongoing. No source/workflowlimit/baseline modifications or Contabobrowserfallback. Do not report wholecurrentapplicablePASS until actualretryterminalsuccess. PR589bodyupdatedcurrent851/heldcriteria/retries and actual777ERROR, notstale8fc. Source851 remainsfrozen; no productrelease.
+- Diagnostic05 independent source03ac37d47ab6bc270ac982a6a68b631c67482e49558415de634b9898d42eb436 noP0-P3 and hosted36review79925008f6fbf9dfe88ccb2a7d2fe6c363a668713d3d636ec30a2b5d93b9d9b3 independentlyactual36PASS/0skip andold4+SQL/workflow/realfixture byteunchanged. Ready624 currentstatic/type pending; noauxmerge yet. Exactmain777+05 prospectiveb7cf reviewedtree matched. Remainingactualrecipientreview blockedatundeterminedidentitycategory; diagnosticrelease/checkscontinuewithoutsecret/config/grant changes. Accounting84/161/77/60,C6/C12PARTIAL unchanged. Next624gates/normaltoolrelease/actualfinitecategory and independentlyaccepted evidence before newfinalsource/release.
+
+
+## 2026-10-07 — current88 source continuity imported by ordinary merge
+
+All earlier evidence journal bytes remain; the following frozen source suffix is appended verbatim. Historical pending statuses remain and are superseded only by actual later evidence.
+
+
 ## 2026-10-07 — reviewed main7bf and incoming MTM preserved; next exact source verification
 
 - Archived former851 core/source/browser/PG/build/compiler and actualpolicyrestoreattempt1 timeout plus unchangedattempt2SUCCESS. Whole851 currentruntime noweligibleforindependentarchivalacceptance; earlier pending/cancelled facts stay inhistory. Sourcearchive branchcodex/hrm-release-851-technical-archive-20261007 retains exact851. Old runtime is not CI for this successor.
@@ -385,11 +585,120 @@
 - Auxiliary624normalmain7bf tool deployment37675446449 remainsindependent inprogress; exactrealidentitycategory stillNOTRUN. No role/ACL/secret/config/tenantactivation/Support/personnelautomation changes. Accounting84/161/77/60,C6/C12PARTIAL. Next publish corrected frozen source andfreshCI whileown7bfrelease/read-onlydiagnosis continues.
 
 
+## 2026-10-07 — current88 freshCI; protected diagnostic7bf and source failures archived
+
+- Independent851 unchangedrestoreattempt2 archival supplement SHA5d940148c445863a40e818ccc1b263dab744483f9a87ca0dd2087735b49ccadd proves actualPG11/API9/UI15+cleanupPASS, artifact11506101934/881756/SHA0fdfbc732a5eba12ed9f5a9bab7ddc6e829ff572dd37556917c3cb8fe9df40f2/CRC andexact851 sourcebinding. All12latest851+required5SUCCESS; original40min browserinstall cancellation retained. This is ARCHIVAL851 only, no current88 runtimecredit/realHR-observation/productionACL/releaseapproval. Actual851PGstrictoriginal159424/SHA56e66646... nowpermanentlylosslesspreserved too, notjusttemporarylog.
+- Rootcurrent4c+05 proof andpeer460e0924... acceptedtool3+incoming16/9tool/gates unchanged; source36/all5App15368PASS. Freshref/rootwholeproof rerun justbefore normalmatchedREST624 merge; exactactualmain7bf parents4c+05/tree8c182 matchesreview. Initialrefassert discovered legitimateincomingmain andstoppedbeforemutation; secondcheckstoppedon incorrectguessedbaselinefilepath, correctedrealroot test-baseline/typecheck-baseline and5gates provedwithoutchangingthem. Originalnormalmerge/parents/tree andallsource/peerproof preserved. Source05 itselfnotwhole8c; standaloneauxPRbuild correctlySKIPPED scripts-only, own7bf normalquality/build/deploystillrequired andcurrentlyrunning/pending37675446449.
+- Source091 sourcePG112978286261 actualFAIL at unmodifiedwholegitdiffcheck973...HEAD dueacceptedmain623 onefinalblankEOF; beforeanyinstall/DBtest. Originalf30ac8a1... fulljob/metadata/pre-cancellation5lanesrun/jobs losslesslyretained. Aftercorrected88 dispatched, original091manual37675633507 terminalCANCELLED:1sourceguardFAIL+other4CANCELLED, no runtimePASS. Rootone-bytefix source88 preservesalllogic; currententirestrictdiff973...88PASS, baselines/checks unchanged. Rootsharedmobileincoming28editlines exactlymatchesmainMTMdelta whileWFbranch remains;14WFnamespaces/3locales exact851 provedseparately withnonemptyrealkeys.
+- Currentfrozen88c93978494dbbbcb3f97ca1378d884d7b594f42/tree4e0b96f38676e964da5b9c8b3caa3f8c4e029bff FFpublished589; freshfive-lane37676068436 hasbuild112980095481/classification112980095708/report112980095840/compiler112980096004/PG112980096123 IN_PROGRESS. Required37676064742 andallcurrentapplicable freshalsoinprogress. Prior851allPASS cannotclose88gates. Independentnewsource/prospective reviewpending. PR589body rewritten current88/heldactualmetadata, notstalehead.
+- Evidenceordinarymerge c7d37d841 imports88/main7bf/MTM/currenttool preservingentirepreviousjournal byteprefix plusfrozen88 suffixverbatim; onlyjournalconflicted, resolutionassertionsPASSandcached/workdiffchecks actualPASS, no force/ours/destructivecleanup. Compared88 three-dotPR617diffdocs-only123paths beforecurrentevidenceappend. Source88 frozenseparatefromarchivedevidenceupdates. NoMac/Support/access/role/config/secret/tenantactivation/personnelautomation change. Accounting84/161/77open/60%,C6/C12PARTIAL. Nextown7bfsuccess/pinnedpublic/fullfiniteACLcategory andcurrent88alltechnical/independentreview, thenonlynormalHRMreleaseifallcriteriaor exactexternalblocker pluscompletedindependentwork.
+
+
+## 2026-10-07 — current88 independent source accepted; runtime/realACL remain pending
+
+- Exact88 independentfullsource receipt SHAff2dfc9434d53eb1e7af830d6459b31b72cd83eb2bc6dc8b1a792268925cdc03 accepts clean source/tree4e0b and fresh7bf+88 WHOLEprospectivetreeexact.24C6production/workflow+4harness byteexact851,14WFnamespaces×3locale semanticallybytecontent exact851;5gates/baselines exactaccepted973,9toolpaths exactreviewed05/main7bf,Finance/Meta retained. Sharedmobileincoming+/− hunksequence equal777→4c and851→88, everypriorWFaddedline retained. Main16MTM sourcepreserved except geofenceEXACT1finalnewline removal. Acceptedchain/C7/C8/c123 ancestry and28fileC12 archive exact; noP0-P3. Authorship/crossreviewdisclosed. Actual088runtime/realACL stillpending, no oldPASSborrow orreleaseapproval.
+- Fresh19:44UTC run37676068436: PGsource112980096123 reachedfullstrictregressions; build112980095481 bundling; report/classification creatingrealrestrictedfixture/schema; compiler112980096004 collectingfulldiagnostics. Required37676064742 scopePASS/type+static+buildstillrunning. Own7bfDeploy37675446449 qualityunitbaseline stillrunning andproductionbundle112977645836 nowinstalling afterpriorbuildqueue. No failedcurrent88 gateatthissnapshot; complete results stillrequired.
+- Original777IDENTITY_UNPROVED/504DEFAULT_ACL_UNREVIEWED unchanged; no actualnewfinitecategory receiveduntilown7bfsuccess/pinnedpublicSHA. Allauthorizedindependentworkcontinues, noaccess/secret/config/grantchanges orpermissionguessing. Accounting84/161/77open/60%,C6/C12PARTIAL; owner approvedrelease remainsinforce. Next currentruntimeartifact/sourcebindings/independent technicalacceptance andrealproductionfiniteidentitydiagnosis, then actualrecipientreview andnormalmainreleaseonlyifallcriteria.
+
+
+## 2026-10-07 — current88 actual browser/PG/build originals accepted and preserved
+
+- Current88manual37676068436 report112980095840/classification112980095708/PG+strictregress112980096123/build112980095481 actualSUCCESS; fullcompiler112980096004 stillrunning, so wholefive/currenttechnicalacceptance notyetcomplete. RootcurrentoriginalPGlog actual4files/44testsPASS andstrict18failingfiles matched18baseline exactly/everyentrystillfails, no newfail gatePASS. Prisma/lint/i18n/runner passed inactualjob; fullglobalsuite NOT CLEAN. Actualisolatedstandalonebuild success, detailed independentbundle reviewpending; no productionapprelease yet.
+- CurrentreportZIP11506249598/853123/SHA3737d7a9977174451d81e451356e13915c4205e53e2147c0f42d1c26ceb69628 andclassZIP11506109913/268098/SHAd7f9ef9dbae61729e89257ef17dfe7a5b7a05de78dbb7561554f53c7927ad8df downloadedroot andpeer independently, exactsize/GitHubdigest/CRC14+5members/contextcandidate88/run37676068436/attempt1 allPASS. Rootactual26sourcehashes and7exactproductionstatementextract hashes to88PASS, report9/class11PASS, actual6HTTP201+6immutabledecisions/linkedactorreasonaudits,7mandatoryAuth.jsTOTP+nonce sessions/weak403/role+foreign+revoked404/retry0delta/stale/reasonconflict/reopenReset/positive2tenantFORCERLS5relations before+after/unscoped0+foreign0/22facthashesunchanged/cleanupPASS. ProductionMtmAuditLogimmutability notclaimedfromsyntheticfixtureguard; immutabledecisionledger remainscanonical.
+- Independentcurrentbrowserreview SHAbaaef9063b39762fb77ee9d88fb897236baec9b464597fb76d5a865129d1713e confirmsactualcurrentexecution andallbindings withauthorship/crossreviewdisclosed. AllowedreportMODULE_ACCESS viewaudit A12/B2 recorded separately, not globalzeroDBwrites; no productionwrites. Rootactuallyviewed all6CURRENT88PNGs: EN report4fractions/samplefooter visible;AZ4fractionswithfooterclip/EnglishIntl durations;RU report mostlyblank tallnestedcapture withonlyduration/manualboundary, finalfractions/footerNOTVISIBLE; EN/AZ queue manualbanner/partial-rejectedfeedback/controls visible;RU onlycase/employeecolumns, controlsNOTVISIBLE. ActualDOM/network interactions separatelyrecorded; no fullmobile/humanAT/WCAG/liveHR/physical/pilot/C12ops acceptance. InheritedNextdevbadge shown.
+- BothactualoriginalZIPs/currentreceipts/root+peerproof andfullreport/classification/PG/buildjoblogs preservedlossless with manifest. Source88 frozenunchanged; no851/091runtime substituted. Fresh7bfproductionDeploy37675446449 qualitySUCCESS/bundlebuilding; actualnewfiniteACLcategory stillNOTRUN pendingownexactsuccessfulrelease/publicbracket. Allauthorization/baseline/privacy/tenantfences maintained, no role/config/secret/grant/activation/Support/personneldecision changes. Accounting84/161/77open/60%,C6/C12PARTIAL. Next completecurrent88compiler+remainingrequired/applicable/independenttechnicalreview plusown7bfrelease/realfiniteidentitydiagnosis, thenreviewactualrecipients andnormalHRMreleaseonlyifcriteriafulfilled.
+
+
+## 2026-10-07 — exact88 whole technical acceptance complete; production ACL stillpending
+
+- Exact88 wholeindependenttechnicalreceipt SHA11697f9688f1f0e17f5965a48fd05018462a18e42dc02a6baf8a73e6f9dc52b3 actualALL5manual37676068436/ALL5requiredApp15368 andall12currentapplicableworkflowsSUCCESS. Requiredtype112980324820 terminalSUCCESS; currentpolicyrestore directlySUCCESS, no retryneededfor88. Freshmain7bf+88 prospectiveWHOLEtreeexact4e0b, sourceclean;606/609stillCLOSEDmergedfalse. Accepted605/608currentlyclosedmergedtrue sourceheads preserved; lastaccepted973 ancestry/archive retained. This is technicalacceptance, NOT HRM productionrelease or actualACL approval.
+- ActualcurrentcompilerZIP11508920913/19685/SHA6edcc41d3211dca6698aee4a1cdd36d29e1b3b8a7f6fbb6b242f5f11664b5edd/CRC2membersPASS; raw177767/SHAfd626333ee46182254dc6a8b0a012af831b4e2781cc1a21f6ca373886ec9b4ba exit2. Root+peer parsed1153diagnostics/35families/18ownedC6typedpaths0 acrossALLfamilies;64gatedfile/codepairs exactunchanged973baseline andbothhostedgatesPASS. No localtsc orredundantgatererun. Total/maps equal851 butnotraw/messageidentities: incomingMTM spreadpreview oneexistingTS2322 changed4more→5more; customerIdunknown incompatibilitysame, pluscoordinatechanges4MTMpaths, no newpair/count/C6error. Fullidentitydelta retained; no exclusivelylineoffset/byteidentical/globalcleanclaim.
+- CurrentPG/buildindependent SHAa6e03f59... actual44/44 realPG,18/18strictfailing-filebaseline,Prismavalidate+2clients/scopedlint/i18n24608/runner49PASS; actualbuildcompiled6.4min, standalone+staticassertionsPASS. Existingdashboardmanifest-copyENOENT warning andtypeskips unchangedandretained, no warning-free/globalcleanclaim. Allcurrentoriginals/reviews andcompilerraw losslessretainedwithbyte-manifest. RootactualUI qualifications persist; no humanAT/mobile/physical/pilot/realHR/C12ops acceptance.
+- Fresh20:05UTC own7bfDeploy37675446449 quality112977644968/build112977645836/atomic+smoke112988692616SUCCESS; retention112991264273queued. Finalpublicbracket/newfiniteACL read NOTRUN until ownrunfullySUCCESS. Original777IDENTITY_UNPROVED and504DEFAULT_ACL_UNREVIEWED unresolved; no blindrole/grant/config/secret/activation/Support/personnelautomation mutation. Usernormalreleaseapproval persists; normal589mainmerge heldsoleactualproductionidentity/recipientreview, freshrefs/protection/prospectivetree recheckstillmandatory. Accounting84/161/77/60,C6/C12PARTIAL. Next own7bffinalsuccess/pinnedfullSHA/read-onlyfinitecategory+independentreview, then actualACLdecision andnormalHRM589ownrelease/smoke ifallcriteria; externalaccess/config changesrequireseparateapprovalonlyifprovednecessary.
+
+
+## 2026-10-07 — actual7bf precise host rejection preserved; bounded supplemental observation underway
+
+- Ownmain7bf Deploy37675446449 alljobsSUCCESS; independent pinned TLS build/ping/build exact7bf PASS. Actual protected diagnostic37679666604 source36/no-skips SUCCESS, production112992399449 FAILURE. Original source-bound ZIP11508058045/962/SHA2e75dab9f0b7962328de8cdfd5b9fb03159a4e12b661b9d9f25766b5f58ee0a4/CRC1 and full originaljob/report/run/jobs/artifacts retained losslessly under actual-main7bf-host-diagnostic with byte manifest. Strictlocal validator accepted ERROR IDENTITY_ENDPOINT_HOST_MISMATCH/proofnull/artifactnull; no SQL executed. Distinct configured PGUSER proved, PGHOST unequal; PGPORT/PGDATABASE checks occur later and remain NOT PROVED. No claim that databases differ or hostnames are aliases.
+- Independentactual-review SHAa3d5c506f7a276db956b5a8fb07a134b3abbde8860dccd9a1fda164c860b45b1 preserved with exact36-source original log. Existing504 DEFAULT_ACL_UNREVIEWED /777 IDENTITY_UNPROVED unchanged. Frozen88 wholetechnical PASS remains actualcurrent but production ACL unresolved, no old green borrowed.
+- Continue permitted independent source-only work in cleannew7bf-based codex/hrm-release-loopback-acl-evidence-20261007: separate bounded read-only actual runtime livebackend observation based on normal deployer semantics, fixed loopback/DNS/equalport+DB/distinctprincipal restrictions, private nonce/PID in memory, read-only rollback/childexit, finite recipient profiles. Old9 tool paths remain byte unchanged. No config/grant/access/secret/productiondata/activation/personnelautomation changes. Root helper and independent child SQL/tests/workflow followed by cross-review; heavy checks hosted Linux only. READ_COMPLETE would still require actual ACL assessment, not automatic release approval.
+- Userreleaseauthorization persists. No speculative external blocker/permission request based solely on hoststringdifference. Next actualhostedtests/source review and auxiliary protected normalrelease; then read-only liveDB/ACL evidence and exact589 fullsource acceptance/release if allcriteria. Accounting84/161/77open/60%, C6/C12 remainpartial.
+
+
+## 2026-10-07 — separate live observer draft626 first realPG failure retained
+
+- New isolated source d2d8032891967bef45b43109bfaa9a0b1ea7760c/tree11c71b85a68d0b1044af788e96df9448e38e95fa published draft626;5 newpaths only, old9 and5gates byteunchanged. Root independently reviewed childSQL/workflow/tests; child independently reviewed roothelper, retaining two findings corrected beforepublication. Source receipts and first local15PASS/1PGSKIP original retained. No localPG/build/Mac work.
+- First hosted source37683900450/job113006643759 actualFAIL: old22+old14PASS/no skips; new15unitPASS and positive actualPGtestFAIL/no skips at initialLIVE_CATALOG with ERROR IDENTITY_UNPROVED cleanupPASS. All8rolecleanup+residuePASS. WrongPID/nonce/otherDB/unsafeACL/RO actualmilestones NOT RUN because positive proof failed. Full originaljob/run/jobs and source receipts archived losslessly with manifest. Sourceacceptance is not runtimePASS. ProductionjobSKIPPED/no observation. Draftrequired heavy checksSKIPPED, not credited as full5acceptance.
+- Continue bounded test-only finiteboolean diagnostics on isolatedhostedPG to establish actual missing identityflag; original assertions, SQL, helper and alloldguards remain unchanged duringdiagnosis. No inference of unsafepermissions or monitoring grant needed; suspected startup applicationname precedence remains unproved untilactualbooleans. No productiongrant/config/access/secret/role/businesswrite/activation mutation. PR589 remains exact88technicalPASS/ACLhold, no release. Accounting84/161/77/60; C6/C12PARTIAL. Next proveactualcause, narrowimplementationfix ifrequired, freshsource hostedtests+required5, normalauxrelease and actualACLreview beforeHRMrelease.
+
+
+## 2026-10-07 — actual852 finite cause established; startup-label fix and acceptedmain incorporation
+
+- Actual852 hosted37684410685/source113008402774 originalFAIL preserved losslessly. Old36PASS/new15unitPASS/1actualFAIL/no skips;8rolecleanup/residuePASS. Fixture-only actualruntimeflags: expectedIdentity/sessionIdentityUnchanged/primary/readOnly/repeatableRead=true; probeNameVerified=false, liveRuntimeSeen=false expectedruntime. No migrationsnapshot/liveness observed or latermilestone credited. Source-only diagnosis preserveshelper/SQL/guards, proving actual ownapplicationname mismatch.
+- Narrow correction uses explicit libpq PGAPPNAME runtimeprivate nonce/migrationfixedname, retaining PGOPTIONS and allactualname/PID/user/DB/session/profile/RO/RR/primary/cleanup/sourceguards. PG16 libpq docs map PGAPPNAME to startup application_name; inference is psql fallback startupname overrode PGOPTIONS, to be confirmed by fresh actualpositive test. No monitoring grant/productionURL/configuration change. Directenv-only transport assertions added, no credentials/nonce inargv.
+- Currentacceptedmain advancednormally tocecb5a7d80895d9f41d7c2b7ddcc43a2e6057938 viaownerPR625,8MTM-onlysettings/helper/tests/locales paths. Ordinarymerge intoauxfeature checkpoint0c292e05bb9a8de51b085547e88d2859723bf17e preservesallincomingbytes, no unrelatedPR mergedbythisagent. Finalauxsourcewhole prospective tree now includescurrentmain; HRM88will incorporatereviewednewtool+acceptedmain andreceivefreshfulltechnicalCI. No source ready/productioncredit until allcriteria. Accounting84/161/77/60,C6/C12PARTIAL.
+
+
 ## 2026-10-07 — final HRM source integrates proved observer and acceptedmain625
 
 - Frozen88 whole technical PASS retained on published codex/hrm-release-88-technical-archive-20261007. Ordinary featuremerge021a852db1f3de986b226059cb721675abc5ed6c brings acceptedmaincecb/owner6258MTMpaths and auxiliary observer5f1437559afd5e1f2f8a2ebcf5aa4123c687e6db into existing589 ancestry. All24 C6production/workflow files and4harness files byteexact88;14Workforce namespaces×3locales semanticallyexact88; incomingMTM keys retained, original sharedmobile/C12/973/c123 preserved. Strictwhole diff973...HEAD PASS; no baseline/gate relaxed. Initialrootcontinuityprobe used wrong uppercaseWorkforce prefix andfailednonemptycount beforecommit/push; corrected usingactualreceipt14lowercasenames/exactkeyset, originaltrace/correction retained in rootproof. No falseempty-key allPASS.
 - Auxiliary5f actualhosted37684879260/source113010010492 ALL52PASS/no skips (old22+14/new16). Runtime/migration actualappname identity nowtrue, migrationliveRuntimeSeentrue, DBname/OIDequal/distinctPID. RealwrongPID/nonce/otherDB guards, unsafeACL projectionwithoutapproval, privilegedSETdenial, read-onlyDDLdenial, allcleanup/residuePASS. Previousd2 and852 originalFAILs remain durablyarchived, no fakegreen/relabel. ExplicitPGAPPNAME narrowfix requiresalloriginalguards, no productionconfig/grantchange. Independentcrossreview/authorship retained; newaux626fullrequired5 nowrunning.
 - New finalHRMhead must receive freshall5manual/fullrequired/currentapplicable CI and exact independent source/browser/PG/build/compiler acceptance; old88runtimePASS is historicalonly. Production HRM notmerged/deployed. Own auxiliary protectedmainrelease and actual liveACLrecipientassessment stillrequired. READ_COMPLETEonlycatalogevidence neverapproval. No activation/personnelautomation/access/secret/role/Support/Mac change. Accounting84/161/77open/60%; C6/C12 remainpartial. Next freeze/publish existing589, freshwholetree acceptance inparallel auxiliary release/readonlyobservation, thenonlynormal589releaseifallcriteria.
+
+
+## 2026-10-07 — exact5638 fresh acceptance started;5f true liveSQL and independent source retained
+
+- Frozennew589 head5638f1ea63c2818aef8be1b0c497eff718303388/tree8743c6aa6b338efde65d8f24a04ee0ec5650fb46 published FF; manual5run37685323552 jobclassification113011546243/build113011546505/PG113011546572/compiler113011546626/report113011546713 allrunning. All13currentapplicable workflows fresh includingnewloopbacksource; requiredactualfull5 pending. Source guards passed before installs, no stale88runtime credit.
+- IndependentEXACT5638 source29ecb1a0... accepts24C6+4harness bytesexact88,14realnonemptyWFnamespaces×3 exact88,5baselines/gates exact973,old9+new5 toolbytesexactreviewed5f,acceptedMTM6258pathbytes/namespaces retainedcecb, sharedmobilepriorWF+MTMhunks exact88,29protectedancestors/c12328filearchive exact. Currentmaincecb+5638 wholeprospectivetreeexact8743c6, sourceclean. Sourceacceptanceonly; newactualruntime pending.
+- Auxiliary5f independentwholetree/source785c830b... andactualhosted6326bd6a... proveAPI-bound syntheticmergef58c40c... treeEXACT1c346/5f;52/52 actualold22+14/new16/noskips, liveprobe/backend/DB correlation andallnegative/cleanup milestonesPASS. Fulloriginal/receipts retainedlosslessly. Actual5frequirednewready37685023188 static/type running; draftskips retainednotcredited. No normalauxmerge/release/realproductionACL yet.
+- Evidenceordinarymergeeef0e473d imports5638; onlyjournalconflictresolved byentireimmutablepremergeprefix + exactnew5638append beyond88, retainingold88tail3000 bytes. Initialwrongrootassumption whole88journalmustbeprefix failedbeforefilewrite/stage/commit; correctedforpriorc7 appendordering, trace/proofretained. Allpreviousjournalbytes retained, no rewrite/historyloss. PR617 diffdocs-only186paths beforecurrentarchiveappend.
+- No productiongrant/config/role/access/secret/activation/personnelautomation/Support/Mac change. Accounting84/161/77/60;C6/C12PARTIAL. Next actual5638source/PG/compiler/build/browser/all13+required5 independence, normalaux5f ownmainrelease/strictreadonlyfiniteACLassessment, thenonlyqualifiednormal589releaseifcriteriafulfilled.
+
+
+## 2026-10-07 — exact5638 classification first actual failure retained; report PASS
+
+- Manualclassification113011546243 attempt1FAIL after7 cases, cleanupPASS10resources. ExactZIP11510779991/400878/SHA7f9084c21257d49db4aacce71eae75216aca6d2ba3b86d810679e303c3a8cf12/CRC7members andfulloriginaljob/run/jobs/artifacts losslesslyretained. RU/AZ/EN sixHR decisionsHTTP201, retry200/zeroaudits+ledgerdelta/conflictingreason+staletoken409 andweakMFA403/teammanager404/tenantadmin404 PASS; originalfacts after6appends unchanged. These partialcases are not whole currentclassification acceptance.
+- Failurestage denied-ungranted/authenticate line120: ordinal7 mandatoryTOTPverificationHTTP400; previoussuccessful mandatorycontexts verified200/noncesconsumed. CompletedAt21:00:00.181 exactly30sboundary; sourceverifySync has no explicitdrift andsource/harness/fixture byteexactaccepted88. Rollover is an inference only because originalsafe receipt withholdsresponsebody/token/requesttimings. No auth/window/assertion/fixture/grant orsourcegate relaxation. Independentdiagnosis pending beforeany unchangedfailed-job rerun. Othermanualjobs NOT cancelled: report113011546713 actualSUCCESS, PG/compiler/build stillrunning.
+- RootactualreportPASS alone cannotcloseC6, nor old88success replace5638missingtail. All13/required5 andownnormalrelease/realACL stillrequired. No production mutation/activation/access/secrets/Support/Mac changes. Accounting84/161/77open/60;C6/C12PARTIAL. Next independentfailureassessment and bounded same-source failed-job rerunonlyiftransient/noimplementationissue; preserveoriginal andeachattempt, completeothergates/realproductionACL inparallel.
+
+
+## 2026-10-07 — normal626 merge; current5638 partial runtime and finite retry decision
+
+- Auxiliary626 fullcurrentApp15368 contexts allSUCCESS:scope113010505144/static113010631553/type113010631472/runner113010010146/scan113010010075. Independentactual52/no-skip/source acceptance andfreshrootpremerge proof currentmaincecb/wholeprospectivetree1c346 allPASS; baseline andoriginal9 bytesunchanged, ordinaryprotectedmerge noadmin/force/bypass. Owner625 ownnormalrelease37684025768 terminalSUCCESS beforemerge. Actual626mainf8dd20c7a849643087ee31969c2f582a96c8bab3 parentscecb+5f/tree1c346 EXACTreviewed5f; source5onlynewpaths. Ownnewf8 Deploy37687183717 quality/build running; publicexactSHA/liveACL actualread NOT RUN yetpendingownfullSUCCESS. Rootf8+HRM5638 prospectivetree EXACT8743c6, so testedC6source remainsfrozen, no needlessSHAchange foronlymain merge-edge.
+- Independent classification firstfailure6bc5e435... confirms exact5638source/ZIP/digest/CRC/7cases/6HR201/10cleanupPASS. Auth/harness/fixture/nonce/lockfile byteexact88; same eachuser enrollmentsecret stored/copied, token mintedafterwarmup/pacing. Earlier6authattempts include5 successfulmandatoryTOTP+canonicalnonce sessions and1intentionalweak; seventhTOTP400 beforeungrantedworkforcePOST, source3distinct400 causes cannotidentifyfromwithheldbody. PriorENsuccessPNG is notfailedMFAresponseproof. Rolloverendtime inferenceonly; no establishedC6/auth regression. Reviewer recommendsone unchangedfailed-job-only rerun afterall5jobs terminal; repeatedfailure needsfinitediagnostics, no blindretry/guardrelaxation. No rerun performed yet; firstfailureorigins retained.
+- Exact5638 realPG113011546572 nowSUCCESS, report113011546713SUCCESS; build/compilerstillrunning, classificationfirstFAIL retained. Required/applicable13 pending; old88 cannotclosemissingcurrenttail. No productionHRMmerge/release, grants/roles/config/access/secrets/activation/Support/Mac changes. Accounting84/161/77open/60%,C6/C12PARTIAL. Next actualcompiler/build terminal andboundedfailed-jobretry, ownf8release/publicproof/strictreadonlyrecipientassessment and exactwhole5638acceptance, then normal589releaseonlywhenfulfilled.
+
+
+## 2026-10-07 — current5638 realPG/build/report accepted; compiler and classification tail held
+
+- IndependentcurrentPG/builda3c65eb3... verifies source113011546572 actual4PGfiles44/44/no skips; unchangedstrict18/18baselineallentriesfailingPASS, not globalcleanunit; Prisma6.19.3validate/current+legacygenerate/scopedlint/i18n24632keys0missingextra/runner50PASS. Build113011546505 actualcompiled7.4min/static968+standaloneassertionsPASS. InheriteddashboardclientmanifestENOENT path/class warning andtypevalidationSKIP retained, no warning-free/globalcleanclaim. Fulloriginallogs/receipt retainedlosslessly; completecompilerstillrunning.
+- Manualreport113011546713 ZIP11512045557/852905/SHA0433552bc576143166e7c476614874a6200c1d23ea2c72f660809829e05509ad/CRC14 actual9cases/cleanupPASS. Independentpartialbrowserc3d0ca79... all26sourcebindings+7canonicalactualSQLextracthashes exact5638;22factsunchanged/5FORCERLS relations/2populatedtenants/foreign0. AllowedviewauditA12vs11observedHTTP200 retained, not globalzeroDBwrites; syntheticMtmAuditLogguard not productionauditmigration. Classificationoriginal7PASS/6HR201+MFA400 remains partial, no tail11caseacceptance borrowed.
+- Root actuallyviewed3CURRENT5638reportPNGs: EN1440four33.33%/N3/unfinished2/unclassified2/integrity1 visible; AZ768fourrates/footerclipped/inheritedEnglishIntl durations; RU320232x2683nested blankcapture withonlyhistory6/1/1/manualboundary, finalrates/footerNOTVISIBLE. Childviewedalso3first-failedclassificationPNGs+failurePNG: RUactioncontrolsNOTVISIBLE; priorENsuccessdoesnotprovefailedMFAresponse. No fullmobile/humanAT/WCAG/physical/pilot/liveHR/C12 acceptance.
+- Auxiliary independentPOSTMERGEa48b13df... proves actualf8parentscecb+5f/wholetree1c346 exacttested5f/current5App15368SUCCESS/protection intact. Oldmainpeerassert caughtalreadycompletednormalmerge; no retroactivepremergeclaim. f8+5638 wholefuturetree8743 stillsamefrozenactualCIhead. Ownf8productionbundle/quality stillrunning; liveproductionACL read NOT RUN untilownfullrelease/pinnedproof. Accounting84/161/77/60;C6/C12PARTIAL. Next completecompiler/failed-jobretry onceunchanged/remaining13+required5 andownauxrelease/readonlyrecipientassessment.
+
+
+## 2026-10-07 — complete5638 compiler accepted; one exact failed-job-only retry
+
+- Originalmanual37685323552 attempt1 terminalFAIL:classification113011546243FAIL, other4sourcePG/build/report/compilerSUCCESS. Complete originalterminalrun/jobs saved before onerootPOSTrerun-failed-jobs, source5638/cleantree unchanged andoriginalZIP/log/failure durable504e5449e. Serveracceptedqueue then actualrun_attempt2 IN_PROGRESS; ONLYfailedclass rerun, original4PASS actualattempt1executioncredits retained. No auth/MFAwindow/bodyassertion/source/baseline edits orwholeworkflow retry. Further samefailurewouldneedfinitecause diagnostics, no blindretry.
+- Currentcompiler113011546626 actualSUCCESSwithinunchangedgates: freshartifact11512132811/19685/SHAb5ab4bffd6bfee28ff159dc9cbb335cfba93730227606f9af89e117238723643/CRC2. Raw177767/SHAfd626333ee46182254dc6a8b0a012af831b4e2781cc1a21f6ca373886ec9b4ba actuallyBYTEEXACTarchived88, currentexecution/artifact binding independentlyverified notborrowed. Exit2/1153diagnostics/35families; root+independent18C6typedpathsALLfamilies0; all64gatedfile/codepairs exactunchanged973baseline/6gatedfamilies. BothactualhostedblockinggatesPASS; globalcompilerNOTCLEAN. Raw currentfreshparseproof/independentdb33a43e... andcounts f8ece57b... plusfulloriginaljob/ZIP retainedlosslessly. No localcompiler replay.
+- Currentallother12applicablePASS exceptrequiredtypefinishing; classificationattempt2queued/run andownf8auxnormalrelease stillpending. No productionHRMrelease/realACLapproval, no grants/config/roles/access/secrets/activation/Support/Mac changes. Accounting84/161/77open/60%;C6/C12PARTIAL. Next retryfull11cases/realMFA/afterledger-RLS+cleanup independentreview, remainingrequiredtype, ownf8release/pinnedSHA andstrictactualreadonlyACLassessment before normal589release.
+
+
+## 2026-10-07 — EXACT5638 complete technical acceptance; ownf8 public proof/read-only dispatch
+
+- Independentwholecurrenttechnical f4f79a2fedeb0e12c2626768b6984f6a5fae4776909b0c60ba38ccbf7c67380f accepts ALL13latestapplicableSUCCESS/ALL5requiredApp15368SUCCESS/latestmanual5SUCCESS. Source5638/tree8743 codefrozen andmainf8+source WHOLEprospectivetreeexact,606/609CLOSEDmergedfalse/acceptedancestors/archivepreserved. Original4manualPASS executionattempt1 remainscorrectcredit; rematerializedattempt2logicalIDs haveidenticalold20:52→21:06/07/17 timestamps, no secondexecutions. Onlyclassification113022259873 actuallyreranattempt2 unchangedandPASS.
+- NewactualclassZIP11512248814/268941/SHA381d3e0dfedc1387bd40a4ef7246914810efede4d72d81653d2fde495d9870d8/CRC5 all11cases/6HR201+6immutabledecision/linkedaudits/7realmandatoryMFA+canonicalnonceconsume/weak403/role+ungranted+foreign+revoked404zero delta/retry200zero409conflict+stale/reopenreset/populated2tenant5FORCERLS/8facts+report14factdigestsunchanged/11cleanupPASS. Independentactualcurrentbrowser56bfb756... rebinding26sources+7productionSQLextracts accepted. FirstattemptMFA400 remainsoriginaldurable, precise3possiblecauseunknown; retryPASSdoesnotproveclockrollover/transience. No source/MFA/window/assertion/baseline change togreen.
+- Rootactuallyviewed3newattempt2classPNGs plus3currentreportPNGs (all6current originals):EN/AZmanualprivacy/success/controls visible withrightbottomclip;RUclasscase/employeecols onlycontrolsNOTVISIBLE. PreviousreportEN4fractions/footer/AZfooterclip/EnglishIntl/RUfinalratesnotvisible qualificationsretained. No fullmobile/WCAG/humanAT/liveHR/physical/pilot/C12operations claim. Fullcompiler1153/35/exit2/owned18zero/64samebaseline globallyNOTCLEAN butunchangedgatesPASS; allactual44PG/18baseline/Prisma/lint/i18n24632/runner50/build7.4min accepted.
+- Ownauxf8 Deploy37687183717 FULLSUCCESS quality113017906272/build113017905974/atomic+smoke113026034276/retention113027892095. RootstrictcanonicalTLS pinned13 build→ping→build3HTTP200/fullf8/builtAt PASS /tmp/hrm-release-f8-public-proof.json retained. Newprotectedmain readonly37690299054 dispatched exactf8 afterownfullrelease; source52 validationrunning, actualproductioncatalogresult/recipientreview NOT YET RECEIVED. Originalmetadata504INCOMPLETE/777IDENTITY_UNPROVED/7bfhostERROR untouched, READ_COMPLETEneverautomaticapproval.
+- No productionHRM merge/release/activation/personnelautomation/grant/role/config/access/secret/Support/Mac change. Accounting84/161/77/60;C6/C12PARTIAL. Next strictlyvalidate actualfinitefour-source-bound identity/ACL artifact beforedisplay/storage; independentlyassess actualrecipients, fresh589ref/protection/wholetree recheck and normal589ownrelease/smokesonlyifsafe. Externalrole/configchange wouldneedseparateapprovalonlyifactualproofrequiresit, no guessedfix.
+
+
+## 2026-10-07 — actualf8 same-live-database ACL proved; bounded recipient-purpose follow-up
+
+- Protected exactmain f8 read37690299054/source113028449941 old36+new16=52 PASS/no skips; production113028735948 PASS. Artifact11513675503 ZIP1367/SHA b1a9c80d6d294cbeea3c35f1792df00824f16b92cf3c54be385270a623e4d823/CRC1 strictfour-source-bound READ_COMPLETE/cleanupPASS validated before display/storage. Independentreview9552/SHA c84cfd7113b7904c7ee3201956a89b526f027128ad08519872cb18bbffb7cd81 accepts actualsame-live-DB correlation/privatePID+nonce+user+datid/currentartifact/stablefiles/primary/RRRO identities, not merely host assumptions. No identifiers/businessrows/secrets exported. Wholeoriginal ZIP/log/run/jobs/finiteoutput/review losslessly archived.
+- Actual5defaultACL entries: expectedruntime SELECT/I/U/D PUBLIC_SCHEMA nongrantable; runtime NOSUPER/NOBYPASS/LOGIN/SETpriv0. RemainingOTHER1SELECT PUBLIC_SCHEMA nongrantable NOSUPER/BYPASS/LOGIN/SETpriv0. PUBLIC0/grantable0/nonownerWRITE3 all expectedruntime, OTHERwrite0. OTHERpurpose UNATTRIBUTED; not provenunsafe, no blindrevocation/configchange justified. Original504DEFAULT_ACL_UNREVIEWED/777IDENTITY_UNPROVED/7bfhost mismatch unchanged; READ_COMPLETE remains observation, not approval.
+- Source backup contract explicitly grants owner defaultSELECT to configuredbackup_role; protected canonicalbackup.env uses PGUSER/BACKUP_EXPECTED_DB_ROLE/PGDATABASE, permits root0600 or root:leaddrive-backup0640. Existing source-probe requires backupcredentials/connection/transientservice and prints identity; unrelated environmental diagnostic does not attribute ACL. Neither is substituted for safe attribution. New clean codex/hrm-release-backup-acl-attribution-20261007 exactf8 worktree adds separate bounded read-only source, preserves old9+loopback5 byteexact. It will compare canonicaldeclaredidentity to actualOTHER through existing trusted migrationcatalog; no backupcredentialfile/thirdconnection/service/dump/access mutation. Declared identity/catalog profile cannot claim freshbackupservice/restore/commissioning acceptance.
+- User normalreviewedrelease authorization remains in force; no activation/personnelautomation/access/grant/role/config/secret/Support/Mac change. Exact5638 technicalPASS preserved, HRM589 notmerged/deployed. Accounting84/161DONE,77open,60%,C6/C12PARTIAL. Next actualbounded attribution after source/hosted/currentrequired5/normalauxrelease; assess actualrecipient manually, then exactfreshHRM acceptance and normalrelease if all criteria.
 
 
 ## 2026-10-07 — frozen5638 archived; actual66-tested attribution tool integrated
@@ -420,6 +729,36 @@ personnelautomation/Support/Mac changes. Accounting84/161/77open/60%, C6/C12
 PARTIAL; configuredbackupcatalogidentity does not claim freshbackupservice,
 commissioning, restore or realHRoperations. Next currentheadfulltechnicalgates
 inparallel normalauxrelease/protectedcatalogassessment, then589release ifsafe.
+
+
+## 2026-10-07 — auxiliary627 published; frozenC7 fresh13/manual5 acceptance
+
+Exactaux60efe238/treee575 PR627draftpublished/attached, source37692727660/113036666929 first66/66PASS/no skips actualfullDEFAULTadapter+realPG milestones/12cleanupPASS, productionpull_requestjob correctlySKIP. Rootfulloriginallog and independentwhole-source98188ffb.../hostedda8435a8... losslesslyarchived, working/prep finding+counters correction retained. READY afteractualsourcePASS; currentfullrequiredstatic113037158500/type113037158519 running, other3SUCCESS. No draftskip credit. Old14+5gates exactf8. Ownauxnormalmainrelease/protectedactualpurpose notyetdone.
+
+FinalHRM589 headc7deecf8c86672204434c157f7be2f0e85566fc7/treea3be6ea7f6fd48ef63aba0e0f6245ba95872f404 publishedFF; diff5638 only identicalaux5newpaths+overarchingjournal append. Frozen5638 actualtechnicalPASS retainedpublishedarchive. Freshmanual5 run37692949528 and12actualapplicableautomaticworkflows (newbackupsource replacesoldlivepathnowalreadymain) =13 currentgates running. No oldruntimecredit borrowed. Evidenceordinarymerge importsnewC7source; onlyjournalconflict resolved entireimmutableprior evidenceprefix + exactnewC7append beyondshared5638, no historyloss.
+
+Ledger parserlastfulltask-row override yields161unique/84DONE/77open; formula80*84/161+20*14/15=60.405797%=60. ConditionalONLYC6closure85/161/76/61 remainscalculationonly, no rowstatus/gatewrite. C6/C12PARTIAL. No grants/roles/config/access/secrets/activation/personnelautomation/Support/Mac change. Next freshC7fulltechnicalreview inparallel ownauxrelease/read-only purposeassessment, thennormal589release onlysafeallcriteria.
+
+
+## 2026-10-08 Europe/Berlin — exactC7 source continuity independently accepted
+
+IndependentcurrentC7 source995bfa5d.../27066B and rootfull source proof accepted
+55unchangedbindings/new5exact60/14realnonemptyWFnamespaces×3locale/31accepted
+ancestors/c123wholearchive/journalprefix/fullprospective mainf8 treea3be.
+ActualPR606/609 stillCLOSEDmergedfalse, strict973...HEAD diffcheckPASS. Current
+C6source/harness/roles/tenant/MFA/privateimmutableaudit/CASE_RECORDED_AT behavior
+byteexactpreviousaccepted5638, no oldruntime credit toC7. Current13 applicable
+workflows andmanual5 remainrunning, finalrequired5 runtime pending. Reviewer
+initialassembly missing priorMTM sha256 field KeyError corrected by explicit
+actualprior-committed-byte comparison, recorded as review-only issue, no source
+orcheck edits. Exact current source/proofs/APIinitialsnapshots retained here.
+
+Aux627actual66noskip sourcePASS/peeraccepted; three requiredchecksSUCCESS, full
+static113037158500/type113037158519 pending. Productionbackupattribution NOTRUN
+untilownnormalrelease. HRM589 notmerged/deployed. Accounting84/161/77/60 and
+C6/C12PARTIAL unchanged; no activation/personnelautomation/Support/access/role/
+grant/config/secret/Mac changes. Next terminalgates and normalauxexactrelease,
+protectedactualattribution/manualassessment then normalHRMrelease ifallcriteria.
 
 
 ## 2026-10-08 Europe/Berlin — inherited all-cohort percentage P2 found and corrected
@@ -456,3 +795,215 @@ manual5/13requiredcurrentCI andindependentacceptance. Auxiliary60/627 unaffected
 frozen, cannormalrelease/protectedreadonlyroleattribution independently.
 Accounting84/161/77/60,C6/C12PARTIAL; no grant/role/config/access/secret/
 activation/personnelautomation/Support/Mac changes.
+
+
+## 2026-10-08 Europe/Berlin — originalC7 complete and immutable; final33 published/ownaux392 release
+
+All5 originalC7manual37692949528 firstattemptSUCCESS preserved before newpush:
+class113037420086/report113037420435/PG113037420308/build113037420302/
+compiler113037420360. Actualfreshbrowser class11/report9/6HR201+6audit/7MFA/
+22facts/RLS/cleanupPASS, root+peer6currentPNG views withRUactions/finalrates
+NOTVISIBLE/AZfooterclip+EnglishIntl durations/devIssue qualifications. ZIPclass
+11514133211/268652/SHA298ce072.../CRC5, report11513514648/852763/SHA09ee06b2.../
+CRC14; fulloriginals retained. PG44noskip/18strictbaselineeveryentryfailing/
+Prisma/i18n24632PASS; build6.8min/static968/standalonePASS inheritedENOENT trace
+warning/typevalidationSKIP retained. Compiler11514304539/19685/CRC2 raw177767
+SHAfd626333... actuallyfreshbyteexact5638; exit2/1153/35families/owned18zero/
+64pairs exactbaseline973. No globallyclean claim. These runtimefacts remain
+immutable; C7 semanticpolicyP2 specifically prevents wholeacceptance/closure.
+
+Sourcefix33f93325599e883973c4c71c256cce8ad91168b3/tree225f13aa65017f2901ccc6309674cb948cf11957
+publishedFF589 after alloriginalmanualterminal/archivebranchC7policyP2published.
+Independent source83c222c6... exactone productionline + meaningfulharness/test
+changes/journalappend; allbackend/locale/19tool/gates exact, root19UI+scoped
+113rule lint2paths/syntax/diffPASS. Fresh manual37695306591/compiler113045459878/
+PG113045460004/build113045460030/report113045460101/class113045460165 running.
+Currentactualapplicable12=11auto+manual, supersedesprevious13count: source-only
+backupfilter correctly doesnottrigger becauseall5toolpaths nowalreadyaccepted
+onmain392; all19toolbytes exactreviewed60/main392. No oldruntimeborrow, current
+fullrequired5 andownHRMrelease stillpending. Evidenceordinarymerge source33
+retainsentirepriorjournalprefix plus exactnewsourceappend, no historyloss.
+
+Aux627fullrequired5 App15368 SUCCESS runner113036666355/scan113036666715/
+scope113037038431/static113037158500/type113037158519. Rootfresh mainf8/protection
+unchanged/currenthead60/old14+5gates/source66noskip/WHOLEe575 guardsPASS, then
+normalmatchedPUTmerge noadmin/force. Main392e0a38e37b9f3915e5ceb2d3b5caf8cd0698ad
+parents[f8,60], WHOLEe575exacttested60. Independentpostmerge5b93d8e8... confirms
+actualparents/tree/checks; first localobjectmissing resolvedbyreadonlyfetch
+andrecorded, no falsepremergeclaim. OwnDeploy37694967642 quality/buildrunning,
+protectedactualbackupattribution NOTRUN untilfullownrelease+pinnedSHAproof.
+No ACLapproval/HRMmerge/deploy/activation/personnelautomation/Support/access/
+role/grant/config/secret/Mac changes. Accounting84/161/77/60,C6/C12PARTIAL.
+Next final33wholefreshacceptance inparallel own392release/readonlycatalogmanual
+assessment, then onlynormal589release ifallcriteria.
+
+
+## 2026-10-08 Europe/Berlin — final33 browser/PG/build accepted; auxiliary392 fully released
+
+Final source remains frozen33f93325599e883973c4c71c256cce8ad91168b3/tree225f13aa65017f2901ccc6309674cb948cf11957. Fresh first manual run37695306591 report113045460101/classification113045460165/PG113045460004/build113045460030 SUCCESS. Independent current browser receipt f1e0e4a7... and PG/build 0de58739... accept actual current executions; no C7 runtime borrowed. Report9/class11, seven strong canonical MFA logins plus intentional weak403, six HR201/six immutable ledger+audit appends, retry/conflict/stale/revoked/ungranted/foreign/role denials, reopen reset,22 fixed facts and FORCE RLS/cleanup passed. All11 actual correction-link display diagnostics show count/no percent; legacy API ratio remains metadata. All four reviewed-only final fractions/sample exclusions remain exact. Root viewed six current PNGs: EN/AZ relevant fields visible with noted clipping; RU report count/final rates and RU classification actions NOT VISIBLE in captured PNGs, DOM/HTTP evidence separate. Full mobile/WCAG/human AT/live HR operations NOT RUN.
+
+Actual44 PostgreSQL tests without skips, unchanged strict18/18 baseline where all historical entries still fail, Prisma validate/generate, i18n24632 and runner51 passed. Build compiled5.1min/static968 and standalone assertions passed. Inherited client-reference-manifest ENOENT copy warning and build type-validation SKIP retained; no global-clean or warning-free claim. Current required five App15368 and11 automatic workflows all first-attempt SUCCESS. Manual full compiler113045459878 still IN PROGRESS; whole final33 technical acceptance and HRM merge/release remain pending. Late currentC7 compiler peer receipt retained as historical evidence only, original C7 semantic P2 superseded by current actual count correction.
+
+Own auxiliary main392e0a38e37b9f3915e5ceb2d3b5caf8cd0698ad normal Deploy37694967642 completed all four expected jobs SUCCESS; three nonnormal recovery/manual jobs SKIPPED. Exact SHA artifact11514819501/digestfa7da503... producer+deployer metadata and complete original quality/build/deploy/retention logs retained. Root HTTPS canonical TLS/address-pinned build→ping→build bracket confirmed exact full392 marker and unchanged builtAt. Protected readonly backup-attribution run37697340007 dispatched on exact current main392 after its complete normal release; source validation in progress, actual catalog/role-purpose acceptance pending. No grants, role/access/config/secret changes, service activation, direct server deploy, personnel decisions, Support or Mac work.
+
+Immutable phase archives: actual33-browser-pg-build-first (32 files) and actual-main392-own-fullrelease (9 files) with original/stored hashes. Accounting remains84/161 DONE,77 open,weighted60%; C6/C12 PARTIAL. Next: fresh complete compiler/whole12 review and protected actual backup attribution/manual source-contract assessment, then normal matched PR589 release only if all applicable criteria pass.
+
+
+## 2026-10-08 Europe/Berlin — final33 whole current technical acceptance; actual backup-purpose hold resolved
+
+Fresh final33 manual37695306591 all five first-attempt lanes SUCCESS. Compiler113045459878 artifact11516635134/19685B/SHAf5cab98b.../CRC2, complete current raw177767B/exit2/1153 diagnostics/35 families. Root and independent9b881d39... parsed every diagnostic, all18 current owned paths zero across all families,64 gated pairs exact accepted973 baseline. Historical global nonclean result preserved; no earlier-head compiler credit. Independent whole current technical receipt67f22fe1... binds actual12 workflows, five App15368 required checks,44PG/regression18/browser20/build and current source tree225f; all first attempt PASS, original failures and all older qualification entries remain immutable.
+
+Actual protected production backup-attribution37697340007 source113052202922 and production113052478342 SUCCESS. Artifact11516305817/ZIP1986B/SHA6ce73e9e.../CRC1 strict finite result6801B validated against all six exact current helper/SQL hashes and full main392 production marker. Simultaneously held runtime/migration sessions prove same primary live DB, unchanged identities, RR/read-only and cleanup. Runtime NOSUPER/NOBYPASS/LOGIN/privilegedSET0; default table ACL consists of expected runtime SELECT/IUD plus one OTHER nongrantable public-schema SELECT, PUBLIC0/OTHERwrites0. Protected canonical backup.env ROOT_BACKUP_0640 declares the same role as that sole OTHER recipient, distinct from runtime/migration. Catalog profile NOSUPER/BYPASS/LOGIN/NOCREATEDB/NOCREATEROLE/NOINHERIT/NOREPLICATION, explicit defaultReadOnly=true, inbound/outbound membership and privilegedSET0, matchedrows1/matchedrecipient1. Existing bootstrap explicitly intends that owner default SELECT and normal backup source enforces the same profile. Root manual assessment and independent e64331c3... accept this specific default-ACL recipient purpose; no grant/config change needed. READ_COMPLETE alone is not approval, old strict/preflight INCOMPLETE/ERROR outcomes remain unchanged. Backup authentication/service/commissioning/dump/restore, all object-level privileges, reserved future DDL window and C12 acceptance are NOT PROVEN.
+
+Root fresh premerge guards pass exact currentmain392/head33/clean worktree/WHOLE225f, accepted973 and c123 ancestry, closed/unmerged606609, original five baseline/gate bytes, all19 observer paths exact reviewed main, all12 workflows/manual5/required5 and unchanged branch protection. Review description prepared around final HR outcomes/count behavior and actual evidence; own HRM main merge/artifact/deploy/post-release checks still required. Durable archives actual392-backup-recipient-review, actual33-compiler-first and final33-whole-premerge-acceptance preserve originals/hash manifests. Accounting remains84/161/77/60,C6/C12 PARTIAL until functional release criteria complete. Next only user-authorized normal matched PR589 merge→own SHA-bound GitHub Actions release→read-only metadata and public/anonymous feature smoke, then independent functional DoD assessment.
+
+
+## 2026-10-08 Europe/Berlin — PR589 normal merge; own final-main release and exact-main checks running
+
+After fresh complete immediate premerge guard, normal matched GitHub merge PUT (no admin/force/protection change) merged PR589 at f3085e5cdf80879bee2e65d06df4e88698afa3e4. Actual ordered parents are [392e0a38e37b9f3915e5ceb2d3b5caf8cd0698ad,33f93325599e883973c4c71c256cce8ad91168b3], whole tree225f13aa65017f2901ccc6309674cb948cf11957 exactly equals independently accepted current33 source/runtime tree. Accepted605/608/973/c123 history retained; validation-only606/609 not merged. Final review description describes current behavior, actual baseline-qualified validation, scope and remaining limits.
+
+Own normal Deploy37698256814 triggered on exact final mainf308 and is queued/running. To satisfy the user's exact-final-commit CI requirement literally, additionally dispatched the existing five isolated hosted WF-C6 lanes on refs/heads/main with expected_head=f3085e5cdf80879bee2e65d06df4e88698afa3e4, in parallel with normal release. This is a new final commit observation; prior33 execution remains source-equivalence evidence, not borrowed as freshf308 runtime. No new source edit or heavy Contabo checks. Own final artifact/quality/build/deploy/smoke, full five exact-main lanes, read-only catalog/post-release checks and independent release/functional DoD acceptance remain pending. No tenant/reconciliation activation, access/grants/role/config/secrets changes, automatic personnel decisions or Support work. C6/C12 remain PARTIAL; accounting84/161/77/60 unchanged. Durable normal589-merge-f308 archive retains immediate guard, structured merge input/result, actual parents/tree, review description and own initial release metadata. Next follow ownf308 release and exact-main gates, then verify production ledger/RLS/guards and public/anonymous feature guards without manufacturing an HR session.
+
+
+## 2026-10-08 Europe/Berlin — actual final-main browser and PG acceptance preserved
+
+Own final-main isolated five run37698304351 binds headf3085e5cdf80879bee2e65d06df4e88698afa3e4. Actual first report113055368866 and classification113055368975 SUCCESS. ZIP report11516980587/849374B/SHA714a46a8.../CRC14 and classification11517091011/269603B/SHAdd6e8273.../CRC5, complete originals and root extracted current artifacts retained. Independent fresh-main browser2c009fb3... verifies26 current source hashes/seven canonical installed SQL routines, report9/class11, seven strong canonical MFA plus weak403, six explicit201/ledger/audit with actor+reason, retries/conflicts/stale/revoke/roles/foreign denials,22 fixed facts/two populated tenant FORCE RLS/viewaudit whitelist and cleanup. All11 count/no-percent diagnostics pass. Root and peer viewed all six CURRENT final-main PNGs; EN/AZ relevant controls/counts/four reviewed final percentages visible with known clipping, RU report final rates/count and RU classification action controls NOT VISIBLE. Inherited English Intl durations inAZ and Next development badge retained; no full mobile/WCAG/human AT or real HR production observation claim.
+
+Fresh final-main PG113055368873 SUCCESS: four real PostgreSQL files44 PASS/no skips, Prisma/i18n24632, unchanged full strict18/18 baseline all entries still failing. Own normal production quality113055213754 SUCCESS, complete original358938B/SHA1c5ddaf9... likewise records exact strict baseline without new failures. Final-main isolated build/compiler and normal artifact/build/deploy still pending; no prior33 runtime borrowed for these lanes. Independent postmerge8a19da01... proves actualparents392+33, whole225f/zero pathdelta,31 accepted ancestors/c123, closed/unmerged606609 and unchanged baseline/gates. Prospective DoD42026580... explicitly holds DONE until actual final-main five lanes/own normal release/public guards/catalog migrations+ledger/RLS/immutable guards and final review; no invented minimum real sample. Root last-full-task-row parser confirms all161 IDs/84DONE/77open including owner-attestation/owner-decision statuses; conditional85/76/61 is NOT accepted yet. C12 remains PARTIAL. Archive actual-f308-browser-pg-first preserves this phase's originals; next own artifact/deploy, complete compiler/build and read-only post-release proof.
+
+
+## 2026-10-08 Europe/Berlin — own final release and all exact-main lanes PASS; original smoke assumption failure and C12 incomplete result retained
+
+Exact mainf308 normal Deploy37698256814 all four normal jobs first-attempt SUCCESS: quality113055213754, producer113055213767, atomic deploy+smoke113060363855, retention113062041961; three nonnormal jobs SKIPPED. Actual producer+consumer artifact11516952707/444660699B/digesta82e5316... agree with fullSHA marker and pinned live public build. No local444MB artifact download claimed. Original deploy logs explicitly apply both20261005193000_workforce_reconciliation_operations and20261006150000_workforce_transferred_assignment_window and report all migrations applied/schema up-to-date514. No reconciliation activation or access/roles/grants/config/secrets mutation.
+
+Fresh exact final-main isolated run37698304351 all five lanes first-attempt SUCCESS. Compiler11517820417/19685B/SHA3cd294f8.../CRC2 contains actualfresh177767B full raw/exit2/1153 diagnostics/35families. Root and independent5021c312... parse all18 owned paths zero across all families and64pairs exact unchanged973 baseline; not global-clean or borrowed33 execution. Independent freshmainPG/build37009dea... accepts44 realPG/no skips, strict18/18 historical failingbaseline, Prisma/i18n24632/runner51, build7.5min/static968/standalone. Inherited manifest ENOENT warning/buildtypevalidationSKIP preserved. All fullcompiler/build/browser/PG work executed on GitHub, not Contabo or Mac.
+
+First actual production readonly smoke helper FAILED before catalog dispatch: root preparation wrongly expected401 for an anonymous caller without Sec-Fetch-Mode. OriginalAssertionError and unknown initialHTTP value retained; it was executed and failed (corrects new proxyreceipt phrase “original unexecuted helper” without rewriting that original). Safe narrow diagnosis observed307/TLS0 on both protected APIs, exact same-origin/login callbackUrl=original path and redirect-URL-only body. Current unchanged proxy source explicitly distinguishes missing-header/navigation redirect from browser-script requests. New strict source-bound307 helper PASS fullSHA build→ping→two exactownlogin/callback/body-only307→stablebuild, independentc61d55bd... accepted. Additional Sec-Fetch-Mode:cors source-bound smoke PASS exact401 JSON Unauthorized/session_expired for both APIs with fullSHA before/after; independent259a8aa5... accepts both contracts and producer/consumer. No application/auth/baseline/gate source change or broad “any4xx” fallback. Authenticated production HR read NOT RUN: no legitimate existing HR session supplied; no identities/tokens/grants manufactured. Real HR operations/metric samples NOT RUN; synthetic browser results remain distinct.
+
+Protected exact deployed-main metadata37700706462 source113063206584 PASS/production113063447824 FAIL. Strict finite ZIP11517690873/1895B/SHAf51fca70.../CRC1 result8240B retains INCOMPLETE and exact reasons APPLIED_TABLE_CONSTRAINTS_NOT_PROVED and DEFAULT_ACL_UNREVIEWED; never relabeledREADY. Actual ledger531/unresolved0/two applied once with correct checksums, ten indexes present+shape, assignmentguard currentbody65a426...+binding, relevant C6case/decision keyshape/FORCERLS and all four append/revision function+trigger proofs true. NewC12 state relation FORCE RLS observed, full constraints remain unproved; generic “id” keyshape false because canonical state table has organizationId PK, not a C6relation failure. PostgreSQL relation estimates are not business counts/real outcomes. Current production backup37700709192 source113063216462/production113063604347 SUCCESS, strict ZIP11517501743/1987B/SHA13bfd9d6.../CRC1 same fullf308/six helper bindings. Held same liveDB/runtime+migration RRRO/sessionidentity/cleanup and statically protected declaredbackup identity/profile match remain proven: one nongrantable OTHER SELECT, no OTHERwrites/PUBLIC/defaultgrantoption/membership/privilegedSET path; manual final current assessment pending peer. No backup authentication/service/commissioning/dump/restore, future reserved quiet window, full C12 or privileged/TRUNCATE immunity claim.
+
+Immutable archives actual-f308-complete-compiler-build, actual-f308-own-normal-release-smoke and actual-f308-production-catalog-originals retain all original statuses/logs/ZIPs/receipts, including first failed preparation smoke and current global metadata FAIL. C6 functional DoD final independent catalog/whole assessment pending; C6/C12 PARTIAL and accounting84/161/77/60 unchanged at this entry. Next finite scoped current catalog/backup manual assessment and final independent DoD, then update only accepted C6 accounting if all criteria complete; C12 remains PARTIAL.
+
+
+## 2026-10-08 Europe/Berlin — WF-C6-010 functional DONE accepted; only one row and accounting advance
+
+Independent exact own released-f308 whole technical acceptance e4550920...,
+final functional DoD df73f922..., and scoped actual production C6/backup review
+f88062fa... are accepted by root. All finite row935/user functional criteria
+are satisfied by explicit manual HR decisions/full-partial-rejected independent
+appeals, immutable authoritative decision audit, role/MFA/tenant/revision/privacy
+and empty/reopened/unclassified/sample rules, CASE_RECORDED_AT, preserved
+historical first recorded resolution and correction association semantics.
+Fresh exact-main five lanes and own four-job production artifact/deploy/smoke,
+real critical catalog/ledger/checksum/RLS/four guards and both exact anonymous
+API contracts are complete. No minimum realN is invented; empty data intentionally
+has no percentage. Production authenticated HR read and actual outcome rates
+NOT RUN without a legitimate existing HR session; no personnel cases/users/
+tokens/grants manufactured. This closes functional measurement, not C12 operating
+acceptance, deployment activation, all generic MtmAuditLog/TRUNCATE/DBA immunity,
+backup authentication/service/restore or complete mobile/WCAG/human AT.
+
+Root acceptance receipt records ONLY WF-C6-010 DONE. Roadmap receives append-only
+latest acceptance entry and one full task-row override; every older byte/entry
+remains a prefix. Root last-full-row audit verifies exactly161 IDs, only
+WF-C6-010 status PARTIAL→DONE, same priority/owner/task, all C12 full rows and
+C7-007/C8-002 DONE unchanged. Accounting85/161 DONE,76open,14/15phasegates;
+80×85/161+20×14/15=60.902691511...%, rounded61%. No other partial row closes.
+Standalone docs/workforce-c6-recorded-outcomes-acceptance-2026-10-08.md details
+scope/evidence/limits. Docs peer caught “first recorded decision” wording too
+broad; corrected beforecheckpoint to first decision closing the case (resolution)
+and states seven actual MFA checks among20 scenarios. No runtime/source change.
+
+Global metadata workflow remains actual FAIL/INCOMPLETE with original two
+APPLIED_TABLE_CONSTRAINTS_NOT_PROVED and DEFAULT_ACL_UNREVIEWED reasons; no READY
+rewrite or baseline weakening. Canonical protected declaredbackup recipient
+purpose is accepted manually using new finite observations, not automatic
+READ_COMPLETE. C12 stays PARTIAL; its table full CHECK/FK/default/policy proof
+and real operating/physical/pilot/load/restore criteria stay open. First actual
+smoke preparation failure (incorrect401/noSec-Fetch-Mode), diagnosis and exact
+307 plus script401 positive checks remain unchanged in the archive. All prior
+implementation/CI failures and retries preserved. Current four final-main phase
+archives roundtrip/hash verification76payloads PASS.
+
+External PR628 normally merged at23:14:49UTC while finalreview continued,
+advancing repositorymain to e041d8a1b90ae80e81667bf5b6263636406d91d2. Child and
+root readonly comparison confirm C6/backend/auth/report/decision/tool/baseline
+and42 Workforce translation namespaces preserved. Its16 MTMsettings/locale/test
+files include a separate agentCheckInOutsideZone ADMIN_ONLY_KEYS permission
+change; whole successor and that MTM policy are OUTSIDE this HRM acceptance,
+not “all repository roles unchanged” or fresh f308-CI credit. No mutation or
+approval of628 by this task. Own f308 actual runtime observations predate its
+successor; additional pinned public bracket still served fullf308 aftermain
+advance. That reusable auxiliary helper's residual “auxiliary” scope caption
+is imprecise for this call; finite URL/TLS/fullSHA observations refer to actual
+own HRM releasef308, original caption retained, correct own smoke/peer receipts
+provide actual scope. No chasing/restarting or modifying external work.
+
+Durable final-f308-functional-acceptance archive binds root/peer DoD, current
+catalog assessment, incomingdelta and actual refs/public observations. Evidence
+remains on dependent draftPR617; sourcePR589 is merged/released and its exact
+verified source frozen. No incidental evidence-PR merge/deploy. Stop at verified
+functional C6 acceptance; next resume must re-read current refs/journal, verify
+any external main/release drift, then choose the next permitted HRM/C12 criterion.
+C12 activation and any new access/secret/production mutation require separate
+approval; HRHub personnel-document work stays after HRM acceptance. Support and
+Mac work untouched. Final docs integrity/peer and checkpoint/publication next.
+
+
+## 2026-10-08 Europe/Berlin — final documentation peer PASS; final evidence checkpoint publication
+
+Final documentation peer d06c5b26... accepts corrected first-closing-resolution
+wording/seven MFA checks among20 scenarios, exact old roadmap/journal byte
+prefixes,161uniqueIDs/85DONE/76open/weighted61/14of15gates, only C6 status change,
+all other rows and C12 unchanged, entire non-docs source equal releasedf308,
+five original gates/baselines exact973. Independently roundtripped four current
+runtime archives76payloads plus separate10 functional originals; no archive
+failure. No new tests/build/production reads or source edit. Root accounting
+proof and final PR descriptions archived separately, preserving earlier bodies.
+
+Final task result: functional WF-C6-010 DONE at verified own releasedf308;
+C12 PARTIAL/globalmetadata INCOMPLETE unchanged and realHR/authenticatedprodHR/
+backup service/restore observations NOT RUN. Externalmain e041/PR628 remains
+outside own HRM acceptance, including its separate MTM permission change.
+Last completed action: independent final documents/counts/source/archive review.
+Precise stopping point: own HRM source released and verified, only final
+append-only documentation/evidence checkpoint publication to existing dependent
+DRAFT PR617 pending at this entry. Next action: explicit-path docs-only commit,
+normal push to existing evidence branch, verify PR617 draft/head and PR589 merged
+state; no merge/deploy of evidence or external code. Next task resumes by fresh
+refs+journal and then next permitted remaining HRM/C12 criterion; activation/
+newproduction/access/secrets changes require separate approval.
+
+
+## 2026-10-08 Europe/Berlin — final checkpoint published; verified stopping state
+
+Final acceptance/accounting/docs checkpoint3cb81fe937e23cf36787cc769b01cf8c63fd66c3
+published normally to existing codex/hrm-wf-c6-010-release-evidence-20261007.
+GitHub verification confirms PR617 OPEN/DRAFT at that checkpoint with preserved
+basecodex/hrm-588-validation-20261005, PR589 merged at accepted ownf308, branch
+clean and final descriptions updated. Both PRs attached to the task. No evidence
+merge/deploy or external628 action. Publication finite proof archived. This
+entry supersedes the preceding “publication pending” stopping point; earlier
+entries remain unchanged.
+
+Last readonly TLS/address-pinned build→ping→build observation: production still
+serves fullf3085e5cdf80879bee2e65d06df4e88698afa3e4, matching before/after builtAt,
+while repositorymain is external e041d8a1b90ae80e81667bf5b6263636406d91d2. This
+is a current public state observation only, not approval of the successor's
+whole release/MTM permission changes. C6 code and its HR access preserved by
+independent source comparison; f308 evidence not borrowed as wholee041CI.
+
+Current result/status: WF-C6-010 functional DONE, own HRM releasef308 verified;
+85/161DONE,76open,weighted61%,14/15gates; C12 PARTIAL and original globalmetadata
+FAIL/INCOMPLETE retained. Last completed action: normal publication and remote
+PR/head/draft verification plus final public SHA/state observation, with all
+source/runtime/production/functional/docs reviews and original failures archived.
+Precise stopping point: after own verified functional HRM acceptance and its
+published dependent evidence; no application changes or release work pending for
+WF-C6-010. Next action on resume: first compare current refs/live artifact and
+read this journal, then work on the next permitted remaining HRM/C12 criterion.
+Real HR authenticated observation remains NOT RUN without a legitimate existing
+HR session; do not manufacture identities/outcomes. Full C12 constraints,
+operating/physical/pilot/load and backup service/restore acceptance remain open;
+activation and new production/access/secret mutations need separate approval.
+Support and HRHub personnel-document work remain outside this completed slice.

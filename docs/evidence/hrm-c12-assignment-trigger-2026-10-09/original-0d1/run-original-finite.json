@@ -1,0 +1,39 @@
+{
+  "id": 37967873542,
+  "run_attempt": 1,
+  "event": "pull_request",
+  "head_sha": "0d1f85e6555d7f461041515d9ddc541ab6318749",
+  "status": "completed",
+  "conclusion": "failure",
+  "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37967873542",
+  "created_at": "2026-10-09T17:39:57Z",
+  "updated_at": "2026-10-09T17:40:38Z",
+  "artifactId": 11633563769,
+  "sourceJobId": 113946698418,
+  "productionJobId": 113946965773,
+  "productionJobConclusion": "skipped",
+  "tests": 25,
+  "passCount": 21,
+  "failCount": 4,
+  "skipCount": 0,
+  "productionObserved": false,
+  "historicalReplay": false,
+  "bindings": [
+    {
+      "path": "original-artifact.zip",
+      "bytes": 1344,
+      "sha256": "c4075b2614887a9ed35eb5b24026df9adedd08a4f5014f373436809595e0d479"
+    },
+    {
+      "path": "original-receipt.json",
+      "bytes": 3581,
+      "sha256": "a7a8ee582537150d5dbca39e4dba2ca680e3f2857f11f81d3dc4729e68426d87"
+    },
+    {
+      "path": "source-log-original.txt.gz",
+      "bytes": 12520,
+      "sha256": "dae91aab16cbb0e18aacbbabf843e16136a1175d51bfc8c96c357fc11ca6f9fa"
+    }
+  ],
+  "uncompressedLogSha256": "edba150e2497314e3eac52650454c0e432539f8f668a5728cb63cd48c6b462a0"
+}

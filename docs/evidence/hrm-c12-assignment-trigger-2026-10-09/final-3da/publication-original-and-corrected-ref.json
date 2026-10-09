@@ -1,0 +1,26 @@
+{
+  "status": "INITIAL_VALIDATION_REF_ASSERTION_FAILED",
+  "sourceSha": "3da6e4b5e809e5bc9cf1641df47b4e2b3a3d85f3",
+  "expectedBaseSha": "729b4579a652ee24cf867487ab026d00e67a875f",
+  "firstMergeSha": "0f55638767fd7199e7387a9e307522397a5b313d",
+  "firstParents": [
+    "cdaf3c17e259ebf2ffe5bc467d4961da950db3ca",
+    "3da6e4b5e809e5bc9cf1641df47b4e2b3a3d85f3"
+  ],
+  "firstTree": "1e752eb27ecfa1978675439eb2ce542c5533580b",
+  "error": "AssertionError",
+  "verificationExit": 1,
+  "readyCommandExecutedAfterFailedAssertion": true,
+  "cause": "MISSING_SHELL_FAIL_FAST_ON_READ_ONLY_PROOF_THEN_READY",
+  "correctedMergeSha": "8b6c06576ab5ae2f01400f82aaef2336b17c8fd7",
+  "correctedParents": [
+    "729b4579a652ee24cf867487ab026d00e67a875f",
+    "3da6e4b5e809e5bc9cf1641df47b4e2b3a3d85f3"
+  ],
+  "correctedTree": "1e752eb27ecfa1978675439eb2ce542c5533580b",
+  "correctedTreeMatchesSource": true,
+  "noMergeOrDeployPerformed": true,
+  "firstReadyRunId": 37969645905,
+  "reopenReason": "Required main-only secret scan does not run on ready_for_review; reopening unchanged source triggers original workflows without altering gates",
+  "productionObserved": false
+}

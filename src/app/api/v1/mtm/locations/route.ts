@@ -19,6 +19,7 @@ import {
   type MtmLiveRouteFact,
 } from "@/lib/mtm/live-field-status"
 import { groupMtmLiveFeedAlerts } from "@/lib/mtm/live-feed-alerts"
+import { shownMtmStationarySince } from "@/lib/mtm/stationary-anchor"
 
 const MAX_FUTURE_LOCATION_SKEW_MS = 5 * 60 * 1000
 const MAX_WEB_LOCATION_AGE_MS = 5 * 60 * 1000
@@ -83,8 +84,10 @@ type AgentWithLocations = Prisma.MtmAgentGetPayload<{
     lastSeenAt: true
     teamId: true
     team: { select: { name: true } }
+    managerId: true
+    manager: { select: { name: true } }
     locations: true
-    workdays: { select: { status: true; workDate: true; startedAt: true } }
+    workdays: { select: { status: true; workDate: true; startedAt: true; pausedAt: true; completedAt: true } }
   }
 }>
 
@@ -218,6 +221,11 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
         lastSeenAt: true,
         teamId: true,
         team: { select: { name: true } },
+        // Whom he reports to — the grouping a dispatcher can actually use:
+        // the card has a «Руководитель» field, and nothing in the product
+        // fills in a team.
+        managerId: true,
+        manager: { select: { name: true } },
         // The live marker is the newest admissible coordinate. Accuracy is a
         // quality gate/metadata field, never a reason to replace a newer point
         // with an older, prettier one. Defensive JS validation below also
@@ -245,7 +253,7 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
           },
           take: 2,
           orderBy: [{ startedAt: "desc" }, { workDate: "desc" }],
-          select: { status: true, workDate: true, startedAt: true },
+          select: { status: true, workDate: true, startedAt: true, pausedAt: true, completedAt: true },
         } } : {}),
       },
     })
@@ -289,6 +297,30 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
     const lastMovingAtByAgent = new Map(
       (recentMovement as unknown as Array<{ agentId: string; _max: { recordedAt: Date | null } | null }>)
         .map((row) => [row.agentId, row._max?.recordedAt ?? null]),
+    )
+
+    // Where and when each standing employee's current stop began — «стоит N
+    // минут». Kept with his latest position by the writer of every GPS point
+    // (src/lib/mtm/stationary-anchor.ts); one narrow read by the table's own
+    // unique index, for the people who are standing only.
+    const stationaryAnchors = returnedAgentIds.length
+      ? await prisma.mtmAgentLatestLocation.findMany({
+          where: { organizationId: orgId, agentId: { in: returnedAgentIds }, stationarySince: { not: null } },
+          select: {
+            agentId: true, recordedAt: true,
+            stationarySince: true, stationaryLatitude: true, stationaryLongitude: true, stationaryConfirmedAt: true,
+          },
+        })
+      : []
+    const stationaryAnchorByAgent = new Map(
+      ((stationaryAnchors ?? []) as Array<{
+        agentId: string
+        recordedAt: Date
+        stationarySince: Date | null
+        stationaryLatitude: number | null
+        stationaryLongitude: number | null
+        stationaryConfirmedAt: Date | null
+      }>).map((row) => [row.agentId, row]),
     )
 
     // Every visit that is open right now, whatever day it was opened on.
@@ -363,11 +395,19 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
         lastSeenAt: a.lastSeenAt,
         teamId: a.teamId,
         teamName: a.team?.name ?? null,
+        managerId: a.managerId ?? null,
+        managerName: a.manager?.name ?? null,
         fieldStatus,
         freshness,
         workdayState,
         workdayDate: fieldSessionEnabled ? effectiveWorkday?.workDate ?? null : null,
         workdayStartedAt: fieldSessionEnabled ? effectiveWorkday?.startedAt ?? null : null,
+        // When the break began and when the shift was closed: the card says
+        // «перерыв с 13:05», not only that the map went quiet (src/lib/mtm/live-map-state-since.ts).
+        // Workforce facts: a Routes-only tenant's field session discloses its
+        // state, date and start, and nothing more of the workday.
+        workdayPausedAt: workforceEnabled && effectiveWorkday?.status === "PAUSED" ? effectiveWorkday.pausedAt ?? null : null,
+        workdayCompletedAt: workforceEnabled && effectiveWorkday?.status === "COMPLETED" ? effectiveWorkday.completedAt ?? null : null,
         workdayCarryover,
         locationState: explainMissingLocation({ hasLocation: Boolean(loc), lastSeenAt: a.lastSeenAt }),
         routeCompletion: dayRoutes?.completion ?? 0,
@@ -378,6 +418,12 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
         // Only with the status it explains: an old GPS point says «offline»
         // first, and then nothing is claimed about a visit either.
         openVisitSince: fieldStatus === "CHECKED_IN" ? openVisitSinceByAgent.get(a.id) ?? null : null,
+        // Only with the status it explains, only for a position the map
+        // shows, and only when the anchor is about that very point: whenever
+        // the two disagree the duration is left out, never guessed.
+        stationarySince: fieldStatus === "STOPPED" && loc && isLiveMapAgentPositionVisible(freshness, workdayState)
+          ? shownMtmStationarySince(loc, stationaryAnchorByAgent.get(a.id), now)
+          : null,
         ...(loc ? {
           latitude: loc.latitude,
           longitude: loc.longitude,
