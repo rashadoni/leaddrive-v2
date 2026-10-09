@@ -1,0 +1,311 @@
+name: HRM C12 operational schema inspection
+
+# Supplemental catalog prerequisites only. The existing metadata gate stays intact.
+on:
+  pull_request:
+    paths:
+      - scripts/hrm-c12-operational-schema-inspection.*
+      - scripts/hrm-migration-metadata-preflight.mjs
+      - scripts/workforce-reconciliation-schema-contract.*
+      - prisma/migrations/20261005193000_workforce_reconciliation_operations/migration.sql
+      - .github/workflows/hrm-c12-operational-schema-inspection.yml
+      - .github/actions/assert-production-environment-protection/**
+      - .github/actions/setup-production-ssh/**
+  workflow_dispatch:
+    inputs:
+      expected_main_sha:
+        description: Exact current main and deployed artifact SHA (40 lowercase characters)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  source-validation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    concurrency:
+      group: hrm-c12-schema-source-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: true
+    steps:
+      # Evidence exists before setup. Use the runner image's installed PG16 in
+      # an owned private cluster; missing binaries fail instead of skipping SQL.
+      - name: Initialize finite source evidence before checkout or container startup
+        env:
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p "$RUNNER_TEMP/hrm-c12-schema-source"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          printf '{"status":"ERROR","sourceSha":"%s","code":"SOURCE_CHECKS_NOT_COMPLETED","productionObserved":false,"historicalReplay":false}\n' "$SOURCE_SHA" \
+            > "$RUNNER_TEMP/hrm-c12-schema-source/initial-source.json"
+      - name: Checkout exact source revision
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Reject dispatch outside exact main
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+        run: |
+          set -euo pipefail
+          [ "$GITHUB_REF" = refs/heads/main ] \
+            && [[ "$EXPECTED_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]] \
+            && [ "$EXPECTED_MAIN_SHA" = "$GITHUB_SHA" ] || {
+              echo '::error::Catalog dispatch requires an exact main revision'
+              exit 1
+            }
+      - name: Check source binding and privacy guards
+        id: unit
+        env:
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          node --check scripts/hrm-c12-operational-schema-inspection.mjs
+          node --check scripts/hrm-c12-operational-schema-inspection.test.mjs
+          node --test scripts/hrm-c12-operational-schema-inspection.test.mjs \
+            | tee "$RUNNER_TEMP/hrm-c12-schema-source/source-tests.tap"
+          node scripts/hrm-c12-operational-schema-inspection.mjs --emit-remote "$SOURCE_SHA" \
+            > "$RUNNER_TEMP/hrm-c12-schema-source/emitted-remote.mjs"
+          node --check "$RUNNER_TEMP/hrm-c12-schema-source/emitted-remote.mjs"
+          node scripts/ci/check-github-runner-policy.mjs
+          git diff --check
+      - name: Start an owned private PostgreSQL 16 cluster after evidence exists
+        # Ubuntu24.04 ships PG16: https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md
+        run: |
+          set -euo pipefail
+          umask 077
+          pg_bin=/usr/lib/postgresql/16/bin
+          pg_data="$RUNNER_TEMP/hrm-c12-schema-pg"
+          directory="$RUNNER_TEMP/hrm-c12-schema-source"
+          for binary in postgres initdb pg_ctl psql createdb; do
+            test -x "$pg_bin/$binary" || { echo '::error::Required installed PostgreSQL16 binary is absent'; exit 1; }
+          done
+          "$pg_bin/postgres" --version | tee "$directory/postgres-version.txt"
+          grep -Eq '^postgres \(PostgreSQL\) 16\.' "$directory/postgres-version.txt"
+          port="$(node --input-type=module <<'JS'
+          import net from 'node:net';
+          const server = net.createServer();
+          server.listen(0, '127.0.0.1', () => {
+            const port = server.address().port;
+            server.close(() => process.stdout.write(String(port)));
+          });
+          JS
+          )"
+          [[ "$port" =~ ^[0-9]+$ ]] || exit 1
+          test ! -e "$pg_data"
+          "$pg_bin/initdb" --pgdata="$pg_data" --username=postgres --auth-local=trust --auth-host=trust --encoding=UTF8 --no-locale \
+            > "$directory/initdb.log" 2>&1
+          "$pg_bin/pg_ctl" --pgdata="$pg_data" --options="-h 127.0.0.1 -p $port -k $pg_data" \
+            --log="$directory/postgres.log" --wait --timeout=30 start
+          "$pg_bin/createdb" --host=127.0.0.1 --port="$port" --username=postgres hrm_c12_schema_contract_test
+          printf 'C12_SCHEMA_TEST_DATABASE_URL=postgresql://postgres:isolated-c12-contract-only@127.0.0.1:%s/hrm_c12_schema_contract_test\n' "$port" >> "$GITHUB_ENV"
+      - name: Run unchanged isolated PostgreSQL schema and drift acceptance
+        id: schema
+        env:
+          CI: 'true'
+          C12_EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          C12_SCHEMA_RECEIPT: ${{ runner.temp }}/hrm-c12-schema-source/c12-schema-contract.json
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$C12_EXPECTED_HEAD_SHA"
+          node --test scripts/workforce-reconciliation-schema-contract.test.mjs \
+            | tee "$RUNNER_TEMP/hrm-c12-schema-source/schema-tests.tap"
+      - name: Record actual complete source and synthetic acceptance
+        env:
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import {readTrustedSource} from './scripts/hrm-c12-operational-schema-inspection.mjs';
+          const directory = process.env.RUNNER_TEMP + '/hrm-c12-schema-source/';
+          const source = readTrustedSource(process.env.SOURCE_SHA);
+          const counts = file => {
+            const text = fs.readFileSync(directory + file, 'utf8');
+            const value = {};
+            for (const key of ['tests','pass','fail','skipped']) {
+              const matches = [...text.matchAll(new RegExp('^# ' + key + ' ([0-9]+)$', 'gm'))];
+              if (matches.length !== 1) throw new Error('SOURCE_COUNTS_INVALID');
+              value[key] = Number(matches[0][1]);
+            }
+            if (value.fail !== 0 || value.skipped !== 0 || value.tests !== value.pass) throw new Error('SOURCE_COUNTS_INVALID');
+            return value;
+          };
+          const schema = JSON.parse(fs.readFileSync(directory + 'c12-schema-contract.json', 'utf8'));
+          if (schema.sourceSha !== source.sourceSha || schema.status !== 'PASS_ISOLATED_SCHEMA_CONTRACT_ONLY'
+            || schema.productionObserved !== false || schema.historicalReplay !== false) throw new Error('SCHEMA_RECEIPT_INVALID');
+          fs.writeFileSync(directory + 'source-result.json', JSON.stringify({
+            status:'PASS_SOURCE_AND_ISOLATED_SCHEMA_ONLY',sourceSha:source.sourceSha,
+            productionObserved:false,historicalReplay:false,sourceBindings:source.bindings,
+            unitCounts:counts('source-tests.tap'),schemaCounts:counts('schema-tests.tap')
+          })+'\n',{mode:0o600,flag:'wx'});
+          JS
+      - name: Retain finite early or original source failures
+        if: always()
+        env:
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p "$RUNNER_TEMP/hrm-c12-schema-source"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          for file in source-result.json c12-schema-contract.json; do
+            if [ ! -s "$RUNNER_TEMP/hrm-c12-schema-source/$file" ]; then
+              printf '{"status":"ERROR","sourceSha":"%s","code":"SOURCE_OR_SCHEMA_DID_NOT_COMPLETE","productionObserved":false,"historicalReplay":false}\n' "$SOURCE_SHA" \
+                > "$RUNNER_TEMP/hrm-c12-schema-source/$file"
+            fi
+          done
+      - name: Preserve original source success and failure artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hrm-c12-schema-source-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/hrm-c12-schema-source/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Stop only the owned private PostgreSQL cluster
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ -f "$RUNNER_TEMP/hrm-c12-schema-pg/postmaster.pid" ]; then
+            /usr/lib/postgresql/16/bin/pg_ctl --pgdata="$RUNNER_TEMP/hrm-c12-schema-pg" --mode=fast --wait --timeout=10 stop
+          fi
+
+  production-catalog:
+    needs: source-validation
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: production
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+    steps:
+      - name: Initialize finite production failure evidence before checkout
+        env:
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p "$RUNNER_TEMP/hrm-c12-schema-production"
+          value=null
+          if [[ "$EXPECTED_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]]; then value="\"$EXPECTED_MAIN_SHA\""; fi
+          printf '{"version":1,"status":"ERROR","expectedArtifactSha":%s,"code":"EARLY_INSPECTION_NOT_COMPLETED","productionObserved":false,"historicalReplay":false}\n' "$value" \
+            > "$RUNNER_TEMP/hrm-c12-schema-production/initial-production.json"
+      - name: Checkout exact dispatch revision
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Require protected production environment
+        uses: ./.github/actions/assert-production-environment-protection
+        with:
+          github-token: ${{ github.token }}
+      - name: Bind inspection to exact current main
+        env:
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+        run: |
+          set -euo pipefail
+          [ "$GITHUB_REF" = refs/heads/main ] \
+            && [[ "$EXPECTED_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]] \
+            && [ "$EXPECTED_MAIN_SHA" = "$GITHUB_SHA" ] || {
+              echo '::error::Catalog inspection requires exact protected main'
+              exit 1
+            }
+          git fetch --no-tags --depth=1 origin refs/heads/main
+          [ "$GITHUB_SHA" = "$(git rev-parse FETCH_HEAD)" ] || {
+            node scripts/hrm-c12-operational-schema-inspection.mjs --error "$EXPECTED_MAIN_SHA" MAIN_CHANGED \
+              > "$RUNNER_TEMP/hrm-c12-schema-production/result.json" || true
+            echo '::error::Main changed before catalog inspection'
+            exit 1
+          }
+      - name: Setup existing pinned production SSH
+        uses: ./.github/actions/setup-production-ssh
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          server-host: ${{ secrets.SERVER_HOST }}
+          known-hosts: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+      - name: Inspect catalog in memory and retain only sanitized original results
+        env:
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+          PRODUCTION_SSH_USER: ${{ secrets.SERVER_USER }}
+          PRODUCTION_SSH_HOST: ${{ secrets.SERVER_HOST }}
+        run: |
+          set -euo pipefail
+          umask 077
+          directory="$RUNNER_TEMP/hrm-c12-schema-production"
+          set +e
+          output="$(
+            node scripts/hrm-c12-operational-schema-inspection.mjs --emit-remote "$EXPECTED_MAIN_SHA" \
+              | timeout 70s ssh -T -o ConnectTimeout=10 -o LogLevel=ERROR -o StrictHostKeyChecking=yes -i ~/.ssh/deploy_key \
+                  "$PRODUCTION_SSH_USER@$PRODUCTION_SSH_HOST" \
+                  "EXPECTED_DEPLOYED_SHA='$EXPECTED_MAIN_SHA' NODE_NO_WARNINGS=1 node --input-type=module -" 2>/dev/null
+          )"
+          transport_status=$?
+          printf '%s' "$output" \
+            | node scripts/hrm-c12-operational-schema-inspection.mjs --validate-output "$EXPECTED_MAIN_SHA" "$transport_status" \
+                > "$directory/sanitized-remote-result.json"
+          validation_status=$?
+          set -e
+          printf '{"transportExit":%s,"validationExit":%s}\n' "$transport_status" "$validation_status" > "$directory/transport-result.json"
+          test -s "$directory/sanitized-remote-result.json" || {
+            node scripts/hrm-c12-operational-schema-inspection.mjs --error "$EXPECTED_MAIN_SHA" TRANSPORT_OR_OUTPUT_INVALID \
+              > "$directory/result.json" || true
+            exit 1
+          }
+          git fetch --no-tags --depth=1 origin refs/heads/main
+          if [ "$EXPECTED_MAIN_SHA" != "$(git rev-parse FETCH_HEAD)" ]; then
+            node scripts/hrm-c12-operational-schema-inspection.mjs --error "$EXPECTED_MAIN_SHA" MAIN_CHANGED \
+              > "$directory/result.json" || true
+            echo '::error::Main changed during catalog inspection; original sanitized outcome retained'
+            exit 1
+          fi
+          cp "$directory/sanitized-remote-result.json" "$directory/result.json"
+          [ "$transport_status" -eq 0 ] && [ "$validation_status" -eq 0 ] || {
+            echo '::error::Read-only catalog contract incomplete or failed; original sanitized outcome retained'
+            exit 1
+          }
+      - name: Retain finite failure when inspection could not start
+        if: always()
+        env:
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          directory="$RUNNER_TEMP/hrm-c12-schema-production"
+          mkdir -p "$directory"
+          if [ ! -s "$directory/result.json" ]; then
+            if [ -f scripts/hrm-c12-operational-schema-inspection.mjs ]; then
+              node scripts/hrm-c12-operational-schema-inspection.mjs --error "$EXPECTED_MAIN_SHA" EARLY_INSPECTION_NOT_COMPLETED \
+                > "$directory/result.json" || true
+            else
+              value=null
+              if [[ "$EXPECTED_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]]; then value="\"$EXPECTED_MAIN_SHA\""; fi
+              printf '{"version":1,"status":"ERROR","expectedArtifactSha":%s,"code":"EARLY_INSPECTION_NOT_COMPLETED","productionObserved":false,"historicalReplay":false}\n' "$value" \
+                > "$directory/result.json"
+            fi
+          fi
+          test -s "$directory/result.json"
+      - name: Preserve sanitized original success or incomplete and error outcomes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hrm-c12-schema-production-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/hrm-c12-schema-production/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Remove ephemeral runner SSH material
+        if: always()
+        run: rm -f ~/.ssh/deploy_key ~/.ssh/known_hosts ~/.ssh/config
