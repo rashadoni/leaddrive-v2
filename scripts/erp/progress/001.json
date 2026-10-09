@@ -1,0 +1,35 @@
+{
+ "key": "001",
+ "kind": "card",
+ "state": {
+  "taken_by": "erp/001-registry-to-repo",
+  "taken_at": "2026-10-09",
+  "history": [
+   {
+    "date": "2026-10-09",
+    "what": "take",
+    "branch": "erp/001-registry-to-repo"
+   },
+   {
+    "date": "2026-10-09",
+    "what": "step",
+    "step": 1
+   },
+   {
+    "date": "2026-10-09",
+    "what": "step",
+    "step": 2
+   },
+   {
+    "date": "2026-10-09",
+    "what": "step",
+    "step": 3
+   }
+  ],
+  "steps_done": [
+   1,
+   2,
+   3
+  ]
+ }
+}
