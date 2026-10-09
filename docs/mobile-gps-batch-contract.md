@@ -68,6 +68,20 @@ history cannot move a live map marker backwards. Existing live-map reads use
 it first and retain a read-only raw-table fallback while deployments/backfill
 catch up; no second authoritative write path is introduced.
 
+The same projection row holds the anchor of the agent's current stop —
+`stationarySince`, `stationaryLatitude`, `stationaryLongitude` — which is what
+the live map reads for «стоит N минут» (`src/lib/mtm/stationary-anchor.ts`).
+Every write decides it from the incoming point alone: a point with accuracy
+worse than 100 m leaves the three columns untouched; a moving point (the
+phone's flag, or speed above 1 m/s) clears them; a still point keeps them while
+it is within 50 m of where the stop began and no more than 10 minutes after
+the previous point, and otherwise starts a new stop at itself. There was no
+backfill: a row written before the columns existed stays unknown until the
+agent's next still point. The live map shows the moment only for an agent it
+calls «Стоит», during his working day, and only when the anchor is about the
+very point it shows; in every other case the duration is left out. The anchor
+is derived from the row's own coordinates and expires with it.
+
 The owner-approved raw GPS retention is fixed at 30 days for standard and
 enterprise. `/api/cron/mtm-cleanup` deletes at most 5,000 raw rows and 5,000
 projection rows per run, reports whether more is pending, and uses the same

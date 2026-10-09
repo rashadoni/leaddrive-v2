@@ -19,6 +19,7 @@ import {
   type MtmLiveRouteFact,
 } from "@/lib/mtm/live-field-status"
 import { groupMtmLiveFeedAlerts } from "@/lib/mtm/live-feed-alerts"
+import { shownMtmStationarySince } from "@/lib/mtm/stationary-anchor"
 
 const MAX_FUTURE_LOCATION_SKEW_MS = 5 * 60 * 1000
 const MAX_WEB_LOCATION_AGE_MS = 5 * 60 * 1000
@@ -298,6 +299,26 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
         .map((row) => [row.agentId, row._max?.recordedAt ?? null]),
     )
 
+    // Where and when each standing employee's current stop began — «стоит N
+    // минут». Kept with his latest position by the writer of every GPS point
+    // (src/lib/mtm/stationary-anchor.ts); one narrow read by the table's own
+    // unique index, for the people who are standing only.
+    const stationaryAnchors = returnedAgentIds.length
+      ? await prisma.mtmAgentLatestLocation.findMany({
+          where: { organizationId: orgId, agentId: { in: returnedAgentIds }, stationarySince: { not: null } },
+          select: { agentId: true, recordedAt: true, stationarySince: true, stationaryLatitude: true, stationaryLongitude: true },
+        })
+      : []
+    const stationaryAnchorByAgent = new Map(
+      ((stationaryAnchors ?? []) as Array<{
+        agentId: string
+        recordedAt: Date
+        stationarySince: Date | null
+        stationaryLatitude: number | null
+        stationaryLongitude: number | null
+      }>).map((row) => [row.agentId, row]),
+    )
+
     // Every visit that is open right now, whatever day it was opened on.
     // Until 2026-10-08 only visits opened today counted. The owner's agent
     // checked in at 22:14 and was still in that visit the next morning: his
@@ -393,6 +414,12 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
         // Only with the status it explains: an old GPS point says «offline»
         // first, and then nothing is claimed about a visit either.
         openVisitSince: fieldStatus === "CHECKED_IN" ? openVisitSinceByAgent.get(a.id) ?? null : null,
+        // Only with the status it explains, only for a position the map
+        // shows, and only when the anchor is about that very point: whenever
+        // the two disagree the duration is left out, never guessed.
+        stationarySince: fieldStatus === "STOPPED" && loc && isLiveMapAgentPositionVisible(freshness, workdayState)
+          ? shownMtmStationarySince(loc, stationaryAnchorByAgent.get(a.id))
+          : null,
         ...(loc ? {
           latitude: loc.latitude,
           longitude: loc.longitude,

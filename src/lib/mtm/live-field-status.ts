@@ -96,7 +96,8 @@ function sampleMs(sample: MtmMovementSample): number {
   return sample.recordedAt instanceof Date ? sample.recordedAt.getTime() : Date.parse(sample.recordedAt)
 }
 
-function sampleMoving(sample: MtmMovementSample): boolean {
+/** One sample says «moving»: by the phone's own flag, or by a speed above GPS noise. */
+export function mtmSampleMoving(sample: Pick<MtmMovementSample, "isMoving" | "speed">): boolean {
   return sample.isMoving === true || (typeof sample.speed === "number" && sample.speed > 1)
 }
 
@@ -125,13 +126,13 @@ export function isMtmAgentMoving(input: {
     .sort((a, b) => sampleMs(b) - sampleMs(a))
   const latest = samples[0]
   if (!latest) return false
-  if (sampleMoving(latest)) return true
+  if (mtmSampleMoving(latest)) return true
   const lastMovingMs = input.lastMovingAt == null
     ? Number.NaN
     : input.lastMovingAt instanceof Date ? input.lastMovingAt.getTime() : Date.parse(input.lastMovingAt)
   if (Number.isFinite(lastMovingMs) && lastMovingMs >= since) return true
   return samples.some((sample) => sampleMs(sample) >= since && (
-    sampleMoving(sample) ||
+    mtmSampleMoving(sample) ||
     calculateDistance(sample.latitude, sample.longitude, latest.latitude, latest.longitude) > radius
   ))
 }
