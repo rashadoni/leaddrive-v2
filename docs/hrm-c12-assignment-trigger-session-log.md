@@ -207,3 +207,24 @@ no SKIPPED passclaim. Currentexactsource reopenedrunner37969838283/scan379698384
 SUCCESS, schema37969838300/export37969838252 actualjobs PASS, pending capture.
 Fourmetadata/ACL repeatedreopenedruns alsoSUCCESS/no productionjobs. No previous
 C6/browser/build/deploy evidence borrowed for thissource-onlyslice.
+
+
+## 2026-10-09 — exact132 targeted regressions accepted; later main qualified
+
+Main-event replays4HRM+schema42+exporter21 archived ZIP/loggzip originalbytes;
+source8/9/11bindings, ordinary13sourceSHA checkout, originalroles/facts/cleanup
+allPASS. Independentregressionreport27355bytes/SHA
+e61d0f7fd38c7627c1a0fb1071c928d6c7a90c8568947ac62e3368f7bb9d941a retained.
+132distinctTAPentries total69+42+21, zeroFAIL/SKIP; syntheticselectedDDL alone,
+notfullhistorical/restoredcopy or realoperations. InitialREADY37969645905 actual
+CANCELLED by concurrency onreopen; logs/jobreceipts preserved with nocredit.
+Mainfullrun37969838236/static113954075718/type113954075759 nowactive, no cancellation
+retry/localheavy substitute. Scope/scan/runneractualSUCCESS; 2fullgatesPENDING.
+
+DuringfrozenCI, unrelatedPR656 acceptedupstream maina791be2f5581e70bf4887800866b4406c789b09a
+adds15MTM/CARTO/package/serviceworkerpaths. NoHRM/routing/AGENTS path. Do not chase
+maininto frozen3da or borrowlatermainacceptance; actualrun eventbase729/source3da
+mustbind wholecheckouttree1e752. FinaldependentPRbase648 unchangedsourcechain,
+any futurerelease needsfreshintegration/review/CI/authorization. No currentmerge,
+deploy, activation, secrets/access/Support/personneldoc changes. This evidence
+checkpoint has full5PENDING truthfully and sourceheadremainsfrozen.

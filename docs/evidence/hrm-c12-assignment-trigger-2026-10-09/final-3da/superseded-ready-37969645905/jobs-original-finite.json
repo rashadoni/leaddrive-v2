@@ -1,0 +1,38 @@
+{
+  "runId": 37969645905,
+  "sourceSha": "3da6e4b5e809e5bc9cf1641df47b4e2b3a3d85f3",
+  "conclusion": "cancelled",
+  "reason": "superseded by reopened run to trigger missing original main-only scan event",
+  "jobs": [
+    {
+      "jobId": 113952692414,
+      "name": "pr-scope",
+      "status": "completed",
+      "conclusion": "success",
+      "originalLogBytes": 89531,
+      "originalLogSha256": "5ed36f02b16b9d189d719068da97de15db8d211b7e344d9a867ca5885d397b4a"
+    },
+    {
+      "jobId": 113952694188,
+      "name": "GitHub-hosted Linux production build",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "jobId": 113952807858,
+      "name": "typecheck",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "originalLogBytes": 19118,
+      "originalLogSha256": "fc883db197dc0f6322d3db39f1d419a5d045be19671a6274d681db2f4569518b"
+    },
+    {
+      "jobId": 113952807925,
+      "name": "static-checks",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "originalLogBytes": 32829,
+      "originalLogSha256": "f9992deed7d6a0fe3a7e0f1363e34ce62a8c49969a527bf8a07152288d61e81d"
+    }
+  ]
+}
