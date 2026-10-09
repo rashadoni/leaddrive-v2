@@ -480,6 +480,18 @@ assert.ok(
     && (prChecksWorkflow.match(/needs\.pr-scope\.outputs\.code == 'true'/g) ?? []).length === 2,
   "static-checks and typecheck may skip only via pr-scope",
 )
+// The same goes for skipping a draft. `github.event.pull_request.draft` is a
+// snapshot: on 2026-10-09 (#639) a push followed at once by "ready for review"
+// produced a run whose event still said draft, both heavy jobs were skipped on
+// a ready pull request, and the skips counted as passes. pr-scope reads the
+// live pull request instead; no job may trust the event for it.
+assert.ok(
+  (prChecksWorkflow.match(/needs\.pr-scope\.outputs\.draft != 'true'/g) ?? []).length === 2
+    && !/^ {4}if: .*github\.event\.pull_request\.draft/mu.test(prChecksWorkflow)
+    && prChecksWorkflow.includes("      draft: ${{ steps.draft.outputs.draft }}")
+    && prChecksWorkflow.includes("        run: bash scripts/ci/pr-draft-state.sh"),
+  "static-checks and typecheck may skip a draft only on pr-scope's reading of the live pull request",
+)
 assert.ok(
   requiredContexts.every((context) => mainProtectionScript.includes(`"context": "${context}"`))
     && !mainProtectionScript.includes('"agent-review"'),
