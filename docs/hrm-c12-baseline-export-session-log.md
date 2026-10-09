@@ -88,3 +88,44 @@ inspection-only observation, not a new feature/test failure.
 Next: publish source-bound first regression asDRAFT, actual isolatedPG proof,
 then refuse unsupportedlayouts only after retaining initial results. Prior
 631/632 and all accepted ancestry preserved; no merge/deploy/activation/Support.
+
+
+## 2026-10-09 Asia/Baku — original PostgreSQL failure retained; narrow correction
+
+Published draftPR646, source4efcda96f8e541c8689f87f0a0a1ce77dc98c659,
+base mainf97. Newsource retains631/632 ancestry and their frozen heads. App
+attachment646 succeeded. Mainprotection reread: unchanged fiveApp15368 required
+contexts, enforceadmins true, forcepush/deletion false. No protection mutation.
+
+Actual original isolatedPG16 run37895087632/job113704518706 FAILED: two
+ordinary/absent positivecases and three existingroot/RLS refusals PASS; SIX
+unsupported parent/child/leaf layouts wrongly returnedCLI0 and createdfiles.
+Originalreceipt artifact11599689645 ZIP digest
+2deb54dd1524546a4c7f9c8493bcbd20be7c2567db664a3d9414755e9d802ed9
+verified againstGitHub, copied unchanged with originalJSON and finite run/job
+metadata underoriginal-4ef. Raw CLI catalog/privateoutput/credentials not
+published. This reproduces sourcewrongadmission, not actual production
+leakage or a restoredhistorical baseline. Originalsource9unit bytes unchanged.
+
+Correction adds onlypg_inherits participation guard for either namedrelation
+before anyledger selection, with trustedpg_catalog. Helper/minimizer/schema
+format/provenance/limits staybyte-identical. IndependentreviewP2 testfixture
+comments resolved: admitfresh publicnamespace includingnon-table objects,
+requireprivatenamespace/readerrole absent, neverDROP publicschema, reset/drop
+onlytask-owned tables/private namespace/role. Actualserviceprincipal mustequal
+wf_baseline_catalog_reader. Cleanuprecordsfinite failures separately and
+preservesoriginal assertions/receipt instead of maskingthem. No claim of
+concurrentadministrativeDDL freeze, fullrestored baseline or realrestoreproof.
+
+Next: narrowNode/runnerchecks, correctedsource checkpoint and actual11casePG
+rerun, independentexact-source review, thenunchanged fiveCI gatecontexts.
+C12 remainsPARTIAL,85/161DONE,76open,weighted61%,14/15gates. Actualbaseline
+restore/operationalobservations and authenticatedproductionHR remainNOTRUN;
+no merge/deploy/activation/Support/access/secrets operations.
+
+Corrected narrowNode result:9PASS,1hostedPGSKIPPED/NOTRUNlocally; syntax,
+runner53 anddiffwhitespacePASS. Inspectionfirstattempt guessedincorrect
+scripts/ci/typecheck-baseline.json path (FileNotFoundError), so noNode check
+raninside thatattempt. Kept asinspectionerror; correctedpathsroot
+typecheck-baseline.json/test-baseline.json, actual9case rerunPASS. Original
+helper9unit andbothbaselines/pr-checks bytes equalmainf97; no weakening.

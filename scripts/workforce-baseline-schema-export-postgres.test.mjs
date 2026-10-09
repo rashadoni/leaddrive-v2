@@ -20,6 +20,7 @@ test('actual isolated baseline CLI refuses unsupported relation populations', {s
     fixture:'SYNTHETIC_SELECTED_DDL_NOT_RESTORED_BASELINE',productionObserved:false,historicalReplay:false,
     cases:[],sourceBindings:[],failure:null,cleanup:[]}
   let privateDir
+  let cleanupSql,ownsPrivateSchema=false,ownsReaderRole=false,originalFailure
   try {
     assert.equal(process.env.GITHUB_ACTIONS,'true');assert.equal(process.env.CI,'true')
     assert.match(receipt.sourceSha,/^[a-f0-9]{40}$/)
@@ -31,20 +32,32 @@ test('actual isolated baseline CLI refuses unsupported relation populations', {s
     const env={PATH:'/usr/local/bin:/usr/bin:/bin',LC_ALL:'C',PGHOST:'127.0.0.1',PGPORT:url.port||'5432',
       PGDATABASE:'hrm_baseline_export_test',PGUSER:'postgres',PGPASSWORD:decodeURIComponent(url.password),
       PGPASSFILE:'/dev/null',PGCONNECT_TIMEOUT:'5'}
-    const sql=text=>{
+    const sql=(text,queryEnv=env)=>{
       try {return execFileSync('psql',['-X','-qAt','--no-password','-v','ON_ERROR_STOP=1','-v','VERBOSITY=sqlstate'],
-        {input:text,encoding:'utf8',env,timeout:20000,maxBuffer:65536,stdio:['pipe','pipe','pipe']}).trim()}
+        {input:text,encoding:'utf8',env:queryEnv,timeout:20000,maxBuffer:65536,stdio:['pipe','pipe','pipe']}).trim()}
       catch(failure){const error=new Error('C12_BASELINE_FIXTURE_QUERY_FAILED')
         const state=String(failure.stderr??'').match(/ERROR:\s+([A-Z0-9]{5})\b/)?.[1]
         error.sqlState=['2BP01','25006','42501','42601','42703','42704','42804','42883','42P01','55P03','57014'].includes(state)?state:null;throw error}
     }
+    cleanupSql=sql
     receipt.sourceBindings=bindings()
     assert.equal(sql("SELECT current_database()='hrm_baseline_export_test' AND (SELECT rolsuper FROM pg_roles WHERE rolname=current_user);"),'t')
-    assert.equal(sql("SELECT count(*) FROM pg_class WHERE relnamespace='public'::regnamespace AND relkind IN ('r','p','v','f');"),'0')
+    // Require a fresh owned service, including non-table namespace objects.
+    // Never reset a pre-existing namespace or role just to make a fixture fit.
+    assert.equal(sql(`SELECT to_regnamespace('private_fixture') IS NULL
+      AND NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='wf_baseline_catalog_reader')
+      AND NOT EXISTS (SELECT 1 FROM pg_depend
+        WHERE refclassid='pg_namespace'::regclass AND refobjid='public'::regnamespace)
+      AND NOT EXISTS (SELECT 1 FROM pg_class WHERE relnamespace='public'::regnamespace)
+      AND NOT EXISTS (SELECT 1 FROM pg_proc WHERE pronamespace='public'::regnamespace)
+      AND NOT EXISTS (SELECT 1 FROM pg_type WHERE typnamespace='public'::regnamespace);`),'t')
+    receipt.admission={freshPublicNamespace:true,privateNamespaceAbsent:true,readerRoleAbsent:true}
     privateDir=fs.mkdtempSync(resolve(tmpdir(),'c12-baseline-cli-'))
     fs.chmodSync(privateDir,0o700)
     const password=randomBytes(24).toString('hex'),role='wf_baseline_catalog_reader'
+    sql('CREATE SCHEMA private_fixture;');ownsPrivateSchema=true
     sql(`CREATE ROLE ${role} LOGIN PASSWORD '${password}' NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOREPLICATION NOINHERIT;`)
+    ownsReaderRole=true
     const servicePath=resolve(privateDir,'pg_service.conf')
     fs.writeFileSync(servicePath,`[c12_isolated]\nhost=127.0.0.1\nport=${env.PGPORT}\ndbname=hrm_baseline_export_test\nuser=${role}\npassword=${password}\nconnect_timeout=5\n`,{mode:0o600,flag:'wx'})
     const readerEnv={PATH:env.PATH,LC_ALL:'C',PGSERVICEFILE:servicePath,PGSERVICE:'c12_isolated',PGPASSFILE:'/dev/null'}
@@ -58,7 +71,8 @@ test('actual isolated baseline CLI refuses unsupported relation populations', {s
     const ledgerColumns='id text PRIMARY KEY,checksum text NOT NULL,finished_at timestamptz,migration_name text NOT NULL,logs text,rolled_back_at timestamptz,started_at timestamptz NOT NULL,applied_steps_count integer NOT NULL'
     const fillApi=table=>`INSERT INTO ${table} VALUES ('fixture-api','${marker}','${marker}',true);`
     const fillLedger=table=>`INSERT INTO ${table} VALUES ('fixture-migration','${checksum}',NULL,'${migrationName}','${marker}',NULL,'2026-10-09T00:00:00Z',0);`
-    const reset=()=>sql(`DROP SCHEMA public CASCADE; DROP SCHEMA IF EXISTS private_fixture CASCADE; CREATE SCHEMA public; CREATE SCHEMA private_fixture;
+    const reset=()=>sql(`DROP SCHEMA private_fixture CASCADE; CREATE SCHEMA private_fixture;
+      DROP TABLE IF EXISTS public.api_keys,public._prisma_migrations CASCADE;
       CREATE TABLE public.api_keys (${apiColumns}); CREATE TABLE public._prisma_migrations (${ledgerColumns});
       ${fillApi('public.api_keys')}${fillLedger('public._prisma_migrations')}`)
     const grant=()=>sql(`GRANT USAGE ON SCHEMA public TO ${role}; GRANT SELECT ON public._prisma_migrations TO ${role};`)
@@ -103,7 +117,7 @@ test('actual isolated baseline CLI refuses unsupported relation populations', {s
             assert.equal(fs.statSync(outputPath).mode&0o777,0o600)
             assert.doesNotMatch(bytes.toString(),new RegExp(marker))
             if(expected==='PARTIAL_SCHEMA_EVIDENCE'){
-              const principal=execFileSync('psql',['-X','-qAt','--no-password','-v','ON_ERROR_STOP=1'],{input:"SELECT current_user=session_user AND NOT rolsuper AND NOT rolbypassrls AND NOT has_table_privilege(current_user,'public.api_keys','SELECT') AND has_table_privilege(current_user,'public._prisma_migrations','SELECT') FROM pg_roles WHERE rolname=current_user;",env:readerEnv,encoding:'utf8',timeout:10000,stdio:['pipe','pipe','pipe']}).trim()
+              const principal=sql("SELECT current_user='wf_baseline_catalog_reader' AND current_user=session_user AND NOT rolsuper AND NOT rolbypassrls AND NOT has_table_privilege(current_user,'public.api_keys','SELECT') AND has_table_privilege(current_user,'public._prisma_migrations','SELECT') FROM pg_roles WHERE rolname=current_user;",readerEnv)
               assert.equal(principal,'t');entry.nonsuperLedgerOnlyService=true
             }
             const again=spawnSync(process.execPath,[resolve(root,'scripts/workforce-baseline-schema-export.mjs'),provenancePath,outputPath,root],{cwd:root,env:readerEnv,encoding:'utf8',timeout:35000,maxBuffer:4096})
@@ -126,9 +140,20 @@ test('actual isolated baseline CLI refuses unsupported relation populations', {s
     assert.deepEqual(bindings(),receipt.sourceBindings)
     assert.equal(receipt.cases.length,cases.length);assert.ok(receipt.cases.every(c=>c.status==='PASS'))
     receipt.status='PASS_ISOLATED_BASELINE_EXPORT_ADMISSION_ONLY'
-  }catch(error){receipt.status='FAIL';receipt.failure={code:error.message==='C12_BASELINE_FIXTURE_QUERY_FAILED'?error.message:'ASSERTION_FAILED',sqlState:error.sqlState??null};throw error}
+  }catch(error){originalFailure=error;receipt.status='FAIL';receipt.failure={code:error.message==='C12_BASELINE_FIXTURE_QUERY_FAILED'?error.message:'ASSERTION_FAILED',sqlState:error.sqlState??null}}
   finally{
-    if(privateDir){fs.rmSync(privateDir,{recursive:true,force:true});receipt.cleanup.push({action:'owned-private-fixture-directory',status:'PASS'})}
-    if(process.env.C12_BASELINE_RECEIPT)fs.writeFileSync(process.env.C12_BASELINE_RECEIPT,JSON.stringify(receipt,null,2)+'\n',{mode:0o600,flag:'wx'})
+    const cleanup=(action,fn)=>{
+      try{fn();receipt.cleanup.push({action,status:'PASS'})}
+      catch(error){receipt.status='FAIL';receipt.cleanup.push({action,status:'FAIL',code:'OWNED_FIXTURE_CLEANUP_FAILED',sqlState:error.sqlState??null})
+        if(!originalFailure)originalFailure=new Error('C12_BASELINE_OWNED_FIXTURE_CLEANUP_FAILED')}
+    }
+    if(ownsPrivateSchema)cleanup('owned-schema-and-tables',()=>cleanupSql('DROP SCHEMA IF EXISTS private_fixture CASCADE; DROP TABLE IF EXISTS public.api_keys,public._prisma_migrations CASCADE;'))
+    if(ownsReaderRole)cleanup('owned-reader-role',()=>cleanupSql('REVOKE ALL ON SCHEMA public FROM wf_baseline_catalog_reader; DROP ROLE wf_baseline_catalog_reader;'))
+    if(privateDir)cleanup('owned-private-fixture-directory',()=>fs.rmSync(privateDir,{recursive:true,force:true}))
+    if(process.env.C12_BASELINE_RECEIPT){
+      try{fs.writeFileSync(process.env.C12_BASELINE_RECEIPT,JSON.stringify(receipt,null,2)+'\n',{mode:0o600,flag:'wx'})}
+      catch{if(!originalFailure)originalFailure=new Error('C12_BASELINE_RECEIPT_WRITE_FAILED')}
+    }
   }
+  if(originalFailure)throw originalFailure
 })

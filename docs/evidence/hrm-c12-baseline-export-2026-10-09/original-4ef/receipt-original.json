@@ -1,0 +1,228 @@
+{
+  "status": "FAIL",
+  "stage": "filtered ledger",
+  "sourceSha": "4efcda96f8e541c8689f87f0a0a1ce77dc98c659",
+  "fixture": "SYNTHETIC_SELECTED_DDL_NOT_RESTORED_BASELINE",
+  "productionObserved": false,
+  "historicalReplay": false,
+  "cases": [
+    {
+      "name": "ordinary schema private output",
+      "status": "PASS",
+      "cliExit": 0,
+      "outputCreated": true,
+      "observed": "OUTPUT_CREATED",
+      "ledgerFingerprintUnchanged": true,
+      "ledgerFingerprintBefore": {
+        "api": "6251402951623caf6b334c46aec2396b",
+        "ledger": "7c73508a4246243c68d2b4f22321eb18"
+      },
+      "ledgerFingerprintAfter": {
+        "api": "6251402951623caf6b334c46aec2396b",
+        "ledger": "7c73508a4246243c68d2b4f22321eb18"
+      },
+      "nonsuperLedgerOnlyService": true,
+      "exclusiveOutputAnd0600": true,
+      "canaryAbsent": true
+    },
+    {
+      "name": "api_keys absent",
+      "status": "PASS",
+      "cliExit": 0,
+      "outputCreated": true,
+      "observed": "OUTPUT_CREATED",
+      "ledgerFingerprintUnchanged": true,
+      "ledgerFingerprintBefore": {
+        "api": null,
+        "ledger": "7c73508a4246243c68d2b4f22321eb18"
+      },
+      "ledgerFingerprintAfter": {
+        "api": null,
+        "ledger": "7c73508a4246243c68d2b4f22321eb18"
+      },
+      "exclusiveOutputAnd0600": true,
+      "canaryAbsent": true
+    },
+    {
+      "name": "api_keys parent with descendant",
+      "status": "FAIL",
+      "cliExit": 0,
+      "outputCreated": true,
+      "observed": "OUTPUT_CREATED",
+      "ledgerFingerprintUnchanged": true,
+      "ledgerFingerprintBefore": {
+        "api": "6251402951623caf6b334c46aec2396b",
+        "ledger": "7c73508a4246243c68d2b4f22321eb18"
+      },
+      "ledgerFingerprintAfter": {
+        "api": "6251402951623caf6b334c46aec2396b",
+        "ledger": "7c73508a4246243c68d2b4f22321eb18"
+      }
+    },
+    {
+      "name": "api_keys inheriting child",
+      "status": "FAIL",
+      "cliExit": 0,
+      "outputCreated": true,
+      "observed": "OUTPUT_CREATED",
+      "ledgerFingerprintUnchanged": true,
+      "ledgerFingerprintBefore": {
+        "api": "6251402951623caf6b334c46aec2396b",
+        "ledger": "7c73508a4246243c68d2b4f22321eb18"
+      },
+      "ledgerFingerprintAfter": {
+        "api": "6251402951623caf6b334c46aec2396b",
+        "ledger": "7c73508a4246243c68d2b4f22321eb18"
+      }
+    },
+    {
+      "name": "ledger parent with descendant",
+      "status": "FAIL",
+      "cliExit": 0,
+      "outputCreated": true,
+      "observed": "OUTPUT_CREATED",
+      "ledgerFingerprintUnchanged": true,
+      "ledgerFingerprintBefore": {
+        "api": "6251402951623caf6b334c46aec2396b",
+        "ledger": "04dfdb957acd2d3c6f349a6d87b03df2"
+      },
+      "ledgerFingerprintAfter": {
+        "api": "6251402951623caf6b334c46aec2396b",
+        "ledger": "04dfdb957acd2d3c6f349a6d87b03df2"
+      }
+    },
+    {
+      "name": "ledger inheriting child",
+      "status": "FAIL",
+      "cliExit": 0,
+      "outputCreated": true,
+      "observed": "OUTPUT_CREATED",
+      "ledgerFingerprintUnchanged": true,
+      "ledgerFingerprintBefore": {
+        "api": "6251402951623caf6b334c46aec2396b",
+        "ledger": "7c73508a4246243c68d2b4f22321eb18"
+      },
+      "ledgerFingerprintAfter": {
+        "api": "6251402951623caf6b334c46aec2396b",
+        "ledger": "7c73508a4246243c68d2b4f22321eb18"
+      }
+    },
+    {
+      "name": "api_keys partition leaf",
+      "status": "FAIL",
+      "cliExit": 0,
+      "outputCreated": true,
+      "observed": "OUTPUT_CREATED",
+      "ledgerFingerprintUnchanged": true,
+      "ledgerFingerprintBefore": {
+        "api": "6251402951623caf6b334c46aec2396b",
+        "ledger": "7c73508a4246243c68d2b4f22321eb18"
+      },
+      "ledgerFingerprintAfter": {
+        "api": "6251402951623caf6b334c46aec2396b",
+        "ledger": "7c73508a4246243c68d2b4f22321eb18"
+      }
+    },
+    {
+      "name": "ledger partition leaf",
+      "status": "FAIL",
+      "cliExit": 0,
+      "outputCreated": true,
+      "observed": "OUTPUT_CREATED",
+      "ledgerFingerprintUnchanged": true,
+      "ledgerFingerprintBefore": {
+        "api": "6251402951623caf6b334c46aec2396b",
+        "ledger": "7c73508a4246243c68d2b4f22321eb18"
+      },
+      "ledgerFingerprintAfter": {
+        "api": "6251402951623caf6b334c46aec2396b",
+        "ledger": "7c73508a4246243c68d2b4f22321eb18"
+      }
+    },
+    {
+      "name": "api_keys partition root",
+      "status": "PASS",
+      "cliExit": 1,
+      "outputCreated": false,
+      "observed": "REFUSED",
+      "ledgerFingerprintUnchanged": true,
+      "ledgerFingerprintBefore": {
+        "api": "d41d8cd98f00b204e9800998ecf8427e",
+        "ledger": "7c73508a4246243c68d2b4f22321eb18"
+      },
+      "ledgerFingerprintAfter": {
+        "api": "d41d8cd98f00b204e9800998ecf8427e",
+        "ledger": "7c73508a4246243c68d2b4f22321eb18"
+      }
+    },
+    {
+      "name": "ledger partition root",
+      "status": "PASS",
+      "cliExit": 1,
+      "outputCreated": false,
+      "observed": "REFUSED",
+      "ledgerFingerprintUnchanged": true,
+      "ledgerFingerprintBefore": {
+        "api": "6251402951623caf6b334c46aec2396b",
+        "ledger": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "ledgerFingerprintAfter": {
+        "api": "6251402951623caf6b334c46aec2396b",
+        "ledger": "d41d8cd98f00b204e9800998ecf8427e"
+      }
+    },
+    {
+      "name": "filtered ledger",
+      "status": "PASS",
+      "cliExit": 1,
+      "outputCreated": false,
+      "observed": "REFUSED",
+      "ledgerFingerprintUnchanged": true,
+      "ledgerFingerprintBefore": {
+        "api": "6251402951623caf6b334c46aec2396b",
+        "ledger": "7c73508a4246243c68d2b4f22321eb18"
+      },
+      "ledgerFingerprintAfter": {
+        "api": "6251402951623caf6b334c46aec2396b",
+        "ledger": "7c73508a4246243c68d2b4f22321eb18"
+      }
+    }
+  ],
+  "sourceBindings": [
+    {
+      "path": "scripts/workforce-baseline-schema-export.sql",
+      "bytes": 6528,
+      "sha256": "0dbc6afdce78fd63df8e39d2a6b8d231f2e60eaac158937ffe1a2bcbc4e71cef"
+    },
+    {
+      "path": "scripts/workforce-baseline-schema-export.mjs",
+      "bytes": 10957,
+      "sha256": "f975b54de6fda8bcef088334dadeefa5d39bbcc81fba408297999739787adfbb"
+    },
+    {
+      "path": "scripts/workforce-baseline-schema-export.test.mjs",
+      "bytes": 4689,
+      "sha256": "f07cd5ca7ada24c9070b58206f7e4a1dbdfc05cc9ed528e0554c55f5e54580fc"
+    },
+    {
+      "path": "scripts/workforce-baseline-schema-export-postgres.test.mjs",
+      "bytes": 11971,
+      "sha256": "239445345640dc8b02ea47ac0303e3cd1489ec7e94ea3e008fb072877ab3686c"
+    },
+    {
+      "path": ".github/workflows/workforce-baseline-schema-export.yml",
+      "bytes": 2944,
+      "sha256": "7f992ff152653df5312c3f58910980e4096c32fd74117d6863a120e9eba40f1a"
+    }
+  ],
+  "failure": {
+    "code": "ASSERTION_FAILED",
+    "sqlState": null
+  },
+  "cleanup": [
+    {
+      "action": "owned-private-fixture-directory",
+      "status": "PASS"
+    }
+  ]
+}
