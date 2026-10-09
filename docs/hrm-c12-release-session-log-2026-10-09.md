@@ -52,3 +52,10 @@ Receipt collection first inspection exited1 at schema job selection: assumed all
 Independent fresh525 hosted review PASS: original73537bytes/SHA256b62b16dfcad9bab8f44f692efb9c41e1433fad00d191d2133ccede3e6e39866e. All6 run/job/check/App15368 SUCCESS; directly fetched ZIP and complete logs byte-equal root archives; CRC, exact8/5/5 sourcebindings and standalone525 checkout verified.132distinct reported TAP entries (251including repeated shared suites), zeroFAIL/SKIP; cleanup PASS. Four metadata receipts byte-identical,37 schema cases preserve9 business fingerprints,11 exporter CLI admission cases preserve original facts. Four production observer blocks equal2b05; productionjobsSKIPPED and no production credit. Reader errors (root collection job-name StopIteration and peer wrong-loopback-filename Git128) preserved separately with corrected captures. No source/baseline changes or hosted test reruns.
 
 Published dependent DRAFTPR663/head4c6dfab642346125e44bf696219bcaf38c5b4d6f/base525, attached to task. Bounded evidence-range Gitleaks8.30.1 scanned2commits/15803bytes/exit0, whitespacePASS. FullREADY five checks and new own deployment remainPENDING.
+
+
+## Full regression terminal and predecessor release healthy
+
+FullREADY37985530002/static114006608273 finished actualSUCCESS at20:29:38UTC, allstepsSUCCESS; type114006608266 stillcompiling. No finalfive credit until type/strictbaseline and independentfullreview complete. Foreign2b05Deploy37984598146 finishedSUCCESS; pinned canonical HTTPS build-before/ping/build-after confirms fullartifactSha2b05 andTLS verified. This is predecessor health, not ownrelease acceptance. Original finite publicbaseline receipt saved separately.
+
+Added an append-only archive-location note to the C6 functional acceptance in evidencePR663: complete475-file ZIP, fullmanifest and frozen originalfunctionalmanifest link. Original acceptance bytes/prefix and ZIP stay unchanged; relative historic file paths describe the archived topology, not new loose files in main. No source525 mutation or additional C6 acceptance claimed.
