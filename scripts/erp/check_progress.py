@@ -201,8 +201,8 @@ def workflow_errors(ctx, args, in_ci):
 
 
 def run(args, branch, soft):
-    """Сама проверка. Возвращает код: 0 — в порядке, 1 — есть ошибки. soft — причина, по
-    которой ошибки состояния этот PR не задерживают (чужой PR), или None."""
+    """Сама проверка. Возвращает код: 0 — в порядке, 1 — есть ошибки. soft — почему ошибки
+    состояния этот PR не задерживают (чужой PR; см. not_mine), или None."""
     ctx = L.Ctx(args)
     errors, warns = L.validate_order(ctx)
     report_errors = []  # отчёт тестов этого прогона: красные для любой ветки
@@ -543,9 +543,10 @@ def run(args, branch, soft):
     if len(warns) > 20:
         print(f"предупреждение: … и ещё {len(warns) - 20}")
     if soft and errors:
-        # чужой PR: это состояние main, а не его правка — показать и не задерживать
+        # чужой PR: показать и не задерживать (pr-scope — это состояние main, а не его правка;
+        # static-checks — состояние в этом же прогоне судит pr-scope)
         for e in errors:
-            print("в main (не этот PR): " + e)
+            print(f"{soft[0]}: " + e)
         not_mine(soft, f"ошибок состояния {len(errors)}")
         errors = []
     errors += report_errors
@@ -563,8 +564,12 @@ def run(args, branch, soft):
 
 
 def not_mine(soft, what):
-    line = (f"scripts/erp в main неисправен ({what}), но этот PR не задержан: {soft}. "
-            f"Чинит ветка erp/<номер>-<slug>.")
+    """soft — (пометка строки, причина, судит ли состояние другой шаг этого прогона)."""
+    if soft[2]:
+        line = f"в состоянии scripts/erp есть ошибки ({what}); этот шаг их не судит: {soft[1]}."
+    else:
+        line = (f"scripts/erp в main неисправен ({what}), но этот PR не задержан: {soft[1]}. "
+                f"Чинит ветка erp/<номер>-<slug>.")
     if os.environ.get("GITHUB_ACTIONS"):
         print("::warning title=ERP progress::" + line)
     print("check_progress: " + line)
@@ -586,11 +591,13 @@ def main():
         repo = args.repo or os.environ.get("ERP_REPO") or os.getcwd()
         files = None if args.no_git else pr_files(repo, args.base_ref)
         if files is not None and not touches_erp(files):
-            soft = (f"ветка {branch} не меняла scripts/erp/, тесты правил, pr-checks.yml и "
-                    f"test-baseline.json")
+            soft = ("в main (не этот PR)",
+                    f"ветка {branch} не меняла scripts/erp/, тесты правил, pr-checks.yml и "
+                    f"test-baseline.json", False)
         elif args.tests_report and not (args.base_ref or args.base_dir):
-            soft = (f"у чужой ветки {branch} шаг static-checks судит только отчёт тестов, "
-                    f"состояние в этом же прогоне судит pr-scope")
+            soft = ("состояние (судит pr-scope)",
+                    f"у чужой ветки {branch} шаг static-checks судит только отчёт тестов, "
+                    f"состояние в этом же прогоне судит pr-scope", True)
     try:
         return run(args, branch, soft)
     except ReportFail:
@@ -598,7 +605,7 @@ def main():
     except L.Fail as e:
         if not soft:
             raise
-        print(f"в main (не этот PR): ОТКАЗ: {e}")
+        print(f"{soft[0]}: ОТКАЗ: {e}")
         not_mine(soft, "состояние не читается")
         return 0
     except Exception:  # noqa: BLE001 — сбой самой проверки: чужой PR за него не отвечает
