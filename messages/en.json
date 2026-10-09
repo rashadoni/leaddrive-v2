@@ -16448,7 +16448,6 @@
       "baseMap": {
         "voyager": "Map",
         "light": "Light",
-        "dark": "Dark",
         "satellite": "Satellite"
       },
       "heatHint": "where employees are densest",

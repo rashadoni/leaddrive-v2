@@ -11,8 +11,8 @@ import {
 
 type CartoBasemapProps = {
   /**
-   * Another background than Voyager — the live map's «Светлая», «Тёмная»,
-   * «Спутник» (src/lib/mtm/live-map-base-maps.ts). Absent on every other map.
+   * Another background than Voyager — the live map's «Светлая», «Спутник»
+   * (src/lib/mtm/live-map-base-maps.ts). Absent on every other map.
    */
   tiles?: { url: string; attribution: string; subdomains?: string } | null
   onLoading?: () => void

@@ -13,16 +13,20 @@ import {
  * picture. Ours had one.
  *
  * «Карта» is CARTO Voyager, what every MTM map has always shown; «Светлая»
- * and «Тёмная» are CARTO's two quiet backgrounds, served by the same hosts
- * under the same key (checked from the production origin, 2026-10-09). A
- * satellite picture is somebody else's imagery and needs a contract of its
+ * is CARTO's quiet light background, served by the same hosts under the same
+ * key (checked from the production origin, 2026-10-09). There is no dark
+ * one: it shipped for a few hours and the owner, seeing it the same night,
+ * said «не нужна тёмная карта». A browser that remembered it comes back to
+ * «Карта».
+ *
+ * A satellite picture is somebody else's imagery and needs a contract of its
  * own: it is offered only where the build was given a tile address for it —
  * until then the choice is simply not there, never a grey square.
  *
  * Pure: no React, no Leaflet.
  */
 
-export const LIVE_MAP_BASE_MAP_IDS = ["voyager", "light", "dark", "satellite"] as const
+export const LIVE_MAP_BASE_MAP_IDS = ["voyager", "light", "satellite"] as const
 export type LiveMapBaseMapId = typeof LIVE_MAP_BASE_MAP_IDS[number]
 export const DEFAULT_LIVE_MAP_BASE_MAP: LiveMapBaseMapId = "voyager"
 
@@ -40,10 +44,7 @@ export interface LiveMapBaseMap {
   tiles: LiveMapBaseMapTiles | null
 }
 
-const CARTO_QUIET: Record<"light" | "dark", string> = {
-  light: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-  dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-}
+const CARTO_LIGHT = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
 
 function escapeHtml(text: string): string {
   return text
@@ -79,8 +80,7 @@ export function liveMapBaseMaps(
   })
   const maps: LiveMapBaseMap[] = [
     { id: "voyager", tiles: null },
-    { id: "light", tiles: carto(CARTO_QUIET.light) },
-    { id: "dark", tiles: carto(CARTO_QUIET.dark) },
+    { id: "light", tiles: carto(CARTO_LIGHT) },
   ]
   const satellite = satelliteTileUrl(satelliteUrl)
   if (satellite) {
