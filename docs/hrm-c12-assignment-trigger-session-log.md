@@ -109,3 +109,24 @@ event23/helper/roles/timeouts/schema/history/migrations/output preserved. Curren
 main729 unchanged atfreshcheck; concurrentotheractivechat is MetaAppReview on
 its ownproject, no secondHRMwriter. Source fullCI/review stillPENDING. C12PARTIAL,
 85/161DONE/76open/61%; no production/access/Support or personnel documents.
+
+
+## 2026-10-09 — shared caller regression retained and corrected
+
+Intermediate607 actual metadata PG16 run37968150533 passed25/25/0fail/0skip,
+originalreceipt/log retained underintermediate-607. Ownnewtest headguard exposed
+three existingcaller workflows lacking HRM_PREFLIGHT_TEST_HEAD_SHA; their0d1
+firstfailures and607repeatfailures (sixruns, ERR_ASSERTION undefined,21PASS/1FAIL)
+are preserved in caller-integration-original, not relabelled or removed. Added
+exactheadcheckout/headenv/finitepreflightreceipt retention and historicalfixture
+pathfilter only to sourcejobs in default/loopback/backupACL workflows. Allthree
+productionjobs remain byteidenticalmain729 and are skipped onPR; no production
+permission/grants/dispatch changes. Testguard notweakened. Two operatorread path
+errors (assumedworkflowfilenames) exit2 preceded reading actual rg-resolvedpaths;
+these were inspectionerrors, not gate/testresults. Baselines/helper/history and
+migrations unchanged. DependentPR657 base corrected explicitly to frozen648/cdaf,
+synthetic077d parentscdaf/607/tree995a equals actual607 reviewedtree.
+16commits562019-byte rangegitleaks8.30.1actualexit0/emptyreport at607; not a claim
+about futurefinalhead. Final source/review/hostedfullchecks stillPENDING.
+
+Original explicitstage pathguess failed128 before anyfiles staged; corrected with exactowned archivefile list. No history/data modified by failedstage.
