@@ -16420,6 +16420,8 @@
       "routeHint": "stops and line of the selected employee",
       "zones": "Client zones",
       "zonesHint": "the circle a check-in is accepted in",
+      "clients": "Clients",
+      "clientsHint": "institutions of the base that have coordinates",
       "heat": "Heat map",
       "heatHint": "where employees are densest",
       "hiddenAgents": "Hidden employees: {count}",
@@ -16878,6 +16880,17 @@
       "factOpen": "Actual {from} — in progress",
       "openVisit": "Open visit",
       "missingCoordinates": "{count, plural, one {# stop has no coordinates and is} other {# stops have no coordinates and are}} not on the map"
+    },
+    "clients": {
+      "loading": "loading clients…",
+      "failed": "clients could not be loaded — press «Refresh»",
+      "onMap": "{shown} of {total} on the map",
+      "withoutCoordinates": "{count, plural, one {# has no coordinates} other {# have no coordinates}}",
+      "truncated": "only part of the base is shown",
+      "group": "Clients here: {count}. Press to zoom in",
+      "class": "class {category}",
+      "open": "Open the card",
+      "nearest": "Who is nearest"
     },
     "areaUnits": {
       "m2": "{value} m²",

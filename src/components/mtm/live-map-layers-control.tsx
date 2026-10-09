@@ -63,7 +63,7 @@ export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents
               <li key={layer.id} className="flex items-center gap-3 px-1 py-1.5">
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-medium">{layer.label}</span>
-                  {layer.hint ? <span className="block text-xs text-muted-foreground">{layer.hint}</span> : null}
+                  {layer.hint ? <span className="block text-xs text-muted-foreground" data-testid={`live-map-layer-hint-${layer.id}`}>{layer.hint}</span> : null}
                 </span>
                 <button
                   type="button"
