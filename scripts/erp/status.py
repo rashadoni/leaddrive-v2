@@ -5,6 +5,8 @@
 (заблокировано = ждут просмотра живой 1С или ответа владельца). Ниже — карточки в работе,
 что будет выдано следующим, ближайшие ворота, ПРОЙДЕННЫЕ ВОРОТА с датой и дословными
 словами (владелец сам видит ворота, которых не открывал) и то, что требует человека.
+Имя и слова у записи о воротах лежат в закрытой папке (records/), в репозитории — только
+роль, дата и хэш: экран читает слова оттуда, а без закрытой папки показывает роль и дату.
 
   python3 status.py
   python3 status.py --screen <OWNER_SCREEN.md>   обновить в файле экрана владельца раздел
@@ -29,9 +31,12 @@ def gates_md(ctx) -> str:
     out = ["| Ворота | Кто | Дата | Слова дословно |", "| --- | --- | --- | --- |"]
     for c, conf in rows:
         for k in conf:
-            words = str(k.get("words") or "слов нет").replace("|", "/")
+            rec = L.read_record(ctx, k)
+            if rec is None or L.record_hash(rec) != k.get("record"):
+                rec = {"by": "?", "words": "ЗАПИСИ В ЗАКРЫТОЙ ПАПКЕ НЕТ ИЛИ ОНА ИЗМЕНЕНА"}
+            words = str(rec.get("words") or "слов нет").replace("|", "/")
             out.append(f"| {c.key} · {c.title} | {L.ROLE_RU.get(k.get('role'), k.get('role'))}: "
-                       f"{k.get('by')} | {k.get('date')} | «{words}» |")
+                       f"{rec.get('by')} | {k.get('date')} | «{words}» |")
     out += ["", "Видите здесь ворота, которых не открывали, или не свои слова — напишите в чат "
                 "«ворота NNN я не открывал»: это остановка работы."]
     return "\n".join(out)
@@ -43,6 +48,7 @@ def write_screen(ctx, path: Path) -> int:
     body = path.read_text(encoding="utf-8")
     if GATES_BEGIN not in body or GATES_END not in body:
         raise L.Fail(f"в {path.name} нет меток {GATES_BEGIN} и {GATES_END}")
+    L.need_private(ctx)  # имя и слова записей о воротах лежат только в закрытой папке
     head, rest = body.split(GATES_BEGIN, 1)
     tail = rest.split(GATES_END, 1)[1]
     new = head + GATES_BEGIN + "\n" + gates_md(ctx) + "\n" + GATES_END + tail
@@ -133,7 +139,7 @@ def main():
         for c, conf in passed[-6:]:
             state = "" if L.is_closed(ctx, c) else " [ещё не закрыты]"
             for k in conf:
-                print(f"  {c.key}{state}: {L.gate_line(k)}")
+                print(f"  {c.key}{state}: {L.gate_line(ctx, k)}")
     else:
         print("Пройденные ворота: пока нет")
 

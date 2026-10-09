@@ -8,8 +8,11 @@
 закомментированный тест, *.spec.ts и номер в имени файла не проходят); «досмотреть» нельзя
 отметить; изменённый текст сбрасывает отметку; ворота не закрываются без дословных слов
 владельца, закрытие ворот вместе с другой работой — красное, запись о воротах из main
-нельзя стереть или изменить; ветка, уже влитая в main, карточку не держит; записка не
-теряется; изменённый документ останавливает работу — и то, что вокруг.
+нельзя стереть или изменить; имя и слова человека в открытое состояние не попадают (там
+роль, дата и хэш, сами они — в закрытой папке); ветка, уже влитая в main, карточку не
+держит; записка не теряется; изменённый документ останавливает работу; чужой PR проверка
+не задерживает (стековый, без надёжной базы, менявший только workflow или список красных)
+— и то, что вокруг.
 
   python3 selftest.py [-v]      -v печатает вывод каждой команды
 Код возврата 0 — все проверки прошли. Только стандартная библиотека.
@@ -181,6 +184,25 @@ class Box:
         d = json.loads(path.read_text(encoding="utf-8"))
         fn(d["state"])
         path.write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")
+
+    def rec(self, pub, dir=None):
+        """Закрытая часть записи человека (имя, слова) по её открытой части (роль, дата, хэш)."""
+        path = (dir or self.dir) / L.RECORDS / f"{(pub or {}).get('record')}.json"
+        return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+
+    def words(self, pub, dir=None):
+        return self.rec(pub, dir).get("words")
+
+    def fake_rec(self, kind, key, role, by, date, words, dir=None):
+        """Запись человека, вписанная руками в обход mark.py: закрытая часть — в records/,
+        возвращается открытая."""
+        rec = {"kind": kind, "key": str(key), "role": role, "by": by, "date": date,
+               "words": words, "salt": "5" * 32}
+        folder = (dir or self.dir) / L.RECORDS
+        folder.mkdir(exist_ok=True)
+        h = L.record_hash(rec)
+        (folder / f"{h}.json").write_text(json.dumps(rec, ensure_ascii=False), encoding="utf-8")
+        return {"role": role, "date": date, "record": h}
 
     def text(self, slug, rid, body, mark):
         line = f"| {rid} | {body} | {mark} |"
@@ -565,12 +587,14 @@ def scenario(box: Box):
                   "--words", "давай")
     check("ворота не закрываются, пока по правилам есть вопросы владельцу",
           rc == 1 and "вопросы" in out, out)
-    hand_gate = {"key": "3", "kind": "gate", "state": {"confirmations": [
-        {"role": "client", "by": "Клиент: главбух", "date": TODAY, "words": "принял на своих данных"},
-        {"role": "owner", "by": "Рашад", "date": TODAY, "words": "давай"}]}}
+    def hand_gate(folder):
+        return {"key": "3", "kind": "gate", "state": {"confirmations": [
+            box.fake_rec("gate", "3", "client", "Клиент: главбух", TODAY, "принял на своих данных", folder),
+            box.fake_rec("gate", "3", "owner", "Рашад", TODAY, "давай", folder)]}}
+
     base_h = box.copy("base_h")
     bad = box.copy("handgate1")
-    L._write_json(bad / "progress" / "3.json", hand_gate)
+    L._write_json(bad / "progress" / "3.json", hand_gate(bad))
     rc, out = run("check_progress.py", "--branch", "erp/3-accept-0", "--base-dir", str(base_h), dir=bad)
     rc2, out2 = run("check_progress.py", "--branch", "erp/3-accept-0", "--base-dir", str(base_h))
     check("запись о воротах, вписанная в файл руками при неснятом вопросе владельцу, — красный "
@@ -593,7 +617,8 @@ def scenario(box: Box):
           rc == 1 and "вопрос владельцу исчез" in out, out)
     base_q2 = box.copy("base_q2")
     bad = box.copy("badclear2")
-    box.edit_reg(lambda by, _: by["u2-B-1.10"]["problem_cleared"].update(words="делай как удобнее"), dir=bad)
+    box.edit_reg(lambda by, _: by["u2-B-1.10"]["problem_cleared"].update(
+        box.fake_rec("problem_cleared", "u2-B-1.10", "owner", "Рашад", TODAY, "делай как удобнее", bad)), dir=bad)
     rc, out = run("check_progress.py", "--base-dir", str(base_q2), dir=bad)
     bad = box.copy("badclear3")
     box.edit_reg(lambda by, _: by["u2-B-1.10"].pop("problem_cleared"), dir=bad)
@@ -607,7 +632,7 @@ def scenario(box: Box):
     run("next_card.py", "--take", b2)
     base_h = box.copy("base_h2")
     bad = box.copy("handgate2")
-    L._write_json(bad / "progress" / "3.json", hand_gate)
+    L._write_json(bad / "progress" / "3.json", hand_gate(bad))
     rc, out = run("check_progress.py", "--branch", "erp/3-accept-0", "--base-dir", str(base_h), dir=bad)
     check("запись о воротах, вписанная руками при незакрытой карточке из их «после», — красный "
           "check_progress с номером карточки (вопросов владельцу при этом нет)",
@@ -651,13 +676,27 @@ def scenario(box: Box):
                   "--date", TODAY, "--words", "принял ещё раз, другими словами")
     check("записанное подтверждение роли не переписывается второй записью",
           rc == 1 and "не переписывается" in out
-          and box.prog()["gates"]["3"]["confirmations"][0]["words"] == client_words, out)
+          and box.words(box.prog()["gates"]["3"]["confirmations"][0]) == client_words, out)
     rc, out = run("mark.py", "gate", "3", "--role", "owner", "--by", "Рашад", "--date", TODAY,
                   "--words", "давай")
+    owner_pub = box.prog()["gates"]["3"]["confirmations"][1]
+    owner_rec = box.rec(owner_pub)
     check("ворота закрываются записью: роль, кто, дата и дословные слова",
           rc == 0 and "ВОРОТА 3 ЗАКРЫТЫ" in out and "«давай»" in out
-          and box.prog()["gates"]["3"]["confirmations"][1] ==
-          {"role": "owner", "by": "Рашад", "date": TODAY, "words": "давай"}, out)
+          and (owner_rec.get("by"), owner_rec.get("words"), owner_rec.get("role")) == ("Рашад", "давай", "owner"),
+          out)
+    gate_file = (box.dir / "progress" / "3.json").read_text(encoding="utf-8")
+    reg_file = (box.dir / "registry.json").read_text(encoding="utf-8")
+    check("в открытом состоянии от записи человека — только роль, дата и хэш: ни имени владельца, "
+          "ни слов клиента, ни ответа на вопрос в файле ворот и в реестре нет; они лежат в "
+          "закрытой папке (records/)",
+          sorted(owner_pub) == ["date", "record", "role"] and owner_pub["date"] == TODAY
+          and L.RECORD_HASH.match(owner_pub["record"]) and "Рашад" not in gate_file
+          and "главбух" not in gate_file and "accept-0.md" not in gate_file
+          and '"by"' not in gate_file and '"words"' not in gate_file
+          and "Рашад" not in reg_file and "по каждому складу" not in reg_file
+          and box.words(box.rule("u2-B-1.10")["problem_cleared"]) == "считать по каждому складу отдельно",
+          gate_file)
     rc, out = run("check_progress.py", "--branch", "erp/3-accept-0", "--base-dir", str(base_g))
     rc2, out2 = run("check_progress.py", "--branch", "erp/2-stock", "--base-dir", str(base_g))
     check("check_progress: PR ветки ворот, где изменилась только запись этих ворот, — зелёный; та же "
@@ -682,7 +721,8 @@ def scenario(box: Box):
           and rc3 == 1 and "порядок карточек" in out3, out + out2 + out3)
     base_closed = box.copy("base_closed")  # main после мержа PR ворот
     bad = box.copy("badgate1")
-    box.edit_prog("3", lambda st: st["confirmations"][1].update(words="давай, и срез 2 тоже"), dir=bad)
+    box.edit_prog("3", lambda st: st["confirmations"][1].update(
+        box.fake_rec("gate", "3", "owner", "Рашад", TODAY, "давай, и срез 2 тоже", bad)), dir=bad)
     rc, out = run("check_progress.py", "--base-dir", str(base_closed), dir=bad)
     bad = box.copy("badgate2")
     box.edit_prog("3", lambda st: st["confirmations"].pop(0), dir=bad)
@@ -704,12 +744,36 @@ def scenario(box: Box):
           "ошибка: выкладку изменённого документа это не запирает",
           rc == 0 and "ворота 3 закрыты записью из main" in out and "открыты карточки 2" in out, out)
     bad = box.copy("badgate4")
-    box.edit_prog("3", lambda st: [k.pop("words") for k in st["confirmations"]], dir=bad)
+    box.edit_prog("3", lambda st: [k.pop("record") for k in st["confirmations"]], dir=bad)
     rc, out = run("check_progress.py", dir=bad)
     rc2, out2 = run("next_card.py", dir=bad)
-    check("запись о воротах без слов (вписали руками) воротами не считается: check_progress красный, "
-          "очередь стоит на воротах",
-          rc == 1 and "без слов" in out and rc2 == 2 and "ВОРОТА 3" in out2, out + out2)
+    check("запись о воротах без хэша записи (вписали руками роль и дату) воротами не считается: "
+          "check_progress красный, очередь стоит на воротах",
+          rc == 1 and "хэша записи" in out and rc2 == 2 and "ВОРОТА 3" in out2, out + out2)
+    # закрытая папка доступна: хэш из открытого состояния сверяется с записью в ней
+    rec_path = L.RECORDS + "/" + owner_pub["record"] + ".json"
+    bad = box.copy("badrec1")
+    (bad / rec_path).write_text(json.dumps(dict(owner_rec, words="давай, и срез 2 тоже"),
+                                           ensure_ascii=False), encoding="utf-8")
+    rc, out = run("check_progress.py", dir=bad)
+    rc5, out5 = run("status.py", dir=bad)
+    bad = box.copy("badrec2")
+    (bad / rec_path).unlink()
+    rc2, out2 = run("check_progress.py", dir=bad)
+    bad = box.copy("badrec3")
+    box.edit_prog("3", lambda st: st["confirmations"][1].update(by="Рашад", words="давай"), dir=bad)
+    rc3, out3 = run("check_progress.py", dir=bad)
+    bad = box.copy("badrec4")
+    box.edit_prog("3", lambda st: st["confirmations"][1].update(box.fake_rec(
+        "gate", "3", "owner", "Claude", TODAY, "давай", bad)), dir=bad)
+    rc4, out4 = run("check_progress.py", dir=bad)
+    check("закрытая папка доступна — хэш сверяется: слова в закрытой записи подменили, запись "
+          "стёрли, за хэшем имя сессии ИИ — красный check_progress, экран владельца подмену слов "
+          "называет; имя и слова, вписанные в открытый файл, — тоже красный",
+          rc == 1 and "хэш не сходится" in out and rc5 == 0 and "ИЗМЕНЕНА" in out5
+          and "срез 2 тоже" not in out5 and rc2 == 1 and "в закрытой папке нет записи" in out2
+          and rc3 == 1 and "имя или слова человека" in out3
+          and rc4 == 1 and "нет имени человека" in out4, out + out5 + out2 + out3 + out4)
     rc, out = run("next_card.py")
     check("после закрытия ворот открывается следующая карточка (4)",
           rc == 0 and "КАРТОЧКА 4 " in out, out)
@@ -733,10 +797,17 @@ def scenario(box: Box):
     bad = box.copy("badrel")
     box.edit_prog("4", lambda st: st.pop("taken_by"), dir=bad)
     rc2, out2 = run("check_progress.py", "--base-dir", str(base_r), dir=bad)
+    rel = box.copy("goodrel")
+    git_at(rel, "init", "-q")  # закрытая папка — под своим git, иначе запись не принимается
+    rc3, out3 = run("mark.py", "release", "4", "--by", "Рашад", "--words", "сними, сессия брошена", dir=rel)
+    was = (box.prog(rel)["cards"]["4"].get("released") or [{}])[0]
+    rc4, out4 = run("check_progress.py", "--base-dir", str(base_r), dir=rel)
     check("занятость с карточки снимает только запись владельца (имя и его слова); снятая руками — "
-          "красный check_progress",
+          "красный check_progress; снятая командой — зелёный, в открытом файле роль, дата и хэш",
           rc == 1 and "дословные слова" in out and box.prog()["cards"]["4"].get("taken_by")
-          and rc2 == 1 and "занятость снята" in out2, out + out2)
+          and rc2 == 1 and "занятость снята" in out2 and rc3 == 0
+          and sorted(was) == ["date", "record", "role", "was"]
+          and box.words(was, rel) == "сними, сессия брошена" and rc4 == 0, out + out2 + out3 + out4)
 
     # --- проверка для GitHub
     rc, out = run("check_progress.py", "--branch", "erp/5-vat", "--base-dir", str(base))
@@ -852,9 +923,12 @@ def scenario(box: Box):
     rc, out = run("export_public.py", "--to", str(pub))
     blob = "".join(p.read_text(encoding="utf-8") for p in pub.rglob("*.json"))
     leak = [w for w in ("закрытое поле", "закрытый текст", "ШЕСТИ пунктов", "rules_text",
-                        "section", "detail", "lishnee", "сеанс 1", "двух складах") if w in blob]
-    check("выкладка в репозиторий: нет текста правил, карточек, записок и закрытых полей",
-          rc == 0 and not leak and (pub / "check_progress.py").exists()
+                        "section", "detail", "lishnee", "сеанс 1", "двух складах", "Рашад",
+                        "главбух", "accept-0.md", "кладовщик", "по каждому складу", '"by"',
+                        '"words"', '"salt"') if w in blob]
+    check("выкладка в репозиторий: нет текста правил, карточек, записок, закрытых полей, имён и "
+          "слов подтвердивших; папка records/ не выкладывается",
+          rc == 0 and not leak and (pub / "check_progress.py").exists() and not (pub / L.RECORDS).exists()
           and (pub / "ci_report.py").exists() and not (pub / "owner_codes.py").exists()
           and not (pub / "owner_codes.json").exists()
           and not (pub / "rules_text").exists() and not (box.dir / L.STATE_MOVED).exists(),
@@ -863,10 +937,15 @@ def scenario(box: Box):
     rc, out = run("status.py", **env_run)
     rc2, out2 = run("check_progress.py", "--branch", "erp/5-vat", **env_run)
     rc3, out3 = run("next_card.py", **env_run)
-    check("в выкладке без закрытой папки проверка и экран владельца работают, состояние то же; "
-          "карточку без текста правил не выдают",
+    rc4, out4 = run("status.py", "--screen", str(screen), **env_run)
+    check("в выкладке без закрытой папки (как в GitHub) проверка и экран владельца работают, "
+          "состояние то же, хэши записей сверять не с чем — и не требуется; экран показывает роль и "
+          "дату без имени и слов, файл экрана без закрытой папки не пишется; карточку без текста "
+          "правил не выдают",
           rc == 0 and rc2 == 0 and "В работе: карточка 4" in out and rc3 == 1
-          and "нет закрытой папки" in out3, out + out2 + out3)
+          and "нет закрытой папки" in out3 and "имя и слова — в закрытой папке" in out
+          and "Рашад" not in out and rc4 == 1 and "нет закрытой папки" in out4,
+          out + out2 + out3 + out4)
     inrepo = box.repo / "scripts" / "erp"
     run("export_public.py", "--to", str(inrepo))
     rc, out = run("next_card.py")
@@ -1036,21 +1115,24 @@ def scenario_real(box: Box):
           "дословными словами",
           rc == 1 and rc2 == 1 and "дословные слова" in out2 and rc3 == 0
           and box.rule("u4-D-9.1")["done"]["kind"] == "evidence"
-          and box.rule("u4-D-9.1")["done"]["words"] == "файл загрузился, принимаю", out + out2 + out3)
+          and box.words(box.rule("u4-D-9.1")["done"]) == "файл загрузился, принимаю"
+          and "by" not in box.rule("u4-D-9.1")["done"] and "words" not in box.rule("u4-D-9.1")["done"],
+          out + out2 + out3)
     base_ev = box.copy("base_ev")
     bad = box.copy("badev")
-    box.edit_reg(lambda by, _: by["u4-D-9.1"]["done"].pop("words"), dir=bad)
+    box.edit_reg(lambda by, _: by["u4-D-9.1"]["done"].pop("record"), dir=bad)
     rc, out = run("check_progress.py", dir=bad)
     bad = box.copy("badev2")
-    box.edit_reg(lambda by, _: by["u4-D-9.1"]["done"].update(by="Другой человек"), dir=bad)
+    box.edit_reg(lambda by, _: by["u4-D-9.1"]["done"].update(box.fake_rec(
+        "evidence", "u4-D-9.1", "owner", "Другой человек", TODAY, "файл загрузился, принимаю", bad)), dir=bad)
     rc2, out2 = run("check_progress.py", "--base-dir", str(base_ev), dir=bad)
     bad = box.copy("badev3")
     box.edit_reg(lambda by, _: (by["u4-D-9.1"].pop("done"), by["u4-D-9.1"].update(status="in_progress")),
                  dir=bad)
     rc3, out3 = run("check_progress.py", "--base-dir", str(base_ev), dir=bad)
-    check("check_progress краснеет на свидетельстве без слов владельца, а свидетельство, попавшее в "
+    check("check_progress краснеет на свидетельстве без записи владельца, а свидетельство, попавшее в "
           "main, нельзя ни изменить, ни стереть",
-          rc == 1 and "без слов владельца" in out and rc2 == 1 and "свидетельство из main" in out2
+          rc == 1 and "без записи владельца" in out and rc2 == 1 and "свидетельство из main" in out2
           and rc3 == 1 and "свидетельство из main" in out3, out + out2 + out3)
 
     # --- лазейка перепроверки: стереть свидетельство из main, прикрывшись вопросом или новым хэшем
@@ -1082,7 +1164,7 @@ def scenario_real(box: Box):
     check("вопрос по правилу со свидетельством (mark.py problem): отметка снята, запись владельца "
           "перенесена в журнал evidence_log — сравнение с main зелёное",
           rc == 0 and "done" not in r and r["status"] == "not_started" and rc2 == 0
-          and [k["words"] for k in r.get("evidence_log") or []] == ["файл загрузился, принимаю"],
+          and [box.words(k) for k in r.get("evidence_log") or []] == ["файл загрузился, принимаю"],
           out + out2)
     run("mark.py", "problem", "u4-D-9.1", "--clear", "--by", "Рашад", "--words", "считать первый файл")
     rc, out = run("mark.py", "rule", "u4-D-9.1", "--evidence", str(ev), "--by", "Рашад",
@@ -1091,8 +1173,8 @@ def scenario_real(box: Box):
     rc2, out2 = run("check_progress.py", "--base-dir", str(base_ev))
     check("ответ владельца записан, свидетельство принято заново: новое — в отметке, прежнее — в "
           "журнале; сравнение с main зелёное",
-          rc == 0 and r["done"]["words"] == "первый файл, принимаю" and len(r["evidence_log"]) == 1
-          and r["problem_cleared"]["words"] == "считать первый файл" and rc2 == 0, out + out2)
+          rc == 0 and box.words(r["done"]) == "первый файл, принимаю" and len(r["evidence_log"]) == 1
+          and box.words(r["problem_cleared"]) == "считать первый файл" and rc2 == 0, out + out2)
     # документ изменили: сброс по новому хэшу записей владельца не стирает
     base_ev2 = box.copy("base_ev2")
     docs = box.copy("docev")
@@ -1218,7 +1300,8 @@ def scenario_real(box: Box):
     rc, out = run("export_public.py", "--to", str(pub))
     blob = "".join(p.read_text(encoding="utf-8") for p in pub.rglob("*.json"))
     leak = [w for w in ("закрыт", "Старт. Прочитать", "common", "handoff", "client_does",
-                        "owner_confirms", "второй части", "сделано: настройки", "arch.md") if w in blob]
+                        "owner_confirms", "второй части", "сделано: настройки", "arch.md", "Рашад",
+                        "принимаю", "средняя", "anketa.md", '"by"', '"words"') if w in blob]
     rc2, out2 = run("next_card.py", dir=pub, private=box.dir)
     rc3, out3 = run("next_card.py", dir=pub)
     check("выкладка настоящего формата: плоский порядок без шагов, пояснений и записок; команды в "
@@ -1226,12 +1309,13 @@ def scenario_real(box: Box):
           rc == 0 and not leak and rc2 == 0 and "КАРТОЧКА 002 " in out2
           and rc3 == 1 and "нет закрытой папки" in out3, out + str(leak) + out2 + out3)
     # выкладка документа: правило со свидетельством получило новый текст, другое ушло из документа
-    rec = {"hash": "a" * 64, "date": TODAY, "by": "Рашад", "words": "принимаю как есть"}
     box.edit_reg(lambda _, data: data["rules"].append({
         "id": "X-1", "slug": "u9-X-1", "title": "правило, которого больше нет", "mark": "as_1c",
         "slice": 0, "text_hash": "a" * 64, "status": "done",
-        "done": dict(rec, kind="evidence", card="001", evidence_sha="b" * 64),
-        "problem_cleared": dict(rec, words="оставить как было")}), dir=pub)
+        "done": dict(box.fake_rec("evidence", "u9-X-1", "owner", "Рашад", TODAY, "принимаю как есть"),
+                     hash="a" * 64, kind="evidence", card="001", evidence_sha="b" * 64),
+        "problem_cleared": dict(box.fake_rec("problem_cleared", "u9-X-1", "owner", "Рашад", TODAY,
+                                             "оставить как было"), hash="a" * 64)}), dir=pub)
     base_gone = box.root / "base_gone"
     shutil.copytree(pub, base_gone)
     h9 = box.text("u4-D-9.1", "D-9.1", "Проба загрузки ДВУХ файлов у клиента", "как в 1С")
@@ -1251,8 +1335,8 @@ def scenario_real(box: Box):
           "сравнение с main зелёное, а стёртый retired — красный",
           rc == 0 and "done" not in r and len(r.get("evidence_log") or []) == 2
           and len(r.get("problem_cleared_log") or []) == 1
-          and [k["words"] for k in gone.get("evidence_log") or []] == ["принимаю как есть"]
-          and [k["words"] for k in gone.get("problem_cleared_log") or []] == ["оставить как было"]
+          and [box.words(k) for k in gone.get("evidence_log") or []] == ["принимаю как есть"]
+          and [box.words(k) for k in gone.get("problem_cleared_log") or []] == ["оставить как было"]
           and rc2 == 0 and rc3 == 1 and "u9-X-1: свидетельство из main" in out3
           and "u9-X-1: запись о снятом вопросе из main" in out3, out + out2 + out3)
     box.edit_reg(lambda by, _: by["u1-A-02"].update(text_hash="f" * 64))
@@ -1348,6 +1432,8 @@ def scenario_git(box: Box):
     in_a("mark.py", "rule", "u1-A-02", "--run", box.ci(b1, green=ALL, head=head))
     in_a("mark.py", "step", "1", "2")
     rc, out = in_a("mark.py", "note", "1", "--text", "сделано: настройки; остановился на: —; мешает: —")
+    rc5, out5 = in_a("mark.py", "note", "1", "--text", "после замечаний к PR: поправлены формулировки")
+    notes_1 = (box.dir / "notes" / "1-setup.md").read_text(encoding="utf-8")
     box.git("add", "-A"); box.git("commit", "-q", "-m", "erp 1: закрыта"); box.git("push", "-q", "origin", b1)
     box.git("switch", "-q", "main"); box.git("merge", "-q", "--ff-only", "origin/main")
     ok = box.git("merge", "-q", "--no-ff", "--no-edit", b1) and box.git("push", "-q", "origin", "main")
@@ -1355,6 +1441,12 @@ def scenario_git(box: Box):
     rc2, out2 = in_a("next_card.py")
     check("карточка 1 закрыта и влита в main (ветка на GitHub осталась): очередь идёт дальше, к карточке 2",
           "КАРТОЧКА 1 ЗАКРЫТА" in out and ok and rc2 == 0 and "КАРТОЧКА 2 " in out2, out + out2)
+    rc6, out6 = in_a("mark.py", "note", "1", "--text", "записка к карточке, которая уже в main")
+    check("записку карточки, закрытой в этой же ветке и ещё не смерженной, можно дополнить (замечания "
+          "к PR): закрытие прежнее, текст — в закрытой папке; после мержа — отказ",
+          rc5 == 0 and "записка дополнена" in out5 and "дополнение к записке" in notes_1
+          and "поправлены формулировки" in notes_1 and box.prog(state)["cards"]["1"].get("closed")
+          and rc6 == 1 and "не взята" in out6, out5 + out6)
     # --- чужой PR, открытый ДО того, как карточку 1 смержили: base.sha в событии GitHub — старый
     #     main, а проверяется коммит слияния его ветки с нынешним main (как refs/pull/N/merge)
     old_main = subprocess.run(["git", "rev-parse", "main"], cwd=str(b), capture_output=True,
@@ -1404,10 +1496,50 @@ def scenario_git(box: Box):
         git_at(b, "switch", "-q", "--detach", base)
         return git_at(b, "merge", "-q", "--no-ff", "--no-edit", name)
 
+    # --- стековый чужой PR: его base.sha — голова другого PR, а не коммит main. Сравни с ней —
+    #     и весь scripts/erp, пришедший из main, покажется его правкой (ложный красный)
+    git_at(b, "switch", "-q", "-c", "claude/base-pr", old_main)
+    (b / "BASEPR.md").write_text("нижний PR стека\n", encoding="utf-8")
+    git_at(b, "add", "BASEPR.md"); git_at(b, "commit", "-q", "-m", "нижний PR стека")
+    base_pr = rev("HEAD")
+    git_at(b, "switch", "-q", "-c", "claude/stacked")
+    (b / "STACKED.md").write_text("верхний PR стека\n", encoding="utf-8")
+    git_at(b, "add", "STACKED.md"); git_at(b, "commit", "-q", "-m", "верхний PR стека")
+    git_at(b, "switch", "-q", "--detach", "origin/main")
+    merged = git_at(b, "merge", "-q", "--no-ff", "--no-edit", "claude/stacked")
+    not_main = not git_at(b, "merge-base", "--is-ancestor", base_pr, "origin/main")
+    rc, out = in_b("check_progress.py", "--branch", "claude/stacked", "--base-ref", base_pr,
+                   "--workflow", str(wf_ok), env=ci)
+    check("стековый чужой PR (base.sha — голова другого PR, не коммит main): HEAD — коммит слияния "
+          "с origin/main, базой служит его первый родитель; scripts/erp из main ему в вину не "
+          "ставится — зелёный, без предупреждений",
+          merged and not_main and rc == 0 and "в порядке" in out and "не задержан" not in out
+          and "ОШИБКА" not in out, out)
+    # базу определить нельзя: HEAD — голова ветки (не коммит слияния с origin/main), а base.sha —
+    # не коммит main. Чужая ветка не задержана; ветка карточки — красная, как и раньше
+    git_at(b, "switch", "-q", "--detach", "claude/stacked")
+    rc, out = in_b("check_progress.py", "--branch", "claude/stacked", "--base-ref", base_pr,
+                   "--workflow", str(wf_ok), env=ci)
+    rc2, out2 = in_b("check_progress.py", "--branch", "erp/2-stock", "--base-ref", base_pr,
+                     "--workflow", str(wf_ok), env=ci)
+    rc3, out3 = in_b("check_progress.py", "--branch", "erp-docs/2026-10-09", "--base-ref", base_pr,
+                     "--workflow", str(wf_ok), env=ci)
+    check("надёжной базы нет (HEAD — не коммит слияния с origin/main, base.sha — не коммит main): "
+          "чужая ветка не задержана — предупреждение и код 0; ветка erp/… и erp-docs/… — красные",
+          rc == 0 and "не задержан" in out and "определить нельзя" in out and "::warning" in out
+          and rc2 == 1 and "ОШИБКА: надёжной базы для сравнения нет" in out2
+          and rc3 == 1 and "ОШИБКА: надёжной базы для сравнения нет" in out3, out + out2 + out3)
+
+    def main_is(commit):
+        """origin/main этой рабочей копии — на коммите commit: как будто он уже смержен."""
+        return git_at(b, "update-ref", "refs/remotes/origin/main", commit)
+
+    true_main = rev("refs/remotes/origin/main")
     git_at(b, "switch", "-q", "--detach", "origin/main")
     box.edit_reg(lambda by, _: by["u1-A-01"]["done"].update(hash="0" * 64), dir=fstate)
     git_at(b, "commit", "-q", "-am", "main: состояние неисправно")
     broken = rev("HEAD")
+    main_is(broken)
     ok1 = pr_merge(broken, "claude/other", "OTHER.md", "чужая правка\n")
     rc, out = in_b("check_progress.py", "--branch", "claude/other", "--base-ref", broken,
                    "--workflow", str(wf_ok), env=ci)
@@ -1437,11 +1569,43 @@ def scenario_git(box: Box):
                    "--workflow", str(wf_ok), env=ci)
     check("…а чужой PR, менявший scripts/erp, проверяется строго — красный",
           ok2 and rc == 1 and "ОШИБКА: правило u1-A-01" in out and "не задержан" not in out, out)
+    ok4 = pr_merge(broken, "claude/ruletest", "src/__tests__/erp-foreign.test.ts", "// тест правила\n")
+    rc, out = in_b("check_progress.py", "--branch", "claude/ruletest", "--base-ref", broken,
+                   "--workflow", str(wf_ok), env=ci)
+    check("…и чужой PR, менявший тесты правил (src/__tests__/erp-*), — тоже строго",
+          ok4 and rc == 1 and "ОШИБКА: правило u1-A-01" in out and "не задержан" not in out, out)
+    # чужой PR менял только pr-checks.yml или только test-baseline.json: судится лишь то, что он
+    # мог сломать сам, — строки шага в workflow и список красных у сделанных правил; остальное
+    # (неисправное состояние main) — предупреждением
+    wf_cut = WORKFLOW_OK.replace('--base-ref "$BASE_SHA" ', "")
+    ok5 = pr_merge(broken, "claude/wf-ok", L.WORKFLOW, WORKFLOW_OK + "# правка чужого шага\n")
+    rc, out = in_b("check_progress.py", "--branch", "claude/wf-ok", "--base-ref", broken, env=ci)
+    ok6 = pr_merge(broken, "claude/wf-cut", L.WORKFLOW, wf_cut)
+    rc2, out2 = in_b("check_progress.py", "--branch", "claude/wf-cut", "--base-ref", broken, env=ci)
+    check("чужой PR менял только pr-checks.yml: обязательные строки шага на месте — не задержан "
+          "(неисправное состояние main — предупреждением); строку убрал — красный, и только за неё",
+          ok5 and rc == 0 and "не задержан" in out and "строки шага" in out and "u1-A-01" in out
+          and ok6 and rc2 == 1 and out2.count("ОШИБКА:") == 1 and "нет строки" in out2
+          and "ОШИБКА: правило u1-A-01" not in out2, out + out2)
+    ok7 = pr_merge(broken, "claude/bl-ok", "test-baseline.json",
+                   json.dumps({"knownFailingFiles": ["src/__tests__/other.test.ts"]}))
+    rc, out = in_b("check_progress.py", "--branch", "claude/bl-ok", "--base-ref", broken,
+                   "--workflow", str(wf_ok), env=ci)
+    ok8 = pr_merge(broken, "claude/bl-red", "test-baseline.json",
+                   json.dumps({"knownFailingFiles": ["src/__tests__/erp-setup.test.ts"]}))
+    rc2, out2 = in_b("check_progress.py", "--branch", "claude/bl-red", "--base-ref", broken,
+                     "--workflow", str(wf_ok), env=ci)
+    check("чужой PR менял только test-baseline.json: тесты сделанных правил в список не попали — не "
+          "задержан; записал туда тест сделанного правила — красный, и только за это",
+          ok7 and rc == 0 and "не задержан" in out and "известных" in out
+          and ok8 and rc2 == 1 and "числится красным" in out2 and "erp-setup.test.ts" in out2
+          and all("числится" in ln for ln in out2.splitlines() if ln.startswith("ОШИБКА:")), out + out2)
     # состояние не читается вовсе (registry.json — не JSON): чужой PR всё равно не задержан
     git_at(b, "switch", "-q", "--detach", broken)
     (fstate / "registry.json").write_text("{ это не JSON", encoding="utf-8")
     git_at(b, "commit", "-q", "-am", "main: реестр не читается")
     unread = rev("HEAD")
+    main_is(unread)
     ok3 = pr_merge(unread, "claude/third", "THIRD.md", "чужая правка\n")
     rc, out = in_b("check_progress.py", "--branch", "claude/third", "--base-ref", unread,
                    "--workflow", str(wf_ok), env=ci)
@@ -1450,6 +1614,12 @@ def scenario_git(box: Box):
     check("реестр в main не читается: чужой PR не задержан, ветка карточки падает — проверка не "
           "зелёная на собственном сбое",
           ok3 and rc == 0 and "не задержан" in out and rc2 != 0, out + out2)
+    ok9 = pr_merge(unread, "claude/wf-cut2", L.WORKFLOW, wf_cut)
+    rc, out = in_b("check_progress.py", "--branch", "claude/wf-cut2", "--base-ref", unread, env=ci)
+    check("реестр в main не читается, а чужой PR убрал строку шага из pr-checks.yml — красный: "
+          "строки workflow читаются и без состояния",
+          ok9 and rc == 1 and "нет строки" in out and "не задержан" in out, out)
+    main_is(true_main)
     git_at(b, "switch", "-q", "main")
     # документ изменили: текст правила А-01 другой, реестр пересобран и выложен в main
     h = box.text("u1-A-01", "А-01", "Меню настроек учёта состоит из СЕМИ пунктов", "как в 1С")

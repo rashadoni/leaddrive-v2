@@ -32,7 +32,8 @@
                           [--blocked-rules <правило>,<правило>]
         Записка следующей сессии. Полный текст — в закрытую папку (и в её git); в открытую
         часть команда сама пишет короткую сводку из номеров шагов и правил. Без записки
-        карточка не закрывается.
+        карточка не закрывается. Карточку, закрытую в этой же ветке и ещё не смерженную,
+        новая записка дополняет (замечания к PR), закрытие остаётся прежним.
   mark.py gate <ворота> --role owner|client --by "<имя>" --date ГГГГ-ММ-ДД --words "…"
         Запись о воротах: роль, кто, дата и ДОСЛОВНЫЕ слова из сообщения владельца (для
         клиента — что он сделал и где лежит свидетельство). Без слов — отказ. Только в
@@ -41,6 +42,9 @@
         Сессия по своей инициативе ворота не закрывает и по памяти слова не записывает.
   mark.py release <карточка> --by "<имя владельца>" --words "<его слова дословно>"
         Снять занятость с брошенной карточки (отметки шагов и правил остаются).
+Имя и дословные слова (--by, --words) у ворот, свидетельства, снятого вопроса и снятой
+занятости в открытый репозиторий не попадают: команда кладёт их в закрытую папку
+(records/<хэш>.json), а в состояние пишет только роль, дату и хэш этой записи.
   mark.py sync
         Сверить отметки с текстом правил: где хэш изменился — «сделано» сбрасывается.
         Эта сверка выполняется и перед каждой другой командой.
@@ -228,8 +232,9 @@ def cmd_rule(ctx, a):
         import hashlib
         L.shelve_evidence(rule)  # прежнее свидетельство не затирается новым
         rule["status"] = "done"
-        rule["done"] = dict(stamp, kind="evidence", by=who, words=words,
-                            evidence_sha=hashlib.sha256(path.read_bytes()).hexdigest())
+        rule["done"] = dict(stamp, kind="evidence",
+                            evidence_sha=hashlib.sha256(path.read_bytes()).hexdigest(),
+                            **L.write_record(ctx, "evidence", slug, "owner", who, stamp["date"], words))
         print(f"СДЕЛАНО: {slug} ({rule['id']}) — по свидетельству, принял {who}")
     elif parts:
         got = proof(ctx, rule, card, a.run, card.key)
@@ -317,9 +322,10 @@ def cmd_problem(ctx, a):
         words = L.confirm_words(a.words, f"снять вопрос по правилу {slug}")
         rule.pop("problem")
         L.shelve_cleared(rule)  # прежний ответ владельца не затирается: запись из main неизменяема
-        rule["problem_cleared"] = {"hash": rule["text_hash"], "date": L.today(), "by": who,
-                                   "words": words}
-        ctx.log("problem_clear", rule=slug, by=who)
+        rule["problem_cleared"] = dict(
+            {"hash": rule["text_hash"]},
+            **L.write_record(ctx, "problem_cleared", slug, "owner", who, L.today(), words))
+        ctx.log("problem_clear", rule=slug, role="owner")
         print(f"ВОПРОС СНЯТ: {slug} — {who}. Правило снова надо сделать")
         return
     card = working_card(ctx, rule)
@@ -340,8 +346,25 @@ def cmd_problem(ctx, a):
     try_close(ctx, card)
 
 
+def closed_here(ctx, key):
+    """Карточка уже закрыта, но в этой же ветке, и ветка ещё не влита в origin/main: записку
+    можно дополнить (например, после замечаний к PR). Иначе None."""
+    card = L.find_card(ctx, key)
+    st = ctx.progress["cards"].get(card.key, {})
+    branch = (st.get("closed") or {}).get("branch")
+    if card.gate or not branch or not L.is_closed(ctx, card) or st.get("taken_by") != branch:
+        return None
+    if ctx.use_git and (ctx.current_branch() != branch or branch in ctx.merged_branches()):
+        return None
+    return card
+
+
 def cmd_note(ctx, a):
-    card = taken_card(ctx, a.card)
+    card = closed_here(ctx, a.card)
+    if card is not None:
+        L.require_pushed(ctx, card)
+    else:
+        card = taken_card(ctx, a.card)
     if not (a.text or "").strip() or len(a.text.strip()) < 20:
         raise L.Fail("записка пустая или короче 20 знаков: напиши, что сделано, что осталось "
                      "и что надо знать следующей сессии")
@@ -350,12 +373,17 @@ def cmd_note(ctx, a):
         raise L.Fail("--blocked — одно слово из списка: " + ", ".join(L.NOTE_BLOCKED))
     rules = [L.find_rule(ctx, x.strip())["slug"] for x in (a.blocked_rules or "").split(",")
              if x.strip()]
-    path = write_private(ctx, card, "записка следующей сессии", a.text)
+    was_closed = L.is_closed(ctx, card)
+    path = write_private(ctx, card, "дополнение к записке" if was_closed
+                         else "записка следующей сессии", a.text)
     st = L.cstate(ctx, card)
     st["note"] = L.public_note(ctx, card, blocked, rules)
     ctx.log("note", card=card.key)
     print(f"ЗАПИСКА СОХРАНЕНА: {path}")
     print("В открытую часть записана сводка: " + L.note_line(st["note"]))
+    if was_closed:
+        print(f"Карточка {card.key} уже закрыта в этой ветке: записка дополнена, закрытие прежнее")
+        return
     try_close(ctx, card)
 
 
@@ -402,9 +430,9 @@ def cmd_gate(ctx, a):
                      f"{', '.join(probs)}")
     g = ctx.progress["gates"].setdefault(card.key, {})
     conf = [c for c in g.get("confirmations") or [] if c.get("role") != role]
-    conf.append({"role": role, "by": who, "date": day.isoformat(), "words": words})
+    conf.append(L.write_record(ctx, "gate", card.key, role, who, day.isoformat(), words))
     g["confirmations"] = conf
-    ctx.log("gate", gate=card.key, role=role, by=who)
+    ctx.log("gate", gate=card.key, role=role)
     left = L.gate_missing(ctx, card)
     if left:
         print(f"ЗАПИСАНО: ворота {card.key}, {L.ROLE_RU.get(role, role)} — {who}, "
@@ -415,8 +443,9 @@ def cmd_gate(ctx, a):
     rel = ctx.state_in_repo()
     name = __import__("re").sub(r"[^A-Za-z0-9._-]+", "-", card.key) + ".json"
     print(f"В PR ворот идёт только этот файл: `git add {rel or '<папка состояния>'}/progress/{name}` "
-          f"— коммит, пуш, PR. Другая работа в том же PR — красная проверка. После мержа "
-          f"запись не меняется, владелец видит её на своём экране (status.py).")
+          f"— коммит, пуш, PR. Другая работа в том же PR — красная проверка. В файле — роль, "
+          f"дата и хэш записи; имя и слова остались в закрытой папке. После мержа запись не "
+          f"меняется, владелец видит её на своём экране (status.py).")
 
 
 def cmd_release(ctx, a):
@@ -428,12 +457,13 @@ def cmd_release(ctx, a):
         return
     words = L.confirm_words(a.words, f"снять занятость карточки {card.key}")
     was = st.pop("taken_by")
-    st.setdefault("released", []).append({"date": L.today(), "by": who, "words": words, "was": was})
+    st.setdefault("released", []).append(dict(
+        L.write_record(ctx, "release", card.key, "owner", who, L.today(), words), was=was))
     for s in card.all_rules:
         r = ctx.by_slug[s]
         if r.get("status") == "in_progress":
             r["status"] = "not_started"
-    ctx.log("release", card=card.key, branch=was, by=who)
+    ctx.log("release", card=card.key, branch=was, role="owner")
     print(f"ЗАНЯТОСТЬ СНЯТА: карточка {card.key} (была за веткой {was}) — {who}. "
           f"Если ветка {was} ещё есть в git и не влита в main, удали её (`git push origin "
           f"--delete {was}`): иначе карточка считается занятой")

@@ -22,10 +22,14 @@
      этот тест не числится красным в test-baseline.json; правило входит в карточку,
      которая взята или закрыта. У правила с продолжением — тест каждой части
      (u2-B-404#015); у правила из evidence_rules — имя принявшего и его слова;
-  4. у каждой записи о воротах, свидетельства, снятого вопроса и снятой занятости есть
-     роль, имя человека, дата и дословные слова; у одной ветки не две карточки; записка
-     в открытой части — только номера. Что слова сказал владелец, машина НЕ проверяет
-     (учётная запись GitHub у него и у сессий одна): защита — пункты 8–9 и его экран;
+  4. у каждой записи о воротах, свидетельства, снятого вопроса и снятой занятости в
+     открытой части есть роль, дата и хэш записи — и нет ни имени, ни слов: они лежат в
+     закрытой папке (records/<хэш>.json). Когда закрытая папка доступна (на сервере), хэш
+     сверяется с ней: запись есть, не изменена, в ней имя человека и дословные слова; в
+     GitHub закрытой папки нет, и там сверяется только открытая часть. У одной ветки не
+     две карточки; записка в открытой части — только номера. Что слова сказал владелец,
+     машина НЕ проверяет (учётная запись GitHub у него и у сессий одна): защита — пункты
+     8–10 и его экран;
   5. в workflow стоят строки, без которых эта проверка молча исчезает.
 Если дан отчёт прогона (--tests-report erp-tests.json):
   6. у каждого «сделано», части и «до просмотра» тест с номером имеет в отчёте статус
@@ -34,8 +38,12 @@
   7. такая карточка есть, записана за этой веткой, и это именно та карточка, которую
      выдал бы next_card.py: все «после» закрыты, ворота перед ней закрыты, карточки с
      меньшим номером закрыты или заняты другими ветками при разрешённой параллели.
-Если дано, с чем сравнивать (--base-ref <коммит main> или --base-dir <папка>; в GitHub
-база — первый родитель коммита слияния PR, а не отставший base.sha из события):
+Если дано, с чем сравнивать (--base-ref <коммит main> или --base-dir <папка>). База: если
+HEAD — коммит слияния с двумя родителями и первый родитель лежит в origin/main (так GitHub
+собирает refs/pull/N/merge), базой служит он, что бы ни стояло в base.sha события: base.sha
+отстаёт у старого PR, а у PR, открытого поверх чужой ветки, вообще не коммит main. Иначе
+база — --base-ref, если это коммит из истории origin/main. Иначе надёжной базы нет: ветка
+erp/… и erp-docs/… красная, чужая ветка не задерживается (см. «Чужие PR»):
   8. новые отметки «сделано», «временное поведение», закрытие карточки и ворот
      появились только у карточки этой ветки (в ветке с другим именем новых отметок
      быть не должно вовсе); вопрос по правилу и занятость карточки сняты записью с
@@ -48,16 +56,20 @@
      правилам нет неснятого вопроса владельцу — иначе ошибка (то же, в чём отказывает
      mark.py gate; запись, вписанная в файл руками, не проходит);
  10. запись о воротах, свидетельство, снятый вопрос и снятая занятость, попавшие в
-     main, не стёрты и не изменены. Свидетельство и снятый вопрос обязаны остаться в
-     реестре при любом хэше и любом состоянии правила: на месте или в журнале
-     (evidence_log, problem_cleared_log; у правила, ушедшего из документа, — retired).
+     main, не стёрты и не изменены (сравниваются роль, дата и хэш записи). Свидетельство
+     и снятый вопрос обязаны остаться в реестре при любом хэше и любом состоянии правила:
+     на месте или в журнале (evidence_log, problem_cleared_log; у правила, ушедшего из
+     документа, — retired).
 
 Чужие PR (ветка не erp/<номер>-<slug> и не erp-docs/<дата>). Проверка сторожит отметки, а
 отметки попадают в main только через PR, который их меняет. Поэтому:
-  - джоба pr-scope: PR, который не менял ни scripts/erp/, ни src/__tests__/erp-*, ни
-    pr-checks.yml, ни test-baseline.json, эта проверка не задерживает никогда: всё, что она
-    нашла, уже лежит в main и чинится веткой erp/…, — печатается предупреждением, код 0.
-    PR, который эти пути менял, проверяется строго, как ветка карточки;
+  - джоба pr-scope: строго, как ветка карточки, проверяется только PR, менявший
+    scripts/erp/ или src/__tests__/erp-*. PR, который их не менял, эта проверка за состояние
+    не задерживает никогда: всё, что она нашла, уже лежит в main и чинится веткой erp/…, —
+    печатается предупреждением, код 0. Если такой PR менял pr-checks.yml, красным остаётся
+    одно: пропажа обязательных строк шага из workflow; если менял test-baseline.json — одно:
+    тест сделанного правила записан в известные красные. Список файлов PR определить нельзя
+    (надёжной базы нет) — чужая ветка не задерживается: предупреждение, код 0;
   - джоба static-checks (сравнивать не с чем, история там не скачана): у чужой ветки
     красным считается только отчёт тестов — тест сделанного правила в этом прогоне красный,
     пропущен или не выполнялся. Состояние в том же прогоне судит pr-scope.
@@ -85,8 +97,14 @@ class ReportFail(L.Fail):
     """Отчёт тестов не читается: это ошибка прогона, она красная для любой ветки."""
 
 
+class NoBase(L.Fail):
+    """Сравнивать не с чем: базу нельзя определить надёжно."""
+
+
 ERP_FILE = re.compile(r"^(?:scripts/erp/|src/__tests__/erp-)")
-ERP_ALSO = (L.WORKFLOW, "test-baseline.json")
+# Файлы вне scripts/erp, которыми чужой PR может сломать проверку, и что тогда судится строго.
+ERP_ALSO = {L.WORKFLOW: "workflow", "test-baseline.json": "baseline"}
+MAIN = "refs/remotes/origin/main"
 
 
 def is_foreign(branch: str) -> bool:
@@ -95,27 +113,57 @@ def is_foreign(branch: str) -> bool:
 
 
 def touches_erp(files) -> bool:
-    """PR меняет то, на чём держатся отметки: состояние и команды, тесты правил, workflow
-    проверки или список известных красных тестов."""
-    return any(ERP_FILE.match(f) or f in ERP_ALSO for f in files)
+    """PR меняет то, на чём держатся отметки: состояние и команды или тесты правил."""
+    return any(ERP_FILE.match(f) for f in files)
+
+
+def also_touched(files) -> tuple:
+    """Что из остального судится строго: «workflow» — PR менял pr-checks.yml, «baseline» —
+    менял список известных красных тестов."""
+    return tuple(sorted({ERP_ALSO[f] for f in files if f in ERP_ALSO}))
+
+
+def compare_base(git, base_ref):
+    """(коммит, с которым сравнивать этот PR; это первый родитель коммита слияния?) или None,
+    если надёжной базы нет. git — функция: строка вывода или None при ошибке.
+
+    В GitHub HEAD — коммит слияния ветки PR с main (refs/pull/N/merge), а base.sha из события
+    — main на день открытия PR. У PR, открытого неделю назад, он отстал на неделю; у PR,
+    открытого поверх чужой ветки (стековый), это голова той ветки, а не коммит main. Сравни с
+    ним — и всё, что main получил мимо него (весь scripts/erp, отметки других карточек),
+    покажется работой ЧУЖОГО PR. Поэтому: HEAD с двумя родителями, первый лежит в origin/main
+    — база он, безусловно. Иначе годится только --base-ref из истории origin/main. В
+    репозитории без origin/main (местная проба) верим тому, что дали."""
+    def ok(*a):
+        return git(*a) is not None
+
+    has_main = ok("rev-parse", "--verify", "--quiet", MAIN)
+    parents = (git("rev-list", "--parents", "-n", "1", "HEAD") or "").split()[1:]
+    if len(parents) == 2:
+        if has_main and ok("merge-base", "--is-ancestor", parents[0], MAIN):
+            return parents[0], True
+        if not has_main and base_ref and ok("merge-base", "--is-ancestor", base_ref, parents[0]):
+            return parents[0], True
+    if not base_ref or not ok("cat-file", "-e", f"{base_ref}^{{commit}}"):
+        return None
+    if has_main and not ok("merge-base", "--is-ancestor", base_ref, MAIN):
+        return None
+    return base_ref, False
 
 
 def pr_files(repo, base_ref):
-    """Файлы, которые меняет этот PR, или None, если узнать нельзя. В GitHub HEAD — коммит
-    слияния ветки с main: тогда PR — это разница с его первым родителем. Состояние не
-    читается: ответ нужен и тогда, когда оно не читается вовсе."""
+    """Файлы, которые меняет этот PR, или None, если узнать нельзя. Состояние не читается:
+    ответ нужен и тогда, когда оно не читается вовсе."""
     if not base_ref or repo is None:
         return None
 
     def git(*a):
         return L._git_at(Path(repo), *a)
 
-    parents = (git("rev-list", "--parents", "-n", "1", "HEAD") or "").split()[1:]
-    start = None
-    if len(parents) == 2 and git("merge-base", "--is-ancestor", base_ref, parents[0]) is not None:
-        start = parents[0]
-    else:
-        start = (git("merge-base", base_ref, "HEAD") or "").strip() or None
+    base = compare_base(git, base_ref)
+    if base is None:
+        return None
+    start = base[0] if base[1] else (git("merge-base", base[0], "HEAD") or "").strip() or None
     if not start:
         return None
     out = git("diff", "--name-only", start, "HEAD")
@@ -129,23 +177,6 @@ def changed_files(ctx, base_ref):
     return pr_files(ctx.repo, base_ref)
 
 
-def effective_base(ctx, base_ref):
-    """С каким коммитом main сравнивать. В GitHub HEAD — коммит слияния ветки PR с main, а
-    base.sha из события PR — это main на день открытия PR: у PR, открытого неделю назад, он
-    отстал на неделю. Сравни отметки с ним — и всё, что другие карточки за эту неделю
-    смержили в main, покажется «новой отметкой вне своей ветки» у ЧУЖОГО PR, который
-    scripts/erp не трогал. Поэтому база — первый родитель коммита слияния (тот main, с
-    которым GitHub ветку слил), если он лежит в истории origin/main и содержит base.sha.
-    Иначе — то, что дали."""
-    if not base_ref or not ctx.use_git:
-        return base_ref
-    parents = (ctx.git("rev-list", "--parents", "-n", "1", "HEAD") or "").split()[1:]
-    if len(parents) == 2 and ctx.git_ok("merge-base", "--is-ancestor", base_ref, parents[0]) \
-            and ctx.git_ok("merge-base", "--is-ancestor", parents[0], "refs/remotes/origin/main"):
-        return parents[0]
-    return base_ref
-
-
 def load_base(ctx, args):
     """(registry, progress, order) из main — или None, если сравнивать не с чем."""
     def read(name):
@@ -157,11 +188,16 @@ def load_base(ctx, args):
 
     if not (args.base_dir or args.base_ref):
         return None
-    if args.base_ref and not ctx.git_ok("cat-file", "-e", f"{args.base_ref}^{{commit}}"):
-        raise L.Fail(f"база для сравнения {args.base_ref} не читается: нужен checkout с "
-                     f"fetch-depth: 0 и коммит main из события PR")
     if args.base_ref:
-        args.base_ref = effective_base(ctx, args.base_ref)
+        base = compare_base(ctx.git, args.base_ref)
+        if base is None and not ctx.git_ok("cat-file", "-e", f"{args.base_ref}^{{commit}}"):
+            raise L.Fail(f"база для сравнения {args.base_ref} не читается: нужен checkout с "
+                         f"fetch-depth: 0 и коммит main из события PR")
+        if base is None:
+            raise NoBase(f"надёжной базы для сравнения нет: {args.base_ref[:12]} не лежит в истории "
+                         f"origin/main, а HEAD — не коммит слияния ветки с origin/main. Ветка "
+                         f"карточки создаётся от origin/main, PR открывается в main")
+        args.base_ref = base[0]
     reg = read("registry.json")
     files = {}
     if args.base_dir:
@@ -188,9 +224,9 @@ def gate_open(ctx, gate):
     return [x.key for x in cards if not L.is_closed(ctx, x)], L.open_problems(ctx, cards)
 
 
-def workflow_errors(ctx, args, in_ci):
+def workflow_errors(repo, args, in_ci):
     """Строки workflow, без которых проверка отметок молча исчезает."""
-    path = Path(args.workflow) if args.workflow else ctx.repo / L.WORKFLOW
+    path = Path(args.workflow) if args.workflow else Path(repo) / L.WORKFLOW
     if not path.is_file():
         return [f"нет файла {L.WORKFLOW}: проверка отметок нигде не запускается"] if in_ci else []
     live = [ln for ln in path.read_text(encoding="utf-8").splitlines()
@@ -206,13 +242,15 @@ def run(args, branch, soft):
     ctx = L.Ctx(args)
     errors, warns = L.validate_order(ctx)
     report_errors = []  # отчёт тестов этого прогона: красные для любой ветки
+    # то, что чужой PR может сломать, не трогая scripts/erp: строки workflow и список красных
+    kept = {"workflow": [], "baseline": []}
     in_ci = bool(os.environ.get("GITHUB_ACTIONS"))
     if in_ci and not (args.base_ref or args.base_dir or args.tests_report):
         errors.append("нет базы для сравнения: в GitHub проверка запускается с --base-ref "
                       "\"$BASE_SHA\" (джоба pr-scope) или с --tests-report (джоба static-checks)")
-    wf = workflow_errors(ctx, args, in_ci)
+    wf = workflow_errors(ctx.repo, args, in_ci)
     if in_ci or ctx.state_in_repo() is not None or args.workflow:
-        errors += wf
+        kept["workflow"] += wf
     elif wf:  # состояние ещё в закрытой папке: строки в workflow ставит карточка 001
         warns.append(f"в {L.WORKFLOW} пока нет строк проверки отметок ({len(wf)}): их ставит "
                      f"карточка 001")
@@ -236,7 +274,7 @@ def run(args, branch, soft):
         try:
             known_red = set(json.loads(bl.read_text(encoding="utf-8")).get("knownFailingFiles") or [])
         except (json.JSONDecodeError, AttributeError):
-            errors.append(f"{bl.name} не читается")
+            kept["baseline"].append(f"{bl.name} не читается")
     roots = ctx.tests_roots()
     no_tree_said = False
     n_done = 0
@@ -259,8 +297,8 @@ def run(args, branch, soft):
                           f"(выключенный, закомментированный и *.spec.ts не считаются)")
             return False
         if all(t["file"] in known_red for t in tests):
-            errors.append(f"правило {slug}: его тест ({tests[0]['file']}) числится красным "
-                          f"в {bl.name}")
+            kept["baseline"].append(f"правило {slug}: его тест ({tests[0]['file']}) числится "
+                                    f"красным в {bl.name}")
             return False
         if report is not None:
             green, red, skipped = L.green_for(report["results"], slug, want)
@@ -312,10 +350,11 @@ def run(args, branch, soft):
             if not any(slug in c.evidence for c in cards):
                 errors.append(f"правило {slug} закрыто свидетельством, но ни одна карточка не "
                               f"называет его в evidence_rules — нужен тест")
-            elif not (d.get("by") or "").strip() or not d.get("evidence_sha"):
-                errors.append(f"правило {slug}: свидетельство без имени принявшего или без файла")
-            elif not str(d.get("words") or "").strip():
-                errors.append(f"правило {slug}: свидетельство принято без слов владельца")
+            elif not d.get("evidence_sha"):
+                errors.append(f"правило {slug}: свидетельство без файла")
+            elif L.record_problem(ctx, d, "evidence", slug):
+                errors.append(f"правило {slug}: свидетельство без записи владельца — "
+                              + L.record_problem(ctx, d, "evidence", slug))
         elif parts:
             missing = [k for k in parts if not L.part_ok(ctx, r, k)]
             if missing:
@@ -335,18 +374,13 @@ def run(args, branch, soft):
         st = ctx.progress["cards"].get(c.key, {})
         if c.gate:
             for k in ctx.progress["gates"].get(c.key, {}).get("confirmations") or []:
-                if not (k.get("by") or "").strip() or not k.get("date") or \
-                        k.get("by", "").strip().lower() in L.NOT_A_PERSON:
-                    errors.append(f"ворота {c.key}: подтверждение без имени человека или без даты")
-                if k.get("role") not in c.who:
-                    errors.append(f"ворота {c.key}: подтверждение с ролью {k.get('role')}, которой "
+                role = k.get("role") if isinstance(k, dict) else None
+                why = L.record_problem(ctx, k, "gate", c.key)
+                if why:
+                    errors.append(f"ворота {c.key}: подтверждение ({role}) — {why}")
+                if role not in c.who:
+                    errors.append(f"ворота {c.key}: подтверждение с ролью {role}, которой "
                                   f"у этих ворот нет")
-                if not str(k.get("words") or "").strip():
-                    errors.append(f"ворота {c.key}: подтверждение ({k.get('role')}) без слов — "
-                                  f"запись о воротах несёт дословные слова владельца или описание "
-                                  f"действия клиента")
-                elif len(str(k["words"])) > L.WORDS_MAX:
-                    errors.append(f"ворота {c.key}: слова подтверждения длиннее {L.WORDS_MAX} знаков")
             if L.is_closed(ctx, c):
                 late, probs = gate_open(ctx, c)
                 if late or probs:
@@ -355,8 +389,9 @@ def run(args, branch, soft):
         if st.get("note") is not None:
             errors += L.note_errors(ctx, c.key, st["note"])
         for k in st.get("released") or []:
-            if not str(k.get("words") or "").strip() or not (k.get("by") or "").strip():
-                errors.append(f"карточка {c.key}: занятость снята без имени и слов владельца")
+            why = L.record_problem(ctx, k, "release", c.key)
+            if why:
+                errors.append(f"карточка {c.key}: занятость снята без записи владельца — {why}")
         if st.get("closed") and L.closure_gaps(ctx, c):
             warns.append(f"карточка {c.key} была закрыта, но снова открыта: "
                          f"{L.closure_gaps(ctx, c)[0]}")
@@ -367,14 +402,25 @@ def run(args, branch, soft):
             errors.append(f"за веткой {b} записаны сразу карточки {', '.join(keys)}: "
                           f"одна ветка — одна карточка")
 
-    for r in ctx.rules:
+    logs = [(r["slug"], r) for r in ctx.rules] + sorted((ctx.registry.get("retired") or {}).items())
+    for slug, r in logs:
         for k in [r.get("problem_cleared")] + list(r.get("problem_cleared_log") or []):
-            if k and (not str(k.get("by") or "").strip() or not str(k.get("words") or "").strip()):
-                errors.append(f"правило {r['slug']}: вопрос снят без имени и слов владельца")
+            why = L.record_problem(ctx, k, "problem_cleared", slug) if k else None
+            if why:
+                errors.append(f"правило {slug}: вопрос снят без записи владельца — {why}")
         for k in r.get("evidence_log") or []:
-            if not str(k.get("by") or "").strip() or not str(k.get("words") or "").strip():
-                errors.append(f"правило {r['slug']}: в журнале свидетельств запись без имени и "
-                              f"слов владельца")
+            why = L.record_problem(ctx, k, "evidence", slug)
+            if why:
+                errors.append(f"правило {slug}: в журнале свидетельств запись без записи "
+                              f"владельца — {why}")
+    leaks = L.secret_fields({"registry": {"rules": ctx.rules,
+                                          "retired": ctx.registry.get("retired") or {}},
+                             "progress": {k: ctx.progress[k] for k in ("cards", "gates")}})
+    if leaks:
+        errors.append(f"в открытом состоянии записаны имя или слова человека ({', '.join(leaks[:4])}"
+                      + (f" и ещё {len(leaks) - 4}" if len(leaks) > 4 else "")
+                      + "): репозиторий открытый — там остаются роль, дата и хэш, имя и слова "
+                        "лежат в закрытой папке")
 
     mine = None
     if branch.startswith("erp/"):
@@ -399,7 +445,11 @@ def run(args, branch, soft):
             elif res["kind"] == "done":
                 errors.append(f"карточка {mine.key}: по записям всё уже закрыто")
 
-    base = load_base(ctx, args)
+    try:
+        base = load_base(ctx, args)
+    except NoBase as e:
+        errors.append(str(e))
+        base = None
     if base is not None:
         breg, bprog, border = base
         old = {r.get("slug"): r for r in breg.get("rules") or []}
@@ -461,8 +511,8 @@ def run(args, branch, soft):
                 for k in was:
                     if k not in now:
                         errors.append(f"ворота {c.key}: запись из main ({k.get('role')}, "
-                                      f"{k.get('by')}, {k.get('date')}) стёрта или изменена — "
-                                      f"запись о воротах не переписывается")
+                                      f"{k.get('date')}, запись {str(k.get('record'))[:12]}) стёрта "
+                                      f"или изменена — запись о воротах не переписывается")
                 if [k for k in now if k not in was]:
                     new_gates.append(c)
                     # запись появилась в этом PR: то же, в чём отказывает mark.py gate, — на случай
@@ -542,13 +592,18 @@ def run(args, branch, soft):
         print("предупреждение: " + w)
     if len(warns) > 20:
         print(f"предупреждение: … и ещё {len(warns) - 20}")
-    if soft and errors:
+    if soft:
         # чужой PR: показать и не задерживать (pr-scope — это состояние main, а не его правка;
-        # static-checks — состояние в этом же прогоне судит pr-scope)
+        # static-checks — состояние в этом же прогоне судит pr-scope). Строго судится только
+        # то, что этот PR сам мог сломать (soft["keep"]): строки workflow, список красных
+        errors += [e for cat, found in kept.items() if cat not in soft["keep"] for e in found]
         for e in errors:
-            print(f"{soft[0]}: " + e)
-        not_mine(soft, f"ошибок состояния {len(errors)}")
-        errors = []
+            print(f"{soft['tag']}: " + e)
+        if errors:
+            not_mine(soft, f"ошибок состояния {len(errors)}")
+        errors = [e for cat in soft["keep"] for e in kept[cat]]
+    else:
+        errors = kept["workflow"] + errors + kept["baseline"]
     errors += report_errors
     for e in errors:
         print("ОШИБКА: " + e)
@@ -564,11 +619,12 @@ def run(args, branch, soft):
 
 
 def not_mine(soft, what):
-    """soft — (пометка строки, причина, судит ли состояние другой шаг этого прогона)."""
-    if soft[2]:
-        line = f"в состоянии scripts/erp есть ошибки ({what}); этот шаг их не судит: {soft[1]}."
+    """soft — {"tag": пометка строки, "why": причина, "other_step": состояние судит другой шаг
+    этого прогона, "keep": что всё же судится строго}."""
+    if soft["other_step"]:
+        line = f"в состоянии scripts/erp есть ошибки ({what}); этот шаг их не судит: {soft['why']}."
     else:
-        line = (f"scripts/erp в main неисправен ({what}), но этот PR не задержан: {soft[1]}. "
+        line = (f"scripts/erp в main неисправен ({what}), но этот PR не задержан: {soft['why']}. "
                 f"Чинит ветка erp/<номер>-<slug>.")
     if os.environ.get("GITHUB_ACTIONS"):
         print("::warning title=ERP progress::" + line)
@@ -587,17 +643,26 @@ def main():
     branch = args.branch or os.environ.get("GITHUB_HEAD_REF") or os.environ.get("ERP_BRANCH") or ""
     # Чей это PR — решается до чтения состояния: ответ нужен и тогда, когда оно не читается.
     soft = None
+    repo = args.repo or os.environ.get("ERP_REPO") or os.getcwd()
     if is_foreign(branch):
-        repo = args.repo or os.environ.get("ERP_REPO") or os.getcwd()
         files = None if args.no_git else pr_files(repo, args.base_ref)
         if files is not None and not touches_erp(files):
-            soft = ("в main (не этот PR)",
-                    f"ветка {branch} не меняла scripts/erp/, тесты правил, pr-checks.yml и "
-                    f"test-baseline.json", False)
+            keep = also_touched(files)
+            names = {"workflow": "строки шага в pr-checks.yml", "baseline": "список известных "
+                     "красных у сделанных правил"}
+            soft = {"tag": "в main (не этот PR)", "other_step": False, "keep": keep,
+                    "why": f"ветка {branch} не меняла scripts/erp/ и тесты правил"
+                           + ("; строго проверено только то, что она могла сломать: "
+                              + ", ".join(names[k] for k in keep) if keep else "")}
         elif args.tests_report and not (args.base_ref or args.base_dir):
-            soft = ("состояние (судит pr-scope)",
-                    f"у чужой ветки {branch} шаг static-checks судит только отчёт тестов, "
-                    f"состояние в этом же прогоне судит pr-scope", True)
+            soft = {"tag": "состояние (судит pr-scope)", "other_step": True, "keep": (),
+                    "why": f"у чужой ветки {branch} шаг static-checks судит только отчёт тестов, "
+                           f"состояние в этом же прогоне судит pr-scope"}
+        elif files is None and args.base_ref and not args.no_git:
+            soft = {"tag": "база неизвестна (чужой PR)", "other_step": False, "keep": (),
+                    "why": f"список файлов ветки {branch} определить нельзя: HEAD — не коммит "
+                           f"слияния с origin/main, а база {args.base_ref[:12]} не лежит в его "
+                           f"истории (PR открыт поверх другой ветки?)"}
     try:
         return run(args, branch, soft)
     except ReportFail:
@@ -605,15 +670,23 @@ def main():
     except L.Fail as e:
         if not soft:
             raise
-        print(f"{soft[0]}: ОТКАЗ: {e}")
+        print(f"{soft['tag']}: ОТКАЗ: {e}")
         not_mine(soft, "состояние не читается")
-        return 0
     except Exception:  # noqa: BLE001 — сбой самой проверки: чужой PR за него не отвечает
         if not soft:
             raise
         traceback.print_exc()
         not_mine(soft, "проверка упала")
-        return 0
+    # проверка не дошла до конца не по вине этого PR; но строки workflow он мог убрать сам —
+    # они читаются без состояния
+    if "workflow" in soft["keep"]:
+        wf = workflow_errors(repo, args, bool(os.environ.get("GITHUB_ACTIONS")))
+        for e in wf:
+            print("ОШИБКА: " + e)
+        if wf:
+            print(f"check_progress: ошибок {len(wf)}")
+            return 1
+    return 0
 
 
 if __name__ == "__main__":

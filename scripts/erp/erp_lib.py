@@ -20,12 +20,16 @@
                    ветки двух карточек не сталкивались при мерже. Пишут только
                    next_card.py --take и mark.py.
 Подтверждение человека (ворота, свидетельство, снятый вопрос, снятая занятость) — запись:
-роль, кто, дата и дословные слова. Машина не проверяет, что слова сказал владелец: у него
-и у сессий одна учётная запись. Защита — отдельный PR на ворота, неизменяемость записи,
-попавшей в main (check_progress.py), и экран владельца, где он видит дату и свои слова.
+роль, кто, дата и дословные слова. Репозиторий открытый, поэтому в состоянии (progress/,
+registry.json) от записи остаются только роль, дата и хэш; имя и дословные слова лежат в
+закрытой папке, records/<хэш>.json. Хэш считается и от случайной добавки (salt), которая
+хранится только там: по открытому хэшу ни имя, ни слова не подобрать. Машина не проверяет,
+что слова сказал владелец: у него и у сессий одна учётная запись. Защита — отдельный PR на
+ворота, неизменяемость записи, попавшей в main (check_progress.py сравнивает хэши), и экран
+владельца, где он видит дату и свои слова (status.py читает их из закрытой папки).
 Закрытая часть (--private, иначе ERP_PRIVATE, иначе папка состояния, если в ней есть
 rules_text/ и cards/, иначе PRIVATE_DEFAULT): rules_text/<slug>.md, cards/<номер>-<slug>.md,
-notes/, decisions/, client/. Это ОДНО место на сервере вне всех рабочих копий, под своим git:
+notes/, records/, decisions/, client/. Это ОДНО место на сервере вне всех рабочих копий, под своим git:
 его видит каждая сессия. В открытом репозитории её нет; проверка GitHub работает без неё.
 
 Номер правила в тесте — латинская запись из реестра целым словом: u3-D-28a.
@@ -46,6 +50,7 @@ import hashlib
 import json
 import os
 import re
+import secrets
 import shutil
 import subprocess
 import sys
@@ -69,7 +74,11 @@ PRE = "pre"
 PRIVATE_DEFAULT = Path.home() / "projects" / "erp-private" / "reports" / "exec"
 REPORT_NAME = "erp-tests"            # имя артефакта GitHub и файла <имя>.json
 STATE_MOVED = "STATE_MOVED.json"     # в закрытой папке: состояние уже живёт в репозитории
-WORDS_MAX = 200                      # дословные слова подтверждения: не длиннее (файл открытый)
+WORDS_MAX = 200                      # дословные слова подтверждения: не длиннее (строка экрана владельца)
+RECORDS = "records"                  # в закрытой папке: имя и слова каждой записи человека
+RECORD_HASH = re.compile(r"^[0-9a-f]{64}$")
+RECORD_KEYS = ("kind", "key", "role", "by", "date", "words", "salt")
+RECORD_SECRET = ("by", "words", "salt")         # чего в открытой записи быть не должно
 NOTE_BLOCKED = ("none", "owner", "client", "look_1c", "ci", "data", "other")
 WORKFLOW = ".github/workflows/pr-checks.yml"
 # Строки, которые обязаны стоять в workflow: без них проверка отметок молча исчезает.
@@ -1176,7 +1185,7 @@ def cards_problem(ctx: Ctx):
 
 def confirm_words(words, what: str) -> str:
     """Дословные слова подтверждения. Пустые — отказ; длинные — отказ (не обрезаем молча:
-    запись должна быть дословной, а файл состояния лежит в открытом репозитории)."""
+    запись должна быть дословной и помещаться в строку экрана владельца)."""
     words = " ".join(str(words or "").split())
     if len(words) < 2:
         raise Fail(f"{what}: нужны дословные слова из сообщения владельца (--words \"…\"); для "
@@ -1189,11 +1198,96 @@ def confirm_words(words, what: str) -> str:
     return words
 
 
+def record_hash(rec: dict) -> str:
+    """Хэш записи человека: от всех её полей, включая случайную добавку."""
+    body = {k: rec.get(k) for k in RECORD_KEYS}
+    return sha(json.dumps(body, ensure_ascii=False, sort_keys=True, separators=(",", ":")))
+
+
+def write_record(ctx: "Ctx", kind: str, key: str, role: str, by: str, date: str, words: str) -> dict:
+    """Записать подтверждение человека. Имя и дословные слова — в закрытую папку
+    (records/<хэш>.json); возвращается то, что идёт в открытое состояние: роль, дата, хэш."""
+    need_private(ctx)
+    rec = {"kind": kind, "key": str(key), "role": role, "by": by, "date": date, "words": words,
+           "salt": secrets.token_hex(16)}
+    h = record_hash(rec)
+    folder = ctx.private / RECORDS
+    folder.mkdir(parents=True, exist_ok=True)
+    _write_json(folder / f"{h}.json", rec)
+    return {"role": role, "date": date, "record": h}
+
+
+def read_record(ctx: "Ctx", k):
+    """Закрытая часть записи (имя, слова) или None: закрытой папки нет, файла нет, не читается."""
+    h = str((k or {}).get("record") or "") if isinstance(k, dict) else ""
+    if ctx.private is None or not RECORD_HASH.match(h):
+        return None
+    path = ctx.private / RECORDS / f"{h}.json"
+    if not path.is_file():
+        return None
+    try:
+        rec = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+    return rec if isinstance(rec, dict) else None
+
+
 def confirmation_ok(k) -> bool:
-    """Запись подтверждения полная: роль, кто, дата, слова."""
-    return bool(isinstance(k, dict) and k.get("role") and str(k.get("by") or "").strip()
-                and str(k.get("by")).strip().lower() not in NOT_A_PERSON
-                and k.get("date") and str(k.get("words") or "").strip())
+    """Открытая запись подтверждения полная: роль, дата и хэш закрытой записи — и ничего, что
+    назвало бы человека или его слова."""
+    return bool(isinstance(k, dict) and k.get("role") and k.get("date")
+                and RECORD_HASH.match(str(k.get("record") or ""))
+                and not any(x in k for x in RECORD_SECRET))
+
+
+def record_problem(ctx: "Ctx", k, kind: str, key: str):
+    """Чем плоха запись человека — или None. Открытая часть проверяется всегда; закрытая (имя,
+    слова, совпадение хэша) — когда закрытая папка доступна: в GitHub её нет и не будет."""
+    if not isinstance(k, dict):
+        return "запись не в том виде"
+    leak = [x for x in RECORD_SECRET if x in k]
+    if leak:
+        return (f"в открытой записи есть поле {', '.join(leak)} — имя и дословные слова хранятся "
+                f"только в закрытой папке, здесь остаются роль, дата и хэш")
+    if not k.get("role") or not k.get("date") or not RECORD_HASH.match(str(k.get("record") or "")):
+        return "нет роли, даты или хэша записи (record) — запись ставит только mark.py"
+    if ctx.private is None:
+        return None
+    rec = read_record(ctx, k)
+    if rec is None:
+        return (f"в закрытой папке нет записи {k['record'][:12]}… ({RECORDS}/) — имени и слов "
+                f"человека за этим хэшем нет")
+    if record_hash(rec) != k["record"]:
+        return f"запись {k['record'][:12]}… в закрытой папке изменена: хэш не сходится"
+    if (rec.get("kind"), str(rec.get("key")), rec.get("role"), rec.get("date")) != \
+            (kind, str(key), k.get("role"), k.get("date")):
+        return (f"запись {k['record'][:12]}… в закрытой папке — о другом (другая роль, дата "
+                f"или предмет)")
+    by = str(rec.get("by") or "").strip()
+    if len(by) < 2 or by.lower() in NOT_A_PERSON:
+        return f"запись {k['record'][:12]}…: в закрытой папке нет имени человека"
+    words = str(rec.get("words") or "").strip()
+    if not words:
+        return f"запись {k['record'][:12]}…: в закрытой папке нет дословных слов"
+    if len(words) > WORDS_MAX:
+        return f"запись {k['record'][:12]}…: слова длиннее {WORDS_MAX} знаков"
+    return None
+
+
+def secret_fields(node, path="") -> list:
+    """Где в открытом состоянии встретились имя или слова человека (их там быть не должно)."""
+    out = []
+    if isinstance(node, dict):
+        for name, v in node.items():
+            here = f"{path}.{name}" if path else str(name)
+            if name in ("by", "words"):
+                out.append(here)
+            else:
+                out += secret_fields(v, here)
+    elif isinstance(node, list):
+        for i, v in enumerate(node):
+            out += secret_fields(v, f"{path}[{i}]")
+    return out
 
 
 def passed_gates(ctx: "Ctx") -> list:
@@ -1207,9 +1301,15 @@ def passed_gates(ctx: "Ctx") -> list:
     return out
 
 
-def gate_line(k) -> str:
-    return (f"{ROLE_RU.get(k.get('role'), k.get('role'))} — {k.get('by')}, {k.get('date')}: "
-            f"«{k.get('words') or 'слов нет'}»")
+def gate_line(ctx: "Ctx", k) -> str:
+    """Строка записи для человека: имя и слова — из закрытой папки, если она доступна."""
+    role = ROLE_RU.get(k.get("role"), k.get("role"))
+    rec = read_record(ctx, k)
+    if rec is None or record_hash(rec) != k.get("record"):
+        why = "имя и слова — в закрытой папке" if ctx.private is None else \
+            "ЗАПИСИ В ЗАКРЫТОЙ ПАПКЕ НЕТ ИЛИ ОНА ИЗМЕНЕНА"
+        return f"{role}, {k.get('date')}: {why} (запись {str(k.get('record') or '—')[:12]})"
+    return f"{role} — {rec.get('by')}, {k.get('date')}: «{rec.get('words') or 'слов нет'}»"
 
 
 # --------------------------------------------------------------------------- записка в открытой части
@@ -1298,7 +1398,8 @@ def closure_gaps(ctx: Ctx, card: Card) -> list:
 
 
 def gate_missing(ctx: Ctx, card: Card) -> list:
-    """Роли, от которых ещё нет полной записи: кто, дата, дословные слова."""
+    """Роли, от которых ещё нет полной записи: роль, дата и хэш закрытой записи с именем и
+    дословными словами."""
     conf = ctx.progress["gates"].get(card.key, {}).get("confirmations") or []
     have = {c.get("role") for c in conf if confirmation_ok(c)}
     return [w for w in card.who if w not in have]

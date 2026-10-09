@@ -149,7 +149,7 @@ def print_gate(ctx, res):
         print("Это ворота-решение: слова решения владельца записываются в --words.")
     conf = ctx.progress["gates"].get(c.key, {}).get("confirmations") or []
     for k in conf:
-        print(f"  уже подтвердил: {L.gate_line(k)}")
+        print(f"  уже подтвердил: {L.gate_line(ctx, k)}")
     if res["problems"]:
         print("Ворота не закроются, пока есть вопросы по правилам: " + ", ".join(res["problems"]))
     waits = sorted({s for p in L.before(ctx, c) for s in p.all_rules
@@ -176,6 +176,8 @@ def print_gate(ctx, res):
             "<что сделал клиент и где лежит свидетельство>"
         print(f"  python3 {tools}/mark.py gate {c.key} --role {role} --by \"<имя>\" "
               f"--date ГГГГ-ММ-ДД --words \"{what}\"")
+    print("Имя и слова в открытый репозиторий не идут: команда кладёт их в закрытую папку "
+          "(records/), в файл ворот — роль, дату и хэш записи.")
     print("Машина подтверждения владельца не проверяет. Защита — отдельный PR, неизменяемость "
           "записи после мержа и экран владельца, где он видит дату и свои слова.")
 
