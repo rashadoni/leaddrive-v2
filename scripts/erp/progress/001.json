@@ -39,6 +39,25 @@
     "date": "2026-10-09",
     "what": "step",
     "step": 6
+   },
+   {
+    "date": "2026-10-09",
+    "what": "step",
+    "step": 7
+   },
+   {
+    "date": "2026-10-09",
+    "what": "step",
+    "step": 8
+   },
+   {
+    "date": "2026-10-09",
+    "what": "note"
+   },
+   {
+    "date": "2026-10-09",
+    "what": "close",
+    "branch": "erp/001-registry-to-repo"
    }
   ],
   "steps_done": [
@@ -47,7 +66,34 @@
    3,
    4,
    5,
-   6
-  ]
+   6,
+   7,
+   8
+  ],
+  "note": {
+   "date": "2026-10-09",
+   "branch": "erp/001-registry-to-repo",
+   "steps_at_note": 8,
+   "steps_done": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+   ],
+   "next_step": null,
+   "rules_done": [],
+   "rules_open": [],
+   "rules_waiting": [],
+   "blocked": "owner",
+   "blocked_rules": []
+  },
+  "closed": {
+   "date": "2026-10-09",
+   "branch": "erp/001-registry-to-repo"
+  }
  }
 }
