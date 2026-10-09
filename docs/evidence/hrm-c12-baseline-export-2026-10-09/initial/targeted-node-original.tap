@@ -1,0 +1,60 @@
+TAP version 13
+# Subtest: actual isolated baseline CLI refuses unsupported relation populations
+ok 1 - actual isolated baseline CLI refuses unsupported relation populations # SKIP
+  ---
+  duration_ms: 1.272756
+  ...
+# Subtest: column fragment explicitly cannot establish a historical executable baseline
+ok 2 - column fragment explicitly cannot establish a historical executable baseline
+  ---
+  duration_ms: 1.978072
+  ...
+# Subtest: absent api_keys is evidence of absence, never reconstructed from Prisma
+ok 3 - absent api_keys is evidence of absence, never reconstructed from Prisma
+  ---
+  duration_ms: 0.450134
+  ...
+# Subtest: unknown identifiers, defaults and extra raw fields cannot reach output
+ok 4 - unknown identifiers, defaults and extra raw fields cannot reach output
+  ---
+  duration_ms: 1.366427
+  ...
+# Subtest: generated or differently collated columns cannot masquerade as equivalent DDL
+ok 5 - generated or differently collated columns cannot masquerade as equivalent DDL
+  ---
+  duration_ms: 0.428151
+  ...
+# Subtest: preserves incomplete, rolled-back and duplicate ledger records without logs
+ok 6 - preserves incomplete, rolled-back and duplicate ledger records without logs
+  ---
+  duration_ms: 0.350175
+  ...
+# Subtest: refuses filtered ledger, collection truncation and malformed checksum
+ok 7 - refuses filtered ledger, collection truncation and malformed checksum
+  ---
+  duration_ms: 0.553268
+  ...
+# Subtest: provenance accepts only bounded opaque receipts and a revision, never credential paths
+ok 8 - provenance accepts only bounded opaque receipts and a revision, never credential paths
+  ---
+  duration_ms: 0.545006
+  ...
+# Subtest: refuses views, foreign/partitioned relations and impossible calendar timestamps
+ok 9 - refuses views, foreign/partitioned relations and impossible calendar timestamps
+  ---
+  duration_ms: 2.623448
+  ...
+# Subtest: policy target roles remain distinct even when counts and expressions are unchanged
+ok 10 - policy target roles remain distinct even when counts and expressions are unchanged
+  ---
+  duration_ms: 1.402289
+  ...
+1..10
+# tests 10
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 1
+# todo 0
+# duration_ms 119.659205

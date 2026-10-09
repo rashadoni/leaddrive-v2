@@ -1,0 +1,71 @@
+{
+  "status": "PASS_ORIGINAL_SOURCE_AND_BASELINE_IDENTITIES",
+  "main": "f97e7e6d292448553d97a76131fc912b70fd4fb8",
+  "acceptedSourceDependency": "10049d31ff02482085b180d2d65ab942ea1beb64",
+  "evidenceDependency": "cbe169d7d1cdaac4b8d422672e2e347a5757fdb0",
+  "unchanged": [
+    {
+      "path": "scripts/workforce-baseline-schema-export.sql",
+      "bytes": 6528,
+      "sha256": "0dbc6afdce78fd63df8e39d2a6b8d231f2e60eaac158937ffe1a2bcbc4e71cef"
+    },
+    {
+      "path": "scripts/workforce-baseline-schema-export.mjs",
+      "bytes": 10957,
+      "sha256": "f975b54de6fda8bcef088334dadeefa5d39bbcc81fba408297999739787adfbb"
+    },
+    {
+      "path": "scripts/workforce-baseline-schema-export.test.mjs",
+      "bytes": 4689,
+      "sha256": "f07cd5ca7ada24c9070b58206f7e4a1dbdfc05cc9ed528e0554c55f5e54580fc"
+    },
+    {
+      "path": "test-baseline.json",
+      "bytes": 1139,
+      "sha256": "8f0fc568274f9fd8c0c741db618d6e4d81025de7112a315cd93e6b92bbd5a4b1"
+    },
+    {
+      "path": "typecheck-baseline.json",
+      "bytes": 3907,
+      "sha256": "919fa9d0212b18ee685af4f08680ebbc34e8c4969294054447df03147bf0fc53"
+    },
+    {
+      "path": ".github/workflows/pr-checks.yml",
+      "bytes": 21090,
+      "sha256": "7de832432ad7e36758ca793205bfe84aa0ead2be0bea82f58a8be3be24e0f834"
+    },
+    {
+      "path": "scripts/ci/check-github-runner-policy.mjs",
+      "bytes": 1908,
+      "sha256": "d0133dc3d1f3e1642f05209be4436751a69a5bf2dd56c8854bbf256179bed3b0"
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.mjs",
+      "bytes": 24904,
+      "sha256": "46b417da7bbe763960b8ede8fa0e9dbd98543d090d54f73979289504bfe35771"
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.sql",
+      "bytes": 14770,
+      "sha256": "b174e32eb68a0dbcca98e8557fe8c716ed8277111e79ba822bce43f4e7023b6a"
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.test.mjs",
+      "bytes": 44730,
+      "sha256": "39c947982f5e7dc2ca1e96307ac5314518bfe748ec58a3cf217f8f09194c0eef"
+    }
+  ],
+  "tasks": 161,
+  "done": 85,
+  "open": 76,
+  "weightedPercent": 61,
+  "C12": "PARTIAL",
+  "localUnitPass": 9,
+  "localPg": "SKIPPED_NOT_RUN_ON_CONTABO",
+  "originalInspectionError": {
+    "code": "MISSING_HISTORICAL_REFERENCE",
+    "path": "docs/workforce-c12-capacity-restore-plan-2026-08-30.md",
+    "gitShowExit": 128,
+    "notProductOrAcceptanceFailure": true
+  }
+}
