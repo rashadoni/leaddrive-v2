@@ -1,0 +1,23 @@
+{
+  "status": "PASS_CURRENT_ACCOUNTING_AND_PREFIX",
+  "sourceSha": "8e1c7e10013eb6d4e5ed273775b3f6d896841065",
+  "uniqueTasks": 161,
+  "done": 85,
+  "open": 76,
+  "weightedPercent": 61,
+  "gatesDone": 14,
+  "gatesTotal": 15,
+  "C6-010": "DONE",
+  "C7-007": "DONE",
+  "C8-002": "DONE",
+  "C12-008": "PARTIAL",
+  "statusCounts": {
+    "DONE": 85,
+    "PARTIAL (OWNER ATTESTATION)": 1,
+    "PARTIAL": 53,
+    "OWNER DECISION": 6,
+    "PLANNED": 13,
+    "BLOCKED": 3
+  },
+  "roadmapCurrentBasePrefixPreserved": true
+}

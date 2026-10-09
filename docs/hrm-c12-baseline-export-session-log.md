@@ -216,3 +216,61 @@ main is necessary before unchanged mandatory CI so its checked merge tree
 equals the final source.647 remains DRAFT while integrating; no old source
 result borrowed, no force/history rewrite, no gate or baseline weakening.
 Next: freeze integrated head, fresh exact runtime/source review and full gates.
+
+
+## 2026-10-09 — integrated exact source frozen; full mandatory CI started
+
+Final source647 is8e1c7e10013eb6d4e5ed273775b3f6d896841065, parents2cb/e6.
+All five exporter source bindings remain byte-identical to reviewed2cb; latest
+CI/AGENTS/draft resolver/baselines/config equal accepted main e6. The bounded
+pinned scanner's exact e6..8e1 range PASS/0findings. Publication remained draft
+during integration. The evidence branch fast-forwarded normally to8e1; no
+source edits will follow frozen verification.
+
+647 was marked ready only after source completion to run the existing mandatory
+static-checks/typecheck at this exact head. No production-build label applies
+to this catalog/Node-only slice. No merge is requested or executed; restore
+draft once all five real SUCCESS results and independent acceptance are retained.
+Original final-head draft run37897379637 skipped heavy jobs and is NOT full
+gate acceptance. Exact8e exporter37897379633 PASS; schema37897379635, source
+review and whole new ready_for_review gates remain pending here.
+Next: final exact artifacts/merge-tree and real static/compiler gates, independent
+review, docs-only dependent evidence draft and final continuity report.
+
+Final8e1 original artifacts retained and root-verified: exporter37897379633/
+113711717300/artifact11600494428, digest609ff7698f96cd0636a4b2c4947c41c390fdd78ee1043caa550c0b11f24c0a7a,
+11actualPG+9oldNode+1parent=21PASS/0FAIL/0SKIP; schema37897379635/
+113711716987/artifact11601360596, digest129d9fac916a0c7be22963e47e2abe0a5c90312d24ebecde1e328a59c63d3581,
+37actualPG+4Node+1parent=42PASS. BothZIP CRC/member/JSON-gzip byte equality,
+all10source bindings, unchanged fingerprints and all3owned cleanupcommands
+verified. No broad residue/production/historical/density credit.
+
+Independent8e1 source review zeroopenP0–P3. Actual tested merge75ba8c4f86c9a9d2a489fd9d5dac41a07fc0d1fb
+parents[e6,8e1], whole tree3eb1c00b2acae92f152f89221084e24895243b47 equals finalsource.
+Rootsrc/prisma/messages/clients whole trees equalcurrentbasee6;11protected
+files/baselines/gates/config/helper9unit unchanged. Accepted973/c123/f308/
+10049/632/4ef/e6 ancestors verified. Accounting latestcanonical161/85/76,
+statuscounts includeBLOCKED3 andPARTIAL OWNERATTESTATION1; no closure.
+Current ready full static/typecheck stillrunning; mandatoryGREEN not claimed.
+
+All original524 corrected-run results are now copied into durable evidence:
+originalZIP+JSON-gzip byte equality/CRC and finite metadata for both workflows,
+plus scanner refusal metadata. The old source worktree remains untouched,
+including its own untracked copies; no evidence is removed or rewritten.
+
+
+## 2026-10-09 — independent exact source and hosted acceptance checkpoint
+
+Independent8e1 source and actual hosted packet review have no openP0–P3.
+Original reports retained compressed with hashes: source SHA256
+2699e761bb93e22d43e665af37c92e2668192fd218a54e594b778722d3ecee5f, hosted SHA256
+b4f963aece187de8fcccc79655730890307a292778363b24c7502f4e1e7b425c.
+Peer independently fetched current6 run/job/artifact endpoints, complete both
+logs, original11/37cases, all10 source bindings, expectedservice, ordinaryprivate
+output/nooverwrite/canary, freshadmission, ownedcleanup and equalwholemerge tree.
+No synthetic proof is credited to actualbaseline/production/restore/density.
+
+Evidence publication is a docs-only checkpoint while ready-source full static
+and typecheck gates remain PENDING. Source647 stays frozen8e1. No merge/deploy
+or furthercodepush. Next: complete actual fivechecks and independent final
+gate acceptance, append results and restore sourceDRAFT;C12PARTIAL/85unchanged.
