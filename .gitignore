@@ -123,3 +123,8 @@ apps/workforce-android/local.properties
 apps/workforce-android/*.jks
 apps/workforce-android/*.keystore
 apps/workforce-android/keystore.properties
+
+# ERP «Склад и Бухгалтерия»: закрытая документация и заметки лежат вне
+# репозитория. Эти две папки не должны попасть в коммит ни при каком `git add`.
+/reports/
+/research_notes/
