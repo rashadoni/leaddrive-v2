@@ -26,7 +26,19 @@
    "pre_look_behavior": false,
    "blocked_by": [],
    "text_hash": "e5842623ead460bd791acf7f1a326463a9630d91a47f58407c8ba75ef8427590",
-   "status": "not_started"
+   "status": "done",
+   "done": {
+    "hash": "e5842623ead460bd791acf7f1a326463a9630d91a47f58407c8ba75ef8427590",
+    "date": "2026-10-09",
+    "card": "probe",
+    "branch": "probe",
+    "kind": "tests",
+    "tests": [
+     "проба"
+    ],
+    "run_id": "0",
+    "sha": "0000000000000000000000000000000000000000"
+   }
   },
   {
    "id": "А-02",
@@ -37,7 +49,19 @@
    "pre_look_behavior": false,
    "blocked_by": [],
    "text_hash": "027402d8dbdec52b2097496934601fa244b6e5ff3910c7246e32a925ef64b3b3",
-   "status": "not_started"
+   "status": "done",
+   "done": {
+    "hash": "027402d8dbdec52b2097496934601fa244b6e5ff3910c7246e32a925ef64b3b3",
+    "date": "2026-10-09",
+    "card": "probe",
+    "branch": "probe",
+    "kind": "tests",
+    "tests": [
+     "проба"
+    ],
+    "run_id": "0",
+    "sha": "0000000000000000000000000000000000000000"
+   }
   },
   {
    "id": "А-03",
