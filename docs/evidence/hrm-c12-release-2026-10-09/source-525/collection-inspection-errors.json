@@ -1,0 +1,11 @@
+{
+  "sourceSha": "52521a0a960156ea8ab1ddb09783399961e9ea61",
+  "initialResult": {
+    "exit": 1,
+    "exception": "StopIteration",
+    "location": "hrm-c12-release-capture-525.py:14",
+    "cause": "Reader assumed source-validation name for schema/export jobs; actual names isolated-schema-contract/baseline-export-admission"
+  },
+  "sourceCiFailure": false,
+  "resolution": "Exact job names used in additive corrected reader; no hosted rerun, source change, baseline change or result removal"
+}

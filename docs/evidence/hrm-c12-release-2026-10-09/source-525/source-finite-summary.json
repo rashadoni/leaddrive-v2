@@ -1,0 +1,237 @@
+{
+  "sourceSha": "52521a0a960156ea8ab1ddb09783399961e9ea61",
+  "distinctTargetedTapEntries": 132,
+  "allActualSuccess": true,
+  "productionObserved": false,
+  "historicalReplay": false,
+  "runs": [
+    {
+      "label": "metadata",
+      "runId": 37984960505,
+      "jobId": 114004532133,
+      "artifactId": 11642064696,
+      "sourceSha": "52521a0a960156ea8ab1ddb09783399961e9ea61",
+      "actualCheckoutSha": "52521a0a960156ea8ab1ddb09783399961e9ea61",
+      "status": "PASS_ISOLATED_ASSIGNMENT_TRIGGER_METADATA_ONLY",
+      "counts": {
+        "tests": [
+          25
+        ],
+        "pass": [
+          25
+        ],
+        "fail": [
+          0
+        ],
+        "skipped": [
+          0
+        ]
+      },
+      "sourceBindingCount": 8,
+      "zipBytes": 1383,
+      "zipSha256": "0bc5708f7ecf2fc1a4826e15db66c6edf23285ac03e55067592e80120e29368d",
+      "receiptSha256": "b04141dac7b58575ebb759efe44e57134deb2c1d6a1c551d49cca0ae2d0ac134",
+      "logBytes": 46054,
+      "logSha256": "b02da173408455990170e8e458b5d5e65bc2b462d447974d4c04994695fb2f43",
+      "productionJobs": [
+        {
+          "name": "production-metadata",
+          "id": 114004790455,
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "label": "default",
+      "runId": 37984960497,
+      "jobId": 114004532545,
+      "artifactId": 11642528012,
+      "sourceSha": "52521a0a960156ea8ab1ddb09783399961e9ea61",
+      "actualCheckoutSha": "52521a0a960156ea8ab1ddb09783399961e9ea61",
+      "status": "PASS_ISOLATED_ASSIGNMENT_TRIGGER_METADATA_ONLY",
+      "counts": {
+        "tests": [
+          25,
+          14
+        ],
+        "pass": [
+          25,
+          14
+        ],
+        "fail": [
+          0,
+          0
+        ],
+        "skipped": [
+          0,
+          0
+        ]
+      },
+      "sourceBindingCount": 8,
+      "zipBytes": 1383,
+      "zipSha256": "26a843f03fbb5c7f160214d8f06b71c0b0a8b252290c52a30974bd7d21468492",
+      "receiptSha256": "b04141dac7b58575ebb759efe44e57134deb2c1d6a1c551d49cca0ae2d0ac134",
+      "logBytes": 53511,
+      "logSha256": "2978aef8eff8685a150c7df51acb7c27f97f75f8f456b46d11c90cdc33646ff6",
+      "productionJobs": [
+        {
+          "name": "production-acl-inspection",
+          "id": 114004894235,
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "label": "loopback",
+      "runId": 37984960467,
+      "jobId": 114004532302,
+      "artifactId": 11642657826,
+      "sourceSha": "52521a0a960156ea8ab1ddb09783399961e9ea61",
+      "actualCheckoutSha": "52521a0a960156ea8ab1ddb09783399961e9ea61",
+      "status": "PASS_ISOLATED_ASSIGNMENT_TRIGGER_METADATA_ONLY",
+      "counts": {
+        "tests": [
+          25,
+          14,
+          16
+        ],
+        "pass": [
+          25,
+          14,
+          16
+        ],
+        "fail": [
+          0,
+          0,
+          0
+        ],
+        "skipped": [
+          0,
+          0,
+          0
+        ]
+      },
+      "sourceBindingCount": 8,
+      "zipBytes": 1383,
+      "zipSha256": "0f149acb97613892fa5db4bbfdce63107e9fc63b9660e7ff38de0e9738d2f27f",
+      "receiptSha256": "b04141dac7b58575ebb759efe44e57134deb2c1d6a1c551d49cca0ae2d0ac134",
+      "logBytes": 63939,
+      "logSha256": "f3759cd7cc4f760f000d9fe5e2608fcc087cdf066408a060ef13c8ad826e59d7",
+      "productionJobs": [
+        {
+          "name": "production-loopback-acl-inspection",
+          "id": 114004793410,
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "label": "backup",
+      "runId": 37984960502,
+      "jobId": 114004532364,
+      "artifactId": 11641524554,
+      "sourceSha": "52521a0a960156ea8ab1ddb09783399961e9ea61",
+      "actualCheckoutSha": "52521a0a960156ea8ab1ddb09783399961e9ea61",
+      "status": "PASS_ISOLATED_ASSIGNMENT_TRIGGER_METADATA_ONLY",
+      "counts": {
+        "tests": [
+          25,
+          14,
+          16,
+          14
+        ],
+        "pass": [
+          25,
+          14,
+          16,
+          14
+        ],
+        "fail": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "skipped": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sourceBindingCount": 8,
+      "zipBytes": 1383,
+      "zipSha256": "6a6e183d431312c87a3db11709380e0462acace6e97b4a9baaa61bc8cead102f",
+      "receiptSha256": "b04141dac7b58575ebb759efe44e57134deb2c1d6a1c551d49cca0ae2d0ac134",
+      "logBytes": 72003,
+      "logSha256": "76c2e9e26aac32f3c68eb3ced482f07fc859fe1c7f6f48f8ad7deb89247d07cf",
+      "productionJobs": [
+        {
+          "name": "production-backup-acl-attribution",
+          "id": 114004908492,
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "label": "schema",
+      "runId": 37984960359,
+      "jobId": 114004532040,
+      "artifactId": 11642592973,
+      "sourceSha": "52521a0a960156ea8ab1ddb09783399961e9ea61",
+      "actualCheckoutSha": "52521a0a960156ea8ab1ddb09783399961e9ea61",
+      "status": "PASS_ISOLATED_SCHEMA_CONTRACT_ONLY",
+      "counts": {
+        "tests": [
+          42
+        ],
+        "pass": [
+          42
+        ],
+        "fail": [
+          0
+        ],
+        "skipped": [
+          0
+        ]
+      },
+      "sourceBindingCount": 5,
+      "zipBytes": 1608,
+      "zipSha256": "152225ac72c8b99c5759885dce8bf285880dda0c26f2549d8f49caf42df43a56",
+      "receiptSha256": "1b37f100d09d294a48ba7a3c28286f61df64464e3e04af44429bdb916253a242",
+      "logBytes": 47826,
+      "logSha256": "e262858492988a3e72f60e00aa032f9561ee479c6bdeefbe4f0915b60c2dd655",
+      "productionJobs": []
+    },
+    {
+      "label": "export",
+      "runId": 37984960466,
+      "jobId": 114004532242,
+      "artifactId": 11642408132,
+      "sourceSha": "52521a0a960156ea8ab1ddb09783399961e9ea61",
+      "actualCheckoutSha": "52521a0a960156ea8ab1ddb09783399961e9ea61",
+      "status": "PASS_ISOLATED_BASELINE_EXPORT_ADMISSION_ONLY",
+      "counts": {
+        "tests": [
+          21
+        ],
+        "pass": [
+          21
+        ],
+        "fail": [
+          0
+        ],
+        "skipped": [
+          0
+        ]
+      },
+      "sourceBindingCount": 5,
+      "zipBytes": 1329,
+      "zipSha256": "8f15935098b94ad4bb9c7c3f50b7cbcb8a69ef0d8acb13a57d8a7cf39cde53e9",
+      "receiptSha256": "748a6fdf524484ac9397e655eff00ab657b02b7c724b44e31b28d3f894396ae0",
+      "logBytes": 54316,
+      "logSha256": "837031e3b36007ac3952db7cb342de6b8b9bb341a402e547e75d8d2f4a14ae93",
+      "productionJobs": []
+    }
+  ]
+}
