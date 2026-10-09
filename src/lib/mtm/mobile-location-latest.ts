@@ -45,13 +45,14 @@ function latestLocationData(input: MtmLatestLocationInput) {
  * to move an agent backwards. The conditional update is race-safe for an
  * existing row; the unique-create race retries that same condition once.
  *
- * The same write keeps the anchor of the current stop — where it began and
- * when («стоит N минут», src/lib/mtm/stationary-anchor.ts). A moving point
- * clears it and a point too vague to trust leaves it alone, both without
- * reading anything. Only a still, trustworthy point has to look at the row
- * first, to tell «the same stop» from «a new one»; when it is the same stop
- * the three columns are not written at all, so a moving point that lands at
- * the same moment is never overwritten with the old anchor.
+ * The same write keeps the current stop — where it began, when, and when it
+ * was last confirmed («стоит N минут», src/lib/mtm/stationary-anchor.ts). A
+ * moving point clears it and a still point too vague to trust leaves it
+ * alone, both without reading anything. Only a still, trustworthy point has
+ * to look at the row first, to tell «the same stop» from «a new one»; when
+ * it is the same stop it writes the confirmation alone — where and when the
+ * stop began are not written back, so a moving point that lands at the same
+ * moment is never overwritten with the old anchor.
  */
 export async function advanceMtmAgentLatestLocation(
   tx: Pick<Prisma.TransactionClient, "mtmAgentLatestLocation">,
@@ -65,11 +66,10 @@ export async function advanceMtmAgentLatestLocation(
   if (kind === "STILL") {
     const previous = (await tx.mtmAgentLatestLocation.findUnique({
       where: { organizationId_agentId: where },
-      select: { recordedAt: true, stationarySince: true, stationaryLatitude: true, stationaryLongitude: true },
+      select: { recordedAt: true, stationarySince: true, stationaryLatitude: true, stationaryLongitude: true, stationaryConfirmedAt: true },
     })) ?? null
     rowExists = previous != null
-    const next = nextMtmStationaryAnchor(previous, input)
-    if (next !== "KEEP") anchor = next
+    anchor = nextMtmStationaryAnchor(previous, input) ?? {}
   }
   const data = { ...latestLocationData(input), ...anchor }
   const updated = await tx.mtmAgentLatestLocation.updateMany({

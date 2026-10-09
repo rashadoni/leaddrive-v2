@@ -15,17 +15,19 @@ const statements = migration.split("\n").filter((line) => !line.trimStart().star
 // the health check stayed green. This test and the Postgres case that replays
 // this very file are the guard.
 describe("MTM latest-location stationary anchor migration", () => {
-  it("adds exactly the three columns the schema names, nullable and without a default", () => {
+  it("adds exactly the four columns the schema names, nullable and without a default", () => {
     expect(statements).toContain('ALTER TABLE "mtm_agent_latest_locations"')
     expect(statements).toContain('ADD COLUMN IF NOT EXISTS "stationarySince" TIMESTAMP(3),')
     expect(statements).toContain('ADD COLUMN IF NOT EXISTS "stationaryLatitude" DOUBLE PRECISION,')
-    expect(statements).toContain('ADD COLUMN IF NOT EXISTS "stationaryLongitude" DOUBLE PRECISION;')
-    expect(statements.match(/ADD COLUMN/g)).toHaveLength(3)
+    expect(statements).toContain('ADD COLUMN IF NOT EXISTS "stationaryLongitude" DOUBLE PRECISION,')
+    expect(statements).toContain('ADD COLUMN IF NOT EXISTS "stationaryConfirmedAt" TIMESTAMP(3);')
+    expect(statements.match(/ADD COLUMN/g)).toHaveLength(4)
     expect(statements).not.toMatch(/NOT NULL|DEFAULT/i)
     const model = schema.slice(schema.indexOf("model MtmAgentLatestLocation {"), schema.indexOf('@@map("mtm_agent_latest_locations")'))
     expect(model).toMatch(/\n\s+stationarySince\s+DateTime\?\n/)
     expect(model).toMatch(/\n\s+stationaryLatitude\s+Float\?\n/)
     expect(model).toMatch(/\n\s+stationaryLongitude\s+Float\?\n/)
+    expect(model).toMatch(/\n\s+stationaryConfirmedAt\s+DateTime\?\n/)
   })
 
   it("is additive: nothing dropped, no backfill, the row-level-security policy left alone", () => {

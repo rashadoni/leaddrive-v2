@@ -9315,6 +9315,9 @@ model MtmAgentLatestLocation {
   /// Where it began: the stop is measured from here, not from the previous point.
   stationaryLatitude  Float?
   stationaryLongitude Float?
+  /// The trustworthy still point that started the stop or last confirmed it.
+  /// Silence is measured from here: only code that knows the anchor writes it.
+  stationaryConfirmedAt DateTime?
 
   @@unique([organizationId, agentId])
   @@index([organizationId, recordedAt])

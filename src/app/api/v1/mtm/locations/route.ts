@@ -306,7 +306,10 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
     const stationaryAnchors = returnedAgentIds.length
       ? await prisma.mtmAgentLatestLocation.findMany({
           where: { organizationId: orgId, agentId: { in: returnedAgentIds }, stationarySince: { not: null } },
-          select: { agentId: true, recordedAt: true, stationarySince: true, stationaryLatitude: true, stationaryLongitude: true },
+          select: {
+            agentId: true, recordedAt: true,
+            stationarySince: true, stationaryLatitude: true, stationaryLongitude: true, stationaryConfirmedAt: true,
+          },
         })
       : []
     const stationaryAnchorByAgent = new Map(
@@ -316,6 +319,7 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
         stationarySince: Date | null
         stationaryLatitude: number | null
         stationaryLongitude: number | null
+        stationaryConfirmedAt: Date | null
       }>).map((row) => [row.agentId, row]),
     )
 
@@ -418,7 +422,7 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
         // shows, and only when the anchor is about that very point: whenever
         // the two disagree the duration is left out, never guessed.
         stationarySince: fieldStatus === "STOPPED" && loc && isLiveMapAgentPositionVisible(freshness, workdayState)
-          ? shownMtmStationarySince(loc, stationaryAnchorByAgent.get(a.id))
+          ? shownMtmStationarySince(loc, stationaryAnchorByAgent.get(a.id), now)
           : null,
         ...(loc ? {
           latitude: loc.latitude,

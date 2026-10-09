@@ -1,7 +1,8 @@
 -- «Стоит N минут» on the live map. The latest-location projection — one row
--- per employee — also remembers where his current stop began and when: three
--- nullable columns, written by advanceMtmAgentLatestLocation with every GPS
--- point (src/lib/mtm/stationary-anchor.ts holds the rules).
+-- per employee — also remembers his current stop: where it began, when, and
+-- when a trustworthy still point last confirmed it. Four nullable columns,
+-- written by advanceMtmAgentLatestLocation with every GPS point
+-- (src/lib/mtm/stationary-anchor.ts holds the rules).
 --
 -- Additive and without a backfill: rows written before this migration stay
 -- «not known» until the employee's next still point, and the count starts
@@ -14,4 +15,5 @@ SET lock_timeout = '3s';
 ALTER TABLE "mtm_agent_latest_locations"
   ADD COLUMN IF NOT EXISTS "stationarySince" TIMESTAMP(3),
   ADD COLUMN IF NOT EXISTS "stationaryLatitude" DOUBLE PRECISION,
-  ADD COLUMN IF NOT EXISTS "stationaryLongitude" DOUBLE PRECISION;
+  ADD COLUMN IF NOT EXISTS "stationaryLongitude" DOUBLE PRECISION,
+  ADD COLUMN IF NOT EXISTS "stationaryConfirmedAt" TIMESTAMP(3);

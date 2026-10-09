@@ -16504,7 +16504,7 @@
       "expandGroup": "Развернуть группу «{name}»",
       "noTeam": "Без отдела",
       "noManager": "Без руководителя",
-      "standingSince": "стоит с {time}",
+      "standingSince": "с {time}",
       "export": {
         "button": "Excel",
         "hint": "Скачать список в Excel: строки и порядок как на экране",

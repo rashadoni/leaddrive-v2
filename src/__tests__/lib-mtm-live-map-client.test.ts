@@ -134,6 +134,29 @@ describe("SWM-12 local GPS freshness aging", () => {
     })
   })
 
+  it("stops counting «стоит N минут» once the coordinate behind it is older than the silence nobody counts as standing", () => {
+    // An organization that calls a position fresh for half an hour: between
+    // two answers of the server (or while the network is down) the page goes
+    // on calling him «стоит» — but not on counting how long.
+    const generous = { onlineSeconds: 1800, delayedSeconds: 1800 }
+    const standing: MtmDashboardAgent = {
+      ...agent("employee-1", 40.4, 49.8),
+      fieldStatus: "STOPPED",
+      routeCompletion: 0,
+      freshness: "ONLINE",
+      locationState: "AVAILABLE",
+      lastSeenAt: new Date(recordedAtMs).toISOString(),
+      stationarySince: new Date(recordedAtMs - 3_600_000).toISOString(),
+    }
+    const within = presentMtmDashboardAgent(standing, generous, recordedAtMs + 600_000)
+    expect(within).toMatchObject({ fieldStatus: "STOPPED", stationarySince: standing.stationarySince })
+    const after = presentMtmDashboardAgent(standing, generous, recordedAtMs + 600_001)
+    expect(after).toMatchObject({ fieldStatus: "STOPPED", stationarySince: null })
+    // Somebody the server said nothing about is passed through as he came — no new key.
+    const moving = { ...standing, fieldStatus: "ON_ROAD" as const, stationarySince: undefined }
+    expect(presentMtmDashboardAgent(moving, generous, recordedAtMs + 900_000)).not.toHaveProperty("stationarySince", null)
+  })
+
   it("keeps stale and missing coordinates off the live map", () => {
     expect(isLiveMapPositionVisible("ONLINE")).toBe(true)
     expect(isLiveMapPositionVisible("DELAYED")).toBe(true)

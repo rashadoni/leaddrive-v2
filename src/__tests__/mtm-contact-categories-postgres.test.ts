@@ -656,13 +656,13 @@ pgDescribe("client categories on a real Postgres", () => {
     })
   })
 
-  // «Стоит N минут»: the anchor of the current stop, kept with the latest
-  // position by every GPS write. No CI step compares schema.prisma with the
-  // SQL of a migration, and this scratch database is built by `db push` — so a
-  // column misspelled in the migration would fail every GPS write of a
-  // standing employee on production with nothing red beforehand. Here the
-  // three columns are taken away and put back by the real migration file, and
-  // the real writer is driven through a day against them.
+  // «Стоит N минут»: the current stop, kept with the latest position by every
+  // GPS write. No CI step compares schema.prisma with the SQL of a migration,
+  // and this scratch database is built by `db push` — so a column misspelled
+  // in the migration would fail every GPS write on production with nothing
+  // red beforehand. Here the four columns are taken away and put back by the
+  // real migration file, and the real writer is driven through a day against
+  // them.
   describe("the anchor of the current stop", () => {
     const AT = Date.parse("2026-10-09T08:00:00.000Z")
     const at = (minutes: number) => new Date(AT + minutes * 60_000)
@@ -683,13 +683,13 @@ pgDescribe("client categories on a real Postgres", () => {
     }
     const row = () => bypass(() => prisma.mtmAgentLatestLocation.findUniqueOrThrow({
       where: { organizationId_agentId: { organizationId: ORG, agentId } },
-      select: { latitude: true, recordedAt: true, stationarySince: true, stationaryLatitude: true, stationaryLongitude: true },
+      select: { latitude: true, recordedAt: true, stationarySince: true, stationaryLatitude: true, stationaryLongitude: true, stationaryConfirmedAt: true },
     }))
 
     beforeAll(async () => {
       const run = (sql: string) => prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, sql)
       // Production as it stood before the migration…
-      run(`ALTER TABLE "mtm_agent_latest_locations" DROP COLUMN "stationarySince", DROP COLUMN "stationaryLatitude", DROP COLUMN "stationaryLongitude";`)
+      run(`ALTER TABLE "mtm_agent_latest_locations" DROP COLUMN "stationarySince", DROP COLUMN "stationaryLatitude", DROP COLUMN "stationaryLongitude", DROP COLUMN "stationaryConfirmedAt";`)
       // …then the migration itself, the very file the deploy applies. Twice: it must be safe to re-run.
       const migration = readFileSync(path.join(ROOT, "prisma/migrations/20261009200000_mtm_latest_location_stationary_anchor/migration.sql"), "utf8")
       run(migration)
@@ -699,11 +699,13 @@ pgDescribe("client categories on a real Postgres", () => {
 
     it("starts with the first still point and keeps that moment while he stands", async () => {
       await gps({ minutes: 0 })
-      expect(await row()).toMatchObject({ stationarySince: at(0), stationaryLatitude: 40.4, stationaryLongitude: 49.85 })
+      expect(await row()).toMatchObject({ stationarySince: at(0), stationaryLatitude: 40.4, stationaryLongitude: 49.85, stationaryConfirmedAt: at(0) })
       await gps({ minutes: 1, latitude: north(8) })
       await gps({ minutes: 2, latitude: north(-6) })
       const standing = await row()
       expect(standing.stationarySince).toEqual(at(0))
+      // Each still point confirms the stop.
+      expect(standing.stationaryConfirmedAt).toEqual(at(2))
       // The position itself goes on advancing.
       expect(standing.recordedAt).toEqual(at(2))
       expect(standing.latitude).toBeCloseTo(north(-6), 9)
@@ -713,7 +715,7 @@ pgDescribe("client categories on a real Postgres", () => {
 
     it("is cleared by a moving point and started again by the next stop", async () => {
       await gps({ minutes: 3, latitude: north(300), isMoving: true, speed: 9 })
-      expect(await row()).toMatchObject({ stationarySince: null, stationaryLatitude: null, stationaryLongitude: null, recordedAt: at(3) })
+      expect(await row()).toMatchObject({ stationarySince: null, stationaryLatitude: null, stationaryLongitude: null, stationaryConfirmedAt: null, recordedAt: at(3) })
       await gps({ minutes: 4, latitude: north(600) })
       await gps({ minutes: 5, latitude: north(600) })
       expect(await row()).toMatchObject({ stationarySince: at(4), stationaryLatitude: north(600) })
@@ -726,12 +728,12 @@ pgDescribe("client categories on a real Postgres", () => {
       expect((await row()).stationarySince).toEqual(at(17))
     })
 
-    it("is left alone by a coordinate too vague to trust, and by a point older than the row", async () => {
-      await gps({ minutes: 18, latitude: north(5_000), accuracy: 300, isMoving: true })
-      // The row advances — the map's own accuracy rule decides what it shows —, the anchor does not move.
-      expect(await row()).toMatchObject({ recordedAt: at(18), stationarySince: at(17), stationaryLatitude: north(660) })
+    it("is left alone by a still coordinate too vague to trust, and by a point older than the row", async () => {
+      await gps({ minutes: 18, latitude: north(5_000), accuracy: 300 })
+      // The row advances — the map's own accuracy rule decides what it shows —; the stop is neither moved nor confirmed.
+      expect(await row()).toMatchObject({ recordedAt: at(18), stationarySince: at(17), stationaryLatitude: north(660), stationaryConfirmedAt: at(17) })
       await gps({ minutes: 10, latitude: north(-900) })
-      expect(await row()).toMatchObject({ recordedAt: at(18), stationarySince: at(17) })
+      expect(await row()).toMatchObject({ recordedAt: at(18), stationarySince: at(17), stationaryConfirmedAt: at(17) })
     })
 
     it("two points arriving at once leave a row that tells the truth about one of them", async () => {
@@ -745,29 +747,63 @@ pgDescribe("client categories on a real Postgres", () => {
       expect(after).toMatchObject({ stationarySince: null, stationaryLatitude: null, stationaryLongitude: null })
     })
 
+    it("vague points do not keep a stop alive: after a quarter of an hour of them it starts again", async () => {
+      await gps({ minutes: 40 })
+      expect((await row()).stationarySince).toEqual(at(40))
+      // Every minute a coordinate, none of them worth trusting — one of them five kilometres away.
+      for (let minutes = 41; minutes <= 55; minutes += 1) await gps({ minutes, accuracy: 300, latitude: minutes === 48 ? north(5_000) : 40.4 })
+      expect(await row()).toMatchObject({ recordedAt: at(55), stationarySince: at(40), stationaryConfirmedAt: at(40) })
+      // A good point at the very same place: the same place, but nobody knows about the fifteen minutes.
+      await gps({ minutes: 56 })
+      expect(await row()).toMatchObject({ stationarySince: at(56), stationaryConfirmedAt: at(56) })
+    })
+
+    it("a vague point that says he is moving ends the stop all the same", async () => {
+      await gps({ minutes: 57 })
+      expect((await row()).stationarySince).toEqual(at(56))
+      await gps({ minutes: 58, accuracy: 300, isMoving: true, speed: 9 })
+      expect(await row()).toMatchObject({ stationarySince: null, stationaryConfirmedAt: null, recordedAt: at(58) })
+    })
+
+    it("a stop that a build without the anchor rode over is not believed afterwards", async () => {
+      await gps({ minutes: 60 })
+      await gps({ minutes: 61 })
+      expect((await row()).stationarySince).toEqual(at(60))
+      // The release is rolled back: the older build advances the position and
+      // its time for a day and knows nothing of the four columns.
+      await bypass(() => prisma.mtmAgentLatestLocation.update({
+        where: { organizationId_agentId: { organizationId: ORG, agentId } },
+        data: { latitude: 40.4, longitude: 49.85, recordedAt: at(24 * 60 + 59) },
+      }))
+      // The release is back, and he stands at the same place a minute later.
+      await gps({ minutes: 24 * 60 + 60 })
+      expect(await row()).toMatchObject({ stationarySince: at(24 * 60 + 60), stationaryConfirmedAt: at(24 * 60 + 60) })
+    })
+
     it("reaches the live map's list: «стоит с …» for the employee who stands", async () => {
       vi.useFakeTimers({ toFake: ["Date"] })
       try {
-        vi.setSystemTime(at(31))
-        const workDate = new Date("2026-10-09T00:00:00.000Z")
+        const DAY = 24 * 60
+        vi.setSystemTime(at(2 * DAY + 31))
+        const workDate = new Date("2026-10-11T00:00:00.000Z")
         await bypass(() => prisma.mtmAgentWorkday.create({
-          data: { organizationId: ORG, agentId, workDate, status: "STARTED", startedAt: at(-60) },
+          data: { organizationId: ORG, agentId, workDate, status: "STARTED", startedAt: at(2 * DAY - 60) },
         }))
         // He stops at 08:21 and is still there at 08:30; each point is also a row of raw GPS, as an upload writes it.
-        for (const minutes of [21, 24, 27, 30]) {
+        for (const minutes of [2 * DAY + 21, 2 * DAY + 24, 2 * DAY + 27, 2 * DAY + 30]) {
           await gps({ minutes, latitude: north(9_000) })
           await bypass(() => prisma.mtmAgentLocation.create({
             data: { organizationId: ORG, agentId, latitude: north(9_000), longitude: 49.85, accuracy: 10, speed: 0, isMoving: false, recordedAt: at(minutes) },
           }))
         }
         // An upload also marks the phone as heard from.
-        await bypass(() => prisma.mtmAgent.update({ where: { id: agentId }, data: { isOnline: true, lastSeenAt: at(30) } }))
+        await bypass(() => prisma.mtmAgent.update({ where: { id: agentId }, data: { isOnline: true, lastSeenAt: at(2 * DAY + 30) } }))
         const { GET } = await import("@/app/api/v1/mtm/locations/route")
         const response = await GET(new NextRequest("http://localhost:3000/api/v1/mtm/locations"))
         const body = await response.json()
         expect(response.status, JSON.stringify(body).slice(0, 300)).toBe(200)
         const mine = body.data.agentLocations.find((entry: { agentId: string }) => entry.agentId === agentId)
-        expect(mine).toMatchObject({ fieldStatus: "STOPPED", stationarySince: at(21).toISOString() })
+        expect(mine).toMatchObject({ fieldStatus: "STOPPED", stationarySince: at(2 * DAY + 21).toISOString() })
       } finally {
         vi.useRealTimers()
       }

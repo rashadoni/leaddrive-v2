@@ -633,7 +633,7 @@ describe("GET /api/v1/mtm/locations", () => {
     const agent = (id: string, over: Record<string, unknown> = {}) =>
       ({ id, name: id, isOnline: true, lastSeenAt: NOW, teamId: null, team: null, workdays: working, locations: [point], ...over })
     const anchor = (agentId: string, over: Record<string, unknown> = {}) =>
-      ({ agentId, recordedAt: NOW, stationarySince: minutesAgo(42), stationaryLatitude: 40.41, stationaryLongitude: 49.87, ...over })
+      ({ agentId, recordedAt: NOW, stationarySince: minutesAgo(42), stationaryLatitude: 40.41, stationaryLongitude: 49.87, stationaryConfirmedAt: NOW, ...over })
     async function roster(agents: unknown[], anchors: unknown[], moving: string[] = []) {
       vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue(agents as never)
       vi.mocked(prisma.mtmRoute.findMany).mockResolvedValue([] as never)
@@ -658,7 +658,7 @@ describe("GET /api/v1/mtm/locations", () => {
       // One narrow read, inside the organization, for the people on this roster who have an anchor.
       const query = vi.mocked(prisma.mtmAgentLatestLocation.findMany).mock.calls[0]?.[0] as { where: unknown; select: Record<string, boolean> }
       expect(query.where).toEqual({ organizationId: ORG, agentId: { in: ["stands"] }, stationarySince: { not: null } })
-      expect(Object.keys(query.select).sort()).toEqual(["agentId", "recordedAt", "stationaryLatitude", "stationaryLongitude", "stationarySince"])
+      expect(Object.keys(query.select).sort()).toEqual(["agentId", "recordedAt", "stationaryConfirmedAt", "stationaryLatitude", "stationaryLongitude", "stationarySince"])
     })
 
     it("says nothing for anybody who is not standing, whatever his row holds", async () => {
@@ -687,7 +687,7 @@ describe("GET /api/v1/mtm/locations", () => {
 
     it("leaves it out whenever the anchor is not about the point on the map — a missing duration, never a wrong one", async () => {
       const byId = await roster(
-        [agent("far"), agent("behind"), agent("ahead"), agent("half")],
+        [agent("far"), agent("behind"), agent("ahead"), agent("half"), agent("stale")],
         [
           // The anchor says he stands about eighty metres from where the map shows him.
           anchor("far", { stationaryLatitude: 40.41072 }),
@@ -697,12 +697,33 @@ describe("GET /api/v1/mtm/locations", () => {
           anchor("ahead", { recordedAt: new Date(NOW.getTime() + 60_000), stationarySince: new Date(NOW.getTime() + 30_000) }),
           // A row with half an anchor.
           anchor("half", { stationaryLongitude: null }),
+          // A stop nobody has confirmed for hours: its build was rolled back, or only vague points came since.
+          anchor("stale", { stationaryConfirmedAt: minutesAgo(11) }),
         ],
       )
-      for (const id of ["far", "behind", "ahead", "half"]) {
+      for (const id of ["far", "behind", "ahead", "half", "stale"]) {
         expect(byId[id].fieldStatus, id).toBe("STOPPED")
         expect(byId[id].stationarySince, id).toBeNull()
       }
+    })
+
+    it("does not count a phone's silence as standing, whatever the organization calls a fresh position", async () => {
+      // «Свежая» for half an hour here: a phone silent for twenty-five minutes is still «стоит» on the map.
+      vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([
+        { key: "offlineThresholdSeconds", value: "1800" },
+        { key: "locationWindowMinutes", value: "30" },
+      ] as never)
+      const quiet = { ...point, recordedAt: minutesAgo(25) }
+      const byId = await roster(
+        [agent("silent-25", { locations: [quiet] }), agent("heard-9", { locations: [{ ...point, recordedAt: minutesAgo(9) }] })],
+        [
+          anchor("silent-25", { recordedAt: minutesAgo(25), stationaryConfirmedAt: minutesAgo(25), stationarySince: minutesAgo(90) }),
+          anchor("heard-9", { recordedAt: minutesAgo(9), stationaryConfirmedAt: minutesAgo(9), stationarySince: minutesAgo(90) }),
+        ],
+      )
+      expect(byId["silent-25"].fieldStatus).toBe("STOPPED")
+      expect(byId["silent-25"].stationarySince).toBeNull()
+      expect(byId["heard-9"].stationarySince).toBe(minutesAgo(90).toISOString())
     })
 
     it("does not ask at all when the roster is empty", async () => {
@@ -826,7 +847,7 @@ describe("POST /api/v1/mtm/locations", () => {
     expect(prisma.mtmAgentLatestLocation.findUnique).toHaveBeenCalledTimes(1)
     expect(prisma.mtmAgentLatestLocation.updateMany).toHaveBeenCalledWith({
       where: { organizationId: ORG, agentId: "agent-1", recordedAt: { lte: recordedAt } },
-      data: expect.objectContaining({ stationarySince: recordedAt, stationaryLatitude: 40.4093, stationaryLongitude: 49.8671 }),
+      data: expect.objectContaining({ stationarySince: recordedAt, stationaryLatitude: 40.4093, stationaryLongitude: 49.8671, stationaryConfirmedAt: recordedAt }),
     })
   })
 
