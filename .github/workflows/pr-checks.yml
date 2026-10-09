@@ -42,12 +42,33 @@ jobs:
     name: pr-scope
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    permissions:
+      contents: read
+      # Только чтобы прочитать, черновик ли PR сейчас (шаг `draft` ниже).
+      pull-requests: read
     outputs:
       code: ${{ steps.scope.outputs.code }}
+      draft: ${{ steps.draft.outputs.draft }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - id: draft
+        # Черновик ли PR — по живому состоянию, а не по одному событию.
+        # `github.event.pull_request.draft` — снимок на момент события. Пуш и
+        # «ready for review» подряд (#639, 2026-10-09) дали прогон по новому
+        # коммиту с `draft: true` в событии, а `ready_for_review` пришёл со
+        # СТАРЫМ коммитом и был отменён: тяжёлые джобы пропущены, пропуск
+        # засчитан как успех, готовый PR показал CLEAN без единого теста.
+        # Пропуск разрешён, только когда черновик и в событии, и сейчас; не
+        # удалось прочитать — не черновик.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_ACTION: ${{ github.event.action }}
+          EVENT_DRAFT: ${{ github.event.pull_request.draft }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: bash scripts/ci/pr-draft-state.sh
       - id: scope
         env:
           EVENT: ${{ github.event_name }}
@@ -95,7 +116,10 @@ jobs:
     # reach production unchecked.
     # Draft iteration does not consume the shared heavy-test slots. The
     # ready_for_review event above starts the complete gate before merging.
-    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft == false && needs.pr-scope.outputs.code == 'true' }}
+    # "Draft" is pr-scope's answer, read from the live pull request — never
+    # `github.event.pull_request.draft` here: a stale event skipped this job
+    # on a ready pull request (#639). `!= 'true'`, so a missing answer runs it.
+    if: ${{ github.event_name == 'pull_request' && needs.pr-scope.outputs.draft != 'true' && needs.pr-scope.outputs.code == 'true' }}
     # Public repositories receive the standard 4-vCPU/16-GiB Linux runner.
     # This replaces the temporary Contabo CI pool.
     runs-on: ubuntu-24.04
@@ -291,7 +315,8 @@ jobs:
     # other. Marking a PR ready fires `ready_for_review` and the gate runs
     # before the merge it guards.
     needs: pr-scope
-    if: ${{ (github.event_name == 'push' || github.event.pull_request.draft == false) && needs.pr-scope.outputs.code == 'true' }}
+    # Draft or not is pr-scope's answer, as for static-checks above.
+    if: ${{ (github.event_name == 'push' || needs.pr-scope.outputs.draft != 'true') && needs.pr-scope.outputs.code == 'true' }}
     # 60, а не 45: 2026-09-09 один прогон занял 44.7 минуты и умер по таймауту,
     # не напечатав ни строки — а пустой лог от убитого компилятора неотличим от
     # чистого прогона, ровно та ловушка, от которой написан check-typecheck-gate.

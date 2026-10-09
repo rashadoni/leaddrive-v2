@@ -98,7 +98,10 @@ but does not remove what the current cycle has already counted.
    PR ready for review once the branch is finished; `ready_for_review` fires and
    the gate runs before the merge it exists to guard. Nothing is weakened — only
    the intermediate pushes stop being billed. Do not mark a PR ready to "trigger
-   CI" and then keep pushing.
+   CI" and then keep pushing. "Draft" is read by `pr-scope` from the live pull
+   request (`scripts/ci/pr-draft-state.sh`): the event's own `draft` flag is a
+   snapshot, and on 2026-10-09 (#639) a push followed at once by "ready for
+   review" skipped both jobs on a ready pull request, which then showed `CLEAN`.
 2. **Documentation is free.** `**/*.md`, `docs/**` and `.agents/**` no longer
    start `pr-checks.yml` at all. Do not add a code change to a docs PR to make
    CI run.
