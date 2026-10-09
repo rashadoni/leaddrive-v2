@@ -6,6 +6,7 @@ import { AlertTriangle, Check, ChevronDown, ChevronRight, Download, Filter, Load
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import { FIELD_STATUS_LABEL_KEYS, type MtmDashboardAgent } from "@/lib/mtm-types"
+import { mtmAgentMapColorHex } from "@/lib/mtm/agent-tags"
 import { rosterExportTable } from "@/lib/mtm/live-map-roster-export"
 import { printRosterHtml, rosterPrintHtml } from "@/lib/mtm/live-map-roster-print"
 import { liveMapDuration } from "@/lib/mtm/live-map-state-since"
@@ -18,9 +19,11 @@ import {
   ROSTER_NARROW_COLUMNS,
   ROSTER_NARROW_COLUMNS_WITH_POINT,
   ROSTER_NO_MANAGER,
+  ROSTER_NO_TAGS,
   ROSTER_NO_TEAM,
   rosterFilterOptions,
   rosterFilterTicked,
+  rosterLabels,
   rosterSignalAge,
   rosterTickState,
   rosterValue,
@@ -53,7 +56,7 @@ export const ROSTER_STATUS_DOT_CLASS: Record<string, string> = {
 const STATUS_LABEL_KEYS: Record<string, string> = FIELD_STATUS_LABEL_KEYS
 
 const SORT_KIND: Record<RosterColumnId, RosterSortKind> = {
-  name: "text", status: "order", signal: "time", distance: "number", team: "text", manager: "text", app: "order", workday: "order", route: "number", speed: "number", battery: "number",
+  name: "text", status: "order", signal: "time", distance: "number", team: "text", manager: "text", tags: "text", app: "order", workday: "order", route: "number", speed: "number", battery: "number",
 }
 
 /**
@@ -67,6 +70,7 @@ const WIDE_TRACK: Record<RosterColumnId, string> = {
   distance: "7.5rem",
   team: "minmax(0,1.1fr)",
   manager: "minmax(0,1.1fr)",
+  tags: "minmax(0,1.2fr)",
   app: "minmax(0,0.9fr)",
   workday: "minmax(0,1.2fr)",
   route: "5.5rem",
@@ -93,6 +97,12 @@ const TICK_BOX = "inline-flex h-9 w-9 cursor-pointer items-center justify-center
 const TICK_INPUT = "h-4 w-4 cursor-pointer accent-[hsl(var(--primary))]"
 const TOOL_BUTTON = "inline-flex min-h-8 shrink-0 items-center gap-1 rounded-md border border-zinc-200 px-2 text-xs font-medium hover:bg-muted dark:border-zinc-700 [@media(pointer:coarse)]:min-h-11"
 const MENU_ROW = "flex min-h-9 cursor-pointer items-center gap-2 rounded px-1 text-sm hover:bg-muted/60 [@media(pointer:coarse)]:min-h-11"
+/**
+ * A row is one line, and a card can carry ten labels: the cell draws the
+ * first two and says how many more there are. All of them are in its tooltip,
+ * in the Excel file and on the printed sheet.
+ */
+const LABELS_IN_A_CELL = 2
 /** A row scrolled into view stops under the heading that follows the screen, not behind it. */
 const UNDER_HEADING = "scroll-mt-[var(--roster-head,11rem)]"
 
@@ -200,6 +210,8 @@ export function LiveMapRoster({
   formatDistance = (meters) => `${Math.round(meters)} m`, exportFileName, printTitle, printNote,
 }: LiveMapRosterProps) {
   const tMap = useTranslations("mtmMap")
+  // The colour's own words — «Цвет на карте», «Розовый» — are the card form's.
+  const tf = useTranslations("mtmForms")
   const locale = useLocale()
   const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<string>>(() => new Set())
   const [exporting, setExporting] = useState<"idle" | "busy" | "failed">("idle")
@@ -295,6 +307,8 @@ export function LiveMapRoster({
       case "signal": return tMap(`freshness.${value.toLowerCase()}`)
       case "team": return value === ROSTER_NO_TEAM ? tMap("roster.noTeam") : knownLabels.current.teams.get(value) ?? tMap("roster.filter.unknownValue")
       case "manager": return value === ROSTER_NO_MANAGER ? tMap("roster.noManager") : knownLabels.current.managers.get(value) ?? tMap("roster.filter.unknownValue")
+      // A label is its own word: it needs no dictionary and cannot be «not in the list».
+      case "tags": return value === ROSTER_NO_TAGS ? tMap("roster.noTags") : value
       case "app": return tMap(`presence.${value.toLowerCase()}`)
       case "workday": return tMap(`roster.workday.${value}`)
       case "route": return tMap(`roster.route.${value}`)
@@ -314,9 +328,9 @@ export function LiveMapRoster({
         label: valueLabel(column, option.value),
         dotClass: column === "status" ? ROSTER_STATUS_DOT_CLASS[option.value] : undefined,
       }))
-      // Names, teams and managers have no order of their own: alphabetical, «no team», «no manager» last.
-      if (column === "name" || column === "team" || column === "manager") {
-        const nobody = column === "manager" ? ROSTER_NO_MANAGER : ROSTER_NO_TEAM
+      // Names, teams, managers and labels have no order of their own: alphabetical, «no team», «no manager», «no labels» last.
+      if (column === "name" || column === "team" || column === "manager" || column === "tags") {
+        const nobody = column === "manager" ? ROSTER_NO_MANAGER : column === "tags" ? ROSTER_NO_TAGS : ROSTER_NO_TEAM
         list.sort((a, b) => (a.value === nobody ? 1 : 0) - (b.value === nobody ? 1 : 0)
           // Namesakes keep one order from refresh to refresh.
           || collator.compare(a.label, b.label) || (a.value < b.value ? -1 : a.value > b.value ? 1 : 0))
@@ -540,6 +554,10 @@ export function LiveMapRoster({
       case "name": {
         const hiddenOnMap = hiddenAgentIds.has(agent.agentId)
         const presence = `${tMap("appPresence")}: ${tMap(`presence.${agent.isOnline ? "online" : "offline"}`)}`
+        // The hex is the palette's, looked up by the stored key — never text
+        // from the card itself; a key this build does not know draws nothing.
+        const colorHex = mtmAgentMapColorHex(agent.mapColor)
+        const colorName = colorHex ? tf(`mapColors.${agent.mapColor}`) : ""
         return (
           <span className="flex min-w-0 items-center gap-1.5">
             {/* The application: a filled dot in the network, a ring out of it — a shape, not only a colour. */}
@@ -558,6 +576,19 @@ export function LiveMapRoster({
             >
               {agent.name}
             </button>
+            {/* The colour his marker is ringed with on the map, so the row and
+                the marker are matched at a glance. A square: the round dots in
+                a row already say «in the network» and the status. */}
+            {colorHex ? (
+              <span
+                // The thin outline keeps a dark colour in sight on a dark theme.
+                className="h-2.5 w-2.5 shrink-0 rounded-[2px] ring-1 ring-zinc-400/60"
+                style={{ backgroundColor: colorHex }}
+                title={`${tf("mapColor")}: ${colorName}`}
+                aria-hidden="true"
+                data-testid={`live-map-agent-color-${agent.agentId}`}
+              />
+            ) : null}
             <span className="sr-only">{presence}</span>
           </span>
         )
@@ -607,6 +638,25 @@ export function LiveMapRoster({
       }
       case "team": return <span className="block truncate" title={agent.teamName ?? undefined}>{agent.teamId ? agent.teamName || "—" : "—"}</span>
       case "manager": return <span className="block truncate" title={agent.managerName ?? undefined}>{agent.managerId ? agent.managerName || "—" : "—"}</span>
+      case "tags": {
+        const labels = rosterLabels(agent)
+        if (labels.length === 0) return <span className="text-muted-foreground">—</span>
+        const rest = labels.slice(LABELS_IN_A_CELL)
+        return (
+          <span className="flex min-w-0 items-center gap-1" title={labels.join(", ")} data-testid={`live-map-agent-tags-${agent.agentId}`}>
+            {labels.slice(0, LABELS_IN_A_CELL).map((label) => (
+              <span key={label} className="min-w-0 truncate rounded border border-zinc-300 px-1 text-[11px] leading-[1.125rem] dark:border-zinc-600">{label}</span>
+            ))}
+            {rest.length > 0 ? (
+              <>
+                <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground" aria-hidden="true">+{rest.length}</span>
+                {/* What a sighted person finds in the tooltip is read out in full. */}
+                <span className="sr-only">, {rest.join(", ")}</span>
+              </>
+            ) : null}
+          </span>
+        )
+      }
       case "app": return <span className={cn("block truncate", agent.isOnline ? "text-green-700 dark:text-green-400" : "text-muted-foreground")}>{tMap(`presence.${agent.isOnline ? "online" : "offline"}`)}</span>
       case "workday": {
         const running = agent.workdayState === "ACTIVE" || agent.workdayState === "PAUSED"

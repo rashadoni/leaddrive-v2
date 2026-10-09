@@ -55,6 +55,14 @@ export interface LiveMapAgent {
   /** Whom the employee reports to, as his card says («Руководитель»). */
   managerId?: string | null
   managerName?: string | null
+  /**
+   * The labels a manager put on the card, and the key of the colour he gave
+   * the employee on the map (src/lib/mtm/agent-tags.ts). The managers' own
+   * notes about the person: empty for whoever is not given them — an
+   * integration key, and the viewer's own row.
+   */
+  tags?: string[]
+  mapColor?: string | null
   /** Optional — dashboard passes it for the route-completion ring overlay. */
   routeCompletion?: number
 }

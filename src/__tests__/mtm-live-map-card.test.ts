@@ -385,6 +385,24 @@ describe("the list as an Excel file", () => {
     expect(rosterCellText(empty, "manager", words)).toBe("—")
   })
 
+  // «Метки»: on screen a row has room for two of them and «+3»; the file and
+  // the printed sheet carry them all.
+  it("writes all of a person's labels into one cell, and a dash where he has none", () => {
+    expect(rosterCellText(agent({ agentId: "a", name: "A", tags: ["стажёр", "ночная смена", "резерв"] }), "tags", words)).toBe("стажёр, ночная смена, резерв")
+    expect(rosterCellText(agent({ agentId: "a", name: "A", tags: [] }), "tags", words)).toBe("—")
+    // An answer from before labels existed has no such field at all.
+    expect(rosterCellText(agent({ agentId: "a", name: "A" }), "tags", words)).toBe("—")
+  })
+
+  it("gives the labels a column only when somebody on the roster carries one, between the manager and the application", () => {
+    const labelled = [agent({ agentId: "a", name: "А", tags: ["стажёр"], managerId: "m", managerName: "Старший" }), agent({ agentId: "b", name: "Б", tags: [] })]
+    const table = rosterExportTable(labelled, availableRosterColumns(labelled, { workforceEnabled: true }), words)
+    expect(table.headers.slice(table.headers.indexOf("[manager]"), table.headers.indexOf("[app]") + 1)).toEqual(["[manager]", "[tags]", "[app]"])
+    expect(table.rows.map((row) => row[table.headers.indexOf("[tags]")])).toEqual(["стажёр", "—"])
+    const plain = [agent({ agentId: "a", name: "А" }), agent({ agentId: "b", name: "Б", tags: [] })]
+    expect(rosterExportTable(plain, availableRosterColumns(plain, { workforceEnabled: true }), words).headers).not.toContain("[tags]")
+  })
+
   it("has every column the roster can show, in the roster's order, for the rows in the order given", () => {
     const rows = [agent({ agentId: "b", name: "Б", battery: 80 }), agent({ agentId: "a", name: "А", battery: 15 })]
     const table = rosterExportTable(rows, ["battery", "name", "status", "signal"], words)
@@ -822,6 +840,22 @@ describe("the card's pieces on screen", () => {
       expect(body.rows.every((row) => row.length === body.headers.length && row.every((cell) => typeof cell === "string"))).toBe(true)
       expect(byTestId("live-map-roster-export-failed")).toBeNull()
       expect(downloads).toEqual(["mtm-live-map-2026-10-09-1430.xlsx"])
+    })
+
+    it("sends the «Метки» column with the file — every label of a person, where the screen shows two", async () => {
+      const labelled = [
+        agent({ agentId: "b", name: "Vüsal Kərimli", tags: ["стажёр", "ночная смена", "резерв", "аптеки"] }),
+        agent({ agentId: "a", name: "Əli Məmmədov", tags: [] }),
+      ]
+      await render(roster({ agents: labelled, rows: labelled }))
+      await act(async () => { byTestId("live-map-roster-export")!.click() })
+      await settle(10)
+      const { body } = posted[0]
+      const column = body.headers.indexOf("Метки")
+      expect(column).toBeGreaterThan(-1)
+      expect(body.rows.map((row) => row[column])).toEqual(["стажёр, ночная смена, резерв, аптеки", "—"])
+      // The column is in the file although the list on screen does not draw it by default.
+      expect(document.body.querySelector('[data-column="tags"]')).toBeNull()
     })
 
     it("says so when the file could not be made", async () => {

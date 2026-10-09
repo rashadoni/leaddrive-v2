@@ -17,7 +17,7 @@
 import { calculateDistance } from "@/lib/geo-utils"
 import { isLiveMapPositionVisible, type MtmDashboardAgent } from "@/lib/mtm-types"
 
-export const ROSTER_COLUMNS = ["name", "status", "signal", "distance", "team", "manager", "app", "workday", "route", "speed", "battery"] as const
+export const ROSTER_COLUMNS = ["name", "status", "signal", "distance", "team", "manager", "tags", "app", "workday", "route", "speed", "battery"] as const
 export type RosterColumnId = typeof ROSTER_COLUMNS[number]
 
 /** What fits beside the map. A narrow list always has these, whatever the wide table shows. */
@@ -32,6 +32,8 @@ export const ROSTER_NARROW_COLUMNS_WITH_POINT: readonly RosterColumnId[] = ["nam
 // «Руководитель» is not among them: the wide table was sized without it, and
 // on a laptop it cut the status word and the names. It is one tick away in
 // «Вид», and its filter and grouping work without the column being drawn.
+// «Метки» neither, for the same reason: they are filtered from «Фильтры» and
+// searched by the box above the list whether or not the column is drawn.
 export const ROSTER_DEFAULT_COLUMNS: readonly RosterColumnId[] = ["name", "status", "signal", "distance", "team", "workday", "route", "battery"]
 /**
  * Columns nobody can switch off. The name is the row. The status is what the
@@ -52,6 +54,11 @@ export const ROSTER_DISTANCE_ORDER = ["NEAR", "CLOSE", "FAR", "VERY_FAR", "UNKNO
 export const ROSTER_NO_TEAM = "__none__"
 /** …and of «Руководитель» for somebody whose card names nobody. */
 export const ROSTER_NO_MANAGER = "__none__"
+/**
+ * …and of «Метки» for somebody with no label. Nobody can type it as a label:
+ * a label has no underscore in it (src/lib/mtm/agent-tags.ts).
+ */
+export const ROSTER_NO_TAGS = "__none__"
 
 const FIXED_ORDER: Partial<Record<RosterColumnId, readonly string[]>> = {
   status: ROSTER_STATUS_ORDER,
@@ -78,6 +85,9 @@ export function rosterValue(agent: MtmDashboardAgent, column: RosterColumnId): s
     case "signal": return agent.freshness
     case "team": return agent.teamId || ROSTER_NO_TEAM
     case "manager": return agent.managerId || ROSTER_NO_MANAGER
+    // The cell as one word, for whoever asks for one. The filter does not: a
+    // person carries several labels, and it reads each of them (rosterValues).
+    case "tags": return rosterLabels(agent).join(", ") || ROSTER_NO_TAGS
     case "app": return agent.isOnline ? "ONLINE" : "OFFLINE"
     case "workday": return agent.workdayState
     case "route": {
@@ -99,6 +109,25 @@ export function rosterValue(agent: MtmDashboardAgent, column: RosterColumnId): s
       return meters < 1_000 ? "NEAR" : meters < 5_000 ? "CLOSE" : meters < 20_000 ? "FAR" : "VERY_FAR"
     }
   }
+}
+
+/**
+ * The labels on an employee's card, in the order his manager wrote them. An
+ * answer from before labels existed has none, and that reads as «no labels».
+ */
+export function rosterLabels(agent: MtmDashboardAgent): string[] {
+  if (!Array.isArray(agent.tags)) return []
+  return [...new Set(agent.tags.filter((label) => typeof label === "string" && label.length > 0))]
+}
+
+/**
+ * Every value a row has in a column. One — except «Метки»: each label is a
+ * value of its own, and a person without any has the one value «no labels».
+ */
+export function rosterValues(agent: MtmDashboardAgent, column: RosterColumnId): string[] {
+  if (column !== "tags") return [rosterValue(agent, column)]
+  const labels = rosterLabels(agent)
+  return labels.length > 0 ? labels : [ROSTER_NO_TAGS]
 }
 
 /**
@@ -170,7 +199,8 @@ export function rosterStatusChipOn(filters: RosterFilters, status: string): bool
 
 /**
  * Letters as the search inside a tick list reads them: «ilqar» finds «İlqar»,
- * «sukur» finds «Şükür». (The name search above the list is the server's.)
+ * «sukur» finds «Şükür». (The search above the list is the server's: it reads
+ * a name as the database does, and a label this same way.)
  */
 export function foldRosterText(value: string): string {
   return value.normalize("NFD").replace(/\p{M}+/gu, "").toLowerCase().replace(/ı/g, "i").trim()
@@ -189,7 +219,13 @@ export function applyRosterFilters(
   if (columns.length === 0) return [...agents]
   // A filter that names two hundred people is looked up, not scanned, per row.
   const listed = new Map(columns.map((column) => [column, new Set(filters[column]?.values ?? [])]))
-  return agents.filter((agent) => columns.every((column) => listed.get(column)?.has(rosterValue(agent, column)) ?? false))
+  // One ticked value is enough: with «стажёр» ticked, a person labelled
+  // «стажёр» and «ночная смена» is shown — a tick says «show these», and he
+  // is one of them. (Every other column has one value per row.)
+  return agents.filter((agent) => columns.every((column) => {
+    const ticked = listed.get(column)
+    return ticked != null && rosterValues(agent, column).some((value) => ticked.has(value))
+  }))
 }
 
 export interface RosterFilterOption {
@@ -209,9 +245,12 @@ export interface RosterFilterOption {
  * A value nobody has says 0; it can still be ticked — the list is alive, and
  * in a minute somebody will. Teams and managers are a vocabulary too — the
  * roster's own: every one of them is listed whatever the other filters leave,
- * so a filter on status never empties the list of managers. Names alone list
- * who is there under the other filters (a hundred people, of whom three are
- * late), plus whoever is ticked, so a tick can always be taken off.
+ * so a filter on status never empties the list of managers. Labels are the
+ * roster's vocabulary in the same way, and a person counts once under each
+ * label he carries; «без меток» closes their list and is always there to
+ * press. Names alone list who is there under the other filters (a hundred
+ * people, of whom three are late), plus whoever is ticked, so a tick can
+ * always be taken off.
  */
 export function rosterFilterOptions(
   agents: readonly MtmDashboardAgent[],
@@ -220,8 +259,7 @@ export function rosterFilterOptions(
 ): RosterFilterOption[] {
   const counts = new Map<string, number>()
   for (const agent of applyRosterFilters(agents, filters, column)) {
-    const value = rosterValue(agent, column)
-    counts.set(value, (counts.get(value) ?? 0) + 1)
+    for (const value of rosterValues(agent, column)) counts.set(value, (counts.get(value) ?? 0) + 1)
   }
   const own = filters[column]
   if (own) for (const value of own.values) if (!counts.has(value)) counts.set(value, 0)
@@ -231,13 +269,15 @@ export function rosterFilterOptions(
     const values = [...fixed, ...[...counts.keys()].filter((value) => !fixed.includes(value))]
     return values.map((value) => ({ value, count: counts.get(value) ?? 0 }))
   }
-  if (column === "team" || column === "manager") {
+  if (column === "team" || column === "manager" || column === "tags") {
     for (const agent of agents) {
-      const value = rosterValue(agent, column)
-      if (!counts.has(value)) counts.set(value, 0)
+      for (const value of rosterValues(agent, column)) if (!counts.has(value)) counts.set(value, 0)
     }
   }
-  return [...counts.keys()].map((value) => ({ value, count: counts.get(value) ?? 0 }))
+  const values = column === "tags"
+    ? [...[...counts.keys()].filter((value) => value !== ROSTER_NO_TAGS), ROSTER_NO_TAGS]
+    : [...counts.keys()]
+  return values.map((value) => ({ value, count: counts.get(value) ?? 0 }))
 }
 
 export interface RosterSort {
@@ -263,6 +303,8 @@ function sortKey(agent: MtmDashboardAgent, column: RosterColumnId): number | str
     }
     case "team": return agent.teamId ? (agent.teamName ?? "") : null
     case "manager": return agent.managerId ? (agent.managerName ?? "") : null
+    // As the cell reads, left to right; a card without labels has nothing to compare.
+    case "tags": return rosterLabels(agent).join(", ") || null
     case "app": return orderIndex(ROSTER_APP_ORDER, rosterValue(agent, "app"))
     case "workday": return orderIndex(ROSTER_WORKDAY_ORDER, agent.workdayState)
     case "route": {
@@ -398,10 +440,12 @@ export function availableRosterColumns(
   const hasTeams = agents.some((agent) => Boolean(agent.teamId))
   // A column of dashes is not a column: «Руководитель» is shown once somebody has one.
   const hasManagers = agents.some((agent) => Boolean(agent.managerId))
+  // …and «Метки» once somebody carries one.
+  const hasLabels = agents.some((agent) => rosterLabels(agent).length > 0)
   // The distance exists only while a point is picked on the map.
   const hasPoint = agents.some((agent) => agent.distanceMeters !== undefined)
   return ROSTER_COLUMNS.filter((column) =>
-    (column !== "team" || hasTeams) && (column !== "manager" || hasManagers)
+    (column !== "team" || hasTeams) && (column !== "manager" || hasManagers) && (column !== "tags" || hasLabels)
     && (column !== "workday" || options.workforceEnabled) && (column !== "distance" || hasPoint))
 }
 

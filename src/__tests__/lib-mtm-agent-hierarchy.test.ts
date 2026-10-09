@@ -134,6 +134,16 @@ describe("agents page search", () => {
     expect(mtmAgentMatchesSearch(card, "123 45 67")).toBe(true)
   })
 
+  it("finds everyone a manager labelled, by the label or a part of it, in any case", () => {
+    const labelled = { name: "Field Agent", tags: ["Стажёр", "ночная смена"] }
+    expect(mtmAgentMatchesSearch(labelled, "стажёр")).toBe(true)
+    expect(mtmAgentMatchesSearch(labelled, "НОЧН")).toBe(true)
+    expect(mtmAgentMatchesSearch(labelled, "резерв")).toBe(false)
+    // A card without labels is simply not found by one.
+    expect(mtmAgentMatchesSearch({ name: "Field Agent", tags: null }, "стажёр")).toBe(false)
+    expect(mtmAgentMatchesSearch({ name: "Field Agent", tags: [] }, "стажёр")).toBe(false)
+  })
+
   it("does not match what is not there, and an empty query matches everyone", () => {
     expect(mtmAgentMatchesSearch(card, "guven.com")).toBe(false)
     expect(mtmAgentMatchesSearch({ name: null }, "x")).toBe(false)

@@ -33,7 +33,7 @@ describe("the layers control on the map", () => {
   let hidden: number
   let baseMaps: { value: string; options: Array<{ id: string; label: string }>; onChange: (id: string) => void } | null
   const layers = (): LiveMapLayer[] => [
-    { id: "agents", label: "Сотрудники", hint: "метки с последним положением", on: state.agents, onToggle: () => { state.agents = !state.agents }, shownByDefault: true },
+    { id: "agents", label: "Сотрудники", hint: "значки с последним положением", on: state.agents, onToggle: () => { state.agents = !state.agents }, shownByDefault: true },
     { id: "route", label: "Маршрут дня", on: state.route, onToggle: () => { state.route = !state.route }, shownByDefault: true },
     { id: "heat", label: "Тепловая карта", on: state.heat, onToggle: () => { state.heat = !state.heat }, testId: "mtm-map-heatmap-toggle" },
   ]

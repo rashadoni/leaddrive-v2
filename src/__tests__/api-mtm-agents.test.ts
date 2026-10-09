@@ -776,6 +776,401 @@ describe("DELETE /api/v1/mtm/agents/[id]", () => {
   })
 })
 
+// ─── Labels and map colour on a card (owner, 2026-10-09) ───
+// A manager's own notes about an employee: free-text labels and a personal
+// colour for the live map. Set on the web, read on the web by the people who
+// manage him — never by the employee himself, who opens the same two endpoints
+// with his phone's token or with a web login of his own.
+describe("labels and map colour on an employee's card", () => {
+  /** What a mocked Prisma call was given, without the Prisma generics. */
+  type QueryArgs = { where: Record<string, unknown>; select: Record<string, unknown>; data: Record<string, unknown> }
+  const argsOf = (mock: unknown, call = 0) =>
+    (mock as { mock: { calls: unknown[][] } }).mock.calls[call][0] as QueryArgs
+
+  const LABELS = ["испытательный срок", "ночная смена"]
+  const labelledCard = (overrides: Record<string, unknown> = {}) => ({
+    id: "a1",
+    name: "Agent One",
+    email: "agent.one@example.com",
+    role: "AGENT",
+    status: "ACTIVE",
+    managerId: null,
+    userId: null,
+    teamId: null,
+    tags: LABELS,
+    mapColor: "teal",
+    ...overrides,
+  })
+  const phoneToken = (agentId = "a1") =>
+    ({ orgId: ORG, agentId, userId: "", role: "AGENT", email: "agent.one@example.com", name: "Agent One" }) as never
+
+  describe("who gets them", () => {
+    it("gives an administrator at a browser every card's labels and colour — an empty list and null where none are set", async () => {
+      mockAgentAdministrator()
+      vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([labelledCard(), { id: "a2", name: "Agent Two" }] as never)
+      vi.mocked(prisma.mtmAgent.count).mockResolvedValue(2)
+
+      const res = await ListAgents(makeReq("/api/v1/mtm/agents"))
+      expect(res.status).toBe(200)
+      const [labelled, plain] = (await res.json()).data.agents
+
+      expect([labelled.tags, labelled.mapColor]).toEqual([LABELS, "teal"])
+      // The card form is filled from this row: the two keys are always
+      // there for it — an empty list and null, never an absent field.
+      expect([plain.tags, plain.mapColor]).toEqual([[], null])
+      expect(argsOf(prisma.mtmAgent.findMany).select).toMatchObject({ tags: true, mapColor: true })
+    })
+
+    it("never puts them in the list a phone token or a session-less caller reads", async () => {
+      vi.mocked(getOrgId).mockResolvedValue(ORG)
+      vi.mocked(prisma.mtmAgent.count).mockResolvedValue(1)
+      // The row carries them on purpose: the answer must not, whatever the query returned.
+      vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([labelledCard()] as never)
+      const expectWithout = async () => {
+        vi.mocked(prisma.mtmAgent.findMany).mockClear()
+        const res = await ListAgents(makeReq("/api/v1/mtm/agents"))
+        expect(res.status).toBe(200)
+        const json = await res.json()
+        expect(json.data.agents[0].name).toBe("Agent One")
+        expect(json.data.agents[0]).not.toHaveProperty("tags")
+        expect(json.data.agents[0]).not.toHaveProperty("mapColor")
+        expect(JSON.stringify(json)).not.toContain("испытательный срок")
+        expect(JSON.stringify(json)).not.toContain("teal")
+        const select = argsOf(prisma.mtmAgent.findMany).select
+        expect(select).not.toHaveProperty("tags")
+        expect(select).not.toHaveProperty("mapColor")
+      }
+
+      // An integration key: an organization, no session.
+      await expectWithout()
+
+      // The employee himself, with the phone's token.
+      vi.mocked(getMobileAuth).mockReturnValue(phoneToken())
+      vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "a1", role: "AGENT" } as never)
+      await expectWithout()
+
+      // The same token sent along with a browser cookie is still the phone.
+      mockAgentAdministrator()
+      await expectWithout()
+    })
+
+    it("opens a card with its labels and colour for an administrator at a browser", async () => {
+      mockAgentAdministrator()
+      vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(labelledCard() as never)
+
+      const res = await GetAgent(makeReq("/api/v1/mtm/agents/a1"), makeParams("a1"))
+      expect(res.status).toBe(200)
+      const json = await res.json()
+
+      expect([json.data.name, json.data.tags, json.data.mapColor]).toEqual(["Agent One", LABELS, "teal"])
+      expect(argsOf(prisma.mtmAgent.findFirst).select).toMatchObject({ tags: true, mapColor: true })
+    })
+
+    it("does not show an employee what his manager noted on his own card when he opens it on his phone", async () => {
+      vi.mocked(getOrgId).mockResolvedValue(ORG)
+      vi.mocked(getMobileAuth).mockReturnValue(phoneToken())
+      vi.mocked(prisma.mtmAgent.findFirst)
+        .mockResolvedValueOnce({ id: "a1", role: "AGENT" } as never) // the caller behind the token
+        .mockResolvedValueOnce(labelledCard() as never) // his own card
+
+      const res = await GetAgent(makeReq("/api/v1/mtm/agents/a1"), makeParams("a1"))
+      expect(res.status).toBe(200)
+      const json = await res.json()
+
+      expect(json.data.name).toBe("Agent One")
+      expect(json.data).not.toHaveProperty("tags")
+      expect(json.data).not.toHaveProperty("mapColor")
+      expect(JSON.stringify(json)).not.toContain("испытательный срок")
+      const select = argsOf(prisma.mtmAgent.findFirst, 1).select
+      expect(select).not.toHaveProperty("tags")
+      expect(select).not.toHaveProperty("mapColor")
+    })
+
+    it("does not put them on a card read without a session", async () => {
+      vi.mocked(getOrgId).mockResolvedValue(ORG)
+      vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(labelledCard() as never)
+
+      const json = await (await GetAgent(makeReq("/api/v1/mtm/agents/a1"), makeParams("a1"))).json()
+
+      expect(json.data.name).toBe("Agent One")
+      expect(JSON.stringify(json)).not.toContain("испытательный срок")
+      expect(argsOf(prisma.mtmAgent.findFirst).select).not.toHaveProperty("tags")
+    })
+
+    // A request may carry the phone's token and a browser cookie at once. The
+    // token decides whose card is read, so it also decides what is on it.
+    it.each([
+      // His scope is himself: the card is found through the token alone.
+      ["a field employee's", { id: "a1", role: "AGENT" }],
+      // His scope is the organization, so the card is found through the
+      // cookie's scope — and still read for a phone.
+      ["an administrator's", { id: "boss-1", role: "ADMIN" }],
+    ])("treats %s phone token sent along with a browser cookie as the phone — on the card too", async (_whose, caller) => {
+      mockAgentAdministrator()
+      vi.mocked(getMobileAuth).mockReturnValue(phoneToken(caller.id))
+      vi.mocked(prisma.mtmAgent.findFirst)
+        .mockResolvedValueOnce(caller as never) // the caller behind the token
+        .mockResolvedValueOnce(labelledCard() as never) // the card he opens
+
+      const res = await GetAgent(makeReq("/api/v1/mtm/agents/a1"), makeParams("a1"))
+      expect(res.status).toBe(200)
+      const json = await res.json()
+
+      expect(json.data.name).toBe("Agent One")
+      expect(json.data).not.toHaveProperty("tags")
+      expect(json.data).not.toHaveProperty("mapColor")
+      expect(JSON.stringify(json)).not.toContain("испытательный срок")
+      const select = argsOf(prisma.mtmAgent.findFirst, 1).select
+      expect(select).not.toHaveProperty("tags")
+      expect(select).not.toHaveProperty("mapColor")
+    })
+  })
+
+  // The notes are about a person, and that person is not always on a phone.
+  // A field employee's card gets linked to a web login the first time he signs
+  // in on the phone with his CRM email, and supervisors and managers work in
+  // the browser every day. «Web sessions only» let each of them read what was
+  // noted about himself (review of 2026-10-10).
+  describe("are kept from the person they are about, whatever he signed in with", () => {
+    const OWN_NOTES = { tags: ["резерв"], mapColor: "navy" }
+
+    function webLogin(webRole: string, actor: { agentId: string; role: string; scopedAgentIds: string[] | null }) {
+      vi.mocked(getSession).mockResolvedValue({
+        orgId: ORG,
+        userId: "field-user",
+        role: webRole,
+        email: "field.user@example.com",
+        name: "Field User",
+      } as never)
+      vi.mocked(resolveMtmRouteActor).mockResolvedValue(actor as never)
+    }
+    const listed = async () => {
+      const res = await ListAgents(makeReq("/api/v1/mtm/agents"))
+      expect(res.status).toBe(200)
+      return res.json() as Promise<{ data: { agents: Array<Record<string, unknown>> } }>
+    }
+    const opened = async (id: string) => {
+      const res = await GetAgent(makeReq(`/api/v1/mtm/agents/${id}`), makeParams(id))
+      expect(res.status).toBe(200)
+      return res.json() as Promise<{ data: Record<string, unknown> }>
+    }
+
+    it.each(["sales", "support", "viewer"])("gives a field employee signed in on the web as «%s» nothing of his own card's notes — in the list and on the card", async (webRole) => {
+      webLogin(webRole, { agentId: "a1", role: "AGENT", scopedAgentIds: ["a1"] })
+      vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([labelledCard()] as never)
+      vi.mocked(prisma.mtmAgent.count).mockResolvedValue(1)
+      vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(labelledCard() as never)
+
+      const list = await listed()
+      const card = await opened("a1")
+
+      // The same answer his phone gets: the keys are not there at all.
+      for (const answer of [list.data.agents[0], card.data]) {
+        expect(answer.name).toBe("Agent One")
+        expect(answer).not.toHaveProperty("tags")
+        expect(answer).not.toHaveProperty("mapColor")
+      }
+      for (const json of [list, card]) {
+        expect(JSON.stringify(json)).not.toContain("испытательный срок")
+        expect(JSON.stringify(json)).not.toContain("teal")
+      }
+      // Not read from the database either.
+      for (const select of [argsOf(prisma.mtmAgent.findMany).select, argsOf(prisma.mtmAgent.findFirst).select]) {
+        expect(select).not.toHaveProperty("tags")
+        expect(select).not.toHaveProperty("mapColor")
+      }
+    })
+
+    it.each([
+      ["a supervisor", "SUPERVISOR"],
+      ["a manager", "MANAGER"],
+    ])("shows %s the notes on his people's cards and his own card blank", async (_who, role) => {
+      webLogin("manager", { agentId: "lead-1", role, scopedAgentIds: ["lead-1", "a1"] })
+      const ownCard = labelledCard({ id: "lead-1", name: "Team Lead", role, ...OWN_NOTES })
+      vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([labelledCard(), ownCard] as never)
+      vi.mocked(prisma.mtmAgent.count).mockResolvedValue(2)
+
+      const list = await listed()
+
+      expect(list.data.agents.map((agent) => [agent.id, agent.tags, agent.mapColor])).toEqual([
+        ["a1", LABELS, "teal"],
+        // The same shape as the others — an empty list and no colour.
+        ["lead-1", [], null],
+      ])
+      expect(JSON.stringify(list)).not.toContain("резерв")
+      expect(JSON.stringify(list)).not.toContain("navy")
+
+      vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValueOnce(labelledCard() as never)
+      expect((await opened("a1")).data).toMatchObject({ tags: LABELS, mapColor: "teal" })
+
+      vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValueOnce(ownCard as never)
+      const own = await opened("lead-1")
+      expect(own.data).toMatchObject({ name: "Team Lead", tags: [], mapColor: null })
+      expect(JSON.stringify(own)).not.toContain("резерв")
+      expect(JSON.stringify(own)).not.toContain("navy")
+    })
+
+    it("keeps nothing from an administrator of the organization who has a card of his own", async () => {
+      // He administers every card, his own too: these notes are his to keep,
+      // so there is nobody to keep them from.
+      webLogin("manager", { agentId: "head-1", role: "ADMIN", scopedAgentIds: null })
+      const ownCard = labelledCard({ id: "head-1", name: "Head Office", role: "ADMIN", ...OWN_NOTES })
+      vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([ownCard] as never)
+      vi.mocked(prisma.mtmAgent.count).mockResolvedValue(1)
+      vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(ownCard as never)
+
+      expect((await listed()).data.agents[0]).toMatchObject({ id: "head-1", ...OWN_NOTES })
+      expect((await opened("head-1")).data).toMatchObject({ id: "head-1", ...OWN_NOTES })
+    })
+  })
+
+  describe("a new card", () => {
+    it("stores the labels the way they will be shown — trimmed, each once — and the colour's key", async () => {
+      mockAgentAdministrator()
+      vi.mocked(prisma.mtmAgent.create).mockResolvedValue({ id: "new-agent", name: "New Agent" } as never)
+
+      const res = await CreateAgent(makeJsonReq("/api/v1/mtm/agents", "POST", {
+        name: "New Agent",
+        tags: ["  испытательный срок ", "Испытательный Срок", "ночная   смена", ""],
+        mapColor: "navy",
+      }))
+
+      expect(res.status).toBe(201)
+      const created = argsOf(prisma.mtmAgent.create)
+      expect(created.data.tags).toEqual(["испытательный срок", "ночная смена"])
+      expect(created.data.mapColor).toBe("navy")
+      // The answer goes to the web session that created the card.
+      expect(created.select).toMatchObject({ tags: true, mapColor: true })
+      expect(argsOf(prisma.mtmAuditLog.create).data.newData).toMatchObject({
+        tags: ["испытательный срок", "ночная смена"],
+        mapColor: "navy",
+      })
+    })
+
+    it("starts without labels and without a colour when the form sends none", async () => {
+      mockAgentAdministrator()
+      vi.mocked(prisma.mtmAgent.create).mockResolvedValue({ id: "new-agent", name: "New Agent" } as never)
+
+      // «Без цвета» leaves the form as an empty string.
+      const res = await CreateAgent(makeJsonReq("/api/v1/mtm/agents", "POST", { name: "New Agent", mapColor: "" }))
+
+      expect(res.status).toBe(201)
+      expect(argsOf(prisma.mtmAgent.create).data).toMatchObject({ tags: [], mapColor: null })
+    })
+  })
+
+  describe("an existing card", () => {
+    beforeEach(() => {
+      mockAgentAdministrator()
+      vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(labelledCard() as never)
+      vi.mocked(prisma.mtmAgent.updateMany).mockResolvedValue({ count: 1 })
+    })
+
+    const put = (body: unknown, id = "a1") =>
+      UpdateAgent(makeJsonReq(`/api/v1/mtm/agents/${id}`, "PUT", body), makeParams(id))
+
+    it("changes only the labels when only labels are sent", async () => {
+      const res = await put({ tags: [" резерв ", "РЕЗЕРВ", "2-я смена"] })
+
+      expect(res.status).toBe(200)
+      expect(argsOf(prisma.mtmAgent.updateMany).data).toEqual({ tags: ["резерв", "2-я смена"] })
+    })
+
+    it("leaves the labels and the colour alone when the caller does not send them", async () => {
+      // The permission switches, the status button and a tab opened before the
+      // labels existed all send a partial body to this route.
+      const res = await put({ canSelfPublishRoutes: true })
+
+      expect(res.status).toBe(200)
+      const { data } = argsOf(prisma.mtmAgent.updateMany)
+      expect(data).toEqual({ canSelfPublishRoutes: true })
+      expect(data).not.toHaveProperty("tags")
+      expect(data).not.toHaveProperty("mapColor")
+    })
+
+    it("removes every label when an empty list is sent, and the colour on «Без цвета»", async () => {
+      expect((await put({ tags: [], mapColor: null })).status).toBe(200)
+      expect(argsOf(prisma.mtmAgent.updateMany).data).toEqual({ tags: [], mapColor: null })
+
+      expect((await put({ mapColor: "" })).status).toBe(200)
+      expect(argsOf(prisma.mtmAgent.updateMany, 1).data).toEqual({ mapColor: null })
+    })
+
+    it("changes the colour without touching the labels", async () => {
+      expect((await put({ mapColor: "fuchsia" })).status).toBe(200)
+
+      expect(argsOf(prisma.mtmAgent.updateMany).data).toEqual({ mapColor: "fuchsia" })
+    })
+
+    it("writes to the audit trail what the labels and the colour were and what they became", async () => {
+      await put({ tags: ["резерв"], mapColor: "black" })
+
+      // The row read before the write is where «were» comes from.
+      expect(argsOf(prisma.mtmAgent.findFirst).select).toMatchObject({ tags: true, mapColor: true })
+      const audit = argsOf(prisma.mtmAuditLog.create).data
+      expect(audit).toMatchObject({ action: "AGENT_UPDATE", entityId: "a1" })
+      expect(audit.oldData).toMatchObject({ tags: LABELS, mapColor: "teal" })
+      expect(audit.newData).toMatchObject({ tags: ["резерв"], mapColor: "black" })
+    })
+
+    it("says why a label was refused", async () => {
+      const res = await put({ tags: ["=1+1"] })
+
+      expect(res.status).toBe(400)
+      expect(await res.json()).toMatchObject({ code: "MTM_AGENT_TAGS_INVALID", error: expect.stringContaining("letter or a digit") })
+    })
+
+    it("does not let the phone's token label a card", async () => {
+      vi.mocked(getSession).mockResolvedValue(null)
+      vi.mocked(getOrgId).mockResolvedValue(ORG)
+      vi.mocked(getMobileAuth).mockReturnValue(phoneToken())
+
+      const res = await put({ tags: ["резерв"], mapColor: "pink" })
+
+      expect(res.status).toBe(403)
+      expect(prisma.mtmAgent.updateMany).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("what is refused", () => {
+    const REFUSED: Array<[string, Record<string, unknown>]> = [
+      ["eleven labels", { tags: Array.from({ length: 11 }, (_, index) => `группа ${index + 1}`) }],
+      ["a label of twenty-five characters", { tags: ["а".repeat(25)] }],
+      ["a label that starts a spreadsheet formula", { tags: ["=1+1"] }],
+      ["the value the map's list keeps for «without labels»", { tags: ["__none__"] }],
+      ["labels sent as one string", { tags: "резерв, 2-я смена" }],
+      ["a colour that is not in the palette", { mapColor: "orange" }],
+      ["a hex in place of a palette key", { mapColor: "#db2777" }],
+    ]
+
+    it.each(REFUSED)("%s on an existing card: 400, and nothing is written", async (_what, body) => {
+      mockAgentAdministrator()
+      vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(labelledCard() as never)
+      vi.mocked(prisma.mtmAgent.updateMany).mockResolvedValue({ count: 1 })
+
+      const res = await UpdateAgent(
+        // The rest of the form travels with it: none of it may be saved either.
+        makeJsonReq("/api/v1/mtm/agents/a1", "PUT", { name: "Renamed", ...body }),
+        makeParams("a1"),
+      )
+
+      expect(res.status).toBe(400)
+      expect(prisma.mtmAgent.updateMany).not.toHaveBeenCalled()
+      expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
+    })
+
+    it.each(REFUSED)("%s on a new card: 400, and no card is created", async (_what, body) => {
+      mockAgentAdministrator()
+      vi.mocked(prisma.mtmAgent.create).mockResolvedValue({ id: "new-agent", name: "New Agent" } as never)
+
+      const res = await CreateAgent(makeJsonReq("/api/v1/mtm/agents", "POST", { name: "New Agent", ...body }))
+
+      expect(res.status).toBe(400)
+      expect(prisma.mtmAgent.create).not.toHaveBeenCalled()
+    })
+  })
+})
+
 // ─── Web field scope for employee cards (audit 2026-09-14) ──
 describe("employee cards follow the web user's field scope", () => {
   const SCOPE = ["mgr-1", "agent-1", "sup-1"]
@@ -879,6 +1274,95 @@ describe("employee cards follow the web user's field scope", () => {
 
     expect(res.status).toBe(200)
     expect((vi.mocked(prisma.mtmAgent.updateMany).mock.calls[0][0] as any).where.id).toEqual({ equals: "agent-1", in: SCOPE })
+  })
+
+  it("lets a manager label and colour an agent of theirs, fenced to the scope at write time", async () => {
+    mockWebManager()
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(card() as never)
+    vi.mocked(prisma.mtmAgent.updateMany).mockResolvedValue({ count: 1 })
+
+    const res = await UpdateAgent(
+      makeJsonReq("/api/v1/mtm/agents/agent-1", "PUT", { tags: ["резерв", "2-я смена"], mapColor: "purple" }),
+      makeParams("agent-1"),
+    )
+
+    expect(res.status).toBe(200)
+    const update = vi.mocked(prisma.mtmAgent.updateMany).mock.calls[0][0] as { where: { id: unknown }; data: unknown }
+    expect(update.where.id).toEqual({ equals: "agent-1", in: SCOPE })
+    expect(update.data).toEqual({ tags: ["резерв", "2-я смена"], mapColor: "purple" })
+  })
+
+  // Who writes the notes follows who reads them: a manager is not shown what
+  // is noted about himself, so he does not set it either.
+  it("refuses a manager who labels or colours his own card — nothing is written", async () => {
+    mockWebManager()
+    // A row that would pass every other check of this route (a field role, in
+    // scope): what refuses it must be that the card is the caller's own.
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(card({ id: "mgr-1", managerId: null }) as never)
+    vi.mocked(prisma.mtmAgent.updateMany).mockResolvedValue({ count: 1 })
+
+    for (const body of [
+      { tags: ["резерв"] },
+      { mapColor: "purple" },
+      // Taking them off is a write as well.
+      { tags: [], mapColor: null },
+      // The rest of the form does not carry them through.
+      { name: "Renamed", tags: ["резерв"], mapColor: "purple" },
+    ]) {
+      const res = await UpdateAgent(makeJsonReq("/api/v1/mtm/agents/mgr-1", "PUT", body), makeParams("mgr-1"))
+      expect(res.status, JSON.stringify(body)).toBe(403)
+      expect(await res.json(), JSON.stringify(body)).toMatchObject({ code: "MTM_AGENT_OWN_NOTES_ADMIN_REQUIRED" })
+    }
+    expect(prisma.mtmAgent.updateMany).not.toHaveBeenCalled()
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
+  })
+
+  it("lets an administrator who has a card of his own label and colour it", async () => {
+    mockWebManager({ agentId: "head-1", role: "ADMIN", scopedAgentIds: null })
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(card({ id: "head-1", role: "ADMIN", managerId: null }) as never)
+    vi.mocked(prisma.mtmAgent.updateMany).mockResolvedValue({ count: 1 })
+
+    const res = await UpdateAgent(
+      makeJsonReq("/api/v1/mtm/agents/head-1", "PUT", { tags: ["офис"], mapColor: "black" }),
+      makeParams("head-1"),
+    )
+
+    expect(res.status).toBe(200)
+    const update = vi.mocked(prisma.mtmAgent.updateMany).mock.calls[0][0] as { where: { id: unknown }; data: unknown }
+    expect(update.where.id).toBe("head-1")
+    expect(update.data).toEqual({ tags: ["офис"], mapColor: "black" })
+  })
+
+  it("refuses a manager who creates a labelled card for his own login — the link is administrator work", async () => {
+    // A card is «his own» by its link to his web login. Without this a
+    // manager could give himself a second, labelled card.
+    mockWebManager()
+
+    const res = await CreateAgent(makeJsonReq("/api/v1/mtm/agents", "POST", {
+      name: "Second Card",
+      userId: "cm1234567890123456789012",
+      tags: ["резерв"],
+      mapColor: "purple",
+    }))
+
+    expect(res.status).toBe(403)
+    expect(await res.json()).toMatchObject({ code: "MTM_AGENT_LINK_ADMIN_REQUIRED" })
+    expect(prisma.mtmAgent.create).not.toHaveBeenCalled()
+  })
+
+  it("answers 404 to a manager labelling an agent outside their scope, and writes nothing", async () => {
+    mockWebManager()
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(null as never)
+
+    const res = await UpdateAgent(
+      makeJsonReq("/api/v1/mtm/agents/agent-other", "PUT", { tags: ["резерв"], mapColor: "purple" }),
+      makeParams("agent-other"),
+    )
+
+    expect(res.status).toBe(404)
+    const lookup = vi.mocked(prisma.mtmAgent.findFirst).mock.calls[0][0] as { where: { id: unknown } }
+    expect(lookup.where.id).toEqual({ equals: "agent-other", in: SCOPE })
+    expect(prisma.mtmAgent.updateMany).not.toHaveBeenCalled()
   })
 
   it("keeps manager and administrator cards, and those roles, for administrators", async () => {

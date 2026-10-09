@@ -39,6 +39,10 @@ import { getOrgId, requireAuth } from "@/lib/api-auth"
 import { getMobileAuth, resolveMobileAuth } from "@/lib/mobile-auth"
 import { nearestStreet, nearestStreetUrl, parseNearestStreet, resetNearestStreetStateForTests } from "@/lib/mtm/nearest-street"
 import { resetRateLimit } from "@/lib/rate-limit"
+import { MTM_AGENT_TAG_MAX_COUNT, MTM_AGENT_TAG_MAX_LENGTH, validateMtmAgentTags } from "@/lib/mtm/agent-tags"
+import { ROSTER_COLUMNS } from "@/lib/mtm/live-map-roster"
+import { rosterExportTable } from "@/lib/mtm/live-map-roster-export"
+import type { MtmDashboardAgent } from "@/lib/mtm-types"
 
 const ORG = "org-1"
 const USER = "user-manager"
@@ -197,6 +201,32 @@ describe("POST /api/v1/mtm/locations/export", () => {
     expect(sheet.rows[3][0]).toBe("'+994 50 000 00 00")
     // Every cell is a string cell: nothing was turned into a formula object.
     expect(sheet.rows.flat().every((cell) => typeof cell === "string")).toBe(true)
+  })
+
+  // The three limits that have to agree: how many labels a card may hold and
+  // how long each may be (the card's validator), how the list joins them into
+  // a cell, and how long a cell this route accepts. One cell too long refuses
+  // the whole file, not one row — so the fullest card there can be is sent.
+  it("takes the fullest «Метки» cell a card can hold, in a table with every column the list has, and writes it whole", async () => {
+    const labels = Array.from({ length: MTM_AGENT_TAG_MAX_COUNT }, (_unused, index) => `${index}${"я".repeat(MTM_AGENT_TAG_MAX_LENGTH - 1)}`)
+    expect(validateMtmAgentTags(labels)).toEqual({ ok: true, tags: labels })
+    const person: MtmDashboardAgent = {
+      agentId: "a", name: "Əli Məmmədov", isOnline: true, fieldStatus: "ON_ROAD", freshness: "ONLINE", workdayState: "ACTIVE",
+      locationState: "AVAILABLE", routeCompletion: 0, tags: labels,
+    }
+    const word = (value: unknown) => String(value)
+    const sent = rosterExportTable([person], ROSTER_COLUMNS, {
+      column: word, status: word, freshness: word, presence: word, workday: word, routeProgress: (done, total) => `${done}/${total}`,
+      speed: word, distance: word, clock: word, dateTime: word, visitOpened: word, standingSince: word,
+    })
+    const cell = sent.rows[0][sent.headers.indexOf("tags")]
+    expect(cell).toBe(labels.join(", "))
+
+    const response = await exportPOST(exportRequest({ ...table, headers: sent.headers, rows: sent.rows }))
+
+    expect(response.status).toBe(200)
+    const sheet = await read(response)
+    expect(sheet.rows[1][sent.headers.indexOf("tags")]).toBe(cell)
   })
 
   it("reads nothing of the tenant: it only puts the given words into a workbook", async () => {

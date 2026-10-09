@@ -84,7 +84,7 @@ const METERS_PER_DEGREE = (Math.PI * 6_371_000) / 180
 const CENTRE = { latitude: 40.4093, longitude: 49.8671 }
 const northOf = (meters: number) => ({ latitude: CENTRE.latitude + meters / METERS_PER_DEGREE, longitude: CENTRE.longitude })
 
-interface Row { agentId: string; name: string; fieldStatus: string; meters: number | null; minutesAgo: number; battery?: number; workdayState?: string; managerId?: string; managerName?: string }
+interface Row { agentId: string; name: string; fieldStatus: string; meters: number | null; minutesAgo: number; battery?: number; workdayState?: string; managerId?: string; managerName?: string; tags?: string[] }
 let rosterRows: Row[]
 let requests: string[]
 /** What the journal and the road server answer for the selected employee's card. */
@@ -107,6 +107,7 @@ function answer(now: number) {
       agentLocations: rosterRows.map((row) => ({
         agentId: row.agentId, name: row.name, isOnline: true, lastSeenAt: iso(0), teamId: null, teamName: null,
         managerId: row.managerId ?? null, managerName: row.managerName ?? null,
+        tags: row.tags ?? [], mapColor: null,
         fieldStatus: row.fieldStatus, freshness: row.meters == null ? "NO_LOCATION" : "ONLINE",
         workdayState: row.workdayState ?? "ACTIVE", workdayDate: "2026-10-09", workdayStartedAt: iso(120), workdayCarryover: false,
         workdayPausedAt: workforceEnabled && row.workdayState === "PAUSED" ? iso(35) : null, workdayCompletedAt: null,
@@ -527,7 +528,7 @@ describe("the live map page, end to end", () => {
   })
 
   it("opens the selected employee's card with where he is, since when, and his own events of today", async () => {
-    rosterRows[1] = { agentId: "near", name: "Nigar", fieldStatus: "STOPPED", meters: 450, minutesAgo: 1, workdayState: "PAUSED", managerId: "boss-1", managerName: "Старший Первый" }
+    rosterRows[1] = { agentId: "near", name: "Nigar", fieldStatus: "STOPPED", meters: 450, minutesAgo: 1, workdayState: "PAUSED", managerId: "boss-1", managerName: "Старший Первый", tags: ["стажёр", "север"] }
     activityLogs = [
       { id: "2", action: "WORKDAY_PAUSE", agentId: "near", createdAt: new Date(Date.now() - 35 * 60_000).toISOString() },
       { id: "1", action: "CHECK_OUT", agentId: "near", createdAt: new Date(Date.now() - 50 * 60_000).toISOString(), subject: { customerName: "Аптека на углу", visitId: "v1", routeId: null } },
@@ -558,6 +559,8 @@ describe("the live map page, end to end", () => {
     expect(card.filter((request) => request.startsWith("/api/v1/mtm/geocode/street"))).toHaveLength(1)
     // Whom she reports to is said in the card, whether or not the list draws that column.
     expect(detail.querySelector('[data-testid="live-map-agent-manager"]')?.textContent).toBe("Руководитель: Старший Первый")
+    // And the labels a manager put on her.
+    expect(detail.querySelector('[data-testid="live-map-agent-tags"]')?.textContent).toBe("Метки: стажёр, север")
     expect(byTestId("roster-column-manager")).toBeNull()
     // The list above it can be taken away as a file.
     expect(byTestId("live-map-roster-export")?.textContent).toBe("Excel")
