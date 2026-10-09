@@ -339,11 +339,6 @@ export default function MtmMapPage() {
       setMapLook(parseMapLook(window.localStorage.getItem(MAP_LOOK_STORAGE_KEY)))
     } catch { /* storage closed to the page: the defaults */ }
   }, [])
-  // The background chosen in «Слои»; null is the one every MTM map draws.
-  const baseMap = useMemo(() => {
-    const chosen = BASE_MAPS.find((map) => map.id === mapLook.base)
-    return chosen?.tiles ? { id: chosen.id, ...chosen.tiles } : null
-  }, [mapLook.base])
   const changeMapLook = (change: Partial<typeof DEFAULT_MAP_LOOK>) => {
     const next = { ...mapLook, ...change }
     setMapLook(next)
@@ -735,6 +730,11 @@ export default function MtmMapPage() {
   }, [])
   // What the layer's line says: what it is, and — once read — what it shows
   // and what it cannot (a client without coordinates is not on any map).
+  // The background chosen in «Слои»; null is the one every MTM map draws.
+  const baseMap = useMemo(() => {
+    const chosen = BASE_MAPS.find((map) => map.id === mapLook.base)
+    return chosen?.tiles ? { id: chosen.id, ...chosen.tiles } : null
+  }, [mapLook.base])
   const clientsHint = !clientsKey
     ? tMap("layers.clientsHint")
     : clientsHeld?.data
