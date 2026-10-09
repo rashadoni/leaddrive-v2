@@ -15114,6 +15114,8 @@
       "ROUTE_COMPLETE": "Route completed",
       "ROUTE_PUBLISH": "Route published",
       "ROUTE_DAY_CLOSE": "Route closed at day end",
+      "ROUTE_REMOVAL_REQUEST": "Asked to remove a route stop",
+      "ROUTE_ADDITION_REQUEST": "Asked to add a route stop",
       "VISIT_COMPLETE": "Visit completed",
       "VISIT_ACTION_COMPLETE": "Visit step done",
       "VISIT_RESULT_UPDATE": "Visit result updated",
@@ -16455,6 +16457,7 @@
       "nearestTo": "Nearest to: {label}",
       "clearPoint": "Remove",
       "rulerTotal": "Ruler: {distance}",
+      "rulerArea": "Area inside: {area}",
       "rulerStart": "Press the map to put the first point",
       "rulerHint": "Every press adds a segment",
       "rulerUndo": "Remove the last one",
@@ -16496,6 +16499,11 @@
       "collapseGroup": "Collapse group {name}",
       "expandGroup": "Expand group {name}",
       "noTeam": "No team",
+      "export": {
+        "button": "Excel",
+        "hint": "Download the list as Excel: rows and order as on screen",
+        "failed": "The list could not be exported. Try again."
+      },
       "historyToday": "Today's history",
       "kmh": "{value} km/h",
       "age": {
@@ -16870,6 +16878,41 @@
       "factOpen": "Actual {from} — in progress",
       "openVisit": "Open visit",
       "missingCoordinates": "{count, plural, one {# stop has no coordinates and is} other {# stops have no coordinates and are}} not on the map"
+    },
+    "areaUnits": {
+      "m2": "{value} m²",
+      "ha": "{value} ha",
+      "km2": "{value} km²"
+    },
+    "place": {
+      "title": "Where now",
+      "atClientVisit": "at client {name}, visit in progress",
+      "atClientZone": "inside the zone of client {name}",
+      "visitAway": "the visit at client {name} is still open, and he is {distance} away from it",
+      "delayedHint": "from a delayed coordinate — its time is in the line above",
+      "approximately": "approximately {place}",
+      "loading": "finding the street…",
+      "coordinates": "street not found · {coordinates}"
+    },
+    "since": {
+      "VISIT": "Visit in progress since {time}",
+      "BREAK": "On a break since {time}",
+      "SHIFT_CLOSED": "Workday closed at {time}",
+      "duration": {
+        "moment": "just now",
+        "minutes": "{minutes} min",
+        "hours": "{hours} h {minutes} min",
+        "days": "{days} d {hours} h"
+      }
+    },
+    "events": {
+      "title": "Events today",
+      "loading": "Loading events…",
+      "empty": "No events yet today",
+      "failed": "Events could not be refreshed",
+      "cut": "The latest {count} events of the day are shown — see «Today's history» for earlier ones",
+      "more": "Show {count} more",
+      "fewer": "Show fewer"
     },
     "distanceUnits": {
       "m": "{value} m",

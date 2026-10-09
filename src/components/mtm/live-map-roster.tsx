@@ -2,10 +2,11 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type Ref } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { AlertTriangle, ArrowLeft, ChevronDown, ChevronRight, Filter, Maximize2, Minimize2, PanelRightClose, SlidersHorizontal, X } from "lucide-react"
+import { AlertTriangle, ArrowLeft, ChevronDown, ChevronRight, Download, Filter, Loader2, Maximize2, Minimize2, PanelRightClose, SlidersHorizontal, X } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import { FIELD_STATUS_LABEL_KEYS, type MtmDashboardAgent } from "@/lib/mtm-types"
+import { rosterExportTable } from "@/lib/mtm/live-map-roster-export"
 import {
   activeRosterFilterColumns,
   availableRosterColumns,
@@ -123,6 +124,12 @@ export interface LiveMapRosterProps {
   isEarlierDay: (value: string) => boolean
   /** «450 m», «7,8 km» — for the distance to the point picked on the map. */
   formatDistance?: (meters: number) => string
+  /**
+   * The name of the Excel file, without the extension (ASCII). Given — the
+   * list offers «Excel»: the rows it shows, in its order, with every column
+   * it has. Absent — no button.
+   */
+  exportFileName?: () => string
 }
 
 /**
@@ -145,13 +152,14 @@ export function LiveMapRoster({
   agents, rows, searchSlot, filters, onFiltersChange, view, onViewChange, onHide, hiddenOnWide = false,
   hiddenAgentIds, onToggleAgentOnMap, onSetAgentsOnMap, selectedAgentId, onSelect, selectedDetailRef,
   renderDetail, nowMs, workforceEnabled, formatClock, formatVisitOpened, isEarlierDay,
-  formatDistance = (meters) => `${Math.round(meters)} m`,
+  formatDistance = (meters) => `${Math.round(meters)} m`, exportFileName,
 }: LiveMapRosterProps) {
   const tMap = useTranslations("mtmMap")
   const locale = useLocale()
   const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<string>>(() => new Set())
   /** The column whose tick list is open inside «Фильтры»; null is the list of columns. */
   const [filtersColumn, setFiltersColumn] = useState<RosterColumnId | null>(null)
+  const [exporting, setExporting] = useState<"idle" | "busy" | "failed">("idle")
   const asideRef = useRef<HTMLElement | null>(null)
   const headingRef = useRef<HTMLDivElement | null>(null)
 
@@ -291,6 +299,47 @@ export function LiveMapRoster({
     })
   }
 
+  // The file is the list as it stands: the rows left by the filters, group by
+  // group in the order on screen, with every column the roster has — not only
+  // the three a narrow list draws. The server only turns the words into a
+  // workbook (see the export route for why it is built here).
+  const downloadExcel = async () => {
+    if (!exportFileName || exporting === "busy") return
+    setExporting("busy")
+    try {
+      const table = rosterExportTable(groups.flatMap((group) => group.agents), available, {
+        column: columnLabel,
+        status: (status) => valueLabel("status", status),
+        freshness: (freshness) => tMap(`freshness.${freshness.toLowerCase()}`),
+        presence: (online) => tMap(`presence.${online ? "online" : "offline"}`),
+        workday: (state) => tMap(`roster.workday.${state}`),
+        routeProgress: (done, total) => tMap("routeStop.progress", { done, total }),
+        speed: (kmh) => tMap("roster.kmh", { value: kmh }),
+        distance: formatDistance,
+        clock: (iso) => formatClock(iso),
+        dateTime: formatVisitOpened,
+        visitOpened: (time) => tMap("visitOpenedAt", { time }),
+      })
+      const response = await fetch("/api/v1/mtm/locations/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sheetName: tMap("agents").slice(0, 31), fileName: exportFileName(), ...table }),
+      })
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      const url = URL.createObjectURL(await response.blob())
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `${exportFileName()}.xlsx`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+      setExporting("idle")
+    } catch {
+      setExporting("failed")
+    }
+  }
+
   const cell = (agent: MtmDashboardAgent, column: RosterColumnId): ReactNode => {
     switch (column) {
       case "name": {
@@ -423,19 +472,42 @@ export function LiveMapRoster({
           <span role="status" className="text-xs tabular-nums text-muted-foreground" data-testid="live-map-roster-count">
             {tMap("roster.shownCount", { shown: rows.length, total: agents.length })}
           </span>
-          {/* Only where the list stands beside the map, and the screen is wide
-              enough for a table next to a usable map, is there a width to choose. */}
-          <button
-            type="button"
-            onClick={() => onViewChange({ ...view, width: view.width === "wide" ? "narrow" : "wide" })}
-            data-testid="live-map-roster-width"
-            className={cn(TOOL_BUTTON, "ml-auto hidden min-[85rem]:inline-flex")}
-          >
-            {view.width === "wide"
-              ? <><Minimize2 className="h-3.5 w-3.5" aria-hidden="true" />{tMap("roster.narrow")}</>
-              : <><Maximize2 className="h-3.5 w-3.5" aria-hidden="true" />{tMap("roster.wide")}</>}
-          </button>
+          {/* The list's own tools keep to the right edge together. */}
+          <div className="ml-auto flex items-center gap-1.5">
+            {/* The list as a file: what is shown, in this order. A word on it, not an arrow alone. */}
+            {exportFileName ? (
+              <button
+                type="button"
+                onClick={() => { void downloadExcel() }}
+                disabled={exporting === "busy" || rows.length === 0}
+                title={tMap("roster.export.hint")}
+                aria-label={tMap("roster.export.hint")}
+                data-testid="live-map-roster-export"
+                className={cn(TOOL_BUTTON, "disabled:opacity-50")}
+              >
+                {exporting === "busy"
+                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                  : <Download className="h-3.5 w-3.5" aria-hidden="true" />}
+                {tMap("roster.export.button")}
+              </button>
+            ) : null}
+            {/* Only where the list stands beside the map, and the screen is wide
+                enough for a table next to a usable map, is there a width to choose. */}
+            <button
+              type="button"
+              onClick={() => onViewChange({ ...view, width: view.width === "wide" ? "narrow" : "wide" })}
+              data-testid="live-map-roster-width"
+              className={cn(TOOL_BUTTON, "ml-auto hidden min-[85rem]:inline-flex")}
+            >
+              {view.width === "wide"
+                ? <><Minimize2 className="h-3.5 w-3.5" aria-hidden="true" />{tMap("roster.narrow")}</>
+                : <><Maximize2 className="h-3.5 w-3.5" aria-hidden="true" />{tMap("roster.wide")}</>}
+            </button>
+          </div>
         </div>
+        {exporting === "failed" ? (
+          <div role="status" className="px-3 pt-1 text-xs text-amber-700 dark:text-amber-300" data-testid="live-map-roster-export-failed">{tMap("roster.export.failed")}</div>
+        ) : null}
         <div className="flex items-center gap-1.5 px-3 pt-2">
           <div className="min-w-0 flex-1">{searchSlot}</div>
           {/* Every column's filter in one place — also the columns this width has no room to draw. */}

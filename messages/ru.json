@@ -15114,6 +15114,8 @@
       "ROUTE_COMPLETE": "Маршрут завершён",
       "ROUTE_PUBLISH": "Маршрут опубликован",
       "ROUTE_DAY_CLOSE": "Маршрут закрыт в конце дня",
+      "ROUTE_REMOVAL_REQUEST": "Попросил убрать точку из маршрута",
+      "ROUTE_ADDITION_REQUEST": "Попросил добавить точку в маршрут",
       "VISIT_COMPLETE": "Визит завершён",
       "VISIT_ACTION_COMPLETE": "Шаг визита выполнен",
       "VISIT_RESULT_UPDATE": "Итог визита изменён",
@@ -16455,6 +16457,7 @@
       "nearestTo": "Ближайшие к: {label}",
       "clearPoint": "Убрать",
       "rulerTotal": "Линейка: {distance}",
+      "rulerArea": "Площадь внутри: {area}",
       "rulerStart": "Нажмите на карту, чтобы поставить первую точку",
       "rulerHint": "Каждое нажатие добавляет отрезок",
       "rulerUndo": "Убрать последнюю",
@@ -16496,6 +16499,11 @@
       "collapseGroup": "Свернуть группу «{name}»",
       "expandGroup": "Развернуть группу «{name}»",
       "noTeam": "Без отдела",
+      "export": {
+        "button": "Excel",
+        "hint": "Скачать список в Excel: строки и порядок как на экране",
+        "failed": "Не удалось выгрузить список. Попробуйте ещё раз."
+      },
       "historyToday": "История за день",
       "kmh": "{value} км/ч",
       "age": {
@@ -16870,6 +16878,41 @@
       "factOpen": "Факт {from} — идёт",
       "openVisit": "Открыть визит",
       "missingCoordinates": "{count, plural, one {# точка без координат не показана на карте} few {# точки без координат не показаны на карте} many {# точек без координат не показаны на карте} other {# точки без координат не показаны на карте}}"
+    },
+    "areaUnits": {
+      "m2": "{value} м²",
+      "ha": "{value} га",
+      "km2": "{value} км²"
+    },
+    "place": {
+      "title": "Где сейчас",
+      "atClientVisit": "у клиента {name}, идёт визит",
+      "atClientZone": "в зоне клиента {name}",
+      "visitAway": "визит у клиента {name} не закрыт, а сам в {distance} оттуда",
+      "delayedHint": "по координате с задержкой — время в строке выше",
+      "approximately": "примерно {place}",
+      "loading": "определяю улицу…",
+      "coordinates": "улица не определена · {coordinates}"
+    },
+    "since": {
+      "VISIT": "Визит идёт с {time}",
+      "BREAK": "Перерыв с {time}",
+      "SHIFT_CLOSED": "Рабочий день завершён в {time}",
+      "duration": {
+        "moment": "только что",
+        "minutes": "{minutes} мин",
+        "hours": "{hours} ч {minutes} мин",
+        "days": "{days} дн {hours} ч"
+      }
+    },
+    "events": {
+      "title": "События сегодня",
+      "loading": "Загружаю события…",
+      "empty": "Сегодня событий пока нет",
+      "failed": "Не удалось обновить события",
+      "cut": "Показаны последние {count} событий дня — более ранние смотрите в «Истории за день»",
+      "more": "Показать ещё {count}",
+      "fewer": "Свернуть"
     },
     "distanceUnits": {
       "m": "{value} м",

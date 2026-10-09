@@ -3,13 +3,13 @@
 import "leaflet/dist/leaflet.css"
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type MutableRefObject } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { Circle, CircleMarker, MapContainer, Marker, Polyline, Popup, Tooltip, useMap, useMapEvents } from "react-leaflet"
+import { Circle, CircleMarker, MapContainer, Marker, Polygon, Polyline, Popup, Tooltip, useMap, useMapEvents } from "react-leaflet"
 import L from "leaflet"
 import Link from "next/link"
 import { CartoVectorBasemap } from "./carto-vector-basemap"
 import { formatDateTime, formatTime } from "@/lib/format-date"
 import { calculateDistance } from "@/lib/geo-utils"
-import { liveMapTrailSegments, type LiveMapTrails } from "@/lib/mtm/live-map-trails"
+import { liveMapTrailSegments, outlineCrossesItself, type LiveMapTrails } from "@/lib/mtm/live-map-trails"
 
 // F-24: rewritten on Leaflet. Google Maps + AdvancedMarker had been the
 // source of 5 hotfixes in a month — Vector tiles need a real Map ID, the React
@@ -808,6 +808,13 @@ export default function MtmLiveMap({
           }) : null}
 
           {/* The ruler: a line through the points pressed, and the place they add up to. */}
+          {/* From three points the ruler also reads an area: the shape it is the
+              area of — filled, and closed back to the first point with a fainter
+              edge, so the figure measured is the figure seen. Not for a line
+              that crosses itself: that has no one area. */}
+          {rulerPoints.length >= 3 && !outlineCrossesItself(rulerPoints) ? (
+            <Polygon positions={rulerPoints.map((point) => [point.latitude, point.longitude] as L.LatLngTuple)} interactive={false} pathOptions={{ color: "#0f172a", weight: 1.5, opacity: 0.35, dashArray: "2 6", fillColor: "#0f172a", fillOpacity: 0.08 }} />
+          ) : null}
           {rulerPoints.length >= 2 ? (
             <Polyline positions={rulerPoints.map((point) => [point.latitude, point.longitude] as L.LatLngTuple)} interactive={false} pathOptions={{ color: "#0f172a", weight: 2.5, opacity: 0.9, dashArray: "2 6" }} />
           ) : null}

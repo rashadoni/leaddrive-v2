@@ -69,6 +69,10 @@ export interface MtmDashboardAgent extends Omit<LiveMapAgent, "latitude" | "long
   workdayDate?: string | null
   workdayStartedAt?: string | null
   workdayCarryover?: boolean
+  /** When the break he is on began — only while the workday is paused. */
+  workdayPausedAt?: string | null
+  /** When the workday was closed — only once it is. */
+  workdayCompletedAt?: string | null
   /** When the visit the agent is in was opened — it may be an earlier day. Only with CHECKED_IN. */
   openVisitSince?: string | null
   /** Stops visited and stops in all of today's routes that count; 0 of 0 = no route. */
