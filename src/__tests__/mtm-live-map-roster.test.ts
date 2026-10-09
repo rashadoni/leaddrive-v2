@@ -1090,6 +1090,67 @@ describe("the list on the page", () => {
       expect(scrolled).toEqual([])
     })
 
+    it("holds the list's height while a menu floats beside it — the menu does not jump from under the cursor when a filter shortens the list", async () => {
+      // On production, the day the panel shipped: a press left nine rows of
+      // fourteen, the page settled higher, the panel moved with the list's
+      // heading — and the second press landed on another value.
+      await draw()
+      const aside = byTestId("live-map-roster")!
+      const heading = byTestId("live-map-roster-heading")!
+      // The height is held on the table: its heading follows the screen only inside it.
+      const table = byTestId("live-map-roster-table")!
+      Object.defineProperty(table, "offsetHeight", { configurable: true, value: 1800 })
+      const scrolled: Array<unknown> = []
+      aside.scrollIntoView = (options?: unknown) => { scrolled.push(options) }
+      expect(table.style.minHeight).toBe("")
+
+      await press(byTestId("live-map-roster-filters-button"))
+      expect(table.style.minHeight).toBe("1800px")
+      // And the browser must not follow a surviving row to its new place (scroll anchoring).
+      expect(table.style.overflowAnchor).toBe("none")
+      // The page is scrolled a little, the heading follows the screen, and the
+      // end of this short list is on the screen: exactly where a shorter list
+      // is otherwise brought back to its top.
+      aside.getBoundingClientRect = () => ({ top: -40, bottom: 170, left: 0, right: 400, width: 400, height: 210, x: 0, y: -40, toJSON: () => ({}) })
+      heading.getBoundingClientRect = () => ({ top: 10, bottom: 170, left: 0, right: 400, width: 400, height: 160, x: 0, y: 10, toJSON: () => ({}) })
+      Object.defineProperty(window, "innerHeight", { value: 700, configurable: true })
+      await press(byTestId("live-map-roster-filters-value-status-OFFLINE"))
+      expect(rowIds()).toHaveLength(2)
+      // Two rows now, and the list is as tall as it was: the page has not moved, nor the panel.
+      expect(table.style.minHeight).toBe("1800px")
+      expect(scrolled).toEqual([])
+
+      // The panel is closed: the height is let go, and only now are the two
+      // rows brought back from behind the heading.
+      await closeMenu()
+      expect(table.style.minHeight).toBe("")
+      expect(table.style.overflowAnchor).toBe("")
+      expect(scrolled).toEqual([{ block: "start" }])
+    })
+
+    it("holds it for a column's menu as well, and lets go when the menu closes", async () => {
+      await draw()
+      const table = byTestId("live-map-roster-table")!
+      Object.defineProperty(table, "offsetHeight", { configurable: true, value: 900 })
+      await openMenu("status")
+      expect(table.style.minHeight).toBe("900px")
+      await press(byTestId("roster-filter-value-status-LATE"))
+      expect(rowIds()).toEqual(["a4"])
+      expect(table.style.minHeight).toBe("900px")
+      await closeMenu()
+      expect(table.style.minHeight).toBe("")
+    })
+
+    it("does not hold anything under the map: there the panel is part of the list and moves nothing", async () => {
+      screen.besideMap = false
+      screen.roomForTable = false
+      await draw()
+      const table = byTestId("live-map-roster-table")!
+      Object.defineProperty(table, "offsetHeight", { configurable: true, value: 900 })
+      await press(byTestId("live-map-roster-filters-button"))
+      expect(table.style.minHeight).toBe("")
+    })
+
     it("the list put away on a wide screen takes its open filters with it: they do not open by themselves when it comes back", async () => {
       // Under the map a list that was «put away» is still shown, with its filters open.
       screen.besideMap = false
