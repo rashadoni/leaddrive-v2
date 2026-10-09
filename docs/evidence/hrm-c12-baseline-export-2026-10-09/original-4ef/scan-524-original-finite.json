@@ -1,0 +1,162 @@
+{
+  "status": "ORIGINAL_SCAN_FAIL_REPRODUCED",
+  "exit": 1,
+  "findings": [
+    {
+      "RuleID": "generic-api-key",
+      "File": "docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json",
+      "StartLine": 17,
+      "EndLine": 17,
+      "Commit": "524313c1995336db77f64c8d50078c6433a7d97f",
+      "Fingerprint": "524313c1995336db77f64c8d50078c6433a7d97f:docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json:generic-api-key:17"
+    },
+    {
+      "RuleID": "generic-api-key",
+      "File": "docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json",
+      "StartLine": 21,
+      "EndLine": 21,
+      "Commit": "524313c1995336db77f64c8d50078c6433a7d97f",
+      "Fingerprint": "524313c1995336db77f64c8d50078c6433a7d97f:docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json:generic-api-key:21"
+    },
+    {
+      "RuleID": "generic-api-key",
+      "File": "docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json",
+      "StartLine": 54,
+      "EndLine": 54,
+      "Commit": "524313c1995336db77f64c8d50078c6433a7d97f",
+      "Fingerprint": "524313c1995336db77f64c8d50078c6433a7d97f:docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json:generic-api-key:54"
+    },
+    {
+      "RuleID": "generic-api-key",
+      "File": "docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json",
+      "StartLine": 58,
+      "EndLine": 58,
+      "Commit": "524313c1995336db77f64c8d50078c6433a7d97f",
+      "Fingerprint": "524313c1995336db77f64c8d50078c6433a7d97f:docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json:generic-api-key:58"
+    },
+    {
+      "RuleID": "generic-api-key",
+      "File": "docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json",
+      "StartLine": 70,
+      "EndLine": 70,
+      "Commit": "524313c1995336db77f64c8d50078c6433a7d97f",
+      "Fingerprint": "524313c1995336db77f64c8d50078c6433a7d97f:docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json:generic-api-key:70"
+    },
+    {
+      "RuleID": "generic-api-key",
+      "File": "docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json",
+      "StartLine": 74,
+      "EndLine": 74,
+      "Commit": "524313c1995336db77f64c8d50078c6433a7d97f",
+      "Fingerprint": "524313c1995336db77f64c8d50078c6433a7d97f:docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json:generic-api-key:74"
+    },
+    {
+      "RuleID": "generic-api-key",
+      "File": "docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json",
+      "StartLine": 86,
+      "EndLine": 86,
+      "Commit": "524313c1995336db77f64c8d50078c6433a7d97f",
+      "Fingerprint": "524313c1995336db77f64c8d50078c6433a7d97f:docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json:generic-api-key:86"
+    },
+    {
+      "RuleID": "generic-api-key",
+      "File": "docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json",
+      "StartLine": 90,
+      "EndLine": 90,
+      "Commit": "524313c1995336db77f64c8d50078c6433a7d97f",
+      "Fingerprint": "524313c1995336db77f64c8d50078c6433a7d97f:docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json:generic-api-key:90"
+    },
+    {
+      "RuleID": "generic-api-key",
+      "File": "docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json",
+      "StartLine": 102,
+      "EndLine": 102,
+      "Commit": "524313c1995336db77f64c8d50078c6433a7d97f",
+      "Fingerprint": "524313c1995336db77f64c8d50078c6433a7d97f:docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json:generic-api-key:102"
+    },
+    {
+      "RuleID": "generic-api-key",
+      "File": "docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json",
+      "StartLine": 106,
+      "EndLine": 106,
+      "Commit": "524313c1995336db77f64c8d50078c6433a7d97f",
+      "Fingerprint": "524313c1995336db77f64c8d50078c6433a7d97f:docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json:generic-api-key:106"
+    },
+    {
+      "RuleID": "generic-api-key",
+      "File": "docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json",
+      "StartLine": 118,
+      "EndLine": 118,
+      "Commit": "524313c1995336db77f64c8d50078c6433a7d97f",
+      "Fingerprint": "524313c1995336db77f64c8d50078c6433a7d97f:docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json:generic-api-key:118"
+    },
+    {
+      "RuleID": "generic-api-key",
+      "File": "docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json",
+      "StartLine": 122,
+      "EndLine": 122,
+      "Commit": "524313c1995336db77f64c8d50078c6433a7d97f",
+      "Fingerprint": "524313c1995336db77f64c8d50078c6433a7d97f:docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json:generic-api-key:122"
+    },
+    {
+      "RuleID": "generic-api-key",
+      "File": "docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json",
+      "StartLine": 134,
+      "EndLine": 134,
+      "Commit": "524313c1995336db77f64c8d50078c6433a7d97f",
+      "Fingerprint": "524313c1995336db77f64c8d50078c6433a7d97f:docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json:generic-api-key:134"
+    },
+    {
+      "RuleID": "generic-api-key",
+      "File": "docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json",
+      "StartLine": 138,
+      "EndLine": 138,
+      "Commit": "524313c1995336db77f64c8d50078c6433a7d97f",
+      "Fingerprint": "524313c1995336db77f64c8d50078c6433a7d97f:docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json:generic-api-key:138"
+    },
+    {
+      "RuleID": "generic-api-key",
+      "File": "docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json",
+      "StartLine": 166,
+      "EndLine": 166,
+      "Commit": "524313c1995336db77f64c8d50078c6433a7d97f",
+      "Fingerprint": "524313c1995336db77f64c8d50078c6433a7d97f:docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json:generic-api-key:166"
+    },
+    {
+      "RuleID": "generic-api-key",
+      "File": "docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json",
+      "StartLine": 170,
+      "EndLine": 170,
+      "Commit": "524313c1995336db77f64c8d50078c6433a7d97f",
+      "Fingerprint": "524313c1995336db77f64c8d50078c6433a7d97f:docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json:generic-api-key:170"
+    },
+    {
+      "RuleID": "generic-api-key",
+      "File": "docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json",
+      "StartLine": 182,
+      "EndLine": 182,
+      "Commit": "524313c1995336db77f64c8d50078c6433a7d97f",
+      "Fingerprint": "524313c1995336db77f64c8d50078c6433a7d97f:docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json:generic-api-key:182"
+    },
+    {
+      "RuleID": "generic-api-key",
+      "File": "docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json",
+      "StartLine": 186,
+      "EndLine": 186,
+      "Commit": "524313c1995336db77f64c8d50078c6433a7d97f",
+      "Fingerprint": "524313c1995336db77f64c8d50078c6433a7d97f:docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json:generic-api-key:186"
+    }
+  ],
+  "toolVersion": "8.30.1",
+  "verifiedArchiveSha256": "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb",
+  "secretFieldsPublished": false,
+  "redactedReportBytes": 18583,
+  "redactedReportSha256": "a9dc71c7960f0eca10eccb90b2766405904d43e200500676904ff91f867dd27f",
+  "rootAssessment": {
+    "allFindingsAreSyntheticRowMd5": true,
+    "credentialOrCanaryPayloadPublished": false,
+    "configAndBaselineChanged": false,
+    "originalHistoryRewritten": false,
+    "successorFrom": "4efcda96f8e541c8689f87f0a0a1ce77dc98c659"
+  }
+}

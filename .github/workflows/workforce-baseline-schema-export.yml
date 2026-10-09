@@ -1,0 +1,71 @@
+name: Workforce baseline exporter admission
+
+on:
+  pull_request:
+    paths:
+      - scripts/workforce-baseline-schema-export*
+      - .github/workflows/workforce-baseline-schema-export.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: workforce-baseline-export-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  baseline-export-admission:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: hrm_baseline_export_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: isolated-baseline-only
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd "pg_isready -U postgres -d hrm_baseline_export_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Exact-head actual CLI and isolated PostgreSQL regression
+        env:
+          CI: 'true'
+          C12_EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          C12_BASELINE_TEST_DATABASE_URL: postgresql://postgres:isolated-baseline-only@127.0.0.1:${{ job.services.postgres.ports[5432] }}/hrm_baseline_export_test
+          C12_BASELINE_RECEIPT: ${{ runner.temp }}/baseline-export-admission.json
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$C12_EXPECTED_HEAD_SHA"
+          node --test scripts/workforce-baseline-schema-export.test.mjs scripts/workforce-baseline-schema-export-postgres.test.mjs
+          node scripts/ci/check-github-runner-policy.mjs
+          git diff --check
+      - name: Retain finite early failure
+        if: always()
+        env:
+          C12_EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          C12_BASELINE_RECEIPT: ${{ runner.temp }}/baseline-export-admission.json
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          if (!/^[a-f0-9]{40}$/.test(process.env.C12_EXPECTED_HEAD_SHA)) process.exit(1);
+          if (!fs.existsSync(process.env.C12_BASELINE_RECEIPT)) fs.writeFileSync(process.env.C12_BASELINE_RECEIPT,
+            JSON.stringify({status:'FAIL_BEFORE_RECEIPT',sourceSha:process.env.C12_EXPECTED_HEAD_SHA,
+            code:'EARLY_FAILURE_CAUSE_UNVERIFIED',productionObserved:false,historicalReplay:false})+'\n',{mode:0o600,flag:'wx'});
+          JS
+      - name: Preserve original success or failure receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: workforce-baseline-export-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/baseline-export-admission.json
+          if-no-files-found: error
+          retention-days: 30

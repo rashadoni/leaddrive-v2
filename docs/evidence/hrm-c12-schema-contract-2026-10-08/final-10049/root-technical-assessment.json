@@ -1,0 +1,75 @@
+{
+  "status": "PASS_BOUNDED_CATALOG_CONTRACT_ONLY",
+  "sourceSha": "10049d31ff02482085b180d2d65ab942ea1beb64",
+  "sourceTree": "568bb061c4a891d3d9d268dbb7b546ead156da3c",
+  "mandatoryPrMergeSha": "94c42aed076efabb45fbe2a7676dec8995385c7d",
+  "mandatoryPrMergeTree": "568bb061c4a891d3d9d268dbb7b546ead156da3c",
+  "run": 37739776660,
+  "job": 113187557841,
+  "artifact": 11533336298,
+  "cases": 37,
+  "unitCasesPreviouslyRun": 4,
+  "failureCount": 0,
+  "zeroSkipsInHostedPg": "PASS_ACTUAL_TAP_42_REPORTED_INCLUDES_4_UNITS_37_CASES_1_PARENT",
+  "sourceBindings": [
+    {
+      "path": "prisma/migrations/20261005193000_workforce_reconciliation_operations/migration.sql",
+      "bytes": 2721,
+      "sha256": "c452e7f6d13dca1e5257d8353c252745d05cd4f18eae83cd45501f61664ef719"
+    },
+    {
+      "path": "scripts/workforce-reconciliation-schema-contract.sql",
+      "bytes": 9713,
+      "sha256": "9bb45ba8cc38afdba046e3bd761875c043731203de8dab18bfdce420c8aab49f"
+    },
+    {
+      "path": "scripts/workforce-reconciliation-schema-contract.mjs",
+      "bytes": 3153,
+      "sha256": "8ffa59f87d927a8afc463988ba30ab6a9ec3f1a3ca253b5f9841fefddc1b0279"
+    },
+    {
+      "path": "scripts/workforce-reconciliation-schema-contract.test.mjs",
+      "bytes": 18665,
+      "sha256": "f9fb707a30c3725a5ba5777a8e58ccd7cb61aea4205240817e4f122a9b121f41"
+    },
+    {
+      "path": ".github/workflows/workforce-reconciliation-schema-contract.yml",
+      "bytes": 3124,
+      "sha256": "f736a302df806206ae4a76de0e9907885fddd5357b46c10030737fcd322d3d4e"
+    }
+  ],
+  "factFingerprintCount": 9,
+  "actualFactScope": "Eight empty synthetic root tables and two synthetic organization rows; no representative density claim",
+  "factFingerprintsBefore": [
+    "d41d8cd98f00b204e9800998ecf8427e",
+    "d41d8cd98f00b204e9800998ecf8427e",
+    "d41d8cd98f00b204e9800998ecf8427e",
+    "d41d8cd98f00b204e9800998ecf8427e",
+    "d41d8cd98f00b204e9800998ecf8427e",
+    "d41d8cd98f00b204e9800998ecf8427e",
+    "d41d8cd98f00b204e9800998ecf8427e",
+    "d41d8cd98f00b204e9800998ecf8427e",
+    "33e8ad4db4c5a2afa67ebf12adcae532"
+  ],
+  "factFingerprintsAfter": [
+    "d41d8cd98f00b204e9800998ecf8427e",
+    "d41d8cd98f00b204e9800998ecf8427e",
+    "d41d8cd98f00b204e9800998ecf8427e",
+    "d41d8cd98f00b204e9800998ecf8427e",
+    "d41d8cd98f00b204e9800998ecf8427e",
+    "d41d8cd98f00b204e9800998ecf8427e",
+    "d41d8cd98f00b204e9800998ecf8427e",
+    "d41d8cd98f00b204e9800998ecf8427e",
+    "33e8ad4db4c5a2afa67ebf12adcae532"
+  ],
+  "exactBaselineMetadataAndAppSourceUnchanged": true,
+  "productionObserved": false,
+  "historicalReplay": false,
+  "globalC12Done": false,
+  "mandatoryCurrentHeadChecks": "PASS_ACTUAL_FIVE_APP15368_AT_SOURCE10049",
+  "hostedSummaryReference": "hosted-log-finite-summary.json",
+  "globalCompilerClean": false,
+  "globalSuiteClean": false,
+  "currentMain": "227e2110e8cc60183daf2dc0ae154060e32e0ae6",
+  "wholeIncomingMainAccepted": false
+}

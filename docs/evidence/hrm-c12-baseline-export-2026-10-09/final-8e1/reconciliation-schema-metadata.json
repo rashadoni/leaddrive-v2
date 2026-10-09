@@ -1,0 +1,111 @@
+{
+  "sourceSha": "8e1c7e10013eb6d4e5ed273775b3f6d896841065",
+  "run": {
+    "id": 37897379635,
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "success",
+    "run_attempt": 1,
+    "created_at": "2026-10-09T07:08:59Z",
+    "updated_at": "2026-10-09T07:09:59Z",
+    "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37897379635"
+  },
+  "artifact": {
+    "id": 11601360596,
+    "digest": "sha256:129d9fac916a0c7be22963e47e2abe0a5c90312d24ebecde1e328a59c63d3581",
+    "size_in_bytes": 1609,
+    "name": "workforce-c12-schema-8e1c7e10013eb6d4e5ed273775b3f6d896841065-37897379635-1"
+  },
+  "job": {
+    "id": 113711716987,
+    "name": "isolated-schema-contract",
+    "conclusion": "success",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1
+      },
+      {
+        "name": "Initialize containers",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2
+      },
+      {
+        "name": "Run actions/checkout@v6",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3
+      },
+      {
+        "name": "Run actions/setup-node@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4
+      },
+      {
+        "name": "Exact-source isolated catalog and drift acceptance",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5
+      },
+      {
+        "name": "Retain finite failure when tests cannot create a receipt",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6
+      },
+      {
+        "name": "Preserve original finite receipt including failures",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7
+      },
+      {
+        "name": "Post Run actions/setup-node@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 12
+      },
+      {
+        "name": "Post Run actions/checkout@v6",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 13
+      },
+      {
+        "name": "Stop containers",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 14
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 15
+      }
+    ]
+  },
+  "receiptSha256": "c214a010415d6c3d3a22243d8bbc1b858fdf05a9628fe93e435b5fd4ca0ea623",
+  "receiptBytes": 6826,
+  "cases": 37,
+  "allPassed": true,
+  "allSourceBindingsExact": true,
+  "originalBytesPreserved": true,
+  "log": {
+    "bytes": 47862,
+    "sha256": "cc726df2681d33f64a8e784b383595a45486ce764daa203c62c2fbee2f48ea81",
+    "finiteTapSummary": [
+      "# tests 42",
+      "# pass 42",
+      "# fail 0",
+      "# skipped 0"
+    ],
+    "rawLogPublished": false
+  },
+  "productionObserved": false,
+  "historicalReplay": false
+}

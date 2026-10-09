@@ -10,7 +10,10 @@ BEGIN
   IF (SELECT relkind FROM pg_class WHERE oid=to_regclass('public._prisma_migrations')) IS DISTINCT FROM 'r'
     OR row_security_active('public._prisma_migrations'::regclass)
     OR (to_regclass('public.api_keys') IS NOT NULL
-      AND (SELECT relkind FROM pg_class WHERE oid=to_regclass('public.api_keys')) IS DISTINCT FROM 'r') THEN
+      AND (SELECT relkind FROM pg_class WHERE oid=to_regclass('public.api_keys')) IS DISTINCT FROM 'r')
+    OR EXISTS (SELECT 1 FROM pg_inherits
+      WHERE inhrelid IN (to_regclass('public.api_keys'),to_regclass('public._prisma_migrations'))
+        OR inhparent IN (to_regclass('public.api_keys'),to_regclass('public._prisma_migrations'))) THEN
     RAISE EXCEPTION 'WORKFORCE_BASELINE_RELATION_REFUSED';
   END IF;
 END

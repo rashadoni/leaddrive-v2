@@ -1,0 +1,111 @@
+{
+  "sourceSha": "8e1c7e10013eb6d4e5ed273775b3f6d896841065",
+  "run": {
+    "id": 37897379633,
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "success",
+    "run_attempt": 1,
+    "created_at": "2026-10-09T07:08:59Z",
+    "updated_at": "2026-10-09T07:09:40Z",
+    "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37897379633"
+  },
+  "artifact": {
+    "id": 11600494428,
+    "digest": "sha256:609ff7698f96cd0636a4b2c4947c41c390fdd78ee1043caa550c0b11f24c0a7a",
+    "size_in_bytes": 1329,
+    "name": "workforce-baseline-export-8e1c7e10013eb6d4e5ed273775b3f6d896841065-37897379633-1"
+  },
+  "job": {
+    "id": 113711717300,
+    "name": "baseline-export-admission",
+    "conclusion": "success",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1
+      },
+      {
+        "name": "Initialize containers",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2
+      },
+      {
+        "name": "Run actions/checkout@v6",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3
+      },
+      {
+        "name": "Run actions/setup-node@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4
+      },
+      {
+        "name": "Exact-head actual CLI and isolated PostgreSQL regression",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5
+      },
+      {
+        "name": "Retain finite early failure",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6
+      },
+      {
+        "name": "Preserve original success or failure receipt",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7
+      },
+      {
+        "name": "Post Run actions/setup-node@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 12
+      },
+      {
+        "name": "Post Run actions/checkout@v6",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 13
+      },
+      {
+        "name": "Stop containers",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 14
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 15
+      }
+    ]
+  },
+  "receiptSha256": "ba7b6b4abbbe1d09c54caa6501ff7ab8c4697d809fdfc860cbcd5d9e0e93ef38",
+  "receiptBytes": 7554,
+  "cases": 11,
+  "allPassed": true,
+  "allSourceBindingsExact": true,
+  "originalBytesPreserved": true,
+  "log": {
+    "bytes": 54425,
+    "sha256": "fe0b80bc1a4f80be1029c70a0d583ef3dc2c592aeb1db1bb343735c4ed24e2ac",
+    "finiteTapSummary": [
+      "# tests 21",
+      "# pass 21",
+      "# fail 0",
+      "# skipped 0"
+    ],
+    "rawLogPublished": false
+  },
+  "productionObserved": false,
+  "historicalReplay": false
+}

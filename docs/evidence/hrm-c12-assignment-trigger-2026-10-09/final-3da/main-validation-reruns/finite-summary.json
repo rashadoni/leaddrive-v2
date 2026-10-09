@@ -1,0 +1,242 @@
+[
+  {
+    "label": "metadata",
+    "runId": 37969838446,
+    "sourceSha": "3da6e4b5e809e5bc9cf1641df47b4e2b3a3d85f3",
+    "sourceJobId": 113953343142,
+    "conclusion": "success",
+    "event": "pull_request",
+    "runAttempt": 1,
+    "actualTAP": {
+      "tests": [
+        25
+      ],
+      "pass": [
+        25
+      ],
+      "fail": [
+        0
+      ],
+      "skipped": [
+        0
+      ]
+    },
+    "artifactId": 11635795579,
+    "zipSha256": "5bd64ab7b1707ddf80b1cd7c83a26e683d263465c65fbe824a1e42b0a6ea1fd5",
+    "receiptMember": "hrm-assignment-trigger-source.json",
+    "receiptSha256": "093495eb89c19240e2e81515e93e6b8dfea2f7e559241aa2f657238035a0b4be",
+    "logBytes": 45925,
+    "logSha256": "e352b89944520cc97a880e5164fbbc5a0dd7a6b8e1f1e801acb344a4ccb2a1b6",
+    "productionJobs": [
+      {
+        "id": 113953681071,
+        "name": "production-metadata",
+        "conclusion": "skipped"
+      }
+    ],
+    "productionObserved": false,
+    "historicalReplay": false
+  },
+  {
+    "label": "default-acl",
+    "runId": 37969838285,
+    "sourceSha": "3da6e4b5e809e5bc9cf1641df47b4e2b3a3d85f3",
+    "sourceJobId": 113953342697,
+    "conclusion": "success",
+    "event": "pull_request",
+    "runAttempt": 1,
+    "actualTAP": {
+      "tests": [
+        25,
+        14
+      ],
+      "pass": [
+        25,
+        14
+      ],
+      "fail": [
+        0,
+        0
+      ],
+      "skipped": [
+        0,
+        0
+      ]
+    },
+    "artifactId": 11634662954,
+    "zipSha256": "4af5c666c7544388ea5f26ad56c9c9f70b8b145d495d3bca348f49d0c143088f",
+    "receiptMember": "hrm-assignment-trigger-source.json",
+    "receiptSha256": "093495eb89c19240e2e81515e93e6b8dfea2f7e559241aa2f657238035a0b4be",
+    "logBytes": 53439,
+    "logSha256": "c4ad863b4c447b53061db7fbe37970d0aaa248d0ef1b49800863ab1e20fee336",
+    "productionJobs": [
+      {
+        "id": 113953674685,
+        "name": "production-acl-inspection",
+        "conclusion": "skipped"
+      }
+    ],
+    "productionObserved": false,
+    "historicalReplay": false
+  },
+  {
+    "label": "loopback-acl",
+    "runId": 37969838238,
+    "sourceSha": "3da6e4b5e809e5bc9cf1641df47b4e2b3a3d85f3",
+    "sourceJobId": 113953343026,
+    "conclusion": "success",
+    "event": "pull_request",
+    "runAttempt": 1,
+    "actualTAP": {
+      "tests": [
+        25,
+        14,
+        16
+      ],
+      "pass": [
+        25,
+        14,
+        16
+      ],
+      "fail": [
+        0,
+        0,
+        0
+      ],
+      "skipped": [
+        0,
+        0,
+        0
+      ]
+    },
+    "artifactId": 11635645813,
+    "zipSha256": "48585ac7a1cf22883725814272b3e0dd5e57745bceb6e20ce0317df4a34cdcff",
+    "receiptMember": "hrm-assignment-trigger-source.json",
+    "receiptSha256": "093495eb89c19240e2e81515e93e6b8dfea2f7e559241aa2f657238035a0b4be",
+    "logBytes": 63811,
+    "logSha256": "660b6308c39753ccb56a9f117453693018e54f9247aa30e4e3ec36a908ae1716",
+    "productionJobs": [
+      {
+        "id": 113953659363,
+        "name": "production-loopback-acl-inspection",
+        "conclusion": "skipped"
+      }
+    ],
+    "productionObserved": false,
+    "historicalReplay": false
+  },
+  {
+    "label": "backup-acl",
+    "runId": 37969838281,
+    "sourceSha": "3da6e4b5e809e5bc9cf1641df47b4e2b3a3d85f3",
+    "sourceJobId": 113953342810,
+    "conclusion": "success",
+    "event": "pull_request",
+    "runAttempt": 1,
+    "actualTAP": {
+      "tests": [
+        25,
+        14,
+        16,
+        14
+      ],
+      "pass": [
+        25,
+        14,
+        16,
+        14
+      ],
+      "fail": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "skipped": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "artifactId": 11635496080,
+    "zipSha256": "e93096957928d7c78f288cd663c834cfa015c557e109f99956a917ab268da491",
+    "receiptMember": "hrm-assignment-trigger-source.json",
+    "receiptSha256": "093495eb89c19240e2e81515e93e6b8dfea2f7e559241aa2f657238035a0b4be",
+    "logBytes": 72071,
+    "logSha256": "5985240c198bc2cf0492028f868849f62ddb5d764dc352676e411630b994ea00",
+    "productionJobs": [
+      {
+        "id": 113953632142,
+        "name": "production-backup-acl-attribution",
+        "conclusion": "skipped"
+      }
+    ],
+    "productionObserved": false,
+    "historicalReplay": false
+  },
+  {
+    "label": "baseline-export",
+    "runId": 37969838252,
+    "sourceSha": "3da6e4b5e809e5bc9cf1641df47b4e2b3a3d85f3",
+    "sourceJobId": 113953342620,
+    "conclusion": "success",
+    "event": "pull_request",
+    "runAttempt": 1,
+    "actualTAP": {
+      "tests": [
+        21
+      ],
+      "pass": [
+        21
+      ],
+      "fail": [
+        0
+      ],
+      "skipped": [
+        0
+      ]
+    },
+    "artifactId": 11635580913,
+    "zipSha256": "ac2d1e0923781337f0246b555284333dd6cdeb1e186746d77f8313a9d1ac0aff",
+    "receiptMember": "baseline-export-admission.json",
+    "receiptSha256": "e6e70512cb46b5e0e92f21b2ad110932d90edf1a63f90e7bb74d33e49110a7c3",
+    "logBytes": 54430,
+    "logSha256": "3cd5230e96917f6bc2db0cbf355a9c0cda06383e961ea015044e777fba5e995b",
+    "productionJobs": [],
+    "productionObserved": false,
+    "historicalReplay": false
+  },
+  {
+    "label": "schema-contract",
+    "runId": 37969838300,
+    "sourceSha": "3da6e4b5e809e5bc9cf1641df47b4e2b3a3d85f3",
+    "sourceJobId": 113953343370,
+    "conclusion": "success",
+    "event": "pull_request",
+    "runAttempt": 1,
+    "actualTAP": {
+      "tests": [
+        42
+      ],
+      "pass": [
+        42
+      ],
+      "fail": [
+        0
+      ],
+      "skipped": [
+        0
+      ]
+    },
+    "artifactId": 11635316309,
+    "zipSha256": "865e30769ad902bef08cc9356d7940cf577cd2a2abf8386302164c35ca93f2e8",
+    "receiptMember": "c12-schema-contract.json",
+    "receiptSha256": "16f48a51b0e06be0b2d2449e4601baf68cd05e02cec95f36b9f62e764e2d7901",
+    "logBytes": 47875,
+    "logSha256": "ea38c5e6a4eca1961c40fc90b77cfa990d5ce46ac62140bdbb56ae7ff011ed59",
+    "productionJobs": [],
+    "productionObserved": false,
+    "historicalReplay": false
+  }
+]

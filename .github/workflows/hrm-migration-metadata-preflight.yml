@@ -9,6 +9,7 @@ on:
       - scripts/hrm-migration-metadata-preflight.mjs
       - scripts/hrm-migration-metadata-preflight.sql
       - scripts/hrm-migration-metadata-preflight.test.mjs
+      - scripts/ci/fixtures/hrm-metadata-preflight/**
       - docs/hrm-release-preflight-session-log.md
       - prisma/migrations/20260829114500_workforce_future_only_lifecycle/migration.sql
       - prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql
@@ -46,6 +47,8 @@ jobs:
           --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -64,6 +67,8 @@ jobs:
       - name: Check bounded Node sources and isolated SQL contracts
         env:
           CI: 'true'
+          HRM_PREFLIGHT_TEST_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          HRM_PREFLIGHT_TEST_RECEIPT: ${{ runner.temp }}/hrm-assignment-trigger-source.json
           HRM_PREFLIGHT_TEST_DATABASE_URL: postgresql://postgres:isolated-preflight-only@127.0.0.1:${{ job.services.postgres.ports[5432] }}/hrm_preflight_test
         run: |
           set -euo pipefail
@@ -72,6 +77,27 @@ jobs:
           node --test scripts/hrm-migration-metadata-preflight.test.mjs
           node scripts/ci/check-github-runner-policy.mjs
           git diff --check
+      - name: Retain finite early source failure
+        if: always()
+        env:
+          HRM_PREFLIGHT_TEST_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          HRM_PREFLIGHT_TEST_RECEIPT: ${{ runner.temp }}/hrm-assignment-trigger-source.json
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          if (!/^[0-9a-f]{40}$/.test(process.env.HRM_PREFLIGHT_TEST_HEAD_SHA)) process.exit(1);
+          if (!fs.existsSync(process.env.HRM_PREFLIGHT_TEST_RECEIPT)) fs.writeFileSync(process.env.HRM_PREFLIGHT_TEST_RECEIPT,
+            JSON.stringify({status:'FAIL_BEFORE_RECEIPT',sourceSha:process.env.HRM_PREFLIGHT_TEST_HEAD_SHA,
+            code:'EARLY_FAILURE_CAUSE_UNVERIFIED',productionObserved:false,historicalReplay:false})+'\n',{mode:0o600,flag:'wx'});
+          JS
+      - name: Preserve original source success or failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hrm-assignment-trigger-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/hrm-assignment-trigger-source.json
+          if-no-files-found: error
+          retention-days: 30
 
   production-metadata:
     needs: source-validation

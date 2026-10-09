@@ -59,3 +59,29 @@ Never replace a withheld definition with a guessed Prisma-generated equivalent. 
 The disposable PostgreSQL 16 fixture contains synthetic DDL only. Tests verify catalog collection under a nonsuperuser with ledger-only SELECT while SELECT on `api_keys` is denied; row/default/function/comment/log canaries remain absent; ledger checksum and incomplete state survive; output is private, non-overwriting and data fingerprints do not change; a filtered ledger is refused. Local CLI testing used a temporary `psql` wrapper routing to this disposable container. External PGSERVICE resolution was not tested.
 
 Next external substage requires authorization identifying **one already restored isolated copy**, its approved operator/read-only service, and permission to execute only the committed catalog-plus-ledger export and inspect the resulting minimized JSON. No raw backup transfer, restore operation, production database access or permission change is included. Until then, source work and synthetic tests continue independently.
+
+
+## 2026-10-09 — inheritance admission correction
+
+The ordinary-table requirement also excludes any parent or child in `pg_inherits`,
+including partition leaves that report `relkind=r`. The fixed guard checks both
+named relations before selecting ledger metadata. This closes six wrong
+admissions reproduced by the actual CLI on an isolated PostgreSQL16 service.
+The original failed run and all subsequent results remain separately bound to
+their commits; the original exporter JSON format and provenance labels do not
+change.
+
+The new fixture uses a real private PGSERVICE file and directly authenticates the
+named nonsuperuser with ledger-only SELECT. This supersedes the older fixture's
+transport limitation for this isolated test only. It does not verify an external
+operator's service, authorize a restored-copy query, prove historical ordering
+or freeze concurrent administrative DDL. Ordinary/absent positives, inheritance
+orientations, partition roots/leaves, filtered ledger, private non-overwriting
+output and unchanged synthetic data are checked. The fixture requires a fresh
+namespace and removes only its own objects.
+
+Original JSON receipts with synthetic MD5 fields are retained byte-for-byte in
+ZIP/gzip with hashes and readable finite summaries. Current receipt labels name
+the target-table and migration-ledger fingerprints explicitly. Scanner rules and
+baselines stay unchanged. C12 remains PARTIAL until all original operational and
+historical-baseline criteria have actual evidence.

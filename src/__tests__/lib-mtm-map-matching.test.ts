@@ -175,6 +175,31 @@ describe("matching a day", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(2)
   })
 
+  it("a caller who runs out of his own time has not found OSRM down: the next caller is still answered", async () => {
+    // The live map's card gives the roads a couple of seconds. A slow answer
+    // that outlives that budget must not switch «История за день» and the
+    // reports to straight lines for a minute.
+    const slow = vi.fn((_url: string, init?: { signal?: AbortSignal }) => new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")))
+    }))
+    const impatient = await matchRoads([fix(0), fix(30)], { baseUrl: "http://osrm", fetchImpl: slow as unknown as typeof fetch, deadlineMs: 40 })
+    expect(slow).toHaveBeenCalledTimes(1)
+    // His own answer is incomplete — nothing is claimed for the stretch that was not answered.
+    expect(impatient?.complete ?? false).toBe(false)
+    // The very next caller, with time to wait, is asked and answered: no minute of rest was started.
+    const quick = vi.fn(async (url: string) => {
+      const coordinates = decodeURIComponent(url.split("/").at(-1)!.split("?")[0]).split(";").map((pair) => pair.split(",").map(Number))
+      return new Response(JSON.stringify({
+        code: "Ok",
+        matchings: [{ geometry: { coordinates }, legs: [{ distance: 70 }] }],
+        tracepoints: coordinates.map((_unused, index) => ({ matchings_index: 0, waypoint_index: index })),
+      }))
+    })
+    const patient = await matchRoads([fix(0), fix(30)], { baseUrl: "http://osrm", fetchImpl: quick as unknown as typeof fetch })
+    expect(quick).toHaveBeenCalledTimes(1)
+    expect(patient?.complete).toBe(true)
+  })
+
   it("asks nothing where no OSRM is configured", async () => {
     const fetchImpl = vi.fn()
     expect(await matchTrack([fix(0), fix(30)], { baseUrl: null, fetchImpl: fetchImpl as unknown as typeof fetch })).toBeNull()

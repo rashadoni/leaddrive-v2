@@ -125,7 +125,12 @@ jobs:
     runs-on: ubuntu-24.04
     services:
       event-platform-postgres:
-        image: pgvector/pgvector:pg16
+        # The same image as `pgvector/pgvector:pg16`, taken from Google's
+        # mirror of Docker Hub. Pulled straight from Docker Hub without an
+        # account, the runner hit «toomanyrequests» on 2026-10-09 and this
+        # required job went red at «Initialize containers» on every pull
+        # request for as long as the limit lasted — with no code involved.
+        image: mirror.gcr.io/pgvector/pgvector:pg16
         env:
           POSTGRES_DB: event_platform_test
           POSTGRES_USER: postgres

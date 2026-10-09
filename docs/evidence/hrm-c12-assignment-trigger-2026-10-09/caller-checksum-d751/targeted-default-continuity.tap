@@ -1,0 +1,80 @@
+TAP version 13
+# Subtest: application env reads one literal canonical URL and never sources other declarations
+ok 1 - application env reads one literal canonical URL and never sources other declarations
+  ---
+  duration_ms: 4.189491
+  ...
+# Subtest: actual two-session proof exports finite evidence without granting ACL approval
+ok 2 - actual two-session proof exports finite evidence without granting ACL approval
+  ---
+  duration_ms: 3.094753
+  ...
+# Subtest: root, artifact, env and exact endpoint failures occur before SQL
+ok 3 - root, artifact, env and exact endpoint failures occur before SQL
+  ---
+  duration_ms: 2.106703
+  ...
+# Subtest: session, primary, read-only, catalog identity and protected role profiles fail closed
+ok 4 - session, primary, read-only, catalog identity and protected role profiles fail closed
+  ---
+  duration_ms: 7.521941
+  ...
+# Subtest: artifact or either private env changing during observation discards all evidence
+ok 5 - artifact or either private env changing during observation discards all evidence
+  ---
+  duration_ms: 0.757865
+  ...
+# Subtest: unsafe and unknown ACL entries remain visible evidence rather than automatic rejection or approval
+ok 6 - unsafe and unknown ACL entries remain visible evidence rather than automatic rejection or approval
+  ---
+  duration_ms: 0.550835
+  ...
+# Subtest: strict ACL projection rejects raw identities, malformed totals, unknown enums and duplicate groups
+ok 7 - strict ACL projection rejects raw identities, malformed totals, unknown enums and duplicate groups
+  ---
+  duration_ms: 0.85482
+  ...
+# Subtest: internal snapshots reject unknown fields and runtime ACL output; private identifiers never enter report
+ok 8 - internal snapshots reject unknown fields and runtime ACL output; private identifiers never enter report
+  ---
+  duration_ms: 1.160387
+  ...
+# Subtest: report refuses readiness claims, missing proofs, protected profile contradictions and private additions
+ok 9 - report refuses readiness claims, missing proofs, protected profile contradictions and private additions
+  ---
+  duration_ms: 2.438071
+  ...
+# Subtest: both query modes retain fixed clean libpq startup and bounds without credentials in argv
+ok 10 - both query modes retain fixed clean libpq startup and bounds without credentials in argv
+  ---
+  duration_ms: 1.137392
+  ...
+# Subtest: fixed SQL is bounded catalog-only read evidence and original strict metadata source remains exact
+ok 11 - fixed SQL is bounded catalog-only read evidence and original strict metadata source remains exact
+  ---
+  duration_ms: 1.413506
+  ...
+# Subtest: stdin bundle binds unchanged base and supplemental bytes, while non-root emits only a safe error
+ok 12 - stdin bundle binds unchanged base and supplemental bytes, while non-root emits only a safe error
+  ---
+  duration_ms: 120.2325
+  ...
+# Subtest: runner validation preserves original safe errors and withholds forged private receipts
+ok 13 - runner validation preserves original safe errors and withholds forged private receipts
+  ---
+  duration_ms: 297.309287
+  ...
+# Subtest: hosted PostgreSQL proves real runtime/default-ACL catalog projection and read-only enforcement
+ok 14 - hosted PostgreSQL proves real runtime/default-ACL catalog projection and read-only enforcement # SKIP
+  ---
+  duration_ms: 0.27388
+  ...
+1..14
+# tests 14
+# suites 0
+# pass 13
+# fail 0
+# cancelled 0
+# skipped 1
+# todo 0
+# duration_ms 542.712089

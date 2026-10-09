@@ -242,11 +242,20 @@ export async function matchRoads(
 
   const ask = async (url: string): Promise<unknown | null> => {
     const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), Math.max(1, Math.min(REQUEST_TIMEOUT_MS, deadline - now())))
+    const left = deadline - now()
+    // Cut short by the caller's own budget, not by the limit one request has:
+    // the road server did nothing wrong, the caller ran out of time.
+    const cutByBudget = left < REQUEST_TIMEOUT_MS
+    const timer = setTimeout(() => controller.abort(), Math.max(1, Math.min(REQUEST_TIMEOUT_MS, left)))
     try {
       const response = await fetchImpl(url, { signal: controller.signal, cache: "no-store" })
       return await response.json().catch(() => null)
     } catch {
+      // A card that gives the roads two and a half seconds must not, by
+      // running out of them, switch «История за день» and the reports to
+      // straight lines for a minute. This stretch is left unanswered and the
+      // loop below stops on the deadline by itself.
+      if (cutByBudget && controller.signal.aborted) return null
       // Down, refusing connections or too slow: straight lines for a minute.
       failed = true
       unavailableUntil = now() + FAILURE_COOLDOWN_MS

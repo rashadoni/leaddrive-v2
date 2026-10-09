@@ -16512,6 +16512,12 @@
       "noTeam": "No team",
       "noManager": "No manager",
       "standingSince": "since {time}",
+      "print": {
+        "button": "Print",
+        "hint": "Print the list: rows and order as on screen",
+        "shown": "Employees on the sheet: {shown} of {total}",
+        "search": "Name search: {query}"
+      },
       "export": {
         "button": "Excel",
         "hint": "Download the list as Excel: rows and order as on screen",
@@ -16905,6 +16911,46 @@
       "class": "class {category}",
       "open": "Card in a new tab",
       "nearest": "Who is nearest"
+    },
+    "day": {
+      "title": "The day in numbers",
+      "distance": "Distance today",
+      "moving": "In motion",
+      "byRoads": "by road",
+      "unknown": "No data from the phone",
+      "notCalculated": "Not calculated: too many GPS points today. Press «Today's history» and pick a part of the day.",
+      "empty": "No accurate coordinates from the phone yet today",
+      "loading": "Counting the day…",
+      "failed": "The day's numbers could not be refreshed",
+      "note": "Counted from the phone's GPS while the workday is on. Where the phone was silent, the path is not known."
+    },
+    "device": {
+      "title": "Phone and app",
+      "lastContact": "Last contact",
+      "accuracy": "GPS accuracy",
+      "asOf": "as of {time}",
+      "appVersion": "App version",
+      "notifications": "Notifications",
+      "notificationsOn": "Connected",
+      "notificationsOff": "Not connected",
+      "failed": "The app version and notifications could not be refreshed"
+    },
+    "links": {
+      "history": "Today's history",
+      "alerts": "Alerts",
+      "period": "Report for a period",
+      "tasks": "Tasks",
+      "card": "Employee profile",
+      "alertRules": "Alert settings",
+      "alertRulesHint": "Alert rules are the same for the whole organization: there are no separate rules for one employee",
+      "forEmployee": "{label}: {name}"
+    },
+    "card": {
+      "customize": "Customize the card",
+      "customizeHint": "What the card shows and in what order. Press a block's heading to fold it.",
+      "hiddenCount": "hidden: {count}",
+      "moveUp": "{name}: up",
+      "moveDown": "{name}: down"
     },
     "areaUnits": {
       "m2": "{value} m²",

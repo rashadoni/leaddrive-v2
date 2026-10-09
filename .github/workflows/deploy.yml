@@ -184,7 +184,12 @@ jobs:
     timeout-minutes: 30
     services:
       event-platform-postgres:
-        image: postgres:16
+        # The official `postgres:16`, from Docker's own mirror on Amazon ECR
+        # Public. Pulled from Docker Hub without an account, the runner hit
+        # «toomanyrequests» on 2026-10-09: this gate failed at «Initialize
+        # containers», the deploy was skipped, and a merge that was green
+        # everywhere did not reach production — three reruns in a row.
+        image: public.ecr.aws/docker/library/postgres:16
         env:
           POSTGRES_DB: event_platform_test
           POSTGRES_USER: postgres
