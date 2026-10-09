@@ -246,8 +246,13 @@ export default function MtmMapPage() {
   const [trails, setTrails] = useState<LiveMapTrails>(() => new Map())
   // «Клиенты»: the client base as a layer. Read when the layer is switched on
   // and on «Обновить» — never on the roster's timer: a base does not move.
-  const [clientsRead, setClientsRead] = useState<{ key: string; data: LiveMapClientsAnswer | null } | null>(null)
+  // What is kept is the last base that was read for this viewer, and which
+  // turn of reading has ended and how: a refresh that fails, or is still on
+  // its way, never takes the points already on the map away.
+  const [clientsRead, setClientsRead] = useState<{ identity: string; data: LiveMapClientsAnswer | null; settledKey: string; failed: boolean } | null>(null)
   const [clientsRevision, setClientsRevision] = useState(0)
+  const clientsSettledRef = useRef<{ key: string; ok: boolean }>({ key: "", ok: false })
+  const clientsRetriesRef = useRef(0)
   // The tools on the map: a ruler, and a point — an address found or a place
   // pressed — that the list then measures everybody against.
   const [rulerActive, setRulerActive] = useState(false)
@@ -670,11 +675,14 @@ export default function MtmMapPage() {
   }, [contract, roster])
 
   // The client base for «Клиенты». The key names the viewer and the turn of
-  // «Обновить»: an answer for anybody else, or an older turn, is never shown.
+  // reading («Обновить», a retry): switching the layer off and on again asks
+  // for nothing new — the base that was read is still the base.
   const clientsKey = mapLook.clients && mapMode === "live" && identityKey ? `${identityKey}::${clientsRevision}` : ""
   useEffect(() => {
     if (!clientsKey) return
+    if (clientsSettledRef.current.key === clientsKey && clientsSettledRef.current.ok) return
     const controller = new AbortController()
+    let retryTimer: number | null = null
     void fetch("/api/v1/mtm/locations/clients", { cache: "no-store", signal: controller.signal })
       .then(async (response) => {
         const body = response.ok ? await response.json().catch(() => null) as { data?: unknown } | null : null
@@ -682,25 +690,63 @@ export default function MtmMapPage() {
       })
       .catch(() => null)
       .then((data) => {
-        if (!controller.signal.aborted) setClientsRead({ key: clientsKey, data })
+        if (controller.signal.aborted) return
+        clientsSettledRef.current = { key: clientsKey, ok: data !== null }
+        setClientsRead((held) => ({
+          identity: identityKey,
+          // A read that failed keeps what this viewer was last given.
+          data: data ?? (held?.identity === identityKey ? held.data : null),
+          settledKey: clientsKey,
+          failed: data === null,
+        }))
+        if (data !== null) {
+          clientsRetriesRef.current = 0
+        } else if (clientsRetriesRef.current < 3) {
+          // Tried again by itself, a few times, a minute apart (the server
+          // answers a handful of these a minute): a blip when the page opened
+          // must not leave the layer empty until somebody thinks to refresh.
+          clientsRetriesRef.current += 1
+          retryTimer = window.setTimeout(() => setClientsRevision((turn) => turn + 1), 60_000)
+        }
       })
-    return () => controller.abort()
-  }, [clientsKey])
-  const clientsAnswer = clientsRead && clientsRead.key === clientsKey ? clientsRead : null
-  const mapClients = clientsAnswer?.data?.clients ?? NO_CLIENTS
+    return () => {
+      controller.abort()
+      if (retryTimer != null) window.clearTimeout(retryTimer)
+    }
+  }, [clientsKey, identityKey])
+  const clientsHeld = clientsRead && clientsRead.identity === identityKey ? clientsRead : null
+  const clientsLoading = Boolean(clientsKey) && clientsHeld?.settledKey !== clientsKey
+  const clientsFailed = Boolean(clientsKey) && clientsHeld?.settledKey === clientsKey && clientsHeld.failed
+  const mapClients = clientsKey && clientsHeld?.data ? clientsHeld.data.clients : NO_CLIENTS
+  const retryClients = useCallback(() => {
+    clientsRetriesRef.current = 0
+    setClientsRevision((turn) => turn + 1)
+  }, [])
   // What the layer's line says: what it is, and — once read — what it shows
   // and what it cannot (a client without coordinates is not on any map).
   const clientsHint = !clientsKey
     ? tMap("layers.clientsHint")
-    : !clientsAnswer
-      ? tMap("clients.loading")
-      : !clientsAnswer.data
-        ? tMap("clients.failed")
-        : [
-          tMap("clients.onMap", { shown: clientsAnswer.data.clients.length, total: clientsAnswer.data.total }),
-          clientsAnswer.data.withoutCoordinates > 0 ? tMap("clients.withoutCoordinates", { count: clientsAnswer.data.withoutCoordinates }) : "",
-          clientsAnswer.data.truncated ? tMap("clients.truncated") : "",
-        ].filter(Boolean).join(" · ")
+    : clientsHeld?.data
+      ? [
+        tMap("clients.onMap", { shown: clientsHeld.data.clients.length, total: clientsHeld.data.total }),
+        clientsHeld.data.withoutCoordinates > 0 ? tMap("clients.withoutCoordinates", { count: clientsHeld.data.withoutCoordinates }) : "",
+        clientsHeld.data.truncated ? tMap("clients.truncated") : "",
+        clientsFailed ? tMap("clients.refreshFailed") : "",
+      ].filter(Boolean).join(" · ")
+      : clientsLoading ? tMap("clients.loading") : tMap("clients.failed")
+  // The line above is inside «Слои». What must be seen with that panel closed
+  // goes onto the map itself: a layer that is on and has nothing to show for
+  // it, or shows only a part.
+  const clientsAlert = !clientsKey || clientsLoading
+    ? null
+    : !clientsHeld?.data
+      ? { text: tMap("clients.failedShort"), actionLabel: tMap("clients.retry"), onAction: retryClients }
+      : clientsHeld.data.truncated
+        ? { text: tMap("clients.truncated"), actionLabel: null, onAction: null }
+        : null
+  const nearestToClient = useCallback((client: LiveMapClient) => {
+    changeReferencePoint({ latitude: client.latitude, longitude: client.longitude, label: client.name })
+  }, [changeReferencePoint])
 
   const manualRefresh = () => {
     const minimumIntervalSeconds = contract?.polling.minimumIntervalSeconds ?? 15
@@ -718,7 +764,7 @@ export default function MtmMapPage() {
     if (rosterRequestRef.current.controller && !rosterRequestRef.current.controller.signal.aborted) return
     void fetchLocations()
     // «Обновить» is also how a client added a minute ago gets onto the map.
-    if (mapLook.clients) setClientsRevision((turn) => turn + 1)
+    if (mapLook.clients) retryClients()
   }
 
   const handleAgentClick = (agentId: string) => {
@@ -1228,7 +1274,7 @@ export default function MtmMapPage() {
               <Clock className="h-3 w-3" /> {tMap("lastUpdate")}: {formatDateTime(lastUpdate, locale, { timeStyle: "short", timeZone: contract?.timezone })}
             </span>
           )}
-          {mapMode === "live" && <Button className="min-h-11" variant="outline" size="sm" onClick={manualRefresh} disabled={refreshing || loading}>
+          {mapMode === "live" && <Button className="min-h-11" variant="outline" size="sm" onClick={manualRefresh} disabled={refreshing || loading} data-testid="mtm-map-refresh">
             <RefreshCw className={`mr-1 h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} /> {tc("refresh")}
           </Button>}
         </div>
@@ -1358,7 +1404,7 @@ export default function MtmMapPage() {
               rulerPoints={rulerPoints}
               referencePoint={referencePoint}
               clients={mapClients}
-              onClientNearest={(client) => changeReferencePoint({ latitude: client.latitude, longitude: client.longitude, label: client.name })}
+              onClientNearest={nearestToClient}
               geofenceRadius={effectiveGeofenceRadius(null, contract?.geofenceRadiusMeters)}
             />
           )}
@@ -1377,6 +1423,7 @@ export default function MtmMapPage() {
               hiddenAgentCount={hiddenOnMapCount}
               onShowAllAgents={() => setHiddenAgentIds(new Set())}
               note={tMap("historyOnlyExplicit")}
+              alert={clientsAlert}
             />
           )}
           {showRosterLoading ? null : (

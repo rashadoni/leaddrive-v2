@@ -5,7 +5,7 @@ import { withRouteFieldWebRlsAuth } from "@/lib/with-mtm-rls-auth"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
-import { customerScopeForActor } from "@/lib/mtm/field-scope"
+import { activeFieldAssignmentWindow, customerScopeForActor } from "@/lib/mtm/field-scope"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { isValidTimezone } from "@/lib/timezone"
 
@@ -30,11 +30,13 @@ type ClientRow = Prisma.MtmCustomerGetPayload<{
  * card — plus how many there are in all and how many have no coordinates, so
  * the layer can say what it does not show.
  *
- * Scope is the one the institutions list for a field actor already uses
- * (`customerScopeForActor`): an administrator sees the organization, a manager
- * or supervisor the institutions of the employees he sees on this map. People
- * (the legacy DOCTOR kind) are not institutions and are left out, as on the
- * «Учреждения» screen; closed ones (INACTIVE) are left out as well.
+ * Scope is the «Учреждения» list's own (GET /api/v1/mtm/organizations): an
+ * administrator sees the organization; a manager or supervisor the
+ * institutions of his employees and the ones assigned to nobody yet — the
+ * ones he is expected to hand out. So «N из M» on the map counts the same
+ * base the same person sees in his list. People (the legacy DOCTOR kind) are
+ * not institutions and are left out, as on that screen; closed ones
+ * (INACTIVE) are left out as well.
  */
 export const GET = withRouteFieldWebRlsAuth("read", async (_req, auth) => {
   const orgId = auth.orgId
@@ -52,8 +54,8 @@ export const GET = withRouteFieldWebRlsAuth("read", async (_req, auth) => {
     }
     if (!checkRateLimit(`mtm-live-map-clients:${orgId}:${auth.userId}`, RATE_LIMIT)) {
       return NextResponse.json(
-        { error: "Refresh rate limit exceeded", retryAfterSeconds: 30 },
-        { status: 429, headers: { "Retry-After": "30" } },
+        { error: "Refresh rate limit exceeded", retryAfterSeconds: 60 },
+        { status: 429, headers: { "Retry-After": "60" } },
       )
     }
 
@@ -66,7 +68,14 @@ export const GET = withRouteFieldWebRlsAuth("read", async (_req, auth) => {
       deletedAt: null,
       objectType: { not: "DOCTOR" },
       status: { in: ["ACTIVE", "PROSPECT"] },
-      ...(actor.role !== "ADMIN" ? { AND: [customerScopeForActor(actor, asOf)] } : {}),
+      ...(actor.role !== "ADMIN" ? {
+        AND: [{
+          OR: [
+            customerScopeForActor(actor, asOf),
+            { agentAssignments: { none: activeFieldAssignmentWindow(asOf) } },
+          ],
+        }],
+      } : {}),
     }
     // The table's own constraint rejects half a pair and (0, 0) but not a
     // latitude of 500: the range is checked here, as the roster does.

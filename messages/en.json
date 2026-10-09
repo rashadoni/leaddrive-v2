@@ -16884,12 +16884,17 @@
     "clients": {
       "loading": "loading clients…",
       "failed": "clients could not be loaded — press «Refresh»",
-      "onMap": "{shown} of {total} on the map",
+      "failedShort": "Clients did not load",
+      "retry": "Try again",
+      "refreshFailed": "could not be refreshed",
+      "onMap": "{shown} {total, plural, one {of # institution} other {of # institutions}} on the map",
       "withoutCoordinates": "{count, plural, one {# has no coordinates} other {# have no coordinates}}",
       "truncated": "only part of the base is shown",
       "group": "Clients here: {count}. Press to zoom in",
+      "stack": "Clients at this point: {count}",
+      "stackMore": "and {count} more",
       "class": "class {category}",
-      "open": "Open the card",
+      "open": "Card in a new tab",
       "nearest": "Who is nearest"
     },
     "areaUnits": {

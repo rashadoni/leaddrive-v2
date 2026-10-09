@@ -7,6 +7,7 @@
  * nodes at most, and every client in view is still in exactly one of them.
  */
 import { describe, expect, it } from "vitest"
+import { readFileSync } from "node:fs"
 import {
   LIVE_MAP_CLIENT_NODE_BUDGET,
   clusterLiveMapClients,
@@ -19,11 +20,15 @@ const BAKU = { north: 40.5, south: 40.3, east: 50.0, west: 49.7 }
 const client = (id: string, latitude: number, longitude: number, extra: Partial<LiveMapClient> = {}): LiveMapClient =>
   ({ id, name: `Точка ${id}`, latitude, longitude, category: "B", objectType: "PHARMACY", geofenceRadius: null, ...extra })
 
-/** A deterministic scatter over the view: no randomness, so a failure repeats. */
+/**
+ * A deterministic scatter over the view: no randomness, so a failure repeats.
+ * Prime moduli, so no two of them land on one spot — clients sharing a spot
+ * are a case of their own below.
+ */
 function scatter(count: number, view = BAKU): LiveMapClient[] {
   return Array.from({ length: count }, (_unused, index) => {
-    const a = ((index * 7919) % 1000) / 1000
-    const b = ((index * 104729) % 1000) / 1000
+    const a = ((index * 7919) % 100003) / 100003
+    const b = ((index * 104729) % 100019) / 100019
     return client(String(index), view.south + a * (view.north - view.south), view.west + b * (view.east - view.west))
   })
 }
@@ -101,6 +106,33 @@ describe("the clients layer of the live map", () => {
     expect(clusterLiveMapClients(base, pacific, 7).nodes.map((node) => node.id).sort()).toEqual(["client:fiji-east", "client:fiji-west"])
   })
 
+  it("clients on the very same spot are one node that says how many and can be opened as a list — never a disc hiding the others", () => {
+    const base = [
+      client("pharmacy", 40.4, 49.85),
+      client("clinic", 40.4, 49.85),
+      client("lab", 40.400001, 49.850001),
+      client("alone", 40.41, 49.86),
+    ]
+    const { nodes, inView } = clusterLiveMapClients(base, BAKU, 18)
+    expect(inView).toBe(4)
+    expect(represented(nodes)).toBe(4)
+    const stack = nodes.find((node) => node.kind === "GROUP")
+    expect(stack).toMatchObject({ kind: "GROUP", count: 3 })
+    expect(stack?.kind === "GROUP" ? stack.stack?.map((member) => member.id) : null).toEqual(["pharmacy", "clinic", "lab"])
+    expect(nodes.filter((node) => node.kind === "CLIENT").map((node) => node.id)).toEqual(["client:alone"])
+  })
+
+  it("a group that a zoom can still part is not a list: only one whose clients share a spot is", () => {
+    const { nodes } = clusterLiveMapClients(scatter(900), BAKU, 12, 40)
+    expect(nodes.filter((node) => node.kind === "GROUP").every((node) => node.kind === "GROUP" && node.stack === null)).toBe(true)
+    // Four hundred rows imported with one address, over the budget: still one openable stack.
+    const pile = Array.from({ length: 400 }, (_unused, index) => client(`p${index}`, 40.4, 49.85))
+    const piled = clusterLiveMapClients(pile, BAKU, 12)
+    expect(piled.nodes).toHaveLength(1)
+    expect(piled.nodes[0]).toMatchObject({ kind: "GROUP", count: 400 })
+    expect(piled.nodes[0].kind === "GROUP" ? piled.nodes[0].stack?.length : 0).toBe(400)
+  })
+
   it("holds to a smaller budget when it is given one", () => {
     const { nodes } = clusterLiveMapClients(scatter(900), BAKU, 12, 40)
     expect(nodes.length).toBeLessThanOrEqual(40)
@@ -130,5 +162,46 @@ describe("the clients layer of the live map", () => {
     expect(answer).toMatchObject({ total: 12, withoutCoordinates: 7, truncated: false })
     // A total smaller than what arrived is not believed.
     expect(parseLiveMapClients({ clients: [{ id: "a", name: "A", latitude: 40.4, longitude: 49.85 }], total: 0 })?.total).toBe(1)
+  })
+})
+
+// The map's own drawing of the layer cannot run in jsdom (Leaflet draws on a
+// canvas of its own); it was driven in a real browser on 5,000 clients. These
+// lines are what that run depended on — each a rule that was once wrong or
+// would be silently lost in an edit.
+describe("how the map draws the clients layer", () => {
+  const map = readFileSync("src/components/mtm/live-map.tsx", "utf8")
+  const page = readFileSync("src/app/(dashboard)/mtm/map/page.tsx", "utf8")
+
+  it("a press on a client while a tool waits is the tool's — one press, one point, no balloon", () => {
+    // A disc passes its clicks on to the map by default: the ruler was given two points for one press.
+    expect(map).toContain("bubblingMouseEvents={false}")
+    expect(map.match(/onPress=\{pressMode \? handleMapPress : null\}/g)).toHaveLength(2)
+    expect(map).toContain("{onPress ? null : (")
+    expect(map).toContain("{node.stack && !onPress ? (")
+  })
+
+  it("groups stay under every employee and every stop, and are not redrawn when the page merely refreshes", () => {
+    expect(map).toContain("zIndexOffset={-600}")
+    expect(map).toContain("const ClientGroupMarker = memo(function ClientGroupMarker(")
+    expect(map).toContain("const ClientMarker = memo(function ClientMarker(")
+    // The page hands the map the same function every time, or the memo is for nothing.
+    expect(page).toContain("onClientNearest={nearestToClient}")
+    expect(page).toContain("const nearestToClient = useCallback(")
+  })
+
+  it("a client's own check-in radius wins over the organization's, and the layer never frames the map or feeds the heat layer", () => {
+    expect(map).toContain("radius={node.client.geofenceRadius ?? geofenceRadius}")
+    expect(page).toContain("geofenceRadius={effectiveGeofenceRadius(null, contract?.geofenceRadiusMeters)}")
+    expect(map).toContain("<FitBounds agents={agents} plannedRoute={plannedRoute}")
+    expect(map).not.toMatch(/<FitBounds[^>]*clients/)
+  })
+
+  it("a balloon is closed only when a stop stops being in focus — not by every refresh of the roster", () => {
+    expect(map).toContain("if (lastRef.current !== null) map.closePopup()")
+  })
+
+  it("the card opens in a new tab, so the map keeps its place", () => {
+    expect(map.match(/href=\{`\/mtm\/customers\/\$\{encodeURIComponent\(client\.id\)\}`\} target="_blank" rel="noopener"/g)).toHaveLength(2)
   })
 })

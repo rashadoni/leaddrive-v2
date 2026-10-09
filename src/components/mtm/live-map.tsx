@@ -1,7 +1,7 @@
 "use client"
 
 import "leaflet/dist/leaflet.css"
-import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type MutableRefObject } from "react"
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type CSSProperties, type MutableRefObject } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { Circle, CircleMarker, MapContainer, Marker, Polygon, Polyline, Popup, Tooltip, useMap, useMapEvents } from "react-leaflet"
 import L from "leaflet"
@@ -426,8 +426,11 @@ function FocusStop({ stops, focusStopOrder, markers }: {
   const lastRef = useRef<number | null>(null)
   useEffect(() => {
     if (focusStopOrder === null) {
+      // Only when a stop has just stopped being in focus. Run on every new
+      // stops array (the roster hands one every half a minute), this closed
+      // whatever balloon was open — the employee's own, a client's.
+      if (lastRef.current !== null) map.closePopup()
       lastRef.current = null
-      map.closePopup()
       return
     }
     // Once per choice: a poll hands a new stops array every half a minute.
@@ -501,34 +504,71 @@ function clientGroupIcon(count: number) {
   })
 }
 
-function ClientGroupMarker({
-  node, title, onPress,
+/** The two things to do with a client, as buttons a finger can hit. */
+const CLIENT_ACTION: CSSProperties = {
+  display: "inline-flex", alignItems: "center", minHeight: 32, padding: "0 10px", borderRadius: 8,
+  border: "1px solid #cbd5e1", background: "#ffffff", color: "#0f172a", fontSize: 12, fontWeight: 600,
+  textDecoration: "none", cursor: "pointer",
+}
+/** How many names a stack of clients on one spot lists before «и ещё N». */
+const CLIENT_STACK_LISTED = 12
+
+/**
+ * A group of clients. A press zooms in on it — unless every client of it
+ * stands on the very same spot, where no zoom will part them: then the press
+ * lists them. Not re-drawn when the page merely refreshes: an open balloon
+ * would be pulled back into view on every tick.
+ */
+const ClientGroupMarker = memo(function ClientGroupMarker({
+  node, title, moreLabel, onPress,
 }: {
   node: Extract<LiveMapClientNode, { kind: "GROUP" }>
   title: string
+  /** «и ещё N» under a long stack. */
+  moreLabel: string
   /** A tool is waiting for a press: the press is the tool's, not a zoom. */
   onPress: ((latitude: number, longitude: number) => void) | null
 }) {
   const map = useMap()
+  const position = useMemo(() => [node.latitude, node.longitude] as L.LatLngTuple, [node.latitude, node.longitude])
+  const icon = useMemo(() => clientGroupIcon(node.count), [node.count])
+  const handlers = useMemo(() => ({
+    click: () => {
+      if (onPress) onPress(node.latitude, node.longitude)
+      else if (!node.stack) map.flyTo([node.latitude, node.longitude], Math.min(18, map.getZoom() + 2), { duration: 0.35 })
+    },
+  }), [map, node.latitude, node.longitude, node.stack, onPress])
   return (
     <Marker
-      position={[node.latitude, node.longitude]}
-      icon={clientGroupIcon(node.count)}
+      position={position}
+      icon={icon}
       // Under every employee and every stop of the day.
       zIndexOffset={-600}
       title={title}
       alt={title}
-      eventHandlers={{
-        click: () => onPress
-          ? onPress(node.latitude, node.longitude)
-          : map.flyTo([node.latitude, node.longitude], Math.min(18, map.getZoom() + 2), { duration: 0.35 }),
-      }}
-    />
+      eventHandlers={handlers}
+    >
+      {node.stack && !onPress ? (
+        <Popup>
+          <div style={{ fontFamily: "system-ui,sans-serif", minWidth: 180 }} data-testid="live-map-client-stack">
+            <div style={{ fontWeight: 700, fontSize: 13 }}>{title}</div>
+            <ul style={{ listStyle: "none", margin: "6px 0 0", padding: 0 }}>
+              {node.stack.slice(0, CLIENT_STACK_LISTED).map((client) => (
+                <li key={client.id} style={{ fontSize: 12, padding: "3px 0" }}>
+                  <Link href={`/mtm/customers/${encodeURIComponent(client.id)}`} target="_blank" rel="noopener">{client.name}</Link>
+                </li>
+              ))}
+            </ul>
+            {node.stack.length > CLIENT_STACK_LISTED ? <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{moreLabel}</div> : null}
+          </div>
+        </Popup>
+      ) : null}
+    </Marker>
   )
-}
+})
 
 /** One client: a small disc in its class's colour, and what it is in a balloon. */
-function ClientMarker({
+const ClientMarker = memo(function ClientMarker({
   client, kind, classLabel, openLabel, nearestLabel, onPress, onNearest,
 }: {
   client: LiveMapClient
@@ -540,31 +580,36 @@ function ClientMarker({
   onNearest: ((client: LiveMapClient) => void) | null
 }) {
   const map = useMap()
+  const center = useMemo(() => [client.latitude, client.longitude] as L.LatLngTuple, [client.latitude, client.longitude])
+  // A finger needs more than a mouse does.
+  const radius = useMemo(() => (typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches ? 10 : 7), [])
+  const pathOptions = useMemo(
+    () => ({ color: "#ffffff", weight: 1.5, fillColor: liveMapClientColor(client.category), fillOpacity: 0.95 }),
+    [client.category],
+  )
+  const handlers = useMemo(() => ({ click: () => onPress?.(client.latitude, client.longitude) }), [client.latitude, client.longitude, onPress])
   return (
     <CircleMarker
-      center={[client.latitude, client.longitude]}
-      radius={7}
+      center={center}
+      radius={radius}
       // A press on a client is not also a press on the map under it: a disc,
       // unlike a marker, passes its clicks on by default — and the ruler would
       // be given two points for one press.
       bubblingMouseEvents={false}
-      pathOptions={{ color: "#ffffff", weight: 1.5, fillColor: liveMapClientColor(client.category), fillOpacity: 0.95 }}
-      eventHandlers={{ click: () => onPress?.(client.latitude, client.longitude) }}
+      pathOptions={pathOptions}
+      eventHandlers={handlers}
     >
       <Tooltip direction="top" offset={[0, -6]}>{client.name}</Tooltip>
       {onPress ? null : (
         <Popup>
-          <div style={{ fontFamily: "system-ui,sans-serif", minWidth: 170 }} data-testid={`live-map-client-${client.id}`}>
+          <div style={{ fontFamily: "system-ui,sans-serif", minWidth: 190 }} data-testid={`live-map-client-${client.id}`}>
             <div style={{ fontWeight: 700, fontSize: 13 }}>{client.name}</div>
             <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{[kind, classLabel].filter(Boolean).join(" · ")}</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
-              <Link href={`/mtm/customers/${encodeURIComponent(client.id)}`} style={{ fontSize: 12, fontWeight: 600 }}>{openLabel}</Link>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+              {/* In a new tab: the map, its zoom and its tools stay where they were. */}
+              <Link href={`/mtm/customers/${encodeURIComponent(client.id)}`} target="_blank" rel="noopener" style={CLIENT_ACTION}>{openLabel}</Link>
               {onNearest ? (
-                <button
-                  type="button"
-                  onClick={() => { onNearest(client); map.closePopup() }}
-                  style={{ fontSize: 12, fontWeight: 600, color: "#c2410c", textDecoration: "underline", background: "none", border: 0, padding: 0, cursor: "pointer" }}
-                >
+                <button type="button" onClick={() => { onNearest(client); map.closePopup() }} style={CLIENT_ACTION}>
                   {nearestLabel}
                 </button>
               ) : null}
@@ -574,7 +619,7 @@ function ClientMarker({
       )}
     </CircleMarker>
   )
-}
+})
 
 function ClusterMarker({ marker, title }: { marker: LiveMapClusterMarker; title: string }) {
   const map = useMap()
@@ -872,7 +917,8 @@ export default function MtmLiveMap({
             <ClientGroupMarker
               key={node.id}
               node={node}
-              title={tMap("clients.group", { count: node.count })}
+              title={tMap(node.stack ? "clients.stack" : "clients.group", { count: node.count })}
+              moreLabel={node.stack ? tMap("clients.stackMore", { count: Math.max(0, node.count - CLIENT_STACK_LISTED) }) : ""}
               onPress={pressMode ? handleMapPress : null}
             />
           ) : (

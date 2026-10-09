@@ -7,9 +7,10 @@
  * The real route behind the real Route & Field wrapper. The database is stood
  * in for by a small base of institutions that answers the route's own query —
  * its filters are applied to the rows, not merely looked at — except for the
- * team scope, which is the existing `customerScopeForActor` predicate (tested
- * on its own in api-mtm-field-scope-by-team.test.ts) and is checked here to be
- * the one in the query.
+ * team scope: that is the «Учреждения» list's own predicate (the employees'
+ * institutions, `customerScopeForActor`, tested in lib-mtm-field-scope.test.ts,
+ * or the ones assigned to nobody), and is checked here to be the one in the
+ * query, for the organization's own «today».
  */
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
@@ -40,7 +41,7 @@ import { GET } from "@/app/api/v1/mtm/locations/clients/route"
 import { prisma } from "@/lib/prisma"
 import { getOrgId, requireAuth } from "@/lib/api-auth"
 import { getMobileAuth, resolveMobileAuth } from "@/lib/mobile-auth"
-import { customerScopeForActor } from "@/lib/mtm/field-scope"
+import { activeFieldAssignmentWindow, customerScopeForActor } from "@/lib/mtm/field-scope"
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
 import { resetRateLimit } from "@/lib/rate-limit"
 
@@ -145,27 +146,44 @@ describe("GET /api/v1/mtm/locations/clients", () => {
     for (const hidden of ["closed", "deleted", "a-person", "out-of-range", "no-place"]) expect(ids).not.toContain(hidden)
   })
 
-  it("an administrator sees the organization; a manager or supervisor the institutions of the employees he sees", async () => {
+  it("an administrator sees the organization; a manager or supervisor what his «Учреждения» list shows — his employees' and the unassigned", async () => {
     await GET(request())
     const adminWhere = vi.mocked(prisma.mtmCustomer.findMany).mock.calls[0]?.[0]?.where as Where
     expect(adminWhere.organizationId).toBe(ORG)
     expect(adminWhere.AND).toBeUndefined()
 
-    vi.mocked(prisma.mtmCustomer.findMany).mockClear()
-    vi.mocked(prisma.mtmCustomer.count).mockClear()
-    resetRateLimit(`mtm-live-map-clients:${ORG}:${USER}`)
-    const supervisor = { agentId: "sup-1", role: "SUPERVISOR", scopedAgentIds: ["agent-1", "agent-2"] }
-    vi.mocked(resolveMtmRouteActor).mockResolvedValue(supervisor as never)
-    await GET(request())
-    const where = vi.mocked(prisma.mtmCustomer.findMany).mock.calls[0]?.[0]?.where as Where
-    // The very predicate the institutions list of a field actor uses, for the organization's «today».
-    const [scope] = where.AND as [ReturnType<typeof customerScopeForActor>]
-    const today = (scope as { OR: Array<{ agentAssignments?: { some: { effectiveFrom: { lte: Date } } } }> }).OR[0].agentAssignments!.some.effectiveFrom.lte
-    expect(scope).toEqual(customerScopeForActor(supervisor as never, today))
-    expect(JSON.stringify(scope)).toContain("agent-1")
-    // The totals are counted inside the same scope: «N из M» never counts another team's institutions.
-    for (const [call] of vi.mocked(prisma.mtmCustomer.count).mock.calls) {
-      expect((call as { where: Where }).where.AND).toEqual(where.AND)
+    // 23:30 UTC on the 9th is already the 10th in Baku: the scope is asked
+    // for the organization's day, not the server's.
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(new Date("2026-10-09T23:30:00.000Z"))
+    try {
+      vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "timezone", value: "Asia/Baku" }] as never)
+      const organizationDay = new Date("2026-10-10T00:00:00.000Z")
+      for (const actor of [
+        { agentId: "sup-1", role: "SUPERVISOR", scopedAgentIds: ["agent-1", "agent-2"] },
+        { agentId: "mgr-1", role: "MANAGER", scopedAgentIds: ["agent-3"] },
+      ]) {
+        vi.mocked(prisma.mtmCustomer.findMany).mockClear()
+        vi.mocked(prisma.mtmCustomer.count).mockClear()
+        resetRateLimit(`mtm-live-map-clients:${ORG}:${USER}`)
+        vi.mocked(resolveMtmRouteActor).mockResolvedValue(actor as never)
+        expect((await GET(request())).status).toBe(200)
+        const where = vi.mocked(prisma.mtmCustomer.findMany).mock.calls[0]?.[0]?.where as Where
+        expect(where.AND).toEqual([{
+          OR: [
+            customerScopeForActor(actor as never, organizationDay),
+            { agentAssignments: { none: activeFieldAssignmentWindow(organizationDay) } },
+          ],
+        }])
+        expect(JSON.stringify(where.AND)).toContain(actor.scopedAgentIds[0])
+        // The totals are counted inside the same scope: «N из M» never counts what he cannot see.
+        expect(vi.mocked(prisma.mtmCustomer.count).mock.calls).toHaveLength(2)
+        for (const [call] of vi.mocked(prisma.mtmCustomer.count).mock.calls) {
+          expect((call as { where: Where }).where.AND).toEqual(where.AND)
+        }
+      }
+    } finally {
+      vi.useRealTimers()
     }
   })
 
@@ -192,8 +210,10 @@ describe("GET /api/v1/mtm/locations/clients", () => {
   })
 
   it("is asked for when the layer is switched on, not on the map's timer: a handful a minute", async () => {
-    let last = 200
-    for (let turn = 0; turn < 7; turn += 1) last = (await GET(request())).status
-    expect(last).toBe(429)
+    let last: Response | null = null
+    for (let turn = 0; turn < 7; turn += 1) last = await GET(request())
+    expect(last?.status).toBe(429)
+    // The window is a minute: the answer says so, not half of it.
+    expect(last?.headers.get("retry-after")).toBe("60")
   })
 })

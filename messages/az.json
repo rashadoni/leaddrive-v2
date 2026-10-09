@@ -16880,12 +16880,17 @@
     "clients": {
       "loading": "müştərilər yüklənir…",
       "failed": "müştəriləri yükləmək alınmadı — «Yenilə» düyməsini basın",
+      "failedShort": "Müştərilər yüklənmədi",
+      "retry": "Təkrar et",
+      "refreshFailed": "yeniləmək alınmadı",
       "onMap": "xəritədə {total} müəssisədən {shown}",
       "withoutCoordinates": "{count, plural, one {# müəssisənin koordinatı yoxdur} other {# müəssisənin koordinatı yoxdur}}",
       "truncated": "bazanın yalnız bir hissəsi göstərilir",
       "group": "Burada müştəri: {count}. Yaxınlaşdırmaq üçün basın",
+      "stack": "Bu nöqtədə müştəri: {count}",
+      "stackMore": "və daha {count}",
       "class": "sinif {category}",
-      "open": "Kartı aç",
+      "open": "Kart yeni vərəqdə",
       "nearest": "Kim daha yaxındır"
     },
     "areaUnits": {

@@ -35,7 +35,19 @@ export interface LiveMapClient {
 
 export type LiveMapClientNode =
   | { kind: "CLIENT"; id: string; latitude: number; longitude: number; client: LiveMapClient }
-  | { kind: "GROUP"; id: string; latitude: number; longitude: number; count: number }
+  | {
+      kind: "GROUP"
+      id: string
+      latitude: number
+      longitude: number
+      count: number
+      /**
+       * Set when every client of the group stands on the same spot (a
+       * pharmacy inside a clinic, rows imported with one address): no zoom
+       * will ever part them, so the group is opened as a list instead.
+       */
+      stack: LiveMapClient[] | null
+    }
 
 export interface LiveMapClientSelection {
   nodes: LiveMapClientNode[]
@@ -64,6 +76,23 @@ function insideView(client: LiveMapClient, view: LiveMapViewportBounds): boolean
   return client.longitude >= view.west && client.longitude <= view.east
 }
 
+/** The same spot, to about a metre. */
+function spotKey(client: LiveMapClient): string {
+  return `${client.latitude.toFixed(5)},${client.longitude.toFixed(5)}`
+}
+
+function group(id: string, members: LiveMapClient[]): LiveMapClientNode {
+  const spot = spotKey(members[0])
+  return {
+    kind: "GROUP",
+    id,
+    latitude: members.reduce((sum, client) => sum + client.latitude, 0) / members.length,
+    longitude: members.reduce((sum, client) => sum + client.longitude, 0) / members.length,
+    count: members.length,
+    stack: members.every((client) => spotKey(client) === spot) ? members : null,
+  }
+}
+
 function gridCell(client: LiveMapClient, zoom: number, gridPx: number): string {
   const worldSize = 256 * (2 ** zoom)
   const latitude = Math.max(-85.05112878, Math.min(85.05112878, client.latitude))
@@ -87,7 +116,21 @@ export function clusterLiveMapClients(
   const single = (client: LiveMapClient): LiveMapClientNode =>
     ({ kind: "CLIENT", id: `client:${client.id}`, latitude: client.latitude, longitude: client.longitude, client })
 
-  if (visible.length <= safeBudget) return { nodes: visible.map(single), inView: visible.length }
+  if (visible.length <= safeBudget) {
+    // One by one — except where several stand on the very same spot: drawn
+    // as one disc, only the top one could ever be opened.
+    const spots = new Map<string, LiveMapClient[]>()
+    for (const client of visible) {
+      const key = spotKey(client)
+      const members = spots.get(key)
+      if (members) members.push(client)
+      else spots.set(key, [client])
+    }
+    return {
+      nodes: Array.from(spots, ([key, members]) => members.length === 1 ? single(members[0]) : group(`clients:spot:${key}`, members)),
+      inView: visible.length,
+    }
+  }
 
   // Coarser and coarser until what is in view fits the budget. The grid
   // doubles, so this ends: at the size of the world everything is one cell.
@@ -106,13 +149,7 @@ export function clusterLiveMapClients(
         nodes.push(single(members[0]))
         continue
       }
-      nodes.push({
-        kind: "GROUP",
-        id: `clients:${Math.floor(safeZoom)}:${gridPx}:${cell}`,
-        latitude: members.reduce((sum, client) => sum + client.latitude, 0) / members.length,
-        longitude: members.reduce((sum, client) => sum + client.longitude, 0) / members.length,
-        count: members.length,
-      })
+      nodes.push(group(`clients:${Math.floor(safeZoom)}:${gridPx}:${cell}`, members))
     }
     return { nodes, inView: visible.length }
   }
