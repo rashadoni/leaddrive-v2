@@ -1,0 +1,117 @@
+{
+  "status": "PASS_ISOLATED_ASSIGNMENT_TRIGGER_METADATA_ONLY",
+  "sourceSha": "607a25549bb14dacf35ae76a9f95ac1b3e1d1545",
+  "fixture": "SYNTHETIC_SELECTED_DDL_NOT_RESTORED_BASELINE",
+  "productionObserved": false,
+  "historicalReplay": false,
+  "cases": [
+    {
+      "name": "healthy original catalog contract",
+      "status": "PASS",
+      "observed": "READY_FOR_REVIEW"
+    },
+    {
+      "name": "unconditional guard rejects missing-agent insert",
+      "status": "PASS",
+      "sqlState": "23514",
+      "rollbackRows": 0
+    },
+    {
+      "name": "conditional assignment trigger",
+      "status": "PASS",
+      "triggerBound": false,
+      "observed": "INCOMPLETE",
+      "reasons": [
+        "FUNCTION_SHAPE"
+      ],
+      "syntheticBypassProved": true,
+      "rollbackRowsUnchanged": true,
+      "restoration": {
+        "status": "PASS"
+      }
+    },
+    {
+      "name": "column-restricted assignment trigger",
+      "status": "PASS",
+      "triggerBound": false,
+      "observed": "INCOMPLETE",
+      "reasons": [
+        "FUNCTION_SHAPE"
+      ],
+      "restoration": {
+        "status": "PASS"
+      }
+    },
+    {
+      "name": "argument-bearing assignment trigger",
+      "status": "PASS",
+      "triggerBound": false,
+      "observed": "INCOMPLETE",
+      "reasons": [
+        "FUNCTION_SHAPE"
+      ],
+      "restoration": {
+        "status": "PASS"
+      }
+    },
+    {
+      "name": "restored unconditional trigger",
+      "status": "PASS",
+      "observed": "READY_FOR_REVIEW"
+    },
+    {
+      "name": "original ledger, index, timeout and write-refusal contracts",
+      "status": "PASS"
+    }
+  ],
+  "cleanup": [
+    {
+      "action": "owned-fixture-role-and-objects",
+      "status": "PASS"
+    }
+  ],
+  "sourceBindings": [
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.sql",
+      "bytes": 14874,
+      "sha256": "64ad9845ba00cdd283634d68c43b19beaf38e07ec6fc1e9a9926e97a70d98660"
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.mjs",
+      "bytes": 24904,
+      "sha256": "46b417da7bbe763960b8ede8fa0e9dbd98543d090d54f73979289504bfe35771"
+    },
+    {
+      "path": "scripts/hrm-migration-metadata-preflight.test.mjs",
+      "bytes": 51941,
+      "sha256": "e6f8e62e3f70392e79d7f5af1b70568f061261a5b4a2baaf041b14d236dfffe0"
+    },
+    {
+      "path": ".github/workflows/hrm-migration-metadata-preflight.yml",
+      "bytes": 8731,
+      "sha256": "43715d1485c168a49fb75dfe7a8f85729630b91b1325d0b7cb58564112a2b288"
+    },
+    {
+      "path": "scripts/ci/fixtures/hrm-metadata-preflight/assignment-trigger-before.sql",
+      "bytes": 14770,
+      "sha256": "b174e32eb68a0dbcca98e8557fe8c716ed8277111e79ba822bce43f4e7023b6a"
+    },
+    {
+      "path": "prisma/migrations/20260829114500_workforce_future_only_lifecycle/migration.sql",
+      "bytes": 7060,
+      "sha256": "72cbac29ad2b1139672fb235b7a18d42bb4cd98c4e636180c4a3f8ea373a9c67"
+    },
+    {
+      "path": "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql",
+      "bytes": 10851,
+      "sha256": "1deee0b735aee6ca3b055ee71b3663799daa71c3d6c6ef66c47a02dee7efecec"
+    },
+    {
+      "path": "prisma/migrations/20260927014100_workforce_exception_case_revisions_backfill/migration.sql",
+      "bytes": 2122,
+      "sha256": "b768d91611b142be755929b8e962523e053f3dcb7616bd26ee98cb85ce27c394"
+    }
+  ],
+  "originalFailure": null,
+  "pristineFixtureAdmission": true
+}

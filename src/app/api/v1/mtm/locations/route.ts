@@ -83,8 +83,10 @@ type AgentWithLocations = Prisma.MtmAgentGetPayload<{
     lastSeenAt: true
     teamId: true
     team: { select: { name: true } }
+    managerId: true
+    manager: { select: { name: true } }
     locations: true
-    workdays: { select: { status: true; workDate: true; startedAt: true } }
+    workdays: { select: { status: true; workDate: true; startedAt: true; pausedAt: true; completedAt: true } }
   }
 }>
 
@@ -218,6 +220,11 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
         lastSeenAt: true,
         teamId: true,
         team: { select: { name: true } },
+        // Whom he reports to — the grouping a dispatcher can actually use:
+        // the card has a «Руководитель» field, and nothing in the product
+        // fills in a team.
+        managerId: true,
+        manager: { select: { name: true } },
         // The live marker is the newest admissible coordinate. Accuracy is a
         // quality gate/metadata field, never a reason to replace a newer point
         // with an older, prettier one. Defensive JS validation below also
@@ -245,7 +252,7 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
           },
           take: 2,
           orderBy: [{ startedAt: "desc" }, { workDate: "desc" }],
-          select: { status: true, workDate: true, startedAt: true },
+          select: { status: true, workDate: true, startedAt: true, pausedAt: true, completedAt: true },
         } } : {}),
       },
     })
@@ -363,11 +370,19 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
         lastSeenAt: a.lastSeenAt,
         teamId: a.teamId,
         teamName: a.team?.name ?? null,
+        managerId: a.managerId ?? null,
+        managerName: a.manager?.name ?? null,
         fieldStatus,
         freshness,
         workdayState,
         workdayDate: fieldSessionEnabled ? effectiveWorkday?.workDate ?? null : null,
         workdayStartedAt: fieldSessionEnabled ? effectiveWorkday?.startedAt ?? null : null,
+        // When the break began and when the shift was closed: the card says
+        // «перерыв с 13:05», not only that the map went quiet (src/lib/mtm/live-map-state-since.ts).
+        // Workforce facts: a Routes-only tenant's field session discloses its
+        // state, date and start, and nothing more of the workday.
+        workdayPausedAt: workforceEnabled && effectiveWorkday?.status === "PAUSED" ? effectiveWorkday.pausedAt ?? null : null,
+        workdayCompletedAt: workforceEnabled && effectiveWorkday?.status === "COMPLETED" ? effectiveWorkday.completedAt ?? null : null,
         workdayCarryover,
         locationState: explainMissingLocation({ hasLocation: Boolean(loc), lastSeenAt: a.lastSeenAt }),
         routeCompletion: dayRoutes?.completion ?? 0,

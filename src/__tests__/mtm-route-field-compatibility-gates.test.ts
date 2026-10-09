@@ -13,6 +13,10 @@ describe("MTM Route & Field compatibility gates", () => {
       ["src/app/api/v1/mtm/reports/route.ts", ["GET"]],
       ["src/app/api/v1/mtm/leaderboard/route.ts", ["GET"]],
       ["src/app/api/v1/mtm/activity/route.ts", ["GET"]],
+      // The live map's card and its «Excel» button (2026-10-09): managers' web screen only.
+      ["src/app/api/v1/mtm/geocode/street/route.ts", ["GET"]],
+      ["src/app/api/v1/mtm/locations/export/route.ts", ["POST"]],
+      ["src/app/api/v1/mtm/locations/clients/route.ts", ["GET"]],
     ] as const) {
       const route = source(path)
       expect(route).toContain('import { withRouteFieldWebRlsAuth } from "@/lib/with-mtm-rls-auth"')

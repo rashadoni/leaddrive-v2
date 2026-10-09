@@ -157,3 +157,23 @@ export function formatMtmDistance(meters: number, locale: string, unitLabel: Mtm
   }
   return unitLabel("km", new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(safe / 1_000))
 }
+
+export type MtmAreaUnitLabel = (unit: "m2" | "ha" | "km2", value: string) => string
+
+const LATIN_AREA_UNITS: MtmAreaUnitLabel = (unit, value) => `${value} ${unit === "m2" ? "m²" : unit === "km2" ? "km²" : "ha"}`
+
+/**
+ * «850 m²» / «2,4 ha» / «1,25 km²» in the reader's number format — the unit a
+ * person would say for that size: a yard in square metres, a block in
+ * hectares, a district in square kilometres.
+ */
+export function formatMtmArea(squareMeters: number, locale: string, unitLabel: MtmAreaUnitLabel = LATIN_AREA_UNITS): string {
+  const safe = Math.max(0, squareMeters)
+  if (safe < 10_000) {
+    return unitLabel("m2", new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(Math.round(safe)))
+  }
+  if (safe < 1_000_000) {
+    return unitLabel("ha", new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(safe / 10_000))
+  }
+  return unitLabel("km2", new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(safe / 1_000_000))
+}

@@ -184,7 +184,9 @@ describe("the wiring between the list, the card and the map", () => {
   const page = readFileSync("src/app/(dashboard)/mtm/map/page.tsx", "utf8")
 
   it("selects an employee from his marker and shows who he is on hover", () => {
-    expect(map).toContain("eventHandlers={{ click: () => onAgentSelect?.(agent.agentId) }}")
+    // (While a tool on the map waits for a press — the ruler, «point on the
+    // map» — the press is the tool's; otherwise it selects.)
+    expect(map).toContain("eventHandlers={{ click: () => pressMode ? onMapPress?.(agent.latitude, agent.longitude) : onAgentSelect?.(agent.agentId) }}")
     expect(map).toMatch(/<Tooltip direction="top"[\s\S]{0,200}\{agent\.name\}/)
     expect(page).toContain("onAgentSelect={handleMapAgentSelect}")
     // A second press on the same marker reads its balloon; it must not drop the selection.
@@ -195,13 +197,17 @@ describe("the wiring between the list, the card and the map", () => {
     expect(page).toContain("focusStopOrder={selectedStop}")
     expect(page).toContain("onStopSelect={setSelectedStop}")
     expect(page).toContain("followAgent={followSelected}")
-    expect(map).toContain("eventHandlers={{ click: () => onStopSelect?.(stop.orderIndex) }}")
+    expect(map).toContain("eventHandlers={{ click: () => pressMode ? onMapPress?.(stop.latitude, stop.longitude) : onStopSelect?.(stop.orderIndex) }}")
     expect(map).toContain("<FocusStop stops={plannedRoute} focusStopOrder={focusStopOrder} markers={stopMarkersRef} />")
     expect(map).toContain("<FollowAgent agents={agents} focusAgentId={focusAgentId} enabled={followAgent} />")
   })
 
-  it("drops a selection that a status chip has just hidden, and the stop and «follow» with any selection", () => {
-    expect(page).toMatch(/if \(!selected \|\| shownAgentIdsRef\.current\.has\(selected\)\) return[\s\S]{0,200}setSelectedAgent\(null\)[\s\S]{0,80}\}, \[activeFilter\]\)/)
+  // 2026-10-09 the status chips became one of the list's column filters, and
+  // the rule was widened: whatever takes the selected employee out of the list
+  // — a filter, a poll that changes his status, a signal that ages — lets go
+  // of him. The effect is keyed on whether he is shown, not on the filter.
+  it("drops a selection that has left the list, and the stop and «follow» with any selection", () => {
+    expect(page).toMatch(/if \(selectedShown\) return[\s\S]{0,200}setSelectedAgent\(null\)[\s\S]{0,80}\}, \[selectedShown\]\)/)
     expect(page).toMatch(/setSelectedStop\(null\)\s*if \(!selectedAgent\) setFollowSelected\(false\)\s*\}, \[selectedAgent\]\)/)
   })
 })

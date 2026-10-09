@@ -1,0 +1,182 @@
+[
+  {
+    "conclusion": "failure",
+    "databaseId": 37968150616,
+    "headSha": "607a25549bb14dacf35ae76a9f95ac1b3e1d1545",
+    "status": "completed",
+    "workflowName": "HRM live loopback ACL evidence",
+    "jobs": [
+      {
+        "id": 113947634977,
+        "name": "source-validation",
+        "conclusion": "failure"
+      },
+      {
+        "id": 113947897435,
+        "name": "production-loopback-acl-inspection",
+        "conclusion": "skipped"
+      }
+    ],
+    "originalLog": {
+      "path": "37968150616-113947634977-source-original.txt.gz",
+      "bytes": 41740,
+      "sha256": "d4ca26270c8c96045f6990aa8c76fc57232f569b5bcd51e68dd17cb2855200f1",
+      "gzipSha256": "3ca412bcc793dfdff60d08aef808882e78ac2f2fc623b5350bd3f03560fe89e8"
+    },
+    "finiteError": "ERR_ASSERTION_REQUIRED_HEAD_SHA_UNDEFINED",
+    "tests": 22,
+    "passCount": 21,
+    "failCount": 1,
+    "skipCount": 0
+  },
+  {
+    "conclusion": "failure",
+    "databaseId": 37968150576,
+    "headSha": "607a25549bb14dacf35ae76a9f95ac1b3e1d1545",
+    "status": "completed",
+    "workflowName": "HRM configured backup ACL attribution",
+    "jobs": [
+      {
+        "id": 113947635796,
+        "name": "source-validation",
+        "conclusion": "failure"
+      },
+      {
+        "id": 113947922423,
+        "name": "production-backup-acl-attribution",
+        "conclusion": "skipped"
+      }
+    ],
+    "originalLog": {
+      "path": "37968150576-113947635796-source-original.txt.gz",
+      "bytes": 42188,
+      "sha256": "ed0bf21d73af11c98ef63d4a65bb19c55b12911ad582c94f2d310aae1477be76",
+      "gzipSha256": "acb200f884029d3c3be2fb9e8b07db846081c9e505da2806e20576669d924393"
+    },
+    "finiteError": "ERR_ASSERTION_REQUIRED_HEAD_SHA_UNDEFINED",
+    "tests": 22,
+    "passCount": 21,
+    "failCount": 1,
+    "skipCount": 0
+  },
+  {
+    "conclusion": "failure",
+    "databaseId": 37968150622,
+    "headSha": "607a25549bb14dacf35ae76a9f95ac1b3e1d1545",
+    "status": "completed",
+    "workflowName": "HRM default ACL inspection",
+    "jobs": [
+      {
+        "id": 113947634765,
+        "name": "source-validation",
+        "conclusion": "failure"
+      },
+      {
+        "id": 113947922939,
+        "name": "production-acl-inspection",
+        "conclusion": "skipped"
+      }
+    ],
+    "originalLog": {
+      "path": "37968150622-113947634765-source-original.txt.gz",
+      "bytes": 41409,
+      "sha256": "b4fb685f065e49380d24ea4fb99cd6912c342d4c6fa39f174293a513ce6d8ba7",
+      "gzipSha256": "bb68a8a3e3a0273e490d58ad814b577a4743b657b92562494bda6ea63aa657a1"
+    },
+    "finiteError": "ERR_ASSERTION_REQUIRED_HEAD_SHA_UNDEFINED",
+    "tests": 22,
+    "passCount": 21,
+    "failCount": 1,
+    "skipCount": 0
+  },
+  {
+    "conclusion": "failure",
+    "databaseId": 37967873361,
+    "headSha": "0d1f85e6555d7f461041515d9ddc541ab6318749",
+    "status": "completed",
+    "workflowName": "HRM configured backup ACL attribution",
+    "jobs": [
+      {
+        "id": 113946697761,
+        "name": "source-validation",
+        "conclusion": "failure"
+      },
+      {
+        "id": 113946987779,
+        "name": "production-backup-acl-attribution",
+        "conclusion": "skipped"
+      }
+    ],
+    "originalLog": {
+      "path": "37967873361-113946697761-source-original.txt.gz",
+      "bytes": 42250,
+      "sha256": "650fe21699e5367d27d456ddfe5d25999b5e7e682c32f298932ad0e18e20c2e4",
+      "gzipSha256": "c9a5b59d3243b8c5a88cd3be4533d5168991a4f12745317b437c9bfde3b77cca"
+    },
+    "finiteError": "ERR_ASSERTION_REQUIRED_HEAD_SHA_UNDEFINED",
+    "tests": 22,
+    "passCount": 21,
+    "failCount": 1,
+    "skipCount": 0
+  },
+  {
+    "conclusion": "failure",
+    "databaseId": 37967873399,
+    "headSha": "0d1f85e6555d7f461041515d9ddc541ab6318749",
+    "status": "completed",
+    "workflowName": "HRM default ACL inspection",
+    "jobs": [
+      {
+        "id": 113946698382,
+        "name": "source-validation",
+        "conclusion": "failure"
+      },
+      {
+        "id": 113946995785,
+        "name": "production-acl-inspection",
+        "conclusion": "skipped"
+      }
+    ],
+    "originalLog": {
+      "path": "37967873399-113946698382-source-original.txt.gz",
+      "bytes": 41408,
+      "sha256": "9fc3a51fea484fe7221542497f2f82d9acca7546c865d109e25549e326b1007e",
+      "gzipSha256": "937e81f6f2768bf8674148bdc83321293a6e9c413b47ac6416010fd2303babcf"
+    },
+    "finiteError": "ERR_ASSERTION_REQUIRED_HEAD_SHA_UNDEFINED",
+    "tests": 22,
+    "passCount": 21,
+    "failCount": 1,
+    "skipCount": 0
+  },
+  {
+    "conclusion": "failure",
+    "databaseId": 37967873313,
+    "headSha": "0d1f85e6555d7f461041515d9ddc541ab6318749",
+    "status": "completed",
+    "workflowName": "HRM live loopback ACL evidence",
+    "jobs": [
+      {
+        "id": 113946697643,
+        "name": "source-validation",
+        "conclusion": "failure"
+      },
+      {
+        "id": 113946975960,
+        "name": "production-loopback-acl-inspection",
+        "conclusion": "skipped"
+      }
+    ],
+    "originalLog": {
+      "path": "37967873313-113946697643-source-original.txt.gz",
+      "bytes": 41925,
+      "sha256": "5a339b3e003cd29fe1fd7b2f1f297aab71c1e9dae468e49e5c7e5630db9e6da1",
+      "gzipSha256": "c0904a50e31124b739f95f3e60593365e8f5d7fcae505c0f7f75db944f1255c7"
+    },
+    "finiteError": "ERR_ASSERTION_REQUIRED_HEAD_SHA_UNDEFINED",
+    "tests": 22,
+    "passCount": 21,
+    "failCount": 1,
+    "skipCount": 0
+  }
+]
