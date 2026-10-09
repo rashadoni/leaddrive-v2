@@ -177,8 +177,17 @@ describe("since when", () => {
     expect(liveMapStateSince({ ...base, workdayState: "PAUSED", workdayPausedAt: null })).toEqual([])
   })
 
-  it("nothing is claimed about standing still: «стоит» has no recorded beginning", () => {
+  it("standing still is said only with the moment the server recorded — and only while the map still calls him «стоит»", () => {
+    // No recorded beginning (tracking was broken, or the server does not know yet): nothing is claimed.
     expect(liveMapStateSince({ fieldStatus: "STOPPED", workdayState: "ACTIVE" })).toEqual([])
+    expect(liveMapStateSince({ fieldStatus: "STOPPED", workdayState: "ACTIVE", stationarySince: null })).toEqual([])
+    expect(liveMapStateSince({ fieldStatus: "STOPPED", workdayState: "ACTIVE", stationarySince: "2026-10-09T09:20:00.000Z" }))
+      .toEqual([{ basis: "STANDING", since: "2026-10-09T09:20:00.000Z", ongoing: true }])
+    // He drove off, checked in, or his phone went silent: the old stopping moment explains nothing.
+    for (const fieldStatus of ["ON_ROAD", "CHECKED_IN", "OFFLINE", "ROUTE_FINISHED", "LATE"]) {
+      expect(liveMapStateSince({ fieldStatus, workdayState: "ACTIVE", stationarySince: "2026-10-09T09:20:00.000Z" }).map((fact) => fact.basis))
+        .not.toContain("STANDING")
+    }
   })
 
   it("a break inside a visit shows both", () => {
@@ -341,6 +350,7 @@ const words: RosterExportWords = {
   clock: (iso) => iso.slice(11, 16),
   dateTime: (iso) => `${iso.slice(0, 10)} ${iso.slice(11, 16)}`,
   visitOpened: (time) => `визит открыт: ${time}`,
+  standingSince: (time) => `стоит с ${time}`,
 }
 
 describe("the list as an Excel file", () => {
@@ -353,6 +363,12 @@ describe("the list as an Excel file", () => {
     expect(rosterCellText(agent({ agentId: "a", name: "A", fieldStatus: "CHECKED_IN", openVisitSince: "2026-10-08T18:14:00.000Z" }), "status", words))
       .toBe("status:CHECKED_IN · визит открыт: 2026-10-08 18:14")
     expect(rosterCellText(agent({ agentId: "a", name: "A" }), "status", words)).toBe("status:ON_ROAD")
+    // Standing: the moment he stopped, not «40 мин» — a duration is false a minute after the file is saved.
+    expect(rosterCellText(agent({ agentId: "a", name: "A", fieldStatus: "STOPPED", stationarySince: "2026-10-09T09:20:00.000Z" }), "status", words))
+      .toBe("status:STOPPED · стоит с 2026-10-09 09:20")
+    expect(rosterCellText(agent({ agentId: "a", name: "A", fieldStatus: "STOPPED" }), "status", words)).toBe("status:STOPPED")
+    // The moment is not carried into another status.
+    expect(rosterCellText(agent({ agentId: "a", name: "A", fieldStatus: "ON_ROAD", stationarySince: "2026-10-09T09:20:00.000Z" }), "status", words)).toBe("status:ON_ROAD")
     expect(rosterCellText(agent({ agentId: "a", name: "A", workdayStartedAt: "2026-10-09T05:00:00.000Z" }), "workday", words)).toBe("day:ACTIVE · 05:00")
     expect(rosterCellText(agent({ agentId: "a", name: "A", workdayStartedAt: "2026-10-08T05:00:00.000Z", workdayCarryover: true }), "workday", words))
       .toBe("day:ACTIVE · 2026-10-08 05:00")

@@ -7,6 +7,7 @@ import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/compon
 import { cn } from "@/lib/utils"
 import { FIELD_STATUS_LABEL_KEYS, type MtmDashboardAgent } from "@/lib/mtm-types"
 import { rosterExportTable } from "@/lib/mtm/live-map-roster-export"
+import { liveMapDuration } from "@/lib/mtm/live-map-state-since"
 import {
   activeRosterFilterColumns,
   availableRosterColumns,
@@ -455,6 +456,7 @@ export function LiveMapRoster({
         clock: (iso) => formatClock(iso),
         dateTime: formatVisitOpened,
         visitOpened: (time) => tMap("visitOpenedAt", { time }),
+        standingSince: (time) => tMap("roster.standingSince", { time }),
       })
       const response = await fetch("/api/v1/mtm/locations/export", {
         method: "POST",
@@ -511,10 +513,19 @@ export function LiveMapRoster({
         // has to see on the row itself, even where the time does not fit.
         const stale = openedAt != null && isEarlierDay(openedAt)
         const label = valueLabel("status", status)
+        // «Стоит · 40 мин»: how long, not since when — the question a
+        // dispatcher asks of somebody standing («давно он там?»).
+        const standing = status === "STOPPED" ? liveMapDuration(agent.stationarySince, nowMs) : null
+        const standingText = standing ? tMap(`since.duration.${standing.unit}`, { ...standing }) : ""
+        const title = since
+          ? `${label} — ${tMap("visitOpenedAt", { time: since })}`
+          : standing && agent.stationarySince
+            ? tMap("since.STANDING", { time: formatVisitOpened(agent.stationarySince) })
+            : label
         return (
-          <span className="flex min-w-0 items-center gap-1.5" data-testid={`live-map-agent-status-${agent.agentId}`} title={since ? `${label} — ${tMap("visitOpenedAt", { time: since })}` : label}>
+          <span className="flex min-w-0 items-center gap-1.5" data-testid={`live-map-agent-status-${agent.agentId}`} title={title}>
             <span className={cn("h-2 w-2 shrink-0 rounded-full", ROSTER_STATUS_DOT_CLASS[status])} aria-hidden="true" />
-            <span className="min-w-0 truncate">{label}{since ? <span className="hidden text-muted-foreground @2xl:inline"> · {since}</span> : null}</span>
+            <span className="min-w-0 truncate">{label}{since ? <span className="hidden text-muted-foreground @2xl:inline"> · {since}</span> : null}{standingText ? <span className="hidden text-muted-foreground @2xl:inline" data-testid={`live-map-agent-standing-${agent.agentId}`}> · {standingText}</span> : null}</span>
             {stale ? (
               <span className="shrink-0 @2xl:hidden" data-testid={`live-map-agent-visit-stale-${agent.agentId}`}>
                 <AlertTriangle className="h-3.5 w-3.5 text-amber-600" aria-hidden="true" />

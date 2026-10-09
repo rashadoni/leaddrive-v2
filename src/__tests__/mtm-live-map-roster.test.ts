@@ -847,6 +847,26 @@ describe("the list on the page", () => {
     expect(rowIds().sort()).toEqual(["a1", "a2"])
   })
 
+  it("says how long somebody has been standing — in the wide table, and only where the server recorded when he stopped", async () => {
+    agents = [
+      person("s1", "Стоит давно", { fieldStatus: "STOPPED", stationarySince: minutesAgo(80) }),
+      person("s2", "Стоит, начало неизвестно", { fieldStatus: "STOPPED" }),
+      person("s3", "Едет", { fieldStatus: "ON_ROAD", stationarySince: minutesAgo(80) }),
+    ]
+    await draw()
+    const standing = byTestId("live-map-agent-standing-s1")!
+    expect(standing.textContent).toBe(" · 1 ч 20 мин")
+    // Beside the map there is room for the status word only; the wide table shows the duration.
+    expect(standing.className.split(" ")).toEqual(expect.arrayContaining(["hidden", "@2xl:inline"]))
+    // On hover, since when.
+    expect(byTestId("live-map-agent-status-s1")?.getAttribute("title")).toBe("Стоит с 08:40")
+    // No recorded beginning: the word alone, no invented duration.
+    expect(byTestId("live-map-agent-standing-s2")).toBeNull()
+    expect(visibleText(cell("s2", "status"))).toBe("Стоит")
+    // Not carried into «в пути».
+    expect(byTestId("live-map-agent-standing-s3")).toBeNull()
+  })
+
   it("does not group by a column this roster does not have, whatever layout was remembered", async () => {
     // Remembered in another organization, where there were teams.
     agents = TEAM.map((agent) => ({ ...agent, teamId: null, teamName: null }))

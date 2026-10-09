@@ -16504,6 +16504,7 @@
       "expandGroup": "Развернуть группу «{name}»",
       "noTeam": "Без отдела",
       "noManager": "Без руководителя",
+      "standingSince": "с {time}",
       "export": {
         "button": "Excel",
         "hint": "Скачать список в Excel: строки и порядок как на экране",
@@ -16915,6 +16916,7 @@
     },
     "since": {
       "VISIT": "Визит идёт с {time}",
+      "STANDING": "Стоит с {time}",
       "BREAK": "Перерыв с {time}",
       "SHIFT_CLOSED": "Рабочий день завершён в {time}",
       "duration": {

@@ -78,6 +78,8 @@ export interface MtmDashboardAgent extends Omit<LiveMapAgent, "latitude" | "long
   workdayCompletedAt?: string | null
   /** When the visit the agent is in was opened — it may be an earlier day. Only with CHECKED_IN. */
   openVisitSince?: string | null
+  /** Since when he has not moved, outside a visit. Only with STOPPED, and only where tracking was unbroken. */
+  stationarySince?: string | null
   /** Stops visited and stops in all of today's routes that count; 0 of 0 = no route. */
   routeVisited?: number
   routeTotal?: number
@@ -220,6 +222,13 @@ export function presentMtmGpsFreshness(
   return rank[serverFreshness] > rank[calculated] ? serverFreshness : calculated
 }
 
+/**
+ * Longer than this without a trustworthy still point, and nobody knows
+ * whether he stood: «стоит N минут» is neither kept nor shown across such a
+ * silence (the rules are in src/lib/mtm/stationary-anchor.ts).
+ */
+export const MTM_STATIONARY_MAX_SILENCE_MS = 10 * 60 * 1000
+
 export function presentMtmDashboardAgent(
   agent: MtmDashboardAgent,
   thresholds: MtmLiveMapFreshnessThresholds | null | undefined,
@@ -230,11 +239,18 @@ export function presentMtmDashboardAgent(
   const lastSeenAtMs = agent.lastSeenAt ? Date.parse(agent.lastSeenAt) : Number.NaN
   const appPresent = agent.isOnline && Number.isFinite(lastSeenAtMs) &&
     Math.max(0, nowMs - lastSeenAtMs) <= policy.onlineSeconds * 1_000
+  // Between two answers of the server the page goes on counting «стоит N
+  // минут». It stops when the coordinate behind it has grown older than the
+  // silence the server itself would not count as standing — whatever the
+  // organization's own idea of «свежая».
+  const recordedAtMs = agent.recordedAt ? Date.parse(agent.recordedAt) : Number.NaN
+  const standingStillKnown = Number.isFinite(recordedAtMs) && nowMs - recordedAtMs <= MTM_STATIONARY_MAX_SILENCE_MS
   return {
     ...agent,
     isOnline: appPresent,
     freshness,
     fieldStatus: freshness === "STALE" || freshness === "NO_LOCATION" ? "OFFLINE" : agent.fieldStatus,
+    ...(agent.stationarySince && !standingStillKnown ? { stationarySince: null } : {}),
   }
 }
 

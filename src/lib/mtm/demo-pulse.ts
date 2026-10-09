@@ -367,7 +367,9 @@ export async function pulseDemoAgent(input: {
     const missing = samples.filter((sample) => !existing.has(sample.clientLocationId))
     if (missing.length) {
       await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-        let latest: { id: string; sample: (typeof missing)[number] } | null = null
+        // The projection is advanced with every sample, oldest first, as a
+        // phone's batch does: it also keeps where the current stop began
+        // («стоит N минут»), and a drive in the middle of a tick must end it.
         for (const sample of missing) {
           const row = await tx.mtmAgentLocation.create({
             data: {
@@ -383,15 +385,12 @@ export async function pulseDemoAgent(input: {
             },
             select: { id: true },
           })
-          latest = { id: row.id, sample }
+          await advanceMtmAgentLatestLocation(tx, {
+            organizationId, agentId: agent.id, sourceLocationId: row.id, payloadSha256: null,
+            latitude: sample.latitude, longitude: sample.longitude, accuracy: 12, speed: null, heading: null,
+            altitude: null, battery: null, isMoving: sample.isMoving, recordedAt: sample.at, receivedAt: now,
+          })
         }
-        if (!latest) return
-        const { sample } = latest
-        await advanceMtmAgentLatestLocation(tx, {
-          organizationId, agentId: agent.id, sourceLocationId: latest.id, payloadSha256: null,
-          latitude: sample.latitude, longitude: sample.longitude, accuracy: 12, speed: null, heading: null,
-          altitude: null, battery: null, isMoving: sample.isMoving, recordedAt: sample.at, receivedAt: now,
-        })
         await tx.mtmAgent.updateMany({ where: { id: agent.id, organizationId }, data: { isOnline: true, lastSeenAt: now } })
       })
       result.gpsPoint = true

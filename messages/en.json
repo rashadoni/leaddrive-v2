@@ -16504,6 +16504,7 @@
       "expandGroup": "Expand group {name}",
       "noTeam": "No team",
       "noManager": "No manager",
+      "standingSince": "since {time}",
       "export": {
         "button": "Excel",
         "hint": "Download the list as Excel: rows and order as on screen",
@@ -16915,6 +16916,7 @@
     },
     "since": {
       "VISIT": "Visit in progress since {time}",
+      "STANDING": "Standing since {time}",
       "BREAK": "On a break since {time}",
       "SHIFT_CLOSED": "Workday closed at {time}",
       "duration": {

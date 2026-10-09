@@ -16500,6 +16500,7 @@
       "expandGroup": "«{name}» qrupunu aç",
       "noTeam": "Şöbəsiz",
       "noManager": "Rəhbərsiz",
+      "standingSince": "başlayıb: {time}",
       "export": {
         "button": "Excel",
         "hint": "Siyahını Excel-ə ixrac et: sətirlər və sıra ekrandakı kimi",
@@ -16911,6 +16912,7 @@
     },
     "since": {
       "VISIT": "Ziyarət gedir, başlayıb: {time}",
+      "STANDING": "Dayanıb, başlayıb: {time}",
       "BREAK": "Fasilədədir, başlayıb: {time}",
       "SHIFT_CLOSED": "İş günü bitib: {time}",
       "duration": {

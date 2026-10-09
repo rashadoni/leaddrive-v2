@@ -1105,7 +1105,8 @@ export default function MtmMapPage() {
         {liveMapStateSince(agent)
           // The break and the closing of the shift are Workforce facts: without
           // the module the card says nothing of the workday anywhere else either.
-          .filter((fact) => fact.basis === "VISIT" || workforceEnabled)
+          // The visit and standing still are Route & Field's own.
+          .filter((fact) => fact.basis === "VISIT" || fact.basis === "STANDING" || workforceEnabled)
           .map((fact) => {
           const lasted = fact.ongoing ? liveMapDuration(fact.since, presentationNow) : null
           return (
