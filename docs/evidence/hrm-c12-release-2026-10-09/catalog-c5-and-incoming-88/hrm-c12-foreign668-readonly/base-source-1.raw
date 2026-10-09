@@ -1,0 +1,439 @@
+name: PR checks
+
+# Runs on every PR open / synchronize. Cheap fast checks that don't
+# touch production infrastructure. Separate from deploy.yml so a
+# failing PR-check doesn't block deploys triggered by manual main pushes.
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, labeled, ready_for_review]
+    # Без `paths-ignore` — намеренно, с 2026-09-11. Проверки этого файла стали
+    # обязательными в main, а GitHub засчитывает обязательный контекст только
+    # когда по нему пришёл check run: документационный PR, для которого workflow
+    # не запустился вовсе, висел бы на «Expected — waiting for status» вечно.
+    #
+    # Экономия, ради которой фильтр стоял, сохранена по-другому: workflow
+    # стартует всегда, но тяжёлые джобы ниже зависят от `pr-scope` и
+    # пропускаются, если PR не трогает ничего, кроме документации. Пропущенная
+    # джоба засчитывается обязательной проверкой как пройденная. Сам фильтр был
+    # не гипотетикой: PR только с CLAUDE.md (#1058) сжёг два полных прогона
+    # тайпчека за час и дал два разных итога, ни один из которых не был его.
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  # Cancel duplicate runs when new commits land on the same PR.
+  group: pr-checks-${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  pr-scope:
+    # Решает, есть ли в PR что-то кроме документации. Сам по себе ничего не
+    # проверяет — и именно поэтому он тоже обязателен: если он упадёт, джобы
+    # ниже будут ПРОПУЩЕНЫ, а пропуск GitHub засчитывает как успех. Без
+    # обязательности сломанный детектор молча открыл бы main для любого кода.
+    name: pr-scope
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      # Только чтобы прочитать, черновик ли PR сейчас (шаг `draft` ниже).
+      pull-requests: read
+    outputs:
+      code: ${{ steps.scope.outputs.code }}
+      draft: ${{ steps.draft.outputs.draft }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: draft
+        # Черновик ли PR — по живому состоянию, а не по одному событию.
+        # `github.event.pull_request.draft` — снимок на момент события. Пуш и
+        # «ready for review» подряд (#639, 2026-10-09) дали прогон по новому
+        # коммиту с `draft: true` в событии, а `ready_for_review` пришёл со
+        # СТАРЫМ коммитом и был отменён: тяжёлые джобы пропущены, пропуск
+        # засчитан как успех, готовый PR показал CLEAN без единого теста.
+        # Пропуск разрешён, только когда черновик и в событии, и сейчас; не
+        # удалось прочитать — не черновик.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_ACTION: ${{ github.event.action }}
+          EVENT_DRAFT: ${{ github.event.pull_request.draft }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: bash scripts/ci/pr-draft-state.sh
+      - id: scope
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" != "pull_request" ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            echo "push: полный набор проверок"
+            exit 0
+          fi
+          changed="$(git diff --name-only "$BASE_SHA"..."$HEAD_SHA")"
+          if [ -z "$changed" ]; then
+            # Пустой диф — не повод что-то пропускать. Сомнение решается в
+            # пользу проверки, а не в пользу скорости.
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            echo "пустой диф: проверяем на всякий случай"
+            exit 0
+          fi
+          code=false
+          while IFS= read -r file; do
+            case "$file" in
+              *.md|docs/*|.agents/*) ;;
+              *) code=true; echo "код: $file"; break ;;
+            esac
+          done <<< "$changed"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" = false ]; then
+            echo "только документация — тяжёлые проверки будут пропущены"
+          fi
+
+  static-checks:
+    needs: pr-scope
+    # Pull requests only. On a push to main this job proves nothing that
+    # deploy.yml is not already proving on the identical commit: its
+    # "Quality & security gates" job runs every gate below — the four
+    # event-platform gates, lint:pii-columns inside "Run security gates", and
+    # check-test-baseline — and then several more. Running both meant one of
+    # the three shared leaddrive-ci runners sat busy for ~14 minutes per merge
+    # while other sessions' pull requests queued behind it.
+    #
+    # `typecheck` deliberately keeps running on push: it is the one gate
+    # deploy.yml does not perform, so dropping it would let a type regression
+    # reach production unchecked.
+    # Draft iteration does not consume the shared heavy-test slots. The
+    # ready_for_review event above starts the complete gate before merging.
+    # "Draft" is pr-scope's answer, read from the live pull request — never
+    # `github.event.pull_request.draft` here: a stale event skipped this job
+    # on a ready pull request (#639). `!= 'true'`, so a missing answer runs it.
+    if: ${{ github.event_name == 'pull_request' && needs.pr-scope.outputs.draft != 'true' && needs.pr-scope.outputs.code == 'true' }}
+    # Public repositories receive the standard 4-vCPU/16-GiB Linux runner.
+    # This replaces the temporary Contabo CI pool.
+    runs-on: ubuntu-24.04
+    services:
+      event-platform-postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: event_platform_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        # No fixed host port: several runners share one host, and two jobs
+        # both publishing 5432 would make the second one fail to start.
+        # Docker picks a free port; the step below reads it back.
+        ports:
+          - 5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d event_platform_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    # Run 34198177856 spent ~15 min in cold setup on Sep 8, then hit the old
+    # 20 min cap while running tests. Tests themselves take ~9 min. Preserve a
+    # finite bound with room for one cold start; warm setup should be shorter.
+    timeout-minutes: 30
+    env:
+      # Hosted runners had 4 vCPU; the shared box has 8 and up to three general
+      # jobs at once. Left to its default (one worker per core) each vitest
+      # would take all 8, oversubscribe the host 3:1 and push cold-import
+      # tests past their 5 s budget. 4 reproduces the hosted parallelism.
+      VITEST_MAX_WORKERS: "4"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: npm ci --include=dev
+
+      - name: Support UX read-only readiness diagnostic tests
+        run: node --test .github/scripts/test-inspect-support-ux-readiness.mjs
+
+      - name: Generate Prisma client
+        run: npx prisma generate --schema prisma/schema.prisma
+
+      - name: Resolve the per-job Postgres port
+        # `job.services` is not available to job-level `env`, so the port is
+        # exported once here and every database step below reads it back.
+        env:
+          PG_PORT: ${{ job.services.event-platform-postgres.ports['5432'] }}
+        run: |
+          test -n "$PG_PORT" || { echo "::error::service port for event-platform-postgres was not published"; exit 1; }
+          echo "EVENT_PLATFORM_PG_PORT=$PG_PORT" >> "$GITHUB_ENV"
+          echo "event-platform-postgres is on 127.0.0.1:$PG_PORT"
+
+      - name: Support UX canary atomic PostgreSQL gate
+        # A separate fixed scratch database exercises the actual RLS proxy and
+        # handler without changing the event-platform/Workforce fixtures.
+        run: npx vitest run src/__tests__/support-ux-canary-postgres.test.ts
+        env:
+          CI: "true"
+          VITEST_MAX_WORKERS: "1"
+          SUPPORT_UX_CANARY_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/support_ux_canary_test
+
+      - name: Generate frozen pre-pilot Prisma client
+        run: npx prisma generate --schema scripts/ci/fixtures/event-platform-legacy-client/schema.prisma
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+
+      - name: Event-platform Kafka and schema asset gate
+        run: node scripts/ci/test-event-platform-assets.mjs
+
+      - name: PostgreSQL maintenance safety unit tests
+        run: |
+          python3 .github/scripts/test_remediate_postgres_source_tls.py
+          python3 .github/scripts/test_provision_postgres_restore_scratch.py
+
+      - name: Event-platform migration and database invariant gate
+        run: node scripts/ci/test-event-platform-migrations.mjs
+        env:
+          EVENT_PLATFORM_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+
+      - name: Event-platform SDK PostgreSQL concurrency gate
+        run: npx vitest run src/__tests__/lib-event-platform-postgres.test.ts
+        env:
+          EVENT_PLATFORM_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+
+      - name: Workforce shared-lock PostgreSQL race gate
+        run: >-
+          npx vitest run
+          src/__tests__/lib-workforce-calendar-configuration-lock-postgres.test.ts
+          src/__tests__/lib-workforce-exception-lock-postgres.test.ts
+          src/__tests__/lib-workforce-exception-policy-revision-postgres.test.ts
+          src/__tests__/lib-workforce-exception-report-postgres.test.ts
+        env:
+          WORKFORCE_CALENDAR_LOCK_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          WORKFORCE_EXCEPTION_LOCK_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+
+      - name: Demo Center database constraints gate
+        # Every demo migration replayed on a real Postgres, and the real
+        # issuing path run against it. From 2026-09-20 to 09-24 no demo link
+        # could be issued on prod — a CHECK rejected every scenario grant —
+        # while all unit tests, which mock Prisma, stayed green.
+        run: npx vitest run src/__tests__/demo-center-db-constraints.test.ts
+        env:
+          DEMO_CENTER_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          DEMO_CENTER_DB_GATE: required
+
+      - name: MTM client categories database gate
+        # The real save handlers over the real schema on a real Postgres. On
+        # 2026-10-02 the category editor reached prod unable to save once: its
+        # transaction took an advisory lock through `$queryRaw`, which cannot
+        # deserialize the `void` the lock returns (P2010). Every unit test was
+        # green, because they mock Prisma and a mock answers any raw query.
+        run: npx vitest run src/__tests__/mtm-contact-categories-postgres.test.ts
+        env:
+          MTM_CONTACT_CATEGORIES_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          MTM_CONTACT_CATEGORIES_DB_GATE: required
+
+      - name: Finance bill payment database gate
+        # Paying a vendor bill and executing a payment order, by the real
+        # handlers on a real Postgres. What a mocked Prisma cannot show: eight
+        # payments recorded at once used to leave the bill counting two of
+        # them, an order executed twice at once paid twice, and a failure after
+        # the payment row was written left the row behind.
+        run: npx vitest run src/__tests__/finance-bill-payment-postgres.test.ts
+        env:
+          FINANCE_BILL_PAYMENT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          FINANCE_BILL_PAYMENT_DB_GATE: required
+
+      - name: Finance Telegram recipient database gate
+        # Who receives a tenant's payment notices, read off the requests that
+        # leave for api.telegram.org. Until 2026-10-07 every tenant's
+        # counterparties and amounts were addressed to one chat named in the
+        # environment; the settings each organization saves are read back from
+        # a real Postgres here, with that environment pair set, to show it is
+        # never used.
+        run: npx vitest run src/__tests__/finance-telegram-recipient-postgres.test.ts
+        env:
+          FINANCE_TELEGRAM_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          FINANCE_TELEGRAM_DB_GATE: required
+
+      - name: Previous Prisma client rollback-window gate
+        run: node scripts/event-platform-legacy-client-probe.mjs
+        env:
+          LEGACY_PRISMA_CLIENT_MODULE: ${{ github.workspace }}/node_modules/.event-platform-legacy-client
+          LEGACY_RUNTIME_DATABASE_URL: postgresql://event_app:event-app-password@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          LEGACY_VERIFY_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+
+      - name: PII column-wrap lint guard
+        # Verifies every assignment to an encrypted column passes
+        # through encryptForTenant{,OrNull} / softDecryptForTenant /
+        # <col>Ciphertext. Catches the bug class architect found in
+        # PR #127, #132, #133 (plaintext writes to encrypted columns).
+        # Inventory: scripts/lint-encrypted-columns.mjs
+        # BLOCKING — this is the one check architect explicitly called
+        # out as required.
+        run: npm run lint:pii-columns
+
+      - name: Unit tests vs baseline (BLOCKING)
+        # Was `npm test` with continue-on-error, carrying a TODO to make it
+        # blocking "once baseline is clean". Waiting for a clean baseline meant
+        # waiting forever: ~34 files are red on main, so a genuinely broken test
+        # landed green and got waved through as one of the known ones.
+        #
+        # This blocks on a CHANGE to the known-red set instead of on redness
+        # itself, so the gate exists today. test-baseline.json lists the files
+        # that fail on main; the script fails the build if a green file turns
+        # red, and equally if a listed file starts passing — a baseline that
+        # names passing files is how the next real break hides.
+        #
+        # Triaging the 34 is still worth doing. The difference is that the
+        # suite now defends itself while that happens.
+        run: node scripts/check-test-baseline.mjs
+
+  typecheck:
+    # The project type graph needs ~12 GiB. Private-repository Ubuntu runners
+    # provide 8 GiB and terminated the whole job there (exit 143), silently
+    # skipping the blocking gates below; it was moved to a 14 GiB Intel macOS
+    # runner, which then became the most expensive job in the repository
+    # (macOS minutes count against the allowance at ten times the Linux rate:
+    # 1,444 of them cost more than 96,000 Linux minutes).
+    # A public-repository standard Linux runner has 16 GiB. Two full-project
+    # compiler attempts exhausted the former 12-GiB heap on 2026-10-03.
+    # Require a measured 18-GiB RAM+swap budget for the bounded 14-GiB heap,
+    # using only the existing ephemeral-runner helper's capped 4-GiB swap.
+    #
+    # It still skips draft pull requests: the runner is a single shared
+    # resource, and an agent's intermediate pushes would only queue behind each
+    # other. Marking a PR ready fires `ready_for_review` and the gate runs
+    # before the merge it guards.
+    needs: pr-scope
+    # Draft or not is pr-scope's answer, as for static-checks above.
+    if: ${{ (github.event_name == 'push' || needs.pr-scope.outputs.draft != 'true') && needs.pr-scope.outputs.code == 'true' }}
+    # 60, а не 45: 2026-09-09 один прогон занял 44.7 минуты и умер по таймауту,
+    # не напечатав ни строки — а пустой лог от убитого компилятора неотличим от
+    # чистого прогона, ровно та ловушка, от которой написан check-typecheck-gate.
+    # Медиана 9.8 минуты, так что запас нужен не среднему прогону, а тяжёлой
+    # ветке. Это бюджет на зависание, а не цель по скорости: снижать его,
+    # чтобы «быстрее краснело», нельзя.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: npm ci --include=dev
+
+      - name: Generate Prisma client
+        run: npx prisma generate --schema prisma/schema.prisma
+
+      - name: Prepare bounded GitHub-hosted typecheck memory
+        run: bash scripts/ci/prepare-hosted-build-runner.sh
+        env:
+          LEADDRIVE_BUILD_MIN_BUDGET_KIB: "18874368"
+
+      - name: TypeScript compile-check (advisory diagnostics)
+        # The complete diagnostic set remains advisory while the historical
+        # baseline exists. Its exit status and selected defect families are
+        # enforced by the two blocking steps below. Keep the full pass and
+        # finite job timeout; the preflight must admit the measured budget
+        # before this bounded heap can be used.
+        env:
+          NODE_OPTIONS: --max-old-space-size=14336
+        run: |
+          ulimit -c 0
+          set +e
+          npx tsc --noEmit 2>&1 | tee tsc-output.log
+          echo "${PIPESTATUS[0]}" > tsc-exit-code
+        continue-on-error: true
+
+      - name: Syntax, missing-module and undefined-name errors (BLOCKING)
+        run: bash scripts/ci/check-typecheck-gate.sh tsc-output.log tsc-exit-code
+
+      - name: Defect-shaped type errors vs baseline (BLOCKING)
+        run: node scripts/ci/check-typecheck-baseline.mjs tsc-output.log
+
+      - name: Cleanup bounded typecheck swap
+        if: always()
+        run: bash scripts/ci/prepare-hosted-build-runner.sh cleanup
+
+  production-build:
+    name: GitHub-hosted Linux production build
+    # Expensive but required for release-risk PRs. Apply the `production-build`
+    # label once; synchronize/reopen events keep rerunning this proof until the
+    # branch is merged. Push events on main intentionally skip this duplicate —
+    # deploy.yml performs the same build before it can stage an artifact.
+    if: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'production-build') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Prepare bounded GitHub-hosted build memory
+        run: bash scripts/ci/prepare-hosted-build-runner.sh
+
+      - name: Install dependencies from lockfile
+        run: |
+          npm ci
+          npm cache clean --force
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Stamp the candidate revision
+        run: |
+          printf 'export const DEPLOY_SHA = "%s"\nexport const BUILT_AT = "%s"\n' \
+            "$GITHUB_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > src/generated/build-sha.ts
+
+      - name: Build the production standalone bundle
+        run: |
+          test -n "${NEXT_PUBLIC_CARTO_BASEMAPS_API_KEY:-}" || {
+            echo "::error::CARTO_BASEMAPS_API_KEY GitHub secret is required to build MTM maps"
+            exit 1
+          }
+          ulimit -c 0
+          npx next build --webpack
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+          NEXT_BUILD_CPUS: "1"
+          NEXT_WEBPACK_PARALLELISM: "1"
+          LEADDRIVE_COLD_PRODUCTION_BUILD: "1"
+          # The PR build only needs deterministic non-empty auth configuration
+          # while Next collects route data. Never expose the live runtime
+          # signing key to unmerged repository code.
+          NEXTAUTH_SECRET: build-only-${{ github.sha }}
+          NEXTAUTH_URL: https://build.invalid
+          NEXT_PUBLIC_CARTO_BASEMAPS_API_KEY: ${{ secrets.CARTO_BASEMAPS_API_KEY }}
+
+      - name: Verify production build outputs
+        run: |
+          test -f .next/standalone/server.js || { echo "::error::server.js missing"; exit 1; }
+          test -d .next/static || { echo "::error::.next/static missing"; exit 1; }
+          test -f public/sw.js || { echo "::error::public/sw.js missing"; exit 1; }
+          test ! -e .next/standalone/.event-platform-fund-atomic-insert-first-v1 || {
+            echo "::error::final candidate contains the one-release prerequisite marker"
+            exit 1
+          }
+
+      - name: Cleanup bounded build swap
+        if: always()
+        run: bash scripts/ci/prepare-hosted-build-runner.sh cleanup
