@@ -37,6 +37,9 @@ CTA»), с озвучкой на азербайджанском и вшитым�
   `GEMINI_API_KEY2…`). en/ru → Azure `en-US-JennyNeural` / `ru-RU-DmitryNeural`.
   Переопределение: `GEMINI_TTS_VOICE`, `GEMINI_TTS_MODEL`, `ENGINE_AZ=azure`
   (запасной az-голос `az-AZ-BabekNeural`). Локального TTS не делать.
+  Модель `gemini-2.5-flash-preview-tts` Google отключает не раньше 2026-11-17;
+  что будет после — в `docs/VIDEO-GUIDES-HANDOFF.md`, «Модель озвучки и
+  17 ноября 2026».
 - Ключи и логин демо: `/home/rashad/projects/leaddrive-v2/.env`
   (`GEMINI_API_KEY`, `AZURE_SPEECH_KEY/REGION`, `HELP_VIDEO_EMAIL/PASSWORD/ORG_SLUG`).
   Рекордер `.env` сам не читает: `set -a; . /home/rashad/projects/leaddrive-v2/.env; set +a`.
