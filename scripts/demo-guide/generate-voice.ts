@@ -14,6 +14,7 @@ import { execFileSync } from "node:child_process"
 import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs"
 import path from "node:path"
 import { DEMO_GUIDE_VOICE, DEMO_GUIDE_VOICE_DIR, demoGuideVoiceTexts, demoVoiceKey } from "../../src/lib/demo-center/guide-voice"
+import { GEMINI_TTS_SUCCESSOR, geminiTtsModelRetired, geminiTtsPcm, geminiTtsRequest, geminiTtsTooShort } from "../lib/gemini-tts.mjs"
 
 const OUT_DIR = path.join(process.cwd(), "public", DEMO_GUIDE_VOICE_DIR)
 const dryRun = process.argv.includes("--dry-run")
@@ -28,20 +29,23 @@ const exhausted = new Set<number>()
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 // The same delivery the demo clips were read with: calm, clear, unhurried.
+// A preview model is told so in the text; a 3.8 model would read that sentence
+// into the recording, so it gets the same thing as style metadata instead.
 const direction = "Sakit, aydın və mehriban səslə, tələsmədən, Azərbaycan dilində oxu:"
+const style = "calm, clear and kind, unhurried"
 
 async function record(text: string, outFile: string): Promise<void> {
-  const body = {
-    contents: [{ parts: [{ text: `${direction}\n${text}` }] }],
-    generationConfig: {
-      responseModalities: ["AUDIO"],
-      speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: DEMO_GUIDE_VOICE.voice } } },
-    },
-  }
   for (let attempt = 1; attempt <= 12; attempt += 1) {
     if (exhausted.size >= keys.length) throw new Error("daily TTS quota reached on every key — run again tomorrow")
     while (exhausted.has(keyIndex)) keyIndex = (keyIndex + 1) % keys.length
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${DEMO_GUIDE_VOICE.model}:generateContent?key=${keys[keyIndex]}`
+    const { url, body } = geminiTtsRequest({
+      model: DEMO_GUIDE_VOICE.model,
+      key: keys[keyIndex]!,
+      text,
+      voice: DEMO_GUIDE_VOICE.voice,
+      direction,
+      style,
+    })
     let response: Response
     try {
       response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(90_000) })
@@ -66,13 +70,28 @@ async function record(text: string, outFile: string): Promise<void> {
     if (!response.ok) {
       const detail = await response.text().catch(() => "")
       if (response.status >= 500) { await sleep(5_000); continue }
+      // No quiet fallback here, unlike the video generators: a recording is
+      // named after the model that read it, and one phrase in a newer voice
+      // among fifty in the old one is heard as a different narrator.
+      if (geminiTtsModelRetired(DEMO_GUIDE_VOICE.model, response.status)) {
+        throw new Error(
+          `${DEMO_GUIDE_VOICE.model} has been shut down by Google. Set DEMO_GUIDE_VOICE.model to "${GEMINI_TTS_SUCCESSOR}" `
+          + "in src/lib/demo-center/guide-voice.ts and run this again: every phrase is re-recorded under a new name, "
+          + "and the old files can then be deleted.",
+        )
+      }
       throw new Error(`Gemini TTS ${response.status}: ${detail.slice(0, 300)}`)
     }
-    const json = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ inlineData?: { data?: string } }> } }> }
-    const data = json.candidates?.[0]?.content?.parts?.find((part) => part.inlineData?.data)?.inlineData?.data
-    if (!data) throw new Error(`Gemini TTS returned no audio: ${JSON.stringify(json).slice(0, 300)}`)
+    const json = await response.json()
+    const audio = geminiTtsPcm(json, DEMO_GUIDE_VOICE.model)
+    if (!audio) throw new Error(`Gemini TTS returned no audio: ${JSON.stringify(json).slice(0, 300)}`)
+    if (geminiTtsTooShort(audio, text)) {
+      console.log("  audio far too short for the text — asking again")
+      await sleep(5_000)
+      continue
+    }
     const pcm = `${outFile}.pcm`
-    writeFileSync(pcm, Buffer.from(data, "base64"))
+    writeFileSync(pcm, audio)
     // Mono speech at 48 kb/s: a sentence is tens of kilobytes.
     execFileSync("ffmpeg", ["-y", "-hide_banner", "-loglevel", "error", "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", pcm, "-codec:a", "libmp3lame", "-b:a", "48k", outFile])
     rmSync(pcm, { force: true })

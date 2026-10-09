@@ -34,6 +34,7 @@
 
 - **az → Google Gemini** (Google AI Studio): модель `gemini-2.5-flash-preview-tts`, голос `Kore`, ключ `GEMINI_API_KEY`. Суточный лимит ~100 запросов, поэтому Gemini ТОЛЬКО для az.
 - **en/ru → Azure Speech**: `en-US-JennyNeural` / `ru-RU-DmitryNeural`, ключи `AZURE_SPEECH_KEY` / `AZURE_SPEECH_REGION` (быстро, без лимита).
+- Модель `gemini-2.5-flash-preview-tts` Google отключает не раньше 2026-11-17. После этого `produce-guides.mjs` сам переходит на `gemini-3.8-flash-tts`; запрос к новой модели другой, собирать его только через `scripts/lib/gemini-tts.mjs`.
 - Это согласованная облачная TTS — локального фолбэка не делать. Проверь, что ключи есть в `.env` и что `.env` реально подхватывается запуском.
 - **ffmpeg обязателен** (mux + `silencedetect` + `freezedetect`): `ffmpeg -version`, при отсутствии — `sudo apt-get install -y ffmpeg`.
 
