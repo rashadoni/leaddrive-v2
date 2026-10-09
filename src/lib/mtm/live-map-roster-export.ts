@@ -31,6 +31,8 @@ export interface RosterExportWords {
   /** The same, with the date when the moment is not today. */
   dateTime: (iso: string) => string
   visitOpened: (time: string) => string
+  /** «стоит с {time}» — a moment, not a duration: a duration is false a minute after the file is saved. */
+  standingSince: (time: string) => string
 }
 
 const EMPTY = "—"
@@ -47,9 +49,9 @@ export function rosterCellText(agent: MtmDashboardAgent, column: RosterColumnId,
     case "status": {
       const status = rosterValue(agent, "status")
       const label = words.status(status)
-      return status === "CHECKED_IN" && agent.openVisitSince
-        ? `${label} · ${words.visitOpened(words.dateTime(agent.openVisitSince))}`
-        : label
+      if (status === "CHECKED_IN" && agent.openVisitSince) return `${label} · ${words.visitOpened(words.dateTime(agent.openVisitSince))}`
+      if (status === "STOPPED" && agent.stationarySince) return `${label} · ${words.standingSince(words.dateTime(agent.stationarySince))}`
+      return label
     }
     case "signal":
       return agent.recordedAt

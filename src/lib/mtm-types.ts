@@ -78,6 +78,8 @@ export interface MtmDashboardAgent extends Omit<LiveMapAgent, "latitude" | "long
   workdayCompletedAt?: string | null
   /** When the visit the agent is in was opened — it may be an earlier day. Only with CHECKED_IN. */
   openVisitSince?: string | null
+  /** Since when he has not moved, outside a visit. Only with STOPPED, and only where tracking was unbroken. */
+  stationarySince?: string | null
   /** Stops visited and stops in all of today's routes that count; 0 of 0 = no route. */
   routeVisited?: number
   routeTotal?: number
