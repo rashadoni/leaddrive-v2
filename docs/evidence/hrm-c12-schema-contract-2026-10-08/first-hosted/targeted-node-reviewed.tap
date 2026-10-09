@@ -1,0 +1,35 @@
+TAP version 13
+# Subtest: finite validation retains each separate failed prerequisite and empty-match boundary
+ok 1 - finite validation retains each separate failed prerequisite and empty-match boundary
+  ---
+  duration_ms: 2.521203
+  ...
+# Subtest: unknown/private fields, coercible dimensions, nulls and over-bound input refuse
+ok 2 - unknown/private fields, coercible dimensions, nulls and over-bound input refuse
+  ---
+  duration_ms: 0.94263
+  ...
+# Subtest: CLI withholds rejected raw input and refuses incomplete proof
+ok 3 - CLI withholds rejected raw input and refuses incomplete proof
+  ---
+  duration_ms: 161.678806
+  ...
+# Subtest: contract source is bound to the complete unmodified migration
+ok 4 - contract source is bound to the complete unmodified migration
+  ---
+  duration_ms: 2.420652
+  ...
+# Subtest: isolated PostgreSQL16 catalog and drift acceptance
+ok 5 - isolated PostgreSQL16 catalog and drift acceptance # SKIP
+  ---
+  duration_ms: 0.165128
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 4
+# fail 0
+# cancelled 0
+# skipped 1
+# todo 0
+# duration_ms 249.986183

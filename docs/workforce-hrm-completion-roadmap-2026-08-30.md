@@ -7443,3 +7443,25 @@ codex/hrm-wf-c6-010-evidence-20261007, parent9f3, keeping verified PR source hea
 unchanged. WF-C6-010 remains PARTIAL pending owner acceptance. Accounting remains
 84/161 DONE,77 open,weighted60%; C7-007/C8-002 DONE,C12 PARTIAL. No merge, deploy,
 activation, production/access/secrets changes, Support or HRHub document work.
+
+
+## 2026-10-08 — accepted C6 continuity and bounded C12 schema supplement
+
+The older main snapshot is superseded by accepted functional WF-C6-010 at
+released f3085e5cdf80879bee2e65d06df4e88698afa3e4; the independently reviewed
+acceptance and append-only originals remain in [draft PR617](https://github.com/rashadoni/leaddrive-v2/pull/617),
+head d65ef05ae17cbf69be7cb93987dd3efee05db49a. Existing C7-007/C8-002 DONE
+rows are unchanged. Canonical accounting85/161 DONE,76 open,14/15 gates,
+weighted61%. Latest full row per task overrides its historical snapshots.
+
+| ID | Priority | Status | Owner | Task | Evidence / boundary |
+| --- | --- | --- | --- | --- | --- |
+| WF-C6-010 | P2 | DONE | HR/Analytics | Measure false positives, correction rate, appeal overturn rate and time-to-resolution | [Accepted functional evidence PR617](https://github.com/rashadoni/leaddrive-v2/pull/617): explicit scoped HR outcomes, immutable decision audit, partial appeals separately, reviewed-only final percentages/null empty samples and private CASE_RECORDED_AT aggregates accepted on exact releasedf308; real HR production rates and C12 operations receive no credit. |
+
+The additive [C12 operational schema contract](./workforce-c12-operational-schema-contract-2026-10-08.md)
+checks the existing unmodified migration in isolated synthetic PostgreSQL16;
+execution/review are pending at this entry. No extra completed-task/phase credit.
+C12 remains PARTIAL. Original production metadata INCOMPLETE, unresolved
+historical api_keys baseline, real density/collector/device/pilot/restore criteria
+are preserved. This source/test supplement does not authorize activation, grants,
+production execution or new personnel decisions.
