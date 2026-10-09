@@ -157,6 +157,22 @@ const BESIDE_MAP = mediaStore(BESIDE_MAP_QUERY)
 const ROOM_FOR_TABLE = mediaStore(ROOM_FOR_TABLE_QUERY)
 
 /**
+ * A filter or a search can leave three rows where there were a hundred. The
+ * page stays scrolled where it was, the heading goes on following the screen
+ * — and the few rows that are left end up behind it: the list looks empty
+ * (seen on production, 2026-10-09). When the heading is away from its place
+ * and the end of the list is already on the screen, the top of the list is
+ * brought back into view. Somebody reading row sixty of a hundred is not
+ * moved: the end of his list is far below.
+ */
+function bringListBackFromBehindItsHeading(aside: HTMLElement | null, heading: HTMLElement | null): void {
+  if (!aside || !heading) return
+  const list = aside.getBoundingClientRect()
+  const followingTheScreen = heading.getBoundingClientRect().top - list.top > 1
+  if (followingTheScreen && list.bottom < window.innerHeight) aside.scrollIntoView?.({ block: "start" })
+}
+
+/**
  * The employee list beside the live map as a compact table with a filter in
  * every column heading (owner, 2026-10-09: «список должен быть компактным,
  * завтра будут например 100 пользователей. Нужны фильтры прямо в списке, как
@@ -202,25 +218,40 @@ export function LiveMapRoster({
     return () => observer.disconnect()
   }, [])
 
-  // A filter or a search can leave three rows where there were a hundred.
-  // The page stays scrolled where it was, the heading goes on following the
-  // screen — and the few rows that are left end up behind it: the list looks
-  // empty (seen on production, 2026-10-09). When the list has got shorter, its
-  // heading is away from its place and its end is already on the screen, the
-  // top of the list is brought back into view. Somebody reading row sixty of a
-  // hundred is not moved: the end of his list is far below.
+  // When the list has got shorter, its few rows may be left behind its
+  // heading. Not while a menu floats beside the list and holds it steady
+  // (below): then nothing moves until the menu is closed.
   const shownRows = rows.length
   const previousRowsRef = useRef(shownRows)
+  const steadyRef = useRef(false)
   useEffect(() => {
     const shorter = shownRows < previousRowsRef.current
     previousRowsRef.current = shownRows
-    const aside = asideRef.current
-    const heading = headingRef.current
-    if (!shorter || !aside || !heading) return
-    const list = aside.getBoundingClientRect()
-    const followingTheScreen = heading.getBoundingClientRect().top - list.top > 1
-    if (followingTheScreen && list.bottom < window.innerHeight) aside.scrollIntoView?.({ block: "start" })
+    if (shorter && !steadyRef.current) bringListBackFromBehindItsHeading(asideRef.current, headingRef.current)
   }, [shownRows])
+
+  // While a menu floats beside the list, the list keeps the height it had
+  // when the menu opened. A filter that leaves three rows of a hundred makes
+  // the page shorter, the page settles higher — and the menu, which stands
+  // beside the list's heading, jumps from under the cursor: on production,
+  // the day the panel shipped, the second press landed on another value. The
+  // height is let go when the menu closes, and the list is then brought back
+  // from behind its heading if that is where it ended up.
+  // The height is held on the table itself, not on the frame around it: the
+  // heading follows the screen only inside the table, and a table that shrank
+  // inside a frame that did not would let its heading go all the same. And
+  // the browser is told not to hold on to a row of it: Chrome keeps a visible
+  // row where it was on the screen («scroll anchoring»), and a row that
+  // survives the filter moves to the top of the list — the page followed it
+  // there, fifteen hundred pixels up, taking the menu along.
+  const tableRef = useRef<HTMLDivElement | null>(null)
+  const [steadyHeight, setSteadyHeight] = useState<number | null>(null)
+  const holdSteady = (open: boolean) => setSteadyHeight(open ? tableRef.current?.offsetHeight || null : null)
+  useLayoutEffect(() => {
+    const wasSteady = steadyRef.current
+    steadyRef.current = steadyHeight != null
+    if (wasSteady && steadyHeight == null) bringListBackFromBehindItsHeading(asideRef.current, headingRef.current)
+  }, [steadyHeight])
 
   const available = useMemo(() => availableRosterColumns(agents, { workforceEnabled }), [agents, workforceEnabled])
   // The distance exists only while a point is picked on the map, and then it
@@ -325,7 +356,10 @@ export function LiveMapRoster({
   const [wasPutAway, setWasPutAway] = useState(listPutAway)
   if (wasPutAway !== listPutAway) {
     setWasPutAway(listPutAway)
-    if (listPutAway) setFiltersOpen(false)
+    if (listPutAway) {
+      setFiltersOpen(false)
+      setSteadyHeight(null)
+    }
   }
   /** «Фильтры» open in the list itself (under the map), not floating beside it. */
   const filtersInList = filtersOpen && !filtersFloat
@@ -361,6 +395,7 @@ export function LiveMapRoster({
     onSort: (direction: "asc" | "desc") => onViewChange({ ...view, sort: { column, direction } }),
     showCounts: column !== "name",
     placement: menuPlacement,
+    onOpenChange: holdSteady,
   })
   const filtersButton = (
     <button
@@ -378,7 +413,9 @@ export function LiveMapRoster({
   /** The panel of «Фильтры»: the same in the floating menu and in the list itself. */
   const filtersPanel = (gridClass: string, bodyClass: string) => (
     <>
-      <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-zinc-200 px-3 py-2 dark:border-zinc-700">
+      {/* As tall with «Сбросить фильтры» in it as without: a value pressed must
+          not move the values under the cursor. */}
+      <div className="flex min-h-12 shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-zinc-200 px-3 py-2 dark:border-zinc-700 [@media(pointer:coarse)]:min-h-[3.75rem]">
         <span className="text-sm font-semibold">{tMap("roster.filters")}</span>
         <span role="status" className="text-xs tabular-nums text-muted-foreground" data-testid="live-map-roster-filters-count">
           {tMap("roster.shownCount", { shown: rows.length, total: agents.length })}
@@ -606,7 +643,7 @@ export function LiveMapRoster({
       style={trackStyle}
       className={cn("@container order-2 min-w-0 scroll-mt-3 rounded-lg border border-zinc-200 bg-card text-[13px] sm:scroll-mt-4 lg:scroll-mt-8 dark:border-zinc-700", hiddenOnWide && "lg:hidden")}
     >
-      <div role="table" aria-label={tMap("agents")}>
+      <div ref={tableRef} role="table" aria-label={tMap("agents")} data-testid="live-map-roster-table" style={steadyHeight ? { minHeight: steadyHeight, overflowAnchor: "none" } : undefined}>
       {/* The heading follows the screen while the page scrolls: with a hundred
           rows below, the search and the filters are still where they were. The
           negative offsets are the page's own padding (`p-3 sm:p-4 lg:p-8` on
@@ -666,7 +703,7 @@ export function LiveMapRoster({
               values to press — pressed means «show these». Also the columns
               this width has no room to draw. */}
           {filtersFloat ? (
-            <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
+            <Popover open={filtersOpen} onOpenChange={(open) => { holdSteady(open); setFiltersOpen(open) }}>
               <PopoverTrigger asChild>{filtersButton}</PopoverTrigger>
               {/* After the trigger, not before it: the trigger names itself the
                   anchor when it mounts, and the last one to speak is the one
