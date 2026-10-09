@@ -25,11 +25,11 @@ const serwist = new Serwist({
     ],
   },
   runtimeCaching: [
-    // Map resources — always fetch from network, never cache via SW. This
-    // includes CARTO's vector style, TileJSON, MVT tiles, glyphs and sprites
-    // as well as the raster fallback.
+    // Map tiles — always fetch from network, never cache via SW. CARTO's
+    // raster tiles are the only CARTO resource the app requests
+    // (src/components/mtm/carto-basemap.tsx).
     {
-      matcher: /^https:\/\/(?:(?:[a-z0-9-]+\.)?basemaps\.cartocdn\.com\/(?:rastertiles|vector|gl|fonts)\/|.*\.tile\.openstreetmap\.org\/.*\.png(?:\?.*)?$)/i,
+      matcher: /^https:\/\/(?:(?:[a-z0-9-]+\.)?basemaps\.cartocdn\.com\/rastertiles\/|.*\.tile\.openstreetmap\.org\/.*\.png(?:\?.*)?$)/i,
       handler: new NetworkOnly(),
     },
     // Anything whose response depends on auth/tenant state — ALWAYS from the
