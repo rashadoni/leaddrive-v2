@@ -25,20 +25,8 @@
    "slice": 0,
    "pre_look_behavior": false,
    "blocked_by": [],
-   "text_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
-   "status": "done",
-   "done": {
-    "hash": "e5842623ead460bd791acf7f1a326463a9630d91a47f58407c8ba75ef8427590",
-    "date": "2026-10-09",
-    "card": "probe",
-    "branch": "probe",
-    "kind": "tests",
-    "tests": [
-     "проба"
-    ],
-    "run_id": "0",
-    "sha": "0000000000000000000000000000000000000000"
-   }
+   "text_hash": "e5842623ead460bd791acf7f1a326463a9630d91a47f58407c8ba75ef8427590",
+   "status": "not_started"
   },
   {
    "id": "А-02",
