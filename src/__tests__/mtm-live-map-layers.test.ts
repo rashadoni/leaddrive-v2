@@ -61,6 +61,18 @@ describe("the layers control on the map", () => {
     container.remove()
   })
 
+  it("stays inside the map's frame however many layers there are: the open panel scrolls, the button does not shrink", async () => {
+    // Seven switches made the panel 493 px tall on a phone map of 360: the last two could not be reached.
+    await draw()
+    const control = container.querySelector('[data-testid="live-map-layers"]') as HTMLElement
+    expect(control.className).toContain("bottom-3 right-3 top-3")
+    expect(control.className).toContain("z-[1200]")
+    expect(opener().className).toContain("shrink-0")
+    await press(opener())
+    expect(panel()?.className).toContain("min-h-0")
+    expect(panel()?.className).toContain("overflow-y-auto")
+  })
+
   it("stays out of the way until asked for", async () => {
     await draw()
     expect([opener().textContent, opener().getAttribute("aria-expanded")]).toEqual(["Слои", "false"])
@@ -111,15 +123,22 @@ describe("the layers control on the map", () => {
 describe("what the page takes off the map", () => {
   const page = readFileSync("src/app/(dashboard)/mtm/map/page.tsx", "utf8")
   const map = readFileSync("src/components/mtm/live-map.tsx", "utf8")
+  // 2026-10-09 the cards became a table (owner: «список должен быть
+  // компактным… фильтры прямо в списке, как в Excel»). The ticks moved with
+  // the rows into the list's own component; how they behave when pressed is
+  // exercised in mtm-live-map-roster.test.ts.
+  const roster = readFileSync("src/components/mtm/live-map-roster.tsx", "utf8")
 
   it("removes markers for the whole layer and for each employee who is not ticked", () => {
     expect(page).toContain("if (!showAgentMarkers || hiddenAgentIds.has(agent.agentId)) return []")
-    // The list keeps everybody: hiding is about the map, not the roster.
-    expect(page).toMatch(/const filteredAgents = agents\.filter\(a => \{\s*if \(activeFilter === "all"\) return true/)
+    // The list keeps everybody: hiding is about the map, not the roster — the
+    // rows are decided by the filters alone, with no look at who is hidden.
+    expect(page).toMatch(/const filteredAgents = useMemo\(\s*\(\) => sortRoster\(applyRosterFilters\(agents, rosterFilters\), rosterSort, locale\)/)
     // A tick per employee (owner, 2026-10-09: «галочкой выбирать… некоторых
     // конкретных видеть одновременно, кто где находится»): a real checkbox.
-    expect(page).toMatch(/<input\s+type="checkbox"\s+checked=\{!hiddenOnMap\}\s+onChange=\{\(\) => toggleAgentOnMap\(agent\.agentId\)\}/)
-    expect(page).toContain('aria-label={tMap("layers.agentOnMap", { name: agent.name })}')
+    expect(roster).toMatch(/<input\s+type="checkbox"\s+checked=\{!hiddenAgentIds\.has\(agent\.agentId\)\}\s+onChange=\{\(\) => onToggleAgentOnMap\(agent\.agentId\)\}/)
+    expect(roster).toContain('aria-label={tMap("layers.agentOnMap", { name: agent.name })}')
+    expect(page).toContain("onToggleAgentOnMap={toggleAgentOnMap}")
   })
 
   it("lets go of the selection when the selected employee is the one hidden", () => {
@@ -127,10 +146,14 @@ describe("what the page takes off the map", () => {
   })
 
   it("starts a comparison from nobody, or from everybody, in one press, and says how many are on the map", () => {
-    expect(page).toMatch(/const hideAllAgentsOnMap = \(\) => \{\s*setHiddenAgentIds\(new Set\(agents\.map\(\(agent\) => agent\.agentId\)\)\)/)
-    expect(page).toContain('data-testid="live-map-on-map-none" onClick={hideAllAgentsOnMap}')
-    expect(page).toContain('data-testid="live-map-on-map-all" onClick={() => setHiddenAgentIds(new Set())}')
-    expect(page).toContain('tMap("layers.onMapCount", { shown: agents.filter((agent) => !hiddenAgentIds.has(agent.agentId)).length, total: agents.length })')
+    // «Все» and «Никого» are about the rows in the list: with a filter on,
+    // nobody out of sight is ticked or unticked behind one's back.
+    expect(roster).toContain('data-testid="live-map-on-map-none" onClick={() => onSetAgentsOnMap(rowIds, false)}')
+    expect(roster).toContain('data-testid="live-map-on-map-all" onClick={() => onSetAgentsOnMap(rowIds, true)}')
+    expect(roster).toContain('tMap("layers.onMapCount", { shown: tick.onMap, total: tick.total })')
+    expect(page).toContain("onSetAgentsOnMap={setAgentsOnMap}")
+    // Taking the selected employee off the map lets go of the selection, as his own tick does.
+    expect(page).toMatch(/const setAgentsOnMap = \(agentIds: string\[\], onMap: boolean\) => \{[\s\S]{0,500}if \(!onMap && selected && agentIds\.includes\(selected\)\) handleAgentClick\(selected\)/)
     for (const locale of ["ru", "az", "en"]) {
       const layers = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).mtmMap.layers
       expect(layers.onMapCount, locale).toMatch(/\{shown\}.*\{total\}/)

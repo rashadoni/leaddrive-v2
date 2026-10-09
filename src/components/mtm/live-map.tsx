@@ -1,13 +1,16 @@
 "use client"
 
 import "leaflet/dist/leaflet.css"
-import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react"
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type CSSProperties, type MutableRefObject } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { Circle, CircleMarker, MapContainer, Marker, Polyline, Popup, Tooltip, useMap, useMapEvents } from "react-leaflet"
+import { Circle, CircleMarker, MapContainer, Marker, Polygon, Polyline, Popup, Tooltip, useMap, useMapEvents } from "react-leaflet"
 import L from "leaflet"
 import Link from "next/link"
 import { CartoVectorBasemap } from "./carto-vector-basemap"
 import { formatDateTime, formatTime } from "@/lib/format-date"
+import { calculateDistance } from "@/lib/geo-utils"
+import { liveMapTrailSegments, outlineCrossesItself, type LiveMapTrails } from "@/lib/mtm/live-map-trails"
+import { clusterLiveMapClients, liveMapClientColor, type LiveMapClient, type LiveMapClientNode } from "@/lib/mtm/live-map-clients"
 
 // F-24: rewritten on Leaflet. Google Maps + AdvancedMarker had been the
 // source of 5 hotfixes in a month — Vector tiles need a real Map ID, the React
@@ -71,6 +74,38 @@ interface Props {
   onStopSelect?: (orderIndex: number) => void
   /** Keep the selected employee in the middle of the map as his position updates. */
   followAgent?: boolean
+  /** Names beside the markers all the time, not only under the pointer. */
+  showLabels?: boolean
+  /** Where each employee has just been: positions this page has itself seen (live-map-trails.ts). */
+  trails?: LiveMapTrails | null
+  /** Markers glide to a new position instead of jumping there. */
+  glideMarkers?: boolean
+  /**
+   * A tool is waiting for a press on the map itself — the ruler for its next
+   * point, «point on the map» for its one. The page decides what the press
+   * means; the map only reports it and shows a crosshair while it waits.
+   */
+  pressMode?: "ruler" | "point" | null
+  onMapPress?: (latitude: number, longitude: number) => void
+  /** The ruler's points so far, in the order they were pressed. */
+  rulerPoints?: ReadonlyArray<{ latitude: number; longitude: number }>
+  /** A place the dispatcher picked — an address that was found, a point pressed on the map. */
+  referencePoint?: LiveMapReferencePoint | null
+  /**
+   * The client base, while its layer is on: the institutions that have a place
+   * (src/lib/mtm/live-map-clients.ts). Kept apart from the employees and from
+   * the selected employee's stops — the map is not framed around them, and
+   * they never take a marker from an employee.
+   */
+  clients?: readonly LiveMapClient[]
+  /** «Кто ближе всех» in a client's balloon: the list answers for this place. */
+  onClientNearest?: (client: LiveMapClient) => void
+}
+
+export interface LiveMapReferencePoint {
+  latitude: number
+  longitude: number
+  label: string
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -162,6 +197,123 @@ function routeStopIcon(orderIndex: number, status: string, focused = false) {
   })
 }
 
+function referenceIcon() {
+  return L.divIcon({
+    className: "mtm-reference-point-marker",
+    html: `<div style="
+      width:22px;height:22px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);
+      background:#be123c;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4);
+    "></div>`,
+    iconSize: [22, 22],
+    iconAnchor: [11, 22],
+  })
+}
+
+const NO_RULER_POINTS: ReadonlyArray<{ latitude: number; longitude: number }> = []
+const NO_CLIENTS: readonly LiveMapClient[] = []
+const NO_CLIENT_NODES: readonly LiveMapClientNode[] = []
+
+/** A step further than this is not a move to watch: the first fix after a silence, a jump across town. */
+const GLIDE_MAX_METERS = 3_000
+const GLIDE_MS = 1_200
+
+/**
+ * A marker that glides to its new position. The roster answers every thirty
+ * seconds, and a marker that jumps reads as two different people; one that
+ * moves reads as somebody driving. Nothing is invented between two fixes
+ * except the straight line the marker travels for a second.
+ */
+function useGlidingPosition(latitude: number, longitude: number, enabled: boolean): L.LatLngTuple {
+  const [position, setPosition] = useState<L.LatLngTuple>([latitude, longitude])
+  const shownRef = useRef<L.LatLngTuple>([latitude, longitude])
+  useEffect(() => {
+    const from = shownRef.current
+    const to: L.LatLngTuple = [latitude, longitude]
+    const meters = calculateDistance(from[0], from[1], to[0], to[1])
+    const still = typeof window === "undefined" || document.visibilityState !== "visible" ||
+      (typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+    if (!enabled || still || meters < 1 || meters > GLIDE_MAX_METERS) {
+      // Straight there, on the next frame the browser paints.
+      const jump = window.requestAnimationFrame(() => {
+        shownRef.current = to
+        setPosition(to)
+      })
+      return () => window.cancelAnimationFrame(jump)
+    }
+    const startedAt = window.performance.now()
+    let frame = 0
+    const step = (now: number) => {
+      const progress = Math.min(1, (now - startedAt) / GLIDE_MS)
+      const eased = progress * (2 - progress)
+      const current: L.LatLngTuple = [from[0] + (to[0] - from[0]) * eased, from[1] + (to[1] - from[1]) * eased]
+      shownRef.current = current
+      setPosition(current)
+      if (progress < 1) frame = window.requestAnimationFrame(step)
+    }
+    frame = window.requestAnimationFrame(step)
+    return () => window.cancelAnimationFrame(frame)
+  }, [latitude, longitude, enabled])
+  return position
+}
+
+function GlidingMarker({ latitude, longitude, glide, ...props }: Omit<ComponentProps<typeof Marker>, "position"> & {
+  latitude: number
+  longitude: number
+  glide: boolean
+}) {
+  const position = useGlidingPosition(latitude, longitude, glide)
+  return <Marker {...props} position={position} />
+}
+
+/**
+ * The ruler and «point on the map» both read presses on the map itself. A
+ * press on a marker is still that marker's own: Leaflet does not pass it on.
+ */
+function MapPresses({ active, onPress }: { active: boolean; onPress: (latitude: number, longitude: number) => void }) {
+  const map = useMap()
+  useMapEvents({
+    click: (event) => {
+      if (active) onPress(event.latlng.lat, event.latlng.lng)
+    },
+  })
+  useEffect(() => {
+    const container = map.getContainer()
+    if (!active) return
+    container.style.cursor = "crosshair"
+    // Two quick presses are two points, not a zoom that also drops two points.
+    const zoomedByDoubleClick = map.doubleClickZoom.enabled()
+    map.doubleClickZoom.disable()
+    return () => {
+      container.style.cursor = ""
+      if (zoomedByDoubleClick) map.doubleClickZoom.enable()
+    }
+  }, [map, active])
+  return null
+}
+
+/** A place that was just picked comes into view once; the dispatcher may then look elsewhere. */
+function ShowReferencePoint({ point }: { point: LiveMapReferencePoint | null }) {
+  const map = useMap()
+  const shownRef = useRef("")
+  const latitude = point?.latitude
+  const longitude = point?.longitude
+  useEffect(() => {
+    if (typeof latitude !== "number" || typeof longitude !== "number") {
+      shownRef.current = ""
+      return
+    }
+    const key = `${latitude},${longitude}`
+    if (shownRef.current === key) return
+    shownRef.current = key
+    // A point pressed on the map is on the screen already, with the people it
+    // was asked about around it: flying in on it would push them out of view.
+    // An address found somewhere else is flown to.
+    if (map.getBounds().contains([latitude, longitude])) return
+    map.flyTo([latitude, longitude], Math.max(map.getZoom(), 14), { duration: 0.5 })
+  }, [map, latitude, longitude])
+  return null
+}
+
 // ── Sub-components ───────────────────────────────────────────────────────────
 
 function InvalidateSize() {
@@ -188,10 +340,21 @@ function InvalidateSize() {
   return null
 }
 
-function FitBounds({ agents, plannedRoute, focusAgentId }: { agents: LiveMapAgent[]; plannedRoute: RouteStop[]; focusAgentId: string | null }) {
+function FitBounds({ agents, plannedRoute, focusAgentId, hold }: {
+  agents: LiveMapAgent[]
+  plannedRoute: RouteStop[]
+  focusAgentId: string | null
+  /** A tool is in use on the map — a ruler, a picked point: the view is the dispatcher's, not ours. */
+  hold: boolean
+}) {
   const map = useMap()
   const lastFitRef = useRef("")
   useEffect(() => {
+    // Nothing is recorded while held, so what changed meanwhile is framed once
+    // the tool is put down. Held is the framing of the whole team only: an
+    // employee selected meanwhile still gets his day's stops in view — that
+    // frame changes on a selection, never on a movement.
+    if (hold && !(focusAgentId && plannedRoute.length > 0)) return
     // With an employee selected and their day's stops loaded, frame that
     // employee and those stops — not the whole fleet, which zoomed back out
     // and hid the route the manager had just asked for.
@@ -210,9 +373,15 @@ function FitBounds({ agents, plannedRoute, focusAgentId }: { agents: LiveMapAgen
     // live position: refitting every time the marker moved ~11 m kept undoing
     // the manager's own zoom (review of #205). Fit again only when the
     // selection, the stops, or the agent's visibility change.
+    // Without a selection the frame belongs to WHO is on the map, not to where
+    // each of them is this minute. It used to be re-fitted whenever anybody
+    // moved eleven metres — and whenever the list was merely re-sorted — which
+    // undid the dispatcher's own zoom every half a minute and carried the map
+    // away from an address he had just found. Now: when the set of people on
+    // the map changes (a filter, a tick, somebody new).
     const sig = focusMode
       ? `focus:${focusAgentId}:${focusedAgent ? "agent" : "no-agent"}:${plannedRoute.map((s) => `${s.orderIndex}@${s.latitude.toFixed(4)},${s.longitude.toFixed(4)}`).join("|")}`
-      : points.map((p) => `${p[0].toFixed(4)},${p[1].toFixed(4)}`).join("|")
+      : `all:${framedAgents.map((agent) => agent.agentId).sort().join("|")}:${plannedRoute.map((s) => `${s.orderIndex}@${s.latitude.toFixed(4)},${s.longitude.toFixed(4)}`).join("|")}`
     if (focusMode && points.length === 1) {
       if (sig === lastFitRef.current) return
       lastFitRef.current = sig
@@ -224,7 +393,7 @@ function FitBounds({ agents, plannedRoute, focusAgentId }: { agents: LiveMapAgen
     if (sig === lastFitRef.current) return
     lastFitRef.current = sig
     map.fitBounds(L.latLngBounds(points), { padding: [60, 60], maxZoom: 16 })
-  }, [map, agents, plannedRoute, focusAgentId])
+  }, [map, agents, plannedRoute, focusAgentId, hold])
   return null
 }
 
@@ -257,8 +426,11 @@ function FocusStop({ stops, focusStopOrder, markers }: {
   const lastRef = useRef<number | null>(null)
   useEffect(() => {
     if (focusStopOrder === null) {
+      // Only when a stop has just stopped being in focus. Run on every new
+      // stops array (the roster hands one every half a minute), this closed
+      // whatever balloon was open — the employee's own, a client's.
+      if (lastRef.current !== null) map.closePopup()
       lastRef.current = null
-      map.closePopup()
       return
     }
     // Once per choice: a poll hands a new stops array every half a minute.
@@ -314,6 +486,141 @@ function ViewportReporter({ onChange }: { onChange: (viewport: LiveMapViewportBo
   return null
 }
 
+/** A group of clients: a quiet square with a count — an employee's round marker is never mistaken for it. */
+function clientGroupIcon(count: number) {
+  const label = count > 999 ? "999+" : String(count)
+  const width = label.length > 3 ? 40 : label.length > 2 ? 34 : 28
+  return L.divIcon({
+    className: "mtm-client-group-marker",
+    html: `<div style="
+      width:${width}px;height:24px;border-radius:6px;background:#ffffff;
+      border:1.5px solid #475569;color:#1e293b;
+      display:flex;align-items:center;justify-content:center;
+      box-shadow:0 1px 4px rgba(15,23,42,0.25);cursor:zoom-in;
+      font:700 12px system-ui,sans-serif;line-height:1;
+    ">${label}</div>`,
+    iconSize: [width, 24],
+    iconAnchor: [width / 2, 12],
+  })
+}
+
+/** The two things to do with a client, as buttons a finger can hit. */
+const CLIENT_ACTION: CSSProperties = {
+  display: "inline-flex", alignItems: "center", minHeight: 32, padding: "0 10px", borderRadius: 8,
+  border: "1px solid #cbd5e1", background: "#ffffff", color: "#0f172a", fontSize: 12, fontWeight: 600,
+  textDecoration: "none", cursor: "pointer",
+}
+/** How many names a stack of clients on one spot lists before «и ещё N». */
+const CLIENT_STACK_LISTED = 12
+
+/**
+ * A group of clients. A press zooms in on it — unless every client of it
+ * stands on the very same spot, where no zoom will part them: then the press
+ * lists them. Not re-drawn when the page merely refreshes: an open balloon
+ * would be pulled back into view on every tick.
+ */
+const ClientGroupMarker = memo(function ClientGroupMarker({
+  node, title, moreLabel, onPress,
+}: {
+  node: Extract<LiveMapClientNode, { kind: "GROUP" }>
+  title: string
+  /** «и ещё N» under a long stack. */
+  moreLabel: string
+  /** A tool is waiting for a press: the press is the tool's, not a zoom. */
+  onPress: ((latitude: number, longitude: number) => void) | null
+}) {
+  const map = useMap()
+  const position = useMemo(() => [node.latitude, node.longitude] as L.LatLngTuple, [node.latitude, node.longitude])
+  const icon = useMemo(() => clientGroupIcon(node.count), [node.count])
+  const handlers = useMemo(() => ({
+    click: () => {
+      if (onPress) onPress(node.latitude, node.longitude)
+      else if (!node.stack) map.flyTo([node.latitude, node.longitude], Math.min(18, map.getZoom() + 2), { duration: 0.35 })
+    },
+  }), [map, node.latitude, node.longitude, node.stack, onPress])
+  return (
+    <Marker
+      position={position}
+      icon={icon}
+      // Under every employee and every stop of the day.
+      zIndexOffset={-600}
+      title={title}
+      alt={title}
+      eventHandlers={handlers}
+    >
+      {node.stack && !onPress ? (
+        <Popup>
+          <div style={{ fontFamily: "system-ui,sans-serif", minWidth: 180 }} data-testid="live-map-client-stack">
+            <div style={{ fontWeight: 700, fontSize: 13 }}>{title}</div>
+            <ul style={{ listStyle: "none", margin: "6px 0 0", padding: 0 }}>
+              {node.stack.slice(0, CLIENT_STACK_LISTED).map((client) => (
+                <li key={client.id} style={{ fontSize: 12, padding: "3px 0" }}>
+                  <Link href={`/mtm/customers/${encodeURIComponent(client.id)}`} target="_blank" rel="noopener">{client.name}</Link>
+                </li>
+              ))}
+            </ul>
+            {node.stack.length > CLIENT_STACK_LISTED ? <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{moreLabel}</div> : null}
+          </div>
+        </Popup>
+      ) : null}
+    </Marker>
+  )
+})
+
+/** One client: a small disc in its class's colour, and what it is in a balloon. */
+const ClientMarker = memo(function ClientMarker({
+  client, kind, classLabel, openLabel, nearestLabel, onPress, onNearest,
+}: {
+  client: LiveMapClient
+  kind: string
+  classLabel: string
+  openLabel: string
+  nearestLabel: string
+  onPress: ((latitude: number, longitude: number) => void) | null
+  onNearest: ((client: LiveMapClient) => void) | null
+}) {
+  const map = useMap()
+  const center = useMemo(() => [client.latitude, client.longitude] as L.LatLngTuple, [client.latitude, client.longitude])
+  // A finger needs more than a mouse does.
+  const radius = useMemo(() => (typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches ? 10 : 7), [])
+  const pathOptions = useMemo(
+    () => ({ color: "#ffffff", weight: 1.5, fillColor: liveMapClientColor(client.category), fillOpacity: 0.95 }),
+    [client.category],
+  )
+  const handlers = useMemo(() => ({ click: () => onPress?.(client.latitude, client.longitude) }), [client.latitude, client.longitude, onPress])
+  return (
+    <CircleMarker
+      center={center}
+      radius={radius}
+      // A press on a client is not also a press on the map under it: a disc,
+      // unlike a marker, passes its clicks on by default — and the ruler would
+      // be given two points for one press.
+      bubblingMouseEvents={false}
+      pathOptions={pathOptions}
+      eventHandlers={handlers}
+    >
+      <Tooltip direction="top" offset={[0, -6]}>{client.name}</Tooltip>
+      {onPress ? null : (
+        <Popup>
+          <div style={{ fontFamily: "system-ui,sans-serif", minWidth: 190 }} data-testid={`live-map-client-${client.id}`}>
+            <div style={{ fontWeight: 700, fontSize: 13 }}>{client.name}</div>
+            <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{[kind, classLabel].filter(Boolean).join(" · ")}</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+              {/* In a new tab: the map, its zoom and its tools stay where they were. */}
+              <Link href={`/mtm/customers/${encodeURIComponent(client.id)}`} target="_blank" rel="noopener" style={CLIENT_ACTION}>{openLabel}</Link>
+              {onNearest ? (
+                <button type="button" onClick={() => { onNearest(client); map.closePopup() }} style={CLIENT_ACTION}>
+                  {nearestLabel}
+                </button>
+              ) : null}
+            </div>
+          </div>
+        </Popup>
+      )}
+    </CircleMarker>
+  )
+})
+
 function ClusterMarker({ marker, title }: { marker: LiveMapClusterMarker; title: string }) {
   const map = useMap()
   return (
@@ -351,6 +658,15 @@ export default function MtmLiveMap({
   focusStopOrder = null,
   onStopSelect,
   followAgent = false,
+  showLabels = false,
+  trails = null,
+  glideMarkers = false,
+  pressMode = null,
+  onMapPress,
+  rulerPoints = NO_RULER_POINTS,
+  referencePoint = null,
+  clients = NO_CLIENTS,
+  onClientNearest,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const stopMarkersRef = useRef(new Map<number, L.Marker>())
@@ -365,6 +681,15 @@ export default function MtmLiveMap({
   const [zoom, setZoom] = useState(12)
   const locale = useLocale()
   const tMap = useTranslations("mtmMap")
+  const tKinds = useTranslations("mtmCustomers.explorer.objectTypes")
+  // The clients in view, gathered into what the map can draw (live-map-clients.ts).
+  const clientNodes = useMemo(
+    () => (clients.length > 0 ? clusterLiveMapClients(clients, viewport, zoom).nodes : NO_CLIENT_NODES),
+    [clients, viewport, zoom],
+  )
+  const handleMapPress = useCallback((latitude: number, longitude: number) => {
+    onMapPress?.(latitude, longitude)
+  }, [onMapPress])
 
   const handleViewportChange = useCallback((next: LiveMapViewportBounds, nextZoom: number) => {
     setViewport((current) => current &&
@@ -514,11 +839,13 @@ export default function MtmLiveMap({
           scrollWheelZoom
         >
           <InvalidateSize />
-          <FitBounds agents={agents} plannedRoute={plannedRoute} focusAgentId={focusAgentId} />
+          <FitBounds agents={agents} plannedRoute={plannedRoute} focusAgentId={focusAgentId} hold={pressMode != null || rulerPoints.length > 0 || referencePoint != null} />
           <FocusAgent agents={agents} focusAgentId={focusAgentId} />
           <FocusStop stops={plannedRoute} focusStopOrder={focusStopOrder} markers={stopMarkersRef} />
           <FollowAgent agents={agents} focusAgentId={focusAgentId} enabled={followAgent} />
           <ViewportReporter onChange={handleViewportChange} />
+          <MapPresses active={pressMode != null} onPress={handleMapPress} />
+          <ShowReferencePoint point={referencePoint} />
 
           <CartoVectorBasemap
             key={`carto-${baseMapRevision}`}
@@ -574,6 +901,39 @@ export default function MtmLiveMap({
               />
             ))}
 
+          {/* «Клиенты»: the base as points, under everything that is a person or
+              his day. With «Зоны клиентов» on, each client drawn on its own
+              also shows the circle a check-in at it is accepted in. */}
+          {showGeofence ? clientNodes.map((node) => node.kind === "CLIENT" ? (
+            <Circle
+              key={`client-zone-${node.client.id}`}
+              center={[node.latitude, node.longitude]}
+              radius={node.client.geofenceRadius ?? geofenceRadius}
+              interactive={false}
+              pathOptions={{ color: "#64748b", weight: 1, opacity: 0.55, fillColor: "#64748b", fillOpacity: 0.06 }}
+            />
+          ) : null) : null}
+          {clientNodes.map((node) => node.kind === "GROUP" ? (
+            <ClientGroupMarker
+              key={node.id}
+              node={node}
+              title={tMap(node.stack ? "clients.stack" : "clients.group", { count: node.count })}
+              moreLabel={node.stack ? tMap("clients.stackMore", { count: Math.max(0, node.count - CLIENT_STACK_LISTED) }) : ""}
+              onPress={pressMode ? handleMapPress : null}
+            />
+          ) : (
+            <ClientMarker
+              key={node.id}
+              client={node.client}
+              kind={["PHARMACY", "CLINIC", "STORE", "OTHER"].includes(node.client.objectType) ? tKinds(node.client.objectType) : ""}
+              classLabel={node.client.category ? tMap("clients.class", { category: node.client.category }) : ""}
+              openLabel={tMap("clients.open")}
+              nearestLabel={tMap("clients.nearest")}
+              onPress={pressMode ? handleMapPress : null}
+              onNearest={onClientNearest ?? null}
+            />
+          ))}
+
           {/* Route stop markers */}
           {plannedRoute.map((stop) => (
             <Marker
@@ -587,9 +947,11 @@ export default function MtmLiveMap({
                 if (marker) stopMarkersRef.current.set(stop.orderIndex, marker)
                 else stopMarkersRef.current.delete(stop.orderIndex)
               }}
-              eventHandlers={{ click: () => onStopSelect?.(stop.orderIndex) }}
+              // While a tool waits for a press, a press on a stop is the tool's:
+              // «measure from this client», not «open this client».
+              eventHandlers={{ click: () => pressMode ? onMapPress?.(stop.latitude, stop.longitude) : onStopSelect?.(stop.orderIndex) }}
             >
-              <Popup>
+              {pressMode ? null : <Popup>
                 <div style={{ fontFamily: "system-ui,sans-serif", minWidth: 140 }}>
                   <div style={{ fontWeight: 700, fontSize: 13 }}>
                     #{stop.orderIndex + 1} {stop.name}
@@ -618,9 +980,58 @@ export default function MtmLiveMap({
                     </div>
                   ) : null}
                 </div>
-              </Popup>
+              </Popup>}
             </Marker>
           ))}
+
+          {/* «След»: where each employee drawn on his own has just been. Nobody
+              in a cluster has one — a cluster is a count, not a person. */}
+          {trails ? markerSelection.markers.flatMap((marker) => {
+            if (marker.kind !== "AGENT") return []
+            return liveMapTrailSegments(trails.get(marker.agent.agentId) ?? []).map((segment, index) => (
+              <Polyline
+                key={`trail-${marker.agent.agentId}-${index}`}
+                positions={segment.map((point) => [point.latitude, point.longitude] as L.LatLngTuple)}
+                interactive={false}
+                pathOptions={{ color: marker.agent.agentId === focusAgentId ? "#1d4ed8" : "#2563eb", weight: marker.agent.agentId === focusAgentId ? 4 : 3, opacity: 0.55, lineCap: "round", lineJoin: "round" }}
+              />
+            ))
+          }) : null}
+
+          {/* The ruler: a line through the points pressed, and the place they add up to. */}
+          {/* From three points the ruler also reads an area: the shape it is the
+              area of — filled, and closed back to the first point with a fainter
+              edge, so the figure measured is the figure seen. Not for a line
+              that crosses itself: that has no one area. */}
+          {rulerPoints.length >= 3 && !outlineCrossesItself(rulerPoints) ? (
+            <Polygon positions={rulerPoints.map((point) => [point.latitude, point.longitude] as L.LatLngTuple)} interactive={false} pathOptions={{ color: "#0f172a", weight: 1.5, opacity: 0.35, dashArray: "2 6", fillColor: "#0f172a", fillOpacity: 0.08 }} />
+          ) : null}
+          {rulerPoints.length >= 2 ? (
+            <Polyline positions={rulerPoints.map((point) => [point.latitude, point.longitude] as L.LatLngTuple)} interactive={false} pathOptions={{ color: "#0f172a", weight: 2.5, opacity: 0.9, dashArray: "2 6" }} />
+          ) : null}
+          {rulerPoints.map((point, index) => (
+            <CircleMarker
+              key={`ruler-${index}`}
+              center={[point.latitude, point.longitude]}
+              radius={5}
+              interactive={false}
+              pathOptions={{ color: "#0f172a", weight: 2, fillColor: "#ffffff", fillOpacity: 1 }}
+            />
+          ))}
+
+          {/* The place the dispatcher picked: an address found, a point pressed. */}
+          {referencePoint ? (
+            <Marker position={[referencePoint.latitude, referencePoint.longitude]} icon={referenceIcon()} zIndexOffset={1200} alt={referencePoint.label} interactive={false}>
+              {/* An address can run to a hundred letters — district, city, postcode,
+                  country. On the map it is the street and the house; the whole
+                  of it stays in the chip beside the tools. */}
+              <Tooltip direction="top" offset={[0, -22]} opacity={1} permanent>
+                <span style={{ display: "inline-block", width: "max-content", maxWidth: 220, whiteSpace: "normal", fontWeight: 700 }}>
+                  {referencePoint.label.split(",").slice(0, 2).join(",")}
+                </span>
+              </Tooltip>
+            </Marker>
+          ) : null}
 
           {/* Agent markers */}
           {markerSelection.markers.map((marker) => {
@@ -642,20 +1053,25 @@ export default function MtmLiveMap({
             const statusKey: MtmFieldStatus = isMtmFieldStatus(status) ? status : "OFFLINE"
             const isFocused = agent.agentId === focusAgentId
             return (
-              <Marker
+              <GlidingMarker
                 key={marker.id}
-                position={[agent.latitude, agent.longitude]}
+                latitude={agent.latitude}
+                longitude={agent.longitude}
+                glide={glideMarkers}
                 icon={agentIcon(agent.name, agent.freshness, isFocused)}
                 zIndexOffset={isFocused ? 1000 : 500}
                 alt={agent.name}
-                eventHandlers={{ click: () => onAgentSelect?.(agent.agentId) }}
+                // …and so is a press on an employee: the ruler starts from where he is.
+                eventHandlers={{ click: () => pressMode ? onMapPress?.(agent.latitude, agent.longitude) : onAgentSelect?.(agent.agentId) }}
               >
-                {/* Who this is and what he is doing, without a click. */}
-                <Tooltip direction="top" offset={[0, -16]} opacity={1}>
+                {/* Who this is and what he is doing, without a click — and, with
+                    «Подписи» on, his name beside the marker all the time. Leaflet
+                    reads `permanent` once, so the two are different tooltips. */}
+                <Tooltip direction="top" key={showLabels ? "label" : "hover"} permanent={showLabels} offset={[0, -16]} opacity={showLabels ? 0.92 : 1}>
                   <span style={{ fontWeight: 700 }}>{agent.name}</span>
-                  {" · "}{tMap(`fieldStatus.${statusLabelKeys[statusKey]}`)}
+                  {showLabels ? null : <>{" · "}{tMap(`fieldStatus.${statusLabelKeys[statusKey]}`)}</>}
                 </Tooltip>
-                <Popup>
+                {pressMode ? null : <Popup>
                   <div style={{ fontFamily: "system-ui,sans-serif", minWidth: 170 }}>
                     <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4, color: "#0B0B1E" }}>
                       {agent.name}
@@ -682,8 +1098,8 @@ export default function MtmLiveMap({
                       {agent.battery != null ? ` · ${tMap("battery")}: ${Math.round(agent.battery)}%` : ""}
                     </div>
                   </div>
-                </Popup>
-              </Marker>
+                </Popup>}
+              </GlidingMarker>
             )
           })}
         </MapContainer>
@@ -725,7 +1141,7 @@ export default function MtmLiveMap({
       ) : null}
       {ready && markerSelection.truncated ? (
         <div
-          className="pointer-events-none absolute bottom-7 left-3 z-[500] max-w-[min(320px,calc(100%-24px))] rounded-md border border-zinc-300 bg-background/95 px-2.5 py-1.5 text-[11px] font-medium text-foreground shadow-sm dark:border-zinc-700"
+          className="pointer-events-none absolute bottom-8 right-3 z-[500] max-w-[min(320px,calc(100%-24px))] rounded-md border border-zinc-300 bg-background/95 px-2.5 py-1.5 text-[11px] font-medium text-foreground shadow-sm dark:border-zinc-700"
           role="status"
         >
           {tMap("markerWindowLimited", {

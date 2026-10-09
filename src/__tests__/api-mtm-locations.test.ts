@@ -410,6 +410,74 @@ describe("GET /api/v1/mtm/locations", () => {
     }
   })
 
+  // «Отдел» cannot be filled in from the product; the card's «Руководитель»
+  // can. The list groups and filters by him, so he goes out with each row.
+  it("sends whom each employee reports to, or nobody", async () => {
+    const now = new Date("2026-08-01T12:00:00.000Z")
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([
+      { id: "agent-1", name: "Ali", isOnline: false, lastSeenAt: null, teamId: null, team: null, managerId: "mgr-1", manager: { name: "Старший" }, workdays: [], locations: [] },
+      { id: "agent-2", name: "Vali", isOnline: false, lastSeenAt: now, teamId: null, team: null, managerId: null, manager: null, workdays: [], locations: [] },
+    ] as any)
+
+    const json = await (await GET(makeReq())).json()
+
+    expect(json.data.agentLocations.map((agent: any) => [agent.agentId, agent.managerId, agent.managerName])).toEqual([
+      ["agent-1", "mgr-1", "Старший"],
+      ["agent-2", null, null],
+    ])
+    const rosterQuery = vi.mocked(prisma.mtmAgent.findMany).mock.calls[0]?.[0] as any
+    expect(rosterQuery.select).toMatchObject({ managerId: true, manager: { select: { name: true } } })
+  })
+
+  // The card on the live map says «перерыв с 13:05» and «рабочий день закрыт
+  // в 18:02» (2026-10-09). Each time goes out only with the state it explains:
+  // a break that was ended leaves `pausedAt` behind on the row, and a shift
+  // that is still open must not be given a closing time.
+  it("sends when the break began and when the shift was closed — each only with its own state", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-08-01T12:00:00.000Z"))
+    try {
+      const day = new Date("2026-08-01T00:00:00.000Z")
+      const startedAt = new Date("2026-08-01T05:00:00.000Z")
+      const pausedAt = new Date("2026-08-01T09:05:00.000Z")
+      const completedAt = new Date("2026-08-01T11:30:00.000Z")
+      const row = (id: string, workday: Record<string, unknown>) => ({
+        id, name: id, isOnline: false, lastSeenAt: null, teamId: null, team: null, locations: [],
+        workdays: [{ workDate: day, startedAt, ...workday }],
+      })
+      vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([
+        row("on-break", { status: "PAUSED", pausedAt, completedAt: null }),
+        row("closed", { status: "COMPLETED", pausedAt, completedAt }),
+        row("working", { status: "STARTED", pausedAt, completedAt: null }),
+      ] as any)
+
+      const json = await (await GET(makeReq())).json()
+      const byId = Object.fromEntries(json.data.agentLocations.map((agent: any) => [agent.agentId, agent]))
+
+      expect([byId["on-break"].workdayPausedAt, byId["on-break"].workdayCompletedAt]).toEqual([pausedAt.toISOString(), null])
+      expect([byId.closed.workdayPausedAt, byId.closed.workdayCompletedAt]).toEqual([null, completedAt.toISOString()])
+      expect([byId.working.workdayPausedAt, byId.working.workdayCompletedAt]).toEqual([null, null])
+      const rosterQuery = vi.mocked(prisma.mtmAgent.findMany).mock.calls[0]?.[0] as any
+      expect(rosterQuery.select.workdays.select).toMatchObject({ pausedAt: true, completedAt: true })
+
+      // A Routes-only tenant's field session discloses its state, date and
+      // start — the break and the closing time are Workforce facts, and the
+      // card of such a tenant says nothing of the workday anywhere else.
+      vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+        plan: "pro", addons: [], features: ["mtm"], modules: { mtm: true, "workforce-hrm": false },
+      } as never)
+      const routesOnly = await (await GET(makeReq())).json()
+      expect(routesOnly.data.contract.workforceEnabled).toBe(false)
+      expect(routesOnly.data.agentLocations.map((agent: any) => [agent.workdayState, agent.workdayPausedAt, agent.workdayCompletedAt])).toEqual([
+        ["PAUSED", null, null],
+        ["CLOSED", null, null],
+        ["ACTIVE", null, null],
+      ])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   // Owner's own agent, 2026-10-08: checked in at 22:14, still in that visit
   // the next morning. The app showed the open visit and the server refused any
   // other check-in because of it, while the map counted him «Gecikir» and

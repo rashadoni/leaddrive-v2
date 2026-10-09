@@ -52,6 +52,9 @@ export interface LiveMapAgent {
   workdayState: "ACTIVE" | "PAUSED" | "CLOSED" | "NOT_STARTED"
   teamId?: string | null
   teamName?: string | null
+  /** Whom the employee reports to, as his card says («Руководитель»). */
+  managerId?: string | null
+  managerName?: string | null
   /** Optional — dashboard passes it for the route-completion ring overlay. */
   routeCompletion?: number
 }
@@ -69,11 +72,21 @@ export interface MtmDashboardAgent extends Omit<LiveMapAgent, "latitude" | "long
   workdayDate?: string | null
   workdayStartedAt?: string | null
   workdayCarryover?: boolean
+  /** When the break he is on began — only while the workday is paused. */
+  workdayPausedAt?: string | null
+  /** When the workday was closed — only once it is. */
+  workdayCompletedAt?: string | null
   /** When the visit the agent is in was opened — it may be an earlier day. Only with CHECKED_IN. */
   openVisitSince?: string | null
   /** Stops visited and stops in all of today's routes that count; 0 of 0 = no route. */
   routeVisited?: number
   routeTotal?: number
+  /**
+   * Metres to the point the dispatcher picked on the live map. Set by the
+   * page, never by the API: `null` — a point is picked but this employee has
+   * no coordinate to measure from; absent — no point is picked.
+   */
+  distanceMeters?: number | null
 }
 
 export interface LiveMapViewportBounds {
@@ -112,6 +125,7 @@ export function parseMtmLiveMapContract(value: unknown): MtmLiveMapContract | nu
   const returnedAgents = finiteNumber(input.returnedAgents)
   const markerCount = finiteNumber(input.markerCount)
   const maxAccuracyMeters = finiteNumber(input.maxAccuracyMeters)
+  const geofenceRadiusMeters = finiteNumber(input.geofenceRadiusMeters)
   const generatedAt = typeof input.generatedAt === "string" ? input.generatedAt : ""
   const today = typeof input.today === "string" ? input.today : ""
   const timezone = typeof input.timezone === "string" ? input.timezone : ""
@@ -149,6 +163,9 @@ export function parseMtmLiveMapContract(value: unknown): MtmLiveMapContract | nu
     polling: { minimumIntervalSeconds },
     freshnessThresholds: { onlineSeconds, delayedSeconds },
     maxAccuracyMeters,
+    // Optional: an answer cached before the field existed has none, and the
+    // zones then fall back to each client's own radius.
+    ...(geofenceRadiusMeters != null && geofenceRadiusMeters > 0 ? { geofenceRadiusMeters } : {}),
   }
 }
 

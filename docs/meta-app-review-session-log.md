@@ -515,3 +515,28 @@ instructions URL is set and was accepted in the first review.
 - Developer Support (`developers.facebook.com/support/`) offers no App Review channel — only the
   AI assistant, the community forum and the bug tracker.
 
+## 2026-10-09 — round 2 rejected on 2026-10-08, same finding as round 1
+
+- Submission `2592383921221617` came back on 2026-10-08 (10:19 Baku): `instagram_business_basic`
+  and `instagram_business_manage_messages` **not approved**, with the same Policy 1.6 text as on
+  2026-10-01 — the screencast "does not demonstrate the whole process described in the notes";
+  Meta asks for the Meta login from start to finish, the user granting the permission, the full
+  use of the permission, an English UI with captions and explanations of the controls, and an
+  explicit statement if the app is server-to-server or uses a System User token. Nothing
+  specific to our video is named.
+- The five permissions approved on 2026-10-01 were carried as renewals and are untouched:
+  "Готов к публикации" in the Messenger use case; the app stays Live. The submission queue is
+  empty again ("Не отправлено — ничего не добавлено"), so `whatsapp_business_messaging` is no
+  longer blocked.
+- What the 2026-10-03 screencast most plausibly lacked: it was assembled from recorder frames,
+  and its Instagram Login step was the "Ранее вы подключили приложение … Продолжить?" dialog of
+  an already signed-in browser — not a login from the sign-in screen. Round 3 therefore needs a
+  real screen recording that starts signed out: Instagram sign-in screen → credentials (typed by
+  the owner) → the consent screen listing the permissions → the Direct message arriving in the
+  CRM inbox → the reply → the lead, English UI, a caption on every step. The WhatsApp take of
+  2026-10-03 (0:53) predates Embedded Signup and shows no connection step, so by the same rule it
+  should be re-recorded with the Embedded Signup flow at the start before `whatsapp_business_messaging`
+  is submitted.
+- Direct Support case `38945235988453604` (opened 2026-10-07 as a status question) is still Open
+  with no reply; it can now carry the actual question — what the 2026-10-03 recording was missing.
+
