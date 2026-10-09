@@ -58,6 +58,10 @@
     "date": "2026-10-09",
     "what": "close",
     "branch": "erp/001-registry-to-repo"
+   },
+   {
+    "date": "2026-10-09",
+    "what": "note"
    }
   ],
   "steps_done": [
