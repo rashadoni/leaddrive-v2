@@ -1,0 +1,86 @@
+[
+  {
+    "sourceSha": "d751db9d98782debc97b095e599521de7535cfac",
+    "runId": 37968514516,
+    "sourceJobId": 113948859662,
+    "conclusion": "failure",
+    "preflight": {
+      "tests": 25,
+      "passCount": 25,
+      "failCount": 0,
+      "skipCount": 0
+    },
+    "defaultAcl": {
+      "tests": 14,
+      "passCount": 13,
+      "failCount": 1,
+      "skipCount": 0
+    },
+    "finiteError": "HISTORICAL_SQL_HASH_EXPECTED_ON_CURRENT_CONTINUATION",
+    "expectedHistoricalSqlSha256": "b174e32eb68a0dbcca98e8557fe8c716ed8277111e79ba822bce43f4e7023b6a",
+    "actualCorrectedSqlSha256": "64ad9845ba00cdd283634d68c43b19beaf38e07ec6fc1e9a9926e97a70d98660",
+    "log": {
+      "path": "37968514516-113948859662-source-original.txt.gz",
+      "bytes": 54844,
+      "sha256": "09e31e67423829cb0a7c478526b8260588a3a3d9a14e1c91d38fbe593dd02f94",
+      "gzipSha256": "1dc7d32878f92b5855ffaa2726b81bad0117c7daadca73b96a6310dc8f7bcbb7"
+    },
+    "productionConclusion": "skipped"
+  },
+  {
+    "sourceSha": "d751db9d98782debc97b095e599521de7535cfac",
+    "runId": 37968514521,
+    "sourceJobId": 113948859056,
+    "conclusion": "failure",
+    "preflight": {
+      "tests": 25,
+      "passCount": 25,
+      "failCount": 0,
+      "skipCount": 0
+    },
+    "defaultAcl": {
+      "tests": 14,
+      "passCount": 13,
+      "failCount": 1,
+      "skipCount": 0
+    },
+    "finiteError": "HISTORICAL_SQL_HASH_EXPECTED_ON_CURRENT_CONTINUATION",
+    "expectedHistoricalSqlSha256": "b174e32eb68a0dbcca98e8557fe8c716ed8277111e79ba822bce43f4e7023b6a",
+    "actualCorrectedSqlSha256": "64ad9845ba00cdd283634d68c43b19beaf38e07ec6fc1e9a9926e97a70d98660",
+    "log": {
+      "path": "37968514521-113948859056-source-original.txt.gz",
+      "bytes": 55352,
+      "sha256": "66c7ea4c29ecf4994908cbb090c63103063be9b3db48a23ec2ec157f7ac2c597",
+      "gzipSha256": "7a88e5b23d1e5be6d48beaddd2a41e7a9f7bbac917f40355a7a499385dcc8788"
+    },
+    "productionConclusion": "skipped"
+  },
+  {
+    "sourceSha": "d751db9d98782debc97b095e599521de7535cfac",
+    "runId": 37968514636,
+    "sourceJobId": 113948859803,
+    "conclusion": "failure",
+    "preflight": {
+      "tests": 25,
+      "passCount": 25,
+      "failCount": 0,
+      "skipCount": 0
+    },
+    "defaultAcl": {
+      "tests": 14,
+      "passCount": 13,
+      "failCount": 1,
+      "skipCount": 0
+    },
+    "finiteError": "HISTORICAL_SQL_HASH_EXPECTED_ON_CURRENT_CONTINUATION",
+    "expectedHistoricalSqlSha256": "b174e32eb68a0dbcca98e8557fe8c716ed8277111e79ba822bce43f4e7023b6a",
+    "actualCorrectedSqlSha256": "64ad9845ba00cdd283634d68c43b19beaf38e07ec6fc1e9a9926e97a70d98660",
+    "log": {
+      "path": "37968514636-113948859803-source-original.txt.gz",
+      "bytes": 55626,
+      "sha256": "83133a7d122ad93eea22b0f32aee2d01f9583396d516454b1bcfcd4ab7f0d42f",
+      "gzipSha256": "96dfdee5d1c408acb6d9964cfe610858ecfbcede1394803bf445cffc2510ddbf"
+    },
+    "productionConclusion": "skipped"
+  }
+]

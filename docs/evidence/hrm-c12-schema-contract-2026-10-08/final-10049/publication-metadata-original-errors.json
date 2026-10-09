@@ -1,0 +1,14 @@
+{
+  "appAttach632": {
+    "status": "UNRESPONSIVE_CALL_TERMINATED",
+    "repositoryMutation": false,
+    "callWasMade": true,
+    "completionNotClaimed": true
+  },
+  "ghPrBody631": {
+    "initial": "FAILED_GRAPHQL_METADATA_BEFORE_MUTATION",
+    "original": "GraphQL: Projects (classic) is being deprecated ... repository.pullRequest.projectCards",
+    "fallback": "NORMAL_REST_PATCH_BODY_FILE_SUCCESS",
+    "sourceHeadUnchanged": true
+  }
+}

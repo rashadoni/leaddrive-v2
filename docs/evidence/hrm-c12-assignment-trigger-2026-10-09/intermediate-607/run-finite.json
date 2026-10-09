@@ -1,0 +1,14 @@
+{
+  "sourceSha": "607a25549bb14dacf35ae76a9f95ac1b3e1d1545",
+  "runId": 37968150533,
+  "jobId": 113947634786,
+  "artifactId": 11634675396,
+  "conclusion": "success",
+  "tests": 25,
+  "passCount": 25,
+  "failCount": 0,
+  "skipCount": 0,
+  "productionObserved": false,
+  "historicalReplay": false,
+  "logSha256": "4bcbf0f4f084359874d01d13a3005fb664e12dfd38aa845cce65ddf7500d3345"
+}

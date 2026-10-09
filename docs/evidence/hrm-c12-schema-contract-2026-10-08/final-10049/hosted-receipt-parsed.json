@@ -1,0 +1,249 @@
+{
+  "fixture": "SELECTED_SYNTHETIC_DEPENDENCY_DDL_PLUS_COMPLETE_UNMODIFIED_C12_MIGRATION",
+  "sourceSha": "10049d31ff02482085b180d2d65ab942ea1beb64",
+  "sourceBindings": [
+    {
+      "path": "prisma/migrations/20261005193000_workforce_reconciliation_operations/migration.sql",
+      "bytes": 2721,
+      "sha256": "c452e7f6d13dca1e5257d8353c252745d05cd4f18eae83cd45501f61664ef719"
+    },
+    {
+      "path": "scripts/workforce-reconciliation-schema-contract.sql",
+      "bytes": 9713,
+      "sha256": "9bb45ba8cc38afdba046e3bd761875c043731203de8dab18bfdce420c8aab49f"
+    },
+    {
+      "path": "scripts/workforce-reconciliation-schema-contract.mjs",
+      "bytes": 3153,
+      "sha256": "8ffa59f87d927a8afc463988ba30ab6a9ec3f1a3ca253b5f9841fefddc1b0279"
+    },
+    {
+      "path": "scripts/workforce-reconciliation-schema-contract.test.mjs",
+      "bytes": 18665,
+      "sha256": "f9fb707a30c3725a5ba5777a8e58ccd7cb61aea4205240817e4f122a9b121f41"
+    },
+    {
+      "path": ".github/workflows/workforce-reconciliation-schema-contract.yml",
+      "bytes": 3124,
+      "sha256": "f736a302df806206ae4a76de0e9907885fddd5357b46c10030737fcd322d3d4e"
+    }
+  ],
+  "productionObserved": false,
+  "historicalReplay": false,
+  "status": "PASS_ISOLATED_SCHEMA_CONTRACT_ONLY",
+  "stage": "all checks restored without changing original business facts",
+  "failure": null,
+  "cases": [
+    {
+      "name": "exact migration matches as nonsuperuser with no business-table SELECT",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "actual defaults and five CHECK ranges reject bad values",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "actual foreign key rejects orphan and cascades only within rolled-back fixture",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "actual forced RLS separates tenants and rejects foreign writes",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "nullable tenant key",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "wrong timestamp precision",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "wrong UUID type",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "extra private column",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "missing default",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "changed default",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "unexpected nullable default",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "missing primary key",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "deferrable primary key",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "missing foreign key",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "wrong foreign delete action",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "unvalidated foreign key",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "disabled foreign key triggers",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "misbound internal foreign trigger event",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "missing range check",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "weakened range check",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "unvalidated check",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "extra check",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "RLS disabled",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "forced RLS removed",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "policy missing",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "policy read broadened",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "policy write broadened",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "additional restrictive policy",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "custom operator policy dependency",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "missing due index",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "descending due index",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "partial due index",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "extra index",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "inheriting child changes parent row population",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "additional user trigger",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "missing table gives finite refusal",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "all checks restored without changing original business facts",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    }
+  ],
+  "limitations": [
+    "No actual production catalog observation or old metadata-gate replacement",
+    "No complete current/history schema, actual grants, density, timeout benchmark, scheduler, collectors or restore acceptance"
+  ],
+  "factFingerprintsBefore": [
+    "d41d8cd98f00b204e9800998ecf8427e",
+    "d41d8cd98f00b204e9800998ecf8427e",
+    "d41d8cd98f00b204e9800998ecf8427e",
+    "d41d8cd98f00b204e9800998ecf8427e",
+    "d41d8cd98f00b204e9800998ecf8427e",
+    "d41d8cd98f00b204e9800998ecf8427e",
+    "d41d8cd98f00b204e9800998ecf8427e",
+    "d41d8cd98f00b204e9800998ecf8427e",
+    "33e8ad4db4c5a2afa67ebf12adcae532"
+  ],
+  "factFingerprintsAfter": [
+    "d41d8cd98f00b204e9800998ecf8427e",
+    "d41d8cd98f00b204e9800998ecf8427e",
+    "d41d8cd98f00b204e9800998ecf8427e",
+    "d41d8cd98f00b204e9800998ecf8427e",
+    "d41d8cd98f00b204e9800998ecf8427e",
+    "d41d8cd98f00b204e9800998ecf8427e",
+    "d41d8cd98f00b204e9800998ecf8427e",
+    "d41d8cd98f00b204e9800998ecf8427e",
+    "33e8ad4db4c5a2afa67ebf12adcae532"
+  ]
+}

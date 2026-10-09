@@ -1,0 +1,8 @@
+{
+  "status": "FAIL_ACCOUNTING_HARNESS_ONLY",
+  "acceptedCountUnchanged": 85,
+  "observedUniqueIDs": 157,
+  "expectedUniqueIDs": 161,
+  "cause": "Status filter wrongly omitted three BLOCKED rows and PARTIAL (OWNER ATTESTATION); roadmap unchanged",
+  "originalError": "AssertionError: (157, [PLANNED, OWNER DECISION, PARTIAL, DONE])"
+}

@@ -168,7 +168,8 @@ SELECT pg_catalog.json_build_object(
     'shapeMatch',COALESCE((SELECT shape_match FROM guard),false),
     'bodyMd5',(SELECT md5(prosrc) FROM guard),
     'ownerAbility',COALESCE((SELECT (SELECT rolsuper FROM role_state) OR pg_has_role(current_user,proowner,'USAGE') FROM guard),false),
-    'triggerBound',EXISTS(SELECT 1 FROM pg_catalog.pg_trigger t WHERE t.tgrelid=to_regclass('public.workforce_shift_assignments') AND t.tgname='workforce_shift_assignments_guard' AND t.tgfoid=(SELECT oid FROM guard) AND t.tgenabled='O' AND NOT t.tgisinternal AND t.tgtype=23)
+    'triggerBound',EXISTS(SELECT 1 FROM pg_catalog.pg_trigger t WHERE t.tgrelid=to_regclass('public.workforce_shift_assignments') AND t.tgname='workforce_shift_assignments_guard' AND t.tgfoid=(SELECT oid FROM guard) AND t.tgenabled='O' AND NOT t.tgisinternal AND t.tgtype=23
+      AND t.tgqual IS NULL AND t.tgnargs=0 AND cardinality(t.tgattr::smallint[])=0 AND t.tgconstraint=0)
   ),
   -- Catalog proof for the existing API's row UPDATE/DELETE/INSERT contract.
   -- It does not claim TRUNCATE protection or resistance to privileged bypass.

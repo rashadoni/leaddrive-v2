@@ -1,0 +1,54 @@
+{
+  "status": "PASS_FIVE_REAL_EXACT_HEAD_CHECKS",
+  "sourceSha": "8e1c7e10013eb6d4e5ed273775b3f6d896841065",
+  "readyRunId": 37897461306,
+  "readyRunAttempt": 1,
+  "checks": [
+    {
+      "id": 113711978832,
+      "name": "pr-scope",
+      "conclusion": "success",
+      "head_sha": "8e1c7e10013eb6d4e5ed273775b3f6d896841065",
+      "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37897461306/job/113711978832",
+      "appId": 15368
+    },
+    {
+      "id": 113712083820,
+      "name": "static-checks",
+      "conclusion": "success",
+      "head_sha": "8e1c7e10013eb6d4e5ed273775b3f6d896841065",
+      "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37897461306/job/113712083820",
+      "appId": 15368
+    },
+    {
+      "id": 113712083724,
+      "name": "typecheck",
+      "conclusion": "success",
+      "head_sha": "8e1c7e10013eb6d4e5ed273775b3f6d896841065",
+      "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37897461306/job/113712083724",
+      "appId": 15368
+    },
+    {
+      "id": 113711717316,
+      "name": "runner-policy",
+      "conclusion": "success",
+      "head_sha": "8e1c7e10013eb6d4e5ed273775b3f6d896841065",
+      "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37897379631/job/113711717316",
+      "appId": 15368
+    },
+    {
+      "id": 113711717340,
+      "name": "scan",
+      "conclusion": "success",
+      "head_sha": "8e1c7e10013eb6d4e5ed273775b3f6d896841065",
+      "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37897379667/job/113711717340",
+      "appId": 15368
+    }
+  ],
+  "requiredProtectionMatches": true,
+  "baselineOrGateChanged": false,
+  "draftSkippedRunIsNotAcceptance": 37897379637,
+  "productionBuild": "SKIPPED_NO_LABEL_NO_APP_OR_CLIENT_CHANGE",
+  "globalCompilerAndSuiteClean": false,
+  "productionMutation": false
+}
