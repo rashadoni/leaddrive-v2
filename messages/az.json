@@ -16501,6 +16501,10 @@
       "noTeam": "Şöbəsiz",
       "noManager": "Rəhbərsiz",
       "standingSince": "başlayıb: {time}",
+      "print": {
+        "button": "Çap et",
+        "hint": "Siyahını çap et: sətirlər və sıra ekrandakı kimi"
+      },
       "export": {
         "button": "Excel",
         "hint": "Siyahını Excel-ə ixrac et: sətirlər və sıra ekrandakı kimi",
@@ -16894,6 +16898,39 @@
       "class": "sinif {category}",
       "open": "Kart yeni vərəqdə",
       "nearest": "Kim daha yaxındır"
+    },
+    "day": {
+      "title": "Gün rəqəmlərlə",
+      "distance": "Bu günkü məsafə",
+      "moving": "Hərəkətdə",
+      "byRoads": "yollarla",
+      "unknown": "Telefondan məlumat yoxdur",
+      "notCalculated": "Hesablanmayıb: bu gün GPS nöqtələri həddən çoxdur. «Günün tarixçəsi» düyməsini basın və günün bir hissəsini seçin.",
+      "empty": "Bu gün telefondan hələ dəqiq koordinat gəlməyib",
+      "loading": "Gün hesablanır…",
+      "failed": "Günün rəqəmlərini yeniləmək alınmadı",
+      "note": "İş günü davam etdikcə telefonun GPS siqnalı əsasında hesablanır. Telefon susanda keçilən yol məlum deyil."
+    },
+    "device": {
+      "title": "Telefon və tətbiq",
+      "lastContact": "Son əlaqə",
+      "accuracy": "GPS dəqiqliyi",
+      "asOf": "məlumatın vaxtı: {time}",
+      "appVersion": "Tətbiqin versiyası",
+      "notifications": "Bildirişlər",
+      "notificationsOn": "Qoşulub",
+      "notificationsOff": "Qoşulmayıb",
+      "failed": "Tətbiqin versiyasını və bildirişləri yeniləmək alınmadı"
+    },
+    "links": {
+      "history": "Günün tarixçəsi",
+      "alerts": "Xəbərdarlıqlar",
+      "period": "Dövr üzrə hesabat",
+      "tasks": "Tapşırıqlar",
+      "card": "Əməkdaşın profili",
+      "alertRules": "Xəbərdarlıq parametrləri",
+      "alertRulesHint": "Xəbərdarlıq qaydaları bütün təşkilat üçün eynidir: ayrı-ayrı əməkdaşlar üçün qayda yoxdur",
+      "forEmployee": "{label}: {name}"
     },
     "card": {
       "customize": "Kartı tənzimlə",

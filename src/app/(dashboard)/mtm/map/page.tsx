@@ -38,6 +38,11 @@ import { createDateFormatter, formatDateTime, formatTime } from "@/lib/format-da
 import { effectiveGeofenceRadius, formatMtmArea, formatMtmDistance } from "@/lib/mtm/visit-place-check"
 import { mtmLiveFeedHistoryHref, type MtmLiveFeedAlertGroup } from "@/lib/mtm/live-feed-alerts"
 import { LiveMapAgentEvents } from "@/components/mtm/live-map-agent-events"
+import { LiveMapAgentDay } from "@/components/mtm/live-map-agent-day"
+import { LiveMapAgentDevice } from "@/components/mtm/live-map-agent-device"
+import { LiveMapAgentLinks } from "@/components/mtm/live-map-agent-links"
+import { liveMapAgentLinks } from "@/lib/mtm/live-map-agent-links"
+import { useMtmFeature } from "@/hooks/use-mtm-org-settings"
 import { LiveMapCardBlocks, type LiveMapCardBlock } from "@/components/mtm/live-map-card-blocks"
 import { CARD_LAYOUT_STORAGE_KEY, DEFAULT_CARD_LAYOUT, parseCardLayout, serializeCardLayout, type CardLayout } from "@/lib/mtm/live-map-card-layout"
 import { LiveMapAgentPlace } from "@/components/mtm/live-map-agent-place"
@@ -192,6 +197,9 @@ function operationalWeekReturnHref(value: string | null): string | null {
 
 export default function MtmMapPage() {
   const { data: session, status: sessionStatus } = useSession()
+  // Where «Профиль сотрудника» leads: his own section where the organization
+  // keeps field contacts, the employees' list narrowed to him where it does not.
+  const fieldContactsEnabled = useMtmFeature(session?.user, "fieldContactsEnabled").enabled
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
@@ -1137,6 +1145,34 @@ export default function MtmMapPage() {
           </div>
         ),
       },
+      {
+        id: "day",
+        title: tMap("day.title"),
+        render: () => (
+          <LiveMapAgentDay
+            key={`day-${agent.agentId}`}
+            agentId={agent.agentId}
+            // Counted on the server from the day's GPS: asked again on a change
+            // of his state or every two minutes, never on the list's own timer.
+            refreshKey={liveMapAgentEventsRefreshKey(agent, presentationNow)}
+            formatDistance={(meters) => formatMtmDistance(meters, locale, (unit, value) => tUnits(unit, { value }))}
+          />
+        ),
+      },
+      {
+        id: "device",
+        title: tMap("device.title"),
+        render: () => (
+          <LiveMapAgentDevice
+            key={`device-${agent.agentId}`}
+            agent={agent}
+            // What the phone registered with changes rarely: asked again when the shift or the app's presence flips.
+            refreshKey={`${agent.workdayState}|${agent.isOnline ? 1 : 0}`}
+            // With the date when the moment is not today: last week's contact must not read as this morning's.
+            formatTime={formatVisitOpened}
+          />
+        ),
+      },
     ]
     return (
       <div className="space-y-2 text-[11px]" data-testid="live-map-agent-detail">
@@ -1240,6 +1276,11 @@ export default function MtmMapPage() {
             <Crosshair className="h-3 w-3" aria-hidden="true" />{tMap("follow")}
           </button>
         </div>
+        {/* The other screens, already narrowed to him. «История за день» is the pill above. */}
+        <LiveMapAgentLinks
+          agentName={agent.name}
+          links={liveMapAgentLinks({ agentId: agent.agentId, tenantToday, fieldContactsEnabled }).filter((link) => link.id !== "history")}
+        />
         <LiveMapCardBlocks blocks={cardBlocks} layout={cardLayout} onLayoutChange={changeCardLayout} />
       </div>
     )
@@ -1530,6 +1571,7 @@ export default function MtmMapPage() {
             isEarlierDay={(value) => visitOpenedOnAnotherDay(value, contract?.timezone)}
             formatDistance={(meters) => formatMtmDistance(meters, locale, (unit, value) => tUnits(unit, { value }))}
             exportFileName={() => rosterExportFileName(contract?.today, new Date(), contract?.timezone)}
+            printTitle={() => `${t("mtmMap")} · ${formatDateTime(new Date(), locale, { dateStyle: "medium", timeStyle: "short", timeZone: contract?.timezone })}`}
           />
       </div>
 

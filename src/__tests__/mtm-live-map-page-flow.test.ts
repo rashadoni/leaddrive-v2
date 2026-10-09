@@ -198,6 +198,19 @@ describe("the live map page, end to end", () => {
       if (url.pathname === "/api/v1/mtm/locations/clients") {
         return typeof clientBase === "number" ? new Response("{}", { status: clientBase }) : Response.json({ success: true, data: clientBase })
       }
+      // The card's own two blocks: the day counted on the server, and what the phone registered with.
+      if (url.pathname === "/api/v1/mtm/locations/day-totals") {
+        return Response.json({ success: true, data: {
+          date: "2026-10-09", timezone: "Asia/Baku", distanceMeters: 18_400, distanceBasis: "ROADS", movingSeconds: 2_700, unknownSeconds: 0,
+          firstPointAt: new Date(Date.now() - 4 * 3_600_000).toISOString(), lastPointAt: new Date(Date.now() - 60_000).toISOString(), complete: true,
+          generatedAt: new Date().toISOString(),
+        } })
+      }
+      if (url.pathname === "/api/v1/mtm/locations/device") {
+        return Response.json({ success: true, data: { notificationsConnected: true, platform: "android", appVersion: "2.4.1", registeredAt: null } })
+      }
+      // Which sections the organization keeps (the sidebar asks the same).
+      if (url.pathname === "/api/v1/mtm/settings") return Response.json({ success: true, data: {} })
       throw new Error(`unexpected request: ${url.pathname}`)
     }))
     container = document.createElement("div")
@@ -491,6 +504,41 @@ describe("the live map page, end to end", () => {
     expect(byTestId("roster-column-manager")).toBeNull()
     // The list above it can be taken away as a file.
     expect(byTestId("live-map-roster-export")?.textContent).toBe("Excel")
+  })
+
+  it("the card also carries the day in numbers, the phone, and worded links to the other screens already narrowed to him", async () => {
+    await open()
+    await press(byTestId("live-map-agent-card-near"))
+    for (let turn = 0; turn < 150; turn += 1) {
+      if (byTestId("live-map-agent-day-distance") && byTestId("live-map-device-notifications")) break
+      await settle(20)
+    }
+    const detail = byTestId("live-map-agent-detail")!
+    // Counted on the server for him, for the organization's today: the page sends who, never which day.
+    expect(requests.filter((request) => request.startsWith("/api/v1/mtm/locations/day-totals"))).toEqual(["/api/v1/mtm/locations/day-totals?agentId=near"])
+    expect(detail.querySelector('[data-testid="live-map-agent-day-distance"]')?.textContent).toContain("18,4 км")
+    expect(detail.querySelector('[data-testid="live-map-agent-day-distance"]')?.textContent).toContain("по дорогам")
+    expect(detail.querySelector('[data-testid="live-map-agent-day-moving"]')?.textContent).toContain("45 мин")
+    // The phone: what the list already knew, and the two things one small read adds.
+    expect(requests.filter((request) => request.startsWith("/api/v1/mtm/locations/device"))).toEqual(["/api/v1/mtm/locations/device?agentId=near"])
+    expect(detail.querySelector('[data-testid="live-map-device-battery"]')?.textContent).toMatch(/^Батарея: 12%/)
+    expect(detail.querySelector('[data-testid="live-map-device-app-version"]')?.textContent).toBe("Версия приложения: 2.4.1")
+    expect(detail.querySelector('[data-testid="live-map-device-notifications"]')?.textContent).toBe("Уведомления: Подключены")
+    // A default the server fills in is not shown as the phone's own word.
+    expect(detail.textContent).not.toMatch(/android/i)
+    // The other screens, in words, each opened on him.
+    const links = [...detail.querySelectorAll('[data-testid^="live-map-agent-link-"]')].map((link) => [link.textContent, link.getAttribute("href")])
+    expect(links).toEqual([
+      ["Оповещения", "/mtm/alerts?agentId=near"],
+      ["Отчёт за период", "/mtm/calendar?view=agent&agentId=near"],
+      ["Задачи", "/mtm/tasks?agentId=near"],
+      ["Профиль сотрудника", "/mtm/agents/near"],
+      ["Настройки оповещений", "/mtm/settings?tab=alerts"],
+    ])
+    // «История за день» stays the pill it was, with today's date.
+    expect(byTestId("live-map-open-history")?.getAttribute("href")).toBe("/mtm/map?mode=history&agentId=near&date=2026-10-09")
+    // The list above the card can be printed as it stands.
+    expect(byTestId("live-map-roster-print")?.textContent).toBe("Печать")
   })
 
   it("says nothing about a place for somebody the map shows no live position for", async () => {

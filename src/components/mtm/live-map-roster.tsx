@@ -2,11 +2,12 @@
 
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode, type Ref, type RefObject } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { AlertTriangle, Check, ChevronDown, ChevronRight, Download, Filter, Loader2, Maximize2, Minimize2, PanelRightClose, SlidersHorizontal, X } from "lucide-react"
+import { AlertTriangle, Check, ChevronDown, ChevronRight, Download, Filter, Loader2, Maximize2, Minimize2, PanelRightClose, Printer, SlidersHorizontal, X } from "lucide-react"
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import { FIELD_STATUS_LABEL_KEYS, type MtmDashboardAgent } from "@/lib/mtm-types"
 import { rosterExportTable } from "@/lib/mtm/live-map-roster-export"
+import { printRosterHtml, rosterPrintHtml } from "@/lib/mtm/live-map-roster-print"
 import { liveMapDuration } from "@/lib/mtm/live-map-state-since"
 import {
   activeRosterFilterColumns,
@@ -135,6 +136,8 @@ export interface LiveMapRosterProps {
    * it has. Absent — no button.
    */
   exportFileName?: () => string
+  /** The heading of the printed sheet; without it there is no «Печать». */
+  printTitle?: () => string
 }
 
 /** The list stands beside the map from the `lg` breakpoint; narrower than that it is under it. */
@@ -192,7 +195,7 @@ export function LiveMapRoster({
   agents, rows, searchSlot, filters, onFiltersChange, view, onViewChange, onHide, hiddenOnWide = false,
   hiddenAgentIds, onToggleAgentOnMap, onSetAgentsOnMap, selectedAgentId, onSelect, selectedDetailRef,
   renderDetail, nowMs, workforceEnabled, formatClock, formatVisitOpened, isEarlierDay,
-  formatDistance = (meters) => `${Math.round(meters)} m`, exportFileName,
+  formatDistance = (meters) => `${Math.round(meters)} m`, exportFileName, printTitle,
 }: LiveMapRosterProps) {
   const tMap = useTranslations("mtmMap")
   const locale = useLocale()
@@ -477,24 +480,35 @@ export function LiveMapRoster({
   // group in the order on screen, with every column the roster has — not only
   // the three a narrow list draws. The server only turns the words into a
   // workbook (see the export route for why it is built here).
+  /** The list as a table of words — one table for the file and for the printed sheet, so the two cannot differ. */
+  const exportTable = () => rosterExportTable(groups.flatMap((group) => group.agents), available, {
+    column: columnLabel,
+    status: (status) => valueLabel("status", status),
+    freshness: (freshness) => tMap(`freshness.${freshness.toLowerCase()}`),
+    presence: (online) => tMap(`presence.${online ? "online" : "offline"}`),
+    workday: (state) => tMap(`roster.workday.${state}`),
+    routeProgress: (done, total) => tMap("routeStop.progress", { done, total }),
+    speed: (kmh) => tMap("roster.kmh", { value: kmh }),
+    distance: formatDistance,
+    clock: (iso) => formatClock(iso),
+    dateTime: formatVisitOpened,
+    visitOpened: (time) => tMap("visitOpenedAt", { time }),
+    standingSince: (time) => tMap("roster.standingSince", { time }),
+  })
+  const printList = () => {
+    if (!printTitle) return
+    printRosterHtml(rosterPrintHtml({
+      lang: locale,
+      title: printTitle(),
+      subtitle: tMap("roster.shownCount", { shown: rows.length, total: agents.length }),
+      table: exportTable(),
+    }))
+  }
   const downloadExcel = async () => {
     if (!exportFileName || exporting === "busy") return
     setExporting("busy")
     try {
-      const table = rosterExportTable(groups.flatMap((group) => group.agents), available, {
-        column: columnLabel,
-        status: (status) => valueLabel("status", status),
-        freshness: (freshness) => tMap(`freshness.${freshness.toLowerCase()}`),
-        presence: (online) => tMap(`presence.${online ? "online" : "offline"}`),
-        workday: (state) => tMap(`roster.workday.${state}`),
-        routeProgress: (done, total) => tMap("routeStop.progress", { done, total }),
-        speed: (kmh) => tMap("roster.kmh", { value: kmh }),
-        distance: formatDistance,
-        clock: (iso) => formatClock(iso),
-        dateTime: formatVisitOpened,
-        visitOpened: (time) => tMap("visitOpenedAt", { time }),
-        standingSince: (time) => tMap("roster.standingSince", { time }),
-      })
+      const table = exportTable()
       const response = await fetch("/api/v1/mtm/locations/export", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -678,6 +692,20 @@ export function LiveMapRoster({
                   ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
                   : <Download className="h-3.5 w-3.5" aria-hidden="true" />}
                 {tMap("roster.export.button")}
+              </button>
+            ) : null}
+            {/* The same rows on paper, for the morning briefing. */}
+            {printTitle ? (
+              <button
+                type="button"
+                onClick={printList}
+                disabled={rows.length === 0}
+                title={tMap("roster.print.hint")}
+                aria-label={tMap("roster.print.hint")}
+                data-testid="live-map-roster-print"
+                className={cn(TOOL_BUTTON, "disabled:opacity-50")}
+              >
+                <Printer className="h-3.5 w-3.5" aria-hidden="true" />{tMap("roster.print.button")}
               </button>
             ) : null}
             {/* Only where the list stands beside the map, and the screen is wide
