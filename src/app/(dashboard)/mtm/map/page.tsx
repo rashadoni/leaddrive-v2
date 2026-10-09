@@ -1129,6 +1129,8 @@ export default function MtmMapPage() {
         />
         <div className="flex flex-wrap gap-x-3 gap-y-1 text-muted-foreground">
           {agent.teamName ? <span>{tMap("teamFilter")}: {agent.teamName}</span> : null}
+          {/* The list has room for it only as a column somebody switched on; here it is always said. */}
+          {agent.managerName ? <span data-testid="live-map-agent-manager">{tMap("roster.columns.manager")}: {agent.managerName}</span> : null}
           {agent.speed != null && agent.speed > 0 ? <span>{tMap("roster.kmh", { value: agent.speed.toFixed(0) })}</span> : null}
           {agent.routeCompletion > 0 ? <span><Navigation className="inline h-3 w-3" /> {agent.routeCompletion}%</span> : null}
           {agent.accuracy != null ? <span>±{Math.round(agent.accuracy)} m</span> : null}

@@ -255,7 +255,10 @@ export function LiveMapRoster({
       }))
       // Names, teams and managers have no order of their own: alphabetical, «no team», «no manager» last.
       if (column === "name" || column === "team" || column === "manager") {
-        list.sort((a, b) => (a.value === ROSTER_NO_TEAM ? 1 : 0) - (b.value === ROSTER_NO_TEAM ? 1 : 0) || collator.compare(a.label, b.label))
+        const nobody = column === "manager" ? ROSTER_NO_MANAGER : ROSTER_NO_TEAM
+        list.sort((a, b) => (a.value === nobody ? 1 : 0) - (b.value === nobody ? 1 : 0)
+          // Namesakes keep one order from refresh to refresh.
+          || collator.compare(a.label, b.label) || (a.value < b.value ? -1 : a.value > b.value ? 1 : 0))
       }
       byColumn[column] = list
     }
@@ -264,7 +267,7 @@ export function LiveMapRoster({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agents, filters, available, locale, tMap])
 
-  const groups = useMemo(() => groupRoster(rows, groupBy, locale), [rows, groupBy, locale])
+  const groups = useMemo(() => groupRoster(rows, groupBy, locale, agents), [rows, groupBy, locale, agents])
   const rowIds = useMemo(() => rows.map((agent) => agent.agentId), [rows])
   const tick = rosterTickState(rowIds, hiddenAgentIds)
   const filteredColumns = activeRosterFilterColumns(filters)

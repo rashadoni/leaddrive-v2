@@ -29,7 +29,10 @@ export const ROSTER_NARROW_COLUMNS: readonly RosterColumnId[] = ["name", "status
  */
 export const ROSTER_NARROW_COLUMNS_WITH_POINT: readonly RosterColumnId[] = ["name", "status", "distance"]
 /** The wide table, until somebody chooses otherwise. */
-export const ROSTER_DEFAULT_COLUMNS: readonly RosterColumnId[] = ["name", "status", "signal", "distance", "team", "manager", "workday", "route", "battery"]
+// «Руководитель» is not among them: the wide table was sized without it, and
+// on a laptop it cut the status word and the names. It is one tick away in
+// «Вид», and its filter and grouping work without the column being drawn.
+export const ROSTER_DEFAULT_COLUMNS: readonly RosterColumnId[] = ["name", "status", "signal", "distance", "team", "workday", "route", "battery"]
 /**
  * Columns nobody can switch off. The name is the row. The status is what the
  * chips above the map count: a row that does not say it leaves a person counted
@@ -290,14 +293,32 @@ export interface RosterGroup {
   agents: MtmDashboardAgent[]
 }
 
-/** Rows keep the order they came in; groups come in the column's own order. */
-export function groupRoster(agents: readonly MtmDashboardAgent[], groupBy: RosterGroupBy, locale: string): RosterGroup[] {
+/**
+ * Rows keep the order they came in; groups come in the column's own order.
+ *
+ * By manager, a person who is somebody's manager heads his own group instead
+ * of sinking into «без руководителя» (or into his own boss's group) away from
+ * his people: «Иванов» then reads Ivanov and, under him, those who report to
+ * him. Who is a manager is read from `everybody` — the whole roster, not the
+ * rows a filter left — or he would jump groups whenever a filter hid his people.
+ */
+export function groupRoster(
+  agents: readonly MtmDashboardAgent[],
+  groupBy: RosterGroupBy,
+  locale: string,
+  everybody: readonly MtmDashboardAgent[] = agents,
+): RosterGroup[] {
   if (groupBy === "none") return [{ key: "", agents: [...agents] }]
+  const leaders = groupBy === "manager"
+    ? new Set(everybody.flatMap((agent) => (agent.managerId ? [agent.managerId] : [])))
+    : null
   const groups = new Map<string, MtmDashboardAgent[]>()
   for (const agent of agents) {
-    const key = rosterValue(agent, groupBy)
+    const leads = Boolean(leaders?.has(agent.agentId))
+    const key = leads ? agent.agentId : rosterValue(agent, groupBy)
     const members = groups.get(key)
-    if (members) members.push(agent)
+    // The one the group is named after stands first in it.
+    if (members) { if (leads) members.unshift(agent); else members.push(agent) }
     else groups.set(key, [agent])
   }
   const fixed = FIXED_ORDER[groupBy]
@@ -308,9 +329,12 @@ export function groupRoster(agents: readonly MtmDashboardAgent[], groupBy: Roste
     if (a === ROSTER_NO_TEAM || b === ROSTER_NO_TEAM) return a === b ? 0 : a === ROSTER_NO_TEAM ? 1 : -1
     const name = (key: string) => {
       const first = groups.get(key)?.[0]
-      return (groupBy === "manager" ? first?.managerName : first?.teamName) ?? ""
+      if (groupBy !== "manager") return first?.teamName ?? ""
+      // The head of the group is the manager himself; otherwise his name is on his people's rows.
+      return (first?.agentId === key ? first.name : first?.managerName) ?? ""
     }
-    return collator.compare(name(a), name(b))
+    // Two managers of one name stay in one order from refresh to refresh.
+    return collator.compare(name(a), name(b)) || (a < b ? -1 : a > b ? 1 : 0)
   })
   return keys.map((key) => ({ key, agents: groups.get(key) ?? [] }))
 }
@@ -393,7 +417,11 @@ export const ROSTER_DEFAULT_VIEW: RosterView = {
   columns: [...ROSTER_DEFAULT_COLUMNS],
 }
 
-/** The columns the list had when views were first remembered (2026-10-09). */
+/**
+ * The columns the list had when views were first remembered (2026-10-09).
+ * (A tab still running a build from before `seen` rewrites the view without
+ * it; the worst that does is bring a newly arrived default column back once.)
+ */
 const ROSTER_COLUMNS_FIRST_SET: readonly RosterColumnId[] = ["name", "status", "signal", "distance", "team", "app", "workday", "route", "speed", "battery"]
 
 /** The view as it is remembered: with the columns this build knows, so a later one can tell what is new. */
