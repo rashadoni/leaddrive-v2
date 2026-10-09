@@ -869,7 +869,8 @@ export default function MtmLiveMap({
           <ShowReferencePoint point={referencePoint} />
 
           <CartoBasemap
-            key={`carto-${baseMap?.id ?? "voyager"}-${baseMapRevision}`}
+            key={`carto-${baseMapRevision}`}
+            // Another background needs no new key: the layer is swapped when the address changes.
             tiles={baseMap}
             onLoading={handleBaseMapLoading}
             onError={handleBaseMapTileError}

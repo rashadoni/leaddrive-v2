@@ -208,10 +208,16 @@ describe("the trap the vector basemap fell into", () => {
       }
     })
 
-    it("going back to «Карта» asks for Voyager again, and the tiles of the background left behind are taken away", async () => {
-      await mountMap({ tiles: background("dark") }, "carto-dark")
+    it("switching the background swaps the tiles in place — the same mounted layer component, as the live map does it", async () => {
+      // The live map keeps one key for its background (a retry changes it, a choice does not).
+      await mountMap({ tiles: background("dark") })
+      expect(tiles().length).toBeGreaterThan(4)
       expect(tiles().every((tile) => tile.src.includes("/dark_all/"))).toBe(true)
-      await mountMap({ tiles: null }, "carto-voyager")
+      await mountMap({ tiles: background("light") })
+      expect(tiles().length).toBeGreaterThan(4)
+      expect(tiles().every((tile) => tile.src.includes("/light_all/"))).toBe(true)
+      // Back to «Карта»: Voyager again, and nothing of the background left behind.
+      await mountMap({ tiles: null })
       expect(tiles().length).toBeGreaterThan(4)
       expect(tiles().every((tile) => tile.src.includes("/rastertiles/voyager/"))).toBe(true)
     })
