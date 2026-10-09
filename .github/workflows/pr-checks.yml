@@ -95,7 +95,7 @@ jobs:
         if: github.event_name == 'pull_request'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: python3 scripts/erp/check_progress.py --branch "$GITHUB_HEAD_REF" --base-ref "$BASE_SHA" --repo "$GITHUB_WORKSPACE"
+        run: python3 scripts/erp/check_progress.py --branch "$GITHUB_HEAD_REF" --repo "$GITHUB_WORKSPACE"
 
   static-checks:
     needs: pr-scope
