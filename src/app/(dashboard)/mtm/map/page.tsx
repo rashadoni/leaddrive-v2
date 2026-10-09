@@ -141,11 +141,17 @@ function isAbortError(error: unknown): boolean {
 /**
  * The map and the list side by side on a wide screen: beside the map, as a
  * table, or the map alone. The table takes two thirds only where a third is
- * still a usable map (from 1360 px); on a smaller laptop it stays the list.
+ * still a usable map (from 1360 px = 85rem); on a smaller laptop it stays the
+ * list.
+ *
+ * The breakpoint is written in rem on purpose. Tailwind orders its width rules
+ * by value, and cannot compare `lg` (64rem) with a breakpoint in px: written as
+ * `min-[1360px]` the wide rule was emitted BEFORE the `lg` one and lost to it —
+ * on production «Таблица» changed its own label and nothing else (2026-10-09).
  */
 const CANVAS_COLUMNS = {
   narrow: "lg:grid-cols-[minmax(0,1fr)_400px]",
-  wide: "lg:grid-cols-[minmax(0,1fr)_400px] min-[1360px]:grid-cols-[minmax(320px,1fr)_minmax(0,2fr)]",
+  wide: "lg:grid-cols-[minmax(0,1fr)_400px] min-[85rem]:grid-cols-[minmax(320px,1fr)_minmax(0,2fr)]",
   hidden: "lg:grid-cols-1",
 } as const
 

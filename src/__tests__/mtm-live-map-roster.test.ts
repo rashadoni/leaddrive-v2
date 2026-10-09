@@ -584,6 +584,46 @@ describe("the list on the page", () => {
     expect(state.view.width).toBe("wide")
   })
 
+  it("brings its top back into view when a filter leaves a few rows behind the heading that follows the screen", async () => {
+    // Seen on production: scrolled down a long list, a filter left three rows,
+    // and they were all behind the heading — the list looked empty.
+    agents = Array.from({ length: 60 }, (_unused, index) => person(`p${index}`, `Сотрудник ${String(index + 1).padStart(2, "0")}`, {
+      fieldStatus: index < 3 ? "LATE" : "ON_ROAD",
+    }))
+    await draw()
+    const aside = byTestId("live-map-roster")!
+    const heading = byTestId("live-map-roster-heading")!
+    const scrolled: Array<unknown> = []
+    aside.scrollIntoView = (options?: unknown) => { scrolled.push(options) }
+    // The page is scrolled deep into the list: its top is far above the screen, the heading is stuck at the top of it.
+    const place = (listTop: number, listBottom: number, headingTop: number) => {
+      aside.getBoundingClientRect = () => ({ top: listTop, bottom: listBottom, left: 0, right: 400, width: 400, height: listBottom - listTop, x: 0, y: listTop, toJSON: () => ({}) })
+      heading.getBoundingClientRect = () => ({ top: headingTop, bottom: headingTop + 160, left: 0, right: 400, width: 400, height: 160, x: 0, y: headingTop, toJSON: () => ({}) })
+    }
+    Object.defineProperty(window, "innerHeight", { value: 700, configurable: true })
+
+    // Somebody reading far down a long list is not moved when it gets a little shorter (a poll took one row away).
+    place(-1500, 900, 0)
+    agents = agents.slice(0, 59)
+    await draw()
+    expect(scrolled).toEqual([])
+
+    // A filter leaves three rows: the list now ends inside its own heading.
+    place(-40, 170, 10)
+    state.filters = { status: onlyRosterFilterValue("LATE") }
+    await draw()
+    expect(rowIds()).toHaveLength(3)
+    expect(scrolled).toEqual([{ block: "start" }])
+
+    // With the heading in its place there is nothing to bring back; and a list that grows never moves the page.
+    place(120, 400, 120)
+    state.filters = { status: onlyRosterFilterValue("OFFLINE") }
+    await draw()
+    state.filters = {}
+    await draw()
+    expect(scrolled).toHaveLength(1)
+  })
+
   it("drops the columns that have nothing to show: no teams, no workday module", async () => {
     agents = TEAM.map((agent) => ({ ...agent, teamId: null, teamName: null }))
     workforceEnabled = false
@@ -771,9 +811,13 @@ describe("the page behind the list", () => {
 
   it("gives the list the width that is asked for: beside the map, a table where a map still fits, or the map alone", () => {
     expect(page).toContain('narrow: "lg:grid-cols-[minmax(0,1fr)_400px]"')
-    expect(page).toContain('wide: "lg:grid-cols-[minmax(0,1fr)_400px] min-[1360px]:grid-cols-[minmax(320px,1fr)_minmax(0,2fr)]"')
+    expect(page).toContain('wide: "lg:grid-cols-[minmax(0,1fr)_400px] min-[85rem]:grid-cols-[minmax(320px,1fr)_minmax(0,2fr)]"')
     expect(page).toContain('hidden: "lg:grid-cols-1"')
-    expect(roster).toContain('"ml-auto hidden min-[1360px]:inline-flex"')
+    expect(roster).toContain('"ml-auto hidden min-[85rem]:inline-flex"')
+    // A width breakpoint in px next to the named ones (which are in rem) is a
+    // rule Tailwind cannot put in order: it came out before `lg` and lost to
+    // it, and on production «Таблица» changed its label and nothing else.
+    for (const source of [page, roster]) expect(source).not.toMatch(/\b(min|max)-\[\d+px\]:/)
     // Put away only where the list stands beside the map; under the map on a phone it stays.
     expect(page).toContain("hiddenOnWide={rosterHidden}")
     expect(roster).toContain('hiddenOnWide && "lg:hidden"')

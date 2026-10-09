@@ -165,6 +165,26 @@ export function LiveMapRoster({
     return () => observer.disconnect()
   }, [])
 
+  // A filter or a search can leave three rows where there were a hundred.
+  // The page stays scrolled where it was, the heading goes on following the
+  // screen — and the few rows that are left end up behind it: the list looks
+  // empty (seen on production, 2026-10-09). When the list has got shorter, its
+  // heading is away from its place and its end is already on the screen, the
+  // top of the list is brought back into view. Somebody reading row sixty of a
+  // hundred is not moved: the end of his list is far below.
+  const shownRows = rows.length
+  const previousRowsRef = useRef(shownRows)
+  useEffect(() => {
+    const shorter = shownRows < previousRowsRef.current
+    previousRowsRef.current = shownRows
+    const aside = asideRef.current
+    const heading = headingRef.current
+    if (!shorter || !aside || !heading) return
+    const list = aside.getBoundingClientRect()
+    const followingTheScreen = heading.getBoundingClientRect().top - list.top > 1
+    if (followingTheScreen && list.bottom < window.innerHeight) aside.scrollIntoView?.({ block: "start" })
+  }, [shownRows])
+
   const available = useMemo(() => availableRosterColumns(agents, { workforceEnabled }), [agents, workforceEnabled])
   // The distance exists only while a point is picked on the map, and then it
   // is what is being asked: it is shown without being chosen, and beside the
@@ -370,7 +390,7 @@ export function LiveMapRoster({
       data-testid="live-map-roster"
       data-width={view.width}
       style={trackStyle}
-      className={cn("@container order-2 min-w-0 rounded-lg border border-zinc-200 bg-card text-[13px] dark:border-zinc-700", hiddenOnWide && "lg:hidden")}
+      className={cn("@container order-2 min-w-0 scroll-mt-3 rounded-lg border border-zinc-200 bg-card text-[13px] sm:scroll-mt-4 lg:scroll-mt-8 dark:border-zinc-700", hiddenOnWide && "lg:hidden")}
     >
       <div role="table" aria-label={tMap("agents")}>
       {/* The heading follows the screen while the page scrolls: with a hundred
@@ -392,7 +412,7 @@ export function LiveMapRoster({
             type="button"
             onClick={() => onViewChange({ ...view, width: view.width === "wide" ? "narrow" : "wide" })}
             data-testid="live-map-roster-width"
-            className={cn(TOOL_BUTTON, "ml-auto hidden min-[1360px]:inline-flex")}
+            className={cn(TOOL_BUTTON, "ml-auto hidden min-[85rem]:inline-flex")}
           >
             {view.width === "wide"
               ? <><Minimize2 className="h-3.5 w-3.5" aria-hidden="true" />{tMap("roster.narrow")}</>
