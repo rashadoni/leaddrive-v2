@@ -5,9 +5,6 @@
   "conclusion": "success",
   "logBytes": 227026,
   "logSha256": "aed37ecaf40365e5281ce9ac8f0cd634dcb23b0377289b385743e3dbd2098bc6",
-  "actualFailingFiles": 18,
-  "baselineFailingFiles": 18,
-  "strictSetAndStillFailingGate": "PASS_EXISTING_UNCHANGED_GATE",
   "rawLogPublished": false,
   "globalClean": false,
   "steps": [
@@ -167,5 +164,8 @@
       "status": "completed",
       "conclusion": "success"
     }
-  ]
+  ],
+  "actualFailingFiles": 18,
+  "baselineFailingFiles": 18,
+  "strictSetAndStillFailingGate": "PASS_EXISTING_UNCHANGED_GATE"
 }

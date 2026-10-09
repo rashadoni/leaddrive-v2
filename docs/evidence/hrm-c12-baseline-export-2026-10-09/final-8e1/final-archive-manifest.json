@@ -1,0 +1,223 @@
+{
+  "sourceSha": "8e1c7e10013eb6d4e5ed273775b3f6d896841065",
+  "status": "PASS_FINAL_ARCHIVE_INTEGRITY",
+  "files": [
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/accepted-c6-preservation.json",
+      "bytes": 653,
+      "sha256": "2bd369736c12b0370ed3e862d0521a9c4c3fea43fb9a63a6408bd86a2fa2f5f1"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/accounting-and-scope.json",
+      "bytes": 514,
+      "sha256": "169cbb3915cc66f164437bf79d8b088f2ff3dd6da9df9e7f7b875ded74fb4d24"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/archive-manifest-checkpoint.json",
+      "bytes": 3255,
+      "sha256": "899fe16e908367966d2ee1e788e4bcfade1c80582bd3482e1cd0457386badfee"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/baseline-export-metadata.json",
+      "bytes": 2920,
+      "sha256": "a6bbe0dd24156babe03da7d8e1ef42434645a690a0cde14199636bf1cb959d51"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/baseline-export-receipt-original.json.gz",
+      "bytes": 1175,
+      "sha256": "289936278855d01f07a09ffe27cfbda7ec07770491a837541c4982150e12e004"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/baseline-export-receipt-original.zip",
+      "bytes": 1329,
+      "sha256": "609ff7698f96cd0636a4b2c4947c41c390fdd78ee1043caa550c0b11f24c0a7a"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/independent-final-acceptance-8e1c7e-original.json.gz",
+      "bytes": 3595,
+      "sha256": "6a7925d526ee891d30ac69369fe5792be93a211c20d3d47e8a6fdba227f89ee5"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/independent-hosted-review-524313-original.json.gz",
+      "bytes": 2600,
+      "sha256": "1af706251af48d5ac52b1f557301734e324bee2a82b35f22fb2be27111072e6d"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/independent-hosted-review-8e1c7e-original.json.gz",
+      "bytes": 2608,
+      "sha256": "7d81736e2bf4733e6c72f25d577676f115a7e7d21f4c4a932d90c3d4cacbabec"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/independent-source-review-2cb343-original.json.gz",
+      "bytes": 2974,
+      "sha256": "866d17cd5e08b66e94804b5eb5cba83d1de10ea21bbb4cf3fe88b40edca401fe"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/independent-source-review-524313-original.json.gz",
+      "bytes": 2766,
+      "sha256": "507c4b799d710fcac5fda3320898d79390fc4856122c3ae48aff22a919f5beed"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/independent-source-review-8e1c7e-original.json.gz",
+      "bytes": 3084,
+      "sha256": "0d078d0b8144d4d08afe323f15ee0602468024a574a67fb5153c7bb5e71ba740"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/independent-static-review-8e1c7e-original.json.gz",
+      "bytes": 2390,
+      "sha256": "e1661f42371a527bff38beaacfb481d3270fc3998653c4ed7ac3f1746f84939f"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/mandatory-five-exact-head.json",
+      "bytes": 1879,
+      "sha256": "3464549da60f1bc0251377ff6aa2601ed4531b55bef8f1f0956ee6b13e0092c9"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/mandatory-static-finite-summary.json",
+      "bytes": 4118,
+      "sha256": "df645ff33cd6949d88a7b79fba243b114e1c88f785d9336b3ac4d72b633dc2d7"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/mandatory-typecheck-finite-summary.json",
+      "bytes": 3032,
+      "sha256": "4e8243779782c0567fdb9924ff196aeb0d231099124ad374b3352c7a13221e1e"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/reconciliation-schema-metadata.json",
+      "bytes": 2944,
+      "sha256": "39778aedb8e80ae40a7f6205ab676c7a5b8e02f61ff4608ca029ed8b4854d746"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/reconciliation-schema-receipt-original.json.gz",
+      "bytes": 1466,
+      "sha256": "e9f3f9634f3f05f651624838a5e310d12d64712edff338119d3196d8e81e9dac"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/reconciliation-schema-receipt-original.zip",
+      "bytes": 1609,
+      "sha256": "129d9fac916a0c7be22963e47e2abe0a5c90312d24ebecde1e328a59c63d3581"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/root-final-acceptance.json",
+      "bytes": 1614,
+      "sha256": "04ffcd8cbc41614706ad4f373ae7b0ddb836934b52f5f721a6f1e419581bfe4f"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/root-reader-original-errors.json",
+      "bytes": 559,
+      "sha256": "68095d3a1d368a993cc7b36105974d7a11e78c7c0eb2e8f115c0cd0926dbc6fb"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/final-8e1/root-source-preservation.json",
+      "bytes": 3432,
+      "sha256": "02b2dfc4a16efca6d83603816a52e76e342b7e8444d99abacbae5922dcf2c581"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/initial/original-source-identities.json",
+      "bytes": 2392,
+      "sha256": "e0c6c8fe91a115a1fe78465b8f2047b5b10131d684614dfd987c8a65148e861e"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/initial/public-f97-original.json",
+      "bytes": 1363,
+      "sha256": "87a002fb3a19a036494bc0963726baa6d760a9efa19ca6783d77f55c61e5aa2d"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/initial/targeted-node-original.tap",
+      "bytes": 2197,
+      "sha256": "083f305a115b451549b244b791a2803ac3d7a31af3f415ef55c5d79ab973f6b4"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/intermediate-2cb/baseline-export-metadata.json",
+      "bytes": 687,
+      "sha256": "76ce410104979ec98d3a90a2d7f42cf778fac2b2405b49637790413fee858ff4"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/intermediate-2cb/baseline-export-receipt-original.json.gz",
+      "bytes": 1174,
+      "sha256": "743f3b69b312e9f74529ba42f74186df7be97b9dbfa0f9a3cf6c3b88a2d3a969"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/intermediate-2cb/baseline-export-receipt-original.zip",
+      "bytes": 1330,
+      "sha256": "2a74c3b890ee6e8b5eb4f05d96a73f38b45c73daed5ff4479d2f724811ce3fcf"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/intermediate-2cb/reconciliation-schema-metadata.json",
+      "bytes": 682,
+      "sha256": "d3afc75dd240e90d59e181530aac9751193d257f6e04c65ae61ca5f56a265dfd"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/intermediate-2cb/reconciliation-schema-receipt-original.json.gz",
+      "bytes": 1468,
+      "sha256": "886dc48481446cd1ec0933a3e156f1e9b9111b84f91082173ac3332d483138f8"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/intermediate-2cb/reconciliation-schema-receipt-original.zip",
+      "bytes": 1607,
+      "sha256": "95bcf1637fa178bceb51d59c1b8e5eb408a4fa6ea580a22ce0612f64fb2af644"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/intermediate-524/baseline-export-metadata.json",
+      "bytes": 2696,
+      "sha256": "29c459184ff001bed4fd7fd9b0a39ca7c4c8c9c0c60a73566b3ad6fce43f5810"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/intermediate-524/baseline-export-receipt-original.json.gz",
+      "bytes": 1156,
+      "sha256": "03e0f5307aad3a2472865b58d55db105f5c2e9986240f6ead68dee49cf898e94"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/intermediate-524/baseline-export-receipt-original.zip",
+      "bytes": 1316,
+      "sha256": "1f84adb38170683a3e3d74d784a07f6504a9cf0a3759a471256a37a01ccd06d8"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/intermediate-524/reconciliation-schema-metadata.json",
+      "bytes": 2720,
+      "sha256": "e08e53f0b4243696f02cfa14f494e43244fa484ffed3e03b46fd0a18e212f0bf"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/intermediate-524/reconciliation-schema-receipt-original.json.gz",
+      "bytes": 1467,
+      "sha256": "0f9196b5820a5691fb1d9543a409f3cb599e4623cdca696908336d7f39e5077b"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/intermediate-524/reconciliation-schema-receipt-original.zip",
+      "bytes": 1609,
+      "sha256": "915195a6446a72c49bc2aaf893907ff1c3fbe805b227cdb258d4392430594ee4"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/intermediate-524/scan-original-metadata.json",
+      "bytes": 484,
+      "sha256": "460013ee6f27d245a292fc15e5f598589463afd9f2c437e3777adbb4693438b0"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-finite-summary.json",
+      "bytes": 2405,
+      "sha256": "6ee029e8ecfdec87a90ab095bab076596ef7e3fef9c9fb86697e26a6a572f51d"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.json.gz",
+      "bytes": 1092,
+      "sha256": "c7a875e61624a272192952362010c12e620dc52e9212b336c503f3de4e3140dd"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/receipt-original.zip",
+      "bytes": 1256,
+      "sha256": "2deb54dd1524546a4c7f9c8493bcbd20be7c2567db664a3d9414755e9d802ed9"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/run-and-artifact-original.json",
+      "bytes": 2842,
+      "sha256": "a0268799abece32547e6e649a95739648b91a8bde447cf244ca2aa9ccf7b23bc"
+    },
+    {
+      "path": "docs/evidence/hrm-c12-baseline-export-2026-10-09/original-4ef/scan-524-original-finite.json",
+      "bytes": 8214,
+      "sha256": "21295cc5ca4009b0043fe9dd18d8d6a1000b2297109f1f819568a1da5fa4e2f3"
+    }
+  ],
+  "gzDecodeAndZipCrcVerified": true,
+  "priorOriginalsReplaced": false
+}

@@ -291,3 +291,69 @@ Root successful complete-log reread227026bytes/SHA256
 aed37ecaf40365e5281ce9ac8f0cd634dcb23b0377289b385743e3dbd2098bc6 confirms26/26
 staticsteps SUCCESS and strict18/18. Independentstatic review byte/hash-equal
 wholeoriginal and same bound source/currentbaseline PASS. Compiler remains pending.
+
+
+## 2026-10-09 — exact final mandatory checks PASS, global baseline retained
+
+Frozen source8e1 real five GitHubActions/App15368 checks completedSUCCESS:
+readyrun37897461306 scope113711978832/static113712083820/type113712083724,
+runner37897379631/job113711717316 andscan37897379667/job113711717340.
+Originaldraft heavySKIP remains historical/NOTCHECKED, not reused. Protection
+freshly reread: exactlyfivecontexts boundApp15368/enforceadmins/force/deletion
+unchanged. No manualstatus, bypass, detector exception or baseline edit.
+
+Root whole currentcompiler log252502bytes/SHA256
+edd5cfdf41637888da79f2368450c1c85681c9f25363df93c7166eb66ddc4545: actual1154
+diagnostics, tsc exit2, zero syntax/missingmodule/undefinedname families; exact
+64gatedfile/code counts equal64unchangedbaseline. Source has no changed TS
+files relativecurrentbasee6. Current static whole227026bytes/hash above remains
+strict18/18. Globalcompiler/suite NONCLEAN, not repaired or called clean.
+Actualcheckout standalone75ba and equalWHOLEsource3eb1 verified forbothlogs.
+
+Independent final type/five-check acceptance is now being completed. Next:
+archive peer/root final receipt, restore647DRAFT, publish final648docs-only
+checkpoint, fresh refs/integrity and concise finalreport. No merge/deploy/
+activation/access/secret/Support/personnel action;85/161/76/61/C12PARTIAL.
+
+
+## 2026-10-09 — final technical acceptance; release and real baseline held
+
+Supersedes all earlier pending technical observations for final source8e1.
+Independent final acceptance PASS, original report SHA256
+5a316f424be761c87d3419d13a66b22cf0b9243b00203cd09236276ef5fd4465. Peer
+independently fetched every required check/App15368/protection, complete current
+compiler/static/scope/runner/scan logs and compared all1154diagnostics/35families,
+exact64gatedcounts, strict18/18 and testedwhole75ba/3eb1. Alltype13stepsPASS.
+One historical10049-to-currentmain difference is externalci-pr-draft-state.test.ts
+TS2769; it remains recorded, is not C12 source delta or a baseline exception.
+Global compiler/suite remain NONCLEAN; actual source647 never changed after
+verification and is now OPEN DRAFT/unmerged/head8e1,auto_merge null.
+
+Source PR647 https://github.com/rashadoni/leaddrive-v2/pull/647 is technically
+verified, with11actualCLI+9oldNode and37PG+4Node, zero skips, current independent
+source/hosted/fullgate review and five realSUCCESS checks. Evidence PR648
+https://github.com/rashadoni/leaddrive-v2/pull/648 preserves first4ef negatives,
+first524 scanner refusal, all524/2cb/8e1 reruns, reader inspection errors,
+byte-identical ZIP/gzip originals and finite manifests. No detector exception,
+baseline/gate weakening, force push, history rewrite or task closure. Final
+append-only evidence checkpoint remains on648; source8e1 stays frozen.
+
+Fresh refs remain main e6b882ab33cee41d907525bfec601dd6ad4ed12f. PR606/609
+CLOSED/unmerged;646validation OPEN DRAFT/frozen524. Accepted973/c123 and
+589→605→608/631→632 ancestry, original journals and archives remain. Accepted
+C6 core libraries are byte-identical to releasedf308. Support/personnel-doc
+work is untouched. No merge/deploy/activation/production/access/secret action.
+
+Current result: bounded C12 exporter admission fix verified and left in draft;
+C12 PARTIAL,85/161DONE,76open,weighted61%,14/15gates. Last completed acceptance:
+independent exact8e1 source/PostgreSQL/regression/compiler/five-check review,
+source restoredDRAFT. Precise stopping point: no approved already-restored
+copy/operator/read-only-service/provenance package is available. Full historical
+replay still retains original missingapi_keys/P3018/42P01 after391 migrations;
+real density/device/collector/pilot/restore observations remain open. Next action:
+identify the already approved isolated copy and operator, then perform only the
+committed read-only catalog/ledger package within its authorized scope; never
+restore, guessDDL, repair migrations, grant access or activate production by
+inference. Until then those real criteria are NOT RUN and receive no synthetic
+credit. UI/browser/build NOT RUN for this catalog/Node-only slice; original
+accepted C6 UI evidence is preserved, not claimed as a new run.
