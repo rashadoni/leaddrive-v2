@@ -38,6 +38,13 @@ import { createDateFormatter, formatDateTime, formatTime } from "@/lib/format-da
 import { effectiveGeofenceRadius, formatMtmArea, formatMtmDistance } from "@/lib/mtm/visit-place-check"
 import { mtmLiveFeedHistoryHref, type MtmLiveFeedAlertGroup } from "@/lib/mtm/live-feed-alerts"
 import { LiveMapAgentEvents } from "@/components/mtm/live-map-agent-events"
+import { LiveMapAgentDay } from "@/components/mtm/live-map-agent-day"
+import { LiveMapAgentDevice } from "@/components/mtm/live-map-agent-device"
+import { LiveMapAgentLinks } from "@/components/mtm/live-map-agent-links"
+import { liveMapAgentLinks } from "@/lib/mtm/live-map-agent-links"
+import { useMtmFeature } from "@/hooks/use-mtm-org-settings"
+import { LiveMapCardBlocks, type LiveMapCardBlock } from "@/components/mtm/live-map-card-blocks"
+import { CARD_LAYOUT_STORAGE_KEY, DEFAULT_CARD_LAYOUT, parseCardLayout, serializeCardLayout, type CardLayout } from "@/lib/mtm/live-map-card-layout"
 import { LiveMapAgentPlace } from "@/components/mtm/live-map-agent-place"
 import { liveMapAgentEventsRefreshKey } from "@/lib/mtm/live-map-agent-events"
 import type { LiveMapPlaceStop } from "@/lib/mtm/live-map-place"
@@ -190,6 +197,9 @@ function operationalWeekReturnHref(value: string | null): string | null {
 
 export default function MtmMapPage() {
   const { data: session, status: sessionStatus } = useSession()
+  // Where «Профиль сотрудника» leads: his own section where the organization
+  // keeps field contacts, the employees' list narrowed to him where it does not.
+  const fieldContactsEnabled = useMtmFeature(session?.user, "fieldContactsEnabled").enabled
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
@@ -244,6 +254,8 @@ export default function MtmMapPage() {
   // as the model: «бери почти всё, чего нет у нас»): names beside them, the
   // tail of where each has just been, a glide instead of a jump.
   const [mapLook, setMapLook] = useState(DEFAULT_MAP_LOOK)
+  // The card's blocks — folded, reordered, switched off — as this browser left them.
+  const [cardLayout, setCardLayout] = useState<CardLayout>(DEFAULT_CARD_LAYOUT)
   const [trails, setTrails] = useState<LiveMapTrails>(() => new Map())
   // «Клиенты»: the client base as a layer. Read when the layer is switched on
   // and on «Обновить» — never on the roster's timer: a base does not move.
@@ -332,8 +344,15 @@ export default function MtmMapPage() {
         setRosterView(view)
       }
       setMapLook(parseMapLook(window.localStorage.getItem(MAP_LOOK_STORAGE_KEY)))
+      setCardLayout(parseCardLayout(window.localStorage.getItem(CARD_LAYOUT_STORAGE_KEY)))
     } catch { /* storage closed to the page: the defaults */ }
   }, [])
+  const changeCardLayout = (next: CardLayout) => {
+    setCardLayout(next)
+    try {
+      window.localStorage.setItem(CARD_LAYOUT_STORAGE_KEY, serializeCardLayout(next))
+    } catch { /* not remembered; still applied */ }
+  }
   const changeMapLook = (change: Partial<typeof DEFAULT_MAP_LOOK>) => {
     const next = { ...mapLook, ...change }
     setMapLook(next)
@@ -1083,6 +1102,78 @@ export default function MtmMapPage() {
       : agent.workdayState === "PAUSED"
         ? "font-medium text-amber-700 dark:text-amber-300"
         : "text-muted-foreground"
+    // The card's blocks: each under a heading that folds it, in the order the
+    // dispatcher chose (src/lib/mtm/live-map-card-layout.ts). A folded block
+    // is not rendered, so it asks the server for nothing.
+    const cardBlocks: LiveMapCardBlock[] = [
+      {
+        id: "events",
+        title: tMap("events.title"),
+        render: () => (
+          <LiveMapAgentEvents
+            key={`events-${agent.agentId}`}
+            agentId={agent.agentId}
+            refreshKey={liveMapAgentEventsRefreshKey(agent, presentationNow)}
+            workdayStartedAt={workforceEnabled && !agent.workdayCarryover ? agent.workdayStartedAt ?? null : null}
+            formatTime={formatTenantTime}
+            alertText={feedAlertText}
+            isEarlierDay={(value) => visitOpenedOnAnotherDay(value, contract?.timezone)}
+            framed={false}
+          />
+        ),
+      },
+      {
+        id: "route",
+        title: tMap("routeStop.title"),
+        render: () => (
+          <div data-testid="mtm-map-selected-route">
+            {!visibleRouteSnapshot ? (
+              <div className="text-muted-foreground">{tMap("routeStop.loading")}</div>
+            ) : !agentRoute || !routeExecution || routeExecution.totalCount === 0 ? (
+              <div className="text-muted-foreground">{tMap("routeStop.none")}</div>
+            ) : (
+              <LiveMapDaySteps
+                steps={daySteps}
+                selectedOrder={selectedStop}
+                onSelect={setSelectedStop}
+                formatTime={formatTenantTime}
+              />
+            )}
+            {routeStopsWithoutCoordinates > 0 ? (
+              <div className="mt-1 text-amber-700 dark:text-amber-300">{tMap("routeStop.missingCoordinates", { count: routeStopsWithoutCoordinates })}</div>
+            ) : null}
+          </div>
+        ),
+      },
+      {
+        id: "day",
+        title: tMap("day.title"),
+        render: () => (
+          <LiveMapAgentDay
+            key={`day-${agent.agentId}`}
+            agentId={agent.agentId}
+            // Counted on the server from the day's GPS: asked again on a change
+            // of his state or every two minutes, never on the list's own timer.
+            refreshKey={liveMapAgentEventsRefreshKey(agent, presentationNow)}
+            formatDistance={(meters) => formatMtmDistance(meters, locale, (unit, value) => tUnits(unit, { value }))}
+          />
+        ),
+      },
+      {
+        id: "device",
+        title: tMap("device.title"),
+        render: () => (
+          <LiveMapAgentDevice
+            key={`device-${agent.agentId}`}
+            agent={agent}
+            // What the phone registered with changes rarely: asked again when the shift or the app's presence flips.
+            refreshKey={`${agent.workdayState}|${agent.isOnline ? 1 : 0}`}
+            // With the date when the moment is not today: last week's contact must not read as this morning's.
+            formatTime={formatVisitOpened}
+          />
+        ),
+      },
+    ]
     return (
       <div className="space-y-2 text-[11px]" data-testid="live-map-agent-detail">
         {/* On a phone the row has room for about fifteen letters of a name. */}
@@ -1098,7 +1189,8 @@ export default function MtmMapPage() {
             {tMap(`workday.${agent.workdayState.toLowerCase()}`)}
           </span> : null}
           {agent.recordedAt ? (
-            <span className="text-muted-foreground">{tMap("recordedAt")}: {formatDateTime(agent.recordedAt, locale, { timeStyle: "short", timeZone: contract?.timezone })}</span>
+            // With the date when it is not today's — as the «Телефон и приложение» block below says the same moment.
+            <span className="text-muted-foreground">{tMap("recordedAt")}: {formatVisitOpened(agent.recordedAt)}</span>
           ) : null}
         </div>
         {/* Since when — only for what was recorded when it began: the visit, the break, the closed shift. */}
@@ -1185,33 +1277,12 @@ export default function MtmMapPage() {
             <Crosshair className="h-3 w-3" aria-hidden="true" />{tMap("follow")}
           </button>
         </div>
-        <LiveMapAgentEvents
-          key={`events-${agent.agentId}`}
-          agentId={agent.agentId}
-          refreshKey={liveMapAgentEventsRefreshKey(agent, presentationNow)}
-          workdayStartedAt={workforceEnabled && !agent.workdayCarryover ? agent.workdayStartedAt ?? null : null}
-          formatTime={formatTenantTime}
-          alertText={feedAlertText}
-          isEarlierDay={(value) => visitOpenedOnAnotherDay(value, contract?.timezone)}
+        {/* The other screens, already narrowed to him. «История за день» is the pill above. */}
+        <LiveMapAgentLinks
+          agentName={agent.name}
+          links={liveMapAgentLinks({ agentId: agent.agentId, tenantToday, fieldContactsEnabled }).filter((link) => link.id !== "history")}
         />
-        <div data-testid="mtm-map-selected-route" className="rounded-md bg-background/80 p-2">
-          <div className="mb-1 font-semibold text-foreground">{tMap("routeStop.title")}</div>
-          {!visibleRouteSnapshot ? (
-            <div className="text-muted-foreground">{tMap("routeStop.loading")}</div>
-          ) : !agentRoute || !routeExecution || routeExecution.totalCount === 0 ? (
-            <div className="text-muted-foreground">{tMap("routeStop.none")}</div>
-          ) : (
-            <LiveMapDaySteps
-              steps={daySteps}
-              selectedOrder={selectedStop}
-              onSelect={setSelectedStop}
-              formatTime={formatTenantTime}
-            />
-          )}
-          {routeStopsWithoutCoordinates > 0 ? (
-            <div className="mt-1 text-amber-700 dark:text-amber-300">{tMap("routeStop.missingCoordinates", { count: routeStopsWithoutCoordinates })}</div>
-          ) : null}
-        </div>
+        <LiveMapCardBlocks blocks={cardBlocks} layout={cardLayout} onLayoutChange={changeCardLayout} />
       </div>
     )
   }
@@ -1501,6 +1572,13 @@ export default function MtmMapPage() {
             isEarlierDay={(value) => visitOpenedOnAnotherDay(value, contract?.timezone)}
             formatDistance={(meters) => formatMtmDistance(meters, locale, (unit, value) => tUnits(unit, { value }))}
             exportFileName={() => rosterExportFileName(contract?.today, new Date(), contract?.timezone)}
+            printTitle={() => `${t("mtmMap")} · ${formatDateTime(new Date(), locale, { dateStyle: "medium", timeStyle: "short", timeZone: contract?.timezone })}`}
+            // What the server itself narrowed the list by: the sheet must not read as the whole team.
+            printNote={() => [
+              debouncedEmployeeFilter ? tMap("roster.print.search", { query: debouncedEmployeeFilter }) : "",
+              teamFilter ? `${tMap("teamFilter")}: ${teams.find((team) => team.id === teamFilter)?.name ?? teamFilter}` : "",
+              contract?.rosterTruncated ? tMap("rosterTruncated", { shown: contract.returnedAgents }) : "",
+            ].filter(Boolean).join(" · ")}
           />
       </div>
 

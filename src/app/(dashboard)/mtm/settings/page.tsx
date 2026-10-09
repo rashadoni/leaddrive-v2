@@ -128,6 +128,16 @@ export default function MtmSettingsPage() {
   // editor below remounts and reloads (its internals stay untouched).
   const [visitPolicyEditorKey, setVisitPolicyEditorKey] = useState(0)
   const [tab, setTab] = useState<SettingsTab>("visit")
+  // A link can name the tab to open: the live map sends «Настройки
+  // оповещений» to ?tab=alerts, and without this the dispatcher landed on the
+  // first tab and had to find the rules himself. Read once the page is on
+  // screen, from the address itself: while a page reached by a link inside
+  // the application is first drawn, the address is still the old page's.
+  useEffect(() => {
+    const asked = new URLSearchParams(window.location.search).get("tab")
+    const named = SETTINGS_TABS.find((name) => name === asked)
+    if (named) setTab(named)
+  }, [])
   const [implementerToolsOpened, setImplementerToolsOpened] = useState(false)
   // Loading and the leave warning must not re-run when the translator's
   // identity changes; they read the latest one through this ref.

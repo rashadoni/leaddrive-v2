@@ -837,5 +837,69 @@ describe("the card's pieces on screen", () => {
       await render(roster({ rows: [] }))
       expect((byTestId("live-map-roster-export") as HTMLButtonElement).disabled).toBe(true)
     })
+
+    // «Печать»: the same table as the file, on paper. The sheet is a small
+    // document of its own in a hidden frame — the page around the list
+    // (sidebar, map, one screen of rows) is never what gets printed.
+    describe("«Печать» beside it", () => {
+      const frames = () => [...document.querySelectorAll<HTMLIFrameElement>('iframe[data-testid="live-map-roster-print-frame"]')]
+      afterEach(() => { for (const frame of frames()) frame.remove() })
+
+      it("is not offered where the page gave the sheet no heading", async () => {
+        await render(roster())
+        expect(byTestId("live-map-roster-print")).toBeNull()
+      })
+
+      it("prints the rows on screen, in their order, under the page's heading — and says how many of how many, and what narrowed them", async () => {
+        // Three people in the roster; a filter and a search leave two on screen, in the screen's order.
+        const third = agent({ agentId: "c", name: "Vüsal Kərimli", battery: 55, fieldStatus: "STOPPED" })
+        const everybody = [...people, third]
+        const onScreen = [third, people[1]]
+        await render(roster({
+          agents: everybody, rows: onScreen,
+          filters: { status: { mode: "only", values: ["STOPPED"] } },
+          printTitle: () => "Живая карта · 9 окт. 2026 г., 14:30",
+          printNote: () => "Поиск по имени: <b>li</b>",
+        }))
+        const button = byTestId("live-map-roster-print")!
+        expect(button.textContent).toBe("Печать")
+        await act(async () => { button.click() })
+        expect(frames()).toHaveLength(1)
+        const sheet = new DOMParser().parseFromString(frames()[0].srcdoc, "text/html")
+        expect(sheet.querySelector("h1")?.textContent).toBe("Живая карта · 9 окт. 2026 г., 14:30")
+        // The count carries its noun, then the filter in the list's own words, then what the page narrowed by — as text.
+        expect(sheet.querySelector("p")?.textContent).toBe("Сотрудников на листе: 2 из 3 · Статус: Стоит · Поиск по имени: <b>li</b>")
+        expect(sheet.querySelector("p b")).toBeNull()
+        const headings = [...sheet.querySelectorAll("thead th")].map((cell) => cell.textContent)
+        expect(headings).toHaveLength(availableRosterColumns(everybody, { workforceEnabled: true }).length)
+        expect(headings.slice(0, 3)).toEqual(["Сотрудник", "Статус", "Сигнал"])
+        // The rows on screen and nobody else, in the screen's order.
+        expect([...sheet.querySelectorAll("tbody tr")].map((row) => row.querySelector("td")?.textContent)).toEqual(["Vüsal Kərimli", "Əli Məmmədov"])
+        expect(sheet.querySelector("script")).toBeNull()
+        // Nothing was asked of the server, and nothing was downloaded.
+        expect(posted).toEqual([])
+        expect(downloads).toEqual([])
+        // The file is the same table: the same two people in the same order.
+        await act(async () => { byTestId("live-map-roster-export")!.click() })
+        await settle(10)
+        expect(posted[0].body.rows.map((row) => row[0])).toEqual(["Vüsal Kərimli", "Əli Məmmədov"])
+        // Pressed again, the first sheet is replaced, not piled up.
+        await act(async () => { button.click() })
+        expect(frames()).toHaveLength(1)
+      })
+
+      it("a name typed by a person is text on the sheet, whatever it looks like", async () => {
+        await render(roster({ printTitle: () => "Живая карта" }))
+        await act(async () => { byTestId("live-map-roster-print")!.click() })
+        const sheet = new DOMParser().parseFromString(frames()[0].srcdoc, "text/html")
+        expect([...sheet.querySelectorAll("tbody tr")].map((row) => row.querySelector("td")?.textContent)).toEqual(["=cmd|' /C calc'!A0", "Əli Məmmədov"])
+        expect(sheet.querySelector("p")?.textContent).toBe("Сотрудников на листе: 2 из 2")
+      })
+
+      it("has nothing to print from an empty list", async () => {
+        await render(roster({ rows: [], printTitle: () => "Живая карта" }))
+        expect((byTestId("live-map-roster-print") as HTMLButtonElement).disabled).toBe(true)
+      })
+    })
   })
 })
