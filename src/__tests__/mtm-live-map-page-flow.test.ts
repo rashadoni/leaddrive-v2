@@ -234,9 +234,8 @@ describe("the live map page, end to end", () => {
 
     // A filter on another column: the chips now count inside it.
     await press(byTestId("live-map-roster-filters-button"))
-    await press(byTestId("live-map-roster-filters-column-battery"))
-    await press(byTestId("roster-filter-only-battery-LOW"))
-    await closeMenu()
+    await press(byTestId("live-map-roster-filters-value-battery-LOW"))
+    await press(byTestId("live-map-roster-filters-done"))
     expect(rowIds()).toEqual(["near"])
     expect(onMap()).toEqual(["near"])
     expect(byTestId("mtm-map-status-chip-all")?.textContent).toContain("(1)")
@@ -350,7 +349,7 @@ describe("the live map page, end to end", () => {
 
     // «Only within a kilometre», then the point is removed: the filter goes with it instead of emptying the list.
     await press(byTestId("roster-column-distance"))
-    await press(byTestId("roster-filter-only-distance-NEAR"))
+    await press(byTestId("roster-filter-value-distance-NEAR"))
     await closeMenu()
     expect(rowIds()).toEqual(["near"])
     await press(byTestId("live-map-point-clear"))

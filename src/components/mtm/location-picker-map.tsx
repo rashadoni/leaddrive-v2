@@ -6,7 +6,7 @@ import { MapContainer, Marker, useMapEvents, useMap } from "react-leaflet"
 import L from "leaflet"
 import { useLocale, useTranslations } from "next-intl"
 import { LocateFixed, MapPin, Search } from "lucide-react"
-import { CartoVectorBasemap } from "./carto-vector-basemap"
+import { CartoBasemap } from "./carto-basemap"
 
 /**
  * Where an organization is: found by address, taken from where the manager
@@ -375,7 +375,7 @@ function FullScreenMap({ latitude, longitude, onChange, onClose, address, onAddr
 
         <div className="min-h-0 flex-1">
           <MapContainer center={center} zoom={hasPosition ? 16 : 13} style={{ height: "100%", width: "100%" }}>
-            <CartoVectorBasemap />
+            <CartoBasemap />
             <ClickHandler onChange={move} />
             <CenterTracker centerRef={centerRef} />
             <FlyTo target={target} />

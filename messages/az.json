@@ -16466,12 +16466,12 @@
       "show": "Əməkdaşlar siyahısı ({count})",
       "showFiltered": "Siyahı: {shown} / {total} · filtr",
       "filters": "Filtrlər",
-      "filtersBack": "Bütün sütunlar",
       "hide": "Siyahını gizlət",
       "view": "Görünüş",
       "wide": "Cədvəl",
       "narrow": "Siyahı",
       "groupBy": "Qruplaşdır",
+      "sortBy": "Sıralama",
       "grouping": {
         "none": "Qrupsuz",
         "team": "Şöbələr üzrə",
@@ -16500,6 +16500,7 @@
       "expandGroup": "«{name}» qrupunu aç",
       "noTeam": "Şöbəsiz",
       "noManager": "Rəhbərsiz",
+      "standingSince": "başlayıb: {time}",
       "export": {
         "button": "Excel",
         "hint": "Siyahını Excel-ə ixrac et: sətirlər və sıra ekrandakı kimi",
@@ -16563,16 +16564,14 @@
       },
       "filter": {
         "open": "{column}: sıralama və filtr",
-        "selectAll": "Hamısını seç",
-        "only": "yalnız bu",
+        "hint": "Kimi göstərmək istədiyinizi işarələyin. Heç nə işarələnməyibsə — hamı göstərilir.",
+        "done": "Hazırdır · göstərilir: {shown} / {total}",
         "search": "Siyahıda axtar",
         "nothingFound": "Heç nə tapılmadı",
         "reset": "Bu filtri sıfırla",
         "resetAll": "Filtrləri sıfırla",
         "remove": "«{column}» filtrini sil",
         "chip": "{column}: {values}",
-        "except": "{values} istisna olmaqla hamısı",
-        "nothing": "heç nə seçilməyib",
         "unknownValue": "siyahıda yoxdur",
         "more": "daha {count}"
       }
@@ -16913,6 +16912,7 @@
     },
     "since": {
       "VISIT": "Ziyarət gedir, başlayıb: {time}",
+      "STANDING": "Dayanıb, başlayıb: {time}",
       "BREAK": "Fasilədədir, başlayıb: {time}",
       "SHIFT_CLOSED": "İş günü bitib: {time}",
       "duration": {

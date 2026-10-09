@@ -2,16 +2,18 @@
  * Since when — for the states of the live map that have a recorded beginning.
  *
  * Navixy's card says how long a state has lasted («стоит 5 ч 34 мин»). Ours
- * says it only where somebody pressed a button and the moment was written
- * down: the visit he is in, the break he is on, the shift he closed. «Стоит N
- * минут» outside a visit is NOT here: the map knows only that there has been
- * no movement for about five minutes, and a gap in tracking is not standing
- * still. How old the last coordinate is has its own column («Сигнал»).
+ * says it where the beginning was written down: the visit he is in, the
+ * break he is on, the shift he closed — somebody pressed a button — and,
+ * since 2026-10-09 («добей до 100 %»), standing still outside a visit: the
+ * server keeps, with the newest coordinate, the moment he stopped moving
+ * (src/lib/mtm/mobile-location-latest.ts). That moment is forgotten on any
+ * silence in the tracking, so a gap is never counted as standing. How old
+ * the last coordinate is has its own column («Сигнал»).
  *
  * Pure: no React, no fetch.
  */
 
-export type LiveMapStateSinceBasis = "VISIT" | "BREAK" | "SHIFT_CLOSED"
+export type LiveMapStateSinceBasis = "VISIT" | "STANDING" | "BREAK" | "SHIFT_CLOSED"
 
 export interface LiveMapStateSince {
   basis: LiveMapStateSinceBasis
@@ -25,6 +27,8 @@ export interface LiveMapStateSinceSource {
   fieldStatus: string
   workdayState: string
   openVisitSince?: string | null
+  /** Since when he has not moved — only while the map calls him «стоит». */
+  stationarySince?: string | null
   workdayPausedAt?: string | null
   workdayCompletedAt?: string | null
 }
@@ -39,6 +43,10 @@ export function liveMapStateSince(agent: LiveMapStateSinceSource): LiveMapStateS
   const facts: LiveMapStateSince[] = []
   const visit = agent.fieldStatus === "CHECKED_IN" ? moment(agent.openVisitSince) : null
   if (visit) facts.push({ basis: "VISIT", since: visit, ongoing: true })
+  // Only with the status it explains: once the map says «в пути», «на месте»
+  // or «не в сети», an old stopping moment explains nothing.
+  const standing = agent.fieldStatus === "STOPPED" ? moment(agent.stationarySince) : null
+  if (standing) facts.push({ basis: "STANDING", since: standing, ongoing: true })
   const pause = agent.workdayState === "PAUSED" ? moment(agent.workdayPausedAt) : null
   if (pause) facts.push({ basis: "BREAK", since: pause, ongoing: true })
   const closed = agent.workdayState === "CLOSED" ? moment(agent.workdayCompletedAt) : null

@@ -9288,6 +9288,9 @@ model MtmAgentLocation {
 /// separate from the high-volume raw GPS table: writes only advance it when
 /// the incoming recordedAt is not older than the current point, and retention
 /// removes stale projection rows with the same 30-day policy as raw GPS.
+/// It also holds the anchor of the agent's current stop — where it began and
+/// when («стоит N минут»): cleared by a moving point, restarted by distance
+/// or by silence (src/lib/mtm/stationary-anchor.ts).
 model MtmAgentLatestLocation {
   id               String       @id @default(cuid())
   organizationId   String
@@ -9307,6 +9310,14 @@ model MtmAgentLatestLocation {
   recordedAt       DateTime
   receivedAt       DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
+  /// When the current stop began; null while moving or not yet known.
+  stationarySince     DateTime?
+  /// Where it began: the stop is measured from here, not from the previous point.
+  stationaryLatitude  Float?
+  stationaryLongitude Float?
+  /// The trustworthy still point that started the stop or last confirmed it.
+  /// Silence is measured from here: only code that knows the anchor writes it.
+  stationaryConfirmedAt DateTime?
 
   @@unique([organizationId, agentId])
   @@index([organizationId, recordedAt])

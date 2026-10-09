@@ -35,18 +35,20 @@ import {
   parseRosterView,
   pickRosterStatus,
   ROSTER_DEFAULT_VIEW,
-  ROSTER_FILTER_NOTHING,
   ROSTER_NO_MANAGER,
   ROSTER_NO_TEAM,
   rosterFilterAllows,
   rosterFilterOptions,
+  rosterFilterTicked,
   rosterSignalAge,
   rosterStatusChipOn,
   rosterTickState,
   rosterValue,
   serializeRosterView,
   sortRoster,
-  toggleRosterFilterValue,
+  tickRosterFilterValue,
+  withRosterFilter,
+  activeRosterFilterColumns,
   type RosterFilters,
   type RosterView,
 } from "@/lib/mtm/live-map-roster"
@@ -101,35 +103,42 @@ describe("what a column holds", () => {
   })
 })
 
-describe("a column's filter, the way a spreadsheet's tick list means it", () => {
-  it("starts with everything ticked; taking one tick off hides exactly that value", () => {
+// Owner, 2026-10-09, after a day with the first version: «фильтр кажется не
+// юзабилити… сравни с ТМС примером». The first version copied a spreadsheet to
+// the letter — everything ticked, untick what you do not want. The tracking
+// product named as the model ticks the other way round, in its list and in its
+// tables: a tick means «show these», nothing ticked is the whole list.
+describe("a column's filter: tick what to show", () => {
+  it("nothing ticked is no filter; one tick shows exactly that value", () => {
     expect(rosterFilterAllows(undefined, "LATE")).toBe(true)
-    const withoutOffline = toggleRosterFilterValue(undefined, "OFFLINE")
-    expect(withoutOffline).toEqual({ mode: "except", values: ["OFFLINE"] })
-    expect(ids(applyRosterFilters(TEAM, { status: withoutOffline }))).toEqual(["a1", "a2", "a3", "a4"])
-    // The tick put back: no filter at all, not an empty one.
-    expect(toggleRosterFilterValue(withoutOffline, "OFFLINE")).toBeUndefined()
+    expect(rosterFilterTicked(undefined, "LATE")).toBe(false)
+    const late = tickRosterFilterValue(undefined, "LATE")
+    expect(late).toEqual({ mode: "only", values: ["LATE"] })
+    expect(rosterFilterTicked(late, "LATE")).toBe(true)
+    expect(rosterFilterTicked(late, "ON_ROAD")).toBe(false)
+    expect(ids(applyRosterFilters(TEAM, { status: late }))).toEqual(["a4"])
   })
 
-  it("«only» leaves one value in a single press and grows by further ticks", () => {
-    const onlyLate = onlyRosterFilterValue("LATE")
-    expect(ids(applyRosterFilters(TEAM, { status: onlyLate }))).toEqual(["a4"])
-    const lateAndOnRoad = toggleRosterFilterValue(onlyLate, "ON_ROAD")
+  it("a second tick adds to the first; taking one off leaves the other", () => {
+    const lateAndOnRoad = tickRosterFilterValue(tickRosterFilterValue(undefined, "LATE"), "ON_ROAD")
     expect(ids(applyRosterFilters(TEAM, { status: lateAndOnRoad }))).toEqual(["a2", "a4"])
+    expect(ids(applyRosterFilters(TEAM, { status: tickRosterFilterValue(lateAndOnRoad, "LATE") }))).toEqual(["a2"])
   })
 
-  it("tells «everybody except» from «only these» when somebody new joins the roster", () => {
-    // The whole point of two modes: the list changes every thirty seconds.
+  it("the last tick taken off is the filter taken off — the whole list, never an empty one", () => {
+    const late = tickRosterFilterValue(undefined, "LATE")
+    expect(tickRosterFilterValue(late, "LATE")).toBeUndefined()
+    // However an empty filter came to be, it hides nobody and counts as no filter.
+    const empty: RosterFilters = { status: { mode: "only", values: [] } }
+    expect(applyRosterFilters(TEAM, empty)).toHaveLength(TEAM.length)
+    expect(activeRosterFilterColumns(empty)).toEqual([])
+    expect(withRosterFilter({}, "status", { mode: "only", values: [] })).toEqual({})
+  })
+
+  it("somebody who joins the roster later is shown only if his value is ticked", () => {
     const newcomer = person("a7", "Yeni Əməkdaş", { fieldStatus: "ON_ROAD" })
-    const exceptOne: RosterFilters = { name: toggleRosterFilterValue(undefined, "a5") }
-    const onlyTwo: RosterFilters = { name: { mode: "only", values: ["a1", "a2"] } }
-    expect(ids(applyRosterFilters([...TEAM, newcomer], exceptOne))).toContain("a7")
-    expect(ids(applyRosterFilters([...TEAM, newcomer], onlyTwo))).toEqual(["a1", "a2"])
-  })
-
-  it("shows nobody once every tick is taken off, until something is ticked", () => {
-    expect(applyRosterFilters(TEAM, { status: ROSTER_FILTER_NOTHING })).toEqual([])
-    expect(ids(applyRosterFilters(TEAM, { status: toggleRosterFilterValue(ROSTER_FILTER_NOTHING, "STOPPED") }))).toEqual(["a3"])
+    expect(ids(applyRosterFilters([...TEAM, newcomer], { status: onlyRosterFilterValue("ON_ROAD") }))).toEqual(["a2", "a7"])
+    expect(ids(applyRosterFilters([...TEAM, newcomer], { name: { mode: "only", values: ["a1", "a2"] } }))).toEqual(["a1", "a2"])
   })
 
   it("applies every column's filter together", () => {
@@ -137,17 +146,55 @@ describe("a column's filter, the way a spreadsheet's tick list means it", () => 
     expect(ids(applyRosterFilters(TEAM, filters))).toEqual(["a3"])
   })
 
-  it("counts a column's values against the OTHER filters, and keeps a ticked value that they have emptied", () => {
-    const filters: RosterFilters = { team: onlyRosterFilterValue("t-north"), status: onlyRosterFilterValue("LATE") }
-    // The status list is counted inside the northern team, where nobody is late —
-    // «Опаздывает» stays, at zero, because it is ticked and must be untickable.
-    expect(rosterFilterOptions(TEAM, filters, "status")).toEqual([
-      { value: "CHECKED_IN", count: 1 },
-      { value: "ON_ROAD", count: 1 },
+  it("lists every value a column can have, in its own order, also the ones nobody has right now", () => {
+    // At nine in the evening everybody is offline: the status list is still the six statuses, not one line.
+    const evening = TEAM.map((agent) => ({ ...agent, fieldStatus: "OFFLINE" }))
+    expect(rosterFilterOptions(evening, {}, "status")).toEqual([
+      { value: "CHECKED_IN", count: 0 },
+      { value: "ON_ROAD", count: 0 },
+      { value: "STOPPED", count: 0 },
       { value: "LATE", count: 0 },
+      { value: "ROUTE_FINISHED", count: 0 },
+      { value: "OFFLINE", count: 6 },
+    ])
+    expect(rosterFilterOptions(TEAM, {}, "battery").map((option) => option.value)).toEqual(["LOW", "MID", "HIGH", "UNKNOWN"])
+    expect(rosterFilterOptions(TEAM, {}, "route").map((option) => option.value)).toEqual(["IN_PROGRESS", "NOT_STARTED", "DONE", "NONE"])
+  })
+
+  it("counts a column's values against the OTHER filters, and never drops a team or a manager from the list because of them", () => {
+    const filters: RosterFilters = { team: onlyRosterFilterValue("t-north"), status: onlyRosterFilterValue("LATE") }
+    // The status list is counted inside the northern team, where nobody is late.
+    expect(rosterFilterOptions(TEAM, filters, "status").map((option) => [option.value, option.count])).toEqual([
+      ["CHECKED_IN", 1], ["ON_ROAD", 1], ["STOPPED", 0], ["LATE", 0], ["ROUTE_FINISHED", 0], ["OFFLINE", 0],
     ])
     // The team list is counted inside «late»: only the southern team has one.
-    expect(rosterFilterOptions(TEAM, filters, "team")).toEqual([{ value: "t-south", count: 1 }, { value: "t-north", count: 0 }])
+    // The northern and the people of no team are still listed, with a zero —
+    // a filter on status must not leave the dispatcher a list of one team.
+    const teams = rosterFilterOptions(TEAM, filters, "team")
+    expect(teams).toHaveLength(3)
+    expect(Object.fromEntries(teams.map((option) => [option.value, option.count])))
+      .toEqual({ "t-south": 1, "t-north": 0, [rosterValue(TEAM[5], "team")]: 0 })
+    // With a filter that leaves nobody at all, the teams and the managers are all still there to press.
+    const nobody: RosterFilters = { status: onlyRosterFilterValue("ROUTE_FINISHED") }
+    expect(rosterFilterOptions(TEAM, nobody, "team").map((option) => option.count)).toEqual([0, 0, 0])
+    const withBosses = TEAM.map((agent, index) => (index < 2 ? { ...agent, managerId: "boss-1", managerName: "Старший" } : agent))
+    expect(rosterFilterOptions(withBosses, nobody, "manager")).toEqual([{ value: "boss-1", count: 0 }, { value: ROSTER_NO_MANAGER, count: 0 }])
+    expect(Object.fromEntries(rosterFilterOptions(withBosses, { status: onlyRosterFilterValue("LATE") }, "manager").map((option) => [option.value, option.count])))
+      .toEqual({ "boss-1": 0, [ROSTER_NO_MANAGER]: 1 })
+  })
+
+  it("does not drop a value that is there though the column's own vocabulary does not know it", () => {
+    const odd = [TEAM[0], { ...TEAM[1], workdayState: "ON_LEAVE" } as unknown as MtmDashboardAgent]
+    const workday = rosterFilterOptions(odd, {}, "workday").map((option) => [option.value, option.count])
+    expect(workday.slice(-1)).toEqual([["ON_LEAVE", 1]])
+    expect(workday.slice(0, -1).map(([value]) => value)).toEqual(rosterFilterOptions(TEAM, {}, "workday").map((option) => option.value))
+  })
+
+  it("lists by name only who is there under the other filters, plus whoever is ticked — so a tick can always be taken off", () => {
+    const late: RosterFilters = { status: onlyRosterFilterValue("LATE") }
+    expect(rosterFilterOptions(TEAM, late, "name")).toEqual([{ value: "a4", count: 1 }])
+    expect(rosterFilterOptions(TEAM, { ...late, name: { mode: "only", values: ["a1"] } }, "name"))
+      .toEqual([{ value: "a4", count: 1 }, { value: "a1", count: 0 }])
   })
 })
 
@@ -160,17 +207,16 @@ describe("the status chips above the map — the same filter under another hand"
     // Another chip replaces the first; other columns' filters are not touched.
     const withTeam: RosterFilters = { ...late, team: onlyRosterFilterValue("t-north") }
     expect(pickRosterStatus(withTeam, "ON_ROAD")).toEqual({ status: { mode: "only", values: ["ON_ROAD"] }, team: { mode: "only", values: ["t-north"] } })
-    // From a filter made in the menu (several values, or «all except») a chip still leaves just its status.
-    expect(pickRosterStatus({ status: { mode: "except", values: ["OFFLINE"] } }, "LATE")).toEqual({ status: { mode: "only", values: ["LATE"] } })
+    // From a filter made in the menu (several values) a chip still leaves just its status.
     expect(pickRosterStatus({ status: { mode: "only", values: ["LATE", "STOPPED"] } }, "LATE")).toEqual({ status: { mode: "only", values: ["LATE"] } })
   })
 
-  it("lights no chip without a filter, and exactly the statuses a filter lets through", () => {
+  it("lights no chip without a filter, and exactly the statuses that are ticked", () => {
     const statuses = ["CHECKED_IN", "ON_ROAD", "STOPPED", "ROUTE_FINISHED", "LATE", "OFFLINE"]
     expect(statuses.filter((status) => rosterStatusChipOn({}, status))).toEqual([])
     expect(statuses.filter((status) => rosterStatusChipOn({ status: onlyRosterFilterValue("LATE") }, status))).toEqual(["LATE"])
-    expect(statuses.filter((status) => rosterStatusChipOn({ status: { mode: "except", values: ["OFFLINE", "LATE"] } }, status)))
-      .toEqual(["CHECKED_IN", "ON_ROAD", "STOPPED", "ROUTE_FINISHED"])
+    expect(statuses.filter((status) => rosterStatusChipOn({ status: { mode: "only", values: ["ON_ROAD", "STOPPED"] } }, status)))
+      .toEqual(["ON_ROAD", "STOPPED"])
     // A filter on another column lights nothing here.
     expect(statuses.filter((status) => rosterStatusChipOn({ team: onlyRosterFilterValue("t-north") }, status))).toEqual([])
   })
@@ -400,6 +446,7 @@ describe("the list on the page", () => {
       view: state.view,
       onViewChange: (view: RosterView) => update(() => { state.view = view }),
       onHide: () => update(() => { state.hiddenList = true }),
+      hiddenOnWide: state.hiddenList,
       hiddenAgentIds: state.hidden,
       onToggleAgentOnMap: (agentId: string) => update(() => {
         const next = new Set(state.hidden)
@@ -501,45 +548,68 @@ describe("the list on the page", () => {
     expect(row("p0").querySelectorAll('[role="cell"]')).toHaveLength(7)
     expect(row("p0").className).toContain("min-h-9")
     await openMenu("status")
-    await press(byTestId("roster-filter-only-status-LATE"))
+    await press(byTestId("roster-filter-value-status-LATE"))
     expect(rowIds()).toHaveLength(25)
     expect(byTestId("live-map-roster-count")?.textContent).toBe("25 из 100")
   })
 
-  it("opens a tick list with counts from the column heading, and a tick taken off hides those rows at once", async () => {
+  it("opens a tick list from the column heading: nothing ticked, every status listed, and a tick shows just those rows", async () => {
     await draw()
     expect(byTestId("roster-column-menu-status")).toBeNull()
     await openMenu("status")
+    // Every status the map has, with how many people are in it now — also the one nobody is in.
     const values = [...byTestId("roster-filter-values-status")!.querySelectorAll("li")].map((item) => item.textContent)
-    expect(values).toEqual(["На точке1только", "В пути1только", "Стоит1только", "Опаздывает1только", "GPS неактивен2только"])
-    expect((byTestId("roster-filter-all-status") as HTMLInputElement).checked).toBe(true)
+    expect(values).toEqual(["На точке1", "В пути1", "Стоит1", "Опаздывает1", "Маршрут завершён0", "GPS неактивен2"])
+    const ticks = () => [...byTestId("roster-filter-values-status")!.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')]
+    expect(ticks().filter((tick) => tick.checked)).toEqual([])
+    // The menu says what a tick means, in words.
+    expect(byTestId("roster-column-menu-status")?.textContent).toContain("Отметьте, кого показать. Ничего не отмечено — показаны все.")
+    // No «сбросить» while there is nothing to reset.
+    expect(byTestId("roster-filter-reset-status")).toBeNull()
 
-    await press(byTestId("roster-filter-value-status-OFFLINE"))
-    expect(state.filters).toEqual({ status: { mode: "except", values: ["OFFLINE"] } })
-    expect(rowIds()).toEqual(["a2", "a1", "a3", "a4"])
+    await press(byTestId("roster-filter-value-status-LATE"))
+    expect(state.filters).toEqual({ status: { mode: "only", values: ["LATE"] } })
+    expect(rowIds()).toEqual(["a4"])
     // The heading says a filter is on, and so does a chip that takes it off.
     expect(byTestId("roster-column-status")?.getAttribute("data-filtered")).toBe("true")
-    expect(byTestId("live-map-roster-filter-chip-status")?.textContent).toBe("Статус: все, кроме GPS неактивен")
-    expect((byTestId("roster-filter-all-status") as HTMLInputElement).indeterminate).toBe(true)
+    expect(byTestId("live-map-roster-filter-chip-status")?.textContent).toBe("Статус: Опаздывает")
+
+    // A second tick adds to the first.
+    await press(byTestId("roster-filter-value-status-ON_ROAD"))
+    expect(rowIds()).toEqual(["a2", "a4"])
+    expect(byTestId("live-map-roster-filter-chip-status")?.textContent).toBe("Статус: Опаздывает, В пути")
+    expect(ticks().filter((tick) => tick.checked)).toHaveLength(2)
 
     await press(byTestId("live-map-roster-filter-chip-status")?.querySelector("button"))
     expect(state.filters).toEqual({})
     expect(rowIds()).toHaveLength(6)
   })
 
-  it("leaves one value with «только», and «Выбрать все» takes every tick off or puts them all back", async () => {
+  it("the last tick taken off is the whole list again, and «Сбросить этот фильтр» does it in one press", async () => {
     await draw()
     await openMenu("status")
-    await press(byTestId("roster-filter-only-status-LATE"))
+    await press(byTestId("roster-filter-value-status-LATE"))
     expect(rowIds()).toEqual(["a4"])
-    expect(byTestId("live-map-roster-filter-chip-status")?.textContent).toBe("Статус: Опаздывает")
-    // Not everything is ticked: «Выбрать все» ticks it all — no filter.
-    await press(byTestId("roster-filter-all-status"))
+    await press(byTestId("roster-filter-value-status-LATE"))
+    // Not an empty list with «ничего не выбрано»: no tick is no filter.
     expect(state.filters).toEqual({})
-    // Everything is ticked: the same box takes every tick off, and the list says how to get back.
-    await press(byTestId("roster-filter-all-status"))
+    expect(rowIds()).toHaveLength(6)
+    expect(byTestId("live-map-roster-filter-chip-status")).toBeNull()
+
+    await press(byTestId("roster-filter-value-status-OFFLINE"))
+    await press(byTestId("roster-filter-value-status-STOPPED"))
+    expect(rowIds()).toEqual(["a6", "a3", "a5"])
+    await press(byTestId("roster-filter-reset-status"))
+    expect(state.filters).toEqual({})
+    expect(rowIds()).toHaveLength(6)
+  })
+
+  it("a status nobody is in can still be ticked: the list is then empty and says how to get back", async () => {
+    await draw()
+    await openMenu("status")
+    await press(byTestId("roster-filter-value-status-ROUTE_FINISHED"))
     expect(rowIds()).toEqual([])
-    expect(byTestId("live-map-roster-filter-chip-status")?.textContent).toBe("Статус: ничего не выбрано")
+    expect(byTestId("live-map-roster-filter-chip-status")?.textContent).toBe("Статус: Маршрут завершён")
     await closeMenu()
     await press(byTestId("live-map-roster-empty-reset"))
     expect(rowIds()).toHaveLength(6)
@@ -548,10 +618,10 @@ describe("the list on the page", () => {
   it("filters by several columns at once and clears them all in one press", async () => {
     await draw()
     await openMenu("team")
-    await press(byTestId("roster-filter-only-team-t-south"))
+    await press(byTestId("roster-filter-value-team-t-south"))
     await closeMenu()
     await openMenu("workday")
-    await press(byTestId("roster-filter-only-workday-ACTIVE"))
+    await press(byTestId("roster-filter-value-workday-ACTIVE"))
     await closeMenu()
     expect(rowIds()).toEqual(["a3"])
     expect(container.querySelectorAll('[data-testid^="live-map-roster-filter-chip-"]')).toHaveLength(2)
@@ -571,8 +641,8 @@ describe("the list on the page", () => {
     const offered = [...byTestId("roster-filter-values-name")!.querySelectorAll("li")]
     expect(offered).toHaveLength(1)
     // A list of names has one row each: no column of ones beside them.
-    expect(offered[0].textContent).toBe("İlqar Məmmədovтолько")
-    await press(byTestId("roster-filter-only-name-p7"))
+    expect(offered[0].textContent).toBe("İlqar Məmmədov")
+    await press(byTestId("roster-filter-value-name-p7"))
     expect(rowIds()).toEqual(["p7"])
   })
 
@@ -768,15 +838,33 @@ describe("the list on the page", () => {
     // The people whose card names nobody close the list, under their own words.
     expect(heads[2]).toContain("Без руководителя")
     await closeMenu()
-    // «Only his people», from the column's own menu.
+    // «Only his people», from «Фильтры»: managers by name, the people of nobody last.
     await press(byTestId("live-map-roster-filters-button"))
-    await press(byTestId("live-map-roster-filters-column-manager"))
-    // The tick list: managers by name, the people of nobody last.
-    const offered = [...document.body.querySelectorAll('[data-testid="roster-filter-values-manager"] li')]
-      .map((option) => option.querySelector("label span.truncate")?.textContent)
+    const offered = [...byTestId("live-map-roster-filters-group-manager")!.querySelectorAll("button")]
+      .map((option) => option.querySelector("span.truncate")?.textContent)
     expect(offered).toEqual(["Старший Второй", "Старший Первый", "Без руководителя"])
-    await press(byTestId("roster-filter-only-manager-boss-1"))
+    await press(byTestId("live-map-roster-filters-value-manager-boss-1"))
     expect(rowIds().sort()).toEqual(["a1", "a2"])
+  })
+
+  it("says how long somebody has been standing — in the wide table, and only where the server recorded when he stopped", async () => {
+    agents = [
+      person("s1", "Стоит давно", { fieldStatus: "STOPPED", stationarySince: minutesAgo(80) }),
+      person("s2", "Стоит, начало неизвестно", { fieldStatus: "STOPPED" }),
+      person("s3", "Едет", { fieldStatus: "ON_ROAD", stationarySince: minutesAgo(80) }),
+    ]
+    await draw()
+    const standing = byTestId("live-map-agent-standing-s1")!
+    expect(standing.textContent).toBe(" · 1 ч 20 мин")
+    // Beside the map there is room for the status word only; the wide table shows the duration.
+    expect(standing.className.split(" ")).toEqual(expect.arrayContaining(["hidden", "@2xl:inline"]))
+    // On hover, since when.
+    expect(byTestId("live-map-agent-status-s1")?.getAttribute("title")).toBe("Стоит с 08:40")
+    // No recorded beginning: the word alone, no invented duration.
+    expect(byTestId("live-map-agent-standing-s2")).toBeNull()
+    expect(visibleText(cell("s2", "status"))).toBe("Стоит")
+    // Not carried into «в пути».
+    expect(byTestId("live-map-agent-standing-s3")).toBeNull()
   })
 
   it("does not group by a column this roster does not have, whatever layout was remembered", async () => {
@@ -790,25 +878,236 @@ describe("the list on the page", () => {
     expect((byTestId("live-map-roster-group-none") as HTMLInputElement).checked).toBe(true)
   })
 
-  it("filters and sorts the columns it has no room to draw, from «Фильтры»", async () => {
+  it("«Фильтры» is one panel: every column with its values to press, no second level — also the columns it has no room to draw", async () => {
     await draw()
     expect(byTestId("live-map-roster-filters-button")?.textContent).toBe("Фильтры")
     await press(byTestId("live-map-roster-filters-button"))
-    // Every column of this roster is offered, also the ones the narrow list does not show.
-    expect([...byTestId("live-map-roster-filters-menu")!.querySelectorAll('[data-testid^="live-map-roster-filters-column-"]')].map((item) => item.textContent))
-      .toEqual(["Сотрудник", "Статус", "Сигнал", "Отдел", "Приложение", "Рабочий день", "Маршрут", "Скорость", "Батарея"])
-    await press(byTestId("live-map-roster-filters-column-battery"))
-    await press(byTestId("roster-filter-only-battery-LOW"))
+    const panel = byTestId("live-map-roster-filters-menu")!
+    // Every column of this roster at once, also the ones the narrow list does
+    // not draw. Particular people are picked from the search and the name column.
+    expect([...panel.querySelectorAll('[data-testid^="live-map-roster-filters-title-"]')].map((title) => title.textContent))
+      .toEqual(["Статус", "Сигнал", "Отдел", "Приложение", "Рабочий день", "Маршрут", "Скорость", "Батарея"])
+    // The values are on the panel already: one press from «Фильтры» to a filter.
+    expect([...byTestId("live-map-roster-filters-group-battery")!.querySelectorAll("button")].map((value) => value.textContent))
+      .toEqual(["Ниже 20%1", "20–50%1", "Выше 50%2", "Нет данных2"])
+    expect(panel.textContent).toContain("Отметьте, кого показать. Ничего не отмечено — показаны все.")
+    expect(byTestId("live-map-roster-filters-count")?.textContent).toBe("6 из 6")
+    expect(byTestId("live-map-roster-filters-menu-reset")).toBeNull()
+    expect(panel.querySelectorAll('button[aria-pressed="true"]')).toHaveLength(0)
+
+    await press(byTestId("live-map-roster-filters-value-battery-LOW"))
     expect(rowIds()).toEqual(["a1"])
-    await press(byTestId("roster-sort-battery-desc"))
-    expect(state.view.sort).toEqual({ column: "battery", direction: "desc" })
-    // Back to the list of columns: the one that is filtered says how, and the button counts it.
-    await press(byTestId("live-map-roster-filters-back"))
-    expect(byTestId("live-map-roster-filters-column-battery")?.textContent).toBe("БатареяНиже 20%")
+    // The other columns' numbers follow: they are counted inside what is already filtered.
+    expect(byTestId("live-map-roster-filters-value-team-t-south")?.textContent).toBe("Cənub0")
+    expect(byTestId("live-map-roster-filters-value-team-t-north")?.textContent).toBe("Şimal1")
+    // The panel stays open and says what the press did.
+    expect(byTestId("live-map-roster-filters-value-battery-LOW")?.getAttribute("aria-pressed")).toBe("true")
+    expect(byTestId("live-map-roster-filters-count")?.textContent).toBe("1 из 6")
     expect(byTestId("live-map-roster-filters-button")?.textContent).toBe("Фильтры· 1")
+    // A second value of the same column adds to it; another column narrows.
+    await press(byTestId("live-map-roster-filters-value-battery-HIGH"))
+    expect(rowIds()).toHaveLength(3)
+    await press(byTestId("live-map-roster-filters-value-team-t-south"))
+    expect(state.filters).toEqual({ battery: { mode: "only", values: ["LOW", "HIGH"] }, team: { mode: "only", values: ["t-south"] } })
+    expect(byTestId("live-map-roster-filters-button")?.textContent).toBe("Фильтры· 2")
+    // The panel's own counter is the rows drawn.
+    expect(byTestId("live-map-roster-filters-count")?.textContent).toBe(`${rowIds().length} из 6`)
+    // Pressed again, a value is let go of.
+    await press(byTestId("live-map-roster-filters-value-team-t-south"))
+    expect(state.filters).toEqual({ battery: { mode: "only", values: ["LOW", "HIGH"] } })
+
     await press(byTestId("live-map-roster-filters-menu-reset"))
     expect(state.filters).toEqual({})
     expect(rowIds()).toHaveLength(6)
+    expect(byTestId("live-map-roster-filters-menu")).not.toBeNull()
+  })
+
+  it("sorts by a column it has no room to draw, from «Вид»", async () => {
+    await draw()
+    await press(byTestId("live-map-roster-view"))
+    const column = byTestId("live-map-roster-sort-column") as HTMLSelectElement
+    expect(column.value).toBe("name")
+    expect([...column.options].map((option) => option.textContent))
+      .toEqual(["Сотрудник", "Статус", "Сигнал", "Отдел", "Приложение", "Рабочий день", "Маршрут", "Скорость", "Батарея"])
+    expect(byTestId("live-map-roster-sort-asc")?.textContent).toBe("От А до Я")
+    const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")!.set!
+    await act(async () => { setter.call(column, "battery"); column.dispatchEvent(new Event("change", { bubbles: true })) })
+    expect(state.view.sort).toEqual({ column: "battery", direction: "asc" })
+    // The words of the two directions are the column's own.
+    expect(byTestId("live-map-roster-sort-asc")?.textContent).toBe("Сначала меньшие")
+    await press(byTestId("live-map-roster-sort-desc"))
+    expect(state.view.sort).toEqual({ column: "battery", direction: "desc" })
+    expect(byTestId("live-map-roster-sort-desc")?.getAttribute("aria-pressed")).toBe("true")
+    expect(rowIds().slice(0, 2)).toEqual(sortRoster(TEAM, { column: "battery", direction: "desc" }, "ru").slice(0, 2).map((agent) => agent.agentId))
+  })
+
+  describe("where the menus open", () => {
+    // jsdom has no media queries and no layout: the width of the screen is said
+    // by the stub, and the list's heading is given a place to stand. What is
+    // asserted is what the menu was really placed against — the side the
+    // positioning engine chose and the width of the thing it measured — not a
+    // flag the component sets about itself. Once, the anchor line stood before
+    // the trigger and every menu opened in the corner of the screen.
+    const screen = { besideMap: true, roomForTable: true }
+    const listeners = new Map<string, Set<() => void>>()
+    const resize = async (next: Partial<typeof screen>) => {
+      Object.assign(screen, next)
+      await act(async () => { for (const group of listeners.values()) for (const listener of group) listener() })
+    }
+    const settle = async () => { await act(async () => { await new Promise((resolve) => setTimeout(resolve, 30)) }) }
+    const HEADING = { left: 600, top: 100, width: 400, height: 160 }
+    const placeHeading = () => {
+      byTestId("live-map-roster-heading")!.getBoundingClientRect = () => ({
+        ...HEADING, right: HEADING.left + HEADING.width, bottom: HEADING.top + HEADING.height, x: HEADING.left, y: HEADING.top, toJSON: () => ({}),
+      }) as DOMRect
+    }
+    /** Where an open menu really stands: the side chosen and the width of what it was anchored to. */
+    const placed = (testId: string) => {
+      const content = byTestId(testId)?.closest("[data-side]")
+      const wrapper = byTestId(testId)?.closest<HTMLElement>("[data-radix-popper-content-wrapper]")
+      return { side: content?.getAttribute("data-side") ?? null, anchorWidth: wrapper?.style.getPropertyValue("--radix-popper-anchor-width") ?? null }
+    }
+    const BESIDE_THE_LIST = { side: "left", anchorWidth: `${HEADING.width}px` }
+    const UNDER_ITS_OWN_HEADING = { side: "bottom", anchorWidth: "0px" }
+    const floating = () => byTestId("live-map-roster-filters-menu")?.closest("[data-radix-popper-content-wrapper]") != null
+    beforeEach(() => {
+      screen.besideMap = true
+      screen.roomForTable = true
+      listeners.clear()
+      vi.stubGlobal("matchMedia", (query: string) => ({
+        get matches() { return query === "(min-width: 1024px)" ? screen.besideMap : query === "(min-width: 85rem)" ? screen.roomForTable : false },
+        media: query,
+        addEventListener(_type: string, listener: () => void) { listeners.set(query, (listeners.get(query) ?? new Set()).add(listener)) },
+        removeEventListener(_type: string, listener: () => void) { listeners.get(query)?.delete(listener) },
+        addListener() {}, removeListener() {}, onchange: null, dispatchEvent: () => false,
+      }))
+      // Without a screen of some size the engine has no room anywhere and flips every menu.
+      Object.defineProperty(document.documentElement, "clientWidth", { configurable: true, value: 1440 })
+      Object.defineProperty(document.documentElement, "clientHeight", { configurable: true, value: 900 })
+    })
+    afterEach(() => {
+      Reflect.deleteProperty(document.documentElement, "clientWidth")
+      Reflect.deleteProperty(document.documentElement, "clientHeight")
+    })
+
+    it("beside the map: to the left of the list, over the map — the rows being filtered stay in sight", async () => {
+      await draw()
+      placeHeading()
+      await openMenu("status")
+      await settle()
+      expect(placed("roster-column-menu-status")).toEqual(BESIDE_THE_LIST)
+      await closeMenu()
+      await press(byTestId("live-map-roster-filters-button"))
+      await settle()
+      expect(floating()).toBe(true)
+      expect(placed("live-map-roster-filters-menu")).toEqual(BESIDE_THE_LIST)
+      // A floating panel is closed by Escape or a press outside: it needs no «Готово».
+      expect(byTestId("live-map-roster-filters-done")).toBeNull()
+      expect(byTestId("live-map-roster-heading")?.className).toContain("sticky")
+      // It is bounded by the room to the left of the list, so it is never cut by the edge of the screen.
+      expect(byTestId("live-map-roster-filters-menu")?.className).toContain("var(--radix-popover-content-available-width)")
+    })
+
+    it("in the wide table: a column's menu drops under its own heading, «Фильтры» still stands beside the list", async () => {
+      await draw()
+      placeHeading()
+      await press(byTestId("live-map-roster-width"))
+      expect(state.view.width).toBe("wide")
+      await openMenu("status")
+      await settle()
+      expect(placed("roster-column-menu-status")).toEqual(UNDER_ITS_OWN_HEADING)
+      await closeMenu()
+      await press(byTestId("live-map-roster-filters-button"))
+      await settle()
+      expect(floating()).toBe(true)
+      expect(placed("live-map-roster-filters-menu")).toEqual(BESIDE_THE_LIST)
+    })
+
+    it("«Таблица» remembered on a screen with no room for it: the list is narrow, so its menus open to the left", async () => {
+      screen.roomForTable = false
+      state.view = { ...state.view, width: "wide" }
+      await draw()
+      placeHeading()
+      await openMenu("status")
+      await settle()
+      expect(placed("roster-column-menu-status")).toEqual(BESIDE_THE_LIST)
+    })
+
+    it("under the map, on a phone: «Фильтры» opens in the list itself, and «Готово» says how many are left and puts it away", async () => {
+      screen.besideMap = false
+      screen.roomForTable = false
+      await draw()
+      const scrolled: Array<unknown> = []
+      byTestId("live-map-roster")!.scrollIntoView = (options?: unknown) => { scrolled.push(options) }
+      await openMenu("status")
+      await settle()
+      expect(placed("roster-column-menu-status")).toEqual(UNDER_ITS_OWN_HEADING)
+      await closeMenu()
+      const button = byTestId("live-map-roster-filters-button")!
+      expect(button.getAttribute("aria-expanded")).toBe("false")
+      await press(button)
+      expect(button.getAttribute("aria-expanded")).toBe("true")
+      // In the list, not floating over it: nothing is covered and the page scrolls as one.
+      expect(floating()).toBe(false)
+      const panel = byTestId("live-map-roster-filters-menu")!
+      expect(container.contains(panel)).toBe(true)
+      // No part of it is a frame with a scrollbar of its own (owner rule, 2026-09-14).
+      for (const node of [panel, ...panel.querySelectorAll("*")]) {
+        expect(node.getAttribute("class") ?? "", node.getAttribute("data-testid") ?? node.tagName).not.toMatch(/overflow-(y-)?(auto|scroll)|(^|\s)max-h-/)
+      }
+      // A heading that holds the open panel can be taller than the screen: it
+      // does not follow the scroll. Pressed from a list scrolled to row forty
+      // the panel would open far above the screen — so the top of the list is
+      // brought into view with it.
+      expect(byTestId("live-map-roster-heading")?.className).not.toContain("sticky")
+      expect(scrolled).toEqual([{ block: "start" }])
+      await press(byTestId("live-map-roster-filters-value-status-OFFLINE"))
+      expect(byTestId("live-map-roster-filters-done")?.textContent).toBe("Готово · показано 2 из 6")
+      // «Готово» stands at the foot of a tall panel: with the panel gone the
+      // page is brought back to the list, and the focus goes to «Фильтры».
+      await press(byTestId("live-map-roster-filters-done"))
+      expect(byTestId("live-map-roster-filters-menu")).toBeNull()
+      expect(byTestId("live-map-roster-heading")?.className).toContain("sticky")
+      expect(rowIds()).toEqual(["a6", "a5"])
+      expect(scrolled).toEqual([{ block: "start" }, { block: "start" }])
+      expect(document.activeElement).toBe(button)
+      // The same button opens and closes it; closing it that way moves nothing — it is on the screen already.
+      await press(button)
+      expect(byTestId("live-map-roster-filters-menu")).not.toBeNull()
+      expect(scrolled).toHaveLength(3)
+      await press(button)
+      expect(byTestId("live-map-roster-filters-menu")).toBeNull()
+      expect(scrolled).toHaveLength(3)
+    })
+
+    it("a floating panel never moves the page", async () => {
+      await draw()
+      const scrolled: Array<unknown> = []
+      byTestId("live-map-roster")!.scrollIntoView = (options?: unknown) => { scrolled.push(options) }
+      await press(byTestId("live-map-roster-filters-button"))
+      await press(byTestId("live-map-roster-filters-value-status-OFFLINE"))
+      await closeMenu()
+      expect(scrolled).toEqual([])
+    })
+
+    it("the list put away on a wide screen takes its open filters with it: they do not open by themselves when it comes back", async () => {
+      // Under the map a list that was «put away» is still shown, with its filters open.
+      screen.besideMap = false
+      screen.roomForTable = false
+      state.hiddenList = true
+      await draw()
+      await press(byTestId("live-map-roster-filters-button"))
+      expect(byTestId("live-map-roster-filters-menu")).not.toBeNull()
+      // The window is made wide: the list is put away, and its panel with it.
+      await resize({ besideMap: true, roomForTable: true })
+      expect(byTestId("live-map-roster-filters-menu")).toBeNull()
+      expect(byTestId("live-map-roster-filters-button")?.getAttribute("aria-expanded")).toBe("false")
+      // The list is brought back: nothing opens over the map.
+      state.hiddenList = false
+      await draw()
+      await settle()
+      expect(byTestId("live-map-roster-filters-menu")).toBeNull()
+    })
   })
 
   it("names a filtered value that the current answer no longer holds, and counts the rest of a long filter", async () => {
@@ -856,7 +1155,7 @@ describe("the list on the page", () => {
     // The mock returns «namespace.key» for a key that does not exist.
     agents = [...TEAM, ...EDGES]
     state.view = { ...state.view, columns: ["name", "status", "signal", "team", "app", "workday", "route", "speed", "battery"], groupBy: "workday" }
-    state.filters = { status: { mode: "except", values: ["OFFLINE"] }, battery: ROSTER_FILTER_NOTHING }
+    state.filters = { status: { mode: "only", values: ["OFFLINE", "LATE", "STOPPED"] }, battery: onlyRosterFilterValue("LOW") }
     await draw()
     for (const column of ["name", "status", "signal", "team", "app", "workday", "route", "speed", "battery"]) {
       await openMenu(column)
@@ -940,7 +1239,9 @@ describe("the page behind the list", () => {
     expect(rows).toBeGreaterThan(-1)
     expect(roster.slice(rows)).not.toMatch(/overflow-(y-)?(auto|scroll)|max-h-/)
     // The offsets are <main>'s own padding; without them rows show through above the heading.
-    expect(roster).toContain('className="-top-3 z-20 rounded-t-lg border-b border-zinc-200 bg-card sm:-top-4 lg:-top-8 dark:border-zinc-700 [@media(min-height:600px)]:sticky"')
+    expect(roster).toContain('"-top-3 z-20 rounded-t-lg border-b border-zinc-200 bg-card sm:-top-4 lg:-top-8 dark:border-zinc-700",')
+    // It follows the screen — except while it holds the open filters under the map, when it can be taller than the screen.
+    expect(roster).toContain('!filtersInList && "[@media(min-height:600px)]:sticky",')
     expect(readFileSync("src/app/(dashboard)/layout.tsx", "utf8")).toMatch(/<main className=\{`[^`]*overflow-y-auto[^`]* p-3 sm:p-4 lg:p-8 /)
     expect(page).toContain("lg:sticky")
   })
