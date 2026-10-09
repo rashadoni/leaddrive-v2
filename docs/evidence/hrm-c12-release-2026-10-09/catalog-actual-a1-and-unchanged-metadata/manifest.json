@@ -1,0 +1,188 @@
+{
+  "archivedAtUtc": "2026-10-09T23:17:50.796650+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-c12-catalog-actual-production-a1-root/artifacts-original.json.gz",
+      "originalBytes": 580,
+      "originalSha256": "a7f3f9903c09f4f43e8b8f6b4ff61a26915216e4a945fc2f18630c72a51b2266",
+      "storedBytes": 580,
+      "storedSha256": "a7f3f9903c09f4f43e8b8f6b4ff61a26915216e4a945fc2f18630c72a51b2266"
+    },
+    {
+      "path": "hrm-c12-catalog-actual-production-a1-root/finite-summary.json.gz",
+      "originalBytes": 7113,
+      "originalSha256": "4e824bfbb06cc8102a3974daa8bc0741ae797bf3717f0ea1896b5ef5c67d9c7c",
+      "storedBytes": 2487,
+      "storedSha256": "a39110ff0625c11dfe51e8bb763d56b8c259efe6eea0681c81ea5a2099cc7694"
+    },
+    {
+      "path": "hrm-c12-catalog-actual-production-a1-root/jobs-original.json.gz",
+      "originalBytes": 1340,
+      "originalSha256": "aec1f1343ff571b4f744d971537dfccc560cc6422851ecf092500b7b06ed0ba5",
+      "storedBytes": 1340,
+      "storedSha256": "aec1f1343ff571b4f744d971537dfccc560cc6422851ecf092500b7b06ed0ba5"
+    },
+    {
+      "path": "hrm-c12-catalog-actual-production-a1-root/production-original-artifact.zip",
+      "originalBytes": 3332,
+      "originalSha256": "f2be7d576c848194092787a406259274e7a0e8b5f5d18c284bdd1b4eb499eb09",
+      "storedBytes": 3332,
+      "storedSha256": "f2be7d576c848194092787a406259274e7a0e8b5f5d18c284bdd1b4eb499eb09"
+    },
+    {
+      "path": "hrm-c12-catalog-actual-production-a1-root/production-whole-original.log.gz",
+      "originalBytes": 8094,
+      "originalSha256": "51571e7c192b24e40984df94be5f3dd8757704522778e7cf919250f7da8ca62c",
+      "storedBytes": 8094,
+      "storedSha256": "51571e7c192b24e40984df94be5f3dd8757704522778e7cf919250f7da8ca62c"
+    },
+    {
+      "path": "hrm-c12-catalog-actual-production-a1-root/root-cli-revalidated.json.gz",
+      "originalBytes": 3905,
+      "originalSha256": "ea8d8ce478bfb46ae9926a33e82e2bdadb432271d9fba6cb5a8102f8ac93beb4",
+      "storedBytes": 1303,
+      "storedSha256": "ac18a0af87e7b176d8b30cb9b244bd9c75979000bdae1e699fb71711305f1bc0"
+    },
+    {
+      "path": "hrm-c12-catalog-actual-production-a1-root/run-original.json.gz",
+      "originalBytes": 1791,
+      "originalSha256": "c6a0714ed3f6958238fefac900551aad10812a377351ad92eeb77aa406f6539c",
+      "storedBytes": 1791,
+      "storedSha256": "c6a0714ed3f6958238fefac900551aad10812a377351ad92eeb77aa406f6539c"
+    },
+    {
+      "path": "hrm-c12-catalog-actual-production-a1-root/source-original-artifact.zip",
+      "originalBytes": 18219,
+      "originalSha256": "9ea333b1ba0fed1682cd7ea8c22e211a924aa34ff71f7d619cf1ba065b589f21",
+      "storedBytes": 18219,
+      "storedSha256": "9ea333b1ba0fed1682cd7ea8c22e211a924aa34ff71f7d619cf1ba065b589f21"
+    },
+    {
+      "path": "hrm-c12-catalog-actual-production-a1-root/source-whole-original.log.gz",
+      "originalBytes": 12095,
+      "originalSha256": "83957986efc6e71ab7f375eb9147f0175534b999f0de3e143afadd7d04e0e9c1",
+      "storedBytes": 12095,
+      "storedSha256": "83957986efc6e71ab7f375eb9147f0175534b999f0de3e143afadd7d04e0e9c1"
+    },
+    {
+      "path": "hrm-c12-original-metadata-a1-root/artifacts-original.json.gz",
+      "originalBytes": 590,
+      "originalSha256": "d04767e5d5c70dd73ddf77cd020351c91e61a9c41f41a5a235d1a116434b95d3",
+      "storedBytes": 590,
+      "storedSha256": "d04767e5d5c70dd73ddf77cd020351c91e61a9c41f41a5a235d1a116434b95d3"
+    },
+    {
+      "path": "hrm-c12-original-metadata-a1-root/finite-summary.json.gz",
+      "originalBytes": 4336,
+      "originalSha256": "1c46b3eb3b57e72346b69763926d610d215aca97354afee29b38b61c6b7781e1",
+      "storedBytes": 1919,
+      "storedSha256": "a0953110eb3e4c32adc4a1c752c835283c1aeba378dc48b73e079d0b4a02da4d"
+    },
+    {
+      "path": "hrm-c12-original-metadata-a1-root/jobs-original.json.gz",
+      "originalBytes": 1195,
+      "originalSha256": "5ab4611b99e291d46f762ab99b5a816bfc88e241bca082b2c8481aca6de6730f",
+      "storedBytes": 1195,
+      "storedSha256": "5ab4611b99e291d46f762ab99b5a816bfc88e241bca082b2c8481aca6de6730f"
+    },
+    {
+      "path": "hrm-c12-original-metadata-a1-root/production-original-artifact.zip",
+      "originalBytes": 1895,
+      "originalSha256": "c10c18e2bd98e6b4342645cfff369555399b50a1b177986ea1f83b58d52990ec",
+      "storedBytes": 1895,
+      "storedSha256": "c10c18e2bd98e6b4342645cfff369555399b50a1b177986ea1f83b58d52990ec"
+    },
+    {
+      "path": "hrm-c12-original-metadata-a1-root/production-whole-original.log.gz",
+      "originalBytes": 7254,
+      "originalSha256": "d19c26d11acc4424ff79740f8d17130e3a3c1fa2b01607a214e962144d5d5ad4",
+      "storedBytes": 7254,
+      "storedSha256": "d19c26d11acc4424ff79740f8d17130e3a3c1fa2b01607a214e962144d5d5ad4"
+    },
+    {
+      "path": "hrm-c12-original-metadata-a1-root/root-real-committed-cli-validation.json.gz",
+      "originalBytes": 8240,
+      "originalSha256": "c32a24bb3710967d3d6338ad7f3e76d725796077b324251b31e01e820edda465",
+      "storedBytes": 1740,
+      "storedSha256": "7547934ba3c6e8b46cb6a2eb3285c17504174634c81cf4a0552de4a880dd8039"
+    },
+    {
+      "path": "hrm-c12-original-metadata-a1-root/run-original.json.gz",
+      "originalBytes": 1790,
+      "originalSha256": "9220ac08367679a64944842754559cc5e71db6102a5d181e7d51e39ba0a12487",
+      "storedBytes": 1790,
+      "storedSha256": "9220ac08367679a64944842754559cc5e71db6102a5d181e7d51e39ba0a12487"
+    },
+    {
+      "path": "hrm-c12-original-metadata-a1-root/source-original-artifact.zip",
+      "originalBytes": 1384,
+      "originalSha256": "772cb0fba92361072fd227eebb420747e1eabdd75c7f494c88924db0ea417ce7",
+      "storedBytes": 1384,
+      "storedSha256": "772cb0fba92361072fd227eebb420747e1eabdd75c7f494c88924db0ea417ce7"
+    },
+    {
+      "path": "hrm-c12-original-metadata-a1-root/source-whole-original.log.gz",
+      "originalBytes": 11859,
+      "originalSha256": "775e78ff8f5552ba0bfb44ac22e312e9b3851abc9f7be27fdeda020abf2da86c",
+      "storedBytes": 11859,
+      "storedSha256": "775e78ff8f5552ba0bfb44ac22e312e9b3851abc9f7be27fdeda020abf2da86c"
+    },
+    {
+      "path": "hrm-c12-catalog-a1-after-inspection-public.json.gz",
+      "originalBytes": 1348,
+      "originalSha256": "84bfda08f2215358b21ab8b253d92d7538f601aa6e0a245ab6d7c1f3d6fb98e0",
+      "storedBytes": 464,
+      "storedSha256": "906e10f35f14acad3c2798acbdf8fe198fe7d9e3e37419de503d80b031e771cf"
+    },
+    {
+      "path": "hrm-c12-incoming-dcc-root/AGENTS.md.gz",
+      "originalBytes": 14273,
+      "originalSha256": "53fd9b3cc7614fa75d9748ad3caeffc71566bac47bacb877b5f9c879f104adc2",
+      "storedBytes": 6449,
+      "storedSha256": "abe03882e445b4c03bc80eab41f773e1cfdf2988c44b7eb9c705f4e00841b0d9"
+    },
+    {
+      "path": "hrm-c12-incoming-dcc-root/CLAUDE.md.gz",
+      "originalBytes": 45665,
+      "originalSha256": "673b4936cc7f252feb1ff43c9cf275bd2f277114524e5131bdf7733aca8edcb0",
+      "storedBytes": 16741,
+      "storedSha256": "646763b44499b85a0e5b7b1fc0a341b1c730711a6d08415746ba9e0f608bd32c"
+    },
+    {
+      "path": "hrm-c12-incoming-dcc-root/finite-summary.json.gz",
+      "originalBytes": 8957,
+      "originalSha256": "79d6a7c0f19c3dd5ad51dc1d000b7b07792e96604ad7c5042ffcc4bd5c3c0278",
+      "storedBytes": 2663,
+      "storedSha256": "c74f1b7d88e357ba2e7ea12e374dcebdd17677a869ec887ccdfa9403d13b833a"
+    },
+    {
+      "path": "hrm-c12-incoming-dcc-root/initial-reader-path-error-reproduction.stderr.gz",
+      "originalBytes": 110,
+      "originalSha256": "dca153393e7e696d4c94d862692e5acaf42e9dad06b9b6287cf78337aea53ea0",
+      "storedBytes": 115,
+      "storedSha256": "ae8434ee9dbe8cf1af0be77fad831f6b0cf8b52f5dd13386564e633c856efdd8"
+    },
+    {
+      "path": "hrm-c12-incoming-dcc-root/initial-reader-path-error.json.gz",
+      "originalBytes": 307,
+      "originalSha256": "39cee955604ad3575fb6f10a56fca9ac12b749117a2cb64fd0bc09b634616d96",
+      "storedBytes": 208,
+      "storedSha256": "47aa1111d82c393ece6053007dd57665630a12bad41e2fa814a56f354c1b6747"
+    },
+    {
+      "path": "hrm-c12-incoming-dcc-root/pr670-original.json.gz",
+      "originalBytes": 29758,
+      "originalSha256": "4077a5a81a507ee2cf99ad42b0de25a6301930fd7ef2920c81ad9e72233096ad",
+      "storedBytes": 4021,
+      "storedSha256": "970023ce55f95fe624a90e7a48b2e5d178c2ffcfae1ffc53c34ff32203ce8692"
+    },
+    {
+      "path": "hrm-c12-incoming-dcc-root/whole-original.diff.gz",
+      "originalBytes": 236263,
+      "originalSha256": "94cf8510a9e161df7ac6c1504714cfe0f833ab9c49c1e70c5b8be8897192d468",
+      "storedBytes": 63925,
+      "storedSha256": "5f3f5db85ecd71a8c71924b1969df5ee1cf099287365b7f45def457ba55848f0"
+    }
+  ]
+}
