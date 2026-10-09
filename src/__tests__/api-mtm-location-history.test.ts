@@ -411,4 +411,93 @@ describe("GET /api/v1/mtm/location-history", () => {
     expect((await GET(request("?agentId=agent-1&date=2026-09-10&toDate=2026-09-09"))).status).toBe(400)
     expect((await GET(request("?agentId=agent-1&date=2026-09-01&toDate=2026-09-14"))).status).toBe(200)
   })
+
+  // Found 2026-10-09 beside the live map's «День в цифрах»: the two screens
+  // told the same day differently, and History was the wrong one. The day's
+  // trip starts at its earliest anchor, and a visit begun on an earlier day
+  // was handed to it as one.
+  describe("the day's trip and a visit begun before the day", () => {
+    const utc = (clock: string, day = "2026-10-09") => new Date(`${day}T${clock}.000Z`)
+    // 08:00–08:50 Baku: fifty minutes on the road, a fix every thirty seconds.
+    const DRIVE_SECONDS = 50 * 60
+    const drive = Array.from({ length: 101 }, (_, index) => ({
+      id: `loc-${String(index).padStart(3, "0")}`,
+      latitude: 40.38 + 0.12 * index / 100,
+      longitude: 49.83 + 0.17 * index / 100,
+      accuracy: 8, speed: null, heading: null, battery: 80, isMoving: true,
+      recordedAt: new Date(utc("04:00:00").getTime() + index * 30_000),
+      workdayId: null,
+    }))
+    // Where the drive ended he went in for twenty minutes; the phone said nothing.
+    const atTheDoor = {
+      id: "at-the-door", customerId: "customer-1", status: "CHECKED_OUT",
+      checkInAt: utc("04:50:00"), checkOutAt: utc("05:10:00"), checkInLat: 40.5, checkInLng: 50,
+      customer: { name: "Pharmacy on the corner", address: null, latitude: 40.5, longitude: 50 },
+    }
+    // Three days earlier, 10:30 Baku, on the other side of town.
+    const begunEarlier = {
+      id: "begun-earlier", customerId: "customer-9", status: "CHECKED_IN",
+      checkInAt: utc("06:30:00", "2026-10-06"), checkOutAt: null as Date | null, checkInLat: 40.39, checkInLng: 49.85,
+      customer: { name: "Clinic 9", address: null, latitude: 40.39, longitude: 49.85 },
+    }
+
+    type DateBound = { gte?: Date; gt?: Date; lte?: Date; lt?: Date } | null
+    type VisitWhere = { checkInAt?: DateBound; checkOutAt?: DateBound; OR?: VisitWhere[] }
+    const within = (value: Date | null, bound: DateBound | undefined): boolean => {
+      if (bound === undefined) return true
+      if (bound === null || value === null) return bound === null && value === null
+      return (bound.gte == null || value >= bound.gte) && (bound.gt == null || value > bound.gt)
+        && (bound.lte == null || value <= bound.lte) && (bound.lt == null || value < bound.lt)
+    }
+    const visitMatches = (row: typeof begunEarlier, where: VisitWhere): boolean =>
+      within(row.checkInAt, where.checkInAt) && within(row.checkOutAt, where.checkOutAt)
+      && (!where.OR || where.OR.some((alternative) => visitMatches(row, alternative)))
+
+    /** The day as History tells it, the visits table answering the route's own question. */
+    async function read(visits: Array<typeof begunEarlier>) {
+      vi.mocked(prisma.mtmVisit.findMany).mockImplementation((async (args: { where: VisitWhere }) =>
+        visits.filter((row) => visitMatches(row, args.where))) as never)
+      const response = await GET(request("?agentId=agent-1&date=2026-10-09"))
+      expect(response.status).toBe(200)
+      return (await response.json()).data
+    }
+
+    beforeEach(() => {
+      vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "agent-1", name: "Agent One", role: "AGENT", team: null } as never)
+      vi.mocked(prisma.mtmAgentLocation.findMany).mockResolvedValue(drive as never)
+      vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue(null as never)
+      vi.mocked(prisma.mtmRoute.findMany).mockResolvedValue([] as never)
+    })
+
+    it("a visit forgotten open three days earlier does not turn fifty minutes on the road into seventy hours", async () => {
+      const plain = await read([atTheDoor])
+      expect(plain.trip.summary).toMatchObject({ movingSeconds: DRIVE_SECONDS, staySeconds: 20 * 60, visitCount: 1 })
+
+      const day = await read([begunEarlier, atTheDoor])
+      // Was 253 200 — «В пути 70 ч 20 мин»: from the forgotten check-in to the end of today's drive.
+      expect(day.trip.summary.movingSeconds).toBe(DRIVE_SECONDS)
+      expect(day.trip).toEqual(plain.trip)
+      // The visit itself is still the day's to show: it is open, and somebody has to close it.
+      expect(day.visits.map((visit: { id: string }) => visit.id)).toEqual(["begun-earlier", "at-the-door"])
+      expect(day.visits[0]).toMatchObject({ checkInAt: "2026-10-06T06:30:00.000Z", checkOutAt: null })
+      expect(day.summary.visitCount).toBe(2)
+      expect(day.evidencePack.visitIds).toEqual(["begun-earlier", "at-the-door"])
+      expect(day.timeline.map((event: { id: string }) => event.id)).toContain("visit-begun-earlier")
+    })
+
+    it("nor does one closed only this morning become three days of standing", async () => {
+      const plain = await read([atTheDoor])
+      // Closed at 07:30 Baku, half an hour before he set off.
+      const day = await read([{ ...begunEarlier, status: "CHECKED_OUT", checkOutAt: utc("03:30:00") }, atTheDoor])
+
+      expect(day.trip.summary).toMatchObject({ movingSeconds: DRIVE_SECONDS, staySeconds: 20 * 60, visitCount: 1 })
+      expect(day.trip).toEqual(plain.trip)
+      expect(day.visits[0]).toMatchObject({ id: "begun-earlier", checkOutAt: "2026-10-09T03:30:00.000Z" })
+    })
+
+    it("a visit that ended before the day is not the day's at all", async () => {
+      const day = await read([{ ...begunEarlier, status: "CHECKED_OUT", checkOutAt: utc("07:00:00", "2026-10-06") }, atTheDoor])
+      expect(day.visits.map((visit: { id: string }) => visit.id)).toEqual(["at-the-door"])
+    })
+  })
 })
