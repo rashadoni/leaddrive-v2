@@ -16419,6 +16419,13 @@
       "clients": "Müştərilər",
       "clientsHint": "bazadakı koordinatı olan müəssisələr",
       "heat": "İstilik xəritəsi",
+      "base": "Xəritənin görünüşü",
+      "baseMap": {
+        "voyager": "Xəritə",
+        "light": "Açıq",
+        "dark": "Tünd",
+        "satellite": "Peyk"
+      },
       "heatHint": "əməkdaşların ən çox olduğu yerlər",
       "hiddenAgents": "Gizlədilmiş əməkdaş: {count}",
       "showAll": "Hamısını göstər",

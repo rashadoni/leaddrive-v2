@@ -10,6 +10,11 @@ import {
 } from "@/lib/carto-basemap"
 
 type CartoBasemapProps = {
+  /**
+   * Another background than Voyager — the live map's «Светлая», «Тёмная»,
+   * «Спутник» (src/lib/mtm/live-map-base-maps.ts). Absent on every other map.
+   */
+  tiles?: { url: string; attribution: string; subdomains?: string } | null
   onLoading?: () => void
   onLoad?: () => void
   onError?: () => void
@@ -34,7 +39,7 @@ type CartoBasemapProps = {
  * neither `error` nor `load`, so nothing falls back. Vector needs the worker
  * shipped and a watchdog for that silence; it is a feature, not a CSP fix.
  */
-export function CartoBasemap({ onLoading, onLoad, onError }: CartoBasemapProps) {
+export function CartoBasemap({ tiles = null, onLoading, onLoad, onError }: CartoBasemapProps) {
   const map = useMap()
   const callbacksRef = useRef({ onLoading, onLoad, onError })
 
@@ -42,15 +47,23 @@ export function CartoBasemap({ onLoading, onLoad, onError }: CartoBasemapProps) 
     callbacksRef.current = { onLoading, onLoad, onError }
   }, [onError, onLoad, onLoading])
 
+  // By value, not by object: the page hands a new object on every render,
+  // and the tiles must not be torn down and asked for again each time.
+  const tileUrl = tiles?.url ?? null
+  const tileAttribution = tiles?.attribution ?? ""
+  const tileSubdomains = tiles?.subdomains ?? null
+
   useEffect(() => {
     const reportLoading = () => callbacksRef.current.onLoading?.()
     const reportLoad = () => callbacksRef.current.onLoad?.()
     const reportError = () => callbacksRef.current.onError?.()
 
     reportLoading()
-    const layer = L.tileLayer(CARTO_VOYAGER_RASTER_TILE_URL, {
-      attribution: CARTO_VOYAGER_ATTRIBUTION,
-      subdomains: CARTO_VOYAGER_RASTER_SUBDOMAINS,
+    const layer = L.tileLayer(tileUrl ?? CARTO_VOYAGER_RASTER_TILE_URL, {
+      attribution: tileUrl ? tileAttribution : CARTO_VOYAGER_ATTRIBUTION,
+      ...(tileUrl
+        ? (tileSubdomains ? { subdomains: tileSubdomains } : {})
+        : { subdomains: CARTO_VOYAGER_RASTER_SUBDOMAINS }),
     })
     layer.on({
       tileerror: reportError,
@@ -63,7 +76,7 @@ export function CartoBasemap({ onLoading, onLoad, onError }: CartoBasemapProps) 
     return () => {
       layer.remove()
     }
-  }, [map])
+  }, [map, tileUrl, tileAttribution, tileSubdomains])
 
   return null
 }
