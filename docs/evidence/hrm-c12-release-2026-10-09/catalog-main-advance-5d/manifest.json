@@ -1,0 +1,217 @@
+{
+  "archivedAtUtc": "2026-10-09T22:30:06.612087+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-c12-catalog-main-5d-scope/erp-parent-commit.txt",
+      "originalBytes": 187,
+      "originalSha256": "cf4be8764e3a560b6366fc241b25183a1c38ea535b80925db69f1ba7ea58d448",
+      "storedBytes": 187,
+      "storedSha256": "cf4be8764e3a560b6366fc241b25183a1c38ea535b80925db69f1ba7ea58d448"
+    },
+    {
+      "path": "hrm-c12-catalog-main-5d-scope/finite-summary.json.gz",
+      "originalBytes": 3655,
+      "originalSha256": "e59e11202e80dec32f421b3a83c043dd41038f1c11b650dcf5c439c07a26b648",
+      "storedBytes": 1267,
+      "storedSha256": "bda63af0003c8558f27500a5d801079f4cd9c3c521dd35a193476c0f88823440"
+    },
+    {
+      "path": "hrm-c12-catalog-main-5d-scope/latest-commit.txt",
+      "originalBytes": 192,
+      "originalSha256": "6a5eb402ffe5cc4e9d2f5f56af8d59e404be02decdb6532936ff9038f51c149b",
+      "storedBytes": 192,
+      "storedSha256": "6a5eb402ffe5cc4e9d2f5f56af8d59e404be02decdb6532936ff9038f51c149b"
+    },
+    {
+      "path": "hrm-c12-catalog-main-5d-scope/scope-original.diff.gz",
+      "originalBytes": 568415,
+      "originalSha256": "60c79a7b66cfac7d447586fb81f1702da79d81419c26ae75e620a3e5ffc1119d",
+      "storedBytes": 137239,
+      "storedSha256": "1343c5982475f8d8ee452e80966d8c21d224ec2b69ef4d0fb87eb1321deb2c93"
+    },
+    {
+      "path": "hrm-c12-catalog-main-c695-cancelled/finite-summary.json.gz",
+      "originalBytes": 507,
+      "originalSha256": "c8e2bf01d29c207232557fba52a1ab865eabf28af71321b9eee1bcb2c0f76ffb",
+      "storedBytes": 375,
+      "storedSha256": "138628134bf0731f7f5dc0d004cde6114e5e955ea99366a8300802ea1957eae4"
+    },
+    {
+      "path": "hrm-c12-catalog-main-c695-cancelled/job-original.gz",
+      "originalBytes": 776,
+      "originalSha256": "38fece106fa77841a13c40bcafaddb6a448e1f16390a8eecbec20b6499c235a6",
+      "storedBytes": 776,
+      "storedSha256": "38fece106fa77841a13c40bcafaddb6a448e1f16390a8eecbec20b6499c235a6"
+    },
+    {
+      "path": "hrm-c12-catalog-main-c695-cancelled/run-original.gz",
+      "originalBytes": 1547,
+      "originalSha256": "2ade4deadda497e06be3481e6e2fedc7ea6a3cc85c5d417a456b39897fd50745",
+      "storedBytes": 1547,
+      "storedSha256": "2ade4deadda497e06be3481e6e2fedc7ea6a3cc85c5d417a456b39897fd50745"
+    },
+    {
+      "path": "hrm-c12-catalog-main-c695-cancelled/whole-type-log-original.gz",
+      "originalBytes": 4520,
+      "originalSha256": "bccf1ca2e26f31021e7ae62f25be850b89d1a1249f309eaed6f651becd22abf0",
+      "storedBytes": 4520,
+      "storedSha256": "bccf1ca2e26f31021e7ae62f25be850b89d1a1249f309eaed6f651becd22abf0"
+    },
+    {
+      "path": "hrm-c12-foreign88-deploy-peer-review.json.gz",
+      "originalBytes": 15203,
+      "originalSha256": "2f4e6dded63e296f2f956e178b24e96145cec924ddbb046f33dc3c6a5b23d3c7",
+      "storedBytes": 4561,
+      "storedSha256": "f6c02221ef9eb4188c451269657dba4f8861d89e80dc662b7839562f5067c661"
+    },
+    {
+      "path": "hrm-c12-foreign88-deploy-peer/artifact-original.json.gz",
+      "originalBytes": 463,
+      "originalSha256": "82078c7fe7ccfb0402e27f5306543739c532d0830b5f49ba273884da1c8cdfee",
+      "storedBytes": 463,
+      "storedSha256": "82078c7fe7ccfb0402e27f5306543739c532d0830b5f49ba273884da1c8cdfee"
+    },
+    {
+      "path": "hrm-c12-foreign88-deploy-peer/artifacts-raw-original-api.json.gz",
+      "originalBytes": 762,
+      "originalSha256": "1b775d71e4c0592f9389ff0005002bb3573146321e8839ef10f74baddc9d93cc",
+      "storedBytes": 430,
+      "storedSha256": "753510b1b085bb49a26ca4dccefee0dbadb64c6d8560ab50ed5076f462edee5c"
+    },
+    {
+      "path": "hrm-c12-foreign88-deploy-peer/build-original-log.txt.gz",
+      "originalBytes": 31911,
+      "originalSha256": "248349589f258761af29cc9cef5893fdc4f1baf62143696b1f1ab9df3d217730",
+      "storedBytes": 31911,
+      "storedSha256": "248349589f258761af29cc9cef5893fdc4f1baf62143696b1f1ab9df3d217730"
+    },
+    {
+      "path": "hrm-c12-foreign88-deploy-peer/capture-original-stderr.txt",
+      "originalBytes": 0,
+      "originalSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "storedBytes": 0,
+      "storedSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "hrm-c12-foreign88-deploy-peer/capture-original-stdout.txt",
+      "originalBytes": 214,
+      "originalSha256": "88905df91be2a1a97cf79891619ab37f7e6a709a67f259733f10446f59b6da54",
+      "storedBytes": 214,
+      "storedSha256": "88905df91be2a1a97cf79891619ab37f7e6a709a67f259733f10446f59b6da54"
+    },
+    {
+      "path": "hrm-c12-foreign88-deploy-peer/checks-original-log.txt.gz",
+      "originalBytes": 59615,
+      "originalSha256": "ccaeedcc36d92808704f3bddfcf4ce50ba09408d52c99b0d84a467975013b91e",
+      "storedBytes": 59615,
+      "storedSha256": "ccaeedcc36d92808704f3bddfcf4ce50ba09408d52c99b0d84a467975013b91e"
+    },
+    {
+      "path": "hrm-c12-foreign88-deploy-peer/current-main-report-api.json.gz",
+      "originalBytes": 342,
+      "originalSha256": "fe4832e03eee62456345705f6c5cc286c9c728cd2fa25decd22c697e8e36770b",
+      "storedBytes": 211,
+      "storedSha256": "3568e69d84697fd358733a1b9abd5f3fbf9b91930c262d8d8507d38810c66453"
+    },
+    {
+      "path": "hrm-c12-foreign88-deploy-peer/deploy-finite-summary.json.gz",
+      "originalBytes": 11811,
+      "originalSha256": "737a289dcee468633e464e05b2a21bff948ae844e6cb9806ef1fe4a584ae1897",
+      "storedBytes": 2233,
+      "storedSha256": "901962712aaa1632d03a666d1139c6fa18e1d2ad04dcf04fd7a9ae55e06210b1"
+    },
+    {
+      "path": "hrm-c12-foreign88-deploy-peer/deploy-original-log.txt.gz",
+      "originalBytes": 25173,
+      "originalSha256": "d340beb78fee93f529c93195d6c1a876ae79848daa178f7c1e278cf6a13c52d7",
+      "storedBytes": 25173,
+      "storedSha256": "d340beb78fee93f529c93195d6c1a876ae79848daa178f7c1e278cf6a13c52d7"
+    },
+    {
+      "path": "hrm-c12-foreign88-deploy-peer/foreign88-public-bracket.json.gz",
+      "originalBytes": 1327,
+      "originalSha256": "8a59080075b6b269cb6e5f23c6fd268ee7776352fbf31bb5ebb141d142c6b7cb",
+      "storedBytes": 445,
+      "storedSha256": "f945bacffc3ccd6c3a7fe16509b0c6faea4077c33eb9d076385085e56097f58c"
+    },
+    {
+      "path": "hrm-c12-foreign88-deploy-peer/inspection-warning-original.txt",
+      "originalBytes": 55,
+      "originalSha256": "27f9acf9c49d83d767de56f0eb4d96232cdf000e4fca034e74fbe90adfdfe764",
+      "storedBytes": 55,
+      "storedSha256": "27f9acf9c49d83d767de56f0eb4d96232cdf000e4fca034e74fbe90adfdfe764"
+    },
+    {
+      "path": "hrm-c12-foreign88-deploy-peer/jobs-original.json.gz",
+      "originalBytes": 2835,
+      "originalSha256": "cd54993669e1b21f09dabd81e2f81096f3844e17ec7189153d4b80f788f9bec4",
+      "storedBytes": 2835,
+      "storedSha256": "cd54993669e1b21f09dabd81e2f81096f3844e17ec7189153d4b80f788f9bec4"
+    },
+    {
+      "path": "hrm-c12-foreign88-deploy-peer/jobs-raw-original-api.json.gz",
+      "originalBytes": 20927,
+      "originalSha256": "f28fbb06af91a70d889d91dfbf0a8c357f635d6edf9a796ff1889062258b3635",
+      "storedBytes": 2703,
+      "storedSha256": "be44d6405cf9dd8391eab029ae997a22f11296e5a4b54a7d7f28d805cd24350f"
+    },
+    {
+      "path": "hrm-c12-foreign88-deploy-peer/main-after-public-original-api.json.gz",
+      "originalBytes": 342,
+      "originalSha256": "1387c46bd67b7377a24c5501f6496692839d6cf7b36a8db7404a7b5d81be9f10",
+      "storedBytes": 215,
+      "storedSha256": "a2a45b0489fa16a065f4ba09c7d5d57806001237fe8d6bb7e38e83206404885e"
+    },
+    {
+      "path": "hrm-c12-foreign88-deploy-peer/main-before-public-original-api.json.gz",
+      "originalBytes": 342,
+      "originalSha256": "1387c46bd67b7377a24c5501f6496692839d6cf7b36a8db7404a7b5d81be9f10",
+      "storedBytes": 215,
+      "storedSha256": "a2a45b0489fa16a065f4ba09c7d5d57806001237fe8d6bb7e38e83206404885e"
+    },
+    {
+      "path": "hrm-c12-foreign88-deploy-peer/public-proof-original-stderr.txt",
+      "originalBytes": 0,
+      "originalSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "storedBytes": 0,
+      "storedSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "hrm-c12-foreign88-deploy-peer/public-proof-original-stdout.txt",
+      "originalBytes": 139,
+      "originalSha256": "5dc4863ebaba13f849ddac9e5c94c0466a7bce6df9b905e5d8dbf229827e76fa",
+      "storedBytes": 139,
+      "storedSha256": "5dc4863ebaba13f849ddac9e5c94c0466a7bce6df9b905e5d8dbf229827e76fa"
+    },
+    {
+      "path": "hrm-c12-foreign88-deploy-peer/retention-original-log.txt.gz",
+      "originalBytes": 2600,
+      "originalSha256": "e2ab4bbb8957945da50525025480a5044b553a5add747fdb4ad8ffd6afa1be79",
+      "storedBytes": 2600,
+      "storedSha256": "e2ab4bbb8957945da50525025480a5044b553a5add747fdb4ad8ffd6afa1be79"
+    },
+    {
+      "path": "hrm-c12-foreign88-deploy-peer/run-original.json.gz",
+      "originalBytes": 1732,
+      "originalSha256": "23e4864e42e822a00b8e6bd51614c5ffdc0f4597b7c8d71d15fe755648c3429b",
+      "storedBytes": 1732,
+      "storedSha256": "23e4864e42e822a00b8e6bd51614c5ffdc0f4597b7c8d71d15fe755648c3429b"
+    },
+    {
+      "path": "hrm-c12-foreign88-deploy-peer/run-raw-original-api.json.gz",
+      "originalBytes": 12473,
+      "originalSha256": "8d6889c26360b369a783681c943b0869f692edecc72a850aa8dffacf060d1d21",
+      "storedBytes": 1636,
+      "storedSha256": "db9c065a2f9f302d65d11071082cf22c2a925f79ae1a9231a7103b16d2680799"
+    },
+    {
+      "path": "manifest-original-before-diff-compression.json",
+      "originalBytes": 9617,
+      "originalSha256": "1c4bc4af7f069701498f900c4838f88da0506a2368359a219b1ab9c9c3cdf783",
+      "storedBytes": 9617,
+      "storedSha256": "1c4bc4af7f069701498f900c4838f88da0506a2368359a219b1ab9c9c3cdf783"
+    }
+  ],
+  "initialPlainDiffWhitespaceCheck": "FAIL_EXIT2_STANDARD_GIT_DIFF_CONTEXT_BLANK_LINES; original bytes retained in full gzip; original manifest preserved"
+}
