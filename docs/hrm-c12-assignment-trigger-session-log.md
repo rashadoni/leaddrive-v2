@@ -149,3 +149,157 @@ no repinninghistoricalSHA. Four sourceworkflow pathfilters now include bounded
 fixture directory. Final review/PG/fullfivechecks PENDING; ownsourcechanges only.
 
 Actual sequential narrow Node checks: default13PASS/1PGSKIP, loopback15PASS/1PGSKIP, backup13PASS/1PGSKIP; originalTAPretained. ResourceRAMavailable11248MiB,disk265GiB; no fullcompiler/build/install/browser/PG onContabo. Runner53/diff/syntax PASS. Independent reviewer confirms original7-sourcechecksumchain and no extra frozenchecksum consumers; sixsnapshots .txt prevent testdiscovery, exactcurrentbindings and SQLdelta/prodblock proof required.
+
+
+## 2026-10-09 — frozen3da hosted source and all linked ACL regressions pass
+
+Source3da6e4b5e809e5bc9cf1641df47b4e2b3a3d85f3 frozen. Separate evidenceworktree
+branchcodex/hrm-c12-assignment-trigger-evidence-20261009 created fromexactsource;
+future journal/receipts cannot invalidate finalsourceSHA. Actualfirst4freshPG16
+sourcejobs metadata37969105950/default37969105918/loopback37969105881/backup
+37969105942 SUCCESS, allproductionjobs SKIPPED. Eachactualcheckout40SHA verified,
+receiptZIPCRC/singleJSON/all8sourcebindings/7casePASS/cleanupPASS accepted.
+AllsubsequentACLtests executed, not bypassed; exactfiniteTAPcounts in
+final-3da/hosted-source-summary.json, 0FAIL/0SKIP. Originalenv/hash failures and
+intermediatePASS retained separately; baselines unchanged. Fullmandatoryfive
+stillPENDING. PR657 finalbase648/cdaf is dependent; main-onlymandatory5 require
+reversible sameSHAvalidation againstactualmain729, syntheticparents/tree must
+matchfrozen3da beforeREADY. No productionjob/dispatch/merge/deploy involved.
+C12 realrestoredcopy/replay/load/physical/pilot/restore blockers unchanged;
+85DONE/76open/61%/14of15 gates and no newtaskclosure.
+
+
+## 2026-10-09 — exact-source independent PASS; complete GitHub gate event
+
+Independentexact3da sourcePASS/P0-P1-P2zero, originalreport51746bytes/SHA256
+85b5af5d7cfbdfaa77a79692d96b05fa0bfdcc8df64427f7da1ea058e87e834d retained gzip;
+607/d751reviews remain intermediate and originalbytes separately preserved.
+All4actualsourcejobs PASS69distinctTAP (25+14+16+14, repeated acrossworkflows),
+noPGskip. Rootactual18commits728885-byte narrowgitleaks8.30.1exit0; protectedC6
+outcomes/policy/helper/2baselines/gitleaks/prchecks exactintegratedmain729.
+FreshPR589/605/608 alreadymerged bypriorauthorizedrelease;606/609 CLOSED/unmerged;
+oldaccepted973/archivec123/releasedf308/frozen648 are actual3da ancestors.
+
+Temporarily changedPR657 base from648 toactualmain729 toexercise originalmain
+requiredchecks. First immediate refs/pull/657/merge fetch returnedstale0f556 with
+oldbasecdaf/source3da/tree1e752; parentassertFAILED1 preserved, but READY command
+continued duemissing shellfailfast. This was a publicationproof mistake, not
+acceptedverification. Nextfreshfetchactual8b6c parents729/3da/tree1e752 equals
+exact3datree, acceptedcorrectedproof. No source/head/baseline or productionchange.
+FirstREADYrun37969645905 startsfullstatic/type (notdraftSKIP). Secret scan only
+handlesmainPRdefaultopen/sync/reopen events, so no3dascan fromREADY. Reopened
+sameunchangedPR totrigger originalworkflows/allfive; initialREADYrun cancellation
+will be preserved if concurrency cancels it. This is a CIevent correction, not
+weakenedchecks or substitutedlocalgreen. Restore dependent648baseandDRAFT only
+once actualfiveApp15368contexts SUCCESS and independenthosted/compilerreview.
+Mandatoryfullcompiler/static/schema/export finalchecks stillPENDING. No build,
+browser/realrestore/load/physical/pilot/productionHR credit from thissource-onlyslice.
+
+
+## 2026-10-09 — independent hosted PASS; mandatory run queue
+
+Independent hostedreport18993bytes/SHA e6048edf2535bf5cffb1946ce1e4321c3f95cd9160cb25ea8e7b38eec1ec777a
+confirms all4GitHubAPI runs/jobs, exacthead/log/sourcebytes/ZIP CRC/equality,
+69distinctsuiteentries and188executedTAP entriesincludingrepeat, nofailure/skip.
+Newreopened-main run37969838236 pendingbehindinitialREADY37969645905 (install
+stepsactive); ownsource unchanged and allrequiredheavy gates remainPENDING,
+no SKIPPED passclaim. Currentexactsource reopenedrunner37969838283/scan37969838433
+SUCCESS, schema37969838300/export37969838252 actualjobs PASS, pending capture.
+Fourmetadata/ACL repeatedreopenedruns alsoSUCCESS/no productionjobs. No previous
+C6/browser/build/deploy evidence borrowed for thissource-onlyslice.
+
+
+## 2026-10-09 — exact132 targeted regressions accepted; later main qualified
+
+Main-event replays4HRM+schema42+exporter21 archived ZIP/loggzip originalbytes;
+source8/9/11bindings, ordinary13sourceSHA checkout, originalroles/facts/cleanup
+allPASS. Independentregressionreport27355bytes/SHA
+e61d0f7fd38c7627c1a0fb1071c928d6c7a90c8568947ac62e3368f7bb9d941a retained.
+132distinctTAPentries total69+42+21, zeroFAIL/SKIP; syntheticselectedDDL alone,
+notfullhistorical/restoredcopy or realoperations. InitialREADY37969645905 actual
+CANCELLED by concurrency onreopen; logs/jobreceipts preserved with nocredit.
+Mainfullrun37969838236/static113954075718/type113954075759 nowactive, no cancellation
+retry/localheavy substitute. Scope/scan/runneractualSUCCESS; 2fullgatesPENDING.
+
+DuringfrozenCI, unrelatedPR656 acceptedupstream maina791be2f5581e70bf4887800866b4406c789b09a
+adds15MTM/CARTO/package/serviceworkerpaths. NoHRM/routing/AGENTS path. Do not chase
+maininto frozen3da or borrowlatermainacceptance; actualrun eventbase729/source3da
+mustbind wholecheckouttree1e752. FinaldependentPRbase648 unchangedsourcechain,
+any futurerelease needsfreshintegration/review/CI/authorization. No currentmerge,
+deploy, activation, secrets/access/Support/personneldoc changes. This evidence
+checkpoint has full5PENDING truthfully and sourceheadremainsfrozen.
+
+
+## 2026-10-09 — независимая приёмка общего тестового gate
+
+PR658 опубликован как зависимый draft и прикреплён к задаче. Исходный PR657
+сохраняет head 3da6e4b5e809e5bc9cf1641df47b4e2b3a3d85f3. Обязательный
+static-checks (run37969838236, job113954075718) завершился SUCCESS. Все 26 шагов
+прошли, включая прежние проверки базы. Строгий guard подтвердил 18 ошибочных
+файлов и те же 18 записей baseline; глобально набор тестов не чистый.
+Независимый отчёт11949bytes/SHA9e680d6f466d1dfc7eff5ba80a0a911f8ad375fb392365eef367d7b78c127322
+и полный исходный лог226827bytes/SHA92f35ebdee443f815988be8bebd5fae7db8d1b30cd238084e15924c406ec72fc
+сохранены без изменения байтов в gzip. Реальный checkout —8b6c, родители729/3da,
+дерево1e752 совпадает с финальным исходником. Финальная типизация ещё выполняется;
+её прохождение и приёмка всех пяти проверок не заявляются заранее.
+
+Уточнение прежней записи: «ordinary13sourceSHA» — ошибочная текстовая метка,
+не количество доказательств. Реальные привязки: 8 исходников в metadata receipt,
+9 в schema receipt, 11 в exporter receipt; точные checkout подтверждены логами.
+UI/build/реальная восстановленная копия/полный replay/эксплуатация — NOT RUN
+для текущего среза, без переноса прежней C6 приёмки на этот результат. C12 остаётся
+PARTIAL:85/161DONE,76открыты,61%,14/15gates. Production, доступы, секреты, Support
+и кадровые документы в текущем продолжении не изменялись этим исполнителем.
+
+
+## 2026-10-09 — финальные пять gates пройдены; зависимый draft восстановлен
+
+Полный GitHub run37969838236 завершился SUCCESS. Реальные GitHub Actions checks
+App15368 для исходного3da: pr-scope113953949200,static113954075718,
+type113954075759,runner113953342994,scan113953345161 — SUCCESS. Root сверил API,
+реальные checkout в пяти полных логах и дерево1e752 с финальным исходником.
+Компилятор завершилсяexit2:1154диагностики,35семейств. Это глобально не чистая
+типизация. Строгое равенство 64 gated file/code пар с прежним baseline подтверждено;
+новых ошибок синтаксиса/импортов/имён нет. Общий набор тестов также глобально
+не чистый:18известных ошибочных файлов, строгий baseline guard прошёл.
+Полные исходные логи пяти checks сохранены побайтно в gzip вместе с конечными
+сводками. Ни baseline, ни workflow gate не менялись ради результата.
+
+PR657 возвращён в OPEN DRAFT с зависимой базой frozenPR648/cdaf. Head остаётся
+3da6e4b5e809e5bc9cf1641df47b4e2b3a3d85f3; исходная рабочая ветка чистая.
+PR658 хранит документы отдельно, чтобы не менять проверенный исходник.
+Финальный независимый compiler/all-five review пока ожидается; предыдущие review
+не выдаются за него. Merge/deploy/production/доступы/секреты/активация не выполнялись.
+C12PARTIAL,85/161DONE,76открыты,61%,14/15gates. Точная оставшаяся граница:
+согласованная восстановленная копия с provenance и прежний полный replay blocker
+20260811150000_zapier_webhook_api_key_provenance после391,P3018/42P01/api_keys.
+Реальные эксплуатационные/физические/pilot/restore наблюдения — NOT RUN.
+
+
+## 2026-10-09 — финальный независимо проверенный результат
+
+Независимая финальная приёмка завершена PASS, блокирующихP0/P1/P2нет. Оригинал
+отчёта27487bytes/SHA34bea358bffef5545c8c7d4fafc446fc2bccae40083a4bca4e82bc8b760d2d24
+сохранён побайтно в gzip. Reviewer первоначально включил префикс GitHub annotation
+в имя файла при сравнении64пар; эта ошибка чтения записана и исправлена в отчёте.
+Проверки кода и baseline из-за неё не менялись. Все пять текущих App15368 checks,
+полные исходные логи и совпадение дерева с3da подтверждены независимо.
+132 целевых TAP-записи прошли без ошибок/пропусков. Полные compiler/suite остаются
+глобально не чистыми (1154/35/exit2,18ошибочныхфайлов); строгие64/18 baseline
+совпали, не ослаблены. Исходные ошибки и все повторные результаты сохранены.
+
+Текущее состояние: проверенная реализация на3da в зависимом draftPR657→basePR648;
+доказательства в draftPR658→basePR657. Проверенные исходники больше не менялись.
+Последняя завершённая содержательная операция: финальное независимое review
+исходников, PostgreSQL/CLI регрессий и обязательных gates. Точка остановки:
+реальная восстановленная копия с provenance не предоставлена; полный replay
+после391 миграций ранее заблокирован api_keys/P3018/42P01. Следующее действие:
+проверить предоставленную согласованную копию и полный исторический replay;
+реальные эксплуатационные/физические/pilot/restore критерии потребуют собственных
+наблюдений и отдельного разрешённого контекста. Не заменять их синтетикой.
+
+C6-010/C7-007/C8-002DONE; C12PARTIAL. Учёт остаётся85/161DONE,76открыты,61%,14/15.
+NOT RUN в текущем срезе: UI/build,полныйисторическийreplay,реальныеоперационные
+наблюдения,productionHR. Merge/deploy/активация/production/доступы/секреты/Support
+и кадровые документы не выполнялись. Последующие измененияmaina791 не покрыты
+этой приёмкой; любое будущее слияние/выпуск потребует свежей интеграции и проверки.
