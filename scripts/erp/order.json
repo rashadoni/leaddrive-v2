@@ -1,0 +1,1296 @@
+{
+ "cards": [
+  {
+   "number": "001",
+   "slice": 0,
+   "slug": "registry-to-repo",
+   "title": "Реестр правил и команды — в репозиторий, проверка в GitHub",
+   "kind": "work",
+   "after": [],
+   "parallel_ok": false,
+   "prep": true,
+   "rules": [],
+   "steps": 8
+  },
+  {
+   "number": "002",
+   "slice": 0,
+   "slug": "client-questionnaire-and-sample-file",
+   "title": "Анкета клиенту и проба файла для 1С",
+   "kind": "work",
+   "after": [
+    "001"
+   ],
+   "parallel_ok": true,
+   "rules": [
+    "u4-D-9.1"
+   ],
+   "steps": 8,
+   "evidence_rules": [
+    "u4-D-9.1"
+   ]
+  },
+  {
+   "number": "003",
+   "slice": 0,
+   "slug": "look-sessions-demo",
+   "title": "Просмотр живой 1С: сеансы 1, 1а, 3 и 4",
+   "kind": "work",
+   "after": [
+    "001"
+   ],
+   "parallel_ok": true,
+   "prep": true,
+   "rules": [],
+   "steps": 9
+  },
+  {
+   "number": "004",
+   "slice": 0,
+   "slug": "backup-and-restore-drill",
+   "title": "Копии базы LeadDrive и пробное восстановление",
+   "kind": "work",
+   "after": [
+    "001"
+   ],
+   "parallel_ok": true,
+   "prep": true,
+   "rules": [],
+   "steps": 6
+  },
+  {
+   "number": "005",
+   "slice": 0,
+   "slug": "typecheck-memory-probe",
+   "title": "Замер памяти проверки типов на схеме новых таблиц",
+   "kind": "work",
+   "after": [
+    "001"
+   ],
+   "parallel_ok": false,
+   "prep": true,
+   "rules": [],
+   "steps": 7
+  },
+  {
+   "number": "006",
+   "slice": 0,
+   "slug": "remove-old-inventory-stub",
+   "title": "Удаление старой заготовки склада",
+   "kind": "work",
+   "after": [
+    "005"
+   ],
+   "parallel_ok": false,
+   "prep": true,
+   "rules": [],
+   "steps": 7
+  },
+  {
+   "number": "007",
+   "slice": 0,
+   "slug": "modules-warehouse-accounting",
+   "title": "Модули «Склад» и «Бухгалтерия» в меню",
+   "kind": "work",
+   "after": [
+    "006"
+   ],
+   "parallel_ok": false,
+   "prep": true,
+   "rules": [],
+   "steps": 10
+  },
+  {
+   "number": "008",
+   "slice": 0,
+   "slug": "organization-and-settings-menu",
+   "title": "Организация учёта и меню настроек",
+   "kind": "work",
+   "after": [
+    "007"
+   ],
+   "parallel_ok": false,
+   "rules": [
+    "u1-A-01",
+    "u1-A-02",
+    "u1-A-04",
+    "u1-A-05",
+    "u1-A-06",
+    "u1-A-07",
+    "u1-A-08",
+    "u1-A-23"
+   ],
+   "steps": 8
+  },
+  {
+   "number": "009",
+   "slice": 0,
+   "slug": "chart-of-accounts",
+   "title": "План счетов поставкой",
+   "kind": "work",
+   "after": [
+    "008"
+   ],
+   "parallel_ok": false,
+   "rules": [
+    "u1-A-24",
+    "u1-A-31",
+    "u1-A-32",
+    "u1-A-33",
+    "u1-A-35"
+   ],
+   "steps": 8
+  },
+  {
+   "number": "010",
+   "slice": 0,
+   "slug": "taxes-and-accounting-policy",
+   "title": "«Налоги и отчёты» и «Учётная политика»",
+   "kind": "work",
+   "after": [
+    "009"
+   ],
+   "parallel_ok": false,
+   "rules": [
+    "u1-A-09",
+    "u1-A-10",
+    "u1-A-11",
+    "u1-A-12",
+    "u1-A-15",
+    "u1-A-17",
+    "u1-A-18",
+    "u1-A-19",
+    "u1-A-21",
+    "u1-A-22",
+    "u1-A-22a"
+   ],
+   "steps": 8
+  },
+  {
+   "number": "011",
+   "slice": 0,
+   "slug": "gate-slice-0",
+   "title": "Ворота среза 0: готовность",
+   "kind": "gate",
+   "after": [
+    "002",
+    "003",
+    "004",
+    "010"
+   ],
+   "parallel_ok": false,
+   "rules": [],
+   "who": [
+    "client",
+    "owner"
+   ]
+  },
+  {
+   "number": "012",
+   "slice": 1,
+   "slug": "nomenclature",
+   "title": "«Номенклатура» и её справочники, загрузка из файла",
+   "kind": "work",
+   "after": [
+    "011"
+   ],
+   "parallel_ok": false,
+   "rules": [
+    "u1-A-45",
+    "u1-A-51",
+    "u1-A-52",
+    "u1-A-54",
+    "u1-A-55",
+    "u2-B-205",
+    "u2-B-206",
+    "u1-A-64"
+   ],
+   "steps": 8
+  },
+  {
+   "number": "013",
+   "slice": 1,
+   "slug": "warehouses-counterparties-settings",
+   "title": "«Склады», «Контрагенты», статьи и настройки проведения",
+   "kind": "work",
+   "after": [
+    "012"
+   ],
+   "parallel_ok": false,
+   "rules": [
+    "u2-B-208",
+    "u2-B-209",
+    "u1-A-57",
+    "u2-B-212",
+    "u1-A-25a",
+    "u1-A-29",
+    "u1-A-30"
+   ],
+   "steps": 8
+  },
+  {
+   "number": "014",
+   "slice": 1,
+   "slug": "document-frame",
+   "title": "Общее для всех документов: номер, числа, режим цен, команды",
+   "kind": "work",
+   "after": [
+    "013"
+   ],
+   "parallel_ok": false,
+   "rules": [
+    "u1-A-66",
+    "u1-A-68",
+    "u1-A-69",
+    "u1-A-14",
+    "u3-N-09",
+    "u3-N-09a",
+    "u3-K-01",
+    "u2-B-302",
+    "u2-B-304",
+    "u4-D-1.1",
+    "u4-D-1.5"
+   ],
+   "steps": 8
+  },
+  {
+   "number": "015",
+   "slice": 1,
+   "slug": "receipt-quantity-posting",
+   "title": "«Поступление»: приход на склад и основа проведения",
+   "kind": "work",
+   "after": [
+    "014"
+   ],
+   "parallel_ok": false,
+   "rules": [
+    "u2-B-401",
+    "u2-B-402",
+    "u2-B-403",
+    "u2-B-404",
+    "u2-B-405",
+    "u2-B-306",
+    "u4-D-1.3",
+    "u4-D-1.4",
+    "u3-E-01",
+    "u3-E-02"
+   ],
+   "steps": 8
+  },
+  {
+   "number": "016",
+   "slice": 1,
+   "slug": "sale-and-crm-invoice",
+   "title": "«Реализация» и счёт CRM: расход со склада",
+   "kind": "work",
+   "after": [
+    "015"
+   ],
+   "parallel_ok": false,
+   "rules": [
+    "u2-B-411",
+    "u2-B-412",
+    "u2-B-413",
+    "u2-B-414",
+    "u2-B-312",
+    "u2-B-316",
+    "u3-CH-01",
+    "u3-CH-02",
+    "u3-CH-03",
+    "u3-CH-06"
+   ],
+   "steps": 8
+  },
+  {
+   "number": "017",
+   "slice": 1,
+   "slug": "stock-in-out-and-opening-quantity",
+   "title": "Оприходование, списание, требование-накладная и остатки на начало количеством",
+   "kind": "work",
+   "after": [
+    "016"
+   ],
+   "parallel_ok": false,
+   "rules": [
+    "u2-B-441",
+    "u2-B-442",
+    "u2-B-451",
+    "u2-B-452",
+    "u2-B-461",
+    "u1-A-81",
+    "u1-A-82"
+   ],
+   "steps": 8
+  },
+  {
+   "number": "018",
+   "slice": 1,
+   "slug": "transfer-and-stocktake",
+   "title": "«Перемещение товаров» и «Инвентаризация товаров»",
+   "kind": "work",
+   "after": [
+    "017"
+   ],
+   "parallel_ok": false,
+   "rules": [
+    "u2-B-421",
+    "u2-B-422",
+    "u2-B-425",
+    "u2-B-431",
+    "u2-B-432",
+    "u2-B-433",
+    "u2-B-434"
+   ],
+   "steps": 8
+  },
+  {
+   "number": "019",
+   "slice": 1,
+   "slug": "warehouse-reports-and-eqaime",
+   "title": "Отчёты кладовщика, отчёт «Наличие e-qaimə», номер e-qaimə в проведённом документе",
+   "kind": "work",
+   "after": [
+    "018"
+   ],
+   "parallel_ok": false,
+   "rules": [
+    "u3-E-03",
+    "u3-E-04",
+    "u3-E-06",
+    "u3-E-08",
+    "u2-B-801",
+    "u2-B-802",
+    "u2-B-803",
+    "u2-B-805",
+    "u2-B-902",
+    "u2-B-903"
+   ],
+   "steps": 8,
+   "held": [
+    {
+     "rule": "u2-B-902",
+     "waits_for": [
+      "B-904"
+     ]
+    },
+    {
+     "rule": "u2-B-903",
+     "waits_for": [
+      "B-904"
+     ]
+    }
+   ]
+  },
+  {
+   "number": "020",
+   "slice": 1,
+   "slug": "gate-slice-1",
+   "title": "Ворота среза 1: склад по количеству",
+   "kind": "gate",
+   "after": [
+    "019"
+   ],
+   "parallel_ok": false,
+   "rules": [],
+   "who": [
+    "client",
+    "owner"
+   ]
+  },
+  {
+   "number": "021",
+   "slice": 2,
+   "slug": "gate-costing-method-and-policy",
+   "title": "Ворота перед срезом 2: способ оценки запасов и учётная политика клиента",
+   "kind": "gate",
+   "after": [
+    "020"
+   ],
+   "parallel_ok": false,
+   "decision_gate": true,
+   "rules": [],
+   "who": [
+    "client",
+    "owner"
+   ]
+  },
+  {
+   "number": "022",
+   "slice": 2,
+   "slug": "look-session-client-copy",
+   "title": "Просмотр живой 1С: сеанс 2",
+   "kind": "work",
+   "after": [
+    "021"
+   ],
+   "parallel_ok": true,
+   "prep": true,
+   "rules": [],
+   "steps": 7
+  },
+  {
+   "number": "023",
+   "slice": 2,
+   "slug": "access-profiles-and-account-rules",
+   "title": "Профили доступа и таблицы счетов учёта",
+   "kind": "work",
+   "after": [
+    "021"
+   ],
+   "parallel_ok": false,
+   "rules": [
+    "u1-A-87",
+    "u1-A-36",
+    "u1-A-39",
+    "u1-A-40",
+    "u1-A-41",
+    "u1-A-42",
+    "u1-A-43",
+    "u1-A-46",
+    "u1-A-47"
+   ],
+   "steps": 8
+  },
+  {
+   "number": "024",
+   "slice": 2,
+   "slug": "contracts-debt-purchase-postings",
+   "title": "Договоры, долг по накладной и проводки «Поступления»; список «Не отражено»",
+   "kind": "work",
+   "after": [
+    "023"
+   ],
+   "parallel_ok": false,
+   "rules": [
+    "u1-A-58",
+    "u1-A-59",
+    "u3-R-01",
+    "u3-P-01",
+    "u3-P-02",
+    "u4-D-1.2",
+    "u4-D-1.9",
+    "u4-D-3.3",
+    "u4-D-3.3a",
+    "u4-D-3.4"
+   ],
+   "steps": 8
+  },
+  {
+   "number": "025",
+   "slice": 2,
+   "slug": "cost-of-goods",
+   "title": "Стоимость товара: приход, расход при проведении, перемещение",
+   "kind": "work",
+   "after": [
+    "024"
+   ],
+   "parallel_ok": false,
+   "rules": [
+    "u1-A-19a",
+    "u1-A-20",
+    "u1-A-25",
+    "u2-B-112",
+    "u2-B-485",
+    "u2-B-501",
+    "u2-B-501a",
+    "u2-B-508",
+    "u2-B-704",
+    "u4-D-1.8",
+    "u2-B-423"
+   ],
+   "steps": 9
+  },
+  {
+   "number": "026",
+   "slice": 2,
+   "slug": "dtkt-window-and-sale-postings",
+   "title": "Окно «ДтКт» и проводки «Реализации»",
+   "kind": "work",
+   "after": [
+    "025"
+   ],
+   "parallel_ok": false,
+   "rules": [
+    "u4-D-2.1",
+    "u4-D-2.2",
+    "u4-D-2.3",
+    "u3-S-01",
+    "u3-S-01a",
+    "u3-S-02",
+    "u3-S-02a",
+    "u3-S-03"
+   ],
+   "steps": 8
+  },
+  {
+   "number": "027",
+   "slice": 2,
+   "slug": "manual-operation-and-reversal",
+   "title": "«Операция, введенная вручную» и «Сторно документа»",
+   "kind": "work",
+   "after": [
+    "026"
+   ],
+   "parallel_ok": false,
+   "rules": [
+    "u4-D-4.1",
+    "u4-D-4.2",
+    "u4-D-4.3",
+    "u4-D-4.4",
+    "u4-D-4.6"
+   ],
+   "steps": 8,
+   "held": [
+    {
+     "rule": "u4-D-4.6",
+     "waits_for": [
+      "D-4.7"
+     ]
+    }
+   ]
+  },
+  {
+   "number": "028",
+   "slice": 2,
+   "slug": "accountant-reports",
+   "title": "Стандартные отчёты бухгалтера и складские отчёты со стоимостью",
+   "kind": "work",
+   "after": [
+    "027"
+   ],
+   "parallel_ok": false,
+   "rules": [
+    "u4-D-7.1",
+    "u4-D-7.2",
+    "u4-D-7.3",
+    "u4-D-7.4",
+    "u4-D-7.5",
+    "u4-D-7.6",
+    "u4-D-7.7",
+    "u4-D-7.8",
+    "u4-D-7.9",
+    "u2-B-804",
+    "u2-B-807"
+   ],
+   "steps": 8
+  },
+  {
+   "number": "029",
+   "slice": 2,
+   "slug": "gate-slice-2",
+   "title": "Ворота среза 2: стоимость и проводки",
+   "kind": "gate",
+   "after": [
+    "022",
+    "028"
+   ],
+   "parallel_ok": false,
+   "rules": [],
+   "who": [
+    "client",
+    "owner"
+   ]
+  },
+  {
+   "number": "030",
+   "slice": 3,
+   "slug": "crm-payment-effects-function",
+   "title": "Последствия оплаты счёта CRM",
+   "kind": "work",
+   "after": [
+    "029"
+   ],
+   "parallel_ok": false,
+   "prep": true,
+   "rules": [],
+   "steps": 0,
+   "detail": "outline"
+  },
+  {
+   "number": "031",
+   "slice": 3,
+   "slug": "money-directories-and-journals",
+   "title": "Справочники денег и журналы банка и кассы",
+   "kind": "work",
+   "after": [
+    "030"
+   ],
+   "parallel_ok": false,
+   "rules": [
+    "u1-A-27",
+    "u1-A-60",
+    "u1-A-60a",
+    "u1-A-61",
+    "u1-A-62",
+    "u3-N-10",
+    "u3-D-01",
+    "u3-D-02",
+    "u3-D-03"
+   ],
+   "steps": 0,
+   "detail": "outline"
+  },
+  {
+   "number": "032",
+   "slice": 3,
+   "slug": "four-money-documents-forms",
+   "title": "Денежные документы: поля, виды операции, погашение долга",
+   "kind": "work",
+   "after": [
+    "031"
+   ],
+   "parallel_ok": false,
+   "rules": [
+    "u3-D-04",
+    "u3-D-05",
+    "u3-D-06",
+    "u3-D-07",
+    "u3-D-08",
+    "u3-D-10",
+    "u3-D-11",
+    "u3-D-27",
+    "u3-D-28",
+    "u3-D-35",
+    "u3-D-37"
+   ],
+   "steps": 0,
+   "detail": "outline"
+  },
+  {
+   "number": "033",
+   "slice": 3,
+   "slug": "payment-postings-bank-and-cash",
+   "title": "Проводки платежей: поставщику, от покупателя, налог, перевод, касса",
+   "kind": "work",
+   "after": [
+    "032"
+   ],
+   "parallel_ok": false,
+   "rules": [
+    "u3-D-13",
+    "u3-D-14",
+    "u3-D-15",
+    "u3-D-16",
+    "u3-D-16a",
+    "u3-D-17",
+    "u3-D-18",
+    "u3-D-20",
+    "u3-D-21",
+    "u3-D-22",
+    "u3-D-36"
+   ],
+   "steps": 0,
+   "detail": "outline"
+  },
+  {
+   "number": "034",
+   "slice": 3,
+   "slug": "payment-vat-amount-and-budget",
+   "title": "«Сумма НДС» платежа, погашение накладной и НДС в бюджет при оплате",
+   "kind": "work",
+   "after": [
+    "033"
+   ],
+   "parallel_ok": false,
+   "rules": [
+    "u3-D-26",
+    "u3-D-26a",
+    "u3-D-26v",
+    "u3-D-28b",
+    "u3-D-29",
+    "u3-K-02",
+    "u3-S-04",
+    "u3-S-05",
+    "u3-S-06",
+    "u3-S-07"
+   ],
+   "steps": 0,
+   "detail": "outline"
+  },
+  {
+   "number": "035",
+   "slice": 3,
+   "slug": "advance-offset-edit-paid-invoice-refunds",
+   "title": "Зачёт аванса, правка оплаченной накладной, возврат денег",
+   "kind": "work",
+   "after": [
+    "034"
+   ],
+   "parallel_ok": false,
+   "rules": [
+    "u3-R-02",
+    "u3-R-02a",
+    "u3-R-03",
+    "u3-R-03a",
+    "u4-D-1.10",
+    "u4-D-1.10a",
+    "u2-B-415",
+    "u3-D-19",
+    "u3-D-19a"
+   ],
+   "steps": 0,
+   "detail": "outline"
+  },
+  {
+   "number": "036",
+   "slice": 3,
+   "slug": "crm-invoices-debt-adjustment-export",
+   "title": "Оплата счёта CRM, услуги в «Поступлении», «Корректировка долга», акт сверки, «Выгрузка накладных»",
+   "kind": "work",
+   "after": [
+    "035"
+   ],
+   "parallel_ok": false,
+   "rules": [
+    "u3-CH-04",
+    "u3-CH-05",
+    "u3-CH-08",
+    "u3-CH-09",
+    "u3-R-05",
+    "u3-R-07",
+    "u3-E-10",
+    "u3-E-11",
+    "u3-E-11a"
+   ],
+   "steps": 0,
+   "detail": "outline"
+  },
+  {
+   "number": "037",
+   "slice": 3,
+   "slug": "debt-and-cash-reports-print",
+   "title": "Отчёты по долгам и деньгам, кассовая книга, печать",
+   "kind": "work",
+   "after": [
+    "036"
+   ],
+   "parallel_ok": false,
+   "rules": [
+    "u3-T-01",
+    "u3-T-02",
+    "u3-T-03",
+    "u3-T-04",
+    "u3-T-05",
+    "u3-T-06",
+    "u3-T-07",
+    "u3-D-39",
+    "u3-D-41",
+    "u2-B-901"
+   ],
+   "steps": 0,
+   "detail": "outline"
+  },
+  {
+   "number": "038",
+   "slice": 3,
+   "slug": "gate-slice-3",
+   "title": "Ворота среза 3: деньги и расчёты",
+   "kind": "gate",
+   "after": [
+    "037"
+   ],
+   "parallel_ok": false,
+   "rules": [],
+   "who": [
+    "client",
+    "owner"
+   ],
+   "detail": "outline"
+  },
+  {
+   "number": "039",
+   "slice": 4,
+   "slug": "vat-offset-and-month-vat",
+   "title": "«Взаимозачет НДС» и итог месяца по НДС",
+   "kind": "work",
+   "after": [
+    "038"
+   ],
+   "parallel_ok": false,
+   "rules": [
+    "u3-P-03",
+    "u3-P-04",
+    "u3-P-05",
+    "u3-P-06",
+    "u3-P-07",
+    "u3-P-11",
+    "u3-I-01",
+    "u3-I-02",
+    "u3-I-04",
+    "u3-I-06"
+   ],
+   "steps": 0,
+   "detail": "outline"
+  },
+  {
+   "number": "040",
+   "slice": 4,
+   "slug": "returns-deposit-account-vat-writeoff",
+   "title": "Возвраты товара, оплата через депозитный счёт НДС, «Списание НДС»",
+   "kind": "work",
+   "after": [
+    "039"
+   ],
+   "parallel_ok": false,
+   "rules": [
+    "u3-V-01",
+    "u3-V-01a",
+    "u3-V-01b",
+    "u3-V-04",
+    "u3-V-04a",
+    "u2-B-474",
+    "u3-E-09",
+    "u3-D-30",
+    "u3-D-31",
+    "u3-D-31b",
+    "u3-P-13"
+   ],
+   "steps": 0,
+   "detail": "outline"
+  },
+  {
+   "number": "041",
+   "slice": 4,
+   "slug": "gate-slice-4",
+   "title": "Ворота среза 4: НДС за месяц",
+   "kind": "gate",
+   "after": [
+    "040"
+   ],
+   "parallel_ok": false,
+   "rules": [],
+   "who": [
+    "client",
+    "owner"
+   ],
+   "detail": "outline"
+  },
+  {
+   "number": "042",
+   "slice": 5,
+   "slug": "trial-reset-and-opening-balances",
+   "title": "Пробный режим, «Помощник ввода остатков» и документы «Ввод остатков»",
+   "kind": "work",
+   "after": [
+    "041"
+   ],
+   "parallel_ok": false,
+   "rules": [
+    "u1-A-03",
+    "u1-A-76",
+    "u1-A-77",
+    "u1-A-77a",
+    "u1-A-78",
+    "u1-A-79",
+    "u1-A-80",
+    "u1-A-83",
+    "u1-A-84",
+    "u1-A-86",
+    "u3-O-03",
+    "u3-I-09"
+   ],
+   "steps": 0,
+   "detail": "outline"
+  },
+  {
+   "number": "043",
+   "slice": 5,
+   "slug": "gate-go-live",
+   "title": "Ворота запуска: переход в работу",
+   "kind": "gate",
+   "after": [
+    "042"
+   ],
+   "parallel_ok": false,
+   "rules": [],
+   "who": [
+    "client",
+    "owner"
+   ],
+   "detail": "outline"
+  },
+  {
+   "number": "044",
+   "slice": 5,
+   "slug": "month-close-form-and-cost-adjustment",
+   "title": "«Закрытие месяца»: форма, список операций, «Корректировка стоимости номенклатуры»",
+   "kind": "work",
+   "after": [
+    "043"
+   ],
+   "parallel_ok": false,
+   "rules": [
+    "u4-D-5.1",
+    "u4-D-5.2",
+    "u4-D-5.3",
+    "u4-D-5.4",
+    "u4-D-5.4a",
+    "u4-D-5.6",
+    "u4-D-5.7",
+    "u4-D-5.8",
+    "u2-B-502",
+    "u4-D-7.16"
+   ],
+   "steps": 0,
+   "detail": "outline"
+  },
+  {
+   "number": "045",
+   "slice": 5,
+   "slug": "pre-close-checks",
+   "title": "Проверки перед закрытием месяца",
+   "kind": "work",
+   "after": [
+    "044"
+   ],
+   "parallel_ok": false,
+   "rules": [
+    "u4-D-5.10",
+    "u4-D-5.10.1",
+    "u4-D-5.10.2",
+    "u4-D-5.10.3",
+    "u4-D-5.10.4",
+    "u4-D-5.10.5",
+    "u4-D-5.10.6",
+    "u4-D-5.10.7",
+    "u4-D-5.11",
+    "u4-D-5.13",
+    "u4-D-5.14",
+    "u4-D-5.15"
+   ],
+   "steps": 0,
+   "detail": "outline"
+  },
+  {
+   "number": "046",
+   "slice": 5,
+   "slug": "lock-dates",
+   "title": "«Даты запрета изменения»",
+   "kind": "work",
+   "after": [
+    "045"
+   ],
+   "parallel_ok": false,
+   "rules": [
+    "u4-D-1.6",
+    "u4-D-3.5",
+    "u4-D-6.1",
+    "u4-D-6.2",
+    "u4-D-6.4",
+    "u4-D-6.5",
+    "u4-D-6.5a",
+    "u4-D-6.6",
+    "u4-D-7.10"
+   ],
+   "steps": 0,
+   "detail": "outline"
+  },
+  {
+   "number": "047",
+   "slice": 5,
+   "slug": "reopen-closed-month",
+   "title": "Отмена закрытия и открытие закрытого месяца",
+   "kind": "work",
+   "after": [
+    "046"
+   ],
+   "parallel_ok": false,
+   "rules": [
+    "u4-D-5.9",
+    "u4-D-5.9a",
+    "u4-D-6.8",
+    "u4-D-6.9",
+    "u4-D-6.10",
+    "u4-D-6.11",
+    "u4-D-6.12",
+    "u3-E-07"
+   ],
+   "steps": 0,
+   "detail": "outline"
+  },
+  {
+   "number": "048",
+   "slice": 5,
+   "slug": "express-check-and-1c-reconciliation",
+   "title": "«Экспресс-проверка» и отчёт сверки месяца",
+   "kind": "work",
+   "after": [
+    "047"
+   ],
+   "parallel_ok": false,
+   "rules": [
+    "u4-D-7.12",
+    "u4-D-7.14",
+    "u4-D-7.15",
+    "u4-D-8.1",
+    "u4-D-8.2",
+    "u4-D-8.4",
+    "u4-D-8.5",
+    "u4-D-8.6",
+    "u4-D-8.7",
+    "u1-A-38"
+   ],
+   "steps": 0,
+   "detail": "outline"
+  },
+  {
+   "number": "049",
+   "slice": 5,
+   "slug": "gate-slice-5",
+   "title": "Ворота среза 5: первый закрытый месяц",
+   "kind": "gate",
+   "after": [
+    "048"
+   ],
+   "parallel_ok": false,
+   "rules": [],
+   "who": [
+    "client",
+    "owner"
+   ],
+   "detail": "outline"
+  }
+ ],
+ "carry": [
+  {
+   "slug": "u1-A-03",
+   "parts": [
+    "008",
+    "042"
+   ]
+  },
+  {
+   "slug": "u1-A-19",
+   "parts": [
+    "010",
+    "025"
+   ]
+  },
+  {
+   "slug": "u1-A-22",
+   "parts": [
+    "010",
+    "026",
+    "034"
+   ]
+  },
+  {
+   "slug": "u1-A-25a",
+   "parts": [
+    "013",
+    "015"
+   ]
+  },
+  {
+   "slug": "u1-A-45",
+   "parts": [
+    "012",
+    "023"
+   ]
+  },
+  {
+   "slug": "u1-A-64",
+   "parts": [
+    "012",
+    "013",
+    "031"
+   ]
+  },
+  {
+   "slug": "u1-A-68",
+   "parts": [
+    "014",
+    "039"
+   ]
+  },
+  {
+   "slug": "u1-A-81",
+   "parts": [
+    "017",
+    "025",
+    "042"
+   ]
+  },
+  {
+   "slug": "u1-A-86",
+   "parts": [
+    "026",
+    "042"
+   ]
+  },
+  {
+   "slug": "u2-B-302",
+   "parts": [
+    "014",
+    "015"
+   ]
+  },
+  {
+   "slug": "u2-B-404",
+   "parts": [
+    "015",
+    "025"
+   ]
+  },
+  {
+   "slug": "u2-B-405",
+   "parts": [
+    "015",
+    "034",
+    "040"
+   ]
+  },
+  {
+   "slug": "u2-B-414",
+   "parts": [
+    "016",
+    "025"
+   ]
+  },
+  {
+   "slug": "u2-B-415",
+   "parts": [
+    "035",
+    "040"
+   ]
+  },
+  {
+   "slug": "u2-B-802",
+   "parts": [
+    "019",
+    "028"
+   ]
+  },
+  {
+   "slug": "u3-CH-01",
+   "parts": [
+    "016",
+    "036"
+   ]
+  },
+  {
+   "slug": "u3-CH-03",
+   "parts": [
+    "016",
+    "036"
+   ]
+  },
+  {
+   "slug": "u3-CH-08",
+   "parts": [
+    "036",
+    "042"
+   ]
+  },
+  {
+   "slug": "u3-D-19",
+   "parts": [
+    "035",
+    "040"
+   ]
+  },
+  {
+   "slug": "u3-D-19a",
+   "parts": [
+    "035",
+    "040"
+   ]
+  },
+  {
+   "slug": "u3-E-04",
+   "parts": [
+    "019",
+    "040"
+   ]
+  },
+  {
+   "slug": "u3-E-09",
+   "parts": [
+    "040",
+    "045"
+   ]
+  },
+  {
+   "slug": "u3-K-01",
+   "parts": [
+    "014",
+    "034"
+   ]
+  },
+  {
+   "slug": "u3-P-01",
+   "parts": [
+    "024",
+    "036"
+   ]
+  },
+  {
+   "slug": "u3-P-02",
+   "parts": [
+    "024",
+    "034"
+   ]
+  },
+  {
+   "slug": "u3-S-01",
+   "parts": [
+    "026",
+    "035"
+   ]
+  },
+  {
+   "slug": "u3-S-01a",
+   "parts": [
+    "026",
+    "034"
+   ]
+  },
+  {
+   "slug": "u3-S-03",
+   "parts": [
+    "026",
+    "035"
+   ]
+  },
+  {
+   "slug": "u4-D-1.1",
+   "parts": [
+    "014",
+    "015",
+    "016",
+    "026",
+    "037"
+   ]
+  },
+  {
+   "slug": "u4-D-1.10",
+   "parts": [
+    "035",
+    "039"
+   ]
+  },
+  {
+   "slug": "u4-D-1.5",
+   "parts": [
+    "014",
+    "015"
+   ]
+  },
+  {
+   "slug": "u4-D-2.3",
+   "parts": [
+    "026",
+    "034",
+    "039"
+   ]
+  },
+  {
+   "slug": "u4-D-4.3",
+   "parts": [
+    "027",
+    "045",
+    "048"
+   ]
+  }
+ ]
+}

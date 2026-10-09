@@ -16423,6 +16423,13 @@
       "clients": "Clients",
       "clientsHint": "institutions of the base that have coordinates",
       "heat": "Heat map",
+      "base": "Map view",
+      "baseMap": {
+        "voyager": "Map",
+        "light": "Light",
+        "dark": "Dark",
+        "satellite": "Satellite"
+      },
       "heatHint": "where employees are densest",
       "hiddenAgents": "Hidden employees: {count}",
       "showAll": "Show all",

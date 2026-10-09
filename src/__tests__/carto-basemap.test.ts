@@ -57,6 +57,9 @@ describe("CARTO basemap configuration", () => {
       expect(networkOnly.test(tileUrl(template, subdomain, "@2x")), `${subdomain} @2x`).toBe(true)
     }
     expect(networkOnly.test("https://a.tile.openstreetmap.org/12/2615/1552.png")).toBe(true)
+    // The live map's light and dark backgrounds are tiles like any other: never from the worker's cache.
+    expect(networkOnly.test("https://b.basemaps.cartocdn.com/light_all/12/2615/1552@2x.png?key=referrer-key")).toBe(true)
+    expect(networkOnly.test("https://c.basemaps.cartocdn.com/dark_all/12/2615/1552.png?key=referrer-key")).toBe(true)
     expect(networkOnly.test("https://app.leaddrivecrm.org/api/v1/ping")).toBe(false)
   })
 

@@ -30,6 +30,7 @@ const CARTO_KEY = vi.hoisted(() => {
 })
 
 import { CartoBasemap } from "@/components/mtm/carto-basemap"
+import { liveMapBaseMaps } from "@/lib/mtm/live-map-base-maps"
 
 const BAKU: [number, number] = [40.4093, 49.8671]
 
@@ -181,5 +182,89 @@ describe("the trap the vector basemap fell into", () => {
     expect(cspAdmits(policy, "connect-src", "https://evil.example/collect")).toBe(false)
     expect(cspAdmits(policy, "img-src", "http://a.basemaps.cartocdn.com/rastertiles/voyager/1/1/1.png")).toBe(false)
     expect(cspAdmits(policy, "worker-src", "https://cdn.example/worker.js")).toBe(false)
+  })
+
+  // «Слои → Вид карты» on the live map (owner, 2026-10-09: «добей до 100 %» of
+  // the tracking product shown as the model, where the map's look is switched
+  // on the map itself).
+  describe("the live map's other backgrounds", () => {
+    const SATELLITE = "https://tiles.imagery.example/v1/{z}/{x}/{y}.jpg?token=contract"
+    const offered = () => liveMapBaseMaps(CARTO_KEY, SATELLITE, "© Imagery <b>Co</b>")
+    const background = (id: string) => offered().find((map) => map.id === id)!.tiles
+
+    it("«Светлая» and «Тёмная» are CARTO's own tiles under the same key, and the policy admits every one", async () => {
+      const policy = buildCsp("nonce")
+      for (const [id, path] of [["light", "light_all"], ["dark", "dark_all"]] as const) {
+        await mountMap({ tiles: background(id) }, `carto-${id}`)
+        const requested = tiles().map((tile) => new URL(tile.src))
+        expect(requested.length, id).toBeGreaterThan(4)
+        for (const url of requested) {
+          expect(url.hostname).toMatch(/^[abcd]\.basemaps\.cartocdn\.com$/)
+          expect(url.pathname).toMatch(new RegExp(`^/${path}/12/\\d+/\\d+\\.png$`))
+          expect(url.searchParams.get("key")).toBe(CARTO_KEY)
+          expect(cspAdmits(policy, "img-src", url.href), url.href).toBe(true)
+        }
+        expect(fetched).toEqual([])
+      }
+    })
+
+    it("switching the background swaps the tiles in place — the same mounted layer component, as the live map does it", async () => {
+      // The live map keeps one key for its background (a retry changes it, a choice does not).
+      await mountMap({ tiles: background("dark") })
+      expect(tiles().length).toBeGreaterThan(4)
+      expect(tiles().every((tile) => tile.src.includes("/dark_all/"))).toBe(true)
+      await mountMap({ tiles: background("light") })
+      expect(tiles().length).toBeGreaterThan(4)
+      expect(tiles().every((tile) => tile.src.includes("/light_all/"))).toBe(true)
+      // Back to «Карта»: Voyager again, and nothing of the background left behind.
+      await mountMap({ tiles: null })
+      expect(tiles().length).toBeGreaterThan(4)
+      expect(tiles().every((tile) => tile.src.includes("/rastertiles/voyager/"))).toBe(true)
+    })
+
+    it("a page that hands the same background again on every refresh does not make the map ask for its tiles again", async () => {
+      await mountMap({ tiles: { ...background("light")! } }, "carto-light")
+      const first = tiles()
+      // A new object with the same values, the same key: the same layer stays.
+      await mountMap({ tiles: { ...background("light")! } }, "carto-light")
+      expect(tiles()).toEqual(first)
+      expect(tiles().every((tile, index) => tile === first[index])).toBe(true)
+    })
+
+    it("«Спутник» is offered only where the build was given an address for it — https, with the three places Leaflet fills in", () => {
+      expect(liveMapBaseMaps(CARTO_KEY, undefined, undefined).map((map) => map.id)).toEqual(["voyager", "light", "dark"])
+      for (const refused of ["", "   ", "http://tiles.imagery.example/{z}/{x}/{y}.jpg", "https://tiles.imagery.example/{z}/{x}.jpg", "javascript:alert(1)//{z}{x}{y}"]) {
+        expect(liveMapBaseMaps(CARTO_KEY, refused, "x").map((map) => map.id), refused).toEqual(["voyager", "light", "dark"])
+      }
+      expect(offered().map((map) => map.id)).toEqual(["voyager", "light", "dark", "satellite"])
+    })
+
+    it("draws the satellite picture from the address given, credits it in words, and the policy admits it", async () => {
+      await mountMap({ tiles: background("satellite") }, "carto-satellite")
+      const policy = buildCsp("nonce")
+      const requested = tiles().map((tile) => new URL(tile.src))
+      expect(requested.length).toBeGreaterThan(4)
+      for (const url of requested) {
+        expect(url.origin).toBe("https://tiles.imagery.example")
+        expect(url.pathname).toMatch(/^\/v1\/12\/\d+\/\d+\.jpg$/)
+        expect(url.searchParams.get("token")).toBe("contract")
+        expect(cspAdmits(policy, "img-src", url.href), url.href).toBe(true)
+      }
+      // Whose picture it is, as text: the credit line comes from settings and is never markup.
+      const credit = container.querySelector(".leaflet-control-attribution")
+      expect(credit?.textContent).toContain("© Imagery <b>Co</b>")
+      expect(credit?.querySelector("b")).toBeNull()
+    })
+
+    it("a remembered background this build no longer offers is not remembered", async () => {
+      const { parseLiveMapBaseMap } = await import("@/lib/mtm/live-map-base-maps")
+      const withoutSatellite = liveMapBaseMaps(CARTO_KEY, undefined, undefined)
+      expect(parseLiveMapBaseMap("satellite", withoutSatellite)).toBe("voyager")
+      expect(parseLiveMapBaseMap("dark", withoutSatellite)).toBe("dark")
+      expect(parseLiveMapBaseMap("something", withoutSatellite)).toBe("voyager")
+      expect(parseLiveMapBaseMap(undefined, withoutSatellite)).toBe("voyager")
+      // Without a key the addresses carry none (CARTO then answers with its own notice — as for Voyager).
+      expect(liveMapBaseMaps(null, undefined, undefined)[1].tiles?.url).toBe("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png")
+    })
   })
 })

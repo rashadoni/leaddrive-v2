@@ -14,6 +14,7 @@ import dynamic from "next/dynamic"
 import { calculateDistance } from "@/lib/geo-utils"
 import { LiveMapDaySteps } from "@/components/mtm/live-map-day-steps"
 import { LiveMapLayersControl } from "@/components/mtm/live-map-layers-control"
+import { DEFAULT_LIVE_MAP_BASE_MAP, liveMapBaseMaps, parseLiveMapBaseMap, type LiveMapBaseMapId } from "@/lib/mtm/live-map-base-maps"
 import { LiveMapRoster } from "@/components/mtm/live-map-roster"
 import { LiveMapTools } from "@/components/mtm/live-map-tools"
 import { extendLiveMapTrails, outlineCrossesItself, pathLengthMeters, polygonAreaSquareMeters, type LiveMapTrails } from "@/lib/mtm/live-map-trails"
@@ -119,7 +120,9 @@ interface AgentRouteSnapshot {
 
 /** How the map is drawn — remembered in the browser like the list's layout. */
 const MAP_LOOK_STORAGE_KEY = "leaddrive.mtm.live-map.look.v1"
-const DEFAULT_MAP_LOOK = { labels: false, trails: true, glide: true, clients: false }
+const DEFAULT_MAP_LOOK = { labels: false, trails: true, glide: true, clients: false, base: DEFAULT_LIVE_MAP_BASE_MAP as LiveMapBaseMapId }
+/** The backgrounds this build can offer; the same list for as long as the page lives. */
+const BASE_MAPS = liveMapBaseMaps()
 /** With a point picked the list answers «who is nearest» — until another order is asked for. */
 const NEAREST_FIRST: RosterSort = { column: "distance", direction: "asc" }
 
@@ -131,6 +134,8 @@ function parseMapLook(raw: string | null): typeof DEFAULT_MAP_LOOK {
       trails: typeof stored.trails === "boolean" ? stored.trails : DEFAULT_MAP_LOOK.trails,
       glide: typeof stored.glide === "boolean" ? stored.glide : DEFAULT_MAP_LOOK.glide,
       clients: typeof stored.clients === "boolean" ? stored.clients : DEFAULT_MAP_LOOK.clients,
+      // A background this build no longer offers (the satellite contract ended) is not remembered.
+      base: parseLiveMapBaseMap(stored.base, BASE_MAPS),
     }
   } catch {
     return DEFAULT_MAP_LOOK
@@ -744,6 +749,11 @@ export default function MtmMapPage() {
   }, [])
   // What the layer's line says: what it is, and — once read — what it shows
   // and what it cannot (a client without coordinates is not on any map).
+  // The background chosen in «Слои»; null is the one every MTM map draws.
+  const baseMap = useMemo(() => {
+    const chosen = BASE_MAPS.find((map) => map.id === mapLook.base)
+    return chosen?.tiles ? { id: chosen.id, ...chosen.tiles } : null
+  }, [mapLook.base])
   const clientsHint = !clientsKey
     ? tMap("layers.clientsHint")
     : clientsHeld?.data
@@ -1460,6 +1470,7 @@ export default function MtmMapPage() {
           ) : (
             <MtmLiveMap
               agents={mapAgents}
+              baseMap={baseMap}
               showGeofence={showGeofence}
               showHeatmap={showHeatmap}
               plannedRoute={showDayRoute ? routeStops : NO_ROUTE_STOPS}
@@ -1485,6 +1496,11 @@ export default function MtmMapPage() {
           )}
           {showRosterLoading ? null : (
             <LiveMapLayersControl
+              baseMaps={{
+                value: mapLook.base,
+                options: BASE_MAPS.map((map) => ({ id: map.id, label: tMap(`layers.baseMap.${map.id}`) })),
+                onChange: (id) => changeMapLook({ base: parseLiveMapBaseMap(id, BASE_MAPS) }),
+              }}
               layers={[
                 { id: "agents", label: tMap("layers.agents"), hint: tMap("layers.agentsHint"), on: showAgentMarkers, onToggle: () => setShowAgentMarkers((on) => !on), shownByDefault: true },
                 { id: "route", label: tMap("layers.route"), hint: tMap("layers.routeHint"), on: showDayRoute, onToggle: () => setShowDayRoute((on) => !on), shownByDefault: true },

@@ -54,6 +54,8 @@ function isMtmFieldStatus(value: string): value is MtmFieldStatus {
 
 interface Props {
   agents: LiveMapAgent[]
+  /** Another background than the usual one, chosen in «Слои»; null — the usual. */
+  baseMap?: { id: string; url: string; attribution: string; subdomains?: string } | null
   replayTrack?: Array<{ latitude: number; longitude: number; recordedAt: string }>
   showGeofence?: boolean
   showHeatmap?: boolean
@@ -645,6 +647,7 @@ function ClusterMarker({ marker, title }: { marker: LiveMapClusterMarker; title:
 
 export default function MtmLiveMap({
   agents,
+  baseMap = null,
   replayTrack = [],
   showGeofence = false,
   showHeatmap = false,
@@ -755,6 +758,24 @@ export default function MtmLiveMap({
     setBaseMapRevision((current) => current + 1)
   }, [resetBaseMapAttempt])
 
+  // Another background is another attempt: «карта недоступна» raised over
+  // the one that failed must not stay over the one just chosen.
+  const baseMapId = baseMap?.id ?? null
+  const [attemptedBaseMapId, setAttemptedBaseMapId] = useState(baseMapId)
+  if (attemptedBaseMapId !== baseMapId) {
+    setAttemptedBaseMapId(baseMapId)
+    setBaseMapUnavailable(false)
+  }
+  useEffect(() => {
+    if (baseMapFailureTimerRef.current != null) {
+      window.clearTimeout(baseMapFailureTimerRef.current)
+      baseMapFailureTimerRef.current = null
+    }
+    baseMapTileErrorCountRef.current = 0
+    baseMapTileSuccessCountRef.current = 0
+    baseMapUnavailableRef.current = false
+  }, [baseMapId])
+
   useEffect(() => () => {
     if (baseMapFailureTimerRef.current != null) window.clearTimeout(baseMapFailureTimerRef.current)
   }, [])
@@ -849,6 +870,8 @@ export default function MtmLiveMap({
 
           <CartoBasemap
             key={`carto-${baseMapRevision}`}
+            // Another background needs no new key: the layer is swapped when the address changes.
+            tiles={baseMap}
             onLoading={handleBaseMapLoading}
             onError={handleBaseMapTileError}
             onLoad={handleBaseMapTileSuccess}

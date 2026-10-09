@@ -705,6 +705,11 @@ jobs:
           # Next.js inlines NEXT_PUBLIC_* values into browser bundles. CARTO
           # raster tiles require this referrer-restricted key in their URL.
           NEXT_PUBLIC_CARTO_BASEMAPS_API_KEY: ${{ secrets.CARTO_BASEMAPS_API_KEY }}
+          # Optional satellite background of the MTM live map: the imagery
+          # provider's tile address and credit line. Unset secrets expand to
+          # empty strings and the choice is simply not offered.
+          NEXT_PUBLIC_MTM_SATELLITE_TILE_URL: ${{ secrets.MTM_SATELLITE_TILE_URL }}
+          NEXT_PUBLIC_MTM_SATELLITE_TILE_ATTRIBUTION: ${{ secrets.MTM_SATELLITE_TILE_ATTRIBUTION }}
 
       - name: Verify standalone build
         run: |
