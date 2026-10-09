@@ -58,7 +58,7 @@ const WIDE_TRACK: Record<RosterColumnId, string> = {
   name: "minmax(0,1.6fr)",
   status: "minmax(0,1.2fr)",
   signal: "5rem",
-  distance: "6rem",
+  distance: "7.5rem",
   team: "minmax(0,1.1fr)",
   app: "minmax(0,0.9fr)",
   workday: "minmax(0,1.2fr)",
@@ -73,6 +73,8 @@ const TICK_TRACK = "2.25rem"
  * column took its full width first and left a phone five letters of a name.
  */
 const NARROW_TRACKS = `${TICK_TRACK} minmax(0,1.4fr) minmax(0,1fr) 5rem`
+/** With a point picked the last column is the distance, sorted by default: its heading carries an arrow as well. */
+const NARROW_TRACKS_WITH_POINT = `${TICK_TRACK} minmax(0,1.4fr) minmax(0,1fr) 6.5rem`
 
 /**
  * The wide table starts where its default columns have room to be read
@@ -196,7 +198,7 @@ export function LiveMapRoster({
   // A layout remembered from another organization may name a column this roster does not have.
   const groupBy: RosterGroupBy = view.groupBy === "none" || available.includes(view.groupBy) ? view.groupBy : "none"
   const trackStyle = {
-    "--roster-narrow": NARROW_TRACKS,
+    "--roster-narrow": hasPoint ? NARROW_TRACKS_WITH_POINT : NARROW_TRACKS,
     "--roster-wide": [TICK_TRACK, ...wideColumns.map((column) => WIDE_TRACK[column])].join(" "),
   } as CSSProperties
   /** A column lives in the narrow list, in the wide table, or in both. */

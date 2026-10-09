@@ -216,6 +216,8 @@ describe("«who is nearest» — the distance to the point picked on the map", (
       // Beside the map: name, status, distance. The signal waits for the wide table.
       expect(cell("near", "distance")?.className).not.toContain("hidden")
       expect(cell("near", "signal")?.className).toContain("hidden @2xl:block")
+      // The distance heading carries a sort arrow by default: it gets the room for it.
+      expect((container.querySelector('[data-testid="live-map-roster"]') as HTMLElement).style.getPropertyValue("--roster-narrow")).toBe("2.25rem minmax(0,1.4fr) minmax(0,1fr) 6.5rem")
       expect((container.querySelector('[data-testid="roster-column-distance"]') as HTMLElement).textContent).toBe("До точки")
       expect((container.querySelector('[data-testid="roster-column-distance"]') as HTMLElement).closest('[role="columnheader"]')?.getAttribute("aria-sort")).toBe("ascending")
     })
@@ -329,6 +331,10 @@ describe("the tools on the map, in words", () => {
     // The panel closes; what the list is now sorted by stays in sight, with a way out.
     expect(byTestId("live-map-point-panel")).toBeNull()
     expect(byTestId("live-map-point-chip")?.textContent).toBe("Ближайшие к: Həsən bəy Zərdabi prospekti, 79B, BakıУбрать")
+    // With the panel open again the chip steps aside: on a phone the two together are taller than the map.
+    await press(byTestId("live-map-tool-point"))
+    expect(byTestId("live-map-point-chip")).toBeNull()
+    await press(byTestId("live-map-tool-point"))
     await press(byTestId("live-map-point-clear"))
     expect(state.point).toBeNull()
     expect(byTestId("live-map-point-chip")).toBeNull()
@@ -446,6 +452,10 @@ describe("the wiring of the tools", () => {
     expect(map).toMatch(/click: \(event\) => \{\s*if \(active\) onPress\(event\.latlng\.lat, event\.latlng\.lng\)/)
     // Two quick presses are two points, not a zoom.
     expect(map).toContain("map.doubleClickZoom.disable()")
+    // A press on an employee or on a stop is the tool's too — «measure from him» — and opens no balloon.
+    expect(map).toContain("click: () => pressMode ? onMapPress?.(agent.latitude, agent.longitude) : onAgentSelect?.(agent.agentId)")
+    expect(map).toContain("click: () => pressMode ? onMapPress?.(stop.latitude, stop.longitude) : onStopSelect?.(stop.orderIndex)")
+    expect(map.match(/\{pressMode \? null : <Popup>/g) ?? []).toHaveLength(2)
     // Switched on or off, the ruler starts from nothing.
     expect(page).toMatch(/const switchRuler = useCallback\(\(on: boolean\) => \{\s*setRulerActive\(on\)\s*setRulerPoints\(\[\]\)/)
     // The two never wait for a press at the same time.
@@ -464,7 +474,10 @@ describe("the wiring of the tools", () => {
 
   it("leaves the view to the dispatcher while a tool is in use, and frames who is on the map — not every move they make", () => {
     expect(map).toContain("hold={pressMode != null || rulerPoints.length > 0 || referencePoint != null}")
-    expect(map).toMatch(/useEffect\(\(\) => \{\s*\/\/ Nothing is recorded while held[^\n]*\n\s*if \(hold\) return/)
+    // Held is the framing of the whole team; an employee selected meanwhile still gets his stops in view.
+    expect(map).toContain("if (hold && !(focusAgentId && plannedRoute.length > 0)) return")
+    // A point pressed on the map is on the screen already: no flying in on it.
+    expect(map).toMatch(/if \(map\.getBounds\(\)\.contains\(\[latitude, longitude\]\)\) return\s*map\.flyTo\(\[latitude, longitude\]/)
     // The frame without a selection is keyed on the people, sorted: a move of eleven metres or a re-sorted list is not a new frame.
     expect(map).toContain('`all:${framedAgents.map((agent) => agent.agentId).sort().join("|")}:')
   })

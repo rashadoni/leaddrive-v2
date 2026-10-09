@@ -13,7 +13,10 @@ describe("MTM live map: route, statuses and feed", () => {
     expect(map).toContain('tMap("routeStop.planned"')
     expect(map).toContain("href={`/mtm/visits?visitId=${encodeURIComponent(stop.visitId)}`}")
     // Frame the employee and their stops, not the whole fleet.
-    expect(map).toContain("<FitBounds agents={agents} plannedRoute={plannedRoute} focusAgentId={focusAgentId} />")
+    // (`hold`, 2026-10-09: while a ruler or a picked point is in use the team's
+    // frame is left alone; a selected employee's stops are framed all the same.)
+    expect(map).toContain("<FitBounds agents={agents} plannedRoute={plannedRoute} focusAgentId={focusAgentId} hold={")
+    expect(map).toContain("if (hold && !(focusAgentId && plannedRoute.length > 0)) return")
   })
 
   it("honours ?agentId= in live mode", () => {

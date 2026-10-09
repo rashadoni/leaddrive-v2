@@ -97,10 +97,10 @@ export function LiveMapTools({
   }
 
   return (
-    <div className="pointer-events-none absolute bottom-3 left-3 z-[1100] flex max-w-[calc(100%-1.5rem)] flex-col items-start gap-2" data-testid="live-map-tools">
+    <div className="pointer-events-none absolute bottom-3 left-3 z-[1100] flex max-h-[calc(100%-1.5rem)] max-w-[calc(100%-1.5rem)] flex-col items-start gap-2" data-testid="live-map-tools">
       {open ? (
-        <div id="live-map-point-panel" className="pointer-events-auto w-80 max-w-full rounded-lg border border-zinc-300 bg-card p-2 shadow-lg dark:border-zinc-600" data-testid="live-map-point-panel">
-          <form onSubmit={search} className="flex items-center gap-1.5">
+        <div id="live-map-point-panel" className="pointer-events-auto flex min-h-0 w-80 max-w-full flex-col rounded-lg border border-zinc-300 bg-card p-2 shadow-lg dark:border-zinc-600" data-testid="live-map-point-panel">
+          <form onSubmit={search} className="flex shrink-0 items-center gap-1.5">
             <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-zinc-200 bg-background px-2.5 text-sm focus-within:border-primary/60 dark:border-zinc-700">
               <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
               <input
@@ -120,7 +120,7 @@ export function LiveMapTools({
           </form>
           {notice ? <p role="status" className="mt-1.5 px-1 text-xs text-amber-800 dark:text-amber-300" data-testid="live-map-address-notice">{notice}</p> : null}
           {hits.length > 0 ? (
-            <ul className="mt-1.5 divide-y divide-zinc-200 dark:divide-zinc-700" data-testid="live-map-address-hits">
+            <ul className="mt-1.5 min-h-0 divide-y divide-zinc-200 overflow-y-auto dark:divide-zinc-700" data-testid="live-map-address-hits">
               {/* The best three, two lines each: on a phone the map is 360 px
                   tall, and five wrapped addresses pushed the search field out of it. */}
               {hits.slice(0, MAX_HITS_SHOWN).map((hit) => (
@@ -137,7 +137,7 @@ export function LiveMapTools({
             type="button"
             onClick={() => { onPickingPointChange(true); setOpen(false) }}
             data-testid="live-map-pick-point"
-            className="mt-1.5 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-zinc-300 text-sm font-medium hover:bg-muted dark:border-zinc-600"
+            className="mt-1.5 inline-flex min-h-10 w-full shrink-0 items-center justify-center gap-2 rounded-lg border border-zinc-300 text-sm font-medium hover:bg-muted dark:border-zinc-600"
           >
             <MousePointerClick className="h-4 w-4" aria-hidden="true" />{tMap("tools.pickOnMap")}
           </button>
@@ -167,8 +167,9 @@ export function LiveMapTools({
           </button>
         </div>
       ) : null}
-      {referencePoint ? (
-        <div className="pointer-events-auto flex max-w-full items-center gap-2 rounded-lg border border-rose-300 bg-card px-2.5 py-1.5 text-xs shadow-md dark:border-rose-800" data-testid="live-map-point-chip">
+      {/* Not while the panel is open: on a phone the two together are taller than the map. */}
+      {referencePoint && !open ? (
+        <div className="pointer-events-auto flex max-w-full shrink-0 items-center gap-2 rounded-lg border border-rose-300 bg-card px-2.5 py-1.5 text-xs shadow-md dark:border-rose-800" data-testid="live-map-point-chip">
           <MapPin className="h-3.5 w-3.5 shrink-0 text-rose-700" aria-hidden="true" />
           <span className="min-w-0 truncate" title={referencePoint.label}>{tMap("tools.nearestTo", { label: referencePoint.label })}</span>
           <button type="button" onClick={() => onReferencePointChange(null)} data-testid="live-map-point-clear" className="inline-flex min-h-8 shrink-0 items-center gap-1 font-semibold underline underline-offset-2">
@@ -179,7 +180,7 @@ export function LiveMapTools({
       {/* While a tool waits for a press on the map its own line — with its way
           out — is all there is: on a phone the three buttons under it would
           take a third of the map. */}
-      <div className={cn("flex flex-wrap items-center gap-2", (rulerActive || pickingPoint) && "max-sm:hidden")}>
+      <div className={cn("flex shrink-0 flex-wrap items-center gap-2", (rulerActive || pickingPoint) && "max-sm:hidden")}>
         <button
           type="button"
           aria-expanded={open}

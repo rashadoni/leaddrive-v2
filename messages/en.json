@@ -16483,7 +16483,7 @@
         "name": "Employee",
         "status": "Status",
         "signal": "Signal",
-        "distance": "To the point",
+        "distance": "Distance",
         "team": "Team",
         "app": "App",
         "workday": "Workday",

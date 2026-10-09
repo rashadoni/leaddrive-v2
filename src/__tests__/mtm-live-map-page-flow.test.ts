@@ -127,10 +127,10 @@ describe("the live map page, end to end", () => {
   const onMap = () => (hoisted.map.props?.agents as Array<{ agentId: string }>).map((agent) => agent.agentId)
   const mapProp = <T,>(name: string) => hoisted.map.props?.[name] as T
   const closeMenu = async () => {
-    await act(async () => {
-      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))
-      await new Promise((resolve) => setTimeout(resolve, 10))
-    })
+    // First the menu is really gone; then the tick in which it hands the focus
+    // back to its heading — two steps, so the next press never races it.
+    await act(async () => { document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })) })
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)) })
   }
   const open = async () => {
     await act(async () => { root.render(createElement(MtmMapPage)) })

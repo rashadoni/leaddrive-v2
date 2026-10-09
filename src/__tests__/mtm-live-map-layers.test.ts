@@ -61,6 +61,18 @@ describe("the layers control on the map", () => {
     container.remove()
   })
 
+  it("stays inside the map's frame however many layers there are: the open panel scrolls, the button does not shrink", async () => {
+    // Seven switches made the panel 493 px tall on a phone map of 360: the last two could not be reached.
+    await draw()
+    const control = container.querySelector('[data-testid="live-map-layers"]') as HTMLElement
+    expect(control.className).toContain("bottom-3 right-3 top-3")
+    expect(control.className).toContain("z-[1200]")
+    expect(opener().className).toContain("shrink-0")
+    await press(opener())
+    expect(panel()?.className).toContain("min-h-0")
+    expect(panel()?.className).toContain("overflow-y-auto")
+  })
+
   it("stays out of the way until asked for", async () => {
     await draw()
     expect([opener().textContent, opener().getAttribute("aria-expanded")]).toEqual(["Слои", "false"])

@@ -293,6 +293,10 @@ function ShowReferencePoint({ point }: { point: LiveMapReferencePoint | null }) 
     const key = `${latitude},${longitude}`
     if (shownRef.current === key) return
     shownRef.current = key
+    // A point pressed on the map is on the screen already, with the people it
+    // was asked about around it: flying in on it would push them out of view.
+    // An address found somewhere else is flown to.
+    if (map.getBounds().contains([latitude, longitude])) return
     map.flyTo([latitude, longitude], Math.max(map.getZoom(), 14), { duration: 0.5 })
   }, [map, latitude, longitude])
   return null
@@ -334,8 +338,11 @@ function FitBounds({ agents, plannedRoute, focusAgentId, hold }: {
   const map = useMap()
   const lastFitRef = useRef("")
   useEffect(() => {
-    // Nothing is recorded while held, so what changed meanwhile is framed once the tool is put down.
-    if (hold) return
+    // Nothing is recorded while held, so what changed meanwhile is framed once
+    // the tool is put down. Held is the framing of the whole team only: an
+    // employee selected meanwhile still gets his day's stops in view — that
+    // frame changes on a selection, never on a movement.
+    if (hold && !(focusAgentId && plannedRoute.length > 0)) return
     // With an employee selected and their day's stops loaded, frame that
     // employee and those stops — not the whole fleet, which zoomed back out
     // and hid the route the manager had just asked for.
@@ -749,9 +756,11 @@ export default function MtmLiveMap({
                 if (marker) stopMarkersRef.current.set(stop.orderIndex, marker)
                 else stopMarkersRef.current.delete(stop.orderIndex)
               }}
-              eventHandlers={{ click: () => onStopSelect?.(stop.orderIndex) }}
+              // While a tool waits for a press, a press on a stop is the tool's:
+              // «measure from this client», not «open this client».
+              eventHandlers={{ click: () => pressMode ? onMapPress?.(stop.latitude, stop.longitude) : onStopSelect?.(stop.orderIndex) }}
             >
-              <Popup>
+              {pressMode ? null : <Popup>
                 <div style={{ fontFamily: "system-ui,sans-serif", minWidth: 140 }}>
                   <div style={{ fontWeight: 700, fontSize: 13 }}>
                     #{stop.orderIndex + 1} {stop.name}
@@ -780,7 +789,7 @@ export default function MtmLiveMap({
                     </div>
                   ) : null}
                 </div>
-              </Popup>
+              </Popup>}
             </Marker>
           ))}
 
@@ -854,7 +863,8 @@ export default function MtmLiveMap({
                 icon={agentIcon(agent.name, agent.freshness, isFocused)}
                 zIndexOffset={isFocused ? 1000 : 500}
                 alt={agent.name}
-                eventHandlers={{ click: () => onAgentSelect?.(agent.agentId) }}
+                // …and so is a press on an employee: the ruler starts from where he is.
+                eventHandlers={{ click: () => pressMode ? onMapPress?.(agent.latitude, agent.longitude) : onAgentSelect?.(agent.agentId) }}
               >
                 {/* Who this is and what he is doing, without a click — and, with
                     «Подписи» on, his name beside the marker all the time. Leaflet
@@ -863,7 +873,7 @@ export default function MtmLiveMap({
                   <span style={{ fontWeight: 700 }}>{agent.name}</span>
                   {showLabels ? null : <>{" · "}{tMap(`fieldStatus.${statusLabelKeys[statusKey]}`)}</>}
                 </Tooltip>
-                <Popup>
+                {pressMode ? null : <Popup>
                   <div style={{ fontFamily: "system-ui,sans-serif", minWidth: 170 }}>
                     <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4, color: "#0B0B1E" }}>
                       {agent.name}
@@ -890,7 +900,7 @@ export default function MtmLiveMap({
                       {agent.battery != null ? ` · ${tMap("battery")}: ${Math.round(agent.battery)}%` : ""}
                     </div>
                   </div>
-                </Popup>
+                </Popup>}
               </GlidingMarker>
             )
           })}
@@ -933,7 +943,7 @@ export default function MtmLiveMap({
       ) : null}
       {ready && markerSelection.truncated ? (
         <div
-          className="pointer-events-none absolute bottom-20 left-3 z-[500] max-w-[min(320px,calc(100%-24px))] rounded-md border border-zinc-300 bg-background/95 px-2.5 py-1.5 text-[11px] font-medium text-foreground shadow-sm dark:border-zinc-700"
+          className="pointer-events-none absolute bottom-8 right-3 z-[500] max-w-[min(320px,calc(100%-24px))] rounded-md border border-zinc-300 bg-background/95 px-2.5 py-1.5 text-[11px] font-medium text-foreground shadow-sm dark:border-zinc-700"
           role="status"
         >
           {tMap("markerWindowLimited", {

@@ -32,9 +32,13 @@ export interface LiveMapTrailPoint {
 
 export type LiveMapTrails = ReadonlyMap<string, readonly LiveMapTrailPoint[]>
 
-/** A tail is the last half hour, and no longer than this many points. */
+/**
+ * A tail is the last half hour. The roster answers every thirty seconds, so
+ * somebody who never stops adds sixty points in that time; a few more for an
+ * answer asked for by hand.
+ */
 export const TRAIL_MAX_AGE_MS = 30 * 60_000
-export const TRAIL_MAX_POINTS = 40
+export const TRAIL_MAX_POINTS = 72
 /** Standing still: GPS wanders a few metres, and that is not a journey. */
 export const TRAIL_MIN_STEP_METERS = 15
 /**

@@ -342,12 +342,12 @@ describe("the list on the page", () => {
   }
   const openMenu = async (column: string) => { await press(byTestId(`roster-column-${column}`)) }
   const closeMenu = async () => {
-    await act(async () => {
-      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))
-      // A menu closed from the keyboard hands the focus back to its heading a
-      // tick later; let that land before the next press, as it does for a person.
-      await new Promise((resolve) => setTimeout(resolve, 10))
-    })
+    // Two steps, each finished before the next: first the menu is really gone;
+    // then the tick in which it hands the focus back to its heading. Waiting
+    // inside the same step raced the unmount on a loaded machine, and the focus
+    // landed after the next press — closing the menu that press had opened.
+    await act(async () => { document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })) })
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)) })
   }
 
   beforeEach(() => {
