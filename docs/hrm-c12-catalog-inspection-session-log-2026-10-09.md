@@ -76,3 +76,12 @@ Foreign88producer/consumer/API/public pinnedTLS acceptance is independently reta
 
 
 Archive whitespace check initially FAILED(exit2) because the stored plain Git diff contains standard context blank lines with a space. Actual reproduction log retained unchanged; no source whitespace or baseline was edited. The entire exact diff is now gzip-compressed with verified decompression/hash, its original manifest retained separately and final storage manifest updated. Initial failure and subsequent check remain separate results.
+
+
+## 2026-10-09 — current main advanced to accepted MTM history fix
+
+External PR667 normally merged as a1b05f9991019e153ee371e99bb1d99f47f1547b, parents[5d8091b3a54a6ac850b280fab0b98147cb602504,d537e52969c2a93ab9338d0e0e76a312446705e5]. Root did not merge it. Lastdelta3MTMlocation-history route/tests only; totalownC695→latestA1 is35paths. OwnHRM13corecontracts/source, allWorkforce/API/dashboard/Prisma and42namespaces(14perlanguage) remainexactownC695. CurrentAGENTS/CLAUDEcontract alreadyread, registeredrouteunchanged. Independent5d13coreproof andcorrectedERP639attribution separatelyretained; no transfer of its pendingchecks.
+
+5dproductionbuild114052402986CANCELLED onnewpush; its qualitywasstillrunning. OwnC695normalDeploy37998880627 also stillrunning atlatestAPI, supersededmain preventscurrentC695public/catalogacceptance. CurrentA1normalDeploy37999486761 quality114053808168RUNNING/build114053808525PENDING; automaticmaincompiler37999486863/type114054324570RUNNING. Originalearliercancellations/errors remainunchanged. No productioncatalogquery orstaledispatch occurred. NewarchivehelpercompressesexactplainGitdiffs asgzip; prior initialwhitespacefailure andcheckedcompressionrerun remainpreserved ratherthantrimmed. Evidencebranch normallyincludeslatestA1; itsdelta remainsdocs only.
+
+Precisestop: awaitlatestA1actualCI/artifact/normaldeploy/publicfullSHA while preservingownC695and5dcancelled/stale outcomes. Thenprotectedcurrentmain/read-onlycatalogworkflow, withindependentreviewofreal13flags. C12PARTIAL;85of161DONE,76open,weighted61%; actualrestored-copy/provenance andHR/device/load/collector/pilot/restore remainNOTRUN. SourceC5branch staysfrozen andaccepted atits exacttree; its56tests/fivegates do notsubstituteexecutionatA1.

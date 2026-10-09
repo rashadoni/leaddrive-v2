@@ -1,0 +1,55 @@
+{
+  "archivedAtUtc": "2026-10-09T22:34:26.974080+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-c12-catalog-main-a1-scope/erp-parent-commit.txt",
+      "originalBytes": 187,
+      "originalSha256": "cf4be8764e3a560b6366fc241b25183a1c38ea535b80925db69f1ba7ea58d448",
+      "storedBytes": 187,
+      "storedSha256": "cf4be8764e3a560b6366fc241b25183a1c38ea535b80925db69f1ba7ea58d448"
+    },
+    {
+      "path": "hrm-c12-catalog-main-a1-scope/finite-summary.json.gz",
+      "originalBytes": 3818,
+      "originalSha256": "a10721cfef561df0623f476633062b99ab66fe82083969a0c5d5422c65ac8c19",
+      "storedBytes": 1310,
+      "storedSha256": "542d10921428ff51c9e62a5e1bb46dad4797af60c8ad67e17f26a57824237d23"
+    },
+    {
+      "path": "hrm-c12-catalog-main-a1-scope/last-mtm-only-original.diff.gz",
+      "originalBytes": 3870,
+      "originalSha256": "d13895b2a8f856c3523bdfa7e2046776dc163ce3407caa64ab381a51917f2b7f",
+      "storedBytes": 3870,
+      "storedSha256": "d13895b2a8f856c3523bdfa7e2046776dc163ce3407caa64ab381a51917f2b7f"
+    },
+    {
+      "path": "hrm-c12-catalog-main-a1-scope/latest-commit.txt",
+      "originalBytes": 204,
+      "originalSha256": "bbb8f50a6ec4d5d91a3f02dd588f4d15d8f489cd160cbe58ecc30e7232447717",
+      "storedBytes": 204,
+      "storedSha256": "bbb8f50a6ec4d5d91a3f02dd588f4d15d8f489cd160cbe58ecc30e7232447717"
+    },
+    {
+      "path": "hrm-c12-catalog-main-a1-scope/scope-original.diff.gz",
+      "originalBytes": 580311,
+      "originalSha256": "6d48a24fd38128ac3647a0a1dd95eb6a93e2b9bd9cc9ab21d94d40a3f48c0a16",
+      "storedBytes": 140730,
+      "storedSha256": "6bcb4651cef13c1b689ed84ba174d127a63b2fa2a2c1f3f59693259dd02387dd"
+    },
+    {
+      "path": "hrm-c12-catalog-incoming5d-peer-review.json.gz",
+      "originalBytes": 4699,
+      "originalSha256": "11d79cc5abd7d8c30cb281d8b0c158c5fb3bb96016431fc78daa727f4ef5d792",
+      "storedBytes": 1974,
+      "storedSha256": "fb1965613f667af239f230edb7ee90bf13d8d867e2b31ebf9b1f64b308e799f9"
+    },
+    {
+      "path": "hrm-c12-catalog-post-diff-compression-check.txt",
+      "originalBytes": 0,
+      "originalSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "storedBytes": 0,
+      "storedSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}
