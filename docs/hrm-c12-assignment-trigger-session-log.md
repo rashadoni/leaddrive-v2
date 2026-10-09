@@ -149,3 +149,48 @@ no repinninghistoricalSHA. Four sourceworkflow pathfilters now include bounded
 fixture directory. Final review/PG/fullfivechecks PENDING; ownsourcechanges only.
 
 Actual sequential narrow Node checks: default13PASS/1PGSKIP, loopback15PASS/1PGSKIP, backup13PASS/1PGSKIP; originalTAPretained. ResourceRAMavailable11248MiB,disk265GiB; no fullcompiler/build/install/browser/PG onContabo. Runner53/diff/syntax PASS. Independent reviewer confirms original7-sourcechecksumchain and no extra frozenchecksum consumers; sixsnapshots .txt prevent testdiscovery, exactcurrentbindings and SQLdelta/prodblock proof required.
+
+
+## 2026-10-09 — frozen3da hosted source and all linked ACL regressions pass
+
+Source3da6e4b5e809e5bc9cf1641df47b4e2b3a3d85f3 frozen. Separate evidenceworktree
+branchcodex/hrm-c12-assignment-trigger-evidence-20261009 created fromexactsource;
+future journal/receipts cannot invalidate finalsourceSHA. Actualfirst4freshPG16
+sourcejobs metadata37969105950/default37969105918/loopback37969105881/backup
+37969105942 SUCCESS, allproductionjobs SKIPPED. Eachactualcheckout40SHA verified,
+receiptZIPCRC/singleJSON/all8sourcebindings/7casePASS/cleanupPASS accepted.
+AllsubsequentACLtests executed, not bypassed; exactfiniteTAPcounts in
+final-3da/hosted-source-summary.json, 0FAIL/0SKIP. Originalenv/hash failures and
+intermediatePASS retained separately; baselines unchanged. Fullmandatoryfive
+stillPENDING. PR657 finalbase648/cdaf is dependent; main-onlymandatory5 require
+reversible sameSHAvalidation againstactualmain729, syntheticparents/tree must
+matchfrozen3da beforeREADY. No productionjob/dispatch/merge/deploy involved.
+C12 realrestoredcopy/replay/load/physical/pilot/restore blockers unchanged;
+85DONE/76open/61%/14of15 gates and no newtaskclosure.
+
+
+## 2026-10-09 — exact-source independent PASS; complete GitHub gate event
+
+Independentexact3da sourcePASS/P0-P1-P2zero, originalreport51746bytes/SHA256
+85b5af5d7cfbdfaa77a79692d96b05fa0bfdcc8df64427f7da1ea058e87e834d retained gzip;
+607/d751reviews remain intermediate and originalbytes separately preserved.
+All4actualsourcejobs PASS69distinctTAP (25+14+16+14, repeated acrossworkflows),
+noPGskip. Rootactual18commits728885-byte narrowgitleaks8.30.1exit0; protectedC6
+outcomes/policy/helper/2baselines/gitleaks/prchecks exactintegratedmain729.
+FreshPR589/605/608 alreadymerged bypriorauthorizedrelease;606/609 CLOSED/unmerged;
+oldaccepted973/archivec123/releasedf308/frozen648 are actual3da ancestors.
+
+Temporarily changedPR657 base from648 toactualmain729 toexercise originalmain
+requiredchecks. First immediate refs/pull/657/merge fetch returnedstale0f556 with
+oldbasecdaf/source3da/tree1e752; parentassertFAILED1 preserved, but READY command
+continued duemissing shellfailfast. This was a publicationproof mistake, not
+acceptedverification. Nextfreshfetchactual8b6c parents729/3da/tree1e752 equals
+exact3datree, acceptedcorrectedproof. No source/head/baseline or productionchange.
+FirstREADYrun37969645905 startsfullstatic/type (notdraftSKIP). Secret scan only
+handlesmainPRdefaultopen/sync/reopen events, so no3dascan fromREADY. Reopened
+sameunchangedPR totrigger originalworkflows/allfive; initialREADYrun cancellation
+will be preserved if concurrency cancels it. This is a CIevent correction, not
+weakenedchecks or substitutedlocalgreen. Restore dependent648baseandDRAFT only
+once actualfiveApp15368contexts SUCCESS and independenthosted/compilerreview.
+Mandatoryfullcompiler/static/schema/export finalchecks stillPENDING. No build,
+browser/realrestore/load/physical/pilot/productionHR credit from thissource-onlyslice.
