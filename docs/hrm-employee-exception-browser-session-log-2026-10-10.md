@@ -318,3 +318,38 @@ small local check; original reader error saved separately. Correct existing
 check-github-runner-policy.mjs actuallyPASS54workflowfiles. Syntax/diff checks
 PASS; full build/browser/DB/typecheck remain hosted-only. PR678DRAFT; no new
 production mutation.85DONE/76open/61%,C6-006/C12partial,C14open unchanged.
+
+## Second fix admitted and exact-source0d7 hosted gates running
+
+Final0d7a4943e49c07891401ff21d2973399c219f35b/treea4250539b256df9dba96483c33a2d28c18050a4d
+independent SOURCEONLY admission15503B SHAe56cf29ec8e651fdd39436d30ff200612a78b79c2cecf1c7bc301883536b5bbe,
+no remainingP0/P1/P2. Actualnormalparents[fe7d,5393];7ownedcode/13total paths,
+main3foreignMTMbytepreserved,20+10protected/core64/18/old5jobblocks unchanged.
+Browser/auth/retry/privacy/audit/RLS/countergate functions and tail byte43
+unchanged. ImportedDRAFTtemplate+REMOTEsegment valid/canonical/noactivation;
+13factcontrols/32sourcebindings EXPECTEDONLY until actual runtime.
+
+Peer initial Jiti direct-dependency assumption error preserved; actual unchanged
+package-lock pins Jiti2.6.1 and accepted Today harness uses identicalimport;
+fullnpmci includes devdependencies. Root initially guessed head instead of
+actual report source key and gotKeyError; original reader failure retained.
+Shell continued authorized publication after that read-only error; independent
+acceptedsource was already delivered with exact0d7. Corrected root actual
+fullpeerSHA/source/tree/13bindings verificationPASS. No merge/production or
+runtime acceptance inferred from either reader error.
+
+Ordinary feature43->0d7 publication updates DRAFTPR678. Independent CI-only
+ref codex/hrm-employee-exception-ci-0d7-20261010 points EXACTSAME0d7; actualrun
+38026460209 attempt1 sixjobs RUNNING with exact guard. No other run cancelled,
+no second implementation/PR or production route. Old43compiler continues;
+other43jobs reported4SUCCESS/employeeFAIL, wholeoriginal not accepted asPASS.
+Sourcehead is frozen while current hosted source gates execute.
+
+Phase07 contains20originals/240173bytes: complete secondemployeefailure,
+dependency discovery, initial HR read-only reader and corrected version, root
+runner-path error and actual54workflow-policy success. Phase08 stores exact
+secondfix admission, all initial binding errors, root protected proof/current
+publication+run/API originals and currentPR678 body. Source/runtime/baseheads
+are explicit; no borrowed2b/43 status. RequiredREADY candidate gates, actual
+employee browser/database/nativezoom and all source checks remain PENDING.
+85DONE/76open/61%,C6-006/C12partial,C14open unchanged; no syntheticclosure.

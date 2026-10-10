@@ -1,0 +1,90 @@
+{
+  "archivedAtUtc": "2026-10-10T05:09:52.639996+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-employee-exception-second-fix-integrated-source-peer-review-0d7a.json.gz",
+      "originalBytes": 15503,
+      "originalSha256": "e56cf29ec8e651fdd39436d30ff200612a78b79c2cecf1c7bc301883536b5bbe",
+      "storedBytes": 5517,
+      "storedSha256": "6ea8c0ba5247d1d23a71ab94fe086a815926ff9e8030e4d3cc6880a888d1cdae"
+    },
+    {
+      "path": "hrm-employee-exception-0d7-peer-initial-reader-error.json.gz",
+      "originalBytes": 670,
+      "originalSha256": "73970b4132418238f2fdd9f5e03388cd092fd6de2d8fbe2e28019908cf920717",
+      "storedBytes": 470,
+      "storedSha256": "d9dce0a4df149127dd875038eb47dab3c9db8d06fe9c3f3f47206c4a03912451"
+    },
+    {
+      "path": "hrm-employee-exception-0d7-protected-source-root.json.gz",
+      "originalBytes": 4015,
+      "originalSha256": "38f801d3e7ab81a322983af3c1694bec6f74eff8e53eced43d060f3924795257",
+      "storedBytes": 1630,
+      "storedSha256": "e90ae8db103aadb21b07632bbe65b4da85295755d34268ef96383d241fff3dcb"
+    },
+    {
+      "path": "hrm-employee-exception-0d7-peer-binding-root-corrected.json.gz",
+      "originalBytes": 852,
+      "originalSha256": "745dfc6202c920dc97ae730e28550bb04a38ef1ca0aae350e6498371f26aaf75",
+      "storedBytes": 575,
+      "storedSha256": "edeabef1e11304a24d15c520462e588339291ad9dd2cd78f48b2bd11ea212de1"
+    },
+    {
+      "path": "hrm-employee-exception-pr-body-0d7-source-running.md.gz",
+      "originalBytes": 2478,
+      "originalSha256": "5becf59eb4387f28175265876c1d84eadb779c124773839e3a63fb6af6fbe6f0",
+      "storedBytes": 1390,
+      "storedSha256": "e1b941cebb077ae3cc1da2a813390fcfd2986bc1b44011d1a48dc801e1dbf80a"
+    },
+    {
+      "path": "hrm-employee-exception-0d7-publication-and-fresh-source-root/ci-only-api-original.json.gz",
+      "originalBytes": 289,
+      "originalSha256": "10f3c59245cdd66e9f7e5c8a31bbfffe94b21ff1cac82c269ba51dabe361abf0",
+      "storedBytes": 289,
+      "storedSha256": "10f3c59245cdd66e9f7e5c8a31bbfffe94b21ff1cac82c269ba51dabe361abf0"
+    },
+    {
+      "path": "hrm-employee-exception-0d7-publication-and-fresh-source-root/feature-api-original.json.gz",
+      "originalBytes": 291,
+      "originalSha256": "5fac2125a2cdb8188377e1b20166ac71b0078bbc08b416300a628d696b181522",
+      "storedBytes": 291,
+      "storedSha256": "5fac2125a2cdb8188377e1b20166ac71b0078bbc08b416300a628d696b181522"
+    },
+    {
+      "path": "hrm-employee-exception-0d7-publication-and-fresh-source-root/jobs-api-original.json.gz",
+      "originalBytes": 1954,
+      "originalSha256": "025243b2452dc5a057b61d00998df8b684ed7ec52b0cad1936e9ba826181903b",
+      "storedBytes": 1954,
+      "storedSha256": "025243b2452dc5a057b61d00998df8b684ed7ec52b0cad1936e9ba826181903b"
+    },
+    {
+      "path": "hrm-employee-exception-0d7-publication-and-fresh-source-root/main-api-original.json.gz",
+      "originalBytes": 215,
+      "originalSha256": "3bcb01d4128ee2a76bfacf6308680c38fd899722dad5b04ff5a1199717b32e52",
+      "storedBytes": 215,
+      "storedSha256": "3bcb01d4128ee2a76bfacf6308680c38fd899722dad5b04ff5a1199717b32e52"
+    },
+    {
+      "path": "hrm-employee-exception-0d7-publication-and-fresh-source-root/pr678-api-original.json.gz",
+      "originalBytes": 3501,
+      "originalSha256": "0ba819c2d2ccae4ccc8680365fc235bf75532ef359db61bbda65f627841bb100",
+      "storedBytes": 3501,
+      "storedSha256": "0ba819c2d2ccae4ccc8680365fc235bf75532ef359db61bbda65f627841bb100"
+    },
+    {
+      "path": "hrm-employee-exception-0d7-publication-and-fresh-source-root/run-api-original.json.gz",
+      "originalBytes": 1537,
+      "originalSha256": "f08070d2956ab670267bbc1481bca296d0f0bdd53226a79ba7bc3744a88dd1e8",
+      "storedBytes": 1537,
+      "storedSha256": "f08070d2956ab670267bbc1481bca296d0f0bdd53226a79ba7bc3744a88dd1e8"
+    },
+    {
+      "path": "hrm-employee-exception-0d7-publication-and-fresh-source-root/source-dispatch-root.json.gz",
+      "originalBytes": 1437,
+      "originalSha256": "3f2d499d32270d4ccd18a24c2a6b0a04f9cf6ce87b38ac0901be168e3eb1c27d",
+      "storedBytes": 572,
+      "storedSha256": "4f0dec61059e7d3ab9c4ccaaaa1dd9885846fdf2593acd9dd953c810cde71f32"
+    }
+  ]
+}
