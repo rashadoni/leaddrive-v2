@@ -1,0 +1,90 @@
+{
+  "archivedAtUtc": "2026-10-10T05:38:19.468889+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-employee-exception-a7dc-exact-dispatch-root/dispatch-root-summary.json.gz",
+      "originalBytes": 1367,
+      "originalSha256": "27bfc6569eb2330c1ee20a59bc98f7a234bf6ec41d65f762ed9433f7df060c66",
+      "storedBytes": 519,
+      "storedSha256": "8d82061774c9e59418c13f5dbddc72f6b551cbc47381eade844940d9c883157f"
+    },
+    {
+      "path": "hrm-employee-exception-a7dc-exact-dispatch-root/jobs-api-original.json.gz",
+      "originalBytes": 1930,
+      "originalSha256": "59820cd80f3a559a614c7a509e15543287f6cf06d73f61c4b6a2a9e0d1acbab5",
+      "storedBytes": 1930,
+      "storedSha256": "59820cd80f3a559a614c7a509e15543287f6cf06d73f61c4b6a2a9e0d1acbab5"
+    },
+    {
+      "path": "hrm-employee-exception-a7dc-exact-dispatch-root/main-api-original.json.gz",
+      "originalBytes": 215,
+      "originalSha256": "3bcb01d4128ee2a76bfacf6308680c38fd899722dad5b04ff5a1199717b32e52",
+      "storedBytes": 215,
+      "storedSha256": "3bcb01d4128ee2a76bfacf6308680c38fd899722dad5b04ff5a1199717b32e52"
+    },
+    {
+      "path": "hrm-employee-exception-a7dc-exact-dispatch-root/pr678-api-original.json.gz",
+      "originalBytes": 3309,
+      "originalSha256": "46dd846e252e6d26c853bdcf4a1cb20c6ee38123311c73e26b6a5f24fd89594b",
+      "storedBytes": 3309,
+      "storedSha256": "46dd846e252e6d26c853bdcf4a1cb20c6ee38123311c73e26b6a5f24fd89594b"
+    },
+    {
+      "path": "hrm-employee-exception-a7dc-exact-dispatch-root/run-api-original.json.gz",
+      "originalBytes": 1538,
+      "originalSha256": "e42fd35f5146b19a1c5ec8dc984aed1f868cc5bdc8113ee1ef45e3610eac999f",
+      "storedBytes": 1538,
+      "storedSha256": "e42fd35f5146b19a1c5ec8dc984aed1f868cc5bdc8113ee1ef45e3610eac999f"
+    },
+    {
+      "path": "hrm-employee-exception-recovery-alert-scope-source-peer-review-4055.json.gz",
+      "originalBytes": 2378,
+      "originalSha256": "65bb722ad0dfef798bf5da7bddcb16124120105f2f5919dcd848e4db9a943045",
+      "storedBytes": 1193,
+      "storedSha256": "fed495621da128445b5114bece21e6919338ceb90ea9aee183f7879a76b4cc23"
+    },
+    {
+      "path": "hrm-employee-exception-recovery-alert-scope-source-peer-review-a7dc.json.gz",
+      "originalBytes": 3977,
+      "originalSha256": "667413adf1527c56fb5fc39bf286ce380e43de16c4a37ef8d89f7a86fd6a8409",
+      "storedBytes": 2001,
+      "storedSha256": "69da10dc5397e5f2846431a6351221d7a7add1235c44a11dc0754fdaa3c1eee9"
+    },
+    {
+      "path": "hrm-employee-exception-a7dc-protected-source-root.json.gz",
+      "originalBytes": 3846,
+      "originalSha256": "8f745be0c76c695eb61aea006508eb00f25fe829d146e00d91608076e9681be9",
+      "storedBytes": 1579,
+      "storedSha256": "2683ca6221a7bc915da45693aafc4b74a6ef3f346ee6b9adc33c77a1d352b5fc"
+    },
+    {
+      "path": "hrm-employee-exception-next-16.2.11-announcer-primary-api.json.gz",
+      "originalBytes": 4421,
+      "originalSha256": "ad5aab886b11b7b5707a3a61ed987d01fbfc08d2d71a190643bfbe55f7838ec7",
+      "storedBytes": 2031,
+      "storedSha256": "7a934169b57d74e4a1c46dfde1cf6cfee33d6a5a82a4506bc8f5c8dd118f550a"
+    },
+    {
+      "path": "hrm-employee-exception-next-16.2.11-announcer-primary.tsx.gz",
+      "originalBytes": 2424,
+      "originalSha256": "955d4fa8eeec21cbb42fd5ee48f2bc67f7dfd84bfc2a01e7b61b79ada820db88",
+      "storedBytes": 981,
+      "storedSha256": "3e1e9229e197a998d7b2f0add7d05e44cc0370e9e3c07e9fdc7f6c821ae30411"
+    },
+    {
+      "path": "hrm-employee-exception-next-16.2.11-announcer-peer-primary-api.json.gz",
+      "originalBytes": 4421,
+      "originalSha256": "ad5aab886b11b7b5707a3a61ed987d01fbfc08d2d71a190643bfbe55f7838ec7",
+      "storedBytes": 2031,
+      "storedSha256": "7a934169b57d74e4a1c46dfde1cf6cfee33d6a5a82a4506bc8f5c8dd118f550a"
+    },
+    {
+      "path": "hrm-employee-exception-next-16.2.11-announcer-peer-primary.tsx.gz",
+      "originalBytes": 2424,
+      "originalSha256": "955d4fa8eeec21cbb42fd5ee48f2bc67f7dfd84bfc2a01e7b61b79ada820db88",
+      "storedBytes": 981,
+      "storedSha256": "3e1e9229e197a998d7b2f0add7d05e44cc0370e9e3c07e9fdc7f6c821ae30411"
+    }
+  ]
+}

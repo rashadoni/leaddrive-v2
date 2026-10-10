@@ -1,0 +1,160 @@
+{
+  "archivedAtUtc": "2026-10-10T05:38:17.572293+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-employee-exception-0d7-six-terminal-archive-snapshot/actual-full-tsc-output.log.raw-original.gz",
+      "originalBytes": 179299,
+      "originalSha256": "b6b9ee71a33aa9f683f81b2a4879597b63099a4d23ae794e1f71c0ba39536df6",
+      "storedBytes": 19289,
+      "storedSha256": "9392db77de06cf9a55b83941c9f684f4b51f5ead1d2e2ac91ace9c3ed0ab2e40"
+    },
+    {
+      "path": "hrm-employee-exception-0d7-six-terminal-archive-snapshot/actual-tsc-exit-code.raw-original.gz",
+      "originalBytes": 2,
+      "originalSha256": "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3",
+      "storedBytes": 22,
+      "storedSha256": "6e08a71af69ad2fa0122936c77c0ba1d20f2b26808cfc5ea068985fb8264bf05"
+    },
+    {
+      "path": "hrm-employee-exception-0d7-six-terminal-archive-snapshot/artifact-11659484505-original.zip",
+      "originalBytes": 6589320,
+      "originalSha256": "91c4d9757891c8a0fcbaa21f41174d687b8a049b8491ff63cb2cefa1ce60c7e7",
+      "storedBytes": 6589320,
+      "storedSha256": "91c4d9757891c8a0fcbaa21f41174d687b8a049b8491ff63cb2cefa1ce60c7e7"
+    },
+    {
+      "path": "hrm-employee-exception-0d7-six-terminal-archive-snapshot/artifact-11660587773-original.zip",
+      "originalBytes": 20010,
+      "originalSha256": "3e7709b2f062a41196dbb6da2e2d673fbfe030de41afc4756fefacecdc72d288",
+      "storedBytes": 20010,
+      "storedSha256": "3e7709b2f062a41196dbb6da2e2d673fbfe030de41afc4756fefacecdc72d288"
+    },
+    {
+      "path": "hrm-employee-exception-0d7-six-terminal-archive-snapshot/artifact-11660701687-original.zip",
+      "originalBytes": 3790501,
+      "originalSha256": "deecc6d520ace7ecab2af297d931045bf6f670b99b633b07a961424fd3b65698",
+      "storedBytes": 3790501,
+      "storedSha256": "deecc6d520ace7ecab2af297d931045bf6f670b99b633b07a961424fd3b65698"
+    },
+    {
+      "path": "hrm-employee-exception-0d7-six-terminal-archive-snapshot/artifact-11660871189-original.zip",
+      "originalBytes": 206914,
+      "originalSha256": "c11fd1e536dcc72af1bc25ce38f193b0da46c840256794158336f2794a17f18e",
+      "storedBytes": 206914,
+      "storedSha256": "c11fd1e536dcc72af1bc25ce38f193b0da46c840256794158336f2794a17f18e"
+    },
+    {
+      "path": "hrm-employee-exception-0d7-six-terminal-archive-snapshot/artifacts-api-original.json.gz",
+      "originalBytes": 776,
+      "originalSha256": "3db5b58a44735dbb0e932dd05621b5e04d9f37fbb7125fe587a7fca28e4a01de",
+      "storedBytes": 776,
+      "storedSha256": "3db5b58a44735dbb0e932dd05621b5e04d9f37fbb7125fe587a7fca28e4a01de"
+    },
+    {
+      "path": "hrm-employee-exception-0d7-six-terminal-archive-snapshot/finite-capture-summary.json.raw-original.gz",
+      "originalBytes": 18527,
+      "originalSha256": "7e02006a1ab080ef5be92593d80a2fec80e3e9ddc0c52ad74b9a7e5fa9f3fbf7",
+      "storedBytes": 2608,
+      "storedSha256": "acff51a2fa2a22edac351968bfab1a451216563f5b88c56e61121db4355c8510"
+    },
+    {
+      "path": "hrm-employee-exception-0d7-six-terminal-archive-snapshot/hrm-employee-exception-build-peer-review-0d7a.json.raw-original.gz",
+      "originalBytes": 4542,
+      "originalSha256": "b9084089a7fd10ed979e9d64c8b665096b21319bc31e34b6776992aa3f6fc125",
+      "storedBytes": 1291,
+      "storedSha256": "9f8d09da437c5a993c9044c3b97eb8198ab71211805b93e00ceecb7e4caf2e24"
+    },
+    {
+      "path": "hrm-employee-exception-0d7-six-terminal-archive-snapshot/hrm-employee-exception-hr-regression-peer-review-0d7a.json.raw-original.gz",
+      "originalBytes": 25377,
+      "originalSha256": "c32c6eea14a62b513dbd905dfb43b042cd6300906a71c951491ec1b48715aff9",
+      "storedBytes": 5690,
+      "storedSha256": "217a42f62bc5c263fc40c097e3488ec8884057f757537c5ca8a00bf822b8c77b"
+    },
+    {
+      "path": "hrm-employee-exception-0d7-six-terminal-archive-snapshot/hrm-employee-exception-regression-peer-review-0d7a.json.raw-original.gz",
+      "originalBytes": 6757,
+      "originalSha256": "0b895e814fab570ee3322c58c7488330896b23b398e3744244208339a0c12214",
+      "storedBytes": 1859,
+      "storedSha256": "c324ba9c0a3cd41cb1bf739409aaac40409e3a4ab3e2da5351415d9f2b740f07"
+    },
+    {
+      "path": "hrm-employee-exception-0d7-six-terminal-archive-snapshot/hrm-employee-exception-report-regression-peer-review-0d7a.json.raw-original.gz",
+      "originalBytes": 51861,
+      "originalSha256": "9f599049f57503c79d16303fc53e2ee4acd832c351c5a1dc520eeb79167279e7",
+      "storedBytes": 9361,
+      "storedSha256": "f00bf08684c515c06eaed52d357015deba39f401ad6f9a3c1603d2452dc43e05"
+    },
+    {
+      "path": "hrm-employee-exception-0d7-six-terminal-archive-snapshot/job-114138228904-original.txt.gz",
+      "originalBytes": 18832,
+      "originalSha256": "9fcc198fd5fd5ae85011c6e007213d836483ce6f891f0ab6c6d905b552522a5c",
+      "storedBytes": 18832,
+      "storedSha256": "9fcc198fd5fd5ae85011c6e007213d836483ce6f891f0ab6c6d905b552522a5c"
+    },
+    {
+      "path": "hrm-employee-exception-0d7-six-terminal-archive-snapshot/job-114138229052-original.txt.gz",
+      "originalBytes": 28664,
+      "originalSha256": "d870c20ba6fc3cd9fe4408e30c0463b7da3376dbdf9d8ba4b7860902d21ca212",
+      "storedBytes": 28664,
+      "storedSha256": "d870c20ba6fc3cd9fe4408e30c0463b7da3376dbdf9d8ba4b7860902d21ca212"
+    },
+    {
+      "path": "hrm-employee-exception-0d7-six-terminal-archive-snapshot/job-114138229076-original.txt.gz",
+      "originalBytes": 35250,
+      "originalSha256": "ca03754b897100870a3125a3cb4a15ba5d55cc958ab80c6d5e14eb67dffe30b7",
+      "storedBytes": 35250,
+      "storedSha256": "ca03754b897100870a3125a3cb4a15ba5d55cc958ab80c6d5e14eb67dffe30b7"
+    },
+    {
+      "path": "hrm-employee-exception-0d7-six-terminal-archive-snapshot/job-114138229096-original.txt.gz",
+      "originalBytes": 21228,
+      "originalSha256": "d3968177e1a1a65b3f1cfa564825ef37369601e510c495342f42eac5452ff896",
+      "storedBytes": 21228,
+      "storedSha256": "d3968177e1a1a65b3f1cfa564825ef37369601e510c495342f42eac5452ff896"
+    },
+    {
+      "path": "hrm-employee-exception-0d7-six-terminal-archive-snapshot/job-114138229105-original.txt.gz",
+      "originalBytes": 21593,
+      "originalSha256": "c26353ea8c29f8b01a57ae8b5dad426b250ad01350d1be857d17cf5803ff67c5",
+      "storedBytes": 21593,
+      "storedSha256": "c26353ea8c29f8b01a57ae8b5dad426b250ad01350d1be857d17cf5803ff67c5"
+    },
+    {
+      "path": "hrm-employee-exception-0d7-six-terminal-archive-snapshot/job-114138229243-original.txt.gz",
+      "originalBytes": 24570,
+      "originalSha256": "4fbec9c4a71fae704d0fb4118745d00fd00f877b977885d0d02dbbd803148dfa",
+      "storedBytes": 24570,
+      "storedSha256": "4fbec9c4a71fae704d0fb4118745d00fd00f877b977885d0d02dbbd803148dfa"
+    },
+    {
+      "path": "hrm-employee-exception-0d7-six-terminal-archive-snapshot/jobs-api-original.json.gz",
+      "originalBytes": 2320,
+      "originalSha256": "8cbff1d0ff082c5033b4f98959968b220521877f103b6dd76ab2cc150d24464a",
+      "storedBytes": 2320,
+      "storedSha256": "8cbff1d0ff082c5033b4f98959968b220521877f103b6dd76ab2cc150d24464a"
+    },
+    {
+      "path": "hrm-employee-exception-0d7-six-terminal-archive-snapshot/original-source-inventory.json.gz",
+      "originalBytes": 5644,
+      "originalSha256": "197ad3a60337341423d1a9d2a7b5b8bea2523b178d78f83c42da244b7b48ec9d",
+      "storedBytes": 1445,
+      "storedSha256": "64bc12b0ffa6c638fe13a8d2964987bd8c8ecdf7cbf37cf0e2a60110c19b27c0"
+    },
+    {
+      "path": "hrm-employee-exception-0d7-six-terminal-archive-snapshot/root-complete-compiler-gate-review.json.raw-original.gz",
+      "originalBytes": 4852,
+      "originalSha256": "c4bea47bae08d990bec439888db5e71023ffcf559b33e2132cfc9552257548b1",
+      "storedBytes": 1550,
+      "storedSha256": "b4874eefeec05fb93fc5ad2b236ed5d99af447a2f154fc12a3307cafd719a800"
+    },
+    {
+      "path": "hrm-employee-exception-0d7-six-terminal-archive-snapshot/run-api-original.json.gz",
+      "originalBytes": 1538,
+      "originalSha256": "61884f1b6d801564920519f861d5a2e24a45d7846a7d1e5c869d1c72cfd41717",
+      "storedBytes": 1538,
+      "storedSha256": "61884f1b6d801564920519f861d5a2e24a45d7846a7d1e5c869d1c72cfd41717"
+    }
+  ]
+}

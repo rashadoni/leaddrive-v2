@@ -403,3 +403,35 @@ Report/HR also reportedSUCCESS, originalwholecompiler/build stillpending.
 No current4055/candidate/release credit, PR678DRAFT. Existing foreignMTM PR679
 watcher observed read-only; no actions against it.85DONE/76open/61%, C6-006/
 C12partial/C14open unchanged; next ownactualdiagnosticrepeat and exactgates.
+
+## Original0d7 terminal preserved; A7DC recovery-scope repeat running
+
+Original0d7 run38026460209 attempt1 completed naturallyFAILURE with five prior
+gatesSUCCESS/employeeFAIL. Fullrootcapture phase11 includes all six wholelogs,
+four digest/CRCvalidatedZIPs/current fullcompiler179316B rawSHA
+b6b9ee71a33aa9f683f81b2a4879597b63099a4d23ae794e1f71c0ba39536df6,
+1162/35/EXIT2/64pairs-counts matched/critical0/taskowned0/globalNONCLEAN.
+Rawbyte length above follows current rootcapture; originalraw authoritative.
+Report33/54/58/native21/22facts and HR20/108/24writes+audits/native21/8facts
+independentlyaccepted, PG44/sharedguard36/strict18 andbundle974 preserved.
+No employee wholePASS, originalalertidentity remains NOTPROVED.
+
+Unpublished intermediate4055 boundfinding retained:16limit aftermap was not
+finite traversal. Correct finala7dc486d44fd020d5bde07d7604c54fdf57498d8/tree
+4523dce776357deaeabaa795a4b8308512879a18 checks bound beforemap, stores only
+finite boolean/numericdiagnostics. Ownalerts0, everyunknownoutsidealertFAIL;
+only positiveNEXTJS-PORTAL or exact canonicalNext16.2.11 routeannouncer shape
+admitted. Bothroot/peer verified officialprimarysource (2424B/blobd2d5415...),
+lockedversionunchanged. No raw text/privateDOM/DOM/CSS/accessibility removal.
+Source-only finalpeer3977B SHA667413adf1527c56fb5fc39bf286ce380e43de16c4a37ef8d89f7a86fd6a8409,
+no remainingP0/P1/P2, exactreversal proves onlydiagnostic/scope+appendjournal.
+Allproduct/roles/constraints/old5jobs/nativehelper/core64/18 unchanged.
+
+Ordinary source0d7->a7dc publication inDRAFTPR678 and newCI-onlysamecommitref
+codex/hrm-employee-exception-ci-a7dc-20261010. ExactsourceRUN38028091086attempt1
+sixjobs RUNNING; no othercancel/rerun. Phase12 retains initial4055finding,
+finalsourcepeer/rootprotectedproof/officialprimaryroot+peer/originaldispatch
+API/ref/main admission. Actualnew alertidentity/browser/database/candidate/
+required5/mainrelease pending, no old-head credit.85DONE/76open/61%,C6-006/
+C12partial/C14open unchanged. Next actualemployee terminalreceipt/pixels;
+keep exactsourcefrozen until proven result.
