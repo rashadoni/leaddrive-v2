@@ -256,3 +256,33 @@ permissions unchanged. C12PARTIAL/WF-C14-003PLANNED/85DONE76open61% stayunchange
 Next: fullBF browser33/3native/21originalcaptures/54focus/57reflow andPG/full
 baseline/compiler/build independently reviewed, then normal own merge/Actions
 release/fullSHA/ping/privacy smoke, then the next uncovered permitted HRM slice.
+
+## Original BF browser focus failure and corrected settled-state contract
+
+BF source114087124256/run38009864707 and separate candidate114087087178/
+run38009853987 both actually FAIL in standard-100-az-320-empty: no completed
+matrix cells/native run/facts-after/RLS-after/audit acceptance. Wholeoriginal
+ZIPs11652888347/11652098606, API digests/CRC, all15 source bindings and full
+logs independently verified. First3 actual Tab focus/visibility checks PASS;
+Refresh nowfits [76,250] inside [64,320]. Actual native disabled Apply can blur
+during asynchronous loading; original state branch asserted retained focus
+without navigating back. This is an unintended harness focus-retention
+assumption, not a waived visibility or Tab-admission criterion. Both failures
+remain immutable FAIL with cleanupPASS. Root viewed actual original PNG;
+finite original failure review1646B/SHA24952754b9d1b8d64c59dc23c9683578a14da4cf18676ffbedd1a2d9c2d54609.
+
+Local unpublished correction7ba977616a209376cbbb9f9370d005895752cbbe adds actual
+bounded keyboard Tab reacquisition in the settled state before every unchanged
+focusedControl/assertion. No DOM focus injection, assertion removal, count or
+threshold reduction, rate-limit reset, product focus manipulation or baseline
+rewrite. Explicit limitation: no automatic loading-focus retention acceptance.
+Independent BF→7BA review3739B/SHA38574d4b8435539ac917154a82aca4fdce58f636eaa8451fcbe363b7d34f15a4,
+zero remaining sourceP0/P1/P2; all5 other executable paths byteidenticalBF.
+Tiny Node20 syntax/PR608 cumulative whitespace/runner54/gitleaks1commit2023B
+actualPASS after resource inspection. Heavy7BA gates NOT RUN while the original
+BF source/required runs finish; no old success transferred to7BA. No local
+install/browser/compiler/build/PG tests run. No merge/deploy/production mutation.
+Accounting remains85DONE/76open/61%, C12PARTIAL/WF-C14-003PLANNED.
+Next: preserve all completeBF originals, publish7BA and run fresh exact-head
+hosted required/source/browser/PG/compiler/build gates, independently inspect
+actual report evidence, release normally, then next genuinely uncovered slice.
