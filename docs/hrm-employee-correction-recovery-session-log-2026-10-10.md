@@ -1,0 +1,33 @@
+# HRM employee correction recovery session journal — 2026-10-10
+
+## Resume and boundaries
+
+User requests autonomous existing-HRM continuation and authorizes ownverified
+ordinary merges/normalActionsdeploys; everyfinished unit proceeds to nextstep.
+Keep589→605→608/973+c123archive, nevermerge606/609/646/663; Support/HRHubdocs/
+production activation/access/secrets/data remain outside this slice. Canonical
+accounting85DONE76open61%; C6-006/C12PARTIAL/C14OPEN, no syntheticclosure.
+
+Currentparent PR683 frozenfb227/baseownverifiedreleasedM7e58, oneexactsource7
+run38045570415 stillRUNNING. Newcorrectionsourcejob114194293207 actualSUCCESS,
+wholeoriginal root+peer admission andoldremainingjobs pending. No parent683
+merge/releasecredit or nextpublication beforefull parentverifiedrelease.
+
+Newfuture worktree remoteContabo /mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-employee-correction-recovery-20261010,
+branchcodex/hrm-employee-correction-recovery-20261010, originrashadoni/leaddrive-v2.
+Actualcodex-project-context/AGENTS/Delivery contract resolvedproduction13.140.132.245:/opt/leaddrive-v2,
+normal reviewedmain→Actions→immutableSHAartifact→atomicdeploy/publicsmoke.
+No Mac sessions/heavyContabo checks/dependencyinstallation/browser/database.
+Root sole sourcewriter; currentpeer readonlycurrent7/release independentreview.
+
+Nextpermitted syntheticproof: serveractuallycreates201pendingrequest, then
+browser reply is deliberately lost; employee sees error andtypedown fieldsremain,
+actual UI retry uses sameclientkey/body andreceives200idempotent/sameid, no second
+request/audit. Existingworkbench source explicitly keeps draft/key onfailure;
+actual browser proof is missing. Separate eighth job/target/harness/ownservice
+must preserve originalseven andstrictcurrent19request/audit assertions; reuse
+current opt-in syntheticfixture/exactproductionlink routines only. Standard
+AZ/RU/EN viewports; no personneldecision/correction, private body/pixels, native
+form/device/human/productionHR/operational/fullhistorical/defaultACL acceptance.
+This is preparation only. All nextSQL/browser/sourceindependent/hosted checks
+NOT RUN, no automaticpolicy/app behavior change andno issueclosed.
