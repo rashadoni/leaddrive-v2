@@ -186,3 +186,37 @@ prepared separately; execution NOT RUN. Proposed19requests/19audits/9cells/10aut
 Source unpublished; current ownM7e58 normalmainrelease/maincompiler RUNNING.
 Next parentverifiedrelease thennormalfinalmain integration/finalexactsource
 review/draft publication andone7lane source dispatch; no baseline weakening.
+
+## Prepared job and fixture labels qualified before publication
+
+New seventh-job upload/readiness/comment labels now explicitly say correction
+and JSON-only. Fixture source uses opt-in boundary language rather than a stale
+NOT EXECUTED assertion; actual runtime status remains NOT RUN in this journal.
+Oldsixjob blocks, newjob behavior and SQL logic unchanged. Final exact-source
+review after parentrelease/integration will include this label-only delta.
+
+## Existing ordinary main ancestry integrated; publication waits own release
+
+Prepared branch normally integrates actualmain7e58cb3f618b53567df8df54bb9d9b89fed316da
+while its ownnormalActionsrelease is still RUNNING. Merge preserves priorprepared
+checkpoints and existingH6f58 chain; no reset/force or applicationchanges. New
+source differsfrom actualmain only the same sixnewjob/harness/fixture/target/doc
+paths; current682source remainsfrozen. This source-only preparation does not
+claim deployed acceptance. Finalexactsource review may proceed; publication,
+7lane hostedruntime and nextmerge remain gated on own682 verifiedrelease plus
+freshrefs/controls. All plannednewruntime totals remain NOT RUN. Accountingsame.
+
+## Frozen final integrated source admitted; publication still gated
+
+Final CLEAN unpublishedfb227c08821ef2412cce2386929886b0fcfa0628 independently
+source-only ACCEPTED versusM7e58, receipt7209B SHAa8f6d7206c250f1b4c4b55a2aef56d4e6c880f47235fbd05bc0570de581f2665.
+Ordinaryintegration8fd7 parents[b792,M7], thenjournal-onlyfb. ThreeMJS exact335;
+SQL body exact/commentqualified; seventhjob onlythree label/commentdelta, oldsix
+wholeworkflow and56protectedblobs byteequalM7. Bothoriginalfindings resolved,
+append-only journal/priorcheckpoint ancestry intact. Peer actual26pure/3syntax/
+runner54/diffPASS; rootrunner54/static11extractions/diff and boundedredacted
+Gitleaks8.30.1 on12owncommits71325bytesPASS/[]/219ms afterresources. No heavylocal
+checks. NewtargetSQL/browser/seventhjob/fullruntime still NOT RUN; alltotals
+PLANNED. Final exact59original inventory SHA2698bd444fb074ace454f8e9a3a24c6c2e3c429cd1b5f82b049c93a11f8cdcb1.
+Current own682M7 normalquality actualSUCCESS, build/maincompiler RUNNING; parent
+verifiedrelease requiredbefore nextdraft/oneexactH7lane dispatch. Source fixed.
