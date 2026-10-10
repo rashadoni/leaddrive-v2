@@ -59,7 +59,7 @@ const receipts = {
   checkedMergeSha: process.env.GITHUB_SHA, startedAt: now.toISOString(),
   environment: "hosted Chromium / real Auth.js / loopback Next dev / disposable PostgreSQL16 and Redis",
   status: "RUNNING", cases: [], sources: [], productionRoutines: [], authenticationDiagnostics: [], writeDiagnostics: [],
-  matrix, nativeZoomDiagnostics: [], nativeCaptureDiagnostics: [], keyboardFocusDiagnostics: [], nativeZoomVerdict: "NOT RUN",
+  matrix, nativeZoomDiagnostics: [], nativeCaptureDiagnostics: [], keyboardFocusDiagnostics: [], privacyCaptureRefusals: [], nativeZoomVerdict: "NOT RUN",
   limitations: ["Queue table is deliberately horizontally scrollable; table-region checks prove focused visible intersection, not a whole tall table fitting one screen", "Real Tab/Enter and keyboard reason entry; no automatic loading-focus retention/human AT/whole-page WCAG acceptance", "Private reason is never photographed; a failure with a protected form value records NOT_CAPTURED rather than editing the DOM/image", "Synthetic isolated tenants and imported historical terminal decisions only", "Development bundle, not production build", "Exact production decision revision and append-only routines; no full migration replay", "Audit whitelist/append-only fixture guard is synthetic, not a production MtmAuditLog migration", "No live HR observation, physical presence, device, pilot, payroll or disciplinary evidence", "No production mutation, grants, activation, secret/access change or external message"],
 }
 function noProtected(value) {
@@ -349,11 +349,24 @@ async function focusedControl(view, locator, phase, tableRegion = false) {
   if (tableRegion) assert.ok(diagnostic.box.bottom > diagnostic.clip.top && diagnostic.box.top < diagnostic.clip.bottom)
   else assert.ok(diagnostic.box.top >= diagnostic.clip.top - 1 && diagnostic.box.bottom <= diagnostic.clip.bottom + 1)
 }
-async function safeScreenshot(page, name, fullPage = false) {
+async function assertCapturePrivacy(page) {
+  // Reject every nonempty reason, including interrupted partial input. Return
+  // only a boolean; never retain that private value in capture diagnostics.
+  const reasonEmpty = await page.locator('textarea[name="reason"]').evaluateAll(elements => elements.every(element => element.value === ""))
+  assert.equal(reasonEmpty, true, "Nonempty private HR reason forbids capture")
   noProtected(await page.locator("body").innerText())
-  // Read only. Never clear a reason or alter pixels to fabricate an original.
   const values = await page.locator('input:not([type="hidden"]),textarea').evaluateAll(elements => elements.map(element => element.value).join("\n"))
   noProtected(values)
+}
+async function provePrivateCaptureRefusal(view, kind) {
+  // Exercise the same mandatory capture admission on the actual browser DOM.
+  // Never call the screenshot sink with a protected value, even on regression.
+  await assert.rejects(() => assertCapturePrivacy(view.page), /Nonempty private HR reason forbids capture/)
+  receipts.privacyCaptureRefusals.push({ locale: view.locale, width: view.width, nativeZoom: Boolean(view.nativeZoom), kind, status: "PASS", screenshotSinkInvoked: false, rawReasonRetained: false })
+}
+async function safeScreenshot(page, name, fullPage = false) {
+  // This admission is unconditional and precedes every real screenshot sink.
+  await assertCapturePrivacy(page)
   if (isNativeZoomPage(page)) await captureNativeViewport(page, outputDirectory + "/" + name,
     diagnostic => receipts.nativeCaptureDiagnostics.push(diagnostic))
   else await page.screenshot({ path: outputDirectory + "/" + name, fullPage })
@@ -401,10 +414,15 @@ async function uiScenario(tenant, cell, classificationCode, appealCode) {
     await page.keyboard.press("Enter")
     assert.equal(posts, 0, "Empty reason cannot submit")
     await tabTo(page, textarea); await focusedControl(view, textarea, code + "-empty-reason")
+    await page.keyboard.type(reason.slice(0, 12))
+    await provePrivateCaptureRefusal(view, "PARTIAL_REASON")
+    await page.keyboard.press("ControlOrMeta+A"); await page.keyboard.press("Backspace")
+    assert.equal(await textarea.inputValue(), "")
     const phase = code === classificationCode ? "classification" : "appeal"
     if (nativeZoom) await safeScreenshot(page, "classification-" + name + "-" + phase + "-empty-reason.png")
     await page.keyboard.type(reason)
     assert.equal(await textarea.inputValue(), reason)
+    await provePrivateCaptureRefusal(view, "COMPLETE_REASON")
     const committed = observeWaiter(page.waitForResponse(r => new URL(r.url()).pathname === endpoint && r.request().method() === "POST", { timeout: 120_000 }))
     const refreshed = observeWaiter(page.waitForResponse(r => new URL(r.url()).pathname === queueEndpoint && r.request().method() === "GET", { timeout: 120_000 }))
     await tabTo(page, submit); await focusedControl(view, submit, code + "-submit")
@@ -552,6 +570,8 @@ try {
   assert.equal(receipts.nativeCaptureDiagnostics.length,21)
   assert.ok(receipts.nativeCaptureDiagnostics.every(row => row.status === "PASS"))
   assert.equal(receipts.keyboardFocusDiagnostics.length,108)
+  assert.equal(receipts.privacyCaptureRefusals.length,48)
+  assert.ok(receipts.privacyCaptureRefusals.every(row => row.status === "PASS" && row.screenshotSinkInvoked === false && row.rawReasonRetained === false))
   receipts.nativeZoomVerdict = "PASS"
   receipts.status="PASS"
 }catch(error){

@@ -67,3 +67,23 @@ build. Currentparent7BA ownfullsource5lanesSUCCESS; mandatorytype stillPENDING.
 No production merge ofthis newtask, no inherited/newtask runtime credit or
 accounting change. Next freeze checkpoint and independent root-harness review,
 then dependent draftPR and actual hosted matrix; preserve all firsterrors.
+
+## Original f529 privacy review P2 and corrected capture admission
+
+Independent root-harness review of f529238bf06dc6c0f8a1b1857d20adcb86208ca3
+returned blockingP2: complete-marker matching alone could admit a partially
+entered protected reason on an interrupted typing failure. Original2843B
+receipt/SHA924293848949c0aadc902ce8450109d9426efbb89245d70b673bcc712706e4cc
+retained. f529 not published or runtime-tested; no actual private image leak
+claimed. Initialcheckpoint stays in Git; no statusrewrite or baselinechange.
+
+Correction requires every textarea[name=reason] empty before any real capture.
+Only boolean emptiness is retained. Every safeScreenshot unconditionally calls
+that common admission before a screenshot sink. Forty-eight expected actual
+browser-DOM refusals exercise partial and complete keyboard-entered reasons
+(two per manual decision), never call a screenshot sink on those values. Real
+Ctrl/Meta+A and Backspace edits restore the empty field before the original
+empty-state picture; no DOM/pixel masking. All24writes/20cases/108focus/3native/
+21realcaptures and original negative/ledger/RLS/audit/migration gates retained.
+Node20 syntax/whitespace PASS; fresh independent source review and allheavy
+runtime stillPENDING. Parent7BA frozen and unaffected; no newtask closure.
