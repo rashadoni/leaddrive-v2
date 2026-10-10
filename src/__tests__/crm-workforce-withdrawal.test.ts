@@ -49,7 +49,7 @@ describe("Workforce withdrawal from CRM", () => {
       const value = buildMtmMobileCapabilityManifest({ organization,
         auth: { agentId: "agent-1", role: "AGENT", tenantCapabilities: capabilities },
         timezone: "Asia/Baku",
-        workforceSyncV2Pilot: { enrolled: true, scopeRevision: 9n, cohortEpoch: "2026-08-29T10:00:00.000Z" },
+        workforceSyncV2Pilot: { enrolled: true, scopeRevision: BigInt(9), cohortEpoch: "2026-08-29T10:00:00.000Z" },
       })
       expect(value.modules.workforceHrm).toEqual({ enabled: false, scopeVersion: null })
       expect(value.modules.routeField.enabled).toBe(routeField)
