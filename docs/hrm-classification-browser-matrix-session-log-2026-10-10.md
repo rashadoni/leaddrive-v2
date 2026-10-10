@@ -617,3 +617,47 @@ real hosted employee self-flow/error/recovery/keyboard/native responsive and
 privacy browser evidence, with any actual defect fixed and independently
 checked; no fullappeal/Android/device/wholeC14 closure inferred.
 Accounting unchanged85/161DONE/76open/61%; C12PARTIAL/C14incomplete.
+
+## Exact F50 source and current candidate accepted; required type still pending
+
+Freshsource38020223042 attempt1 naturally completedallfiveSUCCESS. Root
+wholecapture validates original APIs/jobs/logs/threeZIP APIsha/bytes/CRC/
+safeunique members; fresh wholecontent report/HR/fullcompiler readers passed.
+Independent sourceHR32349B/SHA16d6832d6fac34ed0572cc1ab8f6ff0c5a93a78694810751d7a54c2b53407a12
+accepts actual20/12/24manual+24audits/108focus/48privatecapture refusals/3native21/
+19bindings/7exactextracts/facts8/RLS/cleanup. Independent actualpixels7117B/SHA
+410b62522781619bac991c56fd3bc4863a66fac697b53b9ce244465ce9f5ed9e
+viewedall21 freshnative originals; no AEF runtime/pixel transfer.
+
+Freshreport33/54focus/58reflow/3native21/15bindings/22facts/RLS/audit/cleanup
+acceptedroot+peer63736B/SHAa58bbd5a4c0b655e32676af29c70a0e1917188877d17f9431907a4e2d8f5a9e4.
+Sourcecompiler7880B/SHAbea22a9496a10f07122bc381fcaa9d1713f93da49e9736117864008eb61ce8fd
+accepts actualfreshraw179299B/SHAf7e463d2ae280538ed2f171dc413dab7036697efabefb5b73016ad14a8db5f22,
+1162/35/exit2/strict64matched/critical0/owned0; globallyNONCLEAN.
+Actualguard31/PG44/fullregstrict18/everyoriginalstillfails/schema/generate/
+lint/i18n/runner/974page standalonebuild independently7172B/SHA
+c138fe26bd47dbbad37c956df3391eab73be74f27be68bcc4a051fd25bbefbb8.
+Inherited trace-copyENOENT and internaltypevalidationskip retained.
+
+FreshREADYreport38020330844/calendar38020330854/manager38020330898 allactual
+SUCCESS on ba790 parents[AFE,F50]/whole6ddc9. Root complete ZIP/readers
+accept report33/3native21/22facts, calendar15/31sources/3native33/89focus/
+contrast/roleboundary, manager9/58sources/3native27/6focus/20facts/cleanup.
+Calendar has no businessfact fingerprint field; no invented immutability.
+Sevenfreshoriginal rootviews documented separately:fourHR, calendarAZ,
+managerEN,reportRU. ReportRU visibletime denominator6resolved/1unfinished/
+1integrity and separateclassificationexplanation, percentagesbelowframe not
+claimedvisible. Nativeclosedselect truncation/validationtooltip/header/dev
+badge/tallhorizontal table retained and qualified; no universalocclusion/
+WCAG/humanAT/physical/operational acceptance. Phase17 all originals immutable.
+
+Mandatorycurrent scope/static/runner/scanSUCCESS; type114119767803 remains
+IN_PROGRESS, no five-context/merge or newproduction credit. Baselines unchanged.
+MainAFE stable at lastfetch, freshrefs still mandatoryimmediatelybeforemerge.
+Independent candidateboundary/final5 proof pending. No pipelinecancel/retry.
+
+Separatedependent employee worktree preparedscopedSQL/admission/native
+mapping, pureguard smoke passedwithoutDB/browser; checkpointffe05c550.
+Fullnewemployeeharness/workflow/hostedruntime stillopen; no C6-006 closure.
+Next finish requiredtype/finalpeer/refadmission, ordinarymerge674 and own
+normalActions/fullSHA release acceptance. Accounting85/161/76/61% unchanged.
