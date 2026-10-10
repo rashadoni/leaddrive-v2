@@ -25737,6 +25737,7 @@
     "selfRequestSubmitted": "Sorğu yoxlama üçün göndərildi.",
     "selfRequestAlreadySubmitted": "Bu sorğu artıq yoxlama üçün göndərilib.",
     "selfRequestSubmitFailed": "Sorğunu göndərmək mümkün olmadı.",
+    "selfRequestUncertainHint": "Göndərişin nəticəsi məlum deyil. Məlumatları dəyişməzdən əvvəl bu sorğunu yenidən göndərərək nəticəni təsdiqləyin.",
     "selfRequestCancelled": "Gözləmədə olan sorğu ləğv edildi.",
     "selfRequestAlreadyCancelled": "Bu gözləmədə olan sorğu artıq ləğv edilib.",
     "selfRequestCancel": "Gözləmədə olan sorğunu ləğv et",

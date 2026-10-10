@@ -25741,6 +25741,7 @@
     "selfRequestSubmitted": "Request submitted for review.",
     "selfRequestAlreadySubmitted": "This request was already submitted for review.",
     "selfRequestSubmitFailed": "Could not submit the request.",
+    "selfRequestUncertainHint": "The result of this submission is unknown. Retry this request to confirm it before changing the details.",
     "selfRequestCancelled": "Pending request cancelled.",
     "selfRequestAlreadyCancelled": "This pending request was already cancelled.",
     "selfRequestCancel": "Cancel pending request",
