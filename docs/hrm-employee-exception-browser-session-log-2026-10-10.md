@@ -185,3 +185,32 @@ Sales/AGENT. No role definition/productpermissions/granular rollout flag or
 production grant changed, no HRlogin/authorization/operational credit.
 Originalaf75checkpoint retained, NOT actual Prisma/browser failure. Peer
 review originalfacts/correction/currentbinding separately; baselines unchanged.
+
+## First actual employee run failed; required imported revision corrected
+
+Source2b run38024424861 attempt1 employeejob114132109352 actualFAILURE.
+Original ZIP11660052646/4917bytes/digest29454bb6... and wholelog103229bytes
+SHAd581446b6eedfb5864b77f16268b7000f13aaee9598d1ed805dd57071172f7bb
+retained byroot/peer. Receipt PrismaClientValidationError fixture-preparing
+source240:9;0auth/0completedcases/0focus/0native/noPNG/cleanupPASS. Partial
+administrator seed writes occurred before failure; no zero-businesswrites or
+complete DBcleanup inferred. Actual new admission30PASS/6targetfiles68PASS;
+runner/i18n/Prisma/lintPASS. No employee browser/wholeDB acceptance.
+
+Installed11exactstatementsCOMMITTED,3CHECKfragments and outsideTxn unique
+cycleindex receipt verified against source; not full historical replay or
+final RLS/appendonly/audit/fingerprint acceptance. Independentfirstfailure
+report17897bytes SHA876af9882893d6bff61917fa35c6fa0000d5403b0733998ea4d890ca1196439c.
+Required schema caseRevision:Int was omitted in importeddecision create.
+Source diagnosis follows exactsource/schema/line; raw private Prisma message
+intentionally omitted and not claimed as diagnostic proof. Narrow fixturefix
+adds index+1, matching existingclassification history/productiontrigger; no
+schema/trigger/writer change or expectation/baseline relaxation. Failure-stage
+labels and safe four-table failurecounts added for futureoriginals; absent
+old counts not fabricated. Cleanup explicitly closes clients/profiles only.
+
+Otherfive originalsource jobs stillRUNNING, no cancellation/rerun. Existing
+samebranch concurrency would cancel them if dispatched immediately; wait
+originalwholeterminal before fresh newsource run. Currentnewcheckpoint needs
+independentdelta review/publication and actual hosted repeat. PR678 remains
+DRAFT.85DONE/76open/61%, C6-006/C12partial/C14open unchanged.

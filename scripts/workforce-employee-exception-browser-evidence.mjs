@@ -42,6 +42,7 @@ const receipts = {
     "Synthetic write allowlist and audit guard are separate fixture constraints, not production MtmAuditLog migration evidence",
     "Real keyboard/native browser zoom bounds; not whole-page overlay nonocclusion, human AT, physical Android or whole C14 acceptance",
     "Development bundle; authenticated production employee session and production mutation NOT RUN",
+    "Cleanup closes owned clients/profiles; partial administrative seed rows survive until the disposable CI service is destroyed, with no immutable-row deletion",
   ],
 }
 const noProtected = value => assert.ok(protectedMarkers.every(marker => !value.includes(marker)), "Protected fixture subject must not be retained")
@@ -237,7 +238,7 @@ async function seed() {
         // Imported terminal history has a distinct existing HR directory actor;
         // it is not an employee decision or a live HR authorization rehearsal.
         assert.equal(others.hr.role, "MANAGER"); assert.equal(principals.hr.role, "manager")
-        await admin.workforceExceptionDecision.create({ data: { organizationId: organization.id, caseId: record.id, operationId: `employee-${suffix}-${key}-${label}-${index}`, decisionCode, reason: privateReason, actorUserId: principals.hr.id, createdAt: new Date(workDate.getTime() + index * 1_000) } })
+        await admin.workforceExceptionDecision.create({ data: { organizationId: organization.id, caseId: record.id, caseRevision: index + 1, operationId: `employee-${suffix}-${key}-${label}-${index}`, decisionCode, reason: privateReason, actorUserId: principals.hr.id, createdAt: new Date(workDate.getTime() + index * 1_000) } })
         if (label === "reopened" && index === 0) historicalResponse = await admin.workforceExceptionEmployeeResponse.create({ data: {
           organizationId: organization.id, caseId: record.id, agentId: agent.id, workdayId: workday.id,
           actorUserId: principals.employee.id, responseCode: "ACKNOWLEDGED", observedCaseRevision: 1,
@@ -629,7 +630,9 @@ try {
     const raw = await readFile(new URL(`../${path}`, import.meta.url))
     receipts.sources.push({ path, bytes: raw.length, sha256: createHash("sha256").update(raw).digest("hex") })
   }
+  stage = "fixture-installing-exact-production-routines"
   await installProductionRoutines()
+  stage = "fixture-seeding-imported-history"
   const tenants = await seed(); initialFacts = await fixedFacts(tenants)
   assert.deepEqual(await counts(), { responses: 1, audit: 0 })
   browser = await chromium.launch({ headless: true })
@@ -652,6 +655,9 @@ try {
 } catch (error) {
   receipts.status = "FAIL"; process.exitCode = 1; receipts.failure = safeFailure(error)
   receipts.failure.diagnostic = "Original failure retained; raw private bodies, tokens, credentials and cookies omitted"
+  try {
+    receipts.failure.disposableCounts = { ...await counts(), cases: await admin.workforceExceptionCase.count(), decisions: await admin.workforceExceptionDecision.count() }
+  } catch { receipts.failure.disposableCounts = "NOT_COLLECTED" }
   if (activePage && !activePage.isClosed()) try {
     await safeScreenshot(activePage, "failure-original.png"); receipts.failure.screenshot = "failure-original.png"
   } catch { receipts.failure.screenshot = "NOT_CAPTURED_PRIVATE_OR_UNAVAILABLE"; receipts.failure.originalPixelsOrDomAltered = false }
