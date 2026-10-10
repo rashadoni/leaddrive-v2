@@ -164,6 +164,13 @@ def main():
                   f"на GitHub — удалить: git push origin --delete {c.branch}")
     for w in alarms[:3]:
         print("ВНИМАНИЕ: " + w[:230])
+    lag = L.private_copy_lag(ctx)  # без сети; отправляют копию next_card.py и mark.py
+    if lag:
+        print("ВНИМАНИЕ: " + lag)
+    unsaved = L.private_unsaved(ctx)
+    if unsaved:
+        print(f"ВНИМАНИЕ: в закрытой папке не записано в историю файлов: {unsaved} — в копии "
+              f"их тоже нет")
     return 0
 
 

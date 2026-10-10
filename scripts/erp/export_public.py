@@ -203,6 +203,10 @@ def main():
     for name in TOOLS:
         src = L.HERE / name
         if src.exists() and src.resolve() != (target / name).resolve():
+            old = (target / name).read_bytes() if (target / name).is_file() else None
+            if old is not None and old != src.read_bytes():
+                # правка, сделанная только в папке назначения, здесь пропадает — пусть это видно
+                print(f"ВНИМАНИЕ: команда {name} в {target} отличалась и заменена версией из {L.HERE}")
             shutil.copyfile(src, target / name)
     print(f"Записано в {target}: registry.json, order.json, progress/ и команды")
     return 0
