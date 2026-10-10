@@ -130,3 +130,16 @@ claimed at publication. New source gitleaks4 commits/23,064B/no leaks PASS;
 small Node20 syntax/cumulative973 whitespace and unchanged baseline checks PASS.
 Parent release still pending, no Mac/local heavy gates. Next preserve all
 first-run outcomes and actual complete artifacts before corrective changes.
+
+## First hosted runtime started at exact D8E
+
+Source workflow38013716710 attempt1 dispatched at exact D8E; five actual
+jobs114099288807(report),114099288899(HR matrix),114099288944(full compiler),
+114099288947(PG/regressions),114099288994(build) IN_PROGRESS. Draft mirrored
+PR run38013694353 is SKIPPED and receives no execution credit. No corrective
+source push or cancellation; all first results will be preserved. Prepared
+finite root artifact reader is syntax-checked only, execution NOT RUN; it
+requires19 exact source blobs,7 exact unmodified migration extracts, actual
+manual matrix/denials/replay/focus/private-capture/native/DB/cleanup evidence.
+No source/test/UI baseline change while originals run. Parent Deploy38013599677
+still IN_PROGRESS; no public release or production HR acceptance yet.
