@@ -79,3 +79,47 @@ No applicationUI/API/schema/policy/productionflag changes. Actual employee
 browser/workflow/body still NOTRUN/NOTIMPLEMENTED. ParentPR674 remainsF50
 frozenREADY CIactive, not merged/released. Next finish parentacceptance and
 new employeeharness/workflow, sourcepeer review before own publication.
+
+## Parent release accepted; current own-source implementation prepared
+
+Supersedes earlier parent674 READY/PENDING: ordinary merge93e3644fed0fa5932a0215c09205454b3df6f42c
+and normalDeploy38021696832 attempt1 actualSUCCESS, independent root/peer
+fullSHA/TLS/ping/anonymousPrivacy and main compiler strict64/owned0 accepted.
+Globalcompiler1162/35/exit2 remainsNONCLEAN; strict18baseline unchanged.
+Evidence retained in parent classification phase19 on evidence663 branch.
+This dedicated branch normally integrated origin/main93E in48f484cee7a0703c199af15cba24ae7e7bea1491,
+preserving preparedFFE checkpoint and foreign MTM bytes.
+
+Prepared positive actor is existing CRM sales + linked directoryAGENT, as
+stated by fixture and receipts; any earlier suggestion of manager as positive
+CRM role is superseded. No product role or permissions changed. Three synthetic
+tenants, flag-enabledA/B and default-off third; enrolledMFA/canonicalnonce
+consumption; imported historical NO_SHOW stays view-only. Seed reopened case
+contains one historical ACK at revision1 before close/reopen revision3, no
+backdated response inserted after reopening, no historical audit credit.
+
+New standalone hosted harness/workflow now IMPLEMENTED but actualruntime,
+PostgreSQLinstallation, Vitest/fullcompiler/build stillNOTRUN. Plans12matrix
+cells and two separate error/API cases,14newmetadata-audited ACK writes plus
+one unchanged historical response,8rollback SQL-state probes,12unchanged
+business/access/legacy fingerprints; these are assertions, not passed results.
+Lost POST response is injected only after real route.fetch commits201;
+real keyboard retry must200/sameoperation/sameresponse/no duplicate. Load503
+is deliberately injected browser fault; refresh uses real API. Exact-day
+correction navigation only, no correction submission. Screenshot admission
+precedes every sink/native proof, no pixel/DOM sanitization or rawprivate log.
+
+Exact production installation plans11statements transactionally,3exactCHECK
+fragments explicitly reconstructed as ALTER, and1exact concurrentcycleindex
+outside transaction. This is NOT historical replay or restoredcopy acceptance.
+Disposable flag-off SELECT revoke/restore tests noledgerquery; confinedfixture
+permission rehearsal, not production grants. Synthetic audit guard qualified.
+
+Earlier two-path static peer review onFFE qualified fixtureSQL/nativehelper
+only; admission/test/newharness/workflow NOT covered. Immutable phase02 retains
+initial and qualified reviews plus original hunk reader error; guessed-path
+lookup failures remain inside originals. No sourceexecution acceptance from it.
+Actual syntax/diff and55workflow runnerpolicyPASS only. Hostprecheckavailable
+9543MB/disk262552MB/memoryfullavg10=0/IOfullavg10=0. No install/fullbuild/browser
+on Contabo. Next full new source independent review, publish dependentDRAFT,
+actual hostedfirst execution with originals/errors/repeats retained.
