@@ -258,6 +258,13 @@ async function submitUi(page, context, tenant, record, locale, changedTo) {
   assert.ok(row && row.organizationId === tenant.organization.id && row.agentId === tenant.agent.id)
   assert.equal(row.status, "PENDING"); assert.equal(row.exceptionCaseId, changedTo ? null : record.id)
   assert.equal(row.exceptionCaseRevision, changedTo ? null : 0)
+  assert.ok(row.type === "TIME_CORRECTION", "Stored request type must match submitted input")
+  assert.ok(row.correctionWorkdayId === selected.workdayId, "Stored workday must match selected own day")
+  assert.ok(row.startDate.toISOString() === `${selected.workDate}T00:00:00.000Z`, "Stored start date must match selected own day")
+  assert.ok(row.endDate.toISOString() === `${selected.workDate}T00:00:00.000Z`, "Stored end date must match selected own day")
+  assert.ok(row.requestedStartAt?.toISOString() === `${selected.workDate}T09:15:00.000Z`, "Stored start boundary must match actual UTC fixture input")
+  assert.ok(row.requestedEndAt === null, "Stored end boundary must remain empty")
+  assert.ok(row.clientRequestId === payload.clientRequestId, "Stored client key must match actual submitted input")
   assert.ok(row.reason === privateReason, "Stored reason must match synthetic input")
   const after = await counts(); assert.deepEqual(after, { requests: before.requests + 1, audit: before.audit + 1 })
   await page.waitForFunction(() => document.querySelector("#workforce-self-request-reason")?.value === "")
@@ -284,6 +291,9 @@ async function boundaries(context) {
     assert.equal(response.status(), 409)
     const body = await response.json(); codes.push(body.code)
     assert.equal(body.code, "WORKFORCE_SELF_REQUEST_WORKDAY_NOT_FOUND")
+    assert.ok(Object.keys(body).sort().join(",") === "code,error"
+      && body.error === "The selected workday is not available for a time correction",
+    "Complete refusal body must match the same bounded public shape for every inaccessible case")
   }
   assert.deepEqual(await counts(), before)
   receipts.cases.push({ name: "foreign-missing-and-different-day-cases-indistinguishable", status: "PASS", actual409: codes.length, requestsAndAuditUnchanged: true })

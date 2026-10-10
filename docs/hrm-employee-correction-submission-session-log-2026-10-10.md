@@ -150,3 +150,20 @@ gitdiffcheck exited2 fornewblanklineEOF; originaldiff/error kept, onlyextra fina
 blankline removed, gitdiffcheck repeatPASS. No check/baseline weakening.
 HeavySQL/browser/fullsuite/compiler/build/newjob executionNOTRUN. Parent682
 currentcandidate/five remainspriority; newsourceunpublished/C6-006/C12/C14open.
+
+## Independent first-source findings strengthened before publication
+
+Readonly d7dd review found two concrete evidence gaps, not observed app/runtime
+failures: persisted request fields were incompletely compared; refusal responses
+compared code/status only. Original finding and d7dd diff retained unchanged.
+Harness now privately asserts actual stored type, selected own workday, both
+UTC dates, requested0915UTC start, null end and actual submitted client key.
+For foreign/missing/different-day case refusal require complete exact two-key
+code/error response shape and common public message; no raw bodies retained.
+Original canonical auth helpers and entire old workflow reconstructed byte-equal;
+peer independently ran26pure admission tests PASS afterresourcecheck. Current
+Node20syntax/diff PASS; SQL/browser/newjob/full runtime remains NOT RUN. Parent
+PR682 ordinarymerge7e58cb3f618b53567df8df54bb9d9b89fed316da releasedbyActions
+still pending; source unpublished, no whole C6-006/C12/C14 completion credit.
+Next exact updated source peer admission; publication waits parentown verified
+normalrelease, then ordinary integrate finalmain and re-review finalsource.
