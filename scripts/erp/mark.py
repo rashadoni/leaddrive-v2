@@ -515,6 +515,8 @@ def main():
                 if x is not None))
             if sha:
                 print(f"Закрытая папка сохранена в её git: {sha}")
+    for line in L.sync_private_copy(ctx):  # вне замка: это сеть
+        print(line)
     return 0
 
 

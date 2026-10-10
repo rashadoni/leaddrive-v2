@@ -10,20 +10,26 @@
 владельца, закрытие ворот вместе с другой работой — красное, запись о воротах из main
 нельзя стереть или изменить; имя и слова человека в открытое состояние не попадают (там
 роль, дата и хэш, сами они — в закрытой папке); ветка, уже влитая в main, карточку не
-держит; записка не теряется; изменённый документ останавливает работу; чужой PR проверка
+держит; записка не теряется; закрытая папка сама уходит в свою копию, а отказ копии виден;
+изменённый документ останавливает работу; чужой PR проверка
 не задерживает (стековый, без надёжной базы, менявший только workflow или список красных)
 — и то, что вокруг.
 
   python3 selftest.py [-v]      -v печатает вывод каждой команды
 Код возврата 0 — все проверки прошли. Только стандартная библиотека.
 """
+import concurrent.futures
+import errno
 import hashlib
 import json
 import os
+import re
+import shlex
 import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 TOOLS = Path(__file__).resolve().parent
@@ -104,6 +110,7 @@ class Box:
         gh.write_text(FAKE_GH, encoding="utf-8")
         gh.chmod(0o755)
         git_at(self.home, "init", "-q")
+        git_at(self.home, "config", L.PRIVATE_MARK, "true")  # как ставит setup_private.py
         self._run = 1000
 
     def git(self, *args):
@@ -799,6 +806,7 @@ def scenario(box: Box):
     rc2, out2 = run("check_progress.py", "--base-dir", str(base_r), dir=bad)
     rel = box.copy("goodrel")
     git_at(rel, "init", "-q")  # закрытая папка — под своим git, иначе запись не принимается
+    git_at(rel, "config", L.PRIVATE_MARK, "true")
     rc3, out3 = run("mark.py", "release", "4", "--by", "Рашад", "--words", "сними, сессия брошена", dir=rel)
     was = (box.prog(rel)["cards"]["4"].get("released") or [{}])[0]
     rc4, out4 = run("check_progress.py", "--base-dir", str(base_r), dir=rel)
@@ -1650,6 +1658,498 @@ def scenario_git(box: Box):
           rc == 3 and "занята веткой erp/1-setup" in out, out)
 
 
+FAKE_GIT = """#!/bin/sh
+# подставной git для проверок копии: считает отправки, умеет «зависнуть» и нашуметь байтами
+if [ "$1" = "push" ]; then
+  [ -n "$ERP_FAKE_PUSH_LOG" ] && echo "$*" >> "$ERP_FAKE_PUSH_LOG"
+  [ -n "$ERP_FAKE_PUSH_NOISE" ] && printf '\\377\\376 noise\\n' >&2
+  if [ -n "$ERP_FAKE_PUSH_SLEEP" ]; then
+    sleep "$ERP_FAKE_PUSH_SLEEP" &
+    [ -n "$ERP_FAKE_PUSH_PID" ] && echo $! > "$ERP_FAKE_PUSH_PID"
+    wait $!
+  fi
+fi
+exec "__GIT__" "$@"
+"""
+
+
+def scenario_copy(box: Box):
+    """Копия закрытой папки — закрытый репозиторий, названный владельцем (origin её git и
+    настройка erp.copy): обновляется сама, отказ копии виден, чужую запись в копии не
+    затирает; любое сомнение в адресе — отказ, а не отправка; в репозиторий кода и в чужой
+    репозиторий закрытое не уходит."""
+    import fcntl
+    b1 = "erp/1-setup"
+    root, home = box.root, box.home
+    real_git = shutil.which("git")
+    quiet = {"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"}  # у git нет имени автора
+    nobody = {k: v for k, v in os.environ.items()
+              if not k.startswith(("GIT_AUTHOR_", "GIT_COMMITTER_")) and k != "EMAIL"}
+    (root / "empty-home").mkdir()
+    nobody.update(HOME=str(root / "empty-home"), **quiet)
+
+    def follow(out):
+        """Выполняет совет «забрать запись из копии» дословно, через оболочку, без имени автора."""
+        advice = re.search(r"`(git -C [^`]* pull [^`]*)`", out)
+        done = bool(advice) and subprocess.run(["sh", "-c", advice.group(1)], env=nobody,
+                                               capture_output=True, text=True).returncode == 0
+        return (advice.group(1) if advice else ""), done
+    bares = {n: root / f"{n}.git" for n in ("copy", "copy2", "code-origin", "evil", "foreign-origin",
+                                             "foreign2-origin")}
+    bares["spaced"] = root / "Backup Disk" / "erp copy.git"
+    bares["spaced"].parent.mkdir()
+    if not (real_git and all(git_at(root, "init", "-q", "--bare", str(b)) for b in bares.values())):
+        check("настоящий git недоступен — проверки копии закрытой папки НЕ ВЫПОЛНЕНЫ", False)
+        return
+    copy, copy2, code_origin, evil = (bares[n] for n in ("copy", "copy2", "code-origin", "evil"))
+    fake = root / "bin" / "git"
+    fake.write_text(FAKE_GIT.replace("__GIT__", real_git), encoding="utf-8")
+    fake.chmod(0o755)
+    pushlog = root / "push.log"
+    box.git("init", "-q")                      # «репозиторий кода» со своим открытым origin
+    box.git("commit", "-q", "--allow-empty", "-m", "init")
+    box.git("remote", "add", "origin", str(code_origin))
+
+    def run(*a, **kw):
+        kw["env"] = dict({"ERP_FAKE_PUSH_LOG": str(pushlog)}, **(kw.get("env") or {}))
+        return box.run(*a, **kw)
+
+    def pushes():
+        return len(pushlog.read_text(encoding="utf-8").splitlines()) if pushlog.exists() else 0
+
+    def raw(path, *args):
+        gd = path if (path / "HEAD").is_file() else path / ".git"
+        r = subprocess.run([real_git, "--git-dir", str(gd), *args], capture_output=True, text=True)
+        return r.stdout.strip() if r.returncode == 0 else ""
+
+    def head(path):
+        return raw(path, "rev-parse", "--verify", "--quiet", "HEAD^{commit}")
+
+    def refs(path):
+        return raw(path, "for-each-ref", "--format=%(refname)").split()
+
+    def bump(name):
+        """Новая запись в истории закрытой папки, сделанная мимо команд."""
+        (home / f"{name}.md").write_text(name + "\n", encoding="utf-8")
+        return git_at(home, "add", "-A") and git_at(home, "commit", "-q", "-m", name)
+
+    def name_copy(addr):
+        git_at(home, "remote", "remove", "origin")
+        git_at(home, "remote", "add", "origin", str(addr))
+        git_at(home, "config", "erp.copy", str(addr))
+
+    target = root / "export-target"
+    target.mkdir()
+    (target / "status.py").write_text("# правка, сделанная только в папке назначения\n", encoding="utf-8")
+    rc, out = run("export_public.py", "--to", str(target))
+    said = [ln for ln in out.splitlines() if "заменена" in ln]
+    check("выкладка говорит, какую команду в папке назначения она заменила своей версией",
+          rc == 0 and len(said) == 1 and "status.py" in said[0] and "ВНИМАНИЕ" in said[0]
+          and (target / "status.py").read_bytes() == (TOOLS / "status.py").read_bytes(), out)
+
+    rc, out = run("next_card.py")
+    rc2, out2 = run("status.py")
+    check("у закрытой папки нет копии — карточку выдают, но с предупреждением; оно же на экране "
+          "состояния, вместе с числом файлов, не записанных в историю",
+          rc == 0 and "КАРТОЧКА 1 " in out and "нет копии" in out and rc2 == 0 and "нет копии" in out2
+          and "не записано в историю" in out2 and pushes() == 0, out + out2)
+    git_at(home, "remote", "add", "origin", str(copy))
+    rc, out = run("next_card.py", "--take", b1)
+    check("у git закрытой папки появился origin, но владелец копию не назвал (erp.copy) — "
+          "карточка берётся, отправки нет, копия пуста",
+          rc == 0 and "ВЗЯТА: карточка 1" in out and "не подтверждена" in out
+          and not refs(copy) and pushes() == 0, out)
+    git_at(home, "config", "erp.copy", str(copy) + "/")
+    rc, out = run("next_card.py", branch=b1)
+    rc2, out2 = run("status.py")
+    check("копия названа — следующая же команда отправляет закрытую папку в неё, в ту же ветку; "
+          "экран состояния о копии молчит",
+          rc == 0 and "Копия закрытой папки обновлена" in out and head(home) and head(copy) == head(home)
+          and refs(copy) == ["refs/heads/main"] and pushes() == 1 and "копи" not in out2.lower(),
+          out + out2)
+    rc, out = run("next_card.py", branch=b1)
+    rc2, out2 = run("mark.py", "sync")
+    check("отправлять нечего — в сеть команда не идёт и о копии молчит",
+          rc == 0 and rc2 == 0 and "копи" not in (out + out2).lower() and pushes() == 1, out + out2)
+
+    was = head(copy)
+    copy.rename(root / "copy-away.git")
+    rc, out = run("mark.py", "step", "1", "1")
+    rc2, out2 = run("status.py")
+    (root / "copy-away.git").rename(copy)
+    reason = out.split("НЕ обновилась (", 1)[-1].split(")", 1)[0]
+    check("копия недоступна: шаг записан, команда не падает, но говорит «НЕ обновилась» (без "
+          "адреса копии в строке); экран состояния показывает, на сколько копия отстала",
+          rc == 0 and box.prog()["cards"]["1"]["steps_done"] == [1] and "НЕ обновилась" in out
+          and "ВНИМАНИЕ" in out and reason == "копия не найдена по своему адресу" and head(copy) == was
+          and head(home) != was and "copy.git" in (home / ".git" / L.PUSH_LOG).read_text(encoding="utf-8")
+          and rc2 == 0 and "отстаёт на 1" in out2, out + out2)
+    rc, out = run("next_card.py", branch=b1)
+    check("копия снова доступна — следующая же команда досылает отставшее сама",
+          rc == 0 and "Копия закрытой папки обновлена" in out and head(copy) == head(home), out)
+
+    pidfile = root / "push.pid"
+    started = time.monotonic()
+    rc, out = run("mark.py", "step", "1", "2", env={"ERP_PUSH_TIMEOUT": "2", "ERP_FAKE_PUSH_SLEEP": "60",
+                                                   "ERP_FAKE_PUSH_PID": str(pidfile)})
+    took = time.monotonic() - started
+    time.sleep(0.3)
+    alive = True
+    try:
+        os.kill(int(pidfile.read_text().strip()), 0)
+    except (OSError, ValueError):
+        alive = False
+    rc2, out2 = run("next_card.py", branch=b1, env={"ERP_FAKE_PUSH_NOISE": "1"})
+    check("отправка зависла: команда ждёт отведённое время, шаг записан, зависший процесс убит "
+          "вместе с тем, что он запустил, "
+          "строка «не ответил»; следующая отправка проходит, даже если git шумит не-текстом",
+          rc == 0 and box.prog()["cards"]["1"]["steps_done"] == [1, 2] and "не ответил" in out
+          and "НЕ обновилась" in out and took < 30 and not alive
+          and rc2 == 0 and "Копия закрытой папки обновлена" in out2 and head(copy) == head(home),
+          out + out2 + f" [{took:.1f} с, жив: {alive}]")
+
+    bump("two-at-once")
+    before = pushes()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+        got = list(pool.map(lambda _: run("next_card.py", branch=b1, env={"ERP_FAKE_PUSH_SLEEP": "1"}),
+                            range(2)))
+    both = got[0][1] + got[1][1]
+    check("две сессии отправляют одновременно: отправка одна, ложной тревоги нет ни у одной",
+          got[0][0] == 0 and got[1][0] == 0 and "НЕ обновилась" not in both
+          and both.count("Копия закрытой папки обновлена") == 1 and pushes() == before + 1
+          and head(copy) == head(home), both)
+
+    other = root / "other-clone"
+    git_at(root, "clone", "-q", str(copy), str(other))
+    (other / "чужая-запись.md").write_text("запись другой копии папки\n", encoding="utf-8")
+    git_at(other, "add", "-A")
+    git_at(other, "commit", "-q", "-m", "other")
+    pushed = git_at(other, "push", "-q", "origin", "HEAD")
+    theirs = head(other)
+    bump("mine")
+    rc, out = run("next_card.py", branch=b1, env=quiet)
+    kept = head(copy) == theirs
+    advice, merged = follow(out)
+    merged = merged and "user.name=erp" in advice and "--allow-unrelated-histories" not in advice
+    rc2, out2 = run("next_card.py", branch=b1)
+    check("в копии есть запись, которой нет в папке: её не затирают (force-push нет), отказ виден "
+          "и говорит, что делать; совет выполняется как написан, даже когда у git нет имени "
+          "автора, и после него копия догоняет папку",
+          pushed and rc == 0 and "НЕ обновилась" in out and "которой нет в папке" in out
+          and "pull --no-rebase" in out and kept and merged and rc2 == 0
+          and "Копия закрытой папки обновлена" in out2 and head(copy) == head(home)
+          and (home / "чужая-запись.md").exists(), out + out2)
+
+    git_at(home, "remote", "set-url", "origin", str(copy2))
+    rc, out = run("next_card.py", branch=b1)
+    empty = not refs(copy2)
+    git_at(home, "config", "erp.copy", str(copy2))
+    rc2, out2 = run("next_card.py", branch=b1)
+    check("адрес origin сменили, а копию владелец не переназвал — отправки нет; назвал — папка "
+          "уходит по новому адресу целиком, хотя местная пометка origin/main «не отстаёт»",
+          rc == 0 and "не подтверждена" in out and empty and rc2 == 0
+          and "Копия закрытой папки обновлена" in out2 and head(copy2) == head(home), out + out2)
+
+    bump("pushurl")
+    git_at(home, "remote", "set-url", "--push", "origin", str(evil))
+    rc, out = run("next_card.py", branch=b1)
+    git_at(home, "config", "--unset", "remote.origin.pushurl")
+    git_at(home, "remote", "set-url", "--add", "origin", str(evil))
+    rc2, out2 = run("next_card.py", branch=b1)
+    git_at(home, "remote", "set-url", "--delete", "origin", str(evil))
+    rc3, out3 = run("next_card.py", branch=b1)
+    check("у origin закрытой папки другой адрес отправки или второй адрес — отправки нет никуда; "
+          "убрали — папка доходит до названной копии",
+          rc == 0 and "не подтверждена" in out and rc2 == 0 and "не подтверждена" in out2
+          and not refs(evil) and rc3 == 0 and "Копия закрытой папки обновлена" in out3
+          and head(copy2) == head(home), out + out2 + out3)
+
+    bump("branch")
+    git_at(home, "branch", "-m", "work")
+    git_at(home, "tag", "work")
+    rc, out = run("next_card.py", branch=b1)
+    check("ветку закрытой папки переименовали (и есть метка с тем же именем): копия остаётся "
+          "одной веткой — той, что была, и догоняет папку",
+          rc == 0 and "Копия закрытой папки обновлена" in out and refs(copy2) == ["refs/heads/main"]
+          and head(copy2) == head(home), out)
+
+    alias = root / "alias.git"
+    os.symlink(code_origin, alias)
+    bump("code")
+    name_copy(str(alias) + "/")
+    rc, out = run("next_card.py", branch=b1)
+    rc2, out2 = run("status.py")
+    box.git("remote", "rename", "origin", "github")
+    rc3, out3 = run("next_card.py", branch=b1)
+    box.git("remote", "rename", "github", "origin")
+    check("копией назван репозиторий кода (он открытый, пустой и принял бы отправку) — под другим "
+          "написанием адреса и при любом имени remote туда не уходит ничего",
+          rc == 0 and "репозиторий кода" in out and "Копия закрытой папки обновлена" not in out + out3
+          and "репозиторий кода" in out2 and rc3 == 0 and "репозиторий кода" in out3
+          and not refs(code_origin) and "set-url" not in out, out + out2 + out3)
+    tools = box.repo / "scripts" / "erp"
+    tools.mkdir(parents=True)
+    for f in TOOLS.glob("*.py"):
+        shutil.copy(f, tools / f.name)
+    plain = root / "not-a-repo"
+    plain.mkdir()
+    e = dict(os.environ, ERP_TODAY=TODAY, PYTHONDONTWRITEBYTECODE="1", ERP_PRIVATE=str(box.dir),
+             ERP_FAKE_PUSH_LOG=str(pushlog), PATH=str(root / "bin") + os.pathsep + os.environ.get("PATH", ""))
+    for k in ("ERP_DIR", "ERP_REPO", "GITHUB_HEAD_REF", "GITHUB_ACTIONS", "GITHUB_WORKSPACE"):
+        e.pop(k, None)
+    e["ERP_BRANCH"] = b1
+    r = subprocess.run([sys.executable, str(tools / "next_card.py"), "--dir", str(box.dir), "--repo", str(plain),
+                        "--no-git"], capture_output=True, text=True, env=e, cwd=str(plain))
+    check("то же, когда команду запустили не из репозитория кода (другой каталог, --repo мимо): "
+          "адрес репозитория кода берётся и оттуда, где лежат сами команды",
+          r.returncode == 0 and "репозиторий кода" in r.stdout and not refs(code_origin), r.stdout + r.stderr)
+    shutil.rmtree(box.repo / "scripts")
+    loose = root / "loose-tools"
+    loose.mkdir()
+    for f in TOOLS.glob("*.py"):
+        shutil.copy(f, loose / f.name)
+    name_copy(copy2)
+    in_repo = subprocess.run([real_git, "rev-parse", "--show-toplevel"], cwd=str(loose),
+                             capture_output=True, text=True).returncode == 0
+    was = head(copy2)
+    r = subprocess.run([sys.executable, str(loose / "next_card.py"), "--dir", str(box.dir), "--repo", str(plain),
+                        "--no-git"], capture_output=True, text=True, env=e, cwd=str(plain))
+    check("адрес репозитория кода прочитать неоткуда (команды лежат вне git, --repo мимо): "
+          "убедиться, что копия — не он, нельзя, значит отправки нет",
+          in_repo or (r.returncode == 0 and "не удалось прочитать адрес" in r.stdout
+                      and "Копия закрытой папки обновлена" not in r.stdout and head(copy2) == was),
+          r.stdout + r.stderr)
+    git_at(home, "config", "erp.copyBranch", "main")
+    rc, out = run("next_card.py", branch=b1)
+    check("копию снова назвали закрытым репозиторием — всё накопленное дошло",
+          rc == 0 and "Копия закрытой папки обновлена" in out and head(copy2) == head(home), out)
+
+    bump("net")
+    name_copy("http://127.0.0.1:9/own3r/erp-secret.git")
+    rc, out = run("next_card.py", branch=b1)
+    check("копия не отвечает по сети: в строке отказа нет ни узла, ни имени копии",
+          rc == 0 and "НЕ обновилась" in out and "127.0.0.1" not in out and "own3r" not in out
+          and "erp-secret" not in out, out)
+    name_copy(bares["spaced"])
+    rc, out = run("next_card.py", branch=b1)
+    before = pushes()
+    rc2, out2 = run("next_card.py", branch=b1)
+    rc3, out3 = run("status.py")
+    check("адрес копии с пробелами: одна отправка, потом тишина и ни одной лишней отправки",
+          rc == 0 and "Копия закрытой папки обновлена" in out and head(bares["spaced"]) == head(home)
+          and rc2 == 0 and "копи" not in (out2 + out3).lower() and pushes() == before, out + out2 + out3)
+    name_copy(copy2)
+    rc, out = run("next_card.py", branch=b1)
+    bump("queue")
+    before = pushes()
+    started = time.monotonic()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
+        got = list(pool.map(lambda _: run("next_card.py", branch=b1, env={
+            "ERP_PUSH_TIMEOUT": "2", "ERP_FAKE_PUSH_SLEEP": "60"}), range(3)))
+    took = time.monotonic() - started
+    attempts = pushes() - before
+    rc2, out2 = run("next_card.py", branch=b1)
+    check("копия зависла, а сессий три: ждут и пробуют не по очереди — попытка одна, все три "
+          "говорят «НЕ обновилась» и не складывают время ожидания; потом досылка проходит",
+          rc == 0 and all(g[0] == 0 and "НЕ обновилась" in g[1] for g in got) and attempts == 1
+          and took < 12 and rc2 == 0 and "Копия закрытой папки обновлена" in out2
+          and head(copy2) == head(home), "".join(g[1] for g in got) + out2 + f" [{took:.1f} с]")
+    bump("held")
+    before = pushes()
+    held = os.open(str(home / ".git"), os.O_RDONLY)
+    try:
+        fcntl.flock(held, fcntl.LOCK_EX)  # «другая сессия» держит отправку дольше отведённого
+        started = time.monotonic()
+        rc, out = run("next_card.py", branch=b1, env={"ERP_PUSH_TIMEOUT": "1"})
+        took = time.monotonic() - started
+    finally:
+        os.close(held)
+    rc2, out2 = run("next_card.py", branch=b1)
+    check("отправку держит другая сессия дольше отведённого: команда не ждёт бесконечно и не "
+          "отправляет второй раз, а говорит «НЕ обновилась»; замок отпустили — досылка проходит",
+          rc == 0 and "НЕ обновилась" in out and "другая сессия" in out and took < 8
+          and pushes() == before + 1 and rc2 == 0 and "Копия закрытой папки обновлена" in out2,
+          out + out2 + f" [{took:.1f} с]")
+    bump("swapped")
+    held = os.open(str(home / ".git"), os.O_RDONLY)
+    try:
+        fcntl.flock(held, fcntl.LOCK_EX)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            waiting = pool.submit(run, "next_card.py", branch=b1, env={"ERP_PUSH_TIMEOUT": "30"})
+            time.sleep(2.5)  # команда уже проверила адрес и ждёт замок
+            git_at(home, "remote", "set-url", "origin", str(code_origin))
+            fcntl.flock(held, fcntl.LOCK_UN)
+            rc, out = waiting.result()
+    finally:
+        os.close(held)
+    git_at(home, "remote", "set-url", "origin", str(copy2))
+    rc2, out2 = run("next_card.py", branch=b1)
+    check("пока команда ждала замок, origin закрытой папки подменили адресом репозитория кода: "
+          "после ожидания адрес проверяется заново — отправки нет никуда; вернули — дошло",
+          rc == 0 and "не подтверждена" in out and "Копия закрытой папки обновлена" not in out
+          and not refs(code_origin) and rc2 == 0 and "Копия закрытой папки обновлена" in out2
+          and head(copy2) == head(home), out + out2)
+    bump("locked-config")
+    (home / ".git" / "config.lock").write_text("", encoding="utf-8")
+    rc, out = run("next_card.py", branch=b1)
+    (home / ".git" / "config.lock").unlink()
+    rc2, out2 = run("next_card.py", branch=b1)
+    check("отправка прошла, а запись о ней в настройки git не легла: команда так и говорит, не "
+          "называя копию отставшей; следующая команда запись исправляет",
+          rc == 0 and head(copy2) == head(home) and "НЕ обновилась" not in out and "config.lock" in out
+          and "обновлена, но запись" in out and rc2 == 0 and "Копия закрытой папки обновлена" in out2, out + out2)
+    bump("timeout-setting")
+    rc, out = run("status.py", env={"ERP_PUSH_TIMEOUT": "сорок пять"})
+    rc2, out2 = run("next_card.py", branch=b1, env={"ERP_PUSH_TIMEOUT": "0"})
+    check("негодное значение времени ожидания не роняет команды и не делает отправку невозможной",
+          rc == 0 and "Traceback" not in out and rc2 == 0 and "Копия закрытой папки обновлена" in out2
+          and head(copy2) == head(home), out + out2)
+
+    seeded, seed = root / "seeded.git", root / "seed-src"
+    seed.mkdir()
+    (seed / "README.md").write_text("создано на сайте\n", encoding="utf-8")
+    made = (git_at(root, "init", "-q", "--bare", str(seeded)) and git_at(seed, "init", "-q")
+            and git_at(seed, "add", "-A") and git_at(seed, "commit", "-q", "-m", "Initial commit")
+            and git_at(seed, "push", "-q", str(seeded), "HEAD:refs/heads/main"))
+    bump("seeded")
+    name_copy(seeded)
+    rc, out = run("next_card.py", branch=b1, env=quiet)
+    advice, merged = follow(out)
+    rc2, out2 = run("next_card.py", branch=b1)
+    check("копию создали непустой (с README): отказ это называет, совет забирает чужую первую "
+          "запись и выполняется как написан, после него папка доходит до копии",
+          made and rc == 0 and "создали непустой" in out and "--allow-unrelated-histories" in advice
+          and merged and rc2 == 0 and "Копия закрытой папки обновлена" in out2
+          and head(seeded) == head(home) and (home / "README.md").exists(), out + out2)
+    name_copy(copy2)
+    run("next_card.py", branch=b1)
+
+    foreign2 = root / "foreign2"
+    shutil.copytree(box.dir, foreign2 / "reports" / "exec")
+    (foreign2 / "README.md").write_text("чужой проект\n", encoding="utf-8")
+    git_at(foreign2, "init", "-q")
+    git_at(foreign2, "add", "README.md")
+    git_at(foreign2, "commit", "-q", "-m", "чужой проект")
+    (foreign2 / "secrets.env").write_text("TOKEN=x\n", encoding="utf-8")
+    git_at(foreign2, "remote", "add", "origin", str(bares["foreign2-origin"]))
+    git_at(foreign2, "config", "erp.copy", str(bares["foreign2-origin"]))
+    was = head(foreign2)
+    rc, out = run("mark.py", "problem", "u1-A-02", "--kind", "wrong", "--text",
+                  "проверка чужого корня той же глубины", dir=foreign2 / "reports" / "exec", branch=b1)
+    rc2, out2 = run("next_card.py", dir=foreign2 / "reports" / "exec", branch=b1)
+    check("закрытая папка на той же глубине (reports/exec) в корне ЧУЖОГО репозитория, у которого "
+          "уже есть свой origin и даже erp.copy: без пометки своего git туда не пишется ничего, "
+          "чужие файлы не захватываются, совета назвать копию нет",
+          rc == 1 and "не помечен" in out and head(foreign2) == was and not refs(bares["foreign2-origin"])
+          and "secrets.env" not in raw(foreign2, "ls-files") and rc2 == 0 and "не помечен" in out2
+          and "remote add origin" not in out + out2 and "Копия закрытой папки" not in out + out2,
+          out + out2)
+
+    foreign = root / "foreign"
+    inner = foreign / "vendor" / "erp" / "reports" / "exec"
+    shutil.copytree(box.dir, inner)
+    git_at(foreign, "init", "-q")
+    git_at(foreign, "remote", "add", "origin", str(bares["foreign-origin"]))
+    git_at(foreign, "config", "erp.copy", str(bares["foreign-origin"]))
+    rc, out = run("next_card.py", dir=inner, branch=b1)
+    rc2, out2 = run("mark.py", "problem", "u1-A-01", "--kind", "wrong", "--text", "проверка чужого корня", dir=inner)
+    check("закрытая папка без своего git внутри чужого репозитория: в его историю ничего не "
+          "пишется и в его origin ничего не уходит",
+          rc == 0 and "чужого репозитория" in out and rc2 == 1 and "чужого репозитория" in out2
+          and not head(foreign) and not refs(bares["foreign-origin"]), out + out2)
+    wt = root / "second-worktree"
+    box.git("worktree", "add", "-q", "--detach", str(wt))
+    shutil.copytree(box.dir, wt / "reports" / "exec")
+    rc, out = run("next_card.py", dir=wt / "reports" / "exec", branch=b1)
+    rc2, out2 = run("mark.py", "problem", "u1-A-01", "--kind", "wrong", "--text", "проверка рабочей копии",
+                    dir=wt / "reports" / "exec")
+    check("закрытая папка в ДРУГОЙ рабочей копии того же репозитория кода: это не закрытая папка — "
+          "запись не принимается, совета сменить origin нет, в код ничего не уходит",
+          rc == 0 and "рабочей копии кода" in out and rc2 == 1 and "рабочей копии кода" in out2
+          and "set-url" not in out + out2 and not refs(code_origin), out + out2)
+
+    restored = root / "restored"
+    git_at(root, "clone", "-q", str(copy2), str(restored))
+    rdir = restored / "reports" / "exec"
+    words = ("mark.py", "problem", "u1-A-02", "--kind", "wrong", "--text", "после восстановления из копии")
+    rc, out = run(*words, dir=rdir, branch=b1)
+    rc0, out0 = run("status.py", dir=rdir)
+    git_at(restored, "config", L.PRIVATE_MARK, "true")
+    was = head(copy2)
+    rc2, out2 = run(*words, dir=rdir, branch=b1)
+    unsent = head(copy2) == was and head(restored) != was
+    git_at(restored, "config", "erp.copy", str(copy2))
+    rc3, out3 = run("next_card.py", dir=rdir, branch=b1)
+    check("папку восстановили клонированием копии: без пометки своего git запись не принимается, а "
+          "экран состояния показывает команду пометки целиком; с пометкой — принимается, но копия "
+          "не подтверждена и отправки нет; владелец назвал копию — всё дошло",
+          rc == 1 and "не помечен" in out and rc0 == 0 and f"config {L.PRIVATE_MARK} true" in out0
+          and rc2 == 0 and "не подтверждена" in out2 and unsent
+          and rc3 == 0 and "Копия закрытой папки обновлена" in out3 and head(copy2) == head(restored),
+          out + out2 + out3)
+
+    outside = root / "outside.md"
+    outside.write_text("файл вне закрытой папки\n", encoding="utf-8")
+    order = json.loads((box.dir / "order.json").read_text(encoding="utf-8"))
+    first_card = L.order_cards(order)[0]
+    first_card.update(detail=str(outside), file="../../../outside.md")
+    (box.dir / "order.json").write_text(json.dumps(order, ensure_ascii=False, indent=1), encoding="utf-8")
+    secret = "тайный текст вопроса: он не должен уйти из закрытой папки"
+    rc, out = run("mark.py", "problem", "u1-A-01", "--kind", "wrong", "--text", secret, branch=b1)
+    check("имя файла карточки в порядке карточек указывает наружу (полным путём и через ../): "
+          "текст вопроса ложится только в закрытую папку, чужой файл не тронут",
+          rc == 0 and outside.read_text(encoding="utf-8") == "файл вне закрытой папки\n"
+          and secret in (box.dir / "notes" / "1-setup.md").read_text(encoding="utf-8")
+          and secret in (box.dir / "cards" / "1-setup.md").read_text(encoding="utf-8"), out)
+
+    def why(text, first=False):
+        return L._push_failure(text, home, "main", first)[0]
+
+    denied = "нет доступа к копии: вход не прошёл"
+    tail = "\nfatal: Could not read from remote repository."
+    check("причина отказа называется по смыслу: нет прав у ключа, неизвестный узел, отказ сервера, "
+          "расхождение; незнакомый ответ git не пересказывается",
+          why("ERROR: Permission to o/r.git denied to user." + tail) == denied
+          and why("ERROR: The key you are authenticating with has been marked as read only." + tail) == denied
+          and why("Host key verification failed." + tail) == denied
+          and why("remote: Permission denied by policy\n ! [remote rejected] main -> main (pre-receive "
+                  "hook declined)") == "сервер копии отклонил запись"
+          and why(tail) == "git не смог прочитать копию: нет доступа или связи"
+          and why(" ! [rejected] main -> main (fetch first)") == L.DIVERGED
+          and why("warning: something entirely new at host.example") == "git отказал"
+          and why("git не ответил за 2 с") == "git не ответил за 2 с"
+          and why("remote: проверка не прошла: сервис не запустился\n ! [remote rejected] main -> main "
+                  "(pre-receive hook declined)\nerror: failed to push some refs to "
+                  "'https://host.example/o/secret.git'") == "сервер копии отклонил запись")
+    real_flock = fcntl.flock
+
+    def no_locks(fd, op):
+        raise OSError(errno.EBADF, "на этой файловой системе замков нет")
+
+    fcntl.flock = no_locks
+    try:
+        started = time.monotonic()
+        with L._copy_lock(home, 30) as lock:
+            got = dict(lock)
+        took = time.monotonic() - started
+    finally:
+        fcntl.flock = real_flock
+    check("замок на этой файловой системе невозможен — отправка идёт без замка и не ждёт впустую",
+          got == {"held": True, "waited": False} and took < 5, f"{got} {took:.1f} с")
+
+    k = L._remote_key
+    one = {k(u) for u in ("https://x-token:abc@GitHub.com/Org/Repo.git", "git@github.com:org/repo",
+                          "ssh://git@github.com:22/org/repo/", "https://github.com:443/org/repo",
+                          "ssh://git@ssh.github.com:443/org/repo.git", "git@github.com:/org//repo.git/",
+                          "https://www.github.com/org/repo")}
+    check("один адрес репозитория узнаётся в разной записи (схема, имя, порт, www, .git, регистр, "
+          "местный путь через ссылку), а соседний — не путается с ним",
+          one == {"github.com/org/repo"} and k("https://github.com/org/repo-private") not in one
+          and k(str(alias)) == k(str(code_origin) + "/") == k("file://" + str(code_origin))
+          and k("code-origin.git", root) == k(str(code_origin)) and k(str(copy)) != k(str(copy2))
+          and k(str(root / "trail .git")) == k(str(root / "trail .git")).strip(), str(one))
+
+
 def scenario_tools(root: Path):
     """Вспомогательные команды: пометка отчёта в GitHub, перенос закрытой папки."""
     env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1", ERP_TODAY=TODAY)
@@ -1736,6 +2236,9 @@ def main():
         box = Box(root / "c")
         build(box)
         scenario_git(box)
+        box = Box(root / "e box")  # с пробелом в пути: советы команд должны годиться оболочке
+        build(box)
+        scenario_copy(box)
         scenario_tools(root / "d")
     finally:
         shutil.rmtree(root, ignore_errors=True)
