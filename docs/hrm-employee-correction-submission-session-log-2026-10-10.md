@@ -194,3 +194,14 @@ and JSON-only. Fixture source uses opt-in boundary language rather than a stale
 NOT EXECUTED assertion; actual runtime status remains NOT RUN in this journal.
 Oldsixjob blocks, newjob behavior and SQL logic unchanged. Final exact-source
 review after parentrelease/integration will include this label-only delta.
+
+## Existing ordinary main ancestry integrated; publication waits own release
+
+Prepared branch normally integrates actualmain7e58cb3f618b53567df8df54bb9d9b89fed316da
+while its ownnormalActionsrelease is still RUNNING. Merge preserves priorprepared
+checkpoints and existingH6f58 chain; no reset/force or applicationchanges. New
+source differsfrom actualmain only the same sixnewjob/harness/fixture/target/doc
+paths; current682source remainsfrozen. This source-only preparation does not
+claim deployed acceptance. Finalexactsource review may proceed; publication,
+7lane hostedruntime and nextmerge remain gated on own682 verifiedrelease plus
+freshrefs/controls. All plannednewruntime totals remain NOT RUN. Accountingsame.
