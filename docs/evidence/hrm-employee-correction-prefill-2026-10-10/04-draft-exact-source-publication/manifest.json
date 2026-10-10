@@ -1,0 +1,34 @@
+{
+  "archivedAtUtc": "2026-10-10T09:16:03.237228+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-employee-correction-prefill-6f58-fresh-publication-guard.json.gz",
+      "originalBytes": 2508,
+      "originalSha256": "c77cc2c96c9c3055478fd3f1027a35c3dfeebc1d2ad18ff0b951ae5943c6ae02",
+      "storedBytes": 1198,
+      "storedSha256": "b5f4dec44560072540c44f2834a3ab538fbf2a8cce0161e584ca6bce796c1752"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-first-publication-root.json.gz",
+      "originalBytes": 21838,
+      "originalSha256": "5bddc072089133936657f7423b9b5d4f32b13e6e2abe68d216c7c837286eab45",
+      "storedBytes": 2234,
+      "storedSha256": "4e4b254b0de53bad5ecb6242326fd226d315f3ac943820677cc5753a1efba2b0"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-pr-body-prepared-6f58.md.gz",
+      "originalBytes": 1580,
+      "originalSha256": "60a5d0489f68c98055d947feb947adc3cbfa62ccfe23424610aa315ed863b0b0",
+      "storedBytes": 918,
+      "storedSha256": "bc4b1fd5c2d491b88b2334f10d9814042864d69de47d3f8620d2cb903fc6dc6e"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-peer-complete-artifact-additive-v1.py.gz",
+      "originalBytes": 15826,
+      "originalSha256": "86264a7f7d4b947e9654960f2f14de41f10b330117af30296cef19d0efffb091",
+      "storedBytes": 5734,
+      "storedSha256": "115e897a7dcc34890cf578f6155e5942dbb9609f369c59e252707c719e2af3cf"
+    }
+  ]
+}
