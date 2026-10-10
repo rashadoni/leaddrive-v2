@@ -329,3 +329,14 @@ Accounting85DONE76open61%, C12PARTIAL/C14-003PLANNED staysunchanged.
 Next: actual7BA matrix/native/keyboard/immutability/audit/PG/strictregressions/
 fullcompiler/build independent acceptance, normal own release and exactpublic
 smoke, then the uncovered classification browser matrix/native/keyboard slice.
+
+## Independent BF compiler artifact review completed
+
+Actual BF sourcecompiler peer9410B/SHA08af6f1ae13d9f88a58f4743ff1262a7f49bb98c09a81fda2aef09786a80588b
+independently validates exactBFcheckout/App15368/ZIPdigest+CRC, rawexit2/
+1158/35/64baseline count-pairs/no critical or owned errors. Original overall
+source38009864707 staysFAILURE. Peer initially guessed absent baseline-wrapper
+filename; original reader/error retained and corrected to existing
+scripts/check-test-baseline.mjs. No code/CI/baseline modifications for that
+reader error. Peer review archived separately; 7BA runtime stillPENDING,
+no BF credit transfer or wholeC12/C14 acceptance.
