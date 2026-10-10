@@ -6,6 +6,7 @@ import {
   isTenantCapabilityEnabled,
   resolveTenantCapabilities,
 } from "@/lib/tenant-capabilities"
+import { buildMtmMobileCapabilityManifest, resolveMtmMobileTenantModules } from "@/lib/mtm/mobile-capability-manifest"
 import { isWithdrawnCrmPath } from "@/lib/crm-product-availability"
 
 describe("Workforce withdrawal from CRM", () => {
@@ -36,6 +37,28 @@ describe("Workforce withdrawal from CRM", () => {
     expect(isTenantCapabilityEnabled("attendance-device-trust", legacy)).toBe(false)
     expect(isTenantCapabilityEnabled("route-field", legacy)).toBe(true)
   })
+
+  it.each([[true, true], [true, false], [false, true], [false, false]])(
+    "mobile discovery preserves Field=%s and refuses retained HRM=%s, including an enrolled cohort",
+    (routeField, workforceHrm) => {
+      const organization = { id: "withdrawal", plan: "enterprise", features: ["mtm"], addons: [],
+        modules: { mtm: true, "route-field": routeField, "workforce-hrm": workforceHrm } }
+      const original = structuredClone(organization)
+      const capabilities = resolveMtmMobileTenantModules(organization)
+      expect(capabilities).toEqual({ routeField, workforceHrm: false, commercial: false })
+      const value = buildMtmMobileCapabilityManifest({ organization,
+        auth: { agentId: "agent-1", role: "AGENT", tenantCapabilities: capabilities },
+        timezone: "Asia/Baku",
+        workforceSyncV2Pilot: { enrolled: true, scopeRevision: 9n, cohortEpoch: "2026-08-29T10:00:00.000Z" },
+      })
+      expect(value.modules.workforceHrm).toEqual({ enabled: false, scopeVersion: null })
+      expect(value.modules.routeField.enabled).toBe(routeField)
+      expect(value.streams).not.toContain("workforce")
+      expect(value.syncV2.workforce).toBe(false)
+      expect(value.syncV2.workforceEpoch).toBeNull()
+      expect(organization).toEqual(original)
+    },
+  )
 
   it("removes HRM from the superadmin module picker while retaining Route & Field", () => {
     expect(TOGGLEABLE_CAPABILITIES).not.toContain("workforce-hrm")
