@@ -450,3 +450,57 @@ Peer initial broadsyntaxregex TS1\d+ incorrectly matched106 semantic TS180xx;
 read-onlyAssertionError preserved and corrected exactlyexisting TS1[0-9]{3}
 gate, no source/baseline change. Oldwhole0d7FAIL remains; currentA7DCruntime
 RUNNING/unaccepted, no head transfer. Next actualemployee receipt/native/DB.
+
+## OriginalA7 terminal retained; integrated4890 exactsource running
+
+A7DC38028091086attempt1 naturally completedFAILURE, fiveoldgatesSUCCESS and
+employee114143130256FAIL at az-native-320-keyboard-acknowledgement genericError
+source685:35. Original underlyingcause NOTPROVED. Actual4completedcases
+(loadrecovery+AZ320/768/1440)/5auth/18focus/1initialnativeproof/7nativecaptures
+(includingfailure),responses5(1historical+4new)/audit4/cases20/decisions6;
+cleanupPASS, no full employee/native/RLSbusinessimmutability acceptance. Real
+committedPOST201→exactretry200 sameoperation/sameresponse/0duplicate and real
+recoveryGET200 passed. Actualoutsidealert1 positivelyidentified exactcanonical
+Nextannouncer, ownalert0; old0d7 offendingidentity stillNOTPROVED.
+
+Rootandpeer viewed originalpixels. Initialnative refresh/correction CSS320/DPR2
+then postnavigation ACK640/DPR1; preservation-only capturePASS at100% grants no
+native200 credit. Reset is separatelyproved integritygap, not rawErrorcause.
+Independent originalpartialpeer33202B SHAc0c43ffc585eb787a6d5510b88591eb852def60efd3f7fee0f192440c61779b0.
+Allsixfulloriginaljoblogs/fourZIPs retained, current compiler actual179299B
+SHAb6b9ee71a33aa9f683f81b2a4879597b63099a4d23ae794e1f71c0ba39536df6,1162/35/EXIT2/64strictpairs-counts
+matched,critical0/owned0/globalNONCLEAN. ActualPG44/nativeguard36/strict18 all
+oldfail unchanged; peer13862B SHA95049be3de7ec0bffd1ae18ff30893565a8e6adb9817351b88e8fa3202cdc51c.
+Report/HR/build actualSUCCESS originals retained; additional independent
+contentreview continues, no newhead runtimecredit.
+
+Current integratedsource48905e225fe489a50b22676c39579d8942e1082c/tree
+b059c769d8f824b25095e2ff887a6cea2d833359 preserves incomingmain0A PR679
+14MTMmap/tests/messages bytes normally via3cdc parents[A7,0A]. OnlymtmMap locale
+namespace changed, all other namespaces unchanged. Root initialreadonly guessed
+mtm namespaceAssertionError retained, actualnamespace correction supersedes;
+old login-directory inference superseded by actualzone-list PR.
+
+Employee-only appendednative reproof invokes unchangedChrome1→2 proof after
+correctionreturn in sameoriginalphysicalwindow, onceperownedpage/exactroute/
+separatephasefilenames/prioractualcontrol. Fulloldsharedhelperprefix/fiveoldjob
+blocks/protected30/baseline64/18 unchanged. Every ownnative focus/sink now
+requires actual320/DPR2/scale1/noCSSzoomtransform; privacyadmission retained.
+NO_SHOWarticlecount1 precedes no-action assertion; privateError staysabsent,
+finitewhitelistedcallee filename/position+screenshotstage recorded. Planned
+6proofs/27captures distinguish6controls100%+21native200%,14cases/50focus,
+14newresponses+audits/1historical/13facts unchanged; actualnew37guard tests
+NOTRUN atpublication. Exactsourcepeer17188B SHA7fe98f48ccca1ccb46ead63981da1b0ab6b65b0795769f8964c1efbfd634ed12
+acceptedSOURCEONLY noP0/P1/P2; root9217B SHA075d095d8bbefd6a7dd38df3af3d80daed21c233d72e2dbed84423b31e42915b
+independentlybinds tree/protected30/foreign14/nativeprefix/fiveoldjobs. Actual
+root syntax/diff/runner54PASS; heavygates NOTRUNContabo byplacementcontract.
+
+Ordinarypublishedfeature/CI-onlysame4890ref; noforce/cancel/rerun. DraftPR678
+exactsource38029499242attempt1 has sixjobsRUNNING. Actualemployee/database/
+native/currentwholetree/candidate/requiredfive acceptance stillpending; no
+oldhead transfer. No productionactivation/grants/secrets/personnel changes.
+Immutablephase14-complete-original-a7-six-gates: 33files/16886778originalbytes.
+Immutablephase15-native-return-source-4890: 5files/42896originalbytes.
+85DONE/76open/61%,C6-006/C12partial/C14open unchanged. Next actual4890
+terminal originals and independentreview, then requiredcurrentcandidate gates
+and normalverifiedrelease when allactive-taskcriteria pass.

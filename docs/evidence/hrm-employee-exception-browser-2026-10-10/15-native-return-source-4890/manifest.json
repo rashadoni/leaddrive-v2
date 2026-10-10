@@ -1,0 +1,41 @@
+{
+  "archivedAtUtc": "2026-10-10T06:03:19.455980+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-employee-exception-4890-source-dispatch-archive-snapshot/hrm-employee-exception-4890-protected-source-root.json.raw-original.gz",
+      "originalBytes": 9217,
+      "originalSha256": "075d095d8bbefd6a7dd38df3af3d80daed21c233d72e2dbed84423b31e42915b",
+      "storedBytes": 3234,
+      "storedSha256": "0f2532b6ca63be6f99ce3945074c544e1a3256f24a6fe7bd52186770ab3a8c1e"
+    },
+    {
+      "path": "hrm-employee-exception-4890-source-dispatch-archive-snapshot/hrm-employee-exception-4890-publication-admission-root.json.raw-original.gz",
+      "originalBytes": 493,
+      "originalSha256": "2a15f0d31665311127bac5f176567be71204f157dcdaed8a39997c8ad1ad4092",
+      "storedBytes": 363,
+      "storedSha256": "0b19df64d31bf3317e1f9e464bec7dcbfb37b2be2e026058c47eb28e2faf2948"
+    },
+    {
+      "path": "hrm-employee-exception-4890-source-dispatch-archive-snapshot/hrm-employee-exception-4890-source-dispatch-runs-api.json.raw-original.gz",
+      "originalBytes": 12463,
+      "originalSha256": "3cf3a63f4e1d2fd94a7e07ef77cda65a15f0a9e207a04069fe6552edcecf4dfb",
+      "storedBytes": 1553,
+      "storedSha256": "bf6e4908ae09a9afb89c28ae47802d3c89977a1fb7071afb399eccfde23391cb"
+    },
+    {
+      "path": "hrm-employee-exception-4890-source-dispatch-archive-snapshot/hrm-employee-exception-native-return-integrated-source-peer-review-4890.json.raw-original.gz",
+      "originalBytes": 17188,
+      "originalSha256": "7fe98f48ccca1ccb46ead63981da1b0ab6b65b0795769f8964c1efbfd634ed12",
+      "storedBytes": 5679,
+      "storedSha256": "3f0657c3305e8c7564bada9ee4a93b933a67deaeae963792a407bfe3c4c75753"
+    },
+    {
+      "path": "hrm-employee-exception-4890-source-dispatch-archive-snapshot/hrm-employee-exception-pr-body-4890-source-dispatch.md.raw-original.gz",
+      "originalBytes": 3535,
+      "originalSha256": "7ed2e30d6286a73ca4dc747e02d5560cb85e7bd0eaf7cf1115c358cd500169fa",
+      "storedBytes": 1923,
+      "storedSha256": "cefb05f8f9d17982ecb7a575f2ba8d2660f293cf873bdccee86bcf2366d73fdb"
+    }
+  ]
+}
