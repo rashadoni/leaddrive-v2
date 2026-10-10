@@ -128,3 +128,32 @@ actual firstterminal wholelog/API/digest-size-CRCZIP and independently qualify
 actualdesired stage failure before appchanges; complete parentownrelease inparallel.
 Unknown-submit merge/release remains gated on both parentrelease and allfixgates.
 Accounting85/76/61 and C6-006/C12PARTIAL/C14OPEN unchanged.
+
+
+## 2026-10-10 13:29 UTC — actual first desired failure preserved before product changes
+
+Source458d/run38054872660/job114221153791 attempt1 naturalFAIL, whole128309B/
+3c97d2b35b4c75da7654a4fc730031bf98fbf50c51697b61241f1b658b666fb8; artifact
+11670955556/7204B/6e34b8d prefix digest with full original API/ZIP retained and
+actual digest-size-CRC validated. Exact37bindings/11cases/10MFA/19 controlled
+real201→replylost→actualrequestfailed/error→edited samekey/onlyreason409→stable
+request/audit hashes→restoredoriginalUI200/APIreplay200, all SQL5/facts11/exact
+routines11/forcedRLS5/two populatedtenants/cleanup13 PASS. All19 five-field sets
+remain editable; desired final require-edit-boundary-after-unknown-commit
+AssertionError ERR_ASSERTION490:10 FAILED. Backend preserves19requests19audits:
+this is a bounded UI recovery defect, no duplicate or personnel-decision claim.
+Firstroot+peerpreparedv2 readers refused skipped PostSetupNode; both original
+reader/error/APIs preserved. Official exactresolved setup-node249970729cb0ef3589644e2896645e5dc5ba9c38
+action.yml has post-if success(); separate v3 permits only this actualfailed-job
+post-cache skip/no executioncredit, retains all old strict predicates +actual3
+JSONcontext/failure/receipt fullH/run/attempt contents. No source/job rerun.
+Reference: https://raw.githubusercontent.com/actions/setup-node/249970729cb0ef3589644e2896645e5dc5ba9c38/action.yml
+Peerfinal16579B/2b885fed5807f455dbfd4c1a36692c5d8bc26283cad9bb29b4614bf0a2dead4d
+and28originalinventorya447a81ee40d3d6b6496a447d98b8b58ed02e200bd215457a9716f29f92abb80
+independently QUALIFIED_NOT_FIXED. Full originals archivedphase04 before appfix.
+Parent684 ownEDE normal/main/public8 now fully root+peer verified and archived09;
+parentrelease prerequisite satisfied. Next scoped immutable original input/key in
+memory, lock edits on uncertain outcome, retry original, distinguish definitive
+refusal from unknown result, meaningful tests/i18n/source+all8/newfocused/current/
+required5/review then ownnormalrelease. No blind keyrotation/auth/server/RLS/
+baseline changes. Accounting85/76/61 and C6-006/C12PARTIAL/C14OPEN unchanged.

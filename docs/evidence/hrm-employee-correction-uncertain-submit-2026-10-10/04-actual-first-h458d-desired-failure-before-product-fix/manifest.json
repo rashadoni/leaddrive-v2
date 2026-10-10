@@ -1,0 +1,657 @@
+{
+  "archivedAtUtc": "2026-10-10T13:29:18.557556+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-desired-failure-root/artifact-11670955556-original.zip",
+      "originalBytes": 7204,
+      "originalSha256": "6e34b8d7152b347844da27061fe149d2656d8b3d840329232fd92eb09bee8b43",
+      "storedBytes": 7204,
+      "storedSha256": "6e34b8d7152b347844da27061fe149d2656d8b3d840329232fd92eb09bee8b43"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-desired-failure-root/artifacts-api-original.json.gz",
+      "originalBytes": 469,
+      "originalSha256": "ed11bc8e3af8882211008bace4455c59c14a6f36e9ab1e5950eae6a835e2d405",
+      "storedBytes": 469,
+      "storedSha256": "ed11bc8e3af8882211008bace4455c59c14a6f36e9ab1e5950eae6a835e2d405"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-desired-failure-root/correction-uncertain-submit-terminal-job-root-summary.json.gz",
+      "originalBytes": 56759,
+      "originalSha256": "5ad5046732ddd9459713f83303b44443449077244e89b8c53ba54231fe929d5f",
+      "storedBytes": 6980,
+      "storedSha256": "8a6481b820dcf3c0353b137329d975e017248c874310cff82bc5663ec23936ee"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-desired-failure-root/first-failure-reader-v2-actual-error-tool-transcript-original.txt.gz",
+      "originalBytes": 327,
+      "originalSha256": "27ff7582beee2aa7847d3a665e9a64f275f7c807d5fd3a60a5af34d3108baeb9",
+      "storedBytes": 223,
+      "storedSha256": "265c28b3b2a8917ab86472f301c9326d5e18e8bfa69d48457c2a7f3223003fe2"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-desired-failure-root/job-api-original.json.gz",
+      "originalBytes": 1027,
+      "originalSha256": "e46bde0bfc9e170f26e8c94d7a2dd1f020d8512c7c0b3f53ffc76c65266fb0d4",
+      "storedBytes": 1027,
+      "storedSha256": "e46bde0bfc9e170f26e8c94d7a2dd1f020d8512c7c0b3f53ffc76c65266fb0d4"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-desired-failure-root/resolved-setup-node-action-manifest-api-original.json.gz",
+      "originalBytes": 2310,
+      "originalSha256": "141b0f21981ebb5b7474c6f4b7beb42f8f6f358fde3d3e5c9032ab500aeb1053",
+      "storedBytes": 2310,
+      "storedSha256": "141b0f21981ebb5b7474c6f4b7beb42f8f6f358fde3d3e5c9032ab500aeb1053"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-desired-failure-root/resolved-setup-node-action-manifest-original.yml.gz",
+      "originalBytes": 2797,
+      "originalSha256": "ad45f1922115116fb4706651d0a9262332bc4e4f11eb2021e09789dd1af18085",
+      "storedBytes": 1258,
+      "storedSha256": "70adbba6551cfbb12f73804b6f70b7e8315ddd06741370a2a6f537324e714c09"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-desired-failure-root/root-first-correction-uncertain-submit-failure-content-qualification-v3.json.gz",
+      "originalBytes": 1390,
+      "originalSha256": "68e215b93d23134045eb06e1331ec355f7ad55ab9acc4ee3a26ecac6327a29d3",
+      "storedBytes": 793,
+      "storedSha256": "4435aecc938aed53062708f1f2fcc63eef0e097bbd71adf605419686f67b5489"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-desired-failure-root/run-api-original.json.gz",
+      "originalBytes": 1642,
+      "originalSha256": "93fbe5bbf1d25f654690515bca13bf0bc4f69168d3eb144efea23a0d38150b1a",
+      "storedBytes": 1642,
+      "storedSha256": "93fbe5bbf1d25f654690515bca13bf0bc4f69168d3eb144efea23a0d38150b1a"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-desired-failure-root/whole-correction-uncertain-submit-job-original.txt.gz",
+      "originalBytes": 24553,
+      "originalSha256": "3b06d5c048f63ac3e8273bd57254608be9fd8c174ae7c6e27ce0b19dd71adb0e",
+      "storedBytes": 24553,
+      "storedSha256": "3b06d5c048f63ac3e8273bd57254608be9fd8c174ae7c6e27ce0b19dd71adb0e"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/first-terminal-job-id.json.gz",
+      "originalBytes": 219,
+      "originalSha256": "5a512dedf0358a2390ae85789826ade56a8f4aaef9cc2a9a8ee4c98c7ad1099b",
+      "storedBytes": 183,
+      "storedSha256": "6737a6226bdc08dcb9bf853e19c6c4f05efdcdd6247caa14eb6c776e9041437a"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/first-terminal-whole-job-original.txt.gz",
+      "originalBytes": 24553,
+      "originalSha256": "3b06d5c048f63ac3e8273bd57254608be9fd8c174ae7c6e27ce0b19dd71adb0e",
+      "storedBytes": 24553,
+      "storedSha256": "3b06d5c048f63ac3e8273bd57254608be9fd8c174ae7c6e27ce0b19dd71adb0e"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-00-jobs.json.gz",
+      "originalBytes": 986,
+      "originalSha256": "197af8900dcf98afc0dd8e5a773632cc23f9a8c1fa633e20330bfc1f602571d3",
+      "storedBytes": 986,
+      "storedSha256": "197af8900dcf98afc0dd8e5a773632cc23f9a8c1fa633e20330bfc1f602571d3"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-00-run.json.gz",
+      "originalBytes": 1635,
+      "originalSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650",
+      "storedBytes": 1635,
+      "storedSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-01-jobs.json.gz",
+      "originalBytes": 986,
+      "originalSha256": "197af8900dcf98afc0dd8e5a773632cc23f9a8c1fa633e20330bfc1f602571d3",
+      "storedBytes": 986,
+      "storedSha256": "197af8900dcf98afc0dd8e5a773632cc23f9a8c1fa633e20330bfc1f602571d3"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-01-run.json.gz",
+      "originalBytes": 1635,
+      "originalSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650",
+      "storedBytes": 1635,
+      "storedSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-02-jobs.json.gz",
+      "originalBytes": 986,
+      "originalSha256": "197af8900dcf98afc0dd8e5a773632cc23f9a8c1fa633e20330bfc1f602571d3",
+      "storedBytes": 986,
+      "storedSha256": "197af8900dcf98afc0dd8e5a773632cc23f9a8c1fa633e20330bfc1f602571d3"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-02-run.json.gz",
+      "originalBytes": 1635,
+      "originalSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650",
+      "storedBytes": 1635,
+      "storedSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-03-jobs.json.gz",
+      "originalBytes": 986,
+      "originalSha256": "197af8900dcf98afc0dd8e5a773632cc23f9a8c1fa633e20330bfc1f602571d3",
+      "storedBytes": 986,
+      "storedSha256": "197af8900dcf98afc0dd8e5a773632cc23f9a8c1fa633e20330bfc1f602571d3"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-03-run.json.gz",
+      "originalBytes": 1635,
+      "originalSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650",
+      "storedBytes": 1635,
+      "storedSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-04-jobs.json.gz",
+      "originalBytes": 986,
+      "originalSha256": "197af8900dcf98afc0dd8e5a773632cc23f9a8c1fa633e20330bfc1f602571d3",
+      "storedBytes": 986,
+      "storedSha256": "197af8900dcf98afc0dd8e5a773632cc23f9a8c1fa633e20330bfc1f602571d3"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-04-run.json.gz",
+      "originalBytes": 1635,
+      "originalSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650",
+      "storedBytes": 1635,
+      "storedSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-05-jobs.json.gz",
+      "originalBytes": 986,
+      "originalSha256": "197af8900dcf98afc0dd8e5a773632cc23f9a8c1fa633e20330bfc1f602571d3",
+      "storedBytes": 986,
+      "storedSha256": "197af8900dcf98afc0dd8e5a773632cc23f9a8c1fa633e20330bfc1f602571d3"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-05-run.json.gz",
+      "originalBytes": 1635,
+      "originalSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650",
+      "storedBytes": 1635,
+      "storedSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-06-jobs.json.gz",
+      "originalBytes": 986,
+      "originalSha256": "197af8900dcf98afc0dd8e5a773632cc23f9a8c1fa633e20330bfc1f602571d3",
+      "storedBytes": 986,
+      "storedSha256": "197af8900dcf98afc0dd8e5a773632cc23f9a8c1fa633e20330bfc1f602571d3"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-06-run.json.gz",
+      "originalBytes": 1635,
+      "originalSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650",
+      "storedBytes": 1635,
+      "storedSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-07-jobs.json.gz",
+      "originalBytes": 995,
+      "originalSha256": "1f9b23fce20d91bbe7109ed85652bae380aa94ff3087203e80d07def4c8f967d",
+      "storedBytes": 995,
+      "storedSha256": "1f9b23fce20d91bbe7109ed85652bae380aa94ff3087203e80d07def4c8f967d"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-07-run.json.gz",
+      "originalBytes": 1635,
+      "originalSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650",
+      "storedBytes": 1635,
+      "storedSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-08-jobs.json.gz",
+      "originalBytes": 995,
+      "originalSha256": "1f9b23fce20d91bbe7109ed85652bae380aa94ff3087203e80d07def4c8f967d",
+      "storedBytes": 995,
+      "storedSha256": "1f9b23fce20d91bbe7109ed85652bae380aa94ff3087203e80d07def4c8f967d"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-08-run.json.gz",
+      "originalBytes": 1635,
+      "originalSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650",
+      "storedBytes": 1635,
+      "storedSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-09-jobs.json.gz",
+      "originalBytes": 995,
+      "originalSha256": "1f9b23fce20d91bbe7109ed85652bae380aa94ff3087203e80d07def4c8f967d",
+      "storedBytes": 995,
+      "storedSha256": "1f9b23fce20d91bbe7109ed85652bae380aa94ff3087203e80d07def4c8f967d"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-09-run.json.gz",
+      "originalBytes": 1635,
+      "originalSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650",
+      "storedBytes": 1635,
+      "storedSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-10-jobs.json.gz",
+      "originalBytes": 995,
+      "originalSha256": "1f9b23fce20d91bbe7109ed85652bae380aa94ff3087203e80d07def4c8f967d",
+      "storedBytes": 995,
+      "storedSha256": "1f9b23fce20d91bbe7109ed85652bae380aa94ff3087203e80d07def4c8f967d"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-10-run.json.gz",
+      "originalBytes": 1635,
+      "originalSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650",
+      "storedBytes": 1635,
+      "storedSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-11-jobs.json.gz",
+      "originalBytes": 995,
+      "originalSha256": "1f9b23fce20d91bbe7109ed85652bae380aa94ff3087203e80d07def4c8f967d",
+      "storedBytes": 995,
+      "storedSha256": "1f9b23fce20d91bbe7109ed85652bae380aa94ff3087203e80d07def4c8f967d"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-11-run.json.gz",
+      "originalBytes": 1635,
+      "originalSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650",
+      "storedBytes": 1635,
+      "storedSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-12-jobs.json.gz",
+      "originalBytes": 995,
+      "originalSha256": "1f9b23fce20d91bbe7109ed85652bae380aa94ff3087203e80d07def4c8f967d",
+      "storedBytes": 995,
+      "storedSha256": "1f9b23fce20d91bbe7109ed85652bae380aa94ff3087203e80d07def4c8f967d"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-12-run.json.gz",
+      "originalBytes": 1635,
+      "originalSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650",
+      "storedBytes": 1635,
+      "storedSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-13-jobs.json.gz",
+      "originalBytes": 1017,
+      "originalSha256": "a4c2a6c19ae158035d79ddcbb5b89b153369f513e555250ee02729f0cd6590d5",
+      "storedBytes": 1017,
+      "storedSha256": "a4c2a6c19ae158035d79ddcbb5b89b153369f513e555250ee02729f0cd6590d5"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-13-run.json.gz",
+      "originalBytes": 1635,
+      "originalSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650",
+      "storedBytes": 1635,
+      "storedSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-14-jobs.json.gz",
+      "originalBytes": 1025,
+      "originalSha256": "dd344b7aca2ae5968a1686952f7b9232a92c0044f1a6659788150dae7bc63c14",
+      "storedBytes": 1025,
+      "storedSha256": "dd344b7aca2ae5968a1686952f7b9232a92c0044f1a6659788150dae7bc63c14"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-14-run.json.gz",
+      "originalBytes": 1635,
+      "originalSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650",
+      "storedBytes": 1635,
+      "storedSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-15-jobs.json.gz",
+      "originalBytes": 1025,
+      "originalSha256": "dd344b7aca2ae5968a1686952f7b9232a92c0044f1a6659788150dae7bc63c14",
+      "storedBytes": 1025,
+      "storedSha256": "dd344b7aca2ae5968a1686952f7b9232a92c0044f1a6659788150dae7bc63c14"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-15-run.json.gz",
+      "originalBytes": 1635,
+      "originalSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650",
+      "storedBytes": 1635,
+      "storedSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-16-jobs.json.gz",
+      "originalBytes": 1025,
+      "originalSha256": "dd344b7aca2ae5968a1686952f7b9232a92c0044f1a6659788150dae7bc63c14",
+      "storedBytes": 1025,
+      "storedSha256": "dd344b7aca2ae5968a1686952f7b9232a92c0044f1a6659788150dae7bc63c14"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-16-run.json.gz",
+      "originalBytes": 1635,
+      "originalSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650",
+      "storedBytes": 1635,
+      "storedSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-17-jobs.json.gz",
+      "originalBytes": 1025,
+      "originalSha256": "dd344b7aca2ae5968a1686952f7b9232a92c0044f1a6659788150dae7bc63c14",
+      "storedBytes": 1025,
+      "storedSha256": "dd344b7aca2ae5968a1686952f7b9232a92c0044f1a6659788150dae7bc63c14"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-17-run.json.gz",
+      "originalBytes": 1635,
+      "originalSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650",
+      "storedBytes": 1635,
+      "storedSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-18-jobs.json.gz",
+      "originalBytes": 1025,
+      "originalSha256": "dd344b7aca2ae5968a1686952f7b9232a92c0044f1a6659788150dae7bc63c14",
+      "storedBytes": 1025,
+      "storedSha256": "dd344b7aca2ae5968a1686952f7b9232a92c0044f1a6659788150dae7bc63c14"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-18-run.json.gz",
+      "originalBytes": 1635,
+      "originalSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650",
+      "storedBytes": 1635,
+      "storedSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-19-jobs.json.gz",
+      "originalBytes": 1025,
+      "originalSha256": "dd344b7aca2ae5968a1686952f7b9232a92c0044f1a6659788150dae7bc63c14",
+      "storedBytes": 1025,
+      "storedSha256": "dd344b7aca2ae5968a1686952f7b9232a92c0044f1a6659788150dae7bc63c14"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-19-run.json.gz",
+      "originalBytes": 1635,
+      "originalSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650",
+      "storedBytes": 1635,
+      "storedSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-20-jobs.json.gz",
+      "originalBytes": 1025,
+      "originalSha256": "dd344b7aca2ae5968a1686952f7b9232a92c0044f1a6659788150dae7bc63c14",
+      "storedBytes": 1025,
+      "storedSha256": "dd344b7aca2ae5968a1686952f7b9232a92c0044f1a6659788150dae7bc63c14"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-20-run.json.gz",
+      "originalBytes": 1635,
+      "originalSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650",
+      "storedBytes": 1635,
+      "storedSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-21-jobs.json.gz",
+      "originalBytes": 1025,
+      "originalSha256": "dd344b7aca2ae5968a1686952f7b9232a92c0044f1a6659788150dae7bc63c14",
+      "storedBytes": 1025,
+      "storedSha256": "dd344b7aca2ae5968a1686952f7b9232a92c0044f1a6659788150dae7bc63c14"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-21-run.json.gz",
+      "originalBytes": 1635,
+      "originalSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650",
+      "storedBytes": 1635,
+      "storedSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-22-jobs.json.gz",
+      "originalBytes": 1025,
+      "originalSha256": "dd344b7aca2ae5968a1686952f7b9232a92c0044f1a6659788150dae7bc63c14",
+      "storedBytes": 1025,
+      "storedSha256": "dd344b7aca2ae5968a1686952f7b9232a92c0044f1a6659788150dae7bc63c14"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-22-run.json.gz",
+      "originalBytes": 1635,
+      "originalSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650",
+      "storedBytes": 1635,
+      "storedSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-23-jobs.json.gz",
+      "originalBytes": 1050,
+      "originalSha256": "76c1f25f6388a556c1035ad84277511f98feeb0a21a3066a4a3d4e93333a2eb5",
+      "storedBytes": 1050,
+      "storedSha256": "76c1f25f6388a556c1035ad84277511f98feeb0a21a3066a4a3d4e93333a2eb5"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-23-run.json.gz",
+      "originalBytes": 1635,
+      "originalSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650",
+      "storedBytes": 1635,
+      "storedSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-24-jobs.json.gz",
+      "originalBytes": 1041,
+      "originalSha256": "d194f0f8065e5645ced0c35199bc7ae0f0ccaad11d95ad2fc633f4ae9551cbc2",
+      "storedBytes": 1041,
+      "storedSha256": "d194f0f8065e5645ced0c35199bc7ae0f0ccaad11d95ad2fc633f4ae9551cbc2"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-458d-first-source-observations-root/tick-24-run.json.gz",
+      "originalBytes": 1642,
+      "originalSha256": "93fbe5bbf1d25f654690515bca13bf0bc4f69168d3eb144efea23a0d38150b1a",
+      "storedBytes": 1642,
+      "storedSha256": "93fbe5bbf1d25f654690515bca13bf0bc4f69168d3eb144efea23a0d38150b1a"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-first-failure-qualifier-v3.py.gz",
+      "originalBytes": 15804,
+      "originalSha256": "850898696449fd45b697ce96fc14dfe517a5a00be436e8e5d3f0a79f124f64c0",
+      "storedBytes": 5557,
+      "storedSha256": "19907257d8c4a28eb11af91a7b4213c3e510ec84a1ec8c138d8a428e0e5b574d"
+    },
+    {
+      "path": "hrm-uncertain-submit-first-source-observer-v1.py.gz",
+      "originalBytes": 2182,
+      "originalSha256": "28c6bf6b6770467d763ff066ab126ec01d88288d64921d296358fd0ef2eb7e9d",
+      "storedBytes": 1035,
+      "storedSha256": "ed3c8b1a9c68680f3f4b0a609dd7b40c83170e03ddf5d8f6bad8e21079d43691"
+    },
+    {
+      "path": "hosted-first-desired-regression/actual-draft-pr-whole-original-api.json.gz",
+      "originalBytes": 2866,
+      "originalSha256": "247fa59dc0d18ab2226c3417de14787e16ea481a7ad93b8ceda24b411c97034a",
+      "storedBytes": 2866,
+      "storedSha256": "247fa59dc0d18ab2226c3417de14787e16ea481a7ad93b8ceda24b411c97034a"
+    },
+    {
+      "path": "hosted-first-desired-regression/actual-registered-workflow-whole-original-api.json.gz",
+      "originalBytes": 326,
+      "originalSha256": "de081ec1c0316abc39db9cf5e7e0538b9a689ebfe2884fd016f03781a242172c",
+      "storedBytes": 326,
+      "storedSha256": "de081ec1c0316abc39db9cf5e7e0538b9a689ebfe2884fd016f03781a242172c"
+    },
+    {
+      "path": "hosted-first-desired-regression/all-first-desired-failure-originals-qualifications-readers-error-inventory.json.gz",
+      "originalBytes": 8641,
+      "originalSha256": "a447a81ee40d3d6b6496a447d98b8b58ed02e200bd215457a9716f29f92abb80",
+      "storedBytes": 1764,
+      "storedSha256": "209421cd4282eb32927ef512dbb4699ce1dca6a10d68646153c3c23d4b696f53"
+    },
+    {
+      "path": "hosted-first-desired-regression/exact-686-first-h458d-desired-failure-peer-qualification.json.gz",
+      "originalBytes": 16579,
+      "originalSha256": "2b885fed5807f455dbfd4c1a36692c5d8bc26283cad9bb29b4614bf0a2dead4d",
+      "storedBytes": 3427,
+      "storedSha256": "523dc58b9cfd3bf24e00d043ead82d9eacfc9a54f74ec4d8e664717b89831af0"
+    },
+    {
+      "path": "hosted-first-desired-regression/first-terminal-desired-failure/actual-resolved-setup-node-action-original.yml.gz",
+      "originalBytes": 2797,
+      "originalSha256": "ad45f1922115116fb4706651d0a9262332bc4e4f11eb2021e09789dd1af18085",
+      "storedBytes": 1258,
+      "storedSha256": "70adbba6551cfbb12f73804b6f70b7e8315ddd06741370a2a6f537324e714c09"
+    },
+    {
+      "path": "hosted-first-desired-regression/first-terminal-desired-failure/actual-resolved-setup-node-action-whole-api-original.json.gz",
+      "originalBytes": 2310,
+      "originalSha256": "141b0f21981ebb5b7474c6f4b7beb42f8f6f358fde3d3e5c9032ab500aeb1053",
+      "storedBytes": 2310,
+      "storedSha256": "141b0f21981ebb5b7474c6f4b7beb42f8f6f358fde3d3e5c9032ab500aeb1053"
+    },
+    {
+      "path": "hosted-first-desired-regression/first-terminal-desired-failure/artifact-11670955556-original.zip",
+      "originalBytes": 7204,
+      "originalSha256": "6e34b8d7152b347844da27061fe149d2656d8b3d840329232fd92eb09bee8b43",
+      "storedBytes": 7204,
+      "storedSha256": "6e34b8d7152b347844da27061fe149d2656d8b3d840329232fd92eb09bee8b43"
+    },
+    {
+      "path": "hosted-first-desired-regression/first-terminal-desired-failure/artifacts-api-original.json.gz",
+      "originalBytes": 469,
+      "originalSha256": "ed11bc8e3af8882211008bace4455c59c14a6f36e9ab1e5950eae6a835e2d405",
+      "storedBytes": 469,
+      "storedSha256": "ed11bc8e3af8882211008bace4455c59c14a6f36e9ab1e5950eae6a835e2d405"
+    },
+    {
+      "path": "hosted-first-desired-regression/first-terminal-desired-failure/correction-uncertain-submit-terminal-job-root-summary.json.gz",
+      "originalBytes": 56759,
+      "originalSha256": "1144c243aad1c2682193f362e5872664c0c753568013f1ec54dd5e5a853a65fa",
+      "storedBytes": 6979,
+      "storedSha256": "401b401bcbf4755e9548d5053618beecd7de866084cea83e854acc2ecc3585f8"
+    },
+    {
+      "path": "hosted-first-desired-regression/first-terminal-desired-failure/first-peer-prepared-failure-v2-step-skip-reader-error.json.gz",
+      "originalBytes": 1939,
+      "originalSha256": "8e2351ad2df9d0bb86f1aeba29cc64729aaa2c4d8cf211d669f2540ae1029aba",
+      "storedBytes": 1017,
+      "storedSha256": "a1eb123f961ebfa7963e345b21de8975ffe546cc91ed150ad57fee626642d5aa"
+    },
+    {
+      "path": "hosted-first-desired-regression/first-terminal-desired-failure/hrm-employee-correction-uncertain-submit-peer-first-failure-qualifier-v3.py.gz",
+      "originalBytes": 16612,
+      "originalSha256": "32fd23d7f0ca198740224b9371a9919bb13302cdd8313e3ac0d1b276c6692f02",
+      "storedBytes": 5778,
+      "storedSha256": "a77d8f9607134d3ccfba47010e837d709fb9760445d6ee203ca56326f8827bef"
+    },
+    {
+      "path": "hosted-first-desired-regression/first-terminal-desired-failure/independent-first-failure-check-whole-original-api.json.gz",
+      "originalBytes": 1330,
+      "originalSha256": "66b1a862ed9c4a608a1cfb75db5920767fe45e355bee8901edd52a37c31fe641",
+      "storedBytes": 1330,
+      "storedSha256": "66b1a862ed9c4a608a1cfb75db5920767fe45e355bee8901edd52a37c31fe641"
+    },
+    {
+      "path": "hosted-first-desired-regression/first-terminal-desired-failure/job-api-original.json.gz",
+      "originalBytes": 1027,
+      "originalSha256": "e46bde0bfc9e170f26e8c94d7a2dd1f020d8512c7c0b3f53ffc76c65266fb0d4",
+      "storedBytes": 1027,
+      "storedSha256": "e46bde0bfc9e170f26e8c94d7a2dd1f020d8512c7c0b3f53ffc76c65266fb0d4"
+    },
+    {
+      "path": "hosted-first-desired-regression/first-terminal-desired-failure/peer-first-correction-uncertain-submit-failure-content-qualification-v3.json.gz",
+      "originalBytes": 1297,
+      "originalSha256": "e2d2b43a0e47a2d1c0c6dd624ee14980342b99cabb76862c1fda87807db2c428",
+      "storedBytes": 742,
+      "storedSha256": "21c9b59e433c2ac1c8b5edb04497fc8b19fdcf2238e34608940649b5ee236acc"
+    },
+    {
+      "path": "hosted-first-desired-regression/first-terminal-desired-failure/run-api-original.json.gz",
+      "originalBytes": 1642,
+      "originalSha256": "93fbe5bbf1d25f654690515bca13bf0bc4f69168d3eb144efea23a0d38150b1a",
+      "storedBytes": 1642,
+      "storedSha256": "93fbe5bbf1d25f654690515bca13bf0bc4f69168d3eb144efea23a0d38150b1a"
+    },
+    {
+      "path": "hosted-first-desired-regression/first-terminal-desired-failure/whole-correction-uncertain-submit-job-original.txt.gz",
+      "originalBytes": 24553,
+      "originalSha256": "3b06d5c048f63ac3e8273bd57254608be9fd8c174ae7c6e27ce0b19dd71adb0e",
+      "storedBytes": 24553,
+      "storedSha256": "3b06d5c048f63ac3e8273bd57254608be9fd8c174ae7c6e27ce0b19dd71adb0e"
+    },
+    {
+      "path": "hosted-first-desired-regression/initial-jobs-whole-original-api.json.gz",
+      "originalBytes": 986,
+      "originalSha256": "197af8900dcf98afc0dd8e5a773632cc23f9a8c1fa633e20330bfc1f602571d3",
+      "storedBytes": 986,
+      "storedSha256": "197af8900dcf98afc0dd8e5a773632cc23f9a8c1fa633e20330bfc1f602571d3"
+    },
+    {
+      "path": "hosted-first-desired-regression/initial-run-whole-original-api.json.gz",
+      "originalBytes": 1635,
+      "originalSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650",
+      "storedBytes": 1635,
+      "storedSha256": "e8cea3c11ba57387b777c78b7e191c58375c7d6c8f4bc03163d5a64cb8b38650"
+    },
+    {
+      "path": "hosted-first-desired-regression/natural-status-originals/20261010T131527Z-run-38054872660-whole-jobs.json.gz",
+      "originalBytes": 986,
+      "originalSha256": "197af8900dcf98afc0dd8e5a773632cc23f9a8c1fa633e20330bfc1f602571d3",
+      "storedBytes": 986,
+      "storedSha256": "197af8900dcf98afc0dd8e5a773632cc23f9a8c1fa633e20330bfc1f602571d3"
+    },
+    {
+      "path": "hosted-first-desired-regression/natural-status-originals/20261010T131630Z-run-38054872660-whole-jobs.json.gz",
+      "originalBytes": 986,
+      "originalSha256": "197af8900dcf98afc0dd8e5a773632cc23f9a8c1fa633e20330bfc1f602571d3",
+      "storedBytes": 986,
+      "storedSha256": "197af8900dcf98afc0dd8e5a773632cc23f9a8c1fa633e20330bfc1f602571d3"
+    },
+    {
+      "path": "hosted-first-desired-regression/natural-status-originals/20261010T131731Z-run-38054872660-whole-jobs.json.gz",
+      "originalBytes": 995,
+      "originalSha256": "1f9b23fce20d91bbe7109ed85652bae380aa94ff3087203e80d07def4c8f967d",
+      "storedBytes": 995,
+      "storedSha256": "1f9b23fce20d91bbe7109ed85652bae380aa94ff3087203e80d07def4c8f967d"
+    },
+    {
+      "path": "hosted-first-desired-regression/natural-status-originals/20261010T131926Z-run-38054872660-whole-jobs.json.gz",
+      "originalBytes": 1012,
+      "originalSha256": "3672c2aca551a5f2bf3bd49129b4959df06bcf2448be69860e3b45c7be134b45",
+      "storedBytes": 1012,
+      "storedSha256": "3672c2aca551a5f2bf3bd49129b4959df06bcf2448be69860e3b45c7be134b45"
+    },
+    {
+      "path": "hosted-first-desired-regression/natural-status-originals/20261010T132033Z-run-38054872660-whole-jobs.json.gz",
+      "originalBytes": 1025,
+      "originalSha256": "dd344b7aca2ae5968a1686952f7b9232a92c0044f1a6659788150dae7bc63c14",
+      "storedBytes": 1025,
+      "storedSha256": "dd344b7aca2ae5968a1686952f7b9232a92c0044f1a6659788150dae7bc63c14"
+    },
+    {
+      "path": "hosted-first-desired-regression/natural-status-originals/20261010T132148Z-run-38054872660-whole-jobs.json.gz",
+      "originalBytes": 1025,
+      "originalSha256": "dd344b7aca2ae5968a1686952f7b9232a92c0044f1a6659788150dae7bc63c14",
+      "storedBytes": 1025,
+      "storedSha256": "dd344b7aca2ae5968a1686952f7b9232a92c0044f1a6659788150dae7bc63c14"
+    },
+    {
+      "path": "hosted-first-desired-regression/natural-status-originals/20261010T132323Z-run-38054872660-whole-jobs.json.gz",
+      "originalBytes": 1025,
+      "originalSha256": "dd344b7aca2ae5968a1686952f7b9232a92c0044f1a6659788150dae7bc63c14",
+      "storedBytes": 1025,
+      "storedSha256": "dd344b7aca2ae5968a1686952f7b9232a92c0044f1a6659788150dae7bc63c14"
+    },
+    {
+      "path": "hosted-first-desired-regression/prepared-independent-original-readers/hrm-employee-correction-uncertain-submit-capture-terminal-job-v1.py.gz",
+      "originalBytes": 4237,
+      "originalSha256": "a960f12aba25e395862fbec3460bed47126389c30e9547592b3b288771c7701d",
+      "storedBytes": 1692,
+      "storedSha256": "53307b3dd96dc6bcde7dd37322a26d3bbdfc77ce5bfc9a8c45b2df644e553d5f"
+    },
+    {
+      "path": "hosted-first-desired-regression/prepared-independent-original-readers/hrm-employee-correction-uncertain-submit-complete-artifact-v2.py.gz",
+      "originalBytes": 13424,
+      "originalSha256": "1ad86fdb25a52a9d557dddce8ef3be19f41f88499e20e845d7686eebe5b79299",
+      "storedBytes": 4769,
+      "storedSha256": "286ce98453b9e0d22e34b5bc17d4437bc0137d85f5a5a1a0e2a83c287506f719"
+    },
+    {
+      "path": "hosted-first-desired-regression/prepared-independent-original-readers/hrm-employee-correction-uncertain-submit-first-failure-qualifier-v2.py.gz",
+      "originalBytes": 14991,
+      "originalSha256": "a460b1e39fb9de524882311315b07625cfad570fc2226f5c2a383d37769a331a",
+      "storedBytes": 5224,
+      "storedSha256": "147c155ff7f43c3a50925ad2767c2721059e63f96fae1d2125c273416afe96f0"
+    },
+    {
+      "path": "hosted-first-desired-regression/prepared-independent-original-readers/prepared-reader-source-only-before-first-artifact-arrival.json.gz",
+      "originalBytes": 1367,
+      "originalSha256": "2cf44304a01664807fd3a7b0d98a82d2c0f3025b48b7776a1223152ae5731f1c",
+      "storedBytes": 609,
+      "storedSha256": "09265220e40d80eb526bafeadc74d98c25e2acd5bdd440fc809c3ed2034ccbc4"
+    }
+  ]
+}
