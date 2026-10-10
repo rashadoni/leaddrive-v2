@@ -198,3 +198,35 @@ Calendar38007879389 and source HR-recordingjob114080793477 justcompleted
 SUCCESS, content acceptance stillPENDING. Native/full report remains FAIL;
 first exact regression stillFAIL beforePG. Current85DONE/76open/61% and
 WF-C14-003 PLANNED/C12PARTIAL remain unchanged.
+
+## Original complete required/compiler/suite and finalBF source
+
+Original39 actualfive mandatory App15368 contexts allSUCCESS: scope/scan/
+runnerpolicy and READYstatic114080860679/type114080860707, not initial heavy
+SKIPPED. Reportsource/candidate remainsFAIL, so no merge despite those gates.
+Full required run38007879425 originals/API/digests/allZIPCRC retained. Raw
+compiler253276B/SHA8f0d84a5c0166a304d8d43be30d19463693ddc805511acda63c5119ac3d529f3
+contains1158diagnostics/35families, exit2, globallyNONCLEAN; strict64(file,code)
+count-pairs exactly64baseline and critical syntax/module/name checksSUCCESS.
+No owned report/guard diagnostics. Do not reuse earlierA1 count1155 for39.
+Strict test baseline retains18known failingfiles/18baseline, allentries still
+fail; baseline/config/guards remain byte-identical toaccepted973.
+
+Source isolated39 bundle actualSUCCESS/webpack7.5minutes/973pages/standalone
+existence/swapcleanup. Types skipped inside unchanged Next build config;
+full compiler accepted only through the independent compiler gates, no deploy
+or changed-head credit. Real originalclassification11PASS/6manualdecisions/
+6immutablelinked audits and7exactproductionmigration extracts independently
+accepted. Actual calendar15/manager9/60originalnativePNGs independently verified
+against their exact original source/merge/whole tree; reportnative stillNOT_RUN.
+
+FinalBF local checkpointbf418db89b54039566ead53546d434999801545e accepted by
+independent delta review,6344B receipt/SHA
+b317a32ea4f7a0a931633f7660f13d3018bc2ecdf7b7cf4536d8e31495535fc6.
+Added one unconditional execution of the existing guard file so its actual
+counts are observable; every oldPG/regression/baseline/lint/memory/timeout
+condition is retained. Final6executablepaths/15protectedbindings verified;
+sourcehelper/test/harness remain39, UIwrap31, EOFrepairB0. Small BF syntax/
+runner54/wholePR608whitespace/baselines/gitleaks checksPASS. BF is not yet
+published while the first39 exact-source compiler completes; no original
+cancellation, no other-head result transfer. No locally run heavyweight gate.
