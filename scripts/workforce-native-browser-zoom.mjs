@@ -248,3 +248,27 @@ export async function proveNative200Zoom(view, outputDirectory, locale, record) 
     event: change.event, settings: change.settings, control: before, zoomed: after,
     viewportEmulation: false, applicationCssChanged: false, applicationServiceWorkers: 0 }
 }
+
+const employeeNavigationReproofs = new WeakSet()
+export async function reproveEmployeeNative200Zoom(view, outputDirectory, locale, record) {
+  assert.ok(isNativeZoomPage(view.page), "Employee reproof requires an owned native page")
+  const owned = ownedContexts.get(view.page.context())
+  assert.equal(owned.fixture, "employee-exceptions")
+  const target = new URL(view.page.url())
+  assert.equal(target.origin, owned.origin)
+  assert.equal(target.pathname, owned.route)
+  assert.equal(target.username + target.password + target.search + target.hash, "")
+  assert.equal(basename(outputDirectory), "native-after-correction-return")
+  assert.equal(view.nativeZoom?.factor, 2, "Initial actual proof required before employee reproof")
+  assert.equal(employeeNavigationReproofs.has(view.page), false, "One immutable reproof per employee page")
+  const previousWindow = controlSurfaces.get(view.page)
+  assert.ok(previousWindow, "Prior validated physical window required")
+  assert.deepEqual(previousWindow, { width: view.nativeZoom.control.width, height: view.nativeZoom.control.height })
+  employeeNavigationReproofs.add(view.page)
+  // Reset only the owned ephemeral registration. Original proof, pixels and
+  // receipt remain intact; the unchanged first-proof routine rejects reuse.
+  controlSurfaces.delete(view.page)
+  const proof = await proveNative200Zoom(view, outputDirectory, locale, record)
+  assert.deepEqual(controlSurfaces.get(view.page), previousWindow, "Reproof must preserve the original physical window")
+  return { ...proof, phase: "AFTER_CORRECTION_RETURN", originalPhysicalWindowPreserved: true }
+}

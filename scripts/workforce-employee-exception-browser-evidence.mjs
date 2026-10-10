@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs"
 import { generateSecret, generateSync } from "otplib"
 import { chromium } from "playwright"
 import { createJiti } from "jiti"
-import { createNativeZoomContext, proveNative200Zoom, captureNativeViewport, isNativeZoomPage } from "./workforce-native-browser-zoom.mjs"
+import { createNativeZoomContext, proveNative200Zoom, reproveEmployeeNative200Zoom, captureNativeViewport, isNativeZoomPage } from "./workforce-native-browser-zoom.mjs"
 import { employeeExceptionBrowserTarget, assertEmployeeExceptionCaptureAllowed } from "./workforce-employee-exception-browser-admission.mjs"
 import { makeRlsTestPrisma } from "./_rls.mjs"
 
@@ -32,7 +32,7 @@ const receipts = {
   environment: "hosted Chromium / real Auth.js MFA / loopback Next dev / disposable PostgreSQL16 and Redis",
   status: "RUNNING", cases: [], sources: [], productionRoutines: [], authenticationDiagnostics: [],
   matrix: { locales, widths, standardExpected: 9, nativeExpected: 3 }, matrixDiagnostics: [],
-  nativeZoomDiagnostics: [], nativeCaptureDiagnostics: [], keyboardFocusDiagnostics: [],
+  nativeZoomDiagnostics: [], nativeCaptureDiagnostics: [], nativeCurrentDiagnostics: [], keyboardFocusDiagnostics: [],
   captureDiagnostics: [], networkFaultDiagnostics: [], recoveryAlertDiagnostics: [], databaseDiagnostics: [], cleanupDiagnostics: [],
   limitations: [
     "Synthetic isolated tenants and imported historical cases only; no real expected-schedule materialization or physical attendance evidence",
@@ -354,6 +354,7 @@ async function tabTo(page, locator) {
   assert.fail("Own control not reachable by bounded real Tab navigation")
 }
 async function focusedControl(view, locator, phase) {
+  if (isNativeZoomPage(view.page)) await assertCurrentEmployeeNativeZoom(view.page, `focus-${phase}`)
   const diagnostic = await locator.evaluate(element => {
     const box = element.getBoundingClientRect()
     let left = 0, right = innerWidth, top = 0, bottom = innerHeight
@@ -382,9 +383,28 @@ async function capturePrivacy(page) {
   receipts.captureDiagnostics.push({ freeTextEmpty: true, protectedSubjectsAbsent: true })
 }
 async function safeScreenshot(page, name) {
+  const previousStage = stage
+  stage = `${previousStage}-capture-${name}`
   await capturePrivacy(page)
-  if (isNativeZoomPage(page)) await captureNativeViewport(page, `${outputDirectory}/${name}`, diagnostic => receipts.nativeCaptureDiagnostics.push(diagnostic))
+  if (isNativeZoomPage(page)) {
+    await assertCurrentEmployeeNativeZoom(page, `capture-${name}`)
+    await captureNativeViewport(page, `${outputDirectory}/${name}`, diagnostic => receipts.nativeCaptureDiagnostics.push(diagnostic))
+  }
   else await page.screenshot({ path: `${outputDirectory}/${name}` })
+  stage = previousStage
+}
+async function assertCurrentEmployeeNativeZoom(page, phase) {
+  const url = new URL(page.url())
+  assert.equal(url.origin, origin.origin); assert.equal(url.pathname, "/workforce/exceptions/mine")
+  assert.equal(url.username + url.password + url.search + url.hash, "")
+  const actual = await page.evaluate(() => ({ width: innerWidth, devicePixelRatio,
+    visualViewportScale: visualViewport.scale, rootZoom: getComputedStyle(document.documentElement).zoom,
+    bodyZoom: getComputedStyle(document.body).zoom, rootTransform: getComputedStyle(document.documentElement).transform,
+    bodyTransform: getComputedStyle(document.body).transform }))
+  receipts.nativeCurrentDiagnostics.push({ phase, ...actual })
+  assert.equal(actual.width, 320); assert.equal(actual.devicePixelRatio, 2); assert.equal(actual.visualViewportScale, 1)
+  assert.ok(["1", "normal"].includes(actual.rootZoom) && ["1", "normal"].includes(actual.bodyZoom))
+  assert.equal(actual.rootTransform, "none"); assert.equal(actual.bodyTransform, "none")
 }
 async function loadPage(page) {
   const response = observeWaiter(page.waitForResponse(row => new URL(row.url()).pathname === endpoint && row.request().method() === "GET", { timeout: 120_000 }))
@@ -413,7 +433,7 @@ async function uiScenario(tenant, cell) {
     // Native proof also captures the application: privacy admission precedes it.
     await capturePrivacy(page)
     view.nativeZoom = await proveNative200Zoom(view, outputDirectory, cell.locale, diagnostic => receipts.nativeCaptureDiagnostics.push(diagnostic))
-    receipts.nativeZoomDiagnostics.push({ locale: cell.locale, status: "PASS", ...view.nativeZoom })
+    receipts.nativeZoomDiagnostics.push({ locale: cell.locale, phase: "INITIAL", status: "PASS", ...view.nativeZoom })
   }
   stage = `${cell.key}-keyboard-refresh`
   const refresh = page.getByRole("button", { name: translations.refresh, exact: true })
@@ -433,6 +453,16 @@ async function uiScenario(tenant, cell) {
   assert.equal(new URL(page.url()).searchParams.get("correctionWorkdayId"), selected.workdayId)
   assert.equal(new URL(page.url()).searchParams.get("exceptionCaseId"), selected.caseId)
   await loadPage(page)
+  if (cell.nativeZoom) {
+    stage = `${cell.key}-native-reproof-after-correction-return`
+    await capturePrivacy(page)
+    const directory = `${outputDirectory}/native-after-correction-return`
+    await mkdir(directory, { recursive: true })
+    view.nativeZoom = await reproveEmployeeNative200Zoom(view, directory, cell.locale,
+      diagnostic => receipts.nativeCaptureDiagnostics.push({ ...diagnostic, screenshot: `native-after-correction-return/${diagnostic.screenshot}` }))
+    receipts.nativeZoomDiagnostics.push({ locale: cell.locale, status: "PASS", ...view.nativeZoom })
+    await assertCurrentEmployeeNativeZoom(page, "after-correction-return")
+  }
   stage = `${cell.key}-keyboard-acknowledgement`
   const acknowledge = article.getByRole("button", { name: translations.acknowledgeForReview, exact: true })
   await tabTo(page, acknowledge); await focusedControl(view, acknowledge, "acknowledge")
@@ -476,6 +506,8 @@ async function uiScenario(tenant, cell) {
   const after = await ownProjection(context, tenant)
   assert.equal(after.cases.find(row => row.caseId === selected.caseId).responseState, "ACKNOWLEDGED")
   const noShow = page.getByRole("article").filter({ hasText: tenant.cases.noShow.reference })
+  stage = `${cell.key}-no-show-own-row-admission`
+  assert.equal(await noShow.count(), 1)
   assert.equal(await noShow.getByRole("button").count(), 0); assert.equal(await noShow.getByRole("link").count(), 0)
   if (cell.nativeZoom) await safeScreenshot(page, `${cell.key}-final-own-boundary.png`)
   receipts.cases.push({ name: cell.key, status: "PASS", ownOnlyMinimizedProjection: true, reopenedOldResponseNotAcknowledged: true, keyboardRefreshAndAcknowledgement: true, exactDayCorrectionNavigation: true, noShowViewOnly: true, nativeZoom: Boolean(cell.nativeZoom) })
@@ -663,10 +695,11 @@ async function databaseProof(tenants) {
   receipts.database = { nonownerForcedRls: true, unscopedRows: 0, foreignRows: 0, populatedResponseAndAuditControlsInTwoTenants: true, actualNewResponses: expectedResponses.length, actualNewAudits: audits.length, historicalResponses: 1, exactAuditLinkAndFiveMetadataKeys: true, exactProductionResponseImmutability: true, cycleUniqueRollbackSqlState: "23505", syntheticAuditGuard: true, defaultAclReviewed: false, fullHistoricalReplay: false }
 }
 function safeFailure(error) {
-  const frame = String(error?.stack || "").split("\n").find(line => line.includes(import.meta.url))
+  const helperUrl = new URL("./workforce-native-browser-zoom.mjs", import.meta.url).href
+  const frame = String(error?.stack || "").split("\n").find(line => line.includes(import.meta.url) || line.includes(helperUrl))
   const position = frame?.match(/:(\d+):(\d+)\)?$/)
   return { stage, name: ["AssertionError", "TimeoutError", "PrismaClientKnownRequestError", "PrismaClientValidationError"].includes(error?.name) ? error.name : "Error",
-    sourcePosition: position ? { line: Number(position[1]), column: Number(position[2]) } : null,
+    sourcePosition: position ? { file: frame.includes(helperUrl) ? "scripts/workforce-native-browser-zoom.mjs" : "scripts/workforce-employee-exception-browser-evidence.mjs", line: Number(position[1]), column: Number(position[2]) } : null,
     sqlState: typeof error?.meta?.code === "string" && /^[A-Z0-9]{5}$/.test(error.meta.code) ? error.meta.code : null,
     prismaCode: typeof error?.code === "string" && /^P\d{4}$/.test(error.code) ? error.code : null }
 }
@@ -689,9 +722,10 @@ try {
   assert.deepEqual(new Set(completedMatrix.map(row => row.name)), new Set(matrixCells.map(cell => cell.key)))
   assert.equal(completedMatrix.length, 12); assert.equal(expectedResponses.length, 14)
   assert.equal(receipts.cases.length, 14)
-  assert.equal(receipts.nativeZoomDiagnostics.length, 3)
+  assert.equal(receipts.nativeZoomDiagnostics.length, 6)
+  assert.deepEqual(new Set(receipts.nativeZoomDiagnostics.map(row => `${row.locale}-${row.phase}`)), new Set(locales.flatMap(locale => [`${locale}-INITIAL`, `${locale}-AFTER_CORRECTION_RETURN`])))
   assert.ok(receipts.nativeZoomDiagnostics.every(row => row.status === "PASS" && row.factor === 2))
-  assert.equal(receipts.nativeCaptureDiagnostics.length, 21)
+  assert.equal(receipts.nativeCaptureDiagnostics.length, 27)
   assert.ok(receipts.nativeCaptureDiagnostics.every(row => row.status === "PASS"))
   assert.equal(receipts.keyboardFocusDiagnostics.length, 50)
   assert.equal(receipts.networkFaultDiagnostics.length, 2)

@@ -297,3 +297,45 @@ accessibility announcements/DOM/CSS/badge manipulation. Original0d7 offending
 alert identity remains NOTPROVED; actual newidentity must be recorded by fresh
 runtime before any attribution/acceptance. Source2b/43/0d7 originals and prior
 4055 checkpoint retained. No product/permission/constraint/baseline changes.
+
+## A7DC partial browser results and native integrity gap; stronger reproof
+
+ActualA7DC run38028091086 employee114143130256 FAIL, stage az-native-320-keyboard-acknowledgement,
+source685:35 genericError. Original wholelog110544B SHA73aab394eb2fd290da120373a436bf8eee8b1dc592db7c402381bc6d54624f9e;
+ZIP11660659390/2632271B SHA8095c2c54f30db61b68e790d6d9413ed02311b58381d8bc696fa4b42146f8b4a retained.
+Completed4cases = real503recovery+AZstandard320/768/1440;5auth/18focus,
+actualcounts responses5/audit4/cases20/decisions6,cleanupPASS. Lost committed
+POST201→retry200 sameoperation/sameresponse/0duplicates actuallypassed.
+Recovery global1 alert now positivelyidentified canonicalRouteAnnouncertrue,
+insideOwnfalse/devPortalfalse; prior0d7 identity remains unproved.1initial
+nativeproof/7captures includes failure; no completednativecell/finalDB proof.
+Actual native refresh/correction width320/DPR2 then post-fullnavigation ACK
+width640/DPR1. Original preservation-only capturePASS at100% is not native200
+credit. Native reset is separately demonstrated integritygap, NOT proved
+cause of genericError (sourcecallee not previously retained).
+
+New bounded employee-only reproof wrapper is additive; oldshared nativecore
+functions remain byteunchanged. Requires exactownedemployee/route/prioractual
+validatedwindow and one repeat perpage, separate native-after-correction-return
+phasepaths; clears only ephemeralcontrolregistration, invokes unchangedfull
+ChromeAPI1→2 proof and checks identical originalphysicalwindow. Oldpixels/
+proof remain immutable. Nativefocus and everyownnative screenshot now require
+actualCSS320/DPR2/scale1/noCSSzoom-transform before use. Planned6proofs/27native
+captures (threeinitial+threeaftercorrectionreturn),14cases/50focus unchanged.
+Privacyadmission before secondproof and eachsink retained; no per-origin or
+CSS/emulated zoom substitute. NO_SHOWmatchingarticlecount1 now mandatory before
+zero controls (prevents vacuouspass). Screenshot stages and whitelisted shared
+helper sourceframe added without rawprivateError retention. Unknown source
+failure stillFAIL. One new guard testcase plus five forgedprior/nonemployee
+capability refusals preserve original36 cases and assertions; actual37test
+execution NOT RUN yet (hostedonly).
+
+Incoming reviewedmain0a6300e7ae19d9435332ab8b4f1c6c9e1d420cac PR679 contains
+14MTMmap/tests/messages paths; actualonlymtmMap localeobject changed, allother
+locale keys equal. Root first assumed namespace mtm and readerAssertionError;
+corrected to actuallyinspected mtmMap, source/gates untouched. Main integrated
+normally at3cdc63c78303de9875eb6051b14c0c1637b4f908 preservingall14. Previous
+workingdirectory login-label inference is superseded by actualzone-list PR.
+Current stronger reproof requires independent source review/fresh exactCI;
+oldA7DCotherjobs continue uncancelled. No production changes/activation or
+closure;85DONE/76open/61%,C6-006/C12partial/C14open unchanged.
