@@ -241,3 +241,25 @@ this newhead; parentverifiedrelease owns currentproduction. Accountingunchanged.
 Lastaction draft+singleexactsource dispatch; precisestop first7source RUNNING;
 next firstwholeoriginals/errors/root+peer content/pixels→READYcurrentcandidate/
 requiredfive→authorizedordinarymerge/ownnormalrelease→nextpermittedwork.
+
+## First actual correction-submission job root and peer admitted
+
+New207 actualSUCCESS, originalwhole119255B/artifact11667384449 digest/size/CRC
+accepted. Actual11cases/10canonicalMFA/30bindings/9standardcells/19PENDINGrequests
+and19audits (10linked/9clearedsource), no directretry duplicates. Exactstored
+fields/privateReason verifiedwithoutbodyretention, all3 completeequal409refusals,
+11exactsource routine/CHECK identities,5actualSQLrollbackstate+rowhashcontrols,
+5forcedRLS/0ownedobjects/0memberships/minimalgrants/unscoped0/two populatedtenant
+positives/foreign0/11businessfactsunchanged/13cleanup allPASS root+peer.
+No nativeform/pixels/device/human/productionHR/defaultACL/fullhistorical claim.
+Rootfirstcompletev2 reader failedline20 assumingallstepsS; actualsuccessjob
+intentionallySKIPs failure-only receipt. Originalerror/API/log/ZIP kept;
+separatev3 permits ONLY that exact conditionalSKIP onsource (and sourceverify
+SKIPonlyon futurePR), allotherscompletedSUCCESS. Peer originalv1 sameassumption
+failed separately andkept; peer v2 samequalifiedstrictsteps+exactroutine/case/
+cleanup identities passed. No actualCI/sourcefailure/rerun/baselineweakening.
+Source7 currentPG/report/HR/newcorrection SUCCESS; oldemployee/build/compiler
+RUNNING. Whole7source admission/currentREADY/C/five/merge/ownrelease pending.
+Currentfixedfb227 unchanged. Next collect remainingactualwholeoriginals/pixels/
+root+peer →READY. Future reply-loss recoveryjournal initializedunpublished,
+no newcode/SQL/browser/runtime orparent683release acceptance yet. Accountingsame.
