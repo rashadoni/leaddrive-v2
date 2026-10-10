@@ -113,3 +113,22 @@ actual refusal cases (coherent three-URL extras andadmin-only extras) plusprior
 24 PASS as26 underNode20 after resourcecheck; initial24outputs/checkpoint retained.
 No connection/SQL/DB/browser/job/sourceindependent execution; current682source
 andbaseline unchanged. Parent682 source5SUCCESS/compilerRUNNING stillpriority.
+
+
+## Separate actual submission harness prepared — runtime NOTRUN
+
+New separate harness preserves exact parent canonicalMFA/rate/session helpers
+and targets imported owncases in two disposable tenants. Planned9standard
+EN/RU/AZ×320/768/1440 cells each realcorrectionlink→form→linkedPENDING201,
+then type/daycleared unlinkedPENDING201, plussecondtenantpositive, eachactual
+200idempotentreplay withno extra rows. Planned19requests+19six-keyaudits, no
+workday/HRdecision/correction/response writes;11knownfact hashesstable, real
+nonowner/unscoped/foreignread controls andthreeindistinguishable409source
+refusals. Five plannedactualSQLrollback checks includeimmutablecase/revision,
+exactday andsyntheticimmutableaudit/case guards. Latestproductionfunction/
+trigger statements andtwo reconstructedrevisionCHECKs/exactvalidationsbound
+to source; no historicalreplay/productionimmutability/defaultACL claim.
+No screenshots/privatebody/identity/secret/errorpayload retained; onlysanitized
+stage/code/frames/counts/hashmetadata. CurrentNode20syntax/diffPASS after
+resources. Database/browser/runtime/sourceindependent/workflow/jobchecks
+NOTRUN; jobnotyetwired. Current682READYcandidate/five continuesunchanged.
