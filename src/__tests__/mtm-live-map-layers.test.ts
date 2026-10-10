@@ -24,7 +24,7 @@ vi.mock("next-intl", () => ({
   },
 }))
 
-import { LiveMapLayersControl, type LiveMapLayer } from "@/components/mtm/live-map-layers-control"
+import { LiveMapLayersControl, type LiveMapLayer, type LiveMapLayersAlert } from "@/components/mtm/live-map-layers-control"
 
 describe("the layers control on the map", () => {
   let root: Root
@@ -32,16 +32,23 @@ describe("the layers control on the map", () => {
   let state: Record<string, boolean>
   let hidden: number
   let baseMaps: { value: string; options: Array<{ id: string; label: string }>; onChange: (id: string) => void } | null
+  /** What one more layer holds, listed under its switch; and what the layers have to say with the panel closed. */
+  let areaNames: string[] | null
+  let alert: LiveMapLayersAlert | Array<LiveMapLayersAlert | null> | null
   const layers = (): LiveMapLayer[] => [
     { id: "agents", label: "Сотрудники", hint: "значки с последним положением", on: state.agents, onToggle: () => { state.agents = !state.agents }, shownByDefault: true },
     { id: "route", label: "Маршрут дня", on: state.route, onToggle: () => { state.route = !state.route }, shownByDefault: true },
     { id: "heat", label: "Тепловая карта", on: state.heat, onToggle: () => { state.heat = !state.heat }, testId: "mtm-map-heatmap-toggle" },
+    ...(areaNames ? [{
+      id: "areas", label: "Свои зоны", hint: `на карте зон: ${areaNames.length}`, on: state.areas, onToggle: () => { state.areas = !state.areas },
+      detail: state.areas ? createElement("ul", null, areaNames.map((name) => createElement("li", { key: name }, name))) : undefined,
+    }] : []),
   ]
   const draw = async () => {
     await act(async () => {
       root.render(createElement(LiveMapLayersControl, {
         layers: layers(), hiddenAgentCount: hidden, onShowAllAgents: () => { hidden = 0 }, note: "Полный трек — в «Истории».",
-        baseMaps,
+        baseMaps, alert,
       }))
     })
   }
@@ -55,6 +62,8 @@ describe("the layers control on the map", () => {
     state = { agents: true, route: true, heat: false }
     hidden = 0
     baseMaps = null
+    areaNames = null
+    alert = null
     container = document.createElement("div")
     document.body.appendChild(container)
     root = createRoot(container)
@@ -141,6 +150,57 @@ describe("the layers control on the map", () => {
     hidden = 2
     await draw()
     expect(container.querySelector('[data-testid="live-map-layers-mark"]')).not.toBeNull()
+  })
+
+  it("lists what a layer holds under its own switch while it is on — inside the panel, with no frame or scrollbar of its own", async () => {
+    areaNames = ["Северный участок", "Центр"]
+    state.areas = false
+    await draw()
+    await press(opener())
+    // Off: the switch and its line, nothing under them.
+    expect(container.querySelector('[data-testid="live-map-layer-detail-areas"]')).toBeNull()
+    await press(layerSwitch("live-map-layer-areas"))
+    const detail = container.querySelector('[data-testid="live-map-layer-detail-areas"]') as HTMLElement
+    expect([...detail.querySelectorAll("li")].map((row) => row.textContent)).toEqual(["Северный участок", "Центр"])
+    // In the row of its own layer, after that layer's switch — and inside the one panel that scrolls.
+    const row = layerSwitch("live-map-layer-areas").closest("li") as HTMLElement
+    expect(row.contains(detail)).toBe(true)
+    expect(panel()?.contains(detail)).toBe(true)
+    expect(detail.className).not.toMatch(/overflow|max-h/)
+    // The other layers have nothing listed under them.
+    expect(container.querySelectorAll('[data-testid^="live-map-layer-detail-"]')).toHaveLength(1)
+    // An extra layer nobody had switched on is not something «taken off the map».
+    await press(layerSwitch("live-map-layer-areas"))
+    await press(opener())
+    expect(container.querySelector('[data-testid="live-map-layers-mark"]')).toBeNull()
+  })
+
+  it("says each layer's own trouble on the map while the panel is closed, each with its own way out", async () => {
+    const retried: string[] = []
+    // One alert, as the page gave it before there were two layers that are read from the server.
+    alert = { text: "Клиенты не загрузились", actionLabel: "Повторить", onAction: () => { retried.push("clients") } }
+    await draw()
+    const said = () => [...container.querySelectorAll('[role="status"]')].map((line) => line.textContent)
+    expect(said()).toEqual(["Клиенты не загрузилисьПовторить"])
+    // Two layers in trouble are two lines; a layer with nothing to say adds none.
+    alert = [
+      { text: "Клиенты не загрузились", actionLabel: "Повторить", onAction: () => { retried.push("clients") } },
+      null,
+      { text: "Свои зоны не загрузились", actionLabel: "Повторить", onAction: () => { retried.push("areas") }, testId: "live-map-areas-alert" },
+      { text: "показана только часть базы", actionLabel: null, onAction: null, testId: "live-map-part-alert" },
+    ]
+    await draw()
+    expect(said()).toEqual(["Клиенты не загрузилисьПовторить", "Свои зоны не загрузилисьПовторить", "показана только часть базы"])
+    await press(container.querySelector('[data-testid="live-map-areas-alert-action"]'))
+    await press(container.querySelector('[data-testid="live-map-layers-alert-action"]'))
+    expect(retried).toEqual(["areas", "clients"])
+    expect(container.querySelector('[data-testid="live-map-part-alert-action"]')).toBeNull()
+    // With the panel open the layers' own lines say it; the alerts step aside.
+    await press(opener())
+    expect(said()).toEqual([])
+    alert = [null, null]
+    await press(opener())
+    expect(said()).toEqual([])
   })
 
   it("counts the employees hidden one by one and brings them all back in one press", async () => {

@@ -9,7 +9,7 @@
  */
 import {
   Activity, AlertTriangle, Camera, CheckCircle2, Eye, Flag, Link2, ListChecks, ListPlus, LogIn, LogOut,
-  Building2, FileUp, ListMinus, Megaphone, MessageSquare, Pause, PencilLine, Play, RotateCcw, Route, Send, Settings, ShieldAlert, ShieldCheck, ShoppingCart, Store,
+  Building2, FileUp, Hexagon, ListMinus, Megaphone, MessageSquare, Pause, PencilLine, Play, RotateCcw, Route, Send, Settings, ShieldAlert, ShieldCheck, ShoppingCart, Store,
   Trash2, UserCog, UserMinus, UserPlus, type LucideIcon,
 } from "lucide-react"
 
@@ -97,6 +97,11 @@ const META: Record<string, ActionMeta> = {
   FIELD_ASSIGNMENT_UPSERT: { icon: UserCog,   tone: "sky" },
   FIELD_PRODUCT_PRESENTATION_UPLOAD: { icon: FileUp, tone: "purple" },
   ORDER_CREATE:        { icon: ShoppingCart,  tone: "emerald" },
+  // 2026-10-10: zones a manager draws by hand on the live map («Свои зоны»).
+  // Named from their first day, so the journal never reads «Действие» for them.
+  MAP_ZONE_CREATE:     { icon: Hexagon,       tone: "emerald" },
+  MAP_ZONE_UPDATE:     { icon: PencilLine,    tone: "sky" },
+  MAP_ZONE_DELETE:     { icon: Trash2,        tone: "red" },
 }
 
 /**
@@ -198,6 +203,11 @@ export function activityDataSummary(
     }
     case "FIELD_PRODUCT_PRESENTATION_UPLOAD":
       return typeof data.title === "string" && data.title.trim() ? data.title.trim() : null
+    // Which zone: its name as the change left it (a removal keeps the name).
+    case "MAP_ZONE_CREATE":
+    case "MAP_ZONE_UPDATE":
+    case "MAP_ZONE_DELETE":
+      return typeof data.name === "string" && data.name.trim() ? data.name.trim() : null
     default:
       return null
   }
