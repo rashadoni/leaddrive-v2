@@ -114,3 +114,29 @@ one hosted dispatch. Precise stop: terminal source6 evidence pending. Next:
 retain originals and independently admit current DB/browser/compiler/build,
 then mandatory READY gates/exact candidate/ordinary merge/normal release.
 85DONE/76open/61%; C6-006/C12partial/C14open;606/609/646/663excluded unchanged.
+
+## Actual first employee terminal SUCCESS; compiler still pending
+
+Source38036094147 employee114166703525 naturally SUCCESS at exactC654.
+Root original127485B wholelog, artifact11664448470/8354259B/digest5888e2f0b3e3bf47d9f763633d3e682cfa4cccd1457b8b6471df278c8f9a112c
+matchedAPI/size/digest/CRC. Separate additive reader admitted all old bounds
+plus15cases/22realcanonicalAuth/39bindings,21bounded DOM observations.
+First16own cases became0 after actual header sign-out200/server sessionnull.
+Same document then showed same-tenant other principal with actual200emptyAPI/
+emptyUI; no imposed observed-tab navigation or forged auth/session/broadcast.
+Second scope is EMPTY importedcases, not populated second-scope evidence.
+Session case adds0employeeledgerwrites and13known fact controls unchanged.
+All original14ACK+audits/8rollback/50focus/6nativeproof/27nativecapture checks
+retained. Root viewed two original current PNGs: RU native correctionfocus
+contained, AZ320 lost-response view original; existing developmentbadge overlap
+on lower unfocused content gives no whole-page/human/physical-device credit.
+
+Source PostgreSQL/report/HR/build now naturalSUCCESS; full compiler RUNNING.
+Independent full source review remains pending compiler terminal. No READY,
+merge or deployment yet. Fresh main remainsM32A; draftC32524 has exactparents
+[M32A,C654] andwhole tree10efd9474b67b52c5911432c0a4d7ce1330efdbd equalH,
+but this structural check gives no candidate runtime credit. Excluded PRs
+606/609/646/663 unmerged, branchprotection actual5App15368/strictfalse retained.
+Archive02 retains exact employee originals/ref guards/actual pixel note.
+Next: naturalcompiler and complete source6 capture/admission, independent
+review, then READY mandatory5 and current candidate employee/report execution.
