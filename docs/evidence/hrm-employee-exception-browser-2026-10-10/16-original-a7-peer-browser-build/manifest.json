@@ -1,0 +1,27 @@
+{
+  "archivedAtUtc": "2026-10-10T06:06:06.631706+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-employee-exception-report-regression-peer-review-a7dc.json.gz",
+      "originalBytes": 51876,
+      "originalSha256": "e50543013e631a76f54d03343bf4ef216fd1d1fbf06db6fc9e72dbd3938449dd",
+      "storedBytes": 9379,
+      "storedSha256": "6a150b96a1e31314d46c8fec232fb88728c41545b6a442233db4a4da4aea89a9"
+    },
+    {
+      "path": "hrm-employee-exception-hr-regression-peer-review-a7dc.json.gz",
+      "originalBytes": 25386,
+      "originalSha256": "cdd7d2d569d5cfc09da6512760107b390f01ccb589cc8037cdfd25c3027ef8e6",
+      "storedBytes": 5673,
+      "storedSha256": "4df5b31b3bb1a2b0200690350d0251944a73167ffd5563fed0e1adb1ee9964dd"
+    },
+    {
+      "path": "hrm-employee-exception-build-peer-review-a7dc.json.gz",
+      "originalBytes": 4712,
+      "originalSha256": "ccce85d9ee6768006bb083cbfb91d8b15a16bf1d67e7f557402b579fa7706a0e",
+      "storedBytes": 1416,
+      "storedSha256": "fefb06be8bc9454d5e160227f36644b721a7c5d1fd8c3b31974e0c9ce60164a9"
+    }
+  ]
+}
