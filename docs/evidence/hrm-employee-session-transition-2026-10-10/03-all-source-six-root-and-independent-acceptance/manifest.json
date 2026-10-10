@@ -1,0 +1,1952 @@
+{
+  "archivedAtUtc": "2026-10-10T08:20:13.540296+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/compiler-job-081506-api-original.json.gz",
+      "originalBytes": 806,
+      "originalSha256": "c56ef9af49b3ef9288033c882a20edf0df06691ec7af4acd841021cd025d34b9",
+      "storedBytes": 806,
+      "storedSha256": "c56ef9af49b3ef9288033c882a20edf0df06691ec7af4acd841021cd025d34b9"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/compiler-job-081610-api-original.json.gz",
+      "originalBytes": 806,
+      "originalSha256": "c56ef9af49b3ef9288033c882a20edf0df06691ec7af4acd841021cd025d34b9",
+      "storedBytes": 806,
+      "storedSha256": "c56ef9af49b3ef9288033c882a20edf0df06691ec7af4acd841021cd025d34b9"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/compiler-job-081712-api-original.json.gz",
+      "originalBytes": 820,
+      "originalSha256": "80cb60e35d0429cf021106edd809aeeb88da8d7b88068777fcd2415fe6ad8b79",
+      "storedBytes": 820,
+      "storedSha256": "80cb60e35d0429cf021106edd809aeeb88da8d7b88068777fcd2415fe6ad8b79"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/draft-candidate-081351-api-original.json.gz",
+      "originalBytes": 1241,
+      "originalSha256": "f783670d71c0dfef822b0918690c7b7db0e7a88c9451f99242d5f3c26437e208",
+      "storedBytes": 1241,
+      "storedSha256": "f783670d71c0dfef822b0918690c7b7db0e7a88c9451f99242d5f3c26437e208"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/draft-pr-081351-api-original.json.gz",
+      "originalBytes": 3161,
+      "originalSha256": "5790f6a2fdff13b470c95655685491daddd435c49a24b18f2f82ab70aaf29acc",
+      "storedBytes": 3161,
+      "storedSha256": "5790f6a2fdff13b470c95655685491daddd435c49a24b18f2f82ab70aaf29acc"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/exact-source-six-lane-peer-review.json.raw-original.gz",
+      "originalBytes": 12522,
+      "originalSha256": "e9d3575aa6fc7ac87fd38de778a1630d78b2c1891559eead7373fff33219e4f2",
+      "storedBytes": 3692,
+      "storedSha256": "fc06cac13e0b86a961483cf3316b598e42571efdc1d4c46322b1798500bf7bc5"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-bundle/first-bundle-reader-assertion-error.json.raw-original.gz",
+      "originalBytes": 920,
+      "originalSha256": "986cc69b86796c1c986a9c0438eb04a97f26af1c5a7f98eb51ed4973bebef1d7",
+      "storedBytes": 504,
+      "storedSha256": "ec2e27115ae40048f9edc9b93cff1cb1538d5031e41a1763d2f40a0fc1afca34"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-bundle/job-api-original.json.gz",
+      "originalBytes": 787,
+      "originalSha256": "0b5863344be890fb4dbd5d4a8d40a0e253394f27fcd5c5861a240b702e4288f6",
+      "storedBytes": 787,
+      "storedSha256": "0b5863344be890fb4dbd5d4a8d40a0e253394f27fcd5c5861a240b702e4288f6"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-bundle/peer-complete-bundle-original-review.json.raw-original.gz",
+      "originalBytes": 1185,
+      "originalSha256": "9e6ec13d2eb719320e88e019231118ef0a91f20d751efc2e20f1b187042fc794",
+      "storedBytes": 754,
+      "storedSha256": "d49dd485557d332b6c273cde2502afc14c0523f8d82326adf6242927d92eec36"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-bundle/whole-bundle-job-original.txt.gz",
+      "originalBytes": 24610,
+      "originalSha256": "63aecbcbb088e666d9a817eb04262224b1ba78bed0d70fd6fa4d9cb0b9a1e26f",
+      "storedBytes": 24610,
+      "storedSha256": "63aecbcbb088e666d9a817eb04262224b1ba78bed0d70fd6fa4d9cb0b9a1e26f"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-employee/artifact-11664448470-original.zip",
+      "originalBytes": 8354259,
+      "originalSha256": "5888e2f0b3e3bf47d9f763633d3e682cfa4cccd1457b8b6471df278c8f9a112c",
+      "storedBytes": 8354259,
+      "storedSha256": "5888e2f0b3e3bf47d9f763633d3e682cfa4cccd1457b8b6471df278c8f9a112c"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-employee/artifacts-api-original.json.gz",
+      "originalBytes": 684,
+      "originalSha256": "843e50f0f7a7122d6a799d1862acba65904850d9e182b8a13b1e3190e17bcabf",
+      "storedBytes": 684,
+      "storedSha256": "843e50f0f7a7122d6a799d1862acba65904850d9e182b8a13b1e3190e17bcabf"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-employee/employee-terminal-job-root-summary.json.raw-original.gz",
+      "originalBytes": 318105,
+      "originalSha256": "c7f8b3d22c0a91bb023607fc71b9fe60f7721b4de703a66f9819c9b7a8e7fe4b",
+      "storedBytes": 14735,
+      "storedSha256": "c1e29298cae6a2875b2fc04274d865774a819be1076efac5951f9c43987df039"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-employee/job-api-original.json.gz",
+      "originalBytes": 1016,
+      "originalSha256": "69801f49ad3f5aa846ddd78cdcd1721f0a1e293ec25bf6add712a8dcd45f7eed",
+      "storedBytes": 1016,
+      "storedSha256": "69801f49ad3f5aa846ddd78cdcd1721f0a1e293ec25bf6add712a8dcd45f7eed"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-employee/original-pixels/az-native-320-ack-focus.png.raw-original.gz",
+      "originalBytes": 193708,
+      "originalSha256": "2373280ad04dffa3fded1c73898ff0853aa3633a36da7cb2246370abb5551eb2",
+      "storedBytes": 190520,
+      "storedSha256": "0d013a2d5cf0ecd154ad17eb53bd27dd321b30d278106831fd42c5b299b2c2ba"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-employee/original-pixels/az-standard-320-committed-response-lost.png.raw-original.gz",
+      "originalBytes": 71130,
+      "originalSha256": "dafc0b16903d68a8c7e32a775fa5df8b3017972ae398a459967be21d4e9eaf88",
+      "storedBytes": 69563,
+      "storedSha256": "e035cdbe85844e0bc9c6813aee0e4573989cde4b9fd50814044749c17dd3bca7"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-employee/original-pixels/en-native-320-acknowledged.png.raw-original.gz",
+      "originalBytes": 185776,
+      "originalSha256": "789139be115991591b86df0fb735c3babeafef43e07c392c6491e7cd87e0881f",
+      "storedBytes": 181429,
+      "storedSha256": "75d764033a9af4045b9344e29a64691707976b95255fcbfaa37d0d1885c187e9"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-employee/original-pixels/ru-native-320-final-own-boundary.png.raw-original.gz",
+      "originalBytes": 173868,
+      "originalSha256": "b516274b53620a0d3d94c8b77d16aba0fdca2f698c25fc74acfb33f11659f261",
+      "storedBytes": 169486,
+      "storedSha256": "7a4e66b3315543c0bd74934c71149b67eff806a68f9e16a1a8f3bdd0a2112dfb"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-employee/peer-complete-employee-additive-content-review.json.raw-original.gz",
+      "originalBytes": 12693,
+      "originalSha256": "f2d66297c5646066e935db5f222573a349722a3c5ffa8465d0ab4596ebbf6e37",
+      "storedBytes": 3235,
+      "storedSha256": "5db6d9427db586426bab6ccc9440620bfe676bb5a1a0cd5ef56af0e6418df6ed"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-employee/peer-employee-original-pixels-reviewed.json.raw-original.gz",
+      "originalBytes": 2143,
+      "originalSha256": "ed3083941124014f62f73b9479c7b5bdf9d2c9897e11a5ff8b17a76bdccb0caf",
+      "storedBytes": 1031,
+      "storedSha256": "9fe7c99933dbce1fe6f0780067bab9fe25786a1b450640e0cad0a1c3657a0715"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-employee/run-api-original.json.gz",
+      "originalBytes": 1530,
+      "originalSha256": "d18ab2de72203a9a4c044cdddbdf358ddc1ba524dea37c280e1b9fb4ca94b68e",
+      "storedBytes": 1530,
+      "storedSha256": "d18ab2de72203a9a4c044cdddbdf358ddc1ba524dea37c280e1b9fb4ca94b68e"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-employee/whole-employee-job-original.txt.gz",
+      "originalBytes": 23352,
+      "originalSha256": "70c3f22be318de8fa10e9a91da4554c45a4b948a597e244858a56564223347f0",
+      "storedBytes": 23352,
+      "storedSha256": "70c3f22be318de8fa10e9a91da4554c45a4b948a597e244858a56564223347f0"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/artifact-11663453724-original.zip",
+      "originalBytes": 3827190,
+      "originalSha256": "b900c304a409838f6f18cf096e53acd6b8b014fc331d13ea833ee8e24feb1b4b",
+      "storedBytes": 3827190,
+      "storedSha256": "b900c304a409838f6f18cf096e53acd6b8b014fc331d13ea833ee8e24feb1b4b"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/artifacts-api-original.json.gz",
+      "originalBytes": 586,
+      "originalSha256": "2d52d7aad92ac8e36306d1240637d70d8947b0d9f9896b8b9f5c383dc055dd37",
+      "storedBytes": 586,
+      "storedSha256": "2d52d7aad92ac8e36306d1240637d70d8947b0d9f9896b8b9f5c383dc055dd37"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/classification-original-pngs-for-visual-review/classification-native-200-az-320-appeal-empty-reason.png.raw-original.gz",
+      "originalBytes": 174320,
+      "originalSha256": "6fa6685a4a755fab9b160bc69d3260fd8fdc11da18336965a8306eeabf78c1a8",
+      "storedBytes": 169472,
+      "storedSha256": "99bb1ecbd3ab1d54c10a7c14b0ee34c91eb99ada2779e3c14fc0a78de886eacc"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/classification-original-pngs-for-visual-review/classification-native-200-az-320-appeal-recorded.png.raw-original.gz",
+      "originalBytes": 107099,
+      "originalSha256": "19ac3cc92592aef87d31183790128e1c1140189014133bff3810d20c119b66b5",
+      "storedBytes": 97759,
+      "storedSha256": "d3e30e7d0c5a3dd2551753a3a1f8bf5e2bff892d8fe1f784103cbb0ffdf63813"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/classification-original-pngs-for-visual-review/classification-native-200-az-320-classification-empty-reason.png.raw-original.gz",
+      "originalBytes": 169897,
+      "originalSha256": "22756bea2b36120f89820563f10eddc3e8849ac31b2e6f03aaf8f39a7fe30582",
+      "storedBytes": 164263,
+      "storedSha256": "dd5545cd31d17c1cce56568754bcc1186988f90d65b792a69667c957d980523c"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/classification-original-pngs-for-visual-review/classification-native-200-az-320-classification-recorded.png.raw-original.gz",
+      "originalBytes": 96111,
+      "originalSha256": "e219557df09bb80fd0c795fee0afd4e5c4a5a0c9d5a65e1d098b64d26c5be29f",
+      "storedBytes": 88116,
+      "storedSha256": "78578b0b969278edad8b2696138f51f3dac303eeab16a5cb6874fd5536e8c17c"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/classification-original-pngs-for-visual-review/classification-native-200-az-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 83051,
+      "originalSha256": "3beb963705d58aa668326700e10e66a1ab9697dba1657283be5e4bf4a9246366",
+      "storedBytes": 77779,
+      "storedSha256": "491570a293a8c6f825674391019c072e7b9951a8faf0a69b23e081717b28b86e"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/classification-original-pngs-for-visual-review/classification-native-200-en-320-appeal-empty-reason.png.raw-original.gz",
+      "originalBytes": 166640,
+      "originalSha256": "b385dd9ab1f8bdcce0c3a54ef3ae8b32de9b90edadc3ff714c6f6d365065572e",
+      "storedBytes": 161120,
+      "storedSha256": "c436f993f110399d89524384416ef49e6a53b5a6b578fe32a8e9e6602d9f23e4"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/classification-original-pngs-for-visual-review/classification-native-200-en-320-appeal-recorded.png.raw-original.gz",
+      "originalBytes": 142186,
+      "originalSha256": "1ec842341f7887d7251c859b8e0d3476ed451aeaf8ec6a4a596ed8aa3f321f4b",
+      "storedBytes": 133717,
+      "storedSha256": "b1c7f1dfe9245888f37061be399de5d6ae67ca55a606fae350432d937f5dd3e7"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/classification-original-pngs-for-visual-review/classification-native-200-en-320-classification-empty-reason.png.raw-original.gz",
+      "originalBytes": 166878,
+      "originalSha256": "1d9ae7e509c7a190c3bab1c0bc12892c816a57a7d2daa1bc740f80db33a2e7b4",
+      "storedBytes": 161242,
+      "storedSha256": "7ef49c10292f8b9905f3aee5752ece6e3262d9874ada45997a98cff983923063"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/classification-original-pngs-for-visual-review/classification-native-200-en-320-classification-recorded.png.raw-original.gz",
+      "originalBytes": 143278,
+      "originalSha256": "a8ab3d688979d105be35b39be8edbc767c15ada6cf3151f28d17086d956163e0",
+      "storedBytes": 134273,
+      "storedSha256": "4d8656c923c85d370faa7fd3771bd79d4cc263156ad4123f724c0b9344f17357"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/classification-original-pngs-for-visual-review/classification-native-200-en-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 128423,
+      "originalSha256": "3d9e17304e6526293276636f217af9432bdf22c46c878b686addbc1147dbca63",
+      "storedBytes": 121189,
+      "storedSha256": "ad8064e18d201b25fbb6a6f787462a931beb7b13be24237289e3550c8605e270"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/classification-original-pngs-for-visual-review/classification-native-200-ru-320-appeal-empty-reason.png.raw-original.gz",
+      "originalBytes": 153928,
+      "originalSha256": "63fbe4be2358b86f406bd413d6c1f18ce42352403435f4050cb32bd8788227ef",
+      "storedBytes": 149088,
+      "storedSha256": "ec0791819f4a741d3c88016c1a79fd3fc09b774537be066985416bee92a91e2c"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/classification-original-pngs-for-visual-review/classification-native-200-ru-320-appeal-recorded.png.raw-original.gz",
+      "originalBytes": 103679,
+      "originalSha256": "001361783fc897c24e89433a384feb2a52bc580d46f844d0a78a7ade49b8ea22",
+      "storedBytes": 97168,
+      "storedSha256": "d4debb1f449e16e29e7ced4b8506faa0f6101e3913c73431ff3114934862b25f"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/classification-original-pngs-for-visual-review/classification-native-200-ru-320-classification-empty-reason.png.raw-original.gz",
+      "originalBytes": 170079,
+      "originalSha256": "576fdeac9596cad5bd86a9dcdb4f177d6bc08a06e30b4cecf4b4e66386f0f21d",
+      "storedBytes": 166059,
+      "storedSha256": "c1b904405ae0407bdb12c86dce1cc24d681facd108be5f73abf1ec3b7e58b965"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/classification-original-pngs-for-visual-review/classification-native-200-ru-320-classification-recorded.png.raw-original.gz",
+      "originalBytes": 103830,
+      "originalSha256": "618caa28c6ab8c366ef2612fce9f5c8f0fb2d5264f31b2debee0d85c7d6269be",
+      "storedBytes": 96265,
+      "storedSha256": "a697107d5c18056fb36752ad3fc968c14fbde1b41484715c457d62de324bc17e"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/classification-original-pngs-for-visual-review/classification-native-200-ru-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 92189,
+      "originalSha256": "423b3928229497d6e6ac76bdd1033fc2a8a34ec90160a0a88fbeb655d6298495",
+      "storedBytes": 86617,
+      "storedSha256": "2e4fac5a66709e44d38c2b9206439e1ae44c1d4bbb8778304ad2b697d46390ed"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/classification-original-pngs-for-visual-review/classification-standard-100-az-1440-complete.png.raw-original.gz",
+      "originalBytes": 143705,
+      "originalSha256": "b983db9a8bc7532c4eaffafdcba7d3ba202a323989697267a462587423af33be",
+      "storedBytes": 138320,
+      "storedSha256": "43c1589d40178f0883d774f278a11272ade84781aeb2c8845f652c107e0c7dee"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/classification-original-pngs-for-visual-review/classification-standard-100-az-320-complete.png.raw-original.gz",
+      "originalBytes": 33156,
+      "originalSha256": "7c224830de55414172bbb85a04414c0abfff3c33aacca61692c884d3f4cada6b",
+      "storedBytes": 31158,
+      "storedSha256": "c1d47fdb99b5526132df6191287501bf7c650ccc4cc7a3209c5a366e29627d33"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/classification-original-pngs-for-visual-review/classification-standard-100-az-768-complete.png.raw-original.gz",
+      "originalBytes": 102939,
+      "originalSha256": "ce6c68af4f941cc29585fd6e90d15509d8dafce09d19a9b687874e11842c761d",
+      "storedBytes": 99478,
+      "storedSha256": "3df2e4d398279ac6231e429179de84090b85f6e5f496bb4bf800225452c6c41f"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/classification-original-pngs-for-visual-review/classification-standard-100-en-1440-complete.png.raw-original.gz",
+      "originalBytes": 137642,
+      "originalSha256": "8360ae55fffef477404651110a48a06b3cd8c49bc2a3a3042cdc23875a577845",
+      "storedBytes": 132374,
+      "storedSha256": "947bc6623d489ba9d576aef8640b92f5caefb3c8705288d6cb8592c45c769636"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/classification-original-pngs-for-visual-review/classification-standard-100-en-320-complete.png.raw-original.gz",
+      "originalBytes": 51619,
+      "originalSha256": "a07beb1beceb60c3326f9d0e12243345d5c400c2f2dd07bb5526bdcfde4db6b0",
+      "storedBytes": 45481,
+      "storedSha256": "6e1c39052d8c44d7697023bd62b12547ef69ab5ffa5d1924bc08de02deb32815"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/classification-original-pngs-for-visual-review/classification-standard-100-en-768-complete.png.raw-original.gz",
+      "originalBytes": 99263,
+      "originalSha256": "7418d2d75bb5b76a51c29865c145284cacc3c577abceabee1b5ac6dfb174250b",
+      "storedBytes": 95949,
+      "storedSha256": "454448aa037f251f5c15e8ed17b9aa467161ee8740b92663d3ed5721ee7115c1"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/classification-original-pngs-for-visual-review/classification-standard-100-ru-1440-complete.png.raw-original.gz",
+      "originalBytes": 179551,
+      "originalSha256": "bf9efb9531ccb7ec4a587ee72663ca5714e36cad41bdf427345ed9236c9ef8fc",
+      "storedBytes": 174769,
+      "storedSha256": "7604a5a9cd7a2f7aa4adf0ced30e62ca5db0c3af6e0555279ec38ebee0e3146a"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/classification-original-pngs-for-visual-review/classification-standard-100-ru-320-complete.png.raw-original.gz",
+      "originalBytes": 42710,
+      "originalSha256": "912672d03df2b3f84e5e5ef024263b9909417b633683179d098a2c271d815a28",
+      "storedBytes": 39642,
+      "storedSha256": "e668b0d78f81d5ecbcbcb9489813bdc0e664513cb992ca196999a6e4002b1257"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/classification-original-pngs-for-visual-review/classification-standard-100-ru-768-complete.png.raw-original.gz",
+      "originalBytes": 125322,
+      "originalSha256": "784a76d140bb4c99a326db80beccdbb67a8e8e15dcff984247c2f3310e37f408",
+      "storedBytes": 122990,
+      "storedSha256": "5164978d03cf4520685eb3c29edf0b21f71e876459f8d943cac9108505483a62"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/classification-original-pngs-for-visual-review/native-zoom-az-control-100.png.raw-original.gz",
+      "originalBytes": 168654,
+      "originalSha256": "6de8eda2ba7c02f00b704f3616f3d21f6c63da7533b27139079984db0255e120",
+      "storedBytes": 161560,
+      "storedSha256": "2e28c4044c113d94e1e46fc29030dba1861a502ad9d3db480566bfd7cbfd60ae"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/classification-original-pngs-for-visual-review/native-zoom-az-observed-200.png.raw-original.gz",
+      "originalBytes": 169942,
+      "originalSha256": "5dff872dacbabca2183f5ea4317b926d7b99374f0becb874eea1901eefca26a7",
+      "storedBytes": 165016,
+      "storedSha256": "df2d08a78ae877b2fd3ca06fe2c20d8f54bab354cc9567136986a35594d0c947"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/classification-original-pngs-for-visual-review/native-zoom-en-control-100.png.raw-original.gz",
+      "originalBytes": 192501,
+      "originalSha256": "be2ecceed6a02b4c3f6ff9fbc2fe7509e1cfe6d09f1fda56733a61e86f20871a",
+      "storedBytes": 183791,
+      "storedSha256": "3f341b95ec2a0d8392cf710d1c199206990ccb2d1ec035ce52035da38b4347e1"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/classification-original-pngs-for-visual-review/native-zoom-en-observed-200.png.raw-original.gz",
+      "originalBytes": 178458,
+      "originalSha256": "68e27fbf907b56a2afe7beac0a3507b0c81888a628f424e35bcc223cb245f9ff",
+      "storedBytes": 173246,
+      "storedSha256": "c4e8380e2b7c518e3b154d369ccc84f214044e3e5fcb36cb20c9fc801582ba7a"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/classification-original-pngs-for-visual-review/native-zoom-ru-control-100.png.raw-original.gz",
+      "originalBytes": 183341,
+      "originalSha256": "503d46d331df1cb7754c0957cb1c32a29b575e71791339b5df6a23108edb967d",
+      "storedBytes": 176998,
+      "storedSha256": "89b4d39734473adee08df0da0c4515618043be76645826cd22fe8cbe900fcc5e"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/classification-original-pngs-for-visual-review/native-zoom-ru-observed-200.png.raw-original.gz",
+      "originalBytes": 166403,
+      "originalSha256": "0c5a08a933735106dcb8b252a42ecbbdd5cda82f8e6e2329d5ef8329582548cc",
+      "storedBytes": 161224,
+      "storedSha256": "ab8b9922fcb4e21170ce7864c45a102e917daf686553b4987b90c7c88b41a1a9"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/finite-capture-summary.json.raw-original.gz",
+      "originalBytes": 2686,
+      "originalSha256": "e864e0488cfc239362757ad799625171eb24cb6efe0ab0da798d13c2bd1725e0",
+      "storedBytes": 692,
+      "storedSha256": "e530ab3950613a88c9c6a5cb442a1a274f602f5cfd2fc90813e95a272180a388"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/job-114166703485-original.txt.gz",
+      "originalBytes": 21041,
+      "originalSha256": "3e49d51aad4f1bf85ff3519e0a30151e51ba3e491fd9701648f3035ce3a9730f",
+      "storedBytes": 21041,
+      "storedSha256": "3e49d51aad4f1bf85ff3519e0a30151e51ba3e491fd9701648f3035ce3a9730f"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/job-api-original.json.gz",
+      "originalBytes": 927,
+      "originalSha256": "a0949f26adf0b1aca0ec7c19d76c9cee1a106c6114c948e5bfef22d000d9dab6",
+      "storedBytes": 927,
+      "storedSha256": "a0949f26adf0b1aca0ec7c19d76c9cee1a106c6114c948e5bfef22d000d9dab6"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/peer-classification-original-pixels-reviewed.json.raw-original.gz",
+      "originalBytes": 2220,
+      "originalSha256": "d7cdd8925e165fe3eaa96b8a5dcc128223db3bb92e2d454b6a319d57b89990c5",
+      "storedBytes": 989,
+      "storedSha256": "8d2c2e6004772a187d070cd72378e41a47079b48a9a54a8b9090097573d7b5dc"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/root-complete-classification-content-review.json.raw-original.gz",
+      "originalBytes": 6904,
+      "originalSha256": "834d063c2d991b773aa0bad09dbd20c6d44223c276e55e5448543a704bee3c3d",
+      "storedBytes": 1620,
+      "storedSha256": "a175665a8d73e4324ef389bf4c20ace4dd61eed931c6a56f93a230b4c2228f28"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-hr/run-api-original.json.gz",
+      "originalBytes": 1530,
+      "originalSha256": "d18ab2de72203a9a4c044cdddbdf358ddc1ba524dea37c280e1b9fb4ca94b68e",
+      "storedBytes": 1530,
+      "storedSha256": "d18ab2de72203a9a4c044cdddbdf358ddc1ba524dea37c280e1b9fb4ca94b68e"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/native-zoom-az-control-100.png.raw-original.gz",
+      "originalBytes": 199860,
+      "originalSha256": "ca54ce520d35d9c1808638c94d4bc0f778299b0bb000c6f14ba13ed910ca0160",
+      "storedBytes": 193939,
+      "storedSha256": "0a1a8879dca9e9e2f8c4cb5d87106c312cbc65cbaf370b057e6b2042e0614530"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/native-zoom-az-observed-200.png.raw-original.gz",
+      "originalBytes": 175052,
+      "originalSha256": "c94e1d9c95662944daf653b92daedcb2850a0cdb917bdacdb1d7359745cf1072",
+      "storedBytes": 170670,
+      "storedSha256": "b9ab79b154b145fb47987adfbcc2af8528c316d253f5bc19bc7b7d22808676bb"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/native-zoom-en-control-100.png.raw-original.gz",
+      "originalBytes": 201796,
+      "originalSha256": "1df341d9ce9a617b359fd28b695aecda17ccbb6092d53f9ed2e0540f8d570a75",
+      "storedBytes": 194427,
+      "storedSha256": "fa7c64053d3f1a2c0f1a51947b508e9aca7b90276fde1a2b99c3338a94aca6df"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/native-zoom-en-observed-200.png.raw-original.gz",
+      "originalBytes": 179495,
+      "originalSha256": "1fce4a0fac1ede3f816cef536f36f6c9d95df1c7a3229b562fc2d3972a9a058b",
+      "storedBytes": 174677,
+      "storedSha256": "f08eab5175e5aec38567d4a8e07fcb05090c8d025fe80c432a187d2d659e3865"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/native-zoom-ru-control-100.png.raw-original.gz",
+      "originalBytes": 196767,
+      "originalSha256": "f74865f6e2455fe5b765b6d10fe4b75afbfdcb3572e11979b32e199664933cd8",
+      "storedBytes": 191383,
+      "storedSha256": "0eefda60576f9c8a679d64ee43989fe86ef3ea62825e366d41d3bae46f265378"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/native-zoom-ru-observed-200.png.raw-original.gz",
+      "originalBytes": 168734,
+      "originalSha256": "07fe9a139c1672921fc6ce47f3aff5a58810384c5bb42fffa04c66dc84373d65",
+      "storedBytes": 163617,
+      "storedSha256": "48a290389b0c0de24897adc54d1c4ea3746e37859e0cc27c9b4035c5571767e9"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-denied-denied.png.raw-original.gz",
+      "originalBytes": 45895,
+      "originalSha256": "937f0f4182a824a7295314e62b1858b99e5544049c5774d06442d1ad1baf71ea",
+      "storedBytes": 44274,
+      "storedSha256": "bfd673b384a9ce093388a96858e27f8e995930ffbb39911345e98f4a4d668e2c"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-denied-team.png.raw-original.gz",
+      "originalBytes": 45895,
+      "originalSha256": "937f0f4182a824a7295314e62b1858b99e5544049c5774d06442d1ad1baf71ea",
+      "storedBytes": 44274,
+      "storedSha256": "bfd673b384a9ce093388a96858e27f8e995930ffbb39911345e98f4a4d668e2c"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-foreign-positive.png.raw-original.gz",
+      "originalBytes": 81164,
+      "originalSha256": "d43be055fa7046a3e234ef4282b60e41276856d96bbe3de442592a81557f4145",
+      "storedBytes": 78453,
+      "storedSha256": "2352f9d22258cd9ce3b21a8eb1383e98607593d6dcc2f2fc2ff118f32d5b1336"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-native-200-az-320-empty.png.raw-original.gz",
+      "originalBytes": 168030,
+      "originalSha256": "ce6acc44a598237e0df95c7d09ab2c662337d9775410a63bcc2583cd1f8728a1",
+      "storedBytes": 163928,
+      "storedSha256": "9233e6b276b464e6017a062ad5c10471edd28e5b3f4cfae707ad330e7b1735b4"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-native-200-az-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 145794,
+      "originalSha256": "9012795a97fda673ff4d3a1fc7bd62cc8019a86f2c9fbb00f72aae2abaa2e8c1",
+      "storedBytes": 141334,
+      "storedSha256": "b7962182177e91fd3d7e1a6fbd5032bcf2e53d284e796fbfd08a6c3a2f891c40"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-native-200-az-320-measured-zero.png.raw-original.gz",
+      "originalBytes": 166875,
+      "originalSha256": "d838d5adf737662460f0b0977a92effa32dd1d5addeeaa2c598c7afd4d152620",
+      "storedBytes": 162648,
+      "storedSha256": "7c987fb849855b811b3381d61fa60c19fb2e1c98d5612df051c26772fdb4e73d"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-native-200-az-320-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 172767,
+      "originalSha256": "b3f548405abdfde67d0f07572b868afb4cbd6e42eb6196f3459dd292decc2458",
+      "storedBytes": 166943,
+      "storedSha256": "af54e409db3b98383bf36d44150fc1ffb4e71953de0ebeffd8e82b25ffca961b"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-native-200-az-320-unresolved-no-sample.png.raw-original.gz",
+      "originalBytes": 167811,
+      "originalSha256": "d72889b43d3a44d65112c00db62709d5a5cbadc52bb86c0f3b7dc4f8f44da704",
+      "storedBytes": 163741,
+      "storedSha256": "f695f26ef49581053901e6bbf6a8b32c77cb95a4f12c73f7e0b672866ee18854"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-native-200-en-320-empty.png.raw-original.gz",
+      "originalBytes": 163586,
+      "originalSha256": "3c14be2d9c08adf1d578b3c77d1152078184d12c8ed2e527ad7fbde0d8951e8b",
+      "storedBytes": 158986,
+      "storedSha256": "9b33d7e3cecf799853233b791bdb66ee7c429fb3c36c4e335356171b7afd4b94"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-native-200-en-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 153144,
+      "originalSha256": "faaaf666c87c7aa9bd41a189d60eb2b76348b8e4bbe508753cd47cc1a06c52ff",
+      "storedBytes": 148230,
+      "storedSha256": "f321ec156765b4a988e6fc2563a2d55bea5b39756bad66b0e0720e4a111cb71b"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-native-200-en-320-measured-zero.png.raw-original.gz",
+      "originalBytes": 163953,
+      "originalSha256": "afe08d1780082a8083979cc81b5bb56e3ec407d79d71e4a68ccde84acd7cfc66",
+      "storedBytes": 159115,
+      "storedSha256": "f47f6f389436f9131c13b2d718255d9f02346f46f90a2cd27e8b6b913bbc073c"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-native-200-en-320-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 186589,
+      "originalSha256": "81d7f75ce52bf674edb939ab38e3262b5360518ccb6d77fb9b03801395d421b9",
+      "storedBytes": 179360,
+      "storedSha256": "27ab09bab2dde83e6c678682ce94a7b1648dcbdd97214979d4e1108cbd67dcc2"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-native-200-en-320-unresolved-no-sample.png.raw-original.gz",
+      "originalBytes": 163637,
+      "originalSha256": "13a09c209c2a670f332513a78e7e78089f46a0fd08d73f3429e897c58399c316",
+      "storedBytes": 159099,
+      "storedSha256": "aabb65757f865b73ea1ba76087957a4eadf6ff45839d138b07efc27ada4820f2"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-native-200-ru-320-empty.png.raw-original.gz",
+      "originalBytes": 142377,
+      "originalSha256": "dfe08d4c695cb85bdf047157c0b4eaf7439f8793698b5178aa15478791aa8214",
+      "storedBytes": 137406,
+      "storedSha256": "4e957f7aa673f9a28d534372f604055408da8a79d08678de276bc5529e075c9a"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-native-200-ru-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 134268,
+      "originalSha256": "0f798b10a4716dbba232f7ccd879f0a3bd5d5dfb5eb724c6bc11d4d694d89660",
+      "storedBytes": 129064,
+      "storedSha256": "8296f926cec1b93faceea2e328bc21033b4f9ccd0dd5b6865eea821d38b176d5"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-native-200-ru-320-measured-zero.png.raw-original.gz",
+      "originalBytes": 141481,
+      "originalSha256": "4090a14172a171695e5c26907f0afbebf2433690d2333686f9ee49100ea68174",
+      "storedBytes": 137526,
+      "storedSha256": "6acc463413fdaa47ec590b50ccaffbd2cbb2bc15549dc50b31d123e04f89a790"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-native-200-ru-320-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 153072,
+      "originalSha256": "12f74e94f8dc6fb4cf60a22691cc1402ced8dd53b23a52484ac9e822d2ef286e",
+      "storedBytes": 147163,
+      "storedSha256": "d55d8d0fbea05cb2431f2932e22429b63519078d0926445e1ed01f37a0c91ea4"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-native-200-ru-320-unresolved-no-sample.png.raw-original.gz",
+      "originalBytes": 142138,
+      "originalSha256": "28efeb106d691c360ea8192d6165f0d241fb6da23f185cfa7ac3a1c5ed853488",
+      "storedBytes": 137419,
+      "storedSha256": "e3efe48dbea4d7fa3ed652a9db2bad65b0763dae7cdaf448237f6937b89a7aec"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-az-1440-keyboard-table.png.raw-original.gz",
+      "originalBytes": 138842,
+      "originalSha256": "e6d9677182f8caf79a5af13f6ec055cb0e4f2b4abbd66466868fef474ff78403",
+      "storedBytes": 132957,
+      "storedSha256": "9da35666cf39c42acd8f3ec1d0fa28f96ff5b2b22b10c9e58544e18d862c2907"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-az-1440-nonempty.png.raw-original.gz",
+      "originalBytes": 139869,
+      "originalSha256": "490cdf3b89fc7d5d31ab9114a16e57ae0927f5be7d8cb2e366d2a62656503ee0",
+      "storedBytes": 135294,
+      "storedSha256": "45414c22e852ecb1d78deae461397662aa3cce3fd214c22103fdaab512270451"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-az-1440-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 79332,
+      "originalSha256": "8b03072876033c1229360afbd4fbbc98f8ae44f59841700279a06375cc1aecaf",
+      "storedBytes": 72754,
+      "storedSha256": "5b8fa2c9c3eaa0c96fc71ea4523261be1a5f9335936aa3b731bb46e489a4d5b3"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-az-320-empty.png.raw-original.gz",
+      "originalBytes": 65305,
+      "originalSha256": "93cce150586d41205178dcab18a64fa657bd286b6726ad853c0d9ffd764582ab",
+      "storedBytes": 64114,
+      "storedSha256": "4fc6f6593d5cd3fe8247b602d25fa7fdaba2e434cf8fd115bfd24ddc109c977f"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-az-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 55191,
+      "originalSha256": "7ba7700bf40ff4fa7c02150827f19a152af8d270c542f3177cc5f0126b77af37",
+      "storedBytes": 53401,
+      "storedSha256": "e2a9db17ba48f92aca35e87a0d79a0036cc501860889f478ae83ecf9a1b5c3a6"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-az-320-measured-zero.png.raw-original.gz",
+      "originalBytes": 65368,
+      "originalSha256": "f275be846bc00c99ed89b0d6662c17267c664b77b824ec9849c0bbc73d99df31",
+      "storedBytes": 64052,
+      "storedSha256": "d17e95983bb78340186a4f857ddcfbc853374c9ed248c592d9b6494682aad7e3"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-az-320-nonempty.png.raw-original.gz",
+      "originalBytes": 63718,
+      "originalSha256": "8278b6028e24809beb389d95331b9ffc201c2c2c8f9e2f8f746e1a58b42b00f3",
+      "storedBytes": 62576,
+      "storedSha256": "061624cc64dd2525dd794ee33f9c042e7e60a4eea2e1c6e14d72510b8d546715"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-az-320-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 52590,
+      "originalSha256": "c48826072cb1da9022f83b5992eb52b70e39f74d60d83926e2bfbadc8e43fe71",
+      "storedBytes": 44728,
+      "storedSha256": "1b616299c59556364e6ecfbc57d70970700e50f71c6cf5c10961ba28270f4ae5"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-az-320-unresolved-no-sample.png.raw-original.gz",
+      "originalBytes": 64847,
+      "originalSha256": "61b13f51c0d3c6e45277127606b8d67ffc28906f07fd5951bc6a3824ac94256c",
+      "storedBytes": 63510,
+      "storedSha256": "9cd249e9f3c8e3e044e3070363c692105feeee22b0ce291a26ec0e9f92df811f"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-az-768-keyboard-table.png.raw-original.gz",
+      "originalBytes": 93438,
+      "originalSha256": "eb16e1a59fc5b1407102ca3f1f8857d0b236eaad8830ce8b86b18b02cefadcab",
+      "storedBytes": 88577,
+      "storedSha256": "8a7914511f8439fe4a89b71943f24b3026a02d33cd3204b7a4ebcbeaf3a3cd7e"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-az-768-nonempty.png.raw-original.gz",
+      "originalBytes": 85785,
+      "originalSha256": "ad45cbdbbf5353138706035c862347ea8831aa652dfb4b9d9230e868312f3844",
+      "storedBytes": 83227,
+      "storedSha256": "f7d8394922841437b37d0043ae605c777c615319ae9087ed31607a01413dda7e"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-az-768-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 80132,
+      "originalSha256": "24aae6f0702bd680339331f0bdb3f6a2d5a1ce345c2322fe7d92c00a26f87ff3",
+      "storedBytes": 72715,
+      "storedSha256": "a58dcd94b25e0cb356c54ed8df903d430049bd5e9a2d85623a36618871645fc4"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-en-1440-keyboard-table.png.raw-original.gz",
+      "originalBytes": 129272,
+      "originalSha256": "9619483811aa93655db83a46671955f4247f83414e6e2dd1e5d27eb92eb0a1a3",
+      "storedBytes": 122535,
+      "storedSha256": "7e71f4f0c3583e46d860d59dfaeb6834314c24c3fe5a686b0d00d820ffd3b146"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-en-1440-nonempty.png.raw-original.gz",
+      "originalBytes": 133495,
+      "originalSha256": "596911c419c20a602b98c423641e0a15976905f89ea58693d4723d99dc244669",
+      "storedBytes": 128148,
+      "storedSha256": "347296143e3f6c2bf378ab995819ced40fd4f8a34db91d4d03fbaa337ada3d73"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-en-1440-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 75993,
+      "originalSha256": "4bb8afce67e80bfb55248628048a721ba08a29fac30ddd5aa03d1e2eb20c6977",
+      "storedBytes": 69666,
+      "storedSha256": "d2453b3ccef35f0f183f63029706dbf6aaf94a2652475702f1ed51a91b418980"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-en-320-empty.png.raw-original.gz",
+      "originalBytes": 58524,
+      "originalSha256": "a011887e2ccb2cd320109c6cde9558f9971bb0b8ad941e9975943836255e1768",
+      "storedBytes": 57656,
+      "storedSha256": "ec5384de6c9b408ec2a66af4f7c366b14fbb7e7efb531c03f1c4fef5e9674af9"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-en-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 55092,
+      "originalSha256": "5d3cc4dc97789f848dd16a1010825af39cc5b6861089bd3e0227f735038a547c",
+      "storedBytes": 52890,
+      "storedSha256": "8f15124aa0ecf011a7bafe9dace25bd4f6879f94bc5f103d3558b0ebc031fb5a"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-en-320-measured-zero.png.raw-original.gz",
+      "originalBytes": 58741,
+      "originalSha256": "761446feaaa6ce5c04b17d4b3f1ad940180ec41ebf8d27e252da5894af3d9730",
+      "storedBytes": 57622,
+      "storedSha256": "5d71640e53cf4433525090a40d8ce9a0efaa4a9b8c8c5f224fdd2baa18984ca6"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-en-320-nonempty.png.raw-original.gz",
+      "originalBytes": 59237,
+      "originalSha256": "b6456bd907a3c168faba60ac48b0d040b02764e1a5bee132db44fce30f958bbd",
+      "storedBytes": 58170,
+      "storedSha256": "a3634384d1286068a29691720c97aa1a41bf1340ca88267be662f78cade9fc49"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-en-320-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 49118,
+      "originalSha256": "7d6a801baf45d8247272ef4b55c1037cdee06e0e157faac51cded6383250cfd4",
+      "storedBytes": 41785,
+      "storedSha256": "2489b582aa626279f82680433e565c8e0b5e4a02b5dee13d3e0333b1ad2e14d8"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-en-320-unresolved-no-sample.png.raw-original.gz",
+      "originalBytes": 58095,
+      "originalSha256": "8d70b2259e570b962d93ae9391e2865285a932c970a27b63656c4c4d8c740df5",
+      "storedBytes": 57096,
+      "storedSha256": "94824f48e856042cb592e29859c6f665047b9390aef17b64ee567fd5b59c031e"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-en-768-keyboard-table.png.raw-original.gz",
+      "originalBytes": 92179,
+      "originalSha256": "bcf420a060a1f35f47a12912e42c12fee7cf4e83a548736f65506cc2957aa66b",
+      "storedBytes": 87403,
+      "storedSha256": "3771a87a9fe60b7ec87aef666f0e0f629e799023ee4dc784e6c000ec9499d22e"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-en-768-nonempty.png.raw-original.gz",
+      "originalBytes": 81214,
+      "originalSha256": "cdf699f2086aa2afb193b11584379ab16a2a1f845f6ad78059dc0ff500bcb1a4",
+      "storedBytes": 78469,
+      "storedSha256": "e60ee789e79b8934666c048a519cef1d7658fad6f1551da15117199d48e86b93"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-en-768-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 78793,
+      "originalSha256": "b5157f2a1879ea86edf5f96478d7245f33b96180a6b9ec8fa5300f2e6b416ab1",
+      "storedBytes": 71553,
+      "storedSha256": "b04393819f89a15b8749893534288258cb81076e5a78b6573e6e12c348b20acf"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-ru-1440-keyboard-table.png.raw-original.gz",
+      "originalBytes": 181976,
+      "originalSha256": "e942fb5c5b459da3342834d874116258b9fb76575d40d8ddadec86bb6a074cb9",
+      "storedBytes": 175668,
+      "storedSha256": "0156755abdf74a56feb063e927db0a69432bac809c12382ac4a4ec6ddd064989"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-ru-1440-nonempty.png.raw-original.gz",
+      "originalBytes": 169683,
+      "originalSha256": "f5b7add4912dd522f1f13e074d92fe5c4418a0d2599c40384d816cecc7456f9f",
+      "storedBytes": 164342,
+      "storedSha256": "0da22fb7a096b0e8afe92a527408455f484faa93a8819fdf9617243724f6f4bc"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-ru-1440-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 129851,
+      "originalSha256": "fa08c806716d094cb226b869ba268d6c7f585cbd6cf0f5017b3dfe576cbefaa5",
+      "storedBytes": 122663,
+      "storedSha256": "6245ef8be6c31243ece5aa8c77bd6a651296d51b78d4e5216c8471880fd8df23"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-ru-320-empty.png.raw-original.gz",
+      "originalBytes": 69345,
+      "originalSha256": "78e86bb405512576df0d1aa82f538df85f6ff74c5c46fc88ec7644fad7905282",
+      "storedBytes": 68053,
+      "storedSha256": "3f37a9be817e2d42375d923982c72fb43e9f478d465ecc0ba2cfaa3791bd6cf9"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-ru-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 63555,
+      "originalSha256": "db8d7fe285bedc9653ff3a345a5bfef859a5606046d794ba66b4b8b3e6b3e714",
+      "storedBytes": 62010,
+      "storedSha256": "5b60fd78b4424362d3c97f4c9e2228ad36f055988030cbc4803e3926752db458"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-ru-320-measured-zero.png.raw-original.gz",
+      "originalBytes": 69577,
+      "originalSha256": "581cc7c3d35e073375bee11b8b4ec035c1a4846d1645885c4e926bb70459ca89",
+      "storedBytes": 68259,
+      "storedSha256": "b50bec43bdadf947bc98051f7d447f27ebfa7de54b8676c55fff597c9a4fc5fd"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-ru-320-nonempty.png.raw-original.gz",
+      "originalBytes": 68272,
+      "originalSha256": "32b224c4dbf003d10e351ac22943248876a799225d8a2e339f4396b0e7562529",
+      "storedBytes": 67306,
+      "storedSha256": "e3e2ab1ef759ed1466bb56efec7c1bf2f78fed766ba50daf5559733f73976010"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-ru-320-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 61369,
+      "originalSha256": "304b57489fbe9f7b735dd1ed5bc1d7e7c3ac2967fbb65df418fc2bdad36e82b2",
+      "storedBytes": 51606,
+      "storedSha256": "18482e7ff29b554664fa51697532078451172f7bbedee9fde73833704a99c0f2"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-ru-320-unresolved-no-sample.png.raw-original.gz",
+      "originalBytes": 68970,
+      "originalSha256": "48659aa0b5b5e4b8a6bb0092fa3c46f23831fc0055beaf4399b92fa32e245fb2",
+      "storedBytes": 67580,
+      "storedSha256": "11a03fa9c7d2d869c3fb133a526d37a65dbf8e587f3d9d4400f5e98ecf2db23c"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-ru-768-keyboard-table.png.raw-original.gz",
+      "originalBytes": 131057,
+      "originalSha256": "a3d31ab07f7dd08baa67f3b23f778bd8db1860d0c22c3c41f4025599dc187b0b",
+      "storedBytes": 123750,
+      "storedSha256": "c7cc7bf978c92fe1fbbcff513928a69139d9aaa48a78e76197d0a4a368acb573"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-ru-768-nonempty.png.raw-original.gz",
+      "originalBytes": 113811,
+      "originalSha256": "b8570cd2a1bb08441beccbd1a2b5ff575ca664538beb79b068c3985c6eb13eac",
+      "storedBytes": 111239,
+      "storedSha256": "64ba6160a2009d55aee4611b6346c81f251ece3d196cfd085c11f8cf9e48b9fd"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-ru-768-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 124729,
+      "originalSha256": "9194b56d7549c8cdbcb82cf12f375e1579d98d29a75d2ec75a59d21878296298",
+      "storedBytes": 115487,
+      "storedSha256": "2df19016ed70a9341ff1507c9bb6492161cd5233006dc2619963a99d007ce1cf"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/actual-report-commit-api.json.raw-original.gz",
+      "originalBytes": 7270,
+      "originalSha256": "f3a944add6a1e112980e5666828dd00e267a569f068ecca934bc24caac3cc85d",
+      "storedBytes": 2027,
+      "storedSha256": "7aa9ea59e621454c869486ebe5ae0fd3a2482143b10ac56812bc71629b0fa283"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/artifact-11664073015-original.zip",
+      "originalBytes": 6591713,
+      "originalSha256": "b0a1ac28ccfa089f10ba8a37a242a0688705d6688c7da0e33f48d52565506cd2",
+      "storedBytes": 6591713,
+      "storedSha256": "b0a1ac28ccfa089f10ba8a37a242a0688705d6688c7da0e33f48d52565506cd2"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/artifacts-api-original.json.gz",
+      "originalBytes": 586,
+      "originalSha256": "2d52d7aad92ac8e36306d1240637d70d8947b0d9f9896b8b9f5c383dc055dd37",
+      "storedBytes": 586,
+      "storedSha256": "2d52d7aad92ac8e36306d1240637d70d8947b0d9f9896b8b9f5c383dc055dd37"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/finite-capture-summary.json.raw-original.gz",
+      "originalBytes": 7802,
+      "originalSha256": "9c48e71e8be1bdaf1997dcd949c19349d4f1ac6ae6a6d8b7f081306ef7bd766e",
+      "storedBytes": 1502,
+      "storedSha256": "536da82474cfc122286063c0573a676e58146b36e5e503a29caaba622d3fb89d"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/job-114166703410-original.txt.gz",
+      "originalBytes": 28697,
+      "originalSha256": "0b0a85874ce05c57c9b884c07c0f507fc8adc8c827df3aca6beceae719d66490",
+      "storedBytes": 28697,
+      "storedSha256": "0b0a85874ce05c57c9b884c07c0f507fc8adc8c827df3aca6beceae719d66490"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/job-114166703569-original.txt.gz",
+      "originalBytes": 19102,
+      "originalSha256": "2ecd9924d5e1259dfc0c0b29dc93ba08af4a6a34c644d41f117c6caf7fc038c2",
+      "storedBytes": 19102,
+      "storedSha256": "2ecd9924d5e1259dfc0c0b29dc93ba08af4a6a34c644d41f117c6caf7fc038c2"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/jobs-api-original.json.gz",
+      "originalBytes": 2240,
+      "originalSha256": "5d3ea2bf08bf079ad45e18a3626f0ee2526bab3a172bbe2c115e6d55d3130288",
+      "storedBytes": 2240,
+      "storedSha256": "5d3ea2bf08bf079ad45e18a3626f0ee2526bab3a172bbe2c115e6d55d3130288"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/peer-report-original-pixels-reviewed.json.raw-original.gz",
+      "originalBytes": 2224,
+      "originalSha256": "a2869767d7bee083eac05691b71bdfb1abe7b190a84279834695afdcbeeee9c4",
+      "storedBytes": 1040,
+      "storedSha256": "2ef4c836d08089b46d7925284df5de358c2d7c3509c8f63aef59ba06047d4847"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/root-complete-report-content-review.json.raw-original.gz",
+      "originalBytes": 5636,
+      "originalSha256": "7081fb034d63ae813ccc8e5f27009440270a5dde0f62c40255968b772a708b17",
+      "storedBytes": 1590,
+      "storedSha256": "f6b0f50f6469e8666809d8207e55e511b9b8c761530a5b169ff6fc467b885caa"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/first-terminal-source-report/run-api-original.json.gz",
+      "originalBytes": 1530,
+      "originalSha256": "d18ab2de72203a9a4c044cdddbdf358ddc1ba524dea37c280e1b9fb4ca94b68e",
+      "storedBytes": 1530,
+      "storedSha256": "d18ab2de72203a9a4c044cdddbdf358ddc1ba524dea37c280e1b9fb4ca94b68e"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/jobs-080135-api-original.json.gz",
+      "originalBytes": 2069,
+      "originalSha256": "938e99a52450d9d975163155e26c60d85bafef89d9a931676fe504f2069ffb27",
+      "storedBytes": 2069,
+      "storedSha256": "938e99a52450d9d975163155e26c60d85bafef89d9a931676fe504f2069ffb27"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/jobs-080255-api-original.json.gz",
+      "originalBytes": 2084,
+      "originalSha256": "9c5b13e0a20211340328ec4cab6137927479600085195f8834f59de7b7d63078",
+      "storedBytes": 2084,
+      "storedSha256": "9c5b13e0a20211340328ec4cab6137927479600085195f8834f59de7b7d63078"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/jobs-080400-api-original.json.gz",
+      "originalBytes": 2084,
+      "originalSha256": "9c5b13e0a20211340328ec4cab6137927479600085195f8834f59de7b7d63078",
+      "storedBytes": 2084,
+      "storedSha256": "9c5b13e0a20211340328ec4cab6137927479600085195f8834f59de7b7d63078"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/jobs-080525-api-original.json.gz",
+      "originalBytes": 2203,
+      "originalSha256": "2d54cc5df1590c9537e4ac02b616023de57bec63b3352a88a0126d299a17374e",
+      "storedBytes": 2203,
+      "storedSha256": "2d54cc5df1590c9537e4ac02b616023de57bec63b3352a88a0126d299a17374e"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/jobs-080711-api-original.json.gz",
+      "originalBytes": 2240,
+      "originalSha256": "5d3ea2bf08bf079ad45e18a3626f0ee2526bab3a172bbe2c115e6d55d3130288",
+      "storedBytes": 2240,
+      "storedSha256": "5d3ea2bf08bf079ad45e18a3626f0ee2526bab3a172bbe2c115e6d55d3130288"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/jobs-080816-api-original.json.gz",
+      "originalBytes": 2240,
+      "originalSha256": "5d3ea2bf08bf079ad45e18a3626f0ee2526bab3a172bbe2c115e6d55d3130288",
+      "storedBytes": 2240,
+      "storedSha256": "5d3ea2bf08bf079ad45e18a3626f0ee2526bab3a172bbe2c115e6d55d3130288"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/jobs-080925-api-original.json.gz",
+      "originalBytes": 2240,
+      "originalSha256": "5d3ea2bf08bf079ad45e18a3626f0ee2526bab3a172bbe2c115e6d55d3130288",
+      "storedBytes": 2240,
+      "storedSha256": "5d3ea2bf08bf079ad45e18a3626f0ee2526bab3a172bbe2c115e6d55d3130288"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/jobs-081038-api-original.json.gz",
+      "originalBytes": 2240,
+      "originalSha256": "5d3ea2bf08bf079ad45e18a3626f0ee2526bab3a172bbe2c115e6d55d3130288",
+      "storedBytes": 2240,
+      "storedSha256": "5d3ea2bf08bf079ad45e18a3626f0ee2526bab3a172bbe2c115e6d55d3130288"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/jobs-081351-api-original.json.gz",
+      "originalBytes": 2285,
+      "originalSha256": "785a7d229d040dc7e021a98bd0f8ed3e0bdb05f92da0c2af56ee95dcec8498a6",
+      "storedBytes": 2285,
+      "storedSha256": "785a7d229d040dc7e021a98bd0f8ed3e0bdb05f92da0c2af56ee95dcec8498a6"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/jobs-in-progress-api-original.json.raw-original.gz",
+      "originalBytes": 18901,
+      "originalSha256": "629bacf8a39cb0c3f6fe02c98b84ccd1ab0255401acf1a0403762f4b505da367",
+      "storedBytes": 2045,
+      "storedSha256": "59b83067b2efc34bc2e67c63b016d990ef9a3233be36832a58ec4b53f32a6a9e"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/main-ref-081351-api-original.json.gz",
+      "originalBytes": 215,
+      "originalSha256": "7b9af4ffb1c217b78884d95380f32ab1099895dfc164681fc864f8218d2edfd6",
+      "storedBytes": 215,
+      "storedSha256": "7b9af4ffb1c217b78884d95380f32ab1099895dfc164681fc864f8218d2edfd6"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/review-initial-scope.json.raw-original.gz",
+      "originalBytes": 638,
+      "originalSha256": "9c06e165b0d34e629309d7b4bec254c8aad1814362c635fe56a08c62cecccd2c",
+      "storedBytes": 427,
+      "storedSha256": "ea144e66506764c18e25ccad971f8b09bff1017070b0253c2846736694ec17e4"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/run-080135-api-original.json.gz",
+      "originalBytes": 1530,
+      "originalSha256": "d18ab2de72203a9a4c044cdddbdf358ddc1ba524dea37c280e1b9fb4ca94b68e",
+      "storedBytes": 1530,
+      "storedSha256": "d18ab2de72203a9a4c044cdddbdf358ddc1ba524dea37c280e1b9fb4ca94b68e"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/run-081216-api-original.json.gz",
+      "originalBytes": 1530,
+      "originalSha256": "d18ab2de72203a9a4c044cdddbdf358ddc1ba524dea37c280e1b9fb4ca94b68e",
+      "storedBytes": 1530,
+      "storedSha256": "d18ab2de72203a9a4c044cdddbdf358ddc1ba524dea37c280e1b9fb4ca94b68e"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/run-in-progress-api-original.json.raw-original.gz",
+      "originalBytes": 12419,
+      "originalSha256": "192d3bb073d762b29f8426722742c3a6a35a5c5db425ee72fa605b785c5084b6",
+      "storedBytes": 1530,
+      "storedSha256": "d18ab2de72203a9a4c044cdddbdf358ddc1ba524dea37c280e1b9fb4ca94b68e"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/source-phase-all-originals-and-reader-corrections-inventory.json.raw-original.gz",
+      "originalBytes": 41684,
+      "originalSha256": "7a5b2925a70bd35d18dfb7b695650819a1281c71e226a3e05ed33775c69f869a",
+      "storedBytes": 7980,
+      "storedSha256": "2ce47c46f29cb37b4f0398b00f5e836e1449a41054c80b1912f74f5e887c1280"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/source-phase-originals-readers-errors-complete-inventory.json.raw-original.gz",
+      "originalBytes": 45791,
+      "originalSha256": "d4e004b653c10e6e9ed89862a15ab191cc3daaac333d386b73d68104c88b58de",
+      "storedBytes": 8644,
+      "storedSha256": "4b690095b0e0fc1d55a8f3e765ef9b97f1643efb37c019a448ab51a1169145ef"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/whole-terminal-six/actual-full-tsc-output.log.raw-original.gz",
+      "originalBytes": 179299,
+      "originalSha256": "b6b9ee71a33aa9f683f81b2a4879597b63099a4d23ae794e1f71c0ba39536df6",
+      "storedBytes": 19289,
+      "storedSha256": "9392db77de06cf9a55b83941c9f684f4b51f5ead1d2e2ac91ace9c3ed0ab2e40"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/whole-terminal-six/actual-tsc-exit-code.raw-original.gz",
+      "originalBytes": 2,
+      "originalSha256": "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3",
+      "storedBytes": 22,
+      "storedSha256": "6e08a71af69ad2fa0122936c77c0ba1d20f2b26808cfc5ea068985fb8264bf05"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/whole-terminal-six/artifact-11663453724-original.zip",
+      "originalBytes": 3827190,
+      "originalSha256": "b900c304a409838f6f18cf096e53acd6b8b014fc331d13ea833ee8e24feb1b4b",
+      "storedBytes": 3827190,
+      "storedSha256": "b900c304a409838f6f18cf096e53acd6b8b014fc331d13ea833ee8e24feb1b4b"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/whole-terminal-six/artifact-11664073015-original.zip",
+      "originalBytes": 6591713,
+      "originalSha256": "b0a1ac28ccfa089f10ba8a37a242a0688705d6688c7da0e33f48d52565506cd2",
+      "storedBytes": 6591713,
+      "storedSha256": "b0a1ac28ccfa089f10ba8a37a242a0688705d6688c7da0e33f48d52565506cd2"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/whole-terminal-six/artifact-11664448470-original.zip",
+      "originalBytes": 8354259,
+      "originalSha256": "5888e2f0b3e3bf47d9f763633d3e682cfa4cccd1457b8b6471df278c8f9a112c",
+      "storedBytes": 8354259,
+      "storedSha256": "5888e2f0b3e3bf47d9f763633d3e682cfa4cccd1457b8b6471df278c8f9a112c"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/whole-terminal-six/artifact-11664467742-original.zip",
+      "originalBytes": 20010,
+      "originalSha256": "65e43618532779e299c9d6a6bb943f0e447dacc1f047f752cb1576d4252ebd42",
+      "storedBytes": 20010,
+      "storedSha256": "65e43618532779e299c9d6a6bb943f0e447dacc1f047f752cb1576d4252ebd42"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/whole-terminal-six/artifacts-api-original.json.gz",
+      "originalBytes": 781,
+      "originalSha256": "504fb93500048e79ab2527c8143a6dc6a3c9610e6f8e9e48a1fa549924d09202",
+      "storedBytes": 781,
+      "storedSha256": "504fb93500048e79ab2527c8143a6dc6a3c9610e6f8e9e48a1fa549924d09202"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/whole-terminal-six/finite-capture-summary.json.raw-original.gz",
+      "originalBytes": 21144,
+      "originalSha256": "87fd63cce25d579e230182a4fa7fb1676516cb82d7966e647bf6ccb2a69d79ff",
+      "storedBytes": 2863,
+      "storedSha256": "22fc8967647df3bd24803a96392c5f1db5e157b15c6f101c153f222272c549c3"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/whole-terminal-six/job-114166703410-original.txt.gz",
+      "originalBytes": 28697,
+      "originalSha256": "0b0a85874ce05c57c9b884c07c0f507fc8adc8c827df3aca6beceae719d66490",
+      "storedBytes": 28697,
+      "storedSha256": "0b0a85874ce05c57c9b884c07c0f507fc8adc8c827df3aca6beceae719d66490"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/whole-terminal-six/job-114166703485-original.txt.gz",
+      "originalBytes": 21041,
+      "originalSha256": "3e49d51aad4f1bf85ff3519e0a30151e51ba3e491fd9701648f3035ce3a9730f",
+      "storedBytes": 21041,
+      "storedSha256": "3e49d51aad4f1bf85ff3519e0a30151e51ba3e491fd9701648f3035ce3a9730f"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/whole-terminal-six/job-114166703500-original.txt.gz",
+      "originalBytes": 35153,
+      "originalSha256": "d75b5d29aa6199dbd8cc491f985b29127fab59adc5e6b190b9c3955bf41d7c64",
+      "storedBytes": 35153,
+      "storedSha256": "d75b5d29aa6199dbd8cc491f985b29127fab59adc5e6b190b9c3955bf41d7c64"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/whole-terminal-six/job-114166703525-original.txt.gz",
+      "originalBytes": 23352,
+      "originalSha256": "70c3f22be318de8fa10e9a91da4554c45a4b948a597e244858a56564223347f0",
+      "storedBytes": 23352,
+      "storedSha256": "70c3f22be318de8fa10e9a91da4554c45a4b948a597e244858a56564223347f0"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/whole-terminal-six/job-114166703540-original.txt.gz",
+      "originalBytes": 24610,
+      "originalSha256": "63aecbcbb088e666d9a817eb04262224b1ba78bed0d70fd6fa4d9cb0b9a1e26f",
+      "storedBytes": 24610,
+      "storedSha256": "63aecbcbb088e666d9a817eb04262224b1ba78bed0d70fd6fa4d9cb0b9a1e26f"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/whole-terminal-six/job-114166703569-original.txt.gz",
+      "originalBytes": 19102,
+      "originalSha256": "2ecd9924d5e1259dfc0c0b29dc93ba08af4a6a34c644d41f117c6caf7fc038c2",
+      "storedBytes": 19102,
+      "storedSha256": "2ecd9924d5e1259dfc0c0b29dc93ba08af4a6a34c644d41f117c6caf7fc038c2"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/whole-terminal-six/jobs-api-original.json.gz",
+      "originalBytes": 2263,
+      "originalSha256": "6df3bce227e2e312b13945872a672e70099bc96ac27d55be6807f86bd0f4bbd0",
+      "storedBytes": 2263,
+      "storedSha256": "6df3bce227e2e312b13945872a672e70099bc96ac27d55be6807f86bd0f4bbd0"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/whole-terminal-six/root-complete-compiler-gate-review.json.raw-original.gz",
+      "originalBytes": 3762,
+      "originalSha256": "bf3261cc1ba22b9e1d25b717b4b246b6292a1133df45a642d329b44bb553c5b8",
+      "storedBytes": 1358,
+      "storedSha256": "2700ab736c7a675d837c8d69f00a40ec978701d643e9c0965884471d97f52b9f"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-ci-peer/whole-terminal-six/run-api-original.json.gz",
+      "originalBytes": 1536,
+      "originalSha256": "b14328c97e0d42c6e8149e5d80f6b8e312fb004efbc73e2b73996363ef4db2c3",
+      "storedBytes": 1536,
+      "storedSha256": "b14328c97e0d42c6e8149e5d80f6b8e312fb004efbc73e2b73996363ef4db2c3"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-full-tsc-output.log.raw-original.gz",
+      "originalBytes": 179299,
+      "originalSha256": "b6b9ee71a33aa9f683f81b2a4879597b63099a4d23ae794e1f71c0ba39536df6",
+      "storedBytes": 19289,
+      "storedSha256": "9392db77de06cf9a55b83941c9f684f4b51f5ead1d2e2ac91ace9c3ed0ab2e40"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/native-zoom-az-control-100.png.raw-original.gz",
+      "originalBytes": 199860,
+      "originalSha256": "ca54ce520d35d9c1808638c94d4bc0f778299b0bb000c6f14ba13ed910ca0160",
+      "storedBytes": 193939,
+      "storedSha256": "0a1a8879dca9e9e2f8c4cb5d87106c312cbc65cbaf370b057e6b2042e0614530"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/native-zoom-az-observed-200.png.raw-original.gz",
+      "originalBytes": 175052,
+      "originalSha256": "c94e1d9c95662944daf653b92daedcb2850a0cdb917bdacdb1d7359745cf1072",
+      "storedBytes": 170670,
+      "storedSha256": "b9ab79b154b145fb47987adfbcc2af8528c316d253f5bc19bc7b7d22808676bb"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/native-zoom-en-control-100.png.raw-original.gz",
+      "originalBytes": 201796,
+      "originalSha256": "1df341d9ce9a617b359fd28b695aecda17ccbb6092d53f9ed2e0540f8d570a75",
+      "storedBytes": 194427,
+      "storedSha256": "fa7c64053d3f1a2c0f1a51947b508e9aca7b90276fde1a2b99c3338a94aca6df"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/native-zoom-en-observed-200.png.raw-original.gz",
+      "originalBytes": 179495,
+      "originalSha256": "1fce4a0fac1ede3f816cef536f36f6c9d95df1c7a3229b562fc2d3972a9a058b",
+      "storedBytes": 174677,
+      "storedSha256": "f08eab5175e5aec38567d4a8e07fcb05090c8d025fe80c432a187d2d659e3865"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/native-zoom-ru-control-100.png.raw-original.gz",
+      "originalBytes": 196767,
+      "originalSha256": "f74865f6e2455fe5b765b6d10fe4b75afbfdcb3572e11979b32e199664933cd8",
+      "storedBytes": 191383,
+      "storedSha256": "0eefda60576f9c8a679d64ee43989fe86ef3ea62825e366d41d3bae46f265378"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/native-zoom-ru-observed-200.png.raw-original.gz",
+      "originalBytes": 168734,
+      "originalSha256": "07fe9a139c1672921fc6ce47f3aff5a58810384c5bb42fffa04c66dc84373d65",
+      "storedBytes": 163617,
+      "storedSha256": "48a290389b0c0de24897adc54d1c4ea3746e37859e0cc27c9b4035c5571767e9"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-denied-denied.png.raw-original.gz",
+      "originalBytes": 45895,
+      "originalSha256": "937f0f4182a824a7295314e62b1858b99e5544049c5774d06442d1ad1baf71ea",
+      "storedBytes": 44274,
+      "storedSha256": "bfd673b384a9ce093388a96858e27f8e995930ffbb39911345e98f4a4d668e2c"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-denied-team.png.raw-original.gz",
+      "originalBytes": 45895,
+      "originalSha256": "937f0f4182a824a7295314e62b1858b99e5544049c5774d06442d1ad1baf71ea",
+      "storedBytes": 44274,
+      "storedSha256": "bfd673b384a9ce093388a96858e27f8e995930ffbb39911345e98f4a4d668e2c"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-foreign-positive.png.raw-original.gz",
+      "originalBytes": 81164,
+      "originalSha256": "d43be055fa7046a3e234ef4282b60e41276856d96bbe3de442592a81557f4145",
+      "storedBytes": 78453,
+      "storedSha256": "2352f9d22258cd9ce3b21a8eb1383e98607593d6dcc2f2fc2ff118f32d5b1336"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-native-200-az-320-empty.png.raw-original.gz",
+      "originalBytes": 168030,
+      "originalSha256": "ce6acc44a598237e0df95c7d09ab2c662337d9775410a63bcc2583cd1f8728a1",
+      "storedBytes": 163928,
+      "storedSha256": "9233e6b276b464e6017a062ad5c10471edd28e5b3f4cfae707ad330e7b1735b4"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-native-200-az-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 145794,
+      "originalSha256": "9012795a97fda673ff4d3a1fc7bd62cc8019a86f2c9fbb00f72aae2abaa2e8c1",
+      "storedBytes": 141334,
+      "storedSha256": "b7962182177e91fd3d7e1a6fbd5032bcf2e53d284e796fbfd08a6c3a2f891c40"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-native-200-az-320-measured-zero.png.raw-original.gz",
+      "originalBytes": 166875,
+      "originalSha256": "d838d5adf737662460f0b0977a92effa32dd1d5addeeaa2c598c7afd4d152620",
+      "storedBytes": 162648,
+      "storedSha256": "7c987fb849855b811b3381d61fa60c19fb2e1c98d5612df051c26772fdb4e73d"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-native-200-az-320-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 172767,
+      "originalSha256": "b3f548405abdfde67d0f07572b868afb4cbd6e42eb6196f3459dd292decc2458",
+      "storedBytes": 166943,
+      "storedSha256": "af54e409db3b98383bf36d44150fc1ffb4e71953de0ebeffd8e82b25ffca961b"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-native-200-az-320-unresolved-no-sample.png.raw-original.gz",
+      "originalBytes": 167811,
+      "originalSha256": "d72889b43d3a44d65112c00db62709d5a5cbadc52bb86c0f3b7dc4f8f44da704",
+      "storedBytes": 163741,
+      "storedSha256": "f695f26ef49581053901e6bbf6a8b32c77cb95a4f12c73f7e0b672866ee18854"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-native-200-en-320-empty.png.raw-original.gz",
+      "originalBytes": 163586,
+      "originalSha256": "3c14be2d9c08adf1d578b3c77d1152078184d12c8ed2e527ad7fbde0d8951e8b",
+      "storedBytes": 158986,
+      "storedSha256": "9b33d7e3cecf799853233b791bdb66ee7c429fb3c36c4e335356171b7afd4b94"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-native-200-en-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 153144,
+      "originalSha256": "faaaf666c87c7aa9bd41a189d60eb2b76348b8e4bbe508753cd47cc1a06c52ff",
+      "storedBytes": 148230,
+      "storedSha256": "f321ec156765b4a988e6fc2563a2d55bea5b39756bad66b0e0720e4a111cb71b"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-native-200-en-320-measured-zero.png.raw-original.gz",
+      "originalBytes": 163953,
+      "originalSha256": "afe08d1780082a8083979cc81b5bb56e3ec407d79d71e4a68ccde84acd7cfc66",
+      "storedBytes": 159115,
+      "storedSha256": "f47f6f389436f9131c13b2d718255d9f02346f46f90a2cd27e8b6b913bbc073c"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-native-200-en-320-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 186589,
+      "originalSha256": "81d7f75ce52bf674edb939ab38e3262b5360518ccb6d77fb9b03801395d421b9",
+      "storedBytes": 179360,
+      "storedSha256": "27ab09bab2dde83e6c678682ce94a7b1648dcbdd97214979d4e1108cbd67dcc2"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-native-200-en-320-unresolved-no-sample.png.raw-original.gz",
+      "originalBytes": 163637,
+      "originalSha256": "13a09c209c2a670f332513a78e7e78089f46a0fd08d73f3429e897c58399c316",
+      "storedBytes": 159099,
+      "storedSha256": "aabb65757f865b73ea1ba76087957a4eadf6ff45839d138b07efc27ada4820f2"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-native-200-ru-320-empty.png.raw-original.gz",
+      "originalBytes": 142377,
+      "originalSha256": "dfe08d4c695cb85bdf047157c0b4eaf7439f8793698b5178aa15478791aa8214",
+      "storedBytes": 137406,
+      "storedSha256": "4e957f7aa673f9a28d534372f604055408da8a79d08678de276bc5529e075c9a"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-native-200-ru-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 134268,
+      "originalSha256": "0f798b10a4716dbba232f7ccd879f0a3bd5d5dfb5eb724c6bc11d4d694d89660",
+      "storedBytes": 129064,
+      "storedSha256": "8296f926cec1b93faceea2e328bc21033b4f9ccd0dd5b6865eea821d38b176d5"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-native-200-ru-320-measured-zero.png.raw-original.gz",
+      "originalBytes": 141481,
+      "originalSha256": "4090a14172a171695e5c26907f0afbebf2433690d2333686f9ee49100ea68174",
+      "storedBytes": 137526,
+      "storedSha256": "6acc463413fdaa47ec590b50ccaffbd2cbb2bc15549dc50b31d123e04f89a790"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-native-200-ru-320-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 153072,
+      "originalSha256": "12f74e94f8dc6fb4cf60a22691cc1402ced8dd53b23a52484ac9e822d2ef286e",
+      "storedBytes": 147163,
+      "storedSha256": "d55d8d0fbea05cb2431f2932e22429b63519078d0926445e1ed01f37a0c91ea4"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-native-200-ru-320-unresolved-no-sample.png.raw-original.gz",
+      "originalBytes": 142138,
+      "originalSha256": "28efeb106d691c360ea8192d6165f0d241fb6da23f185cfa7ac3a1c5ed853488",
+      "storedBytes": 137419,
+      "storedSha256": "e3efe48dbea4d7fa3ed652a9db2bad65b0763dae7cdaf448237f6937b89a7aec"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-az-1440-keyboard-table.png.raw-original.gz",
+      "originalBytes": 138842,
+      "originalSha256": "e6d9677182f8caf79a5af13f6ec055cb0e4f2b4abbd66466868fef474ff78403",
+      "storedBytes": 132957,
+      "storedSha256": "9da35666cf39c42acd8f3ec1d0fa28f96ff5b2b22b10c9e58544e18d862c2907"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-az-1440-nonempty.png.raw-original.gz",
+      "originalBytes": 139869,
+      "originalSha256": "490cdf3b89fc7d5d31ab9114a16e57ae0927f5be7d8cb2e366d2a62656503ee0",
+      "storedBytes": 135294,
+      "storedSha256": "45414c22e852ecb1d78deae461397662aa3cce3fd214c22103fdaab512270451"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-az-1440-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 79332,
+      "originalSha256": "8b03072876033c1229360afbd4fbbc98f8ae44f59841700279a06375cc1aecaf",
+      "storedBytes": 72754,
+      "storedSha256": "5b8fa2c9c3eaa0c96fc71ea4523261be1a5f9335936aa3b731bb46e489a4d5b3"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-az-320-empty.png.raw-original.gz",
+      "originalBytes": 65305,
+      "originalSha256": "93cce150586d41205178dcab18a64fa657bd286b6726ad853c0d9ffd764582ab",
+      "storedBytes": 64114,
+      "storedSha256": "4fc6f6593d5cd3fe8247b602d25fa7fdaba2e434cf8fd115bfd24ddc109c977f"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-az-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 55191,
+      "originalSha256": "7ba7700bf40ff4fa7c02150827f19a152af8d270c542f3177cc5f0126b77af37",
+      "storedBytes": 53401,
+      "storedSha256": "e2a9db17ba48f92aca35e87a0d79a0036cc501860889f478ae83ecf9a1b5c3a6"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-az-320-measured-zero.png.raw-original.gz",
+      "originalBytes": 65368,
+      "originalSha256": "f275be846bc00c99ed89b0d6662c17267c664b77b824ec9849c0bbc73d99df31",
+      "storedBytes": 64052,
+      "storedSha256": "d17e95983bb78340186a4f857ddcfbc853374c9ed248c592d9b6494682aad7e3"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-az-320-nonempty.png.raw-original.gz",
+      "originalBytes": 63718,
+      "originalSha256": "8278b6028e24809beb389d95331b9ffc201c2c2c8f9e2f8f746e1a58b42b00f3",
+      "storedBytes": 62576,
+      "storedSha256": "061624cc64dd2525dd794ee33f9c042e7e60a4eea2e1c6e14d72510b8d546715"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-az-320-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 52590,
+      "originalSha256": "c48826072cb1da9022f83b5992eb52b70e39f74d60d83926e2bfbadc8e43fe71",
+      "storedBytes": 44728,
+      "storedSha256": "1b616299c59556364e6ecfbc57d70970700e50f71c6cf5c10961ba28270f4ae5"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-az-320-unresolved-no-sample.png.raw-original.gz",
+      "originalBytes": 64847,
+      "originalSha256": "61b13f51c0d3c6e45277127606b8d67ffc28906f07fd5951bc6a3824ac94256c",
+      "storedBytes": 63510,
+      "storedSha256": "9cd249e9f3c8e3e044e3070363c692105feeee22b0ce291a26ec0e9f92df811f"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-az-768-keyboard-table.png.raw-original.gz",
+      "originalBytes": 93438,
+      "originalSha256": "eb16e1a59fc5b1407102ca3f1f8857d0b236eaad8830ce8b86b18b02cefadcab",
+      "storedBytes": 88577,
+      "storedSha256": "8a7914511f8439fe4a89b71943f24b3026a02d33cd3204b7a4ebcbeaf3a3cd7e"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-az-768-nonempty.png.raw-original.gz",
+      "originalBytes": 85785,
+      "originalSha256": "ad45cbdbbf5353138706035c862347ea8831aa652dfb4b9d9230e868312f3844",
+      "storedBytes": 83227,
+      "storedSha256": "f7d8394922841437b37d0043ae605c777c615319ae9087ed31607a01413dda7e"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-az-768-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 80132,
+      "originalSha256": "24aae6f0702bd680339331f0bdb3f6a2d5a1ce345c2322fe7d92c00a26f87ff3",
+      "storedBytes": 72715,
+      "storedSha256": "a58dcd94b25e0cb356c54ed8df903d430049bd5e9a2d85623a36618871645fc4"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-en-1440-keyboard-table.png.raw-original.gz",
+      "originalBytes": 129272,
+      "originalSha256": "9619483811aa93655db83a46671955f4247f83414e6e2dd1e5d27eb92eb0a1a3",
+      "storedBytes": 122535,
+      "storedSha256": "7e71f4f0c3583e46d860d59dfaeb6834314c24c3fe5a686b0d00d820ffd3b146"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-en-1440-nonempty.png.raw-original.gz",
+      "originalBytes": 133495,
+      "originalSha256": "596911c419c20a602b98c423641e0a15976905f89ea58693d4723d99dc244669",
+      "storedBytes": 128148,
+      "storedSha256": "347296143e3f6c2bf378ab995819ced40fd4f8a34db91d4d03fbaa337ada3d73"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-en-1440-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 75993,
+      "originalSha256": "4bb8afce67e80bfb55248628048a721ba08a29fac30ddd5aa03d1e2eb20c6977",
+      "storedBytes": 69666,
+      "storedSha256": "d2453b3ccef35f0f183f63029706dbf6aaf94a2652475702f1ed51a91b418980"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-en-320-empty.png.raw-original.gz",
+      "originalBytes": 58524,
+      "originalSha256": "a011887e2ccb2cd320109c6cde9558f9971bb0b8ad941e9975943836255e1768",
+      "storedBytes": 57656,
+      "storedSha256": "ec5384de6c9b408ec2a66af4f7c366b14fbb7e7efb531c03f1c4fef5e9674af9"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-en-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 55092,
+      "originalSha256": "5d3cc4dc97789f848dd16a1010825af39cc5b6861089bd3e0227f735038a547c",
+      "storedBytes": 52890,
+      "storedSha256": "8f15124aa0ecf011a7bafe9dace25bd4f6879f94bc5f103d3558b0ebc031fb5a"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-en-320-measured-zero.png.raw-original.gz",
+      "originalBytes": 58741,
+      "originalSha256": "761446feaaa6ce5c04b17d4b3f1ad940180ec41ebf8d27e252da5894af3d9730",
+      "storedBytes": 57622,
+      "storedSha256": "5d71640e53cf4433525090a40d8ce9a0efaa4a9b8c8c5f224fdd2baa18984ca6"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-en-320-nonempty.png.raw-original.gz",
+      "originalBytes": 59237,
+      "originalSha256": "b6456bd907a3c168faba60ac48b0d040b02764e1a5bee132db44fce30f958bbd",
+      "storedBytes": 58170,
+      "storedSha256": "a3634384d1286068a29691720c97aa1a41bf1340ca88267be662f78cade9fc49"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-en-320-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 49118,
+      "originalSha256": "7d6a801baf45d8247272ef4b55c1037cdee06e0e157faac51cded6383250cfd4",
+      "storedBytes": 41785,
+      "storedSha256": "2489b582aa626279f82680433e565c8e0b5e4a02b5dee13d3e0333b1ad2e14d8"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-en-320-unresolved-no-sample.png.raw-original.gz",
+      "originalBytes": 58095,
+      "originalSha256": "8d70b2259e570b962d93ae9391e2865285a932c970a27b63656c4c4d8c740df5",
+      "storedBytes": 57096,
+      "storedSha256": "94824f48e856042cb592e29859c6f665047b9390aef17b64ee567fd5b59c031e"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-en-768-keyboard-table.png.raw-original.gz",
+      "originalBytes": 92179,
+      "originalSha256": "bcf420a060a1f35f47a12912e42c12fee7cf4e83a548736f65506cc2957aa66b",
+      "storedBytes": 87403,
+      "storedSha256": "3771a87a9fe60b7ec87aef666f0e0f629e799023ee4dc784e6c000ec9499d22e"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-en-768-nonempty.png.raw-original.gz",
+      "originalBytes": 81214,
+      "originalSha256": "cdf699f2086aa2afb193b11584379ab16a2a1f845f6ad78059dc0ff500bcb1a4",
+      "storedBytes": 78469,
+      "storedSha256": "e60ee789e79b8934666c048a519cef1d7658fad6f1551da15117199d48e86b93"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-en-768-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 78793,
+      "originalSha256": "b5157f2a1879ea86edf5f96478d7245f33b96180a6b9ec8fa5300f2e6b416ab1",
+      "storedBytes": 71553,
+      "storedSha256": "b04393819f89a15b8749893534288258cb81076e5a78b6573e6e12c348b20acf"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-ru-1440-keyboard-table.png.raw-original.gz",
+      "originalBytes": 181976,
+      "originalSha256": "e942fb5c5b459da3342834d874116258b9fb76575d40d8ddadec86bb6a074cb9",
+      "storedBytes": 175668,
+      "storedSha256": "0156755abdf74a56feb063e927db0a69432bac809c12382ac4a4ec6ddd064989"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-ru-1440-nonempty.png.raw-original.gz",
+      "originalBytes": 169683,
+      "originalSha256": "f5b7add4912dd522f1f13e074d92fe5c4418a0d2599c40384d816cecc7456f9f",
+      "storedBytes": 164342,
+      "storedSha256": "0da22fb7a096b0e8afe92a527408455f484faa93a8819fdf9617243724f6f4bc"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-ru-1440-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 129851,
+      "originalSha256": "fa08c806716d094cb226b869ba268d6c7f585cbd6cf0f5017b3dfe576cbefaa5",
+      "storedBytes": 122663,
+      "storedSha256": "6245ef8be6c31243ece5aa8c77bd6a651296d51b78d4e5216c8471880fd8df23"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-ru-320-empty.png.raw-original.gz",
+      "originalBytes": 69345,
+      "originalSha256": "78e86bb405512576df0d1aa82f538df85f6ff74c5c46fc88ec7644fad7905282",
+      "storedBytes": 68053,
+      "storedSha256": "3f37a9be817e2d42375d923982c72fb43e9f478d465ecc0ba2cfaa3791bd6cf9"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-ru-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 63555,
+      "originalSha256": "db8d7fe285bedc9653ff3a345a5bfef859a5606046d794ba66b4b8b3e6b3e714",
+      "storedBytes": 62010,
+      "storedSha256": "5b60fd78b4424362d3c97f4c9e2228ad36f055988030cbc4803e3926752db458"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-ru-320-measured-zero.png.raw-original.gz",
+      "originalBytes": 69577,
+      "originalSha256": "581cc7c3d35e073375bee11b8b4ec035c1a4846d1645885c4e926bb70459ca89",
+      "storedBytes": 68259,
+      "storedSha256": "b50bec43bdadf947bc98051f7d447f27ebfa7de54b8676c55fff597c9a4fc5fd"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-ru-320-nonempty.png.raw-original.gz",
+      "originalBytes": 68272,
+      "originalSha256": "32b224c4dbf003d10e351ac22943248876a799225d8a2e339f4396b0e7562529",
+      "storedBytes": 67306,
+      "storedSha256": "e3e2ab1ef759ed1466bb56efec7c1bf2f78fed766ba50daf5559733f73976010"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-ru-320-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 61369,
+      "originalSha256": "304b57489fbe9f7b735dd1ed5bc1d7e7c3ac2967fbb65df418fc2bdad36e82b2",
+      "storedBytes": 51606,
+      "storedSha256": "18482e7ff29b554664fa51697532078451172f7bbedee9fde73833704a99c0f2"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-ru-320-unresolved-no-sample.png.raw-original.gz",
+      "originalBytes": 68970,
+      "originalSha256": "48659aa0b5b5e4b8a6bb0092fa3c46f23831fc0055beaf4399b92fa32e245fb2",
+      "storedBytes": 67580,
+      "storedSha256": "11a03fa9c7d2d869c3fb133a526d37a65dbf8e587f3d9d4400f5e98ecf2db23c"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-ru-768-keyboard-table.png.raw-original.gz",
+      "originalBytes": 131057,
+      "originalSha256": "a3d31ab07f7dd08baa67f3b23f778bd8db1860d0c22c3c41f4025599dc187b0b",
+      "storedBytes": 123750,
+      "storedSha256": "c7cc7bf978c92fe1fbbcff513928a69139d9aaa48a78e76197d0a4a368acb573"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-ru-768-nonempty.png.raw-original.gz",
+      "originalBytes": 113811,
+      "originalSha256": "b8570cd2a1bb08441beccbd1a2b5ff575ca664538beb79b068c3985c6eb13eac",
+      "storedBytes": 111239,
+      "storedSha256": "64ba6160a2009d55aee4611b6346c81f251ece3d196cfd085c11f8cf9e48b9fd"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-pngs-for-visual-review/report-standard-100-ru-768-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 124729,
+      "originalSha256": "9194b56d7549c8cdbcb82cf12f375e1579d98d29a75d2ec75a59d21878296298",
+      "storedBytes": 115487,
+      "storedSha256": "2df19016ed70a9341ff1507c9bb6492161cd5233006dc2619963a99d007ce1cf"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-report-commit-api.json.raw-original.gz",
+      "originalBytes": 7270,
+      "originalSha256": "f3a944add6a1e112980e5666828dd00e267a569f068ecca934bc24caac3cc85d",
+      "storedBytes": 2027,
+      "storedSha256": "7aa9ea59e621454c869486ebe5ae0fd3a2482143b10ac56812bc71629b0fa283"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/actual-tsc-exit-code.raw-original.gz",
+      "originalBytes": 2,
+      "originalSha256": "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3",
+      "storedBytes": 22,
+      "storedSha256": "6e08a71af69ad2fa0122936c77c0ba1d20f2b26808cfc5ea068985fb8264bf05"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/artifact-11663453724-original.zip",
+      "originalBytes": 3827190,
+      "originalSha256": "b900c304a409838f6f18cf096e53acd6b8b014fc331d13ea833ee8e24feb1b4b",
+      "storedBytes": 3827190,
+      "storedSha256": "b900c304a409838f6f18cf096e53acd6b8b014fc331d13ea833ee8e24feb1b4b"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/artifact-11664073015-original.zip",
+      "originalBytes": 6591713,
+      "originalSha256": "b0a1ac28ccfa089f10ba8a37a242a0688705d6688c7da0e33f48d52565506cd2",
+      "storedBytes": 6591713,
+      "storedSha256": "b0a1ac28ccfa089f10ba8a37a242a0688705d6688c7da0e33f48d52565506cd2"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/artifact-11664448470-original.zip",
+      "originalBytes": 8354259,
+      "originalSha256": "5888e2f0b3e3bf47d9f763633d3e682cfa4cccd1457b8b6471df278c8f9a112c",
+      "storedBytes": 8354259,
+      "storedSha256": "5888e2f0b3e3bf47d9f763633d3e682cfa4cccd1457b8b6471df278c8f9a112c"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/artifact-11664467742-original.zip",
+      "originalBytes": 20010,
+      "originalSha256": "65e43618532779e299c9d6a6bb943f0e447dacc1f047f752cb1576d4252ebd42",
+      "storedBytes": 20010,
+      "storedSha256": "65e43618532779e299c9d6a6bb943f0e447dacc1f047f752cb1576d4252ebd42"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/artifacts-api-original.json.gz",
+      "originalBytes": 781,
+      "originalSha256": "504fb93500048e79ab2527c8143a6dc6a3c9610e6f8e9e48a1fa549924d09202",
+      "storedBytes": 781,
+      "storedSha256": "504fb93500048e79ab2527c8143a6dc6a3c9610e6f8e9e48a1fa549924d09202"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/classification-original-pngs-for-visual-review/classification-native-200-az-320-appeal-empty-reason.png.raw-original.gz",
+      "originalBytes": 174320,
+      "originalSha256": "6fa6685a4a755fab9b160bc69d3260fd8fdc11da18336965a8306eeabf78c1a8",
+      "storedBytes": 169472,
+      "storedSha256": "99bb1ecbd3ab1d54c10a7c14b0ee34c91eb99ada2779e3c14fc0a78de886eacc"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/classification-original-pngs-for-visual-review/classification-native-200-az-320-appeal-recorded.png.raw-original.gz",
+      "originalBytes": 107099,
+      "originalSha256": "19ac3cc92592aef87d31183790128e1c1140189014133bff3810d20c119b66b5",
+      "storedBytes": 97759,
+      "storedSha256": "d3e30e7d0c5a3dd2551753a3a1f8bf5e2bff892d8fe1f784103cbb0ffdf63813"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/classification-original-pngs-for-visual-review/classification-native-200-az-320-classification-empty-reason.png.raw-original.gz",
+      "originalBytes": 169897,
+      "originalSha256": "22756bea2b36120f89820563f10eddc3e8849ac31b2e6f03aaf8f39a7fe30582",
+      "storedBytes": 164263,
+      "storedSha256": "dd5545cd31d17c1cce56568754bcc1186988f90d65b792a69667c957d980523c"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/classification-original-pngs-for-visual-review/classification-native-200-az-320-classification-recorded.png.raw-original.gz",
+      "originalBytes": 96111,
+      "originalSha256": "e219557df09bb80fd0c795fee0afd4e5c4a5a0c9d5a65e1d098b64d26c5be29f",
+      "storedBytes": 88116,
+      "storedSha256": "78578b0b969278edad8b2696138f51f3dac303eeab16a5cb6874fd5536e8c17c"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/classification-original-pngs-for-visual-review/classification-native-200-az-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 83051,
+      "originalSha256": "3beb963705d58aa668326700e10e66a1ab9697dba1657283be5e4bf4a9246366",
+      "storedBytes": 77779,
+      "storedSha256": "491570a293a8c6f825674391019c072e7b9951a8faf0a69b23e081717b28b86e"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/classification-original-pngs-for-visual-review/classification-native-200-en-320-appeal-empty-reason.png.raw-original.gz",
+      "originalBytes": 166640,
+      "originalSha256": "b385dd9ab1f8bdcce0c3a54ef3ae8b32de9b90edadc3ff714c6f6d365065572e",
+      "storedBytes": 161120,
+      "storedSha256": "c436f993f110399d89524384416ef49e6a53b5a6b578fe32a8e9e6602d9f23e4"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/classification-original-pngs-for-visual-review/classification-native-200-en-320-appeal-recorded.png.raw-original.gz",
+      "originalBytes": 142186,
+      "originalSha256": "1ec842341f7887d7251c859b8e0d3476ed451aeaf8ec6a4a596ed8aa3f321f4b",
+      "storedBytes": 133717,
+      "storedSha256": "b1c7f1dfe9245888f37061be399de5d6ae67ca55a606fae350432d937f5dd3e7"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/classification-original-pngs-for-visual-review/classification-native-200-en-320-classification-empty-reason.png.raw-original.gz",
+      "originalBytes": 166878,
+      "originalSha256": "1d9ae7e509c7a190c3bab1c0bc12892c816a57a7d2daa1bc740f80db33a2e7b4",
+      "storedBytes": 161242,
+      "storedSha256": "7ef49c10292f8b9905f3aee5752ece6e3262d9874ada45997a98cff983923063"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/classification-original-pngs-for-visual-review/classification-native-200-en-320-classification-recorded.png.raw-original.gz",
+      "originalBytes": 143278,
+      "originalSha256": "a8ab3d688979d105be35b39be8edbc767c15ada6cf3151f28d17086d956163e0",
+      "storedBytes": 134273,
+      "storedSha256": "4d8656c923c85d370faa7fd3771bd79d4cc263156ad4123f724c0b9344f17357"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/classification-original-pngs-for-visual-review/classification-native-200-en-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 128423,
+      "originalSha256": "3d9e17304e6526293276636f217af9432bdf22c46c878b686addbc1147dbca63",
+      "storedBytes": 121189,
+      "storedSha256": "ad8064e18d201b25fbb6a6f787462a931beb7b13be24237289e3550c8605e270"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/classification-original-pngs-for-visual-review/classification-native-200-ru-320-appeal-empty-reason.png.raw-original.gz",
+      "originalBytes": 153928,
+      "originalSha256": "63fbe4be2358b86f406bd413d6c1f18ce42352403435f4050cb32bd8788227ef",
+      "storedBytes": 149088,
+      "storedSha256": "ec0791819f4a741d3c88016c1a79fd3fc09b774537be066985416bee92a91e2c"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/classification-original-pngs-for-visual-review/classification-native-200-ru-320-appeal-recorded.png.raw-original.gz",
+      "originalBytes": 103679,
+      "originalSha256": "001361783fc897c24e89433a384feb2a52bc580d46f844d0a78a7ade49b8ea22",
+      "storedBytes": 97168,
+      "storedSha256": "d4debb1f449e16e29e7ced4b8506faa0f6101e3913c73431ff3114934862b25f"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/classification-original-pngs-for-visual-review/classification-native-200-ru-320-classification-empty-reason.png.raw-original.gz",
+      "originalBytes": 170079,
+      "originalSha256": "576fdeac9596cad5bd86a9dcdb4f177d6bc08a06e30b4cecf4b4e66386f0f21d",
+      "storedBytes": 166059,
+      "storedSha256": "c1b904405ae0407bdb12c86dce1cc24d681facd108be5f73abf1ec3b7e58b965"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/classification-original-pngs-for-visual-review/classification-native-200-ru-320-classification-recorded.png.raw-original.gz",
+      "originalBytes": 103830,
+      "originalSha256": "618caa28c6ab8c366ef2612fce9f5c8f0fb2d5264f31b2debee0d85c7d6269be",
+      "storedBytes": 96265,
+      "storedSha256": "a697107d5c18056fb36752ad3fc968c14fbde1b41484715c457d62de324bc17e"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/classification-original-pngs-for-visual-review/classification-native-200-ru-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 92189,
+      "originalSha256": "423b3928229497d6e6ac76bdd1033fc2a8a34ec90160a0a88fbeb655d6298495",
+      "storedBytes": 86617,
+      "storedSha256": "2e4fac5a66709e44d38c2b9206439e1ae44c1d4bbb8778304ad2b697d46390ed"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/classification-original-pngs-for-visual-review/classification-standard-100-az-1440-complete.png.raw-original.gz",
+      "originalBytes": 143705,
+      "originalSha256": "b983db9a8bc7532c4eaffafdcba7d3ba202a323989697267a462587423af33be",
+      "storedBytes": 138320,
+      "storedSha256": "43c1589d40178f0883d774f278a11272ade84781aeb2c8845f652c107e0c7dee"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/classification-original-pngs-for-visual-review/classification-standard-100-az-320-complete.png.raw-original.gz",
+      "originalBytes": 33156,
+      "originalSha256": "7c224830de55414172bbb85a04414c0abfff3c33aacca61692c884d3f4cada6b",
+      "storedBytes": 31158,
+      "storedSha256": "c1d47fdb99b5526132df6191287501bf7c650ccc4cc7a3209c5a366e29627d33"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/classification-original-pngs-for-visual-review/classification-standard-100-az-768-complete.png.raw-original.gz",
+      "originalBytes": 102939,
+      "originalSha256": "ce6c68af4f941cc29585fd6e90d15509d8dafce09d19a9b687874e11842c761d",
+      "storedBytes": 99478,
+      "storedSha256": "3df2e4d398279ac6231e429179de84090b85f6e5f496bb4bf800225452c6c41f"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/classification-original-pngs-for-visual-review/classification-standard-100-en-1440-complete.png.raw-original.gz",
+      "originalBytes": 137642,
+      "originalSha256": "8360ae55fffef477404651110a48a06b3cd8c49bc2a3a3042cdc23875a577845",
+      "storedBytes": 132374,
+      "storedSha256": "947bc6623d489ba9d576aef8640b92f5caefb3c8705288d6cb8592c45c769636"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/classification-original-pngs-for-visual-review/classification-standard-100-en-320-complete.png.raw-original.gz",
+      "originalBytes": 51619,
+      "originalSha256": "a07beb1beceb60c3326f9d0e12243345d5c400c2f2dd07bb5526bdcfde4db6b0",
+      "storedBytes": 45481,
+      "storedSha256": "6e1c39052d8c44d7697023bd62b12547ef69ab5ffa5d1924bc08de02deb32815"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/classification-original-pngs-for-visual-review/classification-standard-100-en-768-complete.png.raw-original.gz",
+      "originalBytes": 99263,
+      "originalSha256": "7418d2d75bb5b76a51c29865c145284cacc3c577abceabee1b5ac6dfb174250b",
+      "storedBytes": 95949,
+      "storedSha256": "454448aa037f251f5c15e8ed17b9aa467161ee8740b92663d3ed5721ee7115c1"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/classification-original-pngs-for-visual-review/classification-standard-100-ru-1440-complete.png.raw-original.gz",
+      "originalBytes": 179551,
+      "originalSha256": "bf9efb9531ccb7ec4a587ee72663ca5714e36cad41bdf427345ed9236c9ef8fc",
+      "storedBytes": 174769,
+      "storedSha256": "7604a5a9cd7a2f7aa4adf0ced30e62ca5db0c3af6e0555279ec38ebee0e3146a"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/classification-original-pngs-for-visual-review/classification-standard-100-ru-320-complete.png.raw-original.gz",
+      "originalBytes": 42710,
+      "originalSha256": "912672d03df2b3f84e5e5ef024263b9909417b633683179d098a2c271d815a28",
+      "storedBytes": 39642,
+      "storedSha256": "e668b0d78f81d5ecbcbcb9489813bdc0e664513cb992ca196999a6e4002b1257"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/classification-original-pngs-for-visual-review/classification-standard-100-ru-768-complete.png.raw-original.gz",
+      "originalBytes": 125322,
+      "originalSha256": "784a76d140bb4c99a326db80beccdbb67a8e8e15dcff984247c2f3310e37f408",
+      "storedBytes": 122990,
+      "storedSha256": "5164978d03cf4520685eb3c29edf0b21f71e876459f8d943cac9108505483a62"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/classification-original-pngs-for-visual-review/native-zoom-az-control-100.png.raw-original.gz",
+      "originalBytes": 168654,
+      "originalSha256": "6de8eda2ba7c02f00b704f3616f3d21f6c63da7533b27139079984db0255e120",
+      "storedBytes": 161560,
+      "storedSha256": "2e28c4044c113d94e1e46fc29030dba1861a502ad9d3db480566bfd7cbfd60ae"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/classification-original-pngs-for-visual-review/native-zoom-az-observed-200.png.raw-original.gz",
+      "originalBytes": 169942,
+      "originalSha256": "5dff872dacbabca2183f5ea4317b926d7b99374f0becb874eea1901eefca26a7",
+      "storedBytes": 165016,
+      "storedSha256": "df2d08a78ae877b2fd3ca06fe2c20d8f54bab354cc9567136986a35594d0c947"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/classification-original-pngs-for-visual-review/native-zoom-en-control-100.png.raw-original.gz",
+      "originalBytes": 192501,
+      "originalSha256": "be2ecceed6a02b4c3f6ff9fbc2fe7509e1cfe6d09f1fda56733a61e86f20871a",
+      "storedBytes": 183791,
+      "storedSha256": "3f341b95ec2a0d8392cf710d1c199206990ccb2d1ec035ce52035da38b4347e1"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/classification-original-pngs-for-visual-review/native-zoom-en-observed-200.png.raw-original.gz",
+      "originalBytes": 178458,
+      "originalSha256": "68e27fbf907b56a2afe7beac0a3507b0c81888a628f424e35bcc223cb245f9ff",
+      "storedBytes": 173246,
+      "storedSha256": "c4e8380e2b7c518e3b154d369ccc84f214044e3e5fcb36cb20c9fc801582ba7a"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/classification-original-pngs-for-visual-review/native-zoom-ru-control-100.png.raw-original.gz",
+      "originalBytes": 183341,
+      "originalSha256": "503d46d331df1cb7754c0957cb1c32a29b575e71791339b5df6a23108edb967d",
+      "storedBytes": 176998,
+      "storedSha256": "89b4d39734473adee08df0da0c4515618043be76645826cd22fe8cbe900fcc5e"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/classification-original-pngs-for-visual-review/native-zoom-ru-observed-200.png.raw-original.gz",
+      "originalBytes": 166403,
+      "originalSha256": "0c5a08a933735106dcb8b252a42ecbbdd5cda82f8e6e2329d5ef8329582548cc",
+      "storedBytes": 161224,
+      "storedSha256": "ab8b9922fcb4e21170ce7864c45a102e917daf686553b4987b90c7c88b41a1a9"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/finite-capture-summary.json.raw-original.gz",
+      "originalBytes": 21144,
+      "originalSha256": "2a8f2aeb391264dadb5ff5d12d49a90646b7f400d30f8530132d93c5d217c4af",
+      "storedBytes": 2863,
+      "storedSha256": "74fa46fefd68717e273cd8a946416c95abae23ed0d7e27e5d8bfca3334817145"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/job-114166703410-original.txt.gz",
+      "originalBytes": 28697,
+      "originalSha256": "0b0a85874ce05c57c9b884c07c0f507fc8adc8c827df3aca6beceae719d66490",
+      "storedBytes": 28697,
+      "storedSha256": "0b0a85874ce05c57c9b884c07c0f507fc8adc8c827df3aca6beceae719d66490"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/job-114166703485-original.txt.gz",
+      "originalBytes": 21041,
+      "originalSha256": "3e49d51aad4f1bf85ff3519e0a30151e51ba3e491fd9701648f3035ce3a9730f",
+      "storedBytes": 21041,
+      "storedSha256": "3e49d51aad4f1bf85ff3519e0a30151e51ba3e491fd9701648f3035ce3a9730f"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/job-114166703500-original.txt.gz",
+      "originalBytes": 35153,
+      "originalSha256": "d75b5d29aa6199dbd8cc491f985b29127fab59adc5e6b190b9c3955bf41d7c64",
+      "storedBytes": 35153,
+      "storedSha256": "d75b5d29aa6199dbd8cc491f985b29127fab59adc5e6b190b9c3955bf41d7c64"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/job-114166703525-original.txt.gz",
+      "originalBytes": 23352,
+      "originalSha256": "70c3f22be318de8fa10e9a91da4554c45a4b948a597e244858a56564223347f0",
+      "storedBytes": 23352,
+      "storedSha256": "70c3f22be318de8fa10e9a91da4554c45a4b948a597e244858a56564223347f0"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/job-114166703540-original.txt.gz",
+      "originalBytes": 24610,
+      "originalSha256": "63aecbcbb088e666d9a817eb04262224b1ba78bed0d70fd6fa4d9cb0b9a1e26f",
+      "storedBytes": 24610,
+      "storedSha256": "63aecbcbb088e666d9a817eb04262224b1ba78bed0d70fd6fa4d9cb0b9a1e26f"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/job-114166703569-original.txt.gz",
+      "originalBytes": 19102,
+      "originalSha256": "2ecd9924d5e1259dfc0c0b29dc93ba08af4a6a34c644d41f117c6caf7fc038c2",
+      "storedBytes": 19102,
+      "storedSha256": "2ecd9924d5e1259dfc0c0b29dc93ba08af4a6a34c644d41f117c6caf7fc038c2"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/jobs-api-original.json.gz",
+      "originalBytes": 2263,
+      "originalSha256": "6df3bce227e2e312b13945872a672e70099bc96ac27d55be6807f86bd0f4bbd0",
+      "storedBytes": 2263,
+      "storedSha256": "6df3bce227e2e312b13945872a672e70099bc96ac27d55be6807f86bd0f4bbd0"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/root-complete-classification-content-review.json.raw-original.gz",
+      "originalBytes": 6894,
+      "originalSha256": "541d4dd520413ed643c245388656aa8638a6e908c28ca944d06b620d65e68aa8",
+      "storedBytes": 1615,
+      "storedSha256": "d2cb4d18e51d6b8e217d6c0662cb0ea97a617706afec7317e45e8098f01fee58"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/root-complete-compiler-gate-review.json.raw-original.gz",
+      "originalBytes": 3729,
+      "originalSha256": "6a7e3573683552e1942deaee030716a93213fbb087d92b0decbd60333ade8385",
+      "storedBytes": 1347,
+      "storedSha256": "5490cc4e085bba8fe194a5b1901c254131b27d9d552b8f6d2864b373b778fedd"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/root-complete-report-content-review.json.raw-original.gz",
+      "originalBytes": 5615,
+      "originalSha256": "904e9c08c8b99ab92da13f71660ace922ab1ae3b3a219d823d563a09bc6d21fc",
+      "storedBytes": 1580,
+      "storedSha256": "91e92d28410fd967b5fbfa44a9940f00e22d4cbfb773f9047c07c43939011ffc"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/root-complete-source-six-admission.json.raw-original.gz",
+      "originalBytes": 16401,
+      "originalSha256": "088d51a3a941f1ee2d290dca5bb2bfdde18fa181be099c951cd7539b911d2f84",
+      "storedBytes": 4513,
+      "storedSha256": "9dadc3793b579371e6e8d0b5b447b7f37bcdf340874a2d473d3058a38db192df"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-c6547-source-six-root/run-api-original.json.gz",
+      "originalBytes": 1536,
+      "originalSha256": "b14328c97e0d42c6e8149e5d80f6b8e312fb004efbc73e2b73996363ef4db2c3",
+      "storedBytes": 1536,
+      "storedSha256": "b14328c97e0d42c6e8149e5d80f6b8e312fb004efbc73e2b73996363ef4db2c3"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-next-correction-bridge-readonly-discovery.json.raw-original.gz",
+      "originalBytes": 2378,
+      "originalSha256": "1a58d1257503627206b9fee60edc8df620a2e2eb59002dbaf039c6481977e273",
+      "storedBytes": 1246,
+      "storedSha256": "83cd6676b60dbdf54e77b9af188456e2e3bf58920c0d1bcc313bc31f8a08286d"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-required-five-root-capture.py.raw-original.gz",
+      "originalBytes": 3385,
+      "originalSha256": "8bbba41f53e0e98f25b4509b9e973417e4a35f1566e73f660a69b691b4ccd171",
+      "storedBytes": 1388,
+      "storedSha256": "a4bace72bdc2648dbd4dc57700c796c14cc97c0d3f6317a739f99110cd7b581c"
+    },
+    {
+      "path": "hrm-employee-session-transition-source-six-immutable-snapshot/hrm-employee-session-transition-root-pixel-language-qualification.json.raw-original.gz",
+      "originalBytes": 566,
+      "originalSha256": "be397be6c3f6a2cd9f2650b02e56205464dc1ec69752d8c6e9cb94717080b150",
+      "storedBytes": 385,
+      "storedSha256": "bade9e765ef56d266be55135171a3d2ce418fe39f3305a2ae0a4a7415763896f"
+    }
+  ]
+}

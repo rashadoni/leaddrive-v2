@@ -140,3 +140,35 @@ but this structural check gives no candidate runtime credit. Excluded PRs
 Archive02 retains exact employee originals/ref guards/actual pixel note.
 Next: naturalcompiler and complete source6 capture/admission, independent
 review, then READY mandatory5 and current candidate employee/report execution.
+
+## Exact-source six independently accepted; before READY
+
+Actual38036094147 attempt1 naturallySUCCESS, six actualH checkouts/jobSUCCESS.
+Root+independent wholeAPI/log/artifact digest/size/CRC/content accepted.
+Compiler actual1162diagnostics/35families/EXIT2/raw179299B SHA b6b9ee71a33aa9f683f81b2a4879597b63099a4d23ae794e1f71c0ba39536df6;
+strict64/critical0/taskowned0/globalNONCLEAN. PostgreSQL44/nativeguard37/
+strictsuite18inherited failfiles allstillfail/noNew; baselines/readers unchanged.
+Bundle974staticpages/1546emitted routes, actualstandalone/static/cleanup PASS.
+Employee15cases/22auth/39bindings/21bounded session observations with allold
+matrix/native/ACK/audit/fact/rollback bounds retained. Report33/54focus/58reflow/
+22facts/native21; HR20/108focus/24manual+audits/48privacy-refusals/8facts retained.
+Independent finalsource-six acceptance noP0/P1/P2;162-original inventory with
+initial source-slicing and bundle root-path reader errors and corrections.
+All original first results remain; no CI rerun/baseline weakening/localheavy.
+
+Root viewed currentAZunresolved report andENemptyHRreason focus plus two
+employeeoriginals. Clip/developmentbadge/metrics-belowviewport limitations
+retained; no whole-page WCAG/nonocclusion/humanAT/physical/production claim.
+Phase02 root phrase Azure-language was a prose label error; actual language
+is Azerbaijani localeaz. Separate correctionreceipt preserves original; no
+Azure service/browser used or evidence/source/PNG/predicate changed.
+Readonly next correction-request discovery identifies existing owner/day/case
+server checks and current fixture's intentional response-only write scope.
+No next implementation/grants/source/production change from that discovery.
+
+Current result: draft681 sourceC654 technically accepted; READY/currentC/
+mandatory5/merge/release notyetexecuted. Lastaction: source6 fullcontent/pixels
+and independentreview accepted, archive03 immutable originals published.
+Next: freshmain/head/tree refs, READY, actualrequired5 and current matching
+candidate employee/report, independentadmission then ordinarymatchingmerge.
+85DONE/76open/61%, C6-006/C12partial/C14open and excluded606/609/646/663 retained.
