@@ -123,3 +123,31 @@ Actual syntax/diff and55workflow runnerpolicyPASS only. Hostprecheckavailable
 9543MB/disk262552MB/memoryfullavg10=0/IOfullavg10=0. No install/fullbuild/browser
 on Contabo. Next full new source independent review, publish dependentDRAFT,
 actual hostedfirst execution with originals/errors/repeats retained.
+
+## Independent prepared source finding and exact-source route correction
+
+Initial frozen5b436eec01b0b405d9807393fb3ccb93d90b783e reviewed before any
+publication/hosted run. Peer found P2 in anonymous APIRequestContext lane:
+missing Sec-Fetch-Mode and automatic redirects could follow307/login instead
+of proving real fetch401. Corrected only harness anonymous headers to cors
+and API request maxRedirects0; expected401 and production proxy/API unchanged.
+This is a prepared source defect, not an observed hosted/production failure.
+Original5b source and peer finding preserved; full peer report still pending.
+
+Readonly new standalone workflow metadata lookup returned404 before publication.
+Original lookup result retained; no CI run/deploy failed. Route correction moves
+identical employee job into existing registered report workflow, with seven
+additive own paths and explicit expected-head dispatch/READY candidate condition.
+All existing jobs remain byte-identical. Initial standalone task-owned file is
+removed normally; committed5b original remains. Harness source binding follows
+current shared workflow; existing default manual report dispatch with empty
+expected_head skips employee job rather than failing. No workflow/baseline gate
+weakened;54workflow runnerpolicy and syntax/diff checksPASS, runtimeNOTRUN.
+
+Rootinitial native byte-reader guessed assert.ok, exited1 before comparisons;
+actual helper uses assert.equal. Original reader failure retained, corrected
+reader independently confirms20protected application/policy/schema/foreignMTM
+paths and native engine byte-identical to93E. Task-range3commit gitleaks found
+no leaks (~90KB). These bounded source-only checks do not replace hosted gates.
+Next peer final prepared review/corrected integration review, checkpoint,
+publish dependent draft and execute actual existing hosted source workflow.

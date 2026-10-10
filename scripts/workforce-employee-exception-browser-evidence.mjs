@@ -258,7 +258,7 @@ async function paceEmployeePost() {
   postTimes.push(Date.now())
 }
 async function ownProjection(context, tenant, recording = "AVAILABLE") {
-  const response = await context.request.get(endpoint, { timeout: 120_000 })
+  const response = await context.request.get(endpoint, { timeout: 120_000, maxRedirects: 0 })
   assert.equal(response.status(), 200)
   const headers = response.headers()
   assert.ok(headers["cache-control"].includes("no-store"))
@@ -283,7 +283,7 @@ async function ownProjection(context, tenant, recording = "AVAILABLE") {
 }
 async function post(context, record, data, expectedStatus) {
   await paceEmployeePost()
-  const response = await context.request.post(responsePath(record), { data, timeout: 120_000 })
+  const response = await context.request.post(responsePath(record), { data, timeout: 120_000, maxRedirects: 0 })
   assert.equal(response.status(), expectedStatus)
   const body = await response.json(); noProtected(JSON.stringify(body))
   if (expectedStatus < 300) {
@@ -505,8 +505,8 @@ async function denialsAndCycles(tenants) {
   const duplicateCycle = await post(employee, a.cases[matrixCells[0].key], ackPayload(0), 409)
   assert.equal(duplicateCycle.code, "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_REVISION_CONFLICT")
   await post(employee, a.cases.stale, ackPayload(1, first.operationId), 409)
-  const anonymous = await browser.newContext({ baseURL: origin.href, serviceWorkers: "block" }); contexts.push(anonymous)
-  assert.equal((await anonymous.request.get(endpoint)).status(), 401)
+  const anonymous = await browser.newContext({ baseURL: origin.href, serviceWorkers: "block", extraHTTPHeaders: { "Sec-Fetch-Mode": "cors" } }); contexts.push(anonymous)
+  assert.equal((await anonymous.request.get(endpoint, { maxRedirects: 0 })).status(), 401)
   await post(anonymous, a.cases.stale, ackPayload(1), 401)
   for (const [name, expectedStatus] of [["other", 404], ["unlinked", 403], ["viewer", 403], ["admin", 403]]) {
     const context = await contextFor(a.principals[name])
@@ -614,7 +614,7 @@ function safeFailure(error) {
     prismaCode: typeof error?.code === "string" && /^P\d{4}$/.test(error.code) ? error.code : null }
 }
 try {
-  for (const path of ["scripts/workforce-employee-exception-browser-evidence.mjs", "scripts/workforce-employee-exception-browser-admission.mjs", "src/__tests__/workforce-employee-exception-browser-admission.test.ts", "scripts/workforce-native-browser-zoom.mjs", "scripts/ci/fixtures/workforce-native-zoom-extension/manifest.json", "scripts/ci/fixtures/workforce-native-zoom-extension/background.js", "scripts/ci/fixtures/workforce-employee-exception-browser.sql", "scripts/ci/fixtures/workforce-manager-today-browser.sql", ".github/workflows/workforce-employee-exception-browser-evidence.yml", "src/components/workforce/workforce-my-exceptions.tsx", "src/app/(dashboard)/workforce/exceptions/mine/page.tsx", "src/app/api/v1/workforce/exceptions/mine/route.ts", "src/app/api/v1/workforce/exceptions/[id]/response/route.ts", "src/lib/workforce/exception-employee-response-writer.ts", "src/lib/workforce/exception-employee-response-rate-limit.ts", "src/lib/workforce/exception-response-operation.ts", "src/lib/workforce/exception-response-rollout.ts", "src/lib/workforce/exception-workbench.ts", "src/lib/workforce/actor.ts", "src/lib/with-workforce-rls-auth.ts", "src/lib/auth.ts", "src/lib/permissions.ts", "src/lib/workforce/sensitive-response.ts", "prisma/schema.prisma", "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql", "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql", "prisma/migrations/20260830200000_workforce_exception_employee_responses/migration.sql", "prisma/migrations/20260928123000_workforce_exception_response_cycle_unique_index/migration.sql", "messages/az.json", "messages/ru.json", "messages/en.json"]) {
+  for (const path of ["scripts/workforce-employee-exception-browser-evidence.mjs", "scripts/workforce-employee-exception-browser-admission.mjs", "src/__tests__/workforce-employee-exception-browser-admission.test.ts", "scripts/workforce-native-browser-zoom.mjs", "scripts/ci/fixtures/workforce-native-zoom-extension/manifest.json", "scripts/ci/fixtures/workforce-native-zoom-extension/background.js", "scripts/ci/fixtures/workforce-employee-exception-browser.sql", "scripts/ci/fixtures/workforce-manager-today-browser.sql", ".github/workflows/workforce-exception-report-browser-evidence.yml", "src/components/workforce/workforce-my-exceptions.tsx", "src/app/(dashboard)/workforce/exceptions/mine/page.tsx", "src/app/api/v1/workforce/exceptions/mine/route.ts", "src/app/api/v1/workforce/exceptions/[id]/response/route.ts", "src/lib/workforce/exception-employee-response-writer.ts", "src/lib/workforce/exception-employee-response-rate-limit.ts", "src/lib/workforce/exception-response-operation.ts", "src/lib/workforce/exception-response-rollout.ts", "src/lib/workforce/exception-workbench.ts", "src/lib/workforce/actor.ts", "src/lib/with-workforce-rls-auth.ts", "src/lib/auth.ts", "src/lib/permissions.ts", "src/lib/workforce/sensitive-response.ts", "prisma/schema.prisma", "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql", "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql", "prisma/migrations/20260830200000_workforce_exception_employee_responses/migration.sql", "prisma/migrations/20260928123000_workforce_exception_response_cycle_unique_index/migration.sql", "messages/az.json", "messages/ru.json", "messages/en.json"]) {
     const raw = await readFile(new URL(`../${path}`, import.meta.url))
     receipts.sources.push({ path, bytes: raw.length, sha256: createHash("sha256").update(raw).digest("hex") })
   }
