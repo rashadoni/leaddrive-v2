@@ -171,3 +171,17 @@ production role, permission, flag, live decision or HRlogin is introduced.
 Counts12matrix/14newACK+audits/1historical/50focus/21native remain expected,
 NOTRUN. Peer full b082 review and original source remain separately retained;
 this narrow provenance delta requires fresh final source binding/review.
+
+## Prepared directory enum mistake corrected before publication/runtime
+
+Root's af75 provenance proposal incorrectly used MtmAgentRole HR. Actual
+unchanged enum contains ADMIN/MANAGER/SUPERVISOR/AGENT; Workforce HR_ADMIN
+is a distinct access-ledger role. This prepared source mistake is corrected
+before any publication/execution: synthetic history principal is existing
+CRMmanager + directoryMANAGER, and an A-only existing WorkforceHR_ADMIN
+organization-scoped fixture grant issued by syntheticadmin. Historical
+HRdecisions reference this distinct principal; employee responses remain
+Sales/AGENT. No role definition/productpermissions/granular rollout flag or
+production grant changed, no HRlogin/authorization/operational credit.
+Originalaf75checkpoint retained, NOT actual Prisma/browser failure. Peer
+review originalfacts/correction/currentbinding separately; baselines unchanged.

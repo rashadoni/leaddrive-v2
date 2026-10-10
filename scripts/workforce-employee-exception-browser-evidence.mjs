@@ -214,7 +214,15 @@ async function seed() {
     const agent = await admin.mtmAgent.create({ data: { organizationId: organization.id, userId: principals.employee.id, teamId: team.id, name: `Synthetic employee ${key}`, role: "AGENT", status: "ACTIVE" } })
     const others = {}
     for (const name of key === "a" ? ["other", "viewer", "hr"] : []) {
-      others[name] = await admin.mtmAgent.create({ data: { organizationId: organization.id, userId: principals[name].id, teamId: team.id, name: `Synthetic ${name}`, role: name === "hr" ? "HR" : "AGENT", status: "ACTIVE" } })
+      others[name] = await admin.mtmAgent.create({ data: { organizationId: organization.id, userId: principals[name].id, teamId: team.id, name: `Synthetic ${name}`, role: name === "hr" ? "MANAGER" : "AGENT", status: "ACTIVE" } })
+    }
+    if (key === "a") {
+      const grant = await admin.workforceAccessGrant.create({ data: {
+        organizationId: organization.id, principalUserId: principals.hr.id, role: "HR_ADMIN", scopeKind: "ORGANIZATION",
+        effectiveFrom: new Date("2024-01-01T00:00:00Z"), operationId: `employee-history-hr-${suffix}`,
+        grantedByUserId: principals.admin.id, grantReasonCode: "BROWSER_FIXTURE_ONLY",
+      } })
+      assert.equal(grant.role, "HR_ADMIN"); assert.equal(grant.principalUserId, principals.hr.id)
     }
     await admin.mtmSetting.create({ data: { organizationId: organization.id, key: "timezone", value: "UTC" } })
     const cases = {}
@@ -228,7 +236,7 @@ async function seed() {
       for (const [index, decisionCode] of decisions.entries()) {
         // Imported terminal history has a distinct existing HR directory actor;
         // it is not an employee decision or a live HR authorization rehearsal.
-        assert.equal(others.hr.role, "HR"); assert.equal(principals.hr.role, "manager")
+        assert.equal(others.hr.role, "MANAGER"); assert.equal(principals.hr.role, "manager")
         await admin.workforceExceptionDecision.create({ data: { organizationId: organization.id, caseId: record.id, operationId: `employee-${suffix}-${key}-${label}-${index}`, decisionCode, reason: privateReason, actorUserId: principals.hr.id, createdAt: new Date(workDate.getTime() + index * 1_000) } })
         if (label === "reopened" && index === 0) historicalResponse = await admin.workforceExceptionEmployeeResponse.create({ data: {
           organizationId: organization.id, caseId: record.id, agentId: agent.id, workdayId: workday.id,
