@@ -365,3 +365,17 @@ source scan/body/previous compiler independent receipt. Exact new source
 review and browser/PG/compiler/build/report acceptance PENDING, no old-head
 credit. Next preserve actual first new failures or complete independent
 12cell/native/manual/audit/privacy acceptance, then current candidate gates.
+
+## Exact integrated a161 whole source independently accepted
+
+Independent15025B/SHA3676e714fae89eec750739bd8bd70c4b4322fec84ffe384b92e127745f4a8b53
+accepts exacta161/tree12533c9891f7736fa270b7aae87ea4063800c3fd. Actual normal
+integration parents[0cd,bf643], five own diff paths only versus current base;
+all28 incoming mainpaths byte-exact including schema/messages. Queue23349B
+exactreviewed corrected TSX/allnonclasssource unchanged. Protected21/base
+bindings and five973baseline/guard identities preserved; accepted973 and
+archivedc123 ancestry retained. No remaining source P0/P1/P2. Peer helper/
+guard historical authorship qualified with independent root source review.
+Phase09 durable receipt archived. Runtime38016788152 remains pending; no
+production new release/physical/human/wholeC14/C12 credit. Continue actual
+first-runtime failure preservation or complete exact-source acceptance.
