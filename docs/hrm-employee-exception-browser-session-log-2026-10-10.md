@@ -876,3 +876,38 @@ normal exactM Actions deployment and main compiler RUNNING. Next: natural
 terminal original capture, immutable artifact/API+logs digest admission,
 pinned public/privacy probes and independent release review, then next HRM
 scope. C6-006/C12partial/C14open and85DONE76open61% unchanged.
+
+## PR678 exact-main normal release accepted; next bounded task prepared
+
+ActualM32a699a5602a396118c1d8ed7d65c52631a65cfc normal deploy38034058015attempt1
+naturallySUCCESS4normal/3manualSKIP, no reruns/directdeploy. Immutableartifact
+11663565207/444957374B/digest3999e05bb72fa039227642b093f91bba7de77d93d6d20cb8a94e40d2df17a5af
+matchedAPI,actualupload andactualdownload wholelog. Root retained all normal
+joblogs/API and separately parsed exact main compiler38034057984/job114160803680/
+App15368: actual1162diag/35families/EXIT2/strict64/critical0/taskowned0, whole
+252561B SHA7d7ce4d8ff1c580b70efe5c9d0ba76f7ca8cd3d00e0fe8a20b30de1d7a4b3fc6.
+MainstaticSKIP receivesNOcredit; normalquality actual18historical failingfiles/
+18baseline, everyold stillfails/no new, all baselines/blocking readers unchanged.
+Globally compiler/suite NONCLEAN retained, not advertised clean.
+
+Root and independent production probes after actualdeploySUCCESS: canonical
+HTTPS pinned13.140.132.245/TLSverify0, publicfullM→pingok→publicfullM PASS.
+Six anonymousGET for exceptions,exception-reports,exceptions/mine each fetch401
+exactUnauthorized/session_expired andnavigation307samecanonical/login/correct
+callback PASS. No authenticated production employee/HR session, no writes/
+rollout/access/secrets/personnel action. Root UI/DB/regressions/source6/current
+candidate4/required5 remain separately bound to whole tree6bd/currentC/H.
+Fresh independent finalv2 exact-merge release review ACCEPTED, P0/P1/P2none;
+114-original-artifact manifest and initial upload-digest-label reader error/
+manifest-correction originals retained. Earlier v1 report/manifest remain
+immutable, v2 supersedes missing-correction inventory only. No largeZIP local
+production download or Contabo heavy tests. Archivephase29 preserves originals.
+
+Current result: PR678 MERGED+verifiedreleased exactM. Last completed action:
+normalrelease/fullSHA/TLS/ping/privacy/maincompiler independently accepted.
+Precise stopping point: before publishing next prepared CI-only sourcec6547.
+Next action: dependent draftPR and actual hosted exact-head cross-tab rehearsal.
+85DONE/76open/61%, C6-006/C12PARTIAL/C14open unchanged. C12 restored-copy/full
+history/defaultACL/operations and realphysicaldevices/humanAT remain unavailable;
+synthetic success gives no such acceptance. Existing589→605→608/973/c123 ancestry
+retained;606/609/646/663 excluded frommerge. Support/HRHub unchanged.
