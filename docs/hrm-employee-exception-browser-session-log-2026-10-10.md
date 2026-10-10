@@ -353,3 +353,19 @@ publication+run/API originals and currentPR678 body. Source/runtime/baseheads
 are explicit; no borrowed2b/43 status. RequiredREADY candidate gates, actual
 employee browser/database/nativezoom and all source checks remain PENDING.
 85DONE/76open/61%,C6-006/C12partial,C14open unchanged; no syntheticclosure.
+
+## Original43 all six gates completed naturally; current0d7 remains active
+
+Original43 run38025291422 attempt1 now COMPLETEDFAILURE, five existingjobs
+SUCCESS and employeeFAIL. Wholeoriginals/root fullcapture phase09 retains six
+wholelogs/four digest+CRCvalidatedZIPs/freshactual strict compiler readers.
+Compiler114134743597 actualApp15368SUCCESS; fresh ZIP11660366152/20009B,
+raw179299B SHAf7e463d2ae280538ed2f171dc413dab7036697efabefb5b73016ad14a8db5f22,
+1162diagnostics/35families/EXIT2/exact64pair-count baseline/critical0/owned0;
+globallyNONCLEAN. Rootandpeer downloaded independently; byteequal previous2b
+raw is an observation, not borrowedexecution. Peer5530B SHAc49bdaf8cf9aa27ceda407f3155312ec4dc07e4f1040f65b28d84bd7c1a19ea2.
+Current0d7 sixjobs RUNNING, employee schema/role setup; no actualemployee
+browser/finalDB/nativezoom acceptance yet. No cancellation/rerun or baseline
+change. PR678 staysDRAFT; next actual0d7 terminal employee originals and
+independent fullcontent/pixels review, exactsource/candidate/mandatory checks.
+85DONE/76open/61%,C6-006/C12partial,C14open unchanged.
