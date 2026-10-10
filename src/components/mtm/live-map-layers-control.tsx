@@ -19,8 +19,8 @@ export interface LiveMapLayer {
   shownByDefault?: boolean
   /**
    * What the layer itself holds, listed under its switch while it is on — the
-   * organization's own zones under «Свои зоны». Inside the panel, which
-   * already scrolls within the map: no frame or scrollbar of its own.
+   * organization's own zones under «Свои зоны». Inside the panel, with no
+   * frame or scrollbar of its own; in two columns it takes the whole width.
    */
   detail?: ReactNode
 }
@@ -69,8 +69,13 @@ export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents
   return (
     // Bounded by the map's frame (top and bottom) and above the tools: with
     // seven switches the open panel was taller than a phone's map, and the last
-    // ones were cut off with no way to reach them. Now it scrolls inside itself.
-    <div className="pointer-events-none absolute bottom-3 right-3 top-3 z-[1200] flex flex-col items-end gap-2" data-testid="live-map-layers">
+    // ones were cut off with no way to reach them. There it scrolls inside
+    // itself. On a map wide enough the switches stand in two columns instead:
+    // nine of them in one column were taller than the map of a laptop, and a
+    // list that scrolls inside a panel inside a page is the thing the owner
+    // calls a bug. The frame spans the map's width only to learn that width
+    // (@container) — it takes no presses itself.
+    <div className="@container pointer-events-none absolute left-3 bottom-3 right-3 top-3 z-[1200] flex flex-col items-end gap-2" data-testid="live-map-layers">
       <button
         type="button"
         aria-expanded={open}
@@ -94,7 +99,7 @@ export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents
         </div>
       ))}
       {open ? (
-        <div id="live-map-layers-panel" className="pointer-events-auto min-h-0 w-72 max-w-[calc(100vw-3rem)] overflow-y-auto rounded-lg border border-zinc-300 bg-card p-2 shadow-lg dark:border-zinc-600">
+        <div id="live-map-layers-panel" className="pointer-events-auto min-h-0 w-72 max-w-full overflow-y-auto rounded-lg border border-zinc-300 bg-card p-2 shadow-lg @lg:w-[31rem] @2xl:w-[35rem] dark:border-zinc-600">
           {baseMaps && baseMaps.options.length > 1 ? (
             <div className="mb-1 border-b border-zinc-200 px-1 pb-2 dark:border-zinc-700" data-testid="live-map-base-maps">
               <div id="live-map-base-maps-title" className="text-xs font-semibold uppercase text-muted-foreground">{tMap("layers.base")}</div>
@@ -121,9 +126,17 @@ export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents
               </div>
             </div>
           ) : null}
-          <ul className="divide-y divide-zinc-200 dark:divide-zinc-700">
+          {/* A line above every switch but the first row's: one of them in one column, two in two. */}
+          <ul className="grid grid-cols-1 @lg:grid-cols-2 @lg:gap-x-4" data-testid="live-map-layers-list">
             {layers.map((layer) => (
-              <li key={layer.id} className="px-1 py-1.5">
+              <li
+                key={layer.id}
+                className={cn(
+                  "border-t border-zinc-200 px-1 py-1.5 first:border-t-0 dark:border-zinc-700",
+                  // A layer with a list under its switch takes the whole width, so the list is not squeezed into a column.
+                  layer.detail ? "@lg:col-span-2" : "@lg:[&:nth-child(2)]:border-t-0",
+                )}
+              >
                 <div className="flex items-center gap-3">
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-medium">{layer.label}</span>

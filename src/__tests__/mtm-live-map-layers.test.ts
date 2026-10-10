@@ -85,6 +85,35 @@ describe("the layers control on the map", () => {
     expect(panel()?.className).toContain("overflow-y-auto")
   })
 
+  it("on a wide map the switches stand in two columns, so the panel does not scroll inside itself", async () => {
+    // Nine switches in one column were 680 px tall — more than the map of a laptop, which is what bounds the panel.
+    // Measured in a real browser: in two columns they take 430–480 px on maps from 546 px wide (a 1280 px window).
+    await draw()
+    const control = container.querySelector('[data-testid="live-map-layers"]') as HTMLElement
+    // The frame spans the map (left to right) only to learn its width; it still takes no presses itself.
+    expect(control.className).toContain("@container")
+    expect(control.className).toContain("left-3")
+    expect(control.className).toContain("pointer-events-none")
+    await press(opener())
+    expect(panel()?.className).toContain("pointer-events-auto")
+    // Narrow by default — a phone keeps one column — and wide only where the map says there is room.
+    expect(panel()?.className).toContain("w-72")
+    expect(panel()?.className).toContain("@2xl:w-[35rem]")
+    expect(panel()?.className).toContain("@lg:w-[31rem]")
+    expect(panel()?.className).toContain("max-w-full")
+    const list = container.querySelector('[data-testid="live-map-layers-list"]') as HTMLElement
+    expect(list.className).toContain("grid-cols-1")
+    expect(list.className).toContain("@lg:grid-cols-2")
+    // One line above every switch but those of the first row, in one column and in two.
+    const rows = [...list.children] as HTMLElement[]
+    expect(rows.length).toBeGreaterThan(2)
+    for (const row of rows) {
+      expect(row.className).toContain("border-t")
+      expect(row.className).toContain("first:border-t-0")
+    }
+    expect(rows[1].className).toContain("@lg:[&:nth-child(2)]:border-t-0")
+  })
+
   it("stays out of the way until asked for", async () => {
     await draw()
     expect([opener().textContent, opener().getAttribute("aria-expanded")]).toEqual(["Слои", "false"])
@@ -165,6 +194,8 @@ describe("the layers control on the map", () => {
     // In the row of its own layer, after that layer's switch — and inside the one panel that scrolls.
     const row = layerSwitch("live-map-layer-areas").closest("li") as HTMLElement
     expect(row.contains(detail)).toBe(true)
+    // In two columns the layer with a list takes the whole width: the list is not squeezed into half of it.
+    expect(row.className).toContain("@lg:col-span-2")
     expect(panel()?.contains(detail)).toBe(true)
     expect(detail.className).not.toMatch(/overflow|max-h/)
     // The other layers have nothing listed under them.
