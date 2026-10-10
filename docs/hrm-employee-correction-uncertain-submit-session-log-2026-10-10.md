@@ -29,3 +29,30 @@ personnel decision. App changes follow actual reproduction and independent revie
 Publication/release waits parent verified result and fresh normal integration.
 Real restored-copy/operator/provenance/defaultACL/history/device/pilot/human checks
 remain external/open and receive no replacement from this finite browser slice.
+
+
+## Separate regression source prepared; application unchanged
+
+Adds three own MJS files and one narrow Ubuntu24.04 workflow, leaving the original
+eight-job workflow byte-identical. Own30 pure target/refusal tests (including
+present/empty ordinary-recovery opt-in exclusion), three syntax, runner55workflow
+FILES and diff checks actually PASS after RAM/disk/pressure inspection. No install,
+full build/typecheck/browser/SQL ran on Contabo. Sources37/19edited-recovery flows
+are PLANNED, runtime NOT RUN; all app/API/auth/fixtures/baselines unchanged.
+
+For each controlled real201/reply-abort, measure actual five field disabled states.
+If fields remain editable, edit only reason via actual UI, require same-key409
+and complete public mismatch body, unchanged request/audit hashes, restore the
+original visible input and require existing same-bodyUI200. If fields are guarded,
+keyboard edit must leave input unchanged and emit no POST. Every original recovery,
+SQL/routine/role/RLS/fact/cleanup check remains. Final desired assertion requires
+all19 field edit boundaries; unchanged app is expected to produce a firstFAIL
+only after complete reproductions, but no hosted failure exists yet. Preserve
+first originals before a product fix; do not weaken assertions to pass baseline.
+Private payload/reason/id/key/identity never emitted or captured in a screenshot.
+
+Parent684 source currentreport/newrecovery/ordinarysubmission/PG jobs SUCCESS,
+root+peer admitted partial originals. Whole source8/compiler/build and current
+candidate/required-five/ownrelease still pending, so future source remains
+unpublished. Publication and actual reproduction follow parent verified release.
+Next independent source-only review and final current parent verification.
