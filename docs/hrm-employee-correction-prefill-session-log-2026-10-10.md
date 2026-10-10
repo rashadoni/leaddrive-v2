@@ -230,3 +230,15 @@ Next ordinary authorized merge682 then exact own normal release root+peer.
 Future unpublishedd7dd source review identified missing exact persisted-request
 field and full refusal-body assertions; strengthen before publication, actual
 SQL/browser/runtime NOT RUN. Accounting85DONE76open61%; C6-006/C12/C14 open.
+
+## Authorized ordinary merge682; own normal release running
+
+2026-10-10T10:07:17Z ordinary merge7e58cb3f618b53567df8df54bb9d9b89fed316da,
+parents[339f74afc9384eecad5d175217918b08e5c65e15,6f58bc115f999922a0c1c8f740227cad92999674],
+tree3dd4 exact tested source/currentcandidate. Natural push/main deploy38043801893,
+mainPRchecks38043803196 andscan38043801934 RUNNING; no release claim yet. No admin,
+force, deletion, manual deploy or check bypass. Current source frozenunchanged.
+Next own whole normalmaincompiler/quality/build/artifact/atomicdeploy and pinned
+fullSHA/ping/privacy root+peer. Future335 unpublished reviewstrengthened actual
+stored fields and complete refusal bodies, originald7dd findings preserved;
+source-only review continues, SQL/browser/newjob NOT RUN. Accountingunchanged.

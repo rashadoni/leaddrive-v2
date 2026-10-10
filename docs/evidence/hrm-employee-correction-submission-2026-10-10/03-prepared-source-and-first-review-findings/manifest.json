@@ -1,0 +1,153 @@
+{
+  "archivedAtUtc": "2026-10-10T10:08:38.789758+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-employee-correction-submission-335-prepared-source-root/owned-source/.github/workflows/workforce-exception-report-browser-evidence.yml.raw-original.gz",
+      "originalBytes": 44660,
+      "originalSha256": "55a28a41572e969761a4b5ee75e9f91853a036dc0e78925472cf134384e5280f",
+      "storedBytes": 5452,
+      "storedSha256": "9afebddbcd72864b98d3aedd327d9bc1441c5ed13d6733d9e79f19c90d692600"
+    },
+    {
+      "path": "hrm-employee-correction-submission-335-prepared-source-root/owned-source/docs/hrm-employee-correction-submission-session-log-2026-10-10.md.raw-original.gz",
+      "originalBytes": 10941,
+      "originalSha256": "3d4ad2e2be0a19d4dc8b52c92d6358359ae1ecc38d37b33b5192901472c4f59f",
+      "storedBytes": 4838,
+      "storedSha256": "630e217b0ea48b06a5f0b02d9955fea6ffe260bc78fd0de89685e96bd7e51d98"
+    },
+    {
+      "path": "hrm-employee-correction-submission-335-prepared-source-root/owned-source/scripts/ci/fixtures/workforce-employee-correction-browser.sql.raw-original.gz",
+      "originalBytes": 6633,
+      "originalSha256": "81f2bed8246a7fbd07eb9b402bb24103abf4bb1bba3c8c2914e63c4982da78a3",
+      "storedBytes": 2053,
+      "storedSha256": "6cffc51ddb29e0b95459c1f804d77c6c57c8306934e30da8f03b729c3278ace3"
+    },
+    {
+      "path": "hrm-employee-correction-submission-335-prepared-source-root/owned-source/scripts/workforce-employee-correction-browser-admission.mjs.raw-original.gz",
+      "originalBytes": 2472,
+      "originalSha256": "5b9cecf5d4b66f10ec8cf4afbb927d5edb92a7fef41b8b2eb1e0feeacaba86f0",
+      "storedBytes": 1051,
+      "storedSha256": "5916ed17c630b79430b3571e6ceb084aa7ae4b15216c749f2f60a690fc3cdbd9"
+    },
+    {
+      "path": "hrm-employee-correction-submission-335-prepared-source-root/owned-source/scripts/workforce-employee-correction-browser-admission.test.mjs.raw-original.gz",
+      "originalBytes": 4521,
+      "originalSha256": "760cc8ae58ad6f20df3fec35f13cfee361b4607be512331c1eb80db16669dce4",
+      "storedBytes": 1255,
+      "storedSha256": "08f56d81d790ef5fd60238d5966def234de4eaa6df31f05132d4e0ae7d40e61c"
+    },
+    {
+      "path": "hrm-employee-correction-submission-335-prepared-source-root/owned-source/scripts/workforce-employee-correction-browser-evidence.mjs.raw-original.gz",
+      "originalBytes": 34049,
+      "originalSha256": "ba1d644bdfaeb39e9eaa2dc6521a5babdb58d81e7dbe40a41ebf9ac3fd12fccf",
+      "storedBytes": 10009,
+      "storedSha256": "0c5792c4f6e43d4a4f018021e6ce1072568f48e94b613beacce3034b158cbb91"
+    },
+    {
+      "path": "hrm-employee-correction-submission-335-prepared-source-root/root-prepared-source-qualification.json.raw-original.gz",
+      "originalBytes": 1009,
+      "originalSha256": "b9deb1fa60a02945cfd1ad4a7dcbde88bc74ae241fb0933cd79577c7154931aa",
+      "storedBytes": 557,
+      "storedSha256": "98d207bfa3b157ed39e999bc1f34f77b2bdd07c51de08f727d001703ba7db5f5"
+    },
+    {
+      "path": "hrm-employee-correction-submission-335-prepared-source-root/six-owned-path-diff.patch.raw-original.gz",
+      "originalBytes": 71165,
+      "originalSha256": "dfc41da383f07cf40190ae216950dcbaebc3a30f1d3787d6f6cca9158b1e8e8e",
+      "storedBytes": 20438,
+      "storedSha256": "695581e51606bdbdf34a480a84eb4db4e16bc6efd186dc179e3093edaa4c5cbf"
+    },
+    {
+      "path": "hrm-employee-correction-submission-d7dd-source-peer/before-small-source-check-resource-original.json.gz",
+      "originalBytes": 1959,
+      "originalSha256": "858971d12de805515602a6c86805289aa9eed08aaad983a3bad9b1f92bd27edd",
+      "storedBytes": 739,
+      "storedSha256": "c771bb34a9bc28a78c0f1effe26273841ce602b126c68e40d360d468d62e08c8"
+    },
+    {
+      "path": "hrm-employee-correction-submission-d7dd-source-peer/exact-source-originals/.github/workflows/workforce-exception-report-browser-evidence.yml.gz",
+      "originalBytes": 44660,
+      "originalSha256": "55a28a41572e969761a4b5ee75e9f91853a036dc0e78925472cf134384e5280f",
+      "storedBytes": 5452,
+      "storedSha256": "9afebddbcd72864b98d3aedd327d9bc1441c5ed13d6733d9e79f19c90d692600"
+    },
+    {
+      "path": "hrm-employee-correction-submission-d7dd-source-peer/exact-source-originals/docs/hrm-employee-correction-submission-session-log-2026-10-10.md.gz",
+      "originalBytes": 9771,
+      "originalSha256": "ca75b1a3445a38e5aee3c0b7703ccb226c4a38f5a1832f46a0832be279a4fc23",
+      "storedBytes": 4358,
+      "storedSha256": "86486aff4405851b8090b59d6b90bf4eec68a5aeeaa8e39ae1a5349a1adea348"
+    },
+    {
+      "path": "hrm-employee-correction-submission-d7dd-source-peer/exact-source-originals/scripts/ci/fixtures/workforce-employee-correction-browser.sql.gz",
+      "originalBytes": 6633,
+      "originalSha256": "81f2bed8246a7fbd07eb9b402bb24103abf4bb1bba3c8c2914e63c4982da78a3",
+      "storedBytes": 2053,
+      "storedSha256": "6cffc51ddb29e0b95459c1f804d77c6c57c8306934e30da8f03b729c3278ace3"
+    },
+    {
+      "path": "hrm-employee-correction-submission-d7dd-source-peer/exact-source-originals/scripts/workforce-employee-correction-browser-admission.mjs.gz",
+      "originalBytes": 2472,
+      "originalSha256": "5b9cecf5d4b66f10ec8cf4afbb927d5edb92a7fef41b8b2eb1e0feeacaba86f0",
+      "storedBytes": 1051,
+      "storedSha256": "5916ed17c630b79430b3571e6ceb084aa7ae4b15216c749f2f60a690fc3cdbd9"
+    },
+    {
+      "path": "hrm-employee-correction-submission-d7dd-source-peer/exact-source-originals/scripts/workforce-employee-correction-browser-admission.test.mjs.gz",
+      "originalBytes": 4521,
+      "originalSha256": "760cc8ae58ad6f20df3fec35f13cfee361b4607be512331c1eb80db16669dce4",
+      "storedBytes": 1255,
+      "storedSha256": "08f56d81d790ef5fd60238d5966def234de4eaa6df31f05132d4e0ae7d40e61c"
+    },
+    {
+      "path": "hrm-employee-correction-submission-d7dd-source-peer/exact-source-originals/scripts/workforce-employee-correction-browser-evidence.mjs.gz",
+      "originalBytes": 32991,
+      "originalSha256": "90e1c57769d4eb6d09c2fcc5a17b39a5952ec3491757d56b2b9009150ebc8325",
+      "storedBytes": 9737,
+      "storedSha256": "0e249469c19ecc9dc644ba8161c3f18560aebe8889d04db4bf10ac76a99c1cd0"
+    },
+    {
+      "path": "hrm-employee-correction-submission-d7dd-source-peer/first-d7dd-stored-request-field-verification-finding.json.gz",
+      "originalBytes": 3361,
+      "originalSha256": "a8fe2175a0e00c28def4eeccc179e973d5a488afb956fa0a557aa7e97e9908e1",
+      "storedBytes": 1255,
+      "storedSha256": "13470d5d4d219c110f11f125a81c8c5cec4f828893ee486e8f6a3e2f01b40af3"
+    },
+    {
+      "path": "hrm-employee-correction-submission-d7dd-source-peer/pure-target-test-stderr-original.txt.gz",
+      "originalBytes": 0,
+      "originalSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "storedBytes": 20,
+      "storedSha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec"
+    },
+    {
+      "path": "hrm-employee-correction-submission-d7dd-source-peer/pure-target-test-stdout-original.txt.gz",
+      "originalBytes": 4790,
+      "originalSha256": "cc135bd25bf5ab117808e4542433765f632f023e72620a673baa51dd81db625b",
+      "storedBytes": 836,
+      "storedSha256": "09f270f386d729b5211e5b28c745a8f29990e7f91ef8af8ca2a988d01cd2fa2f"
+    },
+    {
+      "path": "hrm-employee-correction-submission-d7dd-source-peer/whole-exact-source-diff-original.patch.gz",
+      "originalBytes": 19684,
+      "originalSha256": "136c3ecc3bf86ab96e942d23464a604c88a9b54e2737e425a1e6c047665e1390",
+      "storedBytes": 19684,
+      "storedSha256": "136c3ecc3bf86ab96e942d23464a604c88a9b54e2737e425a1e6c047665e1390"
+    },
+    {
+      "path": "hrm-employee-correction-submission-first-job-whitespace-original.patch.gz",
+      "originalBytes": 19391,
+      "originalSha256": "d90116a563fcbb1412ccf6188ca873ca5d4d24e9d60b4c38a53ff70e01d9f998",
+      "storedBytes": 5615,
+      "storedSha256": "395de1007a4873ada745f2b8838dc060a2ef856783e4c6e78212aa168ff98982"
+    },
+    {
+      "path": "hrm-employee-correction-submission-first-job-whitespace-error.json.gz",
+      "originalBytes": 581,
+      "originalSha256": "1a62012894f4ed70e3f55a198a57d6f0ed6d2d5428a34a6d71bacde6c2be7adf",
+      "storedBytes": 401,
+      "storedSha256": "bab34e5b6985e863c93ce01eed9c8809beef7b34c55e48826b74d281171332c3"
+    }
+  ]
+}

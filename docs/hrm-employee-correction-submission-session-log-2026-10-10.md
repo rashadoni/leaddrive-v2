@@ -113,3 +113,57 @@ actual refusal cases (coherent three-URL extras andadmin-only extras) plusprior
 24 PASS as26 underNode20 after resourcecheck; initial24outputs/checkpoint retained.
 No connection/SQL/DB/browser/job/sourceindependent execution; current682source
 andbaseline unchanged. Parent682 source5SUCCESS/compilerRUNNING stillpriority.
+
+
+## Separate actual submission harness prepared — runtime NOTRUN
+
+New separate harness preserves exact parent canonicalMFA/rate/session helpers
+and targets imported owncases in two disposable tenants. Planned9standard
+EN/RU/AZ×320/768/1440 cells each realcorrectionlink→form→linkedPENDING201,
+then type/daycleared unlinkedPENDING201, plussecondtenantpositive, eachactual
+200idempotentreplay withno extra rows. Planned19requests+19six-keyaudits, no
+workday/HRdecision/correction/response writes;11knownfact hashesstable, real
+nonowner/unscoped/foreignread controls andthreeindistinguishable409source
+refusals. Five plannedactualSQLrollback checks includeimmutablecase/revision,
+exactday andsyntheticimmutableaudit/case guards. Latestproductionfunction/
+trigger statements andtwo reconstructedrevisionCHECKs/exactvalidationsbound
+to source; no historicalreplay/productionimmutability/defaultACL claim.
+No screenshots/privatebody/identity/secret/errorpayload retained; onlysanitized
+stage/code/frames/counts/hashmetadata. CurrentNode20syntax/diffPASS after
+resources. Database/browser/runtime/sourceindependent/workflow/jobchecks
+NOTRUN; jobnotyetwired. Current682READYcandidate/five continuesunchanged.
+
+
+## Separate seventh hosted job prepared; oldsix unchanged
+
+Workflow adds onlytwo narrowpathfilters andone independent Ubuntu24.04 job
+with bounded isolatedprovisioning/masking/loopback/services/cleanup/artifact.
+Oldsixjob blocks byte-exact. Newjob uses ownprofile/fixture/harness,26puretargets
+and existing self-request/API/UI refusal tests, scopednewMJS lint andactual
+Nextdev/browser withseparate sanitizedartifact. Runtime/sourceindependent NOTRUN.
+Harness observes responsewaiter rejection andawaits actualasync UIhistory;
+201/200/noDup/status/source/date assertionskept. Five SQLrollback checks require
+counts plusrequest/audit rowhashesstable; actualrole/FORCERLS/ownership/membership/
+minimalgrant catalogs mandatory withtwo populatedtenant/unscoped/foreign controls.
+Node20syntax andrunnerpolicy54workflowfiles actualPASS afterresourcecheck. First
+gitdiffcheck exited2 fornewblanklineEOF; originaldiff/error kept, onlyextra final
+blankline removed, gitdiffcheck repeatPASS. No check/baseline weakening.
+HeavySQL/browser/fullsuite/compiler/build/newjob executionNOTRUN. Parent682
+currentcandidate/five remainspriority; newsourceunpublished/C6-006/C12/C14open.
+
+## Independent first-source findings strengthened before publication
+
+Readonly d7dd review found two concrete evidence gaps, not observed app/runtime
+failures: persisted request fields were incompletely compared; refusal responses
+compared code/status only. Original finding and d7dd diff retained unchanged.
+Harness now privately asserts actual stored type, selected own workday, both
+UTC dates, requested0915UTC start, null end and actual submitted client key.
+For foreign/missing/different-day case refusal require complete exact two-key
+code/error response shape and common public message; no raw bodies retained.
+Original canonical auth helpers and entire old workflow reconstructed byte-equal;
+peer independently ran26pure admission tests PASS afterresourcecheck. Current
+Node20syntax/diff PASS; SQL/browser/newjob/full runtime remains NOT RUN. Parent
+PR682 ordinarymerge7e58cb3f618b53567df8df54bb9d9b89fed316da releasedbyActions
+still pending; source unpublished, no whole C6-006/C12/C14 completion credit.
+Next exact updated source peer admission; publication waits parentown verified
+normalrelease, then ordinary integrate finalmain and re-review finalsource.
