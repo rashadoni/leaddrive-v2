@@ -4,6 +4,8 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
+      - "scripts/workforce-crm-lifecycle-evidence.mjs"
+      - "src/lib/crm-product-availability.ts"
       - ".github/workflows/workforce-exception-report-browser-evidence.yml"
       - "scripts/workforce-exception-report-browser-evidence.mjs"
       - "scripts/workforce-employee-exception-browser-*.mjs"
@@ -80,7 +82,7 @@ permissions:
 
 jobs:
   exception-report-browser:
-    name: Authenticated Workforce exception report browser evidence
+    name: "CRM lifecycle — Authenticated Workforce exception report browser evidence"
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
     timeout-minutes: 35
@@ -113,6 +115,8 @@ jobs:
       # Preserve the distinct PR head and GITHUB_SHA in the evidence receipt.
       - name: Checkout candidate
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
 
       - name: Resolve isolated ports and masked application secrets
         env:
@@ -186,7 +190,7 @@ jobs:
       - name: Install Chromium on hosted Ubuntu
         run: npx playwright install --with-deps chromium
 
-      - name: Run real authenticated aggregate report scenarios
+      - name: Verify shipped CRM lifecycle (exceptions)
         shell: bash
         run: |
           test "$CI" = true && test "$WF_EXCEPTION_REPORT_BROWSER" = 1
@@ -210,7 +214,7 @@ jobs:
             fi
             sleep 2
           done
-          node scripts/workforce-exception-report-browser-evidence.mjs
+          node scripts/workforce-crm-lifecycle-evidence.mjs exceptions
 
       - name: Preserve non-secret workflow failure receipt
         if: failure()
@@ -241,7 +245,7 @@ jobs:
           retention-days: 14
 
   exception-classification-browser:
-    name: Exact WF-C6-010 authenticated HR recording browser
+    name: "CRM lifecycle — Exact WF-C6-010 authenticated HR recording browser"
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.expected_head != '' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 35
@@ -283,6 +287,8 @@ jobs:
       # Preserve the distinct PR head and GITHUB_SHA in the evidence receipt.
       - name: Checkout candidate
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
 
       - name: Verify exact authorized candidate
         env:
@@ -367,7 +373,7 @@ jobs:
       - name: Install Chromium on hosted Ubuntu
         run: npx playwright install --with-deps chromium
 
-      - name: Run real authenticated aggregate report scenarios
+      - name: Verify shipped CRM lifecycle (classification)
         shell: bash
         run: |
           test "$CI" = true && test "$WF_EXCEPTION_CLASSIFICATION_BROWSER" = 1
@@ -391,7 +397,7 @@ jobs:
             fi
             sleep 2
           done
-          node scripts/workforce-exception-classification-browser-evidence.mjs
+          node scripts/workforce-crm-lifecycle-evidence.mjs classification
 
       - name: Preserve non-secret workflow failure receipt
         if: failure()
@@ -422,7 +428,7 @@ jobs:
           retention-days: 14
 
   employee-exception-browser:
-    name: Authenticated employee own-exception browser evidence
+    name: "CRM lifecycle — Authenticated employee own-exception browser evidence"
     if: ${{ (github.event_name == 'workflow_dispatch' && inputs.expected_head != '') || (github.event_name == 'pull_request' && !github.event.pull_request.draft) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 35
@@ -464,6 +470,8 @@ jobs:
       # Preserve the distinct PR head and GITHUB_SHA in the evidence receipt.
       - name: Checkout candidate
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
 
       - name: Verify exact authorized source dispatch
         if: ${{ github.event_name == 'workflow_dispatch' }}
@@ -568,7 +576,7 @@ jobs:
       - name: Install Chromium on hosted Ubuntu
         run: npx playwright install --with-deps chromium
 
-      - name: Run current own-only employee scenarios
+      - name: Verify shipped CRM lifecycle (employee)
         shell: bash
         run: |
           test "$CI" = true && test "$WF_EMPLOYEE_EXCEPTION_BROWSER" = 1
@@ -592,7 +600,7 @@ jobs:
             fi
             sleep 2
           done
-          node scripts/workforce-employee-exception-browser-evidence.mjs
+          node scripts/workforce-crm-lifecycle-evidence.mjs employee
 
       - name: Preserve non-secret workflow failure receipt
         if: failure()
@@ -794,7 +802,7 @@ jobs:
         run: bash scripts/ci/prepare-hosted-build-runner.sh cleanup
 
   employee-correction-browser:
-    name: Authenticated employee correction submission browser evidence
+    name: "CRM lifecycle — Authenticated employee correction submission browser evidence"
     if: ${{ (github.event_name == 'workflow_dispatch' && inputs.expected_head != '') || (github.event_name == 'pull_request' && !github.event.pull_request.draft) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 35
@@ -836,6 +844,8 @@ jobs:
       # Preserve the distinct PR head and GITHUB_SHA in the evidence receipt.
       - name: Checkout candidate
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
 
       - name: Verify exact authorized source dispatch
         if: ${{ github.event_name == 'workflow_dispatch' }}
@@ -935,7 +945,7 @@ jobs:
       - name: Install Chromium on hosted Ubuntu
         run: npx playwright install --with-deps chromium
 
-      - name: Run actual pending correction submission scenarios
+      - name: Verify shipped CRM lifecycle (correction)
         shell: bash
         run: |
           test "$CI" = true && test "$WF_EMPLOYEE_CORRECTION_BROWSER" = 1
@@ -959,7 +969,7 @@ jobs:
             fi
             sleep 2
           done
-          node scripts/workforce-employee-correction-browser-evidence.mjs
+          node scripts/workforce-crm-lifecycle-evidence.mjs correction
 
       - name: Preserve non-secret workflow failure receipt
         if: failure()
@@ -990,7 +1000,7 @@ jobs:
           retention-days: 14
 
   employee-correction-recovery-browser:
-    name: Authenticated employee correction reply-loss recovery browser evidence
+    name: "CRM lifecycle — Authenticated employee correction reply-loss recovery browser evidence"
     if: ${{ (github.event_name == 'workflow_dispatch' && inputs.expected_head != '') || (github.event_name == 'pull_request' && !github.event.pull_request.draft) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 35
@@ -1032,6 +1042,8 @@ jobs:
       # Preserve the distinct PR head and GITHUB_SHA in the evidence receipt.
       - name: Checkout candidate
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
 
       - name: Verify exact authorized source dispatch
         if: ${{ github.event_name == 'workflow_dispatch' }}
@@ -1131,7 +1143,7 @@ jobs:
       - name: Install Chromium on hosted Ubuntu
         run: npx playwright install --with-deps chromium
 
-      - name: Run actual committed reply-loss and UI recovery scenarios
+      - name: Verify shipped CRM lifecycle (recovery)
         shell: bash
         run: |
           test "$CI" = true && test "$WF_EMPLOYEE_CORRECTION_RECOVERY_BROWSER" = 1
@@ -1155,7 +1167,7 @@ jobs:
             fi
             sleep 2
           done
-          node scripts/workforce-employee-correction-recovery-browser-evidence.mjs
+          node scripts/workforce-crm-lifecycle-evidence.mjs recovery
 
       - name: Preserve non-secret workflow failure receipt
         if: failure()
