@@ -187,8 +187,11 @@ describe("audit: agents", () => {
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "a1", name: "John", email: "j@t.com", role: "AGENT" } as any)
     vi.mocked(prisma.mtmAgent.deleteMany).mockResolvedValue({ count: 1 } as any)
     await DeleteAgent(plainReq("/api/v1/mtm/agents/a1"), pp("a1"))
+    // agentId is a foreign key to the employee who has just been deleted: the
+    // row names him by entityId. What Postgres does with anything else is in
+    // mtm-contact-categories-postgres.test.ts — this mock accepts any id.
     expect(writeMtmAudit).toHaveBeenCalledWith(
-      expect.objectContaining({ action: "AGENT_DELETE", entity: "agent", entityId: "a1", metadataKind: "agent_delete" })
+      expect.objectContaining({ agentId: null, action: "AGENT_DELETE", entity: "agent", entityId: "a1", metadataKind: "agent_delete" })
     )
   })
 })
