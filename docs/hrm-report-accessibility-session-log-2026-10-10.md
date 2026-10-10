@@ -166,3 +166,35 @@ it; full cumulative PR608→workingtree check passes after repair. It remains
 unpublished while first39 executions finish. No success is borrowed across
 heads. WF-C14-003 roadmap row remains PLANNED (report-only evidence pending);
 wholeC14 incomplete, C12PARTIAL and85/76/61 accounting unchanged.
+
+## Original actual browser failure, reviewed repair and helper regressions
+
+Root independently verified first source report artifact11652525592: entire
+219409BZIP matches API digestc043225d641536f0b28ee4514210e6e3fc6cd9d61370033aab21806201fc0688,
+allCRC and15actual39source bindings match. FAIL at Refreshgeometry:
+focused/focusVisible true, right445 beyond clip320, cases0, nativeNOT_RUN.
+Root viewed original PNG. Finalfact/RLS/audit/native/matrix gates NOT RUN,
+cleanupPASS is cleanup only. Candidate run38007879426 independently FAIL on
+syntheticmerge0a66543b78b16ae7d3d836cd90d7699d1a0b2252 (parents506,39,whole
+tree exact39), same clipping; original fullZIP/digest/CRC/API/logs retained.
+No candidate/source statuses combined or changed-head credit assigned.
+
+B0 one-byteEOF repair independently accepted;31 singleflex-wrap UI insertion
+(+10bytes, controls/sections/events unchanged) independently accepted. Local
+41=4152df6eae68c71c279bf9fa5c1198a4fbb64094 adds only two changed paths to
+existing hosted scopedESLint targets, preserving every old target/step/gate,
+also independently accepted. Original39 first full compiler/build/suite are
+allowed to finish; no cancellation to hide results. New41 runtime stillPENDING.
+
+Actual manager regression38007879384 PASS on candidate0a665/whole39 tree:
+9cases,3factor2 locales,27original nativecaptures with byte/hash proof,
+58sourcebindings,20unchanged business-table fingerprints, cleanupPASS. This
+is exact39 helper regression only, not changed41 or report/C14 completion.
+First generic root receipt reader incorrectly expected report.sources for
+manager; actual manager.sourceBindings schema read and corrected, original
+KeyError retained as tooling error rather than product/CI failure.
+
+Calendar38007879389 and source HR-recordingjob114080793477 justcompleted
+SUCCESS, content acceptance stillPENDING. Native/full report remains FAIL;
+first exact regression stillFAIL beforePG. Current85DONE/76open/61% and
+WF-C14-003 PLANNED/C12PARTIAL remain unchanged.
