@@ -258,3 +258,30 @@ largeZIPlocaldownload/CRC NOT RUN, no claim. Naturaldeploy114192140124 RUNNING
 atomicstage; download/deploy/publicfullSHA/ping/privacy acceptance stillPENDING.
 Next actualterminalnormalrelease/fullroot+peer/pinnedpublic → frozenfb227 draft
 publication/separate7lane hostedruntime. No sourcepush/operationalclosurecredit.
+
+## Own normal exactmain release fully independently accepted
+
+Supersedes prior deploy/public PENDING labels. Own ordinaryM7e58cb3f618b53567df8df54bb9d9b89fed316da
+normaldeploy38043801893 attempt1 push/main actual4normalSUCCESS/3manualSKIP no credit.
+Deploy114192140124/retention114193034895 actualSUCCESS; retention hasno checkout,
+boundvia actualjobhead/fullruntimetarget/steps, no sourcecheckoutclaim. Immutable
+artifact11667007823/444963269B API=actualupload=actualdownload SHA
+76518ab80fbecccde2b128a517a26651966f0f969afab8b6dd7344e744e7b38d; atomic/fullmarker/
+ping/login+hashedassets actualstepsSUCCESS. Root independently recomputes974/
+1546routeinclroot, exact ordinary[B339,H6f58]/tree3dd4/source/C equal. Ownmain
+compiler252806B actual1162/35/EXIT2/strict64/critical0/owned0/globalNONCLEAN;
+quality382399B actual18/alloldstillfail/noNew. Rootfirstquality/build originals
+byteequal finalcapture. Local444MBZIPdownload/CRC/content NOTRUN on Contabo;
+officialupload/downloaddigest+verification accepted, no localZIPclaim.
+Current pinned13 canonicalTLS0 fullM→ping→fullM andsix anonymousGET401/307exact
+callbacks PASS root; peer independentlynineGET fullM bracket/TLS0/address/ping/
+privacy PASS. No authenticatedproductionHR ordevice/human/operationscredit.
+Independentfinal44955B SHA40c5229183e1adb4fe2c29c7e37af843c8d70e35d190f86194b053ad3f545f72
+accepted/noP0/P1/P2; all472original inventory125883B SHAf75d40f1c91c66c3b78237c93af2c6162eb06ab7b99d746b9958f2abf8d06e5c.
+Originalpeerretention checkoutassumption readerfailedbeforeadmission preserved;
+separatev2 admits true metadata-only retention andkeeps three realcheckoutsM.
+No CI/sourcefailure/rerun, nobaseline/role/route/access/Support change. Phase08
+keeps actualownrelease/root+peerwholeoriginals/errors. CurrentH6f58 frozenclean.
+Accounting85/161DONE76open61%, C6-006/C12PARTIAL/C14OPEN. Currentrelease complete.
+Next freshfrozenfb227 source guard→dependentdraft→oneexact7lane hostedsource
+runtime; new19pendingrequest/audit totals remain PLANNED until actualexecution.
