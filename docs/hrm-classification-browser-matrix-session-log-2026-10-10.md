@@ -403,3 +403,38 @@ NOT_APPLIED/RUNTIME_NOTRUN; independent review requested. Next complete
 original a161 receipts, actual form closure evidence, then reviewed narrow
 test repair and fresh whole exact-source gates. Phase07–09 scanner3commits
 17104B no leaks. Accounting85/76/61%, C12 PARTIAL/C14stillopen.
+
+## Actual a161 complete manual-form matrix passes; whole source blocked by test literal
+
+Completed HRjob114108723307 SUCCESS. ZIP11656862823/3816681B/SHA
+45d8775a9d13f4b32c1b3662bb0462e9d3c03d41afd2cb1c4535fb16dd51bf2b
+API/size/allCRC/members verified, checkedsource whole12533 tree exact. Root
+complete artifact reader accepts20cases/12cells/24manual linked24immutable
+audits/108focus(12region intersections+96fully bounded controls)/48actual
+partial+complete private-reason capture refusals/3native21originalcaptures,
+19sources/seven exact production migration extracts/eight unchanged fact
+tables/populated two-tenant controls/forcedRLS/cleanup. No original audits
+on exact replay; original MFA/role/foreign/reopened/revoked negatives pass.
+
+Same originally failing AZ320 empty-submit now actual left93/right291,
+width198/height56, clip77..307,top56..887. All96 individual focused heights
+at least43px(actual measurement with1px tolerance); no horizontal/vertical
+focused-control clipping. Root actually viewed four unaltered native640px
+PNG originals across AZ/RU/EN: focused blank reasons, wrapped hints and AZ
+submit; EN post-record frame shows queue/panelclosed, not a visible status
+announcement. RU submit partly below the textarea-focused frame, but its
+separate focused-submit bounds pass. Fixed header/dev issue badge overlap
+portions of samples, retained; no whole-page occlusion/WCAG/humanAT/physical
+device or all21image visual-claim. Tall scrollable table remains deliberate.
+Phase11 stores ZIP plus exact original single-job APIs/log and rootcomplete/
+selectedpixel receipts. Whole workflow still IN_PROGRESS compiler with known
+strict19/18 source test-literal FAILURE, no overall source acceptance.
+
+Prepared existingtest independent2538B/SHA
+8bef3a89d49ac2bcbc826fff01aa053628e62484bcdad013d698d3dca7dfe739
+accepts same original three required classes on actual ACK+correction Button
+outputs; all other bytes/nine tests/token/privacy/localization assertions
+and baseline unchanged. Peer's first class-order reader assumption error
+preserved separately; corrected reader only, no CI rerun/source edit. Test
+patch still NOT_APPLIED/runtimeNOTRUN. Next natural wholea161 completion/
+fullcompiler original capture, apply exact reviewed test and fresh fullhead.
