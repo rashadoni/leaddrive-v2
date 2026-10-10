@@ -150,3 +150,36 @@ originals. Sourcebranch stays frozen; later evidence appends only archivejournal
 Next admit actual full eight-job source first originals, then current candidate,
 required-five and own normal release; preserve first failures before any change.
 C6-006/C12PARTIAL/C14OPEN/accounting85/76/61 unchanged.
+
+
+## 2026-10-10 12:29 UTC — first seven exact source jobs admitted
+
+Source38051065834 attempt1/current2e4b now has seven actualSUCCESS jobs: report651,
+newrecovery634, ordinarysubmission691, PG629, isolatedbuild506, HR683 and employee607.
+Fullcompiler664 still running, so whole source8 not yet accepted. No rerun or
+source/gate/baseline changes. First whole original logs, bounded artifact ZIPs,
+API/digest/size/CRC/current source bindings and scoped complete readers retained.
+New recovery actual11cases/10MFA/33literalbindings/9cells/19ordered diagnostics:
+all19 real201 commits then deliberate replyabort/actualrequestfailed/errorToast/
+retaineddraft/actualUI200 samewholebody/key/id/unchanged request-audit fingerprints;
+19PENDING+19audits/10linked9cleared/3public409/5SQLrollback/11facts/5forcedRLS/
+exact11routineidentities/13cleanup accepted independently and by root. No real
+outage/concurrency/nativeform/device/human/HR/defaultACL/history credit.
+Report33/54focus/58reflow/15bindings/22facts/21native captures; HR20/108focus/
+24manualwrites+audits/48privacy refusals/19bindings/7SQL/8facts/21native captures;
+ordinary11/10MFA/30bindings/19requests+audits/5SQL/11facts/13cleanup; oldemployee
+15/22MFA/45bindings/12prefills/50focus/6nativeproof/27captures/14newACK+audits/
+13fingerprints/8SQL admitted. Exact sourcePG actual44 tests across4files/native37/
+strict18 alloldstillfail/noNew. Isolatedbuild129737B/c372683814f9fa35f0431cda5d1903649a0db3d4a2edb199ef567580d4b1f80e
+actual974static/1546routes includesroot; skippedNext types get no compiler credit.
+Root actual current EN native report/HR empty-reason images viewed: viewport crops,
+dev1Issue overlay and duplicated HR explanatory paragraph are recorded, no
+whole-page/device/human/production claim. Complete artifact assertions remain
+separate from visible crop. Peer premature HR reader-before-download FileNotFound
+original retained; unchanged reader passed after capture. Root state reader assumed
+sixS but API advanced tosevenS; original API/error and separateactualstate qualifier
+retained. Neither was a CI/source failure or retry. Phase05 archives280files/
+52365535B firstseven originals/readers/errors/qualifications. Next actual fullcompiler
+and completeeight root+peer admission, then currentcandidate/requiredfive/ownnormal
+release. Prepared next unknown-commit-edit source remains unpublished/appunchanged.
+Accounting85/161DONE/76open/61% unchanged; C6-006/C12PARTIAL/C14OPEN.
