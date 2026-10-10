@@ -72,3 +72,20 @@ CurrentNode20syntax/diffPASS after RAM/disk/pressure inspection. Admission
 behavior/tests/database/harness/sourceindependent/hostedruntime NOTRUN; this
 unpublished helper is preparation only. Next separate allowlisted fixture/harness
 and exactjob, preserving alloldlanes andoriginalcurrent682source.
+
+
+## Separate allowlisted request fixture prepared — database NOTRUN
+
+New isolated correction SQL refuses ACK/report/classification coexistence and
+nonrestricted/current-database mismatch. It adds a tenant-forced allowed-day
+table and only request/audit INSERT plus canonical MFA nonce column UPDATE;
+Workforcefacts/decision/correction/response/grant/status writes remain ungranted.
+App request INSERT must target allowed ownlinked-agent/workday/date, optional
+matching case, TIME_CORRECTION/PENDING with a requested boundary. Syntheticaudit
+shape permits only six exact submission metadata keys matching an actual request,
+with append-only fixture guard; existing bounded network/userAgent context kept.
+Currentoriginal ACK/Todayfixture/admission/harness/job untouched. Exactproduction
+link/revision routine installation is still future harness work, not proven by
+this SQL text. gitdiffPASS; SQLsyntax/database/trigger/RLS/role/harness/CI/source
+independent checks NOTRUN. This preparation is unpublished and cannot close
+C6-006/C12/C14 or claim restore/replay/defaultACL/operational acceptance.
