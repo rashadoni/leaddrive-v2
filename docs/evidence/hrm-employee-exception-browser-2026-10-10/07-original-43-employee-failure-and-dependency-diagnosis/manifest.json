@@ -1,0 +1,146 @@
+{
+  "archivedAtUtc": "2026-10-10T05:07:28.914433+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-employee-exception-43-original-failure-archive-snapshot/additional-original-readers/hrm-employee-exception-2b-hr-regression-peer-reader-v2.py.raw-original.gz",
+      "originalBytes": 7645,
+      "originalSha256": "baa54f6bb4e157eb58381f39a816fd14ce165677a1064165be54fd0544be19c0",
+      "storedBytes": 3344,
+      "storedSha256": "9d71a4f4d5c5b9667cf9f49d753199d05b68a49dc599742e5cfb60aa726be569"
+    },
+    {
+      "path": "hrm-employee-exception-43-original-failure-archive-snapshot/additional-original-readers/hrm-employee-exception-2b-hr-regression-peer-reader-v2.stderr.log.raw-original.gz",
+      "originalBytes": 0,
+      "originalSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "storedBytes": 20,
+      "storedSha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec"
+    },
+    {
+      "path": "hrm-employee-exception-43-original-failure-archive-snapshot/additional-original-readers/hrm-employee-exception-2b-hr-regression-peer-reader-v2.stdout.json.raw-original.gz",
+      "originalBytes": 171,
+      "originalSha256": "1c0a4f2265d9c4282637a080fba9a5c5d935487f427f905ed89a0e9e507b981d",
+      "storedBytes": 157,
+      "storedSha256": "42f01b5394b7dc1186fadbcaa78412293f9ccbf0e77a8980f86ab8f9595afe03"
+    },
+    {
+      "path": "hrm-employee-exception-43-original-failure-archive-snapshot/additional-original-readers/hrm-employee-exception-2b-hr-regression-peer-reader.py.raw-original.gz",
+      "originalBytes": 7337,
+      "originalSha256": "010a203e01bbb296cdb29d3d5432736387f3096330a02f30a1814ba7addeb2af",
+      "storedBytes": 3248,
+      "storedSha256": "f08fad86fdc519d6e890be96c64279dc980fd2404140052eb8a095aa47bfbd84"
+    },
+    {
+      "path": "hrm-employee-exception-43-original-failure-archive-snapshot/additional-original-readers/hrm-employee-exception-hosted-first-failure-peer-review-43b1.json.raw-original.gz",
+      "originalBytes": 18077,
+      "originalSha256": "f068de5d94aaf65f111203b4b2e080286e54b4104cb9ca58a12a503fc9c223e3",
+      "storedBytes": 6003,
+      "storedSha256": "370efadcba85857ac6aff6f7e870de760355b3a3e0e15274493d5d4bc7913eb1"
+    },
+    {
+      "path": "hrm-employee-exception-43-original-failure-archive-snapshot/additional-original-readers/hrm-employee-exception-no-show-dependency-discovery-peer.json.raw-original.gz",
+      "originalBytes": 5833,
+      "originalSha256": "9ed58c8a25168760014451b169fc71d5c8b977f58c75a1e5029d1d6824b0feea",
+      "storedBytes": 2593,
+      "storedSha256": "f512e07d99329b4695c42e793e53921fdb6e29aebd83f01ff9d01002fc3c6206"
+    },
+    {
+      "path": "hrm-employee-exception-43-original-failure-archive-snapshot/additional-original-readers/hrm-employee-exception-root-runner-path-error-original.json.raw-original.gz",
+      "originalBytes": 541,
+      "originalSha256": "ff3e8514520a2600f4211457b4400c16f3cc11fae93b7582c715e8527601f814",
+      "storedBytes": 321,
+      "storedSha256": "0455b294201e36cef05708796c876ab6e336a044254d9c32948f652e43ef8246"
+    },
+    {
+      "path": "hrm-employee-exception-43-original-failure-archive-snapshot/hrm-employee-exception-43-first-failed-job-root/artifact-11659589633-original.zip",
+      "originalBytes": 5056,
+      "originalSha256": "344c71b20be4bc434b39e5b844022544263f1072e1e41facfd7db52a6eddeeb9",
+      "storedBytes": 5056,
+      "storedSha256": "344c71b20be4bc434b39e5b844022544263f1072e1e41facfd7db52a6eddeeb9"
+    },
+    {
+      "path": "hrm-employee-exception-43-original-failure-archive-snapshot/hrm-employee-exception-43-first-failed-job-root/artifacts-api-original.json.gz",
+      "originalBytes": 674,
+      "originalSha256": "bbdcd5e7ef923d3f487df921d45c88003dee0f14dd72ffb8041dce84fc83e297",
+      "storedBytes": 674,
+      "storedSha256": "bbdcd5e7ef923d3f487df921d45c88003dee0f14dd72ffb8041dce84fc83e297"
+    },
+    {
+      "path": "hrm-employee-exception-43-original-failure-archive-snapshot/hrm-employee-exception-43-first-failed-job-root/failed-job-root-summary.json.raw-original.gz",
+      "originalBytes": 14399,
+      "originalSha256": "b239864d94142b84debd92f95511dd9d6b2d77a041be0aadf0bd2d1433f156e2",
+      "storedBytes": 4733,
+      "storedSha256": "639caa4daa649f5c95a75865ddc2499f45f74562951cab642c57ab0913412117"
+    },
+    {
+      "path": "hrm-employee-exception-43-original-failure-archive-snapshot/hrm-employee-exception-43-first-failed-job-root/job-api-original.json.gz",
+      "originalBytes": 1002,
+      "originalSha256": "0e09cad5651e6c446f6c19a1fc9d53abdaaaefb2e6f1fcf6514debcb36370aed",
+      "storedBytes": 1002,
+      "storedSha256": "0e09cad5651e6c446f6c19a1fc9d53abdaaaefb2e6f1fcf6514debcb36370aed"
+    },
+    {
+      "path": "hrm-employee-exception-43-original-failure-archive-snapshot/hrm-employee-exception-43-first-failed-job-root/run-api-original.json.gz",
+      "originalBytes": 1544,
+      "originalSha256": "4903e4de2e534c91b69ed42aaefad2a8cc28d25831e4a8374951f43469e8399a",
+      "storedBytes": 1544,
+      "storedSha256": "4903e4de2e534c91b69ed42aaefad2a8cc28d25831e4a8374951f43469e8399a"
+    },
+    {
+      "path": "hrm-employee-exception-43-original-failure-archive-snapshot/hrm-employee-exception-43-first-failed-job-root/whole-failed-job-original.txt.gz",
+      "originalBytes": 22126,
+      "originalSha256": "9cc8001164c2338f15c1e1e2ec037a0d66f341e8b2baa9202dc41aa24f80ac12",
+      "storedBytes": 22126,
+      "storedSha256": "9cc8001164c2338f15c1e1e2ec037a0d66f341e8b2baa9202dc41aa24f80ac12"
+    },
+    {
+      "path": "hrm-employee-exception-43-original-failure-archive-snapshot/hrm-employee-exception-43-original-employee-failure-peer/artifact-original.zip",
+      "originalBytes": 5056,
+      "originalSha256": "344c71b20be4bc434b39e5b844022544263f1072e1e41facfd7db52a6eddeeb9",
+      "storedBytes": 5056,
+      "storedSha256": "344c71b20be4bc434b39e5b844022544263f1072e1e41facfd7db52a6eddeeb9"
+    },
+    {
+      "path": "hrm-employee-exception-43-original-failure-archive-snapshot/hrm-employee-exception-43-original-employee-failure-peer/artifacts-api.json.raw-original.gz",
+      "originalBytes": 822,
+      "originalSha256": "cd22041bf224b7aa1d8b7d11d112de022db7dbc7d2cc3fd770a993bf7d633450",
+      "storedBytes": 457,
+      "storedSha256": "dadd139cbf908052ff4f0da6928db9ec960ad59636215decc0789c656c0f73e3"
+    },
+    {
+      "path": "hrm-employee-exception-43-original-failure-archive-snapshot/hrm-employee-exception-43-original-employee-failure-peer/employee-exception-receipt.json.raw-original.gz",
+      "originalBytes": 13011,
+      "originalSha256": "2b359b3e5d2d117d51d185fc70c5ed3cc4990abf1131977d520f88dcab43fb82",
+      "storedBytes": 4380,
+      "storedSha256": "1ed498b341e586af7adedc1018d0b273d51d4f9bd9241ef21c6e7e737ac7ff9a"
+    },
+    {
+      "path": "hrm-employee-exception-43-original-failure-archive-snapshot/hrm-employee-exception-43-original-employee-failure-peer/job-api.json.raw-original.gz",
+      "originalBytes": 4121,
+      "originalSha256": "e9b06ce92196daafed9e6268a779a5070aeced24ab5f1f5c9ca2b6f6eb117c8e",
+      "storedBytes": 1002,
+      "storedSha256": "0e09cad5651e6c446f6c19a1fc9d53abdaaaefb2e6f1fcf6514debcb36370aed"
+    },
+    {
+      "path": "hrm-employee-exception-43-original-failure-archive-snapshot/hrm-employee-exception-43-original-employee-failure-peer/job-original.log.gz",
+      "originalBytes": 22126,
+      "originalSha256": "9cc8001164c2338f15c1e1e2ec037a0d66f341e8b2baa9202dc41aa24f80ac12",
+      "storedBytes": 22126,
+      "storedSha256": "9cc8001164c2338f15c1e1e2ec037a0d66f341e8b2baa9202dc41aa24f80ac12"
+    },
+    {
+      "path": "hrm-employee-exception-43-original-failure-archive-snapshot/hrm-employee-exception-43-original-employee-failure-peer/job-original.log.raw-original.gz",
+      "originalBytes": 104699,
+      "originalSha256": "35b77387f03f6725ddbf00759c2ebb08c2d6605030041286a0e8fdda6423daca",
+      "storedBytes": 22126,
+      "storedSha256": "9cc8001164c2338f15c1e1e2ec037a0d66f341e8b2baa9202dc41aa24f80ac12"
+    },
+    {
+      "path": "hrm-employee-exception-43-original-failure-archive-snapshot/original-source-inventory.json.gz",
+      "originalBytes": 5933,
+      "originalSha256": "81ec2b200449209e1143e3d92d82a79f85aae3bf8cb4d31d7d55956c7fd9e759",
+      "storedBytes": 1267,
+      "storedSha256": "7784df144a4b7f6b7b1050bd0e8ac6f3266ece659d66083667a26aa0e8bf8ac2"
+    }
+  ]
+}
