@@ -154,7 +154,7 @@ jobs:
       - name: Separate target and existing self-request refusal tests
         run: |
           node --test scripts/workforce-employee-correction-uncertain-submit-browser-admission.test.mjs
-          npx vitest run src/__tests__/workforce-self-request.test.ts src/__tests__/api-workforce-self-requests.test.ts src/__tests__/workforce-self-request-ui-contract.test.ts
+          npx vitest run src/__tests__/workforce-self-request.test.ts src/__tests__/api-workforce-self-requests.test.ts src/__tests__/workforce-self-request-ui-contract.test.ts src/__tests__/workforce-self-request-submission-attempt.test.ts
         env:
           VITEST_MAX_WORKERS: "1"
 
@@ -163,7 +163,7 @@ jobs:
           node scripts/ci/check-github-runner-policy.mjs
           npm run i18n:check
           npx prisma validate
-          npx eslint scripts/workforce-employee-correction-uncertain-submit-browser-evidence.mjs scripts/workforce-employee-correction-uncertain-submit-browser-admission.mjs scripts/workforce-employee-correction-uncertain-submit-browser-admission.test.mjs
+          npx eslint scripts/workforce-employee-correction-uncertain-submit-browser-evidence.mjs scripts/workforce-employee-correction-uncertain-submit-browser-admission.mjs scripts/workforce-employee-correction-uncertain-submit-browser-admission.test.mjs src/lib/workforce/self-request-submission-attempt.ts src/__tests__/workforce-self-request-submission-attempt.test.ts src/components/workforce/workforce-workbench.tsx
 
       - name: Install Chromium on hosted Ubuntu
         run: npx playwright install --with-deps chromium

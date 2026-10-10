@@ -81,3 +81,34 @@ Success reader remains unchanged; all readers runtime NOT RUN.
 Next source-only exact integrated head review/range scan, actual dependent draft
 registration observation, one exact-head first desired hosted regression.
 Accounting85/161DONE/76open/61%, C6-006/C12PARTIAL/C14OPEN unchanged.
+
+
+## 2026-10-10 13:40 UTC — bounded product fix prepared after actual red
+
+Actual firstH458d desiredFAIL run38054872660/job114221153791/full128309B/artifact
+11670955556/7204B preserved before source changes in archive663 uncertainphase04.
+Root+peer admitted all37/11cases/10MFA/19 realcommit-loss-edit409-originalretry200/
+strict SQL/facts/routines/cleanup and final desired failedstage; no rerun. Initial
+reader post-cache skip errors and exactresolved action success() qualifierv3 kept.
+Parent684 own EDE normal38054267635/main38054267679/fullM/TLS/ping/privacy8 root+
+peer release accepted, recoveryarchivephase09; no borrowed earlier-head runtime.
+Product-only bounded fix captures immutable original body/key in component memory,
+locks inputs while unknown, retries saved input instead of recomputing prefill/day,
+clears it only on canonical commit reply. Initial canonical definite refusal permits
+editing; a refused retry cannot disprove an earlier unknown commit and keeps lock.
+Original org/user/role remount boundary, server/API/auth/RLS/audit/schema/fixtures/
+baselines/old eight whole jobs unchanged. No persistent private payload storage,
+blind keyrotation, automatic personnel decision or UI section removal.
+New pure helper has25 meaningful transition cases including malformed/inconsistent
+success,5xx,unknown409/idempotency mismatch,initial canonical refusions and later
+refused retry. New explanatory status copy AZ/RU/EN. Standalone adds these tests/
+touched-file lint and literal39bindings (original37 plus helper/test). Original19
+flows retained; two actual additional refusal controls planned: real initial409
+invalid time editable/no writes, then deliberately corrupted transport copy with
+real schema400 after unknown commit remains locked/original body+key/hashes stable.
+Controlled negative transport is not a real outage/auth/device/HR observation.
+Host targetedVitest NOT RUN: no dependencies in dedicated worktree; hosted job
+includes it. Full build/compiler/browser/SQL NOT RUN on Contabo per workload rule.
+Actual small i18n/syntax/runner55/diff checks captured separately; next exactsource
+independent review and actual full old8+focused positive/current/five/own release.
+Accounting85/76/61 and all partial operational/device gates unchanged.

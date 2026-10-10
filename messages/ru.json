@@ -25734,6 +25734,7 @@
     "selfRequestSubmitted": "Запрос отправлен на проверку.",
     "selfRequestAlreadySubmitted": "Этот запрос уже отправлен на проверку.",
     "selfRequestSubmitFailed": "Не удалось отправить запрос.",
+    "selfRequestUncertainHint": "Результат отправки пока неизвестен. Повторите этот запрос, чтобы подтвердить его, прежде чем менять данные.",
     "selfRequestCancelled": "Ожидающий запрос отменён.",
     "selfRequestAlreadyCancelled": "Этот ожидающий запрос уже отменён.",
     "selfRequestCancel": "Отменить ожидающий запрос",

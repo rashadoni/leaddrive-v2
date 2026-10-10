@@ -23,7 +23,7 @@ const receipts = {
   checkedMergeSha: process.env.GITHUB_SHA, startedAt: new Date().toISOString(),
   environment: "Separate hosted Chromium / canonical Auth.js MFA / disposable PostgreSQL16 and Redis",
   status: "RUNNING", cases: [], sources: [], productionRoutines: [], authenticationDiagnostics: [],
-  databaseDiagnostics: [], cleanupDiagnostics: [], recoveryDiagnostics: [], uncertainEditDiagnostics: [],
+  databaseDiagnostics: [], cleanupDiagnostics: [], recoveryDiagnostics: [], uncertainEditDiagnostics: [], refusalDiagnostics: [],
   limitations: [
     "Imported synthetic own cases and workdays only; no expected-schedule materialization or physical attendance evidence",
     "Pending correction requests only; no approval, workday correction, employee response, appeal, payroll or personnel decision",
@@ -242,6 +242,28 @@ async function submitUi(page, context, tenant, record, locale, changedTo) {
   await section.locator("#workforce-self-request-start-time").fill(`${selected.workDate}T09:15`)
   await section.locator("#workforce-self-request-reason").fill(privateReason)
   assert.equal(await button.isDisabled(), false)
+  const fieldIds = ["workforce-self-request-type", "workforce-self-request-workday", "workforce-self-request-start-time", "workforce-self-request-end-time", "workforce-self-request-reason"]
+  let initialRefusedPayload
+  if (receipts.recoveryDiagnostics.length === 0) {
+    const previousCounts = await counts(), previousRows = await fingerprints(["mtm_hrm_requests", "mtm_audit_logs"])
+    await section.locator("#workforce-self-request-end-time").fill(`${selected.workDate}T08:15`)
+    const refusedWaiter = page.waitForResponse(row => new URL(row.url()).pathname === endpoint && row.request().method() === "POST", { timeout: 120_000 })
+    refusedWaiter.catch(() => {})
+    await button.click()
+    const refused = await refusedWaiter, body = await refused.json()
+    initialRefusedPayload = refused.request().postDataJSON()
+    assert.equal(refused.status(), 409)
+    assert.deepEqual(body, { code: "WORKFORCE_SELF_REQUEST_TIME_RANGE_INVALID", error: "Requested finish time must be after requested start time" })
+    await page.getByText(body.error, { exact: true }).waitFor()
+    await page.waitForFunction(() => !document.querySelector("#workforce-self-request-reason")?.disabled)
+    assert.ok((await Promise.all(fieldIds.map(id => section.locator(`#${id}`).isDisabled()))).every(value => !value))
+    assert.ok(await section.locator("#workforce-self-request-reason").inputValue() === privateReason)
+    assert.equal(await section.locator("#workforce-self-request-end-time").inputValue(), `${selected.workDate}T08:15`)
+    assert.deepEqual(await counts(), previousCounts)
+    assert.deepEqual(await fingerprints(["mtm_hrm_requests", "mtm_audit_logs"]), previousRows)
+    receipts.refusalDiagnostics.push({ kind: "INITIAL_DEFINITE_REFUSAL", actualStatus: 409, code: body.code, allFieldsEditable: true, enteredDraftPreserved: true, rowsAndAuditUnchanged: true, sameKeyOnFollowingSubmission: null })
+    await section.locator("#workforce-self-request-end-time").fill("")
+  }
   const before = await counts()
   const recovery = {
     ordinal: receipts.recoveryDiagnostics.length + 1, phase: stage,
@@ -282,6 +304,11 @@ async function submitUi(page, context, tenant, record, locale, changedTo) {
   const failedRequest = await failedWaiter; await completedHandler
   assert.equal(faultHandlerFailed, false); assert.equal(routedPosts, 1)
   assert.equal(committedStatus, 201)
+  if (initialRefusedPayload) {
+    assert.ok(initialRefusedPayload.clientRequestId === firstPayload.clientRequestId)
+    assert.deepEqual(initialRefusedPayload, { ...firstPayload, requestedEndLocal: `${selected.workDate}T08:15` })
+    receipts.refusalDiagnostics[0].sameKeyOnFollowingSubmission = true
+  }
   assert.ok(firstReply?.success === true && firstReply.idempotent === false)
   assert.equal(failedRequest.failure()?.errorText, "net::ERR_FAILED")
   recovery.browserRequestFailed = true
@@ -297,7 +324,45 @@ async function submitUi(page, context, tenant, record, locale, changedTo) {
   recovery.retainedDraftVerified = true
   const committedRows = await fingerprints(["mtm_hrm_requests", "mtm_audit_logs"])
   await page.unroute(`**${endpoint}`)
-  const fieldIds = ["workforce-self-request-type", "workforce-self-request-workday", "workforce-self-request-start-time", "workforce-self-request-end-time", "workforce-self-request-reason"]
+  await section.getByRole("status").filter({ hasText: labels.selfRequestUncertainHint }).waitFor()
+  if (receipts.recoveryDiagnostics.length === 1) {
+    let refusedClientPayload, invalidServerStatus, invalidServerCode, invalidHandlerFailed = false, finishInvalidHandler
+    const invalidHandlerDone = new Promise(resolve => { finishInvalidHandler = resolve })
+    await page.route(`**${endpoint}`, async route => {
+      if (route.request().method() !== "POST") return route.continue()
+      try {
+        refusedClientPayload = route.request().postDataJSON()
+        assert.deepEqual(refusedClientPayload, firstPayload)
+        // Deliberately corrupt only the transport copy; exercise the real schema refusal.
+        const invalid = await route.fetch({ postData: JSON.stringify({ ...refusedClientPayload, type: "NOT_A_REQUEST_TYPE" }) })
+        const invalidBody = await invalid.json()
+        invalidServerStatus = invalid.status(); invalidServerCode = invalidBody.code
+        assert.equal(invalidServerStatus, 400)
+        assert.deepEqual(Object.keys(invalidBody).sort(), ["code", "error"])
+        assert.equal(invalidServerCode, "WORKFORCE_SELF_REQUEST_INVALID")
+        assert.equal(typeof invalidBody.error, "string")
+        await route.fulfill({ response: invalid })
+      } catch {
+        invalidHandlerFailed = true
+        try { await route.abort("failed") } catch { /* Original handler failure remains explicit. */ }
+      } finally { finishInvalidHandler() }
+    })
+    const refusedWaiter = page.waitForResponse(row => new URL(row.url()).pathname === endpoint && row.request().method() === "POST", { timeout: 120_000 })
+    refusedWaiter.catch(() => {})
+    await button.click()
+    const refused = await refusedWaiter; await invalidHandlerDone
+    assert.equal(invalidHandlerFailed, false)
+    const body = await refused.json()
+    assert.equal(refused.status(), 400); assert.equal(body.code, "WORKFORCE_SELF_REQUEST_INVALID")
+    await page.getByText(body.error, { exact: true }).waitFor()
+    assert.ok((await Promise.all(fieldIds.map(id => section.locator(`#${id}`).isDisabled()))).every(Boolean))
+    assert.equal(await button.isDisabled(), false)
+    assert.ok(await section.locator("#workforce-self-request-reason").inputValue() === privateReason)
+    assert.deepEqual(await counts(), { requests: before.requests + 1, audit: before.audit + 1 })
+    assert.deepEqual(await fingerprints(["mtm_hrm_requests", "mtm_audit_logs"]), committedRows)
+    receipts.refusalDiagnostics.push({ kind: "DEFINITE_REFUSAL_AFTER_UNKNOWN_COMMIT", actualStatus: 400, code: invalidServerCode, controlledCorruptedTransportCopy: true, actualClientBodyAndKeyUnchanged: true, fieldsStillLocked: true, originalDraftPreserved: true, rowsAndAuditUnchanged: true })
+    await page.unroute(`**${endpoint}`)
+  }
   const locked = await Promise.all(fieldIds.map(id => section.locator(`#${id}`).isDisabled()))
   assert.ok(locked.every(Boolean) || locked.every(value => !value), "Unknown-commit fields must have one coherent edit boundary")
   const editing = {
@@ -461,7 +526,7 @@ async function databaseProof() {
   receipts.database = { actualRequests: 19, actualAudits: 19, linkedRequests: 10, unlinkedAfterTypeDayChange: 9, nonownerForcedRls: true, actualRoleCatalog: catalog, unscopedRows: 0, foreignRows: 0, twoPopulatedTenants: true, knownFactControls: finalFacts, unchanged: true, automaticPersonnelDecisions: 0, corrections: 0, employeeResponses: 0, defaultAclReviewed: false, fullHistoricalReplay: false }
 }
 try {
-  const sourcePaths = ["scripts/workforce-employee-correction-uncertain-submit-browser-evidence.mjs", "scripts/workforce-employee-correction-uncertain-submit-browser-admission.mjs", "scripts/workforce-employee-correction-uncertain-submit-browser-admission.test.mjs", "scripts/ci/fixtures/workforce-employee-correction-browser.sql", "scripts/ci/fixtures/workforce-manager-today-browser.sql", ".github/workflows/workforce-exception-report-browser-evidence.yml", "scripts/_rls.mjs", "src/lib/auth.ts", "src/lib/permissions.ts", "src/lib/with-workforce-rls-auth.ts", "src/lib/workforce/actor.ts", "src/lib/workforce/self-request.ts", "src/lib/workforce/hrm-request-idempotency.ts", "src/lib/workforce/exception-linked-mutation.ts", "src/lib/workforce/exception-case-writer.ts", "src/lib/workforce/sensitive-response.ts", "src/app/api/v1/workforce/requests/route.ts", "src/app/api/v1/workforce/exceptions/mine/route.ts", "src/components/workforce/workforce-workbench.tsx", "src/components/workforce/workforce-my-exceptions.tsx", "src/app/(dashboard)/workforce/requests/page.tsx", "prisma/schema.prisma", "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql", "prisma/migrations/20260831113000_workforce_exception_correction_request_link/migration.sql", "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql", "prisma/migrations/20260927014300_workforce_exception_case_revisions_contract/migration.sql", "messages/az.json", "messages/ru.json", "messages/en.json", "package-lock.json", "scripts/workforce-employee-correction-browser-evidence.mjs", "scripts/workforce-employee-correction-browser-admission.mjs", "scripts/workforce-employee-correction-browser-admission.test.mjs", "scripts/workforce-employee-correction-recovery-browser-evidence.mjs", "scripts/workforce-employee-correction-recovery-browser-admission.mjs", "scripts/workforce-employee-correction-recovery-browser-admission.test.mjs", ".github/workflows/workforce-correction-uncertain-submit-browser-evidence.yml"]
+  const sourcePaths = ["scripts/workforce-employee-correction-uncertain-submit-browser-evidence.mjs", "scripts/workforce-employee-correction-uncertain-submit-browser-admission.mjs", "scripts/workforce-employee-correction-uncertain-submit-browser-admission.test.mjs", "scripts/ci/fixtures/workforce-employee-correction-browser.sql", "scripts/ci/fixtures/workforce-manager-today-browser.sql", ".github/workflows/workforce-exception-report-browser-evidence.yml", "scripts/_rls.mjs", "src/lib/auth.ts", "src/lib/permissions.ts", "src/lib/with-workforce-rls-auth.ts", "src/lib/workforce/actor.ts", "src/lib/workforce/self-request.ts", "src/lib/workforce/hrm-request-idempotency.ts", "src/lib/workforce/exception-linked-mutation.ts", "src/lib/workforce/exception-case-writer.ts", "src/lib/workforce/sensitive-response.ts", "src/app/api/v1/workforce/requests/route.ts", "src/app/api/v1/workforce/exceptions/mine/route.ts", "src/components/workforce/workforce-workbench.tsx", "src/components/workforce/workforce-my-exceptions.tsx", "src/app/(dashboard)/workforce/requests/page.tsx", "prisma/schema.prisma", "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql", "prisma/migrations/20260831113000_workforce_exception_correction_request_link/migration.sql", "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql", "prisma/migrations/20260927014300_workforce_exception_case_revisions_contract/migration.sql", "messages/az.json", "messages/ru.json", "messages/en.json", "package-lock.json", "scripts/workforce-employee-correction-browser-evidence.mjs", "scripts/workforce-employee-correction-browser-admission.mjs", "scripts/workforce-employee-correction-browser-admission.test.mjs", "scripts/workforce-employee-correction-recovery-browser-evidence.mjs", "scripts/workforce-employee-correction-recovery-browser-admission.mjs", "scripts/workforce-employee-correction-recovery-browser-admission.test.mjs", ".github/workflows/workforce-correction-uncertain-submit-browser-evidence.yml", "src/lib/workforce/self-request-submission-attempt.ts", "src/__tests__/workforce-self-request-submission-attempt.test.ts"]
   for (const path of sourcePaths) {
     const b = await readFile(new URL(`../${path}`, import.meta.url)); receipts.sources.push({ path, bytes: b.length, sha256: createHash("sha256").update(b).digest("hex") })
   }
@@ -487,6 +552,7 @@ try {
   assert.equal(receipts.cases.length, 11); assert.equal(receipts.authenticationDiagnostics.length, 10)
   stage = "require-edit-boundary-after-unknown-commit"
   assert.equal(receipts.uncertainEditDiagnostics.length, 19)
+  assert.equal(receipts.refusalDiagnostics.length, 2)
   assert.ok(receipts.uncertainEditDiagnostics.every(row => row.allFieldsLockedAfterUnknownCommit && row.attemptedEditPrevented), "Editing after an unknown commit must be prevented until original retry is reconciled")
   receipts.status = "PASS"
 } catch (error) {
