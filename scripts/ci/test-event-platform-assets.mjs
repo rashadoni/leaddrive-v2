@@ -363,8 +363,8 @@ const typecheckJob = githubPrChecks.slice(
 )
 assert.ok(
   typecheckJob.includes("runs-on: ubuntu-24.04")
-    && typecheckJob.includes("NODE_OPTIONS: --max-old-space-size=14336")
-    && typecheckJob.includes('LEADDRIVE_BUILD_MIN_BUDGET_KIB: "18874368"')
+    && typecheckJob.includes("NODE_OPTIONS: --max-old-space-size=16384")
+    && typecheckJob.includes('LEADDRIVE_BUILD_MIN_BUDGET_KIB: "20971520"')
     && typecheckJob.includes("timeout-minutes: 60")
     && typecheckJob.includes("ulimit -c 0")
     && typecheckJob.indexOf("Prepare bounded GitHub-hosted typecheck memory") >= 0
@@ -374,12 +374,12 @@ assert.ok(
     && typecheckJob.includes('echo "${PIPESTATUS[0]}" > tsc-exit-code')
     && typecheckJob.includes("bash scripts/ci/check-typecheck-gate.sh tsc-output.log tsc-exit-code")
     && typecheckJob.includes("node scripts/ci/check-typecheck-baseline.mjs tsc-output.log"),
-  "typecheck must retain the full compiler pass, both blockers, finite timeout and a measured budget for its bounded 14-GiB heap",
+  "typecheck must retain the full compiler pass, both blockers, finite timeout and a measured budget for its bounded 16-GiB heap",
 )
 assert.match(
   typecheckJob,
-  /- name: Prepare bounded GitHub-hosted typecheck memory\s+run: bash scripts\/ci\/prepare-hosted-build-runner\.sh\s+env:\s+LEADDRIVE_BUILD_MIN_BUDGET_KIB: "18874368"/u,
-  "the compiler must execute the hosted-only memory preflight with its own fixed 18-GiB budget",
+  /- name: Prepare bounded GitHub-hosted typecheck memory\s+run: bash scripts\/ci\/prepare-hosted-build-runner\.sh\s+env:\s+LEADDRIVE_BUILD_MIN_BUDGET_KIB: "20971520"/u,
+  "the compiler must execute the hosted-only memory preflight with its own fixed 20-GiB budget",
 )
 assert.ok(
   nextConfig.includes('webpackBuildWorker: process.env.LEADDRIVE_COLD_PRODUCTION_BUILD === "1" ? true : undefined')
