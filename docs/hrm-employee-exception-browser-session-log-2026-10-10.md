@@ -247,3 +247,33 @@ correction in three unrelated paths; preserve it before final verification.
 PR678 remains DRAFT; current source correction needs independent review,
 exact fresh hosted matrix and current-main candidate gates. No production
 mutation.85DONE/76open/61%,C6-006/C12partial,C14open unchanged.
+
+## First authenticated employee recovery failure retained and diagnosed
+
+Source0d7 run38026460209 attempt1 employee114138229105 actualFAILURE at
+injected-load-failure-and-real-refresh AssertionError source502:10, global
+page.getByRole(alert).count()==0. Original ZIP11660871189/206914B SHA
+c11fd1e536dcc72af1bc25ce38f193b0da46c840256794158336f2794a17f18e; wholelog103307B
+SHAc5a11bde64edfdd4dae3a84550b3b0f374a41e3421c3266674d255126aeb2884.
+Real enrolled MFA succeeded once, RefreshGET200 and reopenedarticlewait
+completed beforefailure.0completedcases/1focus/0native; safe counts responses1,
+audit0,cases20,decisions6;cleanupPASS. All32sourcebindings and production
+routineinstallation actualcommitted; no finaldatabase/browser acceptance.
+Rootandpeer viewed both originalpixels: injected error panel present first,
+recovered16items/errorpanel absent in failurePNG, development1Issue badge
+unchanged. Actual offendingalert identity was not recorded and remains
+NOTPROVED for this old run; scope/settling diagnosis is inference only.
+Peer23905B SHAc593c147131024ddb6676450d58655ca23573974d9acb12608992c75c7d25f64.
+
+Harness correction adds bounded16 numeric/boolean alertidentity diagnostics
+without text/privateDOM retention or DOM/CSS modification. The same actual
+own employee section must have zero alerts after recovery; EVERY outside
+alert must be positively classified via NEXTJS-PORTAL ancestry including
+shadowhost, otherwiseFAIL. This retains strict product error clearing and
+unknownalert refusal while qualifying development-only alerts; no badge
+removal or global absence claim. Actual new portalidentity/result NOT RUN.
+Productionproduct,all baselines/constraints/roles/MFA/network/RLS/audit/
+replay/capture assertions unchanged. Old0d7 remaining sourcejobs continue
+naturally; no cancellation/rerun. DraftPR678 needs independent delta review,
+new exactcurrent source/browser/database and candidate/requiredchecks before
+normal release.85DONE/76open/61%,C6-006/C12partial/C14open unchanged.

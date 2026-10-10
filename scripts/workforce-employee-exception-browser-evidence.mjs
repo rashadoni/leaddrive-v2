@@ -33,7 +33,7 @@ const receipts = {
   status: "RUNNING", cases: [], sources: [], productionRoutines: [], authenticationDiagnostics: [],
   matrix: { locales, widths, standardExpected: 9, nativeExpected: 3 }, matrixDiagnostics: [],
   nativeZoomDiagnostics: [], nativeCaptureDiagnostics: [], keyboardFocusDiagnostics: [],
-  captureDiagnostics: [], networkFaultDiagnostics: [], databaseDiagnostics: [], cleanupDiagnostics: [],
+  captureDiagnostics: [], networkFaultDiagnostics: [], recoveryAlertDiagnostics: [], databaseDiagnostics: [], cleanupDiagnostics: [],
   limitations: [
     "Synthetic isolated tenants and imported historical cases only; no real expected-schedule materialization or physical attendance evidence",
     "Employee actor is a linked AGENT under existing CRM sales read/write permission; no roles or production response flags changed",
@@ -499,7 +499,26 @@ async function loadFailureAndRecovery(tenant) {
   const response = observeWaiter(page.waitForResponse(row => new URL(row.url()).pathname === endpoint && row.request().method() === "GET"))
   await page.keyboard.press("Enter"); assert.equal((await response).status(), 200)
   await page.getByRole("article").filter({ hasText: tenant.cases.reopened.reference }).waitFor()
-  assert.equal(await page.getByRole("alert").count(), 0)
+  const ownSection = page.getByTestId("workforce-my-exceptions-boundary").locator("..")
+  assert.equal(await ownSection.count(), 1)
+  const alerts = await page.getByRole("alert").evaluateAll(elements => {
+    const ownRoot = document.querySelector('[data-testid="workforce-my-exceptions-boundary"]')?.parentElement
+    return elements.map(element => {
+      let developmentPortal = false
+      for (let ancestor = element; ancestor; ancestor = ancestor.parentNode || ancestor.host) {
+        if (ancestor.nodeName === "NEXTJS-PORTAL") developmentPortal = true
+      }
+      const box = element.getBoundingClientRect(), style = getComputedStyle(element)
+      return { insideOwnSection: ownRoot?.contains(element) === true, developmentPortal,
+        visible: box.width > 0 && box.height > 0 && style.visibility !== "hidden" && style.display !== "none" }
+    })
+  })
+  assert.ok(alerts.length <= 16, "Bounded alert identity diagnostics required")
+  receipts.recoveryAlertDiagnostics.push({ globalAlerts: alerts.length, alerts })
+  // Require the actual employee error to clear. Every other alert must be
+  // positively identified in the development portal; unknown alerts fail.
+  assert.equal(await ownSection.getByRole("alert").count(), 0)
+  assert.ok(alerts.every(alert => !alert.insideOwnSection && alert.developmentPortal))
   await ownProjection(context, tenant)
   await safeScreenshot(page, "injected-load-failure-real-recovery.png")
   receipts.networkFaultDiagnostics.push({ kind: "LOAD_FAILURE", injected: true, injectedStatus: 503, realRefreshStatus: 200, recovery: true })
