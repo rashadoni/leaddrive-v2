@@ -65,3 +65,14 @@ SQL/browser/newjob/compiler/build/fullsource8 NOT RUN, allnextcounts PLANNED.
 Parent683source7 sixSUCCESS/fullcompilerRUNNING, unchangedfrozenFB. Future
 publication/merge/ownrelease waits parentverifiedrelease andfinalexactsource
 review/freshcontrols; no source/app/role/secret/production/checkbaseline weakening.
+
+## Bounded recovery-phase failures retained before runtime
+
+Eachattempt records onlyordinal/safephase/linkboolean/precounts/actualserverstatus/
+sanitizedhandlerclass+code/abort-observed/errorToast/draft/actualUIstatus/samebody/
+sameid/stablehash booleans. No raw body/reason/clientkey/requestid/identity/error
+message is retained. A realnon201/handlerfailure cannot become successfulreplyloss;
+actualstatus andsafe failurestage remain inspectable if futurebrowser fails.
+ActualNode20syntax/diff PASS afterresources; no newruntime/browser/SQL/CI. Current
+parent683sixsourceSUCCESS/fullcompilerRUNNING, existingheadFB untouched. Future
+source-only review startedon280d checkpoint; this diagnosticsdelta needsreview.

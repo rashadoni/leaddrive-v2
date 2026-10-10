@@ -23,7 +23,7 @@ const receipts = {
   checkedMergeSha: process.env.GITHUB_SHA, startedAt: new Date().toISOString(),
   environment: "Separate hosted Chromium / canonical Auth.js MFA / disposable PostgreSQL16 and Redis",
   status: "RUNNING", cases: [], sources: [], productionRoutines: [], authenticationDiagnostics: [],
-  databaseDiagnostics: [], cleanupDiagnostics: [],
+  databaseDiagnostics: [], cleanupDiagnostics: [], recoveryDiagnostics: [],
   limitations: [
     "Imported synthetic own cases and workdays only; no expected-schedule materialization or physical attendance evidence",
     "Pending correction requests only; no approval, workday correction, employee response, appeal, payroll or personnel decision",
@@ -243,6 +243,15 @@ async function submitUi(page, context, tenant, record, locale, changedTo) {
   await section.locator("#workforce-self-request-reason").fill(privateReason)
   assert.equal(await button.isDisabled(), false)
   const before = await counts()
+  const recovery = {
+    ordinal: receipts.recoveryDiagnostics.length + 1, phase: stage,
+    linked: !changedTo, requestsBefore: before.requests, auditsBefore: before.audit,
+    realServerStatus: null, handlerFailureClass: null, handlerFailureCode: null,
+    routeAbortCompleted: false, browserRequestFailed: false, errorToastObserved: false,
+    retainedDraftVerified: false, actualUiRetryStatus: null,
+    sameUiBodyAndClientKey: false, sameUiRequestId: false, committedRowsUnchanged: false,
+  }
+  receipts.recoveryDiagnostics.push(recovery)
   let firstPayload, firstReply, committedStatus, faultHandlerFailed = false, routedPosts = 0, handlerDone
   const completedHandler = new Promise(resolve => { handlerDone = resolve })
   await page.route(`**${endpoint}`, async route => {
@@ -251,10 +260,16 @@ async function submitUi(page, context, tenant, record, locale, changedTo) {
     try {
       firstPayload = route.request().postDataJSON()
       const actual = await route.fetch({ timeout: 120_000 })
-      committedStatus = actual.status(); firstReply = await actual.json()
-    } catch { faultHandlerFailed = true }
+      committedStatus = actual.status(); recovery.realServerStatus = committedStatus
+      firstReply = await actual.json()
+    } catch (error) {
+      faultHandlerFailed = true
+      recovery.handlerFailureClass = String(error.name || "Error").replace(/[^A-Za-z]/g, "").slice(0, 80)
+      const code = String(error.code || "")
+      recovery.handlerFailureCode = /^[A-Z0-9_]{1,40}$/.test(code) ? code : null
+    }
     finally {
-      try { await route.abort("failed") } catch { faultHandlerFailed = true }
+      try { await route.abort("failed"); recovery.routeAbortCompleted = true } catch { faultHandlerFailed = true }
       handlerDone()
     }
   })
@@ -269,7 +284,9 @@ async function submitUi(page, context, tenant, record, locale, changedTo) {
   assert.equal(committedStatus, 201)
   assert.ok(firstReply?.success === true && firstReply.idempotent === false)
   assert.equal(failedRequest.failure()?.errorText, "net::ERR_FAILED")
+  recovery.browserRequestFailed = true
   await page.getByText("Failed to fetch", { exact: true }).waitFor()
+  recovery.errorToastObserved = true
   assert.deepEqual(await counts(), { requests: before.requests + 1, audit: before.audit + 1 })
   assert.ok(await section.locator("#workforce-self-request-reason").inputValue() === privateReason, "Failed reply must preserve private draft")
   assert.equal(await section.locator("#workforce-self-request-type").inputValue(), "TIME_CORRECTION")
@@ -277,17 +294,22 @@ async function submitUi(page, context, tenant, record, locale, changedTo) {
   assert.ok(await section.locator("#workforce-self-request-start-time").inputValue() === `${selected.workDate}T09:15`, "Failed reply must preserve actual start input")
   assert.equal(await section.locator("#workforce-self-request-end-time").inputValue(), "")
   assert.equal(await button.isDisabled(), false)
+  recovery.retainedDraftVerified = true
   const committedRows = await fingerprints(["mtm_hrm_requests", "mtm_audit_logs"])
   await page.unroute(`**${endpoint}`)
   const waiter = page.waitForResponse(row => new URL(row.url()).pathname === endpoint && row.request().method() === "POST", { timeout: 120_000 })
   waiter.catch(() => {})
   await button.click()
-  const response = await waiter; assert.equal(response.status(), 200)
+  const response = await waiter; recovery.actualUiRetryStatus = response.status()
+  assert.equal(response.status(), 200)
   const payload = response.request().postDataJSON(), reply = await response.json()
   assert.ok(JSON.stringify(payload) === JSON.stringify(firstPayload), "Actual UI retry must preserve complete submitted body and client key")
+  recovery.sameUiBodyAndClientKey = true
   assert.ok(reply.success === true && reply.idempotent === true && reply.data.id === firstReply.data.id, "UI retry must return same committed request")
+  recovery.sameUiRequestId = true
   assert.deepEqual(await counts(), { requests: before.requests + 1, audit: before.audit + 1 })
   assert.deepEqual(await fingerprints(["mtm_hrm_requests", "mtm_audit_logs"]), committedRows)
+  recovery.committedRowsUnchanged = true
   assert.ok(payload.reason === privateReason, "Submitted reason must match synthetic input")
   assert.equal(payload.type, "TIME_CORRECTION"); assert.equal(payload.correctionWorkdayId, selected.workdayId)
   assert.equal(payload.startDate, selected.workDate); assert.equal(payload.endDate, selected.workDate)
