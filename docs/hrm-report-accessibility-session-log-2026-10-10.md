@@ -151,3 +151,11 @@ check without changing any old lint targets, tests, thresholds or job limits.
 Targeted lint is NOT RUN here (no dependencies/host placement); new exact
 source regression job must execute it along with PG/full baseline. Full build
 is already an existing exact-source hosted gate for the use-client component.
+
+Original39 staticcheck114080860679 SUCCESS with unchanged strict18failing/
+18baselinefiles. Its baseline wrapper hides individual test output; do not
+claim an observed27 guard count from that summary. Added a separate hosted
+execution of the existing report admission guard file before the old actual
+PG gates, so exact final source produces observable finite Vitest results.
+Old baseline wrapper,18known failures, tests, conditions and checks unchanged.
+Original39 isolated build114080793543 actualSUCCESS; exact-final build pending.

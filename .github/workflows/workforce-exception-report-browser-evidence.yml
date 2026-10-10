@@ -473,6 +473,8 @@ jobs:
           src/components/workforce/workforce-exception-recorded-outcomes.tsx
           src/components/workforce/workforce-exception-report.tsx
           src/__tests__/workforce-exception-report-browser-evidence-guard.test.ts
+      - name: Report browser environment and native fixture admission guards
+        run: npx vitest run src/__tests__/workforce-exception-report-browser-evidence-guard.test.ts
       - name: Actual shared-lock and aggregate PostgreSQL gates
         run: >-
           npx vitest run
