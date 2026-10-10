@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises"
 import bcrypt from "bcryptjs"
 import { generateSecret, generateSync } from "otplib"
 import { chromium } from "playwright"
+import { createNativeZoomContext, proveNative200Zoom, captureNativeViewport, isNativeZoomPage } from "./workforce-native-browser-zoom.mjs"
 import { makeRlsTestPrisma } from "./_rls.mjs"
 
 // Separate hosted synthetic write rehearsal; never a production seed or activation tool.
@@ -48,14 +49,18 @@ const at = new Date("2025-01-01T00:00:00Z")
 const now = new Date()
 const endpoint = "/api/v1/workforce/exception-decisions"
 const queueEndpoint = "/api/v1/workforce/exceptions"
-const contexts = [], expectedWrites = [], protectedMarkers = [reason, password]
+const contexts = [], nativeZoomContexts = [], expectedWrites = [], protectedMarkers = [reason, password]
+const matrix = { locales: ["az", "ru", "en"], widths: [320, 768, 1440], standardExpected: 9, nativeExpected: 3 }
+const matrixCells = matrix.locales.flatMap(locale => [...matrix.widths.map(width => ({ locale, width, nativeZoom: false, key: locale + "-standard-" + width })), { locale, width: 320, nativeZoom: true, key: locale + "-native-320" }])
+let initialDecisionCount
 let browser, activePage, stage = "fixture-preparing"
 const receipts = {
   version: 1, candidateHead: process.env.WF_EXCEPTION_CLASSIFICATION_BROWSER_HEAD_SHA,
   checkedMergeSha: process.env.GITHUB_SHA, startedAt: now.toISOString(),
   environment: "hosted Chromium / real Auth.js / loopback Next dev / disposable PostgreSQL16 and Redis",
   status: "RUNNING", cases: [], sources: [], productionRoutines: [], authenticationDiagnostics: [], writeDiagnostics: [],
-  limitations: ["Synthetic isolated tenants and imported historical terminal decisions only", "Development bundle, not production build", "Exact production decision revision and append-only routines; no full migration replay", "Audit whitelist/append-only fixture guard is synthetic, not a production MtmAuditLog migration", "No live HR observation, physical presence, device, pilot, payroll or disciplinary evidence", "No production mutation, grants, activation, secret/access change or external message"],
+  matrix, nativeZoomDiagnostics: [], nativeCaptureDiagnostics: [], keyboardFocusDiagnostics: [], queueRegionDiagnostics: [], privacyCaptureRefusals: [], nativeZoomVerdict: "NOT RUN",
+  limitations: ["Queue table is deliberately horizontally scrollable; table-region checks prove focused visible intersection, not a whole tall table fitting one screen", "Real Tab/Enter and keyboard reason entry; no automatic loading-focus retention/human AT/whole-page WCAG acceptance", "Private reason is never photographed; a failure with a protected form value records NOT_CAPTURED rather than editing the DOM/image", "Synthetic isolated tenants and imported historical terminal decisions only", "Development bundle, not production build", "Exact production decision revision and append-only routines; no full migration replay", "Audit whitelist/append-only fixture guard is synthetic, not a production MtmAuditLog migration", "No live HR observation, physical presence, device, pilot, payroll or disciplinary evidence", "No production mutation, grants, activation, secret/access change or external message"],
 }
 function noProtected(value) {
   for (const marker of protectedMarkers) assert.equal(value.includes(marker), false, "Protected reason or database subject leaked")
@@ -137,8 +142,10 @@ async function authenticate(context, principal) {
   }
   await assertSession(context, principal)
 }
-async function contextFor(principal, locale = "en", width = 1280) {
-  const context = await browser.newContext({ baseURL: origin.href, locale: "en-US", viewport: { width, height: 900 }, serviceWorkers: "block" })
+async function contextFor(principal, locale = "en", width = 1280, nativeZoom = false) {
+  const owned = nativeZoom ? await createNativeZoomContext(origin.href, "exception-classification") : null
+  if (owned) nativeZoomContexts.push(owned)
+  const context = owned ? owned.context : await browser.newContext({ baseURL: origin.href, locale: "en-US", viewport: { width, height: 900 }, serviceWorkers: "block" })
   contexts.push(context)
   await context.addCookies([{ name: "NEXT_LOCALE", value: locale, url: origin.href }])
   await authenticate(context, principal)
@@ -225,7 +232,7 @@ async function seed() {
       if (role === "HR_ADMIN" && name === "hr") hrGrant = grant
     }
     const cases = {}
-    for (const label of key === "a" ? ["ru", "az", "en", "stale", "reopened"] : ["foreign"]) {
+    for (const label of key === "a" ? [...matrixCells.map(cell => cell.key), "stale", "reopened"] : ["foreign"]) {
       const record = await admin.workforceExceptionCase.create({ data: {
         organizationId: organization.id, agentId: agent.id, workdayId: workday.id, kind: "LATE_START", detectorVersion: "classification-browser-history-v1",
         deduplicationKey: createHash("sha256").update(`${suffix}-${key}-${label}`).digest("hex"), createdAt: at,
@@ -305,22 +312,106 @@ async function fixedFacts(tenants) {
   }
   return result
 }
-async function uiScenario(tenant, locale, width, classificationCode, appealCode) {
-  stage = `ui-${locale}-authenticate`
-  const ui = JSON.parse(await readFile(new URL(`../messages/${locale}.json`, import.meta.url), "utf8")).workforceExceptionQueue
-  const context = await contextFor(tenant.hr, locale, width)
+async function tabTo(page, locator) {
+  await locator.waitFor({ state: "visible" })
+  assert.equal(await locator.count(), 1)
+  // At most fourteen synthetic queue rows; every hop is a real keypress.
+  for (let ordinal = 0; ordinal < 256; ordinal++) {
+    if (await locator.evaluate(element => document.activeElement === element)) return
+    await page.keyboard.press("Tab")
+  }
+  assert.fail("Control not reachable through bounded real Tab navigation")
+}
+async function focusedControl(view, locator, phase, tableRegion = false) {
+  const diagnostic = await locator.evaluate(element => {
+    const box = element.getBoundingClientRect()
+    const viewport = { width: innerWidth, height: innerHeight }
+    let left = 0, right = viewport.width, top = 0, bottom = viewport.height
+    for (let ancestor = element.parentElement; ancestor; ancestor = ancestor.parentElement) {
+      const style = getComputedStyle(ancestor), bounds = ancestor.getBoundingClientRect()
+      if (["auto", "scroll", "hidden", "clip"].includes(style.overflowX)) {
+        left = Math.max(left, bounds.left + ancestor.clientLeft)
+        right = Math.min(right, bounds.left + ancestor.clientLeft + ancestor.clientWidth)
+      }
+      if (["auto", "scroll", "hidden", "clip"].includes(style.overflowY)) {
+        top = Math.max(top, bounds.top + ancestor.clientTop)
+        bottom = Math.min(bottom, bounds.top + ancestor.clientTop + ancestor.clientHeight)
+      }
+    }
+    return { focused: document.activeElement === element, focusVisible: element.matches(":focus-visible"),
+      viewport, box: { left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: box.width, height: box.height }, clip: { left, right, top, bottom } }
+  })
+  receipts.keyboardFocusDiagnostics.push({ locale: view.locale, width: view.width, nativeZoom: Boolean(view.nativeZoom), phase, tableRegion, ...diagnostic })
+  assert.equal(diagnostic.focused, true); assert.equal(diagnostic.focusVisible, true)
+  assert.ok(Object.values(diagnostic.box).every(Number.isFinite) && Object.values(diagnostic.clip).every(Number.isFinite))
+  assert.ok(diagnostic.box.width > 0 && diagnostic.box.height > 0)
+  assert.ok(diagnostic.box.left >= diagnostic.clip.left - 1 && diagnostic.box.right <= diagnostic.clip.right + 1)
+  if (tableRegion) assert.ok(diagnostic.box.bottom > diagnostic.clip.top && diagnostic.box.top < diagnostic.clip.bottom)
+  else assert.ok(diagnostic.box.top >= diagnostic.clip.top - 1 && diagnostic.box.bottom <= diagnostic.clip.bottom + 1)
+}
+async function assertCapturePrivacy(page) {
+  // Reject every nonempty reason, including interrupted partial input. Return
+  // only a boolean; never retain that private value in capture diagnostics.
+  const reasonEmpty = await page.locator('textarea[name="reason"]').evaluateAll(elements => elements.every(element => element.value === ""))
+  assert.equal(reasonEmpty, true, "Nonempty private HR reason forbids capture")
+  noProtected(await page.locator("body").innerText())
+  const values = await page.locator('input:not([type="hidden"]),textarea').evaluateAll(elements => elements.map(element => element.value).join("\n"))
+  noProtected(values)
+}
+async function provePrivateCaptureRefusal(view, kind) {
+  // Exercise the same mandatory capture admission on the actual browser DOM.
+  // Never call the screenshot sink with a protected value, even on regression.
+  await assert.rejects(() => assertCapturePrivacy(view.page), /Nonempty private HR reason forbids capture/)
+  receipts.privacyCaptureRefusals.push({ locale: view.locale, width: view.width, nativeZoom: Boolean(view.nativeZoom), kind, status: "PASS", screenshotSinkInvoked: false, rawReasonRetained: false })
+}
+async function safeScreenshot(page, name, fullPage = false) {
+  // This admission is unconditional and precedes every real screenshot sink.
+  await assertCapturePrivacy(page)
+  if (isNativeZoomPage(page)) await captureNativeViewport(page, outputDirectory + "/" + name,
+    diagnostic => receipts.nativeCaptureDiagnostics.push(diagnostic))
+  else await page.screenshot({ path: outputDirectory + "/" + name, fullPage })
+}
+async function uiScenario(tenant, cell, classificationCode, appealCode) {
+  const { locale, width, nativeZoom, key } = cell
+  const name = (nativeZoom ? "native-200-" : "standard-100-") + locale + "-" + width
+  stage = name + "-authenticate"
+  const ui = JSON.parse(await readFile(new URL("../messages/" + locale + ".json", import.meta.url), "utf8")).workforceExceptionQueue
+  const context = await contextFor(tenant.hr, locale, width, nativeZoom)
   const page = await context.newPage(); activePage = page
   page.setDefaultTimeout(30_000); page.setDefaultNavigationTimeout(120_000)
+  const view = { ...(nativeZoom ? nativeZoomContexts.at(-1) : {}), page, locale, width, nativeZoom: null }
   const response = observeWaiter(page.waitForResponse(r => new URL(r.url()).pathname === queueEndpoint && r.request().method() === "GET", { timeout: 120_000 }))
   await page.goto("/workforce/exceptions", { waitUntil: "domcontentloaded" })
   assert.equal((await response).status(), 200)
-  const record = tenant.cases[locale]
+  stage = name + "-select-scroll-region"
+  // The named section and its nested scroll region share a title. Select the
+  // actual keyboard-focusable table viewport and verify its accessible label.
+  const region = page.locator('div[role="region"][tabindex="0"]')
+  await region.waitFor({ state: "visible" })
+  assert.equal(await region.count(), 1)
+  assert.equal(await region.getAttribute("aria-label"), ui.casesTitle)
+  assert.equal(await region.getAttribute("tabindex"), "0")
+  assert.equal(await region.getByRole("table").count(), 1)
+  const namedRegionCount = await page.getByRole("region", { name: ui.casesTitle, exact: true }).count()
+  assert.ok(namedRegionCount >= 1)
+  receipts.queueRegionDiagnostics.push({ locale, width, nativeZoom, namedRegionCount, scrollableRegionCount: 1, tableCount: 1, translatedLabelMatches: true, tabindex: "0" })
+  if (nativeZoom) {
+    stage = name + "-prove-native-zoom"
+    view.nativeZoom = await proveNative200Zoom(view, outputDirectory, locale,
+      diagnostic => receipts.nativeCaptureDiagnostics.push(diagnostic))
+    receipts.nativeZoomDiagnostics.push({ locale, status: "PASS", ...view.nativeZoom })
+  }
+  await tabTo(page, region); await focusedControl(view, region, "table-region", true)
+  if (nativeZoom) await safeScreenshot(page, "classification-" + name + "-keyboard-table.png")
+  const record = tenant.cases[key]
   for (const code of [classificationCode, appealCode]) {
-    stage = `ui-${locale}-${code}`
+    stage = name + "-" + code
     const items = await queue(context), item = itemFor(items, record), action = actionFor(item, code)
     assert.equal(item.stage, "RESOLVED")
     const row = page.getByRole("row").filter({ hasText: record.reference }).filter({ has: page.getByTestId("workforce-exception-actions") })
-    await row.getByRole("button", { name: ui.actions[code], exact: true }).click()
+    const offered = row.getByRole("button", { name: ui.actions[code], exact: true })
+    await tabTo(page, offered); await focusedControl(view, offered, code + "-offered")
+    await page.keyboard.press("Enter")
     const panel = page.getByTestId("workforce-exception-action-panel")
     const textarea = panel.locator('textarea[name="reason"]')
     await textarea.waitFor({ state: "visible" })
@@ -328,16 +419,28 @@ async function uiScenario(tenant, locale, width, classificationCode, appealCode)
     let posts = 0
     const count = request => { if (new URL(request.url()).pathname === endpoint && request.method() === "POST") posts++ }
     page.on("request", count)
-    await panel.getByRole("button", { name: ui.recordAction, exact: true }).click()
+    const submit = panel.getByRole("button", { name: ui.recordAction, exact: true })
+    await tabTo(page, submit); await focusedControl(view, submit, code + "-empty-submit")
+    await page.keyboard.press("Enter")
     assert.equal(posts, 0, "Empty reason cannot submit")
-    await textarea.fill(reason)
+    await tabTo(page, textarea); await focusedControl(view, textarea, code + "-empty-reason")
+    await page.keyboard.type(reason.slice(0, 12))
+    await provePrivateCaptureRefusal(view, "PARTIAL_REASON")
+    await page.keyboard.press("ControlOrMeta+A"); await page.keyboard.press("Backspace")
+    assert.equal(await textarea.inputValue(), "")
+    const phase = code === classificationCode ? "classification" : "appeal"
+    if (nativeZoom) await safeScreenshot(page, "classification-" + name + "-" + phase + "-empty-reason.png")
+    await page.keyboard.type(reason)
+    assert.equal(await textarea.inputValue(), reason)
+    await provePrivateCaptureRefusal(view, "COMPLETE_REASON")
     const committed = observeWaiter(page.waitForResponse(r => new URL(r.url()).pathname === endpoint && r.request().method() === "POST", { timeout: 120_000 }))
     const refreshed = observeWaiter(page.waitForResponse(r => new URL(r.url()).pathname === queueEndpoint && r.request().method() === "GET", { timeout: 120_000 }))
-    await panel.getByRole("button", { name: ui.recordAction, exact: true }).click()
+    await tabTo(page, submit); await focusedControl(view, submit, code + "-submit")
+    await page.keyboard.press("Enter")
     const writeResponse = await committed
     const body = await writeResponse.json().catch(() => null)
     recordWriteDiagnostic(writeResponse, body, code)
-    assert.equal(writeResponse.status(), 201)
+    assert.equal(writeResponse.status(), 201); assert.equal(posts, 1)
     assert.ok(body && typeof body === "object"); noProtected(JSON.stringify(body)); assert.equal(body.data.decisionCode, code)
     const payload = writeResponse.request().postDataJSON()
     assert.deepEqual(Object.keys(payload).sort(), ["actionToken", "operationId", "reason"])
@@ -345,16 +448,17 @@ async function uiScenario(tenant, locale, width, classificationCode, appealCode)
     assert.equal((await refreshed).status(), 200)
     page.off("request", count)
     expectedWrites.push({ organizationId: tenant.organization.id, caseId: record.id, actorUserId: tenant.hr.id, code, operationId: payload.operationId })
+    await panel.waitFor({ state: "hidden" })
     await page.getByRole("status").filter({ hasText: ui.actions[code] }).waitFor({ state: "visible" })
-    if (locale === "en" && code === classificationCode) {
+    if (nativeZoom) await safeScreenshot(page, "classification-" + name + "-" + phase + "-recorded.png")
+    if (locale === "en" && width === 1440 && !nativeZoom && code === classificationCode) {
       const before = await decisionCounts()
       const replay = await post(context, payload, 200); assert.equal(replay.idempotent, true)
-      await post(context, { ...payload, reason: `${reason}_CHANGED` }, 409)
+      await post(context, { ...payload, reason: reason + "_CHANGED" }, 409)
       await post(context, { ...payload, operationId: randomUUID() }, 409)
       assert.deepEqual(await decisionCounts(), before)
       receipts.cases.push({ name: "exact-replay-and-conflicting-reason-and-stale-revision", status: "PASS", auditDeltaOnRetry: 0, decisionDeltaOnRetry: 0 })
     }
-    // Queue does not expose protected reason even after it is durably recorded.
     noProtected(JSON.stringify(await queue(context)))
     assert.equal(action.decisionCode, code)
   }
@@ -362,9 +466,9 @@ async function uiScenario(tenant, locale, width, classificationCode, appealCode)
   assert.equal(final.outcomeContext.classification, classificationCode === "CLASSIFY_FALSE_POSITIVE" ? "FALSE_POSITIVE" : "CONFIRMED_EXCEPTION")
   assert.equal(final.outcomeContext.appeal, appealCode.replace("APPEAL_", ""))
   assert.deepEqual(final.outcomeContext.actions, [])
-  await page.screenshot({ path: `${outputDirectory}/classification-${locale}-${width}.png`, fullPage: true })
+  if (!nativeZoom) await safeScreenshot(page, "classification-" + name + "-complete.png", true)
   await assertSession(context, tenant.hr)
-  receipts.cases.push({ name: `real-ui-${locale}-${width}`, status: "PASS", classificationCode, appealCode, protectedReasonRequired: true, directCallerCaseOrCodeAbsent: true })
+  receipts.cases.push({ name, status: "PASS", locale, width, nativeZoom, classificationCode, appealCode, protectedReasonRequired: true, directCallerCaseOrCodeAbsent: true, keyboardManualEntryAndSubmit: true })
   return context
 }
 async function denials(tenants, hrContext) {
@@ -429,6 +533,7 @@ async function databaseProof(tenants) {
       }
     })
   }
+  assert.equal(await admin.workforceExceptionDecision.count(), initialDecisionCount + expectedWrites.length, "Exact new ledger delta; no unexpected unaudited appends")
   const audits=await admin.mtmAuditLog.findMany({orderBy:{id:"asc"}})
   assert.equal(audits.length,expectedWrites.length)
   for(const write of expectedWrites) {
@@ -448,18 +553,36 @@ async function databaseProof(tenants) {
   receipts.database={nonownerForcedRls:true,populatedTwoTenantDecisionControls:true,unscopedRows:0,foreignRows:0,actualNewDecisionCount:expectedWrites.length,actualAuditCount:audits.length,exactActorReasonAndAuditLink:true,exactProductionDecisionImmutability:true,syntheticAuditGuard:true}
 }
 try {
-  for(const path of ["scripts/workforce-exception-classification-browser-evidence.mjs","scripts/ci/fixtures/workforce-exception-classification-browser.sql","scripts/ci/fixtures/workforce-manager-today-browser.sql",".github/workflows/workforce-exception-report-browser-evidence.yml","src/components/workforce/workforce-exception-queue.tsx","src/app/api/v1/workforce/exceptions/route.ts","src/app/api/v1/workforce/exception-decisions/route.ts","src/lib/workforce/exception-outcome-classification.ts","src/lib/workforce/exception-decision-service.ts","src/lib/workforce/exception-case-writer.ts","src/lib/workforce/exception-policy-draft.ts","messages/en.json","messages/ru.json","messages/az.json"]) {
+  for(const path of ["scripts/workforce-exception-classification-browser-evidence.mjs","scripts/workforce-native-browser-zoom.mjs","scripts/ci/fixtures/workforce-native-zoom-extension/manifest.json","scripts/ci/fixtures/workforce-native-zoom-extension/background.js","src/__tests__/workforce-exception-report-browser-evidence-guard.test.ts","src/lib/workforce/exception-decision-rate-limit.ts","scripts/ci/fixtures/workforce-exception-classification-browser.sql","scripts/ci/fixtures/workforce-manager-today-browser.sql",".github/workflows/workforce-exception-report-browser-evidence.yml","src/components/workforce/workforce-exception-queue.tsx","src/app/api/v1/workforce/exceptions/route.ts","src/app/api/v1/workforce/exception-decisions/route.ts","src/lib/workforce/exception-outcome-classification.ts","src/lib/workforce/exception-decision-service.ts","src/lib/workforce/exception-case-writer.ts","src/lib/workforce/exception-policy-draft.ts","messages/en.json","messages/ru.json","messages/az.json"]) {
     const raw=await readFile(new URL(`../${path}`,import.meta.url));receipts.sources.push({path,bytes:raw.length,sha256:createHash("sha256").update(raw).digest("hex")})
   }
   const tenants=await seed(),before=await fixedFacts(tenants)
+  initialDecisionCount = await admin.workforceExceptionDecision.count()
   browser=await chromium.launch({headless:true})
   let hrContext
-  for(const [locale,width,classification,appeal] of [["ru",320,"CLASSIFY_FALSE_POSITIVE","APPEAL_FULLY_UPHELD"],["az",768,"CLASSIFY_CONFIRMED_EXCEPTION","APPEAL_PARTIALLY_UPHELD"],["en",1440,"CLASSIFY_CONFIRMED_EXCEPTION","APPEAL_REJECTED"]]) hrContext=await uiScenario(tenants[0],locale,width,classification,appeal)
+  for (const cell of matrixCells) {
+    if (hrContext) await hrContext.close()
+    const classification = cell.locale === "ru" ? "CLASSIFY_FALSE_POSITIVE" : "CLASSIFY_CONFIRMED_EXCEPTION"
+    const appeal = cell.locale === "ru" ? "APPEAL_FULLY_UPHELD" : cell.locale === "az" ? "APPEAL_PARTIALLY_UPHELD" : "APPEAL_REJECTED"
+    hrContext = await uiScenario(tenants[0], cell, classification, appeal)
+  }
   assert.deepEqual(await fixedFacts(tenants),before,"Classification may append decisions/audit, but cannot change original business facts, grants or corrections")
-  receipts.fixedFacts={phase:"after-six-ui-appends-before-intentional-fixture-revocation",unchanged:true,tables:before}
+  receipts.fixedFacts={phase:"after-twenty-four-ui-appends-before-intentional-fixture-revocation",unchanged:true,tables:before}
   await denials(tenants,hrContext)
   await databaseProof(tenants)
-  assert.equal(expectedWrites.length,6);assert.equal(receipts.cases.length,11)
+  assert.equal(expectedWrites.length,24); assert.equal(receipts.cases.length,20)
+  const expectedNames = new Set(matrixCells.map(cell => (cell.nativeZoom ? "native-200-" : "standard-100-") + cell.locale + "-" + cell.width))
+  const actualMatrix = receipts.cases.filter(row => row.name.startsWith("standard-100-") || row.name.startsWith("native-200-"))
+  assert.equal(actualMatrix.length,12); assert.deepEqual(new Set(actualMatrix.map(row => row.name)),expectedNames)
+  assert.ok(actualMatrix.every(row => row.status === "PASS" && row.keyboardManualEntryAndSubmit))
+  assert.equal(receipts.nativeZoomDiagnostics.length,3)
+  assert.ok(receipts.nativeZoomDiagnostics.every(row => row.status === "PASS" && row.factor === 2))
+  assert.equal(receipts.nativeCaptureDiagnostics.length,21)
+  assert.ok(receipts.nativeCaptureDiagnostics.every(row => row.status === "PASS"))
+  assert.equal(receipts.keyboardFocusDiagnostics.length,108)
+  assert.equal(receipts.privacyCaptureRefusals.length,48)
+  assert.ok(receipts.privacyCaptureRefusals.every(row => row.status === "PASS" && row.screenshotSinkInvoked === false && row.rawReasonRetained === false))
+  receipts.nativeZoomVerdict = "PASS"
   receipts.status="PASS"
 }catch(error){
   receipts.status="FAIL";process.exitCode=1
@@ -469,9 +592,8 @@ try {
   const prismaCode = typeof error?.code === "string" && /^P\d{4}$/.test(error.code) ? error.code : null
   receipts.failure={stage,name:["AssertionError","TimeoutError","PrismaClientKnownRequestError","PrismaClientValidationError"].includes(error?.name)?error.name:"Error",sourcePosition:position?{line:Number(position[1]),column:Number(position[2])}:null,sqlState,prismaCode,diagnostic:"Original failure retained; protected raw bodies, tokens, reason, credentials and cookies omitted"}
   if(activePage&&!activePage.isClosed())try{
-    await activePage.locator('textarea[name="reason"]').evaluateAll(elements=>{for(const element of elements)element.value=""})
-    await activePage.screenshot({path:`${outputDirectory}/failure-original.png`,fullPage:true});receipts.failure.screenshot="failure-original.png";receipts.failure.syntheticReasonRedacted=true
-  }catch{receipts.failure.screenshot="NOT_CAPTURED"}
+    await safeScreenshot(activePage,"failure-original.png",true); receipts.failure.screenshot="failure-original.png"
+  }catch{ receipts.failure.screenshot="NOT_CAPTURED_PRIVATE_OR_UNAVAILABLE"; receipts.failure.originalPixelsOrDomAltered=false }
 }finally{
   // Close contexts before their browser. Preserve safe per-resource failure
   // metadata; concurrent parent/context closure previously left only FAIL.
@@ -480,12 +602,13 @@ try {
     try { await operation(); receipts.cleanupDiagnostics.push({ resource, status: "PASS" }) }
     catch (error) { receipts.cleanupDiagnostics.push({ resource, status: "FAIL", ...safeFailure(error) }) }
   }
+  for (const [index,owned] of nativeZoomContexts.entries()) await closeResource("native-profile-" + (index+1), () => owned.dispose())
   for (const [index,context] of contexts.entries()) await closeResource(`browser-context-${index+1}`, () => context.close())
   if (browser) await closeResource("browser", () => browser.close())
   await closeResource("app-prisma", () => app.$disconnect())
   await closeResource("admin-prisma", () => admin.$disconnect())
   receipts.cleanup=receipts.cleanupDiagnostics.every(result=>result.status==="PASS")?"PASS":"FAIL"
-  if(receipts.cleanup==="FAIL"){receipts.status="FAIL";process.exitCode=1}
+  if(receipts.cleanup==="FAIL"){receipts.status="FAIL";receipts.nativeZoomVerdict="FAIL CLEANUP";process.exitCode=1}
   receipts.completedAt=new Date().toISOString()
   noProtected(JSON.stringify(receipts))
   await writeFile(`${outputDirectory}/exception-classification-receipt.json`,JSON.stringify(receipts,null,2)+"\n",{flag:"wx"})
