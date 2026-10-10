@@ -20,6 +20,7 @@ import {
   type FinanceNotifSettings,
 } from "@/lib/finance/notification-settings"
 import { sendFinanceTelegram } from "@/lib/finance/telegram-send"
+import { escapeHtml as esc } from "@/lib/finance/escape-html"
 
 /** Load notification settings for an organization */
 async function getNotifSettings(orgId?: string): Promise<FinanceNotifSettings> {
@@ -121,6 +122,11 @@ function fmtDate(d: Date | string): string {
 }
 
 // ─── Notification types ────────────────────────────────────────────────
+//
+// `tgText` and `emailHtml` are HTML: every value that comes from a record goes
+// in through `esc()`, and only the template's own tags are markup. The email
+// subject and the in-app title and message are plain text and take the values
+// as they are.
 
 /** New overdue bills detected */
 export async function notifyOverdueBills(bills: { billNumber: string; vendorName: string; amount: number; dueDate: Date | string }[], orgId?: string) {
@@ -128,14 +134,13 @@ export async function notifyOverdueBills(bills: { billNumber: string; vendorName
   const settings = await getNotifSettings(orgId)
   const total = bills.reduce((s, b) => s + b.amount, 0)
   const cur = getCurrencySymbol()
-  const list = bills.slice(0, 10).map((b) => `${b.billNumber} — ${b.vendorName}: ${fmt(b.amount)} ${cur} (due ${fmtDate(b.dueDate)})`).join("\n")
 
   let tgText = `🔴 <b>Overdue: ${bills.length} bill(s) for ${fmt(total)} ${cur}</b>\n\n`
-  bills.slice(0, 10).forEach((b) => { tgText += `• ${b.billNumber} — ${b.vendorName}: <b>${fmt(b.amount)} ${cur}</b> (due ${fmtDate(b.dueDate)})\n` })
+  bills.slice(0, 10).forEach((b) => { tgText += `• ${esc(b.billNumber)} — ${esc(b.vendorName)}: <b>${fmt(b.amount)} ${cur}</b> (due ${fmtDate(b.dueDate)})\n` })
   if (bills.length > 10) tgText += `\n...and ${bills.length - 10} more\n`
   tgText += `\n📎 <a href="${APP_URL}/finance?tab=payables">Open payables</a>`
 
-  const emailHtml = `<h2>Overdue: ${bills.length} bill(s) for ${fmt(total)} ${cur}</h2><ul>${bills.slice(0, 10).map((b) => `<li>${b.billNumber} — ${b.vendorName}: <b>${fmt(b.amount)} ${cur}</b></li>`).join("")}</ul><p><a href="${APP_URL}/finance?tab=payables">Open payables</a></p>`
+  const emailHtml = `<h2>Overdue: ${bills.length} bill(s) for ${fmt(total)} ${cur}</h2><ul>${bills.slice(0, 10).map((b) => `<li>${esc(b.billNumber)} — ${esc(b.vendorName)}: <b>${fmt(b.amount)} ${cur}</b></li>`).join("")}</ul><p><a href="${APP_URL}/finance?tab=payables">Open payables</a></p>`
 
   await sendToChannels(settings.overdue, settings, orgId, tgText,
     `Overdue: ${bills.length} bill(s) for ${fmt(total)} ${cur}`, emailHtml,
@@ -150,10 +155,10 @@ export async function notifyOverdueInvoices(invoices: { invoiceNumber: string; c
 
   const cur = getCurrencySymbol()
   let tgText = `🔴 <b>Overdue A/R: ${invoices.length} invoice(s) for ${fmt(total)} ${cur}</b>\n\n`
-  invoices.slice(0, 10).forEach((inv) => { tgText += `• ${inv.invoiceNumber} — ${inv.companyName}: <b>${fmt(inv.amount)} ${cur}</b>\n` })
+  invoices.slice(0, 10).forEach((inv) => { tgText += `• ${esc(inv.invoiceNumber)} — ${esc(inv.companyName)}: <b>${fmt(inv.amount)} ${cur}</b>\n` })
   tgText += `\n📎 <a href="${APP_URL}/finance?tab=receivables">Open receivables</a>`
 
-  const emailHtml = `<h2>Overdue A/R: ${invoices.length} invoice(s) for ${fmt(total)} ${cur}</h2><ul>${invoices.slice(0, 10).map((inv) => `<li>${inv.invoiceNumber} — ${inv.companyName}: <b>${fmt(inv.amount)} ${cur}</b></li>`).join("")}</ul><p><a href="${APP_URL}/finance?tab=receivables">Open receivables</a></p>`
+  const emailHtml = `<h2>Overdue A/R: ${invoices.length} invoice(s) for ${fmt(total)} ${cur}</h2><ul>${invoices.slice(0, 10).map((inv) => `<li>${esc(inv.invoiceNumber)} — ${esc(inv.companyName)}: <b>${fmt(inv.amount)} ${cur}</b></li>`).join("")}</ul><p><a href="${APP_URL}/finance?tab=receivables">Open receivables</a></p>`
 
   await sendToChannels(settings.overdue, settings, orgId, tgText,
     `Overdue A/R: ${invoices.length} invoice(s) for ${fmt(total)} ${cur}`, emailHtml,
@@ -180,8 +185,8 @@ export async function notifyUpcomingDeadlines(
     tgText += `\n<b>📤 To pay (${bills.length}, ${fmt(total)} ${cur}):</b>\n`
     emailHtml += `<h3>To pay (${bills.length}, ${fmt(total)} ${cur})</h3><ul>`
     bills.slice(0, 5).forEach((b) => {
-      tgText += `• ${b.billNumber} — ${b.vendorName}: ${fmt(b.amount)} ${cur} (due ${fmtDate(b.dueDate)})\n`
-      emailHtml += `<li>${b.billNumber} — ${b.vendorName}: ${fmt(b.amount)} ${cur}</li>`
+      tgText += `• ${esc(b.billNumber)} — ${esc(b.vendorName)}: ${fmt(b.amount)} ${cur} (due ${fmtDate(b.dueDate)})\n`
+      emailHtml += `<li>${esc(b.billNumber)} — ${esc(b.vendorName)}: ${fmt(b.amount)} ${cur}</li>`
     })
     emailHtml += "</ul>"
     summary += `${bills.length} to pay`
@@ -191,8 +196,8 @@ export async function notifyUpcomingDeadlines(
     tgText += `\n<b>📥 Awaiting payment (${invoices.length}, ${fmt(total)} ${cur}):</b>\n`
     emailHtml += `<h3>Awaiting payment (${invoices.length}, ${fmt(total)} ${cur})</h3><ul>`
     invoices.slice(0, 5).forEach((inv) => {
-      tgText += `• ${inv.invoiceNumber} — ${inv.companyName}: ${fmt(inv.amount)} ${cur}\n`
-      emailHtml += `<li>${inv.invoiceNumber} — ${inv.companyName}: ${fmt(inv.amount)} ${cur}</li>`
+      tgText += `• ${esc(inv.invoiceNumber)} — ${esc(inv.companyName)}: ${fmt(inv.amount)} ${cur}\n`
+      emailHtml += `<li>${esc(inv.invoiceNumber)} — ${esc(inv.companyName)}: ${fmt(inv.amount)} ${cur}</li>`
     })
     emailHtml += "</ul>"
     summary += `${summary ? ", " : ""}${invoices.length} awaiting`
@@ -210,8 +215,8 @@ export async function notifyPaymentOrderExecuted(order: {
   orderNumber: string; counterpartyName: string; amount: number; currency: string; purpose: string
 }, orgId?: string) {
   const settings = await getNotifSettings(orgId)
-  const tgText = `✅ <b>Payment order executed</b>\n\n📋 ${order.orderNumber}\n🏢 ${order.counterpartyName}\n💰 <b>${fmt(order.amount)} ${order.currency}</b>\n📝 ${order.purpose}\n\n📎 <a href="${APP_URL}/finance?tab=payments">Open payments</a>`
-  const emailHtml = `<h2>Payment order executed</h2><p><b>${order.orderNumber}</b> — ${order.counterpartyName}</p><p>Amount: <b>${fmt(order.amount)} ${order.currency}</b></p><p>${order.purpose}</p><p><a href="${APP_URL}/finance?tab=payments">Open payments</a></p>`
+  const tgText = `✅ <b>Payment order executed</b>\n\n📋 ${esc(order.orderNumber)}\n🏢 ${esc(order.counterpartyName)}\n💰 <b>${fmt(order.amount)} ${esc(order.currency)}</b>\n📝 ${esc(order.purpose)}\n\n📎 <a href="${APP_URL}/finance?tab=payments">Open payments</a>`
+  const emailHtml = `<h2>Payment order executed</h2><p><b>${esc(order.orderNumber)}</b> — ${esc(order.counterpartyName)}</p><p>Amount: <b>${fmt(order.amount)} ${esc(order.currency)}</b></p><p>${esc(order.purpose)}</p><p><a href="${APP_URL}/finance?tab=payments">Open payments</a></p>`
 
   await sendToChannels(settings.paymentOrders, settings, orgId, tgText,
     `PO ${order.orderNumber} executed — ${fmt(order.amount)} ${order.currency}`, emailHtml,
@@ -223,8 +228,8 @@ export async function notifyPaymentOrderPending(order: {
   orderNumber: string; counterpartyName: string; amount: number; currency: string; purpose: string
 }, orgId?: string) {
   const settings = await getNotifSettings(orgId)
-  const tgText = `🔔 <b>Payment order pending approval</b>\n\n📋 ${order.orderNumber}\n🏢 ${order.counterpartyName}\n💰 <b>${fmt(order.amount)} ${order.currency}</b>\n📝 ${order.purpose}\n\n📎 <a href="${APP_URL}/finance?tab=payments">Approve / Reject</a>`
-  const emailHtml = `<h2>Payment order pending approval</h2><p><b>${order.orderNumber}</b> — ${order.counterpartyName}</p><p>Amount: <b>${fmt(order.amount)} ${order.currency}</b></p><p>${order.purpose}</p><p><a href="${APP_URL}/finance?tab=payments">Approve / Reject</a></p>`
+  const tgText = `🔔 <b>Payment order pending approval</b>\n\n📋 ${esc(order.orderNumber)}\n🏢 ${esc(order.counterpartyName)}\n💰 <b>${fmt(order.amount)} ${esc(order.currency)}</b>\n📝 ${esc(order.purpose)}\n\n📎 <a href="${APP_URL}/finance?tab=payments">Approve / Reject</a>`
+  const emailHtml = `<h2>Payment order pending approval</h2><p><b>${esc(order.orderNumber)}</b> — ${esc(order.counterpartyName)}</p><p>Amount: <b>${fmt(order.amount)} ${esc(order.currency)}</b></p><p>${esc(order.purpose)}</p><p><a href="${APP_URL}/finance?tab=payments">Approve / Reject</a></p>`
 
   await sendToChannels(settings.paymentOrders, settings, orgId, tgText,
     `PO ${order.orderNumber} pending — ${fmt(order.amount)} ${order.currency}`, emailHtml,
@@ -239,8 +244,8 @@ export async function notifyBillPaymentRecorded(bill: {
   const emoji = bill.remainingBalance <= 0 ? "✅" : "💸"
   const status = bill.remainingBalance <= 0 ? "Fully paid" : `Remaining: ${fmt(bill.remainingBalance)} ${bill.currency}`
 
-  const tgText = `${emoji} <b>Bill payment recorded</b>\n\n📋 ${bill.billNumber} — ${bill.vendorName}\n💰 Paid: <b>${fmt(bill.paymentAmount)} ${bill.currency}</b>\n📊 ${status}\n\n📎 <a href="${APP_URL}/finance?tab=payables">Open payables</a>`
-  const emailHtml = `<h2>Bill payment: ${bill.billNumber}</h2><p>${bill.vendorName}</p><p>Paid: <b>${fmt(bill.paymentAmount)} ${bill.currency}</b></p><p>${status}</p><p><a href="${APP_URL}/finance?tab=payables">Open payables</a></p>`
+  const tgText = `${emoji} <b>Bill payment recorded</b>\n\n📋 ${esc(bill.billNumber)} — ${esc(bill.vendorName)}\n💰 Paid: <b>${fmt(bill.paymentAmount)} ${esc(bill.currency)}</b>\n📊 ${esc(status)}\n\n📎 <a href="${APP_URL}/finance?tab=payables">Open payables</a>`
+  const emailHtml = `<h2>Bill payment: ${esc(bill.billNumber)}</h2><p>${esc(bill.vendorName)}</p><p>Paid: <b>${fmt(bill.paymentAmount)} ${esc(bill.currency)}</b></p><p>${esc(status)}</p><p><a href="${APP_URL}/finance?tab=payables">Open payables</a></p>`
 
   await sendToChannels(settings.billPayments, settings, orgId, tgText,
     `Payment: ${bill.billNumber} — ${fmt(bill.paymentAmount)} ${bill.currency}`, emailHtml,
