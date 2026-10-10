@@ -183,3 +183,35 @@ retained. Neither was a CI/source failure or retry. Phase05 archives280files/
 and completeeight root+peer admission, then currentcandidate/requiredfive/ownnormal
 release. Prepared next unknown-commit-edit source remains unpublished/appunchanged.
 Accounting85/161DONE/76open/61% unchanged; C6-006/C12PARTIAL/C14OPEN.
+
+
+## 2026-10-10 12:38 UTC — complete source8 accepted; PR684 READY
+
+All eight jobs completed naturallySUCCESS attempt1 on exact2e4b; no source rerun.
+Root complete fresh capture has six API/digest/size/CRC artifactZIPs, all8 first
+whole logs byteequal final and all5 firstbrowserZIPs byteequal final. All registered
+job identities/checkouts/conditional failure-only skips/sourcebaseline bytes verified.
+Current fullcompiler whole256086B/SHAefde6f97232526c92764b27dfc21a9a8cbb63fc4961e5cb13bba2e37b6eb8a27,
+raw179299B/b6b9ee71a33aa9f683f81b2a4879597b63099a4d23ae794e1f71c0ba39536df6:
+actual1162/35/EXIT2/strict64/critical0/owned0/globalNONCLEAN. Raw bytes happen to
+match earlier source compiler, but this is actual current job/checkout/artifact,
+not transferred prior execution. First currentcompiler log preserved separately.
+Peer completev2 receipt24574B/59e5fb524ed11b362c1e2c0f8cb9911b3024ec56e5451da3b4433badbc505595,
+210-original inventoryf84d458cca330b90364606360860abe8076ec6e3cca3a7f158dc520274f13e03;
+all8 App15368/S/exactH, all8firstwholelogs/all6firstZIPs byteequalfinal independently
+admitted. First aggregate v1 guessed report status-key and KeyError; original/
+reader/error retained, separate v2 exact component-key/status allowlist passed.
+No source/CI/predicate failure or rerun. Whole oldEMP current session observations
+19 are bounded actual values, not an imposed prior count. Screenshot badge/crop/
+date/duplicate-text limits retained; no native-form/device/human/realops credit.
+Phase06 archives342files69948782B complete originals/readers/errors/qualification.
+FreshmainBFE/draft684/H2e4b/C18f64568ac68dfca227bb1ca73535ae580b19dcc exactordinary
+parents[BFE,H]/treef66d equalH/clean source confirmed. Two-ref FETCH_HEAD initially
+selectedmain; that output supplied no candidate equality. Single-ref fetch then
+proved actual candidate explicitly. PR684 markedREADY unchangedH at12:38UTC:
+currentfourbrowser38052702743 and actualrequiredPRchecks38052702763 now running.
+Older draftstatic/type and manualfour skipped jobs receive no execution credit.
+No684 merge/ownrelease yet. Next currentC completefour and actualfive, freshrefs/
+protection/exclusions/archive/chain guard, ordinary own merge then own exact normal
+main/compiler/artifact/public smoke root+peer. FutureD464 only source-prepared,
+unpublished and no app/bugfix/runtime claim. Accounting85/76/61 unchanged.
