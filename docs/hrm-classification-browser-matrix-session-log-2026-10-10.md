@@ -216,3 +216,139 @@ Fresh host8.8GB available/259GB disk, PSI0.38; all heavy gates remain hosted,
 no Mac/local install/build/browser/compiler/PG. Next checkpoint reviewed narrow
 correction, normal push and full fresh source gates on its exact SHA.
 Accounting85 DONE/76open/61%; C12 PARTIAL/C14-003 PLANNED unchanged.
+
+## Corrected0CD normal-pushed; separate fresh hosted run
+
+Final0cd2866a83b0b3e95bba24cd22f02ad037da1a62 source harness exactly equals
+independently reviewed prepared candidate. Only source delta and append-only
+journal committed after complete original D8E outcome capture. Tiny syntax/
+whitespace and gitleaks1commit/7338B/no leaks PASS; no local heavy gates.
+PR674 remains draft and now points0CD. Fresh source38015241105 attempt1
+IN_PROGRESS, old D8E run preserved whole FAILURE, not rerun/cancelled. New
+draft mirror38015242179 SKIPPED gets no execution credit. Phase04 archives
+all original D8E APIs/wholelogs/ZIPs, actual compiler raw+strict readers, report
+full-content proof and first-failure peer's original405-warmup reader error.
+Initial peer expected200 from GET warmup; actual405 is original POST-only
+policy; correction changed reader only. No CI/source baseline weakening.
+No runtime transfer into0CD, no new matrix/task/productionHR acceptance.
+Next actual0CD selector-count proof and full matrix/PG/strict/compiler/build
+independent acceptance, preserve all further first errors and repeat results.
+
+## First0CD runtime proves selector and exposes actual product form clipping
+
+HR browser114103937266/source38015241105 actual FAILURE. Original ZIP
+11655980927/51,307B/digestc767b53871b1595b12b68098092160e790f56d1cec94f403f329aeec3ee2934b
+and whole log/API/PNG checked by root and independent peer. Original safe image
+viewed; no edits. Actual region counts named2/scrollable1/table1/translated
+label=true/tabindex0 prove selected target. Table focused-visible intersection
+and offered action full bounds PASS. Empty-submit focused/focusVisible=true,
+box left189/right401/width212 versus actual scroll clip77..307: right overflow
+94px. Source348 horizontal assertion FAIL, zero cases/manual writes/private
+capture-refusals; native NOT RUN, MFA PASS and cleanup4/4 PASS.
+
+Independent11718B/SHA974539710fe9b34e7bc6f417d546d8acb6c3730c1e2d84fde71027234a2b7178
+identifies blocking product P2 at inline colSpan form/action row sizing, not
+a need to add flex-wrap (it already exists). Initial peer reader guessed
+absent separate-actions file; corrected to actual inline source only, no CI
+rerun or gate modification. Original safe D8E Error cause remains historically
+qualified inference; current actual counts demonstrate old broad ambiguity.
+
+Source0CD independent2101B/SHA8e9d26157d3e0d5a0d44af19aa59e0b35daaeac769b377c0d43bf605b4abfbf6
+confirms exact prepared selector delta and unchanged all other source/gates.
+Phase05 archives actual product failure and current source/independent reviews.
+Other four first0CD lanes continue naturally, no cancellation/corrective push.
+
+Applying adapt with mandatory impeccable context preparation: existing
+.impeccable.md confirmed global operational/evidence-led LeadDrive tone and
+light/dark orange shell; HR audience/manual purpose supplied explicitly by user.
+No new design interview/font/palette/section/information architecture change.
+Prepared-only eight-class-string correction binds action/form width to named
+scroll-region inline size minus existing2rem cell padding, wraps long buttons
+at min44px, and makes desktop form columns depend on actual container. Official
+Tailwind4/W3C container-unit semantics consulted; no new dependency. Current
+source untouched while first0CD run continues; no TSX/lint/build/runtime PASS
+for prepared fix. Physical devices/humanAT NOT RUN (no approved physical
+environment); synthetic/native-hosted results cannot close whole C14/C12.
+Next independent prepared UI review, full original0CD completion/capture,
+then source checkpoint/push and fresh actual exact-head hosted acceptance.
+
+## Corrected container-form prepared source independently reviewed; original proposal retained
+
+Initial prepared style-only proposal used break-words, absent from actual
+pinned Tailwind4.2.2. Independent source-only P3 finding1253B/SHA
+78f083a3033bf4ab4c75e04de675267a064603ca53d2498ab20fab76b0f33d25
+is retained with byte-exact original patch/source/root semantic receipt;
+original root class-list review is superseded only for this utility. No
+published source or runtime ever used that proposal. Corrected proposal
+uses wrap-break-word; exact corrected patchSHA4c11a770ff0fd2c4048bf2f276908db3794acea2e42d94eb1e6257e2f9ab2b16,
+corrected TSXSHAaa0a38748e5174b59e2e3cbec35f893651532d8a662fd34954016e8c67798fee.
+Independent final prepared review4399B/SHA
+a7eda849a889fd35339048df6f2acebdf17271dbe3c3b2fee0926f921db9a2f2
+accepts exactly eight className changes; all other source bytes identical0CD.
+No remaining source P0/P1/P2, but actual94px clipping remains OPEN pending
+fresh12cell browser proof. NOT APPLIED; new CSS/TSX/lint/build/runtime NOT RUN.
+
+Independent actual0CD PostgreSQL/regression/build13913B/SHA
+5f912387ad6727651d52370de4f72de0e052cd5542663877f6ced1417c5f30c5
+accepts guard31, realPG44, strict18 unchanged,973 lineage/baselines, isolated
+production bundle973pages. Inherited dashboard trace-copy ENOENT retained;
+internal build typevalidation SKIP not credited. Source compiler still
+IN_PROGRESS at this checkpoint, run38015241105 is not cancelled or rerun.
+
+Phase06 retains original proposal, actual source-only finding, correction
+and independent receipts. Next wait for whole original0CD completion and
+capture every lane/raw artifact before applying reviewed corrected source.
+Accounting stays85/161,76open,61%; C12 PARTIAL, C14 incomplete.
+
+## Whole original0CD completed and captured before any product correction
+
+38015241105 attempt1 naturally COMPLETED FAILURE at02:19:13UTC. All five
+whole logs/APIs and three original ZIPs captured with exact API SHA/size,
+CRC/member safety/source provenance. HR first actual94px clipping remains
+FAILURE, zero completed matrix cells/writes/private-refusals/native credit;
+original safe image and actual measurement preserved in phase05. Other four
+lanes actual SUCCESS. Complete report actual33cases/3native21captures/54focus
+58reflow/22immutablefacts/RLS/audit/cleanup, all15source bindings root accepted.
+Complete original artifacts are phase07, no extracted-image duplication.
+
+Actual full compiler raw178808B/SHA
+2e859d7a6f37d9df90559acdae15df39644d7e18dc29388047ad7acfb5e13691
+exit2/1158diagnostics/35families, byte-identical D8E. Actual standard critical
+reader and strict64pair/count baseline reader both PASS; task-owned zero.
+Global clean FALSE, inherited workforce diagnostics remain. Original root
+reader wrongly asserted zero for all workforce files; retained exact initial
+AssertionError receipt, corrected ownership to four actual changed paths only.
+Second root reader failed missing immutablecd935 base object; originalexit128
+retained, corrected fetch origin main only. No CI rerun/source/baseline change
+for reader corrections. Gitleaks phase06 one commit5382B no leaks.
+
+Fresh origin/main bf643689a14bc0c2ef981270f7bc0b955b2d76b5 incorporates foreign
+MTM PR675/map-zones (28paths/schema/messages), no queue/harness overlap. Next
+normal integration into own674branch preserves foreign work; reviewed corrected
+UI eight strings then exact integrated-source full hosted checks. Old source
+passes do not transfer to new whole tree; existing baseline remains unchanged.
+Prepared corrected UI still NOT APPLIED at this immutable checkpoint.
+
+## Apply reviewed responsive form to integrated current main
+
+Normal branch merge bc7068caa228b495e3152f02c9b9deaa08eef1d3 preserves current main
+bf643689a14bc0c2ef981270f7bc0b955b2d76b5 and all foreign MTM map-zones work.
+Original0CD whole FAILURE captured and published phase07 before correction.
+Independent0CD compiler6926B/SHAa8762a2c7453ee39199990213ef3687313b1d623ef78e53abd5261a1f98c6dfe
+confirms raw/globalNONCLEAN and strict unchanged; these old-head results do
+not transfer into current integrated source.
+
+Applied exact independently reviewed corrected eight-class patch4c11a770ff0fd2c4048bf2f276908db3794acea2e42d94eb1e6257e2f9ab2b16.
+Actual queue TSX byte-identical reviewed prepared23349B/SHA
+aa0a38748e5174b59e2e3cbec35f893651532d8a662fd34954016e8c67798fee.
+Controls/form follow actual scroll-region inline width minus original cell
+padding; long button labels wrap, minimum44px retained, form columns follow
+container width. All other source bytes/labels/handlers/role checks/manual
+decisions/tenant protections/reason validation and immutable audit unchanged.
+No removal/reorder or unrelated UI/Support/production activation.
+
+Local targeted whitespace/patch-application/reviewed byte identity checks
+only; full TSX/lint/typecheck/schema/browser/build NOT RUN locally per host
+contract. Next checkpoint/push this integrated source then fresh hosted five
+lanes on exact SHA. Draft stays pending; old94px defect remains unaccepted
+until measured12cell proof. Accounting85/161,76open,61%, C12 PARTIAL/C14open.

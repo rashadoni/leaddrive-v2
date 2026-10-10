@@ -337,7 +337,7 @@ export function WorkforceExceptionQueue() {
             <p className="mt-1 text-sm text-muted-foreground">{t("casesHint", { count: items.length })}</p>
           </div>
           <div
-            className="overflow-x-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="@container/workforce-queue overflow-x-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             role="region"
             tabIndex={0}
             aria-label={t("casesTitle")}
@@ -370,14 +370,14 @@ export function WorkforceExceptionQueue() {
                           {item.outcomeContext?.classification === "FALSE_POSITIVE" || item.outcomeContext?.classification === "CONFIRMED_EXCEPTION" ? <p className="mb-2 text-sm">{t(`outcomeLabels.${item.outcomeContext.classification}`)}</p> : null}
                           {["FULLY_UPHELD", "PARTIALLY_UPHELD", "REJECTED"].includes(item.outcomeContext?.appeal ?? "") ? <p className="mb-2 text-sm">{t(`outcomeLabels.${item.outcomeContext!.appeal}`)}</p> : null}
                           {actions.length > 0 ? (
-                            <div className="flex max-w-sm flex-wrap gap-2">
+                            <div className="flex max-w-[min(24rem,calc(100cqi_-_2rem))] flex-wrap gap-2">
                               {actions.map((action) => (
                                 <Button
                                   key={action.decisionCode}
                                   type="button"
                                   size="sm"
                                   variant="outline"
-                                  className="min-h-11 whitespace-normal text-left"
+                                  className="h-auto min-h-11 max-w-full whitespace-normal py-2 text-left"
                                   aria-expanded={actionOpen && selectedAction?.decisionCode === action.decisionCode}
                                   aria-controls={`workforce-exception-action-panel-${itemIndex}`}
                                   disabled={submitting}
@@ -404,13 +404,13 @@ export function WorkforceExceptionQueue() {
                         >
                           <td colSpan={10} className="bg-muted/30 px-4 py-5">
                             <form
-                              className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end"
+                              className="grid w-[calc(100cqi_-_2rem)] max-w-3xl gap-4 @3xl/workforce-queue:grid-cols-[minmax(0,1fr)_auto] @3xl/workforce-queue:items-end"
                               onSubmit={(event) => {
                                 event.preventDefault()
                                 void recordAction()
                               }}
                             >
-                              <div className="max-w-3xl space-y-3">
+                              <div className="min-w-0 max-w-3xl space-y-3 wrap-break-word">
                                 <div>
                                   <p className="font-medium">
                                     {t("actionFormTitle", {
@@ -433,11 +433,11 @@ export function WorkforceExceptionQueue() {
                                 </div> : null}
                                 {formError ? <p role="alert" className="text-sm text-destructive">{formError}</p> : null}
                               </div>
-                              <div className="flex flex-wrap gap-2 lg:justify-end">
-                                <Button type="button" variant="ghost" className="min-h-11" disabled={submitting} onClick={() => closeAction()}>
+                              <div className="flex min-w-0 flex-wrap gap-2 @3xl/workforce-queue:justify-end">
+                                <Button type="button" variant="ghost" className="h-auto min-h-11 max-w-full whitespace-normal" disabled={submitting} onClick={() => closeAction()}>
                                   {t("cancelAction")}
                                 </Button>
-                                <Button type="submit" className="min-h-11" disabled={submitting}>
+                                <Button type="submit" className="h-auto min-h-11 max-w-full whitespace-normal" disabled={submitting}>
                                   {submitting ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : null}
                                   {t("recordAction")}
                                 </Button>
