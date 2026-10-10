@@ -585,3 +585,29 @@ Immutablephase18: 5files/35939originalbytes.
 85DONE/76open/61%,C6-006/C12partial/C14open unchanged. Next actual7CA employee
 terminal originals/fullmatrix/nativephases/DB and independentreview; then
 currentcandidate/requiredchecks and normalverifiedrelease.
+
+## Completeoriginal4890 six-gates retained withactualcompiler/failure review
+
+Originalrun38029499242attempt1 naturallyFAILURE: employeeFAIL and allfiveold
+gatesSUCCESS. Fullsix currentjoblogs/fourAPI digest+size+CRCvalidatedZIPs
+archived, no cancel/rerun/borrowed execution. Rootfullcompileractual179299B
+SHAb6b9ee71a33aa9f683f81b2a4879597b63099a4d23ae794e1f71c0ba39536df6,1162diagnostics/35families/
+EXIT2/64strictpairs-count baseline matched/critical0/owned0, globallyNONCLEAN.
+Unchangedstrictreadersactuallypassed on currentoriginalraw. RootRAM9026MiB
+available/disk261814MiB/memoryfullavg10zero beforetinyreader; noheavylocalcheck.
+
+Independent full4890 firstemployee failurepeer41223B SHA
+49062ead9338d892c72bbbfbbb53533522aae763fd3c28a3eda8999d52363d62 accepted
+originalfailurepreservation only. Full110555Blog/3065453BZIP25members/
+App15368/standalonehead/tree/32sources/11txnstatements+3reconstructedCHECKs+
+exactoutsideTxnindex verified. Actual68scoped/30admissionPASS;5cases/6MFA/
+20focus/twoAZphaseproofs/9captures(two100+seven200)/10actualnativeadmissions
+PASS, RUcorrectionoverflow34.828125px persists, finalDB/RLS/factsNOTREACHED.
+Fouractualoriginalpixelsviewed bypeer (initial/reproof200/ACK/RUfailure).
+Initialreadonlymissinghistoricalreaderpatherror retained; correctedreader
+stdout/stderr/source separatelyarchived. No weakenednative/focus/privacy/
+constraints/baselines, no retrospectivelyaccepted failure. Remainingfive
+sourcegate independentcontentreviews continue; new7CA runtimeRUNNING.
+Immutablephase19: 22files/13912718originalbytes.
+85DONE/76open/61%,C6-006/C12partial/C14open unchanged; next current7CA actual
+employee terminal and fullsource/candidate/requiredchecks, then normalrelease.
