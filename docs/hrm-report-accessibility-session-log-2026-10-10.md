@@ -230,3 +230,29 @@ sourcehelper/test/harness remain39, UIwrap31, EOFrepairB0. Small BF syntax/
 runner54/wholePR608whitespace/baselines/gitleaks checksPASS. BF is not yet
 published while the first39 exact-source compiler completes; no original
 cancellation, no other-head result transfer. No locally run heavyweight gate.
+
+## Original source finished; finalBF published for fresh acceptance
+
+Original39 exact-source compiler114080793288 actualSUCCESS: original ZIP
+11652653103,19955B/digest564306af0b2e375b54a153b9f73335c80b8c55a4378de6e29170a5d24a27a05e,
+allCRC/API binding. Fullraw178808B/SHA
+2e859d7a6f37d9df90559acdae15df39644d7e18dc29388047ad7acfb5e13691,
+exit2/1158/35/strict64pairs unchanged. Root re-read fulloriginal and sequentially
+reparsed with unchanged critical/typebaseline guards (artifact reading only,
+no local compiler). Peer complete receipt independently agrees. Entire source
+run38007879458 staysFAILURE: original UI/EOF failures plus three actualSUCCESS
+lanes, no retroactive green status. Allfirst39 runs allowed to finish with no
+cancellation or bypass; three whole ZIP/API digests/CRC/alllogs retained.
+
+Published cleanBF=bf418db89b54039566ead53546d434999801545e by normalpush,
+PR672 OPEN READY/API+Git head confirmed. Fresh fullrequired38009854020,
+reportcandidate38009853987, sourcefive-lane38009864707, calendar38009853977,
+manager38009853980, runner38009853972 andscan38009853985. Scanner/runner actual
+SUCCESS atBF; allheavy BF outcomesPENDING atthisentry. Separate guard execution
+will report actual count; no39 results borrowed. Main506 stillunchanged and no
+parallel HRM writer. No merge/deploy/activation yet. The actual user-visible
+release slice is only responsive Back/Refresh wrapping; calculations/roles/
+permissions unchanged. C12PARTIAL/WF-C14-003PLANNED/85DONE76open61% stayunchanged.
+Next: fullBF browser33/3native/21originalcaptures/54focus/57reflow andPG/full
+baseline/compiler/build independently reviewed, then normal own merge/Actions
+release/fullSHA/ping/privacy smoke, then the next uncovered permitted HRM slice.
