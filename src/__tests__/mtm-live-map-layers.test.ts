@@ -32,23 +32,26 @@ describe("the layers control on the map", () => {
   let state: Record<string, boolean>
   let hidden: number
   let baseMaps: { value: string; options: Array<{ id: string; label: string }>; onChange: (id: string) => void } | null
-  /** What one more layer holds, listed under its switch; and what the layers have to say with the panel closed. */
+  /** The names of what one more layer holds — the organization's own zones; and what the layers have to say with the panel closed. */
   let areaNames: string[] | null
   let alert: LiveMapLayersAlert | Array<LiveMapLayersAlert | null> | null
+  /** How many times the page has asked the map to show a place (a zone's «На карте»); not handed over at all while undefined. */
+  let closeTurn: number | undefined
   const layers = (): LiveMapLayer[] => [
     { id: "agents", label: "Сотрудники", hint: "значки с последним положением", on: state.agents, onToggle: () => { state.agents = !state.agents }, shownByDefault: true },
     { id: "route", label: "Маршрут дня", on: state.route, onToggle: () => { state.route = !state.route }, shownByDefault: true },
     { id: "heat", label: "Тепловая карта", on: state.heat, onToggle: () => { state.heat = !state.heat }, testId: "mtm-map-heatmap-toggle" },
     ...(areaNames ? [{
       id: "areas", label: "Свои зоны", hint: `на карте зон: ${areaNames.length}`, on: state.areas, onToggle: () => { state.areas = !state.areas },
+      // What the page handed over until 2026-10-10, as a caller that still does: the panel has no place for it.
       detail: state.areas ? createElement("ul", null, areaNames.map((name) => createElement("li", { key: name }, name))) : undefined,
-    }] : []),
+    } as LiveMapLayer] : []),
   ]
   const draw = async () => {
     await act(async () => {
       root.render(createElement(LiveMapLayersControl, {
         layers: layers(), hiddenAgentCount: hidden, onShowAllAgents: () => { hidden = 0 }, note: "Полный трек — в «Истории».",
-        baseMaps, alert,
+        baseMaps, alert, ...(closeTurn === undefined ? {} : { closeTurn }),
       }))
     })
   }
@@ -64,6 +67,7 @@ describe("the layers control on the map", () => {
     baseMaps = null
     areaNames = null
     alert = null
+    closeTurn = undefined
     container = document.createElement("div")
     document.body.appendChild(container)
     root = createRoot(container)
@@ -181,29 +185,104 @@ describe("the layers control on the map", () => {
     expect(container.querySelector('[data-testid="live-map-layers-mark"]')).not.toBeNull()
   })
 
-  it("lists what a layer holds under its own switch while it is on — inside the panel, with no frame or scrollbar of its own", async () => {
-    areaNames = ["Северный участок", "Центр"]
-    state.areas = false
+  it("a layer is its switch and one line of words: nothing is listed under it, however much the layer holds", async () => {
+    // «Свои зоны» listed its zones under the switch. The panel has only the map's height to give, so the list had
+    // one way to grow — a scrollbar inside the panel: on a 1280 px window two zones were enough. The zones are
+    // listed on the page now (mtm-live-map-zones-ui.test.ts, mtm-live-map-page-flow.test.ts).
+    areaNames = ["Северный участок", "Центр", "Аэропорт", "Старый город", "Ясамал", "Насими", "Бинагади", "Сабунчу", "Сураханы", "Хырдалан", "Сумгаит", "Порт"]
+    state.areas = true
     await draw()
     await press(opener())
-    // Off: the switch and its line, nothing under them.
-    expect(container.querySelector('[data-testid="live-map-layer-detail-areas"]')).toBeNull()
-    await press(layerSwitch("live-map-layer-areas"))
-    const detail = container.querySelector('[data-testid="live-map-layer-detail-areas"]') as HTMLElement
-    expect([...detail.querySelectorAll("li")].map((row) => row.textContent)).toEqual(["Северный участок", "Центр"])
-    // In the row of its own layer, after that layer's switch — and inside the one panel that scrolls.
     const row = layerSwitch("live-map-layer-areas").closest("li") as HTMLElement
-    expect(row.contains(detail)).toBe(true)
-    // In two columns the layer with a list takes the whole width: the list is not squeezed into half of it.
-    expect(row.className).toContain("@lg:col-span-2")
-    expect(panel()?.contains(detail)).toBe(true)
-    expect(detail.className).not.toMatch(/overflow|max-h/)
-    // The other layers have nothing listed under them.
-    expect(container.querySelectorAll('[data-testid^="live-map-layer-detail-"]')).toHaveLength(1)
+    // The layer's name, its one line, its switch — and that is the whole row.
+    expect(row.textContent).toBe("Свои зонына карте зон: 12")
+    expect([...row.querySelectorAll("button")].map((button) => button.getAttribute("role"))).toEqual(["switch"])
+    expect(row.querySelector("ul, ol, form")).toBeNull()
+    for (const name of areaNames) expect(panel()?.textContent, name).not.toContain(name)
+    // Every row is one cell of the two columns. The one rule that gives a row both is the same on every row and
+    // picks «the last one, when it is an odd one» — a switch left alone in the last line: with four rows nobody is.
+    const rows = [...(container.querySelector('[data-testid="live-map-layers-list"]') as HTMLElement).children] as HTMLElement[]
+    expect(rows).toHaveLength(4)
+    for (const item of rows) expect(item.className.split(" ").filter((name) => name.includes("col-span"))).toEqual(["@lg:last:odd:col-span-2"])
+    expect(rows.filter((item) => item.matches(":last-child:nth-child(odd)"))).toEqual([])
+    // With a dozen zones the panel is as tall as it is with none.
+    const withZones = panel()!.querySelectorAll("*").length
+    areaNames = []
+    await draw()
+    expect(panel()!.querySelectorAll("*").length).toBe(withZones)
     // An extra layer nobody had switched on is not something «taken off the map».
     await press(layerSwitch("live-map-layer-areas"))
     await press(opener())
     expect(container.querySelector('[data-testid="live-map-layers-mark"]')).toBeNull()
+  })
+
+  it("a switch left alone in the last line of the two columns has the whole line for its words — and only that one", async () => {
+    // «Свои зоны» is the ninth of nine, and with no zones yet its line is a sentence: how to draw the first one. In half
+    // the panel that was five lines, and the panel scrolled inside itself on a laptop's map as soon as one employee was
+    // hidden. Measured in a real browser, map 546x600: across the panel it is two lines, and nothing scrolls.
+    // Tailwind writes the rule as `&:last-child { &:nth-child(odd) { grid-column: span 2 } }` inside the container query.
+    await draw()
+    await press(opener())
+    const rows = () => [...(container.querySelector('[data-testid="live-map-layers-list"]') as HTMLElement).children] as HTMLElement[]
+    const alone = () => rows().map((item) => item.matches(":last-child:nth-child(odd)"))
+    // Three switches: the third stands alone.
+    expect(alone()).toEqual([false, false, true])
+    expect(rows()[2].className.split(" ")).toContain("@lg:last:odd:col-span-2")
+    // A fourth beside it: every row is one cell again, and the third is no longer picked.
+    areaNames = []
+    await draw()
+    expect(alone()).toEqual([false, false, false, false])
+  })
+
+  it("gets out of the way when the map is asked, from outside, to show a place — and opens again when asked", async () => {
+    // «На карте» on a zone's row is pressed right after «Свои зоны» was switched on, that is with the panel open:
+    // the zone is shown in the middle of the map, under the panel — 85 % of it on a 546 px map, all of it on a phone.
+    closeTurn = 0
+    await draw()
+    await press(opener())
+    const shown = () => [panel() != null, opener().getAttribute("aria-expanded")]
+    expect(shown()).toEqual([true, "true"])
+    // Drawn again with nothing asked — the page's data came anew: it stays open.
+    await draw()
+    expect(shown()).toEqual([true, "true"])
+    // A place is asked for.
+    closeTurn = 1
+    await draw()
+    expect(shown()).toEqual([false, "false"])
+    expect(opener().textContent).toBe("Слои")
+    // Its own button opens it as always, and it stays open while nothing new is asked; the switches are as they were.
+    await press(opener())
+    await draw()
+    expect(shown()).toEqual([true, "true"])
+    await press(layerSwitch("live-map-layer-agents"))
+    expect([...shown(), layerSwitch("live-map-layer-agents").getAttribute("aria-checked")]).toEqual([true, "true", "false"])
+    // The next place asked for closes it again; asked once more while closed, it stays closed.
+    closeTurn = 2
+    await draw()
+    expect(shown()).toEqual([false, "false"])
+    closeTurn = 3
+    await draw()
+    expect(shown()).toEqual([false, "false"])
+    await press(opener())
+    expect(shown()).toEqual([true, "true"])
+  })
+
+  it("a panel first drawn after places had been asked for opens as usual, and so does one that is told of no turns at all", async () => {
+    // Back from «История»: the control is drawn anew while the page still holds the turn of the last «На карте».
+    closeTurn = 7
+    await draw()
+    expect(panel()).toBeNull()
+    await press(opener())
+    expect(panel()).not.toBeNull()
+    await draw()
+    expect(panel()).not.toBeNull()
+    act(() => root.unmount())
+    root = createRoot(container)
+    closeTurn = undefined
+    await draw()
+    await press(opener())
+    await draw()
+    expect(panel()).not.toBeNull()
   })
 
   it("says each layer's own trouble on the map while the panel is closed, each with its own way out", async () => {
