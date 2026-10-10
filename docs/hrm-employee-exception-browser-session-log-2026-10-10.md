@@ -520,3 +520,34 @@ actualqualifiedsuccess, peer4712B SHAccce85d9ee6768006bb083cbfb91d8b15a16bf1d67e
 AlloldA7only; originalemployee partialFAIL remains, no runtimecreditto4890.
 Immutablephase16: 3files/81974originalbytes.
 Current4890run38029499242sixjobsRUNNING; next ownactualemployee terminal proof.
+
+## Actual4890 firstemployee failure retained; narrowUI successorprepared
+
+Employee114147262119 actualFAIL at RU320 exact-day-correction-link horizontal
+containment, source377:10. Coarse recordedstage keyboard-refresh includeslink;
+refreshitselfPASS. Focus/focusVisibletrue/height44, bboxright354.828125 vs
+clip320 actual34.828125pxoverflow. Rootandpeer viewed originalclippedRU
+correction/ACKlabels. Originallog110555B SHA2d5dffb1502f495d84a4b19e07535f4de4e03ae94349c7c91144caaade21a784,
+ZIP11661033853/3065453B SHAabba8069ab17f699b17736cdde9a3193061ab4b8efc4ad631bea603bf2ad1e70.
+Actual5cases/6auth/20focus/twoAZnativephaseproofs/samephysicalwindow/10current
+320DPR2 admissions/9captures(2control100+7native200),responses5/audit4/cases20/
+decisions6/cleanupPASS. Whole14case/finalDB acceptance absent, otherfivejobs
+continue naturally. OldA7genericErrorcause staysUNPROVED, no retrospective
+attribution. Archived fullcurrentemployee original/API/ZIP/rawreceipt/pixels
+and rootactualview; no cancelled/rerun/oldhead credit.
+
+Preparednewsource7ca34739e490fb3ef7d88346e4e83c08cf50b665/tree
+6bd9a531f365faf639b847c4d5db13303ac6b951 parent4890 preservescurrentmain0A.
+Onlyfiveclassattributes and appendjournal: narrow zero-minimum gridcolumn,
+boundedstackedactions and autoheight/wrapping maxwidth controls preserving
+min44, unchangeddesktopmdtwo-column. Classstrippedcomponent old/new EXACT;
+handler/hook/condition/DOMsections/copy/routes/roles/schema/rollout/audit/
+nativehelper/harness/baselines unchanged. Preparedroot2037B SHA83701d40e5d81250621cf335da47562104b0b9890684970cf2956c0902cf58c2.
+Initialdiffcheck foundone trailing space innewuncommittedjournalentry; original
+warningretained, removedownnewspace then actualdiffPASS. No oldentry erased.
+Independent source review/publication/newhosted68/30/37+matrix/database/full
+CI pending, newUI NOT RUN. Existingstrictfocus/min44 checksnotweakened.
+Skilladapt+impeccable existingCRMcontext/reference used, no layoutsection
+removal/reordering or font/theme redesign.85DONE/76open/61%, C6-006/C12partial/
+C14open unchanged; next exactnewsource review and runtime.
+Immutablephase17: 14files/3736261originalbytes.
