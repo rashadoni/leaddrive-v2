@@ -50,3 +50,32 @@ Precise stop: before additive read-only form code/runtime review while681CI
 runs. Next: checkpoint narrow harness/source bindings; current681 exact checks/
 ordinary merge/normalrelease remain priority; publish/run this successor only
 after parent681 exact release and independent source admission.
+
+## Additive read-only form source prepared
+
+Each existing12employee matrix navigation now checks actual ownrequests200/
+SELF/canSubmitSelf/notcanDecide/timezoneUTC/emptyrequestlist and exact own-day
+options. Actual form preselects correction type and recorded case day with
+emptytime/reason/disabledsubmit; changing type shows empty leave dates, returning
+to correction discards displayedprefill and another own day can be chosen.
+No reason/time input or submit/intercept/force/session/grant manipulation.
+Observer requires0requestsPOST,globalrequests0 andresponse/auditcounts unchanged;
+existing whole13fact proof still executes after all cases. No submitted-body/
+source-link/fullcorrection/native request-form zoom credit; actual requestform
+viewport separately recorded because native navigation may resetzoom before
+unchanged mine reproving. All old15cases/22auth/50focus/6proof27capture/session
+bounds remain. Six original app/API/request-library/migration source bindings
+added (39→45) solely as hashes, not applied-request-trigger evidence.
+No workflow/fixture/dependency/app/role/schema change. RuntimeNOTRUN and source
+review pending. Parent681 currentcandidate/required checks stillrunning; next
+source remains unpublished until parentverifiedrelease and independentreview.
+
+## First prepared source checkpoint verification
+
+Actual Node20syntax andgitdiff whitespace PASS after RAM/disk/pressure check.
+Root strips only additive helper/diagnostic/call/twoasserts/sixbinding entries:
+originalC654 harness byteequal.39existing bindings preserved as prefix,45final,
+44protected app/API/fixture/guard/dependency/migration blobs byteequalC654.
+No runtime/sourceindependent/fullcompiler/build/suite/database acceptance yet.
+Source branch unpublished; current681 source remains frozenC654 unchanged.
+Next independent review/hosted checks after current681 exact-main verifiedrelease.
