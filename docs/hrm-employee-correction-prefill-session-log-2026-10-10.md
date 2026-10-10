@@ -1,0 +1,52 @@
+# HRM employee correction form prefill — 2026-10-10
+
+## Existing-task continuity and authorized independent preparation
+
+User requested autonomous HRM continuation through verified ordinary merges and
+normal GitHub Actions deployments, then each next permitted step. C6-010 is
+accepted/released, PR678 verified releaseM32A retained; PR681 at frozenC654 is
+READY with exact source-six independently accepted and current candidateC32524/
+mandatory checks RUNNING. No PR681 merge/release acceptance yet.
+
+This separate clean Contabo worktree/branch codex/hrm-employee-correction-bridge-20261010
+is deliberately based on frozen dependentC654, preserving current681 source
+and the589→605→608/973/c123 history. Canonical dirty checkout and unrelated
+worktrees remain untouched. Root is sole HRM source writer, current681 reviewer
+read-only. No Mac session/local install/full build/browser/database execution.
+Resolved by codex-project-context: current managed worktree remote-alt/Contabo,
+origin https://github.com/rashadoni/leaddrive-v2.git, registered production
+13.140.132.245:/opt/leaddrive-v2, reviewed main→deploy.yml immutableSHA route.
+Actual AGENTS.md/current roadmap/deployment contract retained and read.
+
+The first next step is deliberately bounded read-only actual correction-form
+prefill verification inside the existing employee browser rehearsal. Require
+real own-only requests200, actual selected source day/type, own-only options,
+empty time/reason and disabled submit, changing type dismisses prefill and an
+alternative own day can be chosen. Observe no requests POST and unchanged
+response/audit counts with zero requests; preserve all existing legacy and
+cross-tab checks. No source-case attribution/body/successful submit/native
+request-form zoom credit without its separate evidence.
+
+Current fixture intentionally grants response/audit INSERT only. Full successful
+correction submission needs a separately reviewed bounded disposable fixture;
+this step changes no fixture/grants/auth/app/schema/workflow/production flags.
+No correction request or HR/personnel outcome is automatically produced.
+Explicit false positives/full-partial-rejected appeals/empty sample and
+CASE_RECORDED_AT/immutable audit/roles/tenants/privacy remain unchanged.
+C6-006/C12 PARTIAL,C14OPEN,85DONE/76open/61%; no whole-item completion.
+Physical/human/restored-copy/full-history/operations criteria remain blocked.
+606/609/646/archive663 excluded; Support and HRHub unchanged.
+
+Initial read-only discovery guessed a stale migration filename20260830210000;
+rg returned absent-path exit2. Actual rg-files resolved unchanged
+20260831113000_workforce_exception_correction_request_link. This is a reader
+path error, not an application/migration failure; original error preserved.
+Source inspection also confirms existing workday/type handlers dismiss prefill;
+no inferred stale-link bug is implemented or claimed.
+
+Current result: independent next source preparation only. Last action: separate
+clean dependent worktree and actual request-form/API/fixture inspection.
+Precise stop: before additive read-only form code/runtime review while681CI
+runs. Next: checkpoint narrow harness/source bindings; current681 exact checks/
+ordinary merge/normalrelease remain priority; publish/run this successor only
+after parent681 exact release and independent source admission.
