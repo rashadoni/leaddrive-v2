@@ -803,3 +803,26 @@ fresh-ref merge admission still pending at this entry. PR678 READY OPEN, no
 merge/deploy yet. 85DONE/76open/61%, C6-006/C12 PARTIAL, C14 open unchanged.
 Next required-five final admission, ordinary matching-head merge, normal SHA
 release, exact-main compiler/TLS/ping/6 anonymous GET checks, then next HRM step.
+
+## READY exact required-five root originals and unchanged baselines
+
+All five actual App15368 contexts on H7CA completed SUCCESS: pr-scope
+114154818821, static-checks114154901545, typecheck114154901604 from READY
+run38032037251; runner-policy114150722296/run38030658939 and scan114150722140/
+run38030658895. Root retained job/check APIs and whole logs; all five actually
+checkout C=e3a6, with exact [0A,H] parents and tree6bd. Older draft SKIP receives
+no credit. Typecheck whole253299B SHA26ef277d7878e801adc9403ea39af8e400ff56c64e73daaf8b8d55052264be3c
+parsed 1162diagnostics/35families/actualEXIT2/critical0/task-owned0/strict64
+pair-count exactly unchanged baseline. Global compiler remains NONCLEAN.
+Static whole236061B SHAbfb73517e3bbb5f61c87b772b6fb285cc3355152ef0cc4197b40f4b1f825baef
+retains actual18historical failing files; all18still fail and no new failures.
+No baseline/check weakening. Optional PR build SKIP separately qualified;
+actual exact source build source6 SUCCESS already independently accepted.
+Fresh07:12:55UTC root APIs main0A/PR678head7CA/READY/candidateC/tree6bd clean;
+protection strict=false actual, five exact App15368 contexts, enforceAdmins,
+no force/deletion. 606/609/646/663 all unmerged; accepted chain/archive/C6/93E
+ancestry retained. Independent required-five review and immediate recheck
+before merge still pending at this entry; merge/production NOT RUN yet.
+Next ordinary matching-head merge and normal GitHub Actions release, main
+compiler plus exact fullSHA/TLS/ping/6anonymous employee privacy GET probes.
+85DONE/76open/61%, C6-006/C12 PARTIAL and C14 open unchanged.
