@@ -438,3 +438,44 @@ and baseline unchanged. Peer's first class-order reader assumption error
 preserved separately; corrected reader only, no CI rerun/source edit. Test
 patch still NOT_APPLIED/runtimeNOTRUN. Next natural wholea161 completion/
 fullcompiler original capture, apply exact reviewed test and fresh fullhead.
+
+## Whole original a161 terminal failure retained; exact next test/lint source reviewed
+
+Source38016788152 attempt1 naturally COMPLETED FAILURE before correction.
+Complete allfive wholelogs/rawAPIs/threeoriginal ZIPs retained phase12,
+actualroot complete report/HR/fullcompiler readers pass their scoped checks.
+Overall remains strict regressionFAIL19/18, not retrospectively GREEN.
+Actual integrated full compiler179299B/SHA
+f7e463d2ae280538ed2f171dc413dab7036697efabefb5b73016ad14a8db5f22
+exit2/1162diagnostics/35families/strict64unchanged/task-owned0/critical0.
+No old1158 count assumed; globalNONCLEAN. Independent7771B/SHA
+99807a94904cb952fe86c5f8ff2b1220545d7b67abf63ae1c1a70aca6d8b194d
+confirms full artifact plus wholelog original. PG44/guard31/schema/lint/i18n
+PASS; build compiled4.9min/static974of974/standalone, inherited trace-copy
+ENOENT retained, skipped internaltypevalidation not credited.
+
+Independent HR32333B/SHA5df0bfb93f764f474fab39bb825e1aa7d24ddabd3efa551a1563e8195bf633d0
+confirms20/12/24manual24audit/108focus/48private refusals/3native21/RLSfacts8
+cleanup. Original peer reader accidentally required MFA on intentional weak
+HRfixture; error/correction retained, actual16enrolled +weak403 separate,
+GETwarmup405 not changed. Independent actualpixel8094B/SHA
+66a6fa6ab0603b13b9ad85fe1fc058680fe3387bc1b26cc895139034c9037a21
+viewed all21 native plus AZstandard320, qualified devbadge/header/talltable.
+No source P0/P1/P2 or current-source clipping left, but no source-wide/whole
+C14/C12 acceptance until existing regression repaired and final exact gates.
+
+Two companion workflow additions independently reviewed1362B/SHA
+454fc1af8e3b311a8843cd35105379d9d513bd06ce05e5f072cb889c161616ce:
+action-ui.test.ts PR path and existing scoped ESLint target only. All other
+workflow/gate/concurrency/timeout/skip/baseline bytes identical. Prepared
+only, will apply with accepted existing nine-test DOM invariant delta.
+
+Fresh main e05689732adb23928680a3e77f566b9513348ef0 advancesbf643 viaPR673,
+seven ERP script paths only; application/schema/messages unaffected. Next
+normal integration preserves them, apply reviewed test+linttwo-line scope,
+freeze final source after independent binding. Then READY required candidate
+checks and exact-source five-lane dispatch may run concurrently, saving a
+second compiler queue. All actual source/candidate/mandatory5 gates still
+required BEFORE merge/release, no earlier runtime credit transferred. This
+sequencing supersedes sequential READY-after-source waiting, without removing
+any checks or permitting premature merge. Accounting85/76/61%, C12 PARTIAL.

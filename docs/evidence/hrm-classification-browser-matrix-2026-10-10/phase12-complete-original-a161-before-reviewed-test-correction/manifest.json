@@ -1,0 +1,202 @@
+{
+  "archivedAtUtc": "2026-10-10T02:48:14.055598+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-classification-matrix-a161-complete-originals-archive-snapshot/actual-full-tsc-output.log.gz",
+      "originalBytes": 179299,
+      "originalSha256": "f7e463d2ae280538ed2f171dc413dab7036697efabefb5b73016ad14a8db5f22",
+      "storedBytes": 19290,
+      "storedSha256": "9e852d2b82806772b6bf7e535640286d0e70d23506437017981c2e8c374541d5"
+    },
+    {
+      "path": "hrm-classification-matrix-a161-complete-originals-archive-snapshot/actual-report-commit-api.json.gz",
+      "originalBytes": 19615,
+      "originalSha256": "5c9bcd5b4915231c05da61042dfe19b520bf81c082f3c63ca95e814877a9993f",
+      "storedBytes": 6677,
+      "storedSha256": "33830beeb80c770c94bcd4f5630bca1024da7ebaafb73756a05e6559b59722e5"
+    },
+    {
+      "path": "hrm-classification-matrix-a161-complete-originals-archive-snapshot/actual-tsc-exit-code.gz",
+      "originalBytes": 2,
+      "originalSha256": "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3",
+      "storedBytes": 22,
+      "storedSha256": "6e08a71af69ad2fa0122936c77c0ba1d20f2b26808cfc5ea068985fb8264bf05"
+    },
+    {
+      "path": "hrm-classification-matrix-a161-complete-originals-archive-snapshot/artifact-11656129197-original.zip",
+      "originalBytes": 6588695,
+      "originalSha256": "0a4fe9990734eca40176a6e3a4837bd9f4cefd4596199e9a8d54465897cb8fd6",
+      "storedBytes": 6588695,
+      "storedSha256": "0a4fe9990734eca40176a6e3a4837bd9f4cefd4596199e9a8d54465897cb8fd6"
+    },
+    {
+      "path": "hrm-classification-matrix-a161-complete-originals-archive-snapshot/artifact-11656862823-original.zip",
+      "originalBytes": 3816681,
+      "originalSha256": "45d8775a9d13f4b32c1b3662bb0462e9d3c03d41afd2cb1c4535fb16dd51bf2b",
+      "storedBytes": 3816681,
+      "storedSha256": "45d8775a9d13f4b32c1b3662bb0462e9d3c03d41afd2cb1c4535fb16dd51bf2b"
+    },
+    {
+      "path": "hrm-classification-matrix-a161-complete-originals-archive-snapshot/artifact-11657460624-original.zip",
+      "originalBytes": 20009,
+      "originalSha256": "5a7e6adfe94dc6ba640d7d3fdc7b7565104c5824efd41c572b904eedb2c3c67c",
+      "storedBytes": 20009,
+      "storedSha256": "5a7e6adfe94dc6ba640d7d3fdc7b7565104c5824efd41c572b904eedb2c3c67c"
+    },
+    {
+      "path": "hrm-classification-matrix-a161-complete-originals-archive-snapshot/artifacts-api-original.json.gz",
+      "originalBytes": 690,
+      "originalSha256": "1556818a3669d39dac549aab2613d5a68d4964714ea8a95221951f69572182c4",
+      "storedBytes": 690,
+      "storedSha256": "1556818a3669d39dac549aab2613d5a68d4964714ea8a95221951f69572182c4"
+    },
+    {
+      "path": "hrm-classification-matrix-a161-complete-originals-archive-snapshot/finite-capture-summary.json.gz",
+      "originalBytes": 15784,
+      "originalSha256": "af80e06549ac8edd16929ed7cf24ab205f25019269851a279f6a0f939ddfa837",
+      "storedBytes": 2363,
+      "storedSha256": "d988130a943b39e444c456d2cd25f1135a8d5406dab9d378e8efcdd09148f66d"
+    },
+    {
+      "path": "hrm-classification-matrix-a161-complete-originals-archive-snapshot/job-114108723118-original.txt.gz",
+      "originalBytes": 24529,
+      "originalSha256": "94e0a3c18be9faae199925fbb38e2c4fd39e7ea38a7cdd37c96d557b3c8cd921",
+      "storedBytes": 24529,
+      "storedSha256": "94e0a3c18be9faae199925fbb38e2c4fd39e7ea38a7cdd37c96d557b3c8cd921"
+    },
+    {
+      "path": "hrm-classification-matrix-a161-complete-originals-archive-snapshot/job-114108723267-original.txt.gz",
+      "originalBytes": 29482,
+      "originalSha256": "62c6e0af0cf6e80709776f9e563550eeb2f8f241cb7d89adf11f28b266b0bd96",
+      "storedBytes": 29482,
+      "storedSha256": "62c6e0af0cf6e80709776f9e563550eeb2f8f241cb7d89adf11f28b266b0bd96"
+    },
+    {
+      "path": "hrm-classification-matrix-a161-complete-originals-archive-snapshot/job-114108723307-original.txt.gz",
+      "originalBytes": 21406,
+      "originalSha256": "ec43b2377dc92a13562ec6e0331d300383aba572b987b4e06d0a26afb9324b46",
+      "storedBytes": 21406,
+      "storedSha256": "ec43b2377dc92a13562ec6e0331d300383aba572b987b4e06d0a26afb9324b46"
+    },
+    {
+      "path": "hrm-classification-matrix-a161-complete-originals-archive-snapshot/job-114108723344-original.txt.gz",
+      "originalBytes": 35294,
+      "originalSha256": "fb9ec398d8f4aad4366fbe04752ccbebe435411be3d6d05770b3954762e9afaa",
+      "storedBytes": 35294,
+      "storedSha256": "fb9ec398d8f4aad4366fbe04752ccbebe435411be3d6d05770b3954762e9afaa"
+    },
+    {
+      "path": "hrm-classification-matrix-a161-complete-originals-archive-snapshot/job-114108723361-original.txt.gz",
+      "originalBytes": 19356,
+      "originalSha256": "042bed1b4369077717863dc13b3005d6dfd0ab8a269c69e7f32ae7b4a77ed84a",
+      "storedBytes": 19356,
+      "storedSha256": "042bed1b4369077717863dc13b3005d6dfd0ab8a269c69e7f32ae7b4a77ed84a"
+    },
+    {
+      "path": "hrm-classification-matrix-a161-complete-originals-archive-snapshot/jobs-api-original.json.gz",
+      "originalBytes": 2027,
+      "originalSha256": "ec953bfd69dd72047fea5adbb96fbc0a9ec9fbcb1a35661d54307a0e9e17dddc",
+      "storedBytes": 2027,
+      "storedSha256": "ec953bfd69dd72047fea5adbb96fbc0a9ec9fbcb1a35661d54307a0e9e17dddc"
+    },
+    {
+      "path": "hrm-classification-matrix-a161-complete-originals-archive-snapshot/root-complete-classification-content-review.json.gz",
+      "originalBytes": 6892,
+      "originalSha256": "adfed29264a21f44adcde9a4bf94d05abccd31a0cf8bda49226caee444b34f07",
+      "storedBytes": 1602,
+      "storedSha256": "9989211477fb607296c31881256585e815203bff4f04bc19be43d996441fa887"
+    },
+    {
+      "path": "hrm-classification-matrix-a161-complete-originals-archive-snapshot/root-complete-compiler-gate-review.json.gz",
+      "originalBytes": 3921,
+      "originalSha256": "63e4ec8ff634cd0c1c6b0490015b427387ed4ef11e2cc04a20eb69931cd8e53b",
+      "storedBytes": 1411,
+      "storedSha256": "217e2bdbec5a988112ff0312535a9f29294603a9e6091291d20aa324ac8746e9"
+    },
+    {
+      "path": "hrm-classification-matrix-a161-complete-originals-archive-snapshot/root-complete-report-content-review.json.gz",
+      "originalBytes": 5613,
+      "originalSha256": "9c4f5f646c1e8d5066e3238190e3443a04be336fa5c48ab82ff712bbe15a8033",
+      "storedBytes": 1584,
+      "storedSha256": "232fe3d3bd9acbf1a97cae13b00bc75efe3f0a1b9e416614ba296a49a11f8e1a"
+    },
+    {
+      "path": "hrm-classification-matrix-a161-complete-originals-archive-snapshot/run-api-original.json.gz",
+      "originalBytes": 1635,
+      "originalSha256": "71d732eef5101b3f24af572eae3d6861ebfd33383cbc8213d21dc70dd46c2da1",
+      "storedBytes": 1635,
+      "storedSha256": "71d732eef5101b3f24af572eae3d6861ebfd33383cbc8213d21dc70dd46c2da1"
+    },
+    {
+      "path": "hrm-classification-matrix-source-compiler-peer-review-a161.json.gz",
+      "originalBytes": 7771,
+      "originalSha256": "99807a94904cb952fe86c5f8ff2b1220545d7b67abf63ae1c1a70aca6d8b194d",
+      "storedBytes": 2403,
+      "storedSha256": "2206c4d6b7dfe2ac0269aecf1a32a3e711dba6721d17044ec30b9484d4b7b0bb"
+    },
+    {
+      "path": "hrm-classification-matrix-hosted-peer-review-a161.json.gz",
+      "originalBytes": 32333,
+      "originalSha256": "5df0bfb93f764f474fab39bb825e1aa7d24ddabd3efa551a1563e8195bf633d0",
+      "storedBytes": 7721,
+      "storedSha256": "0502d4134abc5e3e946ad3f408abe56dc51891eb395390e180ce175ba68588e7"
+    },
+    {
+      "path": "hrm-classification-matrix-a161-peer-reader-correction.json.gz",
+      "originalBytes": 738,
+      "originalSha256": "263a73580fe843876b2d8fef7ae91b5668e64b1196141cf38d49aacb67fad65b",
+      "storedBytes": 454,
+      "storedSha256": "64ec55509c8db4b33dec4f7dfe3cf0c67d957865cfdf50df5578f857da8f17dc"
+    },
+    {
+      "path": "hrm-classification-matrix-a161-original-pixels-peer-review.json.gz",
+      "originalBytes": 8094,
+      "originalSha256": "66a6fa6ab0603b13b9ad85fe1fc058680fe3387bc1b26cc895139034c9037a21",
+      "storedBytes": 2694,
+      "storedSha256": "1e1b7fb7195a71625066c933823f45e736a38328795c59d17e793a0b7ac82fd3"
+    },
+    {
+      "path": "hrm-classification-matrix-source-regressions-build-peer-review-a161.json.gz",
+      "originalBytes": 6519,
+      "originalSha256": "a5eb83ef09145cdcb0fa23599dcdb5bd3b503b49f03b4581d109094f7c001a9f",
+      "storedBytes": 2225,
+      "storedSha256": "97b2e7fe31aa93f90c642bd9865591d6855e5c05a33165f3a3cbf90b8cae69b4"
+    },
+    {
+      "path": "hrm-classification-queue-action-lint-scope-prepared.patch.gz",
+      "originalBytes": 1176,
+      "originalSha256": "67b94ebc180c93353e91a1df319b08bba62d1b0cdc4706afb6700c7f8ea27f89",
+      "storedBytes": 384,
+      "storedSha256": "7cecddf19d55c57b13d47e60e46cc7c8dd259d11468ebbc2418f6e6e1b158846"
+    },
+    {
+      "path": "hrm-classification-queue-action-lint-scope-prepared.yml.gz",
+      "originalBytes": 25834,
+      "originalSha256": "e98342235eafea2169e0d9512976e1c42cfd2df6fda163476c1845a249c5a111",
+      "storedBytes": 4682,
+      "storedSha256": "4db69e9ee7947ff22fbb959afa000c0556c0203a0e17bad8161f709ae31370a6"
+    },
+    {
+      "path": "hrm-classification-queue-action-lint-scope-prepared.json.gz",
+      "originalBytes": 558,
+      "originalSha256": "d33370ed7c5294aa27305d35a9cdc063ac7a6b1b3c8f2447e768c73973a5bf9d",
+      "storedBytes": 410,
+      "storedSha256": "3bb078ae40869f51cf8f27ca26027935b349fd6cc10becf1ce097f816dcbd265"
+    },
+    {
+      "path": "hrm-classification-queue-action-lint-scope-prepared-peer-review.json.gz",
+      "originalBytes": 1362,
+      "originalSha256": "454fc1af8e3b311a8843cd35105379d9d513bd06ce05e5f072cb889c161616ce",
+      "storedBytes": 785,
+      "storedSha256": "613c09d31bae8c8de6358e2d80524f5f1e5a723325dada31953a17d15837a638"
+    },
+    {
+      "path": "hrm-classification-pr-body-a161-browser-pass-original-regression-fail.md.gz",
+      "originalBytes": 2617,
+      "originalSha256": "340936724b81f3b47bbbcccd91c4d05d8a9f2a9c7bf7dabbd60da446a7916a5d",
+      "storedBytes": 1429,
+      "storedSha256": "6b641c4b69870880d4e15ac50cfb339334d167e410ab63ab643fe5703c27572b"
+    }
+  ]
+}
