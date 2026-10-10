@@ -403,9 +403,14 @@ export const DELETE = withRls(async (req, auth, { params }: { params: Promise<{ 
     if (deletion.kind === "has_history") return agentHasHistory(deletion.history)
     if (deletion.kind === "role_forbidden") return mtmScopedAgentRoleForbidden()
 
+    // `agentId` is a foreign key to the employee, and he no longer exists: a
+    // row naming him there was refused by Postgres (P2003), the catch below
+    // swallowed it, and the deletion left no trace of who did it. He is named
+    // by `entityId` and by his name and role in `oldData` — the same shape the
+    // key's own SET NULL has just given every earlier row about him.
     await writeMtmAudit({
       organizationId: orgId,
-      agentId: id,
+      agentId: null,
       action: "AGENT_DELETE",
       entity: "agent",
       entityId: id,
