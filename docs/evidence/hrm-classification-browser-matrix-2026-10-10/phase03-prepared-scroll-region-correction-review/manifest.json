@@ -1,0 +1,34 @@
+{
+  "archivedAtUtc": "2026-10-10T01:47:10.236243+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-classification-unique-scroll-region-prepared.patch.gz",
+      "originalBytes": 3249,
+      "originalSha256": "18ea208fa69e765f0228a6cad2359d57f4114b7e452d3143823773a8d275c295",
+      "storedBytes": 1492,
+      "storedSha256": "8ef6d846f014739f539f6ca61769d4745a85f74ee09fa4c2e428f0b82346e702"
+    },
+    {
+      "path": "hrm-classification-unique-scroll-region-prepared.json.gz",
+      "originalBytes": 502,
+      "originalSha256": "a7e55cc27e182807f79553fa0e5bc0075ce5f5ea1f334b500225c9064dcb5318",
+      "storedBytes": 385,
+      "storedSha256": "a1001a1de3d50099f42c409d7fac411571fc70ece86f11b37a58d641e91e8a61"
+    },
+    {
+      "path": "hrm-classification-unique-scroll-region-prepared-peer-review.json.gz",
+      "originalBytes": 2533,
+      "originalSha256": "2eee1cb63a7aed3cc832a2726fbf89082425595942adc8d7862fa61b1ab0986b",
+      "storedBytes": 1378,
+      "storedSha256": "8e90792a6c1b89fab53f7768326fa5eb4667c991665a90c19db8d18bef12fb7d"
+    },
+    {
+      "path": "hrm-classification-matrix-review-complete-artifact.py.gz",
+      "originalBytes": 9184,
+      "originalSha256": "851ec547e2065b42d1a1ecde1f4dcee1b27e670f50552c83ea14dc237774bab9",
+      "storedBytes": 3558,
+      "storedSha256": "64aa59226a5831da69bf5e1a5d764dbd3e1113f5a9b15a2a6e2916e25c847273"
+    }
+  ]
+}

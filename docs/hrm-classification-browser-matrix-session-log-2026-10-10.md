@@ -167,3 +167,20 @@ interactive geometry has not been tested yet. Other four original source
 lanes still run naturally; no cancellation or corrected source push.
 Phase02 preserves original failure packet and final source/gitleaks bindings.
 Parent normal release still pending; no false task/operational credit.
+
+## Prepared narrow scrolling-region selector delta independently accepted
+
+Prepared-only patch18ea208f (full digest in receipt), not applied/published
+while first source38013716710 continues. Independent receipt2533B/SHA
+2eee1cb63a7aed3cc832a2726fbf89082425595942adc8d7862fa61b1ab0986b
+accepts no P0/P1/P2 in narrow selector/finite counts delta. It selects actual
+div[role=region][tabindex=0] and verifies count1, exact translated aria-label,
+tabindex0, one table; real geometry/focus/keyboard/privacy/write/rate/DB gates
+remain unchanged. Additional diagnostics contain only counts/booleans, no names
+or private values. Prepared candidate Node20 syntax PASS, runtime NOT RUN.
+Original failure cause remains INFERRED until next actual named-region count.
+Phase03 preserves patch, review, prepared metadata and finite root reader.
+Root reader syntax checked only; no expected matrix-count acceptance borrowed.
+D8E report browser job completed SUCCESS, compiler/regression/build still run.
+No new branch source commit or cancellation; all full original outcomes must
+complete before corrective source publication. Parent normal release pending.
