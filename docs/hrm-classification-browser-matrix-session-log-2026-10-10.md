@@ -543,3 +543,44 @@ current synthetic candidate binding, source review and original readererror.
 Source and candidate/required-five actual complete outcomes must pass before
 ordinary merge; fresh refs/protection will be checked again then. No production
 change for this PR yet, no borrowed A161 pass or wholeC12/C14 closure.
+
+## Exact AEF all source/candidate/required passes; fresh main race stopped merge
+
+AEF38018373702 attempt1 completed actualSUCCESS in allfive source lanes.
+Root whole-original/content readers and independent peer accept20cases/12cells,
+24manualwrites+24immutableaudits/108focus/48private capture refusals/3native21,
+19sourcebindings/7exact production statementextracts/8 unchangedfacts/RLS and
+cleanup. Root actually viewed four fresh original native images, peer all21.
+Header/development badge overlays and deliberate tall/horizontal tables are
+retained and qualified; no whole-page occlusion/WCAG/human device acceptance.
+Report33/3native21/54focus/58reflow/22facts independently accepted.
+
+Actual guard31/PostgreSQL44/schema/generate/lint/i18n/runner passed; full
+strict regression returned18/18 with every original failing file still failing,
+existing nine actionUI cases retained. Exact rawcompiler179299B SHA
+f7e463d2ae280538ed2f171dc413dab7036697efabefb5b73016ad14a8db5f22
+1162diagnostics/35families/exit2, strict64 matched/critical0/owned0; globally
+NONCLEAN. Actual productionbundle974pages/standalone passed; inherited
+trace-copy ENOENT preserved, skipped internal type validation gives no credit.
+
+READY report38018589169/calendar38018589274/manager38018589158 actualSUCCESS,
+current d98 parents[E05,AEF]/whole134c4 at their checkout. Root and peer whole
+ZIP/sourcebindings/native/fact/roleboundary acceptance retained. Required
+PRchecks38018589154 actualscope/static/typeSUCCESS, runner38018376916 and
+scan38018376834 actualSUCCESS, App15368/sourceAEF. Optional and draft SKIP
+rows never counted. All baselines remain unchanged. Root temporary candidate
+artifact-reader SyntaxError and exact reader correction preserved separately.
+
+Fresh premerge reader stopped with actualAssertionError: main had advanced to
+afe67f28f75cbebe2878ddf51bb5f7e0b4a21cc4 while candidate d98/baseE05 was
+stale. No merge or production action occurred. ForeignPR676 changes exactly
+three MTM component/test paths, no owned or Workforce overlap; preserve them.
+Actual requiredchecksSUCCESS is not new-tree runtime acceptance. Reverted
+PR674 DRAFT before integration. Immutable phase15 retains allfive source whole
+logs/APIs/ZIPs, three candidate complete packets, three required runs, root
+visual/source/fact readers, independent reports, original reader error and
+current-ref refusal. Accounting85/161/76/61%, C12PARTIAL/C14incomplete.
+
+Next ordinary integration of currentmain, checkpoint updatedsource/journal,
+independent final-source review and fresh exact-source/candidate required
+gates. No new baseline/skip/timeout relaxations, no foreign rerun/cancellation.

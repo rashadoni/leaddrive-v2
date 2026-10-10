@@ -1,0 +1,566 @@
+{
+  "archivedAtUtc": "2026-10-10T03:19:39.004655+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-candidate-selected-original-visual-review.json.gz",
+      "originalBytes": 2165,
+      "originalSha256": "7c85441a1ca37fcc17dac0620f590600d907a65922c57cf1420e19556ba4f271",
+      "storedBytes": 1069,
+      "storedSha256": "10eb205d3fea487770a7ba4e857c5b233e3181cd952a44c66df6abb9b7454787"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-final-premerge-root/candidate-commit-api-original.json.gz",
+      "originalBytes": 1239,
+      "originalSha256": "5cd80384ad6e58d1f6a975b5aaeb8887e428ccdd3e61ed4d23f783eeae929dde",
+      "storedBytes": 1239,
+      "storedSha256": "5cd80384ad6e58d1f6a975b5aaeb8887e428ccdd3e61ed4d23f783eeae929dde"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-final-premerge-root/candidate-ref-api-original.json.gz",
+      "originalBytes": 225,
+      "originalSha256": "6e371094a6069907c7b87374a3ef8c5f82968d1253aed9f41b96f8dd860fe9a7",
+      "storedBytes": 225,
+      "storedSha256": "6e371094a6069907c7b87374a3ef8c5f82968d1253aed9f41b96f8dd860fe9a7"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-final-premerge-root/checks-api-original.json.gz",
+      "originalBytes": 4151,
+      "originalSha256": "626921f77f442c32d97626252861cbcb70c2cd21d46308c9d460ed0d84762718",
+      "storedBytes": 4151,
+      "storedSha256": "626921f77f442c32d97626252861cbcb70c2cd21d46308c9d460ed0d84762718"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-final-premerge-root/initial-current-ref-refusal.json.gz",
+      "originalBytes": 1081,
+      "originalSha256": "420924184d46840ce35357d1058c32078c0fab8ca146db74a81e8ff6ca8bc2fe",
+      "storedBytes": 661,
+      "storedSha256": "e5f07b4f03dc6cc824215c14b86b111f94c4246845be9006b5fb44a052b51cf9"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-final-premerge-root/main-api-original.json.gz",
+      "originalBytes": 214,
+      "originalSha256": "e349ea69037f947a734689268b1f5ee6dcc7ec79b4ae64104d231ce5bdd84032",
+      "storedBytes": 214,
+      "storedSha256": "e349ea69037f947a734689268b1f5ee6dcc7ec79b4ae64104d231ce5bdd84032"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-final-premerge-root/main-protection-api-original.json.gz",
+      "originalBytes": 422,
+      "originalSha256": "bdaec664bbb0d3971e4bfc06d28c73b1abd217b91596b0a79f6c473ce0005a37",
+      "storedBytes": 422,
+      "storedSha256": "bdaec664bbb0d3971e4bfc06d28c73b1abd217b91596b0a79f6c473ce0005a37"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-final-premerge-root/pr-api-original.json.gz",
+      "originalBytes": 3033,
+      "originalSha256": "cee00ecd5cee37834fda75ccbb8e050506473b44fad5b7c2ea571ab970263691",
+      "storedBytes": 3033,
+      "storedSha256": "cee00ecd5cee37834fda75ccbb8e050506473b44fad5b7c2ea571ab970263691"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-final-premerge-root/source-commit-api-original.json.gz",
+      "originalBytes": 507,
+      "originalSha256": "fc46de3918f38717c5c03e30589864a6c783de63f45cb1f347663d687512d682",
+      "storedBytes": 507,
+      "storedSha256": "fc46de3918f38717c5c03e30589864a6c783de63f45cb1f347663d687512d682"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-ready-calendar-candidate-root/actual-check-api-original.json.gz",
+      "originalBytes": 1327,
+      "originalSha256": "3f74dffcfad27de467659f0cb4a4fb595297f4df414240d6c1f2d4dbe076f76a",
+      "storedBytes": 1327,
+      "storedSha256": "3f74dffcfad27de467659f0cb4a4fb595297f4df414240d6c1f2d4dbe076f76a"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-ready-calendar-candidate-root/artifact-11657077815-original.zip",
+      "originalBytes": 8504554,
+      "originalSha256": "7a1f14e2e7a93e923c7768015cbd1f3aabab6242f3df3f04f86b482a3219747a",
+      "storedBytes": 8504554,
+      "storedSha256": "7a1f14e2e7a93e923c7768015cbd1f3aabab6242f3df3f04f86b482a3219747a"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-ready-calendar-candidate-root/artifacts-api-original.json.gz",
+      "originalBytes": 488,
+      "originalSha256": "13845b5b6bc70521a5236e6c0cee64f251afad0bcd0057e24edffc76861b8e2a",
+      "storedBytes": 488,
+      "storedSha256": "13845b5b6bc70521a5236e6c0cee64f251afad0bcd0057e24edffc76861b8e2a"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-ready-calendar-candidate-root/finite-capture-summary.json.gz",
+      "originalBytes": 6148,
+      "originalSha256": "00b751ba0c948fb46059e2d71a0f1bd727c26bccd7a384347d3066c6bb55e5b4",
+      "storedBytes": 1344,
+      "storedSha256": "ee28de14079aef9be03c5a16837257eb8363bc6aa5eaa494c89a1e6743efc926"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-ready-calendar-candidate-root/job-114114339603-original.txt.gz",
+      "originalBytes": 18292,
+      "originalSha256": "244c16e3f55307883ec106e55bc880732a0d7db3b89161de1ba14e23842e0c3e",
+      "storedBytes": 18292,
+      "storedSha256": "244c16e3f55307883ec106e55bc880732a0d7db3b89161de1ba14e23842e0c3e"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-ready-calendar-candidate-root/jobs-api-original.json.gz",
+      "originalBytes": 900,
+      "originalSha256": "e5084edc06691874b75309b7b2fad9c73a70712fb88d9bc00c8a30b75160462b",
+      "storedBytes": 900,
+      "storedSha256": "e5084edc06691874b75309b7b2fad9c73a70712fb88d9bc00c8a30b75160462b"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-ready-calendar-candidate-root/root-complete-shared-native-content-review.json.gz",
+      "originalBytes": 5019,
+      "originalSha256": "8a08e8de1bb95b6c6b1716a8101e842390fa246b990189bc4e28b8cb8f280ed1",
+      "storedBytes": 1406,
+      "storedSha256": "46476bb49332492cc51aaf96ce208f8081c7bfca4617dd908084f6dcb9987ce3"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-ready-calendar-candidate-root/run-api-original.json.gz",
+      "originalBytes": 1665,
+      "originalSha256": "617b3e84f99564e0bc315685579eb79bb7f656bb4e3a18f57c445c54e875e76b",
+      "storedBytes": 1665,
+      "storedSha256": "617b3e84f99564e0bc315685579eb79bb7f656bb4e3a18f57c445c54e875e76b"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-ready-manager-candidate-root/actual-check-api-original.json.gz",
+      "originalBytes": 1328,
+      "originalSha256": "d95137daa9eda27f39bd813ad805f35245c162b6b5510d8aeaffb6e7e4926136",
+      "storedBytes": 1328,
+      "storedSha256": "d95137daa9eda27f39bd813ad805f35245c162b6b5510d8aeaffb6e7e4926136"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-ready-manager-candidate-root/artifact-11656794626-original.zip",
+      "originalBytes": 7057896,
+      "originalSha256": "2be58afc0c4205dd3f52070f9f4498d836886046300bcbdf06f430dd2cf9e747",
+      "storedBytes": 7057896,
+      "storedSha256": "2be58afc0c4205dd3f52070f9f4498d836886046300bcbdf06f430dd2cf9e747"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-ready-manager-candidate-root/artifacts-api-original.json.gz",
+      "originalBytes": 493,
+      "originalSha256": "e158963ea9ac9fbe23d059fef8a1ae4cd48666e0fe0e7d7bdb023857131de144",
+      "storedBytes": 493,
+      "storedSha256": "e158963ea9ac9fbe23d059fef8a1ae4cd48666e0fe0e7d7bdb023857131de144"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-ready-manager-candidate-root/finite-capture-summary.json.gz",
+      "originalBytes": 5355,
+      "originalSha256": "58df67d479f638a4dc8e226dd41453e59a23859ac4250f0ba2ef7f389131fbac",
+      "storedBytes": 1218,
+      "storedSha256": "a133164cd4bf1fb6f792415b0acc6320aa39c723bdd2f5686d4d9a9222ee4355"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-ready-manager-candidate-root/job-114114339339-original.txt.gz",
+      "originalBytes": 20473,
+      "originalSha256": "d192fae77a065901edc76a1acc4485130c7a7ecc56590c0e532b0adeb9435e11",
+      "storedBytes": 20473,
+      "storedSha256": "d192fae77a065901edc76a1acc4485130c7a7ecc56590c0e532b0adeb9435e11"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-ready-manager-candidate-root/jobs-api-original.json.gz",
+      "originalBytes": 895,
+      "originalSha256": "ec45808ff9e4fb2a022c14142b973e976dadd64013b2173176ee73effc52093e",
+      "storedBytes": 895,
+      "storedSha256": "ec45808ff9e4fb2a022c14142b973e976dadd64013b2173176ee73effc52093e"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-ready-manager-candidate-root/root-complete-shared-native-content-review.json.gz",
+      "originalBytes": 4319,
+      "originalSha256": "ae995d166cf60397247ba7b19ffabeb43a38b3d5c8330478e21629c55f22fe5b",
+      "storedBytes": 1314,
+      "storedSha256": "2186fe01f51ee64894944cf88974471f0a3fabdbd601b9188a16d581b62826fb"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-ready-manager-candidate-root/run-api-original.json.gz",
+      "originalBytes": 1674,
+      "originalSha256": "1b1708ef0e750698606d50d952b448a00c7c160ab7004b1567fe1d8b232e0a0a",
+      "storedBytes": 1674,
+      "storedSha256": "1b1708ef0e750698606d50d952b448a00c7c160ab7004b1567fe1d8b232e0a0a"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-ready-report-candidate-root/actual-report-commit-api.json.gz",
+      "originalBytes": 83773,
+      "originalSha256": "a902d14fa9d4fcb3d695a8ef7e7934bd827e60c0b55711de48e430331e70c764",
+      "storedBytes": 26707,
+      "storedSha256": "4a6bd8786ac5314108c52747ad22437d21ccb63fd23c599bf67db6a0fb03513e"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-ready-report-candidate-root/artifact-11657772192-original.zip",
+      "originalBytes": 6588895,
+      "originalSha256": "466bdae760abc77bc386bf3c771c2d2129f2798f483cd04bf51e98f9131165f2",
+      "storedBytes": 6588895,
+      "storedSha256": "466bdae760abc77bc386bf3c771c2d2129f2798f483cd04bf51e98f9131165f2"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-ready-report-candidate-root/artifacts-api-original.json.gz",
+      "originalBytes": 494,
+      "originalSha256": "c67d3af3cde10a559ef4c42d137eeecbc138d21db95fcd5488b3df59b2b18539",
+      "storedBytes": 494,
+      "storedSha256": "c67d3af3cde10a559ef4c42d137eeecbc138d21db95fcd5488b3df59b2b18539"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-ready-report-candidate-root/finite-capture-summary.json.gz",
+      "originalBytes": 6588,
+      "originalSha256": "d1f4b673dce32ae0f538d4595da49e8c335a471d021a3c28d560e6802b78dcb5",
+      "storedBytes": 1394,
+      "storedSha256": "95c20cb10a3b01612d19025792343e8e219fdf7fab9ff0372babdfe91cee9146"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-ready-report-candidate-root/job-114114339259-original.txt.gz",
+      "originalBytes": 19427,
+      "originalSha256": "65480ab7ca4fb58a230ef25fd0479aa4cb5a79047f9975864d96477e8ffa1fe5",
+      "storedBytes": 19427,
+      "storedSha256": "65480ab7ca4fb58a230ef25fd0479aa4cb5a79047f9975864d96477e8ffa1fe5"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-ready-report-candidate-root/jobs-api-original.json.gz",
+      "originalBytes": 1134,
+      "originalSha256": "9476a00df584269bc45677f9e7ea82234ad0e48d9243e1a23293aaa167850b04",
+      "storedBytes": 1134,
+      "storedSha256": "9476a00df584269bc45677f9e7ea82234ad0e48d9243e1a23293aaa167850b04"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-ready-report-candidate-root/root-complete-report-content-review.json.gz",
+      "originalBytes": 5612,
+      "originalSha256": "a1c70c99f69ae87d841d18bf316a5c0acd7d36e031347f49db82570151b2ddab",
+      "storedBytes": 1619,
+      "storedSha256": "3a6fbaea6644c71e34ba5f80994d1dc7d5ce8bcda542bc340ce09af0f79502ef"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-ready-report-candidate-root/run-api-original.json.gz",
+      "originalBytes": 1672,
+      "originalSha256": "c9aa693d5c74423cf9a96bbcc4c9db2d95b38ba9e809500036c54d78d93fdbbc",
+      "storedBytes": 1672,
+      "storedSha256": "c9aa693d5c74423cf9a96bbcc4c9db2d95b38ba9e809500036c54d78d93fdbbc"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-required-prchecks-root/artifact-11656919829-original.zip",
+      "originalBytes": 517,
+      "originalSha256": "13961d680daa0720dcca6e977a0397051dbde18f324ccbcc01a26ee5abf90580",
+      "storedBytes": 517,
+      "storedSha256": "13961d680daa0720dcca6e977a0397051dbde18f324ccbcc01a26ee5abf90580"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-required-prchecks-root/artifacts-api-original.json.gz",
+      "originalBytes": 458,
+      "originalSha256": "d193a032d0c097f914a8370ccd41702e74f6757f637b958062400dc196c73883",
+      "storedBytes": 458,
+      "storedSha256": "d193a032d0c097f914a8370ccd41702e74f6757f637b958062400dc196c73883"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-required-prchecks-root/finite-capture-summary.json.gz",
+      "originalBytes": 6731,
+      "originalSha256": "a054dc2f87fd88552bc8d64a4a17f5da8a5874f4b66b5c4b49c9297c3609c0a6",
+      "storedBytes": 1468,
+      "storedSha256": "287a1b3ff5d6fd5215b3c3e9a95d7d373aaf95b841225fffefa585b539037ad2"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-required-prchecks-root/job-114114339269-original.txt.gz",
+      "originalBytes": 16051,
+      "originalSha256": "38d56a8181c633a62b0f93f8b31914c82fb9fb1519d04d1cb844de5e339ceb91",
+      "storedBytes": 16051,
+      "storedSha256": "38d56a8181c633a62b0f93f8b31914c82fb9fb1519d04d1cb844de5e339ceb91"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-required-prchecks-root/job-114114445264-original.txt.gz",
+      "originalBytes": 34013,
+      "originalSha256": "c731204fc24ccdfd73af1389d31476db1c3cec73e692c60dec16fad70c97d64a",
+      "storedBytes": 34013,
+      "storedSha256": "c731204fc24ccdfd73af1389d31476db1c3cec73e692c60dec16fad70c97d64a"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-required-prchecks-root/job-114114445294-original.txt.gz",
+      "originalBytes": 46321,
+      "originalSha256": "21809f2b74f6bed4e5456463c3375851ccbcf83473f7d8341516b40eabaf1065",
+      "storedBytes": 46321,
+      "storedSha256": "21809f2b74f6bed4e5456463c3375851ccbcf83473f7d8341516b40eabaf1065"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-required-prchecks-root/jobs-api-original.json.gz",
+      "originalBytes": 1749,
+      "originalSha256": "fd149d55c9d5199fd7eb3af96456c9cb3ebd9b3f0eaaf39861ecfaf3e522c79f",
+      "storedBytes": 1749,
+      "storedSha256": "fd149d55c9d5199fd7eb3af96456c9cb3ebd9b3f0eaaf39861ecfaf3e522c79f"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-required-prchecks-root/run-api-original.json.gz",
+      "originalBytes": 1647,
+      "originalSha256": "099e61e08bf7bb7263ebc597617615ee8bb903f222f0bc3b00380acfc3af5bf5",
+      "storedBytes": 1647,
+      "storedSha256": "099e61e08bf7bb7263ebc597617615ee8bb903f222f0bc3b00380acfc3af5bf5"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-required-runner-root/artifacts-api-original.json.gz",
+      "originalBytes": 52,
+      "originalSha256": "445c0201400e7d67debcd7865fdc885bab735bc10686fdc583a3bd4a3be3286e",
+      "storedBytes": 52,
+      "storedSha256": "445c0201400e7d67debcd7865fdc885bab735bc10686fdc583a3bd4a3be3286e"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-required-runner-root/finite-capture-summary.json.gz",
+      "originalBytes": 1193,
+      "originalSha256": "869ba2e70d80d7bbc91ee1b69ab4487fabcc9f171aa887d162a80dc2a3941da8",
+      "storedBytes": 536,
+      "storedSha256": "28faa10ad6aec549b9b43e3304e01c0f3eb45476ebff76b6bcf0c52b93e17eeb"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-required-runner-root/job-114113681756-original.txt.gz",
+      "originalBytes": 3319,
+      "originalSha256": "6dd28539c3ee6dc8a09c91f5b0bf89906b2b6733ba252fe4c27d78af04201478",
+      "storedBytes": 3319,
+      "storedSha256": "6dd28539c3ee6dc8a09c91f5b0bf89906b2b6733ba252fe4c27d78af04201478"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-required-runner-root/jobs-api-original.json.gz",
+      "originalBytes": 589,
+      "originalSha256": "d65d013bbbfcfa853c281d4db728d30c62e0c1a399330494fa0a4ee1801ad98f",
+      "storedBytes": 589,
+      "storedSha256": "d65d013bbbfcfa853c281d4db728d30c62e0c1a399330494fa0a4ee1801ad98f"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-required-runner-root/run-api-original.json.gz",
+      "originalBytes": 1643,
+      "originalSha256": "1d331c0834169e311378c33379db38efcfe10b6e1e5a0925b5a08133c96065ff",
+      "storedBytes": 1643,
+      "storedSha256": "1d331c0834169e311378c33379db38efcfe10b6e1e5a0925b5a08133c96065ff"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-required-scan-root/artifacts-api-original.json.gz",
+      "originalBytes": 52,
+      "originalSha256": "445c0201400e7d67debcd7865fdc885bab735bc10686fdc583a3bd4a3be3286e",
+      "storedBytes": 52,
+      "storedSha256": "445c0201400e7d67debcd7865fdc885bab735bc10686fdc583a3bd4a3be3286e"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-required-scan-root/finite-capture-summary.json.gz",
+      "originalBytes": 1377,
+      "originalSha256": "21ee1a0543591f1fd51b52b99812c67764ec09e275b5190a81cee9a3efc071ff",
+      "storedBytes": 568,
+      "storedSha256": "4603ae44f109d3941fcd957080dc66212bcd1d6a4916053e03947a7bfadf49ca"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-required-scan-root/job-114113681312-original.txt.gz",
+      "originalBytes": 16189,
+      "originalSha256": "81b27d5ea9ab2e4d0840e004ff77fd1d7cd9e9c3e1ae36b151cf782367add601",
+      "storedBytes": 16189,
+      "storedSha256": "81b27d5ea9ab2e4d0840e004ff77fd1d7cd9e9c3e1ae36b151cf782367add601"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-required-scan-root/jobs-api-original.json.gz",
+      "originalBytes": 638,
+      "originalSha256": "da5da28a23f204a327a4833d4eca8b5a2b585e7b727b9dd279a8eaf92f06bd78",
+      "storedBytes": 638,
+      "storedSha256": "da5da28a23f204a327a4833d4eca8b5a2b585e7b727b9dd279a8eaf92f06bd78"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-required-scan-root/run-api-original.json.gz",
+      "originalBytes": 1644,
+      "originalSha256": "c54c9809c5475f0e35ba4d59fc0934cfd96cae1e197894a36b04b266a92c68f2",
+      "storedBytes": 1644,
+      "storedSha256": "c54c9809c5475f0e35ba4d59fc0934cfd96cae1e197894a36b04b266a92c68f2"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-aef-source-selected-original-visual-review.json.gz",
+      "originalBytes": 2881,
+      "originalSha256": "cb8826f93d4fe703e7d59c277cb5f3b8e5fc4df6e1700a5a302becbf2a5f49b7",
+      "storedBytes": 1221,
+      "storedSha256": "4ecabf7dd76558b61b5b77453c429c270c73c5631dcd967165144a1e9a7ed193"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-matrix-aef-candidate-browser-boundaries-peer-supplement.json.gz",
+      "originalBytes": 26178,
+      "originalSha256": "922eeeb3159200ce3c55fa4cc6d9c19d2afcd129de9ebacb9d04a9438e54cd57",
+      "storedBytes": 3527,
+      "storedSha256": "ef52a2a6e70049166365b62cf2e5467d80290730b4460fcee27df2fe3f8d02fc"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-matrix-aef-complete-source-root/actual-full-tsc-output.log.gz",
+      "originalBytes": 179299,
+      "originalSha256": "f7e463d2ae280538ed2f171dc413dab7036697efabefb5b73016ad14a8db5f22",
+      "storedBytes": 19290,
+      "storedSha256": "9e852d2b82806772b6bf7e535640286d0e70d23506437017981c2e8c374541d5"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-matrix-aef-complete-source-root/actual-report-commit-api.json.gz",
+      "originalBytes": 19290,
+      "originalSha256": "1f65feaa6e269ebee62742a3fa6ad3d734512051698686a1faafa5a482b2b116",
+      "storedBytes": 6909,
+      "storedSha256": "98ab028541e9bba62457fc1262bd6ce9255a20c6c8a0d232cb3760a25a956db0"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-matrix-aef-complete-source-root/actual-tsc-exit-code.gz",
+      "originalBytes": 2,
+      "originalSha256": "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3",
+      "storedBytes": 22,
+      "storedSha256": "6e08a71af69ad2fa0122936c77c0ba1d20f2b26808cfc5ea068985fb8264bf05"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-matrix-aef-complete-source-root/artifact-11657118349-original.zip",
+      "originalBytes": 20009,
+      "originalSha256": "33c75d3a6688851a5c4da14b28d9b17c2ddadf9b231568caf2c3f39260c5a899",
+      "storedBytes": 20009,
+      "storedSha256": "33c75d3a6688851a5c4da14b28d9b17c2ddadf9b231568caf2c3f39260c5a899"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-matrix-aef-complete-source-root/artifact-11657137695-original.zip",
+      "originalBytes": 3813176,
+      "originalSha256": "ff64ab3fa9071342094e0bce256b24b94efd4279222963d4a277dea7c73def10",
+      "storedBytes": 3813176,
+      "storedSha256": "ff64ab3fa9071342094e0bce256b24b94efd4279222963d4a277dea7c73def10"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-matrix-aef-complete-source-root/artifact-11657302180-original.zip",
+      "originalBytes": 6589139,
+      "originalSha256": "b3c9ea8d7e4975444983f704a0b82ef2d8a59e1dfaa04d5561dd6bbeaa9b0ee3",
+      "storedBytes": 6589139,
+      "storedSha256": "b3c9ea8d7e4975444983f704a0b82ef2d8a59e1dfaa04d5561dd6bbeaa9b0ee3"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-matrix-aef-complete-source-root/artifacts-api-original.json.gz",
+      "originalBytes": 684,
+      "originalSha256": "ef5332a9d5cdccec436bf8b48a25eca6a6f8f71a72361bd653d28764c572ad0e",
+      "storedBytes": 684,
+      "storedSha256": "ef5332a9d5cdccec436bf8b48a25eca6a6f8f71a72361bd653d28764c572ad0e"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-matrix-aef-complete-source-root/finite-capture-summary.json.gz",
+      "originalBytes": 15784,
+      "originalSha256": "f998c12420f718325433e9ab2e78fa63c5d111589485994840880605f53ce976",
+      "storedBytes": 2317,
+      "storedSha256": "f183442d7706784209ba9a868d77d1412c3a40679616a8c5fee5f605110311a3"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-matrix-aef-complete-source-root/job-114113673970-original.txt.gz",
+      "originalBytes": 21376,
+      "originalSha256": "d68dcef830ca6061ddb53c9d3aed5db19508d28d17bd7d64a2611f727e7f421a",
+      "storedBytes": 21376,
+      "storedSha256": "d68dcef830ca6061ddb53c9d3aed5db19508d28d17bd7d64a2611f727e7f421a"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-matrix-aef-complete-source-root/job-114113674101-original.txt.gz",
+      "originalBytes": 19317,
+      "originalSha256": "2e7621a1cea796e84a7b631d212b89249315a1463a66eb4dbee206c3b49db45b",
+      "storedBytes": 19317,
+      "storedSha256": "2e7621a1cea796e84a7b631d212b89249315a1463a66eb4dbee206c3b49db45b"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-matrix-aef-complete-source-root/job-114113674131-original.txt.gz",
+      "originalBytes": 35281,
+      "originalSha256": "a2396e616ed793562ab24165568655a7a0c450046fc3ad623c1dd8f1dc52059d",
+      "storedBytes": 35281,
+      "storedSha256": "a2396e616ed793562ab24165568655a7a0c450046fc3ad623c1dd8f1dc52059d"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-matrix-aef-complete-source-root/job-114113674132-original.txt.gz",
+      "originalBytes": 29239,
+      "originalSha256": "695e1ee31b16963e2caf123cc2eecf191a9a85289d6ce4cb84d1a31e8f6af859",
+      "storedBytes": 29239,
+      "storedSha256": "695e1ee31b16963e2caf123cc2eecf191a9a85289d6ce4cb84d1a31e8f6af859"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-matrix-aef-complete-source-root/job-114113674182-original.txt.gz",
+      "originalBytes": 24824,
+      "originalSha256": "6c82270d00e5e19233a5a29ffaf5c4f64dc5af7f300198f58f5981d531282a06",
+      "storedBytes": 24824,
+      "storedSha256": "6c82270d00e5e19233a5a29ffaf5c4f64dc5af7f300198f58f5981d531282a06"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-matrix-aef-complete-source-root/jobs-api-original.json.gz",
+      "originalBytes": 1968,
+      "originalSha256": "931ab2904602928ba02bf632d78289eb80621fd18f1531ab120fac0bfe466c43",
+      "storedBytes": 1968,
+      "storedSha256": "931ab2904602928ba02bf632d78289eb80621fd18f1531ab120fac0bfe466c43"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-matrix-aef-complete-source-root/root-complete-classification-content-review.json.gz",
+      "originalBytes": 6891,
+      "originalSha256": "a4791dc476220eb35a71909f512ac939b16cccd8531c3759597702522000daba",
+      "storedBytes": 1597,
+      "storedSha256": "13cff5e3cba7b5c164c471a064a987f65980a30c37423aff0f58f0434cce2450"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-matrix-aef-complete-source-root/root-complete-compiler-gate-review.json.gz",
+      "originalBytes": 4056,
+      "originalSha256": "fac957ebc1a315bc103bd988a2cb201dc72bfeca89b3a0ad0830987113ed3955",
+      "storedBytes": 1446,
+      "storedSha256": "8a21dfdfe685bed50916880223592d2d4950cde7f17904c2fa9e0f80c9c1ade5"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-matrix-aef-complete-source-root/root-complete-report-content-review.json.gz",
+      "originalBytes": 5612,
+      "originalSha256": "d385b11c8a46790d5f91c1e773aad43e3ff2040080ec3e4fb82100ca785019d4",
+      "storedBytes": 1583,
+      "storedSha256": "aa9861ec118fa9d16d08d23ba3d756d756291de68b2daf7021137d97afb96ac2"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-matrix-aef-complete-source-root/run-api-original.json.gz",
+      "originalBytes": 1639,
+      "originalSha256": "0c60d8ad74ed130a9804fdebd796c017cc05d346d8f14e130f936371e318ef0f",
+      "storedBytes": 1639,
+      "storedSha256": "0c60d8ad74ed130a9804fdebd796c017cc05d346d8f14e130f936371e318ef0f"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-matrix-aef-original-pixels-peer-review.json.gz",
+      "originalBytes": 7821,
+      "originalSha256": "e2a7e99ed71848d415b2b268af2b5fa4dafcd7ba860abb9378b0e28889562aa9",
+      "storedBytes": 2615,
+      "storedSha256": "73dc5eebb7e0ac9476a2993e1441062a3939986e161cfb4028ed402fbd54c439"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-matrix-hosted-peer-review-aef.json.gz",
+      "originalBytes": 32349,
+      "originalSha256": "01f9d16df1445ace7bec2eebf821cb0f293715667be08dcb0825da890e9419bf",
+      "storedBytes": 7703,
+      "storedSha256": "ba737e1cc218be0e8dcaddf951a54f9ca9376c97ec65b37d1c32d0b7d9c7651d"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-matrix-source-compiler-peer-review-aef.json.gz",
+      "originalBytes": 7880,
+      "originalSha256": "6601fdf697c0dbcb64be06a449b9ef0659bac568d0724df1411551963e46307e",
+      "storedBytes": 2422,
+      "storedSha256": "d148c0ddbeaf1a1b44b4fd43af356a60640f5a8a6c909df90507c6ac0421f9c0"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-matrix-source-regressions-build-peer-review-aef.json.gz",
+      "originalBytes": 6629,
+      "originalSha256": "c448596474c4926c33164f2254dfbb085f8f9659ea288fb247bb851e7d05af63",
+      "storedBytes": 2262,
+      "storedSha256": "1c127489d8984e8c952befe25b8288beae412c00e6032b9604ce5230f75573a4"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-review-current-shared-native-initial-syntax-error.json.gz",
+      "originalBytes": 491,
+      "originalSha256": "731b68ecf7f0ee786781692c54fd0f828da6f1a0f033773fb77f331b2eabd6ef",
+      "storedBytes": 378,
+      "storedSha256": "2cc983444c5b61d27f30031fc7218ee26c13710d3b40e0c2a3ca522bf609afce"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-classification-review-current-shared-native-initial-syntax-error.py.gz",
+      "originalBytes": 1938,
+      "originalSha256": "bcf2909db4bab9ab15ea71e4b31a3580a12ca5f023abef9aea8e23e000680a9e",
+      "storedBytes": 1938,
+      "storedSha256": "bcf2909db4bab9ab15ea71e4b31a3580a12ca5f023abef9aea8e23e000680a9e"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-report-accessibility-existing-native-regressions-peer-review-aef.json.gz",
+      "originalBytes": 63391,
+      "originalSha256": "f1a9ab6b01c40f114d49e13f55e58e138464993ca4f73b5d6ff5782ea3b41d14",
+      "storedBytes": 15112,
+      "storedSha256": "d817a19dbfdd88b154173d9d34e7635abbc140b2db6f896096b7aa4b4cf3155f"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-report-accessibility-hosted-browser-peer-review-aef-job-114113674101.json.gz",
+      "originalBytes": 63736,
+      "originalSha256": "e2df9c3e842a2cb2b1af7c135528ed570235a89d77735e6152881c03388ae8fd",
+      "storedBytes": 9101,
+      "storedSha256": "43655d2b6b521419e95046d73ed42d8334a9dbc6686139417ce95913e2454e49"
+    },
+    {
+      "path": "hrm-classification-aef-final-acceptance-top-files/hrm-report-accessibility-hosted-browser-peer-review-aef-job-114114339259.json.gz",
+      "originalBytes": 63736,
+      "originalSha256": "654be625e46cf7983f658f350bb88350b999bb308d17ae4f5a33d07a3d0bb4e8",
+      "storedBytes": 9137,
+      "storedSha256": "856c4563e51dc4be653208a26f788e38a95c81ff36f2c11ff1b88e95ce6fcdf5"
+    }
+  ]
+}
