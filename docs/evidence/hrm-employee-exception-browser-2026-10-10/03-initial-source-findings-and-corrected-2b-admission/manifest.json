@@ -1,0 +1,237 @@
+{
+  "archivedAtUtc": "2026-10-10T04:34:06.902006+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-employee-exception-source-peer-review-5b.json.gz",
+      "originalBytes": 10247,
+      "originalSha256": "ac10dc54283a1e6cb871aaa365dee0b0090afa41b69052da24c798539bc4fd7b",
+      "storedBytes": 4356,
+      "storedSha256": "e1092bd5398095d349efc1873e9d0a2ad2a5dca69527439765f9e2ee60bbc600"
+    },
+    {
+      "path": "hrm-employee-exception-final-source-peer-review-b082.json.gz",
+      "originalBytes": 34300,
+      "originalSha256": "b255b087207c2db9eff5079d3af407bad6b7ccb8f1d2f682f7587df2997821d8",
+      "storedBytes": 10313,
+      "storedSha256": "f9c1bc6fe31132f8170ac4ac1d64485c32d1561e864cd37f2a556c21ce802757"
+    },
+    {
+      "path": "hrm-employee-exception-af75-provenance-source-peer-review.json.gz",
+      "originalBytes": 2489,
+      "originalSha256": "36351e2a7d66b6b74bbe932f0ecba09586950360efca5535eacd7a35e83adade",
+      "storedBytes": 1393,
+      "storedSha256": "35f04aef53544ca9ccd017ab0ac84673b84431ecd382cddd7c7a023a666df6b3"
+    },
+    {
+      "path": "hrm-employee-exception-final-source-peer-review-2b055.json.gz",
+      "originalBytes": 37375,
+      "originalSha256": "d787596ee7377ce98fb2d914b838c5605229094ff36ed58345d9609f98fe8323",
+      "storedBytes": 11107,
+      "storedSha256": "6249aabca29d1f8542df706637d2316cfae9765213fb7e3a88f54041d4e08bb3"
+    },
+    {
+      "path": "hrm-employee-exception-b082-peer-static-bindings.json.gz",
+      "originalBytes": 25251,
+      "originalSha256": "693c691632dabf1cc2b2d1794dc0f1bd496be63738028b5fec6fb02deb804995",
+      "storedBytes": 6328,
+      "storedSha256": "699fef66e704f38899f0411d8ef99c897d8e479bd711043bee3d95aa742b6904"
+    },
+    {
+      "path": "hrm-employee-exception-b082-peer-initial-static-reader-error.json.gz",
+      "originalBytes": 1393,
+      "originalSha256": "9972f818f870aee4b992fc7138a6ccab565731712154a31bd5e15a05c7e4f08e",
+      "storedBytes": 727,
+      "storedSha256": "4b617dbca952d942feeb266770ae58e62f2b69d8f839d0f4bad45c701e8ba20d"
+    },
+    {
+      "path": "hrm-employee-exception-b082-peer-static-reader.py.gz",
+      "originalBytes": 9779,
+      "originalSha256": "62d3a5482078197550eef32bbf22192ba1501588532fe6383e55bbe89acdbf7d",
+      "storedBytes": 3815,
+      "storedSha256": "c02526f9cc5616c61bdfb3452e7a7206948c8af9b6c40549caa3248ff374922c"
+    },
+    {
+      "path": "hrm-employee-exception-b082-peer-static-reader.stdout.json.gz",
+      "originalBytes": 0,
+      "originalSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "storedBytes": 20,
+      "storedSha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec"
+    },
+    {
+      "path": "hrm-employee-exception-b082-peer-static-reader.stderr.log.gz",
+      "originalBytes": 282,
+      "originalSha256": "f373158036f1c65ecf32116aab38a07aff344741220452c577d7d1026e5d5091",
+      "storedBytes": 192,
+      "storedSha256": "6973238d0bb99c2f3e329e92cd58ae27d955f3cb64969cba0e4eef8e1c3701d6"
+    },
+    {
+      "path": "hrm-employee-exception-b082-peer-second-static-reader-original.py.gz",
+      "originalBytes": 3815,
+      "originalSha256": "c02526f9cc5616c61bdfb3452e7a7206948c8af9b6c40549caa3248ff374922c",
+      "storedBytes": 3815,
+      "storedSha256": "c02526f9cc5616c61bdfb3452e7a7206948c8af9b6c40549caa3248ff374922c"
+    },
+    {
+      "path": "hrm-employee-exception-b082-peer-static-reader-v2.py.gz",
+      "originalBytes": 9784,
+      "originalSha256": "693481e2e8dabb17a526407712f9ada1d631c5f516e005924e9dd42c05ed1bfb",
+      "storedBytes": 3819,
+      "storedSha256": "f2a25ea581528cfbdbc87f6ff94653fa9464f16fb98e443f30f1d7d2439afb08"
+    },
+    {
+      "path": "hrm-employee-exception-b082-peer-static-reader-v2.stdout.json.gz",
+      "originalBytes": 0,
+      "originalSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "storedBytes": 20,
+      "storedSha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec"
+    },
+    {
+      "path": "hrm-employee-exception-b082-peer-static-reader-v2.stderr.log.gz",
+      "originalBytes": 257,
+      "originalSha256": "873c58c8178203dae93ce37c2b31e5f8109c53660005aa31c59ba275a9cd530c",
+      "storedBytes": 189,
+      "storedSha256": "cdddc4d082016c7ad4a34c37056e85ac677b291120e5bc4ead51b40144338741"
+    },
+    {
+      "path": "hrm-employee-exception-b082-peer-static-reader-v3.py.gz",
+      "originalBytes": 9898,
+      "originalSha256": "0378510038e287642f733413967f2267271925ba5a8e5930af4d71a2611e0626",
+      "storedBytes": 3838,
+      "storedSha256": "d58296657d0cf554196f10808a5068b845936764f30006cfa62e22008619ecc7"
+    },
+    {
+      "path": "hrm-employee-exception-b082-peer-static-reader-v3.stdout.json.gz",
+      "originalBytes": 0,
+      "originalSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "storedBytes": 20,
+      "storedSha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec"
+    },
+    {
+      "path": "hrm-employee-exception-b082-peer-static-reader-v3.stderr.log.gz",
+      "originalBytes": 259,
+      "originalSha256": "6a8d5f58b0b26198254d0d15ceb55d70a762f30ccaf42d5ecf28fd840a0cf2fb",
+      "storedBytes": 193,
+      "storedSha256": "c9cc342e9cd7a70c023e8afb0978c68a4a3977a1b76a20bf38e30c1a3c269d4d"
+    },
+    {
+      "path": "hrm-employee-exception-b082-peer-static-reader-v4.py.gz",
+      "originalBytes": 9996,
+      "originalSha256": "b5e07ba7f709520ea30a8dbe26cbc3260250d8eed0e22903ef42139fe4e3ac78",
+      "storedBytes": 3847,
+      "storedSha256": "374978655939ce20942fad564e835e0a1de746378e3ff65b711c4b6ebe94e993"
+    },
+    {
+      "path": "hrm-employee-exception-b082-peer-static-reader-v4.stdout.json.gz",
+      "originalBytes": 322,
+      "originalSha256": "a2ece84947a568d77c6ec0e8c1410d455b8cc34ec64519907a7b81db5f512f53",
+      "storedBytes": 258,
+      "storedSha256": "bbcc0ba264b05018ff9ef132d5d4b3c17df334266ba71354dfd04b0452b9acfd"
+    },
+    {
+      "path": "hrm-employee-exception-b082-peer-static-reader-v4.stderr.log.gz",
+      "originalBytes": 0,
+      "originalSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "storedBytes": 20,
+      "storedSha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec"
+    },
+    {
+      "path": "hrm-employee-exception-source-peer-report-writer.py.gz",
+      "originalBytes": 13839,
+      "originalSha256": "7c0133920ab46c60f821e720ab43b3955e9414edb07b600f9f6b3e639746650c",
+      "storedBytes": 5715,
+      "storedSha256": "0aee5535c29ea17144d4820c2c0d3acae7719592ee1291201493dffe96f9c0a3"
+    },
+    {
+      "path": "hrm-employee-exception-source-peer-final2b-reader.py.gz",
+      "originalBytes": 10071,
+      "originalSha256": "78a9f687495a1469b581f58894608346c5b0d9f824ae9f180b1b7cb04c196dad",
+      "storedBytes": 4204,
+      "storedSha256": "8f000ca41c1690b53d5e57e742e3aa589f16738cf53887a1a1bc5bfe82b205e1"
+    },
+    {
+      "path": "hrm-employee-exception-af75-peer-final-head-refusal.json.gz",
+      "originalBytes": 771,
+      "originalSha256": "b9ef0b89dce0567172c9cb9a2990154b4e967950439a4ade71a654f05b2b139e",
+      "storedBytes": 494,
+      "storedSha256": "9e8848e18a29104505bbe5b7199dd80ecd749f6ba8cf92a4ca6f062427e71c80"
+    },
+    {
+      "path": "hrm-employee-exception-af75-peer-final-head-refusal-exact-stderr.log.gz",
+      "originalBytes": 344,
+      "originalSha256": "3e4c4f90030ec6cf1b9d0843f3574a3bd4816cde7589d9c6a5f0c0df9c120593",
+      "storedBytes": 212,
+      "storedSha256": "f1cbc11ac653a6797779b36ff479f9c06b7952e5d85af03e070e91dbfdaa688f"
+    },
+    {
+      "path": "hrm-employee-exception-peer-stderr-preservation-addendum.json.gz",
+      "originalBytes": 709,
+      "originalSha256": "d57dbd4a467b4d9ce7354f11313aabab475b2a03d719c445e941aa5bb40577b3",
+      "storedBytes": 435,
+      "storedSha256": "a02afdca7f034cea936adf2499f200c72e96c774bc7f76dd78a5b406b16a8d26"
+    },
+    {
+      "path": "hrm-employee-exception-source-peer-phase03-inventory.json.gz",
+      "originalBytes": 4875,
+      "originalSha256": "3ae58a31f7d6a77a492c34ddf278747a13d73da8afa581bf0861605177d2c0ee",
+      "storedBytes": 1398,
+      "storedSha256": "8927d4e8ce31549e91ff3725f5ef14d57e2f544ae8eda631d7df71c2126b3c2f"
+    },
+    {
+      "path": "hrm-employee-exception-5b-root-initial-marker-reader-error.json.gz",
+      "originalBytes": 531,
+      "originalSha256": "c7215f6c2e9f20e4867598fb102a93224c551f7ea9e75bdea10d324626cb91a3",
+      "storedBytes": 360,
+      "storedSha256": "084688e593428e088b5272d54200bde842a397498d9254490cdec372baacc27c"
+    },
+    {
+      "path": "hrm-employee-exception-5b-workflow-initial-metadata-404.json.gz",
+      "originalBytes": 535,
+      "originalSha256": "a95b947db19ee6b06b34d25c038bb3686dba7dff3d784b065c59958829006568",
+      "storedBytes": 370,
+      "storedSha256": "ba04dea68afad363980b80baf963dd6d5424458086196340f52667baa5548549"
+    },
+    {
+      "path": "hrm-employee-exception-5b-protected-source-root.json.gz",
+      "originalBytes": 3737,
+      "originalSha256": "28b734b66fb457869bb88b3df9b7507692f1475babaeae996c3298b6be49a705",
+      "storedBytes": 1515,
+      "storedSha256": "2f93f5dc8315cf762774d4dddec8a3a137a3c04c224857e9928395f1cd77d190"
+    },
+    {
+      "path": "hrm-employee-exception-b082-workflow-root.json.gz",
+      "originalBytes": 379,
+      "originalSha256": "fe11d0bb2182c4576af81e30f02ba3289f92dea9f98d8025747f1814bd4eacbe",
+      "storedBytes": 302,
+      "storedSha256": "ff1abe113602bdf31f68f353e4aa14b3dd5f98df471bdb580070ff47b9fab402"
+    },
+    {
+      "path": "hrm-employee-exception-b082-source-gitleaks.json.gz",
+      "originalBytes": 3,
+      "originalSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "storedBytes": 23,
+      "storedSha256": "2ca4529576310b626c1bd48352d283b521d029d54f195d8416536872d826e4c6"
+    },
+    {
+      "path": "hrm-employee-exception-b082-source-gitleaks-log.txt.gz",
+      "originalBytes": 110,
+      "originalSha256": "fabd54f3969970320ccdad14ac9d9571f68badf5a6b28f76a045ca0c15a5e481",
+      "storedBytes": 105,
+      "storedSha256": "1610b8dcc054f52b4ac0c58b8440e5a9b89311bb9acff816466b7a79d4ae5265"
+    },
+    {
+      "path": "hrm-employee-exception-2b-protected-source-root.json.gz",
+      "originalBytes": 3965,
+      "originalSha256": "62edacf1b892eee6c5cb2732d9883ea9cf7a7e97c64eecf9800db398295f1af3",
+      "storedBytes": 1644,
+      "storedSha256": "eaa2e8b051ba9eea4accc70a02eda7a298a5e221d43a63a0767b0435db277fe8"
+    },
+    {
+      "path": "hrm-employee-exception-pr-body-2b-prepared.md.gz",
+      "originalBytes": 2117,
+      "originalSha256": "3d3179798537b5d4794e8043824e2b23596d213bcdde6fdfdebca3fa4b64d63d",
+      "storedBytes": 1210,
+      "storedSha256": "323c12788ad7b017c81fee499de2ae6cb710785024871fde366c60064942a161"
+    }
+  ]
+}
