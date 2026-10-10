@@ -320,3 +320,11 @@ describe("Workforce multi-site day scenario", () => {
     })
   })
 })
+
+// Exercise the preserved HRM engine and tenant-denial contracts after product
+// withdrawal. Real shipped availability is covered separately without this
+// fixture override in crm-workforce-withdrawal and workforce-withdrawal-access.
+vi.mock("@/lib/crm-product-availability", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/lib/crm-product-availability")>(),
+  isCrmCapabilityAvailable: () => true,
+}))

@@ -1,3 +1,4 @@
+import * as crmProductAvailability from "@/lib/crm-product-availability"
 import { describe, expect, it, vi } from "vitest"
 import {
   applyMtmWorkdayEvent,
@@ -452,7 +453,9 @@ describe("MTM mobile workday", () => {
     }
   })
 
-  it("creates an immutable pending-review case in the same workday mutation", async () => {
+  it.each([true, false])("preserves field events and creates an HRM review only when the product is available=%s", async (available) => {
+    const availability = available ? vi.spyOn(crmProductAvailability, "isCrmCapabilityAvailable").mockReturnValue(true) : null
+    try {
     const db = makeMtmPrismaMock()
     vi.mocked(db.mtmAgentWorkday.findFirst).mockResolvedValue(null)
     vi.mocked(db.mtmAgentWorkday.create).mockResolvedValue(workday() as never)
@@ -479,6 +482,7 @@ describe("MTM mobile workday", () => {
       idempotent: false,
       review: { state: "PENDING_REVIEW", reasonCode: "DELAYED_CLAIM" },
     })
+    if (available) {
     expect(db.workforceAttendanceReviewCase.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         organizationId: "org-1",
@@ -491,6 +495,11 @@ describe("MTM mobile workday", () => {
         claimAgeSeconds: 1_200,
       }),
     })
+    } else {
+      expect(db.workforceAttendanceReviewCase.create).not.toHaveBeenCalled()
+      expect(db.mtmAgentWorkdayEvent.create).toHaveBeenCalledTimes(1)
+    }
+    } finally { availability?.mockRestore() }
   })
 
   it("runs an attendance post-event guard inside the state mutation and never reruns it for a replay", async () => {

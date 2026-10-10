@@ -249,41 +249,14 @@ describe("PATCH /api/v1/admin/tenants/[id]/capabilities", () => {
     })
   })
 
-  it("atomically provisions the audited default only after explicit Workforce approval", async () => {
-    const workforceOnlyTenant = {
-      ...tenant,
-      features: ["crm", "sales", "settings"],
-      modules: { crm: true, sales: true, settings: true },
-      settings: { marketplaceCapabilities: { requested: { "workforce-hrm": true } } },
-    }
-    vi.mocked(prisma.organization.findUnique).mockResolvedValue(workforceOnlyTenant as any)
-
+  it.each(["approve", "disable", "reject_request"])("refuses %s for withdrawn Workforce without modifying retained tenant data", async (action) => {
     const res = await PATCH(
-      makeReq("PATCH", { capabilityId: "workforce-hrm", action: "approve" }),
-      makeParams(),
+      makeReq("PATCH", { capabilityId: "workforce-hrm", action }), makeParams(),
     )
-
-    expect(res.status).toBe(200)
-    expect(ensureWorkforceDefaultProfile).toHaveBeenCalledWith({
-      db: prisma,
-      organizationId: "t1",
-      initiatedByUserId: AUTH.userId,
-    })
-    expect(logAudit).toHaveBeenCalledWith(
-      "admin-org",
-      "approve",
-      "tenant_capability",
-      "t1:workforce-hrm",
-      "Mars Overseas",
-      expect.objectContaining({
-        newValue: expect.objectContaining({
-          workforceDefaultProfile: expect.objectContaining({
-            state: "provisioned",
-            profileVersion: "baku-standard-v1",
-          }),
-        }),
-      }),
-    )
+    expect(res.status).toBe(404)
+    expect(prisma.organization.update).not.toHaveBeenCalled()
+    expect(ensureWorkforceDefaultProfile).not.toHaveBeenCalled()
+    expect(logAudit).not.toHaveBeenCalled()
   })
 
   it("enables the full Advisor Suite without seed data", async () => {
@@ -408,44 +381,11 @@ describe("PATCH /api/v1/admin/tenants/[id]/capabilities", () => {
     })
   })
 
-  it("soft-disables Workforce with an explicit false marker while preserving legacy MTM data", async () => {
-    const res = await PATCH(
-      makeReq("PATCH", { capabilityId: "workforce-hrm", action: "disable" }),
-      makeParams(),
-    )
-
-    expect(res.status).toBe(200)
-    expect(prisma.organization.update).toHaveBeenCalledWith({
-      where: { id: "t1" },
-      data: {
-        features: ["crm", "sales", "settings", "mtm"],
-        modules: {
-          crm: true,
-          sales: true,
-          settings: true,
-          mtm: true,
-          "workforce-hrm": false,
-        },
-        settings: {
-          marketplaceCapabilities: {
-            requested: {
-              "ai-security-monitoring": true,
-              "slack-deal-notifier": true,
-              "lead-scoring-template": true,
-            },
-          },
-        },
-      },
-      select: { id: true },
-    })
-    expect(logAudit).toHaveBeenCalledWith(
-      "admin-org",
-      "disable",
-      "tenant_capability",
-      "t1:workforce-hrm",
-      "Mars Overseas",
-      expect.objectContaining({ newValue: expect.objectContaining({ enabled: false }) }),
-    )
+  it.each(["attendance-qr", "attendance-device-trust"])("refuses activation of withdrawn add-on %s", async (capabilityId) => {
+    const res = await PATCH(makeReq("PATCH", { capabilityId, action: "approve" }), makeParams())
+    expect(res.status).toBe(404)
+    expect(prisma.organization.update).not.toHaveBeenCalled()
+    expect(ensureWorkforceDefaultProfile).not.toHaveBeenCalled()
   })
 
   it("approves an app-only capability by installing the marketplace app", async () => {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { isCrmCapabilityAvailable } from "@/lib/crm-product-availability"
 import {
   capabilitySettingsFromTenantSettings,
   getTenantCapabilityDefinition,
@@ -19,6 +20,9 @@ export async function getTenantCapabilityAccess(
   organizationId: string,
   capabilityId: string,
 ): Promise<TenantCapabilityAccess> {
+  if (!isCrmCapabilityAvailable(capabilityId)) {
+    return { allowed: false, capability: null, error: "This capability is unavailable in CRM." }
+  }
   const org = await prisma.organization.findUnique({
     where: { id: organizationId },
     select: {

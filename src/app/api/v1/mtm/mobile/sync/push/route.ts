@@ -538,11 +538,25 @@ export const POST = withMobileRls(async (req, auth) => {
 
   const replayOf = (operationId: string, rec: StoredOp) => {
     const prev = rec.result && typeof rec.result === "object" ? rec.result as Partial<OpResult> : {}
+    // Project every fresh/replayed Field response without changing the stored
+    // idempotency result or its immutable attendance evidence.
+    let serverData = prev?.serverData
+    if (isRouteFieldSessionOperation(auth, rec.entity) && serverData && !Array.isArray(serverData)) {
+      const fieldData = { ...serverData } as Record<string, unknown>
+      delete fieldData.review
+      if (fieldData.event && typeof fieldData.event === "object" && !Array.isArray(fieldData.event)) {
+        const event = { ...fieldData.event } as Record<string, unknown>
+        delete event.attendanceReviewState
+        delete event.attendanceReviewReasonCode
+        fieldData.event = event
+      }
+      serverData = fieldData
+    }
     return {
       operationId,
       status: rec.status as "ok" | "conflict" | "error",
       serverId: prev?.serverId,
-      serverData: prev?.serverData,
+      serverData,
       ...(prev?.error ? { error: prev.error } : {}),
     }
   }
@@ -3044,8 +3058,8 @@ export const POST = withMobileRls(async (req, auth) => {
         continue
       }
 
-      // One payload, three consumers: the pin above, the in-batch replay map,
-      // and the response — fresh and replayed answers are identical by construction.
+      // The pin and in-batch replay map retain the same canonical payload.
+      // Fresh and replayed responses share the capability projection above.
       const stored: StoredOp = {
         entity,
         status: out.opStatus,

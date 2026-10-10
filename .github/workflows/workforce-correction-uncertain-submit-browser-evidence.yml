@@ -4,6 +4,8 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
+      - "scripts/workforce-crm-lifecycle-evidence.mjs"
+      - "src/lib/crm-product-availability.ts"
       - ".github/workflows/workforce-correction-uncertain-submit-browser-evidence.yml"
       - "scripts/workforce-employee-correction-uncertain-submit-browser-*.mjs"
       - "src/components/workforce/workforce-workbench.tsx"
@@ -27,7 +29,7 @@ permissions:
 
 jobs:
   employee-correction-uncertain-submit-browser:
-    name: Authenticated employee correction unknown-commit editing regression
+    name: "CRM lifecycle — Authenticated employee correction unknown-commit editing regression"
     if: ${{ (github.event_name == 'workflow_dispatch' && inputs.expected_head != '') || (github.event_name == 'pull_request' && !github.event.pull_request.draft) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 35
@@ -69,6 +71,8 @@ jobs:
       # Preserve the distinct PR head and GITHUB_SHA in the evidence receipt.
       - name: Checkout candidate
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
 
       - name: Verify exact authorized source dispatch
         if: ${{ github.event_name == 'workflow_dispatch' }}
@@ -168,7 +172,7 @@ jobs:
       - name: Install Chromium on hosted Ubuntu
         run: npx playwright install --with-deps chromium
 
-      - name: Run actual committed reply-loss and UI recovery scenarios
+      - name: Verify shipped CRM lifecycle (uncertain)
         shell: bash
         run: |
           test "$CI" = true && test "$WF_EMPLOYEE_CORRECTION_UNCERTAIN_SUBMIT_BROWSER" = 1
@@ -192,7 +196,7 @@ jobs:
             fi
             sleep 2
           done
-          node scripts/workforce-employee-correction-uncertain-submit-browser-evidence.mjs
+          node scripts/workforce-crm-lifecycle-evidence.mjs uncertain
 
       - name: Preserve non-secret workflow failure receipt
         if: failure()

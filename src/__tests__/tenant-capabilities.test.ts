@@ -6,7 +6,7 @@ import {
   entitlementKeysForCapability,
   featuresToModuleRecord,
   featuresToStringArray,
-  isTenantCapabilityEnabled,
+  hasTenantCapabilityEntitlement,
   mergeCapabilitySettingsIntoTenantSettings,
   removeCapabilityEntitlement,
   resolveTenantCapabilities,
@@ -22,7 +22,9 @@ const byId = (id: string) => {
   return found
 }
 
-describe("tenant capability resolver", () => {
+// Stored licensing contracts remain reusable after extraction. Runtime withdrawal
+// is verified without mocks in crm-workforce-withdrawal.test.ts.
+describe("stored tenant capability entitlement resolver", () => {
   it("materializes Organization.features from json array or serialized json", () => {
     expect(featuresToModuleRecord(["crm", "sales"])).toEqual({ crm: true, sales: true })
     expect(featuresToModuleRecord("[\"mtm\",\"ai_security_monitoring\"]")).toEqual({ mtm: true, ai_security_monitoring: true })
@@ -68,17 +70,17 @@ describe("tenant capability resolver", () => {
     const workforceHrm = byId("workforce-hrm")
     const context = (modules: Record<string, boolean>) => ({ plan: "enterprise", role: "admin", modules })
 
-    expect(isTenantCapabilityEnabled(routeField.id, context({}))).toBe(false)
-    expect(isTenantCapabilityEnabled(workforceHrm.id, context({}))).toBe(false)
+    expect(hasTenantCapabilityEntitlement(routeField.id, context({}))).toBe(false)
+    expect(hasTenantCapabilityEntitlement(workforceHrm.id, context({}))).toBe(false)
 
-    expect(isTenantCapabilityEnabled(routeField.id, context({ "route-field": true }))).toBe(true)
-    expect(isTenantCapabilityEnabled(workforceHrm.id, context({ "route-field": true }))).toBe(false)
+    expect(hasTenantCapabilityEntitlement(routeField.id, context({ "route-field": true }))).toBe(true)
+    expect(hasTenantCapabilityEntitlement(workforceHrm.id, context({ "route-field": true }))).toBe(false)
 
-    expect(isTenantCapabilityEnabled(routeField.id, context({ "workforce-hrm": true }))).toBe(false)
-    expect(isTenantCapabilityEnabled(workforceHrm.id, context({ "workforce-hrm": true }))).toBe(true)
+    expect(hasTenantCapabilityEntitlement(routeField.id, context({ "workforce-hrm": true }))).toBe(false)
+    expect(hasTenantCapabilityEntitlement(workforceHrm.id, context({ "workforce-hrm": true }))).toBe(true)
 
-    expect(isTenantCapabilityEnabled(routeField.id, context({ "route-field": true, "workforce-hrm": true }))).toBe(true)
-    expect(isTenantCapabilityEnabled(workforceHrm.id, context({ "route-field": true, "workforce-hrm": true }))).toBe(true)
+    expect(hasTenantCapabilityEntitlement(routeField.id, context({ "route-field": true, "workforce-hrm": true }))).toBe(true)
+    expect(hasTenantCapabilityEntitlement(workforceHrm.id, context({ "route-field": true, "workforce-hrm": true }))).toBe(true)
   })
 
   it("keeps legacy mtm access while an explicit split soft-disable wins", () => {
@@ -86,8 +88,8 @@ describe("tenant capability resolver", () => {
     const workforceHrm = byId("workforce-hrm")
     const legacy = { plan: "enterprise", role: "admin", modules: { mtm: true } }
 
-    expect(isTenantCapabilityEnabled(routeField.id, legacy)).toBe(true)
-    expect(isTenantCapabilityEnabled(workforceHrm.id, legacy)).toBe(true)
+    expect(hasTenantCapabilityEntitlement(routeField.id, legacy)).toBe(true)
+    expect(hasTenantCapabilityEntitlement(workforceHrm.id, legacy)).toBe(true)
 
     const softDisabled = softDisableCapabilityEntitlement(routeField, {
       features: ["mtm", "route-field"],
@@ -97,12 +99,12 @@ describe("tenant capability resolver", () => {
       features: ["mtm"],
       modules: { mtm: true, "route-field": false },
     })
-    expect(isTenantCapabilityEnabled(routeField.id, {
+    expect(hasTenantCapabilityEntitlement(routeField.id, {
       plan: "enterprise",
       role: "admin",
       modules: softDisabled.modules,
     })).toBe(false)
-    expect(isTenantCapabilityEnabled(workforceHrm.id, {
+    expect(hasTenantCapabilityEntitlement(workforceHrm.id, {
       plan: "enterprise",
       role: "admin",
       modules: softDisabled.modules,
@@ -143,7 +145,7 @@ describe("tenant capability resolver", () => {
       plan: "enterprise",
       modules: { mtm: true },
     })).toMatchObject({ enabled: true, status: "enabled" })
-    expect(isTenantCapabilityEnabled("workforce-hrm", {
+    expect(hasTenantCapabilityEntitlement("workforce-hrm", {
       plan: "enterprise",
       features: ["mtm"],
       modules: { mtm: true },
@@ -157,7 +159,7 @@ describe("tenant capability resolver", () => {
       features: ["mtm"],
       modules: { mtm: true, "workforce-hrm": false },
     })
-    expect(isTenantCapabilityEnabled("workforce-hrm", {
+    expect(hasTenantCapabilityEntitlement("workforce-hrm", {
       plan: "enterprise",
       features: routeOnly.features,
       modules: routeOnly.modules,
@@ -165,12 +167,12 @@ describe("tenant capability resolver", () => {
   })
 
   it("resolves workforce entitlement directly from Organization-compatible fields", () => {
-    expect(isTenantCapabilityEnabled("workforce-hrm", {
+    expect(hasTenantCapabilityEntitlement("workforce-hrm", {
       plan: "enterprise",
       features: ["workforce-hrm"],
       modules: { mtm: false },
     })).toBe(true)
-    expect(isTenantCapabilityEnabled("route-field", {
+    expect(hasTenantCapabilityEntitlement("route-field", {
       plan: "enterprise",
       features: ["workforce-hrm"],
       modules: { mtm: false },

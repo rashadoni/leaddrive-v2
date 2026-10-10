@@ -279,3 +279,11 @@ describe("tenant metadata preserves explicit Workforce decisions", () => {
     expect(logAudit).not.toHaveBeenCalled()
   })
 })
+
+// Preserve archived activation/concurrent metadata-write regressions. Shipped
+// withdrawal is tested with the real policy in crm-workforce-withdrawal and
+// api-admin-tenant-capabilities, plus the hosted withdrawal browser fixture.
+vi.mock("@/lib/crm-product-availability", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/lib/crm-product-availability")>(),
+  isCrmCapabilityAvailable: () => true,
+}))

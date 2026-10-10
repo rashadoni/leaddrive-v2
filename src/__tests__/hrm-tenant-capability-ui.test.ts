@@ -155,30 +155,22 @@ describe("HRM tenant capability UI", () => {
     expect(container.textContent).not.toContain("Saved")
   })
 
-  it("editor ignores contradictory raw features, saves metadata separately, then reloads effective HRM", async () => {
-    let enabled = false
-    fetchMock.mockImplementation(async (input, init) => {
-      if (String(input).endsWith("/capabilities")) {
-        if (init?.method === "PATCH") enabled = true
-        return response(enabled)
-      }
+  it("editor hides withdrawn HRM, preserves its raw flags and can still save tenant metadata", async () => {
+    fetchMock.mockImplementation(async (input) => {
+      if (String(input).endsWith("/capabilities")) return new Response(JSON.stringify({ data: { capabilities: [], settings: {} } }), { status: 200 })
       return new Response(JSON.stringify({ data: {
         id: "tenant-a", name: "Tenant", slug: "tenant", plan: "enterprise", maxUsers: 10, maxContacts: 100,
         branding: {}, features: ["crm", "workforce-hrm"], addons: [], settings: {},
       } }), { status: 200 })
     })
     await render(createElement(TenantEditPage))
-    const toggle = container.querySelector<HTMLButtonElement>('[data-tenant-capability="workforce-hrm"] [role="switch"]')!
-    expect(toggle.getAttribute("aria-label")).toBe("HRM")
-    expect(toggle.getAttribute("aria-checked")).toBe("false")
-    expect(fetchMock.mock.calls.every(([, init]) => !init?.method)).toBe(true)
-    await click(toggle)
-    expect(toggle.getAttribute("aria-checked")).toBe("true")
-    await click(button(messages().admin.tenants.save))
+    expect(container.querySelector('[data-tenant-capability="workforce-hrm"]')).toBeNull()
+    const saveButton = button(messages().admin.tenants.save)
+    expect(saveButton.disabled).toBe(false)
+    await click(saveButton)
     const save = fetchMock.mock.calls.find(([, init]) => init?.method === "PUT")!
     expect(String(save[0])).toBe("/api/v1/admin/tenants/tenant-a")
-    expect(fetchMock.mock.calls.at(-1)?.[0]).toBe("/api/v1/admin/tenants/tenant-a/capabilities")
-    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "PATCH")).toHaveLength(1)
-    expect(toggle.getAttribute("aria-checked")).toBe("true")
+    expect(JSON.parse(String(save[1]?.body)).features).toContain("workforce-hrm")
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "PATCH")).toHaveLength(0)
   })
 })

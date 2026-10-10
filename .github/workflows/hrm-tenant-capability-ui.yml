@@ -6,6 +6,12 @@ on:
     paths:
       - ".github/workflows/hrm-tenant-capability-ui.yml"
       - "scripts/hrm-tenant-capability-ui-browser-evidence.mjs"
+      - "scripts/hrm-crm-withdrawal-browser-evidence.mjs"
+      - "src/lib/crm-product-availability.ts"
+      - "src/proxy.ts"
+      - "src/app/(dashboard)/workforce/layout.tsx"
+      - "src/app/(dashboard)/settings/users/page.tsx"
+      - "src/app/(dashboard)/settings/roles/page.tsx"
       - "scripts/ci/fixtures/hrm-tenant-capability-ui.sql"
       - "src/app/admin/tenants/**"
       - "src/app/api/v1/admin/tenants/**"
@@ -145,7 +151,7 @@ jobs:
         env:
           VITEST_MAX_WORKERS: "1"
         run: |
-          npx vitest run src/__tests__/hrm-tenant-capability-ui.test.ts src/__tests__/api-admin-tenant-workforce-metadata.test.ts src/__tests__/api-admin-tenant-capabilities.test.ts src/__tests__/api-admin.test.ts src/__tests__/admin-capability-catalog.test.ts src/__tests__/tenant-capabilities-panel.test.ts src/__tests__/tenant-capabilities.test.ts
+          npx vitest run src/__tests__/hrm-tenant-capability-ui.test.ts src/__tests__/api-admin-tenant-workforce-metadata.test.ts src/__tests__/api-admin-tenant-capabilities.test.ts src/__tests__/api-admin.test.ts src/__tests__/admin-capability-catalog.test.ts src/__tests__/tenant-capabilities-panel.test.ts src/__tests__/tenant-capabilities.test.ts src/__tests__/crm-workforce-withdrawal.test.ts src/__tests__/workforce-withdrawal-access.test.ts
           npm run i18n:check
           node scripts/ci/check-github-runner-policy.mjs
       - run: npx playwright install --with-deps chromium
@@ -164,7 +170,9 @@ jobs:
             fi
             sleep 2
           done
-          node scripts/hrm-tenant-capability-ui-browser-evidence.mjs
+          # Preserved activation script remains for extraction; the shipped CRM
+          # must now prove withdrawal and data preservation.
+          node scripts/hrm-crm-withdrawal-browser-evidence.mjs
       - name: Preserve failure without exposing runtime logs
         if: failure()
         shell: bash
