@@ -390,3 +390,23 @@ main release only; no activation/restore/data/access/secret or Support changes.
 Accounting stays85 DONE/76 open/61%; C12 PARTIAL and C14-003 PLANNED. Next:
 fresh-ref ordinary merge672, exact normal artifact release/public smoke, then
 separate classification-matrix source85e hosted runtime (currently NOT RUN).
+
+## Ordinary PR672 merge accepted; normal release pending
+
+Fresh final-head/main/App15368 five actual SUCCESS/protection admitted ordinary
+merge --match-head-commit7BA. No admin/force/squash/rebase/direct main push.
+Actual merge cd935999cd657f0a13bb458ee901637389a31916 parents[506,7BA],
+whole tree bf17e1f3c81532111e3a130996f05020604898e0 equals tested source.
+Normal main/push Deploy38013599677 attempt1 IN_PROGRESS. Exact production
+artifact and public fullSHA/ping/privacy are pending; no premature release
+credit. Phase09 gitleaks1 commit/22,107B/no leaks PASS and evidence published
+637af98c9. Fresh open PR scan shows no new parallel HRM writer; historical
+other-task drafts/PR585 are untouched. Original606/609 and validation646 never
+merged. Next monitor normal release and independent public smoke acceptance.
+
+Authorized next isolated classification draft PR674 created at exact final
+d8e53ae26e4e6551ee9c64862baa09e1a66c014c. Reviewed85e source blobs unchanged,
+last checkpoint journal-only. Its first hosted five-lane run dispatched; fresh
+expected31/20/24/108/3/21/48 are NOT RUN at publication. Original f529 privacy
+P2 and corrected independent review preserved separately. No accounting or
+C12/C14 closure, no production HR/data/access/secret/Support changes.

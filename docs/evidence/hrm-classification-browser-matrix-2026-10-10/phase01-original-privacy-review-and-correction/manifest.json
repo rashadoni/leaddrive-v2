@@ -1,0 +1,41 @@
+{
+  "archivedAtUtc": "2026-10-10T01:33:22.372509+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-classification-browser-root-harness-peer-review-f529-original.json.gz",
+      "originalBytes": 2843,
+      "originalSha256": "924293848949c0aadc902ce8450109d9426efbb89245d70b673bcc712706e4cc",
+      "storedBytes": 1469,
+      "storedSha256": "fc8a1d149395accabadeffbfb798efb6ddeaa3c0157c1a1aa573de7b1eedd007"
+    },
+    {
+      "path": "hrm-classification-browser-root-harness-peer-review-85e.json.gz",
+      "originalBytes": 9952,
+      "originalSha256": "569f25b3de3d6478c761033b7235400c03573936a1e888c25620a34378f57993",
+      "storedBytes": 3869,
+      "storedSha256": "57fd606935aa471a486203450fb11bfd30ac4b32e2dabd91b47128855795592b"
+    },
+    {
+      "path": "hrm-classification-native-admission-root-review.json.gz",
+      "originalBytes": 1356,
+      "originalSha256": "58aa503a7220965d1c0370a60ac4af2b7230b3d988d6eef3402c48780fcb9e14",
+      "storedBytes": 803,
+      "storedSha256": "9a52e96486544aff5e059b734c6329baa89010d6ee44bc5832d949d9e5e5171e"
+    },
+    {
+      "path": "hrm-classification-browser-native-admission-author-report.json.gz",
+      "originalBytes": 2679,
+      "originalSha256": "72f8bfa03e2a8d60d437e79b35f6cf40c098bce7b29e281f860b50ebf0e1b093",
+      "storedBytes": 1242,
+      "storedSha256": "4ae8c2f592019dc337e985c42589186e6357ea54004281ee9ee03721c8f6d395"
+    },
+    {
+      "path": "hrm-classification-browser-85e-initial-peer-reader-error.json.gz",
+      "originalBytes": 521,
+      "originalSha256": "5341d9c0f3e361007e6247b25f4909514799594090268a0774ead52d2d2a5579",
+      "storedBytes": 362,
+      "storedSha256": "8e9bdab7519d2a5e855434b6e03d27cdba61cf24a31d276824add95cf9054d29"
+    }
+  ]
+}

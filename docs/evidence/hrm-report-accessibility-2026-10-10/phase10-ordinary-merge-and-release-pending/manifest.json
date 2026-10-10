@@ -1,0 +1,41 @@
+{
+  "archivedAtUtc": "2026-10-10T01:34:48.433860+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-report-accessibility-7ba-fresh-premerge-admission.json.gz",
+      "originalBytes": 946,
+      "originalSha256": "77c631f18a248b5da9c703aa1f4fd036898d9a1b4d2ef8321f008b31f3e6695c",
+      "storedBytes": 411,
+      "storedSha256": "f7346504bb9fe49dd1e64daab27fc3372871176ac70ba44802b3768403243c85"
+    },
+    {
+      "path": "hrm-report-accessibility-672-ordinary-merge-output.json.gz",
+      "originalBytes": 48,
+      "originalSha256": "732883d74fff105b6916110dd67928d04765fdfa4fce96791f3d3be410b4440f",
+      "storedBytes": 54,
+      "storedSha256": "7b513cbd1f1dfc78e7675657489dc831ba7d8d7caba3bd3aedc87f2557bead79"
+    },
+    {
+      "path": "hrm-report-accessibility-672-actual-merge-receipt.json.gz",
+      "originalBytes": 583,
+      "originalSha256": "54d5630ebaa3c59d1ce126f648d58db2038f35d095e7f2d7fdbfc5992347eebf",
+      "storedBytes": 382,
+      "storedSha256": "f988acaa32ff11324ae66940186fb5af339fb1d023c7ec94eab837f4e1d40de9"
+    },
+    {
+      "path": "hrm-report-accessibility-phase09-gitleaks.json.gz",
+      "originalBytes": 3,
+      "originalSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "storedBytes": 23,
+      "storedSha256": "2ca4529576310b626c1bd48352d283b521d029d54f195d8416536872d826e4c6"
+    },
+    {
+      "path": "hrm-report-accessibility-pr-body-final-7ba-accepted.md.gz",
+      "originalBytes": 2264,
+      "originalSha256": "85d09f1a8c4335c3b3ac3459ca8de0b5c700924b5496465a5e35534f4603c106",
+      "storedBytes": 1222,
+      "storedSha256": "112221a5c55f315429a9b6a2e3d999f31858e246c185a62d8ab8cbc1783006ee"
+    }
+  ]
+}
