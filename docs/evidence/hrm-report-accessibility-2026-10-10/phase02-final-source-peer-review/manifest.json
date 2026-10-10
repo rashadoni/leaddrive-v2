@@ -1,0 +1,55 @@
+{
+  "archivedAtUtc": "2026-10-10T00:15:53.428680+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-report-accessibility-final-source-peer-review-39b.json.gz",
+      "originalBytes": 19462,
+      "originalSha256": "43bfd4a4aef1a451ad4e2eae8b1801be789c1438c0812d9a80c8186a17abfac0",
+      "storedBytes": 7127,
+      "storedSha256": "25eccc69d4cabc5d3ecd022d371cd4fe906d00d9077227ab2b6409dbfae5b228"
+    },
+    {
+      "path": "hrm-report-accessibility-reflow-bound-review/actual-reviewed-reflow-callback.js.gz",
+      "originalBytes": 1879,
+      "originalSha256": "0c079a007d762f33d1989caadd96355a2892c0e3565037ddb7bc0d660b536089",
+      "storedBytes": 755,
+      "storedSha256": "887883650cb7a32b3d0841fceee8e0e9fa33172fe826d27058418cac21752c3e"
+    },
+    {
+      "path": "hrm-report-accessibility-reflow-bound-review/corrected-bounds-targets-and-nodes.json.gz",
+      "originalBytes": 942,
+      "originalSha256": "711a90aade1e312283aa9a8dd8f36fcf426abda6117a6f1a2fc5e035cb212d2b",
+      "storedBytes": 545,
+      "storedSha256": "358962e326027b93a1da6ca71335f709f5936ad6adbcaef07c87b65e62e2650d"
+    },
+    {
+      "path": "hrm-report-accessibility-reflow-bound-review/filename-and-source-order-correction.json.gz",
+      "originalBytes": 605,
+      "originalSha256": "f623a4eae39db5d7e3386561e728d0bf48b5c68083a04b11c20149bfd29fcf49",
+      "storedBytes": 408,
+      "storedSha256": "06de4e95f1b1548e1dcc8399508a70f0f3fd056af43fb1591ec1c6e2c7d53aa3"
+    },
+    {
+      "path": "hrm-report-accessibility-reflow-bound-review/initial-reflow-bound-source-binding.json.gz",
+      "originalBytes": 467,
+      "originalSha256": "834572f8ec67261fb692f23141ecba24d73d8c4cdc4df690ed4ac102a1992ff0",
+      "storedBytes": 348,
+      "storedSha256": "9f1ff896bdabd63c99fc7c9802f15c4c91e3f02460b6b85ba04ddd4c5686414b"
+    },
+    {
+      "path": "hrm-report-accessibility-reflow-bound-review/original-1025-fragment-reproduction.json.gz",
+      "originalBytes": 856,
+      "originalSha256": "71625209470c494be72106ba01b02237d95ac341b748fc236621f1092c18ad8e",
+      "storedBytes": 558,
+      "storedSha256": "1748842988cd4a032aca649693dabdec1a1a34da9751e3585c76c4b8e8fefd4a"
+    },
+    {
+      "path": "hrm-report-accessibility-reflow-bound-review/reviewed-before-bound-correction-source.mjs.gz",
+      "originalBytes": 14853,
+      "originalSha256": "19a800681722a37668b43f4df77436945196b45f1f41732f53b22674924f303f",
+      "storedBytes": 14853,
+      "storedSha256": "19a800681722a37668b43f4df77436945196b45f1f41732f53b22674924f303f"
+    }
+  ]
+}

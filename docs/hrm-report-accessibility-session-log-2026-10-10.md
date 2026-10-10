@@ -144,3 +144,25 @@ No logic, UI, test threshold, baseline, workflow guard or detector change.
 Source39 remains on GitHub while its first browser/compiler/build results
 finish; no cancellation or passing result transferred to a changed source.
 Final new head will repeat exact required/PG/browser gates as warranted.
+
+## Final independent source review and hosted admission
+
+Immutable39 source review ACCEPTED_SOURCE_ONLY, no remainingP0/P1/P2:
+/tmp/hrm-report-accessibility-final-source-peer-review-39b.json,19462B,
+SHA25643bfd4a4aef1a451ad4e2eae8b1801be789c1438c0812d9a80c8186a17abfac0.
+Four executable paths and22 protected bindings verified. Root independently
+reviewed child-authored helper/test; child independently reviewed root harness/
+workflow. Resolved bounded-diagnosticP2, post-fix mockDOM limits and initially
+misnamed reproduction/source-order correction retained separately; none is
+actual native zoom or browser PASS. Reader race errors resolved with immutable
+Git blobs, originals retained rather than overwritten.
+
+Actual READY required run38007879425, candidate report38007879426, exact
+source five-lane dispatch38007879458, calendar38007879389 andmanager38007879384
+at39 are pending except first regression refusal described above. Initial
+draft heavySKIPPED receives no acceptance credit. B0 local checkpoint
+b0cbf267fd1ec4dec5c3fe1f3f3fd1786671a678 repairs onlyEOF whitespace and records
+it; full cumulative PR608→workingtree check passes after repair. It remains
+unpublished while first39 executions finish. No success is borrowed across
+heads. WF-C14-003 roadmap row remains PLANNED (report-only evidence pending);
+wholeC14 incomplete, C12PARTIAL and85/76/61 accounting unchanged.
