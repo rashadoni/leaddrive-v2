@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 /**
- * «Свои зоны» of the live map, piece by piece: the small form, the list under
- * the layer's switch, the two buttons among the map's tools, and how the map
- * itself draws a zone.
+ * «Свои зоны» of the live map, piece by piece: the small form, the list of
+ * zones and the card on the page that holds it, the two buttons among the
+ * map's tools, and how the map itself draws a zone.
  *
  * Owner, 2026-10-09, of the tracking product shown as the model: «бери почти
  * всё, чего у нас нет» — there a dispatcher outlines a district, names it, and
@@ -85,6 +85,7 @@ import MtmLiveMap from "@/components/mtm/live-map"
 import { LiveMapTools } from "@/components/mtm/live-map-tools"
 import { LiveMapZoneForm, LiveMapZoneGone, liveMapZoneFormChange, type LiveMapZoneFormBlock, type LiveMapZoneFormTask, type LiveMapZoneFormValues } from "@/components/mtm/live-map-zone-form"
 import { LiveMapZoneList } from "@/components/mtm/live-map-zone-list"
+import { LiveMapZonesCard } from "@/components/mtm/live-map-zones-card"
 import { MTM_AGENT_MAP_COLOR_KEYS, MTM_AGENT_MAP_COLORS } from "@/lib/mtm/agent-tags"
 import {
   LIVE_MAP_ZONE_DEFAULT_HEX,
@@ -345,19 +346,23 @@ describe("the small form of a zone", () => {
   })
 })
 
-describe("the list of zones under the layer's switch", () => {
+describe("the list of zones", () => {
   let changes: Array<{ zoneId: string; change: LiveMapZoneChange }>
   let answer: LiveMapZoneWriteProblem | null
+  /** The zones «На карте» was pressed for, in the order of the presses. */
+  let shown: string[]
   const drawList = (zones: LiveMapZone[], canWrite: boolean) => draw(createElement(LiveMapZoneList, {
     zones, canWrite,
     formatArea: (squareMeters: number) => `${Math.round(squareMeters / 10_000)} га`,
     onChange: async (zone: LiveMapZone, change: LiveMapZoneChange) => { changes.push({ zoneId: zone.id, change }); return answer },
+    onShowOnMap: (zone: LiveMapZone) => { shown.push(zone.id) },
   }))
   const rows = () => [...container.querySelectorAll('[data-testid^="live-map-zone-row-zone-"]')] as HTMLElement[]
 
   beforeEach(() => {
     changes = []
     answer = null
+    shown = []
   })
 
   it("says what each zone is called and how much it covers, in the order it was given", async () => {
@@ -367,26 +372,41 @@ describe("the list of zones under the layer's switch", () => {
     // Each row carries its zone's colour as the map draws it: the key's hex, or the one for «no colour».
     const dot = (row: HTMLElement) => (row.querySelector('[aria-hidden="true"]') as HTMLElement).style.backgroundColor
     expect(rows().map(dot)).toEqual(["rgb(154, 52, 18)", "rgb(13, 148, 136)"])
-    // No frame with a scrollbar of its own: the panel it stands in already scrolls.
+    // No frame with a scrollbar of its own, and no height it may not outgrow: the page scrolls, the list does not.
     expect(byTestId("live-map-zone-list")?.outerHTML).not.toMatch(/overflow-|max-h-/)
   })
 
-  it("offers the three changes in words to somebody who may make them, on every row", async () => {
+  it("offers «На карте» and the three changes in words to somebody who may make them, on every row", async () => {
     await drawList([NORTH, CENTRE], true)
     for (const row of rows()) {
-      expect([...row.querySelectorAll("button")].map((button) => button.textContent)).toEqual(["Переименовать", "Цвет", "Удалить"])
+      expect([...row.querySelectorAll("button")].map((button) => button.textContent)).toEqual(["На карте", "Переименовать", "Цвет", "Удалить"])
     }
     // The words are the same on every row; read aloud, each also says which zone it is about.
     expect([...rows()[1].querySelectorAll("button")].map((button) => button.getAttribute("aria-label")))
-      .toEqual(["Переименовать: Центр", "Цвет: Центр", "Удалить: Центр"])
+      .toEqual(["На карте: Центр", "Переименовать: Центр", "Цвет: Центр", "Удалить: Центр"])
     expect(byTestId("live-map-zone-read-only")).toBeNull()
   })
 
-  it("shows a reader every zone and no button, and says who can change them", async () => {
+  it("shows a reader every zone with «На карте» and no other button, and says who can change them", async () => {
     await drawList([NORTH, CENTRE], false)
     expect(rows()).toHaveLength(2)
-    expect(container.querySelector("button")).toBeNull()
+    // Looking at a zone changes nothing, so it is everybody's; the three changes are not his.
+    expect([...container.querySelectorAll("button")].map((button) => button.textContent)).toEqual(["На карте", "На карте"])
     expect(byTestId("live-map-zone-read-only")?.textContent).toBe("Рисовать и менять зоны могут администратор и менеджер.")
+    await press(byTestId("live-map-zone-show-zone-centre"))
+    expect(shown).toEqual(["zone-centre"])
+    expect(changes).toEqual([])
+  })
+
+  it("«На карте» names the zone of its own row, every time it is pressed — and opens no form", async () => {
+    await drawList([NORTH, CENTRE], true)
+    await press(byTestId("live-map-zone-show-zone-centre"))
+    // The same zone again — the map was moved away meanwhile — is asked for again.
+    await press(byTestId("live-map-zone-show-zone-centre"))
+    await press(byTestId("live-map-zone-show-zone-north"))
+    expect(shown).toEqual(["zone-centre", "zone-centre", "zone-north"])
+    expect(byTestId("live-map-zone-form")).toBeNull()
+    expect(changes).toEqual([])
   })
 
   it("makes a change in the zone's own row and keeps the form until the server has kept the change", async () => {
@@ -437,6 +457,159 @@ describe("the list of zones under the layer's switch", () => {
       .toBe("Зон пока нет. Чтобы нарисовать первую: «Линейка» → «Сохранить как зону» или «Адрес или точка» → «Зона вокруг точки».")
     await drawList([], false)
     expect(byTestId("live-map-zone-empty")?.textContent).toBe("Зон пока нет. Рисовать и менять зоны могут администратор и менеджер.")
+  })
+})
+
+describe("the card «Свои зоны» on the page", () => {
+  // A dozen invented districts, each a circle a little bigger than the one before.
+  const DISTRICTS = ["Аэропорт", "Бинагади", "Насими", "Порт", "Сабунчу", "Северный участок", "Старый город", "Сумгаит", "Сураханы", "Хырдалан", "Центр", "Ясамал"]
+  const dozen: LiveMapZone[] = DISTRICTS.map((name, index) => ({
+    id: `zone-${index + 1}`, name, color: index % 2 ? "teal" : null, kind: "CIRCLE",
+    center: { latitude: 40.3 + index * 0.01, longitude: 49.8 }, radiusMeters: 300 + index * 100,
+  }))
+  let state: { zones: LiveMapZone[]; canWrite: boolean; unfolded: boolean; gone: boolean }
+  let changes: Array<{ zoneId: string; change: LiveMapZoneChange }>
+  let answer: LiveMapZoneWriteProblem | null
+  let shown: string[]
+  // The page keeps whether the card is unfolded and whether «gone» is being said; the card reports the presses.
+  const drawCard = () => draw(createElement(LiveMapZonesCard, {
+    zones: state.zones, canWrite: state.canWrite,
+    unfolded: state.unfolded,
+    onUnfoldedChange: (unfolded: boolean) => { state.unfolded = unfolded },
+    gone: state.gone,
+    onGoneClose: () => { state.gone = false },
+    formatArea: (squareMeters: number) => `${Math.round(squareMeters / 10_000)} га`,
+    onChange: async (zone: LiveMapZone, change: LiveMapZoneChange) => { changes.push({ zoneId: zone.id, change }); return answer },
+    onShowOnMap: (zone: LiveMapZone) => { shown.push(zone.id) },
+  }))
+  const pressAndDraw = async (element: Element | null | undefined) => { await press(element); await drawCard() }
+  const card = () => byTestId("live-map-zones-card")!
+  const fold = () => byTestId("live-map-zones-card-fold") as HTMLButtonElement | null
+  const rows = () => [...card().querySelectorAll('[data-testid^="live-map-zone-row-zone-"]')] as HTMLElement[]
+
+  beforeEach(() => {
+    state = { zones: [NORTH, CENTRE], canWrite: true, unfolded: false, gone: false }
+    changes = []
+    answer = null
+    shown = []
+  })
+
+  it("folded, says how many zones there are and lists none: the employees' list under it is what the page is for", async () => {
+    await drawCard()
+    expect(byTestId("live-map-zones-card-title")?.textContent).toBe("Свои зоны · 2")
+    // The card is named by its heading for whoever does not see it.
+    expect(card().getAttribute("aria-labelledby")).toBe(byTestId("live-map-zones-card-title")?.id)
+    expect(rows()).toEqual([])
+    expect(byTestId("live-map-zone-list")).toBeNull()
+    // The way in is a button that says in words what it does.
+    expect([fold()?.textContent, fold()?.getAttribute("aria-expanded")]).toEqual(["Показать список", "false"])
+    expect(card().querySelectorAll("button")).toHaveLength(1)
+    state.zones = dozen
+    await drawCard()
+    expect(byTestId("live-map-zones-card-title")?.textContent).toBe("Свои зоны · 12")
+  })
+
+  it("unfolds on «Показать список» and folds again on «Свернуть список»", async () => {
+    await drawCard()
+    await pressAndDraw(fold())
+    expect(state.unfolded).toBe(true)
+    expect([fold()?.textContent, fold()?.getAttribute("aria-expanded")]).toEqual(["Свернуть список", "true"])
+    // What the button says it opens is what it points at.
+    expect(card().querySelector(`#${fold()!.getAttribute("aria-controls")}`)?.contains(rows()[0])).toBe(true)
+    expect(rows().map((row) => [byTestId("live-map-zone-row-name", row)?.textContent, byTestId("live-map-zone-row-area", row)?.textContent]))
+      .toEqual([["Северный участок", "94 га"], ["Центр", "707 га"]])
+    await pressAndDraw(fold())
+    expect(state.unfolded).toBe(false)
+    expect(rows()).toEqual([])
+    expect(byTestId("live-map-zones-card-title")?.textContent).toBe("Свои зоны · 2")
+  })
+
+  it("unfolded, is as long as its zones are many: no height of its own, nothing cut off, no scrollbar inside the page", async () => {
+    state.zones = dozen
+    state.unfolded = true
+    await drawCard()
+    expect(rows()).toHaveLength(12)
+    // Nothing in the card may scroll or be clipped: neither the card, nor the list, nor a row.
+    for (const element of [card(), ...card().querySelectorAll<HTMLElement>("*")]) {
+      expect(element.getAttribute("class") ?? "", element.getAttribute("data-testid") ?? element.tagName).not.toMatch(/overflow-|max-h-|truncate|line-clamp/)
+    }
+    // A long name is broken onto the next line, not cut.
+    expect(byTestId("live-map-zone-row-name", rows()[0])?.className).toContain("break-words")
+    // Every button says in words what it does: none is an icon alone.
+    for (const button of card().querySelectorAll("button")) expect(button.textContent?.trim().length, button.outerHTML).toBeGreaterThan(3)
+    // A finger gets a target of 44 px on every one of them.
+    for (const button of card().querySelectorAll("button")) expect(button.className, button.textContent ?? "").toContain("[@media(pointer:coarse)]:min-h-11")
+  })
+
+  it("makes the three changes from a row exactly as the list does, with the form opening in the row", async () => {
+    state.unfolded = true
+    await drawCard()
+    await pressAndDraw(byTestId("live-map-zone-rename-zone-centre"))
+    const row = () => byTestId("live-map-zone-row-zone-centre")!
+    expect(byTestId("live-map-zone-form", row())?.getAttribute("data-task")).toBe("rename")
+    await type("live-map-zone-name", "Старый город", row())
+    answer = "busy"
+    await pressAndDraw(byTestId("live-map-zone-save", row()))
+    // Refused: the form stays in the row and says why.
+    expect(byTestId("live-map-zone-notice", row())?.textContent).toBe("Слишком много изменений подряд. Подождите минуту.")
+    answer = null
+    await pressAndDraw(byTestId("live-map-zone-save", row()))
+    await pressAndDraw(byTestId("live-map-zone-recolor-zone-north"))
+    await pressAndDraw(byTestId("live-map-zone-color-pink"))
+    await pressAndDraw(byTestId("live-map-zone-save"))
+    await pressAndDraw(byTestId("live-map-zone-remove-zone-north"))
+    expect(byTestId("live-map-zone-form-title")?.textContent).toBe("Удалить зону «Северный участок»?")
+    await pressAndDraw(byTestId("live-map-zone-save"))
+    expect(changes).toEqual([
+      { zoneId: "zone-centre", change: { kind: "rename", name: "Старый город" } },
+      { zoneId: "zone-centre", change: { kind: "rename", name: "Старый город" } },
+      { zoneId: "zone-north", change: { kind: "color", color: "pink" } },
+      { zoneId: "zone-north", change: { kind: "delete" } },
+    ])
+    expect(card().querySelector('[data-testid="live-map-zone-form"]')).toBeNull()
+    // «На карте» from the card is the row's own zone.
+    await pressAndDraw(byTestId("live-map-zone-show-zone-centre"))
+    expect(shown).toEqual(["zone-centre"])
+  })
+
+  it("shows a reader the rows, «На карте» on each and who can change them — and nothing that changes a zone", async () => {
+    state.canWrite = false
+    state.unfolded = true
+    await drawCard()
+    expect(rows()).toHaveLength(2)
+    expect([...card().querySelectorAll("button")].map((button) => button.textContent)).toEqual(["Свернуть список", "На карте", "На карте"])
+    expect(byTestId("live-map-zone-read-only")?.textContent).toBe("Рисовать и менять зоны могут администратор и менеджер.")
+  })
+
+  it("with no zones has nothing to fold: how to draw the first one is said at once, in the words on the buttons", async () => {
+    state.zones = []
+    await drawCard()
+    expect(byTestId("live-map-zones-card-title")?.textContent).toBe("Свои зоны · 0")
+    expect(fold()).toBeNull()
+    expect(byTestId("live-map-zone-empty")?.textContent)
+      .toBe("Зон пока нет. Чтобы нарисовать первую: «Линейка» → «Сохранить как зону» или «Адрес или точка» → «Зона вокруг точки».")
+    state.canWrite = false
+    await drawCard()
+    expect(byTestId("live-map-zone-empty")?.textContent).toBe("Зон пока нет. Рисовать и менять зоны могут администратор и менеджер.")
+    expect(card().querySelector("button")).toBeNull()
+  })
+
+  it("says above the list that a zone asked about from a row is gone, until that is closed", async () => {
+    state.unfolded = true
+    state.gone = true
+    await drawCard()
+    const gone = byTestId("live-map-zone-gone")!
+    expect(card().contains(gone)).toBe(true)
+    expect(gone.querySelector("span")?.textContent).toBe("Этой зоны уже нет: её удалил кто-то другой")
+    // Above the list: read before the rows that are left.
+    expect(gone.compareDocumentPosition(byTestId("live-map-zone-list")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    await pressAndDraw(byTestId("live-map-zone-gone-close"))
+    expect([state.gone, byTestId("live-map-zone-gone")]).toEqual([false, null])
+    // The last zone was the one that went: the words stand above «Зон пока нет».
+    state.zones = []
+    state.gone = true
+    await drawCard()
+    expect(byTestId("live-map-zone-gone")!.compareDocumentPosition(byTestId("live-map-zone-empty")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 })
 

@@ -115,6 +115,11 @@ interface Props {
   canEditZones?: boolean
   /** A button in a zone's balloon: the page opens the small form for it. */
   onZoneAction?: (zoneId: string, action: LiveMapZoneChange["kind"]) => void
+  /**
+   * «На карте» on a zone's row in the page's list: bring that whole zone into
+   * view. `turn` is the press — the same zone asked for again is another turn.
+   */
+  focusZone?: { zoneId: string; turn: number } | null
 }
 
 export interface LiveMapReferencePoint {
@@ -451,6 +456,41 @@ function FocusStop({ stops, focusStopOrder, markers }: {
     map.flyTo([stop.latitude, stop.longitude], Math.max(map.getZoom(), 15), { duration: 0.4 })
     markers.current.get(focusStopOrder)?.openPopup()
   }, [map, stops, focusStopOrder, markers])
+  return null
+}
+
+/**
+ * «На карте» on a zone's row: the whole zone comes into view — an outline by
+ * its corners, a circle by its centre and its radius.
+ *
+ * Once per press, as an employee is flown to once per selection: the zones
+ * come as a new array after every change, and flying again on each would take
+ * the map away from whatever was looked at next. What tells one press from
+ * another is its turn, so the same zone asked for twice is shown twice. A zone
+ * that is not on the map now (its layer was switched off meanwhile) moves
+ * nothing.
+ */
+function FocusZone({ zones, focusZone }: { zones: readonly LiveMapZone[]; focusZone: { zoneId: string; turn: number } | null }) {
+  const map = useMap()
+  const zoneId = focusZone?.zoneId ?? null
+  const turn = focusZone?.turn ?? null
+  // Starts at the turn the map was mounted with: a press made before this map
+  // was drawn (the page came back from «История») is not answered late.
+  const answeredRef = useRef(turn)
+  useEffect(() => {
+    if (answeredRef.current === turn) return
+    answeredRef.current = turn
+    const zone = zoneId ? zones.find((candidate) => candidate.id === zoneId) : undefined
+    if (!zone) return
+    const bounds = zone.kind === "CIRCLE"
+      // Leaflet asks for the side of the square, in metres: twice the radius.
+      ? L.latLng(zone.center.latitude, zone.center.longitude).toBounds(zone.radiusMeters * 2)
+      : L.latLngBounds(zone.outline.map((point) => [point.latitude, point.longitude] as L.LatLngTuple))
+    if (!bounds.isValid()) return
+    // Room around it, so the zone's edge is not under the tools and «Слои»; a
+    // zone the size of a shop is not blown up to fill the map.
+    map.flyToBounds(bounds, { padding: [48, 48], maxZoom: 17, duration: 0.5 })
+  }, [map, zones, zoneId, turn])
   return null
 }
 
@@ -796,6 +836,7 @@ export default function MtmLiveMap({
   zones = NO_ZONES,
   canEditZones = false,
   onZoneAction,
+  focusZone = null,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const stopMarkersRef = useRef(new Map<number, L.Marker>())
@@ -1000,6 +1041,7 @@ export default function MtmLiveMap({
           <FocusAgent agents={agents} focusAgentId={focusAgentId} />
           <FocusStop stops={plannedRoute} focusStopOrder={focusStopOrder} markers={stopMarkersRef} />
           <FollowAgent agents={agents} focusAgentId={focusAgentId} enabled={followAgent} />
+          <FocusZone zones={zones} focusZone={focusZone} />
           <ViewportReporter onChange={handleViewportChange} />
           <MapPresses active={pressMode != null} onPress={handleMapPress} />
           <ShowReferencePoint point={referencePoint} />
