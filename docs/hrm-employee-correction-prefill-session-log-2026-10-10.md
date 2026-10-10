@@ -204,3 +204,29 @@ alloriginals/errors/corrections/newreaders/firstREADY APIs. 85DONE76open61%,
 C6-006/C12PARTIAL/C14OPEN. Lastaction source6accepted→READY; precisestop current
 C/fiveRUNNING; next currentoriginals/pixels/root+peer→freshrefsordinarymerge→
 ownnormalActionsartifact/maincompiler/fullSHA/publicprivacy→nextpermittedwork.
+
+## Current candidate and final five independently accepted; fresh premerge
+
+Supersedes preceding RUNNING labels without deleting originals. ExactH6f58/
+base339f/candidatea037/tree3dd4 preserved, clean source. Actual candidate run
+38042164884 employee114184405978/report114184406096 SUCCESS; four dispatch-only
+jobs SKIP, no credit. Original artifacts/logs independently admitted; actual
+session observations22 within unchanged1<n<=512, source19 not borrowed. Root
+three current images and peer eight viewed; finite crop/devbadge and no form
+pixels/nativeform/physical/human proof limits retained. Peer current receipt
+69177B SHA825995d819003829a81591e8cad48a031b2f458e11672f15e271d85db19244a6.
+All five latest App15368 contexts actual SUCCESS: scope114184405992,
+static114184474829,type114184474810,runner114180219234,scan114180219039.
+Root+peer full originals/checkout exacta037; older draft SKIPs retained. Whole
+READY type log253298B SHA43187e621a9704336cc4c61751425d5b73b58bd0db3b33cde872365c622eefb1
+recomputed1162/35/EXIT2/strict64/critical0/owned0/globalNONCLEAN. Static18 oldfail/
+noNew, protection exactfive/strictfalse/adminsenforced/no force/no deletion.
+Peer final five SHA b33ff1c214ca3211346795bde7fccf1c9d38bb968f30e4b83fef0a329e6d8fb1.
+Fresh root main/base/Cparents/tree/28oldarchivebytes/973+c123+f308 ancestry and
+606/609/646/663 unmerged checked. No parallel task sourcewriter; source frozen.
+Phase06 retains whole originals, first reader errors and corrections. Own
+ordinary merge/normal maincompiler/deploy/public release NOT RUN at this entry.
+Next ordinary authorized merge682 then exact own normal release root+peer.
+Future unpublishedd7dd source review identified missing exact persisted-request
+field and full refusal-body assertions; strengthen before publication, actual
+SQL/browser/runtime NOT RUN. Accounting85DONE76open61%; C6-006/C12/C14 open.
