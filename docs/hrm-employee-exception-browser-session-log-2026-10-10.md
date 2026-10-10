@@ -158,3 +158,16 @@ native API boundary while foreignroute/origin/query is refused. Original31
 cases remain; expected36, actual VitestNOTRUN. Existing strict baseline is
 unchanged. No mocked native PASS or hosted capture credit. This narrow native
 test addition is included in current full source review before publication.
+
+## Distinct synthetic imported HR actor before first execution
+
+Root identified a fixture provenance limitation: b082 historical HR decision
+rows were admin-imported with employee Sales/AGENT actor. This had explicitly
+no live HRauthorization credit, but is corrected for representative history.
+A-only distinct enrolled principal uses existing CRMmanager plus linked
+HRdirectory role; imported ACK/RESOLVE/REOPEN rows point to it. The historical
+and new employee responses still point solely to employee Sales/AGENT. No
+production role, permission, flag, live decision or HRlogin is introduced.
+Counts12matrix/14newACK+audits/1historical/50focus/21native remain expected,
+NOTRUN. Peer full b082 review and original source remain separately retained;
+this narrow provenance delta requires fresh final source binding/review.

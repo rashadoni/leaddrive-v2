@@ -202,19 +202,19 @@ async function seed() {
       features: ["workforce-hrm", ...(key === "off" ? [] : ["workforce-exception-response-v1"])], settings: {},
     } })
     const principals = {}
-    for (const name of ["employee", ...(key === "a" ? ["other", "unlinked", "viewer", "admin"] : [])]) {
+    for (const name of ["employee", ...(key === "a" ? ["other", "unlinked", "viewer", "admin", "hr"] : [])]) {
       const totpSecret = generateSecret(); protectedMarkers.push(totpSecret)
       const user = await admin.user.create({ data: {
         organizationId: organization.id, email: `employee-${suffix}-${key}-${name}@example.test`, name: `Fixture ${key} ${name}`,
-        passwordHash, role: name === "admin" ? "admin" : name === "viewer" ? "viewer" : "sales", require2fa: true, totpEnabled: true, totpSecret, smsAuthEnabled: false,
+        passwordHash, role: name === "admin" ? "admin" : name === "viewer" ? "viewer" : name === "hr" ? "manager" : "sales", require2fa: true, totpEnabled: true, totpSecret, smsAuthEnabled: false,
       } })
       principals[name] = { ...user, slug: organization.slug }
     }
     const team = await admin.mtmTeam.create({ data: { organizationId: organization.id, name: `Fixture ${key} team`, code: `EMP-${suffix}-${key}`, isActive: true } })
     const agent = await admin.mtmAgent.create({ data: { organizationId: organization.id, userId: principals.employee.id, teamId: team.id, name: `Synthetic employee ${key}`, role: "AGENT", status: "ACTIVE" } })
     const others = {}
-    for (const name of key === "a" ? ["other", "viewer"] : []) {
-      others[name] = await admin.mtmAgent.create({ data: { organizationId: organization.id, userId: principals[name].id, teamId: team.id, name: `Synthetic ${name}`, role: "AGENT", status: "ACTIVE" } })
+    for (const name of key === "a" ? ["other", "viewer", "hr"] : []) {
+      others[name] = await admin.mtmAgent.create({ data: { organizationId: organization.id, userId: principals[name].id, teamId: team.id, name: `Synthetic ${name}`, role: name === "hr" ? "HR" : "AGENT", status: "ACTIVE" } })
     }
     await admin.mtmSetting.create({ data: { organizationId: organization.id, key: "timezone", value: "UTC" } })
     const cases = {}
@@ -226,7 +226,10 @@ async function seed() {
       await admin.$executeRaw`INSERT INTO wf_employee_browser_allowed_cases("organizationId","caseId","agentId","workdayId","actorUserId") VALUES (${organization.id},${record.id},${agent.id},${workday.id},${principals.employee.id})`
       const decisions = label === "resolved" ? ["ACKNOWLEDGE", "RESOLVE_NO_CHANGE"] : label === "reopened" ? ["ACKNOWLEDGE", "RESOLVE_NO_CHANGE", "REOPEN_FOR_REVIEW"] : label === "stale" ? ["ACKNOWLEDGE"] : []
       for (const [index, decisionCode] of decisions.entries()) {
-        await admin.workforceExceptionDecision.create({ data: { organizationId: organization.id, caseId: record.id, operationId: `employee-${suffix}-${key}-${label}-${index}`, decisionCode, reason: privateReason, actorUserId: principals.employee.id, createdAt: new Date(workDate.getTime() + index * 1_000) } })
+        // Imported terminal history has a distinct existing HR directory actor;
+        // it is not an employee decision or a live HR authorization rehearsal.
+        assert.equal(others.hr.role, "HR"); assert.equal(principals.hr.role, "manager")
+        await admin.workforceExceptionDecision.create({ data: { organizationId: organization.id, caseId: record.id, operationId: `employee-${suffix}-${key}-${label}-${index}`, decisionCode, reason: privateReason, actorUserId: principals.hr.id, createdAt: new Date(workDate.getTime() + index * 1_000) } })
         if (label === "reopened" && index === 0) historicalResponse = await admin.workforceExceptionEmployeeResponse.create({ data: {
           organizationId: organization.id, caseId: record.id, agentId: agent.id, workdayId: workday.id,
           actorUserId: principals.employee.id, responseCode: "ACKNOWLEDGED", observedCaseRevision: 1,
