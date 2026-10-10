@@ -1,0 +1,63 @@
+{
+  "status": "ARCHIVE_READER_FAILURE_NOT_CI",
+  "exit": 1,
+  "diagnostic": "Archive reader mapped a raw .json and an existing .json.gz to one destination; failed before complete manifest. Source/CI/runtime were not changed.",
+  "originalStderr": "Traceback (most recent call last):\n  File \"/tmp/hrm-release-archive-phase-with-diff.py\", line 16, in <module>\n    if f.is_file():copy(f,pathlib.Path(p.name)/f.relative_to(p))\n  File \"/tmp/hrm-release-archive-phase-with-diff.py\", line 7, in copy\n    assert not target.exists();target.parent.mkdir(parents=True,exist_ok=True)\nAssertionError\n",
+  "partialStoredFiles": [
+    {
+      "path": "hrm-employee-exception-2b-first-failed-job-root/artifact-11660052646-original.zip",
+      "bytes": 4917,
+      "sha256": "29454bb6c0a37a5798d1610e17525fd0584456f9c110924b64eaa158086b6f14"
+    },
+    {
+      "path": "hrm-employee-exception-2b-first-failed-job-root/artifacts-original.json.gz",
+      "bytes": 487,
+      "sha256": "86c5268961247fa95f53278f62542f92276162144ae0b91ecdd0de6cd0562034"
+    },
+    {
+      "path": "hrm-employee-exception-2b-first-failed-job-root/job-original.json.gz",
+      "bytes": 1055,
+      "sha256": "e1dfa3a3c23d270e336edcba2948c8576b768a20c42837be5074556ae46d5681"
+    },
+    {
+      "path": "hrm-employee-exception-2b-first-failed-job-root/job-whole-original.txt.gz",
+      "bytes": 21552,
+      "sha256": "e42f71d1405d813a6f72ef312b196c04604cd97ac8b809293c1e7e329407b1bc"
+    },
+    {
+      "path": "hrm-employee-exception-2b-first-failed-job-root/root-first-failed-job-summary.json.gz",
+      "bytes": 4764,
+      "sha256": "ceb435809aef548b1429732ccff11e1b90343d3f375d715e9ba791157233cb8a"
+    },
+    {
+      "path": "hrm-employee-exception-2b-first-failed-job-root/run-original.json.gz",
+      "bytes": 1795,
+      "sha256": "5f259d47a44438243f3e1deb30a317313e58819677af5bb0a885269a31ca52d2"
+    },
+    {
+      "path": "hrm-employee-exception-2b-original-employee-failure-peer/artifact-original.zip",
+      "bytes": 4917,
+      "sha256": "29454bb6c0a37a5798d1610e17525fd0584456f9c110924b64eaa158086b6f14"
+    },
+    {
+      "path": "hrm-employee-exception-2b-original-employee-failure-peer/artifacts-api.json.gz",
+      "bytes": 456,
+      "sha256": "c6f5833f171f35644060a39e63d9f3a995fa9707f0c440a4ac2760b7b83d3395"
+    },
+    {
+      "path": "hrm-employee-exception-2b-original-employee-failure-peer/employee-exception-receipt.json.gz",
+      "bytes": 4252,
+      "sha256": "21ff2e5c76cacf3fe8109828d76e3fc1b3d7dc578bd30b71484521c73239fb7e"
+    },
+    {
+      "path": "hrm-employee-exception-2b-original-employee-failure-peer/job-api.json.gz",
+      "bytes": 1007,
+      "sha256": "92c2eb9879f80d2b8f8841fb61b1d840e394e3d016e59800d95f225b2a50be6d"
+    },
+    {
+      "path": "hrm-employee-exception-2b-original-employee-failure-peer/job-original.log.gz",
+      "bytes": 21552,
+      "sha256": "e42f71d1405d813a6f72ef312b196c04604cd97ac8b809293c1e7e329407b1bc"
+    }
+  ]
+}
