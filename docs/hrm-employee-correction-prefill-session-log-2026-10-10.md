@@ -97,3 +97,24 @@ Next independent exactsource readonlyreview may proceed while parentnormal
 release runs. Publication/runtime gates waitfor parentM fullverifiedrelease.
 No nextsuccessful correctionPOST/source-attribution/body/nativeform or personnel
 outcome acceptance; source12readonlyform checkpoints only. Accounting unchanged.
+
+## Independent source admission and observer-scope label qualification
+
+Exactprepared ea40f6d independentlyACCEPTED source-only; receipt17125B SHA
+fad4554d307f7e80a2e0c0e853c15dc50a81fe726e07330ae89acbe919681bbd.
+Oldharness exactafterremovingadditions,44boundprotectedblobs+8routing/baseline/
+workflowcontrols unchangedM339f,39→45bindings,alloldguards/bounds preserved.
+IndependentNode20syntax/diffPASS afterresourcecheck, runtime/publicationNOTRUN.
+Original peerjournal basename error beforeadmission preserved separately and
+corrected from immutable changedpath discovery. No source/CI defect inferred.
+
+Reviewer finitequalification: requestobserver attaches afterinitialprefill and
+covers onlythree type/day interactions; globalpersistedrequests0 andwhole
+original13facts remain required. Beforepublication rename diagnosticrequestPosts
+to observedInteractionRequestPosts andexplicitrequestObserverScope. This narrows
+label only; observer/zeroassertion/controlflow/persistenceguards unchanged.
+Earlierreceipt/rootlabels/checkpoints remain history; no whole-navigation POST
+absence or successfulsubmit/body/source-link/nativeform evidence claimed.
+ParentM339f deploy38039109759/maincompiler38039109765 stillRUNNING. Newhead
+source-only labeldelta requiresindependentadmission; nextpublication waitsparent
+verifiedrelease. No completioncredit/accounting/routing/roles/activation changes.

@@ -477,7 +477,8 @@ async function correctionPrefillScenario(page, context, tenant, selected, cell) 
       ownScope: true, ownOptionsOnly: true, workdayCount: ownedDays.length, exactRecordedWorkdaySelected: true,
       initialType: "TIME_CORRECTION", timeAndReasonInitiallyEmpty: true, emptySubmitDisabled: true,
       typeChangeDisplaysEmptyLeaveDates: true, returningToCorrectionDiscardsDisplayedPrefill: true,
-      alternateOwnDaySelectable: true, requestPosts: 0, requestsBeforeAndAfter: 0, responseAuditCountsUnchanged: true,
+      alternateOwnDaySelectable: true, observedInteractionRequestPosts: 0, requestsBeforeAndAfter: 0, responseAuditCountsUnchanged: true,
+      requestObserverScope: "Three type/day interactions after initial prefill; persisted requests remain zero, no whole-navigation POST absence claim",
       actualFormViewport: viewport,
       qualification: "Read-only form controls and actual own-only GET only; no submitted body/source-link/successful correction or native request-form zoom acceptance",
     })
