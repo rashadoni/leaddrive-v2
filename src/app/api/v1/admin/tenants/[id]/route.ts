@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { requireSuperAdmin } from "@/lib/superadmin-guard"
 import {
@@ -146,7 +147,14 @@ export async function PUT(
     const updated = await prisma.organization.update({
       // Capability PATCH also updates this row. Refuse a concurrent change
       // instead of writing the features/modules snapshot read above over it.
-      where: { id, updatedAt: existing.updatedAt },
+      where: {
+        id,
+        updatedAt: existing.updatedAt,
+        // Prisma timestamps have millisecond precision. Check the entitlement
+        // snapshot too so two writes in the same millisecond cannot collide.
+        features: { equals: existing.features ?? Prisma.JsonNull },
+        modules: { equals: existing.modules ?? Prisma.JsonNull },
+      },
       data: updateData,
     }).catch((error: unknown) => {
       if ((error as { code?: string } | null)?.code === "P2025") return null

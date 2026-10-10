@@ -87,7 +87,9 @@ beforeEach(() => {
     where.id === tenant.id ? { ...tenant } : null
   ))
   vi.mocked(prisma.organization.update).mockImplementation(async ({ where, data }: any) => {
-    if (where.id !== tenant.id || (where.updatedAt && where.updatedAt.getTime() !== tenant.updatedAt.getTime())) {
+    if (where.id !== tenant.id || (where.updatedAt && where.updatedAt.getTime() !== tenant.updatedAt.getTime()) ||
+      (where.features && JSON.stringify(where.features.equals) !== JSON.stringify(tenant.features)) ||
+      (where.modules && JSON.stringify(where.modules.equals) !== JSON.stringify(tenant.modules))) {
       throw Object.assign(new Error("Record changed"), { code: "P2025" })
     }
     tenant = { ...tenant, ...data, updatedAt: new Date(tenant.updatedAt.getTime() + 1) }
@@ -125,7 +127,10 @@ describe("tenant metadata preserves explicit Workforce decisions", () => {
     expect(tenant.modules["route-field"]).toBe(true)
     expect(tenant.modules.unrelated_flag).toBe(false)
     expect(prisma.organization.update).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: "target-tenant", updatedAt: previousUpdatedAt },
+      where: {
+        id: "target-tenant", updatedAt: previousUpdatedAt,
+        features: { equals: features }, modules: { equals: expect.objectContaining(modules) },
+      },
     }))
     expect(ensureWorkforceDefaultProfile).not.toHaveBeenCalled()
     expect(logAudit).toHaveBeenCalledTimes(1)
@@ -231,6 +236,27 @@ describe("tenant metadata preserves explicit Workforce decisions", () => {
     expect(prisma.organization.update).not.toHaveBeenCalled()
     expect(logAudit).not.toHaveBeenCalled()
     expect(ensureWorkforceDefaultProfile).not.toHaveBeenCalled()
+  })
+
+  it("rejects a capability change even when its timestamp collides in the same millisecond", async () => {
+    vi.mocked(prisma.organization.update).mockImplementationOnce(async ({ where }: any) => {
+      const approved = await PATCH_CAPABILITIES(request("PATCH", { capabilityId: WORKFORCE, action: "approve" }, true), params())
+      expect(approved.status).toBe(200)
+      tenant.updatedAt = where.updatedAt
+      if (JSON.stringify(where.features?.equals) !== JSON.stringify(tenant.features) ||
+        JSON.stringify(where.modules?.equals) !== JSON.stringify(tenant.modules)) {
+        throw Object.assign(new Error("Entitlements changed"), { code: "P2025" })
+      }
+      throw new Error("Metadata Save did not protect the entitlement snapshot")
+    })
+
+    const response = await PUT(request("PUT", { name: "Stale", features: ["crm"] }), params())
+
+    expect(response.status).toBe(409)
+    expect(tenant.name).toBe("Target")
+    expect(tenant.modules[WORKFORCE]).toBe(true)
+    expect(logAudit).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(logAudit).mock.calls[0][1]).toBe("approve")
   })
 
   it("preserves a missing route target as 404 without a write", async () => {

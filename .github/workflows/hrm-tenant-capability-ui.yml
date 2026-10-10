@@ -1,0 +1,284 @@
+name: HRM tenant capability UI evidence
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - ".github/workflows/hrm-tenant-capability-ui.yml"
+      - "scripts/hrm-tenant-capability-ui-browser-evidence.mjs"
+      - "scripts/ci/fixtures/hrm-tenant-capability-ui.sql"
+      - "src/app/admin/tenants/**"
+      - "src/app/api/v1/admin/tenants/**"
+      - "src/lib/admin-sidebar-catalog.ts"
+      - "src/lib/tenant-capabilities.ts"
+      - "src/lib/modules.ts"
+      - "src/lib/workforce/default-configuration-provisioning.ts"
+      - "src/__tests__/hrm-tenant-capability-ui.test.ts"
+      - "src/__tests__/api-admin-tenant-workforce-metadata.test.ts"
+      - "messages/*.json"
+      - "prisma/schema.prisma"
+  workflow_dispatch:
+    inputs:
+      head_sha:
+        description: Exact full commit SHA to verify (no branch/tag names)
+        required: true
+        type: string
+
+concurrency:
+  group: hrm-tenant-capability-ui-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  HRM_UI_HEAD_SHA: ${{ inputs.head_sha || github.event.pull_request.head.sha || github.sha }}
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  draft-state:
+    name: Resolve current draft state
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      draft: ${{ steps.draft.outputs.draft }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.HRM_UI_HEAD_SHA }}
+      - id: draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_ACTION: ${{ github.event.action }}
+          EVENT_DRAFT: ${{ github.event.pull_request.draft }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: bash scripts/ci/pr-draft-state.sh
+
+  browser-database:
+    name: HRM tenant UI and disposable database
+    needs: draft-state
+    if: ${{ needs.draft-state.outputs.draft != 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      CI: "true"
+      NODE_ENV: development
+      NODE_OPTIONS: --max-old-space-size=6144
+      LEADDRIVE_DISABLE_SERVICE_WORKER: "1"
+      HRM_UI_BROWSER: "1"
+      HRM_UI_OUTPUT_DIR: artifacts/hrm-tenant-capability-ui
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: hrm_tenant_capability_ui
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: [5432]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d hrm_tenant_capability_ui"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.HRM_UI_HEAD_SHA }}
+      - name: Bind evidence to exact checkout
+        shell: bash
+        run: |
+          [[ "$HRM_UI_HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$HRM_UI_HEAD_SHA"
+          mkdir -p "$HRM_UI_OUTPUT_DIR"
+          python3 - <<'PY'
+          import json, os, pathlib
+          receipt = {"headSha": os.environ["HRM_UI_HEAD_SHA"], "workflowSha": os.environ["GITHUB_SHA"], "runId": os.environ["GITHUB_RUN_ID"], "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"], "fixture": "synthetic disposable PostgreSQL", "productionMutation": False, "stage": "preparing"}
+          (pathlib.Path(os.environ["HRM_UI_OUTPUT_DIR"]) / "workflow-context.json").write_text(json.dumps(receipt, indent=2) + "\n")
+          PY
+      - name: Resolve loopback ports and ephemeral credentials
+        env:
+          PG_PORT: ${{ job.services.postgres.ports['5432'] }}
+        shell: bash
+        run: |
+          test -n "$PG_PORT"
+          HRM_APP_PORT="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1])')"
+          HRM_DB_PASSWORD="$(openssl rand -hex 24)"
+          HRM_AUTH_SECRET="$(openssl rand -hex 32)"
+          HRM_PII_SECRET="$(openssl rand -hex 32)"
+          echo "::add-mask::$HRM_DB_PASSWORD"
+          echo "::add-mask::$HRM_AUTH_SECRET"
+          echo "::add-mask::$HRM_PII_SECRET"
+          {
+            echo "ADMIN_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:${PG_PORT}/hrm_tenant_capability_ui"
+            echo "EVENT_PLATFORM_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:${PG_PORT}/hrm_tenant_capability_ui"
+            echo "DATABASE_URL=postgresql://hrm_tenant_ui:${HRM_DB_PASSWORD}@127.0.0.1:${PG_PORT}/hrm_tenant_capability_ui"
+            echo "HRM_UI_DATABASE_PASSWORD=$HRM_DB_PASSWORD"
+            echo "HRM_UI_APP_PORT=$HRM_APP_PORT"
+            echo "HRM_UI_BASE_URL=http://localhost:${HRM_APP_PORT}"
+            echo "NEXTAUTH_URL=http://localhost:${HRM_APP_PORT}"
+            echo "AUTH_URL=http://localhost:${HRM_APP_PORT}"
+            echo "APP_URL=http://localhost:${HRM_APP_PORT}"
+            echo "NEXT_PUBLIC_APP_URL=http://localhost:${HRM_APP_PORT}"
+            echo "NEXT_PUBLIC_MARKETING_URL=http://localhost:${HRM_APP_PORT}"
+            echo "AUTH_SECRET=$HRM_AUTH_SECRET"
+            echo "NEXTAUTH_SECRET=$HRM_AUTH_SECRET"
+            echo "TENANT_PII_MASTER_KEY=$HRM_PII_SECRET"
+            echo "HRM_UI_APP_LOG=${RUNNER_TEMP}/hrm-tenant-ui-app.log"
+          } >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+      - name: Create disposable schema and restricted fixture role
+        shell: bash
+        run: |
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION IF NOT EXISTS vector'
+          DATABASE_URL="$ADMIN_DATABASE_URL" npx prisma db push --skip-generate
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 --set=app_password="$HRM_UI_DATABASE_PASSWORD" -f scripts/ci/fixtures/hrm-tenant-capability-ui.sql
+          npx prisma generate
+      - name: Targeted regressions and translations
+        env:
+          VITEST_MAX_WORKERS: "1"
+        run: |
+          npx vitest run src/__tests__/hrm-tenant-capability-ui.test.ts src/__tests__/api-admin-tenant-workforce-metadata.test.ts src/__tests__/api-admin-tenant-capabilities.test.ts src/__tests__/api-admin.test.ts src/__tests__/admin-capability-catalog.test.ts src/__tests__/tenant-capabilities-panel.test.ts src/__tests__/tenant-capabilities.test.ts
+          npm run i18n:check
+          node scripts/ci/check-github-runner-policy.mjs
+      - run: npx playwright install --with-deps chromium
+      - name: Actual authenticated tenant UI and database scenarios
+        shell: bash
+        run: |
+          node node_modules/next/dist/bin/next dev --hostname 127.0.0.1 --port "$HRM_UI_APP_PORT" > "$HRM_UI_APP_LOG" 2>&1 &
+          HRM_APP_PID=$!
+          cleanup() { kill "$HRM_APP_PID" 2>/dev/null || true; wait "$HRM_APP_PID" 2>/dev/null || true; }
+          trap cleanup EXIT
+          for attempt in $(seq 1 90); do
+            if curl -fsS --max-time 5 "${HRM_UI_BASE_URL}/api/v1/ping" >/dev/null 2>&1; then break; fi
+            if ! kill -0 "$HRM_APP_PID" 2>/dev/null || [ "$attempt" -eq 90 ]; then
+              echo "::error::Disposable HRM application did not become ready"
+              exit 1
+            fi
+            sleep 2
+          done
+          node scripts/hrm-tenant-capability-ui-browser-evidence.mjs
+      - name: Preserve failure without exposing runtime logs
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p "$HRM_UI_OUTPUT_DIR"
+          python3 - <<'PY'
+          import json, os, pathlib
+          receipt = {"status": "FAILED", "headSha": os.environ["HRM_UI_HEAD_SHA"], "workflowSha": os.environ["GITHUB_SHA"], "runId": os.environ["GITHUB_RUN_ID"], "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"]}
+          (pathlib.Path(os.environ["HRM_UI_OUTPUT_DIR"]) / "workflow-failure.json").write_text(json.dumps(receipt, indent=2) + "\n")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hrm-tenant-ui-${{ env.HRM_UI_HEAD_SHA }}-${{ github.run_attempt }}
+          path: artifacts/hrm-tenant-capability-ui
+          if-no-files-found: error
+          retention-days: 14
+
+  build-typecheck:
+    name: HRM exact head build and typecheck baseline
+    needs: draft-state
+    if: ${{ needs.draft-state.outputs.draft != 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
+      NEXT_BUILD_CPUS: "1"
+      LEADDRIVE_COLD_PRODUCTION_BUILD: "1"
+      # Build-only loopback placeholder, no production database or credentials.
+      DATABASE_URL: postgresql://build_fixture:build_fixture@127.0.0.1:5432/hrm_build_placeholder
+      NEXTAUTH_SECRET: hrm-ui-build-only-no-authentication-or-production-use
+      AUTH_SECRET: hrm-ui-build-only-no-authentication-or-production-use
+      NEXTAUTH_URL: https://build.invalid
+      NEXT_PUBLIC_CARTO_BASEMAPS_API_KEY: synthetic-build-only-no-provider-access
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.HRM_UI_HEAD_SHA }}
+      - name: Verify exact commit
+        run: |
+          [[ "$HRM_UI_HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$HRM_UI_HEAD_SHA"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - name: Prepare existing hosted typecheck budget
+        run: bash scripts/ci/prepare-hosted-build-runner.sh
+        env:
+          LEADDRIVE_BUILD_MIN_BUDGET_KIB: "18874368"
+      - name: Preserve full typecheck diagnostics
+        shell: bash
+        env:
+          NODE_OPTIONS: --max-old-space-size=14336
+        run: |
+          ulimit -c 0
+          set +e
+          npx tsc --noEmit --pretty false > tsc-output.log 2>&1
+          echo "$?" > tsc-exit-code
+          set -e
+      - name: Existing blocking typecheck gates
+        run: |
+          bash scripts/ci/check-typecheck-gate.sh tsc-output.log tsc-exit-code
+          node scripts/ci/check-typecheck-baseline.mjs tsc-output.log
+      - name: Cleanup typecheck budget
+        if: always()
+        run: bash scripts/ci/prepare-hosted-build-runner.sh cleanup
+      - name: Prepare existing cold build budget
+        run: bash scripts/ci/prepare-hosted-build-runner.sh
+      - name: Full cold production bundle (no deploy)
+        run: npm run build -- --webpack
+        env:
+          NODE_ENV: production
+          NODE_OPTIONS: --max-old-space-size=8192
+          NEXT_WEBPACK_PARALLELISM: "1"
+      - name: Verify build products and exact head receipt
+        shell: bash
+        run: |
+          mkdir -p artifacts/hrm-tenant-build
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib
+          paths = [".next/BUILD_ID", ".next/standalone/server.js", ".next/server/app-paths-manifest.json"]
+          bindings = []
+          for name in paths:
+              payload = pathlib.Path(name).read_bytes()
+              assert payload, name
+              bindings.append({"path": name, "sha256": hashlib.sha256(payload).hexdigest(), "bytes": len(payload)})
+          manifest = json.loads(pathlib.Path(paths[2]).read_text())
+          expected = ["/admin/tenants/[id]/page", "/admin/tenants/[id]/edit/page", "/api/v1/admin/tenants/[id]/route", "/api/v1/admin/tenants/[id]/capabilities/route"]
+          assert all(key in manifest for key in expected), "HRM admin routes missing from full build"
+          receipt = {"status": "PASS", "headSha": os.environ["HRM_UI_HEAD_SHA"], "workflowSha": os.environ["GITHUB_SHA"], "runId": os.environ["GITHUB_RUN_ID"], "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"], "products": bindings, "routes": expected, "deploy": False, "providerKey": "synthetic build-only CARTO marker; provider integration NOT RUN"}
+          pathlib.Path("artifacts/hrm-tenant-build/receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
+          PY
+      - name: Preserve full typecheck diagnostics and build status
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p artifacts/hrm-tenant-build
+          test ! -f tsc-output.log || cp tsc-output.log artifacts/hrm-tenant-build/tsc-output.log
+          test ! -f tsc-exit-code || cp tsc-exit-code artifacts/hrm-tenant-build/tsc-exit-code
+          python3 - <<'PY'
+          import json, os, pathlib
+          receipt = {"headSha": os.environ["HRM_UI_HEAD_SHA"], "workflowSha": os.environ["GITHUB_SHA"], "runId": os.environ["GITHUB_RUN_ID"], "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"], "jobStatus": "${{ job.status }}", "productionMutation": False}
+          pathlib.Path("artifacts/hrm-tenant-build/workflow-status.json").write_text(json.dumps(receipt, indent=2) + "\n")
+          PY
+      - name: Cleanup cold build budget
+        if: always()
+        run: bash scripts/ci/prepare-hosted-build-runner.sh cleanup
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hrm-tenant-build-${{ env.HRM_UI_HEAD_SHA }}-${{ github.run_attempt }}
+          path: artifacts/hrm-tenant-build
+          if-no-files-found: error
+          retention-days: 14

@@ -105,6 +105,7 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
   // Nav-item labels live in the "nav" namespace (same keys the sidebar uses),
   // so the derived catalog resolves item.tKey through this.
   const tNav = useTranslations("nav")
+  const hrmLabel = tNav("groups.HRM")
 
   const [tenant, setTenant] = useState<TenantData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -534,7 +535,7 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
                             return <WorkforceCapabilityControl
                               key={capabilityId}
                               tenantId={tenantId}
-                              label={`${tNav("groups.HRM")} (HRM)`}
+                              label={hrmLabel === "HRM" ? hrmLabel : `${hrmLabel} (HRM)`}
                               pages={pages.map((page) => tNav(page.tKey)).join(" · ")}
                               refreshRevision={capabilityRevision}
                               disabled={saving}
