@@ -733,3 +733,40 @@ Immutablephase23: 11files/19759originalbytes.
 PR678DRAFT, compilerpending; next actualcompletecompiler originals/fullsix
 review, then ready/currentcandidate/requiredCI and normalverifiedrelease.
 85DONE/76open/61%,C6-006/C12partial/C14open unchanged.
+
+## Exact7CA allsixsource accepted; READY currentcandidate/mandatorygatesrunning
+
+Current source7ca34739e490fb3ef7d88346e4e83c08cf50b665 tree
+6bd9a531f365faf639b847c4d5db13303ac6b951 run38030657788attempt1 naturally
+SUCCESS6/6. Rootfullsixoriginaljoblogs/fourAPI digest+size+CRC ZIPs preserved
+andcurrentcompiler/report/HR contentreadersactuallypassed. Compiler raw179299B
+SHAb6b9ee71a33aa9f683f81b2a4879597b63099a4d23ae794e1f71c0ba39536df6,
+1162diag/35families/EXIT2/strict64exactpair-count/critical0/owned0/globalNONCLEAN;
+no assumedold totals, actualsamehash observed afterfreshdownload. Independent
+compilerpeer15656B SHA21d20ec6b0d670906d9eec7a1f9a8e53e5b8f0cf12a1a7a328a151a02775e741
+verifiedApp15368/standalonehead/whole256118B log/ZIP11662084819/20010B digestCRC
+andbinds allfivecurrentindependent successlanes. No remainingP0/P1/P2 inbounded
+source+hosted scope. Complete67filepeermanifest14285B SHA
+e6f110f8404c4386c27ac865fefd61ebf80f03764f9734edf2accd900694a940 retains
+allsourceAPI/logs/ZIPs/rawcompiler/12actualsamplePNGs/reviews andinitialreader
+errors; five-lanepartialmanifest retainedunchanged.
+
+FreshbeforeREADY mainstill0A/sourcePRhead7CA. Rootandpeer preparedcurrent
+candidatee3a6c527533072044efa1a289748be0eac51a1d3 parents[0A,7CA]/whole tree
+6bd9a531f365faf639b847c4d5db13303ac6b951 EXACTsource. Candidate-runtimeNOTRUN at
+thatadmission, no automaticcandidate credit fromsource. Rootupdated finalPR
+title/body aroundconcrete34.8pxRUoverflow/fiveclassfix/actualvalidation and
+limits, then ordinaryghprready06:45:26UTC; no sourcechanges/force/adminmerge.
+PR678 READY OPEN, notmerged. ActualREADY candidate runs: report+employee
+38032037169, manager38032037215, calendar38032037239, requiredPRchecks38032037251
+allRUNNING. Actualsourcehead7CA, checkedcandidateexpected e3a6... stillmust
+verifyactualrunreceipt/fulltree/parents. Manual-only fourjobsSKIP inPR event
+are expectedandreceiveNOCREDIT; source six actualSUCCESS above. Olddraft
+static/typecheck/browser SKIP notrequiredgates accepted. Need actualSUCCESS
+on allfiveApp15368 contexts and fullcurrentcalendar/manager/report/employee
+candidatecontent/pixels; recheckfreshmain/source immediatelybeforemerge.
+Immutablephase24: 119files/30125835originalbytes.
+85DONE/76open/61%,C6-006/C12partial/C14open unchanged. No productionactivation/
+secrets/grants/personnel changes. Next currentcandidate/requiredfive originals
+and independentreview, normalmatchinghead merge andGitHubActions release,
+fullmaincompiler/immutableSHA/TLS/ping/employeeanonymousprivacy proof.
