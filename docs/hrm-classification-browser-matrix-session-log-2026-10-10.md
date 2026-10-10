@@ -379,3 +379,27 @@ guard historical authorship qualified with independent root source review.
 Phase09 durable receipt archived. Runtime38016788152 remains pending; no
 production new release/physical/human/wholeC14/C12 credit. Continue actual
 first-runtime failure preservation or complete exact-source acceptance.
+
+## Original a161 full-regression failure; baseline unchanged
+
+First a161 regressionjob114108723267 terminal FAILURE, whole170640B/SHA
+2a5ac306d8bbded9152335068006218bb07bd86bae64441f6ac0798a328ee0c4.
+Schema/generate/runner/translation/lint/guard31/actualPG44 passed beforehand.
+Full strict suite19failingfiles versus frozen18: one newly failing owned
+workforce-exception-queue-action-ui.test.ts:169 privacy/accessibility test
+expected the complete old className literal. Actual eight style changes
+retain min-h-11/whitespace-normal/text-left but add width/height classes.
+This is owned existing test adaptation, not an MTM/main defect attribution.
+Original full failure and assertion trace retained phase10; no baseline
+update/testskip/timeout/rerun/CI cancellation. Build and report actual SUCCESS;
+HR/native/fullcompiler continue naturally. Other known18 remain nonclean.
+
+Prepared-only minimal existing test delta: retain all privacy/source/role/
+localization/token assertions; check the same three class invariants on
+actually rendered ACKNOWLEDGE and REQUEST_TIME_CORRECTION native buttons
+inside existing second test. Test count/components/fetch fixtures unchanged,
+no new testcase/mock or geometry waiver. Prepared patch fee6cc7639e77160553f4fce879ce4a67c8e9ca72ca02f575f06782ff799330a
+NOT_APPLIED/RUNTIME_NOTRUN; independent review requested. Next complete
+original a161 receipts, actual form closure evidence, then reviewed narrow
+test repair and fresh whole exact-source gates. Phase07–09 scanner3commits
+17104B no leaks. Accounting85/76/61%, C12 PARTIAL/C14stillopen.

@@ -1,0 +1,41 @@
+{
+  "archivedAtUtc": "2026-10-10T02:37:23.797755+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "job-api-original.json.gz",
+      "originalBytes": 971,
+      "originalSha256": "56f6a9fe60a24d91f28fda762146d56d922d1ddebee691652dede0f45b52fb61",
+      "storedBytes": 971,
+      "storedSha256": "56f6a9fe60a24d91f28fda762146d56d922d1ddebee691652dede0f45b52fb61"
+    },
+    {
+      "path": "job-log-original.txt.gz",
+      "originalBytes": 29482,
+      "originalSha256": "62c6e0af0cf6e80709776f9e563550eeb2f8f241cb7d89adf11f28b266b0bd96",
+      "storedBytes": 29482,
+      "storedSha256": "62c6e0af0cf6e80709776f9e563550eeb2f8f241cb7d89adf11f28b266b0bd96"
+    },
+    {
+      "path": "original-failure-binding.json.gz",
+      "originalBytes": 376,
+      "originalSha256": "da2535a4bb37d2cd4817e70862c06ec1d50eba4578578bfd3b7a949b0bb77173",
+      "storedBytes": 297,
+      "storedSha256": "30e641a6c4950a12d1a0981cfd165a0f4c39a3490e5d1b27e55a3b31a2e6cf60"
+    },
+    {
+      "path": "hrm-classification-phases07-09-gitleaks.json.gz",
+      "originalBytes": 3,
+      "originalSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "storedBytes": 23,
+      "storedSha256": "2ca4529576310b626c1bd48352d283b521d029d54f195d8416536872d826e4c6"
+    },
+    {
+      "path": "hrm-classification-phases07-09-gitleaks-log.txt.gz",
+      "originalBytes": 173,
+      "originalSha256": "183d13d61fa8726eed762cea63a6ec44dedd808f0c8b8ffc8f22baa11fcbf35f",
+      "storedBytes": 140,
+      "storedSha256": "dfafc7670c059fdcfb5bd3240ffb6d62747401050164061c5b627bddbebd7535"
+    }
+  ]
+}
