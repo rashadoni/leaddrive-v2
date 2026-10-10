@@ -59,7 +59,7 @@ const receipts = {
   checkedMergeSha: process.env.GITHUB_SHA, startedAt: now.toISOString(),
   environment: "hosted Chromium / real Auth.js / loopback Next dev / disposable PostgreSQL16 and Redis",
   status: "RUNNING", cases: [], sources: [], productionRoutines: [], authenticationDiagnostics: [], writeDiagnostics: [],
-  matrix, nativeZoomDiagnostics: [], nativeCaptureDiagnostics: [], keyboardFocusDiagnostics: [], privacyCaptureRefusals: [], nativeZoomVerdict: "NOT RUN",
+  matrix, nativeZoomDiagnostics: [], nativeCaptureDiagnostics: [], keyboardFocusDiagnostics: [], queueRegionDiagnostics: [], privacyCaptureRefusals: [], nativeZoomVerdict: "NOT RUN",
   limitations: ["Queue table is deliberately horizontally scrollable; table-region checks prove focused visible intersection, not a whole tall table fitting one screen", "Real Tab/Enter and keyboard reason entry; no automatic loading-focus retention/human AT/whole-page WCAG acceptance", "Private reason is never photographed; a failure with a protected form value records NOT_CAPTURED rather than editing the DOM/image", "Synthetic isolated tenants and imported historical terminal decisions only", "Development bundle, not production build", "Exact production decision revision and append-only routines; no full migration replay", "Audit whitelist/append-only fixture guard is synthetic, not a production MtmAuditLog migration", "No live HR observation, physical presence, device, pilot, payroll or disciplinary evidence", "No production mutation, grants, activation, secret/access change or external message"],
 }
 function noProtected(value) {
@@ -383,8 +383,18 @@ async function uiScenario(tenant, cell, classificationCode, appealCode) {
   const response = observeWaiter(page.waitForResponse(r => new URL(r.url()).pathname === queueEndpoint && r.request().method() === "GET", { timeout: 120_000 }))
   await page.goto("/workforce/exceptions", { waitUntil: "domcontentloaded" })
   assert.equal((await response).status(), 200)
-  const region = page.getByRole("region", { name: ui.casesTitle, exact: true })
-  await region.waitFor({ state: "visible" }); assert.equal(await region.getAttribute("tabindex"), "0")
+  stage = name + "-select-scroll-region"
+  // The named section and its nested scroll region share a title. Select the
+  // actual keyboard-focusable table viewport and verify its accessible label.
+  const region = page.locator('div[role="region"][tabindex="0"]')
+  await region.waitFor({ state: "visible" })
+  assert.equal(await region.count(), 1)
+  assert.equal(await region.getAttribute("aria-label"), ui.casesTitle)
+  assert.equal(await region.getAttribute("tabindex"), "0")
+  assert.equal(await region.getByRole("table").count(), 1)
+  const namedRegionCount = await page.getByRole("region", { name: ui.casesTitle, exact: true }).count()
+  assert.ok(namedRegionCount >= 1)
+  receipts.queueRegionDiagnostics.push({ locale, width, nativeZoom, namedRegionCount, scrollableRegionCount: 1, tableCount: 1, translatedLabelMatches: true, tabindex: "0" })
   if (nativeZoom) {
     stage = name + "-prove-native-zoom"
     view.nativeZoom = await proveNative200Zoom(view, outputDirectory, locale,

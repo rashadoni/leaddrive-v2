@@ -119,3 +119,100 @@ Next: publish frozen dedicated branch/draft and actual hosted31guards/20cases/
 24writes+24linked audits/108focus/3native+21captures/48private-capture refusals,
 original denials/migration/facts/RLS/cleanup, PG44, strict18, compiler64/build.
 No local heavy gates, no production HR action or operational substitute.
+
+## Final source published as dependent draft PR674
+
+Dedicated branch normal-pushed d8e53ae26e4e6551ee9c64862baa09e1a66c014c;
+draft674 targets live main cd935999cd657f0a13bb458ee901637389a31916. App
+attachment completed. Source blobs identical to independent85e review; first
+hosted source workflow dispatched at exact expected_head. No runtime PASS
+claimed at publication. New source gitleaks4 commits/23,064B/no leaks PASS;
+small Node20 syntax/cumulative973 whitespace and unchanged baseline checks PASS.
+Parent release still pending, no Mac/local heavy gates. Next preserve all
+first-run outcomes and actual complete artifacts before corrective changes.
+
+## First hosted runtime started at exact D8E
+
+Source workflow38013716710 attempt1 dispatched at exact D8E; five actual
+jobs114099288807(report),114099288899(HR matrix),114099288944(full compiler),
+114099288947(PG/regressions),114099288994(build) IN_PROGRESS. Draft mirrored
+PR run38013694353 is SKIPPED and receives no execution credit. No corrective
+source push or cancellation; all first results will be preserved. Prepared
+finite root artifact reader is syntax-checked only, execution NOT RUN; it
+requires19 exact source blobs,7 exact unmodified migration extracts, actual
+manual matrix/denials/replay/focus/private-capture/native/DB/cleanup evidence.
+No source/test/UI baseline change while originals run. Parent Deploy38013599677
+still IN_PROGRESS; no public release or production HR acceptance yet.
+
+## First D8E browser failure preserved before any correction
+
+Actual source38013716710 HR job114099288899 FAILURE; complete original API/log
+and ZIP11654893044/62,450B/digestd42b36de1d6ca80d748e61ffca67df49e3e7ad980ed3b3170e0927aff8ea3469
+validated against API size/digest/all CRC. Receipt19 source blobs match frozen
+D8E; exact7 routine installation committed, real HR MFA200/nonce consumed,
+zero completed cases/focus/writes/refusals, native NOT RUN, all cleanup PASS.
+Original safe screenshot viewed by root and retained without edits. Failure
+stage standard-100-az-320-authenticate / Error / outer source557. Protected
+raw error text is omitted by existing safe failure contract; exact cause is
+not directly proved by that receipt.
+
+Source diagnosis (INFERENCE, independent review requested): both named section
+aria-labelledby and nested div role=region share casesTitle, so broad named
+getByRole(region) can select two regions. Proposed correction targets actual
+focusable scrolling div and retains uniqueness/role/translated-name/tabindex/
+table verification plus every original geometry/privacy/write/DB/count gate.
+Next run can retain finite actual selector counts to prove this diagnosis.
+No product clipping defect observed or invented; zero focus diagnostics means
+interactive geometry has not been tested yet. Other four original source
+lanes still run naturally; no cancellation or corrected source push.
+Phase02 preserves original failure packet and final source/gitleaks bindings.
+Parent normal release still pending; no false task/operational credit.
+
+## Prepared narrow scrolling-region selector delta independently accepted
+
+Prepared-only patch18ea208f (full digest in receipt), not applied/published
+while first source38013716710 continues. Independent receipt2533B/SHA
+2eee1cb63a7aed3cc832a2726fbf89082425595942adc8d7862fa61b1ab0986b
+accepts no P0/P1/P2 in narrow selector/finite counts delta. It selects actual
+div[role=region][tabindex=0] and verifies count1, exact translated aria-label,
+tabindex0, one table; real geometry/focus/keyboard/privacy/write/rate/DB gates
+remain unchanged. Additional diagnostics contain only counts/booleans, no names
+or private values. Prepared candidate Node20 syntax PASS, runtime NOT RUN.
+Original failure cause remains INFERRED until next actual named-region count.
+Phase03 preserves patch, review, prepared metadata and finite root reader.
+Root reader syntax checked only; no expected matrix-count acceptance borrowed.
+D8E report browser job completed SUCCESS, compiler/regression/build still run.
+No new branch source commit or cancellation; all full original outcomes must
+complete before corrective source publication. Parent normal release pending.
+
+## Full first D8E run retained; reviewed scrolling-region correction applied
+
+Source38013716710 completed naturally FAILURE: HR browser114099288899 FAIL,
+other four actual jobs SUCCESS. Complete source APIs/all five original logs/
+three ZIPs validated size/digest/all CRC in root packet; report33/3native/
+21captures/54focus/58reflow/22facts accepted only as report regression.
+Actual31guard tests and44PG tests PASS; full strict18 baseline files still fail.
+Actual full compiler exit2/1158/35 exactly64 pairs/counts; critical and strict
+readers PASS, global code NONCLEAN. Isolated bundle build SUCCESS. Initial HR
+FAIL remains0cases/0focus/0writes/native NOT RUN; no retrospective matrix PASS.
+Independent first-failure receipt9040B/SHAa770b8e6bb94bb68bd64da7bd46a180fbbc1fb1e4a11eaf06d2d3406365f66e7
+preserves peer initial reader mistake (expected200 from GET warmup, actual405)
+and corrected reader, not CI rerun or route-policy change.
+
+Previously independently reviewed patch applied only after all originals
+completed/captured. Source change limited to selecting unique actual focusable
+scrolling div, checking exact translated label/tabindex/table and retaining
+finite named-region versus selected-region counts. Every geometry/focus/
+privacy/reason/MFA/token/write/rate/DB/20-case24-write gate remains unchanged.
+Cause of original safe Error stays qualified INFERENCE until actual counts
+in next runtime. No product UI/clipping fix invented before observation.
+
+Parent672 normal release38013599677 SUCCESS four normal jobs/three manual
+skips, artifact11654688979. Root canonical HTTPS pinned13 build/ping/build
+200/TLS0/exact full cd935999cd657f0a13bb458ee901637389a31916 and four
+anonymous HRM GET contracts PASS401/307. Independent release review pending
+here; no production HR session/physical/operational acceptance.
+Fresh host8.8GB available/259GB disk, PSI0.38; all heavy gates remain hosted,
+no Mac/local install/build/browser/compiler/PG. Next checkpoint reviewed narrow
+correction, normal push and full fresh source gates on its exact SHA.
+Accounting85 DONE/76open/61%; C12 PARTIAL/C14-003 PLANNED unchanged.
