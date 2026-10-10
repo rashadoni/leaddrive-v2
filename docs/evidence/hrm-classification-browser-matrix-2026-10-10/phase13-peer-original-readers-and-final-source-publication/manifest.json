@@ -1,0 +1,90 @@
+{
+  "archivedAtUtc": "2026-10-10T02:51:35.520709+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-classification-a161-peer-complete-originals-archive-snapshot/hrm-classification-matrix-a161-complete-run-original-peer.json.gz",
+      "originalBytes": 12932,
+      "originalSha256": "d54cb6c23581df560bed6de5e9cd96a93a3b6e3d00d0f67a597bf0b06d6c99e4",
+      "storedBytes": 1635,
+      "storedSha256": "71d732eef5101b3f24af572eae3d6861ebfd33383cbc8213d21dc70dd46c2da1"
+    },
+    {
+      "path": "hrm-classification-a161-peer-complete-originals-archive-snapshot/hrm-classification-matrix-a161-original-complete-peer-index.json.gz",
+      "originalBytes": 5186,
+      "originalSha256": "4300ef048ad4cf589770f918ad8952a16aa446eca05929148430624dc657eced",
+      "storedBytes": 2161,
+      "storedSha256": "f8825fb564f90defad994fb64c7b6d9f9fcb8a3021838505c8c7c72b5b82ab45"
+    },
+    {
+      "path": "hrm-classification-a161-peer-complete-originals-archive-snapshot/hrm-classification-matrix-a161-peer-audit-corrected-stderr.txt.gz",
+      "originalBytes": 0,
+      "originalSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "storedBytes": 20,
+      "storedSha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec"
+    },
+    {
+      "path": "hrm-classification-a161-peer-complete-originals-archive-snapshot/hrm-classification-matrix-a161-peer-audit-corrected.py.gz",
+      "originalBytes": 15706,
+      "originalSha256": "98ceeb555e58af7ef625d2529dd92a183c97b77b0921e4f750803f3e83c38b76",
+      "storedBytes": 6271,
+      "storedSha256": "a36890c9fc9b8a350ca41abae1a9bcceffaa817c61efce2f517d52203da8b022"
+    },
+    {
+      "path": "hrm-classification-a161-peer-complete-originals-archive-snapshot/hrm-classification-matrix-a161-peer-audit-stderr.txt.gz",
+      "originalBytes": 604,
+      "originalSha256": "4e77ac1cf8217db4a1e4d872e3b74a6527138da29ea5fbeb4dcae706241aa295",
+      "storedBytes": 315,
+      "storedSha256": "ee4129c755b68d30150fcdf8e7559996101915159ad6c8c13c4aed3828dc2830"
+    },
+    {
+      "path": "hrm-classification-a161-peer-complete-originals-archive-snapshot/hrm-classification-matrix-a161-peer-audit.py.gz",
+      "originalBytes": 15148,
+      "originalSha256": "78a4b93210e87c342ed2b3339d0e114459d38cb9590fb4a24ec26b719c413542",
+      "storedBytes": 6075,
+      "storedSha256": "fac882dca5f85a70cbd3a24fc65949aa7e981a0a26c0418d0bf4020652968e14"
+    },
+    {
+      "path": "hrm-classification-a161-peer-complete-originals-archive-snapshot/hrm-classification-matrix-a161-peer-reader-correction.json.gz",
+      "originalBytes": 738,
+      "originalSha256": "263a73580fe843876b2d8fef7ae91b5668e64b1196141cf38d49aacb67fad65b",
+      "storedBytes": 454,
+      "storedSha256": "64ec55509c8db4b33dec4f7dfe3cf0c67d957865cfdf50df5578f857da8f17dc"
+    },
+    {
+      "path": "hrm-classification-a161-peer-complete-originals-archive-snapshot/hrm-classification-queue-action-dom-invariants-prepared-peer-initial-reader-error.json.gz",
+      "originalBytes": 411,
+      "originalSha256": "735f7baf5614ebdbb6df884827dca729f05bc036523f7bb48218ddc2a9fbf47a",
+      "storedBytes": 306,
+      "storedSha256": "96d42780133e8799241a9ba30876742939b3460ace473f3d178fd7b73eef1130"
+    },
+    {
+      "path": "hrm-classification-final-test-applied-root-binding.json.gz",
+      "originalBytes": 570,
+      "originalSha256": "10a6556894299670d9042b454f9a405057926d0e330ae7bbb007c4360ba6fe2e",
+      "storedBytes": 416,
+      "storedSha256": "93cab53035f0b0ba2a1443b6d7c3f2774eebd03e6f529bf394f712382399e6b6"
+    },
+    {
+      "path": "hrm-classification-aef-source-gitleaks.json.gz",
+      "originalBytes": 3,
+      "originalSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "storedBytes": 23,
+      "storedSha256": "2ca4529576310b626c1bd48352d283b521d029d54f195d8416536872d826e4c6"
+    },
+    {
+      "path": "hrm-classification-aef-source-gitleaks-log.txt.gz",
+      "originalBytes": 173,
+      "originalSha256": "16c5867d5f2e4d4840acb2ef4ad73fae922318849e15debcef84d0e553077f87",
+      "storedBytes": 140,
+      "storedSha256": "50de58cb34a0d46c1af52b7d02ab43ecaf3f30248e06ab7a98dc8acc25584a0a"
+    },
+    {
+      "path": "hrm-classification-pr-body-final-aef-pending.md.gz",
+      "originalBytes": 2101,
+      "originalSha256": "fcc29eb706d67eea64f3ad03bea90e9a3661f852ea80c723d6e0ed0ab0aa3078",
+      "storedBytes": 1221,
+      "storedSha256": "9354b06ffd3ba6b16e04eb3356d839a21142851a815a34030337d36b57f62165"
+    }
+  ]
+}

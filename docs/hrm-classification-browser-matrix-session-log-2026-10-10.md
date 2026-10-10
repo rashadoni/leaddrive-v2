@@ -479,3 +479,42 @@ second compiler queue. All actual source/candidate/mandatory5 gates still
 required BEFORE merge/release, no earlier runtime credit transferred. This
 sequencing supersedes sequential READY-after-source waiting, without removing
 any checks or permitting premature merge. Accounting85/76/61%, C12 PARTIAL.
+
+## Apply reviewed existing-test invariant repair and exact lint scope
+
+Normal branch integration 932a4b3d26bc49f7f01efae1a06acef6cdd91b8f preserves latest main
+e05689732adb23928680a3e77f566b9513348ef0/seven ERP script paths, no app/schema/
+workforce changes. All original a161 five lanes naturally completed and
+whole originals/first strictFAIL archived in phase12 before source mutation.
+Applied exact independently accepted test17a3e0823770cbcea587cb1263372399236dd3019689974e2e628ed7af7f8989
+and exact two-line companion existingworkflow. Existing nine tests, original
+min44/wrapping/alignment invariants and all privacy/role/token/localization
+assertions retained; actual rendered ACK+correction buttons now checked.
+PR path and scoped ESLint include this changed test; no baseline/gate/timeout/
+skip/concurrency weakness. Queue byte-identical a161/reviewed23349B/SHAaa0a…;
+no new UI behavior or role/audit/tenant/CASE_RECORDED_AT/personnel automation.
+
+Local patch/whitespace/prepared-byte identity only. Full typed lint/schema/
+compiler/build/PostgreSQL/browser NOT RUN locally per remote host contract.
+Next source checkpoint/independent exact binding and ordinary publication.
+Freeze this final head; READY requiredcandidate plus five-lane source can
+run concurrently, all actual fresh results mandatory BEFORE ownmerge/deploy.
+No original source passes transferred to this new tree; global compiler/
+strict suite remain NONCLEAN inherited, unchanged frozen baselines.
+
+## Frozen final aef published, source gates active and READY awaits exact source review
+
+Published clean aef582a2c0dd5cf455b6673da4856a719923c409, seven owned paths
+versus main e056. Ordinarypush, actualfresh source38018373702 attempt1
+IN_PROGRESS; draftmirror38018376932 SKIPPED no credit. PR674 body rewritten
+for final implementation and explicit fresh acceptance pending, previous
+strict19/18 failure preserved, compiler1162/35/exit2 qualified globallyNONCLEAN.
+Gitleaks finalsource range no leaks, baselines byte973. Phase13 preserves
+independent first-A161 complete index5186B/SHA
+4300ef048ad4cf589770f918ad8952a16aa446eca05929148430624dc657eced
+and six original/corrected reader files plus terminalAPI, applied exact
+prepared binding/source scan/body. Peer original errors not discarded.
+Next independent exact-final source binding before READY, all mandatory5
+App15368 and source/candidate browser/PG/compiler/build actual outcomes
+required before ordinaryownmerge/release. No finalsource runtime acceptance
+borrowed from old A161; no task C12/C14 closure.
