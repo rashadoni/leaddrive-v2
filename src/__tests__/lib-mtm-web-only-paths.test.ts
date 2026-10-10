@@ -20,6 +20,10 @@ describe("isMtmWebOnlyPath", () => {
       "/api/v1/mtm/activity",
       "/api/v1/mtm/locations",
       "/api/v1/mtm/notifications",
+      // The live map's hand-drawn zones (2026-10-10) sit under /locations on
+      // purpose: the phone's token never reaches them, list or write.
+      "/api/v1/mtm/locations/zones",
+      "/api/v1/mtm/locations/zones/zone_1",
     ]) {
       expect(isMtmWebOnlyPath(p)).toBe(true)
     }

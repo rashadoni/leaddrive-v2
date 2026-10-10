@@ -1,10 +1,12 @@
 "use client"
 
-import { useState, type FormEvent } from "react"
+import { useState, type FormEvent, type ReactNode } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { Loader2, MapPin, Maximize, Minimize, MousePointerClick, Ruler, Search, X } from "lucide-react"
+import { CircleDashed, Loader2, MapPin, Maximize, Minimize, MousePointerClick, Ruler, Search, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { LiveMapReferencePoint } from "@/components/mtm/live-map"
+import { LiveMapZoneForm, type LiveMapZoneFormValues } from "@/components/mtm/live-map-zone-form"
+import { LIVE_MAP_ZONE_MAX_CORNERS, type LiveMapZoneOutlineProblem, type LiveMapZoneWriteProblem } from "@/lib/mtm/live-map-zones"
 
 interface SearchHit {
   label: string
@@ -34,7 +36,7 @@ const TOOL_ON = "border-primary bg-primary text-primary-foreground"
 export function LiveMapTools({
   near, referencePoint, onReferencePointChange, pickingPoint, onPickingPointChange,
   rulerActive, onRulerToggle, rulerMeters, rulerPointCount, onRulerUndo, formatDistance, rulerArea = null,
-  fullscreen, onFullscreenToggle, fullscreenSupported,
+  fullscreen, onFullscreenToggle, fullscreenSupported, zoneDrawing = null, zoneEditor = null,
 }: {
   /** Roughly where the map is looking, so nearby places come first. */
   near: { latitude: number; longitude: number } | null
@@ -54,6 +56,24 @@ export function LiveMapTools({
   fullscreen: boolean
   onFullscreenToggle: () => void
   fullscreenSupported: boolean
+  /**
+   * «Свои зоны»: what the ruler has outlined, or a circle around the picked
+   * point, kept on the map under a name. Null until the server has said that
+   * this viewer may draw zones — a button it would refuse is not drawn.
+   */
+  zoneDrawing?: {
+    /**
+     * Why the ruler's line cannot be a zone as it stands — too few points, a
+     * line that crosses itself, points that enclose nothing — or null when it
+     * can. The reason, so that it can be said: «Сохранить как зону» that is
+     * simply not there explains nothing.
+     */
+    outlineProblem: LiveMapZoneOutlineProblem | null
+    /** Resolves to why the server refused, or to null when the zone was kept. */
+    onCreate: (kind: "outline" | "circle", values: LiveMapZoneFormValues) => Promise<LiveMapZoneWriteProblem | null>
+  } | null
+  /** The form of a zone that is already on the map, opened from its balloon. */
+  zoneEditor?: ReactNode
 }) {
   const tMap = useTranslations("mtmMap")
   const locale = useLocale()
@@ -62,6 +82,28 @@ export function LiveMapTools({
   const [hits, setHits] = useState<SearchHit[]>([])
   const [searching, setSearching] = useState(false)
   const [notice, setNotice] = useState("")
+  // Which new zone is being named. The form lives as long as the tool it came
+  // from is in hand: the ruler, the picked point. Put the ruler down or remove
+  // the point and the form goes too, instead of coming back by itself with the
+  // next outline.
+  //
+  // An outline that merely stops being one a zone can be does NOT take the
+  // form away. The ruler goes on taking presses while the form is open, so one
+  // stray press — on the map, on a zone, on an employee's marker — could make
+  // the line cross itself, and the form used to vanish with the name typed in
+  // it and not a word of why. Now it stays, says the reason, and waits.
+  const [zoneForm, setZoneForm] = useState<"outline" | "circle" | null>(null)
+  const zoneFormShown = !zoneDrawing ? null
+    : zoneForm === "outline" ? (rulerActive ? zoneForm : null)
+      : zoneForm === "circle" ? (referencePoint ? zoneForm : null) : null
+  if (zoneForm !== null && zoneFormShown === null) setZoneForm(null)
+  const createZone = zoneDrawing?.onCreate
+  const outlineProblem = zoneDrawing?.outlineProblem ?? null
+  const outlineProblemText = outlineProblem
+    ? tMap(`areas.outline.${outlineProblem}`, { max: new Intl.NumberFormat(locale).format(LIVE_MAP_ZONE_MAX_CORNERS) })
+    : null
+  // Too few points are mended by pressing the map; every other reason by taking the last point back.
+  const outlineUndo = outlineProblem !== null && outlineProblem !== "tooFew" && rulerPointCount > 0
 
   const search = async (event: FormEvent) => {
     event.preventDefault()
@@ -146,11 +188,43 @@ export function LiveMapTools({
           {hits.length === 0 ? <p className="mt-1.5 px-1 text-[11px] text-muted-foreground">{tMap("tools.pointHint")}</p> : null}
         </div>
       ) : null}
-      {/* The ruler's reading, in words: what it measures so far and how to go on. */}
+      {zoneEditor ? <div className="pointer-events-auto w-80 max-w-full shrink-0" data-testid="live-map-zone-editor">{zoneEditor}</div> : null}
+      {/* A new zone is named right here, beside what it is made of. */}
+      {createZone && zoneFormShown ? (
+        <LiveMapZoneForm
+          key={zoneFormShown}
+          className="pointer-events-auto w-80 max-w-full shrink-0 shadow-lg"
+          task={{ kind: zoneFormShown }}
+          blocked={zoneFormShown === "outline" && outlineProblemText
+            ? { text: outlineProblemText, ...(outlineUndo ? { actionLabel: tMap("tools.rulerUndo"), onAction: onRulerUndo } : {}) }
+            : null}
+          onCancel={() => setZoneForm(null)}
+          onSubmit={async (values) => {
+            const refused = await createZone(zoneFormShown, values)
+            if (!refused) setZoneForm(null)
+            return refused
+          }}
+        />
+      ) : null}
+      {/* The ruler's reading, in words: what it measures so far and how to go on.
+          On a phone it steps aside for the zone's form: the two together are taller than the map —
+          which is why the form's own reason carries «Убрать последнюю» with it. */}
       {rulerActive ? (
-        <div role="status" className="pointer-events-auto flex max-w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-zinc-300 bg-card px-2.5 py-1.5 text-xs shadow-md dark:border-zinc-600" data-testid="live-map-ruler">
+        <div role="status" className={cn("pointer-events-auto flex max-w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-zinc-300 bg-card px-2.5 py-1.5 text-xs shadow-md dark:border-zinc-600", zoneFormShown && "max-sm:hidden")} data-testid="live-map-ruler">
           <span className="font-semibold" data-testid="live-map-ruler-total">{tMap("tools.rulerTotal", { distance: formatDistance(rulerMeters) })}</span>
           {rulerArea ? <span className="font-semibold" data-testid="live-map-ruler-area">{tMap("tools.rulerArea", { area: rulerArea })}</span> : null}
+          {/* What has just been outlined can stay on the map as a zone with a name. */}
+          {zoneDrawing && !zoneFormShown && outlineProblem === null ? (
+            <button type="button" onClick={() => setZoneForm("outline")} data-testid="live-map-ruler-save-zone" className="inline-flex min-h-8 items-center rounded-md bg-primary px-2 font-semibold text-primary-foreground">
+              {tMap("areas.saveOutline")}
+            </button>
+          ) : null}
+          {/* …and when it cannot, the button is not merely gone: the line says why.
+              Not before the third point — until then the ruler is only a ruler —
+              and only to somebody who could have saved it. */}
+          {zoneDrawing && !zoneFormShown && outlineProblemText && outlineProblem !== "tooFew" ? (
+            <span className="text-amber-800 dark:text-amber-300" data-testid="live-map-ruler-outline-problem">{outlineProblemText}</span>
+          ) : null}
           <span className="text-muted-foreground">{tMap(rulerPointCount === 0 ? "tools.rulerStart" : "tools.rulerHint")}</span>
           {rulerPointCount > 0 ? (
             <button type="button" onClick={onRulerUndo} data-testid="live-map-ruler-undo" className="inline-flex min-h-8 items-center font-semibold underline underline-offset-2">
@@ -172,7 +246,7 @@ export function LiveMapTools({
       ) : null}
       {/* Not while the panel is open: on a phone the two together are taller than the map. */}
       {referencePoint && !open ? (
-        <div className="pointer-events-auto flex max-w-full shrink-0 items-center gap-2 rounded-lg border border-rose-300 bg-card px-2.5 py-1.5 text-xs shadow-md dark:border-rose-800" data-testid="live-map-point-chip">
+        <div className={cn("pointer-events-auto flex max-w-full shrink-0 items-center gap-2 rounded-lg border border-rose-300 bg-card px-2.5 py-1.5 text-xs shadow-md dark:border-rose-800", zoneFormShown && "max-sm:hidden")} data-testid="live-map-point-chip">
           <MapPin className="h-3.5 w-3.5 shrink-0 text-rose-700" aria-hidden="true" />
           <span className="min-w-0 truncate" title={referencePoint.label}>{tMap("tools.nearestTo", { label: referencePoint.label })}</span>
           <button type="button" onClick={() => onReferencePointChange(null)} data-testid="live-map-point-clear" className="inline-flex min-h-8 shrink-0 items-center gap-1 font-semibold underline underline-offset-2">
@@ -180,15 +254,23 @@ export function LiveMapTools({
           </button>
         </div>
       ) : null}
+      {/* The picked point can be the centre of a zone. A button of its own, in
+          words, beside the chip that names the point. */}
+      {zoneDrawing && referencePoint && !open && !zoneFormShown ? (
+        <button type="button" onClick={() => setZoneForm("circle")} data-testid="live-map-point-zone" className="pointer-events-auto inline-flex min-h-9 shrink-0 items-center gap-2 rounded-lg border border-zinc-300 bg-card px-2.5 text-xs font-semibold shadow-md hover:bg-muted dark:border-zinc-600 [@media(pointer:coarse)]:min-h-11">
+          <CircleDashed className="h-3.5 w-3.5" aria-hidden="true" />{tMap("areas.aroundPoint")}
+        </button>
+      ) : null}
       {/* While a tool waits for a press on the map its own line — with its way
           out — is all there is: on a phone the three buttons under it would
-          take a third of the map. */}
-      <div className={cn("flex shrink-0 flex-wrap items-center gap-2", (rulerActive || pickingPoint) && "max-sm:hidden")}>
+          take a third of the map. The same while a zone's form is open. */}
+      <div className={cn("flex shrink-0 flex-wrap items-center gap-2", (rulerActive || pickingPoint || zoneFormShown || zoneEditor) && "max-sm:hidden")}>
         <button
           type="button"
           aria-expanded={open}
           aria-controls="live-map-point-panel"
-          onClick={() => { setOpen((value) => !value); if (pickingPoint) onPickingPointChange(false) }}
+          // The address panel and a zone's form do not fit a phone's map together: the panel takes the place.
+          onClick={() => { setOpen((value) => !value); setZoneForm(null); if (pickingPoint) onPickingPointChange(false) }}
           data-testid="live-map-tool-point"
           className={cn(TOOL, open || pickingPoint ? TOOL_ON : TOOL_IDLE)}
         >

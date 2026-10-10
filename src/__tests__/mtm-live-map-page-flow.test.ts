@@ -98,6 +98,56 @@ let workforceEnabled: boolean
 let routeDelayMs: number
 /** What the server says of the client base, or a status when it fails. */
 let clientBase: Record<string, unknown> | number
+/** The organization's own zones as the server keeps them, or a status when the read fails. */
+let zoneBase: { zones: unknown; access?: { canWrite: boolean } } | number
+/** How many times the zones were read, and every change the server was asked for. */
+let zoneReads: number
+let zoneWrites: Array<{ method: string; path: string; body: unknown }>
+/** Set to make the server refuse the next changes: a status and its code. */
+let zoneRefusal: { status: number; code?: string } | null
+/** How long a read of the zones takes to come back; what it brings is the list as it was when it was asked for. */
+let zoneReadDelayMs: number
+/** How many of the next changes the server carries out and then cannot answer: the connection drops on the way back. */
+let zoneAnswersLost: number
+
+// An invented block a hundredth of a degree a side, and a circle beside it — as the server sends them.
+const NORTH_BLOCK = {
+  id: "zone-north", name: "Северный участок", kind: "POLYGON", color: null,
+  centerLatitude: null, centerLongitude: null, radiusMeters: null,
+  polygon: { type: "Polygon", coordinates: [[[49.8, 40.4], [49.81, 40.4], [49.81, 40.41], [49.8, 40.41], [49.8, 40.4]]] },
+}
+const CENTRE_CIRCLE = { id: "zone-centre", name: "Центр", kind: "CIRCLE", color: "teal", centerLatitude: 40.4, centerLongitude: 49.85, radiusMeters: 1500, polygon: null }
+
+/** The server's side of a change to a zone: it keeps what it is sent and answers with the row. */
+function answerZoneWrite(method: string, path: string, body: Record<string, unknown> | null): Response {
+  zoneWrites.push({ method, path, body })
+  if (zoneRefusal) return Response.json({ error: "refused", code: zoneRefusal.code }, { status: zoneRefusal.status })
+  const kept = typeof zoneBase === "number" || !Array.isArray(zoneBase.zones) ? [] : zoneBase.zones as Array<Record<string, unknown>>
+  if (method === "POST") {
+    // As the real route does (api-mtm-map-zones.test.ts): the very drawing that is already kept is answered, not kept twice.
+    const drawing = (zone: Record<string, unknown> | null) => JSON.stringify([
+      zone?.name, zone?.kind, zone?.color ?? null, zone?.centerLatitude ?? null, zone?.centerLongitude ?? null, zone?.radiusMeters ?? null, zone?.polygon ?? null,
+    ])
+    const already = kept.find((zone) => drawing(zone) === drawing(body))
+    if (already) return Response.json({ success: true, data: already })
+    const zone = {
+      id: `zone-new-${zoneWrites.length}`, name: body?.name, kind: body?.kind, color: body?.color ?? null,
+      centerLatitude: body?.centerLatitude ?? null, centerLongitude: body?.centerLongitude ?? null, radiusMeters: body?.radiusMeters ?? null,
+      polygon: body?.polygon ?? null,
+    }
+    kept.push(zone)
+    return Response.json({ success: true, data: zone }, { status: 201 })
+  }
+  const id = decodeURIComponent(path.split("/").pop() ?? "")
+  const index = kept.findIndex((zone) => zone.id === id)
+  if (index < 0) return Response.json({ error: "Zone not found", code: "MTM_MAP_ZONE_NOT_FOUND" }, { status: 404 })
+  if (method === "DELETE") {
+    kept.splice(index, 1)
+    return Response.json({ success: true, data: { id } })
+  }
+  kept[index] = { ...kept[index], ...body }
+  return Response.json({ success: true, data: kept[index] })
+}
 
 function answer(now: number) {
   const iso = (minutesAgo: number) => new Date(now - minutesAgo * 60_000).toISOString()
@@ -179,15 +229,36 @@ describe("the live map page, end to end", () => {
       ],
       total: 5, withoutCoordinates: 3, truncated: false,
     }
+    zoneBase = { zones: [], access: { canWrite: true } }
+    zoneReads = 0
+    zoneWrites = []
+    zoneRefusal = null
+    zoneReadDelayMs = 0
+    zoneAnswersLost = 0
     rosterRows = [
       { agentId: "far", name: "Fərid", fieldStatus: "ON_ROAD", meters: 7_400, minutesAgo: 1 },
       { agentId: "near", name: "Nigar", fieldStatus: "STOPPED", meters: 450, minutesAgo: 1, battery: 12 },
       { agentId: "mid", name: "Murad", fieldStatus: "ON_ROAD", meters: 3_000, minutesAgo: 2 },
       { agentId: "none", name: "Aynur", fieldStatus: "OFFLINE", meters: null, minutesAgo: 0 },
     ]
-    vi.stubGlobal("fetch", vi.fn(async (input: string) => {
+    vi.stubGlobal("fetch", vi.fn(async (input: string, init?: RequestInit) => {
       const url = new URL(String(input), "http://localhost")
       requests.push(url.pathname + url.search)
+      if (url.pathname.startsWith("/api/v1/mtm/locations/zones")) {
+        const method = init?.method ?? "GET"
+        if (method !== "GET") {
+          const answered = answerZoneWrite(method, url.pathname, init?.body ? JSON.parse(String(init.body)) as Record<string, unknown> : null)
+          if (zoneAnswersLost > 0) {
+            zoneAnswersLost -= 1
+            throw new TypeError("Failed to fetch")
+          }
+          return answered
+        }
+        zoneReads += 1
+        const asked = typeof zoneBase === "number" ? zoneBase : JSON.parse(JSON.stringify(zoneBase)) as Record<string, unknown>
+        if (zoneReadDelayMs > 0) await new Promise((resolve) => setTimeout(resolve, zoneReadDelayMs))
+        return typeof asked === "number" ? new Response("{}", { status: asked }) : Response.json({ success: true, data: asked })
+      }
       if (url.pathname === "/api/v1/mtm/locations") return Response.json(answer(Date.now()))
       if (url.pathname === "/api/v1/mtm/routes") {
         if (routeDelayMs > 0) await new Promise((resolve) => setTimeout(resolve, routeDelayMs))
@@ -485,7 +556,7 @@ describe("the live map page, end to end", () => {
     await press(byTestId("live-map-layer-glide"))
     expect([mapProp("showLabels"), trails(), mapProp("glideMarkers")]).toEqual([true, null, false])
     // The look of the map is remembered in the browser.
-    expect(JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v1") ?? "{}")).toEqual({ labels: true, trails: false, glide: false, clients: false, base: "voyager" })
+    expect(JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v1") ?? "{}")).toEqual({ labels: true, trails: false, glide: false, clients: false, areas: false, base: "voyager" })
   })
 
   it("switches the map's background from «Слои», remembers it, and comes back with it", async () => {
@@ -744,6 +815,512 @@ describe("the live map page, end to end", () => {
     })
   })
 
+  describe("«Свои зоны»: areas the organization draws on the map and names", () => {
+    type ZoneOnMap = { id: string; name: string; kind: string; color: string | null; center?: { latitude: number; longitude: number }; radiusMeters?: number; outline?: Array<{ latitude: number; longitude: number }> }
+    const openLayers = async () => { await press(container.querySelector('[data-testid="live-map-layers"] > button')) }
+    const hint = () => byTestId("live-map-layer-hint-areas")?.textContent
+    const zonesOnMap = () => mapProp<ZoneOnMap[]>("zones")
+    const pressMap = async (latitude: number, longitude: number) => {
+      await act(async () => { mapProp<(lat: number, lng: number) => void>("onMapPress")(latitude, longitude) })
+      await settle()
+    }
+    const type = async (testId: string, value: string, within: ParentNode = document.body) => {
+      const input = within.querySelector<HTMLInputElement>(`[data-testid="${testId}"]`)
+      if (!input) throw new Error(`no field ${testId}`)
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!
+      await act(async () => { setter.call(input, value); input.dispatchEvent(new Event("input", { bubbles: true })) })
+    }
+    const notice = () => byTestId("live-map-zone-notice")?.textContent
+    // Three corners of a triangle about a kilometre a side, as the ruler is pressed.
+    const outlineTriangle = async () => {
+      await press(byTestId("live-map-tool-ruler"))
+      await pressMap(40.4, 49.8)
+      await pressMap(40.409, 49.8)
+      await pressMap(40.409, 49.8118)
+    }
+
+    it("is off until asked for: nothing is read and the map is given no zones", async () => {
+      zoneBase = { zones: [NORTH_BLOCK], access: { canWrite: true } }
+      await open()
+      expect(zoneReads).toBe(0)
+      expect(zonesOnMap()).toEqual([])
+      await openLayers()
+      const layer = byTestId("live-map-layer-areas")
+      expect([layer?.getAttribute("aria-label"), layer?.getAttribute("aria-checked")]).toEqual(["Свои зоны", "false"])
+      expect(hint()).toBe("районы и участки с названием, нарисованные на карте вручную")
+      expect(byTestId("live-map-zone-list")).toBeNull()
+      // Not the clients' own check-in circles: that layer is another switch with another name.
+      expect(byTestId("live-map-layer-zones")?.getAttribute("aria-label")).toBe("Зоны клиентов")
+    })
+
+    it("switched on, reads the zones once, draws them where they were drawn and lists each with what it covers", async () => {
+      zoneBase = { zones: [CENTRE_CIRCLE, NORTH_BLOCK], access: { canWrite: true } }
+      await open()
+      await openLayers()
+      await press(byTestId("live-map-layer-areas"))
+      await settle(20)
+      expect(zoneReads).toBe(1)
+      // By name, in the viewer's own alphabet — not in the order the server keeps them.
+      expect(zonesOnMap().map((zone) => zone.name)).toEqual(["Северный участок", "Центр"])
+      const [block, circle] = zonesOnMap()
+      // The stored ring is [longitude, latitude]: its first corner is at latitude 40.4, longitude 49.8.
+      expect(block).toMatchObject({ id: "zone-north", kind: "POLYGON", color: null })
+      expect(block.outline).toEqual([
+        { latitude: 40.4, longitude: 49.8 }, { latitude: 40.4, longitude: 49.81 }, { latitude: 40.41, longitude: 49.81 }, { latitude: 40.41, longitude: 49.8 },
+      ])
+      expect(circle).toMatchObject({ id: "zone-centre", kind: "CIRCLE", color: "teal", center: { latitude: 40.4, longitude: 49.85 }, radiusMeters: 1500 })
+      expect(mapProp("canEditZones")).toBe(true)
+      expect(hint()).toBe("на карте зон: 2")
+      // The list under the switch: the name and how much the zone covers.
+      const rows = [...document.querySelectorAll('[data-testid^="live-map-zone-row-zone-"]')]
+        .map((row) => [row.querySelector('[data-testid="live-map-zone-row-name"]')?.textContent, row.querySelector('[data-testid="live-map-zone-row-area"]')?.textContent])
+      expect(rows).toEqual([["Северный участок", "94,2 га"], ["Центр", "7,07 км²"]])
+      // The employees on the map are who they were, and the clients' layer was not touched.
+      expect(onMap().sort()).toEqual(["far", "mid", "near"])
+      expect(requests.some((request) => request.startsWith("/api/v1/mtm/locations/clients"))).toBe(false)
+      // Remembered in this browser like the other looks of the map.
+      expect(JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v1") ?? "{}")).toMatchObject({ areas: true })
+      // Off: the map is given none. On again: the zones that were read are still the zones.
+      await press(byTestId("live-map-layer-areas"))
+      expect(zonesOnMap()).toEqual([])
+      expect(byTestId("live-map-zone-list")).toBeNull()
+      await press(byTestId("live-map-layer-areas"))
+      await settle(20)
+      expect(zonesOnMap()).toHaveLength(2)
+      expect(zoneReads).toBe(1)
+    })
+
+    it("a layer that is on and could not be read says so on the map itself, with «Повторить» — beside any other layer's own trouble", async () => {
+      zoneBase = 500
+      clientBase = 500
+      await open()
+      await openLayers()
+      await press(byTestId("live-map-layer-areas"))
+      await press(byTestId("live-map-layer-clients"))
+      await settle(20)
+      expect(hint()).toBe("не удалось загрузить зоны — нажмите «Обновить»")
+      expect(zonesOnMap()).toEqual([])
+      expect(byTestId("live-map-zone-list")).toBeNull()
+      // With «Слои» closed the map would look exactly like «no zones here».
+      await openLayers()
+      expect(byTestId("live-map-areas-alert")?.textContent).toBe("Свои зоны не загрузилисьПовторить")
+      expect(byTestId("live-map-layers-alert")?.textContent).toContain("Клиенты не загрузились")
+      zoneBase = { zones: [CENTRE_CIRCLE], access: { canWrite: true } }
+      await press(byTestId("live-map-areas-alert-action"))
+      await settle(20)
+      expect(zoneReads).toBe(2)
+      expect(zonesOnMap().map((zone) => zone.id)).toEqual(["zone-centre"])
+      expect(byTestId("live-map-areas-alert")).toBeNull()
+      // The clients' own alert is still there: one layer coming back says nothing for another.
+      expect(byTestId("live-map-layers-alert")).not.toBeNull()
+    })
+
+    it("a malformed answer draws nothing, and a row that cannot be drawn is left out and counted — never guessed at", async () => {
+      zoneBase = { zones: "not a list", access: { canWrite: true } }
+      await open()
+      await openLayers()
+      await press(byTestId("live-map-layer-areas"))
+      await settle(20)
+      expect(zonesOnMap()).toEqual([])
+      expect(hint()).toBe("не удалось загрузить зоны — нажмите «Обновить»")
+
+      // A circle whose centre was written the other way round: a latitude of 120 is not on the globe.
+      zoneBase = { zones: [CENTRE_CIRCLE, { ...CENTRE_CIRCLE, id: "zone-swapped", centerLatitude: 120, centerLongitude: 40.4 }], access: { canWrite: true } }
+      await openLayers()
+      await press(byTestId("live-map-areas-alert-action"))
+      await settle(20)
+      expect(zonesOnMap().map((zone) => zone.id)).toEqual(["zone-centre"])
+      await openLayers()
+      expect(hint()).toBe("на карте зон: 1 · не удалось показать: 1")
+    })
+
+    it("the ruler's outline can be kept: «Сохранить как зону» asks for a name and a colour and sends a closed ring of [longitude, latitude] pairs", async () => {
+      await open()
+      await press(byTestId("live-map-tool-ruler"))
+      // Taking the ruler up asks, once, whether this viewer may draw zones; the layer itself stays off.
+      expect(zoneReads).toBe(1)
+      await pressMap(40.4, 49.8)
+      await pressMap(40.409, 49.8)
+      expect(byTestId("live-map-ruler-save-zone")).toBeNull()
+      await pressMap(40.409, 49.8118)
+      expect(byTestId("live-map-ruler-save-zone")?.textContent).toBe("Сохранить как зону")
+      // A line that crosses itself encloses no one area and is not a zone — and the ruler's line says so, the button is not merely gone.
+      await pressMap(40.4, 49.806)
+      await pressMap(40.412, 49.806)
+      expect(byTestId("live-map-ruler-save-zone")).toBeNull()
+      expect(byTestId("live-map-ruler-outline-problem")?.textContent).toBe("Сохранить как зону нельзя: линия пересекает сама себя.")
+      await press(byTestId("live-map-ruler-undo"))
+      await press(byTestId("live-map-ruler-undo"))
+      expect(byTestId("live-map-ruler-outline-problem")).toBeNull()
+
+      await press(byTestId("live-map-ruler-save-zone"))
+      const form = byTestId("live-map-zone-form")!
+      expect([form.getAttribute("data-task"), byTestId("live-map-zone-form-title")?.textContent]).toEqual(["outline", "Новая зона по контуру линейки"])
+      expect(document.activeElement).toBe(byTestId("live-map-zone-name"))
+      // Without a name nothing is sent.
+      await press(byTestId("live-map-zone-save"))
+      expect(notice()).toBe("Введите название зоны")
+      expect(zoneWrites).toEqual([])
+      await type("live-map-zone-name", "  Северный участок ")
+      await press(byTestId("live-map-zone-color-teal"))
+      expect(byTestId("live-map-zone-color-name")?.textContent).toBe("Бирюзовый")
+      await press(byTestId("live-map-zone-save"))
+
+      expect(zoneWrites).toEqual([{
+        method: "POST", path: "/api/v1/mtm/locations/zones",
+        body: {
+          name: "Северный участок", color: "teal", kind: "POLYGON",
+          // Pressed at latitude 40.4, longitude 49.8 — sent as [49.8, 40.4], and closed back to it.
+          polygon: { type: "Polygon", coordinates: [[[49.8, 40.4], [49.8, 40.409], [49.8118, 40.409], [49.8, 40.4]]] },
+        },
+      }])
+      // The server kept it: the zone is on the map at once, its layer is on, the ruler is put down.
+      expect(zonesOnMap()).toEqual([{
+        id: "zone-new-1", name: "Северный участок", color: "teal", kind: "POLYGON",
+        outline: [{ latitude: 40.4, longitude: 49.8 }, { latitude: 40.409, longitude: 49.8 }, { latitude: 40.409, longitude: 49.8118 }],
+      }])
+      expect([mapProp("pressMode"), mapProp<unknown[]>("rulerPoints").length]).toEqual([null, 0])
+      expect(byTestId("live-map-zone-form")).toBeNull()
+      expect(JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v1") ?? "{}")).toMatchObject({ areas: true })
+      // What the server answered was drawn: the list was not read a second time for it.
+      expect(zoneReads).toBe(1)
+      await openLayers()
+      expect([byTestId("live-map-layer-areas")?.getAttribute("aria-checked"), hint()]).toEqual(["true", "на карте зон: 1"])
+    })
+
+    it("says in words why the server did not keep a zone, and draws nothing it refused", async () => {
+      await open()
+      await outlineTriangle()
+      await press(byTestId("live-map-ruler-save-zone"))
+      await type("live-map-zone-name", "Центр")
+      zoneRefusal = { status: 409, code: "MTM_MAP_ZONE_LIMIT_REACHED" }
+      await press(byTestId("live-map-zone-save"))
+      expect(notice()).toBe("В организации уже 500 зон — больше сохранить нельзя. Удалите ненужную.")
+      // Nothing changed on the map: no zone, the layer still off, the outline still in hand.
+      expect(zonesOnMap()).toEqual([])
+      expect(JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v1") ?? "{}").areas ?? false).toBe(false)
+      expect([mapProp("pressMode"), mapProp<unknown[]>("rulerPoints").length]).toEqual(["ruler", 3])
+      // A supervisor's session, a minute of too many changes, a server that fell over: each in its own words.
+      for (const [refusal, words] of [
+        [{ status: 403, code: "MTM_MAP_ZONE_READ_ONLY" }, "У вас нет права менять зоны"],
+        [{ status: 429, code: "MTM_MAP_ZONE_RATE_LIMITED" }, "Слишком много изменений подряд. Подождите минуту."],
+        [{ status: 400 }, "Сервер не принял зону: проверьте название и очертания."],
+        [{ status: 500, code: "MTM_MAP_ZONE_FAILED" }, "Не получилось. Попробуйте ещё раз."],
+        // «Not found» about a zone that was never there is not «somebody removed it».
+        [{ status: 404 }, "Не получилось. Попробуйте ещё раз."],
+        [{ status: 401 }, "Вход устарел. Обновите страницу и войдите снова."],
+      ] as const) {
+        zoneRefusal = refusal
+        await press(byTestId("live-map-zone-save"))
+        expect(notice()).toBe(words)
+        expect(zonesOnMap()).toEqual([])
+      }
+      // The same form, once the server takes it.
+      zoneRefusal = null
+      await press(byTestId("live-map-zone-save"))
+      expect(zonesOnMap().map((zone) => zone.name)).toEqual(["Центр"])
+      expect(byTestId("live-map-zone-form")).toBeNull()
+    })
+
+    it("a zone whose answer was lost on the way back is not kept twice when «Сохранить» is pressed again", async () => {
+      await open()
+      await outlineTriangle()
+      await press(byTestId("live-map-ruler-save-zone"))
+      await type("live-map-zone-name", "Центр")
+      // The server keeps the zone — and the connection drops before its answer arrives.
+      zoneAnswersLost = 1
+      await press(byTestId("live-map-zone-save"))
+      expect(notice()).toBe("Нет связи с сервером. Попробуйте ещё раз.")
+      expect((zoneBase as { zones: unknown[] }).zones).toHaveLength(1)
+      // The page was told nothing, so it draws nothing: the form is still open with the name in it.
+      expect(zonesOnMap()).toEqual([])
+      expect((byTestId("live-map-zone-name") as HTMLInputElement).value).toBe("Центр")
+      // Exactly what the words ask for.
+      await press(byTestId("live-map-zone-save"))
+      expect(zoneWrites.map((write) => write.method)).toEqual(["POST", "POST"])
+      expect(zoneWrites[1].body).toEqual(zoneWrites[0].body)
+      // One zone on the server and one on the map — the one the first press made.
+      expect((zoneBase as { zones: unknown[] }).zones).toHaveLength(1)
+      expect(zonesOnMap().map((zone) => [zone.id, zone.name])).toEqual([["zone-new-1", "Центр"]])
+      expect(byTestId("live-map-zone-form")).toBeNull()
+      // «Обновить» would show a twin if there were one: the list read again is still one zone.
+      await openLayers()
+      expect(hint()).toBe("на карте зон: 1")
+    })
+
+    it("a press on the map while a zone is being named takes neither the form nor the name away: the form says why it cannot be saved now, and waits", async () => {
+      await open()
+      await outlineTriangle()
+      await press(byTestId("live-map-ruler-save-zone"))
+      await type("live-map-zone-name", "Центр")
+      await press(byTestId("live-map-zone-color-teal"))
+      const typed = () => [(byTestId("live-map-zone-name") as HTMLInputElement | null)?.value, byTestId("live-map-zone-color-teal")?.getAttribute("aria-pressed")]
+      const blocked = () => byTestId("live-map-zone-blocked")?.querySelector("span")?.textContent ?? null
+      const save = () => byTestId("live-map-zone-save") as HTMLButtonElement
+      // The ruler is still on: the map goes on giving its presses to it.
+      expect(mapProp("pressMode")).toBe("ruler")
+
+      // A press west of the triangle, level with its middle: the new stretch of line goes through the triangle's side.
+      await pressMap(40.4045, 49.79)
+      expect(mapProp<unknown[]>("rulerPoints")).toHaveLength(4)
+      expect(byTestId("live-map-zone-form")?.getAttribute("data-task")).toBe("outline")
+      expect(typed()).toEqual(["Центр", "true"])
+      expect(blocked()).toBe("Сохранить как зону нельзя: линия пересекает сама себя.")
+      expect(save().disabled).toBe(true)
+      await press(save())
+      expect(zoneWrites).toEqual([])
+
+      // «Убрать последнюю», offered beside the reason: the outline is a triangle again and the form is as it was.
+      await press(byTestId("live-map-zone-blocked-action"))
+      expect(mapProp<unknown[]>("rulerPoints")).toHaveLength(3)
+      expect([blocked(), save().disabled]).toEqual([null, false])
+      expect(typed()).toEqual(["Центр", "true"])
+
+      // Taken back to two points from the ruler's own line: nothing is enclosed, and the form still does not go.
+      await press(byTestId("live-map-ruler-undo"))
+      expect(mapProp<unknown[]>("rulerPoints")).toHaveLength(2)
+      expect(blocked()).toBe("Сохранить пока нельзя: нужны хотя бы три точки. Нажмите на карту, чтобы поставить ещё.")
+      expect([save().disabled, byTestId("live-map-zone-blocked-action")]).toEqual([true, null])
+      expect(typed()).toEqual(["Центр", "true"])
+
+      // The third point put again, elsewhere: saved under the name typed at the start.
+      await pressMap(40.409, 49.81)
+      expect([blocked(), save().disabled]).toEqual([null, false])
+      await press(save())
+      expect(zoneWrites).toEqual([{
+        method: "POST", path: "/api/v1/mtm/locations/zones",
+        body: { name: "Центр", color: "teal", kind: "POLYGON", polygon: { type: "Polygon", coordinates: [[[49.8, 40.4], [49.8, 40.409], [49.81, 40.409], [49.8, 40.4]]] } },
+      }])
+      expect(zonesOnMap().map((zone) => zone.name)).toEqual(["Центр"])
+      expect(byTestId("live-map-zone-form")).toBeNull()
+    })
+
+    it("three presses along one line are a line, not a zone: no «Сохранить как зону», and the ruler says why", async () => {
+      await open()
+      await press(byTestId("live-map-tool-ruler"))
+      // One row of the screen is one latitude, to the last digit.
+      await pressMap(40.4, 49.8)
+      await pressMap(40.4, 49.81)
+      expect(byTestId("live-map-ruler-outline-problem")).toBeNull()
+      await pressMap(40.4, 49.82)
+      expect(byTestId("live-map-ruler-save-zone")).toBeNull()
+      expect(byTestId("live-map-ruler-outline-problem")?.textContent).toBe("Сохранить как зону нельзя: точки стоят на одной линии, внутри нет площади.")
+      // There and back along the same line is no more of a zone.
+      await pressMap(40.4, 49.81)
+      expect(byTestId("live-map-ruler-save-zone")).toBeNull()
+      expect(byTestId("live-map-ruler-outline-problem")).not.toBeNull()
+      await press(byTestId("live-map-ruler-undo"))
+      // A point off the line, and there is something inside.
+      await pressMap(40.409, 49.81)
+      expect(byTestId("live-map-ruler-outline-problem")).toBeNull()
+      expect(byTestId("live-map-ruler-save-zone")?.textContent).toBe("Сохранить как зону")
+      expect(zoneWrites).toEqual([])
+    })
+
+    it("a picked point can be the centre of a zone: «Зона вокруг точки» asks for a name, a radius in metres and a colour", async () => {
+      await open()
+      await press(byTestId("live-map-tool-point"))
+      await press(byTestId("live-map-pick-point"))
+      await pressMap(CENTRE.latitude, CENTRE.longitude)
+      expect(zoneReads).toBe(1)
+      expect(byTestId("live-map-point-zone")?.textContent).toBe("Зона вокруг точки")
+      // The chip that names the point is what it was.
+      expect(byTestId("live-map-point-chip")?.textContent).toBe("Ближайшие к: Точка на картеУбрать")
+      await press(byTestId("live-map-point-zone"))
+      expect([byTestId("live-map-zone-form")?.getAttribute("data-task"), byTestId("live-map-zone-form-title")?.textContent]).toEqual(["circle", "Новая зона вокруг точки"])
+      // A sensible radius is already there, and the range allowed is said in words.
+      expect((byTestId("live-map-zone-radius") as HTMLInputElement).value).toBe("500")
+      expect(byTestId("live-map-zone-radius-range")?.textContent?.replace(/\s/g, " ")).toBe("от 25 до 100 000 метров")
+      await type("live-map-zone-name", "Центр")
+      // Ten metres is under what the server keeps: said here, and nothing is sent or quietly made into 25.
+      await type("live-map-zone-radius", "10")
+      await press(byTestId("live-map-zone-save"))
+      expect(notice()?.replace(/\s/g, " ")).toBe("Радиус — целое число от 25 до 100 000 метров")
+      expect(zoneWrites).toEqual([])
+      await type("live-map-zone-radius", "750")
+      await press(byTestId("live-map-zone-save"))
+      expect(zoneWrites).toEqual([{
+        method: "POST", path: "/api/v1/mtm/locations/zones",
+        body: { name: "Центр", color: null, kind: "CIRCLE", centerLatitude: CENTRE.latitude, centerLongitude: CENTRE.longitude, radiusMeters: 750 },
+      }])
+      expect(zonesOnMap()).toEqual([{ id: "zone-new-1", name: "Центр", color: null, kind: "CIRCLE", center: { ...CENTRE }, radiusMeters: 750 }])
+      // The point is still the point: the list goes on answering «who is nearest to it».
+      expect(mapProp<{ label: string }>("referencePoint")).toMatchObject({ ...CENTRE })
+      expect(rowIds()[0]).toBe("near")
+    })
+
+    it("offers no way to draw or change a zone to somebody the server says may only look", async () => {
+      zoneBase = { zones: [CENTRE_CIRCLE, NORTH_BLOCK], access: { canWrite: false } }
+      await open()
+      await outlineTriangle()
+      expect(byTestId("live-map-ruler-area")).not.toBeNull()
+      expect(byTestId("live-map-ruler-save-zone")).toBeNull()
+      await press(byTestId("live-map-tool-point"))
+      await press(byTestId("live-map-pick-point"))
+      await pressMap(CENTRE.latitude, CENTRE.longitude)
+      expect(byTestId("live-map-point-chip")).not.toBeNull()
+      expect(byTestId("live-map-point-zone")).toBeNull()
+      // He sees every zone: on the map and in the list — without the three buttons, and told who has them.
+      await openLayers()
+      await press(byTestId("live-map-layer-areas"))
+      await settle(20)
+      expect(zonesOnMap()).toHaveLength(2)
+      expect(mapProp("canEditZones")).toBe(false)
+      expect(document.querySelectorAll('[data-testid^="live-map-zone-row-zone-"]')).toHaveLength(2)
+      expect(document.querySelector('[data-testid^="live-map-zone-rename-"], [data-testid^="live-map-zone-recolor-"], [data-testid^="live-map-zone-remove-"]')).toBeNull()
+      expect(byTestId("live-map-zone-read-only")?.textContent).toBe("Рисовать и менять зоны могут администратор и менеджер.")
+      // A press on a button in a balloon he was never shown opens nothing either.
+      await act(async () => { mapProp<(zoneId: string, action: string) => void>("onZoneAction")("zone-centre", "delete") })
+      expect(byTestId("live-map-zone-form")).toBeNull()
+      expect(zoneWrites).toEqual([])
+    })
+
+    // While that read is still on its way: «no «save as a zone» button while the answer about who may draw is still on its way», below, on the clock.
+    it("draws no «save as a zone» button when the read that says who may draw has failed", async () => {
+      zoneBase = 500
+      await open()
+      await outlineTriangle()
+      expect(zoneReads).toBe(1)
+      expect(byTestId("live-map-ruler-area")).not.toBeNull()
+      expect(byTestId("live-map-ruler-save-zone")).toBeNull()
+      // The layer was never switched on, so nothing on the map complains about it.
+      expect(byTestId("live-map-areas-alert")).toBeNull()
+    })
+
+    it("removing a zone asks first, in words, and only then takes it off the map", async () => {
+      zoneBase = { zones: [CENTRE_CIRCLE, NORTH_BLOCK], access: { canWrite: true } }
+      await open()
+      await openLayers()
+      await press(byTestId("live-map-layer-areas"))
+      await settle(20)
+      await press(byTestId("live-map-zone-remove-zone-centre"))
+      const row = byTestId("live-map-zone-row-zone-centre")!
+      expect(row.querySelector('[data-testid="live-map-zone-form-title"]')?.textContent).toBe("Удалить зону «Центр»?")
+      expect(row.textContent).toContain("Она исчезнет с карты у всех в организации.")
+      // Asked, not done.
+      expect(zoneWrites).toEqual([])
+      expect(zonesOnMap()).toHaveLength(2)
+      await press(row.querySelector('[data-testid="live-map-zone-cancel"]'))
+      expect(byTestId("live-map-zone-form")).toBeNull()
+      expect(zoneWrites).toEqual([])
+
+      await press(byTestId("live-map-zone-remove-zone-centre"))
+      expect(byTestId("live-map-zone-save")?.textContent).toBe("Удалить")
+      await press(byTestId("live-map-zone-save"))
+      expect(zoneWrites).toEqual([{ method: "DELETE", path: "/api/v1/mtm/locations/zones/zone-centre", body: null }])
+      expect(zonesOnMap().map((zone) => zone.id)).toEqual(["zone-north"])
+      expect(byTestId("live-map-zone-row-zone-centre")).toBeNull()
+      expect(hint()).toBe("на карте зон: 1")
+      expect(zoneReads).toBe(1)
+    })
+
+    it("renames and recolours a zone from its row in the list, and from its balloon on the map", async () => {
+      zoneBase = { zones: [CENTRE_CIRCLE, NORTH_BLOCK], access: { canWrite: true } }
+      await open()
+      await openLayers()
+      await press(byTestId("live-map-layer-areas"))
+      await settle(20)
+
+      // «Цвет» in the list: the colour it has is the one chosen; another is sent as its key.
+      await press(byTestId("live-map-zone-recolor-zone-centre"))
+      const row = () => byTestId("live-map-zone-row-zone-centre")!
+      expect(row().querySelector('[data-testid="live-map-zone-form-title"]')?.textContent).toBe("Цвет зоны «Центр»")
+      expect(row().querySelector('[data-testid="live-map-zone-color-teal"]')?.getAttribute("aria-pressed")).toBe("true")
+      await press(row().querySelector('[data-testid="live-map-zone-color-pink"]'))
+      await press(row().querySelector('[data-testid="live-map-zone-save"]'))
+      expect(zoneWrites).toEqual([{ method: "PUT", path: "/api/v1/mtm/locations/zones/zone-centre", body: { color: "pink" } }])
+      expect(zonesOnMap().find((zone) => zone.id === "zone-centre")?.color).toBe("pink")
+      // «Без цвета» is sent as no colour — not left out, which would keep the old one.
+      await press(byTestId("live-map-zone-recolor-zone-centre"))
+      await press(row().querySelector('[data-testid="live-map-zone-color-none"]'))
+      await press(row().querySelector('[data-testid="live-map-zone-save"]'))
+      expect(zoneWrites[1]).toEqual({ method: "PUT", path: "/api/v1/mtm/locations/zones/zone-centre", body: { color: null } })
+      expect(zonesOnMap().find((zone) => zone.id === "zone-centre")?.color).toBeNull()
+
+      // «Переименовать» in the zone's balloon: the map reports the button, the page opens the form beside the tools.
+      await openLayers()
+      await act(async () => { mapProp<(zoneId: string, action: string) => void>("onZoneAction")("zone-north", "rename") })
+      await settle()
+      const editor = byTestId("live-map-zone-editor")!
+      expect(editor.querySelector('[data-testid="live-map-zone-form-title"]')?.textContent).toBe("Переименовать зону")
+      expect((editor.querySelector('[data-testid="live-map-zone-name"]') as HTMLInputElement).value).toBe("Северный участок")
+      await type("live-map-zone-name", "Аэропорт", editor)
+      await press(editor.querySelector('[data-testid="live-map-zone-save"]'))
+      expect(zoneWrites[2]).toEqual({ method: "PUT", path: "/api/v1/mtm/locations/zones/zone-north", body: { name: "Аэропорт" } })
+      expect(byTestId("live-map-zone-editor")).toBeNull()
+      // The list is by name: «Аэропорт» now stands before «Центр». The shape did not move.
+      expect(zonesOnMap().map((zone) => zone.name)).toEqual(["Аэропорт", "Центр"])
+      expect(zonesOnMap()[0].outline?.[0]).toEqual({ latitude: 40.4, longitude: 49.8 })
+      expect(zoneReads).toBe(1)
+    })
+
+    it("a zone a colleague removed meanwhile goes from this map too instead of being renamed back to life — and why is said where its form stood, inside the map's frame", async () => {
+      const SOUTH_CIRCLE = { ...CENTRE_CIRCLE, id: "zone-south", name: "Южный склад", color: null, centerLatitude: 40.35 }
+      zoneBase = { zones: [CENTRE_CIRCLE, NORTH_BLOCK, SOUTH_CIRCLE], access: { canWrite: true } }
+      const removedByColleague = (id: string) => {
+        const kept = (zoneBase as { zones: Array<{ id: string }> }).zones
+        kept.splice(kept.findIndex((zone) => zone.id === id), 1)
+      }
+      const said = () => [...document.querySelectorAll<HTMLElement>('[data-testid="live-map-zone-gone"]')]
+      await open()
+      await openLayers()
+      await press(byTestId("live-map-layer-areas"))
+      await settle(20)
+
+      // Somebody else removes «Центр» on the server; here its row in the list is still being renamed.
+      removedByColleague("zone-centre")
+      await press(byTestId("live-map-zone-rename-zone-centre"))
+      await type("live-map-zone-name", "Старый город")
+      await press(byTestId("live-map-zone-save"))
+      expect(zoneWrites).toEqual([{ method: "PUT", path: "/api/v1/mtm/locations/zones/zone-centre", body: { name: "Старый город" } }])
+      expect(zonesOnMap().map((zone) => zone.id)).toEqual(["zone-north", "zone-south"])
+      expect(byTestId("live-map-zone-form")).toBeNull()
+      // The form closed and the zone vanished — which, with nothing said, reads as «renaming deleted my zone».
+      // Said in the list where the row was, and so inside the frame that is all the browser draws when the
+      // map has the whole screen. (The page's toasts are outside it; here they are stood in for by nothing.)
+      expect(said()).toHaveLength(1)
+      expect(said()[0].querySelector("span")?.textContent).toBe("Этой зоны уже нет: её удалил кто-то другой")
+      expect(byTestId("live-map-layer-detail-areas")!.contains(said()[0])).toBe(true)
+      expect(byTestId("mtm-map-frame")!.contains(said()[0])).toBe(true)
+      await press(byTestId("live-map-zone-gone-close"))
+      expect(said()).toEqual([])
+
+      // The same from a zone's balloon: its form stands beside the tools, and so do the words.
+      removedByColleague("zone-north")
+      await act(async () => { mapProp<(zoneId: string, action: string) => void>("onZoneAction")("zone-north", "color") })
+      await settle()
+      await press(byTestId("live-map-zone-editor")!.querySelector('[data-testid="live-map-zone-color-pink"]'))
+      await press(byTestId("live-map-zone-editor")!.querySelector('[data-testid="live-map-zone-save"]'))
+      expect(zonesOnMap().map((zone) => zone.id)).toEqual(["zone-south"])
+      expect(byTestId("live-map-zone-form")).toBeNull()
+      expect(said()).toHaveLength(1)
+      expect(byTestId("live-map-zone-editor")!.contains(said()[0])).toBe(true)
+      expect(byTestId("mtm-map-frame")!.contains(said()[0])).toBe(true)
+
+      // Another zone's form takes its place. And a REMOVAL that came too late needs no saying: gone is what was asked for.
+      removedByColleague("zone-south")
+      await act(async () => { mapProp<(zoneId: string, action: string) => void>("onZoneAction")("zone-south", "delete") })
+      await settle()
+      expect(said()).toEqual([])
+      expect(byTestId("live-map-zone-form-title")?.textContent).toBe("Удалить зону «Южный склад»?")
+      await press(byTestId("live-map-zone-save"))
+      expect(zoneWrites[2]).toEqual({ method: "DELETE", path: "/api/v1/mtm/locations/zones/zone-south", body: null })
+      expect(zonesOnMap()).toEqual([])
+      expect([byTestId("live-map-zone-form"), ...said()]).toEqual([null])
+    })
+
+    it("tells a manager with no zones yet how to draw the first one, in the words that are on the buttons", async () => {
+      await open()
+      await openLayers()
+      await press(byTestId("live-map-layer-areas"))
+      await settle(20)
+      expect(hint()).toBe("на карте зон: 0")
+      expect(byTestId("live-map-zone-empty")?.textContent)
+        .toBe("Зон пока нет. Чтобы нарисовать первую: «Линейка» → «Сохранить как зону» или «Адрес или точка» → «Зона вокруг точки».")
+      expect([byTestId("live-map-tool-ruler")?.textContent, byTestId("live-map-tool-point")?.textContent]).toEqual(["Линейка", "Адрес или точка"])
+    })
+  })
+
   describe("while the map refreshes itself", () => {
     // Half a minute between refreshes: the clock is driven by hand, a second at
     // a time (React applies what a timer set when the `act` it fired in ends).
@@ -870,6 +1447,140 @@ describe("the live map page, end to end", () => {
       expect(requests.filter((request) => request === "/api/v1/mtm/locations").length).toBeGreaterThanOrEqual(polls + 3)
       expect(count("/api/v1/mtm/locations/clients")).toBe(1)
       expect(mapProp<unknown[]>("clients")).toHaveLength(2)
+    })
+
+    it("the zones are read when their layer is switched on and on «Обновить» — never on the map's timer", async () => {
+      window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ labels: false, trails: true, glide: true, areas: true }))
+      zoneBase = { zones: [CENTRE_CIRCLE], access: { canWrite: true } }
+      await act(async () => { root.render(createElement(MtmMapPage)) })
+      await forward(2_000)
+      expect(zoneReads).toBe(1)
+      expect(mapProp<unknown[]>("zones")).toHaveLength(1)
+      const polls = requests.filter((request) => request === "/api/v1/mtm/locations").length
+      await forward(95_000)
+      expect(requests.filter((request) => request === "/api/v1/mtm/locations").length).toBeGreaterThanOrEqual(polls + 3)
+      expect(zoneReads).toBe(1)
+      // «Обновить» is how a zone a colleague has just drawn gets onto this map —
+      // once the roster's own cooldown lets «Обновить» ask for anything at all.
+      ;(zoneBase as { zones: unknown[] }).zones.push(NORTH_BLOCK)
+      await act(async () => { byTestId("mtm-map-refresh")!.click() })
+      await forward(1_000)
+      expect(zoneReads).toBe(1)
+      await forward(16_000)
+      await act(async () => { byTestId("mtm-map-refresh")!.click() })
+      await forward(2_000, 100)
+      expect(zoneReads).toBe(2)
+      expect(mapProp<unknown[]>("zones")).toHaveLength(2)
+    })
+
+    it("a refresh of the zones that fails takes nothing off the map, says so in «Слои», and is tried again by itself", async () => {
+      window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ labels: false, trails: true, glide: true, areas: true }))
+      zoneBase = { zones: [CENTRE_CIRCLE, NORTH_BLOCK], access: { canWrite: true } }
+      await act(async () => { root.render(createElement(MtmMapPage)) })
+      await forward(18_000)
+      expect(mapProp<unknown[]>("zones")).toHaveLength(2)
+      zoneBase = 500
+      const shown = new Set<number>()
+      const observer = new MutationObserver(() => shown.add(mapProp<unknown[]>("zones").length))
+      observer.observe(container, { subtree: true, childList: true, characterData: true, attributes: true })
+      await act(async () => { byTestId("mtm-map-refresh")!.click() })
+      await forward(2_000, 100)
+      observer.disconnect()
+      expect(zoneReads).toBe(2)
+      // Never taken off the map: not while the read was out, not when it failed.
+      expect(mapProp<unknown[]>("zones")).toHaveLength(2)
+      expect([...shown]).not.toContain(0)
+      // The zones are on the map, so nothing shouts over it; the layer's own line says the refresh failed.
+      expect(byTestId("live-map-areas-alert")).toBeNull()
+      await act(async () => { container.querySelector<HTMLElement>('[data-testid="live-map-layers"] > button')!.click() })
+      expect(byTestId("live-map-layer-hint-areas")?.textContent).toBe("на карте зон: 2 · не удалось обновить")
+      // Who may change them was said by the last answer that did come: the list keeps its buttons.
+      expect(byTestId("live-map-zone-rename-zone-centre")).not.toBeNull()
+      // A minute later the page asks again by itself.
+      zoneBase = { zones: [CENTRE_CIRCLE], access: { canWrite: true } }
+      await forward(61_000)
+      expect(zoneReads).toBe(3)
+      expect(mapProp<unknown[]>("zones")).toHaveLength(1)
+      expect(byTestId("live-map-layer-hint-areas")?.textContent).toBe("на карте зон: 1")
+    })
+
+    it.each([
+      ["somebody who may draw gets it once the answer is in", true],
+      ["somebody who may only look never gets it", false],
+    ])("no «save as a zone» button while the answer about who may draw is still on its way: %s", async (_who, canWrite) => {
+      // The layer is off: the zones are asked for only because a tool was taken up, and the answer takes three seconds.
+      zoneBase = { zones: [], access: { canWrite } }
+      zoneReadDelayMs = 3_000
+      const pressMap = async (latitude: number, longitude: number) => {
+        await act(async () => { mapProp<(lat: number, lng: number) => void>("onMapPress")(latitude, longitude) })
+      }
+      await act(async () => { root.render(createElement(MtmMapPage)) })
+      await forward(1_000, 100)
+
+      // The ruler, and a triangle outlined at once — well inside those three seconds.
+      await act(async () => { byTestId("live-map-tool-ruler")!.click() })
+      await pressMap(40.4, 49.8)
+      await pressMap(40.409, 49.8)
+      await pressMap(40.409, 49.8118)
+      await forward(500, 100)
+      expect(zoneReads).toBe(1)
+      // The ruler is a ruler for everybody; what it may offer besides has not been said yet.
+      expect(byTestId("live-map-ruler-area")).not.toBeNull()
+      expect(byTestId("live-map-ruler-save-zone")).toBeNull()
+
+      // A point picked while the same read is still out: no «Зона вокруг точки» either.
+      await act(async () => { byTestId("live-map-tool-point")!.click() })
+      await act(async () => { byTestId("live-map-pick-point")!.click() })
+      await pressMap(CENTRE.latitude, CENTRE.longitude)
+      await forward(300, 100)
+      expect(byTestId("live-map-point-chip")).not.toBeNull()
+      expect(byTestId("live-map-point-zone")).toBeNull()
+      expect(zoneReads).toBe(1)
+
+      // The answer arrives: the button is there for whoever it says may draw, and for nobody else.
+      await forward(3_000, 100)
+      expect(byTestId("live-map-point-zone") !== null).toBe(canWrite)
+      await act(async () => { byTestId("live-map-tool-ruler")!.click() })
+      await pressMap(40.4, 49.8)
+      await pressMap(40.409, 49.8)
+      await pressMap(40.409, 49.8118)
+      await forward(300, 100)
+      expect(byTestId("live-map-ruler-area")).not.toBeNull()
+      expect(byTestId("live-map-ruler-save-zone") !== null).toBe(canWrite)
+      // One read answered both tools.
+      expect(zoneReads).toBe(1)
+    })
+
+    it("a refresh that was on its way while a zone was removed does not bring the zone back", async () => {
+      window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ labels: false, trails: true, glide: true, areas: true }))
+      zoneBase = { zones: [CENTRE_CIRCLE, NORTH_BLOCK], access: { canWrite: true } }
+      await act(async () => { root.render(createElement(MtmMapPage)) })
+      await forward(18_000)
+      expect(zoneReads).toBe(1)
+      const ids = () => mapProp<Array<{ id: string }>>("zones").map((zone) => zone.id)
+      expect(ids()).toEqual(["zone-north", "zone-centre"])
+      // «Обновить»: the read sets out, and takes three seconds to come back with the list as it was.
+      zoneReadDelayMs = 3_000
+      await act(async () => { byTestId("mtm-map-refresh")!.click() })
+      await forward(300, 100)
+      expect(zoneReads).toBe(2)
+      // Meanwhile «Центр» is removed, and the server answers at once.
+      zoneReadDelayMs = 0
+      await act(async () => { container.querySelector<HTMLElement>('[data-testid="live-map-layers"] > button')!.click() })
+      await act(async () => { byTestId("live-map-zone-remove-zone-centre")!.click() })
+      await act(async () => { byTestId("live-map-zone-save")!.click() })
+      await forward(300, 100)
+      expect(zoneWrites).toEqual([{ method: "DELETE", path: "/api/v1/mtm/locations/zones/zone-centre", body: null }])
+      expect(ids()).toEqual(["zone-north"])
+      // The late answer still names «Центр». It is not what the map shows: the list was asked for again instead.
+      const shown = new Set<string>()
+      const observer = new MutationObserver(() => shown.add(ids().join(",")))
+      observer.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true })
+      await forward(5_000, 100)
+      observer.disconnect()
+      expect(ids()).toEqual(["zone-north"])
+      expect([...shown].filter((list) => list.includes("zone-centre"))).toEqual([])
+      expect(zoneReads).toBe(3)
     })
 
     it("on the road the street is asked once, however many times the map refreshes", async () => {
