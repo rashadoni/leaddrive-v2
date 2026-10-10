@@ -219,3 +219,30 @@ independent/runtimeNOTRUN; own separateworktree/journal/archiveprefill01.
 Current681 remains frozenH andits acceptance/release priority unchanged.
 Next current681: actualtypecheckterminal/originalreview/freshrefs/ordinarymerge/
 normalActions exactM artifact/maincompiler/publicprivacy, then nextsourceadmission.
+
+## All five actual required gates and currentC independently accepted
+
+ActualH/App15368 mandatory IDs scope114171075130/static114171137338/type114171137373/
+runner114166426930/scan114166426462 SUCCESS; all originalstepsSUCCESS, actual
+checkoutC32524/tree10efd/parents[M32A,C654] proven. Root+peer fullREADYcompiler
+253353B SHAbf7218275a7b9ea8e82b3f834652c843f894104f136641fcd01e126801cbeaec,
+recomputed1162/35/EXIT2/critical0/owned0/strict64 exactbaseline; no raw compiler
+artifact invented from whole timestamped log. Actualstatic235266B strict18
+unchanged/alloldstillfail/noNew, globalNONCLEAN preserved. No draftskipcredit.
+Initial root requiredreader failed pr-scope2 acrosscheckSuites despite latest
+APIfilter. OriginalpartialAPI/reader/error retained; separatev2 selects newest
+started_at/id before requiring actualS and retains all oldskip/S records.
+Independent separate newestrecord confirmation matches actualfive; no choosing
+olderS over newerpending/failed, no source/CI/baseline change or rerun.
+Root compiler reader v1 inherited mainSha label denotedsourceH, notproduction
+M; v2 corrects label only with v1/currentwholelog/predicates unchanged.
+
+Independentfinalfive/currentC receipt10412B SHA4ea42ca3570272e66873465a9d59a3d014bebb6de3552cd4f011f100a9917659
+accepted, live exact5protection/strictfalse/App15368 andliveREADYH/M/C refs.
+Source6 andcurrentcandidate2 separatelyaccepted, samewholetree, no calendar/
+manager filteredexecution or wholeC12/C14/production authentication credit.
+Archive06 retains alloriginalrequiredlogs/checks/error/corrections/reviews.
+Current stop: before immediatefreshref guard/ordinary matchingheadmerge.
+Next: guard currentM/H/C/protection/latestfive/ancestry/exclusions then ordinary
+merge, actualparents/tree, normalActions artifact/fullSHA/publicprivacy and
+maincompiler root+peeracceptance. PreparednextD9 isexcluded from681admission.
