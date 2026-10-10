@@ -76,3 +76,30 @@ actualstatus andsafe failurestage remain inspectable if futurebrowser fails.
 ActualNode20syntax/diff PASS afterresources; no newruntime/browser/SQL/CI. Current
 parent683sixsourceSUCCESS/fullcompilerRUNNING, existingheadFB untouched. Future
 source-only review startedon280d checkpoint; this diagnosticsdelta needsreview.
+
+## Source-only review accepted and current main integrated; parent release pending
+
+Source checkpoints a1d9a718,280d6c7c and fe948e5f are preserved. Independent
+source-only review accepted the 28 pure admission tests, three syntax checks,
+runner policy and unchanged original seven jobs. The first separator-reader
+assumption error and corrected qualification remain in archive663 phases01-02.
+Prepared root/peer runtime readers retain the first unique-binding count finding
+and the separate corrected reader. Their syntax and literal source contracts
+pass only as preparation; browser, SQL and full source8 have NOT RUN.
+
+PR683 merged ordinarily as bfe456042a018864fead8be64d5f154911195af0 after exact
+source7, currentC13 and required-five root/peer admission. Original employee
+verification400 failure, its unproved cause and exactly one successful same-head
+repeat remain permanent evidence. No MFA rule, helper or baseline was changed.
+Its own normaldeploy38049380728 and ownmainchecks38049380727 are still running:
+this entry does not claim its production release is verified.
+
+Normally merged that actual current main into this separate unpublished successor.
+Only source ancestry changed; the prepared recovery code and original seven
+profiles/jobs/fixtures and production sources remain intact. Future publication
+requires the parent own normal release, fresh refs and final exact source review.
+The proposed19 real server201/reply-abort/draft-retained/UI200 same-key recoveries
+and33 bindings remain planned until hosted execution. Real outage, native form,
+physical/human, authenticated production HR, full historical/defaultACL and
+operational acceptance remain NOT RUN. Accounting85DONE/76open/61%, C6-006/C12
+partial and C14 open; no row closes.
