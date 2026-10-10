@@ -231,4 +231,3 @@ export function renameRouteTarget(
   }
   return next
 }
-

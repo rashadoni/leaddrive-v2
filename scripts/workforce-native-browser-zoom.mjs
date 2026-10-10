@@ -13,9 +13,9 @@ export const isNativeZoomPage = page => ownedContexts.has(page.context())
 
 /** Hosted fixture only. Native browser page zoom; no app injection/emulation. */
 export async function createNativeZoomContext(baseURL, fixture = "calendar") {
-  assert.ok(["calendar", "manager-today"].includes(fixture), "Exact native fixture required")
-  const route = fixture === "calendar" ? "/workforce/calendar" : "/workforce"
-  const optIn = fixture === "calendar" ? "WF_CALENDAR_BROWSER" : "WF_MANAGER_TODAY_BROWSER"
+  assert.ok(["calendar", "manager-today", "exception-report"].includes(fixture), "Exact native fixture required")
+  const route = fixture === "calendar" ? "/workforce/calendar" : fixture === "manager-today" ? "/workforce" : "/workforce/exceptions/report"
+  const optIn = fixture === "calendar" ? "WF_CALENDAR_BROWSER" : fixture === "manager-today" ? "WF_MANAGER_TODAY_BROWSER" : "WF_EXCEPTION_REPORT_BROWSER"
   assert.equal(process.env.GITHUB_ACTIONS, "true")
   assert.equal(process.env.CI, "true")
   assert.equal(process.env[optIn], "1")
