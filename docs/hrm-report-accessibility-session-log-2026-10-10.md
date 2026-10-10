@@ -114,3 +114,16 @@ fragments could already be retained. Preserved original finding; fixed by
 stopping before work exceeds128targets/2048textnodes/1024fragments, retaining
 at most32 failure examples plus a count/finite overflow sentinel. Overflow
 explicitly fails the gate. No wider application change or relaxed threshold.
+
+## Hosted original refusal and minimal repair
+
+Published PR672 exact39b81c0327e82847378cd159293fb5dfd67aa333. Original
+source regression38007879458/job114080793534 refused before dependencies,
+schema or tests: unchanged cumulative PR608 whitespace gate found one inherited
+EOF blank line atsrc/lib/mtm/route-target-types.ts:234. Original full log and
+before/after source bytes are preserved in evidence PR663. Removed exactly one
+newline byte; no MTM semantics or guard/baseline changes. Final changed head
+requires fresh exact checks. Original39 browser/compiler/build runs continue
+without cancellation; their actual outcomes remain separately qualified.
+Append-only runtime/release journal continues in evidence worktree at the same
+docs path so the tested implementation head can remain frozen.
