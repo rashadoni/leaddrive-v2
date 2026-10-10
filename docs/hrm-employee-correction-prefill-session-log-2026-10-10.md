@@ -166,3 +166,41 @@ onlynewjournal/targethelper/isolatedfixture, archived separately; no current682
 source/job changed. SQL/sourceindependent/harness/job/runtime/publication NOTRUN.
 Current682 source6 fulloriginals/root+peer acceptance/READY/currentfive/C/normal
 release remains priority.85DONE76open61%,C6-006/C12PARTIAL/C14OPEN.
+
+
+## Exact source-six accepted; READY/current candidate gates running
+
+Exact6f58run38040729377attempt1 six naturalSUCCESS andfourcompleteoriginalZIPs
+APIsha/size/CRC/path/actualcheckoutH verified byroot+independent. Employee15/
+22auth/45bindings/12readonlyprefills/15owndays each/observedinteractionPOST0/
+requestrows0, current19sessionDOMobservations (>1<=512)/samecontext/document
+old16→logout0→nextprincipal0old/200EMPTY. Allold50focus/6nativeproofs/27captures/
+14ACK+audits/13facts/8SQLrollback bounds retained. No fullsubmission/body/link/
+native-request-form proof. Actualformnativewidth320DPR2 is diagnostic only.
+ActualPG44/nativeguards37/strict18alloldstillfail/noNew, report33/54/58/native21/
+22facts andHR20/108/24+audits/48privatecapture refusals/8facts accepted. Actual
+isolatedbuild974pages1546routes inclroot'/'. Rawcompiler179299B
+SHAb6b9ee71a33aa9f683f81b2a4879597b63099a4d23ae794e1f71c0ba39536df6
+actuallyrecomputed1162/35/EXIT2/strict64/critical0/owned0; globalNONCLEAN.
+Independentfinal152295B SHAbfbcf9c98526683194ed0888daa7d0bcf60e4d0117c3bcd773c39cd9a735c325
+accepted;173originalinventory47898B SHA f0fa4f13114c25196279216540326643c61a0116dad484beab11beff689fa67c.
+Root4currentactualpixels (2employee/AZreport/ENHR) andpeer12 currentimages
+viewed; devbadge/finiteclippedmetrics/no wholepage orphysical/human limitskept.
+First peer wrongcandidate-tree literal reader failedbeforeadmission; actualGit
+tree/parents corrected witholdAPI/errorretained. Firstroot sourcewhole-log
+reader failedformatmatch beforeadmission (ANSI44 andassumedTAP37); original
+receipt kept, separatev2 normalizesANSI andrequiresactualVitest37/44 while
+preservingall counts/baseline/wholecheckout conditions. No source/CI rerunchange.
+
+PR682 nowREADY unchangedH/BM339f/Ca037ad207e10c6d74fcacb6c8c660af4c3902480
+actualsource/C tree3dd4b85b16234d68a3231b6d0a0a0e97e5623a8d. Naturalcurrent
+candidatebrowser38042164884 andrequiredPRchecks38042164915 RUNNING; sameH
+runner38040708976/scan38040708944 actualSUCCESS butfulloriginal/context/root+
+peer finalfive stillpending. Olddraftstatic/type/exceptionSKIP no executioncredit.
+Calendar/manager pathfilters notmatch exactharness/newdoc, NOTRUN/notapplicable,
+no oldresult borrowed. SourcefixedCLEANH; publishedPRbody source6accepted and
+currentcandidate/five/merge/ownnormalrelease pending. Sourcephase05 preserves
+alloriginals/errors/corrections/newreaders/firstREADY APIs. 85DONE76open61%,
+C6-006/C12PARTIAL/C14OPEN. Lastaction source6accepted→READY; precisestop current
+C/fiveRUNNING; next currentoriginals/pixels/root+peer→freshrefsordinarymerge→
+ownnormalActionsartifact/maincompiler/fullSHA/publicprivacy→nextpermittedwork.

@@ -1,0 +1,2064 @@
+{
+  "archivedAtUtc": "2026-10-10T09:41:40.572146+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-employee-root/artifact-11665383414-original.zip",
+      "originalBytes": 8357050,
+      "originalSha256": "b379e436e00d64d50ce2ee1dadcda86c7085d58a87f0a053e490fb1ff3f9a011",
+      "storedBytes": 8357050,
+      "storedSha256": "b379e436e00d64d50ce2ee1dadcda86c7085d58a87f0a053e490fb1ff3f9a011"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-employee-root/artifacts-api-original.json.gz",
+      "originalBytes": 691,
+      "originalSha256": "3547c95431962285f31a6912c51b4c506c626d887524f99a44755c57d75cdad5",
+      "storedBytes": 691,
+      "storedSha256": "3547c95431962285f31a6912c51b4c506c626d887524f99a44755c57d75cdad5"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-employee-root/employee-terminal-job-root-summary.json.raw-original.gz",
+      "originalBytes": 332145,
+      "originalSha256": "b5fa64e2add0ae552522dff46c57fc06d9efeaa42a2ee662a52e52d30e3049b4",
+      "storedBytes": 15798,
+      "storedSha256": "2e11f5c15933a1cae80d770db33fd3fd82d1bc81daa23d8a4ed6552d809a4f3b"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-employee-root/job-api-original.json.gz",
+      "originalBytes": 1005,
+      "originalSha256": "0b6347a4c589b48c471648ce6ee431d3a2f4a6e03a4a70f616135d04fefc0f76",
+      "storedBytes": 1005,
+      "storedSha256": "0b6347a4c589b48c471648ce6ee431d3a2f4a6e03a4a70f616135d04fefc0f76"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-employee-root/original-pixels/az-native-320-ack-focus.png.raw-original.gz",
+      "originalBytes": 193628,
+      "originalSha256": "4f2083a0e0e513707729daa38ff53d0c239b16be72c7bb8ea43d1ebf29851a13",
+      "storedBytes": 190712,
+      "storedSha256": "ef6ddc66a56e11621fa51dadb0aa3f83aac5184263a99ab043e02d4d9b41f1b8"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-employee-root/original-pixels/az-standard-320-committed-response-lost.png.raw-original.gz",
+      "originalBytes": 70999,
+      "originalSha256": "4a6ded8db24248f5224c3c18df533ef24bd504abb5c2d5ff99716bd9b16fa099",
+      "storedBytes": 69682,
+      "storedSha256": "2d23fc028adac50a56387974db1a7e59b3b9d93949e350ecf76602b71439eaa4"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-employee-root/original-pixels/en-native-320-acknowledged.png.raw-original.gz",
+      "originalBytes": 186624,
+      "originalSha256": "1451d1c287d0d8fd38916a751e2ef3a64f1498e28b942230b33b84656bd5d8a3",
+      "storedBytes": 182322,
+      "storedSha256": "8d8309a4e6a91c8386bca32313501b18e3515b220ac99a74c5c739e4620e7007"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-employee-root/original-pixels/ru-native-320-final-own-boundary.png.raw-original.gz",
+      "originalBytes": 174583,
+      "originalSha256": "06edc7a3ffc7e1e011468d01f236c171b79e4498a256c50fc50cf04e9990e6d4",
+      "storedBytes": 170270,
+      "storedSha256": "9d574bacd66a70b5344bae5a6442f14991ac08c251eef75addf50f54ab5b1f1d"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-employee-root/root-complete-employee-correction-prefill-content-review.json.raw-original.gz",
+      "originalBytes": 25176,
+      "originalSha256": "dbe4efc4fae19f5ab9dfdeab3e0e2b3abd5b2372694fac86d4f5cd01bdfea34a",
+      "storedBytes": 3998,
+      "storedSha256": "82d2841c2d9ef46c78bb6cef58356780057d9cbdc9afef793adc7d4314850845"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-employee-root/run-api-original.json.gz",
+      "originalBytes": 1531,
+      "originalSha256": "e1e530eb16426046096172440d741a8c68e24eca3bcac5e66a59b1e7e3e76d43",
+      "storedBytes": 1531,
+      "storedSha256": "e1e530eb16426046096172440d741a8c68e24eca3bcac5e66a59b1e7e3e76d43"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-employee-root/whole-employee-job-original.txt.gz",
+      "originalBytes": 23338,
+      "originalSha256": "087dd312ebf3b2db754d910ad36895b9369b5233eb0bf6ed225056cc929e7382",
+      "storedBytes": 23338,
+      "storedSha256": "087dd312ebf3b2db754d910ad36895b9369b5233eb0bf6ed225056cc929e7382"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-full-tsc-output.log.raw-original.gz",
+      "originalBytes": 179299,
+      "originalSha256": "b6b9ee71a33aa9f683f81b2a4879597b63099a4d23ae794e1f71c0ba39536df6",
+      "storedBytes": 19289,
+      "storedSha256": "9392db77de06cf9a55b83941c9f684f4b51f5ead1d2e2ac91ace9c3ed0ab2e40"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/native-zoom-az-control-100.png.raw-original.gz",
+      "originalBytes": 200055,
+      "originalSha256": "59c7bda0a9cf2cb9cd7226a93cf5ed7ac8f6220bf44a24d0304bdfc3ab858ee8",
+      "storedBytes": 194234,
+      "storedSha256": "690aa2abb6771d38a447e1c57204549454b5e9af5e4a66d5cfb6085c36b2b620"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/native-zoom-az-observed-200.png.raw-original.gz",
+      "originalBytes": 175052,
+      "originalSha256": "c94e1d9c95662944daf653b92daedcb2850a0cdb917bdacdb1d7359745cf1072",
+      "storedBytes": 170670,
+      "storedSha256": "b9ab79b154b145fb47987adfbcc2af8528c316d253f5bc19bc7b7d22808676bb"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/native-zoom-en-control-100.png.raw-original.gz",
+      "originalBytes": 201796,
+      "originalSha256": "1df341d9ce9a617b359fd28b695aecda17ccbb6092d53f9ed2e0540f8d570a75",
+      "storedBytes": 194427,
+      "storedSha256": "fa7c64053d3f1a2c0f1a51947b508e9aca7b90276fde1a2b99c3338a94aca6df"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/native-zoom-en-observed-200.png.raw-original.gz",
+      "originalBytes": 179495,
+      "originalSha256": "1fce4a0fac1ede3f816cef536f36f6c9d95df1c7a3229b562fc2d3972a9a058b",
+      "storedBytes": 174677,
+      "storedSha256": "f08eab5175e5aec38567d4a8e07fcb05090c8d025fe80c432a187d2d659e3865"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/native-zoom-ru-control-100.png.raw-original.gz",
+      "originalBytes": 196767,
+      "originalSha256": "f74865f6e2455fe5b765b6d10fe4b75afbfdcb3572e11979b32e199664933cd8",
+      "storedBytes": 191383,
+      "storedSha256": "0eefda60576f9c8a679d64ee43989fe86ef3ea62825e366d41d3bae46f265378"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/native-zoom-ru-observed-200.png.raw-original.gz",
+      "originalBytes": 168734,
+      "originalSha256": "07fe9a139c1672921fc6ce47f3aff5a58810384c5bb42fffa04c66dc84373d65",
+      "storedBytes": 163617,
+      "storedSha256": "48a290389b0c0de24897adc54d1c4ea3746e37859e0cc27c9b4035c5571767e9"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-denied-denied.png.raw-original.gz",
+      "originalBytes": 45895,
+      "originalSha256": "937f0f4182a824a7295314e62b1858b99e5544049c5774d06442d1ad1baf71ea",
+      "storedBytes": 44274,
+      "storedSha256": "bfd673b384a9ce093388a96858e27f8e995930ffbb39911345e98f4a4d668e2c"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-denied-team.png.raw-original.gz",
+      "originalBytes": 45895,
+      "originalSha256": "937f0f4182a824a7295314e62b1858b99e5544049c5774d06442d1ad1baf71ea",
+      "storedBytes": 44274,
+      "storedSha256": "bfd673b384a9ce093388a96858e27f8e995930ffbb39911345e98f4a4d668e2c"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-foreign-positive.png.raw-original.gz",
+      "originalBytes": 81173,
+      "originalSha256": "ca30217c55b8a1e2100ba1b532257160c27e7ad4d47f8fc9c25dd48a61d3b60c",
+      "storedBytes": 78383,
+      "storedSha256": "9a3a5ba966a46847765446dfac913a951e34d4a48ac5a7906a123b1198397b14"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-native-200-az-320-empty.png.raw-original.gz",
+      "originalBytes": 168036,
+      "originalSha256": "7b6ba47e96d64cdb8a501c60d71a99f0647ada985f44bf2f6dcd54851c98f88a",
+      "storedBytes": 163918,
+      "storedSha256": "daaad5899cb61877a16dedde168ea7799c164bd673119974fca16e1e24f46483"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-native-200-az-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 145794,
+      "originalSha256": "9012795a97fda673ff4d3a1fc7bd62cc8019a86f2c9fbb00f72aae2abaa2e8c1",
+      "storedBytes": 141334,
+      "storedSha256": "b7962182177e91fd3d7e1a6fbd5032bcf2e53d284e796fbfd08a6c3a2f891c40"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-native-200-az-320-measured-zero.png.raw-original.gz",
+      "originalBytes": 166875,
+      "originalSha256": "d838d5adf737662460f0b0977a92effa32dd1d5addeeaa2c598c7afd4d152620",
+      "storedBytes": 162648,
+      "storedSha256": "7c987fb849855b811b3381d61fa60c19fb2e1c98d5612df051c26772fdb4e73d"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-native-200-az-320-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 172767,
+      "originalSha256": "b3f548405abdfde67d0f07572b868afb4cbd6e42eb6196f3459dd292decc2458",
+      "storedBytes": 166943,
+      "storedSha256": "af54e409db3b98383bf36d44150fc1ffb4e71953de0ebeffd8e82b25ffca961b"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-native-200-az-320-unresolved-no-sample.png.raw-original.gz",
+      "originalBytes": 167811,
+      "originalSha256": "5e22118092e697e376ca486d6ccad23f7f3547a51c8f6e6c2d81e114681e30ad",
+      "storedBytes": 163690,
+      "storedSha256": "3f0b38acf5b784914d34716d2a9d1fdf3d48436c54b0ffd8ab911c1fc2642453"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-native-200-en-320-empty.png.raw-original.gz",
+      "originalBytes": 163606,
+      "originalSha256": "96df9364506e4352d3858e7c27118c5503b8391479fd63c01a41cf057c2c42f9",
+      "storedBytes": 158869,
+      "storedSha256": "86cc4a22cd8141e6fb1edd388575e8d392e9b0661bb4e51f13c74ab166baf017"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-native-200-en-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 153144,
+      "originalSha256": "faaaf666c87c7aa9bd41a189d60eb2b76348b8e4bbe508753cd47cc1a06c52ff",
+      "storedBytes": 148230,
+      "storedSha256": "f321ec156765b4a988e6fc2563a2d55bea5b39756bad66b0e0720e4a111cb71b"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-native-200-en-320-measured-zero.png.raw-original.gz",
+      "originalBytes": 162887,
+      "originalSha256": "3eb612b57fed81ca9df97f55ee13b26813365e0c98f1be4b3e4d98b3108e204d",
+      "storedBytes": 158131,
+      "storedSha256": "ce1c2a69918da1d3ddf5e64b08582ed29f03b9f85d18f5c1e539e66185eb4d2d"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-native-200-en-320-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 186589,
+      "originalSha256": "81d7f75ce52bf674edb939ab38e3262b5360518ccb6d77fb9b03801395d421b9",
+      "storedBytes": 179360,
+      "storedSha256": "27ab09bab2dde83e6c678682ce94a7b1648dcbdd97214979d4e1108cbd67dcc2"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-native-200-en-320-unresolved-no-sample.png.raw-original.gz",
+      "originalBytes": 163636,
+      "originalSha256": "0e774f01196bd49a6b716310df26cd1ff26ba9e113034fcb6745651bee092057",
+      "storedBytes": 159110,
+      "storedSha256": "e742b8e0e1d8fd0d1a283884cdf6d137b37b0b6b221d0cb1b77d11f9e77042e3"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-native-200-ru-320-empty.png.raw-original.gz",
+      "originalBytes": 142377,
+      "originalSha256": "e653fb0098042d6750afc41cf2946f0b1ef35fde2cf33cc28d28c9a498981460",
+      "storedBytes": 137398,
+      "storedSha256": "c83662abc057d441f5d740333fe0ff22864976807324d8092dc52ec9e1861e71"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-native-200-ru-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 134290,
+      "originalSha256": "1d920a0d85eb8ae37db5cb42f40c43d6c889f40d7dfe0ee20c97eea0dccf951e",
+      "storedBytes": 129241,
+      "storedSha256": "7957faaa3b50c623cd570062089914e159232c8227d7fe885a4117d11e55a943"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-native-200-ru-320-measured-zero.png.raw-original.gz",
+      "originalBytes": 141495,
+      "originalSha256": "0b6a08d27dea756b6d146ba9db0eb2722176974cc7910dbee23b3cf9a1a1241f",
+      "storedBytes": 137469,
+      "storedSha256": "19c313005db0a91ae931b2371159b795a893c2ef9b00e20339cb803e4f1337fb"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-native-200-ru-320-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 153072,
+      "originalSha256": "12f74e94f8dc6fb4cf60a22691cc1402ced8dd53b23a52484ac9e822d2ef286e",
+      "storedBytes": 147163,
+      "storedSha256": "d55d8d0fbea05cb2431f2932e22429b63519078d0926445e1ed01f37a0c91ea4"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-native-200-ru-320-unresolved-no-sample.png.raw-original.gz",
+      "originalBytes": 142146,
+      "originalSha256": "dd4c2ca9f4c8ffd86b1ebefdb0e0181e93d3e65294bb75197eaa85d4283de956",
+      "storedBytes": 137420,
+      "storedSha256": "319955c6c4f871d038c8824c140c5bb945b6b0fc5bf278cc0276c17515215699"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-az-1440-keyboard-table.png.raw-original.gz",
+      "originalBytes": 138847,
+      "originalSha256": "ecfc80cdf308f2a3929700ca119f121096435779ce6462f871318c06f097173b",
+      "storedBytes": 132849,
+      "storedSha256": "178474776f6a0854b073b88f5dcd013a8fab5a79699401a3cdbd19aa7458f9e5"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-az-1440-nonempty.png.raw-original.gz",
+      "originalBytes": 139885,
+      "originalSha256": "c621514f169dccd240d8b5c69fdd34b56b4888ac3a6a7dbdf2d32a2350f8e912",
+      "storedBytes": 135274,
+      "storedSha256": "9dfd90b52647df663d982940c0b919b2cd1d4e27818b7273c4abb4a6b79ae1e2"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-az-1440-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 79332,
+      "originalSha256": "8b03072876033c1229360afbd4fbbc98f8ae44f59841700279a06375cc1aecaf",
+      "storedBytes": 72754,
+      "storedSha256": "5b8fa2c9c3eaa0c96fc71ea4523261be1a5f9335936aa3b731bb46e489a4d5b3"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-az-320-empty.png.raw-original.gz",
+      "originalBytes": 65306,
+      "originalSha256": "b095296e673d0daae8bc33575492a6cd9620ce53bacab8dc11c8af735753eb89",
+      "storedBytes": 64135,
+      "storedSha256": "871a152a5fb53b7659a527d094c7ae4ae2b24d622d5d4bae3544d8ae6eb6487b"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-az-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 55192,
+      "originalSha256": "5b32d0f6585f17e2cbab75673b04dc8be3c7cb3946a05c564f304556f7927721",
+      "storedBytes": 53533,
+      "storedSha256": "945cde1cd368460057e976c1d69c5312ea9990ce5330992ba8591be62b2998df"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-az-320-measured-zero.png.raw-original.gz",
+      "originalBytes": 65369,
+      "originalSha256": "313b27f3ef8ce51f6f14a3e51a6bfe6a31a46cf422cf4c78c2e79b0d46301e3b",
+      "storedBytes": 64056,
+      "storedSha256": "2db26dd21d80c28938903d92c2630ce5a8abf77d60350a915339e01312b554c1"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-az-320-nonempty.png.raw-original.gz",
+      "originalBytes": 63718,
+      "originalSha256": "8278b6028e24809beb389d95331b9ffc201c2c2c8f9e2f8f746e1a58b42b00f3",
+      "storedBytes": 62576,
+      "storedSha256": "061624cc64dd2525dd794ee33f9c042e7e60a4eea2e1c6e14d72510b8d546715"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-az-320-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 52590,
+      "originalSha256": "c48826072cb1da9022f83b5992eb52b70e39f74d60d83926e2bfbadc8e43fe71",
+      "storedBytes": 44728,
+      "storedSha256": "1b616299c59556364e6ecfbc57d70970700e50f71c6cf5c10961ba28270f4ae5"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-az-320-unresolved-no-sample.png.raw-original.gz",
+      "originalBytes": 64853,
+      "originalSha256": "6a62e2b422becd7d72458968957f28516bac0ab904b3695973327809205fed4e",
+      "storedBytes": 63506,
+      "storedSha256": "20f6b5bcc92ad13bd4ebab0be1850486f66a39fd875b62704a45f2492ec7b25f"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-az-768-keyboard-table.png.raw-original.gz",
+      "originalBytes": 93446,
+      "originalSha256": "b73fc9a6cd8b0dbe59115151e4f34bb06f509a2bd60deac623194aa6a2cfae1b",
+      "storedBytes": 88630,
+      "storedSha256": "7722ab694a605d6afc1cebc0cb1d33b61c43493d4dd98d358ac987943e4b12a0"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-az-768-nonempty.png.raw-original.gz",
+      "originalBytes": 85783,
+      "originalSha256": "cbd8caac555ec2e1e7cc630b43f1c5feec4eb916d79b43d2e7289b8d059fea25",
+      "storedBytes": 83219,
+      "storedSha256": "278b94d29012cdb8b23684ac9f2a5a7494b8b46682749e9e4b977f81b44b9093"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-az-768-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 80132,
+      "originalSha256": "24aae6f0702bd680339331f0bdb3f6a2d5a1ce345c2322fe7d92c00a26f87ff3",
+      "storedBytes": 72715,
+      "storedSha256": "a58dcd94b25e0cb356c54ed8df903d430049bd5e9a2d85623a36618871645fc4"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-en-1440-keyboard-table.png.raw-original.gz",
+      "originalBytes": 129278,
+      "originalSha256": "e40f87b57643542a11b813e9897d948f902aaf88e9e0526d0c917abadb023d19",
+      "storedBytes": 122593,
+      "storedSha256": "4c56a649f0b160dee2f5566aa2fef50300efada55fce691ba4b857606d7d7d32"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-en-1440-nonempty.png.raw-original.gz",
+      "originalBytes": 133495,
+      "originalSha256": "596911c419c20a602b98c423641e0a15976905f89ea58693d4723d99dc244669",
+      "storedBytes": 128148,
+      "storedSha256": "347296143e3f6c2bf378ab995819ced40fd4f8a34db91d4d03fbaa337ada3d73"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-en-1440-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 75993,
+      "originalSha256": "4bb8afce67e80bfb55248628048a721ba08a29fac30ddd5aa03d1e2eb20c6977",
+      "storedBytes": 69666,
+      "storedSha256": "d2453b3ccef35f0f183f63029706dbf6aaf94a2652475702f1ed51a91b418980"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-en-320-empty.png.raw-original.gz",
+      "originalBytes": 58518,
+      "originalSha256": "9a5f2c56eb2854f3eb40341c6b662fcee5230318edfbdeabe5a5f81acb8aa440",
+      "storedBytes": 57612,
+      "storedSha256": "7643a3522d6cfb2b8316891514ba0a45225dd08a512811f41d3f5611c90c8c52"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-en-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 55087,
+      "originalSha256": "610c2a65b96117e8402a2145d9a2474ce5031833ba0a336fe35ff9f078064f44",
+      "storedBytes": 52886,
+      "storedSha256": "12c4f45e47e908bbc65d89a984aa1d6effd6910a79b0de726faaaba24adb830f"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-en-320-measured-zero.png.raw-original.gz",
+      "originalBytes": 58835,
+      "originalSha256": "b131b0fd80169c28654209483d562be66b978b5ba7f91b3cff7352f5757990e9",
+      "storedBytes": 57879,
+      "storedSha256": "c8d2a705858de7a001f1bb462235c61ce1deccc9d197f2bbeaba621e5e48bf0b"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-en-320-nonempty.png.raw-original.gz",
+      "originalBytes": 59227,
+      "originalSha256": "39b6e2fed8937fcf882cb9c5dc6d7f245053f48d5ac81e2c6eb1459486cded8c",
+      "storedBytes": 58402,
+      "storedSha256": "7843c5c02b4b0800e3e0e430040ca20596e70f4df96be0bb9456c90a081355a5"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-en-320-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 49118,
+      "originalSha256": "7d6a801baf45d8247272ef4b55c1037cdee06e0e157faac51cded6383250cfd4",
+      "storedBytes": 41785,
+      "storedSha256": "2489b582aa626279f82680433e565c8e0b5e4a02b5dee13d3e0333b1ad2e14d8"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-en-320-unresolved-no-sample.png.raw-original.gz",
+      "originalBytes": 58163,
+      "originalSha256": "a92da78bed4d4ae78ed88d00e6e7f3cb893763b3b1c92a6cc0da78b8116fa858",
+      "storedBytes": 57075,
+      "storedSha256": "a573eb8e56b23cf3478ffe0780e77062f1a305b06cce6528b14bad558ce22f63"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-en-768-keyboard-table.png.raw-original.gz",
+      "originalBytes": 92189,
+      "originalSha256": "f28a91d96b635f131147be492b6125a6e928f4e3b5a322a86f2f20abb5685044",
+      "storedBytes": 87409,
+      "storedSha256": "6ed941e4ee0f486e970a81b5cfc764c8f482cc7f58127d8296473967633ec602"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-en-768-nonempty.png.raw-original.gz",
+      "originalBytes": 81218,
+      "originalSha256": "5761d98618efdd075455f917dc1e61c0eec426e174fadea81c985df91526aa66",
+      "storedBytes": 78403,
+      "storedSha256": "8d309b0fcbf629aca76e4255dfb8149f656e0f3f608673a8c8e24222e5a2ce45"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-en-768-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 78793,
+      "originalSha256": "b5157f2a1879ea86edf5f96478d7245f33b96180a6b9ec8fa5300f2e6b416ab1",
+      "storedBytes": 71553,
+      "storedSha256": "b04393819f89a15b8749893534288258cb81076e5a78b6573e6e12c348b20acf"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-ru-1440-keyboard-table.png.raw-original.gz",
+      "originalBytes": 181983,
+      "originalSha256": "9296a637f0a8e900ba0ad2ee225e8db94231da28d39e4de2917dfdc451cfa624",
+      "storedBytes": 175365,
+      "storedSha256": "ab789337e052484f51b98c435fd4777a23b64540ed00739b53f382f072b31e4f"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-ru-1440-nonempty.png.raw-original.gz",
+      "originalBytes": 169690,
+      "originalSha256": "383ccdeaa5ee8554f5e87aacdd022aef5c55a713c3618b1a95f100e40db4f530",
+      "storedBytes": 164391,
+      "storedSha256": "7599b1e4686d5a1247b2e02368fb08da5c9edb8b15135f28d5ae823b5ce6b8b0"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-ru-1440-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 129851,
+      "originalSha256": "fa08c806716d094cb226b869ba268d6c7f585cbd6cf0f5017b3dfe576cbefaa5",
+      "storedBytes": 122663,
+      "storedSha256": "6245ef8be6c31243ece5aa8c77bd6a651296d51b78d4e5216c8471880fd8df23"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-ru-320-empty.png.raw-original.gz",
+      "originalBytes": 69347,
+      "originalSha256": "062595134bf3a1690044aa3c56aea937f8b673d8c3efd8f5662ef85c51869123",
+      "storedBytes": 68049,
+      "storedSha256": "19a615fba74a03602258373b19a897c8e703559f54bdd7618b3542865244aad6"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-ru-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 63561,
+      "originalSha256": "afe65e293bcfcfdb43dce0bbf80ff72eb15f7113aacf3357092865396434c9a4",
+      "storedBytes": 62016,
+      "storedSha256": "12fdb0d8860985a1ce73d7d754106d6d27c2dee1180ea1d34eb329335bda3e74"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-ru-320-measured-zero.png.raw-original.gz",
+      "originalBytes": 69591,
+      "originalSha256": "6e4954e93b32164d7aa7b667a38ebae3ebe3b9079ddc225ee9e1feb4ec1f93ba",
+      "storedBytes": 68355,
+      "storedSha256": "50f43e013820d08907690de6cc79c6758f672695062620697e5616a48cd981db"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-ru-320-nonempty.png.raw-original.gz",
+      "originalBytes": 68272,
+      "originalSha256": "32b224c4dbf003d10e351ac22943248876a799225d8a2e339f4396b0e7562529",
+      "storedBytes": 67306,
+      "storedSha256": "e3e2ab1ef759ed1466bb56efec7c1bf2f78fed766ba50daf5559733f73976010"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-ru-320-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 61369,
+      "originalSha256": "304b57489fbe9f7b735dd1ed5bc1d7e7c3ac2967fbb65df418fc2bdad36e82b2",
+      "storedBytes": 51606,
+      "storedSha256": "18482e7ff29b554664fa51697532078451172f7bbedee9fde73833704a99c0f2"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-ru-320-unresolved-no-sample.png.raw-original.gz",
+      "originalBytes": 68983,
+      "originalSha256": "2472da82456ba3b35a69620b4063e28c8d368e70d7e22218d17d5714eda8f208",
+      "storedBytes": 67597,
+      "storedSha256": "0a731a73ee295bae3393f2ce5d7eed87327fae22ce56a7514e0923227e52b661"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-ru-768-keyboard-table.png.raw-original.gz",
+      "originalBytes": 131059,
+      "originalSha256": "c71d4ffb1fc08d69f97b2b3a4b1a286c0731146f9ec69b850232c35f558ddba1",
+      "storedBytes": 123891,
+      "storedSha256": "878785e1fe904d49af1964306e500ba8a24fdf3de75d58765b1e494701676bb7"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-ru-768-nonempty.png.raw-original.gz",
+      "originalBytes": 113811,
+      "originalSha256": "b8570cd2a1bb08441beccbd1a2b5ff575ca664538beb79b068c3985c6eb13eac",
+      "storedBytes": 111239,
+      "storedSha256": "64ba6160a2009d55aee4611b6346c81f251ece3d196cfd085c11f8cf9e48b9fd"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-pngs-for-visual-review/report-standard-100-ru-768-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 124729,
+      "originalSha256": "9194b56d7549c8cdbcb82cf12f375e1579d98d29a75d2ec75a59d21878296298",
+      "storedBytes": 115487,
+      "storedSha256": "2df19016ed70a9341ff1507c9bb6492161cd5233006dc2619963a99d007ce1cf"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-report-commit-api.json.raw-original.gz",
+      "originalBytes": 8333,
+      "originalSha256": "992afb80df99da07771ce066a35b5a93f41dc40e7e7b5adba8edfe5f71d949ce",
+      "storedBytes": 2464,
+      "storedSha256": "d3b008d64459271fa1b98fd64c4ff6e3e1110cbbac57989cd7c8560431fa41d3"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/actual-tsc-exit-code.raw-original.gz",
+      "originalBytes": 2,
+      "originalSha256": "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3",
+      "storedBytes": 22,
+      "storedSha256": "6e08a71af69ad2fa0122936c77c0ba1d20f2b26808cfc5ea068985fb8264bf05"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/artifact-11665383414-original.zip",
+      "originalBytes": 8357050,
+      "originalSha256": "b379e436e00d64d50ce2ee1dadcda86c7085d58a87f0a053e490fb1ff3f9a011",
+      "storedBytes": 8357050,
+      "storedSha256": "b379e436e00d64d50ce2ee1dadcda86c7085d58a87f0a053e490fb1ff3f9a011"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/artifact-11665667562-original.zip",
+      "originalBytes": 6591373,
+      "originalSha256": "d2d57ffabf169745862c7879fc43390810ee91087efd8ed142f1d71aec0b7a2a",
+      "storedBytes": 6591373,
+      "storedSha256": "d2d57ffabf169745862c7879fc43390810ee91087efd8ed142f1d71aec0b7a2a"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/artifact-11665783306-original.zip",
+      "originalBytes": 20010,
+      "originalSha256": "1e679fb229bd7701a71816a0866388a59c881d550da939bd50c4ae5b2baf8a78",
+      "storedBytes": 20010,
+      "storedSha256": "1e679fb229bd7701a71816a0866388a59c881d550da939bd50c4ae5b2baf8a78"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/artifact-11666281504-original.zip",
+      "originalBytes": 3807356,
+      "originalSha256": "186ee42b9058aa8369501564ceb923a73434168acbae29ca2d1c61e7c8993c50",
+      "storedBytes": 3807356,
+      "storedSha256": "186ee42b9058aa8369501564ceb923a73434168acbae29ca2d1c61e7c8993c50"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/artifacts-api-original.json.gz",
+      "originalBytes": 795,
+      "originalSha256": "f1e3460af99fe1e5830d2b88e1aca66f74372bdc194b4bd6e8b6b43d445b4ae5",
+      "storedBytes": 795,
+      "storedSha256": "f1e3460af99fe1e5830d2b88e1aca66f74372bdc194b4bd6e8b6b43d445b4ae5"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/classification-original-pngs-for-visual-review/classification-native-200-az-320-appeal-empty-reason.png.raw-original.gz",
+      "originalBytes": 170713,
+      "originalSha256": "a9e167ddd4601c12bef486f141c90b3dfb4e8142568b26c98ac7b03a098a3090",
+      "storedBytes": 165141,
+      "storedSha256": "c4d7b39086fcd9d095eda58e658a95c9d3c5656397e985562f18f70fecdff595"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/classification-original-pngs-for-visual-review/classification-native-200-az-320-appeal-recorded.png.raw-original.gz",
+      "originalBytes": 105831,
+      "originalSha256": "a1db1ade57f29ede34e3ec485488d57adf6f8de8f6b5a0d58f293298fb4245d1",
+      "storedBytes": 96788,
+      "storedSha256": "65116ab5081bec06039f953667ad0ecdfe1a68f11431f6e764c59c4cb307788c"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/classification-original-pngs-for-visual-review/classification-native-200-az-320-classification-empty-reason.png.raw-original.gz",
+      "originalBytes": 169596,
+      "originalSha256": "73be1a225c81443d436e929e1964da92c7f77e04144b7fd7d81852f1403c8b75",
+      "storedBytes": 163602,
+      "storedSha256": "17020a306778d5a6ea5ec4c2ce2d19e4bf5f9b768794ad8d17e41eefa9c4af77"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/classification-original-pngs-for-visual-review/classification-native-200-az-320-classification-recorded.png.raw-original.gz",
+      "originalBytes": 95264,
+      "originalSha256": "577a04a1a5c794df5fc9e178b1418e533dca667c8179d3a1704c0132549b4bcf",
+      "storedBytes": 87910,
+      "storedSha256": "78024b670e05c1acd5d4aa2ca79950834e374492a52ddb8198d8015ba1c810a8"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/classification-original-pngs-for-visual-review/classification-native-200-az-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 84156,
+      "originalSha256": "4c3399c28d7db5b7daa3efe93c652ba22050915f77253ff6a381a87ac0fbba03",
+      "storedBytes": 78676,
+      "storedSha256": "c2cc54c900c1af1836834ab0b38793e8b35ddb418b668f48747470dcdae59bff"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/classification-original-pngs-for-visual-review/classification-native-200-en-320-appeal-empty-reason.png.raw-original.gz",
+      "originalBytes": 165840,
+      "originalSha256": "99d195e391b7e3711f9457ac93020545e4ace4d59a743c21b31e6190179f957d",
+      "storedBytes": 159909,
+      "storedSha256": "d80de52da08ffb642beb81adae5d850b9746d9d822b29ca9c1a34f1cd0b030d1"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/classification-original-pngs-for-visual-review/classification-native-200-en-320-appeal-recorded.png.raw-original.gz",
+      "originalBytes": 143928,
+      "originalSha256": "1ee8862171521324ef319cb7935da84d5e8e7bc5c715a5c45ac16f367b42c695",
+      "storedBytes": 136015,
+      "storedSha256": "cc2d2ff96d507e9eb2d93d78df7a50af46f833b477536c76100ed394baf69c14"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/classification-original-pngs-for-visual-review/classification-native-200-en-320-classification-empty-reason.png.raw-original.gz",
+      "originalBytes": 166110,
+      "originalSha256": "83267430785851ac39a82a65c704e7684d1fd6e8708d5dbd961c8dfe713cf17f",
+      "storedBytes": 160206,
+      "storedSha256": "99b40c2c0f06be8f47e26d8e0a3a4c85b38675e4de48325f7ab74dd023066db5"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/classification-original-pngs-for-visual-review/classification-native-200-en-320-classification-recorded.png.raw-original.gz",
+      "originalBytes": 145118,
+      "originalSha256": "ec2bc3f02b2271770d79161f248eea3186bea6f6560a69b39ea634d0a01763d4",
+      "storedBytes": 136829,
+      "storedSha256": "c8dda26380438f92c8267dc3b534208a28e9906e93f4d8f5f04552f95c78acec"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/classification-original-pngs-for-visual-review/classification-native-200-en-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 130795,
+      "originalSha256": "eb97b9246957f9f987c5c903f5dc975106ebdcb58b01efa1d2273759beabb0d4",
+      "storedBytes": 122663,
+      "storedSha256": "5f082b4cbe1a33a0322741b67406a82c777ba22d096c0402f38d011e74ccb12f"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/classification-original-pngs-for-visual-review/classification-native-200-ru-320-appeal-empty-reason.png.raw-original.gz",
+      "originalBytes": 152318,
+      "originalSha256": "7488643cb1155410da18f25de8a5b45696ccfce1d773eab5521ae783162b157a",
+      "storedBytes": 147427,
+      "storedSha256": "9de8c65fedd59018e234d60559dc4bff9b839f02ecde79a3da20488b6a1d62e9"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/classification-original-pngs-for-visual-review/classification-native-200-ru-320-appeal-recorded.png.raw-original.gz",
+      "originalBytes": 103216,
+      "originalSha256": "52a4d33152bd09bfd2d8d877efcdf242d4d3650aca55646f725ecb1472dbf37e",
+      "storedBytes": 97229,
+      "storedSha256": "f587968107c6223e61c5293429508d50e16425ac73ade49bf4f2eca2a490d693"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/classification-original-pngs-for-visual-review/classification-native-200-ru-320-classification-empty-reason.png.raw-original.gz",
+      "originalBytes": 153935,
+      "originalSha256": "4473e5ca141625e1cfe6d89f4d5c3fe4ef4e1b8744ced843524f109007bf8a7a",
+      "storedBytes": 149236,
+      "storedSha256": "eda5164522b02e2b42f1583fc73f0c5aed3b8ecfa4f4184c7281211a4c6b5ab2"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/classification-original-pngs-for-visual-review/classification-native-200-ru-320-classification-recorded.png.raw-original.gz",
+      "originalBytes": 103374,
+      "originalSha256": "ea7f6cf64f6b20f0232d2dd981e2c1a097937e75fda382b96f4c9e10d4ce102e",
+      "storedBytes": 96679,
+      "storedSha256": "25edb0c8d20227fcf11fdbb3fc4712317e215f5eedc75867128a9777331fe8b0"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/classification-original-pngs-for-visual-review/classification-native-200-ru-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 91834,
+      "originalSha256": "fdab75e9bdf26938ba4f039dcfece7cca36b553b9b0e3ef31e2ba82eb8c41b97",
+      "storedBytes": 86303,
+      "storedSha256": "0fd5f3e4f2d6ef43fc0347a972b230788fb4e6e2cbe63be49615ad81b5c345b5"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/classification-original-pngs-for-visual-review/classification-standard-100-az-1440-complete.png.raw-original.gz",
+      "originalBytes": 143574,
+      "originalSha256": "42495067e19c75def83c8746648f4e9fc18b28fa6decbb35d328dd418d45b748",
+      "storedBytes": 137950,
+      "storedSha256": "3645ecc3a6694ba6c99105f60b804cc59de474f2b5a580d3a0d83f908353b0b9"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/classification-original-pngs-for-visual-review/classification-standard-100-az-320-complete.png.raw-original.gz",
+      "originalBytes": 32749,
+      "originalSha256": "d075fe608adc471880ce4dae4dd7fb2300b8ab60b26b3a5a47b133c21bf1c08d",
+      "storedBytes": 30937,
+      "storedSha256": "60d0ca3ef4877fba8dd69113ea6fe2847d60c47fc59001c1c428eb65a9640f81"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/classification-original-pngs-for-visual-review/classification-standard-100-az-768-complete.png.raw-original.gz",
+      "originalBytes": 102551,
+      "originalSha256": "940b4fc2d99b49845670de116dc8bcc52469e7e58514b9a19c660d2b0977474c",
+      "storedBytes": 98756,
+      "storedSha256": "dea516c7b4e21ee6bcd1df689d61d64d20a5a9cd59cf80477e3f33a92fe26e8b"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/classification-original-pngs-for-visual-review/classification-standard-100-en-1440-complete.png.raw-original.gz",
+      "originalBytes": 138136,
+      "originalSha256": "31d5f6b3bb7e97b5feffbcb42a495ea877e42fc761e34f0933143e336ab52190",
+      "storedBytes": 133049,
+      "storedSha256": "8a4c20be8e67ad44e44c9515ffc56233788b6a1208a45433539b9ae6cd1e8532"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/classification-original-pngs-for-visual-review/classification-standard-100-en-320-complete.png.raw-original.gz",
+      "originalBytes": 51455,
+      "originalSha256": "20689b0c30d4b356e333956c0aa073842cde0bd41d4642e321a5a16184322c93",
+      "storedBytes": 45518,
+      "storedSha256": "6169fd1f6faeb8a13f172dbedf1570a0f9ad3a3cf6ab5ec2109fb9525c711640"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/classification-original-pngs-for-visual-review/classification-standard-100-en-768-complete.png.raw-original.gz",
+      "originalBytes": 99846,
+      "originalSha256": "e72e8912a191ba99649b34fd22f31bb1046a6efdb1bd6396703798abded8c2f4",
+      "storedBytes": 96265,
+      "storedSha256": "404113596195060d04110ebbd9d48f9fbea134b22bb1f8105d2c6209389e664a"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/classification-original-pngs-for-visual-review/classification-standard-100-ru-1440-complete.png.raw-original.gz",
+      "originalBytes": 179995,
+      "originalSha256": "e2bf3f8c1744ff39114f91fd861529ead91a0948dfa700ff96e1f3aba1158440",
+      "storedBytes": 175362,
+      "storedSha256": "013b5a3f1c4713829530f3e2240533e7578d46a6bf92bab4b0395c204a851809"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/classification-original-pngs-for-visual-review/classification-standard-100-ru-320-complete.png.raw-original.gz",
+      "originalBytes": 42263,
+      "originalSha256": "76a75146d965647137d53d45877d5fc16fa4f89b3b19961a6dc86b8db28e935d",
+      "storedBytes": 38378,
+      "storedSha256": "f56f57b8d1bd9a804f44bab8c45d37d304084940a3c8c58239642e4fe8305123"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/classification-original-pngs-for-visual-review/classification-standard-100-ru-768-complete.png.raw-original.gz",
+      "originalBytes": 125326,
+      "originalSha256": "8dcd821d1042ca045288887a7041b58a6529e71d06270d8aad217c6973f65fcd",
+      "storedBytes": 122852,
+      "storedSha256": "cdb05cded814c5af555660b7c8b25da8c538ab47d94d145c9929b365e500e9b5"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/classification-original-pngs-for-visual-review/native-zoom-az-control-100.png.raw-original.gz",
+      "originalBytes": 169113,
+      "originalSha256": "6ba94baf556c1036af7b56459275ddad5a7631bf673f9487af4f690161dfecdd",
+      "storedBytes": 161020,
+      "storedSha256": "f4c886d5c962ba5df958f9c72bbc1686366a2b330f7c4a0b9b2ecc5216918e59"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/classification-original-pngs-for-visual-review/native-zoom-az-observed-200.png.raw-original.gz",
+      "originalBytes": 169944,
+      "originalSha256": "b6cf44c4e8221a2f1f4051d50c63e3d7b012063da2ea1050862fa94ece33f01e",
+      "storedBytes": 165045,
+      "storedSha256": "d4b2200e09855ed46b685a9f12b765383015d0c4cbcc983ffb96fed603202c1c"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/classification-original-pngs-for-visual-review/native-zoom-en-control-100.png.raw-original.gz",
+      "originalBytes": 193352,
+      "originalSha256": "41fd7b1eaa758d938432744af2aeb801848324a92cb3c9a0ae997c42e5c64289",
+      "storedBytes": 185988,
+      "storedSha256": "e387be3ccae7184abdf617d4718cd09ca43173a3f7aff0c9bf3473392f7198f3"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/classification-original-pngs-for-visual-review/native-zoom-en-observed-200.png.raw-original.gz",
+      "originalBytes": 178486,
+      "originalSha256": "16083c1a523e2c2ad22bdf7fc23aa75e1ca284af5698313334404e5766df9cc6",
+      "storedBytes": 173312,
+      "storedSha256": "ea15ee92c23a2182f50e884c380973e75216f23c2324f94d39c3f8a4ca419cbd"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/classification-original-pngs-for-visual-review/native-zoom-ru-control-100.png.raw-original.gz",
+      "originalBytes": 183723,
+      "originalSha256": "0244b9ae3574236a78d6d88ad4b4a9c3bf2cb554b6255da80ef9680b70670316",
+      "storedBytes": 176029,
+      "storedSha256": "96d4fc61f64e2842e85b9f4583992bcfb191f2e84da87864cb37f9406feb0d23"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/classification-original-pngs-for-visual-review/native-zoom-ru-observed-200.png.raw-original.gz",
+      "originalBytes": 166404,
+      "originalSha256": "e5c5e5953666dac8c601d687f41731ef159bcff4abb461695b4259d7cdfbf0f8",
+      "storedBytes": 161204,
+      "storedSha256": "2f466d98f6b073ae322adf26dadba94145fd870cc29fcd0eefd02e7d67ad470e"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/finite-capture-summary.json.raw-original.gz",
+      "originalBytes": 21144,
+      "originalSha256": "a9c676d04866ed24214f7d2171648707ee9ecc40d93debfc570b5f3c92fbb555",
+      "storedBytes": 2870,
+      "storedSha256": "28672cf5fdb203851eb1e80a226482bdaa69ba890587a29705072f2770f9ee00"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/job-114180278184-original.txt.gz",
+      "originalBytes": 35237,
+      "originalSha256": "8bf290ea1ee4e489306d8f0d09d072b2c6be361e7a7be5205984119a5d87acad",
+      "storedBytes": 35237,
+      "storedSha256": "8bf290ea1ee4e489306d8f0d09d072b2c6be361e7a7be5205984119a5d87acad"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/job-114180278278-original.txt.gz",
+      "originalBytes": 29075,
+      "originalSha256": "452c2da1fdab8d4a88b1d558424d2c4a43c06237afeca608435de87ab93e541b",
+      "storedBytes": 29075,
+      "storedSha256": "452c2da1fdab8d4a88b1d558424d2c4a43c06237afeca608435de87ab93e541b"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/job-114180278301-original.txt.gz",
+      "originalBytes": 24683,
+      "originalSha256": "d421002ff44c07eea5f15fe49c91bed74d56ed946a7ca9038bd56dd340a303c5",
+      "storedBytes": 24683,
+      "storedSha256": "d421002ff44c07eea5f15fe49c91bed74d56ed946a7ca9038bd56dd340a303c5"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/job-114180278324-original.txt.gz",
+      "originalBytes": 23338,
+      "originalSha256": "087dd312ebf3b2db754d910ad36895b9369b5233eb0bf6ed225056cc929e7382",
+      "storedBytes": 23338,
+      "storedSha256": "087dd312ebf3b2db754d910ad36895b9369b5233eb0bf6ed225056cc929e7382"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/job-114180278361-original.txt.gz",
+      "originalBytes": 21240,
+      "originalSha256": "2739b7c1086bcbef14c477e035689d8a0d9242a7a4ab12dc48529a36bfdda4cf",
+      "storedBytes": 21240,
+      "storedSha256": "2739b7c1086bcbef14c477e035689d8a0d9242a7a4ab12dc48529a36bfdda4cf"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/job-114180278362-original.txt.gz",
+      "originalBytes": 19173,
+      "originalSha256": "ecfb1ce8cd2a75b4d004c011aa5bd58643e3c900c218d47a18148e8c7c9b74d8",
+      "storedBytes": 19173,
+      "storedSha256": "ecfb1ce8cd2a75b4d004c011aa5bd58643e3c900c218d47a18148e8c7c9b74d8"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/jobs-api-original.json.gz",
+      "originalBytes": 2291,
+      "originalSha256": "31a2a95218c5c8827902b9d3b30491e0b80222fcde6d1554adf3f5c9a6a9644b",
+      "storedBytes": 2291,
+      "storedSha256": "31a2a95218c5c8827902b9d3b30491e0b80222fcde6d1554adf3f5c9a6a9644b"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/root-all-six-checkout-pg-build-content-review-v2.json.raw-original.gz",
+      "originalBytes": 2065,
+      "originalSha256": "8cd64662d6224174982d060251ce7b4c6baa58dff0fbccbd731ee31f883d38a5",
+      "storedBytes": 800,
+      "storedSha256": "364fc7fcd555b6bdb5430a30e23f1e0771bad71c11ed883b6d8d9e39639e8ebd"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/root-complete-classification-content-review.json.raw-original.gz",
+      "originalBytes": 6893,
+      "originalSha256": "6041f4c9decd04747d634e82f6a169937364024f965d01a602d331342f1c1557",
+      "storedBytes": 1612,
+      "storedSha256": "e5e0df06ea81cb3ffe72d0b615e8fdad4b57581b270c55806b21b8b8b8d72929"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/root-complete-compiler-gate-review.json.raw-original.gz",
+      "originalBytes": 3726,
+      "originalSha256": "e0eb24936b8ee2d0bd64504e692c5cc974910dab75d8557b40179c191562c6d3",
+      "storedBytes": 1349,
+      "storedSha256": "b32a25f361a04e76d37d0a81119210470cdc7d85814e1f1f5d3df04d3005ea42"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/root-complete-report-content-review.json.raw-original.gz",
+      "originalBytes": 5614,
+      "originalSha256": "2477464e4fcb90cc6328fafbe4c3788e9f145a9f9de0b544e57ce119eb9cb851",
+      "storedBytes": 1585,
+      "storedSha256": "faf61ba952b6453e2011f8b3f04a7bd9be0ad6a9fce64db664424a7ad1b793d9"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/root-current-report-hr-pixels-qualification.json.raw-original.gz",
+      "originalBytes": 955,
+      "originalSha256": "68d50d997a6f8bbd3292767a7dd13dabeae7362e5c50fa797dfdfa1299115fa6",
+      "storedBytes": 572,
+      "storedSha256": "d1733535e21922074a6b465734df1bc2ae4d77706cb3622b010a2c14e78847e4"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/root-final-six-source-with-peer-admission.json.raw-original.gz",
+      "originalBytes": 616,
+      "originalSha256": "7720e207f8740a4cb063182178cf1397d79d4a6fb1ba0ddaf95e3e8bd2f12131",
+      "storedBytes": 440,
+      "storedSha256": "efe00772c28fd3e53ae764c42937367f50ecb378136840d2af9a042cc3b64c66"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/hrm-employee-correction-prefill-6f58-source-six-root/run-api-original.json.gz",
+      "originalBytes": 1536,
+      "originalSha256": "9fcc266a10d2bb6d1055f0bfc289f4afbecd33990b8c25ad5aafc5724357c70e",
+      "storedBytes": 1536,
+      "storedSha256": "9fcc266a10d2bb6d1055f0bfc289f4afbecd33990b8c25ad5aafc5724357c70e"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/actual-draft-candidate-tree-binding-peer-review.json.raw-original.gz",
+      "originalBytes": 597,
+      "originalSha256": "80958eae5ec3f2cb80dde046b6c5dcd8ec8c872609cf8d2d6d9b8a3da0760178",
+      "storedBytes": 407,
+      "storedSha256": "b012cfee396e06533bbd2c0439e0f7d8c37854bd42c0df2cf76a522f3dd5386e"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/all-source-six-originals-readers-errors-review-inventory.json.raw-original.gz",
+      "originalBytes": 47898,
+      "originalSha256": "f0fa4f13114c25196279216540326643c61a0116dad484beab11beff689fa67c",
+      "storedBytes": 9140,
+      "storedSha256": "984c0a960f7952f91cc15f7fbce8e8efa0dea3cd1967549caa3646bf29fbade4"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/completed-source-six/actual-full-tsc-output.log.raw-original.gz",
+      "originalBytes": 179299,
+      "originalSha256": "b6b9ee71a33aa9f683f81b2a4879597b63099a4d23ae794e1f71c0ba39536df6",
+      "storedBytes": 19289,
+      "storedSha256": "9392db77de06cf9a55b83941c9f684f4b51f5ead1d2e2ac91ace9c3ed0ab2e40"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/completed-source-six/actual-tsc-exit-code.raw-original.gz",
+      "originalBytes": 2,
+      "originalSha256": "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3",
+      "storedBytes": 22,
+      "storedSha256": "6e08a71af69ad2fa0122936c77c0ba1d20f2b26808cfc5ea068985fb8264bf05"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/completed-source-six/artifact-11665383414-original.zip",
+      "originalBytes": 8357050,
+      "originalSha256": "b379e436e00d64d50ce2ee1dadcda86c7085d58a87f0a053e490fb1ff3f9a011",
+      "storedBytes": 8357050,
+      "storedSha256": "b379e436e00d64d50ce2ee1dadcda86c7085d58a87f0a053e490fb1ff3f9a011"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/completed-source-six/artifact-11665667562-original.zip",
+      "originalBytes": 6591373,
+      "originalSha256": "d2d57ffabf169745862c7879fc43390810ee91087efd8ed142f1d71aec0b7a2a",
+      "storedBytes": 6591373,
+      "storedSha256": "d2d57ffabf169745862c7879fc43390810ee91087efd8ed142f1d71aec0b7a2a"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/completed-source-six/artifact-11665783306-original.zip",
+      "originalBytes": 20010,
+      "originalSha256": "1e679fb229bd7701a71816a0866388a59c881d550da939bd50c4ae5b2baf8a78",
+      "storedBytes": 20010,
+      "storedSha256": "1e679fb229bd7701a71816a0866388a59c881d550da939bd50c4ae5b2baf8a78"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/completed-source-six/artifact-11666281504-original.zip",
+      "originalBytes": 3807356,
+      "originalSha256": "186ee42b9058aa8369501564ceb923a73434168acbae29ca2d1c61e7c8993c50",
+      "storedBytes": 3807356,
+      "storedSha256": "186ee42b9058aa8369501564ceb923a73434168acbae29ca2d1c61e7c8993c50"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/completed-source-six/artifacts-api-original.json.gz",
+      "originalBytes": 795,
+      "originalSha256": "f1e3460af99fe1e5830d2b88e1aca66f74372bdc194b4bd6e8b6b43d445b4ae5",
+      "storedBytes": 795,
+      "storedSha256": "f1e3460af99fe1e5830d2b88e1aca66f74372bdc194b4bd6e8b6b43d445b4ae5"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/completed-source-six/finite-capture-summary.json.raw-original.gz",
+      "originalBytes": 21144,
+      "originalSha256": "2834f520a817a116533e0c5c67b8dfcb134e4d2af1d768cc842f7b28e4c1e455",
+      "storedBytes": 2869,
+      "storedSha256": "47692c3bbf0fd05f852593f4356b3248d8ca774d82d6647a5a1974901c83a243"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/completed-source-six/job-114180278184-original.txt.gz",
+      "originalBytes": 35237,
+      "originalSha256": "8bf290ea1ee4e489306d8f0d09d072b2c6be361e7a7be5205984119a5d87acad",
+      "storedBytes": 35237,
+      "storedSha256": "8bf290ea1ee4e489306d8f0d09d072b2c6be361e7a7be5205984119a5d87acad"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/completed-source-six/job-114180278278-original.txt.gz",
+      "originalBytes": 29075,
+      "originalSha256": "452c2da1fdab8d4a88b1d558424d2c4a43c06237afeca608435de87ab93e541b",
+      "storedBytes": 29075,
+      "storedSha256": "452c2da1fdab8d4a88b1d558424d2c4a43c06237afeca608435de87ab93e541b"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/completed-source-six/job-114180278301-original.txt.gz",
+      "originalBytes": 24683,
+      "originalSha256": "d421002ff44c07eea5f15fe49c91bed74d56ed946a7ca9038bd56dd340a303c5",
+      "storedBytes": 24683,
+      "storedSha256": "d421002ff44c07eea5f15fe49c91bed74d56ed946a7ca9038bd56dd340a303c5"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/completed-source-six/job-114180278324-original.txt.gz",
+      "originalBytes": 23338,
+      "originalSha256": "087dd312ebf3b2db754d910ad36895b9369b5233eb0bf6ed225056cc929e7382",
+      "storedBytes": 23338,
+      "storedSha256": "087dd312ebf3b2db754d910ad36895b9369b5233eb0bf6ed225056cc929e7382"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/completed-source-six/job-114180278361-original.txt.gz",
+      "originalBytes": 21240,
+      "originalSha256": "2739b7c1086bcbef14c477e035689d8a0d9242a7a4ab12dc48529a36bfdda4cf",
+      "storedBytes": 21240,
+      "storedSha256": "2739b7c1086bcbef14c477e035689d8a0d9242a7a4ab12dc48529a36bfdda4cf"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/completed-source-six/job-114180278362-original.txt.gz",
+      "originalBytes": 19173,
+      "originalSha256": "ecfb1ce8cd2a75b4d004c011aa5bd58643e3c900c218d47a18148e8c7c9b74d8",
+      "storedBytes": 19173,
+      "storedSha256": "ecfb1ce8cd2a75b4d004c011aa5bd58643e3c900c218d47a18148e8c7c9b74d8"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/completed-source-six/jobs-api-original.json.gz",
+      "originalBytes": 2291,
+      "originalSha256": "31a2a95218c5c8827902b9d3b30491e0b80222fcde6d1554adf3f5c9a6a9644b",
+      "storedBytes": 2291,
+      "storedSha256": "31a2a95218c5c8827902b9d3b30491e0b80222fcde6d1554adf3f5c9a6a9644b"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/completed-source-six/root-complete-compiler-gate-review.json.raw-original.gz",
+      "originalBytes": 3807,
+      "originalSha256": "21b90dfb49f9a0e7760b3b6912f52e5618f3ac360969460c7fcc4a38d88e3b49",
+      "storedBytes": 1358,
+      "storedSha256": "c4a6aa30da1505972bd2f651da474da974d96db8fe72b70357251681e8d47375"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/completed-source-six/run-api-original.json.gz",
+      "originalBytes": 1536,
+      "originalSha256": "9fcc266a10d2bb6d1055f0bfc289f4afbecd33990b8c25ad5aafc5724357c70e",
+      "storedBytes": 1536,
+      "storedSha256": "9fcc266a10d2bb6d1055f0bfc289f4afbecd33990b8c25ad5aafc5724357c70e"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/current-jobs-0935.json.gz",
+      "originalBytes": 2313,
+      "originalSha256": "0b127c536c328b700d0697193c6a49bcec98d0cf8313f91272b4dba1fc3964bb",
+      "storedBytes": 2313,
+      "storedSha256": "0b127c536c328b700d0697193c6a49bcec98d0cf8313f91272b4dba1fc3964bb"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/current-originals-inventory.json.raw-original.gz",
+      "originalBytes": 40539,
+      "originalSha256": "a7ea364cc0837f5b7d92a5c86203e8b107e691e0ff58689f50765b9cf0dbcb73",
+      "storedBytes": 7739,
+      "storedSha256": "ed8de0eaa1e32ed251d78b37d69cecc83463f8a7e2bd52425667704dd8c47576"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/current-run-0935.json.gz",
+      "originalBytes": 1531,
+      "originalSha256": "e1e530eb16426046096172440d741a8c68e24eca3bcac5e66a59b1e7e3e76d43",
+      "storedBytes": 1531,
+      "storedSha256": "e1e530eb16426046096172440d741a8c68e24eca3bcac5e66a59b1e7e3e76d43"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/draft-candidate-first-api-original.json.gz",
+      "originalBytes": 1242,
+      "originalSha256": "a11089fbabf2337c2e13c3e95a8570a5895d37943052a7c10b26e18096427b3b",
+      "storedBytes": 1242,
+      "storedSha256": "a11089fbabf2337c2e13c3e95a8570a5895d37943052a7c10b26e18096427b3b"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/draft-pr-first-api-original.json.gz",
+      "originalBytes": 2714,
+      "originalSha256": "437d002748fef8f9e2e140f222860f29f3a4fa5fa45f283352d3e3730c6a69ab",
+      "storedBytes": 2714,
+      "storedSha256": "437d002748fef8f9e2e140f222860f29f3a4fa5fa45f283352d3e3730c6a69ab"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/exact-6f58-source-six-lane-peer-review.json.raw-original.gz",
+      "originalBytes": 152295,
+      "originalSha256": "bfbcf9c98526683194ed0888daa7d0bcf60e4d0117c3bcd773c39cd9a735c325",
+      "storedBytes": 22726,
+      "storedSha256": "7eb1a6f7f6ec74c57aa906a05fdb18ce2722fd004ea09d0a59d14aab51602cdd"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-peer-candidate-tree-literal-reader-error.json.raw-original.gz",
+      "originalBytes": 845,
+      "originalSha256": "9b5fa5c0595c4c229008ab9c31e943aa6b89b60f2694546886c3ccfd3bc14619",
+      "storedBytes": 518,
+      "storedSha256": "650281516269b5bf66cf32112dfee91cd4a8f5b1030c943df3c1f521a3ab6c39"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-bundle/peer-first-terminal-bundle-content-review.json.raw-original.gz",
+      "originalBytes": 57922,
+      "originalSha256": "737975e910dc6fe20e40fc16122aa71193a2fb78a8638a3a4dd136b43ee80feb",
+      "storedBytes": 9800,
+      "storedSha256": "2c0b5a7882041f5c6b8eb51d3e7f90b0a61ea8d1cad32957a4b852ff2f2ebc2a"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-bundle/whole-job-api.json.gz",
+      "originalBytes": 794,
+      "originalSha256": "a7f26269573405ea9e7dee4786d86879502eb341544d4693ba7f363e49b4dc97",
+      "storedBytes": 794,
+      "storedSha256": "a7f26269573405ea9e7dee4786d86879502eb341544d4693ba7f363e49b4dc97"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-bundle/whole-original-job.log.gz",
+      "originalBytes": 24683,
+      "originalSha256": "d421002ff44c07eea5f15fe49c91bed74d56ed946a7ca9038bd56dd340a303c5",
+      "storedBytes": 24683,
+      "storedSha256": "d421002ff44c07eea5f15fe49c91bed74d56ed946a7ca9038bd56dd340a303c5"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-employee/artifact-11665383414-original.zip",
+      "originalBytes": 8357050,
+      "originalSha256": "b379e436e00d64d50ce2ee1dadcda86c7085d58a87f0a053e490fb1ff3f9a011",
+      "storedBytes": 8357050,
+      "storedSha256": "b379e436e00d64d50ce2ee1dadcda86c7085d58a87f0a053e490fb1ff3f9a011"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-employee/artifacts-api-original.json.gz",
+      "originalBytes": 691,
+      "originalSha256": "3547c95431962285f31a6912c51b4c506c626d887524f99a44755c57d75cdad5",
+      "storedBytes": 691,
+      "storedSha256": "3547c95431962285f31a6912c51b4c506c626d887524f99a44755c57d75cdad5"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-employee/employee-terminal-job-root-summary.json.raw-original.gz",
+      "originalBytes": 332145,
+      "originalSha256": "c3fb028298d868dc400494f15aa3c724d714e1a9e7d25e8aade9486371691b96",
+      "storedBytes": 15798,
+      "storedSha256": "8cb86b65600f9c4136efd317457975cc5a78065bb05530825211195a8d77b9d0"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-employee/job-api-original.json.gz",
+      "originalBytes": 1005,
+      "originalSha256": "0b6347a4c589b48c471648ce6ee431d3a2f4a6e03a4a70f616135d04fefc0f76",
+      "storedBytes": 1005,
+      "storedSha256": "0b6347a4c589b48c471648ce6ee431d3a2f4a6e03a4a70f616135d04fefc0f76"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-employee/original-pixels/az-native-320-ack-focus.png.raw-original.gz",
+      "originalBytes": 193628,
+      "originalSha256": "4f2083a0e0e513707729daa38ff53d0c239b16be72c7bb8ea43d1ebf29851a13",
+      "storedBytes": 190712,
+      "storedSha256": "ef6ddc66a56e11621fa51dadb0aa3f83aac5184263a99ab043e02d4d9b41f1b8"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-employee/original-pixels/az-standard-320-committed-response-lost.png.raw-original.gz",
+      "originalBytes": 70999,
+      "originalSha256": "4a6ded8db24248f5224c3c18df533ef24bd504abb5c2d5ff99716bd9b16fa099",
+      "storedBytes": 69682,
+      "storedSha256": "2d23fc028adac50a56387974db1a7e59b3b9d93949e350ecf76602b71439eaa4"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-employee/original-pixels/en-native-320-acknowledged.png.raw-original.gz",
+      "originalBytes": 186624,
+      "originalSha256": "1451d1c287d0d8fd38916a751e2ef3a64f1498e28b942230b33b84656bd5d8a3",
+      "storedBytes": 182322,
+      "storedSha256": "8d8309a4e6a91c8386bca32313501b18e3515b220ac99a74c5c739e4620e7007"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-employee/original-pixels/ru-native-320-final-own-boundary.png.raw-original.gz",
+      "originalBytes": 174583,
+      "originalSha256": "06edc7a3ffc7e1e011468d01f236c171b79e4498a256c50fc50cf04e9990e6d4",
+      "storedBytes": 170270,
+      "storedSha256": "9d574bacd66a70b5344bae5a6442f14991ac08c251eef75addf50f54ab5b1f1d"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-employee/peer-actual-employee-pixels-reviewed.json.raw-original.gz",
+      "originalBytes": 2135,
+      "originalSha256": "7bcd665e5a56f3f5fae2937cd232666b1d63bb97528de777fa62c6018e3fd19c",
+      "storedBytes": 966,
+      "storedSha256": "2433e7d10b0369d4cef103a0a887bf8976cf0222b3d18a056dff3ad8a3d41b2d"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-employee/peer-complete-employee-prefill-additive-content-review.json.raw-original.gz",
+      "originalBytes": 25176,
+      "originalSha256": "e871c2b556527b904bae7f6fdf964ea97f7107fe5f8d40eb719651e33381f2ce",
+      "storedBytes": 3998,
+      "storedSha256": "42fc4d677e4d422ec7d9700c4ab1d2a3ee3381c67ff9cbba8e52f02904d29f7f"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-employee/run-api-original.json.gz",
+      "originalBytes": 1531,
+      "originalSha256": "e1e530eb16426046096172440d741a8c68e24eca3bcac5e66a59b1e7e3e76d43",
+      "storedBytes": 1531,
+      "storedSha256": "e1e530eb16426046096172440d741a8c68e24eca3bcac5e66a59b1e7e3e76d43"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-employee/whole-employee-job-original.txt.gz",
+      "originalBytes": 23338,
+      "originalSha256": "087dd312ebf3b2db754d910ad36895b9369b5233eb0bf6ed225056cc929e7382",
+      "storedBytes": 23338,
+      "storedSha256": "087dd312ebf3b2db754d910ad36895b9369b5233eb0bf6ed225056cc929e7382"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/artifact-11666281504-original.zip",
+      "originalBytes": 3807356,
+      "originalSha256": "186ee42b9058aa8369501564ceb923a73434168acbae29ca2d1c61e7c8993c50",
+      "storedBytes": 3807356,
+      "storedSha256": "186ee42b9058aa8369501564ceb923a73434168acbae29ca2d1c61e7c8993c50"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/artifacts-api-original.json.gz",
+      "originalBytes": 584,
+      "originalSha256": "ba230d2572a8ac7d5df0b6111f1df1a83190796c66a8fc7a838de916f897bbc7",
+      "storedBytes": 584,
+      "storedSha256": "ba230d2572a8ac7d5df0b6111f1df1a83190796c66a8fc7a838de916f897bbc7"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/classification-original-pngs-for-visual-review/classification-native-200-az-320-appeal-empty-reason.png.raw-original.gz",
+      "originalBytes": 170713,
+      "originalSha256": "a9e167ddd4601c12bef486f141c90b3dfb4e8142568b26c98ac7b03a098a3090",
+      "storedBytes": 165141,
+      "storedSha256": "c4d7b39086fcd9d095eda58e658a95c9d3c5656397e985562f18f70fecdff595"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/classification-original-pngs-for-visual-review/classification-native-200-az-320-appeal-recorded.png.raw-original.gz",
+      "originalBytes": 105831,
+      "originalSha256": "a1db1ade57f29ede34e3ec485488d57adf6f8de8f6b5a0d58f293298fb4245d1",
+      "storedBytes": 96788,
+      "storedSha256": "65116ab5081bec06039f953667ad0ecdfe1a68f11431f6e764c59c4cb307788c"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/classification-original-pngs-for-visual-review/classification-native-200-az-320-classification-empty-reason.png.raw-original.gz",
+      "originalBytes": 169596,
+      "originalSha256": "73be1a225c81443d436e929e1964da92c7f77e04144b7fd7d81852f1403c8b75",
+      "storedBytes": 163602,
+      "storedSha256": "17020a306778d5a6ea5ec4c2ce2d19e4bf5f9b768794ad8d17e41eefa9c4af77"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/classification-original-pngs-for-visual-review/classification-native-200-az-320-classification-recorded.png.raw-original.gz",
+      "originalBytes": 95264,
+      "originalSha256": "577a04a1a5c794df5fc9e178b1418e533dca667c8179d3a1704c0132549b4bcf",
+      "storedBytes": 87910,
+      "storedSha256": "78024b670e05c1acd5d4aa2ca79950834e374492a52ddb8198d8015ba1c810a8"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/classification-original-pngs-for-visual-review/classification-native-200-az-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 84156,
+      "originalSha256": "4c3399c28d7db5b7daa3efe93c652ba22050915f77253ff6a381a87ac0fbba03",
+      "storedBytes": 78676,
+      "storedSha256": "c2cc54c900c1af1836834ab0b38793e8b35ddb418b668f48747470dcdae59bff"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/classification-original-pngs-for-visual-review/classification-native-200-en-320-appeal-empty-reason.png.raw-original.gz",
+      "originalBytes": 165840,
+      "originalSha256": "99d195e391b7e3711f9457ac93020545e4ace4d59a743c21b31e6190179f957d",
+      "storedBytes": 159909,
+      "storedSha256": "d80de52da08ffb642beb81adae5d850b9746d9d822b29ca9c1a34f1cd0b030d1"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/classification-original-pngs-for-visual-review/classification-native-200-en-320-appeal-recorded.png.raw-original.gz",
+      "originalBytes": 143928,
+      "originalSha256": "1ee8862171521324ef319cb7935da84d5e8e7bc5c715a5c45ac16f367b42c695",
+      "storedBytes": 136015,
+      "storedSha256": "cc2d2ff96d507e9eb2d93d78df7a50af46f833b477536c76100ed394baf69c14"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/classification-original-pngs-for-visual-review/classification-native-200-en-320-classification-empty-reason.png.raw-original.gz",
+      "originalBytes": 166110,
+      "originalSha256": "83267430785851ac39a82a65c704e7684d1fd6e8708d5dbd961c8dfe713cf17f",
+      "storedBytes": 160206,
+      "storedSha256": "99b40c2c0f06be8f47e26d8e0a3a4c85b38675e4de48325f7ab74dd023066db5"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/classification-original-pngs-for-visual-review/classification-native-200-en-320-classification-recorded.png.raw-original.gz",
+      "originalBytes": 145118,
+      "originalSha256": "ec2bc3f02b2271770d79161f248eea3186bea6f6560a69b39ea634d0a01763d4",
+      "storedBytes": 136829,
+      "storedSha256": "c8dda26380438f92c8267dc3b534208a28e9906e93f4d8f5f04552f95c78acec"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/classification-original-pngs-for-visual-review/classification-native-200-en-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 130795,
+      "originalSha256": "eb97b9246957f9f987c5c903f5dc975106ebdcb58b01efa1d2273759beabb0d4",
+      "storedBytes": 122663,
+      "storedSha256": "5f082b4cbe1a33a0322741b67406a82c777ba22d096c0402f38d011e74ccb12f"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/classification-original-pngs-for-visual-review/classification-native-200-ru-320-appeal-empty-reason.png.raw-original.gz",
+      "originalBytes": 152318,
+      "originalSha256": "7488643cb1155410da18f25de8a5b45696ccfce1d773eab5521ae783162b157a",
+      "storedBytes": 147427,
+      "storedSha256": "9de8c65fedd59018e234d60559dc4bff9b839f02ecde79a3da20488b6a1d62e9"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/classification-original-pngs-for-visual-review/classification-native-200-ru-320-appeal-recorded.png.raw-original.gz",
+      "originalBytes": 103216,
+      "originalSha256": "52a4d33152bd09bfd2d8d877efcdf242d4d3650aca55646f725ecb1472dbf37e",
+      "storedBytes": 97229,
+      "storedSha256": "f587968107c6223e61c5293429508d50e16425ac73ade49bf4f2eca2a490d693"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/classification-original-pngs-for-visual-review/classification-native-200-ru-320-classification-empty-reason.png.raw-original.gz",
+      "originalBytes": 153935,
+      "originalSha256": "4473e5ca141625e1cfe6d89f4d5c3fe4ef4e1b8744ced843524f109007bf8a7a",
+      "storedBytes": 149236,
+      "storedSha256": "eda5164522b02e2b42f1583fc73f0c5aed3b8ecfa4f4184c7281211a4c6b5ab2"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/classification-original-pngs-for-visual-review/classification-native-200-ru-320-classification-recorded.png.raw-original.gz",
+      "originalBytes": 103374,
+      "originalSha256": "ea7f6cf64f6b20f0232d2dd981e2c1a097937e75fda382b96f4c9e10d4ce102e",
+      "storedBytes": 96679,
+      "storedSha256": "25edb0c8d20227fcf11fdbb3fc4712317e215f5eedc75867128a9777331fe8b0"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/classification-original-pngs-for-visual-review/classification-native-200-ru-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 91834,
+      "originalSha256": "fdab75e9bdf26938ba4f039dcfece7cca36b553b9b0e3ef31e2ba82eb8c41b97",
+      "storedBytes": 86303,
+      "storedSha256": "0fd5f3e4f2d6ef43fc0347a972b230788fb4e6e2cbe63be49615ad81b5c345b5"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/classification-original-pngs-for-visual-review/classification-standard-100-az-1440-complete.png.raw-original.gz",
+      "originalBytes": 143574,
+      "originalSha256": "42495067e19c75def83c8746648f4e9fc18b28fa6decbb35d328dd418d45b748",
+      "storedBytes": 137950,
+      "storedSha256": "3645ecc3a6694ba6c99105f60b804cc59de474f2b5a580d3a0d83f908353b0b9"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/classification-original-pngs-for-visual-review/classification-standard-100-az-320-complete.png.raw-original.gz",
+      "originalBytes": 32749,
+      "originalSha256": "d075fe608adc471880ce4dae4dd7fb2300b8ab60b26b3a5a47b133c21bf1c08d",
+      "storedBytes": 30937,
+      "storedSha256": "60d0ca3ef4877fba8dd69113ea6fe2847d60c47fc59001c1c428eb65a9640f81"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/classification-original-pngs-for-visual-review/classification-standard-100-az-768-complete.png.raw-original.gz",
+      "originalBytes": 102551,
+      "originalSha256": "940b4fc2d99b49845670de116dc8bcc52469e7e58514b9a19c660d2b0977474c",
+      "storedBytes": 98756,
+      "storedSha256": "dea516c7b4e21ee6bcd1df689d61d64d20a5a9cd59cf80477e3f33a92fe26e8b"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/classification-original-pngs-for-visual-review/classification-standard-100-en-1440-complete.png.raw-original.gz",
+      "originalBytes": 138136,
+      "originalSha256": "31d5f6b3bb7e97b5feffbcb42a495ea877e42fc761e34f0933143e336ab52190",
+      "storedBytes": 133049,
+      "storedSha256": "8a4c20be8e67ad44e44c9515ffc56233788b6a1208a45433539b9ae6cd1e8532"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/classification-original-pngs-for-visual-review/classification-standard-100-en-320-complete.png.raw-original.gz",
+      "originalBytes": 51455,
+      "originalSha256": "20689b0c30d4b356e333956c0aa073842cde0bd41d4642e321a5a16184322c93",
+      "storedBytes": 45518,
+      "storedSha256": "6169fd1f6faeb8a13f172dbedf1570a0f9ad3a3cf6ab5ec2109fb9525c711640"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/classification-original-pngs-for-visual-review/classification-standard-100-en-768-complete.png.raw-original.gz",
+      "originalBytes": 99846,
+      "originalSha256": "e72e8912a191ba99649b34fd22f31bb1046a6efdb1bd6396703798abded8c2f4",
+      "storedBytes": 96265,
+      "storedSha256": "404113596195060d04110ebbd9d48f9fbea134b22bb1f8105d2c6209389e664a"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/classification-original-pngs-for-visual-review/classification-standard-100-ru-1440-complete.png.raw-original.gz",
+      "originalBytes": 179995,
+      "originalSha256": "e2bf3f8c1744ff39114f91fd861529ead91a0948dfa700ff96e1f3aba1158440",
+      "storedBytes": 175362,
+      "storedSha256": "013b5a3f1c4713829530f3e2240533e7578d46a6bf92bab4b0395c204a851809"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/classification-original-pngs-for-visual-review/classification-standard-100-ru-320-complete.png.raw-original.gz",
+      "originalBytes": 42263,
+      "originalSha256": "76a75146d965647137d53d45877d5fc16fa4f89b3b19961a6dc86b8db28e935d",
+      "storedBytes": 38378,
+      "storedSha256": "f56f57b8d1bd9a804f44bab8c45d37d304084940a3c8c58239642e4fe8305123"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/classification-original-pngs-for-visual-review/classification-standard-100-ru-768-complete.png.raw-original.gz",
+      "originalBytes": 125326,
+      "originalSha256": "8dcd821d1042ca045288887a7041b58a6529e71d06270d8aad217c6973f65fcd",
+      "storedBytes": 122852,
+      "storedSha256": "cdb05cded814c5af555660b7c8b25da8c538ab47d94d145c9929b365e500e9b5"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/classification-original-pngs-for-visual-review/native-zoom-az-control-100.png.raw-original.gz",
+      "originalBytes": 169113,
+      "originalSha256": "6ba94baf556c1036af7b56459275ddad5a7631bf673f9487af4f690161dfecdd",
+      "storedBytes": 161020,
+      "storedSha256": "f4c886d5c962ba5df958f9c72bbc1686366a2b330f7c4a0b9b2ecc5216918e59"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/classification-original-pngs-for-visual-review/native-zoom-az-observed-200.png.raw-original.gz",
+      "originalBytes": 169944,
+      "originalSha256": "b6cf44c4e8221a2f1f4051d50c63e3d7b012063da2ea1050862fa94ece33f01e",
+      "storedBytes": 165045,
+      "storedSha256": "d4b2200e09855ed46b685a9f12b765383015d0c4cbcc983ffb96fed603202c1c"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/classification-original-pngs-for-visual-review/native-zoom-en-control-100.png.raw-original.gz",
+      "originalBytes": 193352,
+      "originalSha256": "41fd7b1eaa758d938432744af2aeb801848324a92cb3c9a0ae997c42e5c64289",
+      "storedBytes": 185988,
+      "storedSha256": "e387be3ccae7184abdf617d4718cd09ca43173a3f7aff0c9bf3473392f7198f3"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/classification-original-pngs-for-visual-review/native-zoom-en-observed-200.png.raw-original.gz",
+      "originalBytes": 178486,
+      "originalSha256": "16083c1a523e2c2ad22bdf7fc23aa75e1ca284af5698313334404e5766df9cc6",
+      "storedBytes": 173312,
+      "storedSha256": "ea15ee92c23a2182f50e884c380973e75216f23c2324f94d39c3f8a4ca419cbd"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/classification-original-pngs-for-visual-review/native-zoom-ru-control-100.png.raw-original.gz",
+      "originalBytes": 183723,
+      "originalSha256": "0244b9ae3574236a78d6d88ad4b4a9c3bf2cb554b6255da80ef9680b70670316",
+      "storedBytes": 176029,
+      "storedSha256": "96d4fc61f64e2842e85b9f4583992bcfb191f2e84da87864cb37f9406feb0d23"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/classification-original-pngs-for-visual-review/native-zoom-ru-observed-200.png.raw-original.gz",
+      "originalBytes": 166404,
+      "originalSha256": "e5c5e5953666dac8c601d687f41731ef159bcff4abb461695b4259d7cdfbf0f8",
+      "storedBytes": 161204,
+      "storedSha256": "2f466d98f6b073ae322adf26dadba94145fd870cc29fcd0eefd02e7d67ad470e"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/finite-capture-summary.json.raw-original.gz",
+      "originalBytes": 2631,
+      "originalSha256": "afb95f01332d02bc298232e3a6589d8bb16b49734d142d910832a24635aea1ae",
+      "storedBytes": 659,
+      "storedSha256": "ac066ca694282ef7017e5617ed605883ecc69414deb3ea489f0a35a9dcff2200"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/job-114180278361-original.txt.gz",
+      "originalBytes": 21240,
+      "originalSha256": "2739b7c1086bcbef14c477e035689d8a0d9242a7a4ab12dc48529a36bfdda4cf",
+      "storedBytes": 21240,
+      "storedSha256": "2739b7c1086bcbef14c477e035689d8a0d9242a7a4ab12dc48529a36bfdda4cf"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/job-api-original.json.gz",
+      "originalBytes": 931,
+      "originalSha256": "cda3962507c5edbb501f84d19452aeed88a2afa4b63ecc26f3a8d08652e96683",
+      "storedBytes": 931,
+      "storedSha256": "cda3962507c5edbb501f84d19452aeed88a2afa4b63ecc26f3a8d08652e96683"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/peer-actual-hr-pixels-reviewed.json.raw-original.gz",
+      "originalBytes": 1842,
+      "originalSha256": "84239154aa3d41f514513f6406831f81020520bedfedee2b3a61a3985147a19b",
+      "storedBytes": 808,
+      "storedSha256": "48791405ffad7374e7bdadbf6760065bdbd47a70f117c75b3b24aa41198ad720"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/root-complete-classification-content-review.json.raw-original.gz",
+      "originalBytes": 6917,
+      "originalSha256": "8a9cb73a1327ca023b70ce4d72538f21abddeff2b5717707347137c2905419e7",
+      "storedBytes": 1621,
+      "storedSha256": "757c0fb7e465552682641106a39c342545f3547b58980e833f994c1a522aa8e6"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-hr/run-api-original.json.gz",
+      "originalBytes": 1531,
+      "originalSha256": "e1e530eb16426046096172440d741a8c68e24eca3bcac5e66a59b1e7e3e76d43",
+      "storedBytes": 1531,
+      "storedSha256": "e1e530eb16426046096172440d741a8c68e24eca3bcac5e66a59b1e7e3e76d43"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/native-zoom-az-control-100.png.raw-original.gz",
+      "originalBytes": 200055,
+      "originalSha256": "59c7bda0a9cf2cb9cd7226a93cf5ed7ac8f6220bf44a24d0304bdfc3ab858ee8",
+      "storedBytes": 194234,
+      "storedSha256": "690aa2abb6771d38a447e1c57204549454b5e9af5e4a66d5cfb6085c36b2b620"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/native-zoom-az-observed-200.png.raw-original.gz",
+      "originalBytes": 175052,
+      "originalSha256": "c94e1d9c95662944daf653b92daedcb2850a0cdb917bdacdb1d7359745cf1072",
+      "storedBytes": 170670,
+      "storedSha256": "b9ab79b154b145fb47987adfbcc2af8528c316d253f5bc19bc7b7d22808676bb"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/native-zoom-en-control-100.png.raw-original.gz",
+      "originalBytes": 201796,
+      "originalSha256": "1df341d9ce9a617b359fd28b695aecda17ccbb6092d53f9ed2e0540f8d570a75",
+      "storedBytes": 194427,
+      "storedSha256": "fa7c64053d3f1a2c0f1a51947b508e9aca7b90276fde1a2b99c3338a94aca6df"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/native-zoom-en-observed-200.png.raw-original.gz",
+      "originalBytes": 179495,
+      "originalSha256": "1fce4a0fac1ede3f816cef536f36f6c9d95df1c7a3229b562fc2d3972a9a058b",
+      "storedBytes": 174677,
+      "storedSha256": "f08eab5175e5aec38567d4a8e07fcb05090c8d025fe80c432a187d2d659e3865"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/native-zoom-ru-control-100.png.raw-original.gz",
+      "originalBytes": 196767,
+      "originalSha256": "f74865f6e2455fe5b765b6d10fe4b75afbfdcb3572e11979b32e199664933cd8",
+      "storedBytes": 191383,
+      "storedSha256": "0eefda60576f9c8a679d64ee43989fe86ef3ea62825e366d41d3bae46f265378"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/native-zoom-ru-observed-200.png.raw-original.gz",
+      "originalBytes": 168734,
+      "originalSha256": "07fe9a139c1672921fc6ce47f3aff5a58810384c5bb42fffa04c66dc84373d65",
+      "storedBytes": 163617,
+      "storedSha256": "48a290389b0c0de24897adc54d1c4ea3746e37859e0cc27c9b4035c5571767e9"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-denied-denied.png.raw-original.gz",
+      "originalBytes": 45895,
+      "originalSha256": "937f0f4182a824a7295314e62b1858b99e5544049c5774d06442d1ad1baf71ea",
+      "storedBytes": 44274,
+      "storedSha256": "bfd673b384a9ce093388a96858e27f8e995930ffbb39911345e98f4a4d668e2c"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-denied-team.png.raw-original.gz",
+      "originalBytes": 45895,
+      "originalSha256": "937f0f4182a824a7295314e62b1858b99e5544049c5774d06442d1ad1baf71ea",
+      "storedBytes": 44274,
+      "storedSha256": "bfd673b384a9ce093388a96858e27f8e995930ffbb39911345e98f4a4d668e2c"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-foreign-positive.png.raw-original.gz",
+      "originalBytes": 81173,
+      "originalSha256": "ca30217c55b8a1e2100ba1b532257160c27e7ad4d47f8fc9c25dd48a61d3b60c",
+      "storedBytes": 78383,
+      "storedSha256": "9a3a5ba966a46847765446dfac913a951e34d4a48ac5a7906a123b1198397b14"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-native-200-az-320-empty.png.raw-original.gz",
+      "originalBytes": 168036,
+      "originalSha256": "7b6ba47e96d64cdb8a501c60d71a99f0647ada985f44bf2f6dcd54851c98f88a",
+      "storedBytes": 163918,
+      "storedSha256": "daaad5899cb61877a16dedde168ea7799c164bd673119974fca16e1e24f46483"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-native-200-az-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 145794,
+      "originalSha256": "9012795a97fda673ff4d3a1fc7bd62cc8019a86f2c9fbb00f72aae2abaa2e8c1",
+      "storedBytes": 141334,
+      "storedSha256": "b7962182177e91fd3d7e1a6fbd5032bcf2e53d284e796fbfd08a6c3a2f891c40"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-native-200-az-320-measured-zero.png.raw-original.gz",
+      "originalBytes": 166875,
+      "originalSha256": "d838d5adf737662460f0b0977a92effa32dd1d5addeeaa2c598c7afd4d152620",
+      "storedBytes": 162648,
+      "storedSha256": "7c987fb849855b811b3381d61fa60c19fb2e1c98d5612df051c26772fdb4e73d"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-native-200-az-320-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 172767,
+      "originalSha256": "b3f548405abdfde67d0f07572b868afb4cbd6e42eb6196f3459dd292decc2458",
+      "storedBytes": 166943,
+      "storedSha256": "af54e409db3b98383bf36d44150fc1ffb4e71953de0ebeffd8e82b25ffca961b"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-native-200-az-320-unresolved-no-sample.png.raw-original.gz",
+      "originalBytes": 167811,
+      "originalSha256": "5e22118092e697e376ca486d6ccad23f7f3547a51c8f6e6c2d81e114681e30ad",
+      "storedBytes": 163690,
+      "storedSha256": "3f0b38acf5b784914d34716d2a9d1fdf3d48436c54b0ffd8ab911c1fc2642453"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-native-200-en-320-empty.png.raw-original.gz",
+      "originalBytes": 163606,
+      "originalSha256": "96df9364506e4352d3858e7c27118c5503b8391479fd63c01a41cf057c2c42f9",
+      "storedBytes": 158869,
+      "storedSha256": "86cc4a22cd8141e6fb1edd388575e8d392e9b0661bb4e51f13c74ab166baf017"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-native-200-en-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 153144,
+      "originalSha256": "faaaf666c87c7aa9bd41a189d60eb2b76348b8e4bbe508753cd47cc1a06c52ff",
+      "storedBytes": 148230,
+      "storedSha256": "f321ec156765b4a988e6fc2563a2d55bea5b39756bad66b0e0720e4a111cb71b"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-native-200-en-320-measured-zero.png.raw-original.gz",
+      "originalBytes": 162887,
+      "originalSha256": "3eb612b57fed81ca9df97f55ee13b26813365e0c98f1be4b3e4d98b3108e204d",
+      "storedBytes": 158131,
+      "storedSha256": "ce1c2a69918da1d3ddf5e64b08582ed29f03b9f85d18f5c1e539e66185eb4d2d"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-native-200-en-320-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 186589,
+      "originalSha256": "81d7f75ce52bf674edb939ab38e3262b5360518ccb6d77fb9b03801395d421b9",
+      "storedBytes": 179360,
+      "storedSha256": "27ab09bab2dde83e6c678682ce94a7b1648dcbdd97214979d4e1108cbd67dcc2"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-native-200-en-320-unresolved-no-sample.png.raw-original.gz",
+      "originalBytes": 163636,
+      "originalSha256": "0e774f01196bd49a6b716310df26cd1ff26ba9e113034fcb6745651bee092057",
+      "storedBytes": 159110,
+      "storedSha256": "e742b8e0e1d8fd0d1a283884cdf6d137b37b0b6b221d0cb1b77d11f9e77042e3"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-native-200-ru-320-empty.png.raw-original.gz",
+      "originalBytes": 142377,
+      "originalSha256": "e653fb0098042d6750afc41cf2946f0b1ef35fde2cf33cc28d28c9a498981460",
+      "storedBytes": 137398,
+      "storedSha256": "c83662abc057d441f5d740333fe0ff22864976807324d8092dc52ec9e1861e71"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-native-200-ru-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 134290,
+      "originalSha256": "1d920a0d85eb8ae37db5cb42f40c43d6c889f40d7dfe0ee20c97eea0dccf951e",
+      "storedBytes": 129241,
+      "storedSha256": "7957faaa3b50c623cd570062089914e159232c8227d7fe885a4117d11e55a943"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-native-200-ru-320-measured-zero.png.raw-original.gz",
+      "originalBytes": 141495,
+      "originalSha256": "0b6a08d27dea756b6d146ba9db0eb2722176974cc7910dbee23b3cf9a1a1241f",
+      "storedBytes": 137469,
+      "storedSha256": "19c313005db0a91ae931b2371159b795a893c2ef9b00e20339cb803e4f1337fb"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-native-200-ru-320-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 153072,
+      "originalSha256": "12f74e94f8dc6fb4cf60a22691cc1402ced8dd53b23a52484ac9e822d2ef286e",
+      "storedBytes": 147163,
+      "storedSha256": "d55d8d0fbea05cb2431f2932e22429b63519078d0926445e1ed01f37a0c91ea4"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-native-200-ru-320-unresolved-no-sample.png.raw-original.gz",
+      "originalBytes": 142146,
+      "originalSha256": "dd4c2ca9f4c8ffd86b1ebefdb0e0181e93d3e65294bb75197eaa85d4283de956",
+      "storedBytes": 137420,
+      "storedSha256": "319955c6c4f871d038c8824c140c5bb945b6b0fc5bf278cc0276c17515215699"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-az-1440-keyboard-table.png.raw-original.gz",
+      "originalBytes": 138847,
+      "originalSha256": "ecfc80cdf308f2a3929700ca119f121096435779ce6462f871318c06f097173b",
+      "storedBytes": 132849,
+      "storedSha256": "178474776f6a0854b073b88f5dcd013a8fab5a79699401a3cdbd19aa7458f9e5"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-az-1440-nonempty.png.raw-original.gz",
+      "originalBytes": 139885,
+      "originalSha256": "c621514f169dccd240d8b5c69fdd34b56b4888ac3a6a7dbdf2d32a2350f8e912",
+      "storedBytes": 135274,
+      "storedSha256": "9dfd90b52647df663d982940c0b919b2cd1d4e27818b7273c4abb4a6b79ae1e2"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-az-1440-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 79332,
+      "originalSha256": "8b03072876033c1229360afbd4fbbc98f8ae44f59841700279a06375cc1aecaf",
+      "storedBytes": 72754,
+      "storedSha256": "5b8fa2c9c3eaa0c96fc71ea4523261be1a5f9335936aa3b731bb46e489a4d5b3"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-az-320-empty.png.raw-original.gz",
+      "originalBytes": 65306,
+      "originalSha256": "b095296e673d0daae8bc33575492a6cd9620ce53bacab8dc11c8af735753eb89",
+      "storedBytes": 64135,
+      "storedSha256": "871a152a5fb53b7659a527d094c7ae4ae2b24d622d5d4bae3544d8ae6eb6487b"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-az-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 55192,
+      "originalSha256": "5b32d0f6585f17e2cbab75673b04dc8be3c7cb3946a05c564f304556f7927721",
+      "storedBytes": 53533,
+      "storedSha256": "945cde1cd368460057e976c1d69c5312ea9990ce5330992ba8591be62b2998df"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-az-320-measured-zero.png.raw-original.gz",
+      "originalBytes": 65369,
+      "originalSha256": "313b27f3ef8ce51f6f14a3e51a6bfe6a31a46cf422cf4c78c2e79b0d46301e3b",
+      "storedBytes": 64056,
+      "storedSha256": "2db26dd21d80c28938903d92c2630ce5a8abf77d60350a915339e01312b554c1"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-az-320-nonempty.png.raw-original.gz",
+      "originalBytes": 63718,
+      "originalSha256": "8278b6028e24809beb389d95331b9ffc201c2c2c8f9e2f8f746e1a58b42b00f3",
+      "storedBytes": 62576,
+      "storedSha256": "061624cc64dd2525dd794ee33f9c042e7e60a4eea2e1c6e14d72510b8d546715"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-az-320-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 52590,
+      "originalSha256": "c48826072cb1da9022f83b5992eb52b70e39f74d60d83926e2bfbadc8e43fe71",
+      "storedBytes": 44728,
+      "storedSha256": "1b616299c59556364e6ecfbc57d70970700e50f71c6cf5c10961ba28270f4ae5"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-az-320-unresolved-no-sample.png.raw-original.gz",
+      "originalBytes": 64853,
+      "originalSha256": "6a62e2b422becd7d72458968957f28516bac0ab904b3695973327809205fed4e",
+      "storedBytes": 63506,
+      "storedSha256": "20f6b5bcc92ad13bd4ebab0be1850486f66a39fd875b62704a45f2492ec7b25f"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-az-768-keyboard-table.png.raw-original.gz",
+      "originalBytes": 93446,
+      "originalSha256": "b73fc9a6cd8b0dbe59115151e4f34bb06f509a2bd60deac623194aa6a2cfae1b",
+      "storedBytes": 88630,
+      "storedSha256": "7722ab694a605d6afc1cebc0cb1d33b61c43493d4dd98d358ac987943e4b12a0"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-az-768-nonempty.png.raw-original.gz",
+      "originalBytes": 85783,
+      "originalSha256": "cbd8caac555ec2e1e7cc630b43f1c5feec4eb916d79b43d2e7289b8d059fea25",
+      "storedBytes": 83219,
+      "storedSha256": "278b94d29012cdb8b23684ac9f2a5a7494b8b46682749e9e4b977f81b44b9093"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-az-768-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 80132,
+      "originalSha256": "24aae6f0702bd680339331f0bdb3f6a2d5a1ce345c2322fe7d92c00a26f87ff3",
+      "storedBytes": 72715,
+      "storedSha256": "a58dcd94b25e0cb356c54ed8df903d430049bd5e9a2d85623a36618871645fc4"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-en-1440-keyboard-table.png.raw-original.gz",
+      "originalBytes": 129278,
+      "originalSha256": "e40f87b57643542a11b813e9897d948f902aaf88e9e0526d0c917abadb023d19",
+      "storedBytes": 122593,
+      "storedSha256": "4c56a649f0b160dee2f5566aa2fef50300efada55fce691ba4b857606d7d7d32"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-en-1440-nonempty.png.raw-original.gz",
+      "originalBytes": 133495,
+      "originalSha256": "596911c419c20a602b98c423641e0a15976905f89ea58693d4723d99dc244669",
+      "storedBytes": 128148,
+      "storedSha256": "347296143e3f6c2bf378ab995819ced40fd4f8a34db91d4d03fbaa337ada3d73"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-en-1440-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 75993,
+      "originalSha256": "4bb8afce67e80bfb55248628048a721ba08a29fac30ddd5aa03d1e2eb20c6977",
+      "storedBytes": 69666,
+      "storedSha256": "d2453b3ccef35f0f183f63029706dbf6aaf94a2652475702f1ed51a91b418980"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-en-320-empty.png.raw-original.gz",
+      "originalBytes": 58518,
+      "originalSha256": "9a5f2c56eb2854f3eb40341c6b662fcee5230318edfbdeabe5a5f81acb8aa440",
+      "storedBytes": 57612,
+      "storedSha256": "7643a3522d6cfb2b8316891514ba0a45225dd08a512811f41d3f5611c90c8c52"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-en-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 55087,
+      "originalSha256": "610c2a65b96117e8402a2145d9a2474ce5031833ba0a336fe35ff9f078064f44",
+      "storedBytes": 52886,
+      "storedSha256": "12c4f45e47e908bbc65d89a984aa1d6effd6910a79b0de726faaaba24adb830f"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-en-320-measured-zero.png.raw-original.gz",
+      "originalBytes": 58835,
+      "originalSha256": "b131b0fd80169c28654209483d562be66b978b5ba7f91b3cff7352f5757990e9",
+      "storedBytes": 57879,
+      "storedSha256": "c8d2a705858de7a001f1bb462235c61ce1deccc9d197f2bbeaba621e5e48bf0b"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-en-320-nonempty.png.raw-original.gz",
+      "originalBytes": 59227,
+      "originalSha256": "39b6e2fed8937fcf882cb9c5dc6d7f245053f48d5ac81e2c6eb1459486cded8c",
+      "storedBytes": 58402,
+      "storedSha256": "7843c5c02b4b0800e3e0e430040ca20596e70f4df96be0bb9456c90a081355a5"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-en-320-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 49118,
+      "originalSha256": "7d6a801baf45d8247272ef4b55c1037cdee06e0e157faac51cded6383250cfd4",
+      "storedBytes": 41785,
+      "storedSha256": "2489b582aa626279f82680433e565c8e0b5e4a02b5dee13d3e0333b1ad2e14d8"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-en-320-unresolved-no-sample.png.raw-original.gz",
+      "originalBytes": 58163,
+      "originalSha256": "a92da78bed4d4ae78ed88d00e6e7f3cb893763b3b1c92a6cc0da78b8116fa858",
+      "storedBytes": 57075,
+      "storedSha256": "a573eb8e56b23cf3478ffe0780e77062f1a305b06cce6528b14bad558ce22f63"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-en-768-keyboard-table.png.raw-original.gz",
+      "originalBytes": 92189,
+      "originalSha256": "f28a91d96b635f131147be492b6125a6e928f4e3b5a322a86f2f20abb5685044",
+      "storedBytes": 87409,
+      "storedSha256": "6ed941e4ee0f486e970a81b5cfc764c8f482cc7f58127d8296473967633ec602"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-en-768-nonempty.png.raw-original.gz",
+      "originalBytes": 81218,
+      "originalSha256": "5761d98618efdd075455f917dc1e61c0eec426e174fadea81c985df91526aa66",
+      "storedBytes": 78403,
+      "storedSha256": "8d309b0fcbf629aca76e4255dfb8149f656e0f3f608673a8c8e24222e5a2ce45"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-en-768-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 78793,
+      "originalSha256": "b5157f2a1879ea86edf5f96478d7245f33b96180a6b9ec8fa5300f2e6b416ab1",
+      "storedBytes": 71553,
+      "storedSha256": "b04393819f89a15b8749893534288258cb81076e5a78b6573e6e12c348b20acf"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-ru-1440-keyboard-table.png.raw-original.gz",
+      "originalBytes": 181983,
+      "originalSha256": "9296a637f0a8e900ba0ad2ee225e8db94231da28d39e4de2917dfdc451cfa624",
+      "storedBytes": 175365,
+      "storedSha256": "ab789337e052484f51b98c435fd4777a23b64540ed00739b53f382f072b31e4f"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-ru-1440-nonempty.png.raw-original.gz",
+      "originalBytes": 169690,
+      "originalSha256": "383ccdeaa5ee8554f5e87aacdd022aef5c55a713c3618b1a95f100e40db4f530",
+      "storedBytes": 164391,
+      "storedSha256": "7599b1e4686d5a1247b2e02368fb08da5c9edb8b15135f28d5ae823b5ce6b8b0"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-ru-1440-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 129851,
+      "originalSha256": "fa08c806716d094cb226b869ba268d6c7f585cbd6cf0f5017b3dfe576cbefaa5",
+      "storedBytes": 122663,
+      "storedSha256": "6245ef8be6c31243ece5aa8c77bd6a651296d51b78d4e5216c8471880fd8df23"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-ru-320-empty.png.raw-original.gz",
+      "originalBytes": 69347,
+      "originalSha256": "062595134bf3a1690044aa3c56aea937f8b673d8c3efd8f5662ef85c51869123",
+      "storedBytes": 68049,
+      "storedSha256": "19a615fba74a03602258373b19a897c8e703559f54bdd7618b3542865244aad6"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-ru-320-keyboard-table.png.raw-original.gz",
+      "originalBytes": 63561,
+      "originalSha256": "afe65e293bcfcfdb43dce0bbf80ff72eb15f7113aacf3357092865396434c9a4",
+      "storedBytes": 62016,
+      "storedSha256": "12fdb0d8860985a1ce73d7d754106d6d27c2dee1180ea1d34eb329335bda3e74"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-ru-320-measured-zero.png.raw-original.gz",
+      "originalBytes": 69591,
+      "originalSha256": "6e4954e93b32164d7aa7b667a38ebae3ebe3b9079ddc225ee9e1feb4ec1f93ba",
+      "storedBytes": 68355,
+      "storedSha256": "50f43e013820d08907690de6cc79c6758f672695062620697e5616a48cd981db"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-ru-320-nonempty.png.raw-original.gz",
+      "originalBytes": 68272,
+      "originalSha256": "32b224c4dbf003d10e351ac22943248876a799225d8a2e339f4396b0e7562529",
+      "storedBytes": 67306,
+      "storedSha256": "e3e2ab1ef759ed1466bb56efec7c1bf2f78fed766ba50daf5559733f73976010"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-ru-320-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 61369,
+      "originalSha256": "304b57489fbe9f7b735dd1ed5bc1d7e7c3ac2967fbb65df418fc2bdad36e82b2",
+      "storedBytes": 51606,
+      "storedSha256": "18482e7ff29b554664fa51697532078451172f7bbedee9fde73833704a99c0f2"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-ru-320-unresolved-no-sample.png.raw-original.gz",
+      "originalBytes": 68983,
+      "originalSha256": "2472da82456ba3b35a69620b4063e28c8d368e70d7e22218d17d5714eda8f208",
+      "storedBytes": 67597,
+      "storedSha256": "0a731a73ee295bae3393f2ce5d7eed87327fae22ce56a7514e0923227e52b661"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-ru-768-keyboard-table.png.raw-original.gz",
+      "originalBytes": 131059,
+      "originalSha256": "c71d4ffb1fc08d69f97b2b3a4b1a286c0731146f9ec69b850232c35f558ddba1",
+      "storedBytes": 123891,
+      "storedSha256": "878785e1fe904d49af1964306e500ba8a24fdf3de75d58765b1e494701676bb7"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-ru-768-nonempty.png.raw-original.gz",
+      "originalBytes": 113811,
+      "originalSha256": "b8570cd2a1bb08441beccbd1a2b5ff575ca664538beb79b068c3985c6eb13eac",
+      "storedBytes": 111239,
+      "storedSha256": "64ba6160a2009d55aee4611b6346c81f251ece3d196cfd085c11f8cf9e48b9fd"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-pngs-for-visual-review/report-standard-100-ru-768-recorded-outcomes.png.raw-original.gz",
+      "originalBytes": 124729,
+      "originalSha256": "9194b56d7549c8cdbcb82cf12f375e1579d98d29a75d2ec75a59d21878296298",
+      "storedBytes": 115487,
+      "storedSha256": "2df19016ed70a9341ff1507c9bb6492161cd5233006dc2619963a99d007ce1cf"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/actual-report-commit-api.json.raw-original.gz",
+      "originalBytes": 8333,
+      "originalSha256": "992afb80df99da07771ce066a35b5a93f41dc40e7e7b5adba8edfe5f71d949ce",
+      "storedBytes": 2464,
+      "storedSha256": "d3b008d64459271fa1b98fd64c4ff6e3e1110cbbac57989cd7c8560431fa41d3"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/artifact-11665667562-original.zip",
+      "originalBytes": 6591373,
+      "originalSha256": "d2d57ffabf169745862c7879fc43390810ee91087efd8ed142f1d71aec0b7a2a",
+      "storedBytes": 6591373,
+      "storedSha256": "d2d57ffabf169745862c7879fc43390810ee91087efd8ed142f1d71aec0b7a2a"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/artifacts-api-original.json.gz",
+      "originalBytes": 584,
+      "originalSha256": "ba230d2572a8ac7d5df0b6111f1df1a83190796c66a8fc7a838de916f897bbc7",
+      "storedBytes": 584,
+      "storedSha256": "ba230d2572a8ac7d5df0b6111f1df1a83190796c66a8fc7a838de916f897bbc7"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/finite-capture-summary.json.raw-original.gz",
+      "originalBytes": 4366,
+      "originalSha256": "ac02c9cd0d9a25abf95a1c7de05b33af32b80db09baa83872019790d6829a10e",
+      "storedBytes": 946,
+      "storedSha256": "1ef556114a48837c26037f295e00a88109d864fb333c18eb5cc09e6e24fc14f9"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/job-114180278278-original.txt.gz",
+      "originalBytes": 29075,
+      "originalSha256": "452c2da1fdab8d4a88b1d558424d2c4a43c06237afeca608435de87ab93e541b",
+      "storedBytes": 29075,
+      "storedSha256": "452c2da1fdab8d4a88b1d558424d2c4a43c06237afeca608435de87ab93e541b"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/job-114180278362-original.txt.gz",
+      "originalBytes": 19173,
+      "originalSha256": "ecfb1ce8cd2a75b4d004c011aa5bd58643e3c900c218d47a18148e8c7c9b74d8",
+      "storedBytes": 19173,
+      "storedSha256": "ecfb1ce8cd2a75b4d004c011aa5bd58643e3c900c218d47a18148e8c7c9b74d8"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/jobs-api-original.json.gz",
+      "originalBytes": 2253,
+      "originalSha256": "7308ff640d8f8d1cde17435ed3cc2b6d389260992dcde9dbc7c25be24eeac92b",
+      "storedBytes": 2253,
+      "storedSha256": "7308ff640d8f8d1cde17435ed3cc2b6d389260992dcde9dbc7c25be24eeac92b"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/peer-actual-report-pixels-reviewed.json.raw-original.gz",
+      "originalBytes": 1625,
+      "originalSha256": "e65ff45078b2a9d076c1dbaea11b7c9c58658025fce91ad5f2aa9b5178164ce0",
+      "storedBytes": 742,
+      "storedSha256": "aa2302cc2d7bf213cbc3d5bb2a74f99b610ce10b0d1e260cf647c7bfa2b28149"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/peer-first-terminal-source-postgres-content-review.json.raw-original.gz",
+      "originalBytes": 2199,
+      "originalSha256": "d28b5a0dff1f66d4e607d7475dd495f4aa5abcc47d78fcfcd02007ac9bdc2402",
+      "storedBytes": 819,
+      "storedSha256": "7d407c7b99c1a61d3f4e3f2e0ebbdbdb46de88dc95160c3a51a3cd10eac75512"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/root-complete-report-content-review.json.raw-original.gz",
+      "originalBytes": 5649,
+      "originalSha256": "f7141b690bcdbb229e14529b9ca20d8fe6c5f7e58b7067a636c57138bc07a4f2",
+      "storedBytes": 1597,
+      "storedSha256": "202e8f95f213d50b5fbf529b59aa0b115de3f2149686ae735a45b46d5eb36bae"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/first-terminal-source-report/run-api-original.json.gz",
+      "originalBytes": 1531,
+      "originalSha256": "e1e530eb16426046096172440d741a8c68e24eca3bcac5e66a59b1e7e3e76d43",
+      "storedBytes": 1531,
+      "storedSha256": "e1e530eb16426046096172440d741a8c68e24eca3bcac5e66a59b1e7e3e76d43"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/fresh-093752-candidate-original.json.gz",
+      "originalBytes": 1242,
+      "originalSha256": "a11089fbabf2337c2e13c3e95a8570a5895d37943052a7c10b26e18096427b3b",
+      "storedBytes": 1242,
+      "storedSha256": "a11089fbabf2337c2e13c3e95a8570a5895d37943052a7c10b26e18096427b3b"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/fresh-093752-head-original.json.gz",
+      "originalBytes": 290,
+      "originalSha256": "962573ef0e187befcb6542d5a37b78be8db43f9491f525d544fa325198b98ff4",
+      "storedBytes": 290,
+      "storedSha256": "962573ef0e187befcb6542d5a37b78be8db43f9491f525d544fa325198b98ff4"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/fresh-093752-main-original.json.gz",
+      "originalBytes": 216,
+      "originalSha256": "d5a60716c0f3afa7b211b0619b6660e7da3d97cae8e5dd125f2553c9fb5e200f",
+      "storedBytes": 216,
+      "storedSha256": "d5a60716c0f3afa7b211b0619b6660e7da3d97cae8e5dd125f2553c9fb5e200f"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/fresh-093752-pr-original.json.gz",
+      "originalBytes": 2714,
+      "originalSha256": "279ce0921b4513ac006595e15e5f312a33bc0d312e046e7d4b5ec447bf4117d6",
+      "storedBytes": 2714,
+      "storedSha256": "279ce0921b4513ac006595e15e5f312a33bc0d312e046e7d4b5ec447bf4117d6"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/jobs-091754-api-original.json.gz",
+      "originalBytes": 1945,
+      "originalSha256": "864bbce2a0145859b5018c77fe165b41237d4e844d966a03f4d6dd7e95fe1303",
+      "storedBytes": 1945,
+      "storedSha256": "864bbce2a0145859b5018c77fe165b41237d4e844d966a03f4d6dd7e95fe1303"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/jobs-091857-api-original.json.gz",
+      "originalBytes": 2000,
+      "originalSha256": "dc7812b0671cb849694fd6fa08273c55cc7de58e54e55ffaffe53918d2b67560",
+      "storedBytes": 2000,
+      "storedSha256": "dc7812b0671cb849694fd6fa08273c55cc7de58e54e55ffaffe53918d2b67560"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/jobs-091959-api-original.json.gz",
+      "originalBytes": 1997,
+      "originalSha256": "65e9d542cdbcc7748bbfb74c339045ea3e1c588894e68e8e1e2817863075a620",
+      "storedBytes": 1997,
+      "storedSha256": "65e9d542cdbcc7748bbfb74c339045ea3e1c588894e68e8e1e2817863075a620"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/jobs-092043-api-original.json.gz",
+      "originalBytes": 2031,
+      "originalSha256": "2f9215efc1f4dce34cc478f05bec59fca4512cd89f0e1100cb94b3007b67cdea",
+      "storedBytes": 2031,
+      "storedSha256": "2f9215efc1f4dce34cc478f05bec59fca4512cd89f0e1100cb94b3007b67cdea"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/jobs-092143-api-original.json.gz",
+      "originalBytes": 2099,
+      "originalSha256": "581d7168c6b87787d82b247481dd0bf42ee81cfd9a73c8a122c0dec2f53c5c15",
+      "storedBytes": 2099,
+      "storedSha256": "581d7168c6b87787d82b247481dd0bf42ee81cfd9a73c8a122c0dec2f53c5c15"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/jobs-092224-api-original.json.gz",
+      "originalBytes": 2104,
+      "originalSha256": "b93a1513922cb159062f2d7614f4e31dc430108037c058e8ca8f7c7d97bc6e9e",
+      "storedBytes": 2104,
+      "storedSha256": "b93a1513922cb159062f2d7614f4e31dc430108037c058e8ca8f7c7d97bc6e9e"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/jobs-092830-api-original.json.gz",
+      "originalBytes": 2227,
+      "originalSha256": "8c5be7e44c1383bd2c9e548f4553868981a33b7e92705708912f7ba83c9ab63c",
+      "storedBytes": 2227,
+      "storedSha256": "8c5be7e44c1383bd2c9e548f4553868981a33b7e92705708912f7ba83c9ab63c"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/jobs-092944-api-original.json.gz",
+      "originalBytes": 2264,
+      "originalSha256": "777163e7c21a0153ea7eb2b8541981711bb007a3d6caafede98ce739abbfd4e5",
+      "storedBytes": 2264,
+      "storedSha256": "777163e7c21a0153ea7eb2b8541981711bb007a3d6caafede98ce739abbfd4e5"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/jobs-093044-api-original.json.gz",
+      "originalBytes": 2278,
+      "originalSha256": "20c87c294c19fe772fa4d70e615273ba194c652fab98312ed84cfc043d7355a7",
+      "storedBytes": 2278,
+      "storedSha256": "20c87c294c19fe772fa4d70e615273ba194c652fab98312ed84cfc043d7355a7"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/jobs-first-api-original.json.gz",
+      "originalBytes": 1945,
+      "originalSha256": "864bbce2a0145859b5018c77fe165b41237d4e844d966a03f4d6dd7e95fe1303",
+      "storedBytes": 1945,
+      "storedSha256": "864bbce2a0145859b5018c77fe165b41237d4e844d966a03f4d6dd7e95fe1303"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/poll-jobs-093507-original.json.gz",
+      "originalBytes": 2313,
+      "originalSha256": "0b127c536c328b700d0697193c6a49bcec98d0cf8313f91272b4dba1fc3964bb",
+      "storedBytes": 2313,
+      "storedSha256": "0b127c536c328b700d0697193c6a49bcec98d0cf8313f91272b4dba1fc3964bb"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-source-six-originals-snapshot/independent-current-source-six/run-first-api-original.json.gz",
+      "originalBytes": 1531,
+      "originalSha256": "e1e530eb16426046096172440d741a8c68e24eca3bcac5e66a59b1e7e3e76d43",
+      "storedBytes": 1531,
+      "storedSha256": "e1e530eb16426046096172440d741a8c68e24eca3bcac5e66a59b1e7e3e76d43"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-root-current-pixels-qualification.json.gz",
+      "originalBytes": 1101,
+      "originalSha256": "adfd3cb416c8beab4a73771b6759ccb0f5193965a28219d9c436eb8d34343baf",
+      "storedBytes": 638,
+      "storedSha256": "c98808d8b15d19e8237e55e2f4ff2f61bab0b2eef7f718e98d7bbe76fa579acb"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-root-source-six-original-reader-error.json.gz",
+      "originalBytes": 570,
+      "originalSha256": "61a792f5d7d0ff2d87afb3e56efebcfa62be620ae553151ceb2ce20c2288cd64",
+      "storedBytes": 413,
+      "storedSha256": "a8010d81036f6866e407b1cd87b59debb952624f446cf197f41185ef1d736856"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-6f58-ready-first-root.json.gz",
+      "originalBytes": 131542,
+      "originalSha256": "f98d85a6860484249d609c796dacc21293fbe60a9365ca1667ec3da76f974a02",
+      "storedBytes": 5513,
+      "storedSha256": "b80bdb6923f2379eded01b829cca8e36a95551089d2d84dfb0e5206f552d656c"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-pr-body-ready-source-six-verified.md.gz",
+      "originalBytes": 2080,
+      "originalSha256": "12b5d6a616fc7076c67d84bbb273e7424482d45c5bdee7bdb898f6b8a53a5bcb",
+      "storedBytes": 1194,
+      "storedSha256": "fa7f5f7de729b63b9856aaa66d0022960cfbf5d46192a7f379852c8fd71d535d"
+    }
+  ]
+}
