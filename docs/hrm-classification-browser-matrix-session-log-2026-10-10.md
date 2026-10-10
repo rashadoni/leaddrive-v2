@@ -501,3 +501,26 @@ Freeze this final head; READY requiredcandidate plus five-lane source can
 run concurrently, all actual fresh results mandatory BEFORE ownmerge/deploy.
 No original source passes transferred to this new tree; global compiler/
 strict suite remain NONCLEAN inherited, unchanged frozen baselines.
+
+## AEF fully checked; integrate latest main after actual ref-race refusal
+
+ExactAEF38018373702 allfive sourceSUCCESS, READY candidate report/calendar/
+manager actualSUCCESS, mandatoryscope/static/type/runner/scan actualSUCCESS.
+Strictreg18/18, PG44/guard31, raw1162/35/exit2/strict64/owned0, actualbundle974
+accepted by root and independent peer. Fresh originals, first-readererrors,
+all21peer native pixels/fourroot pixels and qualified limits archived in
+evidencePR663 phase15/checkpointd2d4ab770. No global clean claim.
+
+Immediate premerge refs refused actualmainafe67f28f75cbebe2878ddf51bb5f7e0b4a21cc4
+with stale d98/E05 candidate. No merge/deploy occurred; returnedPR674 DRAFT.
+Normal integration preserves foreignPR676 three MTM source/test paths byte
+for byte, no Workforce/ownedsource overlap, no foreign workflow rerun. Own
+UI/harness/test/workflow/nativehelper/guard bytes remain exactAEF; baseline,
+roles, tenant isolation, privacy, append-onlyaudit/CASE_RECORDED_AT unchanged.
+
+New finalsource requires fresh exact-source/candidate and allfive mandatory
+actual gates before ordinary merge/release; no AEF runtime success transferred.
+User authorizes continuing autonomous next legitimate HRM step after verified
+release. Accounting85/161DONE/76open/61%; C12PARTIAL/C14incomplete. Real
+restore/device/human/operational observations are NOTRUN and not synthetic
+closure; Support, HRHub, activation/access/secrets remain out of scope.
