@@ -162,8 +162,17 @@ def main():
         if not L.is_closed(ctx, c) and c.branch in ctx.erp_branches() and c.branch in ctx.merged_branches():
             print(f"ВНИМАНИЕ: карточка {c.key} открыта, а её ветка {c.branch} влита в origin/main и осталась "
                   f"на GitHub — удалить: git push origin --delete {c.branch}")
+    private_why = L.private_problem(ctx, write=True)
     for w in alarms[:3]:
-        print("ВНИМАНИЕ: " + w[:230])
+        # про закрытую папку — целиком: средство стоит в самой строке
+        print("ВНИМАНИЕ: " + (w if w == private_why else w[:230]))
+    lag = L.private_copy_lag(ctx)  # без сети; отправляют копию next_card.py и mark.py
+    if lag:
+        print("ВНИМАНИЕ: " + lag)
+    unsaved = L.private_unsaved(ctx)
+    if unsaved:
+        print(f"ВНИМАНИЕ: в закрытой папке не записано в историю файлов: {unsaved} — в копии "
+              f"их тоже нет")
     return 0
 
 

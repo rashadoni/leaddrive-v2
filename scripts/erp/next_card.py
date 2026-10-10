@@ -204,6 +204,8 @@ def main():
         why = L.private_problem(ctx, write=True)
         if why:
             print("ВНИМАНИЕ: " + why)
+        for line in L.sync_private_copy(ctx):
+            print(line)
         res = L.pick_next(ctx, me=ctx.current_branch())
         return show(ctx, res, args.full)
 
@@ -253,16 +255,18 @@ def main():
             ctx.log("take", card=card.key, branch=branch)
         ctx.save()
         L.commit_private(ctx, f"erp: take {card.key}")
-        print(f"ВЗЯТА: карточка {card.key} за веткой {branch}")
-        rel = ctx.state_in_repo()
-        if rel is not None:
-            print(f"СЕЙЧАС ЖЕ, до любой работы: `git add {rel} && git commit -m \"erp "
-                  f"{card.key}: взята\" && git push -u origin {branch}` и PR черновиком. "
-                  f"Взятие действует, когда оно на GitHub; без пуша mark.py отметок не примет.")
-            print("Пуш отвергнут (non-fast-forward) — карточку взяла другая сессия: удалить "
-                  "местную ветку, запустить next_card.py снова. Force-push запрещён.")
-        print_card(ctx, card, True, args.full)
-        return 0
+    print(f"ВЗЯТА: карточка {card.key} за веткой {branch}")
+    for line in L.sync_private_copy(ctx):  # вне замка: это сеть
+        print(line)
+    rel = ctx.state_in_repo()
+    if rel is not None:
+        print(f"СЕЙЧАС ЖЕ, до любой работы: `git add {rel} && git commit -m \"erp "
+              f"{card.key}: взята\" && git push -u origin {branch}` и PR черновиком. "
+              f"Взятие действует, когда оно на GitHub; без пуша mark.py отметок не примет.")
+        print("Пуш отвергнут (non-fast-forward) — карточку взяла другая сессия: удалить "
+              "местную ветку, запустить next_card.py снова. Force-push запрещён.")
+    print_card(ctx, card, True, args.full)
+    return 0
 
 
 def show(ctx, res, full):
