@@ -268,9 +268,11 @@ export function LiveMapZoneForm({ task, onSubmit, onCancel, className, blocked =
  * zone has left the map and the list, and the form went with it — so this
  * says why, in the same place, until it is closed.
  *
- * On the map and not in a toast: the map's frame is what goes full screen,
- * and the page's toasts are drawn outside it, where the browser then shows
- * nothing.
+ * Where the form stood, and not in a toast. For a form opened from a zone's
+ * balloon that is on the map: the map's frame is what goes full screen, and
+ * the page's toasts are drawn outside it, where the browser then shows
+ * nothing. For a form opened from a zone's row it is the zones' card on the
+ * page, above the rows that are left.
  */
 export function LiveMapZoneGone({ onClose, className }: { onClose: () => void; className?: string }) {
   const tMap = useTranslations("mtmMap")

@@ -107,6 +107,20 @@ let zoneWrites: Array<{ method: string; path: string; body: unknown }>
 let zoneRefusal: { status: number; code?: string } | null
 /** How long a read of the zones takes to come back; what it brings is the list as it was when it was asked for. */
 let zoneReadDelayMs: number
+/**
+ * A read held back until the case lets it go — not for a number of
+ * milliseconds: a case that checks what stands on the page «while the answer
+ * is on its way» must not depend on how fast the runner is that day.
+ */
+let zoneReadGate: Promise<void> | null
+/** The same for the employees' own answer: the page says «Загрузка карты...» until it comes. */
+let rosterGate: Promise<void> | null
+/** A gate, and the way to open it. */
+function gate(): { held: Promise<void>; release: () => void } {
+  let release = () => {}
+  const held = new Promise<void>((resolve) => { release = resolve })
+  return { held, release }
+}
 /** How many of the next changes the server carries out and then cannot answer: the connection drops on the way back. */
 let zoneAnswersLost: number
 
@@ -234,6 +248,8 @@ describe("the live map page, end to end", () => {
     zoneWrites = []
     zoneRefusal = null
     zoneReadDelayMs = 0
+    zoneReadGate = null
+    rosterGate = null
     zoneAnswersLost = 0
     rosterRows = [
       { agentId: "far", name: "Fərid", fieldStatus: "ON_ROAD", meters: 7_400, minutesAgo: 1 },
@@ -257,9 +273,13 @@ describe("the live map page, end to end", () => {
         zoneReads += 1
         const asked = typeof zoneBase === "number" ? zoneBase : JSON.parse(JSON.stringify(zoneBase)) as Record<string, unknown>
         if (zoneReadDelayMs > 0) await new Promise((resolve) => setTimeout(resolve, zoneReadDelayMs))
+        if (zoneReadGate) await zoneReadGate
         return typeof asked === "number" ? new Response("{}", { status: asked }) : Response.json({ success: true, data: asked })
       }
-      if (url.pathname === "/api/v1/mtm/locations") return Response.json(answer(Date.now()))
+      if (url.pathname === "/api/v1/mtm/locations") {
+        if (rosterGate) await rosterGate
+        return Response.json(answer(Date.now()))
+      }
       if (url.pathname === "/api/v1/mtm/routes") {
         if (routeDelayMs > 0) await new Promise((resolve) => setTimeout(resolve, routeDelayMs))
         return Response.json({ success: true, data: { routes } })
@@ -556,7 +576,7 @@ describe("the live map page, end to end", () => {
     await press(byTestId("live-map-layer-glide"))
     expect([mapProp("showLabels"), trails(), mapProp("glideMarkers")]).toEqual([true, null, false])
     // The look of the map is remembered in the browser.
-    expect(JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v1") ?? "{}")).toEqual({ labels: true, trails: false, glide: false, clients: false, areas: false, base: "voyager" })
+    expect(JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v1") ?? "{}")).toEqual({ labels: true, trails: false, glide: false, clients: false, areas: false, areasList: false, base: "voyager" })
   })
 
   it("switches the map's background from «Слои», remembers it, and comes back with it", async () => {
@@ -820,6 +840,13 @@ describe("the live map page, end to end", () => {
     const openLayers = async () => { await press(container.querySelector('[data-testid="live-map-layers"] > button')) }
     const hint = () => byTestId("live-map-layer-hint-areas")?.textContent
     const zonesOnMap = () => mapProp<ZoneOnMap[]>("zones")
+    // The zones' own card on the page: folded until «Показать список» is pressed.
+    const card = () => byTestId("live-map-zones-card")
+    const cardTitle = () => byTestId("live-map-zones-card-title")?.textContent
+    const fold = () => byTestId("live-map-zones-card-fold")
+    const unfoldCard = async () => { await press(fold()) }
+    const zoneRows = () => [...document.querySelectorAll<HTMLElement>('[data-testid^="live-map-zone-row-zone-"]')]
+    const look = () => JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v1") ?? "{}") as Record<string, unknown>
     const pressMap = async (latitude: number, longitude: number) => {
       await act(async () => { mapProp<(lat: number, lng: number) => void>("onMapPress")(latitude, longitude) })
       await settle()
@@ -848,7 +875,7 @@ describe("the live map page, end to end", () => {
       const layer = byTestId("live-map-layer-areas")
       expect([layer?.getAttribute("aria-label"), layer?.getAttribute("aria-checked")]).toEqual(["Свои зоны", "false"])
       expect(hint()).toBe("районы и участки с названием, нарисованные на карте вручную")
-      expect(byTestId("live-map-zone-list")).toBeNull()
+      expect([card(), byTestId("live-map-zone-list")]).toEqual([null, null])
       // Not the clients' own check-in circles: that layer is another switch with another name.
       expect(byTestId("live-map-layer-zones")?.getAttribute("aria-label")).toBe("Зоны клиентов")
     })
@@ -871,23 +898,295 @@ describe("the live map page, end to end", () => {
       expect(circle).toMatchObject({ id: "zone-centre", kind: "CIRCLE", color: "teal", center: { latitude: 40.4, longitude: 49.85 }, radiusMeters: 1500 })
       expect(mapProp("canEditZones")).toBe(true)
       expect(hint()).toBe("на карте зон: 2")
-      // The list under the switch: the name and how much the zone covers.
-      const rows = [...document.querySelectorAll('[data-testid^="live-map-zone-row-zone-"]')]
+      // In «Слои» the layer is its switch and that one line: no zone is listed in the panel, which has only the map's height to give.
+      const panel = document.getElementById("live-map-layers-panel")!
+      expect(byTestId("live-map-layer-areas")?.closest("li")?.textContent).toBe("Свои зонына карте зон: 2")
+      expect([panel.textContent?.includes("Северный участок"), panel.textContent?.includes("Центр")]).toEqual([false, false])
+      expect(panel.querySelector('[data-testid^="live-map-zone-"]')).toBeNull()
+      // The zones are listed on the page, in a card of their own: folded, it says how many there are.
+      expect(cardTitle()).toBe("Свои зоны · 2")
+      expect([fold()?.textContent, fold()?.getAttribute("aria-expanded"), zoneRows().length]).toEqual(["Показать список", "false", 0])
+      expect(byTestId("mtm-map-frame")!.contains(card())).toBe(false)
+      await unfoldCard()
+      expect([fold()?.textContent, fold()?.getAttribute("aria-expanded")]).toEqual(["Свернуть список", "true"])
+      // The list: the name and how much the zone covers.
+      const rows = zoneRows()
         .map((row) => [row.querySelector('[data-testid="live-map-zone-row-name"]')?.textContent, row.querySelector('[data-testid="live-map-zone-row-area"]')?.textContent])
       expect(rows).toEqual([["Северный участок", "94,2 га"], ["Центр", "7,07 км²"]])
+      expect(zoneRows().every((row) => card()!.contains(row))).toBe(true)
       // The employees on the map are who they were, and the clients' layer was not touched.
       expect(onMap().sort()).toEqual(["far", "mid", "near"])
       expect(requests.some((request) => request.startsWith("/api/v1/mtm/locations/clients"))).toBe(false)
       // Remembered in this browser like the other looks of the map.
-      expect(JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v1") ?? "{}")).toMatchObject({ areas: true })
-      // Off: the map is given none. On again: the zones that were read are still the zones.
+      expect(look()).toMatchObject({ areas: true, areasList: true })
+      // Off: the map is given none, and the card goes with the layer. On again: the zones that were read are still the zones.
       await press(byTestId("live-map-layer-areas"))
       expect(zonesOnMap()).toEqual([])
-      expect(byTestId("live-map-zone-list")).toBeNull()
+      expect([card(), byTestId("live-map-zone-list")]).toEqual([null, null])
       await press(byTestId("live-map-layer-areas"))
       await settle(20)
       expect(zonesOnMap()).toHaveLength(2)
       expect(zoneReads).toBe(1)
+      // The card is back as it was left: unfolded.
+      expect([cardTitle(), zoneRows().length]).toEqual(["Свои зоны · 2", 2])
+    })
+
+    it("the card is not drawn before the zones have been read: a list that is still on its way is not «no zones»", async () => {
+      zoneBase = { zones: [CENTRE_CIRCLE, NORTH_BLOCK], access: { canWrite: true } }
+      // Held until this case lets it go, however long the runner takes over the lines between.
+      const read = gate()
+      zoneReadGate = read.held
+      await open()
+      await openLayers()
+      await press(byTestId("live-map-layer-areas"))
+      await settle(20)
+      // The layer is on and the read is out.
+      expect([byTestId("live-map-layer-areas")?.getAttribute("aria-checked"), hint(), zoneReads]).toEqual(["true", "загружаю зоны…", 1])
+      expect([card(), byTestId("live-map-zone-empty")]).toEqual([null, null])
+      read.release()
+      await settle(20)
+      expect([hint(), cardTitle()]).toEqual(["на карте зон: 2", "Свои зоны · 2"])
+    })
+
+    it("the card waits for the employees too: while the map itself is still loading there is no «На карте» to press", async () => {
+      // A return visit: the layer and its list were left on. The zones answer first, the employees have not yet.
+      window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ areas: true, areasList: true }))
+      zoneBase = { zones: [CENTRE_CIRCLE, NORTH_BLOCK], access: { canWrite: true } }
+      const employees = gate()
+      rosterGate = employees.held
+      await open()
+      await settle(20)
+      // The zones have been read and answered; the map is not drawn yet — only the words that it is loading.
+      expect(zoneReads).toBe(1)
+      expect(byTestId("mtm-map-frame")?.textContent).toBe("Загрузка карты...")
+      expect(byTestId("map-stand-in")).toBeNull()
+      // A press made now would be lost: the map that is drawn afterwards starts from the turn it was drawn with.
+      expect([card(), document.querySelectorAll('[data-testid^="live-map-zone-show-"]').length]).toEqual([null, 0])
+      employees.release()
+      await settle(20)
+      expect(byTestId("map-stand-in")).not.toBeNull()
+      expect([cardTitle(), zoneRows().length, document.querySelectorAll('[data-testid^="live-map-zone-show-"]').length]).toEqual(["Свои зоны · 2", 2, 2])
+      expect(zoneReads).toBe(1)
+    })
+
+    it("stands in the employees' column, above their list — put away with it, wide with it, and under the map on a phone", async () => {
+      zoneBase = { zones: [CENTRE_CIRCLE, NORTH_BLOCK], access: { canWrite: true } }
+      await open()
+      await openLayers()
+      await press(byTestId("live-map-layer-areas"))
+      await settle(20)
+      await openLayers()
+      const canvas = byTestId("mtm-map-canvas")!
+      const side = byTestId("mtm-map-side")!
+      const roster = byTestId("live-map-roster")!
+      // The canvas has two places: the map, and the column — the card and the list are in the column, the card first.
+      expect([...canvas.children]).toEqual([byTestId("mtm-map-frame"), side])
+      expect([...side.children]).toEqual([card(), roster])
+      // …and drawn in that order, top to bottom: a column that is not turned over, and a card that is not sent after the list.
+      expect(side.className.split(" ")).toEqual(expect.arrayContaining(["flex", "flex-col"]))
+      expect(card()!.className).not.toMatch(/(^|\s)(\S+:)?order-/)
+      // Under the map where the canvas is one column (a phone): after the map, before the list.
+      expect(byTestId("mtm-map-frame")!.className).toContain("order-1")
+      expect(side.className).toContain("order-2")
+      // The column is the width the list was given, so the card cannot be wider than the list nor push it.
+      expect(side.className).toContain("min-w-0")
+      expect(side.className).not.toContain("lg:hidden")
+
+      // The list as the wide table: the column is the wide one, and the card is still in it.
+      await press(byTestId("live-map-roster-width"))
+      expect(canvas.getAttribute("data-roster")).toBe("wide")
+      expect([...byTestId("mtm-map-side")!.children]).toEqual([card(), byTestId("live-map-roster")])
+
+      // The list put away on a wide screen: the whole column goes, the card with it — the map has the width.
+      await press(byTestId("live-map-roster-view"))
+      await press(byTestId("live-map-roster-hide"))
+      await closeMenu()
+      expect(canvas.getAttribute("data-roster")).toBe("hidden")
+      expect(byTestId("mtm-map-side")!.className.split(" ")).toContain("lg:hidden")
+      expect(byTestId("mtm-map-side")!.contains(card())).toBe(true)
+      // The zones stay on the map all the while: putting the list away is not switching the layer off.
+      expect(zonesOnMap()).toHaveLength(2)
+      await press(byTestId("live-map-roster-show"))
+      expect(byTestId("mtm-map-side")!.className).not.toContain("lg:hidden")
+      expect(cardTitle()).toBe("Свои зоны · 2")
+    })
+
+    it("remembers in this browser whether the list of zones is unfolded — and works the same when the browser keeps nothing", async () => {
+      zoneBase = { zones: [CENTRE_CIRCLE, NORTH_BLOCK], access: { canWrite: true } }
+      await open()
+      await openLayers()
+      await press(byTestId("live-map-layer-areas"))
+      await settle(20)
+      expect([look().areasList, zoneRows().length]).toEqual([false, 0])
+      await unfoldCard()
+      expect([look().areasList, zoneRows().length]).toEqual([true, 2])
+
+      // The page is opened again in this browser: the layer is on and its list is unfolded, as they were left.
+      await act(async () => { root.unmount() })
+      root = createRoot(container)
+      await open()
+      expect([cardTitle(), fold()?.getAttribute("aria-expanded"), zoneRows().length]).toEqual(["Свои зоны · 2", "true", 2])
+      // Folded and opened once more: folded.
+      await press(fold())
+      expect([look().areasList, zoneRows().length]).toEqual([false, 0])
+      await act(async () => { root.unmount() })
+      root = createRoot(container)
+      await open()
+      expect([cardTitle(), fold()?.getAttribute("aria-expanded"), zoneRows().length]).toEqual(["Свои зоны · 2", "false", 0])
+
+      // A browser that keeps nothing for the page (private mode, storage closed): reading and writing both throw.
+      await act(async () => { root.unmount() })
+      root = createRoot(container)
+      const closed = () => { throw new DOMException("The operation is insecure.", "SecurityError") }
+      vi.spyOn(Storage.prototype, "getItem").mockImplementation(closed)
+      vi.spyOn(Storage.prototype, "setItem").mockImplementation(closed)
+      try {
+        expect(() => window.localStorage.getItem("leaddrive.mtm.live-map.look.v1")).toThrow()
+        await open()
+        // Nothing remembered: the layer is off, as on a first visit — and the page is all there.
+        expect([card(), rowIds().length]).toEqual([null, 4])
+        await openLayers()
+        await press(byTestId("live-map-layer-areas"))
+        await settle(20)
+        expect([cardTitle(), zoneRows().length]).toEqual(["Свои зоны · 2", 0])
+        // Not remembered; still applied.
+        await unfoldCard()
+        expect([fold()?.textContent, zoneRows().length]).toEqual(["Свернуть список", 2])
+        await press(fold())
+        expect([fold()?.textContent, zoneRows().length]).toEqual(["Показать список", 0])
+      } finally {
+        vi.restoreAllMocks()
+      }
+    })
+
+    it("«На карте» on a zone's row asks the map for that zone — again for the same zone when pressed again — and is a reader's too", async () => {
+      zoneBase = { zones: [CENTRE_CIRCLE, NORTH_BLOCK], access: { canWrite: false } }
+      await open()
+      await openLayers()
+      await press(byTestId("live-map-layer-areas"))
+      await settle(20)
+      await unfoldCard()
+      const asked = () => mapProp<{ zoneId: string; turn: number } | null>("focusZone")
+      // Nothing was asked for by merely opening the list.
+      expect(asked()).toBeNull()
+      expect(byTestId("live-map-zone-show-zone-centre")?.textContent).toBe("На карте")
+      // «Слои» is still open — the layer has just been switched on in it — and lies over the middle of the map.
+      const layersButton = () => container.querySelector('[data-testid="live-map-layers"] > button')
+      const layersOpen = () => [document.getElementById("live-map-layers-panel") != null, layersButton()?.getAttribute("aria-expanded")]
+      expect(layersOpen()).toEqual([true, "true"])
+      await press(byTestId("live-map-zone-show-zone-centre"))
+      expect(asked()).toEqual({ zoneId: "zone-centre", turn: 1 })
+      // The zone is shown in the middle of the map, so the panel gets out of the way.
+      expect(layersOpen()).toEqual([false, "false"])
+      // It opens again when asked — the layer is as it was left — and the next «На карте» closes it again.
+      await openLayers()
+      expect(layersOpen()).toEqual([true, "true"])
+      expect(byTestId("live-map-layer-areas")?.getAttribute("aria-checked")).toBe("true")
+      // The same zone a second time is a new turn: the map was dragged away meanwhile, and goes back.
+      await press(byTestId("live-map-zone-show-zone-centre"))
+      expect(asked()).toEqual({ zoneId: "zone-centre", turn: 2 })
+      expect(layersOpen()).toEqual([false, "false"])
+      await press(byTestId("live-map-zone-show-zone-north"))
+      expect(asked()).toEqual({ zoneId: "zone-north", turn: 3 })
+      expect(layersOpen()).toEqual([false, "false"])
+      // The zone asked for is one the map was given; where the real map then goes is asked of Leaflet in mtm-live-map-zone-focus.test.ts.
+      expect(zonesOnMap().map((zone) => zone.id)).toContain("zone-north")
+      // Looking is not changing: nothing was sent, and no form opened.
+      expect([zoneWrites.length, byTestId("live-map-zone-form")]).toEqual([0, null])
+    })
+
+    it("«На карте» switches «Следить» off — the map would go back to the employee at his next position — and lets go of nothing else", async () => {
+      zoneBase = { zones: [CENTRE_CIRCLE, NORTH_BLOCK], access: { canWrite: true } }
+      await open()
+      await openLayers()
+      await press(byTestId("live-map-layer-areas"))
+      await settle(20)
+      await unfoldCard()
+      await press(byTestId("live-map-agent-card-near"))
+      const follow = () => byTestId("live-map-follow")
+      const selection = () => [mapProp("focusAgentId"), byTestId("live-map-agent-detail") != null, onMap().sort().join()]
+      expect([follow()?.textContent, follow()?.getAttribute("aria-pressed"), mapProp("followAgent")]).toEqual(["Следить", "false", false])
+      expect(selection()).toEqual(["near", true, "far,mid,near"])
+
+      // Nobody is followed: the zone is asked for, and the employee stays chosen with his day open, as he was.
+      await press(byTestId("live-map-zone-show-zone-centre"))
+      expect(mapProp("focusZone")).toEqual({ zoneId: "zone-centre", turn: 1 })
+      expect([follow()?.getAttribute("aria-pressed"), mapProp("followAgent")]).toEqual(["false", false])
+      expect(selection()).toEqual(["near", true, "far,mid,near"])
+
+      // «Следить» on: the map keeps to him at every new position.
+      await press(follow())
+      expect([follow()?.getAttribute("aria-pressed"), mapProp("followAgent")]).toEqual(["true", true])
+      // A zone asked for in words: the button shows it is off, and the map is told so — he is still the one chosen.
+      await press(byTestId("live-map-zone-show-zone-north"))
+      expect(mapProp("focusZone")).toEqual({ zoneId: "zone-north", turn: 2 })
+      expect([follow()?.getAttribute("aria-pressed"), mapProp("followAgent")]).toEqual(["false", false])
+      expect(selection()).toEqual(["near", true, "far,mid,near"])
+      // Switched on again by the person, it is on again.
+      await press(follow())
+      expect([follow()?.getAttribute("aria-pressed"), mapProp("followAgent")]).toEqual(["true", true])
+    })
+
+    it("«На карте» brings the map back into view where the list stands under it, and leaves the page alone where the map is beside the list", async () => {
+      zoneBase = { zones: [CENTRE_CIRCLE], access: { canWrite: true } }
+      await open()
+      await openLayers()
+      await press(byTestId("live-map-layer-areas"))
+      await settle(20)
+      await unfoldCard()
+      const frame = byTestId("mtm-map-frame")!
+      const scrolled: unknown[] = []
+      frame.scrollIntoView = (how?: boolean | ScrollIntoViewOptions) => { scrolled.push(how) }
+      const place = (top: number, height: number) => ({ top, bottom: top + height, height, left: 0, right: 360, width: 360, x: 0, y: top, toJSON: () => ({}) })
+      vi.stubGlobal("innerHeight", 800)
+      // Beside the list (a wide screen): the map is on the screen, cut a little at the bottom.
+      frame.getBoundingClientRect = () => place(260, 700)
+      await press(byTestId("live-map-zone-show-zone-centre"))
+      expect(scrolled).toEqual([])
+      // A phone, scrolled down to the card: the map is a screen above, out of sight.
+      frame.getBoundingClientRect = () => place(-520, 430)
+      await press(byTestId("live-map-zone-show-zone-centre"))
+      expect(scrolled).toEqual([{ block: "nearest" }])
+      // Only a strip of it is left at the top of the screen.
+      frame.getBoundingClientRect = () => place(-330, 430)
+      await press(byTestId("live-map-zone-show-zone-centre"))
+      expect(scrolled).toHaveLength(2)
+      // A phone scrolled a few rows down the card: more than half of the map is still on the screen, but its upper
+      // 200 px are not — and the zone is shown in the middle of the whole map, 28 px from the screen's top edge.
+      vi.stubGlobal("innerHeight", 844)
+      frame.getBoundingClientRect = () => place(-200, 456)
+      await press(byTestId("live-map-zone-show-zone-centre"))
+      expect(scrolled).toHaveLength(3)
+      // Standing at the top edge with its lower part below the screen — but more than half in view — it is left alone:
+      // that is the wide screen, where the map keeps its place beside the list.
+      frame.getBoundingClientRect = () => place(0, 1500)
+      await press(byTestId("live-map-zone-show-zone-centre"))
+      expect(scrolled).toHaveLength(3)
+      expect(mapProp<{ turn: number }>("focusZone").turn).toBe(5)
+
+      // In the app the page scrolls inside <main>, under a header of 56 px: «above the top edge» is above <main>'s.
+      const main = document.createElement("main")
+      document.body.appendChild(main)
+      main.appendChild(container)
+      try {
+        main.getBoundingClientRect = () => place(56, 788)
+        // 26 px of the map are under the header.
+        frame.getBoundingClientRect = () => place(30, 456)
+        await press(byTestId("live-map-zone-show-zone-centre"))
+        expect(scrolled).toHaveLength(4)
+        // Right under the header, all of it in view: nothing to bring back.
+        frame.getBoundingClientRect = () => place(56, 456)
+        await press(byTestId("live-map-zone-show-zone-centre"))
+        expect(scrolled).toHaveLength(4)
+        // Beside the list the map keeps its place 12 px under the header, cut at the bottom by a strip: the page stays where it is.
+        frame.getBoundingClientRect = () => place(68, 790)
+        await press(byTestId("live-map-zone-show-zone-centre"))
+        expect(scrolled).toHaveLength(4)
+      } finally {
+        document.body.appendChild(container)
+        main.remove()
+      }
+      expect(scrolled).toEqual([{ block: "nearest" }, { block: "nearest" }, { block: "nearest" }, { block: "nearest" }])
     })
 
     it("a layer that is on and could not be read says so on the map itself, with «Повторить» — beside any other layer's own trouble", async () => {
@@ -900,7 +1199,8 @@ describe("the live map page, end to end", () => {
       await settle(20)
       expect(hint()).toBe("не удалось загрузить зоны — нажмите «Обновить»")
       expect(zonesOnMap()).toEqual([])
-      expect(byTestId("live-map-zone-list")).toBeNull()
+      // No card either: «Свои зоны · 0» would say there are none, and nobody knows that.
+      expect([card(), byTestId("live-map-zone-list")]).toEqual([null, null])
       // With «Слои» closed the map would look exactly like «no zones here».
       await openLayers()
       expect(byTestId("live-map-areas-alert")?.textContent).toBe("Свои зоны не загрузилисьПовторить")
@@ -1166,8 +1466,11 @@ describe("the live map page, end to end", () => {
       await settle(20)
       expect(zonesOnMap()).toHaveLength(2)
       expect(mapProp("canEditZones")).toBe(false)
+      await unfoldCard()
       expect(document.querySelectorAll('[data-testid^="live-map-zone-row-zone-"]')).toHaveLength(2)
       expect(document.querySelector('[data-testid^="live-map-zone-rename-"], [data-testid^="live-map-zone-recolor-"], [data-testid^="live-map-zone-remove-"]')).toBeNull()
+      // All the card offers him: to fold the list, and to find each zone on the map.
+      expect([...card()!.querySelectorAll("button")].map((button) => button.textContent)).toEqual(["Свернуть список", "На карте", "На карте"])
       expect(byTestId("live-map-zone-read-only")?.textContent).toBe("Рисовать и менять зоны могут администратор и менеджер.")
       // A press on a button in a balloon he was never shown opens nothing either.
       await act(async () => { mapProp<(zoneId: string, action: string) => void>("onZoneAction")("zone-centre", "delete") })
@@ -1193,6 +1496,7 @@ describe("the live map page, end to end", () => {
       await openLayers()
       await press(byTestId("live-map-layer-areas"))
       await settle(20)
+      await unfoldCard()
       await press(byTestId("live-map-zone-remove-zone-centre"))
       const row = byTestId("live-map-zone-row-zone-centre")!
       expect(row.querySelector('[data-testid="live-map-zone-form-title"]')?.textContent).toBe("Удалить зону «Центр»?")
@@ -1210,7 +1514,7 @@ describe("the live map page, end to end", () => {
       expect(zoneWrites).toEqual([{ method: "DELETE", path: "/api/v1/mtm/locations/zones/zone-centre", body: null }])
       expect(zonesOnMap().map((zone) => zone.id)).toEqual(["zone-north"])
       expect(byTestId("live-map-zone-row-zone-centre")).toBeNull()
-      expect(hint()).toBe("на карте зон: 1")
+      expect([hint(), cardTitle()]).toEqual(["на карте зон: 1", "Свои зоны · 1"])
       expect(zoneReads).toBe(1)
     })
 
@@ -1220,6 +1524,7 @@ describe("the live map page, end to end", () => {
       await openLayers()
       await press(byTestId("live-map-layer-areas"))
       await settle(20)
+      await unfoldCard()
 
       // «Цвет» in the list: the colour it has is the one chosen; another is sent as its key.
       await press(byTestId("live-map-zone-recolor-zone-centre"))
@@ -1250,11 +1555,12 @@ describe("the live map page, end to end", () => {
       expect(byTestId("live-map-zone-editor")).toBeNull()
       // The list is by name: «Аэропорт» now stands before «Центр». The shape did not move.
       expect(zonesOnMap().map((zone) => zone.name)).toEqual(["Аэропорт", "Центр"])
+      expect(zoneRows().map((item) => item.querySelector('[data-testid="live-map-zone-row-name"]')?.textContent)).toEqual(["Аэропорт", "Центр"])
       expect(zonesOnMap()[0].outline?.[0]).toEqual({ latitude: 40.4, longitude: 49.8 })
       expect(zoneReads).toBe(1)
     })
 
-    it("a zone a colleague removed meanwhile goes from this map too instead of being renamed back to life — and why is said where its form stood, inside the map's frame", async () => {
+    it("a zone a colleague removed meanwhile goes from this map too instead of being renamed back to life — and why is said where its form stood: in the card for a row, on the map for a balloon", async () => {
       const SOUTH_CIRCLE = { ...CENTRE_CIRCLE, id: "zone-south", name: "Южный склад", color: null, centerLatitude: 40.35 }
       zoneBase = { zones: [CENTRE_CIRCLE, NORTH_BLOCK, SOUTH_CIRCLE], access: { canWrite: true } }
       const removedByColleague = (id: string) => {
@@ -1266,6 +1572,7 @@ describe("the live map page, end to end", () => {
       await openLayers()
       await press(byTestId("live-map-layer-areas"))
       await settle(20)
+      await unfoldCard()
 
       // Somebody else removes «Центр» on the server; here its row in the list is still being renamed.
       removedByColleague("zone-centre")
@@ -1276,12 +1583,14 @@ describe("the live map page, end to end", () => {
       expect(zonesOnMap().map((zone) => zone.id)).toEqual(["zone-north", "zone-south"])
       expect(byTestId("live-map-zone-form")).toBeNull()
       // The form closed and the zone vanished — which, with nothing said, reads as «renaming deleted my zone».
-      // Said in the list where the row was, and so inside the frame that is all the browser draws when the
-      // map has the whole screen. (The page's toasts are outside it; here they are stood in for by nothing.)
+      // Said in the card where the row was, above the rows that are left — where whoever pressed is looking.
       expect(said()).toHaveLength(1)
       expect(said()[0].querySelector("span")?.textContent).toBe("Этой зоны уже нет: её удалил кто-то другой")
-      expect(byTestId("live-map-layer-detail-areas")!.contains(said()[0])).toBe(true)
-      expect(byTestId("mtm-map-frame")!.contains(said()[0])).toBe(true)
+      expect(card()!.contains(said()[0])).toBe(true)
+      expect(said()[0].compareDocumentPosition(byTestId("live-map-zone-list")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      // Not on the map: nothing there asked for this change, and «Слои» says only how many zones are left.
+      expect(byTestId("mtm-map-frame")!.contains(said()[0])).toBe(false)
+      expect([hint(), cardTitle()]).toEqual(["на карте зон: 2", "Свои зоны · 2"])
       await press(byTestId("live-map-zone-gone-close"))
       expect(said()).toEqual([])
 
@@ -1293,9 +1602,12 @@ describe("the live map page, end to end", () => {
       await press(byTestId("live-map-zone-editor")!.querySelector('[data-testid="live-map-zone-save"]'))
       expect(zonesOnMap().map((zone) => zone.id)).toEqual(["zone-south"])
       expect(byTestId("live-map-zone-form")).toBeNull()
+      // Inside the frame that is all the browser draws when the map has the whole screen — a balloon can be
+      // pressed there. (The page's toasts are outside it; here they are stood in for by nothing.)
       expect(said()).toHaveLength(1)
       expect(byTestId("live-map-zone-editor")!.contains(said()[0])).toBe(true)
       expect(byTestId("mtm-map-frame")!.contains(said()[0])).toBe(true)
+      expect(card()!.contains(said()[0])).toBe(false)
 
       // Another zone's form takes its place. And a REMOVAL that came too late needs no saying: gone is what was asked for.
       removedByColleague("zone-south")
@@ -1314,10 +1626,71 @@ describe("the live map page, end to end", () => {
       await openLayers()
       await press(byTestId("live-map-layer-areas"))
       await settle(20)
-      expect(hint()).toBe("на карте зон: 0")
-      expect(byTestId("live-map-zone-empty")?.textContent)
-        .toBe("Зон пока нет. Чтобы нарисовать первую: «Линейка» → «Сохранить как зону» или «Адрес или точка» → «Зона вокруг точки».")
+      const howTo = "Зон пока нет. Чтобы нарисовать первую: «Линейка» → «Сохранить как зону» или «Адрес или точка» → «Зона вокруг точки»."
+      // In the card, and at once: with no zones there is no list to unfold, and nothing to press before being told.
+      expect([cardTitle(), fold()]).toEqual(["Свои зоны · 0", null])
+      expect(card()!.contains(byTestId("live-map-zone-empty"))).toBe(true)
+      expect(byTestId("live-map-zone-empty")?.textContent).toBe(howTo)
       expect([byTestId("live-map-tool-ruler")?.textContent, byTestId("live-map-tool-point")?.textContent]).toEqual(["Линейка", "Адрес или точка"])
+      // …and on the map itself, as the layer's own line in «Слои» — instead of «на карте зон: 0», which says nothing to do.
+      expect(hint()).toBe(howTo)
+      expect(byTestId("mtm-map-frame")!.contains(byTestId("live-map-layer-hint-areas"))).toBe(true)
+    })
+
+    it("with the employees' list put away and no zones yet, how to draw the first one is still said — inside the map's frame", async () => {
+      await open()
+      // The whole width to the map: the natural state for drawing. The column goes, and the zones' card with it.
+      await press(byTestId("live-map-roster-view"))
+      await press(byTestId("live-map-roster-hide"))
+      await closeMenu()
+      await openLayers()
+      await press(byTestId("live-map-layer-areas"))
+      await settle(20)
+      expect(byTestId("mtm-map-canvas")?.getAttribute("data-roster")).toBe("hidden")
+      const side = byTestId("mtm-map-side")!
+      expect(side.className.split(" ")).toContain("lg:hidden")
+      // The card is drawn, but in the column that is not shown on a wide screen.
+      expect([cardTitle(), side.contains(card())]).toEqual(["Свои зоны · 0", true])
+      // What can be read on that screen is inside the map's frame — which is also all that the whole-screen map shows.
+      const frame = byTestId("mtm-map-frame")!
+      expect(frame.contains(side)).toBe(false)
+      const line = byTestId("live-map-layer-hint-areas")!
+      expect(frame.contains(line)).toBe(true)
+      expect(line.textContent).toBe("Зон пока нет. Чтобы нарисовать первую: «Линейка» → «Сохранить как зону» или «Адрес или точка» → «Зона вокруг точки».")
+      // The buttons it names are in the same frame, under the same words.
+      expect([frame.contains(byTestId("live-map-tool-ruler")), byTestId("live-map-tool-ruler")?.textContent, byTestId("live-map-tool-point")?.textContent])
+        .toEqual([true, "Линейка", "Адрес или точка"])
+
+      // The first zone drawn: the line counts again.
+      await outlineTriangle()
+      await press(byTestId("live-map-ruler-save-zone"))
+      await type("live-map-zone-name", "Первая")
+      await press(byTestId("live-map-zone-save"))
+      await settle(20)
+      expect(zonesOnMap().map((zone) => zone.name)).toEqual(["Первая"])
+      expect(hint()).toBe("на карте зон: 1")
+    })
+
+    it("a reader with no zones to see is told, on the map too, who may draw them — and never how", async () => {
+      zoneBase = { zones: [], access: { canWrite: false } }
+      await open()
+      await openLayers()
+      await press(byTestId("live-map-layer-areas"))
+      await settle(20)
+      expect(hint()).toBe("Зон пока нет. Рисовать и менять зоны могут администратор и менеджер.")
+      expect(byTestId("live-map-zone-empty")?.textContent).toBe("Зон пока нет. Рисовать и менять зоны могут администратор и менеджер.")
+    })
+
+    it("«Зон пока нет» is said only where nobody drew any: rows that are kept and could not be shown keep the count", async () => {
+      // Two rows are kept and neither can be drawn: «no zones yet» would be untrue.
+      const broken = { ...CENTRE_CIRCLE, centerLatitude: 120, centerLongitude: 40.4 }
+      zoneBase = { zones: [{ ...broken, id: "zone-a" }, { ...broken, id: "zone-b" }], access: { canWrite: true } }
+      await open()
+      await openLayers()
+      await press(byTestId("live-map-layer-areas"))
+      await settle(20)
+      expect(zonesOnMap()).toEqual([])
+      expect(hint()).toBe("на карте зон: 0 · не удалось показать: 2")
     })
   })
 
@@ -1474,7 +1847,7 @@ describe("the live map page, end to end", () => {
     })
 
     it("a refresh of the zones that fails takes nothing off the map, says so in «Слои», and is tried again by itself", async () => {
-      window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ labels: false, trails: true, glide: true, areas: true }))
+      window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ labels: false, trails: true, glide: true, areas: true, areasList: true }))
       zoneBase = { zones: [CENTRE_CIRCLE, NORTH_BLOCK], access: { canWrite: true } }
       await act(async () => { root.render(createElement(MtmMapPage)) })
       await forward(18_000)
@@ -1494,7 +1867,8 @@ describe("the live map page, end to end", () => {
       expect(byTestId("live-map-areas-alert")).toBeNull()
       await act(async () => { container.querySelector<HTMLElement>('[data-testid="live-map-layers"] > button')!.click() })
       expect(byTestId("live-map-layer-hint-areas")?.textContent).toBe("на карте зон: 2 · не удалось обновить")
-      // Who may change them was said by the last answer that did come: the list keeps its buttons.
+      // Who may change them was said by the last answer that did come: the list, in its card, keeps its rows and their buttons.
+      expect(byTestId("live-map-zones-card-title")?.textContent).toBe("Свои зоны · 2")
       expect(byTestId("live-map-zone-rename-zone-centre")).not.toBeNull()
       // A minute later the page asks again by itself.
       zoneBase = { zones: [CENTRE_CIRCLE], access: { canWrite: true } }
@@ -1502,6 +1876,27 @@ describe("the live map page, end to end", () => {
       expect(zoneReads).toBe(3)
       expect(mapProp<unknown[]>("zones")).toHaveLength(1)
       expect(byTestId("live-map-layer-hint-areas")?.textContent).toBe("на карте зон: 1")
+    })
+
+    it("no zones yet and a refresh that failed: the layer's line goes back to the count and says the refresh failed", async () => {
+      window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ areas: true }))
+      zoneBase = { zones: [], access: { canWrite: true } }
+      await act(async () => { root.render(createElement(MtmMapPage)) })
+      await forward(18_000)
+      await act(async () => { container.querySelector<HTMLElement>('[data-testid="live-map-layers"] > button')!.click() })
+      const line = () => byTestId("live-map-layer-hint-areas")?.textContent
+      expect(line()).toBe("Зон пока нет. Чтобы нарисовать первую: «Линейка» → «Сохранить как зону» или «Адрес или точка» → «Зона вокруг точки».")
+      zoneBase = 500
+      await act(async () => { byTestId("mtm-map-refresh")!.click() })
+      await forward(2_000, 100)
+      expect(zoneReads).toBe(2)
+      // «Зон пока нет» is what an answer said, not what a failure says: the line is the count again, with the failure beside it.
+      expect(line()).toBe("на карте зон: 0 · не удалось обновить")
+      // The next read that does come back says it again.
+      zoneBase = { zones: [], access: { canWrite: true } }
+      await forward(61_000)
+      expect(zoneReads).toBe(3)
+      expect(line()).toBe("Зон пока нет. Чтобы нарисовать первую: «Линейка» → «Сохранить как зону» или «Адрес или точка» → «Зона вокруг точки».")
     })
 
     it.each([
@@ -1552,7 +1947,7 @@ describe("the live map page, end to end", () => {
     })
 
     it("a refresh that was on its way while a zone was removed does not bring the zone back", async () => {
-      window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ labels: false, trails: true, glide: true, areas: true }))
+      window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ labels: false, trails: true, glide: true, areas: true, areasList: true }))
       zoneBase = { zones: [CENTRE_CIRCLE, NORTH_BLOCK], access: { canWrite: true } }
       await act(async () => { root.render(createElement(MtmMapPage)) })
       await forward(18_000)
@@ -1566,7 +1961,6 @@ describe("the live map page, end to end", () => {
       expect(zoneReads).toBe(2)
       // Meanwhile «Центр» is removed, and the server answers at once.
       zoneReadDelayMs = 0
-      await act(async () => { container.querySelector<HTMLElement>('[data-testid="live-map-layers"] > button')!.click() })
       await act(async () => { byTestId("live-map-zone-remove-zone-centre")!.click() })
       await act(async () => { byTestId("live-map-zone-save")!.click() })
       await forward(300, 100)

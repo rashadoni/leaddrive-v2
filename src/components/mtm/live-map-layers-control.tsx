@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, type ReactNode } from "react"
+import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { Eye, Layers, X } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -17,12 +17,6 @@ export interface LiveMapLayer {
    * layer that was simply never turned on is not something «missing».
    */
   shownByDefault?: boolean
-  /**
-   * What the layer itself holds, listed under its switch while it is on — the
-   * organization's own zones under «Свои зоны». Inside the panel, with no
-   * frame or scrollbar of its own; in two columns it takes the whole width.
-   */
-  detail?: ReactNode
 }
 
 /**
@@ -47,8 +41,15 @@ export interface LiveMapLayersAlert {
  * be taken off at all, and a single employee could not be hidden. The control
  * is closed until asked for, so the map itself stays clear.
  */
-export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents, note, alert = null, baseMaps = null }: {
+export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents, note, alert = null, baseMaps = null, closeTurn = 0 }: {
   layers: LiveMapLayer[]
+  /**
+   * Counts the times the map was asked, from outside it, to show a place — a
+   * zone's «На карте» in the list on the page. Each new turn closes the panel:
+   * open, it lies over the middle of the map, which is exactly where the place
+   * asked for is shown, and the press would seem to have done nothing.
+   */
+  closeTurn?: number
   /**
    * The map's background, when there is more than one to choose from. Not a
    * layer: exactly one is always on, and choosing one hides nothing.
@@ -63,6 +64,13 @@ export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents
 }) {
   const tMap = useTranslations("mtmMap")
   const [open, setOpen] = useState(false)
+  // Closed while rendering, not in an effect after it: the panel is not drawn
+  // once more over the place asked for. The button opens it again as always.
+  const [closedAtTurn, setClosedAtTurn] = useState(closeTurn)
+  if (closedAtTurn !== closeTurn) {
+    setClosedAtTurn(closeTurn)
+    setOpen(false)
+  }
   const offCount = layers.filter((layer) => layer.shownByDefault && !layer.on).length + (hiddenAgentCount > 0 ? 1 : 0)
   const alerts = (Array.isArray(alert) ? alert : [alert]).filter((item): item is LiveMapLayersAlert => item != null)
 
@@ -73,8 +81,16 @@ export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents
     // itself. On a map wide enough the switches stand in two columns instead:
     // nine of them in one column were taller than the map of a laptop, and a
     // list that scrolls inside a panel inside a page is the thing the owner
-    // calls a bug. The frame spans the map's width only to learn that width
-    // (@container) — it takes no presses itself.
+    // calls a bug. For the same reason a layer is its switch and one line of
+    // words here, and nothing is listed under it: what a layer holds can be
+    // any number of things, and the panel has only the map's height to give —
+    // the organization's own zones are listed on the page (live-map-zones-card.tsx).
+    // A switch left alone in the last row of the two columns (an odd number of
+    // them) has the row's whole width for its words: «Свои зоны» with no zones
+    // yet says how to draw the first one, and that sentence was five lines in
+    // half the panel — taller than the room left on a laptop's map.
+    // The frame spans the map's width only to learn that width (@container) —
+    // it takes no presses itself.
     <div className="@container pointer-events-none absolute left-3 bottom-3 right-3 top-3 z-[1200] flex flex-col items-end gap-2" data-testid="live-map-layers">
       <button
         type="button"
@@ -129,34 +145,24 @@ export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents
           {/* A line above every switch but the first row's: one of them in one column, two in two. */}
           <ul className="grid grid-cols-1 @lg:grid-cols-2 @lg:gap-x-4" data-testid="live-map-layers-list">
             {layers.map((layer) => (
-              <li
-                key={layer.id}
-                className={cn(
-                  "border-t border-zinc-200 px-1 py-1.5 first:border-t-0 dark:border-zinc-700",
-                  // A layer with a list under its switch takes the whole width, so the list is not squeezed into a column.
-                  layer.detail ? "@lg:col-span-2" : "@lg:[&:nth-child(2)]:border-t-0",
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-medium">{layer.label}</span>
-                    {layer.hint ? <span className="block text-xs text-muted-foreground" data-testid={`live-map-layer-hint-${layer.id}`}>{layer.hint}</span> : null}
+              <li key={layer.id} className="flex items-center gap-3 border-t border-zinc-200 px-1 py-1.5 first:border-t-0 @lg:[&:nth-child(2)]:border-t-0 @lg:last:odd:col-span-2 dark:border-zinc-700">
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium">{layer.label}</span>
+                  {layer.hint ? <span className="block text-xs text-muted-foreground" data-testid={`live-map-layer-hint-${layer.id}`}>{layer.hint}</span> : null}
+                </span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={layer.on}
+                  aria-label={layer.label}
+                  data-testid={layer.testId ?? `live-map-layer-${layer.id}`}
+                  onClick={layer.onToggle}
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg"
+                >
+                  <span aria-hidden="true" className={cn("relative inline-flex h-6 w-11 items-center rounded-full transition-colors", layer.on ? "bg-primary" : "bg-zinc-300 dark:bg-zinc-700")}>
+                    <span className={cn("inline-block h-5 w-5 rounded-full bg-white transition-transform", layer.on ? "translate-x-[22px]" : "translate-x-0.5")} />
                   </span>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={layer.on}
-                    aria-label={layer.label}
-                    data-testid={layer.testId ?? `live-map-layer-${layer.id}`}
-                    onClick={layer.onToggle}
-                    className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg"
-                  >
-                    <span aria-hidden="true" className={cn("relative inline-flex h-6 w-11 items-center rounded-full transition-colors", layer.on ? "bg-primary" : "bg-zinc-300 dark:bg-zinc-700")}>
-                      <span className={cn("inline-block h-5 w-5 rounded-full bg-white transition-transform", layer.on ? "translate-x-[22px]" : "translate-x-0.5")} />
-                    </span>
-                  </button>
-                </div>
-                {layer.detail ? <div className="pb-0.5 pt-1" data-testid={`live-map-layer-detail-${layer.id}`}>{layer.detail}</div> : null}
+                </button>
               </li>
             ))}
           </ul>

@@ -53,7 +53,9 @@ import { rosterExportFileName } from "@/lib/mtm/live-map-roster-export"
 import { liveMapDuration, liveMapStateSince } from "@/lib/mtm/live-map-state-since"
 import { parseLiveMapClients, type LiveMapClient, type LiveMapClientsAnswer } from "@/lib/mtm/live-map-clients"
 import { LiveMapZoneForm, LiveMapZoneGone, liveMapZoneFormChange, type LiveMapZoneFormValues } from "@/components/mtm/live-map-zone-form"
-import { LiveMapZoneList } from "@/components/mtm/live-map-zone-list"
+import { LiveMapZonesCard } from "@/components/mtm/live-map-zones-card"
+import { useLiveMapNoZonesWords } from "@/components/mtm/live-map-zone-list"
+import { bringMapFrameIntoView } from "@/lib/mtm/live-map-frame-view"
 import {
   liveMapZoneOutlineProblem,
   liveMapZoneShapeBody,
@@ -135,9 +137,13 @@ interface AgentRouteSnapshot {
   fromCache: boolean
 }
 
-/** How the map is drawn — remembered in the browser like the list's layout. */
+/**
+ * How the map is drawn — remembered in the browser like the list's layout.
+ * `areasList` rides with `areas`: whether the list of «Свои зоны», in its card
+ * on the page, is unfolded.
+ */
 const MAP_LOOK_STORAGE_KEY = "leaddrive.mtm.live-map.look.v1"
-const DEFAULT_MAP_LOOK = { labels: false, trails: true, glide: true, clients: false, areas: false, base: DEFAULT_LIVE_MAP_BASE_MAP as LiveMapBaseMapId }
+const DEFAULT_MAP_LOOK = { labels: false, trails: true, glide: true, clients: false, areas: false, areasList: false, base: DEFAULT_LIVE_MAP_BASE_MAP as LiveMapBaseMapId }
 /** The backgrounds this build can offer; the same list for as long as the page lives. */
 const BASE_MAPS = liveMapBaseMaps()
 /** With a point picked the list answers «who is nearest» — until another order is asked for. */
@@ -152,6 +158,7 @@ function parseMapLook(raw: string | null): typeof DEFAULT_MAP_LOOK {
       glide: typeof stored.glide === "boolean" ? stored.glide : DEFAULT_MAP_LOOK.glide,
       clients: typeof stored.clients === "boolean" ? stored.clients : DEFAULT_MAP_LOOK.clients,
       areas: typeof stored.areas === "boolean" ? stored.areas : DEFAULT_MAP_LOOK.areas,
+      areasList: typeof stored.areasList === "boolean" ? stored.areasList : DEFAULT_MAP_LOOK.areasList,
       // A background this build no longer offers (the satellite contract ended) is not remembered.
       base: parseLiveMapBaseMap(stored.base, BASE_MAPS),
     }
@@ -230,6 +237,7 @@ export default function MtmMapPage() {
   const locale = useLocale()
   const t = useTranslations("nav")
   const tMap = useTranslations("mtmMap")
+  const noZonesWords = useLiveMapNoZonesWords()
   const tf = useTranslations("mtmFilters")
   const tc = useTranslations("common")
   const tAlerts = useTranslations("mtmAlertsPage")
@@ -306,12 +314,17 @@ export default function MtmMapPage() {
   const [zoneEdit, setZoneEdit] = useState<{ zoneId: string; kind: LiveMapZoneChange["kind"] } | null>(null)
   // A rename or a colour that came too late: a colleague had removed the zone.
   // The zone goes from this map and its form goes with it, so why is said in
-  // the place the form stood — the zone's row in «Слои» ("list"), or beside
-  // the tools for a form opened from the balloon ("map"). Both are inside the
-  // map's frame. A toast is not: with the map on the whole screen the browser
-  // paints only that frame, and the form simply closed and the zone vanished
-  // with nothing said — it read as «renaming deleted my zone».
+  // the place the form stood — above the list in the zones' card on the page
+  // ("list"), or beside the tools for a form opened from the balloon ("map").
+  // The second is inside the map's frame on purpose, and not a toast: with the
+  // map on the whole screen the browser paints only that frame, and the form
+  // simply closed and the zone vanished with nothing said — it read as
+  // «renaming deleted my zone». (The card is outside the frame too, but so are
+  // its rows: nothing can be asked from them while the map has the screen.)
   const [zoneGone, setZoneGone] = useState<"list" | "map" | null>(null)
+  // «На карте» on a zone's row: which zone the map is asked to bring into
+  // view, and which press it was — the same zone asked for again is a new turn.
+  const [zoneAsked, setZoneAsked] = useState<{ zoneId: string; turn: number } | null>(null)
   // The tools on the map: a ruler, and a point — an address found or a place
   // pressed — that the list then measures everybody against.
   const [rulerActive, setRulerActive] = useState(false)
@@ -880,10 +893,14 @@ export default function MtmMapPage() {
     zonesRetriesRef.current = 0
     setZonesRevision((turn) => turn + 1)
   }, [])
+  // No zones yet, and nothing else to say of them: the line says how to draw
+  // the first one (to a reader — who may), in the card's own words. The card
+  // is put away with the employees' list and is outside the map's frame when
+  // the map has the whole screen; this line is on the map in every mode.
   const areasHint = !zonesLayerOn
     ? tMap("layers.areasHint")
     : zonesAnswer
-      ? [
+      ? zonesAnswer.zones.length === 0 && zonesAnswer.unreadable === 0 && !zonesFailed ? noZonesWords(zonesCanWrite) : [
         tMap("areas.onMap", { count: zonesAnswer.zones.length }),
         zonesAnswer.unreadable > 0 ? tMap("areas.unreadable", { count: zonesAnswer.unreadable }) : "",
         zonesFailed ? tMap("areas.refreshFailed") : "",
@@ -974,6 +991,13 @@ export default function MtmMapPage() {
     setZoneEdit({ zoneId, kind })
     setZoneGone(null)
   }, [])
+  const showZoneOnMap = (zone: LiveMapZone) => {
+    setZoneAsked((asked) => ({ zoneId: zone.id, turn: (asked?.turn ?? 0) + 1 }))
+    // «Следить» would take the map back to the employee at his next position: the button pressed in words wins.
+    setFollowSelected(false)
+    // Under the map (a phone) the row pressed is a screen below it.
+    bringMapFrameIntoView(mapFrameRef.current)
+  }
   // Only a zone that is on the map now, for somebody who may change it.
   const editedZone = zoneEdit && zonesLayerOn && zonesCanWrite ? sortedZones.find((zone) => zone.id === zoneEdit.zoneId) ?? null : null
   const formatArea = (squareMeters: number) => formatMtmArea(squareMeters, locale, (unit, value) => tMap(`areaUnits.${unit}`, { value }))
@@ -1698,11 +1722,13 @@ export default function MtmMapPage() {
               zones={mapZones}
               canEditZones={zonesCanWrite}
               onZoneAction={openZoneForm}
+              focusZone={zoneAsked}
               geofenceRadius={effectiveGeofenceRadius(null, contract?.geofenceRadiusMeters)}
             />
           )}
           {showRosterLoading ? null : (
             <LiveMapLayersControl
+              closeTurn={zoneAsked?.turn ?? 0}
               baseMaps={{
                 value: mapLook.base,
                 options: BASE_MAPS.map((map) => ({ id: map.id, label: tMap(`layers.baseMap.${map.id}`) })),
@@ -1717,17 +1743,8 @@ export default function MtmMapPage() {
                 { id: "clients", label: tMap("layers.clients"), hint: clientsHint, on: mapLook.clients, onToggle: () => changeMapLook({ clients: !mapLook.clients }) },
                 { id: "zones", label: tMap("layers.zones"), hint: tMap("layers.zonesHint"), on: showGeofence, onToggle: () => setShowGeofence((on) => !on) },
                 { id: "heat", label: tMap("layers.heat"), hint: tMap("layers.heatHint"), on: showHeatmap, onToggle: () => setShowHeatmap((current) => !current), testId: "mtm-map-heatmap-toggle" },
-                // Last, because it is the one layer with a list under its switch: the list grows downwards and pushes nothing away.
-                {
-                  id: "areas", label: tMap("layers.areas"), hint: areasHint, on: mapLook.areas,
-                  onToggle: () => { changeMapLook({ areas: !mapLook.areas }); setZoneEdit(null); setZoneGone(null) },
-                  detail: zonesLayerOn && zonesAnswer ? (
-                    <>
-                      {zoneGone === "list" ? <LiveMapZoneGone className="mb-1.5" onClose={() => setZoneGone(null)} /> : null}
-                      <LiveMapZoneList zones={sortedZones} canWrite={zonesCanWrite} formatArea={formatArea} onChange={(zone, change) => changeZone(zone, change, "list")} />
-                    </>
-                  ) : undefined,
-                },
+                // The switch and how many there are; the zones themselves are listed on the page, above the employees (LiveMapZonesCard).
+                { id: "areas", label: tMap("layers.areas"), hint: areasHint, on: mapLook.areas, onToggle: () => { changeMapLook({ areas: !mapLook.areas }); setZoneEdit(null); setZoneGone(null) } },
               ]}
               hiddenAgentCount={hiddenOnMapCount}
               onShowAllAgents={() => setHiddenAgentIds(new Set())}
@@ -1791,6 +1808,27 @@ export default function MtmMapPage() {
           ) : null}
         </div>
 
+        {/* The employees' column: put away, or made the wide table, as one —
+            the zones' card goes wherever the list goes. Under the map (a
+            phone) the card stands between the map and the list. */}
+        <div data-testid="mtm-map-side" className={`order-2 flex min-w-0 flex-col gap-3 ${rosterHidden ? "lg:hidden" : ""}`}>
+        {/* «Свои зоны» as a list: in the page's own flow, where a long list
+            costs nothing — in «Слои», bounded by the map's frame, two zones
+            were enough to make the panel scroll inside itself. Drawn exactly
+            when the layer is on and the zones have been read. */}
+        {zonesLayerOn && zonesAnswer && !showRosterLoading ? (
+          <LiveMapZonesCard
+            zones={sortedZones}
+            canWrite={zonesCanWrite}
+            unfolded={mapLook.areasList}
+            onUnfoldedChange={(unfolded) => changeMapLook({ areasList: unfolded })}
+            gone={zoneGone === "list"}
+            onGoneClose={() => setZoneGone(null)}
+            formatArea={formatArea}
+            onChange={(zone, change) => changeZone(zone, change, "list")}
+            onShowOnMap={showZoneOnMap}
+          />
+        ) : null}
         {/* The employee list: one line per person, a filter in every column
             heading. Detail appears only after an explicit selection. */}
         <LiveMapRoster
@@ -1830,6 +1868,7 @@ export default function MtmMapPage() {
               contract?.rosterTruncated ? tMap("rosterTruncated", { shown: contract.returnedAgents }) : "",
             ].filter(Boolean).join(" · ")}
           />
+        </div>
       </div>
 
       <section data-testid="mtm-map-live-feed" className="rounded-lg border bg-card p-3" aria-labelledby="mtm-map-live-feed-title">
