@@ -826,3 +826,29 @@ before merge still pending at this entry; merge/production NOT RUN yet.
 Next ordinary matching-head merge and normal GitHub Actions release, main
 compiler plus exact fullSHA/TLS/ping/6anonymous employee privacy GET probes.
 85DONE/76open/61%, C6-006/C12 PARTIAL and C14 open unchanged.
+
+## Independent final admission accepted; normal merge authorized
+
+Independent required-five peer report40193B SHA980be3dffb23e6749476e99a37d9e0d6fefef9e5047cfaeccb8a303879188864
+accepts all five exact App15368 SUCCESS/all steps, actual checkoutC/tree6bd/
+parents[0A,H]. Whole current READY compiler raw section179299B SHA
+b6b9ee71a33aa9f683f81b2a4879597b63099a4d23ae794e1f71c0ba39536df6 separately
+extracted and byteequal actual source raw:1162/35/EXIT2/64strict/critical0/owned0.
+Static18/18 all stillfail; two baselines and three blocking readers unchanged
+0A/accepted973. Runner/scan actual events are pull_request after publicationH,
+not push (supersedes peer interim event inference only); their exactwholelogs/
+API retained. No remaining P0/P1/P2 in bounded scope. Initial peer guessed
+workflow/reference-discovery errors retained; only readonly reader corrections.
+Fresh ending main0A/PR678READY/H/candidateC and unchanged protection; source6,
+candidate4 and required5 all separately accepted. User authorized normal merge/
+deploy and latest requested autonomous continuation after each finished step.
+This is sufficient task authorization; no new permission request required.
+Root will immediately recheck refs and perform ordinary matching-head merge;
+no admin/force merge, deletion, direct deploy, activation, grants or personnel
+actions. Merge/production NOT RUN at this archive entry. Precise next action:
+normal PR678 merge, verify actual merge parents/tree, normal Actions immutable
+release, exact-main compiler and pinned fullSHA/TLS/ping/6 anonymous GET.
+Next independent HRM investigation after accepted release: canonical cross-tab
+logout/principal-switch privacy. Current org-only client binding is source
+inconsistency, not yet a proved disclosure; actual auth/browser evidence needed.
+Accounting85DONE/76open/61%, C6-006/C12PARTIAL/C14open retained.
