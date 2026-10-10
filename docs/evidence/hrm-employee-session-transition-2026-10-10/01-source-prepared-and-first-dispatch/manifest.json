@@ -1,0 +1,132 @@
+{
+  "archivedAtUtc": "2026-10-10T08:06:43.285695+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-employee-session-transition-first-dispatch-root/frozen-c6547-source-journal.md.raw-original.gz",
+      "originalBytes": 5396,
+      "originalSha256": "cec47700811ef00802880585851f9b4b0431a5ab70c63d1cb2849a17948d4a11",
+      "storedBytes": 2690,
+      "storedSha256": "f416dae4f7f2df882f88f62c9db3bb457fc460e3b0589885c5c140280f03162d"
+    },
+    {
+      "path": "hrm-employee-session-transition-first-dispatch-root/hrm-employee-session-ci-peer-reader-first-source-slice-error.json.raw-original.gz",
+      "originalBytes": 449,
+      "originalSha256": "7222d3b880602fd743c523f8a8d1828a3b5b7590c66b2ba0755a9de8854405b8",
+      "storedBytes": 306,
+      "storedSha256": "2095fc8a69a5e5879686c43d52833473864af003c895938c50478fc13ac42b7f"
+    },
+    {
+      "path": "hrm-employee-session-transition-first-dispatch-root/hrm-employee-session-transition-b988-root-source-qualification.json.raw-original.gz",
+      "originalBytes": 494,
+      "originalSha256": "968703e1ff8d6226e9fbdfb4375dd5b08f3eb143d3013ab3aa0136c109b515d7",
+      "storedBytes": 355,
+      "storedSha256": "af13f6d2adb172e526c007d82b3b9a695c3ee2981980281a9ddde7700454ec52"
+    },
+    {
+      "path": "hrm-employee-session-transition-first-dispatch-root/hrm-employee-session-transition-c6547-source-peer/after-removing-addition-byte-equal-original.mjs.gz",
+      "originalBytes": 62205,
+      "originalSha256": "86f9cd609ec179806b644c3bfd7fd5d8734ab8dbd663a0f424ff09e4cce09af4",
+      "storedBytes": 16789,
+      "storedSha256": "a296473665cf15a6980dbb9f4a18e64478a420291dc7d84e8d5610120d97a3c4"
+    },
+    {
+      "path": "hrm-employee-session-transition-first-dispatch-root/hrm-employee-session-transition-c6547-source-peer/exact-c6547-harness.mjs.gz",
+      "originalBytes": 68532,
+      "originalSha256": "475e467dff136f5483c989de99f05683a43673e0ec68a49715ab39706bbd6c88",
+      "storedBytes": 18499,
+      "storedSha256": "4c3d520898d5948ce8bbe851c7aebb917ec6601bf6a896aa232a1906b6fc1701"
+    },
+    {
+      "path": "hrm-employee-session-transition-first-dispatch-root/hrm-employee-session-transition-c6547-source-peer/exact-source-peer-review.json.gz",
+      "originalBytes": 7546,
+      "originalSha256": "5405b7f8a15a259f14813a2fb96f4016122a49087c36c3d5b6352da9b9a20f6a",
+      "storedBytes": 3103,
+      "storedSha256": "6a06ba39a4e0131c1e520586f74a756a39fab494cdbe358522b4d37a98be8dad"
+    },
+    {
+      "path": "hrm-employee-session-transition-first-dispatch-root/hrm-employee-session-transition-c6547-source-peer/hrm-employee-session-transition-b988-root-source-qualification.json.gz",
+      "originalBytes": 494,
+      "originalSha256": "968703e1ff8d6226e9fbdfb4375dd5b08f3eb143d3013ab3aa0136c109b515d7",
+      "storedBytes": 355,
+      "storedSha256": "af13f6d2adb172e526c007d82b3b9a695c3ee2981980281a9ddde7700454ec52"
+    },
+    {
+      "path": "hrm-employee-session-transition-first-dispatch-root/hrm-employee-session-transition-c6547-source-peer/hrm-employee-session-transition-first-source-reader-error.json.gz",
+      "originalBytes": 2657,
+      "originalSha256": "500d1fef3a72e82273a74e16dd6ea8edd815b1857e60ad8f82d8e028cff40dc0",
+      "storedBytes": 1024,
+      "storedSha256": "40e16becf3ab918307350c3e8c91b7f35e8c9ec997c22802597e609ba06591ea"
+    },
+    {
+      "path": "hrm-employee-session-transition-first-dispatch-root/hrm-employee-session-transition-c6547-source-peer/original-M-harness.mjs.gz",
+      "originalBytes": 62205,
+      "originalSha256": "86f9cd609ec179806b644c3bfd7fd5d8734ab8dbd663a0f424ff09e4cce09af4",
+      "storedBytes": 16789,
+      "storedSha256": "a296473665cf15a6980dbb9f4a18e64478a420291dc7d84e8d5610120d97a3c4"
+    },
+    {
+      "path": "hrm-employee-session-transition-first-dispatch-root/hrm-employee-session-transition-c6547-source-peer/whole-owned-diff-original.patch.gz",
+      "originalBytes": 18064,
+      "originalSha256": "65f520dfb1fa44ccbb3d2a577578bf425fe8105fd4261077df4c7a5ffaa378a9",
+      "storedBytes": 6218,
+      "storedSha256": "505cf345549ed06562042325fbb821543caabfd71f2295be826d10838114efe2"
+    },
+    {
+      "path": "hrm-employee-session-transition-first-dispatch-root/hrm-employee-session-transition-c6547-source-root-admission.json.raw-original.gz",
+      "originalBytes": 715,
+      "originalSha256": "350c4b2c5f92306b6211023d297af2c04bd106d542f0255d40a74664dd6ba6b8",
+      "storedBytes": 466,
+      "storedSha256": "a4bd77e3776f84f039f281e4bf882b95f7c4e94f6629b6433c6b36eb923541eb"
+    },
+    {
+      "path": "hrm-employee-session-transition-first-dispatch-root/hrm-employee-session-transition-first-prepared-source-root.json.raw-original.gz",
+      "originalBytes": 1604,
+      "originalSha256": "324df9f7581caf92c3872f3f1a6935232ebf77f76f794ac2d568c5c674b99238",
+      "storedBytes": 793,
+      "storedSha256": "1785340e2079dcbfde26815d89ca3b623a73a248a551e0b2e98824b033a33927"
+    },
+    {
+      "path": "hrm-employee-session-transition-first-dispatch-root/hrm-employee-session-transition-first-source-reader-error.json.raw-original.gz",
+      "originalBytes": 2657,
+      "originalSha256": "500d1fef3a72e82273a74e16dd6ea8edd815b1857e60ad8f82d8e028cff40dc0",
+      "storedBytes": 1024,
+      "storedSha256": "40e16becf3ab918307350c3e8c91b7f35e8c9ec997c22802597e609ba06591ea"
+    },
+    {
+      "path": "hrm-employee-session-transition-first-dispatch-root/hrm-employee-session-transition-pr-body-source-only.md.raw-original.gz",
+      "originalBytes": 2608,
+      "originalSha256": "29a7cd3d872340977289cbb8349141fac05f90ffbacd8666d7efda816e61a5b0",
+      "storedBytes": 1385,
+      "storedSha256": "c7070e6eef7cbe87e316edd0b2d42a0adc392ede820773409b27974af7629d84"
+    },
+    {
+      "path": "hrm-employee-session-transition-first-dispatch-root/jobs38036094147-api-original.json.raw-original.gz",
+      "originalBytes": 20435,
+      "originalSha256": "9aa0cf42792fc513c346886c6d0b1d89ee60ba95ab41a0f3d6b9c7271f7cdeff",
+      "storedBytes": 2240,
+      "storedSha256": "5d3ea2bf08bf079ad45e18a3626f0ee2526bab3a172bbe2c115e6d55d3130288"
+    },
+    {
+      "path": "hrm-employee-session-transition-first-dispatch-root/main-current-api-original.json.raw-original.gz",
+      "originalBytes": 342,
+      "originalSha256": "f4457a96122ce0fd72f8723d6c827524ae9cf1ede13b394884ae22ed533fc0ac",
+      "storedBytes": 215,
+      "storedSha256": "7b9af4ffb1c217b78884d95380f32ab1099895dfc164681fc864f8218d2edfd6"
+    },
+    {
+      "path": "hrm-employee-session-transition-first-dispatch-root/pr681-api-original.json.raw-original.gz",
+      "originalBytes": 18399,
+      "originalSha256": "980ebbc3c707c5f675cf3ea6036100849659b627f484c5074b5293b377a9e451",
+      "storedBytes": 3159,
+      "storedSha256": "a52f969a484ce704e39ca7e9828d161ec833250170cc2280adeb61d86fa5abca"
+    },
+    {
+      "path": "hrm-employee-session-transition-first-dispatch-root/run38036094147-api-original.json.raw-original.gz",
+      "originalBytes": 12419,
+      "originalSha256": "192d3bb073d762b29f8426722742c3a6a35a5c5db425ee72fa605b785c5084b6",
+      "storedBytes": 1530,
+      "storedSha256": "d18ab2de72203a9a4c044cdddbdf358ddc1ba524dea37c280e1b9fb4ca94b68e"
+    }
+  ]
+}

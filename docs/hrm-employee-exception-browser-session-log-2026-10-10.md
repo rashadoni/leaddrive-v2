@@ -911,3 +911,13 @@ Next action: dependent draftPR and actual hosted exact-head cross-tab rehearsal.
 history/defaultACL/operations and realphysicaldevices/humanAT remain unavailable;
 synthetic success gives no such acceptance. Existing589→605→608/973/c123 ancestry
 retained;606/609/646/663 excluded frommerge. Support/HRHub unchanged.
+
+## Continuation to dependent PR681
+
+PR678 exact-M release remains verified. Prepared next source c6547 was
+independently accepted, published as draft PR681 and source6 run38036094147
+is now running. Append-only continuity for that scope continues in
+docs/hrm-employee-session-transition-session-log-2026-10-10.md; archive01
+retains first preparation errors, exact source review and dispatch originals.
+No PR681 runtime/READY/merge acceptance yet. Existing85/76/61 and exclusions
+remain unchanged.
