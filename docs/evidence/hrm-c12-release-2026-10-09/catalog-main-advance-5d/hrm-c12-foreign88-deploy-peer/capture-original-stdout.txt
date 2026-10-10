@@ -1,0 +1,1 @@
+{"status": "PASS_NORMAL_DEPLOY_JOBS_AND_ARTIFACT_BINDINGS", "mainSha": "88c1ca53cf8b248767bffaa99511d0522ced870a", "runId": 37996581372, "normalSuccessCount": 4, "manualSkippedCount": 3, "artifactId": 11648200943}

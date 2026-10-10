@@ -1,0 +1,212 @@
+[
+  {
+    "label": "metadata",
+    "runId": 37984334168,
+    "jobId": 114002413085,
+    "artifactId": 11642018312,
+    "sourceSha": "9ff77c58d94a025cea65302c0a94b92be6658d00",
+    "status": "PASS_ISOLATED_ASSIGNMENT_TRIGGER_METADATA_ONLY",
+    "counts": {
+      "tests": [
+        25
+      ],
+      "pass": [
+        25
+      ],
+      "fail": [
+        0
+      ],
+      "skipped": [
+        0
+      ]
+    },
+    "zipSha256": "130cdf7e57977ebf2fc9c01f677156298292deee04c8644b1d953a1a39b0f4f2",
+    "receiptSha256": "dc70e1b3431f82cf80599439815bc0f479612c6a4523fe3ebfd691f893cdc0c3",
+    "logBytes": 45918,
+    "logSha256": "d1ccc960f1fb42eb75add31608b47413ed0d6c9377e0c17af69fc41bf2414e4c",
+    "productionJobs": [
+      {
+        "name": "production-metadata",
+        "id": 114002774175,
+        "conclusion": "skipped"
+      }
+    ]
+  },
+  {
+    "label": "default",
+    "runId": 37984334214,
+    "jobId": 114002413375,
+    "artifactId": 11641898375,
+    "sourceSha": "9ff77c58d94a025cea65302c0a94b92be6658d00",
+    "status": "PASS_ISOLATED_ASSIGNMENT_TRIGGER_METADATA_ONLY",
+    "counts": {
+      "tests": [
+        25,
+        14
+      ],
+      "pass": [
+        25,
+        14
+      ],
+      "fail": [
+        0,
+        0
+      ],
+      "skipped": [
+        0,
+        0
+      ]
+    },
+    "zipSha256": "10219e2eefd5c4ff10cef808b533df095465c3992ba57deefdc9c9c56b231ee6",
+    "receiptSha256": "dc70e1b3431f82cf80599439815bc0f479612c6a4523fe3ebfd691f893cdc0c3",
+    "logBytes": 53555,
+    "logSha256": "abe628afc84a9cd851bbac1a577aeace76c486b5f680fb62e2a9468ef38a944d",
+    "productionJobs": [
+      {
+        "name": "production-acl-inspection",
+        "id": 114002686146,
+        "conclusion": "skipped"
+      }
+    ]
+  },
+  {
+    "label": "loopback",
+    "runId": 37984334054,
+    "jobId": 114002412765,
+    "artifactId": 11642741748,
+    "sourceSha": "9ff77c58d94a025cea65302c0a94b92be6658d00",
+    "status": "PASS_ISOLATED_ASSIGNMENT_TRIGGER_METADATA_ONLY",
+    "counts": {
+      "tests": [
+        25,
+        14,
+        16
+      ],
+      "pass": [
+        25,
+        14,
+        16
+      ],
+      "fail": [
+        0,
+        0,
+        0
+      ],
+      "skipped": [
+        0,
+        0,
+        0
+      ]
+    },
+    "zipSha256": "f6adf4afc24a13a7567ad0759217c6ed657f4793ecb47474bbd3b8f48f4e8bdc",
+    "receiptSha256": "dc70e1b3431f82cf80599439815bc0f479612c6a4523fe3ebfd691f893cdc0c3",
+    "logBytes": 63735,
+    "logSha256": "7b8c2a5ad5495d15580b665e28459f61afea35c303e4d32f137dd1f10ceb0e46",
+    "productionJobs": [
+      {
+        "name": "production-loopback-acl-inspection",
+        "id": 114002764196,
+        "conclusion": "skipped"
+      }
+    ]
+  },
+  {
+    "label": "backup",
+    "runId": 37984334201,
+    "jobId": 114002412976,
+    "artifactId": 11641453676,
+    "sourceSha": "9ff77c58d94a025cea65302c0a94b92be6658d00",
+    "status": "PASS_ISOLATED_ASSIGNMENT_TRIGGER_METADATA_ONLY",
+    "counts": {
+      "tests": [
+        25,
+        14,
+        16,
+        14
+      ],
+      "pass": [
+        25,
+        14,
+        16,
+        14
+      ],
+      "fail": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "skipped": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "zipSha256": "86ac70ce0c23e4eeab4769b0ba763d3f713ae72f6bf1fa22a8949cfc84e645e6",
+    "receiptSha256": "dc70e1b3431f82cf80599439815bc0f479612c6a4523fe3ebfd691f893cdc0c3",
+    "logBytes": 71988,
+    "logSha256": "17e4f459a9bc8adb4e5b7de2ef85de20cb31f4e6979a74138a564329ecdf4ab7",
+    "productionJobs": [
+      {
+        "name": "production-backup-acl-attribution",
+        "id": 114002813795,
+        "conclusion": "skipped"
+      }
+    ]
+  },
+  {
+    "label": "schema",
+    "runId": 37984333993,
+    "jobId": 114002412998,
+    "artifactId": 11641503576,
+    "sourceSha": "9ff77c58d94a025cea65302c0a94b92be6658d00",
+    "status": "PASS_ISOLATED_SCHEMA_CONTRACT_ONLY",
+    "counts": {
+      "tests": [
+        42
+      ],
+      "pass": [
+        42
+      ],
+      "fail": [
+        0
+      ],
+      "skipped": [
+        0
+      ]
+    },
+    "zipSha256": "e8616f9e4e0c16297474c023a92d6fc364b478da6469b04cdde10d717868b770",
+    "receiptSha256": "8f70323e7f7052fed8ca1a393918b7437f3eebc3ac0fae47caa7b1d7f2d2b5af",
+    "logBytes": 47730,
+    "logSha256": "76bd582f48cef42d7c705541565445b5009298290aed267118fa4af3956c7740",
+    "productionJobs": []
+  },
+  {
+    "label": "export",
+    "runId": 37984334352,
+    "jobId": 114002413874,
+    "artifactId": 11641458634,
+    "sourceSha": "9ff77c58d94a025cea65302c0a94b92be6658d00",
+    "status": "PASS_ISOLATED_BASELINE_EXPORT_ADMISSION_ONLY",
+    "counts": {
+      "tests": [
+        21
+      ],
+      "pass": [
+        21
+      ],
+      "fail": [
+        0
+      ],
+      "skipped": [
+        0
+      ]
+    },
+    "zipSha256": "06c0b15237e1405de4b66ba1bdc92967d8941eb6079b0abbe5e3ea9b57095341",
+    "receiptSha256": "cee33f9dc2228535fe466bfc47d23e123a21fa37766030a9f3beef4f2ac272de",
+    "logBytes": 54177,
+    "logSha256": "0c5572177c924c01128015aca6fea64a1d8f4838c45f34fed31918186be20984",
+    "productionJobs": []
+  }
+]

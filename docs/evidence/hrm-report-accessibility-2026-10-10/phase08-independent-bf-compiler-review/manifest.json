@@ -1,0 +1,13 @@
+{
+  "archivedAtUtc": "2026-10-10T01:03:59.000212+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-report-accessibility-source-compiler-peer-review-bf.json.gz",
+      "originalBytes": 9410,
+      "originalSha256": "08af6f1ae13d9f88a58f4743ff1262a7f49bb98c09a81fda2aef09786a80588b",
+      "storedBytes": 3009,
+      "storedSha256": "d49d3acd0b5732561999197be0bea1760fc22e5cf4838a13bc8042b2fbf9a162"
+    }
+  ]
+}

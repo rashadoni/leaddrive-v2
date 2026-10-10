@@ -1,0 +1,293 @@
+{
+  "archivedAtUtc": "2026-10-10T01:02:18.498742+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-source-root/artifact-11652114066-original.zip",
+      "originalBytes": 269321,
+      "originalSha256": "1f280b43c041f84d5b419e1260ba33afd5b58127c650d4425b76379aef526ad4",
+      "storedBytes": 269321,
+      "storedSha256": "1f280b43c041f84d5b419e1260ba33afd5b58127c650d4425b76379aef526ad4"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-source-root/artifact-11652134943-original.zip",
+      "originalBytes": 19955,
+      "originalSha256": "5b4c7481e600c39d7b7c3cfa5936ada6bc9e1fd4cd22a845ac1de31151cf4bed",
+      "storedBytes": 19955,
+      "storedSha256": "5b4c7481e600c39d7b7c3cfa5936ada6bc9e1fd4cd22a845ac1de31151cf4bed"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-source-root/artifact-11652888347-original.zip",
+      "originalBytes": 274315,
+      "originalSha256": "701664e33f8811d457f4bc07e9a45e9af0cfc4590d895c59c612821b5923135f",
+      "storedBytes": 274315,
+      "storedSha256": "701664e33f8811d457f4bc07e9a45e9af0cfc4590d895c59c612821b5923135f"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-source-root/artifacts-api-original.json.gz",
+      "originalBytes": 680,
+      "originalSha256": "299527191e0bb890411d343ad4ecf86db738e4532ef3b7d59a8b95f2022ef759",
+      "storedBytes": 680,
+      "storedSha256": "299527191e0bb890411d343ad4ecf86db738e4532ef3b7d59a8b95f2022ef759"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-source-root/compiler-raw-tsc-output-original.log.gz",
+      "originalBytes": 19243,
+      "originalSha256": "58ec9dbada5d341841483e76194d4eaff3f3957d231960346f6e50393a30c51c",
+      "storedBytes": 19243,
+      "storedSha256": "58ec9dbada5d341841483e76194d4eaff3f3957d231960346f6e50393a30c51c"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-source-root/finite-capture-summary.json.gz",
+      "originalBytes": 11132,
+      "originalSha256": "42379f976d98bf221ef74c6ea302a117f405b50f1ced5d82c8ab7a5a62f9d4e0",
+      "storedBytes": 1964,
+      "storedSha256": "51554d68a694e15dc22e66fa0d87b53c8c39fe17a321216f9965d7ed740dc243"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-source-root/job-114087124026-original.txt.gz",
+      "originalBytes": 29102,
+      "originalSha256": "7ccf8c890fe4bb881bb2158442a35be04aded171b3906541f70009499c8b4c56",
+      "storedBytes": 29102,
+      "storedSha256": "7ccf8c890fe4bb881bb2158442a35be04aded171b3906541f70009499c8b4c56"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-source-root/job-114087124232-original.txt.gz",
+      "originalBytes": 24804,
+      "originalSha256": "df6d997aead6e33d4a6c660582e7d118198e12d8a866c9f64b279aba7400935f",
+      "storedBytes": 24804,
+      "storedSha256": "df6d997aead6e33d4a6c660582e7d118198e12d8a866c9f64b279aba7400935f"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-source-root/job-114087124256-original.txt.gz",
+      "originalBytes": 19428,
+      "originalSha256": "daf1ce78b395b3d1b325daae59bf8e1db1ea93bf29598426b8ae2eeebfd67841",
+      "storedBytes": 19428,
+      "storedSha256": "daf1ce78b395b3d1b325daae59bf8e1db1ea93bf29598426b8ae2eeebfd67841"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-source-root/job-114087124283-original.txt.gz",
+      "originalBytes": 35261,
+      "originalSha256": "2d42e6fdc9f8dc73a5a0c7f1de9a7a8799fdbf8d1d4bb84ad5e8fbe0e52bcdbe",
+      "storedBytes": 35261,
+      "storedSha256": "2d42e6fdc9f8dc73a5a0c7f1de9a7a8799fdbf8d1d4bb84ad5e8fbe0e52bcdbe"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-source-root/job-114087124292-original.txt.gz",
+      "originalBytes": 21082,
+      "originalSha256": "98fb27526076cdc63a8b7f4d8ed997b539be7c960db3dc0da4b82f0c8e23e2dd",
+      "storedBytes": 21082,
+      "storedSha256": "98fb27526076cdc63a8b7f4d8ed997b539be7c960db3dc0da4b82f0c8e23e2dd"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-source-root/jobs-api-original.json.gz",
+      "originalBytes": 2010,
+      "originalSha256": "49d2e1d2fbbbf288a9aecaa0199d50eb025c20a61a19be9f2fdbc8a421375de7",
+      "storedBytes": 2010,
+      "storedSha256": "49d2e1d2fbbbf288a9aecaa0199d50eb025c20a61a19be9f2fdbc8a421375de7"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-source-root/run-api-original.json.gz",
+      "originalBytes": 1630,
+      "originalSha256": "f1c6a9096df87d6a635764aea355f0504ef1f0cf8849ac0340324b34f5a70875",
+      "storedBytes": 1630,
+      "storedSha256": "f1c6a9096df87d6a635764aea355f0504ef1f0cf8849ac0340324b34f5a70875"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-source-root/tsc-exit-code.gz",
+      "originalBytes": 2,
+      "originalSha256": "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3",
+      "storedBytes": 22,
+      "storedSha256": "6e08a71af69ad2fa0122936c77c0ba1d20f2b26808cfc5ea068985fb8264bf05"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-source-root/tsc-output.log.gz",
+      "originalBytes": 178808,
+      "originalSha256": "2e859d7a6f37d9df90559acdae15df39644d7e18dc29388047ad7acfb5e13691",
+      "storedBytes": 19243,
+      "storedSha256": "58ec9dbada5d341841483e76194d4eaff3f3957d231960346f6e50393a30c51c"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-required-root/artifact-11651964285-original.zip",
+      "originalBytes": 506,
+      "originalSha256": "2b3a4f81d30709ebeff29722b6d94f5839e18598fc8dbb39c8d4f79e45acacfb",
+      "storedBytes": 506,
+      "storedSha256": "2b3a4f81d30709ebeff29722b6d94f5839e18598fc8dbb39c8d4f79e45acacfb"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-required-root/artifacts-api-original.json.gz",
+      "originalBytes": 449,
+      "originalSha256": "f87def42fe314cec5f2687d98579c1b71247e3e8dfb28a98d7f4aec48d9bf927",
+      "storedBytes": 449,
+      "storedSha256": "f87def42fe314cec5f2687d98579c1b71247e3e8dfb28a98d7f4aec48d9bf927"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-required-root/check-runs-api-original.json.gz",
+      "originalBytes": 3135,
+      "originalSha256": "d6083a48a82ae402bc2cc4d6a51ec205e4da7a715f97fad2a626485d58eb48d7",
+      "storedBytes": 3135,
+      "storedSha256": "d6083a48a82ae402bc2cc4d6a51ec205e4da7a715f97fad2a626485d58eb48d7"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-required-root/finite-capture-summary.json.gz",
+      "originalBytes": 6731,
+      "originalSha256": "5cd11675402fb2bcdcddcb6c412b9888549bab0e60c3699bce8e34c9522ec646",
+      "storedBytes": 1469,
+      "storedSha256": "bd378f3acb46e681d023b65d3c481fa2ecce4651ac959d1bc225fa27b636464e"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-required-root/job-114087087453-original.txt.gz",
+      "originalBytes": 15958,
+      "originalSha256": "e39d7169f358298084e8dddee08e5f1260a2a1f4458997549dc5f6ba414797e4",
+      "storedBytes": 15958,
+      "storedSha256": "e39d7169f358298084e8dddee08e5f1260a2a1f4458997549dc5f6ba414797e4"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-required-root/job-114087169223-original.txt.gz",
+      "originalBytes": 33959,
+      "originalSha256": "f49e6854346e0442f012202d539ed47bb068536cd474b17c54adea818832e372",
+      "storedBytes": 33959,
+      "storedSha256": "f49e6854346e0442f012202d539ed47bb068536cd474b17c54adea818832e372"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-required-root/job-114087169231-original.txt.gz",
+      "originalBytes": 45346,
+      "originalSha256": "63a5443e9dd1b25fd702c2ef3bec3b1c884c0e86932250cda2e34a3531992bd1",
+      "storedBytes": 45346,
+      "storedSha256": "63a5443e9dd1b25fd702c2ef3bec3b1c884c0e86932250cda2e34a3531992bd1"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-required-root/jobs-api-original.json.gz",
+      "originalBytes": 1741,
+      "originalSha256": "31c08a038915dbd73d8c79d8106cf966342f022e71a8d7e0d9b9328f3a1a4699",
+      "storedBytes": 1741,
+      "storedSha256": "31c08a038915dbd73d8c79d8106cf966342f022e71a8d7e0d9b9328f3a1a4699"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-required-root/run-api-original.json.gz",
+      "originalBytes": 1663,
+      "originalSha256": "af5f170cdf401652da58be5264eea7d45983eb41617588d41ac1115130aefcbb",
+      "storedBytes": 1663,
+      "storedSha256": "af5f170cdf401652da58be5264eea7d45983eb41617588d41ac1115130aefcbb"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-calendar-root/artifact-11652514886-original.zip",
+      "originalBytes": 8521124,
+      "originalSha256": "7b1212106f6383cd9cbae1bcaa7fb833fa042666fe8cdc0a1f4583e25d12bc5f",
+      "storedBytes": 8521124,
+      "storedSha256": "7b1212106f6383cd9cbae1bcaa7fb833fa042666fe8cdc0a1f4583e25d12bc5f"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-calendar-root/artifacts-api-original.json.gz",
+      "originalBytes": 485,
+      "originalSha256": "5a2dcb63ff8afdca2c3d6ab297a022847052eb3ece6d453229819d2020aa7706",
+      "storedBytes": 485,
+      "storedSha256": "5a2dcb63ff8afdca2c3d6ab297a022847052eb3ece6d453229819d2020aa7706"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-calendar-root/finite-capture-summary.json.gz",
+      "originalBytes": 6148,
+      "originalSha256": "3a530b487cd1cbad92e446b8af66b1dd243b580eb8c352a025ba53a2cda86c44",
+      "storedBytes": 1336,
+      "storedSha256": "672415ff349b2a5f878f6ee81e8fedda8209430cc9bcea0daea5fcdd892569a4"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-calendar-root/job-114087087350-original.txt.gz",
+      "originalBytes": 18324,
+      "originalSha256": "2c38c8e3bf03b9fbf58245b5f95d1603907736b3120337b1d1b6a4cb81a9f330",
+      "storedBytes": 18324,
+      "storedSha256": "2c38c8e3bf03b9fbf58245b5f95d1603907736b3120337b1d1b6a4cb81a9f330"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-calendar-root/jobs-api-original.json.gz",
+      "originalBytes": 881,
+      "originalSha256": "46efbac7d25dab47cb5e58dd96d13b222d3d775e938e15b9ae76edcd43e1fe32",
+      "storedBytes": 881,
+      "storedSha256": "46efbac7d25dab47cb5e58dd96d13b222d3d775e938e15b9ae76edcd43e1fe32"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-calendar-root/run-api-original.json.gz",
+      "originalBytes": 1687,
+      "originalSha256": "25d8bd532e8acc0ac120c2d959764e49a1ac1323958e3c455963ee9db12113f6",
+      "storedBytes": 1687,
+      "storedSha256": "25d8bd532e8acc0ac120c2d959764e49a1ac1323958e3c455963ee9db12113f6"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-manager-root/artifact-11652958175-original.zip",
+      "originalBytes": 7058211,
+      "originalSha256": "970e0de99acf8f363561dde9f41d72cebd51daad46faf1db2fa097e4b6ad2c32",
+      "storedBytes": 7058211,
+      "storedSha256": "970e0de99acf8f363561dde9f41d72cebd51daad46faf1db2fa097e4b6ad2c32"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-manager-root/artifacts-api-original.json.gz",
+      "originalBytes": 489,
+      "originalSha256": "d6e341deeab875988cc33d1397c304ce0a710f6e9d58efb9cd2571b0f9b2418f",
+      "storedBytes": 489,
+      "storedSha256": "d6e341deeab875988cc33d1397c304ce0a710f6e9d58efb9cd2571b0f9b2418f"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-manager-root/finite-capture-summary.json.gz",
+      "originalBytes": 5355,
+      "originalSha256": "877fe99088912908d37265282238dd873222dc2ae3ac9086af1555e34a7b7bf3",
+      "storedBytes": 1216,
+      "storedSha256": "1b3a367dabecfa76baab70efe07353ee8e135565fc3029ed062d803953b6bc72"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-manager-root/job-114087087062-original.txt.gz",
+      "originalBytes": 20484,
+      "originalSha256": "4ee4873ee0e83a8676539cadd68979d8f0502564eb8af426bc5f4abdd0eabebc",
+      "storedBytes": 20484,
+      "storedSha256": "4ee4873ee0e83a8676539cadd68979d8f0502564eb8af426bc5f4abdd0eabebc"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-manager-root/jobs-api-original.json.gz",
+      "originalBytes": 886,
+      "originalSha256": "1170756bc3e49a5d2d0511a13732b7bca9878893ecf205fa26813ec452ec4b5d",
+      "storedBytes": 886,
+      "storedSha256": "1170756bc3e49a5d2d0511a13732b7bca9878893ecf205fa26813ec452ec4b5d"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-original-complete-manager-root/run-api-original.json.gz",
+      "originalBytes": 1696,
+      "originalSha256": "098645eb17c57f1598670fbc2a2e90358c5f12dc87010739286e6f02058374b3",
+      "storedBytes": 1696,
+      "storedSha256": "098645eb17c57f1598670fbc2a2e90358c5f12dc87010739286e6f02058374b3"
+    },
+    {
+      "path": "hrm-report-accessibility-bf-complete-root-qualification.json.gz",
+      "originalBytes": 2381,
+      "originalSha256": "02e926ad9d00d09b404683e55242207b061dfb0599c4cbb14c7ee993b109af2c",
+      "storedBytes": 1191,
+      "storedSha256": "c5e971358f2aeea5428bede0a46a2953812e6902784f607e5fbcb2abd1748f9d"
+    },
+    {
+      "path": "hrm-report-accessibility-source-regressions-peer-review-bf.json.gz",
+      "originalBytes": 7413,
+      "originalSha256": "febb5ea94cc06a7294cc8ca028d3c1b131e10f14c349bad97e6dbe03398e11a6",
+      "storedBytes": 2090,
+      "storedSha256": "d770f06202e05ecbe045d2021c086f080497f2cfb9e0089a04bc3158add0cc16"
+    },
+    {
+      "path": "hrm-report-accessibility-build-peer-review-bf.json.gz",
+      "originalBytes": 4043,
+      "originalSha256": "f50a4f9a8ae4dd6916064fbcccfc0baafaaeb6c8e81419eeb7fc831d3e397fe6",
+      "storedBytes": 1136,
+      "storedSha256": "b2b3cc32ec4cba06c97c16ae42192036c014a9b5771a8469582f651789047a01"
+    },
+    {
+      "path": "hrm-report-accessibility-classification-regression-peer-review-bf.json.gz",
+      "originalBytes": 11432,
+      "originalSha256": "6506ee5063a6a6cfdd5d3e36756ac481330408257ec8bdc2d33f9981554dd59b",
+      "storedBytes": 3785,
+      "storedSha256": "5e68b688942aadd38294aafea391f8a11a692b9312d31312007a5f0cdbeb9016"
+    },
+    {
+      "path": "hrm-report-accessibility-existing-native-regressions-peer-review-bf.json.gz",
+      "originalBytes": 61289,
+      "originalSha256": "1d04919559710d86d3a60530ccded5bc7162861c4a85c3e3f9f791ff71c284a9",
+      "storedBytes": 14911,
+      "storedSha256": "acff6d5219dd3be6b5e858fdffb10bd2e904e032293599344630fce41c83bcf6"
+    }
+  ]
+}

@@ -7520,3 +7520,34 @@ smoke preparation401/noSec-Fetch-Mode, actual307 diagnosis and exact307 plus
 script401 successful checks are retained. No HRM activation, role/access/config/
 secret changes, Support or HRHub document work. Latest continuity and originals:
 [session journal](./hrm-wf-c6-010-session-log.md), dependent evidence draftPR617.
+
+### 2026-10-09 — cumulative release and real C12 catalog observation
+
+User-authorized normal releases [PR662](https://github.com/rashadoni/leaddrive-v2/pull/662)
+and [PR669](https://github.com/rashadoni/leaddrive-v2/pull/669) preserve accepted
+589→605→608/C6 history, schema/export/assignment-trigger work and all original
+evidence. Own frozen525/C5 sources passed actual five required hosted checks
+with unchanged strict baselines. Both own normal SHA-bound deployments and
+exact public/private-access refusal contracts were independently verified.
+The original next/font build failure on later mainA1 and its successful retry
+are retained separately; reused same-SHA quality is not called a fresh test run.
+
+Protected read-only catalog run38003016098 on deployed/current mainA1
+a1b05f9991019e153ee371e99bb1d99f47f1547b actually observed all13 schema
+contract booleans true, with unchanged artifact markers before/after,6 source
+bindings, original safe wire validation and fresh14+42 isolated checks.
+This accepts MATCHED_CATALOG_CONTRACT_ONLY, not C12 or a historical replay.
+Original unchanged metadata run38003278969 then returned actual INCOMPLETE/
+FAILURE with APPLIED_TABLE_CONSTRAINTS_NOT_PROVED and DEFAULT_ACL_UNREVIEWED;
+source25/25 checks passed. Neither gate nor baseline was weakened or reclassified.
+Later foreign MTM PR670 advances main to dcc; source invariants were reviewed,
+but these completed observations and release evidence are bound to A1 and the
+own releases, without current-dcc execution credit.
+
+No further task or phase gate closes:85/161 DONE,76 open,weighted61%,14/15 gates;
+C6-010/C7-007/C8-002 remain DONE, C12 PARTIAL. Approved restored-copy provenance,
+full historical replay, real HR/device/load/collector/pilot/restore observations
+remain open. No production activation, access/secret, Support or HRHub personnel
+document changes. Append-only originals and precise next action:
+[catalog journal](./hrm-c12-catalog-inspection-session-log-2026-10-09.md) and
+[evidence draft PR663](https://github.com/rashadoni/leaddrive-v2/pull/663).

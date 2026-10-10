@@ -82,3 +82,17 @@ root-решение сохранены в
 Учёт:85/161 DONE,76 открыты,14/15 phase gates; взвешенный прогресс
 80×85/161 +20×14/15 =60.90269…%, округлённо61%. Изменён только WF-C6-010;
 C7-007/C8-002 остаются DONE, C12 и остальные частичные пункты не закрыты.
+
+
+## 2026-10-09 — archive location for the cumulative release
+
+The original475 evidence/documentation files from frozen PR617 commit
+`d65ef05ae17cbf69be7cb93987dd3efee05db49a` are preserved byte-for-byte in the
+[complete ZIP](./evidence/hrm-c12-release-2026-10-09/617-original/source-617-documentation-original.zip),
+with the [full path/size/SHA256 manifest](./evidence/hrm-c12-release-2026-10-09/617-original/snapshot-manifest.json).
+Relative evidence paths above describe the original archive topology; the
+[original functional manifest](https://github.com/rashadoni/leaddrive-v2/blob/d65ef05ae17cbf69be7cb93987dd3efee05db49a/docs/evidence/hrm-wf-c6-010-2026-10-07/final-f308-functional-acceptance/manifest.json)
+remains readable at its frozen source. CRC and all475 original hashes were
+independently verified. The original scanner false positive and whitespace
+failures remain beside the ZIP. This archive note adds no new execution,
+production-HR, C12 or acceptance credit and does not change the original record.
