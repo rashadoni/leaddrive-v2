@@ -157,3 +157,58 @@ memory, lock edits on uncertain outcome, retry original, distinguish definitive
 refusal from unknown result, meaningful tests/i18n/source+all8/newfocused/current/
 required5/review then ownnormalrelease. No blind keyrotation/auth/server/RLS/
 baseline changes. Accounting85/76/61 and C6-006/C12PARTIAL/C14OPEN unchanged.
+
+
+## 2026-10-10 13:58 UTC — owner requests immediate inspection release; further module verification deferred
+
+Owner screenshot shows the timekeeping navigation and asks whether this is the
+entire result of the months of work. Acknowledged: current roadmap is attendance/
+workforce, not a completed general HR system; roadmap85/161,76open,weighted61%
+must never be described as equivalent user-visible HR product readiness.
+Personnel documents/hrhub.az remain after the current acceptance as instructed.
+
+New explicit owner instruction supersedes the prior pre-release optional full
+verification sequence for this preview: «никаких проверок не делай деплой я хочу
+посмотреть что ты сделал ... после будешь проверять». No further optional tests,
+review or content-admission checks are authorized until after inspection.
+Canceled manual source runs38057093445 and38057095223; preserve partial/canceled
+originals, no completed source9/runtime acceptance. Natural report403 completed
+before stop has raw API/log/artifact captured only; no content/pixel credit.
+Root/peer observers/readers are evidence preservation only, not fresh tests.
+
+Exact frozen source7a6a11237f26203133dfcaf737c2db530f703cd3 is independently
+source-reviewed with no material issue; earlier small Node30/syntax3/i18n/runner55/
+diff/range scan occurred before this instruction. New25TS/45total/full source9/
+current-browser/fullcompile/SQL/build acceptance remain incomplete or NOT RUN.
+Parent684 ownede439 normal release is already verified. PR686 title/body updated
+to final product fix and honest deferred acceptance; READY and ordinary head-
+matched merge/auto-merge request issued. Mandatory branch protection and normal
+deploy.yml build/quality/publication stages remain enabled unchanged; no admin
+bypass, force or baseline weakening. No additional optional browser reruns.
+
+Root works on remote Contabo dedicated feature worktree; canonical dirty checkout
+is preserved. origin rashadoni/leaddrive-v2; registered production13.140.132.245:/
+opt/leaddrive-v2 through reviewedmain/GitHubActions immutable artifact. No manual
+copy/direct server deploy, access/secrets/activation/Support/businesswrites.
+Excluded606/609/646/archive663 remain unmerged. C6-006/C12PARTIAL/C14OPEN and
+accounting85/76/61 unchanged. Next complete ordinary mandatory publication, record
+actual deployment status and give owner the live module entry; testing follows
+owner inspection. Optional full verification is deferred, not passed or waived
+as evidence of whole-item completion.
+
+
+## 2026-10-10 14:05 UTC — ordinary merge blocked by mandatory GitHub contexts
+
+Auto-merge is disabled by repository settings; first request rejected with
+GraphQL enablePullRequestAutoMerge. Ordinary exact-head API merge returned405:
+«2 of5 required status checks are in progress». Both first errors preserved;
+no merge/deploy claimed, no repository protection change/admin bypass. Actual
+READY required pr-scope PASS; static/type run38057711949 still pending. Six
+naturally triggered optional workforce browser/policy/calendar runs were canceled
+on owner's explicit no-further-check instruction; no full-current acceptance.
+Manual source8 canceled: ordinary392/report403/recovery404 naturally completed
+SUCCESS before cancellation; compiler289/HR447/EMP454/PG481/build498 canceled.
+Focused691924 canceled. Whole original nine logs retained by bounded observer;
+no canceled result classified as PASS and no content review started after stop.
+Next observe mandatory status completion only, then ordinary exact-head merge
+and normal publication. Live preexisting module links given for immediate view.
