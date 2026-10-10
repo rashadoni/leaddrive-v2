@@ -1,4 +1,4 @@
--- Separate hosted disposable request-submission fixture only. NOT EXECUTED.
+-- Separate opt-in hosted disposable request-submission fixture only.
 -- Apply after the unchanged Today base on this job's own PostgreSQL service.
 -- Never combine with ACK/report/classification fixtures or apply to production.
 -- Exact current request-link/revision functions are installed by its harness;

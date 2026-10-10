@@ -939,7 +939,7 @@ jobs:
         run: |
           test "$CI" = true && test "$WF_EMPLOYEE_CORRECTION_BROWSER" = 1
           # The log stays transient on the ephemeral runner. The harness emits
-          # sanitized JSON/screenshots; cookies, passwords and raw logs are not
+          # sanitized JSON; cookies, passwords and raw logs are not
           # uploaded as evidence.
           node node_modules/next/dist/bin/next dev --hostname 127.0.0.1 --port "$APP_PORT" > "$WF_EMPLOYEE_CORRECTION_BROWSER_APP_LOG" 2>&1 &
           WF_APP_PID=$!
@@ -953,7 +953,7 @@ jobs:
               break
             fi
             if ! kill -0 "$WF_APP_PID" 2>/dev/null || [ "$attempt" -eq 90 ]; then
-              echo "::error::Isolated employee exception browser application did not become ready"
+              echo "::error::Isolated employee correction browser application did not become ready"
               exit 1
             fi
             sleep 2
@@ -979,7 +979,7 @@ jobs:
           target.write_text(json.dumps(receipt, indent=2) + "\n")
           PY
 
-      - name: Upload sanitized employee exception evidence
+      - name: Upload sanitized employee correction evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:

@@ -186,3 +186,11 @@ prepared separately; execution NOT RUN. Proposed19requests/19audits/9cells/10aut
 Source unpublished; current ownM7e58 normalmainrelease/maincompiler RUNNING.
 Next parentverifiedrelease thennormalfinalmain integration/finalexactsource
 review/draft publication andone7lane source dispatch; no baseline weakening.
+
+## Prepared job and fixture labels qualified before publication
+
+New seventh-job upload/readiness/comment labels now explicitly say correction
+and JSON-only. Fixture source uses opt-in boundary language rather than a stale
+NOT EXECUTED assertion; actual runtime status remains NOT RUN in this journal.
+Oldsixjob blocks, newjob behavior and SQL logic unchanged. Final exact-source
+review after parentrelease/integration will include this label-only delta.
