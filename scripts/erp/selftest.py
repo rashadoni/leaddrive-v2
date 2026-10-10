@@ -2088,6 +2088,20 @@ def scenario_copy(box: Box):
           and rc3 == 0 and "Копия закрытой папки обновлена" in out3 and head(copy2) == head(restored),
           out + out2 + out3)
 
+    outside = root / "outside.md"
+    outside.write_text("файл вне закрытой папки\n", encoding="utf-8")
+    order = json.loads((box.dir / "order.json").read_text(encoding="utf-8"))
+    first_card = L.order_cards(order)[0]
+    first_card.update(detail=str(outside), file="../../../outside.md")
+    (box.dir / "order.json").write_text(json.dumps(order, ensure_ascii=False, indent=1), encoding="utf-8")
+    secret = "тайный текст вопроса: он не должен уйти из закрытой папки"
+    rc, out = run("mark.py", "problem", "u1-A-01", "--kind", "wrong", "--text", secret, branch=b1)
+    check("имя файла карточки в порядке карточек указывает наружу (полным путём и через ../): "
+          "текст вопроса ложится только в закрытую папку, чужой файл не тронут",
+          rc == 0 and outside.read_text(encoding="utf-8") == "файл вне закрытой папки\n"
+          and secret in (box.dir / "notes" / "1-setup.md").read_text(encoding="utf-8")
+          and secret in (box.dir / "cards" / "1-setup.md").read_text(encoding="utf-8"), out)
+
     def why(text, first=False):
         return L._push_failure(text, home, "main", first)[0]
 
@@ -2102,7 +2116,11 @@ def scenario_copy(box: Box):
                   "hook declined)") == "сервер копии отклонил запись"
           and why(tail) == "git не смог прочитать копию: нет доступа или связи"
           and why(" ! [rejected] main -> main (fetch first)") == L.DIVERGED
-          and why("warning: something entirely new at host.example") == "git отказал")
+          and why("warning: something entirely new at host.example") == "git отказал"
+          and why("git не ответил за 2 с") == "git не ответил за 2 с"
+          and why("remote: проверка не прошла: сервис не запустился\n ! [remote rejected] main -> main "
+                  "(pre-receive hook declined)\nerror: failed to push some refs to "
+                  "'https://host.example/o/secret.git'") == "сервер копии отклонил запись")
     real_flock = fcntl.flock
 
     def no_locks(fd, op):

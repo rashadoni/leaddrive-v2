@@ -492,6 +492,14 @@ class Ctx:
             self._hash_cache[slug] = None if t is None else sha(t)
         return self._hash_cache[slug]
 
+    def _in_private(self, path: Path) -> bool:
+        """Файл лежит внутри закрытой папки. Имя файла карточки приходит из order.json, а он
+        открытый: без этой проверки текст записки можно было бы направить в рабочую копию."""
+        own = self.private.resolve()
+        roots = [own] + ([own.parent.parent] if (own.parent.name, own.name) == ("reports", "exec") else [])
+        real = Path(path).resolve()
+        return any(real == r or r in real.parents for r in roots)
+
     def card_file(self, card: Card) -> Path | None:
         if self.private is None:
             return None
@@ -508,7 +516,7 @@ class Ctx:
             if "\n" in n or len(n) > 300:
                 continue
             for p in ([Path(n)] if Path(n).is_absolute() else [b / n for b in bases]):
-                if p.is_file():
+                if p.is_file() and self._in_private(p):
                     return p
         cards = self.private / "cards"
         if cards.is_dir():
@@ -517,7 +525,7 @@ class Ctx:
                 keys += [f"{int(card.key):02d}", f"{int(card.key):03d}"]
             for k in keys:
                 for pat in (f"{k}-{card.slug}.md", f"{k}-*.md", f"{k}_*.md", f"{k}.md"):
-                    hit = sorted(cards.glob(pat))
+                    hit = [h for h in sorted(cards.glob(pat)) if self._in_private(h)]
                     if hit:
                         return hit[0]
         return None
@@ -570,7 +578,10 @@ class Ctx:
         return self._private_reg
 
     def notes_file(self, card: Card) -> Path | None:
-        return None if self.private is None else self.private / "notes" / f"{card.key}-{card.slug}.md"
+        if self.private is None:
+            return None
+        name = re.sub(r"[^A-Za-z0-9._-]+", "-", f"{card.key}-{card.slug}").lstrip(".") or "card"
+        return self.private / "notes" / f"{name}.md"  # имя — из открытого order.json: без «/» и «..»
 
     def last_note(self, card: Card) -> str | None:
         p = self.notes_file(card)
@@ -1399,7 +1410,6 @@ def _push_copy(home: Path, url: str, branch: str, limit: int):
 DIVERGED = "в копии есть запись, которой нет в папке"
 PUSH_REASONS = (  # что git сказал → что случилось; слова git в строку не идут: в них адрес копии
     (("[rejected]", "non-fast-forward", "fetch first"), DIVERGED),
-    (("не ответил за", "не запустился"), None),  # наши собственные слова — как есть
     (("remote rejected", "hook declined", "protected branch"), "сервер копии отклонил запись"),
     (("could not resolve host", "couldn't resolve host", "unable to look up", "name or service not known",
       "temporary failure in name resolution"), "адрес копии не найден в сети"),
@@ -1420,8 +1430,10 @@ def _push_failure(said: str, home: Path, branch: str, first: bool):
     Что сказал git дословно — в файле PUSH_LOG в папке git закрытой папки. first — по этому
     адресу ещё ни разу не отправляли: расхождение тогда значит «копию создали непустой»."""
     low = (said or "").lower()
-    what = next((said.strip() if text is None else text for keys, text in PUSH_REASONS
-                 if any(k in low for k in keys)), "git отказал")
+    if said == "git не запустился" or re.fullmatch(r"git не ответил за \d+ с", said or ""):
+        what = said  # наши собственные слова из _push_copy — только при точном совпадении
+    else:
+        what = next((text for keys, text in PUSH_REASONS if any(k in low for k in keys)), "git отказал")
     log, saved = _git_dir(home) / PUSH_LOG, False
     with contextlib.suppress(Exception):
         log.write_text(f"{today()}\n{said or ''}\n", encoding="utf-8")
