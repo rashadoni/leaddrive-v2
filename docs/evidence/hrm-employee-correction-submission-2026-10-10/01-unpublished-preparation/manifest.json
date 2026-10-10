@@ -1,0 +1,34 @@
+{
+  "archivedAtUtc": "2026-10-10T09:30:51.519877+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-employee-correction-submission-prepared-journal-cdfb.original.gz",
+      "originalBytes": 6025,
+      "originalSha256": "f9054a53073c35015bdf16aa1608282ab4dc98458bc5030af404dd86ed400991",
+      "storedBytes": 2881,
+      "storedSha256": "89425e6970332df212fd0c03791fc34c9b6920958b9935b4788e70c715fb617c"
+    },
+    {
+      "path": "hrm-employee-correction-submission-prepared-target-cdfb.original.gz",
+      "originalBytes": 2458,
+      "originalSha256": "9703e7babfc7f183cd2a1ee7c2f80bcd2a9cb35488bee791698f72483ab6ad37",
+      "storedBytes": 1051,
+      "storedSha256": "5e209a3e6d900d15221a2ae9a90dcc02a559534f861ed4beca5113dbcb4940f5"
+    },
+    {
+      "path": "hrm-employee-correction-submission-prepared-fixture-cdfb.original.gz",
+      "originalBytes": 6633,
+      "originalSha256": "81f2bed8246a7fbd07eb9b402bb24103abf4bb1bba3c8c2914e63c4982da78a3",
+      "storedBytes": 2053,
+      "storedSha256": "6cffc51ddb29e0b95459c1f804d77c6c57c8306934e30da8f03b729c3278ace3"
+    },
+    {
+      "path": "hrm-employee-correction-submission-preparation-cdfb-root.json.gz",
+      "originalBytes": 750,
+      "originalSha256": "e1dea035a2eb8a77f0c46c41d219236e401508da43a601a72053a677a7ea30e2",
+      "storedBytes": 472,
+      "storedSha256": "a74352a9ec72145f97ff9651c9f5eb6bca8c42cefde3d64dee619d0059522c7f"
+    }
+  ]
+}
