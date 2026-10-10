@@ -5,6 +5,7 @@ import { setTimeout as delay } from "node:timers/promises"
 import bcrypt from "bcryptjs"
 import { chromium } from "playwright"
 import { makeRlsTestPrisma } from "./_rls.mjs"
+import { captureNativeViewport, createNativeZoomContext, isNativeZoomPage, proveNative200Zoom } from "./workforce-native-browser-zoom.mjs"
 
 // Disposable hosted aggregate report browser proof only; this is never a production seed tool.
 assert.equal(process.env.GITHUB_ACTIONS, "true", "Hosted Actions required")
@@ -60,9 +61,13 @@ const receipts = {
   sources: [],
   cases: [],
   status: "RUNNING",
-  limitations: ["Development bundle, not production build", "Synthetic disposable data only", "Historical selected Prisma-schema imports, not canonical terminal/approval/workday correction writer acceptance", "No human AT/native zoom/whole-page keyboard/Android/physical/load/pilot acceptance", "Geometry/text checks do not prove pixel occlusion or whole-page accessibility", "Aggregate report facts are SELECT-only; real view-audit INSERT and auth metadata writes are expected; no production feature/grant activation"],
+  nativeZoomDiagnostics: [], nativeCaptureDiagnostics: [], keyboardFocusDiagnostics: [], textReflowDiagnostics: [],
+  nativeZoomVerdict: "NOT RUN",
+  matrix: { locales: ["az", "ru", "en"], widths: [320, 768, 1440], standardExpected: 9, nativeExpected: 3 },
+  limitations: ["Development bundle, not production build", "Synthetic disposable data only", "Historical selected Prisma-schema imports, not canonical terminal/approval/workday correction writer acceptance", "Report-only keyboard/native zoom; no human AT/whole-page accessibility/Android/physical/load/pilot acceptance", "Geometry/text checks do not prove pixel occlusion or whole-page accessibility", "Aggregate report facts are SELECT-only; real view-audit INSERT and auth metadata writes are expected; no production feature/grant activation"],
 }
 const contexts = []
+const nativeZoomContexts = []
 const authenticationPostTimes = []
 let browser
 let activePage
@@ -159,7 +164,7 @@ async function seed() {
       modules: { "workforce-hrm": true }, features: ["workforce-hrm", "workforce-granular-access-v1"], settings: {},
     } })
     const principals = []
-    for (const role of key === "a" ? ["issuer", "hr", "team", "denied"] : ["issuer", "hr"]) {
+    for (const role of key === "a" ? ["issuer", "hr", "team", "denied", ...Array.from({ length: 12 }, (_, index) => "scenario-hr-" + index)] : ["issuer", "hr"]) {
       const user = await admin.user.create({ data: {
         organizationId: organization.id, email: `report-${suffix}-${key}-${role}@example.test`, name: `Report ${key} ${role}`,
         passwordHash, role: role === "issuer" ? "admin" : "manager", require2fa: false, totpEnabled: false, smsAuthEnabled: false, preferredLanguage: "en",
@@ -169,9 +174,10 @@ async function seed() {
     const [issuer, hr, teamManager, denied] = principals
     const team = await admin.mtmTeam.create({ data: { organizationId: organization.id, name: `Report fixture team ${key}`, code: `REPORT-${suffix}-${key}`, isActive: true } })
     await admin.mtmSetting.create({ data: { organizationId: organization.id, key: "timezone", value: "UTC" } })
-    await admin.workforceAccessGrant.create({ data: {
-      organizationId: organization.id, principalUserId: hr.id, role: "HR_ADMIN", scopeKind: "ORGANIZATION", scopeTeamId: null, scopeSiteId: null, scopeAgentId: null,
-      effectiveFrom: earlier(2), effectiveUntil: null, operationId: `report-${suffix}-${key}-hr`, grantedByUserId: issuer.id, grantReasonCode: "BROWSER_FIXTURE_ONLY",
+    const scenarioHr = principals.filter(principal => principal.key.startsWith("scenario-hr-"))
+    for (const reader of [hr, ...scenarioHr]) await admin.workforceAccessGrant.create({ data: {
+      organizationId: organization.id, principalUserId: reader.id, role: "HR_ADMIN", scopeKind: "ORGANIZATION", scopeTeamId: null, scopeSiteId: null, scopeAgentId: null,
+      effectiveFrom: earlier(2), effectiveUntil: null, operationId: ["report", suffix, key, reader.key].join("-"), grantedByUserId: issuer.id, grantReasonCode: "BROWSER_FIXTURE_ONLY",
     } })
     if (teamManager) await admin.workforceAccessGrant.create({ data: {
       organizationId: organization.id, principalUserId: teamManager.id, role: "TEAM_MANAGER", scopeKind: "TEAM", scopeTeamId: team.id, scopeSiteId: null, scopeAgentId: null,
@@ -232,7 +238,7 @@ async function seed() {
         privateMarkers.push(request.id, correction.id)
       }
     }
-    tenants.push({ key, organization, issuer, hr, teamManager, denied, employee })
+    tenants.push({ key, organization, issuer, hr, scenarioHr, teamManager, denied, employee })
   }
   privateMarkers.push("PRIVATE_REPORT_DECISION_REASON", "PRIVATE_REPORT_REQUEST_REASON", "PRIVATE_REPORT_LEDGER_REASON", "PRIVATE_UNKNOWN_HISTORICAL", "privateBeforeFixture", "privateAfterFixture")
   return tenants
@@ -289,14 +295,16 @@ async function tabTo(page, locator) {
   }
   throw new Error("Native Tab could not reach the report control")
 }
-async function openReport(principal, locale, width) {
-  const context = await browser.newContext({ baseURL, locale: "en-US", viewport: { width, height: 900 }, serviceWorkers: "block" })
+async function openReport(principal, locale, width, nativeZoom = false) {
+  const native = nativeZoom ? await createNativeZoomContext(baseURL, "exception-report") : null
+  if (native) nativeZoomContexts.push(native)
+  const context = native?.context ?? await browser.newContext({ baseURL, locale: "en-US", viewport: { width, height: 900 }, serviceWorkers: "block" })
   contexts.push(context)
   await context.addCookies([{ name: "NEXT_LOCALE", value: locale, url: baseURL }])
   await authenticate(context, principal)
   const page = await context.newPage(); activePage = page
   page.setDefaultTimeout(30_000); page.setDefaultNavigationTimeout(120_000)
-  const view = { context, page, locale, width, principal, ui: await copy(locale), writes: [], getRequests: 0, successfulResponses: 0, failedRequests: 0 }
+  const view = { context, page, locale, width, principal, ui: await copy(locale), writes: [], getRequests: 0, successfulResponses: 0, failedRequests: 0, ...(native ? { worker: native.worker } : {}) }
   views.push(view)
   page.on("request", request => {
     const url = new URL(request.url())
@@ -377,49 +385,159 @@ async function assertRendered(view, truth) {
   })
   assert.ok(geometry.left >= -1 && geometry.right <= geometry.viewport + 1)
   assert.ok(geometry.scrollWidth <= geometry.clientWidth + 1)
+  // Read-only horizontal text-fragment check; no whole-page or pixel-occlusion claim.
+  const reflow = await block.evaluate(element => {
+    const targets = element.querySelectorAll("h2, h3, p, dt, dd")
+    const result = { targets: targets.length, fragments: 0, textNodes: 0, failures: [], failureCount: 0, overflow: false }
+    if (targets.length > 128) return { ...result, overflow: "TARGETS" }
+    for (const [ordinal, target] of targets.entries()) {
+      const box = target.getBoundingClientRect()
+      let left = Math.max(0, box.left), right = Math.min(innerWidth, box.right)
+      for (let ancestor = target.parentElement; ancestor; ancestor = ancestor.parentElement) {
+        if (["auto", "scroll", "hidden", "clip"].includes(getComputedStyle(ancestor).overflowX)) {
+          const bounds = ancestor.getBoundingClientRect()
+          left = Math.max(left, bounds.left + ancestor.clientLeft)
+          right = Math.min(right, bounds.left + ancestor.clientLeft + ancestor.clientWidth)
+        }
+      }
+      const walker = document.createTreeWalker(target, NodeFilter.SHOW_TEXT)
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        if (result.textNodes === 2048) return { ...result, overflow: "TEXT_NODES" }
+        result.textNodes++
+        if (!node.textContent.trim()) continue
+        const range = document.createRange()
+        range.selectNodeContents(node)
+        for (const fragment of range.getClientRects()) {
+          if (result.fragments === 1024) return { ...result, overflow: "FRAGMENTS" }
+          result.fragments++
+          if (![left, right, fragment.left, fragment.right].every(Number.isFinite)
+            || fragment.left < left - 1 || fragment.right > right + 1) {
+            result.failureCount++
+            if (result.failures.length < 32) result.failures.push({ ordinal, tag: target.tagName, left: fragment.left, right: fragment.right, clipLeft: left, clipRight: right })
+          }
+        }
+      }
+    }
+    return result
+  })
+  receipts.textReflowDiagnostics.push({ locale: view.locale, width: view.width, nativeZoom: Boolean(view.nativeZoom), ...reflow })
+  assert.equal(reflow.overflow, false, "Text reflow probe must stop at its finite diagnostic limits")
+  assert.ok(reflow.targets > 0 && reflow.targets <= 128)
+  assert.ok(reflow.fragments > 0 && reflow.fragments <= 1024)
+  assert.equal(reflow.failureCount, 0)
+  assert.deepEqual(reflow.failures, [], "Actual localized outcome text must fit its horizontal clipping bounds")
   return geometry
 }
-async function localeScenario(tenant, locale, width) {
-  stage = `report-${locale}-authenticate`
-  const view = await openReport({ ...tenant.hr, tenant: tenant.key }, locale, width)
-  stage = `report-${locale}-default-empty`
+async function focusedControl(view, locator, phase) {
+  const diagnostic = await locator.evaluate(element => {
+    const box = element.getBoundingClientRect()
+    const viewport = { width: innerWidth, height: innerHeight }
+    let left = 0, right = viewport.width, top = 0, bottom = viewport.height
+    for (let ancestor = element.parentElement; ancestor; ancestor = ancestor.parentElement) {
+      const style = getComputedStyle(ancestor), bounds = ancestor.getBoundingClientRect()
+      if (["auto", "scroll", "hidden", "clip"].includes(style.overflowX)) {
+        left = Math.max(left, bounds.left + ancestor.clientLeft)
+        right = Math.min(right, bounds.left + ancestor.clientLeft + ancestor.clientWidth)
+      }
+      if (["auto", "scroll", "hidden", "clip"].includes(style.overflowY)) {
+        top = Math.max(top, bounds.top + ancestor.clientTop)
+        bottom = Math.min(bottom, bounds.top + ancestor.clientTop + ancestor.clientHeight)
+      }
+    }
+    return { focused: document.activeElement === element, focusVisible: element.matches(":focus-visible"),
+      viewport, box: { left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: box.width, height: box.height },
+      clip: { left, right, top, bottom } }
+  })
+  receipts.keyboardFocusDiagnostics.push({ locale: view.locale, width: view.width, nativeZoom: Boolean(view.nativeZoom), phase, ...diagnostic })
+  assert.equal(diagnostic.focused, true)
+  assert.equal(diagnostic.focusVisible, true)
+  assert.ok(diagnostic.box.width > 0 && diagnostic.box.height > 0)
+  assert.ok(diagnostic.box.left >= diagnostic.clip.left - 1 && diagnostic.box.right <= diagnostic.clip.right + 1)
+  assert.ok(diagnostic.box.top >= diagnostic.clip.top - 1 && diagnostic.box.bottom <= diagnostic.clip.bottom + 1)
+}
+async function evidenceScreenshot(page, file, fullPage = false) {
+  const path = outputDirectory + "/" + file
+  if (isNativeZoomPage(page)) {
+    await captureNativeViewport(page, path, diagnostic => receipts.nativeCaptureDiagnostics.push(diagnostic))
+  } else {
+    await page.screenshot({ path, fullPage })
+  }
+}
+async function localeScenario(tenant, locale, width, nativeZoom = false) {
+  const kind = nativeZoom ? "native-200" : "standard-100"
+  const name = kind + "-" + locale + "-" + width
+  stage = name + "-authenticate"
+  const ordinal = nativeZoom ? 9 + receipts.matrix.locales.indexOf(locale)
+    : receipts.matrix.locales.indexOf(locale) * receipts.matrix.widths.length + receipts.matrix.widths.indexOf(width)
+  assert.ok(ordinal >= 0 && ordinal < 12 && tenant.scenarioHr.length === 12)
+  const principal = tenant.scenarioHr[ordinal]
+  // Each independent cell has its own authorized synthetic HR principal.
+  // Keep every cell below the unchanged 30 reads/15min policy; no reset,
+  // disabled limiter, retry credentials or spoofed address.
+  const view = await openReport({ ...principal, tenant: tenant.key }, locale, width, nativeZoom)
+  stage = name + "-default-empty"
   const initial = await checkedRead(view.response, tenant.key)
   assert.equal(initial.truth.cases, 0)
   await assertRendered(view, initial.truth)
-  stage = `report-${locale}-nonempty-range`
-  const selected = await applyRange(view, "2025-01-01", locale === "ru")
+  if (nativeZoom) {
+    stage = name + "-prove-native-zoom"
+    view.nativeZoom = await proveNative200Zoom(view, outputDirectory, locale,
+      diagnostic => receipts.nativeCaptureDiagnostics.push(diagnostic))
+    receipts.nativeZoomDiagnostics.push({ locale, status: "PASS", ...view.nativeZoom })
+    await assertRendered(view, initial.truth)
+  }
+  stage = name + "-nonempty-range"
+  const selected = await applyRange(view, "2025-01-01", true)
   const geometry = await assertRendered(view, selected.truth)
-  await view.page.screenshot({ path: `${outputDirectory}/report-${locale}-${width}-nonempty.png`, fullPage: true })
-  const recordedOutcomesScreenshot = `report-${locale}-${width}-recorded-outcomes.png`
-  await view.page.getByTestId("workforce-exception-recorded-outcomes").screenshot({ path: `${outputDirectory}/${recordedOutcomesScreenshot}` })
+  const block = view.page.getByTestId("workforce-exception-recorded-outcomes")
+  const recordedOutcomesScreenshot = "report-" + name + "-recorded-outcomes.png"
+  if (nativeZoom) {
+    await block.scrollIntoViewIfNeeded()
+    await evidenceScreenshot(view.page, recordedOutcomesScreenshot)
+  } else {
+    await evidenceScreenshot(view.page, "report-" + name + "-nonempty.png", true)
+    await block.screenshot({ path: outputDirectory + "/" + recordedOutcomesScreenshot })
+  }
   assert.ok((await view.page.locator('section[aria-labelledby="workforce-exception-report-summary"]').innerText()).includes(view.ui.summaryTitle))
   assert.equal(await view.page.getByTestId("workforce-exception-report-boundary").count(), 1)
   const region = view.page.locator('section[aria-labelledby="workforce-exception-report-types"]').getByRole("region", { name: view.ui.typesTitle, exact: true })
   assert.equal(await region.count(), 1)
   assert.equal(await region.getAttribute("tabindex"), "0")
-  let keyboardControls = false
-  if (locale === "ru") {
-    stage = "report-ru-native-refresh"
-    const refresh = view.page.getByRole("button", { name: view.ui.refresh, exact: true })
-    await tabTo(view.page, refresh)
-    const waiting = view.page.waitForResponse(isReportResponse, { timeout: 120_000 })
-    await view.page.keyboard.press("Enter")
-    await checkedRead(await waiting, tenant.key)
-    await assertRendered(view, selected.truth)
-    await tabTo(view.page, region)
-    assert.equal(await region.evaluate(element => document.activeElement === element), true)
-    keyboardControls = true
+  const apply = view.page.getByRole("button", { name: view.ui.apply, exact: true })
+  await tabTo(view.page, apply)
+  await focusedControl(view, apply, "apply")
+  const refresh = view.page.getByRole("button", { name: view.ui.refresh, exact: true })
+  await tabTo(view.page, refresh)
+  await focusedControl(view, refresh, "refresh")
+  const waiting = view.page.waitForResponse(isReportResponse, { timeout: 120_000 })
+  await view.page.keyboard.press("Enter")
+  await checkedRead(await waiting, tenant.key)
+  await assertRendered(view, selected.truth)
+  await tabTo(view.page, region)
+  await focusedControl(view, region, "table")
+  await evidenceScreenshot(view.page, "report-" + name + "-keyboard-table.png")
+  if (width === 320) {
     for (const [state, day] of [["empty", "2025-01-04"], ["unresolved-no-sample", "2025-01-02"], ["measured-zero", "2025-01-03"]]) {
-      stage = `report-ru-${state}`
+      stage = name + "-" + state
       const result = await applyRange(view, day, true)
       await assertRendered(view, result.truth)
-      await view.page.screenshot({ path: `${outputDirectory}/report-ru-320-${state}.png`, fullPage: true })
-      receipts.cases.push({ name: state, status: "PASS", responseStatus: 200, cases: result.truth.cases, sampleCount: result.truth.samples, meanMs: result.truth.mean })
+      await focusedControl(view, apply, state + "-apply")
+      await evidenceScreenshot(view.page, "report-" + name + "-" + state + ".png", !nativeZoom)
+      receipts.cases.push({ name: name + "-" + state, status: "PASS", locale, width, nativeZoom,
+        responseStatus: 200, cases: result.truth.cases, sampleCount: result.truth.samples, meanMs: result.truth.mean,
+        noFalsePercentages: result.truth.classified.falsePositive.sampleCount === 0 && result.truth.classified.falsePositive.share === null
+          && result.truth.classified.appeal.sampleCount === 0 && result.truth.classified.appeal.fullyUpheldShare === null
+          && result.truth.classified.appeal.partiallyUpheldShare === null && result.truth.classified.appeal.rejectedShare === null })
     }
   }
   assert.deepEqual(view.writes, [])
-  receipts.cases.push({ name: `nonempty-${locale}-${width}`, status: "PASS", responseStatus: 200, linkedShare: selected.truth.share, meanMs: selected.truth.mean, integrityExcluded: selected.truth.excluded, geometry, recordedOutcomesScreenshot, nativeApplyRefreshAndTableFocus: keyboardControls, rawPrivateDataExcluded: true })
-  await assertSession(view.context, tenant.hr)
+  receipts.cases.push({ name: name + "-nonempty", status: "PASS", locale, width, nativeZoom,
+    responseStatus: 200, linkedShare: selected.truth.share, meanMs: selected.truth.mean,
+    integrityExcluded: selected.truth.excluded, geometry, recordedOutcomesScreenshot,
+    nativeApplyRefreshAndTableFocus: true, rawPrivateDataExcluded: true,
+    ...(nativeZoom ? { browserZoom: view.nativeZoom } : {}) })
+  assert.ok(view.getRequests <= 20, "Each isolated cell must respect the unchanged principal report budget")
+  await assertSession(view.context, principal)
   await view.context.close()
 }
 async function auditCount(org) { return admin.mtmAuditLog.count({ where: { organizationId: org } }) }
@@ -520,7 +638,7 @@ async function auditProof(tenants) {
   return { results, appendOnlyAuditPrivilegeOnly: true, cancelledDevReadsMayCompleteTheirViewAudit: true, globallyZeroDatabaseWritesClaimed: false }
 }
 try {
-  for (const path of ["scripts/workforce-exception-report-browser-evidence.mjs", "scripts/ci/fixtures/workforce-exception-report-browser.sql", "scripts/ci/fixtures/workforce-manager-today-browser.sql", ".github/workflows/workforce-exception-report-browser-evidence.yml", "src/components/workforce/workforce-exception-report.tsx", "src/components/workforce/workforce-exception-recorded-outcomes.tsx", "src/app/api/v1/workforce/exception-reports/route.ts", "src/lib/workforce/exception-case-report-read.ts", "src/lib/workforce/exception-case-report-recorded-outcomes.ts", "messages/en.json", "messages/ru.json", "messages/az.json"]) {
+  for (const path of ["scripts/workforce-exception-report-browser-evidence.mjs", "scripts/workforce-native-browser-zoom.mjs", "scripts/ci/fixtures/workforce-native-zoom-extension/manifest.json", "scripts/ci/fixtures/workforce-native-zoom-extension/background.js", "scripts/ci/fixtures/workforce-exception-report-browser.sql", "scripts/ci/fixtures/workforce-manager-today-browser.sql", ".github/workflows/workforce-exception-report-browser-evidence.yml", "src/components/workforce/workforce-exception-report.tsx", "src/components/workforce/workforce-exception-recorded-outcomes.tsx", "src/app/api/v1/workforce/exception-reports/route.ts", "src/lib/workforce/exception-case-report-read.ts", "src/lib/workforce/exception-case-report-recorded-outcomes.ts", "messages/en.json", "messages/ru.json", "messages/az.json"]) {
     const raw = await readFile(new URL(`../${path}`, import.meta.url)); receipts.sources.push({ path, bytes: raw.length, sha256: createHash("sha256").update(raw).digest("hex") })
   }
   stage = "historical-fixture-seeding"
@@ -528,7 +646,8 @@ try {
   const before = await facts(organizationIds)
   receipts.rlsBefore = await rlsControls(tenants, "BEFORE")
   stage = "hosted-chromium-launch"; browser = await chromium.launch({ headless: true })
-  for (const [locale, width] of [["ru", 320], ["az", 768], ["en", 1440]]) await localeScenario(tenants[0], locale, width)
+  for (const locale of receipts.matrix.locales) for (const width of receipts.matrix.widths) await localeScenario(tenants[0], locale, width)
+  for (const locale of receipts.matrix.locales) await localeScenario(tenants[0], locale, 320, true)
   await deniedScenario(tenants[0], tenants[0].teamManager)
   await deniedScenario(tenants[0], tenants[0].denied)
   await foreignScenario(tenants)
@@ -537,7 +656,25 @@ try {
   receipts.factImmutability = { tenantCount: 2, tables: before.map((row, index) => ({ ...row, afterSha256: after[index].sha256, unchanged: true })), userAuthenticationMetadataExcluded: true, permittedAuditDeltaSeparate: true }
   receipts.rlsAfter = await rlsControls(tenants, "AFTER")
   receipts.viewAudit = await auditProof(tenants)
-  assert.equal(receipts.cases.length, 9)
+  assert.equal(receipts.cases.length, 33)
+  assert.equal(receipts.nativeZoomDiagnostics.length, 3)
+  assert.ok(receipts.nativeZoomDiagnostics.every(item => item.status === "PASS" && item.factor === 2))
+  const expectedNames = new Set()
+  for (const locale of receipts.matrix.locales) {
+    for (const width of receipts.matrix.widths) expectedNames.add("standard-100-" + locale + "-" + width + "-nonempty")
+    expectedNames.add("native-200-" + locale + "-320-nonempty")
+    for (const kind of ["standard-100", "native-200"]) for (const state of ["empty", "unresolved-no-sample", "measured-zero"]) {
+      expectedNames.add(kind + "-" + locale + "-320-" + state)
+    }
+  }
+  const matrixCases = receipts.cases.filter(item => item.name.startsWith("standard-100-") || item.name.startsWith("native-200-"))
+  assert.equal(matrixCases.length, expectedNames.size)
+  assert.deepEqual(new Set(matrixCases.map(item => item.name)), expectedNames)
+  assert.ok(matrixCases.every(item => item.status === "PASS"))
+  assert.ok(matrixCases.filter(item => !item.name.endsWith("-nonempty")).every(item => item.noFalsePercentages === true))
+  assert.ok(receipts.nativeCaptureDiagnostics.length >= 3 * 7 && receipts.nativeCaptureDiagnostics.every(item => item.status === "PASS"))
+  assert.equal(receipts.keyboardFocusDiagnostics.length, 12 * 3 + 6 * 3)
+  receipts.nativeZoomVerdict = "PASS"
   currentDate(); receipts.status = "PASS"
 } catch (error) {
   receipts.status = "FAIL"; process.exitCode = 1
@@ -545,18 +682,22 @@ try {
   const position = sourceFrame?.match(/:(\d+):(\d+)\)?$/)
   receipts.failure = { stage, name: ["AssertionError", "TimeoutError", "PrismaClientKnownRequestError", "PrismaClientValidationError"].includes(error?.name) ? error.name : "Error", sourcePosition: position ? { line: Number(position[1]), column: Number(position[2]) } : null, diagnostic: "Original failure preserved; no raw error, stack, body, credentials, cookie or session uploaded" }
   if (activePage && !activePage.isClosed()) {
-    try { await activePage.screenshot({ path: `${outputDirectory}/failure-original.png`, fullPage: true }); receipts.failure.screenshot = "failure-original.png" } catch { receipts.failure.screenshot = "NOT_CAPTURED" }
+    try { await evidenceScreenshot(activePage, "failure-original.png", true); receipts.failure.screenshot = "failure-original.png" } catch { receipts.failure.screenshot = "NOT_CAPTURED" }
     try {
-      await activePage.getByTestId("workforce-exception-recorded-outcomes").screenshot({ path: `${outputDirectory}/failure-outcomes.png` })
+      if (isNativeZoomPage(activePage)) await evidenceScreenshot(activePage, "failure-outcomes.png")
+      else await activePage.getByTestId("workforce-exception-recorded-outcomes").screenshot({ path: outputDirectory + "/failure-outcomes.png" })
       receipts.failure.outcomesScreenshot = "failure-outcomes.png"
     } catch { receipts.failure.outcomesScreenshot = "NOT_CAPTURED" }
   }
 } finally {
+  const nativeCleanup = await Promise.allSettled(nativeZoomContexts.map(context => context.dispose()))
+  receipts.nativeZoomCleanup = nativeCleanup.map((result, index) => ({ ordinal: index + 1, status: result.status === "fulfilled" ? "PASS" : "FAIL" }))
+  if (nativeCleanup.some(result => result.status !== "fulfilled")) { receipts.status = "FAIL"; receipts.nativeZoomVerdict = "FAIL CLEANUP"; process.exitCode = 1 }
   const closedContexts = await Promise.allSettled(contexts.map(context => context.close()))
   const closedBrowser = browser ? await Promise.allSettled([browser.close()]) : []
   const disconnected = await Promise.allSettled([app.$disconnect(), admin.$disconnect()])
-  const results = [...closedContexts, ...closedBrowser, ...disconnected]
-  const labels = [...contexts.map((_, index) => `context-${index + 1}`), ...(browser ? ["browser"] : []), "application-database", "fixture-database"]
+  const results = [...nativeCleanup, ...closedContexts, ...closedBrowser, ...disconnected]
+  const labels = [...nativeZoomContexts.map((_, index) => `native-profile-${index + 1}`), ...contexts.map((_, index) => `context-${index + 1}`), ...(browser ? ["browser"] : []), "application-database", "fixture-database"]
   receipts.cleanupActions = results.map((result, index) => ({ action: labels[index], status: result.status === "fulfilled" ? "PASS" : "FAIL" }))
   receipts.cleanup = results.every(result => result.status === "fulfilled") ? "PASS" : "FAIL"
   if (receipts.cleanup === "FAIL") { receipts.status = "FAIL"; process.exitCode = 1 }

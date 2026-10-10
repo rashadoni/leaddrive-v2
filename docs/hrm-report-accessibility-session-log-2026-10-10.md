@@ -63,3 +63,54 @@ config, roles, tenant isolation, CASE_RECORDED_AT and existing production
 workflows are preserved. Small syntax/whitespace checks only after resource
 inspection. Implementation, independent final review, browser/PG artifacts,
 required five CI gates and release remain PENDING at this initial entry.
+
+## Source implementation and review — 2026-10-10T00:08Z
+
+Implemented report-only nine standard locale/width cells and three genuine
+native200% cells. All12 use actual Apply/Refresh/table focus; six320 cells also
+cover empty, unresolved-only and measured-zero states. Strict33-case,54-focus
+and21-original-native-capture admission preserves denied-role/foreign-session
+checks,22-table immutable fact snapshots, forcedRLS and bounded whitelisted
+view audit. Added read-only horizontal localized text-fragment diagnostics;
+no whole-page accessibility or pixel-occlusion claim. Native profile cleanup
+now participates in the overall cleanup result.
+
+Twelve independent authorized synthetic HR principals are seeded before the
+fact fingerprints because the unchanged report budget is30 reads/principal/
+15minutes. Each cell permits at most20 requests; global auth8callbacks/61seconds
+and all production limits remain unchanged. No production principal/grant,
+access, API, roles, schema, product UI or activation changed. Datefields still
+use Playwright.fill; keyboard evidence concerns Apply/Refresh/table and state
+Apply, not full keyboard date entry or human AT.
+
+Root independently reviewed the child-owned helper/guard test: exact fixture
+route/opt-in and loopback guards retained,18 new admission tests stop at first
+native API boundary with an explicit NOT_RUN sentinel, no mocked zoom PASS;
+existing nine subprocess refusals retained. Child's first independent root
+review found no P0/P1/P2, but it was source-only before final reflow/cleanup.
+Final source review and all hosted gates remain pending.
+
+Actual small checks on this source: both Node20 syntax checks PASS, unchanged
+runner policy PASS54workflows, git diff --check PASS; resources about8.7GB
+available/260GB disk/zero memory pressure. Heavy install/Vitest/fullcompiler/
+PG/browser/build NOT RUN on Contabo because placement contract requires hosted
+Ubuntu24.04; no dependencies installed here. Strict baselines and gitleaks
+configuration byte-identical to acceptedPR608.
+
+Preserved tooling errors: first edit-generator ValueError locating an escaped
+newline occurred before its write; corrected command succeeded. One later JS
+wrapper syntax error occurred before tool execution or source mutation; safely
+corrected seed edit succeeded. Read-only attempt to inspect nonexistent
+.github/workflows/ci.yml failed; actual workflow is pr-checks.yml, subsequently
+read. These were not CI/test failures. Original wrong discovery route remains
+in its original receipt with explicit correction, never substituted as proof.
+Fresh origin/main remains50669da053c5da2bf1166404d03decbb13dc7958, no new
+parallel HRM PR. Original PR606/609 closed-unmerged and646 validation-only stay
+excluded. Current source is not accepted until actual exact hosted checks.
+
+Final source review found one P2 in the new reflow diagnostic: numeric bounds
+were asserted after traversal/retention rather than before, so1025 failing
+fragments could already be retained. Preserved original finding; fixed by
+stopping before work exceeds128targets/2048textnodes/1024fragments, retaining
+at most32 failure examples plus a count/finite overflow sentinel. Overflow
+explicitly fails the gate. No wider application change or relaxed threshold.

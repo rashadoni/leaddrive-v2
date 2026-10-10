@@ -6,6 +6,8 @@ on:
     paths:
       - ".github/workflows/workforce-exception-report-browser-evidence.yml"
       - "scripts/workforce-exception-report-browser-evidence.mjs"
+      - "scripts/workforce-native-browser-zoom.mjs"
+      - "scripts/ci/fixtures/workforce-native-zoom-extension/**"
       - "scripts/workforce-exception-classification-browser-evidence.mjs"
       - "scripts/ci/fixtures/workforce-exception-classification-browser.sql"
       - "src/__tests__/workforce-exception-classification-browser-evidence-guard.test.ts"
