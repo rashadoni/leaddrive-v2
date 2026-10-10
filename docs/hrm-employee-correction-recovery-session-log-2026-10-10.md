@@ -215,3 +215,23 @@ No684 merge/ownrelease yet. Next currentC completefour and actualfive, freshrefs
 protection/exclusions/archive/chain guard, ordinary own merge then own exact normal
 main/compiler/artifact/public smoke root+peer. FutureD464 only source-prepared,
 unpublished and no app/bugfix/runtime claim. Accounting85/76/61 unchanged.
+
+
+## 2026-10-10 12:59 UTC — exact current C18 four browser lanes admitted
+
+Current run38052702743 attempt1 naturallySUCCESS: recovery114214913483,
+EMP114214913558, report114214913613, ordinarycorrection114214913663. Actual
+checkout C18/parents[BFE,H2e4b]/wholeTreef66d sourceequal proved. Root fresh four
+ZIPs API/digest/size/CRC and all whole logs; all content readers passed. Actual
+EMP current session23 bounded observations, no recurrent MFA400; strict old and
+new recovery bounds retained. Source-only four skipped jobs receive no execution
+credit. Current report EN200 original viewed: disclaimer/date controls visible;
+lower percentages outside crop/dev badge overlap, no whole-page/device/human.
+Peer currentfour receipt c5f7ee787dc66b3ffdd16517e5dbd0bd50909371a6f6189bb674dc3cb4f77f34
+and148-original inventory independently accepted exact logs/ZIPs/content/pixels.
+Phase07 archives231files76440736B including first root requiredfive reader refusal
+while actual typecheck was in_progress. Original APIs/tool-transcript qualification
+retained; no actual CI failure/rerun. Requiredstatic naturalS; current type still
+compiling, five/merge/ownrelease credit pending. Next actual five completion and
+full compiler/baseline admission, freshrefs/protection/exclusions, ordinarymerge.
+Accounting85/161DONE/76open/61%, C6-006/C12PARTIAL/C14OPEN unchanged.

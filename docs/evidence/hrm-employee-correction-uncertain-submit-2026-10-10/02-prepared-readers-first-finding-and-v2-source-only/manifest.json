@@ -1,0 +1,97 @@
+{
+  "archivedAtUtc": "2026-10-10T12:58:16.576074+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-employee-correction-uncertain-submit-capture-terminal-job-v1.py.gz",
+      "originalBytes": 4237,
+      "originalSha256": "a960f12aba25e395862fbec3460bed47126389c30e9547592b3b288771c7701d",
+      "storedBytes": 1692,
+      "storedSha256": "53307b3dd96dc6bcde7dd37322a26d3bbdfc77ce5bfc9a8c45b2df644e553d5f"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-complete-artifact-v1.py.gz",
+      "originalBytes": 10530,
+      "originalSha256": "5d99bb57ec97f49387840dd1db7303652c3bca7bab55ea4c737c52da12b29798",
+      "storedBytes": 4042,
+      "storedSha256": "ff1977086a89fd4d1d439499edb75b16980f7c10d74502ffe33dc5b6e42212dc"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-complete-artifact-v2.py.gz",
+      "originalBytes": 13424,
+      "originalSha256": "1ad86fdb25a52a9d557dddce8ef3be19f41f88499e20e845d7686eebe5b79299",
+      "storedBytes": 4769,
+      "storedSha256": "286ce98453b9e0d22e34b5bc17d4437bc0137d85f5a5a1a0e2a83c287506f719"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-prepared-readers-root.json.gz",
+      "originalBytes": 652,
+      "originalSha256": "219b0f9c0c7b545a7dc9bc97f6d5589bcf1e00b212f78dccbd15a3db503912f0",
+      "storedBytes": 445,
+      "storedSha256": "69e7dfe8060f497b903d1fc1536dcfbd5fc7f8e7909cc623484f9e96542472af"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-prepared-readers-literal-review-root.json.gz",
+      "originalBytes": 1006,
+      "originalSha256": "7602e54cf41a67d25c1f3e52118dd84416afaefea310b79f2d68f41682ce8ab4",
+      "storedBytes": 638,
+      "storedSha256": "f110e36700755ca1b0a9e2d92e704bd06b9d1fb70426be7adb3a40b966b6339f"
+    },
+    {
+      "path": "hrm-employee-correction-uncertain-submit-prepared-reader-v1-finding-and-v2-root.json.gz",
+      "originalBytes": 908,
+      "originalSha256": "db00253c27bc72a88df55bbde3b4474989ac52493a3b65b69b5e394a955ff3f3",
+      "storedBytes": 587,
+      "storedSha256": "c5112d8af6e77a229e97f79a4efac7a1ba49ae3f4154b7de05c41c378ce44556"
+    },
+    {
+      "path": "prepared-root-reader-v1-review/first-prepared-root-uncertain-reader-source-review-findings.json.gz",
+      "originalBytes": 3853,
+      "originalSha256": "7eace2e871b8131744013bafb3ece2cfb4ddd1de961462b30f258a6e0c6b007b",
+      "storedBytes": 1457,
+      "storedSha256": "a847de04ddc9d0e5c7047b949e41011e88371345c7cb1320fd8b61d42c6560ca"
+    },
+    {
+      "path": "prepared-root-reader-v1-review/preserved-hrm-employee-correction-uncertain-submit-capture-terminal-job-v1.py.gz",
+      "originalBytes": 4237,
+      "originalSha256": "a960f12aba25e395862fbec3460bed47126389c30e9547592b3b288771c7701d",
+      "storedBytes": 1692,
+      "storedSha256": "53307b3dd96dc6bcde7dd37322a26d3bbdfc77ce5bfc9a8c45b2df644e553d5f"
+    },
+    {
+      "path": "prepared-root-reader-v1-review/preserved-hrm-employee-correction-uncertain-submit-complete-artifact-v1.py.gz",
+      "originalBytes": 10530,
+      "originalSha256": "5d99bb57ec97f49387840dd1db7303652c3bca7bab55ea4c737c52da12b29798",
+      "storedBytes": 4042,
+      "storedSha256": "ff1977086a89fd4d1d439499edb75b16980f7c10d74502ffe33dc5b6e42212dc"
+    },
+    {
+      "path": "prepared-root-reader-v2-review/preserved-root-uncertain-complete-v1-original.py.gz",
+      "originalBytes": 10530,
+      "originalSha256": "5d99bb57ec97f49387840dd1db7303652c3bca7bab55ea4c737c52da12b29798",
+      "storedBytes": 4042,
+      "storedSha256": "ff1977086a89fd4d1d439499edb75b16980f7c10d74502ffe33dc5b6e42212dc"
+    },
+    {
+      "path": "prepared-root-reader-v2-review/reviewed-root-uncertain-complete-v2-original.py.gz",
+      "originalBytes": 13424,
+      "originalSha256": "1ad86fdb25a52a9d557dddce8ef3be19f41f88499e20e845d7686eebe5b79299",
+      "storedBytes": 4769,
+      "storedSha256": "286ce98453b9e0d22e34b5bc17d4437bc0137d85f5a5a1a0e2a83c287506f719"
+    },
+    {
+      "path": "prepared-root-reader-v2-review/root-uncertain-complete-v2-source-only-peer-review.json.gz",
+      "originalBytes": 1370,
+      "originalSha256": "59a736ba869f602c6840905e01dd437b3d7d8a38062c39b57433f6209400e99a",
+      "storedBytes": 855,
+      "storedSha256": "93c71f0e6e9fa9fa07f995a530e50d9ba2549b204e072918fa4d12bff5873b69"
+    },
+    {
+      "path": "all-prepared-source-and-root-reader-v2-inventory-v3.json.gz",
+      "originalBytes": 6939,
+      "originalSha256": "68b28657ad2108bc171e1ba074ecb288e2210675116b8826f9b61d2cb4c67915",
+      "storedBytes": 1698,
+      "storedSha256": "bfba007960cacad5868178a46e90fd333b94f51c5a9047d0bc2b2426af9221f8"
+    }
+  ]
+}

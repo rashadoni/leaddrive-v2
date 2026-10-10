@@ -80,3 +80,18 @@ Parent684 source8 now completed naturally SUCCESS, root fulloriginal admission
 underway; currentcandidate/requiredfive/ownrelease not yet verified. Publication
 continues to wait parent own verified release. No synthetic closure/accounting
 change; full historical/restored-copy/operator/provenance remains external.
+
+
+## 2026-10-10 12:59 UTC — prepared readers independently accepted, runtime NOT RUN
+
+Future capturev1/completev1 sources and first source-only reader finding preserved.
+V1 valid routine hashes allowed duplicate identity replacement; exact-case/cleanup
+sets and bounded MFA pacing strengthened additively in completev2. No old predicate
+removed. Independent v2 receipt59a736ba869f602c6840905e01dd437b3d7d8a38062c39b57433f6209400e99a
+accepted byteequal exact11 routine-multiset/case11/cleanup13/pacing blocks; all37
+bindings/19desired-edit diagnostics/two artifact members/current-tree/privacy/SQL
+bounds retained. Syntax/literal SOURCE ONLY; actual runtime still NOT RUN.
+Phase02 archives13files81640B v1/finding/v2/peer originals and qualification.
+No application fix or actual reproduction claimed. Parent684 current four natural
+S; mandatory type still running. Future publication remains after actual verified
+parent own normal release, then real desired regression first-failure preservation.
