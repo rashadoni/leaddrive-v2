@@ -234,3 +234,59 @@ Own normal main/push publication is now running and is not yet completed.
 No directSSH/copy/deploy fallback, activation/access/secrets/Support/business
 writes. Next observe actual normal workflow terminal status and give live
 module links to owner; optional checks follow inspection.
+
+
+## 2026-10-10 14:25 UTC — normal publication progressing; duplicate main check canceled
+
+Own main/push deploy.yml38058992644 attempt1 is running at exact790ba. Actual
+build114233205034 reached Next standalone compilation; quality114233205061 is
+executing the normal embedded publication gates. No optional module test, review,
+content/pixel reader, authenticated/public feature smoke or new dispatch started.
+Redundant separate main/push pr-checks38058992623 canceled at14:19 per owner's
+deferral; this run is not a deploy.yml dependency and gets no own-main compiler
+acceptance credit. Deploy.yml unchanged and continues normally. No additional
+source/current/final combined-tree acceptance claimed. Archivephase06 published
+25adc3d043e5dd6d1162e7c2b76f064cf3889725; updated archive663 describes own790ba
+merge/publication pending instead of earlier ready/parent-pending observations.
+Tool-observed auto-merge-disabled and old-main-guard errors copied into an
+explicit observation record (not a claimed raw subprocess log); original API
+evidence and tool history remain. Next actual normal terminal publication and
+owner's live inspection; module verification is deferred as requested.
+
+
+## 2026-10-10 14:38 UTC — owner-requested inspection release published; extra verification deferred
+
+Own exactmain790ba03b7374b8794d14e0d88571ec0d82043489 normal main/push deploy.yml
+38058992644 attempt1 naturally completed SUCCESS at14:37. Actual jobs: build
+114233205034,quality114233205061,production deploy/post-deploy114236128104,
+retention114237003784 allSUCCESS;3manual-only jobs naturallySKIP/noexecutioncredit.
+Whole original terminal APIs and all4whole job logs preserved. Artifact metadata:
+11673080444/nameleaddrive-prod-790ba03b7374b8794d14e0d88571ec0d82043489/445010279B/
+sha256:fc2e9a89a95d4d01fabe3411e42716d3cd9ba9472fe7413118bbc94f935b98f2.
+Artifact binary download/CRC/content independent admission NOT RUN: owner's
+extra-verification deferral plus remote host heavy-work restriction. This is API
+metadata and natural normal-workflow success, not an independently reviewed
+complete operational acceptance. Built-in post-deploy jobSUCCESS; no separate
+root/peer publicGET/featurePOST/browser/pixel/SQL/release-content checks performed.
+
+Source7a6a independent source-only review and earlier small checks remain recorded;
+all5 mandatory branch contexts naturallySUCCESS before ordinary merge. Incoming
+already merged685main7de25 preserved, not merged by this task. Final combined-tree
+full runtime acceptance remains NOT_COMPLETE; canceled manual/current/main runs
+do not become successful tests. Original firstH458 desiredFAIL, all reader/publication
+errors and raw terminal partial/canceled observations remain append-only. No
+baseline/protection weakening, force/admin/manual-server fallback or activation/
+access/secrets/Support/personnel-business writes. Original589→605→608/973/c123
+archive history is preserved by ordinary merge. No roadmap row/gate closes;
+85/161DONE,76open,weighted61%, C6-006/C12PARTIAL/C14OPEN. These attendance task
+counts do not claim a completed general HR system or equivalent visible readiness.
+
+Live owner inspection: https://app.leaddrivecrm.org/workforce; requests at
+/workforce/requests; C6 decisions at/workforce/exceptions and aggregate report
+at/workforce/exceptions/report. Final PR686 describes actual publication and
+honest deferred verification; archive663 remainsDRAFT/MUSTNOTMERGE. Current
+result: inspection release published. Last completed action: ordinary GitHub
+production deployment. Exact stopping point: no additional module checks resumed;
+owner can view current product. Next action: further module verification after
+inspection, preserving original failures; HR documents/hrhub.az follow current
+HRM acceptance. No synthetic device/human/operational closure.
