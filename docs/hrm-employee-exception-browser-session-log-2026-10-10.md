@@ -339,3 +339,36 @@ workingdirectory login-label inference is superseded by actualzone-list PR.
 Current stronger reproof requires independent source review/fresh exactCI;
 oldA7DCotherjobs continue uncancelled. No production changes/activation or
 closure;85DONE/76open/61%,C6-006/C12partial/C14open unchanged.
+
+## Actual4890 AZ native pass and Russian320 control overflow; narrowUI fix
+
+Run38029499242 employee114147262119 actualFAIL at harness377:10 horizontal
+containment of RUstandard320 exact-day-correction-link (recordedcoarse stage
+ru-standard-320-keyboard-refresh includes subsequentlinkcheck; refresh itself
+PASS). Actualfocused/focusVisibletrue44px high bboxleft93/right354.828125,
+clipright320, overflow34.828125px. Rootandpeer actuallyviewed originalPNG:
+Russian correction and acknowledgement labels visibly clipped. Native reproof
+now actuallypassed completeAZnative320 cell with bothphaseproofs/window
+preserved,10current320/DPR2 admissions,9captures=2controls100+7native200.
+Partial5completedcases=loadrecovery+AZstandard3+AZnative1,6auth/20focus,
+responses5(1historical+4new)/audit4/cases20/decisions6,cleanupPASS; full14case
+acceptance/finalDB stillabsent. Original wholelog110555B SHA
+2d5dffb1502f495d84a4b19e07535f4de4e03ae94349c7c91144caaade21a784;
+ZIP11661033853/3065453B SHAabba8069ab17f699b17736cdde9a3193061ab4b8efc4ad631bea603bf2ad1e70.
+OldA7 genericError actualcause staysUNPROVED; complete currentAZ native pass
+is current evidence, not retrospective cause attribution. Otherfive4890
+lanes continue naturally; no cancellation/rerun.
+
+Applying adapt+impeccable from existingdesigncontext/reference, preserveCRM
+shell/orange/plain localized labels/allsections andactions. Exactlyfiveclass
+attributes in WorkforceMyExceptions: mobile single minmax0 gridtrack, bounded
+stackedaction+hint column, textwrapping/autoheight/maxwidth for refresh/link/
+ACK with min44px. Wide md two-column row remains. Removingsm horizontal action
+flow keeps each existinghint nextto its action in sameDOM sequence. Root
+class-stripped old/newbytes EXACT, no hook/state/handler/request/copy/role/
+projection/rollout/route/schema/nativehelper/harness/assertion changes. Original
+focuscontainment/min44/privacy/baseline checks notweakened. Newsource needs
+independentreview and fresh exact hosted68scoped/30admission/37nativeguard,
+UI/lint/fullcompiler/PG/build/report/HR/candidate/requiredgates. NOTRUNContabo
+byworkloadcontract; no productionactivation/personnel decisions.85DONE/76open/
+61%,C6-006/C12partial/C14open unchanged.
