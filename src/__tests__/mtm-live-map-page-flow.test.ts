@@ -493,23 +493,26 @@ describe("the live map page, end to end", () => {
     // The map everybody knows: the map is handed no other background.
     expect(mapProp("baseMap")).toBeNull()
     await press(document.querySelector('[data-testid="live-map-layers"] > button'))
-    expect([...document.querySelectorAll('[data-testid="live-map-base-maps"] [role="radio"]')].map((choice) => choice.textContent)).toEqual(["Карта", "Светлая", "Тёмная"])
-    await press(byTestId("live-map-base-map-dark"))
-    expect(mapProp<{ id: string; url: string }>("baseMap")).toMatchObject({ id: "dark", url: expect.stringContaining("/dark_all/") })
-    expect(byTestId("live-map-base-map-dark")?.getAttribute("aria-checked")).toBe("true")
-    expect(JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v1") ?? "{}")).toMatchObject({ base: "dark" })
+    expect([...document.querySelectorAll('[data-testid="live-map-base-maps"] [role="radio"]')].map((choice) => choice.textContent)).toEqual(["Карта", "Светлая"])
+    await press(byTestId("live-map-base-map-light"))
+    expect(mapProp<{ id: string; url: string }>("baseMap")).toMatchObject({ id: "light", url: expect.stringContaining("/light_all/") })
+    expect(byTestId("live-map-base-map-light")?.getAttribute("aria-checked")).toBe("true")
+    expect(JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v1") ?? "{}")).toMatchObject({ base: "light" })
 
     // The page is opened again in this browser.
     await act(async () => { root.unmount() })
     root = createRoot(container)
     await open()
-    expect(mapProp<{ id: string }>("baseMap")).toMatchObject({ id: "dark" })
-    // A background this build does not offer (no satellite address was given) falls back to the usual map.
-    await act(async () => { root.unmount() })
-    root = createRoot(container)
-    window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ base: "satellite" }))
-    await open()
-    expect(mapProp("baseMap")).toBeNull()
+    expect(mapProp<{ id: string }>("baseMap")).toMatchObject({ id: "light" })
+    // A background this build does not offer — no satellite address was given, and the dark
+    // one that was taken away the night it shipped — falls back to the usual map.
+    for (const gone of ["satellite", "dark"]) {
+      await act(async () => { root.unmount() })
+      root = createRoot(container)
+      window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ base: gone }))
+      await open()
+      expect(mapProp("baseMap"), gone).toBeNull()
+    }
   })
 
   it("puts the list away on a wide screen without touching what the map draws, and says when a filter is narrowing it", async () => {

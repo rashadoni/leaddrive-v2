@@ -106,7 +106,7 @@ describe("the layers control on the map", () => {
     const chosen: string[] = []
     const offer = (value: string) => ({
       value,
-      options: [{ id: "voyager", label: "Карта" }, { id: "light", label: "Светлая" }, { id: "dark", label: "Тёмная" }],
+      options: [{ id: "voyager", label: "Карта" }, { id: "light", label: "Светлая" }, { id: "satellite", label: "Спутник" }],
       onChange: (id: string) => { chosen.push(id); baseMaps = offer(id) },
     })
     baseMaps = offer("voyager")
@@ -114,9 +114,9 @@ describe("the layers control on the map", () => {
     const choices = () => [...container.querySelectorAll('[data-testid="live-map-base-maps"] [role="radio"]')] as HTMLButtonElement[]
     expect(container.querySelector('[data-testid="live-map-base-maps"] [role="radiogroup"]')?.getAttribute("aria-labelledby")).toBe("live-map-base-maps-title")
     expect(container.querySelector("#live-map-base-maps-title")?.textContent).toBe("Вид карты")
-    expect(choices().map((choice) => [choice.textContent, choice.getAttribute("aria-checked")])).toEqual([["Карта", "true"], ["Светлая", "false"], ["Тёмная", "false"]])
-    await press(container.querySelector('[data-testid="live-map-base-map-dark"]'))
-    expect(chosen).toEqual(["dark"])
+    expect(choices().map((choice) => [choice.textContent, choice.getAttribute("aria-checked")])).toEqual([["Карта", "true"], ["Светлая", "false"], ["Спутник", "false"]])
+    await press(container.querySelector('[data-testid="live-map-base-map-satellite"]'))
+    expect(chosen).toEqual(["satellite"])
     expect(choices().map((choice) => choice.getAttribute("aria-checked"))).toEqual(["false", "false", "true"])
     // A background is not a layer taken off the map: the closed button shows no «something is hidden» mark for it.
     await press(opener())
