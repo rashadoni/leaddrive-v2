@@ -362,3 +362,33 @@ these are originalattempt1 executions (retainedtime/log/artifact), notfresh
 rerunexecutioncredit. OriginalEMPFAIL400/unknowncause kept. Merge remainsheld
 untilactualrepeat whole15/45/12/legacy/sessiondynamic root+peeraccepted and
 freshcontrols. SourceFB/checkedC13 unchanged; no appauth orbaselinemodification.
+
+## Current candidate and five required checks independently accepted
+
+Frozen source FB / base M7e58 / candidate C13 / tree5e8d unchanged. ONE employee
+repeat job114201861633, attempt2, actualSUCCESS: whole117123B and artifact
+11668129299 digest/size/CRC; all15 cases,22MFA,45bindings,12readonlyprefills,50focus,
+6native proofs,27caps,14ACK+audits,13facts,8rollback and actual27 bounded session
+observations accepted root+peer. Counts are actual current results, no older
+observation total imposed. Root current RU focus-link PNG and peer2 AZ originals
+actually viewed with development badge/crop qualifications; native request-form,
+physical/human/production HR are NOT RUN. Original attempt1 employee FAIL400 is
+permanent and cause remains unproved; no auth/helper/assertion change.
+Report/correction carried IDs have original attempt1 timestamps and byteequal
+wholelogs; all3 original first ZIPs byteequal final. Only employee executed again;
+report33/54/58 and correction11/19requests+19audits/30bindings/5SQL/11facts remain
+their original same-C13 successes. Final root capture has4digest/CRC ZIPs, including
+original failure. Manual4 SKIP receive no execution credit. Five actualS App15368
+originals and fulltype253347B/1162/35/EXIT2/strict64/critical0/owned0 independently
+accepted; global compiler/suite remain NONCLEAN.
+Peer final60274B SHA6c2a3ec92b41b285b21f1ebb2cac6ace14db13835d4bcefe102b0b439523f910;
+155-file inventory SHAb96357328a70d9ea5e16b3b3bd5e26420ec76a515a52fda7a8d6cfb5272218e8.
+Peer first aggregate forgot oldemployee PR-only dispatch SKIP; original kept and
+separatev2 verifies only exact intended conditional skips, all other steps actualS.
+Root diagnostic scan on outer transition record printed0; actual nested observations
+27 already validated by complete reader, separate qualification retained. No CI/
+source/assertion failure hidden or changed. All originals/errors/qualified results
+archivedphase13. Next fresh refs/protection/exclusions/archive28/ancestry, ordinary
+head-matched merge683, then OWN exact main compiler/normal immutable artifact/
+public TLS fullSHA/ping/privacy smoke with root+peer admission. No683 release yet.
+Accounting85DONE/76open/61% unchanged, C6-006/C12PARTIAL/C14OPEN.
