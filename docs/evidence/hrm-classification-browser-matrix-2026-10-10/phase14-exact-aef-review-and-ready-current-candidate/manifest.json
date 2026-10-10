@@ -1,0 +1,69 @@
+{
+  "archivedAtUtc": "2026-10-10T02:55:32.078070+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-classification-aef-ready-admission-root/candidate-api-original.json.gz",
+      "originalBytes": 26632,
+      "originalSha256": "aa23612e715c38435e668134ca3290ff96b4b406e8189df6ef1a5986ad57dddc",
+      "storedBytes": 26632,
+      "storedSha256": "aa23612e715c38435e668134ca3290ff96b4b406e8189df6ef1a5986ad57dddc"
+    },
+    {
+      "path": "hrm-classification-aef-ready-admission-root/exact-head-runs-after-ready-api-original.json.gz",
+      "originalBytes": 3792,
+      "originalSha256": "ba0942f9149c1ac66fd80e02b17e932982c0db48121e5e79a37f4484aeaa8f0f",
+      "storedBytes": 3792,
+      "storedSha256": "ba0942f9149c1ac66fd80e02b17e932982c0db48121e5e79a37f4484aeaa8f0f"
+    },
+    {
+      "path": "hrm-classification-aef-ready-admission-root/main-api-original.json.gz",
+      "originalBytes": 217,
+      "originalSha256": "be1a5165fc4aedf3950589f6088e2a6e38b933366e05c5c7d23676bd4098d72c",
+      "storedBytes": 217,
+      "storedSha256": "be1a5165fc4aedf3950589f6088e2a6e38b933366e05c5c7d23676bd4098d72c"
+    },
+    {
+      "path": "hrm-classification-aef-ready-admission-root/pr-after-ready-api-original.json.gz",
+      "originalBytes": 3032,
+      "originalSha256": "9e6de0bb9a1043683a87f59a0a51743082a2de46197369c23d092a066df38dd4",
+      "storedBytes": 3032,
+      "storedSha256": "9e6de0bb9a1043683a87f59a0a51743082a2de46197369c23d092a066df38dd4"
+    },
+    {
+      "path": "hrm-classification-aef-ready-admission-root/pr-api-original.json.gz",
+      "originalBytes": 3029,
+      "originalSha256": "4b9d8a4daffd6367b7dfef0a6d225312548c245934cbda5cc3f276915def7080",
+      "storedBytes": 3029,
+      "storedSha256": "4b9d8a4daffd6367b7dfef0a6d225312548c245934cbda5cc3f276915def7080"
+    },
+    {
+      "path": "hrm-classification-aef-ready-admission-root/ready-admission-binding.json.gz",
+      "originalBytes": 717,
+      "originalSha256": "1a84e67f8535d27365c2c527d38dd71d0aca87eb4fed590aa74c6273bdc846d4",
+      "storedBytes": 509,
+      "storedSha256": "381cd18b8f2cd90581b3d9dadf4d9f7f944aff3dec67f85a80c91c09775ebd2d"
+    },
+    {
+      "path": "hrm-classification-aef-ready-admission-root/source-run-api-original.json.gz",
+      "originalBytes": 1633,
+      "originalSha256": "d2d0b29e432d74c5e163512112ede16280650feedba3eb145752d21259aa629f",
+      "storedBytes": 1633,
+      "storedSha256": "d2d0b29e432d74c5e163512112ede16280650feedba3eb145752d21259aa629f"
+    },
+    {
+      "path": "hrm-classification-matrix-final-source-peer-review-aef.json.gz",
+      "originalBytes": 12409,
+      "originalSha256": "15ab54b3f57b378c0ef75401fdc81c4757c8ab89565723383e8939d6ca3a71a6",
+      "storedBytes": 4377,
+      "storedSha256": "05d06d06cc6b26bf486824dcfe93483159671e79ba19a39f74e74b334f13227f"
+    },
+    {
+      "path": "hrm-classification-final-source-aef-peer-initial-reader-error.json.gz",
+      "originalBytes": 717,
+      "originalSha256": "892a39edddf90280353c2675e37c9d3634afc9b4cafb7d0980d01b09620ff64b",
+      "storedBytes": 487,
+      "storedSha256": "2651400ece64683b2bb36f18b28475c9ee60994f35bd5e46cd7cc79a20d1e506"
+    }
+  ]
+}

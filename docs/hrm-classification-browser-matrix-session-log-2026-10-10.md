@@ -518,3 +518,28 @@ Next independent exact-final source binding before READY, all mandatory5
 App15368 and source/candidate browser/PG/compiler/build actual outcomes
 required before ordinaryownmerge/release. No finalsource runtime acceptance
 borrowed from old A161; no task C12/C14 closure.
+
+## AEF source accepted, current candidate identical, READY exact gates started
+
+Independent12409B/SHA15ab54b3f57b378c0ef75401fdc81c4757c8ab89565723383e8939d6ca3a71a6
+accepts exactaef/tree134c4ab95cd1343719ad1c55cff8102ae2789bb4/baseE05.
+Exact prepared test/workflow/queue bindings and seven own paths; incoming
+seven ERP paths byte-E05, all20 unchanged protections and five973baseline/
+guards preserved. Original peer reader mistakenly treated approved owned
+workflow2-line addition as unchanged protected; error retained and separate
+reviewed workflow admitted, no source/CI weakness.
+
+Fresh beforeREADY mainE05/headAEF and candidate
+d98e9f33439043262dea5c9d97573f150010f0bb parents[E05,AEF], whole tree equals
+source134c4. Actual gh ready success02:53:06UTC. No merge. Exact READY
+sourcePR checks38018589154, candidate report38018589169, manager38018589158,
+calendar38018589274 allpending. Prior actual runner38018376916/scan38018376834
+SUCCESS on exactAEF; draftchecks38018376993 only actualscope, heavySKIP no
+credit. Draft browsers38018376904/38018376865/38018376932 SKIPPED never credit.
+Fresh exact-source38018373702 remains five-lane active independently, no
+concurrency cancellation. Phase14 immutable actual before/after READY APIs,
+current synthetic candidate binding, source review and original readererror.
+
+Source and candidate/required-five actual complete outcomes must pass before
+ordinary merge; fresh refs/protection will be checked again then. No production
+change for this PR yet, no borrowed A161 pass or wholeC12/C14 closure.
