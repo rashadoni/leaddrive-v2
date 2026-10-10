@@ -392,3 +392,23 @@ archivedphase13. Next fresh refs/protection/exclusions/archive28/ancestry, ordin
 head-matched merge683, then OWN exact main compiler/normal immutable artifact/
 public TLS fullSHA/ping/privacy smoke with root+peer admission. No683 release yet.
 Accounting85DONE/76open/61% unchanged, C6-006/C12PARTIAL/C14OPEN.
+
+## PR683 merged through ordinary reviewed main; own release pending
+
+Fresh sourceFB/baseM7/candidateC13, actual newestfive App15368 SUCCESS, exact
+protection5/strictfalse/adminenforcement/no force/delete, sourceclean/origin,
+chain589→605→608, excluded606/609 closed-unmerged and646/663 draft-unmerged,
+973/c123/f308 ancestry and old28 archive bytes verified before mutation. Actual
+registered production13.140.132.245:/opt/leaddrive-v2 and unchanged deploy.yml
+route also verified. No bypass, force, deletion or direct production deploy.
+Ordinary head-matched merge683 at2026-10-10T11:42:49Z: main
+bfe456042a018864fead8be64d5f154911195af0, exact parents[M7e58,FB], tree5e8d equals
+tested source and C13. Original checkpoint commits and accumulated chain retained.
+Own natural push/main normaldeploy38049380728 and fullmainPRchecks38049380727
+running; build446/quality461/type007 running, manual recovery3/mainstatic SKIP
+receive no execution credit. Production release not yet verified; no M7 runtime
+borrowed. SourceFB stays frozen clean. Guard/actual full merge APIs archivedphase14.
+Next root+peer actual own full compiler/quality/build/artifact API-upload-download
+digest/normal4jobs/full publicSHA/TLS/ping and anonymousprivacy, archive final
+release, then unpublished recovery FE948 final integration/review/one source8.
+Accounting85/161DONE,76open,61%; C6-006/C12PARTIAL/C14OPEN; no new closure.
