@@ -1,0 +1,34 @@
+{
+  "archivedAtUtc": "2026-10-10T05:39:14.777533+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-employee-exception-0d7-compiler-root-journal-size-correction.json.gz",
+      "originalBytes": 515,
+      "originalSha256": "0db3964434218c74a4e6864771004ae167b61cddc9598d08d87c0d79d3ed314c",
+      "storedBytes": 373,
+      "storedSha256": "8c72f248a608c3d2fa9fa85d6cd99f39475ada6761b86bbb206c0a1b15983d57"
+    },
+    {
+      "path": "hrm-employee-exception-compiler-peer-review-0d7a.json.gz",
+      "originalBytes": 14766,
+      "originalSha256": "ebbb5fc50ac7c730cc16f05f30240ed4f8ad9fb49ed9d40a9f0ba27befb960f5",
+      "storedBytes": 3842,
+      "storedSha256": "a1518a1d5dc17040e2be5efebb9b9c577bb2fc8d6264ebb024202733ff1371b3"
+    },
+    {
+      "path": "hrm-employee-exception-0d7-compiler-peer-initial-reader-stderr.log.gz",
+      "originalBytes": 89,
+      "originalSha256": "3bfdaafe80d862585b09b4e6fc6328343cf7377712163a8a26bcf5c8e42da47a",
+      "storedBytes": 102,
+      "storedSha256": "edfcf4d5711c55664a7557de50af600d96a58891c0b7b7fd35a0cb89ec1bf9b6"
+    },
+    {
+      "path": "hrm-employee-exception-0d7-compiler-peer-initial-reader-error.json.gz",
+      "originalBytes": 685,
+      "originalSha256": "6e9ae2ad99e017829b28884bd2c48013e92d51deca5b3033e2cb7e290acef3d3",
+      "storedBytes": 466,
+      "storedSha256": "b8c959c820df8bc6e0fdee5562ee3b9fdf0a6845e38ec0e6c20236a2e3f54f72"
+    }
+  ]
+}

@@ -435,3 +435,18 @@ API/ref/main admission. Actualnew alertidentity/browser/database/candidate/
 required5/mainrelease pending, no old-head credit.85DONE/76open/61%,C6-006/
 C12partial/C14open unchanged. Next actualemployee terminalreceipt/pixels;
 keep exactsourcefrozen until proven result.
+
+## Superseding compiler-byte prose correction; original evidence unchanged
+
+The preceding phase11/12 prose incorrectly transcribed rawsize179316. Actual
+source0d7 originalfullcompiler file has 179299 bytes SHAb6b9ee71a33aa9f683f81b2a4879597b63099a4d23ae794e1f71c0ba39536df6,
+verified directly against rootactualreceipt and independentfreshpeer. Original
+archive bytes/hash, compiler1162/35/EXIT2/64strictpairs/owned0 and actualpassed
+strict readers were correct; only the journal prose size is superseded. Old
+entry is retained without rewriting. Correction receipt/peer/fullinitial
+readerstderr archivedphase13. Independentpeer14766B SHA
+ebbb5fc50ac7c730cc16f05f30240ed4f8ad9fb49ed9d40a9f0ba27befb960f5.
+Peer initial broadsyntaxregex TS1\d+ incorrectly matched106 semantic TS180xx;
+read-onlyAssertionError preserved and corrected exactlyexisting TS1[0-9]{3}
+gate, no source/baseline change. Oldwhole0d7FAIL remains; currentA7DCruntime
+RUNNING/unaccepted, no head transfer. Next actualemployee receipt/native/DB.
