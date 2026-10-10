@@ -56,3 +56,28 @@ root+peer admitted partial originals. Whole source8/compiler/build and current
 candidate/required-five/ownrelease still pending, so future source remains
 unpublished. Publication and actual reproduction follow parent verified release.
 Next independent source-only review and final current parent verification.
+
+
+## 2026-10-10 13:08 UTC — ordinary parent integration; independent draft testing may overlap release
+
+Parent684 actual ordinary merge produced EDE ede43999335b0a1df8a37474c2194b2c0c236c19
+parents[BFE,H2e4b]/treef66d exactsource/C18. Source8/current4/required5 are independently
+admitted; ownnormal38054267635 and ownmain38054267679 still RUNNING, own production
+release is not yet accepted. Unpublished D464 normally integrated actualEDE as
+f94349e90c2fb20fb068edfcdf413196b6dca346; original checkpoint/history preserved, no force/rebase/reset.
+Earlier self-imposed wait-before-draft-publication is superseded: independent
+disposable desired regression may publish/test in a dependent draft while parent
+ownnormal runs. Unknown-submit merge/release still waits actual verified parent
+ownrelease and actual first failure→bounded fix→all full gates/review. User's
+standing autonomous draft/merge/deploy authority applies; no production mutation
+or access/secrets change is added by the disposable test.
+Source remains only five owned new/journal paths; all app/auth/roles/fixtures and
+old eight whole-job workflow/baselines untouched. No app fix before actual red.
+Prepared separate first-failure qualifierv2 strengthens direct original run/job/
+attempt/status and exactZIP workflow-context/failure/receipt schemas; v1 first
+finding/original preserved. Independent source-only v2 receipt
+3372ea5b448a0f00bad5ebb4e80ea704734d17e5c35b0370748c41c69eaba363 accepted.
+Success reader remains unchanged; all readers runtime NOT RUN.
+Next source-only exact integrated head review/range scan, actual dependent draft
+registration observation, one exact-head first desired hosted regression.
+Accounting85/161DONE/76open/61%, C6-006/C12PARTIAL/C14OPEN unchanged.
