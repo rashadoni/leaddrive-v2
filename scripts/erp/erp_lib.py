@@ -46,11 +46,13 @@ from __future__ import annotations
 import argparse
 import contextlib
 import datetime
+import errno
 import hashlib
 import json
 import os
 import re
 import secrets
+import shlex
 import shutil
 import signal
 import subprocess
@@ -1117,15 +1119,25 @@ def private_problem(ctx: Ctx, write=False):
     own = ctx.private.resolve()
     if home not in (own, own.parent.parent):
         return (f"закрытая папка {ctx.private} лежит внутри чужого репозитория {home}: в его "
-                f"историю закрытое не пишется и никуда не отправляется. Ей нужен свой git: "
-                f"python3 {HERE / 'setup_private.py'}")
+                f"историю закрытое не пишется и никуда не отправляется. Закрытая папка одна — "
+                f"{PRIVATE_DEFAULT.parent.parent}, под своим git; работать без ERP_PRIVATE")
     if _cfg(home, PRIVATE_MARK) != "true":
-        return (f"git {home} не помечен как собственный git закрытой папки (пометку ставит "
-                f"setup_private.py; после клонирования её нет): закрытое в его историю не пишется "
-                f"и никуда не отправляется. Если {home} — сама закрытая папка, а не чужой "
-                f"репозиторий, в который она попала, один раз: `git -C {home} config "
-                f"{PRIVATE_MARK} true`")
+        return (f"git {home} не помечен как собственный git закрытой папки — закрытое в его "
+                f"историю не пишется и никуда не отправляется. Пометка: `git -C {_q(home)} config "
+                f"{PRIVATE_MARK} true` — ставить, только если {home} и есть сама закрытая папка "
+                f"(после клонирования из копии пометки нет), а не чужой репозиторий, в который "
+                f"она попала")
     return None
+
+
+def _q(path) -> str:
+    """Путь или имя ветки так, как их можно вставить в команду оболочки."""
+    return shlex.quote(str(path))
+
+
+def _git_dir(home: Path) -> Path:
+    """Папка git закрытой папки: обычно <home>/.git, но .git бывает и файлом-ссылкой."""
+    return _git_common(home) or (home / ".git")
 
 
 def _cfg(home: Path, key: str) -> str:
@@ -1205,14 +1217,14 @@ def _remote_key(url: str, base=None) -> str:
         path = Path(os.path.expanduser(u))
         if not path.is_absolute() and base:
             path = Path(base) / path
-        return "path:" + re.sub(r"(\.git)?/*$", "", os.path.realpath(str(path)))
+        return ("path:" + re.sub(r"(\.git)?/*$", "", os.path.realpath(str(path)))).strip()
     u = u.lower()[len(scheme.group(0)) if scheme else 0:]
     u = re.sub(r"^[^/@]*@", "", u)
     m = re.match(r"^([^/:]+)(?::\d+(?=/|$))?[:/]*(.*)$", u)
     host, rest = (m.group(1), m.group(2)) if m else (u, "")
     host = re.sub(r"^(www|ssh)\.", "", host)
     rest = re.sub(r"(\.git)?/*$", "", re.sub(r"/+", "/", rest))
-    return host + "/" + rest
+    return (host + "/" + rest).strip()
 
 
 def _copy_home(ctx: Ctx):
@@ -1241,16 +1253,16 @@ def private_copy(ctx: Ctx) -> dict:
     """Копия закрытой папки — закрытый репозиторий, названный владельцем: его адрес стоит и в
     origin её собственного git, и в настройке COPY_ADDR того же git. Отправка разрешена, только
     когда всё сошлось; любое сомнение — отказ с причиной, а не отправка.
-    Возвращает {"home", "why", "key", "branch"}: home None — закрытой папки со своим git нет;
-    why не None — отправлять нельзя (и почему)."""
+    Возвращает {"home", "why", "key", "branch", "url"}: home None — закрытой папки со своим git
+    нет; why не None — отправлять нельзя (и почему); url — проверенный адрес отправки."""
     home = _copy_home(ctx)
-    out = {"home": home, "why": None, "key": None, "branch": None}
+    out = {"home": home, "why": None, "key": None, "branch": None, "url": None}
     if home is None:
         return out
     urls = _lines(_git_at(home, "remote", "get-url", "--push", "--all", "origin"))
     named = _cfg(home, COPY_ADDR)
-    how = (f"Копию называет владелец: `git -C {home} remote add origin <адрес ЗАКРЫТОГО "
-           f"репозитория>` и `git -C {home} config {COPY_ADDR} <тот же адрес>`")
+    how = (f"Копию называет владелец: `git -C {_q(home)} remote add origin <адрес ЗАКРЫТОГО "
+           f"репозитория>` и `git -C {_q(home)} config {COPY_ADDR} <тот же адрес>`")
     if not urls and not named:
         out["why"] = (f"у закрытой папки {home} нет копии: тексты правил, карточки и записки "
                       f"лежат в одном экземпляре. {how}")
@@ -1279,9 +1291,9 @@ def private_copy(ctx: Ctx) -> dict:
         branch = ref[len("refs/heads/"):] if ref.startswith("refs/heads/") else ""
     if not branch or _git_at(home, "check-ref-format", "refs/heads/" + branch) is None:
         out["why"] = (f"закрытая папка {home} не на ветке, а ветка копии не записана: "
-                      f"`git -C {home} config {COPY_BRANCH} <ветка копии>`")
+                      f"`git -C {_q(home)} config {COPY_BRANCH} <ветка копии>`")
         return out
-    out.update(key=key, branch=branch)
+    out.update(key=key, branch=branch, url=urls[0])
     return out
 
 
@@ -1289,7 +1301,8 @@ def private_unsaved(ctx: Ctx) -> int:
     """Сколько файлов закрытой папки изменено и не записано в её историю (значит, и в копии
     их нет). В историю их кладёт mark.py (записка, вопрос, ворота) и next_card.py --take."""
     home = _copy_home(ctx)
-    return len(_lines(_git_at(home, "status", "--porcelain"))) if home else 0
+    # --no-optional-locks: чтение не берёт index.lock и не мешает записи другой сессии
+    return len(_lines(_git_at(home, "--no-optional-locks", "status", "--porcelain"))) if home else 0
 
 
 def private_copy_lag(ctx: Ctx, copy=None):
@@ -1330,25 +1343,28 @@ def _push_timeout() -> int:
 @contextlib.contextmanager
 def _copy_lock(home: Path, limit: int):
     """Одна отправка за раз. Отдаёт {"held", "waited"}: замок взят ли и пришлось ли ждать
-    другую сессию. Ждёт не дольше limit секунд — иначе очередь сессий копила бы ожидание."""
+    другую сессию. Ждёт не дольше limit секунд — иначе очередь сессий копила бы ожидание.
+    Замки не работают вовсе (не та система, не та файловая система) — работаем без замка."""
     state = {"held": False, "waited": False}
     fd = None
     try:
         import fcntl
-        fd = os.open(str(home / ".git"), os.O_RDONLY)
+        fd = os.open(str(_git_dir(home)), os.O_RDONLY)
         until = time.monotonic() + limit
         while True:
             try:
                 fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 state["held"] = True
                 break
-            except OSError:
+            except OSError as e:
+                if e.errno not in (errno.EWOULDBLOCK, errno.EAGAIN, errno.EACCES):
+                    raise  # это не «занято»: замок здесь невозможен
                 state["waited"] = True
                 if time.monotonic() >= until:
                     break
                 time.sleep(0.2)
     except Exception:  # noqa: BLE001
-        state["held"] = fd is None  # замков нет вовсе (не та система): работаем без него
+        state["held"], state["waited"] = True, False
     try:
         yield state
     finally:
@@ -1356,14 +1372,17 @@ def _copy_lock(home: Path, limit: int):
             os.close(fd)
 
 
-def _push_copy(home: Path, branch: str, limit: int):
-    """git push закрытой папки в её копию: (удалось, что сказал git). Всегда только вперёд
-    (без force). По истечении времени убивается вся группа процессов — и git, и его ssh."""
+def _push_copy(home: Path, url: str, branch: str, limit: int):
+    """git push закрытой папки в её копию: (удалось, что сказал git). Отправка идёт по самому
+    проверенному адресу, а не по имени origin: что бы ни стало с origin после проверки, в
+    другое место она не уйдёт. Всегда только вперёд (без force). По истечении времени
+    убивается вся группа процессов — и git, и его ssh."""
     try:
-        p = subprocess.Popen(["git", "push", "-q", "origin", f"HEAD:refs/heads/{branch}"],
+        p = subprocess.Popen(["git", "push", "-q", url, f"HEAD:refs/heads/{branch}"],
                              cwd=str(home), stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE, encoding="utf-8", errors="replace",
-                             start_new_session=True, env=dict(os.environ, GIT_TERMINAL_PROMPT="0"))
+                             start_new_session=True,
+                             env=dict(os.environ, GIT_TERMINAL_PROMPT="0", LC_ALL="C"))
     except OSError:
         return False, "git не запустился"
     try:
@@ -1377,37 +1396,47 @@ def _push_copy(home: Path, branch: str, limit: int):
     return p.returncode == 0, (err or "") + (out or "")
 
 
+DIVERGED = "в копии есть запись, которой нет в папке"
 PUSH_REASONS = (  # что git сказал → что случилось; слова git в строку не идут: в них адрес копии
-    (("[rejected]", "non-fast-forward", "fetch first"), "в копии есть запись, которой нет в папке"),
+    (("[rejected]", "non-fast-forward", "fetch first"), DIVERGED),
     (("не ответил за", "не запустился"), None),  # наши собственные слова — как есть
+    (("remote rejected", "hook declined", "protected branch"), "сервер копии отклонил запись"),
     (("could not resolve host", "couldn't resolve host", "unable to look up", "name or service not known",
       "temporary failure in name resolution"), "адрес копии не найден в сети"),
-    (("authentication failed", "permission denied", "could not read username", "terminal prompts disabled",
+    (("authentication failed", "permission denied", "denied to", "marked as read only",
+      "host key verification failed", "could not read username", "terminal prompts disabled",
       "returned error: 403", "returned error: 401"), "нет доступа к копии: вход не прошёл"),
-    (("repository not found", "does not appear to be a git repository", "returned error: 404", "not found"),
+    (("repository not found", "does not appear to be a git repository", "returned error: 404"),
      "копия не найдена по своему адресу"),
-    (("remote rejected", "hook declined", "protected branch"), "сервер копии отклонил запись"),
     (("failed to connect", "unable to connect", "connection refused", "timed out", "network is unreachable",
-      "could not read from remote", "connection reset", "unable to access"), "нет связи с копией"),
+      "connection reset", "unable to access"), "нет связи с копией"),
+    (("could not read from remote",), "git не смог прочитать копию: нет доступа или связи"),
 )
 
 
-def _push_failure(said: str, home: Path, branch: str):
+def _push_failure(said: str, home: Path, branch: str, first: bool):
     """(что случилось, что делать) по ответу git. В строку идут только свои слова: адрес и
     узел копии в неё не попадают (вывод команд сессии переносят в PR открытого репозитория).
-    Что сказал git дословно — в файле PUSH_LOG внутри .git закрытой папки."""
+    Что сказал git дословно — в файле PUSH_LOG в папке git закрытой папки. first — по этому
+    адресу ещё ни разу не отправляли: расхождение тогда значит «копию создали непустой»."""
     low = (said or "").lower()
     what = next((said.strip() if text is None else text for keys, text in PUSH_REASONS
                  if any(k in low for k in keys)), "git отказал")
+    log, saved = _git_dir(home) / PUSH_LOG, False
     with contextlib.suppress(Exception):
-        (home / ".git" / PUSH_LOG).write_text(f"{today()}\n{said or ''}\n", encoding="utf-8")
-    push = f"`git -C {home} push origin HEAD:refs/heads/{branch}`"
-    if what.startswith("в копии есть запись"):
+        log.write_text(f"{today()}\n{said or ''}\n", encoding="utf-8")
+        saved = True
+    push = f"`git -C {_q(home)} push origin HEAD:refs/heads/{_q(branch)}`"
+    if what == DIVERGED:
         ident = "" if (_git_at(home, "config", "user.email") or "").strip() else \
             " -c user.name=erp -c user.email=erp@localhost"
-        return what, (f"Сначала забрать её: `git -C {home}{ident} pull --no-rebase --no-edit origin "
-                      f"{branch}`, потом {push}")
-    return what, f"Что сказал git — в {home / '.git' / PUSH_LOG}. Отправить ещё раз: {push}"
+        pull = (f"`git -C {_q(home)}{ident} -c commit.gpgsign=false pull --no-rebase --ff --no-edit "
+                f"{'--allow-unrelated-histories ' if first else ''}origin {_q(branch)}`")
+        why = ("Копию, похоже, создали непустой (с README): пересоздать её пустой либо забрать её "
+               "запись" if first else "Сначала забрать её")
+        return what, f"{why}: {pull}, потом {push}"
+    where = f"Что сказал git — в {log}. " if saved else ""
+    return what, f"{where}Отправить ещё раз: {push}"
 
 
 def sync_private_copy(ctx: Ctx) -> list:
@@ -1422,8 +1451,13 @@ def sync_private_copy(ctx: Ctx) -> list:
         return ["ВНИМАНИЕ: " + copy["why"]]
     limit, started = _push_timeout(), time.time()
     with _copy_lock(home, limit) as lock:
+        copy = private_copy(ctx)  # пока ждали замок, настройки могли сменить: проверяем заново
+        if copy["home"] is None:
+            return []
         if private_copy_lag(ctx, copy) is None:
-            return []  # пока ждали замок, отставшее отправила другая сессия
+            return []  # отставшее отправила другая сессия
+        if copy["why"]:
+            return ["ВНИМАНИЕ: " + copy["why"]]
         head = (_git_at(home, "rev-parse", "--verify", "--quiet", "HEAD") or "").strip()
         failed = _cfg(home, COPY_FAILED).split(" ", 2)
         fresh = len(failed) == 3 and failed[1:] == [head, copy["key"]] and \
@@ -1433,7 +1467,9 @@ def sync_private_copy(ctx: Ctx) -> list:
             return [f"ВНИМАНИЕ: копия закрытой папки НЕ обновилась: её сейчас отправляет другая "
                     f"сессия, и у неё не вышло или ещё не вышло. Запись цела — она в истории "
                     f"папки {home}; досылку повторит следующая команда"]
-        ok, said = _push_copy(home, copy["branch"], limit)
+        sent, _, where = _cfg(home, COPY_SENT).partition(" ")
+        first = not sent or where != copy["key"]
+        ok, said = _push_copy(home, copy["url"], copy["branch"], limit)
         if ok and head:
             _cfg_set(home, COPY_FAILED, None)
             _cfg_set(home, COPY_BRANCH, copy["branch"])
@@ -1441,10 +1477,10 @@ def sync_private_copy(ctx: Ctx) -> list:
                 return ["Копия закрытой папки обновлена"]
             return [f"ВНИМАНИЕ: копия закрытой папки обновлена, но запись об этом ({COPY_SENT}) "
                     f"не легла в настройки git папки {home}: следующие команды будут считать "
-                    f"копию отставшей и отправлять заново. Проверить {home / '.git' / 'config.lock'} "
-                    f"(остаётся от прерванного git) и права на запись в {home / '.git'}"]
+                    f"копию отставшей и отправлять заново. Проверить {_git_dir(home) / 'config.lock'} "
+                    f"(остаётся от прерванного git) и права на запись в {_git_dir(home)}"]
         _cfg_set(home, COPY_FAILED, f"{int(time.time())} {head} {copy['key']}")
-    what, todo = _push_failure(said, home, copy["branch"])
+    what, todo = _push_failure(said, home, copy["branch"], first)
     return [f"ВНИМАНИЕ: копия закрытой папки НЕ обновилась ({what}). Сама запись цела — она в "
             f"истории папки {home}. {todo}; force-push запрещён"]
 

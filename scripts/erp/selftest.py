@@ -19,6 +19,7 @@
 Код возврата 0 — все проверки прошли. Только стандартная библиотека.
 """
 import concurrent.futures
+import errno
 import hashlib
 import json
 import os
@@ -1677,9 +1678,22 @@ def scenario_copy(box: Box):
     настройка erp.copy): обновляется сама, отказ копии виден, чужую запись в копии не
     затирает; любое сомнение в адресе — отказ, а не отправка; в репозиторий кода и в чужой
     репозиторий закрытое не уходит."""
+    import fcntl
     b1 = "erp/1-setup"
     root, home = box.root, box.home
     real_git = shutil.which("git")
+    quiet = {"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"}  # у git нет имени автора
+    nobody = {k: v for k, v in os.environ.items()
+              if not k.startswith(("GIT_AUTHOR_", "GIT_COMMITTER_")) and k != "EMAIL"}
+    (root / "empty-home").mkdir()
+    nobody.update(HOME=str(root / "empty-home"), **quiet)
+
+    def follow(out):
+        """Выполняет совет «забрать запись из копии» дословно, через оболочку, без имени автора."""
+        advice = re.search(r"`(git -C [^`]* pull [^`]*)`", out)
+        done = bool(advice) and subprocess.run(["sh", "-c", advice.group(1)], env=nobody,
+                                               capture_output=True, text=True).returncode == 0
+        return (advice.group(1) if advice else ""), done
     bares = {n: root / f"{n}.git" for n in ("copy", "copy2", "code-origin", "evil", "foreign-origin",
                                              "foreign2-origin")}
     bares["spaced"] = root / "Backup Disk" / "erp copy.git"
@@ -1813,15 +1827,10 @@ def scenario_copy(box: Box):
     pushed = git_at(other, "push", "-q", "origin", "HEAD")
     theirs = head(other)
     bump("mine")
-    rc, out = run("next_card.py", branch=b1)
+    rc, out = run("next_card.py", branch=b1, env=quiet)
     kept = head(copy) == theirs
-    advice = re.search(r"`(git -C [^`]* pull [^`]*)`", out)
-    nobody = {k: v for k, v in os.environ.items()
-              if not k.startswith(("GIT_AUTHOR_", "GIT_COMMITTER_")) and k != "EMAIL"}
-    (root / "empty-home").mkdir()
-    nobody.update(HOME=str(root / "empty-home"), GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1")
-    merged = bool(advice) and subprocess.run(shlex.split(advice.group(1)), env=nobody,
-                                             capture_output=True, text=True).returncode == 0
+    advice, merged = follow(out)
+    merged = merged and "user.name=erp" in advice and "--allow-unrelated-histories" not in advice
     rc2, out2 = run("next_card.py", branch=b1)
     check("в копии есть запись, которой нет в папке: её не затирают (force-push нет), отказ виден "
           "и говорит, что делать; совет выполняется как написан, даже когда у git нет имени "
@@ -1949,7 +1958,6 @@ def scenario_copy(box: Box):
     before = pushes()
     held = os.open(str(home / ".git"), os.O_RDONLY)
     try:
-        import fcntl
         fcntl.flock(held, fcntl.LOCK_EX)  # «другая сессия» держит отправку дольше отведённого
         started = time.monotonic()
         rc, out = run("next_card.py", branch=b1, env={"ERP_PUSH_TIMEOUT": "1"})
@@ -1962,6 +1970,25 @@ def scenario_copy(box: Box):
           rc == 0 and "НЕ обновилась" in out and "другая сессия" in out and took < 8
           and pushes() == before + 1 and rc2 == 0 and "Копия закрытой папки обновлена" in out2,
           out + out2 + f" [{took:.1f} с]")
+    bump("swapped")
+    held = os.open(str(home / ".git"), os.O_RDONLY)
+    try:
+        fcntl.flock(held, fcntl.LOCK_EX)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            waiting = pool.submit(run, "next_card.py", branch=b1, env={"ERP_PUSH_TIMEOUT": "30"})
+            time.sleep(2.5)  # команда уже проверила адрес и ждёт замок
+            git_at(home, "remote", "set-url", "origin", str(code_origin))
+            fcntl.flock(held, fcntl.LOCK_UN)
+            rc, out = waiting.result()
+    finally:
+        os.close(held)
+    git_at(home, "remote", "set-url", "origin", str(copy2))
+    rc2, out2 = run("next_card.py", branch=b1)
+    check("пока команда ждала замок, origin закрытой папки подменили адресом репозитория кода: "
+          "после ожидания адрес проверяется заново — отправки нет никуда; вернули — дошло",
+          rc == 0 and "не подтверждена" in out and "Копия закрытой папки обновлена" not in out
+          and not refs(code_origin) and rc2 == 0 and "Копия закрытой папки обновлена" in out2
+          and head(copy2) == head(home), out + out2)
     bump("locked-config")
     (home / ".git" / "config.lock").write_text("", encoding="utf-8")
     rc, out = run("next_card.py", branch=b1)
@@ -1977,6 +2004,25 @@ def scenario_copy(box: Box):
     check("негодное значение времени ожидания не роняет команды и не делает отправку невозможной",
           rc == 0 and "Traceback" not in out and rc2 == 0 and "Копия закрытой папки обновлена" in out2
           and head(copy2) == head(home), out + out2)
+
+    seeded, seed = root / "seeded.git", root / "seed-src"
+    seed.mkdir()
+    (seed / "README.md").write_text("создано на сайте\n", encoding="utf-8")
+    made = (git_at(root, "init", "-q", "--bare", str(seeded)) and git_at(seed, "init", "-q")
+            and git_at(seed, "add", "-A") and git_at(seed, "commit", "-q", "-m", "Initial commit")
+            and git_at(seed, "push", "-q", str(seeded), "HEAD:refs/heads/main"))
+    bump("seeded")
+    name_copy(seeded)
+    rc, out = run("next_card.py", branch=b1, env=quiet)
+    advice, merged = follow(out)
+    rc2, out2 = run("next_card.py", branch=b1)
+    check("копию создали непустой (с README): отказ это называет, совет забирает чужую первую "
+          "запись и выполняется как написан, после него папка доходит до копии",
+          made and rc == 0 and "создали непустой" in out and "--allow-unrelated-histories" in advice
+          and merged and rc2 == 0 and "Копия закрытой папки обновлена" in out2
+          and head(seeded) == head(home) and (home / "README.md").exists(), out + out2)
+    name_copy(copy2)
+    run("next_card.py", branch=b1)
 
     foreign2 = root / "foreign2"
     shutil.copytree(box.dir, foreign2 / "reports" / "exec")
@@ -2027,18 +2073,51 @@ def scenario_copy(box: Box):
     rdir = restored / "reports" / "exec"
     words = ("mark.py", "problem", "u1-A-02", "--kind", "wrong", "--text", "после восстановления из копии")
     rc, out = run(*words, dir=rdir, branch=b1)
+    rc0, out0 = run("status.py", dir=rdir)
     git_at(restored, "config", L.PRIVATE_MARK, "true")
     was = head(copy2)
     rc2, out2 = run(*words, dir=rdir, branch=b1)
     unsent = head(copy2) == was and head(restored) != was
     git_at(restored, "config", "erp.copy", str(copy2))
     rc3, out3 = run("next_card.py", dir=rdir, branch=b1)
-    check("папку восстановили клонированием копии: без пометки своего git запись не принимается; "
-          "с пометкой — принимается, но копия не подтверждена и отправки нет; владелец назвал "
-          "копию — всё дошло",
-          rc == 1 and "не помечен" in out and rc2 == 0 and "не подтверждена" in out2 and unsent
+    check("папку восстановили клонированием копии: без пометки своего git запись не принимается, а "
+          "экран состояния показывает команду пометки целиком; с пометкой — принимается, но копия "
+          "не подтверждена и отправки нет; владелец назвал копию — всё дошло",
+          rc == 1 and "не помечен" in out and rc0 == 0 and f"config {L.PRIVATE_MARK} true" in out0
+          and rc2 == 0 and "не подтверждена" in out2 and unsent
           and rc3 == 0 and "Копия закрытой папки обновлена" in out3 and head(copy2) == head(restored),
           out + out2 + out3)
+
+    def why(text, first=False):
+        return L._push_failure(text, home, "main", first)[0]
+
+    denied = "нет доступа к копии: вход не прошёл"
+    tail = "\nfatal: Could not read from remote repository."
+    check("причина отказа называется по смыслу: нет прав у ключа, неизвестный узел, отказ сервера, "
+          "расхождение; незнакомый ответ git не пересказывается",
+          why("ERROR: Permission to o/r.git denied to user." + tail) == denied
+          and why("ERROR: The key you are authenticating with has been marked as read only." + tail) == denied
+          and why("Host key verification failed." + tail) == denied
+          and why("remote: Permission denied by policy\n ! [remote rejected] main -> main (pre-receive "
+                  "hook declined)") == "сервер копии отклонил запись"
+          and why(tail) == "git не смог прочитать копию: нет доступа или связи"
+          and why(" ! [rejected] main -> main (fetch first)") == L.DIVERGED
+          and why("warning: something entirely new at host.example") == "git отказал")
+    real_flock = fcntl.flock
+
+    def no_locks(fd, op):
+        raise OSError(errno.EBADF, "на этой файловой системе замков нет")
+
+    fcntl.flock = no_locks
+    try:
+        started = time.monotonic()
+        with L._copy_lock(home, 30) as lock:
+            got = dict(lock)
+        took = time.monotonic() - started
+    finally:
+        fcntl.flock = real_flock
+    check("замок на этой файловой системе невозможен — отправка идёт без замка и не ждёт впустую",
+          got == {"held": True, "waited": False} and took < 5, f"{got} {took:.1f} с")
 
     k = L._remote_key
     one = {k(u) for u in ("https://x-token:abc@GitHub.com/Org/Repo.git", "git@github.com:org/repo",
@@ -2049,7 +2128,8 @@ def scenario_copy(box: Box):
           "местный путь через ссылку), а соседний — не путается с ним",
           one == {"github.com/org/repo"} and k("https://github.com/org/repo-private") not in one
           and k(str(alias)) == k(str(code_origin) + "/") == k("file://" + str(code_origin))
-          and k("code-origin.git", root) == k(str(code_origin)) and k(str(copy)) != k(str(copy2)), str(one))
+          and k("code-origin.git", root) == k(str(code_origin)) and k(str(copy)) != k(str(copy2))
+          and k(str(root / "trail .git")) == k(str(root / "trail .git")).strip(), str(one))
 
 
 def scenario_tools(root: Path):
@@ -2138,7 +2218,7 @@ def main():
         box = Box(root / "c")
         build(box)
         scenario_git(box)
-        box = Box(root / "e")
+        box = Box(root / "e box")  # с пробелом в пути: советы команд должны годиться оболочке
         build(box)
         scenario_copy(box)
         scenario_tools(root / "d")
