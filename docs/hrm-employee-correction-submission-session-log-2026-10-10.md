@@ -36,3 +36,26 @@ C6-006/C12PARTIAL/C14OPEN. ExplicitHRfalsepositive/full-partial-rejectedappeals/
 CASE_RECORDED_AT/immutableaudit/roles/tenants/privacy unchanged. PR606/609/646
 andarchive663nevermerge; Support/HRHub deferred. Heavychecks GithubUbuntu24.04
 only, actualdatabase/browser/compiler/fullsuite/build NOTRUN in this preparation.
+
+
+## Separate-fixture boundary confirmed by actual source
+
+Currentbase Today fixture is SELECT-only for Workforcefacts; its role only
+updates login metadata. Currentemployee extension grants ACK+audit INSERT and
+MFA nonce only; its audit shape rejects self-request submission. Preserve both
+files/oldjob unchanged. A new separately provisioned job may reuse the same
+disposable database/role literals on its own PostgreSQL service but must refuse
+coexistence with ACK/report/classification extensions and install its own narrowly
+allowlisted request/audit/MFA fixture. No production DB/role/flag is involved.
+CurrentactualrequestPOST returns201new/200idempotent, persistsPENDING and six
+metadata fields; bounded network address/userAgent context is existing audit
+behavior, not a claim that all audit context is null. No reason/time/body/private
+authentication values may enter receipts/screenshots/errors. Requestform changing
+type/day dismisses source attribution; linked/unlinked submissions and actual
+immutable DB association need separate assertions. Latest case-revision migration
+replaces workforce_validate_hrm_request_exception_link; install that exactlatest
+function plus original source trigger, not stale first-version behavior.
+Case/decision guards and all workday/HRfacts remain protected/read-only. Audit
+fixture guard is explicitly synthetic; fullproductionimmutableaudit/defaultACL
+and completehistoricalreplay remain separately unproved. Source/harness/schema
+fixture implementation NOTRUN; current682 exact6f58source6 stillrunning.
