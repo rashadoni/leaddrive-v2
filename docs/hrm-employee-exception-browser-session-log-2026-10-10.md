@@ -852,3 +852,27 @@ Next independent HRM investigation after accepted release: canonical cross-tab
 logout/principal-switch privacy. Current org-only client binding is source
 inconsistency, not yet a proved disclosure; actual auth/browser evidence needed.
 Accounting85DONE/76open/61%, C6-006/C12PARTIAL/C14open retained.
+
+## Ordinary PR678 merge completed; exact-main normal release running
+
+Immediate fresh API guard again accepted main0A/H7CA/READY/Ce3a6/five actual
+App15368 SUCCESS and independent final review. Ordinary gh pr merge678 --merge
+--match-head-commit H (no admin/force/delete) completed. Actual merge
+32a699a5602a396118c1d8ed7d65c52631a65cfc at07:19:56UTC has parents[0A,H]
+and whole tree6bd9a531f365faf639b847c4d5db13303ac6b951 exactly tested source/
+candidate. PR678 MERGED, currentmainM. GitHub automatically started normal
+push deploy38034058015attempt1 and mainchecks38034057984, plus runner/scan;
+all RUNNING at observation, no runtime acceptance yet.
+
+Previous readonly reviewer could not resume (collaboration agent thread limit);
+no source mutation or review evidence lost. Fresh independent readonly agent
+employee_release_review assigned exactM/run/normal4jobs/artifact/maincompiler/
+pinnedfullSHA/TLS/ping/6anonymousGET review. Source branch remains frozenH,
+canonical dirty checkout and unrelated worktrees untouched. No production
+SSH/directdeploy/credentials/activation/grants/businesswrites. User's merge/
+deploy/autonomy authorization applied once; 606/609/646/663 still excluded.
+Last completed action: ordinary merge with tested tree proven. Current stop:
+normal exactM Actions deployment and main compiler RUNNING. Next: natural
+terminal original capture, immutable artifact/API+logs digest admission,
+pinned public/privacy probes and independent release review, then next HRM
+scope. C6-006/C12partial/C14open and85DONE76open61% unchanged.

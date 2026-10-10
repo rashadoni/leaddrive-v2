@@ -1,0 +1,48 @@
+{
+  "archivedAtUtc": "2026-10-10T07:21:26.750027+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-employee-exception-7ca3-immediate-before-merge-root.json.gz",
+      "originalBytes": 51097,
+      "originalSha256": "9d780dd64e8caef95e44c73855d565073af1bef2a59012a18b7317804b56eaa6",
+      "storedBytes": 6442,
+      "storedSha256": "a707421ff46d218c676f0398984730244754003a01baee6feaaa7a6e7b356eeb"
+    },
+    {
+      "path": "hrm-employee-exception-7ca3-actual-merge-root/actual-merge-commit.json.gz",
+      "originalBytes": 2773,
+      "originalSha256": "519c2017a6293d12ef9bf0618a1280bcf4098b7b222a99a6d96fbaf2da3c8a2e",
+      "storedBytes": 1330,
+      "storedSha256": "bfb4cb5bba91f416ee80f485412008c9ae1f3799c5cdd51680108a19806c7172"
+    },
+    {
+      "path": "hrm-employee-exception-7ca3-actual-merge-root/actual-merge-root-summary.json.gz",
+      "originalBytes": 399,
+      "originalSha256": "ecfb353a1256f1b28291be354676dcaa7469af1aa7eb6a2d7359e6187bbe667a",
+      "storedBytes": 320,
+      "storedSha256": "6e9e54ea7ae991cf3207d80911fb5597938ebac8183cfc418fded65b93e9083d"
+    },
+    {
+      "path": "hrm-employee-exception-7ca3-actual-merge-root/main-after-merge.json.gz",
+      "originalBytes": 342,
+      "originalSha256": "f4457a96122ce0fd72f8723d6c827524ae9cf1ede13b394884ae22ed533fc0ac",
+      "storedBytes": 215,
+      "storedSha256": "7b9af4ffb1c217b78884d95380f32ab1099895dfc164681fc864f8218d2edfd6"
+    },
+    {
+      "path": "hrm-employee-exception-7ca3-actual-merge-root/merged-pr678.json.gz",
+      "originalBytes": 19821,
+      "originalSha256": "1031f1b3fb2f1564049b1eb1ba9fc1820e75f3aa6126e9501e6ea9c7818d6cab",
+      "storedBytes": 3479,
+      "storedSha256": "73da0bd1ea378b02884374769263b66cc18d97e7782156a691f7297dac14447f"
+    },
+    {
+      "path": "hrm-employee-exception-7ca3-required-five-peer-inventory.json.gz",
+      "originalBytes": 8668,
+      "originalSha256": "f846241e4f31e8804d37074aaa9fd161e4ed611e6bb24f6ae88ae0b7e43073d1",
+      "storedBytes": 2443,
+      "storedSha256": "70dc61a459c28706d2d3bbda99e3454afab675ede3c2c0503db5df92f1fce41e"
+    }
+  ]
+}
