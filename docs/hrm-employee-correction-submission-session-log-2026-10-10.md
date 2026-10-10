@@ -330,3 +330,16 @@ sourceFB/checkbaseline/canonicalhelpers unchanged, no appauth modification.
 Mandatorytype/static stillRUNNING; mergeblocked. Next freshsameH/B/C guard then
 ONErerun failed jobs; retainattempt1 permanently andreviewactualattempt2checkout
 C/wholeartifact independently. No rootcausefixclaim/noaccounting/C14closure.
+
+## ONE reviewed failed-job-only repeat actually requested on same head
+
+Afterphase10originals publishedbefd3ff4b, freshHFB/B7/C13/stateREADY/clean tree/
+ordinaryparents+sametree andnaturallyterminalattempt1onlyfailedEMP296 verified.
+Actualrerun-failed-jobs POST38047393207 accepted11:22:47UTC, expectedattempt2.
+Onlyfailedemployee job repeated; original report/newcorrection succeeded same
+C13 remainseparatelyretained. No innerMFAretry/window/assertion/helper/app/baseline
+change; actual400causeUNPROVED. Requeststdout/stderr andfullfreshguard/run/jobs
+archivedphase11. Repeatresult/wholecandidate/fullfivemandatory NOTYETaccepted;
+mergeblocked. Ifrepeatfailsagain, no blindthirdattempt; private-safe branch/time
+harness diagnostics/newheadsource7 required. Next actualattempt2completeoriginals
+/root+peer/currentC13/five→ordinaryownverifiedrelease ifallaccepted.
