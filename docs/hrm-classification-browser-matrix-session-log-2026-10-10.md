@@ -692,3 +692,44 @@ TLS/ping/privacy root+peer proofs. No directserver/activation/access/secrets.
 Next finish own normalActions immutableproducer/consumerdigest binding,
 publicfullM brackets/privacy, actualMcompiler/strict18, then continue isolated
 employee self-flow. Accounting85/161/76open/61%, C12PARTIAL/C14incomplete.
+
+## 19 — Own normal 93E production release and final main CI accepted
+
+Supersedes phase18 production/main-compiler PENDING only. PR674 ordinary merge
+93e3644fed0fa5932a0215c09205454b3df6f42c remains exact parents[AFE,F50] and
+whole-tree6ddc9; original F50/candidate/required evidence remains unchanged.
+Deploy38021696832 attempt1 completedSUCCESS:4normalSUCCESS/3manualSKIP.
+Artifact11658933387, leaddrive-prod-full93E,444934275bytes, upload/API/download
+digest7768e22f3e7eaba736e265b9588dfeddc295099567d83d5ccc0095bcafc61a1a
+matches actual complete producer/consumer originals. Large ZIP NOT downloaded.
+Actual atomic deploy and normal post-deploy smokesSUCCESS; no manual recovery,
+activation, restore, access/secrets mutation or peer rerun. No own release
+failure/rerun observed; earlier implementation failures remain archived.
+
+Root pinned canonicalTLS build-before/ping/build-after confirms full93E and
+four anonymousHRMGET401JSON/307samehostcallbackPASS. Peer independently ran
+two brackets around four anonymous probes; fresh main remained93E. Real
+authenticated production HR/employee session NOTRUN, no approved session.
+
+Main compiler114123934469 actualSUCCESS/App15368 on exact93E. Complete whole
+log252557bytes SHA9331437cf59cd45c4b9be3f0a02a7b80982bc9fa9adf94555df8eeecf11f20b2.
+Actual1162diagnostics/35families/exit2/strict64matched/critical0/owned0;
+globallyNONCLEAN, not compiler-clean. Main published no compiler artifact;
+root reconstructed diagnostic section strips timestamp/annotation prefixes,
+preserves all multiline continuations and reruns unchanged bounded strict
+readers; original whole log authoritative. Push static/build SKIP receives
+no credit. Actual DeployQuality strict18/18 confirms every old failure still
+fails, separately from source/candidate passes.
+
+Independent final release review34710bytes
+ae0c38b0fe38b78cda8fcd4c9f9fbb2e961e16d19e458365f25978e92ff5c884;
+peer main compiler review5565bytes
+fd683a80f0dba9ff43061cf19ebb7f56cd3d2553cb5124edd815cb6126e50828.
+Immutable phase19 retains55originals/763893bytes, source/CI/artifact/public
+and peer qualifications. C12PARTIAL/C14open/C6-006PARTIAL and85/161DONE,
+76open/weighted61% unchanged. No synthetic operational/device/human credit.
+
+User authorizes autonomous next steps. Next independent scoped employee
+self-flow work is prepared on codex/hrm-employee-exception-browser-20261010,
+normal-integrated93E; actual browser/DB/compiler/build stillNOTRUN there.
+No parent frozen source modified; validation606/609/646 nevermerge,663DRAFT.
