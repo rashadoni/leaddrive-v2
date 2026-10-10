@@ -64,7 +64,7 @@ const receipts = {
   nativeZoomDiagnostics: [], nativeCaptureDiagnostics: [], keyboardFocusDiagnostics: [], textReflowDiagnostics: [],
   nativeZoomVerdict: "NOT RUN",
   matrix: { locales: ["az", "ru", "en"], widths: [320, 768, 1440], standardExpected: 9, nativeExpected: 3 },
-  limitations: ["Development bundle, not production build", "Synthetic disposable data only", "Historical selected Prisma-schema imports, not canonical terminal/approval/workday correction writer acceptance", "Report-only keyboard/native zoom; no human AT/whole-page accessibility/Android/physical/load/pilot acceptance", "Geometry/text checks do not prove pixel occlusion or whole-page accessibility", "Aggregate report facts are SELECT-only; real view-audit INSERT and auth metadata writes are expected; no production feature/grant activation"],
+  limitations: ["Development bundle, not production build", "Synthetic disposable data only", "Historical selected Prisma-schema imports, not canonical terminal/approval/workday correction writer acceptance", "Report-only keyboard/native zoom; settled states reacquire controls by real Tab, no automatic loading-focus retention claim; no human AT/whole-page accessibility/Android/physical/load/pilot acceptance", "Geometry/text checks do not prove pixel occlusion or whole-page accessibility", "Aggregate report facts are SELECT-only; real view-audit INSERT and auth metadata writes are expected; no production feature/grant activation"],
 }
 const contexts = []
 const nativeZoomContexts = []
@@ -521,6 +521,9 @@ async function localeScenario(tenant, locale, width, nativeZoom = false) {
       stage = name + "-" + state
       const result = await applyRange(view, day, true)
       await assertRendered(view, result.truth)
+      // Native disabled controls may blur during loading. Prove keyboard
+      // reachability again in the settled state; no DOM focus injection.
+      await tabTo(view.page, apply)
       await focusedControl(view, apply, state + "-apply")
       await evidenceScreenshot(view.page, "report-" + name + "-" + state + ".png", !nativeZoom)
       receipts.cases.push({ name: name + "-" + state, status: "PASS", locale, width, nativeZoom,

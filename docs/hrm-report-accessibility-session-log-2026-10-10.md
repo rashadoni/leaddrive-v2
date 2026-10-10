@@ -159,3 +159,22 @@ execution of the existing report admission guard file before the old actual
 PG gates, so exact final source produces observable finite Vitest results.
 Old baseline wrapper,18known failures, tests, conditions and checks unchanged.
 Original39 isolated build114080793543 actualSUCCESS; exact-final build pending.
+
+## ActualBF state-focus refusal and harness contract correction
+
+OriginalBF source/candidate reports FAIL at AZ320 empty state: Apply lost
+focus during its existing native disabled loading state, but the newly added
+state probe called focusedControl without repeating realTab as the other
+control probes do. Actual original Refresh clipping is fixed; rendered empty
+rates/text bounds correct. Cases0/nativeNOT_RUN/cleanupPASS, not matrix/native
+acceptance. Original completeZIPs/logs/API/source hashes retained in evidence.
+
+Independent review identifies an implicit focus-retention assumption in the
+new harness, beyond the agreed keyboard-reachability slice. Added actualTab
+to Apply after the settled state's rendering, then the same strictactive/
+focus-visible/fullbox clipping assertions. No DOM.focus injection, assertion
+removal, falsePASS, limits/baselines/roles/product-event behavior changes.
+Receipt explicitly excludes automatic focus retention during loading. This
+adds real keyboard action; fullC14 remainsPLANNED and observed native blur
+remains recorded as a limitation. New exact head needs fresh full acceptance;
+all firstBF jobs remain running to completion without cancellation.
