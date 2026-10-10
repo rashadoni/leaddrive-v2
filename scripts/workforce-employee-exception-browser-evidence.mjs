@@ -34,6 +34,7 @@ const receipts = {
   matrix: { locales, widths, standardExpected: 9, nativeExpected: 3 }, matrixDiagnostics: [],
   nativeZoomDiagnostics: [], nativeCaptureDiagnostics: [], nativeCurrentDiagnostics: [], keyboardFocusDiagnostics: [],
   captureDiagnostics: [], networkFaultDiagnostics: [], recoveryAlertDiagnostics: [], databaseDiagnostics: [], cleanupDiagnostics: [],
+  sessionTransitionDiagnostics: [],
   limitations: [
     "Synthetic isolated tenants and imported historical cases only; no real expected-schedule materialization or physical attendance evidence",
     "Employee actor is a linked AGENT under existing CRM sales read/write permission; no roles or production response flags changed",
@@ -703,8 +704,99 @@ function safeFailure(error) {
     sqlState: typeof error?.meta?.code === "string" && /^[A-Z0-9]{5}$/.test(error.meta.code) ? error.meta.code : null,
     prismaCode: typeof error?.code === "string" && /^P\d{4}$/.test(error.code) ? error.code : null }
 }
+async function canonicalCrossTabSessionTransition(tenants) {
+  const [tenant] = tenants
+  stage = "cross-tab-canonical-authentication"
+  const context = await contextFor(tenant.principals.employee)
+  const observed = await context.newPage(), control = await context.newPage()
+  activePage = observed
+  for (const page of [observed, control]) {
+    page.setDefaultTimeout(30_000); page.setDefaultNavigationTimeout(120_000)
+    await loadPage(page)
+  }
+  const original = await ownProjection(context, tenant)
+  assert.ok(original.cases.length > 0)
+  assert.equal(await observed.getByRole("article").count(), original.cases.length)
+  const before = await counts()
+  const beforeFacts = await fixedFacts(tenants)
+  const translations = JSON.parse(await readFile(new URL("../messages/en.json", import.meta.url), "utf8"))
+  // This observer reads actual DOM commits. It never changes session state,
+  // publishes a broadcast, alters DOM/CSS or captures authentication inputs.
+  const timeOrigin = await observed.evaluate(({ references, nextName }) => {
+    const state = { observations: [], overflow: false }
+    const sample = () => {
+      if (state.observations.length >= 512) { state.overflow = true; return }
+      const articles = [...document.querySelectorAll("article")]
+      state.observations.push({
+        nextPrincipalHeader: [...document.querySelectorAll("header button[aria-label]")].some(node => node.getAttribute("aria-label") === nextName),
+        previousScopeArticles: articles.filter(node => references.some(reference => node.textContent.includes(reference))).length,
+      })
+    }
+    const observer = new MutationObserver(sample)
+    observer.observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true })
+    sample()
+    Object.defineProperty(window, "__wfEmployeeSessionProbe", { value: { state, observer, sample }, configurable: true })
+    return performance.timeOrigin
+  }, { references: original.cases.map(item => item.displayReference), nextName: tenant.principals.other.name })
+
+  stage = "cross-tab-header-sign-out"
+  const signedOut = observeWaiter(control.waitForResponse(response => new URL(response.url()).pathname === "/api/auth/signout" && response.request().method() === "POST"))
+  await control.getByRole("button", { name: tenant.principals.employee.name, exact: true }).click()
+  await control.getByRole("button", { name: translations.auth.signOut, exact: true }).click()
+  assert.equal((await signedOut).status(), 200)
+  await control.waitForURL(url => url.origin === origin.origin && url.pathname === "/login", { timeout: 120_000 })
+  const noSession = await context.request.get("/api/auth/session", { timeout: 120_000 })
+  assert.equal(noSession.status(), 200); assert.equal(await noSession.json(), null)
+  await observed.waitForFunction(() => document.querySelectorAll("article").length === 0, null, { timeout: 30_000 })
+  assert.equal(await observed.getByRole("article").count(), 0)
+
+  stage = "cross-tab-same-tenant-next-principal"
+  // Existing canonical credentials, MFA verification and nonce consumption;
+  // the new page mounts the real provider, whose session broadcast reaches
+  // the observed page. No manual cookie or BroadcastChannel injection.
+  await authenticate(context, tenant.principals.other)
+  await loadPage(control)
+  await observed.getByRole("button", { name: tenant.principals.other.name, exact: true }).waitFor()
+  await observed.getByText(translations.workforceMyExceptions.empty, { exact: true }).waitFor()
+  const next = await context.request.get(endpoint, { timeout: 120_000, maxRedirects: 0 })
+  assert.equal(next.status(), 200)
+  const nextBody = await next.json(); noProtected(JSON.stringify(nextBody))
+  assert.equal(nextBody.success, true)
+  assert.equal(nextBody.data.disposition, "SELF_SERVICE_CORRECTION_ONLY")
+  assert.equal(nextBody.data.responseRecording, "AVAILABLE")
+  assert.deepEqual(nextBody.data.cases, [])
+  assert.equal(await observed.getByRole("article").count(), 0)
+  assert.equal(new URL(observed.url()).pathname, "/workforce/exceptions/mine")
+  const probe = await observed.evaluate(() => {
+    const probe = window.__wfEmployeeSessionProbe
+    if (!probe) throw new Error("Session observer lost")
+    probe.sample(); probe.observer.disconnect(); delete window.__wfEmployeeSessionProbe
+    return { ...probe.state, timeOrigin: performance.timeOrigin }
+  })
+  assert.equal(probe.timeOrigin, timeOrigin)
+  assert.equal(probe.overflow, false)
+  assert.ok(probe.observations.length > 1 && probe.observations.length <= 512)
+  assert.ok(probe.observations.some(row => row.previousScopeArticles === original.cases.length))
+  assert.ok(probe.observations.some(row => row.nextPrincipalHeader))
+  assert.ok(probe.observations.every(row => !row.nextPrincipalHeader || row.previousScopeArticles === 0))
+  assert.deepEqual(await counts(), before)
+  assert.deepEqual(await fixedFacts(tenants), beforeFacts)
+  receipts.sessionTransitionDiagnostics.push({
+    method: "ACTUAL_HEADER_SIGN_OUT_CANONICAL_MFA_AND_PROVIDER_REFRESH",
+    sameBrowserContext: true, sameObservedDocument: true, observedTabNavigationImposed: false,
+    manualCookieSessionOrBroadcastInjection: false, populatedFirstScope: original.cases.length,
+    canonicalSignOutStatus: 200, loggedOutSessionAbsent: true, previousRowsAfterLogout: 0,
+    sameTenantDifferentPrincipal: true, canonicalNextProjectionStatus: 200,
+    nextProjectionRows: 0, nextEmptyUiObserved: true, employeeLedgerWrites: 0,
+    immutableFactControlCount: beforeFacts.length, countsAndKnownFactsUnchanged: true,
+    observations: probe.observations, overflow: false,
+    qualification: "Second existing linked employee has no imported cases; successful own-only API and actual empty UI required, no populated second-scope claim",
+  })
+  receipts.cases.push({ name: "actual-cross-tab-logout-and-same-tenant-principal-change", status: "PASS" })
+}
+
 try {
-  for (const path of ["scripts/workforce-employee-exception-browser-evidence.mjs", "scripts/workforce-employee-exception-browser-admission.mjs", "src/__tests__/workforce-employee-exception-browser-admission.test.ts", "scripts/workforce-native-browser-zoom.mjs", "scripts/ci/fixtures/workforce-native-zoom-extension/manifest.json", "scripts/ci/fixtures/workforce-native-zoom-extension/background.js", "scripts/ci/fixtures/workforce-employee-exception-browser.sql", "scripts/ci/fixtures/workforce-manager-today-browser.sql", ".github/workflows/workforce-exception-report-browser-evidence.yml", "src/components/workforce/workforce-my-exceptions.tsx", "src/app/(dashboard)/workforce/exceptions/mine/page.tsx", "src/app/api/v1/workforce/exceptions/mine/route.ts", "src/app/api/v1/workforce/exceptions/[id]/response/route.ts", "src/lib/workforce/exception-employee-response-writer.ts", "src/lib/workforce/exception-employee-response-rate-limit.ts", "src/lib/workforce/exception-response-operation.ts", "src/lib/workforce/exception-response-rollout.ts", "src/lib/workforce/exception-workbench.ts", "src/lib/workforce/actor.ts", "src/lib/workforce/shift-definition.ts", "src/lib/with-workforce-rls-auth.ts", "src/lib/auth.ts", "src/lib/permissions.ts", "src/lib/workforce/sensitive-response.ts", "prisma/schema.prisma", "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql", "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql", "prisma/migrations/20260830200000_workforce_exception_employee_responses/migration.sql", "prisma/migrations/20260928123000_workforce_exception_response_cycle_unique_index/migration.sql", "messages/az.json", "messages/ru.json", "messages/en.json"]) {
+  for (const path of ["scripts/workforce-employee-exception-browser-evidence.mjs", "scripts/workforce-employee-exception-browser-admission.mjs", "src/__tests__/workforce-employee-exception-browser-admission.test.ts", "scripts/workforce-native-browser-zoom.mjs", "scripts/ci/fixtures/workforce-native-zoom-extension/manifest.json", "scripts/ci/fixtures/workforce-native-zoom-extension/background.js", "scripts/ci/fixtures/workforce-employee-exception-browser.sql", "scripts/ci/fixtures/workforce-manager-today-browser.sql", ".github/workflows/workforce-exception-report-browser-evidence.yml", "src/components/workforce/workforce-my-exceptions.tsx", "src/app/(dashboard)/workforce/exceptions/mine/page.tsx", "src/app/api/v1/workforce/exceptions/mine/route.ts", "src/app/api/v1/workforce/exceptions/[id]/response/route.ts", "src/lib/workforce/exception-employee-response-writer.ts", "src/lib/workforce/exception-employee-response-rate-limit.ts", "src/lib/workforce/exception-response-operation.ts", "src/lib/workforce/exception-response-rollout.ts", "src/lib/workforce/exception-workbench.ts", "src/lib/workforce/actor.ts", "src/lib/workforce/shift-definition.ts", "src/lib/with-workforce-rls-auth.ts", "src/lib/auth.ts", "src/lib/permissions.ts", "src/lib/workforce/sensitive-response.ts", "prisma/schema.prisma", "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql", "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql", "prisma/migrations/20260830200000_workforce_exception_employee_responses/migration.sql", "prisma/migrations/20260928123000_workforce_exception_response_cycle_unique_index/migration.sql", "messages/az.json", "messages/ru.json", "messages/en.json", "src/app/(dashboard)/layout.tsx", "src/components/ui/motion.tsx", "src/components/header.tsx", "src/components/providers.tsx", "src/app/(auth)/login/page.tsx", "src/lib/tenant-domain.ts", "package-lock.json"]) {
     const raw = await readFile(new URL(`../${path}`, import.meta.url))
     receipts.sources.push({ path, bytes: raw.length, sha256: createHash("sha256").update(raw).digest("hex") })
   }
@@ -717,11 +809,14 @@ try {
   await loadFailureAndRecovery(tenants[0])
   for (const cell of matrixCells) await uiScenario(tenants[0], cell)
   await denialsAndCycles(tenants)
+  await canonicalCrossTabSessionTransition(tenants)
   await databaseProof(tenants)
   const completedMatrix = receipts.cases.filter(row => matrixCells.some(cell => cell.key === row.name))
   assert.deepEqual(new Set(completedMatrix.map(row => row.name)), new Set(matrixCells.map(cell => cell.key)))
   assert.equal(completedMatrix.length, 12); assert.equal(expectedResponses.length, 14)
-  assert.equal(receipts.cases.length, 14)
+  assert.equal(receipts.cases.length, 15)
+  assert.equal(receipts.sessionTransitionDiagnostics.length, 1)
+  assert.equal(receipts.authenticationDiagnostics.length, 22)
   assert.equal(receipts.nativeZoomDiagnostics.length, 6)
   assert.deepEqual(new Set(receipts.nativeZoomDiagnostics.map(row => `${row.locale}-${row.phase}`)), new Set(locales.flatMap(locale => [`${locale}-INITIAL`, `${locale}-AFTER_CORRECTION_RETURN`])))
   assert.ok(receipts.nativeZoomDiagnostics.every(row => row.status === "PASS" && row.factor === 2))
