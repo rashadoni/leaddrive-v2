@@ -79,3 +79,21 @@ originalC654 harness byteequal.39existing bindings preserved as prefix,45final,
 No runtime/sourceindependent/fullcompiler/build/suite/database acceptance yet.
 Source branch unpublished; current681 source remains frozenC654 unchanged.
 Next independent review/hosted checks after current681 exact-main verifiedrelease.
+
+## Parent681 normal main integrated; release still pending
+
+PR681 ordinarilymerged339f74afc9384eecad5d175217918b08e5c65e15, exactparents
+[M32A,C654]/tree10efd equals independently testedsource/currentcandidate.
+Natural deploy38039109759 andmaincompiler38039109765 RUNNING; no production
+acceptance yet. This preparednextbranch normallymerged exactM339f intoD9,
+preserving bothparentmain andprepared checkpoints withoutreset/force orpush.
+Onlynextowned harness/doc differfrom actualM; production/API/fixture/dependency/
+baseline/routing unchanged. Current681 source remainsfrozenC654 untouched.
+Previous rootpreparedreceipt21sessionDOM referredto earlierobservedC654 only;
+actual retainedsource bounds>1and<=512, actualcandidate observed28. Next-head
+runtime observations cannot be borrowed or fixed to either historicaltotal.
+Originalreceipt/label andqualification are retained in archiveprefill01.
+Next independent exactsource readonlyreview may proceed while parentnormal
+release runs. Publication/runtime gates waitfor parentM fullverifiedrelease.
+No nextsuccessful correctionPOST/source-attribution/body/nativeform or personnel
+outcome acceptance; source12readonlyform checkpoints only. Accounting unchanged.
