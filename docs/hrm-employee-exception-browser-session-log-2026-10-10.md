@@ -275,3 +275,46 @@ Original2b report actualSUCCESS33/54/58/3native21/22facts/15sources reviewed
 independently; HRjobactualSUCCESS awaitingcompleteoriginalreader. Compiler/
 build/strict regressions stillactive. No whole2b PASS or employeeacceptance.
 Next oldwhole originals plus fresh43 browser/DB/CI and independent actualpixels.
+
+## Complete original2b gates and second43 fixture failure recorded
+
+Original2b six-jobrun38024424861 completed naturallyFAILURE: employeeFAIL,
+other fiveSUCCESS. Phase06 stores27originals/10887998bytes including all six
+whole job logs, four digest/CRC-checked ZIPs, raw compiler179299B/EXIT2,
+root actual report/HR/fullcompiler readers and independent per-gate reviews.
+Actual compiler1162diagnostics/35families/64strictbaselinepairs matched,
+critical0/taskowned0; globalNONCLEAN, no skipped/other-head acceptance.
+Root report33/54focus/58reflow/3native21/22facts and HR20/108focus/24writes+
+audits content verified. Root viewed originalAZnative200report pixels;
+development overlay and header remain qualified, not wholepage nonocclusion.
+Independent initial HR reader full-tall-table containment mistake and corrected
+actual12intersections+96boundedcontrols contract are retained separately.
+Original strict18 stillfail and PG44/sharednativeguard36 retained; no weakening.
+
+Fresh43 employee failed before browser at source250:20. Wholelog104699B
+SHA35b77387f03f6725ddbf00759c2ebb08c2d6605030041286a0e8fdda6423daca;
+ZIP11659589633/5056B SHA344c71b20be4bc434b39e5b844022544263f1072e1e41facfd7db52a6eddeeb9.
+Safe counts1historicalresponse/0audit/15cases/6decisions,0auth/focus/native,
+noPNG/cleanupPASS. Root independently captured full API/log/ZIP/digest/CRC;
+peer18077B SHAf068de5d94aaf65f111203b4b2e080286e54b4104cb9ca58a12a503fc9c223e3.
+Missing NO_SHOW segment inferred from unchanged subject/expecteddate CHECKs
+and exact actual source position; no absent raw message/SQLSTATE fabricated.
+
+Sourcefix fe7d0509427eee477d8715b6d8ef58c72a35f0bc uses existing shift parser
+and canonicalhash, per-tenant syntheticadmin-authored DRAFT template then
+REMOTEsegment; NO_SHOW workday/event/evidence remainNULL. No publication,
+assignment, detector/materialization, START or personnel decision. Template
+fingerprint added:13controlsets,32sourcebindings. Existingroles/production
+product/schema/writer/constraints/baselines unchanged. Sourcejournal appended
+without erasing originals. Normal merge of current main5393 three foreign MTM
+paths yields preparedsource0d7a4943e49c07891401ff21d2973399c219f35b/tree
+a4250539b256df9dba96483c33a2d28c18050a4d; exact protected20/mainforeign3,
+entire native helper/workflow unchanged from43 proven byroot. Narrow source
+independent review is ongoing before ordinary publication/exact fresh hosted
+six gates. Old43 five gates continue uncancelled; no whole43 acceptance.
+
+Root used an incorrect runner-policy reader path (MODULE_NOT_FOUND) during a
+small local check; original reader error saved separately. Correct existing
+check-github-runner-policy.mjs actuallyPASS54workflowfiles. Syntax/diff checks
+PASS; full build/browser/DB/typecheck remain hosted-only. PR678DRAFT; no new
+production mutation.85DONE/76open/61%,C6-006/C12partial,C14open unchanged.
