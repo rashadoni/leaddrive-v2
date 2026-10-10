@@ -18,9 +18,10 @@ const ACTION = "inline-flex min-h-8 items-center text-xs font-semibold underline
  * «Слои»: what each is called and how much it covers — and, for whoever may
  * change them, the same three things its balloon on the map offers.
  *
- * It has no frame and no scrollbar of its own: it grows inside the «Слои»
- * panel, which already scrolls within the map (owner: a frame inside a frame
- * with its own scrollbar is a bug).
+ * It has no frame and no scrollbar of its own (owner: a frame inside a frame
+ * with its own scrollbar is a bug): it grows inside the «Слои» panel, and
+ * where that panel is wide — two columns of switches — the zones stand in two
+ * columns as well, so a dozen of them still fit the map's height.
  *
  * A change is made where the zone's row is: the row opens the small form and
  * keeps it until the server has answered.
@@ -56,7 +57,7 @@ export function LiveMapZoneList({ zones, canWrite, formatArea, onChange }: {
 
   return (
     <div data-testid="live-map-zone-list">
-      <ul className="space-y-1">
+      <ul className="grid grid-cols-1 gap-1 @lg:grid-cols-2 @lg:items-start">
         {zones.map((zone) => {
           const task = canWrite && editing?.zoneId === zone.id ? editing.kind : null
           return (
