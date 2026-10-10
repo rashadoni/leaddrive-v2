@@ -143,3 +143,27 @@ requires19 exact source blobs,7 exact unmodified migration extracts, actual
 manual matrix/denials/replay/focus/private-capture/native/DB/cleanup evidence.
 No source/test/UI baseline change while originals run. Parent Deploy38013599677
 still IN_PROGRESS; no public release or production HR acceptance yet.
+
+## First D8E browser failure preserved before any correction
+
+Actual source38013716710 HR job114099288899 FAILURE; complete original API/log
+and ZIP11654893044/62,450B/digestd42b36de1d6ca80d748e61ffca67df49e3e7ad980ed3b3170e0927aff8ea3469
+validated against API size/digest/all CRC. Receipt19 source blobs match frozen
+D8E; exact7 routine installation committed, real HR MFA200/nonce consumed,
+zero completed cases/focus/writes/refusals, native NOT RUN, all cleanup PASS.
+Original safe screenshot viewed by root and retained without edits. Failure
+stage standard-100-az-320-authenticate / Error / outer source557. Protected
+raw error text is omitted by existing safe failure contract; exact cause is
+not directly proved by that receipt.
+
+Source diagnosis (INFERENCE, independent review requested): both named section
+aria-labelledby and nested div role=region share casesTitle, so broad named
+getByRole(region) can select two regions. Proposed correction targets actual
+focusable scrolling div and retains uniqueness/role/translated-name/tabindex/
+table verification plus every original geometry/privacy/write/DB/count gate.
+Next run can retain finite actual selector counts to prove this diagnosis.
+No product clipping defect observed or invented; zero focus diagnostics means
+interactive geometry has not been tested yet. Other four original source
+lanes still run naturally; no cancellation or corrected source push.
+Phase02 preserves original failure packet and final source/gitleaks bindings.
+Parent normal release still pending; no false task/operational credit.
