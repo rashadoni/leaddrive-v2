@@ -6,6 +6,8 @@ on:
     paths:
       - ".github/workflows/workforce-exception-report-browser-evidence.yml"
       - "scripts/workforce-exception-report-browser-evidence.mjs"
+      - "scripts/workforce-native-browser-zoom.mjs"
+      - "scripts/ci/fixtures/workforce-native-zoom-extension/**"
       - "scripts/workforce-exception-classification-browser-evidence.mjs"
       - "scripts/ci/fixtures/workforce-exception-classification-browser.sql"
       - "src/__tests__/workforce-exception-classification-browser-evidence-guard.test.ts"
@@ -469,6 +471,10 @@ jobs:
           src/app/api/v1/workforce/exceptions/route.ts
           src/components/workforce/workforce-exception-queue.tsx
           src/components/workforce/workforce-exception-recorded-outcomes.tsx
+          src/components/workforce/workforce-exception-report.tsx
+          src/__tests__/workforce-exception-report-browser-evidence-guard.test.ts
+      - name: Report browser environment and native fixture admission guards
+        run: npx vitest run src/__tests__/workforce-exception-report-browser-evidence-guard.test.ts
       - name: Actual shared-lock and aggregate PostgreSQL gates
         run: >-
           npx vitest run
