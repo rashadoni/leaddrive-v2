@@ -52,6 +52,23 @@ import type { LiveMapPlaceStop } from "@/lib/mtm/live-map-place"
 import { rosterExportFileName } from "@/lib/mtm/live-map-roster-export"
 import { liveMapDuration, liveMapStateSince } from "@/lib/mtm/live-map-state-since"
 import { parseLiveMapClients, type LiveMapClient, type LiveMapClientsAnswer } from "@/lib/mtm/live-map-clients"
+import { LiveMapZoneForm, LiveMapZoneGone, liveMapZoneFormChange, type LiveMapZoneFormValues } from "@/components/mtm/live-map-zone-form"
+import { LiveMapZoneList } from "@/components/mtm/live-map-zone-list"
+import {
+  liveMapZoneOutlineProblem,
+  liveMapZoneShapeBody,
+  liveMapZoneWriteProblem,
+  parseLiveMapZone,
+  parseLiveMapZones,
+  sortLiveMapZones,
+  withLiveMapZone,
+  withoutLiveMapZone,
+  type LiveMapZone,
+  type LiveMapZoneChange,
+  type LiveMapZoneShape,
+  type LiveMapZonesAnswer,
+  type LiveMapZoneWriteProblem,
+} from "@/lib/mtm/live-map-zones"
 import { summarizeMtmRouteExecution } from "@/lib/mtm/route-point-execution"
 import { hasMtmCoordinates } from "@/lib/mtm/geo-coordinates"
 import { saveRouteCache, loadRouteCache, routeCacheKey } from "@/lib/mtm/route-cache"
@@ -120,7 +137,7 @@ interface AgentRouteSnapshot {
 
 /** How the map is drawn — remembered in the browser like the list's layout. */
 const MAP_LOOK_STORAGE_KEY = "leaddrive.mtm.live-map.look.v1"
-const DEFAULT_MAP_LOOK = { labels: false, trails: true, glide: true, clients: false, base: DEFAULT_LIVE_MAP_BASE_MAP as LiveMapBaseMapId }
+const DEFAULT_MAP_LOOK = { labels: false, trails: true, glide: true, clients: false, areas: false, base: DEFAULT_LIVE_MAP_BASE_MAP as LiveMapBaseMapId }
 /** The backgrounds this build can offer; the same list for as long as the page lives. */
 const BASE_MAPS = liveMapBaseMaps()
 /** With a point picked the list answers «who is nearest» — until another order is asked for. */
@@ -134,6 +151,7 @@ function parseMapLook(raw: string | null): typeof DEFAULT_MAP_LOOK {
       trails: typeof stored.trails === "boolean" ? stored.trails : DEFAULT_MAP_LOOK.trails,
       glide: typeof stored.glide === "boolean" ? stored.glide : DEFAULT_MAP_LOOK.glide,
       clients: typeof stored.clients === "boolean" ? stored.clients : DEFAULT_MAP_LOOK.clients,
+      areas: typeof stored.areas === "boolean" ? stored.areas : DEFAULT_MAP_LOOK.areas,
       // A background this build no longer offers (the satellite contract ended) is not remembered.
       base: parseLiveMapBaseMap(stored.base, BASE_MAPS),
     }
@@ -145,6 +163,7 @@ function parseMapLook(raw: string | null): typeof DEFAULT_MAP_LOOK {
 /** The «day route» layer switched off: one stable empty list, so the map does not refit on every render. */
 const NO_ROUTE_STOPS: RouteStop[] = []
 const NO_CLIENTS: readonly LiveMapClient[] = []
+const NO_ZONES: readonly LiveMapZone[] = []
 const EMPTY_STATUS_COUNTS = { total: 0, checkedIn: 0, onRoad: 0, stopped: 0, routeFinished: 0, late: 0, offline: 0 }
 const EMPTY_FRESHNESS_COUNTS = { online: 0, delayed: 0, stale: 0, noLocation: 0 }
 const EMPTY_WORKDAY_COUNTS = { active: 0, paused: 0, closed: 0, notStarted: 0 }
@@ -271,6 +290,28 @@ export default function MtmMapPage() {
   const [clientsRevision, setClientsRevision] = useState(0)
   const clientsSettledRef = useRef<{ key: string; ok: boolean }>({ key: "", ok: false })
   const clientsRetriesRef = useRef(0)
+  // «Свои зоны»: the areas the organization has drawn on this map and named.
+  // Kept and read exactly like the client base above — when the layer is
+  // switched on and on «Обновить», never on the roster's timer. One more thing
+  // rides on the same answer: whether this viewer may draw zones at all. So it
+  // is also asked for when the ruler or a point is taken up with the layer
+  // off, and until it has come no «save as a zone» button is drawn.
+  const [zonesRead, setZonesRead] = useState<{ identity: string; data: LiveMapZonesAnswer | null; settledKey: string; failed: boolean } | null>(null)
+  const [zonesRevision, setZonesRevision] = useState(0)
+  const zonesSettledRef = useRef<{ key: string; ok: boolean }>({ key: "", ok: false })
+  const zonesRetriesRef = useRef(0)
+  /** A read of the zones is on its way: what it brings was true before anything saved meanwhile. */
+  const zonesReadOutRef = useRef(false)
+  // The zone whose balloon on the map asked for a change, and which change.
+  const [zoneEdit, setZoneEdit] = useState<{ zoneId: string; kind: LiveMapZoneChange["kind"] } | null>(null)
+  // A rename or a colour that came too late: a colleague had removed the zone.
+  // The zone goes from this map and its form goes with it, so why is said in
+  // the place the form stood — the zone's row in «Слои» ("list"), or beside
+  // the tools for a form opened from the balloon ("map"). Both are inside the
+  // map's frame. A toast is not: with the map on the whole screen the browser
+  // paints only that frame, and the form simply closed and the zone vanished
+  // with nothing said — it read as «renaming deleted my zone».
+  const [zoneGone, setZoneGone] = useState<"list" | "map" | null>(null)
   // The tools on the map: a ruler, and a point — an address found or a place
   // pressed — that the list then measures everybody against.
   const [rulerActive, setRulerActive] = useState(false)
@@ -454,6 +495,8 @@ export default function MtmMapPage() {
     setPickingPoint(false)
     setRulerActive(false)
     setRulerPoints([])
+    setZoneEdit(null)
+    setZoneGone(null)
     setLoadError(null)
     setFreshnessNow(null)
     setRefreshBlockedUntil(0)
@@ -778,6 +821,163 @@ export default function MtmMapPage() {
     changeReferencePoint({ latitude: client.latitude, longitude: client.longitude, label: client.name })
   }, [changeReferencePoint])
 
+  // The organization's own zones. Wanted while their layer is on — and while
+  // the ruler or a point is in hand, because what those two may offer («save
+  // as a zone») is in the same answer. The key is the client base's: the
+  // viewer and the turn of reading, so taking the ruler up a second time, or
+  // switching the layer off and on, asks for nothing new.
+  const zonesLayerOn = mapLook.areas && mapMode === "live" && Boolean(identityKey)
+  const zonesKey = (mapLook.areas || rulerActive || pickingPoint || referencePoint != null) && mapMode === "live" && identityKey
+    ? `${identityKey}::${zonesRevision}`
+    : ""
+  useEffect(() => {
+    if (!zonesKey) return
+    if (zonesSettledRef.current.key === zonesKey && zonesSettledRef.current.ok) return
+    const controller = new AbortController()
+    let retryTimer: number | null = null
+    zonesReadOutRef.current = true
+    void fetch("/api/v1/mtm/locations/zones", { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        const body = response.ok ? await response.json().catch(() => null) as { data?: unknown } | null : null
+        return parseLiveMapZones(body?.data)
+      })
+      .catch(() => null)
+      .then((data) => {
+        if (controller.signal.aborted) return
+        zonesReadOutRef.current = false
+        zonesSettledRef.current = { key: zonesKey, ok: data !== null }
+        setZonesRead((held) => ({
+          identity: identityKey,
+          // A read that failed keeps the zones this viewer was last given.
+          data: data ?? (held?.identity === identityKey ? held.data : null),
+          settledKey: zonesKey,
+          failed: data === null,
+        }))
+        if (data !== null) {
+          zonesRetriesRef.current = 0
+        } else if (zonesRetriesRef.current < 3) {
+          // Like the client base: tried again by itself a few times, a minute apart.
+          zonesRetriesRef.current += 1
+          retryTimer = window.setTimeout(() => setZonesRevision((turn) => turn + 1), 60_000)
+        }
+      })
+    return () => {
+      controller.abort()
+      zonesReadOutRef.current = false
+      if (retryTimer != null) window.clearTimeout(retryTimer)
+    }
+  }, [zonesKey, identityKey])
+  const zonesHeld = zonesRead && zonesRead.identity === identityKey ? zonesRead : null
+  const zonesAnswer = zonesHeld?.data ?? null
+  const zonesLoading = Boolean(zonesKey) && zonesHeld?.settledKey !== zonesKey
+  const zonesFailed = Boolean(zonesKey) && zonesHeld?.settledKey === zonesKey && zonesHeld.failed
+  // Only what the server itself said: a viewer it has not answered about draws nothing.
+  const zonesCanWrite = zonesAnswer?.canWrite === true
+  // By name, as the viewer's language sorts: the server answers oldest first.
+  const sortedZones = useMemo(() => (zonesAnswer ? sortLiveMapZones(zonesAnswer.zones, locale) : NO_ZONES), [zonesAnswer, locale])
+  const mapZones = zonesLayerOn ? sortedZones : NO_ZONES
+  const retryZones = useCallback(() => {
+    zonesRetriesRef.current = 0
+    setZonesRevision((turn) => turn + 1)
+  }, [])
+  const areasHint = !zonesLayerOn
+    ? tMap("layers.areasHint")
+    : zonesAnswer
+      ? [
+        tMap("areas.onMap", { count: zonesAnswer.zones.length }),
+        zonesAnswer.unreadable > 0 ? tMap("areas.unreadable", { count: zonesAnswer.unreadable }) : "",
+        zonesFailed ? tMap("areas.refreshFailed") : "",
+      ].filter(Boolean).join(" · ")
+      : zonesLoading ? tMap("areas.loading") : tMap("areas.failed")
+  // With «Слои» closed a layer that could not be read looks like «no zones here».
+  const areasAlert = !zonesLayerOn || zonesLoading || zonesAnswer
+    ? null
+    : { text: tMap("areas.failedShort"), actionLabel: tMap("areas.retry"), onAction: retryZones, testId: "live-map-areas-alert" }
+  // Whether what the ruler has outlined can be kept as it stands — and when it
+  // cannot, why: too few points, a line that crosses itself, points that
+  // enclose nothing. The reason and not a yes-or-no, because the tools say it
+  // in words: a button that is merely missing explains nothing.
+  const rulerOutlineProblem = useMemo(() => liveMapZoneOutlineProblem(rulerPoints), [rulerPoints])
+
+  // One request about one zone. What comes back is what the server kept, or
+  // why it did not: the page draws the first and says the second — it never
+  // draws what it only hoped was saved.
+  const sendZone = async (method: "POST" | "PUT" | "DELETE", zoneId: string | null, body?: unknown): Promise<{ kept: unknown } | { problem: LiveMapZoneWriteProblem }> => {
+    try {
+      const response = await fetch(`/api/v1/mtm/locations/zones${zoneId ? `/${encodeURIComponent(zoneId)}` : ""}`, {
+        method,
+        ...(body === undefined ? {} : { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
+      })
+      const answer = await response.json().catch(() => null) as { success?: unknown; data?: unknown; code?: unknown } | null
+      if (!response.ok || answer?.success !== true) return { problem: liveMapZoneWriteProblem(response.status, answer?.code) }
+      return { kept: answer?.data }
+    } catch {
+      return { problem: "network" }
+    }
+  }
+  // The zones this viewer holds, after a change the server has kept. The
+  // answer is put into the list in hand — the whole list is not read again
+  // for one zone. Two cases do read it again: the server kept something this
+  // page cannot draw back, and a read that was on its way while the change
+  // was made (what it brings is the list as it was before).
+  const zonesChanged = (identity: string, change: (answer: LiveMapZonesAnswer) => LiveMapZonesAnswer, readAgain = false) => {
+    setZonesRead((held) => (held && held.identity === identity && held.data ? { ...held, data: change(held.data) } : held))
+    if (readAgain || zonesReadOutRef.current) retryZones()
+  }
+  const createZone = async (kind: "outline" | "circle", values: LiveMapZoneFormValues): Promise<LiveMapZoneWriteProblem | null> => {
+    const shape: LiveMapZoneShape | null = kind === "outline"
+      ? { kind: "POLYGON", outline: rulerPoints }
+      : referencePoint
+        ? { kind: "CIRCLE", center: { latitude: referencePoint.latitude, longitude: referencePoint.longitude }, radiusMeters: values.radiusMeters }
+        : null
+    if (!shape) return "invalid"
+    const identity = identityKey
+    // Safe to send again: when the answer to a drawing is lost on its way back
+    // and «Сохранить» is pressed once more, the server answers with the zone it
+    // already kept (zones/route.ts) — which is then drawn here, once.
+    const sent = await sendZone("POST", null, { name: values.name, color: values.color, ...liveMapZoneShapeBody(shape) })
+    // «Not found» about a zone that does not exist yet is not «somebody removed it».
+    if ("problem" in sent) return sent.problem === "gone" ? "failed" : sent.problem
+    const zone = parseLiveMapZone(sent.kept)
+    setZoneGone(null)
+    zonesChanged(identity, (answer) => (zone ? withLiveMapZone(answer, zone) : answer), zone === null)
+    // The new zone is seen at once: its layer comes on, and the ruler that outlined it is put down.
+    if (!mapLook.areas) changeMapLook({ areas: true })
+    if (kind === "outline") switchRuler(false)
+    return null
+  }
+  const changeZone = async (zone: LiveMapZone, change: LiveMapZoneChange, askedFrom: "list" | "map"): Promise<LiveMapZoneWriteProblem | null> => {
+    const identity = identityKey
+    const sent = change.kind === "delete"
+      ? await sendZone("DELETE", zone.id)
+      : await sendZone("PUT", zone.id, change.kind === "rename" ? { name: change.name } : { color: change.color })
+    if ("problem" in sent) {
+      if (sent.problem !== "gone") return sent.problem
+      // Somebody else removed it meanwhile. It is gone from this map too; a
+      // rename or a colour that came too late is said — where the form was
+      // (see zoneGone) — and a removal needs no saying.
+      zonesChanged(identity, (answer) => withoutLiveMapZone(answer, zone.id))
+      setZoneGone(change.kind === "delete" ? null : askedFrom)
+      return null
+    }
+    // A change the server kept: whatever was said about another zone has been read.
+    setZoneGone(null)
+    if (change.kind === "delete") {
+      zonesChanged(identity, (answer) => withoutLiveMapZone(answer, zone.id))
+      return null
+    }
+    const saved = parseLiveMapZone(sent.kept)
+    zonesChanged(identity, (answer) => (saved ? withLiveMapZone(answer, saved) : answer), saved === null)
+    return null
+  }
+  const openZoneForm = useCallback((zoneId: string, kind: LiveMapZoneChange["kind"]) => {
+    setZoneEdit({ zoneId, kind })
+    setZoneGone(null)
+  }, [])
+  // Only a zone that is on the map now, for somebody who may change it.
+  const editedZone = zoneEdit && zonesLayerOn && zonesCanWrite ? sortedZones.find((zone) => zone.id === zoneEdit.zoneId) ?? null : null
+  const formatArea = (squareMeters: number) => formatMtmArea(squareMeters, locale, (unit, value) => tMap(`areaUnits.${unit}`, { value }))
+
   const manualRefresh = () => {
     const minimumIntervalSeconds = contract?.polling.minimumIntervalSeconds ?? 15
     const nextAllowedAt = Math.max(
@@ -795,6 +995,8 @@ export default function MtmMapPage() {
     void fetchLocations()
     // «Обновить» is also how a client added a minute ago gets onto the map.
     if (mapLook.clients) retryClients()
+    // …and a zone a colleague has just drawn.
+    if (mapLook.areas) retryZones()
   }
 
   const handleAgentClick = (agentId: string) => {
@@ -1493,6 +1695,9 @@ export default function MtmMapPage() {
               referencePoint={referencePoint}
               clients={mapClients}
               onClientNearest={nearestToClient}
+              zones={mapZones}
+              canEditZones={zonesCanWrite}
+              onZoneAction={openZoneForm}
               geofenceRadius={effectiveGeofenceRadius(null, contract?.geofenceRadiusMeters)}
             />
           )}
@@ -1512,11 +1717,22 @@ export default function MtmMapPage() {
                 { id: "clients", label: tMap("layers.clients"), hint: clientsHint, on: mapLook.clients, onToggle: () => changeMapLook({ clients: !mapLook.clients }) },
                 { id: "zones", label: tMap("layers.zones"), hint: tMap("layers.zonesHint"), on: showGeofence, onToggle: () => setShowGeofence((on) => !on) },
                 { id: "heat", label: tMap("layers.heat"), hint: tMap("layers.heatHint"), on: showHeatmap, onToggle: () => setShowHeatmap((current) => !current), testId: "mtm-map-heatmap-toggle" },
+                // Last, because it is the one layer with a list under its switch: the list grows downwards and pushes nothing away.
+                {
+                  id: "areas", label: tMap("layers.areas"), hint: areasHint, on: mapLook.areas,
+                  onToggle: () => { changeMapLook({ areas: !mapLook.areas }); setZoneEdit(null); setZoneGone(null) },
+                  detail: zonesLayerOn && zonesAnswer ? (
+                    <>
+                      {zoneGone === "list" ? <LiveMapZoneGone className="mb-1.5" onClose={() => setZoneGone(null)} /> : null}
+                      <LiveMapZoneList zones={sortedZones} canWrite={zonesCanWrite} formatArea={formatArea} onChange={(zone, change) => changeZone(zone, change, "list")} />
+                    </>
+                  ) : undefined,
+                },
               ]}
               hiddenAgentCount={hiddenOnMapCount}
               onShowAllAgents={() => setHiddenAgentIds(new Set())}
               note={tMap("historyOnlyExplicit")}
-              alert={clientsAlert}
+              alert={[clientsAlert, areasAlert]}
             />
           )}
           {showRosterLoading ? null : (
@@ -1538,6 +1754,22 @@ export default function MtmMapPage() {
               fullscreen={mapFullscreen}
               onFullscreenToggle={toggleMapFullscreen}
               fullscreenSupported={fullscreenSupported}
+              zoneDrawing={zonesCanWrite ? { outlineProblem: rulerOutlineProblem, onCreate: createZone } : null}
+              zoneEditor={editedZone && zoneEdit ? (
+                <LiveMapZoneForm
+                  key={`${zoneEdit.kind}:${editedZone.id}`}
+                  className="shadow-lg"
+                  task={{ kind: zoneEdit.kind, zone: editedZone }}
+                  onCancel={() => setZoneEdit(null)}
+                  onSubmit={async (values) => {
+                    const refused = await changeZone(editedZone, liveMapZoneFormChange(zoneEdit.kind, values), "map")
+                    if (!refused) setZoneEdit(null)
+                    return refused
+                  }}
+                />
+              ) : zoneGone === "map" && zonesLayerOn ? (
+                <LiveMapZoneGone className="shadow-lg" onClose={() => setZoneGone(null)} />
+              ) : null}
             />
           )}
           {/* The list put away leaves the whole width to the map; this brings it

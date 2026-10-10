@@ -163,6 +163,7 @@ model Organization {
   mtmContactChangeRequests            MtmContactChangeRequest[]
   mtmContactCreateRequests               MtmContactCreateRequest[]
   mtmDeviceTokens                        MtmDeviceToken[]
+  mtmMapZones                            MtmMapZone[]
   mtmDoctorScoringFormulas            MtmDoctorScoringFormula[]
   mtmDoctorAssessments                MtmDoctorAssessment[]
   mtmContactDictionaries              MtmContactDictionary[]
@@ -6423,6 +6424,44 @@ model MtmDeviceToken {
   @@unique([organizationId, token])
   @@index([organizationId, agentId, disabledAt])
   @@map("mtm_device_tokens")
+}
+
+/// A named area a manager draws by hand on the live map — a district, a
+/// delivery area, «центр»: a circle or one closed outline. It belongs to the
+/// organization, not to the person who drew it, and everybody who opens the
+/// live map sees it.
+///
+/// A drawing only: nothing in GPS ingest or in the alerts reads this table.
+/// The clients' own check-in circles (`MtmCustomer.geofenceRadius`, the map's
+/// «Зоны клиентов» layer) are a different thing and are not stored here.
+model MtmMapZone {
+  id              String       @id @default(cuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name            String
+  /// CIRCLE | POLYGON — pinned by mtm_map_zones_kind_check, and each kind's
+  /// own columns by mtm_map_zones_shape_check.
+  kind            String
+  /// A key of the palette in src/lib/mtm/agent-tags.ts, never a hex: the
+  /// database has nothing to check, the code maps the key to a colour.
+  color           String?
+  centerLatitude  Float?
+  centerLongitude Float?
+  radiusMeters    Int?
+  /// GeoJSON Polygon with one closed ring of [longitude, latitude] pairs.
+  polygon         Json?
+  /// The office user who drew it. A plain id without a relation, as on
+  /// MtmVisitPolicy: removing a user must not remove the organization's zones.
+  createdBy       String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  /// Removed zones are kept: the journal row that says who removed one still
+  /// points at something.
+  deletedAt       DateTime?
+
+  @@unique([organizationId, id])
+  @@index([organizationId, deletedAt])
+  @@map("mtm_map_zones")
 }
 
 model MtmContactCreateRequest {

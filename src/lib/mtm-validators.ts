@@ -1,6 +1,15 @@
 import { z } from "zod"
 import { MTM_AGENT_MAP_COLOR_KEYS } from "@/lib/mtm/agent-tags"
 import { MTM_CONTACT_CLASS_VALUES } from "@/lib/mtm/contact-classes"
+import {
+  LIVE_MAP_ZONE_MAX_CORNERS,
+  LIVE_MAP_ZONE_MAX_RADIUS_METERS,
+  LIVE_MAP_ZONE_MIN_CORNERS,
+  LIVE_MAP_ZONE_MIN_RADIUS_METERS,
+  LIVE_MAP_ZONE_NAME_MAX_LENGTH,
+  liveMapZoneRingProblem,
+  type LiveMapZoneRingProblem,
+} from "@/lib/mtm/live-map-zones"
 import { GovernedDoctorScoringDefinitionSchema } from "@/lib/mtm/professional-glossary"
 
 // Reusable primitives
@@ -1001,6 +1010,72 @@ export const MtmRouteTravelPreviewSchema = z.object({
   expectedVersion: z.number().int().min(1),
   sourceFingerprint: z.string().regex(/^sha256:[a-f0-9]{64}$/),
 }).strict()
+
+// ─── Live map: zones drawn by hand ────────────────────────────────────────
+// A zone is a circle or one closed outline (src/lib/mtm/live-map-zones.ts).
+//
+// Plain numbers, unlike `latitude`/`longitude` at the top of this file: those
+// coerce, and a coerced null is 0 — a circle sent without its centre would be
+// kept on the equator instead of being refused.
+const mapZoneLatitude = z.number().gte(-90).lte(90)
+const mapZoneLongitude = z.number().gte(-180).lte(180)
+const mapZoneName = z.string().trim().min(1).max(LIVE_MAP_ZONE_NAME_MAX_LENGTH)
+// A KEY of the palette an employee's colour is chosen from, never a hex: the
+// map turns the key into a colour itself, so no text from a request reaches
+// a style. «Без цвета» arrives as "" or null, as on the employee's card.
+const mapZoneColor = z.preprocess(emptyStringAsNull, z.enum(MTM_AGENT_MAP_COLOR_KEYS).optional().nullable())
+
+const MAP_ZONE_RING_REFUSALS: Record<Exclude<LiveMapZoneRingProblem, "size">, string> = {
+  open: "The ring must end on the pair it starts with",
+  // Three corners on one line, or a line retraced, are refused with the same words: nothing is inside.
+  corners: "A zone outline needs at least three different corners with an area between them",
+  crossing: "A zone outline must not cross itself",
+}
+// Not `geoPolygon` above: that one is optional, takes a hundred rings of ten
+// thousand pairs each, and checks neither that a ring is closed nor that it
+// does not cross itself. One ring here — a second would be a hole.
+const mapZonePolygon = z.object({
+  type: z.literal("Polygon"),
+  coordinates: z.array(
+    z.array(z.tuple([mapZoneLongitude, mapZoneLatitude])).min(LIVE_MAP_ZONE_MIN_CORNERS + 1).max(LIVE_MAP_ZONE_MAX_CORNERS + 1),
+  ).length(1),
+}).superRefine((polygon, ctx) => {
+  // No ring at all, or one of the wrong length, has been refused above.
+  const ring = polygon.coordinates[0]
+  const problem = ring ? liveMapZoneRingProblem(ring) : null
+  if (problem && problem !== "size") {
+    ctx.addIssue({ code: "custom", path: ["coordinates", 0], message: MAP_ZONE_RING_REFUSALS[problem] })
+  }
+})
+
+const mapZoneCircleShape = {
+  kind: z.literal("CIRCLE"),
+  centerLatitude: mapZoneLatitude,
+  centerLongitude: mapZoneLongitude,
+  // Whole metres: the column is an integer.
+  radiusMeters: z.number().int().min(LIVE_MAP_ZONE_MIN_RADIUS_METERS).max(LIVE_MAP_ZONE_MAX_RADIUS_METERS),
+}
+const mapZoneOutlineShape = {
+  kind: z.literal("POLYGON"),
+  polygon: mapZonePolygon,
+}
+
+export const MapZoneCreateSchema = z.discriminatedUnion("kind", [
+  z.object({ name: mapZoneName, color: mapZoneColor, ...mapZoneCircleShape }),
+  z.object({ name: mapZoneName, color: mapZoneColor, ...mapZoneOutlineShape }),
+])
+
+const mapZoneLabelChange = { name: mapZoneName.optional(), color: mapZoneColor }
+// A change is a new name, a new colour, a new shape, or several of them. The
+// shape is replaced whole and says its kind; a request without a kind is a
+// rename or a recolour and may carry nothing else — the strict object refuses
+// half a shape (a radius on its own) instead of dropping it and answering 200.
+export const MapZoneUpdateSchema = z.discriminatedUnion("kind", [
+  z.object({ ...mapZoneLabelChange, ...mapZoneCircleShape }),
+  z.object({ ...mapZoneLabelChange, ...mapZoneOutlineShape }),
+  z.strictObject({ ...mapZoneLabelChange, kind: z.undefined().optional() })
+    .refine((change) => change.name !== undefined || change.color !== undefined, "Nothing to change"),
+])
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 /**

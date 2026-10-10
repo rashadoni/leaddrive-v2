@@ -900,4 +900,147 @@ pgDescribe("client categories on a real Postgres", () => {
       expect((await roster(`?employee=${encodeURIComponent("сев")}`)).map((row) => row.agentId)).toEqual([])
     })
   })
+
+  // «Свои зоны» of the live map (owner, 2026-10-09: «бери почти всё, чего у
+  // нас нет»): named areas a manager draws by hand. Two things about them are
+  // decided by Postgres, and a mocked Prisma shows neither. The table accepts
+  // a row by its own CHECK — one whole shape, a circle or an outline. And a
+  // circle's empty outline has to reach the column as NULL: Prisma has two
+  // nulls for a JSON column, and its «JSON null» is a value, which that CHECK
+  // refuses on a circle — and it is the null the neighbouring routes write.
+  // `db push` knows neither the CHECK nor the policy, so the table is replaced
+  // by the very file the deploy applies, and the real routes write to it.
+  //
+  // Not shown here: the tenant policy. This connection is a superuser, which
+  // no policy holds; the policy's text is kept by migration-mtm-map-zones.test.ts.
+  describe("zones drawn on the live map", () => {
+    const params = (id: string) => ({ params: Promise.resolve({ id }) })
+    const zonesUrl = "/api/v1/mtm/locations/zones"
+    const circle = { kind: "CIRCLE", centerLatitude: 40.4, centerLongitude: 49.85, radiusMeters: 1500 }
+    // An invented block of a hundredth of a degree a side.
+    const outline = {
+      kind: "POLYGON",
+      polygon: { type: "Polygon", coordinates: [[[49.8, 40.4], [49.81, 40.4], [49.81, 40.41], [49.8, 40.41], [49.8, 40.4]]] },
+    }
+    let zoneId = ""
+
+    beforeAll(() => {
+      const run = (sql: string) => prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, sql)
+      run(`DROP TABLE "mtm_map_zones";`)
+      run(readFileSync(path.join(ROOT, "prisma/migrations/20261010120000_mtm_map_zones/migration.sql"), "utf8"))
+    }, 120_000)
+
+    it("keeps a circle and an outline drawn through the real routes, and lists them as they were drawn", async () => {
+      const { GET, POST } = await import("@/app/api/v1/mtm/locations/zones/route")
+      const drawnCircle = await POST(send("POST", zonesUrl, { name: "Центр", color: "teal", ...circle }))
+      const circleBody = await drawnCircle.json()
+      expect(drawnCircle.status, JSON.stringify(circleBody).slice(0, 300)).toBe(201)
+      const drawnOutline = await POST(send("POST", zonesUrl, { name: "Северный участок", ...outline }))
+      const outlineBody = await drawnOutline.json()
+      expect(drawnOutline.status, JSON.stringify(outlineBody).slice(0, 300)).toBe(201)
+      zoneId = circleBody.data.id
+
+      // The answer to a drawing can be lost on its way back, and «Сохранить» is
+      // pressed again: the same drawing from the same person a moment later is
+      // the zone already kept — answered 200, not kept twice. Asked of Postgres
+      // because the comparison is of what it hands back: an outline out of a
+      // jsonb column (which reorders an object's keys), a moment of drawing out
+      // of a timestamp column. The list and the count of rows below, and the
+      // one MAP_ZONE_CREATE in the journal further down, are the proof that
+      // nothing was written a second time.
+      for (const [body, kept] of [
+        [{ name: "Центр", color: "teal", ...circle }, circleBody.data],
+        [{ name: "Северный участок", ...outline }, outlineBody.data],
+      ] as const) {
+        const again = await POST(send("POST", zonesUrl, body))
+        const againBody = await again.json()
+        expect(again.status, JSON.stringify(againBody).slice(0, 300)).toBe(200)
+        expect(againBody.data).toEqual(kept)
+      }
+
+      const listed = await (await GET(new NextRequest(`http://localhost:3000${zonesUrl}`))).json()
+      expect(listed.data.access).toEqual({ canWrite: true })
+      const byName = Object.fromEntries((listed.data.zones as Array<{ name: string }>).map((zone) => [zone.name, zone]))
+      expect(Object.keys(byName).sort()).toEqual(["Северный участок", "Центр"])
+      expect(byName["Центр"]).toEqual({
+        id: zoneId, name: "Центр", kind: "CIRCLE", color: "teal",
+        centerLatitude: 40.4, centerLongitude: 49.85, radiusMeters: 1500, polygon: null,
+      })
+      // The ring comes back pair for pair: [longitude, latitude], closed.
+      expect(byName["Северный участок"]).toEqual({
+        id: outlineBody.data.id, name: "Северный участок", kind: "POLYGON", color: null,
+        centerLatitude: null, centerLongitude: null, radiusMeters: null, polygon: outline.polygon,
+      })
+      const rows = await bypass(() => prisma.mtmMapZone.findMany({ where: { organizationId: ORG }, select: { createdBy: true, deletedAt: true } }))
+      expect(rows).toEqual([{ createdBy: "admin-user", deletedAt: null }, { createdBy: "admin-user", deletedAt: null }])
+    })
+
+    it("redraws a circle as an outline and back: each way the row passes the table's own shape rule", async () => {
+      const { PUT } = await import("@/app/api/v1/mtm/locations/zones/[id]/route")
+      const asOutline = await PUT(put(`${zonesUrl}/${zoneId}`, outline), params(zoneId))
+      const outlineBody = await asOutline.json()
+      expect(asOutline.status, JSON.stringify(outlineBody).slice(0, 300)).toBe(200)
+      expect(outlineBody.data).toEqual({
+        id: zoneId, name: "Центр", kind: "POLYGON", color: "teal",
+        centerLatitude: null, centerLongitude: null, radiusMeters: null, polygon: outline.polygon,
+      })
+      const asCircle = await PUT(put(`${zonesUrl}/${zoneId}`, { name: "Центр города", ...circle, radiusMeters: 250 }), params(zoneId))
+      const circleBody = await asCircle.json()
+      expect(asCircle.status, JSON.stringify(circleBody).slice(0, 300)).toBe(200)
+      expect(circleBody.data).toEqual({
+        id: zoneId, name: "Центр города", kind: "CIRCLE", color: "teal",
+        centerLatitude: 40.4, centerLongitude: 49.85, radiusMeters: 250, polygon: null,
+      })
+    })
+
+    it("takes a zone off the map without deleting the row, and the journal says who did each thing", async () => {
+      const { GET } = await import("@/app/api/v1/mtm/locations/zones/route")
+      const { DELETE } = await import("@/app/api/v1/mtm/locations/zones/[id]/route")
+      const removed = await DELETE(new NextRequest(`http://localhost:3000${zonesUrl}/${zoneId}`, { method: "DELETE" }), params(zoneId))
+      expect(removed.status).toBe(200)
+      const row = await bypass(() => prisma.mtmMapZone.findUniqueOrThrow({ where: { id: zoneId }, select: { name: true, deletedAt: true } }))
+      expect(row.name).toBe("Центр города")
+      expect(row.deletedAt).toBeInstanceOf(Date)
+      const listed = await (await GET(new NextRequest(`http://localhost:3000${zonesUrl}`))).json()
+      expect((listed.data.zones as Array<{ name: string }>).map((zone) => zone.name)).toEqual(["Северный участок"])
+
+      const journal = await bypass(() => prisma.mtmAuditLog.findMany({
+        where: { organizationId: ORG, entity: "map_zone", entityId: zoneId },
+        select: { action: true, actorUserId: true },
+      }))
+      expect(journal.map((entry) => entry.action).sort()).toEqual(["MAP_ZONE_CREATE", "MAP_ZONE_DELETE", "MAP_ZONE_UPDATE", "MAP_ZONE_UPDATE"])
+      expect(new Set(journal.map((entry) => entry.actorUserId))).toEqual(new Set(["admin-user"]))
+    })
+
+    it("the table itself refuses half a shape, whoever writes it", async () => {
+      const insert = (id: string, values: string) => bypass(() => prisma.$executeRawUnsafe(
+        `INSERT INTO "mtm_map_zones" ("id", "organizationId", "name", "kind", "centerLatitude", "centerLongitude", "radiusMeters", "polygon", "updatedAt")
+         VALUES ('${id}', '${ORG}', ${values}, now())`,
+      ))
+      // A whole circle and a whole outline are accepted: what follows is
+      // refused for its shape, not for a slip in the statement.
+      await insert("raw-circle", `'Круг', 'CIRCLE', 40.4, 49.85, 500, NULL`)
+      await insert("raw-outline", `'Участок', 'POLYGON', NULL, NULL, NULL, '{"type":"Polygon","coordinates":[]}'::jsonb`)
+
+      const halves: Array<[string, string]> = [
+        ["a circle without a radius", `'Круг', 'CIRCLE', 40.4, 49.85, NULL, NULL`],
+        ["a circle without a centre", `'Круг', 'CIRCLE', NULL, NULL, 500, NULL`],
+        ["a circle of a metre", `'Круг', 'CIRCLE', 40.4, 49.85, 1, NULL`],
+        ["a circle off the globe", `'Круг', 'CIRCLE', 140.4, 49.85, 500, NULL`],
+        // What Prisma.JsonNull writes: a value, not an empty column.
+        ["a circle whose outline is a JSON null", `'Круг', 'CIRCLE', 40.4, 49.85, 500, 'null'::jsonb`],
+        ["an outline that kept a radius", `'Участок', 'POLYGON', NULL, NULL, 500, '{"type":"Polygon"}'::jsonb`],
+        ["an outline that is a list, not a polygon", `'Участок', 'POLYGON', NULL, NULL, NULL, '[]'::jsonb`],
+        ["an outline with nothing in it", `'Участок', 'POLYGON', NULL, NULL, NULL, NULL`],
+      ]
+      for (const [index, [what, values]] of halves.entries()) {
+        await expect(insert(`raw-refused-${index}`, values), what).rejects.toThrow(/mtm_map_zones_shape_check/)
+      }
+      await expect(insert("raw-square", `'Квадрат', 'SQUARE', NULL, NULL, NULL, NULL`)).rejects.toThrow(/mtm_map_zones_(kind|shape)_check/)
+      await expect(insert("raw-nameless", `'   ', 'CIRCLE', 40.4, 49.85, 500, NULL`)).rejects.toThrow(/mtm_map_zones_name_check/)
+
+      const kept = await bypass(() => prisma.mtmMapZone.findMany({ where: { id: { startsWith: "raw-" } }, orderBy: { id: "asc" }, select: { id: true } }))
+      expect(kept.map((row) => row.id)).toEqual(["raw-circle", "raw-outline"])
+    })
+  })
 })

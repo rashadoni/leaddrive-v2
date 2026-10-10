@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 import { useTranslations } from "next-intl"
 import { Eye, Layers, X } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -17,6 +17,25 @@ export interface LiveMapLayer {
    * layer that was simply never turned on is not something «missing».
    */
   shownByDefault?: boolean
+  /**
+   * What the layer itself holds, listed under its switch while it is on — the
+   * organization's own zones under «Свои зоны». Inside the panel, which
+   * already scrolls within the map: no frame or scrollbar of its own.
+   */
+  detail?: ReactNode
+}
+
+/**
+ * Something about a layer that must be seen with the panel closed — a layer
+ * that is on and could not be read looks, on the map, exactly like «there
+ * is nothing here». Said in words on the map, with what to do about it.
+ */
+export interface LiveMapLayersAlert {
+  text: string
+  actionLabel: string | null
+  onAction: (() => void) | null
+  /** Names the alert when there is more than one to tell apart; the action is `${testId}-action`. */
+  testId?: string
 }
 
 /**
@@ -39,16 +58,13 @@ export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents
   hiddenAgentCount: number
   onShowAllAgents: () => void
   note?: string
-  /**
-   * Something about a layer that must be seen with the panel closed — a layer
-   * that is on and could not be read looks, on the map, exactly like «there
-   * is nothing here». Said in words on the map, with what to do about it.
-   */
-  alert?: { text: string; actionLabel: string | null; onAction: (() => void) | null } | null
+  /** One alert, or one for each layer that has something to say (see LiveMapLayersAlert). */
+  alert?: LiveMapLayersAlert | Array<LiveMapLayersAlert | null> | null
 }) {
   const tMap = useTranslations("mtmMap")
   const [open, setOpen] = useState(false)
   const offCount = layers.filter((layer) => layer.shownByDefault && !layer.on).length + (hiddenAgentCount > 0 ? 1 : 0)
+  const alerts = (Array.isArray(alert) ? alert : [alert]).filter((item): item is LiveMapLayersAlert => item != null)
 
   return (
     // Bounded by the map's frame (top and bottom) and above the tools: with
@@ -67,16 +83,16 @@ export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents
         {/* Something is hidden: say so while the panel is closed. */}
         {!open && offCount > 0 ? <span className="h-2 w-2 rounded-full bg-amber-500" data-testid="live-map-layers-mark" aria-hidden="true" /> : null}
       </button>
-      {alert && !open ? (
-        <div role="status" className="pointer-events-auto flex max-w-[min(18rem,calc(100vw-3rem))] flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900 shadow-md dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200" data-testid="live-map-layers-alert">
-          <span>{alert.text}</span>
-          {alert.actionLabel && alert.onAction ? (
-            <button type="button" onClick={alert.onAction} data-testid="live-map-layers-alert-action" className="inline-flex min-h-8 items-center font-semibold underline underline-offset-2 [@media(pointer:coarse)]:min-h-11">
-              {alert.actionLabel}
+      {open ? null : alerts.map((item, index) => (
+        <div key={item.testId ?? `alert-${index}`} role="status" className="pointer-events-auto flex max-w-[min(18rem,calc(100vw-3rem))] shrink-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900 shadow-md dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200" data-testid={item.testId ?? "live-map-layers-alert"}>
+          <span>{item.text}</span>
+          {item.actionLabel && item.onAction ? (
+            <button type="button" onClick={item.onAction} data-testid={item.testId ? `${item.testId}-action` : "live-map-layers-alert-action"} className="inline-flex min-h-8 items-center font-semibold underline underline-offset-2 [@media(pointer:coarse)]:min-h-11">
+              {item.actionLabel}
             </button>
           ) : null}
         </div>
-      ) : null}
+      ))}
       {open ? (
         <div id="live-map-layers-panel" className="pointer-events-auto min-h-0 w-72 max-w-[calc(100vw-3rem)] overflow-y-auto rounded-lg border border-zinc-300 bg-card p-2 shadow-lg dark:border-zinc-600">
           {baseMaps && baseMaps.options.length > 1 ? (
@@ -107,24 +123,27 @@ export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents
           ) : null}
           <ul className="divide-y divide-zinc-200 dark:divide-zinc-700">
             {layers.map((layer) => (
-              <li key={layer.id} className="flex items-center gap-3 px-1 py-1.5">
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-medium">{layer.label}</span>
-                  {layer.hint ? <span className="block text-xs text-muted-foreground" data-testid={`live-map-layer-hint-${layer.id}`}>{layer.hint}</span> : null}
-                </span>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={layer.on}
-                  aria-label={layer.label}
-                  data-testid={layer.testId ?? `live-map-layer-${layer.id}`}
-                  onClick={layer.onToggle}
-                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg"
-                >
-                  <span aria-hidden="true" className={cn("relative inline-flex h-6 w-11 items-center rounded-full transition-colors", layer.on ? "bg-primary" : "bg-zinc-300 dark:bg-zinc-700")}>
-                    <span className={cn("inline-block h-5 w-5 rounded-full bg-white transition-transform", layer.on ? "translate-x-[22px]" : "translate-x-0.5")} />
+              <li key={layer.id} className="px-1 py-1.5">
+                <div className="flex items-center gap-3">
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium">{layer.label}</span>
+                    {layer.hint ? <span className="block text-xs text-muted-foreground" data-testid={`live-map-layer-hint-${layer.id}`}>{layer.hint}</span> : null}
                   </span>
-                </button>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={layer.on}
+                    aria-label={layer.label}
+                    data-testid={layer.testId ?? `live-map-layer-${layer.id}`}
+                    onClick={layer.onToggle}
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg"
+                  >
+                    <span aria-hidden="true" className={cn("relative inline-flex h-6 w-11 items-center rounded-full transition-colors", layer.on ? "bg-primary" : "bg-zinc-300 dark:bg-zinc-700")}>
+                      <span className={cn("inline-block h-5 w-5 rounded-full bg-white transition-transform", layer.on ? "translate-x-[22px]" : "translate-x-0.5")} />
+                    </span>
+                  </button>
+                </div>
+                {layer.detail ? <div className="pb-0.5 pt-1" data-testid={`live-map-layer-detail-${layer.id}`}>{layer.detail}</div> : null}
               </li>
             ))}
           </ul>

@@ -3,7 +3,7 @@
 import "leaflet/dist/leaflet.css"
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type CSSProperties, type MutableRefObject } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { Circle, CircleMarker, MapContainer, Marker, Polygon, Polyline, Popup, Tooltip, useMap, useMapEvents } from "react-leaflet"
+import { Circle, CircleMarker, MapContainer, Marker, Pane, Polygon, Polyline, Popup, Tooltip, useMap, useMapEvents } from "react-leaflet"
 import L from "leaflet"
 import Link from "next/link"
 import { CartoBasemap } from "./carto-basemap"
@@ -12,6 +12,8 @@ import { calculateDistance } from "@/lib/geo-utils"
 import { liveMapTrailSegments, outlineCrossesItself, type LiveMapTrails } from "@/lib/mtm/live-map-trails"
 import { clusterLiveMapClients, liveMapClientColor, type LiveMapClient, type LiveMapClientNode } from "@/lib/mtm/live-map-clients"
 import { liveMapAgentMarker } from "@/lib/mtm/live-map-agent-marker"
+import { liveMapZoneHex, liveMapZonesLargestFirst, zoneAreaSquareMeters, type LiveMapZone, type LiveMapZoneChange } from "@/lib/mtm/live-map-zones"
+import { formatMtmArea } from "@/lib/mtm/visit-place-check"
 
 // F-24: rewritten on Leaflet. Google Maps + AdvancedMarker had been the
 // source of 5 hotfixes in a month — Vector tiles need a real Map ID, the React
@@ -103,6 +105,16 @@ interface Props {
   clients?: readonly LiveMapClient[]
   /** «Кто ближе всех» in a client's balloon: the list answers for this place. */
   onClientNearest?: (client: LiveMapClient) => void
+  /**
+   * «Свои зоны», while their layer is on: the areas the organization has
+   * drawn and named (src/lib/mtm/live-map-zones.ts). Drawings only — nothing
+   * here works out who is inside one.
+   */
+  zones?: readonly LiveMapZone[]
+  /** The server said this viewer may change zones: the balloon offers to. */
+  canEditZones?: boolean
+  /** A button in a zone's balloon: the page opens the small form for it. */
+  onZoneAction?: (zoneId: string, action: LiveMapZoneChange["kind"]) => void
 }
 
 export interface LiveMapReferencePoint {
@@ -201,6 +213,15 @@ function referenceIcon() {
 const NO_RULER_POINTS: ReadonlyArray<{ latitude: number; longitude: number }> = []
 const NO_CLIENTS: readonly LiveMapClient[] = []
 const NO_CLIENT_NODES: readonly LiveMapClientNode[] = []
+const NO_ZONES: readonly LiveMapZone[] = []
+/**
+ * «Свои зоны» are drawn in a pane of their own, between the tiles (200) and
+ * everything else the map draws (lines and clients at 400, markers at 600).
+ * In the shared pane a zone added after the clients would lie on top of them
+ * and take the presses meant for a client inside it.
+ */
+const ZONE_PANE = "mtm-own-zones"
+const ZONE_PANE_STYLE: CSSProperties = { zIndex: 350 }
 
 /** A step further than this is not a move to watch: the first fix after a silence, a jump across town. */
 const GLIDE_MAX_METERS = 3_000
@@ -610,6 +631,121 @@ const ClientMarker = memo(function ClientMarker({
   )
 })
 
+/** Removing is not one more thing to do with a zone: it reads as what it is. */
+const ZONE_REMOVE_ACTION: CSSProperties = { ...CLIENT_ACTION, border: "1px solid #fecaca", color: "#b91c1c" }
+
+/**
+ * One of the organization's own zones: its circle or its outline in the
+ * zone's colour, its name on it all the time, and what it is in a balloon.
+ * Not re-drawn when the page merely refreshes: an open balloon would be
+ * pulled back into view on every tick.
+ */
+const ZoneShape = memo(function ZoneShape({
+  zone, canEdit, onPress, onAction, onLayer,
+}: {
+  zone: LiveMapZone
+  canEdit: boolean
+  /** A tool is waiting for a press: the press is the tool's, and no balloon opens. */
+  onPress: ((latitude: number, longitude: number) => void) | null
+  onAction: ((zoneId: string, action: LiveMapZoneChange["kind"]) => void) | null
+  /** The shape Leaflet drew for this zone, and null when it is taken off: ZoneStacking orders them. */
+  onLayer: (zoneId: string, layer: L.Path | null) => void
+}) {
+  const map = useMap()
+  const zoneId = zone.id
+  const layerRef = useCallback((layer: L.Path | null) => { onLayer(zoneId, layer) }, [onLayer, zoneId])
+  const locale = useLocale()
+  const tMap = useTranslations("mtmMap")
+  // The colour is the hex of the zone's KEY, from the palette in the code.
+  const hex = liveMapZoneHex(zone.color)
+  const pathOptions = useMemo(() => ({ color: hex, weight: 2, opacity: 0.9, fillColor: hex, fillOpacity: 0.12 }), [hex])
+  // The one place a zone's { latitude, longitude } become Leaflet's [latitude, longitude].
+  const outline = useMemo(
+    () => (zone.kind === "POLYGON" ? zone.outline.map((point) => [point.latitude, point.longitude] as L.LatLngTuple) : []),
+    [zone],
+  )
+  const center = useMemo(
+    () => (zone.kind === "CIRCLE" ? [zone.center.latitude, zone.center.longitude] as L.LatLngTuple : null),
+    [zone],
+  )
+  // The place that was pressed, not the zone's middle: the ruler measures from there.
+  const handlers = useMemo(() => ({ click: (event: L.LeafletMouseEvent) => onPress?.(event.latlng.lat, event.latlng.lng) }), [onPress])
+  const act = (action: LiveMapZoneChange["kind"]) => {
+    onAction?.(zone.id, action)
+    map.closePopup()
+  }
+  const inside = (
+    <>
+      {/* Leaflet places a label once, for the words it had then: another name is another label. */}
+      <Tooltip key={zone.name} direction="center" permanent opacity={0.92}>
+        <span style={{ display: "inline-block", width: "max-content", maxWidth: 180, whiteSpace: "normal", fontSize: 11, fontWeight: 700, lineHeight: 1.2 }}>
+          {zone.name}
+        </span>
+      </Tooltip>
+      {onPress ? null : (
+        // The balloon goes where every balloon goes — above the markers — not into the zones' own pane under them.
+        <Popup pane="popupPane">
+          <div style={{ fontFamily: "system-ui,sans-serif", minWidth: 190 }} data-testid={`live-map-zone-${zone.id}`}>
+            <div style={{ fontWeight: 700, fontSize: 13 }}>{zone.name}</div>
+            <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
+              {tMap("areas.area", { area: formatMtmArea(zoneAreaSquareMeters(zone), locale, (unit, value) => tMap(`areaUnits.${unit}`, { value })) })}
+            </div>
+            {canEdit && onAction ? (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+                <button type="button" onClick={() => act("rename")} style={CLIENT_ACTION}>{tMap("areas.rename")}</button>
+                <button type="button" onClick={() => act("color")} style={CLIENT_ACTION}>{tMap("areas.recolor")}</button>
+                <button type="button" onClick={() => act("delete")} style={ZONE_REMOVE_ACTION}>{tMap("areas.remove")}</button>
+              </div>
+            ) : null}
+          </div>
+        </Popup>
+      )}
+    </>
+  )
+  // A press on a zone is not also a press on the map under it: a shape, unlike
+  // a marker, passes its clicks on by default — and the ruler would be given
+  // two points for one press.
+  return center && zone.kind === "CIRCLE" ? (
+    <Circle ref={layerRef} center={center} radius={zone.radiusMeters} bubblingMouseEvents={false} pathOptions={pathOptions} eventHandlers={handlers}>
+      {inside}
+    </Circle>
+  ) : (
+    <Polygon ref={layerRef} positions={outline} bubblingMouseEvents={false} pathOptions={pathOptions} eventHandlers={handlers}>
+      {inside}
+    </Polygon>
+  )
+})
+
+/**
+ * Which zone answers a press where two of them overlap: the smaller one.
+ *
+ * Leaflet draws a pane's shapes in the order they were ADDED to the map and
+ * never reorders them, and a filled shape takes every press on it. So a zone
+ * drawn later lay on top of everything under it — outline a district around
+ * three small zones and none of the three could be pressed any more; reload,
+ * and the order became the alphabet's. Here each shape is brought to the
+ * front from the one that covers most to the one that covers least, which
+ * leaves a smaller zone on top of a bigger one whatever their names and
+ * whichever was drawn first.
+ *
+ * It stands after the shapes inside their pane on purpose: an effect of a
+ * later sibling runs after theirs, so the shape of a zone added a moment ago
+ * is already on the map when the order is put right. (The pane mounts what is
+ * in it a render later than the map does; an effect up in the map itself
+ * would run before any shape existed.) Reordering stays inside the zones' own
+ * pane — they remain under every client, line and marker.
+ */
+function ZoneStacking({ order, layers }: {
+  /** The zones' ids, the one that covers most first. */
+  order: readonly string[]
+  layers: MutableRefObject<Map<string, L.Path>>
+}) {
+  useEffect(() => {
+    for (const zoneId of order) layers.current.get(zoneId)?.bringToFront()
+  }, [order, layers])
+  return null
+}
+
 function ClusterMarker({ marker, title }: { marker: LiveMapClusterMarker; title: string }) {
   const map = useMap()
   return (
@@ -657,9 +793,13 @@ export default function MtmLiveMap({
   referencePoint = null,
   clients = NO_CLIENTS,
   onClientNearest,
+  zones = NO_ZONES,
+  canEditZones = false,
+  onZoneAction,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const stopMarkersRef = useRef(new Map<number, L.Marker>())
+  const zoneLayersRef = useRef(new Map<string, L.Path>())
   const baseMapTileErrorCountRef = useRef(0)
   const baseMapTileSuccessCountRef = useRef(0)
   const baseMapUnavailableRef = useRef(false)
@@ -680,6 +820,15 @@ export default function MtmLiveMap({
   const handleMapPress = useCallback((latitude: number, longitude: number) => {
     onMapPress?.(latitude, longitude)
   }, [onMapPress])
+  // While a tool waits for a press, a press on a zone is the tool's — as it is on a client.
+  const zonePress = pressMode ? handleMapPress : null
+  // The bigger zone under the smaller one (see ZoneStacking).
+  const stackedZones = useMemo(() => liveMapZonesLargestFirst(zones), [zones])
+  const zoneOrder = useMemo(() => stackedZones.map((zone) => zone.id), [stackedZones])
+  const keepZoneLayer = useCallback((zoneId: string, layer: L.Path | null) => {
+    if (layer) zoneLayersRef.current.set(zoneId, layer)
+    else zoneLayersRef.current.delete(zoneId)
+  }, [])
 
   const handleViewportChange = useCallback((next: LiveMapViewportBounds, nextZoom: number) => {
     setViewport((current) => current &&
@@ -863,6 +1012,21 @@ export default function MtmLiveMap({
             onError={handleBaseMapTileError}
             onLoad={handleBaseMapTileSuccess}
           />
+
+          {/* «Свои зоны»: under everything that is a person, a client or a line. */}
+          <Pane name={ZONE_PANE} style={ZONE_PANE_STYLE}>
+            {stackedZones.map((zone) => (
+              <ZoneShape
+                key={zone.id}
+                zone={zone}
+                canEdit={canEditZones}
+                onPress={zonePress}
+                onAction={onZoneAction ?? null}
+                onLayer={keepZoneLayer}
+              />
+            ))}
+            <ZoneStacking order={zoneOrder} layers={zoneLayersRef} />
+          </Pane>
 
           {/* Visual density from actual current coordinates; never captures map input. */}
           {showHeatmap && heatPoints.map((point) => (
