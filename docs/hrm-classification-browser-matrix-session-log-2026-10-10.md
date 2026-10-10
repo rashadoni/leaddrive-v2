@@ -299,3 +299,32 @@ Phase06 retains original proposal, actual source-only finding, correction
 and independent receipts. Next wait for whole original0CD completion and
 capture every lane/raw artifact before applying reviewed corrected source.
 Accounting stays85/161,76open,61%; C12 PARTIAL, C14 incomplete.
+
+## Whole original0CD completed and captured before any product correction
+
+38015241105 attempt1 naturally COMPLETED FAILURE at02:19:13UTC. All five
+whole logs/APIs and three original ZIPs captured with exact API SHA/size,
+CRC/member safety/source provenance. HR first actual94px clipping remains
+FAILURE, zero completed matrix cells/writes/private-refusals/native credit;
+original safe image and actual measurement preserved in phase05. Other four
+lanes actual SUCCESS. Complete report actual33cases/3native21captures/54focus
+58reflow/22immutablefacts/RLS/audit/cleanup, all15source bindings root accepted.
+Complete original artifacts are phase07, no extracted-image duplication.
+
+Actual full compiler raw178808B/SHA
+2e859d7a6f37d9df90559acdae15df39644d7e18dc29388047ad7acfb5e13691
+exit2/1158diagnostics/35families, byte-identical D8E. Actual standard critical
+reader and strict64pair/count baseline reader both PASS; task-owned zero.
+Global clean FALSE, inherited workforce diagnostics remain. Original root
+reader wrongly asserted zero for all workforce files; retained exact initial
+AssertionError receipt, corrected ownership to four actual changed paths only.
+Second root reader failed missing immutablecd935 base object; originalexit128
+retained, corrected fetch origin main only. No CI rerun/source/baseline change
+for reader corrections. Gitleaks phase06 one commit5382B no leaks.
+
+Fresh origin/main bf643689a14bc0c2ef981270f7bc0b955b2d76b5 incorporates foreign
+MTM PR675/map-zones (28paths/schema/messages), no queue/harness overlap. Next
+normal integration into own674branch preserves foreign work; reviewed corrected
+UI eight strings then exact integrated-source full hosted checks. Old source
+passes do not transfer to new whole tree; existing baseline remains unchanged.
+Prepared corrected UI still NOT APPLIED at this immutable checkpoint.
