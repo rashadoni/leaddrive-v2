@@ -103,3 +103,31 @@ and33 bindings remain planned until hosted execution. Real outage, native form,
 physical/human, authenticated production HR, full historical/defaultACL and
 operational acceptance remain NOT RUN. Accounting85DONE/76open/61%, C6-006/C12
 partial and C14 open; no row closes.
+
+
+## 2026-10-10 — verified parent release; exact recovery publication checkpoint
+
+Parent PR683 own main bfe456042a018864fead8be64d5f154911195af0 completed natural
+normaldeploy38049380728: four actual successful normal jobs, three manual-only
+skips with no execution credit. SHA-bound artifact11668608983/444975940B has
+API/upload/download digestf0f8ca07f100558c676c1349eb11df2785a97f6941eda29f7f87b44053c7ad86.
+Root and independent original-log review admitted actual974 static pages/1546
+unique routes, unchanged strict18 failing baseline files, and own main compiler
+1162 diagnostics/35 families/EXIT2 with exact64 baseline pairs/critical0/owned0.
+Global compiler and regression suite remain NONCLEAN. Actual pinned TLS full-main
+before/after, ping and eight anonymous HRM GETs passed separately for root and
+peer. No earlier main or source browser runtime supplied parent release credit.
+
+Current recovery code/workflow equals independently accepted FE948 and BE143;
+this checkpoint appends only this journal. Integration48e5 retains ordinary
+parents[FE948,BFE456], original seven whole jobs and all application/auth/SQL
+fixtures/baselines/evidence are preserved. Prepared runtime reader v3 was also
+independently source-only accepted, with original v1/v2 findings retained.
+Small28 admission/syntax/runner checks passed at BE; current source8/SQL/browser/
+19 controlled recoveries/33 bindings/currentcandidate/release remain NOT RUN.
+Next fresh refs/protection/chain/exclusions/archive checks, final exacthead
+source-only review and redacted range scan, dependent draft publication and one
+exact full source-eight hosted run. No recovery runtime acceptance from planning.
+Real outage, concurrency, native-form/device/human/HR/defaultACL/history/pilot
+criteria remain open. No personnel decision, activation or access/secret change.
+Accounting85/161 DONE,76 open,weighted61%; C6-006/C12PARTIAL and C14OPEN.
