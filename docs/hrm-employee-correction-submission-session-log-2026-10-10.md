@@ -101,3 +101,15 @@ source and checked commits. Wholeoriginalstdout/digest retained separately.
 No connections, SQL/database/browser/harness/job/fullcompiler/build/source
 independent/runtime acceptance; fixture remainsunexecuted. Existing ACKsource
 unchanged. Parent682 source5SUCCESS/compilerRUNNING remains priority.
+
+
+## Prepared target narrowed to bare database URLs; actual26PASS
+
+Future target now refuses every DBqueryparameter even when admin/app/fence
+queries allmatch. Job-generated URLs are bare; no extra connection configuration
+is needed. This narrows only unpublished newhelper, leaves existing ACKhelper
+unchanged and makes no proven driver-exploit/production defect claim. Two added
+actual refusal cases (coherent three-URL extras andadmin-only extras) plusprior
+24 PASS as26 underNode20 after resourcecheck; initial24outputs/checkpoint retained.
+No connection/SQL/DB/browser/job/sourceindependent execution; current682source
+andbaseline unchanged. Parent682 source5SUCCESS/compilerRUNNING stillpriority.

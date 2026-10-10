@@ -41,6 +41,12 @@ const refusals = [
   ["different database port", { DATABASE_URL: "postgresql://wf_manager_today_browser:private-marker@127.0.0.1:5434/workforce_manager_today_browser" }],
   ["different admin fence", { EVENT_PLATFORM_TEST_DATABASE_URL: "postgresql://postgres:private-marker@127.0.0.1:5433/workforce_manager_today_browser" }],
   ["different app connection parameters", { DATABASE_URL: "postgresql://wf_manager_today_browser:private-marker@127.0.0.1:5433/workforce_manager_today_browser?sslmode=require" }],
+  ["coherent extra database parameters", {
+    ADMIN_DATABASE_URL: "postgresql://postgres:private-marker@127.0.0.1:5433/workforce_manager_today_browser?options=private-marker",
+    DATABASE_URL: "postgresql://wf_manager_today_browser:private-marker@127.0.0.1:5433/workforce_manager_today_browser?options=private-marker",
+    EVENT_PLATFORM_TEST_DATABASE_URL: "postgresql://postgres:private-marker@127.0.0.1:5433/workforce_manager_today_browser?options=private-marker",
+  }],
+  ["administrator-only extra parameters", { ADMIN_DATABASE_URL: "postgresql://postgres:private-marker@127.0.0.1:5433/workforce_manager_today_browser?application_name=private-marker" }],
   ["remote redis", { REDIS_URL: "redis://example.test:6380/0" }],
   ["different redis database", { REDIS_URL: "redis://127.0.0.1:6380/1" }],
   ["credential-bearing redis", { REDIS_URL: "redis://private-marker@127.0.0.1:6380/0" }],

@@ -20,7 +20,7 @@ export function employeeCorrectionBrowserTarget(env) {
   const database = (value, role) => {
     const url = fixtureURL(value)
     assert.ok(["postgres:", "postgresql:"].includes(url.protocol) && loopback.has(url.hostname), "Loopback PostgreSQL required")
-    assert.ok(url.pathname === "/workforce_manager_today_browser" && url.username === role && !url.hash, "Exact disposable database and role required")
+    assert.ok(url.pathname === "/workforce_manager_today_browser" && url.username === role && !url.search && !url.hash, "Bare disposable database and role required")
     return url
   }
   const admin = database(env.ADMIN_DATABASE_URL, "postgres")
