@@ -73,3 +73,13 @@ to hosted CI. First source checkpoint unpushed, independent source review
 pending and previousM build/main compiler stillrunning. No source-only bug
 or privacy acceptance claimed. Next finish M release, independent new-source
 review, dependent draft publication and actual exact-head hosted execution.
+
+## Diagnostic claim narrowed before publication
+
+First prepared checkpoint b988255 remains in history. Root source review found
+businessWrites:0 too broad for the measured response/audit counts and13fixed
+fact controls (canonical auth nonce changes are intentional and outside these
+facts). New diagnostic records only employeeLedgerWrites:0, actual fact-control
+count and before/after-known-facts equality. No runtime/assertion/guard/baseline
+weakening; no execution credit. Source still unpublished, independent review
+must use the next exact checkpoint, with original finding retained separately.

@@ -787,7 +787,8 @@ async function canonicalCrossTabSessionTransition(tenants) {
     manualCookieSessionOrBroadcastInjection: false, populatedFirstScope: original.cases.length,
     canonicalSignOutStatus: 200, loggedOutSessionAbsent: true, previousRowsAfterLogout: 0,
     sameTenantDifferentPrincipal: true, canonicalNextProjectionStatus: 200,
-    nextProjectionRows: 0, nextEmptyUiObserved: true, businessWrites: 0,
+    nextProjectionRows: 0, nextEmptyUiObserved: true, employeeLedgerWrites: 0,
+    immutableFactControlCount: beforeFacts.length, countsAndKnownFactsUnchanged: true,
     observations: probe.observations, overflow: false,
     qualification: "Second existing linked employee has no imported cases; successful own-only API and actual empty UI required, no populated second-scope claim",
   })
