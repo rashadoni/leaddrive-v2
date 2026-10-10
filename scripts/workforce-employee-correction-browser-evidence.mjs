@@ -192,6 +192,9 @@ async function seed() {
 }
 async function facts() {
   const tables = ["organizations", "mtm_agents", "mtm_agent_workdays", "workforce_exception_cases", "workforce_exception_decisions", "workforce_employee_team_memberships", "workforce_access_grants", "workforce_shift_templates", "workforce_shift_segments", "workforce_time_corrections", "workforce_exception_employee_responses"]
+  return fingerprints(tables)
+}
+async function fingerprints(tables) {
   const result = []
   for (const table of tables) {
     const [row] = await admin.$queryRawUnsafe(`SELECT count(*)::integer AS rows, COALESCE(jsonb_agg(to_jsonb(t) ORDER BY t.id)::text,'[]') AS content FROM public."${table}" t`)
@@ -240,6 +243,8 @@ async function submitUi(page, context, tenant, record, locale, changedTo) {
   assert.equal(await button.isDisabled(), false)
   const before = await counts()
   const waiter = page.waitForResponse(row => new URL(row.url()).pathname === endpoint && row.request().method() === "POST", { timeout: 120_000 })
+  // Observe rejection immediately; awaiting the original still records its failure.
+  waiter.catch(() => {})
   await button.click()
   const response = await waiter; assert.equal(response.status(), 201)
   const payload = response.request().postDataJSON(), reply = await response.json()
@@ -257,6 +262,12 @@ async function submitUi(page, context, tenant, record, locale, changedTo) {
   const after = await counts(); assert.deepEqual(after, { requests: before.requests + 1, audit: before.audit + 1 })
   await page.waitForFunction(() => document.querySelector("#workforce-self-request-reason")?.value === "")
   const ownRows = await admin.mtmHrmRequest.count({ where: { organizationId: tenant.organization.id, agentId: tenant.agent.id } })
+  // requestReload is asynchronous; require its actual visible history to settle.
+  await page.waitForFunction(({ reason, count }) => {
+    const section = document.querySelector('section[aria-labelledby="workforce-request-list"]')
+    return section && Array.from(section.querySelectorAll("article")).filter(article =>
+      Array.from(article.querySelectorAll("p")).some(node => node.textContent === reason)).length === count
+  }, { reason: privateReason, count: ownRows }, { timeout: 120_000 })
   assert.equal(await page.locator('section[aria-labelledby="workforce-request-list"]').getByText(privateReason, { exact: true }).count(), ownRows)
   const replay = await context.request.post(endpoint, { data: payload, timeout: 120_000 })
   assert.equal(replay.status(), 200)
@@ -278,11 +289,12 @@ async function boundaries(context) {
   receipts.cases.push({ name: "foreign-missing-and-different-day-cases-indistinguishable", status: "PASS", actual409: codes.length, requestsAndAuditUnchanged: true })
 }
 async function sqlRollback(kind, expectedState, sql, values) {
-  const before = await counts(); let state
+  const before = await counts(), beforeRows = await fingerprints(["mtm_hrm_requests", "mtm_audit_logs"]); let state
   try { await admin.$transaction(tx => tx.$executeRawUnsafe(sql, ...values)) } catch (error) { state = error.meta?.code }
   assert.ok(state === expectedState, "Exact rollback SQLSTATE required")
   assert.deepEqual(await counts(), before)
-  receipts.databaseDiagnostics.push({ kind, expectedSqlState: expectedState, actualSqlState: state, rolledBack: true })
+  assert.deepEqual(await fingerprints(["mtm_hrm_requests", "mtm_audit_logs"]), beforeRows)
+  receipts.databaseDiagnostics.push({ kind, expectedSqlState: expectedState, actualSqlState: state, rolledBack: true, persistedRequestAndAuditFingerprintsUnchanged: true })
 }
 async function databaseProof() {
   const linked = submitted.find(item => item.linked), alternate = tenants[0].records[1]
@@ -305,6 +317,26 @@ async function databaseProof() {
   }
   const [role] = await app.$queryRaw`SELECT current_user AS role, r.rolsuper, r.rolbypassrls, r.rolinherit FROM pg_roles r WHERE r.rolname=current_user`
   assert.ok(role.role === "wf_manager_today_browser" && !role.rolsuper && !role.rolbypassrls && !role.rolinherit)
+  const [catalog] = await app.$queryRaw`SELECT
+    (SELECT count(*)::integer FROM pg_class WHERE relnamespace='public'::regnamespace
+      AND relname=ANY(ARRAY['mtm_hrm_requests','mtm_audit_logs','workforce_time_corrections',
+        'workforce_exception_employee_responses','wf_correction_browser_allowed_days'])
+      AND relrowsecurity AND relforcerowsecurity) AS forced,
+    (SELECT count(*)::integer FROM pg_class WHERE relnamespace='public'::regnamespace
+      AND relowner=(SELECT oid FROM pg_roles WHERE rolname=current_user)) AS owned,
+    (SELECT count(*)::integer FROM pg_auth_members WHERE member=(SELECT oid FROM pg_roles WHERE rolname=current_user)) AS memberships,
+    has_table_privilege(current_user,'public.mtm_hrm_requests','INSERT') AS request_insert,
+    has_table_privilege(current_user,'public.mtm_audit_logs','INSERT') AS audit_insert,
+    has_table_privilege(current_user,'public.mtm_hrm_requests','UPDATE,DELETE,TRUNCATE') AS request_mutation,
+    has_table_privilege(current_user,'public.mtm_audit_logs','UPDATE,DELETE,TRUNCATE') AS audit_mutation,
+    has_any_column_privilege(current_user,'public.mtm_agent_workdays','INSERT,UPDATE') AS workday_write,
+    has_any_column_privilege(current_user,'public.workforce_exception_decisions','INSERT,UPDATE') AS decision_write,
+    has_any_column_privilege(current_user,'public.workforce_exception_employee_responses','INSERT,UPDATE') AS response_write,
+    has_any_column_privilege(current_user,'public.workforce_time_corrections','INSERT,UPDATE') AS correction_write`
+  assert.equal(catalog.forced, 5); assert.equal(catalog.owned, 0); assert.equal(catalog.memberships, 0)
+  assert.ok(catalog.request_insert && catalog.audit_insert)
+  assert.ok(!catalog.request_mutation && !catalog.audit_mutation && !catalog.workday_write
+    && !catalog.decision_write && !catalog.response_write && !catalog.correction_write)
   assert.equal(await app.mtmHrmRequest.count(), 0)
   for (const tenant of tenants) await app.$transaction(async tx => {
     await tx.$executeRaw`SELECT set_config('app.org_id', ${tenant.organization.id}, true)`
@@ -312,7 +344,7 @@ async function databaseProof() {
     assert.equal(await tx.mtmHrmRequest.count({ where: { organizationId: tenants.find(other => other !== tenant).organization.id } }), 0)
   })
   const finalFacts = await facts(); assert.deepEqual(finalFacts, initialFacts)
-  receipts.database = { actualRequests: 19, actualAudits: 19, linkedRequests: 10, unlinkedAfterTypeDayChange: 9, nonownerForcedRls: true, unscopedRows: 0, foreignRows: 0, twoPopulatedTenants: true, knownFactControls: finalFacts, unchanged: true, automaticPersonnelDecisions: 0, corrections: 0, employeeResponses: 0, defaultAclReviewed: false, fullHistoricalReplay: false }
+  receipts.database = { actualRequests: 19, actualAudits: 19, linkedRequests: 10, unlinkedAfterTypeDayChange: 9, nonownerForcedRls: true, actualRoleCatalog: catalog, unscopedRows: 0, foreignRows: 0, twoPopulatedTenants: true, knownFactControls: finalFacts, unchanged: true, automaticPersonnelDecisions: 0, corrections: 0, employeeResponses: 0, defaultAclReviewed: false, fullHistoricalReplay: false }
 }
 try {
   const sourcePaths = ["scripts/workforce-employee-correction-browser-evidence.mjs", "scripts/workforce-employee-correction-browser-admission.mjs", "scripts/workforce-employee-correction-browser-admission.test.mjs", "scripts/ci/fixtures/workforce-employee-correction-browser.sql", "scripts/ci/fixtures/workforce-manager-today-browser.sql", ".github/workflows/workforce-exception-report-browser-evidence.yml", "scripts/_rls.mjs", "src/lib/auth.ts", "src/lib/permissions.ts", "src/lib/with-workforce-rls-auth.ts", "src/lib/workforce/actor.ts", "src/lib/workforce/self-request.ts", "src/lib/workforce/hrm-request-idempotency.ts", "src/lib/workforce/exception-linked-mutation.ts", "src/lib/workforce/exception-case-writer.ts", "src/lib/workforce/sensitive-response.ts", "src/app/api/v1/workforce/requests/route.ts", "src/app/api/v1/workforce/exceptions/mine/route.ts", "src/components/workforce/workforce-workbench.tsx", "src/components/workforce/workforce-my-exceptions.tsx", "src/app/(dashboard)/workforce/requests/page.tsx", "prisma/schema.prisma", "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql", "prisma/migrations/20260831113000_workforce_exception_correction_request_link/migration.sql", "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql", "prisma/migrations/20260927014300_workforce_exception_case_revisions_contract/migration.sql", "messages/az.json", "messages/ru.json", "messages/en.json", "package-lock.json"]

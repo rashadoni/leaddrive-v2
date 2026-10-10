@@ -132,3 +132,21 @@ No screenshots/privatebody/identity/secret/errorpayload retained; onlysanitized
 stage/code/frames/counts/hashmetadata. CurrentNode20syntax/diffPASS after
 resources. Database/browser/runtime/sourceindependent/workflow/jobchecks
 NOTRUN; jobnotyetwired. Current682READYcandidate/five continuesunchanged.
+
+
+## Separate seventh hosted job prepared; oldsix unchanged
+
+Workflow adds onlytwo narrowpathfilters andone independent Ubuntu24.04 job
+with bounded isolatedprovisioning/masking/loopback/services/cleanup/artifact.
+Oldsixjob blocks byte-exact. Newjob uses ownprofile/fixture/harness,26puretargets
+and existing self-request/API/UI refusal tests, scopednewMJS lint andactual
+Nextdev/browser withseparate sanitizedartifact. Runtime/sourceindependent NOTRUN.
+Harness observes responsewaiter rejection andawaits actualasync UIhistory;
+201/200/noDup/status/source/date assertionskept. Five SQLrollback checks require
+counts plusrequest/audit rowhashesstable; actualrole/FORCERLS/ownership/membership/
+minimalgrant catalogs mandatory withtwo populatedtenant/unscoped/foreign controls.
+Node20syntax andrunnerpolicy54workflowfiles actualPASS afterresourcecheck. First
+gitdiffcheck exited2 fornewblanklineEOF; originaldiff/error kept, onlyextra final
+blankline removed, gitdiffcheck repeatPASS. No check/baseline weakening.
+HeavySQL/browser/fullsuite/compiler/build/newjob executionNOTRUN. Parent682
+currentcandidate/five remainspriority; newsourceunpublished/C6-006/C12/C14open.
