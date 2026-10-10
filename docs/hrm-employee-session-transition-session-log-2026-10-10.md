@@ -284,3 +284,25 @@ Deploy114178398026 and fresh maincompiler114175689426 RUNNING. Final immutable
 artifact/fullSHA/public/privacy6/maincompiler/root+peer release acceptance remains
 pending. Next readonlyprefill exact6f58 independently source-only accepted and
 archived separately; unpublished/runtimeNOTRUN until parentverifiedrelease.
+
+
+## PR681 exact own normal release verified; next source publication
+
+Normal release339f74afc9384eecad5d175217918b08e5c65e15 complete: ownpush/main
+deploy38039109759attempt1 four normalSUCCESS/three manualSKIPNOcredit. Artifact
+11665258904/444958786B API/upload/download digest02eea7d254201c7373f0516c2c9415829ca198b517d80a786a102bd74112441c
+identical, actual974pages/1546routes. Root+independent exactMparents/tree/frozenH
+and downloadedmarker/fullartifact binding accepted. Fresh actual main compiler
+252511B SHA59a905c7cbb7717ad6186bfeec2852a00bc52b75876bee021d551502cb0def6b
+recomputed1162/35/EXIT2/strict64/critical0/owned0; mainstaticSKIPNOcredit. Actual
+main quality full385178B strict18/alloldstillfail/noNew; globalNONCLEAN retained.
+Root+independent canonical pinned13 TLS0/fullSHA→ping→fullSHA and6anonymous
+privacy GET contracts accepted. Independent final31039B SHA24980a5da6af04f1f84015ccaceeaef06c8397fb8fcc71d741e4ae8c6b082f9c
+no scopeP0/P1/P2;400-original inventory109478B SHA4b326785ac653eccae92313c87c2c4a8b263c95723cd429e62df93b51d2ff202.
+All originals retainedphase08, priorerrorsnotrewritten. Root assembly firstfailed
+a redundant guessed inventory parent path; actualinventory was already copied
+inside unchanged snapshot, exactSHAverified andoriginalreadererror retained.
+AuthenticatedprodHR/wholeC6-006/C12/C14/physical/human/ops/restore NOTRUN/unchanged.
+85DONE76open61%. Lastaction own681release fullyverified; precise stop before
+next draft publication; next admitted6f58 readonlyform source→exacthosted
+source6/currentcandidate/required5→ordinarymerge/normalrelease when verified.
