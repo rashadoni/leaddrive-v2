@@ -698,3 +698,38 @@ Heavychecks remainGHAonly; authenticatedproductionemployee/humanAT/devices/
 wholeoverlay/operational/restoredcopy NOTRUN.85DONE/76open/61%,C6-006/C12partial/
 C14open unchanged. Next sourcecompiler/build originals; then ready/current
 candidate andrequiredchecks, normalverifiedmainrelease without activation.
+
+## Current7CA bundle accepted and chain/protection refs reconciled
+
+Currentbundle114150720657/App15368/standalone7CA actualSUCCESS andindependent
+wholelog/steps/API/974staticpages/1546routes/employeeAPI+page/swapcleanup
+accepted; peer4577B SHAcac6a55422de230582b20e8877a304fb96e0208397d14892e8d97868ef4b27df.
+Buildembeddedtypecheck explicitlySKIP; independentfullcompiler114150720728
+stillRUNNING, no allsixsource acceptance. Five-terminal-lane53filemanifest
+11386B SHAe886d5d336db0b3ac4f46c905b23fde6150fc909ba44ae419d5ba12cea0a3629
+records only actualcompletedemployee/report/HR/reg/build originals/reviews,
+no compiler/candidate/requiredfive/production credit.
+
+Fresh API589/605/608 merged chain retained; actualcurrent608head100a381b90a52690899f6a1eded38494eea050e4
+is distinctfrom originalaccepted973. Root proves original973241bacc296b71fe817d1af11187c32e8126af
+andarchivecommitc123556e7a758b7eb5264137dcaf85504b07e471 plusacceptedC6f308
+andown93Erelease are ancestors of bothcurrentmain0A andexactsource7CA; all28
+original docs/evidence/workforce-c12-terminal-973-2026-10-06 files remaintracked.
+Currentrefs recordedactualwithout pretending608still973 or erasinghistory.
+606/609closedunmerged,646OPEN DRAFTvalidation-only524313...,663archiveDRAFT
+unmerged remainexcluded. Main protectionactualstrictfalse(enforceAdmins true;
+force/deletionfalse; requiredreviews0) unchanged, requiredfive actualApp15368
+pr-scope/static-checks/typecheck/runner-policy/scan. AllmustactualSUCCESS, SKIP
+nocredit; no protection/baseline relaxation.
+
+Candidateevent qualification from unchangedcurrentworkflow: ready_for_review
+will run report+employee browser and mandatoryPRchecks/calendar/manager, while
+oldHR/PG/fullcompiler/bundle fourjobs are manualexpected_head-only andSKIP in
+thatPR event. Their exactsource actualruns stillrequired; no skippedcandidate
+credit. Confirm wholecandidate tree byteequal current fullytestedsource and
+parents[currentmain,source]; if incomingmain changes, integrate normally and
+verify newwhole tree. No sourceforcepush/force merge/delete branch/directdeploy.
+Immutablephase23: 11files/19759originalbytes.
+PR678DRAFT, compilerpending; next actualcompletecompiler originals/fullsix
+review, then ready/currentcandidate/requiredCI and normalverifiedrelease.
+85DONE/76open/61%,C6-006/C12partial/C14open unchanged.
