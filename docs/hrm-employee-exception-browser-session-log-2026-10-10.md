@@ -369,3 +369,37 @@ browser/finalDB/nativezoom acceptance yet. No cancellation/rerun or baseline
 change. PR678 staysDRAFT; next actual0d7 terminal employee originals and
 independent fullcontent/pixels review, exactsource/candidate/mandatory checks.
 85DONE/76open/61%,C6-006/C12partial,C14open unchanged.
+
+## First actual authenticated recovery failure on0d7; diagnostic successor
+
+Actual employee114138229105 source0d7 run38026460209 failed at recovery
+AssertionError502:10 globalall-alerts==0. Root independent originalcapture
+whole103307B SHA c5a11bde64edfdd4dae3a84550b3b0f374a41e3421c3266674d255126aeb2884,
+ZIP11660871189/206914B SHAc11fd1e536dcc72af1bc25ce38f193b0da46c840256794158336f2794a17f18e.
+RealMFA1/RefreshGET200/reopenedarticle observed,0completedcases/1focus/0native,
+responses1/audit0/cases20/decisions6,cleanupPASS. Root+peer viewed both exact
+originalPNGs: initialgenericload-error then recovered16items/no visibleload
+panel with unchanged development1Issue badge. Offendingalert identity was
+not recorded, source scope/settling inference remains NOTPROVED on oldhead.
+All32sourcebindings/11txnstatements+3CHECK+outsideconcurrentindex actualapplied,
+not finalRLS/businessimmutability/browser acceptance. Peer23905B SHA
+c593c147131024ddb6676450d58655ca23573974d9acb12608992c75c7d25f64.
+
+New frozenprepared40555798c0f7f484017af640a8809be957f70cd1 harness-onlychange
+requires zero ownsectionalerts, records bounded16 booleanidentitydiagnostics,
+and refuses every unknownexternalalert. Only positively identified actual
+NEXTJS-PORTAL ancestry/shadowhost gets a qualifieddevelopment-only exclusion
+in freshrepeat. No DOM/CSS/badge manipulation/privatepayload/rawtext; no
+retrospective oldalert attribution. Root syntax/diffPASS; independentdelta
+review/publication/freshactualruntime pending. Allproduct/roles/schema/MFA/
+constraints/nativehelper/core64/18 unchanged. This repairs a scope assumption,
+not globalcompiler/suite baseline. Original0d7 remainingchecks continue.
+
+Actual0d7 PG/regression job114138229052 SUCCESS; peer6757B SHA
+0b895e814fab570ee3322c58c7488330896b23b398e3744244208339a0c12214:
+guard36PASS/PG44PASS0skip/strict18everyoldstillfails/globalNONCLEAN. Initial
+readonly readerReferenceError before shell retained, correctedreaderonly.
+Report/HR also reportedSUCCESS, originalwholecompiler/build stillpending.
+No current4055/candidate/release credit, PR678DRAFT. Existing foreignMTM PR679
+watcher observed read-only; no actions against it.85DONE/76open/61%, C6-006/
+C12partial/C14open unchanged; next ownactualdiagnosticrepeat and exactgates.
