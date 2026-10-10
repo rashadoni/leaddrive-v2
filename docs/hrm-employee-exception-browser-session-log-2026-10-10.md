@@ -48,3 +48,34 @@ lookup ran before checkout finished and found no page; lookup was repeated
 after completion, no source/test/production mutation or acceptance from it.
 Next: finish parent674 exact gates/normalrelease, complete minimal current
 self-flow fixture/harness design; fix only defects reproduced in actualbrowser.
+
+## Prepared isolated admission and write-limited fixture checkpoint
+
+New pure admission refuses non-hosted/non-opted/production/non-loopback/
+wrongrole/wrongdatabase/mismatched-admin-fence targets before connections.
+Malformed URLs are sanitized without retaining credential-bearing input.
+Screenshot admission refuses every nonempty free-text value (partial/full/
+whitespace/unknown private text), protected visible subject and missing
+protected inventory. New meaningful executable Vitest refusal cases prepared;
+fullVitest NOTRUN locally per hostcontract.
+
+Actual bounded pureNode smokePASS:1targetpositive/14targetrefusals plus
+1capturepositive/7capturerefusals, no DBconnections/browser sessions; bound
+module receipt immutable docs/evidence/hrm-employee-exception-browser-2026-10-10/
+01-pure-admission-smoke.json. PrecheckRAMavailable9650MB/disk263690MB, memory/
+IO fullavg10zero. Node syntax/diffcheckPASS. No fullbuild/install locally.
+
+Separate preparedSQL adds scopedsynthetic allowlist, tenantRLS, ACK-only
+response INSERT and linked immutablemetadataaudit only; no attendance/
+decision/grant/credential/factor mutation permissions. Single existingMFA
+nonce column allows already-enrolled canonical verification/consumption.
+This is NOT applied or PostgreSQLvalidated and not historical replay. Exact
+production response ownership/revision/append-only routines and concurrent
+cycleindex still need hosted install/proof. Nativehelper gains only fifth
+fixed route/opt-in mapping employee-exceptions->ownpage; all engine bytes
+after existinghosted guard remain unchanged. Independent review pending.
+
+No applicationUI/API/schema/policy/productionflag changes. Actual employee
+browser/workflow/body still NOTRUN/NOTIMPLEMENTED. ParentPR674 remainsF50
+frozenREADY CIactive, not merged/released. Next finish parentacceptance and
+new employeeharness/workflow, sourcepeer review before own publication.
