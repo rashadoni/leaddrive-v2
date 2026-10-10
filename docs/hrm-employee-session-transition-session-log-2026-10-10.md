@@ -246,3 +246,30 @@ Current stop: before immediatefreshref guard/ordinary matchingheadmerge.
 Next: guard currentM/H/C/protection/latestfive/ancestry/exclusions then ordinary
 merge, actualparents/tree, normalActions artifact/fullSHA/publicprivacy and
 maincompiler root+peeracceptance. PreparednextD9 isexcluded from681admission.
+
+## Actual ordinary merge681; exact-main release pending
+
+Immediatefreshrootguard08:47:29 accepted liveREADYH/BM32A/C32524/wholetree10efd,
+actual5latest/App15368SUCCESS/strictfalse/admin-force guards,973/c123/f308
+ancestry andoriginalarchive unchanged,606/609/646/663unmerged/routing/baseline
+bytes unchanged. Normal matchinghead merge executed once withoutadmin/force/
+delete/directproductiondeploy. ActualPR681 merged08:47:32 as
+339f74afc9384eecad5d175217918b08e5c65e15 withordinaryparents[M32A,C654] and
+wholetree10efd exacttestedsource/C. Root+independent actualmergeproven.
+Source681 branch remainsfrozenCLEANH; originalcheck/readerror history retained.
+Natural exactM deploy.yml38039109759 attempt1push/main RUNNING, normalquality
+114175631820/build114175631769 pending;3manualSKIPnoexecutioncredit.
+NaturalmainPRchecks38039109765 type114175689426 RUNNING; mainstaticSKIPno credit.
+Immutableartifact/APIupload-downloaddigest/fullSHA/TLS/ping/6privacyGET and
+maincompiler content/root+peer admission PENDING, no oldM32A release borrowed.
+Archive07 retains freshguard/ordinaryactualmerge/currentownfirstreleaseAPIs.
+
+Independent next readonlyprefill source normallyintegrated exactM339f via
+ordinarymergecheckpointb05d08a andjournalcheckpointea40f6d1e81b4c24f478dc41ab25a8d8bff0eb23.
+Onlyharness/newjournal differM; clean/unpublished/runtimeNOTRUN. Independent
+source review proceeds whileparentrelease runs, no nextpublication before
+parentverifiedrelease. Current productionacceptance notyetcomplete.
+Lastaction ordinary681merge/exacttree/parents proven; stop ownnormalrelease
+andmaincompilerRUNNING; next retainterminaloriginals/artifact/fullSHA/public
+privacy root+peeraccepted then publish/run next admittedprefill successor.
+85DONE/76open/61%, C6-006/C12partial/C14open, excludedPRs unchanged.

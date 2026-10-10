@@ -1,0 +1,76 @@
+{
+  "archivedAtUtc": "2026-10-10T08:54:03.007959+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-employee-session-actual-merge-immutable-snapshot/actual-normal-merge-peer-review.json.raw-original.gz",
+      "originalBytes": 832,
+      "originalSha256": "cc7c998c792d56cde81e7962a689b8a57330c9fabc46f83bce5fbf76eded0763",
+      "storedBytes": 485,
+      "storedSha256": "df952cf40831068ad6841c1f1791168c78828cde83b460c71dce2b819aa1a960"
+    },
+    {
+      "path": "hrm-employee-session-actual-merge-immutable-snapshot/deploy38039109759-jobs-api-original.json.raw-original.gz",
+      "originalBytes": 12703,
+      "originalSha256": "dab09223d41852d47fe6bf7f24d84b6add61e45693da805747f61a07622e9b3d",
+      "storedBytes": 1869,
+      "storedSha256": "9d9af9ee797f7e8ee7cd8765f8e612eb194626165d18f039c161f50b73842d59"
+    },
+    {
+      "path": "hrm-employee-session-actual-merge-immutable-snapshot/hrm-employee-session-transition-339f74-actual-merge-root/actual-M339f-api-original.json.raw-original.gz",
+      "originalBytes": 2783,
+      "originalSha256": "f3306ccbbc2fb6dcf8e66072bd7690995604bd579a555b2ba96693e432950e43",
+      "storedBytes": 1332,
+      "storedSha256": "b8bb1640de3baa320ba36c088a29644a28292d651379839326f3e770a548f999"
+    },
+    {
+      "path": "hrm-employee-session-actual-merge-immutable-snapshot/hrm-employee-session-transition-339f74-actual-merge-root/actual-M339f-natural-runs-api-original.json.raw-original.gz",
+      "originalBytes": 37300,
+      "originalSha256": "1d168fe7cd8a8298770c0fa9e7db8eed761e1c69ef68cbce1c2a8156d924dc4d",
+      "storedBytes": 2009,
+      "storedSha256": "7537eae4f86902aac889a3c2f67da69d4f2b445d042518ec148e43d5e4076f42"
+    },
+    {
+      "path": "hrm-employee-session-actual-merge-immutable-snapshot/hrm-employee-session-transition-339f74-actual-merge-root/actual-main-ref-api-original.json.raw-original.gz",
+      "originalBytes": 342,
+      "originalSha256": "47ef510e3ebdcb0fd3fff1e38ae436fbf750b37b520091f112b3cafc7256322d",
+      "storedBytes": 216,
+      "storedSha256": "d5a60716c0f3afa7b211b0619b6660e7da3d97cae8e5dd125f2553c9fb5e200f"
+    },
+    {
+      "path": "hrm-employee-session-actual-merge-immutable-snapshot/hrm-employee-session-transition-339f74-actual-merge-root/pr681-api-original.json.raw-original.gz",
+      "originalBytes": 18989,
+      "originalSha256": "0758fb806e278fea93379df2985d33a377ee15735bc71bfa94466fc30c1d788f",
+      "storedBytes": 3115,
+      "storedSha256": "2955b92ffee01e7f82ad922c48c19cfb753518f02a9832d177dfcf8bdf95438d"
+    },
+    {
+      "path": "hrm-employee-session-actual-merge-immutable-snapshot/hrm-employee-session-transition-339f74-actual-merge-root/root-actual-normal-merge-proof.json.raw-original.gz",
+      "originalBytes": 1511,
+      "originalSha256": "e12ef853136c262bb56226dca4a8b522e6a737b95b64e410b0223e523ca469a9",
+      "storedBytes": 644,
+      "storedSha256": "5314a48f783e88858d10f64c278e499bd18066e127a456017ba3a61c5238dae3"
+    },
+    {
+      "path": "hrm-employee-session-actual-merge-immutable-snapshot/hrm-employee-session-transition-c6547-immediate-before-merge-root.json.raw-original.gz",
+      "originalBytes": 2308,
+      "originalSha256": "bfc69d4c9e804be68243aa7ac50f65f578e078df0a1d754f6d45085e149aa612",
+      "storedBytes": 1013,
+      "storedSha256": "9586a1537774f2c6043a25c16e205c4332f84809288413b1227b977a4fefae46"
+    },
+    {
+      "path": "hrm-employee-session-actual-merge-immutable-snapshot/hrm-employee-session-transition-pr-body-verified-before-merge.md.raw-original.gz",
+      "originalBytes": 2227,
+      "originalSha256": "8df694236ba28d255c1bd20ffcea24d32110934ed7226450a58075415ac12433",
+      "storedBytes": 1259,
+      "storedSha256": "f55290d900d00fbf34dd1f9ae29dd08939e6634e2413bdb6c6e70e4c4fe6bb32"
+    },
+    {
+      "path": "hrm-employee-session-actual-merge-immutable-snapshot/main38039109765-jobs-api-original.json.raw-original.gz",
+      "originalBytes": 6490,
+      "originalSha256": "fb838a0ed548ec0b86800347b372ed4346982090ddca51de6488cfe390676678",
+      "storedBytes": 1111,
+      "storedSha256": "ea7cdf629c4ac790dba7a8781e44eddef900ee6d2021d4dd39ac7e85c43f28bc"
+    }
+  ]
+}
