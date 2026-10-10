@@ -1,0 +1,69 @@
+{
+  "archivedAtUtc": "2026-10-10T08:22:45.686965+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-employee-session-transition-ready-dispatch-root/candidate-jobs38037560366-api-original.json.raw-original.gz",
+      "originalBytes": 10441,
+      "originalSha256": "623bb5cd35462ea8c49879862bace6146aeb60ce53c487843e3a254ab25f6a14",
+      "storedBytes": 1362,
+      "storedSha256": "c371acc00e97c4c073bd087116685190127d073a87b5e53aef5bf4ea39560da3"
+    },
+    {
+      "path": "hrm-employee-session-transition-ready-dispatch-root/candidate-run38037560366-api-original.json.raw-original.gz",
+      "originalBytes": 12945,
+      "originalSha256": "88969ee55a68fcdec2d6605ae62f6751722db29350f61d2942b3080720381ac1",
+      "storedBytes": 1658,
+      "storedSha256": "912ae72a4e161bfb365d8da0c7f3c0b6069f39e484aacf90d2b3dd9828a99661"
+    },
+    {
+      "path": "hrm-employee-session-transition-ready-dispatch-root/current-head-checks-api-original.json.raw-original.gz",
+      "originalBytes": 97583,
+      "originalSha256": "597088d87655ba04e961086f858dd5106c7227974d14201bf0b8e94c4758a74b",
+      "storedBytes": 3971,
+      "storedSha256": "239e697e69b17e3490510bbac6d359225b75a528062ff2b10248444a3c7bfbf0"
+    },
+    {
+      "path": "hrm-employee-session-transition-ready-dispatch-root/hrm-employee-session-transition-c6547-immediate-before-ready-root.json.raw-original.gz",
+      "originalBytes": 279,
+      "originalSha256": "9e5f83dedaa3b4bcd8ab49f36d323f9d3539a7c46335e235cef3ddba9874b2e9",
+      "storedBytes": 235,
+      "storedSha256": "f9e550d017d28f8c545f19adba42ada49680c739cd24d522ce44cd10830af1c1"
+    },
+    {
+      "path": "hrm-employee-session-transition-ready-dispatch-root/hrm-employee-session-transition-pr-body-source-six-accepted-before-ready.md.raw-original.gz",
+      "originalBytes": 1942,
+      "originalSha256": "20236453bb51cdcfc5566dc83e8f0d82adc2bd0408e77249fe540fb13d54eadc",
+      "storedBytes": 1163,
+      "storedSha256": "dd9ad9b2e39e7b6aaeec4b1d82ba6b4e92587e95140d529d460ade1f39361bd2"
+    },
+    {
+      "path": "hrm-employee-session-transition-ready-dispatch-root/pr681-api-original.json.raw-original.gz",
+      "originalBytes": 17732,
+      "originalSha256": "37cdaf429c28643949cd78686e602ec0ae2ebf0c911ddb4853b91015b13fbe8f",
+      "storedBytes": 2994,
+      "storedSha256": "d167d8759069e09566b64ef22113441b25a2162d8c8bd3e32ef0b710397f48b0"
+    },
+    {
+      "path": "hrm-employee-session-transition-ready-dispatch-root/prchecks-jobs38037560369-api-original.json.raw-original.gz",
+      "originalBytes": 10341,
+      "originalSha256": "dea497df6639da1f35c14aad5b762c440b5c3ce4ea0707445503fd25e722a1c3",
+      "storedBytes": 1614,
+      "storedSha256": "f2f219eab31b9792b609555dc6d0e67c73c118fdd5cd04e835edd702939bdb54"
+    },
+    {
+      "path": "hrm-employee-session-transition-ready-dispatch-root/prchecks-run38037560369-api-original.json.raw-original.gz",
+      "originalBytes": 12878,
+      "originalSha256": "ed9c91a1040bb5d503dfda36ef6fb1059ae70f71641720eb315c165162917c31",
+      "storedBytes": 1628,
+      "storedSha256": "974c4cd42ec51ed287241a80430868b5bd6f666cdea28ed9e28e17a3175e8943"
+    },
+    {
+      "path": "hrm-employee-session-transition-ready-dispatch-root/source-phase-originals-readers-errors-complete-inventory.json.raw-original.gz",
+      "originalBytes": 45791,
+      "originalSha256": "d4e004b653c10e6e9ed89862a15ab191cc3daaac333d386b73d68104c88b58de",
+      "storedBytes": 8644,
+      "storedSha256": "4b690095b0e0fc1d55a8f3e765ef9b97f1643efb37c019a448ab51a1169145ef"
+    }
+  ]
+}

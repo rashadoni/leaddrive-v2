@@ -172,3 +172,26 @@ and independentreview accepted, archive03 immutable originals published.
 Next: freshmain/head/tree refs, READY, actualrequired5 and current matching
 candidate employee/report, independentadmission then ordinarymatchingmerge.
 85DONE/76open/61%, C6-006/C12partial/C14open and excluded606/609/646/663 retained.
+
+## READY actual exactH; current candidate checks running
+
+After exact-source six root+independent acceptance and archive03 publication,
+freshmain/head/base/C/tree remainedM32A/C654/C32524/tree10efd unchanged.
+PR681 description now states final source scope/results/limitations. Actual
+normal ghprready succeeded08:20:53UTC, no source edit or extra dispatch/rerun.
+Current pull_request exceptionrun38037560366 employee114171075267 andreport
+114171075486 RUNNING; four manual-only source/HR/compiler/build lanesSKIP
+receive NOcandidatecredit. Prior source6 actuals remain separately boundH.
+Current PRchecks38037560369 actualpr-scope114171075130 SUCCESS; static114171137338
+andtype114171137373 RUNNING. ExactH/App15368 runner114166426930 andscan114166426462
+actualSUCCESS separately require fulloriginals/currentcheckedtree admission.
+Draftstatic/typecheckSKIPs no credit. Calendar/manager workflowpathfilters do
+not match the two changed harness/doc paths, thus NOTRUN/notapplicable for
+this candidate, with production/source unchangedM and no prior result borrowed.
+Independent reviewer remains active for currentC employee/report, actualfive
+and normalrelease. Phase04 captures firstREADY APIs/prbody/expanded source
+inventory; old/source errors and snapshots stay unchanged. No currentC
+runtime/required5/merge/release acceptance until completeactualoriginals.
+Lastaction READY at exactH with verifiedsource6; stop current candidate and
+mandatorygatesRUNNING; next originalcapture/content/pixel/independentreview,
+freshrefs then ordinarymatchingmerge→normalActionsrelease/fullSHA/privacy.
