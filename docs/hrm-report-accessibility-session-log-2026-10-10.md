@@ -144,3 +144,10 @@ preserving both controls, content and keyboard order. No removal/reordering of
 sections, roles, API, rates, schema, grants or activation. Keep strict existing
 focus bounds; new exact head will rerun browser/PG/CI/build and independent
 source/PNG review. No manufactured passing mock or relaxed clipping tolerance.
+
+Added the actual changed report component and environment/native-admission
+unit-test file to the existing hosted scoped ESLint command. This expands the
+check without changing any old lint targets, tests, thresholds or job limits.
+Targeted lint is NOT RUN here (no dependencies/host placement); new exact
+source regression job must execute it along with PG/full baseline. Full build
+is already an existing exact-source hosted gate for the use-client component.
