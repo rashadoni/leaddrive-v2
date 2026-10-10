@@ -127,3 +127,26 @@ append-only and its phase01/02 entries are preserved. First archive-copy filenam
 error is retained and corrected without source changes. Parent own BFE compiler
 and quality/build now SUCCESS; normal deploy remains in progress. Publication
 waits actual parent own normal release root+peer acceptance. Accounting unchanged.
+
+
+## 2026-10-10 12:11 UTC — exact2e4b draft684 and single source-eight run
+
+Final clean2e4b711b405eb2629cc25e16ff6fafee6b88ba16 source-only review accepted
+SHA2bd5c6bab9205db970b2d4b4460476a06e307af18813c3bbe20428d88bdefdeb;
+25-original inventory d741c853bcc5493744610dac1dc71aca7a5328195ceaa9aaad318cdf53d96b04.
+Only append-only28line journal delta vsacceptedBE; allcode/oldseven equalBE/FE/main.
+Root freshmainBFE, required-fiveApp15368/strictfalse/admin/noforce/delete, chain,
+excluded606609646663unmerged, archive28, baselines and exact ancestry passed.
+Bounded redacted45s BFE..2e4b Gitleaks PASS/no findings. Prepared root reader v3
+independently source-only accepted SHA26cc79f2b6a5db72c7657da8d28a4887708621418cb8c28e5f8867dead49413c;
+no runtime acceptance. Published dependent draft https://github.com/rashadoni/leaddrive-v2/pull/684
+with exacthead/baseBFE and attached to this task. Published samehead CI-only ref
+codex/hrm-correction-recovery-ci-2e4b-20261010, exactly one fullsource-eight
+workflowdispatch38051065834 attempt1 with expected_head full2e4b. Running; SQL/
+browser/recovery/33bindings/19flows/compiler/build remain NOT RUN until terminal
+originals/content are admitted. Draft-skipped PR jobs receive no execution credit.
+Phase04 archives56files708756B finalsource/guards/scanner/reader/sourcepeer/draft
+originals. Sourcebranch stays frozen; later evidence appends only archivejournal.
+Next admit actual full eight-job source first originals, then current candidate,
+required-five and own normal release; preserve first failures before any change.
+C6-006/C12PARTIAL/C14OPEN/accounting85/76/61 unchanged.
