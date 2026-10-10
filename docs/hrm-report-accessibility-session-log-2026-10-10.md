@@ -127,3 +127,20 @@ requires fresh exact checks. Original39 browser/compiler/build runs continue
 without cancellation; their actual outcomes remain separately qualified.
 Append-only runtime/release journal continues in evidence worktree at the same
 docs path so the tested implementation head can remain frozen.
+
+## Actual hosted browser defect and responsive repair
+
+Exact39 source reportjob114080793695 FAIL after real authentication/render:
+AZ320 Refresh was focused and focus-visible but boxleft271/right445 outside
+rightclip320. Zero completed cases; native zoom NOT RUN. Original ZIP
+artifact11652525592,219409B,digestc043225d641536f0b28ee4514210e6e3fc6cd9d61370033aab21806201fc0688,
+allCRC independently verified. Root viewed originalfailure PNG and confirmed
+right-clipped Refresh. Existing cumulative RLS source prepared; no passing
+browser/PG/fullmatrix claim. Original permission-denied user_preferences log
+is retained but is not attributed as this geometry assertion's cause.
+
+Bounded product repair: addflex-wrap to existing Back/Refresh container,
+preserving both controls, content and keyboard order. No removal/reordering of
+sections, roles, API, rates, schema, grants or activation. Keep strict existing
+focus bounds; new exact head will rerun browser/PG/CI/build and independent
+source/PNG review. No manufactured passing mock or relaxed clipping tolerance.
