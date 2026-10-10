@@ -235,3 +235,25 @@ retained; no actual CI failure/rerun. Requiredstatic naturalS; current type stil
 compiling, five/merge/ownrelease credit pending. Next actual five completion and
 full compiler/baseline admission, freshrefs/protection/exclusions, ordinarymerge.
 Accounting85/161DONE/76open/61%, C6-006/C12PARTIAL/C14OPEN unchanged.
+
+
+## 2026-10-10 13:04 UTC — current five accepted; ordinary PR684 merged
+
+All actual latest five App15368 checks naturalSUCCESS, selected before filtering:
+scope114214913505/static114214980027/type114214979978/runner114210097759/scan114210097688,
+all actualC18 checkout/allstepsS. Current compiler253346B/e3614e50035f93269dabb6106cac6a9a41d84fe883179351a5001c0d4e7a1a7e
+actual1162 diagnostics/35families/EXIT2/strict64/critical0/owned0/globalNONCLEAN.
+Static strict18 all old still fail/noNew, baselines byteequal original973. Independent
+finalcurrent4+five receipt ee182a29a657a6803af9002fec054644a549c94649ae0c2d6d87afac672df85e;
+194-original inventory6422359d171662a41f94cbe6c210514e212d532d7a657ac1a9ba8efdcc033f7e.
+Fresh rootguard currentmainBFE/READYH2e4/C18/tree/protectionstrictfalse/adminsenforced/
+latest5/excluded606609646663/actual589605608heads/973-c123-f308ancestry/28oldarchive
+bytes/registered13:/opt Actionsroute/clean feature passed. Ordinary headmatched
+merge684 at13:03:33 produced ownmainede43999335b0a1df8a37474c2194b2c0c236c19 exact
+parents[BFE,H2e4]/wholetreef66d sourceequal. Phase08 archives90files767027B actual
+finalfive/logcontent/root+peer admission/freshguard/merge originals.
+Own normal38054267635 and ownmainchecks38054267679 attempt1 now RUNNING; actual
+runner38054267589 andscan38054267529 naturalS. No own release/public/compiler credit
+yet; no oldBFE runtime borrowed. Next ownnormal/main/compiler/artifact/TLS-pinned
+fullM before-after8privacy root+peer, then publish prepared next regression.
+Accounting and partial historical/device/operator gates unchanged.
