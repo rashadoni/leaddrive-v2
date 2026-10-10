@@ -352,3 +352,152 @@ only; full TSX/lint/typecheck/schema/browser/build NOT RUN locally per host
 contract. Next checkpoint/push this integrated source then fresh hosted five
 lanes on exact SHA. Draft stays pending; old94px defect remains unaccepted
 until measured12cell proof. Accounting85/161,76open,61%, C12 PARTIAL/C14open.
+
+## Exact integrated a161 published; new whole source gates pending
+
+Published clean a1617f62aba38adc8af8905ecf36093b483e2ae2, preserves latest main
+bf643/map-zones by normal merge. Gitleaks new range no leaks, unchanged
+workflow/baselines/config. PR674 retitled actual narrow HR-form fix; draft,
+no merge or new release. Fresh five-lane source38016788152 attempt1 started;
+draft mirror38016791160 SKIPPED gets zero runtime credit. Phase08 preserves
+actual publication PR/run/main APIs, applied exact reviewed queue SHA and
+source scan/body/previous compiler independent receipt. Exact new source
+review and browser/PG/compiler/build/report acceptance PENDING, no old-head
+credit. Next preserve actual first new failures or complete independent
+12cell/native/manual/audit/privacy acceptance, then current candidate gates.
+
+## Exact integrated a161 whole source independently accepted
+
+Independent15025B/SHA3676e714fae89eec750739bd8bd70c4b4322fec84ffe384b92e127745f4a8b53
+accepts exacta161/tree12533c9891f7736fa270b7aae87ea4063800c3fd. Actual normal
+integration parents[0cd,bf643], five own diff paths only versus current base;
+all28 incoming mainpaths byte-exact including schema/messages. Queue23349B
+exactreviewed corrected TSX/allnonclasssource unchanged. Protected21/base
+bindings and five973baseline/guard identities preserved; accepted973 and
+archivedc123 ancestry retained. No remaining source P0/P1/P2. Peer helper/
+guard historical authorship qualified with independent root source review.
+Phase09 durable receipt archived. Runtime38016788152 remains pending; no
+production new release/physical/human/wholeC14/C12 credit. Continue actual
+first-runtime failure preservation or complete exact-source acceptance.
+
+## Original a161 full-regression failure; baseline unchanged
+
+First a161 regressionjob114108723267 terminal FAILURE, whole170640B/SHA
+2a5ac306d8bbded9152335068006218bb07bd86bae64441f6ac0798a328ee0c4.
+Schema/generate/runner/translation/lint/guard31/actualPG44 passed beforehand.
+Full strict suite19failingfiles versus frozen18: one newly failing owned
+workforce-exception-queue-action-ui.test.ts:169 privacy/accessibility test
+expected the complete old className literal. Actual eight style changes
+retain min-h-11/whitespace-normal/text-left but add width/height classes.
+This is owned existing test adaptation, not an MTM/main defect attribution.
+Original full failure and assertion trace retained phase10; no baseline
+update/testskip/timeout/rerun/CI cancellation. Build and report actual SUCCESS;
+HR/native/fullcompiler continue naturally. Other known18 remain nonclean.
+
+Prepared-only minimal existing test delta: retain all privacy/source/role/
+localization/token assertions; check the same three class invariants on
+actually rendered ACKNOWLEDGE and REQUEST_TIME_CORRECTION native buttons
+inside existing second test. Test count/components/fetch fixtures unchanged,
+no new testcase/mock or geometry waiver. Prepared patch fee6cc7639e77160553f4fce879ce4a67c8e9ca72ca02f575f06782ff799330a
+NOT_APPLIED/RUNTIME_NOTRUN; independent review requested. Next complete
+original a161 receipts, actual form closure evidence, then reviewed narrow
+test repair and fresh whole exact-source gates. Phase07–09 scanner3commits
+17104B no leaks. Accounting85/76/61%, C12 PARTIAL/C14stillopen.
+
+## Actual a161 complete manual-form matrix passes; whole source blocked by test literal
+
+Completed HRjob114108723307 SUCCESS. ZIP11656862823/3816681B/SHA
+45d8775a9d13f4b32c1b3662bb0462e9d3c03d41afd2cb1c4535fb16dd51bf2b
+API/size/allCRC/members verified, checkedsource whole12533 tree exact. Root
+complete artifact reader accepts20cases/12cells/24manual linked24immutable
+audits/108focus(12region intersections+96fully bounded controls)/48actual
+partial+complete private-reason capture refusals/3native21originalcaptures,
+19sources/seven exact production migration extracts/eight unchanged fact
+tables/populated two-tenant controls/forcedRLS/cleanup. No original audits
+on exact replay; original MFA/role/foreign/reopened/revoked negatives pass.
+
+Same originally failing AZ320 empty-submit now actual left93/right291,
+width198/height56, clip77..307,top56..887. All96 individual focused heights
+at least43px(actual measurement with1px tolerance); no horizontal/vertical
+focused-control clipping. Root actually viewed four unaltered native640px
+PNG originals across AZ/RU/EN: focused blank reasons, wrapped hints and AZ
+submit; EN post-record frame shows queue/panelclosed, not a visible status
+announcement. RU submit partly below the textarea-focused frame, but its
+separate focused-submit bounds pass. Fixed header/dev issue badge overlap
+portions of samples, retained; no whole-page occlusion/WCAG/humanAT/physical
+device or all21image visual-claim. Tall scrollable table remains deliberate.
+Phase11 stores ZIP plus exact original single-job APIs/log and rootcomplete/
+selectedpixel receipts. Whole workflow still IN_PROGRESS compiler with known
+strict19/18 source test-literal FAILURE, no overall source acceptance.
+
+Prepared existingtest independent2538B/SHA
+8bef3a89d49ac2bcbc826fff01aa053628e62484bcdad013d698d3dca7dfe739
+accepts same original three required classes on actual ACK+correction Button
+outputs; all other bytes/nine tests/token/privacy/localization assertions
+and baseline unchanged. Peer's first class-order reader assumption error
+preserved separately; corrected reader only, no CI rerun/source edit. Test
+patch still NOT_APPLIED/runtimeNOTRUN. Next natural wholea161 completion/
+fullcompiler original capture, apply exact reviewed test and fresh fullhead.
+
+## Whole original a161 terminal failure retained; exact next test/lint source reviewed
+
+Source38016788152 attempt1 naturally COMPLETED FAILURE before correction.
+Complete allfive wholelogs/rawAPIs/threeoriginal ZIPs retained phase12,
+actualroot complete report/HR/fullcompiler readers pass their scoped checks.
+Overall remains strict regressionFAIL19/18, not retrospectively GREEN.
+Actual integrated full compiler179299B/SHA
+f7e463d2ae280538ed2f171dc413dab7036697efabefb5b73016ad14a8db5f22
+exit2/1162diagnostics/35families/strict64unchanged/task-owned0/critical0.
+No old1158 count assumed; globalNONCLEAN. Independent7771B/SHA
+99807a94904cb952fe86c5f8ff2b1220545d7b67abf63ae1c1a70aca6d8b194d
+confirms full artifact plus wholelog original. PG44/guard31/schema/lint/i18n
+PASS; build compiled4.9min/static974of974/standalone, inherited trace-copy
+ENOENT retained, skipped internaltypevalidation not credited.
+
+Independent HR32333B/SHA5df0bfb93f764f474fab39bb825e1aa7d24ddabd3efa551a1563e8195bf633d0
+confirms20/12/24manual24audit/108focus/48private refusals/3native21/RLSfacts8
+cleanup. Original peer reader accidentally required MFA on intentional weak
+HRfixture; error/correction retained, actual16enrolled +weak403 separate,
+GETwarmup405 not changed. Independent actualpixel8094B/SHA
+66a6fa6ab0603b13b9ad85fe1fc058680fe3387bc1b26cc895139034c9037a21
+viewed all21 native plus AZstandard320, qualified devbadge/header/talltable.
+No source P0/P1/P2 or current-source clipping left, but no source-wide/whole
+C14/C12 acceptance until existing regression repaired and final exact gates.
+
+Two companion workflow additions independently reviewed1362B/SHA
+454fc1af8e3b311a8843cd35105379d9d513bd06ce05e5f072cb889c161616ce:
+action-ui.test.ts PR path and existing scoped ESLint target only. All other
+workflow/gate/concurrency/timeout/skip/baseline bytes identical. Prepared
+only, will apply with accepted existing nine-test DOM invariant delta.
+
+Fresh main e05689732adb23928680a3e77f566b9513348ef0 advancesbf643 viaPR673,
+seven ERP script paths only; application/schema/messages unaffected. Next
+normal integration preserves them, apply reviewed test+linttwo-line scope,
+freeze final source after independent binding. Then READY required candidate
+checks and exact-source five-lane dispatch may run concurrently, saving a
+second compiler queue. All actual source/candidate/mandatory5 gates still
+required BEFORE merge/release, no earlier runtime credit transferred. This
+sequencing supersedes sequential READY-after-source waiting, without removing
+any checks or permitting premature merge. Accounting85/76/61%, C12 PARTIAL.
+
+## Apply reviewed existing-test invariant repair and exact lint scope
+
+Normal branch integration 932a4b3d26bc49f7f01efae1a06acef6cdd91b8f preserves latest main
+e05689732adb23928680a3e77f566b9513348ef0/seven ERP script paths, no app/schema/
+workforce changes. All original a161 five lanes naturally completed and
+whole originals/first strictFAIL archived in phase12 before source mutation.
+Applied exact independently accepted test17a3e0823770cbcea587cb1263372399236dd3019689974e2e628ed7af7f8989
+and exact two-line companion existingworkflow. Existing nine tests, original
+min44/wrapping/alignment invariants and all privacy/role/token/localization
+assertions retained; actual rendered ACK+correction buttons now checked.
+PR path and scoped ESLint include this changed test; no baseline/gate/timeout/
+skip/concurrency weakness. Queue byte-identical a161/reviewed23349B/SHAaa0a…;
+no new UI behavior or role/audit/tenant/CASE_RECORDED_AT/personnel automation.
+
+Local patch/whitespace/prepared-byte identity only. Full typed lint/schema/
+compiler/build/PostgreSQL/browser NOT RUN locally per remote host contract.
+Next source checkpoint/independent exact binding and ordinary publication.
+Freeze this final head; READY requiredcandidate plus five-lane source can
+run concurrently, all actual fresh results mandatory BEFORE ownmerge/deploy.
+No original source passes transferred to this new tree; global compiler/
+strict suite remain NONCLEAN inherited, unchanged frozen baselines.

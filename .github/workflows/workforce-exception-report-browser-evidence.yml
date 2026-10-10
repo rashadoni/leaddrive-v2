@@ -12,6 +12,7 @@ on:
       - "scripts/ci/fixtures/workforce-exception-classification-browser.sql"
       - "src/__tests__/workforce-exception-classification-browser-evidence-guard.test.ts"
       - "src/components/workforce/workforce-exception-queue.tsx"
+      - "src/__tests__/workforce-exception-queue-action-ui.test.ts"
       - "src/app/api/v1/workforce/exception-decisions/route.ts"
       - "src/app/api/v1/workforce/exceptions/route.ts"
       - "scripts/_rls.mjs"
@@ -473,6 +474,7 @@ jobs:
           src/components/workforce/workforce-exception-recorded-outcomes.tsx
           src/components/workforce/workforce-exception-report.tsx
           src/__tests__/workforce-exception-report-browser-evidence-guard.test.ts
+          src/__tests__/workforce-exception-queue-action-ui.test.ts
       - name: Report browser environment and native fixture admission guards
         run: npx vitest run src/__tests__/workforce-exception-report-browser-evidence-guard.test.ts
       - name: Actual shared-lock and aggregate PostgreSQL gates

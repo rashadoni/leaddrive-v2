@@ -166,7 +166,6 @@ describe("Workforce exception review-action UI", () => {
     expect(source).toContain('const QUEUE_DECISION_CODES = ["ACKNOWLEDGE", "REQUEST_TIME_CORRECTION"] as const')
     expect(source).toContain('ACKNOWLEDGE: "MANAGER_ACKNOWLEDGED_FOR_HUMAN_REVIEW"')
     expect(source).toContain('REQUEST_TIME_CORRECTION: "MANAGER_REQUESTED_TIME_CORRECTION_FOR_REVIEW"')
-    expect(source).toContain('className="min-h-11 whitespace-normal text-left"')
     expect(source).toContain("onClick={() => closeAction()}")
     expect(source).not.toContain("onClick={closeAction}")
     expect(source).not.toMatch(/localStorage|sessionStorage|console\./)
@@ -193,6 +192,12 @@ describe("Workforce exception review-action UI", () => {
 
     expect(container.textContent?.match(/actions\.ACKNOWLEDGE/g)).toHaveLength(1)
     expect(container.textContent?.match(/actions\.REQUEST_TIME_CORRECTION/g)).toHaveLength(1)
+    for (const label of ["actions.ACKNOWLEDGE", "actions.REQUEST_TIME_CORRECTION"]) {
+      const offeredAction = button(label)
+      for (const className of ["min-h-11", "whitespace-normal", "text-left"]) {
+        expect(offeredAction.classList.contains(className), `${label}.${className}`).toBe(true)
+      }
+    }
     expect(container.textContent).not.toMatch(/REQUEST_EMPLOYEE_RESPONSE|RESOLVE_NO_CHANGE/)
     expect(container.innerHTML).not.toMatch(/ack-token-ciphertext|response-secret|correction-secret|terminal-secret|duplicate-secret|multi-ack-secret|multi-correction-secret/)
   })
