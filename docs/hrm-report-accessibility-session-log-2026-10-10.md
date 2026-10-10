@@ -410,3 +410,43 @@ last checkpoint journal-only. Its first hosted five-lane run dispatched; fresh
 expected31/20/24/108/3/21/48 are NOT RUN at publication. Original f529 privacy
 P2 and corrected independent review preserved separately. No accounting or
 C12/C14 closure, no production HR/data/access/secret/Support changes.
+
+## PR672 own normal release completed and independently accepted
+
+Supersedes preceding release-pending entries only. Own main
+cd935999cd657f0a13bb458ee901637389a31916 / treebf17 released through normal
+main/push Deploy38013599677 attempt1; four normal jobs actual SUCCESS and
+three manual-only jobs SKIPPED. Artifact11654688979/444,731,305B/API SHA256
+9bf3bf4fa47eb10beab6afdc03b390a09a719c9d23773380e11285d632ab3563
+exactly matches actual producer uploaded digest and consumer downloaded digest
+in complete logs. No huge production ZIP downloaded on Contabo. Root4 whole
+logs/APIs and independent originals archived immutable phase11.
+
+Root canonical HTTPS pinned13 build-before/ping/build-after200/TLS0/full
+artifactSha cd935 and separate four anonymous HRM GET401 JSON/307 samehost
+login redirects PASS. Independent two fullSHA/ping brackets plus four privacy
+GETs accept same artifact and fresh maincd935 before/after. Peer31,860B/SHA
+97cad27a14755382bfb0d1638199f57fdf17671a0f72e9a929e679943487160a
+reports no P0/P1/P2. Actual normal quality M strict18/18/all still fail PASS,
+global suite NONCLEAN. Actual automatic main compiler App15368 SUCCESS,
+raw1158/35/exit2 and unchanged64 exact pair/count baseline; main static and
+PR-build were SKIPPED and receive no execution credit. Source7BA actual five
+mandatory/five source gates remain independently accepted on identical tree.
+
+Inherited dashboard page_client-reference-manifest trace-copy ENOENT warning
+also exists in actual production build and is retained, not erased by job
+SUCCESS. Next internal type validation skips by unchanged configuration;
+separate full compiler actually ran. Anonymous/public availability is accepted;
+authenticated production HR/dashboard session/UI NOT RUN, no approved session
+and no fabricated users/grants/decisions. Existing plain recovery is
+uncommissioned/inert for encrypted/off-box ceremony, not C12 acceptance.
+Peer initial gitshowM object-unavailable reader error retained, corrected only
+through immutable GitHub commit API; no source/CI/production modification.
+
+Scoped report narrow controls/native/keyboard/reflow/privacy and normal release
+complete; accounting85/161 DONE76open61% unchanged, C12 PARTIAL/C14-003 PLANNED.
+Original589/605/608 ancestry and validation606/609/646 nonmerge boundary retained.
+Last completed action: exact own normal artifact/public/anonymous release and
+independent review. Current work proceeds in separate draft674 corrected0CD,
+fresh source38015241105 pending. Next actual matrix and any observed product
+defect, full exact-source/mandatory CI, normal verified own release.
