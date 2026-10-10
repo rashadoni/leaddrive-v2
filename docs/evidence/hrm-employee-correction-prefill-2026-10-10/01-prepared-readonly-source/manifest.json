@@ -1,0 +1,41 @@
+{
+  "archivedAtUtc": "2026-10-10T08:39:29.242228+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-employee-correction-prefill-prepared-source-snapshot/hrm-employee-correction-prefill-discovery-original-path-error.json.raw-original.gz",
+      "originalBytes": 406,
+      "originalSha256": "b37604b7b6fc4c0a0bd21b8ffa8a6ed248a4971eafaa93e13f25b3808f7a97ba",
+      "storedBytes": 268,
+      "storedSha256": "b2bda52f4990bae7722fd3c2c6e4d0c91e0e9d393cee2cabc9615761a521e587"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-prepared-source-snapshot/hrm-employee-correction-prefill-prepared-observation-qualification.json.raw-original.gz",
+      "originalBytes": 598,
+      "originalSha256": "809ed4a1466e7d0644aba6cdfb055dc507559975db272c5cb8994c031f062ce2",
+      "storedBytes": 423,
+      "storedSha256": "a3bda0a7edcd4ca009a684427ab3e35c3844e876d65178752c9fee8a5a5f1606"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-prepared-source-snapshot/hrm-employee-correction-prefill-prepared-source-root.json.raw-original.gz",
+      "originalBytes": 9287,
+      "originalSha256": "de7a71d2b4f82a7f4d657393d849b370c76b8f13640c3eae138ccf17694ee653",
+      "storedBytes": 3459,
+      "storedSha256": "5a41e13ecd58d7374e1dc8cc0839efe0e827b08d049ebe91cd8585d9a5218b91"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-prepared-source-snapshot/hrm-employee-correction-prefill-session-log-2026-10-10.md.raw-original.gz",
+      "originalBytes": 5252,
+      "originalSha256": "9a550a9255c2e87650504fc9c6a05f4e66b92c2fb75bd302b53952cab30b92d1",
+      "storedBytes": 2554,
+      "storedSha256": "c0fef588a631eb5a5437f895d934643f4a7af4d4cdda764a61d8d5c89faf3c0c"
+    },
+    {
+      "path": "hrm-employee-correction-prefill-prepared-source-snapshot/prepared-d9f80-owned-diff.patch.raw-original.gz",
+      "originalBytes": 17702,
+      "originalSha256": "6767e13dc92ead88236cbf42f28597e6d9ab35e9dda540b6da368ae5177e51c4",
+      "storedBytes": 5618,
+      "storedSha256": "d40ebfe0c7b113c68900009634e0c7b7a0b9ae2b62b622b876f629fce5d306fb"
+    }
+  ]
+}

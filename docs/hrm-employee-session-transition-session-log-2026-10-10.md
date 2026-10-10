@@ -195,3 +195,27 @@ runtime/required5/merge/release acceptance until completeactualoriginals.
 Lastaction READY at exactH with verifiedsource6; stop current candidate and
 mandatorygatesRUNNING; next originalcapture/content/pixel/independentreview,
 freshrefs then ordinarymatchingmerge→normalActionsrelease/fullSHA/privacy.
+
+## Actual current candidate two-browser accepted; typecheck pending
+
+Natural pull_request38037560366 SUCCESS with2actualcandidatejobs/2validated
+ZIPs,4manual-onlySKIPs NOcredit. BothactualcheckoutC32524fe3 verifiedwholelogs,
+exactparents[M32A,C654]/wholetree10efd sourceequal andfreshmainM retained.
+Root+independent completecontent/currentpixels accepted. Employee15/22auth/
+39bindings and28bounded sessionobservations (source21 wasobserved notinvariant),
+first16→logout0→newheaderold0, actual200emptysecondscope; ledger0/13facts stable.
+Allold50focus/6nativeproof/27captures/14ACK+audits/8rollback bounds retained.
+Report33/54focus/58reflow/22facts/native21 retained. Root3freshcandidateimages,
+peer8freshcandidateimages actuallyviewed; prior sourcepixels not reused.
+Developmentbadge/clippedmetrics/nativefiniteviewport/horizontal-table limitations
+retained. Independent currentcandidate receipt10506B SHA70afc09199ede347c1095e279aaa80a24a3c233d1d3fb1b2f677bf6b9961dba4 accepted.
+Actualstatic114171137338 strict18unchangedSUCCESS andsmall3actualS; required
+compiler114171137373 stillRUNNING, so nofive-gate/merge/release acceptance yet.
+Archive05 preserves all currentcandidate and partialrealmandatory originals.
+
+Separate prepared successor d9f80 adds onlyreadonlyactual correction-form/API
+checks with45bindings and44protected blobs byteequalC654. Unpublished, source
+independent/runtimeNOTRUN; own separateworktree/journal/archiveprefill01.
+Current681 remains frozenH andits acceptance/release priority unchanged.
+Next current681: actualtypecheckterminal/originalreview/freshrefs/ordinarymerge/
+normalActions exactM artifact/maincompiler/publicprivacy, then nextsourceadmission.
