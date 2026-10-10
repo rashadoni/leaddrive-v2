@@ -343,3 +343,22 @@ archivedphase11. Repeatresult/wholecandidate/fullfivemandatory NOTYETaccepted;
 mergeblocked. Ifrepeatfailsagain, no blindthirdattempt; private-safe branch/time
 harness diagnostics/newheadsource7 required. Next actualattempt2completeoriginals
 /root+peer/currentC13/five→ordinaryownverifiedrelease ifallaccepted.
+
+## Exact READY allfive actualSUCCESS fullcontent root+peer admitted
+
+Actualnewestscope114199565164/static114199625287/type114199625260/runner114194022902/
+scan114194022957 allApp15368/sourceHFB/allstepsS/actualcheckoutC13 verified with
+ordinaryparents[M7,FB]/tree5e8d/currentunchangedrequiredfive protection. Earlier
+draft same-name records preserved; no oldSKIP credit. READYtypewhole253347B SHA
+fa67d7a2c1fbc5c9946dd6c128faa06a4cd31348f6a3b22d3af13bf8e4e17377 actual1162/35/
+EXIT2/strict64/critical0/owned0/globalNONCLEAN. Staticwhole235760B SHA
+b35bd7caf607c1e6a31e6c1ad8c252572ca19cef3e26921a71935372c9ff3b08 strict18/
+alloldfail/noNew; firstcomplete static byteequal latestfullcapture. Independent
+five receipt62a32ec218f19631d1f8a37bac8e37a4e3bf22ae47ecaf2107b5def986a828fe
+accepted; originals/readers/wholecurrenttypeartifact archivedphase12.
+Currentemployee singleactualrepeat114201861633 RUNNING, no acceptanceyet.
+Actionsattempt2 also createsnewIDs forcarried-forward report/newcorrection S;
+these are originalattempt1 executions (retainedtime/log/artifact), notfresh
+rerunexecutioncredit. OriginalEMPFAIL400/unknowncause kept. Merge remainsheld
+untilactualrepeat whole15/45/12/legacy/sessiondynamic root+peeraccepted and
+freshcontrols. SourceFB/checkedC13 unchanged; no appauth orbaselinemodification.

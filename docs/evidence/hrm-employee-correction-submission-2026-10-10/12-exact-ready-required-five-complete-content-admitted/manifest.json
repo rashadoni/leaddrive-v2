@@ -1,0 +1,482 @@
+{
+  "archivedAtUtc": "2026-10-10T11:34:23.687080+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/actual-required-five/candidate-whole-api-original.json.gz",
+      "originalBytes": 1246,
+      "originalSha256": "11af17d1381614145b44f6c2bf4df8ff8ed70536d8a17f926991cbb512089da9",
+      "storedBytes": 1246,
+      "storedSha256": "11af17d1381614145b44f6c2bf4df8ff8ed70536d8a17f926991cbb512089da9"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/actual-required-five/checks-page-1-whole-api-original.json.gz",
+      "originalBytes": 4901,
+      "originalSha256": "202cbc5660b70c31c95bcdac24df475c5fddf78b31f11f388f5a210779ed09fc",
+      "storedBytes": 4901,
+      "storedSha256": "202cbc5660b70c31c95bcdac24df475c5fddf78b31f11f388f5a210779ed09fc"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/actual-required-five/main-whole-api-original.json.gz",
+      "originalBytes": 215,
+      "originalSha256": "96b53f281da502642a321fa4ca603425d1be390e0606763f957c0be0c2be5481",
+      "storedBytes": 215,
+      "storedSha256": "96b53f281da502642a321fa4ca603425d1be390e0606763f957c0be0c2be5481"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/actual-required-five/peer-required-five-current-candidate-content-review.json.raw-original.gz",
+      "originalBytes": 6232,
+      "originalSha256": "62a32ec218f19631d1f8a37bac8e37a4e3bf22ae47ecaf2107b5def986a828fe",
+      "storedBytes": 1576,
+      "storedSha256": "e9d0676094fea17bbdcf91ea8ae3365608800a39e7698150cbdd0a05c5880643"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/actual-required-five/pr-scope-check-whole-api-original.json.gz",
+      "originalBytes": 1291,
+      "originalSha256": "97cd4d2561e24e83942716c346bde0b766825a82f3b25f5096b455192eece5d9",
+      "storedBytes": 1291,
+      "storedSha256": "97cd4d2561e24e83942716c346bde0b766825a82f3b25f5096b455192eece5d9"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/actual-required-five/pr-scope-job-whole-api-original.json.gz",
+      "originalBytes": 609,
+      "originalSha256": "fe73bd25150a26aeffc3377c306557bc837d0913421d9c6d6162f283d2393efd",
+      "storedBytes": 609,
+      "storedSha256": "fe73bd25150a26aeffc3377c306557bc837d0913421d9c6d6162f283d2393efd"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/actual-required-five/pr-scope-run-whole-api-original.json.gz",
+      "originalBytes": 1652,
+      "originalSha256": "d443a6e113629542bc28ba0a632e955f124eda80b623af10222170eb71be07fa",
+      "storedBytes": 1652,
+      "storedSha256": "d443a6e113629542bc28ba0a632e955f124eda80b623af10222170eb71be07fa"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/actual-required-five/pr-scope-whole-log-original.txt.gz",
+      "originalBytes": 16246,
+      "originalSha256": "f7d4e0a7d980cb31b0c512703a347843269b3fee95188c7c9ee3a0098f7d11e4",
+      "storedBytes": 16246,
+      "storedSha256": "f7d4e0a7d980cb31b0c512703a347843269b3fee95188c7c9ee3a0098f7d11e4"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/actual-required-five/pr-whole-api-original.json.gz",
+      "originalBytes": 3095,
+      "originalSha256": "2d5f732e3ad5cddf6492a160660e05ff2ca5163619bed42ecd560470f1a929c7",
+      "storedBytes": 3095,
+      "storedSha256": "2d5f732e3ad5cddf6492a160660e05ff2ca5163619bed42ecd560470f1a929c7"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/actual-required-five/protection-whole-api-original.json.gz",
+      "originalBytes": 422,
+      "originalSha256": "bdaec664bbb0d3971e4bfc06d28c73b1abd217b91596b0a79f6c473ce0005a37",
+      "storedBytes": 422,
+      "storedSha256": "bdaec664bbb0d3971e4bfc06d28c73b1abd217b91596b0a79f6c473ce0005a37"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/actual-required-five/runner-policy-check-whole-api-original.json.gz",
+      "originalBytes": 1294,
+      "originalSha256": "b7fccee24ddcba38584b7413ce90ab3a9c98872f42106fd51ece99d4fcc8a4e1",
+      "storedBytes": 1294,
+      "storedSha256": "b7fccee24ddcba38584b7413ce90ab3a9c98872f42106fd51ece99d4fcc8a4e1"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/actual-required-five/runner-policy-job-whole-api-original.json.gz",
+      "originalBytes": 566,
+      "originalSha256": "0ef075972e18509e91137fb709d61f6730de3a6c7fbd1892509241b2d16c4bc1",
+      "storedBytes": 566,
+      "storedSha256": "0ef075972e18509e91137fb709d61f6730de3a6c7fbd1892509241b2d16c4bc1"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/actual-required-five/runner-policy-run-whole-api-original.json.gz",
+      "originalBytes": 1649,
+      "originalSha256": "323dd5d04566dc11b458a4a86a64ae806d6a0f283152de8cc110e8f6a64fc230",
+      "storedBytes": 1649,
+      "storedSha256": "323dd5d04566dc11b458a4a86a64ae806d6a0f283152de8cc110e8f6a64fc230"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/actual-required-five/runner-policy-whole-log-original.txt.gz",
+      "originalBytes": 3284,
+      "originalSha256": "f025d2d63655a61810d22ae792f8104b62031910451e8c6f595a438f58d30923",
+      "storedBytes": 3284,
+      "storedSha256": "f025d2d63655a61810d22ae792f8104b62031910451e8c6f595a438f58d30923"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/actual-required-five/scan-check-whole-api-original.json.gz",
+      "originalBytes": 1289,
+      "originalSha256": "5b06106146ed2c53180a31d16a8214cc6371b5d568e5ebf70de2fe773a35a841",
+      "storedBytes": 1289,
+      "storedSha256": "5b06106146ed2c53180a31d16a8214cc6371b5d568e5ebf70de2fe773a35a841"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/actual-required-five/scan-job-whole-api-original.json.gz",
+      "originalBytes": 610,
+      "originalSha256": "71c68b9a2323853448098f0295cb69ff1472ca9bc3094c02e5446853e5f3ea8a",
+      "storedBytes": 610,
+      "storedSha256": "71c68b9a2323853448098f0295cb69ff1472ca9bc3094c02e5446853e5f3ea8a"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/actual-required-five/scan-run-whole-api-original.json.gz",
+      "originalBytes": 1649,
+      "originalSha256": "1b5eba2adccb08a778365234a6e565ab65c6a2f8c2604b6e892eeff78ef17160",
+      "storedBytes": 1649,
+      "storedSha256": "1b5eba2adccb08a778365234a6e565ab65c6a2f8c2604b6e892eeff78ef17160"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/actual-required-five/scan-whole-log-original.txt.gz",
+      "originalBytes": 16363,
+      "originalSha256": "614f988f6a52a5322d286d290f545d964f217a7b55228b48c7c76b312f5bd604",
+      "storedBytes": 16363,
+      "storedSha256": "614f988f6a52a5322d286d290f545d964f217a7b55228b48c7c76b312f5bd604"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/actual-required-five/source-whole-api-original.json.gz",
+      "originalBytes": 513,
+      "originalSha256": "67f9cdeaf1aa43ee0f7fa19120c37bedd8075b20eb20c63c5bd7e7518db7caf7",
+      "storedBytes": 513,
+      "storedSha256": "67f9cdeaf1aa43ee0f7fa19120c37bedd8075b20eb20c63c5bd7e7518db7caf7"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/actual-required-five/static-checks-check-whole-api-original.json.gz",
+      "originalBytes": 1293,
+      "originalSha256": "5b92c67b54458d13b4a236e9add2bc553fac3d7c1d1f53d8aa0d5ce3c33d4837",
+      "storedBytes": 1293,
+      "storedSha256": "5b92c67b54458d13b4a236e9add2bc553fac3d7c1d1f53d8aa0d5ce3c33d4837"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/actual-required-five/static-checks-job-whole-api-original.json.gz",
+      "originalBytes": 1193,
+      "originalSha256": "ec46fb90d080fe8d8a977414666ab4779b8c4b9b55e8bbfc7c8e8c746def6c30",
+      "storedBytes": 1193,
+      "storedSha256": "ec46fb90d080fe8d8a977414666ab4779b8c4b9b55e8bbfc7c8e8c746def6c30"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/actual-required-five/static-checks-run-whole-api-original.json.gz",
+      "originalBytes": 1652,
+      "originalSha256": "d443a6e113629542bc28ba0a632e955f124eda80b623af10222170eb71be07fa",
+      "storedBytes": 1652,
+      "storedSha256": "d443a6e113629542bc28ba0a632e955f124eda80b623af10222170eb71be07fa"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/actual-required-five/static-checks-whole-log-original.txt.gz",
+      "originalBytes": 45043,
+      "originalSha256": "c5f7e4067c5f9d05e060b044093a9e297fb6d42a0c04fcf9f0ae860db0c5d5c2",
+      "storedBytes": 45043,
+      "storedSha256": "c5f7e4067c5f9d05e060b044093a9e297fb6d42a0c04fcf9f0ae860db0c5d5c2"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/actual-required-five/typecheck-check-whole-api-original.json.gz",
+      "originalBytes": 1293,
+      "originalSha256": "e04ce1268ff3ae7b230b79552ead81c8ddbc7b4117239d122590e55263ac30ae",
+      "storedBytes": 1293,
+      "storedSha256": "e04ce1268ff3ae7b230b79552ead81c8ddbc7b4117239d122590e55263ac30ae"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/actual-required-five/typecheck-job-whole-api-original.json.gz",
+      "originalBytes": 806,
+      "originalSha256": "ea54e6300694a3e0537b1c23a7e9c4c2fa8a8552db3e8cbe95d5b7cb63812799",
+      "storedBytes": 806,
+      "storedSha256": "ea54e6300694a3e0537b1c23a7e9c4c2fa8a8552db3e8cbe95d5b7cb63812799"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/actual-required-five/typecheck-run-whole-api-original.json.gz",
+      "originalBytes": 1652,
+      "originalSha256": "d443a6e113629542bc28ba0a632e955f124eda80b623af10222170eb71be07fa",
+      "storedBytes": 1652,
+      "storedSha256": "d443a6e113629542bc28ba0a632e955f124eda80b623af10222170eb71be07fa"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/actual-required-five/typecheck-whole-log-original.txt.gz",
+      "originalBytes": 34025,
+      "originalSha256": "b9d41a04f077ad1b9dfe68d10729f161fde9f24751de45d854f4160d18c77cb2",
+      "storedBytes": 34025,
+      "storedSha256": "b9d41a04f077ad1b9dfe68d10729f161fde9f24751de45d854f4160d18c77cb2"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-actual-required-five-root/pr-scope-all-suite-records-original.json.raw-original.gz",
+      "originalBytes": 9629,
+      "originalSha256": "cf708bce8aaa3fe8d073e3b4a8dccdb04d2abacd384f88ace8b96447f4849da5",
+      "storedBytes": 1551,
+      "storedSha256": "c6cf2025565b1ef34c5a7a263f99222cebae963b47eef7c2a1ae6fcd4fc5bad4"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-actual-required-five-root/pr-scope-check-original.json.raw-original.gz",
+      "originalBytes": 4534,
+      "originalSha256": "a270f69a7970a51cb059999a1e2ef0d6a36f9f67c728b42d5708f94711539b93",
+      "storedBytes": 1381,
+      "storedSha256": "252c5b1c498cb73e0edb394010d105692b436c19a1f6ca6bc27efd88b66bdfa0"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-actual-required-five-root/pr-scope-checked-commit-original.json.raw-original.gz",
+      "originalBytes": 2643,
+      "originalSha256": "fc7dd8ab4a1cf3463b4656eabd0d3b6398e1ca6ac775255b39cee4dc64d4a022",
+      "storedBytes": 1246,
+      "storedSha256": "11af17d1381614145b44f6c2bf4df8ff8ed70536d8a17f926991cbb512089da9"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-actual-required-five-root/pr-scope-job-original.json.raw-original.gz",
+      "originalBytes": 2595,
+      "originalSha256": "189f20a17285a9e555722f15f98a196242f5bbf8b3c5d0206d8d36add45da699",
+      "storedBytes": 648,
+      "storedSha256": "6f966edc539e59659d5cb99ba9afb510908ea6f179d13d11d79624485a2398c7"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-actual-required-five-root/pr-scope-whole-log-original.txt.gz",
+      "originalBytes": 16246,
+      "originalSha256": "f7d4e0a7d980cb31b0c512703a347843269b3fee95188c7c9ee3a0098f7d11e4",
+      "storedBytes": 16246,
+      "storedSha256": "f7d4e0a7d980cb31b0c512703a347843269b3fee95188c7c9ee3a0098f7d11e4"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-actual-required-five-root/required-latest-checks-api-original.json.raw-original.gz",
+      "originalBytes": 108075,
+      "originalSha256": "b7ecad4b7ba4e0e359d4a877759e38457bde5afea4420e494c39e5ec4737b0dd",
+      "storedBytes": 4338,
+      "storedSha256": "296941299eb15a9679dcaab195be8b6406f348c06e1913a2e869aae5e3475b0d"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-actual-required-five-root/root-required-five-original-content-review.json.raw-original.gz",
+      "originalBytes": 2128,
+      "originalSha256": "9a1714b25a79e9123a857cef680631667aa2662f9e746cf6105cde7a6f235448",
+      "storedBytes": 704,
+      "storedSha256": "fd7443e70cc5c16a2d1aed0974467b11e9c8def4fbf50556b1e135b2a42d8b64"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-actual-required-five-root/runner-policy-all-suite-records-original.json.raw-original.gz",
+      "originalBytes": 4821,
+      "originalSha256": "c22aea92d26f2ecd74ba92d3e7cb7f283489d979c29f6c98cb3155d669ef16a7",
+      "storedBytes": 1400,
+      "storedSha256": "2417cb998daafd30d268e5d9fb54af67045fc6ead0c6cf9769908e3883d903a8"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-actual-required-five-root/runner-policy-check-original.json.raw-original.gz",
+      "originalBytes": 4539,
+      "originalSha256": "6ccf467e7c5395cb859a304c7fa4dc87e4b4e4160e03ef9f203a4cd7b5d0dccf",
+      "storedBytes": 1386,
+      "storedSha256": "dbd47704761ba8907343faf8f36b11b568749a0dc260e18d65b73ec6e9aa4925"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-actual-required-five-root/runner-policy-checked-commit-original.json.raw-original.gz",
+      "originalBytes": 2643,
+      "originalSha256": "fc7dd8ab4a1cf3463b4656eabd0d3b6398e1ca6ac775255b39cee4dc64d4a022",
+      "storedBytes": 1246,
+      "storedSha256": "11af17d1381614145b44f6c2bf4df8ff8ed70536d8a17f926991cbb512089da9"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-actual-required-five-root/runner-policy-job-original.json.raw-original.gz",
+      "originalBytes": 2152,
+      "originalSha256": "f8791e6177785ee5373ec68f431b5ffd11e845d00a66d0eda4c6987d4dfb9eb7",
+      "storedBytes": 603,
+      "storedSha256": "7bd86883268ae6b750c4fb5f3de17691eafed826c9e555347c41440896bc7fbe"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-actual-required-five-root/runner-policy-whole-log-original.txt.gz",
+      "originalBytes": 3284,
+      "originalSha256": "f025d2d63655a61810d22ae792f8104b62031910451e8c6f595a438f58d30923",
+      "storedBytes": 3284,
+      "storedSha256": "f025d2d63655a61810d22ae792f8104b62031910451e8c6f595a438f58d30923"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-actual-required-five-root/scan-all-suite-records-original.json.raw-original.gz",
+      "originalBytes": 4812,
+      "originalSha256": "b2738fdc45f4f12fe55bd5a96f8833f2d533f3975db12983638a300f5410b532",
+      "storedBytes": 1394,
+      "storedSha256": "ad9a8db1d9fee9e2817ef66eb926fa4edadadc8758012fbc4fb43849116f4ff4"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-actual-required-five-root/scan-check-original.json.raw-original.gz",
+      "originalBytes": 4530,
+      "originalSha256": "ae75a22a26cdc6fa8378963201966ec5c8406b31af163c059ed9a5a25ea104af",
+      "storedBytes": 1381,
+      "storedSha256": "f9f98a10404c793a7f4f7b0a614f9045d1e97baad77647b1489ab93f582914ea"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-actual-required-five-root/scan-checked-commit-original.json.raw-original.gz",
+      "originalBytes": 2643,
+      "originalSha256": "fc7dd8ab4a1cf3463b4656eabd0d3b6398e1ca6ac775255b39cee4dc64d4a022",
+      "storedBytes": 1246,
+      "storedSha256": "11af17d1381614145b44f6c2bf4df8ff8ed70536d8a17f926991cbb512089da9"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-actual-required-five-root/scan-job-original.json.raw-original.gz",
+      "originalBytes": 2585,
+      "originalSha256": "b1fadd2927051cf5ec52be8df073067cb2fd5eed4f4d7436ac6d96dcdc7c62c1",
+      "storedBytes": 647,
+      "storedSha256": "0b344f80637bc83b8fe556365d4a070d3d3e4188fe1c562d205fce557548dc1d"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-actual-required-five-root/scan-whole-log-original.txt.gz",
+      "originalBytes": 16363,
+      "originalSha256": "614f988f6a52a5322d286d290f545d964f217a7b55228b48c7c76b312f5bd604",
+      "storedBytes": 16363,
+      "storedSha256": "614f988f6a52a5322d286d290f545d964f217a7b55228b48c7c76b312f5bd604"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-actual-required-five-root/static-checks-all-suite-records-original.json.raw-original.gz",
+      "originalBytes": 9639,
+      "originalSha256": "4771cbe729aa55c2a5e1be30a10c2c26280482c36f29c568a16bf6e078b82b39",
+      "storedBytes": 1561,
+      "storedSha256": "5b6ba225d1941a3ad68a127bb44d6c4727260a33839071c7fc4d056cb9133f39"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-actual-required-five-root/static-checks-check-original.json.raw-original.gz",
+      "originalBytes": 4539,
+      "originalSha256": "c6fc14baec9af2e814dc209d59ef1e81e3674446ac392d2aa1da74dc1274eef9",
+      "storedBytes": 1382,
+      "storedSha256": "6d72eb2e7381a0c213907488c5a4a70a69d6fb547fc7fb53adda7d54e63796a0"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-actual-required-five-root/static-checks-checked-commit-original.json.raw-original.gz",
+      "originalBytes": 2643,
+      "originalSha256": "fc7dd8ab4a1cf3463b4656eabd0d3b6398e1ca6ac775255b39cee4dc64d4a022",
+      "storedBytes": 1246,
+      "storedSha256": "11af17d1381614145b44f6c2bf4df8ff8ed70536d8a17f926991cbb512089da9"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-actual-required-five-root/static-checks-job-original.json.raw-original.gz",
+      "originalBytes": 7690,
+      "originalSha256": "ca97623e0034c70603f3d25170fc4fbfc1bbe8d1829abaf88fbd5a88888d2331",
+      "storedBytes": 1241,
+      "storedSha256": "8596525b98a104db59d555ac036381e795c2cab9324b5895a78336ac8dd805a5"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-actual-required-five-root/static-checks-whole-log-original.txt.gz",
+      "originalBytes": 45043,
+      "originalSha256": "c5f7e4067c5f9d05e060b044093a9e297fb6d42a0c04fcf9f0ae860db0c5d5c2",
+      "storedBytes": 45043,
+      "storedSha256": "c5f7e4067c5f9d05e060b044093a9e297fb6d42a0c04fcf9f0ae860db0c5d5c2"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-actual-required-five-root/typecheck-all-suite-records-original.json.raw-original.gz",
+      "originalBytes": 9632,
+      "originalSha256": "8baa59cfe6ca858278576599c844f0e3257ca5c22fbb70fba75344c4955c9ff7",
+      "storedBytes": 1559,
+      "storedSha256": "027fd657660ba0364d7bdb4dacc46bde3503024a15cab85ae6f37839a2c1ccfa"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-actual-required-five-root/typecheck-check-original.json.raw-original.gz",
+      "originalBytes": 4536,
+      "originalSha256": "7d2760237d7f0f3b955ff9280054e63e2c5b4a83d200c66093e4f4371483ca13",
+      "storedBytes": 1383,
+      "storedSha256": "e9a74d9b4cda55caf48682d6d0c49888433c698995177d73837b882cdf75bde1"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-actual-required-five-root/typecheck-checked-commit-original.json.raw-original.gz",
+      "originalBytes": 2643,
+      "originalSha256": "fc7dd8ab4a1cf3463b4656eabd0d3b6398e1ca6ac775255b39cee4dc64d4a022",
+      "storedBytes": 1246,
+      "storedSha256": "11af17d1381614145b44f6c2bf4df8ff8ed70536d8a17f926991cbb512089da9"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-actual-required-five-root/typecheck-job-original.json.raw-original.gz",
+      "originalBytes": 3991,
+      "originalSha256": "61dd6304da330d9d8980a5922c0a025550bbac351d5a52551c2ab3052032d721",
+      "storedBytes": 852,
+      "storedSha256": "a9f05e6b4204aa3bba35fe37283ef52f8887c18e716fec2e2a20bc291b347c63"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-actual-required-five-root/typecheck-whole-log-original.txt.gz",
+      "originalBytes": 34025,
+      "originalSha256": "b9d41a04f077ad1b9dfe68d10729f161fde9f24751de45d854f4160d18c77cb2",
+      "storedBytes": 34025,
+      "storedSha256": "b9d41a04f077ad1b9dfe68d10729f161fde9f24751de45d854f4160d18c77cb2"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-ready-checks-root/artifact-11667937430-original.zip",
+      "originalBytes": 515,
+      "originalSha256": "22c83913c73d030770875e7b0bf17ef2ecdb3e34f5e5f0f2bb66ce4af0bd836c",
+      "storedBytes": 515,
+      "storedSha256": "22c83913c73d030770875e7b0bf17ef2ecdb3e34f5e5f0f2bb66ce4af0bd836c"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-ready-checks-root/artifacts-api-original.json.gz",
+      "originalBytes": 458,
+      "originalSha256": "82494b44bb3d58ff9595b5b90de7260ec8e7887af3de67b960910171051a62a6",
+      "storedBytes": 458,
+      "storedSha256": "82494b44bb3d58ff9595b5b90de7260ec8e7887af3de67b960910171051a62a6"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-ready-checks-root/finite-capture-summary.json.raw-original.gz",
+      "originalBytes": 6731,
+      "originalSha256": "3e0bf484d941105427075f5d8a803d274a54f8512756906b64dadbb0b1d46bfb",
+      "storedBytes": 1473,
+      "storedSha256": "07979cc88dcd4af71dca16ea4e62018e3c755e2f641b2ea5bb7bcba227f189a8"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-ready-checks-root/job-114199565164-original.txt.gz",
+      "originalBytes": 16246,
+      "originalSha256": "f7d4e0a7d980cb31b0c512703a347843269b3fee95188c7c9ee3a0098f7d11e4",
+      "storedBytes": 16246,
+      "storedSha256": "f7d4e0a7d980cb31b0c512703a347843269b3fee95188c7c9ee3a0098f7d11e4"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-ready-checks-root/job-114199625260-original.txt.gz",
+      "originalBytes": 34025,
+      "originalSha256": "b9d41a04f077ad1b9dfe68d10729f161fde9f24751de45d854f4160d18c77cb2",
+      "storedBytes": 34025,
+      "storedSha256": "b9d41a04f077ad1b9dfe68d10729f161fde9f24751de45d854f4160d18c77cb2"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-ready-checks-root/job-114199625287-original.txt.gz",
+      "originalBytes": 45043,
+      "originalSha256": "c5f7e4067c5f9d05e060b044093a9e297fb6d42a0c04fcf9f0ae860db0c5d5c2",
+      "storedBytes": 45043,
+      "storedSha256": "c5f7e4067c5f9d05e060b044093a9e297fb6d42a0c04fcf9f0ae860db0c5d5c2"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-ready-checks-root/jobs-api-original.json.gz",
+      "originalBytes": 1752,
+      "originalSha256": "2b872a5b87c17fa93958a16c378e84d62a4097b2d37562cd8e542c4610804f07",
+      "storedBytes": 1752,
+      "storedSha256": "2b872a5b87c17fa93958a16c378e84d62a4097b2d37562cd8e542c4610804f07"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-ready-checks-root/ready-typecheck-app-api-original.json.raw-original.gz",
+      "originalBytes": 4536,
+      "originalSha256": "7d2760237d7f0f3b955ff9280054e63e2c5b4a83d200c66093e4f4371483ca13",
+      "storedBytes": 1383,
+      "storedSha256": "e9a74d9b4cda55caf48682d6d0c49888433c698995177d73837b882cdf75bde1"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-ready-checks-root/root-ready-typecheck-content-review.json.raw-original.gz",
+      "originalBytes": 1721,
+      "originalSha256": "d5f9c0e41c032cd179fad7f1d2cd42f174947ce13a3e7576d8ecddaf48a41d99",
+      "storedBytes": 827,
+      "storedSha256": "20198d230fbdeb37f0720954d36b09dba88bf9911cd8223dbcfbe7913046a66e"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-ready-checks-root/run-api-original.json.gz",
+      "originalBytes": 1652,
+      "originalSha256": "d443a6e113629542bc28ba0a632e955f124eda80b623af10222170eb71be07fa",
+      "storedBytes": 1652,
+      "storedSha256": "d443a6e113629542bc28ba0a632e955f124eda80b623af10222170eb71be07fa"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-ready-first-static-root/check-original.json.raw-original.gz",
+      "originalBytes": 3572,
+      "originalSha256": "b30bb109a1af04ed671267a17c8048751a1850f62be3a5ca33676c1dd6531cb9",
+      "storedBytes": 1293,
+      "storedSha256": "5b92c67b54458d13b4a236e9add2bc553fac3d7c1d1f53d8aa0d5ce3c33d4837"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-ready-first-static-root/job-original.json.raw-original.gz",
+      "originalBytes": 5903,
+      "originalSha256": "76e6542e0d1bb015a89650df363cef46f8340c99b8da375bcbb62989ebfccee0",
+      "storedBytes": 1193,
+      "storedSha256": "ec46fb90d080fe8d8a977414666ab4779b8c4b9b55e8bbfc7c8e8c746def6c30"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-ready-first-static-root/root-first-ready-static-complete-content-review.json.raw-original.gz",
+      "originalBytes": 497,
+      "originalSha256": "82d24a1e756f3381689bed6587ca81c55824a16b012d250de91b2d4ce9093c31",
+      "storedBytes": 373,
+      "storedSha256": "66dbde905c0f1fee2c617cc8d954ac20be74f4390626bcc1c05423162ec50c9f"
+    },
+    {
+      "path": "hrm-employee-correction-submission-fb227-required-five-archive-inputs/hrm-employee-correction-submission-fb227-ready-first-static-root/whole-original.log.gz",
+      "originalBytes": 45043,
+      "originalSha256": "c5f7e4067c5f9d05e060b044093a9e297fb6d42a0c04fcf9f0ae860db0c5d5c2",
+      "storedBytes": 45043,
+      "storedSha256": "c5f7e4067c5f9d05e060b044093a9e297fb6d42a0c04fcf9f0ae860db0c5d5c2"
+    }
+  ]
+}
