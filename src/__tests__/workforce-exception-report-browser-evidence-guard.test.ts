@@ -48,7 +48,7 @@ describe("native report fixture admission", () => {
     nativeLauncher.mockReset()
     for (const [key, value] of Object.entries({
       GITHUB_ACTIONS: "true", CI: "true", NODE_ENV: "development",
-      WF_CALENDAR_BROWSER: "1", WF_MANAGER_TODAY_BROWSER: "1", WF_EXCEPTION_REPORT_BROWSER: "1",
+      WF_CALENDAR_BROWSER: "1", WF_MANAGER_TODAY_BROWSER: "1", WF_EXCEPTION_REPORT_BROWSER: "1", WF_EXCEPTION_CLASSIFICATION_BROWSER: "1",
       LEADDRIVE_DISABLE_SERVICE_WORKER: "1",
     })) vi.stubEnv(key, value)
   })
@@ -72,8 +72,15 @@ describe("native report fixture admission", () => {
     expect(nativeLauncher).not.toHaveBeenCalled()
   })
 
-  it.each(["", "exceptions", "exception-classification", "constructor"])("refuses unknown fixture %s", async fixture => {
+  it.each(["", "exceptions", "exception-classification-unknown", "constructor"])("refuses unknown fixture %s", async fixture => {
     await expect(createNativeZoomContext("http://127.0.0.1:9/", fixture)).rejects.toThrow("Exact native fixture required")
+    expect(nativeLauncher).not.toHaveBeenCalled()
+  })
+
+  it.each(["WF_CALENDAR_BROWSER", "WF_MANAGER_TODAY_BROWSER", "WF_EXCEPTION_REPORT_BROWSER"])("refuses classification when only %s is opted in", async otherOptIn => {
+    for (const optIn of ["WF_CALENDAR_BROWSER", "WF_MANAGER_TODAY_BROWSER", "WF_EXCEPTION_REPORT_BROWSER", "WF_EXCEPTION_CLASSIFICATION_BROWSER"]) vi.stubEnv(optIn, "0")
+    vi.stubEnv(otherOptIn, "1")
+    await expect(createNativeZoomContext("http://127.0.0.1:9/", "exception-classification")).rejects.toThrow()
     expect(nativeLauncher).not.toHaveBeenCalled()
   })
 
@@ -81,6 +88,7 @@ describe("native report fixture admission", () => {
     ["calendar", "WF_CALENDAR_BROWSER", "/workforce/calendar"],
     ["manager-today", "WF_MANAGER_TODAY_BROWSER", "/workforce"],
     ["exception-report", "WF_EXCEPTION_REPORT_BROWSER", "/workforce/exceptions/report"],
+    ["exception-classification", "WF_EXCEPTION_CLASSIFICATION_BROWSER", "/workforce/exceptions"],
   ])("keeps the %s opt-in and exact native page boundary", async (fixture, optIn, route) => {
     vi.stubEnv(optIn, "0")
     await expect(createNativeZoomContext("http://127.0.0.1:9/", fixture)).rejects.toThrow()
@@ -100,7 +108,8 @@ describe("native report fixture admission", () => {
       await expect(proveNative200Zoom({ ...view, page }, "/tmp/unused-native-admission", "en", vi.fn())).rejects.toBe(proofBoundary)
       expect(worker.evaluate).toHaveBeenCalledOnce()
       worker.evaluate.mockClear()
-      for (const url of ["http://127.0.0.1:9/workforce/exception-reports", "http://127.0.0.1:9/workforce/exceptions", `http://localhost:9${route}`, `http://127.0.0.1:9${route}?fixture=report`]) {
+      const otherFixtureRoute = route === "/workforce/exceptions" ? "/workforce/exceptions/report" : "/workforce/exceptions"
+      for (const url of ["http://127.0.0.1:9/workforce/exception-reports", `http://127.0.0.1:9${otherFixtureRoute}`, `http://localhost:9${route}`, `http://127.0.0.1:9${route}?fixture=report`]) {
         await expect(proveNative200Zoom({ ...view, page: { ...page, url: () => url } }, "/tmp/unused-native-admission", "en", vi.fn())).rejects.toThrow()
       }
       expect(worker.evaluate).not.toHaveBeenCalled()
