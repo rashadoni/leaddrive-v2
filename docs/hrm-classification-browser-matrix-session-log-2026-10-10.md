@@ -87,3 +87,35 @@ empty-state picture; no DOM/pixel masking. All24writes/20cases/108focus/3native/
 21realcaptures and original negative/ledger/RLS/audit/migration gates retained.
 Node20 syntax/whitespace PASS; fresh independent source review and allheavy
 runtime stillPENDING. Parent7BA frozen and unaffected; no newtask closure.
+
+## Source freeze after corrected independent review and parent merge
+
+Corrected source85e72cbb13292891c87fd7a6ac35306e791d574d accepted by independent
+root-harness reviewer with no P0/P1/P2. Receipt9952B/SHA
+569f25b3de3d6478c761033b7235400c03573936a1e888c25620a34378f57993.
+Reviewer excludes its own helper/guard authoring; root independently accepted
+those two paths, with unchanged helper body and original nine early refusals.
+Original f529 blocking P2, initial peer reader missing checks.yml path, and
+corrected review are immutable in evidence PR663 phase01. This is source-only
+acceptance, not new31-test or actual browser/PG/compiler/build execution.
+
+Parent PR672 all exact7BA source and mandatory checks accepted and ordinary
+merged as cd935999cd657f0a13bb458ee901637389a31916 with parents[main506,7BA]
+and whole tree bf17e1f3c81532111e3a130996f05020604898e0 matching frozen source.
+Normal Deploy38013599677 is IN_PROGRESS; its artifact/public smoke not yet
+accepted. Earlier parent pending-type statements are superseded. No parent
+runtime credit transfers to this new matrix. Source files remain byte-identical
+to reviewed85e; this checkpoint appends only this journal.
+
+Root initially guessed absent workforce-c12-source-verify.yml reader path,
+then discovered actual workforce-exception-report-browser-evidence.yml.
+This is a read-only tooling error, not a source/CI failure. Existing workflow
+already covers this harness/helper/guard and exact expected_head dispatch.
+New dedicated draft PR targets current reviewed main, preserving full589/605/
+608/973 ancestry. First hosted five-lane run will be allowed to complete
+before any corrective source push; preserve original failures and all repeats.
+Accounting85 DONE/76 open/61%; C12 PARTIAL/C14-003 PLANNED unchanged.
+Next: publish frozen dedicated branch/draft and actual hosted31guards/20cases/
+24writes+24linked audits/108focus/3native+21captures/48private-capture refusals,
+original denials/migration/facts/RLS/cleanup, PG44, strict18, compiler64/build.
+No local heavy gates, no production HR action or operational substitute.
