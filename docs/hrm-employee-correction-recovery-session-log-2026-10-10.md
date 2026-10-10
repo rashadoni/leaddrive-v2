@@ -31,3 +31,22 @@ AZ/RU/EN viewports; no personneldecision/correction, private body/pixels, native
 form/device/human/productionHR/operational/fullhistorical/defaultACL acceptance.
 This is preparation only. All nextSQL/browser/sourceindependent/hosted checks
 NOT RUN, no automaticpolicy/app behavior change andno issueclosed.
+
+## Separate recovery target and actual-transport harness prepared, not run
+
+Newprofile excludes bothordinarycorrection andACK opt-ins (includingemptyordinary
+flag), keeps bareloopback/role/database/adminfence/Redis/source+checkedSHA/service
+worker/hostedCI guards. Actual28puretarget/refusal tests andNode20syntax/diff PASS
+afterresources. No connections/browser/database/dependencyinstall/production.
+Harness copies canonical MFA/pacing/session helpers andexactsource-link routines,
+reuses approvedsyntheticfixture onfutureownservice. Every19ordinary linked/
+cleared-source submission wouldfirstreallycommit201, deliberatelyabort browser
+reply, observe actualrequestfailed/errorToast/privateDraftretained, thenactual
+UIretry200/samewholebody/clientkey/requestid/no request-auditmutation, plus old
+APIreplay200/19strictcounts/5SQL/11facts/role+RLS/privatecleanup controls.
+Originalseven sourcefiles/jobs andapplication untouched; proposed33bindings,
+19controlledreplyloss/recovery flows/9cells/10MFA/11cases allPLANNED. No realoutage/
+privatepixel/nativeform/device/human/HR/operationalacceptance. SQL/browser/runtime
+/sourceindependent NOT RUN, nojobwiredyet/sourceunpublished. Parent683source7
+oldemployee nowSUCCESS; build/fullcompiler stillRUNNING. Next exactsourcecheck/
+separateeighthjob preparation whilecurrent683 proofs remainpriority.
