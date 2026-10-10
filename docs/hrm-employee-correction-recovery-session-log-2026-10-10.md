@@ -50,3 +50,18 @@ privatepixel/nativeform/device/human/HR/operationalacceptance. SQL/browser/runti
 /sourceindependent NOT RUN, nojobwiredyet/sourceunpublished. Parent683source7
 oldemployee nowSUCCESS; build/fullcompiler stillRUNNING. Next exactsourcecheck/
 separateeighthjob preparation whilecurrent683 proofs remainpriority.
+
+## Separate eighth hosted job wired; original seven preserved
+
+Adds onlyone narrownew-MJS pathfilter andone isolated Ubuntu24.04 job. Oldseven
+wholeworkflow reconstructs byteexact afteronly newfilter/job/separator removal.
+Own opt-in/profile/PG/Redis/ports/maskedsecrets/canonicalAuth/Nextdev/serviceworker
+fence/timeout/cleanup andsanitizedJSON artifact; uses unchanged approvedordinary
+syntheticrequest fixture onits ownservice, notsharedruntime withsevenoldjobs.
+New28target tests+existing3self-requesttests/scopednew-MJS lint/Prismavalidation/
+i18n/runnerpolicy beforeactualcontrolledreplyloss. Node20syntax/28puretarget/
+runner54workflowfiles/diff actualPASS afterresourcecheck. Sourceindependent,
+SQL/browser/newjob/compiler/build/fullsource8 NOT RUN, allnextcounts PLANNED.
+Parent683source7 sixSUCCESS/fullcompilerRUNNING, unchangedfrozenFB. Future
+publication/merge/ownrelease waits parentverifiedrelease andfinalexactsource
+review/freshcontrols; no source/app/role/secret/production/checkbaseline weakening.
