@@ -59,3 +59,16 @@ Case/decision guards and all workday/HRfacts remain protected/read-only. Audit
 fixture guard is explicitly synthetic; fullproductionimmutableaudit/defaultACL
 and completehistoricalreplay remain separately unproved. Source/harness/schema
 fixture implementation NOTRUN; current682 exact6f58source6 stillrunning.
+
+
+## Separate correction target admission prepared
+
+New standalone admission helper requires GitHubCI/nonproduction/owncorrection
+opt-in and explicitly excludes ACKfixture opt-in, exact fullsource/checkedSHA,
+loopbackHTTP and same loopback disposable admin/app/fence database plusRedis0.
+Credential-bearing URL assertions compare booleans only. Existing ACKadmission
+helper unchanged. No connection/job/fixture/production mutation performed.
+CurrentNode20syntax/diffPASS after RAM/disk/pressure inspection. Admission
+behavior/tests/database/harness/sourceindependent/hostedruntime NOTRUN; this
+unpublished helper is preparation only. Next separate allowlisted fixture/harness
+and exactjob, preserving alloldlanes andoriginalcurrent682source.
