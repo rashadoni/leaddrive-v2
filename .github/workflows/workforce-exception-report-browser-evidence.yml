@@ -7,6 +7,8 @@ on:
       - ".github/workflows/workforce-exception-report-browser-evidence.yml"
       - "scripts/workforce-exception-report-browser-evidence.mjs"
       - "scripts/workforce-employee-exception-browser-*.mjs"
+      - "scripts/workforce-employee-correction-browser-*.mjs"
+      - "scripts/ci/fixtures/workforce-employee-correction-browser.sql"
       - "scripts/ci/fixtures/workforce-employee-exception-browser.sql"
       - "src/__tests__/workforce-employee-exception-browser-admission.test.ts"
       - "src/components/workforce/workforce-my-exceptions.tsx"
@@ -789,3 +791,199 @@ jobs:
       - name: Cleanup bounded build swap
         if: always()
         run: bash scripts/ci/prepare-hosted-build-runner.sh cleanup
+
+  employee-correction-browser:
+    name: Authenticated employee correction submission browser evidence
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.expected_head != '') || (github.event_name == 'pull_request' && !github.event.pull_request.draft) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      CI: "true"
+      NODE_ENV: development
+      NODE_OPTIONS: --max-old-space-size=6144
+      NEXT_TELEMETRY_DISABLED: "1"
+      LEADDRIVE_DISABLE_SERVICE_WORKER: "1"
+      WF_EMPLOYEE_CORRECTION_BROWSER: "1"
+      WF_EMPLOYEE_CORRECTION_BROWSER_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      WF_EMPLOYEE_CORRECTION_BROWSER_OUTPUT_DIR: artifacts/workforce-employee-correction-browser
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: workforce_manager_today_browser
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d workforce_manager_today_browser"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    steps:
+      # The normal pull_request checkout is GitHub's candidate/base merge.
+      # Preserve the distinct PR head and GITHUB_SHA in the evidence receipt.
+      - name: Checkout candidate
+        uses: actions/checkout@v6
+
+      - name: Verify exact authorized source dispatch
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          EXPECTED_HEAD: ${{ inputs.expected_head }}
+        run: |
+          [[ "$EXPECTED_HEAD" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          test "$GITHUB_SHA" = "$EXPECTED_HEAD"
+
+      - name: Resolve isolated ports and masked application secrets
+        env:
+          PG_PORT: ${{ job.services.postgres.ports['5432'] }}
+          WF_REDIS_PORT: ${{ job.services.redis.ports['6379'] }}
+        shell: bash
+        run: |
+          test -n "$WF_REDIS_PORT" || exit 1
+          test -n "$PG_PORT" || { echo "::error::Postgres service port is missing"; exit 1; }
+          [[ "$WF_EMPLOYEE_CORRECTION_BROWSER_HEAD_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          APP_PORT="$(python3 -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')"
+          WF_DATABASE_PASSWORD="$(openssl rand -hex 24)"
+          WF_AUTH_SECRET="$(openssl rand -hex 32)"
+          WF_PII_SECRET="$(openssl rand -hex 32)"
+          echo "::add-mask::$WF_DATABASE_PASSWORD"
+          echo "::add-mask::$WF_AUTH_SECRET"
+          echo "::add-mask::$WF_PII_SECRET"
+          {
+            echo "REDIS_URL=redis://127.0.0.1:${WF_REDIS_PORT}/0"
+            echo "ADMIN_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:${PG_PORT}/workforce_manager_today_browser"
+            echo "EVENT_PLATFORM_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:${PG_PORT}/workforce_manager_today_browser"
+            echo "DATABASE_URL=postgresql://wf_manager_today_browser:${WF_DATABASE_PASSWORD}@127.0.0.1:${PG_PORT}/workforce_manager_today_browser"
+            echo "WF_MANAGER_TODAY_BROWSER_DATABASE_PASSWORD=$WF_DATABASE_PASSWORD"
+            echo "APP_PORT=$APP_PORT"
+            echo "NEXTAUTH_URL=http://localhost:${APP_PORT}"
+            echo "AUTH_URL=http://localhost:${APP_PORT}"
+            echo "APP_URL=http://localhost:${APP_PORT}"
+            echo "NEXT_PUBLIC_APP_URL=http://localhost:${APP_PORT}"
+            echo "NEXT_PUBLIC_MARKETING_URL=http://localhost:${APP_PORT}"
+            echo "WF_EMPLOYEE_CORRECTION_BROWSER_BASE_URL=http://localhost:${APP_PORT}"
+            echo "WF_EMPLOYEE_CORRECTION_BROWSER_APP_LOG=${RUNNER_TEMP}/workforce-employee-correction-browser-app.log"
+            echo "AUTH_SECRET=$WF_AUTH_SECRET"
+            echo "NEXTAUTH_SECRET=$WF_AUTH_SECRET"
+            echo "TENANT_PII_MASTER_KEY=$WF_PII_SECRET"
+          } >> "$GITHUB_ENV"
+          mkdir -p "$WF_EMPLOYEE_CORRECTION_BROWSER_OUTPUT_DIR"
+          python3 - <<'PY'
+          import json, os, pathlib
+          receipt = {
+              "stage": "workflow-preparing",
+              "headSha": os.environ["WF_EMPLOYEE_CORRECTION_BROWSER_HEAD_SHA"],
+              "ciSha": os.environ["GITHUB_SHA"],
+              "runId": os.environ["GITHUB_RUN_ID"],
+              "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "runtime": "ephemeral-next-dev",
+              "productionMutation": False,
+          }
+          target = pathlib.Path(os.environ["WF_EMPLOYEE_CORRECTION_BROWSER_OUTPUT_DIR"]) / "workflow-context.json"
+          target.write_text(json.dumps(receipt, indent=2) + "\n")
+          PY
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install candidate dependencies
+        run: npm ci
+
+      - name: Create candidate schema and restricted application role
+        shell: bash
+        run: |
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 \
+            -c 'CREATE EXTENSION IF NOT EXISTS vector'
+          DATABASE_URL="$ADMIN_DATABASE_URL" npx prisma db push --skip-generate
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 \
+            --set=app_password="$WF_MANAGER_TODAY_BROWSER_DATABASE_PASSWORD" \
+            -f scripts/ci/fixtures/workforce-manager-today-browser.sql
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 \
+            -f scripts/ci/fixtures/workforce-employee-correction-browser.sql
+          npx prisma generate
+
+      - name: Separate target and existing self-request refusal tests
+        run: |
+          node --test scripts/workforce-employee-correction-browser-admission.test.mjs
+          npx vitest run src/__tests__/workforce-self-request.test.ts src/__tests__/api-workforce-self-requests.test.ts src/__tests__/workforce-self-request-ui-contract.test.ts
+        env:
+          VITEST_MAX_WORKERS: "1"
+
+      - name: Unchanged runner and translation checks
+        run: |
+          node scripts/ci/check-github-runner-policy.mjs
+          npm run i18n:check
+          npx prisma validate
+          npx eslint scripts/workforce-employee-correction-browser-evidence.mjs scripts/workforce-employee-correction-browser-admission.mjs scripts/workforce-employee-correction-browser-admission.test.mjs
+
+      - name: Install Chromium on hosted Ubuntu
+        run: npx playwright install --with-deps chromium
+
+      - name: Run actual pending correction submission scenarios
+        shell: bash
+        run: |
+          test "$CI" = true && test "$WF_EMPLOYEE_CORRECTION_BROWSER" = 1
+          # The log stays transient on the ephemeral runner. The harness emits
+          # sanitized JSON; cookies, passwords and raw logs are not
+          # uploaded as evidence.
+          node node_modules/next/dist/bin/next dev --hostname 127.0.0.1 --port "$APP_PORT" > "$WF_EMPLOYEE_CORRECTION_BROWSER_APP_LOG" 2>&1 &
+          WF_APP_PID=$!
+          cleanup() {
+            kill "$WF_APP_PID" 2>/dev/null || true
+            wait "$WF_APP_PID" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          for attempt in $(seq 1 90); do
+            if curl -fsS --max-time 5 "${WF_EMPLOYEE_CORRECTION_BROWSER_BASE_URL}/api/v1/ping" >/dev/null 2>&1; then
+              break
+            fi
+            if ! kill -0 "$WF_APP_PID" 2>/dev/null || [ "$attempt" -eq 90 ]; then
+              echo "::error::Isolated employee correction browser application did not become ready"
+              exit 1
+            fi
+            sleep 2
+          done
+          node scripts/workforce-employee-correction-browser-evidence.mjs
+
+      - name: Preserve non-secret workflow failure receipt
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p "$WF_EMPLOYEE_CORRECTION_BROWSER_OUTPUT_DIR"
+          python3 - <<'PY'
+          import json, os, pathlib
+          receipt = {
+              "status": "FAILED",
+              "headSha": os.environ["WF_EMPLOYEE_CORRECTION_BROWSER_HEAD_SHA"],
+              "ciSha": os.environ["GITHUB_SHA"],
+              "runId": os.environ["GITHUB_RUN_ID"],
+              "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "runtime": "ephemeral-next-dev",
+          }
+          target = pathlib.Path(os.environ["WF_EMPLOYEE_CORRECTION_BROWSER_OUTPUT_DIR"]) / "workflow-failure.json"
+          target.write_text(json.dumps(receipt, indent=2) + "\n")
+          PY
+
+      - name: Upload sanitized employee correction evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: workforce-employee-correction-browser-${{ github.sha }}-${{ github.run_attempt }}
+          path: artifacts/workforce-employee-correction-browser
+          if-no-files-found: error
+          retention-days: 14
