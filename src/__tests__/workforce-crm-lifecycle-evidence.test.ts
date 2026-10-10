@@ -8,7 +8,7 @@ describe("Workforce CRM lifecycle evidence admission", () => {
     { profile: "unknown", env: {}, marker: "known fixture profile" },
     { profile: "calendar", env: { GITHUB_ACTIONS: "false" }, marker: "false" },
     { profile: "calendar", env: { CI: "false" }, marker: "false" },
-    { profile: "calendar", env: { NODE_ENV: "production" }, marker: "development" },
+    { profile: "calendar", env: { NODE_ENV: "production" as const }, marker: "development" },
     { profile: "calendar", env: { WF_CALENDAR_BROWSER_BASE_URL: "https://example.invalid" }, marker: "http:" },
   ])("refuses $profile outside the allowed disposable environment ($marker)", ({ profile, env, marker }) => {
     const result = spawnSync(process.execPath, ["scripts/workforce-crm-lifecycle-evidence.mjs", profile], {
