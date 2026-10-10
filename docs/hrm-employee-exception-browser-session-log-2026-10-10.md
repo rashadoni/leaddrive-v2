@@ -770,3 +770,36 @@ Immutablephase24: 119files/30125835originalbytes.
 secrets/grants/personnel changes. Next currentcandidate/requiredfive originals
 and independentreview, normalmatchinghead merge andGitHubActions release,
 fullmaincompiler/immutableSHA/TLS/ping/employeeanonymousprivacy proof.
+
+## Current candidate four browser lanes independently accepted
+
+Actual checked candidate e3a6c527533072044efa1a289748be0eac51a1d3 has parents
+[0a6300e7ae19d9435332ab8b4f1c6c9e1d420cac,7ca34739e490fb3ef7d88346e4e83c08cf50b665]
+and whole tree 6bd9a531f365faf639b847c4d5db13303ac6b951 exactly source.
+Fresh READY report/employee run38032037169, manager38032037215 and calendar
+38032037239 completed SUCCESS; actual current receipts, not borrowed source
+execution. Employee14cases/12matrix/20realAuthMFA/50focus/14newACK+14audits/
+13unchangedfactsets/8SQLrollbacks/32sourcebindings/6nativephaseproofs/
+27captures(6control100+21native200)/30current320DPR2 admissions accepted.
+Report33cases/54focus/58reflow/15sources/22unchangedfacts/21nativecaptures;
+manager9cases/58sources/27nativecaptures/20facts; calendar15cases/31sources/
+33nativecaptures/89focus/54reflow/72reading/72contrast (minimum4.70747).
+Root content readers and actual current pixel samples inspected; independent
+four reviews with full APIs/logs/digest/size/CRC originals and 10 actual pixel
+views retained in 79-file peer inventory. Existing development Issue badges
+retained; no whole-page overlay nonocclusion or human AT credit claimed.
+
+Root original terminal collector failed line25 artifact-name matching because
+it assumed source H in filename; current artifact correctly names checked C.
+Original partial APIs/logs/error/script preserved. Separate v2 requires explicit
+checked C in artifact name and receipt, retains head/API/digest/CRC admission;
+then candidate v3 content reader verifies exact parents and whole-tree equality.
+No CI/source/baseline or permissions changed. Initial peer reference-discovery
+PermissionError likewise retained and corrected only readonly file discovery.
+Four manual-only jobs in candidate exception run were SKIPPED and receive NO
+execution credit; actual source six remain separately accepted. Current READY
+mandatory five actual SUCCESS observed; their whole-log/independent review and
+fresh-ref merge admission still pending at this entry. PR678 READY OPEN, no
+merge/deploy yet. 85DONE/76open/61%, C6-006/C12 PARTIAL, C14 open unchanged.
+Next required-five final admission, ordinary matching-head merge, normal SHA
+release, exact-main compiler/TLS/ping/6 anonymous GET checks, then next HRM step.
