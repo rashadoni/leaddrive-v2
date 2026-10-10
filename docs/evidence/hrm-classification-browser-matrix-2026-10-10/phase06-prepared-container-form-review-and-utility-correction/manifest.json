@@ -1,0 +1,76 @@
+{
+  "archivedAtUtc": "2026-10-10T02:18:53.118328+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-classification-queue-contained-form-prepared-initial-unsupported-wrap.patch.gz",
+      "originalBytes": 1231,
+      "originalSha256": "ef0395a377337de052c46bb0a860cccfdaa2d58a85348eb4351fa8cd4112603f",
+      "storedBytes": 1231,
+      "storedSha256": "ef0395a377337de052c46bb0a860cccfdaa2d58a85348eb4351fa8cd4112603f"
+    },
+    {
+      "path": "hrm-classification-queue-contained-form-prepared-initial-unsupported-wrap.tsx.gz",
+      "originalBytes": 5609,
+      "originalSha256": "8189baf0fc298160633bfce673db29dc960fa0cf18047f562b265a19e4486948",
+      "storedBytes": 5609,
+      "storedSha256": "8189baf0fc298160633bfce673db29dc960fa0cf18047f562b265a19e4486948"
+    },
+    {
+      "path": "hrm-classification-queue-contained-form-prepared.json.gz",
+      "originalBytes": 1446,
+      "originalSha256": "b9b997d74c0cdb666ff443034b99d0c6d6d34175c4018143059c5e154516d13e",
+      "storedBytes": 880,
+      "storedSha256": "59906ce10236ddaa2db67e84232d30c2207205d13c1e4d1df95f624e59b9f9d6"
+    },
+    {
+      "path": "hrm-classification-contained-form-prepared-root-source-review.json.gz",
+      "originalBytes": 1960,
+      "originalSha256": "8dd64ddf49fc7d27bb06f3144878d19f8b1cf895cdc4f10e8023c0466ae32934",
+      "storedBytes": 803,
+      "storedSha256": "2a256a134f890c039d5ad35e76dd6f9ef168e7bfb57766da0df6fd81493dc827"
+    },
+    {
+      "path": "hrm-classification-queue-contained-form-original-utility-peer-review.json.gz",
+      "originalBytes": 1253,
+      "originalSha256": "78f083a3033bf4ab4c75e04de675267a064603ca53d2498ab20fab76b0f33d25",
+      "storedBytes": 740,
+      "storedSha256": "8bd59ebf8ad8dacd31e77e2d6cec367df1f5520cc23c60d813b8fbfec58866dc"
+    },
+    {
+      "path": "hrm-classification-queue-contained-form-tailwind4-corrected.patch.gz",
+      "originalBytes": 4476,
+      "originalSha256": "4c11a770ff0fd2c4048bf2f276908db3794acea2e42d94eb1e6257e2f9ab2b16",
+      "storedBytes": 1234,
+      "storedSha256": "3518c25a451618bff5381b6c2cc3c33cd11a7670bcc7c91325acb10707a5ee50"
+    },
+    {
+      "path": "hrm-classification-queue-contained-form-tailwind4-corrected.tsx.gz",
+      "originalBytes": 23349,
+      "originalSha256": "aa0a38748e5174b59e2e3cbec35f893651532d8a662fd34954016e8c67798fee",
+      "storedBytes": 5611,
+      "storedSha256": "c22b2cc97160880ff14353d73475c75837598e88cf7a886004ed7128f3837b11"
+    },
+    {
+      "path": "hrm-classification-queue-contained-form-tailwind4-corrected.json.gz",
+      "originalBytes": 943,
+      "originalSha256": "e3561a04300969b25924a99c5e1ccd3833f2091753403b1e3ad2d676bdf84279",
+      "storedBytes": 623,
+      "storedSha256": "dd3f86995b61e085bdc3fd1f2d00ad82dec3345f8f487e58d211b6ba0ddc5ca9"
+    },
+    {
+      "path": "hrm-classification-queue-contained-form-corrected-prepared-peer-review.json.gz",
+      "originalBytes": 4399,
+      "originalSha256": "a7eda849a889fd35339048df6f2acebdf17271dbe3c3b2fee0926f921db9a2f2",
+      "storedBytes": 2043,
+      "storedSha256": "9e90eb6d170cdfc9e45bbd9ff98e19efc06c2874143c5b4814732028f50d8ff4"
+    },
+    {
+      "path": "hrm-classification-matrix-source-regressions-build-peer-review-0cd.json.gz",
+      "originalBytes": 13913,
+      "originalSha256": "5f912387ad6727651d52370de4f72de0e052cd5542663877f6ced1417c5f30c5",
+      "storedBytes": 3095,
+      "storedSha256": "2602b38912d24205b9a423a6f7d32b91e84fe7918cd949c372a3fc04d0c7d704"
+    }
+  ]
+}

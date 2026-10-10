@@ -271,3 +271,31 @@ for prepared fix. Physical devices/humanAT NOT RUN (no approved physical
 environment); synthetic/native-hosted results cannot close whole C14/C12.
 Next independent prepared UI review, full original0CD completion/capture,
 then source checkpoint/push and fresh actual exact-head hosted acceptance.
+
+## Corrected container-form prepared source independently reviewed; original proposal retained
+
+Initial prepared style-only proposal used break-words, absent from actual
+pinned Tailwind4.2.2. Independent source-only P3 finding1253B/SHA
+78f083a3033bf4ab4c75e04de675267a064603ca53d2498ab20fab76b0f33d25
+is retained with byte-exact original patch/source/root semantic receipt;
+original root class-list review is superseded only for this utility. No
+published source or runtime ever used that proposal. Corrected proposal
+uses wrap-break-word; exact corrected patchSHA4c11a770ff0fd2c4048bf2f276908db3794acea2e42d94eb1e6257e2f9ab2b16,
+corrected TSXSHAaa0a38748e5174b59e2e3cbec35f893651532d8a662fd34954016e8c67798fee.
+Independent final prepared review4399B/SHA
+a7eda849a889fd35339048df6f2acebdf17271dbe3c3b2fee0926f921db9a2f2
+accepts exactly eight className changes; all other source bytes identical0CD.
+No remaining source P0/P1/P2, but actual94px clipping remains OPEN pending
+fresh12cell browser proof. NOT APPLIED; new CSS/TSX/lint/build/runtime NOT RUN.
+
+Independent actual0CD PostgreSQL/regression/build13913B/SHA
+5f912387ad6727651d52370de4f72de0e052cd5542663877f6ced1417c5f30c5
+accepts guard31, realPG44, strict18 unchanged,973 lineage/baselines, isolated
+production bundle973pages. Inherited dashboard trace-copy ENOENT retained;
+internal build typevalidation SKIP not credited. Source compiler still
+IN_PROGRESS at this checkpoint, run38015241105 is not cancelled or rerun.
+
+Phase06 retains original proposal, actual source-only finding, correction
+and independent receipts. Next wait for whole original0CD completion and
+capture every lane/raw artifact before applying reviewed corrected source.
+Accounting stays85/161,76open,61%; C12 PARTIAL, C14 incomplete.
