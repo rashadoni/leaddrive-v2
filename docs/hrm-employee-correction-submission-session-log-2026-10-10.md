@@ -304,3 +304,29 @@ Future recoverycapturer/contentreader prepared/syntaxONLY; runtimeNOTRUN. All
 originalAPIs/readyguard/body/reader originals archivedphase09. Precisesstopcurrent
 C13/five running; next wholecurrentoriginals/pixels/independentreview→ordinary
 683merge/ownnormalrelease. No productionmutation for683yet. Accountingunchanged.
+
+## FIRST actual current C13 failure retained before bounded rerun
+
+NaturalREADYbrowser38047393207 attempt1 FAIL: report214SUCCESS/newcorrection371
+SUCCESS, oldEMP296FAIL; manualfourSKIPno executioncredit. Fullroot originals3
+ZIP digest/size/CRC/full3logs/APIs preserved. Currentnew371 all11/10MFA/30bindings/
+19PENDINGrequests+19audits/10linked9clear/5SQL/11facts/13cleanup rootadmitted;
+currentreport33/54focus/58reflow/15bindings/22facts/native21 rootadmitted, one
+freshPNGactuallyviewed withlowercrop/devbadge qualification. WholecandidateFAIL
+NOTACCEPTED. OldEMP firstwhole108084B/artifact11668127299/source45 andordinary
+C13parents[M7,FB]/tree verified. Actualfailure ru-standard-320-authenticate at
+source109: ordinal6 verification400 aftercsrf/callback200/pendingprincipal+
+mandatoryTOTP/warmup405; first5fullMFA200+nonceconsumed. Prefix5cases/18focus/9caps,
+responses5(historical1+new4)/audits4; finalalllegacy/session/prefill/DBnotreached;
+cleanupPASS. No specific public400body/token/requesttimestamps retained; APIhas
+3possible400branches, Invalidcode/TOTPboundary onlyinference NOTPROVED.
+Rootandpeerfirstfailureprefix readers guessedcandidateHead; KeyErrororiginals
+kept/separatesourceHeadcorrectedreaders preserveactualFAIL/noacceptance.
+Independentformalpeer7c37ee7d1d7e78361aa3056c082459a23066518ccb21fd25de32987422ad9b55
+recommendsONEfailed-job-only rerun onidenticalH/C afteroriginalarchive+freshguard,
+withallassertions/authwindows unchanged. Ifrepeated, no blindrerun: narrowprivate
+safe public-branch/timingharnessdiagnostics withnewsource7 required. Original
+sourceFB/checkbaseline/canonicalhelpers unchanged, no appauth modification.
+Mandatorytype/static stillRUNNING; mergeblocked. Next freshsameH/B/C guard then
+ONErerun failed jobs; retainattempt1 permanently andreviewactualattempt2checkout
+C/wholeartifact independently. No rootcausefixclaim/noaccounting/C14closure.
