@@ -286,3 +286,46 @@ Accounting remains85DONE/76open/61%, C12PARTIAL/WF-C14-003PLANNED.
 Next: preserve all completeBF originals, publish7BA and run fresh exact-head
 hosted required/source/browser/PG/compiler/build gates, independently inspect
 actual report evidence, release normally, then next genuinely uncovered slice.
+
+## First BF fully terminal; 7BA published for its own hosted acceptance
+
+Every firstBF required/source/calendar/manager run finished naturally before
+7BA publication; no cancellation/rerun/forcedpush/gate bypass. Source38009864707
+remains overallFAILURE: actual reportFAIL plus4SUCCESS. Required38009854020 and
+allfive App15368 mandatory contexts actualSUCCESS. Hosted guard27PASS/0skip,
+realPG4files44PASS (locks15/calendar12/report11/revisions6), scoped lint/schema/
+i18n/ancestor/whitespace actualPASS; full strict baseline18/18 with everyentry
+stillfailing. Build6.7min/973pages/standalone+static/swapcleanupPASS, no invented
+bundle artifact digest; Nextinternaltypevalidation skipped unchanged.
+
+FreshBF compiler fullraw178808B/SHA2e859d7a6f37d9df90559acdae15df39644d7e18dc29388047ad7acfb5e13691,
+exit2/1158diagnostics/35families/64strict count-pairs, globallyNONCLEAN. Full
+ZIP11652134943/19955B/digest5b4c7481e600c39d7b7c3cfa5936ada6bc9e1fd4cd22a845ac1de31151cf4bed,
+allAPI/CRC verified. Root independently reparsed unchanged original artifact
+with existing critical and baseline readers only (no local compiler). Five
+baseline/gate bytes exactlyaccepted973. Required fulltype raw likewise actual
+1158/64/exit2; no owned report/guard errors. Root qualification2381B/SHA
+02e926ad9d00d09b404683e55242207b061dfb0599c4cbb14c7ee993b109af2c.
+Initial guessed readerfilename absent; corrected by file discovery to actual
+check-typecheck-gate.sh. This is retained tooling read error, not CI failure.
+
+ActualBF HR11cases/14sourcebindings/7productionmigration extracts/6manual
+appends+6linkedimmutable audits,8fixedfacts before intentional fixture
+revocation/cleanupPASS accepted independently. Calendar15cases/31bindings/
+3native/33PNGs andmanager9cases/58bindings/3native/27PNGs accepted onlyatBF;
+allcomplete original run/ZIP/API digests/fulllogs preserved. No shared old
+success satisfies changed7BA. No original historical statuses rewritten.
+
+Normalpush7BA=7ba977616a209376cbbb9f9370d005895752cbbe, livePR672 OPEN READY
+confirmed independently. Immediate bodyPATCH returned a cached BFhead; the
+following livePR read confirms7BA, no cachedhead used for execution credit.
+Fresh7BA sourcefive-lane38011318557, required38011321131, report38011321253,
+calendar38011321175, manager38011321215, runner38011321103/scan38011321132.
+Allfreshheavy outcomesPENDING here. Branch stays frozen7BA; no merge/deploy/
+activation or production/access/secret changes. Main506stillunchanged, no
+parallel HRMwriter. Tiny resourceinspection10.3GBavailable/260GBdisk/PSI0.02;
+allheavy gates remain hostedLinux, noMac/localinstall/build/browser/PG.
+Accounting85DONE76open61%, C12PARTIAL/C14-003PLANNED staysunchanged.
+Next: actual7BA matrix/native/keyboard/immutability/audit/PG/strictregressions/
+fullcompiler/build independent acceptance, normal own release and exactpublic
+smoke, then the uncovered classification browser matrix/native/keyboard slice.
