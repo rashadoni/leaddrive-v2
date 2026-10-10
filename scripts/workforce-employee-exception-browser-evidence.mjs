@@ -35,6 +35,7 @@ const receipts = {
   nativeZoomDiagnostics: [], nativeCaptureDiagnostics: [], nativeCurrentDiagnostics: [], keyboardFocusDiagnostics: [],
   captureDiagnostics: [], networkFaultDiagnostics: [], recoveryAlertDiagnostics: [], databaseDiagnostics: [], cleanupDiagnostics: [],
   sessionTransitionDiagnostics: [],
+  correctionPrefillDiagnostics: [],
   limitations: [
     "Synthetic isolated tenants and imported historical cases only; no real expected-schedule materialization or physical attendance evidence",
     "Employee actor is a linked AGENT under existing CRM sales read/write permission; no roles or production response flags changed",
@@ -413,6 +414,78 @@ async function loadPage(page) {
   assert.equal((await response).status(), 200)
   await page.getByTestId("workforce-my-exceptions-boundary").waitFor()
 }
+async function correctionPrefillScenario(page, context, tenant, selected, cell) {
+  const previousStage = stage
+  stage = `${cell.key}-actual-readonly-correction-prefill`
+  const before = await counts()
+  assert.equal(await admin.mtmHrmRequest.count(), 0)
+  const response = await context.request.get("/api/v1/workforce/requests", { timeout: 120_000, maxRedirects: 0 })
+  assert.equal(response.status(), 200)
+  const body = await response.json(); noProtected(JSON.stringify(body))
+  assert.equal(body.success, true)
+  assert.equal(body.data.scope, "SELF")
+  assert.equal(body.data.canSubmitSelf, true)
+  assert.equal(body.data.canDecide, false)
+  assert.equal(body.data.timezone, "UTC")
+  assert.deepEqual(body.data.requests, [])
+  const ownedDays = body.data.selfWorkdays
+  assert.ok(ownedDays.length > 1 && ownedDays.length <= 100)
+  const expectedIds = Object.values(tenant.cases).map(item => item.workdayId).filter(Boolean)
+  assert.deepEqual(new Set(ownedDays.map(item => item.id)), new Set(expectedIds))
+  const owned = ownedDays.find(item => item.id === selected.workdayId)
+  assert.ok(owned); assert.equal(owned.workDate.slice(0, 10), selected.workDate.slice(0, 10))
+  const labels = JSON.parse(await readFile(new URL(`../messages/${cell.locale}.json`, import.meta.url), "utf8")).workforcePage
+  const section = page.locator('section[aria-labelledby="workforce-self-request"]')
+  await section.waitFor(); assert.equal(await section.count(), 1)
+  const type = section.locator("#workforce-self-request-type")
+  const day = section.locator("#workforce-self-request-workday")
+  await page.waitForFunction(workdayId => document.querySelector("#workforce-self-request-type")?.value === "TIME_CORRECTION"
+    && document.querySelector("#workforce-self-request-workday")?.value === workdayId, selected.workdayId)
+  assert.equal(await type.inputValue(), "TIME_CORRECTION")
+  assert.equal(await day.inputValue(), selected.workdayId)
+  const options = await day.locator("option").evaluateAll(nodes => nodes.map(node => node.value).filter(Boolean))
+  assert.equal(options.length, ownedDays.length)
+  assert.deepEqual(new Set(options), new Set(ownedDays.map(item => item.id)))
+  for (const id of ["start-time", "end-time", "reason"]) assert.equal(await section.locator(`#workforce-self-request-${id}`).inputValue(), "")
+  const submit = section.getByRole("button", { name: labels.selfRequestSubmit, exact: true })
+  assert.equal(await submit.isDisabled(), true)
+  assert.equal(await section.getByText(labels.selfRequestPendingHint, { exact: true }).count(), 1)
+  let requestPosts = 0
+  const observeRequest = request => { if (request.method() === "POST" && new URL(request.url()).pathname === "/api/v1/workforce/requests") requestPosts++ }
+  page.on("request", observeRequest)
+  try {
+    await type.selectOption("LEAVE")
+    await section.locator("#workforce-self-request-start-date").waitFor()
+    assert.equal(await section.locator("#workforce-self-request-start-date").inputValue(), "")
+    assert.equal(await section.locator("#workforce-self-request-end-date").inputValue(), "")
+    assert.equal(await section.locator("#workforce-self-request-workday").count(), 0)
+    assert.equal(await submit.isDisabled(), true)
+    await type.selectOption("TIME_CORRECTION")
+    await day.waitFor(); assert.equal(await day.inputValue(), "")
+    const alternate = ownedDays.find(item => item.id !== selected.workdayId)
+    assert.ok(alternate); await day.selectOption(alternate.id)
+    assert.equal(await day.inputValue(), alternate.id)
+    assert.equal(await section.locator("#workforce-self-request-reason").inputValue(), "")
+    assert.equal(await submit.isDisabled(), true)
+    assert.equal(requestPosts, 0)
+    assert.equal(await admin.mtmHrmRequest.count(), 0)
+    assert.deepEqual(await counts(), before)
+    const viewport = await page.evaluate(() => ({ width: innerWidth, devicePixelRatio }))
+    assert.ok(Number.isFinite(viewport.width) && Number.isFinite(viewport.devicePixelRatio))
+    if (!cell.nativeZoom) assert.equal(viewport.width, cell.width)
+    receipts.correctionPrefillDiagnostics.push({ cell: cell.key, locale: cell.locale, actualOwnRequestsStatus: 200,
+      ownScope: true, ownOptionsOnly: true, workdayCount: ownedDays.length, exactRecordedWorkdaySelected: true,
+      initialType: "TIME_CORRECTION", timeAndReasonInitiallyEmpty: true, emptySubmitDisabled: true,
+      typeChangeDisplaysEmptyLeaveDates: true, returningToCorrectionDiscardsDisplayedPrefill: true,
+      alternateOwnDaySelectable: true, observedInteractionRequestPosts: 0, requestsBeforeAndAfter: 0, responseAuditCountsUnchanged: true,
+      requestObserverScope: "Three type/day interactions after initial prefill; persisted requests remain zero, no whole-navigation POST absence claim",
+      actualFormViewport: viewport,
+      qualification: "Read-only form controls and actual own-only GET only; no submitted body/source-link/successful correction or native request-form zoom acceptance",
+    })
+  } finally { page.off("request", observeRequest) }
+  stage = previousStage
+}
+
 async function uiScenario(tenant, cell) {
   stage = `${cell.key}-authenticate`
   const translations = JSON.parse(await readFile(new URL(`../messages/${cell.locale}.json`, import.meta.url), "utf8")).workforceMyExceptions
@@ -453,6 +526,7 @@ async function uiScenario(tenant, cell) {
   await page.waitForURL(url => url.pathname === "/workforce/requests", { timeout: 120_000 })
   assert.equal(new URL(page.url()).searchParams.get("correctionWorkdayId"), selected.workdayId)
   assert.equal(new URL(page.url()).searchParams.get("exceptionCaseId"), selected.caseId)
+  await correctionPrefillScenario(page, context, tenant, selected, cell)
   await loadPage(page)
   if (cell.nativeZoom) {
     stage = `${cell.key}-native-reproof-after-correction-return`
@@ -796,7 +870,7 @@ async function canonicalCrossTabSessionTransition(tenants) {
 }
 
 try {
-  for (const path of ["scripts/workforce-employee-exception-browser-evidence.mjs", "scripts/workforce-employee-exception-browser-admission.mjs", "src/__tests__/workforce-employee-exception-browser-admission.test.ts", "scripts/workforce-native-browser-zoom.mjs", "scripts/ci/fixtures/workforce-native-zoom-extension/manifest.json", "scripts/ci/fixtures/workforce-native-zoom-extension/background.js", "scripts/ci/fixtures/workforce-employee-exception-browser.sql", "scripts/ci/fixtures/workforce-manager-today-browser.sql", ".github/workflows/workforce-exception-report-browser-evidence.yml", "src/components/workforce/workforce-my-exceptions.tsx", "src/app/(dashboard)/workforce/exceptions/mine/page.tsx", "src/app/api/v1/workforce/exceptions/mine/route.ts", "src/app/api/v1/workforce/exceptions/[id]/response/route.ts", "src/lib/workforce/exception-employee-response-writer.ts", "src/lib/workforce/exception-employee-response-rate-limit.ts", "src/lib/workforce/exception-response-operation.ts", "src/lib/workforce/exception-response-rollout.ts", "src/lib/workforce/exception-workbench.ts", "src/lib/workforce/actor.ts", "src/lib/workforce/shift-definition.ts", "src/lib/with-workforce-rls-auth.ts", "src/lib/auth.ts", "src/lib/permissions.ts", "src/lib/workforce/sensitive-response.ts", "prisma/schema.prisma", "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql", "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql", "prisma/migrations/20260830200000_workforce_exception_employee_responses/migration.sql", "prisma/migrations/20260928123000_workforce_exception_response_cycle_unique_index/migration.sql", "messages/az.json", "messages/ru.json", "messages/en.json", "src/app/(dashboard)/layout.tsx", "src/components/ui/motion.tsx", "src/components/header.tsx", "src/components/providers.tsx", "src/app/(auth)/login/page.tsx", "src/lib/tenant-domain.ts", "package-lock.json"]) {
+  for (const path of ["scripts/workforce-employee-exception-browser-evidence.mjs", "scripts/workforce-employee-exception-browser-admission.mjs", "src/__tests__/workforce-employee-exception-browser-admission.test.ts", "scripts/workforce-native-browser-zoom.mjs", "scripts/ci/fixtures/workforce-native-zoom-extension/manifest.json", "scripts/ci/fixtures/workforce-native-zoom-extension/background.js", "scripts/ci/fixtures/workforce-employee-exception-browser.sql", "scripts/ci/fixtures/workforce-manager-today-browser.sql", ".github/workflows/workforce-exception-report-browser-evidence.yml", "src/components/workforce/workforce-my-exceptions.tsx", "src/app/(dashboard)/workforce/exceptions/mine/page.tsx", "src/app/api/v1/workforce/exceptions/mine/route.ts", "src/app/api/v1/workforce/exceptions/[id]/response/route.ts", "src/lib/workforce/exception-employee-response-writer.ts", "src/lib/workforce/exception-employee-response-rate-limit.ts", "src/lib/workforce/exception-response-operation.ts", "src/lib/workforce/exception-response-rollout.ts", "src/lib/workforce/exception-workbench.ts", "src/lib/workforce/actor.ts", "src/lib/workforce/shift-definition.ts", "src/lib/with-workforce-rls-auth.ts", "src/lib/auth.ts", "src/lib/permissions.ts", "src/lib/workforce/sensitive-response.ts", "prisma/schema.prisma", "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql", "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql", "prisma/migrations/20260830200000_workforce_exception_employee_responses/migration.sql", "prisma/migrations/20260928123000_workforce_exception_response_cycle_unique_index/migration.sql", "messages/az.json", "messages/ru.json", "messages/en.json", "src/app/(dashboard)/layout.tsx", "src/components/ui/motion.tsx", "src/components/header.tsx", "src/components/providers.tsx", "src/app/(auth)/login/page.tsx", "src/lib/tenant-domain.ts", "package-lock.json", "src/components/workforce/workforce-workbench.tsx", "src/app/(dashboard)/workforce/requests/page.tsx", "src/app/api/v1/workforce/requests/route.ts", "src/lib/workforce/self-request.ts", "src/lib/workforce/hrm-request-idempotency.ts", "prisma/migrations/20260831113000_workforce_exception_correction_request_link/migration.sql"]) {
     const raw = await readFile(new URL(`../${path}`, import.meta.url))
     receipts.sources.push({ path, bytes: raw.length, sha256: createHash("sha256").update(raw).digest("hex") })
   }
@@ -816,6 +890,8 @@ try {
   assert.equal(completedMatrix.length, 12); assert.equal(expectedResponses.length, 14)
   assert.equal(receipts.cases.length, 15)
   assert.equal(receipts.sessionTransitionDiagnostics.length, 1)
+  assert.equal(receipts.correctionPrefillDiagnostics.length, 12)
+  assert.deepEqual(new Set(receipts.correctionPrefillDiagnostics.map(row => row.cell)), new Set(matrixCells.map(cell => cell.key)))
   assert.equal(receipts.authenticationDiagnostics.length, 22)
   assert.equal(receipts.nativeZoomDiagnostics.length, 6)
   assert.deepEqual(new Set(receipts.nativeZoomDiagnostics.map(row => `${row.locale}-${row.phase}`)), new Set(locales.flatMap(locale => [`${locale}-INITIAL`, `${locale}-AFTER_CORRECTION_RETURN`])))
