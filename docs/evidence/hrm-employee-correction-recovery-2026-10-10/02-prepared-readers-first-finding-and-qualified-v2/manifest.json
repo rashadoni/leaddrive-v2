@@ -1,0 +1,83 @@
+{
+  "archivedAtUtc": "2026-10-10T11:14:15.905114+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-employee-correction-recovery-reader-review-v2-root-archive/hrm-employee-correction-recovery-capture-terminal-job-v1.py.raw-original.gz",
+      "originalBytes": 4208,
+      "originalSha256": "8191ff1e4f9e61415df12e4388fc79e0f1a88602eaa72a728e7bb650c10ff98b",
+      "storedBytes": 1684,
+      "storedSha256": "542862295d615b0a65e597c6675cda8630b9b2993ec83cb3a349eb0060b68399"
+    },
+    {
+      "path": "hrm-employee-correction-recovery-reader-review-v2-root-archive/hrm-employee-correction-recovery-complete-artifact-v1.py.raw-original.gz",
+      "originalBytes": 9151,
+      "originalSha256": "fecc85c5f70ea6ce93182d28d5dedab7f46cf92db75d479fd4890d31b77c1d46",
+      "storedBytes": 3641,
+      "storedSha256": "25c7994e77807d8901d92450a88ce83d728323a4abc984a6af4873f1ad3dbd6b"
+    },
+    {
+      "path": "hrm-employee-correction-recovery-reader-review-v2-root-archive/hrm-employee-correction-recovery-complete-artifact-v2.py.raw-original.gz",
+      "originalBytes": 9151,
+      "originalSha256": "741186225e60a9b9d584d0e571cbb0e205820bf3c45515ac3dc348f2fc419062",
+      "storedBytes": 3640,
+      "storedSha256": "3102bcbc385de666e3afdca9013c1bb6aec11e26255db38dc9140cb37dedd03b"
+    },
+    {
+      "path": "hrm-employee-correction-recovery-reader-review-v2-root-archive/hrm-employee-correction-recovery-first-prepared-reader-review-finding.json.raw-original.gz",
+      "originalBytes": 385,
+      "originalSha256": "6b4a0426b63e3a9da32ad4868d9841faf89d3283c11d9d688212c23768049974",
+      "storedBytes": 241,
+      "storedSha256": "868ccfaa7ea7cd6a3f23fd214eb5c3567434db3382ebc8f4ed8ddd77f862fd75"
+    },
+    {
+      "path": "hrm-employee-correction-recovery-reader-review-v2-root-archive/hrm-employee-correction-recovery-prepared-reader-and-preservation.json.raw-original.gz",
+      "originalBytes": 1256,
+      "originalSha256": "9edb9038b18f9db9207dffdd33aa74a0715670e3ca06f2cf92c01c6bbe2d7b8a",
+      "storedBytes": 622,
+      "storedSha256": "f6ce088d3e3d590d71f2b314d81ded06e98da627dbebbc72c92b24cd9d37d22a"
+    },
+    {
+      "path": "hrm-employee-correction-recovery-reader-review-v2-root-archive/hrm-employee-correction-source-all-lanes-root-content-v1.py.raw-original.gz",
+      "originalBytes": 2969,
+      "originalSha256": "fdabbc0adf1602b451ad5d977ef7d978fc201c2c98581389e392a049654d7015",
+      "storedBytes": 1586,
+      "storedSha256": "ff1f9b577c2a10b6d59cdee74c8a2f535008fbb7b8216ae047022d73455d8ad3"
+    },
+    {
+      "path": "hrm-employee-correction-recovery-reader-review-v2-root-archive/independent-future-reader-preparation-review/first-peer-future-reader-unique-binding-finding.json.raw-original.gz",
+      "originalBytes": 733,
+      "originalSha256": "0baeaed3dfbdd3cddc98f61947b896a6c1bc7bee846ac19b4cd78d2430d6923e",
+      "storedBytes": 510,
+      "storedSha256": "724d9c3e89acc30a1b7535077c168572ca3b155763e73de3a062f85f79d5f071"
+    },
+    {
+      "path": "hrm-employee-correction-recovery-reader-review-v2-root-archive/independent-future-reader-preparation-review/hrm-employee-correction-recovery-capture-terminal-job-v1.py.raw-original.gz",
+      "originalBytes": 4208,
+      "originalSha256": "8191ff1e4f9e61415df12e4388fc79e0f1a88602eaa72a728e7bb650c10ff98b",
+      "storedBytes": 1684,
+      "storedSha256": "542862295d615b0a65e597c6675cda8630b9b2993ec83cb3a349eb0060b68399"
+    },
+    {
+      "path": "hrm-employee-correction-recovery-reader-review-v2-root-archive/independent-future-reader-preparation-review/hrm-employee-correction-recovery-complete-artifact-v1.py.raw-original.gz",
+      "originalBytes": 9151,
+      "originalSha256": "fecc85c5f70ea6ce93182d28d5dedab7f46cf92db75d479fd4890d31b77c1d46",
+      "storedBytes": 3641,
+      "storedSha256": "25c7994e77807d8901d92450a88ce83d728323a4abc984a6af4873f1ad3dbd6b"
+    },
+    {
+      "path": "hrm-employee-correction-recovery-reader-review-v2-root-archive/independent-future-reader-preparation-review/hrm-employee-correction-recovery-complete-artifact-v2.py.raw-original.gz",
+      "originalBytes": 9151,
+      "originalSha256": "741186225e60a9b9d584d0e571cbb0e205820bf3c45515ac3dc348f2fc419062",
+      "storedBytes": 3640,
+      "storedSha256": "3102bcbc385de666e3afdca9013c1bb6aec11e26255db38dc9140cb37dedd03b"
+    },
+    {
+      "path": "hrm-employee-correction-recovery-reader-review-v2-root-archive/independent-future-reader-preparation-review/recovery-complete-reader-v2-source-only-peer-review.json.raw-original.gz",
+      "originalBytes": 1381,
+      "originalSha256": "6bca4d6aca69379342e2674bcfd4f38ce335fa5ab6134d0ba12f13ebb250c00f",
+      "storedBytes": 775,
+      "storedSha256": "6baaee57fa854e8cf4ba44c3e0f25f585eaa19480188a3c150548288100e26fe"
+    }
+  ]
+}

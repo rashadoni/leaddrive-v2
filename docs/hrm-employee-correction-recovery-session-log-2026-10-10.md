@@ -91,3 +91,18 @@ device/human/HR/defaultACL/history credit. Parent683 sevenactualsource jobs now
 SUCCESS, finalwhole root review underway; no parent683 merge/releasecredit yet.
 Publication remains afterparent683 ownnormal verifiedrelease andnormal merge
 ofthat main into successor/finalexactsource review. Accounting85/161,76open61%.
+
+## Prepared runtime readers source-only review accepted; first finding preserved
+
+Recovery capturev1/contentv1 derived fromactualadmitted207 readers withnewjob/
+artifact/receipt/33sources/8limits plus19safeDiagnostics and8actualper-case
+replyloss/retry flags. Peerfound remainingunique-sourcecount30 inoriginalv1;
+original/finding retained, separatev2 changesonlyunique33 predicate. Independently
+source-only acceptedv2 SHA6bca4d6aca69379342e2674bcfd4f38ce335fa5ab6134d0ba12f13ebb250c00f.
+Python syntaxONLY actualPASS; SQL/browser/capture/contentruntime NOT RUN. Root
+independently confirms five-ownedpaths/oldsevenwholeworkflow byteequal afteronly
+newfilter/job/separator. OriginalcurrentfixedFE948 untouched/unpublished. Source
+8total19flows/33bindings PLANNED, no runtimeacceptance frompreparedreader. Parent
+683READY currentC13/requiredCI running; publication waits ownverifiedmainrelease.
+Alloriginalreaders/firstfinding/correctedv2/source-onlyreview archivedphase02;
+no baseline/app/grant/secret/productionchanges andaccountingunchanged.
