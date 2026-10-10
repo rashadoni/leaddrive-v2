@@ -21,30 +21,25 @@ function fixture(routeField: boolean, workforceHrm: boolean, enabled = true) {
 }
 beforeEach(() => { vi.clearAllMocks(); candidates.mockReset(); candidates.mockResolvedValue({ candidates: [], morePending: false, nextCursorAgentId: null }) })
 
-describe("F8 four-mode navigation/job matrix without activating any tenant", () => {
-  it.each(modes)("Routes=%s HRM=%s keeps nav and an opted-in job independently gated", async (routes, hrm) => {
+describe("Withdrawal four-mode navigation/job matrix without activating any tenant", () => {
+  it.each(modes)("Routes=%s HRM=%s keeps Route & Field while suppressing HRM nav and jobs", async (routes, hrm) => {
     const setup = fixture(routes, hrm)
     const hrefs = accessibleNavItems({ plan: "enterprise", role: "manager", modules: setup.modules }).map(item => item.href)
     expect(hrefs.includes("/mtm")).toBe(routes)
-    expect(hrefs.includes("/workforce")).toBe(hrm)
+    expect(hrefs.includes("/workforce")).toBe(false)
     const result = await runScheduledWorkforceNoShowReview(setup.input)
-    expect(result.workforceTenantsConsidered).toBe(hrm ? 1 : 0)
-    expect(result.reviewEnabledTenantsScanned).toBe(hrm ? 1 : 0)
-    expect(candidates).toHaveBeenCalledTimes(hrm ? 1 : 0)
+    expect(result.workforceTenantsConsidered).toBe(0)
+    expect(result.reviewEnabledTenantsScanned).toBe(0)
+    expect(candidates).toHaveBeenCalledTimes(0)
     expect(materialize).not.toHaveBeenCalled()
-    expect(setup.tx.mtmAuditLog.create).toHaveBeenCalledTimes(hrm ? 1 : 0)
+    expect(setup.tx.mtmAuditLog.create).toHaveBeenCalledTimes(0)
   })
-  it.each(modes)("Routes=%s HRM=%s cannot enter a failing dependency without HRM entitlement", async (routes, hrm) => {
+  it.each(modes)("Routes=%s HRM=%s cannot enter a failing HRM dependency even with retained entitlement", async (routes, hrm) => {
     const setup = fixture(routes, hrm)
     candidates.mockRejectedValue(new Error("SYNTHETIC-CANDIDATE-DEPENDENCY"))
-    if (hrm) {
-      await expect(runScheduledWorkforceNoShowReview(setup.input)).rejects.toThrow("SYNTHETIC-CANDIDATE-DEPENDENCY")
-      expect(setup.leaseStore.fail).toHaveBeenCalledTimes(1)
-    } else {
-      await expect(runScheduledWorkforceNoShowReview(setup.input)).resolves.toMatchObject({ reviewEnabledTenantsScanned: 0 })
-      expect(setup.leaseStore.fail).not.toHaveBeenCalled()
-    }
-    expect(candidates).toHaveBeenCalledTimes(hrm ? 1 : 0)
+    await expect(runScheduledWorkforceNoShowReview(setup.input)).resolves.toMatchObject({ reviewEnabledTenantsScanned: 0 })
+    expect(setup.leaseStore.fail).not.toHaveBeenCalled()
+    expect(candidates).toHaveBeenCalledTimes(0)
     expect(materialize).not.toHaveBeenCalled()
   })
   it.each(modes)("Routes=%s HRM=%s still needs the separate no-show rollout opt-in", async (routes, hrm) => {

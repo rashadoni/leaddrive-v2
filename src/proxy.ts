@@ -13,6 +13,7 @@ import { effectiveHiddenModules, hideableIdForUngatedApiPath } from "@/lib/user-
 import { clientIp } from "@/lib/request-ip"
 import { isDemoRequestApiPath, withDemoRequestCors } from "@/lib/demo-request-cors"
 import { SESSION_EXPIRED_CODE } from "@/lib/session-expired"
+import { isWithdrawnCrmPath } from "@/lib/crm-product-availability"
 
 type SessionModuleGateUser = {
   role?: string
@@ -370,6 +371,16 @@ const authMiddleware = auth(async (req) => {
   // the publicPaths branch below — every other branch returns redirects/JSON,
   // where the header name doesn't affect rendering.)
   const cspReportOnly = !CRM_ONLY_MODE && isMarketingHost(host)
+
+  // This product is no longer served by CRM, including legacy mobile URLs.
+  // Apply before public/cron/API-key bypasses; no tenant or role can enable it.
+  if (isWithdrawnCrmPath(pathname)) {
+    const response = pathname.startsWith("/api/")
+      ? NextResponse.json({ error: "This module is unavailable in CRM.", code: "CRM_MODULE_UNAVAILABLE" }, { status: 410 })
+      : new NextResponse(null, { status: 404 })
+    response.headers.set("Cache-Control", "private, no-store")
+    return withCspHeaders(response, nonce)
+  }
 
   // Domain-based routing: leaddrivecrm.org serves marketing, app.leaddrivecrm.org serves CRM
   // In CRM_ONLY_MODE (same domain for app+marketing), skip marketing routing entirely

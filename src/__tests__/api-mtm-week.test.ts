@@ -2134,3 +2134,11 @@ describe("GET /api/v1/mtm/week — manager reopen actions", () => {
     }
   })
 })
+
+// Exercise the preserved HRM engine and its existing permission/concurrency
+// contracts in isolation. Production withdrawal is covered with the real
+// availability policy in crm-workforce-withdrawal and withdrawal-access suites.
+vi.mock("@/lib/crm-product-availability", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/lib/crm-product-availability")>(),
+  isCrmCapabilityAvailable: () => true,
+}))

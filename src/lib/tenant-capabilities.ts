@@ -1,4 +1,5 @@
 import { hasModule, type ModuleId } from "@/lib/modules"
+import { isCrmCapabilityAvailable } from "@/lib/crm-product-availability"
 
 export const ADVISOR_SUITE_MODULE_IDS: ModuleId[] = [
   "crm",
@@ -233,6 +234,14 @@ export function isTenantCapabilityEnabled(
     hidden?: Record<string, boolean>
     requested?: Record<string, boolean>
   },
+): boolean {
+  return isCrmCapabilityAvailable(capabilityId) && hasTenantCapabilityEntitlement(capabilityId, fields)
+}
+
+/** Stored commercial state, retained for extraction; not a runtime access gate. */
+export function hasTenantCapabilityEntitlement(
+  capabilityId: string,
+  fields: Parameters<typeof isTenantCapabilityEnabled>[1],
 ): boolean {
   const definition = getTenantCapabilityDefinition(capabilityId)
   if (!definition) return false
@@ -547,7 +556,9 @@ export function resolveTenantCapabilities(
   context: TenantCapabilityContext,
   catalog: TenantCapabilityDefinition[] = TENANT_CAPABILITY_CATALOG,
 ): TenantCapabilityState[] {
-  return catalog.map((definition) => resolveTenantCapability(definition, context))
+  return catalog
+    .filter((definition) => isCrmCapabilityAvailable(definition.id))
+    .map((definition) => resolveTenantCapability(definition, context))
 }
 
 function resolveCapabilityActions(

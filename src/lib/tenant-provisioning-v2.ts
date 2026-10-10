@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto"
 import { prisma } from "@/lib/prisma"
 import { ADDON_MODULES, GROUP_MODULE_IDS, moduleRecordFromOrgFields } from "@/lib/modules"
 import { WORKFORCE_DEFAULT_PROFILE_VERSION } from "@/lib/workforce/default-profile"
+import { isCrmCapabilityAvailable } from "@/lib/crm-product-availability"
 import { ensureWorkforceDefaultProfile } from "@/lib/workforce/default-configuration-provisioning"
 import { defaultAliasAmbiguity } from "@/lib/social/monitoring-subjects"
 import { SOCIAL_AGENT_DEFAULTS, SOCIAL_AGENT_TYPE } from "@/lib/ai/social-agent"
@@ -180,7 +181,8 @@ async function stepModuleContract(organizationId: string, input: TenantProvision
 export function shouldProvisionWorkforceDefaultProfile(
   input: Pick<TenantProvisioningV2Input, "features" | "workforceDefaultProfileVersion">,
 ): boolean {
-  return input.workforceDefaultProfileVersion === WORKFORCE_DEFAULT_PROFILE_VERSION
+  return isCrmCapabilityAvailable("workforce-hrm")
+    && input.workforceDefaultProfileVersion === WORKFORCE_DEFAULT_PROFILE_VERSION
     && input.features.includes("workforce-hrm")
 }
 

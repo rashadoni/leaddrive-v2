@@ -11,11 +11,11 @@ import {
 import { DEFAULT_REPORT_WINDOW_DAYS, DEFAULT_SCHEDULE_CADENCE_MINUTES } from "@/lib/social/monitoring-settings"
 
 describe("tenant provisioning v2", () => {
-  it("provisions the Baku baseline only for a newly stamped explicit Workforce entitlement", () => {
+  it("does not provision withdrawn Workforce even for a stamped new or retried tenant", () => {
     expect(shouldProvisionWorkforceDefaultProfile({
       features: ["workforce-hrm"],
       workforceDefaultProfileVersion: "baku-standard-v1",
-    })).toBe(true)
+    })).toBe(false)
     expect(shouldProvisionWorkforceDefaultProfile({
       features: ["mtm"],
       workforceDefaultProfileVersion: "baku-standard-v1",

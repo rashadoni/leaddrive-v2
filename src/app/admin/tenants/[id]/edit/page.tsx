@@ -114,7 +114,9 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
   const [saved, setSaved] = useState(false)
   const [logoUploading, setLogoUploading] = useState(false)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
-  const [hrmBusy, setHrmBusy] = useState(true)
+  const [hrmBusy, setHrmBusy] = useState(() => CAPABILITY_SECTIONS.some(
+    (section) => section.items.some((item) => item.capabilityId === "workforce-hrm"),
+  ))
   const [capabilityRevision, setCapabilityRevision] = useState(0)
   const onHrmBusyChange = useCallback((busy: boolean) => setHrmBusy(busy), [])
   const saveInFlight = useRef(false)

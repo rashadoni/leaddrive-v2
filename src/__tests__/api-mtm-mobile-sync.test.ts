@@ -827,14 +827,20 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
       ...AUTH_CONTEXT,
       tenantCapabilities: { routeField: true, workforceHrm: false },
     } as never)
+    const persisted = {
+      serverId: "workday-pinned-1",
+      serverData: {
+        workday: { status: "STARTED" },
+        event: { type: "START", attendanceReviewState: "REQUIRED", attendanceReviewReasonCode: "DELAYED" },
+        review: { state: "REQUIRED", reasonCode: "DELAYED" },
+      },
+    }
+    const before = structuredClone(persisted)
     vi.mocked(prisma.mtmSyncOperation.findMany).mockResolvedValue([{
       operationId: "op-replay-after-disable",
       entity: "workdays",
       status: "ok",
-      result: {
-        serverId: "workday-pinned-1",
-        serverData: { workday: { status: "STARTED" }, event: { type: "START" } },
-      },
+      result: persisted,
     }] as never)
 
     const response = await PushPOST(makePushReq({ operations: [{
@@ -858,6 +864,10 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
       serverId: "workday-pinned-1",
       serverData: { workday: { status: "STARTED" }, event: { type: "START" } },
     })
+    expect(body.results[0].serverData).not.toHaveProperty("review")
+    expect(body.results[0].serverData.event).not.toHaveProperty("attendanceReviewState")
+    expect(body.results[0].serverData.event).not.toHaveProperty("attendanceReviewReasonCode")
+    expect(persisted).toEqual(before)
     expect(prisma.mtmAgentWorkday.create).not.toHaveBeenCalled()
     expect(prisma.mtmSyncOperation.create).not.toHaveBeenCalled()
   })
@@ -3211,6 +3221,8 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
       updatedAt: new Date("2026-07-14T05:00:00.000Z"),
     } as never)
     vi.mocked(prisma.mtmAgentWorkdayEvent.create).mockResolvedValue({
+      attendanceReviewState: "NOT_REQUIRED",
+      attendanceReviewReasonCode: null,
       id: "event-route-session-1",
       workdayId: "route-session-1",
       clientEventId: "op-route-session-start",
@@ -3236,6 +3248,12 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
       serverId: "route-session-1",
       serverData: { workday: { status: "STARTED" }, event: { type: "START" } },
     })
+    expect(body.results[0].serverData).not.toHaveProperty("review")
+    expect(body.results[0].serverData.event).not.toHaveProperty("attendanceReviewState")
+    expect(body.results[0].serverData.event).not.toHaveProperty("attendanceReviewReasonCode")
+    const pin = vi.mocked(prisma.mtmSyncOperation.create).mock.calls[0][0] as any
+    expect(pin.data.result.serverData.event.attendanceReviewState).toBe("NOT_REQUIRED")
+    expect(pin.data.result.serverData.review).toBeDefined()
     expect(evaluateWorkforceMobileWriteAccess).not.toHaveBeenCalled()
     expect(prisma.mtmSyncOperation.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ entity: "workdays", operationId: "op-route-session-start", status: "ok" }),
