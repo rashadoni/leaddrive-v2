@@ -257,3 +257,31 @@ runner38054267589 andscan38054267529 naturalS. No own release/public/compiler cr
 yet; no oldBFE runtime borrowed. Next ownnormal/main/compiler/artifact/TLS-pinned
 fullM before-after8privacy root+peer, then publish prepared next regression.
 Accounting and partial historical/device/operator gates unchanged.
+
+
+## 2026-10-10 13:26 UTC — own PR684 EDE ordinary normal release verified
+
+Actual ownnormal38054267635 attempt1 all4naturalS; build114219398923/quality114219399001/
+deploy114221904446/retention114222872208, manual3SKIP noexecutioncredit. Artifact
+11670869294/444983547B/sha25603193514231f9b00c774118731126055c407b8398c419dd08ba88f646b798f4b
+API=actualupload=actualdownload;974static/1546routes inclroot. Root+peer exact
+manual skips and Linuxdeps cachehit/sourceif-qualified skipped install; all other
+actual stepsS. Strict18 all oldstillfail/noNew/globalNONCLEAN. First build/quality
+whole logs byteequalfinal. Retention metadataonly/no sourcecheckout/giantZIPlocal
+CRCcontent NOT RUN, no inferred localartifact acceptance.
+Ownmain38054267679 actualtype114219471999/App15368/checkoutEDE/allstepsS whole
+252555B/c28778b8243cf5da664dfb8b1f478145a9fafca0cfbae345336ddbfafd46ed7c:
+1162/35/EXIT2/strict64/critical0/owned0/globalNONCLEAN. Mainstatic+duplicatebuild
+SKIP get no executioncredit. Root actual14pinnedTLS0GETs fullEDE before-after
+eightprivacy checks+ping at13:23; peer separate11actualGETs samefullM bracket/ping/
+eight401fetch307exactloginredirects. NoauthPOST/personnelwrites/realops inference.
+Peer final40555B/2d5ab1958b4a0415f20257823d0a406a79d3f214d7c2b370774af94226552e1f;
+118original inventoryad1813ec9aff9c6944214140d6f316289015ca79d2a66394cc3109f2112cd0e2.
+FreshmainEDE/sourceCLEAN/frozen/exactparents[BFE,H]/treef66d unchanged accepted.
+Phase09 archives318files1585886B ownoriginals/main/public/rootpeer/firstterminals.
+PR684 own ordinary release complete; no borrowedBFE runtime. Continuing next
+DRAFT686 actual firstdesiredregression has naturallyFAILED at finaledit-boundary
+stage after11cases, originals being qualified beforeappfix. Firstrootreader
+conditional post-step expectation refused actualskip; original/API preserved,
+source-condition proof needed before separate reader correction. No source/job
+rerun requested. Accounting85/76/61, C6-006/C12PARTIAL/C14OPEN unchanged.
