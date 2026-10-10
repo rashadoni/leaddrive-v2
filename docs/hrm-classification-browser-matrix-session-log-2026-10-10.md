@@ -584,3 +584,36 @@ current-ref refusal. Accounting85/161/76/61%, C12PARTIAL/C14incomplete.
 Next ordinary integration of currentmain, checkpoint updatedsource/journal,
 independent final-source review and fresh exact-source/candidate required
 gates. No new baseline/skip/timeout relaxations, no foreign rerun/cancellation.
+
+## AEF final required peer proof; current F50 reviewed and READY
+
+AEF independent final27005B/SHA b0f11dc0344253839dcc3b49b5727398f2fa582b6f063fcf21cd96f4ee2ed637
+accepts allfive actualApp15368 wholelogs/strict18/64/1162/35/exit2 and original
+main-race safety refusal. Original guard script/stderr retained phase16, no
+stale merge/runtime credit. Phase15 remains immutable, latest priorarchive
+d2d4ab770. No foreign workflow cancel/rerun or production mutation.
+
+Normal integration2c7a8611c54ec8b46ecabeed832717223bc9680b parents[AEF,AFE],
+append-only sourcejournal checkpoint gives publishedcleanfinal
+f50ee227e156543f8f8207049f6bd59a43ae521d/tree6ddc9e9b1028e7867671896041b5f72dadf36204.
+Sourcecode/harness/test/workflow/helper/guard sixfiles byteAEF, incoming three
+MTMpaths byteAFE. Independentsource11531B/SHA
+01031e2fc914e6ee4b3ced29f25d2bf9204fb9104c9a59c8d0af91aedb4cfa27
+accepts own7paths/all20 protected paths/five baselineguards/appendjournal.
+Fresh currentcandidateba790a4bfc624aa08c05cdadab4b248f0c4ebf65 parents[AFE,F50]
+whole6ddc9 equalsF50, mainAFE stable before/after root+peer review.
+
+Bounded newsource gitleaks noleaks, ordinarypush and exactdispatch38020223042
+attempt1 allfive source lanes active. ActualREADY afterindependent/root
+sourcebinding03:22:28UTC, new required/candidate runs started. Earlier draft
+heavySKIP not counted; all fresh exact-tree actual results required before
+ownmerge/release, no oldAEF execution transferred. F50 sourcefrozen now.
+
+Root independent next-scope reading confirms C6-006 employee self discovery/
+revision-bound acknowledgement/exact-day correction only; free-text appeal
+not accepted by current endpoint. Current per-tenant response flag remains
+default-off in production. Next useful permitted step after verified674 is
+real hosted employee self-flow/error/recovery/keyboard/native responsive and
+privacy browser evidence, with any actual defect fixed and independently
+checked; no fullappeal/Android/device/wholeC14 closure inferred.
+Accounting unchanged85/161DONE/76open/61%; C12PARTIAL/C14incomplete.
