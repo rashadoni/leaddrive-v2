@@ -290,3 +290,17 @@ clean; READY/currentC/five/ordinarymerge/ownnormalrelease stillpending. Next fre
 refs/trees/protection/exclusions→READY samehead/currentcandidate. RecoveryFE948
 source-only accepted archivedphase01; runtimeNOTRUN untilparentownrelease.
 Accountingsame85DONE76open61%; no realhuman/device/ops/defaultACL/C12 closure.
+
+## READY same frozen FB after exact source7 admission
+
+Freshcurrent mainM7/HFB/C13 ordinaryparents/sametree, fiveApp15368requiredcontext
+protection (actualstrictfalse, admins enforced, force/deletefalse), noexcluded
+merge/old28archivebytes/973+c123+f308 ancestry/sourceclean allPASS. READY683
+11:09UTC; naturalcurrentcandidate browser38047393207 report214/oldEMP296/new
+correction371RUNNING, manualfourSKIP/nocredit. NaturalREADYchecks38047393187
+scope164SUCCESS/static287/type260RUNNING; runner/scan currentfrozenH previous
+actualS awaitcompletefiveoriginaladmission. EarlierdraftSKIPs preservedno credit.
+Future recoverycapturer/contentreader prepared/syntaxONLY; runtimeNOTRUN. All
+originalAPIs/readyguard/body/reader originals archivedphase09. Precisesstopcurrent
+C13/five running; next wholecurrentoriginals/pixels/independentreview→ordinary
+683merge/ownnormalrelease. No productionmutation for683yet. Accountingunchanged.
