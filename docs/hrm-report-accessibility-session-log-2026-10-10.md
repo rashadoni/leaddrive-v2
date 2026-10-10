@@ -340,3 +340,53 @@ filename; original reader/error retained and corrected to existing
 scripts/check-test-baseline.mjs. No code/CI/baseline modifications for that
 reader error. Peer review archived separately; 7BA runtime stillPENDING,
 no BF credit transfer or wholeC12/C14 acceptance.
+
+## 2026-10-10 — exact 7BA runtime acceptance; earlier pending entries superseded
+
+Final source 7ba977616a209376cbbb9f9370d005895752cbbe / whole tree
+bf17e1f3c81532111e3a130996f05020604898e0 is frozen. Source run 38011318557
+completed all five jobs SUCCESS. Required run 38011321131 plus runner
+38011321103 and scan 38011321132 completed; the five required contexts
+are actual SUCCESS from GitHub App15368, not skipped-job credit.
+
+Actual report source and candidate: 33 cases, 3 native Chrome200 cells,
+21 unchanged native captures, 54 keyboard-focus checks, 58 reflow checks
+(57 matrix plus one pre-existing foreign-positive case), 22 immutable
+business-table fingerprints, forced RLS/two-tenant boundaries/bounded
+audit and cleanup PASS. Candidate a66fa401d6f8f9681acc2cdb4cbb61f06ec6cd24
+parents are [50669da053c5da2bf1166404d03decbb13dc7958,7BA] and its whole tree
+matches frozen source. Root and peer reviewed original PNGs and actual ZIPs.
+Four root visual views retain original file hashes; dev issue badge overlaps
+part of viewport, so no complete pixel-occlusion/WCAG/human-AT claim.
+
+Actual regression: 27 guard tests and 44 PostgreSQL tests PASS. Original HR
+classification regression remains 11 cases/6 manual appends plus 6 linked
+immutable audits/7 production migration extracts. Calendar15 and manager9
+pass their original native/keyboard/privacy contracts. Full compiler raw
+exit2/1158 diagnostics/35 families matches all 64 strict baseline pairs and
+counts; owned/critical errors zero. Full strict regression still has all18
+known baseline failing files. Global code is NONCLEAN; no baseline was loosened.
+Isolated build compiled 973 pages and standalone/static outputs; inherited
+dashboard-manifest trace-copy ENOENT warning remains in raw logs, as in39/BF.
+Next internal type validation skips by unchanged configuration; actual separate
+full compiler gates ran. Production artifact/smoke acceptance still pending.
+
+Reader correction retained: root old57-total reader was prepared but NOT RUN;
+corrected separate58 reader executed against source and candidate. Peer first
+reader actually failed on old57 expectation; its original error/reader/stderr
+are archived. Native-regression peer reader's earlier exit143 with empty stderr
+is a tooling-fetch interruption, cause NOT PROVED, not CI failure; only missing
+files resumed. Original39/BF CI failures remain unchanged and preserved.
+
+Phase09 archives 50 immutable files/14,115,909 original bytes including full
+source/candidate/required APIs, logs, ZIPs, finite root admission/visual receipts,
+all final independent reviews and reader errors. No extracted PNG duplication;
+original PNG bytes remain in complete verified ZIPs. Fresh main506 and PR672
+head7BA match. Protection has five App15368 contexts, strict=false as actually
+configured, enforce-admins=true, no force push/deletion; no policy mutation.
+
+User's explicit merge/deploy authorization remains effective. Normal reviewed
+main release only; no activation/restore/data/access/secret or Support changes.
+Accounting stays85 DONE/76 open/61%; C12 PARTIAL and C14-003 PLANNED. Next:
+fresh-ref ordinary merge672, exact normal artifact release/public smoke, then
+separate classification-matrix source85e hosted runtime (currently NOT RUN).
