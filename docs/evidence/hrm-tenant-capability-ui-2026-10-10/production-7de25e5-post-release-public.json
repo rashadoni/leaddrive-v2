@@ -1,0 +1,56 @@
+{
+  "status": "PASS",
+  "phase": "production-post-release",
+  "checkedAt": "2026-10-10T14:16:46.296714+00:00",
+  "expectedArtifactSha": "7de25e5f4c7f08b470c95152a64f0efcb653d441",
+  "observedArtifactSha": "7de25e5f4c7f08b470c95152a64f0efcb653d441",
+  "authenticated": false,
+  "businessRowsRead": false,
+  "productionMutationByProbe": false,
+  "deployRun": "https://github.com/rashadoni/leaddrive-v2/actions/runs/38057776970",
+  "results": [
+    {
+      "path": "/api/v1/ping",
+      "status": 200,
+      "location": null,
+      "json": {
+        "ok": true
+      }
+    },
+    {
+      "path": "/api/v1/public/build-info",
+      "status": 200,
+      "location": null,
+      "json": {
+        "sha": "7de25e5f4c7f",
+        "artifactSha": "7de25e5f4c7f08b470c95152a64f0efcb653d441",
+        "builtAt": "2026-10-10T14:01:06Z"
+      }
+    },
+    {
+      "path": "/api/v1/admin/tenants/hrm-ui-auth-probe/capabilities",
+      "status": 307,
+      "location": "https://app.leaddrivecrm.org/login?callbackUrl=%2Fapi%2Fv1%2Fadmin%2Ftenants%2Fhrm-ui-auth-probe%2Fcapabilities"
+    },
+    {
+      "path": "/api/v1/workforce/exceptions",
+      "status": 307,
+      "location": "https://app.leaddrivecrm.org/login?callbackUrl=%2Fapi%2Fv1%2Fworkforce%2Fexceptions"
+    },
+    {
+      "path": "/admin",
+      "status": 307,
+      "location": "https://app.leaddrivecrm.org/login?callbackUrl=%2Fadmin"
+    },
+    {
+      "path": "/workforce",
+      "status": 307,
+      "location": "https://app.leaddrivecrm.org/login?callbackUrl=%2Fworkforce"
+    }
+  ],
+  "limits": [
+    "Anonymous public health/version and login redirects only",
+    "Authenticated tenant HRM UI and production entitlement state NOT RUN; no legitimate SUPERADMIN session",
+    "Synthetic hosted UI/database evidence is separate from these actual production observations"
+  ]
+}

@@ -1,0 +1,4 @@
+typecheck	Defect-shaped type errors vs baseline (BLOCKING)	2026-10-10T13:52:44.0831652Z check-typecheck-baseline: 64 gated pair(s) now, 64 in baseline (1162 errors total).
+typecheck	Defect-shaped type errors vs baseline (BLOCKING)	2026-10-10T13:52:44.0842967Z ✅ No new defect-shaped type errors, and the baseline still matches. Gate passed.
+static-checks	Unit tests vs baseline (BLOCKING)	2026-10-10T13:49:35.0168037Z check-test-baseline: 18 failing file(s), 18 in baseline.
+static-checks	Unit tests vs baseline (BLOCKING)	2026-10-10T13:49:35.0171672Z ✅ No new failures, and every baseline entry still fails. Gate passed.

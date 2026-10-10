@@ -1,0 +1,44 @@
+{
+  "status": "PASS_EXACT_HEAD_AND_SOURCE_BINDINGS",
+  "headSha": "f219771906cb4df755df69ad600a30c33d7b52cd",
+  "runId": "38056170322",
+  "runAttempt": "1",
+  "caseCount": 16,
+  "bindingCount": 15,
+  "caseNames": [
+    "actual non-bypass role and forced tenant RLS",
+    "human HRM label in en/ru/az, persisted false beats raw feature and legacy MTM, no load provisioning",
+    "explicitly disabled HRM remains discoverable with Enable in actual tenant overview",
+    "expected injected audit failure HTTP500 rolls back own entitlement, policy, shift and provisioning audit",
+    "real explicit Enable grants own HRM entitlement and commits one default profile plus provisioning audit",
+    "ordinary Save from pre-approval editor preserves canonical HRM and refreshes switch",
+    "editor explicit disable, stale raw features Save and reload stay disabled without deleting profile",
+    "raw metadata features cannot grant HRM or erase explicit false",
+    "editor re-enable preserves profile identities and does not duplicate provisioning audit",
+    "actual PostgreSQL row-lock race returns 409, preserves entitlement and does not record false update success",
+    "all A mutations preserve B organization and HRM configuration",
+    "legacy MTM editor reads effective enabled, ordinary Save does not mint own HRM entitlement or profile",
+    "intentional legacy MTM group edits retain existing compatibility behavior",
+    "explicit HRM disable overrides legacy MTM across Save and reload without changing legacy data",
+    "authenticated tenant admin cannot read/write own or foreign tenant capabilities/metadata",
+    "disabled HRM remains in overview after persisted disable/reload; profile retained"
+  ],
+  "files": [
+    "editor-disabled-az.png",
+    "editor-disabled-en.png",
+    "overview-disabled-discoverable.png",
+    "receipt.json",
+    "workflow-context.json",
+    "editor-disabled-ru.png",
+    "overview-disabled-after-reload.png",
+    "expected-injected-audit-failure.png"
+  ],
+  "limitations": [
+    "Synthetic disposable organizations only; no production observation or activation",
+    "Prisma db push plus fixture RLS/default uniqueness, not every production migration/trigger",
+    "Development browser bundle; separate cold production build is a distinct gate",
+    "No human accessibility, physical device, operational pilot or load acceptance"
+  ],
+  "productionMutation": false,
+  "artifactPath": "/tmp/hrm-ui-final-run-38056170322-PxxhZg"
+}

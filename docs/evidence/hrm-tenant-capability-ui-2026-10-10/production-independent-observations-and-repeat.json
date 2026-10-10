@@ -1,0 +1,45 @@
+{
+  "initial": {
+    "checkedAt": "2026-10-10T14:00:20Z",
+    "requestClient": "urllib",
+    "sixProbePathsHttpStatus": 403,
+    "releaseState": "package build/quality gates",
+    "classification": "original client-path failure; application cause not established"
+  },
+  "repeat": {
+    "checkedAt": "2026-10-10T14:00:57Z",
+    "requestClient": "curl",
+    "artifactSha": "ede43999335b0a1df8a37474c2194b2c0c236c19",
+    "ping": {
+      "status": 200,
+      "ok": true
+    },
+    "fourProtectedPaths": {
+      "status": 307,
+      "target": "same-origin /login"
+    }
+  },
+  "final": {
+    "checkedAt": "2026-10-10T14:15:44Z",
+    "requestClient": "curl",
+    "deployRun": "38057776970",
+    "deployConclusion": "success",
+    "expectedArtifactSha": "7de25e5f4c7f08b470c95152a64f0efcb653d441",
+    "observedArtifactSha": "7de25e5f4c7f08b470c95152a64f0efcb653d441",
+    "ping": {
+      "status": 200,
+      "ok": true
+    },
+    "fourProtectedPaths": {
+      "status": 307,
+      "target": "same-origin /login"
+    }
+  },
+  "authenticated": false,
+  "businessRowsRead": false,
+  "productionMutationByProbe": false,
+  "limits": [
+    "Independent public observation only; no authenticated HRM/tenant/operational-case acceptance",
+    "Original urllib403 remains distinct; no root cause inferred from successful curl repeat"
+  ]
+}
