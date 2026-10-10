@@ -184,3 +184,52 @@ Root reader syntax checked only; no expected matrix-count acceptance borrowed.
 D8E report browser job completed SUCCESS, compiler/regression/build still run.
 No new branch source commit or cancellation; all full original outcomes must
 complete before corrective source publication. Parent normal release pending.
+
+## Full first D8E run retained; reviewed scrolling-region correction applied
+
+Source38013716710 completed naturally FAILURE: HR browser114099288899 FAIL,
+other four actual jobs SUCCESS. Complete source APIs/all five original logs/
+three ZIPs validated size/digest/all CRC in root packet; report33/3native/
+21captures/54focus/58reflow/22facts accepted only as report regression.
+Actual31guard tests and44PG tests PASS; full strict18 baseline files still fail.
+Actual full compiler exit2/1158/35 exactly64 pairs/counts; critical and strict
+readers PASS, global code NONCLEAN. Isolated bundle build SUCCESS. Initial HR
+FAIL remains0cases/0focus/0writes/native NOT RUN; no retrospective matrix PASS.
+Independent first-failure receipt9040B/SHAa770b8e6bb94bb68bd64da7bd46a180fbbc1fb1e4a11eaf06d2d3406365f66e7
+preserves peer initial reader mistake (expected200 from GET warmup, actual405)
+and corrected reader, not CI rerun or route-policy change.
+
+Previously independently reviewed patch applied only after all originals
+completed/captured. Source change limited to selecting unique actual focusable
+scrolling div, checking exact translated label/tabindex/table and retaining
+finite named-region versus selected-region counts. Every geometry/focus/
+privacy/reason/MFA/token/write/rate/DB/20-case24-write gate remains unchanged.
+Cause of original safe Error stays qualified INFERENCE until actual counts
+in next runtime. No product UI/clipping fix invented before observation.
+
+Parent672 normal release38013599677 SUCCESS four normal jobs/three manual
+skips, artifact11654688979. Root canonical HTTPS pinned13 build/ping/build
+200/TLS0/exact full cd935999cd657f0a13bb458ee901637389a31916 and four
+anonymous HRM GET contracts PASS401/307. Independent release review pending
+here; no production HR session/physical/operational acceptance.
+Fresh host8.8GB available/259GB disk, PSI0.38; all heavy gates remain hosted,
+no Mac/local install/build/browser/compiler/PG. Next checkpoint reviewed narrow
+correction, normal push and full fresh source gates on its exact SHA.
+Accounting85 DONE/76open/61%; C12 PARTIAL/C14-003 PLANNED unchanged.
+
+## Corrected0CD normal-pushed; separate fresh hosted run
+
+Final0cd2866a83b0b3e95bba24cd22f02ad037da1a62 source harness exactly equals
+independently reviewed prepared candidate. Only source delta and append-only
+journal committed after complete original D8E outcome capture. Tiny syntax/
+whitespace and gitleaks1commit/7338B/no leaks PASS; no local heavy gates.
+PR674 remains draft and now points0CD. Fresh source38015241105 attempt1
+IN_PROGRESS, old D8E run preserved whole FAILURE, not rerun/cancelled. New
+draft mirror38015242179 SKIPPED gets no execution credit. Phase04 archives
+all original D8E APIs/wholelogs/ZIPs, actual compiler raw+strict readers, report
+full-content proof and first-failure peer's original405-warmup reader error.
+Initial peer expected200 from GET warmup; actual405 is original POST-only
+policy; correction changed reader only. No CI/source baseline weakening.
+No runtime transfer into0CD, no new matrix/task/productionHR acceptance.
+Next actual0CD selector-count proof and full matrix/PG/strict/compiler/build
+independent acceptance, preserve all further first errors and repeat results.
