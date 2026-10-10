@@ -1,0 +1,69 @@
+{
+  "archivedAtUtc": "2026-10-10T02:26:19.597236+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-classification-a161-publication-root/main-ref-api-original.json.gz",
+      "originalBytes": 212,
+      "originalSha256": "02686901432f4885c14f11f914a6dace4f25db6f8c4aa041464a4113394ed2e8",
+      "storedBytes": 212,
+      "storedSha256": "02686901432f4885c14f11f914a6dace4f25db6f8c4aa041464a4113394ed2e8"
+    },
+    {
+      "path": "hrm-classification-a161-publication-root/pr-api-original.json.gz",
+      "originalBytes": 2970,
+      "originalSha256": "0afa2c9ce77d2a9e59040af53160ae7af5df6fdc1c9c0b0d7c50dbd840a21166",
+      "storedBytes": 2970,
+      "storedSha256": "0afa2c9ce77d2a9e59040af53160ae7af5df6fdc1c9c0b0d7c50dbd840a21166"
+    },
+    {
+      "path": "hrm-classification-a161-publication-root/publication-binding.json.gz",
+      "originalBytes": 491,
+      "originalSha256": "aed2aeaf494052463dd158fc659987a71b9e6581002be48571b4097ca94e52f0",
+      "storedBytes": 374,
+      "storedSha256": "348aadef7452aff85bd50a8ca4e22db1d52153b59f3ffdcbadb72c24d2ffdf80"
+    },
+    {
+      "path": "hrm-classification-a161-publication-root/source-run-api-original.json.gz",
+      "originalBytes": 1631,
+      "originalSha256": "c784628791c45102762a2e0fbca3189606214ae5a4ea729d18ee48d4044f1d27",
+      "storedBytes": 1631,
+      "storedSha256": "c784628791c45102762a2e0fbca3189606214ae5a4ea729d18ee48d4044f1d27"
+    },
+    {
+      "path": "hrm-classification-contained-form-applied-root-source-binding.json.gz",
+      "originalBytes": 423,
+      "originalSha256": "b9bbfc388bc604f0adb19e16294deebdc53d1169a64f86d62c56f489dde38d69",
+      "storedBytes": 330,
+      "storedSha256": "af1a67a2a6c812c416e3c9983faf3af1811f31bf87163e1d733395428ac6c652"
+    },
+    {
+      "path": "hrm-classification-a161-source-gitleaks.json.gz",
+      "originalBytes": 3,
+      "originalSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "storedBytes": 23,
+      "storedSha256": "2ca4529576310b626c1bd48352d283b521d029d54f195d8416536872d826e4c6"
+    },
+    {
+      "path": "hrm-classification-a161-source-gitleaks-log.txt.gz",
+      "originalBytes": 175,
+      "originalSha256": "58f153eb0b139219a173c3bdb7e85d2add46313e9b2faf064480d600d129b0b6",
+      "storedBytes": 141,
+      "storedSha256": "7ea10cf172d1645723f8227bdf99d9ef8f51a23b9091d0c91428627a40e00973"
+    },
+    {
+      "path": "hrm-classification-pr-body-a161-form-fix-pending.md.gz",
+      "originalBytes": 2023,
+      "originalSha256": "d960294a8de6bb8d53f5acad8190651b4f13caca99662ff37de6b85407e8c3e5",
+      "storedBytes": 1162,
+      "storedSha256": "338381005505dd3c60f85033f3c033ccaaab03ec2ff899ff03005278d14931ca"
+    },
+    {
+      "path": "hrm-classification-matrix-source-compiler-peer-review-0cd.json.gz",
+      "originalBytes": 6926,
+      "originalSha256": "a8762a2c7453ee39199990213ef3687313b1d623ef78e53abd5261a1f98c6dfe",
+      "storedBytes": 2051,
+      "storedSha256": "6ed3363d7da64e026e8fb8b74d5f348fa99d8c0bff8c53f139e9c6a1877a73b2"
+    }
+  ]
+}

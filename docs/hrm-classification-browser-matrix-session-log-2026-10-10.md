@@ -328,3 +328,40 @@ normal integration into own674branch preserves foreign work; reviewed corrected
 UI eight strings then exact integrated-source full hosted checks. Old source
 passes do not transfer to new whole tree; existing baseline remains unchanged.
 Prepared corrected UI still NOT APPLIED at this immutable checkpoint.
+
+## Apply reviewed responsive form to integrated current main
+
+Normal branch merge bc7068caa228b495e3152f02c9b9deaa08eef1d3 preserves current main
+bf643689a14bc0c2ef981270f7bc0b955b2d76b5 and all foreign MTM map-zones work.
+Original0CD whole FAILURE captured and published phase07 before correction.
+Independent0CD compiler6926B/SHAa8762a2c7453ee39199990213ef3687313b1d623ef78e53abd5261a1f98c6dfe
+confirms raw/globalNONCLEAN and strict unchanged; these old-head results do
+not transfer into current integrated source.
+
+Applied exact independently reviewed corrected eight-class patch4c11a770ff0fd2c4048bf2f276908db3794acea2e42d94eb1e6257e2f9ab2b16.
+Actual queue TSX byte-identical reviewed prepared23349B/SHA
+aa0a38748e5174b59e2e3cbec35f893651532d8a662fd34954016e8c67798fee.
+Controls/form follow actual scroll-region inline width minus original cell
+padding; long button labels wrap, minimum44px retained, form columns follow
+container width. All other source bytes/labels/handlers/role checks/manual
+decisions/tenant protections/reason validation and immutable audit unchanged.
+No removal/reorder or unrelated UI/Support/production activation.
+
+Local targeted whitespace/patch-application/reviewed byte identity checks
+only; full TSX/lint/typecheck/schema/browser/build NOT RUN locally per host
+contract. Next checkpoint/push this integrated source then fresh hosted five
+lanes on exact SHA. Draft stays pending; old94px defect remains unaccepted
+until measured12cell proof. Accounting85/161,76open,61%, C12 PARTIAL/C14open.
+
+## Exact integrated a161 published; new whole source gates pending
+
+Published clean a1617f62aba38adc8af8905ecf36093b483e2ae2, preserves latest main
+bf643/map-zones by normal merge. Gitleaks new range no leaks, unchanged
+workflow/baselines/config. PR674 retitled actual narrow HR-form fix; draft,
+no merge or new release. Fresh five-lane source38016788152 attempt1 started;
+draft mirror38016791160 SKIPPED gets zero runtime credit. Phase08 preserves
+actual publication PR/run/main APIs, applied exact reviewed queue SHA and
+source scan/body/previous compiler independent receipt. Exact new source
+review and browser/PG/compiler/build/report acceptance PENDING, no old-head
+credit. Next preserve actual first new failures or complete independent
+12cell/native/manual/audit/privacy acceptance, then current candidate gates.
