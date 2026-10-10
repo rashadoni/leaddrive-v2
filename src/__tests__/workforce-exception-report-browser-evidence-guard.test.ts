@@ -85,10 +85,20 @@ describe("native report fixture admission", () => {
   })
 
   it.each([
+    "WF_CALENDAR_BROWSER", "WF_MANAGER_TODAY_BROWSER", "WF_EXCEPTION_REPORT_BROWSER", "WF_EXCEPTION_CLASSIFICATION_BROWSER",
+  ])("refuses employee exceptions when only %s is opted in", async otherOptIn => {
+    vi.stubEnv("WF_EMPLOYEE_EXCEPTION_BROWSER", "0")
+    vi.stubEnv(otherOptIn, "1")
+    await expect(createNativeZoomContext("http://127.0.0.1:9/", "employee-exceptions")).rejects.toThrow()
+    expect(nativeLauncher).not.toHaveBeenCalled()
+  })
+
+  it.each([
     ["calendar", "WF_CALENDAR_BROWSER", "/workforce/calendar"],
     ["manager-today", "WF_MANAGER_TODAY_BROWSER", "/workforce"],
     ["exception-report", "WF_EXCEPTION_REPORT_BROWSER", "/workforce/exceptions/report"],
     ["exception-classification", "WF_EXCEPTION_CLASSIFICATION_BROWSER", "/workforce/exceptions"],
+    ["employee-exceptions", "WF_EMPLOYEE_EXCEPTION_BROWSER", "/workforce/exceptions/mine"],
   ])("keeps the %s opt-in and exact native page boundary", async (fixture, optIn, route) => {
     vi.stubEnv(optIn, "0")
     await expect(createNativeZoomContext("http://127.0.0.1:9/", fixture)).rejects.toThrow()

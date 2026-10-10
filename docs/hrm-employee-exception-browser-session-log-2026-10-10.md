@@ -151,3 +151,10 @@ paths and native engine byte-identical to93E. Task-range3commit gitleaks found
 no leaks (~90KB). These bounded source-only checks do not replace hosted gates.
 Next peer final prepared review/corrected integration review, checkpoint,
 publish dependent draft and execute actual existing hosted source workflow.
+
+Added five meaningful shared-native admission cases: four existing opt-ins
+cannot admit employee route, and own opt-in/exactpage reaches only the mocked
+native API boundary while foreignroute/origin/query is refused. Original31
+cases remain; expected36, actual VitestNOTRUN. Existing strict baseline is
+unchanged. No mocked native PASS or hosted capture credit. This narrow native
+test addition is included in current full source review before publication.
