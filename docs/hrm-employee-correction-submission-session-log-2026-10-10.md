@@ -89,3 +89,15 @@ link/revision routine installation is still future harness work, not proven by
 this SQL text. gitdiffPASS; SQLsyntax/database/trigger/RLS/role/harness/CI/source
 independent checks NOTRUN. This preparation is unpublished and cannot close
 C6-006/C12/C14 or claim restore/replay/defaultACL/operational acceptance.
+
+
+## Separate target refusal checks actual24PASS
+
+ActualNode20 pure24target/refusal checks PASS after RAM/disk/pressure check: real
+productionapp/address/database/privilegedrole/remoteRedis and inconsistent
+admin/app/fence/parameters/profile/source/checkedSHA rejected without supplied
+URL/private-marker disclosure. One coherent localfixture accepted with distinct
+source and checked commits. Wholeoriginalstdout/digest retained separately.
+No connections, SQL/database/browser/harness/job/fullcompiler/build/source
+independent/runtime acceptance; fixture remainsunexecuted. Existing ACKsource
+unchanged. Parent682 source5SUCCESS/compilerRUNNING remains priority.
