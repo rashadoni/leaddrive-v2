@@ -91,3 +91,31 @@ candidate already observed28 and satisfies same preserved predicate. Original
 label retained with separate qualification, no source/guard/baseline weakening.
 Next: finish681 normal exact-M release, normalmerge its finalmain into successor,
 independent source review, dependent draft publication and hosted exacthead gates.
+
+
+## 2026-10-10 — latest readonly prefill source independently admitted
+
+Normal integration of parent681 exact-main339f74afc9384eecad5d175217918b08e5c65e15
+preceded ea40 source admission. Independent ea40 source-only review17125B
+SHAfad4554d307f7e80a2e0c0e853c15dc50a81fe726e07330ae89acbe919681bbd accepted;
+first peer journal-path reader error and all originals preserved in phase02.
+Latest clean unpublished6f58bc115f999922a0c1c8f740227cad92999674 changes only
+telemetry counter name to observedInteractionRequestPosts and adds the explicit
+three-interaction observer scope after initial prefill; no whole-navigation
+POST absence claim. Observer/assertions/persistence/native/session bounds unchanged.
+Independent exact6f58 source-only review2580B SHA2f3dffcc72c342b356647f6fc136e6c69e09b1878a5e84194c4700d08c8ae259
+accepted,45bindings/52protected controls stable, Node20syntax/diffPASS. Runtime,
+source6, currentcandidate, successful correction POST/body/source-link/native
+request-form zoom and authenticated production evidence NOTRUN. Separate
+additive artifact reader preserves every old employee/session predicate and
+requires12finite actual own-form diagnostics; reader runtimeNOTRUN. Two resume
+read-only guessed document/workflow path errors retained and corrected by actual
+filename discovery, not application failures. No baseline/source gate weakening.
+
+Parent681 normal build+quality actuallySUCCESS; production deployment and exact
+main compiler stillRUNNING. Source publication awaits verified parent release.
+85DONE/76open/61%; C6-006/C12PARTIAL/C14OPEN. Latest source-only checkpoint is
+not whole-item closure or real device/human/restore/operations evidence.
+Lastaction exact6f58 source admission; stop parentrelease running/nextsource
+unpublished; next complete parent current-M root+peer artifact/compiler/public
+privacy admission, then publish dependent draft and hosted exacthead gates.
