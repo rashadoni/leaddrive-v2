@@ -14841,6 +14841,7 @@
       "hiddenCategories": "Hidden categories:",
       "enableAllInGroup": "Enable all modules in {group}",
       "branding": "Branding",
+      "logo": "Logo",
       "primaryColor": "Primary Color",
       "logoUrl": "Logo URL",
       "limits": "Limits",
@@ -14875,7 +14876,13 @@
       "landingPageAuto": "Auto — first available page",
       "landingPageHint": "Where the tenant lands when opening the root URL. Only pages of enabled modules are listed; leave on Auto to use the first menu item.",
       "capabilities": "Capabilities",
-      "capabilitiesDesc": "Sidebar areas sold separately from the group modules above. A switch grants the capability's own entitlement."
+      "capabilitiesDesc": "Sidebar areas sold separately from the group modules above. A switch grants the capability's own entitlement.",
+      "workforceControlHint": "HRM changes apply immediately. Save other tenant settings separately.",
+      "workforceEnabled": "HRM is enabled",
+      "workforceDisabled": "HRM is disabled",
+      "workforceLoading": "Loading HRM access…",
+      "workforceControlError": "Could not confirm HRM access. Reload its state before changing it.",
+      "workforceRetry": "Reload HRM state"
     }
   },
   "designCheck": {

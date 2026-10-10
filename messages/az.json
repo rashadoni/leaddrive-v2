@@ -14837,6 +14837,7 @@
       "hiddenCategories": "Gizlənmiş kateqoriyalar:",
       "enableAllInGroup": "«{group}» bölməsindəki bütün modulları aktivləşdir",
       "branding": "Brendinq",
+      "logo": "Loqo",
       "primaryColor": "Əsas rəng",
       "logoUrl": "Loqo URL",
       "limits": "Limitlər",
@@ -14871,7 +14872,13 @@
       "landingPageAuto": "Avtomatik — ilk mövcud səhifə",
       "landingPageHint": "Kök ünvanı açanda müştərinin düşdüyü səhifə. Siyahıda yalnız aktiv modulların səhifələri var; «Avtomatik» menyunun ilk bəndini götürür.",
       "capabilities": "İmkanlar",
-      "capabilitiesDesc": "Yuxarıdakı qrup modullarından ayrı satılan menyu bölmələri. Açar imkanın öz hüququnu verir."
+      "capabilitiesDesc": "Yuxarıdakı qrup modullarından ayrı satılan menyu bölmələri. Açar imkanın öz hüququnu verir.",
+      "workforceControlHint": "HRM giriş dəyişiklikləri dərhal tətbiq olunur. Digər tenant parametrlərini ayrıca saxlayın.",
+      "workforceEnabled": "HRM aktivdir",
+      "workforceDisabled": "HRM deaktivdir",
+      "workforceLoading": "HRM girişi yüklənir…",
+      "workforceControlError": "HRM girişini təsdiqləmək mümkün olmadı. Dəyişiklikdən əvvəl vəziyyətini yenidən yükləyin.",
+      "workforceRetry": "HRM vəziyyətini yenidən yüklə"
     }
   },
   "designCheck": {

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { requireSuperAdmin } from "@/lib/superadmin-guard"
 import {
@@ -15,6 +16,7 @@ import { getDeletionScheduledEmail, getDeletionCompletedEmail } from "@/lib/emai
 import { logAudit } from "@/lib/prisma"
 import { runWithRlsBypass } from "@/lib/rls-context"
 import { reconcileModulesWithFeatures, withRequiredModules } from "@/lib/modules"
+import { featuresToStringArray } from "@/lib/tenant-capabilities"
 
 // GET /api/v1/admin/tenants/[id] — Tenant details
 export async function GET(
@@ -112,7 +114,12 @@ export async function PUT(
       // A Support tenant always needs the shared customer base. Persist the
       // normalized list too (not only the derived `modules` map), otherwise a
       // later edit could make the dependency look like an unexplained grant.
-      const features = withRequiredModules(body.features)
+      // Workforce decisions belong to the explicit capability API. A stale
+      // editor or a raw features payload must not grant/revoke that entitlement
+      // or undo an approval/disable made after the editor was opened.
+      const workforceKey = "workforce-hrm"
+      const features = withRequiredModules(body.features).filter((feature) => feature !== workforceKey)
+      if (featuresToStringArray(existing.features).includes(workforceKey)) features.push(workforceKey)
       updateData.features = JSON.stringify(features)
       // `features` is authoritative for module visibility, but `hasModule` also
       // merges the `modules` JSON column (written by Advisor Suite / capability
@@ -138,9 +145,27 @@ export async function PUT(
     }
 
     const updated = await prisma.organization.update({
-      where: { id },
+      // Capability PATCH also updates this row. Refuse a concurrent change
+      // instead of writing the features/modules snapshot read above over it.
+      where: {
+        id,
+        updatedAt: existing.updatedAt,
+        // Prisma timestamps have millisecond precision. Check the entitlement
+        // snapshot too so two writes in the same millisecond cannot collide.
+        features: { equals: existing.features ?? Prisma.JsonNull },
+        modules: { equals: existing.modules ?? Prisma.JsonNull },
+      },
       data: updateData,
+    }).catch((error: unknown) => {
+      if ((error as { code?: string } | null)?.code === "P2025") return null
+      throw error
     })
+    if (!updated) {
+      return NextResponse.json({
+        error: "Tenant changed while saving. Reload the tenant and try again.",
+        code: "TENANT_UPDATE_CONFLICT",
+      }, { status: 409 })
+    }
 
     logAudit(auth.orgId, "update", "tenant", id, existing.name, {
       oldValue: { plan: existing.plan, isActive: existing.isActive },

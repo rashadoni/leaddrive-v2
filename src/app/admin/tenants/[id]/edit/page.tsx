@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { Card } from "@/components/ui/card"
@@ -24,6 +24,7 @@ import {
   enableCapability,
   disableCapability,
 } from "@/lib/admin-sidebar-catalog"
+import { WorkforceCapabilityControl } from "../workforce-capability-control"
 
 // SIDEBAR_SECTIONS + TOGGLEABLE_MODULES are derived from the live `navItems`
 // (see src/lib/admin-sidebar-catalog.ts) — single source of truth, so this
@@ -93,13 +94,18 @@ interface TenantData {
 }
 
 export default function TenantEditPage() {
-  const router = useRouter()
   const params = useParams()
   const tenantId = params.id as string
+  return <TenantEditState key={tenantId} tenantId={tenantId} />
+}
+
+function TenantEditState({ tenantId }: { tenantId: string }) {
+  const router = useRouter()
   const t = useTranslations("admin")
   // Nav-item labels live in the "nav" namespace (same keys the sidebar uses),
   // so the derived catalog resolves item.tKey through this.
   const tNav = useTranslations("nav")
+  const hrmLabel = tNav("groups.HRM")
 
   const [tenant, setTenant] = useState<TenantData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -108,6 +114,11 @@ export default function TenantEditPage() {
   const [saved, setSaved] = useState(false)
   const [logoUploading, setLogoUploading] = useState(false)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
+  const [hrmBusy, setHrmBusy] = useState(true)
+  const [capabilityRevision, setCapabilityRevision] = useState(0)
+  const onHrmBusyChange = useCallback((busy: boolean) => setHrmBusy(busy), [])
+  const saveInFlight = useRef(false)
+  const mounted = useRef(true)
 
   const [form, setForm] = useState({
     name: "",
@@ -125,9 +136,15 @@ export default function TenantEditPage() {
   })
 
   useEffect(() => {
-    fetch(`/api/v1/admin/tenants/${tenantId}`)
-      .then((r) => r.json())
+    mounted.current = true
+    const ac = new AbortController()
+    fetch(`/api/v1/admin/tenants/${tenantId}`, { signal: ac.signal })
+      .then(async (r) => {
+        if (!r.ok) throw new Error("Tenant failed to load")
+        return r.json()
+      })
       .then((res) => {
+        if (ac.signal.aborted) return
         if (res.data) {
           const t = res.data
           setTenant(t)
@@ -150,9 +167,10 @@ export default function TenantEditPage() {
           })
         }
       })
-      .catch(() => setError(t("tenants.error")))
-      .finally(() => setLoading(false))
-  }, [tenantId])
+      .catch(() => { if (!ac.signal.aborted) setError(t("tenants.error")) })
+      .finally(() => { if (!ac.signal.aborted) setLoading(false) })
+    return () => { mounted.current = false; ac.abort() }
+  }, [tenantId, t])
 
   function toggleFeature(id: string) {
     setForm((prev) => {
@@ -210,6 +228,8 @@ export default function TenantEditPage() {
   }
 
   async function handleSave() {
+    if (saveInFlight.current || hrmBusy) return
+    saveInFlight.current = true
     setSaving(true)
     setError("")
     setSaved(false)
@@ -244,16 +264,19 @@ export default function TenantEditPage() {
         }),
       })
       const data = await res.json()
+      if (!mounted.current) return
       if (!res.ok) {
         setError(data.error || "Update failed")
         return
       }
       setSaved(true)
-      setTimeout(() => setSaved(false), 3000)
+      setCapabilityRevision((revision) => revision + 1)
+      setTimeout(() => { if (mounted.current) setSaved(false) }, 3000)
     } catch (err: any) {
-      setError(err.message || "Network error")
+      if (mounted.current) setError(err.message || "Network error")
     } finally {
-      setSaving(false)
+      saveInFlight.current = false
+      if (mounted.current) setSaving(false)
     }
   }
 
@@ -291,7 +314,7 @@ export default function TenantEditPage() {
               <Check className="w-4 h-4" /> {t("tenants.saved")}
             </span>
           )}
-          <Button onClick={handleSave} disabled={saving}>
+          <Button onClick={handleSave} disabled={saving || hrmBusy}>
             {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
             {t("tenants.save")}
           </Button>
@@ -508,6 +531,17 @@ export default function TenantEditPage() {
                         {capabilityIds.map((capabilityId) => {
                           const enabled = isCapabilityEnabled(form.features, capabilityId)
                           const pages = section.items.filter((item) => item.capabilityId === capabilityId)
+                          if (capabilityId === "workforce-hrm") {
+                            return <WorkforceCapabilityControl
+                              key={capabilityId}
+                              tenantId={tenantId}
+                              label={hrmLabel === "HRM" ? hrmLabel : `${hrmLabel} (HRM)`}
+                              pages={pages.map((page) => tNav(page.tKey)).join(" · ")}
+                              refreshRevision={capabilityRevision}
+                              disabled={saving}
+                              onBusyChange={onHrmBusyChange}
+                            />
+                          }
                           return (
                             <div
                               key={capabilityId}
