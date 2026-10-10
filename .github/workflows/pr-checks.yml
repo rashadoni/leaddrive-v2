@@ -363,10 +363,12 @@ jobs:
     # runner, which then became the most expensive job in the repository
     # (macOS minutes count against the allowance at ten times the Linux rate:
     # 1,444 of them cost more than 96,000 Linux minutes).
-    # A public-repository standard Linux runner has 16 GiB. Two full-project
-    # compiler attempts exhausted the former 12-GiB heap on 2026-10-03.
-    # Require a measured 18-GiB RAM+swap budget for the bounded 14-GiB heap,
-    # using only the existing ephemeral-runner helper's capped 4-GiB swap.
+    # A public-repository standard Linux runner has 16 GiB. The compiler
+    # exhausted a 12-GiB heap on 2026-10-03 and the 14-GiB one on 2026-10-10
+    # (#679: exit 134 at 13.9 GiB, green unchanged on a re-run — a coin toss).
+    # Require a measured 20-GiB RAM+swap budget (the runner showed 21) for the
+    # bounded 16-GiB heap, with the helper's capped 4-GiB swap. Next time make
+    # the type graph smaller: the runner has no more to give.
     #
     # It still skips draft pull requests: the runner is a single shared
     # resource, and an agent's intermediate pushes would only queue behind each
@@ -401,7 +403,7 @@ jobs:
       - name: Prepare bounded GitHub-hosted typecheck memory
         run: bash scripts/ci/prepare-hosted-build-runner.sh
         env:
-          LEADDRIVE_BUILD_MIN_BUDGET_KIB: "18874368"
+          LEADDRIVE_BUILD_MIN_BUDGET_KIB: "20971520"
 
       - name: TypeScript compile-check (advisory diagnostics)
         # The complete diagnostic set remains advisory while the historical
@@ -410,7 +412,7 @@ jobs:
         # finite job timeout; the preflight must admit the measured budget
         # before this bounded heap can be used.
         env:
-          NODE_OPTIONS: --max-old-space-size=14336
+          NODE_OPTIONS: --max-old-space-size=16384
         run: |
           ulimit -c 0
           set +e
