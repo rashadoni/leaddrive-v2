@@ -1,0 +1,62 @@
+{
+  "archivedAtUtc": "2026-10-10T06:34:48.866614+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-employee-exception-7ca3-first-source-gates-archive-snapshot/hrm-employee-exception-7ca3-regression-peer-reader-v2.py.raw-original.gz",
+      "originalBytes": 3837,
+      "originalSha256": "27ab67e3f0cedfbb653989d0eb5dd69a095910c456d578e44a0fe7e361ff2160",
+      "storedBytes": 1903,
+      "storedSha256": "a7410d090523c767eb2cc54f24c1f38bcb51cb6e20792383215a70a4d6165d72"
+    },
+    {
+      "path": "hrm-employee-exception-7ca3-first-source-gates-archive-snapshot/hrm-employee-exception-7ca3-regression-peer-reader-v2.stderr.log.raw-original.gz",
+      "originalBytes": 0,
+      "originalSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "storedBytes": 20,
+      "storedSha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec"
+    },
+    {
+      "path": "hrm-employee-exception-7ca3-first-source-gates-archive-snapshot/hrm-employee-exception-7ca3-regression-peer-reader-v2.stdout.json.raw-original.gz",
+      "originalBytes": 166,
+      "originalSha256": "5cf4bcd4be5b1fc7a0e36c16db1e32f31d8da77eabf307441387559bd7dc4e85",
+      "storedBytes": 155,
+      "storedSha256": "4dac149907258ca045dfda473034c76f73099deff535d9d183b9fdb9a75be003"
+    },
+    {
+      "path": "hrm-employee-exception-7ca3-first-source-gates-archive-snapshot/hrm-employee-exception-7ca3-regression-peer-reader.py.raw-original.gz",
+      "originalBytes": 3507,
+      "originalSha256": "91f364a4bc58ace704f9a41ad1970eadd03377d9fdc6ddb7943b35d9c7e01d3a",
+      "storedBytes": 1796,
+      "storedSha256": "0cb26901864250e47ff589f441b223194b8e8001d576a5f0cee55ddd7b662137"
+    },
+    {
+      "path": "hrm-employee-exception-7ca3-first-source-gates-archive-snapshot/hrm-employee-exception-7ca3-regression-peer-reader.stderr.log.raw-original.gz",
+      "originalBytes": 1143,
+      "originalSha256": "57fced58fb06774fdfcf80a3c96b93320f937044b5467d536051099e7504940d",
+      "storedBytes": 549,
+      "storedSha256": "9a3a7f48ebda4d2fcb6ccebe6b0f3b5c03017fbb7ade7c1cba4c706e6514866a"
+    },
+    {
+      "path": "hrm-employee-exception-7ca3-first-source-gates-archive-snapshot/hrm-employee-exception-7ca3-regression-peer-reader.stdout.json.raw-original.gz",
+      "originalBytes": 0,
+      "originalSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "storedBytes": 20,
+      "storedSha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec"
+    },
+    {
+      "path": "hrm-employee-exception-7ca3-first-source-gates-archive-snapshot/hrm-employee-exception-regression-peer-review-7ca3.json.raw-original.gz",
+      "originalBytes": 8284,
+      "originalSha256": "b9abd7d8f8c0d269965ce32c3a26931e1a41da1f614ac5fe3508e439b9ebd373",
+      "storedBytes": 2396,
+      "storedSha256": "a1b598660d78a2b787a24790aae91b9919154dfe149b12323efea5ce78abec27"
+    },
+    {
+      "path": "hrm-employee-exception-7ca3-first-source-gates-archive-snapshot/hrm-employee-exception-report-regression-peer-review-7ca3.json.raw-original.gz",
+      "originalBytes": 51885,
+      "originalSha256": "bfbba73870a2543f7c07057f787245dae90b8b382a788f3709aa294e97cf3a2f",
+      "storedBytes": 9360,
+      "storedSha256": "aac7376245aff48054a37e9702465fd15ab33bf69bf2d41d9f869167b440e008"
+    }
+  ]
+}
