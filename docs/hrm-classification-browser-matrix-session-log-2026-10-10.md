@@ -233,3 +233,41 @@ policy; correction changed reader only. No CI/source baseline weakening.
 No runtime transfer into0CD, no new matrix/task/productionHR acceptance.
 Next actual0CD selector-count proof and full matrix/PG/strict/compiler/build
 independent acceptance, preserve all further first errors and repeat results.
+
+## First0CD runtime proves selector and exposes actual product form clipping
+
+HR browser114103937266/source38015241105 actual FAILURE. Original ZIP
+11655980927/51,307B/digestc767b53871b1595b12b68098092160e790f56d1cec94f403f329aeec3ee2934b
+and whole log/API/PNG checked by root and independent peer. Original safe image
+viewed; no edits. Actual region counts named2/scrollable1/table1/translated
+label=true/tabindex0 prove selected target. Table focused-visible intersection
+and offered action full bounds PASS. Empty-submit focused/focusVisible=true,
+box left189/right401/width212 versus actual scroll clip77..307: right overflow
+94px. Source348 horizontal assertion FAIL, zero cases/manual writes/private
+capture-refusals; native NOT RUN, MFA PASS and cleanup4/4 PASS.
+
+Independent11718B/SHA974539710fe9b34e7bc6f417d546d8acb6c3730c1e2d84fde71027234a2b7178
+identifies blocking product P2 at inline colSpan form/action row sizing, not
+a need to add flex-wrap (it already exists). Initial peer reader guessed
+absent separate-actions file; corrected to actual inline source only, no CI
+rerun or gate modification. Original safe D8E Error cause remains historically
+qualified inference; current actual counts demonstrate old broad ambiguity.
+
+Source0CD independent2101B/SHA8e9d26157d3e0d5a0d44af19aa59e0b35daaeac769b377c0d43bf605b4abfbf6
+confirms exact prepared selector delta and unchanged all other source/gates.
+Phase05 archives actual product failure and current source/independent reviews.
+Other four first0CD lanes continue naturally, no cancellation/corrective push.
+
+Applying adapt with mandatory impeccable context preparation: existing
+.impeccable.md confirmed global operational/evidence-led LeadDrive tone and
+light/dark orange shell; HR audience/manual purpose supplied explicitly by user.
+No new design interview/font/palette/section/information architecture change.
+Prepared-only eight-class-string correction binds action/form width to named
+scroll-region inline size minus existing2rem cell padding, wraps long buttons
+at min44px, and makes desktop form columns depend on actual container. Official
+Tailwind4/W3C container-unit semantics consulted; no new dependency. Current
+source untouched while first0CD run continues; no TSX/lint/build/runtime PASS
+for prepared fix. Physical devices/humanAT NOT RUN (no approved physical
+environment); synthetic/native-hosted results cannot close whole C14/C12.
+Next independent prepared UI review, full original0CD completion/capture,
+then source checkpoint/push and fresh actual exact-head hosted acceptance.
