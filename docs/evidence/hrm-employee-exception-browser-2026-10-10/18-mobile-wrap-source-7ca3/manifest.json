@@ -1,0 +1,41 @@
+{
+  "archivedAtUtc": "2026-10-10T06:23:35.694642+00:00",
+  "scope": "Immutable originals and actual phase receipts; each original status/qualification retained. No future/other-head execution credit.",
+  "artifacts": [
+    {
+      "path": "hrm-employee-exception-mobile-wrap-source-peer-review-7ca3.json.gz",
+      "originalBytes": 12764,
+      "originalSha256": "f11318da9816e0101d1c5ef993922a868dadde3a705a8d2f2572b07f382e67e7",
+      "storedBytes": 4512,
+      "storedSha256": "03bf4b58f0220b142946dae379141c8d8a57e205c71101a7f61cde18a93eefc8"
+    },
+    {
+      "path": "hrm-employee-exception-7ca3-protected-source-root.json.gz",
+      "originalBytes": 6005,
+      "originalSha256": "25a6e16cac687500d7b93f11b10dfa8fc46a301f3ee648d66c5e4ea0a7b054b3",
+      "storedBytes": 2408,
+      "storedSha256": "ca2f2d73d01333836adbb330d8a18a0f547ea58e4be4a8e4d89c0633f5eaed12"
+    },
+    {
+      "path": "hrm-employee-exception-7ca3-publication-admission-root.json.gz",
+      "originalBytes": 581,
+      "originalSha256": "8b27de7b06617d23654e9913b5cd9888ac6fe932dcce2f61884a69446248ac12",
+      "storedBytes": 414,
+      "storedSha256": "81eae4c3453964a9edab74d28a5561536bef5bc832dd734c23a298ca1cff50eb"
+    },
+    {
+      "path": "hrm-employee-exception-7ca3-source-dispatch-runs-api.json.gz",
+      "originalBytes": 12464,
+      "originalSha256": "51c5bf0d9ea546ca6a2324e7812e7cfdec0f06d722599066a65d993cf6b4a191",
+      "storedBytes": 1553,
+      "storedSha256": "964a87c76f7f87aa6f09e53f8d9646d26025136e3aab38918dd1643e1c716a50"
+    },
+    {
+      "path": "hrm-employee-exception-pr-body-7ca3-source-dispatch.md.gz",
+      "originalBytes": 4125,
+      "originalSha256": "2bb8e80c2bc4a34a941b7d15c489e135ac706b3410ab7fb44acbbacab1d90aed",
+      "storedBytes": 2180,
+      "storedSha256": "ab436e85cca90be5f5eed5590408aac52e4bb133ecf2090da99b452fe055d87e"
+    }
+  ]
+}
