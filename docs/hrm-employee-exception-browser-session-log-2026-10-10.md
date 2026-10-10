@@ -277,3 +277,23 @@ replay/capture assertions unchanged. Old0d7 remaining sourcejobs continue
 naturally; no cancellation/rerun. DraftPR678 needs independent delta review,
 new exactcurrent source/browser/database and candidate/requiredchecks before
 normal release.85DONE/76open/61%,C6-006/C12partial/C14open unchanged.
+
+## Prepared diagnostic bound and canonical framework announcer correction
+
+Intermediate4055 was not published/dispatched. Independent sourcefinding:
+16alert bound must apply before map, not after an unbounded browser traversal.
+Now overflow returns only numeric globalAlerts/overflow/emptyalerts, records
+finite diagnostics thenFAIL before classification. Originalfinding2378B SHA
+65bb722ad0dfef798bf5da7bddcb16124120105f2f5919dcd848e4db9a943045 retained.
+
+Pinned unchanged package-lock Next16.2.11 official primarysource inspected:
+https://github.com/vercel/next.js/blob/v16.2.11/packages/next/src/client/components/app-router-announcer.tsx
+Its route accessibility announcer is DIV# __next-route-announcer__, rolealert,
+aria-liveassertive in NEXT-ROUTE-ANNOUNCER open shadowhost, absolute1px square,
+overflowhidden/zero clip. New diagnostic gate admits only this exact structural
+framework shape or proven NEXTJS-PORTAL, requires ownalerts0 and rejects all
+unknownalerts. No raw announcer text/privateDOM/HTML retention, no removing
+accessibility announcements/DOM/CSS/badge manipulation. Original0d7 offending
+alert identity remains NOTPROVED; actual newidentity must be recorded by fresh
+runtime before any attribution/acceptance. Source2b/43/0d7 originals and prior
+4055 checkpoint retained. No product/permission/constraint/baseline changes.

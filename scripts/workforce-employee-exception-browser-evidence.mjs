@@ -501,24 +501,32 @@ async function loadFailureAndRecovery(tenant) {
   await page.getByRole("article").filter({ hasText: tenant.cases.reopened.reference }).waitFor()
   const ownSection = page.getByTestId("workforce-my-exceptions-boundary").locator("..")
   assert.equal(await ownSection.count(), 1)
-  const alerts = await page.getByRole("alert").evaluateAll(elements => {
+  const alertIdentity = await page.getByRole("alert").evaluateAll(elements => {
+    if (elements.length > 16) return { globalAlerts: elements.length, overflow: true, alerts: [] }
     const ownRoot = document.querySelector('[data-testid="workforce-my-exceptions-boundary"]')?.parentElement
-    return elements.map(element => {
+    const alerts = elements.map(element => {
       let developmentPortal = false
       for (let ancestor = element; ancestor; ancestor = ancestor.parentNode || ancestor.host) {
         if (ancestor.nodeName === "NEXTJS-PORTAL") developmentPortal = true
       }
       const box = element.getBoundingClientRect(), style = getComputedStyle(element)
-      return { insideOwnSection: ownRoot?.contains(element) === true, developmentPortal,
+      // Exact pinned Next16.2.11 accessibility announcer shape, not an error.
+      const canonicalRouteAnnouncer = element.getRootNode().host?.nodeName === "NEXT-ROUTE-ANNOUNCER"
+        && element.nodeName === "DIV" && element.id === "__next-route-announcer__"
+        && element.getAttribute("role") === "alert" && element.getAttribute("aria-live") === "assertive"
+        && style.position === "absolute" && box.width === 1 && box.height === 1
+        && style.overflow === "hidden" && style.clip.replace(/[\s,]/g, "") === "rect(0px0px0px0px)"
+      return { insideOwnSection: ownRoot?.contains(element) === true, developmentPortal, canonicalRouteAnnouncer,
         visible: box.width > 0 && box.height > 0 && style.visibility !== "hidden" && style.display !== "none" }
     })
+    return { globalAlerts: elements.length, overflow: false, alerts }
   })
-  assert.ok(alerts.length <= 16, "Bounded alert identity diagnostics required")
-  receipts.recoveryAlertDiagnostics.push({ globalAlerts: alerts.length, alerts })
+  receipts.recoveryAlertDiagnostics.push(alertIdentity)
+  assert.equal(alertIdentity.overflow, false, "Bounded alert identity diagnostics required before traversal")
   // Require the actual employee error to clear. Every other alert must be
-  // positively identified in the development portal; unknown alerts fail.
+  // positively identified as framework-only; unknown alerts fail.
   assert.equal(await ownSection.getByRole("alert").count(), 0)
-  assert.ok(alerts.every(alert => !alert.insideOwnSection && alert.developmentPortal))
+  assert.ok(alertIdentity.alerts.every(alert => !alert.insideOwnSection && (alert.developmentPortal || alert.canonicalRouteAnnouncer)))
   await ownProjection(context, tenant)
   await safeScreenshot(page, "injected-load-failure-real-recovery.png")
   receipts.networkFaultDiagnostics.push({ kind: "LOAD_FAILURE", injected: true, injectedStatus: 503, realRefreshStatus: 200, recovery: true })
