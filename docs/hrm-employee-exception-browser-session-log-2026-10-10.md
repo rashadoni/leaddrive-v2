@@ -656,3 +656,45 @@ source/native/employee/finalDB or release acceptance yet. Main0A unchanged.
 PR678DRAFT, fullcurrentcandidate/requiredfive stillrequired.85DONE/76open/61%,
 C6-006/C12partial/C14open unchanged. Next actualemployee terminal originals
 and review; do not infer UIpass frompreparedclasses or unrelatedreportPASS.
+
+## Current7CA employee and HR fullyaccepted; compiler/build pending
+
+Exactcurrentemployee114150720786 source7ca34739e490fb3ef7d88346e4e83c08cf50b665
+run38030657788attempt1 SUCCESS. Rootfreshoriginal whole118995B log SHA
+b2c46ed7ea15bcd09801481a091c27d183a1fe03838f599c6dbb44a166903da4;
+ZIP11662084075/8349066B SHA1e74a645ada2067c560e0ca3fcb4e0c1e0ac0d9e80d1c159605556ec09632c79,
+API size/digest/allCRC/uniquepaths verified. Rootcompletecontent reader actually
+passed32exactGitbindings/11txnproductionstmt+3CHECKreconstructedALTER+outsideTxn
+index, all14cases/12matrixcells/20realAuthMFA/50focus/14newACK+14audits/1history/
+13unchangedfactcontrols/nonownerforcedRLS/eightactualrollbackSQLstates/cleanup.
+Native actualsixAZ/RU/EN INITIAL+AFTER_CORRECTION_RETURN proofphases,27captures
+(six100%controls+21native200),30current320/DPR2/scale1/noCSSzoom-transform
+admissions and identicaloriginalphysicalwindow; every27PNGbyte/SHA/IHDR and
+focus/scroll/layoutpreservation independently checked.
+
+Root initialreadonlyreader usedbasename suffix matching andambiguouslymatched
+initial+returnphase screenshots; AssertionError line88 retained alongside
+originalreader. Separatev2 binds exactmemberpath under sole receiptprefix,
+alloriginal checks retained; actualv2PASS. No source/threshold/rerun change.
+Rootactuallyviewed fouroriginalpixels: RUstandard320 correctionlabels wrap,
+AZ/RU/ENnative200 ACK labels wrap with visible selectedfocus. Rootpixelreceipt
+1759B SHA4d9a9704556d8383579050c4be733b5e27b1962f67d71e0898c7b50f4369c8ed.
+Independent exactemployee fullpeer62120B SHA66cd0b36e9d51f971e775762218db08d47797bdecf33351a5a0da1e41a0c204e
+no remainingP0/P1/P2 inbounded scope; eightoriginalPNG viewed including RU320
+correction+ACK/AZRUENnative/reproof/RUfinal/real201lostscenario. ActualRUbutton
+right291/clip320/height56 atstandard+native versusold354.828125overflow;
+original4890FAIL preserved, newruntime provesresponsivefix.
+
+CurrentHR114150720760 independentfullpeer25406B SHA
+da99d23c3889a2b923968cd74bfc1245d3a93d30718e0ded8aa021c868af0446:
+whole105440B/currentZIP11661614330/3797454B/API digest+CRC/19sources+7extracts/
+20cases/12cells/24manualwrites+audits/108focus/48privacyrefusals/3native21caps/
+8facts/RLS/cleanup, twoactualoriginalPNGviewed. No HR result transferredfrom
+oldhead or substitutedfor employee.
+Immutablephase22: 20files/9874615originalbytes.
+Currentcompiler114150720728/build114150720657 stillRUNNING. No allsixsource/
+candidate/requiredfive/mainrelease acceptance yet. PR678DRAFT, main0A stable.
+Heavychecks remainGHAonly; authenticatedproductionemployee/humanAT/devices/
+wholeoverlay/operational/restoredcopy NOTRUN.85DONE/76open/61%,C6-006/C12partial/
+C14open unchanged. Next sourcecompiler/build originals; then ready/current
+candidate andrequiredchecks, normalverifiedmainrelease without activation.
