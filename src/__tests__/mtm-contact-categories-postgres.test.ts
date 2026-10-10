@@ -445,10 +445,14 @@ pgDescribe("client categories on a real Postgres", () => {
   describe("deleting an employee", () => {
     const params = (id: string) => ({ params: Promise.resolve({ id }) })
 
-    /** The handler is a privileged web operation: it wants a browser session. */
+    /**
+     * The handler is a privileged web operation: it wants a browser session —
+     * marked as one, the way `getSession` marks it. The journal records an
+     * actor only for a person at a browser, never for an integration key.
+     */
     async function remove(agentId: string) {
       const { getSession } = await import("@/lib/api-auth")
-      vi.mocked(getSession).mockResolvedValueOnce({ orgId: ORG, userId: "admin-user", role: "admin", email: "admin@example.com", name: "Admin" } as never)
+      vi.mocked(getSession).mockResolvedValueOnce({ orgId: ORG, userId: "admin-user", role: "admin", email: "admin@example.com", name: "Admin", principalType: "session" } as never)
       const { DELETE } = await import("@/app/api/v1/mtm/agents/[id]/route")
       const response = await DELETE(new NextRequest(`http://localhost:3000/api/v1/mtm/agents/${agentId}`, { method: "DELETE" }), params(agentId))
       return { status: response.status, body: await response.json() }
@@ -510,6 +514,21 @@ pgDescribe("client categories on a real Postgres", () => {
       expect(await bypass(() => prisma.mtmContactAgentAssignment.count({ where: { agentId: agent.id } }))).toBe(0)
       // The client is nobody's now, not gone.
       expect(await bypass(() => prisma.mtmContact.count({ where: { id: client.id } }))).toBe(1)
+      // Who deleted whom stays in the journal. The row cannot point at the
+      // employee — he is gone, and `agentId` is a foreign key — so it names him
+      // by id and keeps his name: written with his id in `agentId`, Postgres
+      // refused the insert and the handler answered 200 with no row at all.
+      const journal = await bypass(() => prisma.mtmAuditLog.findMany({
+        where: { organizationId: ORG, action: "AGENT_DELETE", entityId: agent.id },
+        select: { agentId: true, actorUserId: true, entity: true, metadataKind: true, oldData: true },
+      }))
+      expect(journal).toEqual([{
+        agentId: null,
+        actorUserId: "admin-user",
+        entity: "agent",
+        metadataKind: "agent_delete",
+        oldData: { id: agent.id, name: "Created by mistake", email: null, role: "AGENT" },
+      }])
     })
 
     it("keeps an employee who has a visit, and says so instead of naming a constraint", async () => {
@@ -528,6 +547,8 @@ pgDescribe("client categories on a real Postgres", () => {
       // Before this check the delete cascaded through the employee's visits.
       expect(await bypass(() => prisma.mtmAgent.count({ where: { id: agent.id } }))).toBe(1)
       expect(await bypass(() => prisma.mtmVisit.count({ where: { id: visit.id } }))).toBe(1)
+      // A refused deletion is not journalled as one.
+      expect(await bypass(() => prisma.mtmAuditLog.count({ where: { action: "AGENT_DELETE", entityId: agent.id } }))).toBe(0)
     })
 
     it("still refuses to rewrite or erase the team history of an employee who exists", async () => {
