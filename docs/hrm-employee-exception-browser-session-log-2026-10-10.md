@@ -214,3 +214,36 @@ samebranch concurrency would cancel them if dispatched immediately; wait
 originalwholeterminal before fresh newsource run. Currentnewcheckpoint needs
 independentdelta review/publication and actual hosted repeat. PR678 remains
 DRAFT.85DONE/76open/61%, C6-006/C12partial/C14open unchanged.
+
+## Second hosted failure retained; valid imported NO_SHOW segment added
+
+Source43b1 run38025291422 attempt1 employeejob114134743579 actualFAILURE,
+fixture-seeding-imported-history Error250:20. Original ZIP11659589633/5056B
+SHA344c71b20be4bc434b39e5b844022544263f1072e1e41facfd7db52a6eddeeb9;
+wholelog104699B SHA35b77387f03f6725ddbf00759c2ebb08c2d6605030041286a0e8fdda6423daca.
+Original receipt counts1historicalresponse/0audit/15cases/6decisions,
+0authentication/0completedbrowsercases/0focus/0native/noPNG/cleanupPASS.
+Partial administrative seed survives until disposable CI service destruction.
+Missing NO_SHOW segment inferred from actual source position and unchanged
+subject/expected-date CHECKs; raw error and SQLSTATE absent, not fabricated.
+Root and independent peer retained API/log/ZIP/receipt with digest and CRC.
+Peer18077B SHAf068de5d94aaf65f111203b4b2e080286e54b4104cb9ca58a12a503fc9c223e3.
+
+Narrow fixture correction creates same-tenant synthetic administrator-authored
+DRAFT template and REMOTE segment before imported NO_SHOW, using existing
+shift schema parser and canonical definition hash. Workday/event/evidence
+remain NULL and expected date exact. No schedule activation, assignment,
+detection/materialization or START evidence; view-only employee behavior
+unchanged. Template added to immutable fingerprints:13controlsets,32source
+bindings now expected. Existing checks, roles, grants, response writer,
+production product and all baselines unchanged. Actual repeat NOT RUN yet.
+
+Original2b run38024424861 naturally completedFAILURE: five existing gates
+SUCCESS, employeeFAIL. Fullcompiler actual1162/35/EXIT2,64strict pairs/counts
+matched,0critical/0task-owned; globally NONCLEAN. Original full log/artifact
+retained and unchanged strict readers actually passed, no skipped credit.
+Latest main5393c874ae4c68e7d62de07c886126785af635d0 contains PR677 MTM audit
+correction in three unrelated paths; preserve it before final verification.
+PR678 remains DRAFT; current source correction needs independent review,
+exact fresh hosted matrix and current-main candidate gates. No production
+mutation.85DONE/76open/61%,C6-006/C12partial,C14open unchanged.

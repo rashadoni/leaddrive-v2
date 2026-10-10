@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises"
 import bcrypt from "bcryptjs"
 import { generateSecret, generateSync } from "otplib"
 import { chromium } from "playwright"
+import { createJiti } from "jiti"
 import { createNativeZoomContext, proveNative200Zoom, captureNativeViewport, isNativeZoomPage } from "./workforce-native-browser-zoom.mjs"
 import { employeeExceptionBrowserTarget, assertEmployeeExceptionCaptureAllowed } from "./workforce-employee-exception-browser-admission.mjs"
 import { makeRlsTestPrisma } from "./_rls.mjs"
@@ -194,6 +195,9 @@ async function installProductionRoutines() {
 }
 
 async function seed() {
+  const jiti = createJiti(import.meta.url, { alias: { "@": new URL("../src", import.meta.url).pathname } })
+  const { parseWorkforceShiftDefinition, workforceShiftDefinitionHash } = await jiti.import("../src/lib/workforce/shift-definition.ts")
+  const definition = parseWorkforceShiftDefinition({ startTime: "09:00", endTime: "17:00", timezone: "UTC", daysOfWeek: [1, 2, 3, 4, 5, 6, 7] })
   const passwordHash = await bcrypt.hash(password, 4)
   protectedMarkers.push(passwordHash)
   const tenants = []
@@ -203,7 +207,7 @@ async function seed() {
       features: ["workforce-hrm", ...(key === "off" ? [] : ["workforce-exception-response-v1"])], settings: {},
     } })
     const principals = {}
-    for (const name of ["employee", ...(key === "a" ? ["other", "unlinked", "viewer", "admin", "hr"] : [])]) {
+    for (const name of ["employee", "admin", ...(key === "a" ? ["other", "unlinked", "viewer", "hr"] : [])]) {
       const totpSecret = generateSecret(); protectedMarkers.push(totpSecret)
       const user = await admin.user.create({ data: {
         organizationId: organization.id, email: `employee-${suffix}-${key}-${name}@example.test`, name: `Fixture ${key} ${name}`,
@@ -247,7 +251,21 @@ async function seed() {
       }
       cases[label] = { ...record, reference: `WF-${record.id.slice(-8)}`, workday }
     }
-    const noShow = await admin.workforceExceptionCase.create({ data: { organizationId: organization.id, agentId: agent.id, workdayId: null, kind: "NO_SHOW", expectedWorkDate: new Date(at.getTime() - 86_400_000), detectorVersion: "employee-browser-imported-schedule-shape-v1", deduplicationKey: createHash("sha256").update(`${suffix}-${key}-no-show`).digest("hex"), createdAt: at } })
+    // Imported segment subject satisfies the unchanged NO_SHOW constraints.
+    // This is not schedule publication, assignment, detection or START evidence.
+    const template = await admin.workforceShiftTemplate.create({ data: {
+      organizationId: organization.id, code: `EMPLOYEE-IMPORTED-${suffix}-${key}`, version: 1,
+      status: "DRAFT", name: "Imported employee fixture definition", timezone: "UTC", definition,
+      definitionHash: workforceShiftDefinitionHash(definition), provenance: "TENANT_ADMIN",
+      createdByUserId: principals.admin.id,
+    } })
+    const segment = await admin.workforceShiftSegment.create({ data: {
+      organizationId: organization.id, templateId: template.id, sequence: 1, mode: "REMOTE", siteId: null,
+      startTime: definition.startTime, endTime: definition.endTime, lateGraceSeconds: 0,
+    } })
+    const noShow = await admin.workforceExceptionCase.create({ data: { organizationId: organization.id, agentId: agent.id, segmentId: segment.id, workdayId: null, kind: "NO_SHOW", expectedWorkDate: new Date(at.getTime() - 86_400_000), detectorVersion: "employee-browser-imported-schedule-shape-v1", deduplicationKey: createHash("sha256").update(`${suffix}-${key}-no-show`).digest("hex"), createdAt: at } })
+    assert.equal(noShow.workdayId, null); assert.equal(noShow.workdayEventId, null); assert.equal(noShow.evidenceId, null)
+    assert.equal(noShow.segmentId, segment.id)
     cases.noShow = { ...noShow, reference: `WF-${noShow.id.slice(-8)}` }
     tenants.push({ organization, principals, team, agent, others, cases })
   }
@@ -311,7 +329,7 @@ async function counts() {
   return { responses: await admin.workforceExceptionEmployeeResponse.count(), audit: await admin.mtmAuditLog.count() }
 }
 async function fixedFacts(tenants) {
-  const tables = ["organizations", "mtm_agents", "mtm_agent_workdays", "workforce_exception_cases", "workforce_exception_decisions", "workforce_shift_segments", "workforce_employee_team_memberships", "workforce_access_grants", "mtm_hrm_requests", "workforce_time_corrections"]
+  const tables = ["organizations", "mtm_agents", "mtm_agent_workdays", "workforce_exception_cases", "workforce_exception_decisions", "workforce_shift_templates", "workforce_shift_segments", "workforce_employee_team_memberships", "workforce_access_grants", "mtm_hrm_requests", "workforce_time_corrections"]
   const ids = tenants.map(tenant => tenant.organization.id), result = []
   for (const table of tables) {
     const column = table === "organizations" ? "id" : "organizationId"
@@ -626,7 +644,7 @@ function safeFailure(error) {
     prismaCode: typeof error?.code === "string" && /^P\d{4}$/.test(error.code) ? error.code : null }
 }
 try {
-  for (const path of ["scripts/workforce-employee-exception-browser-evidence.mjs", "scripts/workforce-employee-exception-browser-admission.mjs", "src/__tests__/workforce-employee-exception-browser-admission.test.ts", "scripts/workforce-native-browser-zoom.mjs", "scripts/ci/fixtures/workforce-native-zoom-extension/manifest.json", "scripts/ci/fixtures/workforce-native-zoom-extension/background.js", "scripts/ci/fixtures/workforce-employee-exception-browser.sql", "scripts/ci/fixtures/workforce-manager-today-browser.sql", ".github/workflows/workforce-exception-report-browser-evidence.yml", "src/components/workforce/workforce-my-exceptions.tsx", "src/app/(dashboard)/workforce/exceptions/mine/page.tsx", "src/app/api/v1/workforce/exceptions/mine/route.ts", "src/app/api/v1/workforce/exceptions/[id]/response/route.ts", "src/lib/workforce/exception-employee-response-writer.ts", "src/lib/workforce/exception-employee-response-rate-limit.ts", "src/lib/workforce/exception-response-operation.ts", "src/lib/workforce/exception-response-rollout.ts", "src/lib/workforce/exception-workbench.ts", "src/lib/workforce/actor.ts", "src/lib/with-workforce-rls-auth.ts", "src/lib/auth.ts", "src/lib/permissions.ts", "src/lib/workforce/sensitive-response.ts", "prisma/schema.prisma", "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql", "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql", "prisma/migrations/20260830200000_workforce_exception_employee_responses/migration.sql", "prisma/migrations/20260928123000_workforce_exception_response_cycle_unique_index/migration.sql", "messages/az.json", "messages/ru.json", "messages/en.json"]) {
+  for (const path of ["scripts/workforce-employee-exception-browser-evidence.mjs", "scripts/workforce-employee-exception-browser-admission.mjs", "src/__tests__/workforce-employee-exception-browser-admission.test.ts", "scripts/workforce-native-browser-zoom.mjs", "scripts/ci/fixtures/workforce-native-zoom-extension/manifest.json", "scripts/ci/fixtures/workforce-native-zoom-extension/background.js", "scripts/ci/fixtures/workforce-employee-exception-browser.sql", "scripts/ci/fixtures/workforce-manager-today-browser.sql", ".github/workflows/workforce-exception-report-browser-evidence.yml", "src/components/workforce/workforce-my-exceptions.tsx", "src/app/(dashboard)/workforce/exceptions/mine/page.tsx", "src/app/api/v1/workforce/exceptions/mine/route.ts", "src/app/api/v1/workforce/exceptions/[id]/response/route.ts", "src/lib/workforce/exception-employee-response-writer.ts", "src/lib/workforce/exception-employee-response-rate-limit.ts", "src/lib/workforce/exception-response-operation.ts", "src/lib/workforce/exception-response-rollout.ts", "src/lib/workforce/exception-workbench.ts", "src/lib/workforce/actor.ts", "src/lib/workforce/shift-definition.ts", "src/lib/with-workforce-rls-auth.ts", "src/lib/auth.ts", "src/lib/permissions.ts", "src/lib/workforce/sensitive-response.ts", "prisma/schema.prisma", "prisma/migrations/20260830170000_workforce_exception_case_lifecycle/migration.sql", "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql", "prisma/migrations/20260830200000_workforce_exception_employee_responses/migration.sql", "prisma/migrations/20260928123000_workforce_exception_response_cycle_unique_index/migration.sql", "messages/az.json", "messages/ru.json", "messages/en.json"]) {
     const raw = await readFile(new URL(`../${path}`, import.meta.url))
     receipts.sources.push({ path, bytes: raw.length, sha256: createHash("sha256").update(raw).digest("hex") })
   }
