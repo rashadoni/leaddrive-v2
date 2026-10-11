@@ -85,7 +85,7 @@ describe.skipIf(!url)("bounded full sweep on isolated PostgreSQL", () => {
   beforeAll(async () => {
     const parsed = new URL(url!)
     if (parsed.protocol !== "postgresql:" || parsed.hostname !== "127.0.0.1" || parsed.pathname !== "/hrm_reconciliation_sweep_test") throw new Error("SWEEP_TEST_DB_NOT_ISOLATED")
-    db = new PrismaClient({ datasources: { db: { url } } }); other = new PrismaClient({ datasources: { db: { url } } }); cursor = workforceReconciliationCursorStore(db)
+    db = new PrismaClient<Prisma.PrismaClientOptions>({ datasources: { db: { url } } }); other = new PrismaClient<Prisma.PrismaClientOptions>({ datasources: { db: { url } } }); cursor = workforceReconciliationCursorStore(db)
     // Deliberately omit FK constraints so orphan/cross-tenant corruptions can be exercised.
     const ddl = [
       'CREATE TABLE organizations (id text PRIMARY KEY, "isActive" boolean NOT NULL, plan text NOT NULL, addons text[] NOT NULL, features jsonb NOT NULL, modules jsonb NOT NULL, "createdAt" timestamp(3) NOT NULL)', 

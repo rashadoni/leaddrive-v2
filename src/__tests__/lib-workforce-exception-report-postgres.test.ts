@@ -160,7 +160,7 @@ async function rejected(state: string, fn: (tx: Prisma.TransactionClient) => Pro
 
 postgresDescribe("bounded recorded exception report on real PostgreSQL", () => {
   beforeAll(async () => {
-    observer = new PrismaClient({ datasourceUrl: clientUrl() })
+    observer = new PrismaClient<Prisma.PrismaClientOptions>({ datasourceUrl: clientUrl() })
     await observer.$executeRawUnsafe(`CREATE SCHEMA ${quoted(schema)}`); schemaCreated = true
     await observer.$executeRawUnsafe(`CREATE ROLE ${quoted(applicationRole)} LOGIN PASSWORD '${applicationPassword}' NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOREPLICATION NOINHERIT`)
     roleCreated = true
@@ -263,7 +263,7 @@ postgresDescribe("bounded recorded exception report on real PostgreSQL", () => {
         await createCorrection(tx,org,`${org}-correction`,`${org}-request`)
       }
     })
-    app = new PrismaClient({ datasourceUrl: clientUrl(applicationRole) })
+    app = new PrismaClient<Prisma.PrismaClientOptions>({ datasourceUrl: clientUrl(applicationRole) })
   },90_000)
 
   afterAll(async () => {

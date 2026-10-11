@@ -101,7 +101,7 @@ pgDescribe("mandatory hosted real restore writer PostgreSQL", () => {
     const owner = target(process.env.ADMIN_DATABASE_URL, "postgres"), app = target(process.env.DATABASE_URL, "wf_policy_restore")
     expect(target(process.env.EVENT_PLATFORM_TEST_DATABASE_URL, "postgres").href).toBe(owner.href)
     expect(app.host).toBe(owner.host); expect(app.searchParams.get("connection_limit")).toBe("4")
-    admin = new PrismaClient({ datasourceUrl: owner.toString() })
+    admin = new PrismaClient<Prisma.PrismaClientOptions>({ datasourceUrl: owner.toString() })
     for (let n = 0; n < 2; n++) {
       await admin.organization.create({ data: { id: orgs[n], name: "Restore isolated fixture", slug: `restore-${n}-${suffix}` } })
       await admin.user.create({ data: { id: users[n], organizationId: orgs[n], email: `restore-${n}-${suffix}@example.test`, name: "Fixture creator", role: "admin", passwordHash: randomUUID() } })
