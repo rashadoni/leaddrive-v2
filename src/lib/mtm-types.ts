@@ -35,6 +35,12 @@ export interface MtmLiveMapContract {
   maxAccuracyMeters: number
   /** The organization's check-in radius, for clients without one of their own. */
   geofenceRadiusMeters?: number
+  /**
+   * «Ссылка на местоположение» in an employee's card. Present only while the
+   * organization has the links switched on and this viewer is let in to them;
+   * `canWrite` — he may make and revoke one. Absent: the block is not drawn.
+   */
+  shareLinks?: { canWrite: boolean }
 }
 
 export interface LiveMapAgent {
@@ -136,6 +142,7 @@ export function parseMtmLiveMapContract(value: unknown): MtmLiveMapContract | nu
   const markerCount = finiteNumber(input.markerCount)
   const maxAccuracyMeters = finiteNumber(input.maxAccuracyMeters)
   const geofenceRadiusMeters = finiteNumber(input.geofenceRadiusMeters)
+  const shareLinks = record(input.shareLinks)
   const generatedAt = typeof input.generatedAt === "string" ? input.generatedAt : ""
   const today = typeof input.today === "string" ? input.today : ""
   const timezone = typeof input.timezone === "string" ? input.timezone : ""
@@ -176,6 +183,11 @@ export function parseMtmLiveMapContract(value: unknown): MtmLiveMapContract | nu
     // Optional: an answer cached before the field existed has none, and the
     // zones then fall back to each client's own radius.
     ...(geofenceRadiusMeters != null && geofenceRadiusMeters > 0 ? { geofenceRadiusMeters } : {}),
+    // Optional, and closed by default: the block that lets a manager show an
+    // employee's position to an outsider is drawn only on the server's exact
+    // word. An answer without the field, or with anything but a boolean in
+    // it, is an organization that has the links switched off.
+    ...(typeof shareLinks.canWrite === "boolean" ? { shareLinks: { canWrite: shareLinks.canWrite } } : {}),
   }
 }
 

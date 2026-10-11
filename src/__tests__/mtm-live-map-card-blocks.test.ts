@@ -59,22 +59,37 @@ describe("the card's layout, as it is remembered", () => {
   })
 
   it("comes back as it was left", () => {
-    const left: CardLayout = { order: ["route", "device", "events", "day"], collapsed: ["events"], hidden: ["device"] }
+    const left: CardLayout = { order: ["route", "share", "device", "events", "day"], collapsed: ["events"], hidden: ["device"] }
     expect(parseCardLayout(serializeCardLayout(left))).toEqual(left)
   })
 
   it("whatever else was stored comes back valid: unknown blocks dropped, repeats ignored", () => {
     expect(parseCardLayout({ order: ["route", "nonsense", "route", "events"], collapsed: ["nonsense", "route"], hidden: "all" }))
-      .toEqual({ order: ["route", "day", "device", "events"], collapsed: ["route"], hidden: [] })
+      .toEqual({ order: ["route", "day", "device", "share", "events"], collapsed: ["route"], hidden: [] })
   })
 
   it("a block that did not exist when the layout was saved takes its place for a new person, after its nearest placed neighbour", () => {
     // Saved when the card had two blocks, with the route moved above the events.
     const saved = parseCardLayout({ order: ["route", "events"], collapsed: [], hidden: [] })
-    // «day» follows «route» in the card's own order, «device» follows «day».
-    expect(saved.order).toEqual(["route", "day", "device", "events"])
+    // «day» follows «route» in the card's own order, «device» follows «day», «share» follows «device».
+    expect(saved.order).toEqual(["route", "day", "device", "share", "events"])
     // Saved with nothing placed at all: the card's own order.
     expect(parseCardLayout({ order: [] }).order).toEqual([...CARD_BLOCKS])
+  })
+
+  it("«Ссылка на местоположение» joins a card laid out before it existed right after the phone — unfolded, not taken off, nothing else moved", () => {
+    // What a browser has kept since the card had four blocks: the phone moved to the top, the day folded, the events hidden.
+    const before = { order: ["device", "events", "route", "day"], collapsed: ["day"], hidden: ["events"] }
+    expect(parseCardLayout(JSON.stringify(before))).toEqual({
+      order: ["device", "share", "events", "route", "day"], collapsed: ["day"], hidden: ["events"],
+    })
+    // For a new person it is the last block of the card.
+    expect(CARD_BLOCKS[CARD_BLOCKS.length - 1]).toBe("share")
+    // An organization with the links switched off has nothing for it: not drawn, and not offered to be put back.
+    const layout = parseCardLayout(JSON.stringify(before))
+    expect(cardBlocksShown(layout, ["events", "route", "day", "device"])).toEqual(["device", "route", "day"])
+    expect(cardBlocksOffered(layout, ["events", "route", "day", "device"])).toEqual(["device", "events", "route", "day"])
+    expect(cardBlocksShown(layout, CARD_BLOCKS)).toEqual(["device", "share", "route", "day"])
   })
 
   it("draws only what this card has something for and the person has not taken off", () => {
@@ -98,11 +113,11 @@ describe("the card's layout, as it is remembered", () => {
   it("moves a block one place among the blocks the card offers, stepping over one it has nothing for today", () => {
     // Today the card has no «day» and no «device»: «route» moved up trades with «events».
     const today = ["events", "route"] as const
-    expect(moveCardBlock(DEFAULT_CARD_LAYOUT, "route", "up", today).order).toEqual(["route", "events", "day", "device"])
-    // With all four offered, «device» up one place trades with «day», not with «events».
-    expect(moveCardBlock(DEFAULT_CARD_LAYOUT, "device", "up", CARD_BLOCKS).order).toEqual(["events", "route", "device", "day"])
+    expect(moveCardBlock(DEFAULT_CARD_LAYOUT, "route", "up", today).order).toEqual(["route", "events", "day", "device", "share"])
+    // With every block offered, «device» up one place trades with «day», not with «events».
+    expect(moveCardBlock(DEFAULT_CARD_LAYOUT, "device", "up", CARD_BLOCKS).order).toEqual(["events", "route", "device", "day", "share"])
     // «device» up when only events and device are offered: over the two the card does not have.
-    expect(moveCardBlock(DEFAULT_CARD_LAYOUT, "device", "up", ["events", "device"]).order).toEqual(["device", "route", "day", "events"])
+    expect(moveCardBlock(DEFAULT_CARD_LAYOUT, "device", "up", ["events", "device"]).order).toEqual(["device", "route", "day", "events", "share"])
     // Nothing above the first, nothing below the last.
     expect(moveCardBlock(DEFAULT_CARD_LAYOUT, "events", "up", today)).toBe(DEFAULT_CARD_LAYOUT)
     expect(moveCardBlock(DEFAULT_CARD_LAYOUT, "route", "down", today)).toBe(DEFAULT_CARD_LAYOUT)

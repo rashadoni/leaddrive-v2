@@ -24,6 +24,10 @@ describe("isMtmWebOnlyPath", () => {
       // purpose: the phone's token never reaches them, list or write.
       "/api/v1/mtm/locations/zones",
       "/api/v1/mtm/locations/zones/zone_1",
+      // Links to an employee's position (2026-10-10) sit there for the same
+      // reason: the phone of the person being shown never reaches them.
+      "/api/v1/mtm/locations/share-links",
+      "/api/v1/mtm/locations/share-links/link_1",
     ]) {
       expect(isMtmWebOnlyPath(p)).toBe(true)
     }

@@ -33,6 +33,9 @@ const SETUP_NOT_HISTORY = new Set([
   "WorkforceAttendanceDeviceAttestationChallenge.agentId",
   // Derived from MtmAgentLocation, which does count.
   "MtmAgentLatestLocation.agentId",
+  // A link to their position, made by a manager: an arrangement about the
+  // employee, not something they did. It leaves with them by cascade.
+  "MtmLocationShareLink.agentId",
   // Only some audit kinds and calendar sources are retained; the delete
   // handler counts exactly those.
   "MtmAuditLog.agentId",

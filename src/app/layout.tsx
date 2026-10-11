@@ -47,6 +47,11 @@ const PUBLIC_PORTAL_PATHS = new Set([
   "/portal/register",
   "/portal/set-password",
 ])
+// «Ссылка на местоположение»: the page behind /share/location/<token> is
+// opened by somebody with no account at all. The literal is the page's own
+// path (LOCATION_SHARE_LINK_PAGE_PATH in src/lib/mtm/location-share-link.ts);
+// a test keeps the two equal.
+const PUBLIC_LOCATION_SHARE_LINK_PATH = "/share/location"
 
 /**
  * Do not serialize the complete CRM catalog into unauthenticated auth/portal
@@ -63,6 +68,11 @@ function messagesForClient(
   }
   if (PUBLIC_PORTAL_PATHS.has(normalizedPath)) {
     return { portal: messages.portal } as AbstractIntlMessages
+  }
+  // A stranger's page gets the few sentences it shows and nothing else of the
+  // catalog — which is every module's labels, a megabyte and a half of them.
+  if (normalizedPath === PUBLIC_LOCATION_SHARE_LINK_PATH || normalizedPath.startsWith(`${PUBLIC_LOCATION_SHARE_LINK_PATH}/`)) {
+    return { mtmLocationShareLink: messages.mtmLocationShareLink } as AbstractIntlMessages
   }
   return messages
 }

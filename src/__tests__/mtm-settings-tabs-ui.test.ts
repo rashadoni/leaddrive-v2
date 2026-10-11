@@ -381,6 +381,57 @@ describe("the settings page as six tabs", () => {
 })
 
 /**
+ * «Ссылка на местоположение» (2026-10-10): by a link a manager makes on the
+ * live map, somebody outside the organization sees where an employee is. The
+ * whole thing is off for an organization until this one switch is turned on —
+ * so the switch has to be where the person who runs the field module finds
+ * it, has to say what it opens, and must not be locked for him.
+ */
+describe("showing an employee's position by a link, in the live map card", () => {
+  const KEY = "locationShareLinksEnabled"
+  const control = () => settingRow(KEY).querySelector('[role="switch"]') as HTMLButtonElement
+
+  it("stands in «Карта агентов» on the alerts tab, under the two numbers, off until somebody turns it on", async () => {
+    await open()
+    expect(tabOf(settingRow(KEY))).toBe("alerts")
+    const card = container.querySelector('[data-settings-group="groupLiveMap"]') as HTMLElement
+    expect([...card.querySelectorAll("[data-setting-row]")].map((row) => row.getAttribute("data-setting-row")))
+      .toEqual(["lateAfterHour", "offlineThresholdSeconds", KEY])
+    expect(control().getAttribute("aria-checked")).toBe("false")
+    // The row says what the switch opens, in the words of the catalogue.
+    expect(settingRow(KEY).textContent).toContain(page.lblLocationShareLinks)
+    expect(settingRow(KEY).textContent).toContain(page.hintLocationShareLinks)
+  })
+
+  it("is the manager's to switch — not locked like the administrator-only switches — and one save sends that one key", async () => {
+    await open()
+    expect(control().disabled).toBe(false)
+    expect(container.querySelector(`[data-testid="mtm-setting-locked-${KEY}"]`)).toBeNull()
+    // The lock itself still works on this page, for the switches that have one.
+    expect((settingRow("fieldContactsEnabled").querySelector('[role="switch"]') as HTMLButtonElement).disabled).toBe(true)
+
+    await openTab("alerts")
+    await flip(KEY)
+    expect(control().getAttribute("aria-checked")).toBe("true")
+    expect(saveBar().hidden).toBe(false)
+    await pressSave()
+    expect(writes).toEqual([{ [KEY]: true }])
+    // Reloaded from what the server kept: still on, and nothing left to save.
+    expect(control().getAttribute("aria-checked")).toBe("true")
+    expect(saveBar().hidden).toBe(true)
+  })
+
+  it("shows an organization that has it on as on, and switching it off is the same one press", async () => {
+    stored = { ...MTM_SETTING_DEFAULTS, [KEY]: true }
+    await open()
+    expect(control().getAttribute("aria-checked")).toBe("true")
+    await flip(KEY)
+    await pressSave()
+    expect(writes).toEqual([{ [KEY]: false }])
+  })
+})
+
+/**
  * Owner, 2026-10-07: «нужна возможность отключения из настроек … если агент не
  * на месте, но мог делать чек-ин». The switch shipped on «Access &
  * permissions», a page only a CRM administrator opens — and the account that

@@ -24,9 +24,10 @@ export interface LiveMapCardBlock {
 
 /**
  * The blocks of the selected employee's card — his events, his route, his day
- * in numbers, his device — each under a heading that folds it, in the order
- * the dispatcher chose, with «Настроить карточку» to reorder them or take one
- * off. What a card has nothing for is simply not offered.
+ * in numbers, his device, the link to his position — each under a heading
+ * that folds it, in the order the dispatcher chose, with «Настроить карточку»
+ * to reorder them or take one off. What a card has nothing for is simply not
+ * offered.
  */
 export function LiveMapCardBlocks({ blocks, layout, onLayoutChange }: {
   blocks: LiveMapCardBlock[]

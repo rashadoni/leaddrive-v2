@@ -330,3 +330,18 @@ export function timezoneLabel(timezone: string, at: Date = new Date()): string {
   const mm = String(abs % 60).padStart(2, "0")
   return `${timezone} (GMT${sign}${hh}:${mm})`
 }
+
+/**
+ * The zone as a person says it: "GMT+4", "GMT+5:30", "GMT-4" — for a reader
+ * who is told which clock a time is in and has no use for "Asia/Baku".
+ *
+ * What Intl's `timeZoneName: "shortOffset"` prints, assembled here from the
+ * offset instead: the same in every language, and the same in a browser
+ * whose own data would print "GMT" or "UTC" for a zero offset.
+ */
+export function timezoneOffsetLabel(timezone: string, at: Date = new Date()): string {
+  const offsetMin = isValidTimezone(timezone) ? getOffsetMinutes(timezone, at) : 0
+  const abs = Math.abs(offsetMin)
+  const minutes = abs % 60
+  return `GMT${offsetMin >= 0 ? "+" : "-"}${Math.floor(abs / 60)}${minutes ? `:${String(minutes).padStart(2, "0")}` : ""}`
+}

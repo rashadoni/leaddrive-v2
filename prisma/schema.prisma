@@ -164,6 +164,7 @@ model Organization {
   mtmContactCreateRequests               MtmContactCreateRequest[]
   mtmDeviceTokens                        MtmDeviceToken[]
   mtmMapZones                            MtmMapZone[]
+  mtmLocationShareLinks                  MtmLocationShareLink[]
   mtmDoctorScoringFormulas            MtmDoctorScoringFormula[]
   mtmDoctorAssessments                MtmDoctorAssessment[]
   mtmContactDictionaries              MtmContactDictionary[]
@@ -5799,6 +5800,7 @@ model MtmAgent {
   contactChangeRequests     MtmContactChangeRequest[]
   contactCreateRequests                MtmContactCreateRequest[]
   deviceTokens                         MtmDeviceToken[]
+  locationShareLinks                   MtmLocationShareLink[]
   enteredDoctorAssessments  MtmDoctorAssessment[]        @relation("MtmDoctorAssessmentEnteredBy")
   reviewedDoctorAssessments MtmDoctorAssessment[]        @relation("MtmDoctorAssessmentReviewedBy")
   fieldPotentials           MtmFieldPotential[]          @relation("MtmFieldPotentialAgent")
@@ -6462,6 +6464,49 @@ model MtmMapZone {
   @@unique([organizationId, id])
   @@index([organizationId, deletedAt])
   @@map("mtm_map_zones")
+}
+
+/// «Ссылка на местоположение»: a link a manager makes on the live map so that
+/// somebody outside the organization — a client waiting for a delivery — can
+/// see, without signing in, where ONE employee is right now. Nothing else of
+/// him: no history, no track, no clients, no phone.
+///
+/// The link itself is not kept. Only the SHA-256 of its token is, so a copy
+/// of this table opens nobody's position, and the link can be shown exactly
+/// once — in the answer to its creation. The token is the only thing the
+/// public page knows, so its hash is unique across ALL organizations.
+///
+/// A link never lives past the organization's midnight, and it works only
+/// while the organization keeps `locationShareLinksEnabled` switched on.
+model MtmLocationShareLink {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// The employee whose position the link shows. The link leaves with him.
+  agentId        String
+  agent          MtmAgent     @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Cascade)
+  /// 64 lowercase hex characters, pinned by mtm_location_share_links_tokenHash_check.
+  tokenHash      String       @unique
+  /// The office user who made the link, and the one who revoked it. Plain ids
+  /// without a relation, as on MtmMapZone: removing a user must not remove,
+  /// or revive, a link.
+  createdBy      String?
+  createdAt      DateTime     @default(now())
+  /// Set by the server alone: an hour, four hours or the organization's
+  /// midnight, whichever comes first. Never taken from a request.
+  expiresAt      DateTime
+  /// A revoked link is kept and marked: the journal row that says who
+  /// revoked it still points at something.
+  revokedAt      DateTime?
+  revokedBy      String?
+  /// How many times the link was opened, stamped at most once a minute. No
+  /// `updatedAt` on purpose: it would move with every view.
+  viewCount      Int          @default(0)
+  lastViewedAt   DateTime?
+
+  @@unique([organizationId, id])
+  @@index([organizationId, agentId, expiresAt])
+  @@map("mtm_location_share_links")
 }
 
 model MtmContactCreateRequest {

@@ -15143,6 +15143,8 @@
       "MAP_ZONE_CREATE": "Xəritəyə zona əlavə edildi",
       "MAP_ZONE_UPDATE": "Xəritədəki zona dəyişdirildi",
       "MAP_ZONE_DELETE": "Xəritədəki zona silindi",
+      "LOCATION_SHARE_LINK_CREATE": "Olduğu yerə link yaradıldı",
+      "LOCATION_SHARE_LINK_REVOKE": "Olduğu yerə link ləğv edildi",
       "VISIT_COMPLETE": "Ziyarət tamamlandı",
       "VISIT_ACTION_COMPLETE": "Ziyarət addımı icra edildi",
       "VISIT_RESULT_UPDATE": "Ziyarətin nəticəsi dəyişdirildi",
@@ -17028,6 +17030,58 @@
       "alertRulesHint": "Xəbərdarlıq qaydaları bütün təşkilat üçün eynidir: ayrı-ayrı əməkdaşlar üçün qayda yoxdur",
       "forEmployee": "{label}: {name}"
     },
+    "share": {
+      "title": "Olduğu yerə link",
+      "shows": "Linki açan şəxs sistemə daxil olmadan əməkdaşın adını, təşkilatı və onun hazırda xəritədə olduğu nöqtəni görür — yalnız iş günü davam edəndə və telefon koordinat göndərəndə. Tarixçə, marşrut və müştərilər göstərilmir.",
+      "showsNothingNow": "Hazırda link üzrə nöqtə göstərilmir: iş günü davam etmir, fasilədir və ya telefon çoxdan koordinat göndərmir. Nöqtə özü görünəcək.",
+      "create": "Link yarat:",
+      "dayLimit": "Link günün sonundan sonra işləmir.",
+      "durations": {
+        "1h": "1 saatlıq",
+        "4h": "4 saatlıq",
+        "day": "Günün sonuna qədər"
+      },
+      "creating": "Link yaradılır…",
+      "ready": "Link hazırdır",
+      "linkField": "Əməkdaşın olduğu yerə link",
+      "copy": "Kopyala",
+      "copied": "Kopyalandı",
+      "copyFailed": "Kopyalamaq alınmadı. Linki seçib əl ilə kopyalayın.",
+      "shownOnce": "Linki indi kopyalayın — sonra onu burada görmək mümkün olmayacaq.",
+      "copiedHere": "Bu linki kopyalamısınız",
+      "aliveTitle": "İşlək linklər",
+      "none": "İşlək link yoxdur.",
+      "validUntil": "Bu vaxta qədər işləyir: {time}",
+      "validUntilEndOfDay": "Günün sonuna qədər işləyir",
+      "createdBy": "Yaradan: {name}",
+      "opened": "{count, plural, one {# dəfə açılıb} other {# dəfə açılıb}}",
+      "lastOpened": "sonuncu dəfə: {time}",
+      "notOpened": "Hələ açılmayıb",
+      "neverOpened": "Açılmayıb",
+      "revoke": "Ləğv et",
+      "revoking": "Ləğv edilir…",
+      "revokeConfirm": "Link ləğv edilsin? Onunla xəritə dərhal açılmayacaq.",
+      "revokeCancel": "Ləğv etmə",
+      "pastTitle": "Artıq işləmir",
+      "revokedAt": "Ləğv edilib: {time}",
+      "expiredAt": "Müddəti bitib: {time}",
+      "loading": "Linklər yüklənir…",
+      "loadFailed": "Linkləri yükləmək alınmadı.",
+      "refreshFailed": "Linklərin siyahısını yeniləmək alınmadı.",
+      "retry": "Təkrar et",
+      "readOnly": "Linkləri administrator və menecer yaradır və ləğv edir.",
+      "errors": {
+        "off": "Linklər söndürülüb, hazırda heç biri açılmır. MTM parametrlərində yandırılır: «Xəbərdarlıqlar» bölməsi, «Agentlərin xəritəsi» bloku.",
+        "readOnly": "Link yaratmaq və ləğv etmək hüququnuz yoxdur.",
+        "limit": "Bu əməkdaşın artıq {limit} işlək linki var — bu, limitdir. Yenisini yaratmaq üçün lazımsız linki ləğv edin.",
+        "agentGone": "Əməkdaş əlçatan deyil: komandanızda deyil və ya deaktiv edilib.",
+        "linkGone": "Bu link artıq yoxdur: ləğv edilib və ya müddəti bitib.",
+        "busy": "Ard-arda çox əməliyyat edildi. Bir dəqiqə gözləyin.",
+        "session": "Giriş vaxtı bitib. Səhifəni yeniləyin və yenidən daxil olun.",
+        "network": "Serverlə əlaqə yoxdur. Yenidən cəhd edin.",
+        "failed": "Alınmadı. Yenidən cəhd edin."
+      }
+    },
     "card": {
       "customize": "Kartı tənzimlə",
       "customizeHint": "Kartda nə göstərilsin və hansı sıra ilə. Bloku yığmaq üçün başlığına basın.",
@@ -17134,6 +17188,36 @@
       "m": "{value} m",
       "km": "{value} km"
     }
+  },
+  "mtmLocationShareLink": {
+    "pageTitle": "Əməkdaşın olduğu yer",
+    "organization": "Təşkilat: {organization}",
+    "loading": "Olduğu yer yüklənir…",
+    "mapLabel": "Xəritə: əməkdaşın hazırda olduğu yer",
+    "recordedAt": "Koordinatın qeydə alındığı vaxt: {time} · {ago}",
+    "ago": {
+      "justNow": "indicə",
+      "minutes": "{count, plural, one {# dəqiqə əvvəl} other {# dəqiqə əvvəl}}",
+      "hours": "{count, plural, one {# saat əvvəl} other {# saat əvvəl}}"
+    },
+    "expiresAt": "Link bu vaxta qədər işləyir: {time}",
+    "expiresAtEndOfDay": "Link günün sonuna qədər işləyir",
+    "timezoneNote": "Vaxt təşkilatın vaxtı ilə göstərilir ({timezone})",
+    "scopeNote": "Yalnız hazırkı nöqtə göstərilir — hərəkət tarixçəsi və marşrut göstərilmir.",
+    "autoRefresh": "Səhifə özü yenilənir.",
+    "refresh": "Yenilə",
+    "refreshing": "Yenilənir…",
+    "unavailable": {
+      "title": "Olduğu yer hazırda əlçatan deyil",
+      "hint": "Səhifə özü yoxlayır. Olduğu yer əlçatan olanda burada görünəcək."
+    },
+    "gone": {
+      "title": "Bu link artıq işləmir",
+      "hint": "Onu göndərən şəxsdən yenisini yaratmağı xahiş edin."
+    },
+    "pageFailed": "Səhifəni göstərmək alınmadı. İnternet bağlantısını yoxlayın və «Yenilə» düyməsini basın.",
+    "rateLimited": "Həddindən çox sorğu. Səhifə bir dəqiqədən sonra yenidən cəhd edəcək.",
+    "connectionLost": "Məlumatı yeniləmək alınmadı. İnternet bağlantısını yoxlayın — səhifə yenidən cəhd edəcək."
   },
   "mtmSettingsPage": {
     "specialtiesHint": "Müştəri əlavə edilərkən ixtisas bu siyahıdan seçilir, «Müştərilər» bölməsindəki filtr də onunla işləyir. Siyahıdan silmək bu ixtisası artıq olan müştəriləri dəyişmir.",
@@ -17252,6 +17336,7 @@
     "lblHistoryStopRadius": "Dayanacaq aşkarlama radiusu (m)",
     "lblHistoryStopMinimum": "Minimum dayanacaq müddəti (dəq)",
     "lblLateAfterHour": "Hansı saatdan agent gecikmiş sayılır",
+    "lblLocationShareLinks": "Agentin olduğu yerə link",
     "lblDeviationThreshold": "Marşrutdan hansı məsafədə",
     "lblDeviationThrottle": "Təkrar xəbərdarlıqlar arası fasilə",
     "lblAlertOutOfZone": "Agent olmalı olduğu yerdə deyil",
@@ -17264,6 +17349,7 @@
     "hintHistoryStopRadius": "Aşkarlanan dayanacağın ilk nöqtəsi ətrafında maksimum GPS yayınması",
     "hintHistoryStopMinimum": "Dayanacağın göstərilməsi üçün əməkdaşın radiusda qalmalı olduğu müddət",
     "hintLateAfterHour": "Bu saata qədər marşruta başlamayan agent xəritədə «Gecikir» kimi görünür. Xəbərdarlıq yaranmır. Yalnız əlaqədə olan agentlərə aiddir.",
+    "hintLocationShareLinks": "Xəritədə agentin kartında rəhbər link yarada bilər — bir saatlıq, dörd saatlıq və ya günün sonunadək. Linki açan şəxs sistemə daxil olmadan agentin adını, şirkətin adını və agentin hazırda xəritədə harada olduğunu görür — yalnız agentin iş günü davam etdikdə. Tarixçə, marşrut, müştərilər və telefon nömrəsi göstərilmir. Siz yandırana qədər söndürülmüş qalır. Söndürsəniz, artıq verilmiş bütün linklər dərhal və həmişəlik işləməyəcək — yenidən yandırdıqdan sonra yeni linklər yaratmaq lazım olacaq. Agentin özü link haqqında bildiriş almır.",
     "hintDeviationThreshold": "Plan marşrutdan bu məsafədə sapma xəbərdarlıq yaradır",
     "hintDeviationThrottle": "Bir agent üzrə təkrar sapma xəbərdarlıqları arasında minimum fasilə",
     "hintMaxPhotos": "Bundan artıq fotonu tətbiq qəbul etmir.",

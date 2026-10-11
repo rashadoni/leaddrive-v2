@@ -15147,6 +15147,8 @@
       "MAP_ZONE_CREATE": "Map zone added",
       "MAP_ZONE_UPDATE": "Map zone changed",
       "MAP_ZONE_DELETE": "Map zone removed",
+      "LOCATION_SHARE_LINK_CREATE": "Location link created",
+      "LOCATION_SHARE_LINK_REVOKE": "Location link revoked",
       "VISIT_COMPLETE": "Visit completed",
       "VISIT_ACTION_COMPLETE": "Visit step done",
       "VISIT_RESULT_UPDATE": "Visit result updated",
@@ -17032,6 +17034,58 @@
       "alertRulesHint": "Alert rules are the same for the whole organization: there are no separate rules for one employee",
       "forEmployee": "{label}: {name}"
     },
+    "share": {
+      "title": "Location link",
+      "shows": "Whoever opens the link sees, without signing in, the employee's name, the organization and the point on the map where the employee is now — only while the workday is on and the phone is reporting coordinates. It shows no history, route or clients.",
+      "showsNothingNow": "Right now the link shows no point: the workday is not running, the employee is on a break, or the phone has not reported coordinates for a while. The point will appear by itself.",
+      "create": "Create a link:",
+      "dayLimit": "A link never lasts past the end of the day.",
+      "durations": {
+        "1h": "For 1 hour",
+        "4h": "For 4 hours",
+        "day": "Until the end of the day"
+      },
+      "creating": "Creating the link…",
+      "ready": "The link is ready",
+      "linkField": "Link to the employee's location",
+      "copy": "Copy",
+      "copied": "Copied",
+      "copyFailed": "Could not copy. Select the link and copy it by hand.",
+      "shownOnce": "Copy the link now — it cannot be opened here again later.",
+      "copiedHere": "You copied this link",
+      "aliveTitle": "Working links",
+      "none": "No working links.",
+      "validUntil": "Works until {time}",
+      "validUntilEndOfDay": "Works until the end of the day",
+      "createdBy": "Created by: {name}",
+      "opened": "{count, plural, one {Opened # time} other {Opened # times}}",
+      "lastOpened": "last time at {time}",
+      "notOpened": "Not opened yet",
+      "neverOpened": "Never opened",
+      "revoke": "Revoke",
+      "revoking": "Revoking…",
+      "revokeConfirm": "Revoke the link? It will stop opening the map at once.",
+      "revokeCancel": "Do not revoke",
+      "pastTitle": "No longer working",
+      "revokedAt": "Revoked: {time}",
+      "expiredAt": "Expired: {time}",
+      "loading": "Loading links…",
+      "loadFailed": "The links could not be loaded.",
+      "refreshFailed": "The list of links could not be refreshed.",
+      "retry": "Try again",
+      "readOnly": "Links are created and revoked by an administrator or a manager.",
+      "errors": {
+        "off": "Links are switched off, and none of them opens now. They are switched on in MTM settings: the “Alerts” tab, the “Agent map” block.",
+        "readOnly": "You are not allowed to create or revoke links.",
+        "limit": "This employee already has {limit} working links — that is the limit. Revoke one you do not need to create a new one.",
+        "agentGone": "The employee is not available: not in your team, or deactivated.",
+        "linkGone": "This link is gone: it was revoked or has expired.",
+        "busy": "Too many actions in a row. Wait a minute.",
+        "session": "You are signed out. Refresh the page and sign in again.",
+        "network": "No connection to the server. Try again.",
+        "failed": "That did not work. Try again."
+      }
+    },
     "card": {
       "customize": "Customize the card",
       "customizeHint": "What the card shows and in what order. Press a block's heading to fold it.",
@@ -17138,6 +17192,36 @@
       "m": "{value} m",
       "km": "{value} km"
     }
+  },
+  "mtmLocationShareLink": {
+    "pageTitle": "Employee location",
+    "organization": "Organization: {organization}",
+    "loading": "Loading the location…",
+    "mapLabel": "Map: where the employee is now",
+    "recordedAt": "Position recorded at {time} · {ago}",
+    "ago": {
+      "justNow": "just now",
+      "minutes": "{count, plural, one {# minute ago} other {# minutes ago}}",
+      "hours": "{count, plural, one {# hour ago} other {# hours ago}}"
+    },
+    "expiresAt": "The link works until {time}",
+    "expiresAtEndOfDay": "The link works until the end of the day",
+    "timezoneNote": "Times are shown in the organization's time ({timezone})",
+    "scopeNote": "Only the current point is shown — no movement history and no route.",
+    "autoRefresh": "The page refreshes by itself.",
+    "refresh": "Refresh",
+    "refreshing": "Refreshing…",
+    "unavailable": {
+      "title": "The location is not available right now",
+      "hint": "The page checks by itself. When the location becomes available, it will appear here."
+    },
+    "gone": {
+      "title": "This link no longer works",
+      "hint": "Ask whoever sent it to make a new one."
+    },
+    "pageFailed": "The page could not be shown. Check your internet connection and press “Refresh”.",
+    "rateLimited": "Too many requests. The page will try again in a minute.",
+    "connectionLost": "Could not refresh. Check your internet connection — the page will try again."
   },
   "mtmSettingsPage": {
     "specialtiesHint": "A client's specialty is picked from this list, and the filter in Clients works by it. Removing a specialty from the list does not change clients who already have it.",
@@ -17256,6 +17340,7 @@
     "lblHistoryStopRadius": "Stop detection radius (m)",
     "lblHistoryStopMinimum": "Minimum stop duration (min)",
     "lblLateAfterHour": "Hour after which an agent is late",
+    "lblLocationShareLinks": "Link to an agent's location",
     "lblDeviationThreshold": "At what distance from the route",
     "lblDeviationThrottle": "Pause between repeated alerts",
     "lblAlertOutOfZone": "The agent is not where expected",
@@ -17268,6 +17353,7 @@
     "hintHistoryStopRadius": "Maximum GPS drift around the first point of a detected stop",
     "hintHistoryStopMinimum": "How long an agent must remain within the radius before a stop is reported",
     "hintLateAfterHour": "An agent who has not started the route by this hour is marked “Late” on the map. No alert is created. Online agents only.",
+    "hintLocationShareLinks": "In an agent's card on the map a manager can create a link — for an hour, for four hours or until the end of the day. Whoever opens it sees, without signing in, the agent's name, the company's name and where the agent is on the map right now — only while the agent's workday is running. No history, route, clients or phone number. It is off until you switch it on. If you switch it off, every link already handed out stops working at once and for good — after you switch it back on, new links have to be made. The agent is not notified about a link.",
     "hintDeviationThreshold": "Distance from the planned route that triggers an out-of-zone alert",
     "hintDeviationThrottle": "Minimum minutes between repeated deviation alerts for one agent",
     "hintMaxPhotos": "The app accepts no more than this.",

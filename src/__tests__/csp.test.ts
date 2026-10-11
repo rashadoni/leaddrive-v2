@@ -167,6 +167,35 @@ describe("middleware CSP headers", () => {
     expect(res.headers.get("Pragma")).toBe("no-cache")
   })
 
+  // «Ссылка на местоположение». The page is as private as the demo link — and
+  // it draws a map. Copying the demo's `no-referrer` here would take the
+  // Referer off every tile request, and the CARTO key the tiles are fetched
+  // with is restricted by referrer: the visitor would get a grey map with
+  // «API KEY REQUIRED» on it, on production only.
+  it("keeps a location link out of shared caches and search engines without taking the referrer from the map's tiles", async () => {
+    const res = await authMiddleware(makeReq({
+      pathname: `/share/location/${"a".repeat(64)}`,
+      host: "app.leaddrivecrm.org",
+    }))
+
+    expect(res.status).toBe(200)
+    expect(res.headers.get("Cache-Control")).toContain("no-store")
+    expect(res.headers.get("Pragma")).toBe("no-cache")
+    expect(res.headers.get("X-Robots-Tag")).toBe("noindex, nofollow")
+    expect(res.headers.get("Referrer-Policy")).toBe("strict-origin-when-cross-origin")
+    // The page's own policy lets those tiles in, and lets nobody frame the page.
+    const policy = res.headers.get("Content-Security-Policy") ?? ""
+    const tile = getCartoVoyagerRasterTileUrl("referrer-restricted-key")
+      .replace("{s}", CARTO_VOYAGER_RASTER_SUBDOMAINS[0])
+      .replace("{z}", "12")
+      .replace("{x}", "2615")
+      .replace("{y}", "1552")
+      .replace("{r}", "@2x")
+    expect(cspAdmits(policy, "img-src", tile), tile).toBe(true)
+    expect(policy).toContain("frame-ancestors 'none'")
+    expect(res.headers.get("X-Frame-Options")).toBe("DENY")
+  })
+
   it("omits frame-ancestors and X-Frame-Options for the cross-origin chat widget", async () => {
     const res = await authMiddleware(makeReq({ pathname: "/embed/chat/session-1", host: "app.leaddrivecrm.org" }))
     const csp = res.headers.get("Content-Security-Policy")

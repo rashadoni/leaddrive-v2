@@ -24,6 +24,8 @@ import { prisma } from "@/lib/prisma"
 import { getOrgId, requireAuth } from "@/lib/api-auth"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { MTM_SETTING_DEFAULTS } from "@/lib/mtm-settings"
+import { AGENT_PERMISSION_ADMIN_ONLY_KEYS, AGENT_PERMISSION_SETTING_KEYS } from "@/lib/mtm/agent-permissions"
+import { NAV_ORG_SETTING_KEYS } from "@/lib/nav-items"
 import {
   MTM_SETTING_NUMBER_RANGES,
   changedMtmSettingKeys,
@@ -51,11 +53,39 @@ function upsertedKeys(): string[] {
   return vi.mocked(prisma.mtmSetting.upsert).mock.calls.map((call) => (call[0] as { create: { key: string } }).create.key)
 }
 
+/** «Ссылки на местоположение» as the table holds them — as much as the save reads and writes. */
+interface ShareLinkRow {
+  id: string
+  organizationId: string
+  expiresAt: Date
+  revokedAt: Date | null
+  revokedBy: string | null
+}
+let shareLinks: ShareLinkRow[]
+
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.useRealTimers()
   vi.mocked(getOrgId).mockResolvedValue(ORG)
   vi.mocked(prisma.mtmSetting.upsert).mockResolvedValue({} as never)
   vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([])
+  shareLinks = []
+  // The statement's own filters are applied to the rows: one that forgot the
+  // organization, «not revoked» or «not out of time» changes rows it must not.
+  vi.mocked(prisma.mtmLocationShareLink.updateMany).mockImplementation((async (args: {
+    where: { organizationId?: string; revokedAt?: null; expiresAt?: { gt: Date } }
+    data: Partial<ShareLinkRow>
+  }) => {
+    for (const key of Object.keys(args.where)) {
+      if (!["organizationId", "revokedAt", "expiresAt"].includes(key)) throw new Error(`the links were asked by an unknown filter: ${key}`)
+    }
+    const rows = shareLinks.filter((row) =>
+      (args.where.organizationId === undefined || row.organizationId === args.where.organizationId)
+      && (args.where.revokedAt !== null || row.revokedAt === null)
+      && (args.where.expiresAt === undefined || row.expiresAt.getTime() > args.where.expiresAt.gt.getTime()))
+    for (const row of rows) Object.assign(row, args.data)
+    return { count: rows.length }
+  }) as never)
   as("admin")
 })
 
@@ -261,6 +291,195 @@ describe("PUT /api/v1/mtm/settings — safe save", () => {
     expect((await res.json()).data.ignoredKeys).toEqual(["agentContactCreateRequests"])
   })
 
+  // «Ссылка на местоположение» (2026-10-10): a manager makes a link by which
+  // somebody outside the organization sees where an employee is. Off for
+  // every organization until somebody switches it on — and switched by
+  // whoever runs the field module, the people who change the rest of «Карта
+  // агентов», not by an administrator alone: the account that runs it for a
+  // client is a CRM manager, and a switch only an administrator reaches was
+  // already moved once for that reason (the case above).
+  it("ships the location links switched off, and takes the switch from a manager as from an administrator", async () => {
+    expect(MTM_SETTING_DEFAULTS.locationShareLinksEnabled).toBe(false)
+    for (const role of ["manager", "admin", "superadmin"]) {
+      vi.mocked(prisma.mtmSetting.upsert).mockClear()
+      vi.mocked(writeMtmAudit).mockClear()
+      as(role)
+      const res = await UpdateSettings(put({ locationShareLinksEnabled: true }))
+      expect(res.status, role).toBe(200)
+      expect(await res.json(), role).toEqual({ success: true, data: { ignoredKeys: [] } })
+      expect(vi.mocked(prisma.mtmSetting.upsert).mock.calls.map((call) => (call[0] as { create: unknown }).create), role)
+        .toEqual([{ organizationId: ORG, key: "locationShareLinksEnabled", value: true }])
+      // Who opened employees' positions to outsiders is on the record.
+      expect(writeMtmAudit, role).toHaveBeenCalledWith(expect.objectContaining({
+        action: "SETTINGS_UPDATE",
+        oldData: { locationShareLinksEnabled: false },
+        newData: expect.objectContaining({ keys: ["locationShareLinksEnabled"], locationShareLinksEnabled: true, actor: { userId: `${role}-user`, role } }),
+      }))
+    }
+    // Switching it back off is the same person's to do.
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "locationShareLinksEnabled", value: true }] as never)
+    vi.mocked(prisma.mtmSetting.upsert).mockClear()
+    as("manager")
+    expect((await UpdateSettings(put({ locationShareLinksEnabled: false }))).status).toBe(200)
+    expect(upsertedKeys()).toEqual(["locationShareLinksEnabled"])
+  })
+
+  // Decision of 2026-10-11. An administrator who switches the links off to
+  // stop a leak expects the leak to stay stopped. Before this, switching them
+  // back on an hour later — to hand out a proper link — brought every link
+  // whose time was not up back to life, the wrong one included.
+  describe("switching the location links off ends every link already handed out, for good", () => {
+    const NOW = new Date("2026-10-10T08:00:00.000Z")
+    const LATER = new Date("2026-10-10T20:00:00.000Z")
+    const switchedOn = () => vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "locationShareLinksEnabled", value: true }] as never)
+    const row = (id: string, over: Partial<ShareLinkRow> = {}): ShareLinkRow => {
+      const made = { id, organizationId: ORG, expiresAt: LATER, revokedAt: null, revokedBy: null, ...over }
+      shareLinks.push(made)
+      return made
+    }
+    const kept = () => JSON.stringify(shareLinks)
+
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ["Date"] })
+      vi.setSystemTime(NOW)
+      row("working-1")
+      row("working-2", { expiresAt: new Date(NOW.getTime() + 1) })
+      row("ran-out", { expiresAt: NOW })
+      row("revoked-earlier", { revokedAt: new Date("2026-10-10T07:00:00.000Z"), revokedBy: "somebody-else" })
+      row("another-organization", { organizationId: "org-2" })
+    })
+
+    it("ends the working links of THIS organization in the same save: when, and by whom", async () => {
+      switchedOn()
+      as("admin")
+      const res = await UpdateSettings(put({ locationShareLinksEnabled: false }))
+      expect(res.status).toBe(200)
+      expect(Object.fromEntries(shareLinks.map((link) => [link.id, [link.revokedAt?.toISOString() ?? null, link.revokedBy]]))).toEqual({
+        "working-1": [NOW.toISOString(), "admin-user"],
+        "working-2": [NOW.toISOString(), "admin-user"],
+        // Out of time already: it is not «revoked by» anybody.
+        "ran-out": [null, null],
+        // Whoever revoked it first stays on the record.
+        "revoked-earlier": ["2026-10-10T07:00:00.000Z", "somebody-else"],
+        // Not this organization's to end.
+        "another-organization": [null, null],
+      })
+      // The switch itself is stored, once.
+      expect(vi.mocked(prisma.mtmSetting.upsert).mock.calls.map((call: unknown[]) => (call[0] as { create: unknown }).create))
+        .toEqual([{ organizationId: ORG, key: "locationShareLinksEnabled", value: false }])
+    })
+
+    it("a manager's save does it too — the switch is not an administrator's alone", async () => {
+      switchedOn()
+      as("manager")
+      expect((await UpdateSettings(put({ locationShareLinksEnabled: false }))).status).toBe(200)
+      expect(shareLinks.filter((link) => link.revokedBy === "manager-user").map((link) => link.id)).toEqual(["working-1", "working-2"])
+    })
+
+    it("stores the switch and ends the links as ONE transaction — there is no «off, but the links were not ended»", async () => {
+      switchedOn()
+      expect((await UpdateSettings(put({ locationShareLinksEnabled: false, geofenceRadius: 150 }))).status).toBe(200)
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1)
+      const [together] = vi.mocked(prisma.$transaction).mock.calls[0] as unknown as [unknown[]]
+      expect(together).toHaveLength(2)
+      // Everything else in the same save is stored as before, and the switch is not stored a second time.
+      expect(upsertedKeys().sort()).toEqual(["geofenceRadius", "locationShareLinksEnabled"])
+      expect(prisma.mtmLocationShareLink.updateMany).toHaveBeenCalledTimes(1)
+    })
+
+    it("when ending the links fails the save says so, and nothing else of it is stored — it can be pressed again", async () => {
+      switchedOn()
+      vi.mocked(prisma.mtmLocationShareLink.updateMany).mockRejectedValueOnce(new Error("connection lost") as never)
+      const before = kept()
+      const res = await UpdateSettings(put({ locationShareLinksEnabled: false, geofenceRadius: 150 }))
+      expect(res.status).toBe(400)
+      expect(kept()).toBe(before)
+      expect(upsertedKeys()).not.toContain("geofenceRadius")
+      expect(writeMtmAudit).not.toHaveBeenCalled()
+      // Pressed again, with the switch still read as on (the database undid the first attempt): done.
+      expect((await UpdateSettings(put({ locationShareLinksEnabled: false, geofenceRadius: 150 }))).status).toBe(200)
+      expect(shareLinks.filter((link) => link.revokedAt?.getTime() === NOW.getTime()).map((link) => link.id)).toEqual(["working-1", "working-2"])
+    })
+
+    it("says on the journal's one row how many links the save ended — and writes no row per link", async () => {
+      switchedOn()
+      as("manager")
+      await UpdateSettings(put({ locationShareLinksEnabled: false }))
+      expect(writeMtmAudit).toHaveBeenCalledTimes(1)
+      expect(writeMtmAudit).toHaveBeenCalledWith(expect.objectContaining({
+        action: "SETTINGS_UPDATE",
+        agentId: null,
+        oldData: { locationShareLinksEnabled: true },
+        newData: {
+          locationShareLinksEnabled: false,
+          keys: ["locationShareLinksEnabled"],
+          actor: { userId: "manager-user", role: "manager" },
+          locationShareLinksEnded: 2,
+        },
+      }))
+    })
+
+    it.each([
+      ["off stays off", false, false],
+      ["on stays on", true, true],
+      ["never touched, saved as off", undefined, false],
+      ["switched ON", false, true],
+      ["switched on for the first time", undefined, true],
+    ])("touches no link when %s", async (_what, stored, sent) => {
+      vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue((stored === undefined ? [] : [{ key: "locationShareLinksEnabled", value: stored }]) as never)
+      const before = kept()
+      const res = await UpdateSettings(put({ locationShareLinksEnabled: sent, geofenceRadius: 150 }))
+      expect(res.status).toBe(200)
+      expect(prisma.mtmLocationShareLink.updateMany).not.toHaveBeenCalled()
+      expect(kept()).toBe(before)
+      // And the journal claims no links ended.
+      for (const [entry] of vi.mocked(writeMtmAudit).mock.calls) expect(entry.newData).not.toHaveProperty("locationShareLinksEnded")
+    })
+
+    it("touches no link when another setting is saved while the links are on, nor when the page sends the switch unchanged with it", async () => {
+      switchedOn()
+      const before = kept()
+      expect((await UpdateSettings(put({ geofenceRadius: 150 }))).status).toBe(200)
+      // A page opened before a deploy sends the whole object back.
+      expect((await UpdateSettings(put({ ...MTM_SETTING_DEFAULTS, locationShareLinksEnabled: true, geofenceRadius: 200 }))).status).toBe(200)
+      expect(prisma.mtmLocationShareLink.updateMany).not.toHaveBeenCalled()
+      expect(kept()).toBe(before)
+    })
+
+    it("ends nothing for a role that may not save, or for a value that is not a yes or a no", async () => {
+      switchedOn()
+      const before = kept()
+      as("viewer")
+      expect((await UpdateSettings(put({ locationShareLinksEnabled: false }))).status).toBe(403)
+      as("admin")
+      for (const bad of ["false", 0, null]) expect((await UpdateSettings(put({ locationShareLinksEnabled: bad }))).status).toBe(400)
+      expect(prisma.mtmLocationShareLink.updateMany).not.toHaveBeenCalled()
+      expect(kept()).toBe(before)
+    })
+  })
+
+  it("takes only a yes or a no for the location links, and nothing from a role that changes no setting", async () => {
+    for (const bad of ["true", 1, null, ["on"]]) {
+      const res = await UpdateSettings(put({ locationShareLinksEnabled: bad }))
+      expect(res.status, JSON.stringify(bad)).toBe(400)
+      expect(await res.json()).toMatchObject({ key: "locationShareLinksEnabled", code: "MTM_SETTING_INVALID_TYPE" })
+    }
+    for (const role of ["sales", "support", "viewer"]) {
+      as(role)
+      expect((await UpdateSettings(put({ locationShareLinksEnabled: true }))).status, role).toBe(403)
+    }
+    expect(prisma.mtmSetting.upsert).not.toHaveBeenCalled()
+  })
+
+  it("keeps the location-link switch out of what an agent may do, out of the menu and off the phone", () => {
+    const key = "locationShareLinksEnabled"
+    // It is not a permission of the employee: he is the one being shown.
+    expect([...AGENT_PERMISSION_SETTING_KEYS, ...AGENT_PERMISSION_ADMIN_ONLY_KEYS] as string[]).not.toContain(key)
+    expect(NAV_ORG_SETTING_KEYS as readonly string[]).not.toContain(key)
+    // The field app is told its policies key by key; this one is not among them.
+    expect(source("src/app/api/v1/mtm/mobile/bootstrap/route.ts")).not.toContain("ocationShareLink")
+  })
+
   it("refuses a non-boolean value for an agent switch", async () => {
     const res = await UpdateSettings(put({ agentContactCreateRequests: "no" }))
     expect(res.status).toBe(400)
@@ -322,6 +541,47 @@ describe("settings page contract", () => {
     const liveMap = group("groupLiveMap")
     expect(liveMap).toContain('key: "lateAfterHour"')
     expect(liveMap).toContain('key: "offlineThresholdSeconds"')
+  })
+
+  it("puts the location-link switch in the live map card, for whoever changes that card, and says in every language what it opens", () => {
+    const liveMap = group("groupLiveMap")
+    const row = liveMap.split("\n").find((line) => line.includes('key: "locationShareLinksEnabled"')) ?? ""
+    expect(row).toContain('labelKey: "lblLocationShareLinks", hintKey: "hintLocationShareLinks", type: "boolean"')
+    // Not an administrator-only switch (see the PUT cases above).
+    expect(row).not.toContain("adminOnly")
+    // Once on the page: a second row elsewhere would be a second place to switch it.
+    expect(page.match(/key: "locationShareLinksEnabled"/g)).toHaveLength(1)
+
+    // What the person switching it on is told, in plain words: what an
+    // outsider sees and what he does not, that it is off until switched on,
+    // that switching it off stops the links already handed out — at once and
+    // for good, new ones have to be made afterwards — and that the employee
+    // himself is not told about a link.
+    const said: Record<string, RegExp[]> = {
+      ru: [
+        /без входа в систему/, /имя агента, название компании и где он сейчас на карте/, /пока у агента идёт рабочий день/,
+        /Истории, маршрута, клиентов и телефона там нет/, /Выключено, пока вы не включите/,
+        /все уже выданные ссылки сразу перестанут работать насовсем/, /после включения нужно будет выдать новые/,
+        /Сам агент уведомления о ссылке не получает/,
+      ],
+      en: [
+        /without signing in/, /the agent's name, the company's name and where the agent is on the map right now/, /while the agent's workday is running/,
+        /No history, route, clients or phone number/, /off until you switch it on/,
+        /every link already handed out stops working at once and for good/, /after you switch it back on, new links have to be made/,
+        /The agent is not notified about a link/,
+      ],
+      az: [
+        /sistemə daxil olmadan/, /agentin adını, şirkətin adını və agentin hazırda xəritədə harada olduğunu/, /agentin iş günü davam etdikdə/,
+        /Tarixçə, marşrut, müştərilər və telefon nömrəsi göstərilmir/, /yandırana qədər söndürülmüş qalır/,
+        /bütün linklər dərhal və həmişəlik işləməyəcək/, /yenidən yandırdıqdan sonra yeni linklər yaratmaq lazım olacaq/,
+        /Agentin özü link haqqında bildiriş almır/,
+      ],
+    }
+    for (const [locale, sentences] of Object.entries(said)) {
+      const messages = JSON.parse(source(`messages/${locale}.json`)).mtmSettingsPage
+      expect(messages.lblLocationShareLinks, locale).toEqual(expect.any(String))
+      for (const sentence of sentences) expect(messages.hintLocationShareLinks, `${locale}: ${sentence}`).toMatch(sentence)
+    }
   })
 
   it("keeps technical GPS history thresholds in a collapsed admin-only section", () => {

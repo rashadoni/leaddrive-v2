@@ -63,6 +63,33 @@ describe("SWM-12 live-map response contract", () => {
   ])("fails closed for a malformed contract", (value) => {
     expect(parseMtmLiveMapContract(value)).toBeNull()
   })
+
+  // «Ссылка на местоположение»: the block on an employee's card that lets a
+  // manager show his position to somebody outside the organization. It is off
+  // for an organization until switched on, so the page draws it only on the
+  // server's exact word — an answer that says nothing, or says it oddly, is «off».
+  it("keeps the location-link field when the server states it, as it was stated", () => {
+    expect(parseMtmLiveMapContract({ ...CONTRACT, shareLinks: { canWrite: true } })).toEqual({ ...CONTRACT, shareLinks: { canWrite: true } })
+    expect(parseMtmLiveMapContract({ ...CONTRACT, shareLinks: { canWrite: false } })?.shareLinks).toEqual({ canWrite: false })
+    // Only what the page reads is carried over.
+    expect(parseMtmLiveMapContract({ ...CONTRACT, shareLinks: { canWrite: true, enabled: true, url: "x" } })?.shareLinks).toEqual({ canWrite: true })
+  })
+
+  it.each([
+    ["is absent", {}],
+    ["is null", { shareLinks: null }],
+    ["is a bare yes", { shareLinks: true }],
+    ["is a word", { shareLinks: "on" }],
+    ["is an empty object", { shareLinks: {} }],
+    ["says «true» as text", { shareLinks: { canWrite: "true" } }],
+    ["says 1", { shareLinks: { canWrite: 1 } }],
+    ["says null", { shareLinks: { canWrite: null } }],
+    ["is a list holding the right object", { shareLinks: [{ canWrite: true }] }],
+  ])("draws no location-link block when the field %s — and the rest of the contract still stands", (_what, extra) => {
+    const parsed = parseMtmLiveMapContract({ ...CONTRACT, ...extra })
+    expect(parsed).toEqual(CONTRACT)
+    expect(parsed).not.toHaveProperty("shareLinks")
+  })
 })
 
 describe("SWM-12 tenant and viewer cache identity", () => {

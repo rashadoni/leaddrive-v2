@@ -79,6 +79,8 @@ vi.mock("@/lib/mtm/route-cache", () => ({
 import MtmMapPage from "@/app/(dashboard)/mtm/map/page"
 import { ROSTER_VIEW_STORAGE_KEY } from "@/lib/mtm/live-map-roster"
 import { resetLiveMapPlaceCacheForTests } from "@/components/mtm/live-map-agent-place"
+import { resetLiveMapShareLinkCacheForTests } from "@/components/mtm/live-map-agent-share"
+import { locationShareLinkExpiresAt } from "@/lib/mtm/location-share-link"
 
 const METERS_PER_DEGREE = (Math.PI * 6_371_000) / 180
 const CENTRE = { latitude: 40.4093, longitude: 49.8671 }
@@ -123,6 +125,16 @@ function gate(): { held: Promise<void>; release: () => void } {
 }
 /** How many of the next changes the server carries out and then cannot answer: the connection drops on the way back. */
 let zoneAnswersLost: number
+/**
+ * «Ссылка на местоположение»: what the roster's answer says of it to this viewer — nothing while the
+ * organization has the links switched off — and the links the server keeps, by employee.
+ */
+let shareLinks: { canWrite: boolean } | null
+let shareLinkTable: Array<{ id: string; agentId: string; expiresAt: string }>
+/** What the list of links says of this viewer, when it is not what the roster said. */
+let shareLinkListCanWrite: boolean | null
+/** Set to make the server refuse the roster itself, as it does to a field employee signed in on the web. */
+let rosterRefusal: number | null
 
 // An invented block a hundredth of a degree a side, and a circle beside it — as the server sends them.
 const NORTH_BLOCK = {
@@ -186,9 +198,33 @@ function answer(now: number) {
         rosterTruncated: false, markerCount: rosterRows.filter((row) => row.meters != null).length, workforceEnabled,
         generatedAt: new Date(now).toISOString(), polling: { minimumIntervalSeconds: 15 },
         freshnessThresholds: { onlineSeconds: 300, delayedSeconds: 600 }, maxAccuracyMeters: 100, geofenceRadiusMeters: 150,
+        ...(shareLinks ? { shareLinks } : {}),
       },
     },
   }
+}
+
+/** The server's side of the location links: it keeps what is made and hands the link itself over once. */
+function answerShareLinks(url: URL, init?: RequestInit): Response {
+  const sent = (link: { id: string; expiresAt: string }) => ({
+    id: link.id, createdAt: new Date().toISOString(), expiresAt: link.expiresAt, revokedAt: null,
+    viewCount: 0, lastViewedAt: null, createdByName: "Менеджер Второй", alive: true,
+  })
+  if ((init?.method ?? "GET") === "POST") {
+    const body = JSON.parse(String(init?.body)) as { agentId: string; duration: string }
+    const link = { id: `share-${shareLinkTable.length + 1}`, agentId: body.agentId, expiresAt: new Date(Date.now() + 3_600_000).toISOString() }
+    shareLinkTable.push(link)
+    const token = `${shareLinkTable.length}`.padStart(64, "0")
+    return Response.json({ success: true, data: { link: sent(link), url: `https://app.example.test/share/location/${token}?lang=ru` } }, { status: 201 })
+  }
+  const agentId = url.searchParams.get("agentId")
+  return Response.json({
+    success: true,
+    data: {
+      links: shareLinkTable.filter((link) => link.agentId === agentId).map(sent),
+      access: { enabled: true, canWrite: shareLinkListCanWrite ?? shareLinks?.canWrite === true },
+    },
+  })
 }
 
 describe("the live map page, end to end", () => {
@@ -229,6 +265,12 @@ describe("the live map page, end to end", () => {
     window.localStorage.clear()
     // The streets the tab remembers are the tab's: every case starts with none.
     resetLiveMapPlaceCacheForTests()
+    // And so are the location links made in it.
+    resetLiveMapShareLinkCacheForTests()
+    shareLinks = null
+    shareLinkTable = []
+    shareLinkListCanWrite = null
+    rosterRefusal = null
     hoisted.map.props = null
     requests = []
     activityLogs = []
@@ -276,9 +318,10 @@ describe("the live map page, end to end", () => {
         if (zoneReadGate) await zoneReadGate
         return typeof asked === "number" ? new Response("{}", { status: asked }) : Response.json({ success: true, data: asked })
       }
+      if (url.pathname.startsWith("/api/v1/mtm/locations/share-links")) return answerShareLinks(url, init)
       if (url.pathname === "/api/v1/mtm/locations") {
         if (rosterGate) await rosterGate
-        return Response.json(answer(Date.now()))
+        return rosterRefusal ? Response.json({ error: "Manager access required" }, { status: rosterRefusal }) : Response.json(answer(Date.now()))
       }
       if (url.pathname === "/api/v1/mtm/routes") {
         if (routeDelayMs > 0) await new Promise((resolve) => setTimeout(resolve, routeDelayMs))
@@ -1694,6 +1737,116 @@ describe("the live map page, end to end", () => {
     })
   })
 
+  describe("«Ссылка на местоположение»: a block of the card, only where the organization switched the links on", () => {
+    const blocks = () => [...document.querySelectorAll('[data-testid^="live-map-card-block-"]')]
+      .map((block) => block.getAttribute("data-testid")!)
+      .filter((id) => /^live-map-card-block-(events|route|day|device|share)$/.test(id))
+      .map((id) => id.replace("live-map-card-block-", ""))
+    const linkRequests = () => requests.filter((request) => request.startsWith("/api/v1/mtm/locations/share-links"))
+    const select = async (agentId: string) => {
+      await press(byTestId(`live-map-agent-card-${agentId}`))
+      for (let turn = 0; turn < 150; turn += 1) {
+        if (!shareLinks || byTestId("live-map-share-none") || byTestId("live-map-share-alive")?.querySelector("li")) break
+        await settle(20)
+      }
+    }
+    const field = () => document.querySelector<HTMLInputElement>('input[data-testid^="live-map-share-url-"]')
+
+    it("is not there while the map's answer does not name it: not drawn, not offered in «Настроить карточку», and the server is asked nothing about links", async () => {
+      await open()
+      await select("near")
+      await settle(700)
+      expect(blocks()).toEqual(["events", "route", "day", "device"])
+      expect(byTestId("live-map-agent-share")).toBeNull()
+      await press(byTestId("live-map-card-customize"))
+      expect(byTestId("live-map-card-block-shown-device")).not.toBeNull()
+      expect(byTestId("live-map-card-block-shown-share")).toBeNull()
+      expect(linkRequests()).toEqual([])
+    })
+
+    it("is the last block of the card once the links are switched on: under its own heading, with the three buttons, asking about this employee once", async () => {
+      shareLinks = { canWrite: true }
+      await open()
+      // Nothing about links is asked before somebody's card is open.
+      expect(linkRequests()).toEqual([])
+      await select("near")
+      expect(blocks()).toEqual(["events", "route", "day", "device", "share"])
+      expect(byTestId("live-map-card-block-toggle-share")?.textContent).toBe("Ссылка на местоположение")
+      expect([...document.querySelectorAll('[data-testid^="live-map-share-create-"]')].map((button) => button.textContent))
+        .toEqual(["На 1 час", "На 4 часа", "До конца дня"])
+      expect(linkRequests()).toEqual(["/api/v1/mtm/locations/share-links?agentId=near"])
+      // It can be folded and taken off like any other block.
+      await press(byTestId("live-map-card-customize"))
+      expect(byTestId("live-map-card-block-shown-share")).not.toBeNull()
+    })
+
+    it("a supervisor's card has the block and not one button in it — on the map's own word, whatever the list of links says", async () => {
+      shareLinks = { canWrite: false }
+      shareLinkTable = [{ id: "share-kept", agentId: "near", expiresAt: new Date(Date.now() + 3_600_000).toISOString() }]
+      // A list that named him a writer would not make him one.
+      shareLinkListCanWrite = true
+      await open()
+      await select("near")
+      const block = byTestId("live-map-agent-share")!
+      expect(block.querySelector('[data-testid="live-map-share-link-share-kept"]')).not.toBeNull()
+      expect(block.querySelectorAll("button")).toHaveLength(0)
+      expect(block.querySelector('[data-testid="live-map-share-read-only"]')?.textContent).toBe("Создавать и отзывать ссылки могут администратор и менеджер.")
+    })
+
+    it("a link just made is still there, with its field, after the block was folded and after another employee was looked at — and he is shown none of it", async () => {
+      shareLinks = { canWrite: true }
+      await open()
+      await select("near")
+      await press(byTestId("live-map-share-create-1h"))
+      const made = `https://app.example.test/share/location/${"1".padStart(64, "0")}?lang=ru`
+      expect(field()?.value).toBe(made)
+
+      // Folded: the block is not rendered at all. Unfolded: the link is back.
+      await press(byTestId("live-map-card-block-toggle-share"))
+      expect(byTestId("live-map-agent-share")).toBeNull()
+      await press(byTestId("live-map-card-block-toggle-share"))
+      expect(field()?.value).toBe(made)
+
+      // Another employee's card: his own list, and nothing of hers.
+      await select("mid")
+      expect(byTestId("live-map-agent-detail")?.textContent).not.toContain(made)
+      expect(field()).toBeNull()
+      expect(linkRequests().at(-1)).toBe("/api/v1/mtm/locations/share-links?agentId=mid")
+      await select("near")
+      expect(field()?.value).toBe(made)
+      // One link was made, however many times the card was opened.
+      expect(shareLinkTable).toHaveLength(1)
+    })
+
+    it("the block counts by the page's own clock and the organization's zone: a link out of time is not left among the working ones, and one that ends with the day says so in words", async () => {
+      shareLinks = { canWrite: true }
+      shareLinkTable = [
+        // The end of a day in the zone the map's answer names (Asia/Baku) — of the day it will be an hour from
+        // now, so that it is always ahead, also when this runs a moment before midnight there.
+        { id: "share-day", agentId: "near", expiresAt: locationShareLinkExpiresAt("day", new Date(Date.now() + 3_600_000), "Asia/Baku").toISOString() },
+        // Its time ran out a minute ago; the list — read before that, as far as the block knows — still calls it working.
+        { id: "share-over", agentId: "near", expiresAt: new Date(Date.now() - 60_000).toISOString() },
+      ]
+      await open()
+      await select("near")
+      const block = byTestId("live-map-agent-share")!
+      const working = [...block.querySelectorAll('[data-testid="live-map-share-alive"] li')].map((row) => row.getAttribute("data-testid"))
+      expect(working).toEqual(["live-map-share-link-share-day"])
+      expect(block.querySelector('[data-testid="live-map-share-link-share-day"] [data-testid="live-map-share-link-until"]')?.textContent).toBe("Действует до конца дня")
+      expect(block.querySelector('[data-testid="live-map-share-past-share-over"]')?.textContent).toMatch(/^Срок истёк: /)
+      expect(block.querySelector('[data-testid="live-map-share-revoke-share-over"]')).toBeNull()
+    })
+
+    it("a field employee signed in on the web is refused the whole map — there is no card, no block, and nothing is asked about links", async () => {
+      shareLinks = { canWrite: true }
+      rosterRefusal = 403
+      await open()
+      expect(rowIds()).toEqual([])
+      expect(byTestId("live-map-agent-share")).toBeNull()
+      expect(requests).toEqual(["/api/v1/mtm/locations"])
+    })
+  })
+
   describe("while the map refreshes itself", () => {
     // Half a minute between refreshes: the clock is driven by hand, a second at
     // a time (React applies what a timer set when the `act` it fired in ends).
@@ -1975,6 +2128,30 @@ describe("the live map page, end to end", () => {
       expect(ids()).toEqual(["zone-north"])
       expect([...shown].filter((list) => list.includes("zone-centre"))).toEqual([])
       expect(zoneReads).toBe(3)
+    })
+
+    it("the links switched off in the settings take the block off the card with the map's next refresh — and its list is never read on the map's timer", async () => {
+      shareLinks = { canWrite: true }
+      await act(async () => { root.render(createElement(MtmMapPage)) })
+      await forward(1_000)
+      await act(async () => { byTestId("live-map-agent-card-near")!.click() })
+      await forward(2_000)
+      expect(byTestId("live-map-agent-share")).not.toBeNull()
+      expect(count("/api/v1/mtm/locations/share-links")).toBe(1)
+      // Two refreshes of the map: the block stands, and asks nobody again.
+      const rosterReads = () => requests.filter((request) => request === "/api/v1/mtm/locations").length
+      const before = rosterReads()
+      await forward(65_000)
+      expect(rosterReads()).toBeGreaterThanOrEqual(before + 2)
+      expect(byTestId("live-map-agent-share")).not.toBeNull()
+      expect(count("/api/v1/mtm/locations/share-links")).toBe(1)
+      // Somebody turns the switch off: the next answer of the map no longer names the links.
+      shareLinks = null
+      await forward(31_000)
+      expect(byTestId("live-map-agent-share")).toBeNull()
+      expect(byTestId("live-map-card-block-share")).toBeNull()
+      // The rest of the card is where it was.
+      expect(byTestId("live-map-card-block-device")).not.toBeNull()
     })
 
     it("on the road the street is asked once, however many times the map refreshes", async () => {

@@ -10,6 +10,7 @@ import {
   liveMapZoneRingProblem,
   type LiveMapZoneRingProblem,
 } from "@/lib/mtm/live-map-zones"
+import { LOCATION_SHARE_LINK_DURATIONS } from "@/lib/mtm/location-share-link"
 import { GovernedDoctorScoringDefinitionSchema } from "@/lib/mtm/professional-glossary"
 
 // Reusable primitives
@@ -1076,6 +1077,15 @@ export const MapZoneUpdateSchema = z.discriminatedUnion("kind", [
   z.strictObject({ ...mapZoneLabelChange, kind: z.undefined().optional() })
     .refine((change) => change.name !== undefined || change.color !== undefined, "Nothing to change"),
 ])
+
+// «Ссылка на местоположение» (src/lib/mtm/location-share-link.ts): whose
+// position, and which of the three buttons was pressed. Strict on purpose —
+// the server alone decides until when a link works, so a request that brings
+// its own `expiresAt` (or anything else) is refused, not quietly trimmed.
+export const LocationShareLinkCreateSchema = z.strictObject({
+  agentId: z.string().trim().min(1).max(191),
+  duration: z.enum(LOCATION_SHARE_LINK_DURATIONS),
+})
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 /**

@@ -41,6 +41,7 @@ import { mtmLiveFeedHistoryHref, type MtmLiveFeedAlertGroup } from "@/lib/mtm/li
 import { LiveMapAgentEvents } from "@/components/mtm/live-map-agent-events"
 import { LiveMapAgentDay } from "@/components/mtm/live-map-agent-day"
 import { LiveMapAgentDevice } from "@/components/mtm/live-map-agent-device"
+import { LiveMapAgentShare } from "@/components/mtm/live-map-agent-share"
 import { LiveMapAgentLinks } from "@/components/mtm/live-map-agent-links"
 import { liveMapAgentLinks } from "@/lib/mtm/live-map-agent-links"
 import { useMtmFeature } from "@/hooks/use-mtm-org-settings"
@@ -1409,6 +1410,27 @@ export default function MtmMapPage() {
           />
         ),
       },
+      // «Ссылка на местоположение»: only where the map's own answer names it —
+      // the organization has the links switched on and this viewer is let in.
+      // Absent, the block is neither drawn nor offered in «Настроить карточку».
+      ...(contract?.shareLinks ? [{
+        id: "share" as const,
+        title: tMap("share.title"),
+        render: () => (
+          <LiveMapAgentShare
+            key={`share-${agent.agentId}`}
+            agentId={agent.agentId}
+            canWrite={contract?.shareLinks?.canWrite === true}
+            // Who opened a link, whether a colleague made or revoked one: asked again as his events are.
+            refreshKey={liveMapAgentEventsRefreshKey(agent, presentationNow)}
+            // A link whose time ran out a moment ago is not left among the working ones; «до конца дня» is said in words.
+            nowMs={presentationNow}
+            timeZone={contract?.timezone}
+            formatTime={formatTenantTime}
+            formatPastTime={formatVisitOpened}
+          />
+        ),
+      }] : []),
     ]
     return (
       <div className="space-y-2 text-[11px]" data-testid="live-map-agent-detail">

@@ -97,4 +97,25 @@ describe("public auth/portal client disclosure boundary", () => {
       expect(publicMessages).not.toMatch(/"role_(?:admin|manager|sales|support|viewer|marketing|finance|hr|ticketing)"/i)
     }
   })
+
+  // «Ссылка на местоположение»: /share/location/<token> is opened by somebody
+  // with no account, and is on neither list above. What the layout really
+  // hands that page is asked of the running layout in
+  // mtm-location-share-link-boundary.test.ts; this keeps the branch itself
+  // from being dropped in a tidy-up of the function.
+  it("scopes the public page of a location link to its own namespace", () => {
+    const layout = read("src/app/layout.tsx")
+
+    expect(layout).toContain("PUBLIC_LOCATION_SHARE_LINK_PATH")
+    // The one namespace, and nothing riding along with it.
+    expect(layout).toContain("return { mtmLocationShareLink: messages.mtmLocationShareLink } as AbstractIntlMessages")
+
+    for (const locale of ["en", "ru", "az"]) {
+      const catalog = JSON.parse(read(`messages/${locale}.json`)) as Record<string, unknown>
+      expect(catalog.mtmLocationShareLink, locale).toBeTypeOf("object")
+      const publicMessages = JSON.stringify({ mtmLocationShareLink: catalog.mtmLocationShareLink })
+      expect(publicMessages).not.toMatch(/\bSUPERADMIN\b|["']superadmin["']/i)
+      expect(publicMessages).not.toMatch(/"role_(?:admin|manager|sales|support|viewer|marketing|finance|hr|ticketing)"/i)
+    }
+  })
 })

@@ -24,6 +24,8 @@ const MUST_LIMIT: Array<[string, string]> = [
   ["src/app/api/v1/public/events/[id]/register/route.ts", "takes an event seat and can send mail to an address the caller names"],
   ["src/app/api/v1/public/surveys/[slug]/route.ts", "writes a survey response"],
   ["src/app/api/v1/public/web-chat/session/route.ts", "opens a chat session and can create a contact"],
+  // A read that writes: each opening of a «ссылка на местоположение» is counted on the link's row.
+  ["src/app/api/v1/public/location-share/[token]/route.ts", "reads an employee's position and stamps the link's view counter"],
 ]
 
 /**
