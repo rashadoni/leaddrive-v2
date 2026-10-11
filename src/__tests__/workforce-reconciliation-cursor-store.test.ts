@@ -45,9 +45,9 @@ describe.skipIf(!testUrl)("Workforce cursor fences on isolated PostgreSQL", () =
       throw new Error("WORKFORCE_CURSOR_TEST_DATABASE_NOT_ISOLATED")
     }
     const options = { datasources: { db: { url: testUrl } } }
-    db = new PrismaClient(options)
-    other = new PrismaClient(options)
-    control = new PrismaClient(options)
+    db = new PrismaClient<Prisma.PrismaClientOptions>(options)
+    other = new PrismaClient<Prisma.PrismaClientOptions>(options)
+    control = new PrismaClient<Prisma.PrismaClientOptions>(options)
     await db.$executeRaw`CREATE TABLE IF NOT EXISTS "system_job_leases" (
       "name" TEXT PRIMARY KEY, "ownerToken" TEXT, "leaseUntil" TIMESTAMP(3), "status" TEXT NOT NULL
     )`

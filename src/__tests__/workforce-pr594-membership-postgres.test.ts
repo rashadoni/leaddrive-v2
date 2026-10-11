@@ -2,7 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { readFileSync } from "node:fs"
 import { spawnSync } from "node:child_process"
 import { createRequire } from "node:module"
-import { PrismaClient } from "@prisma/client"
+import { PrismaClient, type Prisma } from "@prisma/client"
 import { assertWorkforceReconciliationScheduleSubjects as assertSubjects } from "@/lib/workforce/reconciliation-schedule-subject"
 import { workforceShiftDefinitionHash } from "@/lib/workforce/shift-definition"
 import { readWorkforceEligibleRosterHealth } from "@/lib/workforce/reconciliation-roster-health"
@@ -16,7 +16,7 @@ describe.skipIf(!url)("PR594 actual migration and historical subject compatibili
   beforeAll(async () => {
     const parsed = new URL(url!)
     if (parsed.protocol !== "postgresql:" || parsed.hostname !== "127.0.0.1" || parsed.pathname !== "/hrm_membership_compatibility_test") throw new Error("MEMBERSHIP_TEST_DB_NOT_ISOLATED")
-    db = new PrismaClient({ datasources: { db: { url } } })
+    db = new PrismaClient<Prisma.PrismaClientOptions>({ datasources: { db: { url } } })
     const ddl = [
       'CREATE TABLE organizations (id text PRIMARY KEY,"isActive" boolean NOT NULL,plan text,addons jsonb,features jsonb,modules jsonb,"createdAt" timestamp(3) NOT NULL DEFAULT now())',
       'CREATE TABLE workforce_reconciliation_tenant_states ("organizationId" text PRIMARY KEY REFERENCES organizations(id),"lastAttemptAt" timestamp(3),"lastCompletedAt" timestamp(3),"dueAt" timestamp(3),"lastOutcome" text)',

@@ -1,0 +1,146 @@
+name: Typecheck memory profile
+
+# Says what the full-project type check costs and where the memory goes.
+# Manual and read-only. It gates nothing: the required `typecheck` job in
+# pr-checks.yml is the gate. Run this when that job's «Memory used» line is
+# closing in on its heap — BEFORE raising the heap:
+#
+#   gh workflow run typecheck-memory-profile.yml --ref <branch>
+#
+#   full     the same compiler pass as the gate, plus the process's peak RSS
+#   profile  heap after parsing and binding, then types and instantiations
+#            per directory and per file
+#   trace    the compiler's own trace: the slowest files and expressions
+#
+# What these three found on 2026-10-11, and what was tried and not kept, is in
+# CLAUDE.md, «Тесты и проверки».
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: typecheck-memory-profile-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  measure:
+    name: ${{ matrix.leg }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        leg: [full, profile, trace]
+    env:
+      # The most the runner admits, not the gate's own figure: this is run when
+      # the gate's heap is no longer enough, and tracing costs extra on top.
+      NODE_OPTIONS: --max-old-space-size=14336
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: npm ci --include=dev
+
+      - name: Generate Prisma client
+        run: npx prisma generate --schema prisma/schema.prisma
+
+      - name: Prepare bounded GitHub-hosted typecheck memory
+        run: bash scripts/ci/prepare-hosted-build-runner.sh
+        env:
+          LEADDRIVE_BUILD_MIN_BUDGET_KIB: "18874368"
+
+      - name: Measure (${{ matrix.leg }})
+        env:
+          LEG: ${{ matrix.leg }}
+        run: |
+          ulimit -c 0
+          set +e
+          tsc="node node_modules/typescript/lib/tsc.js"
+          case "$LEG" in
+            full)
+              /usr/bin/time -v $tsc --noEmit --extendedDiagnostics > tsc-output.log 2> time.log
+              ;;
+            profile)
+              /usr/bin/time -v node --expose-gc scripts/ci/typecheck-memory-profile.mjs --out typecheck-profile.json > tsc-output.log 2> time.log
+              ;;
+            trace)
+              /usr/bin/time -v $tsc --noEmit --incremental false --extendedDiagnostics --generateTrace ts-trace > tsc-output.log 2> time.log
+              ;;
+          esac
+          echo "exit code: $?"
+          echo "--- errors: $(grep -c 'error TS' tsc-output.log)"
+          echo "--- compiler statistics / profile"
+          grep -v 'error TS' tsc-output.log | tail -n 400
+          echo "--- process"
+          grep -E 'Maximum resident set size|Elapsed \(wall clock\)' time.log
+          # Anything the compiler said on its way down, e.g. an out-of-memory abort.
+          grep -vE '^\s' time.log | tail -n 30
+          free -m
+
+      - name: The gate's own summary of the same log
+        if: ${{ matrix.leg == 'full' }}
+        run: node scripts/ci/check-typecheck-baseline.mjs tsc-output.log || true
+
+      - name: Slowest spans in the compiler trace
+        if: ${{ matrix.leg == 'trace' }}
+        run: |
+          test -f ts-trace/trace.json || { echo "the compiler wrote no trace"; exit 0; }
+          node - <<'NODE'
+          const fs = require("fs")
+          const readline = require("readline")
+          // One event per line; a run that died mid-way leaves a truncated file,
+          // which is still worth reading line by line.
+          const spans = []
+          const open = []
+          const lines = readline.createInterface({ input: fs.createReadStream("ts-trace/trace.json"), crlfDelay: Infinity })
+          lines.on("line", (raw) => {
+            const line = raw.replace(/^,/, "").replace(/,$/, "").trim()
+            if (!line.startsWith("{")) return
+            let event
+            try { event = JSON.parse(line) } catch { return }
+            if (event.ph === "B") open.push(event)
+            else if (event.ph === "E") {
+              const begin = open.pop()
+              if (begin) spans.push({ name: begin.name, ms: (event.ts - begin.ts) / 1000, args: begin.args })
+            } else if (event.ph === "X") spans.push({ name: event.name, ms: event.dur / 1000, args: event.args })
+          })
+          lines.on("close", () => {
+            const root = `${process.cwd()}/`
+            const show = (title, rows) => {
+              console.log(`\n${title}`)
+              for (const row of rows) console.log(`${row.ms.toFixed(0).padStart(8)} ms  ${row.name}  ${JSON.stringify(row.args ?? {}).split(root).join("").slice(0, 200)}`)
+            }
+            const slowest = (keep) => spans.filter(keep).sort((a, b) => b.ms - a.ms)
+            const wholeProgram = new Set(["createProgram", "checkSourceFiles", "findSourceFile", "processRootFiles", "checkSourceFile"])
+            show("Files by check time (top 40)", slowest((span) => span.name === "checkSourceFile").slice(0, 40))
+            // A type comparison that takes seconds is a type being rebuilt:
+            // `structuredTypeRelatedTo` with the same targetId and a new sourceId
+            // every time is how the PrismaClient constructions showed up.
+            show("Expressions and type comparisons (top 60)", slowest((span) => !wholeProgram.has(span.name)).slice(0, 60))
+          })
+          NODE
+
+      - name: Keep the per-file table
+        if: ${{ always() && matrix.leg == 'profile' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: typecheck-profile
+          path: typecheck-profile.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Cleanup bounded typecheck swap
+        if: always()
+        run: bash scripts/ci/prepare-hosted-build-runner.sh cleanup
