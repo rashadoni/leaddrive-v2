@@ -49,8 +49,9 @@ An exact replay returns the same ID under `replayedClientLocationIds`; a reused
 ID with different data returns `409 MTM_LOCATION_ID_CONFLICT`. A legacy raw
 row without a digest is intentionally not treated as an exact v2 replay.
 
-The response separates `appliedClientLocationIds` and
-`replayedClientLocationIds`; it never echoes raw coordinates. A short
+The response separates `appliedClientLocationIds`,
+`replayedClientLocationIds` and `pausedClientLocationIds` (see «Breaks»); it
+never echoes raw coordinates. A short
 concurrent unique-key race is re-read once. If it remains hot, the server
 returns `503 MTM_LOCATION_BATCH_CONCURRENT_RETRY` with `Retry-After: 1` so the
 device retains its batch and retries with jitter.
@@ -59,6 +60,44 @@ device retains its batch and retries with jitter.
 `503 MTM_LOCATION_BATCH_GUARD_UNAVAILABLE` also include bounded
 `Retry-After`. Rate limits are independent by tenant, user and device. GPS is
 not part of the business mutation outbox or sync change log.
+
+## Breaks
+
+A break is the employee's own time: where it was spent is not stored. A point
+whose `recordedAt` falls inside a break of the resolved workday is dropped —
+no row, no change to the latest-location projection — and its ID comes back
+under `pausedClientLocationIds`. The rest of the batch is stored as usual, so
+a batch that spans lunch keeps the work on both sides of it:
+
+```json
+{
+  "success": true,
+  "data": {
+    "appliedClientLocationIds": ["before-lunch", "after-lunch"],
+    "replayedClientLocationIds": [],
+    "pausedClientLocationIds": ["at-lunch"]
+  }
+}
+```
+
+The device must delete every point named there: a retry gets the same answer,
+and keeping the point only means sending those coordinates again. A batch made
+of break points alone is answered `200` with both other lists empty.
+
+This differs on purpose from a point outside the workday, which refuses the
+whole batch with `409 MTM_LOCATION_OUTSIDE_WORKDAY` and names the point: there
+the device has bound the batch to the wrong shift, while a point inside a
+break is one an honest device does send (the fix that lands a second after the
+break began, a break started on another device).
+
+Breaks are read from the workday's own journal — `PAUSE`, `RESUME`, `FINISH`
+and a manager's `REOPEN` — by the reader the single-point route uses
+(`src/lib/mtm/workday-pauses.ts`), so both routes keep the same points of the
+same day; that route answers such a point `409 MTM_LOCATION_WORKDAY_PAUSED`.
+The instants a break begins and ends belong to work. What decides is when the
+point was taken, never the shift's status at upload time. The server can only
+refuse a break it knows about: a device must send its `PAUSE` before the GPS
+it recorded after it.
 
 ## Projection, retention and privacy
 

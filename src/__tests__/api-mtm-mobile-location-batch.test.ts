@@ -68,6 +68,8 @@ beforeEach(() => {
     modules: { mtm: true, "route-field": true },
   } as never)
   vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue(WORKDAY as never)
+  // A day without breaks, unless the test says otherwise.
+  vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockResolvedValue([])
   vi.mocked(prisma.mtmAgent.updateMany).mockResolvedValue({ count: 1 } as never)
   vi.mocked(prisma.mtmAgentLocation.create)
     .mockResolvedValueOnce({ id: "location-1" } as never)
@@ -99,7 +101,11 @@ describe("POST /api/v2/mtm/mobile/location/batch", () => {
     expect(response.status).toBe(201)
     expect(await response.json()).toMatchObject({
       success: true,
-      data: { appliedClientLocationIds: ["location-client-2", "location-client-1"], replayedClientLocationIds: [] },
+      data: {
+        appliedClientLocationIds: ["location-client-2", "location-client-1"],
+        replayedClientLocationIds: [],
+        pausedClientLocationIds: [],
+      },
     })
     expect(prisma.mtmAgentLocation.create).toHaveBeenCalledTimes(2)
     expect(prisma.mtmAgentLatestLocation.create).toHaveBeenCalledWith(expect.objectContaining({
@@ -148,6 +154,82 @@ describe("POST /api/v2/mtm/mobile/location/batch", () => {
       clientLocationId: "location-client-1",
     })
     expect(prisma.mtmAgentLocation.create).not.toHaveBeenCalled()
+  })
+
+  // What the table holds after a batch that spans a break is proved on a real
+  // Postgres (mtm-mobile-location-break-postgres.test.ts). Here: the answer the
+  // device gets, and that a break point is handed to no write at all.
+  it("stores the work on both sides of a break and names the point taken inside it", async () => {
+    vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockResolvedValue([
+      { type: "PAUSE", occurredAt: new Date("2026-08-28T09:10:00.000Z"), appliedAt: new Date("2026-08-28T09:10:01.000Z") },
+      { type: "RESUME", occurredAt: new Date("2026-08-28T09:40:00.000Z"), appliedAt: new Date("2026-08-28T09:40:01.000Z") },
+    ] as never)
+
+    const response = await POST(request({
+      points: [
+        { ...point("location-after", 40.6), recordedAt: "2026-08-28T09:50:00.000Z" },
+        { ...point("location-lunch", 40.5), recordedAt: "2026-08-28T09:20:00.000Z" },
+        { ...point("location-before", 40.4), recordedAt: "2026-08-28T09:00:00.000Z" },
+      ],
+    }))
+
+    expect(response.status).toBe(201)
+    expect(await response.json()).toEqual({
+      success: true,
+      data: {
+        appliedClientLocationIds: ["location-before", "location-after"],
+        replayedClientLocationIds: [],
+        pausedClientLocationIds: ["location-lunch"],
+      },
+    })
+    const written = vi.mocked(prisma.mtmAgentLocation.create).mock.calls
+      .map(([args]) => (args as { data: { clientLocationId: string } }).data.clientLocationId)
+    expect(written).toEqual(["location-before", "location-after"])
+    // Not looked up, and the live-map marker is not moved to it either.
+    expect(prisma.mtmAgentLocation.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ clientLocationId: { in: ["location-before", "location-after"] } }),
+    }))
+    const marker = [
+      ...vi.mocked(prisma.mtmAgentLatestLocation.create).mock.calls,
+      ...vi.mocked(prisma.mtmAgentLatestLocation.updateMany).mock.calls,
+    ].map(([args]) => (args as { data: { latitude: number } }).data.latitude)
+    expect(marker).not.toContain(40.5)
+  })
+
+  it("accepts a batch taken wholly inside a running break without writing or marking the agent online", async () => {
+    vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue({ ...WORKDAY, status: "PAUSED" } as never)
+    vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockResolvedValue([
+      { type: "PAUSE", occurredAt: new Date("2026-08-28T08:30:00.000Z"), appliedAt: new Date("2026-08-28T08:30:01.000Z") },
+    ] as never)
+
+    const response = await POST(request({ points: [point("location-lunch-1"), point("location-lunch-2", 40.5)] }))
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({
+      success: true,
+      data: {
+        appliedClientLocationIds: [],
+        replayedClientLocationIds: [],
+        pausedClientLocationIds: ["location-lunch-1", "location-lunch-2"],
+      },
+    })
+    expect(prisma.$transaction).not.toHaveBeenCalled()
+    expect(prisma.mtmAgentLocation.create).not.toHaveBeenCalled()
+    expect(prisma.mtmAgent.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("reads the breaks of the resolved workday only, and only for the authenticated agent", async () => {
+    await POST(request({ workdayId: "workday-1", points: [point("location-client-1")] }))
+
+    expect(prisma.mtmAgentWorkdayEvent.findMany).toHaveBeenCalledTimes(1)
+    expect(prisma.mtmAgentWorkdayEvent.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: {
+        organizationId: AUTH.orgId,
+        agentId: AUTH.agentId,
+        workdayId: WORKDAY.id,
+        type: { in: ["PAUSE", "RESUME", "FINISH", "REOPEN"] },
+      },
+    }))
   })
 
   it("identifies only the point outside the supplied workday without returning its coordinates", async () => {

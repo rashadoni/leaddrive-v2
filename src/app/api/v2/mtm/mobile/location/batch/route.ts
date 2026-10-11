@@ -10,6 +10,13 @@ import { consumePublicRateLimit } from "@/lib/public-abuse-guard"
 import { mtmMobileLocationPayloadSha256 } from "@/lib/mtm/mobile-location-idempotency"
 import { advanceMtmAgentLatestLocation } from "@/lib/mtm/mobile-location-latest"
 import { recordMtmMobileGpsTelemetry, type MtmMobileGpsResult } from "@/lib/mtm/mobile-gps-telemetry"
+import {
+  isDuringMtmWorkdayPause,
+  MTM_WORKDAY_PAUSE_EVENT_TYPES,
+  mtmWorkdayPauses,
+  type MtmWorkdayPause,
+  type MtmWorkdayPauseEvent,
+} from "@/lib/mtm/workday-pauses"
 
 export const runtime = "nodejs"
 export const maxDuration = 30
@@ -225,6 +232,25 @@ async function resolveWorkday(input: { organizationId: string; agentId: string; 
   })
 }
 
+/**
+ * The breaks of that workday, from its own journal and with the reader the
+ * single-point route uses (workday-pauses.ts): the two ingestion routes must
+ * not disagree about what a break is.
+ */
+async function readWorkdayPauses(input: { organizationId: string; agentId: string; workdayId: string }): Promise<MtmWorkdayPause[]> {
+  const events: MtmWorkdayPauseEvent[] = await prisma.mtmAgentWorkdayEvent.findMany({
+    where: {
+      organizationId: input.organizationId,
+      agentId: input.agentId,
+      workdayId: input.workdayId,
+      type: { in: [...MTM_WORKDAY_PAUSE_EVENT_TYPES] },
+    },
+    orderBy: { occurredAt: "asc" },
+    select: { type: true, occurredAt: true, appliedAt: true },
+  })
+  return mtmWorkdayPauses(events)
+}
+
 type ExistingRow = { clientLocationId: string | null; payloadSha256: string | null }
 
 async function classifyExisting(input: { organizationId: string; agentId: string; points: ParsedPoint[] }) {
@@ -415,9 +441,28 @@ export const POST = withMobileRls(async (req, auth) => {
         { clientLocationId: pointOutsideWorkday.clientLocationId },
       )
     }
+    // A break is the employee's own time: where it was spent is not stored.
+    // The single-point route has refused such a point since A7
+    // (MTM_LOCATION_WORKDAY_PAUSED); until 2026-10-11 this route checked only
+    // the workday window and stored it. As there, the question is WHEN the
+    // point was taken, not what the shift's status is now: a point captured
+    // before the break and delivered during it is work, and one captured at
+    // lunch is not, however late it arrives.
+    //
+    // The rest of the batch is stored. A point outside the workday refuses the
+    // whole batch, because the device has bound all of it to the wrong shift;
+    // a point inside a break is one an honest device does send — the fix that
+    // lands a second after «перерыв» is pressed, a break begun on another
+    // device — and holding the work on both sides of lunch back for it would
+    // only make the device send those coordinates again. So it is dropped
+    // alone and named under `pausedClientLocationIds`: the device deletes it,
+    // a retry gets the same answer. Nothing is looked up or written for it.
+    const pauses = await readWorkdayPauses({ organizationId: auth.orgId, agentId: auth.agentId, workdayId: workday.id })
+    const duringBreak = (point: ParsedPoint) => isDuringMtmWorkdayPause(point.recordedAt, pauses)
+    const pausedClientLocationIds = parsed.points.filter(duringBreak).map((point) => point.clientLocationId)
     // Bind the idempotency digest to the authoritative workday selected above,
     // rather than a client omission that merely asked the server to choose it.
-    const points = parsed.points.map((point) => ({
+    const points = parsed.points.filter((point) => !duringBreak(point)).map((point) => ({
       ...point,
       payloadSha256: mtmMobileLocationPayloadSha256({ ...point, workdayId: workday.id }),
     }))
@@ -437,7 +482,11 @@ export const POST = withMobileRls(async (req, auth) => {
       result = "ok"
       return NextResponse.json({
         success: true,
-        data: { appliedClientLocationIds: [], replayedClientLocationIds: classified.replayedClientLocationIds },
+        data: {
+          appliedClientLocationIds: [],
+          replayedClientLocationIds: classified.replayedClientLocationIds,
+          pausedClientLocationIds,
+        },
       })
     }
 
@@ -470,7 +519,11 @@ export const POST = withMobileRls(async (req, auth) => {
         result = "ok"
         return NextResponse.json({
           success: true,
-          data: { appliedClientLocationIds: [], replayedClientLocationIds: classified.replayedClientLocationIds },
+          data: {
+            appliedClientLocationIds: [],
+            replayedClientLocationIds: classified.replayedClientLocationIds,
+            pausedClientLocationIds,
+          },
         })
       }
       try {
@@ -496,6 +549,7 @@ export const POST = withMobileRls(async (req, auth) => {
       data: {
         appliedClientLocationIds,
         replayedClientLocationIds: classified.replayedClientLocationIds,
+        pausedClientLocationIds,
       },
     }, { status: 201 })
   } catch (caught) {
