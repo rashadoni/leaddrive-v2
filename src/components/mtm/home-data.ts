@@ -4,6 +4,15 @@ import { useEffect, useRef, useState } from "react"
 import { addDateKeyDays } from "@/lib/mtm/mobile-week"
 import { fetchOperationalWeekJsonWithTimeout } from "@/lib/mtm/operational-week-client"
 import type { HomeWeekFacts } from "@/lib/mtm/home-dashboard"
+import type {
+  HomeBase,
+  HomeBaseGroup,
+  HomeQuality,
+  HomeRecentVisit,
+  HomeSetupKind,
+  HomeSetupStep,
+  MtmHomeInsights,
+} from "@/lib/mtm/home-insights"
 import {
   MTM_PANEL_ATTENTION_KINDS,
   type MtmPanelAttention,
@@ -280,3 +289,107 @@ export function useHomeWeek(input: {
     retry: () => setRetryToken((value) => value + 1),
   }
 }
+
+const SETUP_KINDS = new Set<string>(["customersWithoutPin", "contactsUnclassified", "noVisitNorms"])
+const QUALITY_FIELDS = ["visits", "atPlace", "awayFromPlace", "placeUnknown", "withPhoto", "tooLong", "tooShort", "longMinutes", "shortMinutes"] as const
+
+function homeBase(value: unknown): HomeBase | null {
+  const base = record(value)
+  const total = wholeNumber(base.total)
+  const visited = wholeNumber(base.visited)
+  if ((base.subject !== "contacts" && base.subject !== "customers") || !total || visited === null || !Array.isArray(base.groups)) return null
+  const grouping = base.grouping === "class" || base.grouping === "specialty" || base.grouping === "type" ? base.grouping : null
+  if (!grouping) return null
+  const groups = base.groups.flatMap((raw): HomeBaseGroup[] => {
+    const group = record(raw)
+    const groupTotal = wholeNumber(group.total)
+    const groupVisited = wholeNumber(group.visited)
+    return typeof group.key === "string" && group.key && groupTotal && groupVisited !== null
+      ? [{ key: group.key, total: groupTotal, visited: Math.min(groupVisited, groupTotal) }]
+      : []
+  })
+  return { subject: base.subject, grouping, total, visited: Math.min(visited, total), groups }
+}
+
+function homeQuality(value: unknown): HomeQuality | null {
+  const quality = record(value)
+  const read = Object.fromEntries(QUALITY_FIELDS.map((field) => [field, wholeNumber(quality[field])]))
+  if (QUALITY_FIELDS.some((field) => read[field] === null) || !read.visits) return null
+  return read as unknown as HomeQuality
+}
+
+export function normalizeHomeInsights(value: unknown): MtmHomeInsights | null {
+  const envelope = record(value)
+  if (envelope.success !== true) return null
+  const source = record(envelope.data)
+  const today = dateKey(source.today)
+  const monthStart = dateKey(source.monthStart)
+  const weekStart = dateKey(source.weekStart)
+  if (!today || !monthStart || !weekStart) return null
+  return {
+    timezone: typeof source.timezone === "string" ? source.timezone : "UTC",
+    today,
+    monthStart,
+    weekStart,
+    base: homeBase(source.base),
+    quality: homeQuality(source.quality),
+    setup: (Array.isArray(source.setup) ? source.setup : []).flatMap((raw): HomeSetupStep[] => {
+      const step = record(raw)
+      return typeof step.kind === "string" && SETUP_KINDS.has(step.kind)
+        ? [{ kind: step.kind as HomeSetupKind, count: wholeNumber(step.count) ?? 0, total: wholeNumber(step.total) ?? 0 }]
+        : []
+    }),
+    recentVisits: (Array.isArray(source.recentVisits) ? source.recentVisits : []).flatMap((raw): HomeRecentVisit[] => {
+      const visit = record(raw)
+      if (typeof visit.id !== "string" || !visit.id || typeof visit.at !== "string" || Number.isNaN(new Date(visit.at).getTime())) return []
+      return [{
+        id: visit.id,
+        at: visit.at,
+        customerName: typeof visit.customerName === "string" && visit.customerName ? visit.customerName : null,
+        agentName: typeof visit.agentName === "string" && visit.agentName ? visit.agentName : null,
+        durationMinutes: wholeNumber(visit.durationMinutes),
+        flag: visit.flag === "short" || visit.flag === "long" ? visit.flag : null,
+      }]
+    }),
+  }
+}
+
+/**
+ * The lower row: the base, the visits judged, the setup. Read once per day
+ * and per filters — none of it moves by the minute, so it neither polls nor
+ * follows the screen's refresh. A failure draws nothing: the row is an
+ * addition to the screen, and its own pages report their own errors.
+ */
+export function useHomeInsights(input: {
+  organizationId?: string | null
+  viewerId?: string | null
+  regionId: string
+  teamId: string
+  today: string | null
+}): MtmHomeInsights | null {
+  const { organizationId, viewerId, regionId, teamId, today } = input
+  const scopeKey = today && DATE_KEY.test(today) ? `${organizationId || "no-org"}:${viewerId || "no-viewer"}:${regionId}|${teamId}:${today}` : ""
+  const [result, setResult] = useState<{ scopeKey: string; data: MtmHomeInsights } | null>(null)
+
+  useEffect(() => {
+    if (!scopeKey) return
+    const controller = new AbortController()
+    const params = new URLSearchParams()
+    if (regionId) params.set("regionId", regionId)
+    if (teamId) params.set("teamId", teamId)
+    fetch(`/api/v1/mtm/week/insights?${params.toString()}`, {
+      cache: "no-store",
+      signal: controller.signal,
+      headers: organizationId ? { "x-organization-id": String(organizationId) } : {},
+    })
+      .then(async (response) => {
+        const data = response.ok ? normalizeHomeInsights(await response.json()) : null
+        if (data) setResult({ scopeKey, data })
+      })
+      .catch(() => {})
+    return () => controller.abort()
+  }, [organizationId, regionId, scopeKey, teamId])
+
+  return result && result.scopeKey === scopeKey ? result.data : null
+}
+

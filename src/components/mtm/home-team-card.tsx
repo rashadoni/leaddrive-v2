@@ -20,6 +20,7 @@ import {
   type HomeWeekFacts,
   type HomeWeekTotals,
 } from "@/lib/mtm/home-dashboard"
+import type { HomeRecentVisit } from "@/lib/mtm/home-insights"
 
 /**
  * «Komanda · bu həftə»: every field agent with where they stand now and a
@@ -29,6 +30,11 @@ import {
 
 /** Rows shown before «N more»: the card grows in the page, it never scrolls inside. */
 export const HOME_TEAM_ROWS_SHOWN = 8
+/**
+ * Up to this many agents, the card also lists the last visits: a team of one
+ * is one row, and what that one person did last is the next thing to ask.
+ */
+export const HOME_TEAM_RECENT_UP_TO = 2
 
 export type HomeTeamCardRow = HomeTeamRow & { agentId: string; name: string }
 
@@ -119,6 +125,7 @@ export function HomeTeamCard<Row extends HomeTeamCardRow>({
   facts,
   weekFailed,
   totals,
+  recentVisits = [],
   onRetry,
   onRetryWeek,
   onOpenAgent,
@@ -135,6 +142,8 @@ export function HomeTeamCard<Row extends HomeTeamCardRow>({
   facts: HomeWeekFacts | null
   weekFailed: boolean
   totals: HomeWeekTotals | null
+  /** The last visits in scope, newest first; drawn for a small team only. */
+  recentVisits?: readonly HomeRecentVisit[]
   onRetry: () => void
   onRetryWeek: () => void
   onOpenAgent: (agentId: string, day?: string) => void
@@ -169,6 +178,22 @@ export function HomeTeamCard<Row extends HomeTeamCardRow>({
     return t("cellPlan", { date, done: cell.done, planned: cell.planned })
   }
 
+  function duration(minutes: number | null): string {
+    if (minutes === null) return t("durationOpen")
+    return minutes < 60 ? t("durationMinutes", { minutes }) : t("durationHours", { hours: Math.floor(minutes / 60), minutes: minutes % 60 })
+  }
+
+  function visitMoment(value: string): string {
+    const date = new Date(value)
+    const options: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false }
+    try {
+      return createDateFormatter(locale, { timeZone: timezone, ...options }).format(date)
+    } catch {
+      return createDateFormatter(locale, options).format(date)
+    }
+  }
+
+  const recent = team.length > 0 && team.length <= HOME_TEAM_RECENT_UP_TO ? recentVisits : []
   const gpsPercent = totals ? percentOf(totals.gpsConfirmed, totals.visits) : null
   const footText = totals
     ? [t("footVisits", { count: totals.visits }), gpsPercent !== null ? t("footGps", { percent: gpsPercent }) : null].filter(Boolean).join(" · ")
@@ -275,6 +300,20 @@ export function HomeTeamCard<Row extends HomeTeamCardRow>({
             <button type="button" data-testid="mtm-home-team-more" aria-expanded={expanded} className="min-h-11 self-start py-2 text-sm font-medium text-primary hover:underline md:min-h-0" onClick={() => setExpanded((value) => !value)}>
               {expanded ? t("showLess") : t("showMore", { count: hidden })}
             </button>
+          ) : null}
+          {recent.length > 0 ? (
+            <div data-testid="mtm-home-team-recent">
+              <p className="pb-1 pt-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{t("recentTitle")}</p>
+              <ul>
+                {recent.map((visit) => (
+                  <li key={visit.id} className="flex items-center gap-3 border-b border-zinc-100 py-2 text-sm last:border-b-0 dark:border-zinc-800">
+                    <span className="w-28 shrink-0 tabular-nums text-muted-foreground">{visitMoment(visit.at)}</span>
+                    <span className="min-w-0 flex-1 truncate font-medium">{customer(visit.customerName)}</span>
+                    <HomePill tone={visit.flag ? "amber" : "zinc"}>{duration(visit.durationMinutes)}</HomePill>
+                  </li>
+                ))}
+              </ul>
+            </div>
           ) : null}
           <div className="mt-auto">
             {facts ? (

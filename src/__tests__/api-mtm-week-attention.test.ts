@@ -44,89 +44,11 @@ import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
 import { resetMtmFieldScopeMemo } from "@/lib/mtm/field-access"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { prisma } from "@/lib/prisma"
+import { serveRows as serve, type Row } from "./mocks/in-memory-rows"
 
 const ORG = "org-zeytun"
 const NOW = new Date("2026-10-11T14:54:00.000Z") // 18:54 in Baku, a Sunday
 const TODAY_START = new Date("2026-10-10T20:00:00.000Z") // midnight in Baku
-
-type Row = Record<string, unknown>
-
-/** The subset of Prisma's `where` these handlers use, evaluated over plain rows. */
-function holds(value: unknown, condition: unknown): boolean {
-  if (condition === null) return value === null || value === undefined
-  if (condition instanceof Date) return value instanceof Date && value.getTime() === condition.getTime()
-  if (typeof condition !== "object") return value === condition
-  const rule = condition as Record<string, unknown>
-  if ("in" in rule) return (rule.in as unknown[]).includes(value)
-  if ("not" in rule) return !holds(value, rule.not)
-  if ("some" in rule) return Array.isArray(value) && value.some((entry) => matches(entry as Row, rule.some as Row))
-  if ("is" in rule) return value !== null && value !== undefined && matches(value as Row, rule.is as Row)
-  const comparisons = ["gte", "gt", "lte", "lt"].filter((key) => key in rule)
-  if (comparisons.length > 0) {
-    if (!(value instanceof Date) && typeof value !== "number") return false
-    const left = Number(value)
-    return comparisons.every((key) => {
-      const right = Number(rule[key])
-      return key === "gte" ? left >= right : key === "gt" ? left > right : key === "lte" ? left <= right : left < right
-    })
-  }
-  return value !== null && value !== undefined && matches(value as Row, rule)
-}
-
-function matches(row: Row, where: Row | undefined): boolean {
-  if (!where) return true
-  return Object.entries(where).every(([key, condition]) => {
-    if (condition === undefined) return true
-    if (key === "OR") return (condition as Row[]).some((branch) => matches(row, branch))
-    if (key === "AND") return (condition as Row[]).every((branch) => matches(row, branch))
-    return holds(row[key], condition)
-  })
-}
-
-type Query = { where?: Row; distinct?: string[]; take?: number; by?: string[]; _min?: Record<string, boolean>; _max?: Record<string, boolean> }
-
-function extreme(rows: Row[], fields: Record<string, boolean> | undefined, pick: (left: number, right: number) => boolean) {
-  return Object.fromEntries(Object.keys(fields ?? {}).map((field) => {
-    const values = rows.map((row) => row[field]).filter((value): value is Date => value instanceof Date)
-    return [field, values.reduce<Date | null>((best, value) => (!best || pick(value.getTime(), best.getTime()) ? value : best), null)]
-  }))
-}
-
-function serve(model: { findMany: unknown; aggregate: unknown; count: unknown; groupBy: unknown }, rows: Row[]) {
-  vi.mocked(model.groupBy as (query: Query) => Promise<unknown>).mockImplementation(async (query: Query = {}) => {
-    const groups = new Map<string, Row[]>()
-    for (const row of rows.filter((candidate) => matches(candidate, query.where))) {
-      const key = (query.by ?? []).map((field) => String(row[field])).join("|")
-      groups.set(key, [...(groups.get(key) ?? []), row])
-    }
-    return [...groups.values()].map((found) => ({
-      ...Object.fromEntries((query.by ?? []).map((field) => [field, found[0][field]])),
-      _count: { _all: found.length },
-      _min: extreme(found, query._min, (left, right) => left < right),
-      _max: extreme(found, query._max, (left, right) => left > right),
-    }))
-  })
-  vi.mocked(model.findMany as (query: Query) => Promise<unknown>).mockImplementation(async (query: Query = {}) => {
-    let found = rows.filter((row) => matches(row, query.where))
-    if (query.distinct) {
-      const seen = new Set<string>()
-      found = found.filter((row) => {
-        const key = query.distinct!.map((field) => String(row[field])).join("|")
-        return seen.has(key) ? false : (seen.add(key), true)
-      })
-    }
-    return query.take ? found.slice(0, query.take) : found
-  })
-  vi.mocked(model.aggregate as (query: Query) => Promise<unknown>).mockImplementation(async (query: Query = {}) => {
-    const found = rows.filter((row) => matches(row, query.where))
-    return {
-      _count: { _all: found.length },
-      _min: extreme(found, query._min, (left, right) => left < right),
-      _max: extreme(found, query._max, (left, right) => left > right),
-    }
-  })
-  vi.mocked(model.count as (query: Query) => Promise<unknown>).mockImplementation(async (query: Query = {}) => rows.filter((row) => matches(row, query.where)).length)
-}
 
 const at = (iso: string) => new Date(iso)
 const day = (key: string) => new Date(`${key}T00:00:00.000Z`)

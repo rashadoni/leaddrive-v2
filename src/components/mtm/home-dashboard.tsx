@@ -4,7 +4,8 @@ import type { ReactNode } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { BellRing, CheckCircle2, MapPin, Route as RouteIcon, TrendingUp } from "lucide-react"
 import { HomeAttentionCard, attentionRowCount } from "@/components/mtm/home-attention-card"
-import { useHomeAttention, useHomeWeek } from "@/components/mtm/home-data"
+import { useHomeAttention, useHomeInsights, useHomeWeek } from "@/components/mtm/home-data"
+import { HomeBaseCard, HomeQualityCard, HomeSetupStrip } from "@/components/mtm/home-insight-cards"
 import { HomeKpi, type HomeTone } from "@/components/mtm/home-parts"
 import { HomeTeamCard, type HomeTeamCardRow } from "@/components/mtm/home-team-card"
 import { createDateFormatter } from "@/lib/format-date"
@@ -108,6 +109,8 @@ export function MtmHomeDashboard<Row extends HomeTeamCardRow>({
   const comparison = totals && !regionOnly ? weekComparison(totals, week.previous) : { kind: "unknown" as const }
   const card = today ? planCard({ today, plan, nextWorkday: attention.data?.nextWorkday ?? null }) : { kind: "none" as const }
   const waiting = attentionRowCount(attention.data)
+  // The lower row: read once a day per filters, never polled.
+  const insights = useHomeInsights({ organizationId, viewerId, regionId, teamId, today })
 
   const dateTitle = today ? dayLabel(today, locale, { weekday: "long", day: "numeric", month: "long" }) : null
   const asOf = instantLabel(team?.generatedAt ?? null, locale, timezone, { hour: "2-digit", minute: "2-digit", hour12: false })
@@ -244,6 +247,8 @@ export function MtmHomeDashboard<Row extends HomeTeamCardRow>({
         />
       </div>
 
+      <HomeSetupStrip steps={insights?.setup ?? []} />
+
       {/* Side by side from 1400 px: narrower, a row of the team (name, seven
           days, total) would wrap under itself, so the cards stack instead. */}
       <div className="grid gap-4 min-[1400px]:grid-cols-2">
@@ -259,11 +264,21 @@ export function MtmHomeDashboard<Row extends HomeTeamCardRow>({
           facts={week.facts}
           weekFailed={week.failed}
           totals={totals}
+          recentVisits={insights?.recentVisits ?? []}
           onRetry={onRetry}
           onRetryWeek={week.retry}
           onOpenAgent={onOpenAgent}
         />
       </div>
+
+      {/* Below the first screen: the base this month and this week's visits
+          judged. Both or neither — a lone half-width card would leave a hole. */}
+      {insights && (insights.base || insights.quality) ? (
+        <div className="grid gap-4 min-[1400px]:grid-cols-2">
+          <HomeBaseCard base={insights.base} monthStart={insights.monthStart} />
+          <HomeQualityCard quality={insights.quality} />
+        </div>
+      ) : null}
     </div>
   )
 }
