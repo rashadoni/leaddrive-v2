@@ -18,7 +18,7 @@ function sameDatabaseTarget(left, right) {
  * `new PrismaClient({ … })` is typed by its options: the compiler infers a
  * client specific to that one object literal, and the first TypeScript caller
  * that hands it to a `PrismaClient` parameter makes it compare the two clients
- * model by model — about 130,000 types, close to 200 MB of the type check's
+ * model by model — about 150,000 types and over 100 MB of the type check's
  * heap, per construction. The scripts want the ordinary client, so say so. The
  * `any` in the middle is what stops the comparison from being made here.
  *
