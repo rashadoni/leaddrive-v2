@@ -3,6 +3,7 @@ import { headers } from "next/headers"
 import { NextIntlClientProvider, type AbstractIntlMessages } from "next-intl"
 import { getLocale, getMessages } from "next-intl/server"
 import { Providers } from "@/components/providers"
+import { BASEMAP_PROVIDER_META, basemapProviderFromEnv, serializeBasemapProvider } from "@/lib/mtm/basemap-provider"
 import { Toaster } from "sonner"
 import "./globals.css"
 
@@ -89,6 +90,10 @@ export default async function RootLayout({
     await getMessages() as AbstractIntlMessages,
   )
   const nonce = hdrs.get("x-nonce") ?? undefined
+  // Whose tiles the maps fall back to, as the running deployment says it now
+  // — read here, on the server, so that changing it needs no build
+  // (src/lib/mtm/basemap-provider.ts). Nothing is written while no backup is named.
+  const basemapProvider = serializeBasemapProvider(basemapProviderFromEnv())
   // Field UX audit 2026-09-05 (W-03): the document language drives screen
   // readers, hyphenation and spell-check, so it follows the request locale
   // (x-locale from the proxy, ru/az/en) instead of a hard-coded "en".
@@ -99,6 +104,7 @@ export default async function RootLayout({
         <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.googleapis.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {basemapProvider ? <meta name={BASEMAP_PROVIDER_META} content={basemapProvider} /> : null}
       </head>
       <body className="font-sans antialiased">
         {/* @ts-expect-error nonce prop supported at runtime */}

@@ -28,9 +28,11 @@ const serwist = new Serwist({
     // Map tiles — always fetch from network, never cache via SW. CARTO's
     // raster tiles are the only CARTO resource the app requests
     // (src/components/mtm/carto-basemap.tsx): Voyager on every map, and the
-    // live map's light background.
+    // live map's light background. The other hosts are the providers a
+    // deployment may name as its backup background or its satellite picture
+    // (src/lib/mtm/basemap-provider.ts): Esri, MapTiler, Mapbox.
     {
-      matcher: /^https:\/\/(?:(?:[a-z0-9-]+\.)?basemaps\.cartocdn\.com\/(?:rastertiles|light_all)\/|.*\.tile\.openstreetmap\.org\/.*\.png(?:\?.*)?$)/i,
+      matcher: /^https:\/\/(?:(?:[a-z0-9-]+\.)?basemaps\.cartocdn\.com\/(?:rastertiles|light_all)\/|.*\.tile\.openstreetmap\.org\/.*\.png(?:\?.*)?$|(?:[a-z0-9-]+\.)?(?:arcgis|arcgisonline)\.com\/.*\/tile\/|api\.maptiler\.com\/(?:maps|tiles)\/|api\.mapbox\.com\/(?:styles|v4)\/)/i,
       handler: new NetworkOnly(),
     },
     // Anything whose response depends on auth/tenant state — ALWAYS from the

@@ -34,3 +34,13 @@ export function cartoBasemapsApiKey(
 }
 
 export const CARTO_VOYAGER_RASTER_TILE_URL = getCartoVoyagerRasterTileUrl()
+
+/**
+ * Whether a tile address is CARTO's — Voyager, the live map's light
+ * background, with or without `{s}`. The backup provider
+ * (src/lib/mtm/basemap-provider.ts) stands in for these and for nothing else:
+ * a satellite picture from another host is not CARTO's to refuse.
+ */
+export function isCartoTileUrl(url: string): boolean {
+  return /^https:\/\/(?:\{s\}\.|[a-z0-9-]+\.)?basemaps\.cartocdn\.com\//i.test(url)
+}

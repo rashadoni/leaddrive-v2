@@ -62,6 +62,19 @@ describe("CARTO basemap configuration", () => {
     // The live map's light background is tiles like any other: never from the worker's cache.
     expect(networkOnly.test("https://b.basemaps.cartocdn.com/light_all/12/2615/1552@2x.png?key=referrer-key")).toBe(true)
     expect(networkOnly.test("https://app.leaddrivecrm.org/api/v1/ping")).toBe(false)
+    // The providers a deployment may name as its backup background or its
+    // satellite picture (src/lib/mtm/basemap-provider.ts) are tiles too.
+    for (const tile of [
+      "https://static-map-tiles-api.arcgis.com/arcgis/rest/services/static-basemap-tiles-service/v1/arcgis/navigation/static/tile/12/1552/2615?token=k",
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/12/1552/2615",
+      "https://api.maptiler.com/maps/streets-v2/256/12/2615/1552.png?key=k",
+      "https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/12/2615/1552?access_token=k",
+    ]) {
+      expect(networkOnly.test(tile), tile).toBe(true)
+    }
+    // …and nothing else of those hosts is: a provider's own site or another of its services.
+    expect(networkOnly.test("https://www.arcgis.com/home/index.html")).toBe(false)
+    expect(networkOnly.test("https://api.mapbox.com/geocoding/v5/mapbox.places/baku.json")).toBe(false)
   })
 
   // The vector basemap was removed on 2026-10-09 (see carto-basemap.tsx): it

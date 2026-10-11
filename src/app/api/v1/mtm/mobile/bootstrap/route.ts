@@ -10,6 +10,7 @@ import {
   mobileFieldPermissions,
 } from "@/lib/mtm/mobile-capabilities"
 import { cartoBasemapsApiKey } from "@/lib/carto-basemap"
+import { basemapProviderFromEnv } from "@/lib/mtm/basemap-provider"
 import { routeTargetTypesForPlanning } from "@/lib/mtm/route-target-types"
 import { buildMtmMobileCapabilityManifest } from "@/lib/mtm/mobile-capability-manifest"
 import {
@@ -529,7 +530,16 @@ export const GET = withMobileRls(async (req, auth) => {
         // without a key. The key is the same browser-facing, referrer-bound
         // value the web maps use (src/lib/carto-basemap.ts); it is inlined at
         // build time, so older builds simply return null here.
-        maps: { cartoBasemapsApiKey: routeFieldEnabled ? cartoBasemapsApiKey() : null },
+        //
+        // `basemap` is what the web maps are told as well (the deployment's
+        // backup tile provider and whether it is the background now —
+        // src/lib/mtm/basemap-provider.ts). An app build that knows the field
+        // draws its maps from it; older builds read only the key above and
+        // stay on CARTO.
+        maps: {
+          cartoBasemapsApiKey: routeFieldEnabled ? cartoBasemapsApiKey() : null,
+          basemap: routeFieldEnabled ? basemapProviderFromEnv() : null,
+        },
       },
     })
   } catch (error) {

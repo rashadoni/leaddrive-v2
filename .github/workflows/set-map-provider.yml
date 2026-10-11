@@ -1,0 +1,259 @@
+name: Set map tile provider on prod
+
+# Operator job: tell the running deployment whose tiles the MTM maps are drawn
+# on when they are not CARTO's, and whether that backup is the background now.
+# No build and no release — the app reads these values when a page is asked
+# for (src/lib/mtm/basemap-provider.ts, docs/mtm-basemap-provider.md).
+#
+# Why this exists: CARTO's free basemaps may be limited or cut off without
+# warning (terms of 29 September 2026). With a backup named, a map whose CARTO
+# tiles are refused goes over to the backup by itself; `primary: backup` moves
+# every map over at once, for the case no map can notice by itself — a revoked
+# key is answered with a tile that reads «API KEY REQUIRED», not with an error.
+#
+# Usage:
+#   1. Repo Settings → Secrets and variables → Actions → add (once):
+#      MTM_BASEMAP_BACKUP_TILE_URL          — https tile address with {z} {x} {y},
+#                                             the provider's key inside it; the key
+#                                             must be restricted to our sites
+#      MTM_BASEMAP_BACKUP_TILE_ATTRIBUTION  — the credit the provider asks for, in words
+#      MTM_BASEMAP_BACKUP_TILE_SIZE         — 256 or 512 (optional, 256 when absent)
+#   2. Run this workflow and choose `primary`:
+#      keep   — only deliver the three values above, leave the choice as it is
+#      carto  — CARTO is the background; the backup steps in by itself when CARTO refuses
+#      backup — the backup is the background of every map; CARTO is not asked
+#   Secrets that are unset are skipped; existing values are REPLACED, so the
+#   same run changes provider or rotates its key. Values never appear in logs.
+#
+# Before anything is written the job checks the values by the app's own rules
+# and asks the provider for one tile the way our pages ask. After the restart
+# it requires the app to answer /api/v1/ping, the running process to hold
+# exactly the new values, and the app itself to say what it was told. A run
+# that would change nothing writes nothing and restarts nothing.
+# What the job does is tested by running it:
+# src/__tests__/basemap-provider-operator-job.test.ts.
+
+on:
+  workflow_dispatch:
+    inputs:
+      primary:
+        description: "Чьи плитки — фон карт MTM: keep — не менять; carto — CARTO (запасной включится сам, если CARTO откажет); backup — сразу запасной"
+        type: choice
+        options:
+          - keep
+          - carto
+          - backup
+        default: keep
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  set-map-provider:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Setup pinned production SSH
+        uses: ./.github/actions/setup-production-ssh
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          server-host: ${{ secrets.SERVER_HOST }}
+          known-hosts: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+
+      - name: Write map provider settings to canonical app env and restart PM2
+        env:
+          PRIMARY_CHOICE: ${{ inputs.primary }}
+          MTM_BASEMAP_BACKUP_TILE_URL: ${{ secrets.MTM_BASEMAP_BACKUP_TILE_URL }}
+          MTM_BASEMAP_BACKUP_TILE_ATTRIBUTION: ${{ secrets.MTM_BASEMAP_BACKUP_TILE_ATTRIBUTION }}
+          MTM_BASEMAP_BACKUP_TILE_SIZE: ${{ secrets.MTM_BASEMAP_BACKUP_TILE_SIZE }}
+          # Characters are counted as characters, whatever language the credit is in.
+          LC_ALL: C.UTF-8
+        run: |
+          set -euo pipefail
+          # Checked here, before anything leaves the runner — by the app's own
+          # rules (src/lib/mtm/basemap-provider.ts), so that a provider the app
+          # would ignore is refused now and not written and then ignored. The
+          # values travel to the server inside single quotes: a quote or a line
+          # break in one of them would end the quoting.
+          refuse() { echo "::error::$1"; exit 1; }
+          case "$PRIMARY_CHOICE" in
+            keep) MTM_BASEMAP_PRIMARY="" ;;
+            carto|backup) MTM_BASEMAP_PRIMARY="$PRIMARY_CHOICE" ;;
+            *) refuse "primary must be keep, carto or backup" ;;
+          esac
+          for name in MTM_BASEMAP_BACKUP_TILE_URL MTM_BASEMAP_BACKUP_TILE_ATTRIBUTION MTM_BASEMAP_BACKUP_TILE_SIZE; do
+            value="${!name}"
+            case "$value" in
+              *"'"*|*$'\n'*|*$'\r'*) refuse "$name must be one line without a single quote" ;;
+              \"*) refuse "$name must not begin with a double quote" ;;
+            esac
+          done
+          if [ -n "$MTM_BASEMAP_BACKUP_TILE_URL" ]; then
+            case "$MTM_BASEMAP_BACKUP_TILE_URL" in
+              https://*) ;;
+              *) refuse "MTM_BASEMAP_BACKUP_TILE_URL must be an https address" ;;
+            esac
+            for place in '{z}' '{x}' '{y}'; do
+              case "$MTM_BASEMAP_BACKUP_TILE_URL" in *"$place"*) ;; *) refuse "MTM_BASEMAP_BACKUP_TILE_URL has no $place" ;; esac
+            done
+            # Any other {…} — a key that was never put in, say — makes the map
+            # throw while it is being drawn, and the whole screen goes with it.
+            rest="$MTM_BASEMAP_BACKUP_TILE_URL"
+            for place in '{z}' '{x}' '{y}' '{-y}' '{s}' '{r}'; do rest="${rest//"$place"/}"; done
+            case "$rest" in *"{"*|*"}"*) refuse "MTM_BASEMAP_BACKUP_TILE_URL has a {…} the map cannot fill: only {z} {x} {y} {-y} {s} {r} are filled in" ;; esac
+            credit="${MTM_BASEMAP_BACKUP_TILE_ATTRIBUTION//[[:space:]]/}"
+            [ -n "$credit" ] || refuse "MTM_BASEMAP_BACKUP_TILE_ATTRIBUTION is required with the address: whose map it is must be said on the map"
+          fi
+          [ "${#MTM_BASEMAP_BACKUP_TILE_ATTRIBUTION}" -le 300 ] || refuse "MTM_BASEMAP_BACKUP_TILE_ATTRIBUTION is longer than 300 characters"
+          case "$MTM_BASEMAP_BACKUP_TILE_SIZE" in
+            ""|256|512) ;;
+            *) refuse "MTM_BASEMAP_BACKUP_TILE_SIZE must be 256 or 512" ;;
+          esac
+
+          # A provider is not named until it has answered: one tile over Baku,
+          # asked the way our pages ask — with our site as the referrer. A wrong
+          # key is found out here, and not on the day CARTO fails.
+          if [ -n "$MTM_BASEMAP_BACKUP_TILE_URL" ]; then
+            sample="$MTM_BASEMAP_BACKUP_TILE_URL"
+            sample="${sample//'{z}'/12}"; sample="${sample//'{x}'/2615}"; sample="${sample//'{y}'/1552}"
+            sample="${sample//'{-y}'/2543}"; sample="${sample//'{s}'/a}"; sample="${sample//'{r}'/}"
+            answered="$(curl -s -o /dev/null -w '%{http_code} %{content_type}' --max-time 20 \
+              -H 'Referer: https://app.leaddrivecrm.org/' "$sample" || true)"
+            case "$answered" in
+              "200 image/"*) echo "the provider answered a tile asked from our site" ;;
+              *) refuse "the provider did not answer a tile asked from our site (HTTP ${answered%% *}); nothing was changed" ;;
+            esac
+          fi
+
+          ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "MTM_BASEMAP_PRIMARY='$MTM_BASEMAP_PRIMARY' MTM_BASEMAP_BACKUP_TILE_URL='$MTM_BASEMAP_BACKUP_TILE_URL' MTM_BASEMAP_BACKUP_TILE_ATTRIBUTION='$MTM_BASEMAP_BACKUP_TILE_ATTRIBUTION' MTM_BASEMAP_BACKUP_TILE_SIZE='$MTM_BASEMAP_BACKUP_TILE_SIZE' bash -s" <<'REMOTE'
+          set -euo pipefail
+          APP_DIR="/opt/leaddrive-v2"
+          APP_ENV_FILE="${APP_ENV_FILE:-/etc/leaddrive/app.env}"
+          ENV="$APP_ENV_FILE"
+          ENV_DIR="$(dirname -- "$ENV")"
+          APP_ENV_LOCK_FILE="${APP_ENV_LOCK_FILE:-/run/lock/leaddrive-app-env.lock}"
+          [ -d "$ENV_DIR" ] && [ ! -L "$ENV_DIR" ] || { echo "FATAL: app env parent $ENV_DIR missing or is a symlink"; exit 1; }
+          [ "$(stat -c '%U:%G' "$ENV_DIR")" = "root:root" ] || { echo "FATAL: app env parent must be owned by root:root"; exit 1; }
+          ENV_DIR_MODE="$(stat -c '%a' "$ENV_DIR")"
+          (( (8#$ENV_DIR_MODE & 8#022) == 0 )) || { echo "FATAL: app env parent must not be group- or world-writable"; exit 1; }
+          [ -f "$ENV" ] && [ ! -L "$ENV" ] || { echo "FATAL: canonical app env $ENV missing or is a symlink"; exit 1; }
+          [ "$(stat -c '%U:%G:%a' "$ENV")" = "root:root:600" ] || { echo "FATAL: canonical app env must be root:root mode 0600"; exit 1; }
+          [ -d "$(dirname -- "$APP_ENV_LOCK_FILE")" ] || { echo "FATAL: app-env lock parent missing"; exit 1; }
+          exec 9>"$APP_ENV_LOCK_FILE"
+          flock -w 120 9 || { echo "FATAL: another canonical app-env update is running"; exit 1; }
+
+          KEYS="MTM_BASEMAP_BACKUP_TILE_URL MTM_BASEMAP_BACKUP_TILE_ATTRIBUTION MTM_BASEMAP_BACKUP_TILE_SIZE MTM_BASEMAP_PRIMARY"
+          # What the file holds for a key now — compared and counted, never printed.
+          kept() { sed -nE "s/^[[:space:]]*(export[[:space:]]+)?$1=(.*)$/\2/p" "$ENV" | tail -1; }
+          app_pid() { pm2 pid leaddrive-v2 2>/dev/null | tail -1; }
+          # The file is not what the app reads — the process is.
+          process_holds() {
+            local pid; pid="$(app_pid)"
+            [ -n "$pid" ] && [ "$pid" != "0" ] && [ -r "/proc/$pid/environ" ] && grep -zFxq -- "$1=$2" "/proc/$pid/environ"
+          }
+
+          # «backup» with nothing to go to is ignored by the app: every map would
+          # stay on CARTO while this job said otherwise.
+          if [ "$MTM_BASEMAP_PRIMARY" = "backup" ]; then
+            [ -n "${MTM_BASEMAP_BACKUP_TILE_URL:-$(kept MTM_BASEMAP_BACKUP_TILE_URL)}" ] && \
+              [ -n "${MTM_BASEMAP_BACKUP_TILE_ATTRIBUTION:-$(kept MTM_BASEMAP_BACKUP_TILE_ATTRIBUTION)}" ] || {
+                echo "FATAL: the backup cannot be made the background: no backup provider is named yet (add its secrets first); nothing was changed"
+                exit 1
+              }
+          fi
+
+          changed_keys=()
+          for key in $KEYS; do
+            value="${!key:-}"
+            if [ -z "$value" ]; then
+              echo "$key: not given — left as it is"
+            elif [ "$(kept "$key")" = "$value" ] && process_holds "$key" "$value"; then
+              echo "$key: already so"
+            else
+              changed_keys+=("$key")
+            fi
+          done
+          if [ "${#changed_keys[@]}" -eq 0 ]; then
+            echo "Nothing to change — the app env is untouched and PM2 was not restarted"
+            exit 0
+          fi
+
+          ENV_STAGE="$(mktemp "$ENV_DIR/.app.env.map-provider.XXXXXX")"
+          cleanup() { [ -z "$ENV_STAGE" ] || rm -f -- "$ENV_STAGE"; }
+          trap cleanup EXIT
+          cp --preserve=mode,ownership "$ENV" "$ENV_STAGE"
+          # A file that does not end with a line break would have the first new key glued onto its last line.
+          [ -z "$(tail -c1 "$ENV_STAGE")" ] || printf '\n' >> "$ENV_STAGE"
+          for key in "${changed_keys[@]}"; do
+            # Replace-or-append so a change of provider works; values never echo.
+            sed -i "/^[[:space:]]*\(export[[:space:]]\+\)\?${key}=/d" "$ENV_STAGE"
+            printf '%s=%s\n' "$key" "${!key}" >> "$ENV_STAGE"
+            echo "$key: staged for canonical app env"
+          done
+          # ENV_STAGE was created in $ENV_DIR, so this replace cannot cross a
+          # filesystem boundary or leave a partially written app env.
+          mv -f "$ENV_STAGE" "$ENV"
+          ENV_STAGE=""
+
+          # PM2 --update-env merges this shell's environment over what the
+          # process has. Only the keys written above go to it: one that was not
+          # given arrives here as an empty string and would blank a working
+          # value in the running process until the next deploy.
+          for key in $KEYS; do
+            case " ${changed_keys[*]} " in *" $key "*) export "$key" ;; *) unset "$key" ;; esac
+          done
+          pm2 restart leaddrive-v2 --update-env >/dev/null
+          echo "PM2 restarted with updated env (${changed_keys[*]})"
+
+          HEALTHY=false
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            if curl -fsS --max-time 10 http://127.0.0.1:3001/api/v1/ping >/dev/null 2>&1; then
+              HEALTHY=true
+              break
+            fi
+            sleep 5
+          done
+          [ "$HEALTHY" = true ] || { echo "FATAL: the app does not answer /api/v1/ping after the restart"; exit 1; }
+          echo "ping ok"
+
+          # Each key written must be, with exactly its new value, in the
+          # environment of the process that now runs.
+          for key in "${changed_keys[@]}"; do
+            process_holds "$key" "${!key}" || { echo "FATAL: the running process does not hold the new $key"; exit 1; }
+          done
+          echo "running process holds: ${changed_keys[*]}"
+
+          # And the app itself must say what it was told — its own answer, the
+          # one the pages ask. Compared here, never printed: it carries the address.
+          SAID="$(curl -fsS --max-time 15 http://127.0.0.1:3001/api/v1/public/basemap-provider 2>/dev/null || true)"
+          case "$SAID" in
+            *'"backup":{"url":"https://'*) NAMED=yes ;;
+            *'"backup":null'*) NAMED=no ;;
+            *) echo "FATAL: the app did not answer what it says about its map provider"; exit 1 ;;
+          esac
+          if [ -z "$(kept MTM_BASEMAP_BACKUP_TILE_URL)" ]; then
+            [ "$NAMED" = no ] || { echo "FATAL: the app names a backup provider this job did not give it"; exit 1; }
+            echo "the app says: no backup provider is named; every map is CARTO's"
+            exit 0
+          fi
+          [ "$NAMED" = yes ] || { echo "FATAL: the app does not name the backup provider after the restart — it found the values half-said"; exit 1; }
+          if [ "$(kept MTM_BASEMAP_PRIMARY)" = "backup" ]; then
+            case "$SAID" in *'"primary":"backup"'*) ;; *) echo "FATAL: the app did not make the backup its background"; exit 1 ;; esac
+            echo "the app says: a backup provider is named and it is the background of every map"
+          else
+            case "$SAID" in *'"primary":"carto"'*) ;; *) echo "FATAL: the app did not keep CARTO as its background"; exit 1 ;; esac
+            echo "the app says: a backup provider is named; CARTO is the background and the backup steps in when CARTO refuses"
+          fi
+          REMOTE
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
