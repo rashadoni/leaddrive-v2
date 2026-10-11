@@ -15214,9 +15214,6 @@
   "mtmDashboardPage": {
     "welcomeBack": "Welcome back, {name}!",
     "subtitle": "Field team management — agents, routes, visits, tasks",
-    "newAgent": "New Agent",
-    "reports": "Reports",
-    "liveMap": "Live Map",
     "keyMessage": "Key message",
     "announcementValidUntil": "Active until {date}",
     "announcementAcknowledge": "Acknowledge",
@@ -15229,7 +15226,6 @@
     "announcementRetry": "Retry",
     "supportTitle": "Support",
     "supportHint": "Tenant-approved contacts for field assistance.",
-    "scopeUnavailable": "Unavailable for this bounded team scope",
     "operationalWeek": {
       "teamRefreshing": "refreshing…",
       "teamWhereAtCustomer": "At {customer} since {time}",
@@ -15539,8 +15535,6 @@
       "finishConfirmHint": "Finishing closes the active shift and records an audited end event. It cannot be resumed from this screen.",
       "finishConfirmAction": "Confirm finish",
       "finishConfirmCancel": "Keep workday open",
-      "legacyTitle": "Established operational overview",
-      "legacyNote": "The sections below keep their established dashboard formulas. Use the published operational week above for employee-specific plan and evidence review.",
       "workday": {
         "active": "Active",
         "paused": "Paused",
@@ -15607,58 +15601,7 @@
         "pharmacist": "Pharmacist",
         "other": "Other contact"
       }
-    },
-    "period": {
-      "today": "Today",
-      "week": "This Week",
-      "month": "This Month"
-    },
-    "periodSuffix": {
-      "today": "for today",
-      "week": "this week",
-      "month": "this month"
-    },
-    "kpiPlannedRoutes": "Planned Routes",
-    "kpiCompleted": "Completed",
-    "kpiCompletionSuffix": "{pct}% completion",
-    "kpiOffRoute": "Off-Route",
-    "kpiNeedsAttention": "needs attention",
-    "kpiPendingTasks": "Pending Tasks",
-    "kpiImportFailures": "Import failures",
-    "kpiImportFailuresHint": "Failed or partially applied Excel jobs",
-    "kpiOpenVisits": "Open visits",
-    "kpiOpenVisitsHint": "Visits remain open until an agent completes them",
-    "kpiApprovalBacklog": "Approval backlog",
-    "kpiApprovalBacklogHint": "Route changes and customer requests awaiting review",
-    "kpiUrgentSuffix": "{n} urgent",
-    "completionRate": "Completion Rate",
-    "remaining": "Remaining",
-    "timeMetrics": "Time Metrics",
-    "avgRouteTime": "Avg Route Time",
-    "avgVisitTime": "Avg Visit Time",
-    "minutes": "{n} min",
-    "hours": "{n} hrs",
-    "activeAgents": "GPS fresh at overview refresh · {minutes} min",
-    "dashboardSnapshotAt": "Overview refreshed {time}",
-    "lastGpsAt": "Reported {time}",
-    "gpsRosterLimited": "Freshness scan is limited to the first 500 scoped employees.",
-    "dashboardLoadFailed": "Could not load the dashboard: {error}",
-    "networkError": "Network error",
-    "visitStatus": {
-      "checkedOut": "Completed",
-      "checkedIn": "In progress",
-      "cancelled": "Cancelled",
-      "other": "Recorded"
-    },
-    "showOnMap": "Show on Map",
-    "noAgentsOnline": "No accepted GPS report in this freshness window",
-    "loading": "Loading...",
-    "colAgent": "Agent",
-    "colCustomer": "Customer",
-    "colStatus": "Status",
-    "colCheckIn": "Check-in",
-    "colDuration": "Duration",
-    "noVisitsYet": "No visits yet"
+    }
   },
   "mtmAnalytics": {
     "title": "Analytics"
