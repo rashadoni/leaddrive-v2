@@ -15210,9 +15210,6 @@
   "mtmDashboardPage": {
     "welcomeBack": "Xoş gəldiniz, {name}!",
     "subtitle": "Sahə komandasının idarə edilməsi — agentlər, marşrutlar, vizitlər, tapşırıqlar",
-    "newAgent": "Yeni agent",
-    "reports": "Hesabatlar",
-    "liveMap": "Canlı xəritə",
     "keyMessage": "Əsas mesaj",
     "announcementValidUntil": "{date} tarixinədək aktivdir",
     "announcementAcknowledge": "Təsdiq et",
@@ -15225,7 +15222,6 @@
     "announcementRetry": "Yenidən cəhd et",
     "supportTitle": "Dəstək",
     "supportHint": "Bu tenant üçün təsdiqlənmiş sahə dəstəyi əlaqələri.",
-    "scopeUnavailable": "Bu məhdud komanda əhatəsi üçün əlçatan deyil",
     "operationalWeek": {
       "teamRefreshing": "yenilənir…",
       "teamWhereAtCustomer": "{customer} müştərisindədir, {time}-dən",
@@ -15535,8 +15531,6 @@
       "finishConfirmHint": "Bitirmə aktiv növbəni bağlayır və audit olunan son hadisəni qeyd edir. Bu ekrandan onu davam etdirmək mümkün olmayacaq.",
       "finishConfirmAction": "Bitirməni təsdiqlə",
       "finishConfirmCancel": "İş gününü açıq saxla",
-      "legacyTitle": "Əvvəlki əməliyyat icmalı",
-      "legacyNote": "Aşağıdakı bölmələr panelin əvvəlki formulalarını saxlayır. Konkret işçinin planını və sübutlarını yoxlamaq üçün yuxarıdakı əməliyyat həftəsindən istifadə edin.",
       "workday": {
         "active": "Aktivdir",
         "paused": "Dayandırılıb",
@@ -15603,58 +15597,7 @@
         "pharmacist": "Əczaçı",
         "other": "Digər əlaqə"
       }
-    },
-    "period": {
-      "today": "Bu gün",
-      "week": "Bu həftə",
-      "month": "Bu ay"
-    },
-    "periodSuffix": {
-      "today": "bu gün üçün",
-      "week": "bu həftə",
-      "month": "bu ay"
-    },
-    "kpiPlannedRoutes": "Planlaşdırılmış marşrutlar",
-    "kpiCompleted": "Tamamlanıb",
-    "kpiCompletionSuffix": "{pct}% tamamlanma",
-    "kpiOffRoute": "Marşrutdan kənar",
-    "kpiNeedsAttention": "diqqət tələb edir",
-    "kpiPendingTasks": "Gözləyən tapşırıqlar",
-    "kpiImportFailures": "İdxal xətaları",
-    "kpiImportFailuresHint": "Uğursuz və ya qismən tətbiq olunmuş Excel işləri",
-    "kpiOpenVisits": "Açıq ziyarətlər",
-    "kpiOpenVisitsHint": "Agent tamamlayanadək ziyarətlər açıq qalır",
-    "kpiApprovalBacklog": "Təsdiq növbəsi",
-    "kpiApprovalBacklogHint": "Marşrut dəyişiklikləri və müştəri sorğuları yoxlama gözləyir",
-    "kpiUrgentSuffix": "{n} təcili",
-    "completionRate": "Tamamlanma faizi",
-    "remaining": "Qalıb",
-    "timeMetrics": "Zaman metrikaları",
-    "avgRouteTime": "Orta marşrut vaxtı",
-    "avgVisitTime": "Orta vizit vaxtı",
-    "minutes": "{n} dəq",
-    "hours": "{n} saat",
-    "activeAgents": "İcmal yenilənəndə yeni GPS · {minutes} dəq",
-    "dashboardSnapshotAt": "İcmal {time} vaxtında yenilənib",
-    "lastGpsAt": "{time} vaxtında ötürülüb",
-    "gpsRosterLimited": "Yenilik yoxlaması əhatədəki ilk 500 əməkdaşla məhdudlaşdırılıb.",
-    "dashboardLoadFailed": "Əsas paneli yükləmək mümkün olmadı: {error}",
-    "networkError": "Şəbəkə xətası",
-    "visitStatus": {
-      "checkedOut": "Tamamlanıb",
-      "checkedIn": "Davam edir",
-      "cancelled": "Ləğv edilib",
-      "other": "Qeydə alınıb"
-    },
-    "showOnMap": "Xəritədə göstər",
-    "noAgentsOnline": "Bu yenilik intervalında qəbul edilmiş GPS siqnalı yoxdur",
-    "loading": "Yüklənir...",
-    "colAgent": "Agent",
-    "colCustomer": "Müştəri",
-    "colStatus": "Status",
-    "colCheckIn": "Check-in",
-    "colDuration": "Müddət",
-    "noVisitsYet": "Hələ vizit yoxdur"
+    }
   },
   "mtmAnalytics": {
     "title": "Analitika"
