@@ -86,7 +86,7 @@ describe("RLS bypass classifier (totality)", () => {
   })
 
   it("public surfaces that query prisma are classified (runWithTenant or runWithRlsBypass present)", () => {
-    const roots = ["src/app/s", "src/app/f", "src/app/c", "src/app/embed", "src/app/(public)", "src/app/api/v1/public"]
+    const roots = ["src/app/s", "src/app/f", "src/app/c", "src/app/embed", "src/app/(public)", "src/app/share", "src/app/api/v1/public"]
     const files = roots.flatMap((r) => walk(r, (f) => /(page|route)\.tsx?$/.test(f)))
     const offenders = files.filter((f) => {
       const src = read(f)

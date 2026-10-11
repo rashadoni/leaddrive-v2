@@ -55,6 +55,17 @@ export const MTM_SETTING_DEFAULTS = {
   historyStopMinimumMinutes: 5,              // minimum dwell time before a stationary cluster becomes a stop
   lateAfterHour: 10,                         // local hour after which PLANNED routes flip to LATE
                                              // (TODO: lateAfterMinutesPastWorkingStart for finer control)
+  // «Ссылка на местоположение» (src/lib/mtm/location-share-link.ts): a manager
+  // makes a link on the live map, and whoever opens it — without signing in —
+  // sees where that one employee is now. OFF by default: showing a person's
+  // position outside the organization is something an organization decides to
+  // do, never something it finds switched on. Read by the managers' routes
+  // (no link is made while it is off) and by the public answer on EVERY view,
+  // so switching it off stops every link already handed out, at once — and
+  // for good: the save that switches it off revokes them all (PUT
+  // /api/v1/mtm/settings), so switching back on brings none of them back.
+  // Not an agent permission, not a menu switch, and not sent to the phone.
+  locationShareLinksEnabled: false,
 
   // Route-deviation (POST /mobile/location)
   deviationThresholdMeters: 500,             // distance from polyline that triggers alert

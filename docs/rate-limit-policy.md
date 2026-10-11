@@ -30,6 +30,8 @@ Middleware runs before every request. Listed in execution order.
 | 2 | `/api/v1/public/*` (not portal-chat) | POST | `public:<ip>` | `public` |
 | 3 | `/api/v1/public/*/portal-chat` | POST | `chat:<ip>` | `ai` |
 | 4 | `/api/v1/public/*` | GET | `pub-get:<ip>` | `api` |
+| 4a | `/api/v1/public/location-share/<token>` | GET | `share:<ip>:<sha256(token)[:16]>` | `api` |
+| 4b | `/api/v1/public/location-share/*` and `/api/v1/public/demo-access/*` | GET | `cap-addr:<ip>` | 300 req/min, asked before 4a |
 | 5 | `/api/v1/webhooks/*` (not `/manage`) | any | `webhook:<namespace>:<ip>` | `webhook` |
 | 6 | `/api/v1/calls/webhook*` | any | `webhook:calls:<ip>` | `webhook` |
 | 7 | `/api/v1/calendar/feed/*` | any | `webhook:calendar:<ip>` | `webhook` |
@@ -37,6 +39,23 @@ Middleware runs before every request. Listed in execution order.
 
 The public POST/GET rows are evaluated before the public-path early return, so
 public endpoints cannot bypass the limiter by matching `publicPaths`.
+
+Row 4a replaces row 4 for that path, it is not added to it: the answer behind
+a «ссылка на местоположение» is polled twice a minute by every open page, and
+its token is the whole secret. So the bucket is per address and per link, keyed
+by a hash of the token, and the 429 log line prints the path with the token
+replaced by `[redacted]` (the same treatment as `/api/v1/public/demo-access/`).
+A bucket per link does not hold a caller who invents a new token for every
+request: each request would open a bucket of its own, never be refused, cost
+one lookup by a unique index, and enough of them would push other buckets —
+`auth:<ip>` among them — past `MAX_KEYS` and out of the store. Row 4b is the
+ceiling for that: everything one address asks of the two answers that are
+opened by a token in the path (a location link, a demo link's lifecycle
+probe) shares `cap-addr:<ip>`, 300 a minute — 150 open pages behind one
+office address. It is asked BEFORE the per-link bucket, so a request it
+refuses creates no key, and its 429 line prints the path with the token
+replaced by `[redacted]` as well. A token that is not 64 hex characters is
+refused by the route before any lookup.
 
 `<ip>` = `x-real-ip` header (set by nginx) ⇢ last `x-forwarded-for` hop
 ⇢ `"unknown"`.
@@ -61,6 +80,7 @@ Some routes apply an additional in-route rate-limit on top of middleware:
 | `src/app/api/v1/public/portal-auth` | 5/min | hashed tenant+email principal | Password brute-force protection; middleware also applies per-IP `public` bucket |
 | `src/app/api/v1/public/web-chat/*` | `public` | per-session | Keyed by session in handler |
 | `src/app/api/v1/public/surveys/[slug]/route.ts` | `public` | per-slug | Per-survey-slug |
+| `src/app/api/v1/public/location-share/[token]/route.ts` (GET) | 30/min | `clientIp` + first 16 hex of the token's SHA-256 | Unauthenticated read of one employee's current position. An open page asks twice a minute, so 30 leaves room for a few people behind one address and stops a script hammering one link. It is also a public GET that writes (the link's view counter): that write is a conditional update, at most once a minute per link, and is listed in `public-write-rate-limit-gate.test.ts`. |
 | `src/app/api/v1/uploads/[...path]/route.ts` (GET) | 300/min | per-userId | Auth'd disk read; gallery pages fan out to 30-50 image requests per render, so headroom is set high. Throttles a logged-in scraper guessing filenames. |
 | `src/app/api/v1/mtm/photos/route.ts` (POST) | 30/min | per-agentId | Field upload bucket. Caps a compromised JWT or runaway loop from filling disk + saturating HEIC conversion. |
 | `src/app/api/v1/email-templates/upload-image/route.ts` (POST) | 30/min | per-userId | Admin-only (campaigns:write); honest editing is low-frequency. |

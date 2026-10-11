@@ -10,6 +10,7 @@ import {
   formatInTimezone,
   getOffsetMinutes,
   timezoneLabel,
+  timezoneOffsetLabel,
   dateInputValueInTimezone,
   localDateTimeToUtc,
   localDateTimeToUnambiguousUtc,
@@ -257,6 +258,46 @@ describe("P5 timezone — timezoneLabel", () => {
 
   it("returns raw key for invalid TZ", () => {
     expect(timezoneLabel("Bogus/Zone")).toBe("Bogus/Zone")
+  })
+})
+
+describe("timezoneOffsetLabel — the zone as a person says it", () => {
+  const summer = new Date(Date.UTC(2026, 6, 15, 12, 0, 0))
+  const winter = new Date(Date.UTC(2026, 0, 15, 12, 0, 0))
+
+  it("is «GMT+4», not «Asia/Baku (GMT+04:00)»: no zone name, no padded hour", () => {
+    expect(timezoneOffsetLabel("Asia/Baku", summer)).toBe("GMT+4")
+    expect(timezoneOffsetLabel("Europe/Warsaw", summer)).toBe("GMT+2")
+    expect(timezoneOffsetLabel("Asia/Kamchatka", summer)).toBe("GMT+12")
+  })
+
+  it("follows the season", () => {
+    expect(timezoneOffsetLabel("Europe/Warsaw", winter)).toBe("GMT+1")
+    expect(timezoneOffsetLabel("America/New_York", summer)).toBe("GMT-4")
+    expect(timezoneOffsetLabel("America/New_York", winter)).toBe("GMT-5")
+  })
+
+  it("keeps the minutes of a zone that has them", () => {
+    expect(timezoneOffsetLabel("Asia/Kolkata", summer)).toBe("GMT+5:30")
+    expect(timezoneOffsetLabel("America/St_Johns", summer)).toBe("GMT-2:30")
+    expect(timezoneOffsetLabel("Asia/Kathmandu", summer)).toBe("GMT+5:45")
+  })
+
+  it("says «GMT+0» for UTC and for a zone that is none", () => {
+    expect(timezoneOffsetLabel("UTC", summer)).toBe("GMT+0")
+    expect(timezoneOffsetLabel("Bogus/Zone", summer)).toBe("GMT+0")
+  })
+
+  it("is what the platform's own short offset reads — in each of the product's languages", () => {
+    for (const locale of ["ru", "en", "az"]) {
+      for (const zone of ["Asia/Baku", "UTC", "Europe/Warsaw", "Asia/Kolkata", "America/New_York", "America/St_Johns", "Pacific/Auckland"]) {
+        for (const at of [summer, winter]) {
+          const platform = new Intl.DateTimeFormat(locale, { timeZone: zone, timeZoneName: "shortOffset" })
+            .formatToParts(at).find((part) => part.type === "timeZoneName")?.value
+          expect(timezoneOffsetLabel(zone, at), `${locale} ${zone}`).toBe(platform)
+        }
+      }
+    }
   })
 })
 

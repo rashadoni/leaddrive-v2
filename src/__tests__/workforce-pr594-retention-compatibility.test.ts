@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
+import { Prisma } from "@prisma/client"
 vi.mock("@/lib/prisma", async () => {
   const { makeMtmPrismaMock } = await import("./mocks/mtm-prisma")
   return { prisma: makeMtmPrismaMock() }
@@ -56,6 +57,24 @@ describe("PR594 retention compatibility using actual history discovery and DELET
     const response = await remove()
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual({ success: true })
+    expect(prisma.mtmAgent.deleteMany).toHaveBeenCalledWith({ where: { id: "subject-a", organizationId: "org-a" } })
+  })
+  // «Ссылка на местоположение» (2026-10-10). A link to an employee's position
+  // is a row that points at him, and «history» is read from the schema — so
+  // without its line in SETUP_NOT_HISTORY an employee a manager once made a
+  // link for could never be deleted again (409 MTM_AGENT_HAS_HISTORY), and
+  // nothing else in the suite would have said so.
+  it("does not take a link to an employee's position for his work history: he is deleted, and the links go with him", async () => {
+    // The relation is there for the discovery to find…
+    const model = Prisma.dmmf.datamodel.models.find((candidate) => candidate.name === "MtmLocationShareLink")
+    expect(model?.fields.find((field) => field.type === "MtmAgent")?.relationFromFields).toEqual(["organizationId", "agentId"])
+    // …and it is named as setup, not counted as history.
+    expect(agentHistoryRelations()).not.toContainEqual({ model: "MtmLocationShareLink", field: "agentId" })
+    vi.mocked(prisma.mtmLocationShareLink.count).mockResolvedValue(3)
+    const response = await remove()
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ success: true })
+    expect(prisma.mtmLocationShareLink.count).not.toHaveBeenCalled()
     expect(prisma.mtmAgent.deleteMany).toHaveBeenCalledWith({ where: { id: "subject-a", organizationId: "org-a" } })
   })
   it("refuses deletion when the history lookup fails; no database detail crosses the HTTP boundary", async () => {

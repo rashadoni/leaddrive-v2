@@ -13,6 +13,7 @@ import { parseMtmContactClasses } from "@/lib/mtm/contact-classes"
 import { parseMtmRouteTargetTypes } from "@/lib/mtm/route-target-types"
 import { mtmSettingValuesEqual, validateMtmSettingChanges } from "@/lib/mtm/settings-validation"
 import { AGENT_PERMISSION_ADMIN_ONLY_KEYS } from "@/lib/mtm/agent-permissions"
+import { locationShareLinkAliveWhere } from "@/lib/mtm/location-share-link"
 
 const MODULE_TOGGLE_ROLES = ["admin", "superadmin"]
 // Whole-feature visibility switches. Only an administrator changes them.
@@ -173,15 +174,51 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
     // Nothing left to write (e.g. only administrator keys from a manager).
     if (Object.keys(body).length === 0) return NextResponse.json({ success: true, data: { ignoredKeys } })
 
-    const updates = Object.entries(body).map(([key, value]) => {
+    const storeSetting = (key: string, value: unknown) => {
       const jsonValue = value as Prisma.InputJsonValue
       return prisma.mtmSetting.upsert({
         where: { organizationId_key: { organizationId: orgId, key } },
         create: { organizationId: orgId, key, value: jsonValue },
         update: { value: jsonValue },
       })
-    })
-    await Promise.all(updates)
+    }
+
+    // «Ссылка на местоположение»: switching the links off ends every link
+    // already handed out, for good. Whoever switches off to stop a leak
+    // expects it to stay stopped: without this, the links whose time is not
+    // up would open again the moment somebody switched back on. So the save
+    // that turns the switch from on to off also revokes every working link
+    // of this organization — in one transaction with the switch itself:
+    // there is no «off, but the links were not ended», and a save that
+    // failed changed nothing and can simply be pressed again. After it, new
+    // links are made; nothing comes back. (The public answer still asks the
+    // switch on every view — it does not lean on these rows.)
+    //
+    // The switch first, the links second, and in that order: a link that is
+    // being made at this very moment holds the switch's row until it is
+    // committed (POST /api/v1/mtm/locations/share-links reads it FOR SHARE
+    // behind the employee's lock). This save therefore waits for that link
+    // at its first statement, and its second ends it with the rest; a
+    // creation that comes after reads «off». The other way round, the links
+    // would be ended before that one existed.
+    const endsLocationShareLinks = previous.locationShareLinksEnabled === true && body.locationShareLinksEnabled === false
+    let locationShareLinksEnded = 0
+    if (endsLocationShareLinks) {
+      const endedAt = new Date()
+      const [, ended] = await prisma.$transaction([
+        storeSetting("locationShareLinksEnabled", false),
+        prisma.mtmLocationShareLink.updateMany({
+          where: { organizationId: orgId, ...locationShareLinkAliveWhere(endedAt) },
+          data: { revokedAt: endedAt, revokedBy: auth.userId },
+        }),
+      ])
+      locationShareLinksEnded = ended.count
+    }
+    await Promise.all(
+      Object.entries(body)
+        .filter(([key]) => !(endsLocationShareLinks && key === "locationShareLinksEnabled"))
+        .map(([key, value]) => storeSetting(key, value)),
+    )
 
     // Audit only real changes: an old page's whole-object save would otherwise
     // log dozens of untouched keys. Values are compared after normalization.
@@ -198,6 +235,9 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
         ...Object.fromEntries(changedKeys.map((key) => [key, body[key]])),
         keys: changedKeys,
         actor: { userId: auth.userId, role: auth.role },
+        // How many links this save ended — the row that says who switched
+        // them off is this one; no row is written per link.
+        ...(endsLocationShareLinks ? { locationShareLinksEnded } : {}),
       },
       req,
     }).catch((e) => console.warn("[MTM/settings PUT] audit failed", e))

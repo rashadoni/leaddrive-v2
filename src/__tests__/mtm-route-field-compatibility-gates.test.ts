@@ -22,6 +22,9 @@ describe("MTM Route & Field compatibility gates", () => {
       // «Свои зоны» of the live map (2026-10-10): drawn and seen at a browser, never from the phone.
       ["src/app/api/v1/mtm/locations/zones/route.ts", ["GET", "POST"]],
       ["src/app/api/v1/mtm/locations/zones/[id]/route.ts", ["PUT", "DELETE"]],
+      // «Ссылка на местоположение» (2026-10-10): made, listed and revoked by a manager at a browser.
+      ["src/app/api/v1/mtm/locations/share-links/route.ts", ["GET", "POST"]],
+      ["src/app/api/v1/mtm/locations/share-links/[id]/route.ts", ["DELETE"]],
     ] as const) {
       const route = source(path)
       expect(route).toContain('import { withRouteFieldWebRlsAuth } from "@/lib/with-mtm-rls-auth"')

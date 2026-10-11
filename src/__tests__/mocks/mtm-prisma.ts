@@ -253,6 +253,7 @@ export interface MtmPrismaMock {
   mtmContactCreateRequest: ModelMock
   mtmDeviceToken: ModelMock
   mtmMapZone: ModelMock
+  mtmLocationShareLink: ModelMock
   mtmContactChangeRequest: ModelMock
   mtmImportJob: ModelMock
   mtmImportRowError: ModelMock
@@ -434,6 +435,7 @@ export function makeMtmPrismaMock(): MtmPrismaMock {
     mtmContactCreateRequest: makeModel(),
     mtmDeviceToken: makeModel(),
     mtmMapZone: makeModel(),
+    mtmLocationShareLink: makeModel(),
     mtmContactChangeRequest: makeModel(),
     mtmImportJob: makeModel(),
     mtmImportRowError: makeModel(),

@@ -451,6 +451,11 @@ export default function MtmSettingsPage() {
       items: [
         { key: "lateAfterHour", labelKey: "lblLateAfterHour", hintKey: "hintLateAfterHour", type: "number", unitKey: "unitHour" },
         { key: "offlineThresholdSeconds", labelKey: "lblOfflineThreshold", hintKey: "hintOfflineThreshold", type: "number", unitKey: "unitSeconds" },
+        // «Ссылка на местоположение» in an employee's card on the live map.
+        // Changed by whoever may change the rest of this card, not by an
+        // administrator alone: the account that runs the field module for a
+        // client is a CRM manager (see agentCheckInOutsideZone above).
+        { key: "locationShareLinksEnabled", labelKey: "lblLocationShareLinks", hintKey: "hintLocationShareLinks", type: "boolean" },
       ],
     },
     {

@@ -9,7 +9,7 @@
  */
 import {
   Activity, AlertTriangle, Camera, CheckCircle2, Eye, Flag, Link2, ListChecks, ListPlus, LogIn, LogOut,
-  Building2, FileUp, Hexagon, ListMinus, Megaphone, MessageSquare, Pause, PencilLine, Play, RotateCcw, Route, Send, Settings, ShieldAlert, ShieldCheck, ShoppingCart, Store,
+  Building2, FileUp, Hexagon, Link2Off, ListMinus, Megaphone, MessageSquare, Pause, PencilLine, Play, RotateCcw, Route, Send, Settings, ShieldAlert, ShieldCheck, ShoppingCart, Store,
   Trash2, UserCog, UserMinus, UserPlus, type LucideIcon,
 } from "lucide-react"
 
@@ -102,6 +102,11 @@ const META: Record<string, ActionMeta> = {
   MAP_ZONE_CREATE:     { icon: Hexagon,       tone: "emerald" },
   MAP_ZONE_UPDATE:     { icon: PencilLine,    tone: "sky" },
   MAP_ZONE_DELETE:     { icon: Trash2,        tone: "red" },
+  // 2026-10-10: «Ссылка на местоположение» — a manager let somebody outside
+  // the organization see where an employee is, and took that back. The row is
+  // about the employee (agentId), so his managers see it in the journal.
+  LOCATION_SHARE_LINK_CREATE: { icon: Link2,  tone: "violet" },
+  LOCATION_SHARE_LINK_REVOKE: { icon: Link2Off, tone: "amber" },
 }
 
 /**

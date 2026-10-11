@@ -37,6 +37,8 @@ describe("CARTO basemap configuration", () => {
       "src/components/mtm/route-map.tsx",
       "src/components/mtm/location-history-map.tsx",
       "src/components/mtm/location-picker-map.tsx",
+      // The public page of a «ссылка на местоположение».
+      "src/components/mtm/location-share-link-map.tsx",
     ]) {
       const source = readFileSync(resolve(filename), "utf8")
       expect(source).toContain('from "./carto-basemap"')

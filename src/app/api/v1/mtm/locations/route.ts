@@ -5,7 +5,16 @@ import { withRouteFieldWebRlsAuth } from "@/lib/with-mtm-rls-auth"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { addDateKeyDays, currentDateKey, isDateKey, localDateKeyToUtc } from "@/lib/mtm/mobile-week"
 import { isAgentInRouteScope, resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
-import { classifyGpsFreshness, explainMissingLocation, mapWorkdayState } from "@/lib/mtm/live-location"
+import {
+  classifyGpsFreshness,
+  explainMissingLocation,
+  isLiveMapAdmissibleLocation,
+  liveMapAdmissibleLocationWhere,
+  liveMapMaxAccuracyMeters,
+  liveMapWorkdayOf,
+  liveMapWorkdayRead,
+  mapWorkdayState,
+} from "@/lib/mtm/live-location"
 import { isLiveMapAgentPositionVisible, isLiveMapPositionVisible } from "@/lib/mtm-types"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { isValidTimezone } from "@/lib/timezone"
@@ -22,6 +31,7 @@ import { groupMtmLiveFeedAlerts } from "@/lib/mtm/live-feed-alerts"
 import { shownMtmStationarySince } from "@/lib/mtm/stationary-anchor"
 import { MTM_AGENT_WEB_ONLY_SELECT, mtmAgentNotesReader, readsMtmAgentNotes } from "@/lib/mtm/agent-tags"
 import { foldRosterText } from "@/lib/mtm/live-map-roster"
+import { locationShareLinkAccessOf, locationShareLinkContract } from "@/lib/mtm/location-share-access"
 
 const MAX_FUTURE_LOCATION_SKEW_MS = 5 * 60 * 1000
 const MAX_WEB_LOCATION_AGE_MS = 5 * 60 * 1000
@@ -213,7 +223,15 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
     const activityTomorrow = localDateKeyToUtc(tomorrowKey, timezone)
     const tenantHour = hourInTimezone(now, timezone)
 
-    const maxAccuracyMeters = Math.min(1_000, Math.max(5, settings.historyMaxAccuracyMeters))
+    const maxAccuracyMeters = liveMapMaxAccuracyMeters(settings.historyMaxAccuracyMeters)
+    // «Ссылка на местоположение» in an employee's card: named in the contract
+    // only while the organization has the links switched on, and only to a
+    // person at a browser — this wrapper also admits an integration key, and
+    // a key is let in to none of it. Absent, the page draws no block.
+    const shareLinks = locationShareLinkContract(
+      settings.locationShareLinksEnabled,
+      locationShareLinkAccessOf({ principalType: auth.principalType, role: auth.role, actor }),
+    )
 
     // The search above the list finds a person by his name — or by a label on
     // his card («стажёр», «ночная смена»). The database matches a label only
@@ -290,30 +308,18 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
         // The live marker is the newest admissible coordinate. Accuracy is a
         // quality gate/metadata field, never a reason to replace a newer point
         // with an older, prettier one. Defensive JS validation below also
-        // protects against legacy non-finite rows.
+        // protects against legacy non-finite rows. The filter and the reading
+        // of the workdays are shared with the public answer of a «ссылка на
+        // местоположение» (src/lib/mtm/live-location.ts).
         locations: {
-          where: {
-            latitude: { gte: -90, lte: 90 },
-            longitude: { gte: -180, lte: 180 },
-            OR: [
-              { accuracy: null },
-              { accuracy: { gte: 0, lte: maxAccuracyMeters } },
-            ],
-          },
+          where: liveMapAdmissibleLocationWhere(maxAccuracyMeters),
           take: 5,
           orderBy: { recordedAt: "desc" },
         },
         ...(fieldSessionEnabled ? { workdays: {
           // Keep an unfinished prior-day shift visible. Calling it "not
           // started" would hide the exact anomaly the operator must resolve.
-          where: {
-            OR: [
-              { status: { in: ["STARTED", "PAUSED"] } },
-              { workDate: routeToday },
-            ],
-          },
-          take: 2,
-          orderBy: [{ startedAt: "desc" }, { workDate: "desc" }],
+          ...liveMapWorkdayRead(routeToday),
           select: { status: true, workDate: true, startedAt: true, pausedAt: true, completedAt: true },
         } } : {}),
       },
@@ -408,19 +414,11 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
 
     // Determine field status per agent
     const agentLocations = (agents as AgentWithLocations[]).map((a) => {
-      const loc = a.locations.find((candidate: AgentLocationRow) =>
-        Number.isFinite(candidate.latitude) && candidate.latitude >= -90 && candidate.latitude <= 90 &&
-        Number.isFinite(candidate.longitude) && candidate.longitude >= -180 && candidate.longitude <= 180 &&
-        (candidate.accuracy == null || (
-          Number.isFinite(candidate.accuracy) && candidate.accuracy >= 0 && candidate.accuracy <= maxAccuracyMeters
-        )),
-      ) ?? null
+      const loc = a.locations.find((candidate: AgentLocationRow) => isLiveMapAdmissibleLocation(candidate, maxAccuracyMeters)) ?? null
       const dayRoutes = dayRoutesByAgent.get(a.id) ?? null
       const isCheckedIn = checkedInAgents.has(a.id)
       const workdays = fieldSessionEnabled ? a.workdays ?? [] : []
-      const activeWorkday = workdays.find((workday) => workday.status === "STARTED" || workday.status === "PAUSED")
-      const todayWorkday = workdays.find((workday) => workday.workDate.getTime() === routeToday.getTime())
-      const effectiveWorkday = activeWorkday ?? todayWorkday
+      const { active: activeWorkday, effective: effectiveWorkday } = liveMapWorkdayOf(workdays, routeToday)
 
       const freshness = classifyGpsFreshness(loc?.recordedAt, now, {
         onlineSeconds: settings.offlineThresholdSeconds,
@@ -606,6 +604,7 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
           // The radius a check-in is accepted in where the client has none of
           // its own: the live map draws client zones with it.
           geofenceRadiusMeters: settings.geofenceRadius,
+          ...(shareLinks ? { shareLinks } : {}),
           generatedAt: now,
           polling: { minimumIntervalSeconds: 15 },
           freshnessThresholds: {

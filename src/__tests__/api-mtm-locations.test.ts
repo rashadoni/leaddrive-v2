@@ -38,6 +38,7 @@ import { getOrgId, getSession, requireAuth } from "@/lib/api-auth"
 import { getMobileAuth, resolveMobileAuth } from "@/lib/mobile-auth"
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
 import { isMtmWebOnlyPath } from "@/lib/mtm-web-only"
+import { parseMtmLiveMapContract } from "@/lib/mtm-types"
 import { resetRateLimit } from "@/lib/rate-limit"
 
 const ORG = "org-1"
@@ -1067,6 +1068,83 @@ describe("GET /api/v1/mtm/locations", () => {
     expect(res.status).toBe(500)
     const json = await res.json()
     expect(json.error).toBe("Failed to load locations")
+  })
+
+  // «Ссылка на местоположение»: the block on an employee's card by which a
+  // manager shows his position to somebody outside the organization. The page
+  // draws it only when this answer names it — so what is pinned here is that
+  // the answer names it to nobody while the organization has it switched off,
+  // and to nobody who is let in to none of it.
+  describe("the location-link block of an employee's card", () => {
+    const switchedOn = (value: unknown = true) =>
+      vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "locationShareLinksEnabled", value }] as never)
+    const viewer = (webRole: string, card: "ADMIN" | "MANAGER" | "SUPERVISOR", principal: Record<string, unknown> = { principalType: "session" }) => {
+      vi.mocked(requireAuth).mockResolvedValue({
+        orgId: ORG, userId: "user-admin", role: webRole, email: "viewer@example.com", name: "Viewer", ...principal,
+      } as never)
+      vi.mocked(resolveMtmRouteActor).mockResolvedValue({
+        agentId: card === "ADMIN" ? null : "card-1", role: card, scopedAgentIds: card === "ADMIN" ? null : ["agent-1"],
+      })
+    }
+    const contract = async () => {
+      resetRateLimit(`mtm-live-map:${ORG}:user-admin`)
+      const response = await GET(makeReq())
+      expect(response.status).toBe(200)
+      return (await response.json()).data.contract as Record<string, unknown>
+    }
+
+    beforeEach(() => {
+      // An empty roster: the contract is what is read here. (A stub left by an
+      // earlier case in this file outlives `clearAllMocks`, so each is set.)
+      vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([] as never)
+      vi.mocked(prisma.mtmRoute.findMany).mockResolvedValue([] as never)
+      vi.mocked(prisma.mtmVisit.findMany).mockResolvedValue([] as never)
+      vi.mocked(prisma.mtmAlert.findMany).mockResolvedValue([] as never)
+      vi.mocked(prisma.mtmAgentLatestLocation.findMany).mockResolvedValue([] as never)
+    })
+    afterEach(() => {
+      // Back to an organization that has stored no setting, for the cases below.
+      vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([] as never)
+    })
+
+    it("is not named at all while the organization has not switched the links on — to an administrator either", async () => {
+      expect(await contract()).not.toHaveProperty("shareLinks")
+      for (const stored of [false, "maybe", null, 0]) {
+        switchedOn(stored)
+        expect(await contract(), String(stored)).not.toHaveProperty("shareLinks")
+      }
+    })
+
+    it("is named once the links are switched on, with whether this viewer may make and revoke one", async () => {
+      switchedOn()
+      viewer("admin", "ADMIN")
+      expect((await contract()).shareLinks).toEqual({ canWrite: true })
+      viewer("manager", "MANAGER")
+      expect((await contract()).shareLinks).toEqual({ canWrite: true })
+      // A supervisor sees who is being shown to an outsider, and decides nothing.
+      viewer("sales", "SUPERVISOR")
+      expect((await contract()).shareLinks).toEqual({ canWrite: false })
+      // A web role that may only look gets no button, whatever the MTM card says.
+      viewer("support", "MANAGER")
+      expect((await contract()).shareLinks).toEqual({ canWrite: false })
+    })
+
+    it("is never named to an integration key: the roster is its to read, the links are not", async () => {
+      switchedOn()
+      for (const principal of [{ principalType: "api_key" }, {}]) {
+        viewer("admin", "ADMIN", principal)
+        expect(await contract(), JSON.stringify(principal)).not.toHaveProperty("shareLinks")
+      }
+    })
+
+    it("reaches the page through its own parser exactly as the server said it, and not at all when the server said nothing", async () => {
+      const throughThePage = async () => parseMtmLiveMapContract(JSON.parse(JSON.stringify(await contract())))
+      expect(await throughThePage()).not.toHaveProperty("shareLinks")
+      switchedOn()
+      expect((await throughThePage())?.shareLinks).toEqual({ canWrite: true })
+      viewer("sales", "SUPERVISOR")
+      expect((await throughThePage())?.shareLinks).toEqual({ canWrite: false })
+    })
   })
 })
 

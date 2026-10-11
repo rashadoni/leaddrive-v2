@@ -742,7 +742,8 @@ describe("middleware", async () => {
   })
 
   it("isolates Demo Center lifecycle probes in the same hashed capability bucket", async () => {
-    vi.mocked(checkRateLimit).mockReturnValue(false)
+    // The link's own bucket is exhausted; the address's ceiling for all such links (asked first) is not.
+    vi.mocked(checkRateLimit).mockImplementation((key: string) => !key.startsWith("demo:"))
     const capability = "b".repeat(64)
     const req = makeReq({
       pathname: `/api/v1/public/demo-access/${capability}?probe=1`,
@@ -753,7 +754,7 @@ describe("middleware", async () => {
     const res = await authMiddleware(req)
 
     expect(res.status).toBe(429)
-    expect(vi.mocked(checkRateLimit).mock.calls[0]?.[0]).toBe("demo:203.0.113.13:hash_bbbbbbbb")
+    expect(vi.mocked(checkRateLimit).mock.calls.map((call) => call[0])).toEqual(["cap-addr:203.0.113.13", "demo:203.0.113.13:hash_bbbbbbbb"])
   })
 
   it("isolates public buckets by the client IP supplied by a trusted Cloudflare peer", async () => {
@@ -1558,6 +1559,261 @@ describe("middleware", async () => {
     })
     const res = await authMiddleware(req)
     expect(res.status).toBe(403)
+  })
+
+  // ─── «Ссылка на местоположение» ───────────────────────────
+  //
+  // A manager hands somebody a link to where one employee is right now. The
+  // page (/share/location/<token>) and the answer behind it
+  // (/api/v1/public/location-share/<token>) are opened by a person with no
+  // account — or with an account of some other organization. The token in the
+  // address is the whole secret.
+  describe("the public page of a location link", () => {
+    const token = "a".repeat(64)
+    const page = `/share/location/${token}`
+    const answer = `/api/v1/public/location-share/${token}`
+    // Signed in to an organization that has no field product at all.
+    const elsewhere = { user: { id: "u1", organizationId: "org-1", role: "manager", plan: "tier-25", addons: [], modules: { core: true } } }
+
+    it("opens without a session, and is told its own path", async () => {
+      const res = await authMiddleware(makeReq({ pathname: page, host: "app.leaddrivecrm.org", auth: null }))
+      expect(res.status).toBe(200)
+      expect(res.headers.get("location")).toBeNull()
+      expect(forwardedRequestHeader(res, "x-request-pathname")).toBe(page)
+    })
+
+    it.each([
+      "/share",
+      "/share/locations",
+      `/share/locations/${token}`,
+      `/share/location-history/${token}`,
+      `/shared/location/${token}`,
+      `/share-x/location/${token}`,
+      `/mtm/share/location/${token}`,
+    ])("leaves a look-alike behind the login: %s", async (pathname) => {
+      const res = await authMiddleware(makeReq({ pathname, host: "app.leaddrivecrm.org", auth: null }))
+      expect(res.status).toBe(307)
+      expect(res.headers.get("location")).toContain("/login")
+    })
+
+    it("lets nothing keep a copy of the page and no search engine list it — and keeps the referrer the map's tiles need", async () => {
+      const res = await authMiddleware(makeReq({ pathname: page, host: "app.leaddrivecrm.org", auth: null }))
+      expect(res.headers.get("Cache-Control")).toBe("no-store, no-cache, must-revalidate, private")
+      expect(res.headers.get("Pragma")).toBe("no-cache")
+      expect(res.headers.get("X-Robots-Tag")).toBe("noindex, nofollow")
+      // Not `no-referrer`: the CARTO key behind the tiles is restricted by
+      // referrer. This value already sends another site the origin alone.
+      expect(res.headers.get("Referrer-Policy")).toBe("strict-origin-when-cross-origin")
+      expect(res.headers.get("X-Frame-Options")).toBe("DENY")
+    })
+
+    it("does not put those headers on a page that merely sounds alike", async () => {
+      const session = { user: { id: "u1", organizationId: "org-1", role: "admin" } }
+      const res = await authMiddleware(makeReq({ pathname: "/share/locations", host: "app.leaddrivecrm.org", auth: session }))
+      expect(res.headers.get("X-Robots-Tag")).toBeNull()
+      expect(res.headers.get("Cache-Control")).toBeNull()
+    })
+
+    it("may not ask the visitor for his own location, camera or microphone — signed in or not", async () => {
+      for (const auth of [null, elsewhere, { user: { id: "u2", organizationId: "org-2", role: "superadmin" } }]) {
+        const res = await authMiddleware(makeReq({ pathname: page, host: "app.leaddrivecrm.org", auth }))
+        expect(res.status).toBe(200)
+        expect(res.headers.get("permissions-policy")).toBe("camera=(), microphone=(), geolocation=()")
+      }
+    })
+
+    it.each(["ru", "en", "az"])("is read in the language the link carries (?lang=%s), whatever the visitor's cookie says", async (lang) => {
+      const res = await authMiddleware(makeReq({
+        pathname: `${page}?lang=${lang}`,
+        host: "app.leaddrivecrm.org",
+        auth: null,
+        cookies: { NEXT_LOCALE: lang === "ru" ? "az" : "ru" },
+      }))
+      expect(res.status).toBe(200)
+      expect(forwardedRequestHeader(res, "x-locale")).toBe(lang)
+    })
+
+    it("falls back to the visitor's own language, or to the default, when the link names none that exists", async () => {
+      const withCookie = await authMiddleware(makeReq({
+        pathname: `${page}?lang=tr`, host: "app.leaddrivecrm.org", auth: null, cookies: { NEXT_LOCALE: "az" },
+      }))
+      expect(forwardedRequestHeader(withCookie, "x-locale")).toBe("az")
+      for (const query of ["?lang=tr", "?lang=", "?lang=RU", ""]) {
+        const bare = await authMiddleware(makeReq({ pathname: `${page}${query}`, host: "app.leaddrivecrm.org", auth: null }))
+        expect(bare.status).toBe(200)
+        expect(forwardedRequestHeader(bare, "x-locale"), query).toBeNull()
+      }
+    })
+
+    it("does not start honouring ?lang= on other public pages", async () => {
+      const res = await authMiddleware(makeReq({
+        pathname: "/portal/login?lang=en", host: "app.leaddrivecrm.org", auth: null, cookies: { NEXT_LOCALE: "ru" },
+      }))
+      expect(forwardedRequestHeader(res, "x-locale")).toBe("ru")
+    })
+
+    it("opens for somebody signed in to an organization without the field product — the page and the answer behind it", async () => {
+      for (const pathname of [page, answer]) {
+        const res = await authMiddleware(makeReq({ pathname, host: "app.leaddrivecrm.org", auth: elsewhere }))
+        expect(res.status, pathname).toBe(200)
+        expect(res.headers.get("location"), pathname).toBeNull()
+      }
+      // The same session is refused on the managers' own namespace, which is why the answer does not live there.
+      const managers = await authMiddleware(makeReq({ pathname: "/api/v1/mtm/locations/share-links", host: "app.leaddrivecrm.org", auth: elsewhere }))
+      expect(managers.status).toBe(403)
+    })
+
+    it("sends a link opened on the marketing host on to the app host, with its token and its language", async () => {
+      const res = await authMiddleware(makeReq({ pathname: `${page}?lang=az`, host: "leaddrivecrm.org", auth: null }))
+      expect(res.status).toBe(307)
+      expect(res.headers.get("location")).toBe(`https://app.leaddrivecrm.org${page}?lang=az`)
+    })
+
+    it("gives the answer a bucket of its own, keyed by a hash of the token — behind one ceiling per address", async () => {
+      vi.mocked(checkRateLimit).mockReturnValue(true)
+      const res = await authMiddleware(makeReq({ pathname: answer, auth: null, headers: { "x-real-ip": "203.0.113.40" } }))
+      expect(res.status).toBe(200)
+      // The address's ceiling for every such link, then the link's own bucket —
+      // and not the one every other public read of this address shares.
+      expect(vi.mocked(checkRateLimit).mock.calls).toEqual([
+        ["cap-addr:203.0.113.40", { maxRequests: 300, windowMs: 60000 }],
+        ["share:203.0.113.40:hash_aaaaaaaa", { maxRequests: 100, windowMs: 60000 }],
+      ])
+    })
+
+    it("never writes the token into the log when the link's bucket runs out", async () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+      vi.mocked(checkRateLimit).mockImplementation((key: string) => !key.startsWith("share:"))
+      const res = await authMiddleware(makeReq({ pathname: answer, auth: null, headers: { "x-real-ip": "203.0.113.40" } }))
+      expect(res.status).toBe(429)
+      expect(warnSpy).toHaveBeenCalledWith(
+        "[rate-limit-429] category=share key=share:203.0.113.40:hash_aaaaaaaa path=/api/v1/public/location-share/[redacted]",
+      )
+      expect(JSON.stringify(warnSpy.mock.calls)).not.toContain(token)
+      warnSpy.mockRestore()
+    })
+
+    it("never writes the token into the log when the address's ceiling is reached — and opens no bucket for that link", async () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+      vi.mocked(checkRateLimit).mockReturnValue(false)
+      for (const pathname of [answer, `/api/v1/public/demo-access/${"b".repeat(64)}`]) {
+        const res = await authMiddleware(makeReq({ pathname, auth: null, headers: { "x-real-ip": "203.0.113.40" } }))
+        expect(res.status, pathname).toBe(429)
+      }
+      expect(warnSpy.mock.calls.map((call) => call[0])).toEqual([
+        "[rate-limit-429] category=cap-addr key=cap-addr:203.0.113.40 path=/api/v1/public/location-share/[redacted]",
+        "[rate-limit-429] category=cap-addr key=cap-addr:203.0.113.40 path=/api/v1/public/demo-access/[redacted]",
+      ])
+      expect(JSON.stringify(warnSpy.mock.calls)).not.toMatch(/a{64}|b{64}/)
+      // Refused at the first question: the per-link bucket was never asked about, so no key was made for it.
+      expect(vi.mocked(checkRateLimit).mock.calls.map((call) => call[0])).toEqual(["cap-addr:203.0.113.40", "cap-addr:203.0.113.40"])
+      warnSpy.mockRestore()
+    })
+
+    // A bucket per link holds one link's visitors. It does not hold a caller
+    // who makes up a new token for every request: each request opened a bucket
+    // of its own, none was ever refused, each cost a lookup in the database,
+    // and ten thousand of them pushed other buckets — the login limit of the
+    // same address among them — out of the limiter's memory.
+    it("stops an address that invents tokens: the 301st different well-formed token in a minute is refused, and makes no key", async () => {
+      const real = await vi.importActual<typeof import("@/lib/rate-limit")>("@/lib/rate-limit")
+      vi.mocked(checkRateLimit).mockImplementation(real.checkRateLimit)
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+      const from = "203.0.113.42"
+      // 64 hex characters each, different in the first eight (this file's stand-in hashes those).
+      const invented = (turn: number) => `${turn.toString(16).padStart(8, "0")}${"e".repeat(56)}`
+      const ask = (turn: number, ip = from) =>
+        authMiddleware(makeReq({ pathname: `/api/v1/public/location-share/${invented(turn)}`, auth: null, headers: { "x-real-ip": ip } }))
+      try {
+        for (let turn = 1; turn <= 300; turn += 1) expect((await ask(turn)).status, `token ${turn}`).toBe(200)
+        vi.mocked(checkRateLimit).mockClear()
+
+        const refused = await ask(301)
+        expect(refused.status).toBe(429)
+        expect(await refused.json()).toEqual({ error: "Too many requests" })
+        // Only the address's ceiling was asked: nothing was stored under the 301st token.
+        expect(vi.mocked(checkRateLimit).mock.calls.map((call) => call[0])).toEqual([`cap-addr:${from}`])
+        expect(real.getRateLimitRemaining(`share:${from}:hash_${invented(301).slice(0, 8)}`, { maxRequests: 100, windowMs: 60000 })).toBe(100)
+        expect(warnSpy.mock.calls.map((call) => call[0])).toEqual([
+          `[rate-limit-429] category=cap-addr key=cap-addr:${from} path=/api/v1/public/location-share/[redacted]`,
+        ])
+        // The demo link's probes share the ceiling: the same address is refused there too…
+        const demo = await authMiddleware(makeReq({ pathname: `/api/v1/public/demo-access/${"d".repeat(64)}`, auth: null, headers: { "x-real-ip": from } }))
+        expect(demo.status).toBe(429)
+        // …every other public read is not touched by it, and neither is anybody else.
+        expect((await authMiddleware(makeReq({ pathname: "/api/v1/public/catalog", auth: null, headers: { "x-real-ip": from } }))).status).toBe(200)
+        expect((await ask(302, "203.0.113.43")).status).toBe(200)
+      } finally {
+        real.resetRateLimit(`cap-addr:${from}`)
+        real.resetRateLimit("cap-addr:203.0.113.43")
+        real.resetRateLimit(`pub-get:${from}`)
+        real.resetRateLimit(`share:203.0.113.43:hash_${invented(302).slice(0, 8)}`)
+        for (let turn = 1; turn <= 300; turn += 1) real.resetRateLimit(`share:${from}:hash_${invented(turn).slice(0, 8)}`)
+        warnSpy.mockRestore()
+      }
+    })
+
+    it("an office of people each watching a link is not that caller: 150 open pages behind one address are all answered", async () => {
+      const real = await vi.importActual<typeof import("@/lib/rate-limit")>("@/lib/rate-limit")
+      vi.mocked(checkRateLimit).mockImplementation(real.checkRateLimit)
+      const from = "203.0.113.44"
+      const link = (page: number) => `${page.toString(16).padStart(8, "0")}${"f".repeat(56)}`
+      try {
+        // Each open page asks twice a minute.
+        for (let round = 0; round < 2; round += 1) {
+          for (let page = 1; page <= 150; page += 1) {
+            const res = await authMiddleware(makeReq({ pathname: `/api/v1/public/location-share/${link(page)}`, auth: null, headers: { "x-real-ip": from } }))
+            expect(res.status, `page ${page}, request ${round + 1}`).toBe(200)
+          }
+        }
+      } finally {
+        real.resetRateLimit(`cap-addr:${from}`)
+        for (let page = 1; page <= 150; page += 1) real.resetRateLimit(`share:${from}:hash_${link(page).slice(0, 8)}`)
+      }
+    })
+
+    it("leaves the demo link's bucket and every other public read as they were", async () => {
+      vi.mocked(checkRateLimit).mockReturnValue(true)
+      await authMiddleware(makeReq({ pathname: `/api/v1/public/demo-access/${"b".repeat(64)}`, auth: null, headers: { "x-real-ip": "203.0.113.41" } }))
+      await authMiddleware(makeReq({ pathname: "/api/v1/public/catalog", auth: null, headers: { "x-real-ip": "203.0.113.41" } }))
+      // A sibling whose name merely begins the same way is an ordinary public read.
+      await authMiddleware(makeReq({ pathname: `/api/v1/public/location-shares/${token}`, auth: null, headers: { "x-real-ip": "203.0.113.41" } }))
+      expect(vi.mocked(checkRateLimit).mock.calls.map((call) => call[0])).toEqual([
+        "cap-addr:203.0.113.41",
+        "demo:203.0.113.41:hash_bbbbbbbb",
+        "pub-get:203.0.113.41",
+        "pub-get:203.0.113.41",
+      ])
+      // The demo link's events (POST) are another branch, with its own bucket only.
+      vi.mocked(checkRateLimit).mockClear()
+      await authMiddleware(makeReq({ pathname: `/api/v1/public/demo-access/${"b".repeat(64)}/events`, method: "POST", auth: null, headers: { "x-real-ip": "203.0.113.41" } }))
+      expect(vi.mocked(checkRateLimit).mock.calls.map((call) => call[0])).toEqual(["demo:203.0.113.41:hash_bbbbbbbb"])
+    })
+
+    it("does not leave the link in the cross-tenant line either, when the page is opened on another organization's host", async () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+      const res = await authMiddleware(makeReq({
+        pathname: `${page}?lang=ru`,
+        host: "afigroup.leaddrivecrm.org",
+        auth: { user: { id: "u1", organizationId: "org-leaddrive", organizationSlug: "leaddrive", role: "admin" } },
+      }))
+      expect(res.status).toBe(307)
+      expect(warnSpy.mock.calls.map((call) => call[0])).toEqual([
+        "[cross-tenant-block] session-slug=leaddrive host-slug=afigroup path=/share/location/[redacted] user=u1",
+      ])
+      expect(JSON.stringify(warnSpy.mock.calls)).not.toContain(token)
+      // An ordinary page is still named in full.
+      warnSpy.mockClear()
+      await authMiddleware(makeReq({
+        pathname: "/mtm/agents/cmuqufzve60afkp19wzxmizn7",
+        host: "afigroup.leaddrivecrm.org",
+        auth: { user: { id: "u1", organizationId: "org-leaddrive", organizationSlug: "leaddrive", role: "admin" } },
+      }))
+      expect(warnSpy.mock.calls.map((call) => call[0])).toEqual([
+        "[cross-tenant-block] session-slug=leaddrive host-slug=afigroup path=/mtm/agents/cmuqufzve60afkp19wzxmizn7 user=u1",
+      ])
+      warnSpy.mockRestore()
+    })
   })
 })
 

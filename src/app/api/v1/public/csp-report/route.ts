@@ -14,6 +14,7 @@
  */
 import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
+import { redactOpaquePathSegments } from "@/lib/opaque-path-redaction"
 
 export const runtime = "nodejs"
 
@@ -56,12 +57,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       const { directive, blocked, doc } = pick(r)
       // Drop the query string: keeps the dedup key stable and avoids logging any
       // tokens that might ride in a document URL.
-      const docPath = doc.split("?")[0]
-      const key = `${directive}|${blocked}|${docPath}`
+      //
+      // And the token that IS the path: a page opened by a link — a «ссылка на
+      // местоположение», a demo link, a document to sign — reports from an
+      // address that holds the whole secret, and this line would keep a
+      // working link to a person's position in the server log. Taken out
+      // before the key is built as well, so a thousand links to one page are
+      // one line here and not a thousand keys. The blocked address gets the
+      // same treatment: a page refused a frame is reported under its own URL.
+      const docPath = redactOpaquePathSegments(doc.split("?")[0])
+      const blockedAddress = redactOpaquePathSegments(blocked)
+      const key = `${directive}|${blockedAddress}|${docPath}`
       const n = (seen.get(key) ?? 0) + 1
       seen.set(key, n)
       if (n === 1) {
-        console.warn(`[csp-report] directive=${directive} blocked=${blocked} doc=${docPath}`)
+        console.warn(`[csp-report] directive=${directive} blocked=${blockedAddress} doc=${docPath}`)
       }
       if (seen.size > 2000) seen.clear() // safety cap against unbounded growth
     }

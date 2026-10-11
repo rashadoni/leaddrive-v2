@@ -14,6 +14,7 @@ import { clientIp } from "@/lib/request-ip"
 import { isDemoRequestApiPath, withDemoRequestCors } from "@/lib/demo-request-cors"
 import { SESSION_EXPIRED_CODE } from "@/lib/session-expired"
 import { isWithdrawnCrmPath } from "@/lib/crm-product-availability"
+import { redactOpaquePathSegments } from "@/lib/opaque-path-redaction"
 
 type SessionModuleGateUser = {
   role?: string
@@ -77,7 +78,7 @@ function sessionMtmApiBlocked(authUser: SessionModuleGateUser): boolean {
 // click redirects are loaded by unauthenticated recipients (email clients, SMS).
 // Without this, the auth middleware 307→/login and open/click/attribution silently
 // under-count. The routes themselves are RLS-context-wrapped (runWithRlsBypass).
-const publicPaths = ["/login", "/forgot-password", "/reset-password", "/api/auth", "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password", "/api/v1/auth/sms-otp", "/api/v1/public", "/api/v1/demo-request", "/api/v1/ping", "/api/v1/sign/", "/api/v1/tracking/", "/sign/", "/ticket-closure/", "/demo-access/", "/demo-open", "/portal", "/home", "/pricing", "/plans", "/features", "/demo", "/about", "/contact", "/blog", "/legal", "/landing", "/marketing", "/embed/", "/s/", "/widget.js", "/track.js", "/offline", "/c/", "/f/"]
+const publicPaths = ["/login", "/forgot-password", "/reset-password", "/api/auth", "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password", "/api/v1/auth/sms-otp", "/api/v1/public", "/api/v1/demo-request", "/api/v1/ping", "/api/v1/sign/", "/api/v1/tracking/", "/sign/", "/ticket-closure/", "/demo-access/", "/demo-open", "/portal", "/home", "/pricing", "/plans", "/features", "/demo", "/about", "/contact", "/blog", "/legal", "/landing", "/marketing", "/embed/", "/s/", "/widget.js", "/track.js", "/offline", "/c/", "/f/", "/share/location/"]
 const publicExactPaths = new Set(["/manifest.json", "/sw.js", "/unsubscribe"])
 
 /**
@@ -280,6 +281,18 @@ function withCspHeaders(response: NextResponse, nonce: string, allowSameOriginFr
     response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, private")
     response.headers.set("Pragma", "no-cache")
   }
+  // «Ссылка на местоположение» (/share/location/<token>): the page shows
+  // where a named person is right now, so nothing may keep a copy of it and
+  // no search engine may list it. Unlike the demo link above it keeps the
+  // default Referrer-Policy on purpose: the map's tiles are fetched with a
+  // CARTO key that is restricted by referrer, and `no-referrer` would leave
+  // the visitor a grey map. The default already sends other sites the origin
+  // alone, so the token in the address does not travel.
+  if (!!pathname && matchesPublicPath(pathname, "/share/location/")) {
+    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, private")
+    response.headers.set("Pragma", "no-cache")
+    response.headers.set("X-Robots-Tag", "noindex, nofollow")
+  }
   response.headers.set("X-XSS-Protection", "1; mode=block")
   const cameraPolicy = pathname === "/loyalty/pos" ? "camera=(self)" : "camera=()"
   // `pathname` is optional here — 29 of the 31 call sites omit it (marketing-host
@@ -301,6 +314,12 @@ function withCspHeaders(response: NextResponse, nonce: string, allowSameOriginFr
   response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
   return response
 }
+
+// What one address may ask, in a minute, of the answers that are opened by a
+// token in the path (a «ссылка на местоположение», a demo link) — across all
+// tokens together. An open page asks twice a minute, so this is 150 pages
+// open behind one office address; a caller making tokens up is stopped here.
+const CAPABILITY_ADDRESS_RATE_LIMIT = { maxRequests: 300, windowMs: 60_000 }
 
 // Structured one-line warning every time a 429 is returned. Format is grep-
 // friendly so operators can tail PM2 logs and spot abuse patterns per
@@ -455,8 +474,10 @@ const authMiddleware = auth(async (req) => {
         sameSite: "lax",
         httpOnly: true,
       })
+      // The path without anybody's link in it: a page opened by a token in
+      // its address (/share/location/<token>) must not leave that token here.
       console.warn(
-        `[cross-tenant-block] session-slug=${xtSessionSlug || "(none)"} host-slug=${tenantSlug} path=${pathname} user=${xtSession?.user?.id || "?"}`,
+        `[cross-tenant-block] session-slug=${xtSessionSlug || "(none)"} host-slug=${tenantSlug} path=${redactOpaquePathSegments(pathname)} user=${xtSession?.user?.id || "?"}`,
       )
       return withCspHeaders(response, nonce)
     }
@@ -561,11 +582,30 @@ const authMiddleware = auth(async (req) => {
   if (pathname.startsWith("/api/v1/public/") && req.method === "GET") {
     const ip = clientIp(req)
     const isDemoAccess = pathname.startsWith("/api/v1/public/demo-access/")
-    const capability = isDemoAccess ? pathname.split("/")[5] || pathname : null
+    // The answer behind a «ссылка на местоположение». Its token is the whole
+    // secret, exactly as a demo link's is: it gets a bucket of its own keyed
+    // by a hash (an open page asks twice a minute, and must not be starved by
+    // the web chat of the same office), and it never reaches the log below.
+    const isLocationShareLink = pathname.startsWith("/api/v1/public/location-share/")
+    const capability = isDemoAccess || isLocationShareLink ? pathname.split("/")[5] || pathname : null
+    // A bucket per link holds one link's visitors, and nobody who invents a
+    // new token for every request: each such request opened a bucket of its
+    // own, was never refused, cost a lookup in the database, and enough of
+    // them pushed other buckets — the login limit among them — out of the
+    // limiter's memory. So everything one address asks of these answers also
+    // shares one ceiling, asked FIRST: a request refused here opens no bucket.
+    if (capability && !checkRateLimit(`cap-addr:${ip}`, CAPABILITY_ADDRESS_RATE_LIMIT)) {
+      log429("cap-addr", `cap-addr:${ip}`, pathname.replace(capability, "[redacted]"))
+      return withCspHeaders(
+        NextResponse.json({ error: "Too many requests" }, { status: 429 }),
+        nonce,
+      )
+    }
     const capabilityHash = capability ? await hashForRateLimit(capability) : null
-    const key = capabilityHash ? `demo:${ip}:${capabilityHash}` : `pub-get:${ip}`
+    const category = isDemoAccess ? "demo" : isLocationShareLink ? "share" : "public-get"
+    const key = capabilityHash ? `${category}:${ip}:${capabilityHash}` : `pub-get:${ip}`
     if (!checkRateLimit(key, RATE_LIMIT_CONFIG.api)) {
-      log429(isDemoAccess ? "demo" : "public-get", key, capability ? pathname.replace(capability, "[redacted]") : pathname)
+      log429(category, key, capability ? pathname.replace(capability, "[redacted]") : pathname)
       return withCspHeaders(
         NextResponse.json({ error: "Too many requests" }, { status: 429 }),
         nonce,
@@ -582,7 +622,10 @@ const authMiddleware = auth(async (req) => {
     // late: every link otherwise renders in the request default (currently Russian). A valid legal
     // query wins over the browser cookie; malformed values fall back to the normal cookie/default.
     const localeCookie = req.cookies.get("NEXT_LOCALE")?.value
-    const legalLocaleQuery = pathname.startsWith("/legal/")
+    // A «ссылка на местоположение» carries `?lang=` for the same reason: it is
+    // the language of the manager who made it. Whoever opens it has no account
+    // and usually no language cookie, and would otherwise always read Russian.
+    const linkLocaleQuery = pathname.startsWith("/legal/") || pathname.startsWith("/share/location/")
       ? req.nextUrl.searchParams.get("lang")
       : null
     // The guided demo exists in exactly one language — the scenario's — so it
@@ -598,8 +641,8 @@ const authMiddleware = auth(async (req) => {
         ? "az"
         : null
     const publicLocale = demoLocale
-      ?? (legalLocaleQuery === "en" || legalLocaleQuery === "ru" || legalLocaleQuery === "az"
-        ? legalLocaleQuery
+      ?? (linkLocaleQuery === "en" || linkLocaleQuery === "ru" || linkLocaleQuery === "az"
+        ? linkLocaleQuery
         : localeCookie)
     if (publicLocale) {
       requestHeaders.set("x-locale", publicLocale)

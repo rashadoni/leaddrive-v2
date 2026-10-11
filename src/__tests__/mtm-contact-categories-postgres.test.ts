@@ -27,6 +27,7 @@
  * so the gate cannot go quietly green.
  */
 import { spawnSync } from "node:child_process"
+import { createHash } from "node:crypto"
 import { createRequire } from "node:module"
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
@@ -1063,5 +1064,984 @@ pgDescribe("client categories on a real Postgres", () => {
       const kept = await bypass(() => prisma.mtmMapZone.findMany({ where: { id: { startsWith: "raw-" } }, orderBy: { id: "asc" }, select: { id: true } }))
       expect(kept.map((row) => row.id)).toEqual(["raw-circle", "raw-outline"])
     })
+  })
+
+  // «Ссылка на местоположение» (2026-10-10): a manager makes a link on the
+  // live map, and whoever opens it, without signing in, sees where one
+  // employee is now. Everything that keeps this from being a hole is decided
+  // by Postgres, and a mocked Prisma shows none of it:
+  //
+  //   - the public page knows the token and nothing else, so the one lookup by
+  //     hash runs with no organization, under `app.rls_bypass`. If the policy
+  //     lacked that clause every link would be dead; if it were written
+  //     loosely, a query with no context at all would read every
+  //     organization's hashes;
+  //   - one hash must lead to one row across ALL organizations;
+  //   - the table's CHECKs are what stand between a slip in the code and a
+  //     stored link, a link that never ends, a negative count;
+  //   - a link has to leave with its employee, or he could never be deleted.
+  //
+  // `db push` knows neither the CHECKs nor the policy, so the table is
+  // replaced by the very file the deploy applies, and the real routes write
+  // to it.
+  //
+  // What the policy probes below do and do not prove. This suite's own
+  // connection is a superuser, which no policy holds — so each probe steps
+  // down, inside a transaction, to a role made here: NOSUPERUSER, NOBYPASSRLS,
+  // with nothing but DML on this one table. For that role the policy is
+  // really evaluated by Postgres: these are rows it does or does not get.
+  // FORCE is a separate matter — it changes nothing for a role that does not
+  // own the table. So one probe hands the table to that role (and rolls the
+  // handover back): the owner, too, reads nothing without a context, and with
+  // FORCE taken off he reads everything — which is what FORCE is there to stop.
+  // What stays unproven here is a fact about production, not about this file:
+  // that the application's own database role is neither a superuser nor
+  // BYPASSRLS. A role that is either is held by no policy, forced or not.
+  describe("links to an employee's position", () => {
+    const params = (id: string) => ({ params: Promise.resolve({ id }) })
+    const linksUrl = "/api/v1/mtm/locations/share-links"
+    const TABLE = "mtm_location_share_links"
+    const OTHER_ORG = "org-share-links-other"
+    const OUTSIDER = `mtm_share_link_probe_${process.pid}`
+    const sha256 = (value: string) => createHash("sha256").update(value).digest("hex")
+    const run = (sql: string) => prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, sql)
+    let shown = ""
+    let elsewhere = ""
+    let linkId = ""
+    let token = ""
+
+    /** A row written past the routes: only the table's own rules stand in its way. */
+    const insertLink = (id: string, over: { organizationId?: string; agentId?: string; tokenHash?: string; createdAt?: string; expiresAt?: string; viewCount?: number } = {}) =>
+      bypass(() => prisma.$executeRawUnsafe(
+        `INSERT INTO "${TABLE}" ("id", "organizationId", "agentId", "tokenHash", "createdAt", "expiresAt", "viewCount")
+         VALUES ('${id}', '${over.organizationId ?? ORG}', '${over.agentId ?? shown}', '${over.tokenHash ?? sha256(id)}',
+                 ${over.createdAt ?? "now()"}, ${over.expiresAt ?? "now() + interval '1 hour'"}, ${over.viewCount ?? 0})`,
+      ))
+
+    /** As much of a transaction as the probes use: raw statements on its one connection. */
+    interface RawTx {
+      $executeRawUnsafe: (sql: string, ...values: unknown[]) => Promise<number>
+      $queryRawUnsafe: <T = unknown>(sql: string, ...values: unknown[]) => Promise<T>
+      $queryRaw: <T = unknown>(query: TemplateStringsArray, ...values: unknown[]) => Promise<T>
+    }
+    class Undone extends Error {}
+    /** Runs `work` in a transaction that is always rolled back, and hands back what it returned. */
+    async function andUndo<T>(work: (tx: RawTx) => Promise<T>): Promise<T> {
+      const kept: { result?: T } = {}
+      try {
+        await prisma.$transaction(async (tx) => {
+          kept.result = await work(tx as unknown as RawTx)
+          throw new Undone()
+        })
+      } catch (error) {
+        if (!(error instanceof Undone)) throw error
+      }
+      return kept.result as T
+    }
+    /**
+     * A statement as the role that no policy exempts, with exactly the given
+     * settings and nothing else — raw SQL throughout, since a model call with
+     * no organization is refused by the client before it reaches Postgres.
+     */
+    const asOutsider = <T>(settings: { orgId?: string; bypass?: string }, sql: string, ...values: unknown[]) =>
+      andUndo(async (tx) => {
+        await tx.$executeRawUnsafe(`SET LOCAL ROLE "${OUTSIDER}"`)
+        if (settings.orgId !== undefined) await tx.$queryRaw`SELECT set_config('app.org_id', ${settings.orgId}, true)`
+        if (settings.bypass !== undefined) await tx.$queryRaw`SELECT set_config('app.rls_bypass', ${settings.bypass}, true)`
+        return tx.$queryRawUnsafe<T>(sql, ...values)
+      })
+    const found = async (settings: { orgId?: string; bypass?: string }, tokenHash: string) =>
+      (await asOutsider<Array<{ organizationId: string }>>(settings, `SELECT "organizationId" FROM "${TABLE}" WHERE "tokenHash" = $1`, tokenHash))
+        .map((row) => row.organizationId)
+
+    /**
+     * The organization's switch lives in `mtm_settings`, which `db push`
+     * builds with no policy at all. A creation reads that row by a raw
+     * statement inside its transaction; whether the statement runs inside the
+     * organization's scope shows only against the table as production guards
+     * it — so its flags and its policy are lifted from their migration.
+     */
+    function settingsTableGuard(): string {
+      const sql = readFileSync(path.join(ROOT, "prisma/migrations/20260806120000_mtm_rls_coverage_completion/migration.sql"), "utf8")
+      const guard = sql.match(/ALTER TABLE "mtm_settings" ENABLE ROW LEVEL SECURITY;\s*ALTER TABLE "mtm_settings" FORCE ROW LEVEL SECURITY;[\s\S]*?CREATE POLICY tenant_isolation ON "mtm_settings"[\s\S]*?;/)
+      if (!guard) throw new Error("the policy of mtm_settings was not found in its migration")
+      return guard[0]
+    }
+
+    beforeAll(async () => {
+      run(`DROP TABLE "${TABLE}";`)
+      run(readFileSync(path.join(ROOT, "prisma/migrations/20261010150000_mtm_location_share_links/migration.sql"), "utf8"))
+      run(settingsTableGuard())
+      // Cluster-wide, unlike the scratch database: made once, removed below.
+      run(`DO $$ BEGIN
+             IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${OUTSIDER}') THEN
+               CREATE ROLE "${OUTSIDER}" NOLOGIN NOSUPERUSER NOBYPASSRLS;
+             END IF;
+           END $$;`)
+      run(`GRANT SELECT, INSERT, UPDATE, DELETE ON "${TABLE}" TO "${OUTSIDER}";`)
+      await bypass(() => prisma.organization.create({ data: { id: OTHER_ORG, name: "Araz Logistics", slug: "share-links-other" } }))
+      shown = (await bypass(() => prisma.mtmAgent.create({ data: { organizationId: ORG, name: "Shown Courier" }, select: { id: true } }))).id
+      elsewhere = (await bypass(() => prisma.mtmAgent.create({ data: { organizationId: OTHER_ORG, name: "Courier Elsewhere" }, select: { id: true } }))).id
+    }, 120_000)
+
+    afterAll(async () => {
+      const { getSession } = await import("@/lib/api-auth")
+      vi.mocked(getSession).mockResolvedValue(null)
+      // The role outlives the scratch database unless what it was granted there is taken back first.
+      run(`DO $$ BEGIN
+             IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${OUTSIDER}') THEN
+               EXECUTE 'DROP OWNED BY "${OUTSIDER}"';
+               EXECUTE 'DROP ROLE "${OUTSIDER}"';
+             END IF;
+           END $$;`)
+    }, 60_000)
+
+    it("is switched off for an organization that never touched the setting: the real route makes nothing until the real setting is saved", async () => {
+      const { POST } = await import("@/app/api/v1/mtm/locations/share-links/route")
+      const refused = await POST(send("POST", linksUrl, { agentId: shown, duration: "1h" }))
+      expect(refused.status).toBe(403)
+      expect(await refused.json()).toMatchObject({ code: "MTM_LOCATION_SHARE_LINK_DISABLED" })
+      expect(await bypass(() => prisma.mtmLocationShareLink.count())).toBe(0)
+
+      // Switched on the way a person does it: the settings page's own save.
+      const { PUT } = await import("@/app/api/v1/mtm/settings/route")
+      const saved = await PUT(put("/api/v1/mtm/settings", { locationShareLinksEnabled: true }))
+      expect(saved.status, JSON.stringify(await saved.clone().json()).slice(0, 300)).toBe(200)
+      const { getMtmSettings } = await import("@/lib/mtm-settings")
+      const { runWithTenant } = await import("@/lib/rls-context")
+      expect((await runWithTenant(ORG, () => getMtmSettings(ORG))).locationShareLinksEnabled).toBe(true)
+      // …for this organization, and for no other.
+      expect((await runWithTenant(OTHER_ORG, () => getMtmSettings(OTHER_ORG))).locationShareLinksEnabled).toBe(false)
+    })
+
+    it("makes a link through the real route: the table keeps the SHA-256 of the token, and the list never gives either back", async () => {
+      const { GET, POST } = await import("@/app/api/v1/mtm/locations/share-links/route")
+      const before = Date.now()
+      const made = await POST(send("POST", linksUrl, { agentId: shown, duration: "1h" }))
+      const body = await made.json()
+      expect(made.status, JSON.stringify(body).slice(0, 300)).toBe(201)
+      linkId = body.data.link.id
+      token = new URL(body.data.url, "http://localhost").pathname.split("/").pop() ?? ""
+      expect(token).toMatch(/^[a-f0-9]{64}$/)
+      expect(body.data.url).toContain(`/share/location/${token}?lang=ru`)
+
+      const row = await bypass(() => prisma.mtmLocationShareLink.findUniqueOrThrow({ where: { id: linkId } }))
+      expect(row).toMatchObject({
+        organizationId: ORG, agentId: shown, tokenHash: sha256(token), createdBy: "admin-user",
+        revokedAt: null, revokedBy: null, viewCount: 0, lastViewedAt: null,
+      })
+      // Found by the hash, as the public lookup will find it — and by nothing else in the row.
+      expect((await bypass(() => prisma.mtmLocationShareLink.findUnique({ where: { tokenHash: sha256(token) }, select: { id: true } })))?.id).toBe(linkId)
+      expect(JSON.stringify(row)).not.toContain(token)
+      // The moment the manager was told is the moment the table holds, an hour on at most (less only near the organization's midnight).
+      expect(row.expiresAt.toISOString()).toBe(body.data.link.expiresAt)
+      expect(row.expiresAt.getTime()).toBeGreaterThan(row.createdAt.getTime())
+      expect(row.expiresAt.getTime() - row.createdAt.getTime()).toBeLessThanOrEqual(60 * 60 * 1000)
+      expect(row.createdAt.getTime()).toBeGreaterThanOrEqual(before)
+
+      const listed = await GET(new NextRequest(`http://localhost:3000${linksUrl}?agentId=${shown}`))
+      const listedText = await listed.text()
+      expect(listed.status, listedText.slice(0, 300)).toBe(200)
+      expect(listedText).not.toContain(token)
+      expect(listedText).not.toContain(sha256(token))
+      expect(JSON.parse(listedText).data).toEqual({
+        links: [{ ...body.data.link, createdByName: null }],
+        access: { enabled: true, canWrite: true },
+        // He has no shift yet: a link to him shows nothing at this moment.
+        showsNow: false,
+      })
+      // The journal has the row, about the employee, and nothing that opens the link.
+      const journal = await bypass(() => prisma.mtmAuditLog.findMany({ where: { organizationId: ORG, entity: "location_share_link", entityId: linkId } }))
+      expect(journal.map((entry) => [entry.action, entry.agentId, entry.actorUserId])).toEqual([["LOCATION_SHARE_LINK_CREATE", shown, "admin-user"]])
+      expect(JSON.stringify(journal)).not.toContain(token)
+      expect(JSON.stringify(journal)).not.toContain(sha256(token))
+    })
+
+    it("is a table Postgres really guards: the flags are on, and the probe role is one no policy exempts", async () => {
+      const [flags] = await bypass(() => prisma.$queryRawUnsafe<Array<{ relrowsecurity: boolean; relforcerowsecurity: boolean }>>(
+        `SELECT relrowsecurity, relforcerowsecurity FROM pg_class WHERE oid = '"${TABLE}"'::regclass`,
+      ))
+      expect(flags).toEqual({ relrowsecurity: true, relforcerowsecurity: true })
+      const [who] = await asOutsider<Array<{ name: string; rolsuper: boolean; rolbypassrls: boolean; owns: boolean }>>({}, `
+        SELECT current_user::text AS name, r.rolsuper, r.rolbypassrls,
+               (SELECT tableowner = current_user FROM pg_tables WHERE tablename = '${TABLE}') AS owns
+        FROM pg_roles r WHERE r.rolname = current_user`)
+      expect(who).toEqual({ name: OUTSIDER, rolsuper: false, rolbypassrls: false, owns: false })
+      // And this suite's own connection is exactly what such a probe must not be.
+      const [me] = await bypass(() => prisma.$queryRawUnsafe<Array<{ rolsuper: boolean }>>(`SELECT rolsuper FROM pg_roles WHERE rolname = current_user`))
+      expect(me.rolsuper).toBe(true)
+    })
+
+    it("gives the lookup by token nothing without a context, nothing under another organization, and the row under the right one or under the bypass", async () => {
+      const hash = sha256(token)
+      // A link of the other organization as well, so that «nothing» below is the policy at work and not an empty table.
+      await insertLink("theirs", { organizationId: OTHER_ORG, agentId: elsewhere })
+      const theirs = sha256("theirs")
+
+      // No setting at all: what a statement that lost its context gets.
+      expect(await found({}, hash)).toEqual([])
+      expect(await asOutsider({}, `SELECT count(*)::int AS n FROM "${TABLE}"`)).toEqual([{ n: 0 }])
+      // Another organization's context.
+      expect(await found({ orgId: OTHER_ORG }, hash)).toEqual([])
+      expect(await found({ orgId: ORG }, theirs)).toEqual([])
+      // An organization that does not exist, and an empty one.
+      expect(await found({ orgId: "no-such-organization" }, hash)).toEqual([])
+      expect(await found({ orgId: "" }, hash)).toEqual([])
+      // The right organization: its own row and only its own rows.
+      expect(await found({ orgId: ORG }, hash)).toEqual([ORG])
+      expect(await asOutsider({ orgId: ORG }, `SELECT DISTINCT "organizationId" FROM "${TABLE}"`)).toEqual([{ organizationId: ORG }])
+      expect(await found({ orgId: OTHER_ORG }, theirs)).toEqual([OTHER_ORG])
+      // The bypass, with no organization named: how the public lookup finds whose link a token is.
+      expect(await found({ bypass: "on" }, hash)).toEqual([ORG])
+      expect(await found({ bypass: "on" }, theirs)).toEqual([OTHER_ORG])
+      // It opens on the exact word and on nothing that merely looks like a yes.
+      for (const notOn of ["off", "true", "ON", "1", ""]) expect(await found({ bypass: notOn }, hash), notOn).toEqual([])
+    })
+
+    it("lets nobody write into another organization, or change its rows, from inside his own", async () => {
+      const values = (id: string, organizationId: string, agentId: string) =>
+        `INSERT INTO "${TABLE}" ("id", "organizationId", "agentId", "tokenHash", "expiresAt")
+         VALUES ('${id}', '${organizationId}', '${agentId}', '${sha256(id)}', now() + interval '1 hour')`
+      // His own organization: accepted — so what follows is refused by the policy, not by a missing grant.
+      expect(await asOutsider({ orgId: ORG }, `${values("probe-own", ORG, shown)} RETURNING "organizationId"`)).toEqual([{ organizationId: ORG }])
+      await expect(asOutsider({ orgId: ORG }, values("probe-into-theirs", OTHER_ORG, elsewhere))).rejects.toThrow(/row-level security/)
+      await expect(asOutsider({}, values("probe-no-context", ORG, shown))).rejects.toThrow(/row-level security/)
+      // Revoking, counting a view, deleting: another organization's rows are not there to be touched.
+      for (const statement of [
+        `UPDATE "${TABLE}" SET "revokedAt" = now() WHERE "id" = 'theirs' RETURNING "id"`,
+        `UPDATE "${TABLE}" SET "viewCount" = "viewCount" + 1 WHERE "tokenHash" = '${sha256("theirs")}' RETURNING "id"`,
+        `DELETE FROM "${TABLE}" WHERE "id" = 'theirs' RETURNING "id"`,
+      ]) {
+        expect(await asOutsider({ orgId: ORG }, statement), statement).toEqual([])
+        expect(await asOutsider({}, statement), statement).toEqual([])
+      }
+      // A row cannot be moved out of its organization either.
+      await expect(asOutsider({ orgId: ORG }, `UPDATE "${TABLE}" SET "organizationId" = '${OTHER_ORG}', "agentId" = '${elsewhere}' WHERE "id" = '${linkId}'`))
+        .rejects.toThrow(/row-level security/)
+      // Every probe was rolled back: the two rows are as they were.
+      const rows = await bypass(() => prisma.mtmLocationShareLink.findMany({ orderBy: { id: "asc" }, select: { id: true, organizationId: true, revokedAt: true, viewCount: true } }))
+      expect(rows).toEqual([
+        { id: linkId, organizationId: ORG, revokedAt: null, viewCount: 0 },
+        { id: "theirs", organizationId: OTHER_ORG, revokedAt: null, viewCount: 0 },
+      ].sort((left, right) => left.id.localeCompare(right.id)))
+    })
+
+    it("holds the table's owner to the policy too — that is what FORCE is for", async () => {
+      const visible = (force: boolean, settings: { orgId?: string } = {}) => andUndo(async (tx) => {
+        // Handed over for the length of this transaction only.
+        await tx.$executeRawUnsafe(`ALTER TABLE "${TABLE}" OWNER TO "${OUTSIDER}"`)
+        if (!force) await tx.$executeRawUnsafe(`ALTER TABLE "${TABLE}" NO FORCE ROW LEVEL SECURITY`)
+        await tx.$executeRawUnsafe(`SET LOCAL ROLE "${OUTSIDER}"`)
+        if (settings.orgId !== undefined) await tx.$queryRaw`SELECT set_config('app.org_id', ${settings.orgId}, true)`
+        const [row] = await tx.$queryRawUnsafe<Array<{ n: number; owns: boolean }>>(
+          `SELECT (SELECT count(*)::int FROM "${TABLE}") AS n,
+                  (SELECT tableowner = current_user FROM pg_tables WHERE tablename = '${TABLE}') AS owns`,
+        )
+        return row
+      })
+      // As the migration leaves the table: the owner, with no context, reads nothing, and with one reads his organization's row.
+      expect(await visible(true)).toEqual({ n: 0, owns: true })
+      expect(await visible(true, { orgId: ORG })).toEqual({ n: 1, owns: true })
+      // Without FORCE the same owner reads every organization's links with no context at all.
+      expect(await visible(false)).toEqual({ n: 2, owns: true })
+      // Nothing of the handover is left behind.
+      const [after] = await bypass(() => prisma.$queryRawUnsafe<Array<{ owner: string; relforcerowsecurity: boolean }>>(
+        `SELECT pg_get_userbyid(relowner)::text AS owner, relforcerowsecurity FROM pg_class WHERE oid = '"${TABLE}"'::regclass`,
+      ))
+      expect(after.owner).not.toBe(OUTSIDER)
+      expect(after.relforcerowsecurity).toBe(true)
+    })
+
+    it("one hash is one row across every organization: the same hash under another organization is refused", async () => {
+      // 23505 is Postgres's «unique violation», and it names the column that collided.
+      const collision = /23505[\s\S]*"tokenHash"/
+      await expect(insertLink("same-hash-elsewhere", { organizationId: OTHER_ORG, agentId: elsewhere, tokenHash: sha256(token) }))
+        .rejects.toThrow(collision)
+      await expect(insertLink("same-hash-here", { tokenHash: sha256(token) })).rejects.toThrow(collision)
+      // Through the client as well: the model's own unique field.
+      await expect(bypass(() => prisma.mtmLocationShareLink.create({
+        data: { organizationId: OTHER_ORG, agentId: elsewhere, tokenHash: sha256(token), expiresAt: new Date(Date.now() + 60_000) },
+      }))).rejects.toMatchObject({ code: "P2002" })
+      // The index that refuses is the one the migration made, on the hash alone.
+      const indexes = await bypass(() => prisma.$queryRawUnsafe<Array<{ indexdef: string }>>(
+        `SELECT indexdef FROM pg_indexes WHERE tablename = '${TABLE}' AND indexname = '${TABLE}_tokenHash_key'`,
+      ))
+      expect(indexes).toEqual([{ indexdef: expect.stringMatching(/CREATE UNIQUE INDEX .* \("tokenHash"\)$/) }])
+      expect(await bypass(() => prisma.mtmLocationShareLink.count({ where: { tokenHash: sha256(token) } }))).toBe(1)
+    })
+
+    it("the table itself refuses what is not a link, whoever writes it", async () => {
+      // A whole row is accepted: what follows is refused for what it is, not for a slip in the statement.
+      await insertLink("raw-whole")
+      const refusals: Array<[string, Parameters<typeof insertLink>[1], RegExp]> = [
+        ["a link itself where its hash belongs", { tokenHash: `https://app.example.test/share/location/${"a".repeat(64)}` }, /tokenHash_check/],
+        ["a hash in capitals", { tokenHash: "A".repeat(64) }, /tokenHash_check/],
+        ["a hash one character short", { tokenHash: "a".repeat(63) }, /tokenHash_check/],
+        ["a hash with something after it", { tokenHash: `${"a".repeat(64)}x` }, /tokenHash_check/],
+        ["no hash", { tokenHash: "" }, /tokenHash_check/],
+        ["a link that ends the moment it begins", { createdAt: "'2026-10-10 08:00:00'", expiresAt: "'2026-10-10 08:00:00'" }, /expiresAt_check/],
+        ["a link that ends before it begins", { expiresAt: "now() - interval '1 second'" }, /expiresAt_check/],
+        ["fewer views than none", { viewCount: -1 }, /viewCount_check/],
+        // The composite key: a link of this organization cannot show another organization's employee.
+        ["an employee of another organization", { agentId: elsewhere }, /organizationId_agentId_fkey/],
+        ["an employee who does not exist", { agentId: "nobody" }, /organizationId_agentId_fkey/],
+      ]
+      for (const [index, [what, over, constraint]] of refusals.entries()) {
+        await expect(insertLink(`raw-refused-${index}`, over), what).rejects.toThrow(constraint)
+      }
+      const kept = await bypass(() => prisma.mtmLocationShareLink.findMany({ where: { id: { startsWith: "raw-" } }, select: { id: true } }))
+      expect(kept.map((row) => row.id)).toEqual(["raw-whole"])
+    })
+
+    it("revokes through the real route by marking the row, once, and the journal says who did each thing", async () => {
+      const { GET } = await import("@/app/api/v1/mtm/locations/share-links/route")
+      const { DELETE } = await import("@/app/api/v1/mtm/locations/share-links/[id]/route")
+      const revoke = (id: string) => DELETE(new NextRequest(`http://localhost:3000${linksUrl}/${id}`, { method: "DELETE" }), params(id))
+      // Another organization's link is not there for this administrator.
+      expect((await revoke("theirs")).status).toBe(404)
+
+      const revoked = await revoke(linkId)
+      const body = await revoked.json()
+      expect(revoked.status, JSON.stringify(body).slice(0, 300)).toBe(200)
+      const row = await bypass(() => prisma.mtmLocationShareLink.findUniqueOrThrow({ where: { id: linkId } }))
+      expect(row.revokedAt).toBeInstanceOf(Date)
+      expect(row.revokedAt?.toISOString()).toBe(body.data.revokedAt)
+      expect(row).toMatchObject({ revokedBy: "admin-user", tokenHash: sha256(token) })
+      // Done once.
+      expect((await revoke(linkId)).status).toBe(404)
+      expect((await bypass(() => prisma.mtmLocationShareLink.findUniqueOrThrow({ where: { id: linkId } }))).revokedAt).toEqual(row.revokedAt)
+      expect((await bypass(() => prisma.mtmLocationShareLink.findUniqueOrThrow({ where: { id: "theirs" } }))).revokedAt).toBeNull()
+
+      const listed = await (await GET(new NextRequest(`http://localhost:3000${linksUrl}?agentId=${shown}`))).json()
+      // The revoked link stays on the card for the rest of the organization's
+      // day (the list shows today's only — and this suite may run across a midnight).
+      const { locationShareLinkTodayStartedAt } = await import("@/lib/mtm/location-share-link")
+      const madeToday = row.createdAt.getTime() >= locationShareLinkTodayStartedAt(new Date(), "Asia/Baku").getTime()
+      expect((listed.data.links as Array<{ id: string; alive: boolean }>).map((link) => [link.id, link.alive]))
+        .toEqual(expect.arrayContaining([...(madeToday ? [[linkId, false]] : []), ["raw-whole", true]]))
+      const journal = await bypass(() => prisma.mtmAuditLog.findMany({
+        where: { organizationId: ORG, entity: "location_share_link", entityId: linkId },
+        orderBy: { createdAt: "asc" },
+        select: { action: true, agentId: true, actorUserId: true, metadataKind: true },
+      }))
+      expect(journal).toEqual([
+        { action: "LOCATION_SHARE_LINK_CREATE", agentId: shown, actorUserId: "admin-user", metadataKind: "location_share_link" },
+        { action: "LOCATION_SHARE_LINK_REVOKE", agentId: shown, actorUserId: "admin-user", metadataKind: "location_share_link" },
+      ])
+    })
+
+    it("leaves with its employee: an employee who only ever had links is deleted through the real route, and his links are gone", async () => {
+      const { getSession } = await import("@/lib/api-auth")
+      vi.mocked(getSession).mockResolvedValue({ orgId: ORG, userId: "admin-user", role: "admin", email: "admin@example.com", name: "Admin" } as never)
+      const { POST } = await import("@/app/api/v1/mtm/locations/share-links/route")
+      const { DELETE } = await import("@/app/api/v1/mtm/agents/[id]/route")
+      const leaving = (await bypass(() => prisma.mtmAgent.create({ data: { organizationId: ORG, name: "Hired By Mistake" }, select: { id: true } }))).id
+      for (const duration of ["1h", "day"]) {
+        expect((await POST(send("POST", linksUrl, { agentId: leaving, duration }))).status).toBe(201)
+      }
+      const linksOf = (agentId: string) => bypass(() => prisma.mtmLocationShareLink.count({ where: { agentId } }))
+      expect(await linksOf(leaving)).toBe(2)
+      const others = await linksOf(shown)
+
+      const deleted = await DELETE(new NextRequest(`http://localhost:3000/api/v1/mtm/agents/${leaving}`, { method: "DELETE" }), params(leaving))
+      const body = await deleted.json()
+      // Not 409 MTM_AGENT_HAS_HISTORY: a link is an arrangement about him, not his work.
+      expect(deleted.status, JSON.stringify(body).slice(0, 300)).toBe(200)
+      expect(await bypass(() => prisma.mtmAgent.count({ where: { id: leaving } }))).toBe(0)
+      expect(await linksOf(leaving)).toBe(0)
+      // His, and nobody else's.
+      expect(await linksOf(shown)).toBe(others)
+      expect(await linksOf(elsewhere)).toBe(1)
+    })
+
+    // ─── No more than five, also for requests that arrive together ────────
+    //
+    // The route counts his working links and then makes one more. With those
+    // two as separate statements, requests arriving together each counted
+    // four before any had made the fifth: 8 to 12 of 12 were let in. They now
+    // take turns behind a lock per employee — which only a real Postgres can
+    // show: a mock answers `pg_advisory_xact_lock` whatever it is asked.
+    it("holds an employee to five working links when the sixth, seventh… arrive at the same instant: exactly one more is made", async () => {
+      const { POST } = await import("@/app/api/v1/mtm/locations/share-links/route")
+      const { resetRateLimit } = await import("@/lib/rate-limit")
+      const { LOCATION_SHARE_LINK_ALIVE_LIMIT } = await import("@/lib/mtm/location-share-link")
+      const working = (agentId: string) => bypass(() => prisma.mtmLocationShareLink.count({ where: { agentId, revokedAt: null, expiresAt: { gt: new Date() } } }))
+      const TOGETHER = 12
+      // The connections the burst will run on exist before it starts: a pool
+      // that opens them one by one would line the requests up by itself.
+      // (`$executeRaw`: pg_sleep returns void too.)
+      await Promise.all(Array.from({ length: TOGETHER }, () => bypass(() => prisma.$executeRawUnsafe(`SELECT pg_sleep(0.05)`))))
+
+      // Twice over, each time for an employee with no links of his own yet.
+      for (const name of ["Busy Courier", "Busier Courier"]) {
+        // A person's own allowance of changes a minute is not what is being measured here.
+        resetRateLimit(`mtm-location-share-links-write:${ORG}:admin-user`)
+        const busy = (await bypass(() => prisma.mtmAgent.create({ data: { organizationId: ORG, name }, select: { id: true } }))).id
+        for (let made = 1; made < LOCATION_SHARE_LINK_ALIVE_LIMIT; made += 1) {
+          expect((await POST(send("POST", linksUrl, { agentId: busy, duration: "1h" }))).status, `${name}: link ${made}`).toBe(201)
+        }
+        expect(await working(busy)).toBe(LOCATION_SHARE_LINK_ALIVE_LIMIT - 1)
+
+        const answers = await Promise.all(Array.from({ length: TOGETHER }, async () => {
+          const response = await POST(send("POST", linksUrl, { agentId: busy, duration: "1h" }))
+          return { status: response.status, body: await response.json() }
+        }))
+        const statuses = answers.map((answer) => answer.status).sort()
+        expect(statuses, name).toEqual([201, ...Array.from({ length: TOGETHER - 1 }, () => 409)])
+        for (const refused of answers.filter((answer) => answer.status === 409)) {
+          expect(refused.body).toMatchObject({ code: "MTM_LOCATION_SHARE_LINK_LIMIT_REACHED", limit: LOCATION_SHARE_LINK_ALIVE_LIMIT })
+        }
+        expect(await working(busy), name).toBe(LOCATION_SHARE_LINK_ALIVE_LIMIT)
+        // One token was handed out for one row: nobody holds a link the table does not know.
+        const made = answers.find((answer) => answer.status === 201)!
+        const madeToken = new URL(made.body.data.url, "http://localhost").pathname.split("/").pop() ?? ""
+        expect((await bypass(() => prisma.mtmLocationShareLink.findUnique({ where: { tokenHash: sha256(madeToken) }, select: { id: true } })))?.id).toBe(made.body.data.link.id)
+        // The journal has one row per link that exists, and none for a refusal.
+        expect(await bypass(() => prisma.mtmAuditLog.count({ where: { organizationId: ORG, agentId: busy, action: "LOCATION_SHARE_LINK_CREATE" } })))
+          .toBe(LOCATION_SHARE_LINK_ALIVE_LIMIT)
+      }
+      // Another employee's lock is another lock: his colleague's five do not stand in his way.
+      resetRateLimit(`mtm-location-share-links-write:${ORG}:admin-user`)
+      expect((await POST(send("POST", linksUrl, { agentId: shown, duration: "1h" }))).status).toBe(201)
+    }, 120_000)
+
+    // ─── What a stranger with the link is told ────────────────────────────
+    //
+    // The real handler of GET /api/v1/public/location-share/[token], over the
+    // same table and the real rows of a shift, its journal and of GPS —
+    // nothing mocked but the clock, which is held so that «fifteen minutes
+    // old» and «five minutes since the last look» are exact and the run does
+    // not depend on the hour it happens at.
+    const HOUR = 60 * 60 * 1000
+    const MINUTE = 60 * 1000
+    const SECOND = 1000
+    // Noon in Baku — the organization's zone as it ships.
+    const NOON = new Date("2026-10-12T08:00:00.000Z")
+    const after = (ms: number) => new Date(NOON.getTime() + ms)
+    const GONE = { status: 404, body: { success: false, state: "GONE" } }
+    const POINT = { latitude: 40.3777, longitude: 49.892 }
+    let watched = ""
+    let watchedToken = ""
+    let shift = ""
+
+    async function at<T>(moment: Date, work: () => Promise<T>): Promise<T> {
+      vi.useFakeTimers({ toFake: ["Date"] })
+      vi.setSystemTime(moment)
+      try {
+        return await work()
+      } finally {
+        vi.useRealTimers()
+      }
+    }
+    /** A link opened as its recipient opens it: no session, only the address. */
+    async function openLink(from = "203.0.113.50", token = watchedToken) {
+      const { GET } = await import("@/app/api/v1/public/location-share/[token]/route")
+      const response = await GET(
+        new NextRequest(`http://localhost:3000/api/v1/public/location-share/${token}`, { headers: { "x-real-ip": from } }),
+        { params: Promise.resolve({ token }) },
+      )
+      return { status: response.status, body: await response.json() }
+    }
+    const openings = () => bypass(() => prisma.mtmLocationShareLink.findUniqueOrThrow({
+      where: { id: watched },
+      select: { viewCount: true, lastViewedAt: true },
+    }))
+    const setShift = (data: { status: "STARTED" | "PAUSED" | "COMPLETED"; pausedAt?: Date | null; completedAt?: Date | null }) =>
+      bypass(() => prisma.mtmAgentWorkday.updateMany({ where: { organizationId: ORG, agentId: shown }, data }))
+    /** An entry of his shift's journal, as the phone's «перерыв» and «продолжить» leave it. */
+    const journal = (type: "PAUSE" | "RESUME", occurredAt: Date) =>
+      bypass(() => prisma.mtmAgentWorkdayEvent.create({ data: { organizationId: ORG, agentId: shown, workdayId: shift, type, occurredAt, appliedAt: occurredAt } }))
+    const report = (recordedAt: Date, where: { latitude: number; longitude: number }) =>
+      bypass(() => prisma.mtmAgentLocation.create({ data: { organizationId: ORG, agentId: shown, ...where, accuracy: 9, recordedAt } }))
+
+    /**
+     * Runs `work` with this suite's own connections switched to the role no
+     * policy exempts. The suite connects as a superuser, and Postgres holds a
+     * superuser to no policy — so a statement that ran outside its
+     * organization's scope would pass everywhere else in this file.
+     */
+    async function underNoExemption<T>(work: () => Promise<T>): Promise<T> {
+      run(`GRANT SELECT ON "mtm_agents", "organizations", "mtm_agent_workdays", "mtm_agent_workday_events", "mtm_agent_locations" TO "${OUTSIDER}";
+           GRANT SELECT, INSERT, UPDATE ON "mtm_settings", "mtm_audit_logs" TO "${OUTSIDER}";`)
+      const onAdmin = (sql: string) => prismaCli(["db", "execute", "--url", adminUrl!, "--stdin"], process.env, sql)
+      const [{ me }] = await bypass(() => prisma.$queryRawUnsafe<Array<{ me: string }>>(`SELECT session_user::text AS me`))
+      onAdmin(`ALTER ROLE "${me}" IN DATABASE "${scratch!.name}" SET role = '${OUTSIDER}';`)
+      await prisma.$disconnect()
+      try {
+        const [who] = await bypass(() => prisma.$queryRawUnsafe<Array<{ name: string; exempt: boolean }>>(
+          `SELECT current_user::text AS name, (r.rolsuper OR r.rolbypassrls) AS exempt FROM pg_roles r WHERE r.rolname = current_user`,
+        ))
+        expect(who).toEqual({ name: OUTSIDER, exempt: false })
+        return await work()
+      } finally {
+        onAdmin(`ALTER ROLE "${me}" IN DATABASE "${scratch!.name}" RESET role;`)
+        await prisma.$disconnect()
+        const [again] = await bypass(() => prisma.$queryRawUnsafe<Array<{ name: string }>>(`SELECT current_user::text AS name`))
+        expect(again.name).toBe(me)
+      }
+    }
+
+    it("tells a stranger nothing while the organization has no field product, and then exactly the point the employee's phone last reported", async () => {
+      await at(NOON, async () => {
+        const { POST } = await import("@/app/api/v1/mtm/locations/share-links/route")
+        const made = await POST(send("POST", linksUrl, { agentId: shown, duration: "1h" }))
+        const link = await made.json()
+        expect(made.status, JSON.stringify(link).slice(0, 300)).toBe(201)
+        watched = link.data.link.id
+        watchedToken = new URL(link.data.url, "http://localhost").pathname.split("/").pop() ?? ""
+        expect(link.data.link.expiresAt).toBe(after(HOUR).toISOString())
+
+        // He started at nine. His phone reported two minutes ago; a minute ago it
+        // sent one more point, too vague to be a position; and there is one from
+        // the evening before, when he was not on shift.
+        shift = (await bypass(() => prisma.mtmAgentWorkday.create({
+          data: { organizationId: ORG, agentId: shown, workDate: new Date("2026-10-12T00:00:00.000Z"), status: "STARTED", startedAt: after(-3 * HOUR) },
+          select: { id: true },
+        }))).id
+        await bypass(() => prisma.mtmAgentLocation.createMany({
+          data: [
+            { organizationId: ORG, agentId: shown, ...POINT, accuracy: 15, speed: 11, heading: 90, battery: 64, isMoving: true, recordedAt: after(-2 * MINUTE) },
+            { organizationId: ORG, agentId: shown, latitude: 40.9, longitude: 49.1, accuracy: 800, speed: 0, battery: 64, isMoving: false, recordedAt: after(-1 * MINUTE) },
+            { organizationId: ORG, agentId: shown, latitude: 40.1, longitude: 49.5, accuracy: 5, speed: 0, battery: 90, isMoving: false, recordedAt: after(-16 * HOUR) },
+          ],
+        }))
+
+        // The organization as this suite made it was never given the field product: its links open nothing.
+        expect(await openLink()).toEqual(GONE)
+        expect(await openings()).toEqual({ viewCount: 0, lastViewedAt: null })
+
+        await bypass(() => prisma.organization.update({ where: { id: ORG }, data: { modules: { "route-field": true } } }))
+        const organization = await bypass(() => prisma.organization.findUniqueOrThrow({ where: { id: ORG }, select: { name: true } }))
+        expect(await openLink()).toEqual({
+          status: 200,
+          body: {
+            success: true,
+            state: "AVAILABLE",
+            data: {
+              name: "Shown Courier",
+              organizationName: organization.name,
+              ...POINT,
+              recordedAt: after(-2 * MINUTE).toISOString(),
+              expiresAt: after(HOUR).toISOString(),
+              generatedAt: NOON.toISOString(),
+              timezone: "Asia/Baku",
+            },
+          },
+        })
+        expect(await openings()).toEqual({ viewCount: 1, lastViewedAt: NOON })
+
+        // The managers' list tells the card the same thing at the same moment: a link to him shows a point now.
+        const { GET } = await import("@/app/api/v1/mtm/locations/share-links/route")
+        const listed = await (await GET(new NextRequest(`http://localhost:3000${linksUrl}?agentId=${shown}`))).json()
+        expect(listed.data.showsNow).toBe(true)
+        expect(listed.data.links.find((one: { id: string }) => one.id === watched)).toMatchObject({ alive: true, viewCount: 1 })
+      })
+    })
+
+    it("counts a page left open as one opening, and a look after five minutes of silence as the next — also when two people look at the same instant", async () => {
+      // The page's own refresh half a minute later writes nothing.
+      await at(after(30 * SECOND), async () => expect((await openLink()).status).toBe(200))
+      expect(await openings()).toEqual({ viewCount: 1, lastViewedAt: NOON })
+      // A minute on it is the same visitor still: «последний раз» moves, the count does not.
+      await at(after(MINUTE), async () => expect((await openLink()).status).toBe(200))
+      expect(await openings()).toEqual({ viewCount: 1, lastViewedAt: after(MINUTE) })
+      // Both read the row before either writes to it: each handler has five
+      // more reads to make first. Postgres lets one of the two updates through.
+      const both = () => Promise.all([openLink(), openLink("203.0.113.51")])
+      await at(after(3 * MINUTE), async () => {
+        expect((await both()).map((answer) => [answer.status, answer.body.state])).toEqual([[200, "AVAILABLE"], [200, "AVAILABLE"]])
+      })
+      expect(await openings()).toEqual({ viewCount: 1, lastViewedAt: after(3 * MINUTE) })
+      // Nobody asks for five minutes. Then two people at once: one new opening, not two.
+      await at(after(8 * MINUTE), async () => {
+        expect((await both()).map((answer) => answer.status)).toEqual([200, 200])
+      })
+      expect(await openings()).toEqual({ viewCount: 2, lastViewedAt: after(8 * MINUTE) })
+      // Nobody else's link was counted with it.
+      expect(await bypass(() => prisma.mtmLocationShareLink.count({ where: { id: { not: watched }, viewCount: { gt: 0 } } }))).toBe(0)
+    })
+
+    it("says nothing of where he is during a break — nor, after it, of where he spent it", async () => {
+      const lunchPlace = { latitude: 40.2, longitude: 49.6 }
+      const backAtWork = { latitude: 40.39, longitude: 49.84 }
+      await at(after(10 * MINUTE), async () => {
+        const organization = await bypass(() => prisma.organization.findUniqueOrThrow({ where: { id: ORG }, select: { name: true } }))
+        const nothingToShow = {
+          status: 200,
+          body: {
+            success: true,
+            state: "UNAVAILABLE",
+            data: {
+              name: "Shown Courier", organizationName: organization.name,
+              expiresAt: after(HOUR).toISOString(), generatedAt: after(10 * MINUTE).toISOString(), timezone: "Asia/Baku",
+            },
+          },
+        }
+        // He pressed «перерыв» a minute and a half ago. His phone went on
+        // reporting through a door that does not refuse a break's points
+        // (the batch ingestion, «поделиться своим местоположением»).
+        await setShift({ status: "PAUSED", pausedAt: after(8 * MINUTE + 30 * SECOND) })
+        await journal("PAUSE", after(8 * MINUTE + 30 * SECOND))
+        await report(after(9 * MINUTE), lunchPlace)
+        // The link works; there is no point in the answer, and no word about why.
+        expect(await openLink()).toEqual(nothingToShow)
+        const { GET } = await import("@/app/api/v1/mtm/locations/share-links/route")
+        const told = async () => (await (await GET(new NextRequest(`http://localhost:3000${linksUrl}?agentId=${shown}`))).json()).data.showsNow
+        expect(await told()).toBe(false)
+
+        await setShift({ status: "COMPLETED", pausedAt: null, completedAt: after(9 * MINUTE) })
+        expect((await openLink()).body.state).toBe("UNAVAILABLE")
+
+        // «Продолжить», half a minute ago. The newest point the table holds
+        // of him is the one from the break, a minute old — and it is not shown.
+        await journal("RESUME", after(9 * MINUTE + 30 * SECOND))
+        await setShift({ status: "STARTED", pausedAt: null, completedAt: null })
+        expect(await openLink()).toEqual(nothingToShow)
+        expect(await told()).toBe(false)
+
+        // The phone reports from where he is now: that, and only that, is shown.
+        await report(after(9 * MINUTE + 45 * SECOND), backAtWork)
+        expect((await openLink()).body).toMatchObject({ state: "AVAILABLE", data: { ...backAtWork, recordedAt: after(9 * MINUTE + 45 * SECOND).toISOString() } })
+        expect(await told()).toBe(true)
+      })
+    })
+
+    it("answers the same to a database role no policy exempts: the lookup by token goes through the bypass, everything after it through the organization", async () => {
+      const { runWithTenant } = await import("@/lib/rls-context")
+      const byToken = () => prisma.mtmLocationShareLink.findUnique({ where: { tokenHash: sha256(watchedToken) }, select: { id: true } })
+      await underNoExemption(async () => {
+        // The client's own contexts, as the handler uses them: another
+        // organization's finds nothing, the right one and the bypass find the link.
+        expect(await runWithTenant(OTHER_ORG, byToken)).toBeNull()
+        expect(await runWithTenant(ORG, byToken)).toEqual({ id: watched })
+        expect(await bypass(byToken)).toEqual({ id: watched })
+
+        const before = await openings()
+        await at(after(16 * MINUTE), async () => {
+          expect(await openLink("203.0.113.52")).toMatchObject({
+            status: 200,
+            body: { success: true, state: "AVAILABLE", data: { name: "Shown Courier", latitude: 40.39, longitude: 49.84, recordedAt: after(9 * MINUTE + 45 * SECOND).toISOString() } },
+          })
+        })
+        // Six minutes after the last look: a new opening, written too — an UPDATE the policy had to let through.
+        expect(await openings()).toEqual({ viewCount: before.viewCount + 1, lastViewedAt: after(16 * MINUTE) })
+      })
+    }, 120_000)
+
+    // ─── Switching the links off ──────────────────────────────────────────
+    //
+    // Decision of 2026-10-11: off ends every link already handed out, for
+    // good. An administrator who switches off to stop a leak expects it to
+    // stay stopped; switching on again an hour later must bring nothing back.
+
+    it("a save that cannot end the links does not switch them off either: nothing is half done, and the link goes on working", async () => {
+      const { PUT } = await import("@/app/api/v1/mtm/settings/route")
+      const { getMtmSettings } = await import("@/lib/mtm-settings")
+      const { runWithTenant } = await import("@/lib/rls-context")
+      // The table refuses every change to a link, as a database in trouble would.
+      run(`CREATE FUNCTION mtm_share_link_refuse_${process.pid}() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'links cannot be written right now'; END $$;
+           CREATE TRIGGER refuse_writes BEFORE UPDATE ON "${TABLE}" FOR EACH ROW EXECUTE FUNCTION mtm_share_link_refuse_${process.pid}();`)
+      try {
+        await at(after(17 * MINUTE), async () => {
+          const refused = await PUT(put("/api/v1/mtm/settings", { locationShareLinksEnabled: false }))
+          expect(refused.status).toBe(400)
+          // Still on — the switch and the links are one transaction — and the link still opens.
+          expect((await runWithTenant(ORG, () => getMtmSettings(ORG))).locationShareLinksEnabled).toBe(true)
+          expect((await bypass(() => prisma.mtmLocationShareLink.findUniqueOrThrow({ where: { id: watched } }))).revokedAt).toBeNull()
+          expect((await openLink("203.0.113.55")).body.state).toBe("AVAILABLE")
+        })
+      } finally {
+        run(`DROP TRIGGER refuse_writes ON "${TABLE}";
+             DROP FUNCTION mtm_share_link_refuse_${process.pid}();`)
+      }
+    }, 120_000)
+
+    it("switched off, every working link of the organization is ended for good: on again it is STILL gone, and a link made afterwards works", async () => {
+      const { PUT } = await import("@/app/api/v1/mtm/settings/route")
+      const { POST } = await import("@/app/api/v1/mtm/locations/share-links/route")
+      // Another organization's link that works at this hour, and one of this organization's whose time is long up.
+      await insertLink("theirs-working", { organizationId: OTHER_ORG, agentId: elsewhere, createdAt: `'${NOON.toISOString()}'`, expiresAt: `'${after(2 * HOUR).toISOString()}'` })
+      await insertLink("ours-ran-out", { createdAt: `'${after(-2 * HOUR).toISOString()}'`, expiresAt: `'${after(-1 * HOUR).toISOString()}'` })
+      const rowOf = (id: string) => bypass(() => prisma.mtmLocationShareLink.findUniqueOrThrow({ where: { id }, select: { revokedAt: true, revokedBy: true } }))
+
+      // As the role no policy exempts: the statement that ends the links has to
+      // run inside its organization's scope, or it would find no row to end.
+      await underNoExemption(() => at(after(18 * MINUTE), async () => {
+        expect((await openLink("203.0.113.56")).body.state).toBe("AVAILABLE")
+        const working = await bypass(() => prisma.mtmLocationShareLink.count({ where: { organizationId: ORG, revokedAt: null, expiresAt: { gt: after(18 * MINUTE) } } }))
+        expect(working).toBeGreaterThanOrEqual(1)
+        const counted = await openings()
+
+        // Switched off the way a person does it: the settings page's own save.
+        const off = await PUT(put("/api/v1/mtm/settings", { locationShareLinksEnabled: false }))
+        expect(off.status, JSON.stringify(await off.clone().json()).slice(0, 300)).toBe(200)
+        expect(await openLink("203.0.113.56")).toEqual(GONE)
+        // A link that does not work is not «opened».
+        expect(await openings()).toEqual(counted)
+        // Ended in the table, at that moment, by whoever saved…
+        expect(await rowOf(watched)).toEqual({ revokedAt: after(18 * MINUTE), revokedBy: "admin-user" })
+        expect(await bypass(() => prisma.mtmLocationShareLink.count({ where: { organizationId: ORG, revokedAt: null, expiresAt: { gt: after(18 * MINUTE) } } }))).toBe(0)
+        // …this organization's working links only: not one whose time was up, not another organization's.
+        expect(await rowOf("ours-ran-out")).toEqual({ revokedAt: null, revokedBy: null })
+        expect(await rowOf("theirs-working")).toEqual({ revokedAt: null, revokedBy: null })
+        // The journal's one row for the save says how many; there is no row per link.
+        const [saved] = await bypass(() => prisma.mtmAuditLog.findMany({
+          where: { organizationId: ORG, action: "SETTINGS_UPDATE" }, orderBy: { createdAt: "desc" }, take: 1, select: { newData: true, actorUserId: true },
+        }))
+        expect(saved).toMatchObject({ actorUserId: "admin-user", newData: { locationShareLinksEnabled: false, locationShareLinksEnded: working } })
+        expect(await bypass(() => prisma.mtmAuditLog.count({ where: { organizationId: ORG, entityId: watched, action: "LOCATION_SHARE_LINK_REVOKE" } }))).toBe(0)
+
+        // Switched back on: nothing comes back.
+        expect((await PUT(put("/api/v1/mtm/settings", { locationShareLinksEnabled: true }))).status).toBe(200)
+        expect(await openLink("203.0.113.56")).toEqual(GONE)
+        expect(await rowOf(watched)).toEqual({ revokedAt: after(18 * MINUTE), revokedBy: "admin-user" })
+        // The managers' list shows it as one that no longer works.
+        const { GET } = await import("@/app/api/v1/mtm/locations/share-links/route")
+        const listed = await (await GET(new NextRequest(`http://localhost:3000${linksUrl}?agentId=${shown}`))).json()
+        expect(listed.data.links.find((one: { id: string }) => one.id === watched)).toMatchObject({ alive: false, revokedAt: after(18 * MINUTE).toISOString() })
+
+        // A link made now is a new link, and it works.
+        const dead = watchedToken
+        const made = await POST(send("POST", linksUrl, { agentId: shown, duration: "1h" }))
+        const link = await made.json()
+        expect(made.status, JSON.stringify(link).slice(0, 300)).toBe(201)
+        watched = link.data.link.id
+        watchedToken = new URL(link.data.url, "http://localhost").pathname.split("/").pop() ?? ""
+        expect(watchedToken).not.toBe(dead)
+        expect((await openLink("203.0.113.56")).body).toMatchObject({ state: "AVAILABLE", data: { latitude: 40.39, longitude: 49.84, expiresAt: after(HOUR + 18 * MINUTE).toISOString() } })
+        expect(await openLink("203.0.113.56", dead)).toEqual(GONE)
+      }))
+      // The other organization's link was never this save's to touch — also when its own switch is looked at.
+      expect((await bypass(() => prisma.mtmLocationShareLink.findUniqueOrThrow({ where: { id: "theirs-working" } }))).revokedAt).toBeNull()
+    }, 120_000)
+
+    it("stops at the moment its time is up, and at once when it is revoked", async () => {
+      // The link made after the switch came back on: an hour from 12:18.
+      const ends = after(HOUR + 18 * MINUTE)
+      // A millisecond before its time the link still works — though by then
+      // the point is an hour old and is not shown.
+      expect(await at(new Date(ends.getTime() - 1), () => openLink())).toMatchObject({ status: 200, body: { state: "UNAVAILABLE" } })
+      const counted = await openings()
+      expect(await at(ends, () => openLink())).toEqual(GONE)
+      expect(await at(new Date(ends.getTime() + HOUR), () => openLink())).toEqual(GONE)
+      expect(await openings()).toEqual(counted)
+
+      // Back within its time, with a fresh point: it works — until it is revoked through the real route.
+      await at(after(30 * MINUTE), async () => {
+        await bypass(() => prisma.mtmAgentLocation.create({
+          data: { organizationId: ORG, agentId: shown, latitude: 40.41, longitude: 49.87, accuracy: 9, recordedAt: after(29 * MINUTE) },
+        }))
+        expect((await openLink("203.0.113.53")).body).toMatchObject({ state: "AVAILABLE", data: { latitude: 40.41, longitude: 49.87 } })
+        const { DELETE } = await import("@/app/api/v1/mtm/locations/share-links/[id]/route")
+        const revoked = await DELETE(new NextRequest(`http://localhost:3000${linksUrl}/${watched}`, { method: "DELETE" }), params(watched))
+        expect(revoked.status).toBe(200)
+        expect(await openLink("203.0.113.53")).toEqual(GONE)
+      })
+      // Revoked is revoked: at no later or earlier moment does it open again.
+      expect(await at(after(31 * MINUTE), () => openLink("203.0.113.54"))).toEqual(GONE)
+    })
+
+    // ─── Switched off while a link is being made ──────────────────────────
+    //
+    // A creation looks at the switch, then waits for the employee's lock,
+    // then inserts. A save that switched the links off inside that wait had
+    // ended every link there was and gone — and the creation then made one
+    // more, ended by nobody: gone while off, working again the moment the
+    // switch came back on (found on 2026-10-11 by holding the lock the way
+    // the first case below does). The creation now reads the switch once
+    // more behind the lock and holds its row, so that the save and the
+    // creation take turns. Neither turn can be shown by a mock: it takes two
+    // sessions of a real Postgres, one of them stopped half-way by a third.
+
+    /** Sessions of this database that stand in a queue right now: for an advisory lock, or for a row another session holds. */
+    const queued = async (what: "advisory" | "row") => {
+      const [{ n }]: Array<{ n: number }> = await bypass(() => prisma.$queryRawUnsafe(
+        `SELECT count(DISTINCT l.pid)::int AS n
+         FROM pg_locks l JOIN pg_stat_activity a ON a.pid = l.pid
+         WHERE a.datname = current_database() AND NOT l.granted
+           AND l.locktype IN (${what === "advisory" ? "'advisory'" : "'transactionid', 'tuple'"})`,
+      ))
+      return n
+    }
+    /**
+     * Waits for what another session is about to do, and says what never
+     * happened instead of hanging. By the steady clock: the calendar one is
+     * held still here. Shorter than the five seconds a creation's own
+     * transaction is given, so a wait that fails does so by its own name.
+     */
+    async function until(happened: () => Promise<boolean>, what: string) {
+      const started = performance.now()
+      while (!(await happened())) {
+        if (performance.now() - started > 4_000) throw new Error(`never happened: ${what}`)
+        await new Promise((resolve) => setTimeout(resolve, 10))
+      }
+    }
+    /**
+     * Another session — a colleague's request half-way through — that keeps
+     * what `take` took until it is let go. Nothing of it is left afterwards.
+     */
+    async function heldByAnotherSession(take: (tx: RawTx) => Promise<unknown>) {
+      let letGo: () => void = () => {}
+      const lettingGo = new Promise<void>((resolve) => { letGo = resolve })
+      let taken: () => void = () => {}
+      let refused: (error: unknown) => void = () => {}
+      const holding = new Promise<void>((resolve, reject) => { taken = resolve; refused = reject })
+      const session = bypass(() => prisma.$transaction(async (tx: unknown) => {
+        await take(tx as RawTx)
+        taken()
+        await lettingGo
+      }, { timeout: 60_000, maxWait: 20_000 }))
+      session.catch(refused)
+      await holding
+      return async () => {
+        letGo()
+        await session
+      }
+    }
+    const switchLinks = async (on: boolean) => {
+      const { PUT } = await import("@/app/api/v1/mtm/settings/route")
+      return PUT(put("/api/v1/mtm/settings", { locationShareLinksEnabled: on }))
+    }
+    const linksOfOrganization = (working: boolean) => bypass(() => prisma.mtmLocationShareLink.count({
+      where: { organizationId: ORG, ...(working ? { revokedAt: null, expiresAt: { gt: new Date() } } : {}) },
+    }))
+    const tokenIn = (body: { data?: { url?: unknown } } | null) =>
+      typeof body?.data?.url === "string" ? new URL(body.data.url, "http://localhost").pathname.split("/").pop() ?? "" : ""
+
+    it("keeps the organization's switch in a table Postgres guards as production does — the reads of it above ran against that policy", async () => {
+      const [flags]: Array<{ relrowsecurity: boolean; relforcerowsecurity: boolean }> = await bypass(() => prisma.$queryRawUnsafe(
+        `SELECT relrowsecurity, relforcerowsecurity FROM pg_class WHERE oid = '"mtm_settings"'::regclass`,
+      ))
+      expect(flags).toEqual({ relrowsecurity: true, relforcerowsecurity: true })
+      // The role no policy exempts (the save and the creation ran as it two cases up) reads the row inside its organization and nowhere else.
+      run(`GRANT SELECT, UPDATE ON "mtm_settings" TO "${OUTSIDER}";`)
+      const switchOf = (settings: { orgId?: string }) => asOutsider<Array<{ value: unknown }>>(
+        settings, `SELECT "value" FROM "mtm_settings" WHERE "key" = 'locationShareLinksEnabled' FOR SHARE`,
+      )
+      expect(await switchOf({ orgId: ORG })).toEqual([{ value: true }])
+      expect(await switchOf({ orgId: OTHER_ORG })).toEqual([])
+      expect(await switchOf({})).toEqual([])
+    })
+
+    it("a link being made at the moment the links are switched off is not made: behind the employee's lock the creation asks the switch again", async () => {
+      const { POST } = await import("@/app/api/v1/mtm/locations/share-links/route")
+      const { resetRateLimit } = await import("@/lib/rate-limit")
+      resetRateLimit(`mtm-location-share-links-write:${ORG}:admin-user`)
+      const journalled = () => bypass(() => prisma.mtmAuditLog.count({ where: { organizationId: ORG, agentId: shown, action: "LOCATION_SHARE_LINK_CREATE" } }))
+
+      await at(after(40 * MINUTE), async () => {
+        expect((await switchLinks(true)).status).toBe(200)
+        const before = { rows: await linksOfOrganization(false), journalled: await journalled() }
+
+        // A colleague's request holds this employee's lock: the creation has
+        // looked at the switch — on — and now stands between that look and its insert.
+        const letGo = await heldByAnotherSession((tx) => tx.$executeRawUnsafe(
+          `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, `mtm-location-share-link:${ORG}:${shown}`,
+        ))
+        const creating = POST(send("POST", linksUrl, { agentId: shown, duration: "1h" }))
+        let off: Response | null = null
+        let workingRightAfterOff: number | null = null
+        try {
+          await until(async () => (await queued("advisory")) >= 1, "the creation came to wait for the employee's lock")
+          // Switched off meanwhile, the way a person does it: the settings page's own save. It waits for nobody.
+          off = await switchLinks(false)
+          workingRightAfterOff = await linksOfOrganization(true)
+        } finally {
+          await letGo()
+          await creating.catch(() => null)
+        }
+        const made = await creating
+        const body = await made.json()
+        const handedOver = tokenIn(body)
+        const workingAfterCreation = await linksOfOrganization(true)
+
+        // Switched on again.
+        const on = await switchLinks(true)
+        expect({
+          off: off?.status,
+          workingRightAfterOff,
+          creation: made.status,
+          rowsAdded: (await linksOfOrganization(false)) - before.rows,
+          journalRowsAdded: (await journalled()) - before.journalled,
+          workingAfterCreation,
+          on: on.status,
+          workingAfterOnAgain: await linksOfOrganization(true),
+          // Were a link handed over all the same, this is where it would open.
+          handedOverLinkOpens: handedOver ? (await openLink("203.0.113.60", handedOver)).status : "no link was handed over",
+        }).toEqual({
+          off: 200,
+          workingRightAfterOff: 0,
+          creation: 403,
+          rowsAdded: 0,
+          journalRowsAdded: 0,
+          workingAfterCreation: 0,
+          on: 200,
+          workingAfterOnAgain: 0,
+          handedOverLinkOpens: "no link was handed over",
+        })
+        // The same answer as a creation that found the links off at the door.
+        expect(body).toEqual({
+          error: "The organization has location links switched off",
+          code: "MTM_LOCATION_SHARE_LINK_DISABLED",
+          setting: "locationShareLinksEnabled",
+        })
+      })
+    }, 120_000)
+
+    it("and one that got to the switch first is ended by that very save: the save waits for the link to be made, then ends it with the rest", async () => {
+      const { POST } = await import("@/app/api/v1/mtm/locations/share-links/route")
+      const { resetRateLimit } = await import("@/lib/rate-limit")
+      resetRateLimit(`mtm-location-share-links-write:${ORG}:admin-user`)
+
+      await at(after(45 * MINUTE), async () => {
+        expect((await switchLinks(true)).status).toBe(200)
+        const workingBefore = await linksOfOrganization(true)
+
+        // A colleague's request holds the employee's own row: the creation
+        // gets through the lock and the switch — on, its row now held — and
+        // stops at the insert, which has to look that employee up.
+        const letGo = await heldByAnotherSession((tx) => tx.$queryRawUnsafe(
+          `SELECT 1 AS held FROM "mtm_agents" WHERE "organizationId" = $1 AND "id" = $2 FOR UPDATE`, ORG, shown,
+        ))
+        const creating = POST(send("POST", linksUrl, { agentId: shown, duration: "1h" }))
+        let saving: Promise<Response> | null = null
+        let saved = false
+        try {
+          await until(async () => (await queued("row")) >= 1, "the creation came to wait at its insert")
+          saving = switchLinks(false).finally(() => { saved = true })
+          // The save has to wait for the row the creation holds. (Were the row
+          // not held, the save would be through by now — and what follows would say so.)
+          await until(async () => saved || (await queued("row")) >= 2, "the save either waited for the creation or went past it")
+        } finally {
+          await letGo()
+          await creating.catch(() => null)
+          await saving?.catch(() => null)
+        }
+        const made = await creating
+        const body = await made.json()
+        expect(made.status, JSON.stringify(body).slice(0, 300)).toBe(201)
+        const madeToken = tokenIn(body)
+        expect(madeToken).toMatch(/^[a-f0-9]{64}$/)
+        const off = await saving
+        expect(off?.status, JSON.stringify(await off?.clone().json()).slice(0, 300)).toBe(200)
+
+        // The link was made — and ended by the save that had been waiting for it, at that save's own moment, by whoever saved.
+        const row = () => bypass(() => prisma.mtmLocationShareLink.findUniqueOrThrow({ where: { id: body.data.link.id }, select: { revokedAt: true, revokedBy: true } }))
+        expect(await row()).toEqual({ revokedAt: after(45 * MINUTE), revokedBy: "admin-user" })
+        expect(await linksOfOrganization(true)).toBe(0)
+        // The journal's row for the save counts it with the rest.
+        const [journal] = await bypass(() => prisma.mtmAuditLog.findMany({
+          where: { organizationId: ORG, action: "SETTINGS_UPDATE" }, orderBy: { createdAt: "desc" }, take: 1, select: { newData: true },
+        }))
+        expect(journal.newData).toMatchObject({ locationShareLinksEnabled: false, locationShareLinksEnded: workingBefore + 1 })
+        expect(await openLink("203.0.113.61", madeToken)).toEqual(GONE)
+
+        // Switched on again: it stays ended.
+        expect((await switchLinks(true)).status).toBe(200)
+        expect(await openLink("203.0.113.62", madeToken)).toEqual(GONE)
+        expect(await row()).toEqual({ revokedAt: after(45 * MINUTE), revokedBy: "admin-user" })
+        expect(await linksOfOrganization(true)).toBe(0)
+      })
+    }, 120_000)
   })
 })

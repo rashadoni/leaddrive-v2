@@ -11,8 +11,14 @@
  * Pure: no React, no storage. The page reads and writes the string.
  */
 
-/** Every block the card can have, in the order a new person sees them. */
-export const CARD_BLOCKS = ["events", "route", "day", "device"] as const
+/**
+ * Every block the card can have, in the order a new person sees them.
+ *
+ * «share» — «Ссылка на местоположение» — is last, and the card has it only
+ * where the organization switched the links on: for everybody else it is
+ * neither drawn nor offered in «Настроить карточку».
+ */
+export const CARD_BLOCKS = ["events", "route", "day", "device", "share"] as const
 export type CardBlockId = typeof CARD_BLOCKS[number]
 
 export interface CardLayout {
