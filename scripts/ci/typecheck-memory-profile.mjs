@@ -99,6 +99,15 @@ const bucketOf = (file) => {
   return parts.slice(0, Math.min(parts.length - 1, 2)).join("/") || file
 }
 
+const share = (part, whole) => `${((part / Math.max(whole, 1)) * 100).toFixed(1)}%`
+const table = (title, rows, columns) => {
+  console.log(`\n${title}`)
+  console.log(columns.map((column) => column.name.padStart(column.width)).join(" "))
+  for (const row of rows) {
+    console.log(columns.map((column) => String(column.value(row)).padStart(column.width)).join(" "))
+  }
+}
+
 const sourceFiles = program.getSourceFiles()
 const declarationBytes = new Map()
 for (const sourceFile of sourceFiles) {
@@ -106,6 +115,16 @@ for (const sourceFile of sourceFiles) {
   const bucket = bucketOf(relative(sourceFile.fileName))
   declarationBytes.set(bucket, (declarationBytes.get(bucket) ?? 0) + sourceFile.text.length)
 }
+// Printed before the check starts: if the compiler runs out of memory half
+// way, everything above this line has still been said.
+table(
+  "Declaration files by size (parsed and bound whether or not anything uses them)",
+  [...declarationBytes.entries()].sort((a, b) => b[1] - a[1]).slice(0, 15),
+  [
+    { name: "MiB", width: 8, value: (row) => (row[1] / 1048576).toFixed(1) },
+    { name: "  package", width: 9, value: (row) => `  ${row[0]}` },
+  ],
+)
 
 const counters = () => ({
   types: program.getTypeCount(),
@@ -143,6 +162,9 @@ for (const sourceFile of sourceFiles) {
     const heap = heapNow()
     samples.push({ checked, file: relative(sourceFile.fileName), heapMiB: mib(heap), types: after.types })
     console.log(`checked ${checked} file(s): heap ${mib(heap)} MiB, ${after.types} types`)
+    for (const entry of files.slice(-sampleEvery).sort((a, b) => b.types - a.types).slice(0, 3)) {
+      if (entry.types >= 20000) console.log(`    ${String(entry.types).padStart(9)} types  ${entry.file}`)
+    }
   }
 }
 phase(`check (${checked} files)`, startedChecking)
@@ -160,14 +182,6 @@ for (const entry of files) {
   buckets.set(key, bucket)
 }
 
-const share = (part, whole) => `${((part / Math.max(whole, 1)) * 100).toFixed(1)}%`
-const table = (title, rows, columns) => {
-  console.log(`\n${title}`)
-  console.log(columns.map((column) => column.name.padStart(column.width)).join(" "))
-  for (const row of rows) {
-    console.log(columns.map((column) => String(column.value(row)).padStart(column.width)).join(" "))
-  }
-}
 const fileColumns = [
   { name: "types", width: 10, value: (row) => row.types },
   { name: "share", width: 7, value: (row) => share(row.types, totals.types) },
@@ -183,14 +197,6 @@ table("Phases", phases, [
   { name: "seconds", width: 9, value: (row) => row.seconds },
   { name: "  phase", width: 7, value: (row) => `  ${row.name}` },
 ])
-table(
-  "Declaration files by size (parsed and bound whether or not anything uses them)",
-  [...declarationBytes.entries()].sort((a, b) => b[1] - a[1]).slice(0, 15),
-  [
-    { name: "MiB", width: 8, value: (row) => (row[1] / 1048576).toFixed(1) },
-    { name: "  package", width: 9, value: (row) => `  ${row[0]}` },
-  ],
-)
 table(
   "Directories by types created",
   [...buckets.values()].sort((a, b) => b.types - a.types).slice(0, top),

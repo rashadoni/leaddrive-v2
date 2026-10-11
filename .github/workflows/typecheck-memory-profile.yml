@@ -28,12 +28,23 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        leg: [full, no-incremental, prisma-only, no-tests, profile, trace]
+        include:
+          # main before this branch, with the heap it needs to finish at all.
+          - leg: before
+            ref: c69bbbd5d192151d2769077aace3fdf1478f9db9
+            heap: "16384"
+            budget: "20971520"
+          - leg: full
+          - leg: no-incremental
+          - leg: slim-prisma
+          - leg: profile
     env:
-      NODE_OPTIONS: --max-old-space-size=14336
+      NODE_OPTIONS: --max-old-space-size=${{ matrix.heap || '14336' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          ref: ${{ matrix.ref || github.sha }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -49,12 +60,18 @@ jobs:
       - name: Prepare bounded GitHub-hosted typecheck memory
         run: bash scripts/ci/prepare-hosted-build-runner.sh
         env:
-          LEADDRIVE_BUILD_MIN_BUDGET_KIB: "18874368"
+          LEADDRIVE_BUILD_MIN_BUDGET_KIB: ${{ matrix.budget || '18874368' }}
 
       - name: Size of the generated Prisma typings
         run: |
           wc -c -l node_modules/.prisma/client/index.d.ts
           grep -c '^model ' prisma/schema.prisma
+
+      - name: Rewrite the nested-write inputs of the Prisma typings
+        if: ${{ matrix.leg == 'slim-prisma' }}
+        run: |
+          node scripts/ci/slim-prisma-client-types.mjs
+          wc -c -l node_modules/.prisma/client/index.d.ts
 
       - name: Measure (${{ matrix.leg }})
         env:
@@ -64,7 +81,7 @@ jobs:
           set +e
           tsc="node node_modules/typescript/lib/tsc.js"
           case "$LEG" in
-            full)
+            before|full|slim-prisma)
               /usr/bin/time -v $tsc --noEmit --extendedDiagnostics > tsc-output.log 2> time.log
               ;;
             no-incremental)
@@ -100,10 +117,29 @@ jobs:
           grep -vE '^\s' time.log | tail -n 30
           free -m
 
-      - name: Blocking gates over the same log (full leg only)
-        if: ${{ matrix.leg == 'full' }}
+      - name: Blocking gates over the same log
+        if: ${{ matrix.leg != 'profile' }}
         run: |
           node scripts/ci/check-typecheck-baseline.mjs tsc-output.log || true
+          # The same errors, as a set: by position, and by file and code (which
+          # survives a line being added above an error).
+          grep -E '^[^ ]+\([0-9]+,[0-9]+\): error TS[0-9]+' tsc-output.log | sed -E 's/^([^ ]+)\(([0-9]+),([0-9]+)\): error (TS[0-9]+).*/\1 \2 \3 \4/' | sort > errors-by-position.txt
+          sed -E 's/^([^ ]+) [0-9]+ [0-9]+ (TS[0-9]+)$/\1 \2/' errors-by-position.txt | sort | uniq -c > errors-by-file-and-code.txt
+          echo "errors: $(wc -l < errors-by-position.txt)"
+          echo "by position:      $(sha256sum < errors-by-position.txt)"
+          echo "by file and code: $(sha256sum < errors-by-file-and-code.txt)"
+
+      - name: Keep the compiler log
+        if: ${{ always() && matrix.leg != 'profile' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: tsc-output-${{ matrix.leg }}
+          path: |
+            tsc-output.log
+            errors-by-position.txt
+            errors-by-file-and-code.txt
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Slowest spans in the compiler trace
         if: ${{ matrix.leg == 'trace' }}
