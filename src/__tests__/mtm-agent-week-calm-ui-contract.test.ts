@@ -67,13 +67,18 @@ describe("the agent's week, for a manager", () => {
  * «loading» on every visit.
  */
 describe("the Panel keeps the last team list", () => {
-  it("shows the remembered list at once and marks it as refreshing", () => {
+  it("shows the remembered list at once and says what time it is of", () => {
     expect(ui).toContain("const cached = readTeamToday(scopeKey)")
     expect(ui).toContain("rememberTeamToday(normalized)")
     expect(ui).toContain('window.sessionStorage.setItem(`${TEAM_TODAY_CACHE_KEY}:${payload.scopeKey}`')
     // Never the numbers of another region or team.
     expect(ui).toContain("parsed.scopeKey === scopeKey && Array.isArray(parsed.rows)")
-    expect(ui).toContain('teamFromCache && teamPhase === "loading" ? <span className="text-muted-foreground">{t("teamRefreshing")}</span>')
-    for (const locale of ["az", "ru", "en"]) expect(typeof messages[locale].teamRefreshing).toBe("string")
+    // Since 2026-10-11 the list is the home screen's team card, and a list
+    // shown from memory is honest by its time: the heading reads «данные на
+    // HH:MM» of the payload on screen, so a stale list never passes for now.
+    const dashboard = readFileSync("src/components/mtm/home-dashboard.tsx", "utf8")
+    expect(dashboard).toContain('asOf ? tw("summaryAsOf", { time: asOf }) : null')
+    expect(dashboard).toContain("instantLabel(team?.generatedAt ?? null")
+    for (const locale of ["az", "ru", "en"]) expect(messages[locale].summaryAsOf).toContain("{time}")
   })
 })

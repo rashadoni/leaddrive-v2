@@ -1,0 +1,298 @@
+"use client"
+
+import { useState, type ReactNode } from "react"
+import Link from "next/link"
+import { useLocale, useTranslations } from "next-intl"
+import { AlertTriangle, CheckCircle2, MapPin, Navigation, Users, WifiOff } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { HomeCard, HomeCardFoot, HomePill, type HomeTone } from "@/components/mtm/home-parts"
+import { createDateFormatter } from "@/lib/format-date"
+import { cn } from "@/lib/utils"
+import {
+  buildAgentWeek,
+  percentOf,
+  type HomeAgentState,
+  type HomeCellTone,
+  type HomeDayCell,
+  type HomeTeamEntry,
+  type HomeTeamRow,
+  type HomeWeekDay,
+  type HomeWeekFacts,
+  type HomeWeekTotals,
+} from "@/lib/mtm/home-dashboard"
+
+/**
+ * «Komanda · bu həftə»: every field agent with where they stand now and a
+ * strip of the week — visited / planned per day, coloured by how the day
+ * went. The strip is built from the facts «Результаты» counts.
+ */
+
+/** Rows shown before «N more»: the card grows in the page, it never scrolls inside. */
+export const HOME_TEAM_ROWS_SHOWN = 8
+
+export type HomeTeamCardRow = HomeTeamRow & { agentId: string; name: string }
+
+const CELL: Record<HomeCellTone, string> = {
+  full: "bg-emerald-500 text-white",
+  partial: "bg-amber-400 text-amber-950",
+  missed: "bg-rose-500 text-white",
+  pending: "border border-zinc-300 text-foreground dark:border-zinc-600",
+  upcoming: "border border-zinc-200 text-muted-foreground dark:border-zinc-700",
+  visited: "bg-sky-500 text-white",
+  off: "border border-dashed border-zinc-300 text-transparent dark:border-zinc-600",
+  none: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400",
+}
+
+const LEGEND: ReadonlyArray<{ tone: HomeCellTone; key: "legendFull" | "legendPartial" | "legendMissed" | "legendNone" | "legendOff" }> = [
+  { tone: "full", key: "legendFull" },
+  { tone: "partial", key: "legendPartial" },
+  { tone: "missed", key: "legendMissed" },
+  { tone: "none", key: "legendNone" },
+  { tone: "off", key: "legendOff" },
+]
+
+const STATE_TONE: Record<HomeAgentState["kind"], HomeTone> = {
+  "at-customer": "green",
+  heading: "blue",
+  "plan-done": "green",
+  "not-started": "zinc",
+  unplanned: "amber",
+  "last-visit": "zinc",
+  "no-activity": "zinc",
+}
+
+const STATE_KEY = {
+  "at-customer": "stateAtCustomer",
+  heading: "stateHeading",
+  "plan-done": "statePlanDone",
+  "not-started": "stateNotStarted",
+  unplanned: "stateUnplanned",
+  "last-visit": "stateLastVisit",
+  "no-activity": "stateNoActivity",
+} as const satisfies Record<HomeAgentState["kind"], string>
+
+function stateIcon(kind: HomeAgentState["kind"]): ReactNode {
+  if (kind === "at-customer") return <MapPin className="h-3 w-3" aria-hidden="true" />
+  if (kind === "heading") return <Navigation className="h-3 w-3" aria-hidden="true" />
+  if (kind === "plan-done") return <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
+  return null
+}
+
+export function cellText(cell: HomeDayCell): string {
+  if (cell.tone === "off") return ""
+  if (cell.tone === "none") return "–"
+  if (cell.tone === "upcoming") return String(cell.planned)
+  if (cell.tone === "visited") return String(cell.visits)
+  return `${cell.done}/${cell.planned}`
+}
+
+function initials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean)
+  return ((words[0]?.[0] ?? "") + (words.length > 1 ? words[words.length - 1][0] : "")).toUpperCase() || "—"
+}
+
+/** A calendar day: a date key is read at UTC so no timezone moves it. */
+function dayLabel(value: string, locale: string, options: Intl.DateTimeFormatOptions): string {
+  const date = new Date(`${value}T12:00:00.000Z`)
+  return Number.isNaN(date.getTime()) ? value : createDateFormatter(locale, { timeZone: "UTC", ...options }).format(date)
+}
+
+function clock(value: string | null, locale: string, timezone: string): string {
+  if (!value) return ""
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ""
+  try {
+    return createDateFormatter(locale, { timeZone: timezone, hour: "2-digit", minute: "2-digit", hour12: false }).format(date)
+  } catch {
+    return createDateFormatter(locale, { hour: "2-digit", minute: "2-digit", hour12: false }).format(date)
+  }
+}
+
+export function HomeTeamCard<Row extends HomeTeamCardRow>({
+  team,
+  hasCards,
+  loading,
+  failed,
+  today,
+  timezone,
+  week,
+  facts,
+  weekFailed,
+  totals,
+  onRetry,
+  onRetryWeek,
+  onOpenAgent,
+}: {
+  team: ReadonlyArray<HomeTeamEntry<Row>>
+  /** Whether the scope holds any card at all: an office-only team is not «no employees». */
+  hasCards: boolean
+  loading: boolean
+  failed: boolean
+  today: string | null
+  timezone: string
+  week: readonly HomeWeekDay[]
+  /** Null while the week is loading, refused or failed: the strip is then not drawn. */
+  facts: HomeWeekFacts | null
+  weekFailed: boolean
+  totals: HomeWeekTotals | null
+  onRetry: () => void
+  onRetryWeek: () => void
+  onOpenAgent: (agentId: string, day?: string) => void
+}) {
+  const t = useTranslations("mtmDashboardPage.home")
+  const tw = useTranslations("mtmDashboardPage.operationalWeek")
+  const locale = useLocale()
+  const [expanded, setExpanded] = useState(false)
+  const shown = expanded ? team : team.slice(0, HOME_TEAM_ROWS_SHOWN)
+  const hidden = team.length - shown.length
+  const customer = (value: string | null) => value || tw("teamWhereUnknownCustomer")
+
+  function detail(entry: HomeTeamEntry<Row>): string {
+    const { state, row } = entry
+    if (state.kind === "at-customer") return t("detailAtCustomer", { customer: customer(state.customerName), time: clock(state.since, locale, timezone) })
+    if (state.kind === "heading") {
+      return state.plannedAt
+        ? t("detailHeading", { customer: customer(state.customerName), time: clock(state.plannedAt, locale, timezone) })
+        : t("detailHeadingNoTime", { customer: customer(state.customerName) })
+    }
+    if (state.kind === "last-visit") return t("detailLastVisit", { customer: customer(state.customerName), time: clock(state.until, locale, timezone) })
+    // Always a last known time, never «live» (the same rule as the map).
+    return row.lastGpsAt ? tw("teamRowLastGps", { time: clock(row.lastGpsAt, locale, timezone) }) : ""
+  }
+
+  function cellTitle(cell: HomeDayCell): string {
+    const date = dayLabel(cell.date, locale, { weekday: "long", day: "numeric", month: "long" })
+    if (cell.tone === "off") return t("cellOff", { date })
+    if (cell.tone === "none") return t("cellNone", { date })
+    if (cell.tone === "upcoming") return t("cellUpcoming", { date, planned: cell.planned })
+    if (cell.tone === "visited") return t("cellVisited", { date, visits: cell.visits })
+    return t("cellPlan", { date, done: cell.done, planned: cell.planned })
+  }
+
+  const gpsPercent = totals ? percentOf(totals.gpsConfirmed, totals.visits) : null
+  const footText = totals
+    ? [t("footVisits", { count: totals.visits }), gpsPercent !== null ? t("footGps", { percent: gpsPercent }) : null].filter(Boolean).join(" · ")
+    : null
+
+  return (
+    <HomeCard
+      testId="mtm-home-team"
+      titleId="mtm-home-team-title"
+      icon={<Users className="h-4 w-4" aria-hidden="true" />}
+      tone="orange"
+      title={t("teamTitle")}
+      action={{ href: "/mtm/map", label: t("openMap") }}
+    >
+      {failed && team.length === 0 ? (
+        <p role="alert" className="flex flex-wrap items-center gap-x-3 gap-y-2 py-4 text-sm">
+          <WifiOff className="h-4 w-4 text-red-600" aria-hidden="true" />
+          <span className="font-semibold">{tw("teamLoadFailed")}</span>
+          <Button type="button" variant="outline" size="sm" className="min-h-11 md:min-h-9" onClick={onRetry}>{t("retry")}</Button>
+        </p>
+      ) : loading && team.length === 0 ? (
+        <p role="status" className="py-4 text-sm text-muted-foreground">{tw("teamLoading")}</p>
+      ) : team.length === 0 ? (
+        <p className="py-4 text-sm font-semibold">{hasCards ? tw("noFieldStaff") : tw("noEmployeesTitle")}</p>
+      ) : (
+        <>
+          <div className="hidden items-center gap-3 border-b border-zinc-100 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground dark:border-zinc-800 sm:flex">
+            <span className="min-w-0 flex-1 truncate">{t("colAgent")}</span>
+            {facts ? (
+              <>
+                <div className="flex gap-1" aria-hidden="true">
+                  {week.map((day) => <span key={day.date} className="w-8 text-center">{dayLabel(day.date, locale, { weekday: "short" })}</span>)}
+                </div>
+                <span className="w-11 text-right">{t("colWeek")}</span>
+              </>
+            ) : null}
+          </div>
+          <ul>
+            {shown.map((entry) => {
+              const { row, state } = entry
+              const agentWeek = facts && today ? buildAgentWeek(row.agentId, today, week, facts) : null
+              const text = detail(entry)
+              return (
+                <li key={row.agentId} data-testid="mtm-home-team-row" className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-zinc-100 py-2 dark:border-zinc-800">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary" aria-hidden="true">{initials(row.name)}</span>
+                  <div className="min-w-[9rem] flex-1">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <button
+                        type="button"
+                        aria-label={t("openAgentWeek", { name: row.name })}
+                        className="min-w-0 truncate text-left text-sm font-semibold hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                        onClick={() => onOpenAgent(row.agentId)}
+                      >
+                        {row.name}
+                      </button>
+                      {row.openAlerts > 0 ? (
+                        <Link
+                          href={`/mtm/alerts?agentId=${encodeURIComponent(row.agentId)}`}
+                          prefetch={false}
+                          title={tw("teamRowOpenAlerts", { count: row.openAlerts })}
+                          aria-label={tw("teamRowOpenAlerts", { count: row.openAlerts })}
+                          className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-1.5 py-0.5 text-[11px] font-semibold text-amber-700 ring-1 ring-inset ring-amber-200 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-900"
+                        >
+                          <AlertTriangle className="h-3 w-3" aria-hidden="true" />{row.openAlerts}
+                        </Link>
+                      ) : null}
+                    </div>
+                    <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
+                      <HomePill tone={STATE_TONE[state.kind]} className="text-[11px]">{stateIcon(state.kind)}{t(STATE_KEY[state.kind])}</HomePill>
+                      {text ? <span className="min-w-0 truncate text-xs text-muted-foreground" title={text}>{text}</span> : null}
+                    </div>
+                  </div>
+                  {agentWeek ? (
+                    <>
+                      <div className="flex gap-1" data-testid="mtm-home-team-week">
+                        {agentWeek.cells.map((cell) => (
+                          <button
+                            key={cell.date}
+                            type="button"
+                            data-tone={cell.tone}
+                            title={cellTitle(cell)}
+                            aria-label={cellTitle(cell)}
+                            className={cn(
+                              "flex h-8 w-8 items-center justify-center rounded-md text-[11px] font-semibold tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
+                              CELL[cell.tone],
+                              cell.isToday && "ring-2 ring-primary/70 ring-offset-1 ring-offset-card",
+                            )}
+                            onClick={() => onOpenAgent(row.agentId, cell.date)}
+                          >
+                            {cellText(cell)}
+                          </button>
+                        ))}
+                      </div>
+                      <span data-testid="mtm-home-team-total" className="w-11 shrink-0 text-right text-sm font-bold tabular-nums">
+                        {agentWeek.planned > 0 ? `${agentWeek.done}/${agentWeek.planned}` : "–"}
+                      </span>
+                    </>
+                  ) : null}
+                </li>
+              )
+            })}
+          </ul>
+          {hidden > 0 || expanded ? (
+            <button type="button" data-testid="mtm-home-team-more" aria-expanded={expanded} className="min-h-11 self-start py-2 text-sm font-medium text-primary hover:underline md:min-h-0" onClick={() => setExpanded((value) => !value)}>
+              {expanded ? t("showLess") : t("showMore", { count: hidden })}
+            </button>
+          ) : null}
+          <div className="mt-auto">
+            {facts ? (
+              <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 pt-3 text-[11px] text-muted-foreground" data-testid="mtm-home-team-legend">
+                {LEGEND.map((item) => (
+                  <span key={item.key} className="inline-flex items-center gap-1.5"><span className={cn("h-3 w-3 rounded-sm", CELL[item.tone])} aria-hidden="true" />{t(item.key)}</span>
+                ))}
+              </div>
+            ) : weekFailed ? (
+              <p role="status" className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-3 text-xs text-muted-foreground">
+                {t("weekLoadFailed")}
+                <Button type="button" variant="outline" size="sm" className="min-h-11 md:min-h-8" onClick={onRetryWeek}>{t("retry")}</Button>
+              </p>
+            ) : null}
+            {footText ? <HomeCardFoot text={footText} href="/mtm/analytics?period=thisWeek" link={t("openResults")} /> : <div className="h-3" />}
+          </div>
+        </>
+      )}
+    </HomeCard>
+  )
+}

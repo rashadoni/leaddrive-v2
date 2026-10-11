@@ -119,39 +119,41 @@ export default function MtmDashboardPage() {
 
   return (
     <div className="space-y-5">
-      {/* Header with greeting and live clock */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          {userName && <h2 className="text-lg font-semibold mb-0.5">{td("welcomeBack", { name: userName })}</h2>}
-          <div className="flex items-center gap-2">
-            <PageDescription
-              icon={MapPin}
-              title={t("mtmDashboard")}
-              description={td("subtitle")}
-            />
-            <HelpButton slug="mtm-overview" variant="label" />
-          </div>
-        </div>
-        <DashboardClock
-          locale={locale}
-          timezone={typeof operational?.timezone === "string" ? operational.timezone : null}
-        />
-      </div>
-
-      {/* Audit 2026-09-21: the first fact of the day belongs above the fold.
-          With a live announcement the 96 px skeleton and the message body
-          pushed the team summary below the fold on a 390×844 phone, so the
-          operational week comes first and the announcement follows it. */}
+      {/* Owner 2026-10-11: the team view is the home screen and carries its
+          own heading (the date, whether it is a working day, the filters).
+          The greeting and the clock remain above one employee's week only,
+          so the screen never has two headings. */}
       <OperationalWeekHome
         key={`${orgId || "no-org"}:${session?.user?.id || session?.user?.email || "no-viewer"}`}
         organizationId={orgId ? String(orgId) : null}
         viewerId={session?.user?.id || session?.user?.email || null}
+        agentHeader={(
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              {userName && <h2 className="text-lg font-semibold mb-0.5">{td("welcomeBack", { name: userName })}</h2>}
+              <div className="flex items-center gap-2">
+                <PageDescription
+                  icon={MapPin}
+                  title={t("mtmDashboard")}
+                  description={td("subtitle")}
+                />
+                <HelpButton slug="mtm-overview" variant="label" />
+              </div>
+            </div>
+            <DashboardClock
+              locale={locale}
+              timezone={typeof operational?.timezone === "string" ? operational.timezone : null}
+            />
+          </div>
+        )}
       />
 
       {operationalLoading ? (
-        <div className="h-24 animate-pulse border-y border-zinc-200 bg-muted/40 motion-reduce:animate-none dark:border-zinc-700" aria-label={td("announcementLoading")} />
+        // Most organizations have no announcement: a grey bar pulsing under
+        // the cards on every open promised a block that then never came.
+        <span className="sr-only" role="status">{td("announcementLoading")}</span>
       ) : operationalError ? (
-        <section className="flex flex-col gap-3 border-y border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:flex-row sm:items-center sm:justify-between">
+        <section className="flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold">{td("announcementLoadFailed")}</p>
             <p className="mt-1 text-xs text-muted-foreground">{td("announcementLoadFailedHint")}</p>
@@ -161,7 +163,7 @@ export default function MtmDashboardPage() {
           </Button>
         </section>
       ) : (operational?.announcement || operational?.support.email || operational?.support.phone) ? (
-        <section className="grid border-y border-zinc-200 bg-card dark:border-zinc-700 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <section className="grid overflow-hidden rounded-2xl border border-zinc-200 bg-card dark:border-zinc-700 lg:grid-cols-[minmax(0,1fr)_320px]">
           {operational.announcement ? (
             <div className="p-4 lg:p-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

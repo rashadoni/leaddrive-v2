@@ -9,8 +9,9 @@ import { dateInputValueInTimezone, isValidTimezone } from "@/lib/timezone"
 import { addDateKeyDays, currentDateKey, localDateKeyToUtc } from "@/lib/mtm/mobile-week"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { OPERATIONAL_WEEK_LIMITS } from "@/lib/mtm/operational-week"
-import type { WorkCalendarOverride } from "@/lib/mtm/work-calendar"
+import { resolveWorkCalendarDay, type WorkCalendarOverride } from "@/lib/mtm/work-calendar"
 import {
+  MTM_ATTENTION_PEOPLE_SHOWN,
   MTM_NEXT_WORKDAY_LOOKAHEAD_DAYS,
   agentsWorkingOn,
   buildAttentionItems,
@@ -20,7 +21,11 @@ import {
   openContactCreateRequestWhere,
   openCustomerCreateRequestWhere,
   openRouteChangeRequestWhere,
+  pendingPhotoWhere,
   routeAwaitingPublishWhere,
+  summarizeByAgent,
+  weekStartKey,
+  weekWorkingDays,
   type AttentionAgentFilter,
   type MtmPanelAttention,
 } from "@/lib/mtm/panel-attention"
@@ -29,8 +34,11 @@ import {
  * GET /api/v1/mtm/week/attention — «Ждёт решения» on the Panel.
  *
  * Counts of lists that already exist (see src/lib/mtm/panel-attention.ts) for
- * the caller's own scope and the Panel's region/team filters. Only counts and
- * calendar days leave the server: no names, no request text, no coordinates.
+ * the caller's own scope and the Panel's region/team filters, with the names
+ * of the agents the rows belong to — the same names the lists themselves
+ * show — and the organization's working days for the week strip. No request
+ * text, no customer names, no coordinates.
+ *
  * An agent reviews nothing, so an agent gets an empty answer rather than a
  * refusal — the Panel is their screen too.
  */
@@ -43,6 +51,12 @@ function trimmedParam(params: URLSearchParams, key: string): string {
 
 function utcDateKey(value: Date): string {
   return value.toISOString().slice(0, 10)
+}
+
+type AgentGroup = { agentId: string; count: number; date: Date | null }
+
+function countOf(row: { _count?: { _all?: number } | null }): number {
+  return row._count?._all ?? 0
 }
 
 export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
@@ -67,7 +81,29 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
   const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
   const generatedAt = new Date()
   const today = currentDateKey(generatedAt, timezone)
-  const empty: MtmPanelAttention = { timezone, today, generatedAt: generatedAt.toISOString(), items: [], nextWorkday: null }
+  const monday = weekStartKey(today)
+  const lookaheadEnd = addDateKeyDays(today, MTM_NEXT_WORKDAY_LOOKAHEAD_DAYS + 1)
+
+  // The calendar is the organization's own and names nobody: every reader of
+  // the Panel may know which days it works.
+  const calendarRows = await prisma.mtmWorkCalendarDay.findMany({
+    where: {
+      organizationId: auth.orgId,
+      deletedAt: null,
+      date: { gte: new Date(`${monday}T00:00:00.000Z`), lt: new Date(`${lookaheadEnd}T00:00:00.000Z`) },
+    },
+    select: { id: true, date: true, kind: true, name: true, teamId: true, agentId: true, movedToDate: true, routePlanningAllowed: true },
+  })
+  const overrides = calendarRows as WorkCalendarOverride[]
+  const empty: MtmPanelAttention = {
+    timezone,
+    today,
+    generatedAt: generatedAt.toISOString(),
+    todayIsWorkingDay: resolveWorkCalendarDay({ date: today, overrides }).isWorkingDay,
+    week: weekWorkingDays(today, overrides),
+    items: [],
+    nextWorkday: null,
+  }
 
   // The same people who may open the queues these rows lead to.
   if (!canManageFieldMasterData(actor)) return NextResponse.json({ success: true, data: empty })
@@ -99,70 +135,95 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       where: { ...agentWhere, status: "ACTIVE", role: "AGENT" },
       orderBy: [{ name: "asc" }, { id: "asc" }],
       take: OPERATIONAL_WEEK_LIMITS.filterAgents,
-      select: { id: true, teamId: true },
+      select: { id: true, name: true, teamId: true },
     }),
   ])
   const agentIds: AttentionAgentFilter = filterAgents ? filterAgents.map((agent: { id: string }) => agent.id) : scopeIds
-  const fieldAgents = fieldAgentsRaw as Array<{ id: string; teamId: string | null }>
+  const fieldAgents = fieldAgentsRaw as Array<{ id: string; name: string; teamId: string | null }>
 
   const todayStart = localDateKeyToUtc(today, timezone)
-  const tomorrowKey = addDateKeyDays(today, 1)
-  const lookaheadEnd = addDateKeyDays(today, MTM_NEXT_WORKDAY_LOOKAHEAD_DAYS + 1)
 
-  const [contactRequests, customerRequests, routeChanges, drafts, alerts, calendarRows] = await Promise.all([
-    prisma.mtmContactCreateRequest.aggregate({
+  const [contactRequests, customerRequests, routeChanges, drafts, alerts, photos] = await Promise.all([
+    prisma.mtmContactCreateRequest.groupBy({
+      by: ["requestedByAgentId"],
       where: openContactCreateRequestWhere(auth.orgId, agentIds) as Prisma.MtmContactCreateRequestWhereInput,
       _count: { _all: true },
       _min: { submittedAt: true },
     }),
-    prisma.mtmCustomerCreateRequest.aggregate({
+    prisma.mtmCustomerCreateRequest.groupBy({
+      by: ["requestedByAgentId"],
       where: openCustomerCreateRequestWhere(auth.orgId, agentIds) as Prisma.MtmCustomerCreateRequestWhereInput,
       _count: { _all: true },
       _min: { submittedAt: true, createdAt: true },
     }),
-    prisma.mtmRouteChangeRequest.aggregate({
+    prisma.mtmRouteChangeRequest.groupBy({
+      by: ["requestedByAgentId"],
       where: openRouteChangeRequestWhere(auth.orgId, agentIds) as Prisma.MtmRouteChangeRequestWhereInput,
       _count: { _all: true },
       _min: { submittedAt: true },
     }),
-    prisma.mtmRoute.aggregate({
+    prisma.mtmRoute.groupBy({
+      by: ["agentId"],
       where: routeAwaitingPublishWhere(auth.orgId, agentIds, today) as Prisma.MtmRouteWhereInput,
       _count: { _all: true },
       _min: { date: true },
     }),
-    prisma.mtmAlert.aggregate({
+    prisma.mtmAlert.groupBy({
+      by: ["type"],
       where: olderOpenAlertWhere(auth.orgId, agentIds, todayStart) as Prisma.MtmAlertWhereInput,
       _count: { _all: true },
       _max: { createdAt: true },
     }),
-    fieldAgents.length > 0
-      ? prisma.mtmWorkCalendarDay.findMany({
-          where: {
-            organizationId: auth.orgId,
-            deletedAt: null,
-            date: { gte: new Date(`${tomorrowKey}T00:00:00.000Z`), lt: new Date(`${lookaheadEnd}T00:00:00.000Z`) },
-          },
-          select: { id: true, date: true, kind: true, name: true, teamId: true, agentId: true, movedToDate: true, routePlanningAllowed: true },
-        })
-      : Promise.resolve([]),
+    prisma.mtmPhoto.aggregate({
+      where: pendingPhotoWhere(auth.orgId, agentIds) as Prisma.MtmPhotoWhereInput,
+      _count: { _all: true },
+      _min: { createdAt: true },
+    }),
   ])
+
+  type RequestGroup = { requestedByAgentId: string; _count?: { _all?: number } | null; _min?: { submittedAt?: Date | null; createdAt?: Date | null } | null }
+  const byRequester = (rows: unknown, date: (row: RequestGroup) => Date | null | undefined): AgentGroup[] =>
+    (rows as RequestGroup[]).map((row) => ({ agentId: row.requestedByAgentId, count: countOf(row), date: date(row) ?? null }))
+  const contactSummary = summarizeByAgent(byRequester(contactRequests, (row) => row._min?.submittedAt), "earliest")
+  // Never submitted: such a request has waited since it was written.
+  const customerSummary = summarizeByAgent(byRequester(customerRequests, (row) => row._min?.submittedAt ?? row._min?.createdAt), "earliest")
+  const routeChangeSummary = summarizeByAgent(byRequester(routeChanges, (row) => row._min?.submittedAt), "earliest")
+  const draftSummary = summarizeByAgent(
+    (drafts as Array<{ agentId: string; _count?: { _all?: number } | null; _min?: { date?: Date | null } | null }>)
+      .map((row) => ({ agentId: row.agentId, count: countOf(row), date: row._min?.date ?? null })),
+    "earliest",
+  )
+  const alertGroups = alerts as Array<{ type: string; _count?: { _all?: number } | null; _max?: { createdAt?: Date | null } | null }>
+  const alertCount = alertGroups.reduce((sum, row) => sum + countOf(row), 0)
+  const newestAlert = alertGroups.reduce<Date | null>((newest, row) => {
+    const at = row._max?.createdAt ?? null
+    return at && (!newest || at > newest) ? at : newest
+  }, null)
+
+  // One read for every name a row spells out.
+  const namedIds = [...new Set([contactSummary, customerSummary, routeChangeSummary, draftSummary]
+    .flatMap((summary) => summary.agentIds.slice(0, MTM_ATTENTION_PEOPLE_SHOWN)))]
+  const namedAgents = namedIds.length > 0
+    ? await prisma.mtmAgent.findMany({ where: { organizationId: auth.orgId, id: { in: namedIds } }, select: { id: true, name: true } })
+    : []
+  const agentNames = new Map((namedAgents as Array<{ id: string; name: string }>).map((agent) => [agent.id, agent.name]))
 
   const localDay = (value: Date | null | undefined) => (value ? dateInputValueInTimezone(value, timezone) : null)
-  const countOf = (row: { _count?: { _all?: number } | null }) => row._count?._all ?? 0
   const items = buildAttentionItems([
-    { kind: "contactCreateRequests", count: countOf(contactRequests), date: localDay(contactRequests._min?.submittedAt) },
-    {
-      kind: "customerCreateRequests",
-      count: countOf(customerRequests),
-      date: localDay(customerRequests._min?.submittedAt ?? customerRequests._min?.createdAt),
-    },
-    { kind: "routeChangeRequests", count: countOf(routeChanges), date: localDay(routeChanges._min?.submittedAt) },
+    { kind: "contactCreateRequests", count: contactSummary.count, date: localDay(contactSummary.date), agentIds: contactSummary.agentIds },
+    { kind: "customerCreateRequests", count: customerSummary.count, date: localDay(customerSummary.date), agentIds: customerSummary.agentIds },
+    { kind: "routeChangeRequests", count: routeChangeSummary.count, date: localDay(routeChangeSummary.date), agentIds: routeChangeSummary.agentIds },
     // A route's date is a calendar day already, stored at UTC midnight.
-    { kind: "routesAwaitingPublish", count: countOf(drafts), date: drafts._min?.date ? utcDateKey(drafts._min.date) : null },
-    { kind: "olderAlerts", count: countOf(alerts), date: localDay(alerts._max?.createdAt) },
-  ])
+    { kind: "routesAwaitingPublish", count: draftSummary.count, date: draftSummary.date ? utcDateKey(draftSummary.date) : null, agentIds: draftSummary.agentIds },
+    {
+      kind: "olderAlerts",
+      count: alertCount,
+      date: localDay(newestAlert),
+      types: alertGroups.map((row) => ({ type: row.type, count: countOf(row) })),
+    },
+    { kind: "photosPendingReview", count: countOf(photos), date: localDay(photos._min?.createdAt) },
+  ], agentNames)
 
-  const overrides = calendarRows as WorkCalendarOverride[]
   const nextDate = fieldAgents.length > 0 ? nextWorkingDateKey(today, overrides) : null
   const working = nextDate ? agentsWorkingOn(fieldAgents, nextDate, overrides) : []
   const routed = nextDate && working.length > 0

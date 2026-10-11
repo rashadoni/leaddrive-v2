@@ -32,6 +32,7 @@ export const MTM_PANEL_ATTENTION_KINDS = [
   "routeChangeRequests",
   "routesAwaitingPublish",
   "olderAlerts",
+  "photosPendingReview",
 ] as const
 
 export type MtmPanelAttentionKind = (typeof MTM_PANEL_ATTENTION_KINDS)[number]
@@ -45,7 +46,22 @@ export interface MtmPanelAttentionItem {
    * the newest unresolved alert. Null when the rows carry no usable date.
    */
   date: string | null
+  /**
+   * Whose rows these are, the busiest first — at most
+   * {@link MTM_ATTENTION_PEOPLE_SHOWN} names. The reader may open the list the
+   * row leads to, where the same names stand.
+   */
+  people: string[]
+  /** How many different agents the rows belong to. */
+  peopleCount: number
+  /** Alerts only: how many of each type, the most frequent first. */
+  types: Array<{ type: string; count: number }>
 }
+
+/** Names a row spells out; beyond it the row says «and N more». */
+export const MTM_ATTENTION_PEOPLE_SHOWN = 2
+/** Alert types a row spells out. */
+export const MTM_ATTENTION_TYPES_SHOWN = 3
 
 export interface MtmPanelNextWorkday {
   /** The next working day after today, as a date key. */
@@ -56,12 +72,23 @@ export interface MtmPanelNextWorkday {
   withoutRoute: number
   /** The first of them, in the order given: the planner opens on this agent and this day. */
   agentId: string | null
+  /** Names of those without a route, at most {@link MTM_ATTENTION_PEOPLE_SHOWN}. */
+  people: string[]
+}
+
+export interface MtmPanelWeekDay {
+  date: string
+  isWorkingDay: boolean
 }
 
 export interface MtmPanelAttention {
   timezone: string
   today: string
   generatedAt: string
+  /** Whether the organization works today, by its calendar. */
+  todayIsWorkingDay: boolean
+  /** Monday to Sunday of the current week, for the team's week strip. */
+  week: MtmPanelWeekDay[]
   items: MtmPanelAttentionItem[]
   nextWorkday: MtmPanelNextWorkday | null
 }
@@ -132,6 +159,60 @@ export function olderOpenAlertWhere(organizationId: string, agentIds: AttentionA
 }
 
 /**
+ * Photos nobody has reviewed yet, in the scope of GET /api/v1/mtm/photos
+ * (`mtmPhotoFieldScopeWhere`): taken by an agent in scope, or on a visit of one.
+ */
+export function pendingPhotoWhere(organizationId: string, agentIds: AttentionAgentFilter) {
+  return {
+    organizationId,
+    status: "PENDING" as const,
+    ...(agentIds === null ? {} : {
+      OR: [
+        { agentId: { in: [...agentIds] } },
+        { visit: { is: { agentId: { in: [...agentIds] } } } },
+      ],
+    }),
+  }
+}
+
+/** Monday of the week `dateKey` falls in. */
+export function weekStartKey(dateKey: string): string {
+  const weekday = (new Date(`${dateKey}T00:00:00.000Z`).getUTCDay() + 6) % 7
+  return addDateKeyDays(dateKey, -weekday)
+}
+
+/** Monday to Sunday of today's week, each with the organization's verdict on it. */
+export function weekWorkingDays(todayKey: string, overrides: readonly WorkCalendarOverride[]): MtmPanelWeekDay[] {
+  const monday = weekStartKey(todayKey)
+  return Array.from({ length: 7 }, (_unused, offset) => {
+    const date = addDateKeyDays(monday, offset)
+    return { date, isWorkingDay: resolveWorkCalendarDay({ date, overrides }).isWorkingDay }
+  })
+}
+
+/**
+ * Totals of rows grouped by the agent they belong to: how many, the calendar
+ * extreme the row names, and whose they are (the busiest first, ties by id so
+ * a refresh does not reshuffle the names).
+ */
+export function summarizeByAgent(
+  groups: ReadonlyArray<{ agentId: string; count: number; date: Date | null }>,
+  pick: "earliest" | "latest",
+): { count: number; date: Date | null; agentIds: string[] } {
+  let count = 0
+  let date: Date | null = null
+  for (const group of groups) {
+    count += group.count
+    if (group.date && (!date || (pick === "earliest" ? group.date < date : group.date > date))) date = group.date
+  }
+  const agentIds = [...groups]
+    .filter((group) => group.count > 0)
+    .sort((left, right) => right.count - left.count || left.agentId.localeCompare(right.agentId))
+    .map((group) => group.agentId)
+  return { count, date, agentIds }
+}
+
+/**
  * The first working day after `todayKey` for the organization as a whole.
  * Team and agent overrides are applied per agent by `agentsWorkingOn`.
  */
@@ -155,7 +236,7 @@ export function agentsWorkingOn<Agent extends { id: string; teamId: string | nul
 export function buildNextWorkday(input: {
   date: string | null
   /** Field agents working that day. */
-  agents: ReadonlyArray<{ id: string }>
+  agents: ReadonlyArray<{ id: string; name?: string | null }>
   /** Agent ids holding a published route for that day. */
   agentIdsWithRoute: ReadonlySet<string>
 }): MtmPanelNextWorkday | null {
@@ -166,17 +247,42 @@ export function buildNextWorkday(input: {
     agents: input.agents.length,
     withoutRoute: without.length,
     agentId: without[0]?.id ?? null,
+    people: without.slice(0, MTM_ATTENTION_PEOPLE_SHOWN).flatMap((agent) => (agent.name ? [agent.name] : [])),
   }
 }
 
 /** Rows with nothing waiting are not rows: the block lists only what needs a decision. */
 export function buildAttentionItems(
-  counts: ReadonlyArray<{ kind: MtmPanelAttentionKind; count: number; date: string | null }>,
+  counts: ReadonlyArray<{
+    kind: MtmPanelAttentionKind
+    count: number
+    date: string | null
+    /** Agent ids the rows belong to, the busiest first. */
+    agentIds?: readonly string[]
+    types?: ReadonlyArray<{ type: string; count: number }>
+  }>,
+  agentNames: ReadonlyMap<string, string> = new Map(),
 ): MtmPanelAttentionItem[] {
   const order = new Map(MTM_PANEL_ATTENTION_KINDS.map((kind, index) => [kind, index]))
   return counts
     .filter((item) => item.count > 0)
-    .map((item) => ({ kind: item.kind, count: item.count, date: item.date }))
+    .map((item) => {
+      const agentIds = item.agentIds ?? []
+      return {
+        kind: item.kind,
+        count: item.count,
+        date: item.date,
+        people: agentIds.slice(0, MTM_ATTENTION_PEOPLE_SHOWN).flatMap((id) => {
+          const name = agentNames.get(id)
+          return name ? [name] : []
+        }),
+        peopleCount: agentIds.length,
+        types: [...(item.types ?? [])]
+          .filter((entry) => entry.count > 0)
+          .sort((left, right) => right.count - left.count || left.type.localeCompare(right.type))
+          .slice(0, MTM_ATTENTION_TYPES_SHOWN),
+      }
+    })
     .sort((left, right) => (order.get(left.kind) ?? 0) - (order.get(right.kind) ?? 0))
 }
 
@@ -185,7 +291,7 @@ export function buildAttentionItems(
  * rows: a generic tab would be the duplicate navigation the audit of
  * 2026-09-21 removed from this screen.
  */
-export function attentionItemHref(item: MtmPanelAttentionItem): string {
+export function attentionItemHref(item: Pick<MtmPanelAttentionItem, "kind" | "date">): string {
   switch (item.kind) {
     case "contactCreateRequests":
       return "/mtm/contacts"
@@ -197,6 +303,10 @@ export function attentionItemHref(item: MtmPanelAttentionItem): string {
     case "olderAlerts":
       // /mtm/alerts opens on today; without the day these alerts stay hidden.
       return item.date ? `/mtm/alerts?date=${encodeURIComponent(item.date)}` : "/mtm/alerts"
+    case "photosPendingReview":
+      // The gallery opens on this week and on every status; an unreviewed
+      // photo of last week would not be there.
+      return "/mtm/photos?status=PENDING&period=all"
   }
 }
 

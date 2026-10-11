@@ -37,6 +37,7 @@ import { GET as contactRequestQueue } from "@/app/api/v1/mtm/contact-create-requ
 import { GET as customerRequestQueue } from "@/app/api/v1/mtm/customer-create-requests/route"
 import { GET as routeChangeQueue } from "@/app/api/v1/mtm/route-change-requests/route"
 import { GET as alertList } from "@/app/api/v1/mtm/alerts/route"
+import { GET as photoList } from "@/app/api/v1/mtm/photos/route"
 import { requireAuth } from "@/lib/api-auth"
 import { getMobileAuth, resolveMobileAuth } from "@/lib/mobile-auth"
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
@@ -82,7 +83,7 @@ function matches(row: Row, where: Row | undefined): boolean {
   })
 }
 
-type Query = { where?: Row; distinct?: string[]; take?: number; _min?: Record<string, boolean>; _max?: Record<string, boolean> }
+type Query = { where?: Row; distinct?: string[]; take?: number; by?: string[]; _min?: Record<string, boolean>; _max?: Record<string, boolean> }
 
 function extreme(rows: Row[], fields: Record<string, boolean> | undefined, pick: (left: number, right: number) => boolean) {
   return Object.fromEntries(Object.keys(fields ?? {}).map((field) => {
@@ -91,7 +92,20 @@ function extreme(rows: Row[], fields: Record<string, boolean> | undefined, pick:
   }))
 }
 
-function serve(model: { findMany: unknown; aggregate: unknown; count: unknown }, rows: Row[]) {
+function serve(model: { findMany: unknown; aggregate: unknown; count: unknown; groupBy: unknown }, rows: Row[]) {
+  vi.mocked(model.groupBy as (query: Query) => Promise<unknown>).mockImplementation(async (query: Query = {}) => {
+    const groups = new Map<string, Row[]>()
+    for (const row of rows.filter((candidate) => matches(candidate, query.where))) {
+      const key = (query.by ?? []).map((field) => String(row[field])).join("|")
+      groups.set(key, [...(groups.get(key) ?? []), row])
+    }
+    return [...groups.values()].map((found) => ({
+      ...Object.fromEntries((query.by ?? []).map((field) => [field, found[0][field]])),
+      _count: { _all: found.length },
+      _min: extreme(found, query._min, (left, right) => left < right),
+      _max: extreme(found, query._max, (left, right) => left > right),
+    }))
+  })
   vi.mocked(model.findMany as (query: Query) => Promise<unknown>).mockImplementation(async (query: Query = {}) => {
     let found = rows.filter((row) => matches(row, query.where))
     if (query.distinct) {
@@ -167,6 +181,16 @@ const ALERTS: Row[] = [
   { id: "al-closed", organizationId: ORG, agentId: "a2", isResolved: true, type: "OUT_OF_ZONE", createdAt: at("2026-10-01T09:00:00.000Z") },
 ]
 
+const PHOTOS: Row[] = [
+  // Two photos of the northern agent's visits nobody has looked at, one already approved.
+  { id: "ph1", organizationId: ORG, agentId: "a1", status: "PENDING", createdAt: at("2026-10-07T18:20:00.000Z"), visit: { agentId: "a1" } },
+  { id: "ph2", organizationId: ORG, agentId: "a1", status: "PENDING", createdAt: at("2026-10-08T12:02:00.000Z"), visit: { agentId: "a1" } },
+  { id: "ph3", organizationId: ORG, agentId: "a2", status: "APPROVED", createdAt: at("2026-10-08T12:02:00.000Z"), visit: { agentId: "a2" } },
+  // Taken by the office manager on the southern agent's visit: in that agent's scope through the visit.
+  { id: "ph4", organizationId: ORG, agentId: "m1", status: "PENDING", createdAt: at("2026-10-09T09:00:00.000Z"), visit: { agentId: "a2" } },
+  { id: "ph5", organizationId: "org-other", agentId: "x1", status: "PENDING", createdAt: at("2026-10-09T09:00:00.000Z"), visit: null },
+]
+
 type Actor = { agentId: string | null; role: "ADMIN" | "MANAGER" | "SUPERVISOR" | "AGENT"; scopedAgentIds: string[] | null }
 const ADMIN: Actor = { agentId: "adm", role: "ADMIN", scopedAgentIds: null }
 const MANAGER_NORTH: Actor = { agentId: "m1", role: "MANAGER", scopedAgentIds: ["a1", "a3"] }
@@ -182,7 +206,17 @@ function signIn(actor: Actor) {
 async function attention(query = "") {
   const response = await GET(new NextRequest(`http://localhost:3000/api/v1/mtm/week/attention${query}`))
   const json = await response.json()
-  return { status: response.status, data: json.data as { today: string; timezone: string; items: Array<{ kind: string; count: number; date: string | null }>; nextWorkday: { date: string; agents: number; withoutRoute: number; agentId: string | null } | null } }
+  return {
+    status: response.status,
+    data: json.data as {
+      today: string
+      timezone: string
+      todayIsWorkingDay: boolean
+      week: Array<{ date: string; isWorkingDay: boolean }>
+      items: Array<{ kind: string; count: number; date: string | null; people: string[]; peopleCount: number; types: Array<{ type: string; count: number }> }>
+      nextWorkday: { date: string; agents: number; withoutRoute: number; agentId: string | null; people: string[] } | null
+    },
+  }
 }
 
 async function listLength(handler: (req: NextRequest) => Promise<Response> | Response, path: string, key: string): Promise<number> {
@@ -208,6 +242,7 @@ beforeEach(() => {
   serve(prisma.mtmRouteChangeRequest, ROUTE_CHANGES)
   serve(prisma.mtmRoute, ROUTES)
   serve(prisma.mtmAlert, ALERTS)
+  serve(prisma.mtmPhoto, PHOTOS)
   serve(prisma.mtmWorkCalendarDay, [])
 })
 
@@ -236,6 +271,11 @@ describe("GET /api/v1/mtm/week/attention", () => {
       expect(shown[kind] ?? 0, kind).toBe(count)
     }
 
+    // The gallery, as the same person reads it with the «not reviewed» filter.
+    const gallery = await photoList(new NextRequest("http://localhost:3000/api/v1/mtm/photos?status=PENDING&limit=200"))
+    expect(gallery.status).toBe(200)
+    expect(shown.photosPendingReview ?? 0).toBe((await gallery.json()).data.total)
+
     // The alert list, as the same person reads it: unresolved, raised before today.
     const response = await alertList(new NextRequest("http://localhost:3000/api/v1/mtm/alerts?resolved=false&limit=200"))
     const alerts = (await response.json()).data.alerts as Array<{ createdAt: string }>
@@ -247,7 +287,7 @@ describe("GET /api/v1/mtm/week/attention", () => {
     const { data } = await attention()
     expect(data.timezone).toBe("Asia/Baku")
     expect(data.today).toBe("2026-10-11")
-    expect(data.items).toEqual([
+    expect(data.items.map(({ kind, count, date }) => ({ kind, count, date }))).toEqual([
       // Sent at 02:01 on the 8th in Baku — the 7th in UTC.
       { kind: "contactCreateRequests", count: 2, date: "2026-10-08" },
       // Never submitted: it has waited since it was written.
@@ -256,25 +296,81 @@ describe("GET /api/v1/mtm/week/attention", () => {
       { kind: "routesAwaitingPublish", count: 1, date: "2026-10-12" },
       // Six of the 8th and one of 23:30 on the 10th; the one of 00:30 today is not «earlier».
       { kind: "olderAlerts", count: 7, date: "2026-10-10" },
+      // Three unreviewed photos, the oldest taken at 22:20 on the 7th in Baku.
+      { kind: "photosPendingReview", count: 3, date: "2026-10-07" },
     ])
+  })
+
+  it("says whose rows they are and which alerts, as the lists themselves do", async () => {
+    signIn(ADMIN)
+    const items = Object.fromEntries((await attention()).data.items.map((item) => [item.kind, item]))
+    expect(items.contactCreateRequests).toMatchObject({ people: ["Agent North", "Agent South"], peopleCount: 2 })
+    expect(items.customerCreateRequests).toMatchObject({ people: ["Agent South"], peopleCount: 1 })
+    // One by the northern agent, one by the office manager.
+    expect(items.routeChangeRequests).toMatchObject({ people: ["Agent North", "Office Manager"], peopleCount: 2 })
+    expect(items.routesAwaitingPublish).toMatchObject({ people: ["Agent North"], peopleCount: 1 })
+    // The most frequent type first; a row never names more than three.
+    expect(items.olderAlerts.types).toEqual([{ type: "OUT_OF_ZONE", count: 6 }, { type: "LONG_BREAK", count: 1 }])
+    expect(items.olderAlerts.people).toEqual([])
+    expect(items.photosPendingReview).toMatchObject({ people: [], peopleCount: 0, types: [] })
+
+    // A manager is not told the name of an agent outside their scope.
+    signIn(MANAGER_NORTH)
+    const own = JSON.stringify((await attention()).data)
+    expect(own).toContain("Agent North")
+    expect(own).not.toContain("Agent South")
+  })
+
+  it("tells every reader whether the organization works today and on which days of the week", async () => {
+    signIn(ADMIN)
+    const sunday = (await attention()).data
+    expect(sunday.todayIsWorkingDay).toBe(false)
+    expect(sunday.week).toEqual([
+      { date: "2026-10-05", isWorkingDay: true },
+      { date: "2026-10-06", isWorkingDay: true },
+      { date: "2026-10-07", isWorkingDay: true },
+      { date: "2026-10-08", isWorkingDay: true },
+      { date: "2026-10-09", isWorkingDay: true },
+      { date: "2026-10-10", isWorkingDay: false },
+      { date: "2026-10-11", isWorkingDay: false },
+    ])
+
+    // A Saturday the organization declared working, and a holiday on Wednesday.
+    serve(prisma.mtmWorkCalendarDay, [
+      { id: "w1", organizationId: ORG, deletedAt: null, date: day("2026-10-10"), kind: "EXCEPTION_WORKDAY", name: null, teamId: null, agentId: null, movedToDate: null, routePlanningAllowed: null },
+      { id: "w2", organizationId: ORG, deletedAt: null, date: day("2026-10-07"), kind: "PUBLIC_HOLIDAY", name: null, teamId: null, agentId: null, movedToDate: null, routePlanningAllowed: null },
+    ])
+    const changed = (await attention()).data.week
+    expect(changed.find((entry) => entry.date === "2026-10-10")?.isWorkingDay).toBe(true)
+    expect(changed.find((entry) => entry.date === "2026-10-07")?.isWorkingDay).toBe(false)
+
+    // The calendar is not a secret: an agent's own Panel knows the day off too.
+    signIn(FIELD_AGENT)
+    const agent = (await attention()).data
+    expect(agent.todayIsWorkingDay).toBe(false)
+    expect(agent.week).toHaveLength(7)
   })
 
   it("narrows every row to the reader's own agents", async () => {
     signIn(MANAGER_NORTH)
-    expect((await attention()).data.items).toEqual([
+    const brief = async () => (await attention()).data.items.map(({ kind, count, date }) => ({ kind, count, date }))
+    expect(await brief()).toEqual([
       { kind: "contactCreateRequests", count: 1, date: "2026-10-08" },
       { kind: "routeChangeRequests", count: 1, date: "2026-10-09" },
       { kind: "routesAwaitingPublish", count: 1, date: "2026-10-12" },
       { kind: "olderAlerts", count: 6, date: "2026-10-08" },
+      { kind: "photosPendingReview", count: 2, date: "2026-10-07" },
     ])
 
     signIn(SUPERVISOR_SOUTH)
-    expect((await attention()).data.items).toEqual([
+    expect(await brief()).toEqual([
       { kind: "contactCreateRequests", count: 1, date: "2026-10-09" },
       { kind: "customerCreateRequests", count: 1, date: "2026-10-06" },
       // Not theirs by author, theirs by the route it is about.
       { kind: "routeChangeRequests", count: 1, date: "2026-10-10" },
       { kind: "olderAlerts", count: 1, date: "2026-10-10" },
+      // Not taken by their agent, taken on their agent's visit.
+      { kind: "photosPendingReview", count: 1, date: "2026-10-09" },
     ])
   })
 
@@ -286,8 +382,9 @@ describe("GET /api/v1/mtm/week/attention", () => {
       ["customerCreateRequests", 1],
       ["routeChangeRequests", 1],
       ["olderAlerts", 1],
+      ["photosPendingReview", 1],
     ])
-    expect(south.nextWorkday).toEqual({ date: "2026-10-12", agents: 1, withoutRoute: 0, agentId: null })
+    expect(south.nextWorkday).toEqual({ date: "2026-10-12", agents: 1, withoutRoute: 0, agentId: null, people: [] })
 
     const north = (await attention("?regionId=r1")).data
     // The deactivated agent's team still counts for requests, never for «needs a route».
@@ -296,15 +393,16 @@ describe("GET /api/v1/mtm/week/attention", () => {
       ["routeChangeRequests", 1],
       ["routesAwaitingPublish", 1],
       ["olderAlerts", 6],
+      ["photosPendingReview", 2],
     ])
-    expect(north.nextWorkday).toEqual({ date: "2026-10-12", agents: 1, withoutRoute: 1, agentId: "a1" })
+    expect(north.nextWorkday).toEqual({ date: "2026-10-12", agents: 1, withoutRoute: 1, agentId: "a1", people: ["Agent North"] })
   })
 
   it("names Monday as the next working day and who has no published route for it", async () => {
     signIn(ADMIN)
     // Two active field agents; the office cards and the deactivated one are not expected to hold a route.
     // A draft is not a route anyone can work by: the northern agent still counts as without one.
-    expect((await attention()).data.nextWorkday).toEqual({ date: "2026-10-12", agents: 2, withoutRoute: 1, agentId: "a1" })
+    expect((await attention()).data.nextWorkday).toEqual({ date: "2026-10-12", agents: 2, withoutRoute: 1, agentId: "a1", people: ["Agent North"] })
   })
 
   it("moves past a holiday and leaves out an agent on a day off", async () => {
@@ -314,7 +412,7 @@ describe("GET /api/v1/mtm/week/attention", () => {
       { id: "h2", organizationId: ORG, deletedAt: null, date: day("2026-10-13"), kind: "MOVED_DAY_OFF", name: null, teamId: null, agentId: "a1", movedToDate: null, routePlanningAllowed: null },
     ])
     // Tuesday the 13th: the northern agent is off, the southern one has no route for that day.
-    expect((await attention()).data.nextWorkday).toEqual({ date: "2026-10-13", agents: 1, withoutRoute: 1, agentId: "a2" })
+    expect((await attention()).data.nextWorkday).toEqual({ date: "2026-10-13", agents: 1, withoutRoute: 1, agentId: "a2", people: ["Agent South"] })
   })
 
   it("gives a field agent an empty answer and reads no queue for them", async () => {
@@ -324,8 +422,10 @@ describe("GET /api/v1/mtm/week/attention", () => {
     expect(data.items).toEqual([])
     expect(data.nextWorkday).toBeNull()
     for (const model of [prisma.mtmContactCreateRequest, prisma.mtmCustomerCreateRequest, prisma.mtmRouteChangeRequest, prisma.mtmRoute, prisma.mtmAlert]) {
-      expect(model.aggregate).not.toHaveBeenCalled()
+      expect(model.groupBy).not.toHaveBeenCalled()
     }
+    expect(prisma.mtmPhoto.aggregate).not.toHaveBeenCalled()
+    expect(prisma.mtmAgent.findMany).not.toHaveBeenCalled()
   })
 
   it("refuses a reader without an MTM card, a manager without a scope, and a burst of refreshes", async () => {
@@ -343,9 +443,9 @@ describe("GET /api/v1/mtm/week/attention", () => {
     expect(limited.headers.get("Retry-After")).toBe("15")
   })
 
-  it("sends counts and days only: no names, no request text", async () => {
+  it("sends counts, days and agents' names only: no customer names, no request text", async () => {
     signIn(ADMIN)
     const body = JSON.stringify((await attention()).data)
-    for (const leak of ["Agent North", "Agent South", "Aptek", "Klinika", "latitude"]) expect(body).not.toContain(leak)
+    for (const leak of ["Aptek", "Klinika", "latitude", "payload"]) expect(body).not.toContain(leak)
   })
 })
