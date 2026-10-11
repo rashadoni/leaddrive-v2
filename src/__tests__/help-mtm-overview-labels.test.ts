@@ -9,8 +9,8 @@
  * source still reads through `t(…)`.
  *
  * Checked in all three articles: every <HelpKey> and every «…» / “…”
- * quotation. A quotation may carry sample values («На визите сейчас 2 из 14»)
- * or an ellipsis in place of one («У клиента … с 10:40»).
+ * quotation. A quotation may carry sample values («Неделя: 42 визита») or an
+ * ellipsis in place of one («На связи: …»).
  */
 import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
@@ -18,12 +18,25 @@ import { describe, expect, it } from "vitest"
 const LOCALES = ["ru", "az", "en"] as const
 type Locale = (typeof LOCALES)[number]
 
-/** Where the Panel reads its text: file, translator variable, namespace. */
-const SCREEN = [
+const HOME = ["mtmDashboardPage", "home"] as const
+const WEEK = ["mtmDashboardPage", "operationalWeek"] as const
+
+/**
+ * Where the Panel reads its text: file, translator variable, namespace.
+ * The home cards pick many keys from tables (`t(STATE_KEY[state.kind])`), so
+ * for them a key counts when the file names it at all (`call: null`).
+ */
+const SCREEN: ReadonlyArray<{ file: string; call: string | null; namespace: readonly string[] }> = [
   { file: "src/app/(dashboard)/mtm/page.tsx", call: "t", namespace: ["nav"] },
   { file: "src/app/(dashboard)/mtm/page.tsx", call: "td", namespace: ["mtmDashboardPage"] },
-  { file: "src/components/mtm/operational-week-home.tsx", call: "t", namespace: ["mtmDashboardPage", "operationalWeek"] },
-] as const
+  { file: "src/components/mtm/operational-week-home.tsx", call: "t", namespace: WEEK },
+  { file: "src/components/mtm/home-dashboard.tsx", call: null, namespace: HOME },
+  { file: "src/components/mtm/home-dashboard.tsx", call: "tw", namespace: WEEK },
+  { file: "src/components/mtm/home-attention-card.tsx", call: null, namespace: HOME },
+  { file: "src/components/mtm/home-team-card.tsx", call: null, namespace: HOME },
+  { file: "src/components/mtm/home-team-card.tsx", call: "tw", namespace: WEEK },
+  { file: "src/components/mtm/home-insight-cards.tsx", call: null, namespace: HOME },
+]
 
 type Messages = { [key: string]: string | Messages }
 
@@ -61,7 +74,8 @@ function drawnLabels(locale: Locale): RegExp[] {
     for (const [key, value] of Object.entries(namespaceOf(messages, namespace))) {
       if (typeof value !== "string") continue
       // `t("key")`, and `t(cond ? "a" : "key", …)` on one line.
-      if (new RegExp(`\\b${call}\\([^\\n]*"${key}"`).test(source)) patterns.push(...patternsOf(value))
+      const drawn = call ? new RegExp(`\\b${call}\\([^\\n]*"${key}"`).test(source) : source.includes(`"${key}"`)
+      if (drawn) patterns.push(...patternsOf(value))
     }
   }
   // The module's name in the sidebar; the sidebar, not the page, draws it.
@@ -90,11 +104,11 @@ describe("MTM Panel help article — quoted labels exist on the screen", () => {
   })
 
   it("matches sample values and ellipses against placeholders and plural branches", () => {
-    const visit = patternsOf("На визите сейчас {count} из {total}")
-    expect(visit.some((pattern) => pattern.test("На визите сейчас 2 из 14"))).toBe(true)
-    expect(visit.some((pattern) => pattern.test("В поле 2 из 14"))).toBe(false)
-    const idle = patternsOf("{count, plural, one {# сотрудник без активности} many {# сотрудников без активности} other {# сотрудника без активности}}")
-    expect(idle.some((pattern) => pattern.test("5 сотрудников без активности"))).toBe(true)
-    expect(idle.some((pattern) => pattern.test("сотрудников без активности"))).toBe(false)
+    const gps = patternsOf("с подтверждением по GPS {percent}%")
+    expect(gps.some((pattern) => pattern.test("с подтверждением по GPS 90%"))).toBe(true)
+    expect(gps.some((pattern) => pattern.test("с подтверждением по GPS"))).toBe(false)
+    const more = patternsOf("{count, plural, one {Ещё # сотрудник} few {Ещё # сотрудника} many {Ещё # сотрудников} other {Ещё # сотрудника}}")
+    expect(more.some((pattern) => pattern.test("Ещё 6 сотрудников"))).toBe(true)
+    expect(more.some((pattern) => pattern.test("Ещё сотрудников"))).toBe(false)
   })
 })

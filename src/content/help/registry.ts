@@ -1271,9 +1271,9 @@ export const HELP_REGISTRY: Record<HelpSlug, ArticleEntry> = {
   "mtm-overview": {
     title: { en: "MTM Dashboard", ru: "Панель MTM", az: "MTM Paneli" },
     subtitle: {
-      en: "The Route & Field home screen — who is where today, and any employee's week.",
-      ru: "Главный экран «Маршруты и поле» — кто где сегодня и неделя любого сотрудника.",
-      az: "«Marşrut & Sahə» ana ekranı — bu gün kim haradadır və istənilən işçinin həftəsi.",
+      en: "The Route & Field home screen — the team's day and week in figures, what is waiting for you, and any employee's week.",
+      ru: "Главный экран «Маршруты и поле» — день и неделя команды в цифрах, что ждёт решения и неделя любого сотрудника.",
+      az: "«Marşrut & Sahə» ana ekranı — komandanın günü və həftəsi rəqəmlərlə, qərar gözləyənlər və istənilən işçinin həftəsi.",
     },
     content: {
       en: lazy(() => import("./mtm-overview/en")),
