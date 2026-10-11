@@ -7,12 +7,16 @@ name: Typecheck memory profile
 #
 #   gh workflow run typecheck-memory-profile.yml --ref <branch>
 #
-#   full     the same compiler pass as the gate, plus the process's peak RSS
-#   profile  heap after parsing and binding, then types and instantiations
-#            per directory and per file
-#   trace    the compiler's own trace: the slowest files and expressions
+#   full            the same compiler pass as the gate, plus the process's peak RSS
+#   profile         heap after parsing and binding, then types and
+#                   instantiations per directory and per file
+#   trace           the compiler's own trace: the slowest files and expressions
+#   prisma-typings  what the generated Prisma client costs alone, as generated
+#                   and as the gate rewrites it — and the compiler's own proof
+#                   that every rewritten type is identical to the one it
+#                   replaced. Run it after a Prisma upgrade.
 #
-# What these three found on 2026-10-11, and what was tried and not kept, is in
+# What these found on 2026-10-11, and what was tried and not kept, is in
 # CLAUDE.md, «Тесты и проверки».
 
 on:
@@ -36,7 +40,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        leg: [full, profile, trace]
+        leg: [full, profile, trace, prisma-typings]
     env:
       # The most the runner admits, not the gate's own figure: this is run when
       # the gate's heap is no longer enough, and tracing costs extra on top.
@@ -56,12 +60,39 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate --schema prisma/schema.prisma
 
+      - name: Rewrite the repeated Prisma input types, as the gate does
+        if: ${{ matrix.leg != 'prisma-typings' }}
+        run: node scripts/ci/slim-prisma-client-types.mjs
+
       - name: Prepare bounded GitHub-hosted typecheck memory
         run: bash scripts/ci/prepare-hosted-build-runner.sh
         env:
           LEADDRIVE_BUILD_MIN_BUDGET_KIB: "18874368"
 
+      - name: The Prisma typings alone, and whether the rewrite is still exact
+        if: ${{ matrix.leg == 'prisma-typings' }}
+        run: |
+          ulimit -c 0
+          # A program of one file: whatever it imports is all the compiler holds.
+          printf '{"extends":"./tsconfig.json","compilerOptions":{"incremental":false},"files":["prisma-typings-probe.ts"],"include":[]}\n' > tsconfig.prisma-typings.json
+          heap="node --expose-gc scripts/ci/typecheck-memory-profile.mjs --project tsconfig.prisma-typings.json"
+          echo "=== the standard library and @types only"
+          printf 'export type Probe = string\n' > prisma-typings-probe.ts
+          $heap | grep -E '^(parse|bind|check) '
+          echo "=== plus the Prisma client, as generated"
+          wc -c -l node_modules/.prisma/client/index.d.ts
+          printf 'import type { Prisma } from "@prisma/client"\nexport type Probe = Prisma.JsonValue\n' > prisma-typings-probe.ts
+          $heap | grep -E '^(parse|bind|check) '
+          echo "=== plus the Prisma client, rewritten"
+          node scripts/ci/slim-prisma-client-types.mjs --proof prisma-rewrite-proof
+          wc -c -l node_modules/.prisma/client/index.d.ts
+          $heap | grep -E '^(parse|bind|check) '
+          echo "=== the compiler compares every rewritten type with the body it replaced"
+          node node_modules/typescript/lib/tsc.js -p prisma-rewrite-proof --pretty false --extendedDiagnostics
+          echo "identical: none of the rewritten types differs, and the control rewrite does"
+
       - name: Measure (${{ matrix.leg }})
+        if: ${{ matrix.leg != 'prisma-typings' }}
         env:
           LEG: ${{ matrix.leg }}
         run: |
@@ -91,7 +122,14 @@ jobs:
 
       - name: The gate's own summary of the same log
         if: ${{ matrix.leg == 'full' }}
-        run: node scripts/ci/check-typecheck-baseline.mjs tsc-output.log || true
+        run: |
+          node scripts/ci/check-typecheck-baseline.mjs tsc-output.log || true
+          # The error list as a set, to compare two runs: by position, and by
+          # file and code (which survives a line being added above an error).
+          grep -E '^[^ ]+\([0-9]+,[0-9]+\): error TS[0-9]+' tsc-output.log | sed -E 's/^([^ ]+)\(([0-9]+),([0-9]+)\): error (TS[0-9]+).*/\1 \2 \3 \4/' | sort > errors-by-position.txt
+          echo "errors: $(wc -l < errors-by-position.txt)"
+          echo "by position:      $(sha256sum < errors-by-position.txt)"
+          echo "by file and code: $(sed -E 's/^([^ ]+) [0-9]+ [0-9]+ (TS[0-9]+)$/\1 \2/' errors-by-position.txt | sort | uniq -c | sha256sum)"
 
       - name: Slowest spans in the compiler trace
         if: ${{ matrix.leg == 'trace' }}
