@@ -228,24 +228,29 @@ describe("MTM Panel for a manager", () => {
     }
   })
 
-  it("keeps every number in the summary an ICU argument with the plural forms of each locale", () => {
-    const plural = ["summaryOpenShifts", "summaryWithoutPlan", "teamIdleCollapsed", "teamIdleNoActivity", "teamRowOpenAlerts", "teamRowVisits"]
-    for (const key of plural) {
-      const ru: string = messages.ru.mtmDashboardPage.operationalWeek[key]
-      for (const form of ["one {", "few {", "many {", "other {"]) expect(ru, `ru ${key} ${form}`).toContain(form)
-      for (const locale of ["az", "en"]) {
-        const text: string = messages[locale].mtmDashboardPage.operationalWeek[key]
-        expect(text, `${locale} ${key}`).toContain("one {")
-        expect(text, `${locale} ${key}`).toContain("other {")
-      }
+  // The team list of 2026-09-21 — a line of facts above a row per agent — left
+  // the screen with the home screen (2026-10-11). Its plural forms and
+  // arguments were checked here for as long as nothing drew them, so the old
+  // check on the wording of the summary became a check that the wording is
+  // gone; the one counted label the team card kept is checked with its reader.
+  it("keeps the team card's alert count an ICU argument, and no wording of the team list it replaced", () => {
+    expect(homeTeamCard).toContain('tw("teamRowOpenAlerts", {')
+    const ru: string = messages.ru.mtmDashboardPage.operationalWeek.teamRowOpenAlerts
+    for (const form of ["one {", "few {", "many {", "other {"]) expect(ru, `ru ${form}`).toContain(form)
+    for (const locale of ["az", "en"]) {
+      const text: string = messages[locale].mtmDashboardPage.operationalWeek.teamRowOpenAlerts
+      expect(text, locale).toContain("one {")
+      expect(text, locale).toContain("other {")
     }
+    const removed = [
+      "teamTodayTitle", "teamTodayTitleNoDate", "teamRefreshing", "teamVisitsTruncated", "teamOpenWeek", "teamRowOnMap",
+      "summaryInField", "summaryOnVisit", "summaryOpenShifts", "summaryNoPlans", "summaryWithoutPlan",
+      "teamWhereAtCustomer", "teamWhereHeadingAt", "teamWhereHeading", "teamWhereDayDoneAt", "teamWhereDayDone", "teamWhereLastVisit",
+      "teamNoGpsToday", "teamRouteProgress", "teamNoRoute", "teamRowVisits", "teamRowOpenVisit",
+      "teamIdleCollapsed", "teamIdleNoActivity", "teamIdleShow", "teamIdleHide",
+    ]
     for (const locale of ["az", "ru", "en"]) {
-      for (const key of ["summaryInField", "summaryOnVisit"]) {
-        const text: string = messages[locale].mtmDashboardPage.operationalWeek[key]
-        expect(text).toContain("{count}")
-        expect(text).toContain("{total}")
-      }
-      expect(messages[locale].mtmDashboardPage.operationalWeek.teamRouteProgress).toContain("{visited}/{total}")
+      for (const key of removed) expect(messages[locale].mtmDashboardPage.operationalWeek, `${locale} ${key}`).not.toHaveProperty(key)
     }
   })
 })
