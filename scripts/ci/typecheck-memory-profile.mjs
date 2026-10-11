@@ -9,7 +9,7 @@
  * caused it.
  *
  *   node --expose-gc --max-old-space-size=<MiB> scripts/ci/typecheck-memory-profile.mjs \
- *     [--project tsconfig.json] [--top 60] [--out profile.json]
+ *     [--project tsconfig.json] [--top 60] [--sample-every 300] [--out profile.json]
  *
  * Read the result with one caveat: the compiler resolves types lazily, so a
  * shared type is billed to the first file that touches it. A file at the top of
@@ -17,8 +17,9 @@
  * totals and the phase table are the numbers to trust, the per-file list is
  * where to start reading.
  *
- * CI only. The project does not fit in the development box's memory, and a
- * profile of a compiler that died half way describes nothing.
+ * CI only: the project does not fit in the development box's memory. It
+ * reports as it goes — the heap and the heaviest files of every few hundred —
+ * so a run that dies of memory half way has still named what it got through.
  */
 import { writeFileSync } from "node:fs"
 import path from "node:path"
