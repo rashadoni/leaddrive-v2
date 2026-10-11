@@ -357,18 +357,18 @@ jobs:
         run: node scripts/check-test-baseline.mjs
 
   typecheck:
-    # The project type graph needs ~12 GiB. Private-repository Ubuntu runners
+    # The project type graph needs ~8.2 GiB («Memory used» at the end of the
+    # compiler step is the current figure). Private-repository Ubuntu runners
     # provide 8 GiB and terminated the whole job there (exit 143), silently
     # skipping the blocking gates below; it was moved to a 14 GiB Intel macOS
     # runner, which then became the most expensive job in the repository
     # (macOS minutes count against the allowance at ten times the Linux rate:
     # 1,444 of them cost more than 96,000 Linux minutes).
-    # A public-repository standard Linux runner has 16 GiB. The compiler
-    # exhausted a 12-GiB heap on 2026-10-03 and the 14-GiB one on 2026-10-10
-    # (#679: exit 134 at 13.9 GiB, green unchanged on a re-run — a coin toss).
-    # Require a measured 20-GiB RAM+swap budget (the runner showed 21) for the
-    # bounded 16-GiB heap, with the helper's capped 4-GiB swap. Next time make
-    # the type graph smaller: the runner has no more to give.
+    # A public-repository standard Linux runner has 16 GiB, and the heap took
+    # all of it in a week (12 GiB ran out 2026-10-03, 14 GiB 2026-10-10). The
+    # graph was then made smaller instead: read CLAUDE.md, «Тесты и проверки»,
+    # before raising this again. Require a measured 16-GiB RAM+swap budget for
+    # the bounded 12-GiB heap, using only the helper's capped 4-GiB swap.
     #
     # It still skips draft pull requests: the runner is a single shared
     # resource, and an agent's intermediate pushes would only queue behind each
@@ -403,7 +403,7 @@ jobs:
       - name: Prepare bounded GitHub-hosted typecheck memory
         run: bash scripts/ci/prepare-hosted-build-runner.sh
         env:
-          LEADDRIVE_BUILD_MIN_BUDGET_KIB: "20971520"
+          LEADDRIVE_BUILD_MIN_BUDGET_KIB: "16777216"
 
       - name: TypeScript compile-check (advisory diagnostics)
         # The complete diagnostic set remains advisory while the historical
@@ -411,12 +411,14 @@ jobs:
         # enforced by the two blocking steps below. Keep the full pass and
         # finite job timeout; the preflight must admit the measured budget
         # before this bounded heap can be used.
+        # `--extendedDiagnostics` adds the compiler's own statistics after the
+        # errors — «Memory used» is the number to watch against the heap.
         env:
-          NODE_OPTIONS: --max-old-space-size=16384
+          NODE_OPTIONS: --max-old-space-size=12288
         run: |
           ulimit -c 0
           set +e
-          npx tsc --noEmit 2>&1 | tee tsc-output.log
+          npx tsc --noEmit --extendedDiagnostics 2>&1 | tee tsc-output.log
           echo "${PIPESTATUS[0]}" > tsc-exit-code
         continue-on-error: true
 

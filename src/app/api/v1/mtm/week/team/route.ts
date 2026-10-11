@@ -91,7 +91,7 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
     where: agentWhere,
     orderBy: [{ name: "asc" }, { id: "asc" }],
     take: OPERATIONAL_WEEK_LIMITS.filterAgents + 1,
-    select: { id: true, name: true, team: { select: { id: true, name: true } } },
+    select: { id: true, name: true, role: true, team: { select: { id: true, name: true } } },
   })
   const agents = agentsRaw.slice(0, OPERATIONAL_WEEK_LIMITS.filterAgents)
   const agentsTruncated = agentsRaw.length > OPERATIONAL_WEEK_LIMITS.filterAgents
@@ -100,7 +100,7 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
   if (agentIds.length === 0) {
     return NextResponse.json({
       success: true,
-      data: { mode: "TEAM_TODAY", timezone, today, generatedAt, rows: [], completeness: { authoritative: true, truncatedSources: [] }, capabilities: { workday: { enabled: canReadWorkforce } } },
+      data: { mode: "TEAM_TODAY", timezone, today, generatedAt, rows: [], lastVisitAt: null, completeness: { authoritative: true, truncatedSources: [] }, capabilities: { workday: { enabled: canReadWorkforce } } },
     })
   }
 
@@ -176,6 +176,21 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
 
   const scopeSet = new Set(agentIds)
   const visitsTruncated = visitsRaw.length > TEAM_VISIT_LIMIT
+  // A day without a single visit says nothing by itself (owner 2026-10-11, the
+  // Panel on a Sunday evening). When the team was last at a customer is the
+  // one fact that gives the empty day a meaning, so it is read only then.
+  const lastVisit = visitsRaw.length === 0
+    ? await prisma.mtmVisit.findFirst({
+        where: {
+          organizationId: auth.orgId,
+          agentId: { in: agentIds },
+          deletedAt: null,
+          checkInAt: { lt: window.activityStart },
+        },
+        orderBy: [{ checkInAt: "desc" }, { id: "desc" }],
+        select: { checkInAt: true },
+      })
+    : null
   const rows = buildMtmTeamTodayRows({
     now: generatedAt,
     todayKey: today,
@@ -230,6 +245,7 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
       today,
       generatedAt,
       rows,
+      lastVisitAt: lastVisit?.checkInAt ? lastVisit.checkInAt.toISOString() : null,
       completeness: { authoritative: truncatedSources.length === 0, truncatedSources },
       capabilities: { workday: { enabled: canReadWorkforce } },
     },

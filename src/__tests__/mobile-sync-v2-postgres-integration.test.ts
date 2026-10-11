@@ -5,6 +5,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
+import type { Prisma } from "@prisma/client"
 
 const url = process.env.MOBILE_SYNC_V2_TEST_DATABASE_URL
 const schema = "mtm_mobile_sync_v2_integration"
@@ -81,7 +82,7 @@ describe.skipIf(!url)("MTM mobile sync v2 trigger integration (real Postgres)", 
 
   beforeAll(async () => {
     const { PrismaClient } = await import("@prisma/client")
-    db = new PrismaClient({ datasourceUrl: url })
+    db = new PrismaClient<Prisma.PrismaClientOptions>({ datasourceUrl: url })
     // This exact named schema is test-owned. No production/shared database may
     // be supplied to this opt-in test URL.
     await db.$executeRawUnsafe(`DROP SCHEMA IF EXISTS ${schema} CASCADE`)

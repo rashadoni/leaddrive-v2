@@ -14,11 +14,26 @@ function sameDatabaseTarget(left, right) {
     && left.search === right.search
 }
 
+/**
+ * `new PrismaClient({ … })` is typed by its options: the compiler infers a
+ * client specific to that one object literal, and the first TypeScript caller
+ * that hands it to a `PrismaClient` parameter makes it compare the two clients
+ * model by model — about 150,000 types and over 100 MB of the type check's
+ * heap, per construction. The scripts want the ordinary client, so say so. The
+ * `any` in the middle is what stops the comparison from being made here.
+ *
+ * @param {import("@prisma/client").Prisma.PrismaClientOptions} options
+ * @returns {PrismaClient}
+ */
+function newPrismaClient(options) {
+  return /** @type {any} */ (new PrismaClient(options))
+}
+
 /** @param {{ orgId?: string }} [opts] */
 export async function makeScriptPrisma({ orgId } = {}) {
   const url = new URL(process.env.DATABASE_URL)
   url.searchParams.set("connection_limit", "1")
-  const prisma = new PrismaClient({ datasourceUrl: url.toString() })
+  const prisma = newPrismaClient({ datasourceUrl: url.toString() })
   if (orgId) {
     await prisma.$executeRaw`SELECT set_config('app.org_id', ${orgId}, false)`
   } else {
@@ -51,5 +66,5 @@ export function makeRlsTestPrisma(databaseUrl) {
     throw new Error("unscoped RLS test clients may only target EVENT_PLATFORM_TEST_DATABASE_URL")
   }
 
-  return new PrismaClient({ datasourceUrl: actual.toString() })
+  return newPrismaClient({ datasourceUrl: actual.toString() })
 }

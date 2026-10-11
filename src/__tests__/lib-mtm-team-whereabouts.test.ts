@@ -53,10 +53,15 @@ describe("the team rows carry the next stop", () => {
     const route = readFileSync("src/app/api/v1/mtm/week/team/route.ts", "utf8")
     expect(route).toContain('where: { deletedAt: null, status: "PENDING" }')
     expect(route).toContain("take: 1,")
-    const ui = readFileSync("src/components/mtm/operational-week-home.tsx", "utf8")
-    expect(ui).toContain('data-testid="mtm-week-team-row-where"')
-    expect(ui.indexOf('summary.active.map((entry) => renderTeamRow(entry, "active"))'))
-      .toBeLessThan(ui.indexOf('summary.problems.map((entry) => renderTeamRow(entry, "problem"))'))
-    expect(ui).toContain("href={`/mtm/map?agentId=${encodeURIComponent(row.agentId)}`}")
+    // Since 2026-10-11 the team is a card of the home screen: who is where is
+    // the chip and the line beside it, those busy now stand first
+    // (`homeTeam`, covered in lib-mtm-home-dashboard.test.ts), and the map is
+    // one link on the card.
+    const card = readFileSync("src/components/mtm/home-team-card.tsx", "utf8")
+    expect(card).toContain('t("detailAtCustomer"')
+    expect(card).toContain('t("detailHeading"')
+    expect(card).toContain('action={{ href: "/mtm/map", label: t("openMap") }}')
+    const dashboard = readFileSync("src/components/mtm/home-dashboard.tsx", "utf8")
+    expect(dashboard).toContain("homeTeam(team.rows, team.workdayEnabled)")
   })
 })

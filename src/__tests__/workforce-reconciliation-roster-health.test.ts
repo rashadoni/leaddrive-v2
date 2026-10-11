@@ -14,7 +14,7 @@ const url = process.env.WORKFORCE_ROSTER_HEALTH_TEST_DATABASE_URL
 describe.skipIf(!url)("eligible roster on an isolated synthetic PostgreSQL schema", () => {
   let db: PrismaClient, other: PrismaClient
   beforeAll(async () => {
-    db = new PrismaClient({ datasources: { db: { url } } }); other = new PrismaClient({ datasources: { db: { url } } })
+    db = new PrismaClient<Prisma.PrismaClientOptions>({ datasources: { db: { url } } }); other = new PrismaClient<Prisma.PrismaClientOptions>({ datasources: { db: { url } } })
     await db.$executeRaw`CREATE TABLE organizations (id text PRIMARY KEY,"isActive" boolean NOT NULL,plan text,addons jsonb,features jsonb,modules jsonb,"createdAt" timestamp(3) NOT NULL DEFAULT now())`
     await db.$executeRaw`CREATE TABLE workforce_reconciliation_tenant_states ("organizationId" text PRIMARY KEY REFERENCES organizations(id),"lastAttemptAt" timestamp(3),"lastCompletedAt" timestamp(3),"dueAt" timestamp(3),"lastOutcome" text)`
     await db.$executeRaw`CREATE ROLE wf_roster_fixture_reader NOLOGIN NOSUPERUSER NOBYPASSRLS`

@@ -1,4 +1,8 @@
-import { google } from "googleapis"
+// One API, not `import { google } from "googleapis"`: the root entry declares
+// every Google API there is — 165 MB of typings for the type check to hold in
+// memory, and 2.4 s of module loading against 0.3 s. The calendar module exports
+// the same `auth` and `calendar`, so the calls below are unchanged.
+import * as google from "googleapis/build/src/apis/calendar"
 import { prisma } from "@/lib/prisma"
 
 function createOAuth2Client() {

@@ -91,10 +91,15 @@ export default function MtmPhotosPage() {
   const [total, setTotal] = useState(0)
   // Land on this week's photos: the newest rows of a tenant can be seeded
   // placeholders, and "all" is one click away.
-  const [period, setPeriod] = useState<PhotoPeriod>("week")
+  // A link may name the period and the status it means (the Panel's «N photos
+  // not reviewed» row opens every unreviewed photo, not this week's). A named
+  // period is a choice like any other: the page does not widen it by itself.
+  const linkedPeriod = PHOTO_PERIOD_ORDER.find((value) => value === searchParams.get("period")) ?? null
+  const linkedStatus = (["PENDING", "APPROVED", "REJECTED"] as const).find((value) => value === searchParams.get("status")) ?? null
+  const [period, setPeriod] = useState<PhotoPeriod>(linkedPeriod ?? "week")
   // Audit 2026-09-21: the page opened on «Эта неделя» with four zeros while
   // 1367 photos were stored, and asked the manager to widen it themselves.
-  const [periodChosenByUser, setPeriodChosenByUser] = useState(false)
+  const [periodChosenByUser, setPeriodChosenByUser] = useState(linkedPeriod !== null)
   const [widenedFrom, setWidenedFrom] = useState<PhotoPeriod | null>(null)
   const [agentFilter, setAgentFilter] = useState("")
   const [knownAgents, setKnownAgents] = useState<Map<string, string>>(() => new Map())
@@ -106,7 +111,7 @@ export default function MtmPhotosPage() {
   const [loading, setLoading] = useState(true)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteItem, setDeleteItem] = useState<MtmPhotoRow | null>(null)
-  const [activeFilter, setActiveFilter] = useState("all")
+  const [activeFilter, setActiveFilter] = useState<string>(linkedStatus ?? "all")
   // Audit 2026-09-26: the counters added up the newest 200 photos, not the
   // period — «all» read 200 while 1367 were stored. The server counts now.
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({})

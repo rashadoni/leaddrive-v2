@@ -51,10 +51,15 @@ function nextDay(dateKey: string): string {
  * the formula registry's own facts (see src/lib/mtm/team-results.ts); the
  * registry itself sits folded below the page as «Как считаются цифры».
  */
-export function MtmTeamResults({ orgId }: { orgId?: string }) {
+/** A period named in the URL (`?period=thisWeek`), or null for anything else. */
+export function teamResultsPreset(value: string | null | undefined): Preset | null {
+  return AGENT_PERIOD_PRESETS.find((preset) => preset === value) ?? null
+}
+
+export function MtmTeamResults({ orgId, initialPreset }: { orgId?: string; initialPreset?: Preset | null }) {
   const t = useTranslations("mtmTeamResults")
   const locale = useLocale()
-  const [preset, setPreset] = useState<Preset>("thisMonth")
+  const [preset, setPreset] = useState<Preset>(initialPreset ?? "thisMonth")
   const [teamId, setTeamId] = useState("")
   const [timezone, setTimezone] = useState<string | null>(null)
   const [data, setData] = useState<KpiData | null>(null)
