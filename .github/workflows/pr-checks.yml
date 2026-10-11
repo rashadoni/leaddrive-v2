@@ -357,7 +357,7 @@ jobs:
         run: node scripts/check-test-baseline.mjs
 
   typecheck:
-    # The project type graph needs ~8.2 GiB («Memory used» at the end of the
+    # The project type graph needs ~7.8 GiB («Memory used» at the end of the
     # compiler step is the current figure). Private-repository Ubuntu runners
     # provide 8 GiB and terminated the whole job there (exit 143), silently
     # skipping the blocking gates below; it was moved to a 14 GiB Intel macOS

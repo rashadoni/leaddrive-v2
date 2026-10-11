@@ -41,9 +41,6 @@ jobs:
       fail-fast: false
       matrix:
         leg: [full, profile, trace, prisma-typings]
-        # TEMPORARY, for this branch's before/after — removed before merge.
-        include:
-          - leg: full-as-generated
     env:
       # The most the runner admits, not the gate's own figure: this is run when
       # the gate's heap is no longer enough, and tracing costs extra on top.
@@ -64,7 +61,7 @@ jobs:
         run: npx prisma generate --schema prisma/schema.prisma
 
       - name: Rewrite the repeated Prisma input types, as the gate does
-        if: ${{ matrix.leg != 'prisma-typings' && matrix.leg != 'full-as-generated' }}
+        if: ${{ matrix.leg != 'prisma-typings' }}
         run: node scripts/ci/slim-prisma-client-types.mjs
 
       - name: Prepare bounded GitHub-hosted typecheck memory
@@ -103,7 +100,7 @@ jobs:
           set +e
           tsc="node node_modules/typescript/lib/tsc.js"
           case "$LEG" in
-            full|full-as-generated)
+            full)
               /usr/bin/time -v $tsc --noEmit --extendedDiagnostics > tsc-output.log 2> time.log
               ;;
             profile)
@@ -124,7 +121,7 @@ jobs:
           free -m
 
       - name: The gate's own summary of the same log
-        if: ${{ matrix.leg == 'full' || matrix.leg == 'full-as-generated' }}
+        if: ${{ matrix.leg == 'full' }}
         run: |
           node scripts/ci/check-typecheck-baseline.mjs tsc-output.log || true
           # The error list as a set, to compare two runs: by position, and by
