@@ -1,9 +1,13 @@
 "use client"
 
 /**
- * MTM — Dashboard (home/overview) help article (English).
- * Covers the SWM-17 operational week plus the established home-page overview.
- * The live Map, Activity Journal and Leaderboard have their own articles.
+ * MTM — Dashboard (/mtm) help article (English).
+ * Describes only what is on screen: the team's home screen
+ * (`home-dashboard.tsx` and its cards) and one employee's week
+ * (`operational-week-home.tsx`). Labels are quoted from `messages/en.json`
+ * (`mtmDashboardPage`, `.home`, `.operationalWeek`): when a label changes
+ * there, change it here too, or `help-mtm-overview-labels.test.ts` goes red.
+ * Shifts and work time are not covered (Workforce).
  */
 import {
   HelpScenario,
@@ -18,193 +22,99 @@ export default function MtmOverviewHelpEn() {
   return (
     <div className="space-y-6">
       <HelpScenario
-        persona="Field-operations manager or supervisor"
-        goal="Review one employee's published week, actual evidence, workday state, GPS freshness, tasks, and plan changes without leaving the dashboard"
+        persona="Field team manager"
+        goal="See in a minute how the team's day and week are going and what is waiting for your decision"
       >
-        This is the home page of the <HelpKey>Route &amp; Field</HelpKey> module (left menu{" "}
-        <HelpKey>Dashboard</HelpKey>). Managers receive a server-scoped employee picker and a
-        read-only operational week. An agent viewing their own week may use only the workday actions
-        the server currently allows. The established KPI overview remains below it.
+        This is the first screen of the <HelpKey>Route &amp; Field</HelpKey> module —{" "}
+        <HelpKey>Dashboard</HelpKey> in the menu. You see only the employees in your scope. An agent
+        signed in as themselves sees only their own week.
       </HelpScenario>
 
-      <HelpSection title="What's on the page">
-        <p>
-          Top-left shows a greeting with your name (<strong>"Welcome back, {"{name}"}!"</strong>),
-          below it the page title <HelpKey>Dashboard</HelpKey> with the description "Field team
-          management — agents, routes, visits, tasks", and top-right a live date plus a digital clock
-          that ticks every second. Under the clock sit three quick-action buttons:{" "}
-          <HelpKey>New Agent</HelpKey>, <HelpKey>Reports</HelpKey> and <HelpKey>Live Map</HelpKey>.
-        </p>
-        <p>
-          Below them is the <HelpKey>Operational week</HelpKey>: region, team, employee, date, and
-          1/5/7-day controls followed by the published day plan and an attention summary. After that
-          comes the established period filter — <HelpKey>Today</HelpKey>, <HelpKey>This Week</HelpKey>,{" "}
-          <HelpKey>This Month</HelpKey> — with the selected one highlighted. Under the filter come
-          four KPI cards, then a three-column row (completion ring, time metrics, active agents), and
-          at the bottom the <HelpKey>Recent Visits</HelpKey> table.
-        </p>
+      <HelpSection title="The day in four figures">
+        <p>The heading has the date, “Working day” or “Day off”, and the time the figures are true for.</p>
         <dl className="rounded-md border p-3">
-          <HelpDef term="Planned Routes">Number of routes planned for the selected period; a period label sits underneath (e.g. "for today").</HelpDef>
-          <HelpDef term="Completed">Number of completed routes; shows "{"{pct}"}% completion" underneath.</HelpDef>
-          <HelpDef term="Off-Route">Number of off-route alerts; labelled "needs attention".</HelpDef>
-          <HelpDef term="Pending Tasks">Number of still-open tasks; shows "{"{n}"} urgent" underneath.</HelpDef>
-          <HelpDef term="Completion Rate">Ring chart — percentage in the centre, with "Completed" and "Remaining" colour keys beside it.</HelpDef>
-          <HelpDef term="Time Metrics">Average route time and average visit time (in minutes), total work time (in hours).</HelpDef>
-          <HelpDef term="Active Agents">Established activity summary. Use Operational week or Live Map for the latest recorded GPS timestamp and freshness evidence.</HelpDef>
-          <HelpDef term="Recent Visits">Table of recent visits with Agent, Customer, Status, Check-in time and Duration columns.</HelpDef>
+          <HelpDef term="In the field now">How many field agents are at a client or on the way between stops; “2 on a visit” counts those at a client. On a day without visits it reads “Last visit — …”.</HelpDef>
+          <HelpDef term="Today's plan">Stops visited out of those planned for today. When there is no plan for today it becomes “Tomorrow&apos;s plan”: how many agents already have a route.</HelpDef>
+          <HelpDef term="This week vs plan">The same from Monday to today, with a comparison: “62% by this day last week · ↑ 5 pts”.</HelpDef>
+          <HelpDef term="Waiting for you">How many issues are waiting for you. When there are none: “all clear”.</HelpDef>
         </dl>
+        <p>
+          Field agents are counted. An administrator&apos;s or a manager&apos;s card counts only on a
+          day it has a route, a visit or an alert.
+        </p>
       </HelpSection>
 
-      <HelpSection title="Step by step: review an operational week">
+      <HelpSection title="Waiting for you">
+        <p>
+          One row per list where something is waiting: requests for new clients and institutions,
+          route change requests, unpublished routes, unresolved alerts of earlier days, unreviewed
+          photos, and agents without a route for the next working day. The row says whose it is and
+          since which day. Its button — <HelpKey>Open request</HelpKey>, <HelpKey>Publish</HelpKey>,{" "}
+          <HelpKey>Resolve</HelpKey>, <HelpKey>Review</HelpKey> or <HelpKey>Plan</HelpKey> — opens
+          that list.
+        </p>
+      </HelpSection>
+
+      <HelpSection title="Team · this week">
+        <p>
+          One row per field agent. Under the name is where they stand now: “on a visit”, “on the
+          way”, “plan done”, “not started” or “no activity”, then the client and the time, or “last
+          GPS 10:52”. The last GPS is when the agent was last seen, not where they are now.
+        </p>
+        <p>
+          On the right is the week by day: each cell shows stops visited and how many were planned;
+          the colours are named under the list. At the bottom: “Week: 42 visits” and the{" "}
+          <HelpKey>Open results</HelpKey> link.
+        </p>
+      </HelpSection>
+
+      <HelpSection title="Client base and visit quality">
+        <dl className="rounded-md border p-3">
+          <HelpDef term="Client base">How many clients or institutions of the base were visited this month — by class, and until classes are set, by specialty or type.</HelpDef>
+          <HelpDef term="Visit quality">How many of the week&apos;s visits were “Recorded at the client”, how many came “With a photo”, how many were “Too long” or “Too short”.</HelpDef>
+        </dl>
+        <p>
+          An administrator also sees a strip, “2 steps left for the figures to be complete:” — what
+          is not set up in the module yet. Once it is all done the strip is gone.
+        </p>
+      </HelpSection>
+
+      <HelpSection title="One employee's week">
         <HelpStep n={1}>
           <p>
-            Narrow <HelpKey>Region</HelpKey> and <HelpKey>Team</HelpKey> when needed, then choose one
-            <HelpKey>Employee</HelpKey>. Managers do not receive route, visit, task, workday, or GPS
-            facts until an employee is selected.
+            Click an agent&apos;s name or a cell of their week, or pick them in the{" "}
+            <HelpKey>Employee</HelpKey> filter in the heading. The <HelpKey>Region</HelpKey> and{" "}
+            <HelpKey>Team</HelpKey> filters narrow the screen; they are absent when there is nothing
+            to choose from.
           </p>
-          <HelpCallout kind="see" label="What you'll see">
-            The selected employee replaces any previous facts completely. Each day shows text and
-            icons for planned, actual, and cancelled stops, plus workday state. On a phone, choose a
-            day from the day switcher; the five-column week is never squeezed into the narrow screen.
+          <HelpCallout kind="see">
+            The <HelpKey>Operational week</HelpKey>: days with “Plan”, “Actual”, “Cancelled” and the
+            route stops, “Plan coverage”, and the “Needs attention” block — alerts, “Cancellations
+            awaiting review”, “Active tasks”. To get back to the team, clear the{" "}
+            <HelpKey>Employee</HelpKey> filter with its cross.
           </HelpCallout>
         </HelpStep>
         <HelpStep n={2}>
           <p>
-            Open an organization, contact, route, visit, or GPS history from a stop. The dashboard
-            context is carried in the return link. Actual visits outside the published plan are
-            listed separately and do not change the published-plan denominator.
+            An agent asks to cancel a stop from their own week — <HelpKey>Request cancellation</HelpKey>.
+            A manager with the right to review decides it right here: <HelpKey>Approve</HelpKey>,{" "}
+            <HelpKey>Reschedule</HelpKey>, <HelpKey>Return</HelpKey> or <HelpKey>Reject</HelpKey>.
           </p>
-          <HelpCallout kind="see" label="Evidence rules">
-            GPS freshness is separate from workday state. “Online”, “delayed”, and “stale” describe
-            the age of the last admissible coordinate, not a claim that the employee is at that
-            location now. Cached and partial snapshots are labelled with their saved time or limit.
-          </HelpCallout>
-        </HelpStep>
-      </HelpSection>
-
-      <HelpSection title="Step by step: pick a period and read the KPIs">
-        <HelpStep n={1}>
-          <p>
-            Choose one of the period buttons: <HelpKey>Today</HelpKey>, <HelpKey>This Week</HelpKey> or{" "}
-            <HelpKey>This Month</HelpKey>.
-          </p>
-          <HelpCallout kind="see" label="What you'll see">
-            The button you pick turns solid (filled) while the others stay outlined. The four KPI
-            cards and the blocks below refresh for the new period; the label under the{" "}
-            <strong>Planned Routes</strong> card changes to match ("for today" / "this week" /
-            "this month").
-          </HelpCallout>
-        </HelpStep>
-        <HelpStep n={2}>
-          <p>
-            Read the four KPI cards left to right: <strong>Planned Routes</strong>,{" "}
-            <strong>Completed</strong>, <strong>Off-Route</strong> and <strong>Pending Tasks</strong>.
-          </p>
-          <HelpCallout kind="see" label="What you'll see">
-            Each card has a large number, a title and a small sub-line: <strong>Completed</strong>{" "}
-            shows the completion percent, <strong>Off-Route</strong> says "needs attention", and{" "}
-            <strong>Pending Tasks</strong> shows how many are urgent. Loading, unavailable scoped
-            metrics, and genuine zeroes are displayed differently.
-          </HelpCallout>
-        </HelpStep>
-      </HelpSection>
-
-      <HelpSection title="Step by step: read the completion and time blocks">
-        <HelpStep n={1}>
-          <p>
-            Look at the <HelpKey>Completion Rate</HelpKey> ring on the left.
-          </p>
-          <HelpCallout kind="see" label="What you'll see">
-            The circular ring fills to the completion percent for the selected period, with that
-            percent printed in the centre. Two keys sit beside it: <strong>Completed</strong> (number
-            of completed routes) and <strong>Remaining</strong> (planned minus completed).
-          </HelpCallout>
-        </HelpStep>
-        <HelpStep n={2}>
-          <p>
-            Move to the <HelpKey>Time Metrics</HelpKey> block in the middle.
-          </p>
-          <HelpCallout kind="see" label="What you'll see">
-            Three rows, each with a clock icon: <strong>Avg Route Time</strong> and{" "}
-            <strong>Avg Visit Time</strong> in minutes, and <strong>Total Work Time</strong> in hours.
-          </HelpCallout>
-        </HelpStep>
-      </HelpSection>
-
-      <HelpSection title="Step by step: track active agents">
-        <HelpStep n={1}>
-          <p>
-            Look at the <HelpKey>Active Agents</HelpKey> block on the right.
-          </p>
-          <HelpCallout kind="see" label="What you'll see">
-            This established block may show an activity badge, up to five names, and a last reported
-            speed. It is not proof of an employee's exact present location. Use the operational week
-            evidence row or <HelpKey>Live Map</HelpKey> for the latest coordinate timestamp,
-            freshness, accuracy, and battery.
-          </HelpCallout>
-        </HelpStep>
-        <HelpStep n={2}>
-          <p>
-            If any agent is online, click the <HelpKey>Show on Map</HelpKey> button at the bottom of
-            the block.
-          </p>
-          <HelpCallout kind="see" label="What you'll see">
-            You go to the <HelpKey>Live Map</HelpKey> page (the same place as the{" "}
-            <HelpKey>Live Map</HelpKey> quick action). The map has its own dedicated help article.
-          </HelpCallout>
-        </HelpStep>
-      </HelpSection>
-
-      <HelpSection title="Step by step: read the recent-visits table">
-        <HelpStep n={1}>
-          <p>
-            Look at the <HelpKey>Recent Visits</HelpKey> table at the very bottom of the page.
-          </p>
-          <HelpCallout kind="see" label="What you'll see">
-            A five-column table: <strong>Agent</strong>, <strong>Customer</strong>,{" "}
-            <strong>Status</strong>, <strong>Check-in</strong> and <strong>Duration</strong>. Status
-            shows as a coloured pill (e.g. CHECKED_OUT green, CHECKED_IN blue). While data loads you
-            see "Loading...", and if there are no visits yet you see "No visits yet".
-          </HelpCallout>
-        </HelpStep>
-      </HelpSection>
-
-      <HelpSection title="Step by step: quick actions">
-        <HelpStep n={1}>
-          <p>
-            Click one of the three buttons under the header: <HelpKey>New Agent</HelpKey>,{" "}
-            <HelpKey>Reports</HelpKey> or <HelpKey>Live Map</HelpKey>.
-          </p>
-          <HelpCallout kind="see" label="What you'll see">
-            <HelpKey>New Agent</HelpKey> takes you to the agents page, <HelpKey>Reports</HelpKey> to
-            the reports page, and <HelpKey>Live Map</HelpKey> to the live map. These are just
-            navigation links — nothing changes here.
-          </HelpCallout>
         </HelpStep>
       </HelpSection>
 
       <HelpCallout kind="tip">
         <p>
-          Operational week refreshes automatically while the tab is visible and can be refreshed
-          manually. Requests never overlap. “Last successful response” is the server response time;
-          an offline snapshot is separately labelled with its saved time and expiry state. If this
-          device cannot store the copy, the live view stays available and shows a non-blocking warning.
+          The screen refreshes itself once a minute while the tab is in front of you; the
+          circular-arrow button refreshes at once. Below the dashboard there may be a “Key message”
+          for you and “Support” with contacts.
         </p>
       </HelpCallout>
 
       <HelpCallout kind="warning">
         <p>
-          A zero is meaningful only after a successful response. Loading, permission, partial,
-          rate-limit, offline, and unavailable-scope states are labelled explicitly; do not interpret
-          them as zero activity.
-        </p>
-      </HelpCallout>
-
-      <HelpCallout kind="security">
-        <p>
-          The server enforces tenant, manager, team, and employee scope. An out-of-scope employee is
-          not returned, and the screen clears previous facts before requesting another employee.
-          Cached facts are bound to the tenant, signed-in viewer, employee, filters, date, and range.
+          A zero or an empty card means there is nothing only after a successful load. If the data
+          did not arrive, the card says so in words and offers <HelpKey>Try again</HelpKey>.
         </p>
       </HelpCallout>
     </div>
