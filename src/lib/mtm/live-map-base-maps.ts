@@ -46,7 +46,8 @@ export interface LiveMapBaseMap {
 
 const CARTO_LIGHT = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
 
-function escapeHtml(text: string): string {
+/** Words from a deployment's settings, made safe for Leaflet's attribution control, which takes HTML. */
+export function escapeTileAttribution(text: string): string {
   return text
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -55,11 +56,24 @@ function escapeHtml(text: string): string {
     .replace(/'/g, "&#39;")
 }
 
-/** A tile address a browser can be sent to: https, with the three places Leaflet fills in. */
-function satelliteTileUrl(raw: string | null | undefined): string | null {
+/** The places of an address Leaflet fills in by itself; any other `{…}` it throws on. */
+const TILE_URL_PLACES = new Set(["z", "x", "y", "-y", "s", "r"])
+
+/**
+ * A tile address a browser can be sent to: https, with the three places
+ * Leaflet fills in — and no place it cannot fill. An address pasted with a
+ * placeholder left in it («…?key={key}») makes Leaflet throw while the map is
+ * being drawn, and the whole screen goes with it; such an address is no
+ * address.
+ */
+export function tileUrlTemplate(raw: string | null | undefined): string | null {
   const url = raw?.trim() ?? ""
   if (!url.startsWith("https://")) return null
-  return ["{z}", "{x}", "{y}"].every((part) => url.includes(part)) ? url : null
+  if (!["{z}", "{x}", "{y}"].every((part) => url.includes(part))) return null
+  const places = [...url.matchAll(/\{([^{}]*)\}/g)].map((match) => match[1])
+  if (!places.every((place) => TILE_URL_PLACES.has(place))) return null
+  // A brace that opens or closes nothing is not a place either.
+  return /[{}]/.test(url.replace(/\{[^{}]*\}/g, "")) ? null : url
 }
 
 /**
@@ -82,13 +96,13 @@ export function liveMapBaseMaps(
     { id: "voyager", tiles: null },
     { id: "light", tiles: carto(CARTO_LIGHT) },
   ]
-  const satellite = satelliteTileUrl(satelliteUrl)
+  const satellite = tileUrlTemplate(satelliteUrl)
   if (satellite) {
     maps.push({
       id: "satellite",
       // Whose picture it is must be said on the map; the words come from the
       // deployment's settings and are shown as text, never as markup.
-      tiles: { url: satellite, attribution: escapeHtml(satelliteAttribution?.trim() ?? "") },
+      tiles: { url: satellite, attribution: escapeTileAttribution(satelliteAttribution?.trim() ?? "") },
     })
   }
   return maps

@@ -161,7 +161,7 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
     vi.stubEnv("NEXT_PUBLIC_CARTO_BASEMAPS_API_KEY", " carto-test-key ")
     try {
       const json = await (await GET(request())).json()
-      expect(json.data.maps).toEqual({ cartoBasemapsApiKey: "carto-test-key" })
+      expect(json.data.maps).toEqual({ cartoBasemapsApiKey: "carto-test-key", basemap: { primary: "carto", backup: null } })
     } finally {
       vi.unstubAllEnvs()
     }
@@ -171,7 +171,34 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
     vi.stubEnv("NEXT_PUBLIC_CARTO_BASEMAPS_API_KEY", "")
     try {
       const json = await (await GET(request())).json()
-      expect(json.data.maps).toEqual({ cartoBasemapsApiKey: null })
+      expect(json.data.maps).toEqual({ cartoBasemapsApiKey: null, basemap: { primary: "carto", backup: null } })
+    } finally {
+      vi.unstubAllEnvs()
+    }
+  })
+
+  // CARTO's free tiles may be cut off without warning; the deployment can
+  // name a backup provider and make it the background without a release
+  // (src/lib/mtm/basemap-provider.ts). The phone is told what the web is told.
+  it("tells the field app the deployment's backup tile provider, and whether it is the background now", async () => {
+    const url = "https://tiles.backup.example/{z}/{y}/{x}?token=browser-key"
+    vi.stubEnv("NEXT_PUBLIC_CARTO_BASEMAPS_API_KEY", "carto-test-key")
+    vi.stubEnv("MTM_BASEMAP_BACKUP_TILE_URL", url)
+    vi.stubEnv("MTM_BASEMAP_BACKUP_TILE_ATTRIBUTION", "Powered by Backup")
+    vi.stubEnv("MTM_BASEMAP_BACKUP_TILE_SIZE", "512")
+    try {
+      const waiting = await (await GET(request())).json()
+      expect(waiting.data.maps).toEqual({
+        cartoBasemapsApiKey: "carto-test-key",
+        basemap: { primary: "carto", backup: { url, attribution: "Powered by Backup", tileSize: 512 } },
+      })
+
+      // Changed on the running server: the next answer says so, with no new build.
+      vi.stubEnv("MTM_BASEMAP_PRIMARY", "backup")
+      const moved = await (await GET(request())).json()
+      expect(moved.data.maps.basemap.primary).toBe("backup")
+      // The key older builds read is still there: they stay on CARTO and keep working.
+      expect(moved.data.maps.cartoBasemapsApiKey).toBe("carto-test-key")
     } finally {
       vi.unstubAllEnvs()
     }
