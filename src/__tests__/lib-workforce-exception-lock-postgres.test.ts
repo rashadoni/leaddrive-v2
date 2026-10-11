@@ -177,9 +177,9 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
   } | null = null
 
   beforeAll(async () => {
-    observer = new PrismaClient({ datasourceUrl: integrationDatabaseUrl })
-    terminalClient = new PrismaClient({ datasourceUrl: integrationDatabaseUrl })
-    linkedClient = new PrismaClient({ datasourceUrl: integrationDatabaseUrl })
+    observer = new PrismaClient<Prisma.PrismaClientOptions>({ datasourceUrl: integrationDatabaseUrl })
+    terminalClient = new PrismaClient<Prisma.PrismaClientOptions>({ datasourceUrl: integrationDatabaseUrl })
+    linkedClient = new PrismaClient<Prisma.PrismaClientOptions>({ datasourceUrl: integrationDatabaseUrl })
     await observer.$executeRawUnsafe(`
       CREATE ROLE "${migrationOwnerRole}" NOLOGIN NOSUPERUSER NOBYPASSRLS
     `)
@@ -587,7 +587,7 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
       `)
     }
     await observer.$executeRawUnsafe(`ALTER SCHEMA "${schema}" OWNER TO "${migrationOwnerRole}"`)
-    migrationClient = new PrismaClient({ datasourceUrl: migrationDatabaseUrl() })
+    migrationClient = new PrismaClient<Prisma.PrismaClientOptions>({ datasourceUrl: migrationDatabaseUrl() })
     await observer.$executeRawUnsafe(`
       ALTER TABLE "${schema}"."workforce_exception_decisions"
       ENABLE ROW LEVEL SECURITY
@@ -919,7 +919,7 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
       GRANT SELECT ON "${schema}"."workforce_exception_employee_responses"
       TO "${applicationRole}"
     `)
-    applicationClient = new PrismaClient({ datasourceUrl: applicationDatabaseUrl() })
+    applicationClient = new PrismaClient<Prisma.PrismaClientOptions>({ datasourceUrl: applicationDatabaseUrl() })
   }, 90_000)
 
   afterAll(async () => {

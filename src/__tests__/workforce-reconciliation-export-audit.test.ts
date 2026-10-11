@@ -56,7 +56,7 @@ describe.skipIf(!url)("export audit on isolated PostgreSQL", () => {
   beforeAll(async () => {
     const parsed = new URL(url!)
     if (parsed.protocol !== "postgresql:" || parsed.hostname !== "127.0.0.1" || parsed.pathname !== "/hrm_export_audit_test") throw new Error("EXPORT_TEST_DB_NOT_ISOLATED")
-    db = new PrismaClient({ datasources: { db: { url } } }); other = new PrismaClient({ datasources: { db: { url } } })
+    db = new PrismaClient<Prisma.PrismaClientOptions>({ datasources: { db: { url } } }); other = new PrismaClient<Prisma.PrismaClientOptions>({ datasources: { db: { url } } })
     await db.$executeRaw`CREATE TABLE "workforce_timesheet_approvals" (
       "id" text PRIMARY KEY, "organizationId" text NOT NULL, "agentId" text NOT NULL,
       "periodStart" date NOT NULL, "periodEnd" date NOT NULL, "recordKind" text NOT NULL,

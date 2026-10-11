@@ -88,7 +88,7 @@ pgDescribe("hosted employee impact SELECT-only coherent PostgreSQL projection", 
     expect(target(process.env.EVENT_PLATFORM_TEST_DATABASE_URL, "postgres").href).toBe(adminUrl.href)
     expect([url.protocol, url.host, url.pathname, url.search]).toEqual([adminUrl.protocol, adminUrl.host, adminUrl.pathname, adminUrl.search])
     url.searchParams.set("connection_limit", "1")
-    owner = new PrismaClient({ datasourceUrl: adminUrl.toString() }); reader = new PrismaClient({ datasourceUrl: url.toString() })
+    owner = new PrismaClient<Prisma.PrismaClientOptions>({ datasourceUrl: adminUrl.toString() }); reader = new PrismaClient<Prisma.PrismaClientOptions>({ datasourceUrl: url.toString() })
     for (const [n, id] of orgs.entries()) {
       await owner.organization.create({ data: { id, name: "Impact disposable fixture", slug: `impact-${n}-${suffix}` } })
       await owner.mtmSetting.create({ data: { organizationId: id, key: "timezone", value: "UTC" } })

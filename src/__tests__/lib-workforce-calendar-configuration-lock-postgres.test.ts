@@ -287,7 +287,7 @@ postgresDescribe("Workforce calendar date locks (real PostgreSQL)", () => {
   const clients: PrismaClient[] = []
 
   beforeAll(async () => {
-    observer = new PrismaClient({ datasourceUrl: integrationDatabaseUrl })
+    observer = new PrismaClient<Prisma.PrismaClientOptions>({ datasourceUrl: integrationDatabaseUrl })
     await observer.$connect()
     await observer.$executeRawUnsafe(`CREATE SCHEMA "${schema}"`)
     await observer.$executeRawUnsafe(`
@@ -394,9 +394,9 @@ postgresDescribe("Workforce calendar date locks (real PostgreSQL)", () => {
         )
       `)
     }
-    firstClient = new PrismaClient({ datasourceUrl: schemaDatabaseUrl() })
-    secondClient = new PrismaClient({ datasourceUrl: schemaDatabaseUrl() })
-    applicationClient = new PrismaClient({ datasourceUrl: schemaDatabaseUrl(true) })
+    firstClient = new PrismaClient<Prisma.PrismaClientOptions>({ datasourceUrl: schemaDatabaseUrl() })
+    secondClient = new PrismaClient<Prisma.PrismaClientOptions>({ datasourceUrl: schemaDatabaseUrl() })
+    applicationClient = new PrismaClient<Prisma.PrismaClientOptions>({ datasourceUrl: schemaDatabaseUrl(true) })
     clients.push(firstClient, secondClient, applicationClient)
     await Promise.all(clients.map((client) => client.$connect()))
   })

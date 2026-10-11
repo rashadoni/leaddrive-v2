@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import { PrismaClient } from "@prisma/client"
+import { PrismaClient, type Prisma } from "@prisma/client"
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { publishWorkforceShiftAssignments, scheduleWorkforceShiftAssignment } from "@/lib/workforce/configuration-management"
 import { publishWorkforceSiteAssignments, scheduleWorkforceSiteAssignment } from "@/lib/workforce/site-management"
@@ -12,8 +12,8 @@ const day=(s:string)=>new Date(`${s}T00:00:00.000Z`)
 describe.skipIf(!adminUrl||!appUrl)("C7 bulk writers with real PostgreSQL, current migration triggers and FORCE RLS",()=>{
  let admin:PrismaClient;let db:PrismaClient;let peer:PrismaClient;let unscoped:PrismaClient;let org:string;let user:string;let agents:string[];let templates:string[];let sites:string[]
  const clients:PrismaClient[]=[]
- async function client(scope?:string){const u=new URL(appUrl!);u.searchParams.set("connection_limit","1");const c=new PrismaClient({datasourceUrl:u.toString()});clients.push(c);if(scope)await c.$executeRaw`SELECT set_config('app.org_id',${scope},false)`;return c}
- beforeAll(async()=>{for(const raw of [adminUrl!,appUrl!]){const u=new URL(raw);if(u.hostname!=="127.0.0.1"||u.pathname!=="/workforce_bulk_browser")throw new Error("BULK_TEST_TARGET_NOT_ISOLATED")};admin=new PrismaClient({datasourceUrl:adminUrl})})
+ async function client(scope?:string){const u=new URL(appUrl!);u.searchParams.set("connection_limit","1");const c=new PrismaClient<Prisma.PrismaClientOptions>({datasourceUrl:u.toString()});clients.push(c);if(scope)await c.$executeRaw`SELECT set_config('app.org_id',${scope},false)`;return c}
+ beforeAll(async()=>{for(const raw of [adminUrl!,appUrl!]){const u=new URL(raw);if(u.hostname!=="127.0.0.1"||u.pathname!=="/workforce_bulk_browser")throw new Error("BULK_TEST_TARGET_NOT_ISOLATED")};admin=new PrismaClient<Prisma.PrismaClientOptions>({datasourceUrl:adminUrl})})
  beforeEach(async()=>{
   org=`c7-${randomUUID()}`;user=`${org}-user`;agents=[`${org}-a`,`${org}-b`];templates=[`${org}-old`,`${org}-new`];sites=[`${org}-p0`,`${org}-p1`]
   await admin.organization.create({data:{id:org,name:"Synthetic bulk tenant",slug:org,features:["workforce-hrm"]}})

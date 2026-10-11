@@ -51,7 +51,7 @@ postgresDescribe("hosted real PostgreSQL recorded future-window read", () => {
     expect(fence.href).toBe(ownerUrl.href)
     expect([appUrl.protocol, appUrl.host, appUrl.pathname, appUrl.search]).toEqual([ownerUrl.protocol, ownerUrl.host, ownerUrl.pathname, ownerUrl.search])
     appUrl.searchParams.set("connection_limit", "1")
-    admin = new PrismaClient({ datasourceUrl: ownerUrl.toString() }); app = new PrismaClient({ datasourceUrl: appUrl.toString() })
+    admin = new PrismaClient<Prisma.PrismaClientOptions>({ datasourceUrl: ownerUrl.toString() }); app = new PrismaClient<Prisma.PrismaClientOptions>({ datasourceUrl: appUrl.toString() })
     for (const [index, id] of orgs.entries()) {
       await admin.organization.create({ data: { id, name: "Window isolated fixture", slug: `window-${index}-${suffix}` } })
       await admin.mtmSetting.create({ data: { organizationId: id, key: "timezone", value: "UTC" } })

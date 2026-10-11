@@ -217,7 +217,7 @@ postgresDescribe("Workforce exception policy revision migration (real PostgreSQL
   } | null = null
 
   beforeAll(async () => {
-    observer = new PrismaClient({ datasourceUrl: integrationDatabaseUrl })
+    observer = new PrismaClient<Prisma.PrismaClientOptions>({ datasourceUrl: integrationDatabaseUrl })
     await observer.$executeRawUnsafe(
       `CREATE ROLE "${migrationOwnerRole}" NOLOGIN NOSUPERUSER NOBYPASSRLS`,
     )
@@ -350,10 +350,10 @@ postgresDescribe("Workforce exception policy revision migration (real PostgreSQL
       throw new Error(`Policy revision migration failed\n${deploy.stdout}\n${deploy.stderr}`)
     }
 
-    migrationClient = new PrismaClient({
+    migrationClient = new PrismaClient<Prisma.PrismaClientOptions>({
       datasourceUrl: databaseUrlForRole(migrationLoginRole, migrationPassword),
     })
-    applicationClient = new PrismaClient({
+    applicationClient = new PrismaClient<Prisma.PrismaClientOptions>({
       datasourceUrl: databaseUrlForRole(applicationRole, applicationPassword),
     })
 

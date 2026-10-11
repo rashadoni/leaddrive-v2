@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
-import { PrismaClient } from "@prisma/client"
+import { PrismaClient, type Prisma } from "@prisma/client"
 import { readWorkforceReconciliationApprovalGroup as readGroup } from "@/lib/workforce/reconciliation-approval-group"
 import { buildWorkforceTimesheetApproval } from "@/lib/workforce/timesheet-approval"
 import { runWorkforceReconciliationJob } from "@/lib/workforce/reconciliation-job"
@@ -45,7 +45,7 @@ describe.skipIf(!url)("approval groups on isolated PostgreSQL", () => {
   beforeAll(async () => {
     const parsed = new URL(url!)
     if (parsed.protocol !== "postgresql:" || parsed.hostname !== "127.0.0.1" || parsed.pathname !== "/hrm_approval_group_test") throw new Error("APPROVAL_TEST_DB_NOT_ISOLATED")
-    db = new PrismaClient({ datasources: { db: { url } } }); other = new PrismaClient({ datasources: { db: { url } } })
+    db = new PrismaClient<Prisma.PrismaClientOptions>({ datasources: { db: { url } } }); other = new PrismaClient<Prisma.PrismaClientOptions>({ datasources: { db: { url } } })
     await db.$executeRaw`CREATE TABLE "workforce_timesheet_approvals" (
       "id" text PRIMARY KEY, "organizationId" text NOT NULL, "agentId" text NOT NULL,
       "periodStart" date NOT NULL, "periodEnd" date NOT NULL, "recordKind" text NOT NULL,

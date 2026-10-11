@@ -15214,9 +15214,6 @@
   "mtmDashboardPage": {
     "welcomeBack": "С возвращением, {name}!",
     "subtitle": "Управление полевой командой — агенты, маршруты, визиты, задачи",
-    "newAgent": "Новый агент",
-    "reports": "Отчёты",
-    "liveMap": "Карта в реальном времени",
     "keyMessage": "Ключевое сообщение",
     "announcementValidUntil": "Действует до {date}",
     "announcementAcknowledge": "Подтвердить",
@@ -15229,7 +15226,6 @@
     "announcementRetry": "Повторить",
     "supportTitle": "Поддержка",
     "supportHint": "Утверждённые для этого клиента контакты полевой поддержки.",
-    "scopeUnavailable": "Недоступно для этой ограниченной зоны команды",
     "home": {
       "workingDay": "Рабочий день",
       "dayOff": "Выходной",
@@ -15634,8 +15630,6 @@
       "finishConfirmHint": "Завершение закроет активную смену и запишет аудируемое событие окончания. Продолжить её с этого экрана будет нельзя.",
       "finishConfirmAction": "Подтвердить завершение",
       "finishConfirmCancel": "Оставить день открытым",
-      "legacyTitle": "Прежний операционный обзор",
-      "legacyNote": "Разделы ниже сохраняют прежние формулы панели. Для проверки плана и подтверждений конкретного сотрудника используйте операционную неделю выше.",
       "workday": {
         "active": "Активен",
         "paused": "На паузе",
@@ -15702,58 +15696,7 @@
         "pharmacist": "Фармацевт",
         "other": "Другой контакт"
       }
-    },
-    "period": {
-      "today": "Сегодня",
-      "week": "Эта неделя",
-      "month": "Этот месяц"
-    },
-    "periodSuffix": {
-      "today": "за сегодня",
-      "week": "за неделю",
-      "month": "за месяц"
-    },
-    "kpiPlannedRoutes": "Запланировано маршрутов",
-    "kpiCompleted": "Завершено",
-    "kpiCompletionSuffix": "{pct}% выполнения",
-    "kpiOffRoute": "Отклонения",
-    "kpiNeedsAttention": "требует внимания",
-    "kpiPendingTasks": "Открытых задач",
-    "kpiImportFailures": "Ошибки импорта",
-    "kpiImportFailuresHint": "Неудачные или частично применённые задания Excel",
-    "kpiOpenVisits": "Открытые визиты",
-    "kpiOpenVisitsHint": "Визиты остаются открытыми до явного завершения агентом",
-    "kpiApprovalBacklog": "Очередь согласований",
-    "kpiApprovalBacklogHint": "Изменения маршрутов и заявки на клиентов ожидают проверки",
-    "kpiUrgentSuffix": "{n} срочных",
-    "completionRate": "Процент выполнения",
-    "remaining": "Осталось",
-    "timeMetrics": "Метрики времени",
-    "avgRouteTime": "Среднее время маршрута",
-    "avgVisitTime": "Среднее время визита",
-    "minutes": "{n} мин",
-    "hours": "{n} ч",
-    "activeAgents": "GPS был свежим при обновлении обзора · {minutes} мин",
-    "dashboardSnapshotAt": "Обзор обновлён в {time}",
-    "lastGpsAt": "Передано в {time}",
-    "gpsRosterLimited": "Проверка свежести ограничена первыми 500 доступными сотрудниками.",
-    "dashboardLoadFailed": "Не удалось загрузить главную: {error}",
-    "networkError": "Ошибка сети",
-    "visitStatus": {
-      "checkedOut": "Завершён",
-      "checkedIn": "В процессе",
-      "cancelled": "Отменён",
-      "other": "Зафиксирован"
-    },
-    "showOnMap": "Показать на карте",
-    "noAgentsOnline": "Нет принятого GPS-сигнала в этом интервале свежести",
-    "loading": "Загрузка...",
-    "colAgent": "Агент",
-    "colCustomer": "Клиент",
-    "colStatus": "Статус",
-    "colCheckIn": "Чек-ин",
-    "colDuration": "Длительность",
-    "noVisitsYet": "Визитов пока нет"
+    }
   },
   "mtmAnalytics": {
     "title": "Аналитика"

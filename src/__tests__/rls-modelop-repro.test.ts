@@ -5,6 +5,7 @@
 // Run: RLS_TEST_DATABASE_URL=postgresql://postgres:rls@localhost:55432/postgres \
 //        npx vitest run src/__tests__/rls-modelop-repro.test.ts
 import { describe, it, expect, beforeAll, afterAll } from "vitest"
+import type { Prisma } from "@prisma/client"
 
 const url = process.env.RLS_TEST_DATABASE_URL
 
@@ -21,7 +22,7 @@ describe.skipIf(!url)("RLS model-op vs raw-op repro (real prisma client)", () =>
 
   beforeAll(async () => {
     const { PrismaClient } = await import("@prisma/client")
-    base = new PrismaClient({ datasourceUrl: url }) // superuser — DDL + seed only
+    base = new PrismaClient<Prisma.PrismaClientOptions>({ datasourceUrl: url }) // superuser — DDL + seed only
     // non-superuser app role that OWNS deals so FORCE RLS binds to it (mirrors prod hermes)
     await base.$executeRawUnsafe(`DO $$ BEGIN
       IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname='rls_app') THEN

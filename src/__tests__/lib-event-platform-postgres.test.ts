@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import { PrismaClient } from "@prisma/client"
+import { PrismaClient, type Prisma } from "@prisma/client"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import {
   AggregateVersionConflictError,
@@ -15,7 +15,7 @@ postgresDescribe("event-platform PostgreSQL optimistic append", () => {
   let prisma!: PrismaClient
 
   beforeAll(() => {
-    prisma = new PrismaClient({ datasources: { db: { url: integrationDatabaseUrl } } })
+    prisma = new PrismaClient<Prisma.PrismaClientOptions>({ datasources: { db: { url: integrationDatabaseUrl } } })
   })
 
   afterAll(async () => {

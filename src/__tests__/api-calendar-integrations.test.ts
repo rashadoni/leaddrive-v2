@@ -35,7 +35,7 @@ vi.mock("@/lib/google-calendar", () => ({
 vi.mock("@/lib/slack", () => ({
   sendSlackNotification: vi.fn(),
 }))
-vi.mock("googleapis", () => {
+vi.mock("googleapis/build/src/apis/calendar", () => {
   const MockOAuth2 = vi.fn().mockImplementation(function (this: any) {
     this.generateAuthUrl = vi.fn().mockReturnValue("https://accounts.google.com/o/oauth2/auth?fake=1")
     this.getToken = vi.fn().mockResolvedValue({
@@ -49,9 +49,7 @@ vi.mock("googleapis", () => {
     })
   })
   return {
-    google: {
-      auth: { OAuth2: MockOAuth2 },
-    },
+    auth: { OAuth2: MockOAuth2 },
   }
 })
 

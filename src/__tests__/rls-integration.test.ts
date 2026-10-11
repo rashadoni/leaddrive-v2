@@ -4,6 +4,7 @@
 //            RLS_TEST_DATABASE_URL=postgresql://postgres:rls@localhost:55432/postgres npx vitest run src/__tests__/rls-integration.test.ts
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest"
 import { emitEnableSql, emitDisableSql } from "../../scripts/rls/generate-rls-policies.mjs"
+import type { Prisma } from "@prisma/client"
 
 const url = process.env.RLS_TEST_DATABASE_URL
 
@@ -19,7 +20,7 @@ describe.skipIf(!url)("RLS integration (real Postgres)", () => {
 
   beforeAll(async () => {
     const { PrismaClient } = await import("@prisma/client")
-    base = new PrismaClient({ datasourceUrl: url })
+    base = new PrismaClient<Prisma.PrismaClientOptions>({ datasourceUrl: url })
     // The client under test must NOT be a superuser — superusers bypass RLS, FORCE
     // or not (Task 2 spike finding). rls_test_app mirrors prod `hermes`: LOGIN,
     // NOSUPERUSER, NOBYPASSRLS, and table OWNER (FORCE is what subjects the owner
