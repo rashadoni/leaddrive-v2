@@ -15417,7 +15417,6 @@
       "partialData": "Неполный операционный снимок",
       "partialDataHint": "Один или несколько ограниченных источников достигли лимита ответа. Показанные строки достоверны, но период не является полным.",
       "scopeListLimited": "Список доступных сотрудников достиг лимита ответа. Сначала сузьте регион или команду.",
-      "accuracyMeters": "±{value} м",
       "openGpsHistory": "Открыть историю GPS",
       "chooseDay": "Выберите день",
       "stopsCount": "{count, plural, one {# визит в плане} few {# визита в плане} many {# визитов в плане} other {# визита в плане}}",
@@ -15450,7 +15449,6 @@
       "coverageFormula": "Выполненные допустимые точки опубликованного плана: {numerator} / {denominator}.",
       "coverageNotApplicable": "Выполнение плана не рассчитывается: в опубликованном плане нет допустимых точек.",
       "coveragePartial": "Выполнение плана не публикуется: данные маршрутов или визитов достигли лимита ответа.",
-      "sourceUpdatedAt": "Последнее изменение источника: {date}",
       "baseCoverageTitle": "Покрытие базы сотрудника",
       "baseCoveragePeriod": "Период: {date}",
       "baseCoverageSigned": "Подписано · v{version}",
@@ -15532,7 +15530,6 @@
         "DUPLICATE_PLAN": "Дубликат в плане",
         "OTHER": "Другая причина"
       },
-      "dueAt": "Срок {date}",
       "taskId": "ID {id}",
       "taskVersion": "версия {version}",
       "taskScheduledStart": "Начало",
