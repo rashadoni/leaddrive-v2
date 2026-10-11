@@ -400,6 +400,14 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate --schema prisma/schema.prisma
 
+      - name: Rewrite the repeated Prisma input types as Omit<…> (exact)
+        # Two thirds of the generated declaration file is full copies of the
+        # create/update inputs, one per relation. The script replaces a copy
+        # only when it is its base type minus whole properties, and leaves the
+        # file as generated (with a warning) when it cannot be exact — this
+        # saves memory, it is not a condition of the check.
+        run: node scripts/ci/slim-prisma-client-types.mjs
+
       - name: Prepare bounded GitHub-hosted typecheck memory
         run: bash scripts/ci/prepare-hosted-build-runner.sh
         env:
