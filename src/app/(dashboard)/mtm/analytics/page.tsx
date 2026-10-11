@@ -1,13 +1,14 @@
 "use client"
 
 import { useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
 import { BarChart3 } from "lucide-react"
 import { PageDescription } from "@/components/page-description"
 import { HelpButton } from "@/components/help/help-button"
 import { ExplainableKpiDashboard } from "@/components/mtm/explainable-kpi-dashboard"
-import { MtmTeamResults } from "@/components/mtm/team-results"
+import { MtmTeamResults, teamResultsPreset } from "@/components/mtm/team-results"
 
 /**
  * Owner 2026-09-26: «аналитика нужна для менеджеров». The page opened on the
@@ -23,6 +24,9 @@ export default function MtmAnalyticsPage() {
   const tr = useTranslations("mtmTeamResults")
   const [formulasOpen, setFormulasOpen] = useState(false)
   const orgId = session?.user?.organizationId ? String(session.user.organizationId) : undefined
+  // The Panel's «this week» line links here with its period, so the number a
+  // manager clicked is the number this page opens on.
+  const initialPreset = teamResultsPreset(useSearchParams().get("period"))
 
   return (
     <div className="space-y-4">
@@ -31,7 +35,7 @@ export default function MtmAnalyticsPage() {
         <HelpButton slug="mtm-analytics" variant="label" />
       </div>
 
-      <MtmTeamResults orgId={orgId} />
+      <MtmTeamResults orgId={orgId} initialPreset={initialPreset} />
 
       <details
         data-testid="mtm-analytics-formulas"

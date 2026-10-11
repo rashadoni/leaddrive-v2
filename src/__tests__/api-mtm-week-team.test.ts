@@ -154,10 +154,46 @@ describe("GET /api/v1/mtm/week/team", () => {
     expect(json.data.rows[0].workday).toBeNull()
   })
 
+  // Owner 2026-10-11: «на визите 0 из 3» for a team of one field agent, and a
+  // Sunday evening with nothing on it. The row says whose card it is, and a
+  // day without a visit says when the team was last at a customer.
+  it("sends each card's role, and the last visit only on a day without one", async () => {
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([{ id: "anar", name: "Anar Mammadov", role: "AGENT", team: null }] as never)
+    const busy = await (await GET(new NextRequest("http://localhost:3000/api/v1/mtm/week/team"))).json()
+    type Query = { select: Record<string, unknown>; where: Record<string, { gte?: Date; lt?: Date } | unknown>; orderBy: unknown[] }
+    const queryOf = (call: unknown[] | undefined) => call![0] as Query
+    expect(queryOf(vi.mocked(prisma.mtmAgent.findMany).mock.calls[0]).select.role).toBe(true)
+    expect(busy.data.rows[0].agent.role).toBe("AGENT")
+    // Visits today: nothing to look back for.
+    expect(prisma.mtmVisit.findFirst).not.toHaveBeenCalled()
+    expect(busy.data.lastVisitAt).toBeNull()
+
+    vi.mocked(prisma.mtmVisit.findMany).mockResolvedValue([] as never)
+    vi.mocked(prisma.mtmVisit.findFirst).mockResolvedValue({ checkInAt: new Date("2026-10-08T12:01:07.000Z") } as never)
+    const quiet = await (await GET(new NextRequest("http://localhost:3000/api/v1/mtm/week/team"))).json()
+    expect(quiet.data.lastVisitAt).toBe("2026-10-08T12:01:07.000Z")
+    const lookBack = queryOf(vi.mocked(prisma.mtmVisit.findFirst).mock.calls[0])
+    const today = queryOf(vi.mocked(prisma.mtmVisit.findMany).mock.calls.at(-1)).where.checkInAt as { gte: Date }
+    // Same people, same tenant, strictly before the day the list covers.
+    expect(lookBack.where).toMatchObject({ organizationId: ORG, agentId: { in: ["anar"] }, deletedAt: null })
+    expect(lookBack.where.checkInAt).toEqual({ lt: today.gte })
+    expect(lookBack.orderBy[0]).toEqual({ checkInAt: "desc" })
+    expect(lookBack.select).toEqual({ checkInAt: true })
+  })
+
+  it("says the team has never been at a customer as a missing fact, not as a date", async () => {
+    vi.mocked(prisma.mtmVisit.findMany).mockResolvedValue([] as never)
+    vi.mocked(prisma.mtmVisit.findFirst).mockResolvedValue(null as never)
+    const json = await (await GET(new NextRequest("http://localhost:3000/api/v1/mtm/week/team"))).json()
+    expect(json.data.lastVisitAt).toBeNull()
+  })
+
   it("does not read facts when nobody is in scope", async () => {
     vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([] as never)
     const json = await (await GET(new NextRequest("http://localhost:3000/api/v1/mtm/week/team"))).json()
     expect(json.data.rows).toEqual([])
+    expect(json.data.lastVisitAt).toBeNull()
+    expect(prisma.mtmVisit.findFirst).not.toHaveBeenCalled()
     expect(prisma.mtmVisit.findMany).not.toHaveBeenCalled()
     expect(prisma.mtmAlert.groupBy).not.toHaveBeenCalled()
   })

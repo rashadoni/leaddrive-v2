@@ -16,7 +16,13 @@ describe("MTM photos page", () => {
   })
 
   it("lands on this week's photos and filters employees on the server", () => {
-    expect(page).toContain('useState<PhotoPeriod>("week")')
+    expect(page).toContain('useState<PhotoPeriod>(linkedPeriod ?? "week")')
+    // A link may name the period and the status it means (the home screen's
+    // «N photos not reviewed» row); a named period is not widened behind the reader.
+    expect(page).toContain('PHOTO_PERIOD_ORDER.find((value) => value === searchParams.get("period")) ?? null')
+    expect(page).toContain('(["PENDING", "APPROVED", "REJECTED"] as const).find((value) => value === searchParams.get("status")) ?? null')
+    expect(page).toContain("useState(linkedPeriod !== null)")
+    expect(page).toContain('useState<string>(linkedStatus ?? "all")')
     expect(page).toContain('params.set("agentId", agentFilter)')
     expect(page).toContain('testId="mtm-photos-period"')
     expect(page).toContain('testId="mtm-photos-agent"')

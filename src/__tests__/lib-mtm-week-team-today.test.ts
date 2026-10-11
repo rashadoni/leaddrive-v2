@@ -64,4 +64,21 @@ describe("team today rows", () => {
     expect(row.visits.map((visit) => visit.id)).toEqual(["v3", "v4", "v5", "v6", "v7", "v8"])
     expect(row.visitCount).toBe(MTM_TEAM_TODAY_VISITS_PER_ROW + 3)
   })
+
+  // The Panel counts an office card only on a day it did field work, so every
+  // row says whose card it is.
+  it("carries the card's role, and null when the reader did not select it", () => {
+    const rows = buildMtmTeamTodayRows({
+      now: NOW,
+      todayKey: "2026-09-14",
+      workforceEnabled: false,
+      agents: [{ id: "director", name: "Director", role: "ADMIN" }, { id: "agent", name: "Agent", role: "AGENT" }, { id: "legacy", name: "Legacy" }],
+      latestLocations: [],
+      routes: [],
+      visits: [],
+      openAlertCounts: [],
+      workdays: [],
+    })
+    expect(rows.map((row) => row.agent.role)).toEqual(["ADMIN", "AGENT", null])
+  })
 })

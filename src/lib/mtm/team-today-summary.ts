@@ -35,6 +35,11 @@ export interface TeamTodayRowInput {
   visitCount: number
   openAlerts: number
   workday: MtmManagerWorkdayState | null
+  /**
+   * The MTM card's role. Absent in payloads cached before the Panel learned
+   * roles: such a row counts as before.
+   */
+  role?: string | null
 }
 
 export type TeamRowFlag = "shift-left-open" | "in-field-no-plan" | "in-field-no-gps" | "open-alerts"
@@ -58,6 +63,7 @@ export interface TeamTodaySummaryOptions {
 }
 
 export interface TeamTodaySummary<Row extends TeamTodayRowInput = TeamTodayRowInput> {
+  /** People expected in the field today: see `isOfficeCardWithoutFieldWork`. */
   total: number
   inField: number
   /** What "in the field" was measured by: the workday state, or (without workforce-hrm) an open visit. */
@@ -150,6 +156,28 @@ export function classifyTeamRow<Row extends TeamTodayRowInput>(row: Row, workday
   }
 }
 
+/** The one role whose card means «works in the field». */
+const FIELD_ROLE = "AGENT"
+
+/**
+ * An administrator's, manager's or supervisor's card on a day it did no field
+ * work. Owner 2026-10-11, Zeytun Pharma on prod: «на визите 0 из 3» and «3
+ * сотрудника без активности» for a team of ONE agent — the other two cards
+ * belonged to the director and the office manager, who are never expected at
+ * a customer. They are people who can be in the field (a joint visit), not
+ * people who are absent from it: such a card is shown and counted on a day it
+ * holds a route, a visit, a shift or an alert, and left out otherwise.
+ *
+ * A last GPS point alone does not make it field work: an administrator with
+ * the app in their pocket is not «в поле».
+ */
+export function isOfficeCardWithoutFieldWork(row: TeamTodayRowInput, workdayEnabled: boolean): boolean {
+  if (!row.role || row.role === FIELD_ROLE) return false
+  const workday = workdayEnabled ? row.workday : null
+  const hasShift = Boolean(workday && workday.kind !== "not-started")
+  return row.route === null && row.visitCount === 0 && row.visits.length === 0 && row.openAlerts === 0 && !hasShift
+}
+
 function leftOpenHours(row: TeamTodayRowInput): number {
   return row.workday?.kind === "left-open" ? row.workday.hours : -1
 }
@@ -159,7 +187,8 @@ export function summarizeTeamToday<Row extends TeamTodayRowInput>(
   options: TeamTodaySummaryOptions,
 ): TeamTodaySummary<Row> {
   const { workdayEnabled } = options
-  const classified = rows.map((row, index) => ({ entry: classifyTeamRow(row, workdayEnabled), index }))
+  const expected = rows.filter((row) => !isOfficeCardWithoutFieldWork(row, workdayEnabled))
+  const classified = expected.map((row, index) => ({ entry: classifyTeamRow(row, workdayEnabled), index }))
 
   let inField = 0
   let planned = 0
@@ -205,12 +234,12 @@ export function summarizeTeamToday<Row extends TeamTodayRowInput>(
     .sort((a, b) => byName(a.entry.row, b.entry.row) || a.index - b.index)
 
   return {
-    total: rows.length,
+    total: expected.length,
     inField,
     inFieldBasis: workdayEnabled ? "workday" : "visit",
     openShifts: { count: openShiftCount, oldest },
     planned,
-    withoutPlan: rows.length - planned,
+    withoutPlan: expected.length - planned,
     problems: problems.map(({ entry }) => entry),
     active: active.map(({ entry }) => entry),
     idle: idle.map(({ entry }) => entry),
