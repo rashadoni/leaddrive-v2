@@ -364,11 +364,11 @@ jobs:
     # runner, which then became the most expensive job in the repository
     # (macOS minutes count against the allowance at ten times the Linux rate:
     # 1,444 of them cost more than 96,000 Linux minutes).
-    # A public-repository standard Linux runner has 16 GiB, and the heap ran
-    # out at 12 GiB (2026-10-03) and at 14 GiB (2026-10-10). The graph was then
-    # made smaller instead: read CLAUDE.md, «Тесты и проверки», before raising
-    # this again. Require a measured 16-GiB RAM+swap budget for the bounded
-    # 12-GiB heap, using only the ephemeral-runner helper's capped 4-GiB swap.
+    # A public-repository standard Linux runner has 16 GiB, and the heap took
+    # all of it in a week (12 GiB ran out 2026-10-03, 14 GiB 2026-10-10). The
+    # graph was then made smaller instead: read CLAUDE.md, «Тесты и проверки»,
+    # before raising this again. Require a measured 16-GiB RAM+swap budget for
+    # the bounded 12-GiB heap, using only the helper's capped 4-GiB swap.
     #
     # It still skips draft pull requests: the runner is a single shared
     # resource, and an agent's intermediate pushes would only queue behind each
