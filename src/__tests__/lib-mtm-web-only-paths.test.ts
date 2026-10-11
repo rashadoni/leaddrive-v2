@@ -38,7 +38,6 @@ describe("isMtmWebOnlyPath", () => {
       "/api/v1/mtm/routes",
       "/api/v1/mtm/visits/v1",
       "/api/v1/mtm/tasks",
-      "/api/v1/mtm/dashboard",
       "/api/v1/mtm/customers",
       "/api/v1/mtm/alerts",
       "/api/v1/mtm/settings",
