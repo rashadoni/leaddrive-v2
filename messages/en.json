@@ -15417,7 +15417,6 @@
       "partialData": "Partial operational snapshot",
       "partialDataHint": "One or more bounded sources reached their response limit. The visible rows are valid, but the period is not authoritative.",
       "scopeListLimited": "The scoped employee list reached its response limit. Narrow the region or team before choosing an employee.",
-      "accuracyMeters": "±{value} m",
       "openGpsHistory": "Open GPS history",
       "chooseDay": "Choose a day",
       "stopsCount": "{count, plural, one {# planned visit} other {# planned visits}}",
@@ -15450,7 +15449,6 @@
       "coverageFormula": "Completed eligible published stops: {numerator} / {denominator}.",
       "coverageNotApplicable": "Plan coverage is not applicable because there are no eligible published stops.",
       "coveragePartial": "Coverage is not published because route or visit evidence reached a response limit.",
-      "sourceUpdatedAt": "Latest source change: {date}",
       "baseCoverageTitle": "Employee base coverage",
       "baseCoveragePeriod": "Period: {date}",
       "baseCoverageSigned": "Signed · v{version}",
@@ -15532,7 +15530,6 @@
         "DUPLICATE_PLAN": "Duplicate plan stop",
         "OTHER": "Other reason"
       },
-      "dueAt": "Due {date}",
       "taskId": "ID {id}",
       "taskVersion": "v{version}",
       "taskScheduledStart": "Starts",

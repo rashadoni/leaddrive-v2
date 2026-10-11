@@ -15413,7 +15413,6 @@
       "partialData": "Qismən əməliyyat görüntüsü",
       "partialDataHint": "Bir və ya bir neçə məhdud mənbə cavab limitinə çatıb. Görünən sətirlər etibarlıdır, lakin dövr tam deyil.",
       "scopeListLimited": "Əhatədəki işçilərin siyahısı cavab limitinə çatıb. İşçi seçməzdən əvvəl regionu və ya komandanı daraldın.",
-      "accuracyMeters": "±{value} m",
       "openGpsHistory": "GPS tarixçəsini aç",
       "chooseDay": "Gün seçin",
       "stopsCount": "{count, plural, one {Planda # vizit} other {Planda # vizit}}",
@@ -15446,7 +15445,6 @@
       "coverageFormula": "İcra edilmiş uyğun dərc olunmuş nöqtələr: {numerator} / {denominator}.",
       "coverageNotApplicable": "Dərc olunmuş planda uyğun nöqtə olmadığı üçün planın icrası hesablanmır.",
       "coveragePartial": "Marşrut və ya vizit sübutu cavab limitinə çatdığı üçün planın icrası dərc edilmir.",
-      "sourceUpdatedAt": "Mənbədə son dəyişiklik: {date}",
       "baseCoverageTitle": "İşçi bazasının əhatəsi",
       "baseCoveragePeriod": "Dövr: {date}",
       "baseCoverageSigned": "İmzalanıb · v{version}",
@@ -15528,7 +15526,6 @@
         "DUPLICATE_PLAN": "Planda dublikat",
         "OTHER": "Digər səbəb"
       },
-      "dueAt": "Son tarix {date}",
       "taskId": "ID {id}",
       "taskVersion": "versiya {version}",
       "taskScheduledStart": "Başlanğıc",
