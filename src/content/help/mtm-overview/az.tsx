@@ -1,12 +1,11 @@
 "use client"
 
 /**
- * MTM — İdarə paneli (home/overview) help article (Azerbaijani).
- * REWRITE: yalnız «Marşrutlar və saha» modulunun BAŞ səhifəsini (idarə paneli)
- * SWM-17 əməliyyat həftəsini və əvvəlki panel icmalını əhatə edir — salamlama + canlı saat,
- * dörd KPI kartı, tamamlanma halqası, zaman metrikaları, aktiv agentlər və
- * son vizitlər cədvəli. Canlı Xəritə, Fəaliyyət jurnalı və Reytinq ARTIQ
- * öz ayrıca məqalələrinə malikdir, ona görə bura DAXİL DEYİL.
+ * MTM — «Panel» (/mtm), kömək məqaləsi (Azərbaycan dili).
+ * Yalnız `operational-week-home.tsx` ekrana çıxardığını təsvir edir: komanda bu
+ * gün, filtrlər və bir işçinin həftəsi. Yazılar `messages/az.json` faylından
+ * götürülüb (`mtmDashboardPage` və `mtmDashboardPage.operationalWeek`): orada
+ * yazı dəyişirsə, burada da düzəldin. Növbə və iş günü bura daxil deyil (Workforce).
  */
 import {
   HelpScenario,
@@ -21,193 +20,93 @@ export default function MtmOverviewHelpAz() {
   return (
     <div className="space-y-6">
       <HelpScenario
-        persona="Saha əməliyyatları üzrə menecer və ya supervayzer"
-        goal="Bir işçinin dərc olunmuş həftəsini, faktiki sübutlarını, iş günü vəziyyətini, GPS yeniliyini, tapşırıqlarını və plan dəyişikliklərini yoxlamaq"
+        persona="Sahə komandasının rəhbəri"
+        goal="Bu gün işçilərdən kimin harada olduğunu görmək və istənilən işçinin həftəsini açmaq"
       >
-        Bu, <HelpKey>Marşrutlar və saha</HelpKey> modulunun baş səhifəsidir (sol menyuda{" "}
-        <HelpKey>Panel</HelpKey>). Rəhbər server tərəfindən məhdudlaşdırılmış işçi seçimi və yalnız
-        oxunan əməliyyat həftəsi alır. Agent öz həftəsində yalnız serverin həmin anda icazə verdiyi
-        iş günü əməliyyatlarını yerinə yetirə bilər. Əvvəlki KPI icmalı aşağıda qalır.
+        Bu, <HelpKey>Marşrut &amp; Sahə</HelpKey> modulunun ilk ekranıdır, menyuda —{" "}
+        <HelpKey>Panel</HelpKey>. Siz yalnız öz əhatənizdəki işçiləri görürsünüz. Öz hesabı ilə
+        daxil olan agent yalnız öz həftəsini görür.
       </HelpScenario>
 
-      <HelpSection title="Səhifədə nə var">
+      <HelpSection title="Komanda bu gün">
         <p>
-          Yuxarıda sol tərəfdə adınızla salamlama (<strong>«Xoş gəldiniz, {"{ad}"}!»</strong>),
-          altında səhifə adı <HelpKey>Panel</HelpKey> və «Sahə komandasının idarə edilməsi — agentlər,
-          marşrutlar, vizitlər, tapşırıqlar» izahı, sağ tərəfdə isə canlı tarix və saniyəsi ilə
-          işləyən rəqəmsal saat var. Saatın altında üç sürətli əməliyyat düyməsi durur:{" "}
-          <HelpKey>Yeni agent</HelpKey>, <HelpKey>Hesabatlar</HelpKey> və <HelpKey>Canlı xəritə</HelpKey>.
+          Birinci sətir günün yekunudur: <strong>«İndi vizitdə 14 nəfərdən 2»</strong> — hazırda
+          neçə işçinin viziti açıqdır. Yanında — <strong>«bu günə plan yoxdur»</strong> və ya{" "}
+          <strong>«3 işçinin planı yoxdur»</strong> və rəqəmlərin hansı vaxta aid olduğu:{" "}
+          <strong>«14:05 üzrə»</strong>.
         </p>
-        <p>
-          Onların altında <HelpKey>Əməliyyat həftəsi</HelpKey> var: region, komanda, işçi, tarix,
-          1/5/7 günlük dövr, günlər üzrə dərc olunmuş plan və diqqət bloku. Ondan sonra əvvəlki dövr
-          filtri gəlir — <HelpKey>Bu gün</HelpKey>, <HelpKey>Bu həftə</HelpKey>,{" "}
-          <HelpKey>Bu ay</HelpKey> — seçilmiş dövr tünd rənglə işarələnir. Filtrin altında dörd KPI
-          kartı, sonra üç sütunlu sıra (tamamlanma halqası, zaman metrikaları, aktiv agentlər) və ən
-          aşağıda <HelpKey>Son vizitlər</HelpKey> cədvəli gəlir.
-        </p>
+        <p>Aşağıda hər işçiyə bir sətir. Sətir yalnız onun haqqında məlum olanı deyir:</p>
         <dl className="rounded-md border p-3">
-          <HelpDef term="Planlaşdırılmış marşrutlar">Seçilmiş dövr üçün planlaşdırılmış marşrutların sayı; altında dövr etiketi (məs. «bu gün üçün»).</HelpDef>
-          <HelpDef term="Tamamlanıb">Tamamlanmış marşrutların sayı; altında «{"{faiz}"}% tamamlanma» göstərilir.</HelpDef>
-          <HelpDef term="Marşrutdan kənar">Marşrutdan kənara çıxma siqnallarının sayı; altında «diqqət tələb edir» yazılır.</HelpDef>
-          <HelpDef term="Gözləyən tapşırıqlar">Hələ açıq tapşırıqların sayı; altında «{"{n}"} təcili» göstərilir.</HelpDef>
-          <HelpDef term="Tamamlanma faizi">Halqa qrafiki — mərkəzdə faiz, yanında «Tamamlanıb» və «Qalıb» rəng açarları.</HelpDef>
-          <HelpDef term="Zaman metrikaları">Orta marşrut vaxtı və orta vizit vaxtı (dəqiqə ilə), ümumi iş vaxtı (saat ilə).</HelpDef>
-          <HelpDef term="Aktiv agentlər">Əvvəlki fəaliyyət xülasəsi. Son GPS vaxtı və yeniliyi üçün Əməliyyat həftəsinə və ya xəritəyə baxın.</HelpDef>
-          <HelpDef term="Son vizitlər">Son vizitlərin cədvəli: Agent, Müştəri, Status, Check-in vaxtı və Müddət sütunları.</HelpDef>
+          <HelpDef term="Haradadır">«… müştərisindədir, 10:40-dən», «Növbəti: …, 11:30» və ya «10:15-dək … müştərisində olub».</HelpDef>
+          <HelpDef term="marşrut 3/8">Bu günə planlaşdırılmış nöqtələrdən neçəsinə baş çəkilib. «Plan yoxdur» — bu günə marşrut yoxdur.</HelpDef>
+          <HelpDef term="son GPS">Son koordinatın gəldiyi vaxt. Bu, işçinin indi də orada olduğunu bildirmir. «Bu gün GPS yoxdur» — o, vizitdədir, koordinat isə gəlməyib.</HelpDef>
+          <HelpDef term="xəbərdarlıq">«2 açıq xəbərdarlıq» — bu işçinin xəbərdarlıqları siyahısına keçid.</HelpDef>
+          <HelpDef term="Xəritədə">Xəritəni bu işçinin üzərində açır.</HelpDef>
         </dl>
-      </HelpSection>
-
-      <HelpSection title="Addım-addım: əməliyyat həftəsini yoxla">
-        <HelpStep n={1}>
-          <p>
-            Lazım olduqda <HelpKey>Region</HelpKey> və <HelpKey>Komanda</HelpKey> seçimini daraldın,
-            sonra bir <HelpKey>İşçi</HelpKey> seçin. İşçi seçilənədək rəhbərə marşrut, vizit,
-            tapşırıq, iş günü və GPS faktları göndərilmir.
-          </p>
-          <HelpCallout kind="see" label="Ekranda görəcəksiniz">
-            Seçilmiş işçinin məlumatları əvvəlkiləri tam əvəz edir. Hər gündə plan, fakt və ləğv
-            sayı mətn və nişanla, həmçinin iş günü vəziyyəti göstərilir. Telefonda gün dəyişdiricisi
-            işləyir; beş sütun dar ekrana sıxılmır.
-          </HelpCallout>
-        </HelpStep>
-        <HelpStep n={2}>
-          <p>
-            Nöqtədən təşkilatı, əlaqəni, marşrutu, viziti və ya GPS tarixçəsini aça bilərsiniz;
-            panel konteksti geri keçiddə saxlanılır. Dərc olunmuş plandan kənar faktiki vizitlər
-            ayrıca göstərilir və planın məxrəcinə daxil edilmir.
-          </p>
-          <HelpCallout kind="see" label="Sübut qaydaları">
-            GPS yeniliyi iş gününün vəziyyətindən ayrıdır. “Yeni”, “gecikmiş” və “köhnəlmiş” son
-            etibarlı koordinatın yaşını bildirir, işçinin indi həmin nöqtədə olduğunu iddia etmir.
-            Keş və qismən görüntülər həmişə ayrıca işarələnir.
-          </HelpCallout>
-        </HelpStep>
-      </HelpSection>
-
-      <HelpSection title="Addım-addım: dövrü seç və KPI-ları oxu">
-        <HelpStep n={1}>
-          <p>
-            Dövr filtrindən birini seçin: <HelpKey>Bu gün</HelpKey>, <HelpKey>Bu həftə</HelpKey> və ya{" "}
-            <HelpKey>Bu ay</HelpKey>.
-          </p>
-          <HelpCallout kind="see" label="Ekranda görəcəksiniz">
-            Seçdiyiniz düymə tünd (dolu) görünür, qalanları çərçivəli qalır. Dörd KPI kartı və
-            aşağıdakı bloklar yeni dövrə görə yenilənir; <strong>Planlaşdırılmış marşrutlar</strong>{" "}
-            kartının altındakı etiket də ona uyğun dəyişir («bu gün üçün» / «bu həftə» / «bu ay»).
-          </HelpCallout>
-        </HelpStep>
-        <HelpStep n={2}>
-          <p>
-            Dörd KPI kartını soldan sağa oxuyun:{" "}
-            <strong>Planlaşdırılmış marşrutlar</strong>, <strong>Tamamlanıb</strong>,{" "}
-            <strong>Marşrutdan kənar</strong> və <strong>Gözləyən tapşırıqlar</strong>.
-          </p>
-          <HelpCallout kind="see" label="Ekranda görəcəksiniz">
-            Hər kartda iri rəqəm, başlıq və kiçik alt yazı var: <strong>Tamamlanıb</strong> faizi,{" "}
-            <strong>Marşrutdan kənar</strong> «diqqət tələb edir», <strong>Gözləyən tapşırıqlar</strong>{" "}
-            isə neçəsinin təcili olduğunu göstərir. Yüklənmə, məhdud əhatədə əlçatmaz metrika və
-            həqiqi sıfır bir-birindən fərqli göstərilir.
-          </HelpCallout>
-        </HelpStep>
-      </HelpSection>
-
-      <HelpSection title="Addım-addım: tamamlanma və zaman bloklarını oxu">
-        <HelpStep n={1}>
-          <p>
-            Soldakı <HelpKey>Tamamlanma faizi</HelpKey> halqasına baxın.
-          </p>
-          <HelpCallout kind="see" label="Ekranda görəcəksiniz">
-            Dairəvi halqa qrafiki seçilmiş dövrün tamamlanma faizini doldurur, mərkəzdə həmin faiz
-            yazılır. Yanında iki açar var: <strong>Tamamlanıb</strong> (tamamlanmış marşrutların sayı)
-            və <strong>Qalıb</strong> (planlaşdırılmış minus tamamlanmış).
-          </HelpCallout>
-        </HelpStep>
-        <HelpStep n={2}>
-          <p>
-            Ortadakı <HelpKey>Zaman metrikaları</HelpKey> blokuna keçin.
-          </p>
-          <HelpCallout kind="see" label="Ekranda görəcəksiniz">
-            Üç sətir, hər biri saat ikonalı: <strong>Orta marşrut vaxtı</strong> və{" "}
-            <strong>Orta vizit vaxtı</strong> dəqiqə ilə, <strong>Ümumi iş vaxtı</strong> isə saat ilə
-            göstərilir.
-          </HelpCallout>
-        </HelpStep>
-      </HelpSection>
-
-      <HelpSection title="Addım-addım: aktiv agentləri izlə">
-        <HelpStep n={1}>
-          <p>
-            Sağdakı <HelpKey>Aktiv agentlər</HelpKey> blokuna baxın.
-          </p>
-          <HelpCallout kind="see" label="Ekranda görəcəksiniz">
-            Bu əvvəlki blok fəaliyyət nişanı, beşədək ad və son göndərilmiş sürəti göstərə bilər.
-            Bu, işçinin dəqiq cari yerini sübut etmir. Koordinat vaxtı, yenilik, dəqiqlik və batareya
-            üçün Əməliyyat həftəsinə və ya <HelpKey>Canlı xəritə</HelpKey>yə baxın.
-          </HelpCallout>
-        </HelpStep>
-        <HelpStep n={2}>
-          <p>
-            Onlayn agent varsa, blokun altındakı <HelpKey>Xəritədə göstər</HelpKey> düyməsini basın.
-          </p>
-          <HelpCallout kind="see" label="Ekranda görəcəksiniz">
-            <HelpKey>Canlı xəritə</HelpKey> səhifəsinə keçirsiniz (sürətli əməliyyatlardakı{" "}
-            <HelpKey>Canlı xəritə</HelpKey> düyməsi ilə eyni yer). Xəritənin öz təfərrüatlı izahı üçün
-            ayrıca yardım məqaləsi var.
-          </HelpCallout>
-        </HelpStep>
-      </HelpSection>
-
-      <HelpSection title="Addım-addım: son vizitlər cədvəlini oxu">
-        <HelpStep n={1}>
-          <p>
-            Səhifənin ən altındakı <HelpKey>Son vizitlər</HelpKey> cədvəlinə baxın.
-          </p>
-          <HelpCallout kind="see" label="Ekranda görəcəksiniz">
-            Beş sütunlu cədvəl: <strong>Agent</strong>, <strong>Müştəri</strong>,{" "}
-            <strong>Status</strong>, <strong>Check-in</strong> və <strong>Müddət</strong>. Status
-            rəngli nişan kimi göstərilir (məs. CHECKED_OUT yaşıl, CHECKED_IN mavi). Məlumat yüklənərkən
-            «Yüklənir...», hələ vizit yoxdursa «Hələ vizit yoxdur» yazısı çıxır.
-          </HelpCallout>
-        </HelpStep>
-      </HelpSection>
-
-      <HelpSection title="Addım-addım: sürətli əməliyyatlar">
-        <HelpStep n={1}>
-          <p>
-            Başlığın altındakı üç düymədən birini basın: <HelpKey>Yeni agent</HelpKey>,{" "}
-            <HelpKey>Hesabatlar</HelpKey> və ya <HelpKey>Canlı xəritə</HelpKey>.
-          </p>
-          <HelpCallout kind="see" label="Ekranda görəcəksiniz">
-            <HelpKey>Yeni agent</HelpKey> sizi agentlər səhifəsinə,{" "}
-            <HelpKey>Hesabatlar</HelpKey> hesabatlar səhifəsinə, <HelpKey>Canlı xəritə</HelpKey> isə
-            canlı xəritəyə aparır. Bunlar sadəcə naviqasiya keçidləridir — burada heç nə dəyişmir.
-          </HelpCallout>
-        </HelpStep>
-      </HelpSection>
-
-      <HelpCallout kind="tip">
         <p>
-          Əməliyyat həftəsi vərəq görünəndə avtomatik yenilənir və əl ilə də yenilənə bilər. Sorğular
-          üst-üstə düşmür. Son uğurlu server cavabının vaxtı ilə avtonom görüntünün saxlanma vaxtı
-          ayrıca göstərilir. Cihaz nüsxəni saxlaya bilməzsə, aktual görünüş əlçatan qalır və mane
-          olmayan xəbərdarlıq göstərir.
+          Solda kəhrəba rəngli zolaq nəyinsə qaydasında olmadığı sətri göstərir: plansız vizit,
+          GPS-siz vizit və ya açıq xəbərdarlıqlar. Bu gün nə viziti, nə də koordinatı olan işçilər bir
+          sətrə yığılıb — «5 işçi bu gün aktivlik göstərməyib»; onu <HelpKey>Göstər</HelpKey> açır.
+        </p>
+      </HelpSection>
+
+      <HelpSection title="İşçinin həftəsini açırıq">
+        <HelpStep n={1}>
+          <p>
+            Siyahının altında filtrlər var: <HelpKey>Region</HelpKey> və <HelpKey>Komanda</HelpKey>{" "}
+            siyahını daraldır, <HelpKey>İşçi</HelpKey> bir nəfərin həftəsini açır.
+          </p>
+        </HelpStep>
+        <HelpStep n={2}>
+          <p>
+            İşçinin sətrinə klikləyin və ya onu <HelpKey>İşçi</HelpKey> filtrində seçin.
+          </p>
+          <HelpCallout kind="see" label="Ekranda görəcəksiniz">
+            Həmin işçinin <HelpKey>Əməliyyat həftəsi</HelpKey>. Komandaya qayıtmaq üçün{" "}
+            <HelpKey>İşçi</HelpKey> filtrini xaç işarəsi ilə sıfırlayın.
+          </HelpCallout>
+        </HelpStep>
+      </HelpSection>
+
+      <HelpSection title="Həftə nəyi göstərir">
+        <dl className="rounded-md border p-3">
+          <HelpDef term="Dövr">«1 gün», «5 gün», «7 gün» düymələri, «Tarix» sahəsi və oxlar ekranda hansı günlərin olacağını seçir.</HelpDef>
+          <HelpDef term="Əlaqə">«Əlaqədədir: …» və ya «…-dən əlaqə yoxdur» — işçinin son koordinatının vaxtı. «Xəritədə yol» onun seçilmiş gündəki yolunu açır.</HelpDef>
+          <HelpDef term="Günlər">Hər gündə «Plan», «Fakt», «Ləğv» və marşrut nöqtələri var: müəssisə, müştəri, plan və fakt vaxtı, vizit qeydləri (giriş və çıxış, dəqiqələr, foto, imza). «Marşrutu aç» və «Viziti aç» marşrutun və vizitin özünə aparır. Plandan kənar vizitlər ayrıca göstərilir: «Dərc olunmuş plandan kənar faktiki vizitlər». Telefonda günlər düymələrlə dəyişdirilir.</HelpDef>
+          <HelpDef term="Planın icrası">Ekrandakı dövr üzrə dərc olunmuş planın icra edilmiş nöqtələrinin payı.</HelpDef>
+          <HelpDef term="Diqqət tələb edir">Bu işçinin xəbərdarlıqları, «Təsdiq gözləyən ləğvlər», plan dəyişiklikləri və «Aktiv tapşırıqlar». Heç nə olmadıqda — «Hər şey qaydasındadır — tədbir lazım deyil.»</HelpDef>
+        </dl>
+        <p>
+          Nöqtənin ləğvini agent öz həftəsində <HelpKey>Ləğv sorğusu göndər</HelpKey> düyməsi ilə
+          istəyir. Təsdiq hüququ olan rəhbər onu elə burada həll edir: <HelpKey>Təsdiqlə</HelpKey>,{" "}
+          <HelpKey>Köçür</HelpKey>, <HelpKey>Geri qaytar</HelpKey> və ya <HelpKey>Rədd et</HelpKey>.
+          Köçürmə üçün yeni tarix, geri qaytarma və rədd üçün şərh lazımdır.
+        </p>
+      </HelpSection>
+
+      <HelpSection title="Mesaj və dəstək">
+        <p>
+          Panelin altında «Əsas mesaj» — sizə göndərilmiş, «… tarixinədək aktivdir» müddətli elan —
+          və modul parametrlərindəki e-poçt və telefonla «Dəstək» ola bilər.{" "}
+          <HelpKey>Təsdiq et</HelpKey> düyməsi mesajı oxuduğunuzu qeyd edir. Nə mesaj, nə də əlaqə
+          məlumatı olmadıqda bu blok yoxdur.
+        </p>
+      </HelpSection>
+
+      <HelpCallout kind="tip" label="Məsləhət">
+        <p>
+          Vərəq qarşınızda açıq olduqca ekran dəqiqədə bir dəfə özü yenilənir. Dairəvi oxlu düymə
+          dərhal yeniləyir.
         </p>
       </HelpCallout>
 
-      <HelpCallout kind="warning">
+      <HelpCallout kind="warning" label="Vacib">
         <p>
-          Sıfır yalnız uğurlu cavabdan sonra məna daşıyır. Yüklənmə, giriş qadağası, qismən məlumat,
-          tezlik limiti, avtonom görüntü və əhatədə əlçatmaz metrika açıq işarələnir; bunları sıfır
-          fəaliyyət kimi qəbul etməyin.
-        </p>
-      </HelpCallout>
-
-      <HelpCallout kind="security">
-        <p>
-          Server tenant, rəhbər, komanda və işçi əhatəsini tətbiq edir. Əhatədən kənar işçi qaytarılmır
-          və başqa işçi sorğulanmazdan əvvəl əvvəlki faktlar silinir. Keş tenant, daxil olmuş istifadəçi,
-          işçi, filtrlər, tarix və diapazonla bağlanır.
+          Sıfır və boş siyahı yalnız uğurlu yükləmədən sonra heç nə olmadığını bildirir. Məlumat
+          gəlməyibsə, ekran bunu sözlə deyir — «Komandanın bugünkü vəziyyətini yükləmək alınmadı» —
+          və <HelpKey>Həftəni yenidən yüklə</HelpKey> təklif edir. Şəbəkə olmadıqda işçinin həftəsi
+          saxlanmış nüsxə varsa, ondan və «Şəbəkə yoxdur — son saxlanmış görüntü göstərilir» qeydi
+          ilə göstərilir.
         </p>
       </HelpCallout>
     </div>

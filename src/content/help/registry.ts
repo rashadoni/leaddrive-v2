@@ -1269,11 +1269,11 @@ export const HELP_REGISTRY: Record<HelpSlug, ArticleEntry> = {
     },
   },
   "mtm-overview": {
-    title: { en: "MTM Dashboard", ru: "Дашборд MTM", az: "MTM İdarə paneli" },
+    title: { en: "MTM Dashboard", ru: "Панель MTM", az: "MTM Paneli" },
     subtitle: {
-      en: "The Route & Field home screen — field KPIs at a glance and the entry point to the module.",
-      ru: "Главный экран «Маршруты и поле» — полевые KPI с одного взгляда и точка входа в модуль.",
-      az: "«Marşrutlar və saha» ana ekranı — saha KPI-ları bir baxışda və modula giriş nöqtəsi.",
+      en: "The Route & Field home screen — who is where today, and any employee's week.",
+      ru: "Главный экран «Маршруты и поле» — кто где сегодня и неделя любого сотрудника.",
+      az: "«Marşrut & Sahə» ana ekranı — bu gün kim haradadır və istənilən işçinin həftəsi.",
     },
     content: {
       en: lazy(() => import("./mtm-overview/en")),
