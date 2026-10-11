@@ -155,6 +155,39 @@ describe("MTM Panel for a manager", () => {
     expect(messages.az.mtmDashboardPage.operationalWeek.workdayLeftOpen).toBe("Növbə {date} {time}-dən açıqdır ({duration}) — agent bağlamayıb")
   })
 
+  // Owner 2026-10-11, asked what else to add «чтоб было полезно»: the client
+  // base reached this month, the week's visits judged, and what is left to
+  // set up. Below the first screen, read once, and never a lone half-width card.
+  it("adds the lower row under the first screen: the base, visit quality, and the setup strip", () => {
+    const cards = readFileSync("src/components/mtm/home-insight-cards.tsx", "utf8")
+    const insights = readFileSync("src/lib/mtm/home-insights.ts", "utf8")
+    const route = readFileSync("src/app/api/v1/mtm/week/insights/route.ts", "utf8")
+    // The strip stands under the figures; the two cards under «ждёт решения» and the team.
+    expect(home.indexOf("<HomeSetupStrip")).toBeGreaterThan(home.indexOf("mtm-home-kpi-attention"))
+    expect(home.indexOf("<HomeSetupStrip")).toBeLessThan(home.indexOf("<HomeAttentionCard"))
+    expect(home.indexOf("<HomeBaseCard")).toBeGreaterThan(home.indexOf("<HomeTeamCard"))
+    expect(home).toContain("{insights && (insights.base || insights.quality) ? (")
+    // Read once per day and filters: not on the screen's refresh.
+    const hook = homeData.slice(homeData.indexOf("export function useHomeInsights"))
+    expect(hook).toContain("}, [organizationId, regionId, scopeKey, teamId])")
+    expect(hook).not.toContain("refreshToken")
+    // Place is judged by the one rule every page uses, never measured here.
+    expect(insights).toContain("visitPlaceSummary(visit, options.organizationRadius).verdict")
+    expect(insights).not.toMatch(/calculateDistance|haversine/i)
+    // The base is the clients the reader may open, the visits those of their agents.
+    expect(route).toContain("contactScopeForActor(scopeActor, todayDate)")
+    expect(route).toContain("customerScopeForActor(scopeActor, todayDate)")
+    // Setup is the organization's own: its administrator only, and not under a team filter.
+    expect(route).toContain('const isAdmin = actor.role === "ADMIN" && !filtered')
+    // No inner scroll frame, no table: the cards grow in the page.
+    expect(cards).not.toMatch(/overflow-y-auto|overflow-x-auto|overflow-auto|max-h-|sticky|<table\b|<details\b|<aside\b/)
+    for (const key of ["setupTitle", "setupCustomersWithoutPin", "setupContactsUnclassified"]) {
+      const ru: string = messages.ru.mtmDashboardPage.home[key]
+      for (const form of ["one {", "few {", "many {", "other {"]) expect(ru, `ru ${key} ${form}`).toContain(form)
+      for (const locale of ["az", "en"]) expect(messages[locale].mtmDashboardPage.home[key], `${locale} ${key}`).toContain("other {")
+    }
+  })
+
   it("keeps every count of the home screen an ICU argument with the plural forms of each locale", () => {
     const plural = [
       "kpiInFieldUnit", "kpiPointsUnit", "todayVisits", "weekRemaining", "issuesUnit",

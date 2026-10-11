@@ -11,13 +11,17 @@ import { readFileSync } from "node:fs"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { NextIntlClientProvider, type AbstractIntlMessages } from "next-intl"
 import { MtmHomeDashboard, type HomeTeamToday } from "@/components/mtm/home-dashboard"
-import { homeWeekFacts, normalizeHomeAttention } from "@/components/mtm/home-data"
+import { homeWeekFacts, normalizeHomeAttention, normalizeHomeInsights } from "@/components/mtm/home-data"
 import type { HomeTeamCardRow } from "@/components/mtm/home-team-card"
 
 vi.mock("next/link", () => ({
-  // `prefetch` is Next's own prop, not an attribute of <a>.
-  default: ({ children, href, className, title }: { children?: ReactNode; href: string; className?: string; title?: string }) =>
-    createElement("a", { href, className, title }, children),
+  default: (props: { children?: ReactNode; href: string; prefetch?: boolean; [key: string]: unknown }) => {
+    // `prefetch` is Next's own prop, not an attribute of <a>.
+    const attributes: Record<string, unknown> = { ...props }
+    delete attributes.prefetch
+    delete attributes.children
+    return createElement("a", attributes, props.children)
+  },
 }))
 
 const IntlProvider = NextIntlClientProvider as FunctionComponent<
@@ -45,6 +49,8 @@ type Scenario = {
   visits: unknown[]
   /** Planned and visited by the same weekday of last week. */
   previous: [number, number]
+  /** The lower row; absent for a reader the endpoint refuses. */
+  insights?: Record<string, unknown>
 }
 
 const ZEYTUN: Scenario = {
@@ -73,6 +79,20 @@ const ZEYTUN: Scenario = {
   plan: [...points("a1", "2026-10-07", 3, 1), ...points("a1", "2026-10-08", 4, 1)],
   visits: [...visits("a1", "2026-10-07", 1), ...visits("a1", "2026-10-08", 1)],
   previous: [0, 0],
+  // As on prod: 321 doctors all in class «B», two visited; two visits this week.
+  insights: {
+    timezone: "Asia/Baku",
+    today: "2026-10-11",
+    monthStart: "2026-10-01",
+    weekStart: "2026-10-05",
+    base: { subject: "contacts", grouping: "specialty", total: 321, visited: 2, groups: [{ key: "Terapevt", total: 229, visited: 0 }, { key: "Qastroenteroloq", total: 92, visited: 2 }] },
+    quality: { visits: 2, atPlace: 2, awayFromPlace: 0, placeUnknown: 0, withPhoto: 2, tooLong: 1, tooShort: 1, longMinutes: 120, shortMinutes: 2 },
+    setup: [{ kind: "customersWithoutPin", count: 69, total: 72 }, { kind: "contactsUnclassified", count: 321, total: 321 }, { kind: "noVisitNorms", count: 0, total: 0 }],
+    recentVisits: [
+      { id: "v2", at: "2026-10-08T12:01:08.000Z", customerName: "Klinika 2", agentName: "Seymur Məmmədov", durationMinutes: 1, flag: "short" },
+      { id: "v1", at: "2026-10-07T18:14:51.000Z", customerName: "Klinika 1", agentName: "Seymur Məmmədov", durationMinutes: 798, flag: "long" },
+    ],
+  },
 }
 
 const open = (customerName: string, at: string) => ({ customerName, status: "CHECKED_IN", checkInAt: at, checkOutAt: null })
@@ -111,6 +131,16 @@ const TUESDAY: Scenario = {
   ],
   visits: [...visits("a1", "2026-10-12", 6), ...visits("a1", "2026-10-13", 3), ...visits("a2", "2026-10-12", 4), ...visits("a2", "2026-10-13", 1), ...visits("a3", "2026-10-12", 7), ...visits("a3", "2026-10-13", 5), ...visits("a4", "2026-10-12", 5, 3)],
   previous: [50, 26],
+  insights: {
+    timezone: "Asia/Baku",
+    today: "2026-10-13",
+    monthStart: "2026-10-01",
+    weekStart: "2026-10-12",
+    base: { subject: "contacts", grouping: "class", total: 502, visited: 158, groups: [{ key: "VIP", total: 12, visited: 9 }, { key: "A", total: 80, visited: 41 }, { key: "B", total: 260, visited: 88 }, { key: "C", total: 150, visited: 20 }] },
+    quality: { visits: 31, atPlace: 28, awayFromPlace: 2, placeUnknown: 1, withPhoto: 27, tooLong: 0, tooShort: 2, longMinutes: 120, shortMinutes: 2 },
+    setup: [],
+    recentVisits: [{ id: "v9", at: "2026-10-13T07:31:00.000Z", customerName: "Mərkəzi Klinika", agentName: "Seymur Məmmədov", durationMinutes: null, flag: null }],
+  },
 }
 
 let root: Root | null = null
@@ -125,12 +155,13 @@ function report(plan: unknown[], visitFacts: unknown[], totals: [number, number]
   return { success: true, data: { report: { plan: { denominator: totals[0], numerator: totals[1], percentage: 0 }, gps: { denominator: 0, numerator: 0, percentage: 0 }, drilldown: { planDenominator: plan, gpsDenominator: visitFacts } } } }
 }
 
-function serve(scenario: Scenario, overrides: { attention?: () => Response | Promise<Response>; kpi?: () => Response | Promise<Response> } = {}) {
+function serve(scenario: Scenario, overrides: { attention?: () => Response | Promise<Response>; kpi?: () => Response | Promise<Response>; insights?: () => Response | Promise<Response> } = {}) {
   const monday = (scenario.attention.week as Array<{ date: string }>)[0].date
   vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input)
     requests.push(url)
     if (url.includes("/week/attention")) return overrides.attention ? overrides.attention() : json({ success: true, data: scenario.attention })
+    if (url.includes("/week/insights")) return overrides.insights ? overrides.insights() : scenario.insights ? json({ success: true, data: scenario.insights }) : json({ error: "nope" }, 500)
     if (url.includes("/mtm/kpi")) {
       if (overrides.kpi) return overrides.kpi()
       // This week (Monday through Sunday) carries the facts; any other range is last week's totals.
@@ -437,6 +468,112 @@ describe("when something does not load", () => {
   })
 })
 
+describe("the lower row", () => {
+  it("shows how much of Zeytun's base was reached this month, by specialty while all are in one class", async () => {
+    serve(ZEYTUN)
+    await render("ru", ZEYTUN)
+    expect(text("mtm-home-base")).toContain("База клиентов · октябрь")
+    expect(text("mtm-home-base-visited")).toBe("2")
+    expect(text("mtm-home-base")).toContain("из 321 посещено в этом месяце")
+    // Two of 321 is 0.6 %: a rounded «0%» would deny the two visits that were made.
+    expect(text("mtm-home-base")).toContain("0,6%")
+    const groups = Array.from(container.querySelectorAll("[data-testid='mtm-home-base-group']")).map((item) => item.textContent)
+    expect(groups).toEqual(["Terapevt0 / 2290%", "Qastroenteroloq2 / 922%"])
+    expect(text("mtm-home-base")).toContain("Не посещено в этом месяце: 319")
+    expect(container.querySelector("[data-testid='mtm-home-base'] a[href='/mtm/contacts']")?.textContent).toBe("Открыть список")
+    expect(container.querySelector("[data-testid='mtm-home-base'] a[href='/mtm/routes']")?.textContent).toBe("Спланировать визиты")
+  })
+
+  it("judges the week's visits: place, photo, too long, too short", async () => {
+    serve(ZEYTUN)
+    await render("ru", ZEYTUN)
+    expect(text("mtm-home-quality")).toContain("Качество визитов · эта неделя")
+    expect(text("mtm-home-quality-place")).toBe("Отмечены рядом с клиентомотметка в пределах зоны клиента2 / 2")
+    expect(text("mtm-home-quality-photo")).toBe("С фотов каждом визите есть фото2 / 2")
+    expect(text("mtm-home-quality-long")).toBe("Слишком длинныедольше 120 мин1")
+    expect(text("mtm-home-quality-short")).toBe("Слишком короткиекороче 2 мин1")
+    expect(container.querySelector("[data-testid='mtm-home-quality'] a[href='/mtm/visits']")?.textContent).toBe("Открыть визиты")
+  })
+
+  it("names what is left to set up, each step a link to where it is done", async () => {
+    serve(ZEYTUN)
+    await render("ru", ZEYTUN)
+    expect(text("mtm-home-setup")).toContain("Чтобы цифры были полными, осталось 3 шага:")
+    const step = (kind: string) => container.querySelector<HTMLAnchorElement>(`[data-testid='mtm-home-setup-${kind}']`)
+    expect(step("customersWithoutPin")?.textContent).toBe("Поставьте точку на карте 69 учреждениям")
+    expect(step("customersWithoutPin")?.getAttribute("href")).toBe("/mtm/customers")
+    expect(step("contactsUnclassified")?.textContent).toBe("Задайте класс 321 клиенту")
+    expect(step("contactsUnclassified")?.getAttribute("href")).toBe("/mtm/contacts")
+    expect(step("noVisitNorms")?.textContent).toBe("Задайте нормы визитов")
+    expect(step("noVisitNorms")?.getAttribute("href")).toBe("/mtm/settings")
+  })
+
+  it("lists a small team's last visits under it, the odd ones marked", async () => {
+    serve(ZEYTUN)
+    await render("ru", ZEYTUN)
+    const recent = container.querySelector("[data-testid='mtm-home-team-recent']")
+    expect(recent?.textContent).toContain("Последние визиты")
+    expect(Array.from(recent?.querySelectorAll("li") ?? []).map((item) => item.textContent)).toEqual([
+      "8 окт., 16:01Klinika 21 мин",
+      "7 окт., 22:14Klinika 113 ч 18 мин",
+    ])
+  })
+
+  it("splits the base by class on a classified base, shows no setup strip and no last visits for a full team", async () => {
+    serve(TUESDAY)
+    await render("ru", TUESDAY)
+    expect(container.querySelector("[data-testid='mtm-home-setup']")).toBeNull()
+    expect(container.querySelector("[data-testid='mtm-home-team-recent']")).toBeNull()
+    expect(text("mtm-home-base-visited")).toBe("158")
+    expect(text("mtm-home-base")).toContain("31%")
+    expect(Array.from(container.querySelectorAll("[data-testid='mtm-home-base-group']")).map((item) => item.textContent)).toEqual([
+      "VIP9 / 1275%", "Класс A41 / 8051%", "Класс B88 / 26034%", "Класс C20 / 15013%",
+    ])
+    // Two visits away from the client and one that cannot be judged.
+    expect(text("mtm-home-quality-place")).toBe("Отмечены рядом с клиентомвдали от клиента: 2 · нельзя проверить (нет точки или GPS): 128 / 31")
+    expect(text("mtm-home-quality-photo")).toBe("С фотобез фото: 427 / 31")
+    expect(text("mtm-home-quality-long")).toContain("0")
+  })
+
+  it.each(["az", "en"])("has words for the lower row in %s", async (locale) => {
+    serve(ZEYTUN)
+    await render(locale, ZEYTUN)
+    for (const testId of ["mtm-home-setup", "mtm-home-base", "mtm-home-quality", "mtm-home-team-recent"]) {
+      expect(text(testId), testId).not.toMatch(/mtmDashboardPage|home\.[a-z]|\{count|\{total|\{minutes|\{month|\{key|\{hours/)
+      expect(text(testId).length, testId).toBeGreaterThan(10)
+    }
+  })
+
+  it("asks once, for the screen's filters, and is simply absent when the answer does not come", async () => {
+    serve(ZEYTUN)
+    await render("ru", ZEYTUN, { regionId: "r1", teamId: "t1" })
+    expect(requests.filter((url) => url.includes("/week/insights"))).toEqual(["/api/v1/mtm/week/insights?regionId=r1&teamId=t1"])
+    await act(async () => { root?.unmount() })
+
+    serve(ZEYTUN, { insights: () => json({ error: "boom" }, 500) })
+    await render("ru", ZEYTUN)
+    for (const testId of ["mtm-home-setup", "mtm-home-base", "mtm-home-quality", "mtm-home-team-recent"]) {
+      expect(container.querySelector(`[data-testid='${testId}']`), testId).toBeNull()
+    }
+    // The first screen does not depend on it.
+    expect(kpi("attention").value).toBe("4")
+    expect(teamRows()).toHaveLength(1)
+  })
+
+  it("draws both cards or neither, with a plain line where one has nothing to show", async () => {
+    serve(ZEYTUN, { insights: () => json({ success: true, data: { ...ZEYTUN.insights, quality: null } }) })
+    await render("ru", ZEYTUN)
+    expect(text("mtm-home-base-visited")).toBe("2")
+    expect(text("mtm-home-quality")).toContain("На этой неделе визитов не было")
+    await act(async () => { root?.unmount() })
+
+    serve(ZEYTUN, { insights: () => json({ success: true, data: { ...ZEYTUN.insights, base: null, quality: null, setup: [], recentVisits: [] } }) })
+    await render("ru", ZEYTUN)
+    expect(container.querySelector("[data-testid='mtm-home-base']")).toBeNull()
+    expect(container.querySelector("[data-testid='mtm-home-quality']")).toBeNull()
+  })
+})
+
 describe("a long team", () => {
   it("shows eight agents and the rest on request, in the page and not in a frame", async () => {
     const many: Scenario = {
@@ -490,5 +627,22 @@ describe("reading the answers", () => {
     expect(read?.week).toEqual([])
     // An older server does not say: the day is taken for a working one.
     expect(read?.todayIsWorkingDay).toBe(true)
+  })
+
+  it("reads the lower row defensively", () => {
+    expect(normalizeHomeInsights({ success: true, data: { today: "2026-10-11", monthStart: "October", weekStart: "2026-10-05" } })).toBeNull()
+    const read = normalizeHomeInsights({ success: true, data: {
+      today: "2026-10-11", monthStart: "2026-10-01", weekStart: "2026-10-05",
+      base: { subject: "contacts", grouping: "class", total: 10, visited: 14, groups: [{ key: "A", total: 4, visited: 9 }, { key: "", total: 3, visited: 1 }, { key: "B", total: 0, visited: 0 }] },
+      // A field missing: the card would show a made-up zero.
+      quality: { visits: 2, atPlace: 2, withPhoto: 2 },
+      setup: [{ kind: "customersWithoutPin", count: 69, total: 72 }, { kind: "buyMoreLicences", count: 1 }],
+      recentVisits: [{ id: "v1", at: "2026-10-08T12:01:08.000Z", durationMinutes: 1, flag: "weird" }, { id: "", at: "2026-10-08T12:01:08.000Z" }, { id: "v3", at: "yesterday" }],
+    } })
+    // Never more visited than there are; a group without a name or without clients is not a bar.
+    expect(read?.base).toEqual({ subject: "contacts", grouping: "class", total: 10, visited: 10, groups: [{ key: "A", total: 4, visited: 4 }] })
+    expect(read?.quality).toBeNull()
+    expect(read?.setup).toEqual([{ kind: "customersWithoutPin", count: 69, total: 72 }])
+    expect(read?.recentVisits).toEqual([{ id: "v1", at: "2026-10-08T12:01:08.000Z", customerName: null, agentName: null, durationMinutes: 1, flag: null }])
   })
 })
