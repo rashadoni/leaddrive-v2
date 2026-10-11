@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process"
 import { resolve } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { createNativeZoomContext, proveNative200Zoom } from "../../scripts/workforce-native-browser-zoom.mjs"
+import { createNativeZoomContext, proveNative200Zoom, reproveEmployeeNative200Zoom } from "../../scripts/workforce-native-browser-zoom.mjs"
 
 const nativeLauncher = vi.hoisted(() => vi.fn())
 vi.mock("playwright", () => ({ chromium: { launchPersistentContext: nativeLauncher } }))
@@ -55,6 +55,15 @@ describe("native report fixture admission", () => {
 
   afterEach(() => vi.unstubAllEnvs())
 
+  it("refuses employee reproof without an owned page before URL, zoom or capture access", async () => {
+    const page = { context: () => ({}), url: vi.fn() }
+    const capture = vi.fn()
+    await expect(reproveEmployeeNative200Zoom({ page }, "/tmp/native-after-correction-return", "en", capture)).rejects.toThrow("owned native page")
+    expect(page.url).not.toHaveBeenCalled()
+    expect(capture).not.toHaveBeenCalled()
+    expect(nativeLauncher).not.toHaveBeenCalled()
+  })
+
   it.each([
     ["GITHUB_ACTIONS", "false"], ["CI", "false"], ["NODE_ENV", "production"],
     ["WF_EXCEPTION_REPORT_BROWSER", "0"], ["LEADDRIVE_DISABLE_SERVICE_WORKER", "0"],
@@ -85,10 +94,20 @@ describe("native report fixture admission", () => {
   })
 
   it.each([
+    "WF_CALENDAR_BROWSER", "WF_MANAGER_TODAY_BROWSER", "WF_EXCEPTION_REPORT_BROWSER", "WF_EXCEPTION_CLASSIFICATION_BROWSER",
+  ])("refuses employee exceptions when only %s is opted in", async otherOptIn => {
+    vi.stubEnv("WF_EMPLOYEE_EXCEPTION_BROWSER", "0")
+    vi.stubEnv(otherOptIn, "1")
+    await expect(createNativeZoomContext("http://127.0.0.1:9/", "employee-exceptions")).rejects.toThrow()
+    expect(nativeLauncher).not.toHaveBeenCalled()
+  })
+
+  it.each([
     ["calendar", "WF_CALENDAR_BROWSER", "/workforce/calendar"],
     ["manager-today", "WF_MANAGER_TODAY_BROWSER", "/workforce"],
     ["exception-report", "WF_EXCEPTION_REPORT_BROWSER", "/workforce/exceptions/report"],
     ["exception-classification", "WF_EXCEPTION_CLASSIFICATION_BROWSER", "/workforce/exceptions"],
+    ["employee-exceptions", "WF_EMPLOYEE_EXCEPTION_BROWSER", "/workforce/exceptions/mine"],
   ])("keeps the %s opt-in and exact native page boundary", async (fixture, optIn, route) => {
     vi.stubEnv(optIn, "0")
     await expect(createNativeZoomContext("http://127.0.0.1:9/", fixture)).rejects.toThrow()
@@ -108,6 +127,11 @@ describe("native report fixture admission", () => {
       await expect(proveNative200Zoom({ ...view, page }, "/tmp/unused-native-admission", "en", vi.fn())).rejects.toBe(proofBoundary)
       expect(worker.evaluate).toHaveBeenCalledOnce()
       worker.evaluate.mockClear()
+      // An opted-in profile and a forged proof object cannot replace the
+      // actual prior physical-window control; other fixtures are excluded.
+      await expect(reproveEmployeeNative200Zoom({ ...view, page, nativeZoom: { factor: 2, control: { width: 640, height: 1601 } } },
+        "/tmp/native-after-correction-return", "en", vi.fn())).rejects.toThrow()
+      expect(worker.evaluate).not.toHaveBeenCalled()
       const otherFixtureRoute = route === "/workforce/exceptions" ? "/workforce/exceptions/report" : "/workforce/exceptions"
       for (const url of ["http://127.0.0.1:9/workforce/exception-reports", `http://127.0.0.1:9${otherFixtureRoute}`, `http://localhost:9${route}`, `http://127.0.0.1:9${route}?fixture=report`]) {
         await expect(proveNative200Zoom({ ...view, page: { ...page, url: () => url } }, "/tmp/unused-native-admission", "en", vi.fn())).rejects.toThrow()

@@ -4,6 +4,8 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
+      - "scripts/workforce-crm-lifecycle-evidence.mjs"
+      - "src/lib/crm-product-availability.ts"
       - ".github/workflows/workforce-policy-employee-impact-evidence.yml"
       - "scripts/ci/fixtures/workforce-policy-employee-impact.sql"
       - "scripts/workforce-policy-employee-impact-browser-evidence.mjs"
@@ -62,7 +64,7 @@ concurrency:
 
 jobs:
   employee-impact-evidence:
-    name: Real PostgreSQL SELECT-only and authenticated employee impact browser evidence
+    name: "CRM lifecycle — Real PostgreSQL SELECT-only and authenticated employee impact browser evidence"
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
     timeout-minutes: 40
@@ -159,7 +161,7 @@ jobs:
       - name: Install Chromium on hosted Ubuntu
         run: npx playwright install --with-deps chromium
 
-      - name: Verify real authenticated on-demand aggregate UI and session boundaries
+      - name: Verify shipped CRM lifecycle (impact)
         shell: bash
         run: |
           test "$CI" = true && test "$WF_POLICY_IMPACT_BROWSER" = 1
@@ -181,7 +183,7 @@ jobs:
             fi
             sleep 2
           done
-          node scripts/workforce-policy-employee-impact-browser-evidence.mjs
+          node scripts/workforce-crm-lifecycle-evidence.mjs impact
 
       - name: Preserve safe workflow outcome
         if: always()

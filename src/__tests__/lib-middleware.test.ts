@@ -1475,17 +1475,17 @@ describe("middleware", async () => {
   })
 
   it.each([
-    ["Routes-only", { core: true, "route-field": true }],
-    ["HRM-only", { core: true, "workforce-hrm": true }],
-    ["both split capabilities", { core: true, "route-field": true, "workforce-hrm": true }],
-  ])("admits %s sessions to the MTM compatibility namespace for an exact handler gate", async (_name, modules) => {
+    ["Routes-only", { core: true, "route-field": true }, true],
+    ["HRM-only", { core: true, "workforce-hrm": true }, false],
+    ["both split capabilities", { core: true, "route-field": true, "workforce-hrm": true }, true],
+  ])("applies the remaining Route & Field boundary for %s sessions", async (_name, modules, allowed) => {
     const req = makeReq({
       pathname: "/api/v1/mtm/routes",
       host: "app.leaddrivecrm.org",
       auth: { user: { id: "u1", organizationId: "org-1", role: "manager", plan: "tier-25", addons: [], modules } },
     })
     const res = await authMiddleware(req)
-    expect(res.status).not.toBe(403)
+    expect(res.status === 403).toBe(!allowed)
   })
 
   it("blocks a legacy MTM tenant after both split capabilities are soft-disabled", async () => {
@@ -1558,5 +1558,37 @@ describe("middleware", async () => {
     })
     const res = await authMiddleware(req)
     expect(res.status).toBe(403)
+  })
+})
+
+describe("withdrawn Workforce product boundary", () => {
+  it.each(["GET", "POST", "PATCH", "DELETE", "OPTIONS"])("rejects %s before API-key, mobile and cron bypasses", async (method) => {
+    for (const path of [
+      "/api/v1/workforce/today", "/api/v1/workforce/requests",
+      "/api/v1/mtm/mobile/hrm", "/api/v1/mtm/mobile/workday",
+      "/api/v1/mtm/mobile/attendance/devices/enrollments",
+      "/api/v1/mtm/week/workday", "/api/v1/mtm/work-calendar",
+      "/api/v2/mtm/mobile/sync/workforce", "/api/cron/workforce-no-show-review",
+      "/api/v1/%77orkforce/timesheet",
+    ]) {
+      const response = await authMiddleware(makeReq({ pathname: path, method,
+        headers: { authorization: "Bearer ld_test_withdrawal" },
+        auth: { user: { role: "superadmin", modules: { "workforce-hrm": true, mtm: true } } },
+      }))
+      expect(response.status, path).toBe(410)
+      expect(response.headers.get("Cache-Control")).toBe("private, no-store")
+      expect(await response.json()).toMatchObject({ code: "CRM_MODULE_UNAVAILABLE" })
+    }
+  })
+
+  it("does not render archived pages or their marketplace demos", async () => {
+    for (const path of ["/workforce", "/workforce/configuration", "/%77orkforce/timesheet", "/marketplace/demo/workforce-hrm", "/marketplace/demo/attendance-qr"]) {
+      const response = await authMiddleware(makeReq({ pathname: path,
+        auth: { user: { role: "superadmin", modules: { "workforce-hrm": true } } },
+      }))
+      expect(response.status, path).toBe(404)
+      expect(response.headers.get("Cache-Control")).toBe("private, no-store")
+      expect(await response.text()).toBe("")
+    }
   })
 })

@@ -13,9 +13,9 @@ export const isNativeZoomPage = page => ownedContexts.has(page.context())
 
 /** Hosted fixture only. Native browser page zoom; no app injection/emulation. */
 export async function createNativeZoomContext(baseURL, fixture = "calendar") {
-  assert.ok(["calendar", "manager-today", "exception-report", "exception-classification"].includes(fixture), "Exact native fixture required")
-  const route = fixture === "calendar" ? "/workforce/calendar" : fixture === "manager-today" ? "/workforce" : fixture === "exception-report" ? "/workforce/exceptions/report" : "/workforce/exceptions"
-  const optIn = fixture === "calendar" ? "WF_CALENDAR_BROWSER" : fixture === "manager-today" ? "WF_MANAGER_TODAY_BROWSER" : fixture === "exception-report" ? "WF_EXCEPTION_REPORT_BROWSER" : "WF_EXCEPTION_CLASSIFICATION_BROWSER"
+  assert.ok(["calendar", "manager-today", "exception-report", "exception-classification", "employee-exceptions"].includes(fixture), "Exact native fixture required")
+  const route = fixture === "calendar" ? "/workforce/calendar" : fixture === "manager-today" ? "/workforce" : fixture === "exception-report" ? "/workforce/exceptions/report" : fixture === "exception-classification" ? "/workforce/exceptions" : "/workforce/exceptions/mine"
+  const optIn = fixture === "calendar" ? "WF_CALENDAR_BROWSER" : fixture === "manager-today" ? "WF_MANAGER_TODAY_BROWSER" : fixture === "exception-report" ? "WF_EXCEPTION_REPORT_BROWSER" : fixture === "exception-classification" ? "WF_EXCEPTION_CLASSIFICATION_BROWSER" : "WF_EMPLOYEE_EXCEPTION_BROWSER"
   assert.equal(process.env.GITHUB_ACTIONS, "true")
   assert.equal(process.env.CI, "true")
   assert.equal(process.env[optIn], "1")
@@ -247,4 +247,28 @@ export async function proveNative200Zoom(view, outputDirectory, locale, record) 
   return { method: "BROWSER_TABS_AUTOMATIC_PER_TAB_ZOOM", fixture: owned.fixture, factor: change.factor,
     event: change.event, settings: change.settings, control: before, zoomed: after,
     viewportEmulation: false, applicationCssChanged: false, applicationServiceWorkers: 0 }
+}
+
+const employeeNavigationReproofs = new WeakSet()
+export async function reproveEmployeeNative200Zoom(view, outputDirectory, locale, record) {
+  assert.ok(isNativeZoomPage(view.page), "Employee reproof requires an owned native page")
+  const owned = ownedContexts.get(view.page.context())
+  assert.equal(owned.fixture, "employee-exceptions")
+  const target = new URL(view.page.url())
+  assert.equal(target.origin, owned.origin)
+  assert.equal(target.pathname, owned.route)
+  assert.equal(target.username + target.password + target.search + target.hash, "")
+  assert.equal(basename(outputDirectory), "native-after-correction-return")
+  assert.equal(view.nativeZoom?.factor, 2, "Initial actual proof required before employee reproof")
+  assert.equal(employeeNavigationReproofs.has(view.page), false, "One immutable reproof per employee page")
+  const previousWindow = controlSurfaces.get(view.page)
+  assert.ok(previousWindow, "Prior validated physical window required")
+  assert.deepEqual(previousWindow, { width: view.nativeZoom.control.width, height: view.nativeZoom.control.height })
+  employeeNavigationReproofs.add(view.page)
+  // Reset only the owned ephemeral registration. Original proof, pixels and
+  // receipt remain intact; the unchanged first-proof routine rejects reuse.
+  controlSurfaces.delete(view.page)
+  const proof = await proveNative200Zoom(view, outputDirectory, locale, record)
+  assert.deepEqual(controlSurfaces.get(view.page), previousWindow, "Reproof must preserve the original physical window")
+  return { ...proof, phase: "AFTER_CORRECTION_RETURN", originalPhysicalWindowPreserved: true }
 }

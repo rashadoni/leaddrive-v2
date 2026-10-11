@@ -1,0 +1,9 @@
+
+ RUN  v4.1.2 /mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-tenant-capability-ui-20261010
+
+
+ Test Files  7 passed (7)
+      Tests  97 passed (97)
+   Start at  14:47:05
+   Duration  5.55s (transform 890ms, setup 86ms, import 2.26s, tests 1.20s, environment 682ms)
+

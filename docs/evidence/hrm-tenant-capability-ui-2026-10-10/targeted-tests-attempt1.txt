@@ -1,0 +1,51 @@
+
+ RUN  v4.1.2 /mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-hrm-tenant-capability-ui-20261010
+
+ ❯ src/__tests__/hrm-tenant-capability-ui.test.ts (10 tests | 1 failed) 751ms
+     × editor ignores contradictory raw features, saves metadata separately, then reloads effective HRM 130ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/hrm-tenant-capability-ui.test.ts > HRM tenant capability UI > editor ignores contradictory raw features, saves metadata separately, then reloads effective HRM
+AssertionError: expected "vi.fn()" to not be called at all, but actually been called 3 times
+
+Received:
+
+  1st vi.fn() call:
+
+    Array [
+      [Error: MISSING_MESSAGE: Could not resolve `admin.tenants.logo` in messages for locale `en`.],
+    ]
+
+  2nd vi.fn() call:
+
+    Array [
+      [Error: MISSING_MESSAGE: Could not resolve `admin.tenants.logo` in messages for locale `en`.],
+    ]
+
+  3rd vi.fn() call:
+
+    Array [
+      [Error: MISSING_MESSAGE: Could not resolve `admin.tenants.logo` in messages for locale `en`.],
+    ]
+
+
+Number of calls: 3
+
+ ❯ render src/__tests__/hrm-tenant-capability-ui.test.ts:49:22
+     47|   const errors = vi.fn()
+     48|   await act(async () => root.render(createElement(IntlProvider, { loca…
+     49|   expect(errors).not.toHaveBeenCalled()
+       |                      ^
+     50| }
+     51| function button(label: string) {
+ ❯ src/__tests__/hrm-tenant-capability-ui.test.ts:170:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 6 passed (7)
+      Tests  1 failed | 96 passed (97)
+   Start at  14:46:29
+   Duration  6.03s (transform 858ms, setup 86ms, import 2.32s, tests 995ms, environment 1.31s)
+

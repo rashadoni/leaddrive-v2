@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
+import { isCrmCapabilityAvailable } from "@/lib/crm-product-availability"
 import { navItems } from "@/lib/nav-items"
 import { isTenantCapabilityEnabled } from "@/lib/tenant-capabilities"
 import {
@@ -30,28 +31,24 @@ function source(path: string): string {
  * own card, built from the same navigation the sidebar renders.
  */
 describe("admin capability catalog", () => {
-  it("covers every capability-gated area in the navigation", () => {
+  it("covers every available capability-gated area in the navigation", () => {
     const expected = new Set(
       navItems.flatMap((item) => {
         const capability = item.capability ?? item.tenantCapability
-        return capability ? [capability] : []
+        return capability && isCrmCapabilityAvailable(capability) ? [capability] : []
       }),
     )
     expect(expected.size).toBeGreaterThan(0)
     expect(new Set(TOGGLEABLE_CAPABILITIES)).toEqual(expected)
-    // The one the owner asked about.
-    expect(TOGGLEABLE_CAPABILITIES).toContain("workforce-hrm")
+    // Withdrawn capabilities cannot be enabled from the tenant editor.
+    expect(TOGGLEABLE_CAPABILITIES).not.toContain("workforce-hrm")
   })
 
-  it("lists the pages each capability unlocks, grouped like the sidebar", () => {
-    const hrm = CAPABILITY_SECTIONS.find((section) => section.group === "HRM")
-    expect(hrm, "HRM has no group module, so it can only appear here").toBeTruthy()
-    expect(hrm!.items.length).toBeGreaterThan(0)
-    for (const item of hrm!.items) {
-      expect(item.capabilityId).toBe("workforce-hrm")
-      expect(item.href.startsWith("/")).toBe(true)
-      expect(item.tKey).toBeTruthy()
-    }
+  it("omits archived HRM pages and keeps the Route & Field section", () => {
+    expect(CAPABILITY_SECTIONS.find((section) => section.group === "HRM")).toBeUndefined()
+    const routes = CAPABILITY_SECTIONS.find((section) => section.group === "Route & Field")!
+    expect(routes.items.length).toBeGreaterThan(0)
+    expect(routes.items.every((item) => item.capabilityId === "route-field")).toBe(true)
   })
 
   it("stays out of the module catalogue, which the module tests lock", () => {
@@ -96,17 +93,16 @@ describe("admin capability catalog", () => {
     expect(twice).toEqual(once)
   })
 
-  it("actually changes access, not just the features array", () => {
-    // The point of the switch is that the tenant gains or loses the pages. A
-    // toggle that only rewrites a string list would look right in the editor
-    // and do nothing in the product, which is the failure worth guarding.
+  it("cannot reactivate withdrawn HRM by changing the stored features array", () => {
+    // Archived entitlement helpers remain available for extraction. Runtime
+    // access stays closed independently of the raw flags.
     const tenant = { plan: "professional", role: "admin", addons: [] as string[] }
     const asModules = (features: string[]) => Object.fromEntries(features.map((f) => [f, true]))
 
     const off = ["crm", "sales"]
     const on = enableCapability(off, "workforce-hrm")
 
-    expect(isTenantCapabilityEnabled("workforce-hrm", { ...tenant, features: on, modules: asModules(on) })).toBe(true)
+    expect(isTenantCapabilityEnabled("workforce-hrm", { ...tenant, features: on, modules: asModules(on) })).toBe(false)
 
     const revoked = disableCapability(on, "workforce-hrm")
     expect(

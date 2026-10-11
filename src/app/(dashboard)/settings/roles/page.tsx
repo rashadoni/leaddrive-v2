@@ -16,6 +16,7 @@ import { HelpButton } from "@/components/help/help-button"
 import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { enforcedAccessLevel, type AccessLevel } from "@/lib/user-access-summary"
+import { isCrmCapabilityAvailable } from "@/lib/crm-product-availability"
 
 
 interface RoleConfig {
@@ -43,6 +44,7 @@ const MODULE_GROUPS: { label: string; modules: string[] }[] = [
 ]
 
 const MODULES: string[] = MODULE_GROUPS.flatMap(g => g.modules)
+  .filter((module) => module !== "workforce" || isCrmCapabilityAvailable("workforce-hrm"))
 const MODULE_HINT_KEYS: Partial<Record<string, string>> = {
   loyalty: "moduleHint_loyalty",
   // A manager reads `users` and has no `settings`: without these two lines the

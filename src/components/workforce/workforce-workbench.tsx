@@ -38,6 +38,12 @@ import {
   shouldRenderWorkforceData,
   TimesheetApprovalRefreshLifecycle,
 } from "@/lib/workforce/timesheet-refresh-lifecycle"
+import {
+  captureWorkforceSelfRequestSubmissionAttempt,
+  readWorkforceSelfRequestSubmissionReply,
+  retainWorkforceSelfRequestSubmissionAfterFailure,
+  type WorkforceSelfRequestSubmissionAttempt,
+} from "@/lib/workforce/self-request-submission-attempt"
 
 type WorkforceView = "today" | "timesheet" | "requests"
 type RequestStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED"
@@ -817,8 +823,11 @@ function ScopedWorkforceWorkbench({ view, session }: {
         },
         body: JSON.stringify(input),
       })
-      const result = await response.json().catch(() => ({}))
-      if (!response.ok || !result.success) throw new Error(result.error || "HTTP " + response.status)
+      const result = readWorkforceSelfRequestSubmissionReply(
+        response.status,
+        await response.json().catch(() => null),
+        t("selfRequestSubmitFailed"),
+      )
       toast.success(result.idempotent ? t("selfRequestAlreadySubmitted") : t("selfRequestSubmitted"))
       requestReload()
       return { idempotent: Boolean(result.idempotent) }
@@ -1557,37 +1566,48 @@ function SelfRequestPanel({ data, t, submitting, preselectedCorrectionWorkdayId,
   })
   const [clientRequestId, setClientRequestId] = useState(createSelfRequestClientId)
   const [prefillDismissed, setPrefillDismissed] = useState(false)
+  const [attempt, setAttempt] = useState<WorkforceSelfRequestSubmissionAttempt | null>(null)
+  const attemptRef = useRef<WorkforceSelfRequestSubmissionAttempt | null>(null)
+  const sendingRef = useRef(false)
+  const pendingInput = attempt?.input
+  const locked = submitting || attempt !== null
   const prefilledWorkdayId = !prefillDismissed && preselectedCorrectionWorkdayId && data.selfWorkdays.some((workday) => workday.id === preselectedCorrectionWorkdayId)
     ? preselectedCorrectionWorkdayId
     : ""
-  const selectedWorkdayId = draft.correctionWorkdayId || prefilledWorkdayId
-  const requestType = draft.type === "LEAVE" && prefilledWorkdayId ? "TIME_CORRECTION" : draft.type
+  const selectedWorkdayId = pendingInput?.correctionWorkdayId ?? (draft.correctionWorkdayId || prefilledWorkdayId)
+  const requestType = pendingInput?.type ?? (draft.type === "LEAVE" && prefilledWorkdayId ? "TIME_CORRECTION" : draft.type)
   const exceptionCaseId = !prefillDismissed && prefilledWorkdayId && preselectedExceptionCaseId
     ? preselectedExceptionCaseId
     : undefined
   const selectedWorkday = data.selfWorkdays.find((workday) => workday.id === selectedWorkdayId) ?? null
   const correction = requestType === "TIME_CORRECTION"
-  const startDate = correction ? selectedWorkday?.workDate.slice(0, 10) ?? "" : draft.startDate
-  const endDate = correction ? selectedWorkday?.workDate.slice(0, 10) ?? "" : draft.endDate
+  const startDate = pendingInput?.startDate ?? (correction ? selectedWorkday?.workDate.slice(0, 10) ?? "" : draft.startDate)
+  const endDate = pendingInput?.endDate ?? (correction ? selectedWorkday?.workDate.slice(0, 10) ?? "" : draft.endDate)
   const hasTimeBoundary = Boolean(draft.requestedStartLocal || draft.requestedEndLocal)
-  const ready = Boolean(draft.reason.trim() && startDate && endDate && (!correction || (selectedWorkday && hasTimeBoundary)))
+  const ready = Boolean(attempt || (draft.reason.trim() && startDate && endDate && (!correction || (selectedWorkday && hasTimeBoundary))))
 
   async function submit() {
-    if (!ready) return
+    if (sendingRef.current || (!attemptRef.current && !ready)) return
+    sendingRef.current = true
+    const currentAttempt = attemptRef.current ?? captureWorkforceSelfRequestSubmissionAttempt({
+      clientRequestId,
+      type: requestType,
+      startDate,
+      endDate,
+      reason: draft.reason.trim(),
+      ...(correction ? {
+        correctionWorkdayId: selectedWorkday?.id,
+        ...(exceptionCaseId ? { exceptionCaseId } : {}),
+        requestedStartLocal: draft.requestedStartLocal || undefined,
+        requestedEndLocal: draft.requestedEndLocal || undefined,
+      } : {}),
+    })
+    attemptRef.current = currentAttempt
+    setAttempt(currentAttempt)
     try {
-      await onSubmit({
-        clientRequestId,
-        type: requestType,
-        startDate,
-        endDate,
-        reason: draft.reason.trim(),
-        ...(correction ? {
-          correctionWorkdayId: selectedWorkday?.id,
-          ...(exceptionCaseId ? { exceptionCaseId } : {}),
-          requestedStartLocal: draft.requestedStartLocal || undefined,
-          requestedEndLocal: draft.requestedEndLocal || undefined,
-        } : {}),
-      })
+      await onSubmit(currentAttempt.input)
+      attemptRef.current = null
+      setAttempt(null)
       setDraft({
         type: "LEAVE",
         startDate: "",
@@ -1599,8 +1619,12 @@ function SelfRequestPanel({ data, t, submitting, preselectedCorrectionWorkdayId,
       })
       setPrefillDismissed(true)
       setClientRequestId(createSelfRequestClientId())
-    } catch {
-      // Keep the same idempotency key and entered text so a network retry remains safe.
+    } catch (error) {
+      const retained = retainWorkforceSelfRequestSubmissionAfterFailure(currentAttempt, error)
+      attemptRef.current = retained
+      setAttempt(retained)
+    } finally {
+      sendingRef.current = false
     }
   }
 
@@ -1622,7 +1646,7 @@ function SelfRequestPanel({ data, t, submitting, preselectedCorrectionWorkdayId,
             type: event.target.value as "LEAVE" | "ABSENCE" | "TIME_CORRECTION",
           }))
         }}
-        disabled={submitting}
+        disabled={locked}
         className="min-h-12"
       >
         <option value="LEAVE">{t("requestType.leave")}</option>
@@ -1639,37 +1663,39 @@ function SelfRequestPanel({ data, t, submitting, preselectedCorrectionWorkdayId,
             setPrefillDismissed(true)
             setDraft((current) => ({ ...current, correctionWorkdayId: event.target.value }))
           }}
-          disabled={submitting || data.selfWorkdays.length === 0}
+          disabled={locked || data.selfWorkdays.length === 0}
           className="min-h-12"
         >
           <option value="">{t("selfRequestSelectWorkday")}</option>
+          {pendingInput?.correctionWorkdayId && !selectedWorkday ? <option value={pendingInput.correctionWorkdayId}>{pendingInput.startDate}</option> : null}
           {data.selfWorkdays.map((workday) => <option key={workday.id} value={workday.id}>{workday.workDate.slice(0, 10)} · {t(`status.${workday.status}`)}</option>)}
         </Select>
         <div className="space-y-1.5">
           <label htmlFor="workforce-self-request-start-time" className="text-sm font-medium">{t("selfRequestStartTime", { timezone: data.timezone })}</label>
-          <Input id="workforce-self-request-start-time" type="datetime-local" value={draft.requestedStartLocal} onChange={(event) => setDraft((current) => ({ ...current, requestedStartLocal: event.target.value }))} disabled={submitting || !selectedWorkday} className="min-h-12" />
+          <Input id="workforce-self-request-start-time" type="datetime-local" value={draft.requestedStartLocal} onChange={(event) => setDraft((current) => ({ ...current, requestedStartLocal: event.target.value }))} disabled={locked || !selectedWorkday} className="min-h-12" />
         </div>
         <div className="space-y-1.5 md:col-start-2">
           <label htmlFor="workforce-self-request-end-time" className="text-sm font-medium">{t("selfRequestEndTime", { timezone: data.timezone })}</label>
-          <Input id="workforce-self-request-end-time" type="datetime-local" value={draft.requestedEndLocal} onChange={(event) => setDraft((current) => ({ ...current, requestedEndLocal: event.target.value }))} disabled={submitting || !selectedWorkday} className="min-h-12" />
+          <Input id="workforce-self-request-end-time" type="datetime-local" value={draft.requestedEndLocal} onChange={(event) => setDraft((current) => ({ ...current, requestedEndLocal: event.target.value }))} disabled={locked || !selectedWorkday} className="min-h-12" />
         </div>
         {data.selfWorkdays.length === 0 ? <p className="text-sm text-muted-foreground md:col-span-2">{t("selfRequestNoWorkdays")}</p> : <p className="text-sm text-muted-foreground md:col-span-2">{t("selfRequestTimeHint")}</p>}
       </div> : <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <label htmlFor="workforce-self-request-start-date" className="text-sm font-medium">{t("selfRequestStartDate")}</label>
-          <Input id="workforce-self-request-start-date" type="date" value={draft.startDate} onChange={(event) => setDraft((current) => ({ ...current, startDate: event.target.value, endDate: !current.endDate || current.endDate < event.target.value ? event.target.value : current.endDate }))} disabled={submitting} className="min-h-12" required />
+          <Input id="workforce-self-request-start-date" type="date" value={pendingInput?.startDate ?? draft.startDate} onChange={(event) => setDraft((current) => ({ ...current, startDate: event.target.value, endDate: !current.endDate || current.endDate < event.target.value ? event.target.value : current.endDate }))} disabled={locked} className="min-h-12" required />
         </div>
         <div className="space-y-1.5">
           <label htmlFor="workforce-self-request-end-date" className="text-sm font-medium">{t("selfRequestEndDate")}</label>
-          <Input id="workforce-self-request-end-date" type="date" min={draft.startDate || undefined} value={draft.endDate} onChange={(event) => setDraft((current) => ({ ...current, endDate: event.target.value }))} disabled={submitting} className="min-h-12" required />
+          <Input id="workforce-self-request-end-date" type="date" min={draft.startDate || undefined} value={pendingInput?.endDate ?? draft.endDate} onChange={(event) => setDraft((current) => ({ ...current, endDate: event.target.value }))} disabled={locked} className="min-h-12" required />
         </div>
       </div>}
 
       <div className="space-y-1.5">
         <label htmlFor="workforce-self-request-reason" className="text-sm font-medium">{t("selfRequestReason")}</label>
-        <Textarea id="workforce-self-request-reason" value={draft.reason} onChange={(event) => setDraft((current) => ({ ...current, reason: event.target.value }))} maxLength={1000} minLength={3} disabled={submitting} className="min-h-28" aria-describedby="workforce-self-request-reason-hint" required />
+        <Textarea id="workforce-self-request-reason" value={draft.reason} onChange={(event) => setDraft((current) => ({ ...current, reason: event.target.value }))} maxLength={1000} minLength={3} disabled={locked} className="min-h-28" aria-describedby="workforce-self-request-reason-hint" required />
         <p id="workforce-self-request-reason-hint" className="text-sm text-muted-foreground">{t("selfRequestReasonHint")}</p>
       </div>
+      {attempt?.uncertain ? <p role="status" className="text-sm leading-6 text-muted-foreground">{t("selfRequestUncertainHint")}</p> : null}
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" className="min-h-12" disabled={submitting || !ready}>{submitting ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <Check />}{t("selfRequestSubmit")}</Button>
         {correction ? <span className="text-sm text-muted-foreground">{t("selfRequestPendingHint")}</span> : null}

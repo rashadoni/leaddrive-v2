@@ -17,6 +17,7 @@
  */
 import { navItems, NAV_GROUP_ORDER, type NavItem } from "./nav-items"
 import type { ModuleId } from "./modules"
+import { isCrmCapabilityAvailable } from "./crm-product-availability"
 import {
   entitlementKeysForCapability,
   getTenantCapabilityDefinition,
@@ -151,7 +152,7 @@ function capabilityOf(item: NavItem): FieldTenantCapabilityId | undefined {
 
 const capabilityGatedNavItems: CapabilityGatedNavItem[] = navItems.flatMap((item) => {
   const capabilityId = capabilityOf(item)
-  return capabilityId ? [{ ...item, capabilityId }] : []
+  return capabilityId && isCrmCapabilityAvailable(capabilityId) ? [{ ...item, capabilityId }] : []
 })
 
 /**

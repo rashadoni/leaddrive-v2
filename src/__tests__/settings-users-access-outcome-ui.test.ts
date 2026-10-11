@@ -151,12 +151,12 @@ describe("user card — what this person gets", () => {
     await openCard([spareCard, takenCard])
 
     expect(block().textContent).toContain("Что получит этот человек")
+    expect(rows()).not.toHaveProperty("Кадры")
     expect(rows()).toEqual({
       "Основная": [false, "Скрыт", null],
       "Продажи": [false, "Скрыт", null],
       "Финансы": [false, "Скрыт", null],
       "Маршруты и поле": [true, "Всё, включая удаление", "В поле — Вся организация."],
-      "Кадры": [false, "Скрыт", null],
       "Настройки": [null, "Только свои уведомления", "У «Настроек» галочки нет: доступ к ним даёт только роль."],
     })
   })

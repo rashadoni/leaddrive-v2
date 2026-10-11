@@ -4,6 +4,8 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
+      - "scripts/workforce-crm-lifecycle-evidence.mjs"
+      - "src/lib/crm-product-availability.ts"
       - ".github/workflows/workforce-manager-today-browser-evidence.yml"
       - "scripts/workforce-manager-today-browser-evidence.mjs"
       - "scripts/workforce-native-browser-zoom.mjs"
@@ -68,7 +70,7 @@ permissions:
 
 jobs:
   manager-today-browser:
-    name: Authenticated Workforce manager Today browser evidence
+    name: "CRM lifecycle — Authenticated Workforce manager Today browser evidence"
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
     timeout-minutes: 35
@@ -101,6 +103,8 @@ jobs:
       # Preserve the distinct PR head and GITHUB_SHA in the evidence receipt.
       - name: Checkout candidate
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
 
       - name: Resolve isolated ports and masked application secrets
         env:
@@ -175,7 +179,7 @@ jobs:
       - name: Install Chromium on hosted Ubuntu
         run: npx playwright install --with-deps chromium
 
-      - name: Run real authenticated manager Today scenarios
+      - name: Verify shipped CRM lifecycle (today)
         shell: bash
         run: |
           test "$CI" = true && test "$WF_MANAGER_TODAY_BROWSER" = 1
@@ -199,7 +203,7 @@ jobs:
             fi
             sleep 2
           done
-          node scripts/workforce-manager-today-browser-evidence.mjs
+          node scripts/workforce-crm-lifecycle-evidence.mjs today
 
       - name: Preserve non-secret workflow failure receipt
         if: failure()

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto"
 import type { Prisma } from "@prisma/client"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
+import { isCrmCapabilityAvailable } from "@/lib/crm-product-availability"
 
 export type MtmWorkdayAction = "START" | "PAUSE" | "RESUME" | "FINISH"
 
@@ -632,7 +633,7 @@ async function createAttendanceReviewCaseIfRequired(
   input: MtmWorkdayEventInput,
   event: { id: string },
 ): Promise<void> {
-  if (input.attendanceReview.state !== "PENDING_REVIEW") return
+  if (!isCrmCapabilityAvailable("workforce-hrm") || input.attendanceReview.state !== "PENDING_REVIEW") return
   await db.workforceAttendanceReviewCase.create({
     data: {
       organizationId: scope.organizationId,

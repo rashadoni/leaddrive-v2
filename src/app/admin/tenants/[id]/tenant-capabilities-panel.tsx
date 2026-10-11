@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -16,7 +16,7 @@ type CapabilityStatus =
   | "setup_required"
   | "disabled"
 
-interface CapabilityRow {
+export interface CapabilityRow {
   id: string
   label: string
   description: string
@@ -39,33 +39,48 @@ interface CapabilitiesResponse {
 }
 
 export function TenantCapabilitiesPanel({ tenantId }: { tenantId: string }) {
+  return <TenantCapabilitiesState key={tenantId} tenantId={tenantId} />
+}
+
+function TenantCapabilitiesState({ tenantId }: { tenantId: string }) {
   const [capabilities, setCapabilities] = useState<CapabilityRow[]>([])
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const inFlight = useRef(false)
+  const mounted = useRef(true)
 
   const load = useCallback(async (signal?: AbortSignal) => {
+    if (inFlight.current) return
+    inFlight.current = true
+    setLoading(true)
     setError(null)
+    setMessage(null)
     try {
       const res = await fetch(`/api/v1/admin/tenants/${tenantId}/capabilities`, { signal })
       const body: CapabilitiesResponse = await res.json()
-      if (!res.ok) {
+      if (!mounted.current || signal?.aborted) return
+      if (!res.ok || !Array.isArray(body.data?.capabilities)) {
         setError(body.error || `Capabilities failed to load (HTTP ${res.status})`)
         return
       }
-      setCapabilities(body.data?.capabilities ?? [])
+      setCapabilities(body.data.capabilities)
     } catch (err) {
-      if ((err as Error).name !== "AbortError") setError("Capabilities failed to load")
+      if (mounted.current && !signal?.aborted && (err as Error).name !== "AbortError") setError("Capabilities failed to load")
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) {
+        inFlight.current = false
+        if (mounted.current) setLoading(false)
+      }
     }
   }, [tenantId])
 
   useEffect(() => {
+    mounted.current = true
     const ac = new AbortController()
     load(ac.signal)
-    return () => ac.abort()
+    return () => { mounted.current = false; inFlight.current = false; ac.abort() }
   }, [load])
 
   const requested = useMemo(
@@ -86,8 +101,11 @@ export function TenantCapabilitiesPanel({ tenantId }: { tenantId: string }) {
     [capabilities],
   )
   const advisorSuiteActive = useMemo(() => isAdvisorSuiteActive(capabilities), [capabilities])
+  const disabled = useMemo(() => capabilities.filter((capability) => capability.status === "disabled"), [capabilities])
 
   async function mutate(capability: CapabilityRow, action: "approve" | "reject_request" | "disable") {
+    if (inFlight.current) return
+    inFlight.current = true
     setBusyId(capability.id)
     setError(null)
     setMessage(null)
@@ -98,11 +116,12 @@ export function TenantCapabilitiesPanel({ tenantId }: { tenantId: string }) {
         body: JSON.stringify({ capabilityId: capability.id, action }),
       })
       const body: CapabilitiesResponse = await res.json().catch(() => ({}))
-      if (!res.ok) {
+      if (!mounted.current) return
+      if (!res.ok || !Array.isArray(body.data?.capabilities)) {
         setError(body.error || `Action failed (HTTP ${res.status})`)
         return
       }
-      setCapabilities(body.data?.capabilities ?? [])
+      setCapabilities(body.data.capabilities)
       setMessage(
         action === "approve"
           ? `${capability.label} approved`
@@ -110,12 +129,17 @@ export function TenantCapabilitiesPanel({ tenantId }: { tenantId: string }) {
             ? `${capability.label} disabled without deleting tenant data`
             : `${capability.label} request rejected`,
       )
+    } catch {
+      if (mounted.current) setError("Action failed. Refresh to confirm the current capability state.")
     } finally {
-      setBusyId(null)
+      inFlight.current = false
+      if (mounted.current) setBusyId(null)
     }
   }
 
   async function enableAdvisorSuite() {
+    if (inFlight.current) return
+    inFlight.current = true
     setBusyId("advisor-suite")
     setError(null)
     setMessage(null)
@@ -126,14 +150,18 @@ export function TenantCapabilitiesPanel({ tenantId }: { tenantId: string }) {
         body: JSON.stringify({ action: "enable_advisor_suite" }),
       })
       const body: CapabilitiesResponse = await res.json().catch(() => ({}))
-      if (!res.ok) {
+      if (!mounted.current) return
+      if (!res.ok || !Array.isArray(body.data?.capabilities)) {
         setError(body.error || `Advisor Suite activation failed (HTTP ${res.status})`)
         return
       }
-      setCapabilities(body.data?.capabilities ?? [])
+      setCapabilities(body.data.capabilities)
       setMessage("Advisor Suite enabled for this tenant")
+    } catch {
+      if (mounted.current) setError("Advisor Suite activation failed. Refresh to confirm the current capability state.")
     } finally {
-      setBusyId(null)
+      inFlight.current = false
+      if (mounted.current) setBusyId(null)
     }
   }
 
@@ -199,7 +227,7 @@ export function TenantCapabilitiesPanel({ tenantId }: { tenantId: string }) {
                 type="button"
                 size="sm"
                 onClick={enableAdvisorSuite}
-                disabled={advisorSuiteActive || busyId === "advisor-suite"}
+                disabled={advisorSuiteActive || busyId !== null}
                 className="shrink-0"
               >
                 {busyId === "advisor-suite" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
@@ -229,6 +257,14 @@ export function TenantCapabilitiesPanel({ tenantId }: { tenantId: string }) {
             busyId={busyId}
             onDisable={(capability) => mutate(capability, "disable")}
           />
+          <CapabilitySection
+            title="Disabled"
+            empty="No capabilities are disabled."
+            capabilities={disabled}
+            busyId={busyId}
+            approveLabel="Enable"
+            onApprove={(capability) => mutate(capability, "approve")}
+          />
         </div>
       )}
     </Card>
@@ -243,6 +279,7 @@ function CapabilitySection({
   onApprove,
   onReject,
   onDisable,
+  approveLabel = "Approve",
 }: {
   title: string
   empty: string
@@ -251,6 +288,7 @@ function CapabilitySection({
   onApprove?: (capability: CapabilityRow) => void
   onReject?: (capability: CapabilityRow) => void
   onDisable?: (capability: CapabilityRow) => void
+  approveLabel?: string
 }) {
   return (
     <section>
@@ -294,19 +332,19 @@ function CapabilitySection({
                 {(onApprove || onReject || canDisable) ? (
                   <div className="mt-4 flex flex-wrap gap-2">
                     {onApprove ? (
-                      <Button size="sm" onClick={() => onApprove(capability)} disabled={busy || !canApprove}>
+                      <Button size="sm" onClick={() => onApprove(capability)} disabled={busyId !== null || !canApprove}>
                         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                        Approve
+                        {approveLabel}
                       </Button>
                     ) : null}
                     {onReject ? (
-                      <Button size="sm" variant="outline" onClick={() => onReject(capability)} disabled={busy}>
+                      <Button size="sm" variant="outline" onClick={() => onReject(capability)} disabled={busyId !== null}>
                         <XCircle className="h-4 w-4" />
                         Reject
                       </Button>
                     ) : null}
                     {canDisable ? (
-                      <Button size="sm" variant="outline" onClick={() => onDisable?.(capability)} disabled={busy}>
+                      <Button size="sm" variant="outline" onClick={() => onDisable?.(capability)} disabled={busyId !== null}>
                         <XCircle className="h-4 w-4" />
                         Disable
                       </Button>

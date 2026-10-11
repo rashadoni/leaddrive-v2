@@ -110,7 +110,7 @@ describe("accessibleNavItems", () => {
     expect(withFeat.some((i) => i.href === "/complaints")).toBe(true)
   })
 
-  it("keeps Workforce navigation independent from Route & Field in all four tenant modes", () => {
+  it("withdraws Workforce navigation in all four retained tenant entitlement modes", () => {
     const workforceHrefs = [
       "/workforce",
       "/workforce/timesheet",
@@ -124,9 +124,9 @@ describe("accessibleNavItems", () => {
       return workforceHrefs.every((href) => hrefs.includes(href))
     }
 
-    expect(hasEveryWorkforcePage({ "workforce-hrm": true })).toBe(true) // HRM-only
+    expect(hasEveryWorkforcePage({ "workforce-hrm": true })).toBe(false) // HRM-only
     expect(hasEveryWorkforcePage({ mtm: true, "workforce-hrm": false })).toBe(false) // Routes-only
-    expect(hasEveryWorkforcePage({ mtm: true, "workforce-hrm": true })).toBe(true) // Both
+    expect(hasEveryWorkforcePage({ mtm: true, "workforce-hrm": true })).toBe(false) // Both
     expect(hasEveryWorkforcePage({ mtm: false, "workforce-hrm": false })).toBe(false) // Neither
 
     const hrmOnly = accessibleNavItems({ plan: "enterprise", role: "manager", modules: { "workforce-hrm": true } })
@@ -135,7 +135,7 @@ describe("accessibleNavItems", () => {
     expect(routesOnly.some((item) => item.href === "/mtm")).toBe(true)
   })
 
-  it("gives a non-admin Workforce operator a calendar path while keeping broad configuration admin-only", () => {
+  it("hides withdrawn Workforce from operators, schedulers and administrators", () => {
     const schedulerCompatible = accessibleNavItems({
       plan: "enterprise",
       role: "manager",
@@ -152,14 +152,13 @@ describe("accessibleNavItems", () => {
       modules: { "workforce-hrm": true },
     })
 
-    expect(schedulerCompatible.some((item) => item.href === "/workforce/calendar")).toBe(true)
+    expect(schedulerCompatible.some((item) => item.href === "/workforce/calendar")).toBe(false)
     expect(schedulerCompatible.some((item) => item.href === "/workforce/configuration")).toBe(false)
-    // Support has no legacy Workforce permission. Navigation stays available
-    // because an independent SCHEDULER grant, resolved by the API, may exist.
-    expect(grantOnlySchedulerCandidate.some((item) => item.href === "/workforce/calendar")).toBe(true)
+    // A retained independent SCHEDULER grant cannot reopen the withdrawn UI.
+    expect(grantOnlySchedulerCandidate.some((item) => item.href === "/workforce/calendar")).toBe(false)
     expect(grantOnlySchedulerCandidate.some((item) => item.href === "/workforce/configuration")).toBe(false)
-    expect(administrator.some((item) => item.href === "/workforce/calendar")).toBe(true)
-    expect(administrator.some((item) => item.href === "/workforce/configuration")).toBe(true)
+    expect(administrator.some((item) => item.href === "/workforce/calendar")).toBe(false)
+    expect(administrator.some((item) => item.href === "/workforce/configuration")).toBe(false)
   })
 
   it("gates conversation analytics on VoIP independently from Support", () => {

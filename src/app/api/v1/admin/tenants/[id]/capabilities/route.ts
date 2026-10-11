@@ -5,6 +5,7 @@ import { prisma, logAudit } from "@/lib/prisma"
 import { AppInstallError, installTenantApp, type InstallTenantAppResult } from "@/lib/apps/install-executor"
 import { hasModule } from "@/lib/modules"
 import { requireSuperAdmin } from "@/lib/superadmin-guard"
+import { isCrmCapabilityAvailable } from "@/lib/crm-product-availability"
 import {
   ensureWorkforceDefaultProfile,
   type WorkforceDefaultProfileProvisioningResult,
@@ -219,7 +220,9 @@ export async function PATCH(
     }
 
     const definition = getTenantCapabilityDefinition(parsed.data.capabilityId!)
-    if (!definition) return NextResponse.json({ error: "Capability not found" }, { status: 404 })
+    if (!definition || !isCrmCapabilityAvailable(definition.id)) {
+      return NextResponse.json({ error: "Capability not found" }, { status: 404 })
+    }
 
     const entitlementKeys = entitlementKeysForCapability(definition)
 

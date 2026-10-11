@@ -3,6 +3,8 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
+      - "scripts/workforce-crm-lifecycle-evidence.mjs"
+      - "src/lib/crm-product-availability.ts"
       - ".github/workflows/workforce-policy-restore-evidence.yml"
       - "scripts/_rls.mjs"
       - "scripts/ci/workforce-policy-restore-fixture.mjs"
@@ -63,7 +65,7 @@ permissions:
   contents: read
 jobs:
   restore-writer:
-    name: Real PostgreSQL, authorized API and rendered policy restore UI evidence
+    name: "CRM lifecycle — Real PostgreSQL, authorized API and rendered policy restore UI evidence"
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
     timeout-minutes: 40
@@ -154,7 +156,9 @@ jobs:
           node scripts/ci/workforce-policy-restore-base-row.mjs after
       - name: Execute mandatory real PostgreSQL restore concurrency and rollback tests
         run: npx vitest run src/__tests__/lib-workforce-policy-restore-postgres.test.ts --maxWorkers=1
-      - name: Execute real credentials and authorized restore API scenarios
+      - name: Install Chromium on hosted Ubuntu
+        run: npx playwright install --with-deps chromium
+      - name: Verify shipped CRM lifecycle (restore-api)
         shell: bash
         run: |
           set -euo pipefail
@@ -167,10 +171,8 @@ jobs:
             if ! kill -0 "$WF_APP_PID" 2>/dev/null || [ "$attempt" -eq 90 ]; then exit 1; fi
             sleep 2
           done
-          node scripts/workforce-policy-restore-api-evidence.mjs
-      - name: Install Chromium on hosted Ubuntu
-        run: npx playwright install --with-deps chromium
-      - name: Execute real rendered manual restore UI, session, retry and rollback scenarios
+          node scripts/workforce-crm-lifecycle-evidence.mjs restore-api
+      - name: Verify shipped CRM lifecycle (restore-browser)
         shell: bash
         run: |
           set -euo pipefail
@@ -183,7 +185,7 @@ jobs:
             if ! kill -0 "$WF_APP_PID" 2>/dev/null || [ "$attempt" -eq 90 ]; then exit 1; fi
             sleep 2
           done
-          node scripts/workforce-policy-restore-browser-evidence.mjs
+          node scripts/workforce-crm-lifecycle-evidence.mjs restore-browser
       - name: Upload complete non-secret restore receipts
         if: always()
         uses: actions/upload-artifact@v4

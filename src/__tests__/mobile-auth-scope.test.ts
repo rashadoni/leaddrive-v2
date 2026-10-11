@@ -200,25 +200,17 @@ describe("resolveMobileAuth — revocation check", () => {
     expect(result).toBeNull()
   })
 
-  it("ACCEPTED: legacy tenant retains Workforce access after Route & Field is disabled", async () => {
+  it("REJECTED: legacy Workforce cannot keep a mobile session after Route & Field is disabled", async () => {
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(ACTIVE_AGENT as any)
-    // The first lookup resolves Route & Field. The second one retains the
-    // established Workforce compatibility entitlement until an explicit
-    // `workforce-hrm: false` marker is written for the tenant.
+    // Only the still-available Route & Field entitlement can keep this session.
     vi.mocked(hasModule).mockReturnValueOnce(false)
 
     const result = await resolveMobileAuth(makeRequestWithMobileBearer("/api/v1/mtm/visits"))
 
-    expect(result?.tenantCapabilities).toEqual({
-      routeField: false,
-      workforceHrm: true,
-      attendanceQr: false,
-      attendanceDeviceTrust: false,
-      workforceExceptionResponse: false,
-    })
+    expect(result).toBeNull()
   })
 
-  it("ACCEPTED: an active Workforce-only tenant receives no Route & Field capability", async () => {
+  it("REJECTED: a retained Workforce-only entitlement cannot open CRM mobile", async () => {
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({
       ...ACTIVE_AGENT,
       organization: {
@@ -229,22 +221,15 @@ describe("resolveMobileAuth — revocation check", () => {
         modules: { mtm: false, "workforce-hrm": true },
       },
     } as any)
-    // Route & Field uses the first `hasModule(..., "mtm")` lookup. The
-    // explicit Workforce flag remains authoritative for the second resolver.
+    // The retained Workforce flag does not override product withdrawal.
     vi.mocked(hasModule).mockReturnValueOnce(false)
 
     const result = await resolveMobileAuth(makeRequestWithMobileBearer("/api/v1/mtm/mobile/workday"))
 
-    expect(result?.tenantCapabilities).toEqual({
-      routeField: false,
-      workforceHrm: true,
-      attendanceQr: false,
-      attendanceDeviceTrust: false,
-      workforceExceptionResponse: false,
-    })
+    expect(result).toBeNull()
   })
 
-  it("snapshots the response rollout from the same fresh Workforce tenant row", async () => {
+  it("rejects a Workforce-only session even with the response rollout flag", async () => {
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({
       ...ACTIVE_AGENT,
       organization: {
@@ -259,11 +244,7 @@ describe("resolveMobileAuth — revocation check", () => {
 
     const result = await resolveMobileAuth(makeRequestWithMobileBearer("/api/v1/mtm/mobile/hrm/exceptions"))
 
-    expect(result?.tenantCapabilities).toMatchObject({
-      routeField: false,
-      workforceHrm: true,
-      workforceExceptionResponse: true,
-    })
+    expect(result).toBeNull()
     expect(prisma.organization.findUnique).not.toHaveBeenCalled()
   })
 
@@ -289,7 +270,7 @@ describe("resolveMobileAuth — revocation check", () => {
     })
   })
 
-  it("ACCEPTED: Workforce attendance add-ons remain explicit and independently scoped", async () => {
+  it("REJECTED: attendance add-ons cannot reactivate withdrawn Workforce", async () => {
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({
       ...ACTIVE_AGENT,
       organization: {
@@ -309,11 +290,7 @@ describe("resolveMobileAuth — revocation check", () => {
 
     const result = await resolveMobileAuth(makeRequestWithMobileBearer("/api/v1/mtm/mobile/workday"))
 
-    expect(result?.tenantCapabilities).toMatchObject({
-      workforceHrm: true,
-      attendanceQr: true,
-      attendanceDeviceTrust: true,
-    })
+    expect(result).toBeNull()
   })
 
   it("REJECTED: a tenant with both independently disabled capabilities receives no mobile JWT session", async () => {
@@ -335,7 +312,7 @@ describe("resolveMobileAuth — revocation check", () => {
   })
 
   it.each(["route-field", "workforce-hrm"] as const)(
-    "admits an independently enabled %s tenant",
+    "admits only the available product for a %s tenant",
     async (capabilityId) => {
       vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({
         ...ACTIVE_AGENT,
@@ -350,14 +327,15 @@ describe("resolveMobileAuth — revocation check", () => {
       vi.mocked(hasModule).mockImplementation((context, moduleId) => context.modules?.[moduleId] === true)
 
       const request = makeRequestWithMobileBearer("/api/v1/mtm/mobile/bootstrap")
-      expect(await resolveMobileAuth(request)).toMatchObject({
-        orgId: "org-mtm",
-        agentId: "agent-42",
-        tenantCapabilities: {
-          routeField: capabilityId === "route-field",
-          workforceHrm: capabilityId === "workforce-hrm",
-        },
-      })
+      const result = await resolveMobileAuth(request)
+      if (capabilityId === "workforce-hrm") {
+        expect(result).toBeNull()
+      } else {
+        expect(result).toMatchObject({
+          orgId: "org-mtm", agentId: "agent-42",
+          tenantCapabilities: { routeField: true, workforceHrm: false },
+        })
+      }
     },
   )
 

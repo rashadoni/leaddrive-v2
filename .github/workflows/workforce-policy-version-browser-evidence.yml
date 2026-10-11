@@ -4,6 +4,8 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
+      - "scripts/workforce-crm-lifecycle-evidence.mjs"
+      - "src/lib/crm-product-availability.ts"
       - ".github/workflows/workforce-policy-version-browser-evidence.yml"
       - "scripts/workforce-policy-version-browser-evidence.mjs"
       - "scripts/_rls.mjs"
@@ -53,7 +55,7 @@ permissions:
 
 jobs:
   policy-version-browser:
-    name: Authenticated Workforce policy version browser evidence
+    name: "CRM lifecycle — Authenticated Workforce policy version browser evidence"
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
     timeout-minutes: 35
@@ -86,6 +88,8 @@ jobs:
       # Preserve the distinct PR head and GITHUB_SHA in the evidence receipt.
       - name: Checkout candidate
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
 
       - name: Resolve isolated ports and masked application secrets
         env:
@@ -164,7 +168,7 @@ jobs:
           WF_POLICY_WINDOW_POSTGRES: "1"
         run: npx vitest run src/__tests__/lib-workforce-policy-future-window-postgres.test.ts --maxWorkers=1
 
-      - name: Run real authenticated policy version scenarios
+      - name: Verify shipped CRM lifecycle (versions)
         shell: bash
         run: |
           test "$CI" = true && test "$WF_POLICY_VERSION_BROWSER" = 1
@@ -188,7 +192,7 @@ jobs:
             fi
             sleep 2
           done
-          node scripts/workforce-policy-version-browser-evidence.mjs
+          node scripts/workforce-crm-lifecycle-evidence.mjs versions
 
       - name: Preserve non-secret workflow failure receipt
         if: failure()

@@ -1,0 +1,15 @@
+{
+  "observedAtUtc": "2026-10-10T03:33:21.114124+00:00",
+  "status": "PASS_SCOPED_PURE_ADMISSION_SMOKE",
+  "moduleSha256": "2e69c2e861a02e6209b4d97e88b50240f64b20355b5891115ba18cc83254af22",
+  "targetPositive": 1,
+  "targetRefusals": 14,
+  "capturePositive": 1,
+  "captureRefusals": 7,
+  "databaseConnections": 0,
+  "browserSessions": 0,
+  "fullVitestSuite": "NOT RUN locally; hosted only",
+  "runtimeSelfFlow": "NOT RUN",
+  "productionMutation": false,
+  "scope": "Root actually executed bounded Node assertion smoke against pure target/privacy admission. Not hosted fixture, PostgreSQL, browser, compiler/build or whole C6/C14 acceptance."
+}

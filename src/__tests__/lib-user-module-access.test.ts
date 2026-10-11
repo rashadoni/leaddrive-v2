@@ -57,9 +57,9 @@ describe("the hideable catalog", () => {
   it("lists only what the tenant has", () => {
     expect(tenantHideableModules(org({ crm: true, sales: true, settings: true }))).toEqual(["crm", "sales"])
     // The historical `mtm` grant dual-reads as both field capabilities.
-    expect(tenantHideableModules(org({ crm: true, mtm: true }))).toEqual(["crm", "mtm", "workforce-hrm"])
+    expect(tenantHideableModules(org({ crm: true, mtm: true }))).toEqual(["crm", "mtm"])
     // A Workforce-only tenant has HRM without Route & Field.
-    expect(tenantHideableModules(org({ crm: true, "workforce-hrm": true }))).toEqual(["crm", "workforce-hrm"])
+    expect(tenantHideableModules(org({ crm: true, "workforce-hrm": true }))).toEqual(["crm"])
   })
 })
 
@@ -108,10 +108,10 @@ describe("applyUserModuleMask", () => {
   describe("Route & Field and Workforce HRM", () => {
     const fieldTenant = { crm: true, mtm: true, settings: true }
 
-    it("hiding Route & Field keeps HRM that was living on the mtm grant", () => {
+    it("hiding Route & Field cannot reopen withdrawn HRM", () => {
       const ctx = masked(fieldTenant, ["mtm"])
       expect(isTenantCapabilityEnabled("route-field", ctx)).toBe(false)
-      expect(isTenantCapabilityEnabled("workforce-hrm", ctx)).toBe(true)
+      expect(isTenantCapabilityEnabled("workforce-hrm", ctx)).toBe(false)
       expect(hasModule(ctx, "mtm")).toBe(false)
     })
 
@@ -146,7 +146,7 @@ describe("what the restricted user's menu shows", () => {
   it("drops the hidden groups from the sidebar and nothing else", () => {
     const before = groupsFor([])
     const after = groupsFor(["sales", "marketing", "mtm"])
-    expect(before).toEqual(expect.arrayContaining(["Sales", "Marketing", "Route & Field", "HRM"]))
+    expect(before).toEqual(expect.arrayContaining(["Sales", "Marketing", "Route & Field"]))
     expect(before.filter((group) => !after.includes(group))).toEqual(["Sales", "Marketing", "Route & Field"])
   })
 

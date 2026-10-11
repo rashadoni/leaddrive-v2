@@ -4,6 +4,8 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
+      - "scripts/workforce-crm-lifecycle-evidence.mjs"
+      - "src/lib/crm-product-availability.ts"
       - '.github/workflows/workforce-bulk-assignment-evidence.yml'
       - 'scripts/workforce-bulk-*.mjs'
       - 'scripts/_rls.mjs'
@@ -35,7 +37,7 @@ permissions:
 
 jobs:
   bulk-acceptance:
-    name: C7 bulk schedules and sites acceptance
+    name: "CRM lifecycle — C7 bulk schedules and sites acceptance"
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
     timeout-minutes: 35
@@ -66,6 +68,8 @@ jobs:
     steps:
       - name: Checkout candidate merge
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
@@ -134,7 +138,7 @@ jobs:
           exit "$WF_TEST_EXIT"
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - name: Run authenticated named-record browser scenarios
+      - name: Verify shipped CRM lifecycle (bulk)
         shell: bash
         run: |
           set -euo pipefail
@@ -147,7 +151,7 @@ jobs:
             if ! kill -0 "$WF_APP_PID" 2>/dev/null || [ "$attempt" -eq 90 ]; then exit 1; fi
             sleep 2
           done
-          node scripts/workforce-bulk-browser-evidence.mjs
+          node scripts/workforce-crm-lifecycle-evidence.mjs bulk
       - name: Record workflow outcome without logs or credentials
         if: always()
         env:

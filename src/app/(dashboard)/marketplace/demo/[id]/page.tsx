@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { getTenantCapabilityDemo } from "@/lib/tenant-capability-demos"
 import { TENANT_CAPABILITY_CATALOG } from "@/lib/tenant-capabilities"
+import { isCrmCapabilityAvailable } from "@/lib/crm-product-availability"
 
 export default async function MarketplaceCapabilityDemoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
+  if (!isCrmCapabilityAvailable(id)) notFound()
   const definition = TENANT_CAPABILITY_CATALOG.find((capability) => capability.id === id)
   const demo = getTenantCapabilityDemo(id)
   if (!definition || !demo) notFound()

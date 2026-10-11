@@ -263,7 +263,7 @@ export function WorkforceMyExceptions() {
     {responseRecording === "MIGRATION_REQUIRED" ? <section data-testid="workforce-my-exceptions-response-boundary" aria-labelledby="workforce-my-exceptions-response-boundary" className="rounded-lg border border-zinc-200 bg-muted/30 p-4 dark:border-zinc-700">
       <h2 id="workforce-my-exceptions-response-boundary" className="font-semibold">{t("responseRecordingUnavailableTitle")}</h2><p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">{t("responseRecordingUnavailableHint")}</p>
     </section> : null}
-    <div className="flex justify-end"><Button type="button" variant="outline" className="min-h-11" onClick={refresh} disabled={loading || acknowledgingCaseId !== null}>{loading ? <Loader2 className="mr-2 size-4 animate-spin motion-reduce:animate-none" /> : <RefreshCw className="mr-2 size-4" />}{t("refresh")}</Button></div>
+    <div className="flex justify-end"><Button type="button" variant="outline" className="h-auto min-h-11 max-w-full whitespace-normal" onClick={refresh} disabled={loading || acknowledgingCaseId !== null}>{loading ? <Loader2 className="mr-2 size-4 animate-spin motion-reduce:animate-none" /> : <RefreshCw className="mr-2 size-4" />}{t("refresh")}</Button></div>
     {error ? <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error}</div> : null}
     {loading ? <div className="flex items-center gap-2 py-12 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin motion-reduce:animate-none" />{t("loading")}</div> : null}
     {items && !loading ? <section aria-labelledby="workforce-my-exceptions-list" className="rounded-lg border border-zinc-200 dark:border-zinc-700">
@@ -272,15 +272,15 @@ export function WorkforceMyExceptions() {
         const correctionWorkdayId = item.availableAction === "REQUEST_CORRECTION" ? item.workdayId : null
         const isWorkdayCorrection = correctionWorkdayId !== null
         const displayDate = dateFormatter.format(new Date(`${item.workDate.slice(0, 10)}T12:00:00`))
-        return <article key={item.caseId} className="grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+        return <article key={item.caseId} className="grid min-w-0 grid-cols-1 gap-4 p-4 wrap-break-word md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2"><span className="font-mono text-xs text-muted-foreground">{item.displayReference}</span><Badge variant="outline">{tTypes(`types.${item.type}`)}</Badge></div>
             <p className="mt-2 text-sm font-medium">{item.availableAction === "VIEW_ONLY_NO_SHOW" ? t("expectedWorkday", { date: displayDate }) : t("workday", { date: displayDate })}</p>
             <p className="mt-1 text-xs text-muted-foreground">{t("raised", { date: dateFormatter.format(new Date(item.createdAt)) })}</p>
           </div>
-          <div className="flex flex-col items-stretch gap-2 sm:flex-row md:flex-col">
-            {isWorkdayCorrection ? <><Button asChild className="min-h-11"><Link href={`/workforce/requests?correctionWorkdayId=${encodeURIComponent(correctionWorkdayId)}&exceptionCaseId=${encodeURIComponent(item.caseId)}`}>{t("requestCorrection")}</Link></Button><p className="max-w-72 text-xs leading-5 text-muted-foreground">{t("requestCorrectionHint")}</p></> : <p className="max-w-72 text-xs leading-5 text-muted-foreground" data-testid="workforce-no-show-self-review-boundary">{t("noShowReviewOnlyHint")}</p>}
-            {isWorkdayCorrection && responseRecording === "AVAILABLE" && item.responseState === "NOT_ACKNOWLEDGED" && item.availableResponseAction?.kind === "ACKNOWLEDGE" ? <><Button type="button" variant="outline" className="min-h-11" disabled={acknowledgingCaseId !== null} onClick={() => void acknowledgeForReview(item)}>{acknowledgingCaseId === item.caseId ? <Loader2 className="mr-2 size-4 animate-spin motion-reduce:animate-none" /> : null}{t("acknowledgeForReview")}</Button><p className="max-w-72 text-xs leading-5 text-muted-foreground">{t("acknowledgeForReviewHint")}</p></> : null}
+          <div className="flex min-w-0 max-w-full flex-col items-stretch gap-2 md:max-w-72">
+            {isWorkdayCorrection ? <><Button asChild className="h-auto min-h-11 max-w-full whitespace-normal"><Link href={`/workforce/requests?correctionWorkdayId=${encodeURIComponent(correctionWorkdayId)}&exceptionCaseId=${encodeURIComponent(item.caseId)}`}>{t("requestCorrection")}</Link></Button><p className="max-w-72 text-xs leading-5 text-muted-foreground">{t("requestCorrectionHint")}</p></> : <p className="max-w-72 text-xs leading-5 text-muted-foreground" data-testid="workforce-no-show-self-review-boundary">{t("noShowReviewOnlyHint")}</p>}
+            {isWorkdayCorrection && responseRecording === "AVAILABLE" && item.responseState === "NOT_ACKNOWLEDGED" && item.availableResponseAction?.kind === "ACKNOWLEDGE" ? <><Button type="button" variant="outline" className="h-auto min-h-11 max-w-full whitespace-normal" disabled={acknowledgingCaseId !== null} onClick={() => void acknowledgeForReview(item)}>{acknowledgingCaseId === item.caseId ? <Loader2 className="mr-2 size-4 animate-spin motion-reduce:animate-none" /> : null}{t("acknowledgeForReview")}</Button><p className="max-w-72 text-xs leading-5 text-muted-foreground">{t("acknowledgeForReviewHint")}</p></> : null}
             {isWorkdayCorrection && responseRecording === "AVAILABLE" && item.responseState === "ACKNOWLEDGED" ? <p className="max-w-72 text-xs leading-5 text-muted-foreground" role="status">{t("acknowledgedForReview")}</p> : null}
           </div>
         </article>

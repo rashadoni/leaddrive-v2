@@ -1,5 +1,7 @@
 "use client"
 
+import { isCrmCapabilityAvailable } from "@/lib/crm-product-availability"
+
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { signOut, useSession } from "next-auth/react"
@@ -215,7 +217,7 @@ function UserFormDialog({
     sessionUser?.role === "superadmin"
       ? USER_HIDEABLE_MODULE_IDS
       : tenantHideableModules(orgFromSession(sessionUser))
-  ).map((id) => {
+  ).filter(isCrmCapabilityAvailable).map((id) => {
     const group = navItems.find((item) =>
       id === WORKFORCE_HIDEABLE_ID ? item.capability === id : item.module === id,
     )?.group
