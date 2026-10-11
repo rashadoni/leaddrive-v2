@@ -1,0 +1,153 @@
+name: Typecheck memory profile
+
+# Read-only measurement of what the full-project type check costs and where.
+# It gates nothing: the required `typecheck` job in pr-checks.yml is the gate.
+# Run it by hand when that job's heap starts to look tight again.
+
+on:
+  workflow_dispatch:
+  # TEMPORARY while the investigation branch is open — removed before merge.
+  push:
+    branches: [claude/typecheck-memory-diet]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: typecheck-memory-profile-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  measure:
+    name: ${{ matrix.leg }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        leg: [full, no-incremental, prisma-only, no-tests, profile, trace]
+    env:
+      NODE_OPTIONS: --max-old-space-size=14336
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: npm ci --include=dev
+
+      - name: Generate Prisma client
+        run: npx prisma generate --schema prisma/schema.prisma
+
+      - name: Prepare bounded GitHub-hosted typecheck memory
+        run: bash scripts/ci/prepare-hosted-build-runner.sh
+        env:
+          LEADDRIVE_BUILD_MIN_BUDGET_KIB: "18874368"
+
+      - name: Size of the generated Prisma typings
+        run: |
+          wc -c -l node_modules/.prisma/client/index.d.ts
+          grep -c '^model ' prisma/schema.prisma
+
+      - name: Measure (${{ matrix.leg }})
+        env:
+          LEG: ${{ matrix.leg }}
+        run: |
+          ulimit -c 0
+          set +e
+          tsc="node node_modules/typescript/lib/tsc.js"
+          case "$LEG" in
+            full)
+              /usr/bin/time -v $tsc --noEmit --extendedDiagnostics > tsc-output.log 2> time.log
+              ;;
+            no-incremental)
+              /usr/bin/time -v $tsc --noEmit --incremental false --extendedDiagnostics > tsc-output.log 2> time.log
+              ;;
+            prisma-only)
+              printf 'import type { Prisma } from "@prisma/client"\nexport type Probe = Prisma.JsonValue\n' > diag-prisma-only.ts
+              printf '{"extends":"./tsconfig.json","compilerOptions":{"incremental":false},"files":["diag-prisma-only.ts"],"include":[]}\n' > tsconfig.diag.json
+              /usr/bin/time -v $tsc --noEmit -p tsconfig.diag.json --extendedDiagnostics > tsc-output.log 2> time.log
+              ;;
+            no-tests)
+              node -e '
+                const base = JSON.parse(require("fs").readFileSync("tsconfig.json", "utf8"))
+                const exclude = [...base.exclude, "src/__tests__", "**/*.test.ts", "**/*.test.tsx"]
+                require("fs").writeFileSync("tsconfig.diag.json", JSON.stringify({ extends: "./tsconfig.json", compilerOptions: { incremental: false }, exclude }))
+              '
+              /usr/bin/time -v $tsc --noEmit -p tsconfig.diag.json --extendedDiagnostics > tsc-output.log 2> time.log
+              ;;
+            profile)
+              /usr/bin/time -v node --expose-gc scripts/ci/typecheck-memory-profile.mjs --out typecheck-profile.json > tsc-output.log 2> time.log
+              ;;
+            trace)
+              /usr/bin/time -v $tsc --noEmit --incremental false --extendedDiagnostics --generateTrace ts-trace > tsc-output.log 2> time.log
+              ;;
+          esac
+          code=$?
+          echo "exit code: $code"
+          echo "--- errors: $(grep -c 'error TS' tsc-output.log)"
+          echo "--- compiler statistics / profile"
+          grep -v 'error TS' tsc-output.log | tail -n 400
+          echo "--- process"
+          grep -E 'Maximum resident set size|Elapsed \(wall clock\)|Exit status|Swaps|Major \(requiring I/O\) page faults' time.log
+          grep -vE '^\s' time.log | tail -n 30
+          free -m
+
+      - name: Blocking gates over the same log (full leg only)
+        if: ${{ matrix.leg == 'full' }}
+        run: |
+          node scripts/ci/check-typecheck-baseline.mjs tsc-output.log || true
+
+      - name: Slowest spans in the compiler trace
+        if: ${{ matrix.leg == 'trace' }}
+        run: |
+          ls -la ts-trace || exit 0
+          node - <<'NODE'
+          const fs = require("fs")
+          const readline = require("readline")
+          const file = "ts-trace/trace.json"
+          if (!fs.existsSync(file)) { console.log("no trace.json"); process.exit(0) }
+          const spans = []
+          const open = []
+          const rl = readline.createInterface({ input: fs.createReadStream(file), crlfDelay: Infinity })
+          rl.on("line", (raw) => {
+            const line = raw.replace(/^,/, "").replace(/,$/, "").trim()
+            if (!line.startsWith("{")) return
+            let event
+            try { event = JSON.parse(line) } catch { return }
+            if (event.ph === "B") open.push(event)
+            else if (event.ph === "E") {
+              const begin = open.pop()
+              if (begin) spans.push({ name: begin.name, ms: (event.ts - begin.ts) / 1000, args: begin.args })
+            } else if (event.ph === "X") spans.push({ name: event.name, ms: event.dur / 1000, args: event.args })
+          })
+          rl.on("close", () => {
+            const show = (title, rows) => {
+              console.log(`\n${title}`)
+              for (const row of rows) console.log(`${row.ms.toFixed(0).padStart(8)} ms  ${row.name}  ${JSON.stringify(row.args ?? {}).slice(0, 220)}`)
+            }
+            const by = (name) => spans.filter((span) => span.name === name).sort((a, b) => b.ms - a.ms)
+            show("checkSourceFile — top 50", by("checkSourceFile").slice(0, 50))
+            show("everything else — top 80", spans.filter((span) => span.name !== "checkSourceFile" && span.name !== "createProgram" && span.name !== "checkSourceFiles" && span.name !== "findSourceFile" && span.name !== "processRootFiles").sort((a, b) => b.ms - a.ms).slice(0, 80))
+          })
+          NODE
+
+      - name: Keep the per-file table
+        if: ${{ always() && matrix.leg == 'profile' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: typecheck-profile
+          path: typecheck-profile.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Cleanup bounded typecheck swap
+        if: always()
+        run: bash scripts/ci/prepare-hosted-build-runner.sh cleanup
