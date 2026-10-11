@@ -129,6 +129,61 @@ describe("MTM Panel for a manager", () => {
     expect(messages.az.mtmDashboardPage.operationalWeek.workdayLeftOpen).toBe("Növbə {date} {time}-dən açıqdır ({duration}) — agent bağlamayıb")
   })
 
+  // Owner 2026-10-11, the Panel on a Sunday evening: «разве это должно быть на
+  // главном?». What waits for the manager stands first; the day's list, the
+  // week line and the filters follow. Rows, never tiles.
+  it("puts «ждёт решения» above the team's day, the week line under it, and draws no empty filter", () => {
+    const section = ui.indexOf('data-testid="mtm-operational-week"')
+    const attention = ui.indexOf("<MtmPanelAttention ", section)
+    const summaryCall = ui.indexOf("{teamLayout && !bootstrapFailed ? renderTeamToday() : null}", section)
+    expect(attention).toBeGreaterThan(section)
+    expect(attention).toBeLessThan(summaryCall)
+    // Drawn for the team view only, and with the filters on screen.
+    expect(ui).toContain("{teamLayout && !bootstrapFailed && query ? (\n        <MtmPanelAttention organizationId={organizationId} viewerId={viewerId} regionId={query.regionId} teamId={query.teamId} refreshToken={refreshToken} />")
+    const render = ui.slice(ui.indexOf("function renderTeamToday()"), ui.indexOf("\n  }\n", ui.indexOf("function renderTeamToday()")))
+    expect(render.indexOf("<MtmPanelWeekLine ")).toBeGreaterThan(render.indexOf("summary.idle.map"))
+    expect(render).toContain('t("summaryLastVisit"')
+    // A team of office cards is not «no employees».
+    expect(render).toContain('scoped.rows.length === 0 ? t("noEmployeesTitle") : t("noFieldStaff")')
+    expect(ui).toContain("const regionField = filters.regions.length > 0 || query?.regionId ? (")
+    expect(ui).toContain("const teamField = filters.teams.length > 0 || query?.teamId ? (")
+    for (const file of ["src/components/mtm/panel-attention.tsx", "src/components/mtm/panel-week-line.tsx"]) {
+      const source = readFileSync(file, "utf8")
+      expect(source, file).not.toMatch(/overflow-y-auto|overflow-x-auto|overflow-auto|max-h-|sticky|<table\b|<details\b|<aside\b|grid-cols/)
+    }
+    // Shifts are Workforce, withdrawn from the CRM on 2026-10-10: not a row here.
+    expect(readFileSync("src/app/api/v1/mtm/week/attention/route.ts", "utf8")).not.toContain("mtmAgentWorkday")
+  })
+
+  it("keeps every count of «ждёт решения» an ICU argument with the plural forms of each locale", () => {
+    const plural = ["contactCreateRequests", "customerCreateRequests", "routeChangeRequests", "routesAwaitingPublish", "olderAlerts"]
+    for (const key of plural) {
+      const ru: string = messages.ru.mtmDashboardPage.operationalWeek.attention[key]
+      for (const form of ["one {", "few {", "many {", "other {"]) expect(ru, `ru ${key} ${form}`).toContain(form)
+      for (const locale of ["az", "en"]) {
+        const text: string = messages[locale].mtmDashboardPage.operationalWeek.attention[key]
+        expect(text, `${locale} ${key}`).toContain("one {")
+        expect(text, `${locale} ${key}`).toContain("other {")
+      }
+    }
+    const ruUnplanned: string = messages.ru.mtmDashboardPage.operationalWeek.week.unplanned
+    for (const form of ["one {", "few {", "many {", "other {"]) expect(ruUnplanned).toContain(form)
+    for (const locale of ["az", "ru", "en"]) {
+      const words = messages[locale].mtmDashboardPage.operationalWeek
+      for (const key of ["waitingSince", "nearestDay", "newestDay", "nextWorkdaySingle"]) expect(words.attention[key], `${locale} ${key}`).toContain("{date}")
+      for (const key of ["nextWorkdayNobody", "nextWorkdaySome"]) {
+        expect(words.attention[key], `${locale} ${key}`).toContain("{date}")
+        expect(words.attention[key], `${locale} ${key}`).toContain("{total}")
+      }
+      expect(words.attention.nextWorkdaySome).toContain("{count}")
+      expect(words.week.plan).toContain("{done}")
+      expect(words.week.plan).toContain("{planned}")
+      expect(words.summaryLastVisit).toContain("{date}")
+      // Every row ends in a button with words on it, never an icon alone.
+      for (const key of ["review", "publish", "resolve", "plan", "retry"]) expect(words.attention[key].length, `${locale} ${key}`).toBeGreaterThan(2)
+    }
+  })
+
   it("keeps every number in the summary an ICU argument with the plural forms of each locale", () => {
     const plural = ["summaryOpenShifts", "summaryWithoutPlan", "teamIdleCollapsed", "teamIdleNoActivity", "teamRowOpenAlerts", "teamRowVisits"]
     for (const key of plural) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { classifyTeamRow, summarizeTeamToday, teamTodayForScope, teamTodayScopeKey, type TeamTodayRowInput } from "@/lib/mtm/team-today-summary"
+import { classifyTeamRow, isOfficeCardWithoutFieldWork, summarizeTeamToday, teamTodayForScope, teamTodayScopeKey, type TeamTodayRowInput } from "@/lib/mtm/team-today-summary"
 import type { MtmManagerWorkdayState } from "@/lib/mtm/workday-open-anomaly"
 
 /**
@@ -223,5 +223,66 @@ describe("team payload scope", () => {
 
   it("keys the scope so region and team never collide", () => {
     expect(teamTodayScopeKey({ regionId: "a", teamId: "" })).not.toBe(teamTodayScopeKey({ regionId: "", teamId: "a" }))
+  })
+})
+
+/**
+ * Zeytun Pharma on prod, Sunday 11 October 2026: three MTM cards — the
+ * director (ADMIN), the office manager (MANAGER) and one field agent — and
+ * the Panel said «на визите 0 из 3» and «3 сотрудника без активности».
+ * Workforce is withdrawn from the CRM, so there is no workday state.
+ */
+describe("office cards on the Panel", () => {
+  const NO_WORKDAY = { workdayEnabled: false, partial: false, visitsTruncated: false }
+  const office = (agentId: string, role: string, overrides: Partial<TeamTodayRowInput> = {}) => row({ agentId, role, workday: null, ...overrides })
+  const visit = { status: "CHECKED_OUT", checkInAt: "2026-10-11T08:00:00.000Z", checkOutAt: "2026-10-11T08:20:00.000Z" }
+
+  it("counts one field agent out of three cards when the other two are the director and the office manager", () => {
+    const summary = summarizeTeamToday([
+      office("director", "ADMIN"),
+      office("office-manager", "MANAGER"),
+      row({ agentId: "field-agent", role: "AGENT", workday: null }),
+    ], NO_WORKDAY)
+    expect(summary.total).toBe(1)
+    expect(summary.inField).toBe(0)
+    expect(summary.withoutPlan).toBe(1)
+    expect(summary.idle.map((entry) => entry.row.agentId)).toEqual(["field-agent"])
+    expect(summary.active).toEqual([])
+    expect(summary.problems).toEqual([])
+  })
+
+  it("shows and counts a manager on the day they hold a route, make a visit or have an alert", () => {
+    const summary = summarizeTeamToday([
+      office("with-route", "MANAGER", { route: { visited: 0, total: 3 } }),
+      office("on-joint-visit", "SUPERVISOR", { visits: [{ ...visit, status: "CHECKED_IN", checkOutAt: null }], visitCount: 1 }),
+      office("with-alert", "ADMIN", { openAlerts: 2 }),
+      office("at-the-desk", "MANAGER"),
+      row({ agentId: "field-agent", role: "AGENT", workday: null }),
+    ], NO_WORKDAY)
+    expect(summary.total).toBe(4)
+    expect(summary.planned).toBe(1)
+    expect(summary.inField).toBe(1)
+    const shown = [...summary.problems, ...summary.active, ...summary.idle].map((entry) => entry.row.agentId).sort()
+    expect(shown).toEqual(["field-agent", "on-joint-visit", "with-alert", "with-route"])
+  })
+
+  it("does not take an administrator with the app in their pocket for someone in the field", () => {
+    const withGps = office("director", "ADMIN", { lastGpsAt: "2026-10-11T09:00:00.000Z" })
+    expect(isOfficeCardWithoutFieldWork(withGps, false)).toBe(true)
+    expect(summarizeTeamToday([withGps], NO_WORKDAY).total).toBe(0)
+  })
+
+  it("keeps a manager whose shift is running when the tenant tracks shifts, and ignores a shift it does not track", () => {
+    const working = office("manager", "MANAGER", { workday: { kind: "working", since: "2026-10-11T05:00:00.000Z" } })
+    expect(isOfficeCardWithoutFieldWork(working, true)).toBe(false)
+    expect(isOfficeCardWithoutFieldWork(working, false)).toBe(true)
+    expect(isOfficeCardWithoutFieldWork(office("manager", "MANAGER", { workday: { kind: "not-started" } }), true)).toBe(true)
+  })
+
+  it("never drops a field agent, and counts a row of unknown role as before", () => {
+    // A payload cached by a tab opened before roles were sent has no `role`.
+    const rows = [row({ agentId: "legacy" }), row({ agentId: "nameless-role", role: null }), row({ agentId: "agent", role: "AGENT" })]
+    for (const entry of rows) expect(isOfficeCardWithoutFieldWork(entry, true)).toBe(false)
+    expect(summarizeTeamToday(rows, OPTIONS).total).toBe(3)
   })
 })

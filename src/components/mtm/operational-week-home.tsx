@@ -45,6 +45,8 @@ import {
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { MtmFilterBar, MtmFilterDate, MtmFilterSelect } from "@/components/mtm/filter-bar"
+import { MtmPanelAttention } from "@/components/mtm/panel-attention"
+import { MtmPanelWeekLine } from "@/components/mtm/panel-week-line"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -250,6 +252,8 @@ interface TeamTodayRow {
   agentId: string
   name: string
   teamName: string | null
+  /** The MTM card's role; null in responses from before the Panel counted field staff only. */
+  role: string | null
   lastGpsAt: string | null
   route: { visited: number; total: number } | null
   visits: Array<{ id: string; customerName: string | null; status: string; checkInAt: string | null; checkOutAt: string | null }>
@@ -267,6 +271,8 @@ interface TeamToday {
   today: string
   generatedAt: string | null
   rows: TeamTodayRow[]
+  /** When the team was last at a customer; sent only on a day without a visit. */
+  lastVisitAt: string | null
   partial: boolean
   visitsTruncated: boolean
   workdayEnabled: boolean
@@ -899,6 +905,7 @@ function normalizeTeamToday(value: unknown, scopeKey: string): TeamToday | null 
       agentId,
       name: firstString(agent, "name") || "—",
       teamName: firstString(agent, "teamName"),
+      role: firstString(agent, "role"),
       lastGpsAt: firstString(row, "lastGpsAt"),
       route: total === null ? null : { visited: Math.max(0, firstNumber(route, "visited") ?? 0), total },
       visits: list(row.visits).map((visitValue) => {
@@ -929,6 +936,7 @@ function normalizeTeamToday(value: unknown, scopeKey: string): TeamToday | null 
     today: firstString(source, "today") || "",
     generatedAt: firstString(source, "generatedAt"),
     rows,
+    lastVisitAt: firstString(source, "lastVisitAt"),
     partial: list(completeness.truncatedSources).includes("FILTER_AGENTS"),
     visitsTruncated: list(completeness.truncatedSources).includes("VISITS"),
     workdayEnabled: record(record(source.capabilities).workday).enabled === true,
@@ -3007,7 +3015,9 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
               </p>
             ) : null}
             {summary.total === 0 ? (
-              <p className="px-4 py-3 text-sm font-semibold lg:px-5">{t("noEmployeesTitle")}</p>
+              // Cards exist, but none is a field one and none did field work
+              // today: that is not «no employees».
+              <p className="px-4 py-3 text-sm font-semibold lg:px-5">{scoped.rows.length === 0 ? t("noEmployeesTitle") : t("noFieldStaff")}</p>
             ) : (
               <>
                 {/* No separator glyph in the DOM: at 294 px a «·» would wrap to the
@@ -3034,6 +3044,8 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
                   ) : summary.withoutPlan > 0 ? (
                     <span>{t("summaryWithoutPlan", { count: summary.withoutPlan })}</span>
                   ) : null}
+                  {/* A day without a visit: when the team was last at a customer. */}
+                  {scoped.lastVisitAt ? <span data-testid="mtm-week-team-last-visit">{t("summaryLastVisit", { date: formatTenantTimestamp(scoped.lastVisitAt, locale, timezone, { day: "numeric", month: "short" }) })}</span> : null}
                   {summary.partial ? <span className="text-amber-700 dark:text-amber-300">{t("summaryScopeTruncated", { count: summary.total })}</span> : null}
                   {summary.visitsTruncated ? <span className="text-amber-700 dark:text-amber-300">{t("teamVisitsTruncated")}</span> : null}
                   {scoped.generatedAt ? <span className="tabular-nums text-muted-foreground">{t("summaryAsOf", { time: shortTime(scoped.generatedAt, timezone) })}</span> : null}
@@ -3062,6 +3074,7 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
                     </li>
                   ) : null}
                 </ul>
+                <MtmPanelWeekLine organizationId={organizationId} today={scoped.today} regionId={query?.regionId || ""} teamId={query?.teamId || ""} />
               </>
             )}
           </>
@@ -3079,18 +3092,21 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
   function renderScopeControls(compact: boolean) {
     // Owner 2026-09-27: filters in one row. Region, team and employee were
     // labelled selects on a grid, the period, date and «< >» a row of their own.
-    const regionField = (
+    // Owner 2026-10-11, an organization with no regions and no teams: two
+    // filters with nothing in them. A filter is drawn when it has something
+    // to choose from, or holds a value the reader must be able to clear.
+    const regionField = filters.regions.length > 0 || query?.regionId ? (
       <MtmFilterSelect testId="mtm-week-region" label={t("region")} value={query?.regionId || ""} allLabel={t("allRegions")}
         options={filters.regions.map((option) => ({ value: option.id, label: option.name }))}
         disabled={!query || Boolean(mutatingAction) || phase === "loading" && filters.regions.length === 0}
         onChange={(value) => query && updateQuery({ ...query, regionId: value, teamId: "", agentId: "" }, "region")} />
-    )
-    const teamField = (
+    ) : null
+    const teamField = filters.teams.length > 0 || query?.teamId ? (
       <MtmFilterSelect testId="mtm-week-team" label={t("team")} value={query?.teamId || ""} allLabel={t("allTeams")}
         options={filters.teams.map((option) => ({ value: option.id, label: option.name }))}
         disabled={!query || Boolean(mutatingAction) || phase === "loading" && filters.teams.length === 0}
         onChange={(value) => query && updateQuery({ ...query, teamId: value, agentId: "" }, "team")} />
-    )
+    ) : null
     const employeeField = (
       <MtmFilterSelect testId="mtm-week-employee" label={t("employee")} value={effectiveAgentId} allLabel={t("chooseEmployee")}
         options={displayedAgentOptions.map((option) => ({ value: option.id, label: option.name }))}
@@ -3184,6 +3200,10 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
       {/* Audit 2026-09-21: the first fact stands above any filter or heading.
           The section's own heading stays first for screen readers only. */}
       {teamLayout ? <h2 id="operational-week-title" className="sr-only">{t("title")}</h2> : null}
+      {/* Owner 2026-10-11: what waits for the manager stands first, whatever the hour. */}
+      {teamLayout && !bootstrapFailed && query ? (
+        <MtmPanelAttention organizationId={organizationId} viewerId={viewerId} regionId={query.regionId} teamId={query.teamId} refreshToken={refreshToken} />
+      ) : null}
       {teamLayout && !bootstrapFailed ? renderTeamToday() : null}
       {renderScopeControls(teamLayout)}
 

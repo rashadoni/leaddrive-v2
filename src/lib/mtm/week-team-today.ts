@@ -17,7 +17,7 @@ export type MtmTeamTodayInput = {
   now: Date
   todayKey: string
   workforceEnabled: boolean
-  agents: ReadonlyArray<{ id: string; name: string; team?: { id: string; name: string } | null }>
+  agents: ReadonlyArray<{ id: string; name: string; role?: string | null; team?: { id: string; name: string } | null }>
   latestLocations: ReadonlyArray<{ agentId: string; recordedAt: Date }>
   routes: ReadonlyArray<{
     agentId: string
@@ -47,7 +47,11 @@ export type MtmTeamTodayInput = {
 }
 
 export type MtmTeamTodayRow = {
-  agent: { id: string; name: string; teamName: string | null }
+  /**
+   * `role` is the MTM card's role. The Panel counts an office card
+   * (administrator, manager, supervisor) only on a day it did field work.
+   */
+  agent: { id: string; name: string; teamName: string | null; role: string | null }
   lastGpsAt: string | null
   route: { visited: number; total: number; state: "FINISHED" | "ACTIVE" | "NOT_STARTED" } | null
   /** The newest {@link MTM_TEAM_TODAY_VISITS_PER_ROW} visits, shown in time order. */
@@ -109,7 +113,7 @@ export function buildMtmTeamTodayRows(input: MtmTeamTodayInput): MtmTeamTodayRow
         (left.plannedTime?.getTime() ?? Number.MAX_SAFE_INTEGER) - (right.plannedTime?.getTime() ?? Number.MAX_SAFE_INTEGER)
         || left.orderIndex - right.orderIndex)[0] ?? null
     return {
-      agent: { id: agent.id, name: agent.name, teamName: agent.team?.name ?? null },
+      agent: { id: agent.id, name: agent.name, teamName: agent.team?.name ?? null, role: agent.role ?? null },
       lastGpsAt: lastGps ? lastGps.toISOString() : null,
       route: combined ? { visited: Math.min(combined.visitedPoints, combined.totalPoints), total: combined.totalPoints, state: combined.state } : null,
       visitCount: allVisits.length,
