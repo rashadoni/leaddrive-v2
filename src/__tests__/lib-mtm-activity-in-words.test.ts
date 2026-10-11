@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs"
+import { createTranslator } from "next-intl"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("@/lib/prisma", async () => {
@@ -13,6 +14,7 @@ import {
   actionLabelKey,
   activityActorName,
   activityDataSummary,
+  activityDetails,
   canonicalAction,
 } from "@/lib/mtm/activity-actions"
 
@@ -75,6 +77,69 @@ describe("the activity journal in words", () => {
       expect(messages[locale].detailOrganizations).toContain("{count, plural,")
     }
     expect(messages.ru.detailRecipients).toContain("few {")
+  })
+})
+
+/**
+ * 2026-10-11: «Rashad Rahimov · Агент удалён · Сотрудник» — removed whom? The
+ * row's link to the employee (`agentId`) is cleared with him; his name stays
+ * in the snapshot the writer left. Rows are shaped as the activity API answers.
+ */
+describe("a row about an employee names the employee", () => {
+  const translator = (locale: "az" | "ru" | "en") => {
+    const t = createTranslator({
+      locale,
+      messages: JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")),
+      namespace: "mtmActivity",
+    }) as unknown as (key: string, values?: Record<string, unknown>) => string
+    return t
+  }
+  const removed = (oldData: unknown) => ({
+    id: "log-1", action: "AGENT_DELETE", entity: "agent", entityId: "agent-gone", metadataKind: "agent_delete",
+    agentId: null, agent: null, actorUserId: "admin-user", actor: { userId: "admin-user", name: "Rashad Rahimov" },
+    subject: { customerName: null, visitId: null, routeId: null },
+    oldData, newData: null,
+  })
+
+  it.each(["az", "ru", "en"] as const)("%s: the removed employee by the name his card had, his id in the tooltip", (locale) => {
+    const card = { id: "agent-gone", name: " Anar Məmmədov ", email: "anar@example.com", role: "AGENT" }
+    expect(activityDetails(removed(card), translator(locale))).toEqual({ label: "Anar Məmmədov", title: "agent-gone" })
+  })
+
+  it.each([
+    ["az", "Əməkdaş"],
+    ["ru", "Сотрудник"],
+    ["en", "Agent"],
+  ] as const)("%s: «%s» when the row kept no name — no snapshot, an empty one, a name that is not text", (locale, generic) => {
+    const t = translator(locale)
+    for (const snapshot of [null, undefined, {}, { name: "" }, { name: "  " }, { name: 7 }, ["Anar"], "Anar"]) {
+      expect(activityDetails(removed(snapshot), t), JSON.stringify(snapshot)).toEqual({ label: generic, title: "agent-gone" })
+    }
+  })
+
+  it("takes the name a change left: the «after» of an edit, else the card's «before»", () => {
+    const t = (key: string) => key
+    const before = { id: "a", name: "Anar Mamedov", role: "AGENT" }
+    expect(activityDataSummary({ action: "AGENT_CREATE", newData: { name: "Anar Mamedov", role: "AGENT" } }, t)).toBe("Anar Mamedov")
+    expect(activityDataSummary({ action: "AGENT_UPDATE", oldData: before, newData: { name: "Anar Məmmədov" } }, t)).toBe("Anar Məmmədov")
+    expect(activityDataSummary({ action: "AGENT_UPDATE", oldData: before, newData: { status: "INACTIVE" } }, t)).toBe("Anar Mamedov")
+    expect(activityDataSummary({ action: "AGENT_DELETE", oldData: before }, t)).toBe("Anar Mamedov")
+  })
+
+  it("is the name only — the card's labels and map colour never become the line", () => {
+    const t = translator("ru")
+    const notes = { tags: ["стажёр", "ночная смена"], mapColor: "teal" }
+    expect(activityDetails(removed({ id: "agent-gone", name: "Anar Məmmədov", ...notes }), t).label).toBe("Anar Məmmədov")
+    expect(activityDetails(removed({ id: "agent-gone", ...notes }), t).label).toBe("Сотрудник")
+  })
+
+  it("leaves other rows about an employee as they were — a snapshot's «name» there is not his", () => {
+    const t = translator("ru")
+    // A failed sign-in is still told by its kind, a sign-in by the object.
+    expect(activityDetails({ action: "MOBILE_LOGIN_FAILED", entity: "agent", entityId: "a", metadataKind: "login_failed", newData: { name: "Pixel 8" } }, t))
+      .toEqual({ label: "Неудачный вход", title: null })
+    expect(activityDetails({ action: "MOBILE_LOGIN", entity: "agent", entityId: "a", newData: { name: "Pixel 8" } }, t))
+      .toEqual({ label: "Сотрудник", title: "a" })
   })
 })
 

@@ -5,15 +5,14 @@ import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { toast } from "sonner"
 import { useTranslations, useLocale } from "next-intl"
-import { mtmActivityEntityText } from "@/lib/mtm/activity-entity"
 import { Activity, ShieldAlert, Download, ChevronRight, Lock } from "lucide-react"
 import { PageDescription } from "@/components/page-description"
 import { MtmFilterBar, MtmFilterSelect, MtmResultLine } from "@/components/mtm/filter-bar"
 import { Button } from "@/components/ui/button"
 import { HelpButton } from "@/components/help/help-button"
 import {
-  actionMeta, actionLabelKey, TONE_CLASSES, activityRowHref, kindKey,
-  relativeTime, dayKeyOf, dayLabel, activityActorName, activityDataSummary, type ActivitySubject,
+  actionMeta, actionLabelKey, TONE_CLASSES, activityRowHref,
+  relativeTime, dayKeyOf, dayLabel, activityActorName, activityDetails, type ActivityDetailsRow,
 } from "@/lib/mtm/activity-actions"
 import { mtmAccessErrorKey, type MtmAccessErrorKey } from "@/lib/mtm/access-error"
 import { formatDate } from "@/lib/format-date"
@@ -114,22 +113,9 @@ export default function MtmActivityPage() {
     a.click(); URL.revokeObjectURL(url)
   }
 
-  // C12: строка читалась как «mtm_pharmacy_promotion_execution · 4f2a9c» —
-  // имя таблицы и шесть символов идентификатора. Ни то, ни другое не язык, а
-  // по обрывку id ничего и не найти. Полный id уехал в подсказку.
-  const detailsOf = (l: any): { label: string; title: string | null } => {
-    // 2026-09-14: the row used to read «Əməliyyat · Sistem · Əməkdaş». What a
-    // manager needs is WHERE — the customer's name, resolved by the API.
-    const subject = l.subject as ActivitySubject | undefined
-    if (subject?.customerName) return { label: subject.customerName, title: l.entityId ?? null }
-    // Audit 2026-09-21: «Запись» said nothing about a broadcast or a bulk
-    // assignment; the row's own facts do.
-    const summary = activityDataSummary(l, tt)
-    if (summary) return { label: summary, title: l.entityId ?? null }
-    const k = kindKey(l.metadataKind)
-    if (k) return { label: t(k), title: null }
-    return mtmActivityEntityText(l, t)
-  }
+  // One function for the row and for the CSV export, so the file a manager
+  // downloads says what the screen said (src/lib/mtm/activity-actions.tsx).
+  const detailsOf = (l: ActivityDetailsRow) => activityDetails(l, tt)
 
   return (
     <div className="space-y-4">
@@ -238,6 +224,7 @@ export default function MtmActivityPage() {
     const clickable = !!href
     return (
       <div
+        data-testid="mtm-activity-row"
         onClick={clickable ? () => router.push(href!) : undefined}
         className={`flex items-center gap-3 px-4 py-2.5 border-b last:border-0 border-zinc-100 dark:border-zinc-800 ${clickable ? "cursor-pointer hover:bg-muted/40" : ""}`}
       >
@@ -255,7 +242,7 @@ export default function MtmActivityPage() {
           <div className="text-sm font-medium truncate">{activityActorName(log, t)}</div>
           {(() => {
             const details = detailsOf(log)
-            return <div className="text-xs text-muted-foreground truncate" title={details.title ?? undefined}>{details.label}</div>
+            return <div data-testid="mtm-activity-row-details" className="text-xs text-muted-foreground truncate" title={details.title ?? undefined}>{details.label}</div>
           })()}
         </div>
         {/* time + drill-down chevron */}
