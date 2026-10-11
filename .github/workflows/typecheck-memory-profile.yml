@@ -17,9 +17,6 @@ name: Typecheck memory profile
 
 on:
   workflow_dispatch:
-  # TEMPORARY while the investigation branch is open — removed before merge.
-  push:
-    branches: [claude/typecheck-memory-diet]
 
 permissions:
   contents: read
