@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { createNotification } from "@/lib/notifications"
 import { canReviewMtmRouteRequest, resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
+import { locales } from "@/i18n/routing"
 import {
   MTM_LOCATION_REQUEST_NOTIFICATION_ENTITY,
   MTM_LOCATION_REQUEST_NOTIFICATION_KIND,
@@ -14,7 +15,27 @@ const MAX_RECIPIENTS = 50
 
 export interface LocationRequestReviewer {
   userId: string
+  /** Their own choice, or — having made none — the language most of their colleagues chose. */
   preferredLanguage: string | null
+}
+
+/**
+ * The language of an organization, for a person who never chose one.
+ *
+ * The interface language lives in a browser cookie; `User.preferredLanguage`
+ * is set only where somebody set it. On the day this was written the director
+ * of the first tenant to use «Клиент здесь» read the CRM in Azerbaijani and
+ * had no language on his card, so he would have been written to in the
+ * application's default. What the organization's people did choose is the
+ * better guess: the most frequent choice, ties in the order of `locales`.
+ */
+export function organizationLanguage(choices: ReadonlyArray<{ language: string | null; count: number }>): string | null {
+  let best: { language: string; count: number } | null = null
+  for (const locale of locales) {
+    const count = choices.filter((choice) => choice.language === locale).reduce((sum, choice) => sum + choice.count, 0)
+    if (count > 0 && (!best || count > best.count)) best = { language: locale, count }
+  }
+  return best?.language ?? null
 }
 
 /**
@@ -52,6 +73,17 @@ export async function locationRequestReviewers(input: {
     select: { id: true, role: true, preferredLanguage: true },
   })
 
+  // Asked only when somebody among them chose no language.
+  let fallback: string | null = null
+  if (users.some((user) => !user.preferredLanguage)) {
+    const chosen: Array<{ preferredLanguage: string | null; _count?: { _all?: number } | null }> = await prisma.user.groupBy({
+      by: ["preferredLanguage"],
+      where: { organizationId: input.organizationId, isActive: true, anonymizedAt: null, preferredLanguage: { not: null } },
+      _count: { _all: true },
+    })
+    fallback = organizationLanguage(chosen.map((row) => ({ language: row.preferredLanguage, count: row._count?._all ?? 0 })))
+  }
+
   const reviewers: LocationRequestReviewer[] = []
   for (const user of users) {
     const actor = await resolveMtmRouteActor(prisma, {
@@ -60,7 +92,7 @@ export async function locationRequestReviewers(input: {
       webRole: user.role,
     })
     if (actor && canReviewMtmRouteRequest(actor, input.requestedByAgentId)) {
-      reviewers.push({ userId: user.id, preferredLanguage: user.preferredLanguage })
+      reviewers.push({ userId: user.id, preferredLanguage: user.preferredLanguage ?? fallback })
     }
   }
   return reviewers
