@@ -1101,10 +1101,12 @@ export const POST = withMobileRls(async (req, auth) => {
             let waitingPlace: WaitingLocationPlace | null = null
             // Read before the pin is asked about: past that question the compiler no longer knows the row.
             const customerRadius: number | null = customer?.geofenceRadius ?? null
-            if (customer && !activeVisit && !hasMtmCoordinates(customer)) {
+            // The customer that was found, not the id the phone sent: only the first is known to be one.
+            const foundCustomerId: string | null = customer?.id ?? null
+            if (customer && foundCustomerId && !activeVisit && !hasMtmCoordinates(customer)) {
               waitingPlace = await waitingLocationRequestCovers(tx, {
                 organizationId: orgId,
-                customerId,
+                customerId: foundCustomerId,
                 agentId,
                 latitude: data.checkInLat,
                 longitude: data.checkInLng,
@@ -1154,7 +1156,7 @@ export const POST = withMobileRls(async (req, auth) => {
               if (distanceMeters != null && distanceMeters > geofenceRadius(radius) && !waitingPlace) {
                 waitingPlace = await waitingLocationRequestCovers(tx, {
                   organizationId: orgId,
-                  customerId,
+                  customerId: customer.id,
                   agentId,
                   latitude: data.checkInLat,
                   longitude: data.checkInLng,
