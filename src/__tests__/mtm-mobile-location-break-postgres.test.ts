@@ -7,14 +7,17 @@
  * since A7. The batch route, POST /api/v2/mtm/mobile/location/batch, checked
  * only the workday window until 2026-10-11: a device in the batch pilot could
  * record where the break was spent, and the live-map marker followed it there.
+ * The entry a web session or an integration's key writes through for an
+ * employee, POST /api/v1/mtm/locations, looked at no workday at all until
+ * 2026-10-12.
  *
  * What is asked here is what the table holds afterwards, not what the handler
  * was seen to call: a mocked Prisma answers any query, including the journal
- * read this rule depends on. Both handlers run with the real mobile wrapper,
+ * read this rule depends on. The three handlers run with their real wrappers,
  * the real RLS scope and the real Prisma client over a scratch database built
- * from schema.prisma. Two things are stand-ins: who is calling (the mobile
- * token) and the batch rate limiter, which is not the subject and would stop
- * the seventh batch of a device within a minute.
+ * from schema.prisma. The stand-ins: who is calling (the mobile token, the
+ * web session), the tenant's plan, and the batch rate limiter, which is not
+ * the subject and would stop the seventh batch of a device within a minute.
  *
  * Every instant is taken relative to now — the handlers refuse the future and
  * anything older than a week — so nothing here depends on the date.
@@ -61,6 +64,26 @@ vi.mock("@/lib/mobile-auth", async () => {
   mock.resolveMobileAuth.mockImplementation(async () => caller.current)
   return mock
 })
+vi.mock("@/lib/api-auth", () => ({
+  getOrgId: vi.fn(),
+  getSession: vi.fn().mockResolvedValue(null),
+  // The organization's administrator at a browser; an integration's key comes
+  // through the same wrapper with the same role.
+  requireAuth: vi.fn(async () => ({
+    orgId: "org-break",
+    userId: "admin-user",
+    role: "admin",
+    email: "admin@example.test",
+    name: "Admin",
+    principalType: "session",
+  })),
+  isAuthError: (value: unknown) => value instanceof Response,
+}))
+// The tenant's plan is not what is under test.
+vi.mock("@/lib/tenant-capability-access", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/lib/tenant-capability-access")>(),
+  requireTenantCapabilityAccessResponse: async () => null,
+}))
 vi.mock("@/lib/public-abuse-guard", async () => {
   const actual = await vi.importActual<typeof import("@/lib/public-abuse-guard")>("@/lib/public-abuse-guard")
   return {
@@ -75,6 +98,7 @@ const ORG = "org-break"
 const DEVICE = "device-break-1"
 const BATCH_URL = "http://localhost:3000/api/v2/mtm/mobile/location/batch"
 const POINT_URL = "http://localhost:3000/api/v1/mtm/mobile/location"
+const WEB_URL = "http://localhost:3000/api/v1/mtm/locations"
 
 function prismaCli(args: string[], env: NodeJS.ProcessEnv, input?: string) {
   const result = spawnSync(process.execPath, [PRISMA_CLI, ...args], { input, encoding: "utf8", env })
@@ -120,6 +144,7 @@ pgDescribe("GPS recorded during a break on a real Postgres", () => {
   let bypass!: typeof import("@/lib/rls-context").runWithRlsBypass
   let postBatch!: typeof import("@/app/api/v2/mtm/mobile/location/batch/route").POST
   let postPoint!: typeof import("@/app/api/v1/mtm/mobile/location/route").POST
+  let postWeb!: typeof import("@/app/api/v1/mtm/locations/route").POST
   let sequence = 0
 
   beforeAll(async () => {
@@ -133,6 +158,7 @@ pgDescribe("GPS recorded during a break on a real Postgres", () => {
     bypass = (await import("@/lib/rls-context")).runWithRlsBypass
     postBatch = (await import("@/app/api/v2/mtm/mobile/location/batch/route")).POST
     postPoint = (await import("@/app/api/v1/mtm/mobile/location/route")).POST
+    postWeb = (await import("@/app/api/v1/mtm/locations/route")).POST
     await bypass(() => prisma.organization.create({
       data: { id: ORG, name: "Tenant with field agents", slug: ORG, modules: { mtm: true, "route-field": true } },
     }))
@@ -224,6 +250,17 @@ pgDescribe("GPS recorded during a break on a real Postgres", () => {
       body: JSON.stringify(payload(point)),
     }))
     return response.status
+  }
+
+  /** A point written for that employee by the organization's administrator, or by an integration's key. */
+  async function sendForEmployee(agentId: string, minute: number) {
+    const { latitude, longitude, accuracy, speed, recordedAt } = payload({ clientLocationId: "", minute })
+    const response = await postWeb(new NextRequest(WEB_URL, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ agentId, latitude, longitude, accuracy, speed, recordedAt }),
+    }))
+    return { status: response.status, body: await response.json() as { code?: string } }
   }
 
   /** What the table holds for that agent: the minute of the day each stored point was taken at. */
@@ -404,6 +441,64 @@ pgDescribe("GPS recorded during a break on a real Postgres", () => {
       code: "MTM_LOCATION_WORKDAY_REQUIRED",
     })
     expect(await storedMinutes(agentId)).toEqual([])
+  })
+
+  // The web entry takes nothing older than five minutes, so these days are
+  // laid out around «a minute or two ago» (the day began three hours ago).
+  describe("written for an employee from the web or by an integration's key", () => {
+    it("is refused while the break runs, and the marker stays where the work stopped", async () => {
+      const { agentId } = await agentWithDay({ status: "PAUSED", journal: [{ type: "PAUSE", minute: 120 }] })
+      expect((await sendBatch(agentId, [{ clientLocationId: "before", minute: 110 }])).status).toBe(201)
+
+      const sent = await sendForEmployee(agentId, 179)
+
+      expect(await storedMinutes(agentId)).toEqual([110])
+      expect(await markerMinute(agentId)).toBe(110)
+      expect(sent.status).toBe(409)
+      expect(sent.body.code).toBe("MTM_LOCATION_WORKDAY_PAUSED")
+    })
+
+    it("is refused for a moment inside a break that has just ended, and written for one after it", async () => {
+      const { agentId } = await agentWithDay({
+        status: "STARTED",
+        journal: [{ type: "PAUSE", minute: 177 }, { type: "RESUME", minute: 178.5 }],
+      })
+
+      const inside = await sendForEmployee(agentId, 178)
+      const after = await sendForEmployee(agentId, 179)
+
+      expect(await storedMinutes(agentId)).toEqual([179])
+      expect(inside.status).toBe(409)
+      expect(after.status).toBe(201)
+    })
+
+    it("is refused in the gap a manager's reopen leaves after the finish", async () => {
+      // Finished at 100, reopened at 170 and not resumed yet: the row reads
+      // PAUSED, and the break in the journal is the REOPEN, not a PAUSE.
+      const { agentId } = await agentWithDay({
+        status: "PAUSED",
+        journal: [{ type: "FINISH", minute: 100 }, { type: "REOPEN", minute: 100, appliedMinute: 170 }],
+      })
+
+      const sent = await sendForEmployee(agentId, 179)
+
+      expect(await storedMinutes(agentId)).toEqual([])
+      expect(sent.status).toBe(409)
+    })
+
+    it("is written for somebody who is working, and for somebody with no shift at all, as before", async () => {
+      const working = await agentWithDay({
+        status: "STARTED",
+        journal: [{ type: "PAUSE", minute: 60 }, { type: "RESUME", minute: 90 }],
+      })
+      const finished = await agentWithDay({ status: "COMPLETED", journal: [{ type: "FINISH", minute: 150 }] })
+      const noShift = await agentWithDay(null)
+
+      for (const { agentId } of [working, finished, noShift]) {
+        expect((await sendForEmployee(agentId, 179)).status).toBe(201)
+        expect(await storedMinutes(agentId)).toEqual([179])
+      }
+    })
   })
 
   it("still refuses the whole batch for a point outside the workday", async () => {

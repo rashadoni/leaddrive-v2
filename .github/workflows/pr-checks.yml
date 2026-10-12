@@ -298,7 +298,8 @@ jobs:
         # Where an employee spent a break is not stored, read off the table
         # after the real GPS ingestion handlers ran on a real Postgres. Until
         # 2026-10-11 the batch route checked only the workday window and kept
-        # the points taken at lunch; the single-point route had refused them
+        # the points taken at lunch, and until 2026-10-12 the web/API-key entry
+        # looked at no workday at all; the single-point route had refused them
         # all along. A mocked Prisma answers the journal read this depends on
         # with whatever the test hands it.
         run: npx vitest run src/__tests__/mtm-mobile-location-break-postgres.test.ts

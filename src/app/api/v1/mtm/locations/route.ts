@@ -32,6 +32,12 @@ import { shownMtmStationarySince } from "@/lib/mtm/stationary-anchor"
 import { MTM_AGENT_WEB_ONLY_SELECT, mtmAgentNotesReader, readsMtmAgentNotes } from "@/lib/mtm/agent-tags"
 import { foldRosterText } from "@/lib/mtm/live-map-roster"
 import { locationShareLinkAccessOf, locationShareLinkContract } from "@/lib/mtm/location-share-access"
+import {
+  isDuringMtmWorkdayPause,
+  MTM_WORKDAY_PAUSE_EVENT_TYPES,
+  mtmWorkdayPauses,
+  type MtmWorkdayPauseEvent,
+} from "@/lib/mtm/workday-pauses"
 
 const MAX_FUTURE_LOCATION_SKEW_MS = 5 * 60 * 1000
 const MAX_WEB_LOCATION_AGE_MS = 5 * 60 * 1000
@@ -681,6 +687,42 @@ export const POST = withRouteFieldWebRlsAuth("write", async (req, auth) => {
   // Keep both out-of-scope and unknown targets indistinguishable. In
   // particular, do not disclose whether a cross-tenant agent ID exists.
   if (!targetAllowed) return locationAgentNotFound()
+
+  // A break is the employee's own time: where it is spent is not stored,
+  // whoever sends the point (owner, 2026-10-12). The phone has been refused
+  // such a point since A7 and the batch route since 2026-10-11; this entry — a
+  // web session or an integration's key writing for an employee — looked at no
+  // workday at all, and its point moved the marker on the live map while the
+  // break ran. Only the break is asked about: a point for somebody who has no
+  // shift at that moment is written as before.
+  //
+  // The shift is the last one begun by then, its breaks come from its own
+  // journal with the reader the phone's routes use (workday-pauses.ts), and
+  // the question is when the point was taken. A foreign or unknown agentId
+  // finds no shift here and is still refused by the conditional update below.
+  const workdayThen: { id: string } | null = await prisma.mtmAgentWorkday.findFirst({
+    where: { organizationId: auth.orgId, agentId: requestedAgentId, startedAt: { lte: recordedAt } },
+    orderBy: { startedAt: "desc" },
+    select: { id: true },
+  })
+  if (workdayThen) {
+    const pauseEvents: MtmWorkdayPauseEvent[] = await prisma.mtmAgentWorkdayEvent.findMany({
+      where: {
+        organizationId: auth.orgId,
+        agentId: requestedAgentId,
+        workdayId: workdayThen.id,
+        type: { in: [...MTM_WORKDAY_PAUSE_EVENT_TYPES] },
+      },
+      orderBy: { occurredAt: "asc" },
+      select: { type: true, occurredAt: true, appliedAt: true },
+    })
+    if (isDuringMtmWorkdayPause(recordedAt, mtmWorkdayPauses(pauseEvents))) {
+      return NextResponse.json(
+        { error: "recordedAt falls inside a workday break", code: "MTM_LOCATION_WORKDAY_PAUSED" },
+        { status: 409 },
+      )
+    }
+  }
 
   try {
     const location = await prisma.$transaction(async (tx) => {
