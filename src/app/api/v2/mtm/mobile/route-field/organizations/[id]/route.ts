@@ -8,6 +8,8 @@ import { customerScopeForActor } from "@/lib/mtm/field-scope"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
+import { normalizeMtmCoordinates } from "@/lib/mtm/geo-coordinates"
+import { LOCATION_REQUEST_ANSWER_SHOWN_DAYS, customerLocationRequestForAgent } from "@/lib/mtm/customer-location-request"
 
 const ROUTE_FIELD_CONTACT_LIMIT = 50
 const ROUTE_FIELD_VISIT_LIMIT = 15
@@ -24,6 +26,10 @@ const routeFieldOrganizationSelect = (agentId: string) => ({
   locality: true,
   city: true,
   district: true,
+  // Where the organization's pin stands: the card measures how far the agent
+  // is from it, and offers «Клиент здесь» when the pin is evidently wrong.
+  latitude: true,
+  longitude: true,
   phone: true,
   // The person at the organization itself. Agents visit it and must know whom
   // to ask for; they still cannot change it (owner, 2026-10-02).
@@ -81,6 +87,8 @@ function projectRouteFieldOrganization(source: RouteFieldOrganizationSource) {
     locality: source.locality,
     city: source.city,
     district: source.district,
+    // Both numbers or both null: 0,0 never reaches a phone as a place.
+    ...normalizeMtmCoordinates(source),
     phone: source.phone,
     contactPerson: source.contactPerson,
     contacts: source.contactWorkplaces.map((workplace) => ({
@@ -146,10 +154,42 @@ export const GET = withMobileRls(async (_req, auth, { params }: { params: Promis
   })
   if (!organization) return noStoreJson({ error: "Not found", code: "MTM_ROUTE_FIELD_ORGANIZATION_NOT_FOUND" }, { status: 404 })
 
+  // «Клиент здесь»: the request that is waiting about this organization —
+  // whoever sent it, so that a second agent at the same door is told — or,
+  // failing that, the answer to this agent's own latest one, for a week.
+  const locationRequestSelect = {
+    id: true,
+    status: true,
+    requestedByAgentId: true,
+    proposedLatitude: true,
+    proposedLongitude: true,
+    movedMeters: true,
+    decisionComment: true,
+    submittedAt: true,
+    reviewedAt: true,
+  } as const
+  const answeredSince = new Date(Date.now() - LOCATION_REQUEST_ANSWER_SHOWN_DAYS * 24 * 60 * 60 * 1000)
+  const locationRequest = await prisma.mtmCustomerLocationRequest.findFirst({
+    where: { organizationId: auth.orgId, customerId: organization.id, status: "SUBMITTED" },
+    orderBy: { submittedAt: "desc" },
+    select: locationRequestSelect,
+  }) ?? await prisma.mtmCustomerLocationRequest.findFirst({
+    where: {
+      organizationId: auth.orgId,
+      customerId: organization.id,
+      requestedByAgentId: actor.agentId,
+      status: { in: ["APPROVED", "REJECTED"] },
+      reviewedAt: { gte: answeredSince },
+    },
+    orderBy: { reviewedAt: "desc" },
+    select: locationRequestSelect,
+  })
+
   return noStoreJson({
     success: true,
     data: {
       organization: projectRouteFieldOrganization(organization),
+      locationRequest: locationRequest ? customerLocationRequestForAgent(locationRequest, actor.agentId) : null,
       asOf: asOf.toISOString().slice(0, 10),
       timezone,
       contactLimit: ROUTE_FIELD_CONTACT_LIMIT,

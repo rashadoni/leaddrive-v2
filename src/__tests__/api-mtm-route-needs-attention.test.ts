@@ -39,6 +39,7 @@ beforeEach(() => {
   } as never)
   vi.mocked(prisma.mtmRouteChangeRequest.count).mockResolvedValue(2 as never)
   vi.mocked(prisma.mtmCustomerCreateRequest.count).mockResolvedValue(3 as never)
+  vi.mocked(prisma.mtmCustomerLocationRequest.count).mockResolvedValue(4 as never)
 })
 
 describe("GET /mtm/routes/needs-attention", () => {
@@ -50,10 +51,12 @@ describe("GET /mtm/routes/needs-attention", () => {
       success: true,
       data: {
         schemaVersion: 1,
-        total: 5,
+        total: 9,
         categories: {
           routeChanges: { count: 2 },
           customerRequests: { count: 3 },
+          // «Клиент здесь»: requests to move a customer's pin, sent from the spot.
+          customerLocationRequests: { count: 4 },
         },
       },
     })
@@ -74,6 +77,14 @@ describe("GET /mtm/routes/needs-attention", () => {
         requestedByAgentId: { in: ["agent-1", "agent-2"] },
       },
     })
+    // Only what still waits, and only from the agents this manager answers for.
+    expect(prisma.mtmCustomerLocationRequest.count).toHaveBeenCalledWith({
+      where: {
+        organizationId: ORG,
+        status: "SUBMITTED",
+        requestedByAgentId: { in: ["agent-1", "agent-2"] },
+      },
+    })
   })
 
   it("denies non-reviewers before issuing either count", async () => {
@@ -88,5 +99,6 @@ describe("GET /mtm/routes/needs-attention", () => {
     expect(response.status).toBe(403)
     expect(prisma.mtmRouteChangeRequest.count).not.toHaveBeenCalled()
     expect(prisma.mtmCustomerCreateRequest.count).not.toHaveBeenCalled()
+    expect(prisma.mtmCustomerLocationRequest.count).not.toHaveBeenCalled()
   })
 })

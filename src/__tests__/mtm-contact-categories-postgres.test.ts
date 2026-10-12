@@ -2044,4 +2044,298 @@ pgDescribe("client categories on a real Postgres", () => {
       })
     }, 120_000)
   })
+  // «Клиент здесь» (owner, 2026-10-12): «агент приходит на тот адрес, но видит,
+  // что не те координаты. У него должна быть возможность отправить запрос на
+  // корректировку, отправляя с места, где клиент, координаты».
+  //
+  // What is at stake is a customer's pin — the thing every visit is measured
+  // against — so the real routes write to the real table: the one-waiting
+  // index, the CHECKs and the policy come from the very file the deploy
+  // applies (`db push` knows none of them), and «accepting moves the pin only
+  // from where it stood» is a conditional UPDATE that a mocked client would
+  // answer however it was told to.
+  describe("a customer's pin corrected from the spot", () => {
+    const TABLE = "mtm_customer_location_requests"
+    const params = (id: string) => ({ params: Promise.resolve({ id }) })
+    const run = (sql: string) => prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, sql)
+    /** About this many metres north of a latitude. */
+    const north = (latitude: number, meters: number) => latitude + meters / 111_195
+    const PIN = { latitude: 40.4, longitude: 49.85 }
+    // Where the pharmacy really is: 1.2 km north of its pin. Seventeen
+    // significant digits on purpose — a coordinate as a phone sends it, which
+    // comes back from Postgres different in the last one.
+    const DOOR = { latitude: north(40.4, 1_200), longitude: 49.85 }
+    /** The same place, give or take the last digit of a double. */
+    const at = (place: { latitude: number; longitude: number }) => ({
+      latitude: expect.closeTo(place.latitude, 9), longitude: expect.closeTo(place.longitude, 9),
+    })
+    let asker = ""
+    let colleague = ""
+    let pharmacy = ""
+    let pinless = ""
+    let waitingId = ""
+
+    const phoneUrl = (customerId: string) => `/api/v2/mtm/mobile/route-field/organizations/${customerId}/location-request`
+    const asAgent = async (agentId: string) => {
+      const { resolveMobileAuth } = await import("@/lib/mobile-auth")
+      vi.mocked(resolveMobileAuth).mockResolvedValue({ agentId, userId: `user-of-${agentId}`, orgId: ORG, email: "agent@example.com", name: "Agent", role: "AGENT" } as never)
+    }
+    const sending = (key: string, over: { proposed?: { latitude: number; longitude: number }; agent?: Record<string, unknown>; comment?: string } = {}) => ({
+      idempotencyKey: key,
+      proposed: over.proposed ?? DOOR,
+      agent: { ...(over.proposed ?? DOOR), accuracyMeters: 8, fixAgeSeconds: 5, ...over.agent },
+      ...(over.comment ? { comment: over.comment } : {}),
+    })
+    const ask = async (agentId: string, customerId: string, body: unknown) => {
+      await asAgent(agentId)
+      const { POST } = await import("@/app/api/v2/mtm/mobile/route-field/organizations/[id]/location-request/route")
+      const response = await POST(send("POST", phoneUrl(customerId), body), params(customerId))
+      return { status: response.status, body: await response.json() }
+    }
+    const takeBack = async (agentId: string, customerId: string) => {
+      await asAgent(agentId)
+      const { DELETE } = await import("@/app/api/v2/mtm/mobile/route-field/organizations/[id]/location-request/route")
+      const response = await DELETE(new NextRequest(`http://localhost:3000${phoneUrl(customerId)}`, { method: "DELETE" }), params(customerId))
+      return { status: response.status, body: await response.json() }
+    }
+    const cardOf = async (agentId: string, customerId: string) => {
+      await asAgent(agentId)
+      const { GET } = await import("@/app/api/v2/mtm/mobile/route-field/organizations/[id]/route")
+      const response = await GET(new NextRequest(`http://localhost:3000/api/v2/mtm/mobile/route-field/organizations/${customerId}`), params(customerId))
+      return (await response.json()).data as { organization: { latitude: number | null; longitude: number | null }; locationRequest: Record<string, unknown> | null }
+    }
+    const decide = async (requestId: string, body: unknown) => {
+      const { POST } = await import("@/app/api/v1/mtm/customer-location-requests/[id]/decision/route")
+      const response = await POST(send("POST", `/api/v1/mtm/customer-location-requests/${requestId}/decision`, body), params(requestId))
+      return { status: response.status, body: await response.json() }
+    }
+    const waitingList = async (query = "") => {
+      const { GET } = await import("@/app/api/v1/mtm/customer-location-requests/route")
+      const response = await GET(new NextRequest(`http://localhost:3000/api/v1/mtm/customer-location-requests${query}`))
+      return (await response.json()).data.requests as Array<Record<string, unknown>>
+    }
+    const pinOf = (customerId: string) => bypass(() => prisma.mtmCustomer.findUniqueOrThrow({ where: { id: customerId }, select: { latitude: true, longitude: true } }))
+    const rows = (where: Record<string, unknown> = {}) => bypass(() => prisma.mtmCustomerLocationRequest.findMany({ where: { organizationId: ORG, ...where }, orderBy: { createdAt: "asc" } }))
+
+    beforeAll(async () => {
+      run(`DROP TABLE "${TABLE}";`)
+      run(readFileSync(path.join(ROOT, "prisma/migrations/20261012100000_mtm_customer_location_requests/migration.sql"), "utf8"))
+      asker = (await bypass(() => prisma.mtmAgent.create({ data: { organizationId: ORG, name: "Nigar at the Door" }, select: { id: true } }))).id
+      colleague = (await bypass(() => prisma.mtmAgent.create({ data: { organizationId: ORG, name: "Second at the Door" }, select: { id: true } }))).id
+      pharmacy = (await bypass(() => prisma.mtmCustomer.create({ data: { organizationId: ORG, name: "Aptek Nümunə", address: "Nümunə küç. 12", ...PIN }, select: { id: true } }))).id
+      pinless = (await bypass(() => prisma.mtmCustomer.create({ data: { organizationId: ORG, name: "Aptek Xəritəsiz" }, select: { id: true } }))).id
+      const since = new Date("2026-01-01T00:00:00.000Z")
+      await bypass(() => prisma.mtmCustomerAgentAssignment.createMany({
+        data: [
+          { organizationId: ORG, customerId: pharmacy, agentId: asker, effectiveFrom: since },
+          { organizationId: ORG, customerId: pharmacy, agentId: colleague, effectiveFrom: since },
+          { organizationId: ORG, customerId: pinless, agentId: asker, effectiveFrom: since },
+        ],
+      }))
+      // Two visits «вне зоны» at this pharmacy in the last weeks, and one at another customer.
+      await bypass(() => prisma.mtmAlert.createMany({
+        data: [pharmacy, pharmacy, pinless].map((customerId) => ({
+          organizationId: ORG, agentId: asker, type: "OUT_OF_ZONE" as const, category: "WARNING" as const,
+          title: "Out of zone check-in", metadata: { customerId },
+        })),
+      }))
+    }, 120_000)
+
+    afterAll(async () => {
+      const { resolveMobileAuth } = await import("@/lib/mobile-auth")
+      vi.mocked(resolveMobileAuth).mockReset()
+    })
+
+    it("is a table Postgres really guards, and one that refuses a place that is none", async () => {
+      const flags = await bypass(() => prisma.$queryRawUnsafe<Array<{ relrowsecurity: boolean; relforcerowsecurity: boolean }>>(
+        `SELECT relrowsecurity, relforcerowsecurity FROM pg_class WHERE relname = '${TABLE}'`,
+      ))
+      expect(flags).toEqual([{ relrowsecurity: true, relforcerowsecurity: true }])
+      const policies = await bypass(() => prisma.$queryRawUnsafe<Array<{ policyname: string }>>(`SELECT policyname FROM pg_policies WHERE tablename = '${TABLE}'`))
+      expect(policies).toEqual([{ policyname: "tenant_isolation" }])
+      // 0,0 is «no coordinates» written as a number: nobody's customer is in the Gulf of Guinea.
+      await expect(bypass(() => prisma.$executeRawUnsafe(
+        `INSERT INTO "${TABLE}" ("id", "organizationId", "customerId", "requestedByAgentId", "idempotencyKey", "proposedLatitude", "proposedLongitude", "agentLatitude", "agentLongitude", "agentAccuracyMeters", "agentFixAt", "agentToProposedMeters", "updatedAt")
+         VALUES ('raw-null-island', '${ORG}', '${pharmacy}', '${asker}', 'raw-null-island', 0, 0, 40.4, 49.85, 5, now(), 0, now())`,
+      ))).rejects.toThrow(/mtm_customer_location_requests_proposed_check/)
+    })
+
+    it("refuses a phone that does not know where it is, a mocked place and a pin put streets away — and writes nothing", async () => {
+      const vague = await ask(asker, pharmacy, sending("refused-accuracy-1", { agent: { accuracyMeters: 350 } }))
+      expect(vague).toMatchObject({ status: 422, body: { code: "MTM_LOCATION_REQUEST_ACCURACY_TOO_LOW", details: { accuracyMeters: 350, maxAccuracyMeters: 100 } } })
+      const mocked = await ask(asker, pharmacy, sending("refused-mock-0001", { agent: { isMock: true } }))
+      expect(mocked).toMatchObject({ status: 422, body: { code: "MTM_LOCATION_REQUEST_MOCK_LOCATION" } })
+      // The agent is at the old pin; the pin he draws is 1.2 km from him.
+      const drawn = await ask(asker, pharmacy, sending("refused-far-00001", { agent: PIN }))
+      expect(drawn).toMatchObject({ status: 422, body: { code: "MTM_LOCATION_REQUEST_PIN_TOO_FAR", details: { maxDistanceMeters: 150 } } })
+      const same = await ask(asker, pharmacy, sending("refused-same-0001", { proposed: { latitude: north(40.4, 8), longitude: 49.85 } }))
+      expect(same).toMatchObject({ status: 422, body: { code: "MTM_LOCATION_REQUEST_UNCHANGED" } })
+      expect(await rows()).toEqual([])
+      expect(await pinOf(pharmacy)).toEqual(PIN)
+    })
+
+    it("takes the request from the spot, keeps what the phone knew — and moves nothing yet", async () => {
+      const taken = await ask(asker, pharmacy, sending("from-the-door-0001", { comment: "Вход со двора" }))
+      expect(taken.status, JSON.stringify(taken.body).slice(0, 300)).toBe(201)
+      waitingId = taken.body.data.request.id
+      expect(taken.body.data.request).toMatchObject({ status: "SUBMITTED", mine: true, proposedLatitude: at(DOOR).latitude, proposedLongitude: 49.85, movedMeters: 1_200 })
+
+      const [row] = await rows()
+      expect(row).toMatchObject({
+        id: waitingId, customerId: pharmacy, requestedByAgentId: asker, status: "SUBMITTED",
+        previousLatitude: 40.4, previousLongitude: 49.85,
+        proposedLatitude: at(DOOR).latitude, proposedLongitude: 49.85,
+        agentLatitude: at(DOOR).latitude, agentLongitude: 49.85, agentAccuracyMeters: 8,
+        movedMeters: 1_200, agentToProposedMeters: 0, comment: "Вход со двора", reviewedBy: null, reviewedAt: null,
+      })
+      // The fix is five seconds older than the moment the server took the request.
+      expect(row.submittedAt.getTime() - row.agentFixAt.getTime()).toBe(5_000)
+      // The agent asked; he changed nothing.
+      expect(await pinOf(pharmacy)).toEqual(PIN)
+
+      const card = await cardOf(asker, pharmacy)
+      expect(card.organization).toMatchObject(PIN)
+      expect(card.locationRequest).toMatchObject({ id: waitingId, status: "SUBMITTED", mine: true })
+      const journal = await bypass(() => prisma.mtmAuditLog.findMany({ where: { organizationId: ORG, entity: "customer_location_request", entityId: waitingId } }))
+      expect(journal.map((entry) => [entry.action, entry.agentId])).toEqual([["CUSTOMER_LOCATION_REQUEST", asker]])
+    })
+
+    it("takes a sending that is sent again as the same request, and refuses its key for another pin", async () => {
+      const again = await ask(asker, pharmacy, sending("from-the-door-0001", { comment: "Вход со двора" }))
+      expect(again).toMatchObject({ status: 200, body: { idempotent: true, data: { request: { id: waitingId } } } })
+      const other = await ask(asker, pharmacy, sending("from-the-door-0001", { proposed: { latitude: north(DOOR.latitude, 30), longitude: 49.85 } }))
+      expect(other).toMatchObject({ status: 409, body: { code: "MTM_LOCATION_REQUEST_IDEMPOTENCY_MISMATCH" } })
+      expect(await rows()).toHaveLength(1)
+    })
+
+    it("tells a second agent at the same door that one is already waiting — and the database itself holds that", async () => {
+      const second = await ask(colleague, pharmacy, sending("second-at-door-01"))
+      expect(second).toMatchObject({ status: 409, body: { code: "MTM_LOCATION_REQUEST_PENDING", data: { request: { id: waitingId, mine: false, decisionComment: null } } } })
+      // Not who sent it.
+      expect(JSON.stringify(second.body)).not.toContain(asker)
+      const card = await cardOf(colleague, pharmacy)
+      expect(card.locationRequest).toMatchObject({ id: waitingId, status: "SUBMITTED", mine: false })
+      // Past the route: two waiting rows about one customer cannot exist.
+      await expect(bypass(() => prisma.$executeRawUnsafe(
+        `INSERT INTO "${TABLE}" ("id", "organizationId", "customerId", "requestedByAgentId", "idempotencyKey", "proposedLatitude", "proposedLongitude", "agentLatitude", "agentLongitude", "agentAccuracyMeters", "agentFixAt", "agentToProposedMeters", "updatedAt")
+         VALUES ('raw-second', '${ORG}', '${pharmacy}', '${colleague}', 'raw-second', 40.41, 49.85, 40.41, 49.85, 5, now(), 0, now())`,
+      // 23505: a unique index refused it — and the only one on these two columns is «one waiting per customer».
+      ))).rejects.toThrow(/23505[\s\S]*organizationId[\s\S]*customerId[\s\S]*already exists/)
+      expect(await rows()).toHaveLength(1)
+    })
+
+    it("lets the agent take his own request back — not somebody else's — and ask again", async () => {
+      expect(await takeBack(colleague, pharmacy)).toMatchObject({ status: 404, body: { code: "MTM_LOCATION_REQUEST_NOT_FOUND" } })
+      expect((await rows())[0].status).toBe("SUBMITTED")
+      expect(await takeBack(asker, pharmacy)).toMatchObject({ status: 200, body: { data: { id: waitingId, status: "CANCELLED" } } })
+      expect((await rows())[0].status).toBe("CANCELLED")
+      expect((await cardOf(asker, pharmacy)).locationRequest).toBeNull()
+      expect(await takeBack(asker, pharmacy)).toMatchObject({ status: 404 })
+
+      const again = await ask(asker, pharmacy, sending("from-the-door-0002"))
+      expect(again.status, JSON.stringify(again.body).slice(0, 300)).toBe(201)
+      waitingId = again.body.data.request.id
+    })
+
+    it("shows a manager what waits: where the pin stood, where the agent stood, and how often visits there were «вне зоны»", async () => {
+      const [request, ...rest] = await waitingList()
+      expect(rest).toEqual([])
+      expect(request).toMatchObject({
+        id: waitingId, status: "SUBMITTED",
+        agent: { id: asker, name: "Nigar at the Door" },
+        customer: { id: pharmacy, name: "Aptek Nümunə", address: "Nümunə küç. 12", ...PIN },
+        previous: PIN, proposed: at(DOOR),
+        agentFix: { latitude: at(DOOR).latitude, longitude: 49.85, accuracyMeters: 8 },
+        movedMeters: 1_200, agentToProposedMeters: 0,
+        pinMovedSince: false, canDecide: true,
+        // Of this pharmacy, not of the other customer.
+        outOfZoneAlerts: 2,
+      })
+    })
+
+    it("on «принять» moves the pin from where it stood, leaves a receipt, tells the agent and writes the journal — once", async () => {
+      const accepted = await decide(waitingId, { decision: "APPROVED" })
+      expect(accepted.status, JSON.stringify(accepted.body).slice(0, 300)).toBe(200)
+      expect(await pinOf(pharmacy)).toEqual(at(DOOR))
+      const [row] = await rows({ id: waitingId })
+      expect(row).toMatchObject({ status: "APPROVED", reviewedBy: "admin-user", decisionComment: null })
+      expect(row.reviewedAt).toBeInstanceOf(Date)
+
+      const receipts = await bypass(() => prisma.mtmCustomerCoordinateVerification.findMany({ where: { organizationId: ORG, customerId: pharmacy } }))
+      expect(receipts).toHaveLength(1)
+      expect(receipts[0]).toMatchObject({
+        latitude: at(DOOR).latitude, longitude: 49.85, status: "VERIFIED", accuracyMeters: 8,
+        sourceSystem: "FIELD_AGENT", sourceReference: `customer-location-request:${waitingId}`, verifiedByUserId: "admin-user",
+      })
+      const told = await bypass(() => prisma.mtmRouteNotificationOutbox.findMany({ where: { organizationId: ORG, dedupeKey: { startsWith: `customer-location-request:${waitingId}:` } } }))
+      expect(told.map((message) => [message.agentId, message.title])).toEqual([[asker, "Customer location corrected"]])
+      const journal = await bypass(() => prisma.mtmAuditLog.findMany({ where: { organizationId: ORG, action: "CUSTOMER_LOCATION_DECISION", entityId: waitingId } }))
+      expect(journal).toHaveLength(1)
+      expect(journal[0]).toMatchObject({ agentId: asker, actorUserId: "admin-user" })
+      expect(journal[0].oldData).toMatchObject({ status: "SUBMITTED", ...PIN })
+      expect(journal[0].newData).toMatchObject({ status: "APPROVED", customerId: pharmacy, ...at(DOOR) })
+
+      // The same answer again changes nothing; the other answer is refused.
+      expect(await decide(waitingId, { decision: "APPROVED" })).toMatchObject({ status: 200, body: { idempotent: true } })
+      expect(await decide(waitingId, { decision: "REJECTED" })).toMatchObject({ status: 409, body: { code: "APPROVAL_ALREADY_DECIDED" } })
+      expect(await bypass(() => prisma.mtmCustomerCoordinateVerification.count({ where: { organizationId: ORG, customerId: pharmacy } }))).toBe(1)
+      expect(await waitingList()).toEqual([])
+
+      // The agent's card: the pin he asked for, and the answer to his question.
+      const card = await cardOf(asker, pharmacy)
+      expect(card.organization).toMatchObject(at(DOOR))
+      expect(card.locationRequest).toMatchObject({ id: waitingId, status: "APPROVED", mine: true })
+      // A colleague is shown the new pin, and nobody else's answered question.
+      expect((await cardOf(colleague, pharmacy)).locationRequest).toBeNull()
+    })
+
+    it("does not move a pin that somebody moved after the agent asked: the request waits, and can be declined with a word", async () => {
+      // The pharmacy is said to be 300 m further north still.
+      const further = { latitude: north(DOOR.latitude, 300), longitude: 49.85 }
+      const asked = await ask(asker, pharmacy, sending("further-north-0001", { proposed: further }))
+      expect(asked.status, JSON.stringify(asked.body).slice(0, 300)).toBe(201)
+      const requestId = asked.body.data.request.id
+      // Meanwhile a manager corrects the card himself.
+      const byHand = { latitude: north(DOOR.latitude, 40), longitude: 49.851 }
+      await bypass(() => prisma.mtmCustomer.update({ where: { id: pharmacy }, data: byHand }))
+
+      expect((await waitingList())[0]).toMatchObject({ id: requestId, pinMovedSince: true })
+      expect(await decide(requestId, { decision: "APPROVED" })).toMatchObject({ status: 409, body: { code: "MTM_LOCATION_REQUEST_CUSTOMER_MOVED" } })
+      // Nothing of the refused answer stayed: not the status, not the pin, not a receipt, not a word to the agent.
+      expect((await rows({ id: requestId }))[0]).toMatchObject({ status: "SUBMITTED", reviewedBy: null, reviewedAt: null })
+      expect(await pinOf(pharmacy)).toEqual(at(byHand))
+      expect(await bypass(() => prisma.mtmCustomerCoordinateVerification.count({ where: { organizationId: ORG, customerId: pharmacy } }))).toBe(1)
+      expect(await bypass(() => prisma.mtmRouteNotificationOutbox.count({ where: { organizationId: ORG, dedupeKey: { startsWith: `customer-location-request:${requestId}:` } } }))).toBe(0)
+
+      const declined = await decide(requestId, { decision: "REJECTED", comment: "Точку уже поправили вручную" })
+      expect(declined.status, JSON.stringify(declined.body).slice(0, 300)).toBe(200)
+      expect(await pinOf(pharmacy)).toEqual(at(byHand))
+      expect((await rows({ id: requestId }))[0]).toMatchObject({ status: "REJECTED", reviewedBy: "admin-user", decisionComment: "Точку уже поправили вручную" })
+      const told = await bypass(() => prisma.mtmRouteNotificationOutbox.findMany({ where: { organizationId: ORG, dedupeKey: { startsWith: `customer-location-request:${requestId}:` } } }))
+      expect(told.map((message) => [message.agentId, message.title, message.body])).toEqual([[asker, "Customer location request declined", "Aptek Nümunə: Точку уже поправили вручную"]])
+      // Whoever asked reads the manager's word on the card.
+      expect((await cardOf(asker, pharmacy)).locationRequest).toMatchObject({ id: requestId, status: "REJECTED", mine: true, decisionComment: "Точку уже поправили вручную" })
+    })
+
+    it("gives a customer that had no pin its first one", async () => {
+      expect(await pinOf(pinless)).toEqual({ latitude: null, longitude: null })
+      const asked = await ask(asker, pinless, sending("first-pin-000001"))
+      expect(asked.status, JSON.stringify(asked.body).slice(0, 300)).toBe(201)
+      expect(asked.body.data.request).toMatchObject({ movedMeters: null })
+      const requestId = asked.body.data.request.id
+      expect((await waitingList())[0]).toMatchObject({ id: requestId, previous: null, pinMovedSince: false, outOfZoneAlerts: 1 })
+      expect((await decide(requestId, { decision: "APPROVED" })).status).toBe(200)
+      expect(await pinOf(pinless)).toEqual(at(DOOR))
+    })
+
+    it("is switched off by the organization: the agent is refused and nothing is written", async () => {
+      const { PUT } = await import("@/app/api/v1/mtm/settings/route")
+      expect((await PUT(put("/api/v1/mtm/settings", { agentCustomerLocationRequests: false }))).status).toBe(200)
+      const before = (await rows()).length
+      const refused = await ask(asker, pharmacy, sending("switched-off-0001", { proposed: { latitude: north(DOOR.latitude, 500), longitude: 49.85 } }))
+      expect(refused).toMatchObject({ status: 403, body: { code: "MTM_AGENT_PERMISSION_DISABLED", permission: "customerLocationRequest" } })
+      expect((await rows()).length).toBe(before)
+      expect((await PUT(put("/api/v1/mtm/settings", { agentCustomerLocationRequests: true }))).status).toBe(200)
+    })
+  })
 })

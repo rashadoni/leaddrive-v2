@@ -250,6 +250,7 @@ export interface MtmPrismaMock {
   // Onboarding (M5+)
   mtmOnboarding: ModelMock
   mtmCustomerCreateRequest: ModelMock
+  mtmCustomerLocationRequest: ModelMock
   mtmContactCreateRequest: ModelMock
   mtmDeviceToken: ModelMock
   mtmMapZone: ModelMock
@@ -432,6 +433,7 @@ export function makeMtmPrismaMock(): MtmPrismaMock {
     mtmTeam: makeModel(),
     mtmOnboarding: makeModel(),
     mtmCustomerCreateRequest: makeModel(),
+    mtmCustomerLocationRequest: makeModel(),
     mtmContactCreateRequest: makeModel(),
     mtmDeviceToken: makeModel(),
     mtmMapZone: makeModel(),
