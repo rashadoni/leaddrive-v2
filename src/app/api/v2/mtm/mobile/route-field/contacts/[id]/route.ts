@@ -51,6 +51,10 @@ const routeFieldContactSelect = (customerScope: Prisma.MtmCustomerWhereInput) =>
       phone: true,
       customer: {
         select: {
+          // The organization's card opens by this id. Only organizations of
+          // the agent's own field scope get this far (the `where` above), and
+          // those he already opens from his list of places.
+          id: true,
           name: true,
           city: true,
           address: true,
@@ -83,6 +87,7 @@ function projectRouteFieldContact(source: RouteFieldContactSource) {
     status: source.status,
     workplaces: source.workplaces.map((workplace) => ({
       id: workplace.id,
+      customerId: workplace.customer.id,
       name: workplace.customer.name,
       city: workplace.customer.city,
       address: workplace.customer.address,
