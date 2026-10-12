@@ -6,6 +6,10 @@ import { PAGE_SIZE } from "@/lib/constants"
 import type { Role } from "@/lib/permissions"
 import { ENTITY_TO_MODULE } from "@/lib/notifications/taxonomy"
 import { canNotifyEntityType } from "@/lib/notifications/access"
+import {
+  MTM_LOCATION_REQUEST_NOTIFICATION_ENTITY,
+  MTM_LOCATION_REQUEST_NOTIFICATION_URL,
+} from "@/lib/mtm/customer-location-request-notification"
 
 /**
  * Entity-type allowlist filter, shared by GET (read-gate) and PATCH (mark-read
@@ -45,8 +49,15 @@ const notificationEntityUrls: Record<string, string> = {
   invoice: "/invoices",
 }
 
+/** Entities that open a list, not a card of their own: the id is not part of the address. */
+const notificationListUrls: Record<string, string> = {
+  [MTM_LOCATION_REQUEST_NOTIFICATION_ENTITY]: MTM_LOCATION_REQUEST_NOTIFICATION_URL,
+}
+
 function getNotificationUrl(notification: NotificationTarget) {
   if (!notification.entityType) return null
+  const list = notificationListUrls[notification.entityType]
+  if (list) return list
   const base = notificationEntityUrls[notification.entityType]
   if (!base) return null
   return notification.entityId ? `${base}/${notification.entityId}` : base

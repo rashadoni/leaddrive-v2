@@ -14,6 +14,12 @@ import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { readJsonSafely } from "@/lib/http/read-json-safely"
 import { deriveSection } from "@/lib/notifications/taxonomy"
+import {
+  MTM_LOCATION_REQUEST_NOTIFICATION_ENTITY,
+  MTM_LOCATION_REQUEST_NOTIFICATION_KIND,
+  MTM_LOCATION_REQUEST_NOTIFICATION_URL,
+  MTM_LOCATION_REQUEST_TOAST_MS,
+} from "@/lib/mtm/customer-location-request-notification"
 
 interface Notification {
   id: string
@@ -47,6 +53,8 @@ const entityUrls: Record<string, string> = {
 }
 
 function getEntityUrl(type?: string, id?: string) {
+  // «Клиент здесь» opens the queue it is decided in, not a card of its own.
+  if (type === MTM_LOCATION_REQUEST_NOTIFICATION_ENTITY) return MTM_LOCATION_REQUEST_NOTIFICATION_URL
   if (!type || !id) return null
   const base = entityUrls[type]
   return base ? `${base}/${id}` : null
@@ -74,17 +82,25 @@ export function NotificationBell() {
   // Section push prefs: section key → push enabled (fetched once on mount).
   // null = not yet loaded (treat as ungated — keep toasting until prefs load).
   const pushPrefs = useRef<Record<string, boolean> | null>(null)
+  // Kinds the person switched off one by one (same fetch).
+  const kindsOff = useRef<Set<string>>(new Set())
+  // What the button of a pop-up does. A ref, because the pop-up is raised by the
+  // poll, which must not restart every time the click handler is rebuilt.
+  const openFromToast = useRef<(n: Notification, url: string) => void>(() => {})
 
   useEffect(() => {
     fetch("/api/v1/users/me/notification-preferences")
-      .then((r) => readJsonSafely<ApiEnvelope<{ sections: Array<{ key: string; push: boolean }> }>>(r))
+      .then((r) => readJsonSafely<ApiEnvelope<{ sections: Array<{ key: string; push: boolean; types?: Array<{ key: string; enabled: boolean }> }> }>>(r))
       .then((json) => {
         if (json?.success && json.data) {
           const map: Record<string, boolean> = {}
+          const off = new Set<string>()
           for (const s of json.data.sections) {
             map[s.key] = s.push
+            for (const type of s.types ?? []) if (!type.enabled) off.add(type.key)
           }
           pushPrefs.current = map
+          kindsOff.current = off
         }
       })
       .catch(() => {/* best-effort: keep toasting if fetch fails */})
@@ -116,11 +132,27 @@ export function NotificationBell() {
                 // - section unknown (null) → fail-closed: suppress toast (unmapped entityType)
                 // - section known → toast only if push pref is on (default true)
                 const section = deriveSection(n.entityType ?? "")
-                const prefAllows =
-                  pushPrefs.current === null ||
-                  (section !== null && (pushPrefs.current[section] ?? true))
+                const waitingAgent = n.entityType === MTM_LOCATION_REQUEST_NOTIFICATION_ENTITY
+                const prefAllows = waitingAgent
+                  // Not the section's switch (off by default for «Route & Field»): this
+                  // one is shown until the person switches off this very kind.
+                  ? !kindsOff.current.has(MTM_LOCATION_REQUEST_NOTIFICATION_KIND)
+                  : pushPrefs.current === null ||
+                    (section !== null && (pushPrefs.current[section] ?? true))
                 if (prefAllows) {
-                  toast(n.title, { description: n.message || undefined })
+                  if (waitingAgent) {
+                    // An agent may be standing at the customer's door: this one
+                    // stays on the screen and carries its own way to the queue.
+                    const url = getNotificationUrl(n)
+                    toast.warning(n.title, {
+                      description: n.message || undefined,
+                      duration: MTM_LOCATION_REQUEST_TOAST_MS,
+                      closeButton: true,
+                      action: url ? { label: t("openRequest"), onClick: () => openFromToast.current(n, url) } : undefined,
+                    })
+                  } else {
+                    toast(n.title, { description: n.message || undefined })
+                  }
                   toasted++
                 }
               }
@@ -131,7 +163,7 @@ export function NotificationBell() {
         setUnreadCount(json.data.unreadCount)
       }
     } catch {}
-  }, [orgId])
+  }, [orgId, t])
 
   useEffect(() => {
     const initialLoad = setTimeout(() => { void fetchNotifications() }, 0)
@@ -177,6 +209,9 @@ export function NotificationBell() {
     }
     if (url) router.push(url)
   }
+  useEffect(() => {
+    openFromToast.current = handleNotificationClick
+  })
 
   const typeColors: Record<string, string> = {
     info: "bg-blue-500",

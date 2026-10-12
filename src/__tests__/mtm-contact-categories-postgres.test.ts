@@ -72,6 +72,11 @@ vi.mock("@/lib/mobile-auth", async () => {
   const { makeMobileAuthMock } = await import("./mocks/mobile-auth")
   return makeMobileAuthMock()
 })
+// Nor is the mail transport: what is asked of it is read, nothing is sent.
+vi.mock("@/lib/email", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/lib/email")>(),
+  sendEmail: vi.fn(async () => ({ success: true })),
+}))
 // The tenant's plan is not what is under test.
 vi.mock("@/lib/tenant-capability-access", async (importOriginal) => ({
   ...await importOriginal<typeof import("@/lib/tenant-capability-access")>(),
@@ -2130,6 +2135,25 @@ pgDescribe("client categories on a real Postgres", () => {
       colleague = (await bypass(() => prisma.mtmAgent.create({ data: { organizationId: ORG, name: "Second at the Door" }, select: { id: true } }))).id
       pharmacy = (await bypass(() => prisma.mtmCustomer.create({ data: { organizationId: ORG, name: "Aptek Nümunə", address: "Nümunə küç. 12", ...PIN }, select: { id: true } }))).id
       pinless = (await bypass(() => prisma.mtmCustomer.create({ data: { organizationId: ORG, name: "Aptek Xəritəsiz" }, select: { id: true } }))).id
+      // Who is at the office when the request arrives. Two directors, each with a
+      // language; one who left; a salesman with no MTM card; an MTM administrator
+      // who is not a web administrator; an agent with a login of his own.
+      await bypass(() => prisma.user.createMany({
+        data: [
+          { id: "loc-director-az", organizationId: ORG, email: "loc-director-az@example.com", name: "Director", passwordHash: "-", role: "admin", preferredLanguage: "az" },
+          { id: "loc-director-ru", organizationId: ORG, email: "loc-director-ru@example.com", name: "Second director", passwordHash: "-", role: "admin" },
+          { id: "loc-director-gone", organizationId: ORG, email: "loc-director-gone@example.com", name: "Former director", passwordHash: "-", role: "admin", isActive: false },
+          { id: "loc-salesman", organizationId: ORG, email: "loc-salesman@example.com", name: "Salesman", passwordHash: "-", role: "sales" },
+          { id: "loc-field-admin", organizationId: ORG, email: "loc-field-admin@example.com", name: "Field administrator", passwordHash: "-", role: "member", preferredLanguage: "en" },
+          { id: "loc-agent-login", organizationId: ORG, email: "loc-agent-login@example.com", name: "Agent with a login", passwordHash: "-", role: "member" },
+        ],
+      }))
+      await bypass(() => prisma.mtmAgent.createMany({
+        data: [
+          { organizationId: ORG, name: "Field administrator", userId: "loc-field-admin", role: "ADMIN" },
+          { organizationId: ORG, name: "Agent with a login", userId: "loc-agent-login", role: "AGENT" },
+        ],
+      }))
       const since = new Date("2026-01-01T00:00:00.000Z")
       await bypass(() => prisma.mtmCustomerAgentAssignment.createMany({
         data: [
@@ -2206,12 +2230,52 @@ pgDescribe("client categories on a real Postgres", () => {
       expect(journal.map((entry) => [entry.action, entry.agentId])).toEqual([["CUSTOMER_LOCATION_REQUEST", asker]])
     })
 
+    // Owner, 2026-10-12, after sending the first request from a phone and finding
+    // only a «1» on a tab: «уведомление где теперь для менеджера… оно должно
+    // быть заметным… агент может быть рядом с клиентом, и чтоб долго не ждать».
+    const toldAbout = () => bypass(() => prisma.notification.findMany({
+      where: { organizationId: ORG, entityType: "mtm_location_request" },
+      orderBy: { userId: "asc" },
+    }))
+
+    it("tells everyone who may decide, at once and each in their own language — and nobody else", async () => {
+      const told = await toldAbout()
+      // The four sendings that were refused told nobody: every row is about the one that was taken.
+      expect(told.map((row) => [row.userId, row.entityId, row.type, row.isRead])).toEqual([
+        ["loc-director-az", waitingId, "warning", false],
+        ["loc-director-ru", waitingId, "warning", false],
+        ["loc-field-admin", waitingId, "warning", false],
+      ])
+      expect(told[0]).toMatchObject({
+        title: "Müştəri ünvanı: agent qərar gözləyir",
+        message: "Nigar at the Door «Aptek Nümunə» müştərisinin yanındadır və nöqtənin yerində olmadığını bildirir — əvvəlkindən 1,2 km aralıda. Yeni yeri qəbul edin və ya olduğu kimi saxlayın.",
+      })
+      // No language chosen: the application's own.
+      expect(told[1]).toMatchObject({
+        title: "Адрес клиента: агент ждёт решения",
+        message: "Nigar at the Door у клиента «Aptek Nümunə» и сообщает, что точка стоит не там — в 1,2 км от прежней. Примите новое место или оставьте как было.",
+      })
+      expect(told[2].title).toBe("Customer address: an agent is waiting for a decision")
+
+      // A manager who is not looking at the CRM gets a letter, with the way to the queue.
+      const { sendEmail } = await import("@/lib/email")
+      await vi.waitFor(() => expect(vi.mocked(sendEmail)).toHaveBeenCalledTimes(3))
+      const letters = vi.mocked(sendEmail).mock.calls.map(([letter]) => letter)
+      expect(letters.map((letter) => letter.to).sort()).toEqual(["loc-director-az@example.com", "loc-director-ru@example.com", "loc-field-admin@example.com"])
+      for (const letter of letters) {
+        expect(letter).toMatchObject({ organizationId: ORG, transactional: true })
+        expect(letter.text).toContain("/mtm/routes?view=approvals")
+      }
+    })
+
     it("takes a sending that is sent again as the same request, and refuses its key for another pin", async () => {
       const again = await ask(asker, pharmacy, sending("from-the-door-0001", { comment: "Вход со двора" }))
       expect(again).toMatchObject({ status: 200, body: { idempotent: true, data: { request: { id: waitingId } } } })
       const other = await ask(asker, pharmacy, sending("from-the-door-0001", { proposed: { latitude: north(DOOR.latitude, 30), longitude: 49.85 } }))
       expect(other).toMatchObject({ status: 409, body: { code: "MTM_LOCATION_REQUEST_IDEMPOTENCY_MISMATCH" } })
       expect(await rows()).toHaveLength(1)
+      // The phone repeated itself; nobody was told a second time.
+      expect(await toldAbout()).toHaveLength(3)
     })
 
     it("tells a second agent at the same door that one is already waiting — and the database itself holds that", async () => {

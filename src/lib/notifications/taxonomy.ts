@@ -31,6 +31,7 @@ import { navItems, NAV_GROUP_ORDER } from "@/lib/nav-items"
  * - "complaint"      → "tickets"     (Complaint register lives under tickets module, Support group)
  * - "inbox_message"  → "omnichannel" (Inbound inbox messages — Communication group)
  * - "order"          → "mtm"         (MTM field orders — gated by mtm module, Route & Field group)
+ * - "mtm_location_request" → "mtm"   («Клиент здесь» — an agent's request to move a customer's pin)
  * - "survey"         → "campaigns"   (Surveys — gated by campaigns module, Marketing group)
  * - "loyalty"        → "loyalty"     (Loyalty accounts — gated by loyalty module, Loyalty Program group)
  */
@@ -57,6 +58,9 @@ export const ENTITY_TO_MODULE: Record<string, string> = {
   inbox_message:  "omnichannel", // Inbound inbox message — gated by omnichannel module (Communication group)
   // Phase 2c — Route & Field + Marketing/Loyalty emitters
   order:          "mtm",         // MTM field order — gated by mtm module (Route & Field group)
+  // «Клиент здесь»: an agent asks for a customer's pin to be moved — for whoever may decide it.
+  // The literal is MTM_LOCATION_REQUEST_NOTIFICATION_ENTITY (src/lib/mtm/customer-location-request-notification.ts).
+  mtm_location_request: "mtm",
   survey:         "campaigns",   // Survey response — gated by campaigns module (Marketing group)
   loyalty:        "loyalty",     // Loyalty tier/redeem — gated by loyalty module (Loyalty Program group)
   // Phase 2d — Industry Cloud emitters (one notable gated kind per vertical)
@@ -178,6 +182,9 @@ export const NOTIFICATION_KINDS: NotificationKind[] = (
     { kind: "order.created",       entityType: "order" },
     { kind: "order.shipped",       entityType: "order" },
     { kind: "order.returned",      entityType: "order" },
+    // «Клиент здесь»: an agent asks, from the spot, for a customer's pin to be moved.
+    // On unless switched off — see KINDS_ON_UNLESS_SWITCHED_OFF in prefs.ts.
+    { kind: "mtm.locationRequest.submitted", entityType: "mtm_location_request" },
     // Phase 2c — Marketing: survey response (gated by campaigns module)
     { kind: "survey.response",     entityType: "survey" },
     // Phase 2c — Loyalty Program: notable low-volume loyalty events only (NOT per-earn spam)

@@ -194,7 +194,7 @@ export function MtmHomeDashboard<Row extends HomeTeamCardRow>({
   // — what waits —
   const items = attention.data?.items ?? []
   const countOf = (...kinds: string[]) => items.filter((item) => kinds.includes(item.kind)).reduce((sum, item) => sum + item.count, 0)
-  const requests = countOf("contactCreateRequests", "customerCreateRequests", "routeChangeRequests")
+  const requests = countOf("customerLocationRequests", "contactCreateRequests", "customerCreateRequests", "routeChangeRequests")
   const waitingParts = [
     requests > 0 ? t("shortRequests", { count: requests }) : null,
     countOf("routesAwaitingPublish") > 0 ? t("shortDrafts", { count: countOf("routesAwaitingPublish") }) : null,

@@ -72,6 +72,8 @@ export function normalizeHomeAttention(value: unknown): MtmPanelAttention | null
         const typeCount = wholeNumber(type.count)
         return typeof type.type === "string" && type.type && typeCount ? [{ type: type.type, count: typeCount }] : []
       }),
+      // The moment the oldest «Клиент здесь» was sent: only a real instant is kept.
+      ...(typeof item.since === "string" && !Number.isNaN(Date.parse(item.since)) ? { since: item.since } : {}),
     }]
   })
   const next = record(source.nextWorkday)

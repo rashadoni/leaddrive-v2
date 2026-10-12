@@ -27,6 +27,8 @@ import { resolveWorkCalendarDay, type WorkCalendarOverride } from "@/lib/mtm/wor
 export const MTM_OPEN_APPROVAL_STATUSES = ["SUBMITTED", "IN_REVIEW", "NEEDS_INFO"] as const
 
 export const MTM_PANEL_ATTENTION_KINDS = [
+  // First on purpose: the agent who sent it may be standing at the customer's door.
+  "customerLocationRequests",
   "contactCreateRequests",
   "customerCreateRequests",
   "routeChangeRequests",
@@ -56,6 +58,11 @@ export interface MtmPanelAttentionItem {
   peopleCount: number
   /** Alerts only: how many of each type, the most frequent first. */
   types: Array<{ type: string; count: number }>
+  /**
+   * «Клиент здесь» only: the moment the oldest request was sent. The other
+   * rows wait in days; this one is counted in minutes, so the row names the hour.
+   */
+  since?: string
 }
 
 /** Names a row spells out; beyond it the row says «and N more». */
@@ -104,6 +111,14 @@ export type AttentionAgentFilter = readonly string[] | null
 
 function requestedBy(agentIds: AttentionAgentFilter): { requestedByAgentId?: { in: string[] } } {
   return agentIds === null ? {} : { requestedByAgentId: { in: [...agentIds] } }
+}
+
+/**
+ * Same rows as GET /api/v1/mtm/customer-location-requests: «Клиент здесь»,
+ * an agent's request to move a customer's pin, not yet decided.
+ */
+export function openCustomerLocationRequestWhere(organizationId: string, agentIds: AttentionAgentFilter) {
+  return { organizationId, status: "SUBMITTED" as const, ...requestedBy(agentIds) }
 }
 
 /** Same rows as GET /api/v1/mtm/contact-create-requests. */
@@ -260,6 +275,7 @@ export function buildAttentionItems(
     /** Agent ids the rows belong to, the busiest first. */
     agentIds?: readonly string[]
     types?: ReadonlyArray<{ type: string; count: number }>
+    since?: Date | null
   }>,
   agentNames: ReadonlyMap<string, string> = new Map(),
 ): MtmPanelAttentionItem[] {
@@ -281,6 +297,7 @@ export function buildAttentionItems(
           .filter((entry) => entry.count > 0)
           .sort((left, right) => right.count - left.count || left.type.localeCompare(right.type))
           .slice(0, MTM_ATTENTION_TYPES_SHOWN),
+        ...(item.since ? { since: item.since.toISOString() } : {}),
       }
     })
     .sort((left, right) => (order.get(left.kind) ?? 0) - (order.get(right.kind) ?? 0))
@@ -295,6 +312,7 @@ export function attentionItemHref(item: Pick<MtmPanelAttentionItem, "kind" | "da
   switch (item.kind) {
     case "contactCreateRequests":
       return "/mtm/contacts"
+    case "customerLocationRequests":
     case "customerCreateRequests":
     case "routeChangeRequests":
       return "/mtm/routes?view=approvals"
