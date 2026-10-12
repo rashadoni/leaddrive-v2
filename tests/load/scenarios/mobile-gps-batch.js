@@ -63,7 +63,10 @@ function responseCoversBatch(response, expectedCount, requireReplay) {
     const data = JSON.parse(response.body)?.data
     const applied = Array.isArray(data?.appliedClientLocationIds) ? data.appliedClientLocationIds : []
     const replayed = Array.isArray(data?.replayedClientLocationIds) ? data.replayedClientLocationIds : []
-    return applied.length + replayed.length === expectedCount && (!requireReplay || replayed.length === expectedCount)
+    // A point taken during a break is answered for too: dropped, and named.
+    const paused = Array.isArray(data?.pausedClientLocationIds) ? data.pausedClientLocationIds : []
+    return applied.length + replayed.length + paused.length === expectedCount
+      && (!requireReplay || replayed.length + paused.length === expectedCount)
   } catch {
     return false
   }
