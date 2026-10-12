@@ -9,6 +9,10 @@ import { getOrgModuleContext } from "@/lib/api-auth"
 import type { Role } from "@/lib/permissions"
 import { sendEmail } from "@/lib/email"
 import { APP_URL } from "@/lib/domains"
+import {
+  MTM_LOCATION_REQUEST_NOTIFICATION_ENTITY,
+  MTM_LOCATION_REQUEST_NOTIFICATION_URL,
+} from "@/lib/mtm/customer-location-request-notification"
 
 /** Derive a click-through URL from the entity type + id. */
 function deriveNotificationUrl(entityType?: string, entityId?: string): string {
@@ -31,6 +35,8 @@ function deriveNotificationUrl(entityType?: string, entityId?: string): string {
     case "complaint":     return `/complaints`
     case "inbox_message": return `/inbox`
     // Phase 2c — Route & Field + Marketing
+    // «Клиент здесь»: the request is decided in the approvals queue, on a map.
+    case MTM_LOCATION_REQUEST_NOTIFICATION_ENTITY: return MTM_LOCATION_REQUEST_NOTIFICATION_URL
     case "survey":  return `/surveys`
     case "loyalty": return `/loyalty/dashboard`
     default:        return "/notifications"

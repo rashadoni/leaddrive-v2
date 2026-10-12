@@ -14,6 +14,7 @@ import { agentPermissionDeniedBody, agentPermissionEnabled } from "@/lib/mtm/age
 import { normalizeMtmCoordinates } from "@/lib/mtm/geo-coordinates"
 import { MTM_ROUTE_AUDIT_ACTION } from "@/lib/mtm/route-audit"
 import { writeMtmAudit } from "@/lib/mtm-audit"
+import { notifyLocationRequestReviewers } from "@/lib/mtm/customer-location-request-notify"
 import {
   CUSTOMER_LOCATION_REQUEST_ERROR,
   LOCATION_REQUEST_COMMENT_MAX,
@@ -211,6 +212,16 @@ export const POST = withMobileRls<RouteContext>(async (req, auth, { params }) =>
     },
     req,
   }).catch((error) => console.warn("[MTM/route-field/location-request] audit failed", error))
+
+  // The agent may be standing at the customer's door: whoever can decide is
+  // told now, not when they next open the approvals tab. Never fails the request.
+  await notifyLocationRequestReviewers({
+    organizationId: auth.orgId,
+    requestId: created.id,
+    requestedByAgentId: actor.agentId,
+    customerName: customer.name,
+    movedMeters: verdict.facts.movedMeters,
+  })
 
   return noStoreJson({ success: true, data: { request: customerLocationRequestForAgent(created, actor.agentId) } }, { status: 201 })
 }, { requiredCapability: "route-field" })

@@ -19,6 +19,7 @@ import {
   nextWorkingDateKey,
   olderOpenAlertWhere,
   openContactCreateRequestWhere,
+  openCustomerLocationRequestWhere,
   openCustomerCreateRequestWhere,
   openRouteChangeRequestWhere,
   pendingPhotoWhere,
@@ -143,7 +144,13 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
 
   const todayStart = localDateKeyToUtc(today, timezone)
 
-  const [contactRequests, customerRequests, routeChanges, drafts, alerts, photos] = await Promise.all([
+  const [locationRequests, contactRequests, customerRequests, routeChanges, drafts, alerts, photos] = await Promise.all([
+    prisma.mtmCustomerLocationRequest.groupBy({
+      by: ["requestedByAgentId"],
+      where: openCustomerLocationRequestWhere(auth.orgId, agentIds) as Prisma.MtmCustomerLocationRequestWhereInput,
+      _count: { _all: true },
+      _min: { submittedAt: true },
+    }),
     prisma.mtmContactCreateRequest.groupBy({
       by: ["requestedByAgentId"],
       where: openContactCreateRequestWhere(auth.orgId, agentIds) as Prisma.MtmContactCreateRequestWhereInput,
@@ -184,6 +191,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
   type RequestGroup = { requestedByAgentId: string; _count?: { _all?: number } | null; _min?: { submittedAt?: Date | null; createdAt?: Date | null } | null }
   const byRequester = (rows: unknown, date: (row: RequestGroup) => Date | null | undefined): AgentGroup[] =>
     (rows as RequestGroup[]).map((row) => ({ agentId: row.requestedByAgentId, count: countOf(row), date: date(row) ?? null }))
+  const locationSummary = summarizeByAgent(byRequester(locationRequests, (row) => row._min?.submittedAt), "earliest")
   const contactSummary = summarizeByAgent(byRequester(contactRequests, (row) => row._min?.submittedAt), "earliest")
   // Never submitted: such a request has waited since it was written.
   const customerSummary = summarizeByAgent(byRequester(customerRequests, (row) => row._min?.submittedAt ?? row._min?.createdAt), "earliest")
@@ -201,7 +209,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
   }, null)
 
   // One read for every name a row spells out.
-  const namedIds = [...new Set([contactSummary, customerSummary, routeChangeSummary, draftSummary]
+  const namedIds = [...new Set([locationSummary, contactSummary, customerSummary, routeChangeSummary, draftSummary]
     .flatMap((summary) => summary.agentIds.slice(0, MTM_ATTENTION_PEOPLE_SHOWN)))]
   const namedAgents = namedIds.length > 0
     ? await prisma.mtmAgent.findMany({ where: { organizationId: auth.orgId, id: { in: namedIds } }, select: { id: true, name: true } })
@@ -210,6 +218,13 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
 
   const localDay = (value: Date | null | undefined) => (value ? dateInputValueInTimezone(value, timezone) : null)
   const items = buildAttentionItems([
+    {
+      kind: "customerLocationRequests",
+      count: locationSummary.count,
+      date: localDay(locationSummary.date),
+      agentIds: locationSummary.agentIds,
+      since: locationSummary.date,
+    },
     { kind: "contactCreateRequests", count: contactSummary.count, date: localDay(contactSummary.date), agentIds: contactSummary.agentIds },
     { kind: "customerCreateRequests", count: customerSummary.count, date: localDay(customerSummary.date), agentIds: customerSummary.agentIds },
     { kind: "routeChangeRequests", count: routeChangeSummary.count, date: localDay(routeChangeSummary.date), agentIds: routeChangeSummary.agentIds },

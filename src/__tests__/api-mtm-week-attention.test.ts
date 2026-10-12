@@ -36,6 +36,7 @@ import { GET } from "@/app/api/v1/mtm/week/attention/route"
 import { GET as contactRequestQueue } from "@/app/api/v1/mtm/contact-create-requests/route"
 import { GET as customerRequestQueue } from "@/app/api/v1/mtm/customer-create-requests/route"
 import { GET as routeChangeQueue } from "@/app/api/v1/mtm/route-change-requests/route"
+import { GET as locationRequestQueue } from "@/app/api/v1/mtm/customer-location-requests/route"
 import { GET as alertList } from "@/app/api/v1/mtm/alerts/route"
 import { GET as photoList } from "@/app/api/v1/mtm/photos/route"
 import { requireAuth } from "@/lib/api-auth"
@@ -72,6 +73,27 @@ const CONTACT_REQUESTS: Row[] = [
 const CUSTOMER_REQUESTS: Row[] = [
   { id: "cu1", organizationId: ORG, requestedByAgentId: "a2", status: "NEEDS_INFO", submittedAt: null, createdAt: at("2026-10-06T07:00:00.000Z"), name: "Aptek", externalCode: null, phone: null },
   { id: "cu2", organizationId: ORG, requestedByAgentId: "a1", status: "DRAFT", submittedAt: null, createdAt: at("2026-10-05T07:00:00.000Z"), name: "Klinika", externalCode: null, phone: null },
+]
+
+/** What the queue of «Клиент здесь» reads of a request, besides who sent it and when. */
+const locationRequest = (row: Row): Row => ({
+  reviewedAt: null, comment: null, decisionComment: null,
+  previousLatitude: 40.37, previousLongitude: 49.83, proposedLatitude: 40.41, proposedLongitude: 49.87,
+  agentLatitude: 40.41, agentLongitude: 49.87, agentAccuracyMeters: 17, agentFixAt: at("2026-10-11T14:39:30.000Z"),
+  movedMeters: 5600, agentToProposedMeters: 12, customerId: `customer-${row.id}`,
+  customer: { id: `customer-${row.id}`, name: "Klinika", address: null, city: null, latitude: 40.37, longitude: 49.83 },
+  requestedByAgent: { id: row.requestedByAgentId, name: "Agent" }, visits: [],
+  ...row,
+})
+
+const LOCATION_REQUESTS: Row[] = [
+  // Sent a quarter of an hour ago, from the door: 18:40 in Baku, today.
+  locationRequest({ id: "lr1", organizationId: ORG, requestedByAgentId: "a1", status: "SUBMITTED", submittedAt: at("2026-10-11T14:40:00.000Z") }),
+  locationRequest({ id: "lr2", organizationId: ORG, requestedByAgentId: "a2", status: "SUBMITTED", submittedAt: at("2026-10-10T09:00:00.000Z") }),
+  // Decided ones wait for nobody; another tenant's is not ours.
+  locationRequest({ id: "lr3", organizationId: ORG, requestedByAgentId: "a1", status: "APPROVED", submittedAt: at("2026-10-09T09:00:00.000Z") }),
+  locationRequest({ id: "lr4", organizationId: ORG, requestedByAgentId: "a2", status: "REJECTED", submittedAt: at("2026-10-09T10:00:00.000Z") }),
+  locationRequest({ id: "lr5", organizationId: "org-other", requestedByAgentId: "x1", status: "SUBMITTED", submittedAt: at("2026-10-11T14:00:00.000Z") }),
 ]
 
 const ROUTE_CHANGES: Row[] = [
@@ -135,7 +157,7 @@ async function attention(query = "") {
       timezone: string
       todayIsWorkingDay: boolean
       week: Array<{ date: string; isWorkingDay: boolean }>
-      items: Array<{ kind: string; count: number; date: string | null; people: string[]; peopleCount: number; types: Array<{ type: string; count: number }> }>
+      items: Array<{ kind: string; count: number; date: string | null; people: string[]; peopleCount: number; types: Array<{ type: string; count: number }>; since?: string }>
       nextWorkday: { date: string; agents: number; withoutRoute: number; agentId: string | null; people: string[] } | null
     },
   }
@@ -162,6 +184,8 @@ beforeEach(() => {
   serve(prisma.mtmContactCreateRequest, CONTACT_REQUESTS)
   serve(prisma.mtmCustomerCreateRequest, CUSTOMER_REQUESTS)
   serve(prisma.mtmRouteChangeRequest, ROUTE_CHANGES)
+  // Nothing of «Клиент здесь» waits on the owner's Sunday; its own tests bring the rows.
+  serve(prisma.mtmCustomerLocationRequest, [])
   serve(prisma.mtmRoute, ROUTES)
   serve(prisma.mtmAlert, ALERTS)
   serve(prisma.mtmPhoto, PHOTOS)
@@ -337,13 +361,73 @@ describe("GET /api/v1/mtm/week/attention", () => {
     expect((await attention()).data.nextWorkday).toEqual({ date: "2026-10-13", agents: 1, withoutRoute: 1, agentId: "a2", people: ["Agent South"] })
   })
 
+  describe("«Клиент здесь»: an agent's request to move a customer's pin", () => {
+    beforeEach(() => {
+      serve(prisma.mtmCustomerLocationRequest, LOCATION_REQUESTS)
+    })
+
+    it.each([
+      ["an administrator", ADMIN, 2],
+      ["a manager of the northern agents", MANAGER_NORTH, 1],
+      ["a supervisor of the southern agent", SUPERVISOR_SOUTH, 1],
+    ])("shows %s the number of requests the queue returns to them", async (_label, actor, expected) => {
+      signIn(actor)
+      const shown = (await attention()).data.items.find((item) => item.kind === "customerLocationRequests")
+      const queued = await listLength(locationRequestQueue, "/api/v1/mtm/customer-location-requests", "requests")
+      expect(queued).toBe(expected)
+      expect(shown?.count ?? 0).toBe(queued)
+    })
+
+    it("stands first, before every other row: the agent may still be at the door", async () => {
+      signIn(ADMIN)
+      const { data } = await attention()
+      expect(data.items[0]).toMatchObject({
+        kind: "customerLocationRequests",
+        count: 2,
+        // The older of the two waits since the 10th…
+        date: "2026-10-10",
+        since: "2026-10-10T09:00:00.000Z",
+        people: ["Agent North", "Agent South"],
+        peopleCount: 2,
+      })
+      // …and nothing that was there before has moved or gone.
+      expect(data.items.slice(1).map((item) => item.kind)).toEqual([
+        "contactCreateRequests", "customerCreateRequests", "routeChangeRequests", "routesAwaitingPublish", "olderAlerts", "photosPendingReview",
+      ])
+    })
+
+    it("names the hour of a request sent today, to the reader whose agent sent it", async () => {
+      signIn(MANAGER_NORTH)
+      const { data } = await attention()
+      expect(data.items[0]).toMatchObject({
+        kind: "customerLocationRequests",
+        count: 1,
+        date: "2026-10-11",
+        since: "2026-10-11T14:40:00.000Z",
+        people: ["Agent North"],
+      })
+      expect(JSON.stringify(data)).not.toContain("Agent South")
+    })
+
+    it("is not a row once every request is decided, and says nothing of where the customer is", async () => {
+      signIn(ADMIN)
+      serve(prisma.mtmCustomerLocationRequest, LOCATION_REQUESTS.filter((row) => row.status !== "SUBMITTED" || row.organizationId !== ORG))
+      const { data } = await attention()
+      expect(data.items.some((item) => item.kind === "customerLocationRequests")).toBe(false)
+
+      serve(prisma.mtmCustomerLocationRequest, LOCATION_REQUESTS)
+      const body = JSON.stringify((await attention()).data)
+      for (const leak of ["Klinika", "40.41", "49.87", "proposedLatitude"]) expect(body).not.toContain(leak)
+    })
+  })
+
   it("gives a field agent an empty answer and reads no queue for them", async () => {
     signIn(FIELD_AGENT)
     const { status, data } = await attention()
     expect(status).toBe(200)
     expect(data.items).toEqual([])
     expect(data.nextWorkday).toBeNull()
-    for (const model of [prisma.mtmContactCreateRequest, prisma.mtmCustomerCreateRequest, prisma.mtmRouteChangeRequest, prisma.mtmRoute, prisma.mtmAlert]) {
+    for (const model of [prisma.mtmCustomerLocationRequest, prisma.mtmContactCreateRequest, prisma.mtmCustomerCreateRequest, prisma.mtmRouteChangeRequest, prisma.mtmRoute, prisma.mtmAlert]) {
       expect(model.groupBy).not.toHaveBeenCalled()
     }
     expect(prisma.mtmPhoto.aggregate).not.toHaveBeenCalled()

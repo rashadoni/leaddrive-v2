@@ -3,7 +3,7 @@
 import type { ReactNode } from "react"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
-import { AlertTriangle, BellRing, CalendarDays, CheckCircle2, Image as ImageIcon, Route as RouteIcon, UserPlus, Building2, WifiOff } from "lucide-react"
+import { AlertTriangle, BellRing, CalendarDays, CheckCircle2, Image as ImageIcon, MapPin, Route as RouteIcon, UserPlus, Building2, WifiOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { HomeCard, HOME_ICON, type HomeTone } from "@/components/mtm/home-parts"
 import type { HomeAttentionState } from "@/components/mtm/home-data"
@@ -25,6 +25,7 @@ import {
  */
 
 const ROW_KEY = {
+  customerLocationRequests: "rowCustomerLocationRequests",
   contactCreateRequests: "rowContactCreateRequests",
   customerCreateRequests: "rowCustomerCreateRequests",
   routeChangeRequests: "rowRouteChangeRequests",
@@ -34,6 +35,7 @@ const ROW_KEY = {
 } as const satisfies Record<MtmPanelAttentionKind, string>
 
 const CTA_KEY = {
+  customerLocationRequests: "ctaLocation",
   contactCreateRequests: "ctaRequest",
   customerCreateRequests: "ctaRequest",
   routeChangeRequests: "ctaRequest",
@@ -43,6 +45,8 @@ const CTA_KEY = {
 } as const satisfies Record<MtmPanelAttentionKind, string>
 
 const ROW_TONE: Record<MtmPanelAttentionKind, HomeTone> = {
+  // Red: somebody is waiting for this one on the spot, not at a desk.
+  customerLocationRequests: "red",
   contactCreateRequests: "blue",
   customerCreateRequests: "blue",
   routeChangeRequests: "blue",
@@ -54,6 +58,7 @@ const ROW_TONE: Record<MtmPanelAttentionKind, HomeTone> = {
 function rowIcon(kind: MtmPanelAttentionKind): ReactNode {
   const className = "h-5 w-5"
   switch (kind) {
+    case "customerLocationRequests": return <MapPin className={className} aria-hidden="true" />
     case "contactCreateRequests": return <UserPlus className={className} aria-hidden="true" />
     case "customerCreateRequests": return <Building2 className={className} aria-hidden="true" />
     case "routeChangeRequests": return <RouteIcon className={className} aria-hidden="true" />
@@ -81,6 +86,11 @@ export function HomeAttentionCard({ state }: { state: HomeAttentionState }) {
   const locale = useLocale()
   const { data } = state
   const short = (date: string) => dayLabel(date, locale, { day: "numeric", month: "short" })
+  /** The hour a request was sent, in the organization's own time. */
+  const clock = (at: string, timeZone: string): string | null => {
+    const date = new Date(at)
+    return Number.isNaN(date.getTime()) ? null : createDateFormatter(locale, { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(date)
+  }
 
   function peopleLine(people: readonly string[], total: number): string | null {
     if (people.length === 0) return null
@@ -93,6 +103,15 @@ export function HomeAttentionCard({ state }: { state: HomeAttentionState }) {
   function itemSub(item: MtmPanelAttentionItem): string {
     const parts: Array<string | null> = []
     switch (item.kind) {
+      case "customerLocationRequests": {
+        // Sent today: the row says since what hour, because the agent may still be there.
+        const time = item.since && data && item.date === data.today ? clock(item.since, data.timezone) : null
+        parts.push(
+          peopleLine(item.people, item.peopleCount),
+          time ? t("subWaitingSinceTime", { time }) : item.date ? t("subWaitingSince", { date: short(item.date) }) : null,
+        )
+        break
+      }
       case "contactCreateRequests":
       case "customerCreateRequests":
       case "routeChangeRequests":

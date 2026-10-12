@@ -287,6 +287,59 @@ describe("Zeytun Pharma, Sunday 11 October", () => {
     for (const link of Array.from(container.querySelectorAll("[data-testid='mtm-home-attention'] li a"))) expect(link.textContent?.trim().length).toBeGreaterThan(3)
   })
 
+  // Owner, 2026-10-12, having sent «Клиент здесь» from a phone: «в панели также
+  // должно показываться… агент может быть рядом с клиентом, и чтоб долго не ждать».
+  describe("an agent's request to move a customer's pin", () => {
+    const waiting = (since: string, date: string) => ({
+      ...ZEYTUN,
+      attention: {
+        ...ZEYTUN.attention,
+        items: [
+          { kind: "customerLocationRequests", count: 1, date, since, people: ["Nigar Əliyeva"], peopleCount: 1, types: [] },
+          ...(ZEYTUN.attention.items as unknown[]),
+        ],
+      },
+    })
+
+    it("stands first, in red, with the hour it was sent and the one filled button", async () => {
+      // 18:04 in Baku, today.
+      const scenario = waiting("2026-10-11T14:04:00.000Z", "2026-10-11")
+      serve(scenario)
+      await render("ru", scenario)
+      const rows = Array.from(container.querySelectorAll<HTMLElement>("[data-testid='mtm-home-attention'] li"))
+      expect(rows[0].getAttribute("data-testid")).toBe("mtm-home-attention-customerLocationRequests")
+      const row = attentionRow("customerLocationRequests")!
+      expect(row.querySelector("p")?.textContent).toBe("Адрес клиента: агент сообщает другое место")
+      expect(row.textContent).toContain("Nigar Əliyeva · ждёт с 18:04")
+      const link = row.querySelector("a")!
+      expect(link.textContent).toBe("Посмотреть место")
+      expect(link.getAttribute("href")).toBe("/mtm/routes?view=approvals")
+      // The icon of this row is red; the request for a new client under it is blue.
+      expect(row.querySelector("span")?.className).toBe(attentionRow("next-workday")?.querySelector("span")?.className)
+      expect(row.querySelector("span")?.className).not.toBe(attentionRow("contactCreateRequests")?.querySelector("span")?.className)
+      // It is one more request in the figure above.
+      expect(kpi("attention").value).toBe("5")
+      expect(kpi("attention").sub).toBe("2 заявки · 6 оповещений · 2 фото · план")
+    })
+
+    it("names the day instead of the hour once the request is not of today", async () => {
+      const scenario = waiting("2026-10-09T08:15:00.000Z", "2026-10-09")
+      serve(scenario)
+      await render("ru", scenario)
+      expect(attentionRow("customerLocationRequests")?.textContent).toContain("Nigar Əliyeva · ждёт с 9 окт.")
+    })
+
+    it("reads in Azerbaijani", async () => {
+      const scenario = waiting("2026-10-11T14:04:00.000Z", "2026-10-11")
+      serve(scenario)
+      await render("az", scenario)
+      const row = attentionRow("customerLocationRequests")!
+      expect(row.querySelector("p")?.textContent).toBe("Müştəri ünvanı: agent başqa yer bildirir")
+      expect(row.textContent).toContain("Nigar Əliyeva · 18:04-dən gözləyir")
+      expect(row.querySelector("a")?.textContent).toBe("Yerə bax")
+    })
+  })
+
   it("shows the one agent with the week as it went: two partial days, the rest without a plan, a weekend", async () => {
     serve(ZEYTUN)
     await render("ru", ZEYTUN)
