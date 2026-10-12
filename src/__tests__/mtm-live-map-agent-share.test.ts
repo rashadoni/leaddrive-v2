@@ -49,7 +49,7 @@ const ZONE = "Asia/Baku"
 const END_OF_DAY = iso(600)
 const LIST = "/api/v1/mtm/locations/share-links"
 const OFF = "Ссылки выключены, сейчас ни одна не открывается. Включаются в настройках MTM: вкладка «Оповещения», блок «Карта агентов»."
-const SHOWS = "Кто откроет ссылку, без входа увидит имя сотрудника, организацию и точку на карте, где он сейчас, — только пока идёт его рабочий день и телефон передаёт координаты. Истории, маршрута и клиентов там нет."
+const SHOWS = "Как в такси: отправьте ссылку — человек без входа увидит на карте, где сотрудник сейчас."
 
 interface KeptLink {
   id: string
@@ -96,7 +96,7 @@ describe("the «Ссылка на местоположение» block of the ca
     await settle()
   }
   const share = (over: Partial<{ agentId: string; canWrite: boolean; refreshKey: string; nowMs: number; timeZone: string | undefined }> = {}) => createElement(LiveMapAgentShare, {
-    agentId: "a1", canWrite: true, refreshKey: "k1", nowMs: NOW, timeZone: ZONE, ...over,
+    agentId: "a1", agentName: "Нигяр Примерова", canWrite: true, refreshKey: "k1", nowMs: NOW, timeZone: ZONE, ...over,
     formatTime: (value: string) => value.slice(11, 16),
     formatPastTime: (value: string) => `${value.slice(8, 10)}.${value.slice(5, 7)} ${value.slice(11, 16)}`,
   })
@@ -111,11 +111,10 @@ describe("the «Ссылка на местоположение» block of the ca
   }
   const buttons = () => [...container.querySelectorAll("button")].map((button) => button.textContent)
   const durationButtons = () => [...container.querySelectorAll<HTMLButtonElement>('[data-testid^="live-map-share-create-"]')]
-  /** The working links on screen, each as its lines read. */
+  /** The working links on screen, each as its two lines read: until when, then who made it and whether it was opened. */
   const working = () => [...container.querySelectorAll('[data-testid="live-map-share-alive"] li')].map((row) => [
     row.querySelector('[data-testid="live-map-share-link-until"]')?.textContent,
-    row.querySelector('[data-testid="live-map-share-link-author"]')?.textContent ?? null,
-    row.querySelector('[data-testid="live-map-share-link-opened"]')?.textContent,
+    row.querySelector('[data-testid="live-map-share-link-facts"]')?.textContent,
   ])
   const past = () => [...container.querySelectorAll('[data-testid="live-map-share-past"] li')].map((row) => row.textContent)
   const field = () => container.querySelector<HTMLInputElement>('input[data-testid^="live-map-share-url-"]')
@@ -218,9 +217,11 @@ describe("the «Ссылка на местоположение» block of the ca
     it("says what the outsider will see, and offers a manager three worded buttons", async () => {
       await open()
       expect(text("live-map-share-shows")).toBe(SHOWS)
-      expect(byTestId("live-map-share-create")?.textContent).toBe("Создать ссылку:На 1 часНа 4 часаДо конца дняСсылка не живёт дольше конца дня.")
+      expect(byTestId("live-map-share-create")?.textContent).toBe("Создать ссылку:На 1 часНа 4 часаДо конца дня")
       expect(durationButtons().map((button) => button.textContent)).toEqual(["На 1 час", "На 4 часа", "До конца дня"])
-      expect(text("live-map-share-none")).toBe("Действующих ссылок нет.")
+      // With no link working nothing is headed «Действующие ссылки»: the three buttons are the whole block.
+      expect(byTestId("live-map-share-alive")).toBeNull()
+      expect(byTestId("live-map-share-loading")).toBeNull()
       // Asked once, about him.
       expect(requests).toEqual([{ method: "GET", path: `${LIST}?agentId=a1`, body: null }])
     })
@@ -276,7 +277,7 @@ describe("the «Ссылка на местоположение» block of the ca
       await press(durationButtons().find((button) => button.textContent === label))
       expect(asked("POST")).toEqual([{ method: "POST", path: LIST, body: { agentId: "a1", duration } }])
       // The moment on screen is the one the server answered with.
-      expect(working()).toEqual([[until, "Кто создал: Менеджер Второй", "Ещё не открывали"]])
+      expect(working()).toEqual([[until, "Менеджер Второй · Ещё не открывали"]])
     })
 
     it("shows the link once it is made: in a field, with «Скопировать» beside it and the word that it will not be shown again — and copies nothing by itself", async () => {
@@ -286,14 +287,14 @@ describe("the «Ссылка на местоположение» block of the ca
       expect(field()?.value).toBe(url)
       expect(field()?.readOnly).toBe(true)
       expect(field()?.getAttribute("aria-label")).toBe("Ссылка на местоположение сотрудника")
-      expect(text("live-map-share-fresh-link-1")).toBe("Ссылка готоваСкопироватьСкопируйте ссылку сейчас — потом увидеть её здесь будет нельзя.")
+      expect(text("live-map-share-fresh-link-1")).toBe("Ссылка готова — отправьте еёОтправить в WhatsAppСкопироватьОтправьте сейчас: потом ссылку здесь не увидеть.")
       expect(text("live-map-share-copy-link-1")).toBe("Скопировать")
       // Nothing went to the clipboard that no press asked for.
       expect(writeText).not.toHaveBeenCalled()
       expect(execCommand).not.toHaveBeenCalled()
       // The row came from the answer to the creation: the list was not read again for it.
       expect(requests.map((request) => request.method)).toEqual(["GET", "POST"])
-      expect(text("live-map-share-none")).toBeNull()
+      expect(byTestId("live-map-share-alive")).not.toBeNull()
     })
 
     it("while the server is making the link, says so and takes no second press", async () => {
@@ -382,12 +383,12 @@ describe("the «Ссылка на местоположение» block of the ca
       keep({ viewCount: 0 })
       await open()
       expect(working()).toEqual([
-        ["Действует до конца дня", "Кто создал: Старший Первый", "Открыта 21 раз · последний раз в 09:57"],
-        ["Действует до 11:00", "Кто создал: Старший Первый", "Открыта 5 раз · последний раз в 09:50"],
-        // The author's name could not be read: the line is not drawn, nobody is named in his place.
-        ["Действует до 11:00", null, "Открыта 2 раза · последний раз в 09:40"],
-        ["Действует до 11:00", "Кто создал: Старший Первый", "Открыта 1 раз · последний раз в 09:30"],
-        ["Действует до 11:00", "Кто создал: Старший Первый", "Ещё не открывали"],
+        ["Действует до конца дня", "Старший Первый · Открыта 21 раз · последний раз в 09:57"],
+        ["Действует до 11:00", "Старший Первый · Открыта 5 раз · последний раз в 09:50"],
+        // The author's name could not be read: nobody is named in his place.
+        ["Действует до 11:00", "Открыта 2 раза · последний раз в 09:40"],
+        ["Действует до 11:00", "Старший Первый · Открыта 1 раз · последний раз в 09:30"],
+        ["Действует до 11:00", "Старший Первый · Ещё не открывали"],
       ])
     })
 
@@ -431,7 +432,7 @@ describe("the «Ссылка на местоположение» block of the ca
       link.lastViewedAt = iso(-1)
       await open({ refreshKey: "k2" })
       expect(asked("GET")).toHaveLength(2)
-      expect(working()[0][2]).toBe("Открыта 4 раза · последний раз в 09:59")
+      expect(working()[0][1]).toBe("Старший Первый · Открыта 4 раза · последний раз в 09:59")
     })
   })
 
@@ -529,7 +530,7 @@ describe("the «Ссылка на местоположение» block of the ca
       await revoke("link-1")
       expect(field()).toBeNull()
       expect(working()).toEqual([])
-      expect(text("live-map-share-none")).toBe("Действующих ссылок нет.")
+      expect(byTestId("live-map-share-alive")).toBeNull()
       // No row is left to stand on: the keyboard goes to the first of the three buttons.
       expect(document.activeElement).toBe(byTestId("live-map-share-create-1h"))
     })
@@ -598,7 +599,7 @@ describe("the «Ссылка на местоположение» block of the ca
       access.canWrite = false
       await open({ canWrite: false })
       expect(text("live-map-share-shows")).toBe(SHOWS)
-      expect(working()).toEqual([["Действует до 11:00", "Кто создал: Старший Первый", "Открыта 2 раза · последний раз в 09:56"]])
+      expect(working()).toEqual([["Действует до 11:00", "Старший Первый · Открыта 2 раза · последний раз в 09:56"]])
       expect(past()).toHaveLength(1)
       expect(text("live-map-share-read-only")).toBe("Создавать и отзывать ссылки могут администратор и менеджер.")
       // After both lists: it is about him, not about any link above it.
@@ -741,7 +742,7 @@ describe("the «Ссылка на местоположение» block of the ca
       await open()
       expect(byTestId("live-map-share-read-failed")?.firstElementChild?.textContent).toBe("Не удалось загрузить ссылки.")
       expect(byTestId("live-map-share-alive")).toBeNull()
-      expect(byTestId("live-map-share-none")).toBeNull()
+      expect(byTestId("live-map-share-loading")).toBeNull()
       expect(durationButtons()).toHaveLength(3)
       refuse.list = undefined
       keep()
@@ -783,7 +784,7 @@ describe("the «Ссылка на местоположение» block of the ca
         takeAway()
         refuse.list = () => Response.json(body)
         await open()
-        expect(byTestId("live-map-share-none"), JSON.stringify(body)).toBeNull()
+        expect(byTestId("live-map-share-alive"), JSON.stringify(body)).toBeNull()
         expect(byTestId("live-map-share-read-failed")?.firstElementChild?.textContent, JSON.stringify(body)).toBe("Не удалось загрузить ссылки.")
       }
     })
@@ -801,11 +802,11 @@ describe("the «Ссылка на местоположение» block of the ca
       await open()
       // The list is on its way; the link that cannot be shown twice is not waiting for it.
       expect(field()?.value).toBe(made1)
-      expect(text("live-map-share-shown-once")).toBe("Скопируйте ссылку сейчас — потом увидеть её здесь будет нельзя.")
+      expect(text("live-map-share-shown-once")).toBe("Отправьте сейчас: потом ссылку здесь не увидеть.")
       await act(async () => { onItsWay.forEach((release) => release()) })
       await settle()
       expect(field()?.value).toBe(made1)
-      expect(working()).toEqual([["Действует до 14:00", "Кто создал: Менеджер Второй", "Ещё не открывали"]])
+      expect(working()).toEqual([["Действует до 14:00", "Менеджер Второй · Ещё не открывали"]])
     })
 
     it("stands there again after another employee was looked at — who is shown none of it", async () => {
@@ -887,7 +888,7 @@ describe("the «Ссылка на местоположение» block of the ca
   })
 
   describe("what the manager is told about this moment", () => {
-    const NOTHING_NOW = "Сейчас по ссылке точка не показывается: рабочий день не идёт, идёт перерыв или телефон давно не передавал координаты. Точка появится сама."
+    const NOTHING_NOW = "Сейчас точки на карте не будет: рабочий день не идёт, перерыв или телефон не на связи. Появится сама."
 
     it("says in amber, above the buttons, that a link shows no point right now — on the server's own «no»", async () => {
       showsNow = false
@@ -912,7 +913,9 @@ describe("the «Ссылка на местоположение» block of the ca
         showsNow = said
         await open()
         expect(byTestId("live-map-share-shows-nothing-now"), JSON.stringify(said)).toBeNull()
-        expect(text("live-map-share-none"), JSON.stringify(said)).toBe("Действующих ссылок нет.")
+        // The list was read: the three buttons stand, and nothing is still loading.
+        expect(durationButtons(), JSON.stringify(said)).toHaveLength(3)
+        expect(byTestId("live-map-share-loading"), JSON.stringify(said)).toBeNull()
       }
     })
 
@@ -944,7 +947,7 @@ describe("the «Ссылка на местоположение» block of the ca
       })
       await press(byTestId("live-map-share-create-4h"))
       expect(asked("POST")).toEqual([{ method: "POST", path: LIST, body: { agentId: "a1", duration: "4h" } }])
-      expect(working()).toEqual([["Действует до конца дня", "Кто создал: Менеджер Второй", "Ещё не открывали"]])
+      expect(working()).toEqual([["Действует до конца дня", "Менеджер Второй · Ещё не открывали"]])
       // …and its «Отозвать» is named by the same words.
       expect(byTestId("live-map-share-revoke-link-1")?.getAttribute("aria-label")).toBe("Отозвать: Действует до конца дня")
     })
@@ -967,11 +970,12 @@ describe("the «Ссылка на местоположение» block of the ca
       expect(working()[0][0]).toBe("Действует до конца дня")
     })
 
-    it("says under the three buttons that a link does not outlive the day — so «На 4 часа» late in the evening is explained", async () => {
+    // «Ссылка не живёт дольше конца дня» stood under the buttons until 2026-10-12. The owner asked for
+    // a lighter block; a link cut at midnight says so in its own row («Действует до конца дня», above).
+    it("leaves that to the link's own row: nothing is explained under the three buttons", async () => {
       await open()
-      expect(text("live-map-share-day-limit")).toBe("Ссылка не живёт дольше конца дня.")
-      expect(comesBefore(durationButtons()[2], byTestId("live-map-share-day-limit"))).toBe(true)
-      expect(byTestId("live-map-share-day-limit")?.closest('[data-testid="live-map-share-create"]')).not.toBeNull()
+      expect(byTestId("live-map-share-day-limit")).toBeNull()
+      expect(durationButtons()[2].parentElement?.nextElementSibling).toBeNull()
     })
   })
 
@@ -991,7 +995,7 @@ describe("the «Ссылка на местоположение» block of the ca
       // The hour is up — on the page and on the server.
       serverNow = NOW + 60 * 60_000
       await open({ nowMs: NOW + 60 * 60_000 })
-      expect(working()).toEqual([["Действует до 14:00", "Кто создал: Старший Первый", "Ещё не открывали"]])
+      expect(working()).toEqual([["Действует до 14:00", "Старший Первый · Ещё не открывали"]])
       expect(byTestId(`live-map-share-link-${longer.id}`)).not.toBeNull()
       expect(field()).toBeNull()
       expect(container.querySelector('[data-testid^="live-map-share-copy-"]')).toBeNull()
@@ -1126,16 +1130,16 @@ describe("the «Ссылка на местоположение» block of the ca
       vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
       await act(async () => { byTestId("live-map-share-copy-link-1")?.click() })
       await act(async () => { await vi.advanceTimersByTimeAsync(50) })
-      expect(text("live-map-share-copied-here-link-1")).toBe("Вы скопировали эту ссылку")
+      expect(text("live-map-share-copied-here-link-1")).toBe("Эту ссылку вы уже отправили или скопировали")
       await act(async () => { await vi.advanceTimersByTimeAsync(5_000) })
       expect(text("live-map-share-copy-link-1")).toBe("Скопировать")
-      expect(text("live-map-share-copied-here-link-1")).toBe("Вы скопировали эту ссылку")
+      expect(text("live-map-share-copied-here-link-1")).toBe("Эту ссылку вы уже отправили или скопировали")
       vi.useRealTimers()
-      expect(byTestId("live-map-share-revoke-link-1")?.getAttribute("aria-label")).toBe("Отозвать: Действует до 11:00 · Вы скопировали эту ссылку")
+      expect(byTestId("live-map-share-revoke-link-1")?.getAttribute("aria-label")).toBe("Отозвать: Действует до 11:00 · Эту ссылку вы уже отправили или скопировали")
 
       takeAway()
       await open()
-      expect(text("live-map-share-copied-here-link-1")).toBe("Вы скопировали эту ссылку")
+      expect(text("live-map-share-copied-here-link-1")).toBe("Эту ссылку вы уже отправили или скопировали")
       // A reload forgets the address, and the mark with it.
       takeAway()
       resetLiveMapShareLinkCacheForTests()
@@ -1149,13 +1153,119 @@ describe("the «Ссылка на местоположение» block of the ca
       await settle(1_050)
       await press(byTestId("live-map-share-create-1h"))
       expect(working()).toEqual([
-        ["Действует до 11:00", "Кто создал: Менеджер Второй", "Ещё не открывали"],
-        ["Действует до 11:00", "Кто создал: Менеджер Второй", "Ещё не открывали"],
+        ["Действует до 11:00", "Менеджер Второй · Ещё не открывали"],
+        ["Действует до 11:00", "Менеджер Второй · Ещё не открывали"],
       ])
       await press(byTestId("live-map-share-copy-link-1"))
-      expect(text("live-map-share-copied-here-link-1")).toBe("Вы скопировали эту ссылку")
+      expect(text("live-map-share-copied-here-link-1")).toBe("Эту ссылку вы уже отправили или скопировали")
       expect(byTestId("live-map-share-copied-here-link-2")).toBeNull()
       expect(byTestId("live-map-share-revoke-link-2")?.getAttribute("aria-label")).toBe("Отозвать: Действует до 11:00")
+    })
+
+    // The owner, 2026-10-12: «его отправку и описание облегчи». Copying a link, opening WhatsApp and
+    // pasting it there was three steps for what a taxi app does in one.
+    describe("sending it", () => {
+      const MADE = `https://app.example.test/share/location/${"1".padStart(64, "0")}?lang=ru`
+      const MESSAGE = `Смотрите на карте, где сейчас Нигяр Примерова: ${MADE}`
+      const share = vi.fn<(data: { text?: string }) => Promise<void>>()
+      const withShareSheet = () => Object.defineProperty(navigator, "share", { configurable: true, value: share })
+
+      beforeEach(() => {
+        share.mockReset()
+        share.mockResolvedValue(undefined)
+      })
+      afterEach(() => {
+        Reflect.deleteProperty(navigator, "share")
+      })
+
+      it("«Отправить в WhatsApp» opens WhatsApp with the message already written — the employee's name and the link — in a tab of its own", async () => {
+        await open()
+        await press(byTestId("live-map-share-create-1h"))
+        const whatsapp = byTestId("live-map-share-whatsapp-link-1") as HTMLAnchorElement | null
+        expect(whatsapp?.tagName).toBe("A")
+        expect(whatsapp?.textContent).toBe("Отправить в WhatsApp")
+        const target = new URL(whatsapp?.getAttribute("href") ?? "")
+        expect(target.origin + target.pathname).toBe("https://wa.me/")
+        // Whom it goes to is chosen in WhatsApp: the card names no number.
+        expect([...target.searchParams.keys()]).toEqual(["text"])
+        expect(target.searchParams.get("text")).toBe(MESSAGE)
+        expect(whatsapp?.getAttribute("target")).toBe("_blank")
+        // The tab WhatsApp opens in is given neither this page nor its address.
+        expect(whatsapp?.getAttribute("rel")).toBe("noopener noreferrer")
+        // It stands first of the ways to send, under the link itself.
+        expect(comesBefore(field(), whatsapp)).toBe(true)
+        expect(comesBefore(whatsapp, byTestId("live-map-share-copy-link-1"))).toBe(true)
+      })
+
+      it("a press on it marks the link as sent, for good, and puts nothing in the clipboard", async () => {
+        await open()
+        await press(byTestId("live-map-share-create-1h"))
+        const whatsapp = byTestId("live-map-share-whatsapp-link-1")
+        // jsdom does not follow a link; the press is all that is asked of it here.
+        whatsapp?.addEventListener("click", (event) => event.preventDefault())
+        await press(whatsapp)
+        expect(text("live-map-share-copied-here-link-1")).toBe("Эту ссылку вы уже отправили или скопировали")
+        expect(writeText).not.toHaveBeenCalled()
+        expect(execCommand).not.toHaveBeenCalled()
+        takeAway()
+        await open()
+        expect(text("live-map-share-copied-here-link-1")).toBe("Эту ссылку вы уже отправили или скопировали")
+      })
+
+      it("offers «Поделиться…» only where the device has a sheet of its own", async () => {
+        await open()
+        await press(byTestId("live-map-share-create-1h"))
+        expect(byTestId("live-map-share-share-link-1")).toBeNull()
+        expect(buttons()).not.toContain("Поделиться…")
+        takeAway()
+        withShareSheet()
+        await open()
+        expect(text("live-map-share-share-link-1")).toBe("Поделиться…")
+        expect(comesBefore(byTestId("live-map-share-share-link-1"), byTestId("live-map-share-copy-link-1"))).toBe(true)
+      })
+
+      it("«Поделиться…» hands the device the same message, and marks the link once it went", async () => {
+        withShareSheet()
+        await open()
+        await press(byTestId("live-map-share-create-1h"))
+        expect(share).not.toHaveBeenCalled()
+        await press(byTestId("live-map-share-share-link-1"))
+        expect(share.mock.calls).toEqual([[{ text: MESSAGE }]])
+        expect(text("live-map-share-copied-here-link-1")).toBe("Эту ссылку вы уже отправили или скопировали")
+        expect(byTestId("live-map-share-copy-failed")).toBeNull()
+      })
+
+      it("a sheet closed without choosing is not a failure and not a sending", async () => {
+        withShareSheet()
+        share.mockRejectedValue(new DOMException("Share canceled", "AbortError"))
+        await open()
+        await press(byTestId("live-map-share-create-1h"))
+        await press(byTestId("live-map-share-share-link-1"))
+        expect(byTestId("live-map-share-copied-here-link-1")).toBeNull()
+        expect(byTestId("live-map-share-copy-failed")).toBeNull()
+      })
+
+      it("a sheet the device refused to open says so and leaves the link selected, to be copied by hand", async () => {
+        withShareSheet()
+        share.mockRejectedValue(new DOMException("Not allowed", "NotAllowedError"))
+        await open()
+        await press(byTestId("live-map-share-create-1h"))
+        await press(byTestId("live-map-share-share-link-1"))
+        expect(text("live-map-share-copy-failed")).toBe("Не удалось скопировать. Выделите ссылку и скопируйте вручную.")
+        expect(byTestId("live-map-share-copied-here-link-1")).toBeNull()
+        expect(field()?.selectionStart).toBe(0)
+        expect(field()?.selectionEnd).toBe(MADE.length)
+      })
+
+      it("a supervisor, who is shown no link, is shown no way to send one", async () => {
+        withShareSheet()
+        keep()
+        access.canWrite = false
+        await open({ canWrite: false })
+        expect(working()).toHaveLength(1)
+        expect(container.querySelector('[data-testid^="live-map-share-whatsapp-"]')).toBeNull()
+        expect(container.querySelector('[data-testid^="live-map-share-share-"]')).toBeNull()
+      })
     })
 
     it("does not mark a link that could not be copied", async () => {
@@ -1255,7 +1365,7 @@ describe("the words of «Ссылка на местоположение» in the
     const durations = (locale: string) => ((catalogs[locale].mtmMap as Messages).share as Messages).durations as Messages
     expect(durations("ru")).toEqual({ "1h": "На 1 час", "4h": "На 4 часа", day: "До конца дня" })
     expect(((catalogs.ru.mtmMap as Messages).share as Messages).title).toBe("Ссылка на местоположение")
-    expect(((catalogs.ru.mtmMap as Messages).share as Messages).shownOnce).toBe("Скопируйте ссылку сейчас — потом увидеть её здесь будет нельзя.")
+    expect(((catalogs.ru.mtmMap as Messages).share as Messages).shownOnce).toBe("Отправьте сейчас: потом ссылку здесь не увидеть.")
   })
 
   it("say where the links are switched on by the names the settings page itself carries for that tab and that card", () => {
@@ -1285,10 +1395,16 @@ describe("the words of «Ссылка на местоположение» in the
     expect(share.revokeConfirm).toBe("Отозвать ссылку? По ней сразу перестанет открываться карта.")
     expect(share.revokeCancel).toBe("Не отзывать")
     expect(share.validUntilEndOfDay).toBe("Действует до конца дня")
-    expect(share.dayLimit).toBe("Ссылка не живёт дольше конца дня.")
-    expect(share.copiedHere).toBe("Вы скопировали эту ссылку")
+    // Under the buttons until 2026-10-12; the row of a link cut at midnight says it now.
+    expect(share.dayLimit).toBeUndefined()
+    expect(share.none).toBeUndefined()
+    expect(share.ready).toBe("Ссылка готова — отправьте её")
+    expect(share.sendWhatsApp).toBe("Отправить в WhatsApp")
+    expect(share.shareOther).toBe("Поделиться…")
+    expect(share.message).toBe("Смотрите на карте, где сейчас {name}: {url}")
+    expect(share.copiedHere).toBe("Эту ссылку вы уже отправили или скопировали")
     expect(share.neverOpened).toBe("Не открывали")
-    expect(((catalogs.az.mtmMap as Messages).share as Messages).shownOnce).toBe("Linki indi kopyalayın — sonra onu burada görmək mümkün olmayacaq.")
+    expect(((catalogs.az.mtmMap as Messages).share as Messages).shownOnce).toBe("İndi göndərin: sonra linki burada görmək olmayacaq.")
     // «Открыть» is what the outsider does with a link; of the manager's own view the block says «увидеть».
     expect(share.shownOnce).not.toMatch(/откр/i)
   })

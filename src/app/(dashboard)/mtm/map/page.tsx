@@ -1420,6 +1420,7 @@ export default function MtmMapPage() {
           <LiveMapAgentShare
             key={`share-${agent.agentId}`}
             agentId={agent.agentId}
+            agentName={agent.name}
             canWrite={contract?.shareLinks?.canWrite === true}
             // Who opened a link, whether a colleague made or revoked one: asked again as his events are.
             refreshKey={liveMapAgentEventsRefreshKey(agent, presentationNow)}

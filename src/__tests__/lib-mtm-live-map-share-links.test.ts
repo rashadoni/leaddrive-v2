@@ -12,6 +12,7 @@ import {
   aliveLiveMapShareLinks,
   isLiveMapShareLinkOutOfTime,
   liveMapShareLinkProblem,
+  liveMapShareLinkWhatsAppUrl,
   parseCreatedLiveMapShareLink,
   parseLiveMapShareLink,
   parseLiveMapShareLinks,
@@ -244,5 +245,27 @@ describe("the list in hand after a change", () => {
   it("takes away a link the server no longer knows, instead of showing it under a made-up reason", () => {
     expect(withoutLiveMapShareLink(links, "a").map((link) => link.id)).toEqual(["b", "old"])
     expect(withoutLiveMapShareLink(links, "nobody")).toEqual(links)
+  })
+})
+
+describe("where «Отправить в WhatsApp» leads", () => {
+  it("is WhatsApp's own «send to…» with the whole message in it — and no number: whom it goes to is chosen there", () => {
+    const message = "Смотрите на карте, где сейчас Нигяр Примерова: https://app.example.test/share/location/" + "a".repeat(64) + "?lang=ru"
+    const target = new URL(liveMapShareLinkWhatsAppUrl(message))
+    expect(target.origin).toBe("https://wa.me")
+    expect(target.pathname).toBe("/")
+    expect([...target.searchParams.keys()]).toEqual(["text"])
+    expect(target.searchParams.get("text")).toBe(message)
+  })
+
+  it("keeps a message whole whatever a name holds: an ampersand, a hash, a plus, a line break", () => {
+    for (const name of ["A & B", "№ 5 #1", "Plus+Minus", "two\nlines", "100% «свой»", "?x=1&text=other"]) {
+      const message = `Где сейчас ${name}: https://app.example.test/share/location/${"b".repeat(64)}?lang=az`
+      const address = liveMapShareLinkWhatsAppUrl(message)
+      // One parameter, and it reads back exactly as it was written.
+      expect([...new URL(address).searchParams.keys()], name).toEqual(["text"])
+      expect(new URL(address).searchParams.get("text"), name).toBe(message)
+      expect(address, name).not.toMatch(/[\s#]/)
+    }
   })
 })

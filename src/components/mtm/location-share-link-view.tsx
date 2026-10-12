@@ -437,7 +437,6 @@ export function LocationShareLinkView({ token }: { token: string }) {
                 {t("timezoneNote", { timezone: timezoneOffsetLabel(snapshot.timezone, new Date(now)) })}
               </p>
             ) : null}
-            {position ? <p className="text-xs text-muted-foreground" data-testid="location-share-link-scope">{t("scopeNote")}</p> : null}
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-2">
               {refresh}
               {/* Without a position the words above have already said that the page checks by itself. */}

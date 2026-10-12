@@ -160,10 +160,11 @@ describe("the public page of a location link", () => {
       await open()
       expect(state()).toBe("available")
       expect(text("location-share-link-name")).toBe("Нигяр Примерова")
-      expect(text("location-share-link-organization")).toBe("Организация: Example LLC")
-      expect(text("location-share-link-recorded")).toBe("Координата записана в 14:02 · 3 минуты назад")
+      expect(text("location-share-link-organization")).toBe("Example LLC")
+      expect(text("location-share-link-recorded")).toBe("Обновлено в 14:02 · 3 минуты назад")
       expect(text("location-share-link-expires")).toBe("Ссылка действует до 18:00")
-      expect(text("location-share-link-scope")).toBe("Показана только текущая точка — без истории перемещений и маршрута.")
+      // Said on the page until 2026-10-12; it is the link's description for a messenger's preview now, not a line the visitor reads.
+      expect(byTestId("location-share-link-scope")).toBeNull()
       expect(container.textContent).toContain("Страница обновляется сама.")
       expect(byTestId("location-share-link-map")?.getAttribute("aria-label")).toBe("Карта: где сейчас находится сотрудник")
       // The map is handed the point, the name for the marker's letter and how many times «Обновить» was pressed — and nothing else.
@@ -187,16 +188,16 @@ describe("the public page of a location link", () => {
     it("counts «N минут назад» from the server's clock and the time passed on the page — not from the visitor's own clock", async () => {
       await open()
       // The device believes it is 03:00 UTC; the age is still the true three minutes.
-      expect(text("location-share-link-recorded")).toBe("Координата записана в 14:02 · 3 минуты назад")
+      expect(text("location-share-link-recorded")).toBe("Обновлено в 14:02 · 3 минуты назад")
       // The employee stands still: the same point comes back, two minutes older.
       await forward(120_000)
-      expect(text("location-share-link-recorded")).toBe("Координата записана в 14:02 · 5 минут назад")
+      expect(text("location-share-link-recorded")).toBe("Обновлено в 14:02 · 5 минут назад")
     })
 
     it("says «только что» of a point recorded within the minute", async () => {
       server = () => available({ recordedAt: iso(SERVER_NOW + elapsed() - 20_000) })
       await open()
-      expect(text("location-share-link-recorded")).toBe("Координата записана в 14:05 · только что")
+      expect(text("location-share-link-recorded")).toBe("Обновлено в 14:05 · только что")
     })
 
     it("follows the employee: a new point from the server is what the map is handed next", async () => {
@@ -213,7 +214,7 @@ describe("the public page of a location link", () => {
       // The visitor's device is on UTC.
       vi.mocked(Date.prototype.getTimezoneOffset).mockReturnValue(0)
       await open()
-      expect(text("location-share-link-recorded")).toBe("Координата записана в 14:02 · 3 минуты назад")
+      expect(text("location-share-link-recorded")).toBe("Обновлено в 14:02 · 3 минуты назад")
       expect(text("location-share-link-expires")).toBe("Ссылка действует до 18:00")
       // As a person says it — not the name of a zone out of a database.
       expect(text("location-share-link-timezone")).toBe("Время указано по времени организации (GMT+4)")
@@ -228,7 +229,7 @@ describe("the public page of a location link", () => {
       vi.mocked(Date.prototype.getTimezoneOffset).mockReturnValue(-240)
       server = () => available({ timezone: "Europe/Warsaw" })
       await open()
-      expect(text("location-share-link-recorded")).toBe("Координата записана в 12:02 · 3 минуты назад")
+      expect(text("location-share-link-recorded")).toBe("Обновлено в 12:02 · 3 минуты назад")
       expect(text("location-share-link-expires")).toBe("Ссылка действует до 16:00")
       expect(text("location-share-link-timezone")).toBe("Время указано по времени организации (GMT+2)")
 
@@ -269,7 +270,7 @@ describe("the public page of a location link", () => {
       await forward(30_000)
       expect(state()).toBe("unavailable")
       expect(byTestId("map-stand-in")).toBeNull()
-      expect(container.textContent).not.toContain("Координата записана")
+      expect(container.textContent).not.toContain("Обновлено в")
     })
 
     it("ignores coordinates sent beside «nothing to show»: the state is the server's word, not the page's reading of the fields", async () => {
@@ -310,7 +311,7 @@ describe("the public page of a location link", () => {
       // Said once: where he is goes at once, and the page does not yet call the link over.
       expect(state()).toBe("unavailable")
       expect(byTestId("map-stand-in")).toBeNull()
-      expect(container.textContent).not.toContain("Координата записана")
+      expect(container.textContent).not.toContain("Обновлено в")
       expect(text("location-share-link-unavailable")).toContain("Сейчас местоположение недоступно")
       expect(byTestId("location-share-link-notice")).toBeNull()
       expect(requests).toHaveLength(2)
@@ -318,7 +319,7 @@ describe("the public page of a location link", () => {
       await forward(30_000)
       expect(requests).toHaveLength(3)
       expect(state()).toBe("gone")
-      expect(container.textContent).not.toMatch(/Примерова|Example LLC|Координата записана/)
+      expect(container.textContent).not.toMatch(/Примерова|Example LLC|Обновлено в/)
       await forward(5 * 60_000, 10_000)
       expect(requests).toHaveLength(3)
     })
@@ -373,7 +374,7 @@ describe("the public page of a location link", () => {
       // Past the moment, and nobody to ask.
       expect(state()).toBe("unavailable")
       expect(byTestId("map-stand-in")).toBeNull()
-      expect(container.textContent).not.toContain("Координата записана")
+      expect(container.textContent).not.toContain("Обновлено в")
       expect(byTestId("location-share-link-gone")).toBeNull()
       expect(text("location-share-link-notice")).toBe("Не удалось обновить данные. Проверьте интернет — страница попробует ещё раз.")
       expect(requests).toHaveLength(3)
@@ -473,7 +474,7 @@ describe("the public page of a location link", () => {
       expect(state()).toBe("available")
       expect(lastMap()).toMatchObject({ latitude: 40.4093, longitude: 49.8671 })
       // The age goes on by the page's clock while nothing new arrives.
-      expect(text("location-share-link-recorded")).toBe("Координата записана в 14:02 · 3 минуты назад")
+      expect(text("location-share-link-recorded")).toBe("Обновлено в 14:02 · 3 минуты назад")
       await forward(29_000)
       expect(requests).toHaveLength(2)
       server = () => available()
@@ -488,12 +489,12 @@ describe("the public page of a location link", () => {
       // Eleven more minutes without an answer: the point is fourteen minutes old — still within the quarter of an hour.
       await forward(11 * 60_000, 10_000)
       expect(state()).toBe("available")
-      expect(text("location-share-link-recorded")).toBe("Координата записана в 14:02 · 14 минут назад")
+      expect(text("location-share-link-recorded")).toBe("Обновлено в 14:02 · 14 минут назад")
       await forward(2 * 60_000, 10_000)
       expect(state()).toBe("unavailable")
       expect(byTestId("map-stand-in")).toBeNull()
       expect(text("location-share-link-unavailable")).toContain("Сейчас местоположение недоступно")
-      expect(container.textContent).not.toContain("Координата записана")
+      expect(container.textContent).not.toContain("Обновлено в")
     })
 
     it("when the very first question fails, says so with «Обновить» instead of loading for ever", async () => {
@@ -700,8 +701,8 @@ describe("the public page of a location link", () => {
     it("reads in Azerbaijani, on the 24-hour clock", async () => {
       hoisted.locale = "az"
       await open()
-      expect(text("location-share-link-organization")).toBe("Təşkilat: Example LLC")
-      expect(text("location-share-link-recorded")).toBe("Koordinatın qeydə alındığı vaxt: 14:02 · 3 dəqiqə əvvəl")
+      expect(text("location-share-link-organization")).toBe("Example LLC")
+      expect(text("location-share-link-recorded")).toBe("Yenilənib: 14:02 · 3 dəqiqə əvvəl")
       expect(text("location-share-link-expires")).toBe("Link bu vaxta qədər işləyir: 18:00")
       expect(text("location-share-link-refresh")).toBe("Yenilə")
     })
@@ -763,7 +764,7 @@ describe("the public page of a location link", () => {
 
     it("after the phone has slept for half an hour: asks the moment it is looked at, and meanwhile does not call the old point «3 минуты назад»", async () => {
       await open()
-      expect(text("location-share-link-recorded")).toBe("Координата записана в 14:02 · 3 минуты назад")
+      expect(text("location-share-link-recorded")).toBe("Обновлено в 14:02 · 3 минуты назад")
       await look("hidden")
       const steady = performance.now()
       sleep(35 * 60_000)
@@ -777,11 +778,11 @@ describe("the public page of a location link", () => {
       // The point is thirty-eight minutes old: the server itself would not hand it over.
       expect(state()).toBe("unavailable")
       expect(byTestId("map-stand-in")).toBeNull()
-      expect(container.textContent).not.toContain("Координата записана")
+      expect(container.textContent).not.toContain("Обновлено в")
       await act(async () => { answer(available({ recordedAt: iso(SERVER_NOW + elapsed() - 20_000) })) })
       await forward(50, 50)
       expect(state()).toBe("available")
-      expect(text("location-share-link-recorded")).toBe("Координата записана в 14:40 · только что")
+      expect(text("location-share-link-recorded")).toBe("Обновлено в 14:40 · только что")
     })
 
     it("after five minutes of sleep the point is still shown — with its true age", async () => {
@@ -792,7 +793,7 @@ describe("the public page of a location link", () => {
       await look("visible")
       expect(requests).toHaveLength(2)
       expect(state()).toBe("available")
-      expect(text("location-share-link-recorded")).toBe("Координата записана в 14:02 · 8 минут назад")
+      expect(text("location-share-link-recorded")).toBe("Обновлено в 14:02 · 8 минут назад")
     })
 
     it("a phone that slept through the link's last minutes does not go on showing the position", async () => {
@@ -830,7 +831,7 @@ describe("the public page of a location link", () => {
       await forward(120_000)
       expect(requests).toHaveLength(5)
       expect(state()).toBe("available")
-      expect(text("location-share-link-recorded")).toBe("Координата записана в 14:02 · 5 минут назад")
+      expect(text("location-share-link-recorded")).toBe("Обновлено в 14:02 · 5 минут назад")
     })
 
     // The case above is answered every half-minute, and every answer starts
@@ -846,28 +847,28 @@ describe("the public page of a location link", () => {
       const perfAtOpen = performance.now()
       const serverNow = () => SERVER_NOW + (performance.now() - perfAtOpen)
       await open()
-      expect(text("location-share-link-recorded")).toBe("Координата записана в 14:02 · 3 минуты назад")
+      expect(text("location-share-link-recorded")).toBe("Обновлено в 14:02 · 3 минуты назад")
       // Somebody corrects the phone's clock — an hour back — on a connection that hangs every question from here on.
       vi.setSystemTime(new Date(Date.now() - 60 * 60_000))
       server = () => new Promise<Response>(() => {})
       await forward(120_000)
       expect(state()).toBe("available")
-      expect(text("location-share-link-recorded")).toBe("Координата записана в 14:02 · 5 минут назад")
+      expect(text("location-share-link-recorded")).toBe("Обновлено в 14:02 · 5 минут назад")
       // It went on asking: each hanging question given up after its fifteen seconds, and said so.
       expect(requests).toHaveLength(5)
       expect(text("location-share-link-notice")).toBe("Не удалось обновить данные. Проверьте интернет — страница попробует ещё раз.")
       // Nine minutes more and the point is fourteen minutes old; past the quarter of an hour it is no longer called «сейчас».
       await forward(9 * 60_000, 10_000)
-      expect(text("location-share-link-recorded")).toBe("Координата записана в 14:02 · 14 минут назад")
+      expect(text("location-share-link-recorded")).toBe("Обновлено в 14:02 · 14 минут назад")
       await forward(2 * 60_000, 10_000)
       expect(state()).toBe("unavailable")
       expect(byTestId("map-stand-in")).toBeNull()
-      expect(container.textContent).not.toContain("Координата записана")
+      expect(container.textContent).not.toContain("Обновлено в")
       // The connection is back: the next half-minute's question is answered, and its point is on the map.
       server = () => available({ generatedAt: iso(serverNow()), recordedAt: iso(serverNow() - 20_000) })
       await forward(30_000)
       expect(state()).toBe("available")
-      expect(text("location-share-link-recorded")).toBe("Координата записана в 14:18 · только что")
+      expect(text("location-share-link-recorded")).toBe("Обновлено в 14:18 · только что")
       expect(byTestId("location-share-link-notice")).toBeNull()
     })
 
@@ -892,7 +893,7 @@ describe("the public page of a location link", () => {
       expect(byTestId("location-share-link-notice")).toBeNull()
       expect(byTestId("location-share-link-refresh")?.hasAttribute("disabled")).toBe(false)
       expect(state()).toBe("available")
-      expect(text("location-share-link-recorded")).toBe("Координата записана в 14:02 · 4 минуты назад")
+      expect(text("location-share-link-recorded")).toBe("Обновлено в 14:02 · 4 минуты назад")
     })
 
     it("a wall clock set back an hour does not keep the page from asking when it is looked at again: by the steady clock it last asked forty seconds ago", async () => {
@@ -907,7 +908,7 @@ describe("the public page of a location link", () => {
       expect(requests).toHaveLength(1)
       await look("visible")
       expect(requests).toHaveLength(2)
-      expect(text("location-share-link-recorded")).toBe("Координата записана в 14:02 · 3 минуты назад")
+      expect(text("location-share-link-recorded")).toBe("Обновлено в 14:02 · 3 минуты назад")
     })
 
     it("a wall clock set a day ahead does not end a link that works: the position goes, the server is asked, and its answer puts it back", async () => {
