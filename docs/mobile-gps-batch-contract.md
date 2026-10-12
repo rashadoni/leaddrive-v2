@@ -93,7 +93,9 @@ break began, a break started on another device).
 Breaks are read from the workday's own journal — `PAUSE`, `RESUME`, `FINISH`
 and a manager's `REOPEN` — by the reader the single-point route uses
 (`src/lib/mtm/workday-pauses.ts`), so both routes keep the same points of the
-same day; that route answers such a point `409 MTM_LOCATION_WORKDAY_PAUSED`.
+same day; that route answers such a point `409 MTM_LOCATION_WORKDAY_PAUSED`,
+and so does the web/API-key entry `POST /api/v1/mtm/locations` when the
+employee it writes for is on a break.
 The instants a break begins and ends belong to work. What decides is when the
 point was taken, never the shift's status at upload time. The server can only
 refuse a break it knows about: a device must send its `PAUSE` before the GPS

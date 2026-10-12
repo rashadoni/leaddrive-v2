@@ -1234,6 +1234,74 @@ describe("POST /api/v1/mtm/locations", () => {
     })
   })
 
+  // What the table holds afterwards is proved on a real Postgres
+  // (mtm-mobile-location-break-postgres.test.ts). Here: the answer, that
+  // nothing is written, and whose shift is asked about.
+  describe("a point sent for an employee who is on a break", () => {
+    const minutesAgo = (minutes: number) => new Date(Date.now() - minutes * 60_000)
+
+    it("is refused before any write", async () => {
+      vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValueOnce({ id: "workday-1" } as never)
+      vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockResolvedValueOnce([
+        { type: "PAUSE", occurredAt: minutesAgo(20), appliedAt: minutesAgo(20) },
+      ] as never)
+
+      const res = await POST(makePostReq({ agentId: "agent-1", latitude: 40.4093, longitude: 49.8671 }))
+
+      expect(res.status).toBe(409)
+      expect(await res.json()).toEqual({
+        error: "recordedAt falls inside a workday break",
+        code: "MTM_LOCATION_WORKDAY_PAUSED",
+      })
+      expect(prisma.$transaction).not.toHaveBeenCalled()
+      expect(prisma.mtmAgentLocation.create).not.toHaveBeenCalled()
+      expect(prisma.mtmAgentLatestLocation.updateMany).not.toHaveBeenCalled()
+      expect(prisma.mtmAgent.updateMany).not.toHaveBeenCalled()
+      // That employee's shift in this organization, and that shift's journal.
+      expect(prisma.mtmAgentWorkday.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+        where: expect.objectContaining({ organizationId: ORG, agentId: "agent-1" }),
+      }))
+      expect(prisma.mtmAgentWorkdayEvent.findMany).toHaveBeenCalledWith(expect.objectContaining({
+        where: {
+          organizationId: ORG,
+          agentId: "agent-1",
+          workdayId: "workday-1",
+          type: { in: ["PAUSE", "RESUME", "FINISH", "REOPEN"] },
+        },
+      }))
+    })
+
+    it("is written once the break has ended", async () => {
+      vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValueOnce({ id: "workday-1" } as never)
+      vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockResolvedValueOnce([
+        { type: "PAUSE", occurredAt: minutesAgo(40), appliedAt: minutesAgo(40) },
+        { type: "RESUME", occurredAt: minutesAgo(10), appliedAt: minutesAgo(10) },
+      ] as never)
+      vi.mocked(prisma.mtmAgentLocation.create).mockResolvedValue({ id: "loc-1" } as never)
+      vi.mocked(prisma.mtmAgent.updateMany).mockResolvedValue({ count: 1 } as never)
+      vi.mocked(prisma.mtmAgentLatestLocation.updateMany).mockResolvedValue({ count: 1 } as never)
+
+      const res = await POST(makePostReq({ agentId: "agent-1", latitude: 40.4093, longitude: 49.8671 }))
+
+      expect(res.status).toBe(201)
+      expect(prisma.mtmAgentLocation.create).toHaveBeenCalledTimes(1)
+    })
+
+    it("does not tell a caller outside the employee's scope that there is a break", async () => {
+      vi.mocked(resolveMtmRouteActor).mockResolvedValue({
+        agentId: "manager-1",
+        role: "MANAGER",
+        scopedAgentIds: ["agent-2"],
+      } as never)
+
+      const res = await POST(makePostReq({ agentId: "agent-1", latitude: 40.4093, longitude: 49.8671 }))
+
+      expect(res.status).toBe(404)
+      expect(prisma.mtmAgentWorkday.findFirst).not.toHaveBeenCalled()
+      expect(prisma.mtmAgentWorkdayEvent.findMany).not.toHaveBeenCalled()
+    })
+  })
+
   it("rejects a valid mobile principal on the web-only writer without touching GPS rows", async () => {
     const mobile = {
       orgId: ORG,
