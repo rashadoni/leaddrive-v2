@@ -9,7 +9,7 @@ import { VisitCreateSchema, parseBody } from "@/lib/mtm-validators"
 import { notifyAgent } from "@/lib/mtm-notify"
 import { agentPermissionEnabled } from "@/lib/mtm/agent-permissions"
 import { getMtmSettings } from "@/lib/mtm-settings"
-import { checkInGeofenceRadius, mtmVisitPlaceSnapshot } from "@/lib/mtm/check-in-geofence"
+import { checkInGeofenceRadius, mtmVisitPlaceSnapshot, waitingLocationRequestCovers, type WaitingLocationPlace } from "@/lib/mtm/check-in-geofence"
 import { addDateKeyDays, currentDateKey, localDateKeyToUtc } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
 import {
@@ -86,6 +86,8 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       participants: {
         select: { agentId: true, role: true, joinedAt: true, leftAt: true },
       },
+      // «Адрес на проверке»: the visit was checked in from the place its agent reported as the customer's real one.
+      locationRequest: { select: { id: true, status: true } },
     } as const
     type VisitRow = Prisma.MtmVisitGetPayload<{ include: typeof include }>
 
@@ -223,10 +225,27 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
       select: { id: true, name: true, latitude: true, longitude: true, geofenceRadius: true },
     })
     if (!scopedCustomer) return checkInErrorResponse(MTM_CHECK_IN_ERROR.CUSTOMER_MISSING)
+    // «Клиент здесь»: this agent's own waiting request about this customer,
+    // when the check-in is made from the place it names — the same rule as
+    // both sync paths (src/lib/mtm/check-in-geofence.ts). Asked only where the
+    // check-in would otherwise be refused or flagged.
+    let waitingPlace: WaitingLocationPlace | null = null
+    // Read before the pin is asked about: past that question the compiler no longer knows the row.
+    const customerRadius: number | null = scopedCustomer.geofenceRadius ?? null
+    if (!hasMtmCoordinates(scopedCustomer)) {
+      waitingPlace = await waitingLocationRequestCovers(prisma, {
+        organizationId: orgId,
+        customerId,
+        agentId,
+        latitude,
+        longitude,
+        customerRadius,
+      })
+    }
     // Owner decision 2 (field UX audit 2026-09-05): a customer without
     // coordinates cannot be visited by anyone, force included. The fix is on
     // the organization card, not in the field.
-    if (!hasMtmCoordinates(scopedCustomer)) {
+    if (!hasMtmCoordinates(scopedCustomer) && !waitingPlace) {
       return checkInErrorResponse(MTM_CHECK_IN_ERROR.NO_COORDINATES, { customerId })
     }
     if (body.contactId) {
@@ -281,7 +300,9 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
     // Geofence validation when the agent provides GPS coordinates. A missing
     // agent fix does not block the check-in; a missing customer pair was
     // already refused above with NO_COORDINATES.
-    if (latitude != null && longitude != null) {
+    // A customer with no pin got here only on the strength of the waiting
+    // request, which has already measured the distance: nothing more to measure.
+    if (latitude != null && longitude != null && hasMtmCoordinates(scopedCustomer)) {
       const customer = scopedCustomer
       const orgSettings = await getMtmSettings(orgId)
       // F-22: prefer per-customer override, fall back to org-level setting (default 100m)
@@ -296,6 +317,18 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
       )
 
       if (distanceMeters > geofenceRadius) {
+        waitingPlace = await waitingLocationRequestCovers(prisma, {
+          organizationId: orgId,
+          customerId,
+          agentId,
+          latitude,
+          longitude,
+          customerRadius: customer.geofenceRadius,
+          organizationRadius: orgSettings.geofenceRadius,
+        })
+      }
+      // Outside the pin's zone, and not at the place the agent reported: the rule as it always was.
+      if (distanceMeters > geofenceRadius && !waitingPlace) {
         // Off by default. An organization that turns the switch on accepts its
         // agents' check-ins from outside the zone; the alert below still
         // fires, and the visit keeps both positions for the review page.
@@ -452,6 +485,8 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
           checkInLat: latitude,
           checkInLng: longitude,
           ...(await mtmVisitPlaceSnapshot(tx, orgId, scopedCustomer)),
+          // The mark a manager sees as «адрес на проверке».
+          locationRequestId: waitingPlace?.id ?? null,
           notes: notes || null,
         },
       })

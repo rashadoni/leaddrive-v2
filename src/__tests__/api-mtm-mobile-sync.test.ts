@@ -6,7 +6,7 @@
  *   POST /api/v1/mtm/mobile/sync/push
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { NextRequest } from "next/server"
 import { Prisma } from "@prisma/client"
 
@@ -1346,6 +1346,93 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
     expect(prisma.mtmRoutePoint.updateMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ id: "point-1", status: "PENDING", deletedAt: null }),
     }))
+  })
+
+  // «Клиент здесь», while the request waits (owner, 2026-10-12: «пускать, но
+  // показывать руководителю такой визит с пометкой "адрес на проверке"»). This
+  // is the door the field app itself uses. The rule is one for every writer
+  // (lib/mtm/check-in-geofence.ts) and is proven against a real database
+  // (mtm-contact-categories-postgres.test.ts); held here is that this writer
+  // asks it and carries the answer onto the visit.
+  describe("a check-in from the place the agent reported as the customer's real one", () => {
+    const visitRow = (id: string) => ({
+      id, status: "CHECKED_IN", checkInAt: new Date("2026-10-12T09:00:00.000Z"), customerId: "cust-1", contactId: null, routeId: null, routePointId: null,
+    })
+    // The shared mock keeps what a test told it: no request waits unless a test here says so — before and after.
+    const noRequestWaits = () => vi.mocked(prisma.mtmCustomerLocationRequest.findFirst).mockReset().mockResolvedValue(null as never)
+    beforeEach(noRequestWaits)
+    afterEach(noRequestWaits)
+    const checkInAt = (id: string, latitude: number, longitude: number) => PushPOST(makePushReq({ operations: [{
+      operationId: `op-${id}`,
+      op: "create",
+      entity: "visits",
+      data: { id, customerId: "cust-1", checkInAt: "2026-10-12T09:00:00.000Z", checkInLat: latitude, checkInLng: longitude },
+      clientTimestamp: Date.now(),
+    }] }))
+
+    it("is accepted without an alert, carries the request, and keeps the customer's real pin as what it was measured against", async () => {
+      vi.mocked(prisma.mtmCustomer.findFirst).mockResolvedValue({
+        id: "cust-1", category: "B", objectType: "CLINIC", latitude: 40.4, longitude: 49.8, geofenceRadius: 50,
+      } as never)
+      vi.mocked(prisma.mtmCustomerLocationRequest.findFirst).mockResolvedValue({ id: "request-1", proposedLatitude: 41.0, proposedLongitude: 50.5 } as never)
+      vi.mocked(prisma.mtmVisit.create).mockResolvedValue(visitRow("field-visit-reported") as never)
+
+      const body = await (await checkInAt("field-visit-reported", 41.0, 50.5)).json()
+
+      expect(body.results[0]).toMatchObject({ status: "ok", serverId: "field-visit-reported" })
+      expect(prisma.mtmAlert.create).not.toHaveBeenCalled()
+      expect(vi.mocked(prisma.mtmVisit.create).mock.calls[0][0].data).toMatchObject({
+        locationRequestId: "request-1",
+        checkInCustomerLat: 40.4,
+        checkInCustomerLng: 49.8,
+      })
+      // Asked about this agent, this customer, and only a request that still waits.
+      expect(vi.mocked(prisma.mtmCustomerLocationRequest.findFirst).mock.calls[0][0]).toMatchObject({
+        where: { customerId: "cust-1", status: "SUBMITTED", requestedByAgentId: expect.any(String), organizationId: expect.any(String) },
+      })
+    })
+
+    it("is refused a few streets from that place, as it would be without the request", async () => {
+      vi.mocked(prisma.mtmCustomer.findFirst).mockResolvedValue({
+        id: "cust-1", category: "B", objectType: "CLINIC", latitude: 40.4, longitude: 49.8, geofenceRadius: 50,
+      } as never)
+      vi.mocked(prisma.mtmCustomerLocationRequest.findFirst).mockResolvedValue({ id: "request-1", proposedLatitude: 41.0, proposedLongitude: 50.5 } as never)
+
+      const body = await (await checkInAt("field-visit-streets-away", 41.01, 50.5)).json()
+
+      expect(body.results[0]).toMatchObject({ status: "conflict", serverData: { code: "MTM_VISIT_OUT_OF_ZONE" } })
+      expect(prisma.mtmVisit.create).not.toHaveBeenCalled()
+    })
+
+    it("starts a visit at a customer that has no pin yet — for whoever asked, and for nobody who did not", async () => {
+      vi.mocked(prisma.mtmCustomer.findFirst).mockResolvedValue({
+        id: "cust-1", category: "B", objectType: "CLINIC", latitude: null, longitude: null, geofenceRadius: null,
+      } as never)
+      const refused = await (await checkInAt("field-visit-nobody-asked", 41.0, 50.5)).json()
+      expect(refused.results[0]).toMatchObject({ status: "conflict", serverData: { code: "MTM_VISIT_CUSTOMER_NO_COORDINATES" } })
+      expect(prisma.mtmVisit.create).not.toHaveBeenCalled()
+
+      vi.mocked(prisma.mtmCustomerLocationRequest.findFirst).mockResolvedValue({ id: "request-2", proposedLatitude: 41.0, proposedLongitude: 50.5 } as never)
+      vi.mocked(prisma.mtmVisit.create).mockResolvedValue(visitRow("field-visit-first-pin") as never)
+      const taken = await (await checkInAt("field-visit-first-pin", 41.0, 50.5)).json()
+      expect(taken.results[0]).toMatchObject({ status: "ok", serverId: "field-visit-first-pin" })
+      expect(vi.mocked(prisma.mtmVisit.create).mock.calls[0][0].data).toMatchObject({
+        locationRequestId: "request-2", checkInCustomerLat: null, checkInCustomerLng: null,
+      })
+    })
+
+    it("asks nothing of the requests for an ordinary check-in inside the zone", async () => {
+      vi.mocked(prisma.mtmCustomer.findFirst).mockResolvedValue({
+        id: "cust-1", category: "B", objectType: "CLINIC", latitude: 40.4, longitude: 49.8, geofenceRadius: 50,
+      } as never)
+      vi.mocked(prisma.mtmVisit.create).mockResolvedValue(visitRow("field-visit-ordinary") as never)
+
+      const body = await (await checkInAt("field-visit-ordinary", 40.4, 49.8)).json()
+
+      expect(body.results[0]).toMatchObject({ status: "ok" })
+      expect(prisma.mtmCustomerLocationRequest.findFirst).not.toHaveBeenCalled()
+      expect(vi.mocked(prisma.mtmVisit.create).mock.calls[0][0].data.locationRequestId).toBeNull()
+    })
   })
 
   it("pins a force check-in from an unprivileged agent as a forbidden conflict", async () => {

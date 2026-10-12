@@ -2118,8 +2118,14 @@ pgDescribe("client categories on a real Postgres", () => {
     const rows = (where: Record<string, unknown> = {}) => bypass(() => prisma.mtmCustomerLocationRequest.findMany({ where: { organizationId: ORG, ...where }, orderBy: { createdAt: "asc" } }))
 
     beforeAll(async () => {
+      // Production as it stood before the two migrations (`db push` built both
+      // from schema.prisma, without the CHECKs, the one-waiting index or the
+      // policy)…
+      run(`ALTER TABLE "mtm_visits" DROP COLUMN "locationRequestId";`)
       run(`DROP TABLE "${TABLE}";`)
+      // …then the very files the deploy applies, in their order.
       run(readFileSync(path.join(ROOT, "prisma/migrations/20261012100000_mtm_customer_location_requests/migration.sql"), "utf8"))
+      run(readFileSync(path.join(ROOT, "prisma/migrations/20261012160000_mtm_visit_location_request/migration.sql"), "utf8"))
       asker = (await bypass(() => prisma.mtmAgent.create({ data: { organizationId: ORG, name: "Nigar at the Door" }, select: { id: true } }))).id
       colleague = (await bypass(() => prisma.mtmAgent.create({ data: { organizationId: ORG, name: "Second at the Door" }, select: { id: true } }))).id
       pharmacy = (await bypass(() => prisma.mtmCustomer.create({ data: { organizationId: ORG, name: "Aptek Nümunə", address: "Nümunə küç. 12", ...PIN }, select: { id: true } }))).id
@@ -2336,6 +2342,151 @@ pgDescribe("client categories on a real Postgres", () => {
       expect(refused).toMatchObject({ status: 403, body: { code: "MTM_AGENT_PERMISSION_DISABLED", permission: "customerLocationRequest" } })
       expect((await rows()).length).toBe(before)
       expect((await PUT(put("/api/v1/mtm/settings", { agentCustomerLocationRequests: true }))).status).toBe(200)
+    })
+
+    // The owner, 2026-10-12, on whether an agent may start the visit he came
+    // for while his request waits: «пускать, но показывать руководителю такой
+    // визит с пометкой "адрес на проверке"» — and, asked about the opening it
+    // would leave for a convenient «correction»: the visit must stay what it
+    // is until a manager decides. So: accepted, marked, and still measured
+    // against the customer's real pin.
+    describe("a visit from the reported place, while the request waits", () => {
+      const CLINIC_PIN = { latitude: 40.5, longitude: 49.7 }
+      // A kilometre north of the clinic's pin: where the agent says it is.
+      const CLINIC_DOOR = { latitude: north(40.5, 1_000), longitude: 49.7 }
+      let clinic = ""
+      let pinlessClinic = ""
+      let clinicRequest = ""
+      let leaningVisit = ""
+
+      const checkIn = async (agentId: string, customerId: string, at: { latitude: number; longitude: number }) => {
+        const { POST } = await import("@/app/api/v1/mtm/visits/route")
+        const response = await POST(send("POST", "/api/v1/mtm/visits", { agentId, customerId, ...at }))
+        return { status: response.status, body: await response.json() }
+      }
+      /** One open visit per agent: the one just made is ended, as a check-out would. */
+      const endVisits = (agentId: string) => bypass(() => prisma.mtmVisit.updateMany({
+        where: { organizationId: ORG, agentId, status: "CHECKED_IN" },
+        data: { status: "CHECKED_OUT", checkOutAt: new Date() },
+      }))
+      const visit = (id: string) => bypass(() => prisma.mtmVisit.findUniqueOrThrow({
+        where: { id },
+        select: { status: true, locationRequestId: true, checkInLat: true, checkInLng: true, checkInCustomerLat: true, checkInCustomerLng: true, checkInGeofenceRadius: true },
+      }))
+      const outOfZoneAlerts = (customerId: string) => bypass(() => prisma.mtmAlert.count({
+        where: { organizationId: ORG, type: "OUT_OF_ZONE", metadata: { path: ["customerId"], equals: customerId } },
+      }))
+      /** Where every page says the check-in was made: at the customer's pin, outside its zone, or the customer has none. */
+      const verdictOf = async (id: string, customerId: string) => {
+        const { visitPlaceSummary } = await import("@/lib/mtm/visit-place-check")
+        const customer = await bypass(() => prisma.mtmCustomer.findUniqueOrThrow({ where: { id: customerId }, select: { latitude: true, longitude: true, geofenceRadius: true } }))
+        return visitPlaceSummary({ ...(await visit(id)), customer }, 100).checkIn.state
+      }
+
+      beforeAll(async () => {
+        clinic = (await bypass(() => prisma.mtmCustomer.create({ data: { organizationId: ORG, name: "Klinika Nümunə", ...CLINIC_PIN }, select: { id: true } }))).id
+        pinlessClinic = (await bypass(() => prisma.mtmCustomer.create({ data: { organizationId: ORG, name: "Klinika Xəritəsiz" }, select: { id: true } }))).id
+        const since = new Date("2026-01-01T00:00:00.000Z")
+        await bypass(() => prisma.mtmCustomerAgentAssignment.createMany({
+          data: [asker, colleague].flatMap((agentId) => [clinic, pinlessClinic].map((customerId) => ({ organizationId: ORG, customerId, agentId, effectiveFrom: since }))),
+        }))
+        await endVisits(asker)
+        await endVisits(colleague)
+      }, 60_000)
+
+      it("without a request the pin is the rule, as it always was: a kilometre away is refused, and no pin is refused", async () => {
+        const far = await checkIn(asker, clinic, CLINIC_DOOR)
+        expect(far.status).toBeGreaterThanOrEqual(400)
+        expect(far.body).toMatchObject({ code: "MTM_VISIT_OUT_OF_ZONE", distanceMeters: 1_000 })
+        const noPin = await checkIn(asker, pinlessClinic, CLINIC_DOOR)
+        expect(noPin.body).toMatchObject({ code: "MTM_VISIT_CUSTOMER_NO_COORDINATES" })
+        expect(await bypass(() => prisma.mtmVisit.count({ where: { organizationId: ORG, customerId: { in: [clinic, pinlessClinic] } } }))).toBe(0)
+      })
+
+      it("lets in the agent who reported the place — at that place — and marks the visit; it stays «вне зоны» for every page", async () => {
+        const asked = await ask(asker, clinic, sending("clinic-door-00001", { proposed: CLINIC_DOOR }))
+        expect(asked.status, JSON.stringify(asked.body).slice(0, 300)).toBe(201)
+        clinicRequest = asked.body.data.request.id
+        const alertsBefore = await outOfZoneAlerts(clinic)
+
+        const made = await checkIn(asker, clinic, CLINIC_DOOR)
+        expect(made.status, JSON.stringify(made.body).slice(0, 300)).toBe(201)
+        const all = await bypass(() => prisma.mtmVisit.findMany({ where: { organizationId: ORG, customerId: clinic }, select: { id: true } }))
+        expect(all).toHaveLength(1)
+        leaningVisit = all[0].id
+        expect(await visit(leaningVisit)).toMatchObject({
+          status: "CHECKED_IN", locationRequestId: clinicRequest,
+          // The customer's real pin, not the place the agent would like it to be.
+          checkInCustomerLat: 40.5, checkInCustomerLng: 49.7, checkInGeofenceRadius: 100,
+        })
+        expect(await verdictOf(leaningVisit, clinic)).toBe("outside")
+        // Accepted, not «refused» and not «forced»: no alarm was raised about it.
+        expect(await outOfZoneAlerts(clinic)).toBe(alertsBefore)
+
+        // The manager who answers the request is told the visit is there…
+        const waiting = (await waitingList()).find((request) => request.id === clinicRequest)
+        expect((waiting?.visits as Array<{ id: string }>).map((row) => row.id)).toEqual([leaningVisit])
+        // …and whoever reads the visits sees which of them leaned on a request, and that it still waits.
+        const { GET } = await import("@/app/api/v1/mtm/visits/route")
+        const listed = (await (await GET(new NextRequest(`http://localhost:3000/api/v1/mtm/visits?customerId=${clinic}`))).json()).data.visits as Array<{ id: string; locationRequest: unknown }>
+        expect(listed.find((row) => row.id === leaningVisit)?.locationRequest).toEqual({ id: clinicRequest, status: "SUBMITTED" })
+      })
+
+      it("covers nobody else: a colleague at the same door is measured against the pin as it stands", async () => {
+        const other = await checkIn(colleague, clinic, CLINIC_DOOR)
+        expect(other.status).toBeGreaterThanOrEqual(400)
+        expect(other.body).toMatchObject({ code: "MTM_VISIT_OUT_OF_ZONE" })
+      })
+
+      it("names a door, not a district: the reporter himself is refused a few streets from the place he reported", async () => {
+        await endVisits(asker)
+        const streets = await checkIn(asker, clinic, { latitude: north(CLINIC_DOOR.latitude, 400), longitude: 49.7 })
+        expect(streets.status).toBeGreaterThanOrEqual(400)
+        expect(streets.body).toMatchObject({ code: "MTM_VISIT_OUT_OF_ZONE" })
+        // At the old pin he is in the zone like anybody: the request takes nothing away.
+        const atPin = await checkIn(asker, clinic, CLINIC_PIN)
+        expect(atPin.status, JSON.stringify(atPin.body).slice(0, 300)).toBe(201)
+        const ordinary = await bypass(() => prisma.mtmVisit.findFirstOrThrow({ where: { organizationId: ORG, customerId: clinic, id: { not: leaningVisit } }, select: { locationRequestId: true } }))
+        expect(ordinary.locationRequestId).toBeNull()
+        await endVisits(asker)
+      })
+
+      it("on «принять» the visit becomes one made at the customer — that visit, and no other", async () => {
+        expect((await decide(clinicRequest, { decision: "APPROVED" })).status).toBe(200)
+        expect(await pinOf(clinic)).toEqual(at(CLINIC_DOOR))
+        expect(await visit(leaningVisit)).toMatchObject({ locationRequestId: clinicRequest, checkInCustomerLat: at(CLINIC_DOOR).latitude, checkInCustomerLng: 49.7 })
+        expect(await verdictOf(leaningVisit, clinic)).toBe("at_point")
+        // The visit made at the old pin that day keeps the pin it was measured against.
+        const ordinary = await bypass(() => prisma.mtmVisit.findFirstOrThrow({ where: { organizationId: ORG, customerId: clinic, id: { not: leaningVisit } }, select: { checkInCustomerLat: true } }))
+        expect(ordinary.checkInCustomerLat).toBe(40.5)
+      })
+
+      it("gives a customer with no pin the same: the reporter starts his visit, nobody else does — and a declined request leaves it without a place", async () => {
+        const asked = await ask(asker, pinlessClinic, sending("pinless-door-0001", { proposed: CLINIC_DOOR }))
+        expect(asked.status, JSON.stringify(asked.body).slice(0, 300)).toBe(201)
+        const requestId = asked.body.data.request.id
+
+        expect((await checkIn(colleague, pinlessClinic, CLINIC_DOOR)).body).toMatchObject({ code: "MTM_VISIT_CUSTOMER_NO_COORDINATES" })
+        // Without a position there is nothing to cover.
+        const { POST } = await import("@/app/api/v1/mtm/visits/route")
+        const blind = await POST(send("POST", "/api/v1/mtm/visits", { agentId: asker, customerId: pinlessClinic }))
+        expect(await blind.json()).toMatchObject({ code: "MTM_VISIT_CUSTOMER_NO_COORDINATES" })
+
+        const made = await checkIn(asker, pinlessClinic, CLINIC_DOOR)
+        expect(made.status, JSON.stringify(made.body).slice(0, 300)).toBe(201)
+        const row = await bypass(() => prisma.mtmVisit.findFirstOrThrow({ where: { organizationId: ORG, customerId: pinlessClinic }, select: { id: true } }))
+        expect(await visit(row.id)).toMatchObject({ locationRequestId: requestId, checkInCustomerLat: null, checkInCustomerLng: null })
+        expect(await verdictOf(row.id, pinlessClinic)).toBe("no_pin")
+
+        expect((await decide(requestId, { decision: "REJECTED", comment: "Это не клиника" })).status).toBe(200)
+        expect(await pinOf(pinlessClinic)).toEqual({ latitude: null, longitude: null })
+        // Still marked, still without a place: what it was is not rewritten by a «нет».
+        expect(await visit(row.id)).toMatchObject({ locationRequestId: requestId, checkInCustomerLat: null })
+        expect(await verdictOf(row.id, pinlessClinic)).toBe("no_pin")
+        await endVisits(asker)
+        // The request is answered: the next check-in there is refused again.
+        expect((await checkIn(asker, pinlessClinic, CLINIC_DOOR)).body).toMatchObject({ code: "MTM_VISIT_CUSTOMER_NO_COORDINATES" })
+      })
     })
   })
 })

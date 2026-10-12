@@ -70,6 +70,8 @@ type MtmVisitRow = {
   checkInCustomerLat?: number | null
   checkInCustomerLng?: number | null
   checkInGeofenceRadius?: number | null
+  /** «Клиент здесь»: the request this visit was checked in on the strength of. */
+  locationRequest?: { id: string; status: string } | null
   notes?: string | null
   agent?: { id: string; name: string | null } | null
   customer?: {
@@ -131,6 +133,19 @@ const TEAM_ACTIVE_PREVIEW_LIMIT = 8
 
 function operationalWeekReturnHref(value: string | null): string | null {
   return value === "/mtm" || value?.startsWith("/mtm?") ? value : null
+}
+
+/**
+ * The words beside a visit's place verdict when the visit leaned on a «Клиент
+ * здесь» request: waiting — «адрес на проверке», and what became of it after.
+ * Nothing for a visit that leaned on none.
+ */
+function locationRequestMark(status: string | null | undefined): { key: "locationRequestWaiting" | "locationRequestAccepted" | "locationRequestDeclined" | "locationRequestWithdrawn"; waiting: boolean } | null {
+  if (status === "SUBMITTED") return { key: "locationRequestWaiting", waiting: true }
+  if (status === "APPROVED") return { key: "locationRequestAccepted", waiting: false }
+  if (status === "REJECTED") return { key: "locationRequestDeclined", waiting: false }
+  if (status === "CANCELLED") return { key: "locationRequestWithdrawn", waiting: false }
+  return null
 }
 
 export default function MtmVisitsPage() {
@@ -596,7 +611,23 @@ export default function MtmVisitsPage() {
    * verdict and words as the route detail and the GPS history.
    */
   function gpsBadge(visit: MtmVisitRow) {
-    return <VisitPlaceBadge place={visitPlaceSummary(visit, meta.geofenceRadius)} />
+    const request = locationRequestMark(visit.locationRequest?.status)
+    return (
+      <span className="inline-flex flex-wrap items-center gap-1.5">
+        <VisitPlaceBadge place={visitPlaceSummary(visit, meta.geofenceRadius)} />
+        {/* Why a visit «вне зоны» was accepted: its agent had reported the pin as wrong, from that very place. */}
+        {request ? (
+          <span
+            data-testid="mtm-visit-location-request"
+            className={request.waiting
+              ? "inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-900 dark:bg-amber-950/50 dark:text-amber-200"
+              : "inline-flex rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"}
+          >
+            {t(request.key)}
+          </span>
+        ) : null}
+      </span>
+    )
   }
 
   function visitActions(visit: MtmVisitRow, showEditLabel: boolean) {

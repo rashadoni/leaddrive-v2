@@ -1,4 +1,6 @@
 import type { Prisma } from "@prisma/client"
+import { calculateDistance } from "@/lib/geo-utils"
+import { normalizeMtmCoordinates } from "@/lib/mtm/geo-coordinates"
 import { coerceMtmBooleanSetting } from "@/lib/mtm/setting-values"
 import { agentPermissionEnabled } from "@/lib/mtm/agent-permissions"
 
@@ -124,4 +126,87 @@ export function createOutsideZoneCheckInReader(organizationId: string) {
     )
     return cached
   }
+}
+
+/** The place a waiting «Клиент здесь» request names, and how far from it the check-in was made. */
+export interface WaitingLocationPlace {
+  /** The request the visit leans on. */
+  id: string
+  latitude: number
+  longitude: number
+  distanceMeters: number
+}
+
+type WaitingLocationReader = Pick<Prisma.TransactionClient, "mtmCustomerLocationRequest" | "mtmSetting">
+
+/**
+ * «Клиент здесь», while the request waits.
+ *
+ * An agent who has told a manager «the customer is not where its pin stands —
+ * it is here» is at the customer, and the pin he would be measured against is
+ * the very thing he reported as wrong. Until 2026-10-12 he was refused (too
+ * far, or no pin at all) and could not start the visit he had come for until
+ * a manager answered.
+ *
+ * The owner's decision that day: let him in, and show a manager such a visit
+ * as what it is — «адрес на проверке». So this answers one narrow question
+ * for all three check-in writers alike: is this check-in made by the agent
+ * who sent the waiting request about this customer, from within the
+ * customer's zone around the place the request names? If so the visit is
+ * accepted and carries the request's id (`MtmVisit.locationRequestId`).
+ *
+ * What it deliberately does not do:
+ *  - it does not move the pin: the visit keeps the customer's real pin in its
+ *    place snapshot, so every page goes on reading «вне зоны N км» for it
+ *    until a manager accepts the request (the decision route then rewrites
+ *    the snapshot of exactly these visits);
+ *  - it covers nobody else: a colleague at the same door is measured against
+ *    the pin as it stands;
+ *  - it covers no check-in without a position, and none outside the zone
+ *    around the proposed place — the request names a door, not a district.
+ *
+ * Asked only where a check-in is about to be refused or flagged — a customer
+ * with no pin, or a position outside the zone — so an ordinary check-in costs
+ * no extra query.
+ */
+export async function waitingLocationRequestCovers(
+  client: WaitingLocationReader,
+  input: {
+    organizationId: string
+    customerId: string
+    agentId: string
+    latitude: unknown
+    longitude: unknown
+    customerRadius: number | null | undefined
+    /** Skips the setting read when the caller already has it. */
+    organizationRadius?: unknown
+  },
+): Promise<WaitingLocationPlace | null> {
+  const fix = normalizeMtmCoordinates({
+    latitude: typeof input.latitude === "number" ? input.latitude : null,
+    longitude: typeof input.longitude === "number" ? input.longitude : null,
+  })
+  if (fix.latitude === null || fix.longitude === null) return null
+  const request = await client.mtmCustomerLocationRequest.findFirst({
+    where: {
+      organizationId: input.organizationId,
+      customerId: input.customerId,
+      requestedByAgentId: input.agentId,
+      status: "SUBMITTED",
+    },
+    select: { id: true, proposedLatitude: true, proposedLongitude: true },
+  })
+  if (!request) return null
+  let organizationRadius = input.organizationRadius
+  if (input.customerRadius == null && organizationRadius === undefined) {
+    const setting = await client.mtmSetting.findFirst({
+      where: { organizationId: input.organizationId, key: "geofenceRadius" },
+      select: { value: true },
+    })
+    organizationRadius = setting?.value
+  }
+  const radius = checkInGeofenceRadius(input.customerRadius, organizationRadius)
+  const distance = calculateDistance(fix.latitude, fix.longitude, request.proposedLatitude, request.proposedLongitude)
+  if (distance > radius) return null
+  return { id: request.id, latitude: request.proposedLatitude, longitude: request.proposedLongitude, distanceMeters: Math.round(distance) }
 }

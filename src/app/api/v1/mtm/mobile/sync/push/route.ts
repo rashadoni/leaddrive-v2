@@ -19,7 +19,7 @@ import {
 import { calculateDistance } from "@/lib/geo-utils"
 import { MTM_CHECK_IN_ERROR, checkInConflict, type MtmCheckInErrorCode, type MtmCheckInErrorDetails } from "@/lib/mtm/check-in-errors"
 import { hasMtmCoordinates } from "@/lib/mtm/geo-coordinates"
-import { clampCheckInGeofenceRadius as geofenceRadius, createAlertOutOfZoneReader, createOutsideZoneCheckInReader, mtmVisitPlaceSnapshot } from "@/lib/mtm/check-in-geofence"
+import { clampCheckInGeofenceRadius as geofenceRadius, createAlertOutOfZoneReader, createOutsideZoneCheckInReader, mtmVisitPlaceSnapshot, waitingLocationRequestCovers, type WaitingLocationPlace } from "@/lib/mtm/check-in-geofence"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { BrandPotentialCreateSchema, BrandPotentialEndSchema, VisitActionResultSchema } from "@/lib/mtm-validators"
 import { brandPotentialRequestHash, utcBrandPotentialDate } from "@/lib/mtm/brand-potential"
@@ -1095,13 +1095,32 @@ export const POST = withMobileRls(async (req, auth) => {
                 : Promise.resolve(contactId ? { id: contactId } : null),
             ])
 
+            // «Клиент здесь»: this agent's own waiting request about this
+            // customer, when he checks in from the place it names. Asked only
+            // where the check-in would otherwise be refused or flagged.
+            let waitingPlace: WaitingLocationPlace | null = null
+            // Read before the pin is asked about: past that question the compiler no longer knows the row.
+            const customerRadius: number | null = customer?.geofenceRadius ?? null
+            // The customer that was found, not the id the phone sent: only the first is known to be one.
+            const foundCustomerId: string | null = customer?.id ?? null
+            if (customer && foundCustomerId && !activeVisit && !hasMtmCoordinates(customer)) {
+              waitingPlace = await waitingLocationRequestCovers(tx, {
+                organizationId: orgId,
+                customerId: foundCustomerId,
+                agentId,
+                latitude: data.checkInLat,
+                longitude: data.checkInLng,
+                customerRadius,
+              })
+            }
+
             if (!customer) {
               rejectCheckIn(MTM_CHECK_IN_ERROR.CUSTOMER_MISSING)
             } else if (contactId && !contact) {
               rejectCheckIn(MTM_CHECK_IN_ERROR.CONTACT_MISSING)
             } else if (activeVisit) {
               rejectCheckIn(MTM_CHECK_IN_ERROR.ACTIVE_VISIT, { activeVisit })
-            } else if (!hasMtmCoordinates(customer)) {
+            } else if (!hasMtmCoordinates(customer) && !waitingPlace) {
               // Owner decision 2 (field UX audit 2026-09-05): a customer without
               // coordinates cannot be visited by anyone, force included. The fix
               // is on the organization card, not in the field.
@@ -1122,15 +1141,31 @@ export const POST = withMobileRls(async (req, auth) => {
                   })
                   radius = geofenceRadius(setting?.value)
                 }
-                distanceMeters = calculateDistance(
-                  data.checkInLat,
-                  data.checkInLng,
-                  customer.latitude,
-                  customer.longitude,
-                )
+                // A customer with no pin got here only on the strength of the
+                // waiting request, which has already measured the distance.
+                if (hasMtmCoordinates(customer)) {
+                  distanceMeters = calculateDistance(
+                    data.checkInLat,
+                    data.checkInLng,
+                    customer.latitude,
+                    customer.longitude,
+                  )
+                }
               }
 
-              if (distanceMeters != null && distanceMeters > geofenceRadius(radius)) {
+              if (distanceMeters != null && distanceMeters > geofenceRadius(radius) && !waitingPlace) {
+                waitingPlace = await waitingLocationRequestCovers(tx, {
+                  organizationId: orgId,
+                  customerId: customer.id,
+                  agentId,
+                  latitude: data.checkInLat,
+                  longitude: data.checkInLng,
+                  customerRadius: customer.geofenceRadius,
+                  organizationRadius: radius,
+                })
+              }
+              // Outside the pin's zone, and not at the place the agent reported: the rule as it always was.
+              if (distanceMeters != null && distanceMeters > geofenceRadius(radius) && !waitingPlace) {
                 const roundedDistance = Math.round(distanceMeters)
                 const allowedRadius = geofenceRadius(radius)
                 // The organization's switch `checkInOutsideZone`: accepted, not
@@ -1225,6 +1260,8 @@ export const POST = withMobileRls(async (req, auth) => {
                     checkInLat: data.checkInLat ?? null,
                     checkInLng: data.checkInLng ?? null,
                     ...(await mtmVisitPlaceSnapshot(tx, orgId, customer)),
+                    // The mark a manager sees as «адрес на проверке».
+                    locationRequestId: waitingPlace?.id ?? null,
                     notes: data.notes ?? null,
                   },
                   select: { id: true, status: true, checkInAt: true, customerId: true, contactId: true, routeId: true, routePointId: true },

@@ -13499,6 +13499,7 @@
     "locationAgentOnPoint": "nöqtənin özündə",
     "locationFactOutOfZone": "Burada «zonadan kənar» vizitlər, {days} gün",
     "locationOutOfZoneNone": "olmayıb",
+    "locationVisitsNote": "{count, plural, one {Agent artıq bu yerdən vizit qeyd edib — saat {time}.} other {Agent artıq bu yerdən # vizit qeyd edib, birincisi saat {time}.}} Siz qərar verənə qədər «zonadan kənar» sayılır; qəbul etsəniz, «zonada» olacaq.",
     "locationMeters": "{meters} m",
     "locationKilometers": "{km} km",
     "locationAgentComment": "Agentin şərhi",
@@ -14198,7 +14199,17 @@
     "teamActiveHint": "Hazırda müştəri yanında olan agentlər. Detallara baxmaq üçün ziyarəti seçin.",
     "activeSince": "giriş {time}",
     "teamActiveMore": "{count, plural, one {Daha # açıq ziyarət — tarixçədə göstər} other {Daha # açıq ziyarət — tarixçədə göstər}}",
+    "locationRequestWaiting": "Ünvan yoxlanılır",
+    "locationRequestAccepted": "Ünvan agentin sorğusu ilə düzəldilib",
+    "locationRequestDeclined": "Ünvan sorğusu rədd edilib",
+    "locationRequestWithdrawn": "Ünvan sorğusu geri götürülüb",
     "review": {
+      "locationRequest": {
+        "SUBMITTED": "Agent özünün müştərinin əsl yeri kimi bildirdiyi yerdən qeydiyyat edib. Ünvan düzəlişi sorğusu qərar gözləyir — o vaxta qədər vizit «zonadan kənar» sayılır.",
+        "APPROVED": "Agent müştərinin əsl yeri kimi bildirdiyi yerdən qeydiyyat edib. Sorğu qəbul olunub — vizit müştərinin yanında edilmiş sayılır.",
+        "REJECTED": "Agent müştərinin əsl yeri kimi bildirdiyi yerdən qeydiyyat edib. Sorğu rədd edilib — vizit «zonadan kənar» qalıb.",
+        "CANCELLED": "Agent müştərinin əsl yeri kimi bildirdiyi yerdən qeydiyyat edib, sonra sorğunu geri götürüb — vizit «zonadan kənar» qalıb."
+      },
       "title": "Ziyarətin detalları",
       "close": "Ziyarət detallarını bağla",
       "loadFailed": "Ziyarəti yükləmək alınmadı. Yenidən cəhd edin.",

@@ -32,7 +32,9 @@ class CustomerMovedError extends Error {}
  * to the place the agent reported — in the same transaction as the answer,
  * and only if the pin still stands where it stood when the agent asked — and
  * leaves a coordinate-verification receipt naming the agent's fix as its
- * source. `REJECTED` leaves the customer as it is. Either way the agent is
+ * source; the visits the agent checked in from that place while the request
+ * waited are from then on measured against it. `REJECTED` leaves the customer
+ * as it is, and those visits as they were recorded: outside the zone. Either way the agent is
  * told, and the journal keeps who decided and what the pin was and became.
  */
 export const POST = withRouteFieldRlsAuth<RouteContext>("write", async (req, auth, { params }) => {
@@ -94,6 +96,13 @@ export const POST = withRouteFieldRlsAuth<RouteContext>("write", async (req, aut
           data: { latitude: request.proposedLatitude, longitude: request.proposedLongitude },
         })
         if (moved.count !== 1) throw new CustomerMovedError("Customer pin changed")
+        // The visits this agent checked in from the reported place while the
+        // request waited were measured against the old pin («вне зоны»). The
+        // place is now the customer's: they were made at the customer.
+        await tx.mtmVisit.updateMany({
+          where: { organizationId: auth.orgId, locationRequestId: id },
+          data: { checkInCustomerLat: request.proposedLatitude, checkInCustomerLng: request.proposedLongitude },
+        })
         // The organization card shows where its coordinates come from: now from a person who stood there.
         await tx.mtmCustomerCoordinateVerification.create({
           data: {

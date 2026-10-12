@@ -6405,6 +6405,8 @@ model MtmCustomerLocationRequest {
   reviewedAt            DateTime?
   createdAt             DateTime          @default(now())
   updatedAt             DateTime          @updatedAt
+  // Visits checked in from the proposed place while this request waited.
+  visits                MtmVisit[]
 
   @@unique([organizationId, idempotencyKey])
   @@index([organizationId, status, submittedAt])
@@ -7136,6 +7138,11 @@ model MtmVisit {
   checkInCustomerLat    Float?
   checkInCustomerLng    Float?
   checkInGeofenceRadius Int?
+  // «Клиент здесь»: the visit was checked in from the place its agent's own
+  // waiting request names — accepted, and kept apart for the manager who
+  // answers the request. Null on every other visit.
+  locationRequestId     String?
+  locationRequest       MtmCustomerLocationRequest? @relation(fields: [locationRequestId], references: [id], onDelete: SetNull)
   duration        Int? // minutes
   notes           String?
   outcome         MtmVisitOutcome?
@@ -7159,6 +7166,7 @@ model MtmVisit {
   pharmacyPromotionExecutions MtmPharmacyPromotionExecution[]
   presentationSessions        MtmPresentationSession[]
 
+  @@index([organizationId, locationRequestId])
   @@unique([organizationId, id])
   @@index([organizationId])
   @@index([agentId])

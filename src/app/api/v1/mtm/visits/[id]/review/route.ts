@@ -53,6 +53,8 @@ export const GET = withRouteFieldRlsAuth("read", async (
         checkInCustomerLat: true,
         checkInCustomerLng: true,
         checkInGeofenceRadius: true,
+        // «Адрес на проверке»: the visit was checked in from the place its agent reported as the customer's real one.
+        locationRequest: { select: { id: true, status: true } },
         notes: true,
         outcome: true,
         potential: true,

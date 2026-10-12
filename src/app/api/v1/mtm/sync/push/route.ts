@@ -32,7 +32,7 @@ import {
 } from "@/lib/mtm/field-scope"
 import { VisitActionResultSchema } from "@/lib/mtm-validators"
 import { getMtmSettings } from "@/lib/mtm-settings"
-import { clampCheckInGeofenceRadius as geofenceRadius, createAlertOutOfZoneReader, createOutsideZoneCheckInReader, mtmVisitPlaceSnapshot } from "@/lib/mtm/check-in-geofence"
+import { clampCheckInGeofenceRadius as geofenceRadius, createAlertOutOfZoneReader, createOutsideZoneCheckInReader, mtmVisitPlaceSnapshot, waitingLocationRequestCovers, type WaitingLocationPlace } from "@/lib/mtm/check-in-geofence"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { canApplyMobileTaskTransition, type MobileTaskStatus } from "@/lib/mtm/mobile-task"
 import {
@@ -229,9 +229,26 @@ async function applyOp(
           select: { id: true, name: true, latitude: true, longitude: true, geofenceRadius: true },
         })
         if (!customer) { const r = { status: "customer_not_found", code: MTM_CHECK_IN_ERROR.CUSTOMER_MISSING }; await pin("conflict", r); return { status: "conflict" as const, result: r } }
+        // «Клиент здесь»: this agent's own waiting request about this
+        // customer, when he checks in from the place it names — the same rule
+        // as the native engine (src/lib/mtm/check-in-geofence.ts). Asked only
+        // where the check-in would otherwise be refused or flagged.
+        let waitingPlace: WaitingLocationPlace | null = null
+        // Read before the pin is asked about: past that question the compiler no longer knows the row.
+        const customerRadius: number | null = customer.geofenceRadius ?? null
+        if (!hasMtmCoordinates(customer)) {
+          waitingPlace = await waitingLocationRequestCovers(tx, {
+            organizationId: orgId,
+            customerId: resolvedCustomerId,
+            agentId: fieldAgentId,
+            latitude: coordinates.latitude,
+            longitude: coordinates.longitude,
+            customerRadius,
+          })
+        }
         // Owner decision 2 (field UX audit 2026-09-05): no coordinates, no
         // check-in, on every entry point.
-        if (!hasMtmCoordinates(customer)) {
+        if (!hasMtmCoordinates(customer) && !waitingPlace) {
           const r = { status: "customer_no_coordinates", code: MTM_CHECK_IN_ERROR.NO_COORDINATES, customerId: resolvedCustomerId }
           await pin("conflict", r)
           return { status: "conflict" as const, result: r }
@@ -287,9 +304,25 @@ async function applyOp(
             const setting = await tx.mtmSetting.findFirst({ where: { organizationId: orgId, key: "geofenceRadius" }, select: { value: true } })
             radius = geofenceRadius(setting?.value)
           }
-          const distanceMeters = calculateDistance(checkInLat, checkInLng, customer.latitude, customer.longitude)
           const allowedRadius = geofenceRadius(radius)
-          if (distanceMeters > allowedRadius) {
+          // A customer with no pin got here only on the strength of the
+          // waiting request, which has already measured the distance.
+          const distanceMeters = hasMtmCoordinates(customer)
+            ? calculateDistance(checkInLat, checkInLng, customer.latitude, customer.longitude)
+            : 0
+          if (distanceMeters > allowedRadius && !waitingPlace) {
+            waitingPlace = await waitingLocationRequestCovers(tx, {
+              organizationId: orgId,
+              customerId: resolvedCustomerId,
+              agentId: fieldAgentId,
+              latitude: checkInLat,
+              longitude: checkInLng,
+              customerRadius: customer.geofenceRadius,
+              organizationRadius: radius,
+            })
+          }
+          // Outside the pin's zone, and not at the place the agent reported: the rule as it always was.
+          if (distanceMeters > allowedRadius && !waitingPlace) {
             const roundedDistance = Math.round(distanceMeters)
             const outsideAllowed = await outsideZoneCheckInEnabled(tx)
             if (await alertOutOfZoneEnabled(tx)) await tx.mtmAlert.create({
@@ -343,6 +376,8 @@ async function applyOp(
             routeId: routePoint?.routeId ?? null, routePointId: routePoint?.id ?? null,
             status: "CHECKED_IN", checkInAt, checkInLat, checkInLng,
             ...(await mtmVisitPlaceSnapshot(tx, orgId, customer)),
+            // The mark a manager sees as «адрес на проверке».
+            locationRequestId: waitingPlace?.id ?? null,
             notes: typeof d.notes === "string" ? d.notes : null,
           },
           select: { id: true, status: true, checkInAt: true, customerId: true },
