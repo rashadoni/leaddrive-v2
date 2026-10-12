@@ -64,6 +64,8 @@ describe("agent permission registry", () => {
       contactCreateRequest: true,
       contactChangeRequest: true,
       customerCreateRequest: true,
+      // «Клиент здесь» (2026-10-12): new, and on — it changes nothing until a manager accepts.
+      customerLocationRequest: true,
       taskSelfCreate: true,
       taskSelfRecurring: true,
     })
@@ -230,6 +232,7 @@ describe("switch rows are enforced where the agent asks", () => {
     // The same request from the field app: its own door, the same switch.
     ["contactChangeRequest", "src/app/api/v2/mtm/mobile/route-field/contacts/[id]/change-requests/route.ts"],
     ["customerCreateRequest", "src/app/api/v1/mtm/customer-create-requests/route.ts"],
+    ["customerLocationRequest", "src/app/api/v2/mtm/mobile/route-field/organizations/[id]/location-request/route.ts"],
   ])("%s is refused by its endpoint", (id, file) => {
     expect(source(file)).toContain(`agentPermissionDeniedBody("${id}")`)
   })
@@ -264,7 +267,7 @@ describe("switch rows are enforced where the agent asks", () => {
   it("covers every switch row", () => {
     expect(AGENT_SWITCH_ROWS.map((row) => row.id).sort()).toEqual([
       "checkInOutsideZone",
-      "contactChangeRequest", "contactCreateRequest", "customerCreateRequest",
+      "contactChangeRequest", "contactCreateRequest", "customerCreateRequest", "customerLocationRequest",
       "taskSelfCreate", "taskSelfRecurring", "teamSchedule",
     ])
   })

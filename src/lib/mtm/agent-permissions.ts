@@ -34,6 +34,7 @@ export const AGENT_PERMISSION_SETTING_KEYS = [
   "agentContactCreateRequests",
   "agentContactChangeRequests",
   "agentCustomerCreateRequests",
+  "agentCustomerLocationRequests",
   "agentCheckInOutsideZone",
 ] as const
 export type AgentPermissionSettingKey = typeof AGENT_PERMISSION_SETTING_KEYS[number]
@@ -52,6 +53,7 @@ export const AGENT_PERMISSION_ADMIN_ONLY_KEYS = [
   "agentContactCreateRequests",
   "agentContactChangeRequests",
   "agentCustomerCreateRequests",
+  "agentCustomerLocationRequests",
 ] as const satisfies readonly AgentPermissionSettingKey[]
 
 /** A grant that lives on the employee card (`MtmAgent`). */
@@ -120,6 +122,12 @@ export const AGENT_PERMISSION_ROWS = [
   {
     id: "customerCreateRequest", group: "clients", kind: "switch", setting: "agentCustomerCreateRequests",
     surfaces: ["web"],
+  },
+  // «Клиент здесь» (owner, 2026-10-12): from the spot, with the place the
+  // phone is at — src/lib/mtm/customer-location-request.ts.
+  {
+    id: "customerLocationRequest", group: "clients", kind: "switch", setting: "agentCustomerLocationRequests",
+    surfaces: ["app"],
   },
   { id: "masterDataEdit", group: "clients", kind: "never" },
   { id: "clientTransfer", group: "clients", kind: "never" },

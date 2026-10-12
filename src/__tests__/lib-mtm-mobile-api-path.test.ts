@@ -51,6 +51,22 @@ describe("a client change request is a mobile path", () => {
   })
 })
 
+describe("«Клиент здесь» is a mobile path", () => {
+  it("lets a mobile token reach the request about one organization's pin", () => {
+    expect(isMtmApiPath("/api/v2/mtm/mobile/route-field/organizations/customer-1/location-request")).toBe(true)
+    expect(isMtmMobileApiPath("/api/v2/mtm/mobile/route-field/organizations/customer-1/location-request/")).toBe(true)
+  })
+
+  it("keeps the allowlist exact", () => {
+    expect(isMtmApiPath("/api/v2/mtm/mobile/route-field/organizations/customer-1/location-request/request-1")).toBe(false)
+    expect(isMtmApiPath("/api/v2/mtm/mobile/route-field/organizations/customer-1/location-requests")).toBe(false)
+    expect(isMtmApiPath("/api/v2/mtm/mobile/route-field/contacts/contact-1/location-request")).toBe(false)
+    expect(isMtmApiPath("/api/v2/mtm/mobile/route-field/organizations/a/b/location-request")).toBe(false)
+    // The managers' side is not a place for a phone's token.
+    expect(isMtmMobileApiPath("/api/v1/mtm/customer-location-requests")).toBe(false)
+  })
+})
+
 /**
  * 2026-10-04: a new v2 mobile handler shipped with every check green and was
  * unreachable on production — the proxy admits a mobile token only on the

@@ -11,7 +11,7 @@ function forbidden() {
 }
 
 /**
- * A deliberately aggregate-only companion to the two existing approval queues.
+ * A deliberately aggregate-only companion to the approval queues.
  * It uses their exact organization and manager scope rules, without returning
  * customer, route, or request data before the reviewer opens the relevant queue.
  */
@@ -35,6 +35,11 @@ export const GET = withRouteFieldRlsAuth("read", async (_req, auth) => {
     organizationId: auth.orgId,
     status: { in: OPEN_APPROVAL_STATUSES },
   }
+  // «Клиент здесь»: requests to move a customer's pin, sent from the spot.
+  const customerLocationRequests: Prisma.MtmCustomerLocationRequestWhereInput = {
+    organizationId: auth.orgId,
+    status: "SUBMITTED",
+  }
 
   if (actor.scopedAgentIds !== null) {
     const scopedAgentIds = [...actor.scopedAgentIds]
@@ -43,21 +48,24 @@ export const GET = withRouteFieldRlsAuth("read", async (_req, auth) => {
       { route: { agentId: { in: scopedAgentIds } } },
     ]
     customerRequests.requestedByAgentId = { in: scopedAgentIds }
+    customerLocationRequests.requestedByAgentId = { in: scopedAgentIds }
   }
 
-  const [routeChangeCount, customerRequestCount] = await Promise.all([
+  const [routeChangeCount, customerRequestCount, customerLocationRequestCount] = await Promise.all([
     prisma.mtmRouteChangeRequest.count({ where: routeChanges }),
     prisma.mtmCustomerCreateRequest.count({ where: customerRequests }),
+    prisma.mtmCustomerLocationRequest.count({ where: customerLocationRequests }),
   ])
 
   return NextResponse.json({
     success: true,
     data: {
       schemaVersion: 1,
-      total: routeChangeCount + customerRequestCount,
+      total: routeChangeCount + customerRequestCount + customerLocationRequestCount,
       categories: {
         routeChanges: { count: routeChangeCount },
         customerRequests: { count: customerRequestCount },
+        customerLocationRequests: { count: customerLocationRequestCount },
       },
     },
   })

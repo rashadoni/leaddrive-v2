@@ -123,6 +123,10 @@ export const MTM_SETTING_DEFAULTS = {
   agentContactCreateRequests: true,
   agentContactChangeRequests: true,
   agentCustomerCreateRequests: true,
+  // «Клиент здесь» (2026-10-12): from the spot, an agent asks for a
+  // customer's pin to be moved to where the customer really is. ON by default,
+  // like the three requests above: it changes nothing until a manager accepts.
+  agentCustomerLocationRequests: true,
   // Pharmacy promotion definitions, targets, and drafts remain inspectable
   // while this is false. Submit, review, and ledger posting all fail closed.
   // Enabling it is deliberately a separate tenant action after signed

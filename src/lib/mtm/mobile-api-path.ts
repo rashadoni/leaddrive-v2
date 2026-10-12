@@ -26,6 +26,10 @@ const V2_MTM_MOBILE_DETAIL_PATH = /^\/api\/v2\/mtm\/mobile\/route-field\/(?:cont
 // the app's POST to /login (307): the handler was live on production for an
 // hour on 2026-10-04 and unreachable.
 const V2_MTM_MOBILE_CONTACT_CHANGE_REQUEST_PATH = /^\/api\/v2\/mtm\/mobile\/route-field\/contacts\/[^/%]+\/change-requests$/
+// «Клиент здесь»: an agent's request, sent from the spot, to move one
+// organization's pin (and its withdrawal). The same lesson as above — a
+// handler the proxy does not admit answers the app with a redirect to /login.
+const V2_MTM_MOBILE_ORGANIZATION_LOCATION_REQUEST_PATH = /^\/api\/v2\/mtm\/mobile\/route-field\/organizations\/[^/%]+\/location-request$/
 
 function normalizedPathname(pathname: string): string {
   return pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname
@@ -36,6 +40,7 @@ function isApprovedV2MtmMobilePath(pathname: string): boolean {
   return V2_MTM_MOBILE_EXACT_PATHS.has(normalized)
     || V2_MTM_MOBILE_DETAIL_PATH.test(normalized)
     || V2_MTM_MOBILE_CONTACT_CHANGE_REQUEST_PATH.test(normalized)
+    || V2_MTM_MOBILE_ORGANIZATION_LOCATION_REQUEST_PATH.test(normalized)
 }
 
 export function isMtmApiPath(pathname: string): boolean {

@@ -165,6 +165,7 @@ model Organization {
   mtmDeviceTokens                        MtmDeviceToken[]
   mtmMapZones                            MtmMapZone[]
   mtmLocationShareLinks                  MtmLocationShareLink[]
+  mtmCustomerLocationRequests            MtmCustomerLocationRequest[]
   mtmDoctorScoringFormulas            MtmDoctorScoringFormula[]
   mtmDoctorAssessments                MtmDoctorAssessment[]
   mtmContactDictionaries              MtmContactDictionary[]
@@ -5801,6 +5802,7 @@ model MtmAgent {
   contactCreateRequests                MtmContactCreateRequest[]
   deviceTokens                         MtmDeviceToken[]
   locationShareLinks                   MtmLocationShareLink[]
+  customerLocationRequests             MtmCustomerLocationRequest[]
   enteredDoctorAssessments  MtmDoctorAssessment[]        @relation("MtmDoctorAssessmentEnteredBy")
   reviewedDoctorAssessments MtmDoctorAssessment[]        @relation("MtmDoctorAssessmentReviewedBy")
   fieldPotentials           MtmFieldPotential[]          @relation("MtmFieldPotentialAgent")
@@ -6018,6 +6020,7 @@ model MtmCustomer {
   documents                MtmDocument[]
   presentationSessions          MtmPresentationSession[]
 
+  locationRequests       MtmCustomerLocationRequest[]
   @@unique([organizationId, code])
   @@unique([organizationId, id])
   @@index([organizationId])
@@ -6366,6 +6369,50 @@ model MtmDoctorAssessment {
 /// Agent-proposed master-data change. Managers/admins apply the reviewed
 /// payload transactionally; the request preserves the immutable decision
 /// envelope and makes mobile retries idempotent without mutating the contact.
+// «Клиент здесь»: a field agent who has come to a customer and finds its pin
+// in the wrong place asks, from the spot, for the pin to be moved — with the
+// place he stands at as evidence. The agent never changes a customer himself
+// (owner, 2026-10-02); a manager accepts the new place or leaves the old one.
+// Asked for by the owner on 2026-10-12.
+model MtmCustomerLocationRequest {
+  id                    String            @id @default(cuid())
+  organizationId        String
+  organization          Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customerId            String
+  customer              MtmCustomer       @relation(fields: [organizationId, customerId], references: [organizationId, id], onDelete: Cascade)
+  requestedByAgentId    String
+  requestedByAgent      MtmAgent          @relation(fields: [organizationId, requestedByAgentId], references: [organizationId, id], onDelete: Cascade)
+  status                MtmApprovalStatus @default(SUBMITTED)
+  idempotencyKey        String
+  // Where the customer's pin stood when the agent asked. Null: it had none.
+  previousLatitude      Float?
+  previousLongitude     Float?
+  // Where the agent says the customer is.
+  proposedLatitude      Float
+  proposedLongitude     Float
+  // Where the agent's own phone was at that moment, and how sure it was.
+  agentLatitude         Float
+  agentLongitude        Float
+  agentAccuracyMeters   Float
+  agentFixAt            DateTime
+  // Rounded metres, kept so that a manager reads them as they were measured.
+  movedMeters           Int?
+  agentToProposedMeters Int
+  comment               String?
+  reviewedBy            String?
+  decisionComment       String?
+  submittedAt           DateTime          @default(now())
+  reviewedAt            DateTime?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, status, submittedAt])
+  @@index([organizationId, customerId, submittedAt])
+  @@index([organizationId, requestedByAgentId, submittedAt])
+  @@map("mtm_customer_location_requests")
+}
+
 model MtmContactChangeRequest {
   id                       String               @id @default(cuid())
   organizationId           String
