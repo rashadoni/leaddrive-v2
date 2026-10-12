@@ -2143,7 +2143,7 @@ pgDescribe("client categories on a real Postgres", () => {
           { id: "loc-director-az", organizationId: ORG, email: "loc-director-az@example.com", name: "Director", passwordHash: "-", role: "admin", preferredLanguage: "az" },
           { id: "loc-director-ru", organizationId: ORG, email: "loc-director-ru@example.com", name: "Second director", passwordHash: "-", role: "admin" },
           { id: "loc-director-gone", organizationId: ORG, email: "loc-director-gone@example.com", name: "Former director", passwordHash: "-", role: "admin", isActive: false },
-          { id: "loc-salesman", organizationId: ORG, email: "loc-salesman@example.com", name: "Salesman", passwordHash: "-", role: "sales" },
+          { id: "loc-salesman", organizationId: ORG, email: "loc-salesman@example.com", name: "Salesman", passwordHash: "-", role: "sales", preferredLanguage: "az" },
           { id: "loc-field-admin", organizationId: ORG, email: "loc-field-admin@example.com", name: "Field administrator", passwordHash: "-", role: "member", preferredLanguage: "en" },
           { id: "loc-agent-login", organizationId: ORG, email: "loc-agent-login@example.com", name: "Agent with a login", passwordHash: "-", role: "member" },
         ],
@@ -2250,10 +2250,12 @@ pgDescribe("client categories on a real Postgres", () => {
         title: "Müştəri ünvanı: agent qərar gözləyir",
         message: "Nigar at the Door «Aptek Nümunə» müştərisinin yanındadır və nöqtənin yerində olmadığını bildirir — əvvəlkindən 1,2 km aralıda. Yeni yeri qəbul edin və ya olduğu kimi saxlayın.",
       })
-      // No language chosen: the application's own.
+      // He chose no language: he is written to in the one most of the
+      // organization chose (two for Azerbaijani, one for English), not in the
+      // application's default.
       expect(told[1]).toMatchObject({
-        title: "Адрес клиента: агент ждёт решения",
-        message: "Nigar at the Door у клиента «Aptek Nümunə» и сообщает, что точка стоит не там — в 1,2 км от прежней. Примите новое место или оставьте как было.",
+        title: "Müştəri ünvanı: agent qərar gözləyir",
+        message: told[0].message,
       })
       expect(told[2].title).toBe("Customer address: an agent is waiting for a decision")
 

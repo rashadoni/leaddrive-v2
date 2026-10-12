@@ -14,7 +14,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     mtmAgent: { findMany: vi.fn(), findFirst: vi.fn() },
-    user: { findMany: vi.fn() },
+    user: { findMany: vi.fn(), groupBy: vi.fn() },
   },
 }))
 vi.mock("@/lib/notifications", () => ({ createNotification: vi.fn() }))
@@ -26,7 +26,7 @@ vi.mock("@/lib/mtm/route-permissions", async (importOriginal) => ({
 import { prisma } from "@/lib/prisma"
 import { createNotification } from "@/lib/notifications"
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
-import { locationRequestReviewers, notifyLocationRequestReviewers } from "@/lib/mtm/customer-location-request-notify"
+import { locationRequestReviewers, notifyLocationRequestReviewers, organizationLanguage } from "@/lib/mtm/customer-location-request-notify"
 import {
   MTM_LOCATION_REQUEST_NOTIFICATION_ENTITY,
   MTM_LOCATION_REQUEST_NOTIFICATION_KIND,
@@ -65,6 +65,11 @@ beforeEach(() => {
   vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([{ userId: "u-manager-own" }, { userId: "u-manager-other" }, { userId: "u-supervisor-self" }, { userId: null }] as never)
   vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ name: "Nigar Əliyeva" } as never)
   vi.mocked(prisma.user.findMany).mockResolvedValue(USERS as never)
+  // Nobody in this organization chose a language besides the two above.
+  vi.mocked(prisma.user.groupBy).mockResolvedValue([
+    { preferredLanguage: "az", _count: { _all: 1 } },
+    { preferredLanguage: "ru", _count: { _all: 1 } },
+  ] as never)
   vi.mocked(resolveMtmRouteActor).mockImplementation(async (_client, params) => ACTORS[params.userId] as never)
   vi.mocked(createNotification).mockImplementation(async (input) => ({ id: `n-${input.userId}` }) as never)
 })
@@ -93,6 +98,43 @@ describe("who may decide the request is who is told", () => {
       { role: { in: ["admin", "superadmin"] } },
       { id: { in: ["u-manager-own", "u-manager-other", "u-supervisor-self"] } },
     ])
+  })
+})
+
+describe("a reviewer who never chose a language", () => {
+  const withDirector = (preferredLanguage: string | null) =>
+    vi.mocked(prisma.user.findMany).mockResolvedValue([{ id: "u-director", role: "admin", preferredLanguage }] as never)
+
+  it("is written to in the language most of the organization's people chose", async () => {
+    withDirector(null)
+    vi.mocked(prisma.user.groupBy).mockResolvedValue([
+      { preferredLanguage: "ru", _count: { _all: 1 } },
+      { preferredLanguage: "az", _count: { _all: 4 } },
+    ] as never)
+    expect(await locationRequestReviewers({ organizationId: ORG, requestedByAgentId: ASKER })).toEqual([{ userId: "u-director", preferredLanguage: "az" }])
+    expect(vi.mocked(prisma.user.groupBy).mock.calls[0][0]).toMatchObject({
+      by: ["preferredLanguage"],
+      where: { organizationId: ORG, isActive: true, anonymizedAt: null, preferredLanguage: { not: null } },
+    })
+  })
+
+  it("gets the application's own language where nobody chose any", async () => {
+    withDirector(null)
+    vi.mocked(prisma.user.groupBy).mockResolvedValue([] as never)
+    expect(await locationRequestReviewers({ organizationId: ORG, requestedByAgentId: ASKER })).toEqual([{ userId: "u-director", preferredLanguage: null }])
+  })
+
+  it("is not asked about when everyone has a language of their own", async () => {
+    withDirector("en")
+    expect(await locationRequestReviewers({ organizationId: ORG, requestedByAgentId: ASKER })).toEqual([{ userId: "u-director", preferredLanguage: "en" }])
+    expect(prisma.user.groupBy).not.toHaveBeenCalled()
+  })
+
+  it("counts choices, breaks a tie in the application's order of languages, and ignores what is not a language of the application", () => {
+    expect(organizationLanguage([{ language: "en", count: 3 }, { language: "az", count: 3 }])).toBe("az")
+    expect(organizationLanguage([{ language: "en", count: 2 }, { language: "ru", count: 1 }, { language: "en", count: 2 }])).toBe("en")
+    expect(organizationLanguage([{ language: "de", count: 9 }, { language: null, count: 5 }])).toBeNull()
+    expect(organizationLanguage([])).toBeNull()
   })
 })
 
