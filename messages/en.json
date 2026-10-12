@@ -13503,6 +13503,7 @@
     "locationAgentOnPoint": "right at it",
     "locationFactOutOfZone": "«Out of zone» visits here in {days} days",
     "locationOutOfZoneNone": "none",
+    "locationVisitsNote": "{count, plural, one {The agent has already checked in a visit from this place — at {time}.} other {The agent has already checked in # visits from this place, the first at {time}.}} Until you decide it counts as «out of zone»; accept, and it becomes «in zone».",
     "locationMeters": "{meters} m",
     "locationKilometers": "{km} km",
     "locationAgentComment": "Agent's comment",
@@ -14202,7 +14203,17 @@
     "teamActiveHint": "Agents who are with a customer right now. Select a visit to see its details.",
     "activeSince": "since {time}",
     "teamActiveMore": "{count, plural, one {# more open visit — show in history} other {# more open visits — show in history}}",
+    "locationRequestWaiting": "Address under review",
+    "locationRequestAccepted": "Address corrected at the agent's request",
+    "locationRequestDeclined": "Address request declined",
+    "locationRequestWithdrawn": "Address request withdrawn",
     "review": {
+      "locationRequest": {
+        "SUBMITTED": "The agent checked in from the place he himself reported as the customer's real one. The address request is waiting — until it is decided the visit counts as «out of zone».",
+        "APPROVED": "The agent checked in from the place he reported as the customer's real one. The request was accepted — the visit counts as made at the customer.",
+        "REJECTED": "The agent checked in from the place he reported as the customer's real one. The request was declined — the visit stays «out of zone».",
+        "CANCELLED": "The agent checked in from the place he reported as the customer's real one and then withdrew the request — the visit stays «out of zone»."
+      },
       "title": "Visit details",
       "close": "Close visit details",
       "loadFailed": "The visit could not be loaded. Try again.",

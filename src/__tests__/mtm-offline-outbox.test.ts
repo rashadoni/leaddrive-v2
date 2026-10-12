@@ -128,6 +128,7 @@ let txMock: {
   mtmRoutePoint: { findFirst: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> }
   mtmSetting: { findFirst: ReturnType<typeof vi.fn> }
   mtmAlert: { create: ReturnType<typeof vi.fn> }
+  mtmCustomerLocationRequest: { findFirst: ReturnType<typeof vi.fn> }
   mtmVisitParticipant: { createMany: ReturnType<typeof vi.fn> }
   mtmRoute: { updateMany: ReturnType<typeof vi.fn>; findFirst: ReturnType<typeof vi.fn> }
   mtmAuditLog: { create: ReturnType<typeof vi.fn> }
@@ -181,6 +182,8 @@ beforeEach(() => {
     },
     mtmSetting: { findFirst: vi.fn().mockResolvedValue(null) },
     mtmAlert: { create: vi.fn().mockResolvedValue({}) },
+    // «Клиент здесь»: this agent has no waiting request about the customer, unless a test says otherwise.
+    mtmCustomerLocationRequest: { findFirst: vi.fn().mockResolvedValue(null) },
     mtmVisitParticipant: { createMany: vi.fn().mockResolvedValue({}) },
     mtmRoute: { updateMany: vi.fn().mockResolvedValue({ count: 1 }), findFirst: vi.fn().mockResolvedValue(null) },
     mtmAuditLog: { create: vi.fn().mockResolvedValue({}) },
@@ -412,6 +415,57 @@ describe("POST /api/v1/mtm/sync/push", () => {
     expect((await res.json()).data.results[0].result.status).toBe("out_of_zone")
     expect(txMock.mtmAlert.create).toHaveBeenCalledTimes(1)
     expect(txMock.mtmVisit.create).not.toHaveBeenCalled()
+  })
+
+  // «Клиент здесь», while the request waits (owner, 2026-10-12): the agent who
+  // reported the customer's real place is let in there, and the visit carries
+  // the request. The rule is one for every writer (lib/mtm/check-in-geofence.ts);
+  // what is held here is that this writer asks it — where, about whom, and
+  // what it does with the answer. That it lets nobody else in is proven
+  // against a real database (mtm-contact-categories-postgres.test.ts).
+  it("accepts a check-in from the place of the agent's own waiting request: no alert, and the visit carries the request", async () => {
+    txMock.mtmCustomer.findFirst.mockResolvedValue({ id: "cust-1", latitude: 40.0, longitude: 49.0, geofenceRadius: 100 })
+    txMock.mtmCustomerLocationRequest.findFirst.mockResolvedValue({ id: "request-1", proposedLatitude: 41.0, proposedLongitude: 50.0 })
+    const res = await POST(req({ operations: [checkinOp(uuid(), { checkInLat: 41.0, checkInLng: 50.0 })] }), undefined as never)
+    expect((await res.json()).data.results[0].status).toBe("ok")
+    expect(txMock.mtmAlert.create).not.toHaveBeenCalled()
+    expect(txMock.mtmVisit.create).toHaveBeenCalledTimes(1)
+    expect(txMock.mtmVisit.create.mock.calls[0][0].data).toMatchObject({
+      locationRequestId: "request-1",
+      // Measured against the customer's real pin, not the one he asks for.
+      checkInCustomerLat: 40.0, checkInCustomerLng: 49.0,
+    })
+    // Asked about this agent and this customer, and only for a request that still waits.
+    const asked = txMock.mtmCustomerLocationRequest.findFirst.mock.calls[0][0].where
+    expect(asked).toMatchObject({ customerId: "cust-1", status: "SUBMITTED" })
+    expect(asked.organizationId).toEqual(expect.any(String))
+    expect(asked.requestedByAgentId).toEqual(expect.any(String))
+  })
+
+  it("still refuses him a few streets from the place he reported", async () => {
+    txMock.mtmCustomer.findFirst.mockResolvedValue({ id: "cust-1", latitude: 40.0, longitude: 49.0, geofenceRadius: 100 })
+    txMock.mtmCustomerLocationRequest.findFirst.mockResolvedValue({ id: "request-1", proposedLatitude: 41.0, proposedLongitude: 50.0 })
+    const res = await POST(req({ operations: [checkinOp(uuid(), { checkInLat: 41.01, checkInLng: 50.0 })] }), undefined as never)
+    expect((await res.json()).data.results[0].result.status).toBe("out_of_zone")
+    expect(txMock.mtmVisit.create).not.toHaveBeenCalled()
+  })
+
+  it("lets him start a visit at a customer that has no pin yet — and nobody who did not ask", async () => {
+    txMock.mtmCustomer.findFirst.mockResolvedValue({ id: "cust-1", latitude: null, longitude: null, geofenceRadius: null })
+    const refused = await POST(req({ operations: [checkinOp(uuid(), { checkInLat: 41.0, checkInLng: 50.0 })] }), undefined as never)
+    expect((await refused.json()).data.results[0].result.status).toBe("customer_no_coordinates")
+    txMock.mtmCustomerLocationRequest.findFirst.mockResolvedValue({ id: "request-2", proposedLatitude: 41.0, proposedLongitude: 50.0 })
+    const taken = await POST(req({ operations: [checkinOp(uuid(), { checkInLat: 41.0, checkInLng: 50.0 })] }), undefined as never)
+    expect((await taken.json()).data.results[0].status).toBe("ok")
+    expect(txMock.mtmVisit.create.mock.calls[0][0].data).toMatchObject({ locationRequestId: "request-2", checkInCustomerLat: null, checkInCustomerLng: null })
+  })
+
+  it("asks nothing of the requests for an ordinary check-in inside the zone", async () => {
+    txMock.mtmCustomer.findFirst.mockResolvedValue({ id: "cust-1", latitude: 40.0, longitude: 49.0, geofenceRadius: 100 })
+    const res = await POST(req({ operations: [checkinOp(uuid(), { checkInLat: 40.0, checkInLng: 49.0 })] }), undefined as never)
+    expect((await res.json()).data.results[0].status).toBe("ok")
+    expect(txMock.mtmCustomerLocationRequest.findFirst).not.toHaveBeenCalled()
+    expect(txMock.mtmVisit.create.mock.calls[0][0].data.locationRequestId).toBeNull()
   })
 
   it("still refuses an out-of-zone check-in but creates no alert when alertOutOfZone is off", async () => {

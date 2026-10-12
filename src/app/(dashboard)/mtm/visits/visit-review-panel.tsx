@@ -35,6 +35,8 @@ export interface VisitReviewData {
     checkInCustomerLat?: number | null
     checkInCustomerLng?: number | null
     checkInGeofenceRadius?: number | null
+    /** «Клиент здесь»: the request this visit was checked in on the strength of. */
+    locationRequest?: { id: string; status: string } | null
     notes: string | null
     outcome: string | null
     potential: string | null
@@ -475,6 +477,17 @@ export function VisitReviewPanel({ visitId, refreshToken, closeHref, onVisitLoad
               {placeRow(t("review.placeCheckIn"), place.checkIn, "checkIn")}
               {placeRow(t("review.placeCheckOut"), place.checkOut, "checkOut")}
             </dl>
+            {/* Why a visit «вне зоны» was accepted: its agent had reported the pin as wrong, from that very place. */}
+            {visit.locationRequest && ["SUBMITTED", "APPROVED", "REJECTED", "CANCELLED"].includes(visit.locationRequest.status) ? (
+              <p
+                data-testid="mtm-visit-review-location-request"
+                className={visit.locationRequest.status === "SUBMITTED"
+                  ? "mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+                  : "mt-2 rounded-lg border border-zinc-200 bg-muted/40 px-3 py-2 text-xs text-muted-foreground dark:border-zinc-700"}
+              >
+                {t(`review.locationRequest.${visit.locationRequest.status}`)}
+              </p>
+            ) : null}
             <p className="mt-1 flex flex-wrap gap-x-4 text-xs">
               {mapHref(visit.checkInLat, visit.checkInLng) ? (
                 <a className="inline-flex items-center gap-1 font-medium text-primary hover:underline" href={mapHref(visit.checkInLat, visit.checkInLng) as string} target="_blank" rel="noreferrer">

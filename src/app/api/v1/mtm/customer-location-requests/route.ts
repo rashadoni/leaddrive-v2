@@ -9,6 +9,13 @@ import { customerPinUnchangedSince } from "@/lib/mtm/customer-location-request"
 const requestInclude = {
   requestedByAgent: { select: { id: true, name: true } },
   customer: { select: { id: true, name: true, address: true, city: true, latitude: true, longitude: true } },
+  // Visits the agent has already checked in from the place he reported.
+  visits: {
+    where: { deletedAt: null },
+    orderBy: { checkInAt: "asc" },
+    take: 5,
+    select: { id: true, checkInAt: true },
+  },
 } satisfies Prisma.MtmCustomerLocationRequestInclude
 
 type LocationRequestRow = Prisma.MtmCustomerLocationRequestGetPayload<{ include: typeof requestInclude }>
@@ -45,6 +52,8 @@ function project(row: LocationRequestRow, outOfZoneAlerts: number, canDecide: bo
     },
     movedMeters: row.movedMeters,
     agentToProposedMeters: row.agentToProposedMeters,
+    // «Адрес на проверке»: accepted from the reported place, and outside the zone until this is accepted.
+    visits: row.visits.map((visit) => ({ id: visit.id, checkInAt: visit.checkInAt })),
     // Somebody moved the pin after the agent asked: accepting would be refused, and the screen says why.
     pinMovedSince: row.status === "SUBMITTED" && !customerPinUnchangedSince(row, row.customer),
     outOfZoneAlerts,

@@ -24,6 +24,8 @@ export type CustomerLocationRequestRow = {
   agentFix: Point & { accuracyMeters: number; at: string }
   movedMeters: number | null
   agentToProposedMeters: number
+  /** Visits the agent has already checked in from the place he reported. */
+  visits?: Array<{ id: string; checkInAt: string }>
   pinMovedSince: boolean
   outOfZoneAlerts: number
   canDecide: boolean
@@ -119,6 +121,7 @@ export function MtmCustomerLocationRequestQueue({ active, orgId, onChanged }: Cu
     ? t("locationKilometers", { km: new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(meters / 1000) })
     : t("locationMeters", { meters }))
   const when = createDateFormatter(locale, { dateStyle: "medium", timeStyle: "short" })
+  const clock = createDateFormatter(locale, { timeStyle: "short" })
 
   if (!loading && requests.length === 0) return null
 
@@ -192,6 +195,13 @@ export function MtmCustomerLocationRequestQueue({ active, orgId, onChanged }: Cu
                   <p className="rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-700">
                     <span className="block text-[11px] text-muted-foreground">{t("locationAgentComment")}</span>
                     {request.comment}
+                  </p>
+                ) : null}
+
+                {/* «Адрес на проверке»: he was let in from this place, and the visit waits for this answer too. */}
+                {request.visits && request.visits.length > 0 ? (
+                  <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200" data-testid="mtm-customer-location-visits">
+                    {t("locationVisitsNote", { count: request.visits.length, time: clock.format(new Date(request.visits[0].checkInAt)) })}
                   </p>
                 ) : null}
 
