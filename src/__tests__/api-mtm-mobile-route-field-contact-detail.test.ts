@@ -77,6 +77,7 @@ beforeEach(() => {
       department: "must-never-serialize department",
       customerId: "customer-1",
       customer: {
+        id: "customer-1",
         name: "North Clinic",
         city: "Baku",
         address: "Nizami 2",
@@ -127,10 +128,19 @@ describe("GET /api/v2/mtm/mobile/route-field/contacts/:id", () => {
         contact: {
           id: "contact-1",
           name: "Dr. Farid",
-          workplaces: [{ id: "workplace-1", name: "North Clinic", phone: "+994 12 111 11 11" }],
+          // The workplace names its organization: the doctor's card opens that
+          // organization's card by it. Until 2026-10-12 the id was withheld, and
+          // the owner, looking on his phone for where a clinic's pin is
+          // corrected, could not get from a doctor to the doctor's clinic.
+          workplaces: [{ id: "workplace-1", customerId: "customer-1", name: "North Clinic", phone: "+994 12 111 11 11" }],
         },
       },
     })
+    // Exactly these, and nothing else of the organization or the employment.
+    expect(Object.keys(payload.data.contact.workplaces[0]).sort()).toEqual(["address", "city", "customerId", "id", "isPrimary", "jobTitle", "name", "phone"])
+    // The id is of an organization in the agent's own scope: the same clause that decides which workplaces are listed at all.
+    expect((args.select.workplaces as { select: { customer: { select: Record<string, boolean> } } }).select.customer.select)
+      .toEqual({ id: true, name: true, city: true, address: true })
     const serialized = JSON.stringify(payload)
     for (const forbidden of [
       "must-never-serialize@example.test",
@@ -142,7 +152,6 @@ describe("GET /api/v2/mtm/mobile/route-field/contacts/:id", () => {
       "must-never-serialize notes",
       "must-never-serialize department",
       "must-never-serialize manager",
-      "customerId",
       "latitude",
       "longitude",
       "agentAssignments",
