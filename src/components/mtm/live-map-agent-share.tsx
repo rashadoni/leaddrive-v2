@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useId, useRef, useState } from "react"
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react"
 import { useTranslations } from "next-intl"
 import { copyTextWithFallback } from "@/lib/copy-text"
 import {
@@ -13,6 +13,7 @@ import {
   aliveLiveMapShareLinks,
   isLiveMapShareLinkOutOfTime,
   liveMapShareLinkProblem,
+  liveMapShareLinkWhatsAppUrl,
   parseCreatedLiveMapShareLink,
   parseLiveMapShareLinks,
   pastLiveMapShareLinks,
@@ -28,6 +29,9 @@ import {
 const PILL = "inline-flex min-h-8 items-center rounded-full border border-zinc-300 px-2.5 text-[11px] font-medium text-foreground hover:bg-muted aria-disabled:cursor-default aria-disabled:opacity-60 aria-disabled:hover:bg-transparent dark:border-zinc-600 [@media(pointer:coarse)]:min-h-11"
 // The worded action of a row, as in the list of zones.
 const ACTION = "inline-flex min-h-8 shrink-0 items-center text-[11px] font-semibold underline underline-offset-2 aria-disabled:cursor-default aria-disabled:opacity-60 [@media(pointer:coarse)]:min-h-11"
+// The ways a new link leaves the card: «Отправить в WhatsApp» is the first of them, the other two stand under it.
+const SEND = "inline-flex min-h-9 items-center justify-center rounded-lg px-3 text-xs font-semibold [@media(pointer:coarse)]:min-h-11"
+const SEND_OTHER = `${SEND} flex-1 border border-zinc-300 bg-background text-foreground hover:bg-muted dark:border-zinc-600`
 // The two answers to «Отозвать ссылку?».
 const ANSWER = "inline-flex min-h-8 items-center rounded-lg px-2.5 text-[11px] font-semibold aria-disabled:cursor-default aria-disabled:opacity-60 [@media(pointer:coarse)]:min-h-11"
 /** How long «Скопировано» stands on the button before it reads «Скопировать» again. */
@@ -45,6 +49,7 @@ interface FreshLink {
   link: LiveMapShareLink
   url: string
   /**
+   * It has left this card: «Отправить в WhatsApp», «Поделиться» or
    * «Скопировать» was pressed on it here, and it worked. With two links made
    * one after another — the same hour, the same author, neither opened yet —
    * this is the only thing that tells the one that was sent from the spare.
@@ -81,6 +86,12 @@ function rememberFreshLink(entry: FreshLink): void {
     freshLinks.delete(id)
   }
 }
+
+// Whether this browser has a «Поделиться» of its own (a phone's sheet with every
+// messenger and SMS on it) is a fact of the device: nothing to subscribe to.
+const subscribeToNothing = () => () => {}
+const browserCanShare = () => typeof navigator !== "undefined" && typeof navigator.share === "function"
+const serverCannotShare = () => false
 
 /**
  * Selects the whole link and keeps its beginning in view. Left to itself the
@@ -137,10 +148,12 @@ type FocusTarget =
  *
  * Three worded buttons make a link — an hour, four hours, until the end of
  * the day; the server decides the moment it ends. The link itself comes back
- * once, in the answer to its creation, and is shown in a field with a
- * «Скопировать» button beside it: it is never copied by itself (a browser
- * drops a copy that no press asked for), and never shown again after a
- * reload. Below are the links that work — until when, who made each, how
+ * once, in the answer to its creation, and is shown in a field with the ways
+ * to send it under it: «Отправить в WhatsApp» (WhatsApp opens with the
+ * message already written; whom it goes to is chosen there), «Поделиться»
+ * where the device has a sheet of its own, and «Скопировать». It is never
+ * copied or sent by itself (a browser drops a copy that no press asked for),
+ * and never shown again after a reload. Below are the links that work — until when, who made each, how
  * many times it was opened — each with «Отозвать»; a supervisor sees the
  * same list and no button.
  *
@@ -152,8 +165,10 @@ type FocusTarget =
  * Everything the server refuses is said here, in the block, in words — for
  * the same reason: there a toast is not painted.
  */
-export function LiveMapAgentShare({ agentId, canWrite, refreshKey, nowMs, timeZone, formatTime, formatPastTime }: {
+export function LiveMapAgentShare({ agentId, agentName, canWrite, refreshKey, nowMs, timeZone, formatTime, formatPastTime }: {
   agentId: string
+  /** Whose position the link shows: the message that is sent with the link names him. */
+  agentName: string
   /** The live map's contract about this viewer: may he make and revoke a link. */
   canWrite: boolean
   /** Changes when the list is to be read again; not on every refresh of the map. */
@@ -188,6 +203,9 @@ export function LiveMapAgentShare({ agentId, canWrite, refreshKey, nowMs, timeZo
   const focusNext = useRef<FocusTarget | null>(null)
   /** A link was made a moment ago: for that moment the three buttons take no press. */
   const [justMade, setJustMade] = useState(false)
+  const canShare = useSyncExternalStore(subscribeToNothing, browserCanShare, serverCannotShare)
+  /** Counts the times a link left the card: the mark «вы уже отправили» is read from the tab's memory, and this draws it. */
+  const [, setSentTurn] = useState(0)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -401,14 +419,47 @@ export function LiveMapAgentShare({ agentId, canWrite, refreshKey, nowMs, timeZo
     setNotice(problem ? { agentId, problem } : null)
   }
 
+  /**
+   * The link has left this card by one of its three ways. Kept with the
+   * address — it comes back with it when the block is unfolded again — and
+   * so not in state: the row is asked to draw again.
+   */
+  const markSent = (linkId: string) => {
+    const fresh = freshLinks.get(linkId)
+    if (fresh) freshLinks.set(linkId, { ...fresh, copied: true })
+    setSentTurn((turn) => turn + 1)
+  }
+
   const copyLink = async (linkId: string, url: string) => {
     const copied = await copyTextWithFallback(url)
-    const fresh = freshLinks.get(linkId)
-    // Kept with the address: it comes back with it when the block is unfolded again.
-    if (copied && fresh) freshLinks.set(linkId, { ...fresh, copied: true })
+    if (copied) markSent(linkId)
     setCopy({ linkId, result: copied ? "copied" : "failed" })
     // Left to do it by hand, the manager finds the link already selected.
     if (!copied) selectLink(fields.current.get(linkId))
+  }
+
+  /** What goes to the client with the link: one line that says whose position it is. */
+  const messageOf = (url: string) => t("share.message", { name: agentName, url })
+
+  /** The device's own «Поделиться»: its sheet has WhatsApp, Telegram, SMS — whatever the phone has. */
+  const shareLink = async (linkId: string, url: string) => {
+    try {
+      await navigator.share({ text: messageOf(url) })
+      markSent(linkId)
+      setCopy(null)
+    } catch (error) {
+      // The sheet was closed without choosing: nothing went wrong, nothing was sent.
+      if (error instanceof DOMException && error.name === "AbortError") return
+      setCopy({ linkId, result: "failed" })
+      selectLink(fields.current.get(linkId))
+    }
+  }
+
+  /** «Отправить в WhatsApp» opens WhatsApp in a tab of its own; the card stays as it is. */
+  const sentToWhatsApp = (linkId: string) => {
+    markSent(linkId)
+    // «Не удалось скопировать» said of an earlier press is no longer the last word about this link.
+    setCopy((previous) => (previous?.result === "failed" ? null : previous))
   }
 
   const openings = (link: LiveMapShareLink) => (link.viewCount > 0
@@ -418,6 +469,9 @@ export function LiveMapAgentShare({ agentId, canWrite, refreshKey, nowMs, timeZo
   const untilOf = (link: LiveMapShareLink) => (timeZone && isLocationShareLinkEndOfDay(new Date(link.expiresAt), timeZone)
     ? t("share.validUntilEndOfDay")
     : t("share.validUntil", { time: formatTime(link.expiresAt) }))
+
+  /** Who made it and whether it was opened — one quiet line under «Действует до…». */
+  const factsOf = (link: LiveMapShareLink) => [link.createdByName, openings(link)].filter(Boolean).join(" · ")
 
   return (
     // Focusable by the code alone: where the keyboard is put when a press has left nothing else of its own to stand on.
@@ -449,8 +503,6 @@ export function LiveMapAgentShare({ agentId, canWrite, refreshKey, nowMs, timeZo
               </button>
             ))}
           </div>
-          {/* Why «На 4 часа» late in the evening is shorter than four hours. */}
-          <p className="text-muted-foreground" data-testid="live-map-share-day-limit">{t("share.dayLimit")}</p>
         </div>
       ) : null}
       {busy?.kind === "create" ? (
@@ -463,15 +515,14 @@ export function LiveMapAgentShare({ agentId, canWrite, refreshKey, nowMs, timeZo
         <p role="alert" className="text-red-700 dark:text-red-400" data-testid="live-map-share-notice">{t(`share.errors.${shownProblem}`, { limit })}</p>
       ) : null}
 
-      {/* A list that could not be read at all is not headed «Действующие ссылки» over nothing. */}
-      {answer || alive.length > 0 || !readProblem ? <div data-testid="live-map-share-alive">
+      {/* Nothing is headed «Действующие ссылки» over nothing: with no link working, the three buttons above are the whole block. */}
+      {alive.length === 0 ? (
+        answer || readProblem
+          ? null
+          : <p className="text-muted-foreground" data-testid="live-map-share-loading">{t("share.loading")}</p>
+      ) : <div data-testid="live-map-share-alive">
         <div className="font-semibold text-foreground">{t("share.aliveTitle")}</div>
-        {alive.length === 0 ? (
-          answer
-            ? <p className="text-muted-foreground" data-testid="live-map-share-none">{t("share.none")}</p>
-            : <p className="text-muted-foreground" data-testid="live-map-share-loading">{t("share.loading")}</p>
-        ) : (
-          <ul className="mt-1 space-y-1">
+        <ul className="mt-1 space-y-1">
             {alive.map((link, position) => {
               const until = untilOf(link)
               // The link itself: only for whoever may make one, and only where it was made.
@@ -488,34 +539,51 @@ export function LiveMapAgentShare({ agentId, canWrite, refreshKey, nowMs, timeZo
                 <li key={link.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 rounded-md bg-muted/50 px-2 py-1.5" data-testid={`live-map-share-link-${link.id}`}>
                   <div className="min-w-0">
                     <div className="font-medium text-foreground" data-testid="live-map-share-link-until">{until}</div>
-                    {link.createdByName ? (
-                      <div className="break-words text-muted-foreground" data-testid="live-map-share-link-author">{t("share.createdBy", { name: link.createdByName })}</div>
-                    ) : null}
-                    <div className="text-muted-foreground" data-testid="live-map-share-link-opened">{openings(link)}</div>
+                    <div className="break-words text-muted-foreground" data-testid="live-map-share-link-facts">{factsOf(link)}</div>
                   </div>
                   {fresh ? (
                     <div role="status" className="col-span-2 row-start-2 mt-1.5 rounded-md border border-emerald-300 bg-emerald-50 p-2 dark:border-emerald-800 dark:bg-emerald-950/40" data-testid={`live-map-share-fresh-${link.id}`}>
                       <div className="font-semibold text-foreground">{t("share.ready")}</div>
-                      <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                        <input
-                          ref={(node) => {
-                            if (node) fields.current.set(link.id, node)
-                            else fields.current.delete(link.id)
-                          }}
-                          type="text"
-                          readOnly
-                          value={fresh.url}
-                          aria-label={t("share.linkField")}
-                          onFocus={(event) => selectLink(event.currentTarget)}
-                          data-testid={`live-map-share-url-${link.id}`}
-                          // 16 px on a touch screen: a smaller field makes iOS zoom the whole page on focus.
-                          className="h-9 min-w-[9rem] flex-1 rounded-lg border border-zinc-200 bg-background px-2 text-xs text-foreground outline-none focus:border-primary/60 dark:border-zinc-700 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:text-base"
-                        />
+                      <input
+                        ref={(node) => {
+                          if (node) fields.current.set(link.id, node)
+                          else fields.current.delete(link.id)
+                        }}
+                        type="text"
+                        readOnly
+                        value={fresh.url}
+                        aria-label={t("share.linkField")}
+                        onFocus={(event) => selectLink(event.currentTarget)}
+                        data-testid={`live-map-share-url-${link.id}`}
+                        // 16 px on a touch screen: a smaller field makes iOS zoom the whole page on focus.
+                        className="mt-1 h-8 w-full rounded-lg border border-zinc-200 bg-background px-2 text-[11px] text-muted-foreground outline-none focus:border-primary/60 focus:text-foreground dark:border-zinc-700 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:text-base"
+                      />
+                      <a
+                        href={liveMapShareLinkWhatsAppUrl(messageOf(fresh.url))}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => sentToWhatsApp(link.id)}
+                        data-testid={`live-map-share-whatsapp-${link.id}`}
+                        className={`${SEND} mt-1.5 w-full bg-emerald-600 text-white hover:bg-emerald-700`}
+                      >
+                        {t("share.sendWhatsApp")}
+                      </a>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        {canShare ? (
+                          <button
+                            type="button"
+                            onClick={() => { void shareLink(link.id, fresh.url) }}
+                            data-testid={`live-map-share-share-${link.id}`}
+                            className={SEND_OTHER}
+                          >
+                            {t("share.shareOther")}
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           onClick={() => { void copyLink(link.id, fresh.url) }}
                           data-testid={`live-map-share-copy-${link.id}`}
-                          className="inline-flex min-h-9 shrink-0 items-center rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90 [@media(pointer:coarse)]:min-h-11"
+                          className={SEND_OTHER}
                         >
                           {copied === "copied" ? t("share.copied") : t("share.copy")}
                         </button>
@@ -580,9 +648,8 @@ export function LiveMapAgentShare({ agentId, canWrite, refreshKey, nowMs, timeZo
                 </li>
               )
             })}
-          </ul>
-        )}
-      </div> : null}
+        </ul>
+      </div>}
 
       {past.length > 0 ? (
         <div data-testid="live-map-share-past">

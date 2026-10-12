@@ -143,7 +143,7 @@ describe("the sentences the page shows", () => {
 
   it("say when the coordinate was recorded and until when the link works, as decided", () => {
     const t = translator("ru")
-    expect(t("recordedAt", { time: "14:05", ago: t("ago.minutes", { count: 3 }) })).toBe("Координата записана в 14:05 · 3 минуты назад")
+    expect(t("recordedAt", { time: "14:05", ago: t("ago.minutes", { count: 3 }) })).toBe("Обновлено в 14:05 · 3 минуты назад")
     expect(t("expiresAt", { time: "18:00" })).toBe("Ссылка действует до 18:00")
     expect(t("expiresAtEndOfDay")).toBe("Ссылка действует до конца дня")
     // The zone as a person says it, in brackets after the sentence it explains.
@@ -167,7 +167,7 @@ describe("the sentences the page shows", () => {
   it("count the same in English and in Azerbaijani", () => {
     const en = translator("en")
     expect([1, 2, 15].map((count) => en("ago.minutes", { count }))).toEqual(["1 minute ago", "2 minutes ago", "15 minutes ago"])
-    expect(en("recordedAt", { time: "14:05", ago: en("ago.minutes", { count: 3 }) })).toBe("Position recorded at 14:05 · 3 minutes ago")
+    expect(en("recordedAt", { time: "14:05", ago: en("ago.minutes", { count: 3 }) })).toBe("Updated at 14:05 · 3 minutes ago")
     const az = translator("az")
     expect([1, 2, 15].map((count) => az("ago.minutes", { count }))).toEqual(["1 dəqiqə əvvəl", "2 dəqiqə əvvəl", "15 dəqiqə əvvəl"])
     expect(az("expiresAt", { time: "18:00" })).toBe("Link bu vaxta qədər işləyir: 18:00")

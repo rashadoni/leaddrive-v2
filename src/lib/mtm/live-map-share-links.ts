@@ -139,6 +139,16 @@ export function parseCreatedLiveMapShareLink(value: unknown, origin: string): { 
 export type LiveMapShareLinkProblem = "off" | "readOnly" | "limit" | "agentGone" | "linkGone" | "busy" | "session" | "network" | "failed"
 
 /**
+ * Where «Отправить в WhatsApp» leads: WhatsApp's own «send to…», with the
+ * message already written. Whom it goes to is chosen there — the card does
+ * not know the client's number, and a manager who sends it to the wrong chat
+ * sees that in WhatsApp, not here.
+ */
+export function liveMapShareLinkWhatsAppUrl(message: string): string {
+  return `https://wa.me/?text=${encodeURIComponent(message)}`
+}
+
+/**
  * `asked` is what was asked for: the routes answer one 404 for an employee
  * who is not there and for a link that is not, and only the question tells
  * which of the two it was.

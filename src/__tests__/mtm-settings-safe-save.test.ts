@@ -552,35 +552,32 @@ describe("settings page contract", () => {
     // Once on the page: a second row elsewhere would be a second place to switch it.
     expect(page.match(/key: "locationShareLinksEnabled"/g)).toHaveLength(1)
 
-    // What the person switching it on is told, in plain words: what an
-    // outsider sees and what he does not, that it is off until switched on,
-    // that switching it off stops the links already handed out — at once and
-    // for good, new ones have to be made afterwards — and that the employee
-    // himself is not told about a link.
+    // What the person switching it on is told — in a few short sentences
+    // since 2026-10-12 (the owner: «его описание облегчи»; his own words for
+    // the thing are «как в такси»): that an outsider needs no sign-in and sees
+    // where the agent is now, that it is only during the workday and without
+    // history or route, that the agent himself is not told, and that
+    // switching it off stops the links already handed out for good.
     const said: Record<string, RegExp[]> = {
       ru: [
-        /без входа в систему/, /имя агента, название компании и где он сейчас на карте/, /пока у агента идёт рабочий день/,
-        /Истории, маршрута, клиентов и телефона там нет/, /Выключено, пока вы не включите/,
-        /все уже выданные ссылки сразу перестанут работать насовсем/, /после включения нужно будет выдать новые/,
-        /Сам агент уведомления о ссылке не получает/,
+        /^Как в такси:/, /человек без входа видит, где агент сейчас/, /Только во время рабочего дня, без истории и маршрута/,
+        /Агенту уведомление не приходит/, /Если выключить, все выданные ссылки перестанут работать насовсем/,
       ],
       en: [
-        /without signing in/, /the agent's name, the company's name and where the agent is on the map right now/, /while the agent's workday is running/,
-        /No history, route, clients or phone number/, /off until you switch it on/,
-        /every link already handed out stops working at once and for good/, /after you switch it back on, new links have to be made/,
-        /The agent is not notified about a link/,
+        /^Like a taxi app:/, /the person sees where the agent is now, without signing in/, /Only during the workday, with no history and no route/,
+        /The agent is not notified/, /If you switch it off, every link handed out stops working for good/,
       ],
       az: [
-        /sistemə daxil olmadan/, /agentin adını, şirkətin adını və agentin hazırda xəritədə harada olduğunu/, /agentin iş günü davam etdikdə/,
-        /Tarixçə, marşrut, müştərilər və telefon nömrəsi göstərilmir/, /yandırana qədər söndürülmüş qalır/,
-        /bütün linklər dərhal və həmişəlik işləməyəcək/, /yenidən yandırdıqdan sonra yeni linklər yaratmaq lazım olacaq/,
-        /Agentin özü link haqqında bildiriş almır/,
+        /^Taksi kimi:/, /açan şəxs sistemə daxil olmadan agentin indi harada olduğunu görür/, /Yalnız iş günü ərzində, tarixçə və marşrut olmadan/,
+        /Agentə bildiriş getmir/, /Söndürsəniz, verilmiş bütün linklər həmişəlik işləməyəcək/,
       ],
     }
     for (const [locale, sentences] of Object.entries(said)) {
       const messages = JSON.parse(source(`messages/${locale}.json`)).mtmSettingsPage
       expect(messages.lblLocationShareLinks, locale).toEqual(expect.any(String))
       for (const sentence of sentences) expect(messages.hintLocationShareLinks, `${locale}: ${sentence}`).toMatch(sentence)
+      // Short enough to be read: the hint it replaced ran to seven sentences.
+      expect(messages.hintLocationShareLinks.split(/(?<=[.!?])\s+/).length, locale).toBeLessThanOrEqual(4)
     }
   })
 
