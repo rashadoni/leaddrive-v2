@@ -64,9 +64,9 @@ describe("employee TIME_CORRECTION submission uses a complete proposed interval 
     expect(details.dayKind.key).toBe("WORKED")
     source.startedAt = at("06:00")
     expect(details.correctionBasis).toMatchObject({ facts: { startedAt: at("05:21").toISOString(), totalPausedSeconds: 1800 } })
-    const locks = vi.mocked(prisma.$executeRaw).mock.calls.map((call) => call.flat().join(" "))
-    const workdayLock = locks.findIndex((sql) => sql.includes("mtm-workday:"))
-    const requestLock = locks.findIndex((sql) => sql.includes("mtm-attendance-requests:"))
+    const locks = vi.mocked(prisma.$executeRaw).mock.calls.map((call: unknown[]) => call.flat().join(" "))
+    const workdayLock = locks.findIndex((sql: string) => sql.includes("mtm-workday:"))
+    const requestLock = locks.findIndex((sql: string) => sql.includes("mtm-attendance-requests:"))
     expect(workdayLock).toBeGreaterThanOrEqual(0); expect(requestLock).toBeGreaterThan(workdayLock)
   })
   it.each([

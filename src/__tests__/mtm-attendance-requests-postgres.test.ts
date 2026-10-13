@@ -40,6 +40,9 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
   let api: typeof import("@/app/api/v1/mtm/mobile/attendance/requests/route")
   let createdRole = false, createdDb = false
   let documentRuntime: string | undefined
+  let documentLogRuntime: string | undefined
+  const originalRuntime = process.env.LEADDRIVE_RUNTIME_DIR
+  const originalLogs = process.env.LEADDRIVE_LOG_DIR
   const self = { organizationId: "request-pg-a", agentId: "request-pg-owner", role: "AGENT" }
   const input = (date: string) => ({ clientRequestId: randomUUID(), kind: "HOURLY_ABSENCE", unit: "HOURS", startDate: date, endDate: date, startTime: "09:00", endTime: "10:00", reason: "Fictional request" })
   const submit = (body: unknown) => api.POST(new NextRequest("http://localhost/api/v1/mtm/mobile/attendance/requests", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }))
@@ -58,6 +61,8 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
     // Exercise the real external-runtime guard, which correctly rejects /tmp.
     documentRuntime = mkdtempSync(join(homedir(), ".attendance-private-documents-test-"))
     process.env.LEADDRIVE_RUNTIME_DIR = documentRuntime
+    documentLogRuntime = mkdtempSync(join(homedir(), ".attendance-private-logs-test-"))
+    process.env.LEADDRIVE_LOG_DIR = documentLogRuntime
     prisma = (await import("@/lib/prisma")).prisma
     ;({ runWithTenant: tenant, runWithRlsBypass: bypass } = await import("@/lib/rls-context"))
     store = await import("@/lib/mtm/attendance-request-store")
@@ -67,7 +72,7 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
     api = await import("@/app/api/v1/mtm/mobile/attendance/requests/route")
     await bypass(async () => {
       for (const org of ["request-pg-a", "request-pg-b"]) {
-        await prisma.organization.create({ data: { id: org, name: "Fictional request organization", slug: org, modules: ["route-field"] } })
+        await prisma.organization.create({ data: { id: org, name: "Fictional request organization", slug: org, modules: { "route-field": true } } })
         await prisma.mtmSetting.create({ data: { organizationId: org, key: "attendanceEnabled", value: true } })
       }
       await prisma.user.create({ data: { id: "request-pg-admin", organizationId: self.organizationId, name: "Fictional limits administrator", email: "limits-admin@example.invalid", role: "admin", passwordHash: "unusable-fixture-hash" } })
@@ -79,6 +84,9 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
     if (createdDb) sql(adminUrl!, `DROP DATABASE "${scratch!.name}" WITH (FORCE)`)
     if (createdRole) sql(adminUrl!, `DROP ROLE "${scratch!.role}"`)
     if (documentRuntime) rmSync(documentRuntime, { recursive: true, force: true })
+    if (documentLogRuntime) rmSync(documentLogRuntime, { recursive: true, force: true })
+    if (originalRuntime === undefined) delete process.env.LEADDRIVE_RUNTIME_DIR; else process.env.LEADDRIVE_RUNTIME_DIR = originalRuntime
+    if (originalLogs === undefined) delete process.env.LEADDRIVE_LOG_DIR; else process.env.LEADDRIVE_LOG_DIR = originalLogs
   })
   it("commits one UUID exactly once under a race, binds the body and keeps workday facts untouched", async () => {
     const body = input("2026-11-02")
