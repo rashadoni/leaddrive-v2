@@ -35,7 +35,7 @@ import {
 } from "@/lib/demo-center/session-clock"
 import { cn } from "@/lib/utils"
 import { DemoCoachMark } from "./demo-coach-mark"
-import { DemoJourneyGuide } from "./demo-journey-guide"
+import { DemoJourneyGuide, IntroClip } from "./demo-journey-guide"
 import { createJourneyReporter, type JourneyReporter } from "./journey-reporter"
 import { DemoJourneySidebar } from "./demo-journey-sidebar"
 import { useGuideVoice } from "./demo-guide-voice"
@@ -426,6 +426,22 @@ export function DemoJourneyPlayer({
               pressed (owner's screen, 2026-09-22). */}
           <div className="grid min-w-0 flex-1 grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px]">
             <main id="demo-scene" className="min-w-0 overflow-y-auto p-4 sm:p-6">
+              {viewSection.intro && manifest.capabilities.video ? (
+                <IntroClip
+                  key={viewSection.id}
+                  slug={viewSection.intro.slug}
+                  caption={viewSection.intro.caption}
+                  status={viewSection.intro.status}
+                  token={token}
+                  variant={variant}
+                  compact={reviewMode || stepIndex > 0}
+                  onClipEvent={(name) => {
+                    // A clip carries its own voiceover: the guide falls silent for it.
+                    if (name === "video.started") voice.stop()
+                    reporterRef.current?.report({ eventType: "JOURNEY", name, sectionId: viewSection.id })
+                  }}
+                />
+              ) : null}
               {Scene ? <Scene key={viewSection.id} {...sceneProps} /> : <ScenePending section={viewSection} />}
             </main>
             <DemoJourneyGuide
@@ -444,7 +460,6 @@ export function DemoJourneyPlayer({
               resultBanner={resultBanner}
               canBack={canBack}
               canSkip={canSkip}
-              onClipEvent={(name) => reporterRef.current?.report({ eventType: "JOURNEY", name, sectionId: viewSection.id })}
               onNext={() => step && dispatch({ type: "complete-step", stepId: step.id })}
               onBack={goBack}
               onSkip={() => step && dispatch({ type: "skip-step", stepId: step.id })}
