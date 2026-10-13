@@ -6,10 +6,10 @@
     "android": "16"
   },
   "app": {
-    "version": "3.8.1",
-    "versionCode": 1462,
-    "sourceSha": "11401a8aff7abf197de4dfda65f4a4ed5337a946",
-    "apkSha256": "8e46e6ac5bf27b939950cc8f5df5c1d2bb2eeae34fc97f5031bc5df11e4cb502"
+    "version": "3.8.2",
+    "versionCode": 1465,
+    "sourceSha": "9483676bb1d7aeef0ce01cdc34334983e4b18892",
+    "apkSha256": "673ff1851f87ca5fd9b8e0212fe591d5ca4613bb49f8c8701987bbf21fa7cfd2"
   },
   "cases": [
     {
@@ -72,6 +72,27 @@
       "name": "overnight-endurance",
       "status": "NOT_RUN",
       "reason": "Power monitoring is active but is not a completed functional endurance run"
+    },
+    {
+      "at": "2026-10-13T23:13:32.253567+00:00",
+      "name": "known-company-offline-explanation-3.8.2",
+      "status": "PASS",
+      "detail": {
+        "activeDefaultNetwork": "none",
+        "copy": "connectivity guidance",
+        "inputPreserved": true,
+        "version": "3.8.2",
+        "code": 1465
+      }
+    },
+    {
+      "at": "2026-10-13T23:13:48.437545+00:00",
+      "name": "company-retry-after-reconnection-3.8.2",
+      "status": "PASS",
+      "detail": {
+        "tenant": "mtm-attendance-phone",
+        "loginFormVisible": true
+      }
     }
   ],
   "privacy": {
@@ -82,5 +103,5 @@
     "personalScreenshotsPublished": false,
     "testLocationPermissions": "Fine, coarse and background temporarily denied; original grants retained privately for restoration"
   },
-  "updatedAt": "2026-10-13T23:11:13.131854+00:00"
+  "updatedAt": "2026-10-13T23:15:02.984366+00:00"
 }
