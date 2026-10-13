@@ -1,0 +1,254 @@
+"use client"
+
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react"
+import { useFormatter, useTranslations } from "next-intl"
+import { CalendarDays, Clock3, ListChecks, LogIn, LogOut, UserRoundX } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { HomeCard, HomeKpi, HomePill, type HomeTone } from "@/components/mtm/home-parts"
+import { addDateKeyDays, isDateKey } from "@/lib/mtm/mobile-week"
+import { filterMtmAttendanceRows, summarizeMtmAttendanceRows, type MtmAttendanceReport, type MtmAttendanceReportRow } from "@/lib/mtm/attendance-report"
+import { formatAttendanceDuration } from "@/lib/mtm/attendance-presentation"
+
+type Form = "DAY" | "MONTH" | "LATE_EARLY" | "ABSENCES" | "JOURNAL"
+type Range = { from: string; to: string }
+const FORMS: Form[] = ["DAY", "MONTH", "LATE_EARLY", "ABSENCES", "JOURNAL"]
+const FORM_MESSAGES: Record<Form, string> = { DAY: "reportDay", MONTH: "reportMonth", LATE_EARLY: "reportLateEarly", ABSENCES: "reportAbsences", JOURNAL: "reportJournal" }
+const KIND_MESSAGES: Record<MtmAttendanceReportRow["kind"], string> = { WORKED: "reportWorkedDay", OPEN: "reportOpenDay", MISSING_FINISH: "reportMissingFinish",
+  ABSENT: "reportAbsentDay", WEEKEND: "reportWeekend", HOLIDAY: "reportHoliday", UPCOMING: "reportUpcoming", INVALID_FACTS: "reportInvalidFacts" }
+const REASON_MESSAGES: Record<string, string> = { DUPLICATE_WORKDAY: "reportReasonDuplicate", SCHEDULE_INVALID: "reportReasonSchedule", TIMESTAMP_INVALID: "reportReasonTimestamp",
+  EVENT_TYPE_INVALID: "reportReasonEvent", JOURNAL_INCOMPLETE: "reportReasonJournal", PAUSE_TOTAL_MISMATCH: "reportReasonPause", WORKDAY_INCONSISTENT: "reportReasonFacts" }
+const EVENT_MESSAGES: Record<string, string> = { START: "reportEventStart", PAUSE: "reportEventPause", RESUME: "reportEventResume", FINISH: "reportEventFinish", REOPEN: "reportEventReopen" }
+const SELECT_CLASS = "min-h-11 w-full rounded-lg border border-zinc-200 bg-card px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:border-zinc-700"
+const CELL = "border-b border-zinc-100 px-3 py-3 align-top dark:border-zinc-800"
+const HEADER = "px-3 py-3 text-left text-xs font-medium text-muted-foreground"
+const PAGE_SIZE = 50
+
+function monthRange(month: string): Range {
+  const [year, number] = month.split("-").map(Number)
+  return { from: `${month}-01`, to: new Date(Date.UTC(year, number, 0, 12)).toISOString().slice(0, 10) }
+}
+function rowTone(row: MtmAttendanceReportRow): HomeTone {
+  if (row.kind === "INVALID_FACTS" || row.kind === "ABSENT") return "red"
+  if (row.kind === "MISSING_FINISH" || (row.lateSeconds ?? 0) > 0 || (row.earlyLeaveSeconds ?? 0) > 0) return "amber"
+  if (row.kind === "OPEN" || row.kind === "HOLIDAY") return "blue"
+  return row.kind === "WORKED" ? "green" : "zinc"
+}
+
+/** All forms, filters, cards and totals select from one server-scoped day-row snapshot. */
+export function MtmAttendanceReportWorkspace() {
+  const t = useTranslations("mtmAttendance")
+  const format = useFormatter()
+  const [today, setToday] = useState<string | null>(null)
+  const [range, setRange] = useState<Range>({ from: "", to: "" })
+  const [report, setReport] = useState<MtmAttendanceReport | null>(null)
+  const [form, setForm] = useState<Form>("DAY")
+  const [teamId, setTeamId] = useState("")
+  const [employeeId, setEmployeeId] = useState("")
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [rangeError, setRangeError] = useState<string | null>(null)
+  const [page, setPage] = useState(0)
+  const request = useRef<AbortController | null>(null)
+
+  const load = useCallback(async (requestedRange?: Range) => {
+    request.current?.abort()
+    const controller = new AbortController()
+    request.current = controller
+    setLoading(true)
+    setError(null)
+    setRangeError(null)
+    setReport(null)
+    setPage(0)
+    try {
+      let selected = requestedRange
+      if (!selected) {
+        const response = await fetch("/api/v1/mtm/attendance/rules", { cache: "no-store", signal: controller.signal })
+        const body = await response.json().catch(() => null)
+        if (controller.signal.aborted) return
+        if (!response.ok || body?.success !== true || !isDateKey(body.data?.today)) {
+          setError(t([401, 403, 404].includes(response.status) ? "reportAccessUnavailable" : "reportLoadError"))
+          return
+        }
+        setToday(body.data.today)
+        selected = { from: body.data.today, to: body.data.today }
+      }
+      setRange(selected)
+      const query = new URLSearchParams({ from: selected.from, to: selected.to, form: "ALL" })
+      const response = await fetch(`/api/v1/mtm/attendance/report?${query}`, { cache: "no-store", signal: controller.signal })
+      const body = await response.json().catch(() => null)
+      if (controller.signal.aborted) return
+      if (!response.ok || body?.success !== true || !Array.isArray(body.data?.rows)) {
+        setError(t([401, 403, 404].includes(response.status) ? "reportAccessUnavailable"
+          : body?.code === "MTM_ATTENDANCE_REPORT_TOO_LARGE" ? "reportTooLarge" : "reportLoadError"))
+        if ([401, 403, 404].includes(response.status)) { setEmployeeId(""); setTeamId("") }
+        return
+      }
+      const loaded = body.data as MtmAttendanceReport
+      setReport(loaded)
+      setEmployeeId((id) => loaded.rows.some((row) => row.employeeId === id) ? id : "")
+      setTeamId((id) => loaded.rows.some((row) => row.teamId === id) ? id : "")
+    } catch {
+      if (!controller.signal.aborted) setError(t("reportLoadError"))
+    } finally {
+      if (!controller.signal.aborted) setLoading(false)
+    }
+  }, [t])
+
+  useEffect(() => { void load(); return () => request.current?.abort() }, [load])
+
+  const directory = useMemo(() => {
+    const employees = new Map<string, { id: string; name: string; teamId: string | null }>()
+    const teams = new Map<string, string>()
+    for (const row of report?.rows ?? []) {
+      employees.set(row.employeeId, { id: row.employeeId, name: row.employeeName, teamId: row.teamId })
+      if (row.teamId) teams.set(row.teamId, row.teamName ?? t("reportUnnamedTeam"))
+    }
+    return { employees: [...employees.values()], teams: [...teams].map(([id, name]) => ({ id, name })) }
+  }, [report, t])
+  const rows = useMemo(() => filterMtmAttendanceRows(report?.rows ?? [], { teamId: teamId || undefined, employeeId: employeeId || undefined,
+    form: form === "DAY" || form === "MONTH" ? "ALL" : form }), [report, teamId, employeeId, form])
+  const totals = useMemo(() => summarizeMtmAttendanceRows(rows), [rows])
+  const journal = useMemo(() => form === "JOURNAL" ? rows.flatMap((row) => row.events.map((event, index) => ({ row, event, index }))) : [], [rows, form])
+  const monthEmployees = useMemo(() => {
+    if (form !== "MONTH") return []
+    const people = new Map<string, { name: string; team: string | null; rows: MtmAttendanceReportRow[]; dates: Map<string, MtmAttendanceReportRow> }>()
+    for (const row of rows) {
+      if (!people.has(row.employeeId)) people.set(row.employeeId, { name: row.employeeName, team: row.teamName, rows: [], dates: new Map() })
+      const employee = people.get(row.employeeId)!
+      employee.rows.push(row)
+      employee.dates.set(row.date, row)
+    }
+    return [...people].map(([id, person]) => ({ id, ...person, totals: summarizeMtmAttendanceRows(person.rows) }))
+  }, [rows, form])
+  const monthDates = useMemo(() => {
+    if (form !== "MONTH" || !report) return []
+    const count = Math.round((Date.parse(report.to) - Date.parse(report.from)) / 86_400_000) + 1
+    return Array.from({ length: Math.min(count, 31) }, (_, index) => addDateKeyDays(report.from, index))
+  }, [report, form])
+  const count = form === "MONTH" ? monthEmployees.length : form === "JOURNAL" ? journal.length : rows.length
+  const lastPage = Math.max(0, Math.ceil(count / PAGE_SIZE) - 1)
+  const currentPage = Math.min(page, lastPage)
+  const pageStart = currentPage * PAGE_SIZE
+  const dateLabel = (date: string) => format.dateTime(new Date(`${date}T12:00:00.000Z`), { dateStyle: "medium", timeZone: "UTC" })
+  const timeLabel = (at: string | null, timezone: string, full = false) => at ? format.dateTime(new Date(at), { timeZone: timezone,
+    ...(full ? { dateStyle: "short" as const, timeStyle: "medium" as const } : { hour: "2-digit" as const, minute: "2-digit" as const, second: "2-digit" as const }) }) : "—"
+  const rowNotes = (row: MtmAttendanceReportRow) => row.factsState === "INVALID"
+    ? row.invalidReasons.map((reason) => t(REASON_MESSAGES[reason] ?? "reportReasonFacts")).join(" · ")
+    : row.kind === "OPEN" ? t("reportProvisional") : row.kind === "MISSING_FINISH" ? t("reportUnknownTime")
+      : row.kind === "ABSENT" ? t("reportAbsenceReasonPending") : row.flags.includes("WORKED_ON_DAY_OFF") ? t("reportWorkOnDayOff") : row.calendarName ?? "—"
+
+  function chooseForm(next: Form) {
+    setForm(next)
+    setPage(0)
+    if (next === "MONTH" && form !== "MONTH" && today) void load(monthRange(today.slice(0, 7)))
+  }
+  function applyRange(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!isDateKey(range.from) || !isDateKey(range.to) || range.to < range.from || range.to >= addDateKeyDays(range.from, 366)) {
+      setRangeError(t("reportRangeInvalid"))
+      return
+    }
+    void load(range)
+  }
+  function monthCell(row: MtmAttendanceReportRow | undefined) {
+    if (!row) return "—"
+    if (row.kind === "WEEKEND") return t("reportCodeWeekend")
+    if (row.kind === "HOLIDAY") return t("reportCodeHoliday")
+    if (row.kind === "ABSENT") return t("reportCodeAbsent")
+    if (row.kind === "UPCOMING") return "·"
+    if (row.kind === "MISSING_FINISH") return "?"
+    if (row.kind === "INVALID_FACTS") return "!"
+    return `${row.kind === "OPEN" ? "~" : ""}${formatAttendanceDuration(row.workedSeconds)}`
+  }
+
+  const multiDay = report ? report.from !== report.to : range.from !== range.to
+  const unit = t(multiDay ? "reportDayRecords" : "reportPeople")
+  const timezones = [...new Set(rows.map((row) => row.timezone))]
+  const cards = [
+    { id: "arrived", label: "reportArrived", value: totals.arrivedCount, tone: "green" as const, icon: <LogIn className="h-4 w-4" />, hint: "reportArrivedHint" },
+    { id: "late", label: "reportLateCount", value: totals.lateCount, tone: "amber" as const, icon: <Clock3 className="h-4 w-4" />, hint: "reportLateHint" },
+    { id: "absent", label: "reportAbsentCount", value: totals.absentCount, tone: "zinc" as const, icon: <UserRoundX className="h-4 w-4" />, hint: "reportAbsenceReasonPending" },
+    { id: "missing-finish", label: "reportMissingFinish", value: totals.missingFinishCount, tone: "red" as const, icon: <LogOut className="h-4 w-4" />, hint: "reportMissingFinishHint" },
+  ]
+
+  return <section aria-label={t("reportTitle")} className="space-y-5" data-testid="attendance-report-workspace">
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{cards.map((card) => <HomeKpi key={card.id} testId={`attendance-${card.id}`} label={t(card.label)}
+      icon={card.icon} tone={card.tone} value={report ? format.number(card.value) : null} unit={unit} sub={t(card.hint)}
+      progress={report && totals.rowCount ? card.value / totals.rowCount * 100 : 0} />)}</div>
+    <HomeCard testId="attendance-report-filters" titleId="attendance-report-filters-title" icon={<ListChecks className="h-4 w-4" aria-hidden="true" />} tone="orange" title={t("reportForm")}>
+      <div className="space-y-5 py-4">
+        <div className="flex flex-wrap gap-2" role="group" aria-label={t("reportForm")}>{FORMS.map((value) => <Button key={value} type="button" className="min-h-11 rounded-full"
+          variant={form === value ? "default" : "outline"} aria-pressed={form === value} disabled={value === "MONTH" && !today} onClick={() => chooseForm(value)}>{t(FORM_MESSAGES[value])}</Button>)}</div>
+        <form onSubmit={applyRange} className="grid items-end gap-4 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1.2fr_1.3fr_auto]" aria-label={t("reportFilters")}>
+          {form === "MONTH" ? <div className="space-y-2 sm:col-span-2 xl:col-span-2"><label htmlFor="attendance-report-month" className="text-sm font-medium">{t("reportMonthSelect")}</label>
+            <Input id="attendance-report-month" type="month" required value={range.from.slice(0, 7)} className="min-h-11" onChange={(event) => { if (/^\d{4}-\d{2}$/.test(event.target.value)) { setRange(monthRange(event.target.value)); setRangeError(null) } }} />
+            {range.from && range.to ? <p className="text-xs text-muted-foreground">{t("reportPeriod", { from: dateLabel(range.from), to: dateLabel(range.to) })}</p> : null}</div> : <>
+            <div className="space-y-2"><label htmlFor="attendance-report-from" className="text-sm font-medium">{t("reportFrom")}</label><Input id="attendance-report-from" type="date" required className="min-h-11" value={range.from} onChange={(event) => { setRange({ ...range, from: event.target.value }); setRangeError(null) }} /></div>
+            <div className="space-y-2"><label htmlFor="attendance-report-to" className="text-sm font-medium">{t("reportTo")}</label><Input id="attendance-report-to" type="date" required className="min-h-11" value={range.to} onChange={(event) => { setRange({ ...range, to: event.target.value }); setRangeError(null) }} /></div></>}
+          <div className="space-y-2"><label htmlFor="attendance-report-team" className="text-sm font-medium">{t("reportTeam")}</label><select id="attendance-report-team" className={SELECT_CLASS} value={teamId} disabled={!report}
+            onChange={(event) => { setTeamId(event.target.value); setEmployeeId(""); setPage(0) }}><option value="">{t("reportAllTeams")}</option>{directory.teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select></div>
+          <div className="space-y-2"><label htmlFor="attendance-report-employee" className="text-sm font-medium">{t("reportEmployee")}</label><select id="attendance-report-employee" className={SELECT_CLASS} value={employeeId} disabled={!report}
+            onChange={(event) => { setEmployeeId(event.target.value); setPage(0) }}><option value="">{t("reportAllEmployees")}</option>{directory.employees.filter((employee) => !teamId || employee.teamId === teamId).map((employee) => <option key={employee.id} value={employee.id}>{employee.name}</option>)}</select></div>
+          <Button type="submit" variant="outline" className="min-h-11" disabled={!today}>{t("reportApply")}</Button>
+        </form>
+        {rangeError ? <p role="alert" className="text-sm text-destructive">{rangeError}</p> : null}
+      </div>
+    </HomeCard>
+    <HomeCard testId="attendance-report-results" titleId="attendance-report-results-title" icon={<CalendarDays className="h-4 w-4" aria-hidden="true" />} tone="orange" title={t(FORM_MESSAGES[form])}>
+      <div className="space-y-4 py-4">
+        {loading ? <p role="status" className="text-sm text-muted-foreground">{t("reportLoading")}</p> : null}
+        {error ? <div className="space-y-3"><p role="alert" className="text-sm text-destructive">{error}</p><Button type="button" variant="outline" className="min-h-11" onClick={() => void load(today ? range : undefined)}>{t("reportReload")}</Button></div> : null}
+        {report ? <>
+          <div className="flex flex-wrap justify-between gap-2 text-xs text-muted-foreground"><p>{t("reportPeriod", { from: dateLabel(report.from), to: dateLabel(report.to) })}</p>
+            <p>{t("reportSnapshot", { time: timeLabel(report.asOf, timezones[0] ?? "Asia/Baku", true), timezone: timezones[0] ?? "Asia/Baku" })}</p></div>
+          {!count ? <p className="rounded-xl bg-muted/50 px-4 py-5 text-sm text-muted-foreground">{t("reportEmpty")}</p> : form === "MONTH" ? <>
+            <div className="overflow-x-auto" role="region" aria-label={t("reportMonth")} tabIndex={0}><table className="w-full border-collapse text-sm" data-testid="attendance-month-grid">
+              <thead><tr><th scope="col" className={`${HEADER} sticky left-0 z-10 min-w-40 bg-card`}>{t("reportEmployee")}</th>
+                {monthDates.map((date) => <th key={date} scope="col" className={`${HEADER} min-w-14 text-center`}><time dateTime={date} title={dateLabel(date)}>{Number(date.slice(-2))}</time></th>)}
+                <th scope="col" className={`${HEADER} min-w-24`}>{t("reportWorked")}</th><th scope="col" className={HEADER}>{t("reportLateCount")}</th><th scope="col" className={HEADER}>{t("reportAbsentCount")}</th></tr></thead>
+              <tbody>{monthEmployees.slice(pageStart, pageStart + PAGE_SIZE).map((person) => <tr key={person.id} data-testid="attendance-month-person"><th scope="row" className={`${CELL} sticky left-0 z-10 bg-card text-left font-semibold`}>
+                {person.name}<span className="mt-1 block text-xs font-normal text-muted-foreground">{person.team ?? t("reportNoTeam")}</span></th>
+                {monthDates.map((date) => { const row = person.dates.get(date); return <td key={date} className={`${CELL} text-center`}><span title={row ? `${dateLabel(date)} · ${t(KIND_MESSAGES[row.kind])} · ${rowNotes(row)}` : dateLabel(date)}>
+                  <HomePill tone={row ? rowTone(row) : "zinc"} className="min-w-10 justify-center rounded-md px-1.5 py-1 tabular-nums">{monthCell(row)}</HomePill></span></td> })}
+                <td className={`${CELL} whitespace-nowrap tabular-nums`}>{formatAttendanceDuration(person.totals.workedSeconds)}{!person.totals.isComplete ? <span className="block text-xs text-amber-700 dark:text-amber-300">{t("reportPartial")}</span> : null}</td>
+                <td className={`${CELL} tabular-nums`}>{person.totals.lateCount}</td><td className={`${CELL} tabular-nums`}>{person.totals.absentCount}</td></tr>)}</tbody>
+            </table></div>
+            <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground" aria-label={t("reportLegend")}>{[
+              ["8:00", "reportWorkedDay", "green"], ["8:00", "reportLateOrEarly", "amber"], [t("reportCodeAbsent"), "reportAbsentDay", "red"],
+              [t("reportCodeWeekend"), "reportWeekend", "zinc"], [t("reportCodeHoliday"), "reportHoliday", "blue"], ["·", "reportUpcoming", "zinc"],
+              ["~", "reportProvisional", "blue"], ["?", "reportMissingFinish", "amber"], ["!", "reportInvalidFacts", "red"],
+            ].map(([code, key, tone]) => <span key={key} className="inline-flex items-center gap-1.5"><HomePill tone={tone as HomeTone} className="rounded-md">{code}</HomePill>{t(key)}</span>)}</div>
+          </> : form === "JOURNAL" ? <div className="overflow-x-auto" role="region" aria-label={t("reportJournal")} tabIndex={0}><table className="w-full min-w-[780px] text-sm" data-testid="attendance-journal-table">
+            <thead><tr>{["reportEmployee", "reportDate", "reportEvent", "reportPhoneTime", "reportServerTime"].map((key) => <th key={key} scope="col" className={HEADER}>{t(key)}</th>)}</tr></thead>
+            <tbody>{journal.slice(pageStart, pageStart + PAGE_SIZE).map(({ row, event, index }) => <tr key={`${row.employeeId}:${row.date}:${event.id ?? index}`} data-testid="attendance-journal-event">
+              <th scope="row" className={`${CELL} text-left font-semibold`}>{row.employeeName}<span className="mt-1 block text-xs font-normal text-muted-foreground">{row.teamName ?? t("reportNoTeam")}</span></th>
+              <td className={`${CELL} whitespace-nowrap`}>{dateLabel(row.date)}<span className="block text-xs text-muted-foreground">{row.timezone}</span></td>
+              <td className={CELL}>{t(EVENT_MESSAGES[event.type])}</td><td className={`${CELL} whitespace-nowrap tabular-nums`}>{timeLabel(event.claimedAt ?? event.occurredAt, row.timezone, true)}</td>
+              <td className={`${CELL} whitespace-nowrap tabular-nums`}>{timeLabel(event.serverReceivedAt, row.timezone, true)}</td></tr>)}</tbody>
+          </table></div> : <div className="overflow-x-auto" role="region" aria-label={t(FORM_MESSAGES[form])} tabIndex={0}><table className="w-full min-w-[1180px] text-sm" data-testid="attendance-day-table">
+            <thead><tr>{["reportEmployee", "reportDate", "reportStatus", "reportStarted", "reportFinished", "reportWorked", "reportPaused", "reportLate", "reportEarly", "reportNotes"].map((key) => <th key={key} scope="col" className={HEADER}>{t(key)}</th>)}</tr></thead>
+            <tbody>{rows.slice(pageStart, pageStart + PAGE_SIZE).map((row) => <tr key={`${row.employeeId}:${row.date}`} data-testid="attendance-day-row">
+              <th scope="row" className={`${CELL} min-w-40 text-left font-semibold`}>{row.employeeName}<span className="mt-1 block text-xs font-normal text-muted-foreground">{row.teamName ?? t("reportNoTeam")}</span></th>
+              <td className={`${CELL} whitespace-nowrap`}>{dateLabel(row.date)}</td><td className={CELL}><HomePill tone={rowTone(row)}>{t(KIND_MESSAGES[row.kind])}</HomePill></td>
+              <td className={`${CELL} whitespace-nowrap tabular-nums`} title={row.timezone}>{timeLabel(row.startedAt, row.timezone)}</td><td className={`${CELL} whitespace-nowrap tabular-nums`} title={row.timezone}>{timeLabel(row.completedAt, row.timezone)}</td>
+              <td className={`${CELL} tabular-nums`}>{formatAttendanceDuration(row.workedSeconds)}{row.kind === "OPEN" ? <span className="block text-xs text-blue-700 dark:text-blue-300">{t("reportProvisionalShort")}</span> : null}</td>
+              <td className={`${CELL} tabular-nums`}>{formatAttendanceDuration(row.pausedSeconds)}</td><td className={`${CELL} tabular-nums`}>{(row.lateSeconds ?? 0) > 0 ? <HomePill tone="amber">{formatAttendanceDuration(row.lateSeconds)}</HomePill> : formatAttendanceDuration(row.lateSeconds)}</td>
+              <td className={`${CELL} tabular-nums`}>{(row.earlyLeaveSeconds ?? 0) > 0 ? <HomePill tone="amber">{formatAttendanceDuration(row.earlyLeaveSeconds)}</HomePill> : formatAttendanceDuration(row.earlyLeaveSeconds)}</td>
+              <td className={`${CELL} min-w-48 text-xs leading-relaxed text-muted-foreground`}>{rowNotes(row)}</td></tr>)}</tbody>
+          </table></div>}
+          <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground"><p>{t("reportShown", { from: count ? pageStart + 1 : 0, to: Math.min(pageStart + PAGE_SIZE, count), total: count })}</p>
+            {count > PAGE_SIZE ? <div className="flex items-center gap-2"><Button type="button" variant="outline" className="min-h-11" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>{t("reportPrevious")}</Button>
+              <span>{t("reportPage", { current: currentPage + 1, total: lastPage + 1 })}</span><Button type="button" variant="outline" className="min-h-11" disabled={currentPage === lastPage} onClick={() => setPage(currentPage + 1)}>{t("reportNext")}</Button></div> : null}</div>
+          <div data-testid="attendance-report-totals" className="space-y-2 rounded-xl bg-muted/50 px-4 py-3 text-sm"><p className="font-semibold">{t("reportTotalsTitle")}</p>
+            <p className="tabular-nums">{t("reportTotals", { worked: formatAttendanceDuration(totals.workedSeconds), paused: formatAttendanceDuration(totals.pausedSeconds), late: formatAttendanceDuration(totals.lateSeconds), early: formatAttendanceDuration(totals.earlyLeaveSeconds) })}</p>
+            <p className="text-xs text-muted-foreground">{t("reportTotalsRows", { rows: totals.rowCount, employees: totals.employeeCount })}</p>
+            {!totals.isComplete ? <p className="text-xs font-medium text-amber-800 dark:text-amber-300">{t("reportIncompleteTotals", { worked: totals.unknownWorkedCount, paused: totals.unknownPausedCount })}</p> : null}
+            {rows.some((row) => row.kind === "OPEN") ? <p className="text-xs text-blue-700 dark:text-blue-300">{t("reportProvisional")}</p> : null}
+          </div>
+          <p className="text-xs text-muted-foreground">{t("reportTimezones", { zones: timezones.length ? format.list(timezones) : "—" })} {t("reportDurationFormat")}</p>
+        </> : null}
+      </div>
+    </HomeCard>
+  </section>
+}
