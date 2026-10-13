@@ -106,6 +106,7 @@ jobs:
             echo "NEXTAUTH_SECRET=$MTM_AUTH_SECRET"
             echo "TENANT_PII_MASTER_KEY=$MTM_PII_SECRET"
             echo "MTM_E2E_LOG=${RUNNER_TEMP}/mtm-attendance-e2e.log"
+            echo "LEADDRIVE_RUNTIME_DIR=${RUNNER_TEMP}/mtm-attendance-e2e-runtime"
           } >> "$GITHUB_ENV"
       - uses: actions/setup-node@v6
         with:
@@ -134,7 +135,7 @@ jobs:
             fi
             sleep 2
           done
-          node scripts/mtm-attendance-browser-evidence.mjs
+          xvfb-run --auto-servernum --server-args='-screen 0 1920x1200x24' node scripts/mtm-attendance-browser-evidence.mjs
       - name: Preserve sanitized workflow result
         if: always()
         env:

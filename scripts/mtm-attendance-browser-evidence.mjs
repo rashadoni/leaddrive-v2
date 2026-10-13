@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { setTimeout as delay } from 'node:timers/promises'
 import { chromium } from 'playwright'
+import sharp from 'sharp'
 import { requireFixture, seedFixture } from './fixtures/mtm-attendance-e2e.mjs'
 
 requireFixture()
@@ -24,11 +25,11 @@ const t = (key, vars = {}) => {
 }
 const routes = ['', 'requests', 'decisions', 'employees', 'branches', 'branches/report', 'shifts', 'leave-balances', 'months', 'installations', 'branch-qr', 'review', 'location-settings', 'recordings']
 const caseNames = ['fixture-rls', 'credentials-and-roles', 'hr-read-grant', 'mobile-workday', 'report-scope-exports', 'views-crud', 'deliveries-crud', 'rules-calendar', 'day-kinds-quotas', 'employee-participation', 'employment-history', 'branches-assignments', 'geo-policy-consent', 'requests-decisions', 'hr-recording-batch', 'installation-decisions', 'shift-day-night', 'leave-policy-profile', 'month-freeze', 'risk-dismissal', ...routes.map(route => `page:${route || 'report'}`), 'browser-report-tabs-filters-pagination', 'browser-views-save-rename-delete-cancel', 'browser-employee-search-switch-history', 'browser-branch-create-edit-archive-cancel', 'browser-request-approve-reject-revoke', 'browser-qr-toggle-refresh-hide', 'browser-locales-mobile-width', 'hr-revoke-fresh-session', 'final-privacy-invariants', 'browser-settings-hr-catalogue-quotas', 'browser-delivery-create-edit-cancel-delete', 'browser-batch-recording-and-decision-journal', 'browser-shift-publish-cancel-and-leave-profile', 'browser-geo-off-legal-block-and-branch-summary', 'browser-installation-approve-revoke-history', 'browser-month-frozen-download']
-caseNames.push('browser-rules-calendar-crud', 'browser-hr-grant-revoke', 'browser-kind-create-archive-restore', 'browser-employment-record', 'browser-primary-branch-assignment', 'browser-risk-dismissal', 'browser-leave-policy-publication', 'browser-month-preview-close-blockers', 'browser-sidebar-click-traversal', 'browser-branch-lost-acknowledgement-retry', 'browser-catalogue-competing-tabs')
+caseNames.push('browser-rules-calendar-crud', 'browser-hr-grant-revoke', 'browser-kind-create-archive-restore', 'browser-employment-record', 'browser-primary-branch-assignment', 'browser-risk-dismissal', 'browser-leave-policy-publication', 'browser-month-preview-close-blockers', 'browser-sidebar-click-traversal', 'browser-branch-lost-acknowledgement-retry', 'browser-catalogue-competing-tabs', 'browser-private-document-download-and-permissions')
 const manifest = {
   version: 1, status: 'RUNNING', headSha: head, workflowSha: process.env.GITHUB_SHA,
   runId: process.env.GITHUB_RUN_ID, runAttempt: process.env.GITHUB_RUN_ATTEMPT,
-  environment: 'GitHub Linux, Chromium, Next development server, isolated PostgreSQL 16',
+  environment: 'GitHub Linux, headed Chromium under Xvfb, Next development server, isolated PostgreSQL 16',
   productionMutation: false, physicalAPK: 'NOT_RUN', outboundEmail: 'NOT_RUN',
   startedAt: new Date().toISOString(), cases: [], sourceBindings: [], controls: [],
   limitations: [
@@ -94,12 +95,13 @@ async function readyPage(path) {
   await page.locator('h1').first().waitFor({ timeout: 120000 })
   await poll(async () => !(await page.locator('[aria-busy="true"]').count()), 'Page still busy', 120000)
 }
-async function clickResponse(locator, path, method = 'POST', status = 200) {
+async function clickResponse(locator, path, method = 'POST', status = 200, parseBody = true) {
   const waiting = page.waitForResponse(response => new URL(response.url()).pathname === path && response.request().method() === method, { timeout: 120000 })
   void waiting.catch(() => {}) // A failed click must not leave an unhandled listener rejection.
   await locator.click()
   const response = await waiting
   assert.equal(response.status(), status)
+  if (!parseBody) return
   const body = await response.json()
   if (status < 400) assert.equal(body.success, true)
   return body.data
@@ -127,7 +129,9 @@ async function mobileLogin(role) {
 try {
   await run('fixture-rls', 'database', async () => { fixture = await seedFixture(); return { automaticEmployees: 58, restrictedRole: true, crossTenantDenied: true } })
   assert.ok(fixture, 'Fixture provisioning failed')
-  browser = await chromium.launch({ headless: true })
+  // Native tab visibility is part of the QR lifecycle; no synthetic visibility events.
+  assert.ok(process.env.DISPLAY, 'Hosted virtual display required')
+  browser = await chromium.launch({ headless: false })
   await run('credentials-and-roles', 'authenticated-http', async () => {
     for (const role of ['admin', 'hr', 'manager', 'employee', 'field', 'foreign']) {
       const context = await browser.newContext({ baseURL: origin.origin, viewport: { width: 1440, height: 1000 }, locale: 'en-US' })
@@ -556,22 +560,32 @@ try {
     await readyPage('branch-qr')
     const toggle = page.getByRole('switch', { name: t('qrRule') })
     assert.equal(await toggle.getAttribute('aria-checked'), 'false')
-    await clickResponse(toggle, '/api/v1/mtm/settings', 'PUT')
-    const qr = page.getByRole('img', { name: t('qrImageAlt') })
-    await qr.waitFor({ timeout: 120000 })
-    assert.ok((await qr.getAttribute('src')).startsWith('data:image/png;base64,'))
-    await button('qrRefresh').click()
-    await qr.waitFor({ timeout: 120000 })
-    const secondPage = await sessions.admin.newPage()
-    await secondPage.goto('about:blank')
-    await secondPage.bringToFront()
-    await poll(async () => await page.evaluate(() => document.visibilityState) === 'hidden', 'QR page background visibility')
-    assert.equal(await qr.count(), 0)
-    await secondPage.close(); await page.bringToFront()
-    await qr.waitFor({ timeout: 120000 })
-    await clickResponse(toggle, '/api/v1/mtm/settings', 'PUT')
-    await poll(async () => await toggle.getAttribute('aria-checked') === 'false', 'QR disabled')
-    assert.equal(await qr.count(), 0)
+    let secondPage
+    try {
+      // The component aborts the old PUT response while loading its new state.
+      // Prove the real status and resulting state without reading a discarded body.
+      await clickResponse(toggle, '/api/v1/mtm/settings', 'PUT', 200, false)
+      await poll(async () => await toggle.getAttribute('aria-checked') === 'true', 'QR enabled')
+      assert.equal((await api('admin', '/branch-qr')).enabled, true)
+      const qr = page.getByRole('img', { name: t('qrImageAlt') })
+      await qr.waitFor({ timeout: 120000 })
+      assert.ok((await qr.getAttribute('src')).startsWith('data:image/png;base64,'))
+      await button('qrRefresh').click()
+      await qr.waitFor({ timeout: 120000 })
+      secondPage = await sessions.admin.newPage()
+      await secondPage.goto('about:blank'); await secondPage.bringToFront()
+      await poll(async () => await page.evaluate(() => document.visibilityState) === 'hidden', 'QR page background visibility')
+      await poll(async () => await qr.count() === 0, 'QR hidden in background')
+      await secondPage.close(); secondPage = null; await page.bringToFront()
+      await qr.waitFor({ timeout: 120000 })
+      await clickResponse(toggle, '/api/v1/mtm/settings', 'PUT', 200, false)
+      await poll(async () => await toggle.getAttribute('aria-checked') === 'false', 'QR disabled')
+      assert.equal(await qr.count(), 0)
+    } finally {
+      await secondPage?.close()
+      // Failed lifecycle assertions must still leave the disposable policy OFF.
+      await request(sessions.admin, '/api/v1/mtm/settings', { method: 'PUT', body: { attendanceBranchQrEnabled: false } })
+    }
     return { enabledThenDisabled: true, refresh: true, hidesInBackground: true, cameraScan: 'NOT_RUN' }
   })
   await run('browser-settings-hr-catalogue-quotas', 'browser-action+database-backed-http', async () => {
@@ -647,8 +661,11 @@ try {
     await page.getByTestId('attendance-journal-row').first().waitFor()
     const download = page.waitForEvent('download', { timeout: 120000 })
     await button('exportExcel').click(); assert.equal(await (await download).failure(), null)
-    const detail = page.locator('a[href^="/mtm/attendance/requests?requestId="]').first()
-    await detail.click(); await page.getByTestId('attendance-request-queue').waitFor()
+    // The journal is a table, not a list of links. Check the actual requestId
+    // destination explicitly; do not claim a non-existent journal control.
+    await readyPage(`requests?requestId=${state.uiReject.id}`)
+    await page.getByTestId(`attendance-request-${state.uiReject.id}`).waitFor()
+    return { teamRecording: true, journalFilterAndExport: true, focusedRequest: 'Direct browser URL navigation; journal has no detail link' }
   })
   await run('browser-shift-publish-cancel-and-leave-profile', 'browser-action+database-backed-http', async () => {
     await readyPage('shifts')
@@ -799,6 +816,7 @@ try {
     await page.locator('#employment-date').fill(date(-90))
     await page.locator('#employment-reason').fill('Fictional documented employment date')
     await clickResponse(button('employeesSaveChange', history), `${apiRoot}/employees/history`)
+    await row.getByRole('button', { name: t('employeesHistoryNamed', { name: 'Fixture field' }) }).click()
     await history.getByTestId('employment-event').waitFor()
     assert.equal((await fixture.admin.mtmAgent.findUniqueOrThrow({ where: { id: fixture.agents.field.id } })).role, 'AGENT')
     await button('employeesClose', history).click()
@@ -878,7 +896,12 @@ try {
     for (const route of routes.filter(route => route !== 'recordings')) {
       const href = `/mtm/attendance${route ? `/${route}` : ''}`
       const link = page.locator(`aside a[href="${href}"]`)
-      await link.click()
+      await link.scrollIntoViewIfNeeded()
+      const bounds = await link.boundingBox()
+      assert.ok(bounds)
+      // Use the unobstructed right side of the real link. Next development's
+      // issue badge overlays the bottom-left of this development-only runner.
+      await link.click({ position: { x: bounds.width - 20, y: bounds.height / 2 } })
       await page.waitForURL(url => url.pathname === href, { timeout: 120000 })
       await page.locator('h1').first().waitFor()
       assert.equal(await link.getAttribute('aria-current'), 'page')
@@ -945,6 +968,57 @@ try {
       await poll(async () => await button('kindsAdd', page.getByTestId('attendance-day-kinds')).isEnabled(), 'Catalogue reloaded after conflict')
     } finally { page = original; await concurrent.close() }
     return { realCompetingBrowserTabs: 2, staleWriteRejected: true, newerValuePreserved: true, reloadRestoresControls: true }
+  })
+  await run('browser-private-document-download-and-permissions', 'mobile-multipart-http+browser-download+role-http', async () => {
+    const clientRequestId = randomUUID(), clientAttachmentId = randomUUID()
+    // Synthetic pixels and metadata only, generated in the disposable runner.
+    const bytes = await sharp({ create: { width: 16, height: 16, channels: 3, background: '#ffffff' } }).jpeg()
+      .withExif({ IFD0: { ImageDescription: 'Fictional CI document, no personal data' } }).toBuffer()
+    assert.ok((await sharp(bytes).metadata()).exif)
+    const upload = async (buffer, attachmentId, expectedStatus) => {
+      const response = await mobiles.employee.request.post(`${mobileRoot}/attachments`, {
+        multipart: { clientRequestId, clientAttachmentId: attachmentId, file: { name: 'fixture.jpg', mimeType: 'image/jpeg', buffer } }, timeout: 120000,
+      })
+      assert.equal(response.status(), expectedStatus)
+      const json = await response.json()
+      if (expectedStatus < 400) assert.equal(json.success, true)
+      return json.data
+    }
+    const selected = await upload(bytes, clientAttachmentId, 201)
+    assert.equal((await upload(bytes, clientAttachmentId, 200)).id, selected.id)
+    await upload(Buffer.from('Not an image'), randomUUID(), 400)
+    await upload(Buffer.alloc(5 * 1024 * 1024 + 1), randomUUID(), 413)
+    const unselected = await upload(bytes, randomUUID(), 201)
+    const own = await mobile('employee', `/attachments/${selected.id}`, { raw: true })
+    const sanitizedBytes = await own.body()
+    assert.equal(own.headers()['content-type'], 'image/jpeg')
+    assert.equal((await sharp(sanitizedBytes).metadata()).exif, undefined)
+    await api('admin', `/attachments/${selected.id}`, { status: 404 })
+    await mobile('field', `/attachments/${selected.id}`, { status: 404 })
+    const submitted = await mobile('employee', '/requests', { method: 'POST', status: 201, body: {
+      clientRequestId, kind: 'SICK_LEAVE', unit: 'DAYS', startDate: date(28), endDate: date(28),
+      reason: 'Fictional document request for access verification', attachmentIds: [selected.id],
+    } })
+    for (const [role, status] of [['hr', 403], ['employee', 403], ['field', 403], ['foreign', 404]]) await api(role, `/attachments/${selected.id}`, { status })
+    await api('admin', `/attachments/${unselected.id}`, { status: 404 })
+    const manager = await api('manager', `/attachments/${selected.id}`, { raw: true })
+    assert.deepEqual(await manager.body(), sanitizedBytes)
+    assert.equal(manager.headers()['cache-control'], 'private, no-store')
+    assert.equal(manager.headers()['x-content-type-options'], 'nosniff')
+    await readyPage(`requests?requestId=${submitted.request.id}`)
+    const row = page.getByTestId(`attendance-request-${submitted.request.id}`)
+    await button('requestsOpen', row).click()
+    const link = row.getByRole('link', { name: t('requestsDocument', { number: 1 }), exact: true })
+    assert.equal(await link.getAttribute('href'), `${apiRoot}/attachments/${selected.id}`)
+    const waiting = page.waitForEvent('download', { timeout: 120000 }); void waiting.catch(() => {})
+    await link.click()
+    const download = await waiting
+    assert.equal(await download.failure(), null)
+    const stream = await download.createReadStream(), chunks = []
+    assert.ok(stream)
+    for await (const chunk of stream) chunks.push(chunk)
+    assert.deepEqual(Buffer.concat(chunks), sanitizedBytes)
+    return { actualBrowserDocumentDownload: true, draftAndUnselectedHidden: true, deniedRoles: 4, otherEmployeeDenied: true, sameTeamReviewerAllowed: true, exifRemoved: true, invalidFileAndSizeRejected: true, upload: 'Actual mobile multipart HTTP, not APK picker', admissionBackend: 'Application development memory fallback; production Redis gate NOT_RUN' }
   })
   await run('browser-locales-mobile-width', 'browser-navigation+layout', async () => {
     for (const locale of ['az', 'ru', 'en']) {

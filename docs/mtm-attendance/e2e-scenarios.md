@@ -46,7 +46,7 @@ possible combination was tested is permitted.
 | Branch report | Real shared report snapshot | Date/team/employee filters; PDF download |
 | Geo policy | OFF default; no legal text rejected; fictional publication/consent/withdrawal; restore OFF | Incomplete text disables activation; save OFF; no coordinates submitted |
 | Employee requests | Submit/replay; approved/rejected/cancelled; revoke annual leave; HR/foreign denial | Expand, approve, require rejection reason, reject, cancel revocation, revoke; employee sees result |
-| Decision journal | Persisted decisions from real requests/HR recording | Date/status filter, export, request deep link |
+| Decision journal | Persisted decisions from real requests/HR recording | Date/status filter, export; focused request URL tested by direct navigation (the journal renders no detail links) |
 | HR recording | Multi-person batch; replay; duplicate employee rejection; HR read-only denial | Team selection, day kind/date/reason, preview, save, start new record |
 | Installations | Request; approve/reject/revoke/replay; HR denial | Approve, required reason, history, revoke; employee sees state |
 | QR | Real policy route and generated code | Enable, display, refresh, hide on background, return, disable |
@@ -161,3 +161,39 @@ it does not fabricate a successful API response. Both cases require a subsequent
 hosted run before they can be labelled PASS. Other recovery controls and physical
 offline queues remain unverified. The workflow also reacts to the auth/workday,
 sidebar, schema and translation sources used by these scenarios.
+
+## Initial hosted evidence and corrections — 2026-10-14 (Asia/Baku)
+
+Run 38472009609 finished **FAIL: 52 PASS, 7 FAIL, 5 NOT_RUN**. The exact-head
+artifact proves real migration setup/restricted RLS, six web credential sessions,
+two mobile logins, four workday transitions and retries, all 14 page data reads,
+and the named passing mutation families. It does not establish a green suite.
+
+The seven failures were traced as follows:
+
+- Two seeded risk fixtures violated the real receipt-time guard; corrected to
+  the event's actual `serverReceivedAt` in checkpoint `87e37b7c8`.
+- The QR test tried to read a response body discarded by the component during
+  its refresh. It now checks the real status and resulting UI/API state, with
+  unconditional disposable-policy OFF cleanup. Its earlier interruption caused
+  the final QR-OFF invariant failure as well.
+- Employment recording successfully saved and closed the editor; the harness
+  now reopens history before asserting the new entry.
+- The journal has no request-detail anchors. The earlier invented-anchor
+  assertion is replaced with explicitly labelled direct request URL navigation.
+- The final sidebar item overlapped Next development's issue badge. The harness
+  scrolls the real sidebar and clicks an unobstructed position in the link, with
+  normal pointer actionability checks and no forced click.
+
+No product defect has been established by these seven failures. The QR
+background check now runs headed Chromium under a hosted Xvfb display so tab
+visibility comes from Chromium, never synthetic `visibilitychange` events.
+The updated suite still requires hosted verification.
+
+A new private-document flow covers actual mobile multipart upload, identical
+retry, invalid image/size, EXIF removal, draft and unselected-document privacy,
+same-team reviewer access, read-only HR/self/field/foreign denial, and a real
+browser document-link download. Upload is explicitly mobile HTTP, not an Android
+picker. Files stay in disposable private runner storage outside artifacts.
+The development server uses the application's memory admission backend; the
+production Redis availability/concurrency gate remains **NOT_RUN** here.
