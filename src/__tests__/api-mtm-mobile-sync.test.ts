@@ -3993,6 +3993,20 @@ describe("explicit attendance enrollment through the live workday path", () => {
     expect(evaluateWorkforceMobileWriteAccess).not.toHaveBeenCalled()
     expect(prisma.mtmSyncOperation.create).toHaveBeenCalledTimes(1)
   })
+  it("accepts an excluded field employee's queued workday without recording stale attendance evidence", async () => {
+    enrolled("AGENT")
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: AGENT_ID, role: "AGENT", attendanceParticipant: true, attendanceExcluded: true } as never)
+    vi.mocked(prisma.mtmSetting.findUnique).mockResolvedValue({ value: true } as never)
+    const op = operation(), installationId = "rf-fictional-installation-0000001"
+    const response = await PushPOST(makePushReq({ operations: [{ ...op, data: { ...op.data, attendanceMark: {
+      version: 1, installationId, locationState: "NO_CONSENT", consentRevisionId: null, location: null,
+    } } }] }, { "x-field-device-id": installationId }))
+    expect((await response.json()).results).toMatchObject([{ status: "ok", serverId: "office-workday" }])
+    expect(prisma.mtmAgentWorkday.create).toHaveBeenCalledTimes(1)
+    expect(prisma.mtmAgentWorkdayEvent.create).toHaveBeenCalledTimes(1)
+    const sql = vi.mocked(prisma.$executeRaw).mock.calls.map((call: unknown[]) => Array.isArray(call[0]) ? call[0].join(" ") : "").join("\n")
+    expect(sql).not.toMatch(/INSERT INTO mtm_attendance_(mark|qr)_evidence/)
+  })
   it("preserves the Workforce fence when both capabilities are present", async () => {
     enrolled()
     vi.mocked(resolveMobileAuth).mockResolvedValue({ ...AUTH_CONTEXT, role: "EMPLOYEE", tenantCapabilities: { routeField: true, workforceHrm: true } } as never)

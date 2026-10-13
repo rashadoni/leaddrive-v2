@@ -67,6 +67,9 @@ suite("attendance demo fixture with real PostgreSQL guards", () => {
     for (const name of ["20260828230000_workforce_direct_correction_contract", "20260915210100_workforce_workday_reopen_ledger"]) {
       sql(database!.toString(), retainedFunction(migration(name), "workforce_guard_completed_workday"))
     }
+    sql(database!.toString(), 'DROP TABLE mtm_attendance_participation_events; ALTER TABLE mtm_agents DROP COLUMN "attendanceExcluded", DROP COLUMN "attendanceIncludedFrom"; DROP TABLE mtm_attendance_month_days; DROP TABLE mtm_attendance_month_members; DROP TABLE mtm_attendance_month_closes;')
+    sql(database!.toString(), migration("20261013190000_mtm_attendance_month_close"))
+    sql(database!.toString(), migration("20261013220000_mtm_attendance_automatic_participation"))
     sql(database!.toString(), `GRANT USAGE ON SCHEMA public TO "${role}"; GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "${role}";`)
     process.env.DATABASE_URL = appUrl!.toString()
     db = new PrismaClient()
@@ -95,9 +98,13 @@ suite("attendance demo fixture with real PostgreSQL guards", () => {
     const customer = await db.organization.findUnique({ where: { id: "untouched-customer-fixture" } })
     expect(await prepareDemo(db, "unusable-test-hash")).toBe(true)
     const snapshot = await readOnlyDemo(db)
+    expect(snapshot.agents).toHaveLength(3)
+    expect(snapshot.agents.filter(agent => agent.userId === DEMO.userId)).toMatchObject([{ role: "EMPLOYEE", attendanceParticipant: true,
+      attendanceExcluded: false, attendanceIncludedFrom: expect.any(Date), canPlanOwnRoutes: false, canSelfPublishRoutes: false }])
     expect(snapshot.workdays).toHaveLength(3)
     expect(snapshot.workdays.flatMap((day) => day.events)).toHaveLength(12)
-    const report = buildMtmAttendanceReport({ employees: DEMO_AGENTS.map((id) => ({ id, name: "Demo", teamId: null, teamName: null })),
+    const report = buildMtmAttendanceReport({ employees: snapshot.agents.map(agent => ({ id: agent.id, name: "Demo", teamId: null, teamName: null,
+      attendanceIncludedFrom: agent.attendanceIncludedFrom?.toISOString() ?? null })),
       workdays: snapshot.workdays, calendar: [], rules: [], from: DEMO.from, to: DEMO.to, now: new Date("2026-10-13T10:00:00Z") })
     expect(verifyParity(snapshot, report).totals.workedSeconds).toBe(90540)
     expect(await prepareDemo(db, "replacement-must-not-be-used")).toBe(false)
@@ -126,8 +133,10 @@ suite("attendance demo fixture with real PostgreSQL guards", () => {
   })
   it("reads all new surface tables only in the fixed tenant and refuses unexpected configuration without repair", async () => {
     const before = await readSurfaceDemo(db)
-    expect(before.agents.map(agent => agent.id)).toEqual([...DEMO_AGENTS])
-    expect(Object.values(before.counts)).toEqual(Array(25).fill(0))
+    expect(before.agents.filter(agent => agent.role === "AGENT").map(agent => agent.id)).toEqual([...DEMO_AGENTS])
+    expect(before.agents.filter(agent => agent.userId === DEMO.userId)).toHaveLength(1)
+    expect(before.agents).toHaveLength(3)
+    expect(Object.values(before.counts)).toEqual(Array(26).fill(0))
     const foreign = await admin.mtmAttendanceBranch.create({ data: { organizationId: "untouched-customer-fixture" } })
     let ownId: string | null = null
     try {

@@ -5,6 +5,7 @@ import { ATTENDANCE_INSTALLATION_RULE_KEY, saveAttendanceInstallationRule } from
 import { NextRequest, NextResponse } from "next/server"
 import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
+import { attendanceIdentityConflictResponse } from "@/lib/mtm/attendance-identity-error"
 import { SettingsUpdateSchema, parseBody } from "@/lib/mtm-validators"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { withRls, withRlsAuth } from "@/lib/with-rls"
@@ -288,6 +289,8 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
 
     return NextResponse.json({ success: true, data: { ignoredKeys } })
   } catch (error: unknown) {
+    const conflict = attendanceIdentityConflictResponse(error)
+    if (conflict) return conflict
     if (error instanceof AttendanceRequestError) return NextResponse.json({ error: error.code, code: error.code }, { status: error.status })
     const message = error instanceof Error ? error.message : "Failed to update settings"
     return NextResponse.json({ error: message }, { status: 400 })

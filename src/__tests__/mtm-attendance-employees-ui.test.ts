@@ -19,9 +19,9 @@ const postCalls = () => fetchMock.mock.calls.filter(([, options]) => options?.me
 async function render(language = locale) { locale = language; const props = { locale, messages: messages[locale], timeZone: "Asia/Baku", children: createElement(MtmAttendanceEmployees) }; await act(async () => root.render(createElement(NextIntlClientProvider, props))) }
 const field = (id: string) => container.querySelector<HTMLInputElement | HTMLSelectElement>(`#${id}`)!
 async function edit(id: string, value: string) { await act(async () => { const input = field(id); Object.getOwnPropertyDescriptor(input.tagName === "SELECT" ? HTMLSelectElement.prototype : HTMLInputElement.prototype, "value")!.set!.call(input, value); input.dispatchEvent(new Event("input", { bubbles: true })); input.dispatchEvent(new Event("change", { bubbles: true })) }) }
-async function submit(history = false) { await act(async () => container.querySelector(`[data-testid="${history ? "employees-history" : "employees-enrollment"}"] form`)!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }))) }
-async function fillEnrollment() { for (const [id, value] of [["enroll-user", "user-leyla"], ["enroll-team", "team-centre"], ["enroll-date", "2026-10-01"], ["enroll-reason", "Fictional employment"]]) await edit(id, value) }
-async function openHistory(index = 0) { await act(async () => container.querySelectorAll<HTMLButtonElement>('[data-testid="employee-row"] button')[index].click()) }
+async function submit() { await act(async () => container.querySelector('[data-testid="employees-history"] form')!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }))) }
+async function toggle(index = 0) { await act(async () => container.querySelectorAll<HTMLButtonElement>('[role="switch"]')[index].click()) }
+async function openHistory(index = 0) { await act(async () => container.querySelectorAll<HTMLButtonElement>('[data-testid="employee-row"] button:not([role="switch"])')[index].click()) }
 function capture() {
   const dir = process.env.MTM_ATTENDANCE_RENDER_DIR; if (!dir) return
   mkdirSync(dir, { recursive: true }); const clone = container.cloneNode(true) as HTMLElement
@@ -32,89 +32,108 @@ function capture() {
 beforeEach(() => {
   locale = "ru"; unmounted = false; container = document.createElement("div"); document.body.append(container); root = createRoot(container)
   directory = { timezone: "Asia/Baku", users: [{ id: "user-leyla", name: "Leyla Demo", existingRole: null, existingTeamId: null, eligible: true }, { id: "user-rauf", name: "Rauf Demo", existingRole: "MANAGER", existingTeamId: "team-centre", eligible: true }, { id: "ineligible", name: "Hidden Demo", existingRole: "AGENT", existingTeamId: null, eligible: false }], teams: [{ id: "team-centre", name: "Demo Centre" }, { id: "team-north", name: "Demo North" }], employees: [
-    { id: "employee-aylin", name: "Aylin Demo", role: "EMPLOYEE", teamName: "Demo Centre", status: "ACTIVE", history: [{ id: "hire-1", kind: "HIRE", date: "2026-10-01", at: "2026-09-30T20:00:00.000Z", byName: "Rauf Demo" }] },
-    { id: "employee-murad", name: "Murad Demo", role: "AGENT", teamName: "Demo North", status: "ACTIVE", history: [] },
+    { id: "employee-aylin", name: "Aylin Demo", role: "EMPLOYEE", teamName: "Demo Centre", status: "ACTIVE", included: true, participationVersion: null, includedFrom: null, history: [{ id: "hire-1", kind: "HIRE", date: "2026-10-01", at: "2026-09-30T20:00:00.000Z", byName: "Rauf Demo" }] },
+    { id: "employee-murad", name: "Murad Demo", role: "AGENT", teamName: "Demo North", status: "ACTIVE", included: true, participationVersion: null, includedFrom: null, history: [] },
   ] }
-  fetchMock.mockReset(); fetchMock.mockImplementation(async (url, options) => options?.method === "POST" ? response({ ...(String(url).endsWith("/history") ? { eventId: "new-event" } : { agentId: "new-employee" }), idempotent: false }) : response(directory)); vi.stubGlobal("fetch", fetchMock)
+  fetchMock.mockReset(); fetchMock.mockImplementation(async (_url, options) => options?.method === "POST" ? response({ eventId: "new-event", idempotent: false }) : response(directory)); vi.stubGlobal("fetch", fetchMock)
 })
 afterEach(async () => { if (!unmounted) await act(async () => root.unmount()); container.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
-describe("actual employee enrollment and immutable history UI", () => {
-  it.each(["ru", "az", "en"] as const)("renders %s with explicit dates, localized roles and authors", async language => {
-    await render(language); expect(field("enroll-date").value).toBe(""); expect(field("enroll-user").value).toBe(""); expect(container.textContent).not.toMatch(/mtmAttendance\.|mtmStatus\.|undefined|Hidden Demo|EMPLOYEE|AGENT/)
-    await fillEnrollment(); await openHistory(); await edit("employment-date", "2026-10-31"); await edit("employment-reason", "Fictional employment change"); expect(container.querySelectorAll('[data-testid="employment-event"]')).toHaveLength(1); expect(container.textContent).toContain(t("employeesAuthor", { name: "Rauf Demo" })); capture()
+describe("automatic employee participation and immutable history UI", () => {
+  it.each(["ru", "az", "en"] as const)("renders %s with automatic participation, localized roles and no enrollment form", async language => {
+    directory.employees[1].included = false
+    await render(language); expect(container.querySelector('[data-testid="employees-enrollment"]')).toBeNull(); expect(container.querySelector("form")).toBeNull()
+    expect(container.textContent).not.toMatch(/mtmAttendance\.|mtmStatus\.|undefined|Hidden Demo|EMPLOYEE|AGENT/)
+    expect(container.textContent).toContain(t("employeesAutomaticHint")); expect(container.querySelectorAll('[role="switch"]')).toHaveLength(2)
+    expect(container.querySelector('[role="switch"]')!.getAttribute("aria-checked")).toBe("true"); capture()
+    await openHistory(); expect(field("employment-date").value).toBe(""); expect(container.querySelectorAll('[data-testid="employment-event"]')).toHaveLength(1); expect(container.textContent).toContain(t("employeesAuthor", { name: "Rauf Demo" }))
   })
-  it("does not submit an absent date or a short reason", async () => {
-    await render(); await edit("enroll-user", "user-leyla"); await submit(); expect(postCalls()).toHaveLength(0); expect(container.textContent).toContain(t("employeesInvalid"))
-    await edit("enroll-date", "2026-10-01"); await edit("enroll-reason", "ab"); await submit(); expect(postCalls()).toHaveLength(0)
+  it("keeps explicit date and comment validation only for personnel changes", async () => {
+    await render(); await openHistory(); await submit(); expect(postCalls()).toHaveLength(0); expect(container.textContent).toContain(t("employeesInvalid"))
+    await edit("employment-date", "2026-10-31"); await edit("employment-reason", "ab"); await submit(); expect(postCalls()).toHaveLength(0)
   })
-  it("enrolls only the chosen existing user and refreshes the roster", async () => {
-    await render(); await fillEnrollment(); await submit()
-    expect(JSON.parse(postCalls()[0][1]!.body as string)).toMatchObject({ userId: "user-leyla", teamId: "team-centre", hireDate: "2026-10-01", reason: "Fictional employment" })
-    expect(JSON.parse(postCalls()[0][1]!.body as string).clientRequestId).toMatch(/^[a-f0-9-]{36}$/); expect(field("enroll-date").value).toBe(""); expect(container.textContent).toContain(t("employeesSaved")); expect(fetchMock.mock.calls.filter(([, options]) => options?.method !== "POST")).toHaveLength(2)
+  it("excludes only the chosen employee without requesting a reason or altering the account", async () => {
+    await render(); await toggle()
+    expect(postCalls()[0][0]).toBe("/api/v1/mtm/attendance/employees/participation")
+    const body = JSON.parse(postCalls()[0][1]!.body as string)
+    expect(body).toEqual({ agentId: "employee-aylin", included: false, previousEventId: null, clientRequestId: expect.stringMatching(/^[a-f0-9-]{36}$/) })
+    expect(container.textContent).toContain(t("employeesSaved")); expect(fetchMock.mock.calls.filter(([, options]) => options?.method !== "POST")).toHaveLength(2)
+    // The server response, not an optimistic flip, remains the source of truth.
+    expect(container.querySelector('[role="switch"]')!.getAttribute("aria-checked")).toBe("true")
   })
-  it("does not claim the history refreshed when a confirmed write is followed by a failed reload", async () => {
-    await render(); await fillEnrollment()
-    fetchMock.mockImplementation(async (_url, options) => options?.method === "POST" ? response({ agentId: "new-employee", idempotent: false }) : response(null, 500))
-    await submit(); expect(container.textContent).toContain(t("employeesLoadError")); expect(container.textContent).not.toContain(t("employeesSaved")); expect(button("employeesCheckWrite")).toBeUndefined(); expect(container.querySelector("form")).toBeNull()
+  it("includes an excluded employee with the exact latest version", async () => {
+    directory.employees[0].included = false; directory.employees[0].participationVersion = "participation-previous"
+    await render(); await toggle(); expect(JSON.parse(postCalls()[0][1]!.body as string)).toMatchObject({ agentId: "employee-aylin", included: true, previousEventId: "participation-previous" })
   })
-  it("retains an existing manager's team even if a synthetic DOM change attempts another", async () => {
-    await render(); await edit("enroll-user", "user-rauf"); expect(field("enroll-team").disabled).toBe(true); expect(field("enroll-team").value).toBe("team-centre"); expect(container.textContent).toContain(t("employeesManagerHint"))
-    await edit("enroll-team", "team-north"); await edit("enroll-date", "2026-10-01"); await edit("enroll-reason", "Fictional enrollment"); await submit(); expect(JSON.parse(postCalls()[0][1]!.body as string).teamId).toBe("team-centre")
+  it("does not claim the roster refreshed when a confirmed write is followed by a failed reload", async () => {
+    await render(); fetchMock.mockImplementation(async (_url, options) => options?.method === "POST" ? response({ eventId: "new-event", idempotent: false }) : response(null, 500))
+    await toggle(); expect(container.textContent).toContain(t("employeesLoadError")); expect(container.textContent).not.toContain(t("employeesSaved")); expect(button("employeesCheckWrite")).toBeUndefined(); expect(container.querySelector('[role="switch"]')).toBeNull()
   })
   it("records termination with the last known immutable event and explicit last working day", async () => {
     await render(); await openHistory(); expect(field("employment-date").value).toBe(""); expect(field("employment-kind").value).toBe("TERMINATION")
-    await edit("employment-date", "2026-10-31"); await edit("employment-reason", "Fictional termination"); await submit(true)
+    await edit("employment-date", "2026-10-31"); await edit("employment-reason", "Fictional termination"); await submit()
     expect(postCalls()[0][0]).toBe("/api/v1/mtm/attendance/employees/history"); expect(JSON.parse(postCalls()[0][1]!.body as string)).toMatchObject({ agentId: "employee-aylin", kind: "TERMINATION", date: "2026-10-31", previousEventId: "hire-1" }); expect(container.querySelector('[data-testid="employees-history"]')).toBeNull()
   })
   it("records the first HIRE without inventing a prior event", async () => {
-    await render(); await openHistory(1); expect(field("employment-kind").value).toBe("HIRE"); await edit("employment-date", "2026-10-01"); await edit("employment-reason", "Fictional hire"); await submit(true)
+    await render(); await openHistory(1); expect(field("employment-kind").value).toBe("HIRE"); await edit("employment-date", "2026-10-01"); await edit("employment-reason", "Fictional hire"); await submit()
     expect(JSON.parse(postCalls()[0][1]!.body as string)).toMatchObject({ kind: "HIRE", previousEventId: null, agentId: "employee-murad" })
   })
   it("permits a rehire date immediately after the last working date without inventing an off-day", async () => {
     directory.employees[0].history.push({ id: "term-1", kind: "TERMINATION", date: "2026-10-31", at: "2026-10-31T20:00:00Z", byName: null })
-    await render(); await openHistory(); expect(field("employment-kind").value).toBe("REHIRE"); await edit("employment-date", "2026-11-01"); await edit("employment-reason", "Fictional rehire"); await submit(true)
+    await render(); await openHistory(); expect(field("employment-kind").value).toBe("REHIRE"); await edit("employment-date", "2026-11-01"); await edit("employment-reason", "Fictional rehire"); await submit()
     expect(JSON.parse(postCalls()[0][1]!.body as string)).toMatchObject({ kind: "REHIRE", date: "2026-11-01", previousEventId: "term-1" })
   })
   it("replays an unknown outcome with exactly the same UUID/body after a language change", async () => {
     const original = fetchMock.getMockImplementation()!; let failed = false
     fetchMock.mockImplementation(async (url, options) => { if (options?.method === "POST" && !failed) { failed = true; throw new Error("PRIVATE_NETWORK") } return original(url, options) })
-    const storage = vi.spyOn(Storage.prototype, "setItem"); await render(); await fillEnrollment(); await submit(); const body = postCalls()[0][1]!.body
-    expect(container.textContent).toContain(t("employeesUnconfirmed")); expect(button("employeesRefresh").disabled).toBe(true); expect(field("enroll-reason").disabled).toBe(true)
+    const storage = vi.spyOn(Storage.prototype, "setItem"); await render(); await toggle(); const body = postCalls()[0][1]!.body
+    expect(container.textContent).toContain(t("employeesUnconfirmed")); expect(button("employeesRefresh").disabled).toBe(true); expect(container.querySelector<HTMLButtonElement>('[role="switch"]')!.disabled).toBe(true)
     await render("az"); await click("employeesCheckWrite"); expect(postCalls()).toHaveLength(2); expect(postCalls()[1][1]!.body).toBe(body); expect(storage).not.toHaveBeenCalled(); expect(container.textContent).not.toContain("PRIVATE_NETWORK")
   })
   it("keeps an in-flight write stable on locale change", async () => {
     const original = fetchMock.getMockImplementation()!; let resolve: (value: Response) => void = () => {}
     fetchMock.mockImplementation((url, options) => options?.method === "POST" ? new Promise<Response>(done => { resolve = done }) : original(url, options))
-    await render(); await fillEnrollment(); await submit(); const signal = postCalls()[0][1]!.signal!; await render("en"); expect(signal.aborted).toBe(false)
-    await act(async () => resolve(response({ agentId: "new-employee", idempotent: false }))); expect(container.textContent).toContain(t("employeesSaved")); expect(postCalls()).toHaveLength(1)
+    await render(); await toggle(); const signal = postCalls()[0][1]!.signal!; await render("en"); expect(signal.aborted).toBe(false)
+    await act(async () => resolve(response({ eventId: "new-event", idempotent: false }))); expect(container.textContent).toContain(t("employeesSaved")); expect(postCalls()).toHaveLength(1)
   })
   it.each([401, 403, 404])("clears directory and private drafts on HTTP %s", async status => {
     const original = fetchMock.getMockImplementation()!; fetchMock.mockImplementation((url, options) => options?.method === "POST" ? Promise.resolve(response(null, status)) : original(url, options))
-    await render(); await fillEnrollment(); await submit(); expect(container.textContent).toContain(t("employeesAccessUnavailable")); expect(container.textContent).not.toMatch(/Aylin|Leyla|Rauf|Demo Centre|PRIVATE_/); expect(container.querySelector("input")).toBeNull(); expect(button("employeesCheckWrite")).toBeUndefined()
+    await render(); await toggle(); expect(container.textContent).toContain(t("employeesAccessUnavailable")); expect(container.textContent).not.toMatch(/Aylin|Leyla|Rauf|Demo Centre|PRIVATE_/); expect(container.querySelector("input")).toBeNull(); expect(button("employeesCheckWrite")).toBeUndefined()
   })
   it("removes previously visible users when refresh loses administrator access", async () => {
     await render(); fetchMock.mockResolvedValue(response(null, 403)); await click("employeesRefresh"); expect(container.textContent).not.toContain("Aylin"); expect(container.querySelector("select")).toBeNull()
   })
   it("requires a fresh read after a stale history response", async () => {
     const original = fetchMock.getMockImplementation()!; fetchMock.mockImplementation((url, options) => options?.method === "POST" ? Promise.resolve(response(null, 409, "MTM_ATTENDANCE_EMPLOYEE_HISTORY_CHANGED")) : original(url, options))
-    await render(); await openHistory(); await edit("employment-date", "2026-10-31"); await edit("employment-reason", "Fictional termination"); await submit(true)
+    await render(); await openHistory(); await edit("employment-date", "2026-10-31"); await edit("employment-reason", "Fictional termination"); await submit()
     expect(container.textContent).toContain(t("employeesChanged")); expect(button("employeesSaveChange").disabled).toBe(true); await click("employeesRefresh"); expect(container.querySelector('[data-testid="employees-history"]')).toBeNull()
   })
   it("renders a known date error without retrying or showing server traces", async () => {
     const original = fetchMock.getMockImplementation()!; fetchMock.mockImplementation((url, options) => options?.method === "POST" ? Promise.resolve(response(null, 400, "MTM_ATTENDANCE_EMPLOYEE_DATE_INVALID")) : original(url, options))
-    await render(); await fillEnrollment(); await submit(); expect(container.textContent).toContain(t("employeesDateInvalid")); expect(button("employeesCheckWrite")).toBeUndefined(); expect(button("employeesEnroll").disabled).toBe(false)
+    await render(); await openHistory(); await edit("employment-date", "2026-10-31"); await edit("employment-reason", "Fictional termination"); await submit(); expect(container.textContent).toContain(t("employeesDateInvalid")); expect(button("employeesCheckWrite")).toBeUndefined(); expect(button("employeesSaveChange").disabled).toBe(false)
   })
   it("handles empty data and bounds roster/history DOM without truncating access to records", async () => {
-    directory.users = []; directory.employees = []; await render(); expect(container.textContent).toContain(t("employeesEmpty")); expect(container.textContent).toContain(t("employeesNoEligible"))
-    directory.employees = Array.from({ length: 51 }, (_, i) => ({ id: `employee-${i}`, name: `Demo ${i}`, role: "AGENT", status: "ACTIVE", teamName: null, history: Array.from({ length: 22 }, (_, j) => ({ id: `event-${j}`, kind: "HIRE" as const, date: "2026-10-01", at: "2026-09-30T20:00:00Z", byName: null })) }))
+    directory.users = []; directory.employees = []; await render(); expect(container.textContent).toContain(t("employeesEmpty"))
+    directory.employees = Array.from({ length: 300 }, (_, i) => ({ id: `employee-${i}`, name: `Demo ${i}`, role: "AGENT", status: "ACTIVE", teamName: null, included: i >= 15, participationVersion: null, includedFrom: null, history: Array.from({ length: 22 }, (_, j) => ({ id: `event-${j}`, kind: "HIRE" as const, date: "2026-10-01", at: "2026-09-30T20:00:00Z", byName: null })) }))
     await click("employeesRefresh"); expect(container.querySelectorAll('[data-testid="employee-row"]')).toHaveLength(25); await click("employeesNext"); expect(container.textContent).toContain("Demo 25"); await openHistory(); expect(container.querySelectorAll('[data-testid="employment-event"]')).toHaveLength(20)
-    await edit("employee-search", "Demo 50"); expect(container.querySelectorAll('[data-testid="employee-row"]')).toHaveLength(1)
+    expect(container.textContent).toContain(t("employeesParticipationCounts", { total: 300, included: 285, excluded: 15 }))
+    await edit("employee-search", "Demo 299"); expect(container.querySelectorAll('[data-testid="employee-row"]')).toHaveLength(1)
+    await edit("employee-search", ""); await edit("employee-participation", "EXCLUDED"); expect(container.querySelectorAll('[data-testid="employee-row"]')).toHaveLength(15)
+    expect([...container.querySelectorAll('[role="switch"]')].every(node => node.getAttribute("aria-checked") === "false")).toBe(true)
   })
   it("aborts a pending write on unmount and ignores its late response", async () => {
     const original = fetchMock.getMockImplementation()!; let resolve: (value: Response) => void = () => {}
     fetchMock.mockImplementation((url, options) => options?.method === "POST" ? new Promise<Response>(done => { resolve = done }) : original(url, options))
-    await render(); await fillEnrollment(); await submit(); const count = fetchMock.mock.calls.length; await act(async () => root.unmount()); unmounted = true
-    expect(postCalls()[0][1]!.signal!.aborted).toBe(true); await act(async () => resolve(response({ agentId: "new", idempotent: true }))); expect(fetchMock.mock.calls).toHaveLength(count)
+    await render(); await toggle(); const count = fetchMock.mock.calls.length; await act(async () => root.unmount()); unmounted = true
+    expect(postCalls()[0][1]!.signal!.aborted).toBe(true); await act(async () => resolve(response({ eventId: "new-event", idempotent: true }))); expect(fetchMock.mock.calls).toHaveLength(count)
+  })
+  it("rejects an old or incomplete roster instead of guessing participation", async () => {
+    fetchMock.mockResolvedValue(response({ ...directory, employees: directory.employees.map(employee => ({ ...employee, included: undefined })) }))
+    await render(); expect(container.textContent).toContain(t("employeesLoadError")); expect(container.querySelector('[role="switch"]')).toBeNull()
+  })
+  it("requires refreshing after another administrator changes participation", async () => {
+    const original = fetchMock.getMockImplementation()!; fetchMock.mockImplementation((url, options) => options?.method === "POST" ? Promise.resolve(response(null, 409, "MTM_ATTENDANCE_PARTICIPATION_CHANGED")) : original(url, options))
+    await render(); await toggle(); expect(container.textContent).toContain(t("employeesChanged")); expect(container.querySelector<HTMLButtonElement>('[role="switch"]')!.disabled).toBe(true)
+    await click("employeesRefresh"); expect(container.querySelector<HTMLButtonElement>('[role="switch"]')!.disabled).toBe(false)
   })
   it("does not show an editable directory after failed or aborted loading", async () => {
     fetchMock.mockResolvedValue(response(null, 500)); await render(); expect(container.textContent).toContain(t("employeesLoadError")); expect(container.querySelector("form")).toBeNull()

@@ -1,3 +1,4 @@
+import { attendanceParticipationOnDate, type AttendanceParticipationChange } from "@/lib/mtm/attendance-participation"
 import { attendanceShiftForDate, type AttendanceResolvedShift } from "@/lib/mtm/attendance-shift-plan"
 import type { AttendanceShiftAssignment } from "@/lib/mtm/attendance-shift-contract"
 import { attendanceEmploymentOnDate, type AttendanceEmploymentEvent, type AttendanceEmploymentState } from "@/lib/mtm/attendance-employment"
@@ -25,6 +26,8 @@ export interface MtmAttendanceEmployee {
   teamId: string | null
   teamName: string | null
   employmentEvents?: readonly AttendanceEmploymentEvent[]
+  attendanceIncludedFrom?: string | null
+  participationEvents?: readonly AttendanceParticipationChange[]
 }
 
 export interface MtmAttendanceEventInput {
@@ -348,12 +351,17 @@ export function buildMtmAttendanceReport(input: MtmAttendanceReportInput) {
   for (const assignment of input.shiftAssignments ?? []) {
     const assigned = shiftsByEmployee.get(assignment.agentId) ?? []; assigned.push(assignment); shiftsByEmployee.set(assignment.agentId, assigned)
   }
-  const rows = input.employees.flatMap((employee) => dates.map((date) => {
+  const rows = input.employees.flatMap((employee) => dates.flatMap((date) => {
     const shift = attendanceShiftForDate(shiftsByEmployee.get(employee.id) ?? [], employee.id, employee.teamId, date, input.calendar)
     const plan = shift ? dayPlan(input.rules, date, now, shift) : plans.get(date)!
     const row = buildRow(employee, date, days.get(rowKey(employee.id, date)) ?? [], plan, calendarByDate.get(date) ?? [], now)
     const dayKind = catalogue.get(row.kind)
     const projected = projectApprovedAttendanceRequests(dayKind ? { ...row, dayKind } : row, approvedByEmployee.get(employee.id) ?? [], plan.rule.lateGraceMinutes * 60)
+    const participation = attendanceParticipationOnDate(employee.attendanceIncludedFrom, employee.participationEvents, date, row.timezone)
+    if (participation === "EXCLUDED") return []
+    // A newly added user must not acquire invented historic absences. Existing
+    // phone facts and approved records remain real even before auto-enrollment.
+    if (participation === "BEFORE_START" && !row.workdayId && row.factsState !== "INVALID" && projected.kind !== "APPROVED_REQUEST") return []
     const employmentState = attendanceEmploymentOnDate(employee.employmentEvents, date, row.timezone)
     if (employmentState !== "NOT_EMPLOYED") return { ...projected, employmentState }
     // Keep actual work/invalid facts visible even outside a recorded contract.

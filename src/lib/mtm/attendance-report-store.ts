@@ -1,3 +1,4 @@
+import { readAttendanceParticipationHistory } from "@/lib/mtm/attendance-participation-store"
 import { attendanceAccountingRows } from "@/lib/mtm/attendance-shift-plan"
 import { readAttendanceShiftAssignments } from "@/lib/mtm/attendance-shift-store"
 import { addDateKeyDays } from "@/lib/mtm/mobile-week"
@@ -59,7 +60,7 @@ export async function readAttendanceProjectionInTransaction(tx: Prisma.Transacti
         ...(query.employeeId ? { AND: { id: query.employeeId } } : {}),
         ...(query.teamId ? { teamId: query.teamId } : {}),
       },
-      select: { id: true, name: true, teamId: true },
+      select: { id: true, name: true, teamId: true, attendanceIncludedFrom: true },
       orderBy: [{ name: "asc" }, { id: "asc" }],
       take: Math.floor(MTM_ATTENDANCE_REPORT_MAX_ROWS / days) + 1,
     })
@@ -114,8 +115,9 @@ export async function readAttendanceProjectionInTransaction(tx: Prisma.Transacti
     for (const event of employment) employmentByEmployee.set(event.agentId, [...(employmentByEmployee.get(event.agentId) ?? []), { kind: event.kind, effectiveAt: event.effectiveAt.toISOString() }])
     const teamNames = new Map(teams.map((team) => [team.id, team.name]))
     const shiftAssignments = await readAttendanceShiftAssignments(tx, organizationId, agentIds, precedingDate, query.to)
+    const participation = await readAttendanceParticipationHistory(tx, organizationId, agentIds)
     const calculationInput = {
-      employees: employees.map((employee) => ({ ...employee, employmentEvents: employmentByEmployee.get(employee.id), teamName: employee.teamId ? teamNames.get(employee.teamId) ?? null : null })),
+      employees: employees.map((employee) => ({ ...employee, attendanceIncludedFrom: employee.attendanceIncludedFrom?.toISOString() ?? null, participationEvents: participation.filter(event => event.agentId === employee.id), employmentEvents: employmentByEmployee.get(employee.id), teamName: employee.teamId ? teamNames.get(employee.teamId) ?? null : null })),
       approvedRequests, dayKinds: catalogue.items, workdays: workdays.map((day) => ({ ...day, correctionProjection: projectAttendanceCorrectionFacts(day, correctionsByWorkday.get(day.id) ?? [], now) })),
       calendar, rules, shiftAssignments, from: query.from, to: query.to, now,
     }

@@ -60,6 +60,12 @@ describe("installation approval boundaries", () => {
     await expect(submitAttendanceInstallation(self, device, { requestId: randomUUID() })).rejects.toMatchObject({ status: 403 })
     expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
   })
+  it("excludes a field employee from attendance device rules while keeping their field workday usable", async () => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: self.agentId, role: "AGENT", attendanceParticipant: true, attendanceExcluded: true } as never)
+    await expect(enforceAttendanceInstallationApproval(prisma, scope, null)).resolves.toBeUndefined()
+    expect(vi.mocked(prisma.$queryRaw).mock.calls.some((call: unknown[]) => Array.isArray(call[0]) && call[0].join(" ").includes("AS approved"))).toBe(false)
+    await expect(readOwnAttendanceInstallation({ ...self, role: "AGENT" }, device)).rejects.toMatchObject({ status: 403 })
+  })
   it("accepts no employee, location or installation in the request body", () => {
     expect(AttendanceInstallationRequestSchema.safeParse({ requestId: "10000000-0000-7000-8000-000000000001" }).success).toBe(true)
     expect(AttendanceInstallationRequestSchema.safeParse({ requestId: "00000000-0000-0000-0000-000000000000" }).success).toBe(false)

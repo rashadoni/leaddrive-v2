@@ -1,5 +1,5 @@
-/** Shipping enrollment, immutable employment dates and live workday writes on
- * a disposable database with the real restricted application role. */
+/** Upgrade manual enrollment to automatic participation on a disposable
+ * database, retaining employment/workday facts and the restricted app role. */
 import { randomUUID } from "node:crypto"
 import { spawnSync } from "node:child_process"
 import { createRequire } from "node:module"
@@ -7,6 +7,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { NextRequest } from "next/server"
+import type { Prisma, MtmAttendanceParticipationEvent } from "@prisma/client"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 
 const adminUrl = process.env.MTM_ATTENDANCE_TEST_DATABASE_URL
@@ -193,5 +194,267 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
     })
     expect(() => sql(scratch!.adminDb, `UPDATE workforce_employment_events SET "effectiveAt" = NOW() WHERE id = '${hireId}'`)).toThrow()
     expect(await tenant("employee-pg-b", () => prisma.$queryRaw`SELECT id FROM workforce_employment_events`)).toEqual([])
+  })
+
+  const automaticOrg = "employee-pg-automatic", automaticAdminId = "automatic-user-000"
+  const automaticAdmin = { organizationId: automaticOrg, userId: automaticAdminId, principalType: "session" as const }
+  let automaticAgentId: string, excludedEventId: string
+  const exclusionRequest = { clientRequestId: randomUUID(), included: false, previousEventId: null }
+  it("upgrades 300 existing active users without hire facts and preserves existing identities", async () => {
+    const beforeEmployment = await bypass(() => prisma.$queryRaw`SELECT id FROM workforce_employment_events ORDER BY id`)
+    await bypass(async () => {
+      await prisma.organization.create({ data: { id: automaticOrg, name: "Fictional automatic participation", slug: automaticOrg, modules: { "route-field": true } } })
+      await prisma.mtmSetting.create({ data: { organizationId: automaticOrg, key: "attendanceEnabled", value: true } })
+      await prisma.user.createMany({ data: Array.from({ length: 300 }, (_, index) => ({ id: `automatic-user-${String(index).padStart(3, "0")}`,
+        organizationId: automaticOrg, name: `Fictional employee ${index}`, email: `automatic-${index}@example.invalid`,
+        passwordHash: "automatic-fixture-only", role: index === 0 ? "admin" : "sales" })) })
+      await prisma.user.createMany({ data: [
+        { id: "automatic-inactive", organizationId: automaticOrg, name: "Inactive fixture", email: "inactive@example.invalid", passwordHash: "fixture", isActive: false },
+        { id: "automatic-anonymized", organizationId: automaticOrg, name: "Anonymized fixture", email: "anonymized@example.invalid", passwordHash: "fixture", anonymizedAt: new Date() },
+      ] })
+      await prisma.mtmTeam.create({ data: { id: "automatic-team", organizationId: automaticOrg, name: "Fictional existing team" } })
+      await prisma.mtmAgent.create({ data: { id: "automatic-field", organizationId: automaticOrg, userId: "automatic-user-001", name: "Existing field identity", email: "existing-field@example.invalid",
+        role: "AGENT", teamId: "automatic-team", passwordHash: "retained-field-password", canPlanOwnRoutes: true, canSelfPublishRoutes: true } })
+      await prisma.mtmAgent.create({ data: { id: "automatic-manual", organizationId: automaticOrg, userId: "automatic-user-002", name: "Existing manual employee",
+        role: "EMPLOYEE", attendanceParticipant: true, canPlanOwnRoutes: false } })
+      await prisma.mtmAgent.create({ data: { id: "automatic-manager", organizationId: automaticOrg, userId: "automatic-user-003", name: "Existing inactive manager",
+        role: "MANAGER", status: "INACTIVE", teamId: "automatic-team", passwordHash: "retained-manager-password" } })
+    })
+    // db push supplies current columns; remove only this additive migration's
+    // empty structures, then exercise the actual deployment SQL over old data.
+    sql(scratch!.adminDb, 'DROP TABLE mtm_attendance_participation_events; ALTER TABLE mtm_agents DROP COLUMN "attendanceExcluded", DROP COLUMN "attendanceIncludedFrom"; DROP TABLE mtm_attendance_month_days; DROP TABLE mtm_attendance_month_members; DROP TABLE mtm_attendance_month_closes;')
+    sql(scratch!.adminDb, readFileSync("prisma/migrations/20261013190000_mtm_attendance_month_close/migration.sql", "utf8"))
+    sql(scratch!.adminDb, readFileSync("prisma/migrations/20261013220000_mtm_attendance_automatic_participation/migration.sql", "utf8"))
+    sql(scratch!.adminDb, `GRANT SELECT, INSERT, UPDATE, DELETE ON mtm_attendance_participation_events, mtm_attendance_month_closes, mtm_attendance_month_members, mtm_attendance_month_days TO "${scratch!.role}";`)
+    await tenant(automaticOrg, async () => {
+      expect(await prisma.mtmAgent.count()).toBe(300)
+      expect(await prisma.mtmAgent.count({ where: { userId: { in: ["automatic-inactive", "automatic-anonymized"] } } })).toBe(0)
+      expect(await prisma.mtmAgent.findUnique({ where: { id: "automatic-field" } })).toMatchObject({ role: "AGENT", name: "Existing field identity", teamId: "automatic-team",
+        passwordHash: "retained-field-password", canPlanOwnRoutes: true, canSelfPublishRoutes: true, attendanceIncludedFrom: null, attendanceExcluded: false })
+      expect(await prisma.mtmAgent.findUnique({ where: { id: "automatic-manual" } })).toMatchObject({ attendanceIncludedFrom: null, role: "EMPLOYEE", attendanceParticipant: true })
+      expect(await prisma.mtmAgent.findUnique({ where: { id: "automatic-manager" } })).toMatchObject({ status: "INACTIVE", role: "MANAGER", teamId: "automatic-team", passwordHash: "retained-manager-password", attendanceIncludedFrom: expect.any(Date) })
+      const card = await prisma.mtmAgent.findFirstOrThrow({ where: { userId: "automatic-user-010" } })
+      automaticAgentId = card.id
+      expect(card).toMatchObject({ role: "EMPLOYEE", status: "ACTIVE", passwordHash: null, attendanceParticipant: true, attendanceExcluded: false,
+        attendanceIncludedFrom: expect.any(Date), canPlanOwnRoutes: false, canSelfPublishRoutes: false })
+      expect(await prisma.$queryRaw`SELECT id FROM workforce_employment_events`).toEqual([])
+    })
+    expect(await bypass(() => prisma.$queryRaw`SELECT id FROM workforce_employment_events ORDER BY id`)).toEqual(beforeEmployment)
+    // The existing office hire remains an explicit historical fact and keeps
+    // its old baseline; enabling automatic participation does not rewrite it.
+    expect(await tenant(organizationId, () => prisma.mtmAgent.findUnique({ where: { id: agentId } }))).toMatchObject({ attendanceIncludedFrom: null })
+  }, 180_000)
+
+  it("reads all 300 employees without provisioning writes or credential disclosure, and has no invented past absences", async () => {
+    await tenant(automaticOrg, async () => {
+      const before = [await prisma.mtmAgent.count(), await prisma.mtmAuditLog.count(), await prisma.mtmAttendanceParticipationEvent.count(), await prisma.user.count()]
+      const directory = await store.readAttendanceEmployees(automaticAdmin)
+      expect(directory.employees).toHaveLength(300)
+      expect(directory.users.every(user => !user.eligible)).toBe(true)
+      expect(directory.employees.find(employee => employee.id === automaticAgentId)).toMatchObject({ included: true, participationVersion: null, includedFrom: expect.any(String), history: [] })
+      expect(JSON.stringify(directory)).not.toMatch(/@example\.invalid|fixture-only|retained-.*-password/)
+      expect([await prisma.mtmAgent.count(), await prisma.mtmAuditLog.count(), await prisma.mtmAttendanceParticipationEvent.count(), await prisma.user.count()]).toEqual(before)
+      const projection = await report.readMtmAttendanceReport({ organizationId: automaticOrg, actor: { role: "ADMIN", agentId: null, scopedAgentIds: null }, query: { from: "2020-01-01", to: "2020-01-02", employeeId: automaticAgentId, form: "ALL" } })
+      expect(projection.rows).toEqual([])
+    })
+  })
+
+  it("automatically covers new users and reactivation, but does nothing while the module is off", async () => {
+    await tenant(automaticOrg, async () => {
+      await prisma.user.create({ data: { id: "automatic-new", organizationId: automaticOrg, name: "New fictional user", email: "new@example.invalid", passwordHash: "fixture" } })
+      expect(await prisma.mtmAgent.count({ where: { userId: "automatic-new" } })).toBe(1)
+      await prisma.user.update({ where: { id: "automatic-inactive" }, data: { isActive: true } })
+      expect(await prisma.mtmAgent.count({ where: { userId: "automatic-inactive" } })).toBe(1)
+      await prisma.mtmSetting.update({ where: { organizationId_key: { organizationId: automaticOrg, key: "attendanceEnabled" } }, data: { value: false } })
+      await prisma.user.create({ data: { id: "automatic-created-off", organizationId: automaticOrg, name: "Created while off", email: "created-off@example.invalid", passwordHash: "fixture" } })
+      expect(await prisma.mtmAgent.count({ where: { userId: "automatic-created-off" } })).toBe(0)
+      await prisma.mtmSetting.update({ where: { organizationId_key: { organizationId: automaticOrg, key: "attendanceEnabled" } }, data: { value: true } })
+      expect(await prisma.mtmAgent.count({ where: { userId: "automatic-created-off" } })).toBe(1)
+      expect(await prisma.$queryRaw`SELECT id FROM workforce_employment_events`).toEqual([])
+    })
+  })
+
+  it("serializes exact replay into one exclusion event and audit without changing account or field permissions", async () => {
+    const input = { ...exclusionRequest, agentId: automaticAgentId }
+    const result = await Promise.all([0, 1].map(() => tenant(automaticOrg, () => store.setAttendanceParticipation(automaticAdmin, input))))
+    expect(result[0].eventId).toBe(result[1].eventId)
+    expect(result.map(value => value.idempotent).sort()).toEqual([false, true])
+    excludedEventId = result[0].eventId
+    await tenant(automaticOrg, async () => {
+      expect(await prisma.mtmAttendanceParticipationEvent.count({ where: { agentId: automaticAgentId } })).toBe(1)
+      expect(await prisma.mtmAuditLog.count({ where: { action: "MTM_ATTENDANCE_PARTICIPATION_CHANGED" } })).toBe(1)
+      expect(await prisma.mtmAgent.findUnique({ where: { id: automaticAgentId } })).toMatchObject({ role: "EMPLOYEE", status: "ACTIVE", attendanceParticipant: true, attendanceExcluded: true })
+      expect(await prisma.user.findUnique({ where: { id: "automatic-user-010" } })).toMatchObject({ isActive: true, role: "sales", passwordHash: "automatic-fixture-only" })
+      await expect(self.requireAttendanceSelf(prisma, { organizationId: automaticOrg, agentId: automaticAgentId, role: "EMPLOYEE" })).rejects.toMatchObject({ status: 403 })
+      const directory = await store.readAttendanceEmployees(automaticAdmin)
+      expect(directory.employees.find(employee => employee.id === automaticAgentId)).toMatchObject({ included: false, participationVersion: excludedEventId })
+    })
+    await expect(tenant(automaticOrg, () => store.setAttendanceParticipation(automaticAdmin, { ...input, included: true }))).rejects.toMatchObject({ code: "MTM_ATTENDANCE_PARTICIPATION_REPLAY_MISMATCH" })
+    await expect(tenant(automaticOrg, () => store.setAttendanceParticipation(automaticAdmin, { ...input, clientRequestId: randomUUID(), included: true }))).rejects.toMatchObject({ code: "MTM_ATTENDANCE_PARTICIPATION_CHANGED" })
+  })
+
+  it("keeps exclusion through module toggles and reactivation, then appends re-inclusion with the expected version", async () => {
+    await tenant(automaticOrg, async () => {
+      await prisma.user.update({ where: { id: "automatic-user-010" }, data: { isActive: false } })
+      await prisma.user.update({ where: { id: "automatic-user-010" }, data: { isActive: true } })
+      await prisma.mtmSetting.update({ where: { organizationId_key: { organizationId: automaticOrg, key: "attendanceEnabled" } }, data: { value: false } })
+      await expect(store.setAttendanceParticipation(automaticAdmin, { clientRequestId: randomUUID(), agentId: automaticAgentId, included: true, previousEventId: excludedEventId })).rejects.toMatchObject({ code: "MTM_ATTENDANCE_DISABLED" })
+      await prisma.mtmSetting.update({ where: { organizationId_key: { organizationId: automaticOrg, key: "attendanceEnabled" } }, data: { value: true } })
+      expect(await prisma.mtmAgent.findUnique({ where: { id: automaticAgentId } })).toMatchObject({ attendanceExcluded: true })
+      const result = await store.setAttendanceParticipation(automaticAdmin, { clientRequestId: randomUUID(), agentId: automaticAgentId, included: true, previousEventId: excludedEventId })
+      const events: MtmAttendanceParticipationEvent[] = await prisma.mtmAttendanceParticipationEvent.findMany({ where: { agentId: automaticAgentId }, orderBy: { effectiveAt: "asc" } })
+      expect(events.map(event => event.included)).toEqual([false, true])
+      expect(events[1].previousEventId).toBe(excludedEventId)
+      expect(events[1].id).toBe(result.eventId)
+      expect(events[1].effectiveAt.getTime()).toBeGreaterThan(events[0].effectiveAt.getTime())
+      expect(await self.requireAttendanceSelf(prisma, { organizationId: automaticOrg, agentId: automaticAgentId, role: "EMPLOYEE" })).toBe("Asia/Baku")
+    })
+  })
+
+  it("refuses non-admin/foreign changes, cross-tenant history reads and direct exclusion writes", async () => {
+    const input = { clientRequestId: randomUUID(), agentId: automaticAgentId, included: false, previousEventId: null }
+    await expect(tenant(automaticOrg, () => store.setAttendanceParticipation({ ...automaticAdmin, userId: "automatic-user-010" }, input))).rejects.toMatchObject({ status: 403 })
+    await expect(tenant("employee-pg-b", () => store.setAttendanceParticipation(automaticAdmin, input))).rejects.toThrow()
+    await tenant("employee-pg-b", async () => {
+      expect(await prisma.mtmAttendanceParticipationEvent.findMany({ where: { organizationId: automaticOrg } })).toEqual([])
+      await expect(prisma.mtmAttendanceParticipationEvent.create({ data: { id: randomUUID(), organizationId: automaticOrg, agentId: automaticAgentId,
+        included: false, requestId: randomUUID(), requestHash: "0".repeat(64), createdBy: automaticAdminId } })).rejects.toThrow()
+    })
+    await expect(tenant(automaticOrg, () => prisma.mtmAgent.update({ where: { id: automaticAgentId }, data: { attendanceExcluded: true } }))).rejects.toThrow()
+    await tenant(automaticOrg, async () => {
+      expect(await prisma.$executeRaw`UPDATE mtm_attendance_participation_events SET included = true WHERE id = ${excludedEventId}`).toBe(0)
+      expect(await prisma.$executeRaw`DELETE FROM mtm_attendance_participation_events WHERE id = ${excludedEventId}`).toBe(0)
+      expect(await prisma.mtmAgent.findUnique({ where: { id: automaticAgentId } })).toMatchObject({ attendanceExcluded: false })
+    })
+    expect(() => sql(scratch!.adminDb, `UPDATE mtm_attendance_participation_events SET included = true WHERE id = '${excludedEventId}'`)).toThrow()
+  })
+
+  it("rolls back the event and exclusion mirror if its audit fails", async () => {
+    const previous = await tenant(automaticOrg, () => prisma.mtmAttendanceParticipationEvent.findFirstOrThrow({ where: { agentId: automaticAgentId }, orderBy: { effectiveAt: "desc" } }))
+    sql(scratch!.adminDb, `CREATE FUNCTION fixture_reject_participation() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action = 'MTM_ATTENDANCE_PARTICIPATION_CHANGED' THEN RAISE EXCEPTION 'fixture audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER fixture_participation_audit BEFORE INSERT ON mtm_audit_logs FOR EACH ROW EXECUTE FUNCTION fixture_reject_participation();`)
+    try {
+      await expect(tenant(automaticOrg, () => store.setAttendanceParticipation(automaticAdmin, { clientRequestId: randomUUID(), agentId: automaticAgentId, included: false, previousEventId: previous.id }))).rejects.toThrow()
+      await tenant(automaticOrg, async () => {
+        expect(await prisma.mtmAttendanceParticipationEvent.count({ where: { agentId: automaticAgentId } })).toBe(2)
+        expect(await prisma.mtmAgent.findUnique({ where: { id: automaticAgentId } })).toMatchObject({ attendanceExcluded: false })
+      })
+    } finally { sql(scratch!.adminDb, 'DROP TRIGGER fixture_participation_audit ON mtm_audit_logs; DROP FUNCTION fixture_reject_participation();') }
+  })
+
+  it.each(["email", "duplicate"])("fails closed on an existing %s identity conflict and rolls back enabling", async conflict => {
+    const org = `automatic-conflict-${conflict}`, uid = `${org}-user`
+    await bypass(async () => {
+      await prisma.organization.create({ data: { id: org, name: "Fictional identity collision", slug: org } })
+      await prisma.mtmSetting.create({ data: { organizationId: org, key: "attendanceEnabled", value: false } })
+      await prisma.user.create({ data: { id: uid, organizationId: org, name: "Fictional user", email: `${org}@example.invalid`, passwordHash: "fixture" } })
+      await prisma.mtmAgent.create({ data: { id: `${org}-card`, organizationId: org, name: "Existing unrelated card",
+        ...(conflict === "email" ? { email: `${org.toUpperCase()}@example.invalid` } : { userId: uid }) } })
+      if (conflict === "duplicate") await prisma.mtmAgent.create({ data: { id: `${org}-second`, organizationId: org, name: "Duplicate legacy link", userId: uid } })
+    })
+    await tenant(org, async () => {
+      await expect(prisma.mtmSetting.update({ where: { organizationId_key: { organizationId: org, key: "attendanceEnabled" } }, data: { value: true } })).rejects.toThrow(/MTM_ATTENDANCE_EMPLOYEE_IDENTITY_CONFLICT/)
+      expect(await prisma.mtmSetting.findUnique({ where: { organizationId_key: { organizationId: org, key: "attendanceEnabled" } } })).toMatchObject({ value: false })
+      expect(await prisma.mtmAgent.count()).toBe(conflict === "email" ? 1 : 2)
+      expect(await prisma.mtmAgent.count({ where: { attendanceParticipant: true } })).toBe(0)
+    })
+  })
+
+  it("refuses a second field card linked to an automatically represented user", async () => {
+    await tenant(automaticOrg, async () => {
+      await expect(prisma.mtmAgent.create({ data: { organizationId: automaticOrg, userId: "automatic-user-010", name: "Second field card", role: "AGENT" } })).rejects.toThrow(/MTM_ATTENDANCE_EMPLOYEE_IDENTITY_CONFLICT/)
+      expect(await prisma.mtmAgent.count({ where: { userId: "automatic-user-010" } })).toBe(1)
+    })
+  })
+
+  it("protects an active CRM user's link and card while leaving exclusion as a separate operation", async () => {
+    await tenant(automaticOrg, async () => {
+      const card = await prisma.mtmAgent.findFirstOrThrow({ where: { userId: "automatic-new" } })
+      await expect(prisma.mtmAgent.update({ where: { id: card.id }, data: { userId: null } })).rejects.toThrow(/MTM_ATTENDANCE_EMPLOYEE_LINK_REQUIRED/)
+      await expect(prisma.mtmAgent.delete({ where: { id: card.id } })).rejects.toThrow(/MTM_ATTENDANCE_EMPLOYEE_LINK_REQUIRED/)
+      expect(await prisma.mtmAgent.findUnique({ where: { id: card.id } })).toMatchObject({ userId: "automatic-new", attendanceExcluded: false })
+      await prisma.user.update({ where: { id: "automatic-new" }, data: { isActive: false } })
+      await prisma.mtmAgent.delete({ where: { id: card.id } })
+      expect(await prisma.mtmAgent.count({ where: { userId: "automatic-new" } })).toBe(0)
+    })
+  })
+
+  it("preserves off-mode unlink and tenant deletion instead of enforcing attendance outside its scope", async () => {
+    const org = "automatic-delete-fixture", uid = `${org}-user`
+    await bypass(async () => {
+      await prisma.organization.create({ data: { id: org, name: "Fictional deletion", slug: org } })
+      await prisma.mtmSetting.create({ data: { organizationId: org, key: "attendanceEnabled", value: true } })
+      await prisma.user.create({ data: { id: uid, organizationId: org, name: "Deletion fixture", email: `${uid}@example.invalid`, passwordHash: "fixture" } })
+      const card = await prisma.mtmAgent.findFirstOrThrow({ where: { organizationId: org, userId: uid } })
+      await prisma.mtmSetting.update({ where: { organizationId_key: { organizationId: org, key: "attendanceEnabled" } }, data: { value: false } })
+      await prisma.mtmAgent.update({ where: { id: card.id }, data: { userId: null } })
+      await prisma.mtmAgent.delete({ where: { id: card.id } })
+      await prisma.mtmSetting.update({ where: { organizationId_key: { organizationId: org, key: "attendanceEnabled" } }, data: { value: true } })
+      expect(await prisma.mtmAgent.count({ where: { organizationId: org, userId: uid } })).toBe(1)
+      await prisma.organization.delete({ where: { id: org } })
+      expect(await prisma.mtmAgent.count({ where: { organizationId: org } })).toBe(0)
+    })
+  })
+
+  it.each(["user-first", "enable-first"])("serializes concurrent enable and user creation (%s) without missing a user", async order => {
+    const org = `automatic-race-${order}`, uid = `${org}-user`
+    await bypass(async () => {
+      await prisma.organization.create({ data: { id: org, name: "Fictional concurrent lifecycle", slug: org } })
+      await prisma.mtmSetting.create({ data: { organizationId: org, key: "attendanceEnabled", value: false } })
+    })
+    let release!: () => void, entered!: () => void
+    const released = new Promise<void>(resolve => { release = resolve }), ready = new Promise<void>(resolve => { entered = resolve })
+    const first = tenant(org, () => prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      if (order === "user-first") await tx.user.create({ data: { id: uid, organizationId: org, name: "Concurrent user", email: `${uid}@example.invalid`, passwordHash: "fixture" } })
+      else await tx.mtmSetting.update({ where: { organizationId_key: { organizationId: org, key: "attendanceEnabled" } }, data: { value: true } })
+      entered(); await released
+    }, { timeout: 15_000 }))
+    // Always release the held connection if the first transaction fails.
+    void first.catch(() => { entered(); release() })
+    await ready
+    const second = tenant(org, async () => order === "user-first"
+      ? await prisma.mtmSetting.update({ where: { organizationId_key: { organizationId: org, key: "attendanceEnabled" } }, data: { value: true } })
+      : await prisma.user.create({ data: { id: uid, organizationId: org, name: "Concurrent user", email: `${uid}@example.invalid`, passwordHash: "fixture" } }))
+    release()
+    await Promise.all([first, second])
+    expect(await tenant(org, () => prisma.mtmAgent.count({ where: { userId: uid, attendanceParticipant: true } }))).toBe(1)
+  })
+
+  it("lets a user provision finish while exclusion waits behind the real month-close canonical locks", async () => {
+    const scope = { organizationId: automaticOrg, agentId: "automatic-field" }
+    const { lockMtmWorkdayTransitions } = await import("@/lib/mtm/workday")
+    let allowFence!: () => void, entered!: () => void
+    const released = new Promise<void>(resolve => { allowFence = resolve }), ready = new Promise<void>(resolve => { entered = resolve })
+    // Exact close ordering without manufacturing a closed financial snapshot.
+    const closer = tenant(automaticOrg, () => prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await lockMtmWorkdayTransitions(tx, scope)
+      await self.lockAttendanceRequests(tx, scope)
+      await store.requireAttendanceEmployeeAdmin(tx, automaticAdmin)
+      entered(); await released
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-attendance-month-snapshot:${automaticOrg}`}, 0))`
+    }, { timeout: 15_000 }))
+    void closer.catch(() => { entered(); allowFence() })
+    await ready
+    const excluding = tenant(automaticOrg, () => store.setAttendanceParticipation(automaticAdmin, {
+      clientRequestId: randomUUID(), agentId: scope.agentId, included: false, previousEventId: null,
+    }))
+    // Observe the real blocked advisory acquisition before adding the third
+    // writer; no sleeps are used to guess which transaction acquired a lock.
+    let waiting = false
+    try {
+      for (let attempt = 0; attempt < 30 && !waiting; attempt++) {
+        const [row] = await bypass(() => prisma.$queryRaw<Array<{ waiting: boolean }>>`SELECT EXISTS (
+          SELECT 1 FROM pg_stat_activity WHERE datname = current_database() AND wait_event = 'advisory' AND pid <> pg_backend_pid()
+        ) AS waiting`)
+        waiting = row.waiting
+        if (!waiting) await new Promise(resolve => setTimeout(resolve, 10))
+      }
+      expect(waiting).toBe(true)
+      await tenant(automaticOrg, () => prisma.user.create({ data: { id: "automatic-month-race-user", organizationId: automaticOrg,
+        name: "Concurrent month fixture", email: "month-race@example.invalid", passwordHash: "fixture" } }))
+    } finally { allowFence() }
+    await Promise.all([closer, excluding])
+    expect(await tenant(automaticOrg, () => prisma.mtmAgent.count({ where: { userId: "automatic-month-race-user" } }))).toBe(1)
+    expect(await tenant(automaticOrg, () => prisma.mtmAgent.findUnique({ where: { id: scope.agentId } }))).toMatchObject({ role: "AGENT", attendanceParticipant: false,
+      canPlanOwnRoutes: true, canSelfPublishRoutes: true, attendanceExcluded: true })
   })
 })

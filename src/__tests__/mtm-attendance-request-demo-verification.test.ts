@@ -63,11 +63,14 @@ const phoneFacts = () => ({ workdays: DEMO_WORKDAYS.map(day => ({
     claimedAt: at(day.date, time), serverReceivedAt: new Date(at(day.date, time).getTime() + 1000) })),
 })) })
 function surfaceSnapshot(): Awaited<ReturnType<typeof readSurfaceDemo>> {
-  return { agents: DEMO_AGENTS.map(id => ({ id, role: "AGENT", status: "ACTIVE", teamId: null, userId: null })), users: [{ id: DEMO.userId, role: "admin" }],
+  return { agents: [...DEMO_AGENTS.map(id => ({ id, role: "AGENT" as const, status: "ACTIVE" as const, teamId: null, userId: null,
+    attendanceParticipant: false, attendanceExcluded: false, attendanceIncludedFrom: null, canPlanOwnRoutes: true, canSelfPublishRoutes: false })),
+    { id: "9a000000-0000-4000-8000-000000000001", role: "EMPLOYEE", status: "ACTIVE", teamId: null, userId: DEMO.userId,
+      attendanceParticipant: true, attendanceExcluded: false, attendanceIncludedFrom: new Date("2026-10-13T10:00:00.000Z"), canPlanOwnRoutes: false, canSelfPublishRoutes: false }], users: [{ id: DEMO.userId, role: "admin" }],
     settings: [{ key: "attendanceEnabled", value: true }, { key: "timezone", value: "Asia/Baku" }], counts: {
       teams: 0, branches: 0, branchRevisions: 0, assignments: 0, locationPolicies: 0, locationConsents: 0, marks: 0, streamIntegrity: 0, risks: 0, riskDecisions: 0,
       installationRequests: 0, installationDecisions: 0, installationRevocations: 0, qrEvidence: 0, leavePolicies: 0, leaveProfiles: 0, monthCloses: 0, monthMembers: 0,
-      monthDays: 0, shiftPlans: 0, shiftMembers: 0, reminderNotices: 0, schedules: 0, deliveries: 0, employment: 0,
+      monthDays: 0, shiftPlans: 0, shiftMembers: 0, reminderNotices: 0, schedules: 0, deliveries: 0, employment: 0, participation: 0,
     } }
 }
 function surfaceDatabase(snapshot = surfaceSnapshot()) {
@@ -77,7 +80,7 @@ function surfaceDatabase(snapshot = surfaceSnapshot()) {
   const tx = { $executeRawUnsafe: async (sql: string) => { order.push(sql) }, $executeRaw: async () => { order.push("tenant") },
     $queryRaw: vi.fn(async (query: TemplateStringsArray, ...values: unknown[]) => {
       if (query.join("").includes("current_setting")) return [state]
-      expect(values).toHaveLength(25); expect(values.every(value => value === DEMO.id)).toBe(true)
+      expect(values).toHaveLength(26); expect(values.every(value => value === DEMO.id)).toBe(true)
       return [structuredClone(snapshot.counts)]
     }), organization: { findUnique: async () => { order.push("owner"); return owner } }, mtmAgent: { findMany: async () => structuredClone(snapshot.agents) },
     user: { findMany: async () => structuredClone(snapshot.users) }, mtmSetting: { findMany: async () => structuredClone(snapshot.settings) } }
@@ -87,6 +90,7 @@ function surfaceDatabase(snapshot = surfaceSnapshot()) {
   return { db, order, state, owner }
 }
 function surfaceHttp() {
+  const agents = surfaceSnapshot().agents
   const report = buildMtmAttendanceReport({ employees: DEMO_AGENTS.map(id => ({ id, name: "PRIVATE_NAME", teamId: null, teamName: null })),
     workdays: phoneFacts().workdays, calendar: [], rules: [], from: DEMO.from, to: DEMO.to, now: "2026-10-13T10:00:00Z" })
   const legacy = { ...report, rows: report.rows.map(row => ({ ...row, locationMarks: attendanceReportMarks(row, new Map()) })) }
@@ -95,16 +99,17 @@ function surfaceHttp() {
       attendanceEmployeeRemindersEnabled: false, attendanceManagerAlertsEnabled: false },
     "/api/v1/mtm/attendance/branches": { branches: [], canManageBranches: true },
     "/api/v1/mtm/attendance/employees": { timezone: "Asia/Baku", teams: [], users: [{ id: DEMO.userId }],
-      employees: DEMO_AGENTS.map(id => ({ id, role: "AGENT", status: "ACTIVE", teamName: null, history: [] })) },
+      employees: agents.map(agent => ({ id: agent.id, role: agent.role, status: "ACTIVE", teamName: null, history: [],
+        included: true, participationVersion: null, includedFrom: agent.attendanceIncludedFrom?.toISOString() ?? null })) },
     "/api/v1/mtm/attendance/location-policy": { policy: null },
-    [`/api/v1/mtm/attendance/review?from=${DEMO.from}&to=${REQUEST_DEMO.to}&status=ALL`]: { items: [], directory: DEMO_AGENTS.map(id => ({ id })) },
+    [`/api/v1/mtm/attendance/review?from=${DEMO.from}&to=${REQUEST_DEMO.to}&status=ALL`]: { items: [], directory: agents.map(({ id }) => ({ id })) },
     "/api/v1/mtm/attendance/installations?status=ALL": { required: false, canConfigure: true, timezone: "Asia/Baku", nextCursor: null, items: [] },
     "/api/v1/mtm/attendance/branch-qr": { enabled: false, canConfigure: true, branches: [] },
     [`/api/v1/mtm/attendance/leave-balances?year=2026&usedThrough=${REQUEST_DEMO.to}`]: { year: 2026, usedThrough: REQUEST_DEMO.to, policy: null, canManage: true, hasMore: false,
-      rows: DEMO_AGENTS.map(employeeId => ({ employeeId, state: "POLICY_MISSING", profile: null, serviceYears: null, allowanceDays: null, usedDays: null, plannedDays: null, remainingDays: null, availableDays: null })) },
-    "/api/v1/mtm/attendance/months?month=2026-09": { month: "2026-09", canClose: true, moreEmployees: false, moreSnapshots: false, items: [], employees: DEMO_AGENTS.map(id => ({ id, closed: false, canClose: true })) },
-    "/api/v1/mtm/attendance/shifts?from=2026-10-01&to=2026-10-31": { canManage: true, timezone: "Asia/Baku", revisionId: null, plans: [], rosters: [{ teamId: null, count: 2,
-      hash: createHash("sha256").update(JSON.stringify({ organizationId: DEMO.id, teamId: null, ids: [...DEMO_AGENTS].sort() })).digest("hex") }] },
+      rows: agents.map(({ id: employeeId }) => ({ employeeId, state: "POLICY_MISSING", profile: null, serviceYears: null, allowanceDays: null, usedDays: null, plannedDays: null, remainingDays: null, availableDays: null })) },
+    "/api/v1/mtm/attendance/months?month=2026-09": { month: "2026-09", canClose: true, moreEmployees: false, moreSnapshots: false, items: [], employees: agents.map(({ id, userId }) => ({ id, closed: false, canClose: userId !== DEMO.userId })) },
+    "/api/v1/mtm/attendance/shifts?from=2026-10-01&to=2026-10-31": { canManage: true, timezone: "Asia/Baku", revisionId: null, plans: [], rosters: [{ teamId: null, count: 3,
+      hash: createHash("sha256").update(JSON.stringify({ organizationId: DEMO.id, teamId: null, ids: agents.map(agent => agent.id).sort() })).digest("hex") }] },
     "/api/v1/mtm/attendance/deliveries": { timezone: "Asia/Baku", schedules: [], receipts: [] },
     [`/api/v1/mtm/attendance/report?from=${DEMO.from}&to=${DEMO.to}&form=ALL`]: legacy,
   }
@@ -242,6 +247,9 @@ describe("read-only deployed attendance surfaces", () => {
     fixture.state.bypass = "off"; snapshot.counts.branches = 1
     await expect(readSurfaceDemo(fixture.db)).rejects.toThrow()
     expect(snapshot.counts.branches).toBe(1)
+    snapshot.counts.branches = 0; snapshot.counts.participation = 1
+    await expect(readSurfaceDemo(fixture.db)).rejects.toThrow()
+    snapshot.counts.participation = 0
     snapshot.counts.branches = 0; snapshot.settings.push({ key: "attendanceBranchQrEnabled", value: true })
     await expect(readSurfaceDemo(fixture.db)).rejects.toThrow()
     snapshot.settings.pop(); fixture.owner.settings.attendanceDemoOwner = "foreign" as typeof DEMO.marker
@@ -253,7 +261,7 @@ describe("read-only deployed attendance surfaces", () => {
     await expect(verifySurfaceDemo(surfaceSnapshot(), phoneFacts(), request)).resolves.toBeUndefined()
     expect(request.mock.calls.map(([path]) => path)).toEqual(Object.keys(paths))
     expect(JSON.stringify(surfaceDemoEvidence())).not.toContain("PRIVATE")
-    expect(surfaceDemoEvidence()).toMatchObject({ mode: "READ_ONLY_DEFAULTS", browser: "NOT_RUN" })
+    expect(surfaceDemoEvidence()).toMatchObject({ mode: "READ_ONLY_DEFAULTS", browser: "NOT_RUN", employeeCount: 3 })
   })
   it.each([
     ["settings", "SURFACE_SETTINGS", "attendanceBranchQrEnabled", true],
@@ -277,6 +285,10 @@ describe("read-only deployed attendance surfaces", () => {
       (fixture: ReturnType<typeof surfaceHttp>) => { fixture.legacy.rows[0].locationMarks[0].state = "INSIDE" },
       (fixture: ReturnType<typeof surfaceHttp>) => { fixture.legacy.rows[0].locationMarks[1] = fixture.legacy.rows[0].locationMarks[0] },
       (fixture: ReturnType<typeof surfaceHttp>) => { fixture.legacy.rows[0].events[0].id = "fabricated"; fixture.legacy.rows[0].locationMarks[0].eventId = "fabricated" },
+      (fixture: ReturnType<typeof surfaceHttp>) => { const rows = fixture.paths["/api/v1/mtm/attendance/employees"].employees as Array<Record<string, unknown>>; rows[2].included = false },
+      (fixture: ReturnType<typeof surfaceHttp>) => { const rows = fixture.paths["/api/v1/mtm/attendance/employees"].employees as Array<Record<string, unknown>>; rows[2].includedFrom = null },
+      (fixture: ReturnType<typeof surfaceHttp>) => { const rows = fixture.paths["/api/v1/mtm/attendance/employees"].employees as Array<Record<string, unknown>>; rows[2].participationVersion = "PRIVATE_EVENT" },
+      (fixture: ReturnType<typeof surfaceHttp>) => { const rows = fixture.paths["/api/v1/mtm/attendance/months?month=2026-09"].employees as Array<Record<string, unknown>>; rows[2].canClose = true },
     ]) {
       const fixture = surfaceHttp(); change(fixture)
       await expect(verifySurfaceDemo(surfaceSnapshot(), phoneFacts(), fixture.request)).rejects.toThrow("VERIFICATION_FAILED")

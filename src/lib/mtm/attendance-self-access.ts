@@ -11,8 +11,8 @@ export async function requireAttendanceSelf(db: Prisma.TransactionClient, self: 
   if (!agentPermissionEnabled({ attendanceEnabled: values.find((value) => value.key === "attendanceEnabled")?.value === true }, permission)) {
     throw new AttendanceRequestError("MTM_ATTENDANCE_DISABLED", 404)
   }
-  const agent = await db.mtmAgent.findFirst({ where: { id: self.agentId, organizationId: self.organizationId, status: "ACTIVE", role: self.role as Prisma.MtmAgentWhereInput["role"] }, select: { id: true, role: true, attendanceParticipant: true } })
-  if (!agent || !mayUseAttendanceSelf(self.role, true, agent.attendanceParticipant === true)) throw new AttendanceRequestError("MTM_ATTENDANCE_SELF_REQUIRED", 403)
+  const agent = await db.mtmAgent.findFirst({ where: { id: self.agentId, organizationId: self.organizationId, status: "ACTIVE", role: self.role as Prisma.MtmAgentWhereInput["role"] }, select: { id: true, role: true, attendanceParticipant: true, attendanceExcluded: true } })
+  if (!agent || !mayUseAttendanceSelf(self.role, true, agent.attendanceParticipant === true, agent.attendanceExcluded === true)) throw new AttendanceRequestError("MTM_ATTENDANCE_SELF_REQUIRED", 403)
   const timezone = values.find((value) => value.key === "timezone")?.value ?? "Asia/Baku"
   if (typeof timezone !== "string" || !isValidTimezone(timezone)) throw new AttendanceRequestError("MTM_ATTENDANCE_TIMEZONE_INVALID", 409)
   return timezone
@@ -23,4 +23,11 @@ export async function lockAttendanceRequests(db: Prisma.TransactionClient, self:
   // Linearize a submission with disabling attendance or deactivating its owner.
   await db.$queryRaw`SELECT "id" FROM "mtm_settings" WHERE "organizationId" = ${self.organizationId} AND "key" = 'attendanceEnabled' FOR SHARE`
   await db.$queryRaw`SELECT "id" FROM "mtm_agents" WHERE "organizationId" = ${self.organizationId} AND "id" = ${self.agentId} FOR SHARE`
+}
+
+/** Internal legacy-workday hooks already hold the employee/feature locks.
+ * Exclusion affects attendance evidence only, never the field workday itself. */
+export async function isAttendanceEmployeeExcluded(db: Prisma.TransactionClient, self: Pick<AttendanceSelf, "organizationId" | "agentId">) {
+  const agent = await db.mtmAgent.findFirst({ where: { id: self.agentId, organizationId: self.organizationId }, select: { attendanceExcluded: true } })
+  return agent?.attendanceExcluded === true
 }

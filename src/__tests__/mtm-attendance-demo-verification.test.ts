@@ -5,7 +5,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { PrismaClient } from "@prisma/client"
 import { buildMtmAttendanceReport } from "@/lib/mtm/attendance-report"
-import { DEMO, DEMO_AGENTS, DEMO_WORKDAYS, assertContext, assertOwnedOrganization, authenticatedReport,
+import { DEMO, DEMO_AGENTS, DEMO_WORKDAYS, assertDemoAttendanceAgents, assertContext, assertOwnedOrganization, authenticatedReport,
   databaseUrlFromEnv, expectedRows, prepareDemo, readOnlyDemo, safeFailure, validateEvidence, verifyParity,
 } from "../../scripts/mtm-attendance-demo-verification"
 
@@ -34,6 +34,24 @@ describe("dedicated attendance demo controller", () => {
     expect(() => assertContext("read-only-check", sha, "b".repeat(40))).toThrow("REVISION_OR_MODE_INVALID")
     expect(() => assertContext("seed-any-tenant", sha, sha)).toThrow("REVISION_OR_MODE_INVALID")
   })
+  it("accepts only the two immutable field identities plus the exact automatic CRM-user card", () => {
+    const agents = (): Array<Parameters<typeof assertDemoAttendanceAgents>[0][number]> => [...DEMO_AGENTS.map(id => ({ id, role: "AGENT", status: "ACTIVE", teamId: null, userId: null as string | null,
+      attendanceParticipant: false, attendanceExcluded: false, attendanceIncludedFrom: null as Date | null, canPlanOwnRoutes: true, canSelfPublishRoutes: false })),
+      { id: "9a000000-0000-4000-8000-000000000001", role: "EMPLOYEE", status: "ACTIVE", teamId: null, userId: DEMO.userId,
+        attendanceParticipant: true, attendanceExcluded: false, attendanceIncludedFrom: new Date("2026-10-13T10:00:00Z"), canPlanOwnRoutes: false, canSelfPublishRoutes: false }]
+    expect(() => assertDemoAttendanceAgents(agents())).not.toThrow()
+    for (const mutate of [
+      (rows: ReturnType<typeof agents>) => { rows.pop() },
+      (rows: ReturnType<typeof agents>) => { rows.push({ ...rows[2], id: "another-card" }) },
+      (rows: ReturnType<typeof agents>) => { rows[2].userId = "PRIVATE_FOREIGN_USER" },
+      (rows: ReturnType<typeof agents>) => { rows[2].role = "ADMIN" },
+      (rows: ReturnType<typeof agents>) => { rows[2].attendanceExcluded = true },
+      (rows: ReturnType<typeof agents>) => { rows[2].attendanceIncludedFrom = null },
+      (rows: ReturnType<typeof agents>) => { rows[2].attendanceIncludedFrom = new Date("2026-10-05") },
+      (rows: ReturnType<typeof agents>) => { rows[2].canPlanOwnRoutes = true },
+      (rows: ReturnType<typeof agents>) => { rows[0].userId = DEMO.userId },
+    ]) { const rows = agents(); mutate(rows); expect(() => assertDemoAttendanceAgents(rows)).toThrow("FIXTURE_CHANGED") }
+  })
   it("ownership collision stops preparation before any create; an owned repeat performs no rewrite", async () => {
     const create = vi.fn()
     const tx = { $executeRaw: vi.fn(), organization: { findMany: vi.fn(async () => [{ ...owned, settings: {} }]), create } }
@@ -54,6 +72,31 @@ describe("dedicated attendance demo controller", () => {
     } } as unknown as PrismaClient
     await expect(readOnlyDemo(db)).rejects.toThrow("TENANT_NOT_OWNED")
     expect(calls).toEqual(["SET TRANSACTION READ ONLY", "tenant context", "ownership"])
+  })
+  it.each([0, 1, null])("verifies raw employment history count %s without an ignored Prisma delegate", async count => {
+    const tx = { $executeRawUnsafe: vi.fn(), $executeRaw: vi.fn(),
+      $queryRaw: vi.fn().mockResolvedValueOnce([{ readOnly: "on", orgId: DEMO.id, bypass: null }])
+        .mockResolvedValueOnce(count === null ? [] : [{ count }])
+        .mockResolvedValueOnce([{ name: "workforce_completed_workday_guard" }, { name: "workforce_workday_events_append_only" }]),
+      organization: { findMany: vi.fn(async () => [owned]) },
+      user: { findMany: vi.fn(async () => [{ id: DEMO.userId, email: DEMO.email, role: "admin", isActive: true,
+        hiddenModules: [], totpEnabled: false, smsAuthEnabled: false, require2fa: false, phone: null, verifiedPhone: null, anonymizedAt: null }]) },
+      mtmAgent: { findMany: vi.fn(async () => [...DEMO_AGENTS.map(id => ({ id, role: "AGENT", status: "ACTIVE", teamId: null, userId: null,
+        attendanceParticipant: false, attendanceExcluded: false, attendanceIncludedFrom: null })),
+        { id: "9a000000-0000-4000-8000-000000000001", role: "EMPLOYEE", status: "ACTIVE", teamId: null, userId: DEMO.userId,
+          attendanceParticipant: true, attendanceExcluded: false, attendanceIncludedFrom: new Date("2026-10-13T10:00:00Z"), canPlanOwnRoutes: false, canSelfPublishRoutes: false }]) },
+      mtmSetting: { findMany: vi.fn(async () => [{ key: "attendanceEnabled", value: true }, { key: "timezone", value: "Asia/Baku" }]) },
+      mtmAttendanceRule: { count: vi.fn(async () => 0) }, mtmWorkCalendarDay: { count: vi.fn(async () => 0) },
+      mtmAttendanceParticipationEvent: { count: vi.fn(async () => 0) },
+      mtmAgentWorkday: { findMany: vi.fn(async () => snapshot().workdays) },
+    }
+    const db = { $transaction: (fn: (value: typeof tx) => unknown) => fn(tx) } as unknown as PrismaClient
+    if (count === 0) await expect(readOnlyDemo(db)).resolves.toMatchObject(snapshot())
+    else { await expect(readOnlyDemo(db)).rejects.toThrow("FIXTURE_CHANGED"); expect(tx.mtmAgentWorkday.findMany).not.toHaveBeenCalled() }
+    expect(tx.$executeRawUnsafe).toHaveBeenCalledWith("SET TRANSACTION READ ONLY")
+    const [query, tenant] = tx.$queryRaw.mock.calls[1]
+    expect(query.join("?")).toMatch(/FROM workforce_employment_events WHERE "organizationId" = \?/)
+    expect(tenant).toBe(DEMO.id)
   })
   it("independently matches actual report rows, shared-parser pauses, journal clocks and totals", () => {
     const parity = verifyParity(snapshot(), report())

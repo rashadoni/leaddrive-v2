@@ -6,15 +6,20 @@ export const AttendanceEmployeeEnrollmentSchema = z.object({ clientRequestId: z.
   teamId: id.nullable(), hireDate: date, reason: z.string().trim().min(3).max(1000) }).strict()
 export const AttendanceEmploymentInputSchema = z.object({ clientRequestId: z.string().uuid(), agentId: id,
   kind: z.enum(["HIRE", "TERMINATION", "REHIRE"]), date, previousEventId: id.nullable(), reason: z.string().trim().min(3).max(1000) }).strict()
+export const AttendanceParticipationInputSchema = z.object({ clientRequestId: z.string().uuid(), agentId: id,
+  included: z.boolean(), previousEventId: id.nullable() }).strict()
+export type AttendanceParticipationEvent = { id: string; agentId: string; included: boolean; effectiveAt: string }
 export type AttendanceEmployeeDirectory = {
   users: Array<{ id: string; name: string; existingRole: string | null; existingTeamId: string | null; eligible: boolean }>
   teams: Array<{ id: string; name: string }>
-  employees: Array<{ id: string; name: string; role: string; teamName: string | null; status: string; history: Array<{ id: string; kind: "HIRE" | "TERMINATION" | "REHIRE"; date: string; at: string; byName: string | null }> }>
+  employees: Array<{ id: string; name: string; role: string; teamName: string | null; status: string;
+    included: boolean; participationVersion: string | null; includedFrom: string | null;
+    history: Array<{ id: string; kind: "HIRE" | "TERMINATION" | "REHIRE"; date: string; at: string; byName: string | null }> }>
   timezone: string
 }
 const SELF_ROLES = new Set(["AGENT", "EMPLOYEE", "ADMIN", "MANAGER", "SUPERVISOR"])
-export function mayUseAttendanceSelf(role: string, attendanceEnabled: boolean, participant: boolean) {
-  return attendanceEnabled && SELF_ROLES.has(role) && (role === "AGENT" || participant)
+export function mayUseAttendanceSelf(role: string, attendanceEnabled: boolean, participant: boolean, excluded = false) {
+  return attendanceEnabled && !excluded && SELF_ROLES.has(role) && (role === "AGENT" || participant)
 }
 /** Exact allowlist is applied by fresh mobile authentication, including dual
  * web/mobile transports that don't use withMobileRls. Unknown paths deny. */
