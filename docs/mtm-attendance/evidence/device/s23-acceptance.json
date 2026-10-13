@@ -93,6 +93,55 @@
         "tenant": "mtm-attendance-phone",
         "loginFormVisible": true
       }
+    },
+    {
+      "at": "2026-10-13T23:16:58.626442+00:00",
+      "name": "login-empty-fields-validation-3.8.2",
+      "status": "PASS",
+      "detail": {
+        "tenant": "mtm-attendance-phone",
+        "noAuthenticationSubmitted": true
+      }
+    },
+    {
+      "at": "2026-10-13T23:18:04.406321+00:00",
+      "name": "login-password-visibility-toggle-3.8.2",
+      "status": "PASS",
+      "detail": {
+        "fictionalPlaceholderOnly": true,
+        "returnedToMaskedAndCleared": true
+      }
+    },
+    {
+      "at": "2026-10-13T23:18:11.954398+00:00",
+      "name": "selected-company-survives-restart-3.8.2",
+      "status": "PASS",
+      "detail": {
+        "tenant": "mtm-attendance-phone"
+      }
+    },
+    {
+      "at": "2026-10-13T23:19:29.747859+00:00",
+      "name": "fictional-login-wrong-password-rejected-3.8.2",
+      "status": "PASS",
+      "detail": {
+        "tenant": "mtm-attendance-phone",
+        "workdayNotOpened": true,
+        "oneAttemptOnly": true
+      }
+    },
+    {
+      "at": "2026-10-13T23:19:44.982451+00:00",
+      "name": "location-permissions-remain-denied-after-upgrade",
+      "status": "PASS",
+      "detail": {
+        "permissions": [
+          "COARSE",
+          "FINE",
+          "BACKGROUND"
+        ],
+        "restoreAfterTests": true
+      }
     }
   ],
   "privacy": {
@@ -103,5 +152,5 @@
     "personalScreenshotsPublished": false,
     "testLocationPermissions": "Fine, coarse and background temporarily denied; original grants retained privately for restoration"
   },
-  "updatedAt": "2026-10-13T23:15:02.984366+00:00"
+  "updatedAt": "2026-10-13T23:21:07.283875+00:00"
 }
