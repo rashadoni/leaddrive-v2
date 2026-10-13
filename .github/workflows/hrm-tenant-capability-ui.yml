@@ -244,11 +244,15 @@ jobs:
         run: bash scripts/ci/prepare-hosted-build-runner.sh cleanup
       - name: Prepare existing cold build budget
         run: bash scripts/ci/prepare-hosted-build-runner.sh
+        env:
+          # The full attendance bundle exceeded the previous 8-GiB heap.
+          # Measure 16 GiB RAM+bounded swap before allowing a 10-GiB heap.
+          LEADDRIVE_BUILD_MIN_BUDGET_KIB: "16777216"
       - name: Full cold production bundle (no deploy)
         run: npm run build -- --webpack
         env:
           NODE_ENV: production
-          NODE_OPTIONS: --max-old-space-size=8192
+          NODE_OPTIONS: --max-old-space-size=10240
           NEXT_WEBPACK_PARALLELISM: "1"
       - name: Verify build products and exact head receipt
         shell: bash
