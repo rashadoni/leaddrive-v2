@@ -106,7 +106,20 @@ export function acceptJourneyReport(manifest: DemoJourneyManifest, report: DemoJ
  * prospect, and a transition filed under the section they left would be
  * refused by the server anyway.
  */
-export function journeyReportsBetween(before: DemoJourneySnapshot, after: DemoJourneySnapshot, options: { jumped?: boolean } = {}): DemoJourneyReport[] {
+export function journeyReportsBetween(
+  before: DemoJourneySnapshot,
+  after: DemoJourneySnapshot,
+  options: {
+    jumped?: boolean
+    /**
+     * The state the prospect's own action entered (the reducer's
+     * `transitioned`), or null for none. Given, it is what gets reported —
+     * not `after.state`: when the guide skips modules already walked, the
+     * story lands several states ahead, and those were staged, not done.
+     */
+    moved?: DemoJourneyState | null
+  } = {},
+): DemoJourneyReport[] {
   if (options.jumped) {
     return after.sectionId !== before.sectionId ? [{ eventType: "JOURNEY", name: "journey.section_opened", sectionId: after.sectionId }] : []
   }
@@ -119,8 +132,9 @@ export function journeyReportsBetween(before: DemoJourneySnapshot, after: DemoJo
   for (const stepId of after.skippedSteps) {
     if (!skipped.has(stepId)) reports.push({ eventType: "JOURNEY", name: "journey.step_skipped", sectionId: before.sectionId, stepId })
   }
-  if (after.state !== before.state) {
-    reports.push({ eventType: "JOURNEY", name: "journey.transition", sectionId: before.sectionId, to: after.state })
+  const moved = "moved" in options ? options.moved : after.state !== before.state ? after.state : null
+  if (moved) {
+    reports.push({ eventType: "JOURNEY", name: "journey.transition", sectionId: before.sectionId, to: moved })
   }
   if (after.sectionId !== before.sectionId) {
     reports.push({ eventType: "JOURNEY", name: "journey.section_opened", sectionId: after.sectionId })
