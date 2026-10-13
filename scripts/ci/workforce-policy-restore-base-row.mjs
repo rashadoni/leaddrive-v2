@@ -12,9 +12,12 @@ const definition = { expectedWorkSeconds: 0, lateGraceSeconds: 0, undertimeToler
 const definitionHash = createHash("sha256").update(JSON.stringify(Object.fromEntries(Object.entries(definition).sort(([a], [b]) => a.localeCompare(b))))).digest("hex")
 try {
   if (process.argv[2] === "before") {
-    // Minimal projections allow the candidate client to seed the pre-anchor schema.
+    // The candidate client can materialize defaults for newly added columns
+    // even with select:{id:true}. Seed this historical fixture using only the
+    // columns in its pinned schema; do not alter the pre-anchor database.
     await owner.organization.create({ data: { id: org, name: "Additive migration existing fixture", slug: org }, select: { id: true } })
-    await owner.user.create({ data: { id: user, organizationId: org, email: user + "@example.test", name: "Fixture actor", role: "admin", passwordHash: randomUUID() }, select: { id: true } })
+    await owner.$executeRaw`INSERT INTO users (id, "organizationId", email, name, role, "passwordHash", "createdAt", "updatedAt")
+      VALUES (${user}, ${org}, ${user + "@example.test"}, 'Fixture actor', 'admin', ${randomUUID()}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
     await owner.workforcePolicy.create({ data: { id, organizationId: org, version: 1, name: "Existing legacy draft", effectiveFrom: new Date("2090-01-01"), definition, definitionHash, createdByUserId: user }, select: { id: true } })
     for (const [version, status, from, to, system] of [[2, "ACTIVE", "2020-01-01", "2030-12-31", false],
       [3, "RETIRED", "2019-01-01", "2019-12-31", false], [4, "ACTIVE", "2031-01-01", null, true]]) {
@@ -39,7 +42,8 @@ try {
       await tx.$executeRawUnsafe("ALTER TABLE workforce_policies DISABLE TRIGGER workforce_policies_published_definition_delete_guard")
       await tx.workforcePolicy.deleteMany({ where: { organizationId: org } })
       await tx.$executeRawUnsafe("ALTER TABLE workforce_policies ENABLE TRIGGER workforce_policies_published_definition_delete_guard")
-      await tx.user.delete({ where: { id: user } }); await tx.organization.delete({ where: { id: org } })
+      await tx.$executeRaw`DELETE FROM users WHERE id = ${user} AND "organizationId" = ${org}`
+      await tx.organization.delete({ where: { id: org }, select: { id: true } })
     })
     assert.equal(await owner.organization.count({ where: { id: org } }), 0)
     const [guard] = await owner.$queryRaw`SELECT tgenabled FROM pg_trigger WHERE tgname='workforce_policies_published_definition_delete_guard'`

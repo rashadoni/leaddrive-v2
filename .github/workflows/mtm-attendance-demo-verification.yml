@@ -1,0 +1,144 @@
+name: Verify MTM attendance demo
+
+# Explicit fixture preparation is intentionally separate from read-only DB
+# comparison. Both modes log in normally; only this fictional user's login
+# counters may change during read-only-check. No scheduled or deploy trigger.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Prepare the dedicated fictional tenant, or only check its existing fixture"
+        type: choice
+        required: true
+        default: read-only-check
+        options: [read-only-check, prepare-and-check]
+      expected_main_sha:
+        description: "Exact current and already deployed 40-character main SHA"
+        type: string
+        required: true
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  verify-controller:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: postgresql://postgres:fixture-only@127.0.0.1:5432/postgres
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: fixture-only
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v6
+      - name: Require exact current main before building the controller
+        env:
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+        run: |
+          set -euo pipefail
+          [ "$GITHUB_REF" = refs/heads/main ]
+          [[ "$EXPECTED_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]]
+          git fetch --no-tags --depth=1 origin refs/heads/main
+          [ "$EXPECTED_MAIN_SHA" = "$GITHUB_SHA" ]
+          [ "$EXPECTED_MAIN_SHA" = "$(git rev-parse FETCH_HEAD)" ]
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npx prisma generate
+      - name: Prove ownership fences, auth flow, parity and real immutable database guards
+        env:
+          MTM_DEMO_TEST_DATABASE_URL: postgresql://postgres:fixture-only@127.0.0.1:5432/postgres
+          MTM_DEMO_DB_GATE: required
+          VITEST_MAX_WORKERS: 1
+        run: npx vitest run src/__tests__/mtm-attendance-demo-verification.test.ts src/__tests__/mtm-attendance-demo-verification-postgres.test.ts
+      - name: Bundle exactly the reviewed controller and shared pause parser
+        run: node scripts/build-mtm-attendance-demo-controller.mjs attendance-demo-controller.cjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: attendance-demo-controller-${{ github.sha }}
+          path: attendance-demo-controller.cjs
+          retention-days: 1
+          if-no-files-found: error
+
+  production-demo:
+    needs: verify-controller
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: production
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/assert-production-environment-protection
+        with:
+          github-token: ${{ github.token }}
+      - name: Recheck current main after waiting for the production lock
+        env:
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+          DEMO_MODE: ${{ inputs.mode }}
+        run: |
+          set -euo pipefail
+          [ "$GITHUB_REF" = refs/heads/main ]
+          [[ "$EXPECTED_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$DEMO_MODE" = read-only-check || "$DEMO_MODE" = prepare-and-check ]]
+          git fetch --no-tags --depth=1 origin refs/heads/main
+          [ "$EXPECTED_MAIN_SHA" = "$GITHUB_SHA" ]
+          [ "$EXPECTED_MAIN_SHA" = "$(git rev-parse FETCH_HEAD)" ]
+      - uses: actions/download-artifact@v4
+        with:
+          name: attendance-demo-controller-${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: ./.github/actions/setup-production-ssh
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          server-host: ${{ secrets.SERVER_HOST }}
+          known-hosts: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+      - name: Run the bounded fixture operation and ordinary authenticated GET
+        env:
+          DEMO_MODE: ${{ inputs.mode }}
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          set -euo pipefail
+          [ "$SERVER_HOST" = 13.140.132.245 ] && [ "$SERVER_USER" = root ]
+          [[ "$EXPECTED_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$DEMO_MODE" = read-only-check || "$DEMO_MODE" = prepare-and-check ]]
+          RAW_OUTPUT="$(mktemp)"
+          trap 'rm -f "$RAW_OUTPUT"' EXIT
+          mkdir -p evidence
+          set +e
+          ssh -T -o ConnectTimeout=10 -o LogLevel=ERROR -i ~/.ssh/deploy_key \
+            "$SERVER_USER@$SERVER_HOST" \
+            "NODE_NO_WARNINGS=1 node - --run '$DEMO_MODE' '$EXPECTED_MAIN_SHA'" \
+            < attendance-demo-controller.cjs > "$RAW_OUTPUT" 2>/dev/null
+          REMOTE_STATUS=$?
+          set -e
+          node attendance-demo-controller.cjs --validate-output < "$RAW_OUTPUT" > evidence/attendance-demo.json || {
+            rm -f evidence/attendance-demo.json
+            echo '::error::Demo controller returned no valid sanitized evidence'
+            exit 1
+          }
+          cat evidence/attendance-demo.json
+          [ "$REMOTE_STATUS" -eq 0 ]
+          node -e 'if (require("./evidence/attendance-demo.json").status !== "PASS") process.exit(1)'
+      - name: Retain only allowlisted fictional-tenant counts, seconds and matches
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: attendance-demo-evidence-${{ github.sha }}
+          path: evidence/attendance-demo.json
+          retention-days: 14
+          if-no-files-found: ignore
