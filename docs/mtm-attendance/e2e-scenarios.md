@@ -143,3 +143,21 @@ Network uncertainty/retry UI, deliberately stale browser tabs, attachments,
 every queue's pagination boundaries, the full role/control cross-product and
 physical Android scenarios remain explicit acceptance work. Existing real HTTP
 stale/replay assertions are useful coverage, not substitutes for those clicks.
+
+## First hosted run and negative browser flows — 2026-10-14 (Asia/Baku)
+
+The initial hosted run is
+[38472009609](https://github.com/rashadoni/leaddrive-v2/actions/runs/38472009609),
+bound to `74bd10a8e7d16c2dac093562ca86498d2badf04c`; results are pending.
+Static review during that run corrected seeded risk evidence to use the actual
+event's `serverReceivedAt`, as required by the production insert guard.
+
+Two more executable browser cases supersede part of the remaining network/stale
+tab gap: a real branch write whose acknowledgement is intentionally dropped,
+followed by the UI's exact-request retry with one branch/version; and competing
+catalogue tabs where the stale save returns 409, preserves the newer value and
+requires reload. Fault injection drops a response after the real handler commits;
+it does not fabricate a successful API response. Both cases require a subsequent
+hosted run before they can be labelled PASS. Other recovery controls and physical
+offline queues remain unverified. The workflow also reacts to the auth/workday,
+sidebar, schema and translation sources used by these scenarios.

@@ -8,11 +8,21 @@ on:
       - 'scripts/mtm-attendance-browser-evidence.mjs'
       - 'scripts/fixtures/mtm-attendance-e2e.mjs'
       - 'src/components/mtm/attendance-*.tsx'
+      - 'src/components/mtm/mtm-sidebar-sections.tsx'
+      - 'src/lib/nav-items.ts'
       - 'src/app/(dashboard)/mtm/attendance/**'
       - 'src/app/api/v1/mtm/attendance/**'
+      - 'src/app/api/v1/mtm/mobile/auth/route.ts'
+      - 'src/app/api/v1/mtm/mobile/sync/push/route.ts'
       - 'src/app/api/v2/mtm/mobile/route-field/attendance/**'
       - 'src/lib/mtm/attendance-*.ts'
+      - 'src/lib/mtm/workday*.ts'
+      - 'src/lib/mobile-auth.ts'
+      - 'src/auth.ts'
+      - 'prisma/schema.prisma'
       - 'prisma/migrations/*mtm_attendance*/migration.sql'
+      - 'prisma/migrations/*mtm_workday_employee_return*/migration.sql'
+      - 'messages/*.json'
   workflow_dispatch:
     inputs:
       head_sha:

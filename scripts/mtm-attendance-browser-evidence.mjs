@@ -24,7 +24,7 @@ const t = (key, vars = {}) => {
 }
 const routes = ['', 'requests', 'decisions', 'employees', 'branches', 'branches/report', 'shifts', 'leave-balances', 'months', 'installations', 'branch-qr', 'review', 'location-settings', 'recordings']
 const caseNames = ['fixture-rls', 'credentials-and-roles', 'hr-read-grant', 'mobile-workday', 'report-scope-exports', 'views-crud', 'deliveries-crud', 'rules-calendar', 'day-kinds-quotas', 'employee-participation', 'employment-history', 'branches-assignments', 'geo-policy-consent', 'requests-decisions', 'hr-recording-batch', 'installation-decisions', 'shift-day-night', 'leave-policy-profile', 'month-freeze', 'risk-dismissal', ...routes.map(route => `page:${route || 'report'}`), 'browser-report-tabs-filters-pagination', 'browser-views-save-rename-delete-cancel', 'browser-employee-search-switch-history', 'browser-branch-create-edit-archive-cancel', 'browser-request-approve-reject-revoke', 'browser-qr-toggle-refresh-hide', 'browser-locales-mobile-width', 'hr-revoke-fresh-session', 'final-privacy-invariants', 'browser-settings-hr-catalogue-quotas', 'browser-delivery-create-edit-cancel-delete', 'browser-batch-recording-and-decision-journal', 'browser-shift-publish-cancel-and-leave-profile', 'browser-geo-off-legal-block-and-branch-summary', 'browser-installation-approve-revoke-history', 'browser-month-frozen-download']
-caseNames.push('browser-rules-calendar-crud', 'browser-hr-grant-revoke', 'browser-kind-create-archive-restore', 'browser-employment-record', 'browser-primary-branch-assignment', 'browser-risk-dismissal', 'browser-leave-policy-publication', 'browser-month-preview-close-blockers', 'browser-sidebar-click-traversal')
+caseNames.push('browser-rules-calendar-crud', 'browser-hr-grant-revoke', 'browser-kind-create-archive-restore', 'browser-employment-record', 'browser-primary-branch-assignment', 'browser-risk-dismissal', 'browser-leave-policy-publication', 'browser-month-preview-close-blockers', 'browser-sidebar-click-traversal', 'browser-branch-lost-acknowledgement-retry', 'browser-catalogue-competing-tabs')
 const manifest = {
   version: 1, status: 'RUNNING', headSha: head, workflowSha: process.env.GITHUB_SHA,
   runId: process.env.GITHUB_RUN_ID, runAttempt: process.env.GITHUB_RUN_ATTEMPT,
@@ -399,7 +399,7 @@ try {
   await run('risk-dismissal', 'authenticated-http+database', async () => {
     assert.ok(state.workdayId)
     const event = await fixture.admin.mtmAgentWorkdayEvent.findFirstOrThrow({ where: { workdayId: state.workdayId, type: 'START' } })
-    await fixture.admin.mtmAttendanceMarkEvidence.create({ data: { organizationId: fixture.organization.id, agentId: fixture.agents.employee.id, eventId: event.id, redactedRequestHash: 'a'.repeat(64), installationId: `rf-e2e-${randomUUID()}`, action: 'START', claimedAt: event.occurredAt, serverReceivedAt: event.occurredAt, locationState: 'NO_CONSENT' } })
+    await fixture.admin.mtmAttendanceMarkEvidence.create({ data: { organizationId: fixture.organization.id, agentId: fixture.agents.employee.id, eventId: event.id, redactedRequestHash: 'a'.repeat(64), installationId: `rf-e2e-${randomUUID()}`, action: 'START', claimedAt: event.occurredAt, serverReceivedAt: event.serverReceivedAt, locationState: 'NO_CONSENT' } })
     const risk = await fixture.admin.mtmAttendanceRiskCase.create({ data: { organizationId: fixture.organization.id, agentId: fixture.agents.employee.id, eventId: event.id, kind: 'CLOCK_DIFFERENCE', workDate: new Date(`${today}T00:00:00Z`), timezone: 'Asia/Baku', detectorVersion: 'mtm-attendance-risk-v1', policySnapshot: { allowSharedInstallations: false, rejectMockLocations: true, clockDifferenceSeconds: 300 }, details: { version: 1, deltaSeconds: 600, thresholdSeconds: 300 } } })
     const query = `/review?from=${today}&to=${today}&status=OPEN&kind=ALL`
     assert.ok((await api('admin', query)).items.some(row => row.id === risk.id))
@@ -818,7 +818,7 @@ try {
     assert.ok(state.workdayId)
     const event = await fixture.admin.mtmAgentWorkdayEvent.findFirstOrThrow({ where: { workdayId: state.workdayId, type: 'FINISH' } })
     const workday = await fixture.admin.mtmAgentWorkday.findUniqueOrThrow({ where: { id: state.workdayId } })
-    await fixture.admin.mtmAttendanceMarkEvidence.create({ data: { organizationId: fixture.organization.id, agentId: fixture.agents.employee.id, eventId: event.id, redactedRequestHash: 'b'.repeat(64), installationId: `rf-e2e-${randomUUID()}`, action: 'FINISH', claimedAt: event.occurredAt, serverReceivedAt: event.occurredAt, locationState: 'NO_CONSENT' } })
+    await fixture.admin.mtmAttendanceMarkEvidence.create({ data: { organizationId: fixture.organization.id, agentId: fixture.agents.employee.id, eventId: event.id, redactedRequestHash: 'b'.repeat(64), installationId: `rf-e2e-${randomUUID()}`, action: 'FINISH', claimedAt: event.occurredAt, serverReceivedAt: event.serverReceivedAt, locationState: 'NO_CONSENT' } })
     const risk = await fixture.admin.mtmAttendanceRiskCase.create({ data: { organizationId: fixture.organization.id, agentId: fixture.agents.employee.id, eventId: event.id, kind: 'CLOCK_DIFFERENCE', workDate: workday.workDate, timezone: 'Asia/Baku', detectorVersion: 'mtm-attendance-risk-v1', policySnapshot: { allowSharedInstallations: false, rejectMockLocations: true, clockDifferenceSeconds: 300 }, details: { version: 1, deltaSeconds: 600, thresholdSeconds: 300 } } })
     await readyPage('review')
     await page.locator('#risk-from').fill(today); await page.locator('#risk-to').fill(today)
@@ -884,6 +884,67 @@ try {
       assert.equal(await link.getAttribute('aria-current'), 'page')
     }
     return { actualSidebarClicks: 13, proves: 'Navigation only; mutations have separate case records' }
+  })
+  await run('browser-branch-lost-acknowledgement-retry', 'browser-action+real-commit-response-drop', async () => {
+    await readyPage('branches'); await button('branchesAdd').click()
+    const editor = page.getByTestId('branches-editor')
+    for (const [id, value] of Object.entries({ name: 'Fixture response-drop branch', address: 'Fictional address', latitude: '40.43', longitude: '49.82', radiusMeters: '200' })) await editor.locator(`#branch-${id}`).fill(value)
+    const pattern = `${origin.origin}${apiRoot}/branches`
+    let firstBody, committed, interceptionError
+    const retryBodies = []
+    const intercept = async route => {
+      if (route.request().method() !== 'POST') return route.continue()
+      const body = route.request().postDataJSON()
+      if (firstBody) { retryBodies.push(body); return route.continue() }
+      firstBody = body
+      try {
+        // The real handler commits first; only its acknowledgement is lost.
+        const response = await route.fetch()
+        assert.equal(response.status(), 200)
+        const json = await response.json(); assert.equal(json.success, true)
+        committed = json.data
+      } catch (error) { interceptionError = error }
+      await route.abort('failed')
+    }
+    await page.route(pattern, intercept)
+    try {
+      await button('branchesSave', editor).click()
+      await button('branchesCheckWrite').waitFor()
+      if (interceptionError) throw interceptionError
+      assert.ok(committed?.branch?.id)
+      assert.equal(await button('branchesAdd').isEnabled(), false)
+      const repeated = await clickResponse(button('branchesCheckWrite'), `${apiRoot}/branches`)
+      assert.equal(repeated.idempotent, true)
+      assert.equal(repeated.branch.id, committed.branch.id)
+      assert.deepEqual(retryBodies, [firstBody])
+      const rows = (await api('admin', '/branches')).branches.filter(branch => branch.name === 'Fixture response-drop branch')
+      assert.equal(rows.length, 1); assert.equal(rows[0].version, 1)
+    } finally { await page.unroute(pattern, intercept) }
+    return { actualServerCommit: true, droppedResponses: 1, sameRequestRetried: true, duplicateBranches: 0 }
+  })
+  await run('browser-catalogue-competing-tabs', 'browser-action+database-backed-http', async () => {
+    const original = page, concurrent = await sessions.admin.newPage()
+    try {
+      for (const target of [original, concurrent]) {
+        page = target
+        await readyPage('')
+        const kinds = page.getByTestId('attendance-day-kinds')
+        await button('kindsOpen', kinds).click()
+        const row = page.locator('[data-testid="attendance-kind-row"][data-kind="REMOTE_WORK"]')
+        await page.locator('#attendance-kinds-search').fill('Fixture browser remote')
+        await button('kindsEdit', row).click()
+        await page.locator('#attendance-kind-name-en').fill(target === original ? 'Fixture stale tab must not save' : 'Fixture concurrent remote')
+      }
+      await clickResponse(button('kindsSave', page.getByTestId('attendance-kind-editor')), `${apiRoot}/day-kinds`, 'PUT')
+      page = original
+      await clickResponse(button('kindsSave', page.getByTestId('attendance-kind-editor')), `${apiRoot}/day-kinds`, 'PUT', 409)
+      await page.getByText(t('kindsChanged'), { exact: true }).waitFor()
+      assert.equal(await button('kindsSave', page.getByTestId('attendance-kind-editor')).isEnabled(), false)
+      await clickResponse(button('kindsReload', page.getByTestId('attendance-day-kinds')), `${apiRoot}/day-kinds`, 'GET')
+      assert.equal((await api('admin', '/day-kinds')).items.find(item => item.key === 'REMOTE_WORK').names.en, 'Fixture concurrent remote')
+      await poll(async () => await button('kindsAdd', page.getByTestId('attendance-day-kinds')).isEnabled(), 'Catalogue reloaded after conflict')
+    } finally { page = original; await concurrent.close() }
+    return { realCompetingBrowserTabs: 2, staleWriteRejected: true, newerValuePreserved: true, reloadRestoresControls: true }
   })
   await run('browser-locales-mobile-width', 'browser-navigation+layout', async () => {
     for (const locale of ['az', 'ru', 'en']) {
