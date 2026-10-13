@@ -372,7 +372,7 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
   try {
    const f=await fieldDay(),at=new Date(f.at.getTime()+1000)
    const first=await streamPoint(at,{isMock:true,attendanceConsentId:f.consent})
-   expect(first.status).toBe(201);expect(JSON.stringify(first.body)).not.toMatch(/isMock|attendanceConsentId|consentId/)
+   expect(first.status).toBe(200);expect(first.body).toMatchObject({success:true,data:{replayed:false}});expect(JSON.stringify(first.body)).not.toMatch(/isMock|attendanceConsentId|consentId/)
    const rows=await streamRows();expect(rows).toHaveLength(1);expect(rows[0]).toMatchObject({isMock:true,consentId:f.consent})
    expect((await streamPoint(at,{isMock:false,attendanceConsentId:f.consent},first.clientLocationId)).status).toBe(200)
    expect(await streamRows()).toEqual(rows)
@@ -387,14 +387,15 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
   try {
    const f=await fieldDay(),at=new Date(f.at.getTime()+1000)
    await tenant(ORG,()=>prisma.mtmSetting.updateMany({where:{organizationId:ORG,key:"attendanceEnabled"},data:{value:false}}))
-   expect((await streamPoint(at,{isMock:true,attendanceConsentId:f.consent})).status).toBe(201)
+   expect((await streamPoint(at,{isMock:true,attendanceConsentId:f.consent})).status).toBe(200)
    expect(await streamRows()).toEqual([])
    await tenant(ORG,()=>prisma.mtmSetting.updateMany({where:{organizationId:ORG,key:"attendanceEnabled"},data:{value:true}}))
    await tenant(ORG,()=>store.recordOwnAttendanceLocationConsent(self(),{requestId:randomUUID(),policyRevisionId:policyId,expectedConsentId:f.consent,accepted:false}))
-   expect((await streamPoint(at,{isMock:true,attendanceConsentId:f.consent})).status).toBe(201)
+   expect((await streamPoint(at,{isMock:true,attendanceConsentId:f.consent})).status).toBe(200)
    await accept()
-   expect((await streamPoint(at,{isMock:true,attendanceConsentId:f.consent})).status).toBe(201)
-   expect((await streamPoint(at,{})).status).toBe(201)
+   expect((await streamPoint(at,{isMock:true,attendanceConsentId:f.consent})).status).toBe(200)
+   expect((await streamPoint(at,{})).status).toBe(200)
+   expect(await tenant(ORG,()=>prisma.mtmAgentLocation.count({where:{organizationId:ORG,agentId:identity.agentId}}))).toBe(4)
    expect(await streamRows()).toEqual([])
   } finally {
    identity.role="EMPLOYEE"
