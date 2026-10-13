@@ -277,6 +277,15 @@ jobs:
           MTM_ATTENDANCE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           MTM_ATTENDANCE_DB_GATE: required
 
+      - name: MTM attendance demo verification database gate
+        # Prove the exact production fixture against immutable PostgreSQL
+        # triggers before merge; this step never connects to production.
+        run: npx vitest run src/__tests__/mtm-attendance-demo-verification.test.ts src/__tests__/mtm-attendance-demo-verification-postgres.test.ts
+        env:
+          MTM_DEMO_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          MTM_DEMO_DB_GATE: required
+          VITEST_MAX_WORKERS: 1
+
       - name: Finance bill payment database gate
         # Paying a vendor bill and executing a payment order, by the real
         # handlers on a real Postgres. What a mocked Prisma cannot show: eight
