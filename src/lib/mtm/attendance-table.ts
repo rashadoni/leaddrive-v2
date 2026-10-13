@@ -25,7 +25,7 @@ export function buildAttendanceTable(report: MtmAttendanceReport, value: Attenda
   }).format(new Date(value)) : "—"
   const title = t(config.mode === "MONTH" ? "reportMonth" : config.mode === "JOURNAL" ? "reportJournal" : config.filters.form === "LATE_EARLY" ? "reportLateEarly" : config.filters.form === "ABSENCES" ? "reportAbsences" : "reportDay")
   const baseNotes = (row: MtmAttendanceReportRow) => row.factsState === "INVALID" ? row.invalidReasons.map((reason) => t(REASON[reason] ?? "reportReasonFacts")).join(" · ")
-    : row.kind === "OPEN" ? t("reportProvisional") : row.kind === "MISSING_FINISH" ? t("reportUnknownTime") : row.kind === "ABSENT" ? t("reportAbsenceReasonPending") : row.flags.includes("WORKED_ON_APPROVED_ABSENCE") ? t("reportWorkOnLeave") : row.flags.includes("WORKED_ON_DAY_OFF") ? t("reportWorkOnDayOff") : row.calendarName ?? "—"
+    : row.kind === "OPEN" ? t("reportProvisional") : row.kind === "MISSING_FINISH" ? t("reportUnknownTime") : row.kind === "ABSENT" ? t("reportAbsenceReasonPending") : row.flags.includes("WORKED_OUTSIDE_EMPLOYMENT") ? t("reportWorkOutsideEmployment") : row.flags.includes("WORKED_ON_APPROVED_ABSENCE") ? t("reportWorkOnLeave") : row.flags.includes("WORKED_ON_DAY_OFF") ? t("reportWorkOnDayOff") : row.calendarName ?? "—"
   const dayNotes = (row: MtmAttendanceReportRow) => [baseNotes(row), ...attendanceApprovedLines(row, locale, t), ...attendanceCorrectionLines(row, locale, t)].filter((line) => line !== "—").join(" · ") || "—"
   const duration = (row: MtmAttendanceReportRow) => `${formatAttendanceDuration(row.workedSeconds)}${row.kind === "OPEN" ? ` · ${t("reportProvisionalShort")}` : ""}`
   const columns: AttendanceTable["columns"] = config.columns.flatMap((column) => column === "days"
@@ -80,6 +80,7 @@ export function buildAttendanceTable(report: MtmAttendanceReport, value: Attenda
   const totalLines = config.showTotals ? [t("reportTotalsTitle"),
     t("reportTotals", { worked: formatAttendanceDuration(totals.workedSeconds), paused: formatAttendanceDuration(totals.pausedSeconds), late: formatAttendanceDuration(totals.lateSeconds), early: formatAttendanceDuration(totals.earlyLeaveSeconds) }),
     t("reportTotalsRows", { rows: totals.rowCount, employees: totals.employeeCount })] : []
+  if (config.showTotals && totals.annualLeaveDays > 0) totalLines.push(t("reportAnnualLeaveDays", { days: totals.annualLeaveDays }))
   if (config.showTotals && !totals.isComplete) totalLines.push(t("reportIncompleteTotals", { worked: totals.unknownWorkedCount, paused: totals.unknownPausedCount }))
   return { title, columns, rows: tableRows, details, totals: totalLines }
 }

@@ -170,7 +170,7 @@ export function MtmAttendanceReportWorkspace() {
   const baseRowNotes = (row: MtmAttendanceReportRow) => row.factsState === "INVALID"
     ? row.invalidReasons.map((reason) => t(REASON_MESSAGES[reason] ?? "reportReasonFacts")).join(" · ")
     : row.kind === "OPEN" ? t("reportProvisional") : row.kind === "MISSING_FINISH" ? t("reportUnknownTime")
-      : row.kind === "ABSENT" ? t("reportAbsenceReasonPending") : row.flags.includes("WORKED_ON_APPROVED_ABSENCE") ? t("reportWorkOnLeave") : row.flags.includes("WORKED_ON_DAY_OFF") ? t("reportWorkOnDayOff") : row.calendarName ?? "—"
+      : row.kind === "ABSENT" ? t("reportAbsenceReasonPending") : row.flags.includes("WORKED_OUTSIDE_EMPLOYMENT") ? t("reportWorkOutsideEmployment") : row.flags.includes("WORKED_ON_APPROVED_ABSENCE") ? t("reportWorkOnLeave") : row.flags.includes("WORKED_ON_DAY_OFF") ? t("reportWorkOnDayOff") : row.calendarName ?? "—"
 
   const rowNotes = (row: MtmAttendanceReportRow) => [baseRowNotes(row), ...attendanceApprovedLines(row, locale, t), ...attendanceCorrectionLines(row, locale, t)].filter((line) => line !== "—").join(" · ") || "—"
 
@@ -314,6 +314,7 @@ export function MtmAttendanceReportWorkspace() {
           <div data-testid="attendance-report-totals" className="space-y-2 rounded-xl bg-muted/50 px-4 py-3 text-sm"><p className="font-semibold">{t("reportTotalsTitle")}</p>
             <p className="tabular-nums">{t("reportTotals", { worked: formatAttendanceDuration(totals.workedSeconds), paused: formatAttendanceDuration(totals.pausedSeconds), late: formatAttendanceDuration(totals.lateSeconds), early: formatAttendanceDuration(totals.earlyLeaveSeconds) })}</p>
             <p className="text-xs text-muted-foreground">{t("reportTotalsRows", { rows: totals.rowCount, employees: totals.employeeCount })}</p>
+            {totals.annualLeaveDays > 0 && <p className="text-xs text-muted-foreground">{t("reportAnnualLeaveDays", { days: totals.annualLeaveDays })}</p>}
             {!totals.isComplete ? <p className="text-xs font-medium text-amber-800 dark:text-amber-300">{t("reportIncompleteTotals", { worked: totals.unknownWorkedCount, paused: totals.unknownPausedCount })}</p> : null}
             {rows.some((row) => row.kind === "OPEN") ? <p className="text-xs text-blue-700 dark:text-blue-300">{t("reportProvisional")}</p> : null}
           </div>

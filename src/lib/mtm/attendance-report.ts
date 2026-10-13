@@ -1,3 +1,4 @@
+import { attendanceEmploymentOnDate, type AttendanceEmploymentEvent, type AttendanceEmploymentState } from "@/lib/mtm/attendance-employment"
 import { projectApprovedAttendanceRequests, type AttendanceApprovedPeriod } from "@/lib/mtm/attendance-request-projection"
 import type { AttendanceDayKind } from "@/lib/mtm/attendance-day-kinds"
 import { addDateKeyDays, currentDateKey, isDateKey } from "@/lib/mtm/mobile-week"
@@ -14,12 +15,13 @@ export type MtmAttendanceInstant = Date | string
 export type MtmAttendanceEventType = "START" | "PAUSE" | "RESUME" | "FINISH" | "REOPEN"
 const EVENT_TYPES: readonly string[] = ["START", "PAUSE", "RESUME", "FINISH", "REOPEN"]
 
-/** The caller has already applied tenant/manager scope; employment bounds arrive in stage 2.9. */
+/** The caller has already applied tenant/manager scope. */
 export interface MtmAttendanceEmployee {
   id: string
   name: string
   teamId: string | null
   teamName: string | null
+  employmentEvents?: readonly AttendanceEmploymentEvent[]
 }
 
 export interface MtmAttendanceEventInput {
@@ -73,8 +75,8 @@ export interface MtmAttendanceEvent {
   serverReceivedAt: string | null
 }
 
-export type MtmAttendanceDayKind = "APPROVED_REQUEST" | "WORKED" | "OPEN" | "MISSING_FINISH" | "ABSENT" | "WEEKEND" | "HOLIDAY" | "UPCOMING" | "INVALID_FACTS"
-export type MtmAttendanceFlag = "WORKED_ON_APPROVED_ABSENCE" | "MISSING_FINISH" | "FACTS_INVALID" | "WORKED_ON_DAY_OFF" | "LATE_START" | "EARLY_LEAVE"
+export type MtmAttendanceDayKind = "NOT_EMPLOYED" | "APPROVED_REQUEST" | "WORKED" | "OPEN" | "MISSING_FINISH" | "ABSENT" | "WEEKEND" | "HOLIDAY" | "UPCOMING" | "INVALID_FACTS"
+export type MtmAttendanceFlag = "WORKED_OUTSIDE_EMPLOYMENT" | "WORKED_ON_APPROVED_ABSENCE" | "MISSING_FINISH" | "FACTS_INVALID" | "WORKED_ON_DAY_OFF" | "LATE_START" | "EARLY_LEAVE"
 export type MtmAttendanceInvalidReason = "DUPLICATE_WORKDAY" | "SCHEDULE_INVALID" | "TIMESTAMP_INVALID" | "EVENT_TYPE_INVALID" | "JOURNAL_INCOMPLETE" | "PAUSE_TOTAL_MISMATCH" | "WORKDAY_INCONSISTENT"
 
 /**
@@ -93,6 +95,8 @@ export interface MtmAttendanceReportRow {
   kind: MtmAttendanceDayKind
   dayKind?: AttendanceDayKind
   factsState: "NONE" | "VALID" | "INVALID"
+  employmentState?: AttendanceEmploymentState
+  annualLeaveDays?: number
   ruleId: string
   timezone: string
   calendarKind: WorkCalendarDayKind
@@ -320,7 +324,17 @@ export function buildMtmAttendanceReport(input: MtmAttendanceReportInput) {
   const rows = input.employees.flatMap((employee) => dates.map((date) => {
     const row = buildRow(employee, date, days.get(rowKey(employee.id, date)) ?? [], plans.get(date)!, calendarByDate.get(date) ?? [], now)
     const dayKind = catalogue.get(row.kind)
-    return projectApprovedAttendanceRequests(dayKind ? { ...row, dayKind } : row, approvedByEmployee.get(employee.id) ?? [], plans.get(date)!.rule.lateGraceMinutes * 60)
+    const projected = projectApprovedAttendanceRequests(dayKind ? { ...row, dayKind } : row, approvedByEmployee.get(employee.id) ?? [], plans.get(date)!.rule.lateGraceMinutes * 60)
+    const employmentState = attendanceEmploymentOnDate(employee.employmentEvents, date, row.timezone)
+    if (employmentState !== "NOT_EMPLOYED") return { ...projected, employmentState }
+    // Keep actual work/invalid facts visible even outside a recorded contract.
+    const outside: MtmAttendanceReportRow = { ...projected, employmentState, expectedWorkSeconds: 0, annualLeaveDays: 0,
+      lateSeconds: row.factsState === "INVALID" ? null : 0, earlyLeaveSeconds: row.earlyLeaveSeconds === null ? null : 0,
+      flags: projected.flags.filter(flag => flag !== "LATE_START" && flag !== "EARLY_LEAVE") }
+    return row.workdayId
+      ? { ...outside, flags: [...outside.flags, "WORKED_OUTSIDE_EMPLOYMENT" as const] }
+      : row.factsState === "INVALID" ? outside : { ...outside, kind: "NOT_EMPLOYED" as const, dayKind: catalogue.get("NOT_EMPLOYED") }
+
   }))
   return { from: input.from, to: input.to, asOf, rows, totals: summarizeMtmAttendanceRows(rows) }
 }
@@ -350,6 +364,7 @@ export function summarizeMtmAttendanceRows(rows: readonly MtmAttendanceReportRow
     rowCount: rows.length, employeeCount: new Set(rows.map((row) => row.employeeId)).size,
     arrivedCount: rows.filter((row) => row.startedAt !== null && row.factsState === "VALID").length,
     absentCount: rows.filter((row) => row.kind === "ABSENT").length,
+    annualLeaveDays: rows.reduce((total, row) => total + (row.annualLeaveDays ?? 0), 0),
     lateCount: rows.filter((row) => (row.lateSeconds ?? 0) > 0).length,
     earlyLeaveCount: rows.filter((row) => (row.earlyLeaveSeconds ?? 0) > 0).length,
     missingFinishCount: rows.filter((row) => row.flags.includes("MISSING_FINISH")).length,
