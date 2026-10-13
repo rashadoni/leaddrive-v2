@@ -1,9 +1,9 @@
 import { describe,expect,it } from "vitest"
-import { buildMtmAttendanceReport } from "@/lib/mtm/attendance-report"
+import { buildMtmAttendanceReport, type MtmAttendanceReport } from "@/lib/mtm/attendance-report"
 import { attendanceMonthHash,buildAttendanceMonthSnapshot,verifiedAttendanceMonthSnapshot } from "@/lib/mtm/attendance-month-snapshot"
 import { AttendanceMonthCloseSchema } from "@/lib/mtm/attendance-month-contract"
 const selection={month:"2026-09",agentIds:["fictional-a"]},now=new Date("2026-10-03T08:00:00Z")
-const report=()=>buildMtmAttendanceReport({employees:[{id:"fictional-a",name:"Demo employee 01",teamId:null,teamName:null}],workdays:[],calendar:[],rules:[],from:"2026-09-01",to:"2026-09-30",now})
+const report=(): MtmAttendanceReport=>buildMtmAttendanceReport({employees:[{id:"fictional-a",name:"Demo employee 01",teamId:null,teamName:null}],workdays:[],calendar:[],rules:[],from:"2026-09-01",to:"2026-09-30",now})
 describe("closed month payload uses frozen content",()=>{
  it("preserves absences/weekends and all three export languages without fabricating time",()=>{
   const built=buildAttendanceMonthSnapshot(report(),selection,now);expect(built.blockers).toEqual([]);expect(built.payload.coverage).toHaveLength(30)

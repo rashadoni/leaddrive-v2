@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs"
 import { createTranslator } from "next-intl"
 import { describe, expect, it } from "vitest"
 import ExcelJS from "exceljs"
-import { buildMtmAttendanceReport, type MtmAttendanceReportRow } from "@/lib/mtm/attendance-report"
+import { buildMtmAttendanceReport, type MtmAttendanceReportRow, type MtmAttendanceEventInput } from "@/lib/mtm/attendance-report"
 import { attendanceOvertimeRows } from "@/lib/mtm/attendance-overtime"
 import { defaultAttendanceDayKinds } from "@/lib/mtm/attendance-day-kinds"
 import type { AttendanceApprovedPeriod } from "@/lib/mtm/attendance-request-projection"
@@ -16,9 +16,11 @@ const at = (clock: string, day = date) => `${day}T${clock}:00+04:00`
 const employee = { id: "overtime-fixture", name: "=Demo employee", teamId: null, teamName: null }
 function report() {
   const startedAt = at("09:00"), completedAt = at("20:15")
+  // An upstream enriched event must not let private fields into the report/export.
+  const privatePause: MtmAttendanceEventInput & { latitude: number; longitude: number } = { type: "PAUSE", occurredAt: at("13:00"), latitude: 40.987654, longitude: 49.123456 }
   return buildMtmAttendanceReport({ from: date, to: next, now: at("21:00", next), employees: [employee], rules: [], calendar: [],
     workdays: [{ id: "worked", agentId: employee.id, workDate: date, startedAt, completedAt, status: "COMPLETED", totalPausedSeconds: 3600,
-      events: [{ type: "START", occurredAt: startedAt }, { type: "PAUSE", occurredAt: at("13:00"), latitude: 40.987654, longitude: 49.123456 }, { type: "RESUME", occurredAt: at("14:00") }, { type: "FINISH", occurredAt: completedAt }] }] })
+      events: [{ type: "START", occurredAt: startedAt }, privatePause, { type: "RESUME", occurredAt: at("14:00") }, { type: "FINISH", occurredAt: completedAt }] }] })
 }
 function permission(id = "permission", startTime = "18:00", endTime = "19:00"): AttendanceApprovedPeriod {
   return { id, agentId: employee.id, startDate: date, endDate: date, decidedAt: at("08:00"),

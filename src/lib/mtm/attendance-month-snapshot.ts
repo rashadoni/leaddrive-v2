@@ -24,7 +24,8 @@ export function buildAttendanceMonthSnapshot(report: MtmAttendanceReport, select
     .map(row=>({employeeId:row.employeeId,date:row.sourceDate,kind:row.kind}))
   const tables={} as AttendanceMonthPayload["tables"]
   for(const [locale,messages] of Object.entries({az,ru,en}) as ["az"|"ru"|"en",typeof ru][]) {
-    const t=createTranslator({locale,messages,namespace:"mtmAttendance"})
+    const tableMessages: { mtmAttendance: Record<string,string> } = messages
+    const t=createTranslator({locale,messages:tableMessages,namespace:"mtmAttendance"})
     tables[locale]=buildAttendanceTable(report,{version:1,mode:"MONTH",columns:[...DEFAULT_ATTENDANCE_VIEW_COLUMNS.MONTH],showTotals:true,filters:{from,to,form:"ALL"}},locale,t)
   }
   const payload=AttendanceMonthPayloadSchema.parse({version:1,month:selection.month,from,to,asOf:report.asOf,agentIds:ids,tables,
