@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { attendanceIdentityConflictResponse } from "@/lib/mtm/attendance-identity-error"
 import { withRls } from "@/lib/with-rls"
 import { getMobileAuth } from "@/lib/mobile-auth"
 import bcrypt from "bcryptjs"
@@ -312,6 +313,8 @@ export const PUT = withRls(async (req, auth, { params }: { params: Promise<{ id:
 
     return NextResponse.json({ success: true })
   } catch (e: unknown) {
+    const conflict = attendanceIdentityConflictResponse(e)
+    if (conflict) return conflict
     return NextResponse.json({ error: e instanceof Error ? e.message : "Failed to update" }, { status: 400 })
   }
 })

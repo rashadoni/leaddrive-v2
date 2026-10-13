@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma"
 import { isValidTimezone, localDateTimeToUnambiguousUtc } from "@/lib/timezone"
 import { addDateKeyDays, currentDateKey, isDateKey } from "@/lib/mtm/mobile-week"
 import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
-import { AttendanceEmployeeEnrollmentSchema, AttendanceEmploymentInputSchema, type AttendanceEmployeeDirectory } from "@/lib/mtm/attendance-employee-contract"
+import { AttendanceEmployeeEnrollmentSchema, AttendanceEmploymentInputSchema, AttendanceParticipationInputSchema, type AttendanceEmployeeDirectory } from "@/lib/mtm/attendance-employee-contract"
+import { readAttendanceParticipationHistory } from "@/lib/mtm/attendance-participation-store"
 import { recordWorkforceEmploymentEventInTransaction, WorkforceEmploymentHistoryError } from "@/lib/workforce/employment-history"
 import type { AttendanceReviewer } from "@/lib/mtm/attendance-request-decision"
 import { resolveAttendanceReviewerScope } from "@/lib/mtm/attendance-request-decision"
@@ -18,7 +19,7 @@ export async function requireAttendanceEmployeeAdmin(tx: Prisma.TransactionClien
   await tx.$executeRaw`SELECT set_config('lock_timeout', '3s', true)`
   await tx.$queryRaw`SELECT "id" FROM mtm_settings WHERE "organizationId" = ${actor.organizationId} AND "key" IN ('attendanceEnabled', 'timezone') ORDER BY "key" FOR SHARE`
   await resolveAttendanceReviewerScope(tx, actor)
-  // Managing enrollment is tenant administration, not a team-manager grant.
+  // Managing participation is tenant administration, not a team-manager grant.
   const [user] = await tx.$queryRaw<Array<{ role: string }>>`SELECT "role" FROM "users" WHERE "organizationId" = ${actor.organizationId} AND "id" = ${actor.userId} AND "isActive" AND "anonymizedAt" IS NULL FOR SHARE`
   if (!user || !["admin", "superadmin"].includes(user.role)) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_ADMIN_REQUIRED", 403)
   const setting = await tx.mtmSetting.findUnique({ where: { organizationId_key: { organizationId: actor.organizationId, key: "timezone" } }, select: { value: true } })
@@ -41,22 +42,61 @@ export async function readAttendanceEmployees(actor: AttendanceReviewer): Promis
   return prisma.$transaction(async tx => {
     const timezone = await requireAttendanceEmployeeAdmin(tx, actor), organizationId = actor.organizationId
     const users = await tx.user.findMany({ where: { organizationId, isActive: true, anonymizedAt: null }, select: { id: true, name: true }, orderBy: [{ name: "asc" }, { id: "asc" }], take: 1001 })
-    const cards = await tx.mtmAgent.findMany({ where: { organizationId }, select: { id: true, name: true, userId: true, role: true, status: true, attendanceParticipant: true, teamId: true, team: { select: { name: true } } }, orderBy: [{ name: "asc" }, { id: "asc" }], take: 1001 })
+    const cards = await tx.mtmAgent.findMany({ where: { organizationId }, select: { id: true, name: true, userId: true, role: true, status: true, attendanceParticipant: true, attendanceExcluded: true, attendanceIncludedFrom: true, teamId: true, team: { select: { name: true } } }, orderBy: [{ name: "asc" }, { id: "asc" }], take: 1001 })
     const teams = await tx.mtmTeam.findMany({ where: { organizationId }, select: { id: true, name: true }, orderBy: [{ name: "asc" }, { id: "asc" }], take: 1001 })
     if (users.length > 1000 || cards.length > 1000 || teams.length > 1000) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_TOO_LARGE", 422)
     const tracked = cards.filter(card => card.role === "AGENT" || card.attendanceParticipant)
     const events = await history(tx, organizationId, tracked.map(card => card.id))
+    const participation = await readAttendanceParticipationHistory(tx, organizationId, tracked.map(card => card.id))
+    const latestParticipation = new Map(participation.map(event => [event.agentId, event.id]))
     const names = new Map(users.map(user => [user.id, user.name]))
     return { timezone, teams, users: users.map(user => {
       const linked = cards.filter(card => card.userId === user.id), card = linked[0]
       return { id: user.id, name: user.name, existingRole: card?.role ?? null, existingTeamId: card?.teamId ?? null,
-        eligible: linked.length === 0 || (linked.length === 1 && card.status === "ACTIVE" && card.role !== "AGENT" && !card.attendanceParticipant) }
+        eligible: false }
     }), employees: tracked.map(card => ({ id: card.id, name: card.name, role: card.role, status: card.status, teamName: card.team?.name ?? null,
+      included: !card.attendanceExcluded, participationVersion: latestParticipation.get(card.id) ?? null, includedFrom: card.attendanceIncludedFrom?.toISOString() ?? null,
       history: events.filter(event => event.agentId === card.id).map(event => ({ id: event.id, kind: event.kind,
         // A termination instant is the start of the day after the last work day.
         date: employmentDate(event, timezone),
         at: event.effectiveAt.toISOString(), byName: names.get(event.recordedByUserId) ?? null })) })) }
   }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead, timeout: 15_000 })
+}
+export async function setAttendanceParticipation(actor: AttendanceReviewer, raw: unknown) {
+  const parsed = AttendanceParticipationInputSchema.safeParse(raw)
+  if (!parsed.success) throw new AttendanceRequestError("MTM_ATTENDANCE_PARTICIPATION_INVALID", 400)
+  const input = parsed.data, organizationId = actor.organizationId
+  return prisma.$transaction(async tx => {
+    await requireAttendanceEmployeeAdmin(tx, actor)
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock_shared(hashtextextended(${`mtm-attendance-month-snapshot:${organizationId}`}, 0))`
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-attendance-participation:${organizationId}`}, 0))`
+    const hash = createHash("sha256").update(JSON.stringify(input)).digest("hex")
+    const [receipt] = await tx.$queryRaw<Array<{ id: string; createdBy: string; requestHash: string }>>`
+      SELECT id, "createdBy", "requestHash" FROM mtm_attendance_participation_events
+      WHERE "organizationId" = ${organizationId} AND "requestId" = ${input.clientRequestId}`
+    if (receipt) {
+      if (receipt.createdBy !== actor.userId || receipt.requestHash !== hash) throw new AttendanceRequestError("MTM_ATTENDANCE_PARTICIPATION_REPLAY_MISMATCH")
+      return { eventId: receipt.id, idempotent: true }
+    }
+    const [card] = await tx.$queryRaw<Array<{ attendanceExcluded: boolean }>>`
+      SELECT "attendanceExcluded" FROM mtm_agents WHERE "organizationId" = ${organizationId} AND id = ${input.agentId}
+        AND (role = 'AGENT' OR "attendanceParticipant") FOR UPDATE`
+    if (!card) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_NOT_FOUND", 404)
+    const [previous] = await tx.$queryRaw<Array<{ id: string }>>`SELECT id FROM mtm_attendance_participation_events
+      WHERE "organizationId" = ${organizationId} AND "agentId" = ${input.agentId} ORDER BY "effectiveAt" DESC, id DESC LIMIT 1`
+    if ((previous?.id ?? null) !== input.previousEventId || input.included === !card.attendanceExcluded) throw new AttendanceRequestError("MTM_ATTENDANCE_PARTICIPATION_CHANGED")
+    const eventId = randomUUID()
+    // The insert trigger updates only attendanceExcluded. Its deferred guard
+    // refuses an exclusion write without a matching immutable history event.
+    await tx.$executeRaw`INSERT INTO mtm_attendance_participation_events
+      (id, "organizationId", "agentId", included, "previousEventId", "requestId", "requestHash", "createdBy")
+      VALUES (${eventId}, ${organizationId}, ${input.agentId}, ${input.included}, ${input.previousEventId}, ${input.clientRequestId}, ${hash}, ${actor.userId})`
+    await tx.mtmAuditLog.create({ data: { organizationId, actorUserId: actor.userId, agentId: input.agentId,
+      action: "MTM_ATTENDANCE_PARTICIPATION_CHANGED", entity: "attendance_participation_event", entityId: eventId,
+      metadataKind: "mtm_attendance_participation", oldData: { included: !card.attendanceExcluded },
+      newData: { clientRequestId: input.clientRequestId, eventId, included: input.included } } })
+    return { eventId, idempotent: false }
+  }, { timeout: 15_000 })
 }
 async function lockOperation(tx: Prisma.TransactionClient, actor: AttendanceReviewer, operationId: string, input: unknown) {
   await tx.$executeRaw`SELECT set_config('lock_timeout', '3s', true)`

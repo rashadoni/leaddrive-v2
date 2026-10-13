@@ -429,6 +429,7 @@ export function makeMtmPrismaMock(): MtmPrismaMock {
     mtmAttendanceShiftPlan: makeModel(),
     mtmAttendanceShiftMember: makeModel(),
     mtmAttendanceReminderNotice: makeModel(),
+    mtmAttendanceParticipationEvent: makeModel(),
     mtmSetting: makeModel(),
     mtmNotification: makeModel(),
     mtmRouteNotificationOutbox: makeModel(),

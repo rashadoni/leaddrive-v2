@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { logAudit, prisma } from "@/lib/prisma"
+import { attendanceIdentityConflictResponse } from "@/lib/mtm/attendance-identity-error"
 import { checkUserLimit } from "@/lib/plan-limits"
 import bcrypt from "bcryptjs"
 import { withRlsAuth, withRlsSessionAuth } from "@/lib/with-rls"
@@ -193,6 +194,8 @@ export const POST = withRlsSessionAuth(async (req, authResult) => {
 
     return NextResponse.json({ success: true, data: user }, { status: 201 })
   } catch (e) {
+    const conflict = attendanceIdentityConflictResponse(e)
+    if (conflict) return conflict
     console.error("Users POST error:", e)
     return NextResponse.json({ error: "Failed to create user" }, { status: 500 })
   }

@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 vi.mock("@/lib/prisma",async()=>({prisma:(await import("./mocks/mtm-prisma")).makeMtmPrismaMock()}))
 import { prisma } from "@/lib/prisma"
-import { attendanceMarkRedactedHash, isAttendanceMarkRedactedReplay } from "@/lib/mtm/attendance-location-store"
+import { attendanceMarkRedactedHash, currentAttendanceStreamConsent, recordAttendanceMarkEvidence, isAttendanceMarkRedactedReplay } from "@/lib/mtm/attendance-location-store"
+import { recordAttendanceQr } from "@/lib/mtm/attendance-qr-store"
 import { mtmWorkdayRequestHash, parseMtmWorkdayEvent } from "@/lib/mtm/workday"
 const scope={organizationId:"fictional-org",agentId:"fictional-agent"}
 const now=new Date("2026-10-13T05:00:00Z")
@@ -33,5 +34,23 @@ describe("one-way attendance location redaction",()=>{
   // The real migration/RLS/concurrency behavior is covered by the PG suite.
   const values=vi.mocked(prisma.$queryRaw).mock.calls.at(-1)!.slice(1)
   expect(values).toEqual([scope.organizationId,scope.agentId,input().clientEventId,hash,mtmWorkdayRequestHash(scope,redacted())])
+ })
+})
+
+
+describe("excluded employee attendance evidence", () => {
+ it("discards stale queued attendance marks and QR without applying attendance restrictions to the field day", async () => {
+  vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ attendanceExcluded: true } as never)
+  vi.mocked(prisma.mtmSetting.findUnique).mockResolvedValue({ value: true } as never)
+  const parsed = input()
+  await recordAttendanceQr(prisma, scope, parsed, "fictional-event")
+  await recordAttendanceMarkEvidence(prisma, { scope, input: parsed, workday: { id: "fictional-day" }, event: { id: "fictional-event" } } as Parameters<typeof recordAttendanceMarkEvidence>[1], { ...scope, role: "AGENT" })
+  expect(prisma.$executeRaw).not.toHaveBeenCalled(); expect(prisma.$queryRaw).not.toHaveBeenCalled()
+ })
+ it("does not append attendance stream metadata for an excluded field employee", async () => {
+  vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ attendanceExcluded: true } as never)
+  vi.mocked(prisma.mtmSetting.findFirst).mockResolvedValue({ value: true } as never)
+  expect(await currentAttendanceStreamConsent(prisma, scope)).toBeNull()
+  expect(vi.mocked(prisma.$queryRaw).mock.calls.some(call => Array.isArray(call[0]) && call[0].join(" ").includes("mtm_attendance_location_consents"))).toBe(false)
  })
 })

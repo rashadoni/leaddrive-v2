@@ -46,7 +46,7 @@ export async function readAttendanceShiftDirectory(reviewer: AttendanceReviewer,
     const user = await tx.user.findFirst({ where: { organizationId: reviewer.organizationId, id: reviewer.userId }, select: { role: true } })
     const canManage = !!user && ["admin", "superadmin"].includes(user.role)
     const agents = await tx.mtmAgent.findMany({ where: { organizationId: reviewer.organizationId, OR: [{ role: "AGENT" }, { attendanceParticipant: true }],
-      ...(actor.scopedAgentIds === null ? {} : { id: { in: [...actor.scopedAgentIds] } }) }, select: { id: true, teamId: true, status: true }, take: 5001 })
+      ...(actor.scopedAgentIds === null ? {} : { id: { in: [...actor.scopedAgentIds] } }) }, select: { id: true, teamId: true, status: true, attendanceExcluded: true }, take: 5001 })
     if (agents.length > 5000) return fail("DIRECTORY_TOO_LARGE")
     const assignments = await readAttendanceShiftAssignments(tx, reviewer.organizationId, agents.map(agent => agent.id), parsed.data.from, parsed.data.to)
     const plans = new Map<string, AttendanceShiftPlan>()
@@ -57,7 +57,7 @@ export async function readAttendanceShiftDirectory(reviewer: AttendanceReviewer,
     }
     const rosters: AttendanceShiftRoster[] = []
     if (canManage) {
-      const active = agents.filter(agent => agent.status === "ACTIVE")
+      const active = agents.filter(agent => agent.status === "ACTIVE" && !agent.attendanceExcluded)
       const ids = active.map(agent => agent.id)
       if (ids.length && ids.length <= 500) rosters.push({ teamId: null, name: null, count: ids.length, hash: rosterHash(reviewer.organizationId, null, ids) })
       const teamIds = [...new Set(active.flatMap(agent => agent.teamId ? [agent.teamId] : []))]
@@ -101,7 +101,7 @@ export async function publishAttendanceShiftPlan(reviewer: AttendanceReviewer, r
     if (input.teamId && !team) return fail("ROSTER_CHANGED")
     const teamWhere = input.teamId ? Prisma.sql`AND "teamId"=${input.teamId}` : Prisma.empty
     const agents = await tx.$queryRaw<{ id: string }[]>(Prisma.sql`SELECT id FROM mtm_agents WHERE "organizationId"=${reviewer.organizationId} AND status='ACTIVE'
-      AND (role='AGENT' OR "attendanceParticipant") ${teamWhere} ORDER BY id LIMIT 501 FOR SHARE`)
+      AND NOT "attendanceExcluded" AND (role='AGENT' OR "attendanceParticipant") ${teamWhere} ORDER BY id LIMIT 501 FOR SHARE`)
     if (!agents.length || agents.length > 500 || rosterHash(reviewer.organizationId, input.teamId, agents.map(agent => agent.id)) !== input.expectedRosterHash) return fail("ROSTER_CHANGED")
     const id = randomUUID(), version = (previous?.version ?? 0) + 1
     const [row] = await tx.$queryRaw<PlanRow[]>`INSERT INTO mtm_attendance_shift_plans(id,"organizationId",version,"previousId","requestId","requestHash","teamId","teamName",value,reason,"createdBy")

@@ -16,6 +16,7 @@ datasource db {
 // ═══════════════════════════════════════════════════
 
 model Organization {
+  attendanceParticipationEvents MtmAttendanceParticipationEvent[]
   attendanceReminderNotices MtmAttendanceReminderNotice[]
   attendanceQrEvidence MtmAttendanceQrEvidence[]
   attendanceInstallationRequests MtmAttendanceInstallationRequest[]
@@ -633,6 +634,7 @@ model PlanRequest {
 }
 
 model User {
+  attendanceParticipationEvents MtmAttendanceParticipationEvent[]
   attendanceReminderNotices MtmAttendanceReminderNotice[]
   attendanceInstallationDecisions MtmAttendanceInstallationDecision[]
   attendanceInstallationRevocations MtmAttendanceInstallationRevocation[]
@@ -5775,6 +5777,7 @@ model MtmTeam {
 
 // MTM Agent — field agents linked to CRM users
 model MtmAgent {
+  attendanceParticipationEvents MtmAttendanceParticipationEvent[]
   attendanceMonthMemberships MtmAttendanceMonthMember[]
   attendanceReminderSubjects MtmAttendanceReminderNotice[] @relation("AttendanceReminderSubject")
   attendanceReminderRecipients MtmAttendanceReminderNotice[] @relation("AttendanceReminderRecipient")
@@ -5804,6 +5807,11 @@ model MtmAgent {
   canPlanOwnRoutes Boolean       @default(true)
   /// Explicit attendance enrolment for non-field roles; never grants field permissions.
   attendanceParticipant Boolean @default(false)
+  /// Administrator exclusion from attendance only; never changes field permissions.
+  attendanceExcluded Boolean @default(false)
+  /// Initial automatic attendance inclusion, not an employment/hire date.
+  /// Null retains the already tracked participant's historical baseline.
+  attendanceIncludedFrom DateTime? @db.Timestamp(3)
   /// Whether this field agent may publish their own route drafts.
   /// This grant is the whole rule: the organization-wide routeSelfPublish switch was removed on 2026-10-06.
   canSelfPublishRoutes Boolean   @default(false)
@@ -22495,6 +22503,26 @@ model MtmAttendanceShiftMember {
   @@map("mtm_attendance_shift_members")
 }
 
+
+model MtmAttendanceParticipationEvent {
+  id String @id
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentId String
+  agent MtmAgent @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  included Boolean
+  previousEventId String?
+  requestId String
+  requestHash String @db.VarChar(64)
+  createdBy String
+  creator User @relation(fields: [organizationId, createdBy], references: [organizationId, id], onDelete: Restrict)
+  effectiveAt DateTime @default(now()) @db.Timestamp(3)
+  @@unique([organizationId, id])
+  @@unique([organizationId, agentId, id])
+  @@unique([organizationId, requestId])
+  @@index([organizationId, agentId, effectiveAt, id])
+  @@map("mtm_attendance_participation_events")
+}
 
 model MtmAttendanceReminderNotice {
   id String @id

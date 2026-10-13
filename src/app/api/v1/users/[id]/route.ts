@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import type { Prisma } from "@prisma/client"
 import { z } from "zod"
 import { logAudit, prisma } from "@/lib/prisma"
+import { attendanceIdentityConflictResponse } from "@/lib/mtm/attendance-identity-error"
 import { withRlsSessionAuth } from "@/lib/with-rls"
 import { getAssignableRoleIds } from "@/lib/org-roles"
 import { checkPermission, isAdmin } from "@/lib/permissions"
@@ -242,6 +243,8 @@ export const PUT = withRlsSessionAuth(async (req: NextRequest, authResult, { par
 
     return NextResponse.json({ success: true, data: user })
   } catch (e) {
+    const conflict = attendanceIdentityConflictResponse(e)
+    if (conflict) return conflict
     console.error("Users API error:", e)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }

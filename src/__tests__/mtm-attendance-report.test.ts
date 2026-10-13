@@ -174,3 +174,38 @@ describe("MTM attendance shared report calculation", () => {
       employees: Array.from({ length: 275 }, (_, index) => ({ ...employee, id: `agent-${index}` })) }))).toThrow("MTM_ATTENDANCE_REPORT_TOO_LARGE")
   })
 })
+
+
+describe("automatic attendance participation in reports", () => {
+  it("does not invent absences before activation, including the tenant's midnight boundary", () => {
+    const person = { ...employee, attendanceIncludedFrom: "2026-10-13T20:30:00Z" }
+    const report = buildMtmAttendanceReport(input({ employees: [person], to: "2026-10-15", now: at("19:00", "2026-10-15") }))
+    expect(report.rows.map(row => row.date)).toEqual(["2026-10-14", "2026-10-15"])
+    expect(report.totals.absentCount).toBe(2)
+  })
+  it("keeps existing actual facts before automatic participation without fabricating a hiring date", () => {
+    const person = { ...employee, attendanceIncludedFrom: "2026-10-13T20:30:00Z" }
+    const report = buildMtmAttendanceReport(input({ employees: [person], workdays: [completed()], to: "2026-10-14", now: at("19:00", "2026-10-14") }))
+    expect(report.rows.map(row => row.date)).toEqual([date, "2026-10-14"])
+    expect(report.rows[0]).toMatchObject({ kind: "WORKED", workedSeconds: 32400, employmentState: "UNKNOWN" })
+  })
+  it("preserves earlier history and leaves excluded days out even when legacy field work continues", () => {
+    const person = { ...employee, participationEvents: [{ included: false, effectiveAt: "2026-10-13T06:00:00Z" }] }
+    const legacyDay = completed({ id: "field-day", workDate: "2026-10-13", startedAt: at("09:00", "2026-10-13"), completedAt: at("18:00", "2026-10-13"), events: [event("START", "09:00", "2026-10-13"), event("FINISH", "18:00", "2026-10-13")] })
+    const workdays = [completed(), legacyDay]
+    const before = JSON.stringify(workdays)
+    const report = buildMtmAttendanceReport(input({ employees: [person], workdays, to: "2026-10-15", now: at("19:00", "2026-10-15") }))
+    expect(report.rows.map(row => row.date)).toEqual([date]); expect(report.totals.workedSeconds).toBe(32400)
+    expect(JSON.stringify(workdays)).toBe(before)
+  })
+  it("re-inclusion resumes on its civil date without filling the excluded interval", () => {
+    const person = { ...employee, participationEvents: [{ included: true, effectiveAt: "2026-10-14T20:30:00Z" }, { included: false, effectiveAt: "2026-10-13T06:00:00Z" }] }
+    const report = buildMtmAttendanceReport(input({ employees: [person], to: "2026-10-16", now: at("19:00", "2026-10-16") }))
+    expect(report.rows.map(row => row.date)).toEqual([date, "2026-10-15", "2026-10-16"])
+  })
+  it("uses the latest same-day change and fails visibly for malformed boundaries", () => {
+    const person = { ...employee, participationEvents: [{ included: false, effectiveAt: at("10:00") }, { included: true, effectiveAt: at("11:00") }] }
+    expect(buildMtmAttendanceReport(input({ employees: [person] })).rows).toHaveLength(1)
+    expect(() => buildMtmAttendanceReport(input({ employees: [{ ...person, attendanceIncludedFrom: "bad-date" }] }))).toThrow("MTM_ATTENDANCE_PARTICIPATION_HISTORY_INVALID")
+  })
+})
