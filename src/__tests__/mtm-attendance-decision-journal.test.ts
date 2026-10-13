@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto"
 import { NextRequest } from "next/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import ExcelJS from "exceljs"
-import { createTranslator, type AbstractIntlMessages } from "next-intl"
+import { createTranslator } from "next-intl"
 import { attendancePdfText } from "./helpers/attendance-pdf"
 
 vi.mock("@/lib/prisma", async () => ({ prisma: (await import("./mocks/mtm-prisma")).makeMtmPrismaMock() }))
@@ -97,7 +97,7 @@ describe("safe attendance request/decision journal and actual files", () => {
   })
   it.each(["az", "ru", "en"] as const)("exports the exact safe screen cells with Unicode in %s", async locale => {
     const response = await read(), journal: AttendanceDecisionJournal = (await response.json()).data
-    const messages: AbstractIntlMessages = ({ az, ru, en })[locale]
+    const messages: { mtmAttendance: Record<string, string> } = ({ az, ru, en })[locale]
     const table = buildAttendanceDecisionJournalTable(journal, locale, createTranslator({ locale, messages, namespace: "mtmAttendance" }))
     const xlsx = await exportRequest({ snapshot: journal.snapshot, format: "xlsx", locale }); expect(xlsx.status).toBe(200)
     const book = new ExcelJS.Workbook(); await book.xlsx.load(Buffer.from(await xlsx.arrayBuffer()) as never)
