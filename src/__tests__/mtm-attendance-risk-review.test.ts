@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto"
+import type { Prisma } from "@prisma/client"
 import { NextRequest } from "next/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import ExcelJS from "exceljs"
@@ -35,12 +36,12 @@ beforeEach(()=>{
  vi.mocked(requireAuth).mockResolvedValue({orgId:org,userId,role:"admin",principalType:"session"} as never)
  vi.mocked(resolveMtmRouteActor).mockResolvedValue(actor);vi.mocked(resolveAttendanceReviewerScope).mockResolvedValue(actor)
  vi.mocked(requireAttendanceReviewer).mockResolvedValue({actor,locale:"en"})
- vi.mocked(prisma.$transaction).mockImplementation((async callback=>callback(prisma)) as never)
+ vi.mocked(prisma.$transaction).mockImplementation((async (callback: (tx: Prisma.TransactionClient)=>Promise<unknown>)=>callback(prisma)) as never)
  vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{key:"attendanceEnabled",value:true},{key:"timezone",value:"Asia/Baku"}] as never)
  vi.mocked(prisma.mtmSetting.findUnique).mockResolvedValue({value:true} as never)
  vi.mocked(prisma.organization.findUnique).mockResolvedValue({plan:"enterprise",addons:[],features:["mtm"],modules:{mtm:true,"route-field":true},settings:{}} as never)
- vi.mocked(prisma.mtmAgent.findMany).mockImplementation((async args=>args.select.team ? [{id:employee,name:"=Fictional employee",teamId:"fictional-team",team:{name:"Fictional team"}}] : [{id:"related",name:"Fictional colleague"}]) as never)
- vi.mocked(prisma.$queryRaw).mockImplementation((async sql=>{
+ vi.mocked(prisma.mtmAgent.findMany).mockImplementation((async (args: {select: {team?: unknown}})=>args.select.team ? [{id:employee,name:"=Fictional employee",teamId:"fictional-team",team:{name:"Fictional team"}}] : [{id:"related",name:"Fictional colleague"}]) as never)
+ vi.mocked(prisma.$queryRaw).mockImplementation((async (sql: TemplateStringsArray)=>{
   const s=sql.join(" ");if(s.includes("FROM users"))return [currentUser];if(s.includes('SELECT c.id'))return rows
   if(s.includes('SELECT "agentId" FROM mtm_attendance_risk_cases'))return [{agentId:employee}]
   if(s.includes('FROM mtm_attendance_risk_decisions'))return existing
@@ -54,7 +55,7 @@ describe("attendance risk reports and reason ledger",()=>{
   expect(data.items[0]).toMatchObject({relatedNames:["Fictional colleague"],relatedNamesRestricted:true,usualName:null,usualDays:null})
   expect(JSON.stringify(data)).not.toMatch(/PRIVATE_FORBIDDEN|latitude|installationId|outside-scope/)
   expect(prisma.mtmAgent.findMany).toHaveBeenLastCalledWith(expect.objectContaining({where:{organizationId:org,id:{in:["related"]}}}))
-  const call=vi.mocked(prisma.$queryRaw).mock.calls.find(([sql])=>sql.join(" ").includes("SELECT c.id"))!
+  const call=vi.mocked(prisma.$queryRaw).mock.calls.find((call: unknown[])=>(call[0] as TemplateStringsArray).join(" ").includes("SELECT c.id"))!
   expect(call).toContain(org);expect(call).toContainEqual([employee,"related"])
  })
  it("does not promote a report-wide HR grant into dismissal permission",async()=>{
@@ -67,7 +68,7 @@ describe("attendance risk reports and reason ledger",()=>{
   for(const item of[{role:"MANAGER" as const,agentId:null,scopedAgentIds:null},{role:"AGENT" as const,agentId:employee,scopedAgentIds:[employee]}]){vi.mocked(resolveMtmRouteActor).mockResolvedValue(item);await expect(readAttendanceRiskReport({organizationId:org,actor:item,reviewer,query})).rejects.toMatchObject({status:403})}
   vi.mocked(resolveMtmRouteActor).mockResolvedValue({role:"MANAGER",agentId:null,scopedAgentIds:[employee]})
   await expect(readAttendanceRiskReport({organizationId:org,actor:{role:"MANAGER",agentId:null,scopedAgentIds:[employee]},reviewer,query:{...query,employeeId:"foreign"}})).rejects.toMatchObject({status:403})
-  expect(vi.mocked(prisma.$queryRaw).mock.calls.some(([sql])=>sql.join(" ").includes("SELECT c.id"))).toBe(false)
+  expect(vi.mocked(prisma.$queryRaw).mock.calls.some((call: unknown[])=>(call[0] as TemplateStringsArray).join(" ").includes("SELECT c.id"))).toBe(false)
  })
  it.each(["grant","hidden","disabled","scope"])("rechecks a stale middleware actor after %s changes",async mode=>{
   if(mode==="grant"){currentUser={role:"viewer",hiddenModules:[],mtmAttendanceAll:false};vi.mocked(resolveMtmRouteActor).mockResolvedValue(null)}
@@ -75,7 +76,7 @@ describe("attendance risk reports and reason ledger",()=>{
   if(mode==="disabled")vi.mocked(prisma.mtmSetting.findUnique).mockResolvedValue({value:false} as never)
   if(mode==="scope")vi.mocked(resolveMtmRouteActor).mockResolvedValue({role:"MANAGER",agentId:null,scopedAgentIds:[]})
   await expect(readAttendanceRiskReport({organizationId:org,actor,allEmployeesGrant:true,reviewer,query:{...query,employeeId:employee}})).rejects.toMatchObject({status:mode==="disabled"?404:403})
-  expect(vi.mocked(prisma.$queryRaw).mock.calls.some(([sql])=>sql.join(" ").includes("SELECT c.id"))).toBe(false)
+  expect(vi.mocked(prisma.$queryRaw).mock.calls.some((call: unknown[])=>(call[0] as TemplateStringsArray).join(" ").includes("SELECT c.id"))).toBe(false)
  })
  it("hides access when disabled and refuses non-session principals",async()=>{
   vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{key:"attendanceEnabled",value:false}] as never)
@@ -95,7 +96,7 @@ describe("attendance risk reports and reason ledger",()=>{
   const table=buildAttendanceRiskTable(report,locale,createTranslator({locale,messages,namespace:"mtmAttendance"}))
   const xlsx=await POST(request({snapshot:report.snapshot,locale,format:"xlsx"}));expect(xlsx.status).toBe(200)
   const book=new ExcelJS.Workbook();await book.xlsx.load(Buffer.from(await xlsx.arrayBuffer()) as never)
-  expect(book.worksheets[0].getRow(2).values).toEqual([undefined,...table.rows[0].cells.map(cell=>cell.startsWith("=")?`'${cell}`:cell)])
+  expect(book.worksheets[0].getRow(2).values).toEqual([undefined,...table.rows[0].cells.map(cell=>typeof cell==="string" && cell.startsWith("=")?`'${cell}`:cell)])
   const pdf=await POST(request({snapshot:report.snapshot,locale,format:"pdf"}));expect(pdf.status).toBe(200)
   const text=attendancePdfText(Buffer.from(await pdf.arrayBuffer())).replace(/\s+/g," ")
   expect(text).toContain("Fictional reviewer");expect(text).toContain("shared device confirmed");expect(text).toContain(messages.mtmAttendance.riskDismissed)
@@ -109,12 +110,12 @@ describe("attendance risk reports and reason ledger",()=>{
   expect((await DISMISS(request({requestId:randomUUID(),reason:" "}),{params:Promise.resolve({id:caseId})})).status).toBe(400)
   vi.mocked(requireAttendanceReviewer).mockRejectedValue(new AttendanceRequestError("MTM_ATTENDANCE_DECISION_FORBIDDEN",403))
   expect((await DISMISS(request({requestId:randomUUID(),reason:"Fictional explanation"}),{params:Promise.resolve({id:caseId})})).status).toBe(403)
-  expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled();expect(vi.mocked(prisma.$executeRaw).mock.calls.some(([sql])=>sql.join(" ").includes("INSERT INTO"))).toBe(false)
+  expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled();expect(vi.mocked(prisma.$executeRaw).mock.calls.some((call: unknown[])=>(call[0] as TemplateStringsArray).join(" ").includes("INSERT INTO"))).toBe(false)
  })
  it("records a stable decision and audit, then permits only the exact retry",async()=>{
   const payload={requestId:randomUUID(),reason:"  Fictional shared phone confirmed  "}
   const first=await dismissAttendanceRiskInTransaction(prisma,reviewer,caseId,payload);expect(first.idempotent).toBe(false)
-  const call=vi.mocked(prisma.$executeRaw).mock.calls.find(([sql])=>sql.join(" ").includes("INSERT INTO mtm_attendance_risk_decisions"))!
+  const call=vi.mocked(prisma.$executeRaw).mock.calls.find((call: unknown[])=>(call[0] as TemplateStringsArray).join(" ").includes("INSERT INTO mtm_attendance_risk_decisions"))!
   existing=[{id:first.id,requestId:payload.requestId,requestHash:call[5],caseId}]
   expect(await dismissAttendanceRiskInTransaction(prisma,reviewer,caseId,payload)).toEqual({id:first.id,idempotent:true})
   expect(prisma.mtmAuditLog.create).toHaveBeenCalledTimes(1)
