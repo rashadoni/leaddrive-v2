@@ -4,7 +4,9 @@ import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
 import { decideAttendanceRequest } from "@/lib/mtm/attendance-request-decision"
 import { attendanceRequestFailure, attendanceRequestResponse } from "@/lib/mtm/attendance-request-http"
 
-export const POST = withMtmAttendanceAuth<{ params: Promise<{ id: string }> }>("write", async (req, auth, context) => {
+type DecisionContext = { params: Promise<{ id: string }> }
+
+export const POST = withMtmAttendanceAuth<DecisionContext>("write", async (req, auth, context) => {
   try {
     if (auth.principalType !== "session") throw new AttendanceRequestError("MTM_ATTENDANCE_DECISION_FORBIDDEN", 403)
     const body = await readJsonRequestWithinLimit(req, 4096)

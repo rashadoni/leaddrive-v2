@@ -134,7 +134,7 @@ export function MtmAttendanceDayKinds({ canManage, onAccessLost, onSaved, access
 
   return <section data-testid="attendance-day-kinds" className="space-y-4">
     <Button type="button" variant="outline" className="min-h-11" aria-expanded={open} aria-controls="attendance-day-kinds-content" disabled={saving} onClick={() => setOpen(!open)}>{t(open ? "kindsClose" : "kindsOpen")}</Button>
-    {open ? <div id="attendance-day-kinds-content"><HomeCard titleId="attendance-day-kinds-title" title={t("kindsTitle")} tone="orange" icon={<Tags className="h-4 w-4" aria-hidden="true" />}>
+    {open ? <div id="attendance-day-kinds-content"><HomeCard testId="attendance-day-kinds-card" titleId="attendance-day-kinds-title" title={t("kindsTitle")} tone="orange" icon={<Tags className="h-4 w-4" aria-hidden="true" />}>
       <div className="space-y-5 py-4">
         <div className="space-y-2 text-sm text-muted-foreground"><p>{t("kindsIntro")}</p><p>{t("kindsPayHint")}</p></div>
         {loading ? <p role="status" className="text-sm text-muted-foreground">{t("kindsLoading")}</p> : null}
