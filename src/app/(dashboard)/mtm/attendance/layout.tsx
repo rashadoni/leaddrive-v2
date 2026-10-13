@@ -13,10 +13,11 @@ export default async function AttendanceLayout({ children }: { children: ReactNo
   const user = session?.user
   if (!user?.id || !user.organizationId || !checkPermission(user.role as Role, "mtm", "read")
     || user.hiddenModules?.includes("route-field")) notFound()
-  const allowed = await runWithTenant(user.organizationId, async () => {
-    const capability = await getTenantCapabilityAccess(user.organizationId, "route-field")
+  const { id: userId, organizationId, role } = user
+  const allowed = await runWithTenant(organizationId, async () => {
+    const capability = await getTenantCapabilityAccess(organizationId, "route-field")
     if (!capability.allowed) return false
-    const access = await getMtmAttendanceAccess(user.organizationId, user.id, user.role)
+    const access = await getMtmAttendanceAccess(organizationId, userId, role)
     return access.enabled && Boolean(access.actor)
   })
   if (!allowed) notFound()
