@@ -1,3 +1,4 @@
+import { MTM_ATTENDANCE_REQUEST_NOTIFICATION_ENTITY, MTM_ATTENDANCE_REQUEST_NOTIFICATION_URL } from "@/lib/mtm/attendance-request-notification"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getOrgModuleContext } from "@/lib/api-auth"
@@ -23,6 +24,10 @@ async function computeEntityTypeFilter(orgId: string, role: Role) {
     const orgCtx = await getOrgModuleContext(orgId)
     const ctx = { role, ...orgCtx }
     allowed = Object.keys(ENTITY_TO_MODULE).filter((et) => canNotifyEntityType(ctx, et))
+    if (allowed.includes(MTM_ATTENDANCE_REQUEST_NOTIFICATION_ENTITY)) {
+      const feature = await prisma.mtmSetting.findUnique({ where: { organizationId_key: { organizationId: orgId, key: "attendanceEnabled" } }, select: { value: true } })
+      if (feature?.value !== true) allowed = allowed.filter((entity) => entity !== MTM_ATTENDANCE_REQUEST_NOTIFICATION_ENTITY)
+    }
   } catch {
     // fail-closed: keep allowed=[] so only null-entityType rows pass
   }
@@ -52,6 +57,7 @@ const notificationEntityUrls: Record<string, string> = {
 /** Entities that open a list, not a card of their own: the id is not part of the address. */
 const notificationListUrls: Record<string, string> = {
   [MTM_LOCATION_REQUEST_NOTIFICATION_ENTITY]: MTM_LOCATION_REQUEST_NOTIFICATION_URL,
+  [MTM_ATTENDANCE_REQUEST_NOTIFICATION_ENTITY]: MTM_ATTENDANCE_REQUEST_NOTIFICATION_URL,
 }
 
 function getNotificationUrl(notification: NotificationTarget) {

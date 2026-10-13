@@ -1,3 +1,4 @@
+import { projectApprovedAttendanceRequests, type AttendanceApprovedPeriod } from "@/lib/mtm/attendance-request-projection"
 import type { AttendanceDayKind } from "@/lib/mtm/attendance-day-kinds"
 import { addDateKeyDays, currentDateKey, isDateKey } from "@/lib/mtm/mobile-week"
 import { AttendanceRuleInputSchema, attendanceRuleForDate, minutesOfDay, type MtmAttendanceRule } from "@/lib/mtm/attendance-rules"
@@ -72,8 +73,8 @@ export interface MtmAttendanceEvent {
   serverReceivedAt: string | null
 }
 
-export type MtmAttendanceDayKind = "WORKED" | "OPEN" | "MISSING_FINISH" | "ABSENT" | "WEEKEND" | "HOLIDAY" | "UPCOMING" | "INVALID_FACTS"
-export type MtmAttendanceFlag = "MISSING_FINISH" | "FACTS_INVALID" | "WORKED_ON_DAY_OFF" | "LATE_START" | "EARLY_LEAVE"
+export type MtmAttendanceDayKind = "APPROVED_REQUEST" | "WORKED" | "OPEN" | "MISSING_FINISH" | "ABSENT" | "WEEKEND" | "HOLIDAY" | "UPCOMING" | "INVALID_FACTS"
+export type MtmAttendanceFlag = "WORKED_ON_APPROVED_ABSENCE" | "MISSING_FINISH" | "FACTS_INVALID" | "WORKED_ON_DAY_OFF" | "LATE_START" | "EARLY_LEAVE"
 export type MtmAttendanceInvalidReason = "DUPLICATE_WORKDAY" | "SCHEDULE_INVALID" | "TIMESTAMP_INVALID" | "EVENT_TYPE_INVALID" | "JOURNAL_INCOMPLETE" | "PAUSE_TOTAL_MISMATCH" | "WORKDAY_INCONSISTENT"
 
 /**
@@ -110,9 +111,11 @@ export interface MtmAttendanceReportRow {
   invalidReasons: MtmAttendanceInvalidReason[]
   events: MtmAttendanceEvent[]
   corrections?: MtmAttendanceCorrection[]
+  approvedRequests?: AttendanceApprovedPeriod[]
 }
 
 export interface MtmAttendanceReportInput {
+  approvedRequests?: readonly AttendanceApprovedPeriod[]
   dayKinds?: readonly AttendanceDayKind[]
   employees: readonly MtmAttendanceEmployee[]
   workdays: readonly MtmAttendanceWorkday[]
@@ -312,10 +315,12 @@ export function buildMtmAttendanceReport(input: MtmAttendanceReportInput) {
     calendarByDate.set(date, [...(calendarByDate.get(date) ?? []), entry])
   }
   const catalogue = new Map(input.dayKinds?.map((kind) => [kind.key, kind]))
+  const approvedByEmployee = new Map<string, AttendanceApprovedPeriod[]>()
+  for (const entry of input.approvedRequests ?? []) approvedByEmployee.set(entry.agentId, [...(approvedByEmployee.get(entry.agentId) ?? []), entry])
   const rows = input.employees.flatMap((employee) => dates.map((date) => {
     const row = buildRow(employee, date, days.get(rowKey(employee.id, date)) ?? [], plans.get(date)!, calendarByDate.get(date) ?? [], now)
     const dayKind = catalogue.get(row.kind)
-    return dayKind ? { ...row, dayKind } : row
+    return projectApprovedAttendanceRequests(dayKind ? { ...row, dayKind } : row, approvedByEmployee.get(employee.id) ?? [])
   }))
   return { from: input.from, to: input.to, asOf, rows, totals: summarizeMtmAttendanceRows(rows) }
 }

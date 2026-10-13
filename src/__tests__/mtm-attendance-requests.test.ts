@@ -24,6 +24,8 @@ beforeEach(() => {
   vi.mocked(prisma.$transaction).mockImplementation((async (callback: (tx: typeof prisma) => unknown) => callback(prisma)) as never)
   vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "attendanceEnabled", value: true }, { key: "timezone", value: "Asia/Baku" }] as never)
   vi.mocked(prisma.mtmSetting.findUnique).mockResolvedValue(null)
+  vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([])
+  vi.mocked(prisma.user.findMany).mockResolvedValue([])
   vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: self.agentId } as never)
   vi.mocked(prisma.mtmHrmRequest.findFirst).mockResolvedValue(null)
   vi.mocked(prisma.mtmHrmRequest.findMany).mockResolvedValue([])

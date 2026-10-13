@@ -1,3 +1,4 @@
+import { notifyAttendanceRequestReviewers } from "@/lib/mtm/attendance-request-notify"
 import { createHash, randomUUID } from "node:crypto"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
@@ -135,6 +136,7 @@ export async function submitAttendanceRequestInTransaction(db: Prisma.Transactio
     action: "MTM_ATTENDANCE_REQUEST_SUBMITTED", entity: "hrm_request", entityId: created.id, metadataKind: "mtm_attendance_request",
     newData: { kind: input.kind, startDate: input.startDate, endDate: input.endDate, unit: input.unit, attachmentCount: input.attachmentIds.length },
   } })
+  await notifyAttendanceRequestReviewers(db, { organizationId: self.organizationId, agentId: self.agentId, requestId: created.id })
   return { request: attendanceRequestDto(created), idempotent: false }
 }
 export async function submitAttendanceRequest(self: AttendanceSelf, raw: unknown) {

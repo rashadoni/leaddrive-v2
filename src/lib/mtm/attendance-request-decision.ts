@@ -23,7 +23,7 @@ export type AttendanceReviewer = { organizationId: string; userId: string; princ
 
 /** The report-wide HR grant is read-only. Review uses the current web write
  * permission AND current Route & Field scope, never the cached report actor. */
-export async function requireAttendanceReviewer(tx: Prisma.TransactionClient, reviewer: AttendanceReviewer, agentId: string) {
+export async function resolveAttendanceReviewerScope(tx: Prisma.TransactionClient, reviewer: AttendanceReviewer) {
   if (reviewer.principalType !== "session") throw new AttendanceRequestError("MTM_ATTENDANCE_DECISION_FORBIDDEN", 403)
   const { organizationId, userId } = reviewer
   const [user] = await tx.$queryRaw<{ role: string; hiddenModules: string[] }[]>`
@@ -43,6 +43,14 @@ export async function requireAttendanceReviewer(tx: Prisma.TransactionClient, re
   const feature = await tx.mtmSetting.findUnique({ where: { organizationId_key: { organizationId, key: "attendanceEnabled" } }, select: { value: true } })
   if (feature?.value !== true) throw new AttendanceRequestError("MTM_ATTENDANCE_DISABLED", 404)
   const actor = await resolveMtmRouteActor(tx, { organizationId, userId, webRole: user.role })
+  if (!actor || !["ADMIN", "MANAGER", "SUPERVISOR"].includes(actor.role) || (actor.role !== "ADMIN" && actor.scopedAgentIds === null)) {
+    throw new AttendanceRequestError("MTM_ATTENDANCE_DECISION_FORBIDDEN", 403)
+  }
+  return actor
+}
+export async function requireAttendanceReviewer(tx: Prisma.TransactionClient, reviewer: AttendanceReviewer, agentId: string) {
+  const { organizationId, userId } = reviewer
+  const actor = await resolveAttendanceReviewerScope(tx, reviewer)
   const target = await tx.mtmAgent.findFirst({ where: { id: agentId, organizationId, status: "ACTIVE" }, select: { userId: true, user: { select: { preferredLanguage: true } } } })
   if (!target || !actor || !canReviewMtmRouteRequest(actor, agentId)) throw new AttendanceRequestError("MTM_ATTENDANCE_DECISION_FORBIDDEN", 403)
   if (target.userId === userId) throw new AttendanceRequestError("MTM_ATTENDANCE_REQUEST_SELF_APPROVAL", 403)
@@ -65,16 +73,16 @@ export async function decideAttendanceRequestInTransaction(tx: Prisma.Transactio
   const row = await tx.mtmHrmRequest.findFirst({ where: { id: requestId, organizationId }, select: { ...attendanceRequestSelect, decidedByUserId: true } })
   if (!row) throw new AttendanceRequestError("MTM_ATTENDANCE_REQUEST_NOT_FOUND", 404)
   const details = AttendanceRequestDetailsSchema.safeParse(row.attendanceDetails)
-  if (!details.success || details.data.kind !== "TIME_CORRECTION") throw new AttendanceRequestError("MTM_ATTENDANCE_DECISION_KIND_UNAVAILABLE", 400)
+  if (!details.success) throw new AttendanceRequestError("MTM_ATTENDANCE_DECISION_KIND_UNAVAILABLE", 400)
   const { decision, version } = parsed.data
   const note = parsed.data.note || null
   const now = new Date()
   let idempotent = false
-  if (decision === "APPROVED") {
+  if (decision === "APPROVED" && details.data.kind === "TIME_CORRECTION") {
     const result = await applyAttendanceTimeCorrectionInTransaction(tx, { organizationId, userId, requestId, expectedVersion: version, decisionNote: note, now })
     idempotent = result.idempotent
   } else if (row.status !== "PENDING") {
-    if (row.status !== "REJECTED" || row.decidedByUserId !== userId || row.decisionNote !== note) throw new AttendanceRequestError("MTM_ATTENDANCE_REQUEST_ALREADY_DECIDED")
+    if (row.status !== decision || row.decidedByUserId !== userId || row.decisionNote !== note) throw new AttendanceRequestError("MTM_ATTENDANCE_REQUEST_ALREADY_DECIDED")
     idempotent = true
   } else {
     if (row.updatedAt.toISOString() !== version) throw new AttendanceRequestError("MTM_ATTENDANCE_REQUEST_CHANGED")

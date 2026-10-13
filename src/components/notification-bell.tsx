@@ -1,5 +1,8 @@
 "use client"
 
+import { MTM_ATTENDANCE_REQUEST_NOTIFICATION_ENTITY, MTM_ATTENDANCE_REQUEST_NOTIFICATION_URL, MTM_ATTENDANCE_REQUEST_NOTIFICATION_KIND } from "@/lib/mtm/attendance-request-notification"
+
+
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
@@ -54,6 +57,7 @@ const entityUrls: Record<string, string> = {
 
 function getEntityUrl(type?: string, id?: string) {
   // «Клиент здесь» opens the queue it is decided in, not a card of its own.
+  if (type === MTM_ATTENDANCE_REQUEST_NOTIFICATION_ENTITY) return MTM_ATTENDANCE_REQUEST_NOTIFICATION_URL
   if (type === MTM_LOCATION_REQUEST_NOTIFICATION_ENTITY) return MTM_LOCATION_REQUEST_NOTIFICATION_URL
   if (!type || !id) return null
   const base = entityUrls[type]
@@ -132,11 +136,13 @@ export function NotificationBell() {
                 // - section unknown (null) → fail-closed: suppress toast (unmapped entityType)
                 // - section known → toast only if push pref is on (default true)
                 const section = deriveSection(n.entityType ?? "")
-                const waitingAgent = n.entityType === MTM_LOCATION_REQUEST_NOTIFICATION_ENTITY
+                const urgentKind = n.entityType === MTM_LOCATION_REQUEST_NOTIFICATION_ENTITY ? MTM_LOCATION_REQUEST_NOTIFICATION_KIND
+                  : n.entityType === MTM_ATTENDANCE_REQUEST_NOTIFICATION_ENTITY ? MTM_ATTENDANCE_REQUEST_NOTIFICATION_KIND : null
+                const waitingAgent = urgentKind !== null
                 const prefAllows = waitingAgent
                   // Not the section's switch (off by default for «Route & Field»): this
                   // one is shown until the person switches off this very kind.
-                  ? !kindsOff.current.has(MTM_LOCATION_REQUEST_NOTIFICATION_KIND)
+                  ? !kindsOff.current.has(urgentKind!)
                   : pushPrefs.current === null ||
                     (section !== null && (pushPrefs.current[section] ?? true))
                 if (prefAllows) {

@@ -281,6 +281,7 @@ export interface MtmPrismaMock {
   mtmPharmacyRewardClaim: ModelMock
   mtmPharmacyPromotionOperation: ModelMock
   // Non-mtm models commonly mocked alongside MTM tests
+  notification: ModelMock
   user: ModelMock
   organization: ModelMock
   savedView: ModelMock
@@ -467,6 +468,7 @@ export function makeMtmPrismaMock(): MtmPrismaMock {
     mtmPharmacyReward: makeModel(),
     mtmPharmacyRewardClaim: makeModel(),
     mtmPharmacyPromotionOperation: makeModel(),
+    notification: makeModel(),
     user: makeModel(),
     organization: makeMtmOrganizationModel(),
     savedView: makeModel(),

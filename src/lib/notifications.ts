@@ -1,3 +1,4 @@
+import { MTM_ATTENDANCE_REQUEST_NOTIFICATION_ENTITY, MTM_ATTENDANCE_REQUEST_NOTIFICATION_URL } from "@/lib/mtm/attendance-request-notification"
 import { createHash } from "node:crypto"
 import { Prisma, type Notification as NotificationRow } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
@@ -36,6 +37,7 @@ function deriveNotificationUrl(entityType?: string, entityId?: string): string {
     case "inbox_message": return `/inbox`
     // Phase 2c — Route & Field + Marketing
     // «Клиент здесь»: the request is decided in the approvals queue, on a map.
+    case MTM_ATTENDANCE_REQUEST_NOTIFICATION_ENTITY: return MTM_ATTENDANCE_REQUEST_NOTIFICATION_URL
     case MTM_LOCATION_REQUEST_NOTIFICATION_ENTITY: return MTM_LOCATION_REQUEST_NOTIFICATION_URL
     case "survey":  return `/surveys`
     case "loyalty": return `/loyalty/dashboard`

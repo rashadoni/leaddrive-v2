@@ -26,6 +26,8 @@ beforeEach(() => {
   vi.mocked(prisma.$queryRaw).mockResolvedValue([])
   vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "attendanceEnabled", value: true }, { key: "timezone", value: "Asia/Baku" }] as never)
   vi.mocked(prisma.mtmSetting.findUnique).mockResolvedValue(null)
+  vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([])
+  vi.mocked(prisma.user.findMany).mockResolvedValue([])
   vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: self.agentId } as never)
   vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue(null)
   vi.mocked(prisma.mtmHrmRequest.findFirst).mockResolvedValue(null)

@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react"
 import { useFormatter, useLocale, useTranslations } from "next-intl"
 import { CalendarDays, Clock3, ListChecks, LogIn, LogOut, UserRoundX } from "lucide-react"
@@ -169,7 +170,7 @@ export function MtmAttendanceReportWorkspace() {
   const baseRowNotes = (row: MtmAttendanceReportRow) => row.factsState === "INVALID"
     ? row.invalidReasons.map((reason) => t(REASON_MESSAGES[reason] ?? "reportReasonFacts")).join(" · ")
     : row.kind === "OPEN" ? t("reportProvisional") : row.kind === "MISSING_FINISH" ? t("reportUnknownTime")
-      : row.kind === "ABSENT" ? t("reportAbsenceReasonPending") : row.flags.includes("WORKED_ON_DAY_OFF") ? t("reportWorkOnDayOff") : row.calendarName ?? "—"
+      : row.kind === "ABSENT" ? t("reportAbsenceReasonPending") : row.flags.includes("WORKED_ON_APPROVED_ABSENCE") ? t("reportWorkOnLeave") : row.flags.includes("WORKED_ON_DAY_OFF") ? t("reportWorkOnDayOff") : row.calendarName ?? "—"
 
   const rowNotes = (row: MtmAttendanceReportRow) => [baseRowNotes(row), ...attendanceCorrectionLines(row, locale, t)].filter((line) => line !== "—").join(" · ") || "—"
 
@@ -231,6 +232,7 @@ export function MtmAttendanceReportWorkspace() {
   ]
 
   return <section aria-label={t("reportTitle")} className="space-y-5" data-testid="attendance-report-workspace">
+    {!accessUnavailable && <Link href="/mtm/attendance/requests" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("requestsTitle")}</Link>}
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{cards.map((card) => <HomeKpi key={card.id} testId={`attendance-${card.id}`} label={t(card.label)}
       icon={card.icon} tone={card.tone} value={report ? format.number(card.value) : null} unit={t(multiDay ? "reportDayRecords" : "reportPeople", { count: card.value })} sub={t(card.hint)}
       progress={report && totals.rowCount ? card.value / totals.rowCount * 100 : 0} />)}</div>

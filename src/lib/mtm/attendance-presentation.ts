@@ -13,7 +13,7 @@ export function formatAttendanceDuration(seconds: number | null): string {
 export const DEFAULT_ATTENDANCE_DAY_COLUMNS = ["employee", "team", "date", "status", "startedAt", "completedAt", "worked", "paused", "late", "early", "notes"] as const
 export const DEFAULT_ATTENDANCE_JOURNAL_COLUMNS = ["employee", "team", "date", "status", "event", "phoneAt", "serverAt"] as const
 
-const STATUS_KEYS: Record<MtmAttendanceReportRow["kind"], string> = { WORKED: "reportWorkedDay", OPEN: "reportOpenDay", MISSING_FINISH: "reportMissingFinish", ABSENT: "reportAbsentDay", WEEKEND: "reportWeekend", HOLIDAY: "reportHoliday", UPCOMING: "reportUpcoming", INVALID_FACTS: "reportInvalidFacts" }
+const STATUS_KEYS: Record<MtmAttendanceReportRow["kind"], string> = { APPROVED_REQUEST: "reportApprovedRequest", WORKED: "reportWorkedDay", OPEN: "reportOpenDay", MISSING_FINISH: "reportMissingFinish", ABSENT: "reportAbsentDay", WEEKEND: "reportWeekend", HOLIDAY: "reportHoliday", UPCOMING: "reportUpcoming", INVALID_FACTS: "reportInvalidFacts" }
 export function attendanceStatusText(row: MtmAttendanceReportRow, locale: string, t: (key: string) => string) {
   return row.dayKind ? `${row.dayKind.code} · ${attendanceDayKindLabel(row.dayKind, locale)}` : t(STATUS_KEYS[row.kind])
 }

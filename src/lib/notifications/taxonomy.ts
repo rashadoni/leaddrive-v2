@@ -61,6 +61,7 @@ export const ENTITY_TO_MODULE: Record<string, string> = {
   // «Клиент здесь»: an agent asks for a customer's pin to be moved — for whoever may decide it.
   // The literal is MTM_LOCATION_REQUEST_NOTIFICATION_ENTITY (src/lib/mtm/customer-location-request-notification.ts).
   mtm_location_request: "mtm",
+  mtm_attendance_request: "mtm",
   survey:         "campaigns",   // Survey response — gated by campaigns module (Marketing group)
   loyalty:        "loyalty",     // Loyalty tier/redeem — gated by loyalty module (Loyalty Program group)
   // Phase 2d — Industry Cloud emitters (one notable gated kind per vertical)
@@ -185,6 +186,7 @@ export const NOTIFICATION_KINDS: NotificationKind[] = (
     // «Клиент здесь»: an agent asks, from the spot, for a customer's pin to be moved.
     // On unless switched off — see KINDS_ON_UNLESS_SWITCHED_OFF in prefs.ts.
     { kind: "mtm.locationRequest.submitted", entityType: "mtm_location_request" },
+    { kind: "mtm.attendanceRequest.submitted", entityType: "mtm_attendance_request" },
     // Phase 2c — Marketing: survey response (gated by campaigns module)
     { kind: "survey.response",     entityType: "survey" },
     // Phase 2c — Loyalty Program: notable low-volume loyalty events only (NOT per-earn spam)
