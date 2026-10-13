@@ -35,7 +35,7 @@ describe("dedicated attendance demo controller", () => {
     expect(() => assertContext("seed-any-tenant", sha, sha)).toThrow("REVISION_OR_MODE_INVALID")
   })
   it("accepts only the two immutable field identities plus the exact automatic CRM-user card", () => {
-    const agents = () => [...DEMO_AGENTS.map(id => ({ id, role: "AGENT", status: "ACTIVE", teamId: null, userId: null as string | null,
+    const agents = (): Array<Parameters<typeof assertDemoAttendanceAgents>[0][number]> => [...DEMO_AGENTS.map(id => ({ id, role: "AGENT", status: "ACTIVE", teamId: null, userId: null as string | null,
       attendanceParticipant: false, attendanceExcluded: false, attendanceIncludedFrom: null as Date | null, canPlanOwnRoutes: true, canSelfPublishRoutes: false })),
       { id: "9a000000-0000-4000-8000-000000000001", role: "EMPLOYEE", status: "ACTIVE", teamId: null, userId: DEMO.userId,
         attendanceParticipant: true, attendanceExcluded: false, attendanceIncludedFrom: new Date("2026-10-13T10:00:00Z"), canPlanOwnRoutes: false, canSelfPublishRoutes: false }]

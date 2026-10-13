@@ -7,6 +7,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { NextRequest } from "next/server"
+import type { Prisma, MtmAttendanceParticipationEvent } from "@prisma/client"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 
 const adminUrl = process.env.MTM_ATTENDANCE_TEST_DATABASE_URL
@@ -301,7 +302,7 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
       await prisma.mtmSetting.update({ where: { organizationId_key: { organizationId: automaticOrg, key: "attendanceEnabled" } }, data: { value: true } })
       expect(await prisma.mtmAgent.findUnique({ where: { id: automaticAgentId } })).toMatchObject({ attendanceExcluded: true })
       const result = await store.setAttendanceParticipation(automaticAdmin, { clientRequestId: randomUUID(), agentId: automaticAgentId, included: true, previousEventId: excludedEventId })
-      const events = await prisma.mtmAttendanceParticipationEvent.findMany({ where: { agentId: automaticAgentId }, orderBy: { effectiveAt: "asc" } })
+      const events: MtmAttendanceParticipationEvent[] = await prisma.mtmAttendanceParticipationEvent.findMany({ where: { agentId: automaticAgentId }, orderBy: { effectiveAt: "asc" } })
       expect(events.map(event => event.included)).toEqual([false, true])
       expect(events[1].previousEventId).toBe(excludedEventId)
       expect(events[1].id).toBe(result.eventId)
@@ -402,7 +403,7 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
     })
     let release!: () => void, entered!: () => void
     const released = new Promise<void>(resolve => { release = resolve }), ready = new Promise<void>(resolve => { entered = resolve })
-    const first = tenant(org, () => prisma.$transaction(async tx => {
+    const first = tenant(org, () => prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       if (order === "user-first") await tx.user.create({ data: { id: uid, organizationId: org, name: "Concurrent user", email: `${uid}@example.invalid`, passwordHash: "fixture" } })
       else await tx.mtmSetting.update({ where: { organizationId_key: { organizationId: org, key: "attendanceEnabled" } }, data: { value: true } })
       entered(); await released
@@ -424,7 +425,7 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
     let allowFence!: () => void, entered!: () => void
     const released = new Promise<void>(resolve => { allowFence = resolve }), ready = new Promise<void>(resolve => { entered = resolve })
     // Exact close ordering without manufacturing a closed financial snapshot.
-    const closer = tenant(automaticOrg, () => prisma.$transaction(async tx => {
+    const closer = tenant(automaticOrg, () => prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await lockMtmWorkdayTransitions(tx, scope)
       await self.lockAttendanceRequests(tx, scope)
       await store.requireAttendanceEmployeeAdmin(tx, automaticAdmin)

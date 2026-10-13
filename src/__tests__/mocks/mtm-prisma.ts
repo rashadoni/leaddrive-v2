@@ -218,6 +218,7 @@ export interface MtmPrismaMock {
   mtmAttendanceShiftPlan: ModelMock
   mtmAttendanceShiftMember: ModelMock
   mtmAttendanceReminderNotice: ModelMock
+  mtmAttendanceParticipationEvent: ModelMock
   mtmSetting: ModelMock
   mtmNotification: ModelMock
   mtmRouteNotificationOutbox: ModelMock

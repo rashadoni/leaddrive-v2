@@ -41,7 +41,7 @@ async function history(tx: Prisma.TransactionClient, organizationId: string, age
   return rows
 }
 export async function readAttendanceEmployees(actor: AttendanceReviewer): Promise<AttendanceEmployeeDirectory> {
-  return prisma.$transaction(async tx => {
+  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const timezone = await requireAttendanceEmployeeAdmin(tx, actor), organizationId = actor.organizationId
     const users = await tx.user.findMany({ where: { organizationId, isActive: true, anonymizedAt: null }, select: { id: true, name: true }, orderBy: [{ name: "asc" }, { id: "asc" }], take: 1001 })
     const cards = await tx.mtmAgent.findMany({ where: { organizationId }, select: { id: true, name: true, userId: true, role: true, status: true, attendanceParticipant: true, attendanceExcluded: true, attendanceIncludedFrom: true, teamId: true, team: { select: { name: true } } }, orderBy: [{ name: "asc" }, { id: "asc" }], take: 1001 })
@@ -68,7 +68,7 @@ export async function setAttendanceParticipation(actor: AttendanceReviewer, raw:
   const parsed = AttendanceParticipationInputSchema.safeParse(raw)
   if (!parsed.success) throw new AttendanceRequestError("MTM_ATTENDANCE_PARTICIPATION_INVALID", 400)
   const input = parsed.data, organizationId = actor.organizationId
-  return prisma.$transaction(async tx => {
+  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await requireAttendanceEmployeeAdmin(tx, actor)
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-attendance-participation-request:${organizationId}:${input.clientRequestId}`}, 0))`
     // Match workday writers and month close: canonical employee locks precede
