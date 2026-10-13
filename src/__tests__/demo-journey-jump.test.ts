@@ -2,8 +2,9 @@
  * Opening any section at once (owner, 2026-09-22: «если клиент сразу
  * интересуется, например, омни-каналом, зачем ему обязательно переходить по
  * всем разделам?»). A jump stages what the sections in between would have
- * produced, so the section opens on the data it expects; it never goes
- * backwards, never opens the story's own shell, never skips a real call.
+ * produced, so the section opens on the data it expects; it never opens the
+ * story's own shell and never skips a real call. Since 2026-10-13 a section
+ * behind the story opens too — with its guide, from its beginning.
  */
 import { describe, expect, it } from "vitest"
 import {
@@ -67,7 +68,7 @@ describe("opening a section ahead of the story", () => {
   it("lands an Omni-channel prospect straight in the inbox, on its first step", () => {
     const result = jump(start(), "conversation")
     expect(result.ok).toBe(true)
-    expect(result.snapshot).toMatchObject({ sectionId: "conversation", stepId: "conversation-views", state: "SOURCE_SEEN" })
+    expect(result.snapshot).toMatchObject({ sectionId: "conversation", stepId: "conversation-channels", state: "SOURCE_SEEN" })
     expect(result.transitioned).toBe("SOURCE_SEEN")
     expect(result.snapshot.visitedSections).toContain("conversation")
     // Nothing was done in their name: no step counts as completed.
@@ -121,12 +122,89 @@ describe("opening a section ahead of the story", () => {
   })
 })
 
-describe("what a jump refuses", () => {
-  it("never goes backwards: behind the story a section only opens read-only", () => {
-    const { snapshot } = jump(start(), "deal")
-    expect(jump(snapshot, "conversation").ok).toBe(false)
-    expect(jump(snapshot, "deal").ok).toBe(false)
+/**
+ * Owner, 2026-10-13, after walking his own demo: «для клиента должны быть
+ * открыты модули; переходя по модулю, начинается гид». He had jumped from
+ * the campaigns to the boards; the inbox, the AI reply and the AI call then
+ * only opened «prepared, read-only», and the demo still told him it was
+ * complete at 15 of 27 steps.
+ */
+describe("a module behind the story opens with its guide", () => {
+  /** Drives the story until `stepId` is the step in hand. */
+  const driveTo = (snapshot: DemoJourneySnapshot, stepId: string, m: DemoJourneyManifest = manifest) => {
+    let current = snapshot
+    for (let guard = 0; guard < 200 && current.stepId !== stepId; guard += 1) {
+      const result = reduceJourney(current, actionFor(current, m), m, NOW)
+      if (!result.ok) throw new Error(`${current.stepId}: ${result.error}`)
+      current = result.snapshot
+    }
+    return current
+  }
+
+  it("starts over from the module's first step, on the data it begins with", () => {
+    const atDeal = jump(start(), "deal").snapshot
+    expect(atDeal.records.lead).not.toBeNull()
+
+    const back = jump(atDeal, "conversation")
+    expect(back.ok).toBe(true)
+    expect(back.snapshot).toMatchObject({ sectionId: "conversation", stepId: "conversation-channels", state: "SOURCE_SEEN" })
+    // The inbox as it is before anyone answered: the request is there, the lead is not yet.
+    expect(back.snapshot.records.conversation.messages.length).toBeGreaterThan(0)
+    expect(back.snapshot.records.lead).toBeNull()
+    expect(back.snapshot.records.deal).toBeNull()
+    // …and its steps are the prospect's to do: the first one completes like any other.
+    expect(reduceJourney(back.snapshot, actionFor(back.snapshot), manifest, NOW).ok).toBe(true)
   })
+
+  it("can be opened again after it was walked — the guide starts from the beginning", () => {
+    const walked = driveTo(start(), "ai-reply-draft")
+    expect(sectionStatus(walked, manifest, "conversation")).toBe("done")
+    const again = jump(walked, "conversation").snapshot
+    expect(again).toMatchObject({ sectionId: "conversation", stepId: "conversation-channels" })
+    // What was walked stays walked: the menu's tick does not disappear.
+    expect(sectionStatus(again, manifest, "source")).toBe("done")
+    expect(again.completedSteps).toEqual(walked.completedSteps)
+  })
+
+  it("then goes on to what was not seen, not through what was", () => {
+    // Jumped to the deals and walked them; the quote is next and unseen.
+    const dealsWalked = driveTo(jump(start(), "deal").snapshot, "quote-create")
+    // Back to the campaigns — the first module, never walked.
+    const campaigns = jump(dealsWalked, "source").snapshot
+    const afterCampaigns = driveTo(campaigns, "conversation-channels")
+    expect(afterCampaigns.sectionId).toBe("conversation")
+    // …and when the guide reaches the deals again it does not walk them twice.
+    const afterTask = driveTo(afterCampaigns, "quote-create")
+    expect(afterTask.completedSteps.filter((id) => id === "deal-convert")).toHaveLength(1)
+    expect(sectionStatus(afterTask, manifest, "deal")).toBe("done")
+    expect(afterTask.records.deal, "the quote opens on its deal, staged for it").not.toBeNull()
+  })
+
+  it("keeps how the call really ended instead of rebuilding it as «no call»", () => {
+    const afterCall = driveTo(start(), "task-boards")
+    const answered = afterCall.records.lead!.timeline.find((entry) => entry.id === "tl-call")!.title
+    const dealAgain = jump(driveTo(afterCall, "quote-create"), "deal").snapshot
+    expect(dealAgain.records.lead!.timeline.find((entry) => entry.id === "tl-call")?.title).toBe(answered)
+  })
+
+  it("does not refill a quota: the inbox's five messages are five for the session", () => {
+    const written = reduceJourney(driveTo(start(), "ai-reply-composer"), { type: "ui", path: "inbox.replies", value: 5 }, manifest, NOW).snapshot
+    const again = jump(written, "conversation").snapshot
+    expect(again.ui["inbox.replies"]).toBe(5)
+    // …while what a step asks to switch is back as it was.
+    expect(again.ui["inbox.channel"]).toBeUndefined()
+    expect(again.ui["inbox.composer"]).toBeUndefined()
+  })
+
+  it("is still refused while the real call waits for its outcome", () => {
+    const live = withLiveCall(manifest)
+    const atCall = jump(start(live), "deal", live).snapshot
+    expect(atCall.sectionId).toBe("ai-call")
+    expect(jump(atCall, "conversation", live).ok).toBe(false)
+  })
+})
+
+describe("what a jump refuses", () => {
 
   it("never opens the story's own shell — the summary comes at the end", () => {
     expect(jump(start(), "summary").ok).toBe(false)
@@ -194,5 +272,30 @@ describe("what the admin hears about a jump", () => {
     const reports = journeyReportsBetween(before, after, { jumped: true })
     expect(reports).toEqual([{ eventType: "JOURNEY", name: "journey.section_opened", sectionId: "conversation" }])
     expect(acceptJourneyReport(manifest, reports[0]).ok).toBe(true)
+  })
+})
+
+describe("what is reported when the guide skips modules already walked", () => {
+  it("files the prospect's own step, never the states that were staged past", () => {
+    // Deals walked after a jump, then the campaigns opened from behind: their
+    // last step lands the story on the next module not seen yet.
+    let current = jump(start(), "deal").snapshot
+    const drive = (until: (snapshot: DemoJourneySnapshot) => boolean) => {
+      for (let guard = 0; guard < 200 && !until(current); guard += 1) current = reduceJourney(current, actionFor(current), manifest, NOW).snapshot
+    }
+    drive((snapshot) => snapshot.sectionId === "summary")
+    current = jump(current, "conversation").snapshot
+    drive((snapshot) => snapshot.sectionId === "ai-reply")
+    // Walk the two inbox chapters and the lead chapters up to the last step before the walked deals.
+    drive((snapshot) => snapshot.stepId === "task-reports")
+    const before = current
+    const result = reduceJourney(before, actionFor(before), manifest, NOW)
+    expect(result.snapshot.sectionId, "past the walked deals, quote and win").toBe("summary")
+    expect(result.snapshot.state).not.toBe(before.state)
+
+    const reports = journeyReportsBetween(before, result.snapshot, { moved: result.transitioned ?? null })
+    expect(reports.map((report) => report.name)).toEqual(["journey.step_completed", "journey.section_opened"])
+    // …and each of them is one the server accepts.
+    for (const report of reports) expect(acceptJourneyReport(manifest, report).ok, report.name).toBe(true)
   })
 })
