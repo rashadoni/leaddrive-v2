@@ -280,3 +280,34 @@ PASS locally: module syntax and runner policy (62 workflows). Full browser,
 PostgreSQL, build and typecheck are **NOT_RUN locally**, per the host contract.
 The original-session correction still needs hosted verification; QR lifecycle
 must not be reported as passing until that run succeeds.
+
+## Fifth hosted evidence and concurrent-tab loading — 2026-10-14 (Asia/Baku)
+
+Run [38482714069](https://github.com/rashadoni/leaddrive-v2/actions/runs/38482714069),
+exact head `33e242e4a4c5106247e2cb6ca0cfcab7d63cf443`, finished
+**FAIL: 61 PASS, 1 FAIL, 5 NOT_RUN**. The QR scenario now passed all native
+lifecycle assertions. Its manifest records minimized window, actual hidden
+document, QR removal while hidden, and QR restoration after foregrounding.
+The original-session correction is therefore verified in the hosted browser.
+
+The remaining failure moved to competing catalogue tabs: the second tab timed
+out looking for the catalogue search input before either tab submitted a write.
+That input renders only after a separate catalogue GET, not after the generic
+page heading. The former cleanup also closed the failing second tab before the
+outer failure screenshot, leaving only the already edited first tab visible.
+This artifact cannot establish whether the second tab had a server failure,
+loading delay or focus problem; no product defect is claimed from it.
+
+The scenario now foregrounds each real tab, waits for the actual catalogue GET
+started by the Open button, requires a successful response and both tabs' same
+initial revision, then performs the unchanged competing-write assertions:
+successful newer save, rejected stale save with 409, disabled stale editor,
+explicit reload and preservation of the newer value. HTTP status failures are
+reported immediately without response bodies. Safe stage/revision metadata and
+the actual failing tab's screenshot are retained before cleanup. No error is
+retried or turned into a pass, and no global timeout is increased.
+
+PASS locally: module syntax, runner policy (62 workflows), diff check. Heavy
+verification remains **NOT_RUN locally**. The overall suite still requires a
+successful hosted run; the prior green runs of the competing-tab case do not
+override this latest failure.

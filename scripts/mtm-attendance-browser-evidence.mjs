@@ -132,7 +132,11 @@ async function clickResponse(locator, path, method = 'POST', status = 200, parse
   void waiting.catch(() => {}) // A failed click must not leave an unhandled listener rejection.
   await locator.click()
   const response = await waiting
-  assert.equal(response.status(), status)
+  if (response.status() !== status) {
+    const error = new Error('Unexpected browser HTTP status')
+    error.safeDiagnostic = `${method} ${path}: expected ${status}, received ${response.status()}`
+    throw error
+  }
   if (!parseBody) return
   const body = await response.json()
   if (status < 400) assert.equal(body.success, true)
@@ -1003,26 +1007,47 @@ try {
   })
   await run('browser-catalogue-competing-tabs', 'browser-action+database-backed-http', async () => {
     const original = page, concurrent = await sessions.admin.newPage()
+    const loads = []
+    manifest.competingTabs = { stage: 'open', loads }
     try {
       for (const target of [original, concurrent]) {
         page = target
+        await page.bringToFront()
         await readyPage('')
         const kinds = page.getByTestId('attendance-day-kinds')
-        await button('kindsOpen', kinds).click()
+        manifest.competingTabs.stage = target === original ? 'load-original' : 'load-concurrent'
+        // Opening this panel starts its own request; the page heading does not
+        // establish a loaded catalogue. Fail on the real response before trying
+        // controls that render only when that catalogue has valid items.
+        const catalogue = await clickResponse(button('kindsOpen', kinds), `${apiRoot}/day-kinds`, 'GET')
+        loads.push({ tab: target === original ? 'original' : 'concurrent', version: catalogue.version, items: catalogue.items.length })
+        assert.ok(catalogue.items.some(item => item.key === 'REMOTE_WORK' && item.names.en === 'Fixture browser remote'))
+        if (loads.length === 2) assert.equal(loads[0].version, catalogue.version)
         const row = page.locator('[data-testid="attendance-kind-row"][data-kind="REMOTE_WORK"]')
+        manifest.competingTabs.stage = target === original ? 'edit-original' : 'edit-concurrent'
         await page.locator('#attendance-kinds-search').fill('Fixture browser remote')
         await button('kindsEdit', row).click()
         await page.locator('#attendance-kind-name-en').fill(target === original ? 'Fixture stale tab must not save' : 'Fixture concurrent remote')
       }
+      manifest.competingTabs.stage = 'save-concurrent'
       await clickResponse(button('kindsSave', page.getByTestId('attendance-kind-editor')), `${apiRoot}/day-kinds`, 'PUT')
       page = original
+      await page.bringToFront()
+      manifest.competingTabs.stage = 'reject-stale-original'
       await clickResponse(button('kindsSave', page.getByTestId('attendance-kind-editor')), `${apiRoot}/day-kinds`, 'PUT', 409)
       await page.getByText(t('kindsChanged'), { exact: true }).waitFor()
       assert.equal(await button('kindsSave', page.getByTestId('attendance-kind-editor')).isEnabled(), false)
+      manifest.competingTabs.stage = 'reload-original'
       await clickResponse(button('kindsReload', page.getByTestId('attendance-day-kinds')), `${apiRoot}/day-kinds`, 'GET')
       assert.equal((await api('admin', '/day-kinds')).items.find(item => item.key === 'REMOTE_WORK').names.en, 'Fixture concurrent remote')
       await poll(async () => await button('kindsAdd', page.getByTestId('attendance-day-kinds')).isEnabled(), 'Catalogue reloaded after conflict')
-    } finally { page = original; await concurrent.close() }
+      manifest.competingTabs.stage = 'complete'
+    } catch (error) {
+      // Retain the actual failing tab before cleanup closes it. The outer case
+      // screenshot otherwise only shows the original page restored below.
+      await page.screenshot({ path: `${output}/failure-browser-catalogue-competing-tabs-active.png`, fullPage: false }).catch(() => {})
+      throw error
+    } finally { page = original; await concurrent.close(); await original.bringToFront() }
     return { realCompetingBrowserTabs: 2, staleWriteRejected: true, newerValuePreserved: true, reloadRestoresControls: true }
   })
   await run('browser-private-document-download-and-permissions', 'mobile-multipart-http+browser-download+role-http', async () => {
