@@ -157,9 +157,9 @@ pgDescribe("MTM corrections on real PostgreSQL", () => {
     }
     await expect(tenant(ORG, () => decision.decideAttendanceRequest({ ...reviewer, principalType: "api_key" }, request.id, raw))).rejects.toMatchObject({ status: 403 })
     await expect(tenant(OTHER, () => decision.decideAttendanceRequest({ ...reviewer, organizationId: OTHER }, request.id, raw))).rejects.toMatchObject({ status: 404 })
-    await tenant(ORG, () => prisma.user.update({ where: { id: ADMIN }, data: { hiddenModules: ["mtm"] } }))
+    await tenant(ORG, () => prisma.user.update({ where: { id: ADMIN }, data: { role: "manager", hiddenModules: ["mtm"] } }))
     await expect(approve(request)).rejects.toMatchObject({ status: 403 })
-    await tenant(ORG, () => prisma.user.update({ where: { id: ADMIN }, data: { hiddenModules: [] } }))
+    await tenant(ORG, () => prisma.user.update({ where: { id: ADMIN }, data: { role: "admin", hiddenModules: [] } }))
     await tenant(ORG, () => prisma.mtmSetting.update({ where: { organizationId_key: { organizationId: ORG, key: "attendanceEnabled" } }, data: { value: false } }))
     await expect(approve(request)).rejects.toMatchObject({ status: 404 })
     await tenant(ORG, () => prisma.mtmSetting.update({ where: { organizationId_key: { organizationId: ORG, key: "attendanceEnabled" } }, data: { value: true } }))
