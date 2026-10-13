@@ -41,6 +41,9 @@ export async function enforceAttendanceInstallationApproval(tx: Prisma.Transacti
   const feature = await tx.mtmSetting.findUnique({ where: { organizationId_key: { organizationId: scope.organizationId, key: "attendanceEnabled" } }, select: { value: true } })
   if (feature?.value !== true) return
   await lockAttendanceRequests(tx, scope)
+  // Re-read after the shared feature lock: a concurrent disable wins.
+  const current = await tx.mtmSetting.findUnique({ where: { organizationId_key: { organizationId: scope.organizationId, key: "attendanceEnabled" } }, select: { value: true } })
+  if (current?.value !== true) return
   await lockAttendanceInstallationPolicy(tx, scope.organizationId)
   if (!await readAttendanceInstallationRule(tx, scope.organizationId)) return
   const installationId = parseAttendanceInstallationId(rawInstallation)
