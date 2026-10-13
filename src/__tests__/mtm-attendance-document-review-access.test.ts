@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-const fixture = vi.hoisted(() => ({ auth: { orgId: "document-org", userId: "reviewer", principalType: "session" } }))
+const fixture = vi.hoisted(() => ({ auth: { orgId: "document-org", userId: "reviewer", principalType: "session" as string | undefined } }))
 vi.mock("@/lib/mtm/with-attendance-auth", () => ({ withMtmAttendanceAuth: (_action: string, handler: (req: Request, auth: typeof fixture.auth, ctx: unknown) => Promise<Response>) => (req: Request, ctx: unknown) => handler(req, fixture.auth, ctx) }))
 vi.mock("@/lib/prisma", async () => ({ prisma: (await import("./mocks/mtm-prisma")).makeMtmPrismaMock() }))
 vi.mock("@/lib/mtm/route-permissions", async (original) => ({ ...await original<typeof import("@/lib/mtm/route-permissions")>(), resolveMtmRouteActor: vi.fn() }))
@@ -32,8 +32,9 @@ describe("CRM private document reviewer admission", () => {
     expect(res.headers.get("cache-control")).toBe("private, no-store")
     expect(readAttendanceDocument).toHaveBeenCalledWith({ organizationId: "document-org", actor: { agentId: null, role: "ADMIN", scopedAgentIds: null } }, "document")
   })
-  it.each(["api-key", "read-only", "self", "other-team", "unbounded-manager", "inactive"])("never reads bytes for %s", async (reason) => {
+  it.each(["api-key", "missing-principal", "read-only", "self", "other-team", "unbounded-manager", "inactive"])("never reads bytes for %s", async (reason) => {
     if (reason === "api-key") fixture.auth.principalType = "api_key"
+    if (reason === "missing-principal") fixture.auth.principalType = undefined
     if (reason === "read-only") vi.mocked(prisma.user.findFirst).mockResolvedValue({ role: "viewer", hiddenModules: [], mtmAttendanceAll: true } as never)
     if (reason === "self") vi.mocked(prisma.mtmAttendanceAttachment.findFirst).mockResolvedValue({ agentId: "employee", agent: { userId: "reviewer", status: "ACTIVE" } } as never)
     if (reason === "other-team") vi.mocked(resolveMtmRouteActor).mockResolvedValue({ agentId: "manager", role: "MANAGER", scopedAgentIds: [] })
