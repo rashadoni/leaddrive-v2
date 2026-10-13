@@ -8,7 +8,7 @@ an `organizationId` field) WITHOUT a context-delivering wrapper
 (withRls/withRlsAuth/withRlsSessionAuth/withInboxSessionWrite/
 withSocialMonitoringMutationFence/withSocialConnectAuth/withMobileRls/
 withMobileFieldSuiteRls/withMobileTenantCapabilityRls/withMtmRlsAuth/
-withRouteFieldRlsAuth/withRouteFieldWebRlsAuth/withWorkforceHrmRlsAuth/
+withRouteFieldRlsAuth/withRouteFieldWebRlsAuth/withMtmAttendanceAuth/withWorkforceHrmRlsAuth/
 withWorkforceRlsAuth/withWorkforceSessionAuth/withWorkforceSessionAdminAuth/
 withWorkforceSessionGrantManagementAuth/
 withWorkforceSessionEvidenceTimelineAuth/withWorkforceSessionExceptionQueueAuth/
@@ -65,6 +65,7 @@ DELIVER = re.compile(
     r'|withMtmRlsAuth(?:<[^>]+>)?\('
     r'|withRouteFieldRlsAuth(?:<[^>]+>)?\('
     r'|withRouteFieldWebRlsAuth(?:<[^>]+>)?\('
+    r'|withMtmAttendanceAuth(?:<[^>]+>)?\('
     r'|withWorkforceHrmRlsAuth(?:<[^>]+>)?\('
     r'|withWorkforceRlsAuth(?:<[^>]+>)?\('
     r'|withWorkforceSessionAuth(?:<[^>]+>)?\('
