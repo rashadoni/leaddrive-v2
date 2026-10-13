@@ -64,11 +64,11 @@ BEGIN
  END IF;
  NEW."createdAt":=clock_timestamp(); RETURN NEW;
 END $$;
-DO $$ DECLARE name TEXT; BEGIN
- FOREACH name IN ARRAY ARRAY['mtm_attendance_risk_cases','mtm_attendance_risk_decisions'] LOOP
-  EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY',name);
-  EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY',name);
-  EXECUTE format('CREATE POLICY tenant_isolation ON %I USING ("organizationId"=current_setting(''app.org_id'',true) OR current_setting(''app.rls_bypass'',true)=''on'') WITH CHECK ("organizationId"=current_setting(''app.org_id'',true) OR current_setting(''app.rls_bypass'',true)=''on'')',name);
-  EXECUTE format('CREATE TRIGGER %I BEFORE INSERT OR UPDATE OR DELETE ON %I FOR EACH ROW EXECUTE FUNCTION mtm_attendance_risk_guard()',name||'_guard',name);
- END LOOP;
-END $$;
+ALTER TABLE "mtm_attendance_risk_cases" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "mtm_attendance_risk_cases" FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON "mtm_attendance_risk_cases" USING ("organizationId"=current_setting('app.org_id',true) OR current_setting('app.rls_bypass',true)='on') WITH CHECK ("organizationId"=current_setting('app.org_id',true) OR current_setting('app.rls_bypass',true)='on');
+CREATE TRIGGER mtm_attendance_risk_cases_guard BEFORE INSERT OR UPDATE OR DELETE ON "mtm_attendance_risk_cases" FOR EACH ROW EXECUTE FUNCTION mtm_attendance_risk_guard();
+ALTER TABLE "mtm_attendance_risk_decisions" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "mtm_attendance_risk_decisions" FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON "mtm_attendance_risk_decisions" USING ("organizationId"=current_setting('app.org_id',true) OR current_setting('app.rls_bypass',true)='on') WITH CHECK ("organizationId"=current_setting('app.org_id',true) OR current_setting('app.rls_bypass',true)='on');
+CREATE TRIGGER mtm_attendance_risk_decisions_guard BEFORE INSERT OR UPDATE OR DELETE ON "mtm_attendance_risk_decisions" FOR EACH ROW EXECUTE FUNCTION mtm_attendance_risk_guard();

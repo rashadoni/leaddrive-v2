@@ -47,13 +47,15 @@ CREATE TABLE mtm_attendance_mark_evidence (
 );
 CREATE INDEX ON mtm_attendance_mark_evidence("organizationId","installationId","claimedAt");
 CREATE INDEX ON mtm_attendance_mark_evidence("organizationId","agentId","claimedAt");
-DO $$ DECLARE name TEXT; BEGIN
- FOREACH name IN ARRAY ARRAY['mtm_attendance_location_policies','mtm_attendance_location_consents','mtm_attendance_mark_evidence'] LOOP
-  EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY',name);
-  EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY',name);
-  EXECUTE format('CREATE POLICY tenant_isolation ON %I USING ("organizationId"=current_setting(''app.org_id'',true) OR current_setting(''app.rls_bypass'',true)=''on'') WITH CHECK ("organizationId"=current_setting(''app.org_id'',true) OR current_setting(''app.rls_bypass'',true)=''on'')',name);
- END LOOP;
-END $$;
+ALTER TABLE "mtm_attendance_location_policies" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "mtm_attendance_location_policies" FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON "mtm_attendance_location_policies" USING ("organizationId"=current_setting('app.org_id',true) OR current_setting('app.rls_bypass',true)='on') WITH CHECK ("organizationId"=current_setting('app.org_id',true) OR current_setting('app.rls_bypass',true)='on');
+ALTER TABLE "mtm_attendance_location_consents" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "mtm_attendance_location_consents" FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON "mtm_attendance_location_consents" USING ("organizationId"=current_setting('app.org_id',true) OR current_setting('app.rls_bypass',true)='on') WITH CHECK ("organizationId"=current_setting('app.org_id',true) OR current_setting('app.rls_bypass',true)='on');
+ALTER TABLE "mtm_attendance_mark_evidence" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "mtm_attendance_mark_evidence" FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON "mtm_attendance_mark_evidence" USING ("organizationId"=current_setting('app.org_id',true) OR current_setting('app.rls_bypass',true)='on') WITH CHECK ("organizationId"=current_setting('app.org_id',true) OR current_setting('app.rls_bypass',true)='on');
 CREATE FUNCTION mtm_attendance_location_history_guard() RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE predecessor RECORD; current_policy RECORD; canonical_event RECORD; consent RECORD;
 BEGIN
