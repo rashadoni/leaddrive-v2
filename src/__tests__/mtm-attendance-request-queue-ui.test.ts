@@ -48,7 +48,7 @@ async function editNote(value: string) { await act(async () => {
 async function filter(status: string) { await act(async () => { const field = container.querySelector("select")!; field.value = status; field.dispatchEvent(new Event("change", { bubbles: true })) }) }
 const writes = () => fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")
 beforeEach(() => {
-  language = "ru"; container = document.createElement("div"); document.body.append(container); root = createRoot(container)
+  window.history.replaceState({}, "", "/"); language = "ru"; container = document.createElement("div"); document.body.append(container); root = createRoot(container)
   fetchMock.mockReset(); fetchMock.mockImplementation(async () => response()); vi.stubGlobal("fetch", fetchMock)
 })
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals() })
@@ -66,6 +66,19 @@ function capture(locale: string, variant = "") {
 }
 
 describe("actual attendance review queue", () => {
+  it("opens only the authorized linked request with the decided-history filter", async () => {
+    window.history.replaceState({}, "", `/mtm/attendance/requests?requestId=${id(1)}`)
+    fetchMock.mockImplementation(async () => response([{ ...request(), status: "APPROVED", decidedAt: version }]))
+    await render()
+    expect(fetchMock.mock.calls.at(-1)?.[0]).toBe(`/api/v1/mtm/attendance/requests?status=ALL&requestId=${id(1)}`)
+    expect(container.querySelector("select")!.disabled).toBe(true)
+    expect(container.textContent).toContain(request().reason)
+    expect(button("requestsApprove")).toBeUndefined()
+    await click("requestsAll")
+    expect(fetchMock.mock.calls.at(-1)?.[0]).toBe("/api/v1/mtm/attendance/requests?status=ALL")
+    expect(container.querySelector("select")!.disabled).toBe(false)
+  })
+
   it.each(["ru", "az", "en"] as const)("renders scoped request types, explicit actions and document links in %s", async locale => {
     await render(locale)
     expect(fetchMock.mock.calls[0][0]).toBe("/api/v1/mtm/attendance/requests?status=PENDING")

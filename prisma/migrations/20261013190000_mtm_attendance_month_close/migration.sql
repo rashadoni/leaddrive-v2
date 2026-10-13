@@ -29,15 +29,23 @@ BEGIN
  IF TG_OP='DELETE' AND NOT EXISTS(SELECT 1 FROM organizations WHERE id=OLD."organizationId") THEN RETURN OLD; END IF;
  RAISE EXCEPTION 'MTM_ATTENDANCE_MONTH_IMMUTABLE' USING ERRCODE='23514';
 END $$;
-DO $$ DECLARE tab TEXT; BEGIN
- FOREACH tab IN ARRAY ARRAY['mtm_attendance_month_closes','mtm_attendance_month_members','mtm_attendance_month_days'] LOOP
-  EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY',tab);
-  EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY',tab);
-  EXECUTE format('CREATE POLICY tenant_read ON %I FOR SELECT USING ("organizationId"=current_setting(''app.org_id'',true) OR current_setting(''app.rls_bypass'',true)=''on'')',tab);
-  EXECUTE format('CREATE POLICY tenant_insert ON %I FOR INSERT WITH CHECK ("organizationId"=current_setting(''app.org_id'',true) OR current_setting(''app.rls_bypass'',true)=''on'')',tab);
-  EXECUTE format('CREATE TRIGGER mtm_month_immutable BEFORE UPDATE OR DELETE ON %I FOR EACH ROW EXECUTE FUNCTION mtm_attendance_month_history_guard()',tab);
- END LOOP;
-END $$;
+ALTER TABLE "mtm_attendance_month_closes" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "mtm_attendance_month_closes" FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_read ON "mtm_attendance_month_closes" FOR SELECT USING ("organizationId"=current_setting('app.org_id',true) OR current_setting('app.rls_bypass',true)='on');
+CREATE POLICY tenant_insert ON "mtm_attendance_month_closes" FOR INSERT WITH CHECK ("organizationId"=current_setting('app.org_id',true) OR current_setting('app.rls_bypass',true)='on');
+CREATE TRIGGER mtm_month_immutable BEFORE UPDATE OR DELETE ON "mtm_attendance_month_closes" FOR EACH ROW EXECUTE FUNCTION mtm_attendance_month_history_guard();
+
+ALTER TABLE "mtm_attendance_month_members" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "mtm_attendance_month_members" FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_read ON "mtm_attendance_month_members" FOR SELECT USING ("organizationId"=current_setting('app.org_id',true) OR current_setting('app.rls_bypass',true)='on');
+CREATE POLICY tenant_insert ON "mtm_attendance_month_members" FOR INSERT WITH CHECK ("organizationId"=current_setting('app.org_id',true) OR current_setting('app.rls_bypass',true)='on');
+CREATE TRIGGER mtm_month_immutable BEFORE UPDATE OR DELETE ON "mtm_attendance_month_members" FOR EACH ROW EXECUTE FUNCTION mtm_attendance_month_history_guard();
+
+ALTER TABLE "mtm_attendance_month_days" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "mtm_attendance_month_days" FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_read ON "mtm_attendance_month_days" FOR SELECT USING ("organizationId"=current_setting('app.org_id',true) OR current_setting('app.rls_bypass',true)='on');
+CREATE POLICY tenant_insert ON "mtm_attendance_month_days" FOR INSERT WITH CHECK ("organizationId"=current_setting('app.org_id',true) OR current_setting('app.rls_bypass',true)='on');
+CREATE TRIGGER mtm_month_immutable BEFORE UPDATE OR DELETE ON "mtm_attendance_month_days" FOR EACH ROW EXECUTE FUNCTION mtm_attendance_month_history_guard();
 -- READ COMMITTED close takes the exclusive counterpart only after its sorted
 -- canonical employee locks and fresh authorization locks. Every source writer
 -- holds the shared fence until commit. This avoids a stale RR snapshot taken
@@ -74,7 +82,7 @@ BEGIN
  IF NOT EXISTS(SELECT 1 FROM mtm_attendance_month_days WHERE "organizationId"=NEW."organizationId" AND "agentId"=NEW."agentId" AND "sourceDate"=NEW."workDate") THEN RETURN NEW; END IF;
  IF TG_OP='UPDATE' AND (to_jsonb(NEW)-'updatedAt')=(to_jsonb(OLD)-'updatedAt') THEN RETURN NEW; END IF;
  IF NOT EXISTS(SELECT 1 FROM workforce_time_corrections correction WHERE correction."organizationId"=NEW."organizationId" AND correction."agentId"=NEW."agentId" AND correction."workdayId"=NEW.id
-  AND correction.xmin=(pg_current_xact_id()::text)::xid
+  AND correction.xmin::text::bigint=mod(pg_current_xact_id()::text::numeric,4294967296)::bigint
   AND workforce_workday_fact_matches(correction."afterFacts",NEW)
   AND CASE WHEN TG_OP='INSERT' THEN correction."beforeFacts"->>'kind'='MISSING' AND correction."beforeFacts"->>'workDate'=to_char(NEW."workDate",'YYYY-MM-DD')
     ELSE workforce_workday_fact_matches(correction."beforeFacts",OLD) END) THEN
