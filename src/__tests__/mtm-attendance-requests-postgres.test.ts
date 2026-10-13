@@ -39,6 +39,7 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
   let review: typeof import("@/lib/mtm/attendance-request-review")
   let decision: typeof import("@/lib/mtm/attendance-request-decision")
   let report: typeof import("@/lib/mtm/attendance-report-store")
+  let journal: typeof import("@/lib/mtm/attendance-decision-journal-store")
   let photos: typeof import("@/lib/mtm/attendance-attachment")
   let limits: typeof import("@/lib/mtm/attendance-request-limit-store")
   let quotaApi: typeof import("@/app/api/v1/mtm/mobile/attendance/request-limits/route")
@@ -76,6 +77,7 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
     review = await import("@/lib/mtm/attendance-request-review")
     decision = await import("@/lib/mtm/attendance-request-decision")
     report = await import("@/lib/mtm/attendance-report-store")
+    journal = await import("@/lib/mtm/attendance-decision-journal-store")
     photos = await import("@/lib/mtm/attendance-attachment")
     limits = await import("@/lib/mtm/attendance-request-limit-store")
     quotaApi = await import("@/app/api/v1/mtm/mobile/attendance/request-limits/route")
@@ -404,6 +406,54 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
     await tenant("request-pg-b", async () => {
       const rows = await prisma.$queryRaw<unknown[]>`SELECT id FROM workforce_employment_events WHERE "agentId" = ${self.agentId}`
       expect(rows).toHaveLength(0)
+    })
+  })
+
+  it("keeps the exported decision history scoped and private while preserving original approval and cancellation", async () => {
+    const query = { from: "2026-09-07", to: "2026-09-09", status: "ALL" }
+    const actor = { role: "MANAGER" as const, agentId: null, scopedAgentIds: [self.agentId] }
+    const now = new Date("2026-10-13T10:00:00Z")
+    await tenant(self.organizationId, async () => {
+      const read = () => journal.readAttendanceDecisionJournal({ organizationId: self.organizationId, actor, query, now })
+      const history = await read()
+      expect(history.items).toHaveLength(1)
+      expect(history.items[0]).toMatchObject({ employeeId: self.agentId, status: "CANCELLED", source: "EMPLOYEE",
+        requestKind: "ANNUAL_LEAVE", decision: { byName: "Fictional limits administrator" },
+        cancellation: { byName: "Fictional limits administrator" } })
+      expect(history.items[0].decision!.at).not.toBeNull()
+      expect(history.items[0].cancellation!.at).not.toBeNull()
+      expect(JSON.stringify(history)).not.toMatch(/PRIVATE_|Original fictional approval|attachmentIds|submissionHash|decisionNote|reason/)
+      expect((await read()).snapshot).toEqual(history.snapshot)
+      expect((await journal.readAttendanceDecisionJournal({ organizationId: self.organizationId, actor: { ...actor, scopedAgentIds: ["request-pg-colleague"] }, query })).items).toHaveLength(0)
+      const hr = await journal.readAttendanceDecisionJournal({ organizationId: self.organizationId,
+        actor: { ...actor, scopedAgentIds: null }, allEmployeesGrant: true, query: { from: "2027-08-10", to: "2027-08-11" } })
+      expect(hr.items).toHaveLength(2)
+      expect(hr.items.every(item => item.source === "HR" && item.submittedByName === "Fictional limits administrator" && item.decision?.byName === item.submittedByName)).toBe(true)
+      expect(JSON.stringify(hr)).not.toContain("PRIVATE_HR_BATCH_REASON")
+    })
+    await tenant("request-pg-b", async () => {
+      // Even a accidentally mismatched organization argument cannot cross RLS.
+      const foreign = await journal.readAttendanceDecisionJournal({ organizationId: self.organizationId, actor, query })
+      expect(foreign.items).toHaveLength(0)
+    })
+  })
+  it("changes the decision snapshot after an actual decision and preserves both filtered histories", async () => {
+    const body = { clientRequestId: randomUUID(), kind: "SICK_LEAVE", unit: "DAYS", startDate: "2027-11-03", endDate: "2027-11-03", reason: "PRIVATE_JOURNAL_REASON" }
+    const response = await submit(body); expect(response.status).toBe(201)
+    const request = (await response.json()).data.request
+    await tenant(self.organizationId, async () => {
+      const actor = { role: "ADMIN" as const, agentId: null, scopedAgentIds: null }
+      const read = (status = "ALL") => journal.readAttendanceDecisionJournal({ organizationId: self.organizationId, actor, query: { from: body.startDate, to: body.endDate, status } })
+      const before = await read()
+      expect(before.items[0]).toMatchObject({ status: "PENDING", decision: null })
+      await decision.decideAttendanceRequest({ organizationId: self.organizationId, userId: "request-pg-admin", principalType: "session" }, request.id,
+        { version: request.version, decision: "REJECTED", note: "PRIVATE_JOURNAL_NOTE" })
+      const after = await read()
+      expect(after.snapshot.id).not.toBe(before.snapshot.id)
+      expect(after.items[0]).toMatchObject({ id: request.id, status: "REJECTED", decision: { byName: "Fictional limits administrator" } })
+      expect((await read("PENDING")).items).toHaveLength(0)
+      expect((await read("REJECTED")).items).toHaveLength(1)
+      expect(JSON.stringify(after)).not.toMatch(/PRIVATE_JOURNAL_REASON|PRIVATE_JOURNAL_NOTE/)
     })
   })
 
