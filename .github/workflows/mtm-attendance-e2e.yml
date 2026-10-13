@@ -1,0 +1,145 @@
+name: MTM attendance authenticated E2E
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - '.github/workflows/mtm-attendance-e2e.yml'
+      - 'scripts/mtm-attendance-browser-evidence.mjs'
+      - 'scripts/fixtures/mtm-attendance-e2e.mjs'
+      - 'src/components/mtm/attendance-*.tsx'
+      - 'src/app/(dashboard)/mtm/attendance/**'
+      - 'src/app/api/v1/mtm/attendance/**'
+      - 'src/app/api/v2/mtm/mobile/route-field/attendance/**'
+      - 'src/lib/mtm/attendance-*.ts'
+      - 'prisma/migrations/*mtm_attendance*/migration.sql'
+  workflow_dispatch:
+    inputs:
+      head_sha:
+        description: Exact full commit SHA to verify
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mtm-attendance-e2e-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  MTM_E2E_HEAD_SHA: ${{ inputs.head_sha || github.event.pull_request.head.sha || github.sha }}
+  NEXT_TELEMETRY_DISABLED: '1'
+
+jobs:
+  browser:
+    name: Attendance authenticated browser and database
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    env:
+      CI: 'true'
+      NODE_ENV: development
+      NODE_OPTIONS: --max-old-space-size=6144
+      MTM_ATTENDANCE_E2E: '1'
+      LEADDRIVE_DISABLE_SERVICE_WORKER: '1'
+      MTM_E2E_OUTPUT: artifacts/mtm-attendance-e2e
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: mtm_attendance_e2e
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: [5432]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d mtm_attendance_e2e"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.MTM_E2E_HEAD_SHA }}
+      - name: Bind exact checkout and create initial receipt
+        run: |
+          [[ "$MTM_E2E_HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$MTM_E2E_HEAD_SHA"
+          mkdir -p "$MTM_E2E_OUTPUT"
+          python3 - <<'PY'
+          import json,os,pathlib
+          receipt={'status':'NOT_RUN','reason':'Preparing isolated application','headSha':os.environ['MTM_E2E_HEAD_SHA'],'runId':os.environ['GITHUB_RUN_ID'],'productionMutation':False,'physicalAPK':'NOT_RUN'}
+          (pathlib.Path(os.environ['MTM_E2E_OUTPUT'])/'manifest.json').write_text(json.dumps(receipt,indent=2)+'\n')
+          PY
+      - name: Ephemeral loopback environment
+        env:
+          PG_PORT: ${{ job.services.postgres.ports['5432'] }}
+        run: |
+          MTM_APP_PORT="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1])')"
+          MTM_DB_PASSWORD="$(openssl rand -hex 24)"
+          MTM_AUTH_SECRET="$(openssl rand -hex 32)"
+          MTM_PII_SECRET="$(openssl rand -hex 32)"
+          echo "::add-mask::$MTM_DB_PASSWORD"
+          echo "::add-mask::$MTM_AUTH_SECRET"
+          echo "::add-mask::$MTM_PII_SECRET"
+          {
+            echo "ADMIN_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:${PG_PORT}/mtm_attendance_e2e"
+            echo "EVENT_PLATFORM_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:${PG_PORT}/mtm_attendance_e2e"
+            echo "DATABASE_URL=postgresql://mtm_attendance_e2e:${MTM_DB_PASSWORD}@127.0.0.1:${PG_PORT}/mtm_attendance_e2e"
+            echo "MTM_E2E_DATABASE_PASSWORD=$MTM_DB_PASSWORD"
+            echo "MTM_E2E_PORT=$MTM_APP_PORT"
+            echo "MTM_E2E_BASE_URL=http://localhost:${MTM_APP_PORT}"
+            echo "NEXTAUTH_URL=http://localhost:${MTM_APP_PORT}"
+            echo "AUTH_URL=http://localhost:${MTM_APP_PORT}"
+            echo "APP_URL=http://localhost:${MTM_APP_PORT}"
+            echo "NEXT_PUBLIC_APP_URL=http://localhost:${MTM_APP_PORT}"
+            echo "NEXT_PUBLIC_MARKETING_URL=http://localhost:${MTM_APP_PORT}"
+            echo "AUTH_SECRET=$MTM_AUTH_SECRET"
+            echo "NEXTAUTH_SECRET=$MTM_AUTH_SECRET"
+            echo "TENANT_PII_MASTER_KEY=$MTM_PII_SECRET"
+            echo "MTM_E2E_LOG=${RUNNER_TEMP}/mtm-attendance-e2e.log"
+          } >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - name: Actual schema, attendance migration guards and tenant RLS
+        run: |
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION IF NOT EXISTS vector'
+          DATABASE_URL="$ADMIN_DATABASE_URL" npx prisma db push --skip-generate
+          npx prisma generate
+          node scripts/fixtures/mtm-attendance-e2e.mjs prepare
+          node scripts/ci/check-github-runner-policy.mjs
+      - run: npx playwright install --with-deps chromium
+      - name: Authenticated browser, mobile HTTP and PostgreSQL scenarios
+        run: |
+          node node_modules/next/dist/bin/next dev --hostname 127.0.0.1 --port "$MTM_E2E_PORT" > "$MTM_E2E_LOG" 2>&1 &
+          MTM_APP_PID=$!
+          cleanup() { kill "$MTM_APP_PID" 2>/dev/null || true; wait "$MTM_APP_PID" 2>/dev/null || true; }
+          trap cleanup EXIT
+          for attempt in $(seq 1 90); do
+            if curl -fsS --max-time 5 "$MTM_E2E_BASE_URL/api/v1/ping" >/dev/null 2>&1; then break; fi
+            if ! kill -0 "$MTM_APP_PID" 2>/dev/null || [ "$attempt" -eq 90 ]; then
+              echo '::error::Isolated attendance application failed to start'
+              exit 1
+            fi
+            sleep 2
+          done
+          node scripts/mtm-attendance-browser-evidence.mjs
+      - name: Preserve sanitized workflow result
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          mkdir -p "$MTM_E2E_OUTPUT"
+          python3 - <<'PY'
+          import json,os,pathlib
+          receipt={'headSha':os.environ['MTM_E2E_HEAD_SHA'],'workflowSha':os.environ['GITHUB_SHA'],'runId':os.environ['GITHUB_RUN_ID'],'runAttempt':os.environ['GITHUB_RUN_ATTEMPT'],'jobStatus':os.environ['JOB_STATUS'],'productionMutation':False}
+          (pathlib.Path(os.environ['MTM_E2E_OUTPUT'])/'workflow-result.json').write_text(json.dumps(receipt,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mtm-attendance-e2e-${{ env.MTM_E2E_HEAD_SHA }}-${{ github.run_attempt }}
+          path: artifacts/mtm-attendance-e2e
+          if-no-files-found: error
+          retention-days: 14

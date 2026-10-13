@@ -1,0 +1,771 @@
+import assert from 'node:assert/strict'
+import { createHash, randomUUID } from 'node:crypto'
+import { execFileSync } from 'node:child_process'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { setTimeout as delay } from 'node:timers/promises'
+import { chromium } from 'playwright'
+import { requireFixture, seedFixture } from './fixtures/mtm-attendance-e2e.mjs'
+
+requireFixture()
+const origin = new URL(process.env.MTM_E2E_BASE_URL)
+assert.equal(origin.protocol, 'http:')
+assert.ok(['localhost', '127.0.0.1'].includes(origin.hostname))
+assert.equal(origin.pathname + origin.search + origin.hash, '/')
+assert.equal(origin.username + origin.password, '')
+const head = process.env.MTM_E2E_HEAD_SHA
+assert.match(head ?? '', /^[a-f0-9]{40}$/)
+assert.equal(execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), head)
+const output = process.env.MTM_E2E_OUTPUT || 'artifacts/mtm-attendance-e2e'
+await mkdir(output, { recursive: true })
+const messages = JSON.parse(await readFile('messages/en.json', 'utf8')).mtmAttendance
+const t = (key, vars = {}) => {
+  assert.equal(typeof messages[key], 'string', `Missing label ${key}`)
+  return messages[key].replace(/\{(\w+)\}/g, (_, name) => String(vars[name] ?? `{${name}}`))
+}
+const routes = ['', 'requests', 'decisions', 'employees', 'branches', 'branches/report', 'shifts', 'leave-balances', 'months', 'installations', 'branch-qr', 'review', 'location-settings', 'recordings']
+const caseNames = ['fixture-rls', 'credentials-and-roles', 'hr-read-grant', 'mobile-workday', 'report-scope-exports', 'views-crud', 'deliveries-crud', 'rules-calendar', 'day-kinds-quotas', 'employee-participation', 'employment-history', 'branches-assignments', 'geo-policy-consent', 'requests-decisions', 'hr-recording-batch', 'installation-decisions', 'shift-day-night', 'leave-policy-profile', 'month-freeze', 'risk-dismissal', ...routes.map(route => `page:${route || 'report'}`), 'browser-report-tabs-filters-pagination', 'browser-views-save-rename-delete-cancel', 'browser-employee-search-switch-history', 'browser-branch-create-edit-archive-cancel', 'browser-request-approve-reject-revoke', 'browser-qr-toggle-refresh-hide', 'browser-locales-mobile-width', 'hr-revoke-fresh-session', 'final-privacy-invariants', 'browser-settings-hr-catalogue-quotas', 'browser-delivery-create-edit-cancel-delete', 'browser-batch-recording-and-decision-journal', 'browser-shift-publish-cancel-and-leave-profile', 'browser-geo-off-legal-block-and-branch-summary', 'browser-installation-approve-revoke-history', 'browser-month-frozen-download']
+const manifest = {
+  version: 1, status: 'RUNNING', headSha: head, workflowSha: process.env.GITHUB_SHA,
+  runId: process.env.GITHUB_RUN_ID, runAttempt: process.env.GITHUB_RUN_ATTEMPT,
+  environment: 'GitHub Linux, Chromium, Next development server, isolated PostgreSQL 16',
+  productionMutation: false, physicalAPK: 'NOT_RUN', outboundEmail: 'NOT_RUN',
+  startedAt: new Date().toISOString(), cases: [], sourceBindings: [], controls: [],
+  limitations: [
+    'Browser navigation and action families are separate records; page opening does not prove every button.',
+    'Mobile workday and employee submission use the real mobile HTTP transport, not a physical APK or OS permissions.',
+    'Fictional disposable organizations, policies and coordinates only; no client settings, legal approvals or external delivery.',
+    'Current schema plus explicit attendance production migrations/guards; not a replay of every unrelated historical CRM migration.',
+    'Development rendering; production build, physical phone, provider delivery, QR camera and overnight soak are distinct gates.',
+  ],
+}
+for (const path of ['.github/workflows/mtm-attendance-e2e.yml', 'scripts/mtm-attendance-browser-evidence.mjs', 'scripts/fixtures/mtm-attendance-e2e.mjs', 'prisma/schema.prisma', ...execFileSync('git', ['ls-files', 'src/components/mtm/attendance-*', 'src/app/(dashboard)/mtm/attendance/*', 'src/lib/mtm/attendance-*', 'prisma/migrations/*mtm_attendance*/migration.sql'], { encoding: 'utf8' }).trim().split('\n').filter(Boolean)]) {
+  const bytes = await readFile(path)
+  manifest.sourceBindings.push({ path, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') })
+}
+let fixture, browser, page
+const sessions = {}, mobiles = {}
+const state = {}
+const apiRoot = '/api/v1/mtm/attendance'
+const mobileRoot = '/api/v2/mtm/mobile/route-field/attendance'
+const dateKey = value => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Baku', year: 'numeric', month: '2-digit', day: '2-digit' }).format(value)
+const today = dateKey(new Date())
+const date = delta => new Date(Date.parse(`${today}T12:00:00Z`) + delta * 86400000).toISOString().slice(0, 10)
+const configuration = (from = today, to = from) => ({ version: 1, mode: 'DAY', columns: ['employee', 'date', 'status', 'worked'], showTotals: true, filters: { from, to, form: 'ALL' } })
+async function persist() { await writeFile(`${output}/manifest.json`, JSON.stringify(manifest, null, 2) + '\n') }
+async function run(name, transport, action) {
+  const startedAt = new Date().toISOString()
+  try {
+    const detail = await action()
+    manifest.cases.push({ name, transport, status: 'PASS', startedAt, completedAt: new Date().toISOString(), ...detail })
+    console.log(`PASS ${name}`)
+  } catch (error) {
+    // Never dump response bodies, headers, auth tokens, raw SQL or runtime logs.
+    const code = String(error?.message ?? '').match(/\bMTM_[A-Z_]+\b/)?.[0]
+    const diagnostic = error?.safeDiagnostic ?? (error?.code === 'ERR_ASSERTION' ? 'Assertion mismatch' : error?.name || 'Error')
+    manifest.cases.push({ name, transport, status: 'FAIL', startedAt, completedAt: new Date().toISOString(), diagnostic, ...(code ? { code } : {}), sourceLine: error?.stack?.match(/mtm-attendance-browser-evidence\.mjs:(\d+):/)?.[1] ?? null })
+    console.log(`FAIL ${name}: ${diagnostic}`)
+    if (page && !page.isClosed()) await page.screenshot({ path: `${output}/failure-${name.replace(/[^a-z0-9-]/gi, '-')}.png`, fullPage: false }).catch(() => {})
+  }
+  await persist()
+}
+async function request(session, path, { method = 'GET', body, status = 200, raw = false } = {}) {
+  const response = await session.request.fetch(path, { method, ...(body === undefined ? {} : { data: body }), timeout: 120000 })
+  if (response.status() !== status) {
+    const error = new Error('Unexpected HTTP status')
+    const json = await response.json().catch(() => null)
+    error.safeDiagnostic = `${method} ${new URL(path, origin).pathname}: expected ${status}, received ${response.status()}${/^MTM_[A-Z_]+$/.test(json?.code ?? '') ? ` ${json.code}` : ''}`
+    throw error
+  }
+  if (raw) return response
+  const json = await response.json()
+  if (status < 400) assert.equal(json.success, true)
+  return json.data
+}
+const api = (role, path, options) => request(sessions[role], `${apiRoot}${path}`, options)
+const mobile = (role, path, options) => request(mobiles[role], `${mobileRoot}${path}`, options)
+async function poll(check, label, timeout = 20000) {
+  const end = Date.now() + timeout
+  do { if (await check()) return; await delay(100) } while (Date.now() < end)
+  const error = new Error('Timed out'); error.safeDiagnostic = label; throw error
+}
+async function readyPage(path) {
+  await page.goto(`/mtm/attendance${path ? `/${path}` : ''}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
+  await page.locator('h1').first().waitFor({ timeout: 120000 })
+  await poll(async () => !(await page.locator('[aria-busy="true"]').count()), 'Page still busy', 120000)
+}
+async function clickResponse(locator, path, method = 'POST', status = 200) {
+  const waiting = page.waitForResponse(response => new URL(response.url()).pathname === path && response.request().method() === method, { timeout: 120000 })
+  await locator.click()
+  const response = await waiting
+  assert.equal(response.status(), status)
+  return (await response.json()).data
+}
+const button = (key, scope = page) => scope.getByRole('button', { name: t(key), exact: true })
+async function login(context, user, slug) {
+  const csrfResponse = await context.request.get('/api/auth/csrf', { timeout: 120000 })
+  assert.equal(csrfResponse.status(), 200)
+  const { csrfToken } = await csrfResponse.json()
+  const response = await context.request.post('/api/auth/callback/credentials', { timeout: 120000,
+    headers: { 'X-Auth-Return-Redirect': '1' }, form: { csrfToken, email: user.email, password: fixture.password, organizationSlug: slug, callbackUrl: `${origin.origin}/mtm/attendance` } })
+  assert.equal(response.status(), 200)
+  assert.equal(new URL((await response.json()).url, origin).searchParams.get('error'), null)
+  assert.ok((await context.cookies()).some(cookie => cookie.name.endsWith('authjs.session-token')))
+  const session = await (await context.request.get('/api/auth/session')).json()
+  assert.equal(session.user.id, user.id)
+  assert.equal(session.user.organizationId, user.organizationId)
+}
+async function mobileLogin(role) {
+  const response = await request(sessions[role], '/api/v1/mtm/mobile/auth', { method: 'POST', body: { email: fixture.users[role].email, password: fixture.password, organizationSlug: fixture.organization.slug } })
+  assert.equal(response.agent.id, fixture.agents[role].id)
+  const context = await browser.newContext({ baseURL: origin.origin, extraHTTPHeaders: { Authorization: `Bearer ${response.token}`, 'x-field-device-id': `rf-e2e-${randomUUID()}` } })
+  mobiles[role] = context
+}
+try {
+  await run('fixture-rls', 'database', async () => { fixture = await seedFixture(); return { automaticEmployees: 58, restrictedRole: true, crossTenantDenied: true } })
+  assert.ok(fixture, 'Fixture provisioning failed')
+  browser = await chromium.launch({ headless: true })
+  await run('credentials-and-roles', 'authenticated-http', async () => {
+    for (const role of ['admin', 'hr', 'manager', 'employee', 'field', 'foreign']) {
+      const context = await browser.newContext({ baseURL: origin.origin, viewport: { width: 1440, height: 1000 }, locale: 'en-US' })
+      await context.addCookies([{ name: 'NEXT_LOCALE', value: 'en', url: origin.origin }])
+      await context.route('**/*', route => new URL(route.request().url()).origin === origin.origin ? route.continue() : route.abort())
+      sessions[role] = context
+      await login(context, fixture.users[role], role === 'foreign' ? fixture.foreignOrganization.slug : fixture.organization.slug)
+    }
+    await mobileLogin('employee'); await mobileLogin('field')
+    return { webRoles: 6, actualMobileCredentialLogins: 2, mockedAuthentication: false }
+  })
+  assert.ok(sessions.admin && mobiles.employee)
+  page = await sessions.admin.newPage()
+  page.setDefaultTimeout(30000)
+  await run('hr-read-grant', 'authenticated-http+database', async () => {
+    const directory = await api('admin', '/access?search=Fixture%20hr')
+    const row = directory.users.find(item => item.id === fixture.users.hr.id)
+    assert.ok(row?.canGrant)
+    const grant = await api('admin', `/access/${row.id}`, { method: 'PATCH', body: { allEmployees: true, version: row.version } })
+    assert.equal(grant.allEmployees, true)
+    await api('admin', `/access/${row.id}`, { method: 'PATCH', body: { allEmployees: false, version: row.version }, status: 409 })
+    const report = await api('hr', `/report?from=${today}&to=${today}&form=ALL`)
+    assert.ok(report.rows.some(row => row.employeeId === fixture.agents.outside.id))
+    await api('hr', '/rules', { method: 'POST', body: {}, status: 403 })
+    state.hrGrant = grant
+  })
+  await run('mobile-workday', 'mobile-http+database', async () => {
+    const workdayId = randomUUID(), start = Date.now() - 240000
+    for (const [index, action] of ['START', 'PAUSE', 'RESUME', 'FINISH'].entries()) {
+      const data = { action, ...(action === 'START' ? { id: workdayId } : { workdayId }), occurredAt: new Date(start + index * 60000).toISOString() }
+      const body = { operations: [{ operationId: randomUUID(), op: 'create', entity: 'workdays', data, clientTimestamp: Date.now() }] }
+      for (let retry = 0; retry < 2; retry++) {
+        const response = await mobiles.employee.request.post('/api/v1/mtm/mobile/sync/push', { data: body, timeout: 120000 })
+        assert.equal(response.status(), 200)
+        const result = (await response.json()).results
+        assert.equal(result[0].status, 'ok'); assert.equal(result[0].serverId, workdayId)
+      }
+    }
+    const workday = await fixture.admin.mtmAgentWorkday.findUniqueOrThrow({ where: { id: workdayId } })
+    assert.equal(workday.status, 'COMPLETED'); assert.equal(workday.totalPausedSeconds, 60)
+    assert.equal(workday.agentId, fixture.agents.employee.id)
+    assert.equal(await fixture.admin.mtmAgentWorkdayEvent.count({ where: { workdayId } }), 4)
+    await assert.rejects(() => fixture.admin.mtmAgentWorkday.update({ where: { id: workdayId }, data: { completedAt: new Date() } }))
+    state.workdayId = workdayId
+    return { transitions: 4, exactOperationRetries: 4, persistedEvents: 4 }
+  })
+  await run('report-scope-exports', 'authenticated-http', async () => {
+    state.report = await api('admin', `/report?from=${today}&to=${today}&form=ALL`)
+    assert.ok(state.report.rows.length > 50)
+    const manager = await api('manager', `/report?from=${today}&to=${today}&form=ALL`)
+    assert.ok(manager.rows.some(row => row.employeeId === fixture.agents.employee.id))
+    assert.ok(manager.rows.every(row => row.teamId === fixture.team.id))
+    const foreign = await api('foreign', `/report?from=${today}&to=${today}&form=ALL`)
+    assert.ok(foreign.rows.every(row => row.employeeId === fixture.agents.foreign.id))
+    await api('employee', '/rules', { status: 403 }); await api('field', '/rules', { status: 403 })
+    await api('admin', '/report?from=invalid&to=invalid&form=ALL', { status: 400 })
+    for (const format of ['xlsx', 'pdf']) {
+      const response = await api('admin', '/export', { method: 'POST', body: { config: configuration(), format, locale: 'en', snapshot: state.report.snapshot }, raw: true })
+      const bytes = await response.body()
+      assert.ok(bytes.length > 200)
+      assert.equal(bytes.subarray(0, format === 'pdf' ? 4 : 2).toString(), format === 'pdf' ? '%PDF' : 'PK')
+    }
+    const foreignResponse = await api('foreign', '/export', { method: 'POST', body: { config: configuration(), format: 'xlsx', locale: 'en', snapshot: state.report.snapshot }, raw: true, status: 409 })
+    assert.equal(foreignResponse.status(), 409)
+    return { formats: ['xlsx', 'pdf'], teamScope: true, foreignScope: true }
+  })
+  await run('views-crud', 'authenticated-http', async () => {
+    const input = { name: 'Fixture private form', config: configuration(), requestId: randomUUID() }
+    const view = await api('admin', '/views', { method: 'POST', body: input })
+    assert.equal((await api('admin', '/views', { method: 'POST', body: input })).id, view.id)
+    assert.ok(!(await api('hr', '/views')).some(row => row.id === view.id))
+    const next = await api('admin', `/views/${view.id}`, { method: 'PATCH', body: { name: 'Fixture renamed form', config: input.config, version: view.version } })
+    await api('admin', `/views/${view.id}`, { method: 'PATCH', body: { name: 'Stale', config: input.config, version: view.version }, status: 409 })
+    await api('admin', `/views/${view.id}`, { method: 'DELETE', body: { version: next.version } })
+    assert.ok(!(await api('admin', '/views')).some(row => row.id === view.id))
+  })
+  await run('deliveries-crud', 'authenticated-http+database', async () => {
+    assert.deepEqual((await api('admin', '/deliveries')).schedules, [])
+    const input = { name: 'Fixture disabled delivery', config: configuration(), frequency: 'DAILY', format: 'xlsx', locale: 'en', recipients: ['fixture@example.invalid'], enabled: false }
+    await api('admin', '/deliveries', { method: 'POST', body: { requestId: randomUUID(), input: { ...input, recipients: ['bad-address'] } }, status: 400 })
+    const body = { requestId: randomUUID(), input }
+    const schedule = await api('admin', '/deliveries', { method: 'POST', body })
+    assert.equal((await api('admin', '/deliveries', { method: 'POST', body })).id, schedule.id)
+    const changed = await api('admin', `/deliveries/${schedule.id}`, { method: 'PATCH', body: { version: schedule.version, input: { ...input, format: 'pdf', frequency: 'WEEKLY' } } })
+    await api('admin', `/deliveries/${schedule.id}`, { method: 'DELETE', body: { version: schedule.version }, status: 409 })
+    await api('admin', `/deliveries/${schedule.id}`, { method: 'DELETE', body: { version: changed.version } })
+    assert.deepEqual((await api('admin', '/deliveries')).schedules, [])
+    const count = await fixture.admin.$queryRaw`SELECT count(*)::int AS n FROM mtm_attendance_deliveries`
+    assert.equal(count[0].n, 0)
+    return { externalSend: 'NOT_RUN', schedulesRemain: 0 }
+  })
+  await run('rules-calendar', 'authenticated-http', async () => {
+    const rules = await api('admin', '/rules')
+    const input = { effectiveFrom: rules.minEffectiveFrom, startTime: '09:00', endTime: '18:00', lunchMinutes: 60, lateGraceMinutes: 10, weekendDays: [0, 6] }
+    await api('admin', '/rules', { method: 'POST', body: { ...input, endTime: '08:00' }, status: 400 })
+    await api('admin', '/rules', { method: 'POST', body: input, status: 201 })
+    assert.equal((await api('admin', '/rules')).versions.length, 1)
+    const holiday = await api('admin', '/calendar', { method: 'POST', body: { date: date(15), kind: 'COMPANY_HOLIDAY', name: 'Fixture holiday' } })
+    const revised = await api('admin', '/calendar', { method: 'POST', body: { date: date(15), kind: 'EXCEPTION_WORKDAY', name: 'Fixture exception', id: holiday.id, version: holiday.updatedAt } })
+    await api('admin', '/calendar', { method: 'DELETE', body: { id: holiday.id, version: holiday.updatedAt }, status: 409 })
+    await api('admin', '/calendar', { method: 'DELETE', body: { id: revised.id, version: revised.updatedAt } })
+    await api('admin', '/calendar', { method: 'POST', body: { date: date(-1), kind: 'COMPANY_HOLIDAY', name: 'Forbidden past' }, status: 409 })
+  })
+  await run('day-kinds-quotas', 'authenticated-http', async () => {
+    const catalogue = await api('admin', '/day-kinds')
+    const items = catalogue.items.map(item => item.key === 'REMOTE_WORK' ? { ...item, names: { az: 'Sınaq uzaq iş', ru: 'Тестовая удалённая работа', en: 'Fixture remote work' } } : item)
+    const changed = await api('admin', '/day-kinds', { method: 'PUT', body: { version: catalogue.version, items } })
+    assert.ok(changed.version)
+    await api('admin', '/day-kinds', { method: 'PUT', body: { version: catalogue.version, items }, status: 409 })
+    await api('admin', '/day-kinds', { method: 'PUT', body: { version: changed.version, items: items.filter(item => item.key !== 'WORKED') }, status: 400 })
+    const limits = await api('admin', '/request-limits')
+    const updated = await api('admin', '/request-limits', { method: 'PUT', body: { version: limits.version, monthlyMinutes: 600, monthlyRequests: 4 } })
+    assert.equal(updated.monthlyMinutes, 600)
+    await api('admin', '/request-limits', { method: 'PUT', body: { version: updated.version, monthlyMinutes: -1, monthlyRequests: 4 }, status: 400 })
+  })
+  await run('employee-participation', 'authenticated-http+database', async () => {
+    const before = await fixture.admin.mtmAgent.findUniqueOrThrow({ where: { id: fixture.agents.field.id } })
+    const directory = await api('admin', '/employees')
+    assert.equal(directory.employees.length, 58)
+    assert.ok(directory.employees.every(row => row.included))
+    assert.ok(directory.employees.every(row => row.history.length === 0))
+    const row = directory.employees.find(row => row.id === before.id)
+    const input = { clientRequestId: randomUUID(), agentId: row.id, included: false, previousEventId: row.participationVersion }
+    const result = await api('admin', '/employees/participation', { method: 'POST', body: input })
+    assert.equal((await api('admin', '/employees/participation', { method: 'POST', body: input })).idempotent, true)
+    await api('admin', '/employees/participation', { method: 'POST', body: { ...input, included: true }, status: 409 })
+    await api('hr', '/employees/participation', { method: 'POST', body: { ...input, clientRequestId: randomUUID() }, status: 403 })
+    const after = await fixture.admin.mtmAgent.findUniqueOrThrow({ where: { id: before.id } })
+    assert.equal(after.attendanceExcluded, true)
+    for (const key of ['role', 'teamId', 'userId', 'passwordHash', 'canPlanOwnRoutes', 'canSelfPublishRoutes']) assert.equal(after[key], before[key])
+    // Field operations remain usable; attendance-specific self requests deny.
+    await mobile('field', '/requests', { status: 403 })
+    await request(mobiles.field, '/api/v1/mtm/mobile/bootstrap')
+    await api('admin', '/employees/participation', { method: 'POST', body: { ...input, clientRequestId: randomUUID(), included: true, previousEventId: result.eventId } })
+    assert.equal((await api('admin', '/employees')).employees.find(row => row.id === before.id).included, true)
+  })
+  await run('employment-history', 'authenticated-http+database', async () => {
+    const base = { agentId: fixture.agents.outside.id, reason: 'Fictional employment history', previousEventId: null }
+    const hire = await api('admin', '/employees/history', { method: 'POST', body: { ...base, clientRequestId: randomUUID(), kind: 'HIRE', date: date(-20) } })
+    const termination = await api('admin', '/employees/history', { method: 'POST', body: { ...base, clientRequestId: randomUUID(), previousEventId: hire.eventId, kind: 'TERMINATION', date: date(-10) } })
+    await api('admin', '/employees/history', { method: 'POST', body: { ...base, clientRequestId: randomUUID(), previousEventId: termination.eventId, kind: 'REHIRE', date: date(-9) } })
+    const row = (await api('admin', '/employees')).employees.find(row => row.id === base.agentId)
+    assert.deepEqual(row.history.map(item => item.kind), ['HIRE', 'TERMINATION', 'REHIRE'])
+    await api('admin', '/employees/history', { method: 'POST', body: { ...base, clientRequestId: randomUUID(), kind: 'HIRE', date: date(-20) }, status: 409 })
+  })
+  await run('branches-assignments', 'authenticated-http', async () => {
+    const input = { requestId: randomUUID(), expectedRevisionId: null, branchId: null, name: 'Fixture office branch', address: 'Fictional address', latitude: 40.4, longitude: 49.8, radiusMeters: 300, active: true }
+    const { branch } = await api('admin', '/branches', { method: 'POST', body: input })
+    assert.equal((await api('admin', '/branches', { method: 'POST', body: input })).branch.id, branch.id)
+    const revision = await api('admin', '/branches', { method: 'POST', body: { ...input, requestId: randomUUID(), branchId: branch.id, expectedRevisionId: branch.revisionId, radiusMeters: 400 } })
+    await api('admin', '/branches', { method: 'POST', body: { ...input, requestId: randomUUID(), branchId: branch.id, expectedRevisionId: branch.revisionId, radiusMeters: 500 }, status: 409 })
+    await api('admin', '/branches/assignments', { method: 'POST', body: { requestId: randomUUID(), expectedRevisionId: null, agentId: fixture.agents.employee.id, branchId: branch.id } })
+    const rows = await api('admin', '/branches/assignments?search=Fixture%20employee')
+    assert.equal(rows.employees.find(row => row.id === fixture.agents.employee.id).primary.branchId, branch.id)
+    await api('manager', '/branches/assignments', { method: 'POST', body: { requestId: randomUUID(), expectedRevisionId: null, agentId: fixture.agents.outside.id, branchId: branch.id }, status: 403 })
+    state.branch = revision.branch
+  })
+  await run('geo-policy-consent', 'authenticated-http+mobile-http', async () => {
+    assert.equal((await api('admin', '/location-policy')).policy, null)
+    const empty = { requestId: randomUUID(), expectedRevisionId: null, enabled: true, texts: { az: '', ru: '', en: '' }, legalReviewConfirmed: false }
+    await api('admin', '/location-policy', { method: 'POST', body: empty, status: 400 })
+    const texts = { az: 'Yalnız uydurma CI sınaq mətni; hüquqi təsdiq deyil.', ru: 'Только вымышленный текст для CI; не юридическое согласование.', en: 'Fictional CI-only consent text; not legal approval.' }
+    const { policy } = await api('admin', '/location-policy', { method: 'POST', body: { ...empty, requestId: randomUUID(), texts, legalReviewConfirmed: true } })
+    const consent = await mobile('employee', '/location-consent', { method: 'POST', body: { requestId: randomUUID(), policyRevisionId: policy.id, expectedConsentId: null, accepted: true } })
+    assert.equal((await mobile('employee', '/location-consent')).maySendLocation, true)
+    await mobile('employee', '/location-consent', { method: 'POST', body: { requestId: randomUUID(), policyRevisionId: policy.id, expectedConsentId: consent.consent.id, accepted: false } })
+    assert.equal((await mobile('employee', '/location-consent')).maySendLocation, false)
+    await api('admin', '/location-policy', { method: 'POST', body: { ...empty, requestId: randomUUID(), expectedRevisionId: policy.id, enabled: false, texts, legalReviewConfirmed: false } })
+    assert.equal((await api('admin', '/location-policy')).policy.enabled, false)
+    return { fixturePolicyOnly: true, coordinatesSubmitted: false, finalState: 'OFF' }
+  })
+  await run('requests-decisions', 'mobile-http+authenticated-http+database', async () => {
+    const submit = async (kind, delta) => {
+      const input = { clientRequestId: randomUUID(), kind, unit: 'DAYS', startDate: date(delta), endDate: date(delta), reason: 'Fictional employee request', attachmentIds: [] }
+      const { request: submitted } = await mobile('employee', '/requests', { method: 'POST', body: input, status: 201 })
+      assert.equal((await mobile('employee', '/requests', { method: 'POST', body: input })).request.id, submitted.id)
+      return submitted
+    }
+    const approved = await submit('ANNUAL_LEAVE', 20)
+    await api('hr', `/requests/${approved.id}/decision`, { method: 'POST', body: { decision: 'APPROVED', version: approved.version, note: null }, status: 403 })
+    await api('foreign', `/requests/${approved.id}/decision`, { method: 'POST', body: { decision: 'APPROVED', version: approved.version, note: null }, status: 404 })
+    const decided = await api('manager', `/requests/${approved.id}/decision`, { method: 'POST', body: { decision: 'APPROVED', version: approved.version, note: 'Fixture approved' } })
+    const item = decided.request
+    assert.equal(item.status, 'APPROVED')
+    await api('admin', `/requests/${approved.id}/revoke`, { method: 'POST', body: { version: item.version, reason: 'Fixture revocation' } })
+    const rejected = await submit('SICK_LEAVE', 21)
+    await api('admin', `/requests/${rejected.id}/decision`, { method: 'POST', body: { decision: 'REJECTED', version: rejected.version, note: null }, status: 400 })
+    assert.equal((await api('admin', `/requests/${rejected.id}/decision`, { method: 'POST', body: { decision: 'REJECTED', version: rejected.version, note: 'Fictional rejection reason' } })).request.status, 'REJECTED')
+    const cancelled = await submit('REMOTE_WORK', 22)
+    await mobile('employee', `/requests/${cancelled.id}`, { method: 'DELETE' })
+    for (const status of ['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED']) await api('admin', `/requests?status=${status}`)
+    state.uiApprove = await submit('ANNUAL_LEAVE', 23)
+    state.uiReject = await submit('SICK_LEAVE', 24)
+    const own = await mobile('employee', '/requests')
+    assert.ok(own.items.some(row => row.id === cancelled.id && row.status === 'CANCELLED'))
+    return { submitReplay: true, reviewerScope: true, approveRejectRevokeCancel: true }
+  })
+  await run('hr-recording-batch', 'authenticated-http+database', async () => {
+    const directory = await api('admin', '/recordings')
+    const input = { clientRequestId: randomUUID(), agentIds: [fixture.agents.employee.id, fixture.agents.outside.id], dayKindKey: 'REMOTE_WORK', catalogueVersion: directory.catalogue.version, unit: 'DAYS', startDate: date(26), endDate: date(26), reason: 'Fictional batch remote day' }
+    await api('admin', '/recordings', { method: 'POST', body: input, status: 201 })
+    assert.equal((await api('admin', '/recordings', { method: 'POST', body: input })).idempotent, true)
+    await api('hr', '/recordings', { method: 'POST', body: { ...input, clientRequestId: randomUUID() }, status: 403 })
+    await api('admin', '/recordings', { method: 'POST', body: { ...input, clientRequestId: randomUUID(), agentIds: [fixture.agents.employee.id, fixture.agents.employee.id] }, status: 400 })
+    const report = await api('admin', `/report?from=${date(26)}&to=${date(26)}&form=ALL`)
+    assert.equal(report.rows.filter(row => input.agentIds.includes(row.employeeId) && row.kind === 'APPROVED_REQUEST').length, 2)
+  })
+  await run('installation-decisions', 'mobile-http+authenticated-http', async () => {
+    for (const [role, action] of [['employee', 'APPROVE'], ['field', 'REJECT']]) {
+      await mobile(role, '/installation', { method: 'POST', body: { requestId: randomUUID() } })
+      const queue = await api('admin', '/installations?status=PENDING')
+      const row = queue.items.find(item => item.employeeId === fixture.agents[role].id)
+      assert.ok(row)
+      const input = { requestId: randomUUID(), action, reason: 'Fictional device decision' }
+      await api('hr', `/installations/${row.id}`, { method: 'POST', body: input, status: 403 })
+      await api('admin', `/installations/${row.id}`, { method: 'POST', body: input })
+      assert.equal((await api('admin', `/installations/${row.id}`, { method: 'POST', body: input })).idempotent, true)
+      if (action === 'APPROVE') await api('admin', `/installations/${row.id}`, { method: 'POST', body: { requestId: randomUUID(), action: 'REVOKE', reason: 'Fixture revoked' } })
+      assert.equal((await mobile(role, '/installation')).state, action === 'APPROVE' ? 'REVOKED' : 'REJECTED')
+    }
+  })
+  await run('shift-day-night', 'authenticated-http', async () => {
+    let directory = await api('admin', `/shifts?from=${date(1)}&to=${date(30)}`)
+    for (const night of [false, true]) {
+      const roster = directory.rosters.find(item => item.teamId === fixture.team.id)
+      assert.ok(roster)
+      const input = { requestId: randomUUID(), expectedRevisionId: directory.revisionId, expectedRosterHash: roster.hash, teamId: fixture.team.id, reason: 'Fictional shift', value: { from: date(night ? 5 : 1), to: date(night ? 8 : 4), timezone: 'Asia/Baku', attribution: night ? 'END_DAY' : 'START_DAY', cycle: [{ kind: 'WORK', startTime: night ? '22:00' : '09:00', endTime: night ? '06:00' : '18:00', nextDay: night, lunchMinutes: 60, lateGraceMinutes: 10 }, { kind: 'OFF' }], preHolidayMinutes: null, preHolidayConfirmed: false, overtimeThresholdMinutes: 30 } }
+      await api('admin', '/shifts', { method: 'POST', body: input })
+      await api('admin', '/shifts', { method: 'POST', body: { ...input, requestId: randomUUID() }, status: 409 })
+      directory = await api('admin', `/shifts?from=${date(1)}&to=${date(30)}`)
+    }
+    assert.ok(directory.plans.some(plan => plan.value.cycle.some(day => day.nextDay)))
+    assert.ok(directory.plans.length >= 2)
+  })
+  await run('leave-policy-profile', 'authenticated-http', async () => {
+    const year = Number(today.slice(0, 4))
+    const initial = await api('admin', `/leave-balances?year=${year}`)
+    assert.equal(initial.policy, null)
+    const policy = { requestId: randomUUID(), expectedRevisionId: null, year, reason: 'Fictional policy only', policy: { basisDate: `${year}-01-01`, counting: 'WORKING_DAYS', minutesPerDay: 480, reviewed: true, tiers: [{ category: 'Fixture category', minimumYears: 0, days: 20 }] } }
+    await api('admin', '/leave-balances/policy', { method: 'POST', body: policy })
+    await api('admin', '/leave-balances/profiles', { method: 'POST', body: { requestId: randomUUID(), expectedRevisionId: null, year, reason: 'Fictional opening balance', agentId: fixture.agents.employee.id, profile: { category: 'Fixture category', serviceStart: `${year - 1}-01-01`, openingDays: 2 } } })
+    const balances = await api('admin', `/leave-balances?year=${year}`)
+    const employee = balances.rows.find(row => row.employeeId === fixture.agents.employee.id)
+    assert.equal(employee.state, 'READY'); assert.equal(employee.allowanceDays, 20)
+    await api('hr', '/leave-balances/policy', { method: 'POST', body: { ...policy, requestId: randomUUID() }, status: 403 })
+  })
+  await run('month-freeze', 'authenticated-http+database', async () => {
+    const previous = new Date(`${today.slice(0, 7)}-01T12:00:00Z`); previous.setUTCMonth(previous.getUTCMonth() - 1)
+    const month = previous.toISOString().slice(0, 7), workDate = `${month}-15`
+    const agentId = fixture.agents.outside.id
+    // Historical fixture fact uses the same DB guards; it is not a phone claim.
+    const workday = await fixture.admin.mtmAgentWorkday.create({ data: { organizationId: fixture.organization.id, agentId, workDate: new Date(`${workDate}T00:00:00Z`), status: 'COMPLETED', startedAt: new Date(`${workDate}T05:00:00Z`), completedAt: new Date(`${workDate}T14:00:00Z`), totalPausedSeconds: 0 } })
+    await fixture.admin.mtmAgentWorkdayEvent.createMany({ data: ['START', 'FINISH'].map(type => ({ organizationId: fixture.organization.id, agentId, workdayId: workday.id, clientEventId: randomUUID(), type, occurredAt: type === 'START' ? workday.startedAt : workday.completedAt, appliedAt: type === 'START' ? workday.startedAt : workday.completedAt, claimedAt: type === 'START' ? workday.startedAt : workday.completedAt, serverReceivedAt: type === 'START' ? workday.startedAt : workday.completedAt })) })
+    const selection = { month, agentIds: [agentId] }
+    const preview = await api('admin', '/months/preview?locale=en', { method: 'POST', body: selection })
+    assert.deepEqual(preview.blockers, [])
+    await api('admin', '/months', { method: 'POST', body: { ...selection, requestId: randomUUID(), preview: { hash: '0'.repeat(64), asOf: preview.asOf } }, status: 409 })
+    const input = { ...selection, requestId: randomUUID(), preview: { hash: preview.hash, asOf: preview.asOf } }
+    const closed = await api('admin', '/months', { method: 'POST', body: input })
+    assert.equal((await api('admin', '/months', { method: 'POST', body: input })).idempotent, true)
+    const snapshot = await api('admin', `/months/${closed.id}?locale=en`)
+    await fixture.admin.mtmAgent.update({ where: { id: agentId }, data: { name: 'Fixture renamed after close' } })
+    assert.deepEqual((await api('admin', `/months/${closed.id}?locale=en`)).table, snapshot.table)
+    for (const format of ['xlsx', 'pdf']) assert.ok((await (await api('admin', `/months/${closed.id}/export?locale=en&format=${format}`, { raw: true })).body()).length > 200)
+    await api('foreign', `/months/${closed.id}?locale=en`, { status: 404 })
+    state.closedMonth = closed
+    return { stalePreviewRejected: true, exactRetry: true, frozenAfterRename: true }
+  })
+  await run('risk-dismissal', 'authenticated-http+database', async () => {
+    assert.ok(state.workdayId)
+    const event = await fixture.admin.mtmAgentWorkdayEvent.findFirstOrThrow({ where: { workdayId: state.workdayId, type: 'START' } })
+    await fixture.admin.mtmAttendanceMarkEvidence.create({ data: { organizationId: fixture.organization.id, agentId: fixture.agents.employee.id, eventId: event.id, redactedRequestHash: 'a'.repeat(64), installationId: `rf-e2e-${randomUUID()}`, action: 'START', claimedAt: event.occurredAt, serverReceivedAt: event.occurredAt, locationState: 'NO_CONSENT' } })
+    const risk = await fixture.admin.mtmAttendanceRiskCase.create({ data: { organizationId: fixture.organization.id, agentId: fixture.agents.employee.id, eventId: event.id, kind: 'CLOCK_DIFFERENCE', workDate: new Date(`${today}T00:00:00Z`), timezone: 'Asia/Baku', detectorVersion: 'mtm-attendance-risk-v1', policySnapshot: { allowSharedInstallations: false, rejectMockLocations: true, clockDifferenceSeconds: 300 }, details: { version: 1, deltaSeconds: 600, thresholdSeconds: 300 } } })
+    const query = `/review?from=${today}&to=${today}&status=OPEN&kind=ALL`
+    assert.ok((await api('admin', query)).items.some(row => row.id === risk.id))
+    await api('hr', `/review/${risk.id}`, { method: 'POST', body: { requestId: randomUUID(), reason: 'Fictional review' }, status: 403 })
+    const input = { requestId: randomUUID(), reason: 'Fictional clock verified' }
+    await api('admin', `/review/${risk.id}`, { method: 'POST', body: input })
+    await api('admin', `/review/${risk.id}`, { method: 'POST', body: input })
+    assert.ok(!(await api('admin', query)).items.some(row => row.id === risk.id))
+    assert.equal((await fixture.admin.mtmAgentWorkday.findUniqueOrThrow({ where: { id: state.workdayId } })).status, 'COMPLETED')
+    return { detector: 'synthetic seeded case; detector logic NOT_RUN here', reviewPreservesWorkday: true }
+  })
+  const pageEndpoints = { '': '/report', requests: '/requests', decisions: '/decisions', employees: '/employees', branches: '/branches', 'branches/report': '/report', shifts: '/shifts', 'leave-balances': '/leave-balances', months: '/months', installations: '/installations', 'branch-qr': '/branch-qr', review: '/review', 'location-settings': '/location-policy', recordings: '/recordings' }
+  for (const route of routes) await run(`page:${route || 'report'}`, 'browser-navigation', async () => {
+    const loaded = page.waitForResponse(response => new URL(response.url()).pathname === `${apiRoot}${pageEndpoints[route]}` && response.request().method() === 'GET', { timeout: 120000 })
+    await readyPage(route)
+    assert.equal((await loaded).status(), 200)
+    const errors = await page.locator('[role="alert"]').allTextContents()
+    assert.equal(errors.filter(text => [t('reportLoadError'), t('reportAccessUnavailable')].includes(text.trim())).length, 0)
+    // Inventory is evidence of discoverable controls, not a claim they were clicked.
+    const controls = await page.locator('main button, main a, main input, main select, main textarea').evaluateAll(elements => elements.map(element => ({ tag: element.tagName.toLowerCase(), role: element.getAttribute('role'), type: element.getAttribute('type'), name: (element.getAttribute('aria-label') || element.textContent || '').trim().slice(0, 160), href: element.getAttribute('href'), disabled: element.hasAttribute('disabled') })))
+    manifest.controls.push({ route: `/mtm/attendance${route ? `/${route}` : ''}`, coverage: 'inventory-only; see named action cases for exercised controls', controls })
+    await page.screenshot({ path: `${output}/page-${route.replaceAll('/', '-') || 'report'}.png`, fullPage: false })
+    if (route !== 'recordings') {
+      const link = page.locator(`aside a[href="/mtm/attendance${route ? `/${route}` : ''}"]`)
+      assert.equal(await link.count(), 1, 'Exactly one HR sidebar destination')
+      assert.equal(await link.getAttribute('aria-current'), 'page')
+    }
+    return { headingVisible: true, realDataRead: true, controlsInventoried: controls.length }
+  })
+  await run('browser-report-tabs-filters-pagination', 'browser-action+database-backed-http', async () => {
+    await readyPage('')
+    await page.getByTestId('attendance-day-table').waitFor()
+    assert.equal(await page.getByTestId('attendance-day-row').count(), 50)
+    await button('reportNext').click()
+    await poll(async () => (await page.getByTestId('attendance-day-row').count()) < 50, 'Report next page')
+    await button('reportPrevious').click()
+    for (const key of ['reportMonth', 'reportLateEarly', 'reportAbsences', 'overtimeTitle', 'reportJournal', 'reportDay']) {
+      const tab = button(key, page.getByRole('group', { name: t('reportForm'), exact: true }))
+      await tab.click()
+      assert.equal(await tab.getAttribute('aria-pressed'), 'true')
+      if (key === 'reportMonth') await page.getByTestId('attendance-month-grid').waitFor({ timeout: 120000 })
+    }
+    await page.locator('#attendance-report-from').fill(today)
+    await page.locator('#attendance-report-to').fill(today)
+    await clickResponse(button('reportApply'), `${apiRoot}/report`, 'GET')
+    await page.locator('#attendance-report-team').selectOption(fixture.team.id)
+    await page.locator('#attendance-report-employee').selectOption(fixture.agents.employee.id)
+    assert.equal(await page.getByTestId('attendance-day-row').count(), 1)
+    assert.ok((await page.getByTestId('attendance-day-row').innerText()).includes(fixture.users.employee.name))
+    // A real file download follows the button and confirms the browser flow.
+    for (const key of ['exportExcel', 'exportPdf']) {
+      const download = page.waitForEvent('download', { timeout: 120000 })
+      await button(key).click()
+      const file = await download
+      assert.equal(await file.failure(), null)
+      assert.match(file.suggestedFilename(), key === 'exportPdf' ? /\.pdf$/i : /\.xlsx$/i)
+    }
+    await page.locator('#attendance-report-from').fill(date(2))
+    await page.locator('#attendance-report-to').fill(today)
+    await button('reportApply').click()
+    assert.ok(await page.locator('[role="alert"]').count())
+    return { reportTabs: 6, pagination: true, teamEmployeeFilter: true, browserDownloads: 2, invalidRange: true }
+  })
+  await run('browser-views-save-rename-delete-cancel', 'browser-action+database-backed-http', async () => {
+    await readyPage('')
+    const section = page.getByTestId('attendance-personal-views')
+    await section.locator('#attendance-view-name').fill('Fixture browser form')
+    await clickResponse(button('viewsSave', section), `${apiRoot}/views`)
+    let row = page.getByTestId('attendance-personal-view').filter({ hasText: 'Fixture browser form' })
+    await row.waitFor()
+    await row.getByRole('button', { name: t('viewsOpenNamed', { name: 'Fixture browser form' }) }).click()
+    await page.getByTestId('attendance-custom-table').waitFor()
+    await row.getByRole('button', { name: t('viewsEditNamed', { name: 'Fixture browser form' }) }).click()
+    await section.locator('#attendance-view-name').fill('Fixture browser renamed')
+    const saved = (await api('admin', '/views')).find(view => view.name === 'Fixture browser form')
+    await clickResponse(button('viewsSaveChanges', section), `${apiRoot}/views/${saved.id}`, 'PATCH')
+    row = page.getByTestId('attendance-personal-view').filter({ hasText: 'Fixture browser renamed' })
+    await row.getByRole('button', { name: t('viewsDeleteNamed', { name: 'Fixture browser renamed' }) }).click()
+    await button('viewsCancel', row).click()
+    assert.ok((await api('admin', '/views')).some(view => view.id === saved.id))
+    await row.getByRole('button', { name: t('viewsDeleteNamed', { name: 'Fixture browser renamed' }) }).click()
+    await clickResponse(button('viewsConfirmDelete', row), `${apiRoot}/views/${saved.id}`, 'DELETE')
+    assert.ok(!(await api('admin', '/views')).some(view => view.id === saved.id))
+    return { createdRenamedOpenedDeleted: true, deleteCancellation: true }
+  })
+  await run('browser-employee-search-switch-history', 'browser-action+database-backed-http', async () => {
+    await readyPage('employees')
+    await page.getByTestId('employee-row').first().waitFor()
+    assert.equal(await page.getByTestId('employee-row').count(), 25)
+    await button('employeesNext').click(); await button('employeesPrevious').click()
+    await page.locator('#employee-search').fill(fixture.users.field.name)
+    const row = page.getByTestId('employee-row')
+    assert.equal(await row.count(), 1)
+    const toggle = row.getByRole('switch')
+    assert.equal(await toggle.getAttribute('aria-checked'), 'true')
+    await clickResponse(toggle, `${apiRoot}/employees/participation`)
+    await poll(async () => await toggle.getAttribute('aria-checked') === 'false' && await toggle.isEnabled(), 'Exclusion confirmed')
+    await page.locator('#employee-participation').selectOption('INCLUDED')
+    assert.equal(await row.count(), 0)
+    await page.locator('#employee-participation').selectOption('EXCLUDED')
+    await row.waitFor()
+    await clickResponse(row.getByRole('switch'), `${apiRoot}/employees/participation`)
+    await page.locator('#employee-participation').selectOption('ALL')
+    await row.getByRole('button', { name: t('employeesHistoryNamed', { name: fixture.users.field.name }) }).click()
+    const history = page.getByTestId('employees-history')
+    await history.waitFor()
+    await button('employeesClose', history).click()
+    assert.equal(await history.count(), 0)
+    assert.equal((await fixture.admin.mtmAgent.findUniqueOrThrow({ where: { id: fixture.agents.field.id } })).role, 'AGENT')
+    return { pagination: true, search: true, inclusionFilter: true, switchRoundTrip: true, historyOpenClose: true }
+  })
+  await run('browser-branch-create-edit-archive-cancel', 'browser-action+database-backed-http', async () => {
+    await readyPage('branches')
+    await button('branchesAdd').click()
+    await button('branchesCancel').click()
+    assert.equal(await page.getByTestId('branches-editor').count(), 0)
+    await button('branchesAdd').click()
+    const editor = page.getByTestId('branches-editor')
+    for (const [id, value] of Object.entries({ name: 'Fixture browser branch', address: 'Fictional branch address', latitude: '40.42', longitude: '49.81', radiusMeters: '250' })) await editor.locator(`#branch-${id}`).fill(value)
+    const created = await clickResponse(button('branchesSave', editor), `${apiRoot}/branches`)
+    await page.getByTestId('branch-row').filter({ hasText: 'Fixture browser branch' }).getByRole('button').click()
+    await editor.locator('#branch-active').selectOption('false')
+    await clickResponse(button('branchesSave', editor), `${apiRoot}/branches`)
+    assert.equal((await api('admin', '/branches')).branches.find(branch => branch.id === created.branch.id).active, false)
+  })
+  await run('browser-request-approve-reject-revoke', 'browser-action+mobile-http', async () => {
+    assert.ok(state.uiApprove && state.uiReject, 'Employee request fixture must succeed')
+    await readyPage('requests')
+    let row = page.getByTestId(`attendance-request-${state.uiApprove.id}`)
+    await button('requestsOpen', row).click()
+    await row.locator('textarea').fill('Fixture browser approval')
+    await clickResponse(button('requestsApprove', row), `${apiRoot}/requests/${state.uiApprove.id}/decision`)
+    await page.getByRole('combobox', { name: t('requestsTitle'), exact: true }).selectOption('APPROVED')
+    row = page.getByTestId(`attendance-request-${state.uiApprove.id}`)
+    await button('requestsOpen', row).click()
+    await button('revocationOpen', row).click()
+    await button('revocationKeep', row).click()
+    await button('revocationOpen', row).click()
+    await row.locator('textarea').fill('Fixture browser revocation')
+    await clickResponse(button('revocationConfirm', row), `${apiRoot}/requests/${state.uiApprove.id}/revoke`)
+    await page.getByRole('combobox', { name: t('requestsTitle'), exact: true }).selectOption('PENDING')
+    row = page.getByTestId(`attendance-request-${state.uiReject.id}`)
+    await button('requestsOpen', row).click()
+    assert.equal(await button('requestsReject', row).isEnabled(), false)
+    await row.locator('textarea').fill('Fixture browser rejection')
+    await clickResponse(button('requestsReject', row), `${apiRoot}/requests/${state.uiReject.id}/decision`)
+    const own = await mobile('employee', '/requests')
+    assert.equal(own.items.find(item => item.id === state.uiApprove.id).status, 'CANCELLED')
+    assert.equal(own.items.find(item => item.id === state.uiReject.id).status, 'REJECTED')
+  })
+  await run('browser-qr-toggle-refresh-hide', 'browser-action+database-backed-http', async () => {
+    assert.ok(state.branch)
+    await readyPage('branch-qr')
+    const toggle = page.getByRole('switch', { name: t('qrRule') })
+    assert.equal(await toggle.getAttribute('aria-checked'), 'false')
+    await clickResponse(toggle, '/api/v1/mtm/settings', 'PUT')
+    const qr = page.getByRole('img', { name: t('qrImageAlt') })
+    await qr.waitFor({ timeout: 120000 })
+    assert.ok((await qr.getAttribute('src')).startsWith('data:image/png;base64,'))
+    await button('qrRefresh').click()
+    await qr.waitFor({ timeout: 120000 })
+    const secondPage = await sessions.admin.newPage()
+    await secondPage.goto('about:blank')
+    await secondPage.bringToFront()
+    await poll(async () => await page.evaluate(() => document.visibilityState) === 'hidden', 'QR page background visibility')
+    assert.equal(await qr.count(), 0)
+    await secondPage.close(); await page.bringToFront()
+    await qr.waitFor({ timeout: 120000 })
+    await clickResponse(toggle, '/api/v1/mtm/settings', 'PUT')
+    await poll(async () => await toggle.getAttribute('aria-checked') === 'false', 'QR disabled')
+    assert.equal(await qr.count(), 0)
+    return { enabledThenDisabled: true, refresh: true, hidesInBackground: true, cameraScan: 'NOT_RUN' }
+  })
+  await run('browser-settings-hr-catalogue-quotas', 'browser-action+database-backed-http', async () => {
+    await readyPage('')
+    const limits = page.getByTestId('attendance-request-limits')
+    await limits.getByRole('button').first().click()
+    await page.locator('#attendance-limits-hours').fill('12')
+    await page.locator('#attendance-limits-count').fill('5')
+    await clickResponse(button('limitsSave', limits), `${apiRoot}/request-limits`, 'PUT')
+    assert.equal((await api('admin', '/request-limits')).monthlyMinutes, 720)
+    const kinds = page.getByTestId('attendance-day-kinds')
+    await button('kindsOpen', kinds).click()
+    await button('kindsAdd', kinds).click()
+    await button('kindsCancel', page.getByTestId('attendance-kind-editor')).click()
+    await button('kindsPresetRu', kinds).click()
+    await button('kindsCancel', kinds).click()
+    await page.locator('#attendance-kinds-search').fill('Fixture remote work')
+    const row = page.getByTestId('attendance-kind-row').filter({ hasText: 'Fixture remote work' })
+    await button('kindsEdit', row).click()
+    await page.locator('#attendance-kind-name-en').fill('Fixture browser remote')
+    await clickResponse(button('kindsSave', page.getByTestId('attendance-kind-editor')), `${apiRoot}/day-kinds`, 'PUT')
+    assert.equal((await api('admin', '/day-kinds')).items.find(item => item.key === 'REMOTE_WORK').names.en, 'Fixture browser remote')
+    const hr = page.getByTestId('attendance-hr-access')
+    await hr.getByRole('button').first().click()
+    await page.locator('#attendance-hr-search').fill('Fixture hr')
+    await clickResponse(button('hrSearch', hr), `${apiRoot}/access`, 'GET')
+    const hrRow = page.getByTestId('attendance-hr-user').filter({ hasText: 'Fixture hr' })
+    await hrRow.getByRole('button', { name: t('hrRevokeNamed', { name: 'Fixture hr' }) }).click()
+    await button('hrCancel', hrRow).click()
+    assert.equal((await api('admin', '/access?search=Fixture%20hr')).users[0].allEmployees, true)
+    return { limitsSaved: true, catalogueEdited: true, presetCancelled: true, hrSearchRevokeCancelled: true }
+  })
+  await run('browser-delivery-create-edit-cancel-delete', 'browser-action+database-backed-http', async () => {
+    await readyPage('')
+    const section = page.getByTestId('attendance-deliveries')
+    await section.getByRole('button').first().click()
+    await button('deliveryNew', section).click()
+    await page.locator('#attendance-delivery-name').fill('Fixture browser delivery')
+    await page.locator('#attendance-delivery-recipients').fill('invalid-email')
+    await page.getByLabel(t('deliveryEnableOnSave')).uncheck()
+    await button('deliverySave', section).click()
+    assert.equal((await api('admin', '/deliveries')).schedules.length, 0)
+    await page.locator('#attendance-delivery-recipients').fill('fixture@example.invalid')
+    const schedule = await clickResponse(button('deliverySave', section), `${apiRoot}/deliveries`)
+    const row = page.getByTestId('attendance-delivery-schedule')
+    await row.getByRole('button', { name: t('deliveryEditNamed', { name: schedule.name }) }).click()
+    await page.locator('#attendance-delivery-format').selectOption('pdf')
+    await page.locator('#attendance-delivery-frequency').selectOption('MONTHLY')
+    await clickResponse(button('deliverySave', section), `${apiRoot}/deliveries/${schedule.id}`, 'PATCH')
+    await row.getByRole('button', { name: t('deliveryDeleteNamed', { name: schedule.name }) }).click()
+    await button('deliveryCancel', row).click()
+    await row.getByRole('button', { name: t('deliveryDeleteNamed', { name: schedule.name }) }).click()
+    await clickResponse(button('deliveryConfirmDelete', row), `${apiRoot}/deliveries/${schedule.id}`, 'DELETE')
+    assert.equal((await api('admin', '/deliveries')).schedules.length, 0)
+    return { realEmailsSent: 0, remainedDisabled: true }
+  })
+  await run('browser-batch-recording-and-decision-journal', 'browser-action+database-backed-http', async () => {
+    await readyPage('recordings')
+    await page.locator('#hr-recording-mode').selectOption('TEAM')
+    await page.locator('#hr-recording-target').selectOption(fixture.team.id)
+    await page.locator('#hr-recording-kind').selectOption('REMOTE_WORK')
+    await page.locator('#hr-recording-from').fill(date(27)); await page.locator('#hr-recording-to').fill(date(27))
+    await page.locator('#hr-recording-reason').fill('Fictional browser team day')
+    assert.ok(await page.getByTestId('hr-recording-preview').locator('li').count() >= 2)
+    await clickResponse(button('hrRecordingSave'), `${apiRoot}/recordings`, 'POST', 201)
+    await button('hrRecordingNew').click()
+    assert.equal(await page.locator('#hr-recording-target').inputValue(), '')
+    await readyPage('decisions')
+    await page.locator('#attendance-journal-from').fill(today)
+    await page.locator('#attendance-journal-to').fill(date(30))
+    await page.locator('#attendance-journal-status').selectOption('APPROVED')
+    await clickResponse(button('journalApply'), `${apiRoot}/decisions`, 'GET')
+    await page.getByTestId('attendance-journal-row').first().waitFor()
+    const download = page.waitForEvent('download', { timeout: 120000 })
+    await button('exportExcel').click(); assert.equal(await (await download).failure(), null)
+    const detail = page.locator('a[href^="/mtm/attendance/requests?requestId="]').first()
+    await detail.click(); await page.getByTestId('attendance-request-queue').waitFor()
+  })
+  await run('browser-shift-publish-cancel-and-leave-profile', 'browser-action+database-backed-http', async () => {
+    await readyPage('shifts')
+    await button('shiftCreate').click(); await button('shiftCancel').click(); await button('shiftCreate').click()
+    const editor = page.getByTestId('shift-create')
+    await editor.getByLabel(t('shiftTeam')).selectOption(fixture.team.id)
+    await editor.getByLabel(t('shiftFrom')).fill(date(10)); await editor.getByLabel(t('shiftTo')).fill(date(12))
+    await editor.getByLabel(t('shiftStart')).first().fill('22:00'); await editor.getByLabel(t('shiftEnd')).first().fill('06:00')
+    await editor.getByLabel(t('shiftNextDay')).first().check()
+    await button('shiftAdd', editor).click(); await button('shiftRemove', editor).last().click()
+    await editor.getByLabel(t('shiftReason')).fill('Fictional browser night shift')
+    await clickResponse(button('shiftPublish', editor), `${apiRoot}/shifts`)
+    assert.ok((await api('admin', `/shifts?from=${date(10)}&to=${date(12)}`)).plans.length)
+    await readyPage('leave-balances')
+    await page.getByTestId('leave-row').first().waitFor()
+    await button('leaveNext').click(); await button('leavePrev').click()
+    const row = page.getByTestId('leave-row').filter({ hasText: 'Fixture employee' })
+    await button('leaveEdit', row).click()
+    const profile = page.getByTestId('leave-profile')
+    await profile.getByLabel(t('leaveOpening'), { exact: false }).fill('3')
+    await profile.getByLabel(t('leaveReason')).fill('Fictional browser balance update')
+    await clickResponse(button('leavePublish', profile), `${apiRoot}/leave-balances/profiles`)
+    assert.equal((await api('admin', `/leave-balances?year=${today.slice(0, 4)}`)).rows.find(row => row.employeeId === fixture.agents.employee.id).profile.value.openingDays, 3)
+  })
+  await run('browser-geo-off-legal-block-and-branch-summary', 'browser-action+database-backed-http', async () => {
+    await readyPage('location-settings')
+    const editor = page.getByTestId('geo-policy-editor')
+    await editor.locator('#geo-text-en').fill('')
+    assert.equal(await editor.getByLabel(t('geoPolicyEnable')).isEnabled(), false)
+    await clickResponse(button('geoPolicySave', editor), `${apiRoot}/location-policy`)
+    assert.equal((await api('admin', '/location-policy')).policy.enabled, false)
+    await readyPage('branches/report')
+    await page.locator('#attendance-branch-from').fill(today); await page.locator('#attendance-branch-to').fill(today)
+    await clickResponse(button('reportApply'), `${apiRoot}/report`, 'GET')
+    await page.locator('#attendance-branch-team').selectOption(fixture.team.id)
+    await page.locator('#attendance-branch-employee').selectOption(fixture.agents.employee.id)
+    const download = page.waitForEvent('download', { timeout: 120000 })
+    await button('exportPdf').click(); assert.equal(await (await download).failure(), null)
+  })
+  await run('browser-installation-approve-revoke-history', 'browser-action+mobile-http', async () => {
+    await mobile('employee', '/installation', { method: 'POST', body: { requestId: randomUUID() } })
+    const queue = await api('admin', '/installations?status=PENDING')
+    const item = queue.items.find(item => item.employeeId === fixture.agents.employee.id)
+    assert.ok(item)
+    await readyPage('installations')
+    let row = page.getByTestId('installation-row').filter({ hasText: 'Fixture employee' })
+    await button('installationApprove', row).click()
+    assert.equal(await button('installationSave').isEnabled(), false)
+    await page.locator('#installation-reason').fill('Fictional browser approval')
+    await clickResponse(button('installationSave'), `${apiRoot}/installations/${item.id}`)
+    await page.getByRole('combobox').last().selectOption('APPROVED')
+    row = page.getByTestId('installation-row').filter({ hasText: 'Fixture employee' })
+    await button('installationHistory', row).click()
+    await button('installationRevoke', row).click()
+    await page.locator('#installation-reason').fill('Fictional browser revoke')
+    await clickResponse(button('installationSave'), `${apiRoot}/installations/${item.id}`)
+    assert.equal((await mobile('employee', '/installation')).state, 'REVOKED')
+  })
+  await run('browser-month-frozen-download', 'browser-action+database-backed-http', async () => {
+    assert.ok(state.closedMonth)
+    await readyPage('months')
+    await page.locator('input[type="month"]').fill(state.closedMonth.month)
+    await page.getByLabel(t('monthCloseChooseSaved')).selectOption(state.closedMonth.id)
+    await button('monthCloseExcel').waitFor()
+    for (const key of ['monthCloseExcel', 'monthClosePdf']) {
+      const download = page.waitForEvent('download', { timeout: 120000 })
+      await button(key).click(); assert.equal(await (await download).failure(), null)
+    }
+    assert.ok(await page.getByText(t('monthCloseFrozen'), { exact: true }).isVisible())
+  })
+  await run('browser-locales-mobile-width', 'browser-navigation+layout', async () => {
+    for (const locale of ['az', 'ru', 'en']) {
+      await sessions.admin.addCookies([{ name: 'NEXT_LOCALE', value: locale, url: origin.origin }])
+      await readyPage('employees')
+      await page.getByTestId('employee-row').first().waitFor()
+      const translated = JSON.parse(await readFile(`messages/${locale}.json`, 'utf8')).mtmAttendance
+      assert.equal(await page.locator('h1').first().innerText(), translated.employeesTitle)
+      await page.screenshot({ path: `${output}/employees-${locale}.png`, fullPage: false })
+    }
+    await page.setViewportSize({ width: 390, height: 844 })
+    await readyPage('employees')
+    await page.getByTestId('employee-row').first().waitFor()
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1))
+    await page.screenshot({ path: `${output}/employees-mobile.png`, fullPage: false })
+    await page.setViewportSize({ width: 1440, height: 1000 })
+    return { locales: ['az', 'ru', 'en'], viewport: '390x844', physicalPhone: 'NOT_RUN' }
+  })
+  await run('hr-revoke-fresh-session', 'authenticated-http', async () => {
+    const row = (await api('admin', '/access?search=Fixture%20hr')).users.find(row => row.id === fixture.users.hr.id)
+    assert.equal(row.allEmployees, true)
+    await api('admin', `/access/${row.id}`, { method: 'PATCH', body: { version: row.version, allEmployees: false } })
+    await api('hr', '/rules', { status: 403 })
+    await api('hr', `/report?from=${today}&to=${today}&form=ALL`, { status: 403 })
+    return { originalSessionImmediatelyDenied: true }
+  })
+  await run('final-privacy-invariants', 'authenticated-http+database', async () => {
+    assert.notEqual((await api('admin', '/location-policy')).policy?.enabled, true)
+    assert.equal((await api('admin', '/branch-qr')).enabled, false)
+    assert.equal((await api('admin', '/deliveries')).schedules.length, 0)
+    assert.equal(await fixture.admin.mtmAttendanceMarkEvidence.count({ where: { latitude: { not: null } } }), 0)
+    assert.equal(await fixture.admin.user.count({ where: { organizationId: fixture.foreignOrganization.id } }), 1)
+    assert.equal(await fixture.admin.mtmAgentWorkday.count({ where: { organizationId: fixture.foreignOrganization.id } }), 0)
+    return { geoOff: true, qrOff: true, noMailSchedules: true, noCoordinates: true, otherTenantUntouched: true }
+  })
+} catch (error) {
+  manifest.cases.push({ name: 'harness', status: 'FAIL', diagnostic: error?.safeDiagnostic || error?.name || 'Harness error' })
+} finally {
+  for (const name of caseNames) if (!manifest.cases.some(item => item.name === name)) manifest.cases.push({ name, status: 'NOT_RUN', reason: 'Earlier setup did not complete' })
+  for (const [name, reason] of [
+    ['physical-apk-os-permissions', 'Separate S23 device run; this workflow has no USB phone'],
+    ['external-email-delivery', 'No recipients/providers; schedules are disabled and no cron is invoked'],
+    ['camera-qr-offline-replay', 'Actual camera, offline Android queue, kill/restart and OS permission flows need the physical device'],
+    ['overnight-soak', 'Bounded CI scenarios; this is not an overnight endurance run'],
+    ['all-control-combinations', 'Finite named action families; inventory alone does not prove every control or all possible combinations'],
+  ]) manifest.cases.push({ name, status: 'NOT_RUN', reason })
+  manifest.completedAt = new Date().toISOString()
+  manifest.summary = Object.fromEntries(['PASS', 'FAIL', 'NOT_RUN'].map(status => [status, manifest.cases.filter(item => item.status === status).length]))
+  manifest.status = manifest.summary.FAIL ? 'FAIL' : caseNames.some(name => manifest.cases.find(item => item.name === name)?.status !== 'PASS') ? 'NOT_RUN' : 'PASS'
+  await persist()
+  await browser?.close().catch(() => {})
+  await fixture?.app.$disconnect().catch(() => {})
+  await fixture?.admin.$disconnect().catch(() => {})
+  console.log(JSON.stringify({ status: manifest.status, headSha: head, summary: manifest.summary }))
+  if (manifest.status !== 'PASS') process.exitCode = 1
+}
