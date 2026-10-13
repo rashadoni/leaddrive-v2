@@ -184,6 +184,12 @@ target aborts the release; retired targets are never accepted or migrated.
   one-worker heap and bounded swap; production receives its immutable tarball
   and never builds from its checkout. Both legacy on-host build scripts are
   fail-fast tombstones.
+- PR and release webpack builds use a bounded 12 GiB V8 heap after measuring
+  at least 16 GiB available RAM plus free swap. Extra swap remains capped at
+  4 GiB; sequential disposable workers and cold-cache settings remain enabled.
+  GNU time records peak RSS in the build log. The prior 8 GiB heap was exhausted
+  by the integrated server compilation in PR #747; successful CI is still
+  required before release.
 - PM2 runs `.next/standalone/server.js` via `/tmp/start-leaddrive.sh`
 - Start script reads `/etc/leaddrive/app.env`; `/opt/leaddrive-v2/.env` is only
   a compatibility symlink during the controlled transition.

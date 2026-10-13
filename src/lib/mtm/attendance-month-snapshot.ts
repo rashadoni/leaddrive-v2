@@ -23,8 +23,9 @@ export function buildAttendanceMonthSnapshot(report: MtmAttendanceReport, select
   const blockers=rows.filter(row=>["OPEN","MISSING_FINISH","INVALID_FACTS","UPCOMING"].includes(row.kind) || currentDateKey(now,row.timezone)<=to)
     .map(row=>({employeeId:row.employeeId,date:row.sourceDate,kind:row.kind}))
   const tables={} as AttendanceMonthPayload["tables"]
-  for(const [locale,messages] of Object.entries({az,ru,en}) as ["az"|"ru"|"en",typeof ru][]) {
-    const tableMessages: { mtmAttendance: Record<string,string> } = messages
+  const catalogues = {az:az.mtmAttendance,ru:ru.mtmAttendance,en:en.mtmAttendance}
+  for(const locale of ["az","ru","en"] as const) {
+    const tableMessages: { mtmAttendance: Record<string,string> } = {mtmAttendance:catalogues[locale]}
     const t=createTranslator({locale,messages:tableMessages,namespace:"mtmAttendance"})
     tables[locale]=buildAttendanceTable(report,{version:1,mode:"MONTH",columns:[...DEFAULT_ATTENDANCE_VIEW_COLUMNS.MONTH],showTotals:true,filters:{from,to,form:"ALL"}},locale,t)
   }
