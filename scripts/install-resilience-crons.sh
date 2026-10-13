@@ -57,6 +57,7 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   /cron-trigger\.sh \/api\/cron\/missed-inbound-reconciliation/ { next }
   /cron-trigger\.sh \/api\/cron\/mtm-cleanup/ { next }
   /cron-trigger\.sh \/api\/cron\/mtm-route-day-close/ { next }
+  /cron-trigger\.sh \/api\/cron\/mtm-attendance-reports/ { next }
   /cron-trigger\.sh \/api\/cron\/demo-call-retention/ { next }
   /cron-trigger\.sh \/api\/cron\/campaign-scheduled-send/ { next }
   /cron-trigger\.sh \/api\/cron\/mtm-demo-pulse/ { next }
@@ -113,6 +114,8 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   # which no single UTC tick can hit for every tenant. The update is idempotent
   # and leased, so extra ticks cost one bounded query per tenant.
   printf '%s\n' "20 * * * * $TRIGGER /api/cron/mtm-route-day-close >> $LOG 2>&1"
+  # Private attendance schedules are opt-in; worker rechecks access per letter.
+  printf '%s\n' "*/5 * * * * $TRIGGER /api/cron/mtm-attendance-reports >> $LOG 2>&1"
   # A campaign with status «scheduled» goes out when its scheduledAt comes.
   # These are real messages to customers' contacts: each campaign is claimed
   # with one conditional write before sending, so overlapping ticks or a manual

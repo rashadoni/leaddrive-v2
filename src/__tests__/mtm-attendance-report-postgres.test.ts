@@ -5,7 +5,7 @@
 import { randomUUID } from "node:crypto"
 import { spawnSync } from "node:child_process"
 import { createRequire } from "node:module"
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs"
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import ExcelJS from "exceljs"
@@ -31,6 +31,8 @@ const scratch = vi.hoisted(() => {
   process.env.DATABASE_URL = app.toString()
   return { name, role, adminDb: adminDb.toString() }
 })
+const mail = vi.hoisted(() => ({ send: vi.fn(), capability: true, capabilityHook: undefined as (() => Promise<void>) | undefined }))
+vi.mock("@/lib/email", () => ({ sendEmail: mail.send }))
 const caller = vi.hoisted(() => ({ orgId: "attendance-report-a", userId: "fixture-admin", role: "admin" }))
 vi.mock("@/lib/api-auth", () => ({
   getOrgId: vi.fn(), getSession: vi.fn(), requireSessionAuth: vi.fn(),
@@ -40,6 +42,7 @@ vi.mock("@/lib/api-auth", () => ({
 vi.mock("@/lib/tenant-capability-access", async (importOriginal) => ({
   ...await importOriginal<typeof import("@/lib/tenant-capability-access")>(),
   requireTenantCapabilityAccessResponse: async () => null,
+  getTenantCapabilityAccess: async () => { await mail.capabilityHook?.(); return { allowed: mail.capability } },
 }))
 
 function cli(args: string[], statement?: string) {
@@ -90,12 +93,13 @@ pgDescribe("MTM report reads the real saved workday and journal", () => {
       process.env.DATABASE_URL = scratch!.adminDb
       cli(["db", "push", "--schema", schemaFile, "--skip-generate"])
     } finally { process.env.DATABASE_URL = appUrl }
-    sql(scratch!.adminDb, 'DROP TABLE mtm_attendance_rules; DROP TABLE mtm_work_calendar_days; DROP TYPE "MtmWorkCalendarDayKind";')
+    sql(scratch!.adminDb, 'DROP TABLE mtm_attendance_deliveries; DROP TABLE mtm_attendance_schedules; DROP TABLE mtm_attendance_rules; DROP TABLE mtm_work_calendar_days; DROP TYPE "MtmWorkCalendarDayKind";')
     for (const migration of [
       "20260715160000_mtm_work_calendar",
       "20260806120000_mtm_rls_coverage_completion",
       "20260806160000_mtm_rls_bypass_clause_normalization",
       "20261013010000_mtm_attendance_rules",
+      "20261013020000_mtm_attendance_deliveries",
     ]) sql(scratch!.adminDb, readFileSync(`prisma/migrations/${migration}/migration.sql`, "utf8"))
     sql(scratch!.adminDb, `GRANT USAGE ON SCHEMA public TO "${scratch!.role}"; GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "${scratch!.role}";`)
     prisma = (await import("@/lib/prisma")).prisma
@@ -314,7 +318,7 @@ pgDescribe("MTM report reads the real saved workday and journal", () => {
     const excel = await exportReport(request("xlsx"))
     expect(excel.status).toBe(200)
     const workbook = new ExcelJS.Workbook()
-    await workbook.xlsx.load(Buffer.from(await excel.arrayBuffer()))
+    await workbook.xlsx.load(await excel.arrayBuffer())
     expect(workbook.worksheets[0].rowCount).toBe(6)
     const cells = JSON.stringify(workbook.worksheets.map((sheet) => sheet.getSheetValues()))
     expect(cells).toContain("Fixture employee A")
@@ -330,6 +334,160 @@ pgDescribe("MTM report reads the real saved workday and journal", () => {
     await tenant(ORG, () => prisma.mtmSetting.updateMany({ where: { organizationId: ORG, key: "attendanceEnabled" }, data: { value: false } }))
     expect((await exportReport(request("pdf"))).status).toBe(404)
     await tenant(ORG, () => prisma.mtmSetting.updateMany({ where: { organizationId: ORG, key: "attendanceEnabled" }, data: { value: true } }))
+  })
+
+  const scheduleDraft = () => ({ name: "Fixture attendance delivery", config: viewConfig(), frequency: "DAILY" as const, format: "xlsx" as const, locale: "az" as const, recipients: ["fictional@example.test"], enabled: true })
+  async function createSchedule(userId = "fixture-admin", draft = scheduleDraft()) {
+    const { saveAttendanceDelivery } = await import("@/lib/mtm/attendance-delivery-store")
+    const schedule = await tenant(ORG, () => saveAttendanceDelivery({ organizationId: ORG, userId, timezone: "Asia/Baku", value: { requestId: randomUUID(), input: draft } }))
+    expect(schedule).not.toBeNull()
+    return schedule!
+  }
+  async function queueSchedule(id: string) {
+    const { enqueueAttendanceDelivery, readAttendanceDeliveries } = await import("@/lib/mtm/attendance-delivery-store")
+    await tenant(ORG, () => prisma.$executeRaw`UPDATE "mtm_attendance_schedules" SET "nextRunAt" = ${new Date(Date.now() - 1000)} WHERE "organizationId" = ${ORG} AND "id" = ${id}`)
+    await Promise.all([tenant(ORG, () => enqueueAttendanceDelivery(ORG, id, new Date())), tenant(ORG, () => enqueueAttendanceDelivery(ORG, id, new Date()))])
+    const rows = await tenant(ORG, () => readAttendanceDeliveries(ORG, "fixture-admin"))
+    const supervisor = await tenant(ORG, () => readAttendanceDeliveries(ORG, "fixture-supervisor-user"))
+    return [...rows.receipts, ...supervisor.receipts].filter((item) => item.scheduleId === id)
+  }
+
+  it("keeps schedules personal with real API idempotency, version conflicts, archival, off gate and forced RLS", async () => {
+    const api = await import("@/app/api/v1/mtm/attendance/deliveries/route")
+    const itemApi = await import("@/app/api/v1/mtm/attendance/deliveries/[id]/route")
+    Object.assign(caller, { orgId: ORG, userId: "fixture-admin", role: "admin" })
+    const body = { requestId: randomUUID(), input: scheduleDraft() }
+    const req = (value: unknown, method = "POST") => new NextRequest("http://localhost/api/v1/mtm/attendance/deliveries", { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(value) })
+    const created = await api.POST(req(body))
+    expect(created.status).toBe(200)
+    const saved = (await created.json()).data
+    expect((await (await api.POST(req(body))).json()).data).toEqual(saved)
+    expect((await api.POST(req({ ...body, input: { ...body.input, name: "Changed retry" } }))).status).toBe(409)
+    const ctx = { params: Promise.resolve({ id: saved.id }) }
+    Object.assign(caller, { userId: "fixture-supervisor-user", role: "manager" })
+    expect((await itemApi.PATCH(req({ version: saved.version, input: body.input }, "PATCH"), ctx)).status).toBe(404)
+    expect((await (await api.GET(new NextRequest("http://localhost/api/v1/mtm/attendance/deliveries"))).json()).data.schedules).toEqual([])
+    expect(await tenant(OTHER, () => prisma.$queryRaw`SELECT "id" FROM "mtm_attendance_schedules" WHERE "id" = ${saved.id}`)).toEqual([])
+    await expect(tenant(OTHER, () => prisma.$executeRaw`INSERT INTO "mtm_attendance_deliveries" ("id", "organizationId", "scheduleId", "scheduleVersion", "recipient", "from", "to") VALUES ('foreign-receipt', ${OTHER}, ${saved.id}, ${new Date()}, 'fixture@example.test', CURRENT_DATE, CURRENT_DATE)`)).rejects.toThrow()
+    Object.assign(caller, { userId: "fixture-admin", role: "admin" })
+    const updated = await itemApi.PATCH(req({ version: saved.version, input: { ...body.input, enabled: false } }, "PATCH"), ctx)
+    expect(updated.status).toBe(200)
+    const changed = (await updated.json()).data
+    expect((await itemApi.DELETE(req({ version: saved.version }, "DELETE"), ctx)).status).toBe(409)
+    expect((await itemApi.DELETE(req({ version: changed.version }, "DELETE"), ctx)).status).toBe(200)
+    expect((await (await api.GET(new NextRequest("http://localhost/api/v1/mtm/attendance/deliveries"))).json()).data.schedules).toEqual([])
+    await tenant(ORG, () => prisma.mtmSetting.updateMany({ where: { organizationId: ORG, key: "attendanceEnabled" }, data: { value: false } }))
+    expect((await api.POST(req({ ...body, requestId: randomUUID() }))).status).toBe(404)
+    expect((await api.GET(new NextRequest("http://localhost/api/v1/mtm/attendance/deliveries"))).status).toBe(404)
+    await tenant(ORG, () => prisma.mtmSetting.updateMany({ where: { organizationId: ORG, key: "attendanceEnabled" }, data: { value: true } }))
+  })
+
+  it("hands off one private, real file per recipient despite concurrent queue and worker retries", async () => {
+    const { deliverAttendanceReceipt } = await import("@/lib/cron/mtm-attendance-delivery-job")
+    const draft = { ...scheduleDraft(), recipients: ["one@example.test", "two@example.test"] }
+    const schedule = await createSchedule("fixture-supervisor-user", draft)
+    const receipts = await queueSchedule(schedule.id)
+    expect(receipts).toHaveLength(2)
+    const attachments: string[] = []
+    mail.send.mockReset().mockImplementation(async (args) => {
+      expect(args).toMatchObject({ transactional: true, allowProviderFallback: false, organizationId: ORG, sentBy: "fixture-supervisor-user" })
+      expect(args.to).toMatch(/^(one|two)@example.test$/)
+      const path = args.attachments[0].path
+      attachments.push(path)
+      const book = new ExcelJS.Workbook()
+      await book.xlsx.load(Uint8Array.from(readFileSync(path)).buffer)
+      const text = JSON.stringify(book.worksheets.map((sheet) => sheet.getSheetValues()))
+      expect(text).toContain("Fixture employee A")
+      expect(text).not.toMatch(/Fixture employee B|Other tenant|PRIVATE_BREAK_MARKER|12\.34567|45\.67891|latitude|longitude/)
+      return { success: true, messageId: `fixture-${args.to}` }
+    })
+    await Promise.all([tenant(ORG, () => deliverAttendanceReceipt(ORG, receipts[0].id)), tenant(ORG, () => deliverAttendanceReceipt(ORG, receipts[0].id))])
+    await tenant(ORG, () => deliverAttendanceReceipt(ORG, receipts[1].id))
+    expect(mail.send).toHaveBeenCalledTimes(2)
+    for (const path of attachments) expect(existsSync(path)).toBe(false)
+    const { readAttendanceDeliveries } = await import("@/lib/mtm/attendance-delivery-store")
+    const saved = await tenant(ORG, () => readAttendanceDeliveries(ORG, "fixture-supervisor-user"))
+    expect(saved.receipts.filter((row) => row.scheduleId === schedule.id).map((row) => row.status)).toEqual(["SENT", "SENT"])
+    expect(await tenant(ORG, () => deliverAttendanceReceipt(ORG, receipts[0].id))).toBe("SKIPPED")
+    expect(mail.send).toHaveBeenCalledTimes(2)
+  })
+
+  it("cancels pending sends after feature, capability, account, visibility or employee access is revoked", async () => {
+    const { deliverAttendanceReceipt } = await import("@/lib/cron/mtm-attendance-delivery-job")
+    const { saveAttendanceDelivery } = await import("@/lib/mtm/attendance-delivery-store")
+    const settings = (enabled: boolean) => tenant(ORG, () => prisma.mtmSetting.updateMany({ where: { organizationId: ORG, key: "attendanceEnabled" }, data: { value: enabled } }))
+    const user = (data: { isActive?: boolean; hiddenModules?: string[] }) => tenant(ORG, () => prisma.user.update({ where: { id: "fixture-supervisor-user" }, data }))
+    const cases = [
+      { revoke: () => settings(false), restore: () => settings(true) },
+      { revoke: async () => { mail.capability = false }, restore: async () => { mail.capability = true } },
+      { revoke: () => user({ isActive: false }), restore: () => user({ isActive: true }) },
+      { revoke: () => user({ hiddenModules: ["mtm"] }), restore: () => user({ hiddenModules: [] }) },
+    ]
+    for (const item of cases) {
+      const schedule = await createSchedule("fixture-supervisor-user")
+      const [receipt] = await queueSchedule(schedule.id)
+      mail.send.mockClear()
+      await item.revoke()
+      try { expect(await tenant(ORG, () => deliverAttendanceReceipt(ORG, receipt.id))).toBe("CANCELLED"); expect(mail.send).not.toHaveBeenCalled() }
+      finally { await item.restore() }
+      await tenant(ORG, () => saveAttendanceDelivery({ organizationId: ORG, userId: "fixture-supervisor-user", timezone: "Asia/Baku", id: schedule.id, remove: true, value: { version: schedule.version } }))
+    }
+    // A saved explicit employee must never become a report for all employees.
+    const outside = await createSchedule("fixture-supervisor-user", { ...scheduleDraft(), config: { ...viewConfig(), filters: { ...viewConfig().filters, employeeId: "employee-b" } } })
+    const [receipt] = await queueSchedule(outside.id)
+    mail.send.mockClear()
+    expect(await tenant(ORG, () => deliverAttendanceReceipt(ORG, receipt.id))).toBe("FAILED")
+    expect(mail.send).not.toHaveBeenCalled()
+  })
+
+  it("rechecks a revoked opt-in after the file was built and cancels stale or changed schedules", async () => {
+    const { deliverAttendanceReceipt } = await import("@/lib/cron/mtm-attendance-delivery-job")
+    const { saveAttendanceDelivery, readAttendanceDeliveries } = await import("@/lib/mtm/attendance-delivery-store")
+    const schedule = await createSchedule()
+    const [receipt] = await queueSchedule(schedule.id)
+    let reads = 0
+    mail.send.mockClear()
+    mail.capabilityHook = async () => {
+      if (++reads === 2) await prisma.mtmSetting.updateMany({ where: { organizationId: ORG, key: "attendanceEnabled" }, data: { value: false } })
+    }
+    try {
+      expect(await tenant(ORG, () => deliverAttendanceReceipt(ORG, receipt.id))).toBe("CANCELLED")
+      expect(reads).toBe(2)
+      expect(mail.send).not.toHaveBeenCalled()
+    } finally {
+      mail.capabilityHook = undefined
+      await tenant(ORG, () => prisma.mtmSetting.updateMany({ where: { organizationId: ORG, key: "attendanceEnabled" }, data: { value: true } }))
+    }
+    const changed = await createSchedule()
+    const [old] = await queueSchedule(changed.id)
+    await tenant(ORG, () => saveAttendanceDelivery({ organizationId: ORG, userId: "fixture-admin", timezone: "Asia/Baku", id: changed.id, value: { version: changed.version, input: { ...scheduleDraft(), recipients: ["replacement@example.test"] } } }))
+    expect(await tenant(ORG, () => deliverAttendanceReceipt(ORG, old.id))).toBe("SKIPPED")
+    const history = await tenant(ORG, () => readAttendanceDeliveries(ORG, "fixture-admin"))
+    expect(history.receipts.find((item) => item.id === old.id)).toMatchObject({ status: "CANCELLED", errorCode: "SCHEDULE_CHANGED" })
+    const stale = await createSchedule()
+    const [older] = await queueSchedule(stale.id)
+    await tenant(ORG, () => prisma.$executeRaw`UPDATE "mtm_attendance_deliveries" SET "from" = "from" - 1, "to" = "to" - 1 WHERE "organizationId" = ${ORG} AND "id" = ${older.id}`)
+    expect(await tenant(ORG, () => deliverAttendanceReceipt(ORG, older.id))).toBe("CANCELLED")
+    expect(mail.send).not.toHaveBeenCalled()
+  })
+
+  it("records ambiguous handoffs and abandoned claims as UNKNOWN and never retries them", async () => {
+    const { deliverAttendanceReceipt, executeMtmAttendanceDeliveryJob } = await import("@/lib/cron/mtm-attendance-delivery-job")
+    const { readAttendanceDeliveries } = await import("@/lib/mtm/attendance-delivery-store")
+    const schedule = await createSchedule()
+    const [receipt] = await queueSchedule(schedule.id)
+    mail.send.mockReset().mockRejectedValue(new Error("simulated response lost after provider acceptance"))
+    expect(await tenant(ORG, () => deliverAttendanceReceipt(ORG, receipt.id))).toBe("UNKNOWN")
+    expect(await tenant(ORG, () => deliverAttendanceReceipt(ORG, receipt.id))).toBe("SKIPPED")
+    expect(mail.send).toHaveBeenCalledTimes(1)
+    const abandoned = await createSchedule()
+    const [crash] = await queueSchedule(abandoned.id)
+    await tenant(ORG, () => prisma.$executeRaw`UPDATE "mtm_attendance_deliveries" SET "status" = 'SENDING', "claimedAt" = ${new Date(Date.now() - 7_200_000)} WHERE "organizationId" = ${ORG} AND "id" = ${crash.id}`)
+    await bypass(() => executeMtmAttendanceDeliveryJob())
+    const history = await tenant(ORG, () => readAttendanceDeliveries(ORG, "fixture-admin"))
+    expect(history.receipts.find((item) => item.id === crash.id)).toMatchObject({ status: "UNKNOWN", errorCode: "WORKER_INTERRUPTED" })
+    expect(await tenant(ORG, () => deliverAttendanceReceipt(ORG, crash.id))).toBe("SKIPPED")
+    expect(mail.send).toHaveBeenCalledTimes(1)
   })
 
 })
