@@ -30,7 +30,7 @@ export async function saveAttendanceRiskPolicy(reviewer: AttendanceReviewer, cha
       throw new AttendanceRequestError("MTM_ATTENDANCE_RISK_POLICY_INVALID", 400)
     }
   }
-  return prisma.$transaction(async tx => {
+  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await lockAttendanceRiskPolicy(tx, reviewer.organizationId, true)
     const [user] = await tx.$queryRaw<{ role: string; hiddenModules: string[] }[]>`SELECT role,"hiddenModules" FROM users
       WHERE "organizationId"=${reviewer.organizationId} AND id=${reviewer.userId} AND "isActive" AND "anonymizedAt" IS NULL FOR SHARE`

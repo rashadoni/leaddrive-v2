@@ -16,7 +16,7 @@ beforeEach(()=>{
  vi.mocked(prisma.$queryRaw).mockResolvedValue([user])
  vi.mocked(resolveMtmRouteActor).mockResolvedValue({role:"MANAGER",agentId:null,scopedAgentIds:[input.agentId]})
  vi.mocked(prisma.notification.createMany).mockResolvedValue({count:1})
- vi.mocked(prisma.notification.findFirst).mockImplementation((async({where})=>({...where})) as never)
+ vi.mocked(prisma.notification.findFirst).mockImplementation((async({where}:{where:{id:string}})=>({...where})) as never)
 })
 describe("risk bell delivery scope",()=>{
  it("commits one generic idempotent private preview and respects explicit opt-out",async()=>{
