@@ -494,6 +494,12 @@ export const GET = withMobileRls(async (req, auth) => {
             ...agentPermissionStates(settings),
             ...(settings.attendanceEnabled ? { attendanceRequests: attendanceSelf, attendanceWorkday: attendanceSelf } : {}),
           },
+          // This server lets an employee return to the workday they closed
+          // earlier today (POST …/route-field/workday-return). Not a switch —
+          // the owner removed the restriction for everyone on 2026-10-13 — but
+          // the app shows the button only where the server says it can answer:
+          // against a server from before this key the tap would be a 404.
+          workdayReturn: true,
           // The organization's check-in zone, as check-in enforces it. The app
           // checked a hard-coded 100 m before sending and turned agents back at
           // 150 m when the zone was 250 m (Redmi Pad SE, 2026-09-15). A

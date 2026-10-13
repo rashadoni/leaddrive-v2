@@ -11300,6 +11300,8 @@
     "permGroup_team": "Komanda, göstəricilər, sorğular",
     "perm_workdayOwn": "Öz iş gününü başlamaq və bitirmək",
     "perm_workdayOwn_hint": "Yalnız agent özü. Rəhbər günü onun əvəzinə bağlaya bilməz.",
+    "perm_workdayReturn": "Bu gün bağladığı iş gününə qayıtmaq",
+    "perm_workdayReturn_hint": "Agent özü, yalnız həmin gün. Bağlanma ilə qayıdış arasındakı vaxt iş vaxtı sayılmır; dünənki gün vaxtın düzəlişi sorğusu ilə dəyişir.",
     "perm_locationShare": "İş günü ərzində öz məkanını ötürmək",
     "perm_locationShare_hint": "Bunsuz marşrutu və vizitləri təsdiqləmək mümkün deyil, ona görə söndürülmür.",
     "perm_locationHistoryOwn": "Keçdiyi yolu görmək",
