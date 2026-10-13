@@ -154,6 +154,21 @@ describe("Records rebuilt from identity alone", () => {
     const declined = rebuildRecordsAtState(identity, "CALL_DECLINED", NOW, DEMO_JOURNEY_HAPPY_PATH)
     expect(declined.lead?.timeline.some((entry) => entry.id === "tl-call")).toBe(true)
   })
+
+  it("stops at the call for a prospect who is still on it — nothing after the call exists yet", () => {
+    // These states match no step of the happy path, and the rebuild used to
+    // run to the very end: Da Vinci was handed a won deal and an accepted
+    // quote to describe to someone whose phone was still ringing.
+    for (const state of ["CALL_QUEUED", "CALLING", "CALL_RESULT_RECORDED", "CALL_DECLINED"] as const) {
+      const records = rebuildRecordsAtState(identity, state, NOW, DEMO_JOURNEY_HAPPY_PATH)
+      expect(records.lead?.status, state).toBe("qualified")
+      expect(records.task, state).toBeNull()
+      expect(records.deal, state).toBeNull()
+      expect(records.quote, state).toBeNull()
+    }
+    // While it rings there is no outcome on the card yet.
+    expect(rebuildRecordsAtState(identity, "CALLING", NOW, DEMO_JOURNEY_HAPPY_PATH).lead?.timeline.some((entry) => entry.id === "tl-call")).toBe(false)
+  })
 })
 
 describe("Access-trail event types", () => {

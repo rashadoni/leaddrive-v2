@@ -1,3 +1,4 @@
+import { attendanceAccountingRows } from "@/lib/mtm/attendance-shift-plan"
 import { readAttendanceShiftAssignments } from "@/lib/mtm/attendance-shift-store"
 import { addDateKeyDays } from "@/lib/mtm/mobile-week"
 import type { AttendanceEmploymentEvent } from "@/lib/mtm/attendance-employment"
@@ -91,7 +92,7 @@ export async function readAttendanceProjectionInTransaction(tx: Prisma.Transacti
       readAttendanceRules(organizationId, tx),
       readAttendanceDayKinds(organizationId, tx),
     ])
-    const approved = await tx.mtmHrmRequest.findMany({ where: { organizationId, agentId: { in: agentIds }, status: "APPROVED", attendanceDetails: { not: Prisma.DbNull }, startDate: { lte: to }, endDate: { gte: readFrom } },
+    const approved = await tx.mtmHrmRequest.findMany({ where: { organizationId, agentId: { in: agentIds }, status: "APPROVED", attendanceDetails: { not: Prisma.DbNull }, startDate: { lte: calendarTo }, endDate: { gte: readFrom } },
       select: { id: true, agentId: true, startDate: true, endDate: true, decidedAt: true, attendanceDetails: true }, take: 10_001 })
     if (approved.length > 10_000) throw new Error("MTM_ATTENDANCE_APPROVED_REQUESTS_TOO_LARGE")
     const approvedRequests: AttendanceApprovedPeriod[] = approved.map((entry) => {
@@ -122,9 +123,8 @@ export async function readAttendanceProjectionInTransaction(tx: Prisma.Transacti
     const locationEvidence = await readAttendanceLocationReportEvidence(tx, organizationId, workdays.map(day => day.id))
     const rows = filterMtmAttendanceRows(report.rows, { form: query.form }).map(row => ({ ...row, locationMarks: attendanceReportMarks(row, locationEvidence) }))
     const supplemental = shiftAssignments.length ? buildMtmAttendanceReport({ ...calculationInput, from: precedingDate, to: precedingDate }).rows : []
-    const accountingRows = shiftAssignments.length ? [...supplemental, ...report.rows]
-      .map(row => ({ ...row, sourceDate: row.date, date: row.accountingDate ?? row.date, locationMarks: attendanceReportMarks(row, locationEvidence) }))
-      .filter(row => row.date >= query.from && row.date <= query.to) : undefined
+    const accountingRows = shiftAssignments.length ? attendanceAccountingRows([...supplemental, ...report.rows], query.from, query.to)
+      .map(row => ({ ...row, locationMarks: attendanceReportMarks(row, locationEvidence) })) : undefined
     if (accountingRows && accountingRows.length > MTM_ATTENDANCE_REPORT_MAX_ROWS) throw new Error("MTM_ATTENDANCE_REPORT_TOO_LARGE")
     const result = { ...report, rows, ...(accountingRows ? { accountingRows: filterMtmAttendanceRows(accountingRows, { form: query.form }) } : {}), totals: summarizeMtmAttendanceRows(rows), form: query.form }
     const id = createHash("sha256").update(JSON.stringify({ query, report: result })).digest("hex")

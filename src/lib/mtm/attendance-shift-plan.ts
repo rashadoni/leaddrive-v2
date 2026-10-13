@@ -1,3 +1,4 @@
+import type { MtmAttendanceReportRow } from "@/lib/mtm/attendance-report"
 import { minutesOfDay } from "@/lib/mtm/attendance-rules"
 import { addDateKeyDays } from "@/lib/mtm/mobile-week"
 import { AttendanceShiftValueSchema, type AttendanceShiftAssignment } from "@/lib/mtm/attendance-shift-contract"
@@ -26,4 +27,12 @@ export function attendanceShiftForDate(assignments: readonly AttendanceShiftAssi
   const endOffset = Math.floor((minutesOfDay(clock.endTime) + (clock.nextDay ? 1440 : 0) - shorteningMinutes) / 1440)
   return { id: plan.id, timezone: value.timezone, ...clock, working: day.kind === "WORK", accountingDate: value.attribution === "END_DAY" && clock.nextDay && (day.kind === "WORK" || (effective.overrideId !== null && effective.isWorkingDay)) ? addDateKeyDays(date, endOffset) : date,
     shorteningMinutes, overtimeThresholdMinutes: value.overtimeThresholdMinutes }
+}
+
+/** Monthly attribution moves a work slot, never an unrelated holiday or leave.
+ * Callers include the preceding civil day to retain incoming night shifts. */
+export function attendanceAccountingRows(rows: readonly MtmAttendanceReportRow[], from: string, to: string): MtmAttendanceReportRow[] {
+  return rows.map(row => ({ ...row, sourceDate: row.date,
+    date: row.workdayId || ["ABSENT", "UPCOMING", "INVALID_FACTS"].includes(row.kind) ? row.accountingDate ?? row.date : row.date,
+  })).filter(row => row.date >= from && row.date <= to)
 }
