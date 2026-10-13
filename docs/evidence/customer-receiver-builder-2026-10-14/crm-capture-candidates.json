@@ -1,0 +1,449 @@
+{
+  "source_sha": "552f2a1d48458132a3a999763b9723fb5147b9cd",
+  "scope": "lexical_candidates_only_not_runtime_coverage",
+  "directories": [
+    "src/app/api",
+    "src/lib"
+  ],
+  "matched_files": 41,
+  "matched_calls": 72,
+  "limitations": [
+    "Dynamic model dispatch, raw SQL, nested writes, scripts and external DB writers are not proven covered.",
+    "Unrelated source fields may cause matches; inspect the approved field diff before emitting an integration event.",
+    "This inventory does not activate or capture CRM mutations."
+  ],
+  "entries": [
+    {
+      "path": "src/lib/account-engagement/sql-handoff.ts",
+      "line": 112,
+      "entity": "deal",
+      "operation": "create"
+    },
+    {
+      "path": "src/lib/crm-commands/lead/convert-lead-to-deal.ts",
+      "line": 243,
+      "entity": "company",
+      "operation": "create"
+    },
+    {
+      "path": "src/lib/crm-commands/lead/convert-lead-to-deal.ts",
+      "line": 261,
+      "entity": "contact",
+      "operation": "create"
+    },
+    {
+      "path": "src/lib/crm-commands/lead/convert-lead-to-deal.ts",
+      "line": 272,
+      "entity": "contact",
+      "operation": "update"
+    },
+    {
+      "path": "src/lib/crm-commands/lead/convert-lead-to-deal.ts",
+      "line": 278,
+      "entity": "deal",
+      "operation": "create"
+    },
+    {
+      "path": "src/lib/crm-commands/deal/update-deal.ts",
+      "line": 278,
+      "entity": "deal",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/lib/crm-commands/deal/create-deal.ts",
+      "line": 154,
+      "entity": "deal",
+      "operation": "create"
+    },
+    {
+      "path": "src/lib/web-chat-contact.ts",
+      "line": 42,
+      "entity": "contact",
+      "operation": "create"
+    },
+    {
+      "path": "src/lib/user-work-handover.ts",
+      "line": 78,
+      "entity": "deal",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/lib/campaigns/send-campaign.ts",
+      "line": 355,
+      "entity": "contact",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/lib/contact-events.ts",
+      "line": 47,
+      "entity": "contact",
+      "operation": "update"
+    },
+    {
+      "path": "src/lib/contact-events.ts",
+      "line": 107,
+      "entity": "contact",
+      "operation": "update"
+    },
+    {
+      "path": "src/lib/ai/advisor/execution.ts",
+      "line": 481,
+      "entity": "deal",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/lib/ai/tool-executor.ts",
+      "line": 139,
+      "entity": "deal",
+      "operation": "update"
+    },
+    {
+      "path": "src/lib/ai/tool-executor.ts",
+      "line": 221,
+      "entity": "deal",
+      "operation": "create"
+    },
+    {
+      "path": "src/lib/ai/tool-executor.ts",
+      "line": 276,
+      "entity": "contact",
+      "operation": "update"
+    },
+    {
+      "path": "src/lib/inbox/send-conversation-reply.ts",
+      "line": 399,
+      "entity": "contact",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/lib/inbox/send-conversation-reply.ts",
+      "line": 475,
+      "entity": "contact",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/lib/inbox/send-conversation-reply.ts",
+      "line": 595,
+      "entity": "contact",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/lib/inbox/chatwoot-inbound.ts",
+      "line": 630,
+      "entity": "contact",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/lib/inbox/conversation-actions.ts",
+      "line": 440,
+      "entity": "contact",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/lib/journey-engine.ts",
+      "line": 822,
+      "entity": "contact",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/app/api/v1/portal-users/route.ts",
+      "line": 232,
+      "entity": "contact",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/app/api/v1/portal-users/route.ts",
+      "line": 285,
+      "entity": "contact",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/app/api/v1/portal-users/route.ts",
+      "line": 318,
+      "entity": "contact",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/app/api/v1/portal-users/route.ts",
+      "line": 351,
+      "entity": "contact",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/app/api/v1/portal-users/route.ts",
+      "line": 384,
+      "entity": "contact",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/app/api/v1/code-modules/[id]/execute/route.ts",
+      "line": 57,
+      "entity": "deal",
+      "operation": "create"
+    },
+    {
+      "path": "src/app/api/v1/code-modules/[id]/execute/route.ts",
+      "line": 91,
+      "entity": "deal",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/app/api/v1/code-modules/[id]/execute/route.ts",
+      "line": 147,
+      "entity": "contact",
+      "operation": "create"
+    },
+    {
+      "path": "src/app/api/v1/code-modules/[id]/execute/route.ts",
+      "line": 164,
+      "entity": "contact",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/lib/portal-password-link.ts",
+      "line": 86,
+      "entity": "contact",
+      "operation": "update"
+    },
+    {
+      "path": "src/lib/portal-password-link.ts",
+      "line": 156,
+      "entity": "contact",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/app/api/v1/contacts/bulk/route.ts",
+      "line": 72,
+      "entity": "contact",
+      "operation": "deleteMany"
+    },
+    {
+      "path": "src/app/api/v1/contacts/bulk/route.ts",
+      "line": 85,
+      "entity": "contact",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/app/api/v1/contacts/bulk/route.ts",
+      "line": 97,
+      "entity": "contact",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/app/api/v1/contacts/bulk/route.ts",
+      "line": 110,
+      "entity": "contact",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/lib/workflow-engine.ts",
+      "line": 26,
+      "entity": "deal",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/app/api/v1/contacts/route.ts",
+      "line": 105,
+      "entity": "contact",
+      "operation": "create"
+    },
+    {
+      "path": "src/app/api/v1/contacts/bulk-delete/route.ts",
+      "line": 32,
+      "entity": "contact",
+      "operation": "deleteMany"
+    },
+    {
+      "path": "src/app/api/v1/contacts/[id]/route.ts",
+      "line": 67,
+      "entity": "contact",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/app/api/v1/contacts/[id]/route.ts",
+      "line": 96,
+      "entity": "contact",
+      "operation": "deleteMany"
+    },
+    {
+      "path": "src/app/api/v1/public/email-inbound/route.ts",
+      "line": 488,
+      "entity": "contact",
+      "operation": "create"
+    },
+    {
+      "path": "src/app/api/v1/webhooks/telegram/route.ts",
+      "line": 215,
+      "entity": "contact",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/app/api/v1/webhooks/chatwoot/route.ts",
+      "line": 328,
+      "entity": "contact",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/app/api/v1/webhooks/chatwoot/route.ts",
+      "line": 447,
+      "entity": "contact",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/app/api/v1/webhooks/whatsapp/route.ts",
+      "line": 1180,
+      "entity": "contact",
+      "operation": "create"
+    },
+    {
+      "path": "src/app/api/v1/webhooks/whatsapp/route.ts",
+      "line": 1269,
+      "entity": "contact",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/app/api/v1/public/portal-auth/route.ts",
+      "line": 155,
+      "entity": "contact",
+      "operation": "update"
+    },
+    {
+      "path": "src/app/api/v1/public/portal-auth/register/route.ts",
+      "line": 177,
+      "entity": "contact",
+      "operation": "update"
+    },
+    {
+      "path": "src/app/api/v1/public/portal-auth/register/route.ts",
+      "line": 258,
+      "entity": "contact",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/app/api/v1/public/portal-auth/set-password/route.ts",
+      "line": 123,
+      "entity": "contact",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/app/api/cron/engagement-decay/route.ts",
+      "line": 93,
+      "entity": "contact",
+      "operation": "update"
+    },
+    {
+      "path": "src/app/api/v1/public/portal-push-register/route.ts",
+      "line": 45,
+      "entity": "contact",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/app/api/v1/public/portal-push-register/route.ts",
+      "line": 69,
+      "entity": "contact",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/app/api/v1/deals/bulk/route.ts",
+      "line": 91,
+      "entity": "deal",
+      "operation": "deleteMany"
+    },
+    {
+      "path": "src/app/api/v1/deals/[id]/products/route.ts",
+      "line": 82,
+      "entity": "deal",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/app/api/v1/deals/[id]/products/route.ts",
+      "line": 106,
+      "entity": "deal",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/app/api/v1/deals/[id]/route.ts",
+      "line": 125,
+      "entity": "deal",
+      "operation": "deleteMany"
+    },
+    {
+      "path": "src/app/api/cron/ai-auto-actions/route.ts",
+      "line": 1356,
+      "entity": "deal",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/app/api/cron/ai-auto-actions/route.ts",
+      "line": 1369,
+      "entity": "contact",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/app/api/cron/ai-auto-actions/route.ts",
+      "line": 1388,
+      "entity": "deal",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/app/api/cron/ai-auto-actions/route.ts",
+      "line": 1518,
+      "entity": "deal",
+      "operation": "create"
+    },
+    {
+      "path": "src/app/api/v1/complaints/import-xlsx/route.ts",
+      "line": 195,
+      "entity": "contact",
+      "operation": "create"
+    },
+    {
+      "path": "src/app/api/v1/complaints/route.ts",
+      "line": 147,
+      "entity": "contact",
+      "operation": "create"
+    },
+    {
+      "path": "src/app/api/v1/inbox/conversations/[id]/delivery-reconciliation/route.ts",
+      "line": 117,
+      "entity": "contact",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/app/api/v1/companies/bulk/route.ts",
+      "line": 60,
+      "entity": "company",
+      "operation": "deleteMany"
+    },
+    {
+      "path": "src/app/api/v1/companies/bulk/route.ts",
+      "line": 73,
+      "entity": "company",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/app/api/v1/companies/bulk/route.ts",
+      "line": 85,
+      "entity": "company",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/app/api/v1/companies/route.ts",
+      "line": 97,
+      "entity": "company",
+      "operation": "create"
+    },
+    {
+      "path": "src/app/api/v1/companies/[id]/route.ts",
+      "line": 72,
+      "entity": "company",
+      "operation": "updateMany"
+    },
+    {
+      "path": "src/app/api/v1/companies/[id]/route.ts",
+      "line": 95,
+      "entity": "company",
+      "operation": "deleteMany"
+    }
+  ]
+}
