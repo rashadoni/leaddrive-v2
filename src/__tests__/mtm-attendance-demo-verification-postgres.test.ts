@@ -205,6 +205,10 @@ suite("attendance demo fixture with real PostgreSQL guards", () => {
     await expect(readPhone(db)).rejects.toThrow("PHONE_FIXTURE_CHANGED")
     await admin.organization.update({ where: { id: PHONE.id }, data: { isActive: true } })
     expect(await readPhone(db)).toEqual(snapshot)
+    await admin.mtmAgent.updateMany({ where: { organizationId: PHONE.id, userId: PHONE_USERS[1].id }, data: { attendanceParticipant: false } })
+    await expect(readPhone(db)).rejects.toThrow("PHONE_FIXTURE_CHANGED")
+    await admin.mtmAgent.updateMany({ where: { organizationId: PHONE.id, userId: PHONE_USERS[1].id }, data: { attendanceParticipant: true } })
+    expect(await readPhone(db)).toEqual(snapshot)
   })
 
 })

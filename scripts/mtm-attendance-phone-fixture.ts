@@ -66,10 +66,11 @@ export async function readPhone(db: Db) {
     const users = await tx.user.findMany({ where: { organizationId: PHONE.id }, select: { id: true, email: true, role: true, isActive: true, passwordHash: true }, take: 4 })
     if (users.length !== PHONE_USERS.length || users.some(user => !PHONE_USERS.some(expected => expected.id === user.id
       && expected.email === user.email && expected.role === user.role) || !user.isActive)) fail("PHONE_FIXTURE_CHANGED")
-    const agents = await tx.mtmAgent.findMany({ where: { organizationId: PHONE.id }, select: { userId: true, role: true, status: true, attendanceExcluded: true }, take: 4 })
+    const agents = await tx.mtmAgent.findMany({ where: { organizationId: PHONE.id }, select: { userId: true, role: true, status: true, attendanceExcluded: true, attendanceParticipant: true }, take: 4 })
     if (agents.length !== 3 || new Set(agents.map(agent => agent.userId)).size !== 3 || agents.some(agent =>
       !PHONE_USERS.some(user => user.id === agent.userId) || agent.status !== "ACTIVE" || agent.attendanceExcluded
-      || agent.role !== (agent.userId === PHONE_USERS[2].id ? "AGENT" : "EMPLOYEE"))) fail("PHONE_FIXTURE_CHANGED")
+      || agent.role !== (agent.userId === PHONE_USERS[2].id ? "AGENT" : "EMPLOYEE")
+      || (agent.role === "EMPLOYEE" && !agent.attendanceParticipant))) fail("PHONE_FIXTURE_CHANGED")
     const setting = await tx.mtmSetting.findUnique({ where: { organizationId_key: { organizationId: PHONE.id, key: "attendanceEnabled" } } })
     if (setting?.value !== true) fail("PHONE_FIXTURE_CHANGED")
     if (await tx.mtmAttendanceLocationPolicy.count({ where: { organizationId: PHONE.id, enabled: true } })
