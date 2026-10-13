@@ -11,6 +11,7 @@ import { attendanceRequestDto, attendanceRequestSelect } from "@/lib/mtm/attenda
 export const AttendanceReviewQuerySchema = z.object({
   status: z.enum(["PENDING", "APPROVED", "REJECTED", "CANCELLED", "ALL"]).default("PENDING"),
   cursor: z.string().uuid().optional(),
+  requestId: z.string().uuid().optional(),
 }).strict()
 export type AttendanceReviewItem = AttendanceRequestDto & { employeeName: string; teamName: string | null; reviewerName: string | null; cancellation?: AttendanceRevocation }
 
@@ -34,13 +35,13 @@ export async function listAttendanceRequestsForReview(reviewer: AttendanceReview
   if (!parsed.success) throw new AttendanceRequestError("MTM_ATTENDANCE_REQUEST_INVALID", 400)
   return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const actor = await resolveAttendanceReviewerScope(tx, reviewer)
-    const { status, cursor } = parsed.data
+    const { status, cursor, requestId } = parsed.data
     const scope = attendanceReviewWhere(reviewer.organizationId, reviewer.userId, actor, status !== "PENDING")
     const where = { ...scope, ...(status === "ALL" ? { AND: [...(Array.isArray(scope.AND) ? scope.AND : []), { OR: [{ status: { not: "PENDING" as const } }, { agent: { is: { status: "ACTIVE" as const } } }] }] } : { status }) }
     const before = cursor ? await tx.mtmHrmRequest.findFirst({ where: { ...where, id: cursor }, select: { submittedAt: true } }) : null
     if (cursor && !before) throw new AttendanceRequestError("MTM_ATTENDANCE_REQUEST_CHANGED")
     const rows = await tx.mtmHrmRequest.findMany({
-      where: { ...where, ...(before ? { OR: [{ submittedAt: { lt: before.submittedAt } }, { submittedAt: before.submittedAt, id: { lt: cursor! } }] } : {}) },
+      where: { ...where, ...(requestId ? { id: requestId } : {}), ...(before ? { OR: [{ submittedAt: { lt: before.submittedAt } }, { submittedAt: before.submittedAt, id: { lt: cursor! } }] } : {}) },
       orderBy: [{ submittedAt: "desc" }, { id: "desc" }], take: 51,
       select: { ...attendanceRequestSelect, agent: { select: { name: true, team: { select: { name: true } } } }, decidedByUserId: true },
     })

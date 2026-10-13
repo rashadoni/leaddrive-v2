@@ -141,6 +141,9 @@ export async function returnOwnMtmWorkday(context: {
         return { kind: "success" as const, workday: before, idempotent: true }
       }
 
+      const closedMonth = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM mtm_attendance_month_days WHERE "organizationId"=${organizationId} AND "agentId"=${agentId} AND "sourceDate"=${workday.workDate}::date LIMIT 1`
+      if (closedMonth.length) throw refuse(MTM_WORKDAY_RETURN_CONFLICT.LOCKED, before)
+
       await enforceAttendanceInstallationApproval(tx, { organizationId, agentId }, context.installationId)
 
       const stateConflict = workforceWorkdayReopenStateConflict(before, today)

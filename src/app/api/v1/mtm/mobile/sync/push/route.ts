@@ -1,3 +1,4 @@
+import { isAttendanceMonthClosedWrite } from "@/lib/mtm/attendance-month-guard"
 import { recordAttendanceQr, readAttendanceQrReceipt } from "@/lib/mtm/attendance-qr-store"
 import { enforceAttendanceInstallationApproval } from "@/lib/mtm/attendance-installation-policy"
 import { requireAttendanceSelf, lockAttendanceRequests } from "@/lib/mtm/attendance-self-access"
@@ -3162,6 +3163,10 @@ export const POST = withMobileRls(async (req, auth) => {
       known.set(operationId, stored)
       results.push(replayOf(operationId, stored))
     } catch (e: unknown) {
+      if (isAttendanceMonthClosedWrite(e)) {
+        results.push({ operationId, status: "conflict", error: "MTM_ATTENDANCE_MONTH_CLOSED", serverData: { code: "MTM_ATTENDANCE_MONTH_CLOSED", committed: false } })
+        continue
+      }
       if (e instanceof AttendanceRequestError) {
         if (["MTM_ATTENDANCE_LOCATION_OUTSIDE_REJECTED", "MTM_ATTENDANCE_LOCATION_MOCK_REJECTED", "MTM_ATTENDANCE_INSTALLATION_APP_REQUIRED", "MTM_ATTENDANCE_INSTALLATION_APPROVAL_REQUIRED"].includes(e.code)) {
           // The canonical transaction has rolled back. Surface a resolvable

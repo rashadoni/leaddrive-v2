@@ -1,0 +1,5 @@
+import { withMtmAttendanceAuth } from "@/lib/mtm/with-attendance-auth"
+import { attendanceRequestFailure, attendanceRequestResponse } from "@/lib/mtm/attendance-request-http"
+import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
+import { previewAttendanceMonth } from "@/lib/mtm/attendance-month-store"
+export const POST=withMtmAttendanceAuth("write",async(req,auth)=>{try{const locale=req.nextUrl.searchParams.get("locale")??"az";if(!["az","ru","en"].includes(locale))throw new AttendanceRequestError("MTM_ATTENDANCE_MONTH_INVALID",400);const text=await req.text();if(Buffer.byteLength(text,"utf8")>32768)throw new AttendanceRequestError("MTM_ATTENDANCE_MONTH_INVALID",413);let body:unknown;try{body=JSON.parse(text)}catch{throw new AttendanceRequestError("MTM_ATTENDANCE_MONTH_INVALID",400)}return attendanceRequestResponse(await previewAttendanceMonth({organizationId:auth.orgId,userId:auth.userId,principalType:auth.principalType??"api_key"},body,locale as "az"|"ru"|"en"))}catch(error){return attendanceRequestFailure(error)}})

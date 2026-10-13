@@ -1,0 +1,6 @@
+import { withMtmAttendanceAuth } from "@/lib/mtm/with-attendance-auth"
+import { attendanceRequestFailure, attendanceRequestResponse } from "@/lib/mtm/attendance-request-http"
+import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
+import { closeAttendanceMonth, readAttendanceMonthDirectory } from "@/lib/mtm/attendance-month-store"
+export const GET=withMtmAttendanceAuth("read",async(req,auth)=>{try{return attendanceRequestResponse(await readAttendanceMonthDirectory({organizationId:auth.orgId,userId:auth.userId,principalType:auth.principalType??"api_key"},Object.fromEntries(req.nextUrl.searchParams)))}catch(error){return attendanceRequestFailure(error)}})
+export const POST=withMtmAttendanceAuth("write",async(req,auth)=>{try{const text=await req.text();if(Buffer.byteLength(text,"utf8")>32768)throw new AttendanceRequestError("MTM_ATTENDANCE_MONTH_INVALID",413);let body:unknown;try{body=JSON.parse(text)}catch{throw new AttendanceRequestError("MTM_ATTENDANCE_MONTH_INVALID",400)}return attendanceRequestResponse(await closeAttendanceMonth({organizationId:auth.orgId,userId:auth.userId,principalType:auth.principalType??"api_key"},body))}catch(error){return attendanceRequestFailure(error)}})
