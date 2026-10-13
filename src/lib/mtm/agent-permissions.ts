@@ -29,6 +29,7 @@ export type AgentPermissionSurface = "app" | "web"
 /** Tenant MTM settings that are agent permissions. All are booleans. */
 export const AGENT_PERMISSION_SETTING_KEYS = [
   "attendanceEnabled",
+  "attendanceBranchQrEnabled",
   "teamScheduleVisibilityEnabled",
   "taskSelfCreate",
   "taskSelfRecurring",
@@ -52,6 +53,7 @@ export type AgentPermissionSettings = Record<AgentPermissionSettingKey, boolean>
  */
 export const AGENT_PERMISSION_ADMIN_ONLY_KEYS = [
   "attendanceEnabled",
+  "attendanceBranchQrEnabled",
   "agentContactCreateRequests",
   "agentContactChangeRequests",
   "agentCustomerCreateRequests",
@@ -83,6 +85,7 @@ export const AGENT_PERMISSION_ROWS = [
   // The same whole-feature switch; no second permission level to configure.
   { id: "attendanceWorkday", group: "workday", kind: "switch", setting: "attendanceEnabled", surfaces: ["app"] },
   { id: "attendanceLocation", group: "workday", kind: "switch", setting: "attendanceEnabled", surfaces: ["app"] },
+  { id: "attendanceBranchQr", group: "workday", kind: "switch", setting: "attendanceBranchQrEnabled", requires: "attendanceEnabled", surfaces: ["app"] },
   { id: "attendanceInstallation", group: "workday", kind: "switch", setting: "attendanceEnabled", surfaces: ["app"] },
   { id: "attendanceRequests", group: "workday", kind: "switch", setting: "attendanceEnabled", surfaces: ["app"] },
   { id: "locationShare", group: "workday", kind: "always" },
@@ -187,10 +190,10 @@ export function agentPermissionEnabled(settings: Partial<AgentPermissionSettings
 }
 
 /** Every switch at once — what the field app receives in its bootstrap. */
-export type AgentPermissionStates = Record<Exclude<AgentSwitchId, "attendanceRequests" | "attendanceWorkday" | "attendanceLocation" | "attendanceInstallation">, boolean> & { attendanceRequests?: true; attendanceWorkday?: true; attendanceLocation?: true; attendanceInstallation?: true }
+export type AgentPermissionStates = Record<Exclude<AgentSwitchId, "attendanceRequests" | "attendanceWorkday" | "attendanceLocation" | "attendanceInstallation" | "attendanceBranchQr">, boolean> & { attendanceRequests?: true; attendanceWorkday?: true; attendanceLocation?: true; attendanceInstallation?: true; attendanceBranchQr?: true }
 export function agentPermissionStates(settings: Partial<AgentPermissionSettings>): AgentPermissionStates {
   return Object.fromEntries(
-    AGENT_SWITCH_ROWS.filter((row) => !["attendanceRequests", "attendanceWorkday", "attendanceLocation", "attendanceInstallation"].includes(row.id) || settings.attendanceEnabled === true)
+    AGENT_SWITCH_ROWS.filter((row) => row.id !== "attendanceBranchQr" || (settings.attendanceEnabled === true && settings.attendanceBranchQrEnabled === true)).filter((row) => !["attendanceRequests", "attendanceWorkday", "attendanceLocation", "attendanceInstallation"].includes(row.id) || settings.attendanceEnabled === true)
       .map((row) => [row.id, agentPermissionEnabled(settings, row.id)]),
   ) as AgentPermissionStates
 }

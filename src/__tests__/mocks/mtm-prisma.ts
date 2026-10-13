@@ -207,6 +207,7 @@ export interface MtmPrismaMock {
   mtmAttendanceStreamIntegrity: ModelMock
   mtmAttendanceRiskCase: ModelMock
   mtmAttendanceRiskDecision: ModelMock
+  mtmAttendanceQrEvidence: ModelMock
   mtmAttendanceMarkEvidence: ModelMock
   mtmAttendanceAttachment: ModelMock
   mtmSetting: ModelMock
@@ -409,6 +410,7 @@ export function makeMtmPrismaMock(): MtmPrismaMock {
     mtmAttendanceStreamIntegrity: makeModel(),
     mtmAttendanceRiskCase: makeModel(),
     mtmAttendanceRiskDecision: makeModel(),
+    mtmAttendanceQrEvidence: makeModel(),
     mtmAttendanceMarkEvidence: makeModel(),
     mtmAttendanceAttachment: makeModel(),
     mtmSetting: makeModel(),

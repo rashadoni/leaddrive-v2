@@ -38,9 +38,12 @@ export async function saveAttendanceInstallationRule(reviewer: AttendanceReviewe
  * A legacy mark without evidence cannot bypass an explicitly enabled rule.
  * Accepted operation replays return before this hook and remain unchanged. */
 export async function enforceAttendanceInstallationApproval(tx: Prisma.TransactionClient, scope: { organizationId: string; agentId: string }, rawInstallation: unknown) {
-  await lockAttendanceRequests(tx, scope)
   const feature = await tx.mtmSetting.findUnique({ where: { organizationId_key: { organizationId: scope.organizationId, key: "attendanceEnabled" } }, select: { value: true } })
   if (feature?.value !== true) return
+  await lockAttendanceRequests(tx, scope)
+  // Re-read after the shared feature lock: a concurrent disable wins.
+  const current = await tx.mtmSetting.findUnique({ where: { organizationId_key: { organizationId: scope.organizationId, key: "attendanceEnabled" } }, select: { value: true } })
+  if (current?.value !== true) return
   await lockAttendanceInstallationPolicy(tx, scope.organizationId)
   if (!await readAttendanceInstallationRule(tx, scope.organizationId)) return
   const installationId = parseAttendanceInstallationId(rawInstallation)
