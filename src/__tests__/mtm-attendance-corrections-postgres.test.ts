@@ -1,4 +1,5 @@
 /** Real PostgreSQL: approved proposals, immutable raw journal, ledger and atomic projection. */
+import type { Prisma } from "@prisma/client"
 import { randomUUID } from "node:crypto"
 import { spawnSync } from "node:child_process"
 import { createRequire } from "node:module"
@@ -77,7 +78,7 @@ pgDescribe("MTM corrections on real PostgreSQL", () => {
     report = await import("@/lib/mtm/attendance-report-store")
     await bypass(async () => {
       for (const id of [ORG, OTHER]) {
-        await prisma.organization.create({ data: { id, name: "Fictional correction company", slug: id, modules: ["route-field"] } })
+        await prisma.organization.create({ data: { id, name: "Fictional correction company", slug: id, modules: { "route-field": true } } })
         await prisma.mtmSetting.create({ data: { organizationId: id, key: "attendanceEnabled", value: true } })
       }
       for (const [id, role] of [[ADMIN, "admin"], ["correction-pg-owner", "admin"], ["correction-pg-hr", "manager"], ["correction-pg-supervisor", "manager"]]) {
@@ -165,7 +166,7 @@ pgDescribe("MTM corrections on real PostgreSQL", () => {
   })
   it("the deferred database guard rejects approval and a fabricated day without the ledger, rolling both back", async () => {
     const { request } = await submit(input("2026-09-08"))
-    await expect(tenant(ORG, () => prisma.$transaction(async (tx) => {
+    await expect(tenant(ORG, () => prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const day = await tx.mtmAgentWorkday.create({ data: { organizationId: ORG, agentId: AGENT, workDate: new Date("2026-09-08"), status: "COMPLETED", startedAt: at("2026-09-08", "09:00"), completedAt: at("2026-09-08", "18:00") } })
       await tx.mtmHrmRequest.update({ where: { id: request.id }, data: { status: "APPROVED", correctionWorkdayId: day.id, decidedAt: new Date(), decidedByUserId: ADMIN } })
     }))).rejects.toThrow()
