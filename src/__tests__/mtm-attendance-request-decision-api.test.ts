@@ -1,7 +1,11 @@
+import { GET as attachmentGet } from "@/app/api/v1/mtm/attendance/attachments/[id]/route"
+import { readAttendanceDocument } from "@/lib/mtm/attendance-attachment"
+import { GET as reviewGet } from "@/app/api/v1/mtm/attendance/requests/route"
 import { randomUUID } from "node:crypto"
 import { NextRequest, NextResponse } from "next/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+vi.mock("@/lib/mtm/attendance-attachment", () => ({ readAttendanceDocument: vi.fn() }))
 vi.mock("@/lib/prisma", async () => ({ prisma: (await import("./mocks/mtm-prisma")).makeMtmPrismaMock() }))
 vi.mock("@/lib/api-auth", () => ({ requireAuth: vi.fn(), getOrgId: vi.fn(), getSession: vi.fn().mockResolvedValue(null), isAuthError: (value: unknown) => value instanceof Response }))
 vi.mock("@/lib/mobile-auth", async () => (await import("./mocks/mobile-auth")).makeMobileAuthMock())
@@ -91,6 +95,21 @@ describe("attendance decision endpoint with the real authorization wrapper, deci
     expect(first.headers.get("cache-control")).toBe("private, no-store")
     expect(first.headers.get("x-content-type-options")).toBe("nosniff")
   })
+  it.each(["ANNUAL_LEAVE", "SICK_LEAVE", "TIME_OFF", "HOURLY_ABSENCE", "BUSINESS_TRIP", "REMOTE_WORK", "OVERTIME"])("decides %s once without changing phone facts", async (kind) => {
+    const { correctionBasis: _basis, ...details } = stored!.attendanceDetails
+    void _basis
+    Object.assign(stored!, { type: kind === "ANNUAL_LEAVE" ? "LEAVE" : "ABSENCE", attendanceDetails: { ...details, kind }, correctionWorkdayId: null })
+    const body = { decision: "APPROVED", version, note: "Fictional checked request" }
+    expect((await post(body)).status).toBe(200)
+    expect((await post(body)).status).toBe(200)
+    expect(stored?.status).toBe("APPROVED")
+    expect(prisma.mtmHrmRequest.updateMany).toHaveBeenCalledTimes(1)
+    expect(prisma.mtmAuditLog.create).toHaveBeenCalledTimes(1)
+    expect(prisma.mtmNotification.create).toHaveBeenCalledTimes(1)
+    expect(prisma.mtmAgentWorkday.update).not.toHaveBeenCalled()
+    expect(prisma.workforceTimeCorrection.create).not.toHaveBeenCalled()
+    expect((await post({ ...body, decision: "REJECTED" })).status).toBe(409)
+  })
   it("requires a rejection reason, preserves it only in the request and retries the same decision", async () => {
     expect(AttendanceDecisionInputSchema.safeParse({ decision: "REJECTED", version }).success).toBe(false)
     expect((await post({ decision: "REJECTED", version, note: "  " })).status).toBe(400)
@@ -162,5 +181,62 @@ describe("attendance decision endpoint with the real authorization wrapper, deci
     expect(result.status).toBe(500)
     expect(await result.json()).toEqual({ error: "MTM_ATTENDANCE_REQUEST_FAILED", code: "MTM_ATTENDANCE_REQUEST_FAILED" })
     noWrites()
+  })
+})
+
+
+describe("attendance review list has its own current write scope", () => {
+  it("returns the permitted request, author and reviewer without an internal hash", async () => {
+    vi.mocked(prisma.mtmHrmRequest.findMany).mockResolvedValue([{ ...stored, agent: { name: "Fictional employee", team: { name: "Fictional team" } } }] as never)
+    const response = await reviewGet(new NextRequest("http://localhost/api/v1/mtm/attendance/requests?status=PENDING"))
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.data.items[0]).toMatchObject({ id: requestId, employeeName: "Fictional employee", teamName: "Fictional team" })
+    expect(JSON.stringify(body)).not.toContain("submissionHash")
+    expect(prisma.mtmHrmRequest.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ organizationId, status: "PENDING", agent: { is: { organizationId, status: "ACTIVE", OR: [{ userId: null }, { userId: { not: userId } }] } } }) }))
+  })
+  it.each(["api-key", "inactive-user", "read-only-hr", "hidden", "feature-off", "unbounded-manager"])("denies %s before reading any request detail", async (kind) => {
+    if (kind === "api-key") identity({ principalType: "api_key" })
+    if (kind === "inactive-user") currentUser = null
+    if (kind === "read-only-hr") { currentUser = { role: "viewer", hiddenModules: [], mtmAttendanceAll: true }; identity({ role: "viewer" }) }
+    if (kind === "hidden") currentUser = { role: "manager", hiddenModules: ["mtm"] }
+    if (kind === "feature-off") vi.mocked(prisma.mtmSetting.findUnique).mockResolvedValue({ value: false } as never)
+    if (kind === "unbounded-manager") vi.mocked(resolveMtmRouteActor).mockResolvedValue({ role: "MANAGER", agentId: null, scopedAgentIds: null })
+    expect([403, 404]).toContain((await reviewGet(new NextRequest("http://localhost/api/v1/mtm/attendance/requests"))).status)
+    expect(prisma.mtmHrmRequest.findMany).not.toHaveBeenCalled()
+  })
+  it("applies the supervisor's exact scope and rejects a cursor outside it", async () => {
+    vi.mocked(resolveMtmRouteActor).mockResolvedValue({ role: "SUPERVISOR", agentId: "supervisor", scopedAgentIds: [agentId] })
+    vi.mocked(prisma.mtmHrmRequest.findMany).mockResolvedValue([])
+    expect((await reviewGet(new NextRequest("http://localhost/api/v1/mtm/attendance/requests"))).status).toBe(200)
+    expect(prisma.mtmHrmRequest.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ AND: [{ agentId: { in: [agentId] } }, { agentId: { not: "supervisor" } }] }) }))
+    vi.mocked(prisma.mtmHrmRequest.findFirst).mockResolvedValue(null)
+    expect((await reviewGet(new NextRequest(`http://localhost/api/v1/mtm/attendance/requests?cursor=${randomUUID()}`))).status).toBe(409)
+  })
+})
+
+
+describe("private document access uses review authority, not a report-wide grant", () => {
+  const id = randomUUID()
+  const get = () => attachmentGet(new NextRequest(`http://localhost/api/v1/mtm/attendance/attachments/${id}`), { params: Promise.resolve({ id }) })
+  beforeEach(() => {
+    vi.mocked(prisma.mtmAttendanceAttachment.findFirst).mockResolvedValue({ agentId } as never)
+    vi.mocked(readAttendanceDocument).mockResolvedValue({ bytes: Buffer.from("fixture"), mimeType: "image/jpeg" })
+  })
+  it("passes the current real reviewer scope to the private reader", async () => {
+    const res = await get()
+    expect(res.status).toBe(200)
+    expect(readAttendanceDocument).toHaveBeenCalledWith({ organizationId, actor: { agentId: null, role: "ADMIN", scopedAgentIds: null } }, id)
+    expect(res.headers.get("cache-control")).toBe("private, no-store")
+  })
+  it.each(["read-only", "other-team", "self", "api-key", "missing"])("does not read bytes for %s", async (reason) => {
+    if (reason === "read-only") currentUser = { role: "viewer", hiddenModules: [], mtmAttendanceAll: true }
+    if (reason === "other-team") vi.mocked(resolveMtmRouteActor).mockResolvedValueOnce({ agentId: null, role: "ADMIN", scopedAgentIds: null }).mockResolvedValue({ agentId: "manager", role: "MANAGER", scopedAgentIds: [] })
+    if (reason === "self") stored!.agent.userId = userId
+    if (reason === "api-key") identity({ principalType: "api_key" })
+    if (reason === "missing") vi.mocked(prisma.mtmAttendanceAttachment.findFirst).mockResolvedValue(null)
+    const res = await get()
+    expect([403, 404]).toContain(res.status)
+    expect(readAttendanceDocument).not.toHaveBeenCalled()
   })
 })

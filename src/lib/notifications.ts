@@ -81,7 +81,7 @@ async function resolvePushDecision(
     if (!canNotifyEntityType(ctx, entityType)) return false
 
     const prefs: NotificationPrefs =
-      ((prefRow?.data as any)?.notificationPreferences as NotificationPrefs) ?? {}
+      ((prefRow?.data as { notificationPreferences?: NotificationPrefs } | null)?.notificationPreferences) ?? {}
     return shouldPush(prefs, section, kind)
   } catch {
     return false

@@ -5,6 +5,7 @@ import { NextRequest } from "next/server"
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    mtmSetting: { findUnique: vi.fn() },
     userPreference: { findUnique: vi.fn(), upsert: vi.fn() },
   },
 }))
@@ -12,9 +13,9 @@ vi.mock("@/lib/prisma", () => ({
 vi.mock("@/lib/api-auth", () => ({
   requireSessionAuth: vi.fn(),
   isAuthError: vi.fn().mockImplementation(
-    (r: any) =>
+    (r: unknown) =>
       r instanceof Response ||
-      (r && r.status !== undefined && typeof r.json === "function" && !r.orgId),
+      (typeof r === "object" && r !== null && "status" in r && "json" in r && typeof r.json === "function" && !("orgId" in r)),
   ),
   getOrgModuleContext: vi.fn(),
 }))
@@ -69,6 +70,7 @@ const SESSION = { userId: "user-1", orgId: "org-abc", role: "admin" }
 describe("GET /api/v1/users/me/notification-preferences", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(prisma.mtmSetting.findUnique).mockResolvedValue(null)
     mockRequireSessionAuth.mockResolvedValue(SESSION)
     mockIsAuthError.mockReturnValue(false)
     mockGetOrgModuleContext.mockResolvedValue(fullAccessOrgCtx)
@@ -82,7 +84,7 @@ describe("GET /api/v1/users/me/notification-preferences", () => {
     expect(json.success).toBe(true)
     expect(Array.isArray(json.data.sections)).toBe(true)
     // At least CRM should appear and be accessible for admin with all modules
-    const crm = json.data.sections.find((s: any) => s.key === "CRM")
+    const crm = json.data.sections.find((s: { key: string }) => s.key === "CRM")
     expect(crm).toBeDefined()
     expect(crm.accessible).toBe(true)
   })
@@ -91,13 +93,13 @@ describe("GET /api/v1/users/me/notification-preferences", () => {
     const res = await GET(makeReq("GET"))
     expect(res.status).toBe(200)
     const json = await res.json()
-    const contractsSection = json.data.sections.find((s: any) => s.key === "Contracts Control")
+    const contractsSection = json.data.sections.find((s: { key: string }) => s.key === "Contracts Control")
     expect(contractsSection).toBeDefined()
     // Section must have types (non-empty) — this is the core assertion for the bug fix.
     // The route returns types: Array<{key, enabled}> derived from kindsForSection().
     expect(Array.isArray(contractsSection.types)).toBe(true)
     expect(contractsSection.types.length).toBeGreaterThan(0)
-    const typeKeys: string[] = contractsSection.types.map((t: any) => t.key)
+    const typeKeys: string[] = contractsSection.types.map((t: { key: string }) => t.key)
     expect(typeKeys).toContain("contract.approval_requested")
     expect(typeKeys).toContain("contract.approved")
     expect(typeKeys).toContain("contract.signed")
@@ -121,6 +123,7 @@ describe("GET /api/v1/users/me/notification-preferences", () => {
 describe("PUT /api/v1/users/me/notification-preferences", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(prisma.mtmSetting.findUnique).mockResolvedValue(null)
     mockRequireSessionAuth.mockResolvedValue(SESSION)
     mockIsAuthError.mockReturnValue(false)
     mockGetOrgModuleContext.mockResolvedValue(fullAccessOrgCtx)
@@ -184,5 +187,41 @@ describe("PUT /api/v1/users/me/notification-preferences", () => {
     expect(json.success).toBe(true)
     expect(json.data.section.key).toBe("CRM")
     expect(json.data.section.push).toBe(true)
+  })
+})
+
+
+describe("attendance notification preference visibility", () => {
+  const kind = "mtm.attendanceRequest.submitted"
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockRequireSessionAuth.mockResolvedValue(SESSION)
+    mockIsAuthError.mockReturnValue(false)
+    mockGetOrgModuleContext.mockResolvedValue({ ...fullAccessOrgCtx, modules: { ...fullAccessOrgCtx.modules, "route-field": true } })
+    mockFindUnique.mockResolvedValue(null)
+    vi.mocked(prisma.mtmSetting.findUnique).mockResolvedValue(null)
+  })
+  it("omits the attendance kind when absent or disabled, including saved preferences", async () => {
+    mockFindUnique.mockResolvedValue({ data: { notificationPreferences: { "Route & Field": { types: { [kind]: true } } } } })
+    for (const value of [null, { value: false }]) {
+      vi.mocked(prisma.mtmSetting.findUnique).mockResolvedValue(value as never)
+      const res = await GET(makeReq("GET"))
+      expect(res.status).toBe(200)
+      expect(JSON.stringify(await res.json())).not.toContain(kind)
+    }
+  })
+  it("exposes it only when enabled and preserves explicit opt-out", async () => {
+    vi.mocked(prisma.mtmSetting.findUnique).mockResolvedValue({ value: true } as never)
+    const enabled = await (await GET(makeReq("GET"))).json()
+    const section = enabled.data.sections.find((row: { types: { key: string }[] }) => row.types.some(type => type.key === kind))
+    expect(section).toBeDefined()
+    const res = await PUT(makeReq("PUT", { section: section.key, types: { [kind]: false } }))
+    expect(res.status).toBe(200)
+    expect((await res.json()).data.section.types).toContainEqual({ key: kind, enabled: false })
+  })
+  it("rejects modifying the hidden kind without writing preferences", async () => {
+    const res = await PUT(makeReq("PUT", { section: "Route & Field", types: { [kind]: true } }))
+    expect(res.status).toBe(400)
+    expect(mockUpsert).not.toHaveBeenCalled()
   })
 })

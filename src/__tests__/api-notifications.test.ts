@@ -3,6 +3,7 @@ import { NextRequest } from "next/server"
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    mtmSetting: { findUnique: vi.fn() },
     notification: { findMany: vi.fn(), count: vi.fn(), updateMany: vi.fn() },
     deal: { findMany: vi.fn() },
   },
@@ -62,6 +63,7 @@ type EntityTypeInClause = { entityType?: { in?: string[] } | null }
 describe("GET /api/v1/notifications", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(prisma.mtmSetting.findUnique).mockResolvedValue(null)
     mockGetOrgId.mockResolvedValue("org-1")
     // Session user has admin role — wildcard read means all entityTypes are allowed.
     mockAuth.mockResolvedValue({ user: { id: "user-1", role: "admin" } })
@@ -261,6 +263,7 @@ describe("GET /api/v1/notifications", () => {
 describe("PATCH /api/v1/notifications", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(prisma.mtmSetting.findUnique).mockResolvedValue(null)
     mockGetOrgId.mockResolvedValue("org-1")
     mockAuth.mockResolvedValue({ user: { id: "user-1", role: "admin" } })
     mockGetSession.mockResolvedValue({ orgId: "org-1", userId: "user-1", role: "admin" })

@@ -34,6 +34,9 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
   let tenant: typeof import("@/lib/rls-context").runWithTenant
   let bypass: typeof import("@/lib/rls-context").runWithRlsBypass
   let store: typeof import("@/lib/mtm/attendance-request-store")
+  let review: typeof import("@/lib/mtm/attendance-request-review")
+  let decision: typeof import("@/lib/mtm/attendance-request-decision")
+  let report: typeof import("@/lib/mtm/attendance-report-store")
   let photos: typeof import("@/lib/mtm/attendance-attachment")
   let limits: typeof import("@/lib/mtm/attendance-request-limit-store")
   let quotaApi: typeof import("@/app/api/v1/mtm/mobile/attendance/request-limits/route")
@@ -66,6 +69,9 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
     prisma = (await import("@/lib/prisma")).prisma
     ;({ runWithTenant: tenant, runWithRlsBypass: bypass } = await import("@/lib/rls-context"))
     store = await import("@/lib/mtm/attendance-request-store")
+    review = await import("@/lib/mtm/attendance-request-review")
+    decision = await import("@/lib/mtm/attendance-request-decision")
+    report = await import("@/lib/mtm/attendance-report-store")
     photos = await import("@/lib/mtm/attendance-attachment")
     limits = await import("@/lib/mtm/attendance-request-limit-store")
     quotaApi = await import("@/app/api/v1/mtm/mobile/attendance/request-limits/route")
@@ -192,6 +198,61 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
       expect(await prisma.mtmAuditLog.count({ where: { metadataKind: "mtm_attendance_request_limits" } })).toBe(1)
       await expect(limits.saveAttendanceRequestLimits(self.organizationId, "request-pg-admin", { monthlyMinutes: 480, monthlyRequests: 3, version: null })).rejects.toMatchObject({ status: 409 })
       await limits.saveAttendanceRequestLimits(self.organizationId, "request-pg-admin", { monthlyMinutes: 480, monthlyRequests: 3, version: changed.version })
+    })
+  })
+
+  it("commits a reviewer bell with submission, decides leave once, and projects its kind without overwriting a holiday", async () => {
+    const reviewer = { organizationId: self.organizationId, userId: "request-pg-admin", principalType: "session" as const }
+    const body = { clientRequestId: randomUUID(), kind: "ANNUAL_LEAVE", unit: "DAYS", startDate: "2026-08-10", endDate: "2026-08-12", reason: "PRIVATE_LEAVE_REASON" }
+    const response = await submit(body)
+    expect(response.status).toBe(201)
+    const row = (await response.json()).data.request
+    expect((await submit(body)).status).toBe(200)
+    await tenant(self.organizationId, async () => {
+      const bells = await prisma.notification.findMany({ where: { entityType: "mtm_attendance_request", entityId: row.id } })
+      expect(bells).toHaveLength(1)
+      expect(bells[0].userId).toBe(reviewer.userId)
+      expect(JSON.stringify(bells)).not.toMatch(/PRIVATE_LEAVE_REASON|ANNUAL_LEAVE|SICK_LEAVE/)
+      expect((await review.listAttendanceRequestsForReview(reviewer, {})).items.some(item => item.id === row.id)).toBe(true)
+      await prisma.mtmWorkCalendarDay.create({ data: { organizationId: self.organizationId, date: new Date("2026-08-11"), kind: "PUBLIC_HOLIDAY", name: "Fictional calendar holiday" } })
+    })
+    const raw = { decision: "APPROVED", version: row.version, note: "Fictional reviewed leave" }
+    const answers = await Promise.all([1, 2].map(() => tenant(self.organizationId, () => decision.decideAttendanceRequest(reviewer, row.id, raw))))
+    expect(answers.map(item => item.idempotent).sort()).toEqual([false, true])
+    await tenant(self.organizationId, async () => {
+      expect(await prisma.mtmAuditLog.count({ where: { entityId: row.id, action: "MTM_ATTENDANCE_REQUEST_DECIDED" } })).toBe(1)
+      expect(await prisma.mtmNotification.count({ where: { metadata: { path: ["attendanceRequestId"], equals: row.id } } })).toBe(1)
+      expect(await prisma.mtmAgentWorkday.count()).toBe(0)
+      const result = await report.readMtmAttendanceReport({ organizationId: self.organizationId, actor: { role: "ADMIN", agentId: null, scopedAgentIds: null }, query: { from: body.startDate, to: body.endDate, form: "ALL", employeeId: self.agentId } })
+      expect(result.rows.map(item => item.kind)).toEqual(["APPROVED_REQUEST", "HOLIDAY", "APPROVED_REQUEST"])
+      expect(result.totals.absentCount).toBe(0)
+      expect(JSON.stringify(result)).not.toMatch(/PRIVATE_LEAVE_REASON|Fictional reviewed leave|attachmentIds|submissionHash/)
+      await expect(decision.decideAttendanceRequest(reviewer, row.id, { ...raw, decision: "REJECTED" })).rejects.toMatchObject({ status: 409 })
+    })
+  })
+  it("rejection releases a reserved monthly slot and the employee reads the same answer", async () => {
+    const requests = []
+    for (const date of ["2027-07-01", "2027-07-02", "2027-07-03"]) {
+      const response = await submit(input(date)); expect(response.status).toBe(201)
+      requests.push((await response.json()).data.request)
+    }
+    expect((await submit(input("2027-07-04"))).status).toBe(409)
+    await tenant(self.organizationId, async () => {
+      const target = requests[0]
+      await decision.decideAttendanceRequest({ organizationId: self.organizationId, userId: "request-pg-admin", principalType: "session" }, target.id, { decision: "REJECTED", version: target.version, note: "Fictional rejection explanation" })
+      const own = await store.listOwnAttendanceRequests(self)
+      expect(own.items.find(item => item.id === target.id)).toMatchObject({ status: "REJECTED", decisionNote: "Fictional rejection explanation" })
+      expect((await store.readOwnAttendanceRequestQuota(self, "2027-07")).usedRequests).toBe(2)
+    })
+    expect((await submit(input("2027-07-04"))).status).toBe(201)
+  })
+  it("rolls submission and audit back if its durable reviewer notification cannot commit", async () => {
+    const body = { clientRequestId: randomUUID(), kind: "SICK_LEAVE", unit: "DAYS", startDate: "2026-08-20", endDate: "2026-08-20", reason: "Private fictional reason" }
+    sql(scratch!.adminDb, `CREATE FUNCTION fixture_reject_attendance_bell() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW."entityType" = 'mtm_attendance_request' THEN RAISE EXCEPTION 'fixture bell unavailable'; END IF; RETURN NEW; END $$; CREATE TRIGGER fixture_attendance_bell BEFORE INSERT ON notifications FOR EACH ROW EXECUTE FUNCTION fixture_reject_attendance_bell();`)
+    try { expect((await submit(body)).status).toBe(500) }
+    finally { sql(scratch!.adminDb, 'DROP TRIGGER fixture_attendance_bell ON notifications; DROP FUNCTION fixture_reject_attendance_bell();') }
+    await tenant(self.organizationId, async () => {
+      expect(await prisma.mtmHrmRequest.count({ where: { clientRequestId: body.clientRequestId } })).toBe(0)
     })
   })
 

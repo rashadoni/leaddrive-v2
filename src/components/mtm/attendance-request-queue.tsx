@@ -69,7 +69,7 @@ export function MtmAttendanceRequestQueue() {
         setItems((previous) => previous.flatMap((row) => row.id !== current.id ? [row] : status === "ALL" ? [{ ...row, ...result }] : []))
         setSelected(null); setNote(""); setMessage(t("requestsSaved"))
       } else if ([401, 403, 404].includes(response.status)) {
-        setItems([]); setSelected(null); setMessage(t("requestsForbidden"))
+        setItems([]); setCursor(null); setSelected(null); setMessage(t("requestsForbidden"))
       } else {
         setUnknown(true); setMessage(t(response.status === 409 ? "requestsChanged" : "requestsUnknown"))
       }
@@ -77,7 +77,7 @@ export function MtmAttendanceRequestQueue() {
     finally { if (!controller.signal.aborted) { writing.current = false; setBusy(false) } }
   }
 
-  return <section className="space-y-5" data-testid="attendance-request-queue" aria-label={t("requestsTitle")}>
+  return <section className="space-y-5" data-testid="attendance-request-queue" aria-label={t("requestsTitle")} aria-busy={busy}>
     <Link href="/mtm/attendance" className="inline-flex min-h-11 items-center text-sm font-medium text-primary underline-offset-4 hover:underline">{t("requestsBack")}</Link>
     <HomeCard testId="attendance-request-card" titleId="attendance-request-title" tone="amber" icon={<ClipboardList className="h-5 w-5" />} title={t("requestsTitle")}>
       <p className="pt-4 text-sm text-muted-foreground">{t("requestsDescription")}</p>
@@ -87,32 +87,32 @@ export function MtmAttendanceRequestQueue() {
             {STATUSES.map((value) => <option key={value} value={value}>{t(LABELS[value])}</option>)}
           </select>
         </label>
-        <Button variant="outline" onClick={() => void load()} disabled={busy}>{t("requestsRefresh")}</Button>
+        <Button className="min-h-11" variant="outline" onClick={() => void load()} disabled={busy}>{t("requestsRefresh")}</Button>
       </div>
       {message && <p role="status" className="py-3 text-sm">{message}</p>}
-      {!busy && items.length === 0 && <p className="py-8 text-sm text-muted-foreground">{t("requestsEmpty")}</p>}
+      {!busy && !message && items.length === 0 && <p className="py-8 text-sm text-muted-foreground">{t("requestsEmpty")}</p>}
       <ul className="divide-y divide-border">
         {items.map((item) => <li key={item.id} className="py-4" data-testid={`attendance-request-${item.id}`}>
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0 flex-1 space-y-1">
+            <div className="min-w-0 basis-full space-y-1 sm:flex-1 sm:basis-0">
               <p className="font-semibold">{item.employeeName} <span className="font-normal text-muted-foreground">{item.teamName}</span></p>
               <p className="text-sm">{item.details.kind === "TIME_CORRECTION" ? t("requestsTimeCorrection") : attendanceDayKindLabel(item.details.dayKind, locale)} · {item.startDate}{item.endDate !== item.startDate ? ` — ${item.endDate}` : ""}{item.details.unit === "HOURS" ? ` · ${item.details.startTime}–${item.details.endTime}` : ""}</p>
               <p className="text-xs text-muted-foreground">{t("requestsSubmitted", { date: stamp(item.submittedAt, item.details.timezone) })}</p>
             </div>
             <HomePill tone={item.status === "PENDING" ? "amber" : item.status === "APPROVED" ? "green" : "zinc"}>{t(LABELS[item.status])}</HomePill>
-            <Button variant="outline" disabled={busy} onClick={() => { setSelected(item.id === selected ? null : item.id); setNote("") }}>{t(item.id === selected ? "requestsClose" : "requestsOpen")}</Button>
+            <Button className="min-h-11" variant="outline" disabled={busy} aria-expanded={item.id === selected} aria-controls={`attendance-request-details-${item.id}`} onClick={() => { setSelected(item.id === selected ? null : item.id); setNote("") }}>{t(item.id === selected ? "requestsClose" : "requestsOpen")}</Button>
           </div>
-          {item.id === selected && <div className="mt-4 space-y-4 rounded-lg bg-muted/40 p-4">
+          {item.id === selected && <div id={`attendance-request-details-${item.id}`} className="mt-4 space-y-4 rounded-lg bg-muted/40 p-4">
             <div><h3 className="text-sm font-semibold">{t("requestsReason")}</h3><p className="mt-1 whitespace-pre-wrap break-words text-sm">{item.reason}</p></div>
             {item.details.attachmentIds.length > 0 && <div><h3 className="text-sm font-semibold">{t("requestsDocuments")}</h3><div className="mt-2 flex flex-wrap gap-3">{item.details.attachmentIds.map((id, index) => <a key={id} href={`/api/v1/mtm/attendance/attachments/${encodeURIComponent(id)}`} className="inline-flex min-h-11 items-center text-sm text-primary underline" target="_blank" rel="noopener noreferrer">{t("requestsDocument", { number: index + 1 })}</a>)}</div></div>}
             {item.decisionNote && <p className="whitespace-pre-wrap break-words text-sm">{item.decisionNote}</p>}
             {item.decidedAt && <p className="text-xs text-muted-foreground">{t("requestsDecision", { name: item.reviewerName ?? "—", date: stamp(item.decidedAt, item.details.timezone) })}</p>}
             {item.status === "PENDING" && <><label className="block text-sm font-medium">{t("requestsNote")}<textarea className="mt-2 min-h-24 w-full rounded-lg border bg-background p-3 font-normal" value={note} maxLength={1000} disabled={busy || unknown} onChange={(event) => setNote(event.target.value)} /></label><p className="text-xs text-muted-foreground">{t("requestsNoteHint")}</p>
-              <div className="flex flex-wrap gap-3"><Button onClick={() => void decide("APPROVED")} disabled={busy || unknown}>{t(busy ? "requestsSaving" : "requestsApprove")}</Button><Button variant="outline" onClick={() => void decide("REJECTED")} disabled={busy || unknown || note.trim().length < 3}>{t("requestsReject")}</Button></div></>}
+              <div className="flex flex-wrap gap-3"><Button className="min-h-11" onClick={() => void decide("APPROVED")} disabled={busy || unknown}>{t(busy ? "requestsSaving" : "requestsApprove")}</Button><Button className="min-h-11" variant="outline" onClick={() => void decide("REJECTED")} disabled={busy || unknown || note.trim().length < 3}>{t("requestsReject")}</Button></div></>}
           </div>}
         </li>)}
       </ul>
-      {cursor && <Button variant="outline" className="my-4" disabled={busy} onClick={() => void load(cursor)}>{t("requestsMore")}</Button>}
+      {cursor && <Button variant="outline" className="my-4 min-h-11" disabled={busy} onClick={() => void load(cursor)}>{t("requestsMore")}</Button>}
     </HomeCard>
   </section>
 }
