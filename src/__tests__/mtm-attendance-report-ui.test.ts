@@ -267,4 +267,23 @@ describe("attendance report workspace on the real row calculation", () => {
     expect(formatAttendanceDuration(27540)).toBe("7:39")
     expect(formatAttendanceDuration(null)).toBe("—")
   })
+  it("renders both source shifts in one monthly cell and totals the accounting projection", async () => {
+    fetchMock.mockImplementation(async url => {
+      const parsed = new URL(String(url), "https://attendance.test")
+      if (!parsed.pathname.endsWith("/report")) return defaultFetch(url)
+      const base = fixture(parsed.searchParams.get("from")!, parsed.searchParams.get("to")!, [employees[0]])
+      const row = base.rows[0]
+      return response({ ...base, accountingRows: [
+        { ...row, date: "2026-10-01", sourceDate: "2026-09-30", kind: "WORKED", workedSeconds: 25200 },
+        { ...row, date: "2026-10-01", sourceDate: "2026-10-01", kind: "WORKED", workedSeconds: 3600 },
+      ] })
+    })
+    await render(); await click(messages("en").mtmAttendance.reportMonth)
+    const person = container.querySelector('[data-testid="attendance-month-person"]')!
+    const firstDay = person.querySelector("td")!
+    expect(firstDay.textContent).toContain("7:00"); expect(firstDay.textContent).toContain("1:00"); expect(firstDay.textContent).toContain("shift 9/30/26")
+    expect(person.textContent).toContain("8:00")
+    expect(container.querySelector('[data-testid="attendance-report-totals"]')?.textContent).toContain("8:00")
+  })
+
 })

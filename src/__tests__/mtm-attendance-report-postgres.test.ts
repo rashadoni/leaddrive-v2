@@ -94,7 +94,7 @@ pgDescribe("MTM report reads the real saved workday and journal", () => {
       process.env.DATABASE_URL = scratch!.adminDb
       cli(["db", "push", "--schema", schemaFile, "--skip-generate"])
     } finally { process.env.DATABASE_URL = appUrl }
-    sql(scratch!.adminDb, 'ALTER TABLE users DROP COLUMN "mtmAttendanceAll"; DROP TABLE mtm_attendance_leave_profiles; DROP TABLE mtm_attendance_leave_policies; DROP TABLE mtm_attendance_deliveries; DROP TABLE mtm_attendance_schedules; DROP TABLE mtm_attendance_rules; DROP TABLE mtm_work_calendar_days; DROP TYPE "MtmWorkCalendarDayKind";')
+    sql(scratch!.adminDb, 'ALTER TABLE users DROP COLUMN "mtmAttendanceAll"; DROP TABLE mtm_attendance_shift_members; DROP TABLE mtm_attendance_shift_plans; DROP TABLE mtm_attendance_leave_profiles; DROP TABLE mtm_attendance_leave_policies; DROP TABLE mtm_attendance_deliveries; DROP TABLE mtm_attendance_schedules; DROP TABLE mtm_attendance_rules; DROP TABLE mtm_work_calendar_days; DROP TYPE "MtmWorkCalendarDayKind";')
     for (const migration of [
       "20260715160000_mtm_work_calendar",
       "20260806120000_mtm_rls_coverage_completion",
@@ -103,6 +103,7 @@ pgDescribe("MTM report reads the real saved workday and journal", () => {
       "20261013020000_mtm_attendance_deliveries",
       "20261013030000_mtm_attendance_hr_access",
       "20261013180000_mtm_attendance_leave_balances",
+      "20261013200000_mtm_attendance_shift_plans",
     ]) sql(scratch!.adminDb, readFileSync(`prisma/migrations/${migration}/migration.sql`, "utf8"))
     sql(scratch!.adminDb, readFileSync("scripts/rls/enable-batch-5.sql", "utf8"))
     sql(scratch!.adminDb, `GRANT USAGE ON SCHEMA public TO "${scratch!.role}"; GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "${scratch!.role}";`)
@@ -730,6 +731,66 @@ pgDescribe("MTM report reads the real saved workday and journal", () => {
     } finally { sql(scratch!.adminDb, "DROP TRIGGER fixture_leave_audit_failure ON mtm_audit_logs; DROP FUNCTION fixture_leave_audit_failure();") }
     expect((await read()).policy).toEqual(previous)
     expect(await tenant(ORG, () => prisma.$queryRaw`SELECT id FROM mtm_attendance_leave_policies WHERE "requestId"=${requestId}`)).toEqual([])
+  })
+
+  function shiftPeriod() {
+    const date = new Date(), from = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 2, 1)).toISOString().slice(0, 10)
+    return { from, to: addDateKeyDays(from, 27) }
+  }
+  const shiftReviewer = { organizationId: ORG, userId: "fixture-admin", principalType: "session" as const }
+  async function shiftInput() {
+    const shifts = await import("@/lib/mtm/attendance-shift-store"), period = shiftPeriod()
+    const directory = await tenant(ORG, () => shifts.readAttendanceShiftDirectory(shiftReviewer, period))
+    const roster = directory.rosters.find(row => row.teamId === "team-a")!
+    return { requestId: randomUUID(), expectedRevisionId: directory.revisionId, expectedRosterHash: roster.hash, teamId: roster.teamId,
+      reason: "PRIVATE_FICTIONAL_SHIFT_REASON", value: { ...period, timezone: directory.timezone, attribution: "END_DAY" as const, preHolidayMinutes: null, preHolidayConfirmed: false, overtimeThresholdMinutes: null,
+        cycle: [{ kind: "WORK" as const, startTime: "22:00", endTime: "06:00", nextDay: true, lunchMinutes: 60, lateGraceMinutes: 10 }, { kind: "OFF" as const }] } }
+  }
+  it("publishes a shift roster atomically once and rejects later changes to its membership", async () => {
+    const shifts = await import("@/lib/mtm/attendance-shift-store"), input = await shiftInput()
+    const saved = await Promise.all([0, 1].map(() => tenant(ORG, () => shifts.publishAttendanceShiftPlan(shiftReviewer, input))))
+    expect(saved[0].id).toBe(saved[1].id); expect(saved[0].memberCount).toBe(1)
+    expect(JSON.stringify(saved)).not.toMatch(/PRIVATE_FICTIONAL_SHIFT_REASON|requestHash|createdBy/)
+    await expect(tenant(ORG, () => shifts.publishAttendanceShiftPlan(shiftReviewer, { ...input, reason: "Different replay" }))).rejects.toMatchObject({ code: "MTM_ATTENDANCE_SHIFT_REPLAY_MISMATCH" })
+    await expect(tenant(ORG, () => shifts.publishAttendanceShiftPlan(shiftReviewer, { ...input, requestId: randomUUID() }))).rejects.toMatchObject({ code: "MTM_ATTENDANCE_SHIFT_CHANGED" })
+    expect(await tenant(OTHER, () => prisma.$queryRaw`SELECT id FROM mtm_attendance_shift_plans`)).toEqual([])
+    expect(await tenant(OTHER, () => prisma.$queryRaw`SELECT id FROM mtm_attendance_shift_members`)).toEqual([])
+    expect(await tenant(ORG, () => prisma.$executeRaw`UPDATE mtm_attendance_shift_plans SET reason='Attempted change' WHERE id=${saved[0].id}`)).toBe(0)
+    expect(() => sql(scratch!.adminDb, `UPDATE mtm_attendance_shift_plans SET reason='Owner attempted change' WHERE id='${saved[0].id}'`)).toThrow(/MTM_ATTENDANCE_SHIFT_IMMUTABLE/)
+    await expect(tenant(ORG, () => prisma.$executeRaw`INSERT INTO mtm_attendance_shift_members(id,"organizationId","planId","agentId") VALUES(${randomUUID()},${ORG},${saved[0].id},'employee-b')`)).rejects.toThrow(/MTM_ATTENDANCE_SHIFT_ROSTER_FROZEN/)
+    expect(await tenant(ORG, () => prisma.mtmAuditLog.count({ where: { organizationId: ORG, action: "MTM_ATTENDANCE_SHIFT_PUBLISHED", entityId: saved[0].id } }))).toBe(1)
+    await tenant(ORG, () => prisma.mtmAgent.update({ where: { id: "employee-a" }, data: { teamId: "team-b" } }))
+    try {
+      const incoming = await tenant(ORG, () => readReport({ organizationId: ORG, actor: adminActor, query: { from: addDateKeyDays(input.value.from, 1), to: addDateKeyDays(input.value.from, 1), employeeId: "employee-a", form: "ALL" }, now: at(addDateKeyDays(input.value.from, 2), "12:00") }))
+      expect(incoming.rows).toHaveLength(1)
+      expect(incoming.accountingRows?.map(row => [row.sourceDate, row.date, row.shiftPlanId])).toEqual([[input.value.from, addDateKeyDays(input.value.from, 1), saved[0].id], [addDateKeyDays(input.value.from, 1), addDateKeyDays(input.value.from, 1), saved[0].id]])
+      const supervisor = await tenant(ORG, () => shifts.readAttendanceShiftDirectory({ ...shiftReviewer, userId: "fixture-supervisor-user" }, shiftPeriod()))
+      expect(supervisor.plans).toEqual([])
+    } finally { await tenant(ORG, () => prisma.mtmAgent.update({ where: { id: "employee-a" }, data: { teamId: "team-a" } })) }
+  })
+  it("rejects stale roster, backdating, unprivileged publishers and disabled attendance", async () => {
+    const shifts = await import("@/lib/mtm/attendance-shift-store"), input = await shiftInput()
+    const publish = (body: unknown, reviewer = shiftReviewer) => tenant(ORG, () => shifts.publishAttendanceShiftPlan(reviewer, body))
+    await expect(publish({ ...input, expectedRosterHash: "f".repeat(64) })).rejects.toMatchObject({ code: "MTM_ATTENDANCE_SHIFT_ROSTER_CHANGED" })
+    const today = currentDateKey(new Date(), "Asia/Baku")
+    await expect(publish({ ...input, value: { ...input.value, from: today, to: today } })).rejects.toMatchObject({ code: "MTM_ATTENDANCE_SHIFT_FUTURE_REQUIRED" })
+    await expect(publish(input, { ...shiftReviewer, userId: "fixture-supervisor-user" })).rejects.toMatchObject({ status: 403 })
+    await expect(tenant(ORG, () => shifts.publishAttendanceShiftPlan({ ...shiftReviewer, principalType: "api_key" }, input))).rejects.toMatchObject({ status: 403 })
+    await tenant(ORG, () => prisma.mtmSetting.updateMany({ where: { organizationId: ORG, key: "attendanceEnabled" }, data: { value: false } }))
+    try { await expect(publish(input)).rejects.toMatchObject({ status: 404 }) }
+    finally { await tenant(ORG, () => prisma.mtmSetting.updateMany({ where: { organizationId: ORG, key: "attendanceEnabled" }, data: { value: true } })) }
+    expect(await tenant(ORG, () => prisma.$queryRaw`SELECT id FROM mtm_attendance_shift_plans WHERE "requestId"=${input.requestId}`)).toEqual([])
+  })
+  it("rolls back the shift plan and every member when the audit fails", async () => {
+    const shifts = await import("@/lib/mtm/attendance-shift-store"), input = await shiftInput()
+    const count = () => tenant(ORG, () => prisma.$queryRaw`SELECT id FROM mtm_attendance_shift_members`)
+    const before = await count()
+    sql(scratch!.adminDb, `CREATE FUNCTION fixture_shift_audit_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action='MTM_ATTENDANCE_SHIFT_PUBLISHED' THEN RAISE EXCEPTION 'fixture shift audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER fixture_shift_audit_failure BEFORE INSERT ON mtm_audit_logs FOR EACH ROW EXECUTE FUNCTION fixture_shift_audit_failure();`)
+    try { await expect(tenant(ORG, () => shifts.publishAttendanceShiftPlan(shiftReviewer, input))).rejects.toThrow() }
+    finally { sql(scratch!.adminDb, "DROP TRIGGER fixture_shift_audit_failure ON mtm_audit_logs; DROP FUNCTION fixture_shift_audit_failure();") }
+    expect(await count()).toEqual(before)
+    expect(await tenant(ORG, () => prisma.$queryRaw`SELECT id FROM mtm_attendance_shift_plans WHERE "requestId"=${input.requestId}`)).toEqual([])
+    expect((await tenant(ORG, () => shifts.readAttendanceShiftDirectory(shiftReviewer, shiftPeriod()))).revisionId).toBe(input.expectedRevisionId)
   })
 
 })
