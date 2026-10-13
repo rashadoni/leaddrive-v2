@@ -249,3 +249,34 @@ removes Playwright's focus override and natively minimizes/restores Chromium
 through its window API, asserting the actual minimized state, hidden visibility,
 absent QR and restored foreground QR. No fake DOM visibility or forced click is
 used. These remaining browser corrections require another hosted run.
+
+## Fourth hosted evidence and focus-session correction — 2026-10-14 (Asia/Baku)
+
+Run [38480664142](https://github.com/rashadoni/leaddrive-v2/actions/runs/38480664142),
+exact head `a9cbf556ecd6fdcd9514748f551ab4e9804f1290`, finished
+**FAIL: 61 PASS, 1 FAIL, 5 NOT_RUN**. Private-document upload through the real
+mobile HTTP route and the HR browser download passed. Both leave-page flows
+passed; complete-response timings were 6.1 and 7.5 seconds on this runner.
+All other implemented flows passed except native QR background visibility.
+The native Openbox window really became minimized, while the document stayed
+visible; the QR-removal assertion was therefore not reached.
+
+The earlier focus-override explanation was incomplete: Chromium holds a capture
+handle on the CDP session that enabled focus emulation. Sending disable on a
+separate session does not release Playwright's original handle. This follows
+the [Chromium focus-emulation implementation](https://raw.githubusercontent.com/chromium/chromium/main/content/browser/devtools/protocol/emulation_handler.cc)
+and the pinned Playwright driver's main-frame initialization.
+
+The harness now obtains that original in-process main-frame session through a
+small compatibility-checked helper, disables its focus override, and retains the
+real native minimize, actual hidden visibility, absent QR and foreground QR
+assertions. It changes neither application code nor DOM visibility/events.
+Missing or changed driver structure fails the case rather than silently skipping
+it. Nested cleanup restores the original override even if policy cleanup or
+window restoration fails; the shared driver session is never detached.
+Only safe window/visibility states are added to the artifact manifest.
+
+PASS locally: module syntax and runner policy (62 workflows). Full browser,
+PostgreSQL, build and typecheck are **NOT_RUN locally**, per the host contract.
+The original-session correction still needs hosted verification; QR lifecycle
+must not be reported as passing until that run succeeds.

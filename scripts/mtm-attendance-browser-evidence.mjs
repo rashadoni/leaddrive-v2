@@ -90,6 +90,22 @@ async function poll(check, label, timeout = 20000) {
   do { if (await check()) return; await delay(100) } while (Date.now() < end)
   const error = new Error('Timed out'); error.safeDiagnostic = label; throw error
 }
+function playwrightFocusSession(targetPage) {
+  // Focus emulation owns a Chromium capture handle per CDP session. A new
+  // public CDPSession cannot release the handle enabled by Playwright itself.
+  // Use the pinned in-process driver's original session, without patching the
+  // driver or page. Fail closed if a dependency upgrade changes this structure.
+  const implementation = targetPage._connection?.toImpl?.(targetPage)
+  const delegate = implementation?.delegate
+  const frame = delegate?._mainFrameSession
+  if (!implementation || delegate?._page !== implementation || frame?._crPage !== delegate
+    || frame?._targetId !== delegate?._targetId || typeof frame?._client?.send !== 'function') {
+    const error = new Error('Unsupported Playwright focus session')
+    error.safeDiagnostic = 'Pinned Playwright original focus session unavailable; review driver compatibility'
+    throw error
+  }
+  return frame._client
+}
 async function readyPage(path) {
   await page.goto(`/mtm/attendance${path ? `/${path}` : ''}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
   await page.locator('h1').first().waitFor({ timeout: 120000 })
@@ -588,31 +604,42 @@ try {
       assert.ok((await qr.getAttribute('src')).startsWith('data:image/png;base64,'))
       await button('qrRefresh').click()
       await qr.waitFor({ timeout: 120000 })
-      // Playwright enables focus emulation on every page, which pins visibility
-      // to visible. Remove that runner override before minimizing the native
-      // window; never assign document.visibilityState or dispatch synthetic events.
-      visibilitySession = await sessions.admin.newCDPSession(page)
+      // Release Playwright's own per-session capture handle before minimizing
+      // the native window. A separate CDP session cannot undo that override.
+      // Never assign document.visibilityState or dispatch synthetic events.
+      visibilitySession = playwrightFocusSession(page)
       await visibilitySession.send('Emulation.setFocusEmulationEnabled', { enabled: false })
       ;({ windowId } = await visibilitySession.send('Browser.getWindowForTarget'))
       await visibilitySession.send('Browser.setWindowBounds', { windowId, bounds: { windowState: 'minimized' } })
       await poll(async () => (await visibilitySession.send('Browser.getWindowBounds', { windowId })).bounds.windowState === 'minimized', 'Native Chromium window minimized')
-      await poll(async () => await page.evaluate(() => document.visibilityState) === 'hidden', 'QR native window background visibility')
+      await poll(async () => {
+        const visibilityState = await page.evaluate(() => document.visibilityState)
+        manifest.qrLifecycle = { nativeWindowState: 'minimized', visibilityState, focusOverrideSession: 'Playwright original main-frame session' }
+        return visibilityState === 'hidden'
+      }, 'QR native window background visibility')
       await poll(async () => await qr.count() === 0, 'QR hidden in background')
+      manifest.qrLifecycle.qrAbsentWhileHidden = true
       await visibilitySession.send('Browser.setWindowBounds', { windowId, bounds: { windowState: 'normal' } })
       await page.bringToFront()
       await poll(async () => await page.evaluate(() => document.visibilityState) === 'visible', 'QR native window foreground visibility')
       await qr.waitFor({ timeout: 120000 })
+      manifest.qrLifecycle.qrRestoredInForeground = true
       await clickResponse(toggle, '/api/v1/mtm/settings', 'PUT', 200, false)
       await poll(async () => await toggle.getAttribute('aria-checked') === 'false', 'QR disabled')
       assert.equal(await qr.count(), 0)
     } finally {
       // Failed lifecycle assertions must still leave the disposable policy OFF.
-      await request(sessions.admin, '/api/v1/mtm/settings', { method: 'PUT', body: { attendanceBranchQrEnabled: false } })
-      if (visibilitySession) {
-        if (windowId !== undefined) await visibilitySession.send('Browser.setWindowBounds', { windowId, bounds: { windowState: 'normal' } })
-        await page.bringToFront()
-        await visibilitySession.send('Emulation.setFocusEmulationEnabled', { enabled: true })
-        await visibilitySession.detach()
+      try {
+        await request(sessions.admin, '/api/v1/mtm/settings', { method: 'PUT', body: { attendanceBranchQrEnabled: false } })
+      } finally {
+        if (visibilitySession) {
+          try {
+            if (windowId !== undefined) await visibilitySession.send('Browser.setWindowBounds', { windowId, bounds: { windowState: 'normal' } })
+            await page.bringToFront()
+          } finally {
+            await visibilitySession.send('Emulation.setFocusEmulationEnabled', { enabled: true })
+          }
+        }
       }
     }
     return { enabledThenDisabled: true, refresh: true, hidesInBackground: true, nativeWindowMinimizeAndRestore: true, playwrightFocusOverrideDisabled: true, cameraScan: 'NOT_RUN' }
