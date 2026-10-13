@@ -13,6 +13,21 @@ export const REQUEST_DEMO = Object.freeze({
   reason: "Fictional stage 2 attendance acceptance", note: "Fictional stage 2 approval",
 })
 const fail = (): never => { throw new Error("VERIFICATION_FAILED") }
+const REQUEST_PHASES = ["CONTEXT", "PUBLIC_REVISION", "DATABASE", "FIXTURE_BEFORE", "CREDENTIAL", "PREPARE_CREDENTIAL", "MOBILE_CREDENTIAL", "REQUEST_BEFORE",
+  "WEB_LOGIN", "MOBILE_LOGIN", "REPORT_BEFORE", "SUBMISSION", "SUBMISSION_REPLAY", "REVIEW_QUEUE", "REVIEW_BELL", "REVIEW_PANEL", "DECISION", "DECISION_REPLAY",
+  "REVIEW_PANEL_AFTER", "EMPLOYEE_REQUESTS", "EMPLOYEE_REPLY", "REPORT_AFTER", "HISTORY", "REQUEST_AFTER", "FIXTURE_AFTER", "FINAL_REVISION"] as const
+type RequestPhase = typeof REQUEST_PHASES[number]
+class RequestVerificationError extends Error {
+  constructor(readonly phase: RequestPhase) { super("VERIFICATION_FAILED") }
+}
+function phaseFailure(error: unknown, phase: RequestPhase): RequestVerificationError {
+  return error instanceof RequestVerificationError ? error : new RequestVerificationError(phase)
+}
+/** A code-owned stage only. Never serialize an exception, URL, HTTP body or credential. */
+export function safeRequestFailure(error: unknown) {
+  return { ...safeFailure(new Error("unknown")), ...(error instanceof RequestVerificationError ? { phase: error.phase } : {}) }
+}
+
 type Db = Pick<PrismaClient, "$transaction">
 export function assertRequestContext(sha: string, deployed: string, now = new Date()) {
   assertContext("read-only-check", sha, deployed, now)
@@ -87,7 +102,8 @@ export function verifyRequestReport(value: unknown, approved: boolean) {
 
 export async function exerciseRequestDemo(password: string, initial: Awaited<ReturnType<typeof readRequestDemo>>, fetcher: typeof fetch = fetch) {
   let token = ""
-  const session = await authenticatedDemoSession(password, fetcher)
+  let phase: RequestPhase = "WEB_LOGIN"
+  const session = await authenticatedDemoSession(password, fetcher).catch(error => { throw phaseFailure(error, phase) })
   const requestPath = "/api/v1/mtm/mobile/attendance/requests"
   const reportPath = `/api/v1/mtm/attendance/report?from=${REQUEST_DEMO.from}&to=${REQUEST_DEMO.to}&form=ALL&employeeId=${DEMO_AGENTS[0]}`
   async function mobile(path: string, body?: unknown) {
@@ -100,79 +116,112 @@ export async function exerciseRequestDemo(password: string, initial: Awaited<Ret
     return data(JSON.parse(text))
   }
   try {
+    phase = "MOBILE_LOGIN"
     const auth = await mobile("/api/v1/mtm/mobile/auth", { email: REQUEST_DEMO.email, password, organizationSlug: DEMO.slug })
     const agent = record(auth.agent)
     if (agent.id !== DEMO_AGENTS[0] || agent.organizationId !== DEMO.id || agent.role !== "AGENT" || typeof auth.token !== "string" || !auth.token) return fail()
     token = auth.token
     const transitioned = initial.status !== "APPROVED"
+    phase = "REPORT_BEFORE"
     if (transitioned) verifyRequestReport(data(await session.request(reportPath)), false)
+    phase = "SUBMISSION"
     const submitted = await mobile(requestPath, requestBody()), request = record(submitted.request)
     if (typeof request.id !== "string" || !/^[a-f0-9-]{36}$/.test(request.id) || request.status !== (transitioned ? "PENDING" : "APPROVED")) return fail()
     if (initial.requestId && initial.requestId !== request.id) return fail()
+    phase = "SUBMISSION_REPLAY"
     const replay = await mobile(requestPath, requestBody())
     if (replay.idempotent !== true || record(replay.request).id !== request.id) return fail()
+    phase = "REVIEW_QUEUE"
     const queue = data(await session.request(`/api/v1/mtm/attendance/requests?status=${transitioned ? "PENDING" : "APPROVED"}`))
     if (!items(queue.items).some(row => row.id === request.id && row.agentId === DEMO_AGENTS[0])) return fail()
+    phase = "REVIEW_BELL"
     const bells = data(await session.request("/api/v1/notifications"))
     if (!items(bells.notifications).some(row => row.entityType === "mtm_attendance_request" && row.entityId === request.id)) return fail()
     if (transitioned) {
+      phase = "REVIEW_PANEL"
       const attention = data(await session.request("/api/v1/mtm/week/attention"))
       if (!items(attention.items).some(row => row.kind === "attendanceRequests" && row.count === 1)) return fail()
     }
     const decide = () => session.request(`/api/v1/mtm/attendance/requests/${request.id}/decision`, { method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ decision: "APPROVED", version: request.version, note: REQUEST_DEMO.note }) })
+    phase = "DECISION"
     const decided = data(await decide())
     if (record(decided.request).id !== request.id || record(decided.request).status !== "APPROVED") return fail()
+    phase = "DECISION_REPLAY"
     const repeated = data(await decide())
     if (repeated.idempotent !== true || record(repeated.request).id !== request.id) return fail()
+    phase = "REVIEW_PANEL_AFTER"
     const afterAttention = data(await session.request("/api/v1/mtm/week/attention"))
     if (items(afterAttention.items).some(row => row.kind === "attendanceRequests" && row.count !== 0)) return fail()
+    phase = "EMPLOYEE_REQUESTS"
     const own = await mobile(requestPath)
     if (!items(own.items).some(row => row.id === request.id && row.status === "APPROVED" && row.decisionNote === REQUEST_DEMO.note)) return fail()
+    phase = "EMPLOYEE_REPLY"
     const inbox = await mobile("/api/v1/mtm/mobile/notifications")
     if (!items(inbox.items).some(row => record(row.metadata).attendanceRequestId === request.id && record(row.metadata).status === "APPROVED")) return fail()
+    phase = "REPORT_AFTER"
     const report = verifyRequestReport(data(await session.request(reportPath)), true)
+    phase = "HISTORY"
     const history = data(await session.request(`/api/v1/mtm/attendance/decisions?from=${REQUEST_DEMO.from}&to=${REQUEST_DEMO.to}&status=APPROVED`))
     if (!items(history.items).some(row => row.id === request.id && row.employeeId === DEMO_AGENTS[0] && row.source === "EMPLOYEE" && record(row.decision).at)) return fail()
     return { transitioned, report }
-  } finally { token = ""; session.close() }
+  } catch (error) { throw phaseFailure(error, phase) }
+  finally { token = ""; session.close() }
 }
 
 export async function runRequestProduction(sha: string) {
-  assertRequestContext(sha, readRootFile(`${APP}/.deploy-sha`, 128))
-  if (process.getuid?.() !== 0) return fail()
-  const response = await fetch(`${DEMO.origin}/api/v1/public/build-info`, { redirect: "error", signal: AbortSignal.timeout(10_000) })
-  if (!response.ok || (await response.json()).artifactSha !== sha) return fail()
-  process.env.DATABASE_URL = databaseUrlFromEnv(readRootFile("/etc/leaddrive/app.env", 65536))
-  const requireApp = createRequire(`${APP}/package.json`)
-  const bcrypt = requireApp("bcryptjs") as typeof import("bcryptjs")
-  const { makeScriptPrisma } = await import(pathToFileURL(`${APP}/scripts/_rls.mjs`).href)
-  const db: PrismaClient = await makeScriptPrisma({ orgId: DEMO.id })
+  let phase: RequestPhase = "CONTEXT"
   try {
-    const before = await readOnlyDemo(db), password = credential("read-only-check")
-    if (!await bcrypt.compare(password, before.passwordHash)) return fail()
-    await prepareRequestDemo(db, await bcrypt.hash(password, 12))
-    const hash = await db.$transaction(async tx => {
-      await tx.$executeRawUnsafe("SET TRANSACTION READ ONLY")
-      return tx.mtmAgent.findFirst({ where: { organizationId: DEMO.id, id: DEMO_AGENTS[0], email: REQUEST_DEMO.email, userId: null }, select: { passwordHash: true } })
-    })
-    if (!hash?.passwordHash || !await bcrypt.compare(password, hash.passwordHash)) return fail()
-    const initial = await readRequestDemo(db)
-    const result = await exerciseRequestDemo(password, initial)
-    const final = await readRequestDemo(db), after = await readOnlyDemo(db)
-    if (final.status !== "APPROVED" || JSON.stringify(before.workdays) !== JSON.stringify(after.workdays)) return fail()
     assertRequestContext(sha, readRootFile(`${APP}/.deploy-sha`, 128))
-    return { version: 1, status: "PASS", artifactSha: sha, tenant: DEMO.slug, period: { from: REQUEST_DEMO.from, to: REQUEST_DEMO.to },
-      loginMethods: ["credentials", "mobile-credentials"], readOnlyComparison: true, physicalPhone: "NOT_RUN", transitioned: result.transitioned,
-      checks: { submission: true, replay: true, reviewerQueue: true, reviewerBell: true, reviewerPanel: true, decision: true, employeeReply: true, report: true, history: true, phoneFactsUnchanged: true },
-      counts: { submittedAudits: final.submittedAudits, decidedAudits: final.decidedAudits, reviewerBells: final.reviewerBells, employeeReplies: final.employeeReplies }, report: result.report }
-  } finally { await db.$disconnect(); delete process.env.DATABASE_URL }
+    if (process.getuid?.() !== 0) return fail()
+    phase = "PUBLIC_REVISION"
+    const response = await fetch(`${DEMO.origin}/api/v1/public/build-info`, { redirect: "error", signal: AbortSignal.timeout(10_000) })
+    if (!response.ok || (await response.json()).artifactSha !== sha) return fail()
+    phase = "DATABASE"
+    process.env.DATABASE_URL = databaseUrlFromEnv(readRootFile("/etc/leaddrive/app.env", 65536))
+    const requireApp = createRequire(`${APP}/package.json`)
+    const bcrypt = requireApp("bcryptjs") as typeof import("bcryptjs")
+    const { makeScriptPrisma } = await import(pathToFileURL(`${APP}/scripts/_rls.mjs`).href)
+    const db: PrismaClient = await makeScriptPrisma({ orgId: DEMO.id })
+    try {
+      phase = "FIXTURE_BEFORE"
+      const before = await readOnlyDemo(db)
+      phase = "CREDENTIAL"
+      const password = credential("read-only-check")
+      if (!await bcrypt.compare(password, before.passwordHash)) return fail()
+      phase = "PREPARE_CREDENTIAL"
+      await prepareRequestDemo(db, await bcrypt.hash(password, 12))
+      phase = "MOBILE_CREDENTIAL"
+      const hash = await db.$transaction(async tx => {
+        await tx.$executeRawUnsafe("SET TRANSACTION READ ONLY")
+        return tx.mtmAgent.findFirst({ where: { organizationId: DEMO.id, id: DEMO_AGENTS[0], email: REQUEST_DEMO.email, userId: null }, select: { passwordHash: true } })
+      })
+      if (!hash?.passwordHash || !await bcrypt.compare(password, hash.passwordHash)) return fail()
+      phase = "REQUEST_BEFORE"
+      const initial = await readRequestDemo(db)
+      const result = await exerciseRequestDemo(password, initial)
+      phase = "REQUEST_AFTER"
+      const final = await readRequestDemo(db)
+      phase = "FIXTURE_AFTER"
+      const after = await readOnlyDemo(db)
+      if (final.status !== "APPROVED" || JSON.stringify(before.workdays) !== JSON.stringify(after.workdays)) return fail()
+      phase = "FINAL_REVISION"
+      assertRequestContext(sha, readRootFile(`${APP}/.deploy-sha`, 128))
+      return { version: 1, status: "PASS", artifactSha: sha, tenant: DEMO.slug, period: { from: REQUEST_DEMO.from, to: REQUEST_DEMO.to },
+        loginMethods: ["credentials", "mobile-credentials"], readOnlyComparison: true, physicalPhone: "NOT_RUN", transitioned: result.transitioned,
+        checks: { submission: true, replay: true, reviewerQueue: true, reviewerBell: true, reviewerPanel: true, decision: true, employeeReply: true, report: true, history: true, phoneFactsUnchanged: true },
+        counts: { submittedAudits: final.submittedAudits, decidedAudits: final.decidedAudits, reviewerBells: final.reviewerBells, employeeReplies: final.employeeReplies }, report: result.report }
+    } finally { await db.$disconnect() }
+  } catch (error) { throw phaseFailure(error, phase) }
+  finally { delete process.env.DATABASE_URL }
 }
 
 export function validateRequestEvidence(value: unknown) {
   const row = record(value)
   if (row.status === "FAIL") {
-    if (JSON.stringify(row) !== JSON.stringify(safeFailure(new Error("unknown")))) return fail()
+    if (row.phase !== undefined && !REQUEST_PHASES.includes(row.phase as RequestPhase)) return fail()
+    const expected = { ...safeFailure(new Error("unknown")), ...(row.phase === undefined ? {} : { phase: row.phase }) }
+    if (JSON.stringify(row) !== JSON.stringify(expected)) return fail()
     return row
   }
   const expected = { version: 1, status: "PASS", artifactSha: row.artifactSha, tenant: DEMO.slug,
@@ -185,8 +234,8 @@ export function validateRequestEvidence(value: unknown) {
   return row
 }
 if (process.argv[2] === "--run-requests") {
-  void runRequestProduction(process.argv[3]).then(result => { process.stdout.write(JSON.stringify(validateRequestEvidence(result)) + "\n") }).catch(() => {
-    process.stdout.write(JSON.stringify(safeFailure(new Error("unknown"))) + "\n"); process.exitCode = 1
+  void runRequestProduction(process.argv[3]).then(result => { process.stdout.write(JSON.stringify(validateRequestEvidence(result)) + "\n") }).catch(error => {
+    process.stdout.write(JSON.stringify(safeRequestFailure(error)) + "\n"); process.exitCode = 1
   })
 } else if (process.argv[2] === "--validate-requests") {
   let input = ""
