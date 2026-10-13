@@ -445,6 +445,7 @@
 #### 2026-10-13 — 2.2 CI: хранилище тестовых документов
 
 - Настоящий Postgres подтвердил 28/29 сценариев; единственная ошибка — тест задавал приватному хранилищу `/tmp`, который штатная защита корректно запрещает. Тест создаёт отдельный случайный каталог вне checkout в домашней директории CI runner и удаляет только свой каталог после проверки. Производственная защита не изменена. Повторный Postgres — CI; локально NOT RUN по контракту нагрузки.
+| 2026-10-13 | Codex | Подготовлена приёмка1.14: dispatch-only Verify MTM attendance demo, режимы prepare-and-check/read-only-check; только exact current main=deployed/public artifact SHA, protected production environment, общий production lock и pinned SSH. Fixture строго принадлежит marker/фиксированному demo tenant, чужой существующий slug вызывает отказ; вставка идемпотентна и не перезаписывает журнал. Пароль остаётся в root-only runtime файле, используется обычный CSRF/credentials вход; DB-сверка в READ ONLY. Наружу выходят только разрешённые фиктивные ID/секунды/совпадения. 10 unit tests со сборкой controller и sanitizer PASS; 4 настоящих PG сценария добавлены обязательными в PR/deploy перед production-запуском, локально NOT RUN по host contract. ESLint/YAML/diff PASS; production и browser ещё NOT RUN. Controller checkpoint e70c365d1 и CI dd44336b2 проверены root; HR typefix511348397 включён. |
 
 #### 2026-10-13 — 1.14 CI: уточнение типа аварийного выхода
 
@@ -549,3 +550,8 @@
 - Покрытые нарушения исчезают из LATE_EARLY, флагов и итогов; оставшиеся минуты совпадают во всех формах. Targeted tests:19 projection/hour tests PASS, затем22 hours/export tests PASS; actual Excel/PDF сохраняют7:00 работы и не включают согласованного сотрудника в форму нарушений. Scoped ESLint5paths и diff-check PASS.
 - Реальный PG сценарий добавлен: pending не скрывает нарушение → approved start снимает только опоздание → rejected end сохраняет ранний уход → HR-approved end убирает строку из late form; workday и2events неизменны. PG/fullcompiler/build NOT RUN локально по host contract, выполняются в CI.
 - PR2.7 #723 с0cb295cce создан/attached/ready; после обнаруженного конфликта append-only журнала в CI-worktree включён main, предыдущие записи сохранены. Следующее: checkpoint2.8 и PR, затем2.9 особые случаи.
+#### 2026-10-13 — 1.14 CI: литерал статуса тестового снимка
+
+- Обязательный static-checks #718 PASS, включая реальный PostgreSQL. Typecheck нашёл одну оставшуюся группу ошибок в unit fixture: строка COMPLETED расширялась до string вместо enum. Значение обозначено literal as const, без изменения runtime или baseline. Full compiler повторяется в CI; локально NOT RUN по host contract.
+
+- PR#723 https://github.com/rashadoni/leaddrive-v2/pull/723 открыт и переведён ready. CI не стартовал из-за конфликта append-only журнала с #718 в main; включён origin/main ae1f26604, обе стороны всех записей сохранены. Runtime-конфликтов нет. Проверки2.7 ожидаются на объединённом head.
