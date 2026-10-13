@@ -372,7 +372,7 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
   try {
    const f=await fieldDay(),at=new Date(f.at.getTime()+1000)
    const first=await streamPoint(at,{isMock:true,attendanceConsentId:f.consent})
-   expect(first.status).toBe(201);expect(JSON.stringify(first.body)).not.toMatch(/isMock|attendanceConsentId|consentId/)
+   expect(first.status).toBe(200);expect(first.body).toMatchObject({success:true,data:{replayed:false}});expect(JSON.stringify(first.body)).not.toMatch(/isMock|attendanceConsentId|consentId/)
    const rows=await streamRows();expect(rows).toHaveLength(1);expect(rows[0]).toMatchObject({isMock:true,consentId:f.consent})
    expect((await streamPoint(at,{isMock:false,attendanceConsentId:f.consent},first.clientLocationId)).status).toBe(200)
    expect(await streamRows()).toEqual(rows)
@@ -387,14 +387,15 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
   try {
    const f=await fieldDay(),at=new Date(f.at.getTime()+1000)
    await tenant(ORG,()=>prisma.mtmSetting.updateMany({where:{organizationId:ORG,key:"attendanceEnabled"},data:{value:false}}))
-   expect((await streamPoint(at,{isMock:true,attendanceConsentId:f.consent})).status).toBe(201)
+   expect((await streamPoint(at,{isMock:true,attendanceConsentId:f.consent})).status).toBe(200)
    expect(await streamRows()).toEqual([])
    await tenant(ORG,()=>prisma.mtmSetting.updateMany({where:{organizationId:ORG,key:"attendanceEnabled"},data:{value:true}}))
    await tenant(ORG,()=>store.recordOwnAttendanceLocationConsent(self(),{requestId:randomUUID(),policyRevisionId:policyId,expectedConsentId:f.consent,accepted:false}))
-   expect((await streamPoint(at,{isMock:true,attendanceConsentId:f.consent})).status).toBe(201)
+   expect((await streamPoint(at,{isMock:true,attendanceConsentId:f.consent})).status).toBe(200)
    await accept()
-   expect((await streamPoint(at,{isMock:true,attendanceConsentId:f.consent})).status).toBe(201)
-   expect((await streamPoint(at,{})).status).toBe(201)
+   expect((await streamPoint(at,{isMock:true,attendanceConsentId:f.consent})).status).toBe(200)
+   expect((await streamPoint(at,{})).status).toBe(200)
+   expect(await tenant(ORG,()=>prisma.mtmAgentLocation.count({where:{organizationId:ORG,agentId:identity.agentId}}))).toBe(4)
    expect(await streamRows()).toEqual([])
   } finally {
    identity.role="EMPLOYEE"
@@ -461,7 +462,7 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
  })
  it("strict approval rolls back a legacy mark, allows an approved mark and preserves accepted replays after revocation",async()=>{
   await employee();const installations=await import("@/lib/mtm/attendance-installation-store"),policy=await import("@/lib/mtm/attendance-installation-policy")
-  const at=new Date(),op=operation("START",randomUUID(),at)
+  const at=new Date(),workdayId=randomUUID(),op=operation("START",workdayId,at)
   await tenant(ORG,()=>policy.saveAttendanceInstallationRule(admin,true))
   try {
    expect((await send(op)).body.results).toMatchObject([{status:"conflict",serverData:{code:"MTM_ATTENDANCE_INSTALLATION_APPROVAL_REQUIRED",committed:false}}])
@@ -473,7 +474,7 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
    expect((await send(op)).body.results).toMatchObject([{status:"ok"}])
    await tenant(ORG,()=>installations.decideAttendanceInstallation(admin,id,{requestId:randomUUID(),action:"REVOKE",reason:"Fictional replacement"}))
    expect((await send(op)).body.results).toMatchObject([{status:"ok"}])
-   const finish=operation("FINISH",op.data.id!,new Date(Date.now()+1000))
+   const finish=operation("FINISH",workdayId,new Date(Date.now()+1000))
    expect((await send(finish)).body.results).toMatchObject([{status:"conflict",serverData:{committed:false}}])
    expect(await tenant(ORG,()=>prisma.mtmAgentWorkday.findFirst({where:{organizationId:ORG,agentId:identity.agentId},select:{status:true,completedAt:true}}))).toEqual({status:"STARTED",completedAt:null})
   } finally {await tenant(ORG,()=>policy.saveAttendanceInstallationRule(admin,false))}
