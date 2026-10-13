@@ -427,7 +427,10 @@ export function DemoJourneyPlayer({
             <main id="demo-scene" className="min-w-0 overflow-y-auto p-4 sm:p-6">
               {viewSection.intro && manifest.capabilities.video ? (
                 <IntroClip
-                  key={viewSection.id}
+                  // Its own key: the scene below is keyed by the section too, and
+                  // two siblings with one key left the previous chapter's clip
+                  // on screen above the new one.
+                  key={`clip:${viewSection.id}`}
                   slug={viewSection.intro.slug}
                   caption={viewSection.intro.caption}
                   status={viewSection.intro.status}
