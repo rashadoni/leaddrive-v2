@@ -2,6 +2,7 @@
  * Only authentication and the subscription decision are fixtures; Prisma,
  * employee scope, settings, calendar and journal reads are real PostgreSQL.
  */
+import { randomUUID } from "node:crypto"
 import { spawnSync } from "node:child_process"
 import { createRequire } from "node:module"
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs"
@@ -10,6 +11,7 @@ import { join } from "node:path"
 import { NextRequest } from "next/server"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { addDateKeyDays, currentDateKey } from "@/lib/mtm/mobile-week"
+import type { AttendanceViewConfig } from "@/lib/mtm/attendance-view-contract"
 import type { MtmRouteActor } from "@/lib/mtm/route-permissions"
 
 const adminUrl = process.env.MTM_ATTENDANCE_TEST_DATABASE_URL
@@ -60,6 +62,11 @@ pgDescribe("MTM report reads the real saved workday and journal", () => {
   let createRule: typeof import("@/lib/mtm/attendance-rule-store").createAttendanceRule
   let calendar: typeof import("@/lib/mtm/attendance-calendar")
   let postCalendar: typeof import("@/app/api/v1/mtm/attendance/calendar/route").POST
+  let views: typeof import("@/lib/mtm/attendance-view-store")
+  let postView: typeof import("@/app/api/v1/mtm/attendance/views/route").POST
+  let patchView: typeof import("@/app/api/v1/mtm/attendance/views/[id]/route").PATCH
+  let genericPatchView: typeof import("@/app/api/v1/saved-views/[id]/route").PATCH
+  let genericDeleteView: typeof import("@/app/api/v1/saved-views/[id]/route").DELETE
   let createdRole = false
   let createdDb = false
   let monday: string
@@ -95,12 +102,17 @@ pgDescribe("MTM report reads the real saved workday and journal", () => {
     getReport = (await import("@/app/api/v1/mtm/attendance/report/route")).GET
     calendar = await import("@/lib/mtm/attendance-calendar")
     postCalendar = (await import("@/app/api/v1/mtm/attendance/calendar/route")).POST
+    views = await import("@/lib/mtm/attendance-view-store")
+    postView = (await import("@/app/api/v1/mtm/attendance/views/route")).POST
+    patchView = (await import("@/app/api/v1/mtm/attendance/views/[id]/route")).PATCH
+    ;({ PATCH: genericPatchView, DELETE: genericDeleteView } = await import("@/app/api/v1/saved-views/[id]/route"))
     monday = addDateKeyDays(currentDateKey(new Date(), "Asia/Baku"), 8)
     while (new Date(`${monday}T00:00:00Z`).getUTCDay() !== 1) monday = addDateKeyDays(monday, 1)
     friday = addDateKeyDays(monday, 4)
     now = at(friday, "19:00")
     await bypass(async () => {
       for (const id of [ORG, OTHER]) await prisma.organization.create({ data: { id, name: `Fixture ${id}`, slug: id } })
+      await prisma.user.create({ data: { id: "fixture-admin", organizationId: ORG, email: "admin@example.test", name: "Fixture administrator", role: "admin", passwordHash: "fixture-unusable-hash" } })
       await prisma.user.create({ data: { id: "fixture-supervisor-user", organizationId: ORG, email: "supervisor@example.test", name: "Fixture supervisor", role: "manager", passwordHash: "fixture-unusable-hash" } })
       for (const id of ["team-a", "team-b"]) await prisma.mtmTeam.create({ data: { id, organizationId: ORG, name: id } })
       await prisma.mtmAgent.createMany({ data: [
@@ -241,6 +253,48 @@ pgDescribe("MTM report reads the real saved workday and journal", () => {
     Object.assign(caller, { orgId: OTHER, userId: "fixture-admin", role: "admin" })
     expect((await postCalendar(request())).status).toBe(404)
     expect(await tenant(OTHER, () => prisma.mtmWorkCalendarDay.count({ where: { organizationId: OTHER } }))).toBe(0)
+  })
+
+  const viewConfig = (): AttendanceViewConfig => ({ version: 1, mode: "DAY", columns: ["employee", "worked", "late"], showTotals: false,
+    filters: { from: monday, to: friday, teamId: "team-a", form: "LATE_EARLY" } })
+
+  it("reopens an identical personal form with ordered columns, filters and totals, and deduplicates retries", async () => {
+    const value = { name: "Fixture personal report", config: viewConfig(), requestId: randomUUID() }
+    const [first, retry] = await Promise.all([1, 2].map(() => tenant(ORG, () => views.saveAttendanceView({ organizationId: ORG, userId: "fixture-admin", value }))))
+    expect(retry).toEqual(first)
+    expect(first!.config).toEqual(value.config)
+    const reopened = await tenant(ORG, () => views.readAttendanceViews(ORG, "fixture-admin"))
+    expect(reopened).toEqual([first])
+    expect(await tenant(ORG, () => views.readAttendanceViews(ORG, "fixture-supervisor-user"))).toEqual([])
+    expect(await tenant(OTHER, () => views.readAttendanceViews(OTHER, "fixture-admin"))).toEqual([])
+    const before = await tenant(ORG, () => readReport({ organizationId: ORG, actor: adminActor, query: value.config.filters, now }))
+    const after = await tenant(ORG, () => readReport({ organizationId: ORG, actor: adminActor, query: reopened[0].config.filters, now }))
+    expect(after).toEqual(before)
+    const updated = await tenant(ORG, () => views.saveAttendanceView({ organizationId: ORG, userId: "fixture-admin", id: first!.id,
+      value: { name: "Renamed fixture", config: { ...viewConfig(), columns: ["late", "employee"] }, version: first!.version } }))
+    expect(updated!.config.columns).toEqual(["late", "employee"])
+    await expect(tenant(ORG, () => views.saveAttendanceView({ organizationId: ORG, userId: "fixture-admin", id: first!.id, remove: true, value: { version: first!.version } })))
+      .rejects.toMatchObject({ code: "MTM_ATTENDANCE_VIEW_CHANGED" })
+    await tenant(ORG, () => views.saveAttendanceView({ organizationId: ORG, userId: "fixture-admin", id: first!.id, remove: true, value: { version: updated!.version } }))
+    expect(await tenant(ORG, () => views.readAttendanceViews(ORG, "fixture-admin"))).toEqual([])
+  })
+
+  it("does not permit foreign personal form edits, generic share bypass, or writes with the feature disabled", async () => {
+    const value = { name: "Fixture scope report", config: viewConfig(), requestId: randomUUID() }
+    Object.assign(caller, { orgId: ORG, userId: "fixture-admin", role: "admin" })
+    const request = (url: string, method: string, body: unknown) => new NextRequest(`http://localhost${url}`, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+    const createdResponse = await postView(request("/api/v1/mtm/attendance/views", "POST", value))
+    expect(createdResponse.status).toBe(200)
+    const created = (await createdResponse.json()).data
+    Object.assign(caller, { userId: "fixture-supervisor-user", role: "manager" })
+    expect((await patchView(request(`/api/v1/mtm/attendance/views/${created.id}`, "PATCH", { name: value.name, config: value.config, version: created.version }), { params: Promise.resolve({ id: created.id }) })).status).toBe(404)
+    Object.assign(caller, { userId: "fixture-admin", role: "admin" })
+    expect((await genericPatchView(request(`/api/v1/saved-views/${created.id}`, "PATCH", { isShared: true }), { params: Promise.resolve({ id: created.id }) })).status).toBe(404)
+    expect((await genericDeleteView(request(`/api/v1/saved-views/${created.id}`, "DELETE", {}), { params: Promise.resolve({ id: created.id }) })).status).toBe(404)
+    await tenant(ORG, () => prisma.mtmSetting.updateMany({ where: { organizationId: ORG, key: "attendanceEnabled" }, data: { value: false } }))
+    expect((await postView(request("/api/v1/mtm/attendance/views", "POST", { ...value, requestId: randomUUID() }))).status).toBe(404)
+    expect(await tenant(ORG, () => views.readAttendanceViews(ORG, "fixture-admin"))).toEqual([created])
+    await tenant(ORG, () => prisma.mtmSetting.updateMany({ where: { organizationId: ORG, key: "attendanceEnabled" }, data: { value: true } }))
   })
 
 })

@@ -68,7 +68,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   return runWithTenant(orgId, async () => {
   const { view, allowed } = await ownerOrAdmin(id, orgId, userId, role)
-  if (!view) return NextResponse.json({ error: "Not found" }, { status: 404 })
+  // Attendance views are private and only writable through their opt-in boundary.
+  if (!view || view.entityType === "mtm_attendance") return NextResponse.json({ error: "Not found" }, { status: 404 })
   if (!allowed) return NextResponse.json({ error: "Forbidden — only the view owner or an admin may edit it" }, { status: 403 })
 
   // Now gate on the module that owns this view's entityType
@@ -134,7 +135,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   return runWithTenant(orgId, async () => {
   const { view, allowed } = await ownerOrAdmin(id, orgId, userId, role)
-  if (!view) return NextResponse.json({ error: "Not found" }, { status: 404 })
+  // Attendance views are private and only writable through their opt-in boundary.
+  if (!view || view.entityType === "mtm_attendance") return NextResponse.json({ error: "Not found" }, { status: 404 })
   if (!allowed) return NextResponse.json({ error: "Forbidden — only the view owner or an admin may delete it" }, { status: 403 })
 
   // Gate on the module that owns this view's entityType
