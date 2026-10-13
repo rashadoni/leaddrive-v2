@@ -1,8 +1,11 @@
+import { AttendanceRequestDetailsSchema } from "@/lib/mtm/attendance-request-contract"
+import type { AttendanceApprovedPeriod } from "@/lib/mtm/attendance-request-projection"
 import { readAttendanceDayKinds } from "@/lib/mtm/attendance-day-kind-store"
 import { createHash } from "node:crypto"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { readAttendanceRules } from "@/lib/mtm/attendance-rule-store"
+import { projectAttendanceCorrectionFacts } from "@/lib/mtm/attendance-correction-facts"
 import { buildMtmAttendanceReport, filterMtmAttendanceRows, summarizeMtmAttendanceRows, MTM_ATTENDANCE_REPORT_MAX_ROWS } from "@/lib/mtm/attendance-report"
 import type { MtmRouteActor } from "@/lib/mtm/route-permissions"
 
@@ -54,11 +57,11 @@ export async function readMtmAttendanceReport(input: {
       tx.mtmAgentWorkday.findMany({
         where: { organizationId, agentId: { in: agentIds }, workDate: { gte: from, lte: to } },
         select: {
-          id: true, agentId: true, workDate: true, status: true, startedAt: true, completedAt: true, totalPausedSeconds: true,
+          id: true, agentId: true, workDate: true, status: true, startedAt: true, pausedAt: true, completedAt: true, totalPausedSeconds: true,
           events: {
             where: { organizationId, agentId: { in: agentIds } },
             orderBy: [{ occurredAt: "asc" }, { appliedAt: "asc" }, { id: "asc" }],
-            select: { id: true, type: true, occurredAt: true, appliedAt: true, claimedAt: true, serverReceivedAt: true },
+            select: { id: true, type: true, occurredAt: true, appliedAt: true, claimedAt: true, serverReceivedAt: true, clientEventId: true },
           },
         },
       }),
@@ -73,10 +76,24 @@ export async function readMtmAttendanceReport(input: {
       readAttendanceRules(organizationId, tx),
       readAttendanceDayKinds(organizationId, tx),
     ])
+    const approved = await tx.mtmHrmRequest.findMany({ where: { organizationId, agentId: { in: agentIds }, status: "APPROVED", attendanceDetails: { not: Prisma.DbNull }, startDate: { lte: to }, endDate: { gte: from } },
+      select: { id: true, agentId: true, startDate: true, endDate: true, decidedAt: true, attendanceDetails: true }, take: 10_001 })
+    if (approved.length > 10_000) throw new Error("MTM_ATTENDANCE_APPROVED_REQUESTS_TOO_LARGE")
+    const approvedRequests: AttendanceApprovedPeriod[] = approved.map((entry) => {
+      const details = AttendanceRequestDetailsSchema.parse(entry.attendanceDetails)
+      if (!entry.decidedAt) throw new Error("MTM_ATTENDANCE_APPROVED_REQUEST_INVALID")
+      return { id: entry.id, agentId: entry.agentId, startDate: entry.startDate.toISOString().slice(0, 10), endDate: entry.endDate.toISOString().slice(0, 10), decidedAt: entry.decidedAt.toISOString(),
+        details: { kind: details.kind, unit: details.unit, startTime: details.startTime, endTime: details.endTime, timezone: details.timezone, dayKind: details.dayKind } }
+    })
+    const corrections = await tx.workforceTimeCorrection.findMany({ where: { organizationId, agentId: { in: agentIds }, workdayId: { in: workdays.map((day) => day.id) } },
+      select: { id: true, workdayId: true, requestId: true, source: true, occurredAt: true, beforeFacts: true, afterFacts: true, actorUser: { select: { id: true, name: true } } } })
+    const correctionsByWorkday = new Map<string, typeof corrections>()
+    for (const correction of corrections) correctionsByWorkday.set(correction.workdayId, [...(correctionsByWorkday.get(correction.workdayId) ?? []), correction])
     const teamNames = new Map(teams.map((team) => [team.id, team.name]))
     const report = buildMtmAttendanceReport({
       employees: employees.map((employee) => ({ ...employee, teamName: employee.teamId ? teamNames.get(employee.teamId) ?? null : null })),
-      dayKinds: catalogue.items, workdays, calendar, rules, from: query.from, to: query.to, now,
+      approvedRequests, dayKinds: catalogue.items, workdays: workdays.map((day) => ({ ...day, correctionProjection: projectAttendanceCorrectionFacts(day, correctionsByWorkday.get(day.id) ?? [], now) })),
+      calendar, rules, from: query.from, to: query.to, now,
     })
     const rows = filterMtmAttendanceRows(report.rows, { form: query.form })
     const result = { ...report, rows, totals: summarizeMtmAttendanceRows(rows), form: query.form }

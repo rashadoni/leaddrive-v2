@@ -196,6 +196,7 @@ export interface MtmPrismaMock {
   mtmAttendanceSchedule: ModelMock
   mtmAttendanceDelivery: ModelMock
   mtmAttendanceRule: ModelMock
+  mtmAttendanceAttachment: ModelMock
   mtmSetting: ModelMock
   mtmNotification: ModelMock
   mtmRouteNotificationOutbox: ModelMock
@@ -280,6 +281,7 @@ export interface MtmPrismaMock {
   mtmPharmacyRewardClaim: ModelMock
   mtmPharmacyPromotionOperation: ModelMock
   // Non-mtm models commonly mocked alongside MTM tests
+  notification: ModelMock
   user: ModelMock
   organization: ModelMock
   savedView: ModelMock
@@ -384,6 +386,7 @@ export function makeMtmPrismaMock(): MtmPrismaMock {
     mtmAttendanceSchedule: makeModel(),
     mtmAttendanceDelivery: makeModel(),
     mtmAttendanceRule: makeModel(),
+    mtmAttendanceAttachment: makeModel(),
     mtmSetting: makeModel(),
     mtmNotification: makeModel(),
     mtmRouteNotificationOutbox: makeModel(),
@@ -465,6 +468,7 @@ export function makeMtmPrismaMock(): MtmPrismaMock {
     mtmPharmacyReward: makeModel(),
     mtmPharmacyRewardClaim: makeModel(),
     mtmPharmacyPromotionOperation: makeModel(),
+    notification: makeModel(),
     user: makeModel(),
     organization: makeMtmOrganizationModel(),
     savedView: makeModel(),

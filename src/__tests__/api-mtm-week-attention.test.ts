@@ -455,3 +455,28 @@ describe("GET /api/v1/mtm/week/attention", () => {
     for (const leak of ["Aptek", "Klinika", "latitude", "payload"]) expect(body).not.toContain(leak)
   })
 })
+
+
+describe("attendance Panel attention", () => {
+  beforeEach(() => {
+    signIn(ADMIN)
+    vi.mocked(requireAuth).mockResolvedValue({ orgId: ORG, userId: "user-adm", role: "admin", principalType: "session", email: "fixture@example.test", name: "Fixture" } as never)
+    // Nonempty JSON is enough here: the Panel deliberately never reads its contents.
+    const make = (id: string, agentId: string, status = "PENDING", owner?: string): Row => ({
+      id, organizationId: ORG, agentId, status, attendanceDetails: { fixture: true }, submittedAt: NOW,
+      agent: { ...AGENTS.find(agent => agent.id === agentId), userId: owner ?? null },
+    })
+    serve(prisma.mtmHrmRequest, [make("r1", "a1"), make("r2", "a2"), make("r3", "a3"), make("r4", "a1", "APPROVED"), make("r5", "a1", "PENDING", "user-adm"), make("r6", "adm"), { ...make("r7", "x1"), organizationId: "org-other" }])
+  })
+  it("omits the new item and performs no request query while the feature is off", async () => {
+    const { status, data } = await attention()
+    expect(status).toBe(200)
+    expect(data.items.some(item => item.kind === "attendanceRequests")).toBe(false)
+    expect(prisma.mtmHrmRequest.groupBy).not.toHaveBeenCalled()
+  })
+  it("counts only active, other-employee pending requests and narrows by team", async () => {
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "attendanceEnabled", value: true }] as never)
+    expect((await attention()).data.items.find(item => item.kind === "attendanceRequests")).toMatchObject({ count: 2 })
+    expect((await attention("?teamId=t1")).data.items.find(item => item.kind === "attendanceRequests")).toMatchObject({ count: 1 })
+  })
+})

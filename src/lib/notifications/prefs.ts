@@ -1,3 +1,4 @@
+import { MTM_ATTENDANCE_REQUEST_NOTIFICATION_KIND } from "@/lib/mtm/attendance-request-notification"
 /**
  * Notification preference types and the push-decision helper — pure functions,
  * no DB, no React.
@@ -71,6 +72,7 @@ export const DEFAULT_SECTION_PUSH: Record<string, boolean> = {
  */
 export const KINDS_ON_UNLESS_SWITCHED_OFF: ReadonlySet<string> = new Set([
   MTM_LOCATION_REQUEST_NOTIFICATION_KIND,
+  MTM_ATTENDANCE_REQUEST_NOTIFICATION_KIND,
 ])
 
 // ---------------------------------------------------------------------------

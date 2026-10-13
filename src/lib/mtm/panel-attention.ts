@@ -29,6 +29,7 @@ export const MTM_OPEN_APPROVAL_STATUSES = ["SUBMITTED", "IN_REVIEW", "NEEDS_INFO
 export const MTM_PANEL_ATTENTION_KINDS = [
   // First on purpose: the agent who sent it may be standing at the customer's door.
   "customerLocationRequests",
+  "attendanceRequests",
   "contactCreateRequests",
   "customerCreateRequests",
   "routeChangeRequests",
@@ -310,6 +311,8 @@ export function buildAttentionItems(
  */
 export function attentionItemHref(item: Pick<MtmPanelAttentionItem, "kind" | "date">): string {
   switch (item.kind) {
+    case "attendanceRequests":
+      return "/mtm/attendance/requests"
     case "contactCreateRequests":
       return "/mtm/contacts"
     case "customerLocationRequests":

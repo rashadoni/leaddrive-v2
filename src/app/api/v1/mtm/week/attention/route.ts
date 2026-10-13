@@ -1,3 +1,5 @@
+import { attendanceReviewWhere } from "@/lib/mtm/attendance-request-review"
+import { checkPermission, type Role } from "@/lib/permissions"
 import type { Prisma } from "@prisma/client"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
@@ -142,6 +144,14 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
   const agentIds: AttentionAgentFilter = filterAgents ? filterAgents.map((agent: { id: string }) => agent.id) : scopeIds
   const fieldAgents = fieldAgentsRaw as Array<{ id: string; name: string; teamId: string | null }>
 
+  // Off means no attendance query and no new item in this legacy response.
+  const attendanceGroups = settings.attendanceEnabled === true && auth.principalType === "session" && checkPermission(auth.role as Role, "mtm", "write")
+    ? await prisma.mtmHrmRequest.groupBy({ by: ["agentId"],
+      where: { ...attendanceReviewWhere(auth.orgId, auth.userId, { ...actor, scopedAgentIds: agentIds === null ? null : [...agentIds] }), status: "PENDING" },
+      _count: { _all: true }, _min: { submittedAt: true },
+    }) : []
+  const attendanceSummary = summarizeByAgent(attendanceGroups.map((row) => ({ agentId: row.agentId, count: row._count._all, date: row._min.submittedAt })), "earliest")
+
   const todayStart = localDateKeyToUtc(today, timezone)
 
   const [locationRequests, contactRequests, customerRequests, routeChanges, drafts, alerts, photos] = await Promise.all([
@@ -209,7 +219,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
   }, null)
 
   // One read for every name a row spells out.
-  const namedIds = [...new Set([locationSummary, contactSummary, customerSummary, routeChangeSummary, draftSummary]
+  const namedIds = [...new Set([attendanceSummary, locationSummary, contactSummary, customerSummary, routeChangeSummary, draftSummary]
     .flatMap((summary) => summary.agentIds.slice(0, MTM_ATTENTION_PEOPLE_SHOWN)))]
   const namedAgents = namedIds.length > 0
     ? await prisma.mtmAgent.findMany({ where: { organizationId: auth.orgId, id: { in: namedIds } }, select: { id: true, name: true } })
@@ -218,6 +228,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
 
   const localDay = (value: Date | null | undefined) => (value ? dateInputValueInTimezone(value, timezone) : null)
   const items = buildAttentionItems([
+    { kind: "attendanceRequests", count: attendanceSummary.count, date: localDay(attendanceSummary.date), agentIds: attendanceSummary.agentIds },
     {
       kind: "customerLocationRequests",
       count: locationSummary.count,

@@ -1,3 +1,4 @@
+import { projectApprovedAttendanceRequests, type AttendanceApprovedPeriod } from "@/lib/mtm/attendance-request-projection"
 import type { AttendanceDayKind } from "@/lib/mtm/attendance-day-kinds"
 import { addDateKeyDays, currentDateKey, isDateKey } from "@/lib/mtm/mobile-week"
 import { AttendanceRuleInputSchema, attendanceRuleForDate, minutesOfDay, type MtmAttendanceRule } from "@/lib/mtm/attendance-rules"
@@ -5,6 +6,7 @@ import { resolveWorkCalendarDay, type WorkCalendarDayKind, type WorkCalendarOver
 import { mtmWorkdayPauses } from "@/lib/mtm/workday-pauses"
 import { isValidTimezone, localDateTimeToUnambiguousUtc } from "@/lib/timezone"
 import { calculateWorkforceTimesheetDay, type WorkforceWorkdayFactsInput } from "@/lib/workforce/timesheet-calculation"
+import type { WorkforceWorkdayCorrectionFacts } from "@/lib/workforce/workday-correction-facts"
 
 export const MTM_ATTENDANCE_REPORT_MAX_DAYS = 366
 export const MTM_ATTENDANCE_REPORT_MAX_ROWS = 100_000
@@ -44,6 +46,21 @@ export interface MtmAttendanceWorkday {
   completedAt: MtmAttendanceInstant | null
   totalPausedSeconds: number
   events: readonly MtmAttendanceEventInput[]
+  /** Server-only ledger proof; never accepted from a report request/client. */
+  correctionProjection?: MtmAttendanceCorrectionProjection
+}
+
+/** Safe history: no reasons, attachments, device identifiers or coordinates. */
+export type MtmAttendanceCorrection = {
+  id: string; requestId: string | null; source: "REQUEST_APPROVAL" | "DIRECT_MANAGER"; occurredAt: string
+  reviewer: { id: string; name: string | null }
+  before: { kind: "MISSING"; workDate: string } | { kind: "WORKDAY"; facts: WorkforceWorkdayCorrectionFacts }
+  after: WorkforceWorkdayCorrectionFacts
+}
+export type MtmAttendanceCorrectionProjection = { valid: false } | {
+  valid: true; facts: WorkforceWorkdayCorrectionFacts
+  pauseIntervals: Array<{ startedAt: string; endedAt: string | null }>
+  history: MtmAttendanceCorrection[]
 }
 
 /** Allowlisted journal DTO: coordinates, notes and request/evidence payloads never cross this boundary. */
@@ -56,8 +73,8 @@ export interface MtmAttendanceEvent {
   serverReceivedAt: string | null
 }
 
-export type MtmAttendanceDayKind = "WORKED" | "OPEN" | "MISSING_FINISH" | "ABSENT" | "WEEKEND" | "HOLIDAY" | "UPCOMING" | "INVALID_FACTS"
-export type MtmAttendanceFlag = "MISSING_FINISH" | "FACTS_INVALID" | "WORKED_ON_DAY_OFF" | "LATE_START" | "EARLY_LEAVE"
+export type MtmAttendanceDayKind = "APPROVED_REQUEST" | "WORKED" | "OPEN" | "MISSING_FINISH" | "ABSENT" | "WEEKEND" | "HOLIDAY" | "UPCOMING" | "INVALID_FACTS"
+export type MtmAttendanceFlag = "WORKED_ON_APPROVED_ABSENCE" | "MISSING_FINISH" | "FACTS_INVALID" | "WORKED_ON_DAY_OFF" | "LATE_START" | "EARLY_LEAVE"
 export type MtmAttendanceInvalidReason = "DUPLICATE_WORKDAY" | "SCHEDULE_INVALID" | "TIMESTAMP_INVALID" | "EVENT_TYPE_INVALID" | "JOURNAL_INCOMPLETE" | "PAUSE_TOTAL_MISMATCH" | "WORKDAY_INCONSISTENT"
 
 /**
@@ -93,9 +110,12 @@ export interface MtmAttendanceReportRow {
   flags: MtmAttendanceFlag[]
   invalidReasons: MtmAttendanceInvalidReason[]
   events: MtmAttendanceEvent[]
+  corrections?: MtmAttendanceCorrection[]
+  approvedRequests?: AttendanceApprovedPeriod[]
 }
 
 export interface MtmAttendanceReportInput {
+  approvedRequests?: readonly AttendanceApprovedPeriod[]
   dayKinds?: readonly AttendanceDayKind[]
   employees: readonly MtmAttendanceEmployee[]
   workdays: readonly MtmAttendanceWorkday[]
@@ -212,19 +232,27 @@ function buildRow(employee: MtmAttendanceEmployee, date: string, days: readonly 
   row.startedAt = instant(day.startedAt)
   row.completedAt = instant(day.completedAt)
   row.events = read.events
+  const corrected = day.correctionProjection
+  if (corrected?.valid === false) return invalid(row, ["WORKDAY_INCONSISTENT"])
+  if (corrected?.valid) {
+    if (corrected.facts.id !== day.id || corrected.facts.workDate !== date || corrected.facts.status !== day.status
+      || corrected.facts.startedAt !== row.startedAt || corrected.facts.completedAt !== row.completedAt
+      || corrected.facts.totalPausedSeconds !== day.totalPausedSeconds || !corrected.history.length) return invalid(row, ["WORKDAY_INCONSISTENT"])
+    row.corrections = corrected.history
+  }
   if (date < today && (day.status === "STARTED" || day.status === "PAUSED")) row.flags.push("MISSING_FINISH")
   const reasons = [...read.reasons]
   if (!row.startedAt || (day.completedAt !== null && !row.completedAt)) reasons.push("TIMESTAMP_INVALID")
   if (!day.id || !["STARTED", "PAUSED", "COMPLETED"].includes(day.status)
     || !Number.isSafeInteger(day.totalPausedSeconds) || day.totalPausedSeconds < 0
     || read.events.some((event) => Date.parse(event.occurredAt) > now.getTime()) || date > today) reasons.push("WORKDAY_INCONSISTENT")
-  if (read.events.filter((event) => event.type === "START").length !== 1
-    || (day.status === "COMPLETED" && !read.events.some((event) => event.type === "FINISH"))) reasons.push("JOURNAL_INCOMPLETE")
+  if (!corrected?.valid && (read.events.filter((event) => event.type === "START").length !== 1
+    || (day.status === "COMPLETED" && !read.events.some((event) => event.type === "FINISH")))) reasons.push("JOURNAL_INCOMPLETE")
   if (reasons.length) return invalid(row, reasons)
 
   // This is the only pause parser. Its documented tolerance for replayed or
   // redundant events is preserved; no second state machine is added here.
-  const pauses = mtmWorkdayPauses(read.events)
+  const pauses = corrected?.valid ? corrected.pauseIntervals.map((pause) => ({ from: new Date(pause.startedAt), to: pause.endedAt ? new Date(pause.endedAt) : null })) : mtmWorkdayPauses(read.events)
   const closedPauseSeconds = pauses.reduce((total, pause) => total + (pause.to === null ? 0 : Math.floor((pause.to.getTime() - pause.from.getTime()) / 1000)), 0)
   if (closedPauseSeconds !== day.totalPausedSeconds) return invalid(row, ["PAUSE_TOTAL_MISMATCH"])
   try {
@@ -287,10 +315,12 @@ export function buildMtmAttendanceReport(input: MtmAttendanceReportInput) {
     calendarByDate.set(date, [...(calendarByDate.get(date) ?? []), entry])
   }
   const catalogue = new Map(input.dayKinds?.map((kind) => [kind.key, kind]))
+  const approvedByEmployee = new Map<string, AttendanceApprovedPeriod[]>()
+  for (const entry of input.approvedRequests ?? []) approvedByEmployee.set(entry.agentId, [...(approvedByEmployee.get(entry.agentId) ?? []), entry])
   const rows = input.employees.flatMap((employee) => dates.map((date) => {
     const row = buildRow(employee, date, days.get(rowKey(employee.id, date)) ?? [], plans.get(date)!, calendarByDate.get(date) ?? [], now)
     const dayKind = catalogue.get(row.kind)
-    return dayKind ? { ...row, dayKind } : row
+    return projectApprovedAttendanceRequests(dayKind ? { ...row, dayKind } : row, approvedByEmployee.get(employee.id) ?? [])
   }))
   return { from: input.from, to: input.to, asOf, rows, totals: summarizeMtmAttendanceRows(rows) }
 }
@@ -308,7 +338,7 @@ export function filterMtmAttendanceRows(rows: readonly MtmAttendanceReportRow[],
   return rows.filter((row) => (!filter.employeeId || row.employeeId === filter.employeeId)
     && (!filter.teamId || row.teamId === filter.teamId) && (!filter.from || row.date >= filter.from) && (!filter.to || row.date <= filter.to)
     && (filter.form !== "LATE_EARLY" || (row.lateSeconds ?? 0) > 0 || (row.earlyLeaveSeconds ?? 0) > 0)
-    && (filter.form !== "ABSENCES" || row.kind === "ABSENT") && (filter.form !== "JOURNAL" || row.events.length > 0))
+    && (filter.form !== "ABSENCES" || row.kind === "ABSENT") && (filter.form !== "JOURNAL" || row.events.length > 0 || Boolean(row.corrections?.length)))
 }
 
 /** Sums known values only. Consumers must retain the explicit completeness counts beside the totals. */

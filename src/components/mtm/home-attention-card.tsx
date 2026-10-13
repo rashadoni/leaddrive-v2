@@ -26,6 +26,7 @@ import {
 
 const ROW_KEY = {
   customerLocationRequests: "rowCustomerLocationRequests",
+  attendanceRequests: "rowAttendanceRequests",
   contactCreateRequests: "rowContactCreateRequests",
   customerCreateRequests: "rowCustomerCreateRequests",
   routeChangeRequests: "rowRouteChangeRequests",
@@ -36,6 +37,7 @@ const ROW_KEY = {
 
 const CTA_KEY = {
   customerLocationRequests: "ctaLocation",
+  attendanceRequests: "ctaRequest",
   contactCreateRequests: "ctaRequest",
   customerCreateRequests: "ctaRequest",
   routeChangeRequests: "ctaRequest",
@@ -47,6 +49,7 @@ const CTA_KEY = {
 const ROW_TONE: Record<MtmPanelAttentionKind, HomeTone> = {
   // Red: somebody is waiting for this one on the spot, not at a desk.
   customerLocationRequests: "red",
+  attendanceRequests: "amber",
   contactCreateRequests: "blue",
   customerCreateRequests: "blue",
   routeChangeRequests: "blue",
@@ -59,6 +62,7 @@ function rowIcon(kind: MtmPanelAttentionKind): ReactNode {
   const className = "h-5 w-5"
   switch (kind) {
     case "customerLocationRequests": return <MapPin className={className} aria-hidden="true" />
+    case "attendanceRequests": return <CalendarDays className={className} aria-hidden="true" />
     case "contactCreateRequests": return <UserPlus className={className} aria-hidden="true" />
     case "customerCreateRequests": return <Building2 className={className} aria-hidden="true" />
     case "routeChangeRequests": return <RouteIcon className={className} aria-hidden="true" />
@@ -112,6 +116,7 @@ export function HomeAttentionCard({ state }: { state: HomeAttentionState }) {
         )
         break
       }
+      case "attendanceRequests":
       case "contactCreateRequests":
       case "customerCreateRequests":
       case "routeChangeRequests":

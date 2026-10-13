@@ -3,6 +3,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { createTranslator } from "next-intl"
 import { describe, expect, it } from "vitest"
 import ExcelJS from "exceljs"
+import { defaultAttendanceDayKinds } from "@/lib/mtm/attendance-day-kinds"
 import { buildMtmAttendanceReport } from "@/lib/mtm/attendance-report"
 import { buildAttendanceTable } from "@/lib/mtm/attendance-table"
 import { AttendanceExportTooLarge, buildAttendancePdf, buildAttendanceXlsx } from "@/lib/mtm/attendance-export"
@@ -80,5 +81,27 @@ describe("attendance forms keep their numbers and privacy in actual files", () =
     const huge = { ...projected, rows: Array.from({ length: 10_001 }, () => projected.rows[0]) }
     expect(() => buildAttendanceXlsx(huge)).toThrow(AttendanceExportTooLarge)
     expect(() => buildAttendancePdf(huge)).toThrow(AttendanceExportTooLarge)
+  })
+})
+
+
+describe("approved HR catalogue periods remain visible in exports", () => {
+  it.each(["DAY", "MONTH"] as const)("exports the frozen kind and approved period for %s without inventing hours", async mode => {
+    const date = "2026-10-12"
+    const dayKind = defaultAttendanceDayKinds(() => ({ az: "Demo təhsil", ru: "Учебный отпуск", en: "Fixture study leave" })).find(kind => kind.key === "STUDY_LEAVE")!
+    const result = buildMtmAttendanceReport({ employees: [{ id: "employee", name: "Fictional employee", teamId: null, teamName: null }], workdays: [], rules: [], calendar: [], from: date, to: date, now: "2026-10-13T12:00:00Z",
+      approvedRequests: [{ id: "record", agentId: "employee", startDate: date, endDate: date, decidedAt: "2026-10-12T12:00:00Z", details: { kind: "HR_RECORD", dayKind, unit: "DAYS", startTime: null, endTime: null, timezone: "Asia/Baku" } }] })
+    const messages = JSON.parse(readFileSync("messages/en.json", "utf8"))
+    const projected = buildAttendanceTable(result, { ...config, mode, columns: mode === "MONTH" ? [...DEFAULT_ATTENDANCE_MONTH_COLUMNS] : [...DEFAULT_ATTENDANCE_DAY_COLUMNS],
+      filters: { from: mode === "MONTH" ? "2026-10-01" : date, to: mode === "MONTH" ? "2026-10-31" : date, form: "ALL" } }, "en", createTranslator({ locale: "en", messages, namespace: "mtmAttendance" }))
+    const text = pdfText(buildAttendancePdf(projected))
+    expect(text.replace(/\s+/g, " ")).toContain("Fixture study leave")
+    expect(text).toContain("Approved:")
+    const book = new ExcelJS.Workbook()
+    await book.xlsx.load(await buildAttendanceXlsx(projected).xlsx.writeBuffer())
+    const cells = JSON.stringify(book.worksheets.map(sheet => sheet.getSheetValues()))
+    expect(cells).toContain("Fixture study leave")
+    expect(result.totals).toMatchObject({ workedSeconds: 0, arrivedCount: 0, absentCount: 0 })
+    expect(text + cells).not.toMatch(/submissionHash|recording|attachmentIds/)
   })
 })

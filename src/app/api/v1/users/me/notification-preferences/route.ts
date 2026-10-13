@@ -11,7 +11,7 @@
  * The stored prefs are merged into UserPreference.data.notificationPreferences,
  * preserving other keys (favorites/recents/etc.).
  */
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { getOrgModuleContext } from "@/lib/api-auth"
@@ -21,6 +21,7 @@ import {
   NAV_GROUP_ORDER,
   kindsForSection,
 } from "@/lib/notifications/taxonomy"
+import { MTM_ATTENDANCE_REQUEST_NOTIFICATION_KIND } from "@/lib/mtm/attendance-request-notification"
 import { canNotifySection } from "@/lib/notifications/access"
 import {
   type NotificationPrefs,
@@ -33,13 +34,22 @@ const putSchema = z.object({
   types: z.record(z.string(), z.boolean()).optional(),
 })
 
+async function attendanceNotificationsEnabled(orgId: string) {
+  const row = await prisma.mtmSetting.findUnique({
+    where: { organizationId_key: { organizationId: orgId, key: "attendanceEnabled" } },
+    select: { value: true },
+  })
+  return row?.value === true
+}
+
 /** Build one SectionRow from stored prefs + access ctx. */
 function buildSectionRow(
   section: string,
   stored: NotificationPrefs,
-  accessible: boolean
+  accessible: boolean,
+  attendanceEnabled: boolean
 ) {
-  const kinds = kindsForSection(section)
+  const kinds = kindsForSection(section).filter((kind) => attendanceEnabled || kind !== MTM_ATTENDANCE_REQUEST_NOTIFICATION_KIND)
   return {
     key: section,
     accessible,
@@ -57,15 +67,16 @@ export const GET = withRlsSessionAuth(async (req, session) => {
   try {
     const orgCtx = await getOrgModuleContext(orgId)
     const ctx = { role: role as Role, ...orgCtx }
+    const attendanceEnabled = await attendanceNotificationsEnabled(orgId)
 
     const pref = await prisma.userPreference.findUnique({ where: { userId } })
     const stored: NotificationPrefs =
-      ((pref?.data as any)?.notificationPreferences as NotificationPrefs) ?? {}
+      ((pref?.data as { notificationPreferences?: NotificationPrefs } | null)?.notificationPreferences) ?? {}
 
     const sections = NAV_GROUP_ORDER.filter(
       (section) => kindsForSection(section).length > 0
     ).map((section) =>
-      buildSectionRow(section, stored, canNotifySection(ctx, section))
+      buildSectionRow(section, stored, canNotifySection(ctx, section), attendanceEnabled)
     )
 
     return NextResponse.json({ success: true, data: { sections } })
@@ -113,12 +124,17 @@ export const PUT = withRlsSessionAuth(async (req, session) => {
   try {
     const orgCtx = await getOrgModuleContext(orgId)
     const ctx = { role: role as Role, ...orgCtx }
+    const attendanceEnabled = await attendanceNotificationsEnabled(orgId)
 
     if (!canNotifySection(ctx, section)) {
       return NextResponse.json(
         { error: "Cannot set preferences for an inaccessible section" },
         { status: 400 }
       )
+    }
+
+    if (!attendanceEnabled && types && MTM_ATTENDANCE_REQUEST_NOTIFICATION_KIND in types) {
+      return NextResponse.json({ error: "Cannot set preferences for an unavailable notification type" }, { status: 400 })
     }
 
     // Load current stored prefs to do a deep merge (preserve other data keys).
@@ -159,7 +175,7 @@ export const PUT = withRlsSessionAuth(async (req, session) => {
       },
     })
 
-    const sectionRow = buildSectionRow(section, updatedPrefs, true)
+    const sectionRow = buildSectionRow(section, updatedPrefs, true, attendanceEnabled)
     return NextResponse.json({ success: true, data: { section: sectionRow } })
   } catch (e) {
     console.error("[notification-preferences PUT]", e)

@@ -1,4 +1,5 @@
 import { vi } from "vitest"
+import { Prisma } from "@prisma/client"
 
 /**
  * Rows kept in memory and filtered through the query a handler really sends.
@@ -29,6 +30,8 @@ type Query = {
 }
 
 function holds(value: unknown, condition: unknown): boolean {
+  // These fixtures model missing JSON columns with null; Prisma sentinels have no enumerable fields.
+  if (condition === Prisma.DbNull || condition === Prisma.JsonNull) return value === null || value === undefined
   if (condition === null) return value === null || value === undefined
   if (condition instanceof Date) return value instanceof Date && value.getTime() === condition.getTime()
   if (typeof condition !== "object") return value === condition
