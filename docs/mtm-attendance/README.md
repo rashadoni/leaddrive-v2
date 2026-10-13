@@ -762,3 +762,16 @@ Actual React render → HTML/CSS и **12 PNG** (registry/assignments × az/ru/en
 - Геосбор OFF по ответу владельца, emails empty/no send. Следующее: PR3.7/обязательный CI, проверка demo2.11 после deploy, затем4.1–4.6 без дублирования reserved mobile.
 
 **2026-10-13 — интеграция с server2.12.** Root b0ec4b504 включает PR7334f74c79ba и main243479d84. Bootstrap/agentpermissions/workday-return/office-auth110 PASS после merge; сохранены workdayReturn и attendance capabilities. Полные CI ожидаются. Резерв mobile2.12 по-прежнему действует.
+
+
+#### 2026-10-13 — этап 4: отдельный журнал замечаний, макеты и решение 5.7
+
+- Текущая root ветка codex/mtm-attendance-risk-review от3.7af1825f72; 3.7 PR735 https://github.com/rashadoni/leaddrive-v2/pull/735 attached, CIожидается. Детекторы4.1–4.5 в отдельном worktree codex/mtm-attendance-risk-detection. Макеты risks/mockup-ru-{1440,390} и settings-mockup-ru-{1440,390} проверены, оба1440 показаны перед UIкодом.
+- Выбраны отдельные MtmAttendanceRiskCase/Decision вместо WorkforceExceptionCase: старый approval reader автоматически читает все C6кейсы и мог заблокировать закрытие/считать новый decision испорченным. Старые Workforce routes/capability не включаются. Один rfID — установка приложения, не доказанный физический телефон. Повод требует человеческой проверки, часы/связь не равны обману, общий законный телефон имеет свой выключатель.
+- Root4.6 API/read/export/снятие с reason готовы к интеграции: allowlistбезGPS/device; relatednames через текущийscope; HR read-only не даёт права решения, selfreview запрещён; неизвестный ответ разрешает exactretry. BellHR/scopedруководителю атомарный genericpreview, defaulturgent с явным optout; причины решений скрыты из общего activity.
+- Focused API/reason/actualXLSXPDF14 PASS, UI+notify+notificationbaseline135 PASS, scopedlint21 PASS после исправления тестового createElement. Fullcompiler/build/PG NOT RUN на Contabo. ActualUIcapture и настоящие PGscenario ещё выполняются.
+- PR727 exactee11b820c mandatory5 PASS; дополнительный exacthead fullbuild/typecheck+UI run38369546526SUCCESS. Normalmerge727 main5754f7a5991daf475c954aa67ccf741300840a21, production/demo2.11 ожидает deploy. PR731 current42187af45 fullbuild/typecheckPASS, mandatorystatic/typeвочереди.
+- Mobilemain43ca0d3 включает чужой PR120«Вернуться к работе»; в серверном журнале ещё нет «2.12 закрыта», reservedпути не меняются. НашgeoWIPлокальный, не выпускаетсяпараллельно.
+- Пользователь прямо подтвердил5.7: «Пока оставить Excel/PDF; формат согласуем позже». Специальный бухгалтерский формат отложен по его решению; стандартные Excel/PDF сохраняются. Сбор места OFF до утверждённого согласия; emailадресов по умолчаниюнет.
+
+**2026-10-13 — actual4.6 и capture.** UI12 PASS после повторного render, i18n25914 PASS, scopedlint21 PASS. ActualReact HTML/screens ru/az/en ×1440/390 в evidence/risks; обнаружено и исправлено EN390 переполнение exportbuttons (flexwrap), теперьscrollWidth==viewport/innerScroll0/controlMin44 у всех6. Исправлены подписи «Все» и согласованы два времени в фиктивном delayedexample. Root просмотрел RUdesktop/mobile, независимый review остальныхснимков/границдоступа идёт.

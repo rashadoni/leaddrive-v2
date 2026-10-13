@@ -1,5 +1,8 @@
 "use client"
 
+import { MTM_ATTENDANCE_RISK_NOTIFICATION_ENTITY, MTM_ATTENDANCE_RISK_NOTIFICATION_URL, MTM_ATTENDANCE_RISK_NOTIFICATION_KIND } from "@/lib/mtm/attendance-risk-notification"
+
+
 import { MTM_ATTENDANCE_REQUEST_NOTIFICATION_ENTITY, MTM_ATTENDANCE_REQUEST_NOTIFICATION_URL, MTM_ATTENDANCE_REQUEST_NOTIFICATION_KIND } from "@/lib/mtm/attendance-request-notification"
 
 
@@ -57,6 +60,7 @@ const entityUrls: Record<string, string> = {
 
 function getEntityUrl(type?: string, id?: string) {
   // «Клиент здесь» opens the queue it is decided in, not a card of its own.
+  if (type === MTM_ATTENDANCE_RISK_NOTIFICATION_ENTITY) return MTM_ATTENDANCE_RISK_NOTIFICATION_URL
   if (type === MTM_ATTENDANCE_REQUEST_NOTIFICATION_ENTITY) return MTM_ATTENDANCE_REQUEST_NOTIFICATION_URL
   if (type === MTM_LOCATION_REQUEST_NOTIFICATION_ENTITY) return MTM_LOCATION_REQUEST_NOTIFICATION_URL
   if (!type || !id) return null
@@ -137,6 +141,7 @@ export function NotificationBell() {
                 // - section known → toast only if push pref is on (default true)
                 const section = deriveSection(n.entityType ?? "")
                 const urgentKind = n.entityType === MTM_LOCATION_REQUEST_NOTIFICATION_ENTITY ? MTM_LOCATION_REQUEST_NOTIFICATION_KIND
+                  : n.entityType === MTM_ATTENDANCE_RISK_NOTIFICATION_ENTITY ? MTM_ATTENDANCE_RISK_NOTIFICATION_KIND
                   : n.entityType === MTM_ATTENDANCE_REQUEST_NOTIFICATION_ENTITY ? MTM_ATTENDANCE_REQUEST_NOTIFICATION_KIND : null
                 const waitingAgent = urgentKind !== null
                 const prefAllows = waitingAgent

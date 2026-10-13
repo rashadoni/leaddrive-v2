@@ -3155,7 +3155,7 @@ export const POST = withMobileRls(async (req, auth) => {
       results.push(replayOf(operationId, stored))
     } catch (e: unknown) {
       if (e instanceof AttendanceRequestError) {
-        if (e.code === "MTM_ATTENDANCE_LOCATION_OUTSIDE_REJECTED") {
+        if (["MTM_ATTENDANCE_LOCATION_OUTSIDE_REJECTED", "MTM_ATTENDANCE_LOCATION_MOCK_REJECTED"].includes(e.code)) {
           // The canonical transaction has rolled back. Surface a resolvable
           // refusal instead of silently retrying the same outside fix forever.
           results.push({ operationId, status: "conflict", error: e.code, serverData: { code: e.code, committed: false } })

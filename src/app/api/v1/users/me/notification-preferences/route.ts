@@ -1,3 +1,4 @@
+import { MTM_ATTENDANCE_RISK_NOTIFICATION_KIND } from "@/lib/mtm/attendance-risk-notification"
 /**
  * GET  /api/v1/users/me/notification-preferences
  *   → { success: true, data: { sections: SectionRow[] } }
@@ -49,7 +50,7 @@ function buildSectionRow(
   accessible: boolean,
   attendanceEnabled: boolean
 ) {
-  const kinds = kindsForSection(section).filter((kind) => attendanceEnabled || kind !== MTM_ATTENDANCE_REQUEST_NOTIFICATION_KIND)
+  const kinds = kindsForSection(section).filter((kind) => attendanceEnabled || (kind !== MTM_ATTENDANCE_REQUEST_NOTIFICATION_KIND && kind !== MTM_ATTENDANCE_RISK_NOTIFICATION_KIND))
   return {
     key: section,
     accessible,
@@ -133,7 +134,7 @@ export const PUT = withRlsSessionAuth(async (req, session) => {
       )
     }
 
-    if (!attendanceEnabled && types && MTM_ATTENDANCE_REQUEST_NOTIFICATION_KIND in types) {
+    if (!attendanceEnabled && types && (MTM_ATTENDANCE_REQUEST_NOTIFICATION_KIND in types || MTM_ATTENDANCE_RISK_NOTIFICATION_KIND in types)) {
       return NextResponse.json({ error: "Cannot set preferences for an unavailable notification type" }, { status: 400 })
     }
 

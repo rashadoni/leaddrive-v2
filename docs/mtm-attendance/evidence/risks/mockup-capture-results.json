@@ -1,0 +1,26 @@
+[
+  {
+    "prefix": "mockup",
+    "width": 1440,
+    "height": 1748,
+    "overflow": false
+  },
+  {
+    "prefix": "mockup",
+    "width": 390,
+    "height": 3864,
+    "overflow": false
+  },
+  {
+    "prefix": "settings-mockup",
+    "width": 1440,
+    "height": 1344,
+    "overflow": false
+  },
+  {
+    "prefix": "settings-mockup",
+    "width": 390,
+    "height": 2383,
+    "overflow": false
+  }
+]
