@@ -1,3 +1,4 @@
+import { mayUseAttendanceSelf } from "@/lib/mtm/attendance-employee-contract"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { withMobileRls } from "@/lib/with-mobile-rls"
@@ -247,6 +248,7 @@ export const GET = withMobileRls(async (req, auth) => {
           name: true,
           email: true,
           role: true,
+          attendanceParticipant: true,
           canPlanOwnRoutes: true,
           canSelfPublishRoutes: true,
         },
@@ -333,7 +335,7 @@ export const GET = withMobileRls(async (req, auth) => {
       && (agent.role !== "AGENT" || agent.canPlanOwnRoutes)
     // Publishing remains manager-controlled unless this specific field agent
     // was granted it on their card (canPublishMtmRoute).
-    const canSelfPublishRoutes = routeFieldEnabled && (agent.role !== "AGENT" || (
+    const canSelfPublishRoutes = routeFieldEnabled && (["ADMIN", "MANAGER", "SUPERVISOR"].includes(agent.role) || (
       canPlanOwnRoutes
       && agent.canSelfPublishRoutes === true
     ))
@@ -391,7 +393,8 @@ export const GET = withMobileRls(async (req, auth) => {
     // policy, requests, timesheets, or team data. When Workforce is enabled
     // its stricter read permission continues to provide the same canonical
     // workday projection.
-    const fieldSessionEnabled = routeFieldEnabled && auth.role === "AGENT"
+    const attendanceSelf = routeFieldEnabled && mayUseAttendanceSelf(auth.role, settings.attendanceEnabled, agent.attendanceParticipant)
+    const fieldSessionEnabled = routeFieldEnabled && (auth.role === "AGENT" || attendanceSelf)
     const workday = fieldSessionEnabled || (workforceEnabled && hasMobilePermission(auth.role, "WORKTIME_SELF_READ"))
       ? await prisma.mtmAgentWorkday.findFirst({
           where: {
@@ -487,7 +490,10 @@ export const GET = withMobileRls(async (req, auth) => {
           // only: every endpoint behind a switch refuses on its own. Older
           // APKs ignore the key and keep showing the entry points; the server
           // then answers MTM_AGENT_PERMISSION_DISABLED.
-          agentPermissions: agentPermissionStates(settings),
+          agentPermissions: {
+            ...agentPermissionStates(settings),
+            ...(settings.attendanceEnabled ? { attendanceRequests: attendanceSelf, attendanceWorkday: attendanceSelf } : {}),
+          },
           // This server lets an employee return to the workday they closed
           // earlier today (POST …/route-field/workday-return). Not a switch —
           // the owner removed the restriction for everyone on 2026-10-13 — but

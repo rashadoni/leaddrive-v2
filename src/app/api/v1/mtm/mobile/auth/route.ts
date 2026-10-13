@@ -243,6 +243,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
     }
 
+    if (agent.role === "EMPLOYEE") {
+      const feature = await prisma.mtmSetting.findUnique({ where: { organizationId_key: { organizationId: agent.organizationId, key: "attendanceEnabled" } }, select: { value: true } })
+      if (!agent.userId || !agent.attendanceParticipant || feature?.value !== true) {
+        return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
+      }
+    }
+
     let authenticated = false
     let linkedUserId = agent.userId
     let linkedUserCredentialState: {

@@ -254,6 +254,12 @@ describe("attendance report workspace on the real row calculation", () => {
     expect(container.querySelector('[data-testid="attendance-report-totals"]')).toBeNull()
   })
 
+  it.each([true, false])("shows employee administration only with current canManageRules=%s", async canManageRules => {
+    fetchMock.mockImplementation(async (url) => String(url).endsWith("/rules") ? response({ today: TODAY, canManageRules }) : defaultFetch(url))
+    await render()
+    expect(Boolean(container.querySelector('a[href="/mtm/attendance/employees"]'))).toBe(canManageRules)
+  })
+
   it("shares an exact duration notation with exports, without rounding away seconds", () => {
     expect(formatAttendanceDuration(0)).toBe("0:00")
     expect(formatAttendanceDuration(601)).toBe("0:10:01")

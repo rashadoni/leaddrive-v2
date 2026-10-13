@@ -196,6 +196,9 @@ export interface MtmPrismaMock {
   mtmAttendanceSchedule: ModelMock
   mtmAttendanceDelivery: ModelMock
   mtmAttendanceRule: ModelMock
+  mtmAttendanceBranch: ModelMock
+  mtmAttendanceBranchRevision: ModelMock
+  mtmAttendancePrimaryBranchRevision: ModelMock
   mtmAttendanceAttachment: ModelMock
   mtmSetting: ModelMock
   mtmNotification: ModelMock
@@ -386,6 +389,9 @@ export function makeMtmPrismaMock(): MtmPrismaMock {
     mtmAttendanceSchedule: makeModel(),
     mtmAttendanceDelivery: makeModel(),
     mtmAttendanceRule: makeModel(),
+    mtmAttendanceBranch: makeModel(),
+    mtmAttendanceBranchRevision: makeModel(),
+    mtmAttendancePrimaryBranchRevision: makeModel(),
     mtmAttendanceAttachment: makeModel(),
     mtmSetting: makeModel(),
     mtmNotification: makeModel(),
