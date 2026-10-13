@@ -13,6 +13,7 @@
 export type MtmSettingNumberRange = { min: number; max: number }
 
 export const MTM_SETTING_NUMBER_RANGES = {
+  attendanceClockDifferenceSeconds: { min: 30, max: 86_400 },
   // Check-in radius around a customer, meters.
   geofenceRadius: { min: 25, max: 10_000 },
   // Local hour after which a not-started route shows as late on the live map.

@@ -16,7 +16,7 @@ const adminUrl=process.env.MTM_ATTENDANCE_TEST_DATABASE_URL
 if(!adminUrl&&process.env.MTM_ATTENDANCE_DB_GATE==="required")throw new Error("MTM_ATTENDANCE_TEST_DATABASE_URL is required")
 const scratch=vi.hoisted(()=>{const admin=process.env.MTM_ATTENDANCE_TEST_DATABASE_URL;if(!admin)return null;const name=`mtm_geo_${process.pid}_${Date.now()}`,role=`${name}_app`;const url=new URL(admin);url.pathname=`/${name}`;const app=new URL(url);app.username=role;app.password="geo-fixture-only";process.env.DATABASE_URL=app.toString();return{name,role,adminDb:url.toString()}})
 const identity=vi.hoisted(()=>({orgId:"geo-fixture-a",agentId:"",role:"EMPLOYEE"}))
-vi.mock("@/lib/mobile-auth",()=>({resolveMobileAuth:async()=>({...identity,tenantCapabilities:{routeField:true,workforceHrm:false}})}))
+vi.mock("@/lib/mobile-auth",()=>({resolveMobileAuth:async(req:Request)=>({...identity,...(req.headers.get("x-fixture-agent")?{agentId:req.headers.get("x-fixture-agent")!}:{}),tenantCapabilities:{routeField:true,workforceHrm:false}})}))
 const cli=createRequire(import.meta.url).resolve("prisma/build/index.js")
 function sql(url:string,statement:string){const result=spawnSync(process.execPath,[cli,"db","execute","--url",url,"--stdin"],{input:statement,encoding:"utf8",timeout:180000,maxBuffer:1024*1024});if(result.status!==0)throw new Error(`Location fixture failed: ${String(result.stderr||result.stdout).replace(/postgres(?:ql)?:\/\/[^\s]+/g,"[test database]")}`)}
 const ORG="geo-fixture-a",OTHER="geo-fixture-b",ADMIN="geo-fixture-admin",INSTALLATION="rf-fictional-installation-0000001"
@@ -39,8 +39,8 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
   sql(adminUrl!,`CREATE DATABASE "${scratch!.name}"`);createdDb=true
   schemaDir=mkdtempSync(join(tmpdir(),"mtm-geo-schema-"));const schema=join(schemaDir,"schema.prisma");writeFileSync(schema,readFileSync("prisma/schema.prisma","utf8").split("\n").filter(line=>!/Unsupported\("vector/.test(line)).join("\n"))
   const result=spawnSync(process.execPath,[cli,"db","push","--schema",schema,"--skip-generate"],{env:{...process.env,DATABASE_URL:scratch!.adminDb},encoding:"utf8",timeout:180000,maxBuffer:1024*1024});if(result.status!==0)throw new Error("Location fixture schema push failed")
-  sql(scratch!.adminDb,'DROP TABLE mtm_attendance_mark_evidence; DROP TABLE mtm_attendance_location_consents; DROP TABLE mtm_attendance_location_policies; DROP TABLE mtm_attendance_primary_branch_revisions; DROP TABLE mtm_attendance_branch_revisions; DROP TABLE mtm_attendance_branches; ALTER TABLE workforce_time_corrections DROP COLUMN "requestHash";')
-  for(const migration of["20260806120000_mtm_rls_coverage_completion","20260806160000_mtm_rls_bypass_clause_normalization","20261013070000_mtm_attendance_branches","20261013090000_mtm_attendance_location_evidence"])sql(scratch!.adminDb,readFileSync(`prisma/migrations/${migration}/migration.sql`,"utf8"))
+  sql(scratch!.adminDb,'DROP TABLE mtm_attendance_risk_decisions; DROP TABLE mtm_attendance_risk_cases; DROP TABLE mtm_attendance_mark_evidence; DROP TABLE mtm_attendance_location_consents; DROP TABLE mtm_attendance_location_policies; DROP TABLE mtm_attendance_primary_branch_revisions; DROP TABLE mtm_attendance_branch_revisions; DROP TABLE mtm_attendance_branches; ALTER TABLE workforce_time_corrections DROP COLUMN "requestHash";')
+  for(const migration of["20260806120000_mtm_rls_coverage_completion","20260806160000_mtm_rls_bypass_clause_normalization","20261013070000_mtm_attendance_branches","20261013090000_mtm_attendance_location_evidence","20261013120000_mtm_attendance_risks"])sql(scratch!.adminDb,readFileSync(`prisma/migrations/${migration}/migration.sql`,"utf8"))
   const foundation=readFileSync("prisma/migrations/20260828223000_workforce_h3_foundation/migration.sql","utf8");sql(scratch!.adminDb,foundation.slice(foundation.indexOf("-- Tenant data ships fail-closed."),foundation.indexOf("-- A migration runner may own new tables")))
   for(const migration of["20260828224500_workforce_h3_legacy_fact_guard","20260828230000_workforce_direct_correction_contract"])sql(scratch!.adminDb,readFileSync(`prisma/migrations/${migration}/migration.sql`,"utf8"))
   sql(scratch!.adminDb,readFileSync("scripts/rls/enable-batch-5.sql","utf8"));sql(scratch!.adminDb,`GRANT USAGE ON SCHEMA public TO "${scratch!.role}"; GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA public TO "${scratch!.role}"`)
@@ -238,4 +238,77 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
   expect(await tenant(OTHER,()=>prisma.$queryRaw`SELECT id FROM mtm_attendance_location_consents`)).toEqual([])
   expect(()=>sql(scratch!.adminDb,`UPDATE mtm_attendance_mark_evidence SET action='START' WHERE id='${row.id}'`)).toThrow()
  })
+
+ const riskRows=(agentId=identity.agentId)=>tenant(ORG,()=>prisma.$queryRaw<{id:string;agentId:string;eventId:string;kind:string;details:Record<string,unknown>}[]>`SELECT id,"agentId","eventId",kind,details FROM mtm_attendance_risk_cases WHERE "agentId"=${agentId} ORDER BY kind`)
+ const noLocation=(installationId:string):AttendanceMark=>({version:1,installationId,locationState:"NO_CONSENT",consentRevisionId:null,location:null})
+ const setting=(key:string,value:boolean|number)=>tenant(ORG,()=>prisma.mtmSetting.upsert({where:{organizationId_key:{organizationId:ORG,key}},create:{organizationId:ORG,key,value},update:{value}}))
+ it("flags both employees on one installation and keeps exact retries from duplicating cases or bell rows",async()=>{
+  const device=`rf-${randomUUID()}`,a=await employee(),at=new Date(),first=operation("START",randomUUID(),at,noLocation(device))
+  expect((await send(first,device)).body.results).toMatchObject([{status:"ok"}]);expect(await riskRows(a)).toEqual([])
+  const b=await employee(),second=operation("START",randomUUID(),new Date(),noLocation(device))
+  expect((await send(second,device)).body.results).toMatchObject([{status:"ok"}])
+  const aCases=await riskRows(a),bCases=await riskRows(b)
+  expect(aCases).toHaveLength(1);expect(bCases).toHaveLength(1)
+  expect(aCases[0]).toMatchObject({kind:"SHARED_INSTALLATION",details:{relatedAgentIds:[b],usualAgentId:null,observedDays:0}})
+  expect(bCases[0]).toMatchObject({kind:"SHARED_INSTALLATION",details:{relatedAgentIds:[a]}})
+  const ids=[aCases[0].id,bCases[0].id]
+  const bells=()=>tenant(ORG,()=>prisma.notification.count({where:{entityId:{in:ids}}}))
+  const before=await bells();expect(before).toBeGreaterThanOrEqual(2)
+  expect((await send(second,device)).body.results).toMatchObject([{status:"ok"}]);expect(await riskRows(b)).toHaveLength(1);expect(await bells()).toBe(before)
+  expect(JSON.stringify([...aCases,...bCases])).not.toMatch(/installationId|latitude|longitude/)
+  expect(await tenant(OTHER,()=>prisma.$queryRaw`SELECT id FROM mtm_attendance_risk_cases`)).toEqual([])
+  await expect(tenant(ORG,()=>prisma.$executeRaw`UPDATE mtm_attendance_risk_cases SET kind='NEW_INSTALLATION' WHERE id=${ids[0]}`)).rejects.toThrow(/IMMUTABLE/)
+  await expect(tenant(ORG,()=>prisma.$executeRaw`DELETE FROM mtm_attendance_risk_cases WHERE id=${ids[0]}`)).rejects.toThrow(/IMMUTABLE/)
+ })
+ it("does not conflate different canonical days or different installations",async()=>{
+  const device=`rf-${randomUUID()}`,yesterday=new Date(Date.now()-86400000),a=await employee()
+  expect((await send(operation("START",randomUUID(),yesterday,noLocation(device)),device)).body.results).toMatchObject([{status:"ok"}])
+  const b=await employee();expect((await send(operation("START",randomUUID(),new Date(),noLocation(device)),device)).body.results).toMatchObject([{status:"ok"}])
+  expect((await riskRows(a)).map(row=>row.kind)).toEqual(["DELAYED_CLAIM"]);expect(await riskRows(b)).toEqual([])
+  await employee();const other=`rf-${randomUUID()}`;expect((await send(operation("START",randomUUID(),new Date(),noLocation(other)),other)).body.results).toMatchObject([{status:"ok"}]);expect(await riskRows()).toEqual([])
+ })
+ it("allows a tenant's lawful shared installation without generating shared-phone hints",async()=>{
+  const device=`rf-${randomUUID()}`;await setting("attendanceAllowSharedInstallations",true)
+  try{for(let i=0;i<2;i++){await employee();expect((await send(operation("START",randomUUID(),new Date(),noLocation(device)),device)).body.results).toMatchObject([{status:"ok"}]);expect(await riskRows()).toEqual([])}}
+  finally{await setting("attendanceAllowSharedInstallations",false)}
+ })
+ it("uses the first observed installation as an unknown baseline and flags a later new installation",async()=>{
+  await employee();const first=`rf-${randomUUID()}`,second=`rf-${randomUUID()}`,day=randomUUID(),at=new Date()
+  expect((await send(operation("START",day,at,noLocation(first)),first)).body.results).toMatchObject([{status:"ok"}]);expect(await riskRows()).toEqual([])
+  expect((await send(operation("FINISH",day,new Date(at.getTime()+1000),noLocation(second)),second)).body.results).toMatchObject([{status:"ok"}])
+  expect((await riskRows()).map(row=>row.kind)).toEqual(["NEW_INSTALLATION"])
+ })
+ it("freezes a neutral timing difference and labels offline delivery separately",async()=>{
+  const device=`rf-${randomUUID()}`;await employee()
+  expect((await send(operation("START",randomUUID(),new Date(Date.now()-600000),noLocation(device)),device)).body.results).toMatchObject([{status:"ok"}])
+  expect((await riskRows())[0]).toMatchObject({kind:"CLOCK_DIFFERENCE",details:{thresholdSeconds:300}})
+  await employee();expect((await send(operation("START",randomUUID(),new Date(Date.now()-1800000),noLocation(device)),device)).body.results).toMatchObject([{status:"ok"}])
+  expect((await riskRows()).some(row=>row.kind==="DELAYED_CLAIM")).toBe(true);expect((await riskRows()).some(row=>row.kind==="CLOCK_DIFFERENCE")).toBe(false)
+ })
+ it("flags mock provenance by default and refuses it atomically only when the tenant chooses rejection",async()=>{
+  await employee();await accept();let at=new Date(Date.now()+1000),mark=packet(at);mark.location!.isMock=true
+  expect((await send(operation("START",randomUUID(),at,mark))).body.results).toMatchObject([{status:"ok"}]);expect((await riskRows()).some(row=>row.kind==="MOCK_LOCATION")).toBe(true)
+  await employee();await accept();at=new Date(Date.now()+1000);mark=packet(at);mark.location!.isMock=true;await setting("attendanceRejectMockLocations",true)
+  try{expect((await send(operation("START",randomUUID(),at,mark))).body.results[0].status).not.toBe("ok");expect(await tenant(ORG,()=>prisma.mtmAgentWorkday.count({where:{agentId:identity.agentId}}))).toBe(0);expect(await evidence()).toEqual([]);expect(await riskRows()).toEqual([])}
+  finally{await setting("attendanceRejectMockLocations",false)}
+ })
+ it("rolls back the mark, risk and canonical day when the durable review bell cannot be saved",async()=>{
+  await employee();const device=`rf-${randomUUID()}`,notifier=await import("@/lib/mtm/attendance-risk-notify")
+  const failure=vi.spyOn(notifier,"notifyAttendanceRiskReviewers").mockRejectedValueOnce(new Error("fixture risk notification failure"))
+  try{expect((await send(operation("START",randomUUID(),new Date(Date.now()-1800000),noLocation(device)),device)).body.results[0].status).not.toBe("ok");expect(await tenant(ORG,()=>prisma.mtmAgentWorkday.count({where:{agentId:identity.agentId}}))).toBe(0);expect(await riskRows()).toEqual([]);expect(await evidence()).toEqual([]);expect(await tenant(ORG,()=>prisma.mtmSyncOperation.count({where:{agentId:identity.agentId}}))).toBe(0)}finally{failure.mockRestore()}
+ })
+ it("serializes concurrent employees sharing an installation so neither misses the other",async()=>{
+  const a=await employee(),b=await employee(),device=`rf-${randomUUID()}`
+  const sends=[a,b].map(agentId=>{const op=operation("START",randomUUID(),new Date(),noLocation(device));return push.POST(new NextRequest("http://localhost/api/v1/mtm/mobile/sync/push",{method:"POST",headers:{"content-type":"application/json","x-field-device-id":device,"x-fixture-agent":agentId},body:JSON.stringify({operations:[op]})})).then(async response=>({status:response.status,body:await response.json()}))})
+  const results=await Promise.all(sends);for(const result of results)expect(result.body.results).toMatchObject([{status:"ok"}])
+  expect((await riskRows(a)).filter(row=>row.kind==="SHARED_INSTALLATION")).toHaveLength(1);expect((await riskRows(b)).filter(row=>row.kind==="SHARED_INSTALLATION")).toHaveLength(1)
+ })
+ it("uses only earlier distinct days for the usual-user hint, not mark frequency or today's first arrival",async()=>{
+  const a=await employee(),device=`rf-${randomUUID()}`
+  for(const days of[4,3,2]){const start=new Date(Date.now()-days*86400000),day=randomUUID();expect((await send(operation("START",day,start,noLocation(device)),device)).body.results).toMatchObject([{status:"ok"}]);expect((await send(operation("FINISH",day,new Date(start.getTime()+1000),noLocation(device)),device)).body.results).toMatchObject([{status:"ok"}])}
+  const b=await employee();expect((await send(operation("START",randomUUID(),new Date(),noLocation(device)),device)).body.results).toMatchObject([{status:"ok"}])
+  identity.agentId=a;expect((await send(operation("START",randomUUID(),new Date(),noLocation(device)),device)).body.results).toMatchObject([{status:"ok"}])
+  for(const agent of[a,b])expect((await riskRows(agent)).find(row=>row.kind==="SHARED_INSTALLATION")).toMatchObject({details:{usualAgentId:a,usualDays:3,observedDays:3}})
+ })
+
 })

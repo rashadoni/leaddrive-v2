@@ -1,3 +1,4 @@
+import { enforceAttendanceMockRule, recordAttendanceRisks } from "@/lib/mtm/attendance-risk-detection"
 import { createHash, randomUUID } from "node:crypto"
 import { enforceAttendanceOutsideRule } from "@/lib/mtm/attendance-outside-rule"
 import { Prisma } from "@prisma/client"
@@ -154,7 +155,9 @@ export async function recordAttendanceMarkEvidence(tx: Tx, context: MtmWorkdayPo
   const evaluation = evaluateAttendanceLocation({...mark,location,locationState:location?"AVAILABLE":mark.location?"NO_CONSENT":mark.locationState},context.input.claimedAt,branches,primary)
   const finding = onBreak ? "BREAK_PRIVACY":evaluation.finding
   await enforceAttendanceOutsideRule(tx,self.organizationId,finding)
+  const riskPolicy = await enforceAttendanceMockRule(tx,self.organizationId,location?.isMock??null)
   await tx.$executeRaw`INSERT INTO mtm_attendance_mark_evidence
     (id,"organizationId","agentId","eventId","installationId",action,"claimedAt","serverReceivedAt","locationState",latitude,longitude,accuracy,"fixCapturedAt","fixAgeSeconds",provider,"isMock","consentId","branchRevisionId","primaryBranchId","distanceMeters","redactedRequestHash")
     VALUES (${randomUUID()},${self.organizationId},${self.agentId},${context.event.id},${mark.installationId},${context.input.action},${context.input.claimedAt},${context.input.serverReceivedAt},${finding},${location?.latitude??null},${location?.longitude??null},${location?.accuracy??null},${location?new Date(location.capturedAt):null},${evaluation.fixAgeSeconds},${location?.provider??null},${location?.isMock??null},${consent?.id??null},${evaluation.branch?.id??null},${primary},${evaluation.distanceMeters},${attendanceMarkRedactedHash(self,context.input)})`
+  await recordAttendanceRisks(tx,{organizationId:self.organizationId,eventId:context.event.id,policy:riskPolicy})
 }
