@@ -10,7 +10,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { buildMtmAttendanceReport } from "@/lib/mtm/attendance-report"
 import { DEMO, DEMO_AGENTS, prepareDemo, readOnlyDemo, verifyParity } from "../../scripts/mtm-attendance-demo-verification"
 
-import { prepareRequestDemo, readRequestDemo, REQUEST_DEMO } from "../../scripts/mtm-attendance-request-demo-verification"
+import { prepareRequestDemo, readRequestDemo, readSurfaceDemo, REQUEST_DEMO } from "../../scripts/mtm-attendance-request-demo-verification"
 
 const adminUrl = process.env.MTM_DEMO_TEST_DATABASE_URL
 if (!adminUrl && process.env.MTM_DEMO_DB_GATE === "required") throw new Error("MTM_DEMO_TEST_DATABASE_URL is required")
@@ -123,6 +123,34 @@ suite("attendance demo fixture with real PostgreSQL guards", () => {
     await db.$executeRaw`SELECT set_config('app.org_id', 'untouched-customer-fixture', false)`
     try { expect(await db.mtmAgentWorkday.findMany()).toEqual([]); expect(await db.mtmAgentWorkdayEvent.findMany()).toEqual([]) }
     finally { await db.$executeRaw`SELECT set_config('app.org_id', ${DEMO.id}, false)` }
+  })
+  it("reads all new surface tables only in the fixed tenant and refuses unexpected configuration without repair", async () => {
+    const before = await readSurfaceDemo(db)
+    expect(before.agents.map(agent => agent.id)).toEqual([...DEMO_AGENTS])
+    expect(Object.values(before.counts)).toEqual(Array(25).fill(0))
+    const foreign = await admin.mtmAttendanceBranch.create({ data: { organizationId: "untouched-customer-fixture" } })
+    let ownId: string | null = null
+    try {
+      expect(await readSurfaceDemo(db)).toEqual(before)
+      const own = await admin.mtmAttendanceBranch.create({ data: { organizationId: DEMO.id } }); ownId = own.id
+      await expect(readSurfaceDemo(db)).rejects.toThrow("VERIFICATION_FAILED")
+      expect(await admin.mtmAttendanceBranch.findUnique({ where: { id: own.id } })).not.toBeNull()
+      expect(await admin.mtmAttendanceBranch.findUnique({ where: { id: foreign.id } })).not.toBeNull()
+    } finally {
+      // These two rows exist only in this disposable CI database.
+      if (ownId) await admin.mtmAttendanceBranch.delete({ where: { id: ownId } })
+      await admin.mtmAttendanceBranch.delete({ where: { id: foreign.id } })
+    }
+    expect(await readSurfaceDemo(db)).toEqual(before)
+  })
+  it("the new surface reader leaves its actual PostgreSQL transaction unable to write", async () => {
+    const probe = { $transaction: (fn: (tx: Prisma.TransactionClient) => Promise<unknown>) => db.$transaction(async tx => {
+      const value = await fn(tx)
+      await tx.mtmSetting.create({ data: { organizationId: DEMO.id, key: "must-not-be-written", value: true } })
+      return value
+    }, { isolationLevel: "RepeatableRead", timeout: 15_000 }) } as unknown as Pick<PrismaClient, "$transaction">
+    await expect(readSurfaceDemo(probe)).rejects.toThrow(/read-only transaction/)
+    expect(await admin.mtmSetting.count({ where: { organizationId: DEMO.id, key: "must-not-be-written" } })).toBe(0)
   })
   it("provisions only an unused fixture mobile credential once without changing phone facts or another tenant", async () => {
     const before = await readOnlyDemo(db)

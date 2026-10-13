@@ -2,10 +2,11 @@
  * CRM HTTP authentication. Database writes only provision an unused fixture
  * mobile credential; requests and decisions go through production APIs. */
 import { createRequire } from "node:module"
+import { createHash } from "node:crypto"
 import { pathToFileURL } from "node:url"
 import type { PrismaClient } from "@prisma/client"
 import { APP, DEMO, DEMO_AGENTS, assertContext, assertOwnedOrganization, authenticatedDemoSession,
-  credential, databaseUrlFromEnv, readOnlyDemo, readRootFile, safeFailure } from "./mtm-attendance-demo-verification"
+  credential, databaseUrlFromEnv, readOnlyDemo, readRootFile, safeFailure, verifyParity } from "./mtm-attendance-demo-verification"
 
 export const REQUEST_DEMO = Object.freeze({
   clientRequestId: "ae5db3f8-10ea-47a0-91d3-727845145b71",
@@ -15,7 +16,9 @@ export const REQUEST_DEMO = Object.freeze({
 const fail = (): never => { throw new Error("VERIFICATION_FAILED") }
 const REQUEST_PHASES = ["CONTEXT", "PUBLIC_REVISION", "DATABASE", "FIXTURE_BEFORE", "CREDENTIAL", "PREPARE_CREDENTIAL", "MOBILE_CREDENTIAL", "REQUEST_BEFORE",
   "WEB_LOGIN", "MOBILE_LOGIN", "REPORT_BEFORE", "SUBMISSION", "SUBMISSION_REPLAY", "REVIEW_QUEUE", "REVIEW_BELL", "REVIEW_PANEL", "DECISION", "DECISION_REPLAY",
-  "REVIEW_PANEL_AFTER", "EMPLOYEE_REQUESTS", "EMPLOYEE_REPLY", "REPORT_AFTER", "HISTORY", "REQUEST_AFTER", "FIXTURE_AFTER", "FINAL_REVISION"] as const
+  "REVIEW_PANEL_AFTER", "EMPLOYEE_REQUESTS", "EMPLOYEE_REPLY", "REPORT_AFTER", "HISTORY", "REQUEST_AFTER", "FIXTURE_AFTER", "FINAL_REVISION",
+  "SURFACE_DATABASE", "SURFACE_HTTP", "SURFACE_SETTINGS", "SURFACE_BRANCHES", "SURFACE_EMPLOYEES", "SURFACE_GEO", "SURFACE_RISKS", "SURFACE_INSTALLATIONS",
+  "SURFACE_QR", "SURFACE_LEAVE", "SURFACE_MONTHS", "SURFACE_SHIFTS", "SURFACE_DELIVERIES", "SURFACE_REPORT"] as const
 type RequestPhase = typeof REQUEST_PHASES[number]
 class RequestVerificationError extends Error {
   constructor(readonly phase: RequestPhase) { super("VERIFICATION_FAILED") }
@@ -41,6 +44,139 @@ function record(value: unknown): Record<string, unknown> {
 }
 function data(value: unknown) { const body = record(value); if (body.success !== true) return fail(); return record(body.data) }
 function items(value: unknown) { if (!Array.isArray(value)) return fail(); return value.map(record) }
+
+const SURFACE_OFF_FLAGS = ["attendanceRequireInstallationApproval", "attendanceBranchQrEnabled", "attendanceEmployeeRemindersEnabled", "attendanceManagerAlertsEnabled"] as const
+const SURFACE_EMPTY_COUNTS = ["teams", "branches", "branchRevisions", "assignments", "locationPolicies", "locationConsents", "marks", "streamIntegrity", "risks", "riskDecisions",
+  "installationRequests", "installationDecisions", "installationRevocations", "qrEvidence", "leavePolicies", "leaveProfiles", "monthCloses", "monthMembers", "monthDays",
+  "shiftPlans", "shiftMembers", "reminderNotices", "schedules", "deliveries", "employment"] as const
+/** Fixed-tenant defaults only. No legal norm, consent, branch, QR, schedule or
+ * reminder is created merely to manufacture a populated production screenshot. */
+export async function readSurfaceDemo(db: Db) {
+  return db.$transaction(async tx => {
+    await tx.$executeRawUnsafe("SET TRANSACTION READ ONLY")
+    await tx.$executeRaw`SELECT set_config('app.org_id', ${DEMO.id}, true)`
+    assertOwnedOrganization(await tx.organization.findUnique({ where: { id: DEMO.id }, select: { id: true, slug: true, settings: true } }))
+    const state = await tx.$queryRaw<Array<{ readOnly: string; orgId: string; bypass: string | null }>>`SELECT current_setting('transaction_read_only') AS "readOnly", current_setting('app.org_id') AS "orgId", current_setting('app.rls_bypass', true) AS bypass`
+    if (state[0]?.readOnly !== "on" || state[0]?.orgId !== DEMO.id || state[0]?.bypass === "on") return fail()
+    const agents = await tx.mtmAgent.findMany({ where: { organizationId: DEMO.id }, select: { id: true, role: true, status: true, teamId: true, userId: true }, orderBy: { id: "asc" }, take: 3 })
+    if (agents.length !== 2 || agents.some((agent, i) => agent.id !== DEMO_AGENTS[i] || agent.role !== "AGENT" || agent.status !== "ACTIVE" || agent.teamId !== null || agent.userId !== null)) return fail()
+    const users = await tx.user.findMany({ where: { organizationId: DEMO.id }, select: { id: true, role: true }, take: 2 })
+    if (users.length !== 1 || users[0].id !== DEMO.userId || users[0].role !== "admin") return fail()
+    const settings = await tx.mtmSetting.findMany({ where: { organizationId: DEMO.id, key: { in: ["attendanceEnabled", "timezone", ...SURFACE_OFF_FLAGS] } }, select: { key: true, value: true }, orderBy: { key: "asc" } })
+    if (settings.find(row => row.key === "attendanceEnabled")?.value !== true || settings.find(row => row.key === "timezone")?.value !== "Asia/Baku"
+      || SURFACE_OFF_FLAGS.some(key => settings.some(row => row.key === key && row.value !== false))) return fail()
+    const counts = await tx.$queryRaw<Array<Record<typeof SURFACE_EMPTY_COUNTS[number], number>>>`SELECT
+      (SELECT count(*)::int FROM mtm_teams WHERE "organizationId"=${DEMO.id}) AS teams,
+      (SELECT count(*)::int FROM mtm_attendance_branches WHERE "organizationId"=${DEMO.id}) AS branches,
+      (SELECT count(*)::int FROM mtm_attendance_branch_revisions WHERE "organizationId"=${DEMO.id}) AS "branchRevisions",
+      (SELECT count(*)::int FROM mtm_attendance_primary_branch_revisions WHERE "organizationId"=${DEMO.id}) AS assignments,
+      (SELECT count(*)::int FROM mtm_attendance_location_policies WHERE "organizationId"=${DEMO.id}) AS "locationPolicies",
+      (SELECT count(*)::int FROM mtm_attendance_location_consents WHERE "organizationId"=${DEMO.id}) AS "locationConsents",
+      (SELECT count(*)::int FROM mtm_attendance_mark_evidence WHERE "organizationId"=${DEMO.id}) AS marks,
+      (SELECT count(*)::int FROM mtm_attendance_stream_integrity WHERE "organizationId"=${DEMO.id}) AS "streamIntegrity",
+      (SELECT count(*)::int FROM mtm_attendance_risk_cases WHERE "organizationId"=${DEMO.id}) AS risks,
+      (SELECT count(*)::int FROM mtm_attendance_risk_decisions WHERE "organizationId"=${DEMO.id}) AS "riskDecisions",
+      (SELECT count(*)::int FROM mtm_attendance_installation_requests WHERE "organizationId"=${DEMO.id}) AS "installationRequests",
+      (SELECT count(*)::int FROM mtm_attendance_installation_decisions WHERE "organizationId"=${DEMO.id}) AS "installationDecisions",
+      (SELECT count(*)::int FROM mtm_attendance_installation_revocations WHERE "organizationId"=${DEMO.id}) AS "installationRevocations",
+      (SELECT count(*)::int FROM mtm_attendance_qr_evidence WHERE "organizationId"=${DEMO.id}) AS "qrEvidence",
+      (SELECT count(*)::int FROM mtm_attendance_leave_policies WHERE "organizationId"=${DEMO.id}) AS "leavePolicies",
+      (SELECT count(*)::int FROM mtm_attendance_leave_profiles WHERE "organizationId"=${DEMO.id}) AS "leaveProfiles",
+      (SELECT count(*)::int FROM mtm_attendance_month_closes WHERE "organizationId"=${DEMO.id}) AS "monthCloses",
+      (SELECT count(*)::int FROM mtm_attendance_month_members WHERE "organizationId"=${DEMO.id}) AS "monthMembers",
+      (SELECT count(*)::int FROM mtm_attendance_month_days WHERE "organizationId"=${DEMO.id}) AS "monthDays",
+      (SELECT count(*)::int FROM mtm_attendance_shift_plans WHERE "organizationId"=${DEMO.id}) AS "shiftPlans",
+      (SELECT count(*)::int FROM mtm_attendance_shift_members WHERE "organizationId"=${DEMO.id}) AS "shiftMembers",
+      (SELECT count(*)::int FROM mtm_attendance_reminder_notices WHERE "organizationId"=${DEMO.id}) AS "reminderNotices",
+      (SELECT count(*)::int FROM mtm_attendance_schedules WHERE "organizationId"=${DEMO.id}) AS schedules,
+      (SELECT count(*)::int FROM mtm_attendance_deliveries WHERE "organizationId"=${DEMO.id}) AS deliveries,
+      (SELECT count(*)::int FROM workforce_employment_events WHERE "organizationId"=${DEMO.id}) AS employment`
+    if (counts.length !== 1 || Object.keys(counts[0]).length !== SURFACE_EMPTY_COUNTS.length || SURFACE_EMPTY_COUNTS.some(key => counts[0][key] !== 0)) return fail()
+    return { agents, users, settings, counts: counts[0] }
+  }, { isolationLevel: "RepeatableRead", timeout: 15_000 })
+}
+
+export const surfaceDemoEvidence = () => ({ mode: "READ_ONLY_DEFAULTS", browser: "NOT_RUN", configurationUnchanged: true,
+  employeeCount: 2, checks: { settings: true, branches: true, employees: true, geoOff: true, risks: true, installations: true, qrOff: true,
+    leaveUnknown: true, months: true, shifts: true, mailEmpty: true, legacyReportParity: true, legacyLocationsUnknown: true } })
+
+/** Authenticated GETs prove deployed data surfaces and safe empty states. They
+ * are deliberately not labelled as browser, native-phone or configured-flow proof. */
+export async function verifySurfaceDemo(snapshot: Awaited<ReturnType<typeof readSurfaceDemo>>, facts: Pick<Awaited<ReturnType<typeof readOnlyDemo>>, "workdays">,
+  request: (path: string, init?: RequestInit) => Promise<unknown>) {
+  let phase: RequestPhase = "SURFACE_SETTINGS"
+  const get = async (path: string) => data(await request(path, { method: "GET" }))
+  const sameIds = (rows: Record<string, unknown>[], field: string) => rows.length === snapshot.agents.length
+    && JSON.stringify(rows.map(row => row[field]).sort()) === JSON.stringify(snapshot.agents.map(row => row.id).sort())
+  try {
+    const settings = await get("/api/v1/mtm/settings")
+    if (settings.attendanceEnabled !== true || settings.timezone !== "Asia/Baku" || SURFACE_OFF_FLAGS.some(key => settings[key] !== false)) return fail()
+    phase = "SURFACE_BRANCHES"
+    const branches = await get("/api/v1/mtm/attendance/branches")
+    if (items(branches.branches).length !== snapshot.counts.branches || branches.canManageBranches !== true) return fail()
+    phase = "SURFACE_EMPLOYEES"
+    const employees = await get("/api/v1/mtm/attendance/employees")
+    if (employees.timezone !== "Asia/Baku" || items(employees.teams).length !== snapshot.counts.teams || !sameIds(items(employees.employees), "id")
+      || items(employees.employees).some(row => row.role !== "AGENT" || row.status !== "ACTIVE" || row.teamName !== null || items(row.history).length)
+      || items(employees.users).length !== snapshot.users.length || items(employees.users)[0].id !== DEMO.userId) return fail()
+    phase = "SURFACE_GEO"
+    if ((await get("/api/v1/mtm/attendance/location-policy")).policy !== null) return fail()
+    phase = "SURFACE_RISKS"
+    const risks = await get(`/api/v1/mtm/attendance/review?from=${DEMO.from}&to=${REQUEST_DEMO.to}&status=ALL`)
+    if (items(risks.items).length !== snapshot.counts.risks || !sameIds(items(risks.directory), "id")) return fail()
+    phase = "SURFACE_INSTALLATIONS"
+    const installations = await get("/api/v1/mtm/attendance/installations?status=ALL")
+    if (installations.required !== false || installations.canConfigure !== true || installations.timezone !== "Asia/Baku"
+      || installations.nextCursor !== null || items(installations.items).length !== snapshot.counts.installationRequests) return fail()
+    phase = "SURFACE_QR"
+    const qr = await get("/api/v1/mtm/attendance/branch-qr")
+    if (qr.enabled !== false || qr.canConfigure !== true || items(qr.branches).length !== snapshot.counts.branches) return fail()
+    phase = "SURFACE_LEAVE"
+    const leave = await get(`/api/v1/mtm/attendance/leave-balances?year=2026&usedThrough=${REQUEST_DEMO.to}`)
+    if (leave.year !== 2026 || leave.usedThrough !== REQUEST_DEMO.to || leave.policy !== null || leave.canManage !== true || leave.hasMore !== false
+      || !sameIds(items(leave.rows), "employeeId") || items(leave.rows).some(row => row.state !== "POLICY_MISSING"
+        || ["profile", "serviceYears", "allowanceDays", "usedDays", "plannedDays", "remainingDays", "availableDays"].some(key => row[key] !== null))) return fail()
+    phase = "SURFACE_MONTHS"
+    const months = await get("/api/v1/mtm/attendance/months?month=2026-09")
+    if (months.month !== "2026-09" || months.canClose !== true || months.moreEmployees !== false || months.moreSnapshots !== false
+      || items(months.items).length !== snapshot.counts.monthCloses || !sameIds(items(months.employees), "id")
+      || items(months.employees).some(row => row.closed !== false || row.canClose !== true)) return fail()
+    phase = "SURFACE_SHIFTS"
+    const shifts = await get("/api/v1/mtm/attendance/shifts?from=2026-10-01&to=2026-10-31")
+    const rosters = items(shifts.rosters)
+    const rosterHash = createHash("sha256").update(JSON.stringify({ organizationId: DEMO.id, teamId: null, ids: snapshot.agents.map(agent => agent.id).sort() })).digest("hex")
+    if (shifts.canManage !== true || shifts.timezone !== "Asia/Baku" || shifts.revisionId !== null || items(shifts.plans).length !== snapshot.counts.shiftPlans
+      || rosters.length !== 1 || rosters[0].teamId !== null || rosters[0].count !== snapshot.agents.length || rosters[0].hash !== rosterHash) return fail()
+    phase = "SURFACE_DELIVERIES"
+    const mail = await get("/api/v1/mtm/attendance/deliveries")
+    if (mail.timezone !== "Asia/Baku" || items(mail.schedules).length !== snapshot.counts.schedules || items(mail.receipts).length !== snapshot.counts.deliveries) return fail()
+    phase = "SURFACE_REPORT"
+    const report = await get(`/api/v1/mtm/attendance/report?from=${DEMO.from}&to=${DEMO.to}&form=ALL`)
+    verifyParity(facts, report)
+    for (const row of items(report.rows)) {
+      const endpoints = items(row.events).filter(event => event.type === "START" || event.type === "FINISH")
+      const marks = items(row.locationMarks)
+      if (marks.length !== endpoints.length || new Set(marks.map(mark => mark.eventId)).size !== marks.length
+        || marks.some(mark => !endpoints.some(event => event.id === mark.eventId && event.type === mark.action
+          && (event.claimedAt ?? event.occurredAt) === mark.claimedAt && event.serverReceivedAt === mark.serverReceivedAt)
+        || mark.state !== "NOT_RECORDED" || mark.branch !== null || mark.distanceMeters !== null || mark.qr !== undefined)) return fail()
+    }
+  } catch (error) { throw phaseFailure(error, phase) }
+}
+
+export async function exerciseSurfaceDemo(db: Db, password: string, facts: Pick<Awaited<ReturnType<typeof readOnlyDemo>>, "workdays">, fetcher: typeof fetch = fetch) {
+  let phase: RequestPhase = "SURFACE_DATABASE"
+  try {
+    const before = await readSurfaceDemo(db)
+    phase = "SURFACE_HTTP"
+    const session = await authenticatedDemoSession(password, fetcher)
+    try { await verifySurfaceDemo(before, facts, session.request) }
+    finally { session.close() }
+    phase = "SURFACE_DATABASE"
+    if (JSON.stringify(before) !== JSON.stringify(await readSurfaceDemo(db))) return fail()
+    return surfaceDemoEvidence()
+  } catch (error) { throw phaseFailure(error, phase) }
+}
 
 /** Only fill the two null credential fields of the one immutable fixture ID.
  * A different email, linked CRM identity or existing password is never replaced. */
@@ -205,12 +341,14 @@ export async function runRequestProduction(sha: string) {
       phase = "FIXTURE_AFTER"
       const after = await readOnlyDemo(db)
       if (final.status !== "APPROVED" || JSON.stringify(before.workdays) !== JSON.stringify(after.workdays)) return fail()
+      // Existing request acceptance and unchanged phone facts must pass first.
+      const surfaces = await exerciseSurfaceDemo(db, password, { workdays: after.workdays })
       phase = "FINAL_REVISION"
       assertRequestContext(sha, readRootFile(`${APP}/.deploy-sha`, 128))
       return { version: 1, status: "PASS", artifactSha: sha, tenant: DEMO.slug, period: { from: REQUEST_DEMO.from, to: REQUEST_DEMO.to },
         loginMethods: ["credentials", "mobile-credentials"], readOnlyComparison: true, physicalPhone: "NOT_RUN", transitioned: result.transitioned,
         checks: { submission: true, replay: true, reviewerQueue: true, reviewerBell: true, reviewerPanel: true, decision: true, employeeReply: true, report: true, history: true, phoneFactsUnchanged: true },
-        counts: { submittedAudits: final.submittedAudits, decidedAudits: final.decidedAudits, reviewerBells: final.reviewerBells, employeeReplies: final.employeeReplies }, report: result.report }
+        counts: { submittedAudits: final.submittedAudits, decidedAudits: final.decidedAudits, reviewerBells: final.reviewerBells, employeeReplies: final.employeeReplies }, report: result.report, surfaces }
     } finally { await db.$disconnect() }
   } catch (error) { throw phaseFailure(error, phase) }
   finally { delete process.env.DATABASE_URL }
@@ -229,7 +367,7 @@ export function validateRequestEvidence(value: unknown) {
     readOnlyComparison: true, physicalPhone: "NOT_RUN", transitioned: row.transitioned,
     checks: { submission: true, replay: true, reviewerQueue: true, reviewerBell: true, reviewerPanel: true, decision: true, employeeReply: true, report: true, history: true, phoneFactsUnchanged: true },
     counts: { submittedAudits: 1, decidedAudits: 1, reviewerBells: 1, employeeReplies: 1 },
-    report: { rowCount: 2, absentCount: 0, annualLeaveDays: 2, workedSeconds: 0 } }
+    report: { rowCount: 2, absentCount: 0, annualLeaveDays: 2, workedSeconds: 0 }, surfaces: surfaceDemoEvidence() }
   if (!/^[a-f0-9]{40}$/.test(String(row.artifactSha)) || typeof row.transitioned !== "boolean" || JSON.stringify(row) !== JSON.stringify(expected)) return fail()
   return row
 }
