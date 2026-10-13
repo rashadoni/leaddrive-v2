@@ -193,6 +193,7 @@ export interface MtmPrismaMock {
   mtmPhoto: ModelMock
   mtmAlert: ModelMock
   mtmAgentLatestLocation: ModelMock
+  mtmAttendanceRule: ModelMock
   mtmSetting: ModelMock
   mtmNotification: ModelMock
   mtmRouteNotificationOutbox: ModelMock
@@ -378,6 +379,7 @@ export function makeMtmPrismaMock(): MtmPrismaMock {
     mtmPhoto: makeModel(),
     mtmAlert: makeModel(),
     mtmAgentLatestLocation: makeModel(),
+    mtmAttendanceRule: makeModel(),
     mtmSetting: makeModel(),
     mtmNotification: makeModel(),
     mtmRouteNotificationOutbox: makeModel(),

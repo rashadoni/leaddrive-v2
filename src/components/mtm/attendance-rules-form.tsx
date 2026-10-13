@@ -1,0 +1,269 @@
+"use client"
+
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
+import { useFormatter, useTranslations } from "next-intl"
+import { CalendarClock, History } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { HomeCard, HomePill } from "@/components/mtm/home-parts"
+import type { MtmAttendanceRule } from "@/lib/mtm/attendance-rules"
+
+type RulesData = {
+  current: MtmAttendanceRule
+  versions: MtmAttendanceRule[]
+  today: string
+  minEffectiveFrom: string
+  canManageRules: boolean
+}
+
+type Draft = {
+  effectiveFrom: string
+  startTime: string
+  endTime: string
+  lunchMinutes: string
+  lateGraceMinutes: string
+  weekendDays: number[]
+}
+
+const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0] as const
+const DAY_KEYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"] as const
+const ENDPOINT = "/api/v1/mtm/attendance/rules"
+
+function draftFor(rule: MtmAttendanceRule, effectiveFrom: string): Draft {
+  return { effectiveFrom, startTime: rule.startTime, endTime: rule.endTime,
+    lunchMinutes: String(rule.lunchMinutes), lateGraceMinutes: String(rule.lateGraceMinutes),
+    weekendDays: [...rule.weekendDays] }
+}
+
+function nextDate(date: string): string {
+  const value = new Date(`${date}T12:00:00.000Z`)
+  value.setUTCDate(value.getUTCDate() + 1)
+  return value.toISOString().slice(0, 10)
+}
+
+/** A single organization rule, with changes scheduled explicitly for a future day. */
+export function MtmAttendanceRulesForm() {
+  const t = useTranslations("mtmAttendance")
+  const format = useFormatter()
+  const [data, setData] = useState<RulesData | null>(null)
+  const [draft, setDraft] = useState<Draft | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [savedDate, setSavedDate] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [mustReload, setMustReload] = useState(false)
+  const loadController = useRef<AbortController | null>(null)
+  const saveController = useRef<AbortController | null>(null)
+  const interruptedSave = useRef(false)
+
+  const load = useCallback(async (acknowledgeInterrupted = false) => {
+    loadController.current?.abort()
+    const controller = new AbortController()
+    loadController.current = controller
+    setLoading(true)
+    setLoadError(null)
+    setSaveError(null)
+    setSavedDate(null)
+    setData(null)
+    setDraft(null)
+    if (interruptedSave.current) setSaving(false)
+    try {
+      const response = await fetch(ENDPOINT, { cache: "no-store", signal: controller.signal })
+      const body = await response.json().catch(() => null)
+      if (controller.signal.aborted) return
+      if (!response.ok || body?.success !== true || !body.data?.current || !Array.isArray(body.data.versions)) {
+        setLoadError(t([401, 403, 404].includes(response.status) ? "rulesAccessUnavailable" : "rulesLoadError"))
+        return
+      }
+      const loaded = body.data as RulesData
+      const latest = [...loaded.versions].sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom))[0] ?? loaded.current
+      setData(loaded)
+      setDraft(draftFor(loaded.canManageRules ? latest : loaded.current, loaded.minEffectiveFrom))
+      const unresolved = interruptedSave.current && !acknowledgeInterrupted
+      setMustReload(unresolved)
+      if (unresolved) setSaveError(t("rulesSaveUnconfirmed"))
+      else interruptedSave.current = false
+    } catch {
+      if (!controller.signal.aborted) setLoadError(t("rulesLoadError"))
+    } finally {
+      if (!controller.signal.aborted) setLoading(false)
+    }
+  }, [t])
+
+  useEffect(() => {
+    void load()
+    return () => {
+      loadController.current?.abort()
+      if (saveController.current) {
+        interruptedSave.current = true
+        saveController.current.abort()
+        saveController.current = null
+      }
+    }
+  }, [load])
+
+  const dateLabel = (date: string) => format.dateTime(new Date(`${date}T12:00:00.000Z`), { dateStyle: "medium", timeZone: "UTC" })
+  const weekendLabel = (days: readonly number[]) => {
+    const names = WEEKDAYS.filter((day) => days.includes(day)).map((day) => t(DAY_KEYS[day]))
+    return names.length ? format.list(names, { type: "conjunction" }) : t("noWeekendDays")
+  }
+
+  function change(values: Partial<Draft>) {
+    setDraft((previous) => previous ? { ...previous, ...values } : previous)
+    setSavedDate(null)
+    if (!mustReload) setSaveError(null)
+  }
+
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!data?.canManageRules || !draft || saving || saveController.current || mustReload) return
+    const lunchMinutes = Number(draft.lunchMinutes)
+    const lateGraceMinutes = Number(draft.lateGraceMinutes)
+    const toMinutes = (time: string) => { const [hours, minutes] = time.split(":").map(Number); return hours * 60 + minutes }
+    if (!draft.lunchMinutes.trim() || !draft.lateGraceMinutes.trim()
+      || !Number.isInteger(lunchMinutes) || lunchMinutes < 0 || lunchMinutes > 1439
+      || !Number.isInteger(lateGraceMinutes) || lateGraceMinutes < 0 || lateGraceMinutes > 120
+      || !draft.startTime || !draft.endTime || draft.endTime <= draft.startTime
+      || toMinutes(draft.endTime) - toMinutes(draft.startTime) <= lunchMinutes
+      || draft.weekendDays.length > 6) {
+      setSaveError(t("rulesInvalid"))
+      return
+    }
+    if (!draft.effectiveFrom || draft.effectiveFrom < data.minEffectiveFrom) {
+      setSaveError(t("rulesFutureRequired"))
+      setMustReload(true)
+      return
+    }
+    const controller = new AbortController()
+    saveController.current = controller
+    setSaving(true)
+    setSaveError(null)
+    setSavedDate(null)
+    try {
+      const response = await fetch(ENDPOINT, { method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...draft, lunchMinutes, lateGraceMinutes }), signal: controller.signal })
+      const body = await response.json().catch(() => null)
+      if (controller.signal.aborted) return
+      if (!response.ok || body?.success !== true || !body.data?.effectiveFrom) {
+        if ([401, 403, 404].includes(response.status)) {
+          setData(null)
+          setDraft(null)
+          setLoadError(t("rulesAccessUnavailable"))
+        } else if (body?.code === "MTM_ATTENDANCE_RULE_INVALID") {
+          setSaveError(t("rulesInvalid"))
+        } else if (body?.code === "MTM_ATTENDANCE_RULE_FUTURE_REQUIRED") {
+          setSaveError(t("rulesFutureRequired"))
+          setMustReload(true)
+        } else {
+          setSaveError(t(body?.code === "MTM_ATTENDANCE_RULE_CONFLICT" ? "rulesConflict" : "rulesSaveUnconfirmed"))
+          setMustReload(true)
+        }
+        return
+      }
+      const saved = body.data as MtmAttendanceRule
+      // The server returned a new future version. Today's rule stays visible;
+      // the next edit cannot silently overwrite this just-published version.
+      const minEffectiveFrom = nextDate(saved.effectiveFrom)
+      setData({ ...data, versions: [...data.versions.filter((rule) => rule.id !== saved.id), saved], minEffectiveFrom })
+      setDraft(draftFor(saved, minEffectiveFrom))
+      setSavedDate(saved.effectiveFrom)
+    } catch {
+      if (!controller.signal.aborted) {
+        setSaveError(t("rulesSaveUnconfirmed"))
+        setMustReload(true)
+      }
+    } finally {
+      if (saveController.current === controller) saveController.current = null
+      if (!controller.signal.aborted) setSaving(false)
+    }
+  }
+
+  const versions = data ? [...new Map([data.current, ...data.versions].map((rule) => [rule.id, rule])).values()]
+    .sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom)) : []
+
+  return <HomeCard testId="attendance-rules" titleId="attendance-rules-title" icon={<CalendarClock className="h-4 w-4" aria-hidden="true" />}
+    tone="orange" title={t("rulesTitle")}>
+    <div className="space-y-6 py-4">
+      {loading ? <p role="status" className="text-sm text-muted-foreground">{t("rulesLoading")}</p> : null}
+      {loadError ? <div className="space-y-3">
+        <p role="alert" className="text-sm text-destructive">{loadError}</p>
+        <Button type="button" variant="outline" className="min-h-11" onClick={() => void load(true)}>{t("rulesReload")}</Button>
+      </div> : null}
+      {data && draft ? <>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="space-y-1">
+            <p className="text-sm font-medium">{t("rulesCurrentHours", { start: data.current.startTime, end: data.current.endTime })}</p>
+            <p className="max-w-prose text-sm text-muted-foreground">{t("rulesHistoryPreserved")}</p>
+          </div>
+          <span className="text-xs text-muted-foreground">{t("rulesTimezone", { timezone: data.current.timezone })}</span>
+        </div>
+        {!data.canManageRules ? <p className="rounded-xl bg-muted/60 px-4 py-3 text-sm">{t("rulesReadOnly")}</p> : null}
+        <form onSubmit={(event) => void save(event)} className="space-y-5" aria-label={t("rulesTitle")}>
+          <fieldset disabled={!data.canManageRules || saving || mustReload} className="space-y-5">
+            <legend className="mb-3 text-sm font-semibold">{t(data.canManageRules ? "rulesNextVersion" : "rulesCurrentVersion")}</legend>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="space-y-2">
+                <label htmlFor="attendance-start" className="text-sm font-medium">{t("rulesStart")}</label>
+                <Input id="attendance-start" type="time" required value={draft.startTime} className="min-h-11 tabular-nums" onChange={(event) => change({ startTime: event.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="attendance-end" className="text-sm font-medium">{t("rulesEnd")}</label>
+                <Input id="attendance-end" type="time" required value={draft.endTime} className="min-h-11 tabular-nums" onChange={(event) => change({ endTime: event.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="attendance-lunch" className="text-sm font-medium">{t("rulesLunch")}</label>
+                <Input id="attendance-lunch" type="number" required min={0} max={1439} step={1} value={draft.lunchMinutes} className="min-h-11 tabular-nums" onChange={(event) => change({ lunchMinutes: event.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="attendance-grace" className="text-sm font-medium">{t("rulesLateGrace")}</label>
+                <Input id="attendance-grace" type="number" required min={0} max={120} step={1} value={draft.lateGraceMinutes} className="min-h-11 tabular-nums" onChange={(event) => change({ lateGraceMinutes: event.target.value })} />
+              </div>
+            </div>
+            <p className="max-w-prose text-xs text-muted-foreground">{t("rulesLunchHint")}</p>
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium">{t("rulesWeekends")}</legend>
+              <div className="flex flex-wrap gap-2">
+                {WEEKDAYS.map((day) => <label key={day} className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-zinc-200 px-3 text-sm has-[:checked]:border-primary/40 has-[:checked]:bg-primary/5 has-[:disabled]:cursor-default dark:border-zinc-700">
+                  <input type="checkbox" value={day} checked={draft.weekendDays.includes(day)} className="h-4 w-4 accent-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                    onChange={(event) => change({ weekendDays: event.target.checked ? [...draft.weekendDays, day].sort((a, b) => a - b) : draft.weekendDays.filter((value) => value !== day) })} />
+                  {t(DAY_KEYS[day])}
+                </label>)}
+              </div>
+            </fieldset>
+            {data.canManageRules ? <div className="grid items-start gap-3 sm:grid-cols-[minmax(12rem,16rem)_1fr]">
+              <div className="space-y-2">
+                <label htmlFor="attendance-effective-from" className="text-sm font-medium">{t("rulesEffectiveFrom")}</label>
+                <Input id="attendance-effective-from" type="date" required min={data.minEffectiveFrom} value={draft.effectiveFrom} aria-describedby="attendance-effective-hint" className="min-h-11" onChange={(event) => change({ effectiveFrom: event.target.value })} />
+              </div>
+              <p id="attendance-effective-hint" className="max-w-prose text-xs leading-relaxed text-muted-foreground sm:pt-8">{t("rulesEarliestDate", { date: dateLabel(data.minEffectiveFrom) })}</p>
+            </div> : null}
+          </fieldset>
+          {saveError ? <div className="space-y-2">
+            <p role="alert" className="text-sm text-destructive">{saveError}</p>
+            {mustReload ? <Button type="button" variant="outline" className="min-h-11" onClick={() => void load(true)}>{t("rulesReload")}</Button> : null}
+          </div> : null}
+          {savedDate ? <p role="status" className="text-sm font-medium text-emerald-700 dark:text-emerald-300">{t("rulesSaved", { date: dateLabel(savedDate) })}</p> : null}
+          {data.canManageRules ? <Button type="submit" disabled={saving || mustReload} className="min-h-11 w-full sm:w-auto">{t(saving ? "rulesSaving" : "rulesSave")}</Button> : null}
+        </form>
+        <section aria-labelledby="attendance-rules-history-title" className="border-t border-zinc-100 pt-5 dark:border-zinc-800">
+          <h4 id="attendance-rules-history-title" className="mb-3 flex items-center gap-2 text-sm font-semibold"><History className="h-4 w-4 text-muted-foreground" aria-hidden="true" />{t("rulesHistory")}</h4>
+          <ol className="divide-y divide-zinc-100 dark:divide-zinc-800">
+            {versions.map((rule) => <li key={rule.id} className="grid gap-2 py-3 sm:grid-cols-[minmax(12rem,1fr)_2fr]" data-testid="attendance-rule-version">
+              <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                <span>{rule.createdAt === null ? t("rulesDefaultVersion") : t("rulesVersionFrom", { date: dateLabel(rule.effectiveFrom) })}</span>
+                <HomePill tone={rule.id === data.current.id ? "green" : rule.effectiveFrom > data.today ? "blue" : "zinc"}>
+                  {t(rule.id === data.current.id ? "rulesActive" : rule.effectiveFrom > data.today ? "rulesScheduled" : "rulesPrevious")}
+                </HomePill>
+              </div>
+              <div className="space-y-1 text-sm">
+                <p className="tabular-nums">{t("rulesVersionSummary", { start: rule.startTime, end: rule.endTime, lunch: rule.lunchMinutes, grace: rule.lateGraceMinutes })}</p>
+                <p className="text-xs text-muted-foreground">{t("rulesWeekendSummary", { days: weekendLabel(rule.weekendDays) })}</p>
+              </div>
+            </li>)}
+          </ol>
+        </section>
+      </> : null}
+    </div>
+  </HomeCard>
+}

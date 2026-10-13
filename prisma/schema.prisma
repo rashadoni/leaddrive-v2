@@ -126,6 +126,7 @@ model Organization {
   mtmAgentWorkdays                    MtmAgentWorkday[]
   mtmAgentWorkdayEvents               MtmAgentWorkdayEvent[]
   mtmSettings                         MtmSetting[]
+  mtmAttendanceRules                  MtmAttendanceRule[]
   mtmNotifications                    MtmNotification[]
   mtmRouteNotificationOutbox          MtmRouteNotificationOutbox[]
   mtmAuditLogs                        MtmAuditLog[]
@@ -9473,6 +9474,26 @@ model MtmAgentLatestLocation {
 }
 
 // MTM Setting — organization-level MTM settings
+// Append-only MTM attendance rules. The effective rule is the last version
+// starting on/before the work date; changes never rewrite earlier periods.
+model MtmAttendanceRule {
+  id               String       @id @default(cuid())
+  organizationId   String
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  effectiveFrom    DateTime     @db.Date
+  timezone         String
+  startTime        String       @db.VarChar(5)
+  endTime          String       @db.VarChar(5)
+  lunchMinutes     Int
+  lateGraceMinutes Int
+  weekendDays      Int[]
+  createdBy        String
+  createdAt        DateTime     @default(now())
+
+  @@unique([organizationId, effectiveFrom])
+  @@map("mtm_attendance_rules")
+}
+
 model MtmSetting {
   id             String       @id @default(cuid())
   organizationId String
