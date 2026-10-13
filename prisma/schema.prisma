@@ -129,6 +129,7 @@ model Organization {
   mtmAttendanceRules                  MtmAttendanceRule[]
   mtmAttendanceSchedules              MtmAttendanceSchedule[]
   mtmAttendanceDeliveries             MtmAttendanceDelivery[]
+  mtmAttendanceAttachments            MtmAttendanceAttachment[]
   mtmNotifications                    MtmNotification[]
   mtmRouteNotificationOutbox          MtmRouteNotificationOutbox[]
   mtmAuditLogs                        MtmAuditLog[]
@@ -5824,6 +5825,7 @@ model MtmAgent {
   uploadedMediaObjects      MtmMediaObject[]             @relation("MtmMediaObjectUploader")
   documentAssignments       MtmDocumentAssignment[]
   hrmRequests               MtmHrmRequest[]
+  attendanceAttachments     MtmAttendanceAttachment[]
   workforceShiftAssignments WorkforceShiftAssignment[]
   workforceTeamMemberships WorkforceEmployeeTeamMembership[]
   workforceEmploymentEvents WorkforceEmploymentEvent[] @ignore
@@ -8207,6 +8209,9 @@ model MtmHrmRequest {
   requestedStartAt    DateTime?
   requestedEndAt      DateTime?
   reason              String
+  // MTM-only subtype, hours and immutable submission snapshot. NULL keeps
+  // retained Workforce records distinguishable; its routes stay withdrawn.
+  attendanceDetails   Json?
   decisionNote        String?
   decidedByUserId     String?
   submittedAt         DateTime
@@ -8225,6 +8230,26 @@ model MtmHrmRequest {
   @@index([correctionWorkdayId])
   @@index([organizationId, exceptionCaseId])
   @@map("mtm_hrm_requests")
+}
+
+model MtmAttendanceAttachment {
+  id                    String       @id
+  organizationId        String
+  organization          Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentId               String
+  agent                 MtmAgent     @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  clientRequestId       String
+  clientAttachmentId    String
+  storageKey            String       @unique
+  sourceSha256          String
+  checksumSha256        String
+  sizeBytes             Int
+  mimeType              String
+  createdAt             DateTime     @default(now())
+
+  @@unique([organizationId, agentId, clientAttachmentId])
+  @@index([organizationId, agentId, clientRequestId])
+  @@map("mtm_attendance_attachments")
 }
 
 // A tenant-owned work location/context. It deliberately has no relation to

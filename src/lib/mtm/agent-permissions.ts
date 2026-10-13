@@ -28,6 +28,7 @@ export type AgentPermissionSurface = "app" | "web"
 
 /** Tenant MTM settings that are agent permissions. All are booleans. */
 export const AGENT_PERMISSION_SETTING_KEYS = [
+  "attendanceEnabled",
   "teamScheduleVisibilityEnabled",
   "taskSelfCreate",
   "taskSelfRecurring",
@@ -50,6 +51,7 @@ export type AgentPermissionSettings = Record<AgentPermissionSettingKey, boolean>
  * the zone just as well when set wide enough — may lift the zone outright.
  */
 export const AGENT_PERMISSION_ADMIN_ONLY_KEYS = [
+  "attendanceEnabled",
   "agentContactCreateRequests",
   "agentContactChangeRequests",
   "agentCustomerCreateRequests",
@@ -76,6 +78,8 @@ export type AgentPermissionRow = RowBase & (
 export const AGENT_PERMISSION_ROWS = [
   // --- Working day and location
   { id: "workdayOwn", group: "workday", kind: "always" },
+  // The same whole-feature switch; no second permission level to configure.
+  { id: "attendanceRequests", group: "workday", kind: "switch", setting: "attendanceEnabled", surfaces: ["app"] },
   { id: "locationShare", group: "workday", kind: "always" },
   { id: "locationHistoryOwn", group: "workday", kind: "always" },
   { id: "locationTeam", group: "workday", kind: "never" },
@@ -178,10 +182,12 @@ export function agentPermissionEnabled(settings: Partial<AgentPermissionSettings
 }
 
 /** Every switch at once — what the field app receives in its bootstrap. */
-export function agentPermissionStates(settings: Partial<AgentPermissionSettings>): Record<AgentSwitchId, boolean> {
+export type AgentPermissionStates = Record<Exclude<AgentSwitchId, "attendanceRequests">, boolean> & { attendanceRequests?: true }
+export function agentPermissionStates(settings: Partial<AgentPermissionSettings>): AgentPermissionStates {
   return Object.fromEntries(
-    AGENT_SWITCH_ROWS.map((row) => [row.id, agentPermissionEnabled(settings, row.id)]),
-  ) as Record<AgentSwitchId, boolean>
+    AGENT_SWITCH_ROWS.filter((row) => row.id !== "attendanceRequests" || settings.attendanceEnabled === true)
+      .map((row) => [row.id, agentPermissionEnabled(settings, row.id)]),
+  ) as AgentPermissionStates
 }
 
 /** The body of the refusal; the route adds the 403. */

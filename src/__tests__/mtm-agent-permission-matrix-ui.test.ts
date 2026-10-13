@@ -120,7 +120,7 @@ afterEach(() => {
 
 describe("«Что может агент»", () => {
   it("lists every function with words, never a raw translation key", async () => {
-    await open()
+    await open({ attendanceEnabled: true })
     expect(AGENT_PERMISSION_ROWS.filter((item) => !row(item.id)).map((item) => item.id)).toEqual([])
     expect(container.textContent).toContain("Что может агент")
     expect(container.textContent).not.toContain("mtmAccess.")
@@ -132,6 +132,7 @@ describe("«Что может агент»", () => {
 
   it("shows what an organization that never touched the switches has", async () => {
     await open()
+    expect(row("attendanceRequests")).toBeNull()
     const state = (id: string) => [toggleOf(id).getAttribute("aria-checked"), toggleOf(id).textContent]
     expect(state("contactCreateRequest")).toEqual(["true", "Может"])
     expect(state("contactChangeRequest")).toEqual(["true", "Может"])
@@ -200,7 +201,7 @@ describe("«Что может агент»", () => {
   })
 
   it("offers names only where the grant lives on the employee card", async () => {
-    await open()
+    await open({ attendanceEnabled: true })
     const withNames = AGENT_PERMISSION_ROWS.filter((item) => row(item.id).querySelector('input[type="checkbox"]')).map((item) => item.id)
     expect(withNames).toEqual(["routePlanOwn", "routeSelfPublish"])
   })

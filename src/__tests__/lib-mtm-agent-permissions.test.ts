@@ -266,10 +266,18 @@ describe("switch rows are enforced where the agent asks", () => {
 
   it("covers every switch row", () => {
     expect(AGENT_SWITCH_ROWS.map((row) => row.id).sort()).toEqual([
+      "attendanceRequests",
       "checkInOutsideZone",
       "contactChangeRequest", "contactCreateRequest", "customerCreateRequest", "customerLocationRequest",
       "taskSelfCreate", "taskSelfRecurring", "teamSchedule",
     ])
+  })
+
+  it("uses the one attendance switch in the request writer, with no separate permission level", () => {
+    const row = AGENT_SWITCH_ROWS.find((candidate) => candidate.id === "attendanceRequests")
+    expect(row?.setting).toBe("attendanceEnabled")
+    expect(source("src/lib/mtm/attendance-request-store.ts")).toContain('agentPermissionEnabled({ attendanceEnabled:')
+    expect(source("src/lib/mtm/attendance-request-store.ts")).toContain('"attendanceRequests"')
   })
 
   // Publishing one's own routes is not a switch: one tick on the agent's card

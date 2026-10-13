@@ -11246,6 +11246,8 @@
     "domainHint": "Alt domen istifadə edin, məsələn landing.sirketiniz.com və ya pages.sirketiniz.com"
   },
   "mtmAccess": {
+    "perm_attendanceRequests": "İş günü müraciətləri",
+    "perm_attendanceRequests_hint": "Məzuniyyət, xəstəlik, istirahət, saatlıq icazə, ezamiyyət, məsafədən iş və ya əlavə iş üçün müraciət edin. İş günü uçotunun ümumi keçidindən istifadə edir.",
     "title": "Giriş və icazələr",
     "description": "«Marşrut & Sahə» bölməsində kim işləyir, kimin müştərilərini, marşrutlarını və vizitlərini görür — və agentlərə nəyə icazə verilir. Dəyişiklik dərhal qüvvəyə minir.",
     "adminOnly": "Bu bölmə yalnız təşkilatın administratoru üçün açıqdır.",

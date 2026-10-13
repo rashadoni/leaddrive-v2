@@ -11250,6 +11250,8 @@
     "domainHint": "Use a subdomain like landing.yourcompany.com or pages.yourcompany.com"
   },
   "mtmAccess": {
+    "perm_attendanceRequests": "Attendance requests",
+    "perm_attendanceRequests_hint": "Ask for leave, a sick day, time off, business travel, remote work or overtime. Uses the same Attendance switch.",
     "title": "Access & permissions",
     "description": "Who works in Route & Field, whose clients, routes and visits they see — and what agents are allowed to do. A change applies at once.",
     "adminOnly": "This section is open to the organization's administrator only.",
