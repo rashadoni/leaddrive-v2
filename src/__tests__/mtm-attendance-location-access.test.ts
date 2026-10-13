@@ -4,10 +4,10 @@ vi.mock("@/lib/prisma",async()=>({prisma:(await import("./mocks/mtm-prisma")).ma
 vi.mock("@/lib/mobile-auth",()=>({resolveMobileAuth:vi.fn()}))
 import { prisma } from "@/lib/prisma"
 import { resolveMobileAuth } from "@/lib/mobile-auth"
-import { GET,POST } from "@/app/api/v1/mtm/mobile/attendance/location-consent/route"
+import { GET,POST } from "@/app/api/v2/mtm/mobile/route-field/attendance/location-consent/route"
 import { getRlsContext } from "@/lib/rls-context"
 import { officeAttendanceMobilePath } from "@/lib/mtm/attendance-employee-contract"
-const request=(body?:unknown)=>new NextRequest("http://localhost/api/v1/mtm/mobile/attendance/location-consent",body===undefined?{}:{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)})
+const request=(body?:unknown)=>new NextRequest("http://localhost/api/v2/mtm/mobile/route-field/attendance/location-consent",body===undefined?{}:{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)})
 const consent={requestId:"ec2f6acb-f55f-4717-ae23-bec9790ebc14",policyRevisionId:"fictional-policy",expectedConsentId:null,accepted:true}
 beforeEach(()=>{
  vi.resetAllMocks()
@@ -25,8 +25,8 @@ describe("own attendance location consent transport",()=>{
   expect(response.headers.get("cache-control")).toBe("private, no-store")
  })
  it("allows only the two reviewed office methods at the exact own endpoint",()=>{
-  for(const method of["GET","POST"])expect(officeAttendanceMobilePath(method,"/api/v1/mtm/mobile/attendance/location-consent")).toBe(true)
-  for(const method of["PUT","DELETE","PATCH"])expect(officeAttendanceMobilePath(method,"/api/v1/mtm/mobile/attendance/location-consent")).toBe(false)
+  for(const method of["GET","POST"])expect(officeAttendanceMobilePath(method,"/api/v2/mtm/mobile/route-field/attendance/location-consent")).toBe(true)
+  for(const method of["PUT","DELETE","PATCH"])expect(officeAttendanceMobilePath(method,"/api/v2/mtm/mobile/route-field/attendance/location-consent")).toBe(false)
   expect(officeAttendanceMobilePath("POST","/api/v1/mtm/attendance/location-policy")).toBe(false)
  })
  it("refuses collection while the whole feature is disabled and writes no consent",async()=>{

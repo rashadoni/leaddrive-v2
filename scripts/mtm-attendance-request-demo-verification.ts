@@ -15,7 +15,9 @@ export const REQUEST_DEMO = Object.freeze({
 })
 const fail = (): never => { throw new Error("VERIFICATION_FAILED") }
 const REQUEST_PHASES = ["CONTEXT", "PUBLIC_REVISION", "DATABASE", "FIXTURE_BEFORE", "CREDENTIAL", "PREPARE_CREDENTIAL", "MOBILE_CREDENTIAL", "REQUEST_BEFORE",
-  "WEB_LOGIN", "MOBILE_LOGIN", "REPORT_BEFORE", "SUBMISSION", "SUBMISSION_REPLAY", "REVIEW_QUEUE", "REVIEW_BELL", "REVIEW_PANEL", "DECISION", "DECISION_REPLAY",
+  "WEB_LOGIN", "MOBILE_LOGIN", "MOBILE_LOGIN_TRANSPORT", "MOBILE_LOGIN_HTTP_400", "MOBILE_LOGIN_HTTP_401", "MOBILE_LOGIN_HTTP_403",
+  "MOBILE_LOGIN_HTTP_429", "MOBILE_LOGIN_HTTP_500", "MOBILE_LOGIN_HTTP_503", "MOBILE_LOGIN_HTTP_OTHER", "MOBILE_LOGIN_RESPONSE", "MOBILE_LOGIN_IDENTITY",
+  "REPORT_BEFORE", "SUBMISSION", "SUBMISSION_REPLAY", "REVIEW_QUEUE", "REVIEW_BELL", "REVIEW_PANEL", "DECISION", "DECISION_REPLAY",
   "REVIEW_PANEL_AFTER", "EMPLOYEE_REQUESTS", "EMPLOYEE_REPLY", "REPORT_AFTER", "HISTORY", "REQUEST_AFTER", "FIXTURE_AFTER", "FINAL_REVISION",
   "SURFACE_DATABASE", "SURFACE_HTTP", "SURFACE_SETTINGS", "SURFACE_BRANCHES", "SURFACE_EMPLOYEES", "SURFACE_GEO", "SURFACE_RISKS", "SURFACE_INSTALLATIONS",
   "SURFACE_QR", "SURFACE_LEAVE", "SURFACE_MONTHS", "SURFACE_SHIFTS", "SURFACE_DELIVERIES", "SURFACE_REPORT"] as const
@@ -243,20 +245,31 @@ export async function exerciseRequestDemo(password: string, initial: Awaited<Ret
   let token = ""
   let phase: RequestPhase = "WEB_LOGIN"
   const session = await authenticatedDemoSession(password, fetcher).catch(error => { throw phaseFailure(error, phase) })
-  const requestPath = "/api/v1/mtm/mobile/attendance/requests"
+  const requestPath = "/api/v2/mtm/mobile/route-field/attendance/requests"
   const reportPath = `/api/v1/mtm/attendance/report?from=${REQUEST_DEMO.from}&to=${REQUEST_DEMO.to}&form=ALL&employeeId=${DEMO_AGENTS[0]}`
   async function mobile(path: string, body?: unknown) {
     if (![requestPath, "/api/v1/mtm/mobile/auth", "/api/v1/mtm/mobile/notifications"].includes(path)) return fail()
+    const isLogin = path === "/api/v1/mtm/mobile/auth"
+    if (isLogin) phase = "MOBILE_LOGIN_TRANSPORT"
     const response = await fetcher(`${DEMO.origin}${path}`, { method: body === undefined ? "GET" : "POST", redirect: "manual", signal: AbortSignal.timeout(15_000),
       headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }) })
+    if (isLogin) {
+      // Select a constant from the status only. Never copy an HTTP message,
+      // response field, transport exception or credential into public evidence.
+      const failures: Partial<Record<number, RequestPhase>> = { 400: "MOBILE_LOGIN_HTTP_400", 401: "MOBILE_LOGIN_HTTP_401", 403: "MOBILE_LOGIN_HTTP_403",
+        429: "MOBILE_LOGIN_HTTP_429", 500: "MOBILE_LOGIN_HTTP_500", 503: "MOBILE_LOGIN_HTTP_503" }
+      phase = failures[response.status] ?? "MOBILE_LOGIN_HTTP_OTHER"
+    }
     if (![200, 201].includes(response.status)) return fail()
+    if (isLogin) phase = "MOBILE_LOGIN_RESPONSE"
     const text = await response.text(); if (Buffer.byteLength(text) > 256_000) return fail()
     return data(JSON.parse(text))
   }
   try {
     phase = "MOBILE_LOGIN"
     const auth = await mobile("/api/v1/mtm/mobile/auth", { email: REQUEST_DEMO.email, password, organizationSlug: DEMO.slug })
+    phase = "MOBILE_LOGIN_IDENTITY"
     const agent = record(auth.agent)
     if (agent.id !== DEMO_AGENTS[0] || agent.organizationId !== DEMO.id || agent.role !== "AGENT" || typeof auth.token !== "string" || !auth.token) return fail()
     token = auth.token

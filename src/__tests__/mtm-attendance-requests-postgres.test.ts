@@ -42,8 +42,8 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
   let journal: typeof import("@/lib/mtm/attendance-decision-journal-store")
   let photos: typeof import("@/lib/mtm/attendance-attachment")
   let limits: typeof import("@/lib/mtm/attendance-request-limit-store")
-  let quotaApi: typeof import("@/app/api/v1/mtm/mobile/attendance/request-limits/route")
-  let api: typeof import("@/app/api/v1/mtm/mobile/attendance/requests/route")
+  let quotaApi: typeof import("@/app/api/v2/mtm/mobile/route-field/attendance/request-limits/route")
+  let api: typeof import("@/app/api/v2/mtm/mobile/route-field/attendance/requests/route")
   let createdRole = false, createdDb = false
   let documentRuntime: string | undefined
   let documentLogRuntime: string | undefined
@@ -51,7 +51,7 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
   const originalLogs = process.env.LEADDRIVE_LOG_DIR
   const self = { organizationId: "request-pg-a", agentId: "request-pg-owner", role: "AGENT" }
   const input = (date: string) => ({ clientRequestId: randomUUID(), kind: "HOURLY_ABSENCE", unit: "HOURS", startDate: date, endDate: date, startTime: "09:00", endTime: "10:00", reason: "Fictional request" })
-  const submit = (body: unknown) => api.POST(new NextRequest("http://localhost/api/v1/mtm/mobile/attendance/requests", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }))
+  const submit = (body: unknown) => api.POST(new NextRequest("http://localhost/api/v2/mtm/mobile/route-field/attendance/requests", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }))
   beforeAll(async () => {
     sql(adminUrl!, `CREATE ROLE "${scratch!.role}" LOGIN PASSWORD 'attendance-fixture-only' NOSUPERUSER NOBYPASSRLS`); createdRole = true
     sql(adminUrl!, `CREATE DATABASE "${scratch!.name}"`); createdDb = true
@@ -80,8 +80,8 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
     journal = await import("@/lib/mtm/attendance-decision-journal-store")
     photos = await import("@/lib/mtm/attendance-attachment")
     limits = await import("@/lib/mtm/attendance-request-limit-store")
-    quotaApi = await import("@/app/api/v1/mtm/mobile/attendance/request-limits/route")
-    api = await import("@/app/api/v1/mtm/mobile/attendance/requests/route")
+    quotaApi = await import("@/app/api/v2/mtm/mobile/route-field/attendance/request-limits/route")
+    api = await import("@/app/api/v2/mtm/mobile/route-field/attendance/requests/route")
     await bypass(async () => {
       for (const org of ["request-pg-a", "request-pg-b"]) {
         await prisma.organization.create({ data: { id: org, name: "Fictional request organization", slug: org, modules: { "route-field": true } } })
@@ -169,7 +169,7 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
     const responses = await Promise.all([submit(input("2027-03-03")), submit(input("2027-03-04"))])
     expect(responses.map((response) => response.status).sort()).toEqual([201, 409])
     expect(await responses.find((response) => response.status === 409)!.json()).toMatchObject({ code: "MTM_ATTENDANCE_REQUEST_COUNT_LIMIT" })
-    const own = await quotaApi.GET(new NextRequest("http://localhost/api/v1/mtm/mobile/attendance/request-limits?month=2027-03&agentId=request-pg-colleague"))
+    const own = await quotaApi.GET(new NextRequest("http://localhost/api/v2/mtm/mobile/route-field/attendance/request-limits?month=2027-03&agentId=request-pg-colleague"))
     expect(await own.json()).toMatchObject({ data: { month: "2027-03", usedMinutes: 180, usedRequests: 3, remainingRequests: 0, remainingMinutes: 300 } })
     expect((await submit(input("2027-04-01"))).status).toBe(201)
   })

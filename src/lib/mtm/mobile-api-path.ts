@@ -11,6 +11,13 @@ const LEGACY_MTM_API_PREFIX = "/api/v1/mtm/"
 const LEGACY_MTM_MOBILE_API_PREFIX = "/api/v1/mtm/mobile/"
 const V2_MTM_MOBILE_EXACT_PATHS = new Set([
   "/api/v2/mtm/mobile/location/batch",
+  // Attendance belongs to Route & Field. The old /mobile/attendance prefix
+  // stays withdrawn with Workforce HRM and cannot serve these handlers.
+  "/api/v2/mtm/mobile/route-field/attendance/requests",
+  "/api/v2/mtm/mobile/route-field/attendance/request-limits",
+  "/api/v2/mtm/mobile/route-field/attendance/attachments",
+  "/api/v2/mtm/mobile/route-field/attendance/location-consent",
+  "/api/v2/mtm/mobile/route-field/attendance/installation",
   "/api/v2/mtm/mobile/route-field/contact-create-requests",
   "/api/v2/mtm/mobile/route-field/contacts",
   "/api/v2/mtm/mobile/route-field/device-tokens",
@@ -26,6 +33,7 @@ const V2_MTM_MOBILE_EXACT_PATHS = new Set([
   "/api/v2/mtm/mobile/sync/workforce",
 ])
 const V2_MTM_MOBILE_DETAIL_PATH = /^\/api\/v2\/mtm\/mobile\/route-field\/(?:contacts|organizations)\/[^/%]+$/
+const V2_MTM_MOBILE_ATTENDANCE_DETAIL_PATH = /^\/api\/v2\/mtm\/mobile\/route-field\/attendance\/(?:requests|attachments)\/[^/%]+$/
 // An agent's change request on one client. Without this line the proxy sends
 // the app's POST to /login (307): the handler was live on production for an
 // hour on 2026-10-04 and unreachable.
@@ -43,6 +51,7 @@ function isApprovedV2MtmMobilePath(pathname: string): boolean {
   const normalized = normalizedPathname(pathname)
   return V2_MTM_MOBILE_EXACT_PATHS.has(normalized)
     || V2_MTM_MOBILE_DETAIL_PATH.test(normalized)
+    || V2_MTM_MOBILE_ATTENDANCE_DETAIL_PATH.test(normalized)
     || V2_MTM_MOBILE_CONTACT_CHANGE_REQUEST_PATH.test(normalized)
     || V2_MTM_MOBILE_ORGANIZATION_LOCATION_REQUEST_PATH.test(normalized)
 }
