@@ -36,7 +36,8 @@ const row = (index = 1) => container.querySelector<HTMLElement>(`[data-testid="a
 const button = (key: string, region: HTMLElement = container) => Array.from(region.querySelectorAll<HTMLButtonElement>("button")).find(item => item.textContent === translation(key))!
 async function render(locale: typeof language = language) {
   language = locale
-  await act(async () => root.render(createElement(NextIntlClientProvider, { locale, timeZone: "Asia/Baku", messages: locales[locale] }, createElement(MtmAttendanceRequestQueue))))
+  const providerProps = { locale, timeZone: "Asia/Baku", messages: locales[locale], children: createElement(MtmAttendanceRequestQueue) }
+  await act(async () => root.render(createElement(NextIntlClientProvider, providerProps)))
 }
 async function click(key: string, region: HTMLElement = container) { await act(async () => button(key, region).click()) }
 async function editNote(value: string) { await act(async () => {

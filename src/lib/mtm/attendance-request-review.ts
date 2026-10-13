@@ -21,7 +21,7 @@ export function attendanceReviewWhere(organizationId: string, userId: string, ac
     organizationId, attendanceDetails: { not: Prisma.DbNull },
     agent: { is: { organizationId, status: "ACTIVE", OR: [{ userId: null }, { userId: { not: userId } }] } },
     AND: [
-      ...(actor.scopedAgentIds === null ? [] : [{ agentId: { in: actor.scopedAgentIds } }]),
+      ...(actor.scopedAgentIds === null ? [] : [{ agentId: { in: [...actor.scopedAgentIds] } }]),
       ...(actor.agentId ? [{ agentId: { not: actor.agentId } }] : []),
     ],
   }

@@ -10,12 +10,14 @@ type AttachmentContext = { params: Promise<{ id: string }> }
 
 export const GET = withMtmAttendanceAuth<AttachmentContext>("read", async (_req, auth, ctx) => {
   try {
+    if (auth.principalType !== "session") throw new AttendanceRequestError("MTM_ATTENDANCE_DECISION_FORBIDDEN", 403)
+    const reviewer = { organizationId: auth.orgId, userId: auth.userId, principalType: "session" as const }
     const { id } = await ctx.params
     // A report-wide HR grant alone must never open medical documents.
     const actor = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const record = await tx.mtmAttendanceAttachment.findFirst({ where: { id, organizationId: auth.orgId }, select: { agentId: true } })
       if (!record) throw new AttendanceRequestError("MTM_ATTENDANCE_DOCUMENT_UNAVAILABLE", 404)
-      const access = await requireAttendanceReviewer(tx, { organizationId: auth.orgId, userId: auth.userId, principalType: auth.principalType }, record.agentId)
+      const access = await requireAttendanceReviewer(tx, reviewer, record.agentId)
       return access.actor
     })
     const file = await readAttendanceDocument({ organizationId: auth.orgId, actor }, id)

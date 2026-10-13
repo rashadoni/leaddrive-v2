@@ -131,6 +131,7 @@ describe("attendance decision endpoint with the real authorization wrapper, deci
     if (kind === "own-linked-user") stored!.agent.userId = userId // The ADMIN actor deliberately has agentId:null.
     if (kind === "revoked-scope") vi.mocked(resolveMtmRouteActor).mockResolvedValueOnce({ agentId: null, role: "ADMIN", scopedAgentIds: null }).mockResolvedValue({ agentId: "manager", role: "MANAGER", scopedAgentIds: [] })
     if (kind === "revoked-write") currentUser!.role = "viewer"
+    if (kind === "missing-principal") identity({ principalType: undefined })
     if (kind === "inactive-user") currentUser = null
     if (kind === "hidden-module") { currentUser!.role = "manager"; currentUser!.hiddenModules = ["mtm"] }
     if (kind === "feature-revoked") vi.mocked(prisma.mtmSetting.findUnique).mockResolvedValue({ value: false } as never)
@@ -195,8 +196,9 @@ describe("attendance review list has its own current write scope", () => {
     expect(JSON.stringify(body)).not.toContain("submissionHash")
     expect(prisma.mtmHrmRequest.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ organizationId, status: "PENDING", agent: { is: { organizationId, status: "ACTIVE", OR: [{ userId: null }, { userId: { not: userId } }] } } }) }))
   })
-  it.each(["api-key", "inactive-user", "read-only-hr", "hidden", "feature-off", "unbounded-manager"])("denies %s before reading any request detail", async (kind) => {
+  it.each(["api-key", "missing-principal", "inactive-user", "read-only-hr", "hidden", "feature-off", "unbounded-manager"])("denies %s before reading any request detail", async (kind) => {
     if (kind === "api-key") identity({ principalType: "api_key" })
+    if (kind === "missing-principal") identity({ principalType: undefined })
     if (kind === "inactive-user") currentUser = null
     if (kind === "read-only-hr") { currentUser = { role: "viewer", hiddenModules: [], mtmAttendanceAll: true }; identity({ role: "viewer" }) }
     if (kind === "hidden") currentUser = { role: "manager", hiddenModules: ["mtm"] }
