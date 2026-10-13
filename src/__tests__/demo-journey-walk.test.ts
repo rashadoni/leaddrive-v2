@@ -243,7 +243,25 @@ describe("the guided story, walked through the real screens", () => {
     expect(frontier()).toMatchObject({ sectionId: "conversation", stepId: "conversation-views" })
     // The scene the prospect lands on is the real inbox with their conversation, not an empty shell.
     expect(document.querySelector('[data-demo-target~="conversation-open"]')).not.toBeNull()
-    expect(await walkToEnd()).toEqual(stepIdsFrom("conversation"))
+
+    // The story runs to its last screen — and that screen does not say «done»:
+    // the campaigns were jumped over, so it offers them, and the guide's arrow
+    // is on that offer, not on «Bitir» (owner, 2026-10-13: led straight to
+    // «Bitir» at 15 of 27 steps).
+    const first = await walkToEnd(undefined, "summary-finish")
+    expect(first).toEqual(stepIdsFrom("conversation").filter((id) => id !== "summary-finish"))
+    const unseen = document.querySelector('[data-testid="demo-unseen-modules"]')
+    expect(unseen?.textContent).toContain(PROSPECT_TO_CLOSED_WON.sections.find((section) => section.id === "source")!.title)
+    expect(textOf('[data-testid="demo-scene-summary"]')).not.toContain(S.completedTitle)
+    expect(findDemoTarget("summary-finish")?.closest('[data-testid="demo-unseen-modules"]')).not.toBeNull()
+
+    // Following the arrow opens the campaigns with their guide; after them the
+    // guide does not walk the seen modules again — it returns to the last
+    // screen, which now offers to finish.
+    const rest = await walkToEnd()
+    const sourceSteps = PROSPECT_TO_CLOSED_WON.sections.find((section) => section.id === "source")!.steps.map((step) => step.id)
+    expect(rest).toEqual(["summary-finish", ...sourceSteps, "summary-review", "summary-finish"])
+    expect(new Set([...first, ...rest])).toEqual(new Set(stepIdsFrom("source")))
   }, 60_000)
 
   it("opens a later section straight from the sidebar and carries on from there", async () => {
@@ -253,7 +271,32 @@ describe("the guided story, walked through the real screens", () => {
     await act(async () => deals!.click())
     await settle()
     expect(frontier().sectionId).toBe("deal")
-    expect(await walkToEnd()).toEqual(stepIdsFrom("deal"))
+    // Carried on to the end, then through every module that was jumped over:
+    // nothing is left unseen by the time the story can be finished.
+    const walked = await walkToEnd()
+    expect(walked.slice(0, stepIdsFrom("deal").length - 1)).toEqual(stepIdsFrom("deal").filter((id) => id !== "summary-finish"))
+    expect(new Set(walked)).toEqual(new Set(stepIdsFrom("source")))
+  }, 60_000)
+
+  it("opens a module left behind from the menu with its guide, and ticks the ones walked", async () => {
+    await renderPlayer()
+    const item = (href: string) => document.querySelector<HTMLButtonElement>(`[data-testid="demo-sidebar"] [data-nav-href="${href}"]`)!
+    await act(async () => item("/boards").click())
+    await settle()
+    expect(frontier().sectionId).toBe("task")
+
+    // The inbox is behind now. It opens on its first step, with the arrow —
+    // not «prepared for you, read-only».
+    await act(async () => item("/inbox").click())
+    await settle()
+    expect(frontier()).toMatchObject({ sectionId: "conversation", stepId: "conversation-views" })
+    expect(container.textContent).not.toContain(S.reviewMode)
+    expect(document.querySelector('[data-testid="demo-coach-card"]')).not.toBeNull()
+
+    // Walk the inbox module (both its chapters): the menu ticks it, and only it.
+    await walkTo("lead-list-stats")
+    expect(item("/inbox").querySelector('[data-nav-done="true"]')).not.toBeNull()
+    expect(item("/boards").querySelector('[data-nav-done="true"]')).toBeNull()
   }, 60_000)
 })
 

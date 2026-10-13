@@ -327,7 +327,10 @@ export function DemoCoachMark({
         !reducedMotion && "transition-[top,left,width,height] duration-200",
         collapsed && pointsAtControl && !reducedMotion && "animate-pulse",
       )}
-      style={{ ...ring, boxShadow: collapsed ? undefined : "0 0 0 9999px rgba(15, 23, 42, 0.32)" }}
+      // A light veil, enough to set the control apart. At 0.32 the whole
+      // product read as a grey, switched-off screen on every step — the
+      // owner's own demo looked dead to him (2026-10-13).
+      style={{ ...ring, boxShadow: collapsed ? undefined : "0 0 0 9999px rgba(15, 23, 42, 0.12)" }}
     />
   )
 
