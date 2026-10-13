@@ -492,8 +492,9 @@ export const GET = withMobileRls(async (req, auth) => {
           // then answers MTM_AGENT_PERMISSION_DISABLED.
           agentPermissions: {
             ...agentPermissionStates(settings),
-            ...(settings.attendanceEnabled ? { attendanceRequests: attendanceSelf, attendanceWorkday: attendanceSelf } : {}),
+            ...(settings.attendanceEnabled ? { attendanceRequests: attendanceSelf, attendanceWorkday: attendanceSelf, attendanceLocation: attendanceSelf } : {}),
           },
+          ...(attendanceSelf ? { attendanceMarkVersion: 1 } : {}),
           // This server lets an employee return to the workday they closed
           // earlier today (POST …/route-field/workday-return). Not a switch —
           // the owner removed the restriction for everyone on 2026-10-13 — but
