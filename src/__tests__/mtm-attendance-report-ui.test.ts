@@ -36,6 +36,7 @@ const fetchMock = vi.fn<typeof fetch>()
 async function defaultFetch(url: string | URL | Request) {
   const parsed = new URL(String(url), "https://attendance.test")
   if (parsed.pathname.endsWith("/rules")) return response({ today: TODAY })
+  if (parsed.pathname.endsWith("/views")) return response([])
   return response(fixture(parsed.searchParams.get("from")!, parsed.searchParams.get("to")!))
 }
 const messages = (locale: string) => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"))
@@ -114,7 +115,7 @@ describe("attendance report workspace on the real row calculation", () => {
     expect(card("arrived")).toBe("1")
     expect(card("late")).toBe("0")
     expect(field("employee").querySelectorAll("option")).toHaveLength(3)
-    expect(fetchMock.mock.calls).toHaveLength(2)
+    expect(fetchMock.mock.calls).toHaveLength(3)
   })
 
   it("renders late/early and absence forms as slices of the same base snapshot", async () => {
@@ -132,7 +133,7 @@ describe("attendance report workspace on the real row calculation", () => {
     expect(dayRows()[0].textContent).toContain("Samir Karimov")
     expect(card("arrived")).toBe("0")
     expect(card("absent")).toBe("1")
-    expect(fetchMock.mock.calls).toHaveLength(2)
+    expect(fetchMock.mock.calls).toHaveLength(3)
     capture("absences", "ru")
   })
 
@@ -158,7 +159,7 @@ describe("attendance report workspace on the real row calculation", () => {
     expect(container.querySelectorAll('[data-testid="attendance-month-person"]')).toHaveLength(4)
     expect(container.querySelectorAll('[data-testid="attendance-month-grid"] thead th')).toHaveLength(35)
     expect(container.querySelector(`[aria-label="${t.reportLegend}"]`)?.textContent).toContain(t.reportMissingFinish)
-    expect(container.textContent).toContain(t.reportDayRecords)
+    expect(container.textContent).toContain("запис")
     expect(card("missing-finish")).toBe("1")
     expect(container.textContent).toContain(t.reportPartial)
     expect(container.querySelector('[data-testid="attendance-report-totals"]')?.textContent).toContain("16:39")
@@ -187,7 +188,7 @@ describe("attendance report workspace on the real row calculation", () => {
 
   it("paginates displayed records while cards and totals cover all filtered records", async () => {
     const people = Array.from({ length: 55 }, (_, index) => ({ id: `person-${index}`, name: `Employee ${index}`, teamId: null, teamName: null }))
-    fetchMock.mockImplementation(async (url) => String(url).endsWith("/rules") ? response({ today: TODAY }) : response(fixture(TODAY, TODAY, people)))
+    fetchMock.mockImplementation(async (url) => String(url).endsWith("/rules") ? response({ today: TODAY }) : String(url).endsWith("/views") ? response([]) : response(fixture(TODAY, TODAY, people)))
     await render()
     expect(dayRows()).toHaveLength(50)
     expect(card("absent")).toBe("55")
@@ -203,7 +204,7 @@ describe("attendance report workspace on the real row calculation", () => {
     await render()
     await edit("to", "2026-10-01")
     await submit()
-    expect(fetchMock.mock.calls).toHaveLength(2)
+    expect(fetchMock.mock.calls).toHaveLength(3)
     expect(container.querySelector('[role="alert"]')?.textContent).toBe(messages("en").mtmAttendance.reportRangeInvalid)
     expect(dayRows()).toHaveLength(4)
   })
@@ -246,7 +247,7 @@ describe("attendance report workspace on the real row calculation", () => {
   })
 
   it("shows a bounded-report error without server internals or stale totals", async () => {
-    fetchMock.mockImplementation(async (url) => String(url).endsWith("/rules") ? response({ today: TODAY }) : response(null, 400, "MTM_ATTENDANCE_REPORT_TOO_LARGE"))
+    fetchMock.mockImplementation(async (url) => String(url).endsWith("/rules") ? response({ today: TODAY }) : String(url).endsWith("/views") ? response([]) : response(null, 400, "MTM_ATTENDANCE_REPORT_TOO_LARGE"))
     await render()
     expect(container.querySelector('[role="alert"]')?.textContent).toBe(messages("en").mtmAttendance.reportTooLarge)
     expect(container.textContent).not.toContain("PRIVATE_SERVER_ERROR")

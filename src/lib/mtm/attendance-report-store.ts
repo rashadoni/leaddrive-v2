@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { readAttendanceRules } from "@/lib/mtm/attendance-rule-store"
@@ -76,6 +77,8 @@ export async function readMtmAttendanceReport(input: {
       workdays, calendar, rules, from: query.from, to: query.to, now,
     })
     const rows = filterMtmAttendanceRows(report.rows, { form: query.form })
-    return { ...report, rows, totals: summarizeMtmAttendanceRows(rows), form: query.form }
+    const result = { ...report, rows, totals: summarizeMtmAttendanceRows(rows), form: query.form }
+    const id = createHash("sha256").update(JSON.stringify({ query, report: result })).digest("hex")
+    return { ...result, snapshot: { id, asOf: result.asOf, query } }
   }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead, timeout: 15_000 })
 }

@@ -12,7 +12,7 @@ export const ATTENDANCE_VIEW_COLUMNS = {
 export const AttendanceViewConfigSchema = z.object({
   version: z.literal(1),
   mode: z.enum(["DAY", "MONTH", "JOURNAL"]),
-  columns: z.array(z.enum(["employee", "team", "date", "status", "startedAt", "completedAt", "worked", "paused", "late", "early", "event", "phoneAt", "serverAt", "days", "absent"])).min(1).max(15),
+  columns: z.array(z.enum(["employee", "team", "date", "status", "startedAt", "completedAt", "worked", "paused", "late", "early", "event", "phoneAt", "serverAt", "days", "absent", "notes"])).min(1).max(15),
   showTotals: z.boolean(),
   filters: AttendanceReportQuerySchema,
 }).strict().superRefine((config, ctx) => {

@@ -8,6 +8,8 @@ import { createRequire } from "node:module"
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import ExcelJS from "exceljs"
+import { attendancePdfText } from "./helpers/attendance-pdf"
 import { NextRequest } from "next/server"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { addDateKeyDays, currentDateKey } from "@/lib/mtm/mobile-week"
@@ -67,6 +69,7 @@ pgDescribe("MTM report reads the real saved workday and journal", () => {
   let patchView: typeof import("@/app/api/v1/mtm/attendance/views/[id]/route").PATCH
   let genericPatchView: typeof import("@/app/api/v1/saved-views/[id]/route").PATCH
   let genericDeleteView: typeof import("@/app/api/v1/saved-views/[id]/route").DELETE
+  let exportReport: typeof import("@/app/api/v1/mtm/attendance/export/route").POST
   let createdRole = false
   let createdDb = false
   let monday: string
@@ -102,6 +105,7 @@ pgDescribe("MTM report reads the real saved workday and journal", () => {
     getReport = (await import("@/app/api/v1/mtm/attendance/report/route")).GET
     calendar = await import("@/lib/mtm/attendance-calendar")
     postCalendar = (await import("@/app/api/v1/mtm/attendance/calendar/route")).POST
+    exportReport = (await import("@/app/api/v1/mtm/attendance/export/route")).POST
     views = await import("@/lib/mtm/attendance-view-store")
     postView = (await import("@/app/api/v1/mtm/attendance/views/route")).POST
     patchView = (await import("@/app/api/v1/mtm/attendance/views/[id]/route")).PATCH
@@ -294,6 +298,37 @@ pgDescribe("MTM report reads the real saved workday and journal", () => {
     await tenant(ORG, () => prisma.mtmSetting.updateMany({ where: { organizationId: ORG, key: "attendanceEnabled" }, data: { value: false } }))
     expect((await postView(request("/api/v1/mtm/attendance/views", "POST", { ...value, requestId: randomUUID() }))).status).toBe(404)
     expect(await tenant(ORG, () => views.readAttendanceViews(ORG, "fixture-admin"))).toEqual([created])
+    await tenant(ORG, () => prisma.mtmSetting.updateMany({ where: { organizationId: ORG, key: "attendanceEnabled" }, data: { value: true } }))
+  })
+
+  it("exports the actual authorized snapshot with safe cells and refuses changed data or disabled access", async () => {
+    Object.assign(caller, { orgId: ORG, userId: "fixture-admin", role: "admin" })
+    const source = await getReport(new NextRequest(`http://localhost/api/v1/mtm/attendance/report?from=${monday}&to=${friday}`))
+    expect(source.status).toBe(200)
+    const reportData = (await source.json()).data
+    const config = { ...viewConfig(), columns: ["employee", "worked", "paused"], filters: { from: monday, to: friday, employeeId: "employee-a", form: "ALL" } }
+    const value = { config, locale: "az", snapshot: reportData.snapshot }
+    const request = (format: "xlsx" | "pdf", snapshot = value.snapshot) => new NextRequest("http://localhost/api/v1/mtm/attendance/export", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...value, snapshot, format }),
+    })
+    const excel = await exportReport(request("xlsx"))
+    expect(excel.status).toBe(200)
+    const workbook = new ExcelJS.Workbook()
+    await workbook.xlsx.load(Buffer.from(await excel.arrayBuffer()))
+    expect(workbook.worksheets[0].rowCount).toBe(6)
+    const cells = JSON.stringify(workbook.worksheets.map((sheet) => sheet.getSheetValues()))
+    expect(cells).toContain("Fixture employee A")
+    expect(cells).not.toMatch(/Fixture employee B|PRIVATE_BREAK_MARKER|12\.34567|45\.67891|latitude|longitude/)
+    const pdf = await exportReport(request("pdf"))
+    expect(pdf.status).toBe(200)
+    const text = attendancePdfText(Buffer.from(await pdf.arrayBuffer()))
+    expect(text).toContain("Fixture employee A")
+    expect(text).not.toMatch(/Fixture employee B|PRIVATE_BREAK_MARKER|12\.34567|45\.67891|latitude|longitude/)
+    expect((await exportReport(request("xlsx", { ...value.snapshot, id: "0".repeat(64) }))).status).toBe(409)
+    await tenant(ORG, () => prisma.mtmTeam.update({ where: { id: "team-a" }, data: { name: "Updated fixture team" } }))
+    expect((await exportReport(request("xlsx"))).status).toBe(409)
+    await tenant(ORG, () => prisma.mtmSetting.updateMany({ where: { organizationId: ORG, key: "attendanceEnabled" }, data: { value: false } }))
+    expect((await exportReport(request("pdf"))).status).toBe(404)
     await tenant(ORG, () => prisma.mtmSetting.updateMany({ where: { organizationId: ORG, key: "attendanceEnabled" }, data: { value: true } }))
   })
 

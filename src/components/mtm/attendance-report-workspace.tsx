@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react"
-import { useFormatter, useTranslations } from "next-intl"
+import { useFormatter, useLocale, useTranslations } from "next-intl"
 import { CalendarDays, Clock3, ListChecks, LogIn, LogOut, UserRoundX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,6 +9,9 @@ import { HomeCard, HomeKpi, HomePill, type HomeTone } from "@/components/mtm/hom
 import { addDateKeyDays, isDateKey } from "@/lib/mtm/mobile-week"
 import { filterMtmAttendanceRows, summarizeMtmAttendanceRows, type MtmAttendanceReport, type MtmAttendanceReportRow } from "@/lib/mtm/attendance-report"
 import { formatAttendanceDuration } from "@/lib/mtm/attendance-presentation"
+import { ATTENDANCE_VIEW_COLUMNS, type AttendanceViewConfig } from "@/lib/mtm/attendance-view-contract"
+import { buildAttendanceTable } from "@/lib/mtm/attendance-table"
+import { MtmAttendancePersonalViews } from "@/components/mtm/attendance-personal-views"
 
 type Form = "DAY" | "MONTH" | "LATE_EARLY" | "ABSENCES" | "JOURNAL"
 type Range = { from: string; to: string }
@@ -39,6 +42,7 @@ function rowTone(row: MtmAttendanceReportRow): HomeTone {
 export function MtmAttendanceReportWorkspace() {
   const t = useTranslations("mtmAttendance")
   const format = useFormatter()
+  const locale = useLocale() as "az" | "ru" | "en"
   const [today, setToday] = useState<string | null>(null)
   const [range, setRange] = useState<Range>({ from: "", to: "" })
   const [report, setReport] = useState<MtmAttendanceReport | null>(null)
@@ -49,9 +53,11 @@ export function MtmAttendanceReportWorkspace() {
   const [error, setError] = useState<string | null>(null)
   const [rangeError, setRangeError] = useState<string | null>(null)
   const [page, setPage] = useState(0)
+  const [customView, setCustomView] = useState<{ name: string; config: AttendanceViewConfig } | null>(null)
+  const [accessUnavailable, setAccessUnavailable] = useState(false)
   const request = useRef<AbortController | null>(null)
 
-  const load = useCallback(async (requestedRange?: Range) => {
+  const load = useCallback(async (requestedRange?: Range, savedConfig?: AttendanceViewConfig) => {
     request.current?.abort()
     const controller = new AbortController()
     request.current = controller
@@ -60,6 +66,7 @@ export function MtmAttendanceReportWorkspace() {
     setRangeError(null)
     setReport(null)
     setPage(0)
+    setAccessUnavailable(false)
     try {
       let selected = requestedRange
       if (!selected) {
@@ -68,6 +75,7 @@ export function MtmAttendanceReportWorkspace() {
         if (controller.signal.aborted) return
         if (!response.ok || body?.success !== true || !isDateKey(body.data?.today)) {
           setError(t([401, 403, 404].includes(response.status) ? "reportAccessUnavailable" : "reportLoadError"))
+          if ([401, 403, 404].includes(response.status)) setAccessUnavailable(true)
           return
         }
         setToday(body.data.today)
@@ -75,19 +83,21 @@ export function MtmAttendanceReportWorkspace() {
       }
       setRange(selected)
       const query = new URLSearchParams({ from: selected.from, to: selected.to, form: "ALL" })
+      if (savedConfig?.filters.employeeId) query.set("employeeId", savedConfig.filters.employeeId)
+      if (savedConfig?.filters.teamId) query.set("teamId", savedConfig.filters.teamId)
       const response = await fetch(`/api/v1/mtm/attendance/report?${query}`, { cache: "no-store", signal: controller.signal })
       const body = await response.json().catch(() => null)
       if (controller.signal.aborted) return
       if (!response.ok || body?.success !== true || !Array.isArray(body.data?.rows)) {
         setError(t([401, 403, 404].includes(response.status) ? "reportAccessUnavailable"
           : body?.code === "MTM_ATTENDANCE_REPORT_TOO_LARGE" ? "reportTooLarge" : "reportLoadError"))
-        if ([401, 403, 404].includes(response.status)) { setEmployeeId(""); setTeamId("") }
+        if ([401, 403, 404].includes(response.status)) { setAccessUnavailable(true); setCustomView((previous) => previous ? { ...previous, name: "" } : null) }
         return
       }
       const loaded = body.data as MtmAttendanceReport
       setReport(loaded)
-      setEmployeeId((id) => loaded.rows.some((row) => row.employeeId === id) ? id : "")
-      setTeamId((id) => loaded.rows.some((row) => row.teamId === id) ? id : "")
+      // A saved employee/team that left the current scope stays selected.
+      // An empty result must never silently turn into an all-employee report.
     } catch {
       if (!controller.signal.aborted) setError(t("reportLoadError"))
     } finally {
@@ -96,6 +106,14 @@ export function MtmAttendanceReportWorkspace() {
   }, [t])
 
   useEffect(() => { void load(); return () => request.current?.abort() }, [load])
+
+  const currentConfig = useMemo<AttendanceViewConfig | null>(() => {
+    if (!report) return null
+    const mode = customView?.config.mode ?? (form === "MONTH" ? "MONTH" : form === "JOURNAL" ? "JOURNAL" : "DAY")
+    return { version: 1, mode, columns: customView?.config.columns ?? [...ATTENDANCE_VIEW_COLUMNS[mode]], showTotals: customView?.config.showTotals ?? true,
+      filters: { from: report.from, to: report.to, form: customView?.config.filters.form ?? (form === "DAY" || form === "MONTH" ? "ALL" : form),
+        ...(teamId ? { teamId } : {}), ...(employeeId ? { employeeId } : {}) } }
+  }, [report, customView, form, teamId, employeeId])
 
   const directory = useMemo(() => {
     const employees = new Map<string, { id: string; name: string; teamId: string | null }>()
@@ -107,8 +125,10 @@ export function MtmAttendanceReportWorkspace() {
     return { employees: [...employees.values()], teams: [...teams].map(([id, name]) => ({ id, name })) }
   }, [report, t])
   const rows = useMemo(() => filterMtmAttendanceRows(report?.rows ?? [], { teamId: teamId || undefined, employeeId: employeeId || undefined,
-    form: form === "DAY" || form === "MONTH" ? "ALL" : form }), [report, teamId, employeeId, form])
+    form: customView?.config.filters.form ?? (form === "DAY" || form === "MONTH" ? "ALL" : form) }), [report, teamId, employeeId, form, customView])
   const totals = useMemo(() => summarizeMtmAttendanceRows(rows), [rows])
+  const customTable = useMemo(() => report && customView && currentConfig ? buildAttendanceTable(report, currentConfig, locale, t) : null, [report, customView, currentConfig, locale, t])
+  const scopeUnavailable = Boolean(report && (teamId || employeeId) && !report.rows.some((row) => (!teamId || row.teamId === teamId) && (!employeeId || row.employeeId === employeeId)))
   const journal = useMemo(() => form === "JOURNAL" ? rows.flatMap((row) => row.events.map((event, index) => ({ row, event, index }))) : [], [rows, form])
   const monthEmployees = useMemo(() => {
     if (form !== "MONTH") return []
@@ -126,7 +146,7 @@ export function MtmAttendanceReportWorkspace() {
     const count = Math.round((Date.parse(report.to) - Date.parse(report.from)) / 86_400_000) + 1
     return Array.from({ length: Math.min(count, 31) }, (_, index) => addDateKeyDays(report.from, index))
   }, [report, form])
-  const count = form === "MONTH" ? monthEmployees.length : form === "JOURNAL" ? journal.length : rows.length
+  const count = customTable ? customTable.rows.length : form === "MONTH" ? monthEmployees.length : form === "JOURNAL" ? journal.length : rows.length
   const lastPage = Math.max(0, Math.ceil(count / PAGE_SIZE) - 1)
   const currentPage = Math.min(page, lastPage)
   const pageStart = currentPage * PAGE_SIZE
@@ -139,9 +159,12 @@ export function MtmAttendanceReportWorkspace() {
       : row.kind === "ABSENT" ? t("reportAbsenceReasonPending") : row.flags.includes("WORKED_ON_DAY_OFF") ? t("reportWorkOnDayOff") : row.calendarName ?? "—"
 
   function chooseForm(next: Form) {
+    const wasCustom = customView !== null
+    setCustomView(null)
     setForm(next)
     setPage(0)
     if (next === "MONTH" && form !== "MONTH" && today) void load(monthRange(today.slice(0, 7)))
+    else if (wasCustom) void load(range)
   }
   function applyRange(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -149,7 +172,36 @@ export function MtmAttendanceReportWorkspace() {
       setRangeError(t("reportRangeInvalid"))
       return
     }
-    void load(range)
+    if (customView) {
+      const config = { ...customView.config, filters: { ...customView.config.filters, ...range } }
+      setCustomView({ ...customView, config })
+      void load(range, config)
+    } else void load(range)
+  }
+  function applyPersonal(config: AttendanceViewConfig, name: string) {
+    setCustomView({ name, config })
+    setForm(config.mode === "DAY" ? config.filters.form === "JOURNAL" ? "DAY" : config.filters.form === "ALL" ? "DAY" : config.filters.form : config.mode)
+    setTeamId(config.filters.teamId ?? "")
+    setEmployeeId(config.filters.employeeId ?? "")
+    void load({ from: config.filters.from, to: config.filters.to }, config)
+  }
+  function changeScope(team: string, employee: string) {
+    setTeamId(team)
+    setEmployeeId(employee)
+    setPage(0)
+    if (customView && report) {
+      const config = { ...customView.config, filters: { ...customView.config.filters, teamId: team || undefined, employeeId: employee || undefined } }
+      setCustomView({ ...customView, config })
+      void load({ from: report.from, to: report.to }, config)
+    }
+  }
+  function clearPrivateReport() {
+    request.current?.abort()
+    setReport(null)
+    setLoading(false)
+    setAccessUnavailable(true)
+    setCustomView((previous) => previous ? { ...previous, name: "" } : null)
+    setError(t("reportAccessUnavailable"))
   }
   function monthCell(row: MtmAttendanceReportRow | undefined) {
     if (!row) return "—"
@@ -163,7 +215,6 @@ export function MtmAttendanceReportWorkspace() {
   }
 
   const multiDay = report ? report.from !== report.to : range.from !== range.to
-  const unit = t(multiDay ? "reportDayRecords" : "reportPeople")
   const timezones = [...new Set(rows.map((row) => row.timezone))]
   const cards = [
     { id: "arrived", label: "reportArrived", value: totals.arrivedCount, tone: "green" as const, icon: <LogIn className="h-4 w-4" />, hint: "reportArrivedHint" },
@@ -174,12 +225,13 @@ export function MtmAttendanceReportWorkspace() {
 
   return <section aria-label={t("reportTitle")} className="space-y-5" data-testid="attendance-report-workspace">
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{cards.map((card) => <HomeKpi key={card.id} testId={`attendance-${card.id}`} label={t(card.label)}
-      icon={card.icon} tone={card.tone} value={report ? format.number(card.value) : null} unit={unit} sub={t(card.hint)}
+      icon={card.icon} tone={card.tone} value={report ? format.number(card.value) : null} unit={t(multiDay ? "reportDayRecords" : "reportPeople", { count: card.value })} sub={t(card.hint)}
       progress={report && totals.rowCount ? card.value / totals.rowCount * 100 : 0} />)}</div>
     <HomeCard testId="attendance-report-filters" titleId="attendance-report-filters-title" icon={<ListChecks className="h-4 w-4" aria-hidden="true" />} tone="orange" title={t("reportForm")}>
       <div className="space-y-5 py-4">
         <div className="flex flex-wrap gap-2" role="group" aria-label={t("reportForm")}>{FORMS.map((value) => <Button key={value} type="button" className="min-h-11 rounded-full"
-          variant={form === value ? "default" : "outline"} aria-pressed={form === value} disabled={value === "MONTH" && !today} onClick={() => chooseForm(value)}>{t(FORM_MESSAGES[value])}</Button>)}</div>
+          variant={!customView && form === value ? "default" : "outline"} aria-pressed={!customView && form === value} disabled={value === "MONTH" && !today} onClick={() => chooseForm(value)}>{t(FORM_MESSAGES[value])}</Button>)}</div>
+        {customView?.name && !accessUnavailable ? <p className="text-sm font-medium text-primary">{t("viewsActive", { name: customView.name })}</p> : null}
         <form onSubmit={applyRange} className="grid items-end gap-4 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1.2fr_1.3fr_auto]" aria-label={t("reportFilters")}>
           {form === "MONTH" ? <div className="space-y-2 sm:col-span-2 xl:col-span-2"><label htmlFor="attendance-report-month" className="text-sm font-medium">{t("reportMonthSelect")}</label>
             <Input id="attendance-report-month" type="month" required value={range.from.slice(0, 7)} className="min-h-11" onChange={(event) => { if (/^\d{4}-\d{2}$/.test(event.target.value)) { setRange(monthRange(event.target.value)); setRangeError(null) } }} />
@@ -187,22 +239,26 @@ export function MtmAttendanceReportWorkspace() {
             <div className="space-y-2"><label htmlFor="attendance-report-from" className="text-sm font-medium">{t("reportFrom")}</label><Input id="attendance-report-from" type="date" required className="min-h-11" value={range.from} onChange={(event) => { setRange({ ...range, from: event.target.value }); setRangeError(null) }} /></div>
             <div className="space-y-2"><label htmlFor="attendance-report-to" className="text-sm font-medium">{t("reportTo")}</label><Input id="attendance-report-to" type="date" required className="min-h-11" value={range.to} onChange={(event) => { setRange({ ...range, to: event.target.value }); setRangeError(null) }} /></div></>}
           <div className="space-y-2"><label htmlFor="attendance-report-team" className="text-sm font-medium">{t("reportTeam")}</label><select id="attendance-report-team" className={SELECT_CLASS} value={teamId} disabled={!report}
-            onChange={(event) => { setTeamId(event.target.value); setEmployeeId(""); setPage(0) }}><option value="">{t("reportAllTeams")}</option>{directory.teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select></div>
+            onChange={(event) => changeScope(event.target.value, "")}><option value="">{t("reportAllTeams")}</option>{teamId && !directory.teams.some((team) => team.id === teamId) ? <option value={teamId}>{t("viewsUnavailableTeam")}</option> : null}{directory.teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select></div>
           <div className="space-y-2"><label htmlFor="attendance-report-employee" className="text-sm font-medium">{t("reportEmployee")}</label><select id="attendance-report-employee" className={SELECT_CLASS} value={employeeId} disabled={!report}
-            onChange={(event) => { setEmployeeId(event.target.value); setPage(0) }}><option value="">{t("reportAllEmployees")}</option>{directory.employees.filter((employee) => !teamId || employee.teamId === teamId).map((employee) => <option key={employee.id} value={employee.id}>{employee.name}</option>)}</select></div>
+            onChange={(event) => changeScope(teamId, event.target.value)}><option value="">{t("reportAllEmployees")}</option>{employeeId && !directory.employees.some((employee) => employee.id === employeeId) ? <option value={employeeId}>{t("viewsUnavailableEmployee")}</option> : null}{directory.employees.filter((employee) => !teamId || employee.teamId === teamId).map((employee) => <option key={employee.id} value={employee.id}>{employee.name}</option>)}</select></div>
           <Button type="submit" variant="outline" className="min-h-11" disabled={!today}>{t("reportApply")}</Button>
         </form>
         {rangeError ? <p role="alert" className="text-sm text-destructive">{rangeError}</p> : null}
       </div>
     </HomeCard>
-    <HomeCard testId="attendance-report-results" titleId="attendance-report-results-title" icon={<CalendarDays className="h-4 w-4" aria-hidden="true" />} tone="orange" title={t(FORM_MESSAGES[form])}>
+    <HomeCard testId="attendance-report-results" titleId="attendance-report-results-title" icon={<CalendarDays className="h-4 w-4" aria-hidden="true" />} tone="orange" title={customView?.name || t(FORM_MESSAGES[form])}>
       <div className="space-y-4 py-4">
         {loading ? <p role="status" className="text-sm text-muted-foreground">{t("reportLoading")}</p> : null}
-        {error ? <div className="space-y-3"><p role="alert" className="text-sm text-destructive">{error}</p><Button type="button" variant="outline" className="min-h-11" onClick={() => void load(today ? range : undefined)}>{t("reportReload")}</Button></div> : null}
+        {error ? <div className="space-y-3"><p role="alert" className="text-sm text-destructive">{error}</p><Button type="button" variant="outline" className="min-h-11" onClick={() => void load(today ? range : undefined, customView?.config)}>{t("reportReload")}</Button></div> : null}
         {report ? <>
           <div className="flex flex-wrap justify-between gap-2 text-xs text-muted-foreground"><p>{t("reportPeriod", { from: dateLabel(report.from), to: dateLabel(report.to) })}</p>
             <p>{t("reportSnapshot", { time: timeLabel(report.asOf, timezones[0] ?? "Asia/Baku", true), timezone: timezones[0] ?? "Asia/Baku" })}</p></div>
-          {!count ? <p className="rounded-xl bg-muted/50 px-4 py-5 text-sm text-muted-foreground">{t("reportEmpty")}</p> : form === "MONTH" ? <>
+          {scopeUnavailable ? <p role="alert" className="text-sm text-amber-800 dark:text-amber-300">{t("viewsScopeUnavailable")}</p> : null}
+          {!count ? <p className="rounded-xl bg-muted/50 px-4 py-5 text-sm text-muted-foreground">{t("reportEmpty")}</p> : customTable ? <div className="overflow-x-auto" role="region" aria-label={customView?.name} tabIndex={0}>
+            <table className="w-full text-sm" data-testid="attendance-custom-table"><thead><tr>{customTable.columns.map((column) => <th key={column.key} scope="col" className={`${HEADER} min-w-28`} data-column={column.key}>{column.label}</th>)}</tr></thead>
+              <tbody>{customTable.rows.slice(pageStart, pageStart + PAGE_SIZE).map((row) => <tr key={row.key} data-testid="attendance-custom-row">{row.cells.map((cell, index) => <td key={customTable.columns[index].key} className={`${CELL} tabular-nums`}>{cell}</td>)}</tr>)}</tbody>
+            </table></div> : form === "MONTH" ? <>
             <div className="overflow-x-auto" role="region" aria-label={t("reportMonth")} tabIndex={0}><table className="w-full border-collapse text-sm" data-testid="attendance-month-grid">
               <thead><tr><th scope="col" className={`${HEADER} sticky left-0 z-10 min-w-40 bg-card`}>{t("reportEmployee")}</th>
                 {monthDates.map((date) => <th key={date} scope="col" className={`${HEADER} min-w-14 text-center`}><time dateTime={date} title={dateLabel(date)}>{Number(date.slice(-2))}</time></th>)}
@@ -240,6 +296,8 @@ export function MtmAttendanceReportWorkspace() {
           <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground"><p>{t("reportShown", { from: count ? pageStart + 1 : 0, to: Math.min(pageStart + PAGE_SIZE, count), total: count })}</p>
             {count > PAGE_SIZE ? <div className="flex items-center gap-2"><Button type="button" variant="outline" className="min-h-11" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>{t("reportPrevious")}</Button>
               <span>{t("reportPage", { current: currentPage + 1, total: lastPage + 1 })}</span><Button type="button" variant="outline" className="min-h-11" disabled={currentPage === lastPage} onClick={() => setPage(currentPage + 1)}>{t("reportNext")}</Button></div> : null}</div>
+          {customTable ? <><div className="space-y-2 text-xs text-muted-foreground">{customTable.details.slice(2).map((line, index) => <p key={index}>{line}</p>)}</div>
+            {customTable.totals.length ? <div data-testid="attendance-report-totals" className="space-y-2 rounded-xl bg-muted/50 px-4 py-3 text-sm">{customTable.totals.map((line, index) => <p key={index} className={index === 0 ? "font-semibold" : "tabular-nums"}>{line}</p>)}</div> : null}</> : <>
           <div data-testid="attendance-report-totals" className="space-y-2 rounded-xl bg-muted/50 px-4 py-3 text-sm"><p className="font-semibold">{t("reportTotalsTitle")}</p>
             <p className="tabular-nums">{t("reportTotals", { worked: formatAttendanceDuration(totals.workedSeconds), paused: formatAttendanceDuration(totals.pausedSeconds), late: formatAttendanceDuration(totals.lateSeconds), early: formatAttendanceDuration(totals.earlyLeaveSeconds) })}</p>
             <p className="text-xs text-muted-foreground">{t("reportTotalsRows", { rows: totals.rowCount, employees: totals.employeeCount })}</p>
@@ -247,8 +305,10 @@ export function MtmAttendanceReportWorkspace() {
             {rows.some((row) => row.kind === "OPEN") ? <p className="text-xs text-blue-700 dark:text-blue-300">{t("reportProvisional")}</p> : null}
           </div>
           <p className="text-xs text-muted-foreground">{t("reportTimezones", { zones: timezones.length ? format.list(timezones) : "—" })} {t("reportDurationFormat")}</p>
+          </>}
         </> : null}
       </div>
     </HomeCard>
+    <MtmAttendancePersonalViews currentConfig={currentConfig} onApply={applyPersonal} onAccessLost={clearPrivateReport} accessUnavailable={accessUnavailable} />
   </section>
 }

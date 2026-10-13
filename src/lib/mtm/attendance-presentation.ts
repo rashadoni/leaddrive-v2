@@ -7,5 +7,5 @@ export function formatAttendanceDuration(seconds: number | null): string {
   return `${hours}:${minutes}${remainder ? `:${String(remainder).padStart(2, "0")}` : ""}`
 }
 
-export const DEFAULT_ATTENDANCE_DAY_COLUMNS = ["employee", "team", "date", "status", "startedAt", "completedAt", "worked", "paused", "late", "early"] as const
+export const DEFAULT_ATTENDANCE_DAY_COLUMNS = ["employee", "team", "date", "status", "startedAt", "completedAt", "worked", "paused", "late", "early", "notes"] as const
 export const DEFAULT_ATTENDANCE_JOURNAL_COLUMNS = ["employee", "team", "date", "event", "phoneAt", "serverAt"] as const
