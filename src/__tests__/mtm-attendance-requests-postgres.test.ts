@@ -394,8 +394,15 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
       const result = await report.readMtmAttendanceReport({ organizationId: self.organizationId, actor: { role: "ADMIN", agentId: null, scopedAgentIds: null }, query: { from: "2026-09-18", to: "2026-09-25", form: "ALL", employeeId: self.agentId } })
       expect(result.rows.filter(row => row.kind === "ABSENT").map(row => row.date)).toEqual(["2026-09-21", "2026-09-22", "2026-09-25"])
       expect(result.rows.filter(row => row.kind === "NOT_EMPLOYED")).toHaveLength(5)
-      await expect(prisma.$executeRaw`UPDATE workforce_employment_events SET source = 'TAMPER' WHERE "agentId" = ${self.agentId}`).rejects.toThrow()
+      // The production policy permits SELECT/INSERT only: UPDATE cannot see rows.
+      expect(await prisma.$executeRaw`UPDATE workforce_employment_events SET source = 'TAMPER' WHERE "agentId" = ${self.agentId}`).toBe(0)
+      const retained = await prisma.$queryRaw<{ source: string }[]>`SELECT source FROM workforce_employment_events WHERE "agentId" = ${self.agentId}`
+      expect(retained).toHaveLength(3)
+      expect(retained.every(event => event.source === "MTM_TEST_FIXTURE")).toBe(true)
     })
+    // Separately prove the immutable trigger even for the disposable DB owner.
+    // This uses only this test's throwaway database; production RLS is unchanged.
+    expect(() => sql(scratch!.adminDb, `UPDATE workforce_employment_events SET source = 'TAMPER' WHERE "organizationId" = 'request-pg-a' AND "agentId" = 'request-pg-owner'`)).toThrow(/employment history is immutable/i)
     await tenant("request-pg-b", async () => {
       const rows = await prisma.$queryRaw<unknown[]>`SELECT id FROM workforce_employment_events WHERE "agentId" = ${self.agentId}`
       expect(rows).toHaveLength(0)
