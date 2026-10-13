@@ -14,7 +14,7 @@ describe("pharmacy promotions organization switch", () => {
   it("is ON by default and separate from the posting guard", () => {
     expect(MTM_SETTING_DEFAULTS.pharmacyPromotionsEnabled).toBe(true)
     expect(MTM_SETTING_DEFAULTS.pharmacyPromotionPostingEnabled).toBe(false)
-    expect(NAV_ORG_SETTING_KEYS).toEqual(["fieldContactsEnabled", "pharmacyPromotionsEnabled"])
+    expect(NAV_ORG_SETTING_KEYS).toEqual(["fieldContactsEnabled", "pharmacyPromotionsEnabled", "attendanceEnabled"])
   })
 
   it("hides Aptek promoları from the menus only when explicitly off", () => {

@@ -105,9 +105,14 @@ export interface NavItem {
   orgSetting?: NavOrgSettingKey
 }
 
-/** MTM settings keys that hide a menu surface when explicitly false. */
-export const NAV_ORG_SETTING_KEYS = ["fieldContactsEnabled", "pharmacyPromotionsEnabled"] as const
+/** MTM menu switches. Legacy surfaces default on; attendance defaults off. */
+export const NAV_ORG_SETTING_KEYS = ["fieldContactsEnabled", "pharmacyPromotionsEnabled", "attendanceEnabled"] as const
 export type NavOrgSettingKey = (typeof NAV_ORG_SETTING_KEYS)[number]
+
+/** New attendance surfaces require explicit opt-in, including while loading. */
+export function isNavOrgSettingOn(key: NavOrgSettingKey, value: boolean | undefined): boolean {
+  return key === "attendanceEnabled" ? value === true : value !== false
+}
 
 export type SupportNavSection = "work" | "team" | "rules"
 
@@ -347,6 +352,7 @@ export const navItems: NavItem[] = [
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/leaderboard", icon: Trophy, tKey: "mtmLeaderboard", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/activity", icon: Activity, tKey: "mtmActivity", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/reports", icon: FileBarChart, tKey: "mtmReports", group: "Route & Field" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance", icon: FileBarChart, tKey: "mtmAttendance", group: "Route & Field", orgSetting: "attendanceEnabled" },
   // Who works in the module and as what: the employee card behind each login.
   // Admin-only like the endpoints it calls — linking a card to a login is how a
   // person is given (or takes) a field scope.
@@ -549,9 +555,9 @@ export function isNavItemEnabled(
   return moduleEnabled && featureEnabled && addonEnabled && capabilityEnabled
 }
 
-/** Only an explicit false hides: a missing or still-loading setting keeps the item. */
+/** Attendance stays hidden until opt-in is known; legacy menu behavior is retained. */
 export function isNavItemOrgSettingEnabled(org: OrgNavContext, item: NavItem): boolean {
-  return !item.orgSetting || org.orgSettings?.[item.orgSetting] !== false
+  return !item.orgSetting || isNavOrgSettingOn(item.orgSetting, org.orgSettings?.[item.orgSetting])
 }
 
 /**

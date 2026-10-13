@@ -30,6 +30,8 @@ import {
 // they were dropped, and the toggles were replaced with ones gating the alerts
 // the code ACTUALLY generates (OUT_OF_ZONE, LONG_BREAK).
 export const MTM_SETTING_DEFAULTS = {
+  // Opt-in attendance inside MTM. Never revives the withdrawn Workforce UI.
+  attendanceEnabled: false,
   // Scheduling and date-only values across route planning and Excel reports.
   timezone: "Asia/Baku",
   // Privacy-first rollout: agents see only their own calendar unless the
