@@ -1334,3 +1334,9 @@ Quick-start-ru.md содержит уточнённый пользователь
 - PASS on installed 3.8.2: missing-field validation without authentication submission, password visibility toggle using a fictional placeholder, company persistence after force-stop/relaunch, one deliberately wrong password rejected for the owned fictional office user, and all three location permissions still denied after upgrade. No real user login attempt or attendance write.
 - An initial private driver attempt failed to close the Samsung keyboard before scrolling, so gestures entered harmless digits into the email field. It was not a product failure or a submitted login. The driver now verifies actual input-method closure; fields were cleared and the real controls retested successfully.
 - Login remains on the owned fictional company with password cleared. PR754 CI and fifth browser E2E still running. Prepared physical office phases include actual HR readback and event-count checks; they remain NOT_RUN until credential delivery.
+
+### 2026-10-13T23:23:30.361001+00:00 — bounded overnight observer made independent of terminal
+
+- Original terminal-bound power observer exited with signal 15 / code143; its last sample is 23:16:04 UTC. Cause was not established. This creates an observation gap and is not evidence of a phone/app shutdown. Immediate actual device readback at approximately23:23 showed Awake/Powered/StayOn true,94%,31.3 C.
+- Restarted the read-only observer as user unit `mtm-s23-power-watch.service`, independent of the terminal session. Deadline2026-10-14T06:10:00Z; hard runtime7h, memory128MiB, CPU20%. It does not modify phone settings or create attendance facts. Unit active/running confirmed. Stop this unit when physical testing finishes and restore original phone settings/permissions as recorded privately.
+- Full functional endurance is still NOT_RUN; do not count the power samples as employee scenario passes.
