@@ -841,3 +841,12 @@ Actual React render → HTML/CSS и **12 PNG** (registry/assignments × az/ru/en
 - Следующее: завершить узкие tests4.5, checkpointbackend, очередьCRM/actualscreen и mobile4.5; проверитьCI и выпускпредыдущихPR по dependencyorder, послеexactdeploy demo2.11; затемQR4.7 иэтап5. Работа не завершена.
 
 **2026-10-13 — checkpoint4.5 backend gates.** Targeted installation+return39 PASS; realPG location39 SKIPPED/NOT RUN безDB. Translation parity25957 PASS, scopedESLint16 PASS, diffcheckPASS. ДоUI/CI checkpoint не означает завершения4.5. Background73817b91e2de опубликован с RLS/layout21 PASS и permission/return68 PASS; далее нормальный merge вroot после сохраненияWIP.
+**2026-10-13 — CI731 RLS source gate.** Реальные SQL policies уже проверялись PG, но source guard не интерпретирует dynamic EXECUTE. Не выпущенная миграция location развёрнута в явные ALTER/CREATE с теми же ENABLE/FORCE и tenant/bypass условиями. Гейт и baseline не менялись. Узкий RLS/layout повторяется; full gate снова CI.
+
+**2026-10-13 — CI733 table fit.** Широкая таблица филиалов получила свой horizontal overflow wrapper; мобильные карточки и обычная вертикальная прокрутка страницы сохранены. RLS fix731 объединён. Гейты layout/RLS проверяются без исключений и изменения baseline.
+
+**2026-10-13 — CI737 RLS syntax.** Тот же выявленный source contract применён к ещё не выпущенной risk миграции: явные quoted ALTER/CREATE вместо dynamic EXECUTE, те же tenant policies/trigger. Fix733 wrapper и731 policies объединены. Проверки не ослаблены.
+
+**2026-10-13 — CI738 source gates.** Интегрированы явные RLS policies731/737 и tablewrapper733; имя stream таблицы в ALTER приведено к quoted repository contract. Порядок блокировок/политики/trigger без изменения. Все21 narrowRLS/layout сценария предыдущих веток PASS, эта ветка также проверяется.
+
+**2026-10-13 — CI738 office admission contract.** Fixed-row source assertion уточнён с прежнего только FIELD_EXECUTE на уже реализованный field/office допуск: наличие authenticated agent, tenant route-field для office и requireAttendanceSelf в preflight и транзакции. API/PG tests на deny/no mutation сохранены; это обновление ожидаемого контракта после2.12 closure, не обход отказа.

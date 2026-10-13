@@ -148,12 +148,12 @@ export function MtmAttendanceBranchReport() {
         {loading ? <p role="status" className="text-sm text-muted-foreground">{t("reportLoading")}</p> : null}
         {error ? <div className="space-y-3"><p role="alert" className="text-sm text-destructive">{error}</p>{!accessUnavailable ? <Button variant="outline" className="min-h-11" onClick={() => void load(lastRange.current)}>{t("reportReload")}</Button> : null}</div> : null}
         {scopeUnavailable ? <p role="alert" className="text-sm text-amber-800 dark:text-amber-300">{t("viewsScopeUnavailable")}</p> : null}
-        {table ? <>{!table.rows.length ? <p className="rounded-xl bg-muted/50 px-4 py-5 text-sm text-muted-foreground">{t("branchReportEmpty")}</p> : <table className="block w-full text-sm tabular-nums sm:table" data-testid="attendance-branch-table">
+        {table ? <>{!table.rows.length ? <p className="rounded-xl bg-muted/50 px-4 py-5 text-sm text-muted-foreground">{t("branchReportEmpty")}</p> : <div className="overflow-x-auto"><table className="block w-full text-sm tabular-nums sm:table" data-testid="attendance-branch-table">
           <thead className="sr-only sm:not-sr-only sm:table-header-group"><tr>{table.columns.map((column, index) => <th key={column.key} scope="col" className={`border-b border-zinc-200 px-3 py-3 text-xs font-medium text-muted-foreground dark:border-zinc-700 ${index ? "text-right" : "text-left"}`}>{column.label}</th>)}</tr></thead>
           <tbody className="block sm:table-row-group">{table.rows.map(row => <tr key={row.key} data-testid="attendance-branch-row" className="grid grid-cols-2 gap-x-5 gap-y-3 border-b border-zinc-100 py-4 dark:border-zinc-800 sm:table-row sm:border-0 sm:py-0">
             {row.cells.map((cell, index) => index === 0 ? <th key={table.columns[index].key} scope="row" className="col-span-2 min-w-0 break-words text-left font-semibold sm:w-[36%] sm:border-b sm:border-zinc-100 sm:px-3 sm:py-4 dark:sm:border-zinc-800">{cell}</th> : <td key={table.columns[index].key} className="min-w-0 sm:border-b sm:border-zinc-100 sm:px-3 sm:py-4 sm:text-right dark:sm:border-zinc-800"><span className="mb-1 block text-xs text-muted-foreground sm:hidden" aria-hidden="true">{table.columns[index].label}</span>{cell}</td>)}
           </tr>)}</tbody>
-        </table>}
+        </table></div>}
           <div className="space-y-2 text-xs leading-relaxed text-muted-foreground" data-testid="attendance-branch-details">{table.details.slice(1).map((line, index) => <p key={index}>{line}</p>)}</div>
           {table.totals.length ? <div className="space-y-2 rounded-xl bg-muted/50 p-4 text-sm" data-testid="attendance-branch-totals">{table.totals.map((line, index) => <p key={index} className={index === 0 ? "font-semibold" : "tabular-nums"}>{line}</p>)}</div> : null}
         </> : null}

@@ -11,8 +11,8 @@ CREATE TABLE mtm_attendance_stream_integrity (
  FOREIGN KEY ("organizationId","consentId") REFERENCES mtm_attendance_location_consents("organizationId",id) ON DELETE RESTRICT
 );
 CREATE INDEX ON mtm_attendance_stream_integrity("organizationId","agentId","createdAt");
-ALTER TABLE mtm_attendance_stream_integrity ENABLE ROW LEVEL SECURITY;
-ALTER TABLE mtm_attendance_stream_integrity FORCE ROW LEVEL SECURITY;
+ALTER TABLE "mtm_attendance_stream_integrity" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "mtm_attendance_stream_integrity" FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_read ON mtm_attendance_stream_integrity FOR SELECT USING ("organizationId"=current_setting('app.org_id',true) OR current_setting('app.rls_bypass',true)='on');
 CREATE POLICY tenant_insert ON mtm_attendance_stream_integrity FOR INSERT WITH CHECK ("organizationId"=current_setting('app.org_id',true) OR current_setting('app.rls_bypass',true)='on');
 CREATE FUNCTION mtm_attendance_stream_integrity_guard() RETURNS trigger LANGUAGE plpgsql AS $$
