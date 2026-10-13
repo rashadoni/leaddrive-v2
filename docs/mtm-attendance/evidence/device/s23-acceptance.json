@@ -50,18 +50,18 @@
     },
     {
       "name": "fictional-company-provisioning",
-      "status": "NOT_RUN",
-      "reason": "PR752 merged after required CI; exact main deployment still pending"
+      "status": "PASS",
+      "evidence": "Protected workflow 38480267477 created marker-owned isolated tenant with exactly 3 fictional users and automatic cards; all geo/mail/QR disabled"
     },
     {
       "name": "physical-office-and-field-marks",
       "status": "NOT_RUN",
-      "reason": "Wait for separate fictional company"
+      "reason": "Fictional company created; read-only encrypted credential delivery awaits required review and CI"
     },
     {
       "name": "physical-offline-restart-and-requests",
       "status": "NOT_RUN",
-      "reason": "Wait for separate fictional company"
+      "reason": "Fictional company created; read-only encrypted credential delivery awaits required review and CI"
     },
     {
       "name": "physical-camera-qr",
@@ -82,5 +82,5 @@
     "personalScreenshotsPublished": false,
     "testLocationPermissions": "Fine, coarse and background temporarily denied; original grants retained privately for restoration"
   },
-  "updatedAt": "2026-10-13T22:40:40.169339+00:00"
+  "updatedAt": "2026-10-13T23:11:13.131854+00:00"
 }
