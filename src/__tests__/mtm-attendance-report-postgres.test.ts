@@ -58,6 +58,8 @@ pgDescribe("MTM report reads the real saved workday and journal", () => {
   let readReport: typeof import("@/lib/mtm/attendance-report-store").readMtmAttendanceReport
   let getReport: typeof import("@/app/api/v1/mtm/attendance/report/route").GET
   let createRule: typeof import("@/lib/mtm/attendance-rule-store").createAttendanceRule
+  let calendar: typeof import("@/lib/mtm/attendance-calendar")
+  let postCalendar: typeof import("@/app/api/v1/mtm/attendance/calendar/route").POST
   let createdRole = false
   let createdDb = false
   let monday: string
@@ -91,6 +93,8 @@ pgDescribe("MTM report reads the real saved workday and journal", () => {
     ;({ readMtmAttendanceReport: readReport } = await import("@/lib/mtm/attendance-report-store"))
     ;({ createAttendanceRule: createRule } = await import("@/lib/mtm/attendance-rule-store"))
     getReport = (await import("@/app/api/v1/mtm/attendance/report/route")).GET
+    calendar = await import("@/lib/mtm/attendance-calendar")
+    postCalendar = (await import("@/app/api/v1/mtm/attendance/calendar/route")).POST
     monday = addDateKeyDays(currentDateKey(new Date(), "Asia/Baku"), 8)
     while (new Date(`${monday}T00:00:00Z`).getUTCDay() !== 1) monday = addDateKeyDays(monday, 1)
     friday = addDateKeyDays(monday, 4)
@@ -188,4 +192,55 @@ pgDescribe("MTM report reads the real saved workday and journal", () => {
     const result = await tenant(OTHER, () => readReport({ organizationId: ORG, actor: adminActor, query: { from: monday, to: friday, form: "ALL" }, now }))
     expect(result.rows).toEqual([])
   })
+
+  it("edits future holidays with retained previous rows and atomic audit, then removes the override", async () => {
+    const date = addDateKeyDays(monday, 14)
+    const save = (value: unknown, remove = false) => tenant(ORG, () => calendar.saveAttendanceCalendar({
+      organizationId: ORG, userId: "fixture-admin", timezone: "Asia/Baku", value, remove,
+    }))
+    const first = await save({ date, kind: "COMPANY_HOLIDAY", name: "Fixture company day off" })
+    const holiday = await tenant(ORG, () => readReport({ organizationId: ORG, actor: adminActor, query: { from: date, to: date, form: "ALL" }, now: at(date, "19:00") }))
+    expect(holiday.rows.every((row) => row.kind === "HOLIDAY" && row.expectedWorkSeconds === 0)).toBe(true)
+    const second = await save({ date, kind: "EXCEPTION_WORKDAY", name: "Fixture working exception", id: first!.id, version: first!.updatedAt })
+    expect(second!.id).not.toBe(first!.id)
+    const old = await tenant(ORG, () => prisma.mtmWorkCalendarDay.findUniqueOrThrow({ where: { id: first!.id } }))
+    expect(old.deletedAt).not.toBeNull()
+    expect(old.kind).toBe("COMPANY_HOLIDAY")
+    await expect(save({ date, kind: "PUBLIC_HOLIDAY", name: "Stale edit", id: first!.id, version: first!.updatedAt }))
+      .rejects.toMatchObject({ code: "MTM_ATTENDANCE_CALENDAR_CHANGED" })
+    expect(await tenant(ORG, () => calendar.readAttendanceCalendar(ORG, date, date))).toEqual([second])
+    await save({ id: second!.id, version: second!.updatedAt }, true)
+    expect(await tenant(ORG, () => calendar.readAttendanceCalendar(ORG, date, date))).toEqual([])
+    const audit = await tenant(ORG, () => prisma.mtmAuditLog.findMany({ where: { organizationId: ORG, metadataKind: "mtm_attendance_calendar" }, orderBy: { createdAt: "asc" } }))
+    expect(audit.map((entry) => entry.action)).toEqual(["MTM_ATTENDANCE_CALENDAR_ADDED", "MTM_ATTENDANCE_CALENDAR_CHANGED", "MTM_ATTENDANCE_CALENDAR_REMOVED"])
+    expect(audit.every((entry) => entry.actorUserId === "fixture-admin")).toBe(true)
+  })
+
+  it("serializes calendar editors and refuses past changes without altering saved rows", async () => {
+    const date = addDateKeyDays(monday, 15)
+    const results = await Promise.allSettled(["One", "Two"].map((name) => tenant(ORG, () => calendar.saveAttendanceCalendar({
+      organizationId: ORG, userId: "fixture-admin", timezone: "Asia/Baku", value: { date, kind: "COMPANY_HOLIDAY", name },
+    }))))
+    expect(results.filter((entry) => entry.status === "fulfilled")).toHaveLength(1)
+    expect(results.filter((entry) => entry.status === "rejected")).toHaveLength(1)
+    const before = await tenant(ORG, () => prisma.mtmWorkCalendarDay.count({ where: { organizationId: ORG } }))
+    await expect(tenant(ORG, () => calendar.saveAttendanceCalendar({ organizationId: ORG, userId: "fixture-admin", timezone: "Asia/Baku",
+      value: { date: "2000-01-01", kind: "PUBLIC_HOLIDAY", name: "Backdated" },
+    }))).rejects.toMatchObject({ code: "MTM_ATTENDANCE_CALENDAR_PAST" })
+    expect(await tenant(ORG, () => prisma.mtmWorkCalendarDay.count({ where: { organizationId: ORG } }))).toBe(before)
+  })
+
+  it("denies calendar writes by a supervisor or a disabled organization without creating data", async () => {
+    const url = "http://localhost/api/v1/mtm/attendance/calendar"
+    const value = { date: addDateKeyDays(monday, 16), kind: "COMPANY_HOLIDAY", name: "Forbidden fixture change" }
+    const request = () => new NextRequest(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(value) })
+    const before = await tenant(ORG, () => prisma.mtmWorkCalendarDay.count({ where: { organizationId: ORG } }))
+    Object.assign(caller, { orgId: ORG, userId: "fixture-supervisor-user", role: "manager" })
+    expect((await postCalendar(request())).status).toBe(403)
+    expect(await tenant(ORG, () => prisma.mtmWorkCalendarDay.count({ where: { organizationId: ORG } }))).toBe(before)
+    Object.assign(caller, { orgId: OTHER, userId: "fixture-admin", role: "admin" })
+    expect((await postCalendar(request())).status).toBe(404)
+    expect(await tenant(OTHER, () => prisma.mtmWorkCalendarDay.count({ where: { organizationId: OTHER } }))).toBe(0)
+  })
+
 })
