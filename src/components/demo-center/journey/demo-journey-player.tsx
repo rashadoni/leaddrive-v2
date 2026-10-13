@@ -16,6 +16,7 @@ import {
   reachableRoutes,
   awaitingOutcome,
   reduceJourney,
+  moduleProgress,
   sectionJumpTarget,
   serializeSnapshot,
   type DemoJourneyAction,
@@ -256,7 +257,7 @@ export function DemoJourneyPlayer({
       setSnapshot(result.snapshot)
       const reporter = reporterRef.current
       if (reporter) {
-        for (const report of journeyReportsBetween(snapshot, result.snapshot, { jumped: action.type === "open-section" })) reporter.report(report)
+        for (const report of journeyReportsBetween(snapshot, result.snapshot, { jumped: action.type === "open-section", moved: result.transitioned ?? null })) reporter.report(report)
         reporter.activity(result.snapshot.sectionId, result.snapshot.stepId)
       }
       if (result.completedStep) {
@@ -286,8 +287,10 @@ export function DemoJourneyPlayer({
 
   const frontierIndex = sections.findIndex((section) => section.id === frontierSection.id)
 
-  // Any section, any time (owner, 2026-09-22). Ahead of the story it jumps
-  // there and stages what lies between; behind it, it opens read-only.
+  // Any module, any time, always with its guide (owner, 2026-10-13: «для
+  // клиента должны быть открыты модули; переходя по модулю, начинается гид»).
+  // Ahead of the story it jumps there and stages what lies between; behind
+  // it the module starts over from its own beginning.
   const openSection = (sectionId: string) => {
     const jump = sectionJumpTarget(snapshot, manifest, sectionId)
     if (!jump.ok) {
@@ -298,21 +301,18 @@ export function DemoJourneyPlayer({
     if (!result.ok) return
     setViewSectionId(null)
     setAnchorMissing(false)
-    setResultBanner(S.jumpedTo(jump.section.title, jump.section.id !== sectionId))
+    setResultBanner(jump.back ? S.moduleStarted(jump.section.title) : S.jumpedTo(jump.section.title, jump.section.id !== sectionId))
   }
 
   const openChapter = (sectionId: string) => {
     const index = sections.findIndex((section) => section.id === sectionId)
     if (index === frontierIndex) {
-      // Back from review the coach mark searches again and reports; already
-      // on the frontier nothing changes, and the guide's recovery must stay.
+      // Already here: nothing restarts under the prospect's hands. Back from
+      // review the coach mark searches again and reports.
       if (reviewMode) {
         setAnchorMissing(false)
         setViewSectionId(null)
       }
-    } else if (index >= 0 && index < frontierIndex) {
-      setAnchorMissing(false)
-      setViewSectionId(sectionId)
     } else openSection(sectionId)
   }
 
@@ -335,13 +335,11 @@ export function DemoJourneyPlayer({
     const matching = sections
       .map((section, index) => ({ section, index }))
       .filter(({ section }) => section.navGroup !== "demo" && section.route.replace(/\/\[[a-zA-Z]+\]$/, "") === route)
+    // Inside this module already: stay where the prospect is.
     if (matching.some(({ index }) => index === frontierIndex)) return openChapter(frontierSection.id)
-    // Behind the story first: a route that is both behind and ahead (the deal
-    // card) shows what was done rather than jumping past the steps between.
-    const behind = matching.filter(({ index }) => index < frontierIndex)
-    if (behind.length) return openChapter(behind[behind.length - 1].section.id)
-    const ahead = matching.find(({ index }) => index > frontierIndex)
-    if (ahead) openSection(ahead.section.id)
+    // Otherwise a module opens at its beginning — the first section on the
+    // route — whether that is ahead of the story or behind it.
+    if (matching.length) openSection(matching[0].section.id)
   }
 
   const goBack = () => {
@@ -412,6 +410,7 @@ export function DemoJourneyPlayer({
           <DemoJourneySidebar
             visibleRoutes={manifest.visibleRoutes}
             reachableRoutes={reachable}
+            doneRoutes={moduleProgress(snapshot, manifest).filter((module) => module.done).map((module) => module.route)}
             activeRoute={activeRoute}
             onNavigate={navigate}
             onLocked={(label) => hint(S.sectionLater(label))}
@@ -428,7 +427,10 @@ export function DemoJourneyPlayer({
             <main id="demo-scene" className="min-w-0 overflow-y-auto p-4 sm:p-6">
               {viewSection.intro && manifest.capabilities.video ? (
                 <IntroClip
-                  key={viewSection.id}
+                  // Its own key: the scene below is keyed by the section too, and
+                  // two siblings with one key left the previous chapter's clip
+                  // on screen above the new one.
+                  key={`clip:${viewSection.id}`}
                   slug={viewSection.intro.slug}
                   caption={viewSection.intro.caption}
                   status={viewSection.intro.status}

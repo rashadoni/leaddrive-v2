@@ -341,18 +341,34 @@ export function rebuildRecordsAtState(
   state: DemoJourneyState,
   now: Date,
   happyPath: readonly DemoJourneyState[],
+  /** How this session's call really ended, when it had one (`callStateOf`). */
+  callState: DemoJourneyState | null = null,
 ): DemoJourneyRecords {
+  // A call state off the happy path (queued, ringing, declined, failed…) sits
+  // in the call's slot. It used to match no step of the path, so the loop ran
+  // to the very end and the records came back with the deal already won —
+  // which is what the assistant then described to a prospect still on the call.
+  const offPath = (state === "CALLING" || state.startsWith("CALL_")) && !happyPath.includes(state)
+  const stopAt: DemoJourneyState = offPath ? "CALL_SKIPPED" : state
+  const atCallSlot = offPath ? state : callState
   let records = createJourneyRecords(identity, now)
   for (const step of happyPath) {
-    records = applyTransitionEffects(records, step, identity, now)
-    if (step === state) break
-  }
-  // Alternative call outcomes are not on the happy path; apply the one asked
-  // for so a declined or failed call still reads correctly.
-  if (state.startsWith("CALL_") && !happyPath.includes(state)) {
-    records = applyTransitionEffects(records, state, identity, now)
+    records = applyTransitionEffects(records, step === "CALL_SKIPPED" && atCallSlot ? atCallSlot : step, identity, now)
+    if (step === stopAt) break
   }
   return records
+}
+
+/**
+ * How the call in these records ended — read back from the one timeline
+ * entry every outcome writes. A module opened again is rebuilt from scratch,
+ * and it must not turn a call that was answered into «no call this session».
+ */
+export function callStateOf(records: DemoJourneyRecords): DemoJourneyState | null {
+  const title = records.lead?.timeline.find((entry) => entry.id === "tl-call")?.title
+  if (!title) return null
+  const match = (Object.entries(DEMO_CALL_OUTCOME_COPY) as Array<[DemoJourneyState, { title: string }]>).find(([, copy]) => copy.title === title)
+  return match?.[0] ?? null
 }
 
 /**
