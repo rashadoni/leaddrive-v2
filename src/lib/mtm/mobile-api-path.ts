@@ -16,6 +16,10 @@ const V2_MTM_MOBILE_EXACT_PATHS = new Set([
   "/api/v2/mtm/mobile/route-field/device-tokens",
   "/api/v2/mtm/mobile/route-field/organizations",
   "/api/v2/mtm/mobile/route-field/planning-targets",
+  // The employee returns to the workday they closed earlier today. Not under
+  // /api/v1/mtm/mobile/workday: that prefix belongs to the withdrawn HRM and
+  // the proxy answers 410 there.
+  "/api/v2/mtm/mobile/route-field/workday-return",
   "/api/v2/mtm/mobile/sync/routes",
   "/api/v2/mtm/mobile/sync/tasks",
   "/api/v2/mtm/mobile/sync/visits",
