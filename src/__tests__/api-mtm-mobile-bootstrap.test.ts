@@ -75,6 +75,17 @@ const v2Request = () => new NextRequest("http://localhost:3000/api/v1/mtm/mobile
 })
 
 describe("GET /api/v1/mtm/mobile/bootstrap", () => {
+  it.each(["AGENT", "EMPLOYEE"])("hides attendance for excluded %s without granting field access", async role => {
+    vi.mocked(resolveMobileAuth).mockResolvedValue(mobileAuth(role))
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: AGENT, role, attendanceParticipant: true, attendanceExcluded: true, name: "Fictional employee", canPlanOwnRoutes: true } as never)
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "attendanceEnabled", value: true }] as never)
+    const response = await GET(request()); expect(response.status).toBe(200)
+    const json = await response.json()
+    expect(json.data.policies.agentPermissions).toMatchObject({ attendanceRequests: false, attendanceWorkday: false, attendanceLocation: false, attendanceInstallation: false })
+    expect(json.data.policies).not.toHaveProperty("attendanceMarkVersion")
+    expect(json.data.permissions.includes("ROUTE_EXECUTE")).toBe(role === "AGENT")
+    expect(json.data.permissions.includes("WORKTIME_SELF_MUTATE")).toBe(role === "AGENT")
+  })
   it("returns tenant, principal, capabilities and explicit unversioned state", async () => {
     const response = await GET(request())
     expect(response.status).toBe(200)

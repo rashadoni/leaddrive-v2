@@ -249,6 +249,7 @@ export const GET = withMobileRls(async (req, auth) => {
           email: true,
           role: true,
           attendanceParticipant: true,
+          attendanceExcluded: true,
           canPlanOwnRoutes: true,
           canSelfPublishRoutes: true,
         },
@@ -393,7 +394,7 @@ export const GET = withMobileRls(async (req, auth) => {
     // policy, requests, timesheets, or team data. When Workforce is enabled
     // its stricter read permission continues to provide the same canonical
     // workday projection.
-    const attendanceSelf = routeFieldEnabled && mayUseAttendanceSelf(auth.role, settings.attendanceEnabled, agent.attendanceParticipant)
+    const attendanceSelf = routeFieldEnabled && mayUseAttendanceSelf(auth.role, settings.attendanceEnabled, agent.attendanceParticipant, agent.attendanceExcluded)
     const fieldSessionEnabled = routeFieldEnabled && (auth.role === "AGENT" || attendanceSelf)
     const workday = fieldSessionEnabled || (workforceEnabled && hasMobilePermission(auth.role, "WORKTIME_SELF_READ"))
       ? await prisma.mtmAgentWorkday.findFirst({

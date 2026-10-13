@@ -1,6 +1,7 @@
 import { MtmAgentRole, MtmAgentStatus, Prisma } from "@prisma/client"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { attendanceIdentityConflictResponse } from "@/lib/mtm/attendance-identity-error"
 import { getMobileAuth } from "@/lib/mobile-auth"
 import { withRls } from "@/lib/with-rls"
 import bcrypt from "bcryptjs"
@@ -473,6 +474,8 @@ export const POST = withRls(async (req, auth) => {
 
     return NextResponse.json({ success: true, data: agent }, { status: 201 })
   } catch (e: unknown) {
+    const conflict = attendanceIdentityConflictResponse(e)
+    if (conflict) return conflict
     return NextResponse.json({ error: e instanceof Error ? e.message : "Failed to create agent" }, { status: 400 })
   }
 })

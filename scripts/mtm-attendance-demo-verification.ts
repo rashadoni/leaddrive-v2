@@ -28,6 +28,25 @@ type Tx = Prisma.TransactionClient
 function fail(code: string): never { throw new Error(code) }
 const at = (day: string, clock: string) => new Date(`${day}T${clock}:00.000+04:00`)
 export const DEMO_AGENTS = ["mtm-attendance-demo-agent-a-v1", "mtm-attendance-demo-agent-b-v1"] as const
+export const DEMO_ATTENDANCE_AGENT_SELECT = { id: true, role: true, status: true, teamId: true, userId: true,
+  attendanceParticipant: true, attendanceExcluded: true, attendanceIncludedFrom: true, canPlanOwnRoutes: true, canSelfPublishRoutes: true } as const
+type DemoAttendanceAgent = { id: string; role: string; status: string; teamId: string | null; userId: string | null;
+  attendanceParticipant: boolean; attendanceExcluded: boolean; attendanceIncludedFrom: Date | null; canPlanOwnRoutes: boolean; canSelfPublishRoutes: boolean }
+/** The automatic card's UUID comes from the reviewed migration. Only its exact
+ * fixed-tenant user link may identify it; extra or unrelated cards still fail. */
+export function assertDemoAttendanceAgents(agents: readonly DemoAttendanceAgent[]) {
+  const fieldIds = new Set<string>(DEMO_AGENTS)
+  if (agents.length !== 3 || new Set(agents.map(agent => agent.id)).size !== 3) fail("FIXTURE_CHANGED")
+  const legacy = agents.filter(agent => fieldIds.has(agent.id)), automatic = agents.filter(agent => !fieldIds.has(agent.id))
+  if (legacy.length !== 2 || legacy.some(agent => agent.role !== "AGENT" || agent.status !== "ACTIVE" || agent.teamId !== null || agent.userId !== null
+    || agent.attendanceParticipant !== false || agent.attendanceExcluded !== false || agent.attendanceIncludedFrom !== null)) fail("FIXTURE_CHANGED")
+  const admin = automatic[0]
+  if (automatic.length !== 1 || !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(admin.id)
+    || admin.userId !== DEMO.userId || admin.role !== "EMPLOYEE" || admin.status !== "ACTIVE" || admin.teamId !== null
+    || admin.attendanceParticipant !== true || admin.attendanceExcluded !== false || admin.canPlanOwnRoutes !== false || admin.canSelfPublishRoutes !== false
+    || !(admin.attendanceIncludedFrom instanceof Date) || !Number.isFinite(admin.attendanceIncludedFrom.getTime())
+    || admin.attendanceIncludedFrom < at("2026-10-09", "00:00") || admin.attendanceIncludedFrom.getTime() > Date.now()) fail("FIXTURE_CHANGED")
+}
 export const DEMO_WORKDAYS = [
   { id: "mtm-attendance-demo-day-a1-v1", agentId: DEMO_AGENTS[0], date: DEMO.from,
     events: [["START", "09:21"], ["PAUSE", "12:00"], ["RESUME", "12:30"], ["FINISH", "17:30"]], paused: 1800 },
@@ -110,12 +129,17 @@ export async function readOnlyDemo(db: Db) {
     if (users.length !== 1 || users[0].id !== DEMO.userId || users[0].email !== DEMO.email || users[0].role !== "admin"
       || !users[0].isActive || users[0].hiddenModules.length || users[0].totpEnabled || users[0].smsAuthEnabled
       || users[0].require2fa || users[0].phone || users[0].verifiedPhone || users[0].anonymizedAt) fail("FIXTURE_CHANGED")
-    const agents = await tx.mtmAgent.findMany({ where: { organizationId: DEMO.id }, select: { id: true, role: true, status: true, teamId: true }, orderBy: { id: "asc" }, take: 3 })
-    if (agents.length !== 2 || agents.some((agent, i) => agent.id !== DEMO_AGENTS[i] || agent.role !== "AGENT" || agent.status !== "ACTIVE" || agent.teamId)) fail("FIXTURE_CHANGED")
+    const agents = await tx.mtmAgent.findMany({ where: { organizationId: DEMO.id }, select: DEMO_ATTENDANCE_AGENT_SELECT, orderBy: { id: "asc" }, take: 4 })
+    assertDemoAttendanceAgents(agents)
     const settings = await tx.mtmSetting.findMany({ where: { organizationId: DEMO.id }, select: { key: true, value: true } })
     if (settings.find((s) => s.key === "attendanceEnabled")?.value !== true || settings.find((s) => s.key === "timezone")?.value !== "Asia/Baku") fail("FIXTURE_CHANGED")
+    // WorkforceEmploymentEvent is deliberately excluded from Prisma's client.
+    const employment = await tx.$queryRaw<Array<{ count: number }>>`
+      SELECT count(*)::int AS count FROM workforce_employment_events WHERE "organizationId" = ${DEMO.id}`
     if (await tx.mtmAttendanceRule.count({ where: { organizationId: DEMO.id } })
-      || await tx.mtmWorkCalendarDay.count({ where: { organizationId: DEMO.id } })) fail("FIXTURE_CHANGED")
+      || await tx.mtmWorkCalendarDay.count({ where: { organizationId: DEMO.id } })
+      || await tx.mtmAttendanceParticipationEvent.count({ where: { organizationId: DEMO.id } })
+      || employment.length !== 1 || employment[0].count !== 0) fail("FIXTURE_CHANGED")
     const workdays = await tx.mtmAgentWorkday.findMany({ where: { organizationId: DEMO.id }, select: {
       id: true, agentId: true, workDate: true, status: true, startedAt: true, completedAt: true, totalPausedSeconds: true,
       events: { where: { organizationId: DEMO.id, agentId: { in: [...DEMO_AGENTS] } },
@@ -135,7 +159,7 @@ export async function readOnlyDemo(db: Db) {
       WHERE tgrelid IN ('mtm_agent_workdays'::regclass, 'mtm_agent_workday_events'::regclass)
       AND tgname IN ('workforce_completed_workday_guard', 'workforce_workday_events_append_only') AND tgenabled IN ('O', 'A')`
     if (triggers.length !== 2) fail("IMMUTABLE_GUARDS_MISSING")
-    return { workdays, passwordHash: users[0].passwordHash }
+    return { workdays, passwordHash: users[0].passwordHash, agents }
   }, { isolationLevel: "RepeatableRead", timeout: 15_000 })
 }
 
