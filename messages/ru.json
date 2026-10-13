@@ -17996,6 +17996,8 @@
     "installationNotificationTitle": "Нужно одобрить телефон для отметок",
     "installationNotificationBody": "В учёте рабочего дня появилась заявка на одобрение установки приложения.",
     "installationDecisionNotification": "Решение по телефону обновлено",
+    "installationOn": "Включено",
+    "installationOff": "Выключено",
     "installationTitle": "Телефоны для отметок",
     "installationSubtitle": "Одобрение относится к установке приложения и сотруднику. Оно не подтверждает личность владельца телефона.",
     "installationRule": "Требовать одобрение телефона",

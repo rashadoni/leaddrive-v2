@@ -61,6 +61,8 @@ describe("installation approval boundaries", () => {
     expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
   })
   it("accepts no employee, location or installation in the request body", () => {
+    expect(AttendanceInstallationRequestSchema.safeParse({ requestId: "10000000-0000-7000-8000-000000000001" }).success).toBe(true)
+    expect(AttendanceInstallationRequestSchema.safeParse({ requestId: "00000000-0000-0000-0000-000000000000" }).success).toBe(false)
     expect(AttendanceInstallationRequestSchema.safeParse({ requestId: randomUUID(), agentId: "other" }).success).toBe(false)
     expect(AttendanceInstallationRequestSchema.safeParse({ requestId: randomUUID(), latitude: 40 }).success).toBe(false)
     expect(AttendanceInstallationDecisionSchema.safeParse({ requestId: randomUUID(), action: "APPROVE", reason: " " }).success).toBe(false)

@@ -1,4 +1,5 @@
 import { readAttendanceInstallationAttention } from "@/lib/mtm/attendance-installation-store"
+import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
 import { attendanceReviewWhere } from "@/lib/mtm/attendance-request-review"
 import { checkPermission, type Role } from "@/lib/permissions"
 import type { Prisma } from "@prisma/client"
@@ -153,8 +154,17 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     }) : []
   const attendanceSummary = summarizeByAgent(attendanceGroups.map((row) => ({ agentId: row.agentId, count: row._count._all, date: row._min.submittedAt })), "earliest")
 
-  const installationGroups = settings.attendanceEnabled === true && auth.principalType === "session" && checkPermission(auth.role as Role, "mtm", "write")
-    ? await readAttendanceInstallationAttention({ organizationId: auth.orgId, userId: auth.userId, principalType: "session" }, agentIds) : []
+  let installationGroups: Awaited<ReturnType<typeof readAttendanceInstallationAttention>> = []
+  try {
+    if (settings.attendanceEnabled === true && auth.principalType === "session" && checkPermission(auth.role as Role, "mtm", "write")) {
+      installationGroups = await readAttendanceInstallationAttention({ organizationId: auth.orgId, userId: auth.userId, principalType: "session" }, agentIds)
+    }
+  } catch (error) {
+    if (error instanceof AttendanceRequestError && [403, 404].includes(error.status)) {
+      return NextResponse.json({ error: "Forbidden", code: "MTM_WEEK_ACCESS_CHANGED" }, { status: 403 })
+    }
+    throw error
+  }
   const installationSummary = summarizeByAgent(installationGroups, "earliest")
 
   const todayStart = localDateKeyToUtc(today, timezone)

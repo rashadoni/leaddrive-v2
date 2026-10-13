@@ -286,6 +286,7 @@ describe("switch rows are enforced where the agent asks", () => {
 
   it("covers every switch row", () => {
     expect(AGENT_SWITCH_ROWS.map((row) => row.id).sort()).toEqual([
+      "attendanceInstallation",
       "attendanceLocation",
       "attendanceRequests",
       "attendanceWorkday",
@@ -300,6 +301,11 @@ describe("switch rows are enforced where the agent asks", () => {
     expect(row?.setting).toBe("attendanceEnabled")
     expect(source("src/lib/mtm/attendance-self-access.ts")).toContain('agentPermissionEnabled({ attendanceEnabled:')
     expect(source("src/lib/mtm/attendance-self-access.ts")).toContain('"attendanceRequests"')
+  })
+
+  it("uses the same attendance switch for installation requests and requires own access in the writer", () => {
+    expect(AGENT_SWITCH_ROWS.find(row => row.id === "attendanceInstallation")?.setting).toBe("attendanceEnabled")
+    expect(source("src/lib/mtm/attendance-installation-store.ts")).toContain('await requireAttendanceSelf(tx, self, "attendanceInstallation")')
   })
 
   // Publishing one's own routes is not a switch: one tick on the agent's card

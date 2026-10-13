@@ -17992,6 +17992,8 @@
     "installationNotificationTitle": "Qeydlər üçün telefon təsdiqi lazımdır",
     "installationNotificationBody": "İş günü uçotunda tətbiq quraşdırmasının təsdiqi üçün müraciət var.",
     "installationDecisionNotification": "Telefon üzrə qərar yeniləndi",
+    "installationOn": "Aktivdir",
+    "installationOff": "Söndürülüb",
     "installationTitle": "Qeydlər üçün telefonlar",
     "installationSubtitle": "Təsdiq tətbiq quraşdırmasına və əməkdaşa aiddir. Telefon sahibinin kimliyini təsdiqləmir.",
     "installationRule": "Telefonun təsdiqini tələb et",

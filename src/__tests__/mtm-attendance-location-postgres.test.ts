@@ -428,6 +428,8 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
   expect(await tenant(OTHER,()=>prisma.$queryRaw`SELECT id FROM mtm_attendance_installation_requests WHERE "requestId"=${requestId}`)).toEqual([])
   const queue=await tenant(ORG,()=>installations.readAttendanceInstallationQueue(admin,{status:"PENDING",employeeId:identity.agentId}))
   expect(queue.items).toHaveLength(1);expect(queue.items[0]).toMatchObject({canDecide:true,canRevoke:false,installationLabel:"…0001"})
+  expect(await tenant(ORG,()=>installations.readAttendanceInstallationAttention(admin,[identity.agentId]))).toMatchObject([{agentId:identity.agentId,count:queue.items.length}])
+  expect(await tenant(ORG,()=>installations.readAttendanceInstallationAttention(admin,[]))).toEqual([])
   expect(JSON.stringify(queue)).not.toContain(INSTALLATION);expect(JSON.stringify(queue)).not.toMatch(/requestHash|latitude|consentId/)
   expect(await tenant(ORG,()=>prisma.notification.count({where:{organizationId:ORG,entityType:"mtm_attendance_installation",entityId:queue.items[0].id}}))).toBe(1)
   const originalNotifier=await import("@/lib/mtm/attendance-installation-notify")

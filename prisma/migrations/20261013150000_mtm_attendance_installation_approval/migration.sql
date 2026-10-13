@@ -3,7 +3,7 @@ SET lock_timeout='3s';
 CREATE TABLE mtm_attendance_installation_requests (
  id TEXT PRIMARY KEY, "organizationId" TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
  "agentId" TEXT NOT NULL, "installationId" VARCHAR(128) NOT NULL CHECK("installationId" ~ '^rf-[a-z0-9-]{20,125}$'),
- "requestId" TEXT NOT NULL CHECK("requestId" ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'),
+ "requestId" TEXT NOT NULL CHECK("requestId" ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'),
  "requestHash" VARCHAR(64) NOT NULL CHECK("requestHash" ~ '^[a-f0-9]{64}$'),
  "submittedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
  FOREIGN KEY("organizationId","agentId") REFERENCES mtm_agents("organizationId",id) ON DELETE RESTRICT,
@@ -14,7 +14,7 @@ CREATE INDEX ON mtm_attendance_installation_requests("organizationId","submitted
 CREATE TABLE mtm_attendance_installation_decisions (
  id TEXT PRIMARY KEY, "organizationId" TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
  "installationRequestId" TEXT NOT NULL, action VARCHAR(7) NOT NULL CHECK(action IN ('APPROVE','REJECT')),
- "requestId" TEXT NOT NULL CHECK("requestId" ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'),
+ "requestId" TEXT NOT NULL CHECK("requestId" ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'),
  "requestHash" VARCHAR(64) NOT NULL CHECK("requestHash" ~ '^[a-f0-9]{64}$'), "actorUserId" TEXT NOT NULL,
  reason VARCHAR(1000) NOT NULL CHECK(length(btrim(reason)) BETWEEN 3 AND 1000), "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
  FOREIGN KEY("organizationId","installationRequestId") REFERENCES mtm_attendance_installation_requests("organizationId",id) ON DELETE RESTRICT,
@@ -23,7 +23,7 @@ CREATE TABLE mtm_attendance_installation_decisions (
 );
 CREATE TABLE mtm_attendance_installation_revocations (
  id TEXT PRIMARY KEY, "organizationId" TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
- "decisionId" TEXT NOT NULL, "requestId" TEXT NOT NULL CHECK("requestId" ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'),
+ "decisionId" TEXT NOT NULL, "requestId" TEXT NOT NULL CHECK("requestId" ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'),
  "requestHash" VARCHAR(64) NOT NULL CHECK("requestHash" ~ '^[a-f0-9]{64}$'), "actorUserId" TEXT NOT NULL,
  reason VARCHAR(1000) NOT NULL CHECK(length(btrim(reason)) BETWEEN 3 AND 1000), "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
  FOREIGN KEY("organizationId","decisionId") REFERENCES mtm_attendance_installation_decisions("organizationId",id) ON DELETE RESTRICT,

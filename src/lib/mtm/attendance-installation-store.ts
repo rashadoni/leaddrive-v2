@@ -1,3 +1,4 @@
+import { isValidTimezone } from "@/lib/timezone"
 import { createHash, randomUUID } from "node:crypto"
 import { Prisma } from "@prisma/client"
 import { z } from "zod"
@@ -105,7 +106,9 @@ export async function readAttendanceInstallationQueue(reviewer: AttendanceReview
         OR (${query.status}='REJECTED' AND d.action='REJECT') OR (${query.status}='REVOKED' AND v.id IS NOT NULL))
       ORDER BY r."submittedAt" DESC,r.id DESC LIMIT 51`)
     const required = await readAttendanceInstallationRule(tx, organizationId)
-    return { required, canConfigure: ["admin", "superadmin"].includes(settingsActor?.role ?? ""), nextCursor: rows.length > 50 ? rows[49].id : null,
+    const clock = await tx.mtmSetting.findUnique({ where: { organizationId_key: { organizationId, key: "timezone" } }, select: { value: true } })
+    const timezone = typeof clock?.value === "string" && isValidTimezone(clock.value) ? clock.value : "Asia/Baku"
+    return { timezone, required, canConfigure: ["admin", "superadmin"].includes(settingsActor?.role ?? ""), nextCursor: rows.length > 50 ? rows[49].id : null,
       items: rows.slice(0, 50).map(row => {
         const dto = ownDto(row, row.installationId, required)
         const canWrite = writer !== null && row.userId !== reviewer.userId && canReviewMtmRouteRequest(writer, row.agentId)

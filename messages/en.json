@@ -17996,6 +17996,8 @@
     "installationNotificationTitle": "A phone needs approval for attendance",
     "installationNotificationBody": "An app installation approval request is waiting in workday attendance.",
     "installationDecisionNotification": "Phone approval decision updated",
+    "installationOn": "On",
+    "installationOff": "Off",
     "installationTitle": "Phones for attendance",
     "installationSubtitle": "Approval belongs to an app installation and an employee. It does not verify the phone owner’s identity.",
     "installationRule": "Require phone approval",

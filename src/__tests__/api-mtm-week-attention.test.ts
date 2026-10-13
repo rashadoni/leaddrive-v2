@@ -461,6 +461,12 @@ describe("attendance Panel attention", () => {
   beforeEach(() => {
     signIn(ADMIN)
     vi.mocked(requireAuth).mockResolvedValue({ orgId: ORG, userId: "user-adm", role: "admin", principalType: "session", email: "fixture@example.test", name: "Fixture" } as never)
+    vi.mocked(prisma.$queryRaw).mockImplementation(async (query) => {
+      const sql = Array.isArray(query) ? query.join(" ") : String(query)
+      return sql.includes('FROM "users"') ? [{ role: "admin", hiddenModules: [] }] : []
+    })
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({ plan: "enterprise", addons: [], features: ["mtm"], modules: { mtm: true, "route-field": true }, settings: {} } as never)
+    vi.mocked(prisma.mtmSetting.findUnique).mockResolvedValue({ value: true } as never)
     // Nonempty JSON is enough here: the Panel deliberately never reads its contents.
     const make = (id: string, agentId: string, status = "PENDING", owner?: string): Row => ({
       id, organizationId: ORG, agentId, status, attendanceDetails: { fixture: true }, submittedAt: NOW,
@@ -478,5 +484,12 @@ describe("attendance Panel attention", () => {
     vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "attendanceEnabled", value: true }] as never)
     expect((await attention()).data.items.find(item => item.kind === "attendanceRequests")).toMatchObject({ count: 2 })
     expect((await attention("?teamId=t1")).data.items.find(item => item.kind === "attendanceRequests")).toMatchObject({ count: 1 })
+  })
+  it("returns a deliberate denial if attendance review access was revoked after authentication", async () => {
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "attendanceEnabled", value: true }] as never)
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([])
+    const response = await GET(new NextRequest("http://localhost:3000/api/v1/mtm/week/attention"))
+    expect(response.status).toBe(403)
+    expect(await response.json()).toEqual({ error: "Forbidden", code: "MTM_WEEK_ACCESS_CHANGED" })
   })
 })

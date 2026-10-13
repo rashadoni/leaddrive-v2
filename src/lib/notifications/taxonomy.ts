@@ -63,6 +63,7 @@ export const ENTITY_TO_MODULE: Record<string, string> = {
   mtm_location_request: "mtm",
   mtm_attendance_request: "mtm",
   mtm_attendance_risk: "mtm",
+  mtm_attendance_installation: "mtm",
   survey:         "campaigns",   // Survey response — gated by campaigns module (Marketing group)
   loyalty:        "loyalty",     // Loyalty tier/redeem — gated by loyalty module (Loyalty Program group)
   // Phase 2d — Industry Cloud emitters (one notable gated kind per vertical)
