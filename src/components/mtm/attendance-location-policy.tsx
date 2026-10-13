@@ -1,7 +1,6 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
-import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { MapPin, ShieldCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -66,7 +65,7 @@ export function MtmAttendanceLocationPolicy(){
  const blocked=loading||saving||Boolean(pending)||refreshRequired||denied||policy===undefined
  const ready=draft.legalReviewConfirmed&&LANGUAGES.every(lang=>draft.texts[lang].trim().length>=20)
  return <div className="mx-auto grid w-full max-w-5xl min-w-0 gap-6" data-testid="attendance-location-policy">
-  <header className="flex flex-wrap items-start justify-between gap-4"><div className="min-w-0"><p className="text-sm text-muted-foreground">{t("geoPolicyEyebrow")}</p><h1 className="mt-1 text-2xl font-semibold tracking-tight">{t("geoPolicyTitle")}</h1><p className="mt-2 max-w-prose text-sm text-muted-foreground">{t("geoPolicySubtitle")}</p></div><Link href="/mtm/attendance" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("branchesBack")}</Link></header>
+  <header className="flex flex-wrap items-start justify-between gap-4"><div className="min-w-0"><p className="text-sm text-muted-foreground">{t("geoPolicyEyebrow")}</p><h1 className="mt-1 text-2xl font-semibold tracking-tight">{t("geoPolicyTitle")}</h1><p className="mt-2 max-w-prose text-sm text-muted-foreground">{t("geoPolicySubtitle")}</p></div></header>
   {loading&&<p role="status" className="text-sm text-muted-foreground">{t("geoPolicyLoading")}</p>}
   {error&&<div role="alert" className="space-y-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4"><p className="text-sm">{t(error)}</p>{pending?<Button className="min-h-11" variant="outline" disabled={saving} onClick={()=>void publish(pending)}>{t("geoPolicyRetry")}</Button>:!denied&&<Button className="min-h-11" variant="outline" disabled={loading||saving} onClick={()=>void load()}>{t("geoPolicyRefresh")}</Button>}</div>}
   {saved&&<p role="status" className="text-sm text-emerald-700 dark:text-emerald-400">{t("geoPolicySaved")}</p>}

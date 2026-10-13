@@ -262,7 +262,7 @@
     "mtmLeaderboard": "Agent reytinqi",
     "mtmActivity": "Fəaliyyət jurnalı",
     "mtmReports": "Sahə hesabatları",
-    "mtmAttendance": "İş vaxtının uçotu",
+    "mtmAttendanceTimesheet": "İş vaxtının uçotu",
     "mtmSettings": "Modul parametrləri",
     "mtmAccess": "Bölmədə kim işləyir və kimin məlumatını görür",
     "workforceToday": "İş vaxtı cədvəli və komanda: iş vaxtı və istisnalar",
@@ -332,7 +332,19 @@
     "auditLogSettings": "Bütün sistem fəaliyyətinə baxın",
     "customFieldsSettings": "Obyektlərə xüsusi sahələr əlavə edin",
     "notificationSettings": "Modul üzrə brauzer və tətbiq bildirişləri",
-    "customDomainsSettings": "Açılış səhifələri üçün öz domeninizi qoşun"
+    "customDomainsSettings": "Açılış səhifələri üçün öz domeninizi qoşun",
+    "mtmAttendanceEmployees": "Əməkdaşların iş vaxtı uçotunda iştirakı",
+    "mtmAttendanceRequests": "Əməkdaş müraciətlərinə baxış",
+    "mtmAttendanceShifts": "Əməkdaşların iş qrafikləri və növbələri",
+    "mtmAttendanceLeave": "Qalan məzuniyyət günləri və dəyişikliklər",
+    "mtmAttendanceMonths": "Aylıq tabellərin yoxlanması və bağlanması",
+    "mtmAttendanceBranchReport": "Filiallar üzrə iş vaxtı və davamiyyət",
+    "mtmAttendanceDecisions": "Müraciətlər və verilmiş qərarların tarixçəsi",
+    "mtmAttendanceBranches": "Şirkətin filialları və təyin olunmuş əməkdaşlar",
+    "mtmAttendanceReview": "Yoxlama tələb edən qeydlər",
+    "mtmAttendancePhones": "Qeydlər üçün istifadə olunan telefonlar",
+    "mtmAttendanceQr": "Filiallarda qeyd üçün QR-kodlar",
+    "mtmAttendanceLocation": "Məkan məlumatları üçün razılıq və qaydalar"
   },
   "skillRouting": {
     "title": "Bacarıq marşrutlaşdırması",
@@ -653,7 +665,26 @@
     "auditLogSettings": "Audit Jurnalı",
     "customFieldsSettings": "Xüsusi sahələr",
     "notificationSettings": "Bildirişlər",
-    "customDomainsSettings": "Xüsusi Domenlər"
+    "customDomainsSettings": "Xüsusi Domenlər",
+    "mtmAttendanceTimesheet": "Tabel",
+    "mtmAttendanceEmployees": "Əməkdaşlar",
+    "mtmAttendanceRequests": "Müraciətlər",
+    "mtmAttendanceShifts": "Qrafiklər və növbələr",
+    "mtmAttendanceLeave": "Məzuniyyət qalıqları",
+    "mtmAttendanceMonths": "Bağlanmış aylar",
+    "mtmAttendanceBranchReport": "Filiallar üzrə xülasə",
+    "mtmAttendanceDecisions": "Qərarların tarixçəsi",
+    "mtmAttendanceBranches": "Filiallar",
+    "mtmAttendanceReview": "Qeydlərin yoxlanması",
+    "mtmAttendancePhones": "Telefonlar",
+    "mtmAttendanceQr": "Filial üçün QR",
+    "mtmAttendanceLocation": "Məkan məlumatları",
+    "mtmSections": {
+      "field": "Səyyar iş",
+      "attendance": "Kadr uçotu",
+      "reports": "Hesabatlar",
+      "settings": "Parametrlər və nəzarət"
+    }
   },
   "mtmModuleNavigation": {
     "primaryNavigationLabel": "MTM əsas bölmələri",

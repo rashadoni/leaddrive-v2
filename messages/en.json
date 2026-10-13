@@ -262,7 +262,7 @@
     "mtmLeaderboard": "Agent rankings",
     "mtmActivity": "Field activity log",
     "mtmReports": "Field reports",
-    "mtmAttendance": "Workday attendance",
+    "mtmAttendanceTimesheet": "Workday attendance",
     "mtmSettings": "Field module settings",
     "mtmAccess": "Who works in the module and whose data they see",
     "workforceToday": "Timesheet & team: work-time status and exceptions",
@@ -332,7 +332,19 @@
     "auditLogSettings": "View all system activity",
     "customFieldsSettings": "Add custom fields to entities",
     "notificationSettings": "Browser and in-app popup alerts by module",
-    "customDomainsSettings": "Connect your own domain for landing pages"
+    "customDomainsSettings": "Connect your own domain for landing pages",
+    "mtmAttendanceEmployees": "Employee participation in attendance tracking",
+    "mtmAttendanceRequests": "Review employee requests",
+    "mtmAttendanceShifts": "Employee work schedules and shifts",
+    "mtmAttendanceLeave": "Available leave days and balance changes",
+    "mtmAttendanceMonths": "Review and close monthly timesheets",
+    "mtmAttendanceBranchReport": "Working time and attendance by branch",
+    "mtmAttendanceDecisions": "Request and decision history",
+    "mtmAttendanceBranches": "Company branches and assigned employees",
+    "mtmAttendanceReview": "Attendance marks that need review",
+    "mtmAttendancePhones": "Phones used for attendance marks",
+    "mtmAttendanceQr": "QR codes for branch attendance",
+    "mtmAttendanceLocation": "Location consent and data rules"
   },
   "skillRouting": {
     "title": "Skill Routing",
@@ -653,7 +665,26 @@
     "auditLogSettings": "Audit Log",
     "customFieldsSettings": "Custom Fields",
     "notificationSettings": "Notifications",
-    "customDomainsSettings": "Custom Domains"
+    "customDomainsSettings": "Custom Domains",
+    "mtmAttendanceTimesheet": "Timesheet",
+    "mtmAttendanceEmployees": "Employees",
+    "mtmAttendanceRequests": "Requests",
+    "mtmAttendanceShifts": "Schedules & shifts",
+    "mtmAttendanceLeave": "Leave balances",
+    "mtmAttendanceMonths": "Closed months",
+    "mtmAttendanceBranchReport": "Branch summary",
+    "mtmAttendanceDecisions": "Decision history",
+    "mtmAttendanceBranches": "Branches",
+    "mtmAttendanceReview": "Review marks",
+    "mtmAttendancePhones": "Phones",
+    "mtmAttendanceQr": "Branch QR",
+    "mtmAttendanceLocation": "Location data",
+    "mtmSections": {
+      "field": "Field operations",
+      "attendance": "People & attendance",
+      "reports": "Reports",
+      "settings": "Settings & checks"
+    }
   },
   "mtmModuleNavigation": {
     "primaryNavigationLabel": "Primary MTM sections",

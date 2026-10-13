@@ -28,6 +28,9 @@ export function MtmModuleNavigation() {
   const activeTool = toolGroups.flatMap((group) => group.items)
     .find((item) => isMtmNavigationItemActive(item.href, pathname))
 
+  // Attendance has its own persistent section in the main left navigation.
+  if (pathname === "/mtm/attendance" || pathname.startsWith("/mtm/attendance/")) return null
+
   return (
     <div className="mb-6 border-b border-zinc-200/80 pb-3 dark:border-zinc-700/80">
       <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">

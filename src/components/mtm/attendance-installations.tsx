@@ -1,7 +1,6 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
-import Link from "next/link"
 import { createDateFormatter } from "@/lib/format-date"
 import { useLocale, useTranslations } from "next-intl"
 import { Smartphone, ShieldCheck } from "lucide-react"
@@ -82,7 +81,7 @@ export function MtmAttendanceInstallations() {
   }
   if (denied) return <p role="status">{t("reportAccessUnavailable")}</p>
   return <main className="min-w-0 space-y-5" aria-label={t("installationTitle")} aria-busy={loading}>
-    <div className="space-y-2"><Link href="/mtm/attendance" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("title")}</Link>
+    <div className="space-y-2">
       <h1 className="text-2xl font-semibold tracking-tight">{t("installationTitle")}</h1><p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">{t("installationSubtitle")}</p></div>
     <HomeCard testId="installation-rule" titleId="installation-rule-title" title={t("installationRule")} tone="green" icon={<ShieldCheck className="h-5 w-5" aria-hidden="true" />}>
       <div className="flex flex-wrap items-center justify-between gap-4 py-4"><p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">{t("installationRuleHint")}</p>

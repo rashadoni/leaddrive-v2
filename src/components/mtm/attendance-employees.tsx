@@ -1,7 +1,6 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
-import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
 import { History, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -109,8 +108,7 @@ export function MtmAttendanceEmployees() {
     setChange({ kind: !employee?.history.length ? "HIRE" : employee.history.at(-1)?.kind === "TERMINATION" ? "REHIRE" : "TERMINATION", date: "", reason: "" })
   }
   return <div className="space-y-5" data-testid="attendance-employees">
-    <Link href="/mtm/attendance" className="inline-flex min-h-11 items-center text-sm text-primary hover:underline">{t("employeesBack")}</Link>
-    <div className="flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-2xl font-bold tracking-tight">{t("employeesTitle")}</h1><p className="mt-2 max-w-prose text-sm text-muted-foreground">{t("employeesIntro")}</p></div>{!denied && <Button variant="outline" className="min-h-11" disabled={loading || saving || Boolean(pending)} onClick={() => void load()}>{t("employeesRefresh")}</Button>}</div>
+    <div className="flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-2xl font-semibold tracking-tight">{t("employeesTitle")}</h1><p className="mt-2 max-w-prose text-sm text-muted-foreground">{t("employeesIntro")}</p></div>{!denied && <Button variant="outline" className="min-h-11" disabled={loading || saving || Boolean(pending)} onClick={() => void load()}>{t("employeesRefresh")}</Button>}</div>
     {loading && <p role="status" className="text-sm text-muted-foreground">{t("employeesLoading")}</p>}
     {error && <p role="alert" className="max-w-prose text-sm text-destructive">{t(error)}</p>}
     {saved && <p role="status" className="text-sm text-emerald-700">{t("employeesSaved")}</p>}

@@ -1,7 +1,6 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
-import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { Building2, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -99,8 +98,7 @@ export function MtmAttendanceBranches() {
   const field=(key:keyof Pick<Draft,"name"|"address"|"latitude"|"longitude"|"radiusMeters">,label:string,type="text")=><div className="min-w-0 space-y-2"><label htmlFor={`branch-${key}`} className="text-sm font-medium">{t(label)}</label><Input id={`branch-${key}`} className="min-h-11" type={type} step={type==="number"?key==="radiusMeters"?"1":"any":undefined} maxLength={key==="name"?160:key==="address"?500:30} value={draft?.[key]??""} disabled={blocked} onChange={event=>setDraft(current=>current?{...current,[key]:event.target.value}:current)}/></div>
   function edit(branch:AttendanceBranch){setError(null);setSaved(false);setDraft({branchId:branch.id,expectedRevisionId:branch.revisionId,name:branch.name,address:branch.address,latitude:String(branch.latitude),longitude:String(branch.longitude),radiusMeters:String(branch.radiusMeters),active:branch.active})}
   return <div className="space-y-5" data-testid="attendance-branches">
-    <Link href="/mtm/attendance" className="inline-flex min-h-11 items-center text-sm text-primary hover:underline">{t("branchesBack")}</Link>
-    <div><h1 className="text-2xl font-bold tracking-tight">{t("branchesTitle")}</h1><p className="mt-2 max-w-prose text-sm text-muted-foreground">{t("branchesIntro")}</p></div>
+    <div><h1 className="text-2xl font-semibold tracking-tight">{t("branchesTitle")}</h1><p className="mt-2 max-w-prose text-sm text-muted-foreground">{t("branchesIntro")}</p></div>
     {!denied?<div className="flex flex-wrap gap-2" role="group" aria-label={t("branchesNavigation")}><Button variant={tab==="branches"?"default":"outline"} className="min-h-11" disabled={saving||Boolean(pending)} onClick={()=>setTab("branches")}>{t("branchesTitle")}</Button><Button variant={tab==="assignments"?"default":"outline"} className="min-h-11" disabled={saving||Boolean(pending)} onClick={()=>setTab("assignments")}>{t("branchesAssignments")}</Button><Button variant="outline" className="min-h-11" disabled={loading||saving||Boolean(pending)} onClick={()=>void load(query)}>{t("branchesRefresh")}</Button></div>:null}
     {loading?<p role="status" className="text-sm text-muted-foreground">{t("branchesLoading")}</p>:null}
     {error?<p role="alert" className="max-w-prose text-sm text-destructive">{t(error)}</p>:null}

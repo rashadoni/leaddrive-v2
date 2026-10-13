@@ -1,12 +1,12 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react"
-import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
-import { ClipboardList, Download } from "lucide-react"
+import { Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { HomeCard, HomePill } from "@/components/mtm/home-parts"
+import { HomePill } from "@/components/mtm/home-parts"
 import { AttendanceDecisionJournalQuerySchema, AttendanceDecisionJournalSnapshotSchema, ATTENDANCE_DECISION_JOURNAL_LIMIT,
   type AttendanceDecisionJournal, type AttendanceDecisionJournalQuery } from "@/lib/mtm/attendance-decision-journal-contract"
 import { buildAttendanceDecisionJournalTable } from "@/lib/mtm/attendance-decision-journal-table"
@@ -116,10 +116,9 @@ export function MtmAttendanceDecisionJournal() {
   }
 
   return <section className="space-y-5" data-testid="attendance-decision-journal" aria-label={t("journalTitle")} aria-busy={loading}>
-    <Link href="/mtm/attendance" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("requestsBack")}</Link>
-    <HomeCard testId="attendance-decision-journal-card" titleId="attendance-decision-journal-title" title={t("journalTitle")} tone="amber" icon={<ClipboardList className="h-5 w-5" aria-hidden="true" />}>
+    <header className="space-y-2"><h1 id="attendance-decision-journal-title" className="text-2xl font-semibold tracking-tight">{t("journalTitle")}</h1><p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">{t("journalDescription")}</p></header>
+    <Card data-testid="attendance-decision-journal-card" aria-labelledby="attendance-decision-journal-title" className="rounded-2xl px-5 py-1">
       <div className="space-y-4 py-4">
-        <p className="text-sm text-muted-foreground">{t("journalDescription")}</p>
         {!accessUnavailable && <><form className="grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.2fr_auto]" onSubmit={apply} aria-label={t("journalFilters")}>
           <div className="space-y-2"><label htmlFor="attendance-journal-from" className="text-sm font-medium">{t("reportFrom")}</label><Input id="attendance-journal-from" type="date" required className="min-h-11" value={draft.from} disabled={loading} onChange={event => changeDraft({ ...draft, from: event.target.value })} /></div>
           <div className="space-y-2"><label htmlFor="attendance-journal-to" className="text-sm font-medium">{t("reportTo")}</label><Input id="attendance-journal-to" type="date" required className="min-h-11" value={draft.to} disabled={loading} onChange={event => changeDraft({ ...draft, to: event.target.value })} /></div>
@@ -143,6 +142,6 @@ export function MtmAttendanceDecisionJournal() {
           </>}
         </>}
       </div>
-    </HomeCard>
+    </Card>
   </section>
 }

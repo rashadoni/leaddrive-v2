@@ -1,7 +1,6 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
-import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
 import { CalendarPlus, Users } from "lucide-react"
 import { z } from "zod"
@@ -149,8 +148,7 @@ export function MtmAttendanceHrRecordingForm() {
   const period = from ? `${dateLabel(from)}${unit === "HOURS" ? ` · ${startTime}–${endTime}` : to && to !== from ? ` — ${dateLabel(to)}` : ""}` : t("hrRecordingPeriodEmpty")
   const dayCount = from && to && unit === "DAYS" ? (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000 + 1 : null
   return <section className="mx-auto max-w-5xl space-y-5" data-testid="attendance-hr-recording" aria-busy={busy}>
-    <Link href="/mtm/attendance/requests" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("hrRecordingBack")}</Link>
-    <div className="space-y-2"><h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("hrRecordingTitle")}</h1><p className="max-w-3xl text-sm leading-6 text-muted-foreground">{t("hrRecordingIntro")}</p></div>
+    <div className="space-y-2"><h1 className="text-2xl font-semibold tracking-tight">{t("hrRecordingTitle")}</h1><p className="max-w-3xl text-sm leading-6 text-muted-foreground">{t("hrRecordingIntro")}</p></div>
     <HomeCard testId="attendance-hr-recording-card" titleId="attendance-hr-recording-title" title={t("hrRecordingCard")} tone="orange" icon={<CalendarPlus className="h-5 w-5" aria-hidden="true" />}>
       <div className="space-y-5 py-5">
         {loading && <p role="status" className="text-sm text-muted-foreground">{t("hrRecordingLoading")}</p>}

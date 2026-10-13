@@ -1,0 +1,104 @@
+{
+  "status": "PASS",
+  "environment": "Chromium, actual Sidebar / attendance components and CSS; fictional read-only HTTP fixture; Next routing adapter",
+  "limitations": [
+    "No authenticated production browser session",
+    "Route changes verified via fixture router; full Next build and gates run separately in CI",
+    "Physical phone not tested"
+  ],
+  "checks": [
+    {
+      "locale": "az",
+      "width": 1440,
+      "asynchronousSettingOpen": true,
+      "all13Links": true,
+      "requestHeader": true,
+      "recordAction": true,
+      "employeeNavigation": true,
+      "deepestActiveOnly": true,
+      "sidebarSearch": true,
+      "documentOverflow": false
+    },
+    {
+      "locale": "az",
+      "width": 390,
+      "keyboardOpen": true,
+      "escapeReturnsFocus": true,
+      "all13ReadableLinks": true,
+      "flyoutFits": true,
+      "navigatesAndCloses": true,
+      "documentOverflow": false
+    },
+    {
+      "locale": "ru",
+      "width": 1440,
+      "asynchronousSettingOpen": true,
+      "all13Links": true,
+      "requestHeader": true,
+      "recordAction": true,
+      "employeeNavigation": true,
+      "deepestActiveOnly": true,
+      "sidebarSearch": true,
+      "documentOverflow": false
+    },
+    {
+      "locale": "ru",
+      "width": 390,
+      "keyboardOpen": true,
+      "escapeReturnsFocus": true,
+      "all13ReadableLinks": true,
+      "flyoutFits": true,
+      "navigatesAndCloses": true,
+      "documentOverflow": false
+    },
+    {
+      "locale": "en",
+      "width": 1440,
+      "asynchronousSettingOpen": true,
+      "all13Links": true,
+      "requestHeader": true,
+      "recordAction": true,
+      "employeeNavigation": true,
+      "deepestActiveOnly": true,
+      "sidebarSearch": true,
+      "documentOverflow": false
+    },
+    {
+      "locale": "en",
+      "width": 390,
+      "keyboardOpen": true,
+      "escapeReturnsFocus": true,
+      "all13ReadableLinks": true,
+      "flyoutFits": true,
+      "navigatesAndCloses": true,
+      "documentOverflow": false
+    }
+  ],
+  "errors": [],
+  "sourceBindings": [
+    {
+      "path": "src/components/sidebar.tsx",
+      "sha256": "ecf64943ec536d808d07e2c287f0af3c5e787f8f127f8c2d92d56d83daedc325"
+    },
+    {
+      "path": "src/components/mtm/mtm-sidebar-sections.tsx",
+      "sha256": "285a8052c2100d81e582ad27586faf5cae12f368e9b2d8be2df25a68b01acc83"
+    },
+    {
+      "path": "src/components/mtm/attendance-report-workspace.tsx",
+      "sha256": "ccfacd8648f694f451feb8ba47e689c8e74b7d0d7a14b30248e33d7c3226bd5a"
+    },
+    {
+      "path": "src/components/mtm/attendance-request-queue.tsx",
+      "sha256": "cf1a6109c25180c3ca35d6dd670959c4ad435db5d6bcb12df76a265c60ee3df2"
+    },
+    {
+      "path": "src/components/mtm/attendance-employees.tsx",
+      "sha256": "08d2d88ed360d9981e73bfd6691247c1b65e81b1b4fd45c198a67f4f47c887bb"
+    },
+    {
+      "path": "src/lib/nav-items.ts",
+      "sha256": "f4b2c13ca6a3d8e51fb34aa7d810ccbb73021c5d56f5872956816b2a0f98fe11"
+    }
+  ]
+}
