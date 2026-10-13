@@ -133,10 +133,13 @@ export async function readOnlyDemo(db: Db) {
     assertDemoAttendanceAgents(agents)
     const settings = await tx.mtmSetting.findMany({ where: { organizationId: DEMO.id }, select: { key: true, value: true } })
     if (settings.find((s) => s.key === "attendanceEnabled")?.value !== true || settings.find((s) => s.key === "timezone")?.value !== "Asia/Baku") fail("FIXTURE_CHANGED")
+    // WorkforceEmploymentEvent is deliberately excluded from Prisma's client.
+    const employment = await tx.$queryRaw<Array<{ count: number }>>`
+      SELECT count(*)::int AS count FROM workforce_employment_events WHERE "organizationId" = ${DEMO.id}`
     if (await tx.mtmAttendanceRule.count({ where: { organizationId: DEMO.id } })
       || await tx.mtmWorkCalendarDay.count({ where: { organizationId: DEMO.id } })
       || await tx.mtmAttendanceParticipationEvent.count({ where: { organizationId: DEMO.id } })
-      || await tx.workforceEmploymentEvent.count({ where: { organizationId: DEMO.id } })) fail("FIXTURE_CHANGED")
+      || employment.length !== 1 || employment[0].count !== 0) fail("FIXTURE_CHANGED")
     const workdays = await tx.mtmAgentWorkday.findMany({ where: { organizationId: DEMO.id }, select: {
       id: true, agentId: true, workDate: true, status: true, startedAt: true, completedAt: true, totalPausedSeconds: true,
       events: { where: { organizationId: DEMO.id, agentId: { in: [...DEMO_AGENTS] } },

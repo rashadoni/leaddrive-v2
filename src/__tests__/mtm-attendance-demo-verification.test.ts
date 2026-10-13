@@ -73,6 +73,31 @@ describe("dedicated attendance demo controller", () => {
     await expect(readOnlyDemo(db)).rejects.toThrow("TENANT_NOT_OWNED")
     expect(calls).toEqual(["SET TRANSACTION READ ONLY", "tenant context", "ownership"])
   })
+  it.each([0, 1, null])("verifies raw employment history count %s without an ignored Prisma delegate", async count => {
+    const tx = { $executeRawUnsafe: vi.fn(), $executeRaw: vi.fn(),
+      $queryRaw: vi.fn().mockResolvedValueOnce([{ readOnly: "on", orgId: DEMO.id, bypass: null }])
+        .mockResolvedValueOnce(count === null ? [] : [{ count }])
+        .mockResolvedValueOnce([{ name: "workforce_completed_workday_guard" }, { name: "workforce_workday_events_append_only" }]),
+      organization: { findMany: vi.fn(async () => [owned]) },
+      user: { findMany: vi.fn(async () => [{ id: DEMO.userId, email: DEMO.email, role: "admin", isActive: true,
+        hiddenModules: [], totpEnabled: false, smsAuthEnabled: false, require2fa: false, phone: null, verifiedPhone: null, anonymizedAt: null }]) },
+      mtmAgent: { findMany: vi.fn(async () => [...DEMO_AGENTS.map(id => ({ id, role: "AGENT", status: "ACTIVE", teamId: null, userId: null,
+        attendanceParticipant: false, attendanceExcluded: false, attendanceIncludedFrom: null })),
+        { id: "9a000000-0000-4000-8000-000000000001", role: "EMPLOYEE", status: "ACTIVE", teamId: null, userId: DEMO.userId,
+          attendanceParticipant: true, attendanceExcluded: false, attendanceIncludedFrom: new Date("2026-10-13T10:00:00Z"), canPlanOwnRoutes: false, canSelfPublishRoutes: false }]) },
+      mtmSetting: { findMany: vi.fn(async () => [{ key: "attendanceEnabled", value: true }, { key: "timezone", value: "Asia/Baku" }]) },
+      mtmAttendanceRule: { count: vi.fn(async () => 0) }, mtmWorkCalendarDay: { count: vi.fn(async () => 0) },
+      mtmAttendanceParticipationEvent: { count: vi.fn(async () => 0) },
+      mtmAgentWorkday: { findMany: vi.fn(async () => snapshot().workdays) },
+    }
+    const db = { $transaction: (fn: (value: typeof tx) => unknown) => fn(tx) } as unknown as PrismaClient
+    if (count === 0) await expect(readOnlyDemo(db)).resolves.toMatchObject(snapshot())
+    else { await expect(readOnlyDemo(db)).rejects.toThrow("FIXTURE_CHANGED"); expect(tx.mtmAgentWorkday.findMany).not.toHaveBeenCalled() }
+    expect(tx.$executeRawUnsafe).toHaveBeenCalledWith("SET TRANSACTION READ ONLY")
+    const [query, tenant] = tx.$queryRaw.mock.calls[1]
+    expect(query.join("?")).toMatch(/FROM workforce_employment_events WHERE "organizationId" = \?/)
+    expect(tenant).toBe(DEMO.id)
+  })
   it("independently matches actual report rows, shared-parser pauses, journal clocks and totals", () => {
     const parity = verifyParity(snapshot(), report())
     expect(parity.totals).toMatchObject({ workedSeconds: 90540, pausedSeconds: 3000, lateSeconds: 1260, earlyLeaveSeconds: 1800, absentCount: 1 })
