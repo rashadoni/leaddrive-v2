@@ -227,6 +227,9 @@ model Organization {
   workforcePolicySnapshots            WorkforcePolicySnapshot[]
   workforceShiftSnapshots             WorkforceShiftSnapshot[]
   workforceWorkdayScheduleSnapshots   WorkforceWorkdayScheduleSnapshot[]
+  attendanceMonthCloses MtmAttendanceMonthClose[]
+  attendanceMonthMembers MtmAttendanceMonthMember[]
+  attendanceMonthDays MtmAttendanceMonthDay[]
   attendanceShiftPlans MtmAttendanceShiftPlan[]
   attendanceShiftMembers MtmAttendanceShiftMember[]
   attendanceLeavePolicies MtmAttendanceLeavePolicy[]
@@ -726,6 +729,7 @@ model User {
   workforceShiftDefaultOperationsPublished WorkforceShiftDefaultOperation[] @relation("WorkforceShiftDefaultOperationPublishedBy")
   workforceShiftTeamDefaultAssignmentsAssigned WorkforceShiftTeamDefaultAssignment[] @relation("WorkforceShiftTeamDefaultAssignmentAssignedBy")
   workforceShiftTeamDefaultOperationsPublished WorkforceShiftTeamDefaultOperation[] @relation("WorkforceShiftTeamDefaultOperationPublishedBy")
+  attendanceMonthClosesCreated MtmAttendanceMonthClose[]
   attendanceShiftPlansCreated MtmAttendanceShiftPlan[]
   attendanceLeavePoliciesCreated MtmAttendanceLeavePolicy[]
   attendanceLeaveProfilesCreated MtmAttendanceLeaveProfile[]
@@ -5769,6 +5773,7 @@ model MtmTeam {
 
 // MTM Agent — field agents linked to CRM users
 model MtmAgent {
+  attendanceMonthMemberships MtmAttendanceMonthMember[]
   attendanceShiftMembers MtmAttendanceShiftMember[]
   attendanceLeaveProfiles MtmAttendanceLeaveProfile[]
   attendanceQrEvidence MtmAttendanceQrEvidence[]
@@ -22406,6 +22411,51 @@ model MtmAttendanceLeaveProfile {
 }
 
 
+model MtmAttendanceMonthClose {
+  id String @id
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  month DateTime @db.Date
+  requestId String
+  requestHash String @db.VarChar(64)
+  payloadHash String @db.VarChar(64)
+  payload Json
+  createdBy String
+  author User @relation(fields: [organizationId, createdBy], references: [organizationId, id], onDelete: Restrict)
+  createdByName String?
+  createdAt DateTime @default(now())
+  members MtmAttendanceMonthMember[]
+  @@unique([organizationId, id])
+  @@unique([organizationId, requestId])
+  @@index([organizationId, month, createdAt, id], map: "mtm_month_closes_period")
+  @@map("mtm_attendance_month_closes")
+}
+model MtmAttendanceMonthMember {
+  id String @id
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  closeId String
+  close MtmAttendanceMonthClose @relation(fields: [organizationId, closeId], references: [organizationId, id], onDelete: Cascade)
+  agentId String
+  agent MtmAgent @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  month DateTime @db.Date
+  days MtmAttendanceMonthDay[]
+  @@unique([organizationId, closeId, agentId])
+  @@unique([organizationId, agentId, month])
+  @@map("mtm_attendance_month_members")
+}
+model MtmAttendanceMonthDay {
+  id String @id
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  closeId String
+  agentId String
+  member MtmAttendanceMonthMember @relation(fields: [organizationId, closeId, agentId], references: [organizationId, closeId, agentId], onDelete: Cascade)
+  sourceDate DateTime @db.Date
+  @@unique([organizationId, agentId, sourceDate])
+  @@index([organizationId, closeId], map: "mtm_month_days_snapshot")
+  @@map("mtm_attendance_month_days")
+}
 // Future, frozen-roster schedules. Revisions never rewrite attendance facts.
 model MtmAttendanceShiftPlan {
   id String @id

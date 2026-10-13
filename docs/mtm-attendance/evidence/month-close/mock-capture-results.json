@@ -1,0 +1,14 @@
+[
+  {
+    "viewport": 1440,
+    "scrollWidth": 1440,
+    "innerScrolls": 0,
+    "minTargetHeight": 44
+  },
+  {
+    "viewport": 390,
+    "scrollWidth": 390,
+    "innerScrolls": 0,
+    "minTargetHeight": 44
+  }
+]
