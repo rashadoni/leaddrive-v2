@@ -11,6 +11,7 @@ import { buildMtmAttendanceReport } from "@/lib/mtm/attendance-report"
 import { DEMO, DEMO_AGENTS, prepareDemo, readOnlyDemo, verifyParity } from "../../scripts/mtm-attendance-demo-verification"
 
 import { prepareRequestDemo, readRequestDemo, readSurfaceDemo, REQUEST_DEMO } from "../../scripts/mtm-attendance-request-demo-verification"
+import { PHONE, PHONE_USERS, preparePhone, readPhone } from "../../scripts/mtm-attendance-phone-fixture"
 
 const adminUrl = process.env.MTM_DEMO_TEST_DATABASE_URL
 if (!adminUrl && process.env.MTM_DEMO_DB_GATE === "required") throw new Error("MTM_DEMO_TEST_DATABASE_URL is required")
@@ -175,6 +176,39 @@ suite("attendance demo fixture with real PostgreSQL guards", () => {
     await db.mtmAgent.update({ where: { id: DEMO_AGENTS[0] }, data: { email: "changed@example.invalid" } })
     await expect(prepareRequestDemo(db, "must-not-overwrite")).rejects.toThrow("VERIFICATION_FAILED")
     expect((await db.mtmAgent.findUnique({ where: { id: DEMO_AGENTS[0] } }))?.passwordHash).toBe("fixture-mobile-hash")
+  })
+
+  it("creates a separately owned physical-phone tenant once, preserving the original demo and real triggers", async () => {
+    const before = await readOnlyDemo(db)
+    await admin.organization.create({ data: { id: "phone-fixture-slug-collision", slug: PHONE.slug, name: "Unowned CI collision" } })
+    await expect(preparePhone(db, "unusable-phone-test-hash")).rejects.toThrow("PHONE_NOT_OWNED")
+    expect(await admin.user.count({ where: { organizationId: PHONE.id } })).toBe(0)
+    await admin.organization.delete({ where: { id: "phone-fixture-slug-collision" } })
+    expect(await preparePhone(db, "unusable-phone-test-hash")).toBe(true)
+    const snapshot = await readPhone(db)
+    expect(snapshot.users.map(user => user.id).sort()).toEqual(PHONE_USERS.map(user => user.id).sort())
+    expect(snapshot.agents).toBe(3)
+    expect(await preparePhone(db, "must-never-replace")).toBe(false)
+    expect(await readPhone(db)).toEqual(snapshot)
+    expect(await readOnlyDemo(db)).toEqual(before)
+    expect(await admin.mtmAgentWorkday.count({ where: { organizationId: PHONE.id } })).toBe(0)
+    expect(await admin.mtmAttendanceLocationPolicy.count({ where: { organizationId: PHONE.id } })).toBe(0)
+    expect(await admin.mtmAttendanceSchedule.count({ where: { organizationId: PHONE.id } })).toBe(0)
+    const probe = { $transaction: (fn: (tx: Prisma.TransactionClient) => Promise<unknown>) => db.$transaction(async tx => {
+      const result = await fn(tx)
+      await tx.user.update({ where: { id: PHONE_USERS[1].id }, data: { name: "must-not-change" } })
+      return result
+    }) } as unknown as Pick<PrismaClient, "$transaction">
+    await expect(readPhone(probe)).rejects.toThrow(/read-only transaction/)
+    expect(await readPhone(db)).toEqual(snapshot)
+    await admin.organization.update({ where: { id: PHONE.id }, data: { isActive: false } })
+    await expect(readPhone(db)).rejects.toThrow("PHONE_FIXTURE_CHANGED")
+    await admin.organization.update({ where: { id: PHONE.id }, data: { isActive: true } })
+    expect(await readPhone(db)).toEqual(snapshot)
+    await admin.mtmAgent.updateMany({ where: { organizationId: PHONE.id, userId: PHONE_USERS[1].id }, data: { attendanceParticipant: false } })
+    await expect(readPhone(db)).rejects.toThrow("PHONE_FIXTURE_CHANGED")
+    await admin.mtmAgent.updateMany({ where: { organizationId: PHONE.id, userId: PHONE_USERS[1].id }, data: { attendanceParticipant: true } })
+    expect(await readPhone(db)).toEqual(snapshot)
   })
 
 })
