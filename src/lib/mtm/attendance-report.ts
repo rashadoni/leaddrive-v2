@@ -320,7 +320,7 @@ export function buildMtmAttendanceReport(input: MtmAttendanceReportInput) {
   const rows = input.employees.flatMap((employee) => dates.map((date) => {
     const row = buildRow(employee, date, days.get(rowKey(employee.id, date)) ?? [], plans.get(date)!, calendarByDate.get(date) ?? [], now)
     const dayKind = catalogue.get(row.kind)
-    return projectApprovedAttendanceRequests(dayKind ? { ...row, dayKind } : row, approvedByEmployee.get(employee.id) ?? [])
+    return projectApprovedAttendanceRequests(dayKind ? { ...row, dayKind } : row, approvedByEmployee.get(employee.id) ?? [], plans.get(date)!.rule.lateGraceMinutes * 60)
   }))
   return { from: input.from, to: input.to, asOf, rows, totals: summarizeMtmAttendanceRows(rows) }
 }
