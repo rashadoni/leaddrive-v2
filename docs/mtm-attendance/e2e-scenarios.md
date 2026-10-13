@@ -63,8 +63,8 @@ installations, branch-qr, review, location-settings and recordings.
 
 ## Remaining acceptance work (must not be relabelled PASS)
 
-The first hosted execution and selector/fixture stabilization remain **NOT RUN**
-until the workflow actually completes. At initial authoring the following still
+Historical authoring checkpoint (superseded by the hosted results below): the
+first execution and selector/fixture stabilization had not run. These still
 need browser mutation cases beyond their existing real HTTP coverage:
 
 - Rules save and calendar create/edit/delete/cancel.
@@ -197,3 +197,30 @@ browser document-link download. Upload is explicitly mobile HTTP, not an Android
 picker. Files stay in disposable private runner storage outside artifacts.
 The development server uses the application's memory admission backend; the
 production Redis availability/concurrency gate remains **NOT_RUN** here.
+
+## Second hosted evidence and environment corrections — 2026-10-14 (Asia/Baku)
+
+Run 38475185628, exact head `576d8989f058d2db9753fc58b8b7b1f026411f0d`,
+finished **FAIL: 60 PASS, 2 FAIL, 5 NOT_RUN**. The earlier fixture/selector fixes,
+all sidebar destinations, real lost-acknowledgement retry, competing browser
+tabs and final privacy invariants passed. Remaining failures were the QR
+background check and the new document-upload flow.
+
+The QR runner still forced the page visible: Playwright's Chromium page setup
+enables `Emulation.setFocusEmulationEnabled` for every page. The scenario now
+removes that automation override through CDP before bringing another real tab
+forward. It retains the native hidden-state and missing-image assertions, then
+restores the runner default. No application event or visibility value is faked.
+
+The document fixture supplied an external runtime directory without a separate
+external log directory. The actual `resolveRuntimePaths` module rejects this
+pair because the default development log directory is inside the checkout.
+A small isolated execution of that module reproduced the rejection and accepted
+the corrected sibling runtime/log directories without writing files. The CI
+environment now configures both. The upload helper also records only expected
+and received status, byte count and an allowlisted application error code on
+failure, so further failures can be diagnosed without private response content.
+
+These corrections still need a new hosted run. No product defect has been
+established; the document access/download assertions remain unproved until the
+upload preparation and the subsequent real browser steps complete successfully.

@@ -107,6 +107,7 @@ jobs:
             echo "TENANT_PII_MASTER_KEY=$MTM_PII_SECRET"
             echo "MTM_E2E_LOG=${RUNNER_TEMP}/mtm-attendance-e2e.log"
             echo "LEADDRIVE_RUNTIME_DIR=${RUNNER_TEMP}/mtm-attendance-e2e-runtime"
+            echo "LEADDRIVE_LOG_DIR=${RUNNER_TEMP}/mtm-attendance-e2e-logs"
           } >> "$GITHUB_ENV"
       - uses: actions/setup-node@v6
         with:

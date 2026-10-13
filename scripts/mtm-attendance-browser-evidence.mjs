@@ -560,7 +560,7 @@ try {
     await readyPage('branch-qr')
     const toggle = page.getByRole('switch', { name: t('qrRule') })
     assert.equal(await toggle.getAttribute('aria-checked'), 'false')
-    let secondPage
+    let secondPage, visibilitySession
     try {
       // The component aborts the old PUT response while loading its new state.
       // Prove the real status and resulting state without reading a discarded body.
@@ -572,6 +572,11 @@ try {
       assert.ok((await qr.getAttribute('src')).startsWith('data:image/png;base64,'))
       await button('qrRefresh').click()
       await qr.waitFor({ timeout: 120000 })
+      // Playwright enables focus emulation on every page, which pins visibility
+      // to visible. Remove that runner override before changing real foreground
+      // tabs; never assign document.visibilityState or dispatch synthetic events.
+      visibilitySession = await sessions.admin.newCDPSession(page)
+      await visibilitySession.send('Emulation.setFocusEmulationEnabled', { enabled: false })
       secondPage = await sessions.admin.newPage()
       await secondPage.goto('about:blank'); await secondPage.bringToFront()
       await poll(async () => await page.evaluate(() => document.visibilityState) === 'hidden', 'QR page background visibility')
@@ -583,10 +588,15 @@ try {
       assert.equal(await qr.count(), 0)
     } finally {
       await secondPage?.close()
+      await page.bringToFront()
+      if (visibilitySession) {
+        await visibilitySession.send('Emulation.setFocusEmulationEnabled', { enabled: true })
+        await visibilitySession.detach()
+      }
       // Failed lifecycle assertions must still leave the disposable policy OFF.
       await request(sessions.admin, '/api/v1/mtm/settings', { method: 'PUT', body: { attendanceBranchQrEnabled: false } })
     }
-    return { enabledThenDisabled: true, refresh: true, hidesInBackground: true, cameraScan: 'NOT_RUN' }
+    return { enabledThenDisabled: true, refresh: true, hidesInBackground: true, playwrightFocusOverrideDisabled: true, cameraScan: 'NOT_RUN' }
   })
   await run('browser-settings-hr-catalogue-quotas', 'browser-action+database-backed-http', async () => {
     await readyPage('')
@@ -979,8 +989,12 @@ try {
       const response = await mobiles.employee.request.post(`${mobileRoot}/attachments`, {
         multipart: { clientRequestId, clientAttachmentId: attachmentId, file: { name: 'fixture.jpg', mimeType: 'image/jpeg', buffer } }, timeout: 120000,
       })
-      assert.equal(response.status(), expectedStatus)
-      const json = await response.json()
+      const json = await response.json().catch(() => null)
+      if (response.status() !== expectedStatus) {
+        const error = new Error('Unexpected document upload status')
+        error.safeDiagnostic = `POST attachments (${buffer.length} bytes): expected ${expectedStatus}, received ${response.status()}${/^MTM_[A-Z_]+$/.test(json?.code ?? '') ? ` ${json.code}` : ''}`
+        throw error
+      }
       if (expectedStatus < 400) assert.equal(json.success, true)
       return json.data
     }
