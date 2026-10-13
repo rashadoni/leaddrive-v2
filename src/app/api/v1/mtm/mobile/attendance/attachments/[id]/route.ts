@@ -2,7 +2,9 @@ import { withMobileRls } from "@/lib/with-mobile-rls"
 import { readAttendanceDocument } from "@/lib/mtm/attendance-attachment"
 import { attendancePrivateHeaders, attendanceRequestFailure } from "@/lib/mtm/attendance-request-http"
 
-export const GET = withMobileRls<{ params: Promise<{ id: string }> }>(async (_req, auth, ctx) => {
+type AttachmentContext = { params: Promise<{ id: string }> }
+
+export const GET = withMobileRls<AttachmentContext>(async (_req, auth, ctx) => {
   try {
     const { id } = await ctx.params
     const file = await readAttendanceDocument({ organizationId: auth.orgId, self: { organizationId: auth.orgId, agentId: auth.agentId, role: auth.role } }, id)

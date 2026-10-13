@@ -489,3 +489,8 @@
 
 - Аналогичный boolean object modules применён к вымышленному tenant fixture лимитов #721. Исправления PostgreSQL/runtime и типов #720 включены в ветку лимитов. Runtime-код и правила доступа не ослаблялись; повтор полного CI ожидается.
 - Дополнительная сверка контракта module-mask: администраторы по дизайну не ограничиваются hiddenModules. PG-сценарий отзыва временно переводит проверяемого пользователя в manager перед скрытием MTM, затем восстанавливает admin; тест теперь проверяет действующую модель прав, не несуществующее ограничение admin. Runtime правил не меняли.
+#### 2026-10-13 — CI заявки: распознаваемый RLS wrapper и приватный доступ
+
+- #719 mandatory static gate нашёл два RLS-context gaps: вложенный generic Promise в inline типе параметров не распознавался scanner, хотя wrapper действовал. Параметр вынесен в named AttachmentContext; scanner и его baseline не менялись. Полный build/typecheck и HRM UI этого head прошли, повтор static обязателен.
+- Из последующего review2.6 обратно перенесено ограничение CRM private attachments: только текущий session reviewer с write и настоящей областью команды, без self/readonly HR grant. Поэтому промежуточный выпуск2.2 также не открывает документы общим HR-читателям. Старая auth.actor могла быть синтетическим широким report actor. Повторные scoped проверки/CI далее; общий RLS dependency scan локально NOT RUN по host contract.
+- Private reviewer admission:7targeted tests PASS, scoped ESLint3paths PASS, diff-check PASS. No role/scope widening: non-admin null scope is denied too. Shared dependencies linked without install/generate. Full regression/RLS scan remains CI-only.
