@@ -239,6 +239,46 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
   expect(()=>sql(scratch!.adminDb,`UPDATE mtm_attendance_mark_evidence SET action='START' WHERE id='${row.id}'`)).toThrow()
  })
 
+ it("reads actual review evidence in scope and appends one immutable dismissal for concurrent retries",async()=>{
+  const review=await import("@/lib/mtm/attendance-risk-review-store")
+  const id=await employee(),device=`rf-${randomUUID()}`
+  expect((await send(operation("START",randomUUID(),new Date(Date.now()-1800000),{version:1,installationId:device,locationState:"NO_CONSENT",location:null,consentRevisionId:null}),device)).body.results[0].status).toBe("ok")
+  const [risk]=await tenant(ORG,()=>prisma.$queryRaw<{id:string;workDate:Date}[]>`SELECT id,"workDate" FROM mtm_attendance_risk_cases WHERE "agentId"=${id}`)
+  const query={from:risk.workDate.toISOString().slice(0,10),to:risk.workDate.toISOString().slice(0,10),status:"ALL",employeeId:id}
+  const access={organizationId:ORG,actor:{role:"ADMIN" as const,agentId:null,scopedAgentIds:null},reviewer:admin,query}
+  const before=await tenant(ORG,()=>review.readAttendanceRiskReport(access));expect(before.items).toHaveLength(1)
+  expect(before.items[0]).toMatchObject({kind:"DELAYED_CLAIM",canDismiss:true,dismissal:null})
+  expect(JSON.stringify(before)).not.toMatch(/installationId|latitude|longitude|consentId/)
+  // A fabricated broad/narrow middleware actor does not replace current DB authority.
+  expect((await tenant(ORG,()=>review.readAttendanceRiskReport({...access,actor:{role:"MANAGER",agentId:null,scopedAgentIds:[]}}))).items).toHaveLength(1)
+  const payload={requestId:randomUUID(),reason:"Fictional offline delivery confirmed"}
+  const results=await Promise.all([tenant(ORG,()=>review.dismissAttendanceRisk(admin,risk.id,payload)),tenant(ORG,()=>review.dismissAttendanceRisk(admin,risk.id,payload))])
+  expect(results[0].id).toBe(results[1].id);expect(results.filter(result=>!result.idempotent)).toHaveLength(1)
+  const after=await tenant(ORG,()=>review.readAttendanceRiskReport(access));expect(after.snapshot.id).not.toBe(before.snapshot.id)
+  expect(after.items[0]).toMatchObject({canDismiss:false,dismissal:{reason:payload.reason,byName:"Fictional administrator"}})
+  expect(await tenant(ORG,()=>prisma.mtmAuditLog.count({where:{action:"MTM_ATTENDANCE_RISK_DISMISSED",entityId:risk.id}}))).toBe(1)
+  await expect(tenant(ORG,()=>review.dismissAttendanceRisk(admin,risk.id,{...payload,reason:"Changed reason"}))).rejects.toMatchObject({status:409})
+  await expect(tenant(ORG,()=>prisma.$executeRaw`UPDATE mtm_attendance_risk_decisions SET reason='rewrite' WHERE "caseId"=${risk.id}`)).rejects.toThrow(/IMMUTABLE/)
+  await expect(tenant(ORG,()=>prisma.$executeRaw`DELETE FROM mtm_attendance_risk_decisions WHERE "caseId"=${risk.id}`)).rejects.toThrow(/IMMUTABLE/)
+  expect(await tenant(OTHER,()=>prisma.$queryRaw`SELECT id FROM mtm_attendance_risk_decisions`)).toEqual([])
+ })
+ it("keeps HR read-only and rolls back dismissal when its audit cannot be saved",async()=>{
+  const review=await import("@/lib/mtm/attendance-risk-review-store")
+  const id=await employee(),device=`rf-${randomUUID()}`
+  expect((await send(operation("START",randomUUID(),new Date(Date.now()-1800000),{version:1,installationId:device,locationState:"NO_CONSENT",location:null,consentRevisionId:null}),device)).body.results[0].status).toBe("ok")
+  const [risk]=await tenant(ORG,()=>prisma.$queryRaw<{id:string;workDate:Date}[]>`SELECT id,"workDate" FROM mtm_attendance_risk_cases WHERE "agentId"=${id}`)
+  const hrId=randomUUID();await bypass(()=>prisma.user.create({data:{id:hrId,organizationId:ORG,email:`${hrId}@example.invalid`,name:"Fictional HR reader",role:"viewer",passwordHash:"unusable-fixture",mtmAttendanceAll:true}}))
+  const hr={organizationId:ORG,userId:hrId,principalType:"session" as const}
+  const report=await tenant(ORG,()=>review.readAttendanceRiskReport({organizationId:ORG,actor:{role:"MANAGER",agentId:null,scopedAgentIds:null},allEmployeesGrant:true,reviewer:hr,query:{from:risk.workDate.toISOString().slice(0,10),to:risk.workDate.toISOString().slice(0,10),employeeId:id}}))
+  expect(report.items[0].canDismiss).toBe(false)
+  const payload={requestId:randomUUID(),reason:"Fictional review"}
+  await expect(tenant(ORG,()=>review.dismissAttendanceRisk(hr,risk.id,payload))).rejects.toMatchObject({status:403})
+  sql(scratch!.adminDb,`CREATE FUNCTION fixture_risk_audit_fail() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action='MTM_ATTENDANCE_RISK_DISMISSED' THEN RAISE EXCEPTION 'fixture risk audit unavailable'; END IF; RETURN NEW; END $$; CREATE TRIGGER fixture_risk_audit_fail BEFORE INSERT ON mtm_audit_logs FOR EACH ROW EXECUTE FUNCTION fixture_risk_audit_fail();`)
+  try{await expect(tenant(ORG,()=>review.dismissAttendanceRisk(admin,risk.id,payload))).rejects.toThrow()
+   expect(await tenant(ORG,()=>prisma.$queryRaw`SELECT id FROM mtm_attendance_risk_decisions WHERE "caseId"=${risk.id}`)).toEqual([])
+  }finally{sql(scratch!.adminDb,'DROP TRIGGER fixture_risk_audit_fail ON mtm_audit_logs; DROP FUNCTION fixture_risk_audit_fail();')}
+ })
+
  const riskRows=(agentId=identity.agentId)=>tenant(ORG,()=>prisma.$queryRaw<{id:string;agentId:string;eventId:string;kind:string;details:Record<string,unknown>}[]>`SELECT id,"agentId","eventId",kind,details FROM mtm_attendance_risk_cases WHERE "agentId"=${agentId} ORDER BY kind`)
  const noLocation=(installationId:string):AttendanceMark=>({version:1,installationId,locationState:"NO_CONSENT",consentRevisionId:null,location:null})
  const setting=(key:string,value:boolean|number)=>tenant(ORG,()=>prisma.mtmSetting.upsert({where:{organizationId_key:{organizationId:ORG,key}},create:{organizationId:ORG,key,value},update:{value}}))

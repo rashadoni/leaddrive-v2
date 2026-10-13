@@ -27,19 +27,21 @@ const reviewer={organizationId:org,userId,principalType:"session" as const}
 const actor={role:"ADMIN" as const,agentId:null,scopedAgentIds:null},query={from:"2026-10-01",to:"2026-10-31",status:"ALL" as const}
 const fixture=()=>({id:caseId,agentId:employee,employeeName:"=Fictional employee",teamId:"fictional-team",teamName:"Fictional team",userId:"fictional-employee-user",kind:"SHARED_INSTALLATION",workDate:new Date("2026-10-13"),timezone:"Asia/Baku",claimedAt:new Date("2026-10-13T05:00:00Z"),serverReceivedAt:new Date("2026-10-13T05:00:02Z"),action:"START",createdAt:new Date("2026-10-13T05:01:00Z"),details:{version:1,relatedAgentIds:["related","outside-scope"],usualAgentId:"outside-scope",usualDays:8,observedDays:10,latitude:PRIVATE,installationId:PRIVATE},dismissedAt:null as Date|null,dismissedBy:null as string|null,reason:null as string|null,branchName:null})
 const PRIVATE="PRIVATE_FORBIDDEN_FIXTURE"
-let rows:ReturnType<typeof fixture>[],existing:object[]
+let rows:ReturnType<typeof fixture>[],existing:object[],currentUser:{role:string;hiddenModules:string[];mtmAttendanceAll:boolean}
 const request=(data:unknown)=>new NextRequest("http://localhost/api/v1/mtm/attendance/review",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(data)})
 const read=()=>GET(new NextRequest(`http://localhost/api/v1/mtm/attendance/review?${new URLSearchParams(query)}`))
 beforeEach(()=>{
- vi.resetAllMocks();rows=[fixture()];existing=[]
+ vi.resetAllMocks();rows=[fixture()];existing=[];currentUser={role:"admin",hiddenModules:[],mtmAttendanceAll:false}
  vi.mocked(requireAuth).mockResolvedValue({orgId:org,userId,role:"admin",principalType:"session"} as never)
  vi.mocked(resolveMtmRouteActor).mockResolvedValue(actor);vi.mocked(resolveAttendanceReviewerScope).mockResolvedValue(actor)
  vi.mocked(requireAttendanceReviewer).mockResolvedValue({actor,locale:"en"})
  vi.mocked(prisma.$transaction).mockImplementation((async callback=>callback(prisma)) as never)
  vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{key:"attendanceEnabled",value:true},{key:"timezone",value:"Asia/Baku"}] as never)
+ vi.mocked(prisma.mtmSetting.findUnique).mockResolvedValue({value:true} as never)
+ vi.mocked(prisma.organization.findUnique).mockResolvedValue({plan:"enterprise",addons:[],features:["mtm"],modules:{mtm:true,"route-field":true},settings:{}} as never)
  vi.mocked(prisma.mtmAgent.findMany).mockImplementation((async args=>args.select.team ? [{id:employee,name:"=Fictional employee",teamId:"fictional-team",team:{name:"Fictional team"}}] : [{id:"related",name:"Fictional colleague"}]) as never)
  vi.mocked(prisma.$queryRaw).mockImplementation((async sql=>{
-  const s=sql.join(" ");if(s.includes('SELECT c.id'))return rows
+  const s=sql.join(" ");if(s.includes("FROM users"))return [currentUser];if(s.includes('SELECT c.id'))return rows
   if(s.includes('SELECT "agentId" FROM mtm_attendance_risk_cases'))return [{agentId:employee}]
   if(s.includes('FROM mtm_attendance_risk_decisions'))return existing
   return []
@@ -47,6 +49,7 @@ beforeEach(()=>{
 })
 describe("attendance risk reports and reason ledger",()=>{
  it("uses a strict endpoint allowlist and masks related employees outside current scope",async()=>{
+  vi.mocked(resolveMtmRouteActor).mockResolvedValue({role:"MANAGER",agentId:null,scopedAgentIds:[employee,"related"]})
   const data=await readAttendanceRiskReport({organizationId:org,actor:{role:"MANAGER",agentId:null,scopedAgentIds:[employee,"related"]},reviewer,query})
   expect(data.items[0]).toMatchObject({relatedNames:["Fictional colleague"],relatedNamesRestricted:true,usualName:null,usualDays:null})
   expect(JSON.stringify(data)).not.toMatch(/PRIVATE_FORBIDDEN|latitude|installationId|outside-scope/)
@@ -55,14 +58,24 @@ describe("attendance risk reports and reason ledger",()=>{
   expect(call).toContain(org);expect(call).toContainEqual([employee,"related"])
  })
  it("does not promote a report-wide HR grant into dismissal permission",async()=>{
+  currentUser={role:"viewer",hiddenModules:[],mtmAttendanceAll:true}
   vi.mocked(resolveAttendanceReviewerScope).mockRejectedValue(new AttendanceRequestError("MTM_ATTENDANCE_DECISION_FORBIDDEN",403))
   const data=await readAttendanceRiskReport({organizationId:org,actor:{role:"MANAGER",agentId:null,scopedAgentIds:null},allEmployeesGrant:true,reviewer,query})
   expect(data.items[0].canDismiss).toBe(false)
  })
  it("denies unscoped manager and foreign employee filter before reading cases",async()=>{
-  for(const item of[{role:"MANAGER" as const,agentId:null,scopedAgentIds:null},{role:"AGENT" as const,agentId:employee,scopedAgentIds:[employee]}])await expect(readAttendanceRiskReport({organizationId:org,actor:item,reviewer,query})).rejects.toMatchObject({status:403})
+  for(const item of[{role:"MANAGER" as const,agentId:null,scopedAgentIds:null},{role:"AGENT" as const,agentId:employee,scopedAgentIds:[employee]}]){vi.mocked(resolveMtmRouteActor).mockResolvedValue(item);await expect(readAttendanceRiskReport({organizationId:org,actor:item,reviewer,query})).rejects.toMatchObject({status:403})}
+  vi.mocked(resolveMtmRouteActor).mockResolvedValue({role:"MANAGER",agentId:null,scopedAgentIds:[employee]})
   await expect(readAttendanceRiskReport({organizationId:org,actor:{role:"MANAGER",agentId:null,scopedAgentIds:[employee]},reviewer,query:{...query,employeeId:"foreign"}})).rejects.toMatchObject({status:403})
-  expect(prisma.$queryRaw).not.toHaveBeenCalled()
+  expect(vi.mocked(prisma.$queryRaw).mock.calls.some(([sql])=>sql.join(" ").includes("SELECT c.id"))).toBe(false)
+ })
+ it.each(["grant","hidden","disabled","scope"])("rechecks a stale middleware actor after %s changes",async mode=>{
+  if(mode==="grant"){currentUser={role:"viewer",hiddenModules:[],mtmAttendanceAll:false};vi.mocked(resolveMtmRouteActor).mockResolvedValue(null)}
+  if(mode==="hidden")currentUser={role:"manager",hiddenModules:["mtm"],mtmAttendanceAll:true}
+  if(mode==="disabled")vi.mocked(prisma.mtmSetting.findUnique).mockResolvedValue({value:false} as never)
+  if(mode==="scope")vi.mocked(resolveMtmRouteActor).mockResolvedValue({role:"MANAGER",agentId:null,scopedAgentIds:[]})
+  await expect(readAttendanceRiskReport({organizationId:org,actor,allEmployeesGrant:true,reviewer,query:{...query,employeeId:employee}})).rejects.toMatchObject({status:mode==="disabled"?404:403})
+  expect(vi.mocked(prisma.$queryRaw).mock.calls.some(([sql])=>sql.join(" ").includes("SELECT c.id"))).toBe(false)
  })
  it("hides access when disabled and refuses non-session principals",async()=>{
   vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{key:"attendanceEnabled",value:false}] as never)

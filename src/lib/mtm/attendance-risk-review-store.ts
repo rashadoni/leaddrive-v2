@@ -2,9 +2,12 @@ import { createHash, randomUUID } from "node:crypto"
 import { z } from "zod"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
+import { checkPermission, type Role } from "@/lib/permissions"
+import { effectiveHiddenModules } from "@/lib/user-module-access"
+import { capabilitySettingsFromTenantSettings, getTenantCapabilityDefinition, resolveTenantCapability, tenantModulesFromFields } from "@/lib/tenant-capabilities"
 import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
 import { requireAttendanceReviewer, resolveAttendanceReviewerScope, type AttendanceReviewer } from "@/lib/mtm/attendance-request-decision"
-import { canReviewMtmRouteRequest, type MtmRouteActor } from "@/lib/mtm/route-permissions"
+import { canReviewMtmRouteRequest, resolveMtmRouteActor, type MtmRouteActor } from "@/lib/mtm/route-permissions"
 import { AttendanceRiskQuerySchema, AttendanceRiskKindSchema, AttendanceRiskDetailsSchema, AttendanceRiskDismissSchema,
   ATTENDANCE_RISK_LIMIT, type AttendanceRiskReport, type AttendanceRiskItem } from "@/lib/mtm/attendance-risk-contract"
 
@@ -14,16 +17,42 @@ type CaseRow = { id: string; agentId: string; employeeName: string; teamId: stri
   dismissedAt: Date | null; dismissedBy: string | null; reason: string | null; branchName: string | null }
 const fail = (code: string, status = 409): never => { throw new AttendanceRequestError(`MTM_ATTENDANCE_RISK_${code}`, status) }
 
+/** Recheck read authority within the very snapshot being exported. Middleware
+ * actors are only an early boundary; they cannot preserve a revoked HR grant. */
+async function currentReadActor(tx: Prisma.TransactionClient, reviewer: AttendanceReviewer): Promise<MtmRouteActor> {
+  if (reviewer.principalType !== "session") return fail("FORBIDDEN", 403)
+  const { organizationId, userId } = reviewer
+  const [user] = await tx.$queryRaw<{ role: string; hiddenModules: string[]; mtmAttendanceAll: boolean }[]>`
+    SELECT role,"hiddenModules","mtmAttendanceAll" FROM users WHERE "organizationId"=${organizationId} AND id=${userId}
+      AND "isActive" AND "anonymizedAt" IS NULL FOR SHARE`
+  if (!user || !checkPermission(user.role as Role, "mtm", "read") || effectiveHiddenModules(user.role, user.hiddenModules).includes("mtm")) return fail("FORBIDDEN", 403)
+  await tx.$queryRaw`SELECT id FROM organizations WHERE id=${organizationId} FOR SHARE`
+  const org = await tx.organization.findUnique({ where: { id: organizationId }, select: { plan: true, addons: true, features: true, modules: true, settings: true } })
+  const definition = getTenantCapabilityDefinition("route-field")
+  if (!org || !definition) return fail("FORBIDDEN", 403)
+  const settings = capabilitySettingsFromTenantSettings(org.settings)
+  const capability = resolveTenantCapability(definition, { plan: org.plan, addons: org.addons, modules: tenantModulesFromFields(org), hidden: settings.hidden, requested: settings.requested })
+  if (!capability.enabled || capability.status === "disabled") return fail("FORBIDDEN", 403)
+  await tx.$queryRaw`SELECT id FROM mtm_settings WHERE "organizationId"=${organizationId} AND key='attendanceEnabled' FOR SHARE`
+  const feature = await tx.mtmSetting.findUnique({ where: { organizationId_key: { organizationId, key: "attendanceEnabled" } }, select: { value: true } })
+  if (feature?.value !== true) throw new AttendanceRequestError("MTM_ATTENDANCE_DISABLED", 404)
+  if (user.mtmAttendanceAll === true) return { role: "MANAGER", agentId: null, scopedAgentIds: null }
+  const actor = await resolveMtmRouteActor(tx, { organizationId, userId, webRole: user.role })
+  if (!actor || actor.role === "AGENT" || (actor.role !== "ADMIN" && actor.scopedAgentIds === null)) return fail("FORBIDDEN", 403)
+  return actor
+}
+
 /** Endpoint evidence is an explicit allowlist. Even related employee names are
  * resolved only through the reader's current scope, never the detector's scope. */
 export async function readAttendanceRiskReport(input: ReadInput): Promise<AttendanceRiskReport> {
   const parsed = AttendanceRiskQuerySchema.safeParse(input.query)
   if (!parsed.success) return fail("QUERY_INVALID", 400)
-  const { organizationId, actor, reviewer } = input, query = parsed.data
-  if (actor.role === "AGENT" || (actor.role !== "ADMIN" && actor.scopedAgentIds === null && input.allEmployeesGrant !== true)) return fail("FORBIDDEN", 403)
-  if (query.employeeId && actor.scopedAgentIds !== null && !actor.scopedAgentIds.includes(query.employeeId)) return fail("FORBIDDEN", 403)
-  const scope = actor.scopedAgentIds === null ? null : [...actor.scopedAgentIds]
+  const { organizationId, reviewer } = input, query = parsed.data
+  if (organizationId !== reviewer.organizationId) return fail("FORBIDDEN", 403)
   return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const actor = await currentReadActor(tx, reviewer)
+    if (query.employeeId && actor.scopedAgentIds !== null && !actor.scopedAgentIds.includes(query.employeeId)) return fail("FORBIDDEN", 403)
+    const scope = actor.scopedAgentIds === null ? null : [...actor.scopedAgentIds]
     let writeActor: MtmRouteActor | null = null
     // A read-only HR grant must never become write access.
     try { writeActor = await resolveAttendanceReviewerScope(tx, reviewer) }
