@@ -23,26 +23,33 @@ export class AttendanceReportAccessError extends Error {
  * One database snapshot for the row projection and its journal. The explicit
  * selects are a privacy boundary: break coordinates are never even read.
  */
-export async function readMtmAttendanceReport(input: {
-  organizationId: string
-  actor: MtmRouteActor
-  query: AttendanceReportQuery
-  now?: Date
-}) {
-  const { organizationId, actor } = input
+export type AttendanceReportReadInput = { organizationId: string; actor: MtmRouteActor; query: AttendanceReportQuery; now?: Date }
+export async function readMtmAttendanceReport(input: AttendanceReportReadInput) {
+  return prisma.$transaction(tx => readMtmAttendanceReportInTransaction(tx, input), { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead, timeout: 15_000 })
+}
+export async function readMtmAttendanceReportInTransaction(tx: Prisma.TransactionClient, input: AttendanceReportReadInput) {
+  const { actor } = input
   const query = AttendanceReportQuerySchema.parse(input.query)
-  if (actor.role === "AGENT" || (query.employeeId && actor.scopedAgentIds !== null && !actor.scopedAgentIds.includes(query.employeeId))) {
-    throw new AttendanceReportAccessError()
-  }
+  if (actor.role === "AGENT" || (query.employeeId && actor.scopedAgentIds !== null && !actor.scopedAgentIds.includes(query.employeeId))) throw new AttendanceReportAccessError()
+  return readAttendanceProjectionInTransaction(tx, { organizationId: input.organizationId, authorizedEmployeeIds: actor.scopedAgentIds, query, now: input.now })
+}
+/** Internal projection only, never an auth boundary. Callers must establish the
+ * current tenant and explicit authorized employee set in this transaction.
+ * Workers can use a bounded verified set without inventing a human actor. */
+export async function readAttendanceProjectionInTransaction(tx: Prisma.TransactionClient, input: {
+  organizationId: string; authorizedEmployeeIds: readonly string[] | null; query: AttendanceReportQuery; now?: Date
+}) {
+  const { organizationId, authorizedEmployeeIds } = input
+  const query = AttendanceReportQuerySchema.parse(input.query)
+  if (query.employeeId && authorizedEmployeeIds !== null && !authorizedEmployeeIds.includes(query.employeeId)) throw new AttendanceReportAccessError()
   const from = new Date(`${query.from}T00:00:00.000Z`)
   const to = new Date(`${query.to}T00:00:00.000Z`)
   const now = input.now ?? new Date()
   const days = Math.round((to.getTime() - from.getTime()) / 86_400_000) + 1
-  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const employees = await tx.mtmAgent.findMany({
       where: {
         organizationId, OR: [{ role: "AGENT" }, { attendanceParticipant: true }],
-        ...(actor.scopedAgentIds === null ? {} : { id: { in: [...actor.scopedAgentIds] } }),
+        ...(authorizedEmployeeIds === null ? {} : { id: { in: [...authorizedEmployeeIds] } }),
         ...(query.employeeId ? { AND: { id: query.employeeId } } : {}),
         ...(query.teamId ? { teamId: query.teamId } : {}),
       },
@@ -110,5 +117,4 @@ export async function readMtmAttendanceReport(input: {
     const result = { ...report, rows, totals: summarizeMtmAttendanceRows(rows), form: query.form }
     const id = createHash("sha256").update(JSON.stringify({ query, report: result })).digest("hex")
     return { ...result, snapshot: { id, asOf: result.asOf, query } }
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead, timeout: 15_000 })
 }
