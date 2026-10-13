@@ -22,7 +22,7 @@ export async function readAttendanceHrDirectory(reviewer: AttendanceReviewer): P
   return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const actor = await resolveAttendanceReviewerScope(tx, reviewer)
     const employees = await tx.mtmAgent.findMany({ where: { organizationId: reviewer.organizationId, status: "ACTIVE",
-      ...(actor.scopedAgentIds === null ? {} : { id: { in: actor.scopedAgentIds } }),
+      ...(actor.scopedAgentIds === null ? {} : { id: { in: [...actor.scopedAgentIds] } }),
       ...(actor.agentId ? { NOT: { id: actor.agentId } } : {}), OR: [{ userId: null }, { userId: { not: reviewer.userId } }],
     }, select: { id: true, name: true, teamId: true, team: { select: { name: true } } }, orderBy: [{ name: "asc" }, { id: "asc" }], take: 2001 })
     if (employees.length > 2000) throw new AttendanceRequestError("MTM_ATTENDANCE_HR_DIRECTORY_TOO_LARGE", 422)

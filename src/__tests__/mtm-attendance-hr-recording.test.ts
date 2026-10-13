@@ -49,6 +49,15 @@ beforeEach(() => {
   }) as never)
 })
 describe("HR day recording through the real tenant/attendance/reviewer boundary", () => {
+  it.each(["api_key", undefined])("refuses directory and writes before private reads without a session: %s", async principalType => {
+    vi.mocked(requireAuth).mockResolvedValue({ orgId: organizationId, userId, role: "admin", principalType } as never)
+    const response = await GET(new NextRequest("http://localhost/api/v1/mtm/attendance/recordings"), undefined)
+    expect(response.status).toBe(403)
+    expect((await post(input())).status).toBe(403)
+    expect(prisma.mtmAgent.findMany).not.toHaveBeenCalled()
+    expect(prisma.mtmHrmRequest.findMany).not.toHaveBeenCalled()
+    noWrites()
+  })
   it("records one explicit batch with author/reason, immutable snapshot and safe employee notices", async () => {
     const body = input(), res = await post(body)
     expect(res.status).toBe(201)
