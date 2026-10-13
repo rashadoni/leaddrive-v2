@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 vi.mock("@/lib/prisma", async () => ({ prisma: (await import("./mocks/mtm-prisma")).makeMtmPrismaMock() }))
 vi.mock("@/lib/api-auth", () => ({ requireAuth: vi.fn(), getOrgId: vi.fn(), getSession: vi.fn().mockResolvedValue(null), isAuthError: (value: unknown) => value instanceof Response }))
@@ -36,7 +36,7 @@ describe("QR display HTTP boundaries", () => {
   it("refuses read-only HR regardless of the all-employee report grant", async () => {
     // requireAuth is the mocked RBAC boundary; the real service's fresh HR
     // denial is additionally exercised by the PostgreSQL gate.
-    vi.mocked(requireAuth).mockResolvedValue(new Response(null, { status: 403 }))
+    vi.mocked(requireAuth).mockResolvedValue(new NextResponse(null, { status: 403 }))
     expect((await POST(request("{}"), undefined)).status).toBe(403)
     expect(requireAuth).toHaveBeenCalledWith(expect.any(NextRequest), "mtm", "write", { deferLegacyModuleGate: "mtm" })
     expect(store.issueAttendanceBranchQr).not.toHaveBeenCalled()
