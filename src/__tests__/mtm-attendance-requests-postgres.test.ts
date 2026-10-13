@@ -72,7 +72,7 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
     api = await import("@/app/api/v1/mtm/mobile/attendance/requests/route")
     await bypass(async () => {
       for (const org of ["request-pg-a", "request-pg-b"]) {
-        await prisma.organization.create({ data: { id: org, name: "Fictional request organization", slug: org, modules: ["route-field"] } })
+        await prisma.organization.create({ data: { id: org, name: "Fictional request organization", slug: org, modules: { "route-field": true } } })
         await prisma.mtmSetting.create({ data: { organizationId: org, key: "attendanceEnabled", value: true } })
       }
       await prisma.user.create({ data: { id: "request-pg-admin", organizationId: self.organizationId, name: "Fictional limits administrator", email: "limits-admin@example.invalid", role: "admin", passwordHash: "unusable-fixture-hash" } })
