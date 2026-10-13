@@ -1,0 +1,139 @@
+name: Encrypted access to MTM phone fixture
+
+# No database writes, password reset or general credential reader. The only
+# result is an envelope for the separately owned fictional attendance company.
+on:
+  workflow_dispatch:
+    inputs:
+      expected_main_sha:
+        description: Exact reviewed current main SHA containing this workflow
+        type: string
+        required: true
+      expected_deployed_sha:
+        description: Exact serving main ancestor SHA, verified again under the production lock
+        type: string
+        required: true
+      recipient_public_key:
+        description: RSA-4096 public key only, canonical base64 DER SPKI (never a private key)
+        type: string
+        required: true
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Require reviewed current main and a deployed ancestor
+        env:
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+          EXPECTED_DEPLOYED_SHA: ${{ inputs.expected_deployed_sha }}
+        run: |
+          set -euo pipefail
+          [ "$GITHUB_REF" = refs/heads/main ]
+          [[ "$EXPECTED_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$EXPECTED_DEPLOYED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          git fetch --no-tags origin refs/heads/main
+          [ "$EXPECTED_MAIN_SHA" = "$GITHUB_SHA" ]
+          [ "$EXPECTED_MAIN_SHA" = "$(git rev-parse FETCH_HEAD)" ]
+          git merge-base --is-ancestor "$EXPECTED_DEPLOYED_SHA" "$EXPECTED_MAIN_SHA"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Verify encryption, ownership reader and output boundaries
+        run: npx vitest run src/__tests__/mtm-attendance-phone-access.test.ts src/__tests__/mtm-attendance-phone-fixture.test.ts --maxWorkers=1
+      - name: Build the bounded read-only controller
+        run: node scripts/build-mtm-attendance-phone-access.mjs attendance-phone-access.cjs
+      - name: Reject invalid recipient before production access
+        env:
+          RECIPIENT_PUBLIC_KEY: ${{ inputs.recipient_public_key }}
+        run: node attendance-phone-access.cjs --phone-access-recipient "$RECIPIENT_PUBLIC_KEY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: attendance-phone-access-controller-${{ github.sha }}
+          path: attendance-phone-access.cjs
+          retention-days: 1
+          if-no-files-found: error
+
+  deliver:
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: production
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/assert-production-environment-protection
+        with:
+          github-token: ${{ github.token }}
+      - name: Recheck current main and deployment ancestry after acquiring the lock
+        env:
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+          EXPECTED_DEPLOYED_SHA: ${{ inputs.expected_deployed_sha }}
+        run: |
+          set -euo pipefail
+          [ "$GITHUB_REF" = refs/heads/main ]
+          [[ "$EXPECTED_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$EXPECTED_DEPLOYED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          git fetch --no-tags origin refs/heads/main
+          [ "$EXPECTED_MAIN_SHA" = "$GITHUB_SHA" ]
+          [ "$EXPECTED_MAIN_SHA" = "$(git rev-parse FETCH_HEAD)" ]
+          git merge-base --is-ancestor "$EXPECTED_DEPLOYED_SHA" "$EXPECTED_MAIN_SHA"
+      - uses: actions/download-artifact@v4
+        with:
+          name: attendance-phone-access-controller-${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: ./.github/actions/setup-production-ssh
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          server-host: ${{ secrets.SERVER_HOST }}
+          known-hosts: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+      - name: Deliver only recipient-encrypted fixture access
+        env:
+          EXPECTED_DEPLOYED_SHA: ${{ inputs.expected_deployed_sha }}
+          RECIPIENT_PUBLIC_KEY: ${{ inputs.recipient_public_key }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          set -euo pipefail
+          [ "$SERVER_HOST" = 13.140.132.245 ] && [ "$SERVER_USER" = root ]
+          [[ "$EXPECTED_DEPLOYED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$RECIPIENT_PUBLIC_KEY" =~ ^[A-Za-z0-9+/]+={0,2}$ ]]
+          RECIPIENT_FINGERPRINT="$(node attendance-phone-access.cjs --phone-access-recipient "$RECIPIENT_PUBLIC_KEY")"
+          RAW_OUTPUT="$(mktemp)"
+          trap 'rm -f "$RAW_OUTPUT"' EXIT
+          mkdir -p evidence
+          set +e
+          ssh -T -o ConnectTimeout=10 -o LogLevel=ERROR -i ~/.ssh/deploy_key \
+            "$SERVER_USER@$SERVER_HOST" \
+            "NODE_NO_WARNINGS=1 node - --phone-access '$EXPECTED_DEPLOYED_SHA' '$RECIPIENT_PUBLIC_KEY'" \
+            < attendance-phone-access.cjs > "$RAW_OUTPUT" 2>/dev/null
+          REMOTE_STATUS=$?
+          set -e
+          node attendance-phone-access.cjs --validate-phone-access "$RECIPIENT_FINGERPRINT" < "$RAW_OUTPUT" > evidence/attendance-phone-access.json || {
+            rm -f evidence/attendance-phone-access.json
+            echo '::error::No valid recipient-encrypted fixture envelope'
+            exit 1
+          }
+          [ "$REMOTE_STATUS" -eq 0 ]
+          node -e 'const r=require("./evidence/attendance-phone-access.json"); if(r.status!=="PASS"||r.artifactSha!==process.env.EXPECTED_DEPLOYED_SHA)process.exit(1); console.log(JSON.stringify({status:r.status,tenant:r.tenant,artifactSha:r.artifactSha,recipientSha256:r.recipientSha256}))'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: attendance-phone-encrypted-access-${{ github.sha }}
+          path: evidence/attendance-phone-access.json
+          retention-days: 1
+          if-no-files-found: error
