@@ -101,6 +101,30 @@ const now = new Date("2026-10-12T06:00:00Z"), date = "2026-10-12"
     await tenant(ORG, () => prisma.mtmAgent.update({ where: { id }, data: { attendanceParticipant: true, status: "INACTIVE" } }))
     expect(await tenant(ORG, () => store.createAttendanceReminders(ORG, id, now))).toBe(0)
   })
+  it("waits for a concurrent attendance OFF commit before preparing any receipt", async () => {
+    const id = await employee()
+    let unlock!: () => void, locked!: () => void
+    const release = new Promise<void>(resolve => { unlock = resolve })
+    const acquired = new Promise<void>(resolve => { locked = resolve })
+    const off = tenant(ORG, () => prisma.$transaction(async tx => {
+      await tx.mtmSetting.update({ where: { organizationId_key: { organizationId: ORG, key: "attendanceEnabled" } }, data: { value: false } })
+      locked(); await release
+    }, { timeout: 15000 }))
+    await acquired
+    const worker = tenant(ORG, () => store.createAttendanceReminders(ORG, id, now))
+    // Observe the real row-lock wait, not an assumed delay or mocked mutex.
+    let waiting = false
+    try {
+      for (let attempt = 0; attempt < 30 && !waiting; attempt++) {
+        const rows = await bypass(() => prisma.$queryRaw<{ waiting: boolean }[]>`SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE pid<>pg_backend_pid() AND usename=current_user AND wait_event_type='Lock' AND query LIKE '%mtm_settings%' AND query LIKE '%FOR SHARE%') AS waiting`)
+        waiting = rows[0].waiting
+        if (!waiting) await new Promise(resolve => setTimeout(resolve, 50))
+      }
+      expect(waiting).toBe(true)
+    } finally { unlock(); await off }
+    expect(await worker).toBe(0); expect(await count(id)).toBe(0)
+    await setting("attendanceEnabled", true)
+  })
   it("enforces tenant RLS, immutability and recipient shape at the database boundary", async () => {
     const id = await employee(); await tenant(ORG, () => store.createAttendanceReminders(ORG, id, now))
     expect(await tenant(OTHER, () => prisma.$queryRaw`SELECT id FROM mtm_attendance_reminder_notices WHERE "agentId"=${id}`)).toEqual([])
