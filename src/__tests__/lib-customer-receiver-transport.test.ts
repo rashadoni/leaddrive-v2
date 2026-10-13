@@ -2,8 +2,10 @@ import { EventEmitter } from "node:events"
 import { request } from "node:https"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { parseSubmission } from "../lib/integrations/customer-receiver/contract"
-import { sendReceiverSubmission, validateReceiverTarget, type ReceiverTarget } from "../lib/integrations/customer-receiver/transport"
+import { requestReceiverJson, sendReceiverSubmission, validateReceiverTarget, type ReceiverTarget } from "../lib/integrations/customer-receiver/transport"
 import type { ReceiverBinding } from "../lib/integrations/customer-receiver/delivery"
+import { defaultBuilderProfile } from "../lib/integrations/customer-receiver/constructor/profile"
+import { previewBuilderResource, syntheticBuilderInput } from "../lib/integrations/customer-receiver/constructor/engine"
 
 vi.mock("node:https", () => ({ request: vi.fn() }))
 
@@ -117,6 +119,22 @@ describe("bounded TLS attempt", () => {
   it("rejects invalid token headers and tenant mismatch before a socket is created", async () => {
     await expect(sendReceiverSubmission({ ...input(), credentials: { ...credentials, accessToken: "token\r\nForged: header" } })).rejects.toThrow()
     await expect(sendReceiverSubmission({ ...input(), organizationId: "org-2" })).rejects.toThrow()
+    expect(request).not.toHaveBeenCalled()
+  })
+  it("uses a configured POST/path and timeout budget for mapped packets", async () => {
+    const profile = defaultBuilderProfile(); profile.resources[0].method = "POST"; profile.resources[0].path = "/customer-api/upsert"
+    const source = syntheticBuilderInput("org-1", "customers"); source.context.integrationId = binding.integrationId
+    const prepared = previewBuilderResource({ profile, resource: "customers", ...source })
+    const check = expect(requestReceiverJson({ ...input(), prepared, limits: { connectTimeoutSeconds: 1, timeoutSeconds: 5, maxBodyKiB: 64 } })).rejects.toThrow("transport failed")
+    expect(vi.mocked(request).mock.calls[0][0]).toMatchObject({ method: "POST", path: "/customer-api/upsert" })
+    await vi.advanceTimersByTimeAsync(1_000); await check
+  })
+  it("rejects an edited, unselected, foreign or hostile mapped packet before opening a socket", async () => {
+    const source = syntheticBuilderInput("org-1", "customers"); source.context.integrationId = binding.integrationId
+    const prepared = previewBuilderResource({ profile: defaultBuilderProfile(), resource: "customers", ...source })
+    for (const change of [{ body: '{"changed":true}' }, { selected: false }, { organizationId: "org-2" }, { path: "//attacker.invalid" }, { path: "/x/%2e%2e/y" }]) {
+      await expect(requestReceiverJson({ ...input(), prepared: { ...prepared, ...change }, limits: { connectTimeoutSeconds: 5, timeoutSeconds: 30, maxBodyKiB: 256 } })).rejects.toThrow()
+    }
     expect(request).not.toHaveBeenCalled()
   })
 })

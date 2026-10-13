@@ -1,7 +1,8 @@
 import { request } from "node:https"
 import { isIP } from "node:net"
+import { createHash } from "node:crypto"
 import { contractAssert, identifier, type ReceiverEnvironment, type Submission } from "./contract"
-import { prepareSubmission, type ReceiverBinding } from "./delivery"
+import { prepareSubmission, validateBinding, type ReceiverBinding } from "./delivery"
 
 /** Fixed, operator-provisioned VPN destination. Never accept this from a payload. */
 export interface ReceiverTarget {
@@ -56,6 +57,36 @@ export async function sendReceiverSubmission(input: {
   submission: Submission
 }): Promise<{ status: number; body: string; retryAfter?: string }> {
   const prepared = prepareSubmission(input.binding, input.organizationId, input.submission)
+  return requestReceiverJson({ ...input, prepared: {
+    organizationId: input.organizationId, integrationId: input.binding.integrationId, environment: input.binding.environment,
+    selected: true, method: "PUT", path: prepared.relativePath, body: prepared.body, idempotencyKey: prepared.idempotencyKey, payloadHash: prepared.payloadHash,
+  }, limits: { connectTimeoutSeconds: 5, timeoutSeconds: 30, maxBodyKiB: 256 } })
+}
+
+/** Internal runtime adapter; the draft builder API never calls this function. */
+export async function requestReceiverJson(input: {
+  binding: ReceiverBinding; organizationId: string; target: ReceiverTarget; credentials: ReceiverCredentials; correlationId: string
+  prepared: { organizationId: string; integrationId: string; environment: ReceiverEnvironment; selected: boolean; method: "PUT" | "POST"; path: string; body: string; idempotencyKey: string; payloadHash: string }
+  limits: { connectTimeoutSeconds: number; timeoutSeconds: number; maxBodyKiB: number }
+}): Promise<{ status: number; body: string; retryAfter?: string }> {
+  validateBinding(input.binding, input.organizationId)
+  const prepared = input.prepared
+  contractAssert(prepared.selected === true)
+  contractAssert(prepared.organizationId === input.organizationId && prepared.integrationId === input.binding.integrationId && prepared.environment === input.binding.environment)
+  contractAssert(prepared.method === "PUT" || prepared.method === "POST")
+  let decodedPath: string
+  try { decodedPath = decodeURIComponent(prepared.path) } catch { throw new ReceiverTransportError() }
+  contractAssert(decodedPath.length <= 512 && /^\/[A-Za-z0-9_.:/-]+$/.test(decodedPath) && !decodedPath.startsWith("//") && !decodedPath.split("/").some((part) => part === "." || part === ".."))
+  const limits = input.limits
+  contractAssert(Number.isInteger(limits.maxBodyKiB) && limits.maxBodyKiB >= 1 && limits.maxBodyKiB <= 1024)
+  contractAssert(Number.isInteger(limits.connectTimeoutSeconds) && limits.connectTimeoutSeconds >= 1 && limits.connectTimeoutSeconds <= 5)
+  contractAssert(Number.isInteger(limits.timeoutSeconds) && limits.timeoutSeconds >= 5 && limits.timeoutSeconds <= 30 && limits.timeoutSeconds >= limits.connectTimeoutSeconds)
+  contractAssert(Buffer.byteLength(prepared.body, "utf8") <= limits.maxBodyKiB * 1024)
+  contractAssert(/^[0-9a-f]{64}$/.test(prepared.idempotencyKey))
+  contractAssert(createHash("sha256").update(prepared.body).digest("hex") === prepared.payloadHash)
+  let parsedBody: unknown
+  try { parsedBody = JSON.parse(prepared.body) } catch { throw new ReceiverTransportError() }
+  contractAssert(parsedBody !== null && typeof parsedBody === "object" && !Array.isArray(parsedBody))
   const origin = validateReceiverTarget(input.binding, input.target)
   const correlationId = identifier(input.correlationId)
   const credentials = input.credentials
@@ -77,12 +108,12 @@ export async function sendReceiverSubmission(input: {
       else reject(new ReceiverTransportError())
     }
     let req: ReturnType<typeof request> | undefined
-    const totalTimer = setTimeout(() => { finish(); req?.destroy() }, 30_000)
-    const connectTimer = setTimeout(() => { finish(); req?.destroy() }, 5_000)
+    const totalTimer = setTimeout(() => { finish(); req?.destroy() }, limits.timeoutSeconds * 1000)
+    const connectTimer = setTimeout(() => { finish(); req?.destroy() }, limits.connectTimeoutSeconds * 1000)
     try {
       req = request({
         protocol: "https:", hostname: origin.hostname, port: 443, servername: origin.hostname,
-        path: prepared.relativePath, method: "PUT", agent: false,
+        path: prepared.path, method: prepared.method, agent: false,
         minVersion: "TLSv1.2", rejectUnauthorized: true,
         cert: credentials.certificate, key: credentials.privateKey, ca: credentials.ca,
         lookup: (_hostname, options, callback) => {

@@ -1,0 +1,30 @@
+{
+  "mode": "standalone_actual_component_with_synthetic_local_api",
+  "databaseChecked": false,
+  "actualErpConnectionChecked": false,
+  "passed": true,
+  "locales": [
+    "ru",
+    "en",
+    "az"
+  ],
+  "desktop": "1440x1050",
+  "phone": "390x900",
+  "checks": [
+    "preview",
+    "draft_save",
+    "keyboard_tabs",
+    "precision_rejection_and_override",
+    "stale_revision_recovery",
+    "history_restore_as_new_revision",
+    "audit_jsonl_schema_manifest_links",
+    "profile_export",
+    "active_profile_import_rejected",
+    "phone_no_overflow",
+    "no_external_requests"
+  ],
+  "saves": 3,
+  "previews": 3,
+  "consoleErrors": [],
+  "externalRequests": []
+}

@@ -16,6 +16,7 @@ import { WebTrackingCard } from "@/components/settings/web-tracking-card"
 import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { HelpButton } from "@/components/help/help-button"
+import { RECEIVER_COPY } from "@/components/settings/receiver-builder-copy"
 
 interface WebhookData {
   id: string
@@ -381,6 +382,11 @@ export default function IntegrationsPage() {
         <p className="text-muted-foreground">{t("subtitle")}</p>
         <PageDescription text={t("description")} />
       </div>
+
+      {(session?.user?.role === "admin" || session?.user?.role === "superadmin") && <div className="flex flex-wrap items-center justify-between gap-4 border border-border rounded-lg p-4">
+        <div><h2 className="font-semibold">{(RECEIVER_COPY[locale] ?? RECEIVER_COPY.en).title}</h2><p className="text-sm text-muted-foreground">{(RECEIVER_COPY[locale] ?? RECEIVER_COPY.en).linkHint}</p></div>
+        <a href="/settings/integrations/customer-receiver" className="inline-flex min-h-11 items-center rounded-md border border-border px-4 text-sm font-medium hover:bg-muted">{(RECEIVER_COPY[locale] ?? RECEIVER_COPY.en).link}</a>
+      </div>}
 
       {/* Integration cards grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
