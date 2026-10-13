@@ -25,7 +25,7 @@ const MODES = ["prepare-and-check", "read-only-check"] as const
 export type DemoMode = typeof MODES[number]
 type Db = Pick<PrismaClient, "$transaction">
 type Tx = Prisma.TransactionClient
-const fail = (code: string): never => { throw new Error(code) }
+function fail(code: string): never { throw new Error(code) }
 const at = (day: string, clock: string) => new Date(`${day}T${clock}:00.000+04:00`)
 export const DEMO_AGENTS = ["mtm-attendance-demo-agent-a-v1", "mtm-attendance-demo-agent-b-v1"] as const
 export const DEMO_WORKDAYS = [
