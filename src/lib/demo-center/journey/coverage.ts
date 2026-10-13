@@ -61,6 +61,8 @@ export const DEMO_JOURNEY_COVERAGE: readonly DemoCoverageArea[] = [
     routes: ["/inbox"],
     sections: [
       { id: "inbox.views", label: "Представления: Все / Мои / Без ответственного / Чат-бот …", included: true, kind: "observe" },
+      { id: "inbox.channels", label: "Каналы в рейке со счётчиками: клик оставляет диалоги одного канала", included: true, kind: "interactive" },
+      { id: "inbox.assign", label: "Назначение диалога коллеге", included: true, kind: "interactive" },
       { id: "inbox.status-tabs", label: "Вкладки Открытые / Закрытые / Отложенные", included: true, kind: "observe" },
       { id: "inbox.filters", label: "Фильтры канала, папки, этапа, тегов", included: true, kind: "observe" },
       { id: "inbox.conversations", label: "Список диалогов с каналом и непрочитанными", included: true, kind: "interactive" },
