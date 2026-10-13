@@ -7,6 +7,7 @@ import { NextIntlClientProvider } from "next-intl"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { MtmAttendanceReportWorkspace } from "@/components/mtm/attendance-report-workspace"
 import { buildMtmAttendanceReport, filterMtmAttendanceRows, summarizeMtmAttendanceRows, type MtmAttendanceEmployee, type MtmAttendanceWorkday } from "@/lib/mtm/attendance-report"
+import { defaultAttendanceDayKinds } from "@/lib/mtm/attendance-day-kinds"
 import { formatAttendanceDuration } from "@/lib/mtm/attendance-presentation"
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -97,6 +98,33 @@ describe("attendance report workspace on the real row calculation", () => {
     expect(container.querySelector('[data-testid="attendance-report-totals"]')?.textContent).toContain(t.reportTotalsTitle)
     for (const name of ["from", "to", "team", "employee"]) expect(container.querySelector(`label[for="attendance-report-${name}"]`)?.textContent).toBeTruthy()
     capture("day", locale)
+  })
+
+  it.each(["ru", "az", "en"])("renders overtime with explicit unknown hours and identical export configuration in %s", async locale => {
+    fetchMock.mockImplementation(async url => {
+      const parsed = new URL(String(url), "https://attendance.test")
+      if (parsed.pathname.endsWith("/export")) return response(null, 409, "MTM_ATTENDANCE_EXPORT_CHANGED")
+      if (!parsed.pathname.endsWith("/report")) return defaultFetch(url)
+      const finished = { ...workdays[0], startedAt: at("09:00"), completedAt: at("20:15"), events: [{ type: "START", occurredAt: at("09:00") }, privatePause, { type: "RESUME", occurredAt: at("14:00") }, { type: "FINISH", occurredAt: at("20:15") }] }
+      const data = buildMtmAttendanceReport({ employees, from: TODAY, to: TODAY, now: at("21:00"), rules: [], calendar: [], workdays: [finished, ...workdays.slice(1)],
+        approvedRequests: [{ id: "demo-overtime-permission", agentId: "a", startDate: TODAY, endDate: TODAY, decidedAt: at("08:00"), details: { kind: "OVERTIME", unit: "HOURS", startTime: "18:00", endTime: "19:00", timezone: "Asia/Baku", dayKind: defaultAttendanceDayKinds(() => ({ ru: "Демо", az: "Demo", en: "Demo" })).find(kind => kind.key === "OVERTIME")! } }] })
+      data.rows[0] = { ...data.rows[0], overtimeThresholdMinutes: 15 }
+      return response({ ...data, snapshot: { id: "a".repeat(64), asOf: data.asOf, query: { from: TODAY, to: TODAY, form: "ALL" } } })
+    })
+    await render(locale)
+    const t = messages(locale).mtmAttendance
+    await click(t.overtimeTitle)
+    const cells = container.querySelector('[data-testid="attendance-custom-row"]')!.textContent
+    expect(cells).toContain("10:15"); expect(cells).toContain("2:15"); expect(cells).toContain("0:15")
+    expect(container.textContent).toContain(t.overtimeUnknown)
+    expect(container.textContent).toContain(t.overtimePartial)
+    expect(container.querySelectorAll('[data-testid="attendance-overtime-cards"] dl')).toHaveLength(3)
+    expect(container.textContent).not.toMatch(/PRIVATE_|40\.987654|49\.123456|mtmAttendance\./)
+    expect(button(t.exportExcel).disabled).toBe(false)
+    capture("overtime", locale)
+    await click(t.exportExcel)
+    const request = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/export"))!
+    expect(JSON.parse(String(request[1]?.body))).toMatchObject({ format: "xlsx", locale, config: { mode: "OVERTIME", filters: { form: "ALL", from: TODAY, to: TODAY }, columns: ["employee", "date", "planned", "worked", "excess", "threshold", "approvedOvertime", "overtimeState"] } })
   })
 
   it("uses the same filtered rows for cards and totals without shrinking the directory", async () => {

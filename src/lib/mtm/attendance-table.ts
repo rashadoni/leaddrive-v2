@@ -1,3 +1,4 @@
+import { attendanceOvertimeRows } from "@/lib/mtm/attendance-overtime"
 import { addDateKeyDays } from "@/lib/mtm/mobile-week"
 import { ATTENDANCE_LOCATION_STATE_MESSAGES, attendanceDayLocationText, attendanceEndpointBranch, summarizeAttendanceBranches } from "@/lib/mtm/attendance-location-report"
 import { filterMtmAttendanceRows, summarizeMtmAttendanceRows, type MtmAttendanceReport, type MtmAttendanceReportRow } from "@/lib/mtm/attendance-report"
@@ -14,7 +15,7 @@ export type AttendanceTable = {
 }
 const REASON: Record<string, string> = { DUPLICATE_WORKDAY: "reportReasonDuplicate", SCHEDULE_INVALID: "reportReasonSchedule", TIMESTAMP_INVALID: "reportReasonTimestamp", EVENT_TYPE_INVALID: "reportReasonEvent", JOURNAL_INCOMPLETE: "reportReasonJournal", PAUSE_TOTAL_MISMATCH: "reportReasonPause", WORKDAY_INCONSISTENT: "reportReasonFacts" }
 const COLUMN: Record<AttendanceViewColumn, string> = { employee: "reportEmployee", team: "reportTeam", date: "reportDate", status: "reportStatus", startedAt: "reportStarted", completedAt: "reportFinished", worked: "reportWorked", paused: "reportPaused", late: "reportLate", early: "reportEarly", event: "reportEvent", phoneAt: "reportPhoneTime", serverAt: "reportServerTime", days: "reportMonth", absent: "reportAbsentCount", notes: "reportNotes",
-  arrivalBranch: "reportArrivalBranch", departureBranch: "reportDepartureBranch", markLocation: "reportMarkLocation", branch: "branchReportBranch", arrivals: "branchReportArrivals", departures: "branchReportDepartures", employees: "branchReportEmployees", outside: "branchReportOutside", uncertain: "branchReportUncertain", noLocation: "branchReportNoLocation", noConsent: "branchReportNoConsent" }
+  arrivalBranch: "reportArrivalBranch", departureBranch: "reportDepartureBranch", markLocation: "reportMarkLocation", branch: "branchReportBranch", arrivals: "branchReportArrivals", departures: "branchReportDepartures", employees: "branchReportEmployees", outside: "branchReportOutside", uncertain: "branchReportUncertain", noLocation: "branchReportNoLocation", noConsent: "branchReportNoConsent", planned: "overtimePlanned", excess: "overtimeExcess", threshold: "overtimeThreshold", approvedOvertime: "overtimeApproved", overtimeState: "overtimeState" }
 
 /** One text projection for personal forms, spreadsheet cells and PDF cells. */
 export function buildAttendanceTable(report: MtmAttendanceReport, value: AttendanceViewConfig, locale: "az" | "ru" | "en", t: AttendanceText): AttendanceTable {
@@ -25,7 +26,7 @@ export function buildAttendanceTable(report: MtmAttendanceReport, value: Attenda
   const time = (value: string | null, timezone: string, full = false) => value ? new Intl.DateTimeFormat(locale, {
     timeZone: timezone, ...(full ? { dateStyle: "short", timeStyle: "medium" } : { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
   }).format(new Date(value)) : "—"
-  const title = t(config.mode === "BRANCH" ? "branchReportTitle" : config.mode === "MONTH" ? "reportMonth" : config.mode === "JOURNAL" ? "reportJournal" : config.filters.form === "LATE_EARLY" ? "reportLateEarly" : config.filters.form === "ABSENCES" ? "reportAbsences" : "reportDay")
+  const title = t(config.mode === "OVERTIME" ? "overtimeTitle" : config.mode === "BRANCH" ? "branchReportTitle" : config.mode === "MONTH" ? "reportMonth" : config.mode === "JOURNAL" ? "reportJournal" : config.filters.form === "LATE_EARLY" ? "reportLateEarly" : config.filters.form === "ABSENCES" ? "reportAbsences" : "reportDay")
   const baseNotes = (row: MtmAttendanceReportRow) => row.factsState === "INVALID" ? row.invalidReasons.map((reason) => t(REASON[reason] ?? "reportReasonFacts")).join(" · ")
     : row.kind === "OPEN" ? t("reportProvisional") : row.kind === "MISSING_FINISH" ? t("reportUnknownTime") : row.kind === "ABSENT" ? t("reportAbsenceReasonPending") : row.flags.includes("WORKED_OUTSIDE_EMPLOYMENT") ? t("reportWorkOutsideEmployment") : row.flags.includes("WORKED_ON_APPROVED_ABSENCE") ? t("reportWorkOnLeave") : row.flags.includes("WORKED_ON_DAY_OFF") ? t("reportWorkOnDayOff") : row.calendarName ?? "—"
   const dayNotes = (row: MtmAttendanceReportRow) => [baseNotes(row), ...attendanceApprovedLines(row, locale, t), ...attendanceCorrectionLines(row, locale, t)].filter((line) => line !== "—").join(" · ") || "—"
@@ -33,6 +34,23 @@ export function buildAttendanceTable(report: MtmAttendanceReport, value: Attenda
   const columns: AttendanceTable["columns"] = config.columns.flatMap((column) => column === "days"
     ? Array.from({ length: Number(config.filters.to.slice(-2)) }, (_, index) => { const key = addDateKeyDays(config.filters.from, index); return { key, label: date(key) } })
     : [{ key: column, label: t(config.mode === "MONTH" && column === "late" ? "reportLateCount" : COLUMN[column]) }])
+  if (config.mode === "OVERTIME") {
+    const overtime = attendanceOvertimeRows(rows)
+    const stateMessages = { UNKNOWN: "overtimeUnknown", THRESHOLD_UNSET: "overtimeThresholdUnset", EXCEEDED: "overtimeExceeded", WITHIN: "overtimeWithin" } as const
+    const overtimeRows = overtime.map(item => {
+      const { row } = item
+      const data: Record<string, string> = { employee: row.employeeName, date: date(row.date), planned: formatAttendanceDuration(row.factsState === "INVALID" ? null : row.expectedWorkSeconds),
+        worked: formatAttendanceDuration(item.excessSeconds === null ? null : row.workedSeconds), excess: formatAttendanceDuration(item.excessSeconds),
+        threshold: formatAttendanceDuration(item.thresholdSeconds), approvedOvertime: formatAttendanceDuration(item.approvedSeconds), overtimeState: t(stateMessages[item.state]) }
+      return { key: `${row.employeeId}:${row.date}`, cells: columns.map(column => data[column.key]), kind: row.kind }
+    })
+    const sum = (key: "excessSeconds" | "approvedSeconds") => overtime.reduce((total, row) => total + (row[key] ?? 0), 0)
+    const partial = overtime.some(row => row.excessSeconds === null || row.approvedSeconds === null)
+    return { title, columns, rows: overtimeRows,
+      details: [t("reportPeriod", { from: date(config.filters.from), to: date(config.filters.to) }), t("reportSnapshot", { time: time(report.asOf, "UTC", true), timezone: "UTC" }), t("overtimeExplanation"), t("overtimeApprovalHint"), t("overtimeThresholdHint"), t("reportDurationFormat"),
+        ...rows.flatMap(row => attendanceCorrectionLines(row, locale, t).map(line => `${row.employeeName} · ${date(row.date)} · ${line}`))],
+      totals: config.showTotals ? [t("reportTotalsTitle"), t("overtimeTotals", { excess: formatAttendanceDuration(sum("excessSeconds")), approved: formatAttendanceDuration(sum("approvedSeconds")) }), ...(partial ? [t("overtimePartial")] : [])] : [] }
+  }
   let tableRows: AttendanceTable["rows"]
   if (config.mode === "BRANCH") {
     tableRows = summarizeAttendanceBranches(rows).rows.map(row => {

@@ -292,6 +292,19 @@ pgDescribe("MTM report reads the real saved workday and journal", () => {
     expect(await tenant(ORG, () => views.readAttendanceViews(ORG, "fixture-admin"))).toEqual([])
   })
 
+  it("persists and reopens an overtime view with the same authorized rows and ordered columns", async () => {
+    const config: AttendanceViewConfig = { ...viewConfig(), mode: "OVERTIME", columns: ["employee", "excess", "approvedOvertime", "threshold"], filters: { from: monday, to: friday, employeeId: "employee-a", form: "ALL" } }
+    const saved = await tenant(ORG, () => views.saveAttendanceView({ organizationId: ORG, userId: "fixture-admin", value: { name: "Fictional overtime", config, requestId: randomUUID() } }))
+    const reopened = (await tenant(ORG, () => views.readAttendanceViews(ORG, "fixture-admin"))).find(view => view.id === saved!.id)!
+    expect(reopened.config).toEqual(config)
+    const before = await tenant(ORG, () => readReport({ organizationId: ORG, actor: adminActor, query: config.filters, now }))
+    const after = await tenant(ORG, () => readReport({ organizationId: ORG, actor: adminActor, query: reopened.config.filters, now }))
+    expect(after).toEqual(before)
+    expect(after.rows.every(row => row.employeeId === "employee-a")).toBe(true)
+    expect(await tenant(OTHER, () => views.readAttendanceViews(OTHER, "fixture-admin"))).toEqual([])
+    await tenant(ORG, () => views.saveAttendanceView({ organizationId: ORG, userId: "fixture-admin", id: saved!.id, remove: true, value: { version: saved!.version } }))
+  })
+
   it("does not permit foreign personal form edits, generic share bypass, or writes with the feature disabled", async () => {
     const value = { name: "Fixture scope report", config: viewConfig(), requestId: randomUUID() }
     Object.assign(caller, { orgId: ORG, userId: "fixture-admin", role: "admin" })

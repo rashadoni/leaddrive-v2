@@ -18961,7 +18961,22 @@
     "employeesChange": "Change",
     "employeesHistoryHint": "The date does not close the employee’s working day or change their card status. Saved records remain in history.",
     "employeesSaveChange": "Save record",
-    "employeesClose": "Close history"
+    "employeesClose": "Close history",
+    "overtimeTitle": "Overtime",
+    "overtimePlanned": "Planned",
+    "overtimeExcess": "Excess",
+    "overtimeThreshold": "Threshold",
+    "overtimeApproved": "Approved by requests",
+    "overtimeState": "State",
+    "overtimeUnknown": "Final hours unavailable",
+    "overtimeThresholdUnset": "Threshold not set",
+    "overtimeExceeded": "Threshold exceeded",
+    "overtimeWithin": "Within threshold",
+    "overtimeExplanation": "Actual hours are compared with the plan after the day ends. Overtime permission does not prove time worked or calculate pay.",
+    "overtimeApprovalHint": "Employees submit overtime requests; managers review them in the shared queue. The full allowance belongs to its sole intersecting recorded shift, or otherwise to the request date. Ambiguous matches show a dash.",
+    "overtimeThresholdHint": "Set the threshold in a published schedule. A missing threshold is not treated as zero.",
+    "overtimeTotals": "Above plan: {excess}. Approved by requests: {approved}.",
+    "overtimePartial": "Partial total: unfinished, invalid and ambiguous hours are excluded."
   },
   "mtmReports": {
     "title": "Reports",

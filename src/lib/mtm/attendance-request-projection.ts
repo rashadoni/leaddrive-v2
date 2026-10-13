@@ -1,7 +1,7 @@
 import type { AttendanceRequestDetails } from "@/lib/mtm/attendance-request-contract"
 import type { MtmAttendanceReportRow } from "@/lib/mtm/attendance-report"
 import { addDateKeyDays } from "@/lib/mtm/mobile-week"
-import { localDateTimeToUnambiguousUtc } from "@/lib/timezone"
+import { isValidTimezone, localDateTimeToUnambiguousUtc } from "@/lib/timezone"
 
 /** Allowlist shared by reports and exports; request reasons/documents stay in the review queue. */
 export type AttendanceApprovedPeriod = {
@@ -18,6 +18,7 @@ export function isAttendanceApprovedAbsence(period: AttendanceApprovedPeriod) {
  * or ambiguous legacy clock must never silently excuse a violation. */
 export function attendanceApprovedPeriodWindow(period: AttendanceApprovedPeriod): [number, number] | null {
   const { unit, startTime, endTime, timezone } = period.details
+  if (!isValidTimezone(timezone)) return null
   if (unit === "HOURS" && (!startTime || !endTime)) return null
   try {
     const from = localDateTimeToUnambiguousUtc(`${period.startDate}T${unit === "DAYS" ? "00:00" : startTime}`, timezone).getTime()
@@ -53,7 +54,9 @@ export function projectApprovedAttendanceRequests(row: MtmAttendanceReportRow, p
     if (onSourceDate(entry)) return true
     if (!row.shiftPlanId || !row.plannedStartAt || !row.plannedEndAt) return false
     const window = attendanceApprovedPeriodWindow(entry)
-    return !!window && window[0] < Date.parse(row.plannedEndAt) && window[1] > Date.parse(row.plannedStartAt)
+    const from = entry.details.kind === "OVERTIME" && row.startedAt ? row.startedAt : row.plannedStartAt
+    const to = entry.details.kind === "OVERTIME" && row.completedAt ? row.completedAt : row.plannedEndAt
+    return !!window && window[0] < Date.parse(to) && window[1] > Date.parse(from)
   })
   if (!approved.length) return row
   const annualLeaveDays = approved.some(period => onSourceDate(period) && period.details.unit === "DAYS" && period.details.dayKind.key === "ANNUAL_LEAVE")

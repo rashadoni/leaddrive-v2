@@ -12,7 +12,7 @@ import type { AttendanceViewConfig } from "@/lib/mtm/attendance-view-contract"
 const ENDPOINT = "/api/v1/mtm/attendance/deliveries"
 const SELECT = "min-h-11 w-full rounded-lg border border-zinc-200 bg-card px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:border-zinc-700"
 const FREQUENCY = { DAILY: "deliveryDaily", WEEKLY: "deliveryWeekly", MONTHLY: "deliveryMonthly" } as const
-const MODE = { DAY: "viewsModeDay", MONTH: "viewsModeMonth", JOURNAL: "viewsModeJournal", BRANCH: "branchReportTitle" } as const
+const MODE = { DAY: "viewsModeDay", MONTH: "viewsModeMonth", JOURNAL: "viewsModeJournal", BRANCH: "branchReportTitle", OVERTIME: "overtimeTitle" } as const
 const STATUS: Record<AttendanceDeliveryReceipt["status"], { key: string; tone: HomeTone }> = {
   PENDING: { key: "deliveryPending", tone: "zinc" }, SENDING: { key: "deliverySending", tone: "blue" },
   SENT: { key: "deliverySent", tone: "green" }, UNKNOWN: { key: "deliveryUnknown", tone: "amber" },

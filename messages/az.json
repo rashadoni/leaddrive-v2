@@ -18957,7 +18957,22 @@
     "employeesChange": "Dəyişiklik",
     "employeesHistoryHint": "Tarix əməkdaşın iş gününü bağlamır və kartının vəziyyətini dəyişmir. Saxlanılmış qeydlər tarixçədə qalır.",
     "employeesSaveChange": "Qeydi saxla",
-    "employeesClose": "Tarixçəni bağla"
+    "employeesClose": "Tarixçəni bağla",
+    "overtimeTitle": "Əlavə iş",
+    "overtimePlanned": "Plan üzrə",
+    "overtimeExcess": "Planı aşan vaxt",
+    "overtimeThreshold": "Hədd",
+    "overtimeApproved": "Müraciətlərlə təsdiqlənib",
+    "overtimeState": "Vəziyyət",
+    "overtimeUnknown": "Yekun saatlar yoxdur",
+    "overtimeThresholdUnset": "Hədd təyin edilməyib",
+    "overtimeExceeded": "Hədd aşılıb",
+    "overtimeWithin": "Hədd daxilində",
+    "overtimeExplanation": "Faktiki saatlar iş günü bitdikdən sonra planla müqayisə olunur. Əlavə işə icazə işlənmiş vaxtı təsdiqləmir və əməkhaqqını hesablamır.",
+    "overtimeApprovalHint": "Əməkdaş əlavə iş müraciəti göndərir; rəhbər ümumi növbədə baxır. İcazə saatları yalnız bir növbə ilə kəsişirsə həmin növbədə, əks halda müraciətin tarixində tam göstərilir. Qeyri-müəyyən uyğunluq tire ilə göstərilir.",
+    "overtimeThresholdHint": "Hədd dərc edilmiş iş qrafikində təyin olunur. Təyin edilməmiş hədd sıfır sayılmır.",
+    "overtimeTotals": "Planı aşan vaxt: {excess}. Müraciətlərlə təsdiqlənib: {approved}.",
+    "overtimePartial": "Yekun natamamdır: başa çatmamış, etibarsız və qeyri-müəyyən saatlar daxil deyil."
   },
   "mtmReports": {
     "title": "Hesabatlar",

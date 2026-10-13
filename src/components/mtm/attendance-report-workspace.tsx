@@ -12,6 +12,7 @@ import { filterMtmAttendanceRows, summarizeMtmAttendanceRows, type MtmAttendance
 import { formatAttendanceDuration, attendanceStatusText, attendanceMonthCellGroup, attendanceCatalogueLegend, attendanceCorrectionLines, attendanceApprovedLines, attendanceJournalEntries } from "@/lib/mtm/attendance-presentation"
 import { DEFAULT_ATTENDANCE_VIEW_COLUMNS, type AttendanceViewConfig } from "@/lib/mtm/attendance-view-contract"
 import { buildAttendanceTable } from "@/lib/mtm/attendance-table"
+import { attendanceOvertimeRows } from "@/lib/mtm/attendance-overtime"
 import { MtmAttendancePersonalViews } from "@/components/mtm/attendance-personal-views"
 import { MtmAttendanceExportButtons } from "@/components/mtm/attendance-export-buttons"
 import { MtmAttendanceDeliveries } from "@/components/mtm/attendance-deliveries"
@@ -20,11 +21,11 @@ import { MtmAttendanceDayKinds } from "@/components/mtm/attendance-day-kinds"
 import { MtmAttendanceRequestLimits } from "@/components/mtm/attendance-request-limits"
 import type { AttendanceReportSnapshot } from "@/lib/mtm/attendance-query"
 
-type Form = "DAY" | "MONTH" | "LATE_EARLY" | "ABSENCES" | "JOURNAL" | "BRANCH"
+type Form = "DAY" | "MONTH" | "LATE_EARLY" | "ABSENCES" | "JOURNAL" | "BRANCH" | "OVERTIME"
 type Range = { from: string; to: string }
 type ReportData = MtmAttendanceReport & { snapshot?: AttendanceReportSnapshot }
-const FORMS: Form[] = ["DAY", "MONTH", "LATE_EARLY", "ABSENCES", "JOURNAL"]
-const FORM_MESSAGES: Record<Form, string> = { DAY: "reportDay", MONTH: "reportMonth", LATE_EARLY: "reportLateEarly", ABSENCES: "reportAbsences", JOURNAL: "reportJournal", BRANCH: "branchReportTitle" }
+const FORMS: Form[] = ["DAY", "MONTH", "LATE_EARLY", "ABSENCES", "OVERTIME", "JOURNAL"]
+const FORM_MESSAGES: Record<Form, string> = { DAY: "reportDay", MONTH: "reportMonth", LATE_EARLY: "reportLateEarly", ABSENCES: "reportAbsences", JOURNAL: "reportJournal", BRANCH: "branchReportTitle", OVERTIME: "overtimeTitle" }
 const REASON_MESSAGES: Record<string, string> = { DUPLICATE_WORKDAY: "reportReasonDuplicate", SCHEDULE_INVALID: "reportReasonSchedule", TIMESTAMP_INVALID: "reportReasonTimestamp",
   EVENT_TYPE_INVALID: "reportReasonEvent", JOURNAL_INCOMPLETE: "reportReasonJournal", PAUSE_TOTAL_MISMATCH: "reportReasonPause", WORKDAY_INCONSISTENT: "reportReasonFacts" }
 const SELECT_CLASS = "min-h-11 w-full rounded-lg border border-zinc-200 bg-card px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:border-zinc-700"
@@ -123,9 +124,9 @@ export function MtmAttendanceReportWorkspace() {
 
   const currentConfig = useMemo<AttendanceViewConfig | null>(() => {
     if (!report) return null
-    const mode = customView?.config.mode ?? (form === "MONTH" ? "MONTH" : form === "JOURNAL" ? "JOURNAL" : form === "BRANCH" ? "BRANCH" : "DAY")
+    const mode = customView?.config.mode ?? (form === "MONTH" ? "MONTH" : form === "JOURNAL" ? "JOURNAL" : form === "BRANCH" ? "BRANCH" : form === "OVERTIME" ? "OVERTIME" : "DAY")
     return { version: 1, mode, columns: customView?.config.columns ?? [...DEFAULT_ATTENDANCE_VIEW_COLUMNS[mode]], showTotals: customView?.config.showTotals ?? true,
-      filters: { from: report.from, to: report.to, form: customView?.config.filters.form ?? (form === "DAY" || form === "MONTH" || form === "BRANCH" ? "ALL" : form),
+      filters: { from: report.from, to: report.to, form: customView?.config.filters.form ?? (form === "DAY" || form === "MONTH" || form === "BRANCH" || form === "OVERTIME" ? "ALL" : form),
         ...(teamId ? { teamId } : {}), ...(employeeId ? { employeeId } : {}) } }
   }, [report, customView, form, teamId, employeeId])
 
@@ -138,10 +139,13 @@ export function MtmAttendanceReportWorkspace() {
     }
     return { employees: [...employees.values()], teams: [...teams].map(([id, name]) => ({ id, name })) }
   }, [report, t])
-  const rows = useMemo(() => filterMtmAttendanceRows((form === "MONTH" ? report?.accountingRows ?? report?.rows : report?.rows) ?? [], { teamId: teamId || undefined, employeeId: employeeId || undefined,
-    form: customView?.config.filters.form ?? (form === "DAY" || form === "MONTH" || form === "BRANCH" ? "ALL" : form) }), [report, teamId, employeeId, form, customView])
+  const rows = useMemo(() => {
+    const filtered = filterMtmAttendanceRows((form === "MONTH" ? report?.accountingRows ?? report?.rows : report?.rows) ?? [], { teamId: teamId || undefined, employeeId: employeeId || undefined,
+      form: customView?.config.filters.form ?? (form === "DAY" || form === "MONTH" || form === "BRANCH" || form === "OVERTIME" ? "ALL" : form) })
+    return form === "OVERTIME" ? attendanceOvertimeRows(filtered).map(item => item.row) : filtered
+  }, [report, teamId, employeeId, form, customView])
   const totals = useMemo(() => summarizeMtmAttendanceRows(rows), [rows])
-  const customTable = useMemo(() => report && customView && currentConfig ? buildAttendanceTable(report, currentConfig, locale, t) : null, [report, customView, currentConfig, locale, t])
+  const customTable = useMemo(() => report && (customView || form === "OVERTIME") && currentConfig ? buildAttendanceTable(report, currentConfig, locale, t) : null, [report, customView, form, currentConfig, locale, t])
   const scopeUnavailable = Boolean(report && (teamId || employeeId) && !report.rows.some((row) => (!teamId || row.teamId === teamId) && (!employeeId || row.employeeId === employeeId)))
   const journal = useMemo(() => form === "JOURNAL" ? rows.flatMap((row) => attendanceJournalEntries(row, locale, t).map((entry) => ({ row, entry }))) : [], [rows, form, locale, t])
   const monthEmployees = useMemo(() => {
@@ -266,8 +270,9 @@ export function MtmAttendanceReportWorkspace() {
           <div className="flex flex-wrap justify-between gap-2 text-xs text-muted-foreground"><p>{t("reportPeriod", { from: dateLabel(report.from), to: dateLabel(report.to) })}</p>
             <p>{t("reportSnapshot", { time: timeLabel(report.asOf, timezones[0] ?? "Asia/Baku", true), timezone: timezones[0] ?? "Asia/Baku" })}</p></div>
           {scopeUnavailable ? <p role="alert" className="text-sm text-amber-800 dark:text-amber-300">{t("viewsScopeUnavailable")}</p> : null}
-          {!count ? <p className="rounded-xl bg-muted/50 px-4 py-5 text-sm text-muted-foreground">{t("reportEmpty")}</p> : customTable ? <div className="overflow-x-auto" role="region" aria-label={customView?.name} tabIndex={0}>
-            <table className="w-full text-sm" data-testid="attendance-custom-table"><thead><tr>{customTable.columns.map((column) => <th key={column.key} scope="col" className={`${HEADER} min-w-28`} data-column={column.key}>{column.label}</th>)}</tr></thead>
+          {!count ? <p className="rounded-xl bg-muted/50 px-4 py-5 text-sm text-muted-foreground">{t("reportEmpty")}</p> : customTable ? <div className={form === "OVERTIME" ? "min-w-0" : "overflow-x-auto"} role="region" aria-label={customView?.name || t(FORM_MESSAGES[form])} tabIndex={0}>
+            {form === "OVERTIME" && <div className="space-y-3 md:hidden" data-testid="attendance-overtime-cards">{customTable.rows.slice(pageStart, pageStart + PAGE_SIZE).map(row => <dl key={row.key} className="grid grid-cols-2 gap-3 rounded-xl border p-4">{row.cells.map((cell, index) => <div key={customTable.columns[index].key} className={index === 0 ? "col-span-2" : "min-w-0"}><dt className="text-xs text-muted-foreground">{customTable.columns[index].label}</dt><dd className="break-words text-sm tabular-nums">{cell}</dd></div>)}</dl>)}</div>}
+            <table className={`w-full text-sm ${form === "OVERTIME" ? "hidden md:table" : ""}`} data-testid="attendance-custom-table"><thead><tr>{customTable.columns.map((column) => <th key={column.key} scope="col" className={`${HEADER} ${form === "OVERTIME" ? "" : "min-w-28"}`} data-column={column.key}>{column.label}</th>)}</tr></thead>
               <tbody>{customTable.rows.slice(pageStart, pageStart + PAGE_SIZE).map((row) => <tr key={row.key} data-testid="attendance-custom-row">{row.cells.map((cell, index) => <td key={customTable.columns[index].key} className={`${CELL} tabular-nums`}>{cell}</td>)}</tr>)}</tbody>
             </table></div> : form === "MONTH" ? <>
             <div className="overflow-x-auto" role="region" aria-label={t("reportMonth")} tabIndex={0}><table className="w-full border-collapse text-sm" data-testid="attendance-month-grid">
