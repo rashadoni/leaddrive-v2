@@ -598,4 +598,66 @@ pgDescribe("MTM report reads the real saved workday and journal", () => {
     await tenant(ORG, () => prisma.mtmSetting.updateMany({ where: { organizationId: ORG, key: "attendanceEnabled" }, data: { value: true } }))
   })
 
+  it("stores one versioned company catalogue, audits changes and uses its labels in the real report and export", async () => {
+    Object.assign(caller, { orgId: ORG, userId: "fixture-admin", role: "admin", principalType: "session" })
+    const api = await import("@/app/api/v1/mtm/attendance/day-kinds/route")
+    const { attendanceDayKindPresetCodes } = await import("@/lib/mtm/attendance-day-kinds")
+    const { getMtmSettings } = await import("@/lib/mtm-settings")
+    const { readAttendanceDayKinds } = await import("@/lib/mtm/attendance-day-kind-store")
+    const read = async () => (await (await api.GET(new NextRequest("http://localhost/api/v1/mtm/attendance/day-kinds"))).json()).data
+    const put = (body: unknown) => api.PUT(new NextRequest("http://localhost/api/v1/mtm/attendance/day-kinds", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }))
+    const initial = await read()
+    expect(initial.version).toBeNull(); expect(initial.items).toHaveLength(32)
+    const before = await report()
+    const items = attendanceDayKindPresetCodes(initial.items, "RU").map((item) => item.key === "WORKED"
+      ? { ...item, code: "WX", names: { az: "Şirkət günü", ru: "День компании", en: "Company day" } }
+      : item.key === "UPCOMING" ? { ...item, code: "NX", names: { az: "Plan günü", ru: "План компании", en: "Company planned day" } } : item)
+    const results = await Promise.all([put({ version: null, items }), put({ version: null, items })])
+    expect(results.map((response) => response.status).sort()).toEqual([200, 409])
+    const saved = await read()
+    expect(saved.version).not.toBeNull()
+    const after = await report()
+    expect(after.rows.find((row) => row.workdayId === "fixture-finished")?.dayKind).toMatchObject({ code: "WX", names: { ru: "День компании" } })
+    expect(after.totals).toEqual(before.totals)
+    expect(after.snapshot.id).not.toBe(before.snapshot.id)
+    const settings = await tenant(ORG, () => getMtmSettings(ORG))
+    expect(settings).not.toHaveProperty("attendanceDayKinds")
+    const foreign = await tenant(OTHER, () => readAttendanceDayKinds(ORG))
+    expect(foreign.version).toBeNull(); expect(foreign.items[0].code).toBe("İ")
+    const url = `http://localhost/api/v1/mtm/attendance/report?from=${monday}&to=${friday}&form=ALL`
+    const current = (await (await getReport(new NextRequest(url))).json()).data
+    const exported = await exportReport(new NextRequest("http://localhost/api/v1/mtm/attendance/export", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ config: { ...viewConfig(), columns: ["employee", "status"], filters: { from: monday, to: friday, form: "ALL" } }, locale: "ru", format: "xlsx", snapshot: current.snapshot }) }))
+    expect(exported.status).toBe(200)
+    const book = new ExcelJS.Workbook(); await book.xlsx.load(await exported.arrayBuffer())
+    expect(JSON.stringify(book.worksheets[0].getSheetValues())).toContain("NX · План компании")
+    expect(await tenant(ORG, () => prisma.mtmAuditLog.count({ where: { organizationId: ORG, metadataKind: "mtm_attendance_day_kinds" } }))).toBe(1)
+    const bad = saved.items.filter((item: { key: string }) => item.key !== "WORKED")
+    expect((await put({ version: saved.version, items: bad })).status).toBe(400)
+    expect((await read()).version).toBe(saved.version)
+    const custom = { ...saved.items[0], key: "CUSTOM_COMPANY", code: "ZZ", names: { az: "Nümunə", ru: "Пример", en: "Example" } }
+    expect((await put({ version: saved.version, items: [...saved.items, custom] })).status).toBe(200)
+    const withCustom = await read()
+    expect((await put({ version: withCustom.version, items: saved.items })).status).toBe(400)
+    expect((await put({ version: withCustom.version, items: withCustom.items.map((item: { key: string }) => item.key === custom.key ? { ...item, archived: true } : item) })).status).toBe(200)
+    expect((await read()).items.find((item: { key: string }) => item.key === custom.key)).toMatchObject({ code: "ZZ", archived: true })
+  })
+
+  it("denies catalogue mutations to a manager, API key and disabled tenant without writes", async () => {
+    const api = await import("@/app/api/v1/mtm/attendance/day-kinds/route")
+    const { readAttendanceDayKinds } = await import("@/lib/mtm/attendance-day-kind-store")
+    const before = await tenant(ORG, () => readAttendanceDayKinds(ORG))
+    const put = () => api.PUT(new NextRequest("http://localhost/api/v1/mtm/attendance/day-kinds", { method: "PUT", body: JSON.stringify({ version: before.version, items: before.items }) }))
+    Object.assign(caller, { orgId: ORG, userId: "fixture-supervisor-user", role: "manager", principalType: "session" })
+    expect((await put()).status).toBe(403)
+    Object.assign(caller, { userId: "fixture-admin", role: "admin", principalType: "api_key" })
+    expect((await put()).status).toBe(403)
+    caller.principalType = "session"
+    await tenant(ORG, () => prisma.mtmSetting.updateMany({ where: { organizationId: ORG, key: "attendanceEnabled" }, data: { value: false } }))
+    expect((await put()).status).toBe(404)
+    expect((await api.GET(new NextRequest("http://localhost/api/v1/mtm/attendance/day-kinds"))).status).toBe(404)
+    expect(await tenant(ORG, () => readAttendanceDayKinds(ORG))).toEqual(before)
+    await tenant(ORG, () => prisma.mtmSetting.updateMany({ where: { organizationId: ORG, key: "attendanceEnabled" }, data: { value: true } }))
+  })
+
 })

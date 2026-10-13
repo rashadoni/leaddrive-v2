@@ -1,3 +1,4 @@
+import type { AttendanceDayKind } from "@/lib/mtm/attendance-day-kinds"
 import { addDateKeyDays, currentDateKey, isDateKey } from "@/lib/mtm/mobile-week"
 import { AttendanceRuleInputSchema, attendanceRuleForDate, minutesOfDay, type MtmAttendanceRule } from "@/lib/mtm/attendance-rules"
 import { resolveWorkCalendarDay, type WorkCalendarDayKind, type WorkCalendarOverride } from "@/lib/mtm/work-calendar"
@@ -73,6 +74,7 @@ export interface MtmAttendanceReportRow {
   date: string
   workdayId: string | null
   kind: MtmAttendanceDayKind
+  dayKind?: AttendanceDayKind
   factsState: "NONE" | "VALID" | "INVALID"
   ruleId: string
   timezone: string
@@ -94,6 +96,7 @@ export interface MtmAttendanceReportRow {
 }
 
 export interface MtmAttendanceReportInput {
+  dayKinds?: readonly AttendanceDayKind[]
   employees: readonly MtmAttendanceEmployee[]
   workdays: readonly MtmAttendanceWorkday[]
   calendar: readonly WorkCalendarOverride[]
@@ -283,8 +286,12 @@ export function buildMtmAttendanceReport(input: MtmAttendanceReportInput) {
     if (!date || date < input.from || date > input.to) continue
     calendarByDate.set(date, [...(calendarByDate.get(date) ?? []), entry])
   }
-  const rows = input.employees.flatMap((employee) => dates.map((date) => buildRow(employee, date,
-    days.get(rowKey(employee.id, date)) ?? [], plans.get(date)!, calendarByDate.get(date) ?? [], now)))
+  const catalogue = new Map(input.dayKinds?.map((kind) => [kind.key, kind]))
+  const rows = input.employees.flatMap((employee) => dates.map((date) => {
+    const row = buildRow(employee, date, days.get(rowKey(employee.id, date)) ?? [], plans.get(date)!, calendarByDate.get(date) ?? [], now)
+    const dayKind = catalogue.get(row.kind)
+    return dayKind ? { ...row, dayKind } : row
+  }))
   return { from: input.from, to: input.to, asOf, rows, totals: summarizeMtmAttendanceRows(rows) }
 }
 
