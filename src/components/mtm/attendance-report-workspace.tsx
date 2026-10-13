@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { HomeCard, HomeKpi, HomePill, type HomeTone } from "@/components/mtm/home-parts"
 import { addDateKeyDays, isDateKey } from "@/lib/mtm/mobile-week"
 import { filterMtmAttendanceRows, summarizeMtmAttendanceRows, type MtmAttendanceReport, type MtmAttendanceReportRow } from "@/lib/mtm/attendance-report"
-import { formatAttendanceDuration, attendanceStatusText, attendanceMonthCell, attendanceCatalogueLegend, attendanceCorrectionLines, attendanceApprovedLines, attendanceJournalEntries } from "@/lib/mtm/attendance-presentation"
+import { formatAttendanceDuration, attendanceStatusText, attendanceMonthCellGroup, attendanceCatalogueLegend, attendanceCorrectionLines, attendanceApprovedLines, attendanceJournalEntries } from "@/lib/mtm/attendance-presentation"
 import { DEFAULT_ATTENDANCE_VIEW_COLUMNS, type AttendanceViewConfig } from "@/lib/mtm/attendance-view-contract"
 import { buildAttendanceTable } from "@/lib/mtm/attendance-table"
 import { MtmAttendancePersonalViews } from "@/components/mtm/attendance-personal-views"
@@ -138,7 +138,7 @@ export function MtmAttendanceReportWorkspace() {
     }
     return { employees: [...employees.values()], teams: [...teams].map(([id, name]) => ({ id, name })) }
   }, [report, t])
-  const rows = useMemo(() => filterMtmAttendanceRows(report?.rows ?? [], { teamId: teamId || undefined, employeeId: employeeId || undefined,
+  const rows = useMemo(() => filterMtmAttendanceRows((form === "MONTH" ? report?.accountingRows ?? report?.rows : report?.rows) ?? [], { teamId: teamId || undefined, employeeId: employeeId || undefined,
     form: customView?.config.filters.form ?? (form === "DAY" || form === "MONTH" || form === "BRANCH" ? "ALL" : form) }), [report, teamId, employeeId, form, customView])
   const totals = useMemo(() => summarizeMtmAttendanceRows(rows), [rows])
   const customTable = useMemo(() => report && customView && currentConfig ? buildAttendanceTable(report, currentConfig, locale, t) : null, [report, customView, currentConfig, locale, t])
@@ -146,12 +146,12 @@ export function MtmAttendanceReportWorkspace() {
   const journal = useMemo(() => form === "JOURNAL" ? rows.flatMap((row) => attendanceJournalEntries(row, locale, t).map((entry) => ({ row, entry }))) : [], [rows, form, locale, t])
   const monthEmployees = useMemo(() => {
     if (form !== "MONTH") return []
-    const people = new Map<string, { name: string; team: string | null; rows: MtmAttendanceReportRow[]; dates: Map<string, MtmAttendanceReportRow> }>()
+    const people = new Map<string, { name: string; team: string | null; rows: MtmAttendanceReportRow[]; dates: Map<string, MtmAttendanceReportRow[]> }>()
     for (const row of rows) {
       if (!people.has(row.employeeId)) people.set(row.employeeId, { name: row.employeeName, team: row.teamName, rows: [], dates: new Map() })
       const employee = people.get(row.employeeId)!
       employee.rows.push(row)
-      employee.dates.set(row.date, row)
+      employee.dates.set(row.date, [...(employee.dates.get(row.date) ?? []), row])
     }
     return [...people].map(([id, person]) => ({ id, ...person, totals: summarizeMtmAttendanceRows(person.rows) }))
   }, [rows, form])
@@ -276,8 +276,9 @@ export function MtmAttendanceReportWorkspace() {
                 <th scope="col" className={`${HEADER} min-w-24`}>{t("reportWorked")}</th><th scope="col" className={HEADER}>{t("reportLateCount")}</th><th scope="col" className={HEADER}>{t("reportAbsentCount")}</th></tr></thead>
               <tbody>{monthEmployees.slice(pageStart, pageStart + PAGE_SIZE).map((person) => <tr key={person.id} data-testid="attendance-month-person"><th scope="row" className={`${CELL} sticky left-0 z-10 bg-card text-left font-semibold`}>
                 {person.name}<span className="mt-1 block text-xs font-normal text-muted-foreground">{person.team ?? t("reportNoTeam")}</span></th>
-                {monthDates.map((date) => { const row = person.dates.get(date); return <td key={date} className={`${CELL} text-center`}><span title={row ? `${dateLabel(date)} · ${attendanceStatusText(row, locale, t)} · ${rowNotes(row)}` : dateLabel(date)}>
-                  <HomePill tone={row ? rowTone(row) : "zinc"} className="min-w-10 justify-center rounded-md px-1.5 py-1 tabular-nums">{row?.dayKind ? <span aria-hidden="true" data-testid="attendance-kind-color" className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: row.dayKind.color }} /> : null}{attendanceMonthCell(row, t)}</HomePill></span></td> })}
+                {monthDates.map((date) => { const entries = person.dates.get(date); return <td key={date} className={`${CELL} text-center`}><div className="flex flex-col items-center gap-2">
+                  {entries?.length ? entries.map(row => <span key={row.sourceDate ?? row.date} title={`${dateLabel(row.sourceDate ?? date)} · ${attendanceStatusText(row, locale, t)} · ${rowNotes(row)}`}>
+                    <HomePill tone={rowTone(row)} className="min-w-10 justify-center rounded-md px-1.5 py-1 tabular-nums">{row.dayKind ? <span aria-hidden="true" data-testid="attendance-kind-color" className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: row.dayKind.color }} /> : null}{attendanceMonthCellGroup([row], locale, t)}</HomePill></span>) : "—"}</div></td> })}
                 <td className={`${CELL} whitespace-nowrap tabular-nums`}>{formatAttendanceDuration(person.totals.workedSeconds)}{!person.totals.isComplete ? <span className="block text-xs text-amber-700 dark:text-amber-300">{t("reportPartial")}</span> : null}</td>
                 <td className={`${CELL} tabular-nums`}>{person.totals.lateCount}</td><td className={`${CELL} tabular-nums`}>{person.totals.absentCount}</td></tr>)}</tbody>
             </table></div>
@@ -305,7 +306,7 @@ export function MtmAttendanceReportWorkspace() {
               <td className={`${CELL} min-w-48 text-xs leading-relaxed text-muted-foreground`}>{rowNotes(row)}</td></tr>)}</tbody>
           </table></div>}
           {!customTable && rows.some((row) => row.corrections?.length) ? <div className="space-y-2 text-xs leading-relaxed text-muted-foreground" data-testid="attendance-correction-history"><p>{t("reportCorrectionLegend")}</p>
-            {form === "MONTH" ? rows.flatMap((row) => attendanceCorrectionLines(row, locale, t).map((line, index) => <p key={`${row.employeeId}:${row.date}:${index}`}>{row.employeeName} · {dateLabel(row.date)} · {line}</p>)) : null}</div> : null}
+            {form === "MONTH" ? rows.flatMap((row) => attendanceCorrectionLines(row, locale, t).map((line, index) => <p key={`${row.employeeId}:${row.sourceDate ?? row.date}:${index}`}>{row.employeeName} · {dateLabel(row.date)} · {line}</p>)) : null}</div> : null}
           <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground"><p>{t("reportShown", { from: count ? pageStart + 1 : 0, to: Math.min(pageStart + PAGE_SIZE, count), total: count })}</p>
             {count > PAGE_SIZE ? <div className="flex items-center gap-2"><Button type="button" variant="outline" className="min-h-11" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>{t("reportPrevious")}</Button>
               <span>{t("reportPage", { current: currentPage + 1, total: lastPage + 1 })}</span><Button type="button" variant="outline" className="min-h-11" disabled={currentPage === lastPage} onClick={() => setPage(currentPage + 1)}>{t("reportNext")}</Button></div> : null}</div>

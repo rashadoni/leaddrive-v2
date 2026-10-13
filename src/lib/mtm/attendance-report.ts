@@ -1,3 +1,5 @@
+import { attendanceShiftForDate, type AttendanceResolvedShift } from "@/lib/mtm/attendance-shift-plan"
+import type { AttendanceShiftAssignment } from "@/lib/mtm/attendance-shift-contract"
 import { attendanceEmploymentOnDate, type AttendanceEmploymentEvent, type AttendanceEmploymentState } from "@/lib/mtm/attendance-employment"
 import type { AttendanceReportMark } from "@/lib/mtm/attendance-location-report"
 import { projectApprovedAttendanceRequests, type AttendanceApprovedPeriod } from "@/lib/mtm/attendance-request-projection"
@@ -87,6 +89,13 @@ export type MtmAttendanceInvalidReason = "DUPLICATE_WORKDAY" | "SCHEDULE_INVALID
  * Breaks are represented solely by pausedSeconds, never their intervals/places.
  */
 export interface MtmAttendanceReportRow {
+  /** Optional schedule/accounting metadata; canonical rows retain workDate. */
+  accountingDate?: string
+  sourceDate?: string
+  shiftLateGraceMinutes?: number
+  shiftPlanId?: string
+  overtimeThresholdMinutes?: number | null
+
   employeeId: string
   employeeName: string
   teamId: string | null
@@ -121,6 +130,7 @@ export interface MtmAttendanceReportRow {
 }
 
 export interface MtmAttendanceReportInput {
+  shiftAssignments?: readonly AttendanceShiftAssignment[]
   approvedRequests?: readonly AttendanceApprovedPeriod[]
   dayKinds?: readonly AttendanceDayKind[]
   employees: readonly MtmAttendanceEmployee[]
@@ -151,21 +161,25 @@ function workDate(value: Date | string): string | null {
 
 function rowKey(employeeId: string, date: string): string { return JSON.stringify([employeeId, date]) }
 
-type DayPlan = { rule: MtmAttendanceRule; today: string; start: string | null; end: string | null; expectedSeconds: number }
+type DayPlan = { shift?: AttendanceResolvedShift; rule: MtmAttendanceRule; today: string; start: string | null; end: string | null; expectedSeconds: number }
 
 /** Resolve expensive timezone/DST conversions once per date, not once per employee. */
-function dayPlan(rules: readonly MtmAttendanceRule[], date: string, now: Date): DayPlan {
-  const rule = attendanceRuleForDate(rules, date)
-  if (!isValidTimezone(rule.timezone) || !AttendanceRuleInputSchema.safeParse({ effectiveFrom: rule.effectiveFrom,
+function dayPlan(rules: readonly MtmAttendanceRule[], date: string, now: Date, shift?: AttendanceResolvedShift | null): DayPlan {
+  const baseline = attendanceRuleForDate(rules, date)
+  const rule = shift ? { ...baseline, id: shift.id, timezone: shift.timezone, startTime: shift.startTime, endTime: shift.endTime, lunchMinutes: shift.lunchMinutes, lateGraceMinutes: shift.lateGraceMinutes } : baseline
+  if (!shift && (!isValidTimezone(rule.timezone) || !AttendanceRuleInputSchema.safeParse({ effectiveFrom: rule.effectiveFrom,
     startTime: rule.startTime, endTime: rule.endTime, lunchMinutes: rule.lunchMinutes,
-    lateGraceMinutes: rule.lateGraceMinutes, weekendDays: rule.weekendDays }).success) {
+    lateGraceMinutes: rule.lateGraceMinutes, weekendDays: rule.weekendDays }).success)) {
     throw new MtmAttendanceReportError("MTM_ATTENDANCE_REPORT_INPUT_INVALID")
   }
-  const plan: DayPlan = { rule, today: currentDateKey(now, rule.timezone), start: null, end: null,
-    expectedSeconds: (minutesOfDay(rule.endTime) - minutesOfDay(rule.startTime) - rule.lunchMinutes) * 60 }
+  const plan: DayPlan = { ...(shift ? { shift } : {}), rule, today: currentDateKey(now, rule.timezone), start: null, end: null,
+    expectedSeconds: (minutesOfDay(rule.endTime) + (shift?.nextDay ? 1440 : 0) - minutesOfDay(rule.startTime) - rule.lunchMinutes - (shift?.shorteningMinutes ?? 0)) * 60 }
   try {
     const start = localDateTimeToUnambiguousUtc(`${date}T${rule.startTime}`, rule.timezone).toISOString()
-    const end = localDateTimeToUnambiguousUtc(`${date}T${rule.endTime}`, rule.timezone).toISOString()
+    const endMinute = minutesOfDay(rule.endTime) + (shift?.nextDay ? 1440 : 0) - (shift?.shorteningMinutes ?? 0)
+    const endDate = addDateKeyDays(date, Math.floor(endMinute / 1440))
+    const endClock = `${String(Math.floor((endMinute % 1440) / 60)).padStart(2, "0")}:${String(endMinute % 60).padStart(2, "0")}`
+    const end = localDateTimeToUnambiguousUtc(`${endDate}T${endClock}`, rule.timezone).toISOString()
     if (end > start && Number.isSafeInteger(plan.expectedSeconds) && plan.expectedSeconds >= 0) {
       plan.start = start
       plan.end = end
@@ -205,7 +219,7 @@ function buildRow(employee: MtmAttendanceEmployee, date: string, days: readonly 
   plan: DayPlan, calendar: readonly WorkCalendarOverride[], now: Date): MtmAttendanceReportRow {
   const { rule, today } = plan
   const effective = resolveWorkCalendarDay({ date, overrides: calendar, agentId: employee.id, teamId: employee.teamId })
-  const customWeekend = rule.weekendDays.includes(new Date(`${date}T00:00:00.000Z`).getUTCDay())
+  const customWeekend = plan.shift ? !plan.shift.working : rule.weekendDays.includes(new Date(`${date}T00:00:00.000Z`).getUTCDay())
   const isWorkingDay = effective.overrideId !== null ? effective.isWorkingDay : !customWeekend
   const calendarKind = effective.overrideId !== null ? effective.kind : customWeekend ? "WEEKEND" : "WORKING_DAY"
   const expectedWorkSeconds = isWorkingDay ? plan.expectedSeconds : 0
@@ -219,6 +233,12 @@ function buildRow(employee: MtmAttendanceEmployee, date: string, days: readonly 
     flags: [], invalidReasons: [], events: [],
   }
 
+  if (plan.shift) {
+    row.accountingDate = plan.shift.accountingDate
+    row.shiftPlanId = plan.shift.id
+    row.shiftLateGraceMinutes = plan.shift.lateGraceMinutes
+    row.overtimeThresholdMinutes = plan.shift.overtimeThresholdMinutes
+  }
   const plannedStartAt = plan.start
   const plannedEndAt = plan.end
   if (!plannedStartAt || !plannedEndAt) {
@@ -246,7 +266,7 @@ function buildRow(employee: MtmAttendanceEmployee, date: string, days: readonly 
       || corrected.facts.totalPausedSeconds !== day.totalPausedSeconds || !corrected.history.length) return invalid(row, ["WORKDAY_INCONSISTENT"])
     row.corrections = corrected.history
   }
-  if (date < today && (day.status === "STARTED" || day.status === "PAUSED")) row.flags.push("MISSING_FINISH")
+  if (date < today && now.getTime() >= Date.parse(plannedEndAt) && (day.status === "STARTED" || day.status === "PAUSED")) row.flags.push("MISSING_FINISH")
   const reasons = [...read.reasons]
   if (!row.startedAt || (day.completedAt !== null && !row.completedAt)) reasons.push("TIMESTAMP_INVALID")
   if (!day.id || !["STARTED", "PAUSED", "COMPLETED"].includes(day.status)
@@ -323,10 +343,16 @@ export function buildMtmAttendanceReport(input: MtmAttendanceReportInput) {
   const catalogue = new Map(input.dayKinds?.map((kind) => [kind.key, kind]))
   const approvedByEmployee = new Map<string, AttendanceApprovedPeriod[]>()
   for (const entry of input.approvedRequests ?? []) approvedByEmployee.set(entry.agentId, [...(approvedByEmployee.get(entry.agentId) ?? []), entry])
+  const shiftsByEmployee = new Map<string, AttendanceShiftAssignment[]>()
+  for (const assignment of input.shiftAssignments ?? []) {
+    const assigned = shiftsByEmployee.get(assignment.agentId) ?? []; assigned.push(assignment); shiftsByEmployee.set(assignment.agentId, assigned)
+  }
   const rows = input.employees.flatMap((employee) => dates.map((date) => {
-    const row = buildRow(employee, date, days.get(rowKey(employee.id, date)) ?? [], plans.get(date)!, calendarByDate.get(date) ?? [], now)
+    const shift = attendanceShiftForDate(shiftsByEmployee.get(employee.id) ?? [], employee.id, employee.teamId, date, input.calendar)
+    const plan = shift ? dayPlan(input.rules, date, now, shift) : plans.get(date)!
+    const row = buildRow(employee, date, days.get(rowKey(employee.id, date)) ?? [], plan, calendarByDate.get(date) ?? [], now)
     const dayKind = catalogue.get(row.kind)
-    const projected = projectApprovedAttendanceRequests(dayKind ? { ...row, dayKind } : row, approvedByEmployee.get(employee.id) ?? [], plans.get(date)!.rule.lateGraceMinutes * 60)
+    const projected = projectApprovedAttendanceRequests(dayKind ? { ...row, dayKind } : row, approvedByEmployee.get(employee.id) ?? [], plan.rule.lateGraceMinutes * 60)
     const employmentState = attendanceEmploymentOnDate(employee.employmentEvents, date, row.timezone)
     if (employmentState !== "NOT_EMPLOYED") return { ...projected, employmentState }
     // Keep actual work/invalid facts visible even outside a recorded contract.
@@ -376,5 +402,5 @@ export function summarizeMtmAttendanceRows(rows: readonly MtmAttendanceReportRow
   }
 }
 
-export type MtmAttendanceReport = ReturnType<typeof buildMtmAttendanceReport>
+export type MtmAttendanceReport = ReturnType<typeof buildMtmAttendanceReport> & { accountingRows?: MtmAttendanceReportRow[] }
 export type MtmAttendanceReportTotals = ReturnType<typeof summarizeMtmAttendanceRows>

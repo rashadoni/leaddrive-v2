@@ -230,6 +230,8 @@ model Organization {
   attendanceMonthCloses MtmAttendanceMonthClose[]
   attendanceMonthMembers MtmAttendanceMonthMember[]
   attendanceMonthDays MtmAttendanceMonthDay[]
+  attendanceShiftPlans MtmAttendanceShiftPlan[]
+  attendanceShiftMembers MtmAttendanceShiftMember[]
   attendanceLeavePolicies MtmAttendanceLeavePolicy[]
   attendanceLeaveProfiles MtmAttendanceLeaveProfile[]
   mtmAttendanceBranches MtmAttendanceBranch[]
@@ -728,6 +730,7 @@ model User {
   workforceShiftTeamDefaultAssignmentsAssigned WorkforceShiftTeamDefaultAssignment[] @relation("WorkforceShiftTeamDefaultAssignmentAssignedBy")
   workforceShiftTeamDefaultOperationsPublished WorkforceShiftTeamDefaultOperation[] @relation("WorkforceShiftTeamDefaultOperationPublishedBy")
   attendanceMonthClosesCreated MtmAttendanceMonthClose[]
+  attendanceShiftPlansCreated MtmAttendanceShiftPlan[]
   attendanceLeavePoliciesCreated MtmAttendanceLeavePolicy[]
   attendanceLeaveProfilesCreated MtmAttendanceLeaveProfile[]
   mtmAttendanceBranchRevisionsCreated MtmAttendanceBranchRevision[]
@@ -5771,6 +5774,7 @@ model MtmTeam {
 // MTM Agent — field agents linked to CRM users
 model MtmAgent {
   attendanceMonthMemberships MtmAttendanceMonthMember[]
+  attendanceShiftMembers MtmAttendanceShiftMember[]
   attendanceLeaveProfiles MtmAttendanceLeaveProfile[]
   attendanceQrEvidence MtmAttendanceQrEvidence[]
   attendanceInstallationRequests MtmAttendanceInstallationRequest[]
@@ -22451,4 +22455,38 @@ model MtmAttendanceMonthDay {
   @@unique([organizationId, agentId, sourceDate])
   @@index([organizationId, closeId], map: "mtm_month_days_snapshot")
   @@map("mtm_attendance_month_days")
+}
+// Future, frozen-roster schedules. Revisions never rewrite attendance facts.
+model MtmAttendanceShiftPlan {
+  id String @id
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  version Int
+  previousId String?
+  requestId String
+  requestHash String @db.VarChar(64)
+  teamId String?
+  teamName String?
+  value Json
+  reason String @db.VarChar(1000)
+  createdBy String
+  author User @relation(fields: [organizationId, createdBy], references: [organizationId, id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  members MtmAttendanceShiftMember[]
+  @@unique([organizationId, id])
+  @@unique([organizationId, version])
+  @@unique([organizationId, requestId])
+  @@map("mtm_attendance_shift_plans")
+}
+model MtmAttendanceShiftMember {
+  id String @id
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  planId String
+  plan MtmAttendanceShiftPlan @relation(fields: [organizationId, planId], references: [organizationId, id], onDelete: Restrict)
+  agentId String
+  agent MtmAgent @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  @@unique([organizationId, planId, agentId])
+  @@index([organizationId, agentId])
+  @@map("mtm_attendance_shift_members")
 }
