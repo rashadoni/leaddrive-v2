@@ -55,3 +55,34 @@ describe("optional attendance reminder timing from the shared report", () => {
     expect(AttendanceReminderPolicySchema.parse({ attendanceManagerAlertsEnabled: false })).toEqual({ attendanceManagerAlertsEnabled: false })
   })
 })
+
+
+describe("reminders follow the canonical overnight source date", () => {
+  const assignment = { agentId: employee.id, plan: { id: "night-plan", version: 1, createdAt: at("07:00"), teamId: null, teamName: null, memberCount: 1,
+    value: { from: date, to: "2026-10-14", timezone: "Asia/Baku", attribution: "END_DAY" as const, preHolidayMinutes: null, preHolidayConfirmed: false, overtimeThresholdMinutes: null,
+      cycle: [{ kind: "WORK" as const, startTime: "22:00", endTime: "06:00", nextDay: true, lunchMinutes: 0, lateGraceMinutes: 30 }] } } }
+  const night = (clock: string, workdays: MtmAttendanceWorkday[] = [day("22:00")], approvedRequests: AttendanceApprovedPeriod[] = []) => {
+    const now = new Date(clock), report = buildMtmAttendanceReport({ employees: [employee], workdays, calendar: [], rules: [], from: date, to: date, now, approvedRequests, shiftAssignments: [assignment] })
+    return attendanceReminderKinds(report.rows[0], now, 10)
+  }
+  it("uses the saved shift grace instead of the fallback daytime rule", () => {
+    expect(night(at("22:11"), [])).toEqual(["EMPLOYEE_START"])
+    expect(night(at("22:31"), [])).toEqual(["EMPLOYEE_START", "MANAGER_MISSING"])
+  })
+  it("waits through midnight and prompts at the planned finish, including its missing-finish projection", () => {
+    expect(night("2026-10-13T01:00:00+04:00")).toEqual([])
+    expect(night("2026-10-13T05:59:00+04:00")).toEqual([])
+    expect(night("2026-10-13T06:00:00+04:00")).toEqual(["EMPLOYEE_FINISH"])
+    expect(night("2026-10-14T06:00:00+04:00")).toEqual([])
+  })
+  it("continues missing-start checks during the same night but not after the planned end", () => {
+    expect(night("2026-10-13T01:00:00+04:00", [])).toEqual(["EMPLOYEE_START", "MANAGER_MISSING"])
+    expect(night("2026-10-13T06:00:00+04:00", [])).toEqual([])
+  })
+  it("keeps a private break and an approved next-day absence quiet", () => {
+    const paused = { ...day("22:00"), status: "PAUSED", events: [...day("22:00").events, { type: "PAUSE", occurredAt: "2026-10-13T05:00:00+04:00" }] }
+    expect(night("2026-10-13T06:00:00+04:00", [paused])).toEqual([])
+    const approved = { ...leave("HOURLY_ABSENCE", true), startDate: "2026-10-13", endDate: "2026-10-13", details: { ...leave("HOURLY_ABSENCE", true).details, startTime: "05:00", endTime: "07:00" } }
+    expect(night("2026-10-13T06:00:00+04:00", [day("22:00")], [approved])).toEqual([])
+  })
+})

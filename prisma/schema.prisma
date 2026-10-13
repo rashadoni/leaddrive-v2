@@ -5771,13 +5771,10 @@ model MtmTeam {
 
 // MTM Agent — field agents linked to CRM users
 model MtmAgent {
-<<<<<<< HEAD
   attendanceReminderSubjects MtmAttendanceReminderNotice[] @relation("AttendanceReminderSubject")
   attendanceReminderRecipients MtmAttendanceReminderNotice[] @relation("AttendanceReminderRecipient")
-=======
   attendanceShiftMembers MtmAttendanceShiftMember[]
   attendanceLeaveProfiles MtmAttendanceLeaveProfile[]
->>>>>>> 74db912f0
   attendanceQrEvidence MtmAttendanceQrEvidence[]
   attendanceInstallationRequests MtmAttendanceInstallationRequest[]
   mtmAttendanceStreamIntegrity MtmAttendanceStreamIntegrity[]
@@ -22370,10 +22367,6 @@ model MtmAttendanceQrEvidence {
   @@map("mtm_attendance_qr_evidence")
 }
 
-<<<<<<< HEAD
-/// Append-only dedupe receipt. A notification is created in the same transaction.
-model MtmAttendanceReminderNotice {
-=======
 model MtmAttendanceLeavePolicy {
   id String @id
   organizationId String
@@ -22395,28 +22388,10 @@ model MtmAttendanceLeavePolicy {
 }
 
 model MtmAttendanceLeaveProfile {
->>>>>>> 74db912f0
   id String @id
   organizationId String
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   agentId String
-<<<<<<< HEAD
-  agent MtmAgent @relation("AttendanceReminderSubject", fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
-  workDate DateTime @db.Date
-  kind String @db.VarChar(20)
-  recipientAgentId String?
-  recipientAgent MtmAgent? @relation("AttendanceReminderRecipient", fields: [organizationId, recipientAgentId], references: [organizationId, id], onDelete: Restrict)
-  recipientUserId String?
-  recipientUser User? @relation(fields: [organizationId, recipientUserId], references: [organizationId, id], onDelete: Restrict)
-  observedAt DateTime @db.Timestamp(3)
-  ruleId String
-  createdAt DateTime @default(now()) @db.Timestamp(3)
-  @@unique([organizationId, agentId, workDate, kind, recipientAgentId], map: "mtm_reminder_employee_dedupe")
-  @@unique([organizationId, agentId, workDate, kind, recipientUserId], map: "mtm_reminder_manager_dedupe")
-  @@index([organizationId, recipientUserId, workDate], map: "mtm_reminder_user_date")
-  @@index([organizationId, recipientAgentId, workDate], map: "mtm_reminder_agent_date")
-  @@map("mtm_attendance_reminder_notices")
-=======
   agent MtmAgent @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
   year Int
   version Int
@@ -22468,5 +22443,27 @@ model MtmAttendanceShiftMember {
   @@unique([organizationId, planId, agentId])
   @@index([organizationId, agentId])
   @@map("mtm_attendance_shift_members")
->>>>>>> 74db912f0
+}
+
+
+model MtmAttendanceReminderNotice {
+  id String @id
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentId String
+  agent MtmAgent @relation("AttendanceReminderSubject", fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  workDate DateTime @db.Date
+  kind String @db.VarChar(20)
+  recipientAgentId String?
+  recipientAgent MtmAgent? @relation("AttendanceReminderRecipient", fields: [organizationId, recipientAgentId], references: [organizationId, id], onDelete: Restrict)
+  recipientUserId String?
+  recipientUser User? @relation(fields: [organizationId, recipientUserId], references: [organizationId, id], onDelete: Restrict)
+  observedAt DateTime @db.Timestamp(3)
+  ruleId String
+  createdAt DateTime @default(now()) @db.Timestamp(3)
+  @@unique([organizationId, agentId, workDate, kind, recipientAgentId], map: "mtm_reminder_employee_dedupe")
+  @@unique([organizationId, agentId, workDate, kind, recipientUserId], map: "mtm_reminder_manager_dedupe")
+  @@index([organizationId, recipientUserId, workDate], map: "mtm_reminder_user_date")
+  @@index([organizationId, recipientAgentId, workDate], map: "mtm_reminder_agent_date")
+  @@map("mtm_attendance_reminder_notices")
 }

@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { currentDateKey } from "@/lib/mtm/mobile-week"
+import { addDateKeyDays, currentDateKey } from "@/lib/mtm/mobile-week"
 import { attendanceApprovedAbsenceWindow, isAttendanceApprovedAbsence } from "@/lib/mtm/attendance-request-projection"
 import { mtmWorkdayPauses } from "@/lib/mtm/workday-pauses"
 import type { MtmAttendanceReportRow } from "@/lib/mtm/attendance-report"
@@ -20,11 +20,16 @@ export const ATTENDANCE_REMINDER_URL = "/mtm/attendance"
  * reminder from their current safe projection; it never calculates work time. */
 export function attendanceReminderKinds(row: MtmAttendanceReportRow, now: Date, lateGraceMinutes: number): AttendanceReminderKind[] {
   const instant = now.getTime()
-  if (!Number.isFinite(instant) || row.date !== currentDateKey(now, row.timezone)
-    || !row.isWorkingDay || row.expectedWorkSeconds <= 0 || row.employmentState === "NOT_EMPLOYED"
+  if (!Number.isFinite(instant) || !row.isWorkingDay || row.expectedWorkSeconds <= 0 || row.employmentState === "NOT_EMPLOYED"
     || row.factsState === "INVALID" || !row.plannedStartAt || !row.plannedEndAt) return []
   const start = Date.parse(row.plannedStartAt), end = Date.parse(row.plannedEndAt)
-  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start || !Number.isInteger(lateGraceMinutes) || lateGraceMinutes < 0) return []
+  const today = currentDateKey(now, row.timezone)
+  // An overnight shift keeps its canonical start date. Permit its finish day,
+  // but never turn an old ordinary day into a catch-up notification.
+  if (row.date !== today && !(row.shiftPlanId && row.date === addDateKeyDays(today, -1)
+    && Number.isFinite(end) && currentDateKey(new Date(end), row.timezone) === today)) return []
+  const graceMinutes = row.shiftLateGraceMinutes ?? lateGraceMinutes
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start || !Number.isInteger(graceMinutes) || graceMinutes < 0) return []
   // A late imported approval or an hourly absence must not cause a prompt while
   // the employee is currently excused. Malformed absence clocks fail closed.
   const periods = row.approvedRequests ?? []
@@ -37,7 +42,7 @@ export function attendanceReminderKinds(row: MtmAttendanceReportRow, now: Date, 
   const kinds: AttendanceReminderKind[] = []
   if (!row.startedAt && !row.completedAt && instant >= start && instant < end) {
     kinds.push("EMPLOYEE_START")
-    if (instant > start + lateGraceMinutes * 60_000 && row.kind === "ABSENT") kinds.push("MANAGER_MISSING")
+    if (instant > start + graceMinutes * 60_000 && row.kind === "ABSENT") kinds.push("MANAGER_MISSING")
   }
   if (row.startedAt && !row.completedAt && instant >= end
     && !mtmWorkdayPauses(row.events).some(pause => pause.to === null)) kinds.push("EMPLOYEE_FINISH")

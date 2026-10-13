@@ -62,17 +62,19 @@ export async function createAttendanceRemindersInTransaction(tx: Prisma.Transact
   if (!policy.enabled || (!policy.employee && !policy.manager) || !await attendanceReminderTenantEnabled(tx, organizationId)) return 0
   const agent = await tx.mtmAgent.findFirst({ where: { organizationId, id: agentId, status: "ACTIVE", OR: [{ role: "AGENT" }, { attendanceParticipant: true }] }, select: { id: true, userId: true, user: { select: { isActive: true, anonymizedAt: true, preferredLanguage: true } } } })
   if (!agent || (agent.userId && (!agent.user?.isActive || agent.user.anonymizedAt))) return 0
-  // A civil date can differ from UTC by one day. Project all three and let the
-  // frozen rule's timezone choose today; live timezone edits cannot rewrite it.
+  // Today can be yesterday in UTC-negative zones; an overnight source date
+  // can therefore be UTC minus two days. The classifier allows only local
+  // today or a real overnight shift ending today, never stale ordinary days.
   const utc = now.toISOString().slice(0, 10)
-  const report = await readAttendanceProjectionInTransaction(tx, { organizationId, authorizedEmployeeIds: [agentId], query: { from: addDateKeyDays(utc, -1), to: addDateKeyDays(utc, 1), employeeId: agentId, form: "ALL" }, now })
+  const report = await readAttendanceProjectionInTransaction(tx, { organizationId, authorizedEmployeeIds: [agentId], query: { from: addDateKeyDays(utc, -2), to: addDateKeyDays(utc, 1), employeeId: agentId, form: "ALL" }, now })
   const rules = await readAttendanceRules(organizationId, tx)
   let created = 0
   for (const row of report.rows) {
     const rule = attendanceRuleForDate(rules, row.date)
+    const ruleId = row.shiftPlanId ?? rule.id
     const kinds = attendanceReminderKinds(row, now, rule.lateGraceMinutes)
     for (const kind of kinds.filter(kind => kind.startsWith("EMPLOYEE") && policy.employee)) {
-      const notice = await insertNotice(tx, { organizationId, agentId, date: row.date, kind, ruleId: rule.id, now })
+      const notice = await insertNotice(tx, { organizationId, agentId, date: row.date, kind, ruleId, now })
       if (!notice) continue
       const t = messages[localeKey(agent.user?.preferredLanguage)]
       await tx.mtmNotification.create({ data: { organizationId, agentId, type: "info", title: t[copyKey[kind]], body: t.reminderEmployeeBody,
@@ -90,7 +92,7 @@ export async function createAttendanceRemindersInTransaction(tx: Prisma.Transact
       const reader = await attendanceReminderReader(tx, organizationId, user.id)
       if (!reader || !canReviewMtmRouteRequest(reader.actor, agentId)) continue
       for (const kind of managerKinds) {
-        const notice = await insertNotice(tx, { organizationId, agentId, date: row.date, kind, ruleId: rule.id, now, recipientUserId: user.id })
+        const notice = await insertNotice(tx, { organizationId, agentId, date: row.date, kind, ruleId, now, recipientUserId: user.id })
         if (!notice) continue
         const t = messages[localeKey(reader.locale)]
         const notification = await createNotification({ organizationId, userId: user.id, type: "warning", title: t[copyKey[kind]], message: t.reminderManagerBody,

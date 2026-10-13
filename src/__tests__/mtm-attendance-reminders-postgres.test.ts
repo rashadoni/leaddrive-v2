@@ -41,6 +41,16 @@ const now = new Date("2026-10-12T06:00:00Z"), date = "2026-10-12"
   }
   const setting = (key: string, value: boolean) => tenant(ORG, () => prisma.mtmSetting.upsert({ where: { organizationId_key: { organizationId: ORG, key } }, create: { organizationId: ORG, key, value }, update: { value } }))
   const count = (agentId: string) => tenant(ORG, () => prisma.$queryRaw<{ count: number }[]>`SELECT count(*)::int AS count FROM mtm_attendance_reminder_notices WHERE "agentId"=${agentId}`).then(rows => rows[0].count)
+  async function nightPlan(agentId: string, timezone = "Asia/Baku") {
+    const id = randomUUID(), value = { from: date, to: "2026-10-14", timezone, attribution: "END_DAY", preHolidayMinutes: null, preHolidayConfirmed: false, overtimeThresholdMinutes: null,
+      cycle: [{ kind: "WORK", startTime: "22:00", endTime: "06:00", nextDay: true, lunchMinutes: 0, lateGraceMinutes: 30 }] }
+    await tenant(ORG, () => prisma.$transaction(async tx => {
+      const [previous] = await tx.$queryRaw<{ id: string; version: number }[]>`SELECT id,version FROM mtm_attendance_shift_plans WHERE "organizationId"=${ORG} ORDER BY version DESC LIMIT 1`
+      await tx.$executeRaw`INSERT INTO mtm_attendance_shift_plans(id,"organizationId",version,"previousId","requestId","requestHash",value,reason,"createdBy") VALUES(${id},${ORG},${(previous?.version ?? 0)+1},${previous?.id ?? null},${randomUUID()},${"a".repeat(64)},${JSON.stringify(value)}::jsonb,'Fictional historical fixture',${ADMIN})`
+      await tx.$executeRaw`INSERT INTO mtm_attendance_shift_members(id,"organizationId","planId","agentId") VALUES(${randomUUID()},${ORG},${id},${agentId})`
+    }))
+    return id
+  }
   beforeAll(async () => {
     sql(adminUrl!, `CREATE ROLE "${scratch!.role}" LOGIN PASSWORD 'reminder-fixture-only' NOSUPERUSER NOBYPASSRLS`); createdRole = true
     sql(adminUrl!, `CREATE DATABASE "${scratch!.name}"`); createdDb = true
@@ -49,8 +59,8 @@ const now = new Date("2026-10-12T06:00:00Z"), date = "2026-10-12"
     writeFileSync(schema, readFileSync("prisma/schema.prisma", "utf8").split("\n").filter(line => !/Unsupported\("vector/.test(line)).join("\n"))
     const pushed = spawnSync(process.execPath, [cli, "db", "push", "--schema", schema, "--skip-generate"], { env: { ...process.env, DATABASE_URL: scratch!.adminDb }, encoding: "utf8", timeout: 180000, maxBuffer: 1024 * 1024 })
     if (pushed.status !== 0) throw new Error("Reminder fixture schema push failed")
-    sql(scratch!.adminDb, "DROP TABLE mtm_attendance_reminder_notices")
-    for (const migration of ["20260806120000_mtm_rls_coverage_completion", "20260806160000_mtm_rls_bypass_clause_normalization", "20261013170000_mtm_attendance_reminders"]) sql(scratch!.adminDb, readFileSync(`prisma/migrations/${migration}/migration.sql`, "utf8"))
+    sql(scratch!.adminDb, "DROP TABLE mtm_attendance_reminder_notices; DROP TABLE mtm_attendance_shift_members; DROP TABLE mtm_attendance_shift_plans")
+    for (const migration of ["20260806120000_mtm_rls_coverage_completion", "20260806160000_mtm_rls_bypass_clause_normalization", "20261013170000_mtm_attendance_reminders", "20261013200000_mtm_attendance_shift_plans"]) sql(scratch!.adminDb, readFileSync(`prisma/migrations/${migration}/migration.sql`, "utf8"))
     sql(scratch!.adminDb, readFileSync("scripts/rls/enable-batch-5.sql", "utf8"))
     sql(scratch!.adminDb, `GRANT USAGE ON SCHEMA public TO "${scratch!.role}"; GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA public TO "${scratch!.role}"`)
     prisma = (await import("@/lib/prisma")).prisma
@@ -162,6 +172,28 @@ const now = new Date("2026-10-12T06:00:00Z"), date = "2026-10-12"
     await setting("attendanceEmployeeRemindersEnabled", true)
     expect((await (await patch()).json()).data.updated).toBe(1)
     expect((await (await get()).json()).data.unread).toBe(0)
+  })
+  it.each([
+    ["Asia/Baku", "2026-10-12T22:00:00+04:00", "2026-10-13T06:01:00+04:00"],
+    ["Etc/GMT+12", "2026-10-12T22:00:00-12:00", "2026-10-14T00:30:00Z"],
+  ])("delivers one next-day finish for %s, preserving the source date and shift provenance", async (timezone, startedAt, observedAt) => {
+    const id = await employee(), planId = await nightPlan(id, timezone), workdayId = randomUUID()
+    await tenant(ORG, async () => {
+      await prisma.mtmAgentWorkday.create({ data: { id: workdayId, organizationId: ORG, agentId: id, workDate: new Date(date), status: "STARTED", startedAt: new Date(startedAt), totalPausedSeconds: 0 } })
+      await prisma.mtmAgentWorkdayEvent.create({ data: { organizationId: ORG, agentId: id, workdayId, type: "START", clientEventId: randomUUID(), occurredAt: new Date(startedAt), appliedAt: new Date(startedAt), claimedAt: new Date(startedAt), serverReceivedAt: new Date(startedAt) } })
+    })
+    expect(await tenant(ORG, () => store.createAttendanceReminders(ORG, id, new Date(observedAt)))).toBe(1)
+    expect(await tenant(ORG, () => store.createAttendanceReminders(ORG, id, new Date(observedAt)))).toBe(0)
+    const receipts = await tenant(ORG, () => prisma.$queryRaw<{ workDate: Date; kind: string; ruleId: string }[]>`SELECT "workDate",kind,"ruleId" FROM mtm_attendance_reminder_notices WHERE "agentId"=${id}`)
+    expect(receipts).toEqual([{ workDate: new Date(date), kind: "EMPLOYEE_FINISH", ruleId: planId }])
+    expect(providers.email).not.toHaveBeenCalled(); expect(providers.push).not.toHaveBeenCalled()
+  })
+  it("uses the frozen night grace for a missing-start alert instead of the fallback rule", async () => {
+    const id = await employee(), planId = await nightPlan(id)
+    expect(await tenant(ORG, () => store.createAttendanceReminders(ORG, id, new Date("2026-10-12T22:11:00+04:00")))).toBe(1)
+    expect(await tenant(ORG, () => store.createAttendanceReminders(ORG, id, new Date("2026-10-12T22:31:00+04:00")))).toBe(1)
+    const receipts = await tenant(ORG, () => prisma.$queryRaw<{ kind: string; ruleId: string }[]>`SELECT kind,"ruleId" FROM mtm_attendance_reminder_notices WHERE "agentId"=${id} ORDER BY kind`)
+    expect(receipts).toEqual([{ kind: "EMPLOYEE_START", ruleId: planId }, { kind: "MANAGER_MISSING", ruleId: planId }])
   })
   it("rolls back a setting change if its mandatory audit fails", async () => {
     sql(scratch!.adminDb, `CREATE FUNCTION reminder_audit_fail() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action='MTM_ATTENDANCE_REMINDER_POLICY_CHANGED' THEN RAISE EXCEPTION 'fixture audit unavailable'; END IF; RETURN NEW; END $$; CREATE TRIGGER reminder_audit_fail BEFORE INSERT ON mtm_audit_logs FOR EACH ROW EXECUTE FUNCTION reminder_audit_fail()`)

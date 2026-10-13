@@ -16,12 +16,7 @@ export function isAttendanceApprovedAbsence(period: AttendanceApprovedPeriod) {
 
 /** Frozen request clocks are interpreted in their original timezone. A broken
  * or ambiguous legacy clock must never silently excuse a violation. */
-<<<<<<< HEAD
-export function attendanceApprovedAbsenceWindow(period: AttendanceApprovedPeriod): [number, number] | null {
-  if (!isAttendanceApprovedAbsence(period)) return null
-=======
 export function attendanceApprovedPeriodWindow(period: AttendanceApprovedPeriod): [number, number] | null {
->>>>>>> 74db912f0
   const { unit, startTime, endTime, timezone } = period.details
   if (unit === "HOURS" && (!startTime || !endTime)) return null
   try {

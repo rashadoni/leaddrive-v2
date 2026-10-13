@@ -17955,7 +17955,6 @@
     "managerNoTeamHint": "Yalnız öz komandalarınızın qaydalarını dəyişə bilərsiniz, amma əməkdaş kartınız hələ heç bir komandaya daxil deyil. Administratordan kartınıza komanda təyin etməsini xahiş edin."
   },
   "mtmAttendance": {
-<<<<<<< HEAD
     "reminderEmployeeStart": "İş gününüz başlayıb — gəlişinizi qeyd edin",
     "reminderEmployeeFinish": "Qrafik üzrə iş gününüz bitib — gedişinizi qeyd edin",
     "reminderEmployeeBody": "Tətbiqi açıb davamiyyət qeydlərinizi yoxlayın. Xatırlatma iş vaxtınızı dəyişmir.",
@@ -17965,7 +17964,6 @@
     "deliveryDailySummary": "HR üçün gündəlik xülasə",
     "deliveryDailySummaryHint": "Əvvəlki günün xülasəsini hazırlayın. E-poçt ünvanlarını əl ilə əlavə edin və göndərişi ayrıca aktivləşdirin.",
     "deliveryDailySummaryName": "Gündəlik davamiyyət xülasəsi",
-=======
     "shiftTitle": "Qrafiklər və növbələr",
     "shiftIntro": "Komandanın iş planı, gecə növbələri və tabeldə saatların uçotu. Dərc edilmiş işçi heyəti komanda dəyişdikdə saxlanılır.",
     "shiftPublished": "Dərc edilmiş qrafiklər",
@@ -18070,7 +18068,6 @@
     "leaveStateHOURS_INVALID": "Saatlıq məzuniyyət vaxtını yoxlamaq lazımdır",
     "leaveStateHOURS_UNCONFIGURED": "Saatların günə çevrilməsi lazımdır",
     "leaveRevision": "Versiya {version} · {date}",
->>>>>>> 74db912f0
     "qrTitle": "Filial ekranında QR",
     "qrIntro": "Gəliş və gediş qeydinin filialını tətbiqdən təsdiqləyin.",
     "qrRule": "Filialı QR ilə təsdiqlə",
