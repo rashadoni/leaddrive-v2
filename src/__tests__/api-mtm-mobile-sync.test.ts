@@ -4004,7 +4004,7 @@ describe("explicit attendance enrollment through the live workday path", () => {
     expect((await response.json()).results).toMatchObject([{ status: "ok", serverId: "office-workday" }])
     expect(prisma.mtmAgentWorkday.create).toHaveBeenCalledTimes(1)
     expect(prisma.mtmAgentWorkdayEvent.create).toHaveBeenCalledTimes(1)
-    const sql = vi.mocked(prisma.$executeRaw).mock.calls.map(call => Array.isArray(call[0]) ? call[0].join(" ") : "").join("\n")
+    const sql = vi.mocked(prisma.$executeRaw).mock.calls.map((call: unknown[]) => Array.isArray(call[0]) ? call[0].join(" ") : "").join("\n")
     expect(sql).not.toMatch(/INSERT INTO mtm_attendance_(mark|qr)_evidence/)
   })
   it("preserves the Workforce fence when both capabilities are present", async () => {

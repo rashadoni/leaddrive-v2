@@ -51,6 +51,6 @@ describe("excluded employee attendance evidence", () => {
   vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ attendanceExcluded: true } as never)
   vi.mocked(prisma.mtmSetting.findFirst).mockResolvedValue({ value: true } as never)
   expect(await currentAttendanceStreamConsent(prisma, scope)).toBeNull()
-  expect(vi.mocked(prisma.$queryRaw).mock.calls.some(call => Array.isArray(call[0]) && call[0].join(" ").includes("mtm_attendance_location_consents"))).toBe(false)
+  expect(vi.mocked(prisma.$queryRaw).mock.calls.some((call: unknown[]) => Array.isArray(call[0]) && call[0].join(" ").includes("mtm_attendance_location_consents"))).toBe(false)
  })
 })
