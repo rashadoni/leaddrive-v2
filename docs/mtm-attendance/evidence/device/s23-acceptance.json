@@ -43,6 +43,12 @@
       "evidence": "Physical Continue with a nonexistent fictional company; clear not-found message; selector preserved and password form not shown"
     },
     {
+      "name": "known-company-offline-explanation",
+      "status": "FAIL",
+      "evidence": "Android active default network none; known company app lookup displays company-not-found instead of connectivity help; selector preserved; network restored",
+      "installedSourceSha": "11401a8aff7abf197de4dfda65f4a4ed5337a946"
+    },
+    {
       "name": "fictional-company-provisioning",
       "status": "NOT_RUN",
       "reason": "PR752 merged after required CI; exact main deployment still pending"
@@ -76,5 +82,5 @@
     "personalScreenshotsPublished": false,
     "testLocationPermissions": "Fine, coarse and background temporarily denied; original grants retained privately for restoration"
   },
-  "updatedAt": "2026-10-13T22:34:56.569162+00:00"
+  "updatedAt": "2026-10-13T22:40:40.169339+00:00"
 }

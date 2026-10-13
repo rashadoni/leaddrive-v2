@@ -1298,3 +1298,11 @@ Quick-start-ru.md содержит уточнённый пользователь
 - Next: confirm deployed reviewed `main`, run the bounded fixture workflow, then physically exercise fictional staff flows; independently wait for exact integration E2E and all required checks before #751 merge.
 
 - Timestamp correction: the preceding integration/preparation entry was recorded around 22:29 UTC, not 22:33 UTC. Physical nonexistent-company validation subsequently passed at 22:31:52 UTC; no login/password form was exposed before company verification.
+
+### 2026-10-13 22:40 UTC — HR navigation live; physical onboarding defect reproduced
+
+- Release #750 workflow `38475815278` completed SUCCESS. Public `/api/v1/public/build-info` now reports exact `2f197d1802bd27974138a0b950f267f60852bc65`; deploy and post-deploy smoke succeeded. Actual authenticated production HR screenshot awaits the isolated phone fixture.
+- S23 Ultra offline onboarding reproduced a product copy defect: for known company `app`, Android `Active default network: none`, Continue showed company-not-found instead of connectivity guidance. Exact installed source confirms `pingServer()` maps all network/timeout exceptions to `success:false`, and ServerScreen maps every such result to `serverNotFoundHelp`. Phone stayed on company selection; no login or real-company mutation occurred.
+- Early offline attempt was INCONCLUSIVE because it checked Android global `mobile_data`, which remains `1` even when `svc data disable` removes connectivity. The definitive attempt verified the actual active default network was `none`. Original Wi-Fi/data were restored in `finally`. Never infer network loss from the radio command alone.
+- Delegated a bounded fix in a separate clean mobile repository worktree, with current-main inspection and targeted tests; no mobile push/release yet. E2E #751 monitoring remains independent.
+- Release #752 still running; fictional company still not created, and physical workday/request acceptance still NOT RUN. Next: reviewed runtime deployment → bounded fixture workflow → fictional device flows.
