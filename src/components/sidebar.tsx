@@ -18,6 +18,7 @@ import {
 } from "@/lib/nav-items"
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react"
 import { Logo } from "@/components/logo"
+import { MtmSidebarSections } from "@/components/mtm/mtm-sidebar-sections"
 import { useTranslations } from "next-intl"
 import { useTicketBadge } from "@/contexts/ticket-badge-context"
 
@@ -271,7 +272,8 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
       const label = t(item.tKey).toLowerCase()
       const groupLabel = t(`groups.${item.group}`).toLowerCase()
       const sectionLabel = item.supportSection ? t(`supportSections.${item.supportSection}`).toLowerCase() : ""
-      return label.includes(q) || groupLabel.includes(q) || sectionLabel.includes(q)
+      const attendanceLabel = item.attendanceSection ? t("mtmSections.attendance").toLowerCase() : ""
+      return label.includes(q) || groupLabel.includes(q) || sectionLabel.includes(q) || attendanceLabel.includes(q)
     })
   }, [searchQuery, accessibleItems, t])
 
@@ -375,7 +377,7 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
     requestAnimationFrame(() => {
       document.querySelector("[data-nav-active='true']")?.scrollIntoView({ block: "nearest", behavior: "smooth" })
     })
-  }, [pathname, activeGroup])
+  }, [pathname, activeGroup, activeBase])
 
   const toggleGroup = (group: string) => {
     // Manual open/close. Allowed to open extra groups on top of the active one;
@@ -630,7 +632,9 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
                 )}
               >
                 <div className="overflow-hidden">
-                  {group === "Support" && !effectiveCollapsed ? (
+                  {group === "Route & Field" ? (
+                    <MtmSidebarSections key={`${pathname}:${(sidebarItemsByGroup.get(group) ?? []).some(item => item.attendanceSection)}`} items={sidebarItemsByGroup.get(group) ?? []} pathname={pathname} collapsed={effectiveCollapsed} renderFieldItem={renderSidebarItem} />
+                  ) : group === "Support" && !effectiveCollapsed ? (
                     <div data-testid="support-navigation-sections" className="space-y-1">
                       {SUPPORT_NAV_SECTION_ORDER.map((section) => {
                         const sectionItems = (sidebarItemsByGroup.get(group) ?? []).filter((item) => item.supportSection === section)

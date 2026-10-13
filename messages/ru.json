@@ -262,7 +262,7 @@
     "mtmLeaderboard": "Рейтинг агентов",
     "mtmActivity": "Журнал активности",
     "mtmReports": "Полевые отчёты",
-    "mtmAttendance": "Учёт рабочего дня",
+    "mtmAttendanceTimesheet": "Учёт рабочего дня",
     "mtmSettings": "Настройки модуля",
     "mtmAccess": "Кто из сотрудников работает в разделе и чьи данные видит",
     "workforceToday": "Табель и команда: рабочее время и исключения",
@@ -332,7 +332,19 @@
     "auditLogSettings": "Просмотр всей активности системы",
     "customFieldsSettings": "Добавление кастомных полей к сущностям",
     "notificationSettings": "Браузерные и всплывающие уведомления по модулям",
-    "customDomainsSettings": "Подключите свой домен для лендинг-страниц"
+    "customDomainsSettings": "Подключите свой домен для лендинг-страниц",
+    "mtmAttendanceEmployees": "Участие сотрудников в учёте рабочего дня",
+    "mtmAttendanceRequests": "Согласование заявок сотрудников",
+    "mtmAttendanceShifts": "Рабочие графики и смены сотрудников",
+    "mtmAttendanceLeave": "Доступные дни отпуска и изменения остатков",
+    "mtmAttendanceMonths": "Проверка и закрытие месячных табелей",
+    "mtmAttendanceBranchReport": "Рабочее время и посещаемость по филиалам",
+    "mtmAttendanceDecisions": "История заявок и принятых решений",
+    "mtmAttendanceBranches": "Филиалы компании и назначенные сотрудники",
+    "mtmAttendanceReview": "Отметки, требующие проверки",
+    "mtmAttendancePhones": "Телефоны, используемые для отметок",
+    "mtmAttendanceQr": "QR-коды для отметок в филиалах",
+    "mtmAttendanceLocation": "Согласие и правила использования геоданных"
   },
   "skillRouting": {
     "title": "Маршрутизация по навыкам",
@@ -653,7 +665,26 @@
     "auditLogSettings": "Журнал аудита",
     "customFieldsSettings": "Пользовательские поля",
     "notificationSettings": "Уведомления",
-    "customDomainsSettings": "Пользовательские домены"
+    "customDomainsSettings": "Пользовательские домены",
+    "mtmAttendanceTimesheet": "Табель",
+    "mtmAttendanceEmployees": "Сотрудники",
+    "mtmAttendanceRequests": "Заявки",
+    "mtmAttendanceShifts": "Графики и смены",
+    "mtmAttendanceLeave": "Остатки отпусков",
+    "mtmAttendanceMonths": "Закрытые месяцы",
+    "mtmAttendanceBranchReport": "Сводка по филиалам",
+    "mtmAttendanceDecisions": "История решений",
+    "mtmAttendanceBranches": "Филиалы",
+    "mtmAttendanceReview": "Проверка отметок",
+    "mtmAttendancePhones": "Телефоны",
+    "mtmAttendanceQr": "QR для филиала",
+    "mtmAttendanceLocation": "Геоданные",
+    "mtmSections": {
+      "field": "Полевые операции",
+      "attendance": "Кадровый учёт",
+      "reports": "Отчёты",
+      "settings": "Настройки и контроль"
+    }
   },
   "mtmModuleNavigation": {
     "primaryNavigationLabel": "Основные разделы MTM",

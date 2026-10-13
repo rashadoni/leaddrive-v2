@@ -103,6 +103,8 @@ export interface NavItem {
    * `accessibleNavItems` (menus) applies it. Unknown = shown.
    */
   orgSetting?: NavOrgSettingKey
+  /** Attendance tools form a submodule inside MTM, never the retired HRM product. */
+  attendanceSection?: "work" | "reports" | "settings"
 }
 
 /** MTM menu switches. Legacy surfaces default on; attendance defaults off. */
@@ -352,7 +354,19 @@ export const navItems: NavItem[] = [
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/leaderboard", icon: Trophy, tKey: "mtmLeaderboard", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/activity", icon: Activity, tKey: "mtmActivity", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/reports", icon: FileBarChart, tKey: "mtmReports", group: "Route & Field" },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance", icon: FileBarChart, tKey: "mtmAttendance", group: "Route & Field", orgSetting: "attendanceEnabled" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance", icon: FileSpreadsheet, tKey: "mtmAttendanceTimesheet", group: "Route & Field", orgSetting: "attendanceEnabled", attendanceSection: "work" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance/employees", icon: Users, tKey: "mtmAttendanceEmployees", group: "Route & Field", orgSetting: "attendanceEnabled", attendanceSection: "work", allowedRoles: ADMIN_ROLES },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance/requests", icon: ClipboardList, tKey: "mtmAttendanceRequests", group: "Route & Field", orgSetting: "attendanceEnabled", attendanceSection: "work" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance/shifts", icon: CalendarDays, tKey: "mtmAttendanceShifts", group: "Route & Field", orgSetting: "attendanceEnabled", attendanceSection: "work" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance/leave-balances", icon: CalendarDays, tKey: "mtmAttendanceLeave", group: "Route & Field", orgSetting: "attendanceEnabled", attendanceSection: "work" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance/months", icon: Lock, tKey: "mtmAttendanceMonths", group: "Route & Field", orgSetting: "attendanceEnabled", attendanceSection: "reports" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance/branches/report", icon: FileBarChart, tKey: "mtmAttendanceBranchReport", group: "Route & Field", orgSetting: "attendanceEnabled", attendanceSection: "reports" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance/decisions", icon: FileCheck, tKey: "mtmAttendanceDecisions", group: "Route & Field", orgSetting: "attendanceEnabled", attendanceSection: "reports" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance/branches", icon: Building2, tKey: "mtmAttendanceBranches", group: "Route & Field", orgSetting: "attendanceEnabled", attendanceSection: "settings" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance/review", icon: SearchCheck, tKey: "mtmAttendanceReview", group: "Route & Field", orgSetting: "attendanceEnabled", attendanceSection: "settings" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance/installations", icon: Phone, tKey: "mtmAttendancePhones", group: "Route & Field", orgSetting: "attendanceEnabled", attendanceSection: "settings" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance/branch-qr", icon: ScanLine, tKey: "mtmAttendanceQr", group: "Route & Field", orgSetting: "attendanceEnabled", attendanceSection: "settings" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance/location-settings", icon: MapPin, tKey: "mtmAttendanceLocation", group: "Route & Field", orgSetting: "attendanceEnabled", attendanceSection: "settings", allowedRoles: ADMIN_ROLES },
   // Who works in the module and as what: the employee card behind each login.
   // Admin-only like the endpoints it calls — linking a card to a login is how a
   // person is given (or takes) a field scope.
