@@ -78,6 +78,8 @@ export type AgentPermissionRow = RowBase & (
 export const AGENT_PERMISSION_ROWS = [
   // --- Working day and location
   { id: "workdayOwn", group: "workday", kind: "always" },
+  // The same day only; yesterday changes through a time-correction request.
+  { id: "workdayReturn", group: "workday", kind: "always" },
   // The same whole-feature switch; no second permission level to configure.
   { id: "attendanceRequests", group: "workday", kind: "switch", setting: "attendanceEnabled", surfaces: ["app"] },
   { id: "locationShare", group: "workday", kind: "always" },
