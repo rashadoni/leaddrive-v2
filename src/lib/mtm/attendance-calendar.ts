@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { currentDateKey, isDateKey } from "@/lib/mtm/mobile-week"
@@ -54,7 +55,7 @@ export async function saveAttendanceCalendar(input: {
   if (!parsed.success) throw new AttendanceCalendarError("MTM_ATTENDANCE_CALENDAR_INVALID", 400)
   const draft = parsed.data
   const today = await attendanceCalendarToday(input.organizationId, input.timezone)
-  return prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const old = draft.id ? await tx.mtmWorkCalendarDay.findFirst({
       where: { id: draft.id, organizationId: input.organizationId, teamId: null, agentId: null, deletedAt: null },
     }) : null

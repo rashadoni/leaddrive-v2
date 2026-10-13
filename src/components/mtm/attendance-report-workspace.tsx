@@ -12,9 +12,12 @@ import { formatAttendanceDuration } from "@/lib/mtm/attendance-presentation"
 import { ATTENDANCE_VIEW_COLUMNS, type AttendanceViewConfig } from "@/lib/mtm/attendance-view-contract"
 import { buildAttendanceTable } from "@/lib/mtm/attendance-table"
 import { MtmAttendancePersonalViews } from "@/components/mtm/attendance-personal-views"
+import { MtmAttendanceExportButtons } from "@/components/mtm/attendance-export-buttons"
+import type { AttendanceReportSnapshot } from "@/lib/mtm/attendance-query"
 
 type Form = "DAY" | "MONTH" | "LATE_EARLY" | "ABSENCES" | "JOURNAL"
 type Range = { from: string; to: string }
+type ReportData = MtmAttendanceReport & { snapshot?: AttendanceReportSnapshot }
 const FORMS: Form[] = ["DAY", "MONTH", "LATE_EARLY", "ABSENCES", "JOURNAL"]
 const FORM_MESSAGES: Record<Form, string> = { DAY: "reportDay", MONTH: "reportMonth", LATE_EARLY: "reportLateEarly", ABSENCES: "reportAbsences", JOURNAL: "reportJournal" }
 const KIND_MESSAGES: Record<MtmAttendanceReportRow["kind"], string> = { WORKED: "reportWorkedDay", OPEN: "reportOpenDay", MISSING_FINISH: "reportMissingFinish",
@@ -45,7 +48,7 @@ export function MtmAttendanceReportWorkspace() {
   const locale = useLocale() as "az" | "ru" | "en"
   const [today, setToday] = useState<string | null>(null)
   const [range, setRange] = useState<Range>({ from: "", to: "" })
-  const [report, setReport] = useState<MtmAttendanceReport | null>(null)
+  const [report, setReport] = useState<ReportData | null>(null)
   const [form, setForm] = useState<Form>("DAY")
   const [teamId, setTeamId] = useState("")
   const [employeeId, setEmployeeId] = useState("")
@@ -94,7 +97,7 @@ export function MtmAttendanceReportWorkspace() {
         if ([401, 403, 404].includes(response.status)) { setAccessUnavailable(true); setCustomView((previous) => previous ? { ...previous, name: "" } : null) }
         return
       }
-      const loaded = body.data as MtmAttendanceReport
+      const loaded = body.data as ReportData
       setReport(loaded)
       // A saved employee/team that left the current scope stays selected.
       // An empty result must never silently turn into an all-employee report.
@@ -229,6 +232,8 @@ export function MtmAttendanceReportWorkspace() {
       progress={report && totals.rowCount ? card.value / totals.rowCount * 100 : 0} />)}</div>
     <HomeCard testId="attendance-report-filters" titleId="attendance-report-filters-title" icon={<ListChecks className="h-4 w-4" aria-hidden="true" />} tone="orange" title={t("reportForm")}>
       <div className="space-y-5 py-4">
+        <MtmAttendanceExportButtons config={currentConfig} snapshot={report?.snapshot ?? null}
+          onRefresh={() => void load(report ? { from: report.from, to: report.to } : range, customView?.config)} onAccessLost={clearPrivateReport} />
         <div className="flex flex-wrap gap-2" role="group" aria-label={t("reportForm")}>{FORMS.map((value) => <Button key={value} type="button" className="min-h-11 rounded-full"
           variant={!customView && form === value ? "default" : "outline"} aria-pressed={!customView && form === value} disabled={value === "MONTH" && !today} onClick={() => chooseForm(value)}>{t(FORM_MESSAGES[value])}</Button>)}</div>
         {customView?.name && !accessUnavailable ? <p className="text-sm font-medium text-primary">{t("viewsActive", { name: customView.name })}</p> : null}

@@ -26,7 +26,7 @@ export async function readAttendanceRules(organizationId: string, db: Pick<Prism
 export async function createAttendanceRule(organizationId: string, userId: string, timezone: string, input: unknown) {
   const parsed = AttendanceRuleInputSchema.safeParse(input)
   if (!parsed.success) throw new AttendanceRuleError("MTM_ATTENDANCE_RULE_INVALID", 400)
-  return prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await tx.$executeRaw`SELECT set_config('lock_timeout', '3s', true)`
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-attendance-rules:${organizationId}`}, 0))`
     const versions = (await tx.$queryRaw<RuleRow[]>`

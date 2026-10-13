@@ -17931,6 +17931,13 @@
     "managerNoTeamHint": "You can change only the rules of your own teams, and your employee card is not in a team yet. Ask an administrator to assign your card to a team."
   },
   "mtmAttendance": {
+    "exportExcel": "Download Excel",
+    "exportPdf": "Download PDF",
+    "exportPreparing": "Preparing file…",
+    "exportReady": "The file is ready for download.",
+    "exportFailed": "Could not download the file. Please try again.",
+    "exportChanged": "The data changed after the report was loaded. Refresh it before downloading so the file matches the screen.",
+    "exportTooLarge": "The file would be too large. Choose a shorter period or fewer employees.",
     "viewsTitle": "Personal forms",
     "viewsIntro": "Choose columns and their order. Each form is saved only for you, including its period and filters.",
     "viewsLoading": "Loading your forms…",

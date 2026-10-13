@@ -31,7 +31,7 @@ export async function readMtmAttendanceReport(input: {
   const to = new Date(`${query.to}T00:00:00.000Z`)
   const now = input.now ?? new Date()
   const days = Math.round((to.getTime() - from.getTime()) / 86_400_000) + 1
-  return prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const employees = await tx.mtmAgent.findMany({
       where: {
         organizationId, role: "AGENT",

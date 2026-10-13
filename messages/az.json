@@ -17927,6 +17927,13 @@
     "managerNoTeamHint": "Yalnız öz komandalarınızın qaydalarını dəyişə bilərsiniz, amma əməkdaş kartınız hələ heç bir komandaya daxil deyil. Administratordan kartınıza komanda təyin etməsini xahiş edin."
   },
   "mtmAttendance": {
+    "exportExcel": "Excel yüklə",
+    "exportPdf": "PDF yüklə",
+    "exportPreparing": "Fayl hazırlanır…",
+    "exportReady": "Fayl yükləmək üçün hazırdır.",
+    "exportFailed": "Faylı yükləmək mümkün olmadı. Yenidən cəhd edin.",
+    "exportChanged": "Hesabat yükləndikdən sonra məlumatlar dəyişib. Fayldakı rəqəmlərin ekranla uyğun olması üçün yükləməzdən əvvəl hesabatı yeniləyin.",
+    "exportTooLarge": "Fayl həddindən artıq böyük olacaq. Daha qısa dövr və ya daha az əməkdaş seçin.",
     "viewsTitle": "Şəxsi formalar",
     "viewsIntro": "Sütunları və onların sırasını seçin. Forma dövr və filtrlərlə birlikdə yalnız sizin üçün saxlanılır.",
     "viewsLoading": "Formalarınız yüklənir…",
