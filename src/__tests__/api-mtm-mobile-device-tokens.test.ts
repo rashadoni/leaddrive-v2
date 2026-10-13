@@ -122,3 +122,28 @@ describe("signing out of a device", () => {
     expect(call.where).toMatchObject({ agentId: "agent-1" })
   })
 })
+
+
+describe("own device address for an explicitly enrolled attendance employee", () => {
+  beforeEach(() => {
+    vi.mocked(resolveMobileAuth).mockResolvedValue({ orgId: "org-1", agentId: "agent-1", userId: "user-1", role: "EMPLOYEE", tenantCapabilities: { routeField: true, workforceHrm: false } } as never)
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "attendanceEnabled", value: true }] as never)
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "agent-1", role: "EMPLOYEE", attendanceParticipant: true } as never)
+  })
+  it("registers and removes only the signed-in employee's notification address", async () => {
+    expect((await POST(request("POST", { token: TOKEN }))).status).toBe(200)
+    expect((await DELETE(request("DELETE", { token: TOKEN }))).status).toBe(200)
+    expect(prisma.mtmDeviceToken.upsert).toHaveBeenCalledWith(expect.objectContaining({ create: expect.objectContaining({ agentId: "agent-1", organizationId: "org-1" }) }))
+    expect(prisma.mtmDeviceToken.deleteMany).toHaveBeenCalledWith({ where: { agentId: "agent-1", organizationId: "org-1", token: TOKEN } })
+  })
+  it("denies an unregistered employee without changing addresses", async () => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "agent-1", attendanceParticipant: false } as never)
+    expect((await POST(request("POST", { token: TOKEN }))).status).toBe(403)
+    expect(prisma.mtmDeviceToken.upsert).not.toHaveBeenCalled()
+  })
+  it("rechecks revocation before writing the address", async () => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValueOnce({ id: "agent-1", attendanceParticipant: true } as never).mockResolvedValue({ id: "agent-1", attendanceParticipant: false } as never)
+    expect((await POST(request("POST", { token: TOKEN }))).status).toBe(403)
+    expect(prisma.mtmDeviceToken.upsert).not.toHaveBeenCalled()
+  })
+})

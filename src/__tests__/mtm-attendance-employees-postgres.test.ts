@@ -104,6 +104,22 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
       expect(await self.requireAttendanceSelf(prisma, { organizationId, agentId: "employee-pg-manager", role: "MANAGER" })).toBe("Asia/Baku")
     })
   })
+  it("supports rehire on the next date without changing either explicit date or inserting an absence", async () => {
+    const id = "employee-pg-manager"
+    const original = await tenant(organizationId, () => store.readAttendanceEmployees(admin))
+    const previousEventId = original.employees.find(row => row.id === id)!.history.at(-1)!.id
+    const termination = await tenant(organizationId, () => store.recordAttendanceEmployment(admin, { clientRequestId: randomUUID(), agentId: id, kind: "TERMINATION", date: "2026-09-07", previousEventId, reason: "Fictional last working date" }))
+    await tenant(organizationId, () => store.recordAttendanceEmployment(admin, { clientRequestId: randomUUID(), agentId: id, kind: "REHIRE", date: "2026-09-08", previousEventId: termination.eventId, reason: "Fictional contiguous rehire" }))
+    await tenant(organizationId, async () => {
+      const events = (await store.readAttendanceEmployees(admin)).employees.find(row => row.id === id)!.history
+      expect(events.slice(-2).map(event => [event.kind, event.date])).toEqual([["TERMINATION", "2026-09-07"], ["REHIRE", "2026-09-08"]])
+      expect(events.at(-1)!.at).toBe(events.at(-2)!.at)
+      const { resolveWorkforceHistoricalEmployment } = await import("@/lib/workforce/employment-history")
+      expect(await resolveWorkforceHistoricalEmployment(prisma, { organizationId, agentId: id, occurredAt: new Date(events.at(-1)!.at) })).toMatchObject({ state: "EMPLOYED", event: { kind: "REHIRE" } })
+      const result = await report.readMtmAttendanceReport({ organizationId, actor: { role: "ADMIN", agentId: null, scopedAgentIds: null }, query: { from: "2026-09-08", to: "2026-09-08", employeeId: id, form: "ALL" } })
+      expect(result.rows[0]).toMatchObject({ employmentState: "EMPLOYED" })
+    })
+  })
   it("refuses foreign identity, non-admin enrollment and a disabled feature before any write", async () => {
     const input = { ...enrollment, clientRequestId: randomUUID(), userId: "employee-pg-rejected-user" }
     await expect(tenant(organizationId, () => store.enrollAttendanceEmployee({ ...admin, userId: "employee-pg-manager-user" }, input))).rejects.toMatchObject({ status: 403 })

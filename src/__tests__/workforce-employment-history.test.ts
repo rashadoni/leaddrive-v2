@@ -148,4 +148,15 @@ describe("Workforce employment history", () => {
       code: "WORKFORCE_EMPLOYMENT_EVENT_ORDER_INVALID",
     })
   })
+  it("accepts only a contiguous rehire at an existing termination boundary", async () => {
+    const db = makeMtmPrismaMock(), effectiveAt = new Date("2026-09-07T20:00:00Z")
+    vi.mocked(db.mtmAgent.findFirst).mockResolvedValue({ id: AGENT } as never)
+    vi.mocked(db.$queryRaw).mockResolvedValueOnce([{ id: "termination", kind: "TERMINATION", effectiveAt }] as never)
+      .mockResolvedValueOnce([{ id: "rehire", kind: "REHIRE", effectiveAt, source: "HR_RECORDED", recordedAt: new Date() }] as never)
+    const result = await recordWorkforceEmploymentEvent({ organizationId: ORG, recordedByUserId: "admin-1", event: { agentId: AGENT, kind: "REHIRE", effectiveAt }, audit: { actorUserId: "admin-1" }, db: db as never })
+    expect(result).toMatchObject({ id: "rehire", kind: "REHIRE", effectiveAt })
+    vi.mocked(db.$queryRaw).mockResolvedValueOnce([{ id: "rehire", kind: "REHIRE", effectiveAt }] as never)
+    await expect(recordWorkforceEmploymentEvent({ organizationId: ORG, recordedByUserId: "admin-1", event: { agentId: AGENT, kind: "TERMINATION", effectiveAt }, audit: { actorUserId: "admin-1" }, db: db as never })).rejects.toMatchObject({ code: "WORKFORCE_EMPLOYMENT_EVENT_ORDER_INVALID" })
+  })
+
 })

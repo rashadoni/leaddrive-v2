@@ -33,7 +33,7 @@ async function history(tx: Prisma.TransactionClient, organizationId: string, age
       WHERE audit."organizationId" = event."organizationId" AND audit."metadataKind" = 'mtm_attendance_employment'
         AND audit."newData"->>'eventId' = event."id" ORDER BY audit."createdAt", audit."id" LIMIT 1) AS "recordedDate"
     FROM workforce_employment_events AS event
-    WHERE event."organizationId" = ${organizationId} AND event."agentId" IN (${Prisma.join(agentIds)}) ORDER BY event."effectiveAt", event."id" LIMIT 10001`
+    WHERE event."organizationId" = ${organizationId} AND event."agentId" IN (${Prisma.join(agentIds)}) ORDER BY event."effectiveAt", CASE WHEN event."kind" = 'REHIRE' THEN 1 ELSE 0 END, event."id" LIMIT 10001`
   if (rows.length > 10000) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_TOO_LARGE", 422)
   return rows
 }

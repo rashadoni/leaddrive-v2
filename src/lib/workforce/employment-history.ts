@@ -95,7 +95,7 @@ export async function resolveWorkforceHistoricalEmployment(
       WHERE "organizationId" = ${input.organizationId}
         AND "agentId" = ${input.agentId}
         AND "effectiveAt" <= ${input.occurredAt}
-      ORDER BY "effectiveAt" DESC, "id" DESC
+      ORDER BY "effectiveAt" DESC, CASE WHEN "kind" = 'REHIRE' THEN 1 ELSE 0 END DESC, "id" DESC
       LIMIT 1
     ) AS event ON TRUE
     WHERE agent."organizationId" = ${input.organizationId}
@@ -201,10 +201,14 @@ export async function recordWorkforceEmploymentEventInTransaction(
       FROM "workforce_employment_events"
       WHERE "organizationId" = ${input.organizationId}
         AND "agentId" = ${input.event.agentId}
-      ORDER BY "effectiveAt" DESC, "id" DESC
+      ORDER BY "effectiveAt" DESC, CASE WHEN "kind" = 'REHIRE' THEN 1 ELSE 0 END DESC, "id" DESC
       LIMIT 1
     `)
-    if (previous && input.event.effectiveAt.getTime() <= previous.effectiveAt.getTime()) {
+    // Last working date ends at the next midnight. A rehire on that next
+    // date may share precisely that boundary; it creates no artificial gap.
+    const contiguousRehire = previous?.kind === "TERMINATION" && input.event.kind === "REHIRE"
+      && input.event.effectiveAt.getTime() === previous.effectiveAt.getTime()
+    if (previous && input.event.effectiveAt.getTime() <= previous.effectiveAt.getTime() && !contiguousRehire) {
       throw new WorkforceEmploymentHistoryError(
         "WORKFORCE_EMPLOYMENT_EVENT_ORDER_INVALID",
         "An employment event must be effective after the last recorded lifecycle event",
