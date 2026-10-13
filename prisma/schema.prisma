@@ -227,6 +227,8 @@ model Organization {
   workforcePolicySnapshots            WorkforcePolicySnapshot[]
   workforceShiftSnapshots             WorkforceShiftSnapshot[]
   workforceWorkdayScheduleSnapshots   WorkforceWorkdayScheduleSnapshot[]
+  attendanceLeavePolicies MtmAttendanceLeavePolicy[]
+  attendanceLeaveProfiles MtmAttendanceLeaveProfile[]
   mtmAttendanceBranches MtmAttendanceBranch[]
   mtmAttendanceBranchRevisions MtmAttendanceBranchRevision[]
   mtmAttendancePrimaryBranchRevisions MtmAttendancePrimaryBranchRevision[]
@@ -722,6 +724,8 @@ model User {
   workforceShiftDefaultOperationsPublished WorkforceShiftDefaultOperation[] @relation("WorkforceShiftDefaultOperationPublishedBy")
   workforceShiftTeamDefaultAssignmentsAssigned WorkforceShiftTeamDefaultAssignment[] @relation("WorkforceShiftTeamDefaultAssignmentAssignedBy")
   workforceShiftTeamDefaultOperationsPublished WorkforceShiftTeamDefaultOperation[] @relation("WorkforceShiftTeamDefaultOperationPublishedBy")
+  attendanceLeavePoliciesCreated MtmAttendanceLeavePolicy[]
+  attendanceLeaveProfilesCreated MtmAttendanceLeaveProfile[]
   mtmAttendanceBranchRevisionsCreated MtmAttendanceBranchRevision[]
   mtmAttendancePrimaryBranchRevisionsCreated MtmAttendancePrimaryBranchRevision[]
   workforceSitesCreated               WorkforceSite[]                @relation("WorkforceSiteCreatedBy")
@@ -5762,6 +5766,7 @@ model MtmTeam {
 
 // MTM Agent — field agents linked to CRM users
 model MtmAgent {
+  attendanceLeaveProfiles MtmAttendanceLeaveProfile[]
   attendanceQrEvidence MtmAttendanceQrEvidence[]
   attendanceInstallationRequests MtmAttendanceInstallationRequest[]
   mtmAttendanceStreamIntegrity MtmAttendanceStreamIntegrity[]
@@ -22352,4 +22357,46 @@ model MtmAttendanceQrEvidence {
   @@unique([organizationId, agentId, nonceFingerprint, action])
   @@index([organizationId, agentId, createdAt])
   @@map("mtm_attendance_qr_evidence")
+}
+
+model MtmAttendanceLeavePolicy {
+  id String @id
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  year Int
+  version Int
+  previousId String?
+  requestId String
+  requestHash String @db.VarChar(64)
+  value Json
+  reason String @db.VarChar(1000)
+  createdBy String
+  author User @relation(fields: [organizationId, createdBy], references: [organizationId, id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  @@unique([organizationId, id])
+  @@unique([organizationId, requestId])
+  @@unique([organizationId, year, version])
+  @@map("mtm_attendance_leave_policies")
+}
+
+model MtmAttendanceLeaveProfile {
+  id String @id
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentId String
+  agent MtmAgent @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  year Int
+  version Int
+  previousId String?
+  requestId String
+  requestHash String @db.VarChar(64)
+  value Json
+  reason String @db.VarChar(1000)
+  createdBy String
+  author User @relation(fields: [organizationId, createdBy], references: [organizationId, id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  @@unique([organizationId, id])
+  @@unique([organizationId, requestId])
+  @@unique([organizationId, agentId, year, version])
+  @@map("mtm_attendance_leave_profiles")
 }
