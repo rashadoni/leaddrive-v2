@@ -50,6 +50,20 @@ describe("employee TIME_CORRECTION submission uses a complete proposed interval 
     expect(prisma.mtmHrmRequest.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ organizationId: self.organizationId, agentId: self.agentId, status: "PENDING", type: "TIME_CORRECTION" }) }))
     expect(result.headers.get("cache-control")).toContain("no-store")
   })
+  it("accepts an explicit next-date night interval while preserving the source workDate", async () => {
+    const body = { ...input(), endDate: "2026-10-13", startTime: "22:00", endTime: "06:00" }
+    expect((await post(body)).status).toBe(201)
+    expect(saved()).toMatchObject({ startDate: at("00:00"), endDate: new Date("2026-10-13T00:00:00Z"),
+      requestedStartAt: at("18:00"), requestedEndAt: new Date("2026-10-13T02:00:00Z"),
+      attendanceDetails: { correctionBasis: { kind: "MISSING", workDate: "2026-10-12" } } })
+    expect(prisma.mtmAgentWorkday.create).not.toHaveBeenCalled()
+  })
+  it("refuses an overnight proposal longer than 24 elapsed hours at the autumn clock change", async () => {
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "attendanceEnabled", value: true }, { key: "timezone", value: "Europe/Berlin" }] as never)
+    const body = { ...input(), startDate: "2025-10-25", endDate: "2025-10-26", startTime: "22:00", endTime: "22:00" }
+    expect((await post(body)).status).toBe(400)
+    expect(prisma.mtmHrmRequest.create).not.toHaveBeenCalled()
+  })
   it("freezes the real source day facts and binds only the authenticated employee under RLS", async () => {
     const source = workday()
     vi.mocked(prisma.mtmAgentWorkday.findFirst).mockImplementation((async (query: unknown) => {

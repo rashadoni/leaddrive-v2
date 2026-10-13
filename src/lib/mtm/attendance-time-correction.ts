@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto"
+import { addDateKeyDays } from "@/lib/mtm/mobile-week"
+import { localDateTimeToUnambiguousUtc } from "@/lib/timezone"
 import type { Prisma } from "@prisma/client"
 import { AttendanceCorrectionBasisSchema, AttendanceRequestDetailsSchema, AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
 import { workforceWorkdayCorrectionFacts, type WorkforceWorkdayCorrectionFacts } from "@/lib/workforce/workday-correction-facts"
@@ -46,11 +48,22 @@ export async function applyAttendanceTimeCorrectionInTransaction(tx: Prisma.Tran
   const workDate = request.startDate.toISOString().slice(0, 10)
   const start = request.requestedStartAt
   const end = request.requestedEndAt
+  const endDate = request.endDate.toISOString().slice(0, 10)
+  const overnight = endDate === addDateKeyDays(workDate, 1)
   if (!start || !end || !Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || end <= start || end > now
-    || request.endDate.toISOString().slice(0, 10) !== workDate
+    || (endDate !== workDate && !overnight)
+    || (overnight && end.getTime() - start.getTime() > 86_400_000)
     || (basis.kind === "MISSING" ? basis.workDate : basis.facts.workDate) !== workDate) {
     conflict("MTM_ATTENDANCE_CORRECTION_INVALID")
   }
+  // The employee's explicit end date and frozen zone must describe the same
+  // proposed UTC interval. Never infer a rollover from a smaller end clock.
+  try {
+    if (!details.data.startTime || !details.data.endTime
+      || (overnight && details.data.endTime > details.data.startTime)
+      || localDateTimeToUnambiguousUtc(`${workDate}T${details.data.startTime}`, details.data.timezone).getTime() !== start.getTime()
+      || localDateTimeToUnambiguousUtc(`${endDate}T${details.data.endTime}`, details.data.timezone).getTime() !== end.getTime()) conflict("MTM_ATTENDANCE_CORRECTION_INVALID")
+  } catch { conflict("MTM_ATTENDANCE_CORRECTION_INVALID") }
   const ledger = await tx.workforceTimeCorrection.findFirst({ where: { organizationId, requestId },
     select: { id: true, workdayId: true, agentId: true, actorUserId: true, source: true, occurredAt: true, beforeFacts: true, afterFacts: true } })
   if (request.status !== "PENDING") {

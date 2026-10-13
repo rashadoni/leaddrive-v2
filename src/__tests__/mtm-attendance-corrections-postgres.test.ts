@@ -66,7 +66,7 @@ pgDescribe("MTM corrections on real PostgreSQL", () => {
     // Use the retained production SQL verbatim, not substitute trigger mocks.
     const foundation = readFileSync("prisma/migrations/20260828223000_workforce_h3_foundation/migration.sql", "utf8")
     sql(scratch!.adminDb, foundation.slice(foundation.indexOf("-- Tenant data ships fail-closed."), foundation.indexOf("-- A migration runner may own new tables")))
-    for (const name of ["20260828224500_workforce_h3_legacy_fact_guard", "20260828230000_workforce_direct_correction_contract", "20261013050000_mtm_attendance_corrections"]) sql(scratch!.adminDb, readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8"))
+    for (const name of ["20260828224500_workforce_h3_legacy_fact_guard", "20260828230000_workforce_direct_correction_contract", "20261013050000_mtm_attendance_corrections", "20261013210000_mtm_attendance_overnight_corrections"]) sql(scratch!.adminDb, readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8"))
     const reopen = readFileSync("prisma/migrations/20260915210100_workforce_workday_reopen_ledger/migration.sql", "utf8")
     sql(scratch!.adminDb, reopen.slice(reopen.indexOf("CREATE OR REPLACE FUNCTION workforce_guard_completed_workday()"), reopen.indexOf("-- A migration runner can own the new table")))
     sql(scratch!.adminDb, readFileSync("scripts/rls/enable-batch-5.sql", "utf8"))
@@ -110,6 +110,24 @@ pgDescribe("MTM corrections on real PostgreSQL", () => {
       await expect(prisma.mtmAgentWorkday.update({ where: { id: day.id }, data: { completedAt: at(body.startDate, "19:00") } })).rejects.toThrow()
       const correction = await prisma.workforceTimeCorrection.findFirstOrThrow({ where: { requestId: request.id } })
       await expect(prisma.workforceTimeCorrection.update({ where: { id: correction.id }, data: { reason: "Erase history" } })).rejects.toThrow()
+    })
+  })
+  it.each(["missing", "started"])("corrects an overnight %s day through the immutable ledger and retains its source date", async (kind) => {
+    const date = kind === "missing" ? "2026-08-30" : "2026-08-31"
+    const endDate = kind === "missing" ? "2026-08-31" : "2026-09-01"
+    const source = kind === "started" ? await seedDay(date, "STARTED") : null
+    const before = source ? await tenant(ORG, () => prisma.mtmAgentWorkdayEvent.findMany({ where: { workdayId: source.id } })) : []
+    const { request } = await submit({ ...input(date, "22:00", "06:00"), endDate })
+    await approve(request)
+    expect(await approve(request)).toMatchObject({ idempotent: true })
+    await tenant(ORG, async () => {
+      const day = await prisma.mtmAgentWorkday.findFirstOrThrow({ where: { agentId: AGENT, workDate: new Date(date) } })
+      expect(day).toMatchObject({ startedAt: at(date, "22:00"), completedAt: at(endDate, "06:00"), status: "COMPLETED" })
+      expect(await prisma.mtmAgentWorkdayEvent.findMany({ where: { workdayId: day.id } })).toEqual(before)
+      expect(await prisma.workforceTimeCorrection.count({ where: { requestId: request.id } })).toBe(1)
+      await expect(prisma.mtmAgentWorkday.update({ where: { id: day.id }, data: { completedAt: at(endDate, "07:00") } })).rejects.toThrow()
+      const snapshot = await report.readMtmAttendanceReport({ organizationId: ORG, actor: { role: "ADMIN", agentId: null, scopedAgentIds: null }, query: { form: "ALL", from: date, to: date } })
+      expect(snapshot.rows[0]).toMatchObject({ date, factsState: "VALID", workedSeconds: 8 * 3600 })
     })
   })
   it("amends a completed day through the ledger; raw phone times and private pause facts never leak to reports", async () => {

@@ -20,7 +20,11 @@ export const AttendanceRequestInputSchema = z.object({
     ctx.addIssue({ code: "custom", path: ["endDate"], message: "MTM_ATTENDANCE_REQUEST_DATE_RANGE" })
   }
   if (input.unit === "HOURS") {
-    if (input.startDate !== input.endDate || !input.startTime || !input.endTime || input.endTime <= input.startTime) {
+    const nextDayCorrection = input.kind === "TIME_CORRECTION" && isDateKey(input.startDate)
+      && input.endDate === addDateKeyDays(input.startDate, 1)
+      && Boolean(input.startTime && input.endTime && input.endTime <= input.startTime)
+    const sameDay = input.startDate === input.endDate && Boolean(input.startTime && input.endTime && input.endTime > input.startTime)
+    if (!sameDay && !nextDayCorrection) {
       ctx.addIssue({ code: "custom", path: ["endTime"], message: "MTM_ATTENDANCE_REQUEST_TIME_RANGE" })
     }
   } else if (input.startTime || input.endTime || input.kind === "HOURLY_ABSENCE" || input.kind === "OVERTIME" || input.kind === "TIME_CORRECTION") {
