@@ -1,4 +1,6 @@
 import type { AttendanceEmploymentEvent } from "@/lib/mtm/attendance-employment"
+import { attendanceReportMarks } from "@/lib/mtm/attendance-location-report"
+import { readAttendanceLocationReportEvidence } from "@/lib/mtm/attendance-location-report-store"
 import { AttendanceRequestDetailsSchema } from "@/lib/mtm/attendance-request-contract"
 import type { AttendanceApprovedPeriod } from "@/lib/mtm/attendance-request-projection"
 import { readAttendanceDayKinds } from "@/lib/mtm/attendance-day-kind-store"
@@ -103,7 +105,8 @@ export async function readMtmAttendanceReport(input: {
       approvedRequests, dayKinds: catalogue.items, workdays: workdays.map((day) => ({ ...day, correctionProjection: projectAttendanceCorrectionFacts(day, correctionsByWorkday.get(day.id) ?? [], now) })),
       calendar, rules, from: query.from, to: query.to, now,
     })
-    const rows = filterMtmAttendanceRows(report.rows, { form: query.form })
+    const locationEvidence = await readAttendanceLocationReportEvidence(tx, organizationId, workdays.map(day => day.id))
+    const rows = filterMtmAttendanceRows(report.rows, { form: query.form }).map(row => ({ ...row, locationMarks: attendanceReportMarks(row, locationEvidence) }))
     const result = { ...report, rows, totals: summarizeMtmAttendanceRows(rows), form: query.form }
     const id = createHash("sha256").update(JSON.stringify({ query, report: result })).digest("hex")
     return { ...result, snapshot: { id, asOf: result.asOf, query } }

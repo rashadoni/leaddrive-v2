@@ -1,4 +1,5 @@
 import { attendanceEmploymentOnDate, type AttendanceEmploymentEvent, type AttendanceEmploymentState } from "@/lib/mtm/attendance-employment"
+import type { AttendanceReportMark } from "@/lib/mtm/attendance-location-report"
 import { projectApprovedAttendanceRequests, type AttendanceApprovedPeriod } from "@/lib/mtm/attendance-request-projection"
 import type { AttendanceDayKind } from "@/lib/mtm/attendance-day-kinds"
 import { addDateKeyDays, currentDateKey, isDateKey } from "@/lib/mtm/mobile-week"
@@ -114,6 +115,7 @@ export interface MtmAttendanceReportRow {
   flags: MtmAttendanceFlag[]
   invalidReasons: MtmAttendanceInvalidReason[]
   events: MtmAttendanceEvent[]
+  locationMarks?: AttendanceReportMark[]
   corrections?: MtmAttendanceCorrection[]
   approvedRequests?: AttendanceApprovedPeriod[]
 }
