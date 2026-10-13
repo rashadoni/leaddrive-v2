@@ -6,7 +6,9 @@ import { requireAttendanceReviewer } from "@/lib/mtm/attendance-request-decision
 import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
 import { attendancePrivateHeaders, attendanceRequestFailure } from "@/lib/mtm/attendance-request-http"
 
-export const GET = withMtmAttendanceAuth<{ params: Promise<{ id: string }> }>("read", async (_req, auth, ctx) => {
+type AttachmentContext = { params: Promise<{ id: string }> }
+
+export const GET = withMtmAttendanceAuth<AttachmentContext>("read", async (_req, auth, ctx) => {
   try {
     const { id } = await ctx.params
     // A report-wide HR grant alone must never open medical documents.
