@@ -10,6 +10,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { buildMtmAttendanceReport } from "@/lib/mtm/attendance-report"
 import { DEMO, DEMO_AGENTS, prepareDemo, readOnlyDemo, verifyParity } from "../../scripts/mtm-attendance-demo-verification"
 
+import { prepareRequestDemo, readRequestDemo, REQUEST_DEMO } from "../../scripts/mtm-attendance-request-demo-verification"
+
 const adminUrl = process.env.MTM_DEMO_TEST_DATABASE_URL
 if (!adminUrl && process.env.MTM_DEMO_DB_GATE === "required") throw new Error("MTM_DEMO_TEST_DATABASE_URL is required")
 if (adminUrl && (!process.env.CI || !["localhost", "127.0.0.1"].includes(new URL(adminUrl).hostname))) {
@@ -122,4 +124,20 @@ suite("attendance demo fixture with real PostgreSQL guards", () => {
     try { expect(await db.mtmAgentWorkday.findMany()).toEqual([]); expect(await db.mtmAgentWorkdayEvent.findMany()).toEqual([]) }
     finally { await db.$executeRaw`SELECT set_config('app.org_id', ${DEMO.id}, false)` }
   })
+  it("provisions only an unused fixture mobile credential once without changing phone facts or another tenant", async () => {
+    const before = await readOnlyDemo(db)
+    const other = await db.organization.findUnique({ where: { id: "untouched-customer-fixture" } })
+    expect(await prepareRequestDemo(db, "fixture-mobile-hash")).toBe(true)
+    expect(await prepareRequestDemo(db, "must-never-replace")).toBe(false)
+    const agent = await db.mtmAgent.findUnique({ where: { id: DEMO_AGENTS[0] } })
+    expect(agent).toMatchObject({ email: REQUEST_DEMO.email, passwordHash: "fixture-mobile-hash", userId: null })
+    expect(await readOnlyDemo(db)).toEqual(before)
+    expect(await readRequestDemo(db)).toMatchObject({ status: "NONE", requestId: null, submittedAudits: 0, reviewerBells: 0 })
+    expect(await db.organization.findUnique({ where: { id: "untouched-customer-fixture" } })).toEqual(other)
+    // Disposable CI-only collision. The production controller cannot repair it.
+    await db.mtmAgent.update({ where: { id: DEMO_AGENTS[0] }, data: { email: "changed@example.invalid" } })
+    await expect(prepareRequestDemo(db, "must-not-overwrite")).rejects.toThrow("VERIFICATION_FAILED")
+    expect((await db.mtmAgent.findUnique({ where: { id: DEMO_AGENTS[0] } }))?.passwordHash).toBe("fixture-mobile-hash")
+  })
+
 })

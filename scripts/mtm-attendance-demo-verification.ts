@@ -19,7 +19,7 @@ export const DEMO = Object.freeze({
   userId: "mtm-attendance-demo-admin-v1", email: "admin@mtm-attendance-demo.example.invalid",
   from: "2026-10-05", to: "2026-10-06", origin: "https://app.leaddrivecrm.org",
 })
-const APP = "/opt/leaddrive-v2/.next/standalone"
+export const APP = "/opt/leaddrive-v2/.next/standalone"
 const STATE = "/var/lib/leaddrive-mtm-attendance-demo"
 const MODES = ["prepare-and-check", "read-only-check"] as const
 export type DemoMode = typeof MODES[number]
@@ -189,7 +189,7 @@ export function verifyParity(snapshot: Pick<Snapshot, "workdays">, report: unkno
 }
 
 /** In-memory cookie jar; fixed-origin requests, no redirect or credential logging. */
-export async function authenticatedReport(password: string, fetcher: typeof fetch = fetch) {
+export async function authenticatedDemoSession(password: string, fetcher: typeof fetch = fetch) {
   const cookies = new Map<string, string>()
   async function request(path: string, init: RequestInit = {}) {
     if (!path.startsWith("/api/") || path.startsWith("//")) fail("HTTP_SCOPE_INVALID")
@@ -216,10 +216,17 @@ export async function authenticatedReport(password: string, fetcher: typeof fetc
     const session = await request("/api/auth/session")
     if (session?.user?.id !== DEMO.userId || session.user.organizationId !== DEMO.id || session.user.role !== "admin"
       || session.user.needs2fa || session.user.needsSetup2fa) fail("LOGIN_FAILED")
-    const report = await request(`/api/v1/mtm/attendance/report?from=${DEMO.from}&to=${DEMO.to}&form=ALL`)
+    return { request, close: () => cookies.clear() }
+  } catch (error) { cookies.clear(); throw error }
+}
+
+export async function authenticatedReport(password: string, fetcher: typeof fetch = fetch) {
+  const session = await authenticatedDemoSession(password, fetcher)
+  try {
+    const report = await session.request(`/api/v1/mtm/attendance/report?from=${DEMO.from}&to=${DEMO.to}&form=ALL`)
     if (report.success !== true) fail("REPORT_UNAVAILABLE")
     return report.data
-  } finally { cookies.clear() }
+  } finally { session.close() }
 }
 
 export function readRootFile(file: string, limit: number, privateFile = false): string {
@@ -244,7 +251,7 @@ export function databaseUrlFromEnv(text: string): string {
   return value
 }
 
-function credential(mode: DemoMode): string {
+export function credential(mode: DemoMode): string {
   if (mode === "prepare-and-check" && !fs.existsSync(STATE)) fs.mkdirSync(STATE, { mode: 0o700 })
   const directory = fs.lstatSync(STATE)
   if (!directory.isDirectory() || directory.isSymbolicLink() || directory.uid !== 0 || (directory.mode & 0o777) !== 0o700) fail("LOCAL_FILE_UNSAFE")
