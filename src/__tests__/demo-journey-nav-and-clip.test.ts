@@ -108,3 +108,20 @@ describe("the section's clip card", () => {
     expect(container.textContent).not.toContain(S.clipWatch)
   })
 })
+
+describe("the clip past the chapter's first step", () => {
+  it("shrinks to one line that still says there is a video, and still plays it", async () => {
+    const onClipEvent = vi.fn()
+    await act(async () => {
+      root.render(createElement(IntroClip, { slug: "demo-leads", caption: "Lid necə yaranır", status: "available", token: "", variant: "open", compact: true, onClipEvent }))
+    })
+    const line = container.querySelector<HTMLButtonElement>('[data-testid="demo-intro-clip-play"]')
+    expect(line?.textContent).toContain("Lid necə yaranır")
+    expect(line?.textContent).toContain(S.clipWatch)
+    // One line: no poster pushing the product screen down for the whole chapter.
+    expect(container.querySelector("img")).toBeNull()
+    await act(async () => line!.click())
+    expect(onClipEvent).toHaveBeenCalledWith("video.started")
+    expect(container.querySelector("video")).not.toBeNull()
+  })
+})
