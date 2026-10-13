@@ -1,21 +1,41 @@
 "use client"
 
-import { CheckCircle2, Circle, Flag } from "lucide-react"
+import { useTranslations } from "next-intl"
+import { CheckCircle2, ChevronRight, Circle, Flag } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { activeSections, demoMoney, quoteTotals } from "@/lib/demo-center/journey"
+import { activeSections, demoMoney, moduleProgress, quoteTotals } from "@/lib/demo-center/journey"
+import { navItems } from "@/lib/nav-items"
 import type { DemoSceneProps } from "../scene-props"
 import { demoTarget } from "../demo-target"
 import { DEMO_JOURNEY_STRINGS as S } from "../strings"
 
-/** Final screen: what the prospect did, the source → won attribution, and
- *  the one button that closes the session. */
-export function SummaryScene({ manifest, snapshot, step, reviewMode, dispatch, hint, onContactSales }: DemoSceneProps & { onContactSales?: () => void }) {
+/**
+ * Last screen: what the prospect did, the source → won attribution — and,
+ * first of all, the modules they have not seen.
+ *
+ * It used to be one list and one button, «Bitir», with the guide's arrow on
+ * it. The owner walked 15 of 27 steps, was led straight to that button, and
+ * read «Demo tamamlandı» having never seen the inbox, the AI reply or the AI
+ * call (2026-10-13). Now the unseen modules come first, each a button that
+ * opens it with its guide, and the arrow points at them; closing the session
+ * is offered plainly only once everything was seen.
+ */
+export function SummaryScene({ manifest, snapshot, step, reviewMode, dispatch, hint, openSection, onContactSales }: DemoSceneProps & { onContactSales?: () => void }) {
+  const tn = useTranslations("nav")
+  // The module as the menu names it («Gələn qutusu»), so the button and the
+  // sidebar entry it leads to read the same.
+  const moduleName = (route: string, fallback: string) => {
+    const item = navItems.find((candidate) => candidate.href === route)
+    return item ? tn(item.tKey) : fallback
+  }
   const sections = activeSections(manifest).filter((section) => section.navGroup !== "demo")
   const completed = new Set(snapshot.completedSteps)
   const skipped = new Set(snapshot.skippedSteps)
   const { records } = snapshot
   const wonAmount = records.deal?.wonAt ? records.deal.amount : records.quote ? quoteTotals(records.quote).gross : null
   const finished = snapshot.state === "COMPLETED"
+  const unseen = finished ? [] : moduleProgress(snapshot, manifest).filter((module) => !module.done)
+  const onFinishStep = step?.id === "summary-finish"
 
   const finish = () => {
     if (reviewMode) {
@@ -31,8 +51,32 @@ export function SummaryScene({ manifest, snapshot, step, reviewMode, dispatch, h
 
   return (
     <div data-testid="demo-scene-summary" className="mx-auto max-w-2xl space-y-4">
+      {unseen.length > 0 && (
+        <div data-testid="demo-unseen-modules" className="rounded-xl border border-orange-200 bg-orange-50/60 p-5 dark:border-orange-900/50 dark:bg-orange-950/20">
+          <h2 className="text-lg font-bold tracking-tight">{S.unseenTitle}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{S.unseenBody}</p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {unseen.map((module, index) => (
+              <Button
+                key={module.route}
+                variant="outline"
+                className="h-auto justify-between whitespace-normal bg-card py-2.5 text-left"
+                onClick={() => openSection?.(module.firstSectionId)}
+                // The guide's arrow belongs here while something is unseen — not on «Bitir».
+                {...(onFinishStep && index === 0 ? { ...demoTarget("summary-finish"), "data-demo-label": S.unseenOpen(moduleName(module.route, module.title)) } : {})}
+              >
+                <span className="min-w-0">
+                  <span className="block font-semibold">{moduleName(module.route, module.title)}</span>
+                  <span className="block text-xs font-normal text-muted-foreground">{module.title}</span>
+                </span>
+                <ChevronRight className="ml-2 h-4 w-4 shrink-0" aria-hidden="true" />
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
       <div data-tour-id="journey-summary" className="rounded-xl border border-zinc-200 bg-card p-6 dark:border-zinc-700">
-        <h1 className="text-2xl font-bold tracking-tight">{finished ? S.completedTitle : manifest.title}</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{finished ? S.completedTitle : unseen.length ? manifest.title : S.allSeenTitle}</h1>
         <ol className="mt-4 space-y-2 text-sm">
           {sections.map((section, index) => {
             const stepsDone = section.steps.filter((candidate) => completed.has(candidate.id)).length
@@ -71,7 +115,14 @@ export function SummaryScene({ manifest, snapshot, step, reviewMode, dispatch, h
         ) : (
           <>
             <p className="flex-1 text-sm text-muted-foreground">{S.syntheticNote}</p>
-            <Button onClick={finish} className="bg-[#FF4D00] text-white hover:bg-[#e04400]" disabled={reviewMode} {...demoTarget("summary-finish")}>
+            <Button
+              onClick={finish}
+              variant={unseen.length ? "outline" : "default"}
+              className={unseen.length ? undefined : "bg-[#FF4D00] text-white hover:bg-[#e04400]"}
+              disabled={reviewMode}
+              data-testid="demo-finish"
+              {...(unseen.length ? {} : demoTarget("summary-finish"))}
+            >
               {S.finish}
             </Button>
           </>
