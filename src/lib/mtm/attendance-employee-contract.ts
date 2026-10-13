@@ -20,12 +20,12 @@ export function mayUseAttendanceSelf(role: string, attendanceEnabled: boolean, p
  * web/mobile transports that don't use withMobileRls. Unknown paths deny. */
 export function officeAttendanceMobilePath(method: string, path: string) {
   if (method === "POST" && path === "/api/v2/mtm/mobile/route-field/workday-return") return true
-  if ((method === "GET" || method === "POST") && ["/api/v1/mtm/mobile/attendance/location-consent", "/api/v1/mtm/mobile/attendance/installation"].includes(path)) return true
+  if ((method === "GET" || method === "POST") && ["/api/v2/mtm/mobile/route-field/attendance/location-consent", "/api/v2/mtm/mobile/route-field/attendance/installation"].includes(path)) return true
   if ((method === "POST" || method === "DELETE") && path === "/api/v2/mtm/mobile/route-field/device-tokens") return true
   if (method === "GET" && ["/api/v1/mtm/mobile/bootstrap", "/api/v1/mtm/mobile/ping", "/api/v1/mtm/mobile/profile",
-    "/api/v1/mtm/mobile/notifications", "/api/v1/mtm/mobile/attendance/requests", "/api/v1/mtm/mobile/attendance/request-limits"].includes(path)) return true
-  if (method === "POST" && ["/api/v1/mtm/mobile/sync/push", "/api/v1/mtm/mobile/attendance/requests", "/api/v1/mtm/mobile/attendance/attachments"].includes(path)) return true
+    "/api/v1/mtm/mobile/notifications", "/api/v2/mtm/mobile/route-field/attendance/requests", "/api/v2/mtm/mobile/route-field/attendance/request-limits"].includes(path)) return true
+  if (method === "POST" && ["/api/v1/mtm/mobile/sync/push", "/api/v2/mtm/mobile/route-field/attendance/requests", "/api/v2/mtm/mobile/route-field/attendance/attachments"].includes(path)) return true
   if (method === "PATCH" && path === "/api/v1/mtm/mobile/notifications") return true
-  if (method === "DELETE" && /^\/api\/v1\/mtm\/mobile\/attendance\/requests\/[a-f0-9-]{36}$/.test(path)) return true
-  return (method === "GET" || method === "DELETE") && /^\/api\/v1\/mtm\/mobile\/attendance\/attachments\/[a-f0-9-]{36}$/.test(path)
+  if (method === "DELETE" && /^\/api\/v2\/mtm\/mobile\/route-field\/attendance\/requests\/[a-f0-9-]{36}$/.test(path)) return true
+  return (method === "GET" || method === "DELETE") && /^\/api\/v2\/mtm\/mobile\/route-field\/attendance\/attachments\/[a-f0-9-]{36}$/.test(path)
 }

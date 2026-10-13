@@ -5,12 +5,12 @@ vi.mock("@/lib/prisma", async () => ({ prisma: (await import("./mocks/mtm-prisma
 vi.mock("@/lib/mobile-auth", async () => (await import("./mocks/mobile-auth")).makeMobileAuthMock())
 import { prisma } from "@/lib/prisma"
 import { resolveMobileAuth } from "@/lib/mobile-auth"
-import { POST } from "@/app/api/v1/mtm/mobile/attendance/requests/route"
-import { GET } from "@/app/api/v1/mtm/mobile/attendance/request-limits/route"
+import { POST } from "@/app/api/v2/mtm/mobile/route-field/attendance/requests/route"
+import { GET } from "@/app/api/v2/mtm/mobile/route-field/attendance/request-limits/route"
 import { defaultAttendanceDayKinds } from "@/lib/mtm/attendance-day-kinds"
 const ORG = "quota-org", AGENT = "quota-agent"
 const body = () => ({ clientRequestId: randomUUID(), kind: "HOURLY_ABSENCE", unit: "HOURS", startDate: "2027-05-10", endDate: "2027-05-10", startTime: "09:00", endTime: "10:00", reason: "Fictional reason" })
-const post = (input = body()) => POST(new NextRequest("https://fixture.invalid/api/v1/mtm/mobile/attendance/requests", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(input) }))
+const post = (input = body()) => POST(new NextRequest("https://fixture.invalid/api/v2/mtm/mobile/route-field/attendance/requests", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(input) }))
 function reservation(startTime: string, endTime: string) {
   return { startDate: new Date("2027-05-01"), attendanceDetails: { version: 1, kind: "HOURLY_ABSENCE", unit: "HOURS", startTime, endTime, timezone: "Asia/Baku",
     attachmentIds: [], submissionHash: "a".repeat(64), dayKind: defaultAttendanceDayKinds((key) => ({ az: key, ru: key, en: key })).find((item) => item.key === "HOURLY_ABSENCE") } }
@@ -50,7 +50,7 @@ it("returns only the authenticated employee's usage and clamps the remainder aft
     expect(where).toMatchObject({ agentId: AGENT, organizationId: ORG, status: { in: ["PENDING", "APPROVED"] } })
     return [reservation("09:00", "10:00"), reservation("12:00", "13:00")]
   }) as never)
-  const result = await GET(new NextRequest("https://fixture.invalid/api/v1/mtm/mobile/attendance/request-limits?month=2027-05&agentId=other"))
+  const result = await GET(new NextRequest("https://fixture.invalid/api/v2/mtm/mobile/route-field/attendance/request-limits?month=2027-05&agentId=other"))
   expect(await result.json()).toMatchObject({ data: { month: "2027-05", usedMinutes: 120, usedRequests: 2, remainingMinutes: 0, remainingRequests: 0 } })
   expect(result.headers.get("cache-control")).toContain("no-store")
 })
@@ -69,9 +69,9 @@ it("does not count sick leave against an hourly-absence quota", async () => {
   expect((await post({ ...body(), kind: "SICK_LEAVE" })).status).toBe(201)
 })
 it("rejects a malformed month and denies reading after the feature is disabled", async () => {
-  expect((await GET(new NextRequest("https://fixture.invalid/api/v1/mtm/mobile/attendance/request-limits?month=2027-13"))).status).toBe(400)
+  expect((await GET(new NextRequest("https://fixture.invalid/api/v2/mtm/mobile/route-field/attendance/request-limits?month=2027-13"))).status).toBe(400)
   vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "attendanceEnabled", value: false }] as never)
-  expect((await GET(new NextRequest("https://fixture.invalid/api/v1/mtm/mobile/attendance/request-limits?month=2027-05"))).status).toBe(404)
+  expect((await GET(new NextRequest("https://fixture.invalid/api/v2/mtm/mobile/route-field/attendance/request-limits?month=2027-05"))).status).toBe(404)
 })
 it.each([
   ["2026-11-01", 240, 409], // Fall-back: 00–04 is five actual hours.

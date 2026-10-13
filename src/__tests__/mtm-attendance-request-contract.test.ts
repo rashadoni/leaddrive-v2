@@ -5,6 +5,7 @@ import { AttendanceRequestInputSchema, attendanceRequestMinutes, attendanceReque
 import { prepareAttendanceDocument, attendanceAttachmentPath } from "@/lib/mtm/attendance-attachment"
 import { agentPermissionStates, agentPermissionEnabled } from "@/lib/mtm/agent-permissions"
 import { isMtmMobileApiPath } from "@/lib/mtm/mobile-api-path"
+import { isWithdrawnCrmPath } from "@/lib/crm-product-availability"
 
 const input = { clientRequestId: randomUUID(), kind: "ANNUAL_LEAVE", unit: "DAYS", startDate: "2026-10-13", endDate: "2026-10-15", reason: "Fixture leave" }
 describe("attendance request intervals and backward compatibility", () => {
@@ -35,8 +36,11 @@ describe("attendance request intervals and backward compatibility", () => {
     expect(agentPermissionStates({ attendanceEnabled: true })).toHaveProperty("attendanceRequests", true)
   })
   it("admits the authenticated mobile paths at the edge without reviving a withdrawn path", () => {
-    expect(isMtmMobileApiPath("/api/v1/mtm/mobile/attendance/requests")).toBe(true)
-    expect(isMtmMobileApiPath(`/api/v1/mtm/mobile/attendance/attachments/${randomUUID()}`)).toBe(true)
+    for (const path of ["/api/v2/mtm/mobile/route-field/attendance/requests", `/api/v2/mtm/mobile/route-field/attendance/attachments/${randomUUID()}`]) {
+      expect(isMtmMobileApiPath(path)).toBe(true)
+      expect(isWithdrawnCrmPath(path)).toBe(false)
+    }
+    expect(isWithdrawnCrmPath("/api/v1/mtm/mobile/attendance/requests")).toBe(true)
   })
 })
 

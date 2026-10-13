@@ -6,15 +6,15 @@ vi.mock("@/lib/prisma", async () => ({ prisma: (await import("./mocks/mtm-prisma
 vi.mock("@/lib/mobile-auth", async () => (await import("./mocks/mobile-auth")).makeMobileAuthMock())
 import { prisma } from "@/lib/prisma"
 import { resolveMobileAuth } from "@/lib/mobile-auth"
-import { GET, POST } from "@/app/api/v1/mtm/mobile/attendance/requests/route"
-import { DELETE } from "@/app/api/v1/mtm/mobile/attendance/requests/[id]/route"
-import { GET as documentGet } from "@/app/api/v1/mtm/mobile/attendance/attachments/[id]/route"
+import { GET, POST } from "@/app/api/v2/mtm/mobile/route-field/attendance/requests/route"
+import { DELETE } from "@/app/api/v2/mtm/mobile/route-field/attendance/requests/[id]/route"
+import { GET as documentGet } from "@/app/api/v2/mtm/mobile/route-field/attendance/attachments/[id]/route"
 import { submitAttendanceRequest } from "@/lib/mtm/attendance-request-store"
 import { getRlsContext } from "@/lib/rls-context"
 
 const self = { organizationId: "request-fixture-org", agentId: "request-fixture-agent", role: "AGENT" }
 const input = () => ({ clientRequestId: randomUUID(), kind: "HOURLY_ABSENCE", unit: "HOURS", startDate: "2026-11-02", endDate: "2026-11-02", startTime: "09:00", endTime: "11:00", reason: "Fixture request" })
-const req = (body: unknown) => new NextRequest("http://localhost/api/v1/mtm/mobile/attendance/requests", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })
+const req = (body: unknown) => new NextRequest("http://localhost/api/v2/mtm/mobile/route-field/attendance/requests", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })
 function authenticate(role = "AGENT", allowed = true) {
   vi.mocked(resolveMobileAuth).mockResolvedValue({ orgId: self.organizationId, agentId: self.agentId, role, tenantCapabilities: { routeField: allowed, workforceHrm: false } } as never)
 }
@@ -78,7 +78,7 @@ describe("new MTM attendance own-request API", () => {
   it("lists only this owner's MTM requests and refuses another owner's cursor", async () => {
     expect((await GET(req(undefined))).status).toBe(200)
     expect(prisma.mtmHrmRequest.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ organizationId: self.organizationId, agentId: self.agentId, attendanceDetails: expect.any(Object) }) }))
-    const response = await GET(new NextRequest(`http://localhost/api/v1/mtm/mobile/attendance/requests?cursor=${randomUUID()}`))
+    const response = await GET(new NextRequest(`http://localhost/api/v2/mtm/mobile/route-field/attendance/requests?cursor=${randomUUID()}`))
     expect(response.status).toBe(400)
   })
   it("does not cancel a foreign or already approved request", async () => {

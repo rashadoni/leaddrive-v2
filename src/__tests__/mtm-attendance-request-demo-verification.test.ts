@@ -31,7 +31,7 @@ function httpFixture(alreadyApproved = false, corrupt?: (path: string, response:
       expect(JSON.parse(init.body as string)).toEqual({ email: REQUEST_DEMO.email, password: "PRIVATE_PASSWORD", organizationSlug: DEMO.slug })
       response = payload({ token: "PRIVATE_MOBILE_TOKEN", agent: { id: DEMO_AGENTS[0], organizationId: DEMO.id, role: "AGENT" } })
     } else if (path === "/api/v1/mtm/attendance/report") response = payload(report(approved))
-    else if (path === "/api/v1/mtm/mobile/attendance/requests") {
+    else if (path === "/api/v2/mtm/mobile/route-field/attendance/requests") {
       expect(init.headers).toMatchObject({ Authorization: "Bearer PRIVATE_MOBILE_TOKEN" })
       if (init.method === "POST") {
         expect(JSON.parse(init.body as string)).toMatchObject({ clientRequestId: REQUEST_DEMO.clientRequestId, kind: "ANNUAL_LEAVE", startDate: REQUEST_DEMO.from, endDate: REQUEST_DEMO.to })
@@ -128,7 +128,7 @@ describe("fixed-tenant request acceptance controller", () => {
     expect(result).toEqual({ transitioned: true, report: { rowCount: 2, absentCount: 0, annualLeaveDays: 2, workedSeconds: 0 } })
     expect(calls.filter(call => call.path.endsWith("/attendance/report"))).toHaveLength(2)
     expect(calls.filter(call => call.init.method === "POST").map(call => call.path)).toEqual([
-      "/api/auth/callback/credentials", "/api/v1/mtm/mobile/auth", "/api/v1/mtm/mobile/attendance/requests", "/api/v1/mtm/mobile/attendance/requests", `/api/v1/mtm/attendance/requests/${id}/decision`, `/api/v1/mtm/attendance/requests/${id}/decision`,
+      "/api/auth/callback/credentials", "/api/v1/mtm/mobile/auth", "/api/v2/mtm/mobile/route-field/attendance/requests", "/api/v2/mtm/mobile/route-field/attendance/requests", `/api/v1/mtm/attendance/requests/${id}/decision`, `/api/v1/mtm/attendance/requests/${id}/decision`,
     ])
     expect(JSON.stringify(result)).not.toMatch(/PRIVATE|token|password/)
   })
@@ -144,7 +144,7 @@ describe("fixed-tenant request acceptance controller", () => {
     await expect(exerciseRequestDemo("PRIVATE_PASSWORD", initial, fetcher)).rejects.toThrow("VERIFICATION_FAILED")
   })
   it("returns only a code-owned phase when a real HTTP response or exception contains private data", async () => {
-    for (const [path, phase] of [["/api/v1/mtm/mobile/auth", "MOBILE_LOGIN"], ["/api/v1/notifications", "REVIEW_BELL"], ["/api/v1/mtm/mobile/notifications", "EMPLOYEE_REPLY"]]) {
+    for (const [path, phase] of [["/api/v1/mtm/mobile/auth", "MOBILE_LOGIN_HTTP_500"], ["/api/v1/notifications", "REVIEW_BELL"], ["/api/v1/mtm/mobile/notifications", "EMPLOYEE_REPLY"]]) {
       const { fetcher } = httpFixture(false, (target, response) => target === path ? Response.json({ password: "PRIVATE", token: "PRIVATE" }, { status: 500 }) : response)
       const failure = await exerciseRequestDemo("PRIVATE_PASSWORD", initial, fetcher).then(() => null, safeRequestFailure)
       expect(failure).toEqual({ version: 1, status: "FAIL", code: "VERIFICATION_FAILED", phase })
@@ -154,6 +154,31 @@ describe("fixed-tenant request acceptance controller", () => {
     expect(safeRequestFailure(new Error("PRIVATE_TOKEN"))).toEqual({ version: 1, status: "FAIL", code: "VERIFICATION_FAILED" })
     expect(() => validateRequestEvidence({ version: 1, status: "FAIL", code: "VERIFICATION_FAILED", phase: "PRIVATE_URL" })).toThrow()
     expect(() => validateRequestEvidence({ version: 1, status: "FAIL", code: "VERIFICATION_FAILED", phase: "WEB_LOGIN", error: "PRIVATE" })).toThrow()
+  })
+  it.each([400, 401, 403, 429, 500, 503, 404, 302])("reports mobile login HTTP %s without exporting its private body", async status => {
+    const { fetcher } = httpFixture(false, (path, response) => path === "/api/v1/mtm/mobile/auth"
+      ? Response.json({ error: "PRIVATE_PASSWORD PRIVATE_TOKEN PRIVATE_URL", phase: "FORGED_PHASE" }, { status }) : response)
+    const failure = await exerciseRequestDemo("PRIVATE_PASSWORD", initial, fetcher).then(() => null, safeRequestFailure)
+    expect(failure).toEqual({ version: 1, status: "FAIL", code: "VERIFICATION_FAILED",
+      phase: [404, 302].includes(status) ? "MOBILE_LOGIN_HTTP_OTHER" : `MOBILE_LOGIN_HTTP_${status}` })
+    expect(validateRequestEvidence(failure)).toEqual(failure)
+    expect(JSON.stringify(failure)).not.toMatch(/PRIVATE|FORGED/)
+  })
+  it("separates an interrupted login from an invalid response and a wrong identity without exposing credentials", async () => {
+    const ordinary = httpFixture().fetcher
+    const interrupted: typeof fetch = async (input, init) => {
+      if (new URL(String(input)).pathname === "/api/v1/mtm/mobile/auth") throw new Error("PRIVATE_TOKEN PRIVATE_URL")
+      return ordinary(input, init)
+    }
+    const malformed = httpFixture(false, (path, response) => path === "/api/v1/mtm/mobile/auth" ? new Response("PRIVATE_INVALID_JSON") : response).fetcher
+    const wrongIdentity = httpFixture(false, (path, response) => path === "/api/v1/mtm/mobile/auth"
+      ? Response.json({ success: true, data: { token: "PRIVATE_TOKEN", agent: { id: "PRIVATE_FOREIGN", organizationId: DEMO.id, role: "AGENT" } } }) : response).fetcher
+    for (const [fetcher, phase] of [[interrupted, "MOBILE_LOGIN_TRANSPORT"], [malformed, "MOBILE_LOGIN_RESPONSE"], [wrongIdentity, "MOBILE_LOGIN_IDENTITY"]] as const) {
+      const failure = await exerciseRequestDemo("PRIVATE_PASSWORD", initial, fetcher).then(() => null, safeRequestFailure)
+      expect(failure).toEqual({ version: 1, status: "FAIL", code: "VERIFICATION_FAILED", phase })
+      expect(validateRequestEvidence(failure)).toEqual(failure)
+      expect(JSON.stringify(failure)).not.toContain("PRIVATE")
+    }
   })
   it("refuses wrong totals, dates, employee or facts rather than accepting a changed baseline", () => {
     expect(verifyRequestReport(report(true), true).annualLeaveDays).toBe(2)

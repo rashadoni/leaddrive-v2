@@ -25,16 +25,25 @@ describe("office attendance fresh mobile access", () => {
     expect((await resolveMobileAuth(request("/api/v1/mtm/mobile/bootstrap")))?.role).toBe("EMPLOYEE")
     expect(prisma.mtmAgent.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ attendanceParticipant: true }) }))
   })
-  it.each(["/api/v1/mtm/mobile/sync/pull", "/api/v1/mtm/visits", "/api/v1/mtm/mobile/route-field/contacts", "/api/v1/mtm/mobile/attendance/requests/foreign"])("denies unknown or field path %s", async path => {
+  it.each(["/api/v1/mtm/mobile/sync/pull", "/api/v1/mtm/visits", "/api/v1/mtm/mobile/route-field/contacts", "/api/v2/mtm/mobile/route-field/attendance/requests/foreign"])("denies unknown or field path %s", async path => {
     expect(await resolveMobileAuth(request(path))).toBeNull()
   })
   it("checks the exact HTTP method as well as the path", async () => {
-    expect(await resolveMobileAuth(request("/api/v1/mtm/mobile/attendance/requests", "PATCH"))).toBeNull()
+    expect(await resolveMobileAuth(request("/api/v2/mtm/mobile/route-field/attendance/requests", "PATCH"))).toBeNull()
     expect(await resolveMobileAuth(request("/api/v1/mtm/mobile/sync/push", "POST"))).not.toBeNull()
     expect(await resolveMobileAuth(request("/api/v2/mtm/mobile/route-field/workday-return", "POST"))).not.toBeNull()
     expect(await resolveMobileAuth(request("/api/v2/mtm/mobile/route-field/workday-return", "GET"))).toBeNull()
     expect(await resolveMobileAuth(request("/api/v2/mtm/mobile/route-field/device-tokens", "POST"))).not.toBeNull()
     expect(await resolveMobileAuth(request("/api/v2/mtm/mobile/route-field/device-tokens", "GET"))).toBeNull()
+  })
+  it.each([
+    ["GET", "/requests"], ["POST", "/requests"], ["GET", "/request-limits"], ["POST", "/attachments"],
+    ["DELETE", "/requests/00000000-0000-4000-8000-000000000001"],
+    ["GET", "/attachments/00000000-0000-4000-8000-000000000001"],
+    ["GET", "/location-consent"], ["POST", "/location-consent"], ["GET", "/installation"], ["POST", "/installation"],
+  ])("admits the new own attendance endpoint %s %s with fresh office credentials", async (method, suffix) => {
+    expect((await resolveMobileAuth(request(`/api/v2/mtm/mobile/route-field/attendance${suffix}`, method)))?.role).toBe("EMPLOYEE")
+    expect(await resolveMobileAuth(request(`/api/v1/mtm/mobile/attendance${suffix}`, method))).toBeNull()
   })
   it("revokes office access when attendance is disabled", async () => {
     vi.mocked(prisma.mtmSetting.findUnique).mockResolvedValue({ value: false } as never)

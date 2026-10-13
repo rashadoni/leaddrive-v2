@@ -9,13 +9,13 @@ import { resolveMobileAuth } from "@/lib/mobile-auth"
 import { AttendanceRequestInputSchema, AttendanceRequestDetailsSchema } from "@/lib/mtm/attendance-request-contract"
 import { submitAttendanceRequest } from "@/lib/mtm/attendance-request-store"
 import { workforceWorkdayCorrectionFacts } from "@/lib/workforce/workday-correction-facts"
-import { POST } from "@/app/api/v1/mtm/mobile/attendance/requests/route"
+import { POST } from "@/app/api/v2/mtm/mobile/route-field/attendance/requests/route"
 import { getRlsContext } from "@/lib/rls-context"
 
 const self = { organizationId: "correction-submit-fixture-org", agentId: "correction-submit-fixture-agent", role: "AGENT" }
 const at = (clock: string) => new Date(`2026-10-12T${clock}:00.000Z`)
 function input() { return { clientRequestId: randomUUID(), kind: "TIME_CORRECTION", unit: "HOURS", startDate: "2026-10-12", endDate: "2026-10-12", startTime: "09:00", endTime: "18:00", reason: "Fixture employee forgot the finish" } }
-const request = (body: unknown) => new NextRequest("http://localhost/api/v1/mtm/mobile/attendance/requests", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })
+const request = (body: unknown) => new NextRequest("http://localhost/api/v2/mtm/mobile/route-field/attendance/requests", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })
 const post = (body: unknown = input()) => POST(request(body))
 function workday() { return { id: "source-workday", workDate: at("00:00"), status: "PAUSED", startedAt: at("05:21"), pausedAt: at("12:00"), completedAt: null as Date | null, totalPausedSeconds: 1800 } }
 const saved = () => vi.mocked(prisma.mtmHrmRequest.create).mock.calls.at(-1)![0].data

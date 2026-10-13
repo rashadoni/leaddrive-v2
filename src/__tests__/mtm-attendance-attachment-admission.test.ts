@@ -7,7 +7,7 @@ vi.mock("@/lib/public-abuse-guard", () => ({ consumePublicRateLimitBatch: vi.fn(
 import { resolveMobileAuth } from "@/lib/mobile-auth"
 import { uploadAttendanceDocument } from "@/lib/mtm/attendance-attachment"
 import { acquirePublicConcurrencySlot, consumePublicRateLimitBatch, releasePublicConcurrencySlot } from "@/lib/public-abuse-guard"
-import { POST } from "@/app/api/v1/mtm/mobile/attendance/attachments/route"
+import { POST } from "@/app/api/v2/mtm/mobile/route-field/attendance/attachments/route"
 const allowed = { allowed: true as const, unavailable: false, retryAfterSeconds: 0 }
 const reservation = { ...allowed, backend: "memory" as const, key: "fixture-key", token: "fixture-token" }
 beforeEach(() => {
@@ -16,7 +16,7 @@ beforeEach(() => {
   vi.mocked(consumePublicRateLimitBatch).mockResolvedValue(allowed)
   vi.mocked(acquirePublicConcurrencySlot).mockResolvedValue(reservation)
 })
-const request = () => new NextRequest("http://localhost/api/v1/mtm/mobile/attendance/attachments", { method: "POST", headers: { "content-type": "multipart/form-data; boundary=x" }, body: "--x--" })
+const request = () => new NextRequest("http://localhost/api/v2/mtm/mobile/route-field/attendance/attachments", { method: "POST", headers: { "content-type": "multipart/form-data; boundary=x" }, body: "--x--" })
 describe("private document resource admission", () => {
   it("refuses a limited agent before reading bytes or decoding an image", async () => {
     vi.mocked(consumePublicRateLimitBatch).mockResolvedValue({ allowed: false, unavailable: false, retryAfterSeconds: 12 })
