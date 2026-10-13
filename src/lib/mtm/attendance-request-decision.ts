@@ -48,10 +48,10 @@ export async function resolveAttendanceReviewerScope(tx: Prisma.TransactionClien
   }
   return actor
 }
-export async function requireAttendanceReviewer(tx: Prisma.TransactionClient, reviewer: AttendanceReviewer, agentId: string) {
+export async function requireAttendanceReviewer(tx: Prisma.TransactionClient, reviewer: AttendanceReviewer, agentId: string, options: { allowInactive?: boolean } = {}) {
   const { organizationId, userId } = reviewer
   const actor = await resolveAttendanceReviewerScope(tx, reviewer)
-  const target = await tx.mtmAgent.findFirst({ where: { id: agentId, organizationId, status: "ACTIVE" }, select: { userId: true, user: { select: { preferredLanguage: true } } } })
+  const target = await tx.mtmAgent.findFirst({ where: { id: agentId, organizationId, ...(options.allowInactive ? {} : { status: "ACTIVE" }) }, select: { userId: true, user: { select: { preferredLanguage: true } } } })
   if (!target || !actor || !canReviewMtmRouteRequest(actor, agentId)) throw new AttendanceRequestError("MTM_ATTENDANCE_DECISION_FORBIDDEN", 403)
   if (target.userId === userId) throw new AttendanceRequestError("MTM_ATTENDANCE_REQUEST_SELF_APPROVAL", 403)
   return { actor, locale: target.user?.preferredLanguage }

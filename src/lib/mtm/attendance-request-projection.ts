@@ -46,7 +46,9 @@ function uncoveredSeconds(from: string | null, to: string | null, windows: [numb
 export function projectApprovedAttendanceRequests(row: MtmAttendanceReportRow, periods: readonly AttendanceApprovedPeriod[], lateGraceSeconds = 0): MtmAttendanceReportRow {
   const approved = periods.filter((entry) => entry.agentId === row.employeeId && entry.startDate <= row.date && entry.endDate >= row.date && entry.details.kind !== "TIME_CORRECTION")
   if (!approved.length) return row
-  let result = { ...row, approvedRequests: approved }
+  const annualLeaveDays = approved.some(period => period.details.unit === "DAYS" && period.details.dayKind.key === "ANNUAL_LEAVE")
+    && !["PUBLIC_HOLIDAY", "COMPANY_HOLIDAY"].includes(row.calendarKind) ? 1 : 0
+  let result = { ...row, approvedRequests: approved, annualLeaveDays }
   if (row.factsState === "INVALID") return result
   const windows = approved.map(absenceWindow).filter((window): window is [number, number] => window !== null)
   if (windows.length && row.factsState === "VALID" && row.isWorkingDay) {

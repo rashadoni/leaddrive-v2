@@ -1,3 +1,4 @@
+import type { AttendanceEmploymentEvent } from "@/lib/mtm/attendance-employment"
 import { AttendanceRequestDetailsSchema } from "@/lib/mtm/attendance-request-contract"
 import type { AttendanceApprovedPeriod } from "@/lib/mtm/attendance-request-projection"
 import { readAttendanceDayKinds } from "@/lib/mtm/attendance-day-kind-store"
@@ -89,9 +90,16 @@ export async function readMtmAttendanceReport(input: {
       select: { id: true, workdayId: true, requestId: true, source: true, occurredAt: true, beforeFacts: true, afterFacts: true, actorUser: { select: { id: true, name: true } } } })
     const correctionsByWorkday = new Map<string, typeof corrections>()
     for (const correction of corrections) correctionsByWorkday.set(correction.workdayId, [...(correctionsByWorkday.get(correction.workdayId) ?? []), correction])
+    const employment = agentIds.length ? await tx.$queryRaw<Array<{ agentId: string; kind: AttendanceEmploymentEvent["kind"]; effectiveAt: Date }>>`
+      SELECT "agentId", "kind", "effectiveAt" FROM "workforce_employment_events"
+      WHERE "organizationId" = ${organizationId} AND "agentId" IN (${Prisma.join(agentIds)})
+      ORDER BY "agentId", "effectiveAt", "id" LIMIT 100001` : []
+    if (employment.length > 100_000) throw new Error("MTM_ATTENDANCE_EMPLOYMENT_HISTORY_TOO_LARGE")
+    const employmentByEmployee = new Map<string, AttendanceEmploymentEvent[]>()
+    for (const event of employment) employmentByEmployee.set(event.agentId, [...(employmentByEmployee.get(event.agentId) ?? []), { kind: event.kind, effectiveAt: event.effectiveAt.toISOString() }])
     const teamNames = new Map(teams.map((team) => [team.id, team.name]))
     const report = buildMtmAttendanceReport({
-      employees: employees.map((employee) => ({ ...employee, teamName: employee.teamId ? teamNames.get(employee.teamId) ?? null : null })),
+      employees: employees.map((employee) => ({ ...employee, employmentEvents: employmentByEmployee.get(employee.id), teamName: employee.teamId ? teamNames.get(employee.teamId) ?? null : null })),
       approvedRequests, dayKinds: catalogue.items, workdays: workdays.map((day) => ({ ...day, correctionProjection: projectAttendanceCorrectionFacts(day, correctionsByWorkday.get(day.id) ?? [], now) })),
       calendar, rules, from: query.from, to: query.to, now,
     })

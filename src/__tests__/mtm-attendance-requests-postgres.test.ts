@@ -34,6 +34,7 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
   let tenant: typeof import("@/lib/rls-context").runWithTenant
   let bypass: typeof import("@/lib/rls-context").runWithRlsBypass
   let store: typeof import("@/lib/mtm/attendance-request-store")
+  let revocation: typeof import("@/lib/mtm/attendance-request-revocation")
   let recording: typeof import("@/lib/mtm/attendance-hr-recording")
   let review: typeof import("@/lib/mtm/attendance-request-review")
   let decision: typeof import("@/lib/mtm/attendance-request-decision")
@@ -58,8 +59,8 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
     const cli = createRequire(import.meta.url).resolve("prisma/build/index.js")
     const result = spawnSync(process.execPath, [cli, "db", "push", "--schema", schemaFile, "--skip-generate"], { env: { ...process.env, DATABASE_URL: scratch!.adminDb }, encoding: "utf8", timeout: 180_000, maxBuffer: 1024 * 1024 })
     if (result.status !== 0) throw new Error("Request fixture schema push failed")
-    sql(scratch!.adminDb, 'DROP TABLE mtm_attendance_attachments; ALTER TABLE mtm_hrm_requests DROP COLUMN "attendanceDetails";')
-    for (const migration of ["20260806120000_mtm_rls_coverage_completion", "20260806160000_mtm_rls_bypass_clause_normalization", "20261013040000_mtm_attendance_requests", "20261013060000_mtm_attendance_hr_recording"]) sql(scratch!.adminDb, readFileSync(`prisma/migrations/${migration}/migration.sql`, "utf8"))
+    sql(scratch!.adminDb, 'DROP TABLE workforce_employment_events; DROP TYPE "WorkforceEmploymentEventKind"; DROP TABLE mtm_attendance_attachments; ALTER TABLE mtm_hrm_requests DROP COLUMN "attendanceDetails";')
+    for (const migration of ["20260830150000_workforce_employment_history", "20260806120000_mtm_rls_coverage_completion", "20260806160000_mtm_rls_bypass_clause_normalization", "20261013040000_mtm_attendance_requests", "20261013060000_mtm_attendance_hr_recording"]) sql(scratch!.adminDb, readFileSync(`prisma/migrations/${migration}/migration.sql`, "utf8"))
     sql(scratch!.adminDb, readFileSync("scripts/rls/enable-batch-5.sql", "utf8"))
     sql(scratch!.adminDb, `GRANT USAGE ON SCHEMA public TO "${scratch!.role}"; GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "${scratch!.role}";`)
     // Exercise the real external-runtime guard, which correctly rejects /tmp.
@@ -70,6 +71,7 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
     prisma = (await import("@/lib/prisma")).prisma
     ;({ runWithTenant: tenant, runWithRlsBypass: bypass } = await import("@/lib/rls-context"))
     store = await import("@/lib/mtm/attendance-request-store")
+    revocation = await import("@/lib/mtm/attendance-request-revocation")
     recording = await import("@/lib/mtm/attendance-hr-recording")
     review = await import("@/lib/mtm/attendance-request-review")
     decision = await import("@/lib/mtm/attendance-request-decision")
@@ -329,6 +331,79 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
       expect((await read("LATE_EARLY")).rows).toHaveLength(0)
       expect(await prisma.mtmAgentWorkday.findUnique({ where: { id: day.id } })).toMatchObject({ startedAt, completedAt, totalPausedSeconds: 0 })
       expect(await prisma.mtmAgentWorkdayEvent.count({ where: { workdayId: day.id } })).toBe(2)
+    })
+  })
+
+  it("counts a holiday within leave separately, retains work-on-leave, and atomically returns days on retroactive cancellation", async () => {
+    const reviewer = { organizationId: self.organizationId, userId: "request-pg-admin", principalType: "session" as const }
+    const body = { clientRequestId: randomUUID(), kind: "ANNUAL_LEAVE", unit: "DAYS", startDate: "2026-09-07", endDate: "2026-09-09", reason: "PRIVATE_RETRO_LEAVE" }
+    const response = await submit(body); expect(response.status).toBe(201)
+    const request = (await response.json()).data.request
+    const approved = await tenant(self.organizationId, () => decision.decideAttendanceRequest(reviewer, request.id, { decision: "APPROVED", version: request.version, note: "Original fictional approval" }))
+    const cancellation = { version: approved.request.version, reason: "PRIVATE_REVOCATION_CAUSE" }
+    const read = () => report.readMtmAttendanceReport({ organizationId: self.organizationId, actor: { role: "ADMIN", agentId: null, scopedAgentIds: null }, query: { from: body.startDate, to: body.endDate, form: "ALL", employeeId: self.agentId } })
+    await tenant(self.organizationId, async () => {
+      await prisma.mtmWorkCalendarDay.create({ data: { organizationId: self.organizationId, date: new Date("2026-09-08"), kind: "PUBLIC_HOLIDAY", name: "Fictional holiday" } })
+      const startedAt = new Date("2026-09-07T05:00:00Z"), completedAt = new Date("2026-09-07T14:00:00Z")
+      const day = await prisma.mtmAgentWorkday.create({ data: { organizationId: self.organizationId, agentId: self.agentId, workDate: new Date(body.startDate), status: "COMPLETED", startedAt, completedAt } })
+      await prisma.mtmAgentWorkdayEvent.createMany({ data: [
+        { organizationId: self.organizationId, agentId: self.agentId, workdayId: day.id, type: "START", occurredAt: startedAt },
+        { organizationId: self.organizationId, agentId: self.agentId, workdayId: day.id, type: "FINISH", occurredAt: completedAt },
+      ] })
+      const result = await read()
+      expect(result.totals.annualLeaveDays).toBe(2)
+      expect(result.rows[0]).toMatchObject({ kind: "WORKED", workedSeconds: 32400, flags: ["WORKED_ON_APPROVED_ABSENCE"], annualLeaveDays: 1 })
+      expect(result.rows[1]).toMatchObject({ kind: "HOLIDAY", annualLeaveDays: 0 })
+      // The employee can withdraw a pending request, never an approved leave.
+      await expect(store.cancelOwnAttendanceRequest(self, request.id)).rejects.toMatchObject({ status: 409 })
+    })
+    sql(scratch!.adminDb, `CREATE FUNCTION fixture_reject_revocation_inbox() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.metadata->>'status' = 'CANCELLED' THEN RAISE EXCEPTION 'fixture inbox unavailable'; END IF; RETURN NEW; END $$; CREATE TRIGGER fixture_revocation_inbox BEFORE INSERT ON mtm_notifications FOR EACH ROW EXECUTE FUNCTION fixture_reject_revocation_inbox();`)
+    try { await expect(tenant(self.organizationId, () => revocation.revokeAttendanceLeave(reviewer, request.id, cancellation))).rejects.toThrow() }
+    finally { sql(scratch!.adminDb, 'DROP TRIGGER fixture_revocation_inbox ON mtm_notifications; DROP FUNCTION fixture_reject_revocation_inbox();') }
+    await tenant(self.organizationId, async () => {
+      expect((await read()).totals.annualLeaveDays).toBe(2)
+      expect(await prisma.mtmAuditLog.count({ where: { entityId: request.id, action: revocation.ATTENDANCE_REVOCATION_ACTION } })).toBe(0)
+      // Historical approvals remain reachable after the employee leaves.
+      await prisma.mtmAgent.update({ where: { id: self.agentId }, data: { status: "INACTIVE" } })
+    })
+    try {
+      const answers = await Promise.all([1, 2].map(() => tenant(self.organizationId, () => revocation.revokeAttendanceLeave(reviewer, request.id, cancellation))))
+      expect(answers.map(answer => answer.idempotent).sort()).toEqual([false, true])
+      await tenant(self.organizationId, async () => {
+        const history = (await review.listAttendanceRequestsForReview(reviewer, { status: "CANCELLED" })).items.find(row => row.id === request.id)
+        expect(history).toMatchObject({ decidedAt: approved.request.decidedAt, decisionNote: "Original fictional approval", cancellation: { reason: cancellation.reason } })
+        expect(await prisma.mtmAuditLog.count({ where: { entityId: request.id, action: revocation.ATTENDANCE_REVOCATION_ACTION } })).toBe(1)
+        expect(await prisma.mtmNotification.count({ where: { AND: [{ metadata: { path: ["attendanceRequestId"], equals: request.id } }, { metadata: { path: ["status"], equals: "CANCELLED" } }] } })).toBe(1)
+        const result = await read()
+        expect(result.totals.annualLeaveDays).toBe(0)
+        expect(result.rows[0]).toMatchObject({ kind: "WORKED", workedSeconds: 32400, flags: [] })
+        expect(result.rows[2].kind).toBe("ABSENT")
+        expect(JSON.stringify(result)).not.toMatch(/PRIVATE_RETRO_LEAVE|PRIVATE_REVOCATION_CAUSE/)
+        await expect(revocation.revokeAttendanceLeave(reviewer, request.id, { ...cancellation, reason: "Changed cause" })).rejects.toMatchObject({ status: 409 })
+      })
+    } finally { await tenant(self.organizationId, () => prisma.mtmAgent.update({ where: { id: self.agentId }, data: { status: "ACTIVE" } })) }
+  })
+  it("uses explicit immutable employment history instead of directory status and scopes it to the tenant", async () => {
+    await tenant(self.organizationId, async () => {
+      for (const [kind, at] of [["HIRE", "2026-09-21T05:00:00Z"], ["TERMINATION", "2026-09-22T20:00:00Z"], ["REHIRE", "2026-09-25T05:00:00Z"]]) {
+        await prisma.$executeRaw`INSERT INTO workforce_employment_events (id, "organizationId", "agentId", kind, "effectiveAt", source, "recordedByUserId") VALUES
+          (${randomUUID()}, ${self.organizationId}, ${self.agentId}, ${kind}::"WorkforceEmploymentEventKind", ${new Date(at)}, 'MTM_TEST_FIXTURE', 'request-pg-admin')`
+      }
+      const result = await report.readMtmAttendanceReport({ organizationId: self.organizationId, actor: { role: "ADMIN", agentId: null, scopedAgentIds: null }, query: { from: "2026-09-18", to: "2026-09-25", form: "ALL", employeeId: self.agentId } })
+      expect(result.rows.filter(row => row.kind === "ABSENT").map(row => row.date)).toEqual(["2026-09-21", "2026-09-22", "2026-09-25"])
+      expect(result.rows.filter(row => row.kind === "NOT_EMPLOYED")).toHaveLength(5)
+      // The production policy permits SELECT/INSERT only: UPDATE cannot see rows.
+      expect(await prisma.$executeRaw`UPDATE workforce_employment_events SET source = 'TAMPER' WHERE "agentId" = ${self.agentId}`).toBe(0)
+      const retained = await prisma.$queryRaw<{ source: string }[]>`SELECT source FROM workforce_employment_events WHERE "agentId" = ${self.agentId}`
+      expect(retained).toHaveLength(3)
+      expect(retained.every(event => event.source === "MTM_TEST_FIXTURE")).toBe(true)
+    })
+    // Separately prove the immutable trigger even for the disposable DB owner.
+    // This uses only this test's throwaway database; production RLS is unchanged.
+    expect(() => sql(scratch!.adminDb, `UPDATE workforce_employment_events SET source = 'TAMPER' WHERE "organizationId" = 'request-pg-a' AND "agentId" = 'request-pg-owner'`)).toThrow(/employment history is immutable/i)
+    await tenant("request-pg-b", async () => {
+      const rows = await prisma.$queryRaw<unknown[]>`SELECT id FROM workforce_employment_events WHERE "agentId" = ${self.agentId}`
+      expect(rows).toHaveLength(0)
     })
   })
 

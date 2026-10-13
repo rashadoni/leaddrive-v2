@@ -52,7 +52,7 @@ beforeEach(() => {
   fetchMock.mockReset(); fetchMock.mockImplementation(async () => response()); vi.stubGlobal("fetch", fetchMock)
 })
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals() })
-function capture(locale: string) {
+function capture(locale: string, variant = "") {
   const directory = process.env.MTM_ATTENDANCE_RENDER_DIR
   if (!directory) return
   mkdirSync(directory, { recursive: true })
@@ -62,7 +62,7 @@ function capture(locale: string) {
     Array.from(target.options).forEach(option => { if (option.value === select.value) option.setAttribute("selected", ""); else option.removeAttribute("selected") })
   })
   container.querySelectorAll("textarea").forEach((field, index) => { clone.querySelectorAll("textarea")[index].textContent = field.value })
-  writeFileSync(join(directory, `attendance-request-queue-${locale}.html`), `<!doctype html><html lang="${locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="attendance.css"><style>html{background:#f4f4f5;color:#18181b}body{width:100%;max-width:1360px;margin:auto;padding:32px;font-family:Arial,sans-serif}*,*::before,*::after{box-sizing:border-box}@media(max-width:600px){body{padding:16px}}</style></head><body>${clone.innerHTML}</body></html>`)
+  writeFileSync(join(directory, `attendance-request-queue-${locale}${variant ? `-${variant}` : ""}.html`), `<!doctype html><html lang="${locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="attendance.css"><style>html{background:#f4f4f5;color:#18181b}body{width:100%;max-width:1360px;margin:auto;padding:32px;font-family:Arial,sans-serif}*,*::before,*::after{box-sizing:border-box}@media(max-width:600px){body{padding:16px}}</style></head><body>${clone.innerHTML}</body></html>`)
 }
 
 describe("actual attendance review queue", () => {
@@ -223,5 +223,121 @@ describe("actual attendance review queue", () => {
     await render(); const readSignal = fetchMock.mock.calls.at(-1)?.[1]?.signal
     await act(async () => root.render(null))
     expect(readSignal?.aborted).toBe(true)
+  })
+})
+
+function approvedLeave(index = 1, kind: "ANNUAL_LEAVE" | "HR_RECORD" = "ANNUAL_LEAVE"): AttendanceReviewItem {
+  return request(index, { status: "APPROVED", submittedAt: "2026-10-01T08:00:00.000Z", startDate: "2026-10-05", endDate: "2026-10-09", reason: "Демонстрационный ежегодный отпуск.",
+    decidedAt: "2026-10-02T06:30:00.000Z", reviewerName: "Nigar Demo", decisionNote: "Демонстрационное согласование",
+    details: { ...request().details, kind, unit: "DAYS", startTime: null, endTime: null, attachmentIds: [], dayKind: dayKinds.find(kind => kind.key === "ANNUAL_LEAVE")! } })
+}
+const cancelledLeave = (): AttendanceReviewItem => ({ ...approvedLeave(), status: "CANCELLED", cancelledAt: "2026-10-13T11:00:00.000Z", version: "2026-10-13T11:00:00.000Z",
+  cancellation: { at: "2026-10-13T11:00:00.000Z", byName: "Reviewer Two Demo", reason: "Демонстрационная отмена по согласованию с сотрудником." } })
+async function openRevocation() {
+  fetchMock.mockImplementation(async () => response([approvedLeave()]))
+  await render(); await filter("APPROVED"); await click("requestsOpen", row()); await click("revocationOpen")
+}
+
+describe("approved annual-leave revocation in the real queue", () => {
+  it.each(["ru", "az", "en"] as const)("shows the reason and preserved original decision in %s", async locale => {
+    fetchMock.mockImplementation(async () => response([approvedLeave()]))
+    await render(locale); await filter("APPROVED"); await click("requestsOpen", row())
+    expect(container.querySelector("textarea")).toBeNull()
+    await click("revocationOpen")
+    expect(row().textContent).toContain("Nigar Demo")
+    expect(row().textContent).toContain(approvedLeave().decisionNote)
+    expect(button("revocationConfirm").disabled).toBe(true)
+    await editNote("  аб  "); await click("revocationConfirm"); expect(writes()).toHaveLength(0)
+    await editNote("Демонстрационная отмена по согласованию с сотрудником.")
+    expect(button("revocationConfirm").disabled).toBe(false)
+    expect(container.querySelector("label textarea")).not.toBeNull()
+    expect(container.textContent).toContain(translation("revocationDescription"))
+    expect(container.textContent).not.toMatch(/mtmAttendance\.|undefined|PRIVATE_INTERNAL_ERROR/)
+    capture(locale, "leave-revocation")
+  })
+  it("leaves the approval unchanged when the reviewer dismisses the editor", async () => {
+    await openRevocation(); await editNote("Private draft reason"); await click("revocationKeep")
+    expect(writes()).toHaveLength(0); expect(container.querySelector("textarea")).toBeNull()
+    expect(row().textContent).toContain("Nigar Demo"); expect(row().textContent).toContain(translation("requestsApproved"))
+    await click("revocationOpen"); expect(container.querySelector("textarea")!.value).toBe("")
+  })
+  it.each(["ANNUAL_LEAVE", "HR_RECORD"] as const)("revokes %s using only the exact version/reason and reloads authoritative history", async kind => {
+    fetchMock.mockImplementation(async () => response([approvedLeave(1, kind)]))
+    await render(); await filter("ALL"); await click("requestsOpen", row()); await click("revocationOpen"); await editNote("  Перенос по согласованию  ")
+    // The mutation DTO deliberately lacks cancellation display data.
+    const { cancellation: _cancellation, ...dto } = cancelledLeave(); void _cancellation
+    fetchMock.mockResolvedValueOnce(decided(dto)).mockResolvedValueOnce(response([cancelledLeave()]))
+    await click("revocationConfirm")
+    expect(writes()).toHaveLength(1)
+    expect(writes()[0][0]).toBe(`/api/v1/mtm/attendance/requests/${id(1)}/revoke`)
+    expect(JSON.parse(String(writes()[0][1]?.body))).toEqual({ version, reason: "Перенос по согласованию" })
+    expect(fetchMock.mock.calls.at(-1)?.[0]).toBe("/api/v1/mtm/attendance/requests?status=ALL")
+    expect(container.textContent).toContain(translation("revocationSaved"))
+    await click("requestsOpen", row())
+    expect(row().textContent).toContain("Nigar Demo"); expect(row().textContent).toContain("Reviewer Two Demo")
+    expect(row().textContent).toContain(cancelledLeave().cancellation!.reason)
+    expect(button("revocationOpen")).toBeUndefined(); expect(container.querySelector("textarea")).toBeNull()
+    expect(container.querySelector('[data-testid="attendance-cancellation-history"]')).not.toBeNull()
+  })
+  it.each(["hours", "sick", "correction", "pending", "cancelled"])("does not offer approved-leave cancellation for %s", async reason => {
+    const item = approvedLeave()
+    if (reason === "hours") item.details.unit = "HOURS"
+    if (reason === "sick") { item.details.kind = "SICK_LEAVE"; item.details.dayKind = dayKinds.find(kind => kind.key === "SICK_LEAVE")! }
+    if (reason === "correction") item.details.kind = "TIME_CORRECTION"
+    if (reason === "pending") item.status = "PENDING"
+    if (reason === "cancelled") item.status = "CANCELLED"
+    fetchMock.mockImplementation(async () => response([item])); await render(); await click("requestsOpen", row())
+    expect(button("revocationOpen")).toBeUndefined(); expect(writes()).toHaveLength(0)
+  })
+  it.each([401, 403, 404])("clears private details and the reason after a %s revocation refusal", async status => {
+    await openRevocation(); await editNote("Private cancellation reason")
+    fetchMock.mockResolvedValueOnce(response([], null, status)); await click("revocationConfirm")
+    expect(container.querySelectorAll("li")).toHaveLength(0); expect(container.querySelector("textarea")).toBeNull()
+    expect(container.textContent).not.toContain("Private cancellation reason")
+    expect(container.textContent).toContain(translation("requestsForbidden"))
+  })
+  it.each(["network", "invalid-json", "conflict"])("blocks a second write after %s until a fresh successful read", async failure => {
+    await openRevocation(); await editNote("Перенос отпуска")
+    if (failure === "network") fetchMock.mockRejectedValueOnce(new Error("PRIVATE_TRANSPORT_ERROR"))
+    else if (failure === "invalid-json") fetchMock.mockResolvedValueOnce(new Response("not json"))
+    else fetchMock.mockResolvedValueOnce(response([], null, 409))
+    await click("revocationConfirm"); await click("revocationConfirm")
+    expect(writes()).toHaveLength(1); expect(button("revocationConfirm").disabled).toBe(true)
+    expect(container.textContent).not.toContain("PRIVATE_TRANSPORT_ERROR")
+    fetchMock.mockResolvedValueOnce(response([], null, 500)); await click("requestsRefresh")
+    expect(button("revocationConfirm")).toBeUndefined()
+    fetchMock.mockResolvedValueOnce(response([cancelledLeave()])); await filter("ALL"); await click("requestsOpen", row())
+    expect(row().textContent).toContain(cancelledLeave().cancellation!.reason)
+    expect(button("revocationOpen")).toBeUndefined(); expect(writes()).toHaveLength(1)
+  })
+  it("requires a successful reload even when cancellation was confirmed but reading history failed", async () => {
+    await openRevocation(); await editNote("Перенос отпуска")
+    fetchMock.mockResolvedValueOnce(decided(cancelledLeave())).mockResolvedValueOnce(response([], null, 500))
+    await click("revocationConfirm")
+    expect(container.textContent).toContain(translation("requestsLoadError"))
+    expect(container.textContent).not.toContain(translation("revocationSaved"))
+    expect(container.querySelectorAll("li")).toHaveLength(0)
+    fetchMock.mockResolvedValueOnce(response([cancelledLeave()])); await filter("ALL"); await click("requestsOpen", row())
+    expect(row().textContent).toContain("Reviewer Two Demo"); expect(writes()).toHaveLength(1)
+  })
+  it("aborts a pending cancellation on locale change, reconciles by GET and ignores the late write reply", async () => {
+    await openRevocation(); await editNote("Перенос отпуска")
+    let finishWrite!: (response: Response) => void, finishRead!: (response: Response) => void
+    fetchMock.mockImplementationOnce(() => new Promise<Response>(done => { finishWrite = done }))
+    await click("revocationConfirm"); await click("requestsSaving"); expect(writes()).toHaveLength(1)
+    const signal = writes()[0][1]?.signal
+    fetchMock.mockImplementationOnce(() => new Promise<Response>(done => { finishRead = done })); await render("en")
+    expect(signal?.aborted).toBe(true); expect(button("requestsRefresh").disabled).toBe(true)
+    await act(async () => finishWrite(decided(cancelledLeave())))
+    expect(container.textContent).not.toContain(translation("revocationSaved"))
+    await act(async () => finishRead(response([cancelledLeave()])))
+    await click("requestsOpen", row()); expect(row().textContent).toContain("Reviewer Two Demo")
+    expect(button("revocationOpen")).toBeUndefined(); expect(writes()).toHaveLength(1)
+  })
+  it("aborts the pending cancellation when leaving the queue", async () => {
+    await openRevocation(); await editNote("Перенос отпуска")
+    fetchMock.mockImplementationOnce(() => new Promise<Response>(() => {})); await click("revocationConfirm")
+    const signal = writes()[0][1]?.signal
+    await act(async () => root.render(null)); expect(signal?.aborted).toBe(true)
   })
 })
