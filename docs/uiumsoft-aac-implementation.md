@@ -109,3 +109,9 @@
 NOT RUN / CI REQUIRED: полный application typecheck, lint/build, PostgreSQL/RLS/rollback/CAS и фактический Prisma-adapter. Даже scoped check, включивший большую generated Prisma-схему, достиг 2 GiB heap limit; heap на Contabo не увеличивался. Адаптер отделён от чистого engine, чтобы обязательную широкую проверку выполнить в CI/выделенном worker. NOT RUN: live OAuth/mTLS/VPN/customer API/ERP/SIEM — реквизиты и среды не предоставлены.
 
 Schema, рабочая сеть и production не изменены. Следующий самостоятельный этап — durable capture/worker и его PostgreSQL-проверки; он ещё не завершён. Перед настоящей передачей необходимы также receiving API-контракт, тестовый endpoint, сертификация/авторизация, Azure/VPN и приёмка. Наличие конструктора не означает готовность всего обмена.
+
+### Последняя полная CI-проверка конструктора
+
+Code head552f2a1d48458132a3a999763b9723fb5147b9cd, run38479938519: pr-scope, static-checks, typecheck, runner-policy, scan и GitHub-hosted Linux production build — PASS. Typecheck gate проверяет существующий baseline; это не заявление об отсутствии всех исторических diagnostics. Production build:18m10s, static checks:15m33s, typecheck:16m5s.
+
+Дополнительные локальные checkpoint после этого SHA содержат только журнал, runtime plan и lexical inventory; приложение не изменено. 205 узких тестов и scoped TypeScript PASS. Реальные PostgreSQL/RLS/CAS именно нового builder adapter, live OAuth/mTLS/VPN/customer API/ERP/SIEM — NOT RUN; constructor browser proof остаётся синтетическим. Schema и production не менялись; merge/deploy не выполнялись.
