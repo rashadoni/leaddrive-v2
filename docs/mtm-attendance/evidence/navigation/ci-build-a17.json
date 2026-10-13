@@ -1,0 +1,32 @@
+{
+  "status": "PASS",
+  "headSha": "a17d31d70f27e35f1e7ff77169d103da20e5b499",
+  "workflowSha": "4577330761e96dcacffee6758178a44b40874b6c",
+  "runId": "38472738075",
+  "runAttempt": "1",
+  "products": [
+    {
+      "path": ".next/BUILD_ID",
+      "sha256": "755460f2511be423713939b961b8c39a8f228f9f5be372a1488ea07e546b95e4",
+      "bytes": 21
+    },
+    {
+      "path": ".next/standalone/server.js",
+      "sha256": "617b34919e7a998734978106a68504017c0a0bd681ca5753fce76f6e2f36cd91",
+      "bytes": 7826
+    },
+    {
+      "path": ".next/server/app-paths-manifest.json",
+      "sha256": "46d900c2f6529ecf27ffb762210d31f153958262ea9b241d2cb91127ed5b1a3f",
+      "bytes": 143594
+    }
+  ],
+  "routes": [
+    "/admin/tenants/[id]/page",
+    "/admin/tenants/[id]/edit/page",
+    "/api/v1/admin/tenants/[id]/route",
+    "/api/v1/admin/tenants/[id]/capabilities/route"
+  ],
+  "deploy": false,
+  "providerKey": "synthetic build-only CARTO marker; provider integration NOT RUN"
+}
