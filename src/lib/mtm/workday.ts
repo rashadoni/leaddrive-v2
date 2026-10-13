@@ -194,7 +194,7 @@ export type MtmWorkdayEventParseResult = {
   input: MtmWorkdayEventInput | null
   error: string | null
   /** Present only when the client sent an unsupported schema version. */
-  code?: "WORKFORCE_WORKDAY_SCHEMA_UNSUPPORTED"
+  code?: "WORKFORCE_WORKDAY_SCHEMA_UNSUPPORTED" | "MTM_ATTENDANCE_MARK_INVALID"
   /** Additive recovery data; never replaces the legacy error text. */
   schemaSupport?: typeof WORKFORCE_WORKDAY_SCHEMA_SUPPORT
 }
