@@ -4,9 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
 import { createDateFormatter } from "@/lib/format-date"
-import { ClipboardList } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { HomeCard, HomePill } from "@/components/mtm/home-parts"
+import { Card } from "@/components/ui/card"
+import { HomePill } from "@/components/mtm/home-parts"
 import { attendanceDayKindLabel } from "@/lib/mtm/attendance-day-kinds"
 import { canRevokeAttendanceLeave } from "@/lib/mtm/attendance-revocation-contract"
 import type { AttendanceReviewItem } from "@/lib/mtm/attendance-request-review"
@@ -112,9 +112,11 @@ export function MtmAttendanceRequestQueue() {
   }
 
   return <section className="space-y-5" data-testid="attendance-request-queue" aria-label={t("requestsTitle")} aria-busy={busy}>
-    <div className="flex flex-wrap items-center justify-between gap-3"><Link href="/mtm/attendance" className="inline-flex min-h-11 items-center text-sm font-medium text-primary underline-offset-4 hover:underline">{t("requestsBack")}</Link><Link href="/mtm/attendance/decisions" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("journalTitle")}</Link><Link href="/mtm/attendance/recordings" className="inline-flex min-h-11 items-center rounded-lg border px-4 text-sm font-medium text-primary hover:bg-muted">{t("hrRecordingTitle")}</Link></div>
-    <HomeCard testId="attendance-request-card" titleId="attendance-request-title" tone="amber" icon={<ClipboardList className="h-5 w-5" />} title={t("requestsTitle")}>
-      <p className="pt-4 text-sm text-muted-foreground">{t("requestsDescription")}</p>
+    <header className="flex flex-wrap items-start justify-between gap-4">
+      <div className="min-w-0 space-y-2"><h1 id="attendance-request-title" className="text-2xl font-semibold tracking-tight">{t("requestsTitle")}</h1><p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">{t("requestsDescription")}</p></div>
+      <Button asChild variant="outline" className="min-h-11 max-w-full whitespace-normal"><Link href="/mtm/attendance/recordings">{t("hrRecordingTitle")}</Link></Button>
+    </header>
+    <Card data-testid="attendance-request-card" aria-labelledby="attendance-request-title" className="rounded-2xl px-5 py-1">
       <div className="flex flex-wrap items-end gap-3 py-4">
         {focusedRequest && <Button className="min-h-11" variant="outline" onClick={() => { setFocusedRequest(null); setSelected(null) }} disabled={busy}>{t("requestsAll")}</Button>}
         <label className="min-w-48 flex-1 text-sm"><span className="mb-1 block font-medium">{t("requestsTitle")}</span>
@@ -155,6 +157,6 @@ export function MtmAttendanceRequestQueue() {
         </li>)}
       </ul>
       {cursor && <Button variant="outline" className="my-4 min-h-11" disabled={busy} onClick={() => void load(cursor)}>{t("requestsMore")}</Button>}
-    </HomeCard>
+    </Card>
   </section>
 }

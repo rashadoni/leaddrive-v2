@@ -120,9 +120,8 @@ export function MtmAttendanceBranchReport() {
   }
 
   return <main className="space-y-5" data-testid="attendance-branch-report">
-    <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div className="space-y-2"><h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{t("branchReportTitle")}</h1><p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">{t("branchReportIntro")}</p></div>
-      <Link href="/mtm/attendance" className={`${LINK_CLASS} shrink-0 self-start`}>{t("branchReportBack")}</Link>
+    <header>
+      <div className="space-y-2"><h1 className="text-2xl font-semibold tracking-tight">{t("branchReportTitle")}</h1><p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">{t("branchReportIntro")}</p></div>
     </header>
     <HomeCard testId="attendance-branch-filters" titleId="attendance-branch-filters-title" icon={<ListFilter className="h-4 w-4" aria-hidden="true" />} tone="orange" title={t("reportFilters")}>
       <form onSubmit={apply} className="grid grid-cols-2 items-end gap-4 py-4 xl:grid-cols-[1fr_1fr_1.15fr_1.3fr_auto]">

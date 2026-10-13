@@ -1,7 +1,6 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
-import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
 import { CalendarDays, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -81,7 +80,6 @@ export function MtmAttendanceLeaveBalances() {
   const locked = busy || !!pending, format = (value: number | null) => value === null ? "—" : t("leaveDays", { days: new Intl.NumberFormat(locale, { maximumFractionDigits: 4 }).format(value) })
   if (denied) return <p role="status">{t("reportAccessUnavailable")}</p>
   return <main className="min-w-0 space-y-5" data-testid="attendance-leave-balances">
-    <Link href="/mtm/attendance" className="inline-flex min-h-11 items-center text-sm text-primary hover:underline">{t("title")}</Link>
     <div className="space-y-2"><h1 className="text-2xl font-semibold tracking-tight">{t("leaveTitle")}</h1><p className="text-sm text-muted-foreground">{t("leaveIntro")}</p></div>
     <div className="flex flex-wrap items-end gap-4"><label className="space-y-1 text-sm"><span>{t("leaveYear")}</span><input aria-label={t("leaveYear")} type="number" min={2000} max={2100} className={control} disabled={locked} value={year} onChange={e => { setYear(e.target.value); setOffset(0) }} /></label>
       <label className="space-y-1 text-sm"><span>{t("leaveThrough")}</span><input type="date" className={control} max={data?.today} disabled={locked} value={usedThrough || data?.usedThrough || ""} onChange={e => setUsedThrough(e.target.value)} /></label>

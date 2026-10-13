@@ -1,7 +1,6 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
-import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { CalendarDays } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -73,7 +72,7 @@ export function MtmAttendanceShifts() {
   }
   const updateSlot = (index: number, value: Slot) => setCycle(previous => previous.map((item, at) => at === index ? value : item))
   return <div className="space-y-6" data-testid="attendance-shifts">
-    <div className="space-y-2"><Link href="/mtm/attendance" className="inline-flex min-h-11 items-center text-sm text-primary">{t("title")}</Link><h1 className="text-2xl font-semibold tracking-tight">{t("shiftTitle")}</h1><p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">{t("shiftIntro")}</p></div>
+    <div className="space-y-2"><h1 className="text-2xl font-semibold tracking-tight">{t("shiftTitle")}</h1><p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">{t("shiftIntro")}</p></div>
     <HomeCard testId="shift-published" titleId="shift-published-title" tone="blue" title={t("shiftPublished")} icon={<CalendarDays className="h-5 w-5" aria-hidden="true" />}>
       <div className="mt-4 grid gap-4 sm:grid-cols-2"><label className="space-y-1 text-sm"><span>{t("shiftFrom")}</span><input type="date" className={control} value={range.from} disabled={locked} onChange={e => e.target.value && setRange(previous => ({ ...previous, from: e.target.value }))} /></label><label className="space-y-1 text-sm"><span>{t("shiftTo")}</span><input type="date" className={control} value={range.to} disabled={locked} onChange={e => e.target.value && setRange(previous => ({ ...previous, to: e.target.value }))} /></label></div>
       {message && <p role="status" className="mt-4 text-sm">{message}</p>}

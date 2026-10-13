@@ -1,7 +1,6 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import Link from "next/link"
 import Image from "next/image"
 import { useTranslations } from "next-intl"
 import { QrCode, ShieldCheck } from "lucide-react"
@@ -79,7 +78,6 @@ export function MtmAttendanceQrDisplay() {
   }
   if (denied) return <p role="status">{t("reportAccessUnavailable")}</p>
   return <main className="min-w-0 space-y-5" data-testid="attendance-qr-display">
-    <Link href="/mtm/attendance" className="inline-flex min-h-11 items-center text-sm text-primary hover:underline">{t("title")}</Link>
     <div className="space-y-2"><h1 className="text-2xl font-semibold tracking-tight">{t("qrTitle")}</h1><p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">{t("qrIntro")}</p></div>
     <HomeCard testId="attendance-qr-rule" titleId="attendance-qr-rule-title" title={t("qrRule")} icon={<ShieldCheck className="h-5 w-5" aria-hidden="true" />} tone="green">
       <div className="flex flex-wrap items-center justify-between gap-4 py-4"><p className="max-w-3xl text-sm text-muted-foreground">{t("qrRuleHint")}</p>

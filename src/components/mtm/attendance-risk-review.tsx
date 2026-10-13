@@ -1,9 +1,9 @@
 "use client"
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react"
-import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
 import { ClipboardList, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { HomeCard, HomePill } from "@/components/mtm/home-parts"
 import { ATTENDANCE_RISK_KINDS, ATTENDANCE_RISK_MESSAGES, ATTENDANCE_RISK_LIMIT, AttendanceRiskQuerySchema, AttendanceRiskSnapshotSchema,
@@ -90,9 +90,8 @@ export function MtmAttendanceRiskReview() {
     finally { anchor?.remove(); if (url) URL.revokeObjectURL(url); if (exportRequest.current === controller) exportRequest.current = null; if (!controller.signal.aborted) setExporting(null) }
   }
   return <section className="space-y-5" data-testid="attendance-risk-review" aria-label={t("riskTitle")} aria-busy={loading}>
-    <Link href="/mtm/attendance" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("requestsBack")}</Link>
-    <HomeCard testId="attendance-risk-report-card" titleId="attendance-risk-report-title" title={t("riskTitle")} tone="amber" icon={<ClipboardList className="h-5 w-5" aria-hidden="true" />}><div className="space-y-4 py-4">
-      <p className="text-sm text-muted-foreground">{t("riskDescription")}</p>
+    <header className="space-y-2"><h1 id="attendance-risk-report-title" className="text-2xl font-semibold tracking-tight">{t("riskTitle")}</h1><p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">{t("riskDescription")}</p></header>
+    <Card data-testid="attendance-risk-report-card" aria-labelledby="attendance-risk-report-title" className="rounded-2xl px-5 py-1"><div className="space-y-4 py-4">
       {!denied && <form onSubmit={apply} className="grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-label={t("journalFilters")}>
         {(["from", "to"] as const).map(key => <div key={key} className="space-y-2"><label htmlFor={`risk-${key}`} className="text-sm font-medium">{t(key === "from" ? "reportFrom" : "reportTo")}</label><Input id={`risk-${key}`} type="date" required className="min-h-11" disabled={locked} value={draft[key]} onChange={e => change({ ...draft, [key]: e.target.value })} /></div>)}
         <div className="space-y-2"><label htmlFor="risk-team" className="text-sm font-medium">{t("riskSelectTeam")}</label><select id="risk-team" className="min-h-11 w-full rounded-lg border bg-background px-3 text-sm" disabled={locked} value={draft.teamId} onChange={e => change({ ...draft, teamId: e.target.value, employeeId: "" })}><option value="">{t("riskAll")}</option>{teams.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></div>
@@ -109,7 +108,7 @@ export function MtmAttendanceRiskReview() {
         {!table.rows.length ? <p className="py-5 text-sm">{t("riskEmpty")}</p> : <><div className="overflow-x-auto"><table className="block w-full text-sm lg:table"><caption className="sr-only">{t("riskTitle")}</caption><thead className="hidden lg:table-header-group"><tr>{table.columns.map(c => <th key={c.key} className="border-b px-3 py-3 text-left text-xs font-semibold text-muted-foreground" scope="col">{c.label}</th>)}<th scope="col" className="sr-only">{t("riskReview")}</th></tr></thead><tbody className="block lg:table-row-group">{table.rows.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map(row => <tr key={row.key} data-testid="risk-row" className="block border-b py-4 lg:table-row lg:py-0">{row.cells.map((cell, i) => <td key={i} className="grid grid-cols-[6rem_1fr] gap-3 px-1 py-2 align-top lg:table-cell lg:px-3 lg:py-4"><span className="text-xs text-muted-foreground lg:hidden">{table.columns[i].label}</span><span className="min-w-0 whitespace-pre-line break-words">{cell}</span></td>)}<td className="block px-1 py-2 lg:table-cell lg:px-3 lg:py-4"><Button type="button" variant="outline" className="min-h-11" disabled={locked || stale} onClick={() => { setSelected(row.key); setReason(""); setSaved(false) }}>{t("riskReview")}</Button></td></tr>)}</tbody></table></div>
           <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-xs">{t("journalPage", { page: page + 1, pages: Math.max(1, Math.ceil(table.rows.length / PAGE_SIZE)), count: table.rows.length })}</p><div className="flex gap-2"><Button type="button" variant="outline" className="min-h-11" disabled={locked || page === 0} onClick={() => setPage(p => p - 1)}>{t("journalPrevious")}</Button><Button type="button" variant="outline" className="min-h-11" disabled={locked || (page + 1) * PAGE_SIZE >= table.rows.length} onClick={() => setPage(p => p + 1)}>{t("journalNext")}</Button></div></div></>}
       </>}
-    </div></HomeCard>
+    </div></Card>
     {selectedItem && <HomeCard testId="attendance-risk-decision-card" titleId="attendance-risk-decision-title" icon={<ClipboardList className="h-5 w-5" aria-hidden="true" />} title={`${t("riskReview")}: ${selectedItem.employeeName}`} tone="amber"><div className="space-y-4 py-4" data-testid="risk-decision"><HomePill tone={selectedItem.dismissal ? "zinc" : "amber"}>{t(selectedItem.dismissal ? "riskDismissed" : "riskOpen")}</HomePill><p className="whitespace-pre-line text-sm">{table?.rows.find(row => row.key === selectedItem.id)?.cells[3]}</p>{selectedItem.dismissal ? <p className="whitespace-pre-line text-sm">{table?.rows.find(row => row.key === selectedItem.id)?.cells[5]}</p> : selectedItem.canDismiss ? <form className="space-y-3" onSubmit={dismiss}><label htmlFor="risk-reason" className="block text-sm font-medium">{t("riskReason")}</label><textarea id="risk-reason" className="min-h-28 w-full rounded-lg border bg-background p-3 text-sm" required minLength={3} maxLength={1000} value={reason} disabled={saving || Boolean(pending) || stale} onChange={e => setReason(e.target.value)} /><p className="text-sm text-muted-foreground">{t("riskReasonHint")}</p><Button type="submit" className="min-h-11" disabled={saving || Boolean(pending) || stale || reason.trim().length < 3}>{t("riskDismiss")}</Button></form> : <p className="text-sm text-muted-foreground">{t("riskReadOnly")}</p>}</div></HomeCard>}
   </section>
 }
