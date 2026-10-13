@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "status": "IN_PROGRESS",
+  "device": {
+    "model": "SM-S918B",
+    "android": "16"
+  },
+  "app": {
+    "version": "3.8.1",
+    "versionCode": 1462,
+    "sourceSha": "11401a8aff7abf197de4dfda65f4a4ed5337a946",
+    "apkSha256": "8e46e6ac5bf27b939950cc8f5df5c1d2bb2eeae34fc97f5031bc5df11e4cb502"
+  },
+  "cases": [
+    {
+      "name": "update-preserves-existing-session",
+      "status": "PASS",
+      "evidence": "adb install -r Success; installed version readback; existing session opened"
+    },
+    {
+      "name": "stay-awake-on-charge",
+      "status": "PASS",
+      "evidence": "Original settings retained separately; Awake/Powered/StayOn true; keyguard showing/inputRestricted false"
+    },
+    {
+      "name": "request-list-open-new-form-and-cancel",
+      "status": "PASS",
+      "evidence": "Physical touch navigation; no submission"
+    },
+    {
+      "name": "switch-company-after-sync",
+      "status": "PASS",
+      "evidence": "Synchronized UI label observed, Profile > Switch company confirmed, company selection reached; no finish-workday action"
+    },
+    {
+      "name": "company-empty-validation",
+      "status": "PASS",
+      "evidence": "Physical Continue click with empty field; company-input stays visible with required-field explanation"
+    },
+    {
+      "name": "fictional-company-provisioning",
+      "status": "NOT_RUN",
+      "reason": "PR752 merged after required CI; exact main deployment still pending"
+    },
+    {
+      "name": "physical-office-and-field-marks",
+      "status": "NOT_RUN",
+      "reason": "Wait for separate fictional company"
+    },
+    {
+      "name": "physical-offline-restart-and-requests",
+      "status": "NOT_RUN",
+      "reason": "Wait for separate fictional company"
+    },
+    {
+      "name": "physical-camera-qr",
+      "status": "NOT_RUN",
+      "reason": "Requires a real code in front of the camera"
+    },
+    {
+      "name": "overnight-endurance",
+      "status": "NOT_RUN",
+      "reason": "Power monitoring is active but is not a completed functional endurance run"
+    }
+  ],
+  "privacy": {
+    "realAttendanceSubmissions": 0,
+    "realWorkdayFinishActions": 0,
+    "realRequestSubmissions": 0,
+    "credentialsPublished": false,
+    "personalScreenshotsPublished": false
+  },
+  "updatedAt": "2026-10-13T22:22:00Z"
+}
