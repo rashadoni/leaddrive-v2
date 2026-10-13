@@ -180,6 +180,7 @@ function dayPlan(rules: readonly MtmAttendanceRule[], date: string, now: Date, s
     const endDate = addDateKeyDays(date, Math.floor(endMinute / 1440))
     const endClock = `${String(Math.floor((endMinute % 1440) / 60)).padStart(2, "0")}:${String(endMinute % 60).padStart(2, "0")}`
     const end = localDateTimeToUnambiguousUtc(`${endDate}T${endClock}`, rule.timezone).toISOString()
+    if (shift) plan.expectedSeconds = (Date.parse(end) - Date.parse(start)) / 1000 - rule.lunchMinutes * 60
     if (end > start && Number.isSafeInteger(plan.expectedSeconds) && plan.expectedSeconds >= 0) {
       plan.start = start
       plan.end = end
