@@ -45,7 +45,7 @@ describe("protected audit export route", () => {
     mocks.session.role = "manager"
     expect((await GET(request())).status).toBe(403); expect(mocks.findMany).not.toHaveBeenCalled()
   })
-  it.each([{ from: "2026-09-01T00:00:00Z" }, { to: "2026-10-14T07:00:00Z" }, { environment: "UNKNOWN" }, { from: "2026-10-14T08:00:00+04:00" }])("rejects invalid interval/environment %j", async (change) => {
+  it.each<Record<string, string>>([{ from: "2026-09-01T00:00:00Z" }, { to: "2026-10-14T07:00:00Z" }, { environment: "UNKNOWN" }, { from: "2026-10-14T08:00:00+04:00" }])("rejects invalid interval/environment %j", async (change) => {
     expect((await GET(request(change))).status).toBe(400); expect(mocks.findMany).not.toHaveBeenCalled()
   })
   it("never silently truncates an oversized package", async () => {

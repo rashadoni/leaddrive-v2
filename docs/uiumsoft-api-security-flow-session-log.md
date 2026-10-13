@@ -146,3 +146,16 @@
 - Browser proof повторён после истории/log-export: save3, preview3, revision conflict/reload, restore under new revision, JSONL/schema/manifest links, profile export и rejected active import, keyboard tabs, RU/EN/AZ, desktop1440x1050 / phone390x900 (включая audit links), no page errors, no external requests. Итоговый result.json supersedes старые failed harness artifacts. Это standalone actual component, не полный Next/production/PG test.
 - На generated Prisma типах scoped tsc достиг 2GiB heap и завершился OOM. Heap не увеличивался; concrete Prisma adapter отделён в prisma-source.ts, чистый engine/source снова проверены. Полный application/Prisma typecheck, lint/build и PostgreSQL rollback/RLS/CAS — NOT RUN / обязательны в CI/отдельном build worker. Никакой общей production readiness не заявлять.
 - Точная граница: конструктор и подготовка пакетов готовы в коде, но capture/worker/real OAuth/mTLS/VPN/API/ERP/SIEM ещё не подключены и не аттестованы. Следующий этап нашей реализации — durable capture/worker и PostgreSQL evidence; отдельно нужны receiving API contract и client connection facts перед реальной отправкой. Не считать весь первоначальный план выполненным.
+
+### PR и широкая проверка
+
+- Constructor checkpoint e88229e74 сохранён. В feature branch включён актуальный origin/main d7afe08bb (уже выпущенная MTM-правка), без конфликтов; её изменения не являются нашей реализацией. Итоговый pushed code head 6f43f7735e0e83df0cf29eb44fc02c4c63a131ba.
+- Создан PR #753: https://github.com/rashadoni/leaddrive-v2/pull/753 . Сначала draft, затем ready для запуска full required checks; PR прикреплён к этому чату. Merge/deploy не выполнялись. Выпуск видимого UI по repository contract требует go-ahead владельца после reviewable result.
+- CI run 38475258074: pr-scope, runner-policy, scan PASS; static-checks и full typecheck пока IN PROGRESS. Production build job SKIPPED, не считать build проверенным. Первый draft run был отменён ready_for_review run; head SHA одинаковый.
+- Пока ожидаются широкие gates, next durable capture/worker этап не объявлен завершённым. Продолжать с этого head и текущего worktree; не перенаправлять в canonical checkout. После CI разобрать failures, обновить эту запись результатом и только затем оценивать следующий этап.
+
+### 2026-10-14 — Результат первой полной CI-проверки конструктора
+
+- Run 38475258074: static-checks PASS (включая repository PostgreSQL/security/test-baseline gates); pr-scope, runner-policy и scan PASS. Это не отдельное доказательство нашего нового Prisma source adapter/CAS на живой БД.
+- Full typecheck нашёл одну новую defect-shaped ошибку TS2345 в api-customer-receiver-audit-export.test.ts: union параметров it.each допускал undefined в Record<string,string>. Добавлен явный generic таблицы; targeted 11 tests этого файла PASS. Другие диагностические ошибки существующего baseline не изменялись.
+- Production build был SKIPPED. Следующая проверка запускается на исправленном SHA с production-build label; локальный полный build не запускается по host contract. Merge/deploy не разрешены этим checkpoint и не выполнялись.
