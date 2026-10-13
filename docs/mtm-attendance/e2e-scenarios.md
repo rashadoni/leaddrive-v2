@@ -90,7 +90,8 @@ GitHub/CI flags, wrong database name or role, and a non-empty initial fixture.
 `prisma db push` supplies the current complete schema. The fixture then replaces
 only empty attendance tables/columns and replays the actual attendance
 migrations, employment history, retained workforce immutable/RLS block,
-completed-workday guard and the later completed-workday function replacement.
+completed-workday guard and the complete reopen-ledger migration (including
+insert validation, append-only triggers, RLS and function replacement).
 This restores real request, branch, consent, risk, installation, month,
 participation and lifecycle guards rather than permissive lookalikes.
 
@@ -118,3 +119,27 @@ production secrets and neither invokes a deployment nor contacts production.
 - NOT RUN on Contabo: install, full application build, full typecheck,
   PostgreSQL integration and Chromium. Host contract puts heavy work in CI.
 - Hosted execution: pending; this document is a scenario plan, not a green run.
+
+## Browser action expansion — 2026-10-14 (Asia/Baku)
+
+The first three missing-action bullets above are superseded by executable
+browser cases: future rule publication; calendar create/edit/delete with both
+cancel paths; HR revoke/grant confirmations with the existing HR session checked
+after each decision; custom day-kind creation/archive/restore; employment HIRE
+recording; primary branch assignment; risk dismissal; fictional leave policy
+publication; month preview/confirmation/close and an unfinished-day blocker.
+All 13 sidebar destinations now also have actual link-click traversal, recorded
+separately from mutation evidence. Historical month facts and risk findings are
+seeded explicitly; those fixture insertions are not relabelled phone submissions
+or detector coverage.
+
+Static review also found that recreating only the completed-workday function
+omitted the reopen ledger's own insert/immutable triggers. The fixture now
+recreates the empty ledger and replays its complete production migration before
+the later employee-return migration. No production database is involved.
+
+These additions remain **NOT RUN in a browser until hosted CI completes**.
+Network uncertainty/retry UI, deliberately stale browser tabs, attachments,
+every queue's pagination boundaries, the full role/control cross-product and
+physical Android scenarios remain explicit acceptance work. Existing real HTTP
+stale/replay assertions are useful coverage, not substitutes for those clicks.

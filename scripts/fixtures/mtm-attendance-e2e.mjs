@@ -25,11 +25,6 @@ export function requireFixture() {
   return { adminURL: urls[0].href, appURL: urls[1].href }
 }
 const migration = name => readFileSync(`prisma/migrations/${name}/migration.sql`, 'utf8')
-const functionFrom = (source, name) => {
-  const result = source.match(new RegExp(`CREATE OR REPLACE FUNCTION ${name}\\([^]*?\\$\\$;`))
-  assert.ok(result, `Retained production function ${name}`)
-  return result[0]
-}
 /** Empty, named CI database ONLY. Never called against an existing tenant. */
 export function prepareDatabase() {
   const { adminURL } = requireFixture()
@@ -43,7 +38,7 @@ export function prepareDatabase() {
     ALTER TABLE mtm_agents DROP COLUMN "attendanceParticipant", DROP COLUMN "attendanceExcluded", DROP COLUMN "attendanceIncludedFrom";
     ALTER TABLE mtm_hrm_requests DROP COLUMN "attendanceDetails";
     ALTER TABLE workforce_time_corrections DROP COLUMN "requestHash";
-    ALTER TABLE workforce_workday_reopens DROP COLUMN source;
+    DROP TABLE workforce_workday_reopens;
   `)
   const applied = []
   const apply = name => { sql(migration(name)); applied.push(name) }
@@ -55,8 +50,7 @@ export function prepareDatabase() {
   applied.push('20260828223000_workforce_h3_foundation:retained-RLS-and-immutable-guards')
   apply('20260828224500_workforce_h3_legacy_fact_guard')
   apply('20260828230000_workforce_direct_correction_contract')
-  sql(functionFrom(migration('20260915210100_workforce_workday_reopen_ledger'), 'workforce_guard_completed_workday'))
-  applied.push('20260915210100_workforce_workday_reopen_ledger:completed-workday-function')
+  apply('20260915210100_workforce_workday_reopen_ledger')
   for (const name of readdirSync('prisma/migrations').filter(name => /^20261013.*mtm_(attendance_|workday_employee_return)/.test(name)).sort()) apply(name)
   sql(readFileSync('scripts/rls/enable-batch-5.sql', 'utf8'))
   const password = process.env.MTM_E2E_DATABASE_PASSWORD

@@ -24,6 +24,7 @@ const t = (key, vars = {}) => {
 }
 const routes = ['', 'requests', 'decisions', 'employees', 'branches', 'branches/report', 'shifts', 'leave-balances', 'months', 'installations', 'branch-qr', 'review', 'location-settings', 'recordings']
 const caseNames = ['fixture-rls', 'credentials-and-roles', 'hr-read-grant', 'mobile-workday', 'report-scope-exports', 'views-crud', 'deliveries-crud', 'rules-calendar', 'day-kinds-quotas', 'employee-participation', 'employment-history', 'branches-assignments', 'geo-policy-consent', 'requests-decisions', 'hr-recording-batch', 'installation-decisions', 'shift-day-night', 'leave-policy-profile', 'month-freeze', 'risk-dismissal', ...routes.map(route => `page:${route || 'report'}`), 'browser-report-tabs-filters-pagination', 'browser-views-save-rename-delete-cancel', 'browser-employee-search-switch-history', 'browser-branch-create-edit-archive-cancel', 'browser-request-approve-reject-revoke', 'browser-qr-toggle-refresh-hide', 'browser-locales-mobile-width', 'hr-revoke-fresh-session', 'final-privacy-invariants', 'browser-settings-hr-catalogue-quotas', 'browser-delivery-create-edit-cancel-delete', 'browser-batch-recording-and-decision-journal', 'browser-shift-publish-cancel-and-leave-profile', 'browser-geo-off-legal-block-and-branch-summary', 'browser-installation-approve-revoke-history', 'browser-month-frozen-download']
+caseNames.push('browser-rules-calendar-crud', 'browser-hr-grant-revoke', 'browser-kind-create-archive-restore', 'browser-employment-record', 'browser-primary-branch-assignment', 'browser-risk-dismissal', 'browser-leave-policy-publication', 'browser-month-preview-close-blockers', 'browser-sidebar-click-traversal')
 const manifest = {
   version: 1, status: 'RUNNING', headSha: head, workflowSha: process.env.GITHUB_SHA,
   runId: process.env.GITHUB_RUN_ID, runAttempt: process.env.GITHUB_RUN_ATTEMPT,
@@ -95,10 +96,13 @@ async function readyPage(path) {
 }
 async function clickResponse(locator, path, method = 'POST', status = 200) {
   const waiting = page.waitForResponse(response => new URL(response.url()).pathname === path && response.request().method() === method, { timeout: 120000 })
+  void waiting.catch(() => {}) // A failed click must not leave an unhandled listener rejection.
   await locator.click()
   const response = await waiting
   assert.equal(response.status(), status)
-  return (await response.json()).data
+  const body = await response.json()
+  if (status < 400) assert.equal(body.success, true)
+  return body.data
 }
 const button = (key, scope = page) => scope.getByRole('button', { name: t(key), exact: true })
 async function login(context, user, slug) {
@@ -410,6 +414,7 @@ try {
   const pageEndpoints = { '': '/report', requests: '/requests', decisions: '/decisions', employees: '/employees', branches: '/branches', 'branches/report': '/report', shifts: '/shifts', 'leave-balances': '/leave-balances', months: '/months', installations: '/installations', 'branch-qr': '/branch-qr', review: '/review', 'location-settings': '/location-policy', recordings: '/recordings' }
   for (const route of routes) await run(`page:${route || 'report'}`, 'browser-navigation', async () => {
     const loaded = page.waitForResponse(response => new URL(response.url()).pathname === `${apiRoot}${pageEndpoints[route]}` && response.request().method() === 'GET', { timeout: 120000 })
+    void loaded.catch(() => {})
     await readyPage(route)
     assert.equal((await loaded).status(), 200)
     const errors = await page.locator('[role="alert"]').allTextContents()
@@ -713,6 +718,172 @@ try {
       await button(key).click(); assert.equal(await (await download).failure(), null)
     }
     assert.ok(await page.getByText(t('monthCloseFrozen'), { exact: true }).isVisible())
+  })
+  await run('browser-rules-calendar-crud', 'browser-action+database-backed-http', async () => {
+    await readyPage('')
+    const before = await api('admin', '/rules')
+    const rules = page.getByTestId('attendance-rules')
+    await page.locator('#attendance-start').fill('09:30')
+    await page.locator('#attendance-end').fill('18:30')
+    await page.locator('#attendance-lunch').fill('60')
+    await page.locator('#attendance-grace').fill('15')
+    await page.locator('#attendance-effective-from').fill(before.minEffectiveFrom)
+    const savedRule = await clickResponse(button('rulesSave', rules), `${apiRoot}/rules`, 'POST', 201)
+    assert.equal(savedRule.startTime, '09:30')
+    assert.equal((await api('admin', '/rules')).current.id, before.current.id)
+    const calendar = page.getByTestId('attendance-calendar'), calendarDate = date(16)
+    await page.locator('#attendance-calendar-year').selectOption(calendarDate.slice(0, 4))
+    await page.locator('#attendance-calendar-date').fill(calendarDate)
+    await page.locator('#attendance-calendar-kind').selectOption('COMPANY_HOLIDAY')
+    await page.locator('#attendance-calendar-name').fill('Fixture browser holiday')
+    const holiday = await clickResponse(button('calendarAdd', calendar), `${apiRoot}/calendar`)
+    let row = page.getByTestId('attendance-calendar-day').filter({ hasText: 'Fixture browser holiday' })
+    await row.getByRole('button').first().click()
+    await button('calendarCancelEdit', calendar).click()
+    await row.getByRole('button').first().click()
+    await page.locator('#attendance-calendar-name').fill('Fixture edited holiday')
+    await clickResponse(button('calendarSaveChanges', calendar), `${apiRoot}/calendar`)
+    row = page.getByTestId('attendance-calendar-day').filter({ hasText: 'Fixture edited holiday' })
+    await row.getByRole('button').last().click(); await button('calendarCancel', row).click()
+    await row.getByRole('button').last().click()
+    await clickResponse(button('calendarConfirmDelete', row), `${apiRoot}/calendar`, 'DELETE')
+    assert.ok(!(await api('admin', `/calendar?from=${calendarDate}&to=${calendarDate}`)).days.some(day => day.id === holiday.id))
+  })
+  await run('browser-hr-grant-revoke', 'browser-action+authenticated-http', async () => {
+    await readyPage('')
+    const section = page.getByTestId('attendance-hr-access')
+    await button('hrOpen', section).click()
+    await page.locator('#attendance-hr-search').fill('Fixture hr')
+    await clickResponse(button('hrSearch', section), `${apiRoot}/access`, 'GET')
+    const row = page.getByTestId('attendance-hr-user').filter({ hasText: 'Fixture hr' })
+    await row.getByRole('button', { name: t('hrRevokeNamed', { name: 'Fixture hr' }) }).click()
+    await clickResponse(button('hrConfirmRevoke', row), `${apiRoot}/access/${fixture.users.hr.id}`, 'PATCH')
+    await api('hr', `/report?from=${today}&to=${today}&form=ALL`, { status: 403 })
+    await row.getByRole('button', { name: t('hrGrantNamed', { name: 'Fixture hr' }) }).click()
+    await clickResponse(button('hrConfirmGrant', row), `${apiRoot}/access/${fixture.users.hr.id}`, 'PATCH')
+    await api('hr', `/report?from=${today}&to=${today}&form=ALL`)
+    await button('hrClose', section).click()
+    return { originalSessionRevokedThenRestored: true }
+  })
+  await run('browser-kind-create-archive-restore', 'browser-action+database-backed-http', async () => {
+    await readyPage('')
+    const kinds = page.getByTestId('attendance-day-kinds')
+    await button('kindsOpen', kinds).click(); await button('kindsAdd', kinds).click()
+    for (const locale of ['az', 'ru', 'en']) await page.locator(`#attendance-kind-name-${locale}`).fill('Fixture browser custom')
+    await page.locator('#attendance-kind-code').fill('FXL')
+    await page.locator('#attendance-kind-group').selectOption('WORK')
+    await page.locator('#attendance-kind-unit').selectOption('HOURS')
+    await page.locator('#attendance-kind-paid').selectOption('true')
+    await page.getByLabel(t('kindsCountsAsWorked')).check()
+    await clickResponse(button('kindsSave', page.getByTestId('attendance-kind-editor')), `${apiRoot}/day-kinds`, 'PUT')
+    const kind = (await api('admin', '/day-kinds')).items.find(item => item.code === 'FXL')
+    assert.ok(kind); assert.equal(kind.countsAsWorked, true)
+    await page.locator('#attendance-kinds-search').fill('Fixture browser custom')
+    const row = page.getByTestId('attendance-kind-row').filter({ hasText: 'Fixture browser custom' })
+    await button('kindsArchive', row).click(); await button('kindsCancel', kinds).click()
+    await button('kindsArchive', row).click()
+    await clickResponse(button('kindsConfirm', kinds), `${apiRoot}/day-kinds`, 'PUT')
+    await poll(async () => await row.count() === 0, 'Archived kind hidden')
+    await page.getByLabel(t('kindsShowArchived')).check()
+    await button('kindsRestore', row).click()
+    await clickResponse(button('kindsConfirm', kinds), `${apiRoot}/day-kinds`, 'PUT')
+    assert.equal((await api('admin', '/day-kinds')).items.find(item => item.key === kind.key).archived, false)
+  })
+  await run('browser-employment-record', 'browser-action+database-backed-http', async () => {
+    await readyPage('employees')
+    await page.locator('#employee-search').fill('Fixture field')
+    const row = page.getByTestId('employee-row').filter({ hasText: 'Fixture field' })
+    await row.getByRole('button', { name: t('employeesHistoryNamed', { name: 'Fixture field' }) }).click()
+    const history = page.getByTestId('employees-history')
+    await page.locator('#employment-kind').selectOption('HIRE')
+    await page.locator('#employment-date').fill(date(-90))
+    await page.locator('#employment-reason').fill('Fictional documented employment date')
+    await clickResponse(button('employeesSaveChange', history), `${apiRoot}/employees/history`)
+    await history.getByTestId('employment-event').waitFor()
+    assert.equal((await fixture.admin.mtmAgent.findUniqueOrThrow({ where: { id: fixture.agents.field.id } })).role, 'AGENT')
+    await button('employeesClose', history).click()
+  })
+  await run('browser-primary-branch-assignment', 'browser-action+database-backed-http', async () => {
+    assert.ok(state.branch)
+    await readyPage('branches'); await button('branchesAssignments').click()
+    await page.locator('#branch-employee-search').fill('Fixture field')
+    await clickResponse(button('branchesFind'), `${apiRoot}/branches/assignments`, 'GET')
+    const row = page.getByTestId('branch-employee').filter({ hasText: 'Fixture field' })
+    await row.getByRole('combobox').selectOption(state.branch.id)
+    await clickResponse(row.getByRole('button', { name: t('branchesAssignNamed', { name: 'Fixture field' }) }), `${apiRoot}/branches/assignments`)
+    const directory = await api('admin', '/branches/assignments?search=Fixture%20field')
+    assert.equal(directory.employees.find(employee => employee.id === fixture.agents.field.id).primary.branchId, state.branch.id)
+  })
+  await run('browser-risk-dismissal', 'browser-action+synthetic-risk-fixture', async () => {
+    assert.ok(state.workdayId)
+    const event = await fixture.admin.mtmAgentWorkdayEvent.findFirstOrThrow({ where: { workdayId: state.workdayId, type: 'FINISH' } })
+    const workday = await fixture.admin.mtmAgentWorkday.findUniqueOrThrow({ where: { id: state.workdayId } })
+    await fixture.admin.mtmAttendanceMarkEvidence.create({ data: { organizationId: fixture.organization.id, agentId: fixture.agents.employee.id, eventId: event.id, redactedRequestHash: 'b'.repeat(64), installationId: `rf-e2e-${randomUUID()}`, action: 'FINISH', claimedAt: event.occurredAt, serverReceivedAt: event.occurredAt, locationState: 'NO_CONSENT' } })
+    const risk = await fixture.admin.mtmAttendanceRiskCase.create({ data: { organizationId: fixture.organization.id, agentId: fixture.agents.employee.id, eventId: event.id, kind: 'CLOCK_DIFFERENCE', workDate: workday.workDate, timezone: 'Asia/Baku', detectorVersion: 'mtm-attendance-risk-v1', policySnapshot: { allowSharedInstallations: false, rejectMockLocations: true, clockDifferenceSeconds: 300 }, details: { version: 1, deltaSeconds: 600, thresholdSeconds: 300 } } })
+    await readyPage('review')
+    await page.locator('#risk-from').fill(today); await page.locator('#risk-to').fill(today)
+    await page.locator('#risk-status').selectOption('OPEN')
+    await page.locator('#risk-kind').selectOption('CLOCK_DIFFERENCE')
+    await clickResponse(button('journalApply'), `${apiRoot}/review`, 'GET')
+    const row = page.getByTestId('risk-row').filter({ hasText: 'Fixture employee' })
+    await button('riskReview', row).click()
+    assert.equal(await button('riskDismiss').isEnabled(), false)
+    await page.locator('#risk-reason').fill('Fictional clock verified through browser')
+    await clickResponse(button('riskDismiss'), `${apiRoot}/review/${risk.id}`)
+    await page.locator('#risk-status').selectOption('DISMISSED')
+    await clickResponse(button('journalApply'), `${apiRoot}/review`, 'GET')
+    assert.ok(await page.getByTestId('risk-row').count() >= 2)
+    assert.deepEqual(await fixture.admin.mtmAgentWorkday.findUniqueOrThrow({ where: { id: workday.id } }), workday)
+    return { detector: 'Seeded finding; only review/dismissal is browser-tested' }
+  })
+  await run('browser-leave-policy-publication', 'browser-action+database-backed-http', async () => {
+    await readyPage('leave-balances')
+    const policy = page.getByTestId('leave-policy')
+    await policy.locator('summary').click()
+    await policy.getByLabel(t('leaveNormDays')).first().fill('21')
+    await button('leaveAddTier', policy).click(); await button('leaveRemoveTier', policy).last().click()
+    await policy.getByLabel(t('leaveReason')).fill('Fictional browser policy revision; not client legal approval')
+    await policy.getByLabel(t('leaveConfirmed')).check()
+    await clickResponse(button('leavePublish', policy), `${apiRoot}/leave-balances/policy`)
+    assert.equal((await api('admin', `/leave-balances?year=${today.slice(0, 4)}`)).rows.find(row => row.employeeId === fixture.agents.employee.id).allowanceDays, 21)
+  })
+  await run('browser-month-preview-close-blockers', 'browser-action+synthetic-historical-facts', async () => {
+    assert.ok(state.closedMonth)
+    const month = state.closedMonth.month, workDate = `${month}-15`
+    for (const [role, completed] of [['manager', true], ['field', false]]) {
+      const agentId = fixture.agents[role].id
+      const workday = await fixture.admin.mtmAgentWorkday.create({ data: { organizationId: fixture.organization.id, agentId, workDate: new Date(`${workDate}T00:00:00Z`), status: completed ? 'COMPLETED' : 'STARTED', startedAt: new Date(`${workDate}T05:00:00Z`), completedAt: completed ? new Date(`${workDate}T14:00:00Z`) : null, totalPausedSeconds: 0 } })
+      for (const type of completed ? ['START', 'FINISH'] : ['START']) {
+        const occurredAt = type === 'START' ? workday.startedAt : workday.completedAt
+        await fixture.admin.mtmAgentWorkdayEvent.create({ data: { organizationId: fixture.organization.id, agentId, workdayId: workday.id, clientEventId: randomUUID(), type, occurredAt, appliedAt: occurredAt, claimedAt: occurredAt, serverReceivedAt: occurredAt } })
+      }
+    }
+    await readyPage('months'); await page.locator('input[type="month"]').fill(month)
+    await page.getByRole('checkbox', { name: /Fixture manager/ }).check()
+    const preview = await clickResponse(button('monthClosePreview'), `${apiRoot}/months/preview`)
+    assert.deepEqual(preview.blockers, [])
+    assert.equal(await button('monthCloseAction').isEnabled(), false)
+    await page.getByLabel(t('monthCloseConfirm')).check()
+    const closed = await clickResponse(button('monthCloseAction'), `${apiRoot}/months`)
+    assert.equal(closed.employeeCount, 1)
+    await page.getByRole('checkbox', { name: /Fixture field/ }).check()
+    const blocked = await clickResponse(button('monthClosePreview'), `${apiRoot}/months/preview`)
+    assert.ok(blocked.blockers.length)
+    await page.getByText(t('monthCloseBlocked'), { exact: true }).waitFor()
+    assert.equal(await button('monthCloseAction').count(), 0)
+    return { completedEmployeeClosed: true, unfinishedWorkdayBlocksClose: true, historicalFacts: 'DB fixture, not phone claims' }
+  })
+  await run('browser-sidebar-click-traversal', 'browser-navigation-click', async () => {
+    await readyPage('')
+    for (const route of routes.filter(route => route !== 'recordings')) {
+      const href = `/mtm/attendance${route ? `/${route}` : ''}`
+      const link = page.locator(`aside a[href="${href}"]`)
+      await link.click()
+      await page.waitForURL(url => url.pathname === href, { timeout: 120000 })
+      await page.locator('h1').first().waitFor()
+      assert.equal(await link.getAttribute('aria-current'), 'page')
+    }
+    return { actualSidebarClicks: 13, proves: 'Navigation only; mutations have separate case records' }
   })
   await run('browser-locales-mobile-width', 'browser-navigation+layout', async () => {
     for (const locale of ['az', 'ru', 'en']) {
