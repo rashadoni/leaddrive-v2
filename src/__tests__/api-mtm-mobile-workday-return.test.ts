@@ -101,8 +101,14 @@ describe("POST /api/v2/mtm/mobile/route-field/workday-return", () => {
     const answer = await ask()
     expect(answer).toMatchObject({ status: 200, cache: "no-store", body: { success: true, idempotent: false, data: { workday: WORKDAY } } })
     // The employee is the authenticated one; the body cannot name another.
-    expect(returnOwnMtmWorkday).toHaveBeenCalledWith({ organizationId: ORG, agentId: AGENT, workdayId: "wd-1", operationId: "tap-00000001" })
+    expect(returnOwnMtmWorkday).toHaveBeenCalledWith({ organizationId: ORG, agentId: AGENT, workdayId: "wd-1", operationId: "tap-00000001", installationId: null })
     expect(writeMtmAudit).toHaveBeenCalledWith(expect.objectContaining({ organizationId: ORG, agentId: AGENT, action: "WORKDAY_RETURN", entity: "workday", entityId: "wd-1" }))
+  })
+
+  it.each(["MTM_ATTENDANCE_INSTALLATION_APP_REQUIRED", "MTM_ATTENDANCE_INSTALLATION_APPROVAL_REQUIRED"])("returns an uncommitted installation refusal: %s", async code => {
+    vi.mocked(returnOwnMtmWorkday).mockRejectedValue(new AttendanceRequestError(code, 422))
+    expect(await ask()).toMatchObject({ status: 409, body: { code, data: { committed: false } } })
+    expect(writeMtmAudit).not.toHaveBeenCalled()
   })
 
   it("acknowledges a repeated sending without a second line in the audit journal", async () => {

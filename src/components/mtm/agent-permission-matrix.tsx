@@ -130,7 +130,7 @@ export function MtmAgentPermissionMatrix({
                 {t(`permGroup_${group}` as never)}
               </h3>
               <ul className="divide-y divide-zinc-200 dark:divide-zinc-700">
-                {AGENT_PERMISSION_ROWS.filter((row) => row.group === group && (!["attendanceRequests", "attendanceWorkday"].includes(row.id) || settings.attendanceEnabled === true)).map((row) => (
+                {AGENT_PERMISSION_ROWS.filter((row) => row.group === group && (!["attendanceRequests", "attendanceWorkday", "attendanceLocation", "attendanceInstallation"].includes(row.id) || settings.attendanceEnabled === true)).map((row) => (
                   <MatrixRow
                     key={row.id}
                     row={row}

@@ -1,3 +1,4 @@
+import { enforceAttendanceInstallationApproval } from "@/lib/mtm/attendance-installation-policy"
 import { requireAttendanceSelf, lockAttendanceRequests } from "@/lib/mtm/attendance-self-access"
 import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
 import { recordAttendanceMarkEvidence, isAttendanceMarkRedactedReplay } from "@/lib/mtm/attendance-location-store"
@@ -3037,6 +3038,9 @@ export const POST = withMobileRls(async (req, auth) => {
           const applied = await applyMtmWorkdayEvent(tx, { organizationId: orgId, agentId }, workdayInput, {
             allowLocationRedactedReplay: replay => isAttendanceMarkRedactedReplay(tx, { organizationId: orgId, agentId }, workdayInput, replay.requestHash),
             afterEvent: async ({ workday, event, beforeWorkday }) => {
+              if (workdayInput.action === "START" || workdayInput.action === "FINISH") {
+                await enforceAttendanceInstallationApproval(tx, { organizationId: orgId, agentId }, req.headers.get("x-field-device-id"))
+              }
               await recordAttendanceMarkEvidence(tx, { scope: { organizationId: orgId, agentId }, input: workdayInput, workday, event, beforeWorkday }, { organizationId: orgId, agentId, role: auth.role })
               if (!workforceWorkday) return
               const prepared = await prepareWorkforceAttendanceVerification(tx, {
@@ -3155,7 +3159,7 @@ export const POST = withMobileRls(async (req, auth) => {
       results.push(replayOf(operationId, stored))
     } catch (e: unknown) {
       if (e instanceof AttendanceRequestError) {
-        if (["MTM_ATTENDANCE_LOCATION_OUTSIDE_REJECTED", "MTM_ATTENDANCE_LOCATION_MOCK_REJECTED"].includes(e.code)) {
+        if (["MTM_ATTENDANCE_LOCATION_OUTSIDE_REJECTED", "MTM_ATTENDANCE_LOCATION_MOCK_REJECTED", "MTM_ATTENDANCE_INSTALLATION_APP_REQUIRED", "MTM_ATTENDANCE_INSTALLATION_APPROVAL_REQUIRED"].includes(e.code)) {
           // The canonical transaction has rolled back. Surface a resolvable
           // refusal instead of silently retrying the same outside fix forever.
           results.push({ operationId, status: "conflict", error: e.code, serverData: { code: e.code, committed: false } })

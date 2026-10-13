@@ -6,7 +6,7 @@ import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
 export type AttendanceSelf = { organizationId: string; agentId: string; role: string }
 
 /** Independent of the withdrawn Workforce grant/route switches. Called again inside every write. */
-export async function requireAttendanceSelf(db: Prisma.TransactionClient, self: AttendanceSelf, permission: "attendanceRequests" | "attendanceWorkday" | "attendanceLocation" = "attendanceRequests") {
+export async function requireAttendanceSelf(db: Prisma.TransactionClient, self: AttendanceSelf, permission: "attendanceRequests" | "attendanceWorkday" | "attendanceLocation" | "attendanceInstallation" = "attendanceRequests") {
   const values = await db.mtmSetting.findMany({ where: { organizationId: self.organizationId, key: { in: ["attendanceEnabled", "timezone"] } }, select: { key: true, value: true } })
   if (!agentPermissionEnabled({ attendanceEnabled: values.find((value) => value.key === "attendanceEnabled")?.value === true }, permission)) {
     throw new AttendanceRequestError("MTM_ATTENDANCE_DISABLED", 404)

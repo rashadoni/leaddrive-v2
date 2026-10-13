@@ -1,3 +1,4 @@
+import { enforceAttendanceInstallationApproval } from "@/lib/mtm/attendance-installation-policy"
 import { createHash } from "node:crypto"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
@@ -96,6 +97,7 @@ export async function returnOwnMtmWorkday(context: {
   operationId: string
   /** Internal route context for the opt-in office path; never taken from body. */
   attendanceRole?: string
+  installationId?: string | null
   /** The server clock; injectable only so «today» is deterministic in tests. */
   now?: Date
 }): Promise<MtmWorkdayReturnResult> {
@@ -138,6 +140,8 @@ export async function returnOwnMtmWorkday(context: {
         // Acknowledged once more, never applied twice; the day is reported as it stands now.
         return { kind: "success" as const, workday: before, idempotent: true }
       }
+
+      await enforceAttendanceInstallationApproval(tx, { organizationId, agentId }, context.installationId)
 
       const stateConflict = workforceWorkdayReopenStateConflict(before, today)
       const finishedAt = workday.completedAt

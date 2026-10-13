@@ -32,6 +32,7 @@ import {
 export const MTM_SETTING_DEFAULTS = {
   // Opt-in attendance inside MTM. Never revives the withdrawn Workforce UI.
   attendanceEnabled: false,
+  attendanceRequireInstallationApproval: false,
   // Reliable outside fixes remain accepted and flagged unless the admin opts in.
   attendanceRejectOutsideBranch: false,
   attendanceAllowSharedInstallations: false,

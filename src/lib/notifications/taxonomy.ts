@@ -188,6 +188,7 @@ export const NOTIFICATION_KINDS: NotificationKind[] = (
     // On unless switched off — see KINDS_ON_UNLESS_SWITCHED_OFF in prefs.ts.
     { kind: "mtm.locationRequest.submitted", entityType: "mtm_location_request" },
     { kind: "mtm.attendanceRequest.submitted", entityType: "mtm_attendance_request" },
+    { kind: "mtm.attendanceInstallation.requested", entityType: "mtm_attendance_installation" },
     { kind: "mtm.attendanceRisk.detected", entityType: "mtm_attendance_risk" },
     // Phase 2c — Marketing: survey response (gated by campaigns module)
     { kind: "survey.response",     entityType: "survey" },

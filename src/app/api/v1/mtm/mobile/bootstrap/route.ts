@@ -492,7 +492,7 @@ export const GET = withMobileRls(async (req, auth) => {
           // then answers MTM_AGENT_PERMISSION_DISABLED.
           agentPermissions: {
             ...agentPermissionStates(settings),
-            ...(settings.attendanceEnabled ? { attendanceRequests: attendanceSelf, attendanceWorkday: attendanceSelf, attendanceLocation: attendanceSelf } : {}),
+            ...(settings.attendanceEnabled ? { attendanceRequests: attendanceSelf, attendanceWorkday: attendanceSelf, attendanceLocation: attendanceSelf, attendanceInstallation: attendanceSelf } : {}),
           },
           ...(attendanceSelf ? { attendanceMarkVersion: 1 } : {}),
           // This server lets an employee return to the workday they closed

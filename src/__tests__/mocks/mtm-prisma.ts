@@ -201,6 +201,9 @@ export interface MtmPrismaMock {
   mtmAttendancePrimaryBranchRevision: ModelMock
   mtmAttendanceLocationPolicy: ModelMock
   mtmAttendanceLocationConsent: ModelMock
+  mtmAttendanceInstallationRequest: ModelMock
+  mtmAttendanceInstallationDecision: ModelMock
+  mtmAttendanceInstallationRevocation: ModelMock
   mtmAttendanceStreamIntegrity: ModelMock
   mtmAttendanceRiskCase: ModelMock
   mtmAttendanceRiskDecision: ModelMock
@@ -400,6 +403,9 @@ export function makeMtmPrismaMock(): MtmPrismaMock {
     mtmAttendancePrimaryBranchRevision: makeModel(),
     mtmAttendanceLocationPolicy: makeModel(),
     mtmAttendanceLocationConsent: makeModel(),
+    mtmAttendanceInstallationRequest: makeModel(),
+    mtmAttendanceInstallationDecision: makeModel(),
+    mtmAttendanceInstallationRevocation: makeModel(),
     mtmAttendanceStreamIntegrity: makeModel(),
     mtmAttendanceRiskCase: makeModel(),
     mtmAttendanceRiskDecision: makeModel(),

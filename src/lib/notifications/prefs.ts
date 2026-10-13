@@ -1,3 +1,4 @@
+import { MTM_ATTENDANCE_INSTALLATION_NOTIFICATION_KIND } from "@/lib/mtm/attendance-installation-notification"
 import { MTM_ATTENDANCE_RISK_NOTIFICATION_KIND } from "@/lib/mtm/attendance-risk-notification"
 import { MTM_ATTENDANCE_REQUEST_NOTIFICATION_KIND } from "@/lib/mtm/attendance-request-notification"
 /**
@@ -75,6 +76,7 @@ export const KINDS_ON_UNLESS_SWITCHED_OFF: ReadonlySet<string> = new Set([
   MTM_LOCATION_REQUEST_NOTIFICATION_KIND,
   MTM_ATTENDANCE_REQUEST_NOTIFICATION_KIND,
   MTM_ATTENDANCE_RISK_NOTIFICATION_KIND,
+  MTM_ATTENDANCE_INSTALLATION_NOTIFICATION_KIND,
 ])
 
 // ---------------------------------------------------------------------------

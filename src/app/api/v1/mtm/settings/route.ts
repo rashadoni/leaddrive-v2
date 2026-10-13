@@ -1,3 +1,4 @@
+import { ATTENDANCE_INSTALLATION_RULE_KEY, saveAttendanceInstallationRule } from "@/lib/mtm/attendance-installation-policy"
 import { NextRequest, NextResponse } from "next/server"
 import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
@@ -65,7 +66,7 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
     )
     // Unlike legacy menu switches, attendance enables new personal-data access.
     // Refuse the entire unauthorized request before any setting can be written.
-    if ((body.attendanceEnabled !== undefined || body[ATTENDANCE_OUTSIDE_RULE_KEY] !== undefined || ATTENDANCE_RISK_SETTING_KEYS.some(key => body[key] !== undefined)) && !MODULE_TOGGLE_ROLES.includes(auth.role)) {
+    if ((body.attendanceEnabled !== undefined || body[ATTENDANCE_INSTALLATION_RULE_KEY] !== undefined || body[ATTENDANCE_OUTSIDE_RULE_KEY] !== undefined || ATTENDANCE_RISK_SETTING_KEYS.some(key => body[key] !== undefined)) && !MODULE_TOGGLE_ROLES.includes(auth.role)) {
       return NextResponse.json({ error: "Forbidden", code: "MTM_ATTENDANCE_ADMIN_REQUIRED" }, { status: 403 })
     }
     // Hiding a whole module surface for every manager and field agent is an
@@ -177,6 +178,10 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
       return NextResponse.json({ error: "Route travel navigation must be a boolean" }, { status: 400 })
     }
 
+    if (body[ATTENDANCE_INSTALLATION_RULE_KEY] !== undefined && typeof body[ATTENDANCE_INSTALLATION_RULE_KEY] !== "boolean") {
+      return NextResponse.json({ error: "Invalid installation approval rule", code: "MTM_ATTENDANCE_INSTALLATION_RULE_INVALID" }, { status: 400 })
+    }
+
     // Nothing left to write (e.g. only administrator keys from a manager).
     if (Object.keys(body).length === 0) return NextResponse.json({ success: true, data: { ignoredKeys } })
 
@@ -184,6 +189,10 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
     // insertion. An audit failure must not leave an unaudited rejection rule.
     if (body[ATTENDANCE_OUTSIDE_RULE_KEY] !== undefined) {
       await saveAttendanceOutsideRule({ organizationId: orgId, userId: auth.userId, principalType: auth.principalType ?? "api_key" }, body[ATTENDANCE_OUTSIDE_RULE_KEY] as boolean)
+    }
+
+    if (body[ATTENDANCE_INSTALLATION_RULE_KEY] !== undefined) {
+      await saveAttendanceInstallationRule({ organizationId: orgId, userId: auth.userId, principalType: auth.principalType ?? "api_key" }, body[ATTENDANCE_INSTALLATION_RULE_KEY] as boolean)
     }
 
     const riskChanges = Object.fromEntries(Object.entries(body).filter(([key]) => (ATTENDANCE_RISK_SETTING_KEYS as readonly string[]).includes(key)))
@@ -231,13 +240,13 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
     }
     await Promise.all(
       Object.entries(body)
-        .filter(([key]) => key !== ATTENDANCE_OUTSIDE_RULE_KEY && !(ATTENDANCE_RISK_SETTING_KEYS as readonly string[]).includes(key) && !(endsLocationShareLinks && key === "locationShareLinksEnabled"))
+        .filter(([key]) => key !== ATTENDANCE_OUTSIDE_RULE_KEY && key !== ATTENDANCE_INSTALLATION_RULE_KEY && !(ATTENDANCE_RISK_SETTING_KEYS as readonly string[]).includes(key) && !(endsLocationShareLinks && key === "locationShareLinksEnabled"))
         .map(([key, value]) => storeSetting(key, value)),
     )
 
     // Audit only real changes: an old page's whole-object save would otherwise
     // log dozens of untouched keys. Values are compared after normalization.
-    const changedKeys = Object.keys(body).filter(key => key !== ATTENDANCE_OUTSIDE_RULE_KEY && !(ATTENDANCE_RISK_SETTING_KEYS as readonly string[]).includes(key) && differs(key))
+    const changedKeys = Object.keys(body).filter(key => key !== ATTENDANCE_OUTSIDE_RULE_KEY && key !== ATTENDANCE_INSTALLATION_RULE_KEY && !(ATTENDANCE_RISK_SETTING_KEYS as readonly string[]).includes(key) && differs(key))
     if (changedKeys.length > 0) await writeMtmAudit({
       organizationId: orgId,
       agentId: null,

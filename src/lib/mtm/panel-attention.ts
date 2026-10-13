@@ -30,6 +30,7 @@ export const MTM_PANEL_ATTENTION_KINDS = [
   // First on purpose: the agent who sent it may be standing at the customer's door.
   "customerLocationRequests",
   "attendanceRequests",
+  "attendanceInstallations",
   "contactCreateRequests",
   "customerCreateRequests",
   "routeChangeRequests",
@@ -311,6 +312,8 @@ export function buildAttentionItems(
  */
 export function attentionItemHref(item: Pick<MtmPanelAttentionItem, "kind" | "date">): string {
   switch (item.kind) {
+    case "attendanceInstallations":
+      return "/mtm/attendance/installations"
     case "attendanceRequests":
       return "/mtm/attendance/requests"
     case "contactCreateRequests":

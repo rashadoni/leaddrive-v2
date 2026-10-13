@@ -43,8 +43,8 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
   sql(adminUrl!,`CREATE DATABASE "${scratch!.name}"`);createdDb=true
   schemaDir=mkdtempSync(join(tmpdir(),"mtm-geo-schema-"));const schema=join(schemaDir,"schema.prisma");writeFileSync(schema,readFileSync("prisma/schema.prisma","utf8").split("\n").filter(line=>!/Unsupported\("vector/.test(line)).join("\n"))
   const result=spawnSync(process.execPath,[cli,"db","push","--schema",schema,"--skip-generate"],{env:{...process.env,DATABASE_URL:scratch!.adminDb},encoding:"utf8",timeout:180000,maxBuffer:1024*1024});if(result.status!==0)throw new Error("Location fixture schema push failed")
-  sql(scratch!.adminDb,'DROP TABLE mtm_attendance_stream_integrity; DROP TABLE mtm_attendance_risk_decisions; DROP TABLE mtm_attendance_risk_cases; DROP TABLE mtm_attendance_mark_evidence; DROP TABLE mtm_attendance_location_consents; DROP TABLE mtm_attendance_location_policies; DROP TABLE mtm_attendance_primary_branch_revisions; DROP TABLE mtm_attendance_branch_revisions; DROP TABLE mtm_attendance_branches; ALTER TABLE workforce_time_corrections DROP COLUMN "requestHash";')
-  for(const migration of["20260806120000_mtm_rls_coverage_completion","20260806160000_mtm_rls_bypass_clause_normalization","20261013070000_mtm_attendance_branches","20261013090000_mtm_attendance_location_evidence","20261013120000_mtm_attendance_risks","20261013140000_mtm_attendance_stream_integrity"])sql(scratch!.adminDb,readFileSync(`prisma/migrations/${migration}/migration.sql`,"utf8"))
+  sql(scratch!.adminDb,'DROP TABLE mtm_attendance_installation_revocations; DROP TABLE mtm_attendance_installation_decisions; DROP TABLE mtm_attendance_installation_requests; DROP TABLE mtm_attendance_stream_integrity; DROP TABLE mtm_attendance_risk_decisions; DROP TABLE mtm_attendance_risk_cases; DROP TABLE mtm_attendance_mark_evidence; DROP TABLE mtm_attendance_location_consents; DROP TABLE mtm_attendance_location_policies; DROP TABLE mtm_attendance_primary_branch_revisions; DROP TABLE mtm_attendance_branch_revisions; DROP TABLE mtm_attendance_branches; ALTER TABLE workforce_time_corrections DROP COLUMN "requestHash";')
+  for(const migration of["20260806120000_mtm_rls_coverage_completion","20260806160000_mtm_rls_bypass_clause_normalization","20261013070000_mtm_attendance_branches","20261013090000_mtm_attendance_location_evidence","20261013120000_mtm_attendance_risks","20261013140000_mtm_attendance_stream_integrity","20261013150000_mtm_attendance_installation_approval"])sql(scratch!.adminDb,readFileSync(`prisma/migrations/${migration}/migration.sql`,"utf8"))
   const foundation=readFileSync("prisma/migrations/20260828223000_workforce_h3_foundation/migration.sql","utf8");sql(scratch!.adminDb,foundation.slice(foundation.indexOf("-- Tenant data ships fail-closed."),foundation.indexOf("-- A migration runner may own new tables")))
   for(const migration of["20260828224500_workforce_h3_legacy_fact_guard","20260828230000_workforce_direct_correction_contract"])sql(scratch!.adminDb,readFileSync(`prisma/migrations/${migration}/migration.sql`,"utf8"))
   sql(scratch!.adminDb,readFileSync("scripts/rls/enable-batch-5.sql","utf8"));sql(scratch!.adminDb,`GRANT USAGE ON SCHEMA public TO "${scratch!.role}"; GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA public TO "${scratch!.role}"`)
@@ -415,6 +415,92 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
    expect((await streamRows()).map(row=>row.isMock).sort()).toEqual([false,true])
    expect(await tenant(ORG,()=>prisma.mtmAgentLocation.count({where:{agentId:identity.agentId,clientLocationId:ids[1]}}))).toBe(0)
   } finally {identity.role="EMPLOYEE"}
+ })
+
+ it("installation requests are own, exact-idempotent, private and atomic with their bell",async()=>{
+  await employee();const installations=await import("@/lib/mtm/attendance-installation-store"),requestId=randomUUID()
+  const first=await tenant(ORG,()=>installations.readOwnAttendanceInstallation(self(),INSTALLATION))
+  expect(first).toMatchObject({required:false,state:"NOT_REQUESTED",canRequest:true})
+  const results=await Promise.all([0,1].map(()=>tenant(ORG,()=>installations.submitAttendanceInstallation(self(),INSTALLATION,{requestId}))))
+  expect(results[0]).toEqual(results[1]);expect(results[0]).toMatchObject({state:"PENDING",requestId,canRequest:false})
+  await expect(tenant(ORG,()=>installations.submitAttendanceInstallation(self(),`${INSTALLATION}-changed`,{requestId}))).rejects.toMatchObject({code:"MTM_ATTENDANCE_INSTALLATION_IDEMPOTENCY_MISMATCH"})
+  await expect(tenant(ORG,()=>installations.submitAttendanceInstallation(self(),INSTALLATION,{requestId:randomUUID()}))).rejects.toMatchObject({code:"MTM_ATTENDANCE_INSTALLATION_ALREADY_REQUESTED"})
+  expect(await tenant(OTHER,()=>prisma.$queryRaw`SELECT id FROM mtm_attendance_installation_requests WHERE "requestId"=${requestId}`)).toEqual([])
+  const queue=await tenant(ORG,()=>installations.readAttendanceInstallationQueue(admin,{status:"PENDING",employeeId:identity.agentId}))
+  expect(queue.items).toHaveLength(1);expect(queue.items[0]).toMatchObject({canDecide:true,canRevoke:false,installationLabel:"…0001"})
+  expect(JSON.stringify(queue)).not.toContain(INSTALLATION);expect(JSON.stringify(queue)).not.toMatch(/requestHash|latitude|consentId/)
+  expect(await tenant(ORG,()=>prisma.notification.count({where:{organizationId:ORG,entityType:"mtm_attendance_installation",entityId:queue.items[0].id}}))).toBe(1)
+  const originalNotifier=await import("@/lib/mtm/attendance-installation-notify")
+  const failed=vi.spyOn(originalNotifier,"notifyAttendanceInstallationReviewers").mockRejectedValueOnce(new Error("fictional bell failure"))
+  try {await expect(tenant(ORG,()=>installations.submitAttendanceInstallation(self(),`${INSTALLATION}-other`,{requestId:randomUUID()}))).rejects.toThrow("fictional bell failure")}
+  finally {failed.mockRestore()}
+  expect((await tenant(ORG,()=>installations.readOwnAttendanceInstallation(self(),`${INSTALLATION}-other`))).state).toBe("NOT_REQUESTED")
+ })
+ it("approval and revocation are immutable, scoped, reasoned and exact retries",async()=>{
+  await employee();const installations=await import("@/lib/mtm/attendance-installation-store")
+  const request={requestId:randomUUID()};await tenant(ORG,()=>installations.submitAttendanceInstallation(self(),INSTALLATION,request))
+  const id=(await tenant(ORG,()=>installations.readAttendanceInstallationQueue(admin,{employeeId:identity.agentId}))).items[0].id
+  const decision={requestId:randomUUID(),action:"APPROVE",reason:"Fictional installation reviewed"}
+  await expect(tenant(ORG,()=>installations.decideAttendanceInstallation({...admin,userId:identity.agentId},id,decision))).rejects.toMatchObject({status:403})
+  await expect(tenant(ORG,()=>installations.decideAttendanceInstallation(admin,id,{...decision,reason:" "}))).rejects.toMatchObject({status:400})
+  const outcomes=await Promise.all([0,1].map(()=>tenant(ORG,()=>installations.decideAttendanceInstallation(admin,id,decision))))
+  expect(outcomes.map(result=>result.idempotent).sort()).toEqual([false,true]);expect(outcomes[0].id).toBe(outcomes[1].id)
+  const revoke={requestId:randomUUID(),action:"REVOKE",reason:"Fictional phone replaced"}
+  await expect(tenant(ORG,()=>installations.decideAttendanceInstallation(admin,id,{...revoke,requestId:decision.requestId}))).rejects.toMatchObject({code:"MTM_ATTENDANCE_INSTALLATION_IDEMPOTENCY_MISMATCH"})
+  await tenant(ORG,()=>installations.decideAttendanceInstallation(admin,id,revoke));expect(await tenant(ORG,()=>installations.decideAttendanceInstallation(admin,id,revoke))).toMatchObject({idempotent:true})
+  expect(await tenant(ORG,()=>installations.submitAttendanceInstallation(self(),INSTALLATION,request))).toMatchObject({requestId:request.requestId,state:"REVOKED",canRequest:true,revocation:{reason:revoke.reason}})
+  const next={requestId:randomUUID()};expect(await tenant(ORG,()=>installations.submitAttendanceInstallation(self(),INSTALLATION,next))).toMatchObject({requestId:next.requestId,state:"PENDING"})
+  expect((await tenant(ORG,()=>installations.readOwnAttendanceInstallation(self(),INSTALLATION))).requestId).toBe(next.requestId)
+  expect(await tenant(ORG,()=>installations.submitAttendanceInstallation(self(),INSTALLATION,request))).toMatchObject({requestId:request.requestId,state:"REVOKED"})
+  expect(await tenant(ORG,()=>prisma.$executeRaw`UPDATE mtm_attendance_installation_decisions SET reason='changed' WHERE id=${outcomes[0].id}`)).toBe(0)
+  expect(()=>sql(scratch!.adminDb,`UPDATE mtm_attendance_installation_decisions SET reason='changed' WHERE id='${outcomes[0].id}'`)).toThrow()
+  expect(()=>sql(scratch!.adminDb,`DELETE FROM mtm_attendance_installation_requests WHERE id='${id}'`)).toThrow()
+  expect(await tenant(OTHER,()=>prisma.$queryRaw`SELECT id FROM mtm_attendance_installation_decisions WHERE id=${outcomes[0].id}`)).toEqual([])
+ })
+ it("strict approval rolls back a legacy mark, allows an approved mark and preserves accepted replays after revocation",async()=>{
+  await employee();const installations=await import("@/lib/mtm/attendance-installation-store"),policy=await import("@/lib/mtm/attendance-installation-policy")
+  const at=new Date(),op=operation("START",randomUUID(),at)
+  await tenant(ORG,()=>policy.saveAttendanceInstallationRule(admin,true))
+  try {
+   expect((await send(op)).body.results).toMatchObject([{status:"conflict",serverData:{code:"MTM_ATTENDANCE_INSTALLATION_APPROVAL_REQUIRED",committed:false}}])
+   expect(await tenant(ORG,()=>prisma.mtmAgentWorkday.count({where:{organizationId:ORG,agentId:identity.agentId}}))).toBe(0)
+   expect(await tenant(ORG,()=>prisma.mtmSyncOperation.count({where:{organizationId:ORG,operationId:op.operationId}}))).toBe(0)
+   await tenant(ORG,()=>installations.submitAttendanceInstallation(self(),INSTALLATION,{requestId:randomUUID()}))
+   const id=(await tenant(ORG,()=>installations.readAttendanceInstallationQueue(admin,{employeeId:identity.agentId}))).items[0].id
+   await tenant(ORG,()=>installations.decideAttendanceInstallation(admin,id,{requestId:randomUUID(),action:"APPROVE",reason:"Fictional review"}))
+   expect((await send(op)).body.results).toMatchObject([{status:"ok"}])
+   await tenant(ORG,()=>installations.decideAttendanceInstallation(admin,id,{requestId:randomUUID(),action:"REVOKE",reason:"Fictional replacement"}))
+   expect((await send(op)).body.results).toMatchObject([{status:"ok"}])
+   const finish=operation("FINISH",op.data.id!,new Date(Date.now()+1000))
+   expect((await send(finish)).body.results).toMatchObject([{status:"conflict",serverData:{committed:false}}])
+   expect(await tenant(ORG,()=>prisma.mtmAgentWorkday.findFirst({where:{organizationId:ORG,agentId:identity.agentId},select:{status:true,completedAt:true}}))).toEqual({status:"STARTED",completedAt:null})
+  } finally {await tenant(ORG,()=>policy.saveAttendanceInstallationRule(admin,false))}
+ })
+ it("disabling attendance keeps strict approval dormant for ordinary field marks and denies new installation requests",async()=>{
+  await employee();const installations=await import("@/lib/mtm/attendance-installation-store"),policy=await import("@/lib/mtm/attendance-installation-policy")
+  await bypass(()=>prisma.mtmAgent.update({where:{id:identity.agentId},data:{role:"AGENT"}}));identity.role="AGENT"
+  await tenant(ORG,()=>policy.saveAttendanceInstallationRule(admin,true))
+  await tenant(ORG,()=>prisma.mtmSetting.update({where:{organizationId_key:{organizationId:ORG,key:"attendanceEnabled"}},data:{value:false}}))
+  try {
+   expect((await send(operation("START",randomUUID(),new Date()))).body.results).toMatchObject([{status:"ok"}])
+   await expect(tenant(ORG,()=>installations.submitAttendanceInstallation(self(),INSTALLATION,{requestId:randomUUID()}))).rejects.toMatchObject({status:404})
+   expect(await tenant(ORG,()=>prisma.$queryRaw`SELECT id FROM mtm_attendance_installation_requests WHERE "agentId"=${identity.agentId}`)).toEqual([])
+  } finally {
+   await tenant(ORG,()=>prisma.mtmSetting.update({where:{organizationId_key:{organizationId:ORG,key:"attendanceEnabled"}},data:{value:true}}))
+   await tenant(ORG,()=>policy.saveAttendanceInstallationRule(admin,false));identity.role="EMPLOYEE"
+  }
+ })
+ it("read-only HR can inspect but cannot decide; current account loss clears access",async()=>{
+  await employee();const installations=await import("@/lib/mtm/attendance-installation-store")
+  await tenant(ORG,()=>installations.submitAttendanceInstallation(self(),INSTALLATION,{requestId:randomUUID()}))
+  const readerId=randomUUID();await bypass(()=>prisma.user.create({data:{id:readerId,organizationId:ORG,email:`${readerId}@example.invalid`,name:"Fictional read-only HR",role:"viewer",mtmAttendanceAll:true,passwordHash:"unusable-fixture"}}))
+  const reader={...admin,userId:readerId},queue=await tenant(ORG,()=>installations.readAttendanceInstallationQueue(reader,{employeeId:identity.agentId}))
+  expect(queue.items[0]).toMatchObject({canDecide:false,canRevoke:false});expect(queue.canConfigure).toBe(false)
+  await expect(tenant(ORG,()=>installations.decideAttendanceInstallation(reader,queue.items[0].id,{requestId:randomUUID(),action:"APPROVE",reason:"Fictional reason"}))).rejects.toMatchObject({status:403})
+  await bypass(()=>prisma.user.update({where:{id:readerId},data:{mtmAttendanceAll:false}}))
+  await expect(tenant(ORG,()=>installations.readAttendanceInstallationQueue(reader,{}))).rejects.toMatchObject({status:403})
+  await bypass(()=>prisma.mtmAgent.update({where:{id:identity.agentId},data:{attendanceParticipant:false}}))
+  await expect(tenant(ORG,()=>installations.readOwnAttendanceInstallation(self(),INSTALLATION))).rejects.toMatchObject({status:403})
  })
 
 })

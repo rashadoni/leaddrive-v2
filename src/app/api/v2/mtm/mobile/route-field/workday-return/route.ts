@@ -62,9 +62,13 @@ export const POST = withMobileRls(async (req, auth) => {
     agentId: auth.agentId,
     workdayId: parsed.data.workdayId,
     operationId: parsed.data.operationId,
+    installationId: req.headers.get("x-field-device-id"),
     ...(attendanceOnly?{attendanceRole:auth.role}:{}),
   }) } catch(error) {
     if (!(error instanceof AttendanceRequestError)) throw error
+    if (["MTM_ATTENDANCE_INSTALLATION_APP_REQUIRED", "MTM_ATTENDANCE_INSTALLATION_APPROVAL_REQUIRED"].includes(error.code)) {
+      return noStoreJson({ error: error.code, code: error.code, data: { committed: false } }, { status: 409 })
+    }
     return noStoreJson({error:"Forbidden",code:"MTM_WORKDAY_RETURN_FORBIDDEN"},{status:403})
   }
   if (result.kind === "not_found") {

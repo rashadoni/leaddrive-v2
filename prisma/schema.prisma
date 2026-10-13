@@ -16,6 +16,9 @@ datasource db {
 // ═══════════════════════════════════════════════════
 
 model Organization {
+  attendanceInstallationRequests MtmAttendanceInstallationRequest[]
+  attendanceInstallationDecisions MtmAttendanceInstallationDecision[]
+  attendanceInstallationRevocations MtmAttendanceInstallationRevocation[]
   mtmAttendanceRiskDecisions MtmAttendanceRiskDecision[]
   mtmAttendanceLocationPolicies MtmAttendanceLocationPolicy[]
   mtmAttendanceStreamIntegrity MtmAttendanceStreamIntegrity[]
@@ -621,6 +624,8 @@ model PlanRequest {
 }
 
 model User {
+  attendanceInstallationDecisions MtmAttendanceInstallationDecision[]
+  attendanceInstallationRevocations MtmAttendanceInstallationRevocation[]
   mtmAttendanceRiskDecisions MtmAttendanceRiskDecision[]
   mtmAttendanceLocationPolicies MtmAttendanceLocationPolicy[]
 
@@ -5756,6 +5761,7 @@ model MtmTeam {
 
 // MTM Agent — field agents linked to CRM users
 model MtmAgent {
+  attendanceInstallationRequests MtmAttendanceInstallationRequest[]
   mtmAttendanceStreamIntegrity MtmAttendanceStreamIntegrity[]
   mtmAttendanceLocationConsents MtmAttendanceLocationConsent[]
   mtmAttendanceMarkEvidence MtmAttendanceMarkEvidence[]
@@ -22268,4 +22274,57 @@ model MtmAttendanceStreamIntegrity {
   createdAt DateTime @default(now())
   @@index([organizationId, agentId, createdAt])
   @@map("mtm_attendance_stream_integrity")
+}
+
+model MtmAttendanceInstallationRequest {
+  id String @id @default(uuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentId String
+  agent MtmAgent @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  installationId String @db.VarChar(128)
+  requestId String
+  requestHash String @db.VarChar(64)
+  submittedAt DateTime @default(now()) @db.Timestamp(3)
+  decisions MtmAttendanceInstallationDecision[]
+  @@unique([organizationId, id])
+  @@unique([organizationId, requestId])
+  @@index([organizationId, agentId, installationId, submittedAt])
+  @@index([organizationId, submittedAt, id])
+  @@map("mtm_attendance_installation_requests")
+}
+model MtmAttendanceInstallationDecision {
+  id String @id @default(uuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  installationRequestId String
+  installationRequest MtmAttendanceInstallationRequest @relation(fields: [organizationId, installationRequestId], references: [organizationId, id], onDelete: Restrict)
+  action String @db.VarChar(7)
+  requestId String
+  requestHash String @db.VarChar(64)
+  actorUserId String
+  actor User @relation(fields: [organizationId, actorUserId], references: [organizationId, id], onDelete: Restrict)
+  reason String @db.VarChar(1000)
+  createdAt DateTime @default(now()) @db.Timestamp(3)
+  revocations MtmAttendanceInstallationRevocation[]
+  @@unique([organizationId, id])
+  @@unique([organizationId, installationRequestId])
+  @@unique([organizationId, requestId])
+  @@map("mtm_attendance_installation_decisions")
+}
+model MtmAttendanceInstallationRevocation {
+  id String @id @default(uuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  decisionId String
+  decision MtmAttendanceInstallationDecision @relation(fields: [organizationId, decisionId], references: [organizationId, id], onDelete: Restrict)
+  requestId String
+  requestHash String @db.VarChar(64)
+  actorUserId String
+  actor User @relation(fields: [organizationId, actorUserId], references: [organizationId, id], onDelete: Restrict)
+  reason String @db.VarChar(1000)
+  createdAt DateTime @default(now()) @db.Timestamp(3)
+  @@unique([organizationId, decisionId])
+  @@unique([organizationId, requestId])
+  @@map("mtm_attendance_installation_revocations")
 }

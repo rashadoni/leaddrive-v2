@@ -1,3 +1,4 @@
+import { readAttendanceInstallationAttention } from "@/lib/mtm/attendance-installation-store"
 import { attendanceReviewWhere } from "@/lib/mtm/attendance-request-review"
 import { checkPermission, type Role } from "@/lib/permissions"
 import type { Prisma } from "@prisma/client"
@@ -152,6 +153,10 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     }) : []
   const attendanceSummary = summarizeByAgent(attendanceGroups.map((row) => ({ agentId: row.agentId, count: row._count._all, date: row._min.submittedAt })), "earliest")
 
+  const installationGroups = settings.attendanceEnabled === true && auth.principalType === "session" && checkPermission(auth.role as Role, "mtm", "write")
+    ? await readAttendanceInstallationAttention({ organizationId: auth.orgId, userId: auth.userId, principalType: "session" }, agentIds) : []
+  const installationSummary = summarizeByAgent(installationGroups, "earliest")
+
   const todayStart = localDateKeyToUtc(today, timezone)
 
   const [locationRequests, contactRequests, customerRequests, routeChanges, drafts, alerts, photos] = await Promise.all([
@@ -219,7 +224,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
   }, null)
 
   // One read for every name a row spells out.
-  const namedIds = [...new Set([attendanceSummary, locationSummary, contactSummary, customerSummary, routeChangeSummary, draftSummary]
+  const namedIds = [...new Set([installationSummary, attendanceSummary, locationSummary, contactSummary, customerSummary, routeChangeSummary, draftSummary]
     .flatMap((summary) => summary.agentIds.slice(0, MTM_ATTENTION_PEOPLE_SHOWN)))]
   const namedAgents = namedIds.length > 0
     ? await prisma.mtmAgent.findMany({ where: { organizationId: auth.orgId, id: { in: namedIds } }, select: { id: true, name: true } })
@@ -228,6 +233,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
 
   const localDay = (value: Date | null | undefined) => (value ? dateInputValueInTimezone(value, timezone) : null)
   const items = buildAttentionItems([
+    { kind: "attendanceInstallations", count: installationSummary.count, date: localDay(installationSummary.date), agentIds: installationSummary.agentIds },
     { kind: "attendanceRequests", count: attendanceSummary.count, date: localDay(attendanceSummary.date), agentIds: attendanceSummary.agentIds },
     {
       kind: "customerLocationRequests",
