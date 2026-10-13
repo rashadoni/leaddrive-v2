@@ -73,6 +73,8 @@ export const DEMO_ANCHORS: Readonly<Record<string, DemoAnchorDefinition>> = {
 
   /* ── Communication → Inbox ── */
   "inbox-views": { area: "inbox", scene: INBOX_SCENE, productFiles: [], label: "All / Me / Unassigned / … views" },
+  "inbox-channels": { area: "inbox", scene: INBOX_SCENE, productFiles: [], label: "Channels with their counts; one click filters the list" },
+  "inbox-assign": { area: "inbox", scene: INBOX_SCENE, productFiles: [], label: "Assign the conversation to a colleague" },
   "inbox-status-tabs": { area: "inbox", scene: INBOX_SCENE, productFiles: [], label: "Opened / Closed / Snoozed" },
   "inbox-filters": { area: "inbox", scene: INBOX_SCENE, productFiles: [], label: "Channel / folder / lifecycle filters" },
   "inbox-conversations": { area: "inbox", scene: INBOX_SCENE, productFiles: [], label: "Conversation list" },

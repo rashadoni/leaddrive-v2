@@ -2,7 +2,7 @@
 
 import { useMemo } from "react"
 import { useTranslations } from "next-intl"
-import { ChevronRight, Lock } from "lucide-react"
+import { CheckCircle2, ChevronRight, Lock } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { NAV_ACTIVE_BAR, NAV_ACTIVE_ICON, NAV_GROUP_LABEL, NAV_GROUP_ORDER, navItems, type NavItem } from "@/lib/nav-items"
 import { cn } from "@/lib/utils"
@@ -21,12 +21,14 @@ import { DEMO_JOURNEY_STRINGS as S } from "./strings"
 export interface DemoJourneySidebarProps {
   visibleRoutes: readonly string[]
   reachableRoutes: readonly string[]
+  /** Modules the prospect walked to the end — ticked, so the menu shows what is left. */
+  doneRoutes?: readonly string[]
   activeRoute: string | null
   onNavigate: (route: string) => void
   onLocked: (label: string) => void
 }
 
-export function DemoJourneySidebar({ visibleRoutes, reachableRoutes, activeRoute, onNavigate, onLocked }: DemoJourneySidebarProps) {
+export function DemoJourneySidebar({ visibleRoutes, reachableRoutes, doneRoutes = [], activeRoute, onNavigate, onLocked }: DemoJourneySidebarProps) {
   const t = useTranslations("nav")
 
   const groups = useMemo(() => {
@@ -42,6 +44,7 @@ export function DemoJourneySidebar({ visibleRoutes, reachableRoutes, activeRoute
   }, [visibleRoutes])
 
   const reachable = new Set(reachableRoutes)
+  const done = new Set(doneRoutes)
 
   return (
     <aside
@@ -117,6 +120,13 @@ export function DemoJourneySidebar({ visibleRoutes, reachableRoutes, activeRoute
                       <Icon className="h-3.5 w-3.5" />
                     </span>
                     <span className="hidden flex-1 truncate min-[1440px]:inline">{label}</span>
+                    {enabled && done.has(item.href) ? (
+                      <CheckCircle2
+                        aria-label={S.moduleDone}
+                        data-nav-done="true"
+                        className="absolute right-1 top-1 h-3 w-3 text-emerald-400 min-[1440px]:static min-[1440px]:h-3.5 min-[1440px]:w-3.5 min-[1440px]:shrink-0"
+                      />
+                    ) : null}
                     {!enabled ? (
                       <Lock
                         aria-hidden="true"

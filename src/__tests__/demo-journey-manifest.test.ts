@@ -244,7 +244,8 @@ describe("Guided journey coverage", () => {
    *  both on purpose, never one to make the other pass. */
   const EXPECTED: Record<string, { included: number; total: number; percent: number }> = {
     campaigns: { included: 7, total: 8, percent: 88 },
-    inbox: { included: 8, total: 10, percent: 80 },
+    // +2 on 2026-10-13: the channel rail and assigning to a colleague are now demonstrated.
+    inbox: { included: 10, total: 12, percent: 83 },
     leads: { included: 20, total: 23, percent: 87 },
     tasks: { included: 11, total: 13, percent: 85 },
     deals: { included: 14, total: 17, percent: 82 },
