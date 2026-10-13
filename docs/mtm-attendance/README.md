@@ -818,3 +818,5 @@ Actual React render → HTML/CSS и **12 PNG** (registry/assignments × az/ru/en
 
 **2026-10-13 — CI737 RLS syntax.** Тот же выявленный source contract применён к ещё не выпущенной risk миграции: явные quoted ALTER/CREATE вместо dynamic EXECUTE, те же tenant policies/trigger. Fix733 wrapper и731 policies объединены. Проверки не ослаблены.
 **2026-10-13 — CI728 продолжение.** Нормально объединён current main6ea297dd6, включая запись о закрытии2.12; обе стороны журнала сохранены. Testclockfix1c2024fc9 остаётся в ветке. Следующее — свежие обязательные проверки и полный build; ранее проваленный/отсутствующий CI не считается успешным.
+
+**2026-10-13 — CI737: обнаружение RLS wrapper.** Mandatory static-checks выявил единственный context-gap в review/[id]: анализатор не распознавал вложенный Promise в inline generic. Тип контекста вынесен в именованный ReviewRouteContext; настоящий withMtmAttendanceAuth→tenant RLS сохранён, правила scanner не менялись. Требуются повторный узкий scanner и свежие обязательные CI проверки; прежний failed gate не обходится.
