@@ -196,6 +196,9 @@ export interface MtmPrismaMock {
   mtmAttendanceSchedule: ModelMock
   mtmAttendanceDelivery: ModelMock
   mtmAttendanceRule: ModelMock
+  mtmAttendanceBranch: ModelMock
+  mtmAttendanceBranchRevision: ModelMock
+  mtmAttendancePrimaryBranchRevision: ModelMock
   mtmAttendanceAttachment: ModelMock
   mtmSetting: ModelMock
   mtmNotification: ModelMock
