@@ -266,6 +266,7 @@ describe("switch rows are enforced where the agent asks", () => {
 
   it("covers every switch row", () => {
     expect(AGENT_SWITCH_ROWS.map((row) => row.id).sort()).toEqual([
+      "attendanceLocation",
       "attendanceRequests",
       "attendanceWorkday",
       "checkInOutsideZone",

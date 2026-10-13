@@ -492,8 +492,9 @@ export const GET = withMobileRls(async (req, auth) => {
           // then answers MTM_AGENT_PERMISSION_DISABLED.
           agentPermissions: {
             ...agentPermissionStates(settings),
-            ...(settings.attendanceEnabled ? { attendanceRequests: attendanceSelf, attendanceWorkday: attendanceSelf } : {}),
+            ...(settings.attendanceEnabled ? { attendanceRequests: attendanceSelf, attendanceWorkday: attendanceSelf, attendanceLocation: attendanceSelf } : {}),
           },
+          ...(attendanceSelf ? { attendanceMarkVersion: 1 } : {}),
           // The organization's check-in zone, as check-in enforces it. The app
           // checked a hard-coded 100 m before sending and turned agents back at
           // 150 m when the zone was 250 m (Redmi Pad SE, 2026-09-15). A

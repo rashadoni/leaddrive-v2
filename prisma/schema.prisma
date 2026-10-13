@@ -16,6 +16,10 @@ datasource db {
 // ═══════════════════════════════════════════════════
 
 model Organization {
+  mtmAttendanceLocationPolicies MtmAttendanceLocationPolicy[]
+  mtmAttendanceLocationConsents MtmAttendanceLocationConsent[]
+  mtmAttendanceMarkEvidence MtmAttendanceMarkEvidence[]
+
   id                  String    @id @default(cuid())
   name                String
   slug                String    @unique
@@ -614,6 +618,8 @@ model PlanRequest {
 }
 
 model User {
+  mtmAttendanceLocationPolicies MtmAttendanceLocationPolicy[]
+
   id                String       @id @default(cuid())
   organizationId    String
   organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -5746,6 +5752,9 @@ model MtmTeam {
 
 // MTM Agent — field agents linked to CRM users
 model MtmAgent {
+  mtmAttendanceLocationConsents MtmAttendanceLocationConsent[]
+  mtmAttendanceMarkEvidence MtmAttendanceMarkEvidence[]
+
   id             String         @id @default(cuid())
   organizationId String
   organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -7694,6 +7703,8 @@ model MtmAgentWorkday {
 }
 
 model MtmAgentWorkdayEvent {
+  mtmAttendanceMarkEvidence MtmAttendanceMarkEvidence?
+
   id             String              @id @default(cuid())
   organizationId String
   organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -8275,6 +8286,8 @@ model MtmAttendanceBranch {
 
 /// Never updated, including name/address/active. Evidence freezes revisionId.
 model MtmAttendanceBranchRevision {
+  markEvidence MtmAttendanceMarkEvidence[]
+
   id String @id @default(uuid())
   organizationId String
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -22103,4 +22116,83 @@ model WorkforceReconciliationTenantState {
 
   @@index([dueAt, lastAttemptAt, organizationId], map: "wf_reconciliation_due_attempt_org_idx")
   @@map("workforce_reconciliation_tenant_states")
+}
+
+/// Tenant legal text is empty until a client-approved publication is supplied.
+model MtmAttendanceLocationPolicy {
+  id String @id @default(uuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  version Int
+  previousId String?
+  requestId String
+  requestHash String @db.VarChar(64)
+  enabled Boolean
+  texts Json
+  legalReviewConfirmed Boolean
+  createdBy String
+  author User @relation(fields: [organizationId, createdBy], references: [organizationId, id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  consents MtmAttendanceLocationConsent[]
+  @@unique([organizationId, id])
+  @@unique([organizationId, version])
+  @@unique([organizationId, requestId])
+  @@map("mtm_attendance_location_policies")
+}
+
+/// Explicit own acceptance or withdrawal; never inferred from an OS permission.
+model MtmAttendanceLocationConsent {
+  id String @id @default(uuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentId String
+  agent MtmAgent @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  policyRevisionId String
+  policy MtmAttendanceLocationPolicy @relation(fields: [organizationId, policyRevisionId], references: [organizationId, id], onDelete: Restrict)
+  version Int
+  previousId String?
+  requestId String
+  requestHash String @db.VarChar(64)
+  accepted Boolean
+  createdAt DateTime @default(now())
+  evidence MtmAttendanceMarkEvidence[]
+  @@unique([organizationId, id])
+  @@unique([organizationId, agentId, version])
+  @@unique([organizationId, agentId, requestId])
+  @@map("mtm_attendance_location_consents")
+}
+
+/// Only new START/FINISH packets; no backfill and no break positions.
+model MtmAttendanceMarkEvidence {
+  id String @id @default(uuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentId String
+  agent MtmAgent @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  eventId String
+  event MtmAgentWorkdayEvent @relation(fields: [organizationId, eventId], references: [organizationId, id], onDelete: Restrict)
+  redactedRequestHash String @db.VarChar(64)
+  installationId String @db.VarChar(128)
+  action String @db.VarChar(6)
+  claimedAt DateTime
+  serverReceivedAt DateTime
+  locationState String @db.VarChar(20)
+  latitude Float?
+  longitude Float?
+  accuracy Float?
+  fixCapturedAt DateTime?
+  fixAgeSeconds Int?
+  provider String? @db.VarChar(10)
+  isMock Boolean?
+  consentId String?
+  consent MtmAttendanceLocationConsent? @relation(fields: [organizationId, consentId], references: [organizationId, id], onDelete: Restrict)
+  branchRevisionId String?
+  branchRevision MtmAttendanceBranchRevision? @relation(fields: [organizationId, branchRevisionId], references: [organizationId, id], onDelete: Restrict)
+  primaryBranchId String?
+  distanceMeters Int?
+  createdAt DateTime @default(now())
+  @@unique([organizationId, eventId])
+  @@index([organizationId, installationId, claimedAt])
+  @@index([organizationId, agentId, claimedAt])
+  @@map("mtm_attendance_mark_evidence")
 }

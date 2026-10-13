@@ -29,7 +29,7 @@ const branchInput=()=>({requestId:randomUUID(),branchId:null as string|null,expe
    sql(adminUrl!,`CREATE DATABASE "${scratch!.name}"`);createdDb=true
    const file=join(mkdtempSync(join(tmpdir(),"mtm-branches-schema-")),"schema.prisma");writeFileSync(file,readFileSync("prisma/schema.prisma","utf8").split("\n").filter(line=>!/Unsupported\("vector/.test(line)).join("\n"))
    const appUrl=process.env.DATABASE_URL!;try{process.env.DATABASE_URL=scratch!.adminDb;cli(["db","push","--schema",file,"--skip-generate"])}finally{process.env.DATABASE_URL=appUrl}
-   sql(scratch!.adminDb,'DROP TABLE mtm_attendance_primary_branch_revisions; DROP TABLE mtm_attendance_branch_revisions; DROP TABLE mtm_attendance_branches;')
+   sql(scratch!.adminDb,'DROP TABLE mtm_attendance_mark_evidence; DROP TABLE mtm_attendance_primary_branch_revisions; DROP TABLE mtm_attendance_branch_revisions; DROP TABLE mtm_attendance_branches;')
    for(const migration of["20260806120000_mtm_rls_coverage_completion","20260806160000_mtm_rls_bypass_clause_normalization","20261013070000_mtm_attendance_branches"])sql(scratch!.adminDb,readFileSync(`prisma/migrations/${migration}/migration.sql`,"utf8"))
    sql(scratch!.adminDb,readFileSync("scripts/rls/enable-batch-5.sql","utf8"));sql(scratch!.adminDb,`GRANT USAGE ON SCHEMA public TO "${scratch!.role}"; GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA public TO "${scratch!.role}"`)
    prisma=(await import("@/lib/prisma")).prisma;({runWithTenant:tenant,runWithRlsBypass:bypass}=await import("@/lib/rls-context"))

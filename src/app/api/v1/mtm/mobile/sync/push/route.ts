@@ -1,5 +1,6 @@
 import { requireAttendanceSelf, lockAttendanceRequests } from "@/lib/mtm/attendance-self-access"
 import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
+import { recordAttendanceMarkEvidence, isAttendanceMarkRedactedReplay } from "@/lib/mtm/attendance-location-store"
 import { routeTransitionActions, writeFieldSyncAudit } from "@/lib/mtm/field-sync-audit"
 import { NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
@@ -713,7 +714,9 @@ export const POST = withMobileRls(async (req, auth) => {
         )
         if (
           !replayParsed.input
-          || prev.requestHash !== mtmWorkdayRequestHash({ organizationId: orgId, agentId }, replayParsed.input)
+          || (replayParsed.input.attendanceMark && replayParsed.input.attendanceMark.installationId !== req.headers.get("x-field-device-id"))
+          || (prev.requestHash !== mtmWorkdayRequestHash({ organizationId: orgId, agentId }, replayParsed.input)
+            && !await isAttendanceMarkRedactedReplay(prisma, { organizationId: orgId, agentId }, replayParsed.input, prev.requestHash))
         ) {
           results.push(await syncWorkdayIdempotencyMismatch({
             operationId, organizationId: orgId, agentId, storedResult: prev.result,
@@ -880,6 +883,9 @@ export const POST = withMobileRls(async (req, auth) => {
         const parsed = parseMtmWorkdayEvent(data, operationId, workdayTimezone, receivedAt)
         workdayInput = parsed.input
         validationError = parsed.error ?? undefined
+        if (workdayInput?.attendanceMark && workdayInput.attendanceMark.installationId !== req.headers.get("x-field-device-id")) {
+          validationError = "MTM_ATTENDANCE_INSTALLATION_MISMATCH"
+        }
         validationServerData = parsed.code
           ? {
               code: parsed.code,
@@ -1010,13 +1016,13 @@ export const POST = withMobileRls(async (req, auth) => {
             return { kind: "workforce-fence-unavailable" }
           }
         }
-        if (attendanceWorkdayOperation) {
+        if (attendanceWorkdayOperation || workdayInput?.attendanceMark) {
           // Linearize enrollment/status/feature revocation with the actual
           // workday write. A denied operation is not pinned and can be retried.
           await lockMtmWorkdayTransitions(tx, { organizationId: orgId, agentId })
           await lockAttendanceRequests(tx, { organizationId: orgId, agentId })
           const timezone = await requireAttendanceSelf(tx, { organizationId: orgId, agentId, role: auth.role })
-          if (timezone !== attendanceWorkdayTimezone || timezone !== workdayTimezone) {
+          if ((attendanceWorkdayOperation && timezone !== attendanceWorkdayTimezone) || timezone !== workdayTimezone) {
             throw new AttendanceRequestError("MTM_ATTENDANCE_TIMEZONE_CHANGED", 409)
           }
         }
@@ -3029,7 +3035,9 @@ export const POST = withMobileRls(async (req, auth) => {
         } else if (entity === "workdays" && opType === "create" && workdayInput) {
           const workforceWorkday = !isRouteFieldSessionOperation(auth, entity)
           const applied = await applyMtmWorkdayEvent(tx, { organizationId: orgId, agentId }, workdayInput, {
+            allowLocationRedactedReplay: replay => isAttendanceMarkRedactedReplay(tx, { organizationId: orgId, agentId }, workdayInput, replay.requestHash),
             afterEvent: async ({ workday, event, beforeWorkday }) => {
+              await recordAttendanceMarkEvidence(tx, { scope: { organizationId: orgId, agentId }, input: workdayInput, workday, event, beforeWorkday }, { organizationId: orgId, agentId, role: auth.role })
               if (!workforceWorkday) return
               const prepared = await prepareWorkforceAttendanceVerification(tx, {
                 organizationId: orgId,
@@ -3187,7 +3195,8 @@ export const POST = withMobileRls(async (req, auth) => {
               winner.entity === "workdays"
               && typeof winner.requestHash === "string"
               && winner.requestHash.length > 0
-              && (entity !== "workdays" || opType !== "create" || winner.requestHash !== workdayRequestHash)
+              && (entity !== "workdays" || opType !== "create" || (winner.requestHash !== workdayRequestHash
+                && (!workdayInput || !await isAttendanceMarkRedactedReplay(prisma, { organizationId: orgId, agentId }, workdayInput, winner.requestHash))))
             ) {
               results.push(await syncWorkdayIdempotencyMismatch({
                 operationId, organizationId: orgId, agentId, storedResult: winner.result,

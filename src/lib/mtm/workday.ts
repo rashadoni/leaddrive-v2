@@ -2,6 +2,7 @@ import { createHash } from "node:crypto"
 import type { Prisma } from "@prisma/client"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { isCrmCapabilityAvailable } from "@/lib/crm-product-availability"
+import { AttendanceMarkSchema, type AttendanceMark } from "@/lib/mtm/attendance-location-contract"
 
 export type MtmWorkdayAction = "START" | "PAUSE" | "RESUME" | "FINISH"
 
@@ -81,6 +82,8 @@ export type MtmWorkdayEventInput = {
   accuracy: number | null
   note: string | null
   attendance?: MtmWorkdayAttendanceEvidence
+  /** Opt-in MTM endpoint evidence; never copied into the workday coordinates. */
+  attendanceMark?: AttendanceMark
 }
 
 export type MtmWorkdayResult =
@@ -129,6 +132,8 @@ export type MtmWorkdayPostEventContext = {
 }
 
 export type MtmWorkdayApplyOptions = {
+  /** Exact, one-way privacy redaction of an already recorded MTM mark. */
+  allowLocationRedactedReplay?: (event: { id: string; requestHash?: string | null }) => Promise<boolean>
   /**
    * Runs after the canonical event is created but before the surrounding
    * transaction commits. Security proofs can therefore reference that event;
@@ -553,6 +558,11 @@ export function parseMtmWorkdayEvent(
   }
 
   const attendanceReview = workforceAttendanceClaimReview(claimedAt, now)
+  const mark = value.attendanceMark === undefined ? null : AttendanceMarkSchema.safeParse(value.attendanceMark)
+  if (mark && (!mark.success || !["START", "FINISH"].includes(action)
+    || value.latitude != null || value.longitude != null || value.accuracy != null || value.attendance != null)) {
+    return { input: null, error: "MTM attendance marks belong only to START/FINISH and cannot contain legacy coordinates or trust proofs", code: "MTM_ATTENDANCE_MARK_INVALID" }
+  }
 
   return {
     input: {
@@ -573,6 +583,7 @@ export function parseMtmWorkdayEvent(
       accuracy: value.accuracy == null ? null : value.accuracy as number,
       note: note || null,
       ...(attendance.evidence ? { attendance: attendance.evidence } : {}),
+      ...(mark?.success ? { attendanceMark: mark.data } : {}),
     },
     error: null,
   }
@@ -624,6 +635,8 @@ export function mtmWorkdayRequestHash(scope: WorkdayScope, input: MtmWorkdayEven
     locationProvider: includesLocation ? input.attendance?.location?.provider ?? null : null,
     locationMock: includesLocation ? input.attendance?.location?.isMock ?? null : null,
     playIntegrityFingerprint: includesPlayIntegrity ? playIntegrityFingerprint : null,
+    // Absent on old packets: their exact historical digest stays unchanged.
+    ...(input.attendanceMark ? { attendanceMark: input.attendanceMark } : {}),
   })).digest("hex")
 }
 
@@ -741,7 +754,7 @@ export async function applyMtmWorkdayEvent(
     select: replayEventSelect,
   })
   if (replay) {
-    if (!mtmWorkdayReplayMatches(replay, input, scope)) {
+    if (!mtmWorkdayReplayMatches(replay, input, scope) && !await options.allowLocationRedactedReplay?.(replay)) {
       return conflict(
         "MTM_WORKDAY_IDEMPOTENCY_MISMATCH",
         "clientEventId was already used for a different workday operation",
