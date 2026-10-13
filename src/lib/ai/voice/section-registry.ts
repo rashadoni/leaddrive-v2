@@ -233,6 +233,7 @@ export const NO_DATA_SECTIONS: Record<string, "surface" | "config" | "bespoke" |
   mtm_analytics: "surface",
   mtm_leaderboard: "surface",
   mtm_reports: "surface",
+  mtm_attendance: "surface",
   mtm_activity: "surface",
   mtm_operations: "surface",
   mtm_settings: "config",
