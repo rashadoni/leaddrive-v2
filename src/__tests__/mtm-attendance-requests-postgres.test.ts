@@ -2,9 +2,9 @@
 import { randomUUID } from "node:crypto"
 import { spawnSync } from "node:child_process"
 import { createRequire } from "node:module"
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs"
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { tmpdir } from "node:os"
+import { homedir, tmpdir } from "node:os"
 import sharp from "sharp"
 import { NextRequest } from "next/server"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
@@ -37,6 +37,7 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
   let photos: typeof import("@/lib/mtm/attendance-attachment")
   let api: typeof import("@/app/api/v1/mtm/mobile/attendance/requests/route")
   let createdRole = false, createdDb = false
+  let documentRuntime: string | undefined
   const self = { organizationId: "request-pg-a", agentId: "request-pg-owner", role: "AGENT" }
   const input = (date: string) => ({ clientRequestId: randomUUID(), kind: "HOURLY_ABSENCE", unit: "HOURS", startDate: date, endDate: date, startTime: "09:00", endTime: "10:00", reason: "Fictional request" })
   const submit = (body: unknown) => api.POST(new NextRequest("http://localhost/api/v1/mtm/mobile/attendance/requests", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }))
@@ -52,7 +53,9 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
     for (const migration of ["20260806120000_mtm_rls_coverage_completion", "20260806160000_mtm_rls_bypass_clause_normalization", "20261013040000_mtm_attendance_requests"]) sql(scratch!.adminDb, readFileSync(`prisma/migrations/${migration}/migration.sql`, "utf8"))
     sql(scratch!.adminDb, readFileSync("scripts/rls/enable-batch-5.sql", "utf8"))
     sql(scratch!.adminDb, `GRANT USAGE ON SCHEMA public TO "${scratch!.role}"; GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "${scratch!.role}";`)
-    process.env.LEADDRIVE_RUNTIME_DIR = mkdtempSync(join(tmpdir(), "attendance-private-documents-"))
+    // Exercise the real external-runtime guard, which correctly rejects /tmp.
+    documentRuntime = mkdtempSync(join(homedir(), ".attendance-private-documents-test-"))
+    process.env.LEADDRIVE_RUNTIME_DIR = documentRuntime
     prisma = (await import("@/lib/prisma")).prisma
     ;({ runWithTenant: tenant, runWithRlsBypass: bypass } = await import("@/lib/rls-context"))
     store = await import("@/lib/mtm/attendance-request-store")
@@ -70,6 +73,7 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
     await prisma?.$disconnect()
     if (createdDb) sql(adminUrl!, `DROP DATABASE "${scratch!.name}" WITH (FORCE)`)
     if (createdRole) sql(adminUrl!, `DROP ROLE "${scratch!.role}"`)
+    if (documentRuntime) rmSync(documentRuntime, { recursive: true, force: true })
   })
   it("commits one UUID exactly once under a race, binds the body and keeps workday facts untouched", async () => {
     const body = input("2026-11-02")
