@@ -154,6 +154,11 @@ jobs:
           npx prisma validate
           npx prisma generate
           node scripts/ci/workforce-policy-restore-base-row.mjs after
+      - name: Align disposable runtime schema after historical migration proof
+        # The before/after proof above must keep its historical schema. The
+        # following current-client API/browser tests need current columns too.
+        # Refuse any destructive schema change; preserve canonical SQL guards.
+        run: DATABASE_URL="$ADMIN_DATABASE_URL" npx prisma db push --schema prisma/schema.prisma --skip-generate
       - name: Execute mandatory real PostgreSQL restore concurrency and rollback tests
         run: npx vitest run src/__tests__/lib-workforce-policy-restore-postgres.test.ts --maxWorkers=1
       - name: Install Chromium on hosted Ubuntu
