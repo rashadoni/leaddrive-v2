@@ -176,7 +176,7 @@ export function MtmAttendanceCalendar() {
             <select id="attendance-calendar-year" className={SELECT_CLASS} value={year ?? String(currentYear)} disabled={saving}
               onChange={(event) => void load(event.target.value)}>{[currentYear, currentYear + 1].map((value) => <option key={value} value={value}>{value}</option>)}</select></div>
         </div>
-        {days.length ? <table className="block w-full table-fixed text-left text-sm sm:table" aria-label={t("calendarTitle")}>
+        {days.length ? <div className="overflow-x-auto" role="region" aria-label={t("calendarTitle")} tabIndex={0}><table className="block w-full table-fixed text-left text-sm sm:table" aria-label={t("calendarTitle")}>
           <thead className="hidden border-b border-zinc-200 text-xs text-muted-foreground dark:border-zinc-700 sm:table-header-group"><tr>
             <th scope="col" className="w-[18%] py-3 pr-3 font-medium">{t("calendarDate")}</th><th scope="col" className="w-[23%] py-3 pr-3 font-medium">{t("calendarKind")}</th>
             <th scope="col" className="py-3 pr-3 font-medium">{t("calendarName")}</th><th scope="col" className="w-[25%] py-3 font-medium">{t("calendarActions")}</th>
@@ -193,7 +193,7 @@ export function MtmAttendanceCalendar() {
               <Button type="button" variant="ghost" className="min-h-11 text-destructive" disabled={disabled} onClick={() => { setRemovingId(day.id); setSaved(null) }} aria-label={t("calendarDeleteDate", { date: dateLabel(day.date) })}>{t("calendarDelete")}</Button></div>
               : <span className="text-xs text-muted-foreground">{t(day.date <= data.today ? "calendarPastReadOnly" : !day.canEdit ? "calendarPairedReadOnly" : "calendarViewOnly")}</span>}</td>
           </tr>)}</tbody>
-        </table> : <p className="rounded-xl border border-dashed border-zinc-200 px-4 py-5 text-sm text-muted-foreground dark:border-zinc-700">{t("calendarEmpty", { year: year ?? String(currentYear) })}</p>}
+        </table></div> : <p className="rounded-xl border border-dashed border-zinc-200 px-4 py-5 text-sm text-muted-foreground dark:border-zinc-700">{t("calendarEmpty", { year: year ?? String(currentYear) })}</p>}
         {data.canManage ? <form className="space-y-4 border-t border-zinc-200 pt-5 dark:border-zinc-700" onSubmit={submit} aria-label={t(draft.id ? "calendarEditForm" : "calendarAddForm")}>
           <fieldset disabled={disabled} className="space-y-4"><legend className="mb-3 text-sm font-semibold">{t(draft.id ? "calendarEditForm" : "calendarAddForm")}</legend>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-[minmax(10rem,1fr)_minmax(12rem,1.3fr)_minmax(14rem,2fr)]">
