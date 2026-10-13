@@ -88,6 +88,10 @@ export function InboxScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
   const [activeId, setActiveId] = useState<string | null>(threadOpen ? "own" : null)
   const selected = activeId === "own"
   const [view, setView] = useState<ViewKey>("all")
+  // The filter is the screen's own: it is reported to the story (the step
+  // «pick WhatsApp» completes on it) but not read back from it, or a channel
+  // picked on one step would still hide most of the list a chapter later.
+  const [pickedChannel, setPickedChannel] = useState<DemoInboxChannel | "all">("all")
   const [assignOpen, setAssignOpen] = useState(false)
   const [assignedTo, setAssignedTo] = useState<string | null>(null)
   const composer: "reply" | "note" = snapshot.ui[COMPOSER_MODE] === "note" ? "note" : "reply"
@@ -146,18 +150,23 @@ export function InboxScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
   // The step that says «open your own conversation» must find it in the list,
   // whatever the prospect filtered by a moment ago.
   const onOpenStep = step?.id === "conversation-open"
-  const channelFilter = onOpenStep ? "all" : String(snapshot.ui[CHANNEL_FILTER] ?? "all")
+  const channelFilter = onOpenStep ? "all" : pickedChannel
   const activeView: ViewKey = onOpenStep ? "all" : view
-  const visible = rows.filter((row) => (channelFilter === "all" || row.channel === channelFilter) && inView(row, activeView))
+  // Newest first, as the product sorts them.
+  const visible = rows
+    .filter((row) => (channelFilter === "all" || row.channel === channelFilter) && inView(row, activeView))
+    .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
   const active = activeId && activeId !== "own" ? rows.find((row) => row.id === activeId) ?? null : null
 
   const pickChannel = (channel: DemoInboxChannel) => {
-    dispatch({ type: "ui", path: CHANNEL_FILTER, value: channelFilter === channel ? "all" : channel })
+    const next = channelFilter === channel ? "all" : channel
+    setPickedChannel(next)
+    dispatch({ type: "ui", path: CHANNEL_FILTER, value: next })
   }
   const pickView = (key: ViewKey) => {
     setView(key)
     // As in the product: «Hamısı» also clears the channel filter.
-    if (key === "all" && channelFilter !== "all") dispatch({ type: "ui", path: CHANNEL_FILTER, value: "all" })
+    if (key === "all") setPickedChannel("all")
   }
   const pickComposer = (key: "reply" | "note") => {
     dispatch({ type: "ui", path: COMPOSER_MODE, value: key })
@@ -196,7 +205,12 @@ export function InboxScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
       return
     }
     const result = dispatch({ type: "transition", stepId: step.id, to: "CONVERSATION_OPENED" })
-    if (result.ok) setActiveId("own")
+    if (result.ok) {
+      setActiveId("own")
+      // The whole list is back around the conversation just opened.
+      setPickedChannel("all")
+      setView("all")
+    }
   }
 
   const sendDraft = () => {

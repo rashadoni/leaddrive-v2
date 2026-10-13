@@ -436,11 +436,20 @@ describe("the Omni Channel module", () => {
     expect(container.querySelector('[data-testid="demo-inbox-sample-thread"]')!.textContent).toContain(messages.inboxV2.composer_note)
   }, 60_000)
 
-  it("finds the prospect's own conversation again when its step comes, whatever was filtered", async () => {
+  it("finds the prospect's own conversation again when its step comes, and gives the whole list back after", async () => {
     await renderPlayer()
     await walkTo("conversation-open")
     // WhatsApp was picked two steps ago; the request came from another channel.
     expect(findDemoTarget("conversation-open"), "the own conversation is in the list").not.toBeNull()
+
+    // Opened, it sits in the full list again — in this chapter and the next:
+    // the WhatsApp filter used to follow the prospect and hide all but two rows.
+    await walkTo("conversation-contact")
+    expect(rows().length).toBeGreaterThanOrEqual(8)
+    expect(rail("whatsapp").getAttribute("aria-pressed")).toBe("false")
+    await walkTo("ai-reply-draft")
+    expect(rows().length).toBeGreaterThanOrEqual(8)
+    expect(rows()[0].getAttribute("data-inbox-row")).toBe("own")
   }, 60_000)
 
   it("writes to the team without the customer seeing it, then hands the conversation over", async () => {

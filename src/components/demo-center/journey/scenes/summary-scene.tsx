@@ -1,8 +1,10 @@
 "use client"
 
+import { useTranslations } from "next-intl"
 import { CheckCircle2, ChevronRight, Circle, Flag } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { activeSections, demoMoney, moduleProgress, quoteTotals } from "@/lib/demo-center/journey"
+import { navItems } from "@/lib/nav-items"
 import type { DemoSceneProps } from "../scene-props"
 import { demoTarget } from "../demo-target"
 import { DEMO_JOURNEY_STRINGS as S } from "../strings"
@@ -19,6 +21,13 @@ import { DEMO_JOURNEY_STRINGS as S } from "../strings"
  * is offered plainly only once everything was seen.
  */
 export function SummaryScene({ manifest, snapshot, step, reviewMode, dispatch, hint, openSection, onContactSales }: DemoSceneProps & { onContactSales?: () => void }) {
+  const tn = useTranslations("nav")
+  // The module as the menu names it («Gələn qutusu»), so the button and the
+  // sidebar entry it leads to read the same.
+  const moduleName = (route: string, fallback: string) => {
+    const item = navItems.find((candidate) => candidate.href === route)
+    return item ? tn(item.tKey) : fallback
+  }
   const sections = activeSections(manifest).filter((section) => section.navGroup !== "demo")
   const completed = new Set(snapshot.completedSteps)
   const skipped = new Set(snapshot.skippedSteps)
@@ -54,9 +63,12 @@ export function SummaryScene({ manifest, snapshot, step, reviewMode, dispatch, h
                 className="h-auto justify-between whitespace-normal bg-card py-2.5 text-left"
                 onClick={() => openSection?.(module.firstSectionId)}
                 // The guide's arrow belongs here while something is unseen — not on «Bitir».
-                {...(onFinishStep && index === 0 ? { ...demoTarget("summary-finish"), "data-demo-label": S.unseenOpen(module.title) } : {})}
+                {...(onFinishStep && index === 0 ? { ...demoTarget("summary-finish"), "data-demo-label": S.unseenOpen(moduleName(module.route, module.title)) } : {})}
               >
-                <span className="font-medium">{module.title}</span>
+                <span className="min-w-0">
+                  <span className="block font-semibold">{moduleName(module.route, module.title)}</span>
+                  <span className="block text-xs font-normal text-muted-foreground">{module.title}</span>
+                </span>
                 <ChevronRight className="ml-2 h-4 w-4 shrink-0" aria-hidden="true" />
               </Button>
             ))}
