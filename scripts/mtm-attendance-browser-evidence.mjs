@@ -29,9 +29,9 @@ caseNames.push('browser-rules-calendar-crud', 'browser-hr-grant-revoke', 'browse
 const manifest = {
   version: 1, status: 'RUNNING', headSha: head, workflowSha: process.env.GITHUB_SHA,
   runId: process.env.GITHUB_RUN_ID, runAttempt: process.env.GITHUB_RUN_ATTEMPT,
-  environment: 'GitHub Linux, headed Chromium under Xvfb, Next development server, isolated PostgreSQL 16',
+  environment: 'GitHub Linux, headed Chromium with Openbox under Xvfb, Next development server, isolated PostgreSQL 16',
   productionMutation: false, physicalAPK: 'NOT_RUN', outboundEmail: 'NOT_RUN',
-  startedAt: new Date().toISOString(), cases: [], sourceBindings: [], controls: [],
+  startedAt: new Date().toISOString(), cases: [], sourceBindings: [], controls: [], timings: [],
   limitations: [
     'Browser navigation and action families are separate records; page opening does not prove every button.',
     'Mobile workday and employee submission use the real mobile HTTP transport, not a physical APK or OS permissions.',
@@ -95,6 +95,22 @@ async function readyPage(path) {
   await page.locator('h1').first().waitFor({ timeout: 120000 })
   await poll(async () => !(await page.locator('[aria-busy="true"]').count()), 'Page still busy', 120000)
 }
+async function readyLeaveBalances() {
+  const started = Date.now()
+  const waiting = page.waitForResponse(response => new URL(response.url()).pathname === `${apiRoot}/leave-balances` && response.request().method() === 'GET', { timeout: 120000 })
+  void waiting.catch(() => {})
+  await readyPage('leave-balances')
+  const response = await waiting
+  const body = await response.json().catch(() => null)
+  manifest.timings.push({ route: `${apiRoot}/leave-balances`, phase: 'navigation-to-complete-response', elapsedMs: Date.now() - started, status: response.status() })
+  if (response.status() !== 200 || body?.success !== true) {
+    const error = new Error('Leave report did not load')
+    error.safeDiagnostic = `GET leave-balances: received ${response.status()}${/^MTM_[A-Z_]+$/.test(body?.code ?? '') ? ` ${body.code}` : ''}`
+    throw error
+  }
+  assert.ok(body.data.rows.length)
+  await page.getByTestId('leave-row').first().waitFor()
+}
 async function clickResponse(locator, path, method = 'POST', status = 200, parseBody = true) {
   const waiting = page.waitForResponse(response => new URL(response.url()).pathname === path && response.request().method() === method, { timeout: 120000 })
   void waiting.catch(() => {}) // A failed click must not leave an unhandled listener rejection.
@@ -131,7 +147,7 @@ try {
   assert.ok(fixture, 'Fixture provisioning failed')
   // Native tab visibility is part of the QR lifecycle; no synthetic visibility events.
   assert.ok(process.env.DISPLAY, 'Hosted virtual display required')
-  browser = await chromium.launch({ headless: false })
+  browser = await chromium.launch({ headless: false, ignoreDefaultArgs: ['--disable-backgrounding-occluded-windows'] })
   await run('credentials-and-roles', 'authenticated-http', async () => {
     for (const role of ['admin', 'hr', 'manager', 'employee', 'field', 'foreign']) {
       const context = await browser.newContext({ baseURL: origin.origin, viewport: { width: 1440, height: 1000 }, locale: 'en-US' })
@@ -560,7 +576,7 @@ try {
     await readyPage('branch-qr')
     const toggle = page.getByRole('switch', { name: t('qrRule') })
     assert.equal(await toggle.getAttribute('aria-checked'), 'false')
-    let secondPage, visibilitySession
+    let visibilitySession, windowId
     try {
       // The component aborts the old PUT response while loading its new state.
       // Prove the real status and resulting state without reading a discarded body.
@@ -573,30 +589,33 @@ try {
       await button('qrRefresh').click()
       await qr.waitFor({ timeout: 120000 })
       // Playwright enables focus emulation on every page, which pins visibility
-      // to visible. Remove that runner override before changing real foreground
-      // tabs; never assign document.visibilityState or dispatch synthetic events.
+      // to visible. Remove that runner override before minimizing the native
+      // window; never assign document.visibilityState or dispatch synthetic events.
       visibilitySession = await sessions.admin.newCDPSession(page)
       await visibilitySession.send('Emulation.setFocusEmulationEnabled', { enabled: false })
-      secondPage = await sessions.admin.newPage()
-      await secondPage.goto('about:blank'); await secondPage.bringToFront()
-      await poll(async () => await page.evaluate(() => document.visibilityState) === 'hidden', 'QR page background visibility')
+      ;({ windowId } = await visibilitySession.send('Browser.getWindowForTarget'))
+      await visibilitySession.send('Browser.setWindowBounds', { windowId, bounds: { windowState: 'minimized' } })
+      await poll(async () => (await visibilitySession.send('Browser.getWindowBounds', { windowId })).bounds.windowState === 'minimized', 'Native Chromium window minimized')
+      await poll(async () => await page.evaluate(() => document.visibilityState) === 'hidden', 'QR native window background visibility')
       await poll(async () => await qr.count() === 0, 'QR hidden in background')
-      await secondPage.close(); secondPage = null; await page.bringToFront()
+      await visibilitySession.send('Browser.setWindowBounds', { windowId, bounds: { windowState: 'normal' } })
+      await page.bringToFront()
+      await poll(async () => await page.evaluate(() => document.visibilityState) === 'visible', 'QR native window foreground visibility')
       await qr.waitFor({ timeout: 120000 })
       await clickResponse(toggle, '/api/v1/mtm/settings', 'PUT', 200, false)
       await poll(async () => await toggle.getAttribute('aria-checked') === 'false', 'QR disabled')
       assert.equal(await qr.count(), 0)
     } finally {
-      await secondPage?.close()
-      await page.bringToFront()
+      // Failed lifecycle assertions must still leave the disposable policy OFF.
+      await request(sessions.admin, '/api/v1/mtm/settings', { method: 'PUT', body: { attendanceBranchQrEnabled: false } })
       if (visibilitySession) {
+        if (windowId !== undefined) await visibilitySession.send('Browser.setWindowBounds', { windowId, bounds: { windowState: 'normal' } })
+        await page.bringToFront()
         await visibilitySession.send('Emulation.setFocusEmulationEnabled', { enabled: true })
         await visibilitySession.detach()
       }
-      // Failed lifecycle assertions must still leave the disposable policy OFF.
-      await request(sessions.admin, '/api/v1/mtm/settings', { method: 'PUT', body: { attendanceBranchQrEnabled: false } })
     }
-    return { enabledThenDisabled: true, refresh: true, hidesInBackground: true, playwrightFocusOverrideDisabled: true, cameraScan: 'NOT_RUN' }
+    return { enabledThenDisabled: true, refresh: true, hidesInBackground: true, nativeWindowMinimizeAndRestore: true, playwrightFocusOverrideDisabled: true, cameraScan: 'NOT_RUN' }
   })
   await run('browser-settings-hr-catalogue-quotas', 'browser-action+database-backed-http', async () => {
     await readyPage('')
@@ -689,9 +708,9 @@ try {
     await editor.getByLabel(t('shiftReason')).fill('Fictional browser night shift')
     await clickResponse(button('shiftPublish', editor), `${apiRoot}/shifts`)
     assert.ok((await api('admin', `/shifts?from=${date(10)}&to=${date(12)}`)).plans.length)
-    await readyPage('leave-balances')
-    await page.getByTestId('leave-row').first().waitFor()
-    await button('leaveNext').click(); await button('leavePrev').click()
+    await readyLeaveBalances()
+    await clickResponse(button('leaveNext'), `${apiRoot}/leave-balances`, 'GET')
+    await clickResponse(button('leavePrev'), `${apiRoot}/leave-balances`, 'GET')
     const row = page.getByTestId('leave-row').filter({ hasText: 'Fixture employee' })
     await button('leaveEdit', row).click()
     const profile = page.getByTestId('leave-profile')
@@ -865,7 +884,7 @@ try {
     return { detector: 'Seeded finding; only review/dismissal is browser-tested' }
   })
   await run('browser-leave-policy-publication', 'browser-action+database-backed-http', async () => {
-    await readyPage('leave-balances')
+    await readyLeaveBalances()
     const policy = page.getByTestId('leave-policy')
     await policy.locator('summary').click()
     await policy.getByLabel(t('leaveNormDays')).first().fill('21')
@@ -1021,7 +1040,9 @@ try {
     assert.equal(manager.headers()['x-content-type-options'], 'nosniff')
     await readyPage(`requests?requestId=${submitted.request.id}`)
     const row = page.getByTestId(`attendance-request-${submitted.request.id}`)
-    await button('requestsOpen', row).click()
+    // A focused request URL automatically expands its details.
+    await button('requestsClose', row).waitFor()
+    assert.equal(await button('requestsClose', row).getAttribute('aria-expanded'), 'true')
     const link = row.getByRole('link', { name: t('requestsDocument', { number: 1 }), exact: true })
     assert.equal(await link.getAttribute('href'), `${apiRoot}/attachments/${selected.id}`)
     const waiting = page.waitForEvent('download', { timeout: 120000 }); void waiting.catch(() => {})

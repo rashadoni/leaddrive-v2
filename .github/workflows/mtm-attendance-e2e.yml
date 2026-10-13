@@ -122,6 +122,8 @@ jobs:
           node scripts/fixtures/mtm-attendance-e2e.mjs prepare
           node scripts/ci/check-github-runner-policy.mjs
       - run: npx playwright install --with-deps chromium
+      - name: Native window manager for QR background lifecycle
+        run: sudo apt-get install --yes --no-install-recommends openbox x11-utils
       - name: Authenticated browser, mobile HTTP and PostgreSQL scenarios
         run: |
           node node_modules/next/dist/bin/next dev --hostname 127.0.0.1 --port "$MTM_E2E_PORT" > "$MTM_E2E_LOG" 2>&1 &
@@ -136,7 +138,21 @@ jobs:
             fi
             sleep 2
           done
-          xvfb-run --auto-servernum --server-args='-screen 0 1920x1200x24' node scripts/mtm-attendance-browser-evidence.mjs
+          xvfb-run --auto-servernum --server-args='-screen 0 1920x1200x24' bash <<'MTM_BROWSER_RUNNER'
+          set -euo pipefail
+          openbox --sm-disable > "$RUNNER_TEMP/mtm-attendance-window-manager.log" 2>&1 &
+          MTM_WM_PID=$!
+          trap 'kill "$MTM_WM_PID" 2>/dev/null || true; wait "$MTM_WM_PID" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if xprop -root _NET_SUPPORTING_WM_CHECK | grep -qE 'window id # 0x[1-9a-f]'; then break; fi
+            if ! kill -0 "$MTM_WM_PID" 2>/dev/null || [ "$attempt" -eq 30 ]; then
+              echo '::error::Hosted window manager failed to start'
+              exit 1
+            fi
+            sleep 1
+          done
+          node scripts/mtm-attendance-browser-evidence.mjs
+          MTM_BROWSER_RUNNER
       - name: Preserve sanitized workflow result
         if: always()
         env:

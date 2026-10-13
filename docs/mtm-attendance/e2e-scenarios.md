@@ -224,3 +224,28 @@ failure, so further failures can be diagnosed without private response content.
 These corrections still need a new hosted run. No product defect has been
 established; the document access/download assertions remain unproved until the
 upload preparation and the subsequent real browser steps complete successfully.
+
+## Third hosted evidence and remaining browser setup — 2026-10-14 (Asia/Baku)
+
+Run 38477922867, exact head `7bbf8f9f47031e245f8dd9a10997d8d809aae9cd`,
+finished **FAIL: 59 PASS, 3 FAIL, 5 NOT_RUN**. The external runtime/log correction
+worked: document upload/retry, invalid files/size, EXIF removal, private draft
+and unselected files, denied roles and same-team reviewer checks completed.
+The actual download was not reached because the harness sought an Open button
+on a focused request that correctly opened itself. The screenshot shows the
+expanded document link and Close button; the harness now asserts that state
+before clicking the document link.
+
+Shift publication succeeded. The subsequent leave report still showed Loading
+when a generic element wait expired. The two leave-page scenarios now await the
+specific real GET response and complete body using the existing HTTP deadline,
+then assert rows; navigation-to-response time/status is retained in the manifest.
+Pagination also waits for its real response. No global UI timeout was increased;
+slow report performance remains to be assessed from this new timing evidence.
+
+Bare Xvfb still did not produce a hidden page after a second window was brought
+forward. CI now starts and verifies Openbox on the same display. The QR scenario
+removes Playwright's focus override and natively minimizes/restores Chromium
+through its window API, asserting the actual minimized state, hidden visibility,
+absent QR and restored foreground QR. No fake DOM visibility or forced click is
+used. These remaining browser corrections require another hosted run.
