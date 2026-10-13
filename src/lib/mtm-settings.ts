@@ -34,6 +34,8 @@ export const MTM_SETTING_DEFAULTS = {
   attendanceEnabled: false,
   attendanceRequireInstallationApproval: false,
   attendanceBranchQrEnabled: false,
+  attendanceEmployeeRemindersEnabled: false,
+  attendanceManagerAlertsEnabled: false,
   // Reliable outside fixes remain accepted and flagged unless the admin opts in.
   attendanceRejectOutsideBranch: false,
   attendanceAllowSharedInstallations: false,

@@ -302,3 +302,18 @@ describe("personal attendance email schedules", () => {
     expect(container.textContent).toContain(messages("en").mtmAttendance.reportAccessUnavailable)
   })
 })
+
+describe("daily HR summary preset", () => {
+  it.each(["ru", "az", "en"])("keeps %s recipients empty and delivery off until explicitly configured", async locale => {
+    await render(locale)
+    const t = messages(locale).mtmAttendance
+    await click(t.deliveryOpen); await click(t.deliveryDailySummary)
+    expect((panel().querySelector("#attendance-delivery-recipients") as HTMLTextAreaElement).value).toBe("")
+    expect((panel().querySelector("#attendance-delivery-frequency") as HTMLSelectElement).value).toBe("DAILY")
+    expect((panel().querySelector("#attendance-delivery-format") as HTMLSelectElement).value).toBe("xlsx")
+    expect(mutations()).toEqual([])
+    capture(locale, "-daily-summary")
+    await submit()
+    expect(mutations()).toEqual([])
+  })
+})
