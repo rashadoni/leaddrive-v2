@@ -446,3 +446,9 @@
 #### 2026-10-13 — CI приватных документов: отдельный каталог логов
 
 - Повтор PostgreSQL выявил второй обязательный runtime-path: при внешнем runtime каталог логов тоже должен быть внешним и отдельным. Fixture задаёт два случайных каталога вне checkout и /tmp, удаляет только свои каталоги и восстанавливает переменные окружения. Защита production не менялась. Проверка реальной записи ожидает повторного CI; локально NOT RUN.
+
+#### 2026-10-13 — CI заявки: распознаваемый RLS wrapper и приватный доступ
+
+- #719 mandatory static gate нашёл два RLS-context gaps: вложенный generic Promise в inline типе параметров не распознавался scanner, хотя wrapper действовал. Параметр вынесен в named AttachmentContext; scanner и его baseline не менялись. Полный build/typecheck и HRM UI этого head прошли, повтор static обязателен.
+- Из последующего review2.6 обратно перенесено ограничение CRM private attachments: только текущий session reviewer с write и настоящей областью команды, без self/readonly HR grant. Поэтому промежуточный выпуск2.2 также не открывает документы общим HR-читателям. Старая auth.actor могла быть синтетическим широким report actor. Повторные scoped проверки/CI далее; общий RLS dependency scan локально NOT RUN по host contract.
+- Private reviewer admission:7targeted tests PASS, scoped ESLint3paths PASS, diff-check PASS. No role/scope widening: non-admin null scope is denied too. Shared dependencies linked without install/generate. Full regression/RLS scan remains CI-only.
