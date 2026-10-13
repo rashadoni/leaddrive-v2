@@ -61,6 +61,9 @@ const now = new Date("2026-10-12T06:00:00Z"), date = "2026-10-12"
     if (pushed.status !== 0) throw new Error("Reminder fixture schema push failed")
     sql(scratch!.adminDb, "DROP TABLE mtm_attendance_reminder_notices; DROP TABLE mtm_attendance_shift_members; DROP TABLE mtm_attendance_shift_plans")
     for (const migration of ["20260806120000_mtm_rls_coverage_completion", "20260806160000_mtm_rls_bypass_clause_normalization", "20261013170000_mtm_attendance_reminders", "20261013200000_mtm_attendance_shift_plans"]) sql(scratch!.adminDb, readFileSync(`prisma/migrations/${migration}/migration.sql`, "utf8"))
+    const explicitRls = readFileSync("prisma/migrations/20261013213000_mtm_attendance_reminders_rls_explicit/migration.sql", "utf8")
+    sql(scratch!.adminDb, explicitRls)
+    sql(scratch!.adminDb, explicitRls)
     sql(scratch!.adminDb, readFileSync("scripts/rls/enable-batch-5.sql", "utf8"))
     sql(scratch!.adminDb, `GRANT USAGE ON SCHEMA public TO "${scratch!.role}"; GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA public TO "${scratch!.role}"`)
     prisma = (await import("@/lib/prisma")).prisma
@@ -136,6 +139,8 @@ const now = new Date("2026-10-12T06:00:00Z"), date = "2026-10-12"
     await setting("attendanceEnabled", true)
   })
   it("enforces tenant RLS, immutability and recipient shape at the database boundary", async () => {
+    const flags = await tenant(ORG, () => prisma.$queryRaw<{ enabled: boolean; forced: boolean }[]>`SELECT relrowsecurity AS enabled, relforcerowsecurity AS forced FROM pg_class WHERE oid='public.mtm_attendance_reminder_notices'::regclass`)
+    expect(flags).toEqual([{ enabled: true, forced: true }])
     const id = await employee(); await tenant(ORG, () => store.createAttendanceReminders(ORG, id, now))
     expect(await tenant(OTHER, () => prisma.$queryRaw`SELECT id FROM mtm_attendance_reminder_notices WHERE "agentId"=${id}`)).toEqual([])
     expect(await tenant(ORG, () => prisma.$executeRaw`UPDATE mtm_attendance_reminder_notices SET kind='MANAGER_LATE' WHERE "agentId"=${id}`)).toBe(0)

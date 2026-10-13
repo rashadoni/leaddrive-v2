@@ -210,6 +210,14 @@ export interface MtmPrismaMock {
   mtmAttendanceQrEvidence: ModelMock
   mtmAttendanceMarkEvidence: ModelMock
   mtmAttendanceAttachment: ModelMock
+  mtmAttendanceLeavePolicy: ModelMock
+  mtmAttendanceLeaveProfile: ModelMock
+  mtmAttendanceMonthClose: ModelMock
+  mtmAttendanceMonthMember: ModelMock
+  mtmAttendanceMonthDay: ModelMock
+  mtmAttendanceShiftPlan: ModelMock
+  mtmAttendanceShiftMember: ModelMock
+  mtmAttendanceReminderNotice: ModelMock
   mtmSetting: ModelMock
   mtmNotification: ModelMock
   mtmRouteNotificationOutbox: ModelMock
@@ -413,6 +421,14 @@ export function makeMtmPrismaMock(): MtmPrismaMock {
     mtmAttendanceQrEvidence: makeModel(),
     mtmAttendanceMarkEvidence: makeModel(),
     mtmAttendanceAttachment: makeModel(),
+    mtmAttendanceLeavePolicy: makeModel(),
+    mtmAttendanceLeaveProfile: makeModel(),
+    mtmAttendanceMonthClose: makeModel(),
+    mtmAttendanceMonthMember: makeModel(),
+    mtmAttendanceMonthDay: makeModel(),
+    mtmAttendanceShiftPlan: makeModel(),
+    mtmAttendanceShiftMember: makeModel(),
+    mtmAttendanceReminderNotice: makeModel(),
     mtmSetting: makeModel(),
     mtmNotification: makeModel(),
     mtmRouteNotificationOutbox: makeModel(),
