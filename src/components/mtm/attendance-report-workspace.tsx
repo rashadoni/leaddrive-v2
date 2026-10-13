@@ -10,7 +10,7 @@ import { HomeCard, HomeKpi, HomePill, type HomeTone } from "@/components/mtm/hom
 import { addDateKeyDays, isDateKey } from "@/lib/mtm/mobile-week"
 import { filterMtmAttendanceRows, summarizeMtmAttendanceRows, type MtmAttendanceReport, type MtmAttendanceReportRow } from "@/lib/mtm/attendance-report"
 import { formatAttendanceDuration, attendanceStatusText, attendanceMonthCell, attendanceCatalogueLegend, attendanceCorrectionLines, attendanceApprovedLines, attendanceJournalEntries } from "@/lib/mtm/attendance-presentation"
-import { ATTENDANCE_VIEW_COLUMNS, type AttendanceViewConfig } from "@/lib/mtm/attendance-view-contract"
+import { DEFAULT_ATTENDANCE_VIEW_COLUMNS, type AttendanceViewConfig } from "@/lib/mtm/attendance-view-contract"
 import { buildAttendanceTable } from "@/lib/mtm/attendance-table"
 import { MtmAttendancePersonalViews } from "@/components/mtm/attendance-personal-views"
 import { MtmAttendanceExportButtons } from "@/components/mtm/attendance-export-buttons"
@@ -20,11 +20,11 @@ import { MtmAttendanceDayKinds } from "@/components/mtm/attendance-day-kinds"
 import { MtmAttendanceRequestLimits } from "@/components/mtm/attendance-request-limits"
 import type { AttendanceReportSnapshot } from "@/lib/mtm/attendance-query"
 
-type Form = "DAY" | "MONTH" | "LATE_EARLY" | "ABSENCES" | "JOURNAL"
+type Form = "DAY" | "MONTH" | "LATE_EARLY" | "ABSENCES" | "JOURNAL" | "BRANCH"
 type Range = { from: string; to: string }
 type ReportData = MtmAttendanceReport & { snapshot?: AttendanceReportSnapshot }
 const FORMS: Form[] = ["DAY", "MONTH", "LATE_EARLY", "ABSENCES", "JOURNAL"]
-const FORM_MESSAGES: Record<Form, string> = { DAY: "reportDay", MONTH: "reportMonth", LATE_EARLY: "reportLateEarly", ABSENCES: "reportAbsences", JOURNAL: "reportJournal" }
+const FORM_MESSAGES: Record<Form, string> = { DAY: "reportDay", MONTH: "reportMonth", LATE_EARLY: "reportLateEarly", ABSENCES: "reportAbsences", JOURNAL: "reportJournal", BRANCH: "branchReportTitle" }
 const REASON_MESSAGES: Record<string, string> = { DUPLICATE_WORKDAY: "reportReasonDuplicate", SCHEDULE_INVALID: "reportReasonSchedule", TIMESTAMP_INVALID: "reportReasonTimestamp",
   EVENT_TYPE_INVALID: "reportReasonEvent", JOURNAL_INCOMPLETE: "reportReasonJournal", PAUSE_TOTAL_MISMATCH: "reportReasonPause", WORKDAY_INCONSISTENT: "reportReasonFacts" }
 const SELECT_CLASS = "min-h-11 w-full rounded-lg border border-zinc-200 bg-card px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:border-zinc-700"
@@ -123,9 +123,9 @@ export function MtmAttendanceReportWorkspace() {
 
   const currentConfig = useMemo<AttendanceViewConfig | null>(() => {
     if (!report) return null
-    const mode = customView?.config.mode ?? (form === "MONTH" ? "MONTH" : form === "JOURNAL" ? "JOURNAL" : "DAY")
-    return { version: 1, mode, columns: customView?.config.columns ?? [...ATTENDANCE_VIEW_COLUMNS[mode]], showTotals: customView?.config.showTotals ?? true,
-      filters: { from: report.from, to: report.to, form: customView?.config.filters.form ?? (form === "DAY" || form === "MONTH" ? "ALL" : form),
+    const mode = customView?.config.mode ?? (form === "MONTH" ? "MONTH" : form === "JOURNAL" ? "JOURNAL" : form === "BRANCH" ? "BRANCH" : "DAY")
+    return { version: 1, mode, columns: customView?.config.columns ?? [...DEFAULT_ATTENDANCE_VIEW_COLUMNS[mode]], showTotals: customView?.config.showTotals ?? true,
+      filters: { from: report.from, to: report.to, form: customView?.config.filters.form ?? (form === "DAY" || form === "MONTH" || form === "BRANCH" ? "ALL" : form),
         ...(teamId ? { teamId } : {}), ...(employeeId ? { employeeId } : {}) } }
   }, [report, customView, form, teamId, employeeId])
 
@@ -139,7 +139,7 @@ export function MtmAttendanceReportWorkspace() {
     return { employees: [...employees.values()], teams: [...teams].map(([id, name]) => ({ id, name })) }
   }, [report, t])
   const rows = useMemo(() => filterMtmAttendanceRows(report?.rows ?? [], { teamId: teamId || undefined, employeeId: employeeId || undefined,
-    form: customView?.config.filters.form ?? (form === "DAY" || form === "MONTH" ? "ALL" : form) }), [report, teamId, employeeId, form, customView])
+    form: customView?.config.filters.form ?? (form === "DAY" || form === "MONTH" || form === "BRANCH" ? "ALL" : form) }), [report, teamId, employeeId, form, customView])
   const totals = useMemo(() => summarizeMtmAttendanceRows(rows), [rows])
   const customTable = useMemo(() => report && customView && currentConfig ? buildAttendanceTable(report, currentConfig, locale, t) : null, [report, customView, currentConfig, locale, t])
   const scopeUnavailable = Boolean(report && (teamId || employeeId) && !report.rows.some((row) => (!teamId || row.teamId === teamId) && (!employeeId || row.employeeId === employeeId)))
@@ -232,7 +232,7 @@ export function MtmAttendanceReportWorkspace() {
   ]
 
   return <section aria-label={t("reportTitle")} className="space-y-5" data-testid="attendance-report-workspace">
-    {!accessUnavailable && <div className="flex flex-wrap gap-5"><Link href="/mtm/attendance/requests" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("requestsTitle")}</Link><Link href="/mtm/attendance/decisions" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("journalTitle")}</Link><Link href="/mtm/attendance/branches" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("branchesTitle")}</Link>{canManageAccess && <Link href="/mtm/attendance/employees" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("employeesTitle")}</Link>}{canManageAccess && <Link href="/mtm/attendance/location-settings" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("geoPolicyTitle")}</Link>}</div>}
+    {!accessUnavailable && <div className="flex flex-wrap gap-5"><Link href="/mtm/attendance/requests" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("requestsTitle")}</Link><Link href="/mtm/attendance/decisions" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("journalTitle")}</Link><Link href="/mtm/attendance/branches" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("branchesTitle")}</Link><Link href="/mtm/attendance/branches/report" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("branchReportTitle")}</Link>{canManageAccess && <Link href="/mtm/attendance/employees" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("employeesTitle")}</Link>}{canManageAccess && <Link href="/mtm/attendance/location-settings" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("geoPolicyTitle")}</Link>}</div>}
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{cards.map((card) => <HomeKpi key={card.id} testId={`attendance-${card.id}`} label={t(card.label)}
       icon={card.icon} tone={card.tone} value={report ? format.number(card.value) : null} unit={t(multiDay ? "reportDayRecords" : "reportPeople", { count: card.value })} sub={t(card.hint)}
       progress={report && totals.rowCount ? card.value / totals.rowCount * 100 : 0} />)}</div>

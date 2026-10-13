@@ -7,6 +7,10 @@ import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { NextRequest } from "next/server"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
+import { buildAttendanceTable } from "@/lib/mtm/attendance-table"
+import { buildAttendanceXlsx, buildAttendancePdf } from "@/lib/mtm/attendance-export"
+import { attendancePdfText } from "./helpers/attendance-pdf"
+import { summarizeAttendanceBranches } from "@/lib/mtm/attendance-location-report"
 import type { AttendanceMark } from "@/lib/mtm/attendance-location-contract"
 const adminUrl=process.env.MTM_ATTENDANCE_TEST_DATABASE_URL
 if(!adminUrl&&process.env.MTM_ATTENDANCE_DB_GATE==="required")throw new Error("MTM_ATTENDANCE_TEST_DATABASE_URL is required")
@@ -66,6 +70,21 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
   const before=rows[0].branchRevisionId
   const edited=await tenant(ORG,()=>branches.saveAttendanceBranch(admin,{requestId:randomUUID(),branchId,expectedRevisionId:branchRevisionId,name:"Moved fictional branch",address:"Demo Road 24",latitude:41,longitude:50,radiusMeters:150,active:true}));branchRevisionId=edited.branch.revisionId
   expect((await evidence())[0].branchRevisionId).toBe(before)
+  const { readMtmAttendanceReport } = await import("@/lib/mtm/attendance-report-store")
+  const workday = await tenant(ORG, () => prisma.mtmAgentWorkday.findFirstOrThrow({where:{agentId:identity.agentId},select:{workDate:true}}))
+  const date = workday.workDate.toISOString().slice(0,10)
+  const report = await tenant(ORG, () => readMtmAttendanceReport({organizationId:ORG,actor:{role:"ADMIN",agentId:null,scopedAgentIds:null},query:{from:date,to:date,form:"ALL",employeeId:identity.agentId},now:new Date(at.getTime()+10000)}))
+  expect(report.rows).toHaveLength(1)
+  expect(report.rows[0].locationMarks).toMatchObject([{state:"INSIDE",branch:{name:"Fictional branch",revisionId:before}}])
+  expect(summarizeAttendanceBranches(report.rows).totals).toMatchObject({arrivals:1,departures:0,employees:1,outside:0})
+  expect(JSON.stringify(report)).not.toMatch(/latitude|longitude|installationId|consentId|provider|fixCapturedAt/)
+  const table=buildAttendanceTable(report,{version:1,mode:"BRANCH",columns:["branch","arrivals","departures","employees","outside"],filters:report.snapshot.query,showTotals:true},"en",key=>key)
+  expect(table.rows[0].cells).toEqual(["Fictional branch",1,0,1,0])
+  expect(JSON.stringify(buildAttendanceXlsx(table).worksheets[0].getSheetValues())+attendancePdfText(buildAttendancePdf(table))).not.toMatch(/Moved fictional branch|latitude|longitude|installationId|40\.4|49\.85/)
+  await expect(tenant(ORG,()=>readMtmAttendanceReport({organizationId:ORG,actor:{role:"SUPERVISOR",agentId:null,scopedAgentIds:[]},query:{from:date,to:date,form:"ALL",employeeId:identity.agentId}}))).rejects.toMatchObject({code:"MTM_ATTENDANCE_SCOPE_DENIED"})
+  const other=await tenant(OTHER,()=>readMtmAttendanceReport({organizationId:OTHER,actor:{role:"ADMIN",agentId:null,scopedAgentIds:null},query:{from:date,to:date,form:"ALL"}}))
+  expect(other.rows).toEqual([])
+
   const altered={...op,data:{...op.data,attendanceMark:{...packet(at),installationId:"rf-fictional-installation-0000002"}}};expect((await send(altered)).body.results).toMatchObject([{status:"conflict"}]);expect(await evidence()).toHaveLength(1)
  })
  it.each(["UNAVAILABLE","NO_CONSENT"] as const)("keeps a time mark without GPS: %s",async locationState=>{
@@ -145,6 +164,22 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
   try{await expect(accept()).rejects.toMatchObject({status:404});expect((await send(operation("START",randomUUID(),new Date(),packet()))).status).toBe(403)}finally{await tenant(ORG,()=>prisma.mtmSetting.update({where:{organizationId_key:{organizationId:ORG,key:"attendanceEnabled"}},data:{value:true}}))}
   await tenant(ORG,()=>prisma.mtmAgent.update({where:{id:identity.agentId},data:{status:"INACTIVE"}}))
   await expect(accept()).rejects.toMatchObject({status:403});expect(await evidence()).toEqual([])
+ })
+ it("keeps old-build and break-private endpoint cells blank in the real report",async()=>{
+  await employee();const id=randomUUID(),at=new Date(),start=operation("START",id,at)
+  expect((await send(start)).body.results).toMatchObject([{status:"ok"}])
+  const pauseAt=new Date(at.getTime()+1000),finishAt=new Date(at.getTime()+2000)
+  expect((await send(operation("PAUSE",id,pauseAt))).body.results).toMatchObject([{status:"ok"}])
+  expect((await send(operation("FINISH",id,finishAt,packet(finishAt)))).body.results).toMatchObject([{status:"ok"}])
+  const day=await tenant(ORG,()=>prisma.mtmAgentWorkday.findFirstOrThrow({where:{agentId:identity.agentId},select:{workDate:true}})),date=day.workDate.toISOString().slice(0,10)
+  const {readMtmAttendanceReport}=await import("@/lib/mtm/attendance-report-store")
+  const report=await tenant(ORG,()=>readMtmAttendanceReport({organizationId:ORG,actor:{role:"ADMIN",agentId:null,scopedAgentIds:null},query:{from:date,to:date,form:"ALL",employeeId:identity.agentId},now:new Date(finishAt.getTime()+1000)}))
+  expect(report.rows[0].locationMarks).toMatchObject([{state:"NOT_RECORDED",branch:null,distanceMeters:null},{state:"NOT_RECORDED",branch:null,distanceMeters:null}])
+  const table=buildAttendanceTable(report,{version:1,mode:"DAY",columns:["arrivalBranch","departureBranch","markLocation"],filters:report.snapshot.query,showTotals:false},"en",key=>key)
+  expect(table.rows[0].cells).toEqual(["—","—","—"])
+  const summary=summarizeAttendanceBranches(report.rows)
+  expect(summary.rows[0]).toMatchObject({arrivals:null,departures:null,employees:null,outside:null})
+  expect(JSON.stringify(report)).not.toMatch(/BREAK_PRIVACY|latitude|longitude|installationId/)
  })
  it("rolls back canonical time and idempotency receipt if evidence cannot be saved",async()=>{
   await employee();sql(scratch!.adminDb,"CREATE FUNCTION fixture_geo_fail() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'fixture evidence failure'; END $$; CREATE TRIGGER fixture_geo_fail BEFORE INSERT ON mtm_attendance_mark_evidence FOR EACH ROW EXECUTE FUNCTION fixture_geo_fail();")

@@ -4,15 +4,22 @@ import { addDateKeyDays, isDateKey } from "@/lib/mtm/mobile-week"
 import { DEFAULT_ATTENDANCE_DAY_COLUMNS, DEFAULT_ATTENDANCE_JOURNAL_COLUMNS } from "@/lib/mtm/attendance-presentation"
 
 export const DEFAULT_ATTENDANCE_MONTH_COLUMNS = ["employee", "team", "days", "worked", "late", "absent"] as const
-export const ATTENDANCE_VIEW_COLUMNS = {
+export const DEFAULT_ATTENDANCE_BRANCH_COLUMNS = ["branch", "arrivals", "departures", "employees", "outside", "uncertain"] as const
+export const DEFAULT_ATTENDANCE_VIEW_COLUMNS = {
   DAY: DEFAULT_ATTENDANCE_DAY_COLUMNS,
   MONTH: DEFAULT_ATTENDANCE_MONTH_COLUMNS,
   JOURNAL: DEFAULT_ATTENDANCE_JOURNAL_COLUMNS,
+  BRANCH: DEFAULT_ATTENDANCE_BRANCH_COLUMNS,
+} as const
+export const ATTENDANCE_VIEW_COLUMNS = {
+  ...DEFAULT_ATTENDANCE_VIEW_COLUMNS,
+  DAY: [...DEFAULT_ATTENDANCE_DAY_COLUMNS, "arrivalBranch", "departureBranch", "markLocation"],
+  BRANCH: [...DEFAULT_ATTENDANCE_BRANCH_COLUMNS, "noLocation", "noConsent"],
 } as const
 export const AttendanceViewConfigSchema = z.object({
   version: z.literal(1),
-  mode: z.enum(["DAY", "MONTH", "JOURNAL"]),
-  columns: z.array(z.enum(["employee", "team", "date", "status", "startedAt", "completedAt", "worked", "paused", "late", "early", "event", "phoneAt", "serverAt", "days", "absent", "notes"])).min(1).max(15),
+  mode: z.enum(["DAY", "MONTH", "JOURNAL", "BRANCH"]),
+  columns: z.array(z.enum(["employee", "team", "date", "status", "startedAt", "completedAt", "worked", "paused", "late", "early", "event", "phoneAt", "serverAt", "days", "absent", "notes", "arrivalBranch", "departureBranch", "markLocation", "branch", "arrivals", "departures", "employees", "outside", "uncertain", "noLocation", "noConsent"])).min(1).max(15),
   showTotals: z.boolean(),
   filters: AttendanceReportQuerySchema,
 }).strict().superRefine((config, ctx) => {

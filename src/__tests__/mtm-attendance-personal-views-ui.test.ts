@@ -7,13 +7,13 @@ import { NextIntlClientProvider } from "next-intl"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { MtmAttendanceReportWorkspace } from "@/components/mtm/attendance-report-workspace"
 import { buildMtmAttendanceReport } from "@/lib/mtm/attendance-report"
-import { ATTENDANCE_VIEW_COLUMNS, AttendanceViewConfigSchema, type AttendanceView, type AttendanceViewConfig } from "@/lib/mtm/attendance-view-contract"
+import { ATTENDANCE_VIEW_COLUMNS, DEFAULT_ATTENDANCE_VIEW_COLUMNS, AttendanceViewConfigSchema, type AttendanceView, type AttendanceViewConfig } from "@/lib/mtm/attendance-view-contract"
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 const TODAY = "2026-10-13"
 const people = [{ id: "a", name: "Aysel Aliyeva", teamId: "north", teamName: "North" }, { id: "b", name: "Leyla Mammadova", teamId: "south", teamName: "South" }]
 const at = (clock: string) => `${TODAY}T${clock}:00+04:00`
-const config = (changes: Partial<AttendanceViewConfig> = {}): AttendanceViewConfig => ({ version: 1, mode: "DAY", columns: [...ATTENDANCE_VIEW_COLUMNS.DAY], showTotals: true,
+const config = (changes: Partial<AttendanceViewConfig> = {}): AttendanceViewConfig => ({ version: 1, mode: "DAY", columns: [...DEFAULT_ATTENDANCE_VIEW_COLUMNS.DAY], showTotals: true,
   filters: { from: TODAY, to: TODAY, form: "ALL" }, ...changes })
 const view = (changes: Partial<AttendanceView> = {}): AttendanceView => ({ id: "view-a", name: "My attendance", config: config(), version: "2026-10-13T10:00:00.000Z", ...changes })
 const response = (data: unknown, status = 200, code?: string) => new Response(JSON.stringify({ success: status < 400, data, code, error: "PRIVATE_ERROR" }), { status })
@@ -97,7 +97,12 @@ describe("personal attendance forms with real report rows", () => {
     expect(panel().textContent).toContain(t.viewsTitle)
     expect(panel().textContent).toContain(t.viewsIntro)
     expect(panel().textContent).toContain(t.reportWorked)
-    expect(panel().querySelectorAll('input[data-column]:checked')).toHaveLength(ATTENDANCE_VIEW_COLUMNS.DAY.length)
+    expect(panel().querySelectorAll('input[data-column]:checked')).toHaveLength(DEFAULT_ATTENDANCE_VIEW_COLUMNS.DAY.length)
+    expect(panel().querySelectorAll('input[data-column]')).toHaveLength(ATTENDANCE_VIEW_COLUMNS.DAY.length)
+    for (const column of ['arrivalBranch', 'departureBranch', 'markLocation']) expect(panel().querySelector<HTMLInputElement>(`input[data-column="${column}"]`)?.checked).toBe(false)
+    expect(panel().textContent).toContain(t.reportArrivalBranch)
+    expect(panel().textContent).toContain(t.reportDepartureBranch)
+    expect(panel().textContent).toContain(t.reportMarkLocation)
     expect(panel().textContent).not.toMatch(/mtmAttendance\.|PRIVATE_/)
     const directory = process.env.MTM_ATTENDANCE_RENDER_DIR
     if (directory) {
@@ -111,7 +116,7 @@ describe("personal attendance forms with real report rows", () => {
     await edit("report-team", "north")
     await edit("view-name", "North hours")
     for (const checkbox of Array.from(panel().querySelectorAll<HTMLInputElement>('input[data-column]'))) {
-      if (!["employee", "worked"].includes(checkbox.dataset.column!)) await act(async () => checkbox.click())
+      if (checkbox.checked && !["employee", "worked"].includes(checkbox.dataset.column!)) await act(async () => checkbox.click())
     }
     await act(async () => panel().querySelector<HTMLButtonElement>('[aria-label="Move “Worked” earlier"]')!.click())
     await submit()
@@ -149,6 +154,34 @@ describe("personal attendance forms with real report rows", () => {
     expect(headers()).toEqual(["Employee", "Team", "Date", "Day status", "Event", "Phone time", "Received by server"])
     expect(customRows()[0]).toContain("8:59:00")
     expect(totals()).toBeUndefined()
+  })
+
+  it("opens and saves a branch form using branch cells instead of day rows", async () => {
+    fetchMock.mockImplementation(async (url, options) => {
+      const result = await server(url, options)
+      if (!String(url).includes("/report?")) return result
+      const body = await result.json()
+      for (const row of body.data.rows) row.locationMarks = row.employeeId === "a" ? [{ eventId: "private-event", action: "START", state: "INSIDE", branch: { id: "private-id", revisionId: "private-revision", name: "Historical branch" }, distanceMeters: 5, claimedAt: at("09:00"), serverReceivedAt: at("09:01") }] : []
+      return response(body.data)
+    })
+    await render(); await edit("view-mode", "BRANCH"); await edit("view-name", "Branches")
+    await submit()
+    expect(savedViews[0].config).toMatchObject({ mode: "BRANCH", columns: [...DEFAULT_ATTENDANCE_VIEW_COLUMNS.BRANCH], filters: { form: "ALL" } })
+    expect(headers()).toEqual(["Branch / location information", "Starts", "Finishes", "Employees", "Outside the branch area", "Uncertain"])
+    expect(customRows()).toEqual(["Historical branch10100"])
+    expect(container.textContent).not.toMatch(/private-event|private-id|private-revision|mtmAttendance\./)
+    await render("ru")
+    expect(customRows()).toEqual(["Historical branch10100"])
+    expect(headers()[0]).toBe(messages("ru").mtmAttendance.branchReportBranch)
+  })
+
+  it("saves optional location columns while preserving missing historical evidence", async () => {
+    await render(); await edit("view-name", "Day locations")
+    for (const column of ["arrivalBranch", "departureBranch", "markLocation"]) await act(async () => panel().querySelector<HTMLInputElement>(`input[data-column="${column}"]`)!.click())
+    await submit()
+    expect(savedViews[0].config.columns.slice(-3)).toEqual(["arrivalBranch", "departureBranch", "markLocation"])
+    expect(headers().slice(-3)).toEqual(["Start branch", "Finish branch", "Mark location"])
+    expect(Array.from(container.querySelectorAll('[data-testid="attendance-custom-row"]')).every(row => Array.from(row.querySelectorAll("td")).slice(-3).every(cell => cell.textContent === "—"))).toBe(true)
   })
 
   it("preserves an opened monthly form and its scope when the locale changes", async () => {
