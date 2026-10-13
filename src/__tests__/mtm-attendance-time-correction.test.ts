@@ -94,6 +94,14 @@ describe("MTM correction engine inside the caller's authorized transaction", () 
     tx.mtmAgentWorkdayEvent.findMany.mockResolvedValue([event("START", "05:00"), event("PAUSE", "13:00")])
     expect((await run()).workday).toMatchObject({ totalPausedSeconds: 3600, pausedAt: null, status: "COMPLETED" })
   })
+  it("refuses an invalid frozen timezone even when the UTC fallback would match", async () => {
+    const pending = request()
+    pending.attendanceDetails.timezone = "invalid-zone"
+    pending.attendanceDetails.startTime = "05:00"; pending.attendanceDetails.endTime = "14:00"
+    tx.mtmHrmRequest.findFirst.mockResolvedValue(pending)
+    await expect(run()).rejects.toHaveProperty("code", "MTM_ATTENDANCE_CORRECTION_INVALID")
+    expect(tx.workforceTimeCorrection.create).not.toHaveBeenCalled()
+  })
   it.each(["self-user", "stale-version", "basis-drift", "missing-now-exists", "missing-finish-proposal", "future-finish", "invalid-journal", "pause-crossing"])("refuses %s before approval or ledger/projection writes", async (kind) => {
     const pending = request()
     if (kind === "self-user") pending.agent.userId = input.userId
