@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto"
+import type { PrismaClient } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import {
   AttendanceRuleInputSchema, attendanceRuleMinimumDate,
@@ -14,8 +15,8 @@ export class AttendanceRuleError extends Error {
   constructor(public readonly code: string, public readonly status: number) { super(code) }
 }
 
-export async function readAttendanceRules(organizationId: string): Promise<MtmAttendanceRule[]> {
-  const rows = await prisma.$queryRaw<RuleRow[]>`
+export async function readAttendanceRules(organizationId: string, db: Pick<PrismaClient, "$queryRaw"> = prisma): Promise<MtmAttendanceRule[]> {
+  const rows = await db.$queryRaw<RuleRow[]>`
     SELECT "id", "effectiveFrom", "timezone", "startTime", "endTime", "lunchMinutes", "lateGraceMinutes", "weekendDays", "createdBy", "createdAt"
     FROM "mtm_attendance_rules" WHERE "organizationId" = ${organizationId} ORDER BY "effectiveFrom" ASC`
   return rows.map(toRule)
