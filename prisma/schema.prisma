@@ -228,6 +228,10 @@ model Organization {
   workforcePolicySnapshots            WorkforcePolicySnapshot[]
   workforceShiftSnapshots             WorkforceShiftSnapshot[]
   workforceWorkdayScheduleSnapshots   WorkforceWorkdayScheduleSnapshot[]
+  attendanceShiftPlans MtmAttendanceShiftPlan[]
+  attendanceShiftMembers MtmAttendanceShiftMember[]
+  attendanceLeavePolicies MtmAttendanceLeavePolicy[]
+  attendanceLeaveProfiles MtmAttendanceLeaveProfile[]
   mtmAttendanceBranches MtmAttendanceBranch[]
   mtmAttendanceBranchRevisions MtmAttendanceBranchRevision[]
   mtmAttendancePrimaryBranchRevisions MtmAttendancePrimaryBranchRevision[]
@@ -724,6 +728,9 @@ model User {
   workforceShiftDefaultOperationsPublished WorkforceShiftDefaultOperation[] @relation("WorkforceShiftDefaultOperationPublishedBy")
   workforceShiftTeamDefaultAssignmentsAssigned WorkforceShiftTeamDefaultAssignment[] @relation("WorkforceShiftTeamDefaultAssignmentAssignedBy")
   workforceShiftTeamDefaultOperationsPublished WorkforceShiftTeamDefaultOperation[] @relation("WorkforceShiftTeamDefaultOperationPublishedBy")
+  attendanceShiftPlansCreated MtmAttendanceShiftPlan[]
+  attendanceLeavePoliciesCreated MtmAttendanceLeavePolicy[]
+  attendanceLeaveProfilesCreated MtmAttendanceLeaveProfile[]
   mtmAttendanceBranchRevisionsCreated MtmAttendanceBranchRevision[]
   mtmAttendancePrimaryBranchRevisionsCreated MtmAttendancePrimaryBranchRevision[]
   workforceSitesCreated               WorkforceSite[]                @relation("WorkforceSiteCreatedBy")
@@ -5764,8 +5771,13 @@ model MtmTeam {
 
 // MTM Agent — field agents linked to CRM users
 model MtmAgent {
+<<<<<<< HEAD
   attendanceReminderSubjects MtmAttendanceReminderNotice[] @relation("AttendanceReminderSubject")
   attendanceReminderRecipients MtmAttendanceReminderNotice[] @relation("AttendanceReminderRecipient")
+=======
+  attendanceShiftMembers MtmAttendanceShiftMember[]
+  attendanceLeaveProfiles MtmAttendanceLeaveProfile[]
+>>>>>>> 74db912f0
   attendanceQrEvidence MtmAttendanceQrEvidence[]
   attendanceInstallationRequests MtmAttendanceInstallationRequest[]
   mtmAttendanceStreamIntegrity MtmAttendanceStreamIntegrity[]
@@ -22358,12 +22370,37 @@ model MtmAttendanceQrEvidence {
   @@map("mtm_attendance_qr_evidence")
 }
 
+<<<<<<< HEAD
 /// Append-only dedupe receipt. A notification is created in the same transaction.
 model MtmAttendanceReminderNotice {
+=======
+model MtmAttendanceLeavePolicy {
+  id String @id
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  year Int
+  version Int
+  previousId String?
+  requestId String
+  requestHash String @db.VarChar(64)
+  value Json
+  reason String @db.VarChar(1000)
+  createdBy String
+  author User @relation(fields: [organizationId, createdBy], references: [organizationId, id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  @@unique([organizationId, id])
+  @@unique([organizationId, requestId])
+  @@unique([organizationId, year, version])
+  @@map("mtm_attendance_leave_policies")
+}
+
+model MtmAttendanceLeaveProfile {
+>>>>>>> 74db912f0
   id String @id
   organizationId String
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   agentId String
+<<<<<<< HEAD
   agent MtmAgent @relation("AttendanceReminderSubject", fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
   workDate DateTime @db.Date
   kind String @db.VarChar(20)
@@ -22379,4 +22416,57 @@ model MtmAttendanceReminderNotice {
   @@index([organizationId, recipientUserId, workDate], map: "mtm_reminder_user_date")
   @@index([organizationId, recipientAgentId, workDate], map: "mtm_reminder_agent_date")
   @@map("mtm_attendance_reminder_notices")
+=======
+  agent MtmAgent @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  year Int
+  version Int
+  previousId String?
+  requestId String
+  requestHash String @db.VarChar(64)
+  value Json
+  reason String @db.VarChar(1000)
+  createdBy String
+  author User @relation(fields: [organizationId, createdBy], references: [organizationId, id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  @@unique([organizationId, id])
+  @@unique([organizationId, requestId])
+  @@unique([organizationId, agentId, year, version])
+  @@map("mtm_attendance_leave_profiles")
+}
+
+
+// Future, frozen-roster schedules. Revisions never rewrite attendance facts.
+model MtmAttendanceShiftPlan {
+  id String @id
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  version Int
+  previousId String?
+  requestId String
+  requestHash String @db.VarChar(64)
+  teamId String?
+  teamName String?
+  value Json
+  reason String @db.VarChar(1000)
+  createdBy String
+  author User @relation(fields: [organizationId, createdBy], references: [organizationId, id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  members MtmAttendanceShiftMember[]
+  @@unique([organizationId, id])
+  @@unique([organizationId, version])
+  @@unique([organizationId, requestId])
+  @@map("mtm_attendance_shift_plans")
+}
+model MtmAttendanceShiftMember {
+  id String @id
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  planId String
+  plan MtmAttendanceShiftPlan @relation(fields: [organizationId, planId], references: [organizationId, id], onDelete: Restrict)
+  agentId String
+  agent MtmAgent @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  @@unique([organizationId, planId, agentId])
+  @@index([organizationId, agentId])
+  @@map("mtm_attendance_shift_members")
+>>>>>>> 74db912f0
 }

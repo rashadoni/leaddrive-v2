@@ -1,7 +1,7 @@
 import { addDateKeyDays } from "@/lib/mtm/mobile-week"
 import { ATTENDANCE_LOCATION_STATE_MESSAGES, attendanceDayLocationText, attendanceEndpointBranch, summarizeAttendanceBranches } from "@/lib/mtm/attendance-location-report"
 import { filterMtmAttendanceRows, summarizeMtmAttendanceRows, type MtmAttendanceReport, type MtmAttendanceReportRow } from "@/lib/mtm/attendance-report"
-import { attendanceStatusText, attendanceMonthCell, attendanceCatalogueLegend, attendanceCorrectionLines, attendanceApprovedLines, attendanceJournalEntries, formatAttendanceDuration } from "@/lib/mtm/attendance-presentation"
+import { attendanceStatusText, attendanceMonthCellGroup, attendanceCatalogueLegend, attendanceCorrectionLines, attendanceApprovedLines, attendanceJournalEntries, formatAttendanceDuration } from "@/lib/mtm/attendance-presentation"
 import { AttendanceViewConfigSchema, type AttendanceViewConfig, type AttendanceViewColumn } from "@/lib/mtm/attendance-view-contract"
 
 export type AttendanceText = (key: string, values?: Record<string, string | number>) => string
@@ -19,7 +19,7 @@ const COLUMN: Record<AttendanceViewColumn, string> = { employee: "reportEmployee
 /** One text projection for personal forms, spreadsheet cells and PDF cells. */
 export function buildAttendanceTable(report: MtmAttendanceReport, value: AttendanceViewConfig, locale: "az" | "ru" | "en", t: AttendanceText): AttendanceTable {
   const config = AttendanceViewConfigSchema.parse(value)
-  const rows = filterMtmAttendanceRows(report.rows, config.filters)
+  const rows = filterMtmAttendanceRows(config.mode === "MONTH" ? report.accountingRows ?? report.rows : report.rows, config.filters)
   const totals = summarizeMtmAttendanceRows(rows)
   const date = (key: string) => new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "UTC" }).format(new Date(`${key}T12:00:00Z`))
   const time = (value: string | null, timezone: string, full = false) => value ? new Intl.DateTimeFormat(locale, {
@@ -44,10 +44,11 @@ export function buildAttendanceTable(report: MtmAttendanceReport, value: Attenda
     for (const row of rows) people.set(row.employeeId, [...(people.get(row.employeeId) ?? []), row])
     tableRows = [...people].map(([id, days]) => {
       const summary = summarizeMtmAttendanceRows(days)
-      const byDate = new Map(days.map((row) => [row.date, row]))
+      const byDate = new Map<string, MtmAttendanceReportRow[]>()
+      for (const row of days) byDate.set(row.date, [...(byDate.get(row.date) ?? []), row])
       const data: Record<string, string | number> = { employee: days[0].employeeName, team: days[0].teamName ?? t("reportNoTeam"),
         worked: `${formatAttendanceDuration(summary.workedSeconds)}${!summary.isComplete ? ` · ${t("reportPartial")}` : ""}`, late: summary.lateCount, absent: summary.absentCount }
-      return { key: id, cells: columns.map((column) => column.key in data ? data[column.key] : attendanceMonthCell(byDate.get(column.key), t)) }
+      return { key: id, cells: columns.map((column) => column.key in data ? data[column.key] : attendanceMonthCellGroup(byDate.get(column.key), locale, t)) }
     })
   } else if (config.mode === "JOURNAL") {
     tableRows = rows.flatMap((row) => attendanceJournalEntries(row, locale, t).map((entry) => {

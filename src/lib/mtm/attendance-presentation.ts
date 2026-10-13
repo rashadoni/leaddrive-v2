@@ -31,6 +31,17 @@ export function attendanceMonthCell(row: MtmAttendanceReportRow | undefined, t: 
   if (row.kind === "INVALID_FACTS") return "!"
   return `${row.kind === "OPEN" ? "~" : ""}${formatAttendanceDuration(row.workedSeconds)}${corrected}`
 }
+/** A month cell may contain the previous night's shift and today's slot.
+ * Preserve every source row; a date-key Map must never overwrite either. */
+export function attendanceMonthCellGroup(rows: readonly MtmAttendanceReportRow[] | undefined, locale: string, t: AttendanceHistoryText): string {
+  if (!rows?.length) return "—"
+  return rows.map(row => {
+    const cell = attendanceMonthCell(row, t)
+    if (!row.sourceDate || row.sourceDate === row.date) return cell
+    const date = new Intl.DateTimeFormat(locale, { dateStyle: "short", timeZone: "UTC" }).format(new Date(`${row.sourceDate}T12:00:00Z`))
+    return `${cell} (${t("shiftSourceDate", { date })})`
+  }).join(" / ")
+}
 export function attendanceCatalogueLegend(rows: readonly MtmAttendanceReportRow[], locale: string): string[] {
   const kinds = new Map(rows.flatMap((row) => row.dayKind ? [[row.dayKind.key, row.dayKind] as const] : []))
   return [...kinds.values()].map((kind) => `${kind.code} — ${attendanceDayKindLabel(kind, locale)}`)
