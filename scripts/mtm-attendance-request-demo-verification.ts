@@ -154,7 +154,10 @@ export async function verifySurfaceDemo(snapshot: Awaited<ReturnType<typeof read
     const report = await get(`/api/v1/mtm/attendance/report?from=${DEMO.from}&to=${DEMO.to}&form=ALL`)
     verifyParity(facts, report)
     for (const row of items(report.rows)) {
-      const endpoints = items(row.events).filter(event => event.type === "START" || event.type === "FINISH")
+      const journal = facts.workdays.find(day => day.agentId === row.employeeId && day.workDate.toISOString().slice(0, 10) === row.date)?.events ?? []
+      const events = items(row.events)
+      if (events.some((event, i) => event.id !== journal[i]?.id)) return fail()
+      const endpoints = events.filter(event => event.type === "START" || event.type === "FINISH")
       const marks = items(row.locationMarks)
       if (marks.length !== endpoints.length || new Set(marks.map(mark => mark.eventId)).size !== marks.length
         || marks.some(mark => !endpoints.some(event => event.id === mark.eventId && event.type === mark.action

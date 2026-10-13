@@ -251,6 +251,7 @@ describe("read-only deployed attendance surfaces", () => {
       (fixture: ReturnType<typeof surfaceHttp>) => { fixture.legacy.rows[0].workedSeconds! -= 3600 },
       (fixture: ReturnType<typeof surfaceHttp>) => { fixture.legacy.rows[0].locationMarks[0].state = "INSIDE" },
       (fixture: ReturnType<typeof surfaceHttp>) => { fixture.legacy.rows[0].locationMarks[1] = fixture.legacy.rows[0].locationMarks[0] },
+      (fixture: ReturnType<typeof surfaceHttp>) => { fixture.legacy.rows[0].events[0].id = "fabricated"; fixture.legacy.rows[0].locationMarks[0].eventId = "fabricated" },
     ]) {
       const fixture = surfaceHttp(); change(fixture)
       await expect(verifySurfaceDemo(surfaceSnapshot(), phoneFacts(), fixture.request)).rejects.toThrow("VERIFICATION_FAILED")
