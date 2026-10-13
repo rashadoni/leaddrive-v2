@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { HomeCard, HomePill, type HomeTone } from "@/components/mtm/home-parts"
 import { AttendanceDeliveryInputSchema, type AttendanceDeliveryInput, type AttendanceDeliveryReceipt, type AttendanceDeliverySchedule } from "@/lib/mtm/attendance-delivery-contract"
-import type { AttendanceViewConfig } from "@/lib/mtm/attendance-view-contract"
+import { DEFAULT_ATTENDANCE_VIEW_COLUMNS, type AttendanceViewConfig } from "@/lib/mtm/attendance-view-contract"
 
 const ENDPOINT = "/api/v1/mtm/attendance/deliveries"
 const SELECT = "min-h-11 w-full rounded-lg border border-zinc-200 bg-card px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:border-zinc-700"
@@ -107,11 +107,13 @@ export function MtmAttendanceDeliveries({ currentConfig, onAccessLost, accessUna
     clearPrivate(); setLoading(false); setSaving(false); setLoadError(t("deliveryAccessUnavailable"))
   }, [accessUnavailable, clearPrivate, t])
 
-  function newDraft() {
+  function newDraft(dailySummary = false) {
     if (!currentConfig) return
     setEditing(null); setRemoving(null); setRecipients(""); setSaved(false); setSaveError(null)
     pendingCreate.current = null
-    setDraft({ name: "", config: currentConfig, frequency: currentConfig.mode === "MONTH" ? "MONTHLY" : "DAILY", format: "xlsx",
+    const config: AttendanceViewConfig = dailySummary ? { ...currentConfig, mode: "DAY", columns: [...DEFAULT_ATTENDANCE_VIEW_COLUMNS.DAY], showTotals: true,
+      filters: { ...currentConfig.filters, to: currentConfig.filters.from, form: "ALL" } } : currentConfig
+    setDraft({ name: dailySummary ? t("deliveryDailySummaryName") : "", config, frequency: config.mode === "MONTH" ? "MONTHLY" : "DAILY", format: "xlsx",
       locale: locale === "az" || locale === "ru" ? locale : "en", recipients: [], enabled: false })
   }
   function edit(schedule: AttendanceDeliverySchedule) {
@@ -185,6 +187,7 @@ export function MtmAttendanceDeliveries({ currentConfig, onAccessLost, accessUna
     {open ? <div id="attendance-deliveries-panel"><HomeCard testId="attendance-deliveries-card" titleId="attendance-deliveries-title" title={t("deliveryTitle")} tone="orange" icon={<Mail className="h-4 w-4" aria-hidden="true" />}>
       <div className="space-y-6 py-4">
         <p className="max-w-prose text-sm text-muted-foreground">{t("deliveryIntro")}</p>
+        <p className="max-w-prose text-sm text-muted-foreground">{t("deliveryDailySummaryHint")}</p>
         {loading ? <p role="status" className="text-sm text-muted-foreground">{t("deliveryLoading")}</p> : null}
         {loadError ? <p role="alert" className="text-sm text-destructive">{loadError}</p> : null}
         {(loadError || mustReload) && !accessUnavailable ? <Button type="button" variant="outline" className="min-h-11" disabled={loading || saving} onClick={() => void load(true)}>{t("deliveryReload")}</Button> : null}
@@ -192,7 +195,7 @@ export function MtmAttendanceDeliveries({ currentConfig, onAccessLost, accessUna
         {saved ? <p role="status" className="text-sm text-emerald-700 dark:text-emerald-300">{t("deliverySaved")}</p> : null}
         {data && !accessUnavailable ? <>
           <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-muted-foreground">{t("deliveryTiming", { timezone: data.timezone })}</p>
-            <div className="flex flex-wrap gap-2"><Button type="button" className="min-h-11" disabled={disabled || !currentConfig || data.schedules.length >= 10} onClick={newDraft}>{t("deliveryNew")}</Button>
+            <div className="flex flex-wrap gap-2"><Button type="button" variant="outline" className="min-h-11 h-auto whitespace-normal" disabled={disabled || !currentConfig || data.schedules.length >= 10} onClick={() => newDraft(true)}>{t("deliveryDailySummary")}</Button><Button type="button" className="min-h-11" disabled={disabled || !currentConfig || data.schedules.length >= 10} onClick={() => newDraft()}>{t("deliveryNew")}</Button>
               <Button type="button" variant="ghost" className="min-h-11" disabled={saving || loading} onClick={() => void load(true)}>{t("deliveryReload")}</Button></div></div>
           {data.schedules.length >= 10 ? <p className="text-sm text-muted-foreground">{t("deliveryLimit")}</p> : null}
           {data.schedules.length ? <ul aria-label={t("deliverySchedules")} className="divide-y divide-zinc-100 dark:divide-zinc-800">{data.schedules.map(schedule => <li key={schedule.id} className="space-y-3 py-4" data-testid="attendance-delivery-schedule">

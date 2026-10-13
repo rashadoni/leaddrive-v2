@@ -79,7 +79,7 @@ describe("the attendance outside-branch rule on Company settings", () => {
     expect(control().getAttribute("aria-label")).toBe(t("lblAttendanceRejectOutsideBranch"))
     expect(row().textContent).toContain(t("hintAttendanceRejectOutsideBranch"))
     expect(row().previousElementSibling?.getAttribute("data-setting-row")).toBe("attendanceEnabled")
-    expect(Array.from(container.querySelectorAll('#mtm-settings-panel-company [data-settings-group]')).map(element => element.getAttribute("data-settings-group"))).toEqual(["groupScheduling", "groupSupport", "groupModules", "groupAgentCapabilities", "groupAttendanceRisk"])
+    expect(Array.from(container.querySelectorAll('#mtm-settings-panel-company [data-settings-group]')).map(element => element.getAttribute("data-settings-group"))).toEqual(["groupScheduling", "groupSupport", "groupModules", "groupAgentCapabilities", "groupAttendanceReminders", "groupAttendanceRisk"])
     expect(container.querySelectorAll('[role="tab"]')).toHaveLength(6)
     expect(row().textContent).not.toContain("mtmSettingsPage.")
     expect(writes).toHaveLength(0); capture()
@@ -129,7 +129,7 @@ describe("attendance risk policy settings", () => {
     expect(row(SHARED).textContent).toContain(t("hintAttendanceAllowSharedInstallations"))
     expect(row(MOCK).textContent).toContain(t("hintAttendanceRejectMockLocations"))
     expect(row(CLOCK).textContent).toContain(t("hintAttendanceClockDifferenceSeconds"))
-    expect(container.querySelectorAll('#mtm-settings-panel-company [data-settings-group]')).toHaveLength(5)
+    expect(container.querySelectorAll('#mtm-settings-panel-company [data-settings-group]')).toHaveLength(6)
     expect(container.querySelector('[data-setting-row="attendanceRequireInstallationApproval"]')).toBeNull()
     expect(writes).toHaveLength(0); capture("attendance-risk-settings")
   })
@@ -172,5 +172,20 @@ describe("attendance risk policy settings", () => {
     expect(toast.error).toHaveBeenCalledWith(t("saveFailed")); expect(toast.success).not.toHaveBeenCalled()
     expect(stored[MOCK]).toBe(false); expect(numberControl().value).toBe("600"); expect(saveBar().hidden).toBe(false)
     refuse = false; await save(); expect(writes).toEqual([{ [MOCK]: true, [CLOCK]: 600 }, { [MOCK]: true, [CLOCK]: 600 }])
+  })
+})
+
+
+describe("attendance reminder settings localization", () => {
+  it.each(locales)("renders %s defaults without notification side effects", async language => {
+    await render(language)
+    for (const key of ["attendanceEmployeeRemindersEnabled", "attendanceManagerAlertsEnabled"]) {
+      expect(control(key).getAttribute("aria-checked")).toBe("false")
+      expect(control(key).disabled).toBe(false)
+      expect(control(key).className).toContain("h-11")
+    }
+    expect(container.textContent).not.toContain("mtmSettingsPage.")
+    expect(writes).toEqual([])
+    capture("attendance-reminder-settings")
   })
 })

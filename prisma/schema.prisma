@@ -16,6 +16,7 @@ datasource db {
 // ═══════════════════════════════════════════════════
 
 model Organization {
+  attendanceReminderNotices MtmAttendanceReminderNotice[]
   attendanceQrEvidence MtmAttendanceQrEvidence[]
   attendanceInstallationRequests MtmAttendanceInstallationRequest[]
   attendanceInstallationDecisions MtmAttendanceInstallationDecision[]
@@ -632,6 +633,7 @@ model PlanRequest {
 }
 
 model User {
+  attendanceReminderNotices MtmAttendanceReminderNotice[]
   attendanceInstallationDecisions MtmAttendanceInstallationDecision[]
   attendanceInstallationRevocations MtmAttendanceInstallationRevocation[]
   mtmAttendanceRiskDecisions MtmAttendanceRiskDecision[]
@@ -5774,6 +5776,8 @@ model MtmTeam {
 // MTM Agent — field agents linked to CRM users
 model MtmAgent {
   attendanceMonthMemberships MtmAttendanceMonthMember[]
+  attendanceReminderSubjects MtmAttendanceReminderNotice[] @relation("AttendanceReminderSubject")
+  attendanceReminderRecipients MtmAttendanceReminderNotice[] @relation("AttendanceReminderRecipient")
   attendanceShiftMembers MtmAttendanceShiftMember[]
   attendanceLeaveProfiles MtmAttendanceLeaveProfile[]
   attendanceQrEvidence MtmAttendanceQrEvidence[]
@@ -22489,4 +22493,27 @@ model MtmAttendanceShiftMember {
   @@unique([organizationId, planId, agentId])
   @@index([organizationId, agentId])
   @@map("mtm_attendance_shift_members")
+}
+
+
+model MtmAttendanceReminderNotice {
+  id String @id
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentId String
+  agent MtmAgent @relation("AttendanceReminderSubject", fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  workDate DateTime @db.Date
+  kind String @db.VarChar(20)
+  recipientAgentId String?
+  recipientAgent MtmAgent? @relation("AttendanceReminderRecipient", fields: [organizationId, recipientAgentId], references: [organizationId, id], onDelete: Restrict)
+  recipientUserId String?
+  recipientUser User? @relation(fields: [organizationId, recipientUserId], references: [organizationId, id], onDelete: Restrict)
+  observedAt DateTime @db.Timestamp(3)
+  ruleId String
+  createdAt DateTime @default(now()) @db.Timestamp(3)
+  @@unique([organizationId, agentId, workDate, kind, recipientAgentId], map: "mtm_reminder_employee_dedupe")
+  @@unique([organizationId, agentId, workDate, kind, recipientUserId], map: "mtm_reminder_manager_dedupe")
+  @@index([organizationId, recipientUserId, workDate], map: "mtm_reminder_user_date")
+  @@index([organizationId, recipientAgentId, workDate], map: "mtm_reminder_agent_date")
+  @@map("mtm_attendance_reminder_notices")
 }

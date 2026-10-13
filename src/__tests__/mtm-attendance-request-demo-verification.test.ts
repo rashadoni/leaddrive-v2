@@ -5,7 +5,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { PrismaClient } from "@prisma/client"
 import { DEMO, DEMO_AGENTS } from "../../scripts/mtm-attendance-demo-verification"
-import { REQUEST_DEMO, assertRequestContext, exerciseRequestDemo, prepareRequestDemo, readRequestDemo, validateRequestEvidence, verifyRequestReport } from "../../scripts/mtm-attendance-request-demo-verification"
+import { REQUEST_DEMO, assertRequestContext, exerciseRequestDemo, prepareRequestDemo, readRequestDemo, safeRequestFailure, validateRequestEvidence, verifyRequestReport } from "../../scripts/mtm-attendance-request-demo-verification"
 
 const id = "253f98f2-2359-45c8-aa57-33554e5dde17"
 const initial = { status: "NONE" as const, requestId: null, submittedAudits: 0, decidedAudits: 0, reviewerBells: 0, employeeReplies: 0 }
@@ -79,6 +79,18 @@ describe("fixed-tenant request acceptance controller", () => {
   it.each(["/api/v1/mtm/mobile/auth", "/api/v1/mtm/attendance/requests", "/api/v1/notifications", "/api/v1/mtm/week/attention", "/api/v1/mtm/mobile/notifications", "/api/v1/mtm/attendance/decisions"])("fails closed on a missing required result at %s", async path => {
     const { fetcher } = httpFixture(false, (target, response) => target === path ? Response.json({ success: true, data: {} }) : response)
     await expect(exerciseRequestDemo("PRIVATE_PASSWORD", initial, fetcher)).rejects.toThrow("VERIFICATION_FAILED")
+  })
+  it("returns only a code-owned phase when a real HTTP response or exception contains private data", async () => {
+    for (const [path, phase] of [["/api/v1/mtm/mobile/auth", "MOBILE_LOGIN"], ["/api/v1/notifications", "REVIEW_BELL"], ["/api/v1/mtm/mobile/notifications", "EMPLOYEE_REPLY"]]) {
+      const { fetcher } = httpFixture(false, (target, response) => target === path ? Response.json({ password: "PRIVATE", token: "PRIVATE" }, { status: 500 }) : response)
+      const failure = await exerciseRequestDemo("PRIVATE_PASSWORD", initial, fetcher).then(() => null, safeRequestFailure)
+      expect(failure).toEqual({ version: 1, status: "FAIL", code: "VERIFICATION_FAILED", phase })
+      expect(validateRequestEvidence(failure)).toEqual(failure)
+      expect(JSON.stringify(failure)).not.toContain("PRIVATE")
+    }
+    expect(safeRequestFailure(new Error("PRIVATE_TOKEN"))).toEqual({ version: 1, status: "FAIL", code: "VERIFICATION_FAILED" })
+    expect(() => validateRequestEvidence({ version: 1, status: "FAIL", code: "VERIFICATION_FAILED", phase: "PRIVATE_URL" })).toThrow()
+    expect(() => validateRequestEvidence({ version: 1, status: "FAIL", code: "VERIFICATION_FAILED", phase: "WEB_LOGIN", error: "PRIVATE" })).toThrow()
   })
   it("refuses wrong totals, dates, employee or facts rather than accepting a changed baseline", () => {
     expect(verifyRequestReport(report(true), true).annualLeaveDays).toBe(2)

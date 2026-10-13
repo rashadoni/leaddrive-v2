@@ -1,3 +1,4 @@
+import { attendanceReminderMobilePredicate } from "@/lib/mtm/attendance-reminder-notification"
 import { Prisma } from "@prisma/client"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
@@ -21,6 +22,7 @@ type MobileNotificationRow = {
 export const GET = withMobileRls(async (req: NextRequest, auth) => {
   try {
     const domainPredicate = notificationDomainPredicate(auth.tenantCapabilities)
+    const reminderPredicate = attendanceReminderMobilePredicate(auth.orgId, auth.agentId)
     const [items, unreadRows] = await Promise.all([
       prisma.$queryRaw<MobileNotificationRow[]>`
         SELECT
@@ -30,6 +32,7 @@ export const GET = withMobileRls(async (req: NextRequest, auth) => {
         WHERE "organizationId" = ${auth.orgId}
           AND "agentId" = ${auth.agentId}
           AND ${domainPredicate}
+          AND ${reminderPredicate}
         ORDER BY "createdAt" DESC, "id" DESC
         LIMIT 100
       `,
@@ -40,6 +43,7 @@ export const GET = withMobileRls(async (req: NextRequest, auth) => {
           AND "agentId" = ${auth.agentId}
           AND "isRead" = FALSE
           AND ${domainPredicate}
+          AND ${reminderPredicate}
       `,
     ])
     const unread = unreadRows[0]?.count ?? 0
@@ -56,6 +60,7 @@ export const PATCH = withMobileRls(async (req: NextRequest, auth) => {
     const body = await req.json()
     const isRead = !!body.isRead
     const domainPredicate = notificationDomainPredicate(auth.tenantCapabilities)
+    const reminderPredicate = attendanceReminderMobilePredicate(auth.orgId, auth.agentId)
     let targetPredicate: Prisma.Sql
     if (Array.isArray(body.ids) && body.ids.length > 0) {
       const ids = body.ids.filter((id: unknown): id is string => typeof id === "string" && id.length > 0)
@@ -74,6 +79,7 @@ export const PATCH = withMobileRls(async (req: NextRequest, auth) => {
       WHERE "organizationId" = ${auth.orgId}
         AND "agentId" = ${auth.agentId}
         AND ${domainPredicate}
+          AND ${reminderPredicate}
         ${targetPredicate}
     `
     return NextResponse.json({ success: true, data: { updated } })

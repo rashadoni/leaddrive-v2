@@ -452,3 +452,25 @@ describe("allowing a check-in outside the zone, beside the radius it lifts", () 
     expect((settingRow("fieldContactsEnabled").querySelector('[role="switch"]') as HTMLButtonElement).disabled).toBe(true)
   })
 })
+
+describe("attendance reminders in company settings", () => {
+  it("hides both switches while attendance is off and preserves company groups", async () => {
+    await openAt("/mtm/settings?tab=company")
+    expect(settingRow("attendanceEmployeeRemindersEnabled")).toBeNull()
+    expect(settingRow("attendanceManagerAlertsEnabled")).toBeNull()
+    expect(settingRow("taskSelfCreate")).not.toBeNull()
+    expect(settingRow("attendanceEnabled")).not.toBeNull()
+  })
+  it("allows an administrator to enable both in one changed-key save", async () => {
+    viewer.role = "admin"; stored.attendanceEnabled = true
+    await openAt("/mtm/settings?tab=company")
+    await flip("attendanceEmployeeRemindersEnabled"); await flip("attendanceManagerAlertsEnabled")
+    await pressSave()
+    expect(writes).toEqual([{ attendanceEmployeeRemindersEnabled: true, attendanceManagerAlertsEnabled: true }])
+    expect(settingRow("attendanceAllowSharedInstallations")).not.toBeNull()
+  })
+  it("leaves both controls disabled for a manager", async () => {
+    stored.attendanceEnabled = true; await openAt("/mtm/settings?tab=company")
+    for (const key of ["attendanceEmployeeRemindersEnabled", "attendanceManagerAlertsEnabled"]) expect((settingRow(key).querySelector('[role="switch"]') as HTMLButtonElement).disabled).toBe(true)
+  })
+})

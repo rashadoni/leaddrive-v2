@@ -1,3 +1,5 @@
+import { ATTENDANCE_REMINDER_KEYS, AttendanceReminderPolicySchema } from "@/lib/mtm/attendance-reminder-contract"
+import { saveAttendanceReminderPolicy } from "@/lib/mtm/attendance-reminder-policy"
 import { ATTENDANCE_QR_RULE_KEY, saveAttendanceQrRule } from "@/lib/mtm/attendance-qr-policy"
 import { ATTENDANCE_INSTALLATION_RULE_KEY, saveAttendanceInstallationRule } from "@/lib/mtm/attendance-installation-policy"
 import { NextRequest, NextResponse } from "next/server"
@@ -67,7 +69,7 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
     )
     // Unlike legacy menu switches, attendance enables new personal-data access.
     // Refuse the entire unauthorized request before any setting can be written.
-    if ((body.attendanceEnabled !== undefined || body[ATTENDANCE_QR_RULE_KEY] !== undefined || body[ATTENDANCE_INSTALLATION_RULE_KEY] !== undefined || body[ATTENDANCE_OUTSIDE_RULE_KEY] !== undefined || ATTENDANCE_RISK_SETTING_KEYS.some(key => body[key] !== undefined)) && !MODULE_TOGGLE_ROLES.includes(auth.role)) {
+    if ((body.attendanceEnabled !== undefined || ATTENDANCE_REMINDER_KEYS.some(key => body[key] !== undefined) || body[ATTENDANCE_QR_RULE_KEY] !== undefined || body[ATTENDANCE_INSTALLATION_RULE_KEY] !== undefined || body[ATTENDANCE_OUTSIDE_RULE_KEY] !== undefined || ATTENDANCE_RISK_SETTING_KEYS.some(key => body[key] !== undefined)) && !MODULE_TOGGLE_ROLES.includes(auth.role)) {
       return NextResponse.json({ error: "Forbidden", code: "MTM_ATTENDANCE_ADMIN_REQUIRED" }, { status: 403 })
     }
     // Hiding a whole module surface for every manager and field agent is an
@@ -187,8 +189,17 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
       return NextResponse.json({ error: "Invalid QR rule", code: "MTM_ATTENDANCE_QR_RULE_INVALID" }, { status: 400 })
     }
 
+    const reminderPolicy = Object.fromEntries(ATTENDANCE_REMINDER_KEYS.filter(key => body[key] !== undefined).map(key => [key, body[key]]))
+    if (Object.keys(reminderPolicy).length && !AttendanceReminderPolicySchema.safeParse(reminderPolicy).success) {
+      return NextResponse.json({ error: "Invalid reminder policy", code: "MTM_ATTENDANCE_REMINDER_POLICY_INVALID" }, { status: 400 })
+    }
+
     // Nothing left to write (e.g. only administrator keys from a manager).
     if (Object.keys(body).length === 0) return NextResponse.json({ success: true, data: { ignoredKeys } })
+
+    if (Object.keys(reminderPolicy).length) {
+      await saveAttendanceReminderPolicy({ organizationId: orgId, userId: auth.userId, principalType: auth.principalType ?? "api_key" }, reminderPolicy)
+    }
 
     // This policy is serialized with endpoint writes, including its first
     // insertion. An audit failure must not leave an unaudited rejection rule.
@@ -249,13 +260,13 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
     }
     await Promise.all(
       Object.entries(body)
-        .filter(([key]) => key !== ATTENDANCE_OUTSIDE_RULE_KEY && key !== ATTENDANCE_INSTALLATION_RULE_KEY && key !== ATTENDANCE_QR_RULE_KEY && !(ATTENDANCE_RISK_SETTING_KEYS as readonly string[]).includes(key) && !(endsLocationShareLinks && key === "locationShareLinksEnabled"))
+        .filter(([key]) => key !== ATTENDANCE_OUTSIDE_RULE_KEY && key !== ATTENDANCE_INSTALLATION_RULE_KEY && !ATTENDANCE_REMINDER_KEYS.includes(key as typeof ATTENDANCE_REMINDER_KEYS[number]) && key !== ATTENDANCE_QR_RULE_KEY && !(ATTENDANCE_RISK_SETTING_KEYS as readonly string[]).includes(key) && !(endsLocationShareLinks && key === "locationShareLinksEnabled"))
         .map(([key, value]) => storeSetting(key, value)),
     )
 
     // Audit only real changes: an old page's whole-object save would otherwise
     // log dozens of untouched keys. Values are compared after normalization.
-    const changedKeys = Object.keys(body).filter(key => key !== ATTENDANCE_OUTSIDE_RULE_KEY && key !== ATTENDANCE_INSTALLATION_RULE_KEY && key !== ATTENDANCE_QR_RULE_KEY && !(ATTENDANCE_RISK_SETTING_KEYS as readonly string[]).includes(key) && differs(key))
+    const changedKeys = Object.keys(body).filter(key => key !== ATTENDANCE_OUTSIDE_RULE_KEY && key !== ATTENDANCE_INSTALLATION_RULE_KEY && !ATTENDANCE_REMINDER_KEYS.includes(key as typeof ATTENDANCE_REMINDER_KEYS[number]) && key !== ATTENDANCE_QR_RULE_KEY && !(ATTENDANCE_RISK_SETTING_KEYS as readonly string[]).includes(key) && differs(key))
     if (changedKeys.length > 0) await writeMtmAudit({
       organizationId: orgId,
       agentId: null,
