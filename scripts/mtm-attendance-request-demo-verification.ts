@@ -5,7 +5,7 @@ import { createRequire } from "node:module"
 import { createHash } from "node:crypto"
 import { pathToFileURL } from "node:url"
 import type { PrismaClient } from "@prisma/client"
-import { APP, DEMO, DEMO_AGENTS, assertContext, assertOwnedOrganization, authenticatedDemoSession,
+import { APP, DEMO, DEMO_AGENTS, DEMO_ATTENDANCE_AGENT_SELECT, assertDemoAttendanceAgents, assertContext, assertOwnedOrganization, authenticatedDemoSession,
   credential, databaseUrlFromEnv, readOnlyDemo, readRootFile, safeFailure, verifyParity } from "./mtm-attendance-demo-verification"
 
 export const REQUEST_DEMO = Object.freeze({
@@ -50,7 +50,7 @@ function items(value: unknown) { if (!Array.isArray(value)) return fail(); retur
 const SURFACE_OFF_FLAGS = ["attendanceRequireInstallationApproval", "attendanceBranchQrEnabled", "attendanceEmployeeRemindersEnabled", "attendanceManagerAlertsEnabled"] as const
 const SURFACE_EMPTY_COUNTS = ["teams", "branches", "branchRevisions", "assignments", "locationPolicies", "locationConsents", "marks", "streamIntegrity", "risks", "riskDecisions",
   "installationRequests", "installationDecisions", "installationRevocations", "qrEvidence", "leavePolicies", "leaveProfiles", "monthCloses", "monthMembers", "monthDays",
-  "shiftPlans", "shiftMembers", "reminderNotices", "schedules", "deliveries", "employment"] as const
+  "shiftPlans", "shiftMembers", "reminderNotices", "schedules", "deliveries", "employment", "participation"] as const
 /** Fixed-tenant defaults only. No legal norm, consent, branch, QR, schedule or
  * reminder is created merely to manufacture a populated production screenshot. */
 export async function readSurfaceDemo(db: Db) {
@@ -60,8 +60,8 @@ export async function readSurfaceDemo(db: Db) {
     assertOwnedOrganization(await tx.organization.findUnique({ where: { id: DEMO.id }, select: { id: true, slug: true, settings: true } }))
     const state = await tx.$queryRaw<Array<{ readOnly: string; orgId: string; bypass: string | null }>>`SELECT current_setting('transaction_read_only') AS "readOnly", current_setting('app.org_id') AS "orgId", current_setting('app.rls_bypass', true) AS bypass`
     if (state[0]?.readOnly !== "on" || state[0]?.orgId !== DEMO.id || state[0]?.bypass === "on") return fail()
-    const agents = await tx.mtmAgent.findMany({ where: { organizationId: DEMO.id }, select: { id: true, role: true, status: true, teamId: true, userId: true }, orderBy: { id: "asc" }, take: 3 })
-    if (agents.length !== 2 || agents.some((agent, i) => agent.id !== DEMO_AGENTS[i] || agent.role !== "AGENT" || agent.status !== "ACTIVE" || agent.teamId !== null || agent.userId !== null)) return fail()
+    const agents = await tx.mtmAgent.findMany({ where: { organizationId: DEMO.id }, select: DEMO_ATTENDANCE_AGENT_SELECT, orderBy: { id: "asc" }, take: 4 })
+    assertDemoAttendanceAgents(agents)
     const users = await tx.user.findMany({ where: { organizationId: DEMO.id }, select: { id: true, role: true }, take: 2 })
     if (users.length !== 1 || users[0].id !== DEMO.userId || users[0].role !== "admin") return fail()
     const settings = await tx.mtmSetting.findMany({ where: { organizationId: DEMO.id, key: { in: ["attendanceEnabled", "timezone", ...SURFACE_OFF_FLAGS] } }, select: { key: true, value: true }, orderBy: { key: "asc" } })
@@ -92,14 +92,15 @@ export async function readSurfaceDemo(db: Db) {
       (SELECT count(*)::int FROM mtm_attendance_reminder_notices WHERE "organizationId"=${DEMO.id}) AS "reminderNotices",
       (SELECT count(*)::int FROM mtm_attendance_schedules WHERE "organizationId"=${DEMO.id}) AS schedules,
       (SELECT count(*)::int FROM mtm_attendance_deliveries WHERE "organizationId"=${DEMO.id}) AS deliveries,
-      (SELECT count(*)::int FROM workforce_employment_events WHERE "organizationId"=${DEMO.id}) AS employment`
+      (SELECT count(*)::int FROM workforce_employment_events WHERE "organizationId"=${DEMO.id}) AS employment,
+      (SELECT count(*)::int FROM mtm_attendance_participation_events WHERE "organizationId"=${DEMO.id}) AS participation`
     if (counts.length !== 1 || Object.keys(counts[0]).length !== SURFACE_EMPTY_COUNTS.length || SURFACE_EMPTY_COUNTS.some(key => counts[0][key] !== 0)) return fail()
     return { agents, users, settings, counts: counts[0] }
   }, { isolationLevel: "RepeatableRead", timeout: 15_000 })
 }
 
 export const surfaceDemoEvidence = () => ({ mode: "READ_ONLY_DEFAULTS", browser: "NOT_RUN", configurationUnchanged: true,
-  employeeCount: 2, checks: { settings: true, branches: true, employees: true, geoOff: true, risks: true, installations: true, qrOff: true,
+  employeeCount: 3, checks: { settings: true, branches: true, employees: true, geoOff: true, risks: true, installations: true, qrOff: true,
     leaveUnknown: true, months: true, shifts: true, mailEmpty: true, legacyReportParity: true, legacyLocationsUnknown: true } })
 
 /** Authenticated GETs prove deployed data surfaces and safe empty states. They
@@ -119,7 +120,11 @@ export async function verifySurfaceDemo(snapshot: Awaited<ReturnType<typeof read
     phase = "SURFACE_EMPLOYEES"
     const employees = await get("/api/v1/mtm/attendance/employees")
     if (employees.timezone !== "Asia/Baku" || items(employees.teams).length !== snapshot.counts.teams || !sameIds(items(employees.employees), "id")
-      || items(employees.employees).some(row => row.role !== "AGENT" || row.status !== "ACTIVE" || row.teamName !== null || items(row.history).length)
+      || items(employees.employees).some(row => {
+        const source = snapshot.agents.find(agent => agent.id === row.id)
+        return !source || row.role !== source.role || row.status !== source.status || row.teamName !== null || items(row.history).length
+          || row.included !== !source.attendanceExcluded || row.participationVersion !== null || row.includedFrom !== (source.attendanceIncludedFrom?.toISOString() ?? null)
+      })
       || items(employees.users).length !== snapshot.users.length || items(employees.users)[0].id !== DEMO.userId) return fail()
     phase = "SURFACE_GEO"
     if ((await get("/api/v1/mtm/attendance/location-policy")).policy !== null) return fail()
@@ -142,7 +147,7 @@ export async function verifySurfaceDemo(snapshot: Awaited<ReturnType<typeof read
     const months = await get("/api/v1/mtm/attendance/months?month=2026-09")
     if (months.month !== "2026-09" || months.canClose !== true || months.moreEmployees !== false || months.moreSnapshots !== false
       || items(months.items).length !== snapshot.counts.monthCloses || !sameIds(items(months.employees), "id")
-      || items(months.employees).some(row => row.closed !== false || row.canClose !== true)) return fail()
+      || items(months.employees).some(row => row.closed !== false || row.canClose !== (snapshot.agents.find(agent => agent.id === row.id)?.userId !== DEMO.userId))) return fail()
     phase = "SURFACE_SHIFTS"
     const shifts = await get("/api/v1/mtm/attendance/shifts?from=2026-10-01&to=2026-10-31")
     const rosters = items(shifts.rosters)

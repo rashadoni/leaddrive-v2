@@ -14,7 +14,7 @@ CREATE TABLE "mtm_attendance_participation_events" (
   "requestId" TEXT NOT NULL,
   "requestHash" VARCHAR(64) NOT NULL CHECK ("requestHash" ~ '^[a-f0-9]{64}$'),
   "createdBy" TEXT NOT NULL,
-  "effectiveAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "effectiveAt" TIMESTAMP(3) NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'),
   FOREIGN KEY ("organizationId", "agentId") REFERENCES mtm_agents("organizationId", id) ON DELETE RESTRICT,
   FOREIGN KEY ("organizationId", "createdBy") REFERENCES users("organizationId", id) ON DELETE RESTRICT,
   UNIQUE ("organizationId", id), UNIQUE ("organizationId", "agentId", id),
@@ -42,10 +42,10 @@ BEGIN
     SELECT * INTO card FROM mtm_agents WHERE "organizationId" = org AND "userId" = uid;
     -- Old field/manual participants retain their historical baseline. An
     -- inactive card stays inactive; this is not a mobile-account activation.
-    IF NOT card."attendanceParticipant" THEN
+    IF NOT card."attendanceParticipant" AND card.role <> 'AGENT' THEN
       UPDATE mtm_agents SET "attendanceParticipant" = true,
-        "attendanceIncludedFrom" = CASE WHEN card.role = 'AGENT' THEN card."attendanceIncludedFrom" ELSE COALESCE(card."attendanceIncludedFrom", clock_timestamp()::timestamp(3)) END,
-        "updatedAt" = clock_timestamp()::timestamp(3)
+        "attendanceIncludedFrom" = COALESCE(card."attendanceIncludedFrom", (clock_timestamp() AT TIME ZONE 'UTC')::timestamp(3)),
+        "updatedAt" = (clock_timestamp() AT TIME ZONE 'UTC')::timestamp(3)
       WHERE "organizationId" = org AND id = card.id;
     END IF;
     RETURN;
@@ -57,7 +57,7 @@ BEGIN
   INSERT INTO mtm_agents (id, "organizationId", "userId", name, email, role, status,
     "attendanceParticipant", "attendanceIncludedFrom", "canPlanOwnRoutes", "canSelfPublishRoutes", "updatedAt")
   VALUES (gen_random_uuid()::text, org, uid, principal.name, principal.email, 'EMPLOYEE', 'ACTIVE',
-    true, clock_timestamp()::timestamp(3), false, false, clock_timestamp()::timestamp(3));
+    true, (clock_timestamp() AT TIME ZONE 'UTC')::timestamp(3), false, false, (clock_timestamp() AT TIME ZONE 'UTC')::timestamp(3));
 END $$;
 
 CREATE FUNCTION mtm_attendance_provision_user_trigger() RETURNS trigger LANGUAGE plpgsql AS $$
@@ -96,6 +96,25 @@ END $$;
 CREATE TRIGGER mtm_attendance_agent_identity BEFORE INSERT OR UPDATE OF "userId", "organizationId" ON mtm_agents
   FOR EACH ROW EXECUTE FUNCTION mtm_attendance_agent_identity_guard();
 
+-- An active CRM user cannot disappear from automatic attendance through an
+-- unrelated card delete/unlink. Exclusion is the explicit attendance control.
+CREATE FUNCTION mtm_attendance_active_link_guard() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF OLD."userId" IS NULL THEN
+    IF TG_OP = 'DELETE' THEN RETURN OLD; END IF; RETURN NEW;
+  END IF;
+  IF TG_OP = 'UPDATE' AND NEW."userId" IS NOT DISTINCT FROM OLD."userId" AND NEW."organizationId" = OLD."organizationId" THEN RETURN NEW; END IF;
+  PERFORM pg_advisory_xact_lock(hashtextextended('mtm-attendance-participation:' || OLD."organizationId", 0));
+  IF EXISTS (SELECT 1 FROM organizations WHERE id = OLD."organizationId")
+    AND EXISTS (SELECT 1 FROM mtm_settings WHERE "organizationId" = OLD."organizationId" AND key = 'attendanceEnabled' AND value = 'true'::jsonb)
+    AND EXISTS (SELECT 1 FROM users WHERE "organizationId" = OLD."organizationId" AND id = OLD."userId" AND "isActive" AND "anonymizedAt" IS NULL) THEN
+    RAISE EXCEPTION 'MTM_ATTENDANCE_EMPLOYEE_LINK_REQUIRED' USING ERRCODE = '23514';
+  END IF;
+  IF TG_OP = 'DELETE' THEN RETURN OLD; END IF; RETURN NEW;
+END $$;
+CREATE TRIGGER mtm_attendance_active_link BEFORE DELETE OR UPDATE OF "userId", "organizationId" ON mtm_agents
+  FOR EACH ROW EXECUTE FUNCTION mtm_attendance_active_link_guard();
+
 CREATE FUNCTION mtm_attendance_participation_guard() RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE predecessor RECORD; excluded BOOLEAN;
 BEGIN
@@ -103,7 +122,11 @@ BEGIN
     IF TG_OP = 'DELETE' AND NOT EXISTS (SELECT 1 FROM organizations WHERE id = OLD."organizationId") THEN RETURN OLD; END IF;
     RAISE EXCEPTION 'MTM_ATTENDANCE_PARTICIPATION_IMMUTABLE' USING ERRCODE = '23514';
   END IF;
-  PERFORM pg_advisory_xact_lock(hashtextextended('mtm-attendance-participation:' || NEW."organizationId", 0));
+  -- Match API/month-close canonical order. Never take the lifecycle tenant
+  -- advisory here: a user insert can hold the month fence while waiting on it.
+  PERFORM pg_advisory_xact_lock(hashtextextended('mtm-attendance-participation-request:' || NEW."organizationId" || ':' || NEW."requestId", 0));
+  PERFORM pg_advisory_xact_lock(hashtext('mtm-workday:' || NEW."organizationId" || ':' || NEW."agentId"));
+  PERFORM pg_advisory_xact_lock(hashtextextended('mtm-attendance-requests:' || NEW."organizationId" || ':' || NEW."agentId", 0));
   IF NOT EXISTS (SELECT 1 FROM users WHERE "organizationId" = NEW."organizationId" AND id = NEW."createdBy" AND "isActive" AND "anonymizedAt" IS NULL AND role IN ('admin', 'superadmin'))
     OR NOT EXISTS (SELECT 1 FROM mtm_settings WHERE "organizationId" = NEW."organizationId" AND key = 'attendanceEnabled' AND value = 'true'::jsonb) THEN
     RAISE EXCEPTION 'MTM_ATTENDANCE_PARTICIPATION_FORBIDDEN' USING ERRCODE = '23514';
@@ -114,8 +137,8 @@ BEGIN
   IF NEW."previousEventId" IS DISTINCT FROM predecessor.id OR NEW.included = (NOT excluded) THEN
     RAISE EXCEPTION 'MTM_ATTENDANCE_PARTICIPATION_CHANGED' USING ERRCODE = '23514';
   END IF;
-  NEW."effectiveAt" := GREATEST(clock_timestamp()::timestamp(3), predecessor."effectiveAt" + interval '1 millisecond');
-  UPDATE mtm_agents SET "attendanceExcluded" = NOT NEW.included, "updatedAt" = clock_timestamp()::timestamp(3)
+  NEW."effectiveAt" := GREATEST((clock_timestamp() AT TIME ZONE 'UTC')::timestamp(3), predecessor."effectiveAt" + interval '1 millisecond');
+  UPDATE mtm_agents SET "attendanceExcluded" = NOT NEW.included, "updatedAt" = (clock_timestamp() AT TIME ZONE 'UTC')::timestamp(3)
     WHERE "organizationId" = NEW."organizationId" AND id = NEW."agentId";
   RETURN NEW;
 END $$;

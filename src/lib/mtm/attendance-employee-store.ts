@@ -6,6 +6,8 @@ import { addDateKeyDays, currentDateKey, isDateKey } from "@/lib/mtm/mobile-week
 import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
 import { AttendanceEmployeeEnrollmentSchema, AttendanceEmploymentInputSchema, AttendanceParticipationInputSchema, type AttendanceEmployeeDirectory } from "@/lib/mtm/attendance-employee-contract"
 import { readAttendanceParticipationHistory } from "@/lib/mtm/attendance-participation-store"
+import { lockAttendanceRequests } from "@/lib/mtm/attendance-self-access"
+import { lockMtmWorkdayTransitions } from "@/lib/mtm/workday"
 import { recordWorkforceEmploymentEventInTransaction, WorkforceEmploymentHistoryError } from "@/lib/workforce/employment-history"
 import type { AttendanceReviewer } from "@/lib/mtm/attendance-request-decision"
 import { resolveAttendanceReviewerScope } from "@/lib/mtm/attendance-request-decision"
@@ -68,8 +70,12 @@ export async function setAttendanceParticipation(actor: AttendanceReviewer, raw:
   const input = parsed.data, organizationId = actor.organizationId
   return prisma.$transaction(async tx => {
     await requireAttendanceEmployeeAdmin(tx, actor)
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-attendance-participation-request:${organizationId}:${input.clientRequestId}`}, 0))`
+    // Match workday writers and month close: canonical employee locks precede
+    // the source fence, so a close cannot hold our row while waiting on us.
+    await lockMtmWorkdayTransitions(tx, { organizationId, agentId: input.agentId })
+    await lockAttendanceRequests(tx, { organizationId, agentId: input.agentId })
     await tx.$executeRaw`SELECT pg_advisory_xact_lock_shared(hashtextextended(${`mtm-attendance-month-snapshot:${organizationId}`}, 0))`
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-attendance-participation:${organizationId}`}, 0))`
     const hash = createHash("sha256").update(JSON.stringify(input)).digest("hex")
     const [receipt] = await tx.$queryRaw<Array<{ id: string; createdBy: string; requestHash: string }>>`
       SELECT id, "createdBy", "requestHash" FROM mtm_attendance_participation_events

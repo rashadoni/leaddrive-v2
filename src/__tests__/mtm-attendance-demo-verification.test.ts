@@ -5,7 +5,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { PrismaClient } from "@prisma/client"
 import { buildMtmAttendanceReport } from "@/lib/mtm/attendance-report"
-import { DEMO, DEMO_AGENTS, DEMO_WORKDAYS, assertContext, assertOwnedOrganization, authenticatedReport,
+import { DEMO, DEMO_AGENTS, DEMO_WORKDAYS, assertDemoAttendanceAgents, assertContext, assertOwnedOrganization, authenticatedReport,
   databaseUrlFromEnv, expectedRows, prepareDemo, readOnlyDemo, safeFailure, validateEvidence, verifyParity,
 } from "../../scripts/mtm-attendance-demo-verification"
 
@@ -33,6 +33,24 @@ describe("dedicated attendance demo controller", () => {
     expect(() => assertContext("prepare-and-check", sha, sha, new Date("2026-10-06"))).toThrow("PERIOD_NOT_COMPLETE")
     expect(() => assertContext("read-only-check", sha, "b".repeat(40))).toThrow("REVISION_OR_MODE_INVALID")
     expect(() => assertContext("seed-any-tenant", sha, sha)).toThrow("REVISION_OR_MODE_INVALID")
+  })
+  it("accepts only the two immutable field identities plus the exact automatic CRM-user card", () => {
+    const agents = () => [...DEMO_AGENTS.map(id => ({ id, role: "AGENT", status: "ACTIVE", teamId: null, userId: null as string | null,
+      attendanceParticipant: false, attendanceExcluded: false, attendanceIncludedFrom: null as Date | null, canPlanOwnRoutes: true, canSelfPublishRoutes: false })),
+      { id: "9a000000-0000-4000-8000-000000000001", role: "EMPLOYEE", status: "ACTIVE", teamId: null, userId: DEMO.userId,
+        attendanceParticipant: true, attendanceExcluded: false, attendanceIncludedFrom: new Date("2026-10-13T10:00:00Z"), canPlanOwnRoutes: false, canSelfPublishRoutes: false }]
+    expect(() => assertDemoAttendanceAgents(agents())).not.toThrow()
+    for (const mutate of [
+      (rows: ReturnType<typeof agents>) => { rows.pop() },
+      (rows: ReturnType<typeof agents>) => { rows.push({ ...rows[2], id: "another-card" }) },
+      (rows: ReturnType<typeof agents>) => { rows[2].userId = "PRIVATE_FOREIGN_USER" },
+      (rows: ReturnType<typeof agents>) => { rows[2].role = "ADMIN" },
+      (rows: ReturnType<typeof agents>) => { rows[2].attendanceExcluded = true },
+      (rows: ReturnType<typeof agents>) => { rows[2].attendanceIncludedFrom = null },
+      (rows: ReturnType<typeof agents>) => { rows[2].attendanceIncludedFrom = new Date("2026-10-05") },
+      (rows: ReturnType<typeof agents>) => { rows[2].canPlanOwnRoutes = true },
+      (rows: ReturnType<typeof agents>) => { rows[0].userId = DEMO.userId },
+    ]) { const rows = agents(); mutate(rows); expect(() => assertDemoAttendanceAgents(rows)).toThrow("FIXTURE_CHANGED") }
   })
   it("ownership collision stops preparation before any create; an owned repeat performs no rewrite", async () => {
     const create = vi.fn()

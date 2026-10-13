@@ -5805,7 +5805,7 @@ model MtmAgent {
   /// Whether this field agent may create and edit their own route drafts.
   /// Managers and administrators always plan within their normal scope.
   canPlanOwnRoutes Boolean       @default(true)
-  /// Explicit attendance enrolment for non-field roles; never grants field permissions.
+  /// Automatic attendance participation for linked CRM users; never grants field permissions.
   attendanceParticipant Boolean @default(false)
   /// Administrator exclusion from attendance only; never changes field permissions.
   attendanceExcluded Boolean @default(false)

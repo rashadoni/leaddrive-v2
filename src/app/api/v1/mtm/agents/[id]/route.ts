@@ -424,6 +424,8 @@ export const DELETE = withRls(async (req, auth, { params }: { params: Promise<{ 
 
     return NextResponse.json({ success: true })
   } catch (e: unknown) {
+    const conflict = attendanceIdentityConflictResponse(e)
+    if (conflict) return conflict
     if (e instanceof Error && /Workforce workday facts cannot be deleted/i.test(e.message)) {
       return workforceRetentionBlocked()
     }

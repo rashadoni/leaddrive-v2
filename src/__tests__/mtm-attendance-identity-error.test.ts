@@ -8,6 +8,14 @@ const unknown = (message: string) => new Prisma.PrismaClientUnknownRequestError(
 const known = (code: string, meta: Record<string, unknown>, message = "Raw query failed") => new Prisma.PrismaClientKnownRequestError(message, { code, meta, clientVersion: "fixture" })
 
 describe("automatic attendance identity conflict response", () => {
+  it("explains protected active-user links with a distinct attendance-only action", async () => {
+    const marker = "MTM_ATTENDANCE_EMPLOYEE_LINK_REQUIRED"
+    const response = attendanceIdentityConflictResponse(unknown(connector(marker)))
+    expect(response?.status).toBe(409)
+    expect(await response!.json()).toEqual({ code: marker,
+      error: "An active CRM user keeps their employee card. Use the attendance participation switch to exclude them from attendance." })
+    expect(attendanceIdentityConflictResponse(new Error(marker))).toBeNull()
+  })
   it.each([
     unknown(`PRIVATE_EMPLOYEE_QUERY\n${connector()}`),
     known("P2010", { code: "23514", message: `ERROR: ${marker}` }),

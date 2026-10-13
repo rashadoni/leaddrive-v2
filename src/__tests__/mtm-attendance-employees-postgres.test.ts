@@ -365,6 +365,35 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
     })
   })
 
+  it("protects an active CRM user's link and card while leaving exclusion as a separate operation", async () => {
+    await tenant(automaticOrg, async () => {
+      const card = await prisma.mtmAgent.findFirstOrThrow({ where: { userId: "automatic-new" } })
+      await expect(prisma.mtmAgent.update({ where: { id: card.id }, data: { userId: null } })).rejects.toThrow(/MTM_ATTENDANCE_EMPLOYEE_LINK_REQUIRED/)
+      await expect(prisma.mtmAgent.delete({ where: { id: card.id } })).rejects.toThrow(/MTM_ATTENDANCE_EMPLOYEE_LINK_REQUIRED/)
+      expect(await prisma.mtmAgent.findUnique({ where: { id: card.id } })).toMatchObject({ userId: "automatic-new", attendanceExcluded: false })
+      await prisma.user.update({ where: { id: "automatic-new" }, data: { isActive: false } })
+      await prisma.mtmAgent.delete({ where: { id: card.id } })
+      expect(await prisma.mtmAgent.count({ where: { userId: "automatic-new" } })).toBe(0)
+    })
+  })
+
+  it("preserves off-mode unlink and tenant deletion instead of enforcing attendance outside its scope", async () => {
+    const org = "automatic-delete-fixture", uid = `${org}-user`
+    await bypass(async () => {
+      await prisma.organization.create({ data: { id: org, name: "Fictional deletion", slug: org } })
+      await prisma.mtmSetting.create({ data: { organizationId: org, key: "attendanceEnabled", value: true } })
+      await prisma.user.create({ data: { id: uid, organizationId: org, name: "Deletion fixture", email: `${uid}@example.invalid`, passwordHash: "fixture" } })
+      const card = await prisma.mtmAgent.findFirstOrThrow({ where: { organizationId: org, userId: uid } })
+      await prisma.mtmSetting.update({ where: { organizationId_key: { organizationId: org, key: "attendanceEnabled" } }, data: { value: false } })
+      await prisma.mtmAgent.update({ where: { id: card.id }, data: { userId: null } })
+      await prisma.mtmAgent.delete({ where: { id: card.id } })
+      await prisma.mtmSetting.update({ where: { organizationId_key: { organizationId: org, key: "attendanceEnabled" } }, data: { value: true } })
+      expect(await prisma.mtmAgent.count({ where: { organizationId: org, userId: uid } })).toBe(1)
+      await prisma.organization.delete({ where: { id: org } })
+      expect(await prisma.mtmAgent.count({ where: { organizationId: org } })).toBe(0)
+    })
+  })
+
   it.each(["user-first", "enable-first"])("serializes concurrent enable and user creation (%s) without missing a user", async order => {
     const org = `automatic-race-${order}`, uid = `${org}-user`
     await bypass(async () => {
@@ -387,5 +416,44 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
     release()
     await Promise.all([first, second])
     expect(await tenant(org, () => prisma.mtmAgent.count({ where: { userId: uid, attendanceParticipant: true } }))).toBe(1)
+  })
+
+  it("lets a user provision finish while exclusion waits behind the real month-close canonical locks", async () => {
+    const scope = { organizationId: automaticOrg, agentId: "automatic-field" }
+    const { lockMtmWorkdayTransitions } = await import("@/lib/mtm/workday")
+    let allowFence!: () => void, entered!: () => void
+    const released = new Promise<void>(resolve => { allowFence = resolve }), ready = new Promise<void>(resolve => { entered = resolve })
+    // Exact close ordering without manufacturing a closed financial snapshot.
+    const closer = tenant(automaticOrg, () => prisma.$transaction(async tx => {
+      await lockMtmWorkdayTransitions(tx, scope)
+      await self.lockAttendanceRequests(tx, scope)
+      await store.requireAttendanceEmployeeAdmin(tx, automaticAdmin)
+      entered(); await released
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-attendance-month-snapshot:${automaticOrg}`}, 0))`
+    }, { timeout: 15_000 }))
+    void closer.catch(() => { entered(); allowFence() })
+    await ready
+    const excluding = tenant(automaticOrg, () => store.setAttendanceParticipation(automaticAdmin, {
+      clientRequestId: randomUUID(), agentId: scope.agentId, included: false, previousEventId: null,
+    }))
+    // Observe the real blocked advisory acquisition before adding the third
+    // writer; no sleeps are used to guess which transaction acquired a lock.
+    let waiting = false
+    try {
+      for (let attempt = 0; attempt < 30 && !waiting; attempt++) {
+        const [row] = await bypass(() => prisma.$queryRaw<Array<{ waiting: boolean }>>`SELECT EXISTS (
+          SELECT 1 FROM pg_stat_activity WHERE datname = current_database() AND wait_event = 'advisory' AND pid <> pg_backend_pid()
+        ) AS waiting`)
+        waiting = row.waiting
+        if (!waiting) await new Promise(resolve => setTimeout(resolve, 10))
+      }
+      expect(waiting).toBe(true)
+      await tenant(automaticOrg, () => prisma.user.create({ data: { id: "automatic-month-race-user", organizationId: automaticOrg,
+        name: "Concurrent month fixture", email: "month-race@example.invalid", passwordHash: "fixture" } }))
+    } finally { allowFence() }
+    await Promise.all([closer, excluding])
+    expect(await tenant(automaticOrg, () => prisma.mtmAgent.count({ where: { userId: "automatic-month-race-user" } }))).toBe(1)
+    expect(await tenant(automaticOrg, () => prisma.mtmAgent.findUnique({ where: { id: scope.agentId } }))).toMatchObject({ role: "AGENT", attendanceParticipant: false,
+      canPlanOwnRoutes: true, canSelfPublishRoutes: true, attendanceExcluded: true })
   })
 })
