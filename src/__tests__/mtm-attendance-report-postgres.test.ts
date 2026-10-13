@@ -314,7 +314,7 @@ pgDescribe("MTM report reads the real saved workday and journal", () => {
     const excel = await exportReport(request("xlsx"))
     expect(excel.status).toBe(200)
     const workbook = new ExcelJS.Workbook()
-    await workbook.xlsx.load(Buffer.from(await excel.arrayBuffer()))
+    await workbook.xlsx.load(await excel.arrayBuffer())
     expect(workbook.worksheets[0].rowCount).toBe(6)
     const cells = JSON.stringify(workbook.worksheets.map((sheet) => sheet.getSheetValues()))
     expect(cells).toContain("Fixture employee A")
