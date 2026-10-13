@@ -26,7 +26,7 @@ export function assertPhoneOwner(org: { id: string; slug: string; settings: unkn
 }
 async function owner(tx: Prisma.TransactionClient) {
   const found = await tx.organization.findMany({ where: { OR: [{ id: PHONE.id }, { slug: PHONE.slug }] },
-    select: { id: true, slug: true, settings: true }, take: 2 })
+    select: { id: true, slug: true, settings: true, isActive: true, modules: true, addons: true }, take: 2 })
   if (found.length > 1) fail("PHONE_NOT_OWNED")
   if (found[0]) assertPhoneOwner(found[0])
   return found[0] ?? null
@@ -58,7 +58,11 @@ export async function readPhone(db: Db) {
   return db.$transaction(async tx => {
     await tx.$executeRawUnsafe("SET TRANSACTION READ ONLY")
     await tx.$executeRaw`SELECT set_config('app.org_id', ${PHONE.id}, true)`
-    assertPhoneOwner(await owner(tx))
+    const organization = await owner(tx)
+    assertPhoneOwner(organization)
+    const modules = organization?.modules as Record<string, unknown> | null
+    if (!organization?.isActive || modules?.mtm !== true || modules?.["route-field"] !== true
+      || !organization.addons.includes("mtm")) fail("PHONE_FIXTURE_CHANGED")
     const users = await tx.user.findMany({ where: { organizationId: PHONE.id }, select: { id: true, email: true, role: true, isActive: true, passwordHash: true }, take: 4 })
     if (users.length !== PHONE_USERS.length || users.some(user => !PHONE_USERS.some(expected => expected.id === user.id
       && expected.email === user.email && expected.role === user.role) || !user.isActive)) fail("PHONE_FIXTURE_CHANGED")

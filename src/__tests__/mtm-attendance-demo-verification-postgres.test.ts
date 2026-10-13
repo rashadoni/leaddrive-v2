@@ -201,6 +201,10 @@ suite("attendance demo fixture with real PostgreSQL guards", () => {
     }) } as unknown as Pick<PrismaClient, "$transaction">
     await expect(readPhone(probe)).rejects.toThrow(/read-only transaction/)
     expect(await readPhone(db)).toEqual(snapshot)
+    await admin.organization.update({ where: { id: PHONE.id }, data: { isActive: false } })
+    await expect(readPhone(db)).rejects.toThrow("PHONE_FIXTURE_CHANGED")
+    await admin.organization.update({ where: { id: PHONE.id }, data: { isActive: true } })
+    expect(await readPhone(db)).toEqual(snapshot)
   })
 
 })
