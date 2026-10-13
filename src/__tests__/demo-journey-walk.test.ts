@@ -347,6 +347,29 @@ describe("the arrow's controls", () => {
   })
 })
 
+describe("a chapter's clip", () => {
+  it("opens the chapter at the top of the product screen, not down the guide's column", async () => {
+    // Owner, 2026-10-13: the video sat «at the bottom, on the right, where
+    // nobody looks» — a 300px thumbnail under the step card.
+    await renderPlayer()
+    await walkTo("source-stats")
+    const scene = container.querySelector("#demo-scene")!
+    const clip = scene.querySelector('[data-testid="demo-intro-clip"]')
+    expect(clip, "the campaigns chapter opens with its clip").not.toBeNull()
+    // Before the screen it introduces, with the poster and the button in words.
+    expect(scene.firstElementChild).toBe(clip)
+    expect(clip!.querySelector("img")).not.toBeNull()
+    expect(clip!.textContent).toContain(S.clipWatch)
+    expect(container.querySelector('[data-testid="demo-guide"] [data-testid="demo-intro-clip-play"]')).toBeNull()
+
+    // A step later it is one line: the product screen has the room back.
+    await walkTo("source-open-campaign")
+    const line = scene.querySelector('[data-testid="demo-intro-clip-play"]')
+    expect(line?.textContent).toContain(S.clipWatch)
+    expect(scene.querySelector('[data-testid="demo-intro-clip"]')).toBeNull()
+  }, 60_000)
+})
+
 describe("the talking guide", () => {
   it("is silent until asked, then reads each step as it opens, and stops for a clip", async () => {
     const played: string[] = []
