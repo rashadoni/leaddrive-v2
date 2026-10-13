@@ -826,3 +826,7 @@ Actual React render → HTML/CSS и **12 PNG** (registry/assignments × az/ru/en
 **2026-10-13 — CI733 table fit.** Широкая таблица филиалов получила свой horizontal overflow wrapper; мобильные карточки и обычная вертикальная прокрутка страницы сохранены. RLS fix731 объединён. Гейты layout/RLS проверяются без исключений и изменения baseline.
 
 **2026-10-13 — CI737 RLS syntax.** Тот же выявленный source contract применён к ещё не выпущенной risk миграции: явные quoted ALTER/CREATE вместо dynamic EXECUTE, те же tenant policies/trigger. Fix733 wrapper и731 policies объединены. Проверки не ослаблены.
+
+**2026-10-13 — CI738 source gates.** Интегрированы явные RLS policies731/737 и tablewrapper733; имя stream таблицы в ALTER приведено к quoted repository contract. Порядок блокировок/политики/trigger без изменения. Все21 narrowRLS/layout сценария предыдущих веток PASS, эта ветка также проверяется.
+
+**2026-10-13 — CI738 office admission contract.** Fixed-row source assertion уточнён с прежнего только FIELD_EXECUTE на уже реализованный field/office допуск: наличие authenticated agent, tenant route-field для office и requireAttendanceSelf в preflight и транзакции. API/PG tests на deny/no mutation сохранены; это обновление ожидаемого контракта после2.12 closure, не обход отказа.

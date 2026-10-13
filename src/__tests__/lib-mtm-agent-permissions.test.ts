@@ -133,7 +133,15 @@ const FACTS: Partial<Record<AgentPermissionId, Fact[]>> = {
     { check: () => mobileCapabilities("AGENT").includes("FIELD_EXECUTE") },
     {
       file: "src/app/api/v2/mtm/mobile/route-field/workday-return/route.ts",
-      contains: 'if (!auth.agentId || !hasMobileCapability(auth.role, "FIELD_EXECUTE")) {',
+      contains: 'if (!auth.agentId || (attendanceOnly && auth.tenantCapabilities?.routeField!==true)) {',
+    },
+    {
+      file: "src/app/api/v2/mtm/mobile/route-field/workday-return/route.ts",
+      contains: 'await requireAttendanceSelf(prisma,{organizationId:auth.orgId,agentId:auth.agentId,role:auth.role},"attendanceWorkday")',
+    },
+    {
+      file: "src/lib/mtm/workday-return.ts",
+      contains: 'await requireAttendanceSelf(tx,self,"attendanceWorkday")',
     },
     {
       file: "src/lib/mtm/workday-return.ts",
