@@ -16,6 +16,7 @@ import { MtmAttendanceExportButtons } from "@/components/mtm/attendance-export-b
 import { MtmAttendanceDeliveries } from "@/components/mtm/attendance-deliveries"
 import { MtmAttendanceHrAccess } from "@/components/mtm/attendance-hr-access"
 import { MtmAttendanceDayKinds } from "@/components/mtm/attendance-day-kinds"
+import { MtmAttendanceRequestLimits } from "@/components/mtm/attendance-request-limits"
 import type { AttendanceReportSnapshot } from "@/lib/mtm/attendance-query"
 
 type Form = "DAY" | "MONTH" | "LATE_EARLY" | "ABSENCES" | "JOURNAL"
@@ -323,5 +324,6 @@ export function MtmAttendanceReportWorkspace() {
     <MtmAttendancePersonalViews currentConfig={currentConfig} onApply={applyPersonal} onAccessLost={clearPrivateReport} accessUnavailable={accessUnavailable} />
     <MtmAttendanceDayKinds canManage={canManageAccess} onAccessLost={clearPrivateReport} onSaved={() => void load(report ? { from: report.from, to: report.to } : range, customView?.config)} accessUnavailable={accessUnavailable} />
     <MtmAttendanceHrAccess canManage={canManageAccess} onAccessLost={clearPrivateReport} accessUnavailable={accessUnavailable} />
+    <MtmAttendanceRequestLimits canManage={canManageAccess} onAccessLost={clearPrivateReport} accessUnavailable={accessUnavailable} />
   </section>
 }

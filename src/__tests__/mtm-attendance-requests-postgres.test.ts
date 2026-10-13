@@ -35,6 +35,8 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
   let bypass: typeof import("@/lib/rls-context").runWithRlsBypass
   let store: typeof import("@/lib/mtm/attendance-request-store")
   let photos: typeof import("@/lib/mtm/attendance-attachment")
+  let limits: typeof import("@/lib/mtm/attendance-request-limit-store")
+  let quotaApi: typeof import("@/app/api/v1/mtm/mobile/attendance/request-limits/route")
   let api: typeof import("@/app/api/v1/mtm/mobile/attendance/requests/route")
   let createdRole = false, createdDb = false
   let documentRuntime: string | undefined
@@ -60,12 +62,15 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
     ;({ runWithTenant: tenant, runWithRlsBypass: bypass } = await import("@/lib/rls-context"))
     store = await import("@/lib/mtm/attendance-request-store")
     photos = await import("@/lib/mtm/attendance-attachment")
+    limits = await import("@/lib/mtm/attendance-request-limit-store")
+    quotaApi = await import("@/app/api/v1/mtm/mobile/attendance/request-limits/route")
     api = await import("@/app/api/v1/mtm/mobile/attendance/requests/route")
     await bypass(async () => {
       for (const org of ["request-pg-a", "request-pg-b"]) {
-        await prisma.organization.create({ data: { id: org, name: "Fictional request organization", slug: org } })
+        await prisma.organization.create({ data: { id: org, name: "Fictional request organization", slug: org, modules: ["route-field"] } })
         await prisma.mtmSetting.create({ data: { organizationId: org, key: "attendanceEnabled", value: true } })
       }
+      await prisma.user.create({ data: { id: "request-pg-admin", organizationId: self.organizationId, name: "Fictional limits administrator", email: "limits-admin@example.invalid", role: "admin", passwordHash: "unusable-fixture-hash" } })
       for (const [id, org] of [["request-pg-owner", "request-pg-a"], ["request-pg-colleague", "request-pg-a"], ["request-pg-foreign", "request-pg-b"]]) await prisma.mtmAgent.create({ data: { id, organizationId: org, name: "Fictional employee", role: "AGENT", status: "ACTIVE" } })
     })
   }, 240_000)
@@ -91,7 +96,7 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
     })
   })
   it("serializes different overlapping UUIDs, allows adjacent hours, and audits pending cancellation", async () => {
-    const body = input("2026-11-03")
+    const body = input("2026-12-03")
     const responses = await Promise.all([submit(body), submit({ ...body, clientRequestId: randomUUID() })])
     expect(responses.map((response) => response.status).sort()).toEqual([201, 409])
     expect((await submit({ ...body, clientRequestId: randomUUID(), startTime: "10:00", endTime: "11:00" })).status).toBe(201)
@@ -104,7 +109,7 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
     expect((await submit({ ...body, clientRequestId: randomUUID() })).status).toBe(201)
   })
   it("binds real re-encoded photo bytes to the owner and request, rejects foreign documents and reviewer drafts", async () => {
-    const body = input("2026-11-04")
+    const body = input("2027-01-04")
     const bytes = await sharp({ create: { width: 16, height: 16, channels: 3, background: "white" } }).png().withExif({ IFD0: { ImageDescription: "PRIVATE_COORDINATE_MARKER" } }).toBuffer()
     const upload = { clientRequestId: body.clientRequestId, clientAttachmentId: randomUUID() }
     const photo = await tenant(self.organizationId, () => photos.uploadAttendanceDocument(self, upload, bytes))
@@ -127,11 +132,11 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
   it("has no writes for a disabled feature, denied capability or another owner, and never leaks draft storage keys", async () => {
     const before = await tenant(self.organizationId, () => prisma.mtmHrmRequest.count())
     identity.routeField = false
-    expect((await submit(input("2026-11-05"))).status).toBe(403)
+    expect((await submit(input("2027-02-05"))).status).toBe(403)
     identity.routeField = true
-    expect((await submit({ ...input("2026-11-05"), agentId: "request-pg-colleague" })).status).toBe(400)
+    expect((await submit({ ...input("2027-02-05"), agentId: "request-pg-colleague" })).status).toBe(400)
     await tenant(self.organizationId, () => prisma.mtmSetting.update({ where: { organizationId_key: { organizationId: self.organizationId, key: "attendanceEnabled" } }, data: { value: false } }))
-    expect((await submit(input("2026-11-05"))).status).toBe(404)
+    expect((await submit(input("2027-02-05"))).status).toBe(404)
     expect(await tenant(self.organizationId, () => prisma.mtmHrmRequest.count())).toBe(before)
     await tenant(self.organizationId, () => prisma.mtmSetting.update({ where: { organizationId_key: { organizationId: self.organizationId, key: "attendanceEnabled" } }, data: { value: true } }))
     const listing = await tenant(self.organizationId, () => store.listOwnAttendanceRequests(self))
@@ -139,4 +144,47 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
     expect(json).not.toMatch(/storageKey|sourceSha256|submissionHash/)
     expect(listing.items.every((item) => item.agentId === self.agentId)).toBe(true)
   })
+  it("reserves the default three monthly requests atomically across non-overlapping dates and excludes the following month", async () => {
+    for (const date of ["2027-03-01", "2027-03-02"]) expect((await submit(input(date))).status).toBe(201)
+    const responses = await Promise.all([submit(input("2027-03-03")), submit(input("2027-03-04"))])
+    expect(responses.map((response) => response.status).sort()).toEqual([201, 409])
+    expect(await responses.find((response) => response.status === 409)!.json()).toMatchObject({ code: "MTM_ATTENDANCE_REQUEST_COUNT_LIMIT" })
+    const own = await quotaApi.GET(new NextRequest("http://localhost/api/v1/mtm/mobile/attendance/request-limits?month=2027-03&agentId=request-pg-colleague"))
+    expect(await own.json()).toMatchObject({ data: { month: "2027-03", usedMinutes: 180, usedRequests: 3, remainingRequests: 0, remainingMinutes: 300 } })
+    expect((await submit(input("2027-04-01"))).status).toBe(201)
+  })
+  it("permits exactly eight hours, counts hourly TIME_OFF too and returns the reservation after own cancellation", async () => {
+    const body = { ...input("2027-05-01"), endTime: "16:30" }
+    const first = await submit(body)
+    expect(first.status).toBe(201)
+    const original = await first.json()
+    expect((await submit({ ...input("2027-05-02"), kind: "TIME_OFF", endTime: "09:30" })).status).toBe(201)
+    const over = await submit({ ...input("2027-05-03"), endTime: "09:01" })
+    expect(over.status).toBe(409)
+    expect(await over.json()).toMatchObject({ code: "MTM_ATTENDANCE_REQUEST_MINUTES_LIMIT" })
+    // Retrying the first UUID at exhausted quota still returns its existing request.
+    expect((await submit(body)).status).toBe(200)
+    await tenant(self.organizationId, () => store.cancelOwnAttendanceRequest(self, original.data.request.id))
+    expect((await submit(input("2027-05-03"))).status).toBe(201)
+    const usage = await tenant(self.organizationId, () => store.readOwnAttendanceRequestQuota(self, "2027-05"))
+    expect(usage).toMatchObject({ usedRequests: 2, usedMinutes: 90, remainingMinutes: 390 })
+  })
+  it("changes company limits with a version and audit, preserves old requests, and zero stops only new hourly absence submissions", async () => {
+    const body = input("2027-06-01")
+    const original = await submit(body)
+    expect(original.status).toBe(201)
+    const before = await original.json()
+    const changed = await tenant(self.organizationId, () => limits.saveAttendanceRequestLimits(self.organizationId, "request-pg-admin", { monthlyMinutes: 0, monthlyRequests: 0, version: null }))
+    expect(changed).toMatchObject({ monthlyMinutes: 0, monthlyRequests: 0 })
+    expect((await submit(body)).status).toBe(200)
+    expect((await submit(input("2027-06-02"))).status).toBe(409)
+    expect((await submit({ clientRequestId: randomUUID(), kind: "SICK_LEAVE", unit: "DAYS", startDate: "2027-06-03", endDate: "2027-06-03", reason: "Fictional document" })).status).toBe(201)
+    await tenant(self.organizationId, async () => {
+      expect(await prisma.mtmHrmRequest.findUnique({ where: { id: before.data.request.id } })).toMatchObject({ status: "PENDING" })
+      expect(await prisma.mtmAuditLog.count({ where: { metadataKind: "mtm_attendance_request_limits" } })).toBe(1)
+      await expect(limits.saveAttendanceRequestLimits(self.organizationId, "request-pg-admin", { monthlyMinutes: 480, monthlyRequests: 3, version: null })).rejects.toMatchObject({ status: 409 })
+      await limits.saveAttendanceRequestLimits(self.organizationId, "request-pg-admin", { monthlyMinutes: 480, monthlyRequests: 3, version: changed.version })
+    })
+  })
+
 })

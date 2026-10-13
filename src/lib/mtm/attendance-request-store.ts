@@ -6,6 +6,8 @@ import { readAttendanceDayKinds } from "@/lib/mtm/attendance-day-kind-store"
 import { agentPermissionEnabled } from "@/lib/mtm/agent-permissions"
 import { lockMtmWorkdayTransitions } from "@/lib/mtm/workday"
 import { workforceWorkdayCorrectionFacts } from "@/lib/workforce/workday-correction-facts"
+import { assertAttendanceRequestQuota, attendanceRequestQuotaUsage } from "@/lib/mtm/attendance-request-quota"
+import { readAttendanceRequestLimits } from "@/lib/mtm/attendance-request-limit-store"
 import {
   AttendanceRequestDetailsSchema, AttendanceRequestError, AttendanceRequestInputSchema,
   attendanceRequestWindowsOverlap, type AttendanceRequestDto, type AttendanceRequestInput, type AttendanceCorrectionBasis,
@@ -121,6 +123,7 @@ export async function submitAttendanceRequestInTransaction(db: Prisma.Transactio
     })) throw new AttendanceRequestError("MTM_ATTENDANCE_REQUEST_OVERLAP")
   }
   const now = new Date()
+  await assertAttendanceRequestQuota(db, self, input, timezone)
   const created = await db.mtmHrmRequest.create({ data: {
     id: randomUUID(), organizationId: self.organizationId, agentId: self.agentId, clientRequestId: input.clientRequestId,
     type: input.kind === "TIME_CORRECTION" ? "TIME_CORRECTION" : input.kind === "ANNUAL_LEAVE" ? "LEAVE" : "ABSENCE", startDate, endDate, reason: input.reason, submittedAt: now,
@@ -165,4 +168,14 @@ export async function cancelOwnAttendanceRequest(self: AttendanceSelf, id: strin
     if (!updated) throw new AttendanceRequestError("MTM_ATTENDANCE_REQUEST_CHANGED")
     return { request: attendanceRequestDto(updated), idempotent: false }
   })
+}
+
+export async function readOwnAttendanceRequestQuota(self: AttendanceSelf, month: string) {
+  return prisma.$transaction(async (db: Prisma.TransactionClient) => {
+    await requireAttendanceSelf(db, self)
+    const limits = await readAttendanceRequestLimits(self.organizationId, db)
+    const usage = await attendanceRequestQuotaUsage(db, self, month)
+    return { month, limits, ...usage, remainingMinutes: Math.max(0, limits.monthlyMinutes - usage.usedMinutes),
+      remainingRequests: Math.max(0, limits.monthlyRequests - usage.usedRequests) }
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead })
 }
