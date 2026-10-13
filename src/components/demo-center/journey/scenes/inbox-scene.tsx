@@ -3,11 +3,12 @@
 import { useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import {
-  Bot, Filter, Inbox as InboxIcon, Phone, Search, Send, Sparkles, StickyNote, User, UserPlus, UserX, Users,
+  Bot, Filter, Inbox as InboxIcon, Lock, Phone, Search, Send, Sparkles, StickyNote, User, UserPlus, UserX, Users,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { formatDateTime } from "@/lib/format-date"
-import { DEMO_CHANNEL_LABELS } from "@/lib/demo-center/journey"
+import { DEMO_CHANNEL_LABELS, DEMO_INBOX_COLLEAGUES, DEMO_INBOX_THREADS, demoInboxChannelOf, type DemoInboxChannel, type DemoInboxMessage } from "@/lib/demo-center/journey"
+import { ChannelIcon, channelColor, channelLabel as productChannelLabel } from "@/lib/inbox-channels"
 import { cn } from "@/lib/utils"
 import type { DemoSceneProps } from "../scene-props"
 import { demoTarget } from "../demo-target"
@@ -24,6 +25,35 @@ import { DEMO_JOURNEY_STRINGS as S } from "../strings"
  */
 const DEMO_REPLY_LIMIT = 5
 const REPLIES_SENT = "inbox.replies"
+
+/** Which channel the rail filters by — the step «pick WhatsApp» completes on it. */
+const CHANNEL_FILTER = "inbox.channel"
+/** «reply» or «note»: the step «write to the team» completes on «note». */
+const COMPOSER_MODE = "inbox.composer"
+/** Set once the conversation was handed to a colleague. */
+const ASSIGNED = "inbox.assigned"
+
+/** The rail lists channels in the product's own order. */
+const RAIL_CHANNELS: readonly DemoInboxChannel[] = ["email", "telegram", "sms", "whatsapp", "facebook", "instagram", "tiktok", "web-chat"]
+
+type ViewKey = "all" | "me" | "unassigned" | "others" | "chatbot" | "participating"
+
+/** One row of the list: the prospect's own conversation or an invented one. */
+interface InboxRow {
+  id: string
+  own: boolean
+  contactName: string
+  companyName: string | null
+  channel: DemoInboxChannel
+  preview: string
+  at: string
+  unread: number
+  unanswered: boolean
+  assignee: "me" | "colleague" | null
+  assigneeName: string | null
+  botHandled: boolean
+  messages: readonly DemoInboxMessage[]
+}
 
 /**
  * Communication → Inbox: the prospect's own inbound message, and the AI draft
@@ -52,13 +82,91 @@ export function InboxScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
   const locale = useLocale()
   const { conversation, lead } = snapshot.records
   const channelLabel = DEMO_CHANNEL_LABELS[conversation.channel]
+  const ownChannel = demoInboxChannelOf(snapshot.identity.sourceChannel)
   const threadOpen = snapshot.state !== "SOURCE_SEEN"
-  const [selected, setSelected] = useState(threadOpen)
-  const [composer, setComposer] = useState<"reply" | "note">("reply")
+  /** "own" is the prospect's conversation; anything else is one of the invented ones. */
+  const [activeId, setActiveId] = useState<string | null>(threadOpen ? "own" : null)
+  const selected = activeId === "own"
+  const [view, setView] = useState<ViewKey>("all")
+  const [assignOpen, setAssignOpen] = useState(false)
+  const [assignedTo, setAssignedTo] = useState<string | null>(null)
+  const composer: "reply" | "note" = snapshot.ui[COMPOSER_MODE] === "note" ? "note" : "reply"
   const [draft, setDraft] = useState("")
   const [mine, setMine] = useState<readonly { id: string; text: string; at: string; kind: "reply" | "note" }[]>([])
   const sentCount = Number(snapshot.ui[REPLIES_SENT] ?? 0)
   const left = Math.max(0, DEMO_REPLY_LIMIT - sentCount)
+
+  // The list a working company sees: the prospect's own request on top, and
+  // around it conversations from every channel (inbox-threads.ts).
+  const base = Date.parse(conversation.messages[0]?.at ?? snapshot.startedAt)
+  const lastOwn = conversation.messages[conversation.messages.length - 1]
+  const rows: InboxRow[] = [
+    {
+      id: "own",
+      own: true,
+      contactName: conversation.contactName,
+      companyName: conversation.companyName,
+      channel: ownChannel,
+      preview: conversation.messages[0]?.text ?? "",
+      at: conversation.messages[0]?.at ?? snapshot.startedAt,
+      unread: selected ? 0 : conversation.unread,
+      unanswered: lastOwn?.direction !== "outbound",
+      assignee: assignedTo ? "colleague" : "me",
+      assigneeName: assignedTo ?? conversation.assignedTo,
+      botHandled: conversation.messages.some((message) => message.ai),
+      messages: [],
+    },
+    ...DEMO_INBOX_THREADS.map((thread): InboxRow => {
+      const last = [...thread.messages].reverse().find((message) => message.from !== "note") ?? thread.messages[0]
+      return {
+        id: thread.id,
+        own: false,
+        contactName: thread.contactName,
+        companyName: thread.companyName,
+        channel: thread.channel,
+        preview: last.text,
+        at: new Date(base - last.minutesAgo * 60_000).toISOString(),
+        unread: activeId === thread.id ? 0 : thread.unread,
+        unanswered: thread.unanswered,
+        assignee: thread.assignee,
+        assigneeName: thread.assignee === "me" ? conversation.assignedTo : thread.colleagueName ?? null,
+        botHandled: thread.botHandled,
+        messages: thread.messages,
+      }
+    }),
+  ]
+
+  const inView = (row: InboxRow, key: ViewKey) =>
+    key === "all" ? true
+      : key === "me" ? row.assignee === "me"
+        : key === "unassigned" ? row.assignee === null
+          : key === "others" ? row.assignee === "colleague"
+            : key === "chatbot" ? row.botHandled
+              : false
+  // The step that says «open your own conversation» must find it in the list,
+  // whatever the prospect filtered by a moment ago.
+  const onOpenStep = step?.id === "conversation-open"
+  const channelFilter = onOpenStep ? "all" : String(snapshot.ui[CHANNEL_FILTER] ?? "all")
+  const activeView: ViewKey = onOpenStep ? "all" : view
+  const visible = rows.filter((row) => (channelFilter === "all" || row.channel === channelFilter) && inView(row, activeView))
+  const active = activeId && activeId !== "own" ? rows.find((row) => row.id === activeId) ?? null : null
+
+  const pickChannel = (channel: DemoInboxChannel) => {
+    dispatch({ type: "ui", path: CHANNEL_FILTER, value: channelFilter === channel ? "all" : channel })
+  }
+  const pickView = (key: ViewKey) => {
+    setView(key)
+    // As in the product: «Hamısı» also clears the channel filter.
+    if (key === "all" && channelFilter !== "all") dispatch({ type: "ui", path: CHANNEL_FILTER, value: "all" })
+  }
+  const pickComposer = (key: "reply" | "note") => {
+    dispatch({ type: "ui", path: COMPOSER_MODE, value: key })
+  }
+  const assignTo = (name: string) => {
+    setAssignedTo(name)
+    setAssignOpen(false)
+    dispatch({ type: "ui", path: ASSIGNED, value: true })
+  }
 
   const sendOwn = () => {
     const text = draft.trim()
@@ -78,8 +186,9 @@ export function InboxScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
   }
 
   const openThread = () => {
-    if (reviewMode) {
-      setSelected(true)
+    // Opened once, it is a conversation like any other in the list.
+    if (reviewMode || threadOpen) {
+      setActiveId("own")
       return
     }
     if (step?.id !== "conversation-open") {
@@ -87,7 +196,7 @@ export function InboxScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
       return
     }
     const result = dispatch({ type: "transition", stepId: step.id, to: "CONVERSATION_OPENED" })
-    if (result.ok) setSelected(true)
+    if (result.ok) setActiveId("own")
   }
 
   const sendDraft = () => {
@@ -116,24 +225,56 @@ export function InboxScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
         <div className="hidden h-12 items-center gap-2 border-b border-border/60 px-3 @6xl:flex">
           <span className="text-base font-semibold tracking-tight">{t("inbox")}</span>
         </div>
-        <nav data-tour-id="inbox-views" aria-label={t("inbox")} className="flex flex-wrap gap-1 p-2 @6xl:block @6xl:flex-1 @6xl:space-y-0.5">
-          {VIEWS.map(({ key, Icon }) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => hint(S.hintFollow(step?.title ?? ""))}
-              aria-current={key === "all" ? "page" : undefined}
-              className={cn(
-                "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors @6xl:w-full",
-                key === "all" ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-              )}
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              <span className="truncate text-left @6xl:flex-1">{t(`view_${key}`)}</span>
-              {key === "all" && <span className="tabular-nums text-[10px] opacity-60">1</span>}
-            </button>
-          ))}
+        <nav data-tour-id="inbox-views" aria-label={t("inbox")} className="flex flex-wrap gap-1 p-2 @6xl:block @6xl:space-y-0.5">
+          {VIEWS.map(({ key, Icon }) => {
+            const count = rows.filter((row) => inView(row, key)).length
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => pickView(key)}
+                aria-current={key === activeView ? "page" : undefined}
+                data-inbox-view={key}
+                className={cn(
+                  "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors @6xl:w-full",
+                  key === activeView ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                )}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                <span className="truncate text-left @6xl:flex-1">{t(`view_${key}`)}</span>
+                {count > 0 && <span className="tabular-nums text-[10px] opacity-60">{count}</span>}
+              </button>
+            )
+          })}
         </nav>
+        {/* Channels with their counts, as in the product's rail: one click
+            keeps a single channel's conversations. */}
+        <div data-tour-id="inbox-channels" className="border-t border-border/60 p-2 @6xl:flex-1">
+          <p className="px-2.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{t("channels")}</p>
+          <div className="flex flex-wrap gap-1 @6xl:block @6xl:space-y-0.5">
+            {RAIL_CHANNELS.map((channel) => {
+              const count = rows.filter((row) => row.channel === channel).length
+              return (
+                <button
+                  key={channel}
+                  type="button"
+                  onClick={() => pickChannel(channel)}
+                  aria-pressed={channelFilter === channel}
+                  data-inbox-channel={channel}
+                  {...(channel === "whatsapp" ? demoTarget("conversation-channels") : {})}
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors @6xl:w-full",
+                    channelFilter === channel ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                  )}
+                >
+                  <ChannelIcon channel={channel} className="h-4 w-4 shrink-0" />
+                  <span className="truncate text-left @6xl:flex-1">{productChannelLabel(channel)}</span>
+                  {count > 0 && <span className="tabular-nums text-[10px] opacity-60">{count}</span>}
+                </button>
+              )
+            })}
+          </div>
+        </div>
       </div>
 
       {/* Conversation list */}
@@ -151,7 +292,7 @@ export function InboxScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
           <button
             type="button"
             data-tour-id="inbox-filters"
-            onClick={() => hint(S.hintFollow(step?.title ?? ""))}
+            onClick={() => hint(S.demoButtonHint)}
             aria-label={t("channels")}
             className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
@@ -164,62 +305,107 @@ export function InboxScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
             <button
               key={tab}
               type="button"
-              onClick={() => hint(S.hintFollow(step?.title ?? ""))}
+              onClick={() => hint(S.demoButtonHint)}
               className={cn(
                 "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
                 tab === "opened" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground",
               )}
             >
               {t(`tab_${tab}`)}
-              <span className="ml-1 tabular-nums text-[10px] opacity-60">{tab === "opened" ? 1 : 0}</span>
+              <span className="ml-1 tabular-nums text-[10px] opacity-60">{tab === "opened" ? rows.length : 0}</span>
             </button>
           ))}
         </div>
 
-        <div data-tour-id="inbox-conversations" className="flex-1 overflow-y-auto">
-          <button
-            type="button"
-            onClick={openThread}
-            {...demoTarget("conversation-open")}
-            aria-current={selected ? "true" : undefined}
-            className={cn(
-              "flex w-full flex-col gap-1 border-b border-border/40 px-3 py-3 text-left transition-colors",
-              selected ? "bg-muted/70" : "hover:bg-muted/40",
-            )}
-          >
-            <span className="flex items-center gap-2">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
-                {conversation.contactName.split(" ").map((part) => part[0]).join("").slice(0, 2)}
-              </span>
-              <span className="min-w-0 flex-1 truncate text-sm font-medium">{conversation.contactName}</span>
-              {conversation.unread > 0 && !selected && (
-                <span className="h-2 w-2 shrink-0 rounded-full bg-[#FF4D00]" aria-hidden="true" />
-              )}
-            </span>
-            <span className="truncate text-xs text-muted-foreground">{conversation.messages[0]?.text}</span>
-            <span className="flex items-center gap-2 text-[10px] text-muted-foreground">
-              <span className="rounded bg-muted px-1.5 py-0.5">{channelLabel}</span>
-              <span>{formatDateTime(conversation.messages[0]?.at ?? "", locale)}</span>
-            </span>
-          </button>
+        <div data-tour-id="inbox-conversations" className="flex-1">
+          {visible.map((row) => {
+            const current = activeId === row.id
+            return (
+              <button
+                key={row.id}
+                type="button"
+                onClick={() => (row.own ? openThread() : setActiveId(row.id))}
+                {...(row.own ? demoTarget("conversation-open") : {})}
+                data-inbox-row={row.id}
+                aria-current={current ? "true" : undefined}
+                className={cn(
+                  "flex w-full flex-col gap-1 border-b border-border/40 px-3 py-3 text-left transition-colors",
+                  current ? "bg-muted/70" : "hover:bg-muted/40",
+                )}
+              >
+                <span className="flex items-center gap-2">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+                    {row.contactName.split(" ").map((part) => part[0]).join("").slice(0, 2)}
+                  </span>
+                  <span className={cn("min-w-0 flex-1 truncate text-sm", row.unread > 0 ? "font-semibold" : "font-medium")}>{row.contactName}</span>
+                  <span className="shrink-0 text-[10px] text-muted-foreground">{formatDateTime(row.at, locale)}</span>
+                </span>
+                <span className="truncate text-xs text-muted-foreground">{row.preview}</span>
+                {/* As the product's row: a plain channel icon, the red
+                    «Cavabsız» pill, the unread count — nothing it does not have. */}
+                <span className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                  <ChannelIcon channel={row.channel} className="h-3.5 w-3.5 shrink-0" />
+                  <span>{row.own ? channelLabel : productChannelLabel(row.channel)}</span>
+                  {row.unanswered && <span className="rounded-full bg-red-100 px-1.5 py-0.5 font-medium text-red-700 dark:bg-red-500/15 dark:text-red-300">{S.unanswered}</span>}
+                  {row.unread > 0 && (
+                    <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-[#FF4D00] px-1 text-[10px] font-semibold text-white">{row.unread}</span>
+                  )}
+                </span>
+              </button>
+            )
+          })}
+          {visible.length === 0 && <p className="p-4 text-xs text-muted-foreground">{S.inboxNothingHere}</p>}
         </div>
       </div>
 
       {/* Thread */}
       <div className="flex min-w-0 flex-col">
-        {!selected ? (
+        {active ? (
+          <SampleThread row={active} base={base} locale={locale} unassigned={t("view_unassigned")} aiLabel={t("messageAuthorAi")} teamLabel={t("composer_note")} assigneeLabel={tc("assignee")} />
+        ) : !selected ? (
           <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground">
             {t("selectConversation")}
           </div>
         ) : (
           <>
-            <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border/60 px-4">
+            <div className="flex min-h-12 shrink-0 flex-wrap items-center gap-2 border-b border-border/60 px-4 py-2">
               <span className="min-w-0 flex-1 truncate text-sm font-semibold">{conversation.contactName}</span>
               <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{channelLabel}</span>
-              <span className="hidden shrink-0 whitespace-nowrap text-xs text-muted-foreground @2xl:inline">{tc("assignee")}: {conversation.assignedTo}</span>
+              {/* The product's assign control: the assignee's name, and the
+                  colleagues the conversation can be handed to. */}
+              <div data-tour-id="inbox-assign" className="relative">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 gap-1.5 px-2 text-xs"
+                  aria-expanded={assignOpen}
+                  onClick={() => setAssignOpen((open) => !open)}
+                  {...(assignOpen ? {} : demoTarget("ai-reply-assign"))}
+                >
+                  <UserPlus className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span className="max-w-[9rem] truncate">{assignedTo ?? conversation.assignedTo}</span>
+                </Button>
+                {assignOpen && (
+                  <div role="menu" className="absolute right-0 top-full z-10 mt-1 w-52 rounded-lg border border-zinc-200 bg-card p-1 shadow-lg dark:border-zinc-700">
+                    <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{t("assign")}</p>
+                    {DEMO_INBOX_COLLEAGUES.map((name, index) => (
+                      <button
+                        key={name}
+                        type="button"
+                        role="menuitem"
+                        onClick={() => assignTo(name)}
+                        {...(index === 0 ? demoTarget("ai-reply-assign") : {})}
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted"
+                      >
+                        <User className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" /> {name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div data-tour-id="inbox-thread" className="flex-1 space-y-3 overflow-y-auto p-4">
+            <div data-tour-id="inbox-thread" className="flex-1 space-y-3 p-4">
               {conversation.messages.map((message) => (
                 <div
                   key={message.id}
@@ -295,8 +481,9 @@ export function InboxScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
                   <button
                     key={key}
                     type="button"
-                    onClick={() => setComposer(key)}
+                    onClick={() => pickComposer(key)}
                     aria-current={composer === key ? "true" : undefined}
+                    {...(key === "note" ? demoTarget("ai-reply-note") : {})}
                     className={cn(
                       "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
                       composer === key ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground",
@@ -305,8 +492,8 @@ export function InboxScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
                     <Icon className="h-3.5 w-3.5" /> {label}
                   </button>
                 ))}
-                <span className="ml-auto text-[10px] text-muted-foreground">
-                  {composer === "reply" ? t("replyGoesToContact") : t("notePrivate")}
+                <span className={cn("ml-auto text-[10px]", composer === "note" ? "font-medium text-amber-700 dark:text-amber-300" : "text-muted-foreground")}>
+                  {composer === "reply" ? t("replyGoesToContact") : t("teamBannerInternal")}
                 </span>
               </div>
               <textarea
@@ -321,7 +508,10 @@ export function InboxScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
                   }
                 }}
                 placeholder={composer === "reply" ? t("composer_reply") : t("addNote")}
-                className="w-full resize-none rounded-lg border border-zinc-200 bg-background p-2.5 text-sm disabled:opacity-60 dark:border-zinc-700"
+                className={cn(
+                  "w-full resize-none rounded-lg border bg-background p-2.5 text-sm disabled:opacity-60",
+                  composer === "note" ? "border-amber-300 bg-amber-50/60 dark:border-amber-500/40 dark:bg-amber-500/10" : "border-zinc-200 dark:border-zinc-700",
+                )}
               />
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <Button size="sm" onClick={sendOwn} disabled={left === 0 || draft.trim().length === 0}>
@@ -341,7 +531,25 @@ export function InboxScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
 
       {/* Contact panel */}
       <div data-tour-id="inbox-contact-panel" className="flex flex-col gap-3 border-t border-border/60 p-4 @3xl:col-span-2 @3xl:flex-row @3xl:flex-wrap @3xl:gap-x-8 @6xl:col-span-1 @6xl:flex-col @6xl:gap-3 @6xl:border-l @6xl:border-t-0">
-        {selected ? (
+        {active ? (
+          <>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{S.contactPanelTitle}</p>
+              <p className="mt-1 text-sm font-semibold">{active.contactName}</p>
+              {active.companyName && <p className="text-xs text-muted-foreground">{active.companyName}</p>}
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{t("channels")}</p>
+              <span className={cn("mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium", channelColor(active.channel))}>
+                <ChannelIcon channel={active.channel} className="h-3 w-3" /> {productChannelLabel(active.channel)}
+              </span>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{tc("assignee")}</p>
+              <p className="mt-1 text-sm">{active.assigneeName ?? t("view_unassigned")}</p>
+            </div>
+          </>
+        ) : selected ? (
           <>
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{S.contactPanelTitle}</p>
@@ -392,5 +600,77 @@ export function InboxScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
       </div>
     </div>
     </div>
+  )
+}
+
+/**
+ * One of the invented conversations, read-only: what the same thread looks
+ * like in the product — who wrote, on which channel, where the AI agent
+ * answered, and the team's internal note between the messages.
+ */
+function SampleThread({
+  row,
+  base,
+  locale,
+  unassigned,
+  aiLabel,
+  teamLabel,
+  assigneeLabel,
+}: {
+  row: InboxRow
+  base: number
+  locale: string
+  unassigned: string
+  aiLabel: string
+  teamLabel: string
+  assigneeLabel: string
+}) {
+  const time = (minutesAgo: number) => formatDateTime(new Date(base - minutesAgo * 60_000).toISOString(), locale)
+  return (
+    <>
+      <div className="flex min-h-12 shrink-0 flex-wrap items-center gap-2 border-b border-border/60 px-4 py-2">
+        <span className="min-w-0 flex-1 truncate text-sm font-semibold">{row.contactName}</span>
+        <span className={cn("inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium", channelColor(row.channel))}>
+          <ChannelIcon channel={row.channel} className="h-3 w-3" /> {productChannelLabel(row.channel)}
+        </span>
+        <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">{assigneeLabel}: {row.assigneeName ?? unassigned}</span>
+      </div>
+      <div data-testid="demo-inbox-sample-thread" className="flex-1 space-y-3 p-4">
+        {row.messages.map((message) =>
+          message.from === "note" ? (
+            <div key={message.id} className="flex justify-center">
+              <div className="max-w-[85%] rounded-xl border border-amber-300/70 bg-amber-50 px-3 py-2 text-sm dark:border-amber-500/40 dark:bg-amber-500/10">
+                <p className="flex items-center gap-1.5 text-[10px] font-semibold text-amber-800 dark:text-amber-300">
+                  <Lock className="h-3 w-3" aria-hidden="true" /> {message.author} · {teamLabel}
+                </p>
+                <p className="mt-1 leading-relaxed">{message.text}</p>
+              </div>
+            </div>
+          ) : (
+            <div key={message.id} className={cn("flex", message.from === "customer" ? "justify-start" : "justify-end")}>
+              <div className={cn("max-w-[85%] rounded-xl px-3 py-2 text-sm", message.from === "customer" ? "bg-muted" : "bg-primary/10")}>
+                <p className="leading-relaxed">{message.text}</p>
+                <p className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
+                  {message.from === "ai" && (
+                    <span className="inline-flex items-center gap-1 rounded bg-[hsl(var(--ai-from))]/15 px-1 py-0.5 font-semibold text-[hsl(var(--ai-from))]">
+                      <Sparkles className="h-2.5 w-2.5" aria-hidden="true" /> {aiLabel}
+                    </span>
+                  )}
+                  {message.from === "operator" && (
+                    <span className="inline-flex items-center gap-1 rounded bg-sky-100 px-1 py-0.5 font-medium text-sky-800 dark:bg-sky-500/15 dark:text-sky-300">
+                      <User className="h-2.5 w-2.5" aria-hidden="true" /> {message.author}
+                    </span>
+                  )}
+                  <ChannelIcon channel={row.channel} className="h-3 w-3" />
+                  <span>{productChannelLabel(row.channel)}</span>
+                  <span className="ml-auto">{time(message.minutesAgo)}</span>
+                </p>
+              </div>
+            </div>
+          ),
+        )}
+      </div>
+      <p className="shrink-0 border-t border-border/60 p-3 text-[11px] text-muted-foreground">{S.sampleThreadNote}</p>
+    </>
   )
 }

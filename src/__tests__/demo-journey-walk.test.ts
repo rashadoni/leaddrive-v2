@@ -240,7 +240,7 @@ describe("the guided story, walked through the real screens", () => {
     expect(inbox, "the first screen offers the inbox").not.toBeNull()
     await act(async () => inbox!.click())
     await settle()
-    expect(frontier()).toMatchObject({ sectionId: "conversation", stepId: "conversation-views" })
+    expect(frontier()).toMatchObject({ sectionId: "conversation", stepId: "conversation-channels" })
     // The scene the prospect lands on is the real inbox with their conversation, not an empty shell.
     expect(document.querySelector('[data-demo-target~="conversation-open"]')).not.toBeNull()
 
@@ -289,7 +289,7 @@ describe("the guided story, walked through the real screens", () => {
     // not «prepared for you, read-only».
     await act(async () => item("/inbox").click())
     await settle()
-    expect(frontier()).toMatchObject({ sectionId: "conversation", stepId: "conversation-views" })
+    expect(frontier()).toMatchObject({ sectionId: "conversation", stepId: "conversation-channels" })
     expect(container.textContent).not.toContain(S.reviewMode)
     expect(document.querySelector('[data-testid="demo-coach-card"]')).not.toBeNull()
 
@@ -388,6 +388,79 @@ describe("the arrow's controls", () => {
       expect(marked, `${step.id}: no control marks demoTarget("${step.id}")`).toBe(true)
     }
   })
+})
+
+/**
+ * Omni Channel is the product the owner advertises, and its demo showed one
+ * Instagram conversation in an empty list (2026-10-13). The inbox is now
+ * filled like a working company's, and the module's steps are the things that
+ * sell it: every channel in one list, the AI draft a person approves, a note
+ * the customer never sees, a hand-over to a colleague.
+ */
+describe("the Omni Channel module", () => {
+  const rows = () => [...container.querySelectorAll<HTMLElement>("[data-inbox-row]")]
+  const rail = (channel: string) => container.querySelector<HTMLButtonElement>(`[data-inbox-channel="${channel}"]`)!
+
+  it("opens on an inbox with conversations from many channels, and filters them by one click", async () => {
+    await renderPlayer()
+    await walkTo("conversation-channels")
+    // The prospect's own request and the company's other conversations.
+    expect(rows().length).toBeGreaterThanOrEqual(8)
+    expect(rows()[0].getAttribute("data-inbox-row")).toBe("own")
+    const channels = ["whatsapp", "instagram", "telegram", "email", "facebook", "web-chat", "tiktok"]
+    for (const channel of channels) expect(rail(channel).textContent, channel).toMatch(/\d/)
+    expect(container.textContent).toContain(S.unanswered)
+
+    // The step's own control: WhatsApp. Only WhatsApp conversations stay, and the story moves on.
+    await act(async () => findDemoTarget("conversation-channels")!.click())
+    await settle()
+    expect(rail("whatsapp").getAttribute("aria-pressed")).toBe("true")
+    expect(rows().map((row) => row.getAttribute("data-inbox-row"))).toEqual(["wa-delivery", "wa-payment"])
+    expect(frontier().stepId).toBe("conversation-views")
+  }, 60_000)
+
+  it("lets any conversation be read: who wrote, on which channel, where the AI agent answered", async () => {
+    await renderPlayer()
+    await walkTo("conversation-channels")
+    await act(async () => container.querySelector<HTMLElement>('[data-inbox-row="ig-price"]')!.click())
+    await settle()
+    const thread = container.querySelector('[data-testid="demo-inbox-sample-thread"]')!
+    expect(thread.textContent).toContain("Instagram")
+    expect(thread.textContent).toContain(messages.inboxV2.messageAuthorAi)
+    // Reading it is not a step: the story has not moved, and nothing was scolded.
+    expect(frontier().stepId).toBe("conversation-channels")
+    expect(toasts).toEqual([])
+    // The internal note sits between the messages, marked as the team's.
+    await act(async () => container.querySelector<HTMLElement>('[data-inbox-row="tg-contract"]')!.click())
+    await settle()
+    expect(container.querySelector('[data-testid="demo-inbox-sample-thread"]')!.textContent).toContain(messages.inboxV2.composer_note)
+  }, 60_000)
+
+  it("finds the prospect's own conversation again when its step comes, whatever was filtered", async () => {
+    await renderPlayer()
+    await walkTo("conversation-open")
+    // WhatsApp was picked two steps ago; the request came from another channel.
+    expect(findDemoTarget("conversation-open"), "the own conversation is in the list").not.toBeNull()
+  }, 60_000)
+
+  it("writes to the team without the customer seeing it, then hands the conversation over", async () => {
+    await renderPlayer()
+    await walkTo("ai-reply-note")
+    await act(async () => findDemoTarget("ai-reply-note")!.click())
+    await settle()
+    expect(textOf('[data-tour-id="inbox-composer"]')).toContain(messages.inboxV2.teamBannerInternal)
+    expect(frontier().stepId).toBe("ai-reply-assign")
+
+    // The assign control opens the colleagues; picking one moves the story on.
+    await act(async () => findDemoTarget("ai-reply-assign")!.click())
+    await settle()
+    const colleague = findDemoTarget("ai-reply-assign")!
+    const name = colleague.textContent!.trim()
+    await act(async () => colleague.click())
+    await settle()
+    expect(textOf('[data-tour-id="inbox-assign"]')).toContain(name)
+    expect(frontier().stepId).toBe("ai-reply-composer")
+  }, 60_000)
 })
 
 describe("a chapter's clip", () => {

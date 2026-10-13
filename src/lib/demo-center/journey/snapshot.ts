@@ -46,6 +46,9 @@ export type DemoJourneyAction =
   | { readonly type: "expire" }
   | { readonly type: "revoke" }
 
+/** `ui` paths that count something the prospect may only do so many times (the inbox composer's five messages). */
+export const DEMO_UI_QUOTAS: readonly string[] = ["inbox.replies"]
+
 export interface DemoJourneyReduceResult {
   readonly ok: boolean
   readonly snapshot: DemoJourneySnapshot
@@ -324,8 +327,9 @@ export function reduceJourney(
           sectionId: target.id,
           stepId: target.steps[0].id,
           visitedSections: snapshot.visitedSections.includes(target.id) ? snapshot.visitedSections : [...snapshot.visitedSections, target.id],
-          // Tabs and toggles too: a step that says «open this tab» must find it closed.
-          ui: {},
+          // Tabs and toggles too: a step that says «open this tab» must find
+          // it closed. Quotas stay — opening a module again is not a refill.
+          ui: Object.fromEntries(Object.entries(snapshot.ui).filter(([path]) => DEMO_UI_QUOTAS.includes(path))),
           updatedAt: now.toISOString(),
         }
         return { ok: true, snapshot: restarted, ...(entry !== snapshot.state ? { transitioned: entry } : {}) }

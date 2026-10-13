@@ -68,7 +68,7 @@ describe("opening a section ahead of the story", () => {
   it("lands an Omni-channel prospect straight in the inbox, on its first step", () => {
     const result = jump(start(), "conversation")
     expect(result.ok).toBe(true)
-    expect(result.snapshot).toMatchObject({ sectionId: "conversation", stepId: "conversation-views", state: "SOURCE_SEEN" })
+    expect(result.snapshot).toMatchObject({ sectionId: "conversation", stepId: "conversation-channels", state: "SOURCE_SEEN" })
     expect(result.transitioned).toBe("SOURCE_SEEN")
     expect(result.snapshot.visitedSections).toContain("conversation")
     // Nothing was done in their name: no step counts as completed.
@@ -147,7 +147,7 @@ describe("a module behind the story opens with its guide", () => {
 
     const back = jump(atDeal, "conversation")
     expect(back.ok).toBe(true)
-    expect(back.snapshot).toMatchObject({ sectionId: "conversation", stepId: "conversation-views", state: "SOURCE_SEEN" })
+    expect(back.snapshot).toMatchObject({ sectionId: "conversation", stepId: "conversation-channels", state: "SOURCE_SEEN" })
     // The inbox as it is before anyone answered: the request is there, the lead is not yet.
     expect(back.snapshot.records.conversation.messages.length).toBeGreaterThan(0)
     expect(back.snapshot.records.lead).toBeNull()
@@ -160,7 +160,7 @@ describe("a module behind the story opens with its guide", () => {
     const walked = driveTo(start(), "ai-reply-draft")
     expect(sectionStatus(walked, manifest, "conversation")).toBe("done")
     const again = jump(walked, "conversation").snapshot
-    expect(again).toMatchObject({ sectionId: "conversation", stepId: "conversation-views" })
+    expect(again).toMatchObject({ sectionId: "conversation", stepId: "conversation-channels" })
     // What was walked stays walked: the menu's tick does not disappear.
     expect(sectionStatus(again, manifest, "source")).toBe("done")
     expect(again.completedSteps).toEqual(walked.completedSteps)
@@ -171,7 +171,7 @@ describe("a module behind the story opens with its guide", () => {
     const dealsWalked = driveTo(jump(start(), "deal").snapshot, "quote-create")
     // Back to the campaigns — the first module, never walked.
     const campaigns = jump(dealsWalked, "source").snapshot
-    const afterCampaigns = driveTo(campaigns, "conversation-views")
+    const afterCampaigns = driveTo(campaigns, "conversation-channels")
     expect(afterCampaigns.sectionId).toBe("conversation")
     // …and when the guide reaches the deals again it does not walk them twice.
     const afterTask = driveTo(afterCampaigns, "quote-create")
@@ -185,6 +185,15 @@ describe("a module behind the story opens with its guide", () => {
     const answered = afterCall.records.lead!.timeline.find((entry) => entry.id === "tl-call")!.title
     const dealAgain = jump(driveTo(afterCall, "quote-create"), "deal").snapshot
     expect(dealAgain.records.lead!.timeline.find((entry) => entry.id === "tl-call")?.title).toBe(answered)
+  })
+
+  it("does not refill a quota: the inbox's five messages are five for the session", () => {
+    const written = reduceJourney(driveTo(start(), "ai-reply-composer"), { type: "ui", path: "inbox.replies", value: 5 }, manifest, NOW).snapshot
+    const again = jump(written, "conversation").snapshot
+    expect(again.ui["inbox.replies"]).toBe(5)
+    // …while what a step asks to switch is back as it was.
+    expect(again.ui["inbox.channel"]).toBeUndefined()
+    expect(again.ui["inbox.composer"]).toBeUndefined()
   })
 
   it("is still refused while the real call waits for its outcome", () => {
