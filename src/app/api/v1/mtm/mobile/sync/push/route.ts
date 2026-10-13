@@ -1,3 +1,5 @@
+import { requireAttendanceSelf, lockAttendanceRequests } from "@/lib/mtm/attendance-self-access"
+import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
 import { routeTransitionActions, writeFieldSyncAudit } from "@/lib/mtm/field-sync-audit"
 import { NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
@@ -36,6 +38,7 @@ import { dateInputValueInTimezone, isValidTimezone } from "@/lib/timezone"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
 import {
   applyMtmWorkdayEvent,
+  lockMtmWorkdayTransitions,
   mtmWorkdayRequestHash,
   parseMtmWorkdayEvent,
   recoveryForMtmWorkdayConflict,
@@ -475,7 +478,22 @@ export const POST = withMobileRls(async (req, auth) => {
       && operation?.data?.force === true
     ))
   const legacyFieldDenied = requireMobileCapability(auth, "FIELD_EXECUTE")
-  if (!containsWorkforceOperation && legacyFieldDenied && !privilegedForceOnly) {
+  // An explicitly enrolled manager/office employee gets only their own workday.
+  // Keep the legacy AGENT path unchanged, including when attendance is disabled.
+  let attendanceWorkdaySelf = false
+  let attendanceWorkdayTimezone: string | null = null
+  if (auth.role !== "AGENT" && hasSyncCapability(auth, "route-field")
+    && admittedOperations.some(operation => operation?.entity === "workdays")) {
+    try {
+      attendanceWorkdayTimezone = await requireAttendanceSelf(prisma, { organizationId: orgId, agentId, role: auth.role })
+      attendanceWorkdaySelf = true
+    } catch (error) {
+      if (!(error instanceof AttendanceRequestError)) {
+        return NextResponse.json({ error: "Attendance access unavailable" }, { status: 503 })
+      }
+    }
+  }
+  if (!containsWorkforceOperation && legacyFieldDenied && !privilegedForceOnly && !attendanceWorkdaySelf) {
     return legacyFieldDenied
   }
 
@@ -633,6 +651,18 @@ export const POST = withMobileRls(async (req, auth) => {
       clientTimestamp,
     }
     const { operationId, opType, entity, data } = operation
+    // Check before replay as well as before a write: enrollment must never
+    // expose results for another field operation stored under this identity.
+    const attendanceWorkdayOperation = attendanceWorkdaySelf && entity === "workdays"
+    if (auth.role === "EMPLOYEE" && !attendanceWorkdayOperation) {
+      results.push(syncPermissionError(operationId, "WORKTIME_SELF_MUTATE"))
+      continue
+    }
+    if (auth.role !== "AGENT" && !needsWorkforceMobileWriteFence(auth, entity)
+      && !attendanceWorkdayOperation && !canMutateRouteSyncOperation(auth, entity, opType, data)) {
+      results.push(syncPermissionError(operationId, "ROUTE_EXECUTE"))
+      continue
+    }
 
     // ── Replay already-processed operations ──────────────────────────
     // The stored entity is authoritative for replay. An operation id cannot
@@ -712,7 +742,7 @@ export const POST = withMobileRls(async (req, auth) => {
         results.push(syncWorkforceMobileWriteFenceError(operationId, workforceMobileWriteAccess))
         continue
       }
-      if (!hasMobilePermission(auth.role, "WORKTIME_SELF_MUTATE")) {
+      if (!attendanceWorkdayOperation && !hasMobilePermission(auth.role, "WORKTIME_SELF_MUTATE")) {
         results.push(syncPermissionError(operationId, "WORKTIME_SELF_MUTATE"))
         continue
       }
@@ -733,7 +763,7 @@ export const POST = withMobileRls(async (req, auth) => {
         results.push(syncCapabilityError(operationId, "route-field"))
         continue
       }
-      if (!canMutateRouteSyncOperation(auth, entity, opType, data)) {
+      if (!attendanceWorkdayOperation && !canMutateRouteSyncOperation(auth, entity, opType, data)) {
         results.push(syncPermissionError(operationId, "ROUTE_EXECUTE"))
         continue
       }
@@ -978,6 +1008,16 @@ export const POST = withMobileRls(async (req, auth) => {
           } catch (error) {
             console.error("[MTM/sync/push] Workforce mobile write fence unavailable in transaction", error)
             return { kind: "workforce-fence-unavailable" }
+          }
+        }
+        if (attendanceWorkdayOperation) {
+          // Linearize enrollment/status/feature revocation with the actual
+          // workday write. A denied operation is not pinned and can be retried.
+          await lockMtmWorkdayTransitions(tx, { organizationId: orgId, agentId })
+          await lockAttendanceRequests(tx, { organizationId: orgId, agentId })
+          const timezone = await requireAttendanceSelf(tx, { organizationId: orgId, agentId, role: auth.role })
+          if (timezone !== attendanceWorkdayTimezone || timezone !== workdayTimezone) {
+            throw new AttendanceRequestError("MTM_ATTENDANCE_TIMEZONE_CHANGED", 409)
           }
         }
         let opStatus: "ok" | "conflict" = "ok"
@@ -3106,6 +3146,10 @@ export const POST = withMobileRls(async (req, auth) => {
       known.set(operationId, stored)
       results.push(replayOf(operationId, stored))
     } catch (e: unknown) {
+      if (e instanceof AttendanceRequestError) {
+        results.push({ operationId, status: "error", error: e.code, serverData: { code: e.code } })
+        continue
+      }
       if (e instanceof WorkforceAttendanceTrustError) {
         // The proof may be renewed (a new QR or freshly signed action), so do
         // not pin this failed attempt into the offline idempotency ledger.

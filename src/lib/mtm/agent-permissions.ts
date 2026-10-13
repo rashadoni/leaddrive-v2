@@ -81,6 +81,7 @@ export const AGENT_PERMISSION_ROWS = [
   // The same day only; yesterday changes through a time-correction request.
   { id: "workdayReturn", group: "workday", kind: "always" },
   // The same whole-feature switch; no second permission level to configure.
+  { id: "attendanceWorkday", group: "workday", kind: "switch", setting: "attendanceEnabled", surfaces: ["app"] },
   { id: "attendanceRequests", group: "workday", kind: "switch", setting: "attendanceEnabled", surfaces: ["app"] },
   { id: "locationShare", group: "workday", kind: "always" },
   { id: "locationHistoryOwn", group: "workday", kind: "always" },
@@ -184,10 +185,10 @@ export function agentPermissionEnabled(settings: Partial<AgentPermissionSettings
 }
 
 /** Every switch at once — what the field app receives in its bootstrap. */
-export type AgentPermissionStates = Record<Exclude<AgentSwitchId, "attendanceRequests">, boolean> & { attendanceRequests?: true }
+export type AgentPermissionStates = Record<Exclude<AgentSwitchId, "attendanceRequests" | "attendanceWorkday">, boolean> & { attendanceRequests?: true; attendanceWorkday?: true }
 export function agentPermissionStates(settings: Partial<AgentPermissionSettings>): AgentPermissionStates {
   return Object.fromEntries(
-    AGENT_SWITCH_ROWS.filter((row) => row.id !== "attendanceRequests" || settings.attendanceEnabled === true)
+    AGENT_SWITCH_ROWS.filter((row) => !["attendanceRequests", "attendanceWorkday"].includes(row.id) || settings.attendanceEnabled === true)
       .map((row) => [row.id, agentPermissionEnabled(settings, row.id)]),
   ) as AgentPermissionStates
 }

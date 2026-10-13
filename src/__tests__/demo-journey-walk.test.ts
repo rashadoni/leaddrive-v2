@@ -483,6 +483,15 @@ describe("a chapter's clip", () => {
     const line = scene.querySelector('[data-testid="demo-intro-clip-play"]')
     expect(line?.textContent).toContain(S.clipWatch)
     expect(scene.querySelector('[data-testid="demo-intro-clip"]')).toBeNull()
+
+    // The next chapter brings its own clip — and only its own: the campaigns'
+    // line used to stay on screen above it.
+    const inbox = PROSPECT_TO_CLOSED_WON.sections.find((section) => section.id === "conversation")!
+    await walkTo(inbox.steps[0].id)
+    const offers = [...scene.querySelectorAll('[data-testid="demo-intro-clip-play"]')]
+    expect(offers).toHaveLength(1)
+    expect(scene.textContent).toContain(inbox.intro!.caption)
+    expect(scene.textContent).not.toContain(PROSPECT_TO_CLOSED_WON.sections.find((section) => section.id === "source")!.intro!.caption)
   }, 60_000)
 })
 

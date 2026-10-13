@@ -60,3 +60,20 @@ describe("explicit employment dates and leave edge cases", () => {
     expect(cancelled.rows[0].events).toEqual(approved.rows[0].events)
   })
 })
+
+
+describe("contiguous employment dates", () => {
+  it("does not invent an absent day between termination and rehire on one midnight boundary", () => {
+    const events = [{ kind: "HIRE" as const, effectiveAt: "2026-09-06T20:00:00Z" },
+      // Deliberately unordered input: the boundary has one defined ordering.
+      { kind: "REHIRE" as const, effectiveAt: "2026-09-07T20:00:00Z" },
+      { kind: "TERMINATION" as const, effectiveAt: "2026-09-07T20:00:00Z" }]
+    expect(attendanceEmploymentOnDate(events, "2026-09-07", "Asia/Baku")).toBe("EMPLOYED")
+    expect(attendanceEmploymentOnDate(events, "2026-09-08", "Asia/Baku")).toBe("EMPLOYED")
+    expect(attendanceEmploymentOnDate(events, "2026-09-09", "Asia/Baku")).toBe("EMPLOYED")
+  })
+  it("still treats a duplicate boundary without an earlier hire as unknown", () => {
+    expect(attendanceEmploymentOnDate([{ kind: "TERMINATION", effectiveAt: "2026-09-07T20:00:00Z" },
+      { kind: "REHIRE", effectiveAt: "2026-09-07T20:00:00Z" }], "2026-09-08", "Asia/Baku")).toBe("UNKNOWN")
+  })
+})

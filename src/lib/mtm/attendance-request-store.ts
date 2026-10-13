@@ -2,9 +2,8 @@ import { notifyAttendanceRequestReviewers } from "@/lib/mtm/attendance-request-n
 import { createHash, randomUUID } from "node:crypto"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
-import { isValidTimezone, localDateTimeToUnambiguousUtc } from "@/lib/timezone"
+import { localDateTimeToUnambiguousUtc } from "@/lib/timezone"
 import { readAttendanceDayKinds } from "@/lib/mtm/attendance-day-kind-store"
-import { agentPermissionEnabled } from "@/lib/mtm/agent-permissions"
 import { lockMtmWorkdayTransitions } from "@/lib/mtm/workday"
 import { workforceWorkdayCorrectionFacts } from "@/lib/workforce/workday-correction-facts"
 import { assertAttendanceRequestQuota, attendanceRequestQuotaUsage } from "@/lib/mtm/attendance-request-quota"
@@ -14,7 +13,8 @@ import {
   attendanceRequestWindowsOverlap, type AttendanceRequestDto, type AttendanceRequestInput, type AttendanceCorrectionBasis,
 } from "@/lib/mtm/attendance-request-contract"
 
-export type AttendanceSelf = { organizationId: string; agentId: string; role: string }
+import { requireAttendanceSelf, lockAttendanceRequests, type AttendanceSelf } from "@/lib/mtm/attendance-self-access"
+export { requireAttendanceSelf, lockAttendanceRequests, type AttendanceSelf } from "@/lib/mtm/attendance-self-access"
 export const attendanceRequestSelect = {
   id: true, clientRequestId: true, agentId: true, status: true, startDate: true, endDate: true,
   reason: true, attendanceDetails: true, submittedAt: true, decisionNote: true,
@@ -36,26 +36,6 @@ export function attendanceRequestDto(row: RequestRow): AttendanceRequestDto {
   }
 }
 
-/** Independent of the withdrawn Workforce grant/route switches. Called again inside every write. */
-export async function requireAttendanceSelf(db: Prisma.TransactionClient, self: AttendanceSelf) {
-  const values = await db.mtmSetting.findMany({ where: { organizationId: self.organizationId, key: { in: ["attendanceEnabled", "timezone"] } }, select: { key: true, value: true } })
-  if (!agentPermissionEnabled({ attendanceEnabled: values.find((value) => value.key === "attendanceEnabled")?.value === true }, "attendanceRequests")) {
-    throw new AttendanceRequestError("MTM_ATTENDANCE_DISABLED", 404)
-  }
-  if (self.role !== "AGENT") throw new AttendanceRequestError("MTM_ATTENDANCE_SELF_REQUIRED", 403)
-  const agent = await db.mtmAgent.findFirst({ where: { id: self.agentId, organizationId: self.organizationId, status: "ACTIVE", role: "AGENT" }, select: { id: true } })
-  if (!agent) throw new AttendanceRequestError("MTM_ATTENDANCE_SELF_REQUIRED", 403)
-  const timezone = values.find((value) => value.key === "timezone")?.value ?? "Asia/Baku"
-  if (typeof timezone !== "string" || !isValidTimezone(timezone)) throw new AttendanceRequestError("MTM_ATTENDANCE_TIMEZONE_INVALID", 409)
-  return timezone
-}
-export async function lockAttendanceRequests(db: Prisma.TransactionClient, self: Pick<AttendanceSelf, "organizationId" | "agentId">) {
-  await db.$executeRaw`SELECT set_config('lock_timeout', '3s', true)`
-  await db.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-attendance-requests:${self.organizationId}:${self.agentId}`}, 0))`
-  // Linearize a submission with disabling attendance or deactivating its owner.
-  await db.$queryRaw`SELECT "id" FROM "mtm_settings" WHERE "organizationId" = ${self.organizationId} AND "key" = 'attendanceEnabled' FOR SHARE`
-  await db.$queryRaw`SELECT "id" FROM "mtm_agents" WHERE "organizationId" = ${self.organizationId} AND "id" = ${self.agentId} FOR SHARE`
-}
 function submissionHash(input: AttendanceRequestInput) {
   return createHash("sha256").update(JSON.stringify({ ...input, attachmentIds: [...input.attachmentIds].sort() })).digest("hex")
 }
