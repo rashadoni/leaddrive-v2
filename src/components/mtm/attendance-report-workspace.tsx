@@ -59,6 +59,7 @@ export function MtmAttendanceReportWorkspace() {
   const [customView, setCustomView] = useState<{ name: string; config: AttendanceViewConfig } | null>(null)
   const [accessUnavailable, setAccessUnavailable] = useState(false)
   const request = useRef<AbortController | null>(null)
+  const lastRequest = useRef<{ range?: Range; config?: AttendanceViewConfig }>({})
 
   const load = useCallback(async (requestedRange?: Range, savedConfig?: AttendanceViewConfig) => {
     request.current?.abort()
@@ -85,6 +86,7 @@ export function MtmAttendanceReportWorkspace() {
         selected = { from: body.data.today, to: body.data.today }
       }
       setRange(selected)
+      lastRequest.current = { range: selected, config: savedConfig }
       const query = new URLSearchParams({ from: selected.from, to: selected.to, form: "ALL" })
       if (savedConfig?.filters.employeeId) query.set("employeeId", savedConfig.filters.employeeId)
       if (savedConfig?.filters.teamId) query.set("teamId", savedConfig.filters.teamId)
@@ -108,7 +110,12 @@ export function MtmAttendanceReportWorkspace() {
     }
   }, [t])
 
-  useEffect(() => { void load(); return () => request.current?.abort() }, [load])
+  useEffect(() => {
+    // Changing language refreshes the same period and saved scope; it must
+    // not bootstrap a monthly form with a single-day report.
+    void load(lastRequest.current.range, lastRequest.current.config)
+    return () => request.current?.abort()
+  }, [load])
 
   const currentConfig = useMemo<AttendanceViewConfig | null>(() => {
     if (!report) return null

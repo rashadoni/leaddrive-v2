@@ -55,8 +55,9 @@ export function MtmAttendanceRulesForm() {
   const [mustReload, setMustReload] = useState(false)
   const loadController = useRef<AbortController | null>(null)
   const saveController = useRef<AbortController | null>(null)
+  const interruptedSave = useRef(false)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (acknowledgeInterrupted = false) => {
     loadController.current?.abort()
     const controller = new AbortController()
     loadController.current = controller
@@ -66,6 +67,7 @@ export function MtmAttendanceRulesForm() {
     setSavedDate(null)
     setData(null)
     setDraft(null)
+    if (interruptedSave.current) setSaving(false)
     try {
       const response = await fetch(ENDPOINT, { cache: "no-store", signal: controller.signal })
       const body = await response.json().catch(() => null)
@@ -78,7 +80,10 @@ export function MtmAttendanceRulesForm() {
       const latest = [...loaded.versions].sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom))[0] ?? loaded.current
       setData(loaded)
       setDraft(draftFor(loaded.canManageRules ? latest : loaded.current, loaded.minEffectiveFrom))
-      setMustReload(false)
+      const unresolved = interruptedSave.current && !acknowledgeInterrupted
+      setMustReload(unresolved)
+      if (unresolved) setSaveError(t("rulesSaveUnconfirmed"))
+      else interruptedSave.current = false
     } catch {
       if (!controller.signal.aborted) setLoadError(t("rulesLoadError"))
     } finally {
@@ -90,7 +95,11 @@ export function MtmAttendanceRulesForm() {
     void load()
     return () => {
       loadController.current?.abort()
-      saveController.current?.abort()
+      if (saveController.current) {
+        interruptedSave.current = true
+        saveController.current.abort()
+        saveController.current = null
+      }
     }
   }, [load])
 
@@ -179,7 +188,7 @@ export function MtmAttendanceRulesForm() {
       {loading ? <p role="status" className="text-sm text-muted-foreground">{t("rulesLoading")}</p> : null}
       {loadError ? <div className="space-y-3">
         <p role="alert" className="text-sm text-destructive">{loadError}</p>
-        <Button type="button" variant="outline" className="min-h-11" onClick={() => void load()}>{t("rulesReload")}</Button>
+        <Button type="button" variant="outline" className="min-h-11" onClick={() => void load(true)}>{t("rulesReload")}</Button>
       </div> : null}
       {data && draft ? <>
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -232,7 +241,7 @@ export function MtmAttendanceRulesForm() {
           </fieldset>
           {saveError ? <div className="space-y-2">
             <p role="alert" className="text-sm text-destructive">{saveError}</p>
-            {mustReload ? <Button type="button" variant="outline" className="min-h-11" onClick={() => void load()}>{t("rulesReload")}</Button> : null}
+            {mustReload ? <Button type="button" variant="outline" className="min-h-11" onClick={() => void load(true)}>{t("rulesReload")}</Button> : null}
           </div> : null}
           {savedDate ? <p role="status" className="text-sm font-medium text-emerald-700 dark:text-emerald-300">{t("rulesSaved", { date: dateLabel(savedDate) })}</p> : null}
           {data.canManageRules ? <Button type="submit" disabled={saving || mustReload} className="min-h-11 w-full sm:w-auto">{t(saving ? "rulesSaving" : "rulesSave")}</Button> : null}

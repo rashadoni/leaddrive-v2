@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import type { PrismaClient } from "@prisma/client"
+import type { Prisma, PrismaClient } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import {
   AttendanceRuleInputSchema, attendanceRuleMinimumDate,

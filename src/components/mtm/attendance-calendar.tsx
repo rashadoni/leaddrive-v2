@@ -41,9 +41,10 @@ export function MtmAttendanceCalendar() {
   const [removingId, setRemovingId] = useState<string | null>(null)
   const loadController = useRef<AbortController | null>(null)
   const mutationController = useRef<AbortController | null>(null)
+  const interruptedSave = useRef(false)
   const dateInput = useRef<HTMLInputElement | null>(null)
 
-  const load = useCallback(async (selectedYear?: string) => {
+  const load = useCallback(async (selectedYear?: string, acknowledgeInterrupted = false) => {
     loadController.current?.abort()
     const controller = new AbortController()
     loadController.current = controller
@@ -54,6 +55,7 @@ export function MtmAttendanceCalendar() {
     setRemovingId(null)
     setData(null)
     setDraft(null)
+    if (interruptedSave.current) setSaving(false)
     if (selectedYear) setYear(selectedYear)
     try {
       const range = selectedYear ? `?from=${selectedYear}-01-01&to=${selectedYear}-12-31` : ""
@@ -68,7 +70,10 @@ export function MtmAttendanceCalendar() {
       setData(loaded)
       setYear(selectedYear ?? loaded.today.slice(0, 4))
       setDraft(blankDraft(loaded.today))
-      setMustReload(false)
+      const unresolved = interruptedSave.current && !acknowledgeInterrupted
+      setMustReload(unresolved)
+      if (unresolved) setSaveError(t("calendarSaveUnconfirmed"))
+      else interruptedSave.current = false
     } catch {
       if (!controller.signal.aborted) setLoadError(t("calendarLoadError"))
     } finally {
@@ -78,7 +83,14 @@ export function MtmAttendanceCalendar() {
 
   useEffect(() => {
     void load()
-    return () => { loadController.current?.abort(); mutationController.current?.abort() }
+    return () => {
+      loadController.current?.abort()
+      if (mutationController.current) {
+        interruptedSave.current = true
+        mutationController.current.abort()
+        mutationController.current = null
+      }
+    }
   }, [load])
 
   const dateLabel = (value: string) => format.dateTime(new Date(`${value}T12:00:00.000Z`), { dateStyle: "medium", timeZone: "UTC" })
@@ -156,7 +168,7 @@ export function MtmAttendanceCalendar() {
       <p className="max-w-prose text-sm text-muted-foreground">{t("calendarIntro")}</p>
       {loading ? <p role="status" className="text-sm text-muted-foreground">{t("calendarLoading")}</p> : null}
       {loadError ? <div className="space-y-3"><p role="alert" className="text-sm text-destructive">{loadError}</p>
-        <Button type="button" variant="outline" className="min-h-11" onClick={() => void load(year ?? undefined)}>{t("calendarReload")}</Button></div> : null}
+        <Button type="button" variant="outline" className="min-h-11" onClick={() => void load(year ?? undefined, true)}>{t("calendarReload")}</Button></div> : null}
       {data && draft && currentYear !== null ? <>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <p className="max-w-prose text-sm text-muted-foreground">{t(data.canManage ? "calendarFutureOnly" : "calendarReadOnly")}</p>
@@ -198,7 +210,7 @@ export function MtmAttendanceCalendar() {
           </fieldset>
         </form> : null}
         {saveError ? <div className="space-y-3"><p role="alert" className="text-sm text-destructive">{saveError}</p>
-          {mustReload ? <Button type="button" variant="outline" className="min-h-11" onClick={() => void load(year ?? undefined)}>{t("calendarReload")}</Button> : null}</div> : null}
+          {mustReload ? <Button type="button" variant="outline" className="min-h-11" onClick={() => void load(year ?? undefined, true)}>{t("calendarReload")}</Button> : null}</div> : null}
         {saved ? <p role="status" className="text-sm text-emerald-700 dark:text-emerald-300">{t(saved)}</p> : null}
       </> : null}
     </div>

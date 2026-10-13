@@ -50,6 +50,7 @@ export function MtmAttendancePersonalViews({ currentConfig, onApply, onAccessLos
   const [removing, setRemoving] = useState<string | null>(null)
   const readRequest = useRef<AbortController | null>(null)
   const writeRequest = useRef<AbortController | null>(null)
+  const interruptedSave = useRef(false)
   const pendingCreate = useRef<{ fingerprint: string; requestId: string } | null>(null)
   const nameInput = useRef<HTMLInputElement | null>(null)
   const editingRef = useRef<AttendanceView | null>(null)
@@ -68,7 +69,7 @@ export function MtmAttendancePersonalViews({ currentConfig, onApply, onAccessLos
     pendingCreate.current = null
   }, [])
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (acknowledgeInterrupted = false) => {
     readRequest.current?.abort()
     const controller = new AbortController()
     readRequest.current = controller
@@ -78,6 +79,7 @@ export function MtmAttendancePersonalViews({ currentConfig, onApply, onAccessLos
     setSaved(null)
     setRemoving(null)
     setViews([])
+    if (interruptedSave.current) setSaving(false)
     try {
       const response = await fetch(ENDPOINT, { cache: "no-store", signal: controller.signal })
       const body = await response.json().catch(() => null)
@@ -90,7 +92,10 @@ export function MtmAttendancePersonalViews({ currentConfig, onApply, onAccessLos
       }
       const loaded = body.data as AttendanceView[]
       setViews(loaded)
-      setMustReload(false)
+      const unresolved = interruptedSave.current && !acknowledgeInterrupted
+      setMustReload(unresolved)
+      if (unresolved) setSaveError(t("viewsSaveUnconfirmed"))
+      else interruptedSave.current = false
       if (editingRef.current) {
         const latest = loaded.find((view) => view.id === editingRef.current!.id)
         setEditing(latest ?? null)
@@ -104,7 +109,17 @@ export function MtmAttendancePersonalViews({ currentConfig, onApply, onAccessLos
     }
   }, [t, clearPrivate])
 
-  useEffect(() => { void load(); return () => { readRequest.current?.abort(); writeRequest.current?.abort() } }, [load])
+  useEffect(() => {
+    void load()
+    return () => {
+      readRequest.current?.abort()
+      if (writeRequest.current) {
+        interruptedSave.current = true
+        writeRequest.current.abort()
+        writeRequest.current = null
+      }
+    }
+  }, [load])
   useEffect(() => {
     if (!currentConfig || accessUnavailable) return
     setDraft((previous) => previous ? { ...previous, filters: filtersFor(previous.mode, currentConfig.filters) } : currentConfig)
@@ -217,7 +232,7 @@ export function MtmAttendancePersonalViews({ currentConfig, onApply, onAccessLos
     <div className="space-y-5 py-4">
       <p className="max-w-prose text-sm text-muted-foreground">{t("viewsIntro")}</p>
       {loading ? <p role="status" className="text-sm text-muted-foreground">{t("viewsLoading")}</p> : null}
-      {loadError ? <div className="space-y-3"><p role="alert" className="text-sm text-destructive">{loadError}</p><Button type="button" variant="outline" className="min-h-11" onClick={() => void load()}>{t("viewsReload")}</Button></div> : null}
+      {loadError ? <div className="space-y-3"><p role="alert" className="text-sm text-destructive">{loadError}</p><Button type="button" variant="outline" className="min-h-11" onClick={() => void load(true)}>{t("viewsReload")}</Button></div> : null}
       {!loading && !loadError && !accessUnavailable ? <>
         {views.length ? <ul className="divide-y divide-zinc-100 dark:divide-zinc-800" aria-label={t("viewsSavedList")}>{views.map((view) => <li key={view.id} className="flex flex-wrap items-center justify-between gap-3 py-3" data-testid="attendance-personal-view">
           <div className="min-w-0"><p className="break-words text-sm font-medium">{view.name}</p><p className="text-xs text-muted-foreground">{t(MODE_MESSAGES[view.config.mode])} · {view.config.filters.from} — {view.config.filters.to}</p></div>
@@ -250,7 +265,7 @@ export function MtmAttendancePersonalViews({ currentConfig, onApply, onAccessLos
             {editing ? <Button type="button" variant="ghost" className="min-h-11" disabled={disabled || !currentConfig} onClick={() => { setEditing(null); setName(""); setDraft(currentConfig); setSaved(null); setSaveError(null); pendingCreate.current = null }}>{t("viewsCreateNew")}</Button> : null}</div>
         </fieldset></form> : <p className="text-sm text-muted-foreground">{t("viewsLoadReportFirst")}</p>}
       </> : null}
-      {saveError ? <div className="space-y-3"><p role="alert" className="text-sm text-destructive">{saveError}</p>{mustReload ? <Button type="button" variant="outline" className="min-h-11" onClick={() => void load()}>{t("viewsReload")}</Button> : null}</div> : null}
+      {saveError ? <div className="space-y-3"><p role="alert" className="text-sm text-destructive">{saveError}</p>{mustReload ? <Button type="button" variant="outline" className="min-h-11" onClick={() => void load(true)}>{t("viewsReload")}</Button> : null}</div> : null}
       {saved ? <p role="status" className="text-sm text-emerald-700 dark:text-emerald-300">{saved}</p> : null}
     </div>
   </HomeCard>

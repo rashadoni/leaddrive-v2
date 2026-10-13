@@ -151,6 +151,21 @@ describe("personal attendance forms with real report rows", () => {
     expect(totals()).toBeUndefined()
   })
 
+  it("preserves an opened monthly form and its scope when the locale changes", async () => {
+    savedViews = [view({ config: config({ mode: "MONTH", columns: ["employee", "days", "worked"],
+      filters: { from: "2026-10-01", to: "2026-10-31", form: "ALL", teamId: "north" } }) })]
+    await render()
+    await click("Open")
+    expect(customRows()).toHaveLength(1)
+    await render("ru")
+    expect(customRows()).toHaveLength(1)
+    expect(headers()).toHaveLength(33)
+    expect(input("report-month").value).toBe("2026-10")
+    expect(input("report-team").value).toBe("north")
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).includes("/report?")).at(-1)?.[0])
+      .toBe("/api/v1/mtm/attendance/report?from=2026-10-01&to=2026-10-31&form=ALL&teamId=north")
+  })
+
   it("renames with optimistic version and deletes only after confirmation", async () => {
     savedViews = [view()]
     await render()
