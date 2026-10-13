@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { HomeCard, HomeKpi, HomePill, type HomeTone } from "@/components/mtm/home-parts"
 import { addDateKeyDays, isDateKey } from "@/lib/mtm/mobile-week"
 import { filterMtmAttendanceRows, summarizeMtmAttendanceRows, type MtmAttendanceReport, type MtmAttendanceReportRow } from "@/lib/mtm/attendance-report"
-import { formatAttendanceDuration, attendanceStatusText, attendanceMonthCell, attendanceCatalogueLegend } from "@/lib/mtm/attendance-presentation"
+import { formatAttendanceDuration, attendanceStatusText, attendanceMonthCell, attendanceCatalogueLegend, attendanceCorrectionLines, attendanceJournalEntries } from "@/lib/mtm/attendance-presentation"
 import { ATTENDANCE_VIEW_COLUMNS, type AttendanceViewConfig } from "@/lib/mtm/attendance-view-contract"
 import { buildAttendanceTable } from "@/lib/mtm/attendance-table"
 import { MtmAttendancePersonalViews } from "@/components/mtm/attendance-personal-views"
@@ -25,7 +25,6 @@ const FORMS: Form[] = ["DAY", "MONTH", "LATE_EARLY", "ABSENCES", "JOURNAL"]
 const FORM_MESSAGES: Record<Form, string> = { DAY: "reportDay", MONTH: "reportMonth", LATE_EARLY: "reportLateEarly", ABSENCES: "reportAbsences", JOURNAL: "reportJournal" }
 const REASON_MESSAGES: Record<string, string> = { DUPLICATE_WORKDAY: "reportReasonDuplicate", SCHEDULE_INVALID: "reportReasonSchedule", TIMESTAMP_INVALID: "reportReasonTimestamp",
   EVENT_TYPE_INVALID: "reportReasonEvent", JOURNAL_INCOMPLETE: "reportReasonJournal", PAUSE_TOTAL_MISMATCH: "reportReasonPause", WORKDAY_INCONSISTENT: "reportReasonFacts" }
-const EVENT_MESSAGES: Record<string, string> = { START: "reportEventStart", PAUSE: "reportEventPause", RESUME: "reportEventResume", FINISH: "reportEventFinish", REOPEN: "reportEventReopen" }
 const SELECT_CLASS = "min-h-11 w-full rounded-lg border border-zinc-200 bg-card px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:border-zinc-700"
 const CELL = "border-b border-zinc-100 px-3 py-3 align-top dark:border-zinc-800"
 const HEADER = "px-3 py-3 text-left text-xs font-medium text-muted-foreground"
@@ -142,7 +141,7 @@ export function MtmAttendanceReportWorkspace() {
   const totals = useMemo(() => summarizeMtmAttendanceRows(rows), [rows])
   const customTable = useMemo(() => report && customView && currentConfig ? buildAttendanceTable(report, currentConfig, locale, t) : null, [report, customView, currentConfig, locale, t])
   const scopeUnavailable = Boolean(report && (teamId || employeeId) && !report.rows.some((row) => (!teamId || row.teamId === teamId) && (!employeeId || row.employeeId === employeeId)))
-  const journal = useMemo(() => form === "JOURNAL" ? rows.flatMap((row) => row.events.map((event, index) => ({ row, event, index }))) : [], [rows, form])
+  const journal = useMemo(() => form === "JOURNAL" ? rows.flatMap((row) => attendanceJournalEntries(row, locale, t).map((entry) => ({ row, entry }))) : [], [rows, form, locale, t])
   const monthEmployees = useMemo(() => {
     if (form !== "MONTH") return []
     const people = new Map<string, { name: string; team: string | null; rows: MtmAttendanceReportRow[]; dates: Map<string, MtmAttendanceReportRow> }>()
@@ -166,10 +165,12 @@ export function MtmAttendanceReportWorkspace() {
   const dateLabel = (date: string) => format.dateTime(new Date(`${date}T12:00:00.000Z`), { dateStyle: "medium", timeZone: "UTC" })
   const timeLabel = (at: string | null, timezone: string, full = false) => at ? format.dateTime(new Date(at), { timeZone: timezone,
     ...(full ? { dateStyle: "short" as const, timeStyle: "medium" as const } : { hour: "2-digit" as const, minute: "2-digit" as const, second: "2-digit" as const }) }) : "—"
-  const rowNotes = (row: MtmAttendanceReportRow) => row.factsState === "INVALID"
+  const baseRowNotes = (row: MtmAttendanceReportRow) => row.factsState === "INVALID"
     ? row.invalidReasons.map((reason) => t(REASON_MESSAGES[reason] ?? "reportReasonFacts")).join(" · ")
     : row.kind === "OPEN" ? t("reportProvisional") : row.kind === "MISSING_FINISH" ? t("reportUnknownTime")
       : row.kind === "ABSENT" ? t("reportAbsenceReasonPending") : row.flags.includes("WORKED_ON_DAY_OFF") ? t("reportWorkOnDayOff") : row.calendarName ?? "—"
+
+  const rowNotes = (row: MtmAttendanceReportRow) => [baseRowNotes(row), ...attendanceCorrectionLines(row, locale, t)].filter((line) => line !== "—").join(" · ") || "—"
 
   function chooseForm(next: Form) {
     const wasCustom = customView !== null
@@ -284,11 +285,11 @@ export function MtmAttendanceReportWorkspace() {
             ].map(([code, key, tone]) => <span key={key} className="inline-flex items-center gap-1.5"><HomePill tone={tone as HomeTone} className="rounded-md">{code}</HomePill>{t(key)}</span>)}</div>
           </> : form === "JOURNAL" ? <div className="overflow-x-auto" role="region" aria-label={t("reportJournal")} tabIndex={0}><table className="w-full min-w-[780px] text-sm" data-testid="attendance-journal-table">
             <thead><tr>{["reportEmployee", "reportDate", "reportStatus", "reportEvent", "reportPhoneTime", "reportServerTime"].map((key) => <th key={key} scope="col" className={HEADER}>{t(key)}</th>)}</tr></thead>
-            <tbody>{journal.slice(pageStart, pageStart + PAGE_SIZE).map(({ row, event, index }) => <tr key={`${row.employeeId}:${row.date}:${event.id ?? index}`} data-testid="attendance-journal-event">
+            <tbody>{journal.slice(pageStart, pageStart + PAGE_SIZE).map(({ row, entry }) => <tr key={`${row.employeeId}:${row.date}:${entry.id}`} data-testid="attendance-journal-event">
               <th scope="row" className={`${CELL} text-left font-semibold`}>{row.employeeName}<span className="mt-1 block text-xs font-normal text-muted-foreground">{row.teamName ?? t("reportNoTeam")}</span></th>
               <td className={`${CELL} whitespace-nowrap`}>{dateLabel(row.date)}<span className="block text-xs text-muted-foreground">{row.timezone}</span></td>
-              <td className={CELL}><span className="inline-flex items-center gap-1.5">{row.dayKind ? <span aria-hidden="true" data-testid="attendance-kind-color" className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: row.dayKind.color }} /> : null}{attendanceStatusText(row, locale, t)}</span></td><td className={CELL}>{t(EVENT_MESSAGES[event.type])}</td><td className={`${CELL} whitespace-nowrap tabular-nums`}>{timeLabel(event.claimedAt ?? event.occurredAt, row.timezone, true)}</td>
-              <td className={`${CELL} whitespace-nowrap tabular-nums`}>{timeLabel(event.serverReceivedAt, row.timezone, true)}</td></tr>)}</tbody>
+              <td className={CELL}><span className="inline-flex items-center gap-1.5">{row.dayKind ? <span aria-hidden="true" data-testid="attendance-kind-color" className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: row.dayKind.color }} /> : null}{attendanceStatusText(row, locale, t)}</span></td><td className={CELL}>{entry.description}</td><td className={`${CELL} whitespace-nowrap tabular-nums`}>{timeLabel(entry.phoneAt, row.timezone, true)}</td>
+              <td className={`${CELL} whitespace-nowrap tabular-nums`}>{timeLabel(entry.serverAt, row.timezone, true)}</td></tr>)}</tbody>
           </table></div> : <div className="overflow-x-auto" role="region" aria-label={t(FORM_MESSAGES[form])} tabIndex={0}><table className="w-full min-w-[1180px] text-sm" data-testid="attendance-day-table">
             <thead><tr>{["reportEmployee", "reportDate", "reportStatus", "reportStarted", "reportFinished", "reportWorked", "reportPaused", "reportLate", "reportEarly", "reportNotes"].map((key) => <th key={key} scope="col" className={HEADER}>{t(key)}</th>)}</tr></thead>
             <tbody>{rows.slice(pageStart, pageStart + PAGE_SIZE).map((row) => <tr key={`${row.employeeId}:${row.date}`} data-testid="attendance-day-row">
@@ -300,6 +301,8 @@ export function MtmAttendanceReportWorkspace() {
               <td className={`${CELL} tabular-nums`}>{(row.earlyLeaveSeconds ?? 0) > 0 ? <HomePill tone="amber">{formatAttendanceDuration(row.earlyLeaveSeconds)}</HomePill> : formatAttendanceDuration(row.earlyLeaveSeconds)}</td>
               <td className={`${CELL} min-w-48 text-xs leading-relaxed text-muted-foreground`}>{rowNotes(row)}</td></tr>)}</tbody>
           </table></div>}
+          {!customTable && rows.some((row) => row.corrections?.length) ? <div className="space-y-2 text-xs leading-relaxed text-muted-foreground" data-testid="attendance-correction-history"><p>{t("reportCorrectionLegend")}</p>
+            {form === "MONTH" ? rows.flatMap((row) => attendanceCorrectionLines(row, locale, t).map((line, index) => <p key={`${row.employeeId}:${row.date}:${index}`}>{row.employeeName} · {dateLabel(row.date)} · {line}</p>)) : null}</div> : null}
           <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground"><p>{t("reportShown", { from: count ? pageStart + 1 : 0, to: Math.min(pageStart + PAGE_SIZE, count), total: count })}</p>
             {count > PAGE_SIZE ? <div className="flex items-center gap-2"><Button type="button" variant="outline" className="min-h-11" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>{t("reportPrevious")}</Button>
               <span>{t("reportPage", { current: currentPage + 1, total: lastPage + 1 })}</span><Button type="button" variant="outline" className="min-h-11" disabled={currentPage === lastPage} onClick={() => setPage(currentPage + 1)}>{t("reportNext")}</Button></div> : null}</div>

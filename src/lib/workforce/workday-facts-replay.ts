@@ -440,20 +440,48 @@ export function replayWorkforceWorkdayFacts(input: {
   corrections?: ReadonlyArray<WorkforceTimeCorrectionReplayFact>
 }): WorkforceReplayedWorkdayFacts {
   const workdayId = nonBlank("workdayId", input.workdayId)
-  const journal = replayJournal({ workdayId, events: input.events })
-  let state = journal.state
   const correctionIds = new Set<string>()
-  const pending = (input.corrections ?? []).map((correction, index) => {
+  const parsed = (input.corrections ?? []).map((correction, index) => {
     const id = nonBlank(`corrections[${index}].id`, correction.id)
     if (correctionIds.has(id)) fail(`corrections[${index}].id is duplicated`)
     correctionIds.add(id)
+    const rawBefore = correction.beforeFacts
+    const missing = rawBefore != null && typeof rawBefore === "object" && !Array.isArray(rawBefore)
+      && "kind" in rawBefore && rawBefore.kind === "MISSING"
+    if (missing && (Object.keys(rawBefore).sort().join(",") !== "kind,workDate"
+      || !("workDate" in rawBefore) || typeof rawBefore.workDate !== "string" || !isDateKey(rawBefore.workDate))) {
+      fail("genesis beforeFacts must describe only the missing work date")
+    }
     return {
       id,
-      before: correctionFacts(`corrections[${index}].beforeFacts`, correction.beforeFacts, workdayId),
+      before: missing ? null : correctionFacts(`corrections[${index}].beforeFacts`, rawBefore, workdayId),
+      missingDate: missing && "workDate" in rawBefore ? rawBefore.workDate : null,
       after: correctionFacts(`corrections[${index}].afterFacts`, correction.afterFacts, workdayId),
     }
   })
+  const genesis = parsed.filter((correction) => correction.before === null)
+  if (genesis.length > 1 || (genesis.length > 0 && input.events.length > 0)) {
+    fail("genesis requires one correction and an empty original journal")
+  }
   const appliedCorrectionIds: string[] = []
+  let state: ReplayedState
+  let eventIds: string[]
+  if (genesis.length === 1) {
+    const first = genesis[0]!
+    if (first.after.workDate !== first.missingDate || first.after.status !== "COMPLETED"
+      || first.after.totalPausedSeconds !== 0 || first.after.pausedAt !== null) {
+      fail("genesis must create a completed, pause-free workday on its missing date")
+    }
+    state = { projection: first.after, pauseIntervals: [] }
+    assertProjectionMatchesIntervals(state)
+    eventIds = []
+    appliedCorrectionIds.push(first.id)
+  } else {
+    const journal = replayJournal({ workdayId, events: input.events })
+    state = journal.state
+    eventIds = journal.eventIds
+  }
+  const pending = parsed.filter((correction): correction is typeof correction & { before: WorkforceWorkdayCorrectionFacts } => correction.before !== null)
 
   while (pending.length > 0) {
     const matches = pending.filter((correction) => projectionMatchesFacts(state.projection, correction.before))
@@ -474,7 +502,7 @@ export function replayWorkforceWorkdayFacts(input: {
     completedAt: state.projection.completedAt,
     totalPausedSeconds: state.projection.totalPausedSeconds,
     pauseIntervals: state.pauseIntervals,
-    eventIds: journal.eventIds,
+    eventIds,
     correctionIds: appliedCorrectionIds,
   }
 }

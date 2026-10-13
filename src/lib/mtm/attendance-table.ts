@@ -1,6 +1,6 @@
 import { addDateKeyDays } from "@/lib/mtm/mobile-week"
 import { filterMtmAttendanceRows, summarizeMtmAttendanceRows, type MtmAttendanceReport, type MtmAttendanceReportRow } from "@/lib/mtm/attendance-report"
-import { attendanceStatusText, attendanceMonthCell, attendanceCatalogueLegend, formatAttendanceDuration } from "@/lib/mtm/attendance-presentation"
+import { attendanceStatusText, attendanceMonthCell, attendanceCatalogueLegend, attendanceCorrectionLines, attendanceJournalEntries, formatAttendanceDuration } from "@/lib/mtm/attendance-presentation"
 import { AttendanceViewConfigSchema, type AttendanceViewConfig, type AttendanceViewColumn } from "@/lib/mtm/attendance-view-contract"
 
 export type AttendanceText = (key: string, values?: Record<string, string | number>) => string
@@ -11,7 +11,6 @@ export type AttendanceTable = {
   details: string[]
   totals: string[]
 }
-const EVENT: Record<string, string> = { START: "reportEventStart", PAUSE: "reportEventPause", RESUME: "reportEventResume", FINISH: "reportEventFinish", REOPEN: "reportEventReopen" }
 const REASON: Record<string, string> = { DUPLICATE_WORKDAY: "reportReasonDuplicate", SCHEDULE_INVALID: "reportReasonSchedule", TIMESTAMP_INVALID: "reportReasonTimestamp", EVENT_TYPE_INVALID: "reportReasonEvent", JOURNAL_INCOMPLETE: "reportReasonJournal", PAUSE_TOTAL_MISMATCH: "reportReasonPause", WORKDAY_INCONSISTENT: "reportReasonFacts" }
 const COLUMN: Record<AttendanceViewColumn, string> = { employee: "reportEmployee", team: "reportTeam", date: "reportDate", status: "reportStatus", startedAt: "reportStarted", completedAt: "reportFinished", worked: "reportWorked", paused: "reportPaused", late: "reportLate", early: "reportEarly", event: "reportEvent", phoneAt: "reportPhoneTime", serverAt: "reportServerTime", days: "reportMonth", absent: "reportAbsentCount", notes: "reportNotes" }
 
@@ -25,8 +24,9 @@ export function buildAttendanceTable(report: MtmAttendanceReport, value: Attenda
     timeZone: timezone, ...(full ? { dateStyle: "short", timeStyle: "medium" } : { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
   }).format(new Date(value)) : "—"
   const title = t(config.mode === "MONTH" ? "reportMonth" : config.mode === "JOURNAL" ? "reportJournal" : config.filters.form === "LATE_EARLY" ? "reportLateEarly" : config.filters.form === "ABSENCES" ? "reportAbsences" : "reportDay")
-  const dayNotes = (row: MtmAttendanceReportRow) => row.factsState === "INVALID" ? row.invalidReasons.map((reason) => t(REASON[reason] ?? "reportReasonFacts")).join(" · ")
+  const baseNotes = (row: MtmAttendanceReportRow) => row.factsState === "INVALID" ? row.invalidReasons.map((reason) => t(REASON[reason] ?? "reportReasonFacts")).join(" · ")
     : row.kind === "OPEN" ? t("reportProvisional") : row.kind === "MISSING_FINISH" ? t("reportUnknownTime") : row.kind === "ABSENT" ? t("reportAbsenceReasonPending") : row.flags.includes("WORKED_ON_DAY_OFF") ? t("reportWorkOnDayOff") : row.calendarName ?? "—"
+  const dayNotes = (row: MtmAttendanceReportRow) => [baseNotes(row), ...attendanceCorrectionLines(row, locale, t)].filter((line) => line !== "—").join(" · ") || "—"
   const duration = (row: MtmAttendanceReportRow) => `${formatAttendanceDuration(row.workedSeconds)}${row.kind === "OPEN" ? ` · ${t("reportProvisionalShort")}` : ""}`
   const columns: AttendanceTable["columns"] = config.columns.flatMap((column) => column === "days"
     ? Array.from({ length: Number(config.filters.to.slice(-2)) }, (_, index) => { const key = addDateKeyDays(config.filters.from, index); return { key, label: date(key) } })
@@ -43,10 +43,10 @@ export function buildAttendanceTable(report: MtmAttendanceReport, value: Attenda
       return { key: id, cells: columns.map((column) => column.key in data ? data[column.key] : attendanceMonthCell(byDate.get(column.key), t)) }
     })
   } else if (config.mode === "JOURNAL") {
-    tableRows = rows.flatMap((row) => row.events.map((event, index) => {
-      const data: Record<string, string> = { employee: row.employeeName, team: row.teamName ?? t("reportNoTeam"), date: date(row.date), status: attendanceStatusText(row, locale, t), event: t(EVENT[event.type]),
-        phoneAt: time(event.claimedAt ?? event.occurredAt, row.timezone, true), serverAt: time(event.serverReceivedAt, row.timezone, true) }
-      return { key: `${row.employeeId}:${row.date}:${event.id ?? index}`, kind: row.kind, cells: columns.map((column) => data[column.key]) }
+    tableRows = rows.flatMap((row) => attendanceJournalEntries(row, locale, t).map((entry) => {
+      const data: Record<string, string> = { employee: row.employeeName, team: row.teamName ?? t("reportNoTeam"), date: date(row.date), status: attendanceStatusText(row, locale, t), event: entry.description,
+        phoneAt: time(entry.phoneAt, row.timezone, true), serverAt: time(entry.serverAt, row.timezone, true) }
+      return { key: `${row.employeeId}:${row.date}:${entry.id}`, kind: row.kind, cells: columns.map((column) => data[column.key]) }
     }))
   } else {
     tableRows = rows.map((row) => {
@@ -66,6 +66,14 @@ export function buildAttendanceTable(report: MtmAttendanceReport, value: Attenda
     ["·", "reportUpcoming"], ["?", "reportMissingFinish"], ["!", "reportInvalidFacts"], ["~", "reportProvisionalShort"],
   ].map(([code, key]) => `${code} — ${t(key)}`).join(" · "))
   if (rows.some((row) => row.kind === "OPEN")) details.push(t("reportProvisional"))
+  if (rows.some((row) => row.corrections?.length)) {
+    details.push(t("reportCorrectionLegend"))
+    // History is retained even when a personal form hides its notes/event column.
+    if (config.mode === "MONTH" || (config.mode === "DAY" && !config.columns.includes("notes"))
+      || (config.mode === "JOURNAL" && !config.columns.includes("event"))) {
+      for (const row of rows) for (const line of attendanceCorrectionLines(row, locale, t)) details.push(`${row.employeeName} · ${date(row.date)} · ${line}`)
+    }
+  }
   const totalLines = config.showTotals ? [t("reportTotalsTitle"),
     t("reportTotals", { worked: formatAttendanceDuration(totals.workedSeconds), paused: formatAttendanceDuration(totals.pausedSeconds), late: formatAttendanceDuration(totals.lateSeconds), early: formatAttendanceDuration(totals.earlyLeaveSeconds) }),
     t("reportTotalsRows", { rows: totals.rowCount, employees: totals.employeeCount })] : []

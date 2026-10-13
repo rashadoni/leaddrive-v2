@@ -17933,6 +17933,13 @@
     "managerNoTeamHint": "You can change only the rules of your own teams, and your employee card is not in a team yet. Ask an administrator to assign your card to a team."
   },
   "mtmAttendance": {
+    "decisionApproved": "Request approved",
+    "decisionRejected": "Request rejected",
+    "reportCorrectionFacts": "{start} – {end}; breaks {paused}",
+    "reportCorrectionEntry": "Correction: {before} → {after}. Approved by {reviewer}, {at}.",
+    "reportCorrectionMissing": "no recorded marks",
+    "reportCorrectionReviewer": "reviewer",
+    "reportCorrectionLegend": "* Corrected through an approved request or manager decision. Original phone marks are retained; a correction has no phone time.",
     "kindsOpen": "Day types",
     "kindsClose": "Collapse day types",
     "kindsTitle": "Day type catalogue",

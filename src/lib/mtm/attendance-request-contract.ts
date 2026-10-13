@@ -2,7 +2,7 @@ import { z } from "zod"
 import { addDateKeyDays, isDateKey } from "@/lib/mtm/mobile-week"
 import { AttendanceDayKindSchema } from "@/lib/mtm/attendance-day-kinds"
 
-export const ATTENDANCE_REQUEST_KINDS = ["ANNUAL_LEAVE", "SICK_LEAVE", "TIME_OFF", "HOURLY_ABSENCE", "BUSINESS_TRIP", "REMOTE_WORK", "OVERTIME"] as const
+export const ATTENDANCE_REQUEST_KINDS = ["ANNUAL_LEAVE", "SICK_LEAVE", "TIME_OFF", "HOURLY_ABSENCE", "BUSINESS_TRIP", "REMOTE_WORK", "OVERTIME", "TIME_CORRECTION"] as const
 const date = z.string().refine(isDateKey)
 const time = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/)
 export const AttendanceRequestInputSchema = z.object({
@@ -23,7 +23,7 @@ export const AttendanceRequestInputSchema = z.object({
     if (input.startDate !== input.endDate || !input.startTime || !input.endTime || input.endTime <= input.startTime) {
       ctx.addIssue({ code: "custom", path: ["endTime"], message: "MTM_ATTENDANCE_REQUEST_TIME_RANGE" })
     }
-  } else if (input.startTime || input.endTime || input.kind === "HOURLY_ABSENCE" || input.kind === "OVERTIME") {
+  } else if (input.startTime || input.endTime || input.kind === "HOURLY_ABSENCE" || input.kind === "OVERTIME" || input.kind === "TIME_CORRECTION") {
     ctx.addIssue({ code: "custom", path: ["unit"], message: "MTM_ATTENDANCE_REQUEST_HOURS_REQUIRED" })
   }
   if (new Set(input.attachmentIds).size !== input.attachmentIds.length) {
@@ -31,6 +31,15 @@ export const AttendanceRequestInputSchema = z.object({
   }
 })
 export type AttendanceRequestInput = z.infer<typeof AttendanceRequestInputSchema>
+export const AttendanceCorrectionBasisSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("MISSING"), workDate: date }).strict(),
+  z.object({ kind: z.literal("WORKDAY"), facts: z.object({
+    id: z.string().min(1), workDate: date, status: z.enum(["STARTED", "PAUSED", "COMPLETED"]),
+    startedAt: z.string().datetime(), pausedAt: z.string().datetime().nullable(), completedAt: z.string().datetime().nullable(),
+    totalPausedSeconds: z.number().int().nonnegative(),
+  }).strict() }).strict(),
+])
+export type AttendanceCorrectionBasis = z.infer<typeof AttendanceCorrectionBasisSchema>
 export const AttendanceRequestDetailsSchema = z.object({
   version: z.literal(1),
   kind: z.enum(ATTENDANCE_REQUEST_KINDS),
@@ -40,7 +49,12 @@ export const AttendanceRequestDetailsSchema = z.object({
   dayKind: AttendanceDayKindSchema,
   attachmentIds: z.array(z.string().uuid()).max(3),
   submissionHash: z.string().regex(/^[a-f0-9]{64}$/),
-}).strict()
+  correctionBasis: AttendanceCorrectionBasisSchema.optional(),
+}).strict().superRefine((value, ctx) => {
+  if ((value.kind === "TIME_CORRECTION") !== (value.correctionBasis !== undefined)) {
+    ctx.addIssue({ code: "custom", path: ["correctionBasis"], message: "MTM_ATTENDANCE_CORRECTION_BASIS_INVALID" })
+  }
+})
 export type AttendanceRequestDetails = z.infer<typeof AttendanceRequestDetailsSchema>
 export type AttendanceRequestStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED"
 export type AttendanceRequestDto = {

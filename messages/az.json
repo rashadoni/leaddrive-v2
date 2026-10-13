@@ -17929,6 +17929,13 @@
     "managerNoTeamHint": "Yalnız öz komandalarınızın qaydalarını dəyişə bilərsiniz, amma əməkdaş kartınız hələ heç bir komandaya daxil deyil. Administratordan kartınıza komanda təyin etməsini xahiş edin."
   },
   "mtmAttendance": {
+    "decisionApproved": "Müraciət təsdiqləndi",
+    "decisionRejected": "Müraciət rədd edildi",
+    "reportCorrectionFacts": "{start} – {end}; fasilələr {paused}",
+    "reportCorrectionEntry": "Düzəliş: {before} → {after}. Təsdiqləyən: {reviewer}, {at}.",
+    "reportCorrectionMissing": "qeyd yox idi",
+    "reportCorrectionReviewer": "yoxlayan şəxs",
+    "reportCorrectionLegend": "* Təsdiqlənmiş müraciət və ya rəhbərin qərarı əsasında düzəldilib. Telefonun ilkin qeydləri saxlanılıb; düzəlişin telefon vaxtı yoxdur.",
     "kindsOpen": "Gün növləri",
     "kindsClose": "Gün növlərini yığ",
     "kindsTitle": "Gün növləri kataloqu",

@@ -17933,6 +17933,13 @@
     "managerNoTeamHint": "Вы можете менять только правила своих команд, а ваша карточка сотрудника пока не входит ни в одну команду. Попросите администратора назначить вам команду."
   },
   "mtmAttendance": {
+    "decisionApproved": "Заявка одобрена",
+    "decisionRejected": "Заявка отклонена",
+    "reportCorrectionFacts": "{start} – {end}; перерывы {paused}",
+    "reportCorrectionEntry": "Исправление: {before} → {after}. Подтвердил: {reviewer}, {at}.",
+    "reportCorrectionMissing": "отметок не было",
+    "reportCorrectionReviewer": "проверяющий",
+    "reportCorrectionLegend": "* Исправлено по одобренной заявке или решению руководителя. Исходные отметки телефона сохранены; у исправления нет времени телефона.",
     "kindsOpen": "Виды дня",
     "kindsClose": "Свернуть виды дня",
     "kindsTitle": "Справочник видов дня",

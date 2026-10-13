@@ -4,9 +4,11 @@ import { prisma } from "@/lib/prisma"
 import { isValidTimezone, localDateTimeToUnambiguousUtc } from "@/lib/timezone"
 import { readAttendanceDayKinds } from "@/lib/mtm/attendance-day-kind-store"
 import { agentPermissionEnabled } from "@/lib/mtm/agent-permissions"
+import { lockMtmWorkdayTransitions } from "@/lib/mtm/workday"
+import { workforceWorkdayCorrectionFacts } from "@/lib/workforce/workday-correction-facts"
 import {
   AttendanceRequestDetailsSchema, AttendanceRequestError, AttendanceRequestInputSchema,
-  attendanceRequestWindowsOverlap, type AttendanceRequestDto, type AttendanceRequestInput,
+  attendanceRequestWindowsOverlap, type AttendanceRequestDto, type AttendanceRequestInput, type AttendanceCorrectionBasis,
 } from "@/lib/mtm/attendance-request-contract"
 
 export type AttendanceSelf = { organizationId: string; agentId: string; role: string }
@@ -20,7 +22,8 @@ export function attendanceRequestDto(row: RequestRow): AttendanceRequestDto {
   const parsed = AttendanceRequestDetailsSchema.parse(row.attendanceDetails)
   const details = { version: parsed.version, kind: parsed.kind, unit: parsed.unit,
     startTime: parsed.startTime, endTime: parsed.endTime, timezone: parsed.timezone,
-    dayKind: parsed.dayKind, attachmentIds: parsed.attachmentIds }
+    dayKind: parsed.dayKind, attachmentIds: parsed.attachmentIds,
+    ...(parsed.correctionBasis ? { correctionBasis: parsed.correctionBasis } : {}) }
   return {
     id: row.id, clientRequestId: row.clientRequestId, agentId: row.agentId, status: row.status,
     startDate: row.startDate.toISOString().slice(0, 10), endDate: row.endDate.toISOString().slice(0, 10),
@@ -58,6 +61,10 @@ export async function submitAttendanceRequestInTransaction(db: Prisma.Transactio
   const parsed = AttendanceRequestInputSchema.safeParse(raw)
   if (!parsed.success) throw new AttendanceRequestError("MTM_ATTENDANCE_REQUEST_INVALID", 400)
   const input = parsed.data
+  if (input.kind === "TIME_CORRECTION") {
+    await db.$executeRaw`SELECT set_config('lock_timeout', '3s', true)`
+    await lockMtmWorkdayTransitions(db, self)
+  }
   await lockAttendanceRequests(db, self)
   const timezone = await requireAttendanceSelf(db, self)
   const hash = submissionHash(input)
@@ -68,13 +75,16 @@ export async function submitAttendanceRequestInTransaction(db: Prisma.Transactio
     return { request: attendanceRequestDto(existing), idempotent: true }
   }
   // Reject nonexistent/ambiguous wall-clock times instead of guessing through DST.
+  let requestedStartAt: Date | null = null
+  let requestedEndAt: Date | null = null
   if (input.unit === "HOURS") {
     try {
-      localDateTimeToUnambiguousUtc(`${input.startDate}T${input.startTime}`, timezone)
-      localDateTimeToUnambiguousUtc(`${input.endDate}T${input.endTime}`, timezone)
+      const start = localDateTimeToUnambiguousUtc(`${input.startDate}T${input.startTime}`, timezone)
+      const end = localDateTimeToUnambiguousUtc(`${input.endDate}T${input.endTime}`, timezone)
+      if (input.kind === "TIME_CORRECTION") { requestedStartAt = start; requestedEndAt = end }
     } catch { throw new AttendanceRequestError("MTM_ATTENDANCE_REQUEST_LOCAL_TIME_INVALID", 400) }
   }
-  const dayKind = (await readAttendanceDayKinds(self.organizationId, db)).items.find((item) => item.key === input.kind && !item.archived)
+  const dayKind = (await readAttendanceDayKinds(self.organizationId, db)).items.find((item) => item.key === (input.kind === "TIME_CORRECTION" ? "WORKED" : input.kind) && !item.archived)
   if (!dayKind) throw new AttendanceRequestError("MTM_ATTENDANCE_REQUEST_KIND_UNAVAILABLE", 400)
   if (input.attachmentIds.length) {
     const count = await db.mtmAttendanceAttachment.count({ where: { organizationId: self.organizationId, agentId: self.agentId, clientRequestId: input.clientRequestId, id: { in: input.attachmentIds } } })
@@ -82,7 +92,23 @@ export async function submitAttendanceRequestInTransaction(db: Prisma.Transactio
   }
   const startDate = new Date(`${input.startDate}T00:00:00Z`)
   const endDate = new Date(`${input.endDate}T00:00:00Z`)
-  const overlaps = await db.mtmHrmRequest.findMany({ where: {
+  let correctionBasis: AttendanceCorrectionBasis | undefined
+  let correctionWorkdayId: string | null = null
+  if (input.kind === "TIME_CORRECTION") {
+    if (!requestedStartAt || !requestedEndAt || requestedEndAt.getTime() > Date.now()) throw new AttendanceRequestError("MTM_ATTENDANCE_CORRECTION_FUTURE", 400)
+    const workday = await db.mtmAgentWorkday.findFirst({ where: { organizationId: self.organizationId, agentId: self.agentId, workDate: startDate },
+      select: { id: true, workDate: true, status: true, startedAt: true, completedAt: true, pausedAt: true, totalPausedSeconds: true } })
+    if (workday) {
+      correctionWorkdayId = workday.id
+      correctionBasis = { kind: "WORKDAY", facts: workforceWorkdayCorrectionFacts(workday) }
+      if (workday.status === "COMPLETED" && workday.startedAt.getTime() === requestedStartAt.getTime() && workday.completedAt?.getTime() === requestedEndAt.getTime()) {
+        throw new AttendanceRequestError("MTM_ATTENDANCE_CORRECTION_UNCHANGED")
+      }
+    } else correctionBasis = { kind: "MISSING", workDate: input.startDate }
+    const pending = await db.mtmHrmRequest.findFirst({ where: { organizationId: self.organizationId, agentId: self.agentId, type: "TIME_CORRECTION", status: "PENDING", startDate }, select: { id: true } })
+    if (pending) throw new AttendanceRequestError("MTM_ATTENDANCE_REQUEST_OVERLAP")
+  }
+  const overlaps = input.kind === "TIME_CORRECTION" ? [] : await db.mtmHrmRequest.findMany({ where: {
     organizationId: self.organizationId, agentId: self.agentId, status: { in: ["PENDING", "APPROVED"] },
     type: { in: ["LEAVE", "ABSENCE"] }, startDate: { lte: endDate }, endDate: { gte: startDate },
   }, select: { startDate: true, endDate: true, attendanceDetails: true }, take: 1001 })
@@ -97,9 +123,10 @@ export async function submitAttendanceRequestInTransaction(db: Prisma.Transactio
   const now = new Date()
   const created = await db.mtmHrmRequest.create({ data: {
     id: randomUUID(), organizationId: self.organizationId, agentId: self.agentId, clientRequestId: input.clientRequestId,
-    type: input.kind === "ANNUAL_LEAVE" ? "LEAVE" : "ABSENCE", startDate, endDate, reason: input.reason, submittedAt: now,
+    type: input.kind === "TIME_CORRECTION" ? "TIME_CORRECTION" : input.kind === "ANNUAL_LEAVE" ? "LEAVE" : "ABSENCE", startDate, endDate, reason: input.reason, submittedAt: now,
+    correctionWorkdayId, requestedStartAt, requestedEndAt,
     attendanceDetails: { version: 1, kind: input.kind, unit: input.unit, startTime: input.startTime ?? null, endTime: input.endTime ?? null,
-      timezone, dayKind, attachmentIds: [...input.attachmentIds].sort(), submissionHash: hash },
+      timezone, dayKind, attachmentIds: [...input.attachmentIds].sort(), submissionHash: hash, ...(correctionBasis ? { correctionBasis } : {}) },
   }, select: attendanceRequestSelect })
   await db.mtmAuditLog.create({ data: { organizationId: self.organizationId, agentId: self.agentId,
     action: "MTM_ATTENDANCE_REQUEST_SUBMITTED", entity: "hrm_request", entityId: created.id, metadataKind: "mtm_attendance_request",
