@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs"
+import { createTranslator } from "next-intl"
 import { describe, expect, it } from "vitest"
 import ExcelJS from "exceljs"
 import { attendancePdfText } from "./helpers/attendance-pdf"
@@ -54,6 +56,18 @@ describe("attendance location report preserves evidence meaning", () => {
     expect(summary.totals).toEqual({ arrivals: 3, departures: 2, employees: 2, outside: 1, uncertain: 1, noLocation: 1, noConsent: 1, unknown: 1 })
     expect(summary.rows.filter(item => item.branch)).toHaveLength(2)
     expect(summary.rows.find(item => item.state === "NO_CONSENT")).toMatchObject({ departures: 1, outside: null, uncertain: null, noConsent: 1 })
+  })
+  it.each(["az", "ru", "en"] as const)("uses real %s translations for branch cells and files", async locale => {
+    const translate=createTranslator({locale,messages:JSON.parse(readFileSync(`messages/${locale}.json`,"utf8")),namespace:"mtmAttendance"})
+    const report={...base,rows:[{...row,locationMarks:[mark("INSIDE"),mark("UNAVAILABLE","FINISH"),mark("NO_CONSENT"),mark("NOT_RECORDED")]}]}
+    const table=buildAttendanceTable(report,config,locale,translate)
+    expect(table.title).toBe(translate("branchReportTitle"))
+    expect(JSON.stringify(table)).not.toMatch(/mtmAttendance\.|branchReport[A-Z]|locationReport[A-Z]/)
+    const actual=new ExcelJS.Workbook();await actual.xlsx.load(await buildAttendanceXlsx(table).xlsx.writeBuffer())
+    expect(actual.worksheets[0].getRow(1).values).toEqual([undefined,...table.columns.map(column=>column.label)])
+    const pdf=attendancePdfText(buildAttendancePdf(table))
+    expect(pdf).toContain(table.title)
+    expect(pdf).toContain(translate("locationReportNoConsent"))
   })
   it("supports persisted branch columns and rejects columns belonging to another row type", () => {
     expect(AttendanceViewConfigSchema.parse({ ...config, columns: ["noConsent", "branch", "noLocation"] }).columns).toEqual(["noConsent", "branch", "noLocation"])

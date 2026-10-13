@@ -741,3 +741,10 @@ Actual React render → HTML/CSS и **12 PNG** (registry/assignments × az/ru/en
 - PR726 exact3c3a33e60: все5mandatory и полный HRM exact-head build SUCCESS, normalmerge main9930dc6e9315dcc4fd904c374f1d764584c4d71d. PR727 prior037a gatesPASS; после сохранения обеих сторон journal конфликта fresh head ee11b820c; зависимые PR728bb4c5dbd0 и7315da2a1b25 включают тот же currentmain и ждут новых проверок.
 - Production725 deployment38360742508 SUCCESS; public build-info artifact2f3360b20711b979b0bfa410339e7012dd8269cd и pingok подтверждены. Демо2.11 пока NOT RUN, ждёт verified deploy727. Геосбор OFF, реальные письма не отправляются, physical phone NOT RUN.
 - Следующее: actual UI3.6, checkpoint/PR/CI, затем правило3.7; reserved Claude2.12/mobile пути не меняются.
+
+
+#### 2026-10-13 — 3.6 actual UI и файлы
+
+- Backend checkpoint4a2e0c4fd, merge34a3594fc включает актуальные зависимости/журнал с обеими сторонами; UI checkpointbf12f46f8. Новый /mtm/attendance/branches/report использует общий snapshot/table для экрана и выгрузки; сохранённые формы и необязательная рассылка понимают BRANCH.
+- UI67 distinct PASS: branch14, personal15, delivery21, report17. ScopedUIlint7 PASS, i18n25864 leaf keys missing0/extra0 PASS. Реальные React render screenshots az/ru/en ×1440/390 в evidence/branch-report; все6 просмотрены, scrollWidth==viewport, innerScroll0, targets44+. Root просмотрел оба RU и показал RU1440 владельцу. Это actual component с фиктивными данными, не production и не physicalphone.
+- Дополнительная проверка фактических az/ru/en файлов XLSX/PDF: location-report10 PASS (в том числе прежние7); вместе с baseline report/export всего46 unique backend testsPASS. Scopedlint3 после финальных изменений PASS. RealPG18, полный tsc/build и production3.6 NOT RUN на Contabo; следующий шаг отдельный PR и required CI. Затем3.7: одна настройка вне филиала, default принять с пометкой.
