@@ -128,6 +128,18 @@ const FACTS: Partial<Record<AgentPermissionId, Fact[]>> = {
     file: "src/app/api/v1/mtm/week/workday/route.ts",
     contains: 'if (!actor || actor.role !== "AGENT" || !actor.agentId) {',
   }],
+  workdayReturn: [
+    // Whoever may move a workday in the app may return to it, and to their own day only.
+    { check: () => mobileCapabilities("AGENT").includes("FIELD_EXECUTE") },
+    {
+      file: "src/app/api/v2/mtm/mobile/route-field/workday-return/route.ts",
+      contains: 'if (!auth.agentId || !hasMobileCapability(auth.role, "FIELD_EXECUTE")) {',
+    },
+    {
+      file: "src/lib/mtm/workday-return.ts",
+      contains: "where: { id: workdayId, organizationId, agentId },",
+    },
+  ],
   locationShare: [{ check: () => mobileCapabilities("AGENT").includes("FIELD_TRACK") }],
   locationHistoryOwn: [{
     file: "src/app/api/v1/mtm/mobile/location/route.ts",

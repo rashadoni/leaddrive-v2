@@ -11306,6 +11306,8 @@
     "permGroup_team": "Team, results, requests",
     "perm_workdayOwn": "Start and finish their own working day",
     "perm_workdayOwn_hint": "Only the agent. A manager cannot close the day for them.",
+    "perm_workdayReturn": "Return to the working day they closed today",
+    "perm_workdayReturn_hint": "The agent themselves, the same day only. The time between closing and returning is not working time; yesterday changes through a time-correction request.",
     "perm_locationShare": "Share their location while the working day is on",
     "perm_locationShare_hint": "Routes and visits cannot be confirmed without it, so it cannot be switched off.",
     "perm_locationHistoryOwn": "See the path they travelled",
