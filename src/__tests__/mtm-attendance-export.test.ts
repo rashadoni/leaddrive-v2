@@ -105,3 +105,25 @@ describe("approved HR catalogue periods remain visible in exports", () => {
     expect(text + cells).not.toMatch(/submissionHash|recording|attachmentIds/)
   })
 })
+
+it("keeps approved-hour exclusions identical in the late form, Excel and PDF", async () => {
+  const dayKind = defaultAttendanceDayKinds(() => ({ az: "İcazə", ru: "Отпроситься", en: "Approved absence" })).find(kind => kind.key === "HOURLY_ABSENCE")!
+  const date = "2026-10-12"
+  const result = buildMtmAttendanceReport({ employees: [{ id: "a", name: "Fictional approved employee", teamId: null, teamName: null }],
+    from: date, to: date, now: "2026-10-13T12:00:00Z", rules: [], calendar: [],
+    workdays: [{ id: "day", agentId: "a", workDate: date, status: "COMPLETED", startedAt: at("10:00"), completedAt: at("17:00"), totalPausedSeconds: 0,
+      events: [{ type: "START", occurredAt: at("10:00") }, { type: "FINISH", occurredAt: at("17:00") }] }],
+    approvedRequests: [["09:00", "10:00"], ["17:00", "18:00"]].map(([startTime, endTime]) => ({ id: startTime, agentId: "a", startDate: date, endDate: date, decidedAt: at("08:00"),
+      details: { kind: "HOURLY_ABSENCE", unit: "HOURS", startTime, endTime, timezone: "Asia/Baku", dayKind } })) })
+  const translate = createTranslator({ locale: "en", messages: JSON.parse(readFileSync("messages/en.json", "utf8")), namespace: "mtmAttendance" })
+  const late = buildAttendanceTable(result, { ...config, filters: { from: date, to: date, form: "LATE_EARLY" } }, "en", translate)
+  expect(late.rows).toHaveLength(0)
+  expect(pdfText(buildAttendancePdf(late))).not.toContain("Fictional approved employee")
+  const sheet = buildAttendanceXlsx(late).worksheets[0]
+  expect(JSON.stringify(sheet.getSheetValues())).not.toContain("Fictional approved employee")
+  const all = buildAttendanceTable(result, { ...config, columns: ["employee", "worked", "late", "early"] }, "en", translate)
+  expect(all.rows[0].cells.slice(0, 4)).toEqual(["Fictional approved employee", "7:00", "0:00", "0:00"])
+  const actual = new ExcelJS.Workbook(); await actual.xlsx.load(await buildAttendanceXlsx(all).xlsx.writeBuffer())
+  expect(actual.worksheets[0].getRow(2).getCell(2).value).toBe("7:00")
+  expect(pdfText(buildAttendancePdf(all))).toContain("7:00")
+})

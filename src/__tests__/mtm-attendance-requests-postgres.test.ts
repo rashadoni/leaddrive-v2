@@ -297,4 +297,39 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
     })
   })
 
+  it("projects only approved hour windows into violations and leaves phone events unchanged", async () => {
+    const date = "2026-09-14"
+    const reviewer = { organizationId: self.organizationId, userId: "request-pg-admin", principalType: "session" as const }
+    const firstResponse = await submit(input(date))
+    expect(firstResponse.status).toBe(201)
+    const first = (await firstResponse.json()).data.request
+    const secondResponse = await submit({ ...input(date), startTime: "17:00", endTime: "18:00" })
+    expect(secondResponse.status).toBe(201)
+    const second = (await secondResponse.json()).data.request
+    await tenant(self.organizationId, async () => {
+      const startedAt = new Date(`${date}T06:00:00Z`), completedAt = new Date(`${date}T13:00:00Z`)
+      const day = await prisma.mtmAgentWorkday.create({ data: { organizationId: self.organizationId, agentId: self.agentId,
+        workDate: new Date(date), status: "COMPLETED", startedAt, completedAt, totalPausedSeconds: 0 } })
+      await prisma.mtmAgentWorkdayEvent.createMany({ data: [
+        { organizationId: self.organizationId, agentId: self.agentId, workdayId: day.id, type: "START", occurredAt: startedAt, clientEventId: randomUUID() },
+        { organizationId: self.organizationId, agentId: self.agentId, workdayId: day.id, type: "FINISH", occurredAt: completedAt, clientEventId: randomUUID() },
+      ] })
+      const read = (form: "ALL" | "LATE_EARLY" = "ALL") => report.readMtmAttendanceReport({ organizationId: self.organizationId,
+        actor: { role: "ADMIN", agentId: null, scopedAgentIds: null }, query: { from: date, to: date, form, employeeId: self.agentId } })
+      expect((await read()).rows[0]).toMatchObject({ lateSeconds: 3600, earlyLeaveSeconds: 3600 })
+      await decision.decideAttendanceRequest(reviewer, first.id, { decision: "APPROVED", version: first.version, note: "Fictional approved start" })
+      await decision.decideAttendanceRequest(reviewer, second.id, { decision: "REJECTED", version: second.version, note: "Fictional rejected end" })
+      expect((await read()).rows[0]).toMatchObject({ lateSeconds: 0, earlyLeaveSeconds: 3600 })
+      expect((await read("LATE_EARLY")).rows).toHaveLength(1)
+      await recording.recordAttendanceDays(reviewer, { clientRequestId: randomUUID(), agentIds: [self.agentId], dayKindKey: "HOURLY_ABSENCE", catalogueVersion: null,
+        unit: "HOURS", startDate: date, endDate: date, startTime: "17:00", endTime: "18:00", reason: "Fictional HR approved end" })
+      const result = await read()
+      expect(result.rows[0]).toMatchObject({ lateSeconds: 0, earlyLeaveSeconds: 0, workedSeconds: 25200, pausedSeconds: 0, flags: [] })
+      expect(result.totals).toMatchObject({ lateCount: 0, earlyLeaveCount: 0 })
+      expect((await read("LATE_EARLY")).rows).toHaveLength(0)
+      expect(await prisma.mtmAgentWorkday.findUnique({ where: { id: day.id } })).toMatchObject({ startedAt, completedAt, totalPausedSeconds: 0 })
+      expect(await prisma.mtmAgentWorkdayEvent.count({ where: { workdayId: day.id } })).toBe(2)
+    })
+  })
+
 })
