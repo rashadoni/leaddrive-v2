@@ -70,8 +70,6 @@ export interface DemoJourneyGuideProps {
   onGuideAction?: () => void
   /** Opens a chapter: behind the story read-only, ahead of it by jumping. */
   onOpenChapter?: (sectionId: string) => void
-  /** A clip was started, played to the end, or failed — for the session's report. */
-  onClipEvent?: (name: DemoClipEvent) => void
 }
 
 export type DemoClipEvent = "video.started" | "video.completed" | "video.error"
@@ -101,7 +99,6 @@ export function DemoJourneyGuide({
   onExitReview,
   liveCall,
   onOutcome,
-  onClipEvent,
   onShowCoach,
   onGuideAction,
   onOpenChapter,
@@ -128,11 +125,6 @@ export function DemoJourneyGuide({
     // voice.play/stop are stable; the recording is the only thing that changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [narration])
-  // A clip carries its own voiceover: the guide falls silent for it.
-  const clipEvent = (name: DemoClipEvent) => {
-    if (name === "video.started") voice.stop()
-    onClipEvent?.(name)
-  }
 
   return (
     <aside
@@ -249,8 +241,15 @@ export function DemoJourneyGuide({
         </div>
       )}
 
-      {section.intro && manifest.capabilities.video && (
-        <IntroClip slug={section.intro.slug} caption={section.intro.caption} status={section.intro.status} token={token} variant={variant} onClipEvent={clipEvent} />
+      {/* The clip itself plays at the top of the product screen (the player
+          renders it). Here only the note for a clip this viewer cannot be
+          served — it is being made, or it opens in a personal demo. */}
+      {section.intro && manifest.capabilities.video && !introClipAssets(section.intro.slug, section.intro.status, token, variant) && (
+        <div data-testid="demo-intro-clip-note" className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{S.clipTitle}</p>
+          <p className="mt-1 text-xs leading-relaxed">{section.intro.caption}</p>
+          <p className="mt-2 text-[11px] text-muted-foreground">{variant === "open" ? S.clipOpenDemo : S.clipPlanned}</p>
+        </div>
       )}
 
       {step && step.completion.kind === "outcome" && !reviewMode && variant === "granted" && liveCall?.enabled && onOutcome ? (
@@ -468,12 +467,39 @@ function DemoAssistant({
   )
 }
 
+/** What a chapter's clip plays from, or null when this viewer cannot be served it. */
+export function introClipAssets(slug: string, status: "available" | "planned", token: string, variant: DemoJourneyVariant) {
+  // The open demo's viewer is unverified, so it streams only the clips filmed
+  // on the invented demo stand (public-clips.ts); a help-library clip in the
+  // story stays behind a grant and the card says where to watch it.
+  const openClip = variant === "open" && DEMO_PUBLIC_CLIP_SLUGS.has(slug)
+  const entry = status === "available" && (variant !== "open" || openClip) ? getHelpVideoForSlug(slug, "az") : null
+  if (!entry) return null
+  if (variant === "preview") return getHelpVideoAsset(entry, "az")
+  if (variant === "open") return { videoSrc: demoPublicClipUrl(slug, "video"), posterSrc: demoPublicClipUrl(slug, "poster") }
+  return {
+    videoSrc: `/api/v1/public/demo-access/${encodeURIComponent(token)}/video/${encodeURIComponent(`${slug}.az`)}.VOICE.mp4`,
+    posterSrc: `/api/v1/public/demo-access/${encodeURIComponent(token)}/video/${encodeURIComponent(`${slug}.az`)}.poster.jpg`,
+  }
+}
+
+/**
+ * A chapter's one-minute clip, at the top of the product screen.
+ *
+ * It used to sit low in the guide's column, a 300px thumbnail under the step
+ * card: the owner started one and left after five seconds, then asked why the
+ * video was «at the bottom, on the right, where nobody looks» (2026-10-13).
+ * Here it is the first thing on the chapter's first step — large, with the
+ * button in words — and a single line on the later steps, so the product
+ * screen is not pushed down for the whole chapter. Playing keeps it open.
+ */
 export function IntroClip({
   slug,
   caption,
   status,
   token,
   variant,
+  compact = false,
   onClipEvent,
 }: {
   slug: string
@@ -481,78 +507,77 @@ export function IntroClip({
   status: "available" | "planned"
   token: string
   variant: DemoJourneyVariant
+  /** Past the chapter's first step: one line instead of the poster. */
+  compact?: boolean
   onClipEvent?: (name: DemoClipEvent) => void
 }) {
   const [playing, setPlaying] = useState(false)
-  // The open demo's viewer is unverified, so it streams only the clips filmed
-  // on the invented demo stand (public-clips.ts); a help-library clip in the
-  // story stays behind a grant and the card says where to watch it.
-  const openClip = variant === "open" && DEMO_PUBLIC_CLIP_SLUGS.has(slug)
-  const entry = status === "available" && (variant !== "open" || openClip) ? getHelpVideoForSlug(slug, "az") : null
-  const assets = !entry
-    ? null
-    : variant === "preview"
-      ? getHelpVideoAsset(entry, "az")
-      : variant === "open"
-        ? { videoSrc: demoPublicClipUrl(slug, "video"), posterSrc: demoPublicClipUrl(slug, "poster") }
-        : {
-            videoSrc: `/api/v1/public/demo-access/${encodeURIComponent(token)}/video/${encodeURIComponent(`${slug}.az`)}.VOICE.mp4`,
-            posterSrc: `/api/v1/public/demo-access/${encodeURIComponent(token)}/video/${encodeURIComponent(`${slug}.az`)}.poster.jpg`,
-          }
+  const assets = introClipAssets(slug, status, token, variant)
+  if (!assets) return null
+  const start = () => {
+    setPlaying(true)
+    onClipEvent?.("video.started")
+  }
+
+  if (playing) {
+    return (
+      <div data-testid="demo-intro-clip" className="mb-4 rounded-xl border border-orange-200 bg-orange-50/60 p-4 dark:border-orange-900/50 dark:bg-orange-950/20">
+        <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-orange-800 dark:text-orange-300">
+          <PlayCircle className="h-4 w-4" aria-hidden="true" /> {S.clipTitle} · <span className="normal-case tracking-normal">{caption}</span>
+        </p>
+        {/* Sound only after the prospect asked for it; captions travel with the file. */}
+        <video
+          className="mt-3 w-full max-w-3xl rounded-lg"
+          controls
+          autoPlay
+          poster={assets.posterSrc}
+          src={assets.videoSrc}
+          onEnded={() => onClipEvent?.("video.completed")}
+          onError={() => onClipEvent?.("video.error")}
+        />
+      </div>
+    )
+  }
+
+  if (compact) {
+    return (
+      <button
+        type="button"
+        data-testid="demo-intro-clip-play"
+        onClick={start}
+        className="mb-4 flex w-full items-center gap-2 rounded-lg border border-orange-200 bg-orange-50/60 px-3 py-2 text-left text-sm transition-colors hover:bg-orange-50 dark:border-orange-900/50 dark:bg-orange-950/20"
+      >
+        <PlayCircle className="h-4 w-4 shrink-0 text-[#FF4D00]" aria-hidden="true" />
+        <span className="min-w-0 flex-1 truncate">{caption}</span>
+        <span className="shrink-0 font-semibold text-[#c2410c] dark:text-orange-300">{S.clipWatch}</span>
+      </button>
+    )
+  }
 
   return (
-    <div
-      data-testid="demo-intro-clip"
-      className={cn(
-        "rounded-lg border p-3",
-        assets ? "border-orange-200 bg-orange-50/50 dark:border-orange-900/50 dark:bg-orange-950/20" : "border-zinc-200 dark:border-zinc-700",
-      )}
-    >
-      <p className={cn("flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em]", assets ? "text-orange-800 dark:text-orange-300" : "text-muted-foreground")}>
-        {assets ? <PlayCircle className="h-3.5 w-3.5" aria-hidden="true" /> : null} {S.clipTitle}
-      </p>
-      <p className="mt-1 text-xs leading-relaxed">{caption}</p>
-      {assets ? (
-        playing ? (
-          // Sound only after the prospect asked for it; captions travel with the file.
-          <video
-            className="mt-2 w-full rounded-md"
-            controls
-            autoPlay
-            poster={assets.posterSrc}
-            src={assets.videoSrc}
-            onEnded={() => onClipEvent?.("video.completed")}
-            onError={() => onClipEvent?.("video.error")}
-          />
-        ) : (
-          // It has to read as a video at a glance: the owner looked at the
-          // poster alone on 2026-09-22 and did not guess it played.
-          <button
-            type="button"
-            data-testid="demo-intro-clip-play"
-            onClick={() => {
-              setPlaying(true)
-              onClipEvent?.("video.started")
-            }}
-            className="group mt-2 block w-full text-left"
-          >
-            <span className="relative block overflow-hidden rounded-md border border-zinc-200 dark:border-zinc-700">
-              {/* eslint-disable-next-line @next/next/no-img-element -- poster from the help-video pipeline, sized by CSS */}
-              <img src={assets.posterSrc} alt="" className="aspect-video w-full object-cover" />
-              <span className="absolute inset-0 flex items-center justify-center bg-black/35 transition-colors group-hover:bg-black/45">
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#FF4D00] text-white shadow-lg ring-4 ring-white/40 transition-transform group-hover:scale-105">
-                  <Play className="ml-0.5 h-5 w-5 fill-current" aria-hidden="true" />
-                </span>
-              </span>
+    <div data-testid="demo-intro-clip" className="mb-4 rounded-xl border border-orange-200 bg-orange-50/60 p-4 dark:border-orange-900/50 dark:bg-orange-950/20">
+      {/* It has to read as a video at a glance: the owner looked at the
+          poster alone on 2026-09-22 and did not guess it played. */}
+      <button type="button" data-testid="demo-intro-clip-play" onClick={start} className="group flex w-full flex-col gap-4 text-left sm:flex-row sm:items-center">
+        <span className="relative block overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700 sm:w-80 sm:shrink-0">
+          {/* eslint-disable-next-line @next/next/no-img-element -- poster from the help-video pipeline, sized by CSS */}
+          <img src={assets.posterSrc} alt="" className="aspect-video w-full object-cover" />
+          <span className="absolute inset-0 flex items-center justify-center bg-black/35 transition-colors group-hover:bg-black/45">
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#FF4D00] text-white shadow-lg ring-4 ring-white/40 transition-transform group-hover:scale-105">
+              <Play className="ml-0.5 h-6 w-6 fill-current" aria-hidden="true" />
             </span>
-            <span className="mt-2 flex h-8 w-full items-center justify-center gap-1.5 rounded-md bg-[#FF4D00] text-xs font-semibold text-white transition-colors group-hover:bg-[#e64500]">
-              <Play className="h-3.5 w-3.5 fill-current" aria-hidden="true" /> {S.clipWatch}
-            </span>
-          </button>
-        )
-      ) : (
-        <p className="mt-2 text-[11px] text-muted-foreground">{variant === "open" ? S.clipOpenDemo : S.clipPlanned}</p>
-      )}
+          </span>
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-orange-800 dark:text-orange-300">
+            <PlayCircle className="h-4 w-4" aria-hidden="true" /> {S.clipTitle}
+          </span>
+          <span className="mt-1 block text-base font-semibold leading-snug">{caption}</span>
+          <span className="mt-3 inline-flex h-10 items-center gap-2 rounded-md bg-[#FF4D00] px-5 text-sm font-semibold text-white transition-colors group-hover:bg-[#e64500]">
+            <Play className="h-4 w-4 fill-current" aria-hidden="true" /> {S.clipWatch}
+          </span>
+        </span>
+      </button>
     </div>
   )
 }
