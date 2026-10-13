@@ -34,10 +34,10 @@ const scratch = vi.hoisted(() => {
 })
 const mail = vi.hoisted(() => ({ send: vi.fn(), capability: true, capabilityHook: undefined as (() => Promise<void>) | undefined }))
 vi.mock("@/lib/email", () => ({ sendEmail: mail.send }))
-const caller = vi.hoisted(() => ({ orgId: "attendance-report-a", userId: "fixture-admin", role: "admin" }))
+const caller = vi.hoisted(() => ({ orgId: "attendance-report-a", userId: "fixture-admin", role: "admin", principalType: "session" as "session" | "api_key" }))
 vi.mock("@/lib/api-auth", () => ({
   getOrgId: vi.fn(), getSession: vi.fn(), requireSessionAuth: vi.fn(),
-  requireAuth: async () => ({ ...caller, email: "admin@example.test", name: "Fixture administrator", principalType: "session" }),
+  requireAuth: async () => ({ ...caller, email: "admin@example.test", name: "Fixture administrator", principalType: caller.principalType }),
   isAuthError: (value: unknown) => value instanceof Response,
 }))
 vi.mock("@/lib/tenant-capability-access", async (importOriginal) => ({
@@ -94,14 +94,16 @@ pgDescribe("MTM report reads the real saved workday and journal", () => {
       process.env.DATABASE_URL = scratch!.adminDb
       cli(["db", "push", "--schema", schemaFile, "--skip-generate"])
     } finally { process.env.DATABASE_URL = appUrl }
-    sql(scratch!.adminDb, 'DROP TABLE mtm_attendance_deliveries; DROP TABLE mtm_attendance_schedules; DROP TABLE mtm_attendance_rules; DROP TABLE mtm_work_calendar_days; DROP TYPE "MtmWorkCalendarDayKind";')
+    sql(scratch!.adminDb, 'ALTER TABLE users DROP COLUMN "mtmAttendanceAll"; DROP TABLE mtm_attendance_deliveries; DROP TABLE mtm_attendance_schedules; DROP TABLE mtm_attendance_rules; DROP TABLE mtm_work_calendar_days; DROP TYPE "MtmWorkCalendarDayKind";')
     for (const migration of [
       "20260715160000_mtm_work_calendar",
       "20260806120000_mtm_rls_coverage_completion",
       "20260806160000_mtm_rls_bypass_clause_normalization",
       "20261013010000_mtm_attendance_rules",
       "20261013020000_mtm_attendance_deliveries",
+      "20261013030000_mtm_attendance_hr_access",
     ]) sql(scratch!.adminDb, readFileSync(`prisma/migrations/${migration}/migration.sql`, "utf8"))
+    sql(scratch!.adminDb, readFileSync("scripts/rls/enable-batch-5.sql", "utf8"))
     sql(scratch!.adminDb, `GRANT USAGE ON SCHEMA public TO "${scratch!.role}"; GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "${scratch!.role}";`)
     prisma = (await import("@/lib/prisma")).prisma
     ;({ runWithTenant: tenant, runWithRlsBypass: bypass } = await import("@/lib/rls-context"))
@@ -489,6 +491,111 @@ pgDescribe("MTM report reads the real saved workday and journal", () => {
     expect(history.receipts.find((item) => item.id === crash.id)).toMatchObject({ status: "UNKNOWN", errorCode: "WORKER_INTERRUPTED" })
     expect(await tenant(ORG, () => deliverAttendanceReceipt(ORG, crash.id))).toBe("SKIPPED")
     expect(mail.send).toHaveBeenCalledTimes(1)
+  })
+
+  it("enforces administrator, manager, supervisor, HR and employee report scopes on the real database", async () => {
+    const hrApi = await import("@/app/api/v1/mtm/attendance/access/route")
+    const hrItem = await import("@/app/api/v1/mtm/attendance/access/[id]/route")
+    const ruleApi = await import("@/app/api/v1/mtm/attendance/rules/route")
+    const { attendanceDeliveryActor } = await import("@/lib/cron/mtm-attendance-delivery-job")
+    const { readAttendanceHrUsers } = await import("@/lib/mtm/attendance-hr-access")
+    const { resolveMtmRouteActor } = await import("@/lib/mtm/route-permissions")
+    await bypass(async () => {
+      await prisma.user.createMany({ data: [
+        { id: "fixture-hr-user", organizationId: ORG, role: "viewer", name: "Fixture HR", email: "hr@example.test", passwordHash: "fixture-unusable-hash" },
+        { id: "fixture-manager-user", organizationId: ORG, role: "manager", name: "Fixture manager", email: "manager@example.test", passwordHash: "fixture-unusable-hash" },
+        { id: "fixture-employee-user", organizationId: ORG, role: "sales", name: "Fixture employee login", email: "employee@example.test", passwordHash: "fixture-unusable-hash" },
+        { id: "fixture-other-user", organizationId: OTHER, role: "viewer", name: "Other tenant HR", email: "other@example.test", passwordHash: "fixture-unusable-hash" },
+      ] })
+      await prisma.mtmAgent.create({ data: { id: "manager-a", organizationId: ORG, role: "MANAGER", name: "Fixture manager", userId: "fixture-manager-user", teamId: "team-a" } })
+      await prisma.mtmAgent.update({ where: { id: "employee-a" }, data: { userId: "fixture-employee-user" } })
+    })
+    const url = `http://localhost/api/v1/mtm/attendance/report?from=${monday}&to=${friday}`
+    const assume = (userId: string, role: string) => Object.assign(caller, { orgId: ORG, userId, role, principalType: "session" })
+    for (const [userId, role, count] of [["fixture-admin", "admin", 10], ["fixture-manager-user", "manager", 5], ["fixture-supervisor-user", "manager", 5]] as const) {
+      assume(userId, role)
+      const response = await getReport(new NextRequest(url))
+      expect(response.status).toBe(200)
+      const rows = (await response.json()).data.rows
+      expect(rows).toHaveLength(count)
+      if (count === 5) {
+        expect(rows.every((row: { employeeId: string }) => row.employeeId === "employee-a")).toBe(true)
+        expect((await getReport(new NextRequest(`${url}&employeeId=employee-b`))).status).toBe(403)
+      }
+    }
+    for (const [id, role] of [["fixture-employee-user", "sales"], ["fixture-hr-user", "viewer"]]) {
+      assume(id, role)
+      expect((await getReport(new NextRequest(url))).status).toBe(403)
+    }
+    assume("fixture-admin", "admin")
+    const listResponse = await hrApi.GET(new NextRequest("http://localhost/api/v1/mtm/attendance/access?search=Fixture%20HR"))
+    expect(listResponse.status).toBe(200)
+    const hr = (await listResponse.json()).data.users[0]
+    expect(hr).toMatchObject({ id: "fixture-hr-user", allEmployees: false, canGrant: true })
+    expect(JSON.stringify(hr)).not.toMatch(/email|password|hiddenModules|totp|phone/)
+    const patch = (id: string, version: string, allEmployees: boolean) => hrItem.PATCH(new NextRequest(`http://localhost/api/v1/mtm/attendance/access/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ version, allEmployees }) }), { params: Promise.resolve({ id }) })
+    expect((await patch("fixture-other-user", hr.version, true)).status).toBe(404)
+    caller.principalType = "api_key"
+    expect((await patch(hr.id, hr.version, true)).status).toBe(403)
+    assume("fixture-hr-user", "viewer")
+    expect((await patch(hr.id, hr.version, true)).status).toBe(403)
+    assume("fixture-admin", "admin")
+    const granted = await patch(hr.id, hr.version, true)
+    expect(granted.status).toBe(200)
+    const active = (await granted.json()).data
+    expect((await patch(hr.id, hr.version, false)).status).toBe(409)
+    assume("fixture-hr-user", "viewer")
+    const response = await getReport(new NextRequest(url))
+    expect(response.status).toBe(200)
+    const reportData = (await response.json()).data
+    expect(reportData.rows).toHaveLength(10)
+    expect((await hrApi.GET(new NextRequest("http://localhost/api/v1/mtm/attendance/access"))).status).toBe(403)
+    expect((await ruleApi.POST(new NextRequest("http://localhost/api/v1/mtm/attendance/rules", { method: "POST", body: "{}" }))).status).toBe(403)
+    // The grant does not promote this HR user in the old Route & Field APIs.
+    expect(await tenant(ORG, () => resolveMtmRouteActor(prisma, { organizationId: ORG, userId: hr.id, webRole: "viewer" }))).toBeNull()
+    expect(await tenant(ORG, () => attendanceDeliveryActor(ORG, hr.id))).toMatchObject({ scopedAgentIds: null })
+    const exportRequest = () => new NextRequest("http://localhost/api/v1/mtm/attendance/export", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ config: { ...viewConfig(), filters: { from: monday, to: friday, form: "ALL" } }, locale: "ru", format: "xlsx", snapshot: reportData.snapshot }) })
+    const exported = await exportReport(exportRequest())
+    expect(exported.status).toBe(200)
+    const book = new ExcelJS.Workbook(); await book.xlsx.load(await exported.arrayBuffer())
+    const text = JSON.stringify(book.worksheets.map((sheet) => sheet.getSheetValues()))
+    expect(text).toContain("Fixture employee A"); expect(text).toContain("Fixture employee B"); expect(text).not.toContain("Other tenant")
+    assume("fixture-admin", "admin")
+    expect((await patch(hr.id, active.version, false)).status).toBe(200)
+    assume("fixture-hr-user", "viewer")
+    expect((await getReport(new NextRequest(url))).status).toBe(403)
+    expect((await exportReport(exportRequest())).status).toBe(403)
+    expect(await tenant(ORG, () => attendanceDeliveryActor(ORG, hr.id))).toBeNull()
+    const audit = await tenant(ORG, () => prisma.mtmAuditLog.findMany({ where: { organizationId: ORG, entityId: hr.id, metadataKind: "mtm_attendance_access" }, orderBy: { createdAt: "asc" } }))
+    expect(audit.map((row: { action: string }) => row.action)).toEqual(["MTM_ATTENDANCE_HR_GRANTED", "MTM_ATTENDANCE_HR_REVOKED"])
+    expect(await tenant(OTHER, () => readAttendanceHrUsers(ORG, ""))).toEqual({ users: [], hasMore: false })
+    assume("fixture-admin", "admin")
+  })
+
+  it("refuses inactive/hidden HR grants and all access changes while attendance is off, without audit or writes", async () => {
+    const api = await import("@/app/api/v1/mtm/attendance/access/route")
+    const item = await import("@/app/api/v1/mtm/attendance/access/[id]/route")
+    Object.assign(caller, { orgId: ORG, userId: "fixture-admin", role: "admin", principalType: "session" })
+    const id = "fixture-hr-user"
+    const list = () => api.GET(new NextRequest("http://localhost/api/v1/mtm/attendance/access?search=Fixture%20HR"))
+    const patch = (version: string) => item.PATCH(new NextRequest("http://localhost/api/v1/mtm/attendance/access/fixture-hr-user", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ version, allEmployees: true }) }), { params: Promise.resolve({ id }) })
+    const count = () => tenant(ORG, () => prisma.mtmAuditLog.count({ where: { organizationId: ORG, entityId: id, metadataKind: "mtm_attendance_access" } }))
+    const before = await count()
+    for (const data of [{ isActive: false, hiddenModules: [] }, { isActive: true, hiddenModules: ["mtm"] }]) {
+      await tenant(ORG, () => prisma.user.update({ where: { id }, data }))
+      const user = (await (await list()).json()).data.users[0]
+      expect(user.canGrant).toBe(false)
+      expect((await patch(user.version)).status).toBe(409)
+    }
+    await tenant(ORG, () => prisma.user.update({ where: { id }, data: { isActive: true, hiddenModules: [] } }))
+    const user = (await (await list()).json()).data.users[0]
+    expect(user.allEmployees).toBe(false)
+    await tenant(ORG, () => prisma.mtmSetting.updateMany({ where: { organizationId: ORG, key: "attendanceEnabled" }, data: { value: false } }))
+    expect((await list()).status).toBe(404)
+    expect((await patch(user.version)).status).toBe(404)
+    expect(await count()).toBe(before)
+    expect(await tenant(ORG, () => prisma.$queryRaw`SELECT "mtmAttendanceAll" FROM "users" WHERE "id" = ${id}`)).toEqual([{ mtmAttendanceAll: false }])
+    await tenant(ORG, () => prisma.mtmSetting.updateMany({ where: { organizationId: ORG, key: "attendanceEnabled" }, data: { value: true } }))
   })
 
 })

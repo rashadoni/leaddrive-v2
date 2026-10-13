@@ -14,6 +14,7 @@ import { buildAttendanceTable } from "@/lib/mtm/attendance-table"
 import { MtmAttendancePersonalViews } from "@/components/mtm/attendance-personal-views"
 import { MtmAttendanceExportButtons } from "@/components/mtm/attendance-export-buttons"
 import { MtmAttendanceDeliveries } from "@/components/mtm/attendance-deliveries"
+import { MtmAttendanceHrAccess } from "@/components/mtm/attendance-hr-access"
 import type { AttendanceReportSnapshot } from "@/lib/mtm/attendance-query"
 
 type Form = "DAY" | "MONTH" | "LATE_EARLY" | "ABSENCES" | "JOURNAL"
@@ -59,6 +60,7 @@ export function MtmAttendanceReportWorkspace() {
   const [page, setPage] = useState(0)
   const [customView, setCustomView] = useState<{ name: string; config: AttendanceViewConfig } | null>(null)
   const [accessUnavailable, setAccessUnavailable] = useState(false)
+  const [canManageAccess, setCanManageAccess] = useState(false)
   const request = useRef<AbortController | null>(null)
   const lastRequest = useRef<{ range?: Range; config?: AttendanceViewConfig }>({})
 
@@ -73,19 +75,20 @@ export function MtmAttendanceReportWorkspace() {
     setPage(0)
     setAccessUnavailable(false)
     try {
-      let selected = requestedRange
-      if (!selected) {
-        const response = await fetch("/api/v1/mtm/attendance/rules", { cache: "no-store", signal: controller.signal })
-        const body = await response.json().catch(() => null)
-        if (controller.signal.aborted) return
-        if (!response.ok || body?.success !== true || !isDateKey(body.data?.today)) {
-          setError(t([401, 403, 404].includes(response.status) ? "reportAccessUnavailable" : "reportLoadError"))
-          if ([401, 403, 404].includes(response.status)) setAccessUnavailable(true)
-          return
-        }
-        setToday(body.data.today)
-        selected = { from: body.data.today, to: body.data.today }
+      // Refresh management rights with the report; a demoted administrator
+      // must not retain a previously opened HR user list.
+      const settingsResponse = await fetch("/api/v1/mtm/attendance/rules", { cache: "no-store", signal: controller.signal })
+      const settingsBody = await settingsResponse.json().catch(() => null)
+      if (controller.signal.aborted) return
+      if (!settingsResponse.ok || settingsBody?.success !== true || !isDateKey(settingsBody.data?.today)) {
+        setCanManageAccess(false)
+        setError(t([401, 403, 404].includes(settingsResponse.status) ? "reportAccessUnavailable" : "reportLoadError"))
+        if ([401, 403, 404].includes(settingsResponse.status)) setAccessUnavailable(true)
+        return
       }
+      setToday(settingsBody.data.today)
+      setCanManageAccess(settingsBody.data.canManageRules === true)
+      const selected = requestedRange ?? { from: settingsBody.data.today, to: settingsBody.data.today }
       setRange(selected)
       lastRequest.current = { range: selected, config: savedConfig }
       const query = new URLSearchParams({ from: selected.from, to: selected.to, form: "ALL" })
@@ -97,7 +100,7 @@ export function MtmAttendanceReportWorkspace() {
       if (!response.ok || body?.success !== true || !Array.isArray(body.data?.rows)) {
         setError(t([401, 403, 404].includes(response.status) ? "reportAccessUnavailable"
           : body?.code === "MTM_ATTENDANCE_REPORT_TOO_LARGE" ? "reportTooLarge" : "reportLoadError"))
-        if ([401, 403, 404].includes(response.status)) { setAccessUnavailable(true); setCustomView((previous) => previous ? { ...previous, name: "" } : null) }
+        if ([401, 403, 404].includes(response.status)) { setAccessUnavailable(true); setCanManageAccess(false); setCustomView((previous) => previous ? { ...previous, name: "" } : null) }
         return
       }
       const loaded = body.data as ReportData
@@ -105,7 +108,7 @@ export function MtmAttendanceReportWorkspace() {
       // A saved employee/team that left the current scope stays selected.
       // An empty result must never silently turn into an all-employee report.
     } catch {
-      if (!controller.signal.aborted) setError(t("reportLoadError"))
+      if (!controller.signal.aborted) { setCanManageAccess(false); setError(t("reportLoadError")) }
     } finally {
       if (!controller.signal.aborted) setLoading(false)
     }
@@ -211,6 +214,7 @@ export function MtmAttendanceReportWorkspace() {
     setReport(null)
     setLoading(false)
     setAccessUnavailable(true)
+    setCanManageAccess(false)
     setCustomView((previous) => previous ? { ...previous, name: "" } : null)
     setError(t("reportAccessUnavailable"))
   }
@@ -324,5 +328,6 @@ export function MtmAttendanceReportWorkspace() {
     </HomeCard>
     <MtmAttendanceDeliveries currentConfig={currentConfig} onAccessLost={clearPrivateReport} accessUnavailable={accessUnavailable} />
     <MtmAttendancePersonalViews currentConfig={currentConfig} onApply={applyPersonal} onAccessLost={clearPrivateReport} accessUnavailable={accessUnavailable} />
+    <MtmAttendanceHrAccess canManage={canManageAccess} onAccessLost={clearPrivateReport} accessUnavailable={accessUnavailable} />
   </section>
 }

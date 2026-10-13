@@ -73,6 +73,7 @@ function put(body: unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(prisma.$queryRaw).mockResolvedValue([] as never)
   vi.mocked(getOrgId).mockResolvedValue(ORG)
   vi.mocked(prisma.mtmSetting.upsert).mockResolvedValue({} as never)
   storedSwitch()
@@ -151,6 +152,24 @@ describe("attendance API and server page guards", () => {
     expect(response.status).toBe(403)
     expect(await response.json()).toMatchObject({ code: "MTM_ATTENDANCE_FORBIDDEN" })
     expect(prisma.mtmAgentWorkday.findMany).not.toHaveBeenCalled()
+  })
+
+  it("grants HR only attendance-wide reading without invoking a broader route role", async () => {
+    storedSwitch(true)
+    caller("viewer", null)
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([{ mtmAttendanceAll: true, role: "viewer", hiddenModules: [] }] as never)
+    expect(await getMtmAttendanceAccess(ORG, USER, "viewer")).toMatchObject({ enabled: true, actor: { role: "MANAGER", scopedAgentIds: null }, allEmployeesGrant: true })
+    expect(resolveMtmRouteActor).not.toHaveBeenCalled()
+    const response = await readAttendance(new NextRequest("http://localhost/api/v1/mtm/attendance"))
+    expect(await response.json()).toEqual({ success: true, data: { canManageRules: false } })
+  })
+
+  it("keeps a hidden module closed in the page before loading private attendance", async () => {
+    storedSwitch(true)
+    caller("manager", MANAGER)
+    vi.mocked(auth).mockResolvedValue({ user: { id: USER, organizationId: ORG, role: "manager", hiddenModules: ["mtm"] } } as never)
+    await expect(AttendanceLayout({ children: "private attendance" })).rejects.toThrow("NEXT_NOT_FOUND")
+    expect(prisma.mtmSetting.findMany).not.toHaveBeenCalled()
   })
 
   it("does not render the nested page for a disabled organization", async () => {
