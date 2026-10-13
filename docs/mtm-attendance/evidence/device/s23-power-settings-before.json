@@ -1,0 +1,29 @@
+{
+  "model": "SM-S918B",
+  "android": "16",
+  "stayOn": "2",
+  "screenTimeout": "30000",
+  "screenSize": "Physical size: 1080x2316",
+  "battery": [
+    "AC powered: false",
+    "USB powered: true",
+    "Wireless powered: false",
+    "Dock powered: false",
+    "status: 2",
+    "level: 25",
+    "temperature: 311",
+    "Capacity level: -1"
+  ],
+  "power": [
+    "mWakefulness=Awake",
+    "mIsPowered=true",
+    "mStayOn=true",
+    "mIsPowered=true",
+    "mWakefulness=1"
+  ],
+  "keyguard": [
+    "showing=false",
+    "inputRestricted=false",
+    "occluded=false"
+  ]
+}

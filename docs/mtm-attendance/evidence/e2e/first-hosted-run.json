@@ -1,0 +1,365 @@
+{
+  "version": 1,
+  "status": "FAIL",
+  "headSha": "74bd10a8e7d16c2dac093562ca86498d2badf04c",
+  "runId": "38472009609",
+  "runAttempt": "1",
+  "environment": "GitHub Linux, Chromium, Next development server, isolated PostgreSQL 16",
+  "productionMutation": false,
+  "physicalAPK": "NOT_RUN",
+  "outboundEmail": "NOT_RUN",
+  "startedAt": "2026-10-13T21:46:22.826Z",
+  "completedAt": "2026-10-13T21:55:23.937Z",
+  "summary": {
+    "PASS": 52,
+    "FAIL": 7,
+    "NOT_RUN": 5
+  },
+  "limitations": [
+    "Browser navigation and action families are separate records; page opening does not prove every button.",
+    "Mobile workday and employee submission use the real mobile HTTP transport, not a physical APK or OS permissions.",
+    "Fictional disposable organizations, policies and coordinates only; no client settings, legal approvals or external delivery.",
+    "Current schema plus explicit attendance production migrations/guards; not a replay of every unrelated historical CRM migration.",
+    "Development rendering; production build, physical phone, provider delivery, QR camera and overnight soak are distinct gates."
+  ],
+  "workflowUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/38472009609",
+  "artifactId": 11852817856,
+  "cases": [
+    {
+      "name": "fixture-rls",
+      "transport": "database",
+      "status": "PASS"
+    },
+    {
+      "name": "credentials-and-roles",
+      "transport": "authenticated-http",
+      "status": "PASS"
+    },
+    {
+      "name": "hr-read-grant",
+      "transport": "authenticated-http+database",
+      "status": "PASS"
+    },
+    {
+      "name": "mobile-workday",
+      "transport": "mobile-http+database",
+      "status": "PASS"
+    },
+    {
+      "name": "report-scope-exports",
+      "transport": "authenticated-http",
+      "status": "PASS"
+    },
+    {
+      "name": "views-crud",
+      "transport": "authenticated-http",
+      "status": "PASS"
+    },
+    {
+      "name": "deliveries-crud",
+      "transport": "authenticated-http+database",
+      "status": "PASS"
+    },
+    {
+      "name": "rules-calendar",
+      "transport": "authenticated-http",
+      "status": "PASS"
+    },
+    {
+      "name": "day-kinds-quotas",
+      "transport": "authenticated-http",
+      "status": "PASS"
+    },
+    {
+      "name": "employee-participation",
+      "transport": "authenticated-http+database",
+      "status": "PASS"
+    },
+    {
+      "name": "employment-history",
+      "transport": "authenticated-http+database",
+      "status": "PASS"
+    },
+    {
+      "name": "branches-assignments",
+      "transport": "authenticated-http",
+      "status": "PASS"
+    },
+    {
+      "name": "geo-policy-consent",
+      "transport": "authenticated-http+mobile-http",
+      "status": "PASS"
+    },
+    {
+      "name": "requests-decisions",
+      "transport": "mobile-http+authenticated-http+database",
+      "status": "PASS"
+    },
+    {
+      "name": "hr-recording-batch",
+      "transport": "authenticated-http+database",
+      "status": "PASS"
+    },
+    {
+      "name": "installation-decisions",
+      "transport": "mobile-http+authenticated-http",
+      "status": "PASS"
+    },
+    {
+      "name": "shift-day-night",
+      "transport": "authenticated-http",
+      "status": "PASS"
+    },
+    {
+      "name": "leave-policy-profile",
+      "transport": "authenticated-http",
+      "status": "PASS"
+    },
+    {
+      "name": "month-freeze",
+      "transport": "authenticated-http+database",
+      "status": "PASS"
+    },
+    {
+      "name": "risk-dismissal",
+      "transport": "authenticated-http+database",
+      "status": "FAIL",
+      "diagnostic": "PrismaClientUnknownRequestError",
+      "code": "MTM_ATTENDANCE_MARK_EVENT_MISMATCH",
+      "sourceLine": "402"
+    },
+    {
+      "name": "page:report",
+      "transport": "browser-navigation",
+      "status": "PASS"
+    },
+    {
+      "name": "page:requests",
+      "transport": "browser-navigation",
+      "status": "PASS"
+    },
+    {
+      "name": "page:decisions",
+      "transport": "browser-navigation",
+      "status": "PASS"
+    },
+    {
+      "name": "page:employees",
+      "transport": "browser-navigation",
+      "status": "PASS"
+    },
+    {
+      "name": "page:branches",
+      "transport": "browser-navigation",
+      "status": "PASS"
+    },
+    {
+      "name": "page:branches/report",
+      "transport": "browser-navigation",
+      "status": "PASS"
+    },
+    {
+      "name": "page:shifts",
+      "transport": "browser-navigation",
+      "status": "PASS"
+    },
+    {
+      "name": "page:leave-balances",
+      "transport": "browser-navigation",
+      "status": "PASS"
+    },
+    {
+      "name": "page:months",
+      "transport": "browser-navigation",
+      "status": "PASS"
+    },
+    {
+      "name": "page:installations",
+      "transport": "browser-navigation",
+      "status": "PASS"
+    },
+    {
+      "name": "page:branch-qr",
+      "transport": "browser-navigation",
+      "status": "PASS"
+    },
+    {
+      "name": "page:review",
+      "transport": "browser-navigation",
+      "status": "PASS"
+    },
+    {
+      "name": "page:location-settings",
+      "transport": "browser-navigation",
+      "status": "PASS"
+    },
+    {
+      "name": "page:recordings",
+      "transport": "browser-navigation",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-report-tabs-filters-pagination",
+      "transport": "browser-action+database-backed-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-views-save-rename-delete-cancel",
+      "transport": "browser-action+database-backed-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-employee-search-switch-history",
+      "transport": "browser-action+database-backed-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-branch-create-edit-archive-cancel",
+      "transport": "browser-action+database-backed-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-request-approve-reject-revoke",
+      "transport": "browser-action+mobile-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-qr-toggle-refresh-hide",
+      "transport": "browser-action+database-backed-http",
+      "status": "FAIL",
+      "diagnostic": "Error",
+      "sourceLine": "103"
+    },
+    {
+      "name": "browser-settings-hr-catalogue-quotas",
+      "transport": "browser-action+database-backed-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-delivery-create-edit-cancel-delete",
+      "transport": "browser-action+database-backed-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-batch-recording-and-decision-journal",
+      "transport": "browser-action+database-backed-http",
+      "status": "FAIL",
+      "diagnostic": "TimeoutError",
+      "sourceLine": "651"
+    },
+    {
+      "name": "browser-shift-publish-cancel-and-leave-profile",
+      "transport": "browser-action+database-backed-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-geo-off-legal-block-and-branch-summary",
+      "transport": "browser-action+database-backed-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-installation-approve-revoke-history",
+      "transport": "browser-action+mobile-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-month-frozen-download",
+      "transport": "browser-action+database-backed-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-rules-calendar-crud",
+      "transport": "browser-action+database-backed-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-hr-grant-revoke",
+      "transport": "browser-action+authenticated-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-kind-create-archive-restore",
+      "transport": "browser-action+database-backed-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-employment-record",
+      "transport": "browser-action+database-backed-http",
+      "status": "FAIL",
+      "diagnostic": "TimeoutError",
+      "sourceLine": "802"
+    },
+    {
+      "name": "browser-primary-branch-assignment",
+      "transport": "browser-action+database-backed-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-risk-dismissal",
+      "transport": "browser-action+synthetic-risk-fixture",
+      "status": "FAIL",
+      "diagnostic": "PrismaClientUnknownRequestError",
+      "code": "MTM_ATTENDANCE_MARK_EVENT_MISMATCH",
+      "sourceLine": "821"
+    },
+    {
+      "name": "browser-leave-policy-publication",
+      "transport": "browser-action+database-backed-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-month-preview-close-blockers",
+      "transport": "browser-action+synthetic-historical-facts",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-sidebar-click-traversal",
+      "transport": "browser-navigation-click",
+      "status": "FAIL",
+      "diagnostic": "TimeoutError",
+      "sourceLine": "881"
+    },
+    {
+      "name": "browser-locales-mobile-width",
+      "transport": "browser-navigation+layout",
+      "status": "PASS"
+    },
+    {
+      "name": "hr-revoke-fresh-session",
+      "transport": "authenticated-http",
+      "status": "PASS"
+    },
+    {
+      "name": "final-privacy-invariants",
+      "transport": "authenticated-http+database",
+      "status": "FAIL",
+      "diagnostic": "Assertion mismatch",
+      "sourceLine": "915"
+    },
+    {
+      "name": "physical-apk-os-permissions",
+      "status": "NOT_RUN",
+      "reason": "Separate S23 device run; this workflow has no USB phone"
+    },
+    {
+      "name": "external-email-delivery",
+      "status": "NOT_RUN",
+      "reason": "No recipients/providers; schedules are disabled and no cron is invoked"
+    },
+    {
+      "name": "camera-qr-offline-replay",
+      "status": "NOT_RUN",
+      "reason": "Actual camera, offline Android queue, kill/restart and OS permission flows need the physical device"
+    },
+    {
+      "name": "overnight-soak",
+      "status": "NOT_RUN",
+      "reason": "Bounded CI scenarios; this is not an overnight endurance run"
+    },
+    {
+      "name": "all-control-combinations",
+      "status": "NOT_RUN",
+      "reason": "Finite named action families; inventory alone does not prove every control or all possible combinations"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "model": "SM-S918B",
+  "stayOn": "15",
+  "screenTimeout": "1800000",
+  "power": [
+    "mWakefulness=Awake",
+    "mIsPowered=true",
+    "mStayOn=true",
+    "mIsPowered=true",
+    "mWakefulness=1"
+  ],
+  "keyguard": [
+    "showing=false",
+    "inputRestricted=false"
+  ]
+}
