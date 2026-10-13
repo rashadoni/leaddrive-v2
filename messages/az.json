@@ -17409,6 +17409,8 @@
     "lblPharmacyPromotions": "Aptek promoları",
     "lblAttendance": "İş vaxtının uçotu",
     "hintAttendance": "Standart olaraq söndürülüb. MTM-də iş vaxtı hesabatlarını aktivləşdirir; məlumatlara giriş istifadəçi icazələri ilə müəyyən edilir.",
+    "lblAttendanceRejectOutsideBranch": "Filialdan kənar qeydləri rədd et",
+    "hintAttendanceRejectOutsideBranch": "Standart olaraq söndürülüb: belə qeydlər xəbərdarlıqla qəbul edilir. Aktiv olduqda yalnız filialdan kənarda olduğu dəqiq müəyyən edilən qeydlər rədd edilir. Razılıq və ya GPS olmadıqda, məkan qeyri-dəqiq olduqda və tətbiqin köhnə versiyasında vaxt qəbul edilir.",
     "hintPharmacyPromotions": "Söndürüldükdə menyudan və agent tətbiqindən gizlədilir; məlumatlar silinmir.",
     "groupLiveMap": "Agentlərin xəritəsi",
     "groupRoutePlanning": "Marşrutun qurulması",

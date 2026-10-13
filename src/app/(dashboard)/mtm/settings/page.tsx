@@ -395,6 +395,7 @@ export default function MtmSettingsPage() {
         { key: "fieldContactsEnabled", labelKey: "lblFieldContacts", hintKey: "hintFieldContacts", type: "boolean", adminOnly: true },
         { key: "pharmacyPromotionsEnabled", labelKey: "lblPharmacyPromotions", hintKey: "hintPharmacyPromotions", type: "boolean", adminOnly: true },
         { key: "attendanceEnabled", labelKey: "lblAttendance", hintKey: "hintAttendance", type: "boolean", adminOnly: true },
+        { key: "attendanceRejectOutsideBranch", labelKey: "lblAttendanceRejectOutsideBranch", hintKey: "hintAttendanceRejectOutsideBranch", type: "boolean", adminOnly: true },
       ],
     },
     {
@@ -568,9 +569,10 @@ export default function MtmSettingsPage() {
       aria-label={ts(item.labelKey)}
       disabled={disabled}
       onClick={() => updateSetting(item.key, !settings[item.key])}
-      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${settings[item.key] ? "bg-primary" : "bg-muted"}`}
+      className={`relative inline-flex w-11 shrink-0 items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${item.key === "attendanceRejectOutsideBranch" ? "h-11" : `h-6 ${settings[item.key] ? "bg-primary" : "bg-muted"}`}`}
     >
-      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings[item.key] ? "translate-x-6" : "translate-x-1"}`} />
+      {item.key === "attendanceRejectOutsideBranch" ? <span aria-hidden="true" className={`absolute inset-x-0 h-6 rounded-full ${settings[item.key] ? "bg-primary" : "bg-muted"}`} /> : null}
+      <span className={`relative inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings[item.key] ? "translate-x-6" : "translate-x-1"}`} />
     </button>
   )
 
@@ -593,10 +595,11 @@ export default function MtmSettingsPage() {
   // `lockNote`: a switch that cannot be pressed says why. The advanced block
   // says it once for all of its rows instead.
   const renderItem = (item: SettingItem, lockNote = true) => {
+    if (item.key === "attendanceRejectOutsideBranch" && settings.attendanceEnabled !== true) return null
     const disabled = item.adminOnly === true && !canChangeAdminOnly
     const switchOn = settings[item.key] === true
     return (
-      <div key={item.key} data-setting-row={item.key} className="space-y-3">
+      <div key={item.key} data-setting-row={item.key} className={`space-y-3 ${item.key === "attendanceRejectOutsideBranch" ? "border-t border-zinc-200 pt-4 dark:border-zinc-700" : ""}`}>
         <div className={`flex items-start justify-between gap-4 ${item.type === "text" ? "flex-col sm:flex-row" : ""}`}>
           <div className="min-w-0">
             <div className="text-sm font-medium">{ts(item.labelKey)}</div>
