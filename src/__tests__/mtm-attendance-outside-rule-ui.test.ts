@@ -43,7 +43,7 @@ async function render(language: Locale = "en") {
   await act(async () => root.render(createElement(NextIntlClientProvider, props)))
 }
 async function save() { await act(async () => button("save").click()) }
-function capture() {
+function capture(prefix = "attendance-outside-rule") {
   const dir = process.env.MTM_ATTENDANCE_RENDER_DIR
   if (!dir) return
   // Reflect the live selected value in static HTML; React keeps it as a DOM property.
@@ -51,7 +51,7 @@ function capture() {
     for (const option of select.options) option.toggleAttribute("selected", option.selected)
   }
   mkdirSync(dir, { recursive: true })
-  writeFileSync(join(dir, `attendance-outside-rule-${locale}.html`), `<!doctype html><html lang="${locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="attendance.css"><style>html{background:#f4f4f5;color:#18181b}body{max-width:1300px;margin:auto;padding:32px;font-family:Arial,sans-serif}*,*:before,*:after{box-sizing:border-box}@media(max-width:600px){body{padding:16px}}</style></head><body>${container.innerHTML}</body></html>`)
+  writeFileSync(join(dir, `${prefix}-${locale}.html`), `<!doctype html><html lang="${locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="attendance.css"><style>html{background:#f4f4f5;color:#18181b}body{max-width:1300px;margin:auto;padding:32px;font-family:Arial,sans-serif}*,*:before,*:after{box-sizing:border-box}@media(max-width:600px){body{padding:16px}}</style></head><body>${container.innerHTML}</body></html>`)
 }
 beforeEach(() => {
   viewer.role = "admin"; locale = "en"; stored = { ...MTM_SETTING_DEFAULTS, attendanceEnabled: true }; writes = []; refuse = false
@@ -79,7 +79,7 @@ describe("the attendance outside-branch rule on Company settings", () => {
     expect(control().getAttribute("aria-label")).toBe(t("lblAttendanceRejectOutsideBranch"))
     expect(row().textContent).toContain(t("hintAttendanceRejectOutsideBranch"))
     expect(row().previousElementSibling?.getAttribute("data-setting-row")).toBe("attendanceEnabled")
-    expect(Array.from(container.querySelectorAll('#mtm-settings-panel-company [data-settings-group]')).map(element => element.getAttribute("data-settings-group"))).toEqual(["groupScheduling", "groupSupport", "groupModules", "groupAgentCapabilities"])
+    expect(Array.from(container.querySelectorAll('#mtm-settings-panel-company [data-settings-group]')).map(element => element.getAttribute("data-settings-group"))).toEqual(["groupScheduling", "groupSupport", "groupModules", "groupAgentCapabilities", "groupAttendanceRisk"])
     expect(container.querySelectorAll('[role="tab"]')).toHaveLength(6)
     expect(row().textContent).not.toContain("mtmSettingsPage.")
     expect(writes).toHaveLength(0); capture()
@@ -108,5 +108,69 @@ describe("the attendance outside-branch rule on Company settings", () => {
     expect(toast.error).toHaveBeenCalledWith(t("saveFailed")); expect(toast.success).not.toHaveBeenCalled(); expect(saveBar().hidden).toBe(false)
     expect(control().getAttribute("aria-checked")).toBe("true"); expect(stored[KEY]).toBe(false); expect(container.textContent).not.toContain("PRIVATE_SERVER_TRACE")
     refuse = false; await save(); expect(stored[KEY]).toBe(true); expect(saveBar().hidden).toBe(true)
+  })
+})
+
+const SHARED = "attendanceAllowSharedInstallations", MOCK = "attendanceRejectMockLocations", CLOCK = "attendanceClockDifferenceSeconds"
+const numberControl = () => row(CLOCK).querySelector<HTMLInputElement>('input[type="number"]')!
+async function setThreshold(value: string) {
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(numberControl(), value)
+    numberControl().dispatchEvent(new Event("input", { bubbles: true }))
+  })
+}
+describe("attendance risk policy settings", () => {
+  it.each(locales)("renders the real %s controls with conservative defaults and all original groups", async language => {
+    await render(language)
+    expect(control(SHARED).getAttribute("aria-checked")).toBe("false")
+    expect(control(MOCK).getAttribute("aria-checked")).toBe("false")
+    expect(numberControl().value).toBe("300")
+    expect(numberControl().min).toBe("30"); expect(numberControl().max).toBe("86400")
+    expect(row(SHARED).textContent).toContain(t("hintAttendanceAllowSharedInstallations"))
+    expect(row(MOCK).textContent).toContain(t("hintAttendanceRejectMockLocations"))
+    expect(row(CLOCK).textContent).toContain(t("hintAttendanceClockDifferenceSeconds"))
+    expect(container.querySelectorAll('#mtm-settings-panel-company [data-settings-group]')).toHaveLength(5)
+    expect(container.querySelector('[data-setting-row="attendanceRequireInstallationApproval"]')).toBeNull()
+    expect(writes).toHaveLength(0); capture("attendance-risk-settings")
+  })
+  it.each([false, undefined, "true", 1])("hides the entire risk group unless attendance is exactly true (%s)", async value => {
+    stored.attendanceEnabled = value; await render()
+    expect(container.querySelector('[data-settings-group="groupAttendanceRisk"]')).toBeNull()
+    expect(container.querySelectorAll('#mtm-settings-panel-company [data-settings-group]')).toHaveLength(4)
+    expect(writes).toHaveLength(0)
+  })
+  it.each(["manager", "viewer"])("keeps %s policy controls locked with an explanation", async role => {
+    viewer.role = role; await render()
+    expect(control(SHARED).disabled).toBe(true); expect(control(MOCK).disabled).toBe(true); expect(numberControl().disabled).toBe(true)
+    for (const key of [SHARED, MOCK, CLOCK]) expect(row(key).textContent).toContain(t("adminOnlyNote"))
+    await click(SHARED); await click(MOCK); expect(writes).toHaveLength(0); expect(saveBar().hidden).toBe(true)
+  })
+  it.each(["admin", "superadmin"])("lets %s save only changed policy keys", async role => {
+    viewer.role = role; await render(); await click(SHARED); await click(MOCK); await setThreshold("600"); await save()
+    expect(writes).toEqual([{ [SHARED]: true, [MOCK]: true, [CLOCK]: 600 }])
+    expect(numberControl().value).toBe("600"); expect(saveBar().hidden).toBe(true)
+  })
+  it.each(["", "29", "86401", "300.5"])("refuses invalid threshold %s without sending or coercing it", async value => {
+    await render(); await setThreshold(value)
+    expect(numberControl().getAttribute("aria-invalid")).toBe("true")
+    expect(row(CLOCK).querySelector('[role="alert"]')?.textContent).toBeTruthy()
+    await save(); expect(writes).toHaveLength(0); expect(stored[CLOCK]).toBe(300)
+    await setThreshold("30"); await save(); expect(writes).toEqual([{ [CLOCK]: 30 }])
+  })
+  it("enables attendance and the rules in the same save", async () => {
+    stored.attendanceEnabled = false; await render(); await click("attendanceEnabled"); await click(MOCK); await setThreshold("86400"); await save()
+    expect(writes).toEqual([{ attendanceEnabled: true, [MOCK]: true, [CLOCK]: 86400 }])
+  })
+  it("keeps existing rules when attendance is switched off and drops only a hidden invalid draft", async () => {
+    stored[SHARED] = true; stored[MOCK] = true; stored[CLOCK] = 600; await render(); await setThreshold(""); await click("attendanceEnabled")
+    expect(row(CLOCK)).toBeNull(); await save(); expect(writes).toEqual([{ attendanceEnabled: false }])
+    await click("attendanceEnabled"); expect(numberControl().value).toBe("600")
+    expect(control(SHARED).getAttribute("aria-checked")).toBe("true"); expect(control(MOCK).getAttribute("aria-checked")).toBe("true")
+  })
+  it("retains an unsaved policy after a denied save and retries without writing unrelated fields", async () => {
+    await render(); await click(MOCK); await setThreshold("600"); refuse = true; await save()
+    expect(toast.error).toHaveBeenCalledWith(t("saveFailed")); expect(toast.success).not.toHaveBeenCalled()
+    expect(stored[MOCK]).toBe(false); expect(numberControl().value).toBe("600"); expect(saveBar().hidden).toBe(false)
+    refuse = false; await save(); expect(writes).toEqual([{ [MOCK]: true, [CLOCK]: 600 }, { [MOCK]: true, [CLOCK]: 600 }])
   })
 })
