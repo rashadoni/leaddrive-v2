@@ -58,7 +58,7 @@ BEGIN
     OR workforce_workday_fact_matches(NEW."afterFacts", workday_row) IS DISTINCT FROM TRUE
     -- This proves the matching version was written in this transaction. The
     -- engine proves prior absence under the shared employee workday lock.
-    OR NOT EXISTS (SELECT 1 FROM "mtm_agent_workdays" w WHERE w."id" = NEW."workdayId" AND w.xmin = pg_current_xact_id()::text::xid)
+    OR NOT EXISTS (SELECT 1 FROM "mtm_agent_workdays" w WHERE w."id" = NEW."workdayId" AND w.xmin::text::bigint = mod(pg_current_xact_id()::text::numeric, 4294967296)::bigint)
     OR EXISTS (SELECT 1 FROM "mtm_agent_workday_events" e WHERE e."organizationId" = NEW."organizationId" AND e."workdayId" = NEW."workdayId")
     OR EXISTS (SELECT 1 FROM "mtm_agents" a WHERE a."organizationId" = NEW."organizationId" AND a."id" = NEW."agentId" AND a."userId" = NEW."actorUserId")
   THEN RAISE EXCEPTION 'MTM missing-day genesis requires its approved employee proposal and new eventless workday' USING ERRCODE = '23514'; END IF;

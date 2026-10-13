@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
 import { addDateKeyDays } from "@/lib/mtm/mobile-week"
-import { localDateTimeToUnambiguousUtc } from "@/lib/timezone"
+import { isValidTimezone, localDateTimeToUnambiguousUtc } from "@/lib/timezone"
 import type { Prisma } from "@prisma/client"
 import { AttendanceCorrectionBasisSchema, AttendanceRequestDetailsSchema, AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
 import { workforceWorkdayCorrectionFacts, type WorkforceWorkdayCorrectionFacts } from "@/lib/workforce/workday-correction-facts"
@@ -59,7 +59,7 @@ export async function applyAttendanceTimeCorrectionInTransaction(tx: Prisma.Tran
   // The employee's explicit end date and frozen zone must describe the same
   // proposed UTC interval. Never infer a rollover from a smaller end clock.
   try {
-    if (!details.data.startTime || !details.data.endTime
+    if (!isValidTimezone(details.data.timezone) || !details.data.startTime || !details.data.endTime
       || (overnight && details.data.endTime > details.data.startTime)
       || localDateTimeToUnambiguousUtc(`${workDate}T${details.data.startTime}`, details.data.timezone).getTime() !== start.getTime()
       || localDateTimeToUnambiguousUtc(`${endDate}T${details.data.endTime}`, details.data.timezone).getTime() !== end.getTime()) conflict("MTM_ATTENDANCE_CORRECTION_INVALID")
