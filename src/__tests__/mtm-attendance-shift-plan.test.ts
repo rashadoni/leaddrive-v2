@@ -96,4 +96,12 @@ describe("frozen-roster shift cycle", () => {
     expect(row.approvedRequests).toHaveLength(1)
   })
 
+  it.each([["2026-03-28", 21600], ["2026-10-24", 28800]] as const)("uses actual scheduled elapsed time across the %s clock change", (date, expectedWorkSeconds) => {
+    const plan = { ...assignment, plan: { ...assignment.plan, value: { ...value, from: date, to: date, timezone: "Europe/Berlin" } } }
+    const row = buildMtmAttendanceReport({ from: date, to: date, now: "2026-12-01T12:00:00Z", employees: [{ id: assignment.agentId, name: "Fictional employee", teamId: null, teamName: null }], workdays: [], rules: [], calendar: [], shiftAssignments: [plan] }).rows[0]
+    expect(row.expectedWorkSeconds).toBe(expectedWorkSeconds)
+    expect(row.kind).toBe("ABSENT")
+    expect(row.plannedStartAt).not.toBeNull(); expect(row.plannedEndAt).not.toBeNull()
+  })
+
 })
