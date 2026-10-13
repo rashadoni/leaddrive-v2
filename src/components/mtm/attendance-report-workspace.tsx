@@ -13,6 +13,7 @@ import { ATTENDANCE_VIEW_COLUMNS, type AttendanceViewConfig } from "@/lib/mtm/at
 import { buildAttendanceTable } from "@/lib/mtm/attendance-table"
 import { MtmAttendancePersonalViews } from "@/components/mtm/attendance-personal-views"
 import { MtmAttendanceExportButtons } from "@/components/mtm/attendance-export-buttons"
+import { MtmAttendanceDeliveries } from "@/components/mtm/attendance-deliveries"
 import type { AttendanceReportSnapshot } from "@/lib/mtm/attendance-query"
 
 type Form = "DAY" | "MONTH" | "LATE_EARLY" | "ABSENCES" | "JOURNAL"
@@ -321,6 +322,7 @@ export function MtmAttendanceReportWorkspace() {
         </> : null}
       </div>
     </HomeCard>
+    <MtmAttendanceDeliveries currentConfig={currentConfig} onAccessLost={clearPrivateReport} accessUnavailable={accessUnavailable} />
     <MtmAttendancePersonalViews currentConfig={currentConfig} onApply={applyPersonal} onAccessLost={clearPrivateReport} accessUnavailable={accessUnavailable} />
   </section>
 }

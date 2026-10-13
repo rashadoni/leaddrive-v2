@@ -17,11 +17,6 @@ import { buildAttendanceTable } from "@/lib/mtm/attendance-table"
 import { buildAttendancePdf, buildAttendanceXlsx } from "@/lib/mtm/attendance-export"
 import { sendEmail } from "@/lib/email"
 
-const emailCopy = {
-  ru: { subject: "Учёт рабочего времени", body: "Отчёт во вложении. Время указано по журналу отметок на момент формирования; незавершённые и неполные дни отмечены в файле." },
-  az: { subject: "İş vaxtının uçotu", body: "Hesabat əlavə olunub. Vaxt hesabat hazırlanan anda qeyd jurnalına əsaslanır; tamamlanmamış və natamam günlər faylda göstərilir." },
-  en: { subject: "Attendance report", body: "The report is attached. Times reflect the recorded events when the file was prepared; open and incomplete days are marked in the file." },
-}
 const htmlText = (value: string) => value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]!)
 
 /** Background work has no session: re-resolve every live web authorization gate. */
@@ -58,7 +53,8 @@ export async function deliverAttendanceReceipt(organizationId: string, receiptId
     const config = AttendanceViewConfigSchema.parse({ ...schedule.config, filters: { ...schedule.config.filters, from: receipt.from.toISOString().slice(0, 10), to: receipt.to.toISOString().slice(0, 10) } })
     const report = await readMtmAttendanceReport({ organizationId, actor, query: config.filters })
     const messages = (await import(`../../../messages/${schedule.locale}.json`)).default
-    const table = buildAttendanceTable(report, config, schedule.locale, createTranslator({ locale: schedule.locale, messages, namespace: "mtmAttendance" }))
+    const t = createTranslator({ locale: schedule.locale, messages, namespace: "mtmAttendance" })
+    const table = buildAttendanceTable(report, config, schedule.locale, t)
     const bytes = schedule.format === "pdf" ? buildAttendancePdf(table) : Buffer.from(await buildAttendanceXlsx(table).xlsx.writeBuffer())
     directory = await mkdtemp(join(tmpdir(), "mtm-attendance-delivery-"))
     const filename = `attendance-${config.filters.from}-${config.filters.to}.${schedule.format}`
@@ -71,7 +67,7 @@ export async function deliverAttendanceReceipt(organizationId: string, receiptId
     const count = await prisma.$executeRaw`UPDATE "mtm_attendance_deliveries" d SET "status" = 'SENDING', "claimedAt" = ${new Date()} FROM "mtm_attendance_schedules" s WHERE d."organizationId" = ${organizationId} AND d."id" = ${receiptId} AND d."status" = 'PENDING' AND s."organizationId" = d."organizationId" AND s."id" = d."scheduleId" AND s."enabled" AND s."archivedAt" IS NULL AND s."updatedAt" = d."scheduleVersion"`
     if (count !== 1) return "SKIPPED" as const
     claimed = true
-    const copy = emailCopy[schedule.locale]
+    const copy = { subject: t("deliveryEmailSubject"), body: t("deliveryEmailBody") }
     const result = await sendEmail({ to: receipt.recipient, subject: `${copy.subject}: ${schedule.name}`, html: `<p>${htmlText(copy.body)}</p><p>${htmlText(table.details[0])}</p>`, text: `${copy.body}\n\n${table.details[0]}`, organizationId, sentBy: row.userId, transactional: true, allowProviderFallback: false, attachments: [{ filename, path }] })
     return finish(organizationId, receiptId, "SENDING", result.success ? "SENT" : "UNKNOWN", result.success ? null : "PROVIDER_UNCONFIRMED", result.success ? result.messageId ?? null : null)
   } catch {

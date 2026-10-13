@@ -13,6 +13,7 @@ import { attendancePdfText } from "./helpers/attendance-pdf"
 import { NextRequest } from "next/server"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { addDateKeyDays, currentDateKey } from "@/lib/mtm/mobile-week"
+import type { AttendanceDeliveryInput } from "@/lib/mtm/attendance-delivery-contract"
 import type { AttendanceViewConfig } from "@/lib/mtm/attendance-view-contract"
 import type { MtmRouteActor } from "@/lib/mtm/route-permissions"
 
@@ -336,7 +337,7 @@ pgDescribe("MTM report reads the real saved workday and journal", () => {
     await tenant(ORG, () => prisma.mtmSetting.updateMany({ where: { organizationId: ORG, key: "attendanceEnabled" }, data: { value: true } }))
   })
 
-  const scheduleDraft = () => ({ name: "Fixture attendance delivery", config: viewConfig(), frequency: "DAILY" as const, format: "xlsx" as const, locale: "az" as const, recipients: ["fictional@example.test"], enabled: true })
+  const scheduleDraft = (): AttendanceDeliveryInput => ({ name: "Fixture attendance delivery", config: { ...viewConfig(), filters: { ...viewConfig().filters, form: "ALL" as const } }, frequency: "DAILY" as const, format: "xlsx" as const, locale: "az" as const, recipients: ["fictional@example.test"], enabled: true })
   async function createSchedule(userId = "fixture-admin", draft = scheduleDraft()) {
     const { saveAttendanceDelivery } = await import("@/lib/mtm/attendance-delivery-store")
     const schedule = await tenant(ORG, () => saveAttendanceDelivery({ organizationId: ORG, userId, timezone: "Asia/Baku", value: { requestId: randomUUID(), input: draft } }))
