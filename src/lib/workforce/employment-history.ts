@@ -171,7 +171,14 @@ export async function recordWorkforceEmploymentEvent(
   input: RecordEmploymentHistoryContext,
 ): Promise<WorkforceEmploymentHistoryEvent> {
   const db = input.db ?? prisma
-  return db.$transaction(async (tx: Prisma.TransactionClient) => {
+  return db.$transaction((tx: Prisma.TransactionClient) => recordWorkforceEmploymentEventInTransaction(tx, input))
+}
+
+/** Shared atomic append for opt-in MTM enrollment; authorization remains at
+ * each caller, and the same immutable database ledger is used by both paths. */
+export async function recordWorkforceEmploymentEventInTransaction(
+  tx: Prisma.TransactionClient, input: RecordEmploymentHistoryContext,
+): Promise<WorkforceEmploymentHistoryEvent> {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${"workforce-employment:" + input.organizationId + ":" + input.event.agentId}))`
     const agent = await tx.mtmAgent.findFirst({
       where: { organizationId: input.organizationId, id: input.event.agentId },
@@ -183,6 +190,8 @@ export async function recordWorkforceEmploymentEvent(
         "The Workforce employee is not available in this tenant",
       )
     }
+    // The per-employee advisory lock serializes appenders. The ledger grants
+    // SELECT/INSERT only; FOR UPDATE would hide its immutable rows under RLS.
     const [previous] = await tx.$queryRaw<Array<{
       id: string
       kind: WorkforceEmploymentHistoryEvent["kind"]
@@ -194,7 +203,6 @@ export async function recordWorkforceEmploymentEvent(
         AND "agentId" = ${input.event.agentId}
       ORDER BY "effectiveAt" DESC, "id" DESC
       LIMIT 1
-      FOR UPDATE
     `)
     if (previous && input.event.effectiveAt.getTime() <= previous.effectiveAt.getTime()) {
       throw new WorkforceEmploymentHistoryError(
@@ -244,5 +252,4 @@ export async function recordWorkforceEmploymentEvent(
       },
     })
     return event
-  })
 }

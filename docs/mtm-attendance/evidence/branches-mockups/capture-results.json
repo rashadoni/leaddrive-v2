@@ -1,0 +1,58 @@
+[
+  {
+    "name": "01-branches",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "innerVerticalScroll": 0,
+    "minimumButtonHeight": 44
+  },
+  {
+    "name": "01-branches",
+    "width": 390,
+    "scrollWidth": 390,
+    "innerVerticalScroll": 0,
+    "minimumButtonHeight": 44
+  },
+  {
+    "name": "02-primary-branch",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "innerVerticalScroll": 0,
+    "minimumButtonHeight": 44
+  },
+  {
+    "name": "02-primary-branch",
+    "width": 390,
+    "scrollWidth": 390,
+    "innerVerticalScroll": 0,
+    "minimumButtonHeight": 44
+  },
+  {
+    "name": "03-mobile-consent",
+    "width": 390,
+    "scrollWidth": 390,
+    "innerVerticalScroll": 0,
+    "minimumButtonHeight": 44
+  },
+  {
+    "name": "04-mobile-start",
+    "width": 390,
+    "scrollWidth": 390,
+    "innerVerticalScroll": 0,
+    "minimumButtonHeight": 44
+  },
+  {
+    "name": "05-mobile-no-location",
+    "width": 390,
+    "scrollWidth": 390,
+    "innerVerticalScroll": 0,
+    "minimumButtonHeight": 44
+  },
+  {
+    "name": "06-mobile-finish",
+    "width": 390,
+    "scrollWidth": 390,
+    "innerVerticalScroll": 0,
+    "minimumButtonHeight": 44
+  }
+]

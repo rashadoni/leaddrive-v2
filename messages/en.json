@@ -11250,6 +11250,8 @@
     "domainHint": "Use a subdomain like landing.yourcompany.com or pages.yourcompany.com"
   },
   "mtmAccess": {
+    "perm_attendanceWorkday": "Own workday",
+    "perm_attendanceWorkday_hint": "Start and finish your own workday and record a break. Uses the same Attendance switch.",
     "perm_attendanceRequests": "Attendance requests",
     "perm_attendanceRequests_hint": "Ask for leave, a sick day, time off, business travel, remote work or overtime. Uses the same Attendance switch.",
     "title": "Access & permissions",
@@ -27112,6 +27114,7 @@
       "OTHER": "Other organization"
     },
     "role": {
+      "EMPLOYEE": "Employee",
       "ADMIN": "Administrator",
       "MANAGER": "Manager",
       "SUPERVISOR": "Supervisor",

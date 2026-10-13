@@ -11246,6 +11246,8 @@
     "domainHint": "Alt domen istifadə edin, məsələn landing.sirketiniz.com və ya pages.sirketiniz.com"
   },
   "mtmAccess": {
+    "perm_attendanceWorkday": "Öz iş günü",
+    "perm_attendanceWorkday_hint": "Öz iş gününü başlatmaq və bitirmək, fasiləni qeyd etmək. İş vaxtı uçotunun ümumi keçidindən istifadə edir.",
     "perm_attendanceRequests": "İş günü müraciətləri",
     "perm_attendanceRequests_hint": "Məzuniyyət, xəstəlik, istirahət, saatlıq icazə, ezamiyyət, məsafədən iş və ya əlavə iş üçün müraciət edin. İş günü uçotunun ümumi keçidindən istifadə edir.",
     "title": "Giriş və icazələr",
@@ -27108,6 +27110,7 @@
       "OTHER": "Digər təşkilat"
     },
     "role": {
+      "EMPLOYEE": "Əməkdaş",
       "ADMIN": "İnzibatçı",
       "MANAGER": "Menecer",
       "SUPERVISOR": "Supervayzer",

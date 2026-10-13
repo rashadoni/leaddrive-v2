@@ -5017,6 +5017,7 @@ enum MtmAgentRole {
   MANAGER
   SUPERVISOR
   AGENT
+  EMPLOYEE
 }
 
 enum MtmAgentStatus {
@@ -5755,6 +5756,8 @@ model MtmAgent {
   /// Whether this field agent may create and edit their own route drafts.
   /// Managers and administrators always plan within their normal scope.
   canPlanOwnRoutes Boolean       @default(true)
+  /// Explicit attendance enrolment for non-field roles; never grants field permissions.
+  attendanceParticipant Boolean @default(false)
   /// Whether this field agent may publish their own route drafts.
   /// This grant is the whole rule: the organization-wide routeSelfPublish switch was removed on 2026-10-06.
   canSelfPublishRoutes Boolean   @default(false)

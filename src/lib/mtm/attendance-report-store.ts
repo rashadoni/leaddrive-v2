@@ -39,7 +39,7 @@ export async function readMtmAttendanceReport(input: {
   return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const employees = await tx.mtmAgent.findMany({
       where: {
-        organizationId, role: "AGENT",
+        organizationId, OR: [{ role: "AGENT" }, { attendanceParticipant: true }],
         ...(actor.scopedAgentIds === null ? {} : { id: { in: [...actor.scopedAgentIds] } }),
         ...(query.employeeId ? { AND: { id: query.employeeId } } : {}),
         ...(query.teamId ? { teamId: query.teamId } : {}),

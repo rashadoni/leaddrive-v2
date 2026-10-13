@@ -1,3 +1,4 @@
+import { officeAttendanceMobilePath } from "@/lib/mtm/attendance-employee-contract"
 import { NextRequest, NextResponse } from "next/server"
 import jwt, { type JwtPayload } from "jsonwebtoken"
 import { prisma } from "./prisma"
@@ -212,6 +213,17 @@ export async function resolveMobileAuth(
       return null
     }
     currentRole = agent.role
+    if (currentRole === "EMPLOYEE") {
+      if (!routeFieldEnabled || !agent.userId || !officeAttendanceMobilePath(req.method, new URL(req.url).pathname)) return null
+      const allowed = await runWithRlsBypass(async () => {
+        const [member, feature] = await Promise.all([
+          prisma.mtmAgent.findFirst({ where: { id: decoded.agentId, organizationId: decoded.orgId, attendanceParticipant: true }, select: { id: true } }),
+          prisma.mtmSetting.findUnique({ where: { organizationId_key: { organizationId: decoded.orgId, key: "attendanceEnabled" } }, select: { value: true } }),
+        ])
+        return Boolean(member) && feature?.value === true
+      })
+      if (!allowed) return null
+    }
 
     // FIX C: linked-user revocation check.
     // When the mobile JWT carries a `userId` (the CRM User this agent is linked to),
