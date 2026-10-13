@@ -408,6 +408,17 @@ jobs:
           MTM_CONTACT_CATEGORIES_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           MTM_CONTACT_CATEGORIES_DB_GATE: required
 
+      - name: MTM workday return database gate
+        # An employee returns to the workday they closed earlier today. What
+        # decides it lives in the database — a completed workday leaves
+        # COMPLETED only against a ledger row, and that ledger's own trigger
+        # used to refuse the employee as its author — so the test applies
+        # production's SQL verbatim and mocks nothing.
+        run: npx vitest run src/__tests__/mtm-workday-return-postgres.test.ts
+        env:
+          MTM_WORKDAY_RETURN_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          MTM_WORKDAY_RETURN_DB_GATE: required
+
       - name: MTM attendance database gate
         run: npx vitest run src/__tests__/mtm-attendance-postgres.test.ts src/__tests__/mtm-attendance-report-postgres.test.ts src/__tests__/mtm-attendance-requests-postgres.test.ts src/__tests__/mtm-attendance-corrections-postgres.test.ts
         env:

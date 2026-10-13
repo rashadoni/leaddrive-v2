@@ -8961,8 +8961,13 @@ model WorkforceWorkdayReopen {
   operationId     String
   /// Proves a repeated operation id carries the exact same reopen request.
   requestHash     String                @db.VarChar(64)
-  actorUserId     String
-  actorUser       User                  @relation("WorkforceWorkdayReopenActor", fields: [organizationId, actorUserId], references: [organizationId, id], onDelete: Restrict)
+  /// Who reopened the day. NULL only for `source = "EMPLOYEE"` when the employee's
+  /// card has no CRM user: most field agents sign in to the app alone.
+  actorUserId     String?
+  actorUser       User?                 @relation("WorkforceWorkdayReopenActor", fields: [organizationId, actorUserId], references: [organizationId, id], onDelete: Restrict)
+  /// "MANAGER": a supervisor reopened someone else's day. "EMPLOYEE": the employee
+  /// returned to their own day the same calendar day (owner, 2026-10-13).
+  source          String                @default("MANAGER")
   reason          String
   beforeFacts     Json
   afterFacts      Json
