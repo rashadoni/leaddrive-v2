@@ -49,9 +49,21 @@
 
 **Scope этой выгрузки — только constructor configuration/read/preview/export.** Разделение TEST/PROD здесь относится к целевой среде профиля, а не доказывает среду/регион физической CRM-инсталляции. Это не аттестация всего security logging. Azure/VPN/WAF, остальные CRM auth/access events, ERP и клиентский приёмник явно исключены из manifest. Срок хранения в профиле является проектной настройкой; он не изменяет существующую DB-retention или WORM-политику.
 
+## Контракт принимающего API из профиля
+
+Конструктор выгружает OpenAPI 3.1 JSON по включённым ресурсам, POST/PUT и настроенным путям. Он описывает вложенные поля, optional/null/required, преобразованные константы, суммы строками с заданной точностью, aliases receipt и обязательные заголовки. Несколько ресурсов могут использовать один receiving path через anyOf. Схема описывает структуру; бизнес-правила и ограничения преобразований также передаются в x-leaddrive-profile/x-leaddrive-mapping и требуют согласования с клиентом.
+
+В документ не добавляются вымышленные server URL, IP, токены или OAuth token endpoint. Он имеет явный draft/non-operational статус. Предложены Bearer + mTLS, durable dedup и разделение API acceptance / ERP outcome; receiving receipt lookup и фактический OAuth contract ещё не определены. Несовместимые scalar/object receipt aliases запрещены до сохранения.
+
+Выгрузка профиля и контракта идёт через session-admin API с tenant catalogue validation и обязательным metadata audit до выдачи файла. Значения полей и константы не копируются в аудит. При отказе аудита выгрузка возвращает 503. Unapplied JSON и busy-состояние блокируют скачивание устаревшего профиля.
+
+Формат основан на [официальной спецификации OpenAPI 3.1](https://spec.openapis.org/oas/v3.1.0.html). Official document schema проверяется отдельным Draft202012Validator, а body/receipt схемы — Ajv 2020. Downloaded proposal и default proposal валидны; синтетические cases покрывают три ресурса, optional values и отказ при неверном типе суммы/версии.
+
+Готовы отдельные AZ/EN DOCX и общий архив в docs/uiumsoft-api-preparation-package. Они содержат согласуемую проектную схему v1.1; пример OpenAPI создан на синтетическом профиле, а не на действующих данных AAC. Наличие этих файлов не закрывает runtime/инфраструктурные gates ниже.
+
 ## Следующие этапы и критерии готовности
 
-1. **Идентичность AAC и бизнес-правило.** Подтвердить фактический tenant ID будущей инсталляции и правило all_deals либо конкретную воронку/этапы. Утвердить поля, валюты, точность и обязательные реквизиты. Ни одна пустая настройка не означает «передавать всё».
+1. **Применение профиля AAC.** Tenant берётся из авторизованной session будущей инсталляции. Поля, валюты, точность, обязательные реквизиты и правила отбора настраиваются в конструкторе; они не зашиты под одну воронку или этап. До запуска владелец утверждает конкретную revision профиля. Ни одна пустая настройка не означает «передавать всё».
 2. **Транзакционное подключение CRM.** Добавить durable версии сущностей и связи зависимостей. Сохранение клиента/сделки, снимка разрешённых полей и Outbox должно происходить в одной tenant-транзакции. Покрыть API, импорт, конвертацию лида и прочие фактические пути изменения; не ограничиваться REST POST. Проверить rollback и конкурентные версии на PostgreSQL.
 3. **Worker и reconciliation.** Применить существующие lease/attempt/state-machine guards `EffectOutbox`; не писать статусы произвольно. Отдельно хранить accepted_by_api и опциональные ERP-результаты. Сделка ждёт durable receipt нужной версии клиента. Ограничить поток 5 запросами/с и 2 соединениями на интеграцию; восстанавливать неопределённые исходы через согласованный receipt API. Подключить планировщик, backpressure и метрики.
 4. **Секреты и клиентское подключение.** Получить тестовый receiving API-контракт, CA/mTLS и OAuth-параметры. Реализовать выдачу/кэш/ротацию токенов и интеграцию с Key Vault. Настроить Azure/VPN и подтвердить фактический source IP. Не вводить примерные адреса в рабочую конфигурацию.
@@ -90,7 +102,7 @@
 
 Модульные тесты находятся в `src/__tests__/lib-customer-receiver-*.test.ts`; сетевые сценарии используют подменённый транспорт и синтетические данные. Это не проверка реального TLS/VPN/ERP. Выполняется узкий TypeScript check этих файлов и `git diff --check`.
 
-На текущем checkpoint: 194 tests PASS в 9 файлах (kernel, constructor, API ownership/revision/audit, source, receipts, transport и регрессия event-platform). Scoped strict TypeScript для kernel/constructor без Prisma-adapter и для UI PASS. Prisma validate/generate выполнены для существующей неизменённой схемы с синтетическим URL без подключения к БД.
+На checkpoint конструктора до добавления contract export: 194 tests PASS в 9 файлах (kernel, constructor, API ownership/revision/audit, source, receipts, transport и регрессия event-platform). Scoped strict TypeScript для kernel/constructor без Prisma-adapter и для UI PASS. Prisma validate/generate выполнены для существующей неизменённой схемы с синтетическим URL без подключения к БД.
 
 Реальный UI-компонент проверен в браузере со standalone локальным синтетическим API: RU/EN/AZ, 1440x1050/390x900, save/preview, keyboard tabs, precision choice, conflict/reload, history restore, audit files, export/import. Ни одного внешнего запроса и page error. Доказательства — `docs/evidence/customer-receiver-builder-2026-10-14/result.json` и screenshots. Это не полная Next-page/production/DB проверка.
 

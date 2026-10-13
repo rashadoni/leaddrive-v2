@@ -22,6 +22,30 @@ beforeEach(() => {
 })
 
 describe("organization-scoped draft builder API", () => {
+  it.each(["export_profile", "export_contract"])("audits %s before returning the file, without values in audit or queue writes", async (action) => {
+    const profile = defaultBuilderProfile()
+    profile.resources[0].mappings.push({ id: "private", target: "customer.code", source: { type: "constant", value: "PRIVATE-CONSTANT" }, transforms: [], missing: "reject" })
+    const response = await POST(request({ action, profile }))
+    expect(response.status).toBe(200)
+    expect(response.headers.get("Cache-Control")).toBe("no-store")
+    expect(mocks.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ organizationId: "org-1", userId: "user-1", action: action === "export_profile" ? "receiver_profile_exported" : "receiver_contract_exported" }) }))
+    expect(JSON.stringify(mocks.auditLog.create.mock.calls)).not.toContain("PRIVATE-CONSTANT")
+    expect(mocks.channelConfig.create).not.toHaveBeenCalled()
+    expect((await response.json()).data).toHaveProperty(action === "export_contract" ? "openapi" : "lifecycle", action === "export_contract" ? "3.1.0" : "draft")
+  })
+  it.each(["export_profile", "export_contract"])("does not release %s when mandatory audit fails", async (action) => {
+    mocks.auditLog.create.mockRejectedValueOnce(new Error("database unavailable"))
+    expect((await POST(request({ action, profile: defaultBuilderProfile() }))).status).toBe(503)
+  })
+  it("rejects invalid constants or unregistered custom fields in the contract without exposing values", async () => {
+    const profile = defaultBuilderProfile()
+    profile.resources[0].mappings.find((entry) => entry.id === "type")!.source = { type: "constant", value: "" }
+    const response = await POST(request({ action: "export_contract", profile }))
+    expect(response.status).toBe(422)
+    expect(await response.json()).toEqual({ error: "Contract preparation failed" })
+    profile.resources[0].mappings.find((entry) => entry.id === "type")!.source = { type: "field", field: "custom.company.unknown" }
+    expect((await POST(request({ action: "export_contract", profile }))).status).toBe(400)
+  })
   it("lists only authenticated organization's disabled drafts and never returns channel secrets", async () => {
     mocks.channelConfig.findMany.mockResolvedValue([row()])
     const response = await GET(request()), result = await response.json()

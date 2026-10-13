@@ -4,7 +4,7 @@ import { identifier, record } from "../contract"
 import { buildSecurityExport } from "../security-events"
 import { BuilderEvaluationError } from "./engine"
 
-export const BUILDER_AUDIT_ACTIONS = ["receiver_draft_created", "receiver_draft_updated", "receiver_draft_read", "receiver_draft_previewed", "receiver_draft_logs_exported"] as const
+export const BUILDER_AUDIT_ACTIONS = ["receiver_draft_created", "receiver_draft_updated", "receiver_draft_read", "receiver_draft_previewed", "receiver_draft_logs_exported", "receiver_profile_exported", "receiver_contract_exported"] as const
 export interface BuilderAuditRow { id: string; organizationId: string; userId: string | null; action: string; entityType: string; entityId: string | null; createdAt: Date; newValue: unknown }
 
 function stableAuditUuid(organizationId: string, nativeId: string) {
@@ -28,7 +28,7 @@ export function exportBuilderAudit(input: { organizationId: string; environment:
       organization_id: organizationId, environment: input.environment,
       source: { system: "LeadDrive", service: "receiver-builder", instance_id: "crm", version: "1.0" },
       category: configuration ? "administration" : "data_access",
-      action: configuration ? "configuration_change" : row.action === "receiver_draft_logs_exported" ? "data_export" : "data_read",
+      action: configuration ? "configuration_change" : row.action.endsWith("_exported") ? "data_export" : "data_read",
       outcome: "success", severity: configuration ? "medium" : "info",
       actor: { type: row.userId ? "user" : "unknown", id: row.userId },
       target: row.entityId ? { type: "receiver_draft", id: row.entityId } : null,

@@ -141,9 +141,16 @@ export function ReceiverBuilder({ locale = "ru", fetcher = fetch }: { locale?: B
       edit(parsed.data); setResource(parsed.data.resources[0].resource); setRaw(""); setRawChanged(false)
     } catch { setError(c.invalid) }
   }
-  const exportProfile = () => {
-    const url = URL.createObjectURL(new Blob([JSON.stringify(profile, null, 2) + "\n"], { type: "application/json" }))
-    const link = document.createElement("a"); link.href = url; link.download = "receiver-profile.json"; link.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+  const exportDocument = async (action: "export_profile" | "export_contract") => {
+    setBusy(true); setError("")
+    try {
+      const response = await fetcher(API, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, profile }) })
+      if (!response.ok) throw new Error("export_failed")
+      const result = await response.json()
+      const url = URL.createObjectURL(new Blob([JSON.stringify(result.data, null, 2) + "\n"], { type: "application/json" }))
+      const link = document.createElement("a"); link.href = url; link.download = action === "export_profile" ? "receiver-profile.json" : "receiver-openapi-proposal.json"; link.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+    } catch { setError(c.error) }
+    finally { setBusy(false) }
   }
   const reload = async () => {
     if ((dirty || rawChanged) && !window.confirm(c.confirmReplace)) return
@@ -252,7 +259,8 @@ export function ReceiverBuilder({ locale = "ru", fetcher = fetch }: { locale?: B
           <div className="rb-pair"><label>{c.logFrom}<input type="datetime-local" value={logFrom} onChange={(event) => { setLogFrom(event.target.value); setLogFiles(null) }} /></label><label>{c.logTo}<input type="datetime-local" value={logTo} onChange={(event) => { setLogTo(event.target.value); setLogFiles(null) }} /></label></div>
           <button type="button" disabled={!logFrom || !logTo} onClick={exportLogs}>{c.logExport}</button>
           {logFiles && <div className="rb-file-actions">{Object.entries(logFiles.files).map(([name, url]) => <a key={name} href={url} download={name}>{name}</a>)}</div>}
-          <div className="rb-file-actions"><button type="button" onClick={() => fileInput.current?.click()}>{c.import}</button><button type="button" disabled={!valid} onClick={exportProfile}>{c.export}</button><input ref={fileInput} type="file" accept="application/json,.json" aria-label={c.import} hidden onChange={async (event) => { const file = event.target.files?.[0]; if (file) { if (file.size > 256 * 1024) setError(c.invalid); else applyImport(await file.text()) } event.target.value = "" }} /></div>
+          <div className="rb-file-actions"><button type="button" disabled={busy} onClick={() => fileInput.current?.click()}>{c.import}</button><button type="button" disabled={busy || loading || !valid || rawChanged} onClick={() => exportDocument("export_profile")}>{c.export}</button><button type="button" disabled={busy || loading || !valid || rawChanged} onClick={() => exportDocument("export_contract")}>{c.contractExport}</button><input ref={fileInput} type="file" accept="application/json,.json" aria-label={c.import} hidden onChange={async (event) => { const file = event.target.files?.[0]; if (file) { if (file.size > 256 * 1024) setError(c.invalid); else applyImport(await file.text()) } event.target.value = "" }} /></div>
+          <p className="rb-hint">{c.contractHint}</p>
           <details onToggle={(event) => { if (event.currentTarget.open && !rawChanged) setRaw(JSON.stringify(profile, null, 2)) }}><summary>{c.advanced}</summary><p className="rb-hint">{c.rawHint}</p>{rawChanged && <p role="status">{c.unsaved}</p>}<textarea aria-label={c.advanced} value={raw} rows={24} spellCheck={false} onChange={(event) => { setRaw(event.target.value); setRawChanged(true) }} /><button type="button" onClick={() => applyImport(raw)}>{c.apply}</button></details>
         </>}
       </fieldset>

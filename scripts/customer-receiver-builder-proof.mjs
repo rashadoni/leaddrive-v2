@@ -1,6 +1,6 @@
 /** Targeted component smoke, synthetic local API. No Next build or ERP traffic. */
 import assert from "node:assert/strict"
-import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises"
+import { mkdtemp, mkdir, writeFile, readFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { createServer } from "vite"
@@ -24,7 +24,8 @@ const { previewBuilderResource, syntheticBuilderInput } = await server.ssrLoadMo
 const { BUILDER_FIELDS } = await server.ssrLoadModule(path.join(root, "src/lib/integrations/customer-receiver/constructor/catalog.ts"))
 const { RECEIVER_COPY } = await server.ssrLoadModule(path.join(root, "src/components/settings/receiver-builder-copy.ts"))
 const { exportBuilderAudit } = await server.ssrLoadModule(path.join(root, "src/lib/integrations/customer-receiver/constructor/audit-export.ts"))
-let drafts = [], previews = 0, saves = 0
+const { buildReceivingApiProposal } = await server.ssrLoadModule(path.join(root, "src/lib/integrations/customer-receiver/constructor/api-proposal.ts"))
+let drafts = [], previews = 0, saves = 0, exports = 0
 async function apiMiddleware(request, response, next) {
   if (request.url === "/receiver-proof/bump") { if (drafts[0]) drafts[0].revision += 1; response.end("ok"); return }
   if (request.url.startsWith("/api/v1/integrations/customer-receiver/logs?")) {
@@ -45,6 +46,10 @@ async function apiMiddleware(request, response, next) {
       try { send(200, { success: true, data: previewBuilderResource({ profile: parsed.data, resource: input.resource, ...syntheticBuilderInput("org-demo", input.resource, input.sample) }) }) }
       catch { send(422, {}) }
       return
+    }
+    if (input.action === "export_profile" || input.action === "export_contract") {
+      exports += 1
+      send(200, { success: true, data: input.action === "export_contract" ? buildReceivingApiProposal(parsed.data) : parsed.data }); return
     }
     const existing = drafts.find((entry) => entry.id === input.id)
     if ((existing?.revision ?? 0) !== input.expectedRevision) { send(409, {}); return }
@@ -106,6 +111,16 @@ try {
   const downloadPromise = page.waitForEvent("download")
   await page.getByRole("button", { name: c.export, exact: true }).click()
   assert.equal((await downloadPromise).suggestedFilename(), "receiver-profile.json")
+  const contractDownload = page.waitForEvent("download")
+  await page.getByRole("button", { name: c.contractExport, exact: true }).click()
+  const contract = await contractDownload
+  assert.equal(contract.suggestedFilename(), "receiver-openapi-proposal.json")
+  const contractText = await readFile(await contract.path(), "utf8")
+  const proposal = JSON.parse(contractText)
+  assert.equal(proposal.openapi, "3.1.0")
+  assert.equal(proposal["x-leaddrive-operational"], false)
+  assert.equal(proposal.servers, undefined)
+  await writeFile(path.join(output, "receiver-openapi-proposal.json"), contractText)
   await page.locator('input[type="file"]').setInputFiles({ name: "invalid-profile.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify({ ...defaultBuilderProfile(), lifecycle: "active" })) })
   await page.getByRole("alert").filter({ hasText: c.invalid }).waitFor()
   await page.getByRole("tab", { name: c.data, exact: true }).click()
@@ -122,7 +137,7 @@ try {
   }
   assert.deepEqual(consoleErrors, [])
   assert.deepEqual(externalRequests, [])
-  const evidence = { mode: "standalone_actual_component_with_synthetic_local_api", databaseChecked: false, actualErpConnectionChecked: false, passed: true, locales: ["ru", "en", "az"], desktop: "1440x1050", phone: "390x900", checks: ["preview", "draft_save", "keyboard_tabs", "precision_rejection_and_override", "stale_revision_recovery", "history_restore_as_new_revision", "audit_jsonl_schema_manifest_links", "profile_export", "active_profile_import_rejected", "phone_no_overflow", "no_external_requests"], saves, previews, consoleErrors, externalRequests }
+  const evidence = { mode: "standalone_actual_component_with_synthetic_local_api", databaseChecked: false, actualErpConnectionChecked: false, passed: true, locales: ["ru", "en", "az"], desktop: "1440x1050", phone: "390x900", checks: ["preview", "draft_save", "keyboard_tabs", "precision_rejection_and_override", "stale_revision_recovery", "history_restore_as_new_revision", "audit_jsonl_schema_manifest_links", "profile_export", "api_contract_download", "active_profile_import_rejected", "phone_no_overflow", "no_external_requests"], saves, previews, exports, consoleErrors, externalRequests }
   await writeFile(path.join(output, "result.json"), JSON.stringify(evidence, null, 2) + "\n")
   console.log(JSON.stringify(evidence))
 } catch (error) {

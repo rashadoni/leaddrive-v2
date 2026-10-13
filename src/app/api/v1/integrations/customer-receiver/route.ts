@@ -7,10 +7,12 @@ import { readJsonRequestWithinLimit } from "@/lib/request-body-limit"
 import { BUILDER_FIELDS, type BuilderField } from "@/lib/integrations/customer-receiver/constructor/catalog"
 import { builderProfileSchema, defaultBuilderProfile, validateProfileCatalogue } from "@/lib/integrations/customer-receiver/constructor/profile"
 import { previewBuilderResource, syntheticBuilderInput } from "@/lib/integrations/customer-receiver/constructor/engine"
+import { buildReceivingApiProposal } from "@/lib/integrations/customer-receiver/constructor/api-proposal"
 import { BUILDER_CHANNEL_TYPE, BuilderStoreError, publicBuilderDraft, saveBuilderDraft, type BuilderStore, type BuilderRow } from "@/lib/integrations/customer-receiver/constructor/store"
 
 const saveSchema = z.object({ id: z.string().max(128).optional(), expectedRevision: z.number().int().min(0), profile: builderProfileSchema }).strict()
 const previewSchema = z.object({ action: z.literal("preview"), profile: builderProfileSchema, resource: z.enum(["customers", "contacts", "deals"]), sample: z.enum(["typical", "missing_optional", "precision"]) }).strict()
+const exportSchema = z.object({ action: z.enum(["export_profile", "export_contract"]), profile: builderProfileSchema }).strict()
 const allowedRole = (role: string) => role === "admin" || role === "superadmin"
 const unavailable = () => NextResponse.json({ error: "Receiver configuration unavailable" }, { status: 503 })
 
@@ -52,12 +54,22 @@ export const POST = withRlsSessionAuth(async (request, session) => {
   const body = await readJsonRequestWithinLimit(request, 256 * 1024)
   if (!body.ok) return NextResponse.json({ error: "Invalid or oversized request" }, { status: body.reason === "too_large" ? 413 : 400 })
   const preview = previewSchema.safeParse(body.value)
-  const save = preview.success ? null : saveSchema.safeParse(body.value)
-  if (!preview.success && !save?.success) return NextResponse.json({ error: "Invalid receiver profile" }, { status: 400 })
+  const exported = exportSchema.safeParse(body.value)
+  const save = preview.success || exported.success ? null : saveSchema.safeParse(body.value)
+  if (!preview.success && !exported.success && !save?.success) return NextResponse.json({ error: "Invalid receiver profile" }, { status: 400 })
   try {
     const fields = await catalogue(session.orgId)
-    const profile = preview.success ? preview.data.profile : save!.data!.profile
+    const profile = preview.success ? preview.data.profile : exported.success ? exported.data.profile : save!.data!.profile
     try { validateProfileCatalogue(profile, fields) } catch { return NextResponse.json({ error: "Unregistered source field" }, { status: 400 }) }
+    if (exported.success) {
+      let document
+      try { document = exported.data.action === "export_contract" ? buildReceivingApiProposal(profile, fields) : profile }
+      catch { return NextResponse.json({ error: "Contract preparation failed" }, { status: 422 }) }
+      const bytes = Buffer.byteLength(JSON.stringify(document), "utf8")
+      if (bytes > 2 * 1024 * 1024) return NextResponse.json({ error: "Export too large" }, { status: 413 })
+      await prisma.auditLog.create({ data: { organizationId: session.orgId, userId: session.userId, action: exported.data.action === "export_contract" ? "receiver_contract_exported" : "receiver_profile_exported", entityType: "receiver_draft", newValue: json({ environment: profile.environment, bytes, resources: profile.resources.filter((entry) => entry.enabled).map((entry) => entry.resource), externalSendingAvailable: false }) } })
+      return NextResponse.json({ success: true, data: document }, { headers: { "Cache-Control": "no-store" } })
+    }
     if (preview.success) {
       let result
       try { result = previewBuilderResource({ profile, resource: preview.data.resource, ...syntheticBuilderInput(session.orgId, preview.data.resource, preview.data.sample, fields), catalogue: fields }) }

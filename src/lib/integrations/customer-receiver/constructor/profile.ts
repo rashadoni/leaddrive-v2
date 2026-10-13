@@ -52,7 +52,8 @@ export const builderProfileSchema = z.object({
   if (profile.limits.connectTimeoutSeconds > profile.limits.timeoutSeconds) issue("invalid_timeout_budget")
   if (new Set(profile.logSources).size !== profile.logSources.length) issue("duplicate_log_source")
   const receiptPaths = Object.entries(profile.receipt).filter(([key]) => key.endsWith("Path")).map(([, value]) => value)
-  if (new Set(receiptPaths).size !== receiptPaths.length) issue("duplicate_receipt_path")
+    if (new Set(receiptPaths).size !== receiptPaths.length) issue("duplicate_receipt_path")
+    if (receiptPaths.some((value, index) => receiptPaths.some((other, otherIndex) => index !== otherIndex && value.startsWith(other + ".")))) issue("overlapping_receipt_paths")
   for (const resource of profile.resources) {
     if (resource.selection.mode === "filtered" && resource.selection.conditions.length === 0) issue("empty_filter")
     if (new Set(resource.mappings.map((entry) => entry.id)).size !== resource.mappings.length) issue("duplicate_mapping_id")

@@ -19,12 +19,14 @@
     "history_restore_as_new_revision",
     "audit_jsonl_schema_manifest_links",
     "profile_export",
+    "api_contract_download",
     "active_profile_import_rejected",
     "phone_no_overflow",
     "no_external_requests"
   ],
   "saves": 3,
   "previews": 3,
+  "exports": 2,
   "consoleErrors": [],
   "externalRequests": []
 }
