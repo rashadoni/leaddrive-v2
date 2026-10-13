@@ -420,7 +420,7 @@ jobs:
           MTM_WORKDAY_RETURN_DB_GATE: required
 
       - name: MTM attendance database gate
-        run: npx vitest run src/__tests__/mtm-attendance-postgres.test.ts src/__tests__/mtm-attendance-report-postgres.test.ts src/__tests__/mtm-attendance-requests-postgres.test.ts src/__tests__/mtm-attendance-corrections-postgres.test.ts src/__tests__/mtm-attendance-branches-postgres.test.ts src/__tests__/mtm-attendance-employees-postgres.test.ts src/__tests__/mtm-attendance-location-postgres.test.ts
+        run: npx vitest run src/__tests__/mtm-attendance-postgres.test.ts src/__tests__/mtm-attendance-report-postgres.test.ts src/__tests__/mtm-attendance-requests-postgres.test.ts src/__tests__/mtm-attendance-corrections-postgres.test.ts src/__tests__/mtm-attendance-branches-postgres.test.ts src/__tests__/mtm-attendance-employees-postgres.test.ts src/__tests__/mtm-attendance-location-postgres.test.ts src/__tests__/mtm-attendance-month-postgres.test.ts src/__tests__/mtm-attendance-reminders-postgres.test.ts
         env:
           MTM_ATTENDANCE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           MTM_ATTENDANCE_DB_GATE: required
@@ -695,6 +695,8 @@ jobs:
 
       - name: Prepare bounded GitHub-hosted build memory
         run: bash scripts/ci/prepare-hosted-build-runner.sh
+        env:
+          LEADDRIVE_BUILD_MIN_BUDGET_KIB: "16777216"
 
       - name: Install dependencies from lockfile
         # Intentionally do not restore node_modules or .next/cache here. A
@@ -719,18 +721,20 @@ jobs:
 
       - name: Build Next.js standalone
         # @serwist requires webpack for sw.js. Next compiles server, edge and
-        # client in sequential disposable workers; the 8 GiB heap leaves the
-        # hosted runner's proven 12 GiB RAM+swap floor room for native code and
-        # the runner service. The cold build disables its unconsumed cache.
+        # client in sequential disposable workers. The integrated server graph
+        # exceeded the old 8 GiB heap in PR #747. A bounded 12 GiB heap requires
+        # a measured 16 GiB RAM+swap floor, retaining 4 GiB for native code and
+        # the runner service. Record peak RSS for future memory decisions.
+        # The cold build disables its unconsumed cache.
         run: |
           test -n "${NEXT_PUBLIC_CARTO_BASEMAPS_API_KEY:-}" || {
             echo "::error::CARTO_BASEMAPS_API_KEY GitHub secret is required to build MTM maps"
             exit 1
           }
           ulimit -c 0
-          npx next build --webpack
+          /usr/bin/time -v npx next build --webpack
         env:
-          NODE_OPTIONS: --max-old-space-size=8192
+          NODE_OPTIONS: --max-old-space-size=12288
           NEXT_BUILD_CPUS: "1"
           NEXT_WEBPACK_PARALLELISM: "1"
           LEADDRIVE_COLD_PRODUCTION_BUILD: "1"
@@ -1595,6 +1599,33 @@ jobs:
              printf "%s\n" "$SMOKE_OUTPUT"
              if ! printf "%s\n" "$SMOKE_OUTPUT" | grep -Fq '\''"smoke":true'\''; then
                echo "FATAL: MTM attendance reports cron smoke was not side-effect-free and successful"
+               exit 1
+             fi'
+
+      - name: Verify the MTM attendance reminders scheduler
+        if: ${{ !cancelled() && steps.deploy_atomic.outcome == 'success' }}
+        run: |
+          ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            'set -euo pipefail
+             CRONTAB="$(crontab -l 2>/dev/null)"
+             ACTIVE_COUNT="$(printf "%s\n" "$CRONTAB" | awk '\''
+               $0 !~ /^[[:space:]]*#/ &&
+               $0 ~ /cron-trigger\.sh \/api\/cron\/mtm-attendance-reminders/ { count++ }
+               END { print count + 0 }
+             '\'')"
+             if [ "$ACTIVE_COUNT" -ne 1 ]; then
+               echo "FATAL: expected exactly one active MTM attendance reminders cron; found $ACTIVE_COUNT"
+               exit 1
+             fi
+             if ! systemctl is-active --quiet cron.service; then
+               echo "FATAL: cron.service is not active"
+               exit 1
+             fi
+             SMOKE_OUTPUT="$(CRON_TRIGGER_LOCK_WAIT_SECONDS=120 /usr/local/lib/leaddrive-v2/ops/current/cron-scripts/cron-trigger.sh "/api/cron/mtm-attendance-reminders?smoke=1")"
+             printf "%s\n" "$SMOKE_OUTPUT"
+             if ! printf "%s\n" "$SMOKE_OUTPUT" | grep -Fq '\''"smoke":true'\''; then
+               echo "FATAL: MTM attendance reminders cron smoke was not side-effect-free and successful"
                exit 1
              fi'
 

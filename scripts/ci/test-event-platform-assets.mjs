@@ -332,7 +332,7 @@ assert.match(
 assert.ok(
   githubDeploy.includes("runs-on: ubuntu-24.04")
     && githubDeploy.includes("bash scripts/ci/prepare-hosted-build-runner.sh")
-    && githubDeploy.includes("NODE_OPTIONS: --max-old-space-size=8192")
+    && githubDeploy.includes("NODE_OPTIONS: --max-old-space-size=12288")
     && githubDeploy.includes("ulimit -c 0")
     && githubDeploy.includes('NEXT_BUILD_CPUS: "1"')
     && githubDeploy.includes('NEXT_WEBPACK_PARALLELISM: "1"')
@@ -351,12 +351,29 @@ assert.ok(
     && githubPrChecks.includes("contains(github.event.pull_request.labels.*.name, 'production-build')")
     && githubPrChecks.includes("name: GitHub-hosted Linux production build")
     && githubPrChecks.includes("bash scripts/ci/prepare-hosted-build-runner.sh")
-    && githubPrChecks.includes("NODE_OPTIONS: --max-old-space-size=8192")
+    && githubPrChecks.includes("NODE_OPTIONS: --max-old-space-size=12288")
     && githubPrChecks.includes('LEADDRIVE_COLD_PRODUCTION_BUILD: "1"')
     && githubPrChecks.includes("ulimit -c 0")
     && githubPrChecks.includes("npx next build --webpack"),
   "the production-build PR label must trigger the same isolated webpack proof",
 )
+for (const [name, job] of [
+  ["PR", githubPrChecks.slice(githubPrChecks.indexOf("  production-build:"))],
+  ["release", githubDeploy.slice(githubDeploy.indexOf("  build:"), githubDeploy.indexOf("  deploy:"))],
+]) {
+  assert.match(
+    job,
+    /- name: Prepare bounded GitHub-hosted build memory\s+run: bash scripts\/ci\/prepare-hosted-build-runner\.sh\s+env:\s+LEADDRIVE_BUILD_MIN_BUDGET_KIB: "16777216"/u,
+    `${name} build must measure a 16-GiB budget before allowing the bounded 12-GiB heap`,
+  )
+  assert.ok(
+    job.includes("NODE_OPTIONS: --max-old-space-size=12288")
+      && job.includes("/usr/bin/time -v npx next build --webpack")
+      && job.indexOf("Prepare bounded GitHub-hosted build memory")
+        < job.indexOf("/usr/bin/time -v npx next build --webpack"),
+    `${name} build must retain the bounded heap and record peak RSS after its memory preflight`,
+  )
+}
 const typecheckJob = githubPrChecks.slice(
   githubPrChecks.indexOf("  typecheck:"),
   githubPrChecks.indexOf("  production-build:"),

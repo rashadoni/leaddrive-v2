@@ -30,7 +30,7 @@ const nextConfig: NextConfig = {
   // Build-memory: the custom webpack hook below disables Next's default build
   // worker unless it is opted back in explicitly. Keep server, edge and client
   // compilation in disposable sequential workers so one compiler graph cannot
-  // retain the previous graph on the 8 GiB hosted runner. The lower-risk
+  // retain the previous graph within the hosted runner's memory budget. The lower-risk
   // webpack memory optimizations stay enabled for the same reason.
   experimental: {
     cpus: nextBuildCpus,

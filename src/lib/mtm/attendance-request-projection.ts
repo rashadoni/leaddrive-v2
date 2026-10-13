@@ -1,7 +1,7 @@
 import type { AttendanceRequestDetails } from "@/lib/mtm/attendance-request-contract"
 import type { MtmAttendanceReportRow } from "@/lib/mtm/attendance-report"
 import { addDateKeyDays } from "@/lib/mtm/mobile-week"
-import { localDateTimeToUnambiguousUtc } from "@/lib/timezone"
+import { isValidTimezone, localDateTimeToUnambiguousUtc } from "@/lib/timezone"
 
 /** Allowlist shared by reports and exports; request reasons/documents stay in the review queue. */
 export type AttendanceApprovedPeriod = {
@@ -10,21 +10,25 @@ export type AttendanceApprovedPeriod = {
 }
 const ABSENCE_KINDS = new Set(["ANNUAL_LEAVE", "SICK_LEAVE", "TIME_OFF", "HOURLY_ABSENCE"])
 
-function isAbsence(period: AttendanceApprovedPeriod) {
+export function isAttendanceApprovedAbsence(period: AttendanceApprovedPeriod) {
   return ABSENCE_KINDS.has(period.details.kind) || (period.details.kind === "HR_RECORD" && ["PAID_LEAVE", "UNPAID_LEAVE"].includes(period.details.dayKind.group))
 }
 
 /** Frozen request clocks are interpreted in their original timezone. A broken
  * or ambiguous legacy clock must never silently excuse a violation. */
-function absenceWindow(period: AttendanceApprovedPeriod): [number, number] | null {
-  if (!isAbsence(period)) return null
+export function attendanceApprovedPeriodWindow(period: AttendanceApprovedPeriod): [number, number] | null {
   const { unit, startTime, endTime, timezone } = period.details
+  if (!isValidTimezone(timezone)) return null
   if (unit === "HOURS" && (!startTime || !endTime)) return null
   try {
     const from = localDateTimeToUnambiguousUtc(`${period.startDate}T${unit === "DAYS" ? "00:00" : startTime}`, timezone).getTime()
     const to = localDateTimeToUnambiguousUtc(`${unit === "DAYS" ? addDateKeyDays(period.endDate, 1) : period.endDate}T${unit === "DAYS" ? "00:00" : endTime}`, timezone).getTime()
     return to > from ? [from, to] : null
   } catch { return null }
+}
+
+export function attendanceApprovedAbsenceWindow(period: AttendanceApprovedPeriod): [number, number] | null {
+  return isAttendanceApprovedAbsence(period) ? attendanceApprovedPeriodWindow(period) : null
 }
 
 /** Union intersections so duplicate/overlapping imported approvals cannot
@@ -44,13 +48,22 @@ function uncoveredSeconds(from: string | null, to: string | null, windows: [numb
 }
 
 export function projectApprovedAttendanceRequests(row: MtmAttendanceReportRow, periods: readonly AttendanceApprovedPeriod[], lateGraceSeconds = 0): MtmAttendanceReportRow {
-  const approved = periods.filter((entry) => entry.agentId === row.employeeId && entry.startDate <= row.date && entry.endDate >= row.date && entry.details.kind !== "TIME_CORRECTION")
+  const onSourceDate = (entry: AttendanceApprovedPeriod) => entry.startDate <= row.date && entry.endDate >= row.date
+  const approved = periods.filter(entry => {
+    if (entry.agentId !== row.employeeId || entry.details.kind === "TIME_CORRECTION") return false
+    if (onSourceDate(entry)) return true
+    if (!row.shiftPlanId || !row.plannedStartAt || !row.plannedEndAt) return false
+    const window = attendanceApprovedPeriodWindow(entry)
+    const from = entry.details.kind === "OVERTIME" && row.startedAt ? row.startedAt : row.plannedStartAt
+    const to = entry.details.kind === "OVERTIME" && row.completedAt ? row.completedAt : row.plannedEndAt
+    return !!window && window[0] < Date.parse(to) && window[1] > Date.parse(from)
+  })
   if (!approved.length) return row
-  const annualLeaveDays = approved.some(period => period.details.unit === "DAYS" && period.details.dayKind.key === "ANNUAL_LEAVE")
+  const annualLeaveDays = approved.some(period => onSourceDate(period) && period.details.unit === "DAYS" && period.details.dayKind.key === "ANNUAL_LEAVE")
     && !["PUBLIC_HOLIDAY", "COMPANY_HOLIDAY"].includes(row.calendarKind) ? 1 : 0
   let result = { ...row, approvedRequests: approved, annualLeaveDays }
   if (row.factsState === "INVALID") return result
-  const windows = approved.map(absenceWindow).filter((window): window is [number, number] => window !== null)
+  const windows = approved.map(attendanceApprovedAbsenceWindow).filter((window): window is [number, number] => window !== null)
   if (windows.length && row.factsState === "VALID" && row.isWorkingDay) {
     const uncoveredLate = row.lateSeconds === null ? null : uncoveredSeconds(row.plannedStartAt, row.startedAt, windows, row.lateSeconds)
     const lateSeconds = uncoveredLate !== null && uncoveredLate <= lateGraceSeconds ? 0 : uncoveredLate
@@ -58,11 +71,11 @@ export function projectApprovedAttendanceRequests(row: MtmAttendanceReportRow, p
     result = { ...result, lateSeconds, earlyLeaveSeconds, flags: row.flags.filter(flag =>
       (flag !== "LATE_START" || (lateSeconds ?? 0) > 0) && (flag !== "EARLY_LEAVE" || (earlyLeaveSeconds ?? 0) > 0)) }
   }
-  const whole = approved.find((entry) => entry.details.unit === "DAYS")
+  const whole = approved.find((entry) => onSourceDate(entry) && entry.details.unit === "DAYS")
   if (!whole) return result
   // A public holiday remains a holiday inside leave. This projection never
   // overwrites the company calendar or manufactures worked hours.
-  const absence = isAbsence(whole)
+  const absence = isAttendanceApprovedAbsence(whole)
   if (whole.details.dayKind.key === "ANNUAL_LEAVE" && ["PUBLIC_HOLIDAY", "COMPANY_HOLIDAY"].includes(row.calendarKind)) return result
   if (row.workdayId) {
     return absence

@@ -1,3 +1,6 @@
+import { attendanceReminderWebFilter } from "@/lib/mtm/attendance-reminder-notification"
+import { ATTENDANCE_REMINDER_ENTITY, ATTENDANCE_REMINDER_URL } from "@/lib/mtm/attendance-reminder-contract"
+import { MTM_ATTENDANCE_RISK_NOTIFICATION_ENTITY, MTM_ATTENDANCE_RISK_NOTIFICATION_URL } from "@/lib/mtm/attendance-risk-notification"
 import { MTM_ATTENDANCE_REQUEST_NOTIFICATION_ENTITY, MTM_ATTENDANCE_REQUEST_NOTIFICATION_URL } from "@/lib/mtm/attendance-request-notification"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
@@ -24,9 +27,9 @@ async function computeEntityTypeFilter(orgId: string, role: Role) {
     const orgCtx = await getOrgModuleContext(orgId)
     const ctx = { role, ...orgCtx }
     allowed = Object.keys(ENTITY_TO_MODULE).filter((et) => canNotifyEntityType(ctx, et))
-    if (allowed.includes(MTM_ATTENDANCE_REQUEST_NOTIFICATION_ENTITY)) {
+    if ((allowed.includes(MTM_ATTENDANCE_REQUEST_NOTIFICATION_ENTITY) || allowed.includes(MTM_ATTENDANCE_RISK_NOTIFICATION_ENTITY))) {
       const feature = await prisma.mtmSetting.findUnique({ where: { organizationId_key: { organizationId: orgId, key: "attendanceEnabled" } }, select: { value: true } })
-      if (feature?.value !== true) allowed = allowed.filter((entity) => entity !== MTM_ATTENDANCE_REQUEST_NOTIFICATION_ENTITY)
+      if (feature?.value !== true) allowed = allowed.filter((entity) => entity !== MTM_ATTENDANCE_REQUEST_NOTIFICATION_ENTITY && entity !== MTM_ATTENDANCE_RISK_NOTIFICATION_ENTITY)
     }
   } catch {
     // fail-closed: keep allowed=[] so only null-entityType rows pass
@@ -56,7 +59,9 @@ const notificationEntityUrls: Record<string, string> = {
 
 /** Entities that open a list, not a card of their own: the id is not part of the address. */
 const notificationListUrls: Record<string, string> = {
+  [ATTENDANCE_REMINDER_ENTITY]: ATTENDANCE_REMINDER_URL,
   [MTM_LOCATION_REQUEST_NOTIFICATION_ENTITY]: MTM_LOCATION_REQUEST_NOTIFICATION_URL,
+  [MTM_ATTENDANCE_RISK_NOTIFICATION_ENTITY]: MTM_ATTENDANCE_RISK_NOTIFICATION_URL,
   [MTM_ATTENDANCE_REQUEST_NOTIFICATION_ENTITY]: MTM_ATTENDANCE_REQUEST_NOTIFICATION_URL,
 }
 
@@ -136,6 +141,7 @@ export const GET = withRls(async (req, { orgId, session }) => {
     // visible. Same filter on the list + both counts so they stay consistent.
     const recipientFilter = { OR: [{ userId }, { userId: "" }] }
     const entityTypeFilter = await computeEntityTypeFilter(orgId, role)
+    const reminderFilter = await attendanceReminderWebFilter(orgId, userId)
 
     // Optional entityType scope — lets a caller (e.g. the sidebar Inbox badge) narrow the unread count
     // to one kind (e.g. inbox_message). Still AND-ed with the allowlist gate below, so it can only
@@ -144,7 +150,7 @@ export const GET = withRls(async (req, { orgId, session }) => {
     const scopeFilter = entityTypeParam ? { entityType: entityTypeParam } : {}
     const baseWhere = {
       organizationId: orgId,
-      AND: [recipientFilter, entityTypeFilter, scopeFilter],
+      AND: [recipientFilter, entityTypeFilter, scopeFilter, reminderFilter],
     }
 
     const [notifications, unreadCount, total] = await Promise.all([
@@ -197,13 +203,14 @@ export const PATCH = withRls(async (req, { orgId, session }) => {
   // what the read-gate shows). + recipient scope (FIX C: IDOR).
   const recipientFilter = { OR: [{ userId }, { userId: "" }] }
   const entityTypeFilter = await computeEntityTypeFilter(orgId, role)
+  const reminderFilter = await attendanceReminderWebFilter(orgId, userId)
 
   try {
     if (markAll) {
       await prisma.notification.updateMany({
         where: {
           organizationId: orgId,
-          AND: [recipientFilter, entityTypeFilter],
+          AND: [recipientFilter, entityTypeFilter, reminderFilter],
           isRead: false,
         },
         data: { isRead: true },
@@ -217,7 +224,7 @@ export const PATCH = withRls(async (req, { orgId, session }) => {
           organizationId: orgId,
           entityType,
           entityId,
-          AND: [recipientFilter, entityTypeFilter],
+          AND: [recipientFilter, entityTypeFilter, reminderFilter],
           isRead: false,
         },
         data: { isRead: true },
@@ -227,7 +234,7 @@ export const PATCH = withRls(async (req, { orgId, session }) => {
         where: {
           id: { in: ids },
           organizationId: orgId,
-          AND: [recipientFilter, entityTypeFilter],
+          AND: [recipientFilter, entityTypeFilter, reminderFilter],
         },
         data: { isRead: true },
       })

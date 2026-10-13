@@ -1,3 +1,4 @@
+import { AttendanceQrInputSchema, type AttendanceQrInput } from "@/lib/mtm/attendance-qr-contract"
 import { createHash } from "node:crypto"
 import type { Prisma } from "@prisma/client"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
@@ -83,6 +84,7 @@ export type MtmWorkdayEventInput = {
   note: string | null
   attendance?: MtmWorkdayAttendanceEvidence
   /** Opt-in MTM endpoint evidence; never copied into the workday coordinates. */
+  attendanceQr?: AttendanceQrInput
   attendanceMark?: AttendanceMark
 }
 
@@ -558,6 +560,10 @@ export function parseMtmWorkdayEvent(
   }
 
   const attendanceReview = workforceAttendanceClaimReview(claimedAt, now)
+  const qr = value.attendanceQr === undefined ? null : AttendanceQrInputSchema.safeParse(value.attendanceQr)
+  if (qr && (!qr.success || !["START", "FINISH"].includes(action) || value.attendance != null)) {
+    return { input: null, error: "MTM QR belongs only to START/FINISH", code: "MTM_ATTENDANCE_MARK_INVALID" }
+  }
   const mark = value.attendanceMark === undefined ? null : AttendanceMarkSchema.safeParse(value.attendanceMark)
   if (mark && (!mark.success || !["START", "FINISH"].includes(action)
     || value.latitude != null || value.longitude != null || value.accuracy != null || value.attendance != null)) {
@@ -583,6 +589,7 @@ export function parseMtmWorkdayEvent(
       accuracy: value.accuracy == null ? null : value.accuracy as number,
       note: note || null,
       ...(attendance.evidence ? { attendance: attendance.evidence } : {}),
+      ...(qr?.success ? { attendanceQr: qr.data } : {}),
       ...(mark?.success ? { attendanceMark: mark.data } : {}),
     },
     error: null,
@@ -637,6 +644,7 @@ export function mtmWorkdayRequestHash(scope: WorkdayScope, input: MtmWorkdayEven
     playIntegrityFingerprint: includesPlayIntegrity ? playIntegrityFingerprint : null,
     // Absent on old packets: their exact historical digest stays unchanged.
     ...(input.attendanceMark ? { attendanceMark: input.attendanceMark } : {}),
+    ...(input.attendanceQr ? { attendanceQr: { version: 1, fingerprint: input.attendanceQr.token ? createHash("sha256").update(input.attendanceQr.token).digest("hex") : null } } : {}),
   })).digest("hex")
 }
 

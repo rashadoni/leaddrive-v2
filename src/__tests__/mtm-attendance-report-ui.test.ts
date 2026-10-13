@@ -7,6 +7,7 @@ import { NextIntlClientProvider } from "next-intl"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { MtmAttendanceReportWorkspace } from "@/components/mtm/attendance-report-workspace"
 import { buildMtmAttendanceReport, filterMtmAttendanceRows, summarizeMtmAttendanceRows, type MtmAttendanceEmployee, type MtmAttendanceWorkday } from "@/lib/mtm/attendance-report"
+import { defaultAttendanceDayKinds } from "@/lib/mtm/attendance-day-kinds"
 import { formatAttendanceDuration } from "@/lib/mtm/attendance-presentation"
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -81,6 +82,8 @@ describe("attendance report workspace on the real row calculation", () => {
   it.each(["ru", "az", "en"])("renders the real day, cards and privacy boundaries in %s", async (locale) => {
     await render(locale)
     const t = messages(locale).mtmAttendance
+    expect(container.querySelector<HTMLDetailsElement>('[data-testid="attendance-help"]')?.open).toBe(false)
+    expect(container.querySelector("summary")?.textContent).toContain(t.helpTitle)
     expect(field("from").value).toBe(TODAY)
     expect(field("to").value).toBe(TODAY)
     expect(dayRows()).toHaveLength(4)
@@ -97,6 +100,33 @@ describe("attendance report workspace on the real row calculation", () => {
     expect(container.querySelector('[data-testid="attendance-report-totals"]')?.textContent).toContain(t.reportTotalsTitle)
     for (const name of ["from", "to", "team", "employee"]) expect(container.querySelector(`label[for="attendance-report-${name}"]`)?.textContent).toBeTruthy()
     capture("day", locale)
+  })
+
+  it.each(["ru", "az", "en"])("renders overtime with explicit unknown hours and identical export configuration in %s", async locale => {
+    fetchMock.mockImplementation(async url => {
+      const parsed = new URL(String(url), "https://attendance.test")
+      if (parsed.pathname.endsWith("/export")) return response(null, 409, "MTM_ATTENDANCE_EXPORT_CHANGED")
+      if (!parsed.pathname.endsWith("/report")) return defaultFetch(url)
+      const finished = { ...workdays[0], startedAt: at("09:00"), completedAt: at("20:15"), events: [{ type: "START", occurredAt: at("09:00") }, privatePause, { type: "RESUME", occurredAt: at("14:00") }, { type: "FINISH", occurredAt: at("20:15") }] }
+      const data = buildMtmAttendanceReport({ employees, from: TODAY, to: TODAY, now: at("21:00"), rules: [], calendar: [], workdays: [finished, ...workdays.slice(1)],
+        approvedRequests: [{ id: "demo-overtime-permission", agentId: "a", startDate: TODAY, endDate: TODAY, decidedAt: at("08:00"), details: { kind: "OVERTIME", unit: "HOURS", startTime: "18:00", endTime: "19:00", timezone: "Asia/Baku", dayKind: defaultAttendanceDayKinds(() => ({ ru: "Демо", az: "Demo", en: "Demo" })).find(kind => kind.key === "OVERTIME")! } }] })
+      data.rows[0] = { ...data.rows[0], overtimeThresholdMinutes: 15 }
+      return response({ ...data, snapshot: { id: "a".repeat(64), asOf: data.asOf, query: { from: TODAY, to: TODAY, form: "ALL" } } })
+    })
+    await render(locale)
+    const t = messages(locale).mtmAttendance
+    await click(t.overtimeTitle)
+    const cells = container.querySelector('[data-testid="attendance-custom-row"]')!.textContent
+    expect(cells).toContain("10:15"); expect(cells).toContain("2:15"); expect(cells).toContain("0:15")
+    expect(container.textContent).toContain(t.overtimeUnknown)
+    expect(container.textContent).toContain(t.overtimePartial)
+    expect(container.querySelectorAll('[data-testid="attendance-overtime-cards"] dl')).toHaveLength(3)
+    expect(container.textContent).not.toMatch(/PRIVATE_|40\.987654|49\.123456|mtmAttendance\./)
+    expect(button(t.exportExcel).disabled).toBe(false)
+    capture("overtime", locale)
+    await click(t.exportExcel)
+    const request = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/export"))!
+    expect(JSON.parse(String(request[1]?.body))).toMatchObject({ format: "xlsx", locale, config: { mode: "OVERTIME", filters: { form: "ALL", from: TODAY, to: TODAY }, columns: ["employee", "date", "planned", "worked", "excess", "threshold", "approvedOvertime", "overtimeState"] } })
   })
 
   it("uses the same filtered rows for cards and totals without shrinking the directory", async () => {
@@ -213,6 +243,7 @@ describe("attendance report workspace on the real row calculation", () => {
     await render()
     fetchMock.mockResolvedValueOnce(response(null, 403, "MTM_ATTENDANCE_FORBIDDEN"))
     await submit()
+    expect(container.querySelector('[data-testid="attendance-help"]')).toBeNull()
     expect(dayRows()).toHaveLength(0)
     expect(container.textContent).not.toContain("Aysel Aliyeva")
     expect(field("employee").querySelectorAll("option")).toHaveLength(1)
@@ -267,4 +298,23 @@ describe("attendance report workspace on the real row calculation", () => {
     expect(formatAttendanceDuration(27540)).toBe("7:39")
     expect(formatAttendanceDuration(null)).toBe("—")
   })
+  it("renders both source shifts in one monthly cell and totals the accounting projection", async () => {
+    fetchMock.mockImplementation(async url => {
+      const parsed = new URL(String(url), "https://attendance.test")
+      if (!parsed.pathname.endsWith("/report")) return defaultFetch(url)
+      const base = fixture(parsed.searchParams.get("from")!, parsed.searchParams.get("to")!, [employees[0]])
+      const row = base.rows[0]
+      return response({ ...base, accountingRows: [
+        { ...row, date: "2026-10-01", sourceDate: "2026-09-30", kind: "WORKED", workedSeconds: 25200 },
+        { ...row, date: "2026-10-01", sourceDate: "2026-10-01", kind: "WORKED", workedSeconds: 3600 },
+      ] })
+    })
+    await render(); await click(messages("en").mtmAttendance.reportMonth)
+    const person = container.querySelector('[data-testid="attendance-month-person"]')!
+    const firstDay = person.querySelector("td")!
+    expect(firstDay.textContent).toContain("7:00"); expect(firstDay.textContent).toContain("1:00"); expect(firstDay.textContent).toContain("shift 9/30/26")
+    expect(person.textContent).toContain("8:00")
+    expect(container.querySelector('[data-testid="attendance-report-totals"]')?.textContent).toContain("8:00")
+  })
+
 })

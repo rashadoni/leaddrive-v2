@@ -1,0 +1,20 @@
+[
+  {
+    "prefix": "manager",
+    "width": 1440,
+    "height": 1220,
+    "overflow": false
+  },
+  {
+    "prefix": "manager",
+    "width": 390,
+    "height": 1959,
+    "overflow": false
+  },
+  {
+    "prefix": "mobile",
+    "width": 390,
+    "height": 841,
+    "overflow": false
+  }
+]

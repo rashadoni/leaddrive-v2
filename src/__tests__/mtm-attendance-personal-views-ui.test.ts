@@ -136,6 +136,19 @@ describe("personal attendance forms with real report rows", () => {
     expect(requestId).toMatch(/^[0-9a-f-]{36}$/)
   })
 
+  it("saves and reopens an overtime form without changing its columns or complete-data filter", async () => {
+    await render()
+    await edit("view-mode", "OVERTIME")
+    await edit("view-name", "Overtime review")
+    await submit()
+    expect(savedViews[0].config).toMatchObject({ mode: "OVERTIME", columns: [...DEFAULT_ATTENDANCE_VIEW_COLUMNS.OVERTIME], filters: { from: TODAY, to: TODAY, form: "ALL" } })
+    expect(customRows()).toHaveLength(1)
+    expect(customRows()[0]).toContain("Threshold not set")
+    const before = { rows: customRows(), totals: totals(), headers: headers() }
+    await act(async () => root.render(null)); await render(); await click("Open")
+    expect({ rows: customRows(), totals: totals(), headers: headers() }).toEqual(before)
+  })
+
   it("supports employee-month and event rows and hides totals when unchecked", async () => {
     await render()
     await edit("view-mode", "MONTH")

@@ -24,6 +24,23 @@ const config: AttendanceViewConfig = { version: 1, mode: "BRANCH", columns: [...
 const t = (key: string, values?: Record<string, string | number>) => values ? `${key} ${JSON.stringify(values)}` : key
 
 describe("attendance location report preserves evidence meaning", () => {
+  it("does not count an inside GPS mark as a confirmed branch when QR was required but missing", () => {
+    const marks = attendanceReportMarks(row, new Map([["start", { ...evidence("start"), qrState: "NOT_PROVIDED" }]]))
+    expect(marks[0]).toMatchObject({ state: "INSIDE", qr: { state: "NOT_PROVIDED", branch: null } })
+    const day = { ...row, locationMarks: marks }
+    expect(attendanceEndpointBranch(day, "START")).toBe("—")
+    expect(summarizeAttendanceBranches([day]).rows.some(group => group.branch)).toBe(false)
+    expect(buildAttendanceTable({ ...base, rows: [day] }, config, "en", t).rows.map(item => item.cells[0])).toContain("qrReportUnconfirmed")
+  })
+  it("reports a verified historical QR branch independently of absent GPS and hides private break proof", () => {
+    const value = { ...evidence("start", "NO_CONSENT"), qrState: "VERIFIED", qrBranchId: "qr-branch", qrBranchRevisionId: "qr-version", qrBranchName: "Fictional QR branch" }
+    const marks = attendanceReportMarks(row, new Map([["start", value]])), day = { ...row, locationMarks: marks }
+    expect(marks[0]).toMatchObject({ branch: null, qr: { branch: { name: value.qrBranchName, revisionId: "qr-version" } } })
+    expect(attendanceEndpointBranch(day, "START")).toBe(value.qrBranchName)
+    expect(summarizeAttendanceBranches([day]).rows[0]).toMatchObject({ branch: { name: value.qrBranchName }, arrivals: 1 })
+    expect(attendanceEndpointBranch({ ...day, startedAt: at("06:00") }, "START")).toBe("—")
+    expect(attendanceReportMarks(row, new Map([["start", { ...value, locationState: "BREAK_PRIVACY" }]]))[0]).not.toHaveProperty("qr")
+  })
   it("excludes pause evidence and every private field, preserving the historical revision", () => {
     const injected = { ...evidence("start"), latitude: 40.987654, longitude: 49.123456, installationId: "PRIVATE_DEVICE", note: "PRIVATE_BREAK" }
     const marks = attendanceReportMarks(row, new Map([["start", injected], ["pause", { ...injected, eventId: "pause", action: "PAUSE" }], ["finish", evidence("finish", "OUTSIDE")]]))

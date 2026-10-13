@@ -29,6 +29,9 @@ import { checkRateLimit } from "@/lib/rate-limit"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { returnOwnMtmWorkday } from "@/lib/mtm/workday-return"
 import { isMtmApiPath } from "@/lib/mtm/mobile-api-path"
+import { prisma } from "@/lib/prisma"
+import { officeAttendanceMobilePath } from "@/lib/mtm/attendance-employee-contract"
+import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
 
 const ORG = "org-1"
 const AGENT = "agent-1"
@@ -60,6 +63,34 @@ beforeEach(() => {
 })
 
 describe("POST /api/v2/mtm/mobile/route-field/workday-return", () => {
+  it("allows only the exact office return route and rechecks enrollment for that own action", async () => {
+    const path="/api/v2/mtm/mobile/route-field/workday-return"
+    expect(officeAttendanceMobilePath("POST",path)).toBe(true)
+    expect(officeAttendanceMobilePath("GET",path)).toBe(false)
+    expect(officeAttendanceMobilePath("POST",`${path}/other`)).toBe(false)
+    signIn({role:"EMPLOYEE"})
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{key:"attendanceEnabled",value:true}] as never)
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({id:AGENT,role:"EMPLOYEE",attendanceParticipant:true} as never)
+    expect(await ask()).toMatchObject({status:200})
+    expect(returnOwnMtmWorkday).toHaveBeenCalledWith(expect.objectContaining({agentId:AGENT,attendanceRole:"EMPLOYEE"}))
+  })
+
+  it.each(["feature","enrollment","capability"])("does not return an office day after %s is withdrawn", async reason=>{
+    signIn({role:"EMPLOYEE",...(reason==="capability"?{tenantCapabilities:{routeField:false}}:{})})
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{key:"attendanceEnabled",value:reason!=="feature"}] as never)
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({id:AGENT,role:"EMPLOYEE",attendanceParticipant:reason!=="enrollment"} as never)
+    expect(await ask()).toMatchObject({status:403})
+    expect(returnOwnMtmWorkday).not.toHaveBeenCalled()
+  })
+
+  it("returns a fresh transaction refusal without recording a successful return audit",async()=>{
+    signIn({role:"EMPLOYEE"})
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{key:"attendanceEnabled",value:true}] as never)
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({id:AGENT,role:"EMPLOYEE",attendanceParticipant:true} as never)
+    vi.mocked(returnOwnMtmWorkday).mockRejectedValue(new AttendanceRequestError("MTM_ATTENDANCE_SELF_REQUIRED",403))
+    expect(await ask()).toMatchObject({status:403})
+    expect(writeMtmAudit).not.toHaveBeenCalled()
+  })
   it("is a path the edge lets the app reach — and not under the prefix of the withdrawn HRM", () => {
     expect(isMtmApiPath("/api/v2/mtm/mobile/route-field/workday-return")).toBe(true)
     expect(isMtmApiPath("/api/v2/mtm/mobile/route-field/workday-returns")).toBe(false)
@@ -70,8 +101,14 @@ describe("POST /api/v2/mtm/mobile/route-field/workday-return", () => {
     const answer = await ask()
     expect(answer).toMatchObject({ status: 200, cache: "no-store", body: { success: true, idempotent: false, data: { workday: WORKDAY } } })
     // The employee is the authenticated one; the body cannot name another.
-    expect(returnOwnMtmWorkday).toHaveBeenCalledWith({ organizationId: ORG, agentId: AGENT, workdayId: "wd-1", operationId: "tap-00000001" })
+    expect(returnOwnMtmWorkday).toHaveBeenCalledWith({ organizationId: ORG, agentId: AGENT, workdayId: "wd-1", operationId: "tap-00000001", installationId: null })
     expect(writeMtmAudit).toHaveBeenCalledWith(expect.objectContaining({ organizationId: ORG, agentId: AGENT, action: "WORKDAY_RETURN", entity: "workday", entityId: "wd-1" }))
+  })
+
+  it.each(["MTM_ATTENDANCE_INSTALLATION_APP_REQUIRED", "MTM_ATTENDANCE_INSTALLATION_APPROVAL_REQUIRED"])("returns an uncommitted installation refusal: %s", async code => {
+    vi.mocked(returnOwnMtmWorkday).mockRejectedValue(new AttendanceRequestError(code, 422))
+    expect(await ask()).toMatchObject({ status: 409, body: { code, data: { committed: false } } })
+    expect(writeMtmAudit).not.toHaveBeenCalled()
   })
 
   it("acknowledges a repeated sending without a second line in the audit journal", async () => {

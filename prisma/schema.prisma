@@ -16,9 +16,17 @@ datasource db {
 // ═══════════════════════════════════════════════════
 
 model Organization {
+  attendanceReminderNotices MtmAttendanceReminderNotice[]
+  attendanceQrEvidence MtmAttendanceQrEvidence[]
+  attendanceInstallationRequests MtmAttendanceInstallationRequest[]
+  attendanceInstallationDecisions MtmAttendanceInstallationDecision[]
+  attendanceInstallationRevocations MtmAttendanceInstallationRevocation[]
+  mtmAttendanceRiskDecisions MtmAttendanceRiskDecision[]
   mtmAttendanceLocationPolicies MtmAttendanceLocationPolicy[]
+  mtmAttendanceStreamIntegrity MtmAttendanceStreamIntegrity[]
   mtmAttendanceLocationConsents MtmAttendanceLocationConsent[]
   mtmAttendanceMarkEvidence MtmAttendanceMarkEvidence[]
+  mtmAttendanceRiskCases MtmAttendanceRiskCase[]
 
   id                  String    @id @default(cuid())
   name                String
@@ -220,6 +228,13 @@ model Organization {
   workforcePolicySnapshots            WorkforcePolicySnapshot[]
   workforceShiftSnapshots             WorkforceShiftSnapshot[]
   workforceWorkdayScheduleSnapshots   WorkforceWorkdayScheduleSnapshot[]
+  attendanceMonthCloses MtmAttendanceMonthClose[]
+  attendanceMonthMembers MtmAttendanceMonthMember[]
+  attendanceMonthDays MtmAttendanceMonthDay[]
+  attendanceShiftPlans MtmAttendanceShiftPlan[]
+  attendanceShiftMembers MtmAttendanceShiftMember[]
+  attendanceLeavePolicies MtmAttendanceLeavePolicy[]
+  attendanceLeaveProfiles MtmAttendanceLeaveProfile[]
   mtmAttendanceBranches MtmAttendanceBranch[]
   mtmAttendanceBranchRevisions MtmAttendanceBranchRevision[]
   mtmAttendancePrimaryBranchRevisions MtmAttendancePrimaryBranchRevision[]
@@ -618,6 +633,10 @@ model PlanRequest {
 }
 
 model User {
+  attendanceReminderNotices MtmAttendanceReminderNotice[]
+  attendanceInstallationDecisions MtmAttendanceInstallationDecision[]
+  attendanceInstallationRevocations MtmAttendanceInstallationRevocation[]
+  mtmAttendanceRiskDecisions MtmAttendanceRiskDecision[]
   mtmAttendanceLocationPolicies MtmAttendanceLocationPolicy[]
 
   id                String       @id @default(cuid())
@@ -712,6 +731,10 @@ model User {
   workforceShiftDefaultOperationsPublished WorkforceShiftDefaultOperation[] @relation("WorkforceShiftDefaultOperationPublishedBy")
   workforceShiftTeamDefaultAssignmentsAssigned WorkforceShiftTeamDefaultAssignment[] @relation("WorkforceShiftTeamDefaultAssignmentAssignedBy")
   workforceShiftTeamDefaultOperationsPublished WorkforceShiftTeamDefaultOperation[] @relation("WorkforceShiftTeamDefaultOperationPublishedBy")
+  attendanceMonthClosesCreated MtmAttendanceMonthClose[]
+  attendanceShiftPlansCreated MtmAttendanceShiftPlan[]
+  attendanceLeavePoliciesCreated MtmAttendanceLeavePolicy[]
+  attendanceLeaveProfilesCreated MtmAttendanceLeaveProfile[]
   mtmAttendanceBranchRevisionsCreated MtmAttendanceBranchRevision[]
   mtmAttendancePrimaryBranchRevisionsCreated MtmAttendancePrimaryBranchRevision[]
   workforceSitesCreated               WorkforceSite[]                @relation("WorkforceSiteCreatedBy")
@@ -5752,8 +5775,17 @@ model MtmTeam {
 
 // MTM Agent — field agents linked to CRM users
 model MtmAgent {
+  attendanceMonthMemberships MtmAttendanceMonthMember[]
+  attendanceReminderSubjects MtmAttendanceReminderNotice[] @relation("AttendanceReminderSubject")
+  attendanceReminderRecipients MtmAttendanceReminderNotice[] @relation("AttendanceReminderRecipient")
+  attendanceShiftMembers MtmAttendanceShiftMember[]
+  attendanceLeaveProfiles MtmAttendanceLeaveProfile[]
+  attendanceQrEvidence MtmAttendanceQrEvidence[]
+  attendanceInstallationRequests MtmAttendanceInstallationRequest[]
+  mtmAttendanceStreamIntegrity MtmAttendanceStreamIntegrity[]
   mtmAttendanceLocationConsents MtmAttendanceLocationConsent[]
   mtmAttendanceMarkEvidence MtmAttendanceMarkEvidence[]
+  mtmAttendanceRiskCases MtmAttendanceRiskCase[]
 
   id             String         @id @default(cuid())
   organizationId String
@@ -7703,7 +7735,9 @@ model MtmAgentWorkday {
 }
 
 model MtmAgentWorkdayEvent {
+  attendanceQrEvidence MtmAttendanceQrEvidence?
   mtmAttendanceMarkEvidence MtmAttendanceMarkEvidence?
+  mtmAttendanceRiskCases MtmAttendanceRiskCase[]
 
   id             String              @id @default(cuid())
   organizationId String
@@ -8286,6 +8320,7 @@ model MtmAttendanceBranch {
 
 /// Never updated, including name/address/active. Evidence freezes revisionId.
 model MtmAttendanceBranchRevision {
+  attendanceQrEvidence MtmAttendanceQrEvidence[]
   markEvidence MtmAttendanceMarkEvidence[]
 
   id String @id @default(uuid())
@@ -9519,6 +9554,7 @@ model MtmAlert {
 
 // MTM Agent Location — GPS tracking data
 model MtmAgentLocation {
+  attendanceIntegrity MtmAttendanceStreamIntegrity?
   id               String           @id @default(cuid())
   organizationId   String
   organization     Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -22161,6 +22197,7 @@ model MtmAttendanceLocationConsent {
   accepted Boolean
   createdAt DateTime @default(now())
   evidence MtmAttendanceMarkEvidence[]
+  streamIntegrity MtmAttendanceStreamIntegrity[]
   @@unique([organizationId, id])
   @@unique([organizationId, agentId, version])
   @@unique([organizationId, agentId, requestId])
@@ -22200,4 +22237,283 @@ model MtmAttendanceMarkEvidence {
   @@index([organizationId, installationId, claimedAt])
   @@index([organizationId, agentId, claimedAt])
   @@map("mtm_attendance_mark_evidence")
+}
+
+/// MTM review hints only. They never change a workday or Workforce approval.
+model MtmAttendanceRiskCase {
+  id String @id @default(uuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentId String
+  agent MtmAgent @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  eventId String
+  event MtmAgentWorkdayEvent @relation(fields: [organizationId, eventId], references: [organizationId, id], onDelete: Restrict)
+  kind String @db.VarChar(32)
+  workDate DateTime @db.Date
+  timezone String @db.VarChar(64)
+  detectorVersion String @db.VarChar(64)
+  policySnapshot Json
+  details Json
+  createdAt DateTime @default(now())
+  decisions MtmAttendanceRiskDecision[]
+  @@unique([organizationId, id])
+  @@unique([organizationId, eventId, kind])
+  @@index([organizationId, agentId, workDate])
+  @@index([organizationId, workDate, kind])
+  @@map("mtm_attendance_risk_cases")
+}
+
+/// One immutable dismissal with a reason. The source hint is retained forever.
+model MtmAttendanceRiskDecision {
+  id String @id @default(uuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  caseId String
+  riskCase MtmAttendanceRiskCase @relation(fields: [organizationId, caseId], references: [organizationId, id], onDelete: Restrict)
+  requestId String
+  requestHash String @db.VarChar(64)
+  actorUserId String
+  actorUser User @relation(fields: [organizationId, actorUserId], references: [organizationId, id], onDelete: Restrict)
+  reason String @db.VarChar(1000)
+  createdAt DateTime @default(now())
+  @@unique([organizationId, caseId])
+  @@unique([organizationId, requestId])
+  @@map("mtm_attendance_risk_decisions")
+}
+
+/// Optional, consent-bound background signal. No coordinates or installation IDs.
+/// Its lifetime follows the raw location (including normal GPS retention).
+model MtmAttendanceStreamIntegrity {
+  locationId String @id
+  location MtmAgentLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentId String
+  agent MtmAgent @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  consentId String
+  consent MtmAttendanceLocationConsent @relation(fields: [organizationId, consentId], references: [organizationId, id], onDelete: Restrict)
+  isMock Boolean
+  createdAt DateTime @default(now())
+  @@index([organizationId, agentId, createdAt])
+  @@map("mtm_attendance_stream_integrity")
+}
+
+model MtmAttendanceInstallationRequest {
+  id String @id @default(uuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentId String
+  agent MtmAgent @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  installationId String @db.VarChar(128)
+  requestId String
+  requestHash String @db.VarChar(64)
+  submittedAt DateTime @default(now()) @db.Timestamp(3)
+  decisions MtmAttendanceInstallationDecision[]
+  @@unique([organizationId, id])
+  @@unique([organizationId, requestId])
+  @@index([organizationId, agentId, installationId, submittedAt])
+  @@index([organizationId, submittedAt, id])
+  @@map("mtm_attendance_installation_requests")
+}
+model MtmAttendanceInstallationDecision {
+  id String @id @default(uuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  installationRequestId String
+  installationRequest MtmAttendanceInstallationRequest @relation(fields: [organizationId, installationRequestId], references: [organizationId, id], onDelete: Restrict)
+  action String @db.VarChar(7)
+  requestId String
+  requestHash String @db.VarChar(64)
+  actorUserId String
+  actor User @relation(fields: [organizationId, actorUserId], references: [organizationId, id], onDelete: Restrict)
+  reason String @db.VarChar(1000)
+  createdAt DateTime @default(now()) @db.Timestamp(3)
+  revocations MtmAttendanceInstallationRevocation[]
+  @@unique([organizationId, id])
+  @@unique([organizationId, installationRequestId])
+  @@unique([organizationId, requestId])
+  @@map("mtm_attendance_installation_decisions")
+}
+model MtmAttendanceInstallationRevocation {
+  id String @id @default(uuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  decisionId String
+  decision MtmAttendanceInstallationDecision @relation(fields: [organizationId, decisionId], references: [organizationId, id], onDelete: Restrict)
+  requestId String
+  requestHash String @db.VarChar(64)
+  actorUserId String
+  actor User @relation(fields: [organizationId, actorUserId], references: [organizationId, id], onDelete: Restrict)
+  reason String @db.VarChar(1000)
+  createdAt DateTime @default(now()) @db.Timestamp(3)
+  @@unique([organizationId, decisionId])
+  @@unique([organizationId, requestId])
+  @@map("mtm_attendance_installation_revocations")
+}
+
+/// Immutable QR outcome, independent of precise location and never raw tokens.
+model MtmAttendanceQrEvidence {
+  id String @id @default(uuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentId String
+  agent MtmAgent @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  eventId String
+  event MtmAgentWorkdayEvent @relation(fields: [organizationId, eventId], references: [organizationId, id], onDelete: Restrict)
+  action String @db.VarChar(6)
+  state String @db.VarChar(16)
+  branchRevisionId String?
+  branchRevision MtmAttendanceBranchRevision? @relation(fields: [organizationId, branchRevisionId], references: [organizationId, id], onDelete: Restrict)
+  nonceFingerprint String? @db.VarChar(64)
+  createdAt DateTime @default(now())
+  @@unique([organizationId, eventId])
+  @@unique([organizationId, agentId, nonceFingerprint, action])
+  @@index([organizationId, agentId, createdAt])
+  @@map("mtm_attendance_qr_evidence")
+}
+
+model MtmAttendanceLeavePolicy {
+  id String @id
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  year Int
+  version Int
+  previousId String?
+  requestId String
+  requestHash String @db.VarChar(64)
+  value Json
+  reason String @db.VarChar(1000)
+  createdBy String
+  author User @relation(fields: [organizationId, createdBy], references: [organizationId, id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  @@unique([organizationId, id])
+  @@unique([organizationId, requestId])
+  @@unique([organizationId, year, version])
+  @@map("mtm_attendance_leave_policies")
+}
+
+model MtmAttendanceLeaveProfile {
+  id String @id
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentId String
+  agent MtmAgent @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  year Int
+  version Int
+  previousId String?
+  requestId String
+  requestHash String @db.VarChar(64)
+  value Json
+  reason String @db.VarChar(1000)
+  createdBy String
+  author User @relation(fields: [organizationId, createdBy], references: [organizationId, id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  @@unique([organizationId, id])
+  @@unique([organizationId, requestId])
+  @@unique([organizationId, agentId, year, version])
+  @@map("mtm_attendance_leave_profiles")
+}
+
+
+model MtmAttendanceMonthClose {
+  id String @id
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  month DateTime @db.Date
+  requestId String
+  requestHash String @db.VarChar(64)
+  payloadHash String @db.VarChar(64)
+  payload Json
+  createdBy String
+  author User @relation(fields: [organizationId, createdBy], references: [organizationId, id], onDelete: Restrict)
+  createdByName String?
+  createdAt DateTime @default(now())
+  members MtmAttendanceMonthMember[]
+  @@unique([organizationId, id])
+  @@unique([organizationId, requestId])
+  @@index([organizationId, month, createdAt, id], map: "mtm_month_closes_period")
+  @@map("mtm_attendance_month_closes")
+}
+model MtmAttendanceMonthMember {
+  id String @id
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  closeId String
+  close MtmAttendanceMonthClose @relation(fields: [organizationId, closeId], references: [organizationId, id], onDelete: Cascade)
+  agentId String
+  agent MtmAgent @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  month DateTime @db.Date
+  days MtmAttendanceMonthDay[]
+  @@unique([organizationId, closeId, agentId])
+  @@unique([organizationId, agentId, month])
+  @@map("mtm_attendance_month_members")
+}
+model MtmAttendanceMonthDay {
+  id String @id
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  closeId String
+  agentId String
+  member MtmAttendanceMonthMember @relation(fields: [organizationId, closeId, agentId], references: [organizationId, closeId, agentId], onDelete: Cascade)
+  sourceDate DateTime @db.Date
+  @@unique([organizationId, agentId, sourceDate])
+  @@index([organizationId, closeId], map: "mtm_month_days_snapshot")
+  @@map("mtm_attendance_month_days")
+}
+// Future, frozen-roster schedules. Revisions never rewrite attendance facts.
+model MtmAttendanceShiftPlan {
+  id String @id
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  version Int
+  previousId String?
+  requestId String
+  requestHash String @db.VarChar(64)
+  teamId String?
+  teamName String?
+  value Json
+  reason String @db.VarChar(1000)
+  createdBy String
+  author User @relation(fields: [organizationId, createdBy], references: [organizationId, id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  members MtmAttendanceShiftMember[]
+  @@unique([organizationId, id])
+  @@unique([organizationId, version])
+  @@unique([organizationId, requestId])
+  @@map("mtm_attendance_shift_plans")
+}
+model MtmAttendanceShiftMember {
+  id String @id
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  planId String
+  plan MtmAttendanceShiftPlan @relation(fields: [organizationId, planId], references: [organizationId, id], onDelete: Restrict)
+  agentId String
+  agent MtmAgent @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  @@unique([organizationId, planId, agentId])
+  @@index([organizationId, agentId])
+  @@map("mtm_attendance_shift_members")
+}
+
+
+model MtmAttendanceReminderNotice {
+  id String @id
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentId String
+  agent MtmAgent @relation("AttendanceReminderSubject", fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  workDate DateTime @db.Date
+  kind String @db.VarChar(20)
+  recipientAgentId String?
+  recipientAgent MtmAgent? @relation("AttendanceReminderRecipient", fields: [organizationId, recipientAgentId], references: [organizationId, id], onDelete: Restrict)
+  recipientUserId String?
+  recipientUser User? @relation(fields: [organizationId, recipientUserId], references: [organizationId, id], onDelete: Restrict)
+  observedAt DateTime @db.Timestamp(3)
+  ruleId String
+  createdAt DateTime @default(now()) @db.Timestamp(3)
+  @@unique([organizationId, agentId, workDate, kind, recipientAgentId], map: "mtm_reminder_employee_dedupe")
+  @@unique([organizationId, agentId, workDate, kind, recipientUserId], map: "mtm_reminder_manager_dedupe")
+  @@index([organizationId, recipientUserId, workDate], map: "mtm_reminder_user_date")
+  @@index([organizationId, recipientAgentId, workDate], map: "mtm_reminder_agent_date")
+  @@map("mtm_attendance_reminder_notices")
 }

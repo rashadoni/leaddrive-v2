@@ -9,9 +9,11 @@ import { Input } from "@/components/ui/input"
 import { HomeCard, HomeKpi, HomePill, type HomeTone } from "@/components/mtm/home-parts"
 import { addDateKeyDays, isDateKey } from "@/lib/mtm/mobile-week"
 import { filterMtmAttendanceRows, summarizeMtmAttendanceRows, type MtmAttendanceReport, type MtmAttendanceReportRow } from "@/lib/mtm/attendance-report"
-import { formatAttendanceDuration, attendanceStatusText, attendanceMonthCell, attendanceCatalogueLegend, attendanceCorrectionLines, attendanceApprovedLines, attendanceJournalEntries } from "@/lib/mtm/attendance-presentation"
+import { formatAttendanceDuration, attendanceStatusText, attendanceMonthCellGroup, attendanceCatalogueLegend, attendanceCorrectionLines, attendanceApprovedLines, attendanceJournalEntries } from "@/lib/mtm/attendance-presentation"
 import { DEFAULT_ATTENDANCE_VIEW_COLUMNS, type AttendanceViewConfig } from "@/lib/mtm/attendance-view-contract"
 import { buildAttendanceTable } from "@/lib/mtm/attendance-table"
+import { attendanceOvertimeRows } from "@/lib/mtm/attendance-overtime"
+import { MtmAttendanceHelp } from "@/components/mtm/attendance-help"
 import { MtmAttendancePersonalViews } from "@/components/mtm/attendance-personal-views"
 import { MtmAttendanceExportButtons } from "@/components/mtm/attendance-export-buttons"
 import { MtmAttendanceDeliveries } from "@/components/mtm/attendance-deliveries"
@@ -20,11 +22,11 @@ import { MtmAttendanceDayKinds } from "@/components/mtm/attendance-day-kinds"
 import { MtmAttendanceRequestLimits } from "@/components/mtm/attendance-request-limits"
 import type { AttendanceReportSnapshot } from "@/lib/mtm/attendance-query"
 
-type Form = "DAY" | "MONTH" | "LATE_EARLY" | "ABSENCES" | "JOURNAL" | "BRANCH"
+type Form = "DAY" | "MONTH" | "LATE_EARLY" | "ABSENCES" | "JOURNAL" | "BRANCH" | "OVERTIME"
 type Range = { from: string; to: string }
 type ReportData = MtmAttendanceReport & { snapshot?: AttendanceReportSnapshot }
-const FORMS: Form[] = ["DAY", "MONTH", "LATE_EARLY", "ABSENCES", "JOURNAL"]
-const FORM_MESSAGES: Record<Form, string> = { DAY: "reportDay", MONTH: "reportMonth", LATE_EARLY: "reportLateEarly", ABSENCES: "reportAbsences", JOURNAL: "reportJournal", BRANCH: "branchReportTitle" }
+const FORMS: Form[] = ["DAY", "MONTH", "LATE_EARLY", "ABSENCES", "OVERTIME", "JOURNAL"]
+const FORM_MESSAGES: Record<Form, string> = { DAY: "reportDay", MONTH: "reportMonth", LATE_EARLY: "reportLateEarly", ABSENCES: "reportAbsences", JOURNAL: "reportJournal", BRANCH: "branchReportTitle", OVERTIME: "overtimeTitle" }
 const REASON_MESSAGES: Record<string, string> = { DUPLICATE_WORKDAY: "reportReasonDuplicate", SCHEDULE_INVALID: "reportReasonSchedule", TIMESTAMP_INVALID: "reportReasonTimestamp",
   EVENT_TYPE_INVALID: "reportReasonEvent", JOURNAL_INCOMPLETE: "reportReasonJournal", PAUSE_TOTAL_MISMATCH: "reportReasonPause", WORKDAY_INCONSISTENT: "reportReasonFacts" }
 const SELECT_CLASS = "min-h-11 w-full rounded-lg border border-zinc-200 bg-card px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:border-zinc-700"
@@ -123,9 +125,9 @@ export function MtmAttendanceReportWorkspace() {
 
   const currentConfig = useMemo<AttendanceViewConfig | null>(() => {
     if (!report) return null
-    const mode = customView?.config.mode ?? (form === "MONTH" ? "MONTH" : form === "JOURNAL" ? "JOURNAL" : form === "BRANCH" ? "BRANCH" : "DAY")
+    const mode = customView?.config.mode ?? (form === "MONTH" ? "MONTH" : form === "JOURNAL" ? "JOURNAL" : form === "BRANCH" ? "BRANCH" : form === "OVERTIME" ? "OVERTIME" : "DAY")
     return { version: 1, mode, columns: customView?.config.columns ?? [...DEFAULT_ATTENDANCE_VIEW_COLUMNS[mode]], showTotals: customView?.config.showTotals ?? true,
-      filters: { from: report.from, to: report.to, form: customView?.config.filters.form ?? (form === "DAY" || form === "MONTH" || form === "BRANCH" ? "ALL" : form),
+      filters: { from: report.from, to: report.to, form: customView?.config.filters.form ?? (form === "DAY" || form === "MONTH" || form === "BRANCH" || form === "OVERTIME" ? "ALL" : form),
         ...(teamId ? { teamId } : {}), ...(employeeId ? { employeeId } : {}) } }
   }, [report, customView, form, teamId, employeeId])
 
@@ -138,20 +140,23 @@ export function MtmAttendanceReportWorkspace() {
     }
     return { employees: [...employees.values()], teams: [...teams].map(([id, name]) => ({ id, name })) }
   }, [report, t])
-  const rows = useMemo(() => filterMtmAttendanceRows(report?.rows ?? [], { teamId: teamId || undefined, employeeId: employeeId || undefined,
-    form: customView?.config.filters.form ?? (form === "DAY" || form === "MONTH" || form === "BRANCH" ? "ALL" : form) }), [report, teamId, employeeId, form, customView])
+  const rows = useMemo(() => {
+    const filtered = filterMtmAttendanceRows((form === "MONTH" ? report?.accountingRows ?? report?.rows : report?.rows) ?? [], { teamId: teamId || undefined, employeeId: employeeId || undefined,
+      form: customView?.config.filters.form ?? (form === "DAY" || form === "MONTH" || form === "BRANCH" || form === "OVERTIME" ? "ALL" : form) })
+    return form === "OVERTIME" ? attendanceOvertimeRows(filtered).map(item => item.row) : filtered
+  }, [report, teamId, employeeId, form, customView])
   const totals = useMemo(() => summarizeMtmAttendanceRows(rows), [rows])
-  const customTable = useMemo(() => report && customView && currentConfig ? buildAttendanceTable(report, currentConfig, locale, t) : null, [report, customView, currentConfig, locale, t])
+  const customTable = useMemo(() => report && (customView || form === "OVERTIME") && currentConfig ? buildAttendanceTable(report, currentConfig, locale, t) : null, [report, customView, form, currentConfig, locale, t])
   const scopeUnavailable = Boolean(report && (teamId || employeeId) && !report.rows.some((row) => (!teamId || row.teamId === teamId) && (!employeeId || row.employeeId === employeeId)))
   const journal = useMemo(() => form === "JOURNAL" ? rows.flatMap((row) => attendanceJournalEntries(row, locale, t).map((entry) => ({ row, entry }))) : [], [rows, form, locale, t])
   const monthEmployees = useMemo(() => {
     if (form !== "MONTH") return []
-    const people = new Map<string, { name: string; team: string | null; rows: MtmAttendanceReportRow[]; dates: Map<string, MtmAttendanceReportRow> }>()
+    const people = new Map<string, { name: string; team: string | null; rows: MtmAttendanceReportRow[]; dates: Map<string, MtmAttendanceReportRow[]> }>()
     for (const row of rows) {
       if (!people.has(row.employeeId)) people.set(row.employeeId, { name: row.employeeName, team: row.teamName, rows: [], dates: new Map() })
       const employee = people.get(row.employeeId)!
       employee.rows.push(row)
-      employee.dates.set(row.date, row)
+      employee.dates.set(row.date, [...(employee.dates.get(row.date) ?? []), row])
     }
     return [...people].map(([id, person]) => ({ id, ...person, totals: summarizeMtmAttendanceRows(person.rows) }))
   }, [rows, form])
@@ -232,7 +237,8 @@ export function MtmAttendanceReportWorkspace() {
   ]
 
   return <section aria-label={t("reportTitle")} className="space-y-5" data-testid="attendance-report-workspace">
-    {!accessUnavailable && <div className="flex flex-wrap gap-5"><Link href="/mtm/attendance/requests" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("requestsTitle")}</Link><Link href="/mtm/attendance/decisions" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("journalTitle")}</Link><Link href="/mtm/attendance/branches" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("branchesTitle")}</Link><Link href="/mtm/attendance/branches/report" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("branchReportTitle")}</Link>{canManageAccess && <Link href="/mtm/attendance/employees" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("employeesTitle")}</Link>}{canManageAccess && <Link href="/mtm/attendance/location-settings" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("geoPolicyTitle")}</Link>}</div>}
+    {!accessUnavailable && <div className="flex flex-wrap gap-5"><Link href="/mtm/attendance/requests" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("requestsTitle")}</Link><Link href="/mtm/attendance/months" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("monthCloseTitle")}</Link><Link href="/mtm/attendance/shifts" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("shiftTitle")}</Link><Link href="/mtm/attendance/leave-balances" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("leaveTitle")}</Link><Link href="/mtm/attendance/branch-qr" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("qrTitle")}</Link><Link href="/mtm/attendance/installations" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("installationTitle")}</Link><Link href="/mtm/attendance/review" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("riskTitle")}</Link><Link href="/mtm/attendance/decisions" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("journalTitle")}</Link><Link href="/mtm/attendance/branches" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("branchesTitle")}</Link><Link href="/mtm/attendance/branches/report" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("branchReportTitle")}</Link>{canManageAccess && <Link href="/mtm/attendance/employees" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("employeesTitle")}</Link>}{canManageAccess && <Link href="/mtm/attendance/location-settings" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("geoPolicyTitle")}</Link>}</div>}
+    {!accessUnavailable && <MtmAttendanceHelp />}
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{cards.map((card) => <HomeKpi key={card.id} testId={`attendance-${card.id}`} label={t(card.label)}
       icon={card.icon} tone={card.tone} value={report ? format.number(card.value) : null} unit={t(multiDay ? "reportDayRecords" : "reportPeople", { count: card.value })} sub={t(card.hint)}
       progress={report && totals.rowCount ? card.value / totals.rowCount * 100 : 0} />)}</div>
@@ -266,18 +272,21 @@ export function MtmAttendanceReportWorkspace() {
           <div className="flex flex-wrap justify-between gap-2 text-xs text-muted-foreground"><p>{t("reportPeriod", { from: dateLabel(report.from), to: dateLabel(report.to) })}</p>
             <p>{t("reportSnapshot", { time: timeLabel(report.asOf, timezones[0] ?? "Asia/Baku", true), timezone: timezones[0] ?? "Asia/Baku" })}</p></div>
           {scopeUnavailable ? <p role="alert" className="text-sm text-amber-800 dark:text-amber-300">{t("viewsScopeUnavailable")}</p> : null}
-          {!count ? <p className="rounded-xl bg-muted/50 px-4 py-5 text-sm text-muted-foreground">{t("reportEmpty")}</p> : customTable ? <div className="overflow-x-auto" role="region" aria-label={customView?.name} tabIndex={0}>
-            <table className="w-full text-sm" data-testid="attendance-custom-table"><thead><tr>{customTable.columns.map((column) => <th key={column.key} scope="col" className={`${HEADER} min-w-28`} data-column={column.key}>{column.label}</th>)}</tr></thead>
+          {!count ? <p className="rounded-xl bg-muted/50 px-4 py-5 text-sm text-muted-foreground">{t("reportEmpty")}</p> : customTable ? <div className="min-w-0 overflow-x-auto" role="region" aria-label={customView?.name || t(FORM_MESSAGES[form])} tabIndex={0}>
+            <table className={`w-full text-sm ${form === "OVERTIME" ? "hidden md:table" : ""}`} data-testid="attendance-custom-table"><thead><tr>{customTable.columns.map((column) => <th key={column.key} scope="col" className={`${HEADER} ${form === "OVERTIME" ? "" : "min-w-28"}`} data-column={column.key}>{column.label}</th>)}</tr></thead>
               <tbody>{customTable.rows.slice(pageStart, pageStart + PAGE_SIZE).map((row) => <tr key={row.key} data-testid="attendance-custom-row">{row.cells.map((cell, index) => <td key={customTable.columns[index].key} className={`${CELL} tabular-nums`}>{cell}</td>)}</tr>)}</tbody>
-            </table></div> : form === "MONTH" ? <>
+            </table>
+            {form === "OVERTIME" && <div className="space-y-3 md:hidden" data-testid="attendance-overtime-cards">{customTable.rows.slice(pageStart, pageStart + PAGE_SIZE).map(row => <dl key={row.key} className="grid grid-cols-2 gap-3 rounded-xl border p-4">{row.cells.map((cell, index) => <div key={customTable.columns[index].key} className={index === 0 ? "col-span-2" : "min-w-0"}><dt className="text-xs text-muted-foreground">{customTable.columns[index].label}</dt><dd className="break-words text-sm tabular-nums">{cell}</dd></div>)}</dl>)}</div>}
+          </div> : form === "MONTH" ? <>
             <div className="overflow-x-auto" role="region" aria-label={t("reportMonth")} tabIndex={0}><table className="w-full border-collapse text-sm" data-testid="attendance-month-grid">
               <thead><tr><th scope="col" className={`${HEADER} sticky left-0 z-10 min-w-40 bg-card`}>{t("reportEmployee")}</th>
                 {monthDates.map((date) => <th key={date} scope="col" className={`${HEADER} min-w-14 text-center`}><time dateTime={date} title={dateLabel(date)}>{Number(date.slice(-2))}</time></th>)}
                 <th scope="col" className={`${HEADER} min-w-24`}>{t("reportWorked")}</th><th scope="col" className={HEADER}>{t("reportLateCount")}</th><th scope="col" className={HEADER}>{t("reportAbsentCount")}</th></tr></thead>
               <tbody>{monthEmployees.slice(pageStart, pageStart + PAGE_SIZE).map((person) => <tr key={person.id} data-testid="attendance-month-person"><th scope="row" className={`${CELL} sticky left-0 z-10 bg-card text-left font-semibold`}>
                 {person.name}<span className="mt-1 block text-xs font-normal text-muted-foreground">{person.team ?? t("reportNoTeam")}</span></th>
-                {monthDates.map((date) => { const row = person.dates.get(date); return <td key={date} className={`${CELL} text-center`}><span title={row ? `${dateLabel(date)} · ${attendanceStatusText(row, locale, t)} · ${rowNotes(row)}` : dateLabel(date)}>
-                  <HomePill tone={row ? rowTone(row) : "zinc"} className="min-w-10 justify-center rounded-md px-1.5 py-1 tabular-nums">{row?.dayKind ? <span aria-hidden="true" data-testid="attendance-kind-color" className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: row.dayKind.color }} /> : null}{attendanceMonthCell(row, t)}</HomePill></span></td> })}
+                {monthDates.map((date) => { const entries = person.dates.get(date); return <td key={date} className={`${CELL} text-center`}><div className="flex flex-col items-center gap-2">
+                  {entries?.length ? entries.map(row => <span key={row.sourceDate ?? row.date} title={`${dateLabel(row.sourceDate ?? date)} · ${attendanceStatusText(row, locale, t)} · ${rowNotes(row)}`}>
+                    <HomePill tone={rowTone(row)} className="min-w-10 justify-center rounded-md px-1.5 py-1 tabular-nums">{row.dayKind ? <span aria-hidden="true" data-testid="attendance-kind-color" className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: row.dayKind.color }} /> : null}{attendanceMonthCellGroup([row], locale, t)}</HomePill></span>) : "—"}</div></td> })}
                 <td className={`${CELL} whitespace-nowrap tabular-nums`}>{formatAttendanceDuration(person.totals.workedSeconds)}{!person.totals.isComplete ? <span className="block text-xs text-amber-700 dark:text-amber-300">{t("reportPartial")}</span> : null}</td>
                 <td className={`${CELL} tabular-nums`}>{person.totals.lateCount}</td><td className={`${CELL} tabular-nums`}>{person.totals.absentCount}</td></tr>)}</tbody>
             </table></div>
@@ -305,7 +314,7 @@ export function MtmAttendanceReportWorkspace() {
               <td className={`${CELL} min-w-48 text-xs leading-relaxed text-muted-foreground`}>{rowNotes(row)}</td></tr>)}</tbody>
           </table></div>}
           {!customTable && rows.some((row) => row.corrections?.length) ? <div className="space-y-2 text-xs leading-relaxed text-muted-foreground" data-testid="attendance-correction-history"><p>{t("reportCorrectionLegend")}</p>
-            {form === "MONTH" ? rows.flatMap((row) => attendanceCorrectionLines(row, locale, t).map((line, index) => <p key={`${row.employeeId}:${row.date}:${index}`}>{row.employeeName} · {dateLabel(row.date)} · {line}</p>)) : null}</div> : null}
+            {form === "MONTH" ? rows.flatMap((row) => attendanceCorrectionLines(row, locale, t).map((line, index) => <p key={`${row.employeeId}:${row.sourceDate ?? row.date}:${index}`}>{row.employeeName} · {dateLabel(row.date)} · {line}</p>)) : null}</div> : null}
           <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground"><p>{t("reportShown", { from: count ? pageStart + 1 : 0, to: Math.min(pageStart + PAGE_SIZE, count), total: count })}</p>
             {count > PAGE_SIZE ? <div className="flex items-center gap-2"><Button type="button" variant="outline" className="min-h-11" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>{t("reportPrevious")}</Button>
               <span>{t("reportPage", { current: currentPage + 1, total: lastPage + 1 })}</span><Button type="button" variant="outline" className="min-h-11" disabled={currentPage === lastPage} onClick={() => setPage(currentPage + 1)}>{t("reportNext")}</Button></div> : null}</div>

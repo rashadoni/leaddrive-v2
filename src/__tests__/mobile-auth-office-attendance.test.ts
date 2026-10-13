@@ -31,6 +31,8 @@ describe("office attendance fresh mobile access", () => {
   it("checks the exact HTTP method as well as the path", async () => {
     expect(await resolveMobileAuth(request("/api/v1/mtm/mobile/attendance/requests", "PATCH"))).toBeNull()
     expect(await resolveMobileAuth(request("/api/v1/mtm/mobile/sync/push", "POST"))).not.toBeNull()
+    expect(await resolveMobileAuth(request("/api/v2/mtm/mobile/route-field/workday-return", "POST"))).not.toBeNull()
+    expect(await resolveMobileAuth(request("/api/v2/mtm/mobile/route-field/workday-return", "GET"))).toBeNull()
     expect(await resolveMobileAuth(request("/api/v2/mtm/mobile/route-field/device-tokens", "POST"))).not.toBeNull()
     expect(await resolveMobileAuth(request("/api/v2/mtm/mobile/route-field/device-tokens", "GET"))).toBeNull()
   })

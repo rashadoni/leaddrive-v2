@@ -710,3 +710,17 @@ describe("settings page contract", () => {
     expect(az.mtmSettingsPage.photoPoliciesWarning).toBeUndefined()
   })
 })
+
+describe("protected attendance reminders", () => {
+  it.each(["attendanceEmployeeRemindersEnabled", "attendanceManagerAlertsEnabled"])("rejects a non-admin mixed write to %s before any writes", async key => {
+    as("manager")
+    expect((await UpdateSettings(put({ [key]: true, supportPhone: "123" }))).status).toBe(403)
+    expect(upsertedKeys()).toEqual([])
+  })
+  it("records the reminder policy in its own atomic audit", async () => {
+    as("admin")
+    expect((await UpdateSettings(put({ attendanceEmployeeRemindersEnabled: true, attendanceManagerAlertsEnabled: true }))).status).toBe(200)
+    expect(upsertedKeys().sort()).toEqual(["attendanceEmployeeRemindersEnabled", "attendanceManagerAlertsEnabled"])
+    expect(prisma.mtmAuditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ action: "MTM_ATTENDANCE_REMINDER_POLICY_CHANGED" }) }))
+  })
+})

@@ -133,7 +133,15 @@ const FACTS: Partial<Record<AgentPermissionId, Fact[]>> = {
     { check: () => mobileCapabilities("AGENT").includes("FIELD_EXECUTE") },
     {
       file: "src/app/api/v2/mtm/mobile/route-field/workday-return/route.ts",
-      contains: 'if (!auth.agentId || !hasMobileCapability(auth.role, "FIELD_EXECUTE")) {',
+      contains: 'if (!auth.agentId || (attendanceOnly && auth.tenantCapabilities?.routeField!==true)) {',
+    },
+    {
+      file: "src/app/api/v2/mtm/mobile/route-field/workday-return/route.ts",
+      contains: 'await requireAttendanceSelf(prisma,{organizationId:auth.orgId,agentId:auth.agentId,role:auth.role},"attendanceWorkday")',
+    },
+    {
+      file: "src/lib/mtm/workday-return.ts",
+      contains: 'await requireAttendanceSelf(tx,self,"attendanceWorkday")',
     },
     {
       file: "src/lib/mtm/workday-return.ts",
@@ -278,6 +286,8 @@ describe("switch rows are enforced where the agent asks", () => {
 
   it("covers every switch row", () => {
     expect(AGENT_SWITCH_ROWS.map((row) => row.id).sort()).toEqual([
+      "attendanceBranchQr",
+      "attendanceInstallation",
       "attendanceLocation",
       "attendanceRequests",
       "attendanceWorkday",
@@ -292,6 +302,11 @@ describe("switch rows are enforced where the agent asks", () => {
     expect(row?.setting).toBe("attendanceEnabled")
     expect(source("src/lib/mtm/attendance-self-access.ts")).toContain('agentPermissionEnabled({ attendanceEnabled:')
     expect(source("src/lib/mtm/attendance-self-access.ts")).toContain('"attendanceRequests"')
+  })
+
+  it("uses the same attendance switch for installation requests and requires own access in the writer", () => {
+    expect(AGENT_SWITCH_ROWS.find(row => row.id === "attendanceInstallation")?.setting).toBe("attendanceEnabled")
+    expect(source("src/lib/mtm/attendance-installation-store.ts")).toContain('await requireAttendanceSelf(tx, self, "attendanceInstallation")')
   })
 
   // Publishing one's own routes is not a switch: one tick on the agent's card

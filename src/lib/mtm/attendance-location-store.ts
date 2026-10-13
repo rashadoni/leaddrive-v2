@@ -1,3 +1,4 @@
+import { enforceAttendanceMockRule, recordAttendanceRisks } from "@/lib/mtm/attendance-risk-detection"
 import { createHash, randomUUID } from "node:crypto"
 import { enforceAttendanceOutsideRule } from "@/lib/mtm/attendance-outside-rule"
 import { Prisma } from "@prisma/client"
@@ -28,6 +29,19 @@ async function lockLocationPolicy(tx: Tx, organizationId: string, exclusive = fa
   await tx.$executeRaw`SELECT set_config('lock_timeout','3s',true)`
   if (exclusive) await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-attendance-location:${organizationId}`},0))`
   else await tx.$executeRaw`SELECT pg_advisory_xact_lock_shared(hashtextextended(${`mtm-attendance-location:${organizationId}`},0))`
+}
+
+/** Optional background integrity metadata uses the same consent lock as marks.
+ * Call before the GPS writer locks/updates the agent. Existing field tracking
+ * does not become dependent on opting into this additional attendance signal. */
+export async function currentAttendanceStreamConsent(tx: Tx, self: Pick<AttendanceSelf,"organizationId"|"agentId">) {
+  await lockAttendanceRequests(tx,self)
+  const setting = await tx.mtmSetting.findFirst({where:{organizationId:self.organizationId,key:"attendanceEnabled"},select:{value:true}})
+  if (setting?.value!==true) return null
+  await lockLocationPolicy(tx,self.organizationId)
+  const policy=await currentPolicy(tx,self.organizationId), consent=await currentConsent(tx,self)
+  if (!policy?.enabled || !policy.legalReviewConfirmed || !consent?.accepted || consent.policyRevisionId!==policy.id) return null
+  return {id:consent.id,createdAt:consent.createdAt}
 }
 async function requireAdministrator(tx: Tx, reviewer: AttendanceReviewer) {
   await resolveAttendanceReviewerScope(tx,reviewer)
@@ -154,7 +168,9 @@ export async function recordAttendanceMarkEvidence(tx: Tx, context: MtmWorkdayPo
   const evaluation = evaluateAttendanceLocation({...mark,location,locationState:location?"AVAILABLE":mark.location?"NO_CONSENT":mark.locationState},context.input.claimedAt,branches,primary)
   const finding = onBreak ? "BREAK_PRIVACY":evaluation.finding
   await enforceAttendanceOutsideRule(tx,self.organizationId,finding)
+  const riskPolicy = await enforceAttendanceMockRule(tx,self.organizationId,location?.isMock??null)
   await tx.$executeRaw`INSERT INTO mtm_attendance_mark_evidence
     (id,"organizationId","agentId","eventId","installationId",action,"claimedAt","serverReceivedAt","locationState",latitude,longitude,accuracy,"fixCapturedAt","fixAgeSeconds",provider,"isMock","consentId","branchRevisionId","primaryBranchId","distanceMeters","redactedRequestHash")
     VALUES (${randomUUID()},${self.organizationId},${self.agentId},${context.event.id},${mark.installationId},${context.input.action},${context.input.claimedAt},${context.input.serverReceivedAt},${finding},${location?.latitude??null},${location?.longitude??null},${location?.accuracy??null},${location?new Date(location.capturedAt):null},${evaluation.fixAgeSeconds},${location?.provider??null},${location?.isMock??null},${consent?.id??null},${evaluation.branch?.id??null},${primary},${evaluation.distanceMeters},${attendanceMarkRedactedHash(self,context.input)})`
+  await recordAttendanceRisks(tx,{organizationId:self.organizationId,eventId:context.event.id,policy:riskPolicy})
 }

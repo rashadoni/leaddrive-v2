@@ -64,6 +64,9 @@ export async function submitAttendanceRequestInTransaction(db: Prisma.Transactio
     try {
       const start = localDateTimeToUnambiguousUtc(`${input.startDate}T${input.startTime}`, timezone)
       const end = localDateTimeToUnambiguousUtc(`${input.endDate}T${input.endTime}`, timezone)
+      if (end <= start || (input.endDate !== input.startDate && end.getTime() - start.getTime() > 86_400_000)) {
+        throw new Error("Invalid elapsed request interval")
+      }
       if (input.kind === "TIME_CORRECTION") { requestedStartAt = start; requestedEndAt = end }
     } catch { throw new AttendanceRequestError("MTM_ATTENDANCE_REQUEST_LOCAL_TIME_INVALID", 400) }
   }

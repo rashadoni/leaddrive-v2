@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { parseAttendanceStreamSignal, prepareAttendanceStreamIntegrity, recordAttendanceStreamIntegrity, type AttendanceStreamSignal } from "@/lib/mtm/attendance-stream-integrity"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { readJsonRequestWithinLimit } from "@/lib/request-body-limit"
@@ -33,7 +34,7 @@ const GPS_BATCH_RATE_LIMITS = {
   device: { maxRequests: 6, windowSeconds: 60 },
 } as const
 
-type ParsedPoint = {
+type ParsedPoint = AttendanceStreamSignal & {
   clientLocationId: string
   latitude: number
   longitude: number
@@ -131,6 +132,8 @@ function parseBatch(body: unknown, now: Date):
   for (const item of record.points) {
     const point = asRecord(item)
     if (!point) return { ok: false, response: error("MTM_LOCATION_BATCH_INVALID", "each point must be an object") }
+    const integrity = parseAttendanceStreamSignal(point)
+    if (!integrity) return {ok:false,response:error("MTM_LOCATION_INTEGRITY_INVALID","invalid location integrity metadata")}
     const clientLocationId = typeof point.clientLocationId === "string" ? point.clientLocationId.trim() : ""
     if (clientLocationId.length < 1 || clientLocationId.length > 100) {
       return { ok: false, response: error("MTM_LOCATION_CLIENT_ID_INVALID", "each point needs clientLocationId (1..100 characters)") }
@@ -185,6 +188,7 @@ function parseBatch(body: unknown, now: Date):
     const altitude = point.altitude == null ? null : point.altitude as number
     const battery = point.battery == null ? null : point.battery as number
     const parsed = {
+      ...integrity,
       clientLocationId,
       latitude,
       longitude,
@@ -293,6 +297,7 @@ async function persistNewPoints(input: {
   now: Date
 }) {
   return prisma.$transaction(async (tx) => {
+    const integrityConsent=await prepareAttendanceStreamIntegrity(tx,input,input.points)
     const currentWorkday = await tx.mtmAgentWorkday.findFirst({
       where: { id: input.workday.id, organizationId: input.organizationId, agentId: input.agentId },
       select: { id: true, status: true, startedAt: true, completedAt: true },
@@ -330,6 +335,7 @@ async function persistNewPoints(input: {
           recordedAt: point.recordedAt,
         },
       })
+      await recordAttendanceStreamIntegrity(tx,{...point,organizationId:input.organizationId,agentId:input.agentId,locationId:created.id},integrityConsent)
       await advanceMtmAgentLatestLocation(tx, {
         organizationId: input.organizationId,
         agentId: input.agentId,

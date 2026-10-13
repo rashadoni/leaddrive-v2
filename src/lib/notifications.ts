@@ -1,3 +1,6 @@
+import { ATTENDANCE_REMINDER_ENTITY, ATTENDANCE_REMINDER_URL } from "@/lib/mtm/attendance-reminder-contract"
+import { MTM_ATTENDANCE_INSTALLATION_NOTIFICATION_ENTITY, MTM_ATTENDANCE_INSTALLATION_NOTIFICATION_URL } from "@/lib/mtm/attendance-installation-notification"
+import { MTM_ATTENDANCE_RISK_NOTIFICATION_ENTITY, MTM_ATTENDANCE_RISK_NOTIFICATION_URL } from "@/lib/mtm/attendance-risk-notification"
 import { MTM_ATTENDANCE_REQUEST_NOTIFICATION_ENTITY, MTM_ATTENDANCE_REQUEST_NOTIFICATION_URL } from "@/lib/mtm/attendance-request-notification"
 import { createHash } from "node:crypto"
 import { Prisma, type Notification as NotificationRow } from "@prisma/client"
@@ -37,6 +40,9 @@ function deriveNotificationUrl(entityType?: string, entityId?: string): string {
     case "inbox_message": return `/inbox`
     // Phase 2c — Route & Field + Marketing
     // «Клиент здесь»: the request is decided in the approvals queue, on a map.
+    case ATTENDANCE_REMINDER_ENTITY: return ATTENDANCE_REMINDER_URL
+    case MTM_ATTENDANCE_INSTALLATION_NOTIFICATION_ENTITY: return MTM_ATTENDANCE_INSTALLATION_NOTIFICATION_URL
+    case MTM_ATTENDANCE_RISK_NOTIFICATION_ENTITY: return MTM_ATTENDANCE_RISK_NOTIFICATION_URL
     case MTM_ATTENDANCE_REQUEST_NOTIFICATION_ENTITY: return MTM_ATTENDANCE_REQUEST_NOTIFICATION_URL
     case MTM_LOCATION_REQUEST_NOTIFICATION_ENTITY: return MTM_LOCATION_REQUEST_NOTIFICATION_URL
     case "survey":  return `/surveys`

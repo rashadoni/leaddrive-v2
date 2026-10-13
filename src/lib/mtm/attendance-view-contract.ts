@@ -4,12 +4,14 @@ import { addDateKeyDays, isDateKey } from "@/lib/mtm/mobile-week"
 import { DEFAULT_ATTENDANCE_DAY_COLUMNS, DEFAULT_ATTENDANCE_JOURNAL_COLUMNS } from "@/lib/mtm/attendance-presentation"
 
 export const DEFAULT_ATTENDANCE_MONTH_COLUMNS = ["employee", "team", "days", "worked", "late", "absent"] as const
+export const DEFAULT_ATTENDANCE_OVERTIME_COLUMNS = ["employee", "date", "planned", "worked", "excess", "threshold", "approvedOvertime", "overtimeState"] as const
 export const DEFAULT_ATTENDANCE_BRANCH_COLUMNS = ["branch", "arrivals", "departures", "employees", "outside", "uncertain"] as const
 export const DEFAULT_ATTENDANCE_VIEW_COLUMNS = {
   DAY: DEFAULT_ATTENDANCE_DAY_COLUMNS,
   MONTH: DEFAULT_ATTENDANCE_MONTH_COLUMNS,
   JOURNAL: DEFAULT_ATTENDANCE_JOURNAL_COLUMNS,
   BRANCH: DEFAULT_ATTENDANCE_BRANCH_COLUMNS,
+  OVERTIME: DEFAULT_ATTENDANCE_OVERTIME_COLUMNS,
 } as const
 export const ATTENDANCE_VIEW_COLUMNS = {
   ...DEFAULT_ATTENDANCE_VIEW_COLUMNS,
@@ -18,8 +20,8 @@ export const ATTENDANCE_VIEW_COLUMNS = {
 } as const
 export const AttendanceViewConfigSchema = z.object({
   version: z.literal(1),
-  mode: z.enum(["DAY", "MONTH", "JOURNAL", "BRANCH"]),
-  columns: z.array(z.enum(["employee", "team", "date", "status", "startedAt", "completedAt", "worked", "paused", "late", "early", "event", "phoneAt", "serverAt", "days", "absent", "notes", "arrivalBranch", "departureBranch", "markLocation", "branch", "arrivals", "departures", "employees", "outside", "uncertain", "noLocation", "noConsent"])).min(1).max(15),
+  mode: z.enum(["DAY", "MONTH", "JOURNAL", "BRANCH", "OVERTIME"]),
+  columns: z.array(z.enum(["employee", "team", "date", "status", "startedAt", "completedAt", "worked", "paused", "late", "early", "event", "phoneAt", "serverAt", "days", "absent", "notes", "arrivalBranch", "departureBranch", "markLocation", "branch", "arrivals", "departures", "employees", "outside", "uncertain", "noLocation", "noConsent", "planned", "excess", "threshold", "approvedOvertime", "overtimeState"])).min(1).max(15),
   showTotals: z.boolean(),
   filters: AttendanceReportQuerySchema,
 }).strict().superRefine((config, ctx) => {
@@ -29,6 +31,7 @@ export const AttendanceViewConfigSchema = z.object({
   if ((config.mode === "JOURNAL") !== (config.filters.form === "JOURNAL")) {
     ctx.addIssue({ code: "custom", path: ["filters", "form"], message: "Journal rows require the journal form" })
   }
+  if (config.mode === "OVERTIME" && config.filters.form !== "ALL") ctx.addIssue({ code: "custom", path: ["filters", "form"], message: "Overtime rows require the complete day snapshot" })
   if (config.mode === "MONTH" && isDateKey(config.filters.to) && (config.filters.from.slice(8) !== "01" || config.filters.from.slice(0, 7) !== config.filters.to.slice(0, 7) || addDateKeyDays(config.filters.to, 1).slice(8) !== "01")) {
     ctx.addIssue({ code: "custom", path: ["filters"], message: "A monthly form requires one complete calendar month" })
   }

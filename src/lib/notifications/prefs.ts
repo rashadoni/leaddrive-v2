@@ -1,3 +1,5 @@
+import { MTM_ATTENDANCE_INSTALLATION_NOTIFICATION_KIND } from "@/lib/mtm/attendance-installation-notification"
+import { MTM_ATTENDANCE_RISK_NOTIFICATION_KIND } from "@/lib/mtm/attendance-risk-notification"
 import { MTM_ATTENDANCE_REQUEST_NOTIFICATION_KIND } from "@/lib/mtm/attendance-request-notification"
 /**
  * Notification preference types and the push-decision helper — pure functions,
@@ -71,8 +73,11 @@ export const DEFAULT_SECTION_PUSH: Record<string, boolean> = {
  * заметным… агент может быть рядом с клиентом, и чтоб долго не ждать»).
  */
 export const KINDS_ON_UNLESS_SWITCHED_OFF: ReadonlySet<string> = new Set([
+  "mtm.attendanceReminder.detected",
   MTM_LOCATION_REQUEST_NOTIFICATION_KIND,
   MTM_ATTENDANCE_REQUEST_NOTIFICATION_KIND,
+  MTM_ATTENDANCE_RISK_NOTIFICATION_KIND,
+  MTM_ATTENDANCE_INSTALLATION_NOTIFICATION_KIND,
 ])
 
 // ---------------------------------------------------------------------------

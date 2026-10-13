@@ -17,6 +17,11 @@ const LABELS = { PENDING: "requestsPending", APPROVED: "requestsApproved", REJEC
 export function MtmAttendanceRequestQueue() {
   const t = useTranslations("mtmAttendance")
   const locale = useLocale()
+  const [focusedRequest, setFocusedRequest] = useState<string | null>(null)
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("requestId")
+    if (id && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) { setFocusedRequest(id); setStatus("ALL") }
+  }, [])
   const [status, setStatus] = useState<(typeof STATUSES)[number]>("PENDING")
   const [items, setItems] = useState<AttendanceReviewItem[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
@@ -36,7 +41,7 @@ export function MtmAttendanceRequestQueue() {
     setBusy(true); setMessage(null); setSelected(null); setNote(""); setRevoking(false)
     if (!after) setItems([])
     try {
-      const query = new URLSearchParams({ status, ...(after ? { cursor: after } : {}) })
+      const query = new URLSearchParams({ status, ...(after ? { cursor: after } : {}), ...(focusedRequest ? { requestId: focusedRequest } : {}) })
       const response = await fetch(`/api/v1/mtm/attendance/requests?${query}`, { cache: "no-store", signal: controller.signal })
       const body = await response.json().catch(() => null)
       if (controller.signal.aborted) return
@@ -46,10 +51,11 @@ export function MtmAttendanceRequestQueue() {
       }
       setItems((previous) => after ? [...previous, ...body.data.items.filter((row: AttendanceReviewItem) => !previous.some((old) => old.id === row.id))] : body.data.items)
       setCursor(body.data.nextCursor); setUnknown(false)
+      if (focusedRequest && body.data.items.some((row: AttendanceReviewItem) => row.id === focusedRequest)) setSelected(focusedRequest)
       return true
     } catch { if (!controller.signal.aborted) setMessage(t("requestsLoadError")) }
     finally { if (!controller.signal.aborted) setBusy(false) }
-  }, [status, t])
+  }, [status, t, focusedRequest])
   useEffect(() => {
     if (writing.current) { writing.current = false; setUnknown(true) }
     void load()
@@ -110,8 +116,9 @@ export function MtmAttendanceRequestQueue() {
     <HomeCard testId="attendance-request-card" titleId="attendance-request-title" tone="amber" icon={<ClipboardList className="h-5 w-5" />} title={t("requestsTitle")}>
       <p className="pt-4 text-sm text-muted-foreground">{t("requestsDescription")}</p>
       <div className="flex flex-wrap items-end gap-3 py-4">
+        {focusedRequest && <Button className="min-h-11" variant="outline" onClick={() => { setFocusedRequest(null); setSelected(null) }} disabled={busy}>{t("requestsAll")}</Button>}
         <label className="min-w-48 flex-1 text-sm"><span className="mb-1 block font-medium">{t("requestsTitle")}</span>
-          <select aria-label={t("requestsTitle")} value={status} disabled={busy} onChange={(event) => setStatus(event.target.value as typeof status)} className="min-h-11 w-full rounded-lg border bg-background px-3">
+          <select aria-label={t("requestsTitle")} value={status} disabled={busy || Boolean(focusedRequest)} onChange={(event) => setStatus(event.target.value as typeof status)} className="min-h-11 w-full rounded-lg border bg-background px-3">
             {STATUSES.map((value) => <option key={value} value={value}>{t(LABELS[value])}</option>)}
           </select>
         </label>

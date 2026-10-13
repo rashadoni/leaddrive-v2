@@ -251,7 +251,7 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
     const shownLogs = logs.map((log: (typeof logs)[number]) => {
       // Attendance reasons belong to the current reviewer queue. The general
       // activity feed also admits read-only users and integration keys.
-      if (log.metadataKind === "mtm_attendance_request" || log.metadataKind === "mtm_attendance_employment") return { ...log, oldData: null, newData: null }
+      if (log.metadataKind === "mtm_attendance_request" || log.metadataKind === "mtm_attendance_employment" || log.metadataKind === "mtm_attendance_risk") return { ...log, oldData: null, newData: null }
       if (log.entity !== "agent" || readsMtmAgentNotes(notesReader, log.entityId ?? log.agentId)) return log
       return { ...log, oldData: withoutMtmAgentNotes(log.oldData), newData: withoutMtmAgentNotes(log.newData) }
     })

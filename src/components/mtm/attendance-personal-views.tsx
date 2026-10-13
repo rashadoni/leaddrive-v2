@@ -12,12 +12,12 @@ const ENDPOINT = "/api/v1/mtm/attendance/views"
 const COLUMN_MESSAGES: Record<AttendanceViewColumn, string> = { employee: "reportEmployee", team: "reportTeam", date: "reportDate", status: "reportStatus",
   startedAt: "reportStarted", completedAt: "reportFinished", worked: "reportWorked", paused: "reportPaused", late: "reportLate", early: "reportEarly",
   event: "reportEvent", phoneAt: "reportPhoneTime", serverAt: "reportServerTime", days: "viewsDays", absent: "reportAbsentCount", notes: "reportNotes", arrivalBranch: "reportArrivalBranch", departureBranch: "reportDepartureBranch", markLocation: "reportMarkLocation",
-  branch: "branchReportBranch", arrivals: "branchReportArrivals", departures: "branchReportDepartures", employees: "branchReportEmployees", outside: "branchReportOutside", uncertain: "branchReportUncertain", noLocation: "locationReportUnavailable", noConsent: "locationReportNoConsent" }
-const MODE_MESSAGES = { DAY: "viewsModeDay", MONTH: "viewsModeMonth", JOURNAL: "viewsModeJournal", BRANCH: "branchReportTitle" } as const
+  branch: "branchReportBranch", arrivals: "branchReportArrivals", departures: "branchReportDepartures", employees: "branchReportEmployees", outside: "branchReportOutside", uncertain: "branchReportUncertain", noLocation: "locationReportUnavailable", noConsent: "locationReportNoConsent", planned: "overtimePlanned", excess: "overtimeExcess", threshold: "overtimeThreshold", approvedOvertime: "overtimeApproved", overtimeState: "overtimeState" }
+const MODE_MESSAGES = { DAY: "viewsModeDay", MONTH: "viewsModeMonth", JOURNAL: "viewsModeJournal", BRANCH: "branchReportTitle", OVERTIME: "overtimeTitle" } as const
 const SELECT_CLASS = "min-h-11 w-full rounded-lg border border-zinc-200 bg-card px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:border-zinc-700"
 
 function filtersFor(mode: AttendanceViewConfig["mode"], filters: AttendanceViewConfig["filters"]) {
-  const result = { ...filters, form: mode === "BRANCH" ? "ALL" as const : mode === "JOURNAL" ? "JOURNAL" as const : filters.form === "JOURNAL" ? "ALL" as const : filters.form }
+  const result = { ...filters, form: mode === "BRANCH" || mode === "OVERTIME" ? "ALL" as const : mode === "JOURNAL" ? "JOURNAL" as const : filters.form === "JOURNAL" ? "ALL" as const : filters.form }
   if (mode === "MONTH") {
     result.from = `${filters.from.slice(0, 7)}-01`
     const end = new Date(`${result.from}T12:00:00Z`)
@@ -249,7 +249,7 @@ export function MtmAttendancePersonalViews({ currentConfig, onApply, onAccessLos
           <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><label htmlFor="attendance-view-name" className="text-sm font-medium">{t("viewsName")}</label>
             <Input ref={nameInput} id="attendance-view-name" className="min-h-11" required maxLength={80} value={name} onChange={(event) => { setName(event.target.value); setSaved(null); if (!mustReload) setSaveError(null) }} /></div>
             <div className="space-y-2"><label htmlFor="attendance-view-mode" className="text-sm font-medium">{t("viewsRowType")}</label><select id="attendance-view-mode" className={SELECT_CLASS} value={draft.mode} onChange={(event) => chooseMode(event.target.value as AttendanceViewConfig["mode"])}>
-              {(["DAY", "MONTH", "JOURNAL", "BRANCH"] as const).map((mode) => <option key={mode} value={mode}>{t(MODE_MESSAGES[mode])}</option>)}</select></div></div>
+              {(["DAY", "MONTH", "JOURNAL", "BRANCH", "OVERTIME"] as const).map((mode) => <option key={mode} value={mode}>{t(MODE_MESSAGES[mode])}</option>)}</select></div></div>
           <fieldset className="space-y-2"><legend className="text-sm font-medium">{t("viewsColumns")}</legend><p className="text-xs text-muted-foreground">{t("viewsColumnHint")}</p>
             <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">{columns.map((column) => { const index = draft.columns.indexOf(column); return <li key={column} className="flex min-h-12 items-center justify-between gap-2 rounded-lg border border-zinc-200 px-3 dark:border-zinc-700">
               <label className="flex min-h-11 min-w-0 cursor-pointer items-center gap-2 text-sm"><input type="checkbox" checked={index >= 0} className="h-4 w-4 accent-primary" data-column={column}

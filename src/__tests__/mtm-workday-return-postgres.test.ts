@@ -361,4 +361,20 @@ pgDescribe("returning to a workday closed earlier today, on a real PostgreSQL", 
     await expect(tenant(ORG, () => prisma.workforceWorkdayReopen.update({ where: { id: row.id }, data: { reason: "Erase history" } }))).rejects.toThrow()
     await expect(tenant(ORG, () => prisma.workforceWorkdayReopen.delete({ where: { id: row.id } }))).rejects.toThrow()
   })
+  it("returns an enrolled office day and rejects a subsequently revoked participant before another event or receipt", async()=>{
+    const {agentId}=await employee()
+    await tenant(ORG,async()=>{
+      await prisma.mtmAgent.update({where:{id:agentId},data:{role:"EMPLOYEE",attendanceParticipant:true}})
+      await prisma.mtmSetting.upsert({where:{organizationId_key:{organizationId:ORG,key:"attendanceEnabled"}},create:{organizationId:ORG,key:"attendanceEnabled",value:true},update:{value:true}})
+    })
+    const day=await seedDay(agentId,TODAY),operationId=randomUUID()
+    const ask=()=>tenant(ORG,()=>returning.returnOwnMtmWorkday({organizationId:ORG,agentId,workdayId:day.id,operationId,now:NOON,attendanceRole:"EMPLOYEE"}))
+    expect(await ask()).toMatchObject({kind:"success",idempotent:false})
+    expect(await ledgerOf(day.id)).toHaveLength(1)
+    await tenant(ORG,()=>prisma.mtmAgent.update({where:{id:agentId},data:{attendanceParticipant:false}}))
+    await expect(ask()).rejects.toMatchObject({code:"MTM_ATTENDANCE_SELF_REQUIRED"})
+    expect(await ledgerOf(day.id)).toHaveLength(1)
+    expect((await journalOf(day.id)).map(e=>e.type)).toEqual(["START","FINISH","REOPEN","RESUME"])
+  })
+
 })

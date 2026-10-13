@@ -207,6 +207,16 @@ describe("attendance review list has its own current write scope", () => {
     expect([403, 404]).toContain((await reviewGet(new NextRequest("http://localhost/api/v1/mtm/attendance/requests"))).status)
     expect(prisma.mtmHrmRequest.findMany).not.toHaveBeenCalled()
   })
+  it("keeps a linked historical request inside the current supervisor scope", async () => {
+    vi.mocked(resolveMtmRouteActor).mockResolvedValue({ role: "SUPERVISOR", agentId: "supervisor", scopedAgentIds: [agentId] })
+    vi.mocked(prisma.mtmHrmRequest.findMany).mockResolvedValue([])
+    expect((await reviewGet(new NextRequest(`http://localhost/api/v1/mtm/attendance/requests?status=ALL&requestId=${requestId}`))).status).toBe(200)
+    expect(prisma.mtmHrmRequest.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ id: requestId, organizationId,
+      AND: expect.arrayContaining([{ agentId: { in: [agentId] } }, { agentId: { not: "supervisor" } }]) }) }))
+    vi.mocked(prisma.mtmHrmRequest.findMany).mockClear()
+    expect((await reviewGet(new NextRequest("http://localhost/api/v1/mtm/attendance/requests?status=ALL&requestId=invalid"))).status).toBe(400)
+    expect(prisma.mtmHrmRequest.findMany).not.toHaveBeenCalled()
+  })
   it("applies the supervisor's exact scope and rejects a cursor outside it", async () => {
     vi.mocked(resolveMtmRouteActor).mockResolvedValue({ role: "SUPERVISOR", agentId: "supervisor", scopedAgentIds: [agentId] })
     vi.mocked(prisma.mtmHrmRequest.findMany).mockResolvedValue([])

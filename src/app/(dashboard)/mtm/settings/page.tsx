@@ -57,6 +57,11 @@ type SettingItem = {
  * daily work comes first; what only an implementer touches is last.
  */
 const SETTINGS_TABS = ["visit", "routes", "alerts", "clients", "company", "admin"] as const
+const ATTENDANCE_TOUCH_SETTING_KEYS = new Set([
+  "attendanceEmployeeRemindersEnabled", "attendanceManagerAlertsEnabled",
+  "attendanceRejectOutsideBranch", "attendanceAllowSharedInstallations",
+  "attendanceRejectMockLocations", "attendanceClockDifferenceSeconds",
+])
 type SettingsTab = typeof SETTINGS_TABS[number]
 const SETTINGS_TAB_LABEL: Record<SettingsTab, string> = {
   visit: "tabVisit", routes: "tabRoutes", alerts: "tabAlerts", clients: "tabClients", company: "tabCompany", admin: "tabAdmin",
@@ -259,6 +264,20 @@ export default function MtmSettingsPage() {
 
   const updateSetting = (key: string, value: SettingValue) => {
     setSettings((prev) => ({ ...prev, [key]: value }))
+    if (key === "attendanceEnabled" && value === false) {
+      // This field disappears with attendance. Drop only its unaccepted input;
+      // keep the last valid value so a hidden error cannot block switching off.
+      setNumberDrafts((prev) => {
+        const next = { ...prev }
+        delete next.attendanceClockDifferenceSeconds
+        return next
+      })
+      setFieldErrors((prev) => {
+        const next = { ...prev }
+        delete next.attendanceClockDifferenceSeconds
+        return next
+      })
+    }
   }
 
   // A block that saves itself (the client card) reports what is now stored:
@@ -482,6 +501,25 @@ export default function MtmSettingsPage() {
       ],
     },
     {
+      titleKey: "groupAttendanceReminders",
+      tab: "company",
+      icon: BellRing,
+      items: [
+        { key: "attendanceEmployeeRemindersEnabled", labelKey: "lblAttendanceEmployeeReminders", hintKey: "hintAttendanceEmployeeReminders", type: "boolean", adminOnly: true },
+        { key: "attendanceManagerAlertsEnabled", labelKey: "lblAttendanceManagerAlerts", hintKey: "hintAttendanceManagerAlerts", type: "boolean", adminOnly: true },
+      ],
+    },
+    {
+      titleKey: "groupAttendanceRisk",
+      tab: "company",
+      icon: AlertTriangle,
+      items: [
+        { key: "attendanceAllowSharedInstallations", labelKey: "lblAttendanceAllowSharedInstallations", hintKey: "hintAttendanceAllowSharedInstallations", type: "boolean", adminOnly: true },
+        { key: "attendanceRejectMockLocations", labelKey: "lblAttendanceRejectMockLocations", hintKey: "hintAttendanceRejectMockLocations", type: "boolean", adminOnly: true },
+        { key: "attendanceClockDifferenceSeconds", labelKey: "lblAttendanceClockDifferenceSeconds", hintKey: "hintAttendanceClockDifferenceSeconds", type: "number", unitKey: "unitSeconds", adminOnly: true },
+      ],
+    },
+    {
       // Set once when the module is rolled out and then left alone: the kill
       // switch of the visit rules and two switches about data, none of which
       // is something an agent does. They used to sit among the daily settings.
@@ -550,7 +588,7 @@ export default function MtmSettingsPage() {
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? `mtm-setting-error-${key}` : undefined}
           onChange={(e) => updateNumber(key, e.target.value)}
-          className={`w-24 rounded-md border bg-background px-2 py-1 text-right text-sm disabled:cursor-not-allowed disabled:opacity-50 ${error ? "border-destructive" : "border-zinc-200 dark:border-zinc-700"}`}
+          className={`w-24 rounded-md border bg-background px-2 py-1 text-right text-sm disabled:cursor-not-allowed disabled:opacity-50 ${ATTENDANCE_TOUCH_SETTING_KEYS.has(key) ? "h-11" : ""} ${error ? "border-destructive" : "border-zinc-200 dark:border-zinc-700"}`}
         />
         {/* The unit used to live only in the screen-reader label and in a
             «(м)» glued to some titles; a number without it is a guess. */}
@@ -569,9 +607,9 @@ export default function MtmSettingsPage() {
       aria-label={ts(item.labelKey)}
       disabled={disabled}
       onClick={() => updateSetting(item.key, !settings[item.key])}
-      className={`relative inline-flex w-11 shrink-0 items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${item.key === "attendanceRejectOutsideBranch" ? "h-11" : `h-6 ${settings[item.key] ? "bg-primary" : "bg-muted"}`}`}
+      className={`relative inline-flex w-11 shrink-0 items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${ATTENDANCE_TOUCH_SETTING_KEYS.has(item.key) ? "h-11" : `h-6 ${settings[item.key] ? "bg-primary" : "bg-muted"}`}`}
     >
-      {item.key === "attendanceRejectOutsideBranch" ? <span aria-hidden="true" className={`absolute inset-x-0 h-6 rounded-full ${settings[item.key] ? "bg-primary" : "bg-muted"}`} /> : null}
+      {ATTENDANCE_TOUCH_SETTING_KEYS.has(item.key) ? <span aria-hidden="true" className={`absolute inset-x-0 h-6 rounded-full ${settings[item.key] ? "bg-primary" : "bg-muted"}`} /> : null}
       <span className={`relative inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings[item.key] ? "translate-x-6" : "translate-x-1"}`} />
     </button>
   )
@@ -668,7 +706,7 @@ export default function MtmSettingsPage() {
   // блоки»). A card is either half of a pair — the pair shares one height —
   // or, when it would stand alone, the whole row with its settings laid out
   // in columns of its own. There is no third kind.
-  const groupsOf = (name: SettingsTab) => settingGroups.filter((group) => group.tab === name)
+  const groupsOf = (name: SettingsTab) => settingGroups.filter((group) => group.tab === name && (!["groupAttendanceRisk", "groupAttendanceReminders"].includes(group.titleKey) || settings.attendanceEnabled === true))
   const renderGroup = (group: SettingGroup, span: "half" | "full", extraClass = "") => {
     const GroupIcon = group.icon
     const columns = span === "half" ? "space-y-4" : `grid gap-x-8 gap-y-4 ${group.items.length % 3 === 0 ? "lg:grid-cols-3" : "lg:grid-cols-2"}`

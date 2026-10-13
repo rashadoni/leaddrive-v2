@@ -1,3 +1,4 @@
+import { ATTENDANCE_QR_STATES, type AttendanceQrState } from "@/lib/mtm/attendance-qr-contract"
 import type { AttendanceLocationFinding } from "@/lib/mtm/attendance-location-contract"
 import type { MtmAttendanceReportRow } from "@/lib/mtm/attendance-report"
 
@@ -7,10 +8,12 @@ export type AttendanceReportMark = {
   state: Exclude<AttendanceLocationFinding, "BREAK_PRIVACY"> | "NOT_RECORDED"
   branch: { id: string; revisionId: string; name: string } | null
   distanceMeters: number | null
+  qr?: { state: AttendanceQrState; branch: { id: string; revisionId: string; name: string } | null }
 }
 export type AttendanceLocationReportEvidence = {
   eventId: string; action: string; claimedAt: Date; serverReceivedAt: Date; locationState: string
   branchId: string | null; branchRevisionId: string | null; branchName: string | null; distanceMeters: number | null
+  qrState?: string | null; qrBranchId?: string | null; qrBranchRevisionId?: string | null; qrBranchName?: string | null
 }
 const STATES: readonly string[] = ["INSIDE", "OUTSIDE", "UNCERTAIN", "UNCONFIGURED", "UNAVAILABLE", "NO_CONSENT"]
 /** Only canonical endpoint events may acquire evidence; PAUSE/RESUME never do. */
@@ -26,32 +29,40 @@ export function attendanceReportMarks(row: MtmAttendanceReportRow, evidence: Rea
     const distance = item?.distanceMeters
     return [{ eventId: event.id, action: event.type, claimedAt: event.claimedAt ?? event.occurredAt,
       serverReceivedAt: event.serverReceivedAt, state, branch,
-      distanceMeters: branch && distance != null && Number.isSafeInteger(distance) && distance >= 0 ? distance : null }]
+      distanceMeters: branch && distance != null && Number.isSafeInteger(distance) && distance >= 0 ? distance : null,
+      ...(valid && item.locationState !== "BREAK_PRIVACY" && item.qrState && (ATTENDANCE_QR_STATES as readonly string[]).includes(item.qrState) ? { qr: { state: item.qrState as AttendanceQrState,
+        branch: item.qrState === "VERIFIED" && item.qrBranchId && item.qrBranchRevisionId && item.qrBranchName
+          ? { id: item.qrBranchId, revisionId: item.qrBranchRevisionId, name: item.qrBranchName } : null } } : {}) }]
   })
 }
-export const ATTENDANCE_LOCATION_STATE_MESSAGES: Record<AttendanceReportMark["state"], string> = {
-  INSIDE: "locationReportInside", OUTSIDE: "locationReportOutside", UNCERTAIN: "locationReportUncertain",
+export const ATTENDANCE_LOCATION_STATE_MESSAGES: Record<AttendanceReportMark["state"] | "QR_UNCONFIRMED", string> = {
+  QR_UNCONFIRMED: "qrReportUnconfirmed", INSIDE: "locationReportInside", OUTSIDE: "locationReportOutside", UNCERTAIN: "locationReportUncertain",
   UNCONFIGURED: "locationReportUnconfigured", UNAVAILABLE: "locationReportUnavailable", NO_CONSENT: "locationReportNoConsent", NOT_RECORDED: "locationReportNotRecorded",
 }
 type Text = (key: string, values?: Record<string, string | number>) => string
 export function attendanceMarkText(mark: AttendanceReportMark, t: Text): string {
-  if (mark.state === "NOT_RECORDED") return "—"
-  return [mark.branch?.name, t(ATTENDANCE_LOCATION_STATE_MESSAGES[mark.state]),
+  if (mark.state === "NOT_RECORDED" && !mark.qr) return "—"
+  const qr = mark.qr ? [mark.qr.branch?.name, t(`qrState${mark.qr.state}`)].filter(Boolean).join(" · ") : null
+  const location = mark.state === "NOT_RECORDED" ? null : [mark.branch?.name, t(ATTENDANCE_LOCATION_STATE_MESSAGES[mark.state]),
     mark.distanceMeters === null ? null : t("locationReportDistance", { meters: mark.distanceMeters })].filter(Boolean).join(" · ")
+  return [qr, qr && location ? t("qrGpsObservation", { value: location }) : location].filter(Boolean).join("; ")
 }
 export function attendanceEndpointBranch(row: MtmAttendanceReportRow, action: "START" | "FINISH") {
   // A corrected clock is not proof of a new location: preserve original marks
   // in the journal column, never attach their place to a correction's time.
   const instant = action === "START" ? row.startedAt : row.completedAt
   const matches = (row.locationMarks ?? []).filter(mark => mark.action === action && mark.claimedAt === instant)
-  return matches.length === 1 && matches[0].state === "INSIDE" ? matches[0].branch?.name ?? "—" : "—"
+  if (matches.length !== 1) return "—"
+  const mark = matches[0]
+  if (mark.qr) return mark.qr.state === "VERIFIED" ? mark.qr.branch?.name ?? "—" : "—"
+  return mark.state === "INSIDE" ? mark.branch?.name ?? "—" : "—"
 }
 export function attendanceDayLocationText(row: MtmAttendanceReportRow, t: Text) {
-  return (row.locationMarks ?? []).filter(mark => mark.state !== "NOT_RECORDED")
+  return (row.locationMarks ?? []).filter(mark => mark.state !== "NOT_RECORDED" || mark.qr)
     .map(mark => `${t(mark.action === "START" ? "reportStarted" : "reportFinished")}: ${attendanceMarkText(mark, t)}`).join("; ") || "—"
 }
 export type AttendanceBranchSummaryRow = {
-  key: string; branch: AttendanceReportMark["branch"]; state: AttendanceReportMark["state"] | null
+  key: string; branch: AttendanceReportMark["branch"]; state: AttendanceReportMark["state"] | "QR_UNCONFIRMED" | null
   arrivals: number | null; departures: number | null; employees: number | null
   outside: number | null; uncertain: number | null; noLocation: number | null; noConsent: number | null
 }
@@ -60,9 +71,11 @@ export function summarizeAttendanceBranches(rows: readonly MtmAttendanceReportRo
   const employees = new Set<string>()
   let arrivals = 0, departures = 0, outside = 0, uncertain = 0, noLocation = 0, noConsent = 0, unknown = 0
   for (const day of rows) for (const mark of day.locationMarks ?? []) {
-    const key = mark.branch ? `branch:${mark.branch.revisionId}` : `state:${mark.state}`
-    const known = mark.state !== "NOT_RECORDED", positioned = ["INSIDE", "OUTSIDE", "UNCERTAIN"].includes(mark.state)
-    if (!groups.has(key)) groups.set(key, { row: { key, branch: mark.branch, state: mark.branch ? null : mark.state,
+    const branch = mark.qr ? mark.qr.state === "VERIFIED" ? mark.qr.branch : null : mark.branch
+    const state = mark.qr && !branch ? "QR_UNCONFIRMED" : mark.state
+    const key = branch ? `branch:${branch.revisionId}` : `state:${state}`
+    const known = Boolean(mark.qr) || mark.state !== "NOT_RECORDED", positioned = ["INSIDE", "OUTSIDE", "UNCERTAIN"].includes(mark.state)
+    if (!groups.has(key)) groups.set(key, { row: { key, branch, state: branch ? null : state,
       arrivals: known ? 0 : null, departures: known ? 0 : null, employees: known ? 0 : null,
       outside: positioned ? 0 : null, uncertain: positioned ? 0 : null,
       noLocation: mark.state === "UNAVAILABLE" ? 0 : null, noConsent: mark.state === "NO_CONSENT" ? 0 : null }, employees: new Set() })

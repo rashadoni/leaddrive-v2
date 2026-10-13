@@ -1,0 +1,12 @@
+const fs=require('node:fs'),path=require('node:path'),{createRequire}=require('node:module');
+const root=process.cwd(),req=createRequire(path.join(root,'package.json'));
+(async()=>{
+ const src=path.join(root,'docs/mtm-attendance/evidence/overtime/actual'),out=src;
+ const files=['ru','az','en'].map(lang=>`attendance-report-overtime-${lang}.html`),classes=new Set();
+ for(const file of files){const html=fs.readFileSync(path.join(src,file),'utf8');for(const match of html.matchAll(/class="([^"]+)"/g))for(const name of match[1].split(/\s+/))classes.add(name);fs.writeFileSync(path.join(out,file),html)}
+ const {compile}=req('@tailwindcss/node'),input=fs.readFileSync(path.join(root,'src/app/globals.css'),'utf8').replace('@import "tailwindcss";','@import "tailwindcss" source(none);');
+ const compiler=await compile(input,{base:path.join(root,'src/app'),onDependency(){}});fs.writeFileSync(path.join(out,'attendance.css'),compiler.build([...classes]));
+ const {chromium}=req('playwright');const browser=await chromium.launch({executablePath:'/home/codex-alt/.cache/ms-playwright/chromium_headless_shell-1208/chrome-headless-shell-linux64/chrome-headless-shell',headless:true,args:['--no-sandbox']});const metrics=[];
+ for(const lang of ['ru','az','en'])for(const width of [1440,390]){const page=await browser.newPage({viewport:{width,height:width===390?844:1100},deviceScaleFactor:1});await page.goto('file://'+path.join(out,`attendance-report-overtime-${lang}.html`));await page.screenshot({path:path.join(out,`attendance-report-overtime-${lang}-${width}.png`),fullPage:true});const proof=await page.evaluate(()=>({width:innerWidth,scrollWidth:document.documentElement.scrollWidth,innerScrolls:[...document.querySelectorAll('*')].filter(e=>getComputedStyle(e).overflowY==='auto'&&e.scrollHeight>e.clientHeight+1).length,forms:document.forms.length,reviewRows:document.querySelectorAll('[data-testid="attendance-custom-row"]').length,controlMin:Math.min(...[...document.querySelectorAll('button,input,select,a')].filter(e=>e.getBoundingClientRect().height>0).map(e=>e.type==='checkbox'?e.closest('label').getBoundingClientRect().height:e.getBoundingClientRect().height)),rawIdentifiersVisible:/private-(branch|event|revision)-/.test(document.body.textContent)}));metrics.push({lang,...proof});await page.close()}
+ fs.writeFileSync(path.join(out,'actual-capture-results.json'),JSON.stringify(metrics,null,2)+'\n');console.log(JSON.stringify(metrics));await browser.close();
+})().catch(error=>{console.error(error);process.exitCode=1});

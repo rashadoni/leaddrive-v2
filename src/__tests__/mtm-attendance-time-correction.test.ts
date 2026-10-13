@@ -41,6 +41,43 @@ describe("MTM correction engine inside the caller's authorized transaction", () 
     expect(tx.mtmAgentWorkdayEvent.create).not.toHaveBeenCalled()
     expect(tx.workforceTimeCorrection.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ source: "REQUEST_APPROVAL", operationId: `request-approval:${input.requestId}`, beforeFacts: workforceWorkdayCorrectionFacts(workday()) }) }))
   })
+  it.each(["WORKDAY", "MISSING"])("approves a %s overnight proposal on its original workDate and replays once", async (kind) => {
+    const source = { ...workday(), startedAt: at("18:00") }
+    const pending = request()
+    pending.endDate = new Date("2026-10-13T00:00:00Z")
+    pending.requestedStartAt = source.startedAt
+    pending.requestedEndAt = new Date("2026-10-13T02:00:00Z")
+    pending.attendanceDetails.startTime = "22:00"; pending.attendanceDetails.endTime = "06:00"
+    pending.attendanceDetails.correctionBasis = kind === "MISSING" ? { kind, workDate: "2026-10-12" } : { kind, facts: workforceWorkdayCorrectionFacts(source) }
+    pending.correctionWorkdayId = kind === "MISSING" ? null : source.id
+    tx.mtmHrmRequest.findFirst.mockResolvedValue(pending)
+    tx.mtmAgentWorkday.findFirst.mockResolvedValue(kind === "MISSING" ? null : source)
+    tx.mtmAgentWorkdayEvent.findMany.mockResolvedValue([event("START", "18:00")])
+    const result = await run()
+    expect(result.workday).toMatchObject({ workDate: "2026-10-12", startedAt: at("18:00").toISOString(), completedAt: "2026-10-13T02:00:00.000Z" })
+    const ledger = tx.workforceTimeCorrection.create.mock.calls[0][0].data
+    tx.workforceTimeCorrection.findFirst.mockResolvedValue(ledger)
+    tx.mtmHrmRequest.findFirst.mockResolvedValue({ ...pending, status: "APPROVED", correctionWorkdayId: result.workdayId, decidedByUserId: input.userId, decidedAt: now })
+    expect(await run()).toEqual({ ...result, idempotent: true })
+    expect(tx.workforceTimeCorrection.create).toHaveBeenCalledTimes(1)
+    expect(tx.mtmAgentWorkdayEvent.create).not.toHaveBeenCalled()
+  })
+  it.each(["two-dates-later", "mismatched-end-clock", "ambiguous-end"])("refuses invalid overnight %s before writes", async (kind) => {
+    const pending = request()
+    pending.endDate = new Date(kind === "two-dates-later" ? "2026-10-14T00:00:00Z" : "2026-10-13T00:00:00Z")
+    pending.requestedStartAt = at("18:00"); pending.requestedEndAt = new Date("2026-10-13T02:00:00Z")
+    pending.attendanceDetails.startTime = "22:00"; pending.attendanceDetails.endTime = "07:00"
+    if (kind === "ambiguous-end") {
+      pending.startDate = new Date("2025-10-25T00:00:00Z"); pending.endDate = new Date("2025-10-26T00:00:00Z")
+      pending.requestedStartAt = new Date("2025-10-25T20:00:00Z"); pending.requestedEndAt = new Date("2025-10-26T01:30:00Z")
+      pending.attendanceDetails.timezone = "Europe/Berlin"; pending.attendanceDetails.endTime = "02:30"
+      pending.attendanceDetails.correctionBasis = { kind: "MISSING", workDate: "2025-10-25" }
+    }
+    tx.mtmHrmRequest.findFirst.mockResolvedValue(pending)
+    await expect(run()).rejects.toHaveProperty("code", "MTM_ATTENDANCE_CORRECTION_INVALID")
+    expect(tx.workforceTimeCorrection.create).not.toHaveBeenCalled()
+    expect(tx.mtmHrmRequest.updateMany).not.toHaveBeenCalled()
+  })
   it("creates an audited missing day, then binds approval and genesis in the same transaction", async () => {
     const missing = request(); missing.correctionWorkdayId = null; missing.attendanceDetails.correctionBasis = { kind: "MISSING", workDate: "2026-10-12" }
     tx.mtmHrmRequest.findFirst.mockResolvedValue(missing); tx.mtmAgentWorkday.findFirst.mockResolvedValue(null)
@@ -56,6 +93,14 @@ describe("MTM correction engine inside the caller's authorized transaction", () 
     tx.mtmHrmRequest.findFirst.mockResolvedValue(pending); tx.mtmAgentWorkday.findFirst.mockResolvedValue(paused)
     tx.mtmAgentWorkdayEvent.findMany.mockResolvedValue([event("START", "05:00"), event("PAUSE", "13:00")])
     expect((await run()).workday).toMatchObject({ totalPausedSeconds: 3600, pausedAt: null, status: "COMPLETED" })
+  })
+  it("refuses an invalid frozen timezone even when the UTC fallback would match", async () => {
+    const pending = request()
+    pending.attendanceDetails.timezone = "invalid-zone"
+    pending.attendanceDetails.startTime = "05:00"; pending.attendanceDetails.endTime = "14:00"
+    tx.mtmHrmRequest.findFirst.mockResolvedValue(pending)
+    await expect(run()).rejects.toHaveProperty("code", "MTM_ATTENDANCE_CORRECTION_INVALID")
+    expect(tx.workforceTimeCorrection.create).not.toHaveBeenCalled()
   })
   it.each(["self-user", "stale-version", "basis-drift", "missing-now-exists", "missing-finish-proposal", "future-finish", "invalid-journal", "pause-crossing"])("refuses %s before approval or ledger/projection writes", async (kind) => {
     const pending = request()
