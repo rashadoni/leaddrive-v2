@@ -433,3 +433,7 @@
 #### 2026-10-13 — CI: историческая схема и текущий клиент
 
 - Historical policy-restore before/after proof прошёл; следующий тест текущего клиента всё ещё запускался на старой схеме и не находил новое поле User. После завершённого и сохранённого historical proof добавлено выравнивание только disposable DB по candidate schema, без accept-data-loss. Историческая сверка остаётся до этого шага; действующие SQL guards сохраняются. Затем выполняются прежние PostgreSQL/API/browser gates, без пропусков.
+
+#### 2026-10-13 — 1.14 CI: литерал статуса тестового снимка
+
+- Обязательный static-checks #718 PASS, включая реальный PostgreSQL. Typecheck нашёл одну оставшуюся группу ошибок в unit fixture: строка COMPLETED расширялась до string вместо enum. Значение обозначено literal as const, без изменения runtime или baseline. Full compiler повторяется в CI; локально NOT RUN по host contract.

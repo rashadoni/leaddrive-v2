@@ -11,7 +11,7 @@ import { DEMO, DEMO_AGENTS, DEMO_WORKDAYS, assertContext, assertOwnedOrganizatio
 
 const at = (day: string, clock: string) => new Date(`${day}T${clock}:00.000+04:00`)
 const snapshot = () => ({ workdays: DEMO_WORKDAYS.map((day) => ({
-  id: day.id, agentId: day.agentId, workDate: new Date(`${day.date}T00:00:00Z`), status: "COMPLETED",
+  id: day.id, agentId: day.agentId, workDate: new Date(`${day.date}T00:00:00Z`), status: "COMPLETED" as const,
   startedAt: at(day.date, day.events[0][1]), completedAt: at(day.date, day.events.at(-1)![1]), totalPausedSeconds: day.paused,
   events: day.events.map(([type, time], i) => ({ id: `${day.id}-event-${i}`, type,
     occurredAt: at(day.date, time), appliedAt: at(day.date, time), claimedAt: at(day.date, time), serverReceivedAt: new Date(at(day.date, time).getTime() + 1000) })),
