@@ -8,8 +8,8 @@
  * Either way the rules are these, so refresh restores the same step and
  * back/forward can never repeat an effect.
  */
-import { applyTransitionEffects, createJourneyRecords, type DemoJourneyRecords, type DemoProspectIdentity } from "./records"
-import { canTransition, isTerminalJourneyState, journeyPath } from "./state"
+import { applyTransitionEffects, callStateOf, createJourneyRecords, rebuildRecordsAtState, type DemoJourneyRecords, type DemoProspectIdentity } from "./records"
+import { DEMO_JOURNEY_HAPPY_PATH, canTransition, isTerminalJourneyState, journeyPath } from "./state"
 import type { DemoJourneyManifest, DemoJourneySection, DemoJourneyState, DemoJourneyStep } from "./types"
 import { DEMO_JOURNEY_STATES } from "./types"
 
@@ -45,6 +45,9 @@ export type DemoJourneyAction =
   | { readonly type: "open-section"; readonly sectionId: string }
   | { readonly type: "expire" }
   | { readonly type: "revoke" }
+
+/** `ui` paths that count something the prospect may only do so many times (the inbox composer's five messages). */
+export const DEMO_UI_QUOTAS: readonly string[] = ["inbox.replies"]
 
 export interface DemoJourneyReduceResult {
   readonly ok: boolean
@@ -109,7 +112,52 @@ export function createJourneySnapshot(
   }
 }
 
-function advance(snapshot: DemoJourneySnapshot, manifest: DemoJourneyManifest): DemoJourneySnapshot {
+function isWalked(section: DemoJourneySection, snapshot: DemoJourneySnapshot): boolean {
+  return section.steps.every((step) => !step.required || snapshot.completedSteps.includes(step.id))
+}
+
+/** Staged records are spaced up to this far apart, so a lead's timeline still reads in order. */
+const STAGED_STEP_MS = 60_000
+
+/**
+ * Moves the story forward to `target`'s beginning, staging what the sections
+ * in between would have produced — the same record effects, in the same order
+ * — so the section opens on the data it expects, never empty. Null when no
+ * legal path leads there.
+ */
+function stageTo(snapshot: DemoJourneySnapshot, target: DemoJourneySection, now: Date): DemoJourneySnapshot | null {
+  let path: readonly DemoJourneyState[] | null = null
+  let entry: DemoJourneyState | null = null
+  for (const candidate of target.entryStates) {
+    const walk = candidate === snapshot.state ? [] : journeyPath(snapshot.state, candidate)
+    if (walk) {
+      path = walk
+      entry = candidate
+      break
+    }
+  }
+  if (!path || !entry) return null
+  // Staged between the story's last move and now — never before what the
+  // prospect already did, never in the future.
+  const room = Math.max(0, now.getTime() - Date.parse(snapshot.updatedAt))
+  const spacing = path.length > 1 ? Math.min(STAGED_STEP_MS, room / (path.length - 1)) : 0
+  let records = snapshot.records
+  path.forEach((state, index) => {
+    const at = new Date(now.getTime() - (path!.length - 1 - index) * spacing)
+    records = applyTransitionEffects(records, state, snapshot.identity, at)
+  })
+  return {
+    ...snapshot,
+    state: entry,
+    records,
+    sectionId: target.id,
+    stepId: target.steps[0].id,
+    visitedSections: snapshot.visitedSections.includes(target.id) ? snapshot.visitedSections : [...snapshot.visitedSections, target.id],
+    updatedAt: now.toISOString(),
+  }
+}
+
+function advance(snapshot: DemoJourneySnapshot, manifest: DemoJourneyManifest, now: Date): DemoJourneySnapshot {
   const sections = activeSections(manifest)
   const sectionIndex = sections.findIndex((section) => section.id === snapshot.sectionId)
   const section = sections[sectionIndex]
@@ -119,6 +167,14 @@ function advance(snapshot: DemoJourneySnapshot, manifest: DemoJourneyManifest): 
   if (nextStep) return { ...snapshot, stepId: nextStep.id }
   const nextSection = sections[sectionIndex + 1]
   if (!nextSection) return snapshot
+  // A module opened again ends among sections the prospect already walked.
+  // The guide does not lead through those a second time: it goes on to the
+  // next one not seen yet — the last screen, when nothing is left.
+  if (isWalked(nextSection, snapshot)) {
+    const unseen = sections.slice(sectionIndex + 1).find((candidate) => !isWalked(candidate, snapshot)) ?? sections[sections.length - 1]
+    const staged = unseen.id === nextSection.id ? null : stageTo(snapshot, unseen, now)
+    if (staged) return staged
+  }
   return {
     ...snapshot,
     sectionId: nextSection.id,
@@ -135,11 +191,8 @@ function closeStep(snapshot: DemoJourneySnapshot, manifest: DemoJourneyManifest,
     completedSteps: snapshot.completedSteps.includes(stepId) ? snapshot.completedSteps : [...snapshot.completedSteps, stepId],
     updatedAt: now.toISOString(),
   }
-  return advance(closed, manifest)
+  return advance(closed, manifest, now)
 }
-
-/** Staged records are spaced up to this far apart, so a lead's timeline still reads in order. */
-const STAGED_STEP_MS = 60_000
 
 /**
  * The story is on a step that waits for something real to end — the live AI
@@ -157,33 +210,41 @@ export function awaitingOutcome(snapshot: DemoJourneySnapshot, manifest: DemoJou
 }
 
 /**
- * Where a jump to `sectionId` really lands, or why it cannot: sections ahead
- * of the story only (behind it, the player shows them read-only), never the
- * story's own shell (orientation, summary), never away from the live AI call
- * while it waits for its outcome (the prospect leaves it with «Zəngsiz davam
- * et» or by calling), and never past it: a jump stops there, so the one real
- * call is not skipped without the prospect seeing it.
+ * Where opening `sectionId` really lands, or why it cannot.
+ *
+ * Owner, 2026-10-13: «для клиента должны быть открыты модули; переходя по
+ * модулю, начинается гид». Any section opens with its guide, in any order and
+ * again: ahead of the story it jumps there and stages what lies between;
+ * behind it (or on it) the section starts over from its own beginning
+ * (`back`). Behind used to mean «read-only, prepared for you» — which is how
+ * a prospect who jumped to the boards never saw the inbox, the AI reply or
+ * the AI call, and was still told the demo was complete.
+ *
+ * Never the story's own shell (orientation, summary), never away from the
+ * live AI call while it waits for its outcome (the prospect leaves it with
+ * «Zəngsiz davam et» or by calling), and a jump ahead never passes it: it
+ * stops there, so the one real call is not skipped unseen.
  */
 export function sectionJumpTarget(
   snapshot: DemoJourneySnapshot,
   manifest: DemoJourneyManifest,
   sectionId: string,
-): { ok: true; section: DemoJourneySection } | { ok: false; error: string } {
+): { ok: true; section: DemoJourneySection; back: boolean } | { ok: false; error: string } {
   const sections = activeSections(manifest)
   const targetIndex = sections.findIndex((section) => section.id === sectionId)
   const frontierIndex = sections.findIndex((section) => section.id === snapshot.sectionId)
   const target = sections[targetIndex]
   if (!target) return { ok: false, error: `section "${sectionId}" is not in this story` }
   if (target.navGroup === "demo") return { ok: false, error: `"${target.id}" is reached by the story, not opened directly` }
-  if (targetIndex <= frontierIndex) return { ok: false, error: `"${target.id}" is not ahead of the story` }
   if (awaitingOutcome(snapshot, manifest)) return { ok: false, error: "the live call waits for its outcome" }
+  if (targetIndex <= frontierIndex) return { ok: true, section: target, back: true }
   // Only a real call is worth stopping a jump for. In the open demo the call
   // from the lead card is a simulation, and making it a toll gate on the way
   // to Deals is exactly what the owner asked us to stop doing.
   const waitsForOutcome = manifest.capabilities.liveCall
-    ? sections.slice(frontierIndex + 1, targetIndex).find((section) => section.steps.some((step) => step.completion.kind === "outcome"))
+    ? sections.slice(frontierIndex + 1, targetIndex).find((section) => section.steps.some((step) => step.completion.kind === "outcome" && !snapshot.completedSteps.includes(step.id)))
     : undefined
-  return { ok: true, section: waitsForOutcome ?? target }
+  return { ok: true, section: waitsForOutcome ?? target, back: false }
 }
 
 export function reduceJourney(
@@ -217,7 +278,7 @@ export function reduceJourney(
       if (action.stepId !== step.id) return fail(`"${action.stepId}" is not the current step ("${step.id}")`)
       if (step.required) return fail(`"${step.id}" is required and cannot be skipped`)
       const skipped = { ...snapshot, skippedSteps: [...snapshot.skippedSteps, step.id], updatedAt: now.toISOString() }
-      return { ok: true, snapshot: advance(skipped, manifest) }
+      return { ok: true, snapshot: advance(skipped, manifest, now) }
     }
 
     case "ui": {
@@ -253,36 +314,31 @@ export function reduceJourney(
       const jump = sectionJumpTarget(snapshot, manifest, action.sectionId)
       if (!jump.ok) return fail(jump.error)
       const target = jump.section
-      let path: readonly DemoJourneyState[] | null = null
-      let entry: DemoJourneyState | null = null
-      for (const candidate of target.entryStates) {
-        const walk = candidate === snapshot.state ? [] : journeyPath(snapshot.state, candidate)
-        if (walk) {
-          path = walk
-          entry = candidate
-          break
+      if (jump.back) {
+        // The module starts over: its records as they stand at its own
+        // beginning, its guide from the first step. What was walked stays
+        // walked (completedSteps) — only the screen goes back.
+        const call = callStateOf(snapshot.records)
+        const entry = call && target.entryStates.includes(call) ? call : target.entryStates[0]
+        const restarted: DemoJourneySnapshot = {
+          ...snapshot,
+          state: entry,
+          records: rebuildRecordsAtState(snapshot.identity, entry, now, DEMO_JOURNEY_HAPPY_PATH, call),
+          sectionId: target.id,
+          stepId: target.steps[0].id,
+          visitedSections: snapshot.visitedSections.includes(target.id) ? snapshot.visitedSections : [...snapshot.visitedSections, target.id],
+          // Tabs and toggles too: a step that says «open this tab» must find
+          // it closed. Quotas stay — opening a module again is not a refill.
+          ui: Object.fromEntries(Object.entries(snapshot.ui).filter(([path]) => DEMO_UI_QUOTAS.includes(path))),
+          updatedAt: now.toISOString(),
         }
+        return { ok: true, snapshot: restarted, ...(entry !== snapshot.state ? { transitioned: entry } : {}) }
       }
-      if (!path || !entry) return fail(`no legal path from ${snapshot.state} to "${target.id}"`)
-      // Staged between the story's last move and now — never before what the
-      // prospect already did, never in the future.
-      const room = Math.max(0, now.getTime() - Date.parse(snapshot.updatedAt))
-      const spacing = path.length > 1 ? Math.min(STAGED_STEP_MS, room / (path.length - 1)) : 0
-      let records = snapshot.records
-      path.forEach((state, index) => {
-        const at = new Date(now.getTime() - (path!.length - 1 - index) * spacing)
-        records = applyTransitionEffects(records, state, snapshot.identity, at)
-      })
-      const jumped: DemoJourneySnapshot = {
-        ...snapshot,
-        state: entry,
-        records,
-        sectionId: target.id,
-        stepId: target.steps[0].id,
-        visitedSections: snapshot.visitedSections.includes(target.id) ? snapshot.visitedSections : [...snapshot.visitedSections, target.id],
-        updatedAt: now.toISOString(),
-      }
-      return { ok: true, snapshot: jumped, ...(entry !== snapshot.state ? { transitioned: entry } : {}) }
+      // The story jumps to the section and stages what the sections in
+      // between would have produced (stageTo).
+      const jumped = stageTo(snapshot, target, now)
+      if (!jumped) return fail(`no legal path from ${snapshot.state} to "${target.id}"`)
+      return { ok: true, snapshot: jumped, ...(jumped.state !== snapshot.state ? { transitioned: jumped.state } : {}) }
     }
 
     case "outcome": {
@@ -338,8 +394,31 @@ export function sectionStatus(
   if (index < 0) return "upcoming"
   const walked = sections[index].steps.every((step) => !step.required || snapshot.completedSteps.includes(step.id))
   if (index === currentIndex && snapshot.state !== "COMPLETED") return "current"
-  if (index <= currentIndex) return walked ? "done" : "passed"
-  return "upcoming"
+  // Walked is walked wherever the story stands now: a module opened again
+  // puts the sections after it «ahead» once more, and they stay done.
+  if (walked) return "done"
+  return index < currentIndex ? "passed" : "upcoming"
+}
+
+/**
+ * The modules of the menu — one per route — and whether each was walked: every
+ * required step of every section on that route. What the sidebar ticks and
+ * the last screen lists as «not seen yet».
+ */
+export function moduleProgress(
+  snapshot: DemoJourneySnapshot,
+  manifest: DemoJourneyManifest,
+): ReadonlyArray<{ route: string; firstSectionId: string; title: string; done: boolean }> {
+  const modules = new Map<string, { route: string; firstSectionId: string; title: string; done: boolean }>()
+  for (const section of activeSections(manifest)) {
+    if (section.navGroup === "demo") continue
+    const route = section.route.replace(/\/\[[a-zA-Z]+\]$/, "")
+    const walked = section.steps.every((step) => !step.required || snapshot.completedSteps.includes(step.id))
+    const known = modules.get(route)
+    if (known) known.done = known.done && walked
+    else modules.set(route, { route, firstSectionId: section.id, title: section.title, done: walked })
+  }
+  return [...modules.values()]
 }
 
 /** Sidebar routes the prospect may open: all of them (owner, 2026-09-22).
