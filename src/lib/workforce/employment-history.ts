@@ -95,7 +95,7 @@ export async function resolveWorkforceHistoricalEmployment(
       WHERE "organizationId" = ${input.organizationId}
         AND "agentId" = ${input.agentId}
         AND "effectiveAt" <= ${input.occurredAt}
-      ORDER BY "effectiveAt" DESC, "id" DESC
+      ORDER BY "effectiveAt" DESC, CASE WHEN "kind" = 'REHIRE' THEN 1 ELSE 0 END DESC, "id" DESC
       LIMIT 1
     ) AS event ON TRUE
     WHERE agent."organizationId" = ${input.organizationId}
@@ -171,7 +171,14 @@ export async function recordWorkforceEmploymentEvent(
   input: RecordEmploymentHistoryContext,
 ): Promise<WorkforceEmploymentHistoryEvent> {
   const db = input.db ?? prisma
-  return db.$transaction(async (tx: Prisma.TransactionClient) => {
+  return db.$transaction((tx: Prisma.TransactionClient) => recordWorkforceEmploymentEventInTransaction(tx, input))
+}
+
+/** Shared atomic append for opt-in MTM enrollment; authorization remains at
+ * each caller, and the same immutable database ledger is used by both paths. */
+export async function recordWorkforceEmploymentEventInTransaction(
+  tx: Prisma.TransactionClient, input: RecordEmploymentHistoryContext,
+): Promise<WorkforceEmploymentHistoryEvent> {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${"workforce-employment:" + input.organizationId + ":" + input.event.agentId}))`
     const agent = await tx.mtmAgent.findFirst({
       where: { organizationId: input.organizationId, id: input.event.agentId },
@@ -183,6 +190,8 @@ export async function recordWorkforceEmploymentEvent(
         "The Workforce employee is not available in this tenant",
       )
     }
+    // The per-employee advisory lock serializes appenders. The ledger grants
+    // SELECT/INSERT only; FOR UPDATE would hide its immutable rows under RLS.
     const [previous] = await tx.$queryRaw<Array<{
       id: string
       kind: WorkforceEmploymentHistoryEvent["kind"]
@@ -192,11 +201,14 @@ export async function recordWorkforceEmploymentEvent(
       FROM "workforce_employment_events"
       WHERE "organizationId" = ${input.organizationId}
         AND "agentId" = ${input.event.agentId}
-      ORDER BY "effectiveAt" DESC, "id" DESC
+      ORDER BY "effectiveAt" DESC, CASE WHEN "kind" = 'REHIRE' THEN 1 ELSE 0 END DESC, "id" DESC
       LIMIT 1
-      FOR UPDATE
     `)
-    if (previous && input.event.effectiveAt.getTime() <= previous.effectiveAt.getTime()) {
+    // Last working date ends at the next midnight. A rehire on that next
+    // date may share precisely that boundary; it creates no artificial gap.
+    const contiguousRehire = previous?.kind === "TERMINATION" && input.event.kind === "REHIRE"
+      && input.event.effectiveAt.getTime() === previous.effectiveAt.getTime()
+    if (previous && input.event.effectiveAt.getTime() <= previous.effectiveAt.getTime() && !contiguousRehire) {
       throw new WorkforceEmploymentHistoryError(
         "WORKFORCE_EMPLOYMENT_EVENT_ORDER_INVALID",
         "An employment event must be effective after the last recorded lifecycle event",
@@ -244,5 +256,4 @@ export async function recordWorkforceEmploymentEvent(
       },
     })
     return event
-  })
 }

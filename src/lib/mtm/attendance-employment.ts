@@ -15,9 +15,12 @@ export function attendanceEmploymentOnDate(events: readonly AttendanceEmployment
     start = localDateTimeToUnambiguousUtc(`${date}T00:00`, timezone).getTime()
     end = localDateTimeToUnambiguousUtc(`${addDateKeyDays(date, 1)}T00:00`, timezone).getTime()
   } catch { return "UNKNOWN" }
-  const ordered = events.map(event => ({ ...event, at: Date.parse(event.effectiveAt) })).sort((a, b) => a.at - b.at)
-  // Malformed or conflicting imported facts establish no employment boundary.
-  if (ordered.some((event, i) => !Number.isFinite(event.at) || (i > 0 && ordered[i - 1].at === event.at))) return "UNKNOWN"
+  const ordered = events.map(event => ({ ...event, at: Date.parse(event.effectiveAt) })).sort((a, b) => a.at - b.at || Number(a.kind === "REHIRE") - Number(b.kind === "REHIRE"))
+  // Only TERMINATION -> REHIRE may share a boundary, after an employed
+  // interval. All other duplicate instants remain conflicting imported facts.
+  if (ordered.some((event, i) => !Number.isFinite(event.at) || (i > 0 && ordered[i - 1].at === event.at
+    && !(event.kind === "REHIRE" && ordered[i - 1].kind === "TERMINATION" && i >= 2
+      && ordered[i - 2].at < event.at && ordered[i - 2].kind !== "TERMINATION")))) return "UNKNOWN"
   let state: AttendanceEmploymentState = ordered[0].kind === "HIRE" ? "NOT_EMPLOYED" : "UNKNOWN"
   for (const event of ordered) {
     if (event.at >= end) break

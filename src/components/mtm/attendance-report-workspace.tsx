@@ -232,7 +232,7 @@ export function MtmAttendanceReportWorkspace() {
   ]
 
   return <section aria-label={t("reportTitle")} className="space-y-5" data-testid="attendance-report-workspace">
-    {!accessUnavailable && <div className="flex flex-wrap gap-5"><Link href="/mtm/attendance/requests" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("requestsTitle")}</Link><Link href="/mtm/attendance/decisions" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("journalTitle")}</Link></div>}
+    {!accessUnavailable && <div className="flex flex-wrap gap-5"><Link href="/mtm/attendance/requests" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("requestsTitle")}</Link><Link href="/mtm/attendance/decisions" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("journalTitle")}</Link><Link href="/mtm/attendance/branches" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("branchesTitle")}</Link>{canManageAccess && <Link href="/mtm/attendance/employees" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">{t("employeesTitle")}</Link>}</div>}
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{cards.map((card) => <HomeKpi key={card.id} testId={`attendance-${card.id}`} label={t(card.label)}
       icon={card.icon} tone={card.tone} value={report ? format.number(card.value) : null} unit={t(multiDay ? "reportDayRecords" : "reportPeople", { count: card.value })} sub={t(card.hint)}
       progress={report && totals.rowCount ? card.value / totals.rowCount * 100 : 0} />)}</div>
