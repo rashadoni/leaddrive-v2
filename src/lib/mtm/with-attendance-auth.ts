@@ -4,7 +4,7 @@ import { withRouteFieldWebRlsAuth } from "@/lib/with-mtm-rls-auth"
 import { getMtmAttendanceAccess } from "@/lib/mtm/attendance-access"
 
 type Access = Extract<Awaited<ReturnType<typeof getMtmAttendanceAccess>>, { enabled: true }>
-export type AttendanceAuth = AuthResult & Access & { actor: NonNullable<Access["actor"]> }
+export type AttendanceAuth = AuthResult & Omit<Access, "actor"> & { actor: NonNullable<Access["actor"]> }
 
 /** Feature, tenant capability, RBAC and employee scope share one boundary. */
 export function withMtmAttendanceAuth<C = unknown>(
