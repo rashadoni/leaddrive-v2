@@ -461,7 +461,7 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
  })
  it("strict approval rolls back a legacy mark, allows an approved mark and preserves accepted replays after revocation",async()=>{
   await employee();const installations=await import("@/lib/mtm/attendance-installation-store"),policy=await import("@/lib/mtm/attendance-installation-policy")
-  const at=new Date(),op=operation("START",randomUUID(),at)
+  const at=new Date(),workdayId=randomUUID(),op=operation("START",workdayId,at)
   await tenant(ORG,()=>policy.saveAttendanceInstallationRule(admin,true))
   try {
    expect((await send(op)).body.results).toMatchObject([{status:"conflict",serverData:{code:"MTM_ATTENDANCE_INSTALLATION_APPROVAL_REQUIRED",committed:false}}])
@@ -473,7 +473,7 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
    expect((await send(op)).body.results).toMatchObject([{status:"ok"}])
    await tenant(ORG,()=>installations.decideAttendanceInstallation(admin,id,{requestId:randomUUID(),action:"REVOKE",reason:"Fictional replacement"}))
    expect((await send(op)).body.results).toMatchObject([{status:"ok"}])
-   const finish=operation("FINISH",op.data.id!,new Date(Date.now()+1000))
+   const finish=operation("FINISH",workdayId,new Date(Date.now()+1000))
    expect((await send(finish)).body.results).toMatchObject([{status:"conflict",serverData:{committed:false}}])
    expect(await tenant(ORG,()=>prisma.mtmAgentWorkday.findFirst({where:{organizationId:ORG,agentId:identity.agentId},select:{status:true,completedAt:true}}))).toEqual({status:"STARTED",completedAt:null})
   } finally {await tenant(ORG,()=>policy.saveAttendanceInstallationRule(admin,false))}
