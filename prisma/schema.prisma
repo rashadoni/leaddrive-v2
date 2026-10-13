@@ -16,9 +16,11 @@ datasource db {
 // ═══════════════════════════════════════════════════
 
 model Organization {
+  mtmAttendanceRiskDecisions MtmAttendanceRiskDecision[]
   mtmAttendanceLocationPolicies MtmAttendanceLocationPolicy[]
   mtmAttendanceLocationConsents MtmAttendanceLocationConsent[]
   mtmAttendanceMarkEvidence MtmAttendanceMarkEvidence[]
+  mtmAttendanceRiskCases MtmAttendanceRiskCase[]
 
   id                  String    @id @default(cuid())
   name                String
@@ -618,6 +620,7 @@ model PlanRequest {
 }
 
 model User {
+  mtmAttendanceRiskDecisions MtmAttendanceRiskDecision[]
   mtmAttendanceLocationPolicies MtmAttendanceLocationPolicy[]
 
   id                String       @id @default(cuid())
@@ -5754,6 +5757,7 @@ model MtmTeam {
 model MtmAgent {
   mtmAttendanceLocationConsents MtmAttendanceLocationConsent[]
   mtmAttendanceMarkEvidence MtmAttendanceMarkEvidence[]
+  mtmAttendanceRiskCases MtmAttendanceRiskCase[]
 
   id             String         @id @default(cuid())
   organizationId String
@@ -7704,6 +7708,7 @@ model MtmAgentWorkday {
 
 model MtmAgentWorkdayEvent {
   mtmAttendanceMarkEvidence MtmAttendanceMarkEvidence?
+  mtmAttendanceRiskCases MtmAttendanceRiskCase[]
 
   id             String              @id @default(cuid())
   organizationId String
@@ -22200,4 +22205,46 @@ model MtmAttendanceMarkEvidence {
   @@index([organizationId, installationId, claimedAt])
   @@index([organizationId, agentId, claimedAt])
   @@map("mtm_attendance_mark_evidence")
+}
+
+/// MTM review hints only. They never change a workday or Workforce approval.
+model MtmAttendanceRiskCase {
+  id String @id @default(uuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentId String
+  agent MtmAgent @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  eventId String
+  event MtmAgentWorkdayEvent @relation(fields: [organizationId, eventId], references: [organizationId, id], onDelete: Restrict)
+  kind String @db.VarChar(32)
+  workDate DateTime @db.Date
+  timezone String @db.VarChar(64)
+  detectorVersion String @db.VarChar(64)
+  policySnapshot Json
+  details Json
+  createdAt DateTime @default(now())
+  decisions MtmAttendanceRiskDecision[]
+  @@unique([organizationId, id])
+  @@unique([organizationId, eventId, kind])
+  @@index([organizationId, agentId, workDate])
+  @@index([organizationId, workDate, kind])
+  @@map("mtm_attendance_risk_cases")
+}
+
+/// One immutable dismissal with a reason. The source hint is retained forever.
+model MtmAttendanceRiskDecision {
+  id String @id @default(uuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  caseId String
+  riskCase MtmAttendanceRiskCase @relation(fields: [organizationId, caseId], references: [organizationId, id], onDelete: Restrict)
+  requestId String
+  requestHash String @db.VarChar(64)
+  actorUserId String
+  actorUser User @relation(fields: [organizationId, actorUserId], references: [organizationId, id], onDelete: Restrict)
+  reason String @db.VarChar(1000)
+  createdAt DateTime @default(now())
+  @@unique([organizationId, caseId])
+  @@unique([organizationId, requestId])
+  @@map("mtm_attendance_risk_decisions")
 }
