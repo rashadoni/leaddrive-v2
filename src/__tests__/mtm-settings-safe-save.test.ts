@@ -46,7 +46,9 @@ function put(body: unknown): NextRequest {
 }
 
 function as(role: string) {
-  vi.mocked(requireAuth).mockResolvedValue({ orgId: ORG, role, userId: `${role}-user` } as never)
+  vi.mocked(requireAuth).mockResolvedValue({ orgId: ORG, role, userId: `${role}-user`, principalType: "session" } as never)
+  // Attendance policy writes recheck the current active administrator in DB.
+  vi.mocked(prisma.$queryRaw).mockResolvedValue([{ role, hiddenModules: [] }])
 }
 
 function upsertedKeys(): string[] {

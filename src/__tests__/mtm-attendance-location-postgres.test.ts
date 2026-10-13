@@ -154,6 +154,50 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
   expect((await send(operation("START",randomUUID(),at,mark))).body.results).toMatchObject([{status:"ok"}])
   const row=(await evidence())[0];expect(row.locationState).toBe(isMock?"UNCERTAIN":"OUTSIDE");expect(row.isMock).toBe(isMock);expect(row.distanceMeters).toBeGreaterThan(1000)
  })
+ it("defaults to flagged acceptance, then atomically refuses a definitive outside mark without repinning accepted replays",async()=>{
+  const {saveAttendanceOutsideRule}=await import("@/lib/mtm/attendance-outside-rule")
+  await employee();await accept();const acceptedAt=new Date(Date.now()+1000),accepted=operation("START",randomUUID(),acceptedAt,packet(acceptedAt))
+  expect((await send(accepted)).body.results).toMatchObject([{status:"ok"}]);expect((await evidence())[0].locationState).toBe("OUTSIDE")
+  await tenant(ORG,()=>saveAttendanceOutsideRule(admin,true))
+  try{
+   expect((await send(accepted)).body.results).toMatchObject([{status:"ok"}])
+   await employee();await accept();const at=new Date(Date.now()+1000),id=randomUUID(),refused=operation("START",id,at,packet(at))
+   expect((await send(refused)).body.results).toMatchObject([{status:"conflict",serverData:{code:"MTM_ATTENDANCE_LOCATION_OUTSIDE_REJECTED",committed:false}}])
+   expect(await evidence()).toEqual([])
+   await tenant(ORG,async()=>{expect(await prisma.mtmAgentWorkday.count({where:{agentId:identity.agentId}})).toBe(0);expect(await prisma.mtmAgentWorkdayEvent.count({where:{agentId:identity.agentId}})).toBe(0);expect(await prisma.mtmSyncOperation.count({where:{agentId:identity.agentId}})).toBe(0)})
+   const inside=packet(at);inside.location!.latitude=41;inside.location!.longitude=50
+   expect((await send({...refused,data:{...refused.data,attendanceMark:inside}})).body.results).toMatchObject([{status:"ok"}])
+   const finishAt=new Date(at.getTime()+1000)
+   expect((await send(operation("FINISH",id,finishAt,packet(finishAt)))).body.results).toMatchObject([{status:"conflict"}])
+   const day=await tenant(ORG,()=>prisma.mtmAgentWorkday.findUniqueOrThrow({where:{id},select:{status:true,completedAt:true}}))
+   expect(day).toEqual({status:"STARTED",completedAt:null});expect(await evidence()).toHaveLength(1)
+   // Time still works without consent/GPS, and a paused FINISH has no private place.
+   expect((await send(operation("PAUSE",id,finishAt))).body.results).toMatchObject([{status:"ok"}])
+   const pausedFinish=new Date(finishAt.getTime()+1000)
+   expect((await send(operation("FINISH",id,pausedFinish,packet(pausedFinish)))).body.results).toMatchObject([{status:"ok"}])
+   expect((await evidence())[1]).toMatchObject({locationState:"BREAK_PRIVACY",latitude:null})
+   for(const state of["UNAVAILABLE","NO_CONSENT"] as const){await employee();const nextAt=new Date();expect((await send(operation("START",randomUUID(),nextAt,{...packet(nextAt),locationState:state,location:null,consentRevisionId:null}))).body.results).toMatchObject([{status:"ok"}])}
+   await employee();await accept();const mockAt=new Date(Date.now()+1000),uncertain=packet(mockAt);uncertain.location!.isMock=true
+   expect((await send(operation("START",randomUUID(),mockAt,uncertain))).body.results).toMatchObject([{status:"ok"}])
+   expect((await evidence())[0].locationState).toBe("UNCERTAIN")
+   await employee();expect((await send(operation("START",randomUUID(),new Date()))).body.results).toMatchObject([{status:"ok"}])
+  }finally{await tenant(ORG,()=>saveAttendanceOutsideRule(admin,false))}
+ })
+ it("audits the outside rule atomically, verifies the current administrator and avoids duplicate audit on retry",async()=>{
+  const {saveAttendanceOutsideRule}=await import("@/lib/mtm/attendance-outside-rule")
+  await employee()
+  await expect(tenant(ORG,()=>saveAttendanceOutsideRule({...admin,userId:identity.agentId},true))).rejects.toMatchObject({status:403})
+  const count=()=>tenant(ORG,()=>prisma.mtmAuditLog.count({where:{action:"MTM_ATTENDANCE_OUTSIDE_RULE_CHANGED"}}))
+  const before=await count()
+  await tenant(ORG,()=>saveAttendanceOutsideRule(admin,true));await tenant(ORG,()=>saveAttendanceOutsideRule(admin,true))
+  expect(await count()).toBe(before+1)
+  sql(scratch!.adminDb,"CREATE FUNCTION fixture_outside_audit_fail() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action='MTM_ATTENDANCE_OUTSIDE_RULE_CHANGED' THEN RAISE EXCEPTION 'fixture audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER fixture_outside_audit_fail BEFORE INSERT ON mtm_audit_logs FOR EACH ROW EXECUTE FUNCTION fixture_outside_audit_fail();")
+  try{
+   await expect(tenant(ORG,()=>saveAttendanceOutsideRule(admin,false))).rejects.toThrow()
+   expect(await tenant(ORG,()=>prisma.mtmSetting.findUnique({where:{organizationId_key:{organizationId:ORG,key:"attendanceRejectOutsideBranch"}},select:{value:true}}))).toEqual({value:true})
+   expect(await count()).toBe(before+1)
+  }finally{sql(scratch!.adminDb,'DROP TRIGGER fixture_outside_audit_fail ON mtm_audit_logs; DROP FUNCTION fixture_outside_audit_fail();');await tenant(ORG,()=>saveAttendanceOutsideRule(admin,false))}
+ })
  it("rejects hidden break evidence and an installation mismatch without creating a day",async()=>{
   await employee();const at=new Date()
   for(const op of[operation("PAUSE",randomUUID(),at,packet(at)),operation("START",randomUUID(),at,packet(at))])expect((await send(op,"rf-fictional-installation-0000002")).body.results[0].status).not.toBe("ok")

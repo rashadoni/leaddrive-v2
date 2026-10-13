@@ -17411,6 +17411,8 @@
     "lblPharmacyPromotions": "Pharmacy promotions",
     "lblAttendance": "Workday attendance",
     "hintAttendance": "Off by default. Enables work-time reports in MTM; user permissions control access to the data.",
+    "lblAttendanceRejectOutsideBranch": "Reject attendance marks outside a branch",
+    "hintAttendanceRejectOutsideBranch": "Off by default: these marks are accepted and flagged. When enabled, only marks confirmed to be outside a branch are rejected. Time is accepted without consent or GPS, with an uncertain location, and from older app versions.",
     "hintPharmacyPromotions": "When off, hidden from the menu and the agent app; no data is deleted.",
     "groupLiveMap": "Agent map",
     "groupRoutePlanning": "Building routes",

@@ -1,0 +1,80 @@
+[
+  {
+    "lang": "ru",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "innerScrolls": 0,
+    "forms": 0,
+    "ruleCount": 1,
+    "newSwitchHeight": 44,
+    "newSwitchChecked": "false",
+    "companyGroups": 4,
+    "controlMin": 24,
+    "rawIdentifiersVisible": false
+  },
+  {
+    "lang": "ru",
+    "width": 390,
+    "scrollWidth": 390,
+    "innerScrolls": 0,
+    "forms": 0,
+    "ruleCount": 1,
+    "newSwitchHeight": 44,
+    "newSwitchChecked": "false",
+    "companyGroups": 4,
+    "controlMin": 24,
+    "rawIdentifiersVisible": false
+  },
+  {
+    "lang": "az",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "innerScrolls": 0,
+    "forms": 0,
+    "ruleCount": 1,
+    "newSwitchHeight": 44,
+    "newSwitchChecked": "false",
+    "companyGroups": 4,
+    "controlMin": 24,
+    "rawIdentifiersVisible": false
+  },
+  {
+    "lang": "az",
+    "width": 390,
+    "scrollWidth": 390,
+    "innerScrolls": 0,
+    "forms": 0,
+    "ruleCount": 1,
+    "newSwitchHeight": 44,
+    "newSwitchChecked": "false",
+    "companyGroups": 4,
+    "controlMin": 24,
+    "rawIdentifiersVisible": false
+  },
+  {
+    "lang": "en",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "innerScrolls": 0,
+    "forms": 0,
+    "ruleCount": 1,
+    "newSwitchHeight": 44,
+    "newSwitchChecked": "false",
+    "companyGroups": 4,
+    "controlMin": 24,
+    "rawIdentifiersVisible": false
+  },
+  {
+    "lang": "en",
+    "width": 390,
+    "scrollWidth": 390,
+    "innerScrolls": 0,
+    "forms": 0,
+    "ruleCount": 1,
+    "newSwitchHeight": 44,
+    "newSwitchChecked": "false",
+    "companyGroups": 4,
+    "controlMin": 24,
+    "rawIdentifiersVisible": false
+  }
+]

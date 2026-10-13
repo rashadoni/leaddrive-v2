@@ -32,6 +32,8 @@ import {
 export const MTM_SETTING_DEFAULTS = {
   // Opt-in attendance inside MTM. Never revives the withdrawn Workforce UI.
   attendanceEnabled: false,
+  // Reliable outside fixes remain accepted and flagged unless the admin opts in.
+  attendanceRejectOutsideBranch: false,
   // Scheduling and date-only values across route planning and Excel reports.
   timezone: "Asia/Baku",
   // Privacy-first rollout: agents see only their own calendar unless the

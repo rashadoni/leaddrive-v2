@@ -14,6 +14,8 @@ import { parseMtmRouteTargetTypes } from "@/lib/mtm/route-target-types"
 import { mtmSettingValuesEqual, validateMtmSettingChanges } from "@/lib/mtm/settings-validation"
 import { AGENT_PERMISSION_ADMIN_ONLY_KEYS } from "@/lib/mtm/agent-permissions"
 import { locationShareLinkAliveWhere } from "@/lib/mtm/location-share-link"
+import { ATTENDANCE_OUTSIDE_RULE_KEY, saveAttendanceOutsideRule } from "@/lib/mtm/attendance-outside-rule"
+import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
 
 const MODULE_TOGGLE_ROLES = ["admin", "superadmin"]
 // Whole-feature visibility switches. Only an administrator changes them.
@@ -62,7 +64,7 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
     )
     // Unlike legacy menu switches, attendance enables new personal-data access.
     // Refuse the entire unauthorized request before any setting can be written.
-    if (body.attendanceEnabled !== undefined && !MODULE_TOGGLE_ROLES.includes(auth.role)) {
+    if ((body.attendanceEnabled !== undefined || body[ATTENDANCE_OUTSIDE_RULE_KEY] !== undefined) && !MODULE_TOGGLE_ROLES.includes(auth.role)) {
       return NextResponse.json({ error: "Forbidden", code: "MTM_ATTENDANCE_ADMIN_REQUIRED" }, { status: 403 })
     }
     // Hiding a whole module surface for every manager and field agent is an
@@ -177,6 +179,12 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
     // Nothing left to write (e.g. only administrator keys from a manager).
     if (Object.keys(body).length === 0) return NextResponse.json({ success: true, data: { ignoredKeys } })
 
+    // This policy is serialized with endpoint writes, including its first
+    // insertion. An audit failure must not leave an unaudited rejection rule.
+    if (body[ATTENDANCE_OUTSIDE_RULE_KEY] !== undefined) {
+      await saveAttendanceOutsideRule({ organizationId: orgId, userId: auth.userId, principalType: auth.principalType ?? "api_key" }, body[ATTENDANCE_OUTSIDE_RULE_KEY] as boolean)
+    }
+
     const storeSetting = (key: string, value: unknown) => {
       const jsonValue = value as Prisma.InputJsonValue
       return prisma.mtmSetting.upsert({
@@ -219,13 +227,13 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
     }
     await Promise.all(
       Object.entries(body)
-        .filter(([key]) => !(endsLocationShareLinks && key === "locationShareLinksEnabled"))
+        .filter(([key]) => key !== ATTENDANCE_OUTSIDE_RULE_KEY && !(endsLocationShareLinks && key === "locationShareLinksEnabled"))
         .map(([key, value]) => storeSetting(key, value)),
     )
 
     // Audit only real changes: an old page's whole-object save would otherwise
     // log dozens of untouched keys. Values are compared after normalization.
-    const changedKeys = Object.keys(body).filter(differs)
+    const changedKeys = Object.keys(body).filter(key => key !== ATTENDANCE_OUTSIDE_RULE_KEY && differs(key))
     if (changedKeys.length > 0) await writeMtmAudit({
       organizationId: orgId,
       agentId: null,
@@ -247,6 +255,7 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
 
     return NextResponse.json({ success: true, data: { ignoredKeys } })
   } catch (error: unknown) {
+    if (error instanceof AttendanceRequestError) return NextResponse.json({ error: error.code, code: error.code }, { status: error.status })
     const message = error instanceof Error ? error.message : "Failed to update settings"
     return NextResponse.json({ error: message }, { status: 400 })
   }
