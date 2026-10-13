@@ -30,6 +30,19 @@ async function lockLocationPolicy(tx: Tx, organizationId: string, exclusive = fa
   if (exclusive) await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-attendance-location:${organizationId}`},0))`
   else await tx.$executeRaw`SELECT pg_advisory_xact_lock_shared(hashtextextended(${`mtm-attendance-location:${organizationId}`},0))`
 }
+
+/** Optional background integrity metadata uses the same consent lock as marks.
+ * Call before the GPS writer locks/updates the agent. Existing field tracking
+ * does not become dependent on opting into this additional attendance signal. */
+export async function currentAttendanceStreamConsent(tx: Tx, self: Pick<AttendanceSelf,"organizationId"|"agentId">) {
+  await lockAttendanceRequests(tx,self)
+  const setting = await tx.mtmSetting.findFirst({where:{organizationId:self.organizationId,key:"attendanceEnabled"},select:{value:true}})
+  if (setting?.value!==true) return null
+  await lockLocationPolicy(tx,self.organizationId)
+  const policy=await currentPolicy(tx,self.organizationId), consent=await currentConsent(tx,self)
+  if (!policy?.enabled || !policy.legalReviewConfirmed || !consent?.accepted || consent.policyRevisionId!==policy.id) return null
+  return {id:consent.id,createdAt:consent.createdAt}
+}
 async function requireAdministrator(tx: Tx, reviewer: AttendanceReviewer) {
   await resolveAttendanceReviewerScope(tx,reviewer)
   const [user] = await tx.$queryRaw<{role:string}[]>`SELECT role FROM users WHERE "organizationId"=${reviewer.organizationId} AND id=${reviewer.userId} AND "isActive" AND "anonymizedAt" IS NULL FOR SHARE`

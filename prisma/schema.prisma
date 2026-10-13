@@ -18,6 +18,7 @@ datasource db {
 model Organization {
   mtmAttendanceRiskDecisions MtmAttendanceRiskDecision[]
   mtmAttendanceLocationPolicies MtmAttendanceLocationPolicy[]
+  mtmAttendanceStreamIntegrity MtmAttendanceStreamIntegrity[]
   mtmAttendanceLocationConsents MtmAttendanceLocationConsent[]
   mtmAttendanceMarkEvidence MtmAttendanceMarkEvidence[]
   mtmAttendanceRiskCases MtmAttendanceRiskCase[]
@@ -5755,6 +5756,7 @@ model MtmTeam {
 
 // MTM Agent — field agents linked to CRM users
 model MtmAgent {
+  mtmAttendanceStreamIntegrity MtmAttendanceStreamIntegrity[]
   mtmAttendanceLocationConsents MtmAttendanceLocationConsent[]
   mtmAttendanceMarkEvidence MtmAttendanceMarkEvidence[]
   mtmAttendanceRiskCases MtmAttendanceRiskCase[]
@@ -9524,6 +9526,7 @@ model MtmAlert {
 
 // MTM Agent Location — GPS tracking data
 model MtmAgentLocation {
+  attendanceIntegrity MtmAttendanceStreamIntegrity?
   id               String           @id @default(cuid())
   organizationId   String
   organization     Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -22166,6 +22169,7 @@ model MtmAttendanceLocationConsent {
   accepted Boolean
   createdAt DateTime @default(now())
   evidence MtmAttendanceMarkEvidence[]
+  streamIntegrity MtmAttendanceStreamIntegrity[]
   @@unique([organizationId, id])
   @@unique([organizationId, agentId, version])
   @@unique([organizationId, agentId, requestId])
@@ -22247,4 +22251,21 @@ model MtmAttendanceRiskDecision {
   @@unique([organizationId, caseId])
   @@unique([organizationId, requestId])
   @@map("mtm_attendance_risk_decisions")
+}
+
+/// Optional, consent-bound background signal. No coordinates or installation IDs.
+/// Its lifetime follows the raw location (including normal GPS retention).
+model MtmAttendanceStreamIntegrity {
+  locationId String @id
+  location MtmAgentLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentId String
+  agent MtmAgent @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  consentId String
+  consent MtmAttendanceLocationConsent @relation(fields: [organizationId, consentId], references: [organizationId, id], onDelete: Restrict)
+  isMock Boolean
+  createdAt DateTime @default(now())
+  @@index([organizationId, agentId, createdAt])
+  @@map("mtm_attendance_stream_integrity")
 }

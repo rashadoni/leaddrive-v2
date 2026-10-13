@@ -17,6 +17,10 @@ if(!adminUrl&&process.env.MTM_ATTENDANCE_DB_GATE==="required")throw new Error("M
 const scratch=vi.hoisted(()=>{const admin=process.env.MTM_ATTENDANCE_TEST_DATABASE_URL;if(!admin)return null;const name=`mtm_geo_${process.pid}_${Date.now()}`,role=`${name}_app`;const url=new URL(admin);url.pathname=`/${name}`;const app=new URL(url);app.username=role;app.password="geo-fixture-only";process.env.DATABASE_URL=app.toString();return{name,role,adminDb:url.toString()}})
 const identity=vi.hoisted(()=>({orgId:"geo-fixture-a",agentId:"",role:"EMPLOYEE"}))
 vi.mock("@/lib/mobile-auth",()=>({resolveMobileAuth:async(req:Request)=>({...identity,...(req.headers.get("x-fixture-agent")?{agentId:req.headers.get("x-fixture-agent")!}:{}),tenantCapabilities:{routeField:true,workforceHrm:false}})}))
+vi.mock("@/lib/public-abuse-guard",async()=>{
+ const actual=await vi.importActual<typeof import("@/lib/public-abuse-guard")>("@/lib/public-abuse-guard")
+ return {...actual,consumePublicRateLimit:vi.fn(async()=>({allowed:true,retryAfterSeconds:0,unavailable:false}))}
+})
 const cli=createRequire(import.meta.url).resolve("prisma/build/index.js")
 function sql(url:string,statement:string){const result=spawnSync(process.execPath,[cli,"db","execute","--url",url,"--stdin"],{input:statement,encoding:"utf8",timeout:180000,maxBuffer:1024*1024});if(result.status!==0)throw new Error(`Location fixture failed: ${String(result.stderr||result.stdout).replace(/postgres(?:ql)?:\/\/[^\s]+/g,"[test database]")}`)}
 const ORG="geo-fixture-a",OTHER="geo-fixture-b",ADMIN="geo-fixture-admin",INSTALLATION="rf-fictional-installation-0000001"
@@ -39,8 +43,8 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
   sql(adminUrl!,`CREATE DATABASE "${scratch!.name}"`);createdDb=true
   schemaDir=mkdtempSync(join(tmpdir(),"mtm-geo-schema-"));const schema=join(schemaDir,"schema.prisma");writeFileSync(schema,readFileSync("prisma/schema.prisma","utf8").split("\n").filter(line=>!/Unsupported\("vector/.test(line)).join("\n"))
   const result=spawnSync(process.execPath,[cli,"db","push","--schema",schema,"--skip-generate"],{env:{...process.env,DATABASE_URL:scratch!.adminDb},encoding:"utf8",timeout:180000,maxBuffer:1024*1024});if(result.status!==0)throw new Error("Location fixture schema push failed")
-  sql(scratch!.adminDb,'DROP TABLE mtm_attendance_risk_decisions; DROP TABLE mtm_attendance_risk_cases; DROP TABLE mtm_attendance_mark_evidence; DROP TABLE mtm_attendance_location_consents; DROP TABLE mtm_attendance_location_policies; DROP TABLE mtm_attendance_primary_branch_revisions; DROP TABLE mtm_attendance_branch_revisions; DROP TABLE mtm_attendance_branches; ALTER TABLE workforce_time_corrections DROP COLUMN "requestHash";')
-  for(const migration of["20260806120000_mtm_rls_coverage_completion","20260806160000_mtm_rls_bypass_clause_normalization","20261013070000_mtm_attendance_branches","20261013090000_mtm_attendance_location_evidence","20261013120000_mtm_attendance_risks"])sql(scratch!.adminDb,readFileSync(`prisma/migrations/${migration}/migration.sql`,"utf8"))
+  sql(scratch!.adminDb,'DROP TABLE mtm_attendance_stream_integrity; DROP TABLE mtm_attendance_risk_decisions; DROP TABLE mtm_attendance_risk_cases; DROP TABLE mtm_attendance_mark_evidence; DROP TABLE mtm_attendance_location_consents; DROP TABLE mtm_attendance_location_policies; DROP TABLE mtm_attendance_primary_branch_revisions; DROP TABLE mtm_attendance_branch_revisions; DROP TABLE mtm_attendance_branches; ALTER TABLE workforce_time_corrections DROP COLUMN "requestHash";')
+  for(const migration of["20260806120000_mtm_rls_coverage_completion","20260806160000_mtm_rls_bypass_clause_normalization","20261013070000_mtm_attendance_branches","20261013090000_mtm_attendance_location_evidence","20261013120000_mtm_attendance_risks","20261013140000_mtm_attendance_stream_integrity"])sql(scratch!.adminDb,readFileSync(`prisma/migrations/${migration}/migration.sql`,"utf8"))
   const foundation=readFileSync("prisma/migrations/20260828223000_workforce_h3_foundation/migration.sql","utf8");sql(scratch!.adminDb,foundation.slice(foundation.indexOf("-- Tenant data ships fail-closed."),foundation.indexOf("-- A migration runner may own new tables")))
   for(const migration of["20260828224500_workforce_h3_legacy_fact_guard","20260828230000_workforce_direct_correction_contract"])sql(scratch!.adminDb,readFileSync(`prisma/migrations/${migration}/migration.sql`,"utf8"))
   sql(scratch!.adminDb,readFileSync("scripts/rls/enable-batch-5.sql","utf8"));sql(scratch!.adminDb,`GRANT USAGE ON SCHEMA public TO "${scratch!.role}"; GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA public TO "${scratch!.role}"`)
@@ -349,6 +353,68 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
   const b=await employee();expect((await send(operation("START",randomUUID(),new Date(),noLocation(device)),device)).body.results).toMatchObject([{status:"ok"}])
   identity.agentId=a;expect((await send(operation("START",randomUUID(),new Date(),noLocation(device)),device)).body.results).toMatchObject([{status:"ok"}])
   for(const agent of[a,b])expect((await riskRows(agent)).find(row=>row.kind==="SHARED_INSTALLATION")).toMatchObject({details:{usualAgentId:a,usualDays:3,observedDays:3}})
+ })
+
+ async function fieldDay() {
+  await employee();identity.role="AGENT"
+  await tenant(ORG,()=>prisma.mtmAgent.update({where:{id:identity.agentId},data:{role:"AGENT"}}))
+  const consent=await accept(),at=new Date(Date.now()+1000),dayId=randomUUID()
+  expect((await send(operation("START",dayId,at))).body.results).toMatchObject([{status:"ok"}])
+  return {consent:consent.consent.id,at,dayId}
+ }
+ const streamRows=()=>tenant(ORG,()=>prisma.$queryRaw<{locationId:string;isMock:boolean;consentId:string}[]>`SELECT * FROM mtm_attendance_stream_integrity WHERE "agentId"=${identity.agentId}`)
+ async function streamPoint(at:Date,signal:Record<string,unknown>,clientLocationId=randomUUID()) {
+  const {POST}=await import("@/app/api/v1/mtm/mobile/location/route")
+  const response=await POST(new NextRequest("http://localhost/api/v1/mtm/mobile/location",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({latitude:40.4,longitude:49.85,accuracy:5,recordedAt:at.toISOString(),clientLocationId,...signal})}))
+  return {status:response.status,body:await response.json(),clientLocationId}
+ }
+ it("retains explicit background signal privately, never enriches a replay, scopes and retains it with the GPS source",async()=>{
+  try {
+   const f=await fieldDay(),at=new Date(f.at.getTime()+1000)
+   const first=await streamPoint(at,{isMock:true,attendanceConsentId:f.consent})
+   expect(first.status).toBe(201);expect(JSON.stringify(first.body)).not.toMatch(/isMock|attendanceConsentId|consentId/)
+   const rows=await streamRows();expect(rows).toHaveLength(1);expect(rows[0]).toMatchObject({isMock:true,consentId:f.consent})
+   expect((await streamPoint(at,{isMock:false,attendanceConsentId:f.consent},first.clientLocationId)).status).toBe(200)
+   expect(await streamRows()).toEqual(rows)
+   expect(await tenant(OTHER,()=>prisma.$queryRaw`SELECT * FROM mtm_attendance_stream_integrity WHERE "locationId"=${rows[0].locationId}`)).toEqual([])
+   expect(await tenant(ORG,()=>prisma.$executeRaw`UPDATE mtm_attendance_stream_integrity SET "isMock"=false WHERE "locationId"=${rows[0].locationId}`)).toBe(0)
+   expect(()=>sql(scratch!.adminDb,`UPDATE mtm_attendance_stream_integrity SET "isMock"=false WHERE "locationId"='${rows[0].locationId}'`)).toThrow()
+   await tenant(ORG,()=>prisma.mtmAgentLocation.delete({where:{id:rows[0].locationId}}))
+   expect(await streamRows()).toEqual([])
+  } finally {identity.role="EMPLOYEE"}
+ })
+ it("keeps ordinary field points but no new signal when attendance is off or acceptance is withdrawn/replaced",async()=>{
+  try {
+   const f=await fieldDay(),at=new Date(f.at.getTime()+1000)
+   await tenant(ORG,()=>prisma.mtmSetting.updateMany({where:{organizationId:ORG,key:"attendanceEnabled"},data:{value:false}}))
+   expect((await streamPoint(at,{isMock:true,attendanceConsentId:f.consent})).status).toBe(201)
+   expect(await streamRows()).toEqual([])
+   await tenant(ORG,()=>prisma.mtmSetting.updateMany({where:{organizationId:ORG,key:"attendanceEnabled"},data:{value:true}}))
+   await tenant(ORG,()=>store.recordOwnAttendanceLocationConsent(self(),{requestId:randomUUID(),policyRevisionId:policyId,expectedConsentId:f.consent,accepted:false}))
+   expect((await streamPoint(at,{isMock:true,attendanceConsentId:f.consent})).status).toBe(201)
+   await accept()
+   expect((await streamPoint(at,{isMock:true,attendanceConsentId:f.consent})).status).toBe(201)
+   expect((await streamPoint(at,{})).status).toBe(201)
+   expect(await streamRows()).toEqual([])
+  } finally {
+   identity.role="EMPLOYEE"
+   await tenant(ORG,()=>prisma.mtmSetting.updateMany({where:{organizationId:ORG,key:"attendanceEnabled"},data:{value:true}}))
+  }
+ })
+ it("batch keeps true and false outside a break and drops the private point with its signal",async()=>{
+  try {
+   const f=await fieldDay(),at=(ms:number)=>new Date(f.at.getTime()+ms)
+   expect((await send(operation("PAUSE",f.dayId,at(1000)))).body.results).toMatchObject([{status:"ok"}])
+   expect((await send(operation("RESUME",f.dayId,at(3000)))).body.results).toMatchObject([{status:"ok"}])
+   await tenant(ORG,()=>prisma.mtmMobileSyncCohort.create({data:{organizationId:ORG,agentId:identity.agentId,deviceId:INSTALLATION,stream:"gps",enabled:true}}))
+   const {POST}=await import("@/app/api/v2/mtm/mobile/location/batch/route")
+   const ids=[randomUUID(),randomUUID(),randomUUID()]
+   const response=await POST(new NextRequest("http://localhost/api/v2/mtm/mobile/location/batch",{method:"POST",headers:{"content-type":"application/json","x-field-device-id":INSTALLATION},body:JSON.stringify({workdayId:f.dayId,points:[500,2000,4000].map((ms,i)=>({clientLocationId:ids[i],latitude:40.4,longitude:49.85,accuracy:5,recordedAt:at(ms).toISOString(),isMock:i!==2,attendanceConsentId:f.consent}))})}))
+   expect(response.status).toBe(201)
+   expect(await response.json()).toMatchObject({data:{appliedClientLocationIds:[ids[0],ids[2]],pausedClientLocationIds:[ids[1]]}})
+   expect((await streamRows()).map(row=>row.isMock).sort()).toEqual([false,true])
+   expect(await tenant(ORG,()=>prisma.mtmAgentLocation.count({where:{agentId:identity.agentId,clientLocationId:ids[1]}}))).toBe(0)
+  } finally {identity.role="EMPLOYEE"}
  })
 
 })

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
+import { lockAttendanceRequests, requireAttendanceSelf } from "@/lib/mtm/attendance-self-access"
 import {
   applyMtmWorkdayEvent,
   lockMtmWorkdayTransitions,
@@ -93,6 +94,8 @@ export async function returnOwnMtmWorkday(context: {
   agentId: string
   workdayId: string
   operationId: string
+  /** Internal route context for the opt-in office path; never taken from body. */
+  attendanceRole?: string
   /** The server clock; injectable only so «today» is deterministic in tests. */
   now?: Date
 }): Promise<MtmWorkdayReturnResult> {
@@ -111,6 +114,11 @@ export async function returnOwnMtmWorkday(context: {
       // Two sendings of one operation: the second waits and finds the first.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`workforce-workday-reopen:${organizationId}:${operationId}`}))`
       await lockMtmWorkdayTransitions(tx, { organizationId, agentId })
+      if (context.attendanceRole) {
+        const self={organizationId,agentId,role:context.attendanceRole}
+        await lockAttendanceRequests(tx,self)
+        await requireAttendanceSelf(tx,self,"attendanceWorkday")
+      }
 
       const workday = await tx.mtmAgentWorkday.findFirst({
         where: { id: workdayId, organizationId, agentId },

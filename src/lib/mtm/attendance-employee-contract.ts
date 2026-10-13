@@ -19,6 +19,7 @@ export function mayUseAttendanceSelf(role: string, attendanceEnabled: boolean, p
 /** Exact allowlist is applied by fresh mobile authentication, including dual
  * web/mobile transports that don't use withMobileRls. Unknown paths deny. */
 export function officeAttendanceMobilePath(method: string, path: string) {
+  if (method === "POST" && path === "/api/v2/mtm/mobile/route-field/workday-return") return true
   if ((method === "GET" || method === "POST") && path === "/api/v1/mtm/mobile/attendance/location-consent") return true
   if ((method === "POST" || method === "DELETE") && path === "/api/v2/mtm/mobile/route-field/device-tokens") return true
   if (method === "GET" && ["/api/v1/mtm/mobile/bootstrap", "/api/v1/mtm/mobile/ping", "/api/v1/mtm/mobile/profile",

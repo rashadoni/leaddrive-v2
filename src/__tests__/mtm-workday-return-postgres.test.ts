@@ -120,11 +120,17 @@ pgDescribe("returning to a workday closed earlier today, on a real PostgreSQL", 
   }))
   const ledgerOf = (workdayId: string) => tenant(ORG, () => prisma.workforceWorkdayReopen.findMany({ where: { workdayId }, orderBy: { occurredAt: "asc" } }))
   /** The ordinary finish, as the app sends it through sync. */
-  const finish = (agentId: string, workdayId: string, when: Date) => tenant(ORG, () => prisma.$transaction((tx) => workdays.applyMtmWorkdayEvent(tx, { organizationId: ORG, agentId }, {
+  const finish = async (agentId: string, workdayId: string, when: Date) => {
+    // The canonical writer stamps appliedAt from the server clock. Advance
+    // that clock with the fictional finish, not the CI runner's wall clock.
+    vi.useFakeTimers({toFake:["Date"]})
+    vi.setSystemTime(when)
+    try { return await tenant(ORG, () => prisma.$transaction((tx) => workdays.applyMtmWorkdayEvent(tx, { organizationId: ORG, agentId }, {
     action: "FINISH", workdayId, clientEventId: randomUUID(), occurredAt: when, claimedAt: when, capturedAt: when, queuedAt: null,
     serverReceivedAt: when, schemaVersion: 1, workDateKey: TODAY, latitude: null, longitude: null, accuracy: null, note: null,
     attendanceReview: { state: "NOT_REQUIRED", reasonCode: null, policyVersion: workdays.WORKFORCE_ATTENDANCE_REVIEW_POLICY_VERSION, claimAgeSeconds: 0 },
-  })))
+  }))) } finally {vi.useRealTimers()}
+  }
 
   beforeAll(async () => {
     sql(adminUrl!, `CREATE ROLE "${scratch!.role}" LOGIN PASSWORD 'workday-return-fixture-only' NOSUPERUSER NOBYPASSRLS`)
@@ -355,4 +361,20 @@ pgDescribe("returning to a workday closed earlier today, on a real PostgreSQL", 
     await expect(tenant(ORG, () => prisma.workforceWorkdayReopen.update({ where: { id: row.id }, data: { reason: "Erase history" } }))).rejects.toThrow()
     await expect(tenant(ORG, () => prisma.workforceWorkdayReopen.delete({ where: { id: row.id } }))).rejects.toThrow()
   })
+  it("returns an enrolled office day and rejects a subsequently revoked participant before another event or receipt", async()=>{
+    const {agentId}=await employee()
+    await tenant(ORG,async()=>{
+      await prisma.mtmAgent.update({where:{id:agentId},data:{role:"EMPLOYEE",attendanceParticipant:true}})
+      await prisma.mtmSetting.upsert({where:{organizationId_key:{organizationId:ORG,key:"attendanceEnabled"}},create:{organizationId:ORG,key:"attendanceEnabled",value:true},update:{value:true}})
+    })
+    const day=await seedDay(agentId,TODAY),operationId=randomUUID()
+    const ask=()=>tenant(ORG,()=>returning.returnOwnMtmWorkday({organizationId:ORG,agentId,workdayId:day.id,operationId,now:NOON,attendanceRole:"EMPLOYEE"}))
+    expect(await ask()).toMatchObject({kind:"success",idempotent:false})
+    expect(await ledgerOf(day.id)).toHaveLength(1)
+    await tenant(ORG,()=>prisma.mtmAgent.update({where:{id:agentId},data:{attendanceParticipant:false}}))
+    await expect(ask()).rejects.toMatchObject({code:"MTM_ATTENDANCE_SELF_REQUIRED"})
+    expect(await ledgerOf(day.id)).toHaveLength(1)
+    expect((await journalOf(day.id)).map(e=>e.type)).toEqual(["START","FINISH","REOPEN","RESUME"])
+  })
+
 })

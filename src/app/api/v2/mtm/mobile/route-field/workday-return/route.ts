@@ -5,6 +5,9 @@ import { hasMobileCapability } from "@/lib/mtm/mobile-capabilities"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { returnOwnMtmWorkday } from "@/lib/mtm/workday-return"
+import { prisma } from "@/lib/prisma"
+import { requireAttendanceSelf } from "@/lib/mtm/attendance-self-access"
+import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
 
 /** A person returns to a day a handful of times at most; this stops a loop, not a person. */
 const RETURN_RATE_LIMIT = { maxRequests: 20, windowMs: 60 * 60_000 }
@@ -33,8 +36,17 @@ function noStoreJson(body: unknown, init?: ResponseInit) {
  * capability the sync endpoint asks of a workday operation.
  */
 export const POST = withMobileRls(async (req, auth) => {
-  if (!auth.agentId || !hasMobileCapability(auth.role, "FIELD_EXECUTE")) {
+  const attendanceOnly = !hasMobileCapability(auth.role, "FIELD_EXECUTE")
+  if (!auth.agentId || (attendanceOnly && auth.tenantCapabilities?.routeField!==true)) {
     return noStoreJson({ error: "Forbidden", code: "MTM_WORKDAY_RETURN_FORBIDDEN" }, { status: 403 })
+  }
+  if (attendanceOnly) {
+    try {
+      await requireAttendanceSelf(prisma,{organizationId:auth.orgId,agentId:auth.agentId,role:auth.role},"attendanceWorkday")
+    } catch (error) {
+      if (!(error instanceof AttendanceRequestError)) return noStoreJson({error:"Attendance access unavailable"},{status:503})
+      return noStoreJson({error:"Forbidden",code:"MTM_WORKDAY_RETURN_FORBIDDEN"},{status:403})
+    }
   }
   if (!checkRateLimit(`mtm-workday-return:${auth.orgId}:${auth.agentId}`, RETURN_RATE_LIMIT)) {
     return noStoreJson({ error: "Too many requests", code: "MTM_WORKDAY_RETURN_RATE_LIMITED" }, { status: 429, headers: { "Retry-After": "600" } })
@@ -44,12 +56,17 @@ export const POST = withMobileRls(async (req, auth) => {
     return noStoreJson({ error: parsed.error.issues[0]?.message || "Invalid request", code: "MTM_WORKDAY_RETURN_INVALID" }, { status: 400 })
   }
 
-  const result = await returnOwnMtmWorkday({
+  let result
+  try { result = await returnOwnMtmWorkday({
     organizationId: auth.orgId,
     agentId: auth.agentId,
     workdayId: parsed.data.workdayId,
     operationId: parsed.data.operationId,
-  })
+    ...(attendanceOnly?{attendanceRole:auth.role}:{}),
+  }) } catch(error) {
+    if (!(error instanceof AttendanceRequestError)) throw error
+    return noStoreJson({error:"Forbidden",code:"MTM_WORKDAY_RETURN_FORBIDDEN"},{status:403})
+  }
   if (result.kind === "not_found") {
     return noStoreJson({ error: "Workday not found", code: "MTM_WORKDAY_NOT_FOUND" }, { status: 404 })
   }

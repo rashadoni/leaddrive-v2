@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { parseAttendanceStreamSignal, prepareAttendanceStreamIntegrity, recordAttendanceStreamIntegrity } from "@/lib/mtm/attendance-stream-integrity"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { hasMtmCoordinates } from "@/lib/mtm/geo-coordinates"
@@ -94,6 +95,8 @@ export const POST = withMobileRls(async (req, auth) => {
   try {
     const workforceEnabled = auth.tenantCapabilities?.workforceHrm === true
     const body = await req.json()
+    const integrity = parseAttendanceStreamSignal(body)
+    if (!integrity) return NextResponse.json({error:"Invalid location integrity metadata",code:"MTM_LOCATION_INTEGRITY_INVALID"},{status:400})
     const selfLocationShare = body.mode === "SELF_SHARE"
     const forbidden = requireMobileCapability(
       auth,
@@ -243,6 +246,8 @@ export const POST = withMobileRls(async (req, auth) => {
     let location
     try {
       location = await prisma.$transaction(async (tx) => {
+        const integrityConsent = !selfLocationShare
+          ? await prepareAttendanceStreamIntegrity(tx,{organizationId:auth.orgId,agentId:auth.agentId},[integrity]) : null
         // Workday state can change between the preflight and the write. Repeat
         // the temporal check in the same transaction so a live point cannot
         // slip in after FINISH, while a queued point captured before FINISH
@@ -294,6 +299,7 @@ export const POST = withMobileRls(async (req, auth) => {
             recordedAt,
           },
         })
+        await recordAttendanceStreamIntegrity(tx,{...integrity,organizationId:auth.orgId,agentId:auth.agentId,locationId:created.id,recordedAt},integrityConsent)
         await advanceMtmAgentLatestLocation(tx, {
           organizationId: auth.orgId,
           agentId: auth.agentId,
