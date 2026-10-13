@@ -127,6 +127,8 @@ model Organization {
   mtmAgentWorkdayEvents               MtmAgentWorkdayEvent[]
   mtmSettings                         MtmSetting[]
   mtmAttendanceRules                  MtmAttendanceRule[]
+  mtmAttendanceSchedules              MtmAttendanceSchedule[]
+  mtmAttendanceDeliveries             MtmAttendanceDelivery[]
   mtmNotifications                    MtmNotification[]
   mtmRouteNotificationOutbox          MtmRouteNotificationOutbox[]
   mtmAuditLogs                        MtmAuditLog[]
@@ -670,6 +672,7 @@ model User {
 
   budgetDeptOwnership  BudgetDepartmentOwner[]
   mtmAgents            MtmAgent[]
+  mtmAttendanceSchedules MtmAttendanceSchedule[]
   mtmPharmacyPromotionsCreated        MtmPharmacyPromotion[]        @relation("MtmPharmacyPromotionCreatedBy")
   mtmPharmacyVersionsCreated          MtmPharmacyPromotionVersion[] @relation("MtmPharmacyVersionCreatedBy")
   mtmPharmacyVersionsPublished        MtmPharmacyPromotionVersion[] @relation("MtmPharmacyVersionPublishedBy")
@@ -9476,6 +9479,52 @@ model MtmAgentLatestLocation {
 // MTM Setting — organization-level MTM settings
 // Append-only MTM attendance rules. The effective rule is the last version
 // starting on/before the work date; changes never rewrite earlier periods.
+/// Personal, opt-in scheduled copies of attendance forms. No break evidence.
+model MtmAttendanceSchedule {
+  id             String       @id
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  input          Json
+  timezone       String
+  enabled        Boolean      @default(false)
+  nextRunAt      DateTime
+  archivedAt     DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  deliveries     MtmAttendanceDelivery[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, userId, archivedAt])
+  @@index([enabled, nextRunAt])
+  @@map("mtm_attendance_schedules")
+}
+
+/// One handoff per recipient and completed period. Unknown outcomes never retry.
+model MtmAttendanceDelivery {
+  id                String    @id
+  organizationId    String
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  scheduleId        String
+  schedule          MtmAttendanceSchedule @relation(fields: [organizationId, scheduleId], references: [organizationId, id], onDelete: Cascade)
+  scheduleVersion   DateTime
+  recipient         String
+  from              DateTime  @db.Date
+  to                DateTime  @db.Date
+  status            String    @default("PENDING")
+  createdAt         DateTime  @default(now())
+  claimedAt         DateTime?
+  completedAt       DateTime?
+  providerMessageId String?
+  errorCode         String?
+
+  @@unique([scheduleId, from, to, recipient])
+  @@index([organizationId, scheduleId, createdAt])
+  @@index([status, createdAt])
+  @@map("mtm_attendance_deliveries")
+}
+
 model MtmAttendanceRule {
   id               String       @id @default(cuid())
   organizationId   String

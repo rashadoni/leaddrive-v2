@@ -70,13 +70,22 @@ function createTransporter(config: SmtpConfig) {
 }
 
 const MAX_SMTP_ATTACHMENT_BYTES = 25 * 1024 * 1024
+type MaterializedAttachment = { filename: string; content: Buffer; contentType?: string }
+
+function attachmentContentType(filename: string): string | undefined {
+  switch (path.extname(filename).toLowerCase()) {
+    case ".pdf": return "application/pdf"
+    case ".xlsx": return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    default: return undefined
+  }
+}
 
 function isWithinRoot(filePath: string, root: string): boolean {
   const relative = path.relative(root, filePath)
   return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative))
 }
 
-async function materializeLocalAttachments(attachments?: { filename: string; path: string }[]) {
+async function materializeLocalAttachments(attachments?: { filename: string; path: string }[]): Promise<MaterializedAttachment[] | undefined> {
   if (!attachments?.length) return undefined
   const configuredRoots = [
     runtimePrivateUploadDirectory("email-attachments"),
@@ -95,7 +104,10 @@ async function materializeLocalAttachments(attachments?: { filename: string; pat
     if (!metadata.isFile() || metadata.size > MAX_SMTP_ATTACHMENT_BYTES) {
       throw new Error("Email attachment is not a bounded regular file")
     }
-    return { filename, content: await readFile(resolved) }
+    const content = await readFile(resolved)
+    if (content.length > MAX_SMTP_ATTACHMENT_BYTES) throw new Error("Email attachment exceeded its validated size")
+    const contentType = attachmentContentType(filename)
+    return { filename, content, ...(contentType ? { contentType } : {}) }
   }))
 }
 
@@ -110,6 +122,7 @@ async function sendViaResend(params: {
   text?: string
   replyTo?: string
   headers?: Record<string, string>
+  attachments?: MaterializedAttachment[]
 }): Promise<{ messageId: string } | null> {
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) return null
@@ -128,6 +141,11 @@ async function sendViaResend(params: {
         ...(params.text ? { text: params.text } : {}),
         ...(params.replyTo ? { reply_to: params.replyTo } : {}),
         ...(params.headers ? { headers: params.headers } : {}),
+        ...(params.attachments?.length ? {
+          attachments: params.attachments.map(({ filename, content }) => ({
+            filename, content: content.toString("base64"),
+          })),
+        } : {}),
       }),
     })
     if (!res.ok) {
@@ -154,6 +172,7 @@ async function sendViaPostmark(params: {
   text?: string
   replyTo?: string
   headers?: Record<string, string>
+  attachments?: MaterializedAttachment[]
 }): Promise<{ messageId: string } | null> {
   const token = process.env.POSTMARK_SERVER_TOKEN
   if (!token) return null
@@ -176,6 +195,11 @@ async function sendViaPostmark(params: {
           ? { Headers: Object.entries(params.headers).map(([Name, Value]) => ({ Name, Value })) }
           : {}),
         MessageStream: process.env.POSTMARK_MESSAGE_STREAM || "outbound",
+        ...(params.attachments?.length ? {
+          Attachments: params.attachments.map(({ filename, content, contentType }) => ({
+            Name: filename, Content: content.toString("base64"), ContentType: contentType ?? "application/octet-stream",
+          })),
+        } : {}),
       }),
     })
     if (!res.ok) {
@@ -227,6 +251,7 @@ export async function sendEmail({
   sequenceId,
   attachments,
   transactional = false,
+  allowProviderFallback = true,
 }: {
   to: string
   subject: string
@@ -249,6 +274,8 @@ export async function sendEmail({
    * of without losing access to their own data. Defaults to false (= marketing).
    */
   transactional?: boolean
+  /** Set false for delivery jobs that must not make a second handoff after an unknown outcome. */
+  allowProviderFallback?: boolean
 }) {
   let safeHeaders: Record<string, string> | undefined
   try {
@@ -359,6 +386,9 @@ export async function sendEmail({
   }
 
   try {
+    // Validate/read once before any provider can send. Every fallback receives
+    // these exact bytes; no provider dereferences paths or silently drops files.
+    const materializedAttachments = await materializeLocalAttachments(attachments)
     const transporter = config ? createTransporter(config) : null
     const smtpFromStr = config
       ? (config.fromName ? `"${config.fromName}" <${config.fromEmail}>` : config.fromEmail)
@@ -423,7 +453,11 @@ export async function sendEmail({
       text: textBody,
       replyTo,
       headers: safeHeaders,
+      attachments: materializedAttachments,
     })
+    if (!resendResult && !allowProviderFallback && process.env.RESEND_API_KEY) {
+      throw new Error("Email delivery failed: Resend did not confirm delivery")
+    }
 
     const postmarkResult = resendResult
       ? null
@@ -435,7 +469,11 @@ export async function sendEmail({
           text: textBody,
           replyTo,
           headers: safeHeaders,
+          attachments: materializedAttachments,
         })
+    if (!resendResult && !postmarkResult && !allowProviderFallback && process.env.POSTMARK_SERVER_TOKEN) {
+      throw new Error("Email delivery failed: Postmark did not confirm delivery")
+    }
 
     let info: { messageId: string }
     if (resendResult) {
@@ -451,7 +489,7 @@ export async function sendEmail({
         text: textBody,
         ...(replyTo ? { replyTo } : {}),
         ...(safeHeaders ? { headers: safeHeaders } : {}),
-        ...(attachments?.length ? { attachments: await materializeLocalAttachments(attachments) } : {}),
+        ...(materializedAttachments?.length ? { attachments: materializedAttachments } : {}),
       })
     } else {
       throw new Error("Email delivery failed: Resend + Postmark rejected and no SMTP fallback configured")
