@@ -445,6 +445,7 @@
 #### 2026-10-13 — 2.2 CI: хранилище тестовых документов
 
 - Настоящий Postgres подтвердил 28/29 сценариев; единственная ошибка — тест задавал приватному хранилищу `/tmp`, который штатная защита корректно запрещает. Тест создаёт отдельный случайный каталог вне checkout в домашней директории CI runner и удаляет только свой каталог после проверки. Производственная защита не изменена. Повторный Postgres — CI; локально NOT RUN по контракту нагрузки.
+| 2026-10-13 | Codex | Подготовлена приёмка1.14: dispatch-only Verify MTM attendance demo, режимы prepare-and-check/read-only-check; только exact current main=deployed/public artifact SHA, protected production environment, общий production lock и pinned SSH. Fixture строго принадлежит marker/фиксированному demo tenant, чужой существующий slug вызывает отказ; вставка идемпотентна и не перезаписывает журнал. Пароль остаётся в root-only runtime файле, используется обычный CSRF/credentials вход; DB-сверка в READ ONLY. Наружу выходят только разрешённые фиктивные ID/секунды/совпадения. 10 unit tests со сборкой controller и sanitizer PASS; 4 настоящих PG сценария добавлены обязательными в PR/deploy перед production-запуском, локально NOT RUN по host contract. ESLint/YAML/diff PASS; production и browser ещё NOT RUN. Controller checkpoint e70c365d1 и CI dd44336b2 проверены root; HR typefix511348397 включён. |
 
 #### 2026-10-13 — 1.14 CI: уточнение типа аварийного выхода
 
@@ -542,3 +543,8 @@
 - UI:38 tests PASS (19HR +19queue), повтор19HR PASS после уточнения RU текста; ESLint4paths PASS, i18n PASS, diff-check PASS. Full tsc/build/новая SQL migration/PG — NOT RUN локально по host contract, обязательны CI. Предыдущая запись «UI20» предварительная и заменена этими фактическими результатами.
 - Пользователь повторил: никаких email по умолчанию, адрес добавляется по желанию. Это сохраняется; реальное письмо не отправлялось, inbox delivery NOT RUN по указанию пользователя.
 - Корень /home/codex-alt/.codex/worktrees/mtm-attendance-approval/leaddrive-v2; ветка codex/mtm-attendance-hr-recording, origin https://github.com/rashadoni/leaddrive-v2.git. Production13.140.132.245:/opt/leaddrive-v2, только verified main → GitHub Actions. Следующее: PR2.7 и задача2.8; исправление мобильного CI идёт параллельно в той же сессии.
+#### 2026-10-13 — 1.14 CI: литерал статуса тестового снимка
+
+- Обязательный static-checks #718 PASS, включая реальный PostgreSQL. Typecheck нашёл одну оставшуюся группу ошибок в unit fixture: строка COMPLETED расширялась до string вместо enum. Значение обозначено literal as const, без изменения runtime или baseline. Full compiler повторяется в CI; локально NOT RUN по host contract.
+
+- PR#723 https://github.com/rashadoni/leaddrive-v2/pull/723 открыт и переведён ready. CI не стартовал из-за конфликта append-only журнала с #718 в main; включён origin/main ae1f26604, обе стороны всех записей сохранены. Runtime-конфликтов нет. Проверки2.7 ожидаются на объединённом head.

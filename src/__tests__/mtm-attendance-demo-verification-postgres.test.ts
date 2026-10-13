@@ -1,0 +1,125 @@
+/** CI-only: the exact operator fixture against the real schema, retained RLS
+ * policies and immutable journal triggers. No production URL is accepted. */
+import { createRequire } from "node:module"
+import { spawnSync } from "node:child_process"
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import { PrismaClient, type Prisma } from "@prisma/client"
+import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { buildMtmAttendanceReport } from "@/lib/mtm/attendance-report"
+import { DEMO, DEMO_AGENTS, prepareDemo, readOnlyDemo, verifyParity } from "../../scripts/mtm-attendance-demo-verification"
+
+const adminUrl = process.env.MTM_DEMO_TEST_DATABASE_URL
+if (!adminUrl && process.env.MTM_DEMO_DB_GATE === "required") throw new Error("MTM_DEMO_TEST_DATABASE_URL is required")
+if (adminUrl && (!process.env.CI || !["localhost", "127.0.0.1"].includes(new URL(adminUrl).hostname))) {
+  throw new Error("Demo PostgreSQL tests require a disposable loopback database in CI")
+}
+const suite = adminUrl ? describe : describe.skip
+const name = `mtm_demo_${process.pid}_${Date.now()}`
+const role = `${name}_app`
+const database = adminUrl ? new URL(adminUrl) : null
+if (database) database.pathname = `/${name}`
+const appUrl = database ? new URL(database) : null
+if (appUrl) { appUrl.username = role; appUrl.password = "demo-fixture-only"; appUrl.searchParams.set("connection_limit", "1") }
+
+function cli(args: string[], input?: string) {
+  const result = spawnSync(process.execPath, [createRequire(import.meta.url).resolve("prisma/build/index.js"), ...args], {
+    input, encoding: "utf8", timeout: 180_000, maxBuffer: 1024 * 1024,
+  })
+  // The database URL and Prisma diagnostics are never interpolated into errors.
+  if (result.status !== 0) throw new Error("Disposable demo database setup failed")
+}
+const sql = (url: string, input: string) => cli(["db", "execute", "--url", url, "--stdin"], input)
+const migration = (name: string) => readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8")
+function retainedFunction(source: string, name: string) {
+  const match = source.match(new RegExp(`CREATE OR REPLACE FUNCTION ${name}\\([^]*?\\$\\$;`))
+  if (!match) throw new Error("Required retained production function missing")
+  return match[0]
+}
+
+suite("attendance demo fixture with real PostgreSQL guards", () => {
+  let db: PrismaClient
+  let admin: PrismaClient
+  let createdDb = false
+  let createdRole = false
+  beforeAll(async () => {
+    sql(adminUrl!, `CREATE ROLE "${role}" LOGIN PASSWORD 'demo-fixture-only' NOSUPERUSER NOBYPASSRLS`)
+    createdRole = true
+    sql(adminUrl!, `CREATE DATABASE "${name}"`)
+    createdDb = true
+    const file = join(mkdtempSync(join(tmpdir(), "mtm-demo-schema-")), "schema.prisma")
+    // Same application schema, omitting only unrelated vector extension columns.
+    writeFileSync(file, readFileSync("prisma/schema.prisma", "utf8").split("\n").filter((line) => !/Unsupported\("vector/.test(line)).join("\n"))
+    const previous = process.env.DATABASE_URL
+    try { process.env.DATABASE_URL = database!.toString(); cli(["db", "push", "--schema", file, "--skip-generate"]) }
+    finally { process.env.DATABASE_URL = previous }
+    for (const name of ["20260806120000_mtm_rls_coverage_completion", "20260806160000_mtm_rls_bypass_clause_normalization"]) {
+      sql(database!.toString(), migration(name))
+    }
+    sql(database!.toString(), readFileSync("scripts/rls/enable-batch-5.sql", "utf8"))
+    sql(database!.toString(), retainedFunction(migration("20260828223000_workforce_h3_foundation"), "workforce_reject_immutable_mutation"))
+    sql(database!.toString(), migration("20260828224500_workforce_h3_legacy_fact_guard"))
+    // db push already created the additive columns/tables. Apply the exact
+    // subsequent production function replacements, not a test imitation.
+    for (const name of ["20260828230000_workforce_direct_correction_contract", "20260915210100_workforce_workday_reopen_ledger"]) {
+      sql(database!.toString(), retainedFunction(migration(name), "workforce_guard_completed_workday"))
+    }
+    sql(database!.toString(), `GRANT USAGE ON SCHEMA public TO "${role}"; GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "${role}";`)
+    process.env.DATABASE_URL = appUrl!.toString()
+    db = new PrismaClient()
+    admin = new PrismaClient<Prisma.PrismaClientOptions>({ datasourceUrl: database!.toString() })
+    await db.$executeRaw`SELECT set_config('app.org_id', ${DEMO.id}, false)`
+    await db.organization.create({ data: { id: "untouched-customer-fixture", slug: "untouched-customer-fixture", name: "Untouched fixture", settings: { retained: true } } })
+  }, 300_000)
+
+  afterAll(async () => {
+    await db?.$disconnect()
+    await admin?.$disconnect()
+    if (createdDb) sql(adminUrl!, `DROP DATABASE "${name}" WITH (FORCE)`)
+    if (createdRole) sql(adminUrl!, `DROP ROLE "${role}"`)
+  }, 120_000)
+
+  it("refuses a pre-existing unowned slug without creating users or attendance records", async () => {
+    await db.organization.create({ data: { id: "unowned-slug-fixture", slug: DEMO.slug, name: "Unowned fixture" } })
+    await expect(prepareDemo(db, "unusable-test-hash")).rejects.toThrow("TENANT_NOT_OWNED")
+    expect(await db.user.count({ where: { organizationId: DEMO.id } })).toBe(0)
+    expect(await db.mtmAgentWorkday.count({ where: { organizationId: DEMO.id } })).toBe(0)
+    // Cleanup only the disposable CI collision, never a production function.
+    await db.organization.delete({ where: { id: "unowned-slug-fixture" } })
+  })
+
+  it("inserts the exact fixture once with triggers enabled and matches actual report arithmetic", async () => {
+    const customer = await db.organization.findUnique({ where: { id: "untouched-customer-fixture" } })
+    expect(await prepareDemo(db, "unusable-test-hash")).toBe(true)
+    const snapshot = await readOnlyDemo(db)
+    expect(snapshot.workdays).toHaveLength(3)
+    expect(snapshot.workdays.flatMap((day) => day.events)).toHaveLength(12)
+    const report = buildMtmAttendanceReport({ employees: DEMO_AGENTS.map((id) => ({ id, name: "Demo", teamId: null, teamName: null })),
+      workdays: snapshot.workdays, calendar: [], rules: [], from: DEMO.from, to: DEMO.to, now: new Date("2026-10-13T10:00:00Z") })
+    expect(verifyParity(snapshot, report).totals.workedSeconds).toBe(90540)
+    expect(await prepareDemo(db, "replacement-must-not-be-used")).toBe(false)
+    expect(await readOnlyDemo(db)).toEqual(snapshot)
+    expect(await db.organization.findUnique({ where: { id: "untouched-customer-fixture" } })).toEqual(customer)
+  })
+
+  it("the actual database refuses ledger rewrites, completed-day changes and writes in read-only comparisons", async () => {
+    const snapshot = await readOnlyDemo(db)
+    // Superuser in the disposable database bypasses RLS: these failures must
+    // come from the retained triggers themselves, not a missing UPDATE policy.
+    await expect(admin.mtmAgentWorkdayEvent.update({ where: { id: snapshot.workdays[0].events[0].id }, data: { note: "rewrite" } })).rejects.toThrow(/Workforce immutable records cannot be UPDATE/)
+    await expect(admin.mtmAgentWorkday.update({ where: { id: snapshot.workdays[0].id }, data: { totalPausedSeconds: 1 } })).rejects.toThrow(/requires its current transaction correction ledger fact/)
+    await expect(db.$transaction(async (tx) => {
+      await tx.$executeRawUnsafe("SET TRANSACTION READ ONLY")
+      await tx.$executeRaw`SELECT set_config('app.org_id', ${DEMO.id}, true)`
+      await tx.user.update({ where: { id: DEMO.userId }, data: { name: "should fail" } })
+    })).rejects.toThrow()
+    expect(await readOnlyDemo(db)).toEqual(snapshot)
+  })
+
+  it("RLS hides even the demo fixture when another tenant is selected", async () => {
+    await db.$executeRaw`SELECT set_config('app.org_id', 'untouched-customer-fixture', false)`
+    try { expect(await db.mtmAgentWorkday.findMany()).toEqual([]); expect(await db.mtmAgentWorkdayEvent.findMany()).toEqual([]) }
+    finally { await db.$executeRaw`SELECT set_config('app.org_id', ${DEMO.id}, false)` }
+  })
+})
