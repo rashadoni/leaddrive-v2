@@ -1,0 +1,69 @@
+{
+  "sources": {
+    "attendance-help-ru.html": "adcbb3482e4f4ebbd371bfda148d10ad43a1d7ad09512bfb8ebb8d38eee4efd9",
+    "attendance-help-az.html": "22063673a499242ca5bc6df042b6680b3923cdaba0f3f610eed7dc5fe38c6aaa",
+    "attendance-help-en.html": "ad87a2c94a40511943554b3150a4fbdcd22bc576cdcd6e02f9c2f40abbf218fd"
+  },
+  "results": [
+    {
+      "locale": "ru",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "minTarget": 76,
+      "topics": 8,
+      "keyboardFocused": true,
+      "expanded": true,
+      "innerScrolls": 0
+    },
+    {
+      "locale": "ru",
+      "width": 390,
+      "scrollWidth": 390,
+      "minTarget": 96,
+      "topics": 8,
+      "keyboardFocused": true,
+      "expanded": true,
+      "innerScrolls": 0
+    },
+    {
+      "locale": "az",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "minTarget": 76,
+      "topics": 8,
+      "keyboardFocused": true,
+      "expanded": true,
+      "innerScrolls": 0
+    },
+    {
+      "locale": "az",
+      "width": 390,
+      "scrollWidth": 390,
+      "minTarget": 96,
+      "topics": 8,
+      "keyboardFocused": true,
+      "expanded": true,
+      "innerScrolls": 0
+    },
+    {
+      "locale": "en",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "minTarget": 76,
+      "topics": 8,
+      "keyboardFocused": true,
+      "expanded": true,
+      "innerScrolls": 0
+    },
+    {
+      "locale": "en",
+      "width": 390,
+      "scrollWidth": 390,
+      "minTarget": 76,
+      "topics": 8,
+      "keyboardFocused": true,
+      "expanded": true,
+      "innerScrolls": 0
+    }
+  ]
+}

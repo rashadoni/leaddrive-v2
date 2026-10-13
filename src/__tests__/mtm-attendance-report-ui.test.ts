@@ -82,6 +82,8 @@ describe("attendance report workspace on the real row calculation", () => {
   it.each(["ru", "az", "en"])("renders the real day, cards and privacy boundaries in %s", async (locale) => {
     await render(locale)
     const t = messages(locale).mtmAttendance
+    expect(container.querySelector<HTMLDetailsElement>('[data-testid="attendance-help"]')?.open).toBe(false)
+    expect(container.querySelector("summary")?.textContent).toContain(t.helpTitle)
     expect(field("from").value).toBe(TODAY)
     expect(field("to").value).toBe(TODAY)
     expect(dayRows()).toHaveLength(4)
@@ -241,6 +243,7 @@ describe("attendance report workspace on the real row calculation", () => {
     await render()
     fetchMock.mockResolvedValueOnce(response(null, 403, "MTM_ATTENDANCE_FORBIDDEN"))
     await submit()
+    expect(container.querySelector('[data-testid="attendance-help"]')).toBeNull()
     expect(dayRows()).toHaveLength(0)
     expect(container.textContent).not.toContain("Aysel Aliyeva")
     expect(field("employee").querySelectorAll("option")).toHaveLength(1)

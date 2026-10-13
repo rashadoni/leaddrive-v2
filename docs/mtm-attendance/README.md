@@ -950,3 +950,23 @@ Production main `7f632185fd3e745add8ed45ad902d772ebd8e122`: deploy38392686554 SU
 92 targeted tests PASS; затем новый invalid-zone regression/рендер21 PASS, финальный UI/export payload3 PASS, personal reopen/contracts32 PASS. Повторы не суммируются. Реальные XLSX/PDF в тестах RU/AZ/EN совпали с ячейками, формулы экранированы, места перерывов нет. ESLint12 и финальный lint3 PASS; i18n26135 PASS. Actual6 PNG обновлены, width fit/no inner scroll/min44, RU1440/AZ390 просмотрены; evidence/overtime. Добавлен realPG regression неизменного закрытого табеля после approved overnight correction; проверка формы OVERTIME добавлена в существующий report PG suite. 36 PG scenarios NOT RUN локально; full compiler/build/generate также NOT RUN по host contract, всё остаётся обязательным в CI.
 
 Мобильный макет явной даты окончания показан; подагент готовит связанную сборку от mobile main15dcf94. Напоминания743 обновлены до9f01d2821 с ночным grace/FINISH и UTC−2 lookback; actual сводки с пустыми адресами просмотрен и показан. 5.8 поручена тому же подагенту после mobile. Production остаётся проверенным7f632; demo2.11 controller PASS, production-demo queued, результат ещё не заявляется. Работа продолжается с независимой проверки5.6 и CI всей цепочки.
+
+
+### 2026-10-13 — 5.8: справка для HR, начало согласованного подзадания
+
+В рамках единой сессии root поручил этому подагенту 5.8 после мобильного ночного исправления (PR124, c9db3c8, CI ожидается). Отдельный worktree `/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-mtm-hr-help`, ветка `codex/mtm-attendance-hr-help` от 5.6 checkpoint013a99dc8. Routing: origin `rashadoni/leaddrive-v2`; production13.140.132.245 `/opt/leaddrive-v2`, только reviewed main → GitHub Actions deploy.yml, собственных production действий здесь нет. §0/§2/§7, AGENTS и действующий delivery contract сверены; предыдущие записи сохраняются.
+
+Объём: раскрываемая справка на существующей странице attendance, восемь коротких тем RU/AZ/EN (включение/права; статусы и неизвестные часы; заявки; смены/переработка; остатки отпусков; закрытый месяц; Excel/PDF/почта; приватность). Без API, схемы, нового permission или отдельного сервиса. Права страницы и скрытие при отказе сохраняются. HTML-макет подготовлен до продуктового UI кода; следующий шаг — два PNG и показ владельцу через root, затем actual component render/переводы/узкие проверки. Утверждённого geo-текста нет, GPS OFF; получателей рассылки по умолчанию нет.
+
+
+### 2026-10-13 — 5.8: показанный макет и подготовленная реализация
+
+Root просмотрел RU1440 и показал владельцу макет до продуктового кода. Один Chromium снял1440/390: без переполнения, controls>=44px; RAM13875MiB/disk236GiB/PSI0. Реализована нативная раскрываемая справка на прежней странице, по умолчанию свёрнута, с восемью темами и18 строками на каждом языке. Новых данных/запросов/настроек нет; после авторитетного отказа доступа справка скрывается вместе с навигацией отчёта. Все существующие разделы сохранены.
+
+Подготовлены три actual component test с настоящими переводами и открытием/закрытием; существующий workspace regression проверяет присутствие и скрытие при отзыве доступа. Следующий шаг — согласованный узкий запуск, actual6PNG с проверкой клавиатуры, lint/parity и checkpoint. Full build/semantic tsc NOT RUN локально по host contract; обязательные CI остаются впереди.
+
+### 2026-10-13 — 5.8: actual справка проверена и готова к интеграции
+
+24 unique UI tests PASS (3 help +21 existing workspace), scoped ESLint4 PASS, parity26153 keys PASS. Первая проверка lint потребовала передать children третьим аргументом createElement в новом тесте; исправлено без изменения продукта, повтор3 help PASS. SHA256 свежих renderHTML совпадают с шестью actual PNG. Browser: RU/AZ/EN1440/390, Enter открывает/Space закрывает, видимый фокус, targets76–96px, без горизонтального переполнения и внутренних прокруток. Просмотрены RU1440/AZ390; root переданы пути для показа. Preflight RAM14090MiB/disk237GiB/PSI0. Это actual component preview с CSS приложения, не full authenticated E2E и не production screenshot. Full build/semantic tsc NOT RUN локально: обязательны в итоговом CI747.
+
+Результат: справка готова. Последнее действие: проверка переводов, реальных render и клавиатуры. Точка продолжения: scoped checkpoint и normal merge root3deb33c2a для общего финального CI; далее rootreview5.8, независимая проверка safe-phase controller и mobile124CI. Продуктовые отправки и сбор места не выполнялись.
