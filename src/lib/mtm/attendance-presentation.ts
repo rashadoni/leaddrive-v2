@@ -44,6 +44,16 @@ export function attendanceCorrectionText(row: MtmAttendanceReportRow, correction
     reviewer: correction.reviewer.name || t("reportCorrectionReviewer"),
     at: new Intl.DateTimeFormat(locale, { timeZone: row.timezone, dateStyle: "short", timeStyle: "medium" }).format(new Date(correction.occurredAt)) })
 }
+/** Approved periods describe permission; they never manufacture a phone event. */
+export function attendanceApprovedLines(row: MtmAttendanceReportRow, locale: string, t: AttendanceHistoryText): string[] {
+  const date = (value: string) => new Intl.DateTimeFormat(locale, { timeZone: "UTC", dateStyle: "medium" }).format(new Date(`${value}T12:00:00Z`))
+  return (row.approvedRequests ?? []).map(entry => t("reportApprovedPeriod", {
+    kind: attendanceDayKindLabel(entry.details.dayKind, locale),
+    period: entry.details.unit === "HOURS"
+      ? `${date(entry.startDate)} · ${entry.details.startTime}–${entry.details.endTime} (${entry.details.timezone})`
+      : `${date(entry.startDate)}${entry.startDate === entry.endDate ? "" : ` — ${date(entry.endDate)}`}`,
+  }))
+}
 export function attendanceCorrectionLines(row: MtmAttendanceReportRow, locale: string, t: AttendanceHistoryText): string[] {
   return (row.corrections ?? []).map((correction) => attendanceCorrectionText(row, correction, locale, t))
 }

@@ -42,7 +42,7 @@ export const AttendanceCorrectionBasisSchema = z.discriminatedUnion("kind", [
 export type AttendanceCorrectionBasis = z.infer<typeof AttendanceCorrectionBasisSchema>
 export const AttendanceRequestDetailsSchema = z.object({
   version: z.literal(1),
-  kind: z.enum(ATTENDANCE_REQUEST_KINDS),
+  kind: z.enum([...ATTENDANCE_REQUEST_KINDS, "HR_RECORD"]),
   unit: z.enum(["DAYS", "HOURS"]),
   startTime: time.nullable(), endTime: time.nullable(),
   timezone: z.string().min(1).max(100),
@@ -50,7 +50,11 @@ export const AttendanceRequestDetailsSchema = z.object({
   attachmentIds: z.array(z.string().uuid()).max(3),
   submissionHash: z.string().regex(/^[a-f0-9]{64}$/),
   correctionBasis: AttendanceCorrectionBasisSchema.optional(),
+  recording: z.object({ userId: z.string().min(1), operationId: z.string().uuid() }).strict().optional(),
 }).strict().superRefine((value, ctx) => {
+  if ((value.kind === "HR_RECORD") !== (value.recording !== undefined)) {
+    ctx.addIssue({ code: "custom", path: ["recording"], message: "MTM_ATTENDANCE_HR_RECORD_INVALID" })
+  }
   if ((value.kind === "TIME_CORRECTION") !== (value.correctionBasis !== undefined)) {
     ctx.addIssue({ code: "custom", path: ["correctionBasis"], message: "MTM_ATTENDANCE_CORRECTION_BASIS_INVALID" })
   }
@@ -61,7 +65,7 @@ export type AttendanceRequestDto = {
   id: string; clientRequestId: string; agentId: string; status: AttendanceRequestStatus
   startDate: string; endDate: string; reason: string; submittedAt: string
   decisionNote: string | null; decidedAt: string | null; cancelledAt: string | null; version: string
-  details: Omit<AttendanceRequestDetails, "submissionHash">
+  details: Omit<AttendanceRequestDetails, "submissionHash" | "recording">
 }
 export class AttendanceRequestError extends Error {
   constructor(public readonly code: string, public readonly status: number = 409) { super(code) }

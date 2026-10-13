@@ -9,19 +9,22 @@ export type AttendanceApprovedPeriod = {
 const ABSENCE_KINDS = new Set(["ANNUAL_LEAVE", "SICK_LEAVE", "TIME_OFF", "HOURLY_ABSENCE"])
 
 export function projectApprovedAttendanceRequests(row: MtmAttendanceReportRow, periods: readonly AttendanceApprovedPeriod[]): MtmAttendanceReportRow {
-  const approved = periods.filter((entry) => entry.startDate <= row.date && entry.endDate >= row.date && entry.details.kind !== "TIME_CORRECTION")
+  const approved = periods.filter((entry) => entry.agentId === row.employeeId && entry.startDate <= row.date && entry.endDate >= row.date && entry.details.kind !== "TIME_CORRECTION")
   if (!approved.length) return row
   const result = { ...row, approvedRequests: approved }
+  if (row.factsState === "INVALID") return result
   const whole = approved.find((entry) => entry.details.unit === "DAYS")
   if (!whole) return result
   // A public holiday remains a holiday inside leave. This projection never
   // overwrites the company calendar or manufactures worked hours.
-  if (whole.details.kind === "ANNUAL_LEAVE" && ["PUBLIC_HOLIDAY", "COMPANY_HOLIDAY"].includes(row.calendarKind)) return result
+  const absence = ABSENCE_KINDS.has(whole.details.kind) || (whole.details.kind === "HR_RECORD" && ["PAID_LEAVE", "UNPAID_LEAVE"].includes(whole.details.dayKind.group))
+  if (whole.details.dayKind.key === "ANNUAL_LEAVE" && ["PUBLIC_HOLIDAY", "COMPANY_HOLIDAY"].includes(row.calendarKind)) return result
   if (row.workdayId) {
-    return ABSENCE_KINDS.has(whole.details.kind)
+    return absence
       ? { ...result, flags: [...new Set([...row.flags, "WORKED_ON_APPROVED_ABSENCE" as const])] }
       : result
   }
+  if (whole.details.kind === "HR_RECORD" && whole.details.dayKind.group === "VIOLATION") return { ...result, dayKind: whole.details.dayKind }
   return { ...result, kind: "APPROVED_REQUEST", dayKind: whole.details.dayKind,
-    expectedWorkSeconds: ABSENCE_KINDS.has(whole.details.kind) ? 0 : row.expectedWorkSeconds }
+    expectedWorkSeconds: absence ? 0 : row.expectedWorkSeconds }
 }

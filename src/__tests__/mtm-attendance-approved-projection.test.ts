@@ -27,4 +27,25 @@ describe("approved attendance requests in the shared report", () => {
     expect(result.rows[0]).toMatchObject({ kind: "WORKED", factsState: "VALID", workedSeconds: 32400, flags: ["WORKED_ON_APPROVED_ABSENCE"] })
     expect(result.rows[0].events).toHaveLength(2)
   })
+  it("projects a manual catalogue kind and still keeps a holiday inside manual annual leave", () => {
+    const manual: AttendanceApprovedPeriod = { ...period, details: { ...period.details, kind: "HR_RECORD" } }
+    const ordinary = buildMtmAttendanceReport({ ...input, approvedRequests: [manual] })
+    expect(ordinary.rows[0]).toMatchObject({ kind: "APPROVED_REQUEST", dayKind: period.details.dayKind, workedSeconds: 0, expectedWorkSeconds: 0 })
+    const holiday = buildMtmAttendanceReport({ ...input, approvedRequests: [manual], calendar: [{ id: "holiday", date, kind: "PUBLIC_HOLIDAY", name: "Fixture holiday", teamId: null, agentId: null, movedToDate: null, routePlanningAllowed: null }] })
+    expect(holiday.rows[0].kind).toBe("HOLIDAY")
+  })
+  it("never masks invalid phone facts with an approved period", () => {
+    const row = buildMtmAttendanceReport({ ...input, approvedRequests: [period], workdays: [{ id: "invalid-day", agentId: period.agentId, workDate: date, status: "COMPLETED", startedAt: `${date}T05:00:00Z`, completedAt: `${date}T14:00:00Z`, totalPausedSeconds: 0, events: [] }] }).rows[0]
+    expect(row.kind).toBe("INVALID_FACTS")
+    expect(row.approvedRequests).toHaveLength(1)
+  })
+
+  it("keeps a recorded unexcused absence in the absence form", () => {
+    const dayKind = defaultAttendanceDayKinds(() => ({ az: "Fixture", ru: "Fixture", en: "Fixture" })).find(kind => kind.key === "UNEXCUSED_ABSENCE")!
+    const result = buildMtmAttendanceReport({ ...input, approvedRequests: [{ ...period, details: { ...period.details, kind: "HR_RECORD", dayKind } }] })
+    expect(result.rows[0]).toMatchObject({ kind: "ABSENT", dayKind })
+    expect(result.totals.absentCount).toBe(1)
+    expect(filterMtmAttendanceRows(result.rows, { form: "ABSENCES" })).toHaveLength(1)
+  })
+
 })

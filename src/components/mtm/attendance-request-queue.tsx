@@ -78,7 +78,7 @@ export function MtmAttendanceRequestQueue() {
   }
 
   return <section className="space-y-5" data-testid="attendance-request-queue" aria-label={t("requestsTitle")} aria-busy={busy}>
-    <Link href="/mtm/attendance" className="inline-flex min-h-11 items-center text-sm font-medium text-primary underline-offset-4 hover:underline">{t("requestsBack")}</Link>
+    <div className="flex flex-wrap items-center justify-between gap-3"><Link href="/mtm/attendance" className="inline-flex min-h-11 items-center text-sm font-medium text-primary underline-offset-4 hover:underline">{t("requestsBack")}</Link><Link href="/mtm/attendance/recordings" className="inline-flex min-h-11 items-center rounded-lg border px-4 text-sm font-medium text-primary hover:bg-muted">{t("hrRecordingTitle")}</Link></div>
     <HomeCard testId="attendance-request-card" titleId="attendance-request-title" tone="amber" icon={<ClipboardList className="h-5 w-5" />} title={t("requestsTitle")}>
       <p className="pt-4 text-sm text-muted-foreground">{t("requestsDescription")}</p>
       <div className="flex flex-wrap items-end gap-3 py-4">
@@ -97,6 +97,7 @@ export function MtmAttendanceRequestQueue() {
             <div className="min-w-0 basis-full space-y-1 sm:flex-1 sm:basis-0">
               <p className="font-semibold">{item.employeeName} <span className="font-normal text-muted-foreground">{item.teamName}</span></p>
               <p className="text-sm">{item.details.kind === "TIME_CORRECTION" ? t("requestsTimeCorrection") : attendanceDayKindLabel(item.details.dayKind, locale)} · {item.startDate}{item.endDate !== item.startDate ? ` — ${item.endDate}` : ""}{item.details.unit === "HOURS" ? ` · ${item.details.startTime}–${item.details.endTime}` : ""}</p>
+              {item.details.kind === "HR_RECORD" && <p className="text-xs font-medium text-muted-foreground">{t("hrRecordingCard")}</p>}
               <p className="text-xs text-muted-foreground">{t("requestsSubmitted", { date: stamp(item.submittedAt, item.details.timezone) })}</p>
             </div>
             <HomePill tone={item.status === "PENDING" ? "amber" : item.status === "APPROVED" ? "green" : "zinc"}>{t(LABELS[item.status])}</HomePill>

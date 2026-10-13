@@ -1,6 +1,6 @@
 import { addDateKeyDays } from "@/lib/mtm/mobile-week"
 import { filterMtmAttendanceRows, summarizeMtmAttendanceRows, type MtmAttendanceReport, type MtmAttendanceReportRow } from "@/lib/mtm/attendance-report"
-import { attendanceStatusText, attendanceMonthCell, attendanceCatalogueLegend, attendanceCorrectionLines, attendanceJournalEntries, formatAttendanceDuration } from "@/lib/mtm/attendance-presentation"
+import { attendanceStatusText, attendanceMonthCell, attendanceCatalogueLegend, attendanceCorrectionLines, attendanceApprovedLines, attendanceJournalEntries, formatAttendanceDuration } from "@/lib/mtm/attendance-presentation"
 import { AttendanceViewConfigSchema, type AttendanceViewConfig, type AttendanceViewColumn } from "@/lib/mtm/attendance-view-contract"
 
 export type AttendanceText = (key: string, values?: Record<string, string | number>) => string
@@ -26,7 +26,7 @@ export function buildAttendanceTable(report: MtmAttendanceReport, value: Attenda
   const title = t(config.mode === "MONTH" ? "reportMonth" : config.mode === "JOURNAL" ? "reportJournal" : config.filters.form === "LATE_EARLY" ? "reportLateEarly" : config.filters.form === "ABSENCES" ? "reportAbsences" : "reportDay")
   const baseNotes = (row: MtmAttendanceReportRow) => row.factsState === "INVALID" ? row.invalidReasons.map((reason) => t(REASON[reason] ?? "reportReasonFacts")).join(" · ")
     : row.kind === "OPEN" ? t("reportProvisional") : row.kind === "MISSING_FINISH" ? t("reportUnknownTime") : row.kind === "ABSENT" ? t("reportAbsenceReasonPending") : row.flags.includes("WORKED_ON_APPROVED_ABSENCE") ? t("reportWorkOnLeave") : row.flags.includes("WORKED_ON_DAY_OFF") ? t("reportWorkOnDayOff") : row.calendarName ?? "—"
-  const dayNotes = (row: MtmAttendanceReportRow) => [baseNotes(row), ...attendanceCorrectionLines(row, locale, t)].filter((line) => line !== "—").join(" · ") || "—"
+  const dayNotes = (row: MtmAttendanceReportRow) => [baseNotes(row), ...attendanceApprovedLines(row, locale, t), ...attendanceCorrectionLines(row, locale, t)].filter((line) => line !== "—").join(" · ") || "—"
   const duration = (row: MtmAttendanceReportRow) => `${formatAttendanceDuration(row.workedSeconds)}${row.kind === "OPEN" ? ` · ${t("reportProvisionalShort")}` : ""}`
   const columns: AttendanceTable["columns"] = config.columns.flatMap((column) => column === "days"
     ? Array.from({ length: Number(config.filters.to.slice(-2)) }, (_, index) => { const key = addDateKeyDays(config.filters.from, index); return { key, label: date(key) } })
@@ -73,6 +73,9 @@ export function buildAttendanceTable(report: MtmAttendanceReport, value: Attenda
       || (config.mode === "JOURNAL" && !config.columns.includes("event"))) {
       for (const row of rows) for (const line of attendanceCorrectionLines(row, locale, t)) details.push(`${row.employeeName} · ${date(row.date)} · ${line}`)
     }
+  }
+  if (config.mode !== "DAY" || !config.columns.includes("notes")) {
+    for (const row of rows) for (const line of attendanceApprovedLines(row, locale, t)) details.push(`${row.employeeName} · ${date(row.date)} · ${line}`)
   }
   const totalLines = config.showTotals ? [t("reportTotalsTitle"),
     t("reportTotals", { worked: formatAttendanceDuration(totals.workedSeconds), paused: formatAttendanceDuration(totals.pausedSeconds), late: formatAttendanceDuration(totals.lateSeconds), early: formatAttendanceDuration(totals.earlyLeaveSeconds) }),

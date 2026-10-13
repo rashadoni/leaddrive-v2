@@ -34,6 +34,7 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
   let tenant: typeof import("@/lib/rls-context").runWithTenant
   let bypass: typeof import("@/lib/rls-context").runWithRlsBypass
   let store: typeof import("@/lib/mtm/attendance-request-store")
+  let recording: typeof import("@/lib/mtm/attendance-hr-recording")
   let review: typeof import("@/lib/mtm/attendance-request-review")
   let decision: typeof import("@/lib/mtm/attendance-request-decision")
   let report: typeof import("@/lib/mtm/attendance-report-store")
@@ -58,7 +59,7 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
     const result = spawnSync(process.execPath, [cli, "db", "push", "--schema", schemaFile, "--skip-generate"], { env: { ...process.env, DATABASE_URL: scratch!.adminDb }, encoding: "utf8", timeout: 180_000, maxBuffer: 1024 * 1024 })
     if (result.status !== 0) throw new Error("Request fixture schema push failed")
     sql(scratch!.adminDb, 'DROP TABLE mtm_attendance_attachments; ALTER TABLE mtm_hrm_requests DROP COLUMN "attendanceDetails";')
-    for (const migration of ["20260806120000_mtm_rls_coverage_completion", "20260806160000_mtm_rls_bypass_clause_normalization", "20261013040000_mtm_attendance_requests"]) sql(scratch!.adminDb, readFileSync(`prisma/migrations/${migration}/migration.sql`, "utf8"))
+    for (const migration of ["20260806120000_mtm_rls_coverage_completion", "20260806160000_mtm_rls_bypass_clause_normalization", "20261013040000_mtm_attendance_requests", "20261013060000_mtm_attendance_hr_recording"]) sql(scratch!.adminDb, readFileSync(`prisma/migrations/${migration}/migration.sql`, "utf8"))
     sql(scratch!.adminDb, readFileSync("scripts/rls/enable-batch-5.sql", "utf8"))
     sql(scratch!.adminDb, `GRANT USAGE ON SCHEMA public TO "${scratch!.role}"; GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "${scratch!.role}";`)
     // Exercise the real external-runtime guard, which correctly rejects /tmp.
@@ -69,6 +70,7 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
     prisma = (await import("@/lib/prisma")).prisma
     ;({ runWithTenant: tenant, runWithRlsBypass: bypass } = await import("@/lib/rls-context"))
     store = await import("@/lib/mtm/attendance-request-store")
+    recording = await import("@/lib/mtm/attendance-hr-recording")
     review = await import("@/lib/mtm/attendance-request-review")
     decision = await import("@/lib/mtm/attendance-request-decision")
     report = await import("@/lib/mtm/attendance-report-store")
@@ -253,6 +255,45 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
     finally { sql(scratch!.adminDb, 'DROP TRIGGER fixture_attendance_bell ON notifications; DROP FUNCTION fixture_reject_attendance_bell();') }
     await tenant(self.organizationId, async () => {
       expect(await prisma.mtmHrmRequest.count({ where: { clientRequestId: body.clientRequestId } })).toBe(0)
+    })
+  })
+
+  it("records an explicit HR batch exactly once, retains author/reason and projects the catalogue snapshot", async () => {
+    const reviewer = { organizationId: self.organizationId, userId: "request-pg-admin", principalType: "session" as const }
+    const body = { clientRequestId: randomUUID(), agentIds: [self.agentId, "request-pg-colleague"], dayKindKey: "STUDY_LEAVE", catalogueVersion: null,
+      unit: "DAYS", startDate: "2027-08-10", endDate: "2027-08-11", reason: "PRIVATE_HR_BATCH_REASON" }
+    const results = await Promise.all([1, 2].map(() => tenant(self.organizationId, () => recording.recordAttendanceDays(reviewer, body))))
+    expect(results.map(result => result.idempotent).sort()).toEqual([false, true])
+    expect(results[0].items).toHaveLength(2)
+    await tenant(self.organizationId, async () => {
+      const ids = results[0].items.map(item => item.id)
+      expect(await prisma.mtmHrmRequest.count({ where: { clientRequestId: body.clientRequestId } })).toBe(2)
+      expect(await prisma.mtmAuditLog.count({ where: { entityId: { in: ids }, action: "MTM_ATTENDANCE_HR_RECORDED" } })).toBe(2)
+      expect(await prisma.mtmNotification.count({ where: { OR: ids.map(id => ({ metadata: { path: ["attendanceRequestId"], equals: id } })) } })).toBe(2)
+      const own = await store.listOwnAttendanceRequests(self)
+      expect(own.items.find(item => ids.includes(item.id))).toMatchObject({ status: "APPROVED", details: { kind: "HR_RECORD", dayKind: { key: "STUDY_LEAVE" } } })
+      expect(JSON.stringify(own)).not.toMatch(/submissionHash|recording|operationId/)
+      const snapshot = await report.readMtmAttendanceReport({ organizationId: self.organizationId, actor: { role: "ADMIN", agentId: null, scopedAgentIds: null }, query: { from: body.startDate, to: body.endDate, form: "ALL", employeeId: self.agentId } })
+      expect(snapshot.rows.every(row => row.dayKind?.key === "STUDY_LEAVE" && row.workedSeconds === 0)).toBe(true)
+      expect(JSON.stringify(snapshot)).not.toContain(body.reason)
+      expect(await prisma.mtmAgentWorkday.count()).toBe(0)
+      await expect(prisma.mtmHrmRequest.update({ where: { id: ids[0] }, data: { reason: "tampered" } })).rejects.toThrow()
+      await expect(recording.recordAttendanceDays(reviewer, { ...body, reason: "changed" })).rejects.toMatchObject({ code: "MTM_ATTENDANCE_REQUEST_IDEMPOTENCY_MISMATCH" })
+      // A conflict affecting only one target refuses the entire new batch.
+      await expect(recording.recordAttendanceDays(reviewer, { ...body, clientRequestId: randomUUID(), agentIds: [self.agentId], startDate: "2027-08-11", endDate: "2027-08-12" })).rejects.toMatchObject({ code: "MTM_ATTENDANCE_REQUEST_OVERLAP" })
+      await expect(recording.recordAttendanceDays(reviewer, { ...body, clientRequestId: randomUUID(), agentIds: [self.agentId, "request-pg-foreign"] })).rejects.toMatchObject({ status: 403 })
+    })
+  })
+  it("rolls back every HR row and audit when an employee inbox insert fails", async () => {
+    const body = { clientRequestId: randomUUID(), agentIds: [self.agentId, "request-pg-colleague"], dayKindKey: "STUDY_LEAVE", catalogueVersion: null,
+      unit: "DAYS", startDate: "2027-08-15", endDate: "2027-08-16", reason: "PRIVATE_ATOMIC_HR_REASON" }
+    sql(scratch!.adminDb, `CREATE FUNCTION fixture_reject_hr_inbox() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'fixture inbox unavailable'; END $$; CREATE TRIGGER fixture_hr_inbox BEFORE INSERT ON mtm_notifications FOR EACH ROW EXECUTE FUNCTION fixture_reject_hr_inbox();`)
+    try {
+      await expect(tenant(self.organizationId, () => recording.recordAttendanceDays({ organizationId: self.organizationId, userId: "request-pg-admin", principalType: "session" }, body))).rejects.toThrow()
+    } finally { sql(scratch!.adminDb, 'DROP TRIGGER fixture_hr_inbox ON mtm_notifications; DROP FUNCTION fixture_reject_hr_inbox();') }
+    await tenant(self.organizationId, async () => {
+      expect(await prisma.mtmHrmRequest.count({ where: { clientRequestId: body.clientRequestId } })).toBe(0)
+      expect(await prisma.mtmAuditLog.count({ where: { newData: { path: ["operationId"], equals: body.clientRequestId } } })).toBe(0)
     })
   })
 
