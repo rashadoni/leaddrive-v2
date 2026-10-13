@@ -17257,6 +17257,11 @@
     "connectionLost": "Could not refresh. Check your internet connection — the page will try again."
   },
   "mtmSettingsPage": {
+    "groupAttendanceReminders": "Attendance reminders",
+    "lblAttendanceEmployeeReminders": "Remind employees",
+    "hintAttendanceEmployeeReminders": "In the app: record arrival after the scheduled start and departure after the scheduled end. Once per day, excluding days off and approved absences.",
+    "lblAttendanceManagerAlerts": "Notify managers",
+    "hintAttendanceManagerAlerts": "In notifications: an arrival is still missing after the grace period, or was recorded later than scheduled. Only employees in the manager’s current scope.",
     "specialtiesHint": "A client's specialty is picked from this list, and the filter in Clients works by it. Removing a specialty from the list does not change clients who already have it.",
     "specialtiesCount": "Total: {count}",
     "specialtiesAddLabel": "New specialty",
@@ -17954,6 +17959,15 @@
     "managerNoTeamHint": "You can change only the rules of your own teams, and your employee card is not in a team yet. Ask an administrator to assign your card to a team."
   },
   "mtmAttendance": {
+    "reminderEmployeeStart": "Your scheduled workday has started — record your arrival",
+    "reminderEmployeeFinish": "Your scheduled workday has ended — record your departure",
+    "reminderEmployeeBody": "Open the app and check your attendance marks. This reminder does not change your working time.",
+    "reminderManagerMissing": "An arrival has not been recorded yet",
+    "reminderManagerLate": "The attendance report has a late arrival",
+    "reminderManagerBody": "Check the employees available to you in the report. An offline mark may arrive later.",
+    "deliveryDailySummary": "Daily HR summary",
+    "deliveryDailySummaryHint": "Prepare a summary of the previous day. Add email addresses manually and enable delivery separately.",
+    "deliveryDailySummaryName": "Daily attendance summary",
     "qrTitle": "Branch QR display",
     "qrIntro": "Confirm a branch when starting or finishing work in the app.",
     "qrRule": "Confirm the branch with QR",
@@ -25808,6 +25822,7 @@
       "order_created": "Order created",
       "order_shipped": "Order shipped",
       "order_returned": "Order returned",
+      "mtm_attendanceReminder_detected": "Attendance: missing and late arrivals",
       "mtm_locationRequest_submitted": "Customer address: an agent's request from the spot",
       "survey_response": "Survey response received",
       "loyalty_tier_changed": "Loyalty tier changed",

@@ -10,14 +10,14 @@ export type AttendanceApprovedPeriod = {
 }
 const ABSENCE_KINDS = new Set(["ANNUAL_LEAVE", "SICK_LEAVE", "TIME_OFF", "HOURLY_ABSENCE"])
 
-function isAbsence(period: AttendanceApprovedPeriod) {
+export function isAttendanceApprovedAbsence(period: AttendanceApprovedPeriod) {
   return ABSENCE_KINDS.has(period.details.kind) || (period.details.kind === "HR_RECORD" && ["PAID_LEAVE", "UNPAID_LEAVE"].includes(period.details.dayKind.group))
 }
 
 /** Frozen request clocks are interpreted in their original timezone. A broken
  * or ambiguous legacy clock must never silently excuse a violation. */
-function absenceWindow(period: AttendanceApprovedPeriod): [number, number] | null {
-  if (!isAbsence(period)) return null
+export function attendanceApprovedAbsenceWindow(period: AttendanceApprovedPeriod): [number, number] | null {
+  if (!isAttendanceApprovedAbsence(period)) return null
   const { unit, startTime, endTime, timezone } = period.details
   if (unit === "HOURS" && (!startTime || !endTime)) return null
   try {
@@ -50,7 +50,7 @@ export function projectApprovedAttendanceRequests(row: MtmAttendanceReportRow, p
     && !["PUBLIC_HOLIDAY", "COMPANY_HOLIDAY"].includes(row.calendarKind) ? 1 : 0
   let result = { ...row, approvedRequests: approved, annualLeaveDays }
   if (row.factsState === "INVALID") return result
-  const windows = approved.map(absenceWindow).filter((window): window is [number, number] => window !== null)
+  const windows = approved.map(attendanceApprovedAbsenceWindow).filter((window): window is [number, number] => window !== null)
   if (windows.length && row.factsState === "VALID" && row.isWorkingDay) {
     const uncoveredLate = row.lateSeconds === null ? null : uncoveredSeconds(row.plannedStartAt, row.startedAt, windows, row.lateSeconds)
     const lateSeconds = uncoveredLate !== null && uncoveredLate <= lateGraceSeconds ? 0 : uncoveredLate
@@ -62,7 +62,7 @@ export function projectApprovedAttendanceRequests(row: MtmAttendanceReportRow, p
   if (!whole) return result
   // A public holiday remains a holiday inside leave. This projection never
   // overwrites the company calendar or manufactures worked hours.
-  const absence = isAbsence(whole)
+  const absence = isAttendanceApprovedAbsence(whole)
   if (whole.details.dayKind.key === "ANNUAL_LEAVE" && ["PUBLIC_HOLIDAY", "COMPANY_HOLIDAY"].includes(row.calendarKind)) return result
   if (row.workdayId) {
     return absence

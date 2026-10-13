@@ -63,6 +63,7 @@ export const ENTITY_TO_MODULE: Record<string, string> = {
   mtm_location_request: "mtm",
   mtm_attendance_request: "mtm",
   mtm_attendance_risk: "mtm",
+  mtm_attendance_reminder: "mtm",
   mtm_attendance_installation: "mtm",
   survey:         "campaigns",   // Survey response — gated by campaigns module (Marketing group)
   loyalty:        "loyalty",     // Loyalty tier/redeem — gated by loyalty module (Loyalty Program group)
@@ -191,6 +192,7 @@ export const NOTIFICATION_KINDS: NotificationKind[] = (
     { kind: "mtm.attendanceRequest.submitted", entityType: "mtm_attendance_request" },
     { kind: "mtm.attendanceInstallation.requested", entityType: "mtm_attendance_installation" },
     { kind: "mtm.attendanceRisk.detected", entityType: "mtm_attendance_risk" },
+    { kind: "mtm.attendanceReminder.detected", entityType: "mtm_attendance_reminder" },
     // Phase 2c — Marketing: survey response (gated by campaigns module)
     { kind: "survey.response",     entityType: "survey" },
     // Phase 2c — Loyalty Program: notable low-volume loyalty events only (NOT per-earn spam)
