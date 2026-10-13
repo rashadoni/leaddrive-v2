@@ -6,7 +6,7 @@ import { workforceWorkdayCorrectionFacts } from "@/lib/workforce/workday-correct
 
 const at = (clock: string) => new Date(`2026-10-12T${clock}:00.000Z`)
 const now = new Date("2026-10-13T12:00:00Z")
-const input = { organizationId: "fixture-org", userId: "fixture-reviewer", requestId: "fixture-request", expectedVersion: at("14:30").toISOString(), decisionNote: null, now }
+const input = { organizationId: "fixture-org", userId: "fixture-reviewer", requestId: "fixture-request", expectedVersion: at("14:30").toISOString(), decisionNote: null as string | null, now }
 const workday = () => ({ id: "fixture-workday", workDate: at("00:00"), status: "STARTED", startedAt: at("05:00"), pausedAt: null as Date | null, completedAt: null as Date | null, totalPausedSeconds: 0 })
 const request = () => ({ id: input.requestId, agentId: "fixture-agent", type: "TIME_CORRECTION", status: "PENDING", updatedAt: at("14:30"),
   startDate: at("00:00"), endDate: at("00:00"), correctionWorkdayId: workday().id as string | null,

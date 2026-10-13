@@ -75,7 +75,8 @@ describe("MTM correction replay and safe report projection", () => {
     expect(report(pausedWorkday, [ledger(original, workforceWorkdayCorrectionFacts(pausedWorkday))]).rows[0].factsState).toBe("INVALID")
   })
   it.each(["az", "ru", "en"] as const)("projects the same before/after, reviewer and clock in %s screen and all export modes", (locale) => {
-    const t = createTranslator({ locale, messages: { az, ru, en }[locale], namespace: "mtmAttendance" })
+    const translate = createTranslator({ locale, messages: { az, ru, en }[locale], namespace: "mtmAttendance" })
+    const t = (key: string, values?: Record<string, string | number>) => translate(key as keyof typeof ru.mtmAttendance, values)
     const result = report()
     const row = result.rows[0]
     const [line] = attendanceCorrectionLines(row, locale, t)
