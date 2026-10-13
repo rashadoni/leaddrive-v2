@@ -8,13 +8,14 @@ import { Input } from "@/components/ui/input"
 import { HomeCard, HomeKpi, HomePill, type HomeTone } from "@/components/mtm/home-parts"
 import { addDateKeyDays, isDateKey } from "@/lib/mtm/mobile-week"
 import { filterMtmAttendanceRows, summarizeMtmAttendanceRows, type MtmAttendanceReport, type MtmAttendanceReportRow } from "@/lib/mtm/attendance-report"
-import { formatAttendanceDuration } from "@/lib/mtm/attendance-presentation"
+import { formatAttendanceDuration, attendanceStatusText, attendanceMonthCell, attendanceCatalogueLegend } from "@/lib/mtm/attendance-presentation"
 import { ATTENDANCE_VIEW_COLUMNS, type AttendanceViewConfig } from "@/lib/mtm/attendance-view-contract"
 import { buildAttendanceTable } from "@/lib/mtm/attendance-table"
 import { MtmAttendancePersonalViews } from "@/components/mtm/attendance-personal-views"
 import { MtmAttendanceExportButtons } from "@/components/mtm/attendance-export-buttons"
 import { MtmAttendanceDeliveries } from "@/components/mtm/attendance-deliveries"
 import { MtmAttendanceHrAccess } from "@/components/mtm/attendance-hr-access"
+import { MtmAttendanceDayKinds } from "@/components/mtm/attendance-day-kinds"
 import type { AttendanceReportSnapshot } from "@/lib/mtm/attendance-query"
 
 type Form = "DAY" | "MONTH" | "LATE_EARLY" | "ABSENCES" | "JOURNAL"
@@ -22,8 +23,6 @@ type Range = { from: string; to: string }
 type ReportData = MtmAttendanceReport & { snapshot?: AttendanceReportSnapshot }
 const FORMS: Form[] = ["DAY", "MONTH", "LATE_EARLY", "ABSENCES", "JOURNAL"]
 const FORM_MESSAGES: Record<Form, string> = { DAY: "reportDay", MONTH: "reportMonth", LATE_EARLY: "reportLateEarly", ABSENCES: "reportAbsences", JOURNAL: "reportJournal" }
-const KIND_MESSAGES: Record<MtmAttendanceReportRow["kind"], string> = { WORKED: "reportWorkedDay", OPEN: "reportOpenDay", MISSING_FINISH: "reportMissingFinish",
-  ABSENT: "reportAbsentDay", WEEKEND: "reportWeekend", HOLIDAY: "reportHoliday", UPCOMING: "reportUpcoming", INVALID_FACTS: "reportInvalidFacts" }
 const REASON_MESSAGES: Record<string, string> = { DUPLICATE_WORKDAY: "reportReasonDuplicate", SCHEDULE_INVALID: "reportReasonSchedule", TIMESTAMP_INVALID: "reportReasonTimestamp",
   EVENT_TYPE_INVALID: "reportReasonEvent", JOURNAL_INCOMPLETE: "reportReasonJournal", PAUSE_TOTAL_MISMATCH: "reportReasonPause", WORKDAY_INCONSISTENT: "reportReasonFacts" }
 const EVENT_MESSAGES: Record<string, string> = { START: "reportEventStart", PAUSE: "reportEventPause", RESUME: "reportEventResume", FINISH: "reportEventFinish", REOPEN: "reportEventReopen" }
@@ -218,17 +217,8 @@ export function MtmAttendanceReportWorkspace() {
     setCustomView((previous) => previous ? { ...previous, name: "" } : null)
     setError(t("reportAccessUnavailable"))
   }
-  function monthCell(row: MtmAttendanceReportRow | undefined) {
-    if (!row) return "—"
-    if (row.kind === "WEEKEND") return t("reportCodeWeekend")
-    if (row.kind === "HOLIDAY") return t("reportCodeHoliday")
-    if (row.kind === "ABSENT") return t("reportCodeAbsent")
-    if (row.kind === "UPCOMING") return "·"
-    if (row.kind === "MISSING_FINISH") return "?"
-    if (row.kind === "INVALID_FACTS") return "!"
-    return `${row.kind === "OPEN" ? "~" : ""}${formatAttendanceDuration(row.workedSeconds)}`
-  }
 
+  const catalogueLegend = attendanceCatalogueLegend(rows, locale)
   const multiDay = report ? report.from !== report.to : range.from !== range.to
   const timezones = [...new Set(rows.map((row) => row.timezone))]
   const cards = [
@@ -282,28 +272,28 @@ export function MtmAttendanceReportWorkspace() {
                 <th scope="col" className={`${HEADER} min-w-24`}>{t("reportWorked")}</th><th scope="col" className={HEADER}>{t("reportLateCount")}</th><th scope="col" className={HEADER}>{t("reportAbsentCount")}</th></tr></thead>
               <tbody>{monthEmployees.slice(pageStart, pageStart + PAGE_SIZE).map((person) => <tr key={person.id} data-testid="attendance-month-person"><th scope="row" className={`${CELL} sticky left-0 z-10 bg-card text-left font-semibold`}>
                 {person.name}<span className="mt-1 block text-xs font-normal text-muted-foreground">{person.team ?? t("reportNoTeam")}</span></th>
-                {monthDates.map((date) => { const row = person.dates.get(date); return <td key={date} className={`${CELL} text-center`}><span title={row ? `${dateLabel(date)} · ${t(KIND_MESSAGES[row.kind])} · ${rowNotes(row)}` : dateLabel(date)}>
-                  <HomePill tone={row ? rowTone(row) : "zinc"} className="min-w-10 justify-center rounded-md px-1.5 py-1 tabular-nums">{monthCell(row)}</HomePill></span></td> })}
+                {monthDates.map((date) => { const row = person.dates.get(date); return <td key={date} className={`${CELL} text-center`}><span title={row ? `${dateLabel(date)} · ${attendanceStatusText(row, locale, t)} · ${rowNotes(row)}` : dateLabel(date)}>
+                  <HomePill tone={row ? rowTone(row) : "zinc"} className="min-w-10 justify-center rounded-md px-1.5 py-1 tabular-nums">{row?.dayKind ? <span aria-hidden="true" data-testid="attendance-kind-color" className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: row.dayKind.color }} /> : null}{attendanceMonthCell(row, t)}</HomePill></span></td> })}
                 <td className={`${CELL} whitespace-nowrap tabular-nums`}>{formatAttendanceDuration(person.totals.workedSeconds)}{!person.totals.isComplete ? <span className="block text-xs text-amber-700 dark:text-amber-300">{t("reportPartial")}</span> : null}</td>
                 <td className={`${CELL} tabular-nums`}>{person.totals.lateCount}</td><td className={`${CELL} tabular-nums`}>{person.totals.absentCount}</td></tr>)}</tbody>
             </table></div>
-            <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground" aria-label={t("reportLegend")}>{[
+            <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground" aria-label={t("reportLegend")}>{catalogueLegend.length ? catalogueLegend.map(label => <span key={label}>{label}</span>) : [
               ["8:00", "reportWorkedDay", "green"], ["8:00", "reportLateOrEarly", "amber"], [t("reportCodeAbsent"), "reportAbsentDay", "red"],
               [t("reportCodeWeekend"), "reportWeekend", "zinc"], [t("reportCodeHoliday"), "reportHoliday", "blue"], ["·", "reportUpcoming", "zinc"],
               ["~", "reportProvisional", "blue"], ["?", "reportMissingFinish", "amber"], ["!", "reportInvalidFacts", "red"],
             ].map(([code, key, tone]) => <span key={key} className="inline-flex items-center gap-1.5"><HomePill tone={tone as HomeTone} className="rounded-md">{code}</HomePill>{t(key)}</span>)}</div>
           </> : form === "JOURNAL" ? <div className="overflow-x-auto" role="region" aria-label={t("reportJournal")} tabIndex={0}><table className="w-full min-w-[780px] text-sm" data-testid="attendance-journal-table">
-            <thead><tr>{["reportEmployee", "reportDate", "reportEvent", "reportPhoneTime", "reportServerTime"].map((key) => <th key={key} scope="col" className={HEADER}>{t(key)}</th>)}</tr></thead>
+            <thead><tr>{["reportEmployee", "reportDate", "reportStatus", "reportEvent", "reportPhoneTime", "reportServerTime"].map((key) => <th key={key} scope="col" className={HEADER}>{t(key)}</th>)}</tr></thead>
             <tbody>{journal.slice(pageStart, pageStart + PAGE_SIZE).map(({ row, event, index }) => <tr key={`${row.employeeId}:${row.date}:${event.id ?? index}`} data-testid="attendance-journal-event">
               <th scope="row" className={`${CELL} text-left font-semibold`}>{row.employeeName}<span className="mt-1 block text-xs font-normal text-muted-foreground">{row.teamName ?? t("reportNoTeam")}</span></th>
               <td className={`${CELL} whitespace-nowrap`}>{dateLabel(row.date)}<span className="block text-xs text-muted-foreground">{row.timezone}</span></td>
-              <td className={CELL}>{t(EVENT_MESSAGES[event.type])}</td><td className={`${CELL} whitespace-nowrap tabular-nums`}>{timeLabel(event.claimedAt ?? event.occurredAt, row.timezone, true)}</td>
+              <td className={CELL}><span className="inline-flex items-center gap-1.5">{row.dayKind ? <span aria-hidden="true" data-testid="attendance-kind-color" className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: row.dayKind.color }} /> : null}{attendanceStatusText(row, locale, t)}</span></td><td className={CELL}>{t(EVENT_MESSAGES[event.type])}</td><td className={`${CELL} whitespace-nowrap tabular-nums`}>{timeLabel(event.claimedAt ?? event.occurredAt, row.timezone, true)}</td>
               <td className={`${CELL} whitespace-nowrap tabular-nums`}>{timeLabel(event.serverReceivedAt, row.timezone, true)}</td></tr>)}</tbody>
           </table></div> : <div className="overflow-x-auto" role="region" aria-label={t(FORM_MESSAGES[form])} tabIndex={0}><table className="w-full min-w-[1180px] text-sm" data-testid="attendance-day-table">
             <thead><tr>{["reportEmployee", "reportDate", "reportStatus", "reportStarted", "reportFinished", "reportWorked", "reportPaused", "reportLate", "reportEarly", "reportNotes"].map((key) => <th key={key} scope="col" className={HEADER}>{t(key)}</th>)}</tr></thead>
             <tbody>{rows.slice(pageStart, pageStart + PAGE_SIZE).map((row) => <tr key={`${row.employeeId}:${row.date}`} data-testid="attendance-day-row">
               <th scope="row" className={`${CELL} min-w-40 text-left font-semibold`}>{row.employeeName}<span className="mt-1 block text-xs font-normal text-muted-foreground">{row.teamName ?? t("reportNoTeam")}</span></th>
-              <td className={`${CELL} whitespace-nowrap`}>{dateLabel(row.date)}</td><td className={CELL}><HomePill tone={rowTone(row)}>{t(KIND_MESSAGES[row.kind])}</HomePill></td>
+              <td className={`${CELL} whitespace-nowrap`}>{dateLabel(row.date)}</td><td className={CELL}><HomePill tone={rowTone(row)}>{row.dayKind ? <span aria-hidden="true" data-testid="attendance-kind-color" className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: row.dayKind.color }} /> : null}{attendanceStatusText(row, locale, t)}</HomePill></td>
               <td className={`${CELL} whitespace-nowrap tabular-nums`} title={row.timezone}>{timeLabel(row.startedAt, row.timezone)}</td><td className={`${CELL} whitespace-nowrap tabular-nums`} title={row.timezone}>{timeLabel(row.completedAt, row.timezone)}</td>
               <td className={`${CELL} tabular-nums`}>{formatAttendanceDuration(row.workedSeconds)}{row.kind === "OPEN" ? <span className="block text-xs text-blue-700 dark:text-blue-300">{t("reportProvisionalShort")}</span> : null}</td>
               <td className={`${CELL} tabular-nums`}>{formatAttendanceDuration(row.pausedSeconds)}</td><td className={`${CELL} tabular-nums`}>{(row.lateSeconds ?? 0) > 0 ? <HomePill tone="amber">{formatAttendanceDuration(row.lateSeconds)}</HomePill> : formatAttendanceDuration(row.lateSeconds)}</td>
@@ -328,6 +318,7 @@ export function MtmAttendanceReportWorkspace() {
     </HomeCard>
     <MtmAttendanceDeliveries currentConfig={currentConfig} onAccessLost={clearPrivateReport} accessUnavailable={accessUnavailable} />
     <MtmAttendancePersonalViews currentConfig={currentConfig} onApply={applyPersonal} onAccessLost={clearPrivateReport} accessUnavailable={accessUnavailable} />
+    <MtmAttendanceDayKinds canManage={canManageAccess} onAccessLost={clearPrivateReport} onSaved={() => void load(report ? { from: report.from, to: report.to } : range, customView?.config)} accessUnavailable={accessUnavailable} />
     <MtmAttendanceHrAccess canManage={canManageAccess} onAccessLost={clearPrivateReport} accessUnavailable={accessUnavailable} />
   </section>
 }

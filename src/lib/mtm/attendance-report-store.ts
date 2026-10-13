@@ -1,3 +1,4 @@
+import { readAttendanceDayKinds } from "@/lib/mtm/attendance-day-kind-store"
 import { createHash } from "node:crypto"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
@@ -48,7 +49,7 @@ export async function readMtmAttendanceReport(input: {
     if (employees.length * days > MTM_ATTENDANCE_REPORT_MAX_ROWS) throw new Error("MTM_ATTENDANCE_REPORT_TOO_LARGE")
     const agentIds = employees.map((employee) => employee.id)
     const teamIds = [...new Set(employees.flatMap((employee) => employee.teamId ? [employee.teamId] : []))]
-    const [teams, workdays, calendar, rules] = await Promise.all([
+    const [teams, workdays, calendar, rules, catalogue] = await Promise.all([
       tx.mtmTeam.findMany({ where: { organizationId, id: { in: teamIds } }, select: { id: true, name: true } }),
       tx.mtmAgentWorkday.findMany({
         where: { organizationId, agentId: { in: agentIds }, workDate: { gte: from, lte: to } },
@@ -70,11 +71,12 @@ export async function readMtmAttendanceReport(input: {
         orderBy: [{ date: "asc" }, { id: "asc" }],
       }),
       readAttendanceRules(organizationId, tx),
+      readAttendanceDayKinds(organizationId, tx),
     ])
     const teamNames = new Map(teams.map((team) => [team.id, team.name]))
     const report = buildMtmAttendanceReport({
       employees: employees.map((employee) => ({ ...employee, teamName: employee.teamId ? teamNames.get(employee.teamId) ?? null : null })),
-      workdays, calendar, rules, from: query.from, to: query.to, now,
+      dayKinds: catalogue.items, workdays, calendar, rules, from: query.from, to: query.to, now,
     })
     const rows = filterMtmAttendanceRows(report.rows, { form: query.form })
     const result = { ...report, rows, totals: summarizeMtmAttendanceRows(rows), form: query.form }
