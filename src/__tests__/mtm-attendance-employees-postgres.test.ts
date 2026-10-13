@@ -50,7 +50,7 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
     const cli = createRequire(import.meta.url).resolve("prisma/build/index.js")
     const result = spawnSync(process.execPath, [cli, "db", "push", "--schema", schemaFile, "--skip-generate"], { env: { ...process.env, DATABASE_URL: scratch!.adminDb }, encoding: "utf8", timeout: 180_000, maxBuffer: 1024 * 1024 })
     if (result.status !== 0) throw new Error("Employee fixture schema push failed")
-    sql(scratch!.adminDb, 'DROP TABLE workforce_employment_events; DROP TYPE "WorkforceEmploymentEventKind"; ALTER TABLE mtm_agents DROP COLUMN "attendanceParticipant";')
+    sql(scratch!.adminDb, 'DROP TABLE workforce_employment_events; DROP TYPE "WorkforceEmploymentEventKind"; ALTER TABLE mtm_agents DROP COLUMN "attendanceParticipant"; ALTER TABLE workforce_time_corrections DROP COLUMN "requestHash";')
     for (const migration of ["20260830150000_workforce_employment_history", "20260806120000_mtm_rls_coverage_completion", "20260806160000_mtm_rls_bypass_clause_normalization", "20261013080000_mtm_attendance_office_employees"]) sql(scratch!.adminDb, readFileSync(`prisma/migrations/${migration}/migration.sql`, "utf8"))
     const foundation = readFileSync("prisma/migrations/20260828223000_workforce_h3_foundation/migration.sql", "utf8")
     sql(scratch!.adminDb, foundation.slice(foundation.indexOf("-- Tenant data ships fail-closed."), foundation.indexOf("-- A migration runner may own new tables")))
