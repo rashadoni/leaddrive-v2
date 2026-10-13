@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react"
-import type { NavOrgSettingKey } from "@/lib/nav-items"
+import { isNavOrgSettingOn, type NavOrgSettingKey } from "@/lib/nav-items"
 import {
   Activity,
   AlertTriangle,
@@ -101,6 +101,7 @@ export const MTM_TOOL_GROUPS = [
     key: "analytics",
     items: [
       { href: "/mtm/reports", icon: FileBarChart, navKey: "mtmReports" },
+      { href: "/mtm/attendance", icon: FileBarChart, navKey: "mtmAttendance", orgSetting: "attendanceEnabled" },
       { href: "/mtm/leaderboard", icon: Trophy, navKey: "mtmLeaderboard" },
       { href: "/mtm/activity", icon: Activity, navKey: "mtmActivity" },
     ],
@@ -115,8 +116,8 @@ export const MTM_TOOL_GROUPS = [
 ] as const satisfies readonly MtmToolNavigationGroup[]
 
 /**
- * Tool groups as a given organization should see them. A switch hides only
- * when explicitly false; a group left without items disappears.
+ * Tool groups as a given organization should see them. Attendance requires
+ * explicit opt-in; legacy switches hide when false. Empty groups disappear.
  */
 export function visibleMtmToolGroups(
   orgSettings: Partial<Record<NavOrgSettingKey, boolean>> = {},
@@ -127,7 +128,7 @@ export function visibleMtmToolGroups(
     .map((group) => ({
       key: group.key,
       items: (group.items as readonly MtmToolNavigationItem[]).filter((item) =>
-        (!item.orgSetting || orgSettings[item.orgSetting] !== false) && (!item.adminOnly || admin)),
+        (!item.orgSetting || isNavOrgSettingOn(item.orgSetting, orgSettings[item.orgSetting])) && (!item.adminOnly || admin)),
     }))
     .filter((group) => group.items.length > 0)
 }

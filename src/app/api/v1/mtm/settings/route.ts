@@ -17,7 +17,7 @@ import { locationShareLinkAliveWhere } from "@/lib/mtm/location-share-link"
 
 const MODULE_TOGGLE_ROLES = ["admin", "superadmin"]
 // Whole-feature visibility switches. Only an administrator changes them.
-const MODULE_TOGGLE_KEYS = ["fieldContactsEnabled", "pharmacyPromotionsEnabled"] as const
+const MODULE_TOGGLE_KEYS = ["fieldContactsEnabled", "pharmacyPromotionsEnabled", "attendanceEnabled"] as const
 // Technical GPS-history thresholds, shown in the collapsed «Qabaqcıl (yalnız
 // administrator)» section. Same rule as the module switches.
 const ADVANCED_KEYS = [
@@ -60,6 +60,11 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
     const body = Object.fromEntries(
       Object.entries(parsed.data).filter(([key, value]) => key in MTM_SETTING_DEFAULTS && value !== undefined)
     )
+    // Unlike legacy menu switches, attendance enables new personal-data access.
+    // Refuse the entire unauthorized request before any setting can be written.
+    if (body.attendanceEnabled !== undefined && !MODULE_TOGGLE_ROLES.includes(auth.role)) {
+      return NextResponse.json({ error: "Forbidden", code: "MTM_ATTENDANCE_ADMIN_REQUIRED" }, { status: 403 })
+    }
     // Hiding a whole module surface for every manager and field agent is an
     // administrator decision, narrower than the general settings guard. The
     // settings page now sends only changed keys and disables these controls
@@ -77,9 +82,7 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
     for (const key of MODULE_TOGGLE_KEYS) {
       if (body[key] !== undefined && typeof body[key] !== "boolean") {
         return NextResponse.json({
-          error: key === "fieldContactsEnabled"
-            ? "Field contacts visibility must be a boolean"
-            : "Pharmacy promotions visibility must be a boolean",
+          error: `${key} must be a boolean`,
         }, { status: 400 })
       }
     }

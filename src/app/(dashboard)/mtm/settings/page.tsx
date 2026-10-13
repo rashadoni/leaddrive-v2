@@ -394,6 +394,7 @@ export default function MtmSettingsPage() {
       items: [
         { key: "fieldContactsEnabled", labelKey: "lblFieldContacts", hintKey: "hintFieldContacts", type: "boolean", adminOnly: true },
         { key: "pharmacyPromotionsEnabled", labelKey: "lblPharmacyPromotions", hintKey: "hintPharmacyPromotions", type: "boolean", adminOnly: true },
+        { key: "attendanceEnabled", labelKey: "lblAttendance", hintKey: "hintAttendance", type: "boolean", adminOnly: true },
       ],
     },
     {

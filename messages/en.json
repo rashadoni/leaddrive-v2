@@ -262,6 +262,7 @@
     "mtmLeaderboard": "Agent rankings",
     "mtmActivity": "Field activity log",
     "mtmReports": "Field reports",
+    "mtmAttendance": "Workday attendance",
     "mtmSettings": "Field module settings",
     "mtmAccess": "Who works in the module and whose data they see",
     "workforceToday": "Timesheet & team: work-time status and exceptions",
@@ -562,6 +563,7 @@
     "mtmLeaderboard": "Leaderboard",
     "mtmActivity": "Activity Log",
     "mtmReports": "Reports",
+    "mtmAttendance": "Workday attendance",
     "workforceToday": "Timesheet & team",
     "workforceTimesheet": "Timesheet",
     "workforceReports": "Work-time reports",
@@ -17400,6 +17402,8 @@
     "lblFieldContacts": "Clients (doctors, pharmacists, etc.)",
     "hintFieldContacts": "When off, the section disappears from the menu and the agent app. No data is deleted.",
     "lblPharmacyPromotions": "Pharmacy promotions",
+    "lblAttendance": "Workday attendance",
+    "hintAttendance": "Off by default. Enables work-time reports in MTM; user permissions control access to the data.",
     "hintPharmacyPromotions": "When off, hidden from the menu and the agent app; no data is deleted.",
     "groupLiveMap": "Agent map",
     "groupRoutePlanning": "Building routes",
@@ -17925,6 +17929,9 @@
     "readOnlyAdminOnly": "Only an administrator can change this rule.",
     "readOnlyOtherTeam": "This rule belongs to a team outside your teams. Its manager or an administrator can change it.",
     "managerNoTeamHint": "You can change only the rules of your own teams, and your employee card is not in a team yet. Ask an administrator to assign your card to a team."
+  },
+  "mtmAttendance": {
+    "title": "Workday attendance"
   },
   "mtmReports": {
     "title": "Reports",

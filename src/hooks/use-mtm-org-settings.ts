@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import {
   isNavItemEnabled,
+  isNavOrgSettingOn,
   matchNavItem,
   NAV_ORG_SETTING_KEYS,
   orgFromSession,
@@ -12,8 +13,8 @@ import {
 
 /**
  * Organization switches from MTM settings that change what the menus show.
- * Absent = unknown (loading, no MTM, no read permission) and is treated as ON
- * by every consumer, so a failed read can only ever show the historical menu.
+ * Absent = unknown (loading, no MTM, no read permission). Legacy surfaces stay
+ * on; new attendance stays hidden unless its value is explicitly true.
  */
 export type MtmNavOrgSettings = Partial<Record<NavOrgSettingKey, boolean>>
 
@@ -76,7 +77,7 @@ function useMtmOrgSettingsState(user: unknown): { settings: MtmNavOrgSettings; r
     })
     const onChanged = (event: Event) => {
       const detail = (event as CustomEvent<MtmNavOrgSettings>).detail ?? {}
-      setState({ orgId, settings: detail })
+      setState((previous) => ({ orgId, settings: { ...(previous.orgId === orgId ? previous.settings : {}), ...detail } }))
     }
     window.addEventListener(MTM_SETTINGS_CHANGED_EVENT, onChanged)
     return () => {
@@ -106,7 +107,7 @@ export function useMtmOrgSettings(user: unknown): MtmNavOrgSettings {
  */
 export function useMtmFeature(user: unknown, feature: NavOrgSettingKey): { enabled: boolean; ready: boolean } {
   const { settings, ready } = useMtmOrgSettingsState(user)
-  return { enabled: settings[feature] !== false, ready }
+  return { enabled: isNavOrgSettingOn(feature, settings[feature]), ready }
 }
 
 /** Field contacts visibility — see useMtmFeature. */
@@ -122,11 +123,12 @@ export function useMtmPharmacyPromotions(user: unknown): { enabled: boolean; rea
 /** The nav gate context from the session plus the organization switches above. */
 export function useNavOrgContext(user: unknown): OrgNavContext {
   const base = useMemo(() => orgFromSession(user), [user])
-  const { fieldContactsEnabled, pharmacyPromotionsEnabled } = useMtmOrgSettings(user)
+  const { fieldContactsEnabled, pharmacyPromotionsEnabled, attendanceEnabled } = useMtmOrgSettings(user)
   return useMemo(() => {
     const orgSettings: MtmNavOrgSettings = {}
     if (fieldContactsEnabled !== undefined) orgSettings.fieldContactsEnabled = fieldContactsEnabled
     if (pharmacyPromotionsEnabled !== undefined) orgSettings.pharmacyPromotionsEnabled = pharmacyPromotionsEnabled
+    if (attendanceEnabled !== undefined) orgSettings.attendanceEnabled = attendanceEnabled
     return Object.keys(orgSettings).length === 0 ? base : { ...base, orgSettings }
-  }, [base, fieldContactsEnabled, pharmacyPromotionsEnabled])
+  }, [base, fieldContactsEnabled, pharmacyPromotionsEnabled, attendanceEnabled])
 }

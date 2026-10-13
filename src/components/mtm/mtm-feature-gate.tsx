@@ -15,7 +15,7 @@ const SETTINGS_ADMIN_ROLES = new Set(["admin", "superadmin"])
 const FEATURES = {
   fieldContactsEnabled: { namespace: "mtmFieldContactsDisabled", icon: UsersRound, testId: "field-contacts" },
   pharmacyPromotionsEnabled: { namespace: "mtmPharmacyPromotionsDisabled", icon: Megaphone, testId: "pharmacy-promotions" },
-} as const satisfies Record<NavOrgSettingKey, { namespace: string; icon: LucideIcon; testId: string }>
+} as const satisfies Record<Exclude<NavOrgSettingKey, "attendanceEnabled">, { namespace: string; icon: LucideIcon; testId: string }>
 
 /**
  * The organization switched an MTM feature off in MTM settings. The menus no
@@ -26,7 +26,7 @@ const FEATURES = {
  * Until the switch is known the children are NOT mounted: a tenant with the
  * feature off must neither see the page flash nor fire its requests.
  */
-export function MtmFeatureGate({ feature, children }: { feature: NavOrgSettingKey; children: ReactNode }) {
+export function MtmFeatureGate({ feature, children }: { feature: keyof typeof FEATURES; children: ReactNode }) {
   const { data: session } = useSession()
   const config = FEATURES[feature]
   const t = useTranslations(config.namespace)
