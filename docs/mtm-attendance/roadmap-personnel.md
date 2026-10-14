@@ -47,6 +47,36 @@
 5. Доступ HR: пометка «только HR и админ» в меню; руководитель видит свою команду.
 6. Проверка: тесты, браузерный тест, S23.
 
+Карта точек изменения (разведка 2026-10-14) — где «Персонал» сейчас требует
+«Маршруты и поле» или модуль MTM:
+
+- Прокси: `src/proxy.ts` (`sessionMtmApiBlocked` закрывает весь `/api/v1/mtm/*`
+  без полевой возможности).
+- Страницы: `mtm/attendance/layout.tsx` (mtm-право, скрытый модуль, `route-field`),
+  `(dashboard)/layout.tsx` (`isNavItemEnabled`), `mtm/layout.tsx`
+  (`MtmFieldScopeGate` спрашивает `/api/v1/mtm/agents`).
+- Меню: `nav-items.ts` — пункты «Персонала» (`module: "mtm"`,
+  `tenantCapability: "route-field"`), тип `FieldTenantCapabilityId`.
+- Веб-API: `with-attendance-auth.ts` → `withRouteFieldWebRlsAuth`;
+  `attendance-access.ts`, `attendance-read-access.ts`,
+  `attendance-request-decision.ts`, `attendance-request-limit-store.ts`,
+  `attendance-reminder-store.ts`; cron `mtm-attendance-delivery-job.ts`.
+- Телефон: `mobile/auth/route.ts` (вход только при route-field или HRM),
+  `mobile-auth.ts` (токен, EMPLOYEE требует routeField), `with-mobile-rls.ts`
+  (`MobileEndpointCapability`), bootstrap (`attendanceSelf = routeFieldEnabled && …`),
+  sync push (`hasSyncCapability(auth,"route-field")`), все v2
+  `route-field/attendance/*`, `device-tokens`, `workday-return`,
+  `mobile-api-path.ts`.
+- Каталог возможностей: `tenant-capabilities.ts`, `user-module-access.ts`,
+  `mobile-capability-manifest.ts`, `admin-sidebar-catalog.ts`; тесты, которые
+  перечисляют id. Новый id — `personnel` (не `workforce-hrm` и не `attendance-*`:
+  их держит выключенными `crm-workforce-withdrawal.test.ts`).
+- Выдача существующим тенантам — миграция по образцу
+  `20260801090000_social_module_split` (DO-цикл по `organizations`, чтение
+  `mtm_settings` под `app.rls_bypass`).
+- Выключатель: `mtm/settings/page.tsx:416` (вкладка «Компания») →
+  «Персонал → Настройки»; layout учёта пускает администратора при выключенном учёте.
+
 ## Этап 3. Чистка и удобство
 
 1. Перенести UI-тесты отчёта на вкладки и удалить прежний одностраничный вид

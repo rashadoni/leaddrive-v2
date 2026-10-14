@@ -38,3 +38,6 @@ export async function isAttendanceMarkExempt(db: Prisma.TransactionClient, self:
   const agent = await db.mtmAgent.findFirst({ where: { id: self.agentId, organizationId: self.organizationId }, select: { attendanceExcluded: true, role: true } })
   return agent?.attendanceExcluded === true || agent?.role === "AGENT"
 }
+/** Former name. The non-UTC regression workflow swaps in a historical
+ * attendance-location-store.ts (BASELINE_SHA) that still imports it. */
+export const isAttendanceEmployeeExcluded = isAttendanceMarkExempt
