@@ -3,12 +3,13 @@ import { isValidTimezone } from "@/lib/timezone"
 import { agentPermissionEnabled } from "@/lib/mtm/agent-permissions"
 import { mayUseAttendanceSelf } from "@/lib/mtm/attendance-employee-contract"
 import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
+import { ATTENDANCE_FEATURE_SETTING_KEY, lockAttendanceFeature } from "@/lib/mtm/attendance-feature"
 export type AttendanceSelf = { organizationId: string; agentId: string; role: string }
 
 /** Independent of the withdrawn Workforce grant/route switches. Called again inside every write. */
 export async function requireAttendanceSelf(db: Prisma.TransactionClient, self: AttendanceSelf, permission: "attendanceRequests" | "attendanceWorkday" | "attendanceLocation" | "attendanceInstallation" = "attendanceRequests") {
-  const values = await db.mtmSetting.findMany({ where: { organizationId: self.organizationId, key: { in: ["attendanceEnabled", "timezone"] } }, select: { key: true, value: true } })
-  if (!agentPermissionEnabled({ attendanceEnabled: values.find((value) => value.key === "attendanceEnabled")?.value === true }, permission)) {
+  const values = await db.mtmSetting.findMany({ where: { organizationId: self.organizationId, key: { in: [ATTENDANCE_FEATURE_SETTING_KEY, "timezone"] } }, select: { key: true, value: true } })
+  if (!agentPermissionEnabled({ attendanceEnabled: values.find((value) => value.key === ATTENDANCE_FEATURE_SETTING_KEY)?.value === true }, permission)) {
     throw new AttendanceRequestError("MTM_ATTENDANCE_DISABLED", 404)
   }
   // A field agent files leave and sick leave with HR, but its day is not HR
@@ -25,7 +26,7 @@ export async function lockAttendanceRequests(db: Prisma.TransactionClient, self:
   await db.$executeRaw`SELECT set_config('lock_timeout', '3s', true)`
   await db.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-attendance-requests:${self.organizationId}:${self.agentId}`}, 0))`
   // Linearize a submission with disabling attendance or deactivating its owner.
-  await db.$queryRaw`SELECT "id" FROM "mtm_settings" WHERE "organizationId" = ${self.organizationId} AND "key" = 'attendanceEnabled' FOR SHARE`
+  await lockAttendanceFeature(db, self.organizationId)
   await db.$queryRaw`SELECT "id" FROM "mtm_agents" WHERE "organizationId" = ${self.organizationId} AND "id" = ${self.agentId} FOR SHARE`
 }
 

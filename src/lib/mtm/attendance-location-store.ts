@@ -10,6 +10,7 @@ import { AttendanceLocationPolicyInputSchema, AttendanceLocationConsentInputSche
   type AttendanceLocationPolicy, type OwnAttendanceLocation, type AttendanceBranchFix } from "@/lib/mtm/attendance-location-contract"
 import { mtmWorkdayRequestHash, type MtmWorkdayEventInput, type MtmWorkdayPostEventContext } from "@/lib/mtm/workday"
 import { MTM_WORKDAY_PAUSE_EVENT_TYPES, mtmWorkdayPauses, isDuringMtmWorkdayPause } from "@/lib/mtm/workday-pauses"
+import { lockAttendanceFeature, readAttendanceFeature } from "@/lib/mtm/attendance-feature"
 
 type Tx = Prisma.TransactionClient
 type PolicyRow = Omit<AttendanceLocationPolicy,"createdAt"> & { createdAt: Date; requestHash: string; createdBy: string }
@@ -36,8 +37,7 @@ async function lockLocationPolicy(tx: Tx, organizationId: string, exclusive = fa
  * does not become dependent on opting into this additional attendance signal. */
 export async function currentAttendanceStreamConsent(tx: Tx, self: Pick<AttendanceSelf,"organizationId"|"agentId">) {
   await lockAttendanceRequests(tx,self)
-  const setting = await tx.mtmSetting.findFirst({where:{organizationId:self.organizationId,key:"attendanceEnabled"},select:{value:true}})
-  if (setting?.value!==true || await isAttendanceMarkExempt(tx,self)) return null
+  if (!await readAttendanceFeature(tx,self.organizationId) || await isAttendanceMarkExempt(tx,self)) return null
   await lockLocationPolicy(tx,self.organizationId)
   const policy=await currentPolicy(tx,self.organizationId), consent=await currentConsent(tx,self)
   if (!policy?.enabled || !policy.legalReviewConfirmed || !consent?.accepted || consent.policyRevisionId!==policy.id) return null
@@ -61,7 +61,7 @@ export async function publishAttendanceLocationPolicy(reviewer: AttendanceReview
   const input = parsed.data, hash = digest(reviewer.userId,input)
   return prisma.$transaction(async tx => {
     await lockLocationPolicy(tx,reviewer.organizationId,true)
-    await tx.$queryRaw`SELECT id FROM mtm_settings WHERE "organizationId"=${reviewer.organizationId} AND key='attendanceEnabled' FOR SHARE`
+    await lockAttendanceFeature(tx,reviewer.organizationId)
     await requireAdministrator(tx,reviewer)
     const [replay] = await tx.$queryRaw<PolicyRow[]>`SELECT * FROM mtm_attendance_location_policies WHERE "organizationId"=${reviewer.organizationId} AND "requestId"=${input.requestId}`
     if (replay) {

@@ -12,6 +12,7 @@ import { lockMtmWorkdayTransitions } from "@/lib/mtm/workday"
 import { recordWorkforceEmploymentEventInTransaction, WorkforceEmploymentHistoryError } from "@/lib/workforce/employment-history"
 import type { AttendanceReviewer } from "@/lib/mtm/attendance-request-decision"
 import { resolveAttendanceReviewerScope } from "@/lib/mtm/attendance-request-decision"
+import { ATTENDANCE_FEATURE_SETTING_KEY } from "@/lib/mtm/attendance-feature"
 
 type EmploymentRow = { id: string; agentId: string; kind: "HIRE" | "TERMINATION" | "REHIRE"; effectiveAt: Date; recordedByUserId: string; recordedDate: string | null }
 function employmentDate(event: EmploymentRow, timezone: string) {
@@ -20,7 +21,7 @@ function employmentDate(event: EmploymentRow, timezone: string) {
 }
 export async function requireAttendanceEmployeeAdmin(tx: Prisma.TransactionClient, actor: AttendanceReviewer) {
   await tx.$executeRaw`SELECT set_config('lock_timeout', '3s', true)`
-  await tx.$queryRaw`SELECT "id" FROM mtm_settings WHERE "organizationId" = ${actor.organizationId} AND "key" IN ('attendanceEnabled', 'timezone') ORDER BY "key" FOR SHARE`
+  await tx.$queryRaw`SELECT "id" FROM mtm_settings WHERE "organizationId" = ${actor.organizationId} AND "key" IN (${ATTENDANCE_FEATURE_SETTING_KEY}, 'timezone') ORDER BY "key" FOR SHARE`
   await resolveAttendanceReviewerScope(tx, actor)
   // Managing participation is tenant administration, not a team-manager grant.
   const [user] = await tx.$queryRaw<Array<{ role: string }>>`SELECT "role" FROM "users" WHERE "organizationId" = ${actor.organizationId} AND "id" = ${actor.userId} AND "isActive" AND "anonymizedAt" IS NULL FOR SHARE`

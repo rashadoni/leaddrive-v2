@@ -14,6 +14,7 @@ import { readJsonRequestWithinLimit } from "@/lib/request-body-limit"
 import type { MtmAgent } from "@prisma/client"
 import { z } from "zod"
 import { isTenantCapabilityEnabled } from "@/lib/tenant-capabilities"
+import { readAttendanceFeature } from "@/lib/mtm/attendance-feature"
 
 // Auth-resolved agent — either the slug-scoped findUnique or the legacy
 // findFirst path returns a full MtmAgent row joined with a minimal org
@@ -244,8 +245,8 @@ export async function POST(req: NextRequest) {
     }
 
     if (agent.role === "EMPLOYEE") {
-      const feature = await prisma.mtmSetting.findUnique({ where: { organizationId_key: { organizationId: agent.organizationId, key: "attendanceEnabled" } }, select: { value: true } })
-      if (!agent.userId || !agent.attendanceParticipant || feature?.value !== true) {
+      const featureOn = await readAttendanceFeature(prisma, agent.organizationId)
+      if (!agent.userId || !agent.attendanceParticipant || !featureOn) {
         return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
       }
     }

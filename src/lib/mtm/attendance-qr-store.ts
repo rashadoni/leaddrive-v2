@@ -10,6 +10,7 @@ import { lockAttendanceQrPolicy, readAttendanceQrRule } from "@/lib/mtm/attendan
 import { issueAttendanceQrToken, verifyAttendanceQrToken, attendanceQrNonceFingerprint } from "@/lib/mtm/attendance-qr-security"
 import type { AttendanceQrDirectory, AttendanceQrDisplay, AttendanceQrReceipt, AttendanceQrState } from "@/lib/mtm/attendance-qr-contract"
 import type { MtmWorkdayEventInput } from "@/lib/mtm/workday"
+import { readAttendanceFeature } from "@/lib/mtm/attendance-feature"
 
 type Tx = Prisma.TransactionClient
 const fail = (code: string, status = 403): never => { throw new AttendanceRequestError(`MTM_ATTENDANCE_QR_${code}`, status) }
@@ -58,8 +59,7 @@ export async function issueAttendanceBranchQr(reviewer: AttendanceReviewer, raw:
  * same code/action on another event. The canonical employee lock serializes it. */
 export async function recordAttendanceQr(tx: Tx, scope: { organizationId: string; agentId: string }, input: MtmWorkdayEventInput, eventId: string, finishingOnBreak = false) {
   if (!["START", "FINISH"].includes(input.action)) return
-  const feature = await tx.mtmSetting.findUnique({ where: { organizationId_key: { organizationId: scope.organizationId, key: "attendanceEnabled" } }, select: { value: true } })
-  if (feature?.value !== true || await isAttendanceMarkExempt(tx, scope)) return
+  if (!await readAttendanceFeature(tx, scope.organizationId) || await isAttendanceMarkExempt(tx, scope)) return
   await lockAttendanceQrPolicy(tx, scope.organizationId)
   if (!await readAttendanceQrRule(tx, scope.organizationId)) return
   let state: AttendanceQrState = "NOT_PROVIDED", branchRevisionId: string | null = null, fingerprint: string | null = null

@@ -1,4 +1,5 @@
 import { MTM_ATTENDANCE_RISK_NOTIFICATION_KIND } from "@/lib/mtm/attendance-risk-notification"
+import { readAttendanceFeature } from "@/lib/mtm/attendance-feature"
 /**
  * GET  /api/v1/users/me/notification-preferences
  *   → { success: true, data: { sections: SectionRow[] } }
@@ -36,11 +37,7 @@ const putSchema = z.object({
 })
 
 async function attendanceNotificationsEnabled(orgId: string) {
-  const row = await prisma.mtmSetting.findUnique({
-    where: { organizationId_key: { organizationId: orgId, key: "attendanceEnabled" } },
-    select: { value: true },
-  })
-  return row?.value === true
+  return readAttendanceFeature(prisma, orgId)
 }
 
 /** Build one SectionRow from stored prefs + access ctx. */
