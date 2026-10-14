@@ -35,7 +35,7 @@ async function requireAdmin(tx: Prisma.TransactionClient, organizationId: string
   }
   await tx.$queryRaw`SELECT "id" FROM "organizations" WHERE "id" = ${organizationId} FOR SHARE`
   const org = await tx.organization.findUnique({ where: { id: organizationId }, select: { plan: true, addons: true, features: true, modules: true, settings: true } })
-  const definition = getTenantCapabilityDefinition("route-field")
+  const definition = getTenantCapabilityDefinition("personnel")
   if (!org || !definition) throw new AttendanceRequestLimitError("MTM_ATTENDANCE_FORBIDDEN", 403)
   const settings = capabilitySettingsFromTenantSettings(org.settings)
   const capability = resolveTenantCapability(definition, { plan: org.plan, addons: org.addons, modules: tenantModulesFromFields(org), hidden: settings.hidden, requested: settings.requested })

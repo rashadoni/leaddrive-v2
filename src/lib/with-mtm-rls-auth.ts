@@ -174,6 +174,17 @@ export function withRouteFieldWebRlsAuth<C = unknown>(
   return withMtmTenantCapabilityWebRlsAuth(action, "route-field", handler)
 }
 
+/**
+ * Personnel (HR work-time attendance): MTM RBAC, its own tenant capability —
+ * sold without Route & Field (owner, 2026-10-14).
+ */
+export function withPersonnelWebRlsAuth<C = unknown>(
+  action: Action | undefined,
+  handler: (req: NextRequest, auth: AuthResult, ctx: C) => Promise<Response> | Response,
+) {
+  return withMtmTenantCapabilityWebRlsAuth(action, "personnel", handler)
+}
+
 /** Workforce-only handlers retain MTM RBAC but use the HRM tenant gate. */
 export function withWorkforceHrmRlsAuth<C = unknown>(
   action: Action | undefined,

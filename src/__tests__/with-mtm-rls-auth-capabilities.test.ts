@@ -21,9 +21,11 @@ vi.mock("@/lib/tenant-capability-access", () => ({
 
 import {
   withMtmRlsAuth,
+  withPersonnelWebRlsAuth,
   withRouteFieldWebRlsAuth,
   withWorkforceHrmRlsAuth,
 } from "@/lib/with-mtm-rls-auth"
+import { requireTenantCapabilityAccessResponse } from "@/lib/tenant-capability-access"
 import { getMobileAuth, resolveMobileAuth } from "@/lib/mobile-auth"
 
 const WORKFORCE_ONLY_AUTH = {
@@ -137,3 +139,37 @@ describe("withMtmRlsAuth web boundary: modules hidden from the caller", () => {
     expect((await route(webRequest(), webAuth())).status).toBe(200)
   })
 })
+
+// Owner, 2026-10-14: Personnel is its own module, sold without Route & Field.
+describe("withPersonnelWebRlsAuth", () => {
+  type WebRoute = (req: NextRequest, auth: unknown, ctx?: unknown) => Promise<Response>
+  const webAuth = (hiddenModules?: string[]) => ({
+    orgId: "org-1", userId: "user-1", role: "manager", email: "m@example.test", name: "M",
+    principalType: "session", ...(hiddenModules ? { hiddenModules } : {}),
+  })
+  const webRequest = () => new NextRequest("http://localhost:3000/api/v1/mtm/attendance/report")
+
+  it("asks the tenant for Personnel, not Route & Field", async () => {
+    const handler = vi.fn(async () => NextResponse.json({ success: true }))
+    const response = await (withPersonnelWebRlsAuth("read", handler) as unknown as WebRoute)(webRequest(), webAuth())
+    expect(response.status).toBe(200)
+    expect(requireTenantCapabilityAccessResponse).toHaveBeenCalledWith("org-1", "personnel")
+    expect(requireTenantCapabilityAccessResponse).not.toHaveBeenCalledWith("org-1", "route-field")
+  })
+
+  it("refuses when the tenant does not have Personnel", async () => {
+    vi.mocked(requireTenantCapabilityAccessResponse).mockResolvedValueOnce(NextResponse.json({ code: "TENANT_CAPABILITY_DISABLED", capabilityId: "personnel" }, { status: 403 }))
+    const handler = vi.fn(async () => NextResponse.json({ success: true }))
+    const response = await (withPersonnelWebRlsAuth("read", handler) as unknown as WebRoute)(webRequest(), webAuth())
+    expect(response.status).toBe(403)
+    expect(handler).not.toHaveBeenCalled()
+  })
+
+  it("is hidden from a person together with MTM until it has its own tick", async () => {
+    const handler = vi.fn(async () => NextResponse.json({ success: true }))
+    const response = await (withPersonnelWebRlsAuth("read", handler) as unknown as WebRoute)(webRequest(), webAuth(["mtm"]))
+    expect(response.status).toBe(403)
+    expect(handler).not.toHaveBeenCalled()
+  })
+})
+

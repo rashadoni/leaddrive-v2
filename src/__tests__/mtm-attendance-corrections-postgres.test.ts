@@ -78,7 +78,7 @@ pgDescribe("MTM corrections on real PostgreSQL", () => {
     report = await import("@/lib/mtm/attendance-report-store")
     await bypass(async () => {
       for (const id of [ORG, OTHER]) {
-        await prisma.organization.create({ data: { id, name: "Fictional correction company", slug: id, modules: { "route-field": true } } })
+        await prisma.organization.create({ data: { id, name: "Fictional correction company", slug: id, modules: { "route-field": true, personnel: true } } })
         await prisma.mtmSetting.create({ data: { organizationId: id, key: "attendanceEnabled", value: true } })
       }
       for (const [id, role] of [[ADMIN, "admin"], ["correction-pg-owner", "admin"], ["correction-pg-hr", "manager"], ["correction-pg-supervisor", "manager"]]) {

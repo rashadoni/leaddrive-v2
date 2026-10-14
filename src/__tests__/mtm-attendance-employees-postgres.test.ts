@@ -66,7 +66,7 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
     report = await import("@/lib/mtm/attendance-report-store")
     await bypass(async () => {
       for (const id of [organizationId, "employee-pg-b"]) {
-        await prisma.organization.create({ data: { id, name: "Fictional attendance organization", slug: id, modules: { "route-field": true } } })
+        await prisma.organization.create({ data: { id, name: "Fictional attendance organization", slug: id, modules: { "route-field": true, personnel: true } } })
         await prisma.mtmSetting.create({ data: { organizationId: id, key: "attendanceEnabled", value: true } })
       }
       for (const id of [userId, enrollment.userId, "employee-pg-manager-user", "employee-pg-rejected-user"]) await prisma.user.create({ data: { id, organizationId, name: "Fictional employee", email: `${id}@example.invalid`, role: id === userId ? "admin" : "sales", passwordHash: "unusable-fixture-hash" } })
@@ -203,7 +203,7 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
   it("upgrades 300 existing active users without hire facts and preserves existing identities", async () => {
     const beforeEmployment = await bypass(() => prisma.$queryRaw`SELECT id FROM workforce_employment_events ORDER BY id`)
     await bypass(async () => {
-      await prisma.organization.create({ data: { id: automaticOrg, name: "Fictional automatic participation", slug: automaticOrg, modules: { "route-field": true } } })
+      await prisma.organization.create({ data: { id: automaticOrg, name: "Fictional automatic participation", slug: automaticOrg, modules: { "route-field": true, personnel: true } } })
       await prisma.mtmSetting.create({ data: { organizationId: automaticOrg, key: "attendanceEnabled", value: true } })
       await prisma.user.createMany({ data: Array.from({ length: 300 }, (_, index) => ({ id: `automatic-user-${String(index).padStart(3, "0")}`,
         organizationId: automaticOrg, name: `Fictional employee ${index}`, email: `automatic-${index}@example.invalid`,

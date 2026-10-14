@@ -69,6 +69,7 @@ export type TenantCapabilityDisableMode = "none" | "hide_only" | "soft_disable"
 export const FIELD_TENANT_CAPABILITY_IDS = [
   "route-field",
   "workforce-hrm",
+  "personnel",
 ] as const
 
 export type FieldTenantCapabilityId = (typeof FIELD_TENANT_CAPABILITY_IDS)[number]
@@ -384,6 +385,22 @@ export const TENANT_CAPABILITY_CATALOG: TenantCapabilityDefinition[] = [
     legacyModuleIds: ["mtm"],
     directEntitlementManagement: true,
     demoAvailable: true,
+    disableMode: "soft_disable",
+  },
+  {
+    // Owner, 2026-10-14: HR work-time attendance is its own module, sellable
+    // without routes. Tenants that had attendance as part of MTM keep it through
+    // the legacy `mtm` grant and the 20261015 backfill of explicit route-field
+    // tenants; a new grant writes only `personnel`.
+    id: "personnel",
+    label: "Personnel",
+    description: "Work-time attendance for office staff: today, timesheet, requests, leave and HR reports.",
+    kind: "industry_module",
+    billing: "paid_addon",
+    featureKey: "personnel",
+    legacyModuleIds: ["mtm"],
+    directEntitlementManagement: true,
+    demoAvailable: false,
     disableMode: "soft_disable",
   },
   {
