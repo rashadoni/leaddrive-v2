@@ -162,6 +162,6 @@ export function MtmAttendanceBranchReport() {
       <div className="space-y-2"><h2 className="text-sm font-semibold">{t("branchReportReadTitle")}</h2><p className="text-sm leading-relaxed text-muted-foreground">{t("branchReportReadHint")}</p><p className="text-sm leading-relaxed text-muted-foreground">{t("branchReportEvidenceHint")}</p></div>
       <div className="space-y-2"><h2 className="text-sm font-semibold">{t("branchReportMissingTitle")}</h2><p className="text-sm leading-relaxed text-muted-foreground">{t("branchReportMissingHint")}</p><p className="text-sm leading-relaxed text-muted-foreground">{t("branchReportBreakPrivacy")}</p></div>
     </div>
-    <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl bg-muted/50 p-4"><div className="space-y-1"><h2 className="text-sm font-semibold">{t("branchReportDaysTitle")}</h2><p className="text-xs leading-relaxed text-muted-foreground">{t("branchReportDaysHint")}</p></div><Link href="/mtm/attendance" className={LINK_CLASS}>{t("branchReportOpenDays")}</Link></div>
+    <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl bg-muted/50 p-4"><div className="space-y-1"><h2 className="text-sm font-semibold">{t("branchReportDaysTitle")}</h2><p className="text-xs leading-relaxed text-muted-foreground">{t("branchReportDaysHint")}</p></div><Link href="/mtm/attendance/timesheet?tab=days" className={LINK_CLASS}>{t("branchReportOpenDays")}</Link></div>
   </main>
 }

@@ -1,14 +1,17 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react"
+import Link from "next/link"
 import { useFormatter, useLocale, useTranslations } from "next-intl"
-import { CalendarDays, Clock3, ListChecks, LogIn, LogOut, UserRoundX } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, Clock3, ListChecks, Lock, LogIn, LogOut, Search, UserRoundX, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { HomeCard, HomeKpi, HomePill, type HomeTone } from "@/components/mtm/home-parts"
 import { addDateKeyDays, isDateKey } from "@/lib/mtm/mobile-week"
+import { attendanceDayKindLabel } from "@/lib/mtm/attendance-day-kinds"
 import { filterMtmAttendanceRows, summarizeMtmAttendanceRows, type MtmAttendanceReport, type MtmAttendanceReportRow } from "@/lib/mtm/attendance-report"
-import { formatAttendanceDuration, attendanceStatusText, attendanceMonthCellGroup, attendanceCatalogueLegend, attendanceCorrectionLines, attendanceApprovedLines, attendanceJournalEntries } from "@/lib/mtm/attendance-presentation"
+import { formatAttendanceDuration, attendanceStatusText, attendanceMonthCell, attendanceMonthCellGroup, attendanceCatalogueLegend, attendanceCorrectionLines, attendanceApprovedLines, attendanceJournalEntries } from "@/lib/mtm/attendance-presentation"
 import { DEFAULT_ATTENDANCE_VIEW_COLUMNS, type AttendanceViewConfig } from "@/lib/mtm/attendance-view-contract"
 import { buildAttendanceTable } from "@/lib/mtm/attendance-table"
 import { attendanceOvertimeRows } from "@/lib/mtm/attendance-overtime"
@@ -21,7 +24,8 @@ import { MtmAttendanceDayKinds } from "@/components/mtm/attendance-day-kinds"
 import { MtmAttendanceRequestLimits } from "@/components/mtm/attendance-request-limits"
 import type { AttendanceReportSnapshot } from "@/lib/mtm/attendance-query"
 
-type Form = "DAY" | "MONTH" | "LATE_EARLY" | "ABSENCES" | "JOURNAL" | "BRANCH" | "OVERTIME"
+export type AttendanceReportForm = "DAY" | "MONTH" | "LATE_EARLY" | "ABSENCES" | "JOURNAL" | "BRANCH" | "OVERTIME"
+type Form = AttendanceReportForm
 type Range = { from: string; to: string }
 type ReportData = MtmAttendanceReport & { snapshot?: AttendanceReportSnapshot }
 const FORMS: Form[] = ["DAY", "MONTH", "LATE_EARLY", "ABSENCES", "OVERTIME", "JOURNAL"]
@@ -44,17 +48,38 @@ function rowTone(row: MtmAttendanceReportRow): HomeTone {
   return row.kind === "WORKED" ? "green" : "zinc"
 }
 
+/** Opening period of each Timesheet tab: the month grid shows the month, day
+ * views a single day (or the linked one), deviation lists the month so far. */
+function timesheetRange(form: Form, today: string, date?: string): Range {
+  if (form === "MONTH") return monthRange(today.slice(0, 7))
+  if (form === "DAY" || form === "JOURNAL") return date && isDateKey(date) ? { from: date, to: date } : { from: today, to: today }
+  return { from: `${today.slice(0, 7)}-01`, to: today }
+}
+
+type WorkspaceProps = {
+  /** "timesheet" is the Personnel → Timesheet tab: one form per tab, header
+   * with period and export, no overview cards or settings underneath. "full"
+   * is the former single page, kept until its UI tests move to the tabs. */
+  layout?: "full" | "timesheet"
+  initialForm?: Form
+  initialDate?: string
+  initialEmployeeId?: string
+  tabs?: ReactNode
+}
+
 /** All forms, filters, cards and totals select from one server-scoped day-row snapshot. */
-export function MtmAttendanceReportWorkspace() {
+export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, initialDate, initialEmployeeId, tabs }: WorkspaceProps = {}) {
   const t = useTranslations("mtmAttendance")
+  const p = useTranslations("personnel")
   const format = useFormatter()
   const locale = useLocale() as "az" | "ru" | "en"
   const [today, setToday] = useState<string | null>(null)
   const [range, setRange] = useState<Range>({ from: "", to: "" })
   const [report, setReport] = useState<ReportData | null>(null)
-  const [form, setForm] = useState<Form>("DAY")
+  const [form, setForm] = useState<Form>(initialForm ?? "DAY")
   const [teamId, setTeamId] = useState("")
-  const [employeeId, setEmployeeId] = useState("")
+  const [employeeId, setEmployeeId] = useState(initialEmployeeId ?? "")
+  const [search, setSearch] = useState("")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [rangeError, setRangeError] = useState<string | null>(null)
@@ -89,7 +114,7 @@ export function MtmAttendanceReportWorkspace() {
       }
       setToday(settingsBody.data.today)
       setCanManageAccess(settingsBody.data.canManageRules === true)
-      const selected = requestedRange ?? { from: settingsBody.data.today, to: settingsBody.data.today }
+      const selected = requestedRange ?? (layout === "timesheet" ? timesheetRange(initialForm ?? "DAY", settingsBody.data.today, initialDate) : { from: settingsBody.data.today, to: settingsBody.data.today })
       setRange(selected)
       lastRequest.current = { range: selected, config: savedConfig }
       const query = new URLSearchParams({ from: selected.from, to: selected.to, form: "ALL" })
@@ -113,7 +138,7 @@ export function MtmAttendanceReportWorkspace() {
     } finally {
       if (!controller.signal.aborted) setLoading(false)
     }
-  }, [t])
+  }, [t, layout, initialForm, initialDate])
 
   useEffect(() => {
     // Changing language refreshes the same period and saved scope; it must
@@ -142,8 +167,10 @@ export function MtmAttendanceReportWorkspace() {
   const rows = useMemo(() => {
     const filtered = filterMtmAttendanceRows((form === "MONTH" ? report?.accountingRows ?? report?.rows : report?.rows) ?? [], { teamId: teamId || undefined, employeeId: employeeId || undefined,
       form: customView?.config.filters.form ?? (form === "DAY" || form === "MONTH" || form === "BRANCH" || form === "OVERTIME" ? "ALL" : form) })
-    return form === "OVERTIME" ? attendanceOvertimeRows(filtered).map(item => item.row) : filtered
-  }, [report, teamId, employeeId, form, customView])
+    const needle = layout === "timesheet" ? search.trim().toLocaleLowerCase(locale) : ""
+    const found = needle ? filtered.filter(row => row.employeeName.toLocaleLowerCase(locale).includes(needle)) : filtered
+    return form === "OVERTIME" ? attendanceOvertimeRows(found).map(item => item.row) : found
+  }, [report, teamId, employeeId, form, customView, layout, search, locale])
   const totals = useMemo(() => summarizeMtmAttendanceRows(rows), [rows])
   const customTable = useMemo(() => report && (customView || form === "OVERTIME") && currentConfig ? buildAttendanceTable(report, currentConfig, locale, t) : null, [report, customView, form, currentConfig, locale, t])
   const scopeUnavailable = Boolean(report && (teamId || employeeId) && !report.rows.some((row) => (!teamId || row.teamId === teamId) && (!employeeId || row.employeeId === employeeId)))
@@ -235,34 +262,7 @@ export function MtmAttendanceReportWorkspace() {
     { id: "missing-finish", label: "reportMissingFinish", value: totals.missingFinishCount, tone: "red" as const, icon: <LogOut className="h-4 w-4" />, hint: "reportMissingFinishHint" },
   ]
 
-  return <section aria-label={t("reportTitle")} className="space-y-5" data-testid="attendance-report-workspace">
-    {!accessUnavailable && <MtmAttendanceHelp />}
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{cards.map((card) => <HomeKpi key={card.id} testId={`attendance-${card.id}`} label={t(card.label)}
-      icon={card.icon} tone={card.tone} value={report ? format.number(card.value) : null} unit={t(multiDay ? "reportDayRecords" : "reportPeople", { count: card.value })} sub={t(card.hint)}
-      progress={report && totals.rowCount ? card.value / totals.rowCount * 100 : 0} />)}</div>
-    <HomeCard testId="attendance-report-filters" titleId="attendance-report-filters-title" icon={<ListChecks className="h-4 w-4" aria-hidden="true" />} tone="orange" title={t("reportForm")}>
-      <div className="space-y-5 py-4">
-        <MtmAttendanceExportButtons config={currentConfig} snapshot={report?.snapshot ?? null}
-          onRefresh={() => void load(report ? { from: report.from, to: report.to } : range, customView?.config)} onAccessLost={clearPrivateReport} />
-        <div className="flex flex-wrap gap-2" role="group" aria-label={t("reportForm")}>{FORMS.map((value) => <Button key={value} type="button" className="min-h-11 rounded-full"
-          variant={!customView && form === value ? "default" : "outline"} aria-pressed={!customView && form === value} disabled={value === "MONTH" && !today} onClick={() => chooseForm(value)}>{t(FORM_MESSAGES[value])}</Button>)}</div>
-        {customView?.name && !accessUnavailable ? <p className="text-sm font-medium text-primary">{t("viewsActive", { name: customView.name })}</p> : null}
-        <form onSubmit={applyRange} className="grid items-end gap-4 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1.2fr_1.3fr_auto]" aria-label={t("reportFilters")}>
-          {form === "MONTH" ? <div className="space-y-2 sm:col-span-2 xl:col-span-2"><label htmlFor="attendance-report-month" className="text-sm font-medium">{t("reportMonthSelect")}</label>
-            <Input id="attendance-report-month" type="month" required value={range.from.slice(0, 7)} className="min-h-11" onChange={(event) => { if (/^\d{4}-\d{2}$/.test(event.target.value)) { setRange(monthRange(event.target.value)); setRangeError(null) } }} />
-            {range.from && range.to ? <p className="text-xs text-muted-foreground">{t("reportPeriod", { from: dateLabel(range.from), to: dateLabel(range.to) })}</p> : null}</div> : <>
-            <div className="space-y-2"><label htmlFor="attendance-report-from" className="text-sm font-medium">{t("reportFrom")}</label><Input id="attendance-report-from" type="date" required className="min-h-11" value={range.from} onChange={(event) => { setRange({ ...range, from: event.target.value }); setRangeError(null) }} /></div>
-            <div className="space-y-2"><label htmlFor="attendance-report-to" className="text-sm font-medium">{t("reportTo")}</label><Input id="attendance-report-to" type="date" required className="min-h-11" value={range.to} onChange={(event) => { setRange({ ...range, to: event.target.value }); setRangeError(null) }} /></div></>}
-          <div className="space-y-2"><label htmlFor="attendance-report-team" className="text-sm font-medium">{t("reportTeam")}</label><select id="attendance-report-team" className={SELECT_CLASS} value={teamId} disabled={!report}
-            onChange={(event) => changeScope(event.target.value, "")}><option value="">{t("reportAllTeams")}</option>{teamId && !directory.teams.some((team) => team.id === teamId) ? <option value={teamId}>{t("viewsUnavailableTeam")}</option> : null}{directory.teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select></div>
-          <div className="space-y-2"><label htmlFor="attendance-report-employee" className="text-sm font-medium">{t("reportEmployee")}</label><select id="attendance-report-employee" className={SELECT_CLASS} value={employeeId} disabled={!report}
-            onChange={(event) => changeScope(teamId, event.target.value)}><option value="">{t("reportAllEmployees")}</option>{employeeId && !directory.employees.some((employee) => employee.id === employeeId) ? <option value={employeeId}>{t("viewsUnavailableEmployee")}</option> : null}{directory.employees.filter((employee) => !teamId || employee.teamId === teamId).map((employee) => <option key={employee.id} value={employee.id}>{employee.name}</option>)}</select></div>
-          <Button type="submit" variant="outline" className="min-h-11" disabled={!today}>{t("reportApply")}</Button>
-        </form>
-        {rangeError ? <p role="alert" className="text-sm text-destructive">{rangeError}</p> : null}
-      </div>
-    </HomeCard>
-    <HomeCard testId="attendance-report-results" titleId="attendance-report-results-title" icon={<CalendarDays className="h-4 w-4" aria-hidden="true" />} tone="orange" title={customView?.name || t(FORM_MESSAGES[form])}>
+  const results = (
       <div className="space-y-4 py-4">
         {loading ? <p role="status" className="text-sm text-muted-foreground">{t("reportLoading")}</p> : null}
         {error ? <div className="space-y-3"><p role="alert" className="text-sm text-destructive">{error}</p><Button type="button" variant="outline" className="min-h-11" onClick={() => void load(today ? range : undefined, customView?.config)}>{t("reportReload")}</Button></div> : null}
@@ -329,6 +329,158 @@ export function MtmAttendanceReportWorkspace() {
           </>}
         </> : null}
       </div>
+  )
+
+  if (layout === "timesheet") return timesheetView()
+
+  function cellCode(row: MtmAttendanceReportRow) {
+    if (row.dayKind) return `${row.dayKind.code}${row.corrections?.length ? "*" : ""}`
+    return attendanceMonthCell(row, t)
+  }
+  function shiftMonth(step: number) {
+    const [year, month] = range.from.slice(0, 7).split("-").map(Number)
+    const next = new Date(Date.UTC(year, month - 1 + step, 1, 12)).toISOString().slice(0, 7)
+    void load(monthRange(next))
+  }
+  function changeDate(next: Range) {
+    setRange(next); setRangeError(null)
+    if (!isDateKey(next.from) || !isDateKey(next.to)) return
+    if (next.to >= next.from && next.to < addDateKeyDays(next.from, 366)) void load(next)
+    else setRangeError(t("reportRangeInvalid"))
+  }
+
+  function timesheetView() {
+    const people = monthEmployees
+    const monthLabel = range.from ? format.dateTime(new Date(`${range.from.slice(0, 7)}-15T12:00:00.000Z`), { month: "long", year: "numeric", timeZone: "UTC" }) : ""
+    const pinned = employeeId ? directory.employees.find(employee => employee.id === employeeId) : null
+    const dateKinds = new Map(monthDates.map(date => [date, monthEmployees[0]?.dates.get(date)?.[0]?.isWorkingDay ?? true]))
+    const legend = [...new Map(rows.flatMap(row => row.dayKind ? [[row.dayKind.key, row.dayKind] as const] : [])).values()]
+    return <section aria-label={t("reportTitle")} className="space-y-5" data-testid="attendance-timesheet">
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-2xl font-bold tracking-tight">{p("timesheetTitle")}</h1>
+          {form === "MONTH" ? <div className="inline-flex items-center gap-1 rounded-xl border bg-card p-1" data-testid="attendance-month-switcher">
+            <Button type="button" variant="ghost" size="icon" className="h-9 w-9" aria-label={p("previousMonth")} disabled={!range.from || loading} onClick={() => shiftMonth(-1)}><ChevronLeft className="h-4 w-4" aria-hidden="true" /></Button>
+            <span className="min-w-36 px-2 text-center text-sm font-semibold capitalize">{monthLabel}</span>
+            <Button type="button" variant="ghost" size="icon" className="h-9 w-9" aria-label={p("nextMonth")} disabled={!range.from || loading} onClick={() => shiftMonth(1)}><ChevronRight className="h-4 w-4" aria-hidden="true" /></Button>
+          </div> : <div className="flex flex-wrap items-center gap-2">
+            <Input aria-label={t("reportFrom")} type="date" className="min-h-10 w-40" value={range.from} onChange={event => changeDate({ ...range, from: event.target.value })} />
+            <span className="text-muted-foreground">—</span>
+            <Input aria-label={t("reportTo")} type="date" className="min-h-10 w-40" value={range.to} onChange={event => changeDate({ ...range, to: event.target.value })} />
+          </div>}
+        </div>
+        <div className="flex flex-wrap items-start gap-2">
+          <Button asChild variant="outline" className="min-h-11 rounded-full"><Link href="/mtm/attendance/timesheet?tab=months" prefetch={false}><Lock className="mr-2 h-4 w-4" aria-hidden="true" />{p("closeMonth")}</Link></Button>
+          <MtmAttendanceExportButtons config={currentConfig} snapshot={report?.snapshot ?? null}
+            onRefresh={() => void load(report ? { from: report.from, to: report.to } : range, customView?.config)} onAccessLost={clearPrivateReport} />
+        </div>
+      </header>
+      {tabs}
+      {rangeError ? <p role="alert" className="text-sm text-destructive">{rangeError}</p> : null}
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="relative"><span className="sr-only">{p("searchEmployee")}</span><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <Input type="search" className="min-h-10 w-60 pl-9" placeholder={p("searchEmployee")} value={search} onChange={event => { setSearch(event.target.value); setPage(0) }} /></label>
+        <select aria-label={t("reportTeam")} className="min-h-10 min-w-44 rounded-lg border border-zinc-200 bg-card px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:border-zinc-700" value={teamId} disabled={!report} onChange={event => changeScope(event.target.value, "")}>
+          <option value="">{t("reportAllTeams")}</option>{directory.teams.map(team => <option key={team.id} value={team.id}>{team.name}</option>)}</select>
+        {employeeId ? <span className="inline-flex min-h-10 items-center gap-2 rounded-full bg-primary/10 px-3 text-sm font-medium text-primary">{p("onlyEmployee", { name: pinned?.name ?? t("viewsUnavailableEmployee") })}
+          <button type="button" className="rounded-full p-0.5 hover:bg-primary/15" aria-label={p("showEveryone")} onClick={() => changeScope(teamId, "")}><X className="h-3.5 w-3.5" aria-hidden="true" /></button></span> : null}
+        {form === "MONTH" && report ? <span className="ml-auto text-xs text-muted-foreground">{p("monthHint", { total: monthEmployees.length })}</span> : null}
+      </div>
+      {form !== "MONTH" ? <div className="rounded-2xl border bg-card px-5">{results}</div> : <div className="space-y-4 rounded-2xl border bg-card p-3" data-testid="attendance-timesheet-month">
+        {loading ? <p role="status" className="p-2 text-sm text-muted-foreground">{t("reportLoading")}</p> : null}
+        {error ? <div className="space-y-3 p-2"><p role="alert" className="text-sm text-destructive">{error}</p><Button type="button" variant="outline" className="min-h-11" onClick={() => void load(today ? range : undefined)}>{t("reportReload")}</Button></div> : null}
+        {report && !people.length ? <p className="rounded-xl bg-muted/50 px-4 py-5 text-sm text-muted-foreground">{t("reportEmpty")}</p> : null}
+        {report && people.length ? <div className="overflow-x-auto" role="region" aria-label={t("reportMonth")} tabIndex={0}><table className="w-full border-collapse text-xs" data-testid="attendance-month-grid">
+          <thead><tr><th scope="col" className="sticky left-0 z-10 w-40 min-w-40 bg-card px-2 py-2 text-left text-xs font-medium text-muted-foreground">{t("reportEmployee")}</th>
+            {monthDates.map(date => <th key={date} scope="col" className={`px-px py-1.5 text-center font-semibold ${date === today ? "rounded-t-lg bg-primary/10 text-primary" : dateKinds.get(date) === false ? "text-muted-foreground/60" : ""}`}>
+              <time dateTime={date} title={dateLabel(date)} className="block text-[11px]">{Number(date.slice(-2))}</time>
+              <span className="block text-[9.5px] font-medium opacity-70">{format.dateTime(new Date(`${date}T12:00:00.000Z`), { weekday: "short", timeZone: "UTC" })}</span></th>)}
+            {(["colDays", "colHours", "colLeave", "colSick", "colMissed"] as const).map(key => <th key={key} scope="col" className="w-11 px-1 py-2 text-center text-[11px] font-semibold text-muted-foreground">{p(key)}</th>)}</tr></thead>
+          <tbody>{people.slice(pageStart, pageStart + PAGE_SIZE).map(person => {
+            const worked = person.rows.filter(row => row.startedAt !== null).length
+            const sick = person.rows.filter(row => row.dayKind?.key === "SICK_LEAVE" || row.dayKind?.key === "UNPAID_SICK").length
+            const missed = person.totals.absentCount + person.totals.missingFinishCount
+            return <tr key={person.id} data-testid="attendance-month-person" className="border-t border-zinc-100 dark:border-zinc-800">
+              <th scope="row" className="sticky left-0 z-10 bg-card px-2 py-1.5 text-left"><span className="block truncate text-[13px] font-semibold">{person.name}</span><span className="block text-[11px] font-normal text-muted-foreground">{person.team ?? t("reportNoTeam")}</span></th>
+              {monthDates.map(date => {
+                const entries = person.dates.get(date) ?? []
+                const row = entries[0]
+                return <td key={date} className={`px-px py-1 text-center ${date === today ? "bg-primary/5" : ""}`}>
+                  {row ? <Popover><PopoverTrigger asChild><button type="button" data-testid="attendance-month-cell" aria-label={`${person.name} · ${dateLabel(date)} · ${attendanceStatusText(row, locale, t)}`}
+                    className="flex h-7 w-full min-w-[22px] items-center justify-center rounded-md text-[11px] font-bold outline-none ring-offset-1 focus-visible:ring-2 focus-visible:ring-primary data-[state=open]:ring-2 data-[state=open]:ring-primary"
+                    style={row.dayKind && row.kind !== "UPCOMING" ? { color: row.dayKind.color, backgroundColor: `${row.dayKind.color}1a` } : { color: "var(--muted-foreground, #8a94a3)" }}>{cellCode(row)}{entries.length > 1 ? "+" : ""}</button></PopoverTrigger>
+                    <PopoverContent align="center" className="w-80 space-y-3 p-4" data-testid="attendance-day-popover">
+                      {entries.map(entry => <div key={entry.sourceDate ?? entry.date} className="space-y-3">
+                        <div><p className="text-sm font-bold">{person.name} · {dateLabel(entry.sourceDate ?? date)}</p><p className="text-xs text-muted-foreground">{attendanceStatusText(entry, locale, t)}</p></div>
+                        <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
+                          <dt className="text-muted-foreground">{p("dayStarted")}</dt><dd className="font-semibold tabular-nums">{timeLabel(entry.startedAt, entry.timezone)}{(entry.lateSeconds ?? 0) > 0 ? <span className="ml-1 text-amber-700 dark:text-amber-300">(+{formatAttendanceDuration(entry.lateSeconds)})</span> : null}</dd>
+                          <dt className="text-muted-foreground">{p("dayFinished")}</dt><dd className="font-semibold tabular-nums">{timeLabel(entry.completedAt, entry.timezone)}</dd>
+                          <dt className="text-muted-foreground">{p("dayWorked")}</dt><dd className="font-semibold tabular-nums">{formatAttendanceDuration(entry.workedSeconds)}</dd>
+                          <dt className="text-muted-foreground">{p("dayPause")}</dt><dd className="font-semibold tabular-nums">{formatAttendanceDuration(entry.pausedSeconds)}</dd>
+                        </dl>
+                        {rowNotes(entry) !== "—" ? <p className="text-xs leading-relaxed text-muted-foreground">{rowNotes(entry)}</p> : null}
+                      </div>)}
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        <Button asChild variant="outline" size="sm" className="min-h-9"><Link prefetch={false} href={`/mtm/attendance/timesheet?tab=journal&date=${date}&employeeId=${encodeURIComponent(person.id)}`}>{p("openDay")}</Link></Button>
+                        <Button asChild size="sm" className="min-h-9"><Link prefetch={false} href={`/mtm/attendance/recordings?date=${date}&employeeId=${encodeURIComponent(person.id)}`}>{p("changeDayKind")}</Link></Button>
+                      </div>
+                    </PopoverContent></Popover> : <span className="text-muted-foreground">—</span>}
+                </td>
+              })}
+              <td className="px-1 text-center text-[13px] font-bold tabular-nums">{worked}</td>
+              <td className="whitespace-nowrap px-1 text-center text-[13px] font-bold tabular-nums">{formatAttendanceDuration(person.totals.workedSeconds)}{!person.totals.isComplete ? "*" : ""}</td>
+              <td className="px-1 text-center text-[13px] font-bold tabular-nums">{person.totals.annualLeaveDays || "—"}</td>
+              <td className="px-1 text-center text-[13px] font-bold tabular-nums">{sick || "—"}</td>
+              <td className={`px-1 text-center text-[13px] font-bold tabular-nums ${missed ? "text-rose-700 dark:text-rose-300" : ""}`}>{missed || "—"}</td>
+            </tr>
+          })}</tbody>
+        </table></div> : null}
+        {report && people.length > PAGE_SIZE ? <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground"><Button type="button" variant="outline" className="min-h-10" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>{t("reportPrevious")}</Button>
+          <span>{t("reportPage", { current: currentPage + 1, total: Math.ceil(people.length / PAGE_SIZE) })}</span><Button type="button" variant="outline" className="min-h-10" disabled={pageStart + PAGE_SIZE >= people.length} onClick={() => setPage(currentPage + 1)}>{t("reportNext")}</Button></div> : null}
+      </div>}
+      {form === "MONTH" && legend.length ? <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground" aria-label={t("reportLegend")}>
+        {legend.map(kind => <span key={kind.key} className="inline-flex items-center gap-1.5"><span className="inline-flex h-5 min-w-6 items-center justify-center rounded px-1 text-[10.5px] font-bold" style={{ color: kind.color, backgroundColor: `${kind.color}1a` }}>{kind.code}</span>{attendanceDayKindLabel(kind, locale)}</span>)}
+        <Link href="/mtm/attendance/settings?tab=day-kinds" prefetch={false} className="ml-auto font-semibold text-primary hover:underline">{p("lettersInSettings")}</Link>
+      </div> : null}
+      <details className="group rounded-2xl border bg-card" data-testid="attendance-timesheet-extras">
+        <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-5 text-sm font-semibold">{p("customFormAndDelivery")}<ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" aria-hidden="true" /></summary>
+        <div className="space-y-5 border-t p-5">
+          <MtmAttendancePersonalViews currentConfig={currentConfig} onApply={applyPersonal} onAccessLost={clearPrivateReport} accessUnavailable={accessUnavailable} />
+          <MtmAttendanceDeliveries currentConfig={currentConfig} onAccessLost={clearPrivateReport} accessUnavailable={accessUnavailable} />
+        </div>
+      </details>
+    </section>
+  }
+
+  return <section aria-label={t("reportTitle")} className="space-y-5" data-testid="attendance-report-workspace">
+    {!accessUnavailable && <MtmAttendanceHelp />}
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{cards.map((card) => <HomeKpi key={card.id} testId={`attendance-${card.id}`} label={t(card.label)}
+      icon={card.icon} tone={card.tone} value={report ? format.number(card.value) : null} unit={t(multiDay ? "reportDayRecords" : "reportPeople", { count: card.value })} sub={t(card.hint)}
+      progress={report && totals.rowCount ? card.value / totals.rowCount * 100 : 0} />)}</div>
+    <HomeCard testId="attendance-report-filters" titleId="attendance-report-filters-title" icon={<ListChecks className="h-4 w-4" aria-hidden="true" />} tone="orange" title={t("reportForm")}>
+      <div className="space-y-5 py-4">
+        <MtmAttendanceExportButtons config={currentConfig} snapshot={report?.snapshot ?? null}
+          onRefresh={() => void load(report ? { from: report.from, to: report.to } : range, customView?.config)} onAccessLost={clearPrivateReport} />
+        <div className="flex flex-wrap gap-2" role="group" aria-label={t("reportForm")}>{FORMS.map((value) => <Button key={value} type="button" className="min-h-11 rounded-full"
+          variant={!customView && form === value ? "default" : "outline"} aria-pressed={!customView && form === value} disabled={value === "MONTH" && !today} onClick={() => chooseForm(value)}>{t(FORM_MESSAGES[value])}</Button>)}</div>
+        {customView?.name && !accessUnavailable ? <p className="text-sm font-medium text-primary">{t("viewsActive", { name: customView.name })}</p> : null}
+        <form onSubmit={applyRange} className="grid items-end gap-4 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1.2fr_1.3fr_auto]" aria-label={t("reportFilters")}>
+          {form === "MONTH" ? <div className="space-y-2 sm:col-span-2 xl:col-span-2"><label htmlFor="attendance-report-month" className="text-sm font-medium">{t("reportMonthSelect")}</label>
+            <Input id="attendance-report-month" type="month" required value={range.from.slice(0, 7)} className="min-h-11" onChange={(event) => { if (/^\d{4}-\d{2}$/.test(event.target.value)) { setRange(monthRange(event.target.value)); setRangeError(null) } }} />
+            {range.from && range.to ? <p className="text-xs text-muted-foreground">{t("reportPeriod", { from: dateLabel(range.from), to: dateLabel(range.to) })}</p> : null}</div> : <>
+            <div className="space-y-2"><label htmlFor="attendance-report-from" className="text-sm font-medium">{t("reportFrom")}</label><Input id="attendance-report-from" type="date" required className="min-h-11" value={range.from} onChange={(event) => { setRange({ ...range, from: event.target.value }); setRangeError(null) }} /></div>
+            <div className="space-y-2"><label htmlFor="attendance-report-to" className="text-sm font-medium">{t("reportTo")}</label><Input id="attendance-report-to" type="date" required className="min-h-11" value={range.to} onChange={(event) => { setRange({ ...range, to: event.target.value }); setRangeError(null) }} /></div></>}
+          <div className="space-y-2"><label htmlFor="attendance-report-team" className="text-sm font-medium">{t("reportTeam")}</label><select id="attendance-report-team" className={SELECT_CLASS} value={teamId} disabled={!report}
+            onChange={(event) => changeScope(event.target.value, "")}><option value="">{t("reportAllTeams")}</option>{teamId && !directory.teams.some((team) => team.id === teamId) ? <option value={teamId}>{t("viewsUnavailableTeam")}</option> : null}{directory.teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select></div>
+          <div className="space-y-2"><label htmlFor="attendance-report-employee" className="text-sm font-medium">{t("reportEmployee")}</label><select id="attendance-report-employee" className={SELECT_CLASS} value={employeeId} disabled={!report}
+            onChange={(event) => changeScope(teamId, event.target.value)}><option value="">{t("reportAllEmployees")}</option>{employeeId && !directory.employees.some((employee) => employee.id === employeeId) ? <option value={employeeId}>{t("viewsUnavailableEmployee")}</option> : null}{directory.employees.filter((employee) => !teamId || employee.teamId === teamId).map((employee) => <option key={employee.id} value={employee.id}>{employee.name}</option>)}</select></div>
+          <Button type="submit" variant="outline" className="min-h-11" disabled={!today}>{t("reportApply")}</Button>
+        </form>
+        {rangeError ? <p role="alert" className="text-sm text-destructive">{rangeError}</p> : null}
+      </div>
+    </HomeCard>
+    <HomeCard testId="attendance-report-results" titleId="attendance-report-results-title" icon={<CalendarDays className="h-4 w-4" aria-hidden="true" />} tone="orange" title={customView?.name || t(FORM_MESSAGES[form])}>
+      {results}
     </HomeCard>
     <MtmAttendanceDeliveries currentConfig={currentConfig} onAccessLost={clearPrivateReport} accessUnavailable={accessUnavailable} />
     <MtmAttendancePersonalViews currentConfig={currentConfig} onApply={applyPersonal} onAccessLost={clearPrivateReport} accessUnavailable={accessUnavailable} />

@@ -103,8 +103,6 @@ export interface NavItem {
    * `accessibleNavItems` (menus) applies it. Unknown = shown.
    */
   orgSetting?: NavOrgSettingKey
-  /** Attendance tools form a submodule inside MTM, never the retired HRM product. */
-  attendanceSection?: "work" | "reports" | "settings"
 }
 
 /** MTM menu switches. Legacy surfaces default on; attendance defaults off. */
@@ -354,24 +352,18 @@ export const navItems: NavItem[] = [
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/leaderboard", icon: Trophy, tKey: "mtmLeaderboard", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/activity", icon: Activity, tKey: "mtmActivity", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/reports", icon: FileBarChart, tKey: "mtmReports", group: "Route & Field" },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance", icon: FileSpreadsheet, tKey: "mtmAttendanceTimesheet", group: "Route & Field", orgSetting: "attendanceEnabled", attendanceSection: "work" },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance/employees", icon: Users, tKey: "mtmAttendanceEmployees", group: "Route & Field", orgSetting: "attendanceEnabled", attendanceSection: "work", allowedRoles: ADMIN_ROLES },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance/requests", icon: ClipboardList, tKey: "mtmAttendanceRequests", group: "Route & Field", orgSetting: "attendanceEnabled", attendanceSection: "work" },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance/shifts", icon: CalendarDays, tKey: "mtmAttendanceShifts", group: "Route & Field", orgSetting: "attendanceEnabled", attendanceSection: "work" },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance/leave-balances", icon: CalendarDays, tKey: "mtmAttendanceLeave", group: "Route & Field", orgSetting: "attendanceEnabled", attendanceSection: "work" },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance/months", icon: Lock, tKey: "mtmAttendanceMonths", group: "Route & Field", orgSetting: "attendanceEnabled", attendanceSection: "reports" },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance/branches/report", icon: FileBarChart, tKey: "mtmAttendanceBranchReport", group: "Route & Field", orgSetting: "attendanceEnabled", attendanceSection: "reports" },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance/decisions", icon: FileCheck, tKey: "mtmAttendanceDecisions", group: "Route & Field", orgSetting: "attendanceEnabled", attendanceSection: "reports" },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance/branches", icon: Building2, tKey: "mtmAttendanceBranches", group: "Route & Field", orgSetting: "attendanceEnabled", attendanceSection: "settings" },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance/review", icon: SearchCheck, tKey: "mtmAttendanceReview", group: "Route & Field", orgSetting: "attendanceEnabled", attendanceSection: "settings" },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance/installations", icon: Phone, tKey: "mtmAttendancePhones", group: "Route & Field", orgSetting: "attendanceEnabled", attendanceSection: "settings" },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance/branch-qr", icon: ScanLine, tKey: "mtmAttendanceQr", group: "Route & Field", orgSetting: "attendanceEnabled", attendanceSection: "settings" },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance/location-settings", icon: MapPin, tKey: "mtmAttendanceLocation", group: "Route & Field", orgSetting: "attendanceEnabled", attendanceSection: "settings", allowedRoles: ADMIN_ROLES },
   // Who works in the module and as what: the employee card behind each login.
   // Admin-only like the endpoints it calls — linking a card to a login is how a
   // person is given (or takes) a field scope.
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/access", icon: KeyRound, tKey: "mtmAccess", group: "Route & Field", allowedRoles: ADMIN_ROLES },
   { module: "mtm", href: "/mtm/settings", icon: Settings, tKey: "mtmSettings", group: "Route & Field" },
+  // Personnel: work-time attendance for HR, its own sidebar section instead of
+  // thirteen links inside Route & Field. Same data, gates and opt-in as before;
+  // the former pages now live as tabs of these four destinations.
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance", icon: Clock, tKey: "personnelToday", group: "Personnel", orgSetting: "attendanceEnabled" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance/timesheet", icon: FileSpreadsheet, tKey: "personnelTimesheet", group: "Personnel", orgSetting: "attendanceEnabled" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance/people", icon: Users, tKey: "personnelPeople", group: "Personnel", orgSetting: "attendanceEnabled" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance/settings", icon: Settings, tKey: "personnelSettings", group: "Personnel", orgSetting: "attendanceEnabled" },
   // Workforce is a first-class capability, not a Route & Field child. It has
   // no `module` on purpose: a tenant can run timekeeping with no routes.
   { href: "/workforce", icon: Clock, tKey: "workforceToday", group: "HRM", capability: "workforce-hrm", permissionScope: "workforce" },
@@ -526,6 +518,7 @@ export const GROUP_LAUNCHER_STYLE: Record<string, { chip: string; icon: string; 
   Analytics:            { chip: "bg-purple-500/15",  icon: "text-purple-500",  dot: "bg-purple-500" },
   ERP:                  { chip: "bg-indigo-500/15",  icon: "text-indigo-500",  dot: "bg-indigo-500" },
   "Route & Field":      { chip: "bg-cyan-500/15",    icon: "text-cyan-500",    dot: "bg-cyan-500" },
+  Personnel:            { chip: "bg-teal-500/15",    icon: "text-teal-600",    dot: "bg-teal-500" },
   HRM:                  { chip: "bg-sky-500/15",     icon: "text-sky-600",     dot: "bg-sky-500" },
   "Health Cloud":       { chip: "bg-rose-500/15",    icon: "text-rose-500",    dot: "bg-rose-500" },
   "Insurance Cloud":    { chip: "bg-sky-500/15",     icon: "text-sky-500",     dot: "bg-sky-500" },
