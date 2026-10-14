@@ -161,9 +161,12 @@ export async function recordAttendanceMarkEvidence(tx: Tx, context: MtmWorkdayPo
       location=null;consent=null
     }
   }
-  const primary = location ? (await tx.$queryRaw<{branchId:string|null}[]>`SELECT "branchId" FROM mtm_attendance_primary_branch_revisions WHERE "organizationId"=${self.organizationId} AND "agentId"=${self.agentId} AND "createdAt"<=${context.input.claimedAt} ORDER BY version DESC LIMIT 1`)[0]?.branchId??null:null
+  // Prisma raw Date parameters are timestamptz. These retained columns use
+  // UTC timestamp-without-time-zone, like the canonical ORM-written event.
+  // Never let a deployment's session TimeZone change the instant or history.
+  const primary = location ? (await tx.$queryRaw<{branchId:string|null}[]>`SELECT "branchId" FROM mtm_attendance_primary_branch_revisions WHERE "organizationId"=${self.organizationId} AND "agentId"=${self.agentId} AND "createdAt"<=(${context.input.claimedAt}::timestamptz AT TIME ZONE 'UTC') ORDER BY version DESC LIMIT 1`)[0]?.branchId??null:null
   const branches = location ? await tx.$queryRaw<AttendanceBranchFix[]>`SELECT id,"branchId",name,latitude,longitude,"radiusMeters" FROM
-    (SELECT DISTINCT ON ("branchId") * FROM mtm_attendance_branch_revisions WHERE "organizationId"=${self.organizationId} AND "createdAt"<=${context.input.claimedAt} ORDER BY "branchId",version DESC) versions WHERE active LIMIT 1001`:[]
+    (SELECT DISTINCT ON ("branchId") * FROM mtm_attendance_branch_revisions WHERE "organizationId"=${self.organizationId} AND "createdAt"<=(${context.input.claimedAt}::timestamptz AT TIME ZONE 'UTC') ORDER BY "branchId",version DESC) versions WHERE active LIMIT 1001`:[]
   if (branches.length>1000) return reject("BRANCHES_TOO_LARGE",422)
   const evaluation = evaluateAttendanceLocation({...mark,location,locationState:location?"AVAILABLE":mark.location?"NO_CONSENT":mark.locationState},context.input.claimedAt,branches,primary)
   const finding = onBreak ? "BREAK_PRIVACY":evaluation.finding
@@ -171,6 +174,6 @@ export async function recordAttendanceMarkEvidence(tx: Tx, context: MtmWorkdayPo
   const riskPolicy = await enforceAttendanceMockRule(tx,self.organizationId,location?.isMock??null)
   await tx.$executeRaw`INSERT INTO mtm_attendance_mark_evidence
     (id,"organizationId","agentId","eventId","installationId",action,"claimedAt","serverReceivedAt","locationState",latitude,longitude,accuracy,"fixCapturedAt","fixAgeSeconds",provider,"isMock","consentId","branchRevisionId","primaryBranchId","distanceMeters","redactedRequestHash")
-    VALUES (${randomUUID()},${self.organizationId},${self.agentId},${context.event.id},${mark.installationId},${context.input.action},${context.input.claimedAt},${context.input.serverReceivedAt},${finding},${location?.latitude??null},${location?.longitude??null},${location?.accuracy??null},${location?new Date(location.capturedAt):null},${evaluation.fixAgeSeconds},${location?.provider??null},${location?.isMock??null},${consent?.id??null},${evaluation.branch?.id??null},${primary},${evaluation.distanceMeters},${attendanceMarkRedactedHash(self,context.input)})`
+    VALUES (${randomUUID()},${self.organizationId},${self.agentId},${context.event.id},${mark.installationId},${context.input.action},(${context.input.claimedAt}::timestamptz AT TIME ZONE 'UTC'),(${context.input.serverReceivedAt}::timestamptz AT TIME ZONE 'UTC'),${finding},${location?.latitude??null},${location?.longitude??null},${location?.accuracy??null},(${location?new Date(location.capturedAt):null}::timestamptz AT TIME ZONE 'UTC'),${evaluation.fixAgeSeconds},${location?.provider??null},${location?.isMock??null},${consent?.id??null},${evaluation.branch?.id??null},${primary},${evaluation.distanceMeters},${attendanceMarkRedactedHash(self,context.input)})`
   await recordAttendanceRisks(tx,{organizationId:self.organizationId,eventId:context.event.id,policy:riskPolicy})
 }

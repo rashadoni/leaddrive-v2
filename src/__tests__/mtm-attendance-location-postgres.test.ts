@@ -52,6 +52,45 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
   await bypass(async()=>{for(const id of[ORG,OTHER]){await prisma.organization.create({data:{id,slug:id,name:"Fictional attendance tenant",plan:"enterprise",modules:{mtm:true,"route-field":true},features:["mtm"]}});await prisma.mtmSetting.create({data:{organizationId:id,key:"attendanceEnabled",value:true}})}await prisma.user.create({data:{id:ADMIN,organizationId:ORG,email:"admin@example.invalid",name:"Fictional administrator",role:"admin",passwordHash:"unusable-fixture"}})})
  },240000)
  afterAll(async()=>{await prisma?.$disconnect();if(createdDb)sql(adminUrl!,`DROP DATABASE "${scratch!.name}" WITH (FORCE)`);if(createdRole)sql(adminUrl!,`DROP ROLE "${scratch!.role}"`);if(schemaDir)rmSync(schemaDir,{recursive:true,force:true})})
+ it.each(["Asia/Baku","America/New_York"] as const)("non-UTC canonical NO_CONSENT START/FINISH and replay preserve exact instants in %s",async timezone=>{
+  // Change only the disposable restricted role, then reopen every connection.
+  // A SET on an arbitrary pool connection would not exercise the real route.
+  sql(scratch!.adminDb,`ALTER ROLE "${scratch!.role}" SET timezone='${timezone}'`)
+  await prisma.$disconnect()
+  try {
+   const [session]=await tenant(ORG,()=>prisma.$queryRaw<{timezone:string;superuser:boolean;bypassRls:boolean}[]>`SELECT current_setting('TimeZone') AS timezone,rolsuper AS superuser,rolbypassrls AS "bypassRls" FROM pg_roles WHERE rolname=current_user`)
+   expect(session).toEqual({timezone,superuser:false,bypassRls:false})
+   await employee()
+   const device=`rf-${randomUUID()}`,day=randomUUID(),at=new Date(Date.now()-10_000)
+   const [cast]=await tenant(ORG,()=>prisma.$queryRaw<{implicit:Date;utc:Date}[]>`SELECT ${at}::timestamptz::timestamp(3) AS implicit,(${at}::timestamptz AT TIME ZONE 'UTC')::timestamp(3) AS utc`)
+   expect(cast.utc).toEqual(at)
+   expect(Math.abs(cast.implicit.getTime()-at.getTime())).toBeGreaterThanOrEqual(3_600_000)
+   const mark:AttendanceMark={version:1,installationId:device,locationState:"NO_CONSENT",consentRevisionId:null,location:null}
+   const start=operation("START",day,at,mark)
+   expect((await send(start,device)).body.results).toMatchObject([{status:"ok"}])
+   expect((await send(start,device)).body.results).toMatchObject([{status:"ok"}])
+   const finish=operation("FINISH",day,new Date(at.getTime()+1_000),mark)
+   expect((await send(finish,device)).body.results).toMatchObject([{status:"ok"}])
+   expect((await send(finish,device)).body.results).toMatchObject([{status:"ok"}])
+   const marks=await evidence()
+   expect(marks).toHaveLength(2)
+   expect(marks.map(row=>[row.action,row.claimedAt.toISOString()])).toEqual([["START",at.toISOString()],["FINISH",finish.data.occurredAt]])
+   expect(marks.every(row=>row.locationState==="NO_CONSENT"&&row.latitude===null&&row.longitude===null&&row.consentId===null)).toBe(true)
+   const events=await tenant(ORG,()=>prisma.mtmAgentWorkdayEvent.findMany({where:{organizationId:ORG,workdayId:day},select:{id:true,occurredAt:true,serverReceivedAt:true}}))
+   expect(events).toHaveLength(2)
+   for(const row of marks){const event=events.find(item=>item.id===row.eventId)!;expect(row.claimedAt).toEqual(event.occurredAt);expect(row.serverReceivedAt).toEqual(event.serverReceivedAt)}
+   // The database still rejects a mark claiming a different canonical instant.
+   await expect(tenant(ORG,()=>prisma.$executeRaw`INSERT INTO mtm_attendance_mark_evidence
+    (id,"organizationId","agentId","eventId","installationId",action,"claimedAt","serverReceivedAt","locationState","redactedRequestHash")
+    VALUES (${randomUUID()},${ORG},${identity.agentId},${marks[0].eventId},${device},'START',(${new Date(at.getTime()+1)}::timestamptz AT TIME ZONE 'UTC'),(${marks[0].serverReceivedAt}::timestamptz AT TIME ZONE 'UTC'),'NO_CONSENT',${"0".repeat(64)})`)).rejects.toThrow(/MTM_ATTENDANCE_MARK_EVENT_MISMATCH/)
+   expect(await evidence()).toHaveLength(2)
+   expect(await tenant(ORG,()=>prisma.mtmAgentWorkday.findUnique({where:{id:day},select:{status:true}}))).toEqual({status:"COMPLETED"})
+   expect(await tenant(OTHER,()=>prisma.$queryRaw`SELECT id FROM mtm_attendance_mark_evidence WHERE "agentId"=${identity.agentId}`)).toEqual([])
+  } finally {
+   sql(scratch!.adminDb,`ALTER ROLE "${scratch!.role}" RESET timezone`)
+   await prisma.$disconnect()
+  }
+ },60_000)
  it("starts empty, requires reviewed text, and publishes one immutable version for racing retries",async()=>{
   await employee();expect(await tenant(ORG,()=>store.readOwnAttendanceLocation(self()))).toEqual({policy:null,consent:null,maySendLocation:false})
   const request={requestId:randomUUID(),expectedRevisionId:null,enabled:true,texts,legalReviewConfirmed:true}

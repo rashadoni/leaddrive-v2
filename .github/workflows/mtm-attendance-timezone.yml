@@ -1,0 +1,101 @@
+name: MTM attendance non-UTC regression
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/mtm-attendance-timezone.yml'
+      - 'src/lib/mtm/attendance-location-store.ts'
+      - 'src/__tests__/mtm-attendance-location-postgres.test.ts'
+      - 'prisma/migrations/*mtm_attendance*/*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+concurrency:
+  group: mtm-attendance-timezone-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  postgres:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CI: 'true'
+      VITEST_MAX_WORKERS: '1'
+      MTM_ATTENDANCE_DB_GATE: required
+      BASELINE_SHA: ebd7dc90af73cca4b6d5d901bf1a170355d3e86b
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: attendance_timezone_test
+        ports: [5432]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d attendance_timezone_test"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Isolated database routing
+        env:
+          PG_PORT: ${{ job.services.postgres.ports['5432'] }}
+        run: |
+          test -n "$PG_PORT"
+          echo "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:$PG_PORT/attendance_timezone_test" >> "$GITHUB_ENV"
+          echo "MTM_ATTENDANCE_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:$PG_PORT/attendance_timezone_test" >> "$GITHUB_ENV"
+      - run: npm ci --include=dev
+      - run: npx prisma generate --schema prisma/schema.prisma
+      - name: Observe the production writer reject non-UTC canonical marks
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          cp src/lib/mtm/attendance-location-store.ts "$RUNNER_TEMP/fixed-attendance-location-store.ts"
+          trap 'cp "$RUNNER_TEMP/fixed-attendance-location-store.ts" src/lib/mtm/attendance-location-store.ts' EXIT
+          git show "$BASELINE_SHA:src/lib/mtm/attendance-location-store.ts" > src/lib/mtm/attendance-location-store.ts
+          set +e
+          npx vitest run src/__tests__/mtm-attendance-location-postgres.test.ts -t 'non-UTC canonical NO_CONSENT' --reporter=json --outputFile=evidence/red-vitest.json > "$RUNNER_TEMP/attendance-timezone-red.log" 2>&1
+          code=$?
+          set -e
+          test "$code" -ne 0
+          python3 - <<'PY'
+          import json,os,pathlib,subprocess
+          report=json.loads(pathlib.Path('evidence/red-vitest.json').read_text())
+          failed=[t for suite in report['testResults'] for t in suite['assertionResults'] if t['status']=='failed']
+          log=(pathlib.Path(os.environ['RUNNER_TEMP'])/'attendance-timezone-red.log').read_text()
+          assert len(failed)==2 and all('non-UTC canonical NO_CONSENT' in t['fullName'] for t in failed)
+          assert all(code in log for code in ('MTM_ATTENDANCE_MARK_EVENT_MISMATCH','P2010','23514'))
+          result={'baselineSha':os.environ['BASELINE_SHA'],'headSha':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
+            'red':{'status':'OBSERVED_EXPECTED_FAILURE','tests':len(failed),'zones':['Asia/Baku','America/New_York'],
+              'prismaCode':'P2010','sqlState':'23514','code':'MTM_ATTENDANCE_MARK_EVENT_MISMATCH'},'green':{'status':'NOT_RUN'},'productionMutation':False}
+          pathlib.Path('evidence/non-utc-receipt.json').write_text(json.dumps(result,indent=2)+'\n')
+          PY
+      - name: Verify corrected writer and existing location/privacy suite
+        run: |
+          set -euo pipefail
+          git diff --exit-code -- src/lib/mtm/attendance-location-store.ts
+          npx vitest run src/__tests__/mtm-attendance-location-postgres.test.ts --reporter=default --reporter=json --outputFile=evidence/green-vitest.json
+          python3 - <<'PY'
+          import json,pathlib
+          report=json.loads(pathlib.Path('evidence/green-vitest.json').read_text())
+          assert report['numFailedTests']==0 and report['numFailedTestSuites']==0
+          regression=[t for suite in report['testResults'] for t in suite['assertionResults'] if 'non-UTC canonical NO_CONSENT' in t['fullName']]
+          assert len(regression)==2 and all(t['status']=='passed' for t in regression)
+          path=pathlib.Path('evidence/non-utc-receipt.json'); receipt=json.loads(path.read_text())
+          receipt['green']={'status':'PASS','passed':report['numPassedTests'],'failed':0,'nonUtcRegressionPassed':len(regression)}
+          path.write_text(json.dumps(receipt,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: attendance-non-utc-${{ github.event.pull_request.head.sha || github.sha }}
+          path: evidence/non-utc-receipt.json
+          retention-days: 14
+          if-no-files-found: warn
