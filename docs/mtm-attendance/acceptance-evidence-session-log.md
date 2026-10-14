@@ -163,3 +163,9 @@
   still requires hosted exact-head gates and the date-format visual check after
   its release. A final coordinator snapshot is required after endurance and
   restoration before publication.
+
+## 2026-10-14T05:57Z — bounded endurance result and publication sequencing
+
+- Imported only the appended README entry and updated S23 receipt from immutable root checkpoint ee7f40ed9. Prior README bytes and all historical case entries remain unchanged. Physical 3.8.5 endurance now PASS: five cycles/refreshes/canonical comparisons over 1,524 seconds.
+- Coordinator now authorizes publication of the independently reviewed CRM date fix and this current evidence snapshot while the separate mobile notification-language repair is tested. This supersedes the previous checkpoint's final-snapshot-before-publication plan. OFFICE final logout/restoration and mobile 3.8.6 are still pending; the evidence receipt remains IN_PROGRESS. No all-night completion claim.
+- Source/test files remain identical to their 56-test/lint verified checkpoint. No repeated local heavy checks; full build/typecheck/browser gates run in hosted CI. Final post-release and restoration results will be appended after observation, not anticipated.

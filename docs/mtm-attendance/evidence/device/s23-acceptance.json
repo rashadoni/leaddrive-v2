@@ -365,7 +365,7 @@
       "detail": {
         "pending": 2,
         "conflicts": 0,
-        "retryLabel": "T\u0259krar: 05:02",
+        "retryLabel": "Təkrar: 05:02",
         "pendingStartAndOvertimeRetained": true,
         "noNewMutation": true
       }
@@ -501,7 +501,7 @@
         "pendingStartPreserved": true,
         "pending": 1,
         "conflicts": 0,
-        "routeOutboxLabel": "T\u0259krar: 06:13",
+        "routeOutboxLabel": "Təkrar: 06:13",
         "allLocationPermissionsDenied": true
       }
     },
@@ -518,13 +518,13 @@
           "at": "2026-10-14T01:58:39.205072+00:00",
           "pending": 1,
           "conflicts": 0,
-          "routeOutboxLabel": "T\u0259krar: 06:13"
+          "routeOutboxLabel": "Təkrar: 06:13"
         },
         "after": {
           "at": "2026-10-14T02:13:40.036660+00:00",
           "pending": 1,
           "conflicts": 0,
-          "routeOutboxLabel": "T\u0259krar: 06:24"
+          "routeOutboxLabel": "Təkrar: 06:24"
         },
         "noGesturesDuringObservation": true,
         "displayedRetryMinuteUtc": "2026-10-14T02:13:00+00:00",
@@ -1523,6 +1523,26 @@
         "correctionBeforeAfterAndReviewerVisible": true,
         "noClippedCellsObserved": true
       }
+    },
+    {
+      "at": "2026-10-14T05:53:04.044092+00:00",
+      "name": "physical-functional-endurance-3.8.5",
+      "status": "PASS",
+      "detail": {
+        "startedAt": "2026-10-14T05:27:40.102489+00:00",
+        "elapsedSeconds": 1524,
+        "cycles": 5,
+        "backgroundForegroundCycles": 5,
+        "realInboxRefreshes": 5,
+        "canonicalWorkdaysAndRequestsUnchanged": true,
+        "noWorkdayWrites": true,
+        "noPendingOfficeMark": true,
+        "installedBuild": {
+          "version": "3.8.5",
+          "versionCode": 1475
+        },
+        "scope": "bounded twenty-minute functional endurance; not an unattended all-night guarantee"
+      }
     }
   ],
   "privacy": {
@@ -1533,7 +1553,7 @@
     "personalScreenshotsPublished": false,
     "testLocationPermissions": "Fine, coarse and background temporarily denied; original grants retained privately for restoration"
   },
-  "updatedAt": "2026-10-14T05:28:06.615115+00:00",
+  "updatedAt": "2026-10-14T05:53:04.044092+00:00",
   "previousInstalledBuilds": [
     {
       "version": "3.8.2",
