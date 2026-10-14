@@ -353,3 +353,38 @@ This supersedes only the earlier pending integration-gate state; all five
 NOT_RUN cases and the physical/production limitations remain in force. The
 receipt includes this separate integration checkpoint and makes no deployment
 acceptance claim.
+
+## Later released and physical evidence — 2026-10-14T06:02:20.475439+00:00
+
+The five NOT_RUN entries above describe that historical hosted manifest; they
+are not the final scope of the subsequent physical acceptance. Prior entries
+and failed runs remain unchanged.
+
+- Released PR756 tested exact `32b90a2a6a4d56322f6300ecc03c235a8b1329fc` in
+  authenticated browser/database run38501754397: **62 PASS, 0 FAIL, 5 NOT_RUN**.
+  Non-UTC run38501754422 demonstrated two expected baseline failures and
+  **53 fixed PASS**. Deployment38504073106 and exact production artifact
+  `8c54afe632181b15d4bb4cb88ee1953a6a72cd4f` were verified separately.
+- The actual Samsung S23 now supplies separate physical evidence for both
+  OFFICE/FIELD workdays, pause persistence, offline FINISH plus cold restart
+  and automatic recovery, all eight request types per role, actual HR decisions,
+  correction/original-event preservation, Excel/PDF and shared-installation
+  findings. Denied-GPS lifecycle regression passed on official3.8.5.
+- The bounded physical endurance passed five HOME/foreground cycles, real inbox
+  refreshes and unchanged canonical day/request comparisons over1,524seconds.
+  This is not uninterrupted all-night functional coverage; power observations
+  and their gaps are a separate receipt.
+- Physical camera QR/document capture, external email, a300-person load test,
+  all possible control/role/network combinations, production Redis admission
+  and a full browser suite on a production build remain **NOT_RUN**.
+  The OFFICE UI does not expose its full private queue count (**NOT_OBSERVABLE**);
+  covered actions are reconciled individually. Location collection remains
+  disabled pending the client's approved consent text.
+- CRM PR757 and mobile PR131 have their own exact-head gates. At this entry,
+  mobile CI38519311958 passed224suites/1,890tests/1existingTODO and TypeScript,
+  including actual RN notification-language tests; signed release, physical
+  3.8.6 locale verification, final OFFICE logout/restoration and the new deployed
+  risk-date check are still pending. Do not transfer earlier PASS counts to them.
+
+See `evidence/device/s23-acceptance.json` for finite timestamped assertions,
+including historical failures, and README section10 for the continuing journal.
