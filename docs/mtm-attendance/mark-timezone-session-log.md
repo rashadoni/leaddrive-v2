@@ -101,3 +101,21 @@
   **NOT RUN locally** by host contract. Workflow now includes Prisma validation,
   generation and explicit assertions for all five new guard/risk cases. Parent
   reviews and pushes the checkpoint to PR756; this worker does not publish.
+
+## 2026-10-14 — hosted red/green verified on 6431d74c7
+
+- Hosted run `38493430575` **SUCCESS**; finite artifact `11862817622` downloaded
+  and checked against exact head `6431d74c7cd500a10a9ea36b55a9f718b275c1af`.
+  Prisma validate and generate **PASS** on the hosted runner.
+- Baseline `ebd7dc90af73cca4b6d5d901bf1a170355d3e86b` reproduced two real failures
+  in Asia/Baku and America/New_York. Each actual caught error carried Prisma
+  `P2010`, PostgreSQL `23514`, `MTM_ATTENDANCE_MARK_EVENT_MISMATCH`.
+- Corrected full restricted-role PostgreSQL suite: **53 PASS, 0 FAIL**, including
+  both canonical START/FINISH/replay cases and all five source/clock/risk cases.
+  Source bodies/security mode unchanged; caller restoration, UTC clocks, consent
+  capture, branch matching, QR, risk calendar/report/cohort behavior verified.
+- Sanitized exact-SHA receipt saved under
+  `evidence/timezone/non-utc-6431d74c7.json`. No production mutation occurred.
+- Authenticated browser run `38493430549` and required integration checks remain
+  in progress. Parent notified; no source edits or new run at the green head.
+  Receipt/journal checkpoint stays local pending coordinator publication.
