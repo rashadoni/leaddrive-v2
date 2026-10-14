@@ -6,10 +6,10 @@
     "android": "16"
   },
   "app": {
-    "version": "3.8.2",
-    "versionCode": 1465,
-    "sourceSha": "9483676bb1d7aeef0ce01cdc34334983e4b18892",
-    "apkSha256": "673ff1851f87ca5fd9b8e0212fe591d5ca4613bb49f8c8701987bbf21fa7cfd2"
+    "version": "3.8.5",
+    "versionCode": 1475,
+    "sourceSha": "d8bf95c5b1eb7eae5841ca54c2e43603cfc7163b",
+    "apkSha256": "e5b43d79c8219e3dd994689c93036520f1db497aa89e94826d2a4b025326b0d8"
   },
   "cases": [
     {
@@ -55,13 +55,13 @@
     },
     {
       "name": "physical-office-and-field-marks",
-      "status": "NOT_RUN",
-      "reason": "Fictional company created; read-only encrypted credential delivery awaits required review and CI"
+      "status": "FAIL",
+      "reason": "Field START tapped once and remains pending; canonical production mark path returns Internal error, retry. Office admission repair passes CI but is not yet installed."
     },
     {
       "name": "physical-offline-restart-and-requests",
       "status": "NOT_RUN",
-      "reason": "Fictional company created; read-only encrypted credential delivery awaits required review and CI"
+      "reason": "Credential delivery PASS; office admission repair pending before physical workday scenarios"
     },
     {
       "name": "physical-camera-qr",
@@ -142,6 +142,1407 @@
         ],
         "restoreAfterTests": true
       }
+    },
+    {
+      "name": "office-admission-3.8.2",
+      "status": "FAIL",
+      "evidence": "Actual APK enters unavailable screen despite explicit attendanceWorkday grant; exact bound bootstrap200 keeps field execution disabled for EMPLOYEE",
+      "diagnostic": "office-bootstrap-admission.json"
+    },
+    {
+      "at": "2026-10-13T23:50:08.741578+00:00",
+      "name": "fictional-field-login-3.8.2",
+      "status": "PASS",
+      "detail": {
+        "tenant": "mtm-attendance-phone",
+        "fieldScreenVisible": true
+      }
+    },
+    {
+      "name": "field-start-canonical-mark-3.8.2",
+      "status": "FAIL",
+      "at": "2026-10-14T00:01:10.970058+00:00",
+      "evidence": "One physical START; actual sync centre 1 pending / 0 conflicts / SYNC_PUSH_RETRY_SCHEDULED; authenticated HR readback has no field workday. Queue retained; no repeated START."
+    },
+    {
+      "at": "2026-10-14T00:04:41.191908+00:00",
+      "name": "physical-field-request-annual_leave",
+      "status": "PASS",
+      "detail": {
+        "id": "9121695d-847c-4807-aee0-2de4162f696d",
+        "kind": "ANNUAL_LEAVE",
+        "status": "PENDING",
+        "serverMatchesPhone": true,
+        "initial90SecondDriverWaitExpired": true,
+        "reconciledAfterTimeoutWithoutResubmission": true
+      }
+    },
+    {
+      "at": "2026-10-14T00:04:56.763Z",
+      "name": "physical-field-request-hr-annual_leave-rejected",
+      "status": "PASS",
+      "transport": "actual-production-browser",
+      "requestId": "9121695d-847c-4807-aee0-2de4162f696d",
+      "kind": "ANNUAL_LEAVE",
+      "decision": "REJECTED",
+      "tenant": "mtm-attendance-phone",
+      "rejectRequiresReason": true
+    },
+    {
+      "at": "2026-10-14T00:13:49.196496+00:00",
+      "name": "physical-field-request-sick_leave",
+      "status": "PASS",
+      "detail": {
+        "id": "36fa0a0e-bdf6-491e-9ccb-0f506f7a8237",
+        "kind": "SICK_LEAVE",
+        "status": "PENDING",
+        "serverMatchesPhone": true,
+        "initialDriverWaitExceeded": true,
+        "driverFlattenedHierarchyFixed": true,
+        "reconciledWithoutResubmission": true
+      }
+    },
+    {
+      "at": "2026-10-14T00:13:49.196762+00:00",
+      "name": "physical-field-request-rejected-visible",
+      "status": "PASS",
+      "detail": {
+        "id": "9121695d-847c-4807-aee0-2de4162f696d",
+        "status": "REJECTED",
+        "managerReasonVisible": true,
+        "serverMatchesPhone": true
+      }
+    },
+    {
+      "at": "2026-10-14T00:13:58.338Z",
+      "name": "physical-field-request-hr-sick_leave-approved",
+      "status": "PASS",
+      "transport": "actual-production-browser",
+      "requestId": "36fa0a0e-bdf6-491e-9ccb-0f506f7a8237",
+      "kind": "SICK_LEAVE",
+      "decision": "APPROVED",
+      "tenant": "mtm-attendance-phone",
+      "rejectRequiresReason": true
+    },
+    {
+      "at": "2026-10-14T00:15:02.771802+00:00",
+      "name": "physical-field-request-approved-visible",
+      "status": "PASS",
+      "detail": {
+        "id": "36fa0a0e-bdf6-491e-9ccb-0f506f7a8237",
+        "status": "APPROVED",
+        "managerReasonVisible": true
+      }
+    },
+    {
+      "at": "2026-10-14T00:18:30.999221+00:00",
+      "name": "upgrade-3.8.3-preserves-field-session-and-pending-mark",
+      "status": "PASS",
+      "detail": {
+        "version": "3.8.3",
+        "versionCode": 1469,
+        "sourceSha": "643e56259ba86874ca35e9d1b3de6c7ecab8c7e8",
+        "apkSha256": "8886a1bcdec6c893818fb16f0ccd348004480eebd2488eee516f0b48114afe65",
+        "sameFictionalFieldUser": true,
+        "pendingStartPreserved": true,
+        "allLocationPermissionsDenied": true
+      }
+    },
+    {
+      "at": "2026-10-14T00:27:12.303220+00:00",
+      "name": "physical-field-request-time_off",
+      "status": "PASS",
+      "detail": {
+        "id": "bff9960e-350f-4eb0-a29a-a5372fc49ae1",
+        "kind": "TIME_OFF",
+        "status": "PENDING",
+        "serverMatchesPhone": true
+      }
+    },
+    {
+      "at": "2026-10-14T00:27:54.809399+00:00",
+      "name": "physical-field-request-cancel-dismiss",
+      "status": "PASS",
+      "detail": {
+        "id": "bff9960e-350f-4eb0-a29a-a5372fc49ae1",
+        "stillPending": true
+      }
+    },
+    {
+      "at": "2026-10-14T00:37:59.567469+00:00",
+      "name": "physical-field-request-hourly_absence",
+      "status": "PASS",
+      "detail": {
+        "id": "5638dd12-19e0-42c7-902b-fc5e75b69ff7",
+        "kind": "HOURLY_ABSENCE",
+        "status": "PENDING",
+        "serverMatchesPhone": true
+      }
+    },
+    {
+      "at": "2026-10-14T00:38:59.314491+00:00",
+      "name": "physical-field-request-cancel-confirmed",
+      "status": "PASS",
+      "detail": {
+        "id": "bff9960e-350f-4eb0-a29a-a5372fc49ae1",
+        "status": "CANCELLED",
+        "serverMatchesPhone": true,
+        "initialRetryWaitExceeded": true,
+        "noRepeatedCancellation": true
+      }
+    },
+    {
+      "at": "2026-10-14T00:50:21.834Z",
+      "name": "physical-field-request-hr-hourly_absence-approved",
+      "status": "PASS",
+      "transport": "actual-production-browser",
+      "requestId": "5638dd12-19e0-42c7-902b-fc5e75b69ff7",
+      "kind": "HOURLY_ABSENCE",
+      "decision": "APPROVED",
+      "tenant": "mtm-attendance-phone",
+      "rejectRequiresReason": true
+    },
+    {
+      "at": "2026-10-14T00:52:16.841587+00:00",
+      "name": "physical-field-request-remote_work",
+      "status": "PASS",
+      "detail": {
+        "id": "97053fdd-d817-47a0-a474-d8f12165b4e9",
+        "kind": "REMOTE_WORK",
+        "status": "PENDING",
+        "serverMatchesPhone": true
+      }
+    },
+    {
+      "at": "2026-10-14T00:52:42.784Z",
+      "name": "physical-field-request-hr-remote_work-approved",
+      "status": "PASS",
+      "transport": "actual-production-browser",
+      "requestId": "97053fdd-d817-47a0-a474-d8f12165b4e9",
+      "kind": "REMOTE_WORK",
+      "decision": "APPROVED",
+      "tenant": "mtm-attendance-phone",
+      "rejectRequiresReason": true
+    },
+    {
+      "at": "2026-10-14T00:52:50.928623+00:00",
+      "name": "physical-field-request-business_trip",
+      "status": "PASS",
+      "detail": {
+        "id": "76a2afde-fa6b-491d-9f74-93765acf517c",
+        "kind": "BUSINESS_TRIP",
+        "status": "PENDING",
+        "serverMatchesPhone": true,
+        "reconciledWithoutResubmission": true
+      }
+    },
+    {
+      "at": "2026-10-14T00:58:51.360963+00:00",
+      "name": "physical-field-hourly_absence-decision-visible",
+      "status": "PASS",
+      "detail": {
+        "id": "5638dd12-19e0-42c7-902b-fc5e75b69ff7",
+        "status": "APPROVED",
+        "managerReasonVisible": true,
+        "serverMatchesPhone": true
+      }
+    },
+    {
+      "at": "2026-10-14T00:59:17.234648+00:00",
+      "name": "physical-field-remote_work-decision-visible",
+      "status": "PASS",
+      "detail": {
+        "id": "97053fdd-d817-47a0-a474-d8f12165b4e9",
+        "status": "APPROVED",
+        "managerReasonVisible": true,
+        "serverMatchesPhone": true
+      }
+    },
+    {
+      "at": "2026-10-14T01:01:13.440405+00:00",
+      "name": "physical-sync-retry-state-visible",
+      "status": "PASS",
+      "detail": {
+        "pending": 2,
+        "conflicts": 0,
+        "retryLabel": "Təkrar: 05:02",
+        "pendingStartAndOvertimeRetained": true,
+        "noNewMutation": true
+      }
+    },
+    {
+      "at": "2026-10-14T01:08:35.263429+00:00",
+      "name": "physical-request-validation-empty-reason",
+      "status": "PASS",
+      "detail": {
+        "localizedErrorVisible": true,
+        "draftRemainsOpen": true
+      }
+    },
+    {
+      "at": "2026-10-14T01:10:40.952328+00:00",
+      "name": "physical-request-validation-reversed-hours",
+      "status": "PASS",
+      "detail": {
+        "localizedErrorVisible": true,
+        "draftRemainsOpen": true
+      }
+    },
+    {
+      "at": "2026-10-14T01:12:29.105104+00:00",
+      "name": "physical-request-validation-nonexistent-date",
+      "status": "PASS",
+      "detail": {
+        "localizedErrorVisible": true,
+        "draftRemainsOpen": true
+      }
+    },
+    {
+      "at": "2026-10-14T01:12:58.949807+00:00",
+      "name": "physical-request-invalid-draft-close",
+      "status": "PASS",
+      "detail": {
+        "noMatchingRequestOnServer": true,
+        "draftClosed": true
+      }
+    },
+    {
+      "at": "2026-10-14T01:16:40.299Z",
+      "name": "physical-field-request-hr-business_trip-approved",
+      "status": "PASS",
+      "transport": "actual-production-browser",
+      "requestId": "76a2afde-fa6b-491d-9f74-93765acf517c",
+      "kind": "BUSINESS_TRIP",
+      "decision": "APPROVED",
+      "tenant": "mtm-attendance-phone",
+      "rejectRequiresReason": true
+    },
+    {
+      "at": "2026-10-14T01:21:03.513027+00:00",
+      "name": "physical-field-request-overtime",
+      "status": "PASS",
+      "detail": {
+        "id": "4b22b937-bf79-4919-822b-32a0fb6af3f1",
+        "kind": "OVERTIME",
+        "status": "PENDING",
+        "serverMatchesPhone": true,
+        "reconciledWithoutResubmission": true
+      }
+    },
+    {
+      "at": "2026-10-14T01:21:31.330865+00:00",
+      "name": "physical-field-business_trip-decision-visible",
+      "status": "PASS",
+      "detail": {
+        "id": "76a2afde-fa6b-491d-9f74-93765acf517c",
+        "status": "APPROVED",
+        "managerReasonVisible": true,
+        "serverMatchesPhone": true
+      }
+    },
+    {
+      "at": "2026-10-14T01:22:06.509Z",
+      "name": "physical-field-request-hr-overtime-approved",
+      "status": "PASS",
+      "transport": "actual-production-browser",
+      "requestId": "4b22b937-bf79-4919-822b-32a0fb6af3f1",
+      "kind": "OVERTIME",
+      "decision": "APPROVED",
+      "tenant": "mtm-attendance-phone",
+      "rejectRequiresReason": true
+    },
+    {
+      "at": "2026-10-13T22:31:52.566588+00:00",
+      "name": "company-not-found-validation",
+      "status": "PASS",
+      "detail": {
+        "companySelectorPreserved": true,
+        "loginNotShown": true
+      }
+    },
+    {
+      "at": "2026-10-13T22:40:01.922025+00:00",
+      "name": "known-company-offline-explanation",
+      "status": "FAIL",
+      "detail": {
+        "selectorPreserved": true,
+        "showsCompanyNotFoundInsteadOfConnectivity": true,
+        "activeDefaultNetwork": "none"
+      }
+    },
+    {
+      "at": "2026-10-14T01:22:56.234973+00:00",
+      "name": "physical-field-overtime-decision-visible",
+      "status": "PASS",
+      "detail": {
+        "id": "4b22b937-bf79-4919-822b-32a0fb6af3f1",
+        "status": "APPROVED",
+        "managerReasonVisible": true,
+        "serverMatchesPhone": true
+      }
+    },
+    {
+      "name": "physical-camera-document-attachment",
+      "status": "NOT_RUN",
+      "reason": "Requires a controlled fictional document in front of the live camera; no capture of unknown surroundings. Hosted upload/privacy coverage is separate."
+    },
+    {
+      "at": "2026-10-14T01:58:15.043131+00:00",
+      "name": "upgrade-3.8.4-preserves-field-session-and-pending-mark",
+      "status": "PASS",
+      "detail": {
+        "installedBuild": {
+          "version": "3.8.4",
+          "versionCode": 1473
+        },
+        "sourceSha": "2ad9a5077c3dc4c36ce1a562ddbf4a2ad360ded5",
+        "apkSha256": "a99aa1c058324886ca9a1e7bfeb5d96ac5e700cf0da246b0c89f77f7c2af0c8d",
+        "sameFictionalFieldUser": true,
+        "pendingStartPreserved": true,
+        "pending": 1,
+        "conflicts": 0,
+        "routeOutboxLabel": "Təkrar: 06:13",
+        "allLocationPermissionsDenied": true
+      }
+    },
+    {
+      "at": "2026-10-14T02:13:43.916617+00:00",
+      "name": "physical-foreground-retry-deadline-wakes-3.8.4",
+      "status": "PASS",
+      "detail": {
+        "installedBuild": {
+          "version": "3.8.4",
+          "versionCode": 1473
+        },
+        "before": {
+          "at": "2026-10-14T01:58:39.205072+00:00",
+          "pending": 1,
+          "conflicts": 0,
+          "routeOutboxLabel": "Təkrar: 06:13"
+        },
+        "after": {
+          "at": "2026-10-14T02:13:40.036660+00:00",
+          "pending": 1,
+          "conflicts": 0,
+          "routeOutboxLabel": "Təkrar: 06:24"
+        },
+        "noGesturesDuringObservation": true,
+        "displayedRetryMinuteUtc": "2026-10-14T02:13:00+00:00",
+        "originalStartNotResubmitted": true,
+        "queueDrained": false
+      }
+    },
+    {
+      "at": "2026-10-14T03:44:23.928283+00:00",
+      "name": "physical-original-start-automatic-canonical-recovery-3.8.4",
+      "status": "PASS",
+      "detail": {
+        "sourceSha": "8c54afe632181b15d4bb4cb88ee1953a6a72cd4f",
+        "workdayId": "wd-1791935425480-lssidppb",
+        "eventTypes": [
+          "START"
+        ],
+        "claimedAt": "2026-10-13T23:50:25.480Z",
+        "serverReceivedAt": "2026-10-14T03:35:39.371Z",
+        "originalObservedTimeWindowPreserved": true,
+        "noRepeatedStart": true,
+        "noManualSync": true,
+        "factsState": "VALID",
+        "locationNotCollected": true,
+        "subsequentPermissionLoop": "separate FAIL"
+      }
+    },
+    {
+      "at": "2026-10-14T03:44:23.929858+00:00",
+      "name": "physical-field-location-denial-loop-3.8.4",
+      "status": "FAIL",
+      "detail": {
+        "installedBuild": {
+          "version": "3.8.4",
+          "versionCode": 1473
+        },
+        "confirmedWorkday": true,
+        "locationPermissionDenied": true,
+        "requestPermissionActivityCountInBoundedEvents": 48,
+        "eventWindowFirst": "10-14 07:42:57.478",
+        "eventWindowLast": "10-14 07:43:02.129",
+        "repeatedResumeRequestCycle": true,
+        "mainActivityRemovedByAndroid": true,
+        "appForceStoppedToEndLoop": true,
+        "workdayNotFinished": true,
+        "realCompanyMutations": 0
+      }
+    },
+    {
+      "at": "2026-10-14T03:47:39.485258+00:00",
+      "name": "physical-delayed-original-start-risk-detected",
+      "status": "PASS",
+      "detail": {
+        "kind": "DELAYED_CLAIM",
+        "actualPhysicalOperation": true,
+        "seededRisk": false,
+        "bothTimesMatchCanonicalEvent": true,
+        "claimedAt": "2026-10-13T23:50:25.480Z",
+        "serverReceivedAt": "2026-10-14T03:35:39.371Z",
+        "deltaSeconds": 13513,
+        "thresholdSeconds": 900,
+        "workdayUnchanged": true,
+        "transport": "physical APK submission, authenticated HR API readback"
+      }
+    },
+    {
+      "at": "2026-10-14T03:59:27.436Z",
+      "name": "physical-delayed-original-start-hr-review-ui",
+      "status": "PASS",
+      "detail": {
+        "sameActualPhysicalEvent": true,
+        "bothBakuClocksVisible": [
+          "03:50",
+          "07:35"
+        ],
+        "reviewFormOpened": true,
+        "noDismissalSubmitted": true
+      }
+    },
+    {
+      "at": "2026-10-14T04:15:30.955565+00:00",
+      "name": "physical-field-location-denial-stable-3.8.5",
+      "status": "PASS",
+      "detail": {
+        "installedBuild": {
+          "version": "3.8.5",
+          "versionCode": 1475
+        },
+        "foregroundCycles": 5,
+        "automaticPermissionActivities": 1,
+        "locationPermissionsStillDenied": true,
+        "sameFictionalFieldIdentity": true,
+        "originalWorkdayRunning": true,
+        "noWorkdayMutation": true
+      }
+    },
+    {
+      "at": "2026-10-14T04:16:07.014901+00:00",
+      "name": "upgrade-3.8.5-preserves-field-session-and-original-day",
+      "status": "PASS",
+      "detail": {
+        "installedBuild": {
+          "version": "3.8.5",
+          "versionCode": 1475
+        },
+        "originalStartAndWorkdayUnchanged": true,
+        "allExistingCanonicalEventsUnchanged": true,
+        "allSevenRequestsUnchanged": true,
+        "inPlaceInstall": true,
+        "dataClear": false
+      }
+    },
+    {
+      "at": "2026-10-14T04:16:49.161991+00:00",
+      "name": "physical-field-pause-3.8.5",
+      "status": "PASS",
+      "detail": {
+        "workdayId": "wd-1791935425480-lssidppb",
+        "eventTypes": [
+          "START",
+          "PAUSE"
+        ],
+        "factsState": "VALID",
+        "kind": "OPEN",
+        "startedAt": "2026-10-13T23:50:25.480Z",
+        "completedAt": null,
+        "pausedSeconds": 11,
+        "pauseSurvivesRestart": true,
+        "installedBuild": {
+          "version": "3.8.5",
+          "versionCode": 1475
+        }
+      }
+    },
+    {
+      "at": "2026-10-14T04:17:34.273877+00:00",
+      "name": "physical-field-resume-3.8.5",
+      "status": "PASS",
+      "detail": {
+        "workdayId": "wd-1791935425480-lssidppb",
+        "eventTypes": [
+          "START",
+          "PAUSE",
+          "RESUME"
+        ],
+        "factsState": "VALID",
+        "kind": "OPEN",
+        "startedAt": "2026-10-13T23:50:25.480Z",
+        "completedAt": null,
+        "pausedSeconds": 49,
+        "installedBuild": {
+          "version": "3.8.5",
+          "versionCode": 1475
+        }
+      }
+    },
+    {
+      "at": "2026-10-14T04:18:20.246418+00:00",
+      "name": "physical-field-finish-cancel-3.8.5",
+      "status": "PASS",
+      "detail": {
+        "workdayId": "wd-1791935425480-lssidppb",
+        "eventTypes": [
+          "START",
+          "PAUSE",
+          "RESUME"
+        ],
+        "factsState": "VALID",
+        "kind": "OPEN",
+        "startedAt": "2026-10-13T23:50:25.480Z",
+        "completedAt": null,
+        "pausedSeconds": 49,
+        "installedBuild": {
+          "version": "3.8.5",
+          "versionCode": 1475
+        }
+      }
+    },
+    {
+      "at": "2026-10-14T04:22:45.105816+00:00",
+      "name": "physical-field-offline-finish-original-time-recovered-3.8.5",
+      "status": "PASS",
+      "detail": {
+        "installedBuild": {
+          "version": "3.8.5",
+          "versionCode": 1475
+        },
+        "exactlyOneFinish": true,
+        "activeDefaultNetworkAtSubmission": "none",
+        "claimedAt": "2026-10-14T04:18:59.277Z",
+        "serverReceivedAt": "2026-10-14T04:19:58.790Z",
+        "noManualSync": true,
+        "factsState": "VALID",
+        "restartBeforeReconnect": "NOT_RUN: pending-title observation timed out before restart; no claim of durable-restart acceptance"
+      }
+    },
+    {
+      "at": "2026-10-14T04:23:20.812901+00:00",
+      "name": "physical-field-return-3.8.5",
+      "status": "PASS",
+      "detail": {
+        "workdayId": "wd-1791935425480-lssidppb",
+        "eventTypes": [
+          "START",
+          "PAUSE",
+          "RESUME",
+          "FINISH",
+          "REOPEN",
+          "RESUME"
+        ],
+        "factsState": "VALID",
+        "kind": "OPEN",
+        "startedAt": "2026-10-13T23:50:25.480Z",
+        "completedAt": null,
+        "pausedSeconds": 297,
+        "installedBuild": {
+          "version": "3.8.5",
+          "versionCode": 1475
+        }
+      }
+    },
+    {
+      "at": "2026-10-14T04:25:28.012682+00:00",
+      "name": "physical-field-offline-finish-after-return-3.8.5",
+      "status": "PASS",
+      "detail": {
+        "workdayId": "wd-1791935425480-lssidppb",
+        "eventTypes": [
+          "START",
+          "PAUSE",
+          "RESUME",
+          "FINISH",
+          "REOPEN",
+          "RESUME",
+          "FINISH"
+        ],
+        "factsState": "VALID",
+        "kind": "WORKED",
+        "startedAt": "2026-10-13T23:50:25.480Z",
+        "completedAt": "2026-10-14T04:24:44.421Z",
+        "pausedSeconds": 297,
+        "beforeRestartObserved": "Server cavab vermir",
+        "durableFinishRecoveredAfterOfflineRestart": true,
+        "offlineColdStartAccessClosed": true,
+        "activeDefaultNetworkDuringSubmission": "none",
+        "exactlyOneNewFinish": true,
+        "totalFinishEvents": 2,
+        "originalOfflineClaimedTimePreserved": true,
+        "reconnectObservationWithoutGestures": true,
+        "installedBuild": {
+          "version": "3.8.5",
+          "versionCode": 1475
+        }
+      }
+    },
+    {
+      "at": "2026-10-14T04:29:45.826909+00:00",
+      "name": "physical-field-request-time_correction",
+      "status": "PASS",
+      "detail": {
+        "id": "61aa2d43-e263-49c0-86fa-b0f576e1ae01",
+        "kind": "TIME_CORRECTION",
+        "status": "PENDING",
+        "serverMatchesPhone": true
+      }
+    },
+    {
+      "at": "2026-10-14T04:30:23.267Z",
+      "name": "physical-field-request-hr-time_correction-approved",
+      "status": "PASS",
+      "transport": "actual-production-browser",
+      "requestId": "61aa2d43-e263-49c0-86fa-b0f576e1ae01",
+      "kind": "TIME_CORRECTION",
+      "decision": "APPROVED",
+      "tenant": "mtm-attendance-phone",
+      "rejectRequiresReason": true
+    },
+    {
+      "at": "2026-10-14T04:30:34.957Z",
+      "name": "physical-field-correction-preserves-original-journal",
+      "status": "PASS",
+      "detail": {
+        "requestId": "61aa2d43-e263-49c0-86fa-b0f576e1ae01",
+        "workdayId": "wd-1791935425480-lssidppb",
+        "canonicalEventCount": 7,
+        "originalEventsUnchanged": true,
+        "exactlyOneCorrection": true,
+        "reviewerVerified": true,
+        "pauseTotalUnchanged": true,
+        "factsState": "VALID"
+      }
+    },
+    {
+      "at": "2026-10-14T04:31:01.383005+00:00",
+      "name": "physical-field-time_correction-decision-visible",
+      "status": "PASS",
+      "detail": {
+        "id": "61aa2d43-e263-49c0-86fa-b0f576e1ae01",
+        "status": "APPROVED",
+        "managerReasonVisible": true,
+        "serverMatchesPhone": true
+      }
+    },
+    {
+      "at": "2026-10-14T04:31:10.835Z",
+      "name": "physical-field-hr-report-and-downloads",
+      "status": "PASS",
+      "detail": {
+        "workdayId": "wd-1791935425480-lssidppb",
+        "canonicalEventCount": 7,
+        "reportMatchesPhoneFacts": true,
+        "downloads": [
+          {
+            "format": "xlsx",
+            "status": 200,
+            "bytes": 8168,
+            "contentChecked": "employee, start, finish, worked, pause and filter isolation"
+          },
+          {
+            "format": "pdf",
+            "status": 200,
+            "bytes": 112059,
+            "contentChecked": "PDF header/trailer only"
+          }
+        ]
+      }
+    },
+    {
+      "at": "2026-10-14T04:32:41.908272+00:00",
+      "name": "physical-field-pdf-content-readback",
+      "status": "PASS",
+      "detail": {
+        "pages": 1,
+        "employeeAndExactStartFinishWorkedPausePresent": true,
+        "filteredEmployeeIsolation": true,
+        "pageImagesPreparedForVisualInspection": true
+      }
+    },
+    {
+      "at": "2026-10-14T04:32:28.437408+00:00",
+      "name": "physical-field-corrected-day-cannot-reopen",
+      "status": "PASS",
+      "detail": {
+        "installedBuild": {
+          "version": "3.8.5",
+          "versionCode": 1475
+        },
+        "explicitLockedExplanationVisible": true,
+        "returnNoLongerAvailable": true,
+        "canonicalEventsAndCorrectionUnchanged": true
+      }
+    },
+    {
+      "at": "2026-10-14T04:34:19.724074+00:00",
+      "name": "physical-field-pdf-visual-review",
+      "status": "PASS",
+      "detail": {
+        "pagesViewed": 1,
+        "singleFictionalEmployeeRow": true,
+        "allTableColumnsLegible": true,
+        "correctionBeforeAfterAndReviewerVisible": true,
+        "noClippedCellsObserved": true
+      }
+    },
+    {
+      "at": "2026-10-14T04:34:12.053388+00:00",
+      "name": "physical-field-final-queue-empty",
+      "status": "PASS",
+      "detail": {
+        "pending": 0,
+        "conflicts": 0,
+        "media": 0,
+        "correctedDayClosed": true,
+        "installedBuild": {
+          "version": "3.8.5",
+          "versionCode": 1475
+        }
+      }
+    },
+    {
+      "at": "2026-10-14T04:36:28.513267+00:00",
+      "name": "physical-field-logout-cancel",
+      "status": "PASS",
+      "detail": {
+        "profileRemainsOpen": true,
+        "loginScreenNotShown": true
+      }
+    },
+    {
+      "at": "2026-10-14T04:36:54.592944+00:00",
+      "name": "physical-field-clean-logout",
+      "status": "PASS",
+      "detail": {
+        "queuePendingBeforeLogout": 0,
+        "queueConflictsBeforeLogout": 0,
+        "fixtureCompanyRetained": true,
+        "loginFormVisible": true,
+        "realCompanyTouched": false
+      }
+    },
+    {
+      "at": "2026-10-14T04:38:21.643529+00:00",
+      "name": "fictional-office-login-3.8.5",
+      "status": "PASS",
+      "detail": {
+        "tenant": "mtm-attendance-phone",
+        "officeWorkdayVisible": true,
+        "installedBuild": {
+          "version": "3.8.5",
+          "versionCode": 1475
+        }
+      }
+    },
+    {
+      "at": "2026-10-14T04:43:44.343122+00:00",
+      "name": "physical-office-start-3.8.5",
+      "status": "PASS",
+      "detail": {
+        "workdayId": "wd-1791953007238-vybecqgr",
+        "eventTypes": [
+          "START"
+        ],
+        "factsState": "VALID",
+        "kind": "OPEN",
+        "startedAt": "2026-10-14T04:43:27.238Z",
+        "completedAt": null,
+        "pausedSeconds": 0,
+        "installedBuild": {
+          "version": "3.8.5",
+          "versionCode": 1475
+        }
+      }
+    },
+    {
+      "at": "2026-10-14T04:44:37.692565+00:00",
+      "name": "physical-office-pause-3.8.5",
+      "status": "PASS",
+      "detail": {
+        "workdayId": "wd-1791953007238-vybecqgr",
+        "eventTypes": [
+          "START",
+          "PAUSE"
+        ],
+        "factsState": "VALID",
+        "kind": "OPEN",
+        "startedAt": "2026-10-14T04:43:27.238Z",
+        "completedAt": null,
+        "pausedSeconds": 20,
+        "pauseSurvivesRestart": true,
+        "installedBuild": {
+          "version": "3.8.5",
+          "versionCode": 1475
+        }
+      }
+    },
+    {
+      "at": "2026-10-14T04:45:24.949895+00:00",
+      "name": "physical-office-resume-3.8.5",
+      "status": "PASS",
+      "detail": {
+        "workdayId": "wd-1791953007238-vybecqgr",
+        "eventTypes": [
+          "START",
+          "PAUSE",
+          "RESUME"
+        ],
+        "factsState": "VALID",
+        "kind": "OPEN",
+        "startedAt": "2026-10-14T04:43:27.238Z",
+        "completedAt": null,
+        "pausedSeconds": 53,
+        "installedBuild": {
+          "version": "3.8.5",
+          "versionCode": 1475
+        }
+      }
+    },
+    {
+      "at": "2026-10-14T04:46:16.474903+00:00",
+      "name": "physical-office-finish-cancel-3.8.5",
+      "status": "PASS",
+      "detail": {
+        "workdayId": "wd-1791953007238-vybecqgr",
+        "eventTypes": [
+          "START",
+          "PAUSE",
+          "RESUME"
+        ],
+        "factsState": "VALID",
+        "kind": "OPEN",
+        "startedAt": "2026-10-14T04:43:27.238Z",
+        "completedAt": null,
+        "pausedSeconds": 53,
+        "installedBuild": {
+          "version": "3.8.5",
+          "versionCode": 1475
+        }
+      }
+    },
+    {
+      "at": "2026-10-14T04:47:34.917402+00:00",
+      "name": "physical-office-offline-finish-3.8.5",
+      "status": "PASS",
+      "detail": {
+        "workdayId": "wd-1791953007238-vybecqgr",
+        "eventTypes": [
+          "START",
+          "PAUSE",
+          "RESUME",
+          "FINISH"
+        ],
+        "factsState": "VALID",
+        "kind": "WORKED",
+        "startedAt": "2026-10-14T04:43:27.238Z",
+        "completedAt": "2026-10-14T04:46:56.368Z",
+        "pausedSeconds": 53,
+        "durableFinishRecoveredAfterOfflineRestart": true,
+        "offlineColdStartAccessClosed": true,
+        "uiObservedBeforeColdRestart": "offline-access-screen",
+        "activeDefaultNetworkDuringSubmission": "none",
+        "activeDefaultNetworkAtColdRestart": "none",
+        "exactlyOneFinish": true,
+        "originalOfflineClaimedTimePreserved": true,
+        "reconnectObservationWithoutGestures": true,
+        "installedBuild": {
+          "version": "3.8.5",
+          "versionCode": 1475
+        }
+      }
+    },
+    {
+      "at": "2026-10-14T04:48:19.437345+00:00",
+      "name": "physical-office-return-3.8.5",
+      "status": "PASS",
+      "detail": {
+        "workdayId": "wd-1791953007238-vybecqgr",
+        "eventTypes": [
+          "START",
+          "PAUSE",
+          "RESUME",
+          "FINISH",
+          "REOPEN",
+          "RESUME"
+        ],
+        "factsState": "VALID",
+        "kind": "OPEN",
+        "startedAt": "2026-10-14T04:43:27.238Z",
+        "completedAt": null,
+        "pausedSeconds": 119,
+        "installedBuild": {
+          "version": "3.8.5",
+          "versionCode": 1475
+        }
+      }
+    },
+    {
+      "at": "2026-10-14T04:49:15.549593+00:00",
+      "name": "physical-office-finish-3.8.5",
+      "status": "PASS",
+      "detail": {
+        "workdayId": "wd-1791953007238-vybecqgr",
+        "eventTypes": [
+          "START",
+          "PAUSE",
+          "RESUME",
+          "FINISH",
+          "REOPEN",
+          "RESUME",
+          "FINISH"
+        ],
+        "factsState": "VALID",
+        "kind": "WORKED",
+        "startedAt": "2026-10-14T04:43:27.238Z",
+        "completedAt": "2026-10-14T04:48:57.741Z",
+        "pausedSeconds": 119,
+        "installedBuild": {
+          "version": "3.8.5",
+          "versionCode": 1475
+        }
+      }
+    },
+    {
+      "at": "2026-10-14T04:52:12.677027+00:00",
+      "name": "physical-office-request-annual_leave",
+      "status": "PASS",
+      "detail": {
+        "id": "da0c6eff-a65e-4533-93eb-f3e51733d9e8",
+        "kind": "ANNUAL_LEAVE",
+        "status": "PENDING",
+        "serverMatchesPhone": true
+      }
+    },
+    {
+      "at": "2026-10-14T04:52:17.193Z",
+      "name": "physical-office-request-hr-annual_leave-rejected",
+      "status": "PASS",
+      "transport": "actual-production-browser",
+      "requestId": "da0c6eff-a65e-4533-93eb-f3e51733d9e8",
+      "kind": "ANNUAL_LEAVE",
+      "decision": "REJECTED",
+      "tenant": "mtm-attendance-phone",
+      "rejectRequiresReason": true
+    },
+    {
+      "at": "2026-10-14T04:55:00.036190+00:00",
+      "name": "physical-office-request-sick_leave",
+      "status": "PASS",
+      "detail": {
+        "id": "13b86a65-833a-4883-a1bb-45ff536e03ac",
+        "kind": "SICK_LEAVE",
+        "status": "PENDING",
+        "serverMatchesPhone": true
+      }
+    },
+    {
+      "at": "2026-10-14T04:55:14.268Z",
+      "name": "physical-office-request-hr-sick_leave-approved",
+      "status": "PASS",
+      "transport": "actual-production-browser",
+      "requestId": "13b86a65-833a-4883-a1bb-45ff536e03ac",
+      "kind": "SICK_LEAVE",
+      "decision": "APPROVED",
+      "tenant": "mtm-attendance-phone",
+      "rejectRequiresReason": true
+    },
+    {
+      "at": "2026-10-14T04:58:13.118399+00:00",
+      "name": "physical-office-request-time_off",
+      "status": "PASS",
+      "detail": {
+        "id": "3050cc70-240e-4114-9b93-ef1fd720dc95",
+        "kind": "TIME_OFF",
+        "status": "PENDING",
+        "serverMatchesPhone": true
+      }
+    },
+    {
+      "at": "2026-10-14T04:58:45.762494+00:00",
+      "name": "physical-office-request-cancel-dismiss",
+      "status": "PASS",
+      "detail": {
+        "id": "3050cc70-240e-4114-9b93-ef1fd720dc95",
+        "stillPending": true
+      }
+    },
+    {
+      "at": "2026-10-14T04:59:14.686081+00:00",
+      "name": "physical-office-request-cancel-confirmed",
+      "status": "PASS",
+      "detail": {
+        "id": "3050cc70-240e-4114-9b93-ef1fd720dc95",
+        "status": "CANCELLED",
+        "serverMatchesPhone": true
+      }
+    },
+    {
+      "at": "2026-10-14T05:02:37.151287+00:00",
+      "name": "physical-office-request-hourly_absence",
+      "status": "PASS",
+      "detail": {
+        "id": "c5ca7d2c-5057-442b-b221-5d48c3d8c143",
+        "kind": "HOURLY_ABSENCE",
+        "status": "PENDING",
+        "serverMatchesPhone": true
+      }
+    },
+    {
+      "at": "2026-10-14T05:02:41.982Z",
+      "name": "physical-office-request-hr-hourly_absence-approved",
+      "status": "PASS",
+      "transport": "actual-production-browser",
+      "requestId": "c5ca7d2c-5057-442b-b221-5d48c3d8c143",
+      "kind": "HOURLY_ABSENCE",
+      "decision": "APPROVED",
+      "tenant": "mtm-attendance-phone",
+      "rejectRequiresReason": true
+    },
+    {
+      "at": "2026-10-14T05:05:30.592600+00:00",
+      "name": "physical-office-request-business_trip",
+      "status": "PASS",
+      "detail": {
+        "id": "9a1624d6-85ce-41ca-8185-7faccfe21af0",
+        "kind": "BUSINESS_TRIP",
+        "status": "PENDING",
+        "serverMatchesPhone": true
+      }
+    },
+    {
+      "at": "2026-10-14T05:05:34.602Z",
+      "name": "physical-office-request-hr-business_trip-approved",
+      "status": "PASS",
+      "transport": "actual-production-browser",
+      "requestId": "9a1624d6-85ce-41ca-8185-7faccfe21af0",
+      "kind": "BUSINESS_TRIP",
+      "decision": "APPROVED",
+      "tenant": "mtm-attendance-phone",
+      "rejectRequiresReason": true
+    },
+    {
+      "at": "2026-10-14T05:08:42.822139+00:00",
+      "name": "physical-office-request-remote_work",
+      "status": "PASS",
+      "detail": {
+        "id": "effe4417-0213-4e38-a8f7-5d4cd5777465",
+        "kind": "REMOTE_WORK",
+        "status": "PENDING",
+        "serverMatchesPhone": true
+      }
+    },
+    {
+      "at": "2026-10-14T05:08:47.659Z",
+      "name": "physical-office-request-hr-remote_work-approved",
+      "status": "PASS",
+      "transport": "actual-production-browser",
+      "requestId": "effe4417-0213-4e38-a8f7-5d4cd5777465",
+      "kind": "REMOTE_WORK",
+      "decision": "APPROVED",
+      "tenant": "mtm-attendance-phone",
+      "rejectRequiresReason": true
+    },
+    {
+      "at": "2026-10-14T05:12:06.879867+00:00",
+      "name": "physical-office-request-overtime",
+      "status": "PASS",
+      "detail": {
+        "id": "b3fcfc3e-198b-4967-a19f-91edd9eda490",
+        "kind": "OVERTIME",
+        "status": "PENDING",
+        "serverMatchesPhone": true
+      }
+    },
+    {
+      "at": "2026-10-14T05:12:11.782Z",
+      "name": "physical-office-request-hr-overtime-approved",
+      "status": "PASS",
+      "transport": "actual-production-browser",
+      "requestId": "b3fcfc3e-198b-4967-a19f-91edd9eda490",
+      "kind": "OVERTIME",
+      "decision": "APPROVED",
+      "tenant": "mtm-attendance-phone",
+      "rejectRequiresReason": true
+    },
+    {
+      "at": "2026-10-14T05:16:00.425897+00:00",
+      "name": "physical-office-request-time_correction",
+      "status": "PASS",
+      "detail": {
+        "id": "4414479b-8472-46cb-829b-9c1b68d15967",
+        "kind": "TIME_CORRECTION",
+        "status": "PENDING",
+        "serverMatchesPhone": true
+      }
+    },
+    {
+      "at": "2026-10-14T05:16:09.192Z",
+      "name": "physical-office-request-hr-time_correction-approved",
+      "status": "PASS",
+      "transport": "actual-production-browser",
+      "requestId": "4414479b-8472-46cb-829b-9c1b68d15967",
+      "kind": "TIME_CORRECTION",
+      "decision": "APPROVED",
+      "tenant": "mtm-attendance-phone",
+      "rejectRequiresReason": true
+    },
+    {
+      "at": "2026-10-14T05:16:16.406Z",
+      "name": "physical-office-correction-preserves-original-journal",
+      "status": "PASS",
+      "detail": {
+        "requestId": "4414479b-8472-46cb-829b-9c1b68d15967",
+        "workdayId": "wd-1791953007238-vybecqgr",
+        "canonicalEventCount": 7,
+        "originalEventsUnchanged": true,
+        "exactlyOneCorrection": true,
+        "reviewerVerified": true,
+        "pauseTotalUnchanged": true,
+        "factsState": "VALID"
+      }
+    },
+    {
+      "at": "2026-10-14T05:16:16.856Z",
+      "name": "physical-both-roles-all-request-payloads-and-final-decisions",
+      "status": "FAIL",
+      "detail": {
+        "stage": "local-metadata",
+        "checkedRequests": 0,
+        "counts": {
+          "field": 0,
+          "office": 0,
+          "DAYS": 0,
+          "HOURS": 0,
+          "APPROVED": 0,
+          "REJECTED": 0,
+          "CANCELLED": 0
+        },
+        "deviceActions": 0,
+        "productionWrites": 0,
+        "privateDetailsWithheld": true
+      }
+    },
+    {
+      "at": "2026-10-14T05:19:02.545651+00:00",
+      "name": "physical-office-annual_leave-decision-visible",
+      "status": "PASS",
+      "detail": {
+        "id": "da0c6eff-a65e-4533-93eb-f3e51733d9e8",
+        "status": "REJECTED",
+        "managerReasonVisible": true,
+        "serverMatchesPhone": true
+      }
+    },
+    {
+      "at": "2026-10-14T05:20:16.546293+00:00",
+      "name": "physical-office-sick_leave-decision-visible",
+      "status": "PASS",
+      "detail": {
+        "id": "13b86a65-833a-4883-a1bb-45ff536e03ac",
+        "status": "APPROVED",
+        "managerReasonVisible": true,
+        "serverMatchesPhone": true
+      }
+    },
+    {
+      "at": "2026-10-14T05:21:20.722724+00:00",
+      "name": "physical-office-hourly_absence-decision-visible",
+      "status": "PASS",
+      "detail": {
+        "id": "c5ca7d2c-5057-442b-b221-5d48c3d8c143",
+        "status": "APPROVED",
+        "managerReasonVisible": true,
+        "serverMatchesPhone": true
+      }
+    },
+    {
+      "at": "2026-10-14T05:22:07.763626+00:00",
+      "name": "physical-office-business_trip-decision-visible",
+      "status": "PASS",
+      "detail": {
+        "id": "9a1624d6-85ce-41ca-8185-7faccfe21af0",
+        "status": "APPROVED",
+        "managerReasonVisible": true,
+        "serverMatchesPhone": true
+      }
+    },
+    {
+      "at": "2026-10-14T05:22:43.504138+00:00",
+      "name": "physical-office-remote_work-decision-visible",
+      "status": "PASS",
+      "detail": {
+        "id": "effe4417-0213-4e38-a8f7-5d4cd5777465",
+        "status": "APPROVED",
+        "managerReasonVisible": true,
+        "serverMatchesPhone": true
+      }
+    },
+    {
+      "at": "2026-10-14T05:23:10.074861+00:00",
+      "name": "physical-office-overtime-decision-visible",
+      "status": "PASS",
+      "detail": {
+        "id": "b3fcfc3e-198b-4967-a19f-91edd9eda490",
+        "status": "APPROVED",
+        "managerReasonVisible": true,
+        "serverMatchesPhone": true
+      }
+    },
+    {
+      "at": "2026-10-14T05:23:30.182709+00:00",
+      "name": "physical-office-time_correction-decision-visible",
+      "status": "PASS",
+      "detail": {
+        "id": "4414479b-8472-46cb-829b-9c1b68d15967",
+        "status": "APPROVED",
+        "managerReasonVisible": true,
+        "serverMatchesPhone": true
+      }
+    },
+    {
+      "at": "2026-10-14T05:23:48.201Z",
+      "name": "physical-both-roles-all-request-payloads-and-final-decisions",
+      "status": "PASS",
+      "detail": {
+        "checkedRequests": 16,
+        "counts": {
+          "field": 8,
+          "office": 8,
+          "DAYS": 10,
+          "HOURS": 6,
+          "APPROVED": 12,
+          "REJECTED": 2,
+          "CANCELLED": 2
+        },
+        "legacyAttemptLogUnavailable": 1,
+        "legacyAttemptEvidence": "first FIELD ANNUAL_LEAVE original physical PASS and post-submit snapshot; no attempt log was backfilled",
+        "exactDatesAndHours": true,
+        "timezone": "Asia/Baku",
+        "initialAndFinalPayloadsMatch": true,
+        "employeeOwnershipVerified": true,
+        "reviewerNamesAndExactNotesVerified": true,
+        "cancellationsOwnedByEmployees": true,
+        "correctionReviewerIdsVerified": 2,
+        "correctionMinuteRulesAndOriginalEventsVerified": true,
+        "nonCorrectionReviewerId": "NOT_EXPOSED_BY_READ_DTO",
+        "transport": "authenticated-owned-fixture-GET-only",
+        "deviceActions": 0,
+        "productionWrites": 0
+      }
+    },
+    {
+      "at": "2026-10-14T05:24:48.670445+00:00",
+      "name": "physical-office-corrected-day-cannot-reopen",
+      "status": "PASS",
+      "detail": {
+        "installedBuild": {
+          "version": "3.8.5",
+          "versionCode": 1475
+        },
+        "explicitLockedExplanationVisible": true,
+        "returnNoLongerAvailable": true,
+        "canonicalEventsAndCorrectionUnchanged": true
+      }
+    },
+    {
+      "at": "2026-10-14T05:26:27.429060+00:00",
+      "name": "physical-office-inbox-refresh-and-read",
+      "status": "PASS",
+      "detail": {
+        "noticeId": "cmv7npyx807upkp0o0i3e4xaq",
+        "readSurvivesRestartAndServerReload": true,
+        "installedBuild": {
+          "version": "3.8.5",
+          "versionCode": 1475
+        }
+      }
+    },
+    {
+      "at": "2026-10-14T05:26:50.201Z",
+      "name": "physical-office-hr-report-and-downloads",
+      "status": "PASS",
+      "detail": {
+        "workdayId": "wd-1791953007238-vybecqgr",
+        "canonicalEventCount": 7,
+        "reportMatchesPhoneFacts": true,
+        "downloads": [
+          {
+            "format": "xlsx",
+            "status": 200,
+            "bytes": 8164,
+            "contentChecked": "employee, start, finish, worked, pause and filter isolation"
+          },
+          {
+            "format": "pdf",
+            "status": 200,
+            "bytes": 112050,
+            "contentChecked": "PDF header/trailer only"
+          }
+        ]
+      }
+    },
+    {
+      "at": "2026-10-14T05:26:50.527673+00:00",
+      "name": "physical-office-pdf-content-readback",
+      "status": "PASS",
+      "detail": {
+        "pages": 1,
+        "employeeAndExactStartFinishWorkedPausePresent": true,
+        "filteredEmployeeIsolation": true,
+        "pageImagesPreparedForVisualInspection": true
+      }
+    },
+    {
+      "at": "2026-10-14T05:26:56.078Z",
+      "name": "physical-same-s23-two-fictional-workers-detected",
+      "status": "PASS",
+      "detail": {
+        "employeeCount": 2,
+        "sharedInstallationCases": 6,
+        "realPhysicalMarks": true,
+        "seededRisks": false,
+        "browserFilter": "SHARED_INSTALLATION",
+        "browserCaseCountMatchesApi": true,
+        "eachRenderedFindingAndRelatedEmployeeVerified": true,
+        "relatedEmployeeVisibleToFictionalHR": true,
+        "installationIdentifierPublished": false
+      }
+    },
+    {
+      "at": "2026-10-14T05:28:06.615115+00:00",
+      "name": "physical-office-pdf-visual-review",
+      "status": "PASS",
+      "detail": {
+        "pagesViewed": 1,
+        "singleFictionalEmployeeRow": true,
+        "allTableColumnsLegible": true,
+        "correctionBeforeAfterAndReviewerVisible": true,
+        "noClippedCellsObserved": true
+      }
+    },
+    {
+      "at": "2026-10-14T05:53:04.044092+00:00",
+      "name": "physical-functional-endurance-3.8.5",
+      "status": "PASS",
+      "detail": {
+        "startedAt": "2026-10-14T05:27:40.102489+00:00",
+        "elapsedSeconds": 1524,
+        "cycles": 5,
+        "backgroundForegroundCycles": 5,
+        "realInboxRefreshes": 5,
+        "canonicalWorkdaysAndRequestsUnchanged": true,
+        "noWorkdayWrites": true,
+        "noPendingOfficeMark": true,
+        "installedBuild": {
+          "version": "3.8.5",
+          "versionCode": 1475
+        },
+        "scope": "bounded twenty-minute functional endurance; not an unattended all-night guarantee"
+      }
     }
   ],
   "privacy": {
@@ -152,5 +1553,25 @@
     "personalScreenshotsPublished": false,
     "testLocationPermissions": "Fine, coarse and background temporarily denied; original grants retained privately for restoration"
   },
-  "updatedAt": "2026-10-13T23:21:07.283875+00:00"
+  "updatedAt": "2026-10-14T05:53:04.044092+00:00",
+  "previousInstalledBuilds": [
+    {
+      "version": "3.8.2",
+      "versionCode": 1465,
+      "sourceSha": "9483676bb1d7aeef0ce01cdc34334983e4b18892",
+      "apkSha256": "673ff1851f87ca5fd9b8e0212fe591d5ca4613bb49f8c8701987bbf21fa7cfd2"
+    },
+    {
+      "version": "3.8.3",
+      "versionCode": 1469,
+      "sourceSha": "643e56259ba86874ca35e9d1b3de6c7ecab8c7e8",
+      "apkSha256": "8886a1bcdec6c893818fb16f0ccd348004480eebd2488eee516f0b48114afe65"
+    },
+    {
+      "version": "3.8.4",
+      "versionCode": 1473,
+      "sourceSha": "2ad9a5077c3dc4c36ce1a562ddbf4a2ad360ded5",
+      "apkSha256": "a99aa1c058324886ca9a1e7bfeb5d96ac5e700cf0da246b0c89f77f7c2af0c8d"
+    }
+  ]
 }

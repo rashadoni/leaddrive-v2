@@ -1,0 +1,1187 @@
+{
+  "version": 1,
+  "status": "PASS",
+  "headSha": "0cb7a1f48bf0b08bba384b3f0aeade87e0030ae7",
+  "workflowSha": "e6caba2334eea11f1dd78febff153fdfd0cfc891",
+  "runId": "38484487031",
+  "runAttempt": "1",
+  "environment": "GitHub Linux, headed Chromium with Openbox under Xvfb, Next development server, isolated PostgreSQL 16",
+  "productionMutation": false,
+  "physicalAPK": "NOT_RUN",
+  "outboundEmail": "NOT_RUN",
+  "startedAt": "2026-10-13T23:38:38.709Z",
+  "completedAt": "2026-10-13T23:47:35.633Z",
+  "summary": {
+    "PASS": 62,
+    "FAIL": 0,
+    "NOT_RUN": 5
+  },
+  "limitations": [
+    "Browser navigation and action families are separate records; page opening does not prove every button.",
+    "Mobile workday and employee submission use the real mobile HTTP transport, not a physical APK or OS permissions.",
+    "Fictional disposable organizations, policies and coordinates only; no client settings, legal approvals or external delivery.",
+    "Current schema plus explicit attendance production migrations/guards; not a replay of every unrelated historical CRM migration.",
+    "Development rendering; production build, physical phone, provider delivery, QR camera and overnight soak are distinct gates."
+  ],
+  "sourceBindings": [
+    {
+      "path": ".github/workflows/mtm-attendance-e2e.yml",
+      "bytes": 7988,
+      "sha256": "2d3b7f30ece373116ff3a6aac8184835d3d376d2778ef2d2a105b1702db550d7"
+    },
+    {
+      "path": "scripts/mtm-attendance-browser-evidence.mjs",
+      "bytes": 92764,
+      "sha256": "2d1d4d60813780c0710a7edc2910712050bad69fabfdcf132dab54321067d7db"
+    },
+    {
+      "path": "scripts/fixtures/mtm-attendance-e2e.mjs",
+      "bytes": 8442,
+      "sha256": "e36dce0fdc8d9159460aa8b9316663f21cdbab481b5cbf1c6e5cbe814efb941d"
+    },
+    {
+      "path": "prisma/schema.prisma",
+      "bytes": 994170,
+      "sha256": "d24b7ee105dc4653d3a7c26d66e1912a7903c0bec3fae13634ba6a5fc7afbcf1"
+    },
+    {
+      "path": "prisma/migrations/20261013010000_mtm_attendance_rules/migration.sql",
+      "bytes": 2896,
+      "sha256": "808d08841d994fb5f3f90ec43bedb44b87c558a445e6ce3f7faf1102c67a8270"
+    },
+    {
+      "path": "prisma/migrations/20261013020000_mtm_attendance_deliveries/migration.sql",
+      "bytes": 3527,
+      "sha256": "539f011b01c5c791909629824265cdee7b7345f83d3c1ee47399b4039dc1b2ed"
+    },
+    {
+      "path": "prisma/migrations/20261013030000_mtm_attendance_hr_access/migration.sql",
+      "bytes": 251,
+      "sha256": "bb9b31bc337875a16c7d93ede4fed1c0457efcf317a089f759b38a931be4d909"
+    },
+    {
+      "path": "prisma/migrations/20261013040000_mtm_attendance_requests/migration.sql",
+      "bytes": 3568,
+      "sha256": "7fef1903aa36efbce9dc407b3a06104e6d7e920a7bdaef6382bf701c74cb8fb2"
+    },
+    {
+      "path": "prisma/migrations/20261013050000_mtm_attendance_corrections/migration.sql",
+      "bytes": 7656,
+      "sha256": "fd545ef8d8aabc2e42e62b2e16c41d7410e1206de55e4dbfa53fb1b8ae9763dd"
+    },
+    {
+      "path": "prisma/migrations/20261013060000_mtm_attendance_hr_recording/migration.sql",
+      "bytes": 1845,
+      "sha256": "b893618c21b99a902bad41d7b1e51f32283a8f4ffaf050a75d78e52aefde9acd"
+    },
+    {
+      "path": "prisma/migrations/20261013070000_mtm_attendance_branches/migration.sql",
+      "bytes": 6639,
+      "sha256": "1f5b0ddb1b3b4551c08da83963f2a85c5ebc8f40696033890a272066ef2cd5f0"
+    },
+    {
+      "path": "prisma/migrations/20261013080000_mtm_attendance_office_employees/migration.sql",
+      "bytes": 179,
+      "sha256": "ad8fb5cd937d60d8a450effc54595c01e6b88f288a4b70d5f2dff616376510af"
+    },
+    {
+      "path": "prisma/migrations/20261013090000_mtm_attendance_location_evidence/migration.sql",
+      "bytes": 10014,
+      "sha256": "fb9d93fcbf238c8db0940652e2042c11fb9633e7811e13ff170e495af31f8c7b"
+    },
+    {
+      "path": "prisma/migrations/20261013120000_mtm_attendance_risks/migration.sql",
+      "bytes": 5766,
+      "sha256": "46620fcd29a6eb93c81f9d78e27a46bc5f7ef39d6fe6de7a14f48d1c0d067e0f"
+    },
+    {
+      "path": "prisma/migrations/20261013140000_mtm_attendance_stream_integrity/migration.sql",
+      "bytes": 2481,
+      "sha256": "c135e0cab0bdeb1cd4320e076b0cc0d47a3590ee06d67fe11638c9b97ae1b854"
+    },
+    {
+      "path": "prisma/migrations/20261013150000_mtm_attendance_installation_approval/migration.sql",
+      "bytes": 7120,
+      "sha256": "7923555d625e41ccafda9624ce3e73260953d2d2c9e7b4a237554b80578e951b"
+    },
+    {
+      "path": "prisma/migrations/20261013160000_mtm_attendance_branch_qr/migration.sql",
+      "bytes": 2589,
+      "sha256": "e2bdae88abeceae377391046f68a8c97692b3efe5f9433ec4e11674482cf1b37"
+    },
+    {
+      "path": "prisma/migrations/20261013170000_mtm_attendance_reminders/migration.sql",
+      "bytes": 3177,
+      "sha256": "49988a39c33b77e8f7d43a5029e159b109f56e1c44c8c9730ec83a939c5dc1b6"
+    },
+    {
+      "path": "prisma/migrations/20261013180000_mtm_attendance_leave_balances/migration.sql",
+      "bytes": 4453,
+      "sha256": "e3c08ae60c9384e47297cf7bff8db92ea4f110f3bff8809202bd04613809a70a"
+    },
+    {
+      "path": "prisma/migrations/20261013190000_mtm_attendance_month_close/migration.sql",
+      "bytes": 9802,
+      "sha256": "39bd2e3c640dae3d9a9e4596d5c994af1ba3d9ad6dd95d5b2a599a9c9fb27486"
+    },
+    {
+      "path": "prisma/migrations/20261013200000_mtm_attendance_shift_plans/migration.sql",
+      "bytes": 4440,
+      "sha256": "d56b07a36c78ba5435ab8f2e1048c03ffcd6a597e8a141097e62823565f14d4b"
+    },
+    {
+      "path": "prisma/migrations/20261013201000_mtm_attendance_month_shift_fence/migration.sql",
+      "bytes": 516,
+      "sha256": "4ea12188cd3812be678e4fd2723b17734c8c6e3eaf9fe7265210f0388417dc9f"
+    },
+    {
+      "path": "prisma/migrations/20261013210000_mtm_attendance_overnight_corrections/migration.sql",
+      "bytes": 4698,
+      "sha256": "dbcf164cc4717eb8d1d45d00169ba03bb6cb469f64a5853abf5803323758f447"
+    },
+    {
+      "path": "prisma/migrations/20261013213000_mtm_attendance_reminders_rls_explicit/migration.sql",
+      "bytes": 401,
+      "sha256": "dce0f50a3f995c81d8406b5995189082f0d3410893afc441529c084fad1548f7"
+    },
+    {
+      "path": "prisma/migrations/20261013220000_mtm_attendance_automatic_participation/migration.sql",
+      "bytes": 11975,
+      "sha256": "10a36d608b920510b94d9cd9ef37d5c4644588c6f1850dd2406570623054319e"
+    },
+    {
+      "path": "src/app/(dashboard)/mtm/attendance/branch-qr/page.tsx",
+      "bytes": 167,
+      "sha256": "4627a682c14f34a23127c7d67c4dee086d038df9f428b11da6e4cb8bda8873d5"
+    },
+    {
+      "path": "src/app/(dashboard)/mtm/attendance/branches/page.tsx",
+      "bytes": 166,
+      "sha256": "0e7e0d81bfa79f3350faee88074c8a164b0fd3ec276f01b665398593ca67cc1b"
+    },
+    {
+      "path": "src/app/(dashboard)/mtm/attendance/branches/report/page.tsx",
+      "bytes": 183,
+      "sha256": "5e957f5ffb7f641a562e64df24ed2cc5e840bde349f9fdc83304f582db2ee6e8"
+    },
+    {
+      "path": "src/app/(dashboard)/mtm/attendance/decisions/page.tsx",
+      "bytes": 189,
+      "sha256": "2d2507c2603a882bbcd24490166e13f209441393ea5472d63fa3c78ae25ee1ad"
+    },
+    {
+      "path": "src/app/(dashboard)/mtm/attendance/employees/page.tsx",
+      "bytes": 173,
+      "sha256": "1667400a14ec9833bb5ee3cccd84255fd8d1df2ce30e6c578e7798833a3abe31"
+    },
+    {
+      "path": "src/app/(dashboard)/mtm/attendance/installations/page.tsx",
+      "bytes": 183,
+      "sha256": "25aa5b69e1b8698404a4a045c6fd8affbb104f32cb4caf9c0b31436acf5711cf"
+    },
+    {
+      "path": "src/app/(dashboard)/mtm/attendance/layout.tsx",
+      "bytes": 1188,
+      "sha256": "e93ca885e534c398a872eb14d381dd9fb9129d98f5dd3271e6609d7d8f3b7bf8"
+    },
+    {
+      "path": "src/app/(dashboard)/mtm/attendance/leave-balances/page.tsx",
+      "bytes": 184,
+      "sha256": "8c3358ac68979a5ff0d27d09a5da862d68a26c66b6a151e546fd6d005e4f334b"
+    },
+    {
+      "path": "src/app/(dashboard)/mtm/attendance/location-settings/page.tsx",
+      "bytes": 191,
+      "sha256": "5201d31100e7dc2bf09eef768d225483a83ebcbd9de1500dfcc15807d5a22421"
+    },
+    {
+      "path": "src/app/(dashboard)/mtm/attendance/months/page.tsx",
+      "bytes": 151,
+      "sha256": "e1c26d51d796d4ed0f6658ffcf807503c1fe8fefe879d25da42a75141851ba80"
+    },
+    {
+      "path": "src/app/(dashboard)/mtm/attendance/page.tsx",
+      "bytes": 596,
+      "sha256": "27ee2450a4a3d0d27831019a7077745cab00d6b01db0df1081d6f8fb9403d49c"
+    },
+    {
+      "path": "src/app/(dashboard)/mtm/attendance/recordings/page.tsx",
+      "bytes": 191,
+      "sha256": "5814eadaa151bbf8dd61c31cb69976732cbabbf909c2a243e1c71f2d0fbe12d7"
+    },
+    {
+      "path": "src/app/(dashboard)/mtm/attendance/requests/page.tsx",
+      "bytes": 179,
+      "sha256": "00b726d6a20909e64adae429c740403ec234e4c240f6e97bd127547312cd8f1c"
+    },
+    {
+      "path": "src/app/(dashboard)/mtm/attendance/review/page.tsx",
+      "bytes": 168,
+      "sha256": "3f0cefa7346948ae8c06a65c429e4ffffad6dc10e856ece5056df5a083bb41b3"
+    },
+    {
+      "path": "src/app/(dashboard)/mtm/attendance/shifts/page.tsx",
+      "bytes": 155,
+      "sha256": "edf7e5fd22b1b2a6e60b56caba35a81aae6648e291ad0724cf07b14f2bdf334a"
+    },
+    {
+      "path": "src/components/mtm/attendance-branch-report.tsx",
+      "bytes": 15264,
+      "sha256": "f1b1908ab63438182bdd868eb7085847c453d673f337f493159049063e2eda2f"
+    },
+    {
+      "path": "src/components/mtm/attendance-branches.tsx",
+      "bytes": 16387,
+      "sha256": "dec3cbfc4c9549bdb23410a9f0500419084a3dece800a16e2f4d74cd6f85c2f6"
+    },
+    {
+      "path": "src/components/mtm/attendance-calendar.tsx",
+      "bytes": 15384,
+      "sha256": "66a32d1ff381c87953b3178b011cc8bfa66c648eed48206333542b22a53d8401"
+    },
+    {
+      "path": "src/components/mtm/attendance-day-kinds.tsx",
+      "bytes": 19595,
+      "sha256": "49d3441587b27e2f2838209f88a024a4366e535aa025f9ae17e974977066a240"
+    },
+    {
+      "path": "src/components/mtm/attendance-decision-journal.tsx",
+      "bytes": 12736,
+      "sha256": "442264354b53f23220d5e11e9e7ff6f278b72a283b1f41cd6d80ef9143321e11"
+    },
+    {
+      "path": "src/components/mtm/attendance-deliveries.tsx",
+      "bytes": 21805,
+      "sha256": "aaad57b31ea676a52801088140c12e909926f7d66774b372fdb4ceb4a4ab4e18"
+    },
+    {
+      "path": "src/components/mtm/attendance-employees.tsx",
+      "bytes": 17050,
+      "sha256": "08d2d88ed360d9981e73bfd6691247c1b65e81b1b4fd45c198a67f4f47c887bb"
+    },
+    {
+      "path": "src/components/mtm/attendance-export-buttons.tsx",
+      "bytes": 4647,
+      "sha256": "d4dd766d64545cded345f33cffd3e82934d342a2737c337b005bdf54d5b209ff"
+    },
+    {
+      "path": "src/components/mtm/attendance-help.tsx",
+      "bytes": 1853,
+      "sha256": "042e9f9bd0465ca277891b1ddcd8c9eeac860474fff4ec5f48bf444dc1b5aff0"
+    },
+    {
+      "path": "src/components/mtm/attendance-hr-access.tsx",
+      "bytes": 10602,
+      "sha256": "50ff43e0df0997836838b6e66513c3c5c9a884fed7cae953abdbea9e72a3ca09"
+    },
+    {
+      "path": "src/components/mtm/attendance-hr-recording-form.tsx",
+      "bytes": 17166,
+      "sha256": "79721db32e299c15db8e829c5120170a13cbe99f628bf5ac4061d73ec51132e1"
+    },
+    {
+      "path": "src/components/mtm/attendance-installations.tsx",
+      "bytes": 13329,
+      "sha256": "d99df25a25921fea5ff67c94a2b72717a0fd2a3deda43144a07449a595be7f2e"
+    },
+    {
+      "path": "src/components/mtm/attendance-leave-balances.tsx",
+      "bytes": 18128,
+      "sha256": "8166ae261c5c811b374404a37e92f8d967508ab66036ff1f915019d4df70731e"
+    },
+    {
+      "path": "src/components/mtm/attendance-location-policy.tsx",
+      "bytes": 8763,
+      "sha256": "b83e9f8ebdae6bf3ae39e9edb84511d6319120494ab1cc229fc1adad238027e4"
+    },
+    {
+      "path": "src/components/mtm/attendance-months.tsx",
+      "bytes": 15047,
+      "sha256": "8174daf6efcdbb3147be2e1def5b2d7ab390a3f4e3f4ae7bbee4f53820d96a9d"
+    },
+    {
+      "path": "src/components/mtm/attendance-personal-views.tsx",
+      "bytes": 18483,
+      "sha256": "5623aab334f2739fa7a9b85932bbf3b500e501029526830380480a1d9ff8e996"
+    },
+    {
+      "path": "src/components/mtm/attendance-qr-display.tsx",
+      "bytes": 8695,
+      "sha256": "77598e95907927b4628cd789cc711d27c4dceb8827012b31d9ccf8aebd2949d6"
+    },
+    {
+      "path": "src/components/mtm/attendance-report-workspace.tsx",
+      "bytes": 34319,
+      "sha256": "ccfacd8648f694f451feb8ba47e689c8e74b7d0d7a14b30248e33d7c3226bd5a"
+    },
+    {
+      "path": "src/components/mtm/attendance-request-limits.tsx",
+      "bytes": 9687,
+      "sha256": "be81a0182bd44100b231be171ebea085b9e32d7e7e5e1493de8d9de16a85626c"
+    },
+    {
+      "path": "src/components/mtm/attendance-request-queue.tsx",
+      "bytes": 14382,
+      "sha256": "cf1a6109c25180c3ca35d6dd670959c4ad435db5d6bcb12df76a265c60ee3df2"
+    },
+    {
+      "path": "src/components/mtm/attendance-risk-review.tsx",
+      "bytes": 16131,
+      "sha256": "736992d7195706c83344c34df7bb0088b1c3db1a97f7de83b142cb567de41acc"
+    },
+    {
+      "path": "src/components/mtm/attendance-rules-form.tsx",
+      "bytes": 15219,
+      "sha256": "81c2926b02a5890f0a3a8732f93613adf6aa2e57a433a722d1e318913c53b969"
+    },
+    {
+      "path": "src/components/mtm/attendance-shifts.tsx",
+      "bytes": 14640,
+      "sha256": "4e66b89975b8c69756101a195a74bccc7e4bafc2a63f829974f8336eea9639a6"
+    },
+    {
+      "path": "src/lib/mtm/attendance-access.ts",
+      "bytes": 1630,
+      "sha256": "95c9560db43580cc30ac5999aaa8a16153a13f06e7080d454555e32539a560a3"
+    },
+    {
+      "path": "src/lib/mtm/attendance-attachment.ts",
+      "bytes": 7010,
+      "sha256": "416a5c7a7cb87cbada3ff99aa0e118ddcb51e4b610fb37ff4c907f38ed5a6eb2"
+    },
+    {
+      "path": "src/lib/mtm/attendance-branches-contract.ts",
+      "bytes": 1759,
+      "sha256": "843da2656fa858022236667ab203fbc24320da1fef681a09a708f44b5168e53b"
+    },
+    {
+      "path": "src/lib/mtm/attendance-branches-store.ts",
+      "bytes": 11423,
+      "sha256": "cb793ed933521628ec9ec9611ee8a8d75a98341378c28accaf5ab84cda5f2cd4"
+    },
+    {
+      "path": "src/lib/mtm/attendance-calendar.ts",
+      "bytes": 6052,
+      "sha256": "27fc90ea02790d7079a80ae1a40434512ae7fff65fb84fda6d111d79268b3881"
+    },
+    {
+      "path": "src/lib/mtm/attendance-correction-facts.ts",
+      "bytes": 4050,
+      "sha256": "bce4a95596626ce2a6da4a1b44eed514e75ab28680d6353777441b63ac87c353"
+    },
+    {
+      "path": "src/lib/mtm/attendance-day-kind-store.ts",
+      "bytes": 3488,
+      "sha256": "89b96f74ada6a794fa3e7e5ca1696482a5f9b70fe025050964da1cdefe143e02"
+    },
+    {
+      "path": "src/lib/mtm/attendance-day-kinds.ts",
+      "bytes": 5230,
+      "sha256": "eab922222c17bee90ef3c5b7fe0c725fa29b493a67dbba7ad968096efeb1a27e"
+    },
+    {
+      "path": "src/lib/mtm/attendance-decision-journal-contract.ts",
+      "bytes": 1737,
+      "sha256": "992f7378196b23bc19c8771661943152e3d2c83d4bcff9c9acd1ae34d340412f"
+    },
+    {
+      "path": "src/lib/mtm/attendance-decision-journal-store.ts",
+      "bytes": 5259,
+      "sha256": "616d06de33dac7bacfea8980084e5ce5e75a4047ad7e008c75fe5e621cfc2f9e"
+    },
+    {
+      "path": "src/lib/mtm/attendance-decision-journal-table.ts",
+      "bytes": 2746,
+      "sha256": "577328bea5e764edb864c704c969c6b8bda342118f7ab84e2dd9d1ce13334ae9"
+    },
+    {
+      "path": "src/lib/mtm/attendance-delivery-api.ts",
+      "bytes": 1206,
+      "sha256": "907dc044243381dfde795901724294796b9394eb467b6b6ba36c281736e47f1b"
+    },
+    {
+      "path": "src/lib/mtm/attendance-delivery-contract.ts",
+      "bytes": 3242,
+      "sha256": "5a2cf8328659624671d0ddea1c8ce7350799fe6091f8b7e528a917e06fe0dbb2"
+    },
+    {
+      "path": "src/lib/mtm/attendance-delivery-store.ts",
+      "bytes": 7954,
+      "sha256": "4e2bd7027a9b813e7ae78041010f9169da4da2475e8c0d1eda0f925514eca1e0"
+    },
+    {
+      "path": "src/lib/mtm/attendance-employee-contract.ts",
+      "bytes": 3277,
+      "sha256": "f111b05d7dcc4a7efb5ae112d7f8bba2914171f9acb66d354e6f54dc7f5a1010"
+    },
+    {
+      "path": "src/lib/mtm/attendance-employee-store.ts",
+      "bytes": 17362,
+      "sha256": "8e9134320fff78b714107027b27854f272f75078da9ec26f4ab70b12a29c7ec5"
+    },
+    {
+      "path": "src/lib/mtm/attendance-employment.ts",
+      "bytes": 2002,
+      "sha256": "fa4a362604c3a8b9df0cc2bcb9d7288e3b89bbedbd03dd5d89f546d12c6706df"
+    },
+    {
+      "path": "src/lib/mtm/attendance-export-contract.ts",
+      "bytes": 619,
+      "sha256": "4be849e1b08c61f83380c0f499f689479501986693c5ffc61e955a3680f7c48e"
+    },
+    {
+      "path": "src/lib/mtm/attendance-export.ts",
+      "bytes": 4592,
+      "sha256": "7bb4105c15a82da2c8c91488a025d5ea6975887a78f02026a7cffcd6763a25e8"
+    },
+    {
+      "path": "src/lib/mtm/attendance-hr-access.ts",
+      "bytes": 3954,
+      "sha256": "32c611d55b926686c933f7008829a56a447b03917bb68f014c0155c4a5d8ffc2"
+    },
+    {
+      "path": "src/lib/mtm/attendance-hr-recording-contract.ts",
+      "bytes": 1930,
+      "sha256": "1b1a30ee24690df57fb7efca3c4515890330f9b91b40eb516a23cc9afacbcf81"
+    },
+    {
+      "path": "src/lib/mtm/attendance-hr-recording.ts",
+      "bytes": 8836,
+      "sha256": "1b3907f32e55db20ed150d8873ef92ab65eab85de92cf2a3b7ac1e8cba68391b"
+    },
+    {
+      "path": "src/lib/mtm/attendance-identity-error.ts",
+      "bytes": 1591,
+      "sha256": "47003d100fd625bd74d65d7b65ff39d81eb220a1dcf63a9f3d9611a9360ceb13"
+    },
+    {
+      "path": "src/lib/mtm/attendance-installation-contract.ts",
+      "bytes": 2432,
+      "sha256": "ca39e8ae3f7fc131c73703867a6f71a77285ab436d4ee8daf20a244f82e2e9ea"
+    },
+    {
+      "path": "src/lib/mtm/attendance-installation-notification.ts",
+      "bytes": 285,
+      "sha256": "22519785d1c59e8eecc10f0630e17dea0471503824f5c5b5133a97af8cc47e2d"
+    },
+    {
+      "path": "src/lib/mtm/attendance-installation-notify.ts",
+      "bytes": 3586,
+      "sha256": "e037c48570f42654852feea5e8f80cb367a23df9e7ef51923b9491df92d8e6b8"
+    },
+    {
+      "path": "src/lib/mtm/attendance-installation-policy.ts",
+      "bytes": 5048,
+      "sha256": "80f3a2ed893065a6f9f0a594d1ee3c7269072193fdf96cf66f4ad59b9166fe63"
+    },
+    {
+      "path": "src/lib/mtm/attendance-installation-store.ts",
+      "bytes": 15155,
+      "sha256": "f7c3c3600251352118b2c319f0639ad4bb42aa443051bdd14def1f17b1950bfb"
+    },
+    {
+      "path": "src/lib/mtm/attendance-leave-balance.ts",
+      "bytes": 3892,
+      "sha256": "c0f6c1dfc33097b6bc36b6e62165f6f8976d1bcaa4ae1ab1c717cec94ee5c444"
+    },
+    {
+      "path": "src/lib/mtm/attendance-leave-contract.ts",
+      "bytes": 2920,
+      "sha256": "9189ad4f88edf03cf7e4a6b510d66834fea16bb7e57401c096f0ddc7bf8b853b"
+    },
+    {
+      "path": "src/lib/mtm/attendance-leave-store.ts",
+      "bytes": 8885,
+      "sha256": "58cff9da04ba1b700383702dd8e725cda36b4e8c0498166882f0e581badf52e8"
+    },
+    {
+      "path": "src/lib/mtm/attendance-location-contract.ts",
+      "bytes": 4742,
+      "sha256": "2e6ead897d40c4e611e471d51bd40ff9dddccea2ce9ae10a1e8ffe3c85f8cd37"
+    },
+    {
+      "path": "src/lib/mtm/attendance-location-report-store.ts",
+      "bytes": 1849,
+      "sha256": "e8ca7451c6b325000453c025a981a795515985a9055d64c4eb6dd1ca1a378640"
+    },
+    {
+      "path": "src/lib/mtm/attendance-location-report.ts",
+      "bytes": 7615,
+      "sha256": "51cfefee76fc77d9aab97267f1bc6fe97210ed58683622de926166ab6a55f424"
+    },
+    {
+      "path": "src/lib/mtm/attendance-location-store.ts",
+      "bytes": 15489,
+      "sha256": "0c227a043e22e308c004b0a9feebdd9edc54ff6e3cbe3f39f330e915720dde30"
+    },
+    {
+      "path": "src/lib/mtm/attendance-month-contract.ts",
+      "bytes": 3440,
+      "sha256": "989a70ccdd1bd5175ca1749127efca2441c3409cd9d8c02fafae464863b44051"
+    },
+    {
+      "path": "src/lib/mtm/attendance-month-guard.ts",
+      "bytes": 1133,
+      "sha256": "b16670a518a0a01081b48ba984689f636c2d5a1752c9c441515b71703b93005a"
+    },
+    {
+      "path": "src/lib/mtm/attendance-month-snapshot.ts",
+      "bytes": 3636,
+      "sha256": "480d68462233ef72f751de7977bffb916e726639df6c5db6f4b358d88b02c606"
+    },
+    {
+      "path": "src/lib/mtm/attendance-month-store.ts",
+      "bytes": 13609,
+      "sha256": "ee22c4677229c5900cc0959755879071a741ac018512f93bc8b3e30ec6c411c1"
+    },
+    {
+      "path": "src/lib/mtm/attendance-outside-rule.ts",
+      "bytes": 3509,
+      "sha256": "a639a7a87c61db6281de8996e941c10abc5bda962a317ceb58c47a255cf4b3fe"
+    },
+    {
+      "path": "src/lib/mtm/attendance-overtime.ts",
+      "bytes": 3391,
+      "sha256": "00ca0e0a1468e019baf02307e9ee7518a9551939a81a5c559dc901ef43580f43"
+    },
+    {
+      "path": "src/lib/mtm/attendance-participation-store.ts",
+      "bytes": 1044,
+      "sha256": "9e9c0305c5bed2e876b6f0b28d660f511c455394b73101867133411e7956bc53"
+    },
+    {
+      "path": "src/lib/mtm/attendance-participation.ts",
+      "bytes": 1401,
+      "sha256": "45ed906481765a5cabd9b8c5e094868aac125ba273b07fdce249aa83eddf5e65"
+    },
+    {
+      "path": "src/lib/mtm/attendance-presentation.ts",
+      "bytes": 6469,
+      "sha256": "edf4c9237bdb46590f2fce256c0289a88da3eade7a200ac4b7aa353adb155e6d"
+    },
+    {
+      "path": "src/lib/mtm/attendance-qr-contract.ts",
+      "bytes": 797,
+      "sha256": "f84980594aa779956998cc64ded6674e27aec9bdd8bdce6a6757293c4a26619f"
+    },
+    {
+      "path": "src/lib/mtm/attendance-qr-policy.ts",
+      "bytes": 2705,
+      "sha256": "758cc936c7920888b2b60de7b37368cd524d0c745d7166ce3f9eab9ab9272b8d"
+    },
+    {
+      "path": "src/lib/mtm/attendance-qr-security.ts",
+      "bytes": 2706,
+      "sha256": "2b984b07065f5b788f3577c7b3460f70c378a9454071cee940f1ff42122b0c3c"
+    },
+    {
+      "path": "src/lib/mtm/attendance-qr-store.ts",
+      "bytes": 7584,
+      "sha256": "cfd7dea1593e0e76396b7d56fb137b518a793f7f05c098bbf7ff22208287f88e"
+    },
+    {
+      "path": "src/lib/mtm/attendance-query.ts",
+      "bytes": 846,
+      "sha256": "9caa6ffc3491f972c37a16ce1ecccafdab064878172d71f73f5e815b2311c388"
+    },
+    {
+      "path": "src/lib/mtm/attendance-read-access.ts",
+      "bytes": 3121,
+      "sha256": "2dced84f615ae8e9616e21f78c34ab5ebc19a4d3b7bf127f3116005114ca66f2"
+    },
+    {
+      "path": "src/lib/mtm/attendance-reminder-contract.ts",
+      "bytes": 3505,
+      "sha256": "69f746ce3ff416003628b41115ab58998dbca0ed13a45dfd39a52be72c7fb9be"
+    },
+    {
+      "path": "src/lib/mtm/attendance-reminder-notification.ts",
+      "bytes": 2557,
+      "sha256": "360ce3eed1764fb3d5987f59a4d24c93b29f66549418d6c7171eef97e166e0e8"
+    },
+    {
+      "path": "src/lib/mtm/attendance-reminder-policy.ts",
+      "bytes": 3638,
+      "sha256": "91b9a18017c7084eaff5c4314eebe44b07d4682d778e4193a630cc9d305d2cd3"
+    },
+    {
+      "path": "src/lib/mtm/attendance-reminder-store.ts",
+      "bytes": 8770,
+      "sha256": "a6159c2fa2569a2c4ea7dfffe73e306b976b7d5cb5b8e3d8d915a6d509c88c6c"
+    },
+    {
+      "path": "src/lib/mtm/attendance-report-store.ts",
+      "bytes": 10963,
+      "sha256": "3f184df4d6646efd999cfcddd5c61aad42b3757662fbd5d688ff86cfd912caf7"
+    },
+    {
+      "path": "src/lib/mtm/attendance-report.ts",
+      "bytes": 24776,
+      "sha256": "d5e603bc8ff023c4e919fcc5e53b1b8da45c21d5366d45d58beabb8504dcef65"
+    },
+    {
+      "path": "src/lib/mtm/attendance-request-contract.ts",
+      "bytes": 5455,
+      "sha256": "ec4d5a57518f5f470b5b9ce41972cdf993dfa207c8940ee3a0942d732be7d23c"
+    },
+    {
+      "path": "src/lib/mtm/attendance-request-decision.ts",
+      "bytes": 8924,
+      "sha256": "212793b77a517b2766f99baf421c3d47c210bdc4deec4048449313958b35e163"
+    },
+    {
+      "path": "src/lib/mtm/attendance-request-http.ts",
+      "bytes": 805,
+      "sha256": "ac1752a923eafcaaa10b700945cf409d95b87a8d92e5af03b889be0b8e40b2f4"
+    },
+    {
+      "path": "src/lib/mtm/attendance-request-limit-store.ts",
+      "bytes": 5569,
+      "sha256": "bc80e8d6cd2935a87137d7ad89ebcacf901f411a7165a3e942b030a45b0a709b"
+    },
+    {
+      "path": "src/lib/mtm/attendance-request-limits.ts",
+      "bytes": 2107,
+      "sha256": "5498c439466680010843bac36475d87ccd027589eea6094612f3b53f4e28462e"
+    },
+    {
+      "path": "src/lib/mtm/attendance-request-notification.ts",
+      "bytes": 345,
+      "sha256": "fff0ad85ee59626d6677a7dad278cdb9f275bde4163c511e8d8ddee1bd5244f4"
+    },
+    {
+      "path": "src/lib/mtm/attendance-request-notify.ts",
+      "bytes": 2742,
+      "sha256": "aa2cf876c42aa073feca227a87f3483541f84a3c6c129acfe07b55997d06c112"
+    },
+    {
+      "path": "src/lib/mtm/attendance-request-projection.ts",
+      "bytes": 5855,
+      "sha256": "ad49ea5d4b288cb56c0be80d5023783b27e3c0704181d60a8ea94af304cf1a6e"
+    },
+    {
+      "path": "src/lib/mtm/attendance-request-quota.ts",
+      "bytes": 3449,
+      "sha256": "60dbbfd7eb4936a9108a376caaefe8c2b2a73de66d49bd4610a4bdb9e78645d5"
+    },
+    {
+      "path": "src/lib/mtm/attendance-request-review.ts",
+      "bytes": 4409,
+      "sha256": "24dcb192dd8ebfc8c57b45d4be3e39e708281797b5747706d1e5d83624045a3a"
+    },
+    {
+      "path": "src/lib/mtm/attendance-request-revocation.ts",
+      "bytes": 6007,
+      "sha256": "21bc3ea3a070dc3c0690b5819ceb59591a105b4ebc08317af7403c70c42dd2cc"
+    },
+    {
+      "path": "src/lib/mtm/attendance-request-store.ts",
+      "bytes": 12928,
+      "sha256": "ca160ebd9e9343ddb65b452cf7ea52c3a9e53273906852e5e45ec0aaa4182730"
+    },
+    {
+      "path": "src/lib/mtm/attendance-revocation-contract.ts",
+      "bytes": 658,
+      "sha256": "359ca53a6e4c982012c21c1f90f093ee639279d435c6cf5b30d257562435e7a8"
+    },
+    {
+      "path": "src/lib/mtm/attendance-risk-contract.ts",
+      "bytes": 3140,
+      "sha256": "a679a511c0958b18a4aee9250bfc4383a752df9324ab9e47bf5eefe27f1e042c"
+    },
+    {
+      "path": "src/lib/mtm/attendance-risk-detection.ts",
+      "bytes": 8318,
+      "sha256": "e9a89c8e0a05484573c7f1144481bef35cf13341213d093d972b0d7925891cbd"
+    },
+    {
+      "path": "src/lib/mtm/attendance-risk-notification.ts",
+      "bytes": 319,
+      "sha256": "13f8ffe0116ef3018ac65a1bbf4c084ac9d04ac28e45dcd83b34a563f1bad154"
+    },
+    {
+      "path": "src/lib/mtm/attendance-risk-notify.ts",
+      "bytes": 3249,
+      "sha256": "4639944cf486cc2c0d943d62551cd4055811023d9fb27a5ca23cf47a1be7c340"
+    },
+    {
+      "path": "src/lib/mtm/attendance-risk-policy.ts",
+      "bytes": 4209,
+      "sha256": "c21509fdc24c099bc3ec68a9404d3bb0809f7efc518f5380f03f9d3336e2295b"
+    },
+    {
+      "path": "src/lib/mtm/attendance-risk-review-store.ts",
+      "bytes": 9791,
+      "sha256": "0489a67894f872e91de69c10c9b38fc5dabd4d86fcf5bd547ed50b202453c8a8"
+    },
+    {
+      "path": "src/lib/mtm/attendance-risk-table.ts",
+      "bytes": 2632,
+      "sha256": "7b320e6173f3505e1100d5621af8881673e740204a41ec2be07ff7e268be3cbe"
+    },
+    {
+      "path": "src/lib/mtm/attendance-rule-store.ts",
+      "bytes": 3012,
+      "sha256": "86c55887e4af1f86da80efc22947245b3be0f809c9220c9e5804c00b7d5212c0"
+    },
+    {
+      "path": "src/lib/mtm/attendance-rules.ts",
+      "bytes": 2475,
+      "sha256": "a0dc65d906317b9bc639413005ef4237a0e40fc1549226960aa26b074ffd9c00"
+    },
+    {
+      "path": "src/lib/mtm/attendance-self-access.ts",
+      "bytes": 3066,
+      "sha256": "4d00bfaffc7e576520df1779a54d86e58e95f6f30f173fad5c20b0bd1444da15"
+    },
+    {
+      "path": "src/lib/mtm/attendance-shift-contract.ts",
+      "bytes": 3244,
+      "sha256": "5296c784f83971f9ecb98741d1582ac26e3fb8798de73b478137a249298530b1"
+    },
+    {
+      "path": "src/lib/mtm/attendance-shift-plan.ts",
+      "bytes": 3361,
+      "sha256": "c96db1f8200e1318ca83dfee328a8a7fb0f9bb10bed9c5c2dabbdccfe5ca43e8"
+    },
+    {
+      "path": "src/lib/mtm/attendance-shift-store.ts",
+      "bytes": 10682,
+      "sha256": "40709160744e549f5c5fb0f2bd4cd6ebb77b7b78140e818ef694f57c601ebf58"
+    },
+    {
+      "path": "src/lib/mtm/attendance-stream-integrity.ts",
+      "bytes": 2010,
+      "sha256": "3cde1d3a0f9d9c0e7895e427395a6e797af8375aca166f2992a4805b33776470"
+    },
+    {
+      "path": "src/lib/mtm/attendance-table.ts",
+      "bytes": 13085,
+      "sha256": "45170bca9ea0f4ba076112c638a4d1f1e14b39994934689ef73e01405c59b701"
+    },
+    {
+      "path": "src/lib/mtm/attendance-time-correction.ts",
+      "bytes": 10478,
+      "sha256": "c8593d625b73d46bf3be4ff895313eaa9e538506cef11b97aeb5e17f4c2e4b49"
+    },
+    {
+      "path": "src/lib/mtm/attendance-view-api.ts",
+      "bytes": 1306,
+      "sha256": "156c6a28fb6d93efec91a89c9ce0d3279357f425dcd13fa39f08e6f86e8dff25"
+    },
+    {
+      "path": "src/lib/mtm/attendance-view-contract.ts",
+      "bytes": 3626,
+      "sha256": "53699bd2c5ee27a89dae18a1492729034d328dd5eb991ef2c49ece1c2411c5d8"
+    },
+    {
+      "path": "src/lib/mtm/attendance-view-store.ts",
+      "bytes": 4165,
+      "sha256": "289b90cbb8320d9f9e39b26cab140515eab2bfe87c79d34ac4126b6745de252e"
+    }
+  ],
+  "qrLifecycle": {
+    "nativeWindowState": "minimized",
+    "visibilityState": "hidden",
+    "focusOverrideSession": "Playwright original main-frame session",
+    "qrAbsentWhileHidden": true,
+    "qrRestoredInForeground": true
+  },
+  "competingTabs": {
+    "stage": "complete",
+    "loads": [
+      {
+        "tab": "original",
+        "version": "2026-10-13T23:45:06.692Z",
+        "items": 33
+      },
+      {
+        "tab": "concurrent",
+        "version": "2026-10-13T23:45:06.692Z",
+        "items": 33
+      }
+    ]
+  },
+  "timings": [
+    {
+      "route": "/api/v1/mtm/attendance/leave-balances",
+      "phase": "navigation-to-complete-response",
+      "elapsedMs": 10757,
+      "status": 200
+    },
+    {
+      "route": "/api/v1/mtm/attendance/leave-balances",
+      "phase": "navigation-to-complete-response",
+      "elapsedMs": 18623,
+      "status": 200
+    }
+  ],
+  "workflowUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/38484487031",
+  "jobId": 115594735004,
+  "artifactId": 11860012505,
+  "sourceManifestSha256": "849f26c7cfb5ba7f627df4d5d75047ec3d7dc0ef2be7900554fdb1d66ad7fe41",
+  "coverageNotes": [
+    "62 named scenarios passed; navigation is separate from mutation evidence.",
+    "58-person fictional roster and six web roles; not a 300-person performance acceptance.",
+    "Actual mobile HTTP flows are not physical APK evidence; device results have a separate receipt.",
+    "Control inventory is not an exhaustive click or all-combinations claim.",
+    "This receipt records the tested SHA above; later documentation-only checkpoints do not alter that tested identity."
+  ],
+  "cases": [
+    {
+      "name": "fixture-rls",
+      "transport": "database",
+      "status": "PASS"
+    },
+    {
+      "name": "credentials-and-roles",
+      "transport": "authenticated-http",
+      "status": "PASS"
+    },
+    {
+      "name": "hr-read-grant",
+      "transport": "authenticated-http+database",
+      "status": "PASS"
+    },
+    {
+      "name": "mobile-workday",
+      "transport": "mobile-http+database",
+      "status": "PASS"
+    },
+    {
+      "name": "report-scope-exports",
+      "transport": "authenticated-http",
+      "status": "PASS"
+    },
+    {
+      "name": "views-crud",
+      "transport": "authenticated-http",
+      "status": "PASS"
+    },
+    {
+      "name": "deliveries-crud",
+      "transport": "authenticated-http+database",
+      "status": "PASS"
+    },
+    {
+      "name": "rules-calendar",
+      "transport": "authenticated-http",
+      "status": "PASS"
+    },
+    {
+      "name": "day-kinds-quotas",
+      "transport": "authenticated-http",
+      "status": "PASS"
+    },
+    {
+      "name": "employee-participation",
+      "transport": "authenticated-http+database",
+      "status": "PASS"
+    },
+    {
+      "name": "employment-history",
+      "transport": "authenticated-http+database",
+      "status": "PASS"
+    },
+    {
+      "name": "branches-assignments",
+      "transport": "authenticated-http",
+      "status": "PASS"
+    },
+    {
+      "name": "geo-policy-consent",
+      "transport": "authenticated-http+mobile-http",
+      "status": "PASS"
+    },
+    {
+      "name": "requests-decisions",
+      "transport": "mobile-http+authenticated-http+database",
+      "status": "PASS"
+    },
+    {
+      "name": "hr-recording-batch",
+      "transport": "authenticated-http+database",
+      "status": "PASS"
+    },
+    {
+      "name": "installation-decisions",
+      "transport": "mobile-http+authenticated-http",
+      "status": "PASS"
+    },
+    {
+      "name": "shift-day-night",
+      "transport": "authenticated-http",
+      "status": "PASS"
+    },
+    {
+      "name": "leave-policy-profile",
+      "transport": "authenticated-http",
+      "status": "PASS"
+    },
+    {
+      "name": "month-freeze",
+      "transport": "authenticated-http+database",
+      "status": "PASS"
+    },
+    {
+      "name": "risk-dismissal",
+      "transport": "authenticated-http+database",
+      "status": "PASS"
+    },
+    {
+      "name": "page:report",
+      "transport": "browser-navigation",
+      "status": "PASS"
+    },
+    {
+      "name": "page:requests",
+      "transport": "browser-navigation",
+      "status": "PASS"
+    },
+    {
+      "name": "page:decisions",
+      "transport": "browser-navigation",
+      "status": "PASS"
+    },
+    {
+      "name": "page:employees",
+      "transport": "browser-navigation",
+      "status": "PASS"
+    },
+    {
+      "name": "page:branches",
+      "transport": "browser-navigation",
+      "status": "PASS"
+    },
+    {
+      "name": "page:branches/report",
+      "transport": "browser-navigation",
+      "status": "PASS"
+    },
+    {
+      "name": "page:shifts",
+      "transport": "browser-navigation",
+      "status": "PASS"
+    },
+    {
+      "name": "page:leave-balances",
+      "transport": "browser-navigation",
+      "status": "PASS"
+    },
+    {
+      "name": "page:months",
+      "transport": "browser-navigation",
+      "status": "PASS"
+    },
+    {
+      "name": "page:installations",
+      "transport": "browser-navigation",
+      "status": "PASS"
+    },
+    {
+      "name": "page:branch-qr",
+      "transport": "browser-navigation",
+      "status": "PASS"
+    },
+    {
+      "name": "page:review",
+      "transport": "browser-navigation",
+      "status": "PASS"
+    },
+    {
+      "name": "page:location-settings",
+      "transport": "browser-navigation",
+      "status": "PASS"
+    },
+    {
+      "name": "page:recordings",
+      "transport": "browser-navigation",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-report-tabs-filters-pagination",
+      "transport": "browser-action+database-backed-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-views-save-rename-delete-cancel",
+      "transport": "browser-action+database-backed-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-employee-search-switch-history",
+      "transport": "browser-action+database-backed-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-branch-create-edit-archive-cancel",
+      "transport": "browser-action+database-backed-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-request-approve-reject-revoke",
+      "transport": "browser-action+mobile-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-qr-toggle-refresh-hide",
+      "transport": "browser-action+database-backed-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-settings-hr-catalogue-quotas",
+      "transport": "browser-action+database-backed-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-delivery-create-edit-cancel-delete",
+      "transport": "browser-action+database-backed-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-batch-recording-and-decision-journal",
+      "transport": "browser-action+database-backed-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-shift-publish-cancel-and-leave-profile",
+      "transport": "browser-action+database-backed-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-geo-off-legal-block-and-branch-summary",
+      "transport": "browser-action+database-backed-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-installation-approve-revoke-history",
+      "transport": "browser-action+mobile-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-month-frozen-download",
+      "transport": "browser-action+database-backed-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-rules-calendar-crud",
+      "transport": "browser-action+database-backed-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-hr-grant-revoke",
+      "transport": "browser-action+authenticated-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-kind-create-archive-restore",
+      "transport": "browser-action+database-backed-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-employment-record",
+      "transport": "browser-action+database-backed-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-primary-branch-assignment",
+      "transport": "browser-action+database-backed-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-risk-dismissal",
+      "transport": "browser-action+synthetic-risk-fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-leave-policy-publication",
+      "transport": "browser-action+database-backed-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-month-preview-close-blockers",
+      "transport": "browser-action+synthetic-historical-facts",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-sidebar-click-traversal",
+      "transport": "browser-navigation-click",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-branch-lost-acknowledgement-retry",
+      "transport": "browser-action+real-commit-response-drop",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-catalogue-competing-tabs",
+      "transport": "browser-action+database-backed-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-private-document-download-and-permissions",
+      "transport": "mobile-multipart-http+browser-download+role-http",
+      "status": "PASS"
+    },
+    {
+      "name": "browser-locales-mobile-width",
+      "transport": "browser-navigation+layout",
+      "status": "PASS"
+    },
+    {
+      "name": "hr-revoke-fresh-session",
+      "transport": "authenticated-http",
+      "status": "PASS"
+    },
+    {
+      "name": "final-privacy-invariants",
+      "transport": "authenticated-http+database",
+      "status": "PASS"
+    },
+    {
+      "name": "physical-apk-os-permissions",
+      "status": "NOT_RUN",
+      "reason": "Separate S23 device run; this workflow has no USB phone"
+    },
+    {
+      "name": "external-email-delivery",
+      "status": "NOT_RUN",
+      "reason": "No recipients/providers; schedules are disabled and no cron is invoked"
+    },
+    {
+      "name": "camera-qr-offline-replay",
+      "status": "NOT_RUN",
+      "reason": "Actual camera, offline Android queue, kill/restart and OS permission flows need the physical device"
+    },
+    {
+      "name": "overnight-soak",
+      "status": "NOT_RUN",
+      "reason": "Bounded CI scenarios; this is not an overnight endurance run"
+    },
+    {
+      "name": "all-control-combinations",
+      "status": "NOT_RUN",
+      "reason": "Finite named action families; inventory alone does not prove every control or all possible combinations"
+    }
+  ],
+  "integrationCheckpoint": {
+    "testedHead": "0cb7a1f48bf0b08bba384b3f0aeade87e0030ae7",
+    "pullRequest": 751,
+    "requiredChecks": {
+      "pr-scope": "PASS",
+      "static-checks": "PASS",
+      "typecheck": "PASS",
+      "runner-policy": "PASS",
+      "scan": "PASS"
+    },
+    "staticChecks": {
+      "runId": "38484487034",
+      "jobId": "115595006502",
+      "durationSeconds": 1492
+    },
+    "mergeCommit": "ebd7dc90af73cca4b6d5d901bf1a170355d3e86b",
+    "mergedAt": "2026-10-13T23:55:19Z",
+    "e2eRepeated": false,
+    "deploymentAcceptance": "Not established by this CI receipt"
+  }
+}

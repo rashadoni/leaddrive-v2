@@ -1,0 +1,27 @@
+{
+  "baselineSha": "ebd7dc90af73cca4b6d5d901bf1a170355d3e86b",
+  "headSha": "6431d74c7cd500a10a9ea36b55a9f718b275c1af",
+  "red": {
+    "status": "OBSERVED_EXPECTED_FAILURE",
+    "tests": 2,
+    "zones": [
+      "Asia/Baku",
+      "America/New_York"
+    ],
+    "reportReadable": true,
+    "processSucceeded": false,
+    "expectedSignatureCount": 2,
+    "expectedTestCount": 2,
+    "prismaCode": "P2010",
+    "sqlState": "23514",
+    "code": "MTM_ATTENDANCE_MARK_EVENT_MISMATCH"
+  },
+  "green": {
+    "status": "PASS",
+    "passed": 53,
+    "failed": 0,
+    "nonUtcRegressionPassed": 2,
+    "utcGuardAndRiskPassed": 5
+  },
+  "productionMutation": false
+}

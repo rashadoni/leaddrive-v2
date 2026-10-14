@@ -1,0 +1,18 @@
+{
+  "headSha": "61d6b02aa976fe8c1e6a80c16b1deb9f10cde3bb",
+  "runId": 38499198535,
+  "jobId": 115642386769,
+  "step": "Unit tests vs baseline (BLOCKING)",
+  "newFailingFiles": 1,
+  "test": "src/__tests__/mtm-date-formatting-contract.test.ts",
+  "assertion": "src/lib/timezone.ts formats dates only through the shared helper",
+  "offender": "src/lib/timezone.ts:39",
+  "cause": "Required existing machine-formatter annotation was replaced by plain explanatory comment during caching refactor",
+  "repairSha": "32b90a2a6a4d56322f6300ecc03c235a8b1329fc",
+  "runtimeLogicChangedByRepair": false,
+  "contractOrBaselineChanged": false,
+  "targetedTestsPassed": 64,
+  "lintErrors": 0,
+  "lintWarnings": 1,
+  "lintWarning": "unused directive: editor rule excludes library but existing CI contract intentionally recognizes this annotation"
+}

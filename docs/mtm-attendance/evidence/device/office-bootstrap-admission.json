@@ -1,0 +1,32 @@
+{
+  "name": "office-bootstrap-admission-diagnostic",
+  "httpStatus": 200,
+  "success": true,
+  "code": null,
+  "tenant": "mtm-attendance-phone-v1",
+  "principal": {
+    "id": "e01fd028-d0a9-4f78-879b-bdfc7517d0f1",
+    "role": "EMPLOYEE"
+  },
+  "routeField": {
+    "enabled": true,
+    "scopeVersion": null
+  },
+  "manifest": {
+    "tenant": {
+      "id": "mtm-attendance-phone-v1",
+      "timezone": "Asia/Baku"
+    },
+    "principal": {
+      "id": "e01fd028-d0a9-4f78-879b-bdfc7517d0f1",
+      "role": "EMPLOYEE"
+    },
+    "routeField": {
+      "enabled": false,
+      "scopeVersion": null
+    },
+    "streams": []
+  },
+  "attendanceWorkday": true,
+  "attendanceMarkVersion": 1
+}

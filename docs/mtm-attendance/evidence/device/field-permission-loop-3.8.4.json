@@ -1,0 +1,16 @@
+{
+  "installedBuild": {
+    "version": "3.8.4",
+    "versionCode": 1473
+  },
+  "confirmedWorkday": true,
+  "locationPermissionDenied": true,
+  "requestPermissionActivityCountInBoundedEvents": 48,
+  "eventWindowFirst": "10-14 07:42:57.478",
+  "eventWindowLast": "10-14 07:43:02.129",
+  "repeatedResumeRequestCycle": true,
+  "mainActivityRemovedByAndroid": true,
+  "appForceStoppedToEndLoop": true,
+  "workdayNotFinished": true,
+  "realCompanyMutations": 0
+}

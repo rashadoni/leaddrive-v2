@@ -1,0 +1,44 @@
+{
+  "sourceSha": "ef42813a6afb883108f13b0247c497dda34a9879",
+  "runId": "38497428853",
+  "artifactId": 11865145995,
+  "runAttempt": 1,
+  "summary": {
+    "PASS": 60,
+    "FAIL": 2,
+    "NOT_RUN": 5
+  },
+  "observations": [
+    {
+      "code": "P2028",
+      "expired": true,
+      "elapsedMs": 28456
+    },
+    {
+      "code": "P2028",
+      "expired": true,
+      "elapsedMs": 15131
+    },
+    {
+      "code": "P2028",
+      "expired": true,
+      "elapsedMs": 21156
+    }
+  ],
+  "failedCases": [
+    {
+      "name": "browser-shift-publish-cancel-and-leave-profile",
+      "status": "FAIL",
+      "diagnostic": "GET leave-balances: received 500 MTM_ATTENDANCE_REQUEST_FAILED",
+      "sourceLine": "123"
+    },
+    {
+      "name": "browser-leave-policy-publication",
+      "status": "FAIL",
+      "diagnostic": "GET /api/v1/mtm/attendance/leave-balances: expected 200, received 500 MTM_ATTENDANCE_REQUEST_FAILED",
+      "sourceLine": "76"
+    }
+  ],
+  "rawLogsPublished": false,
+  "productionMutation": false
+}

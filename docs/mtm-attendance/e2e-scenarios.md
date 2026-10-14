@@ -311,3 +311,45 @@ PASS locally: module syntax, runner policy (62 workflows), diff check. Heavy
 verification remains **NOT_RUN locally**. The overall suite still requires a
 successful hosted run; the prior green runs of the competing-tab case do not
 override this latest failure.
+
+## Sixth hosted evidence — 2026-10-14 (Asia/Baku)
+
+Run [38484487031](https://github.com/rashadoni/leaddrive-v2/actions/runs/38484487031),
+exact head `0cb7a1f48bf0b08bba384b3f0aeade87e0030ae7`, completed
+**PASS: 62 PASS, 0 FAIL, 5 NOT_RUN**. Artifact `11860012505` contains the complete
+sanitized manifest and fictional screenshots. The compact repository receipt is
+[`evidence/e2e/final-hosted-run.json`](evidence/e2e/final-hosted-run.json), with
+every named result and transport, tested-source hashes, original manifest hash,
+QR lifecycle metadata, competing-tab revisions and retained response timings.
+
+Both previously failing lifecycle cases passed in the same run: Chromium really
+minimized and hid the document, the QR disappeared and returned in foreground;
+two real catalogue tabs loaded the same revision, the newer write succeeded,
+the stale write received 409, and explicit reload preserved the newer value.
+All fourteen route reads/navigation and every implemented action family passed.
+No application permission or product assertion was weakened during stabilization.
+
+The five explicit NOT_RUN cases remain physical APK/OS permissions, external
+email, camera/offline Android replay, overnight endurance and all possible
+control combinations. The fixture has 58 people; this is not a 300-person
+performance acceptance. The two leave responses took 10.8 and 18.6 seconds in
+the development CI environment, so this pass does not establish a production
+latency guarantee. Production Redis admission and a production-rendered browser
+suite remain outside this development-server harness.
+
+At receipt creation, typecheck, scope, runner policy and secret scan had passed;
+the separate required static-checks job was still running. The successful E2E
+was not repeated. This is evidence for the exact tested SHA, not a claim about
+the later documentation-only commit containing this receipt.
+
+### Subsequent required-check and merge checkpoint
+
+At 2026-10-13 23:55 UTC the remaining required static-checks job
+`115595006502` finished PASS (24m52s). All five required checks were green for
+exact head `0cb7a1f48bf0b08bba384b3f0aeade87e0030ae7`, alongside the sixth
+browser/PG run. PR 751 was merged at 23:55:19 UTC as
+`ebd7dc90af73cca4b6d5d901bf1a170355d3e86b`. The successful E2E was not repeated.
+This supersedes only the earlier pending integration-gate state; all five
+NOT_RUN cases and the physical/production limitations remain in force. The
+receipt includes this separate integration checkpoint and makes no deployment
+acceptance claim.

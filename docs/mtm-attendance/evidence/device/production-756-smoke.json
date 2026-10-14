@@ -1,0 +1,15 @@
+{
+  "at": "2026-10-14T03:30:18.261Z",
+  "name": "production-attendance-postrelease-smoke",
+  "status": "PASS",
+  "detail": {
+    "sourceSha": "8c54afe632181b15d4bb4cb88ee1953a6a72cd4f",
+    "tenant": "mtm-attendance-phone",
+    "ping": 200,
+    "buildInfo": 200,
+    "leaveRead": 200,
+    "leaveReadMilliseconds": 1260,
+    "fictionalEmployeesAutomaticallyIncluded": 3,
+    "mutations": 0
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "transport": "actual-production-browser-and-authenticated-http",
+  "tenant": "mtm-attendance-phone",
+  "pages": 2,
+  "sidebarDestinations": 13,
+  "automaticEmployees": 3,
+  "allInitiallyIncluded": true,
+  "pageErrors": 0,
+  "artifactSha": "2fc52646f2e9d31ce50320dc872654c55f51c41c",
+  "recordedAt": "2026-10-13T23:39:31.852962+00:00",
+  "screenshot": "production-automatic-employees.png",
+  "reportDataRender": "Not asserted by this two-page navigation case; separate HR HTTP readback confirmed zero facts"
+}
