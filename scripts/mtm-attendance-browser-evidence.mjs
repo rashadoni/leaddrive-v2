@@ -526,7 +526,8 @@ try {
     await page.getByTestId('attendance-day-table').waitFor({ timeout: 120000 })
     // Scope to the timesheet: the sidebar has its own menu search field.
     const sheet = page.getByTestId('attendance-timesheet')
-    const team = sheet.getByLabel(t('reportTeam'), { exact: true })
+    // The saved-form and delivery editors below have their own team fields.
+    const team = sheet.locator(`select[aria-label="${t('reportTeam')}"]`)
     await team.selectOption(fixture.team.id)
     await poll(async () => await team.inputValue() === fixture.team.id, 'Team filter applied')
     await sheet.locator('input[type="search"]').fill(fixture.users.employee.name)
