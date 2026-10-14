@@ -271,7 +271,8 @@ describe("nav re-tag", () => {
   it("every nav item is tagged with a group-module or a dedicated capability", () => {
     for (const i of navItems) {
       if (i.module) expect([...GROUP_MODULE_IDS], i.href).toContain(i.module)
-      else expect(i.capability, i.href).toBeDefined()
+      // Personnel is its own tenant capability (2026-10-14), not part of the MTM module.
+      else expect(i.capability ?? i.tenantCapability, i.href).toBeDefined()
     }
   })
   it("AI/VoIP items carry the addon flag", () => {
