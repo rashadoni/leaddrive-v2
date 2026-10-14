@@ -23,7 +23,18 @@ const t = (key, vars = {}) => {
   assert.equal(typeof messages[key], 'string', `Missing label ${key}`)
   return messages[key].replace(/\{(\w+)\}/g, (_, name) => String(vars[name] ?? `{${name}}`))
 }
-const routes = ['', 'requests', 'decisions', 'employees', 'branches', 'branches/report', 'shifts', 'leave-balances', 'months', 'installations', 'branch-qr', 'review', 'location-settings', 'recordings']
+const routes = ['', 'timesheet', 'settings', 'requests', 'decisions', 'employees', 'branches', 'branches/report', 'shifts', 'leave-balances', 'months', 'installations', 'branch-qr', 'review', 'location-settings', 'recordings']
+// The former pages are tabs of the four Personnel destinations now. Each route
+// key keeps its case name; the value is [address, sidebar destination].
+const destinations = {
+  '': ['', ''], timesheet: ['timesheet?tab=days', 'timesheet'], settings: ['settings?tab=hours', 'settings'], requests: ['requests', ''],
+  decisions: ['timesheet?tab=decisions', 'timesheet'], employees: ['people?tab=employees', 'people'], branches: ['people?tab=branches', 'people'],
+  'branches/report': ['timesheet?tab=branches', 'timesheet'], shifts: ['settings?tab=shifts', 'settings'], 'leave-balances': ['settings?tab=leave', 'settings'],
+  months: ['timesheet?tab=months', 'timesheet'], installations: ['people?tab=phones', 'people'], 'branch-qr': ['settings?tab=qr', 'settings'],
+  review: ['settings?tab=review', 'settings'], 'location-settings': ['settings?tab=location', 'settings'], recordings: ['recordings', null],
+  'day-kinds': ['settings?tab=day-kinds', 'settings'], 'request-limits': ['settings?tab=requests', 'settings'], 'hr-access': ['settings?tab=access', 'settings'],
+}
+const personnelHrefs = ['/mtm/attendance', '/mtm/attendance/timesheet', '/mtm/attendance/people', '/mtm/attendance/settings']
 const caseNames = ['fixture-rls', 'credentials-and-roles', 'hr-read-grant', 'mobile-workday', 'report-scope-exports', 'views-crud', 'deliveries-crud', 'rules-calendar', 'day-kinds-quotas', 'employee-participation', 'employment-history', 'branches-assignments', 'geo-policy-consent', 'requests-decisions', 'hr-recording-batch', 'installation-decisions', 'shift-day-night', 'leave-policy-profile', 'month-freeze', 'risk-dismissal', ...routes.map(route => `page:${route || 'report'}`), 'browser-report-tabs-filters-pagination', 'browser-views-save-rename-delete-cancel', 'browser-employee-search-switch-history', 'browser-branch-create-edit-archive-cancel', 'browser-request-approve-reject-revoke', 'browser-qr-toggle-refresh-hide', 'browser-locales-mobile-width', 'hr-revoke-fresh-session', 'final-privacy-invariants', 'browser-settings-hr-catalogue-quotas', 'browser-delivery-create-edit-cancel-delete', 'browser-batch-recording-and-decision-journal', 'browser-shift-publish-cancel-and-leave-profile', 'browser-geo-off-legal-block-and-branch-summary', 'browser-installation-approve-revoke-history', 'browser-month-frozen-download']
 caseNames.push('browser-rules-calendar-crud', 'browser-hr-grant-revoke', 'browser-kind-create-archive-restore', 'browser-employment-record', 'browser-primary-branch-assignment', 'browser-risk-dismissal', 'browser-leave-policy-publication', 'browser-month-preview-close-blockers', 'browser-sidebar-click-traversal', 'browser-branch-lost-acknowledgement-retry', 'browser-catalogue-competing-tabs', 'browser-private-document-download-and-permissions')
 const manifest = {
@@ -107,9 +118,16 @@ function playwrightFocusSession(targetPage) {
   return frame._client
 }
 async function readyPage(path) {
-  await page.goto(`/mtm/attendance${path ? `/${path}` : ''}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
+  const target = path in destinations ? destinations[path][0] : path
+  await page.goto(`/mtm/attendance${target ? `/${target}` : ''}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
   await page.locator('h1').first().waitFor({ timeout: 120000 })
   await poll(async () => !(await page.locator('[aria-busy="true"]').count()), 'Page still busy', 120000)
+}
+async function openTimesheetExtras() {
+  await readyPage('timesheet')
+  const extras = page.getByTestId('attendance-timesheet-extras')
+  if ((await extras.getAttribute('open')) === null) await extras.locator('summary').click()
+  await page.getByTestId('attendance-personal-views').waitFor({ timeout: 120000 })
 }
 async function readyLeaveBalances() {
   const started = Date.now()
@@ -451,7 +469,7 @@ try {
     assert.equal((await fixture.admin.mtmAgentWorkday.findUniqueOrThrow({ where: { id: state.workdayId } })).status, 'COMPLETED')
     return { detector: 'synthetic seeded case; detector logic NOT_RUN here', reviewPreservesWorkday: true }
   })
-  const pageEndpoints = { '': '/report', requests: '/requests', decisions: '/decisions', employees: '/employees', branches: '/branches', 'branches/report': '/report', shifts: '/shifts', 'leave-balances': '/leave-balances', months: '/months', installations: '/installations', 'branch-qr': '/branch-qr', review: '/review', 'location-settings': '/location-policy', recordings: '/recordings' }
+  const pageEndpoints = { '': '/report', timesheet: '/report', settings: '/rules', requests: '/requests', decisions: '/decisions', employees: '/employees', branches: '/branches', 'branches/report': '/report', shifts: '/shifts', 'leave-balances': '/leave-balances', months: '/months', installations: '/installations', 'branch-qr': '/branch-qr', review: '/review', 'location-settings': '/location-policy', recordings: '/recordings' }
   for (const route of routes) await run(`page:${route || 'report'}`, 'browser-navigation', async () => {
     const loaded = page.waitForResponse(response => new URL(response.url()).pathname === `${apiRoot}${pageEndpoints[route]}` && response.request().method() === 'GET', { timeout: 120000 })
     void loaded.catch(() => {})
@@ -461,34 +479,47 @@ try {
     assert.equal(errors.filter(text => [t('reportLoadError'), t('reportAccessUnavailable')].includes(text.trim())).length, 0)
     // Inventory is evidence of discoverable controls, not a claim they were clicked.
     const controls = await page.locator('main button, main a, main input, main select, main textarea').evaluateAll(elements => elements.map(element => ({ tag: element.tagName.toLowerCase(), role: element.getAttribute('role'), type: element.getAttribute('type'), name: (element.getAttribute('aria-label') || element.textContent || '').trim().slice(0, 160), href: element.getAttribute('href'), disabled: element.hasAttribute('disabled') })))
-    manifest.controls.push({ route: `/mtm/attendance${route ? `/${route}` : ''}`, coverage: 'inventory-only; see named action cases for exercised controls', controls })
+    manifest.controls.push({ route: `/mtm/attendance${destinations[route][0] ? `/${destinations[route][0]}` : ''}`, coverage: 'inventory-only; see named action cases for exercised controls', controls })
     await page.screenshot({ path: `${output}/page-${route.replaceAll('/', '-') || 'report'}.png`, fullPage: false })
-    if (route !== 'recordings') {
-      const link = page.locator(`aside a[href="/mtm/attendance${route ? `/${route}` : ''}"]`)
-      assert.equal(await link.count(), 1, 'Exactly one HR sidebar destination')
+    const section = destinations[route][1]
+    if (section !== null) {
+      const link = page.locator(`aside a[href="/mtm/attendance${section ? `/${section}` : ''}"]`)
+      assert.equal(await link.count(), 1, 'Exactly one Personnel sidebar destination')
       assert.equal(await link.getAttribute('aria-current'), 'page')
     }
     return { headingVisible: true, realDataRead: true, controlsInventoried: controls.length }
   })
   await run('browser-report-tabs-filters-pagination', 'browser-action+database-backed-http', async () => {
-    await readyPage('')
+    await readyPage('timesheet')
     await page.getByTestId('attendance-day-table').waitFor()
     assert.equal(await page.getByTestId('attendance-day-row').count(), 50)
     await button('reportNext').click()
     await poll(async () => (await page.getByTestId('attendance-day-row').count()) < 50, 'Report next page')
     await button('reportPrevious').click()
-    for (const key of ['reportMonth', 'reportLateEarly', 'reportAbsences', 'overtimeTitle', 'reportJournal', 'reportDay']) {
-      const tab = button(key, page.getByRole('group', { name: t('reportForm'), exact: true }))
-      await tab.click()
-      assert.equal(await tab.getAttribute('aria-pressed'), 'true')
-      if (key === 'reportMonth') await page.getByTestId('attendance-month-grid').waitFor({ timeout: 120000 })
+    // Each report form is a tab link of Personnel → Timesheet now.
+    for (const tab of ['month', 'late', 'absence', 'overtime', 'journal', 'days']) {
+      const link = page.getByTestId(`attendance-tab-${tab}`)
+      await link.click()
+      await page.waitForURL(url => url.searchParams.get('tab') === tab, { timeout: 120000 })
+      await poll(async () => await page.getByTestId(`attendance-tab-${tab}`).getAttribute('aria-current') === 'page', `Tab ${tab} selected`, 120000)
+      if (tab === 'month') {
+        await page.getByTestId('attendance-month-grid').waitFor({ timeout: 120000 })
+        // The day card opens from a real cell and links to that day and its correction.
+        await page.getByTestId('attendance-month-cell').first().click()
+        const card = page.getByTestId('attendance-day-popover')
+        await card.waitFor()
+        assert.equal(await card.locator('a').count(), 2)
+        await page.keyboard.press('Escape')
+      }
     }
-    await page.locator('#attendance-report-from').fill(today)
-    await page.locator('#attendance-report-to').fill(today)
-    await clickResponse(button('reportApply'), `${apiRoot}/report`, 'GET')
-    await page.locator('#attendance-report-team').selectOption(fixture.team.id)
-    await page.locator('#attendance-report-employee').selectOption(fixture.agents.employee.id)
-    assert.equal(await page.getByTestId('attendance-day-row').count(), 1)
+    await page.getByTestId('attendance-day-table').waitFor({ timeout: 120000 })
+    const reloaded = page.waitForResponse(response => new URL(response.url()).pathname === `${apiRoot}/report` && response.request().method() === 'GET', { timeout: 120000 })
+    await page.getByLabel(t('reportFrom'), { exact: true }).fill(today)
+    assert.equal((await reloaded).status(), 200)
+    await page.getByLabel(t('reportTo'), { exact: true }).fill(today)
+    await page.getByLabel(t('reportTeam'), { exact: true }).selectOption(fixture.team.id)
+    await page.locator('input[type="search"]').fill(fixture.users.employee.name)
+    await poll(async () => (await page.getByTestId('attendance-day-row').count()) === 1, 'Search narrows to one employee')
     assert.ok((await page.getByTestId('attendance-day-row').innerText()).includes(fixture.users.employee.name))
     // A real file download follows the button and confirms the browser flow.
     for (const key of ['exportExcel', 'exportPdf']) {
@@ -498,14 +529,12 @@ try {
       assert.equal(await file.failure(), null)
       assert.match(file.suggestedFilename(), key === 'exportPdf' ? /\.pdf$/i : /\.xlsx$/i)
     }
-    await page.locator('#attendance-report-from').fill(date(2))
-    await page.locator('#attendance-report-to').fill(today)
-    await button('reportApply').click()
-    assert.ok(await page.locator('[role="alert"]').count())
-    return { reportTabs: 6, pagination: true, teamEmployeeFilter: true, browserDownloads: 2, invalidRange: true }
+    await page.getByLabel(t('reportFrom'), { exact: true }).fill(date(2))
+    await page.getByText(t('reportRangeInvalid'), { exact: true }).waitFor()
+    return { reportTabs: 6, monthDayCard: true, pagination: true, teamAndSearchFilter: true, browserDownloads: 2, invalidRange: true }
   })
   await run('browser-views-save-rename-delete-cancel', 'browser-action+database-backed-http', async () => {
-    await readyPage('')
+    await openTimesheetExtras()
     const section = page.getByTestId('attendance-personal-views')
     await section.locator('#attendance-view-name').fill('Fixture browser form')
     await clickResponse(button('viewsSave', section), `${apiRoot}/views`)
@@ -649,13 +678,14 @@ try {
     return { enabledThenDisabled: true, refresh: true, hidesInBackground: true, nativeWindowMinimizeAndRestore: true, playwrightFocusOverrideDisabled: true, cameraScan: 'NOT_RUN' }
   })
   await run('browser-settings-hr-catalogue-quotas', 'browser-action+database-backed-http', async () => {
-    await readyPage('')
+    await readyPage('request-limits')
     const limits = page.getByTestId('attendance-request-limits')
     await limits.getByRole('button').first().click()
     await page.locator('#attendance-limits-hours').fill('12')
     await page.locator('#attendance-limits-count').fill('5')
     await clickResponse(button('limitsSave', limits), `${apiRoot}/request-limits`, 'PUT')
     assert.equal((await api('admin', '/request-limits')).monthlyMinutes, 720)
+    await readyPage('day-kinds')
     const kinds = page.getByTestId('attendance-day-kinds')
     await button('kindsOpen', kinds).click()
     await button('kindsAdd', kinds).click()
@@ -668,6 +698,7 @@ try {
     await page.locator('#attendance-kind-name-en').fill('Fixture browser remote')
     await clickResponse(button('kindsSave', page.getByTestId('attendance-kind-editor')), `${apiRoot}/day-kinds`, 'PUT')
     assert.equal((await api('admin', '/day-kinds')).items.find(item => item.key === 'REMOTE_WORK').names.en, 'Fixture browser remote')
+    await readyPage('hr-access')
     const hr = page.getByTestId('attendance-hr-access')
     await hr.getByRole('button').first().click()
     await page.locator('#attendance-hr-search').fill('Fixture hr')
@@ -679,7 +710,7 @@ try {
     return { limitsSaved: true, catalogueEdited: true, presetCancelled: true, hrSearchRevokeCancelled: true }
   })
   await run('browser-delivery-create-edit-cancel-delete', 'browser-action+database-backed-http', async () => {
-    await readyPage('')
+    await openTimesheetExtras()
     const section = page.getByTestId('attendance-deliveries')
     await section.getByRole('button').first().click()
     await button('deliveryNew', section).click()
@@ -797,7 +828,7 @@ try {
     assert.ok(await page.getByText(t('monthCloseFrozen'), { exact: true }).isVisible())
   })
   await run('browser-rules-calendar-crud', 'browser-action+database-backed-http', async () => {
-    await readyPage('')
+    await readyPage('settings')
     const before = await api('admin', '/rules')
     const rules = page.getByTestId('attendance-rules')
     await page.locator('#attendance-start').fill('09:30')
@@ -827,7 +858,7 @@ try {
     assert.ok(!(await api('admin', `/calendar?from=${calendarDate}&to=${calendarDate}`)).days.some(day => day.id === holiday.id))
   })
   await run('browser-hr-grant-revoke', 'browser-action+authenticated-http', async () => {
-    await readyPage('')
+    await readyPage('hr-access')
     const section = page.getByTestId('attendance-hr-access')
     await button('hrOpen', section).click()
     await page.locator('#attendance-hr-search').fill('Fixture hr')
@@ -843,7 +874,7 @@ try {
     return { originalSessionRevokedThenRestored: true }
   })
   await run('browser-kind-create-archive-restore', 'browser-action+database-backed-http', async () => {
-    await readyPage('')
+    await readyPage('day-kinds')
     const kinds = page.getByTestId('attendance-day-kinds')
     await button('kindsOpen', kinds).click(); await button('kindsAdd', kinds).click()
     for (const locale of ['az', 'ru', 'en']) await page.locator(`#attendance-kind-name-${locale}`).fill('Fixture browser custom')
@@ -953,8 +984,7 @@ try {
   })
   await run('browser-sidebar-click-traversal', 'browser-navigation-click', async () => {
     await readyPage('')
-    for (const route of routes.filter(route => route !== 'recordings')) {
-      const href = `/mtm/attendance${route ? `/${route}` : ''}`
+    for (const href of personnelHrefs) {
       const link = page.locator(`aside a[href="${href}"]`)
       await link.scrollIntoViewIfNeeded()
       const bounds = await link.boundingBox()
@@ -966,7 +996,9 @@ try {
       await page.locator('h1').first().waitFor()
       assert.equal(await link.getAttribute('aria-current'), 'page')
     }
-    return { actualSidebarClicks: 13, proves: 'Navigation only; mutations have separate case records' }
+    // HR work no longer sits among the field-sales links.
+    assert.equal(await page.locator('aside a[href^="/mtm/attendance/"]').count(), personnelHrefs.length - 1)
+    return { actualSidebarClicks: personnelHrefs.length, proves: 'Navigation only; mutations have separate case records' }
   })
   await run('browser-branch-lost-acknowledgement-retry', 'browser-action+real-commit-response-drop', async () => {
     await readyPage('branches'); await button('branchesAdd').click()
@@ -1013,7 +1045,7 @@ try {
       for (const target of [original, concurrent]) {
         page = target
         await page.bringToFront()
-        await readyPage('')
+        await readyPage('day-kinds')
         const kinds = page.getByTestId('attendance-day-kinds')
         manifest.competingTabs.stage = target === original ? 'load-original' : 'load-concurrent'
         // Opening this panel starts its own request; the page heading does not

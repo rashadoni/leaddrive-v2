@@ -8,7 +8,7 @@ on:
       - 'scripts/mtm-attendance-browser-evidence.mjs'
       - 'scripts/fixtures/mtm-attendance-e2e.mjs'
       - 'src/components/mtm/attendance-*.tsx'
-      - 'src/components/mtm/mtm-sidebar-sections.tsx'
+      - 'src/components/sidebar.tsx'
       - 'src/lib/nav-items.ts'
       - 'src/app/(dashboard)/mtm/attendance/**'
       - 'src/app/api/v1/mtm/attendance/**'

@@ -14,6 +14,7 @@ import type { AttendanceSearchParams } from "@/lib/mtm/attendance-legacy-redirec
 
 // Administrator-only like their endpoints (formerly admin-only menu items).
 const ADMIN_TABS: readonly string[] = ["location"]
+const UNTITLED: readonly string[] = ["hours", "day-kinds", "requests", "access"]
 const TABS = ["hours", "shifts", "day-kinds", "leave", "requests", "access", "review", "qr", "location"] as const
 
 export default async function PersonnelSettingsPage({ searchParams }: { searchParams: AttendanceSearchParams }) {
@@ -23,6 +24,8 @@ export default async function PersonnelSettingsPage({ searchParams }: { searchPa
   const visible = TABS.filter(key => isAdmin || !ADMIN_TABS.includes(key))
   const tab = attendanceTab((await searchParams).tab, visible)
   return <div className="space-y-6">
+    {/* These tabs' forms carry no page heading of their own. */}
+    {UNTITLED.includes(tab) ? <h1 className="text-2xl font-bold tracking-tight">{t(`tabs.${tab}`)}</h1> : null}
     <MtmAttendanceTabs base="/mtm/attendance/settings" active={tab} label={t("settingsTabs")} tabs={visible.map(key => ({ key, label: t(`tabs.${key}`) }))} />
     {tab === "hours" ? <><MtmAttendanceRulesForm /><MtmAttendanceCalendar /></>
       : tab === "shifts" ? <MtmAttendanceShifts />

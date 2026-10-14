@@ -344,7 +344,9 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
   }
   function changeDate(next: Range) {
     setRange(next); setRangeError(null)
-    if (isDateKey(next.from) && isDateKey(next.to) && next.to >= next.from && next.to < addDateKeyDays(next.from, 366)) void load(next)
+    if (!isDateKey(next.from) || !isDateKey(next.to)) return
+    if (next.to >= next.from && next.to < addDateKeyDays(next.from, 366)) void load(next)
+    else setRangeError(t("reportRangeInvalid"))
   }
 
   function timesheetView() {
