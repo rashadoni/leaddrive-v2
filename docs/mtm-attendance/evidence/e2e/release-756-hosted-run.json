@@ -1,0 +1,82 @@
+{
+  "headSha": "61d6b02aa976fe8c1e6a80c16b1deb9f10cde3bb",
+  "browserRun": "https://github.com/rashadoni/leaddrive-v2/actions/runs/38499198474",
+  "browserArtifactId": 11864994638,
+  "summary": {
+    "PASS": 62,
+    "FAIL": 0,
+    "NOT_RUN": 5
+  },
+  "timings": [
+    {
+      "route": "/api/v1/mtm/attendance/leave-balances",
+      "phase": "navigation-to-complete-response",
+      "elapsedMs": 3547,
+      "status": 200
+    },
+    {
+      "route": "/api/v1/mtm/attendance/leave-balances",
+      "phase": "navigation-to-complete-response",
+      "elapsedMs": 4721,
+      "status": 200
+    }
+  ],
+  "leaveReadErrors": [],
+  "notRun": [
+    {
+      "name": "physical-apk-os-permissions",
+      "status": "NOT_RUN",
+      "reason": "Separate S23 device run; this workflow has no USB phone"
+    },
+    {
+      "name": "external-email-delivery",
+      "status": "NOT_RUN",
+      "reason": "No recipients/providers; schedules are disabled and no cron is invoked"
+    },
+    {
+      "name": "camera-qr-offline-replay",
+      "status": "NOT_RUN",
+      "reason": "Actual camera, offline Android queue, kill/restart and OS permission flows need the physical device"
+    },
+    {
+      "name": "overnight-soak",
+      "status": "NOT_RUN",
+      "reason": "Bounded CI scenarios; this is not an overnight endurance run"
+    },
+    {
+      "name": "all-control-combinations",
+      "status": "NOT_RUN",
+      "reason": "Finite named action families; inventory alone does not prove every control or all possible combinations"
+    }
+  ],
+  "nonUtcRun": "https://github.com/rashadoni/leaddrive-v2/actions/runs/38499198520",
+  "nonUtc": {
+    "baselineSha": "ebd7dc90af73cca4b6d5d901bf1a170355d3e86b",
+    "headSha": "61d6b02aa976fe8c1e6a80c16b1deb9f10cde3bb",
+    "red": {
+      "status": "OBSERVED_EXPECTED_FAILURE",
+      "tests": 2,
+      "zones": [
+        "Asia/Baku",
+        "America/New_York"
+      ],
+      "reportReadable": true,
+      "processSucceeded": false,
+      "expectedSignatureCount": 2,
+      "expectedTestCount": 2,
+      "prismaCode": "P2010",
+      "sqlState": "23514",
+      "code": "MTM_ATTENDANCE_MARK_EVENT_MISMATCH"
+    },
+    "green": {
+      "status": "PASS",
+      "passed": 53,
+      "failed": 0,
+      "nonUtcRegressionPassed": 2,
+      "utcGuardAndRiskPassed": 5
+    },
+    "productionMutation": false
+  },
+  "physicalAcceptanceSeparate": true,
+  "productionMutation": false
+}

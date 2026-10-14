@@ -62,3 +62,34 @@
   The other evidence remains uncommitted for the coordinator's final resync.
   No push, PR creation, merge, release, device action or production write was
   performed by this subtask.
+
+## 2026-10-14 — intermediate evidence resync from f6e53256c
+
+- The coordinator requested an intermediate resync from immutable continuation
+  snapshot `f6e53256c9556cc36c330afa85053d08221d482c`, followed by a docs-only
+  checkpoint. This is not the final acceptance snapshot; the coordinator will
+  finish the physical scenarios and request one final resync.
+- The same 17 explicit paths were refreshed, adding only these five reviewed
+  fictional-tenant evidence files: `field-original-start-queue-empty.png`,
+  `field-original-start-recovered.png`, `field-permission-loop-3.8.4.json`,
+  `permission-repair-3.8.5.json`, and
+  `physical-delayed-original-start-review.png`, all under `evidence/device/`.
+  No private temporary file, raw system log, or entire directory was imported.
+- README keeps the exact common 1,342-line prefix, main's seven-line tail and
+  the continuation's complete 215-line tail. The previous continuation prefix
+  is unchanged. The five main-only logs/receipts, both risk-date source/test
+  files from `6aafd0d21`, and this journal's existing entries were preserved.
+- Checks PASS: all 21 non-README imports match source bytes, all 13 imported
+  JSON files parse, the protected files match their saved content, and diff
+  whitespace checks pass. This resync runs no application tests, build,
+  browser, device, or production action. Those checks are NOT_RUN here because
+  this checkpoint changes only evidence and documentation.
+- Reporting correction to the retained 04:06 root journal entry: the private
+  helper comparator controls totaled **five positive and 17 negative** cases,
+  not six positives. Excel, correction and PDF had one positive each; the two
+  endpoint mapping snippets had one positive each. All passed. This does not
+  change any physical scenario outcome or rewrite the original journal.
+- The imported repair receipt faithfully remains `RELEASE_IN_PROGRESS` with
+  physical acceptance `NOT_RUN` at its snapshot time. Later release/device
+  results will supersede that state only in the coordinator's final snapshot.
+  No push, pull request, merge or release was performed by this resync.

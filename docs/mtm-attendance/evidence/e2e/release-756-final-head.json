@@ -1,0 +1,39 @@
+{
+  "recordedAt": "2026-10-14T03:01:48.671634+00:00",
+  "headSha": "32b90a2a6a4d56322f6300ecc03c235a8b1329fc",
+  "browser": {
+    "runId": "38501754397",
+    "artifactId": 11866354016,
+    "counts": {
+      "PASS": 62,
+      "NOT_RUN": 5
+    },
+    "leaveErrorObservations": [],
+    "leaveReadResponseMilliseconds": [
+      3490,
+      4134
+    ]
+  },
+  "nonUtc": {
+    "runId": "38501754422",
+    "artifactId": 11866573020,
+    "baselineExpectedFailures": 2,
+    "passed": 53,
+    "failed": 0
+  },
+  "requiredChecks": {
+    "runId": "38501754366",
+    "scope": "PASS",
+    "static": "PASS",
+    "typecheck": "PASS",
+    "runner": "PASS",
+    "secretScan": "PASS"
+  },
+  "pr": 756,
+  "mergedAt": "2026-10-14T03:01:07Z",
+  "mergeSha": "8c54afe632181b15d4bb4cb88ee1953a6a72cd4f",
+  "deploymentRunId": "38504073106",
+  "deploymentStatus": "PASS",
+  "deployedAtVerified": "2026-10-14T03:30:18.261Z",
+  "postDeploySmoke": "device/production-756-smoke.json"
+}
