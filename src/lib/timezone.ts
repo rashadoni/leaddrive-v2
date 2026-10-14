@@ -35,7 +35,7 @@ function machineFormatter(kind: MachineFormatterKind, timezone: string): Intl.Da
     machineFormatters.set(key, existing)
     return existing
   }
-  // Fixed machine comparison/probe options, never localized UI output.
+  // eslint-disable-next-line no-restricted-syntax -- fixed machine comparison/probe locales, never localized UI output; retained for the MTM date-formatting contract.
   const formatter = new Intl.DateTimeFormat(kind === "date-input" ? "en-CA" : "en-US", {
     timeZone: timezone, ...machineFormatterOptions[kind],
   })
