@@ -14,6 +14,7 @@ vi.mock("next/navigation", async original => ({ ...(await original<typeof import
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 const ru = JSON.parse(readFileSync("messages/ru.json", "utf8"))
+const azMessages = JSON.parse(readFileSync("messages/az.json", "utf8"))
 const p = (key: string) => ru.personnel[key] as string
 const kinds = attendanceDayKindPresetCodes(defaultAttendanceDayKinds(key => ({ ru: ru.mtmAttendance[`dayKindName${key}`], az: "x", en: "x" })), "RU")
 const at = (date: string, time: string) => `${date}T${time}:00+04:00`
@@ -92,6 +93,18 @@ describe("Personnel → Timesheet month", () => {
     expect(reportCalls().at(-1)?.searchParams.get("to")).toBe("2026-10-13")
     expect(container.textContent).toContain(p("onlyEmployee").replace("{name}", "Нигяр Бабаева"))
     expect(container.textContent).not.toContain("Рашад Алиев")
+  })
+})
+
+describe("Timesheet in Azerbaijani", () => {
+  it("names the month and weekdays in Azerbaijani, never the root-locale 'M10'", async () => {
+    await act(async () => root.render(createElement(NextIntlClientProvider, { locale: "az", timeZone: "Asia/Baku", messages: azMessages },
+      createElement(MtmAttendanceReportWorkspace, { layout: "timesheet", initialForm: "MONTH" }))))
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+    expect(container.querySelector('[data-testid="attendance-month-switcher"]')?.textContent).toContain("oktyabr 2026")
+    const text = container.textContent ?? ""
+    expect(text).not.toMatch(/M\d{2}\b/)
+    expect(text).not.toMatch(/\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b/)
   })
 })
 
