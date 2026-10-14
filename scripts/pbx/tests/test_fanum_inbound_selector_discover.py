@@ -90,6 +90,25 @@ class InboundSelectorDiscoverTest(unittest.TestCase):
 
         self.assertEqual(discover.discover_selector(asterisk), SELECTOR_DID)
 
+    def test_accepts_the_expiry_asterisk_20_prints_after_a_live_registration(self):
+        asterisk = FakeAsterisk(
+            registrations=REGISTRATIONS_REPORT.replace(
+                "Registered\n",
+                "Registered        (exp. 107s)\n",
+            ),
+        )
+
+        self.assertEqual(discover.discover_selector(asterisk), SELECTOR_DID)
+
+        for status in ("Rejected        (exp. 107s)", "Unregistered"):
+            with self.subTest(status=status):
+                with self.assertRaises(discover.SelectorDiscoveryRefused):
+                    discover.discover_selector(
+                        FakeAsterisk(
+                            registrations=REGISTRATIONS_REPORT.replace("Registered", status),
+                        ),
+                    )
+
     def test_refuses_each_disagreement_without_including_values_in_the_error(self):
         cases = (
             FakeAsterisk(endpoint=ENDPOINT_REPORT.replace(SELECTOR_DID, "994125550101")),
