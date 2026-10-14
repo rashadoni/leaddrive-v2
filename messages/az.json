@@ -28233,7 +28233,6 @@
   "personnel": {
     "peopleTabs": "Əməkdaşlar bölmələri",
     "settingsTabs": "Parametr bölmələri",
-    "timesheetTabs": "Tabel görünüşləri",
     "tabs": {
       "employees": "Əməkdaşlar",
       "branches": "Filiallar",
@@ -28263,7 +28262,6 @@
     "searchEmployee": "Əməkdaş axtar…",
     "onlyEmployee": "Yalnız: {name}",
     "showEveryone": "Hamısını göstər",
-    "monthHint": "{total} əməkdaş · günü açmaq üçün xanaya toxunun",
     "colDays": "Gün",
     "colHours": "Saat",
     "colLeave": "Məz.",
@@ -28274,8 +28272,6 @@
     "dayWorked": "İşləyib",
     "dayPause": "Fasilə",
     "openDay": "Günü aç",
-    "changeDayKind": "Gün növünü dəyiş",
-    "lettersInSettings": "Hərflər Parametrlərdə dəyişir →",
     "customFormAndDelivery": "Öz formanız və göndəriş",
     "todayTitle": "Bu gün",
     "recordDay": "Əməkdaşa gün qeyd et",
@@ -28319,6 +28315,14 @@
     "weekPlan": "plan {total}",
     "chipLate": "gecikmə: {count}",
     "chipAway": "müraciətlə: {count}",
-    "chipAbsent": "yoxdur: {count}"
+    "chipAbsent": "yoxdur: {count}",
+    "more": "Daha çox",
+    "filterLabel": "Göstər",
+    "filterAll": "Hamısı",
+    "filterEmpty": "Bu ay belə gün yoxdur",
+    "fixDay": "Günü düzəlt",
+    "dayMarks": "Günün qeydləri",
+    "cellHint": "Günü açmaq üçün xanaya toxunun",
+    "close": "Bağla"
   }
 }
