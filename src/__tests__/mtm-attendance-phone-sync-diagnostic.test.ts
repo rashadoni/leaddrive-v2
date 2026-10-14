@@ -67,14 +67,35 @@ describe("bounded phone sync diagnostic", () => {
     const tx={$executeRawUnsafe:vi.fn(async(sql:string)=>{order.push(sql)}),$queryRaw:vi.fn()
       .mockImplementationOnce(async()=>{order.push('query');return [{name:'id'},{name:'redactedRequestHash'},{name:'SECRET_COLUMN'}]})
       .mockResolvedValueOnce([{definition:'private trigger body'}]).mockResolvedValueOnce([{name:'SECRET_CONSTRAINT'}])
-      .mockResolvedValueOnce([{name:'20261013090000_mtm_attendance_location_evidence',applied:true}])
-      .mockResolvedValueOnce([{utc:true,selectAllowed:true,insertAllowed:true}])}
+      .mockResolvedValueOnce([{utc:true,selectAllowed:true,insertAllowed:true}])
+      .mockResolvedValueOnce([{name:'20261013090000_mtm_attendance_location_evidence',applied:true}])}
     const db={$transaction:vi.fn(async(fn: (t:typeof tx)=>Promise<unknown>)=>fn(tx))}
     const catalog=await readDiagnosticCatalog(db as never)
-    expect(order).toEqual(['SET TRANSACTION READ ONLY','query'])
+    expect(order).toEqual(['SET TRANSACTION READ ONLY','query','SET TRANSACTION READ ONLY'])
     expect(catalog.columnsPresent).toEqual(['id','redactedRequestHash'])
     expect(catalog.triggerFunctionSha256).toMatch(/^[a-f0-9]{64}$/)
     expect(JSON.stringify(catalog)).not.toMatch(/private trigger body|SECRET_COLUMN|SECRET_CONSTRAINT/)
+    expect(validatePhoneSyncDiagnostic({...safe(),catalog},sha)).toEqual({...safe(),catalog})
+  })
+  it("recognizes trigger-only NEW fields without accepting arbitrary identifiers", () => {
+    const rows=summarizePhoneSyncLog(`${header(DIAGNOSTIC_OPERATIONS[0])} Error {\nrecord "new" has no field "version"\nrecord "NEW" has no field "accepted"\nrecord "new" has no field "SECRET_FIELD"\n}`)
+    expect(rows[0].missingRecordFields).toEqual([{record:'new',column:'version'},{record:'new',column:'accepted'}])
+    expect(rows[0].missingColumns).toEqual([])
+    expect(JSON.stringify(rows)).not.toContain('SECRET_FIELD')
+    expect(validatePhoneSyncDiagnostic({...safe(),operations:rows},sha)).toEqual({...safe(),operations:rows})
+  })
+  it("retains core catalog facts when the deployment migration ledger is denied", async () => {
+    const order:string[]=[]
+    const tx={$executeRawUnsafe:vi.fn(async(sql:string)=>{order.push(sql)}),$queryRaw:vi.fn()
+      .mockResolvedValueOnce([{name:'redactedRequestHash'}]).mockResolvedValueOnce([{definition:'known trigger'}])
+      .mockResolvedValueOnce([]).mockResolvedValueOnce([{utc:false,selectAllowed:true,insertAllowed:true}])
+      .mockRejectedValueOnce(new Error('permission denied SECRET_LEDGER_DETAIL'))}
+    const db={$transaction:vi.fn(async(fn: (t:typeof tx)=>Promise<unknown>)=>fn(tx))}
+    const catalog=await readDiagnosticCatalog(db as never)
+    expect(order).toEqual(['SET TRANSACTION READ ONLY','SET TRANSACTION READ ONLY'])
+    expect(catalog).toMatchObject({columnsPresent:['redactedRequestHash'],migrations:null,migrationRead:'UNAVAILABLE',insertAllowed:true})
+    expect(catalog.triggerFunctionSha256).toMatch(/^[a-f0-9]{64}$/)
+    expect(JSON.stringify(catalog)).not.toContain('SECRET_LEDGER_DETAIL')
     expect(validatePhoneSyncDiagnostic({...safe(),catalog},sha)).toEqual({...safe(),catalog})
   })
   it("bundles the reviewed controller and never exposes unsupported mode or raw receiver input", () => {

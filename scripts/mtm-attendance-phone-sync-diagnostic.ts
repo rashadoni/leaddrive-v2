@@ -15,6 +15,7 @@ export const DIAGNOSTIC_OPERATIONS = [
 ] as const
 const SQLSTATES = ["23502", "23503", "23505", "23514", "42703", "42P01", "42501", "42883", "55P03", "40P01", "25P02", "22007", "22P02", "42804", "57014", "42601", "42P10", "0A000", "53300"]
 const COLUMNS = ["id", "organizationId", "agentId", "eventId", "installationId", "action", "claimedAt", "serverReceivedAt", "locationState", "latitude", "longitude", "accuracy", "fixCapturedAt", "fixAgeSeconds", "provider", "isMock", "consentId", "branchRevisionId", "primaryBranchId", "distanceMeters", "redactedRequestHash", "createdAt", "type", "occurredAt", "workdayId"]
+const RECORD_FIELDS = [...COLUMNS, "version", "previousId", "accepted", "policyRevisionId", "requestId", "requestHash", "enabled", "legalReviewConfirmed", "texts", "createdBy"]
 const MTM_CODES = ["MTM_ATTENDANCE_MARK_EVENT_MISMATCH", "MTM_ATTENDANCE_LOCATION_IMMUTABLE", "MTM_ATTENDANCE_LOCATION_CONSENT_REQUIRED", "MTM_ATTENDANCE_LOCATION_POLICY_CHANGED", "MTM_ATTENDANCE_LOCATION_HISTORY_CHANGED", "MTM_ATTENDANCE_RISK_EVIDENCE_MISSING", "MTM_ATTENDANCE_RISK_COHORT_TOO_LARGE", "MTM_ATTENDANCE_RISK_EVENT_MISMATCH"]
 const CONSTRAINTS = ["mtm_attendance_mark_evidence_check", ...Array.from({ length: 8 }, (_, n) => `mtm_attendance_mark_evidence_check${n + 1}`),
   ...["installationId", "redactedRequestHash", "action", "locationState", "provider", "distanceMeters"].map(column => `mtm_attendance_mark_evidence_${column}_check`),
@@ -50,7 +51,7 @@ export function summarizePhoneSyncLog(raw: string) {
       constraints: CONSTRAINTS.filter(name => new RegExp(`constraint[ \\"\\x27\\x60]+${quoted(name)}[\\x22\\x27\\x60]`, "i").test(blocks)),
       missingColumns: COLUMNS.filter(name => new RegExp(`column[ \\"\\x27\\x60]+${quoted(name)}[\\x22\\x27\\x60] (?:does not exist|of relation)`, "i").test(blocks)),
       missingRelations: RELATIONS.filter(name => new RegExp(`relation[ \\"\\x27\\x60]+${name}[\\x22\\x27\\x60] does not exist`, "i").test(blocks)),
-      missingRecordFields: RECORDS.flatMap(record => COLUMNS.filter(column => new RegExp(`record [\\x22\\x27]${record}[\\x22\\x27] has no field [\\x22\\x27]${column}[\\x22\\x27]`, "i").test(blocks)).map(column => ({ record, column }))),
+      missingRecordFields: RECORDS.flatMap(record => RECORD_FIELDS.filter(column => new RegExp(`record [\\x22\\x27]${record}[\\x22\\x27] has no field [\\x22\\x27]${column}[\\x22\\x27]`, "i").test(blocks)).map(column => ({ record, column }))),
     }
   })
 }
@@ -65,20 +66,27 @@ export function readDiagnosticTail() {
   } finally { fs.closeSync(fd) }
 }
 export async function readDiagnosticCatalog(db: PrismaClient) {
-  return db.$transaction(async tx => {
+  const core = await db.$transaction(async tx => {
     await tx.$executeRawUnsafe("SET TRANSACTION READ ONLY")
     const columns = await tx.$queryRaw<{ name: string }[]>`SELECT attname AS name FROM pg_attribute WHERE attrelid=to_regclass('public.mtm_attendance_mark_evidence') AND attnum>0 AND NOT attisdropped`
     const functions = await tx.$queryRaw<{ definition: string }[]>`SELECT pg_get_functiondef(p.oid) AS definition FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname='mtm_attendance_location_history_guard' AND p.pronargs=0`
     const constraints = await tx.$queryRaw<{ name: string }[]>`SELECT conname AS name FROM pg_constraint WHERE conrelid=to_regclass('public.mtm_attendance_mark_evidence')`
-    const migrations = await tx.$queryRaw<{ name: string; applied: boolean }[]>`SELECT migration_name AS name,(finished_at IS NOT NULL AND rolled_back_at IS NULL) AS applied FROM _prisma_migrations WHERE migration_name IN ('20261013090000_mtm_attendance_location_evidence','20261013120000_mtm_attendance_risks','20261013160000_mtm_attendance_branch_qr')`
     const [context] = await tx.$queryRaw<{ utc: boolean; selectAllowed: boolean | null; insertAllowed: boolean | null }[]>`SELECT current_setting('TimeZone') IN ('UTC','Etc/UTC') AS utc,has_table_privilege(current_user,to_regclass('public.mtm_attendance_mark_evidence'),'SELECT') AS "selectAllowed",has_table_privilege(current_user,to_regclass('public.mtm_attendance_mark_evidence'),'INSERT') AS "insertAllowed"`
     if (functions.length > 1 || !context) fail()
     return { columnsPresent: COLUMNS.filter(name => columns.some(column => column.name === name)),
       constraintsPresent: CONSTRAINTS.filter(name => constraints.some(constraint => constraint.name === name)),
       triggerFunctionSha256: functions[0] ? createHash("sha256").update(functions[0].definition).digest("hex") : null,
-      migrations: MIGRATIONS.map(name => ({ name, present: migrations.some(row => row.name === name), applied: migrations.some(row => row.name === name && row.applied === true) })),
       utcSession: context.utc === true, selectAllowed: context.selectAllowed === true, insertAllowed: context.insertAllowed === true }
   })
+  // A runtime role may read catalogs but not the deployment ledger. Keep that
+  // optional lookup in its own read-only transaction, so denial cannot abort
+  // or hide the already verified columns, trigger hash and privilege flags.
+  const migrations = await db.$transaction(async tx => {
+    await tx.$executeRawUnsafe("SET TRANSACTION READ ONLY")
+    const rows = await tx.$queryRaw<{ name: string; applied: boolean }[]>`SELECT migration_name AS name,(finished_at IS NOT NULL AND rolled_back_at IS NULL) AS applied FROM _prisma_migrations WHERE migration_name IN ('20261013090000_mtm_attendance_location_evidence','20261013120000_mtm_attendance_risks','20261013160000_mtm_attendance_branch_qr')`
+    return MIGRATIONS.map(name => ({ name, present: rows.some(row => row.name === name), applied: rows.some(row => row.name === name && row.applied === true) }))
+  }).catch(() => null)
+  return { ...core, migrations, migrationRead: migrations === null ? "UNAVAILABLE" : "AVAILABLE" }
 }
 export async function runPhoneSyncDiagnostic(sha: string) {
   if (process.getuid?.() !== 0 || !/^[a-f0-9]{40}$/.test(sha) || readRootFile(`${APP}/.deploy-sha`, 128).trim() !== sha) fail()
@@ -106,10 +114,11 @@ export function validatePhoneSyncDiagnostic(value: unknown, sha: string) {
   if (c !== null && (!c || ![c.utcSession,c.selectAllowed,c.insertAllowed].every(v => typeof v === 'boolean') || (c.triggerFunctionSha256 !== null && !/^[a-f0-9]{64}$/.test(c.triggerFunctionSha256)))) fail()
   const clean = { version: 1, status: "PASS", tenant: PHONE.slug, artifactSha: sha, readOnly: true,
     catalog: c === null ? null : { columnsPresent:list(c.columnsPresent,COLUMNS),constraintsPresent:list(c.constraintsPresent,CONSTRAINTS),triggerFunctionSha256:c.triggerFunctionSha256,
-      migrations:MIGRATIONS.map((name,i) => { const m=c.migrations[i]; if(!m || m.name!==name || typeof m.present!=='boolean' || typeof m.applied!=='boolean') fail(); return {name,present:m.present,applied:m.applied} }),
-      utcSession:c.utcSession,selectAllowed:c.selectAllowed,insertAllowed:c.insertAllowed },
+      utcSession:c.utcSession,selectAllowed:c.selectAllowed,insertAllowed:c.insertAllowed,
+      migrations:c.migrations === null ? null : MIGRATIONS.map((name,i) => { const m=c.migrations![i]; if(!m || m.name!==name || typeof m.present!=='boolean' || typeof m.applied!=='boolean') fail(); return {name,present:m.present,applied:m.applied} }),
+      migrationRead:c.migrations === null ? "UNAVAILABLE" : "AVAILABLE" },
     operations:DIAGNOSTIC_OPERATIONS.map((operationId,i) => { const op=row.operations[i]; if(!op || op.operationId!==operationId || typeof op.found!=='boolean' || !Number.isInteger(op.sampledErrors) || op.sampledErrors<0 || op.sampledErrors>4)fail();
-      return {operationId,found:op.found,sampledErrors:op.sampledErrors,prismaCodes:list(op.prismaCodes,Array.from({length:10000},(_,n)=>`P${String(n).padStart(4,'0')}`)),sqlStates:list(op.sqlStates,SQLSTATES),mtmCodes:list(op.mtmCodes,MTM_CODES),constraints:list(op.constraints,CONSTRAINTS),missingColumns:list(op.missingColumns,COLUMNS),missingRelations:list(op.missingRelations,RELATIONS),missingRecordFields:op.missingRecordFields.map(field=>{if(!RECORDS.includes(field.record)||!COLUMNS.includes(field.column))fail();return {record:field.record,column:field.column}})} }) }
+      return {operationId,found:op.found,sampledErrors:op.sampledErrors,prismaCodes:list(op.prismaCodes,Array.from({length:10000},(_,n)=>`P${String(n).padStart(4,'0')}`)),sqlStates:list(op.sqlStates,SQLSTATES),mtmCodes:list(op.mtmCodes,MTM_CODES),constraints:list(op.constraints,CONSTRAINTS),missingColumns:list(op.missingColumns,COLUMNS),missingRelations:list(op.missingRelations,RELATIONS),missingRecordFields:op.missingRecordFields.map(field=>{if(!RECORDS.includes(field.record)||!RECORD_FIELDS.includes(field.column))fail();return {record:field.record,column:field.column}})} }) }
   if(JSON.stringify(clean)!==JSON.stringify(value)) fail()
   return clean
 }

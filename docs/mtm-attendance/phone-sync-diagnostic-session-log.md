@@ -39,3 +39,16 @@
   required GitHub gates and parent-reviewed dispatch remain next. The optional
   catalog reports null if the restricted runtime role denies a catalog query;
   log evidence is still strictly filtered and independently useful.
+
+## Independent review follow-up
+
+- Added a separate finite PL/pgSQL record-field vocabulary for the known shared
+  trigger fields (including version, previousId, accepted and policyRevisionId).
+  These do not expand the expected mark-table column list. Regression requires
+  NEW/version and NEW/accepted signatures and rejects arbitrary secret fields.
+- Isolated the optional migration-ledger lookup into a second READ ONLY
+  transaction. Permission denial preserves the already read columns, constraints,
+  trigger hash and privileges and yields migrations null / migrationRead
+  UNAVAILABLE; no raw denial detail is emitted.
+- PASS: 11 focused tests after these bounded review changes (2.74 seconds).
+  Production dispatch and required full GitHub gates remain NOT_RUN here.
