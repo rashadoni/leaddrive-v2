@@ -1,0 +1,128 @@
+name: Bounded MTM phone sync diagnostic
+
+# Fixed owned fixture and two operation IDs only; read-only database/log inspection.
+# No raw logs, arbitrary SQL, selectors, passwords, commands or application mutations.
+on:
+  workflow_dispatch:
+    inputs:
+      expected_main_sha:
+        description: Exact reviewed current main SHA containing this workflow
+        type: string
+        required: true
+      expected_deployed_sha:
+        description: Exact serving main ancestor SHA, verified again under the production lock
+        type: string
+        required: true
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Require reviewed current main and a deployed ancestor
+        env:
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+          EXPECTED_DEPLOYED_SHA: ${{ inputs.expected_deployed_sha }}
+        run: |
+          set -euo pipefail
+          [ "$GITHUB_REF" = refs/heads/main ]
+          [[ "$EXPECTED_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$EXPECTED_DEPLOYED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          git fetch --no-tags origin refs/heads/main
+          [ "$EXPECTED_MAIN_SHA" = "$GITHUB_SHA" ]
+          [ "$EXPECTED_MAIN_SHA" = "$(git rev-parse FETCH_HEAD)" ]
+          git merge-base --is-ancestor "$EXPECTED_DEPLOYED_SHA" "$EXPECTED_MAIN_SHA"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Verify fixed selectors, ownership and output boundaries
+        run: npx vitest run src/__tests__/mtm-attendance-phone-sync-diagnostic.test.ts src/__tests__/mtm-attendance-phone-fixture.test.ts --maxWorkers=1
+      - name: Build the bounded read-only controller
+        run: node scripts/build-mtm-attendance-phone-sync-diagnostic.mjs attendance-phone-sync-diagnostic.cjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: attendance-phone-sync-diagnostic-controller-${{ github.sha }}
+          path: attendance-phone-sync-diagnostic.cjs
+          retention-days: 1
+          if-no-files-found: error
+
+  inspect:
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: production
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/assert-production-environment-protection
+        with:
+          github-token: ${{ github.token }}
+      - name: Recheck current main and deployment ancestry after acquiring the lock
+        env:
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+          EXPECTED_DEPLOYED_SHA: ${{ inputs.expected_deployed_sha }}
+        run: |
+          set -euo pipefail
+          [ "$GITHUB_REF" = refs/heads/main ]
+          [[ "$EXPECTED_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$EXPECTED_DEPLOYED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          git fetch --no-tags origin refs/heads/main
+          [ "$EXPECTED_MAIN_SHA" = "$GITHUB_SHA" ]
+          [ "$EXPECTED_MAIN_SHA" = "$(git rev-parse FETCH_HEAD)" ]
+          git merge-base --is-ancestor "$EXPECTED_DEPLOYED_SHA" "$EXPECTED_MAIN_SHA"
+      - uses: actions/download-artifact@v4
+        with:
+          name: attendance-phone-sync-diagnostic-controller-${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: ./.github/actions/setup-production-ssh
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          server-host: ${{ secrets.SERVER_HOST }}
+          known-hosts: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+      - name: Inspect only fixed fictional sync failures
+        env:
+          EXPECTED_DEPLOYED_SHA: ${{ inputs.expected_deployed_sha }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          set -euo pipefail
+          [ "$SERVER_HOST" = 13.140.132.245 ] && [ "$SERVER_USER" = root ]
+          [[ "$EXPECTED_DEPLOYED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          RAW_OUTPUT="$(mktemp)"
+          trap 'rm -f "$RAW_OUTPUT"' EXIT
+          mkdir -p evidence
+          set +e
+          ssh -T -o ConnectTimeout=10 -o LogLevel=ERROR -i ~/.ssh/deploy_key \
+            "$SERVER_USER@$SERVER_HOST" \
+            "NODE_NO_WARNINGS=1 node - --phone-sync-diagnostic '$EXPECTED_DEPLOYED_SHA'" \
+            < attendance-phone-sync-diagnostic.cjs > "$RAW_OUTPUT" 2>/dev/null
+          REMOTE_STATUS=$?
+          set -e
+          node attendance-phone-sync-diagnostic.cjs --validate-phone-sync-diagnostic "$EXPECTED_DEPLOYED_SHA" < "$RAW_OUTPUT" > evidence/attendance-phone-sync-diagnostic.json || {
+            rm -f evidence/attendance-phone-sync-diagnostic.json
+            echo '::error::No valid bounded diagnostic'
+            exit 1
+          }
+          [ "$REMOTE_STATUS" -eq 0 ]
+          node -e 'const r=require("./evidence/attendance-phone-sync-diagnostic.json"); if(r.status!=="PASS"||r.artifactSha!==process.env.EXPECTED_DEPLOYED_SHA)process.exit(1); console.log(JSON.stringify({status:r.status,tenant:r.tenant,artifactSha:r.artifactSha}))'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: attendance-phone-sync-diagnostic-${{ github.sha }}
+          path: evidence/attendance-phone-sync-diagnostic.json
+          retention-days: 1
+          if-no-files-found: error
