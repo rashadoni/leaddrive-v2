@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "status": "RELEASE_IN_PROGRESS",
+  "status": "PASS",
   "pullRequest": "https://github.com/rashadoni/leaddrive-mtm/pull/130",
   "reviewedHead": "dc6153ea10b09fbba9833c2e421dd85973ae89b3",
   "mergedMain": "d8bf95c5b1eb7eae5841ca54c2e43603cfc7163b",
@@ -22,7 +22,32 @@
   },
   "mainRelease": {
     "runId": 38509617681,
-    "status": "IN_PROGRESS"
+    "status": "PASS",
+    "tag": "v3.8.5-build475",
+    "sourceSha": "d8bf95c5b1eb7eae5841ca54c2e43603cfc7163b",
+    "version": "3.8.5",
+    "versionCode": 1475,
+    "apkBytes": 46740487,
+    "apkSha256": "e5b43d79c8219e3dd994689c93036520f1db497aa89e94826d2a4b025326b0d8",
+    "signedReleaseCertificateVerified": true,
+    "downloadChecksumVerified": true,
+    "inPlaceInstallVerified": true
   },
-  "physicalAcceptance": "NOT_RUN: wait for main signed release"
+  "physicalAcceptance": {
+    "at": "2026-10-14T04:15:30.955565+00:00",
+    "name": "physical-field-location-denial-stable-3.8.5",
+    "status": "PASS",
+    "detail": {
+      "installedBuild": {
+        "version": "3.8.5",
+        "versionCode": 1475
+      },
+      "foregroundCycles": 5,
+      "automaticPermissionActivities": 1,
+      "locationPermissionsStillDenied": true,
+      "sameFictionalFieldIdentity": true,
+      "originalWorkdayRunning": true,
+      "noWorkdayMutation": true
+    }
+  }
 }

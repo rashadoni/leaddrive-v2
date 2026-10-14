@@ -118,3 +118,48 @@
   E2E are NOT_RUN locally under the host workload contract; hosted verification
   remains the release gate. No source change was needed. This checkpoint
   appends only this journal; no push, device action or production mutation.
+
+## 2026-10-14 — intermediate physical acceptance resync from 56f2aaf3d
+
+- The coordinator authorized this docs-only checkpoint from immutable continuation
+  `56f2aaf3d4253237e62b699a48a08ca8cbe4037a`. The acceptance branch stays based on
+  reviewed main `8c54afe632181b15d4bb4cb88ee1953a6a72cd4f`; its reviewed
+  risk-date source/test change remains byte-for-byte unchanged. No push or PR
+  was authorized for this checkpoint.
+- Refreshed 31 explicitly named documentation/evidence paths from committed Git
+  blobs only. New imports since the previous assembly are the fictional FIELD
+  corrected PDF/render, stable denied-location and offline-restart screens;
+  OFFICE initial/completed screens and corrected PDF/render; and the actual
+  shared-phone risk screen explicitly named `before-date-fix`. The coordinator
+  inspected these published binary artifacts. No private temporary file, raw
+  UI/system log, credential or entire directory was copied.
+- README preserves the exact 1,342-line common prefix, main's seven-line tail,
+  and all 280 continuation lines. Its full previous bytes remain a prefix;
+  65 new continuation lines are appended. The five main-only session logs/
+  timezone receipt and every older entry in this assembly journal are retained.
+  Both copies of the non-UTC receipt remain in their distinct original paths.
+- The imported S23 receipt remains IN_PROGRESS at 2026-10-14T05:28:06.615115+00:00:
+  118 historical assertions, comprising 107 PASS, seven FAIL and four NOT_RUN.
+  These are historical observations, not 118 independent completed scenarios.
+  The previous 58-case prefix is unchanged. Later PASS receipts now demonstrate
+  both physical workday chains, all eight request types per role, their exact
+  payloads/final decisions, correction history, Excel/PDF, OFFICE inbox and six
+  actual shared-installation findings. The earlier request-verifier failure was
+  a local harness premise (15 logged attempts for 16 real requests), resolved
+  by one explicitly evidenced first-FIELD-annual exception; no history was
+  backfilled and that FAIL is preserved beside the actual 16-request PASS.
+- The coordinator's twenty-minute five-cycle OFFICE functional endurance is
+  still running. Its completion, final OFFICE logout and saved phone-state
+  restoration are NOT_RUN at this snapshot. No all-night functional acceptance
+  is claimed. Physical camera QR/document capture, external email sends and a
+  300-employee load test remain NOT_RUN. Full OFFICE private queue counts remain
+  NOT_OBSERVABLE; canonical covered actions do not establish a hidden zero count.
+- Checks PASS: 13 imported JSON files parse; all 30 non-README imports match
+  immutable source bytes; both README tails and the old S23 case prefix remain;
+  the five main-only files and two reviewed date source/test files match their
+  saved hashes. Diff whitespace is checked before commit. No tests, typecheck,
+  build, browser or device action was repeated for this evidence-only resync;
+  these are NOT_RUN here under the host contract. The final source-bearing PR
+  still requires hosted exact-head gates and the date-format visual check after
+  its release. A final coordinator snapshot is required after endurance and
+  restoration before publication.
