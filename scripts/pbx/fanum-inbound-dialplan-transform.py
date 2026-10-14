@@ -21,8 +21,15 @@ PROVIDER_SOURCE = "extensions_fanum.conf"
 SELECTOR_BYTES_RE = re.compile(rb"[0-9]{5,20}\n")
 SELECTOR_TEXT_RE = re.compile(r"[0-9]{5,20}")
 REVIEWED_WILDCARD_PATTERN = "_X."
-REVIEWED_WILDCARD_APPLICATIONS = (
+# The first step is only a log line, and the station has carried two spellings
+# of it: the one this bundle was first reviewed against, and the one live on
+# FANUM-PBX01 since 2026-09-14.  Either is accepted; every other step must match
+# exactly.
+REVIEWED_WILDCARD_NOOPS = (
     "NoOp(Fanum provider catch-all)",
+    "NoOp(Fanum SIP inbound: ${CALLERID(all)} to ${EXTEN})",
+)
+REVIEWED_WILDCARD_APPLICATIONS = (
     "Set(CHANNEL(language)=az)",
     "Set(DENOISE(rx)=on)",
     "Set(AGC(rx)=5000)",
@@ -222,7 +229,11 @@ def _source_directive(line: str) -> tuple[str, str | None, str, str]:
 
 
 def _review_applications(applications: list[str]) -> None:
-    if tuple(applications) != REVIEWED_WILDCARD_APPLICATIONS:
+    if (
+        not applications
+        or applications[0] not in REVIEWED_WILDCARD_NOOPS
+        or tuple(applications[1:]) != REVIEWED_WILDCARD_APPLICATIONS
+    ):
         raise DialplanRefused("provider wildcard applications are unexpected")
 
 
