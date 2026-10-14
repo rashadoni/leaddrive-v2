@@ -42,7 +42,10 @@ export interface WithMtmRlsAuthOptions {
   mobileCapability?: MobileEndpointCapability
 }
 
-type MtmRlsCapabilityOption = FieldTenantCapabilityId | WithMtmRlsAuthOptions
+// The string form names one capability for both principals, so it is limited to
+// those the phone token carries. Personnel has no mobile capability yet (stage
+// 2b of docs/mtm-attendance/roadmap-personnel.md) and uses its own web wrapper.
+type MtmRlsCapabilityOption = MobileEndpointCapability | WithMtmRlsAuthOptions
 
 function withMtmTenantCapabilityWebRlsAuth<C = unknown>(
   action: Action | undefined,
