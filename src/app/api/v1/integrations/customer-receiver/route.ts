@@ -4,7 +4,7 @@ import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { withRlsSessionAuth } from "@/lib/with-rls"
 import { readJsonRequestWithinLimit } from "@/lib/request-body-limit"
-import { BUILDER_FIELDS, type BuilderField } from "@/lib/integrations/customer-receiver/constructor/catalog"
+import { catalogueWithCustomFields, type BuilderField } from "@/lib/integrations/customer-receiver/constructor/catalog"
 import { builderProfileSchema, defaultBuilderProfile, validateProfileCatalogue } from "@/lib/integrations/customer-receiver/constructor/profile"
 import { previewBuilderResource, syntheticBuilderInput } from "@/lib/integrations/customer-receiver/constructor/engine"
 import { buildReceivingApiProposal } from "@/lib/integrations/customer-receiver/constructor/api-proposal"
@@ -18,9 +18,7 @@ const unavailable = () => NextResponse.json({ error: "Receiver configuration una
 
 async function catalogue(organizationId: string): Promise<BuilderField[]> {
   const fields: Pick<CustomField, "id" | "entityType" | "fieldLabel" | "fieldType">[] = await prisma.customField.findMany({ where: { organizationId, isActive: true, entityType: { in: ["company", "contact", "deal"] } }, take: 501, orderBy: { id: "asc" }, select: { id: true, entityType: true, fieldLabel: true, fieldType: true } })
-  if (fields.length > 500) throw new Error("custom_field_catalogue_limit")
-  const types: Record<string, BuilderField["kind"]> = { text: "text", textarea: "text", email: "text", phone: "text", select: "text", number: "decimal", date: "date", checkbox: "boolean" }
-  return [...BUILDER_FIELDS, ...fields.filter((entry) => types[entry.fieldType]).map((entry) => ({ key: `custom.${entry.entityType}.${entry.id}`, entity: entry.entityType as BuilderField["entity"], kind: types[entry.fieldType], label: { ru: entry.fieldLabel, az: entry.fieldLabel, en: entry.fieldLabel } }))]
+  return catalogueWithCustomFields(fields)
 }
 
 const json = (value: unknown) => value as Prisma.InputJsonValue

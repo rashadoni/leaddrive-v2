@@ -521,6 +521,8 @@ model Organization {
   effectAttempts         EffectAttempt[]
   effectReconciliations  EffectReconciliation[]
   fundBalanceProjections FundBalanceProjection[]
+  customerReceiverPayloads       CustomerReceiverPayload[]
+  customerReceiverSecurityEvents CustomerReceiverSecurityEvent[]
 
   // C12 Multi-channel Campaign Orchestrator
   channelPreferences        ChannelPreference[]
@@ -19538,6 +19540,7 @@ model EffectOutbox {
 
   attempts EffectAttempt[]
   reconciliations EffectReconciliation[]
+  customerReceiverPayload CustomerReceiverPayload?
 
   @@unique([organizationId, id], map: "effect_outbox_org_id_key")
   @@unique([organizationId, effectType, effectKey], map: "effect_outbox_effect_key")
@@ -19588,6 +19591,64 @@ model EffectReconciliation {
   @@unique([organizationId, effectId, attemptNumber], map: "effect_reconciliations_attempt_key")
   @@index([organizationId, reconciledAt, id], map: "effect_reconciliations_org_time_idx")
   @@map("effect_reconciliations")
+}
+
+/// AAC / customer receiving API: the only store of an outgoing personal
+/// payload. Application-encrypted (tenant-derived AES-256-GCM), bounded by
+/// expiresAt (≤ 14 days), deletable once expired unless an incident hold is in
+/// force; only the hold may change. effect_outbox keeps metadata only.
+/// Triggers and FORCE RLS: migration 20261014150000_customer_receiver_runtime.
+model CustomerReceiverPayload {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  effectId       String       @db.Uuid
+  effect         EffectOutbox @relation(fields: [organizationId, effectId], references: [organizationId, id], onDelete: Cascade, onUpdate: Cascade, map: "customer_receiver_payloads_effect_fkey")
+  integrationId  String
+  environment    String
+  cipherText     String
+  bodySha256     String
+  bodyBytes      Int
+  expiresAt      DateTime
+  holdUntil      DateTime?
+  holdReason     String?
+  createdAt      DateTime     @default(now())
+
+  @@unique([organizationId, effectId], map: "customer_receiver_payloads_effect_key")
+  @@index([organizationId, expiresAt], map: "customer_receiver_payloads_expiry_idx")
+  @@index([organizationId, integrationId, createdAt], map: "customer_receiver_payloads_integration_idx")
+  @@map("customer_receiver_payloads")
+}
+
+/// AAC / customer receiving API runtime security log (normalized, value-free).
+/// Append-only except extending holdUntil; deletable after retainUntil.
+model CustomerReceiverSecurityEvent {
+  id                 String       @id @db.Uuid
+  organizationId     String
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  environment        String
+  eventTime          DateTime
+  observedAt         DateTime
+  service            String
+  instanceId         String
+  version            String
+  category           String
+  action             String
+  outcome            String
+  severity           String
+  actorType          String
+  actorId            String?
+  targetType         String?
+  targetId           String?
+  correlationId      String?
+  integrationEventId String?      @db.Uuid
+  retainUntil        DateTime
+  holdUntil          DateTime?
+  recordedAt         DateTime     @default(now())
+
+  @@index([organizationId, environment, eventTime, id], map: "customer_receiver_security_events_time_idx")
+  @@index([organizationId, retainUntil], map: "customer_receiver_security_events_retention_idx")
+  @@map("customer_receiver_security_events")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

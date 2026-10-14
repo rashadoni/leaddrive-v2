@@ -4,7 +4,7 @@
 
 ## Граница текущего результата
 
-Добавлено серверное ядро и конструктор в `src/lib/integrations/customer-receiver/`. В новой странице `/settings/integrations/customer-receiver` и API `/api/v1/integrations/customer-receiver` реализованы сохранение настроек и синтетическая проверка пакетов. **Захват изменений CRM и автоматическая очередь передачи ещё не подключены.** Ни одна операция в работающей CRM не начинает внешнюю отправку от этих изменений. Настоящий приёмный API, организация AAC, Azure/VPN и сертификаты ещё не подключены.
+Добавлено серверное ядро и конструктор в `src/lib/integrations/customer-receiver/`. В новой странице `/settings/integrations/customer-receiver` и API `/api/v1/integrations/customer-receiver` реализованы сохранение настроек и синтетическая проверка пакетов. С 14.10.2026 (Claude Code) в `runtime/` добавлены транзакционный capture, зашифрованное ограниченное хранилище пакетов, обработчик доставки, операторское урегулирование и runtime security log с PostgreSQL-доказательством (раздел «Runtime» ниже). **Ни один путь записи CRM их пока не вызывает, и всё выключено по умолчанию:** без файла операторской привязки и двух переключателей процесса capture и delivery ничего не делают. Ни одна операция в работающей CRM не начинает внешнюю отправку от этих изменений. Настоящий приёмный API, организация AAC, Azure/VPN и сертификаты ещё не подключены.
 
 Название AAC — бизнес-идентичность, не подтверждённый `organizationId`. В `clients/registry.json` отдельной AAC-инсталляции нет; это не доказывает отсутствие такой организации в БД. Не использовать ID одноимённой клиентской карточки вместо ID tenant. Шаблон `ops/customer-receiver/aac.test.example.json` намеренно содержит `organizationId: null`, отключённую интеграцию и `exportRule.mode: disabled`. Приложение его не загружает.
 
@@ -41,6 +41,24 @@
 
 Для реальных данных подготовлены `constructor/source.ts` и `prisma-source.ts`: выбор только разрешённых столбцов, проверка org/id каждой записи и связанного клиента, чтение зарегистрированных custom values, lossless Decimal и UTC snapshots. Они пока не вызываются из публичного preview API. `receipts.ts` проверяет aliases ответа и точное совпадение event/external ID/version; HTTP-успех сам по себе не становится ERP-подтверждением.
 
+## Runtime: очередь, обработчик доставки, security log (14.10.2026)
+
+Код — `src/lib/integrations/customer-receiver/runtime/`, миграция `prisma/migrations/20261014150000_customer_receiver_runtime`.
+
+| Часть | Поведение |
+| --- | --- |
+| `binding.ts` | Операторская привязка из серверного файла `CUSTOMER_RECEIVER_RUNTIME_BINDINGS_FILE` (шаблон `ops/customer-receiver/runtime-bindings.example.json`): tenant, integration, TEST/PROD, точная утверждённая revision профиля + SHA-256, target, **пути** к файлам секретов (не секреты), TTL пакета ≤ 336 ч, retention журнала 30–365 дней, порог паузы. Плюс два переключателя процесса `CUSTOMER_RECEIVER_CAPTURE_ENABLED=on` и `CUSTOMER_RECEIVER_DELIVERY_ENABLED=on`. Нет файла/переключателя/одобрения — выключено. Draft API привязку не создаёт и не включает |
+| `capture.ts` | Вызывается внутри tenant-транзакции мутации CRM. Берёт утверждённую revision (из текущего draft или его истории, по hash) — правка draft после утверждения на захват не влияет. `trigger: change` захватывает только `all`/`filtered` при расписании `on_change`; `manual` — только явный операторский запуск. Проверка/отбор до выделения версии: отклонённая или не отобранная запись не оставляет событий. Затем `appendDomainEvent` (версия записи), `EffectOutbox` с метаданными без персональных данных (hash тела, путь, ключ идемпотентности, receipt aliases, лимиты, зависимость от версии клиента), зашифрованный пакет и security event — всё в той же транзакции. Ошибка БД откатывает и мутацию, и очередь |
+| `payload-store.ts` | Единственное место персонального пакета: AES-256-GCM с ключом tenant (`TENANT_PII_MASTER_KEY`), привязка к таблице/колонке, сверка с hash из неизменяемого ledger. `expiresAt` ≤ 14 дней (CHECK), отправка после истечения запрещена, удаление — только по истечении и без hold (триггер), hold только продлевается. Неизменяемый `EffectOutbox` содержит только метаданные |
+| `worker.ts` | Один ограниченный проход на привязку: восстановление просроченных lease (без `started` → снова pending; со `started` → `reconciliation_required`), захват под advisory-lock направления (пауза при ≥ N неопределённых, лимит одновременных 1–2, порядок версий одной записи, ожидание принятой версии клиента для сделки/контакта), закоммиченный `started` ДО сетевого вызова, ровно замороженные байты/ключ/путь, терминальная evidence + переход одной транзакцией. 2xx засчитывается только с receipt точного event/record/version; 5xx/429/таймаут/кривой receipt → reconciliation, никогда не слепой повтор. Остановка прохода на access_denied/transport/receiver_error/rate_limited |
+| `reconcile.ts` | Решение оператора под ролью `leaddrive_effect_operator`: retry (те же байты и ключ) / succeeded (с receipt) / dead, с неизменяемой evidence в той же транзакции. Роль приложения этого сделать не может (триггеры) |
+| `security-log.ts` | Таблица `customer_receiver_security_events`: нормализованные события без значений, URL, заголовков и тел ответа; запись в той же транзакции, что и изменение состояния; append-only, кроме продления hold; удаление — только после `retainUntil`. Действия: queued/skipped/attempted/accepted/rejected/uncertain/deferred/lease_recovered/receipt_lookup/retention_purge |
+| `app-runtime.ts`, `/api/cron/customer-receiver-delivery` | Боевые адаптеры: tenant-транзакция через `runWithTenant`, отправитель читает секреты из файлов в момент отправки и вызывает существующий `requestReceiverJson`; `captureCrmChangeForReceivers(tx, …)` — точка подключения для путей записи CRM. Cron без привязки отвечает `not_configured`; crontab не установлен |
+
+Выгрузка `GET /api/v1/integrations/customer-receiver/logs` теперь объединяет аудит конструктора и runtime-журнал, а в manifest перечисляет 15 неподключённых источников (`not_configured`) — вместо умолчания о полноте.
+
+Найдено попутно: `appendDomainEvent` при сессии БД не в UTC отклоняется триггером согласованности (`lastEventAt` приводится в поясе сессии, `occurredAt` пишется в UTC). Capture закрепляет UTC для своей транзакции; общая правка вынесена отдельной задачей.
+
 ## Журнал самого конструктора
 
 Метаданные чтения, создания/изменения профиля, preview и выгрузки записываются в AuditLog. Ошибка обязательной записи audit не выдаётся за успешную операцию. В лог не копируются пакеты, значения полей, константы или секреты.
@@ -75,11 +93,11 @@
 | Источник | Владелец | Статус этой задачи |
 | --- | --- | --- |
 | CRM: аутентификация, доступ, роли, административные изменения, чтение/экспорт | LeadDrive | Новый JSONL-контракт готов; существующие события ещё не подключены/не аттестованы |
-| Отправка, receipt, повтор, конфликт, reconciliation | LeadDrive | Словарь событий готов; durable запись worker ещё не подключена |
+| Отправка, receipt, повтор, конфликт, reconciliation | LeadDrive | COLLECTED в `customer_receiver_security_events` (runtime), выгружается с manifest; на проде не включено |
 | Azure Activity/Entra/Key Vault | Владелец Azure + LeadDrive | NOT CONFIGURED: клиентский Azure-контур не предоставлен |
 | WAF/VNet/VPN | Владельцы соответствующих сетей | NOT CONFIGURED: подключение и реальные тестовые события не проверены |
 | БД/ОС/выпуск/backup | Владелец инфраструктуры | Сбор в этот профиль не подключён |
-| Сборщик, буфер, задержки и пропуски | LeadDrive | Словарь/manifest готовы; forwarder/мониторинг ещё не реализованы |
+| Сборщик, буфер, задержки и пропуски | LeadDrive | Manifest называет неподключённые источники; forwarder в SIEM и мониторинг задержки не реализованы |
 | Приёмный API, ERP-адаптер, UiumSoft, сеть заказчика | AAC / интегратор | На стороне заказчика; не заявляется покрытием LeadDrive |
 
 ## Предварительные трудозатраты
@@ -115,3 +133,10 @@ Schema, рабочая сеть и production не изменены. Следу�
 Code head552f2a1d48458132a3a999763b9723fb5147b9cd, run38479938519: pr-scope, static-checks, typecheck, runner-policy, scan и GitHub-hosted Linux production build — PASS. Typecheck gate проверяет существующий baseline; это не заявление об отсутствии всех исторических diagnostics. Production build:18m10s, static checks:15m33s, typecheck:16m5s.
 
 Дополнительные локальные checkpoint после этого SHA содержат только журнал, runtime plan и lexical inventory; приложение не изменено. 205 узких тестов и scoped TypeScript PASS. Реальные PostgreSQL/RLS/CAS именно нового builder adapter, live OAuth/mTLS/VPN/customer API/ERP/SIEM — NOT RUN; constructor browser proof остаётся синтетическим. Schema и production не менялись; merge/deploy не выполнялись.
+
+### Runtime checkpoint (Claude Code, 14.10.2026)
+
+- `src/__tests__/customer-receiver-runtime-postgres.test.ts`: 10 сценариев на настоящем PostgreSQL 16 (pgvector/pg16) с миграцией foundation + runtime, роль приложения без BYPASSRLS в сессии `Europe/Berlin`, операторская роль отдельно — PASS локально. Сценарии: выключено по умолчанию; откат очереди вместе с мутацией; отсутствие персональных данных в ledger/событиях; изоляция tenant; отказ неверной записи; утверждённая revision против правки draft; порядок зависимостей; started до вызова; неопределённый исход → reconciliation, пауза направления, отсутствие слепого повтора; операторские решения; восстановление lease в обе стороны; один исполнитель при трёх конкурентных workers; TTL/purge/hold и запрет отправки истёкшего пакета; окончательный отказ и операторский retry; append-only журнал без значений. Мутация (отключённая проверка зависимостей) даёт 3 красных теста.
+- Все тесты интеграции: 221 PASS в 12 файлах; соседние наборы тенантов/RLS PASS; `find-context-gaps.py` 0, `lint-encrypted-columns` и runner policy PASS; Prisma validate PASS.
+- NOT RUN локально: scoped TypeScript (общая блокировка тяжёлых команд хоста занята, одна повторная попытка), полный typecheck/build — в CI. Тест добавлен шагом в `pr-checks.yml` и `deploy.yml` (`CUSTOMER_RECEIVER_RUNTIME_DB_GATE=required`).
+- NOT RUN / нет данных: подключение capture к путям записи CRM (следующий этап), OAuth/Key Vault, Azure/VPN, receiving API заказчика, receipt lookup, SIEM.

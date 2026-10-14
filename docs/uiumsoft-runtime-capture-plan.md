@@ -1,6 +1,6 @@
 # AAC: подключение подготовленного конструктора к CRM и очереди
 
-Состояние: план следующего этапа, не реализованный worker и не разрешение на отправку. Конструктор, source adapter, bounded transport и предложенный receiving contract подготовлены в ветке codex/uiumsoft-api-security-flow. Реальные источники, durable capture, worker и полное security logging пока не соединены в рабочий контур.
+Состояние (14.10.2026, Claude Code): хранилище пакетов, транзакционный capture, worker, операторское урегулирование и runtime security log реализованы в `src/lib/integrations/customer-receiver/runtime/` и проверены на настоящем PostgreSQL (`customer-receiver-runtime-postgres.test.ts`). Пункты 1–4, 6–8 раздела «Требования» и раздел «Worker» закрыты кодом; подключение к реальным путям записи CRM (таблица ниже) — следующий этап, interval-dispatcher не реализован. Отправка выключена по умолчанию и не разрешена этим состоянием. Исходный план ниже сохранён без изменений.
 
 ## Обнаруженные пути изменения
 

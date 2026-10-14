@@ -7,6 +7,7 @@ export const SECURITY_ACTIONS = [
   "data_read", "data_export", "submission_queued", "submission_attempted", "submission_accepted",
   "submission_rejected", "submission_uncertain", "receipt_lookup", "erp_result_reported",
   "network_connection", "resource_change", "collector_health", "collection_gap", "incident_export",
+  "submission_deferred", "submission_skipped", "lease_recovered", "retention_purge", "incident_hold",
 ] as const
 export const SECURITY_OUTCOMES = ["success", "failure", "unknown"] as const
 export const SECURITY_SEVERITIES = ["info", "low", "medium", "high", "critical"] as const

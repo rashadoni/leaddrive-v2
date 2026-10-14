@@ -50,3 +50,11 @@ export function fieldsForResource(resource: BuilderResource, catalogue: readonly
 }
 
 export const CONTEXT_FIELDS = ["schemaVersion", "eventId", "externalId", "entityVersion", "occurredAt", "sourceSystem", "customerExternalId"] as const
+
+const CUSTOM_FIELD_KINDS: Record<string, BuilderField["kind"]> = { text: "text", textarea: "text", email: "text", phone: "text", select: "text", number: "decimal", date: "date", checkbox: "boolean" }
+
+/** Tenant catalogue = fixed fields + active, supported custom field definitions. */
+export function catalogueWithCustomFields(fields: readonly { id: string; entityType: string; fieldLabel: string; fieldType: string }[]): BuilderField[] {
+  if (fields.length > 500) throw new Error("custom_field_catalogue_limit")
+  return [...BUILDER_FIELDS, ...fields.filter((entry) => CUSTOM_FIELD_KINDS[entry.fieldType] && ["company", "contact", "deal"].includes(entry.entityType)).map((entry) => ({ key: `custom.${entry.entityType}.${entry.id}`, entity: entry.entityType as BuilderEntity, kind: CUSTOM_FIELD_KINDS[entry.fieldType], label: { ru: entry.fieldLabel, az: entry.fieldLabel, en: entry.fieldLabel } }))]
+}
