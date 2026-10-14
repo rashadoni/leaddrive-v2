@@ -52,6 +52,7 @@ export function prepareDatabase() {
   apply('20260828230000_workforce_direct_correction_contract')
   apply('20260915210100_workforce_workday_reopen_ledger')
   for (const name of readdirSync('prisma/migrations').filter(name => /^20261013.*mtm_(attendance_|workday_employee_return)/.test(name)).sort()) apply(name)
+  apply('20261014010000_mtm_attendance_utc_guard_clocks')
   sql(readFileSync('scripts/rls/enable-batch-5.sql', 'utf8'))
   const password = process.env.MTM_E2E_DATABASE_PASSWORD
   assert.match(password ?? '', /^[a-f0-9]{48}$/)

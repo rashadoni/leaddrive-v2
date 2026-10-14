@@ -163,6 +163,18 @@ jobs:
           import json,os,pathlib
           receipt={'headSha':os.environ['MTM_E2E_HEAD_SHA'],'workflowSha':os.environ['GITHUB_SHA'],'runId':os.environ['GITHUB_RUN_ID'],'runAttempt':os.environ['GITHUB_RUN_ATTEMPT'],'jobStatus':os.environ['JOB_STATUS'],'productionMutation':False}
           (pathlib.Path(os.environ['MTM_E2E_OUTPUT'])/'workflow-result.json').write_text(json.dumps(receipt,indent=2)+'\n')
+          # Only finite diagnostic classifications from the owned fixture. Raw
+          # runtime logs can contain authentication/SQL and are never uploaded.
+          diagnostics=[]
+          log=pathlib.Path(os.environ['MTM_E2E_LOG'])
+          if log.exists():
+            for line in log.read_text(errors='replace').splitlines():
+              if not line.startswith('MTM_LEAVE_READ_DIAGNOSTIC '): continue
+              try: value=json.loads(line.removeprefix('MTM_LEAVE_READ_DIAGNOSTIC '))
+              except (ValueError,TypeError): continue
+              if set(value)=={'code','expired','elapsedMs'} and value['code'] in ['P2028','P2024','P2034','P2010','OTHER'] and type(value['expired']) is bool and type(value['elapsedMs']) is int and 0<=value['elapsedMs']<=4500000:
+                diagnostics.append(value)
+          (pathlib.Path(os.environ['MTM_E2E_OUTPUT'])/'leave-read-diagnostics.json').write_text(json.dumps({'observations':diagnostics[-100:]},indent=2)+'\n')
           PY
       - uses: actions/upload-artifact@v4
         if: always()

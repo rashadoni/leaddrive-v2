@@ -45,7 +45,7 @@ export async function readAttendanceRiskReport(input: ReadInput): Promise<Attend
       LEFT JOIN users u ON u."organizationId"=d."organizationId" AND u.id=d."actorUserId"
       LEFT JOIN mtm_attendance_branch_revisions b ON b."organizationId"=c."organizationId" AND b.id=m."branchRevisionId"
       WHERE c."organizationId"=${organizationId} AND (${scope}::text[] IS NULL OR c."agentId"=ANY(${scope}::text[]))
-      AND c."workDate">=${new Date(query.from)}::date AND c."workDate"<=${new Date(query.to)}::date
+      AND c."workDate">=${query.from}::date AND c."workDate"<=${query.to}::date
       AND (${query.employeeId}='' OR c."agentId"=${query.employeeId}) AND (${query.teamId}='' OR a."teamId"=${query.teamId})
       AND (${query.kind}='ALL' OR c.kind=${query.kind})
       AND (${query.status}='ALL' OR (${query.status}='OPEN' AND d.id IS NULL) OR (${query.status}='DISMISSED' AND d.id IS NOT NULL))

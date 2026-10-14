@@ -11,6 +11,43 @@
 
 import { createDateFormatter } from "@/lib/format-date"
 
+type MachineFormatterKind = "validation" | "date-input" | "offset" | "local-minute"
+const MACHINE_FORMATTER_LIMIT = 128
+const machineFormatters = new Map<string, Intl.DateTimeFormat>()
+const machineFormatterOptions: Record<MachineFormatterKind, Intl.DateTimeFormatOptions> = {
+  validation: {},
+  "date-input": { year: "numeric", month: "2-digit", day: "2-digit" },
+  offset: { timeZoneName: "longOffset" },
+  "local-minute": {
+    calendar: "iso8601", numberingSystem: "latn", year: "numeric", month: "2-digit",
+    day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+  },
+}
+
+/** Only fixed-option machine formatters are shared, never instants, offsets,
+ * answers or tenant data. One 128-entry LRU bounds all four kinds together;
+ * every conversion still evaluates the supplied instant with the runtime ICU. */
+function machineFormatter(kind: MachineFormatterKind, timezone: string): Intl.DateTimeFormat {
+  const key = `${kind}\0${timezone}`
+  const existing = machineFormatters.get(key)
+  if (existing) {
+    machineFormatters.delete(key)
+    machineFormatters.set(key, existing)
+    return existing
+  }
+  // eslint-disable-next-line no-restricted-syntax -- fixed machine comparison/probe locales, never localized UI output; retained for the MTM date-formatting contract.
+  const formatter = new Intl.DateTimeFormat(kind === "date-input" ? "en-CA" : "en-US", {
+    timeZone: timezone, ...machineFormatterOptions[kind],
+  })
+  // Failed construction is not retained: caller fallback/exception behavior is unchanged.
+  if (machineFormatters.size >= MACHINE_FORMATTER_LIMIT) {
+    const oldest = machineFormatters.keys().next().value
+    if (oldest !== undefined) machineFormatters.delete(oldest)
+  }
+  machineFormatters.set(key, formatter)
+  return formatter
+}
+
 /**
  * Curated list of common IANA timezones for UI dropdowns. Not exhaustive —
  * `Intl.supportedValuesOf("timeZone")` (where available) returns the full
@@ -80,8 +117,7 @@ export function isValidTimezone(tz: unknown): tz is string {
   if (typeof tz !== "string" || tz.length === 0 || tz.length > 64) return false
   try {
     // Throws RangeError on invalid zones.
-    // eslint-disable-next-line no-restricted-syntax -- a probe, not output: nothing here reaches a screen.
-    new Intl.DateTimeFormat("en-US", { timeZone: tz }).format(new Date())
+    machineFormatter("validation", tz).format(new Date())
     return true
   } catch {
     return false
@@ -148,13 +184,7 @@ export function dateInputValueInTimezone(
   const d = date instanceof Date ? date : new Date(date)
   if (Number.isNaN(d.getTime())) return ""
 
-  // eslint-disable-next-line no-restricted-syntax -- en-CA is pinned to get YYYY-MM-DD for an <input type="date">, not a locale date.
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: tz,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(d)
+  const parts = machineFormatter("date-input", tz).formatToParts(d)
   const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
   return `${values.year}-${values.month}-${values.day}`
 }
@@ -233,18 +263,7 @@ function isSameLocalMinute(
   timezone: string,
 ): boolean {
   // Machine comparison only: this is not user-facing localized date output.
-  // eslint-disable-next-line no-restricted-syntax
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: timezone,
-    calendar: "iso8601",
-    numberingSystem: "latn",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(candidate)
+  const parts = machineFormatter("local-minute", timezone).formatToParts(candidate)
   const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
   return Number(values.year) === value.year
     && Number(values.month) === value.month
@@ -298,11 +317,7 @@ export function getOffsetMinutes(timezone: string, at: Date = new Date()): numbe
   // Use Intl with offsetName "longOffset" and parse — most reliable cross-runtime.
   // Format yields strings like "GMT+04:00" / "GMT-05:30" / "GMT".
   try {
-    // eslint-disable-next-line no-restricted-syntax -- parsing "GMT+04:00" into minutes; en-US is pinned so the regex holds.
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone: timezone,
-      timeZoneName: "longOffset",
-    }).formatToParts(at)
+    const parts = machineFormatter("offset", timezone).formatToParts(at)
     const tzPart = parts.find(p => p.type === "timeZoneName")?.value || ""
     // KNOWN: For UTC, Node yields pure "GMT" without an offset — regex misses,
     //   we fall through to `return 0`. That's the correct answer for UTC.
