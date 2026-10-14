@@ -5,6 +5,8 @@ on:
     paths:
       - '.github/workflows/mtm-attendance-timezone.yml'
       - 'src/lib/mtm/attendance-location-store.ts'
+      - 'src/lib/mtm/attendance-risk-detection.ts'
+      - 'src/lib/mtm/attendance-risk-review-store.ts'
       - 'src/__tests__/mtm-attendance-location-postgres.test.ts'
       - 'prisma/migrations/*mtm_attendance*/*'
   workflow_dispatch:
@@ -52,6 +54,7 @@ jobs:
           echo "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:$PG_PORT/attendance_timezone_test" >> "$GITHUB_ENV"
           echo "MTM_ATTENDANCE_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:$PG_PORT/attendance_timezone_test" >> "$GITHUB_ENV"
       - run: npm ci --include=dev
+      - run: npx prisma validate --schema prisma/schema.prisma
       - run: npx prisma generate --schema prisma/schema.prisma
       - name: Observe the production writer reject non-UTC canonical marks
         run: |
@@ -64,32 +67,53 @@ jobs:
           npx vitest run src/__tests__/mtm-attendance-location-postgres.test.ts -t 'non-UTC canonical NO_CONSENT' --reporter=json --outputFile=evidence/red-vitest.json > "$RUNNER_TEMP/attendance-timezone-red.log" 2>&1
           code=$?
           set -e
-          test "$code" -ne 0
-          python3 - <<'PY'
+          RED_EXIT_CODE="$code" python3 - <<'PY'
           import json,os,pathlib,subprocess
-          report=json.loads(pathlib.Path('evidence/red-vitest.json').read_text())
-          failed=[t for suite in report['testResults'] for t in suite['assertionResults'] if t['status']=='failed']
-          log=(pathlib.Path(os.environ['RUNNER_TEMP'])/'attendance-timezone-red.log').read_text()
-          assert len(failed)==2 and all('non-UTC canonical NO_CONSENT' in t['fullName'] for t in failed)
-          assert all(code in log for code in ('MTM_ATTENDANCE_MARK_EVENT_MISMATCH','P2010','23514'))
+          try:
+            report=json.loads(pathlib.Path('evidence/red-vitest.json').read_text()); readable=True
+          except (OSError,ValueError):
+            report={}; readable=False
+          failed=[t for suite in report.get('testResults',[]) for t in suite.get('assertionResults',[]) if t['status']=='failed']
+          expected=('MTM_ATTENDANCE_MARK_EVENT_MISMATCH','P2010','23514')
+          signatures=[all(code in '\n'.join(t.get('failureMessages',[])) for code in expected) for t in failed]
           result={'baselineSha':os.environ['BASELINE_SHA'],'headSha':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
-            'red':{'status':'OBSERVED_EXPECTED_FAILURE','tests':len(failed),'zones':['Asia/Baku','America/New_York'],
-              'prismaCode':'P2010','sqlState':'23514','code':'MTM_ATTENDANCE_MARK_EVENT_MISMATCH'},'green':{'status':'NOT_RUN'},'productionMutation':False}
-          pathlib.Path('evidence/non-utc-receipt.json').write_text(json.dumps(result,indent=2)+'\n')
+            'red':{'status':'FAIL','tests':len(failed),'zones':['Asia/Baku','America/New_York'],
+              'reportReadable':readable,'processSucceeded':os.environ['RED_EXIT_CODE']=='0',
+              'expectedSignatureCount':sum(signatures),'expectedTestCount':sum('non-UTC canonical NO_CONSENT' in t['fullName'] for t in failed)},
+            'green':{'status':'NOT_RUN'},'productionMutation':False}
+          path=pathlib.Path('evidence/non-utc-receipt.json')
+          path.write_text(json.dumps(result,indent=2)+'\n')
+          assert readable and os.environ['RED_EXIT_CODE']!='0'
+          assert len(failed)==2 and all('non-UTC canonical NO_CONSENT' in t['fullName'] for t in failed)
+          assert all(signatures), 'Both failures must carry the actual allowlisted Prisma/PostgreSQL signature'
+          result['red'].update(status='OBSERVED_EXPECTED_FAILURE',prismaCode='P2010',sqlState='23514',code='MTM_ATTENDANCE_MARK_EVENT_MISMATCH')
+          path.write_text(json.dumps(result,indent=2)+'\n')
           PY
       - name: Verify corrected writer and existing location/privacy suite
         run: |
           set -euo pipefail
           git diff --exit-code -- src/lib/mtm/attendance-location-store.ts
+          set +e
           npx vitest run src/__tests__/mtm-attendance-location-postgres.test.ts --reporter=default --reporter=json --outputFile=evidence/green-vitest.json
-          python3 - <<'PY'
-          import json,pathlib
-          report=json.loads(pathlib.Path('evidence/green-vitest.json').read_text())
+          code=$?
+          set -e
+          GREEN_EXIT_CODE="$code" python3 - <<'PY'
+          import json,os,pathlib
+          try:
+            report=json.loads(pathlib.Path('evidence/green-vitest.json').read_text()); readable=True
+          except (OSError,ValueError):
+            report={}; readable=False
+          path=pathlib.Path('evidence/non-utc-receipt.json'); receipt=json.loads(path.read_text())
+          receipt['green']={'status':'FAIL','reportReadable':readable,'processSucceeded':os.environ['GREEN_EXIT_CODE']=='0',
+            'passed':report.get('numPassedTests',0),'failed':report.get('numFailedTests',0)}
+          path.write_text(json.dumps(receipt,indent=2)+'\n')
+          assert readable and os.environ['GREEN_EXIT_CODE']=='0'
           assert report['numFailedTests']==0 and report['numFailedTestSuites']==0
           regression=[t for suite in report['testResults'] for t in suite['assertionResults'] if 'non-UTC canonical NO_CONSENT' in t['fullName']]
           assert len(regression)==2 and all(t['status']=='passed' for t in regression)
-          path=pathlib.Path('evidence/non-utc-receipt.json'); receipt=json.loads(path.read_text())
-          receipt['green']={'status':'PASS','passed':report['numPassedTests'],'failed':0,'nonUtcRegressionPassed':len(regression)}
+          clock=[t for suite in report['testResults'] for t in suite['assertionResults'] if 'non-UTC guards preserve UTC' in t['fullName'] or 'non-UTC risk dates' in t['fullName'] or 'sets UTC only on four' in t['fullName']]
+          assert len(clock)==5 and all(t['status']=='passed' for t in clock)
+          receipt['green']={'status':'PASS','passed':report['numPassedTests'],'failed':0,'nonUtcRegressionPassed':len(regression),'utcGuardAndRiskPassed':len(clock)}
           path.write_text(json.dumps(receipt,indent=2)+'\n')
           PY
       - uses: actions/upload-artifact@v4

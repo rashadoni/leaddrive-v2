@@ -44,7 +44,7 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
   schemaDir=mkdtempSync(join(tmpdir(),"mtm-geo-schema-"));const schema=join(schemaDir,"schema.prisma");writeFileSync(schema,readFileSync("prisma/schema.prisma","utf8").split("\n").filter(line=>!/Unsupported\("vector/.test(line)).join("\n"))
   const result=spawnSync(process.execPath,[cli,"db","push","--schema",schema,"--skip-generate"],{env:{...process.env,DATABASE_URL:scratch!.adminDb},encoding:"utf8",timeout:180000,maxBuffer:1024*1024});if(result.status!==0)throw new Error("Location fixture schema push failed")
   sql(scratch!.adminDb,'DROP TABLE mtm_attendance_qr_evidence; DROP TABLE mtm_attendance_installation_revocations; DROP TABLE mtm_attendance_installation_decisions; DROP TABLE mtm_attendance_installation_requests; DROP TABLE mtm_attendance_stream_integrity; DROP TABLE mtm_attendance_risk_decisions; DROP TABLE mtm_attendance_risk_cases; DROP TABLE mtm_attendance_mark_evidence; DROP TABLE mtm_attendance_location_consents; DROP TABLE mtm_attendance_location_policies; DROP TABLE mtm_attendance_primary_branch_revisions; DROP TABLE mtm_attendance_branch_revisions; DROP TABLE mtm_attendance_branches; ALTER TABLE workforce_time_corrections DROP COLUMN "requestHash";')
-  for(const migration of["20260806120000_mtm_rls_coverage_completion","20260806160000_mtm_rls_bypass_clause_normalization","20261013070000_mtm_attendance_branches","20261013090000_mtm_attendance_location_evidence","20261013120000_mtm_attendance_risks","20261013140000_mtm_attendance_stream_integrity","20261013150000_mtm_attendance_installation_approval","20261013160000_mtm_attendance_branch_qr"])sql(scratch!.adminDb,readFileSync(`prisma/migrations/${migration}/migration.sql`,"utf8"))
+  for(const migration of["20260806120000_mtm_rls_coverage_completion","20260806160000_mtm_rls_bypass_clause_normalization","20261013070000_mtm_attendance_branches","20261013090000_mtm_attendance_location_evidence","20261013120000_mtm_attendance_risks","20261013140000_mtm_attendance_stream_integrity","20261013150000_mtm_attendance_installation_approval","20261013160000_mtm_attendance_branch_qr","20261014010000_mtm_attendance_utc_guard_clocks"])sql(scratch!.adminDb,readFileSync(`prisma/migrations/${migration}/migration.sql`,"utf8"))
   const foundation=readFileSync("prisma/migrations/20260828223000_workforce_h3_foundation/migration.sql","utf8");sql(scratch!.adminDb,foundation.slice(foundation.indexOf("-- Tenant data ships fail-closed."),foundation.indexOf("-- A migration runner may own new tables")))
   for(const migration of["20260828224500_workforce_h3_legacy_fact_guard","20260828230000_workforce_direct_correction_contract"])sql(scratch!.adminDb,readFileSync(`prisma/migrations/${migration}/migration.sql`,"utf8"))
   sql(scratch!.adminDb,readFileSync("scripts/rls/enable-batch-5.sql","utf8"));sql(scratch!.adminDb,`GRANT USAGE ON SCHEMA public TO "${scratch!.role}"; GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA public TO "${scratch!.role}"`)
@@ -67,7 +67,18 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
    expect(Math.abs(cast.implicit.getTime()-at.getTime())).toBeGreaterThanOrEqual(3_600_000)
    const mark:AttendanceMark={version:1,installationId:device,locationState:"NO_CONSENT",consentRevisionId:null,location:null}
    const start=operation("START",day,at,mark)
-   expect((await send(start,device)).body.results).toMatchObject([{status:"ok"}])
+   const errors=vi.spyOn(console,"error")
+   try {
+    const started=await send(start,device)
+    if(started.body.results[0]?.status==="error"){
+     // The hosted red phase must prove the actual database failure, not just
+     // an arbitrary HTTP error. Never serialize a raw query, object or stack.
+     const error=errors.mock.calls.flat().find(value=>value&&typeof value==="object"&&value.code==="P2010") as {code:string;meta?:{code?:string;message?:string}}|undefined
+     const signature={prismaCode:error?.code==="P2010"?"P2010":null,sqlState:error?.meta?.code==="23514"?"23514":null,code:error?.meta?.message?.includes("MTM_ATTENDANCE_MARK_EVENT_MISMATCH")?"MTM_ATTENDANCE_MARK_EVENT_MISMATCH":null}
+     throw new Error(`Canonical mark failure: ${JSON.stringify(signature)}`)
+    }
+    expect(started.body.results).toMatchObject([{status:"ok"}])
+   } finally {errors.mockRestore()}
    expect((await send(start,device)).body.results).toMatchObject([{status:"ok"}])
    const finish=operation("FINISH",day,new Date(at.getTime()+1_000),mark)
    expect((await send(finish,device)).body.results).toMatchObject([{status:"ok"}])
@@ -660,5 +671,107 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
    await expect(tenant(ORG,()=>qr.readAttendanceQrDirectory(manager))).rejects.toMatchObject({status:403})
   } finally {await tenant(ORG,()=>policy.saveAttendanceQrRule(admin,false))}
  })
+ it("sets UTC only on four attendance guards and preserves their original immutable bodies",async()=>{
+  const guards=[
+   ["mtm_attendance_location_history_guard","20261013090000_mtm_attendance_location_evidence"],
+   ["mtm_attendance_branch_history_guard","20261013070000_mtm_attendance_branches"],
+   ["mtm_attendance_risk_guard","20261013120000_mtm_attendance_risks"],
+   ["mtm_attendance_qr_guard","20261013160000_mtm_attendance_branch_qr"],
+  ] as const
+  for(const [name,migration] of guards){
+   const original=readFileSync(`prisma/migrations/${migration}/migration.sql`,"utf8").split(`CREATE FUNCTION ${name}()`)[1].split("$$")[1]
+   const [installed]=await tenant(ORG,()=>prisma.$queryRaw<{source:string;settings:string[];securityDefiner:boolean}[]>`SELECT p.prosrc AS source,p.proconfig AS settings,p.prosecdef AS "securityDefiner" FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname=${name}`)
+   expect(installed.source).toBe(original)
+   expect(installed.settings.map(value=>value.toLowerCase())).toEqual(["timezone=utc"])
+   expect(installed.securityDefiner).toBe(false)
+  }
+ })
+ it.each(["Asia/Baku","America/New_York"] as const)("non-UTC guards preserve UTC consent, branch, mark and QR clocks and restore caller in %s",async timezone=>{
+  sql(scratch!.adminDb,`ALTER ROLE "${scratch!.role}" SET timezone='${timezone}'`)
+  await prisma.$disconnect()
+  const qrPolicy=await import("@/lib/mtm/attendance-qr-policy"),security=await import("@/lib/mtm/attendance-qr-security")
+  try {
+   const before=Date.now()-1_000,id=await employee(),device=`rf-${randomUUID()}`
+   const published=await tenant(ORG,()=>store.publishAttendanceLocationPolicy(admin,{requestId:randomUUID(),expectedRevisionId:policyId,enabled:true,texts,legalReviewConfirmed:true}))
+   policyId=published.policy.id
+   const consent=await accept()
+   const branch=await tenant(ORG,()=>branches.saveAttendanceBranch(admin,{requestId:randomUUID(),branchId:null,expectedRevisionId:null,name:"Fictional UTC branch",address:"Demo Road UTC",latitude:40.4,longitude:49.85,radiusMeters:150,active:true}))
+   const primary=await tenant(ORG,()=>branches.saveAttendancePrimaryBranch(admin,{requestId:randomUUID(),expectedRevisionId:null,agentId:id,branchId:branch.branch.id}))
+   await tenant(ORG,()=>qrPolicy.saveAttendanceQrRule(admin,true))
+   const at=new Date(Math.max(Date.now(),Date.parse(consent.consent.createdAt)+10,Date.parse(primary.primary.createdAt)+10))
+   const qr=security.issueAttendanceQrToken(ORG,branch.branch.id,branch.branch.revisionId,at)
+   const mark={...packet(at),installationId:device}
+   const result=await send(operation("START",randomUUID(),at,mark,{version:1,token:qr.token}),device)
+   expect(result.body.results).toMatchObject([{status:"ok",serverData:{attendanceQr:{state:"VERIFIED"}}}])
+   const [saved]=await evidence()
+   expect(saved).toMatchObject({locationState:"INSIDE",branchRevisionId:branch.branch.revisionId,consentId:consent.consent.id})
+   expect(saved.claimedAt).toEqual(at)
+   const [clocks]=await tenant(ORG,()=>prisma.$queryRaw<{branch:Date;mark:Date;qr:Date;fix:Date;caller:string}[]>`SELECT b."createdAt" AS branch,m."createdAt" AS mark,q."createdAt" AS qr,m."fixCapturedAt" AS fix,current_setting('TimeZone') AS caller FROM mtm_attendance_branches b JOIN mtm_attendance_mark_evidence m ON m."branchRevisionId"=${branch.branch.revisionId} JOIN mtm_attendance_qr_evidence q ON q."eventId"=m."eventId" WHERE b.id=${branch.branch.id} AND m.id=${saved.id}`)
+   expect(clocks.caller).toBe(timezone)
+   expect(clocks.fix).toEqual(at)
+   const after=Date.now()+1_000
+   for(const clock of [clocks.branch,clocks.mark,clocks.qr,new Date(published.policy.createdAt),new Date(consent.consent.createdAt),new Date(branch.branch.createdAt),new Date(primary.primary.createdAt)]){
+    expect(clock.getTime()).toBeGreaterThanOrEqual(before)
+    expect(clock.getTime()).toBeLessThanOrEqual(after)
+   }
+   // A trigger's local setting must also restore the SAME transaction connection.
+   await tenant(ORG,()=>prisma.$transaction(async tx=>{
+    const [start]=await tx.$queryRaw<{zone:string}[]>`SELECT current_setting('TimeZone') AS zone`
+    expect(start.zone).toBe(timezone)
+    // A no-op conflict still executes the immutable guard; no history is changed.
+    await tx.$executeRaw`INSERT INTO mtm_attendance_branches (id,"organizationId") VALUES (${branch.branch.id},${ORG}) ON CONFLICT DO NOTHING`
+    const [end]=await tx.$queryRaw<{zone:string}[]>`SELECT current_setting('TimeZone') AS zone`
+    expect(end.zone).toBe(timezone)
+   }))
+   expect(await tenant(OTHER,()=>prisma.$queryRaw`SELECT id FROM mtm_attendance_mark_evidence WHERE id=${saved.id}`)).toEqual([])
+  } finally {
+   await tenant(ORG,()=>qrPolicy.saveAttendanceQrRule(admin,false))
+   sql(scratch!.adminDb,`ALTER ROLE "${scratch!.role}" RESET timezone`)
+   await prisma.$disconnect()
+  }
+ },90_000)
+ it.each(["Asia/Baku","America/New_York"] as const)("non-UTC risk dates retain the canonical day, peers, historical cohort and exact-day filter in %s",async timezone=>{
+  sql(scratch!.adminDb,`ALTER ROLE "${scratch!.role}" SET timezone='${timezone}'`)
+  await prisma.$disconnect()
+  try {
+   const review=await import("@/lib/mtm/attendance-risk-review-store")
+   const first=await employee(),device=`rf-${randomUUID()}`,at=new Date(Date.now()-1_800_000)
+   await setting("attendanceAllowSharedInstallations",false)
+   // Three earlier calendar days establish a real usual-user cohort. Today's
+   // events must never enter the historical range through timestamptz coercion.
+   for(const offset of [3,2,1]){
+    const historical=new Date(at.getTime()-offset*86_400_000),day=randomUUID()
+    expect((await send(operation("START",day,historical,noLocation(device)),device)).body.results).toMatchObject([{status:"ok"}])
+    expect((await send(operation("FINISH",day,new Date(historical.getTime()+1_000),noLocation(device)),device)).body.results).toMatchObject([{status:"ok"}])
+   }
+   const before=Date.now()-1_000,day=randomUUID()
+   expect((await send(operation("START",day,at,noLocation(device)),device)).body.results).toMatchObject([{status:"ok"}])
+   const second=await employee()
+   const secondStart=operation("START",randomUUID(),new Date(at.getTime()+1_000),noLocation(device))
+   expect((await send(secondStart,device)).body.results).toMatchObject([{status:"ok"}])
+   expect((await send(secondStart,device)).body.results).toMatchObject([{status:"ok"}])
+   const canonical=await tenant(ORG,()=>prisma.mtmAgentWorkday.findUniqueOrThrow({where:{id:day},select:{workDate:true}}))
+   const date=canonical.workDate.toISOString().slice(0,10)
+   for(const id of [first,second]){
+    const report=await tenant(ORG,()=>review.readAttendanceRiskReport({organizationId:ORG,actor:{role:"ADMIN",agentId:null,scopedAgentIds:null},reviewer:admin,query:{from:date,to:date,status:"ALL",employeeId:id}}))
+    expect(report.items.map(row=>row.kind).sort()).toEqual(["DELAYED_CLAIM","SHARED_INSTALLATION"])
+    expect(report.items.every(row=>row.workDate===date)).toBe(true)
+    const shared=report.items.find(row=>row.kind==="SHARED_INSTALLATION")!
+    const [raw]=await tenant(ORG,()=>prisma.$queryRaw<{details:{usualAgentId:string;observedDays:number};createdAt:Date;workDate:Date}[]>`SELECT details,"createdAt","workDate" FROM mtm_attendance_risk_cases WHERE id=${shared.id}`)
+    expect(raw.details).toMatchObject({usualAgentId:first,observedDays:3})
+    expect(raw.workDate).toEqual(canonical.workDate)
+    expect(raw.createdAt.getTime()).toBeGreaterThanOrEqual(before)
+    expect(raw.createdAt.getTime()).toBeLessThanOrEqual(Date.now()+1_000)
+    const dismissed=await tenant(ORG,()=>review.dismissAttendanceRisk(admin,shared.id,{requestId:randomUUID(),reason:"Fictional timezone review"}))
+    const [decision]=await tenant(ORG,()=>prisma.$queryRaw<{createdAt:Date;caller:string}[]>`SELECT "createdAt",current_setting('TimeZone') AS caller FROM mtm_attendance_risk_decisions WHERE id=${dismissed.id}`)
+    expect(decision.caller).toBe(timezone)
+    expect(decision.createdAt.getTime()).toBeGreaterThanOrEqual(before)
+    expect(decision.createdAt.getTime()).toBeLessThanOrEqual(Date.now()+1_000)
+   }
+  } finally {
+   sql(scratch!.adminDb,`ALTER ROLE "${scratch!.role}" RESET timezone`)
+   await prisma.$disconnect()
+  }
+ },90_000)
 
 })

@@ -9,6 +9,9 @@ import { WORKFORCE_ATTENDANCE_REVIEW_DELAY_MS } from "@/lib/mtm/workday"
 
 export const ATTENDANCE_RISK_DETECTOR_VERSION = "mtm-attendance-risk-v1"
 type Details = Parameters<typeof AttendanceRiskDetailsSchema.parse>[0]
+// Prisma represents a PostgreSQL DATE as UTC midnight. Bind its calendar text,
+// not a timestamptz whose implicit conversion depends on the session timezone.
+const utcCalendarDate = (value: Date) => value.toISOString().slice(0, 10)
 export type AttendanceRiskFact = { agentId: string; eventId: string; installationId: string; workDate: Date; claimedAt: Date; serverReceivedAt: Date;
   isMock: boolean | null; locationState: string; distanceMeters: number | null; branchRevisionId: string | null }
 export function attendanceTimingRisk(claimedAt: Date, receivedAt: Date, threshold: number): { kind: AttendanceRiskKind; details: Details } | null {
@@ -59,7 +62,7 @@ export async function recordAttendanceRisks(tx: Prisma.TransactionClient, input:
     const details = AttendanceRiskDetailsSchema.parse(values)
     const created = await tx.$queryRaw<{ id: string }[]>`INSERT INTO mtm_attendance_risk_cases
       (id,"organizationId","agentId","eventId",kind,"workDate",timezone,"detectorVersion","policySnapshot",details)
-      VALUES (${randomUUID()},${organizationId},${subject.agentId},${subject.eventId},${kind},${subject.workDate},${timezone},${ATTENDANCE_RISK_DETECTOR_VERSION},${JSON.stringify(policy)}::jsonb,${JSON.stringify(details)}::jsonb)
+      VALUES (${randomUUID()},${organizationId},${subject.agentId},${subject.eventId},${kind},${utcCalendarDate(subject.workDate)}::date,${timezone},${ATTENDANCE_RISK_DETECTOR_VERSION},${JSON.stringify(policy)}::jsonb,${JSON.stringify(details)}::jsonb)
       ON CONFLICT ("organizationId","eventId",kind) DO NOTHING RETURNING id`
     if (created[0]) await notifyAttendanceRiskReviewers(tx, { organizationId, agentId: subject.agentId, caseId: created[0].id })
   }
@@ -77,7 +80,7 @@ export async function recordAttendanceRisks(tx: Prisma.TransactionClient, input:
   const peers = await tx.$queryRaw<Pick<AttendanceRiskFact, "agentId" | "eventId" | "workDate">[]>`SELECT m."agentId",m."eventId",w."workDate"
     FROM mtm_attendance_mark_evidence m JOIN mtm_agent_workday_events e ON e."organizationId"=m."organizationId" AND e.id=m."eventId"
     JOIN mtm_agent_workdays w ON w."organizationId"=e."organizationId" AND w.id=e."workdayId"
-    WHERE m."organizationId"=${organizationId} AND m."installationId"=${fact.installationId} AND w."workDate"=${fact.workDate}
+    WHERE m."organizationId"=${organizationId} AND m."installationId"=${fact.installationId} AND w."workDate"=${utcCalendarDate(fact.workDate)}::date
     ORDER BY m."agentId",m."eventId" LIMIT 10001`
   if (peers.length > 10000) throw new AttendanceRequestError("MTM_ATTENDANCE_RISK_COHORT_TOO_LARGE", 422)
   const agents = [...new Set(peers.map(row => row.agentId))].sort()
@@ -86,7 +89,7 @@ export async function recordAttendanceRisks(tx: Prisma.TransactionClient, input:
   const history = await tx.$queryRaw<{ agentId: string; workDate: Date }[]>`SELECT DISTINCT m."agentId",w."workDate"
     FROM mtm_attendance_mark_evidence m JOIN mtm_agent_workday_events e ON e."organizationId"=m."organizationId" AND e.id=m."eventId"
     JOIN mtm_agent_workdays w ON w."organizationId"=e."organizationId" AND w.id=e."workdayId"
-    WHERE m."organizationId"=${organizationId} AND m."installationId"=${fact.installationId} AND w."workDate">=${from} AND w."workDate"<${fact.workDate}`
+    WHERE m."organizationId"=${organizationId} AND m."installationId"=${fact.installationId} AND w."workDate">=${utcCalendarDate(from)}::date AND w."workDate"<${utcCalendarDate(fact.workDate)}::date`
   const usual = usualAttendanceInstallationUser(history)
   for (const peer of peers) await add(peer, "SHARED_INSTALLATION", { version: 1, relatedAgentIds: agents.filter(id => id !== peer.agentId), ...usual })
 }

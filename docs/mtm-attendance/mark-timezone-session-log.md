@@ -59,3 +59,45 @@
   Coordinator will review and push this first checkpoint. A separate follow-up
   will evaluate a forward-only UTC clock trigger migration with no history
   rewrite; coordinator explicitly authorized that investigation and coverage.
+
+## 2026-10-14 — scoped clocks and calendar-date follow-up
+
+- Coordinator approved exactly four function-local UTC settings: location
+  history/evidence, branches/primary assignments, risk cases/decisions and QR
+  evidence. Additive migration `20261014010000_mtm_attendance_utc_guard_clocks`
+  alters only function configuration; bodies, permissions, immutable checks and
+  `GREATEST` ordering remain unchanged. PostgreSQL restores the caller timezone
+  on return. No server-wide setting and no retained-row update/backfill.
+- Calendar dates in risk insert, peer matching, prior-day cohort and report
+  boundaries now bind explicit ISO date strings with `::date`. Canonical Prisma
+  DATE values are normalized from UTC midnight. This prevents west-of-UTC day
+  shifting and inclusion/exclusion errors in both offset directions.
+- Actual migration replay added to the combined location/risk PostgreSQL suite
+  and authenticated browser fixture. Five new real-PG cases cover original
+  function-source equality and configuration, two-zone clock/consent/branch/
+  primary/mark/QR behavior, same-connection caller restoration, and two-zone
+  canonical risk dates, shared-phone peers, three earlier days, exact-day report
+  filtering and dismissal clocks. Existing immutability/RLS tests remain.
+- Historical limitation: a revision previously stamped ahead of real UTC stays
+  unchanged. Its chain remains monotonic and may stay ahead until time catches
+  up; determining and correcting historical intent needs separate evidence.
+  This patch does not guess timestamps. Other unrelated attendance trigger
+  families were inventoried but are outside this four-guard change.
+- First hosted red/green run `38492347020`, head `e401a7513`, failed in harness
+  receipt validation. Both expected non-UTC tests failed and scratch PostgreSQL
+  logged `MTM_ATTENDANCE_MARK_EVENT_MISMATCH` twice. The harness then searched
+  JSON-only reporter stdout for Prisma codes; green phase was **NOT RUN**.
+  This is not a green production-fix result.
+- Harness repair captures only the actual caught error's allowlisted
+  `P2010` / `23514` / `MTM_ATTENDANCE_MARK_EVENT_MISMATCH` signature in the failed
+  test assertion; client error contracts are unchanged. Receipt validation reads
+  those assertions and writes finite FAIL diagnostics before asserting. Green
+  failures are reported as FAIL, not NOT_RUN. Raw errors/queries are not artifacts.
+- Local follow-up checks: **41/41** risk detection/review/notification tests PASS
+  in 8.44 s; targeted TypeScript syntax PASS (not typecheck); fixture syntax,
+  workflow YAML/embedded Bash/Python syntax and runner policy (65 workflows) PASS.
+  Resource preflight: about 14 GiB available RAM, 232 GiB disk, memory PSI zero.
+- Full PG regression, Prisma validate/generate, TypeScript and browser gates are
+  **NOT RUN locally** by host contract. Workflow now includes Prisma validation,
+  generation and explicit assertions for all five new guard/risk cases. Parent
+  reviews and pushes the checkpoint to PR756; this worker does not publish.
