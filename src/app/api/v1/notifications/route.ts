@@ -14,6 +14,7 @@ import {
   MTM_LOCATION_REQUEST_NOTIFICATION_ENTITY,
   MTM_LOCATION_REQUEST_NOTIFICATION_URL,
 } from "@/lib/mtm/customer-location-request-notification"
+import { readAttendanceFeature } from "@/lib/mtm/attendance-feature"
 
 /**
  * Entity-type allowlist filter, shared by GET (read-gate) and PATCH (mark-read
@@ -28,8 +29,7 @@ async function computeEntityTypeFilter(orgId: string, role: Role) {
     const ctx = { role, ...orgCtx }
     allowed = Object.keys(ENTITY_TO_MODULE).filter((et) => canNotifyEntityType(ctx, et))
     if ((allowed.includes(MTM_ATTENDANCE_REQUEST_NOTIFICATION_ENTITY) || allowed.includes(MTM_ATTENDANCE_RISK_NOTIFICATION_ENTITY))) {
-      const feature = await prisma.mtmSetting.findUnique({ where: { organizationId_key: { organizationId: orgId, key: "attendanceEnabled" } }, select: { value: true } })
-      if (feature?.value !== true) allowed = allowed.filter((entity) => entity !== MTM_ATTENDANCE_REQUEST_NOTIFICATION_ENTITY && entity !== MTM_ATTENDANCE_RISK_NOTIFICATION_ENTITY)
+      if (!await readAttendanceFeature(prisma, orgId)) allowed = allowed.filter((entity) => entity !== MTM_ATTENDANCE_REQUEST_NOTIFICATION_ENTITY && entity !== MTM_ATTENDANCE_RISK_NOTIFICATION_ENTITY)
     }
   } catch {
     // fail-closed: keep allowed=[] so only null-entityType rows pass

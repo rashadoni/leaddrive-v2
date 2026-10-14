@@ -7,13 +7,13 @@ import { MTM_ATTENDANCE_RISK_NOTIFICATION_ENTITY, MTM_ATTENDANCE_RISK_NOTIFICATI
 import az from "../../../messages/az.json"
 import ru from "../../../messages/ru.json"
 import en from "../../../messages/en.json"
+import { readAttendanceFeature } from "@/lib/mtm/attendance-feature"
 
 /** Only new cases invoke this. The safe bell entry commits with the case;
  * failures roll back the mark. No external email or push inside the transaction. */
 export async function notifyAttendanceRiskReviewers(tx: Prisma.TransactionClient, input: { organizationId: string; agentId: string; caseId: string }) {
   const { organizationId, agentId, caseId } = input
-  const enabled = await tx.mtmSetting.findUnique({ where: { organizationId_key: { organizationId, key: "attendanceEnabled" } }, select: { value: true } })
-  if (enabled?.value !== true) return
+  if (!await readAttendanceFeature(tx, organizationId)) return
   const cards = await tx.mtmAgent.findMany({ where: { organizationId, status: "ACTIVE", role: { in: ["ADMIN", "MANAGER", "SUPERVISOR"] }, userId: { not: null } }, select: { userId: true } })
   const owner = await tx.mtmAgent.findFirst({ where: { organizationId, id: agentId }, select: { userId: true } })
   const ids = cards.flatMap(card => card.userId ? [card.userId] : [])

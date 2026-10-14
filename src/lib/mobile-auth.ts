@@ -10,6 +10,7 @@ import {
 import { requireAuthSecret } from "./auth-secret"
 import { isTenantCapabilityEnabled } from "./tenant-capabilities"
 import { resolveWorkforceExceptionResponseRecording } from "./workforce/exception-response-rollout"
+import { readAttendanceFeature } from "./mtm/attendance-feature"
 
 export function requireJwtSecret(): string {
   return requireAuthSecret()
@@ -218,9 +219,9 @@ export async function resolveMobileAuth(
       const allowed = await runWithRlsBypass(async () => {
         const [member, feature] = await Promise.all([
           prisma.mtmAgent.findFirst({ where: { id: decoded.agentId, organizationId: decoded.orgId, attendanceParticipant: true }, select: { id: true } }),
-          prisma.mtmSetting.findUnique({ where: { organizationId_key: { organizationId: decoded.orgId, key: "attendanceEnabled" } }, select: { value: true } }),
+          readAttendanceFeature(prisma, decoded.orgId),
         ])
-        return Boolean(member) && feature?.value === true
+        return Boolean(member) && feature
       })
       if (!allowed) return null
     }

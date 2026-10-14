@@ -5,6 +5,7 @@ import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
 import type { AttendanceReviewer } from "@/lib/mtm/attendance-request-decision"
 import { isAttendanceMarkExempt, lockAttendanceRequests } from "@/lib/mtm/attendance-self-access"
 import { parseAttendanceInstallationId, attendanceInstallationFailure } from "@/lib/mtm/attendance-installation-contract"
+import { readAttendanceFeature } from "@/lib/mtm/attendance-feature"
 
 export const ATTENDANCE_INSTALLATION_RULE_KEY = "attendanceRequireInstallationApproval"
 export async function lockAttendanceInstallationPolicy(tx: Prisma.TransactionClient, organizationId: string, exclusive = false) {
@@ -38,12 +39,10 @@ export async function saveAttendanceInstallationRule(reviewer: AttendanceReviewe
  * A legacy mark without evidence cannot bypass an explicitly enabled rule.
  * Accepted operation replays return before this hook and remain unchanged. */
 export async function enforceAttendanceInstallationApproval(tx: Prisma.TransactionClient, scope: { organizationId: string; agentId: string }, rawInstallation: unknown) {
-  const feature = await tx.mtmSetting.findUnique({ where: { organizationId_key: { organizationId: scope.organizationId, key: "attendanceEnabled" } }, select: { value: true } })
-  if (feature?.value !== true) return
+  if (!await readAttendanceFeature(tx, scope.organizationId)) return
   await lockAttendanceRequests(tx, scope)
   // Re-read after the shared feature lock: a concurrent disable wins.
-  const current = await tx.mtmSetting.findUnique({ where: { organizationId_key: { organizationId: scope.organizationId, key: "attendanceEnabled" } }, select: { value: true } })
-  if (current?.value !== true || await isAttendanceMarkExempt(tx, scope)) return
+  if (!await readAttendanceFeature(tx, scope.organizationId) || await isAttendanceMarkExempt(tx, scope)) return
   await lockAttendanceInstallationPolicy(tx, scope.organizationId)
   if (!await readAttendanceInstallationRule(tx, scope.organizationId)) return
   const installationId = parseAttendanceInstallationId(rawInstallation)
