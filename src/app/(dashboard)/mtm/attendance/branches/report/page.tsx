@@ -1,5 +1,6 @@
-import { MtmAttendanceBranchReport } from "@/components/mtm/attendance-branch-report"
+import { redirectToAttendanceTab, type AttendanceSearchParams } from "@/lib/mtm/attendance-legacy-redirect"
 
-export default function AttendanceBranchReportPage() {
-  return <MtmAttendanceBranchReport />
+/** Former page; now Personnel → timesheet → branches. */
+export default async function AttendanceBranchesReportRedirect({ searchParams }: { searchParams: AttendanceSearchParams }) {
+  return redirectToAttendanceTab("timesheet", "branches", searchParams)
 }

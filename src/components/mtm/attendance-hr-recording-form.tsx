@@ -49,6 +49,7 @@ export function MtmAttendanceHrRecordingForm() {
   const readRequest = useRef<AbortController | null>(null)
   const writeRequest = useRef<AbortController | null>(null)
   const frozen = useRef<AttendanceHrRecordingInput | null>(null)
+  const prefilled = useRef(false)
   const clearPrivate = useCallback(() => {
     frozen.current = null; setPending(null); setDirectory(null); setTarget(""); setSelectedIds([])
     setKindKey(""); setFrom(""); setTo(""); setReason(""); setStartTime("09:00"); setEndTime("18:00"); setSavedCount(null); setRecordKind(null)
@@ -69,6 +70,15 @@ export function MtmAttendanceHrRecordingForm() {
       }
       setDirectory({ ...parsed.data, catalogue: { ...parsed.data.catalogue, items: parsed.data.catalogue.items.filter(canRecordAttendanceDayKind) } })
       setDenied(false); setMustReload(false)
+      // Opened from a timesheet cell or Today's "add reason": start with that
+      // person and day. Only an employee in this reviewer's directory is taken.
+      if (!prefilled.current) {
+        prefilled.current = true
+        const query = new URLSearchParams(window.location.search)
+        const employeeId = query.get("employeeId"), date = query.get("date")
+        if (employeeId && parsed.data.employees.some(employee => employee.id === employeeId)) { setMode("EMPLOYEE"); setTarget(employeeId) }
+        if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) { setFrom(date); setTo(date) }
+      }
       // A directory read cannot establish whether a write committed. Its exact
       // UUID/body remains frozen until an authoritative POST acknowledgement.
       if (frozen.current) setError("hrRecordingUnknown")

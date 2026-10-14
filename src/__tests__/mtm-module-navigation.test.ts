@@ -46,7 +46,7 @@ describe("MTM module navigation", () => {
 
   it("keeps every existing MTM destination reachable exactly once", () => {
     const existingMtmHrefs = navItems
-      .filter((item) => item.module === "mtm" && (!item.attendanceSection || item.href === "/mtm/attendance"))
+      .filter((item) => item.module === "mtm" && (item.group !== "Personnel" || item.href === "/mtm/attendance"))
       .map((item) => item.href)
 
     expect(new Set(MTM_ALL_NAVIGATION_HREFS).size).toBe(MTM_ALL_NAVIGATION_HREFS.length)
