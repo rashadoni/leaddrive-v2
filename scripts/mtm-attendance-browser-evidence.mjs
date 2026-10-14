@@ -513,10 +513,14 @@ try {
       }
     }
     await page.getByTestId('attendance-day-table').waitFor({ timeout: 120000 })
-    const reloaded = page.waitForResponse(response => new URL(response.url()).pathname === `${apiRoot}/report` && response.request().method() === 'GET', { timeout: 120000 })
-    await page.getByLabel(t('reportFrom'), { exact: true }).fill(today)
-    assert.equal((await reloaded).status(), 200)
-    await page.getByLabel(t('reportTo'), { exact: true }).fill(today)
+    // A changed period reloads the report by itself; there is no Apply button.
+    for (const from of [date(-1), today]) {
+      const reloaded = page.waitForResponse(response => new URL(response.url()).pathname === `${apiRoot}/report` && response.request().method() === 'GET'
+        && new URL(response.url()).searchParams.get('from') === from, { timeout: 120000 })
+      await page.getByLabel(t('reportFrom'), { exact: true }).fill(from)
+      assert.equal((await reloaded).status(), 200)
+    }
+    await page.getByTestId('attendance-day-table').waitFor({ timeout: 120000 })
     await page.getByLabel(t('reportTeam'), { exact: true }).selectOption(fixture.team.id)
     await page.locator('input[type="search"]').fill(fixture.users.employee.name)
     await poll(async () => (await page.getByTestId('attendance-day-row').count()) === 1, 'Search narrows to one employee')

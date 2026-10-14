@@ -5,7 +5,7 @@ export type AttendanceTab = { key: string; label: string }
 
 /** One row of plain links: each former attendance page is a tab of its section. */
 export function MtmAttendanceTabs({ base, tabs, active, label }: { base: string; tabs: readonly AttendanceTab[]; active: string; label: string }) {
-  return <nav aria-label={label} className="-mx-1 flex gap-1 overflow-x-auto border-b border-border px-1" data-testid="attendance-tabs">
+  return <nav aria-label={label} className="-mx-1 flex gap-1 overflow-x-auto overflow-y-hidden border-b border-border px-1" data-testid="attendance-tabs">
     {tabs.map(tab => {
       const selected = tab.key === active
       return <Link key={tab.key} href={`${base}?tab=${tab.key}`} scroll={false} prefetch={false} aria-current={selected ? "page" : undefined}

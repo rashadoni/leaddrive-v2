@@ -407,6 +407,7 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
         data-testid="sidebar-nav-item"
         data-nav-href={item.href}
         data-nav-active={isActive ? "true" : undefined}
+        aria-current={isActive ? "page" : undefined}
         onClick={(event) => navigateRawHref(event, item.href)}
         className={cn(
           "relative flex min-h-9 items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition-colors duration-150 motion-reduce:transition-none",
@@ -536,6 +537,7 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
                     data-testid="sidebar-search-result"
                     data-nav-href={item.href}
                     data-nav-active={isActive ? "true" : undefined}
+                    aria-current={isActive ? "page" : undefined}
                     onClick={(event) => {
                       setSearchQuery("")
                       navigateRawHref(event, item.href)
