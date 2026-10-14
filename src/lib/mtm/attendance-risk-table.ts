@@ -1,5 +1,6 @@
 import { ATTENDANCE_RISK_MESSAGES, type AttendanceRiskItem, type AttendanceRiskReport } from "@/lib/mtm/attendance-risk-contract"
 import type { AttendanceTable, AttendanceText } from "@/lib/mtm/attendance-table"
+import { formatDateTime } from "@/lib/format-date"
 export function attendanceRiskDetail(item: AttendanceRiskItem, t: AttendanceText) {
   const lines: string[] = []
   if (item.kind === "SHARED_INSTALLATION") {
@@ -20,7 +21,7 @@ export function buildAttendanceRiskTable(report: AttendanceRiskReport, locale: "
   const columns = ["journalEmployee", "riskMark", "riskFinding", "riskTimes", "journalStatus", "riskDecision"]
   return { title: t("riskTitle"), columns: columns.map(key => ({ key, label: t(key) })),
     rows: report.items.map(item => {
-      const instant = (value: string) => new Intl.DateTimeFormat(locale, { timeZone: item.timezone, dateStyle: "medium", timeStyle: "medium" }).format(new Date(value))
+      const instant = (value: string) => formatDateTime(value, locale, { timeZone: item.timezone, dateStyle: "medium", timeStyle: "medium" })
       return { key: item.id, cells: [item.employeeName + (item.teamName ? `\n${item.teamName}` : ""), `${item.workDate}\n${t(item.action === "START" ? "riskStart" : "riskFinish")}`,
         `${t(ATTENDANCE_RISK_MESSAGES[item.kind])}\n${attendanceRiskDetail(item, t)}`,
         `${t("riskClaimed")}: ${instant(item.claimedAt)}\n${t("riskReceived")}: ${instant(item.serverReceivedAt)}\n${item.timezone}`,
