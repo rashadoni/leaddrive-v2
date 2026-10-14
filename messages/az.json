@@ -11507,6 +11507,7 @@
     "moreActions": "Digər əməliyyatlar",
     "presencePausedSince": "{time}-dan fasilədə",
     "presencePaused": "Fasilədə",
+    "presenceWorkingSince": "Gün başlayıb: {time}",
     "presenceFinishedAt": "Gün {time}-da bitdi",
     "presenceFinished": "Gün bitdi",
     "presenceNotStarted": "Gün başlamayıb",

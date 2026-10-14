@@ -86,6 +86,19 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
     expect(json.data.permissions.includes("ROUTE_EXECUTE")).toBe(role === "AGENT")
     expect(json.data.permissions.includes("WORKTIME_SELF_MUTATE")).toBe(role === "AGENT")
   })
+  it.each([["AGENT", false], ["EMPLOYEE", true]] as const)("gives an enrolled %s requests, and day marks only when it is office staff", async (role, marks) => {
+    // Owner, 2026-10-14: a field agent's day is for the field manager, not HR
+    // attendance; the agent still files leave and sick leave with HR.
+    vi.mocked(resolveMobileAuth).mockResolvedValue(mobileAuth(role))
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: AGENT, role, attendanceParticipant: true, attendanceExcluded: false, name: "Fictional employee", canPlanOwnRoutes: true } as never)
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "attendanceEnabled", value: true }, { key: "attendanceBranchQrEnabled", value: true }] as never)
+    const json = await (await GET(request())).json()
+    expect(json.data.policies.agentPermissions).toMatchObject({ attendanceRequests: true, attendanceWorkday: marks, attendanceLocation: marks, attendanceInstallation: marks, attendanceBranchQr: marks })
+    expect(json.data.policies.attendanceMarkVersion === 1).toBe(marks)
+    expect(json.data.policies.attendanceBranchQrVersion === 1).toBe(marks)
+    // The agent's own "Start day" stays its field session.
+    expect(json.data.permissions.includes("WORKTIME_SELF_MUTATE")).toBe(role === "AGENT")
+  })
   it("returns tenant, principal, capabilities and explicit unversioned state", async () => {
     const response = await GET(request())
     expect(response.status).toBe(200)

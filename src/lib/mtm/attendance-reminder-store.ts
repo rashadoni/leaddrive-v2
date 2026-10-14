@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto"
+import { ATTENDANCE_TRACKED_CARD_WHERE } from "@/lib/mtm/attendance-tracking"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { createNotification } from "@/lib/notifications"
@@ -60,7 +61,7 @@ export async function createAttendanceRemindersInTransaction(tx: Prisma.Transact
   await tx.$queryRaw`SELECT id FROM organizations WHERE id=${organizationId} FOR SHARE`
   const policy = await readAttendanceReminderPolicy(tx, organizationId)
   if (!policy.enabled || (!policy.employee && !policy.manager) || !await attendanceReminderTenantEnabled(tx, organizationId)) return 0
-  const agent = await tx.mtmAgent.findFirst({ where: { organizationId, id: agentId, status: "ACTIVE", attendanceExcluded: false, OR: [{ role: "AGENT" }, { attendanceParticipant: true }] }, select: { id: true, userId: true, user: { select: { isActive: true, anonymizedAt: true, preferredLanguage: true } } } })
+  const agent = await tx.mtmAgent.findFirst({ where: { organizationId, id: agentId, status: "ACTIVE", attendanceExcluded: false, ...ATTENDANCE_TRACKED_CARD_WHERE }, select: { id: true, userId: true, user: { select: { isActive: true, anonymizedAt: true, preferredLanguage: true } } } })
   if (!agent || (agent.userId && (!agent.user?.isActive || agent.user.anonymizedAt))) return 0
   // Today can be yesterday in UTC-negative zones; an overnight source date
   // can therefore be UTC minus two days. The classifier allows only local

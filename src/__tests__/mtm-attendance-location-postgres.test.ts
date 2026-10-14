@@ -406,9 +406,10 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
  })
 
  async function fieldDay() {
-  await employee();identity.role="AGENT"
+  // Consent exists from the card's office past; as a field agent it no longer counts.
+  await employee();const consent=await accept();identity.role="AGENT"
   await tenant(ORG,()=>prisma.mtmAgent.update({where:{id:identity.agentId},data:{role:"AGENT"}}))
-  const consent=await accept(),at=new Date(Date.now()+1000),dayId=randomUUID()
+  const at=new Date(Date.now()+1000),dayId=randomUUID()
   expect((await send(operation("START",dayId,at))).body.results).toMatchObject([{status:"ok"}])
   return {consent:consent.consent.id,at,dayId}
  }
@@ -418,41 +419,37 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
   const response=await POST(new NextRequest("http://localhost/api/v1/mtm/mobile/location",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({latitude:40.4,longitude:49.85,accuracy:5,recordedAt:at.toISOString(),clientLocationId,...signal})}))
   return {status:response.status,body:await response.json(),clientLocationId}
  }
- it("retains explicit background signal privately, never enriches a replay, scopes and retains it with the GPS source",async()=>{
+ it("keeps a field agent's GPS points but stores no attendance signal: the agent's day is not HR attendance",async()=>{
+  // Owner, 2026-10-14: a field agent's day belongs to the field manager; HR
+  // attendance (and its private integrity signal) covers office staff only.
   try {
    const f=await fieldDay(),at=new Date(f.at.getTime()+1000)
    const first=await streamPoint(at,{isMock:true,attendanceConsentId:f.consent})
    expect(first.status).toBe(200);expect(first.body).toMatchObject({success:true,data:{replayed:false}});expect(JSON.stringify(first.body)).not.toMatch(/isMock|attendanceConsentId|consentId/)
-   const rows=await streamRows();expect(rows).toHaveLength(1);expect(rows[0]).toMatchObject({isMock:true,consentId:f.consent})
-   expect((await streamPoint(at,{isMock:false,attendanceConsentId:f.consent},first.clientLocationId)).status).toBe(200)
-   expect(await streamRows()).toEqual(rows)
-   expect(await tenant(OTHER,()=>prisma.$queryRaw`SELECT * FROM mtm_attendance_stream_integrity WHERE "locationId"=${rows[0].locationId}`)).toEqual([])
-   expect(await tenant(ORG,()=>prisma.$executeRaw`UPDATE mtm_attendance_stream_integrity SET "isMock"=false WHERE "locationId"=${rows[0].locationId}`)).toBe(0)
-   expect(()=>sql(scratch!.adminDb,`UPDATE mtm_attendance_stream_integrity SET "isMock"=false WHERE "locationId"='${rows[0].locationId}'`)).toThrow()
-   await tenant(ORG,()=>prisma.mtmAgentLocation.delete({where:{id:rows[0].locationId}}))
+   expect(await tenant(ORG,()=>prisma.mtmAgentLocation.count({where:{organizationId:ORG,agentId:identity.agentId}}))).toBe(1)
    expect(await streamRows()).toEqual([])
+   // Its START was accepted without HR mark evidence or a risk case.
+   expect(await tenant(ORG,()=>prisma.$queryRaw`SELECT id FROM mtm_attendance_mark_evidence WHERE "agentId"=${identity.agentId}`)).toEqual([])
   } finally {identity.role="EMPLOYEE"}
  })
- it("keeps ordinary field points but no new signal when attendance is off or acceptance is withdrawn/replaced",async()=>{
+ it("keeps ordinary field points with attendance off, and refuses a field agent's own consent change",async()=>{
   try {
    const f=await fieldDay(),at=new Date(f.at.getTime()+1000)
    await tenant(ORG,()=>prisma.mtmSetting.updateMany({where:{organizationId:ORG,key:"attendanceEnabled"},data:{value:false}}))
    expect((await streamPoint(at,{isMock:true,attendanceConsentId:f.consent})).status).toBe(200)
-   expect(await streamRows()).toEqual([])
    await tenant(ORG,()=>prisma.mtmSetting.updateMany({where:{organizationId:ORG,key:"attendanceEnabled"},data:{value:true}}))
-   await tenant(ORG,()=>store.recordOwnAttendanceLocationConsent(self(),{requestId:randomUUID(),policyRevisionId:policyId,expectedConsentId:f.consent,accepted:false}))
-   expect((await streamPoint(at,{isMock:true,attendanceConsentId:f.consent})).status).toBe(200)
-   await accept()
+   // Location consent is office attendance; a field agent's day is not.
+   await expect(tenant(ORG,()=>store.recordOwnAttendanceLocationConsent(self(),{requestId:randomUUID(),policyRevisionId:policyId,expectedConsentId:f.consent,accepted:false}))).rejects.toMatchObject({code:"MTM_ATTENDANCE_SELF_REQUIRED"})
    expect((await streamPoint(at,{isMock:true,attendanceConsentId:f.consent})).status).toBe(200)
    expect((await streamPoint(at,{})).status).toBe(200)
-   expect(await tenant(ORG,()=>prisma.mtmAgentLocation.count({where:{organizationId:ORG,agentId:identity.agentId}}))).toBe(4)
+   expect(await tenant(ORG,()=>prisma.mtmAgentLocation.count({where:{organizationId:ORG,agentId:identity.agentId}}))).toBe(3)
    expect(await streamRows()).toEqual([])
   } finally {
    identity.role="EMPLOYEE"
    await tenant(ORG,()=>prisma.mtmSetting.updateMany({where:{organizationId:ORG,key:"attendanceEnabled"},data:{value:true}}))
   }
  })
- it("batch keeps true and false outside a break and drops the private point with its signal",async()=>{
+ it("batch keeps a field agent's points outside a break, drops the private point, and keeps no attendance signal",async()=>{
   try {
    const f=await fieldDay(),at=(ms:number)=>new Date(f.at.getTime()+ms)
    expect((await send(operation("PAUSE",f.dayId,at(1000)))).body.results).toMatchObject([{status:"ok"}])
@@ -463,7 +460,8 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
    const response=await POST(new NextRequest("http://localhost/api/v2/mtm/mobile/location/batch",{method:"POST",headers:{"content-type":"application/json","x-field-device-id":INSTALLATION},body:JSON.stringify({workdayId:f.dayId,points:[500,2000,4000].map((ms,i)=>({clientLocationId:ids[i],latitude:40.4,longitude:49.85,accuracy:5,recordedAt:at(ms).toISOString(),isMock:i!==2,attendanceConsentId:f.consent}))})}))
    expect(response.status).toBe(201)
    expect(await response.json()).toMatchObject({data:{appliedClientLocationIds:[ids[0],ids[2]],pausedClientLocationIds:[ids[1]]}})
-   expect((await streamRows()).map(row=>row.isMock).sort()).toEqual([false,true])
+   // Break privacy still applies to the agent's route; no attendance signal is kept.
+   expect(await streamRows()).toEqual([])
    expect(await tenant(ORG,()=>prisma.mtmAgentLocation.count({where:{agentId:identity.agentId,clientLocationId:ids[1]}}))).toBe(0)
   } finally {identity.role="EMPLOYEE"}
  })

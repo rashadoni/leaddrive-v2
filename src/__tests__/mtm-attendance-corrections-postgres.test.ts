@@ -35,7 +35,7 @@ pgDescribe("MTM corrections on real PostgreSQL", () => {
   let report: typeof import("@/lib/mtm/attendance-report-store")
   let createdRole = false, createdDb = false
   const ORG = "correction-pg-a", OTHER = "correction-pg-b", AGENT = "correction-pg-employee", ADMIN = "correction-pg-admin"
-  const self = { organizationId: ORG, agentId: AGENT, role: "AGENT" }
+  const self = { organizationId: ORG, agentId: AGENT, role: "EMPLOYEE" }
   const reviewer = { organizationId: ORG, userId: ADMIN, principalType: "session" as const }
   const at = (date: string, time: string) => new Date(`${date}T${time}:00+04:00`)
   const input = (date: string, startTime = "09:00", endTime = "18:00") => ({ clientRequestId: randomUUID(), kind: "TIME_CORRECTION", unit: "HOURS", startDate: date, endDate: date, startTime, endTime, reason: "Fictional forgotten mark" })
@@ -85,7 +85,7 @@ pgDescribe("MTM corrections on real PostgreSQL", () => {
         await prisma.user.create({ data: { id, organizationId: ORG, name: "Fictional reviewer", email: `${id}@example.invalid`, role, passwordHash: "unusable-fixture-hash", mtmAttendanceAll: id === "correction-pg-hr" } })
       }
       for (const id of ["correction-team-a", "correction-team-b"]) await prisma.mtmTeam.create({ data: { id, organizationId: ORG, name: id } })
-      await prisma.mtmAgent.create({ data: { id: AGENT, organizationId: ORG, name: "Fictional employee", role: "AGENT", userId: "correction-pg-owner", teamId: "correction-team-a" } })
+      await prisma.mtmAgent.create({ data: { id: AGENT, organizationId: ORG, name: "Fictional employee", role: "EMPLOYEE", attendanceParticipant: true, userId: "correction-pg-owner", teamId: "correction-team-a" } })
       await prisma.mtmAgent.create({ data: { id: "correction-supervisor-card", organizationId: ORG, name: "Other team supervisor", role: "SUPERVISOR", userId: "correction-pg-supervisor", teamId: "correction-team-b" } })
     })
   }, 240_000)

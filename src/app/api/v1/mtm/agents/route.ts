@@ -102,6 +102,15 @@ async function mayReadWorkdayTimes(auth: RlsAuth): Promise<boolean> {
 }
 
 /** То же состояние, но без моментов времени. */
+/**
+ * Owner, 2026-10-14: a field agent's day belongs to the field manager, who sees
+ * when it started and when it finished — not HR's timesheet, and not the
+ * moments of a break (an agent's break is their own time).
+ */
+function fieldManagerTimes(presence: MtmAgentPresence): MtmAgentPresence {
+  return presence.kind === "paused" ? { kind: "paused", since: null } : presence
+}
+
 function withoutTimes(presence: MtmAgentPresence): MtmAgentPresence {
   switch (presence.kind) {
     case "working": return { kind: "working", since: null }
@@ -346,7 +355,7 @@ export const GET = withRls(async (req, auth) => {
             ...agent,
             ...(webSession ? { userEmail: user?.email ?? null } : {}),
             ...(readsNotes ? { tags: notesOfThisCard ? tags ?? [] : [], mapColor: notesOfThisCard ? mapColor ?? null : null } : {}),
-            presence: showTimes ? presence : withoutTimes(presence),
+            presence: showTimes ? presence : webSession && agent.role === "AGENT" ? fieldManagerTimes(presence) : withoutTimes(presence),
             breaks: showTimes ? (breaksByAgent.get(agent.id) ?? []) : [],
             activity: activityAvailable ? mtmAgentCardActivity(activityByAgent.get(agent.id) ?? {}) : null,
             clients: clientsAvailable ? (clientsByAgent.get(agent.id) ?? 0) : null,

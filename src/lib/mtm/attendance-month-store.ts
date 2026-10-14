@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto"
+import { ATTENDANCE_TRACKED_CARD_WHERE } from "@/lib/mtm/attendance-tracking"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { currentAttendanceReadActor } from "@/lib/mtm/attendance-read-access"
@@ -19,7 +20,7 @@ async function writeScope(tx:Tx, reviewer:AttendanceReviewer, ids:readonly strin
   await currentAttendanceReadActor(tx,reviewer)
   const actor=await resolveAttendanceReviewerScope(tx,reviewer)
   if(actor.scopedAgentIds!==null && ids.some(id=>!actor.scopedAgentIds!.includes(id))) return fail("FORBIDDEN",403)
-  const targets=await tx.mtmAgent.findMany({where:{organizationId:reviewer.organizationId,id:{in:[...ids]},OR:[{role:"AGENT"},{attendanceParticipant:true}]},select:{id:true,userId:true}})
+  const targets=await tx.mtmAgent.findMany({where:{organizationId:reviewer.organizationId,id:{in:[...ids]},...ATTENDANCE_TRACKED_CARD_WHERE},select:{id:true,userId:true}})
   if(targets.length!==ids.length || targets.some(row=>row.userId===reviewer.userId)) return fail("FORBIDDEN",403)
 }
 async function snapshot(tx:Tx, reviewer:AttendanceReviewer, selection:AttendanceMonthSelection, asOf:Date) {
@@ -100,7 +101,7 @@ export async function readAttendanceMonthDirectory(reviewer:AttendanceReviewer,r
     const actor=await currentAttendanceReadActor(tx,reviewer)
     let writer:Awaited<ReturnType<typeof resolveAttendanceReviewerScope>>|null=null
     try{writer=await resolveAttendanceReviewerScope(tx,reviewer)}catch(e){if(!(e instanceof AttendanceRequestError && e.status===403))throw e}
-    const employees=await tx.mtmAgent.findMany({where:{organizationId:org,OR:[{role:"AGENT"},{attendanceParticipant:true}],...(actor.scopedAgentIds===null?{}:{id:{in:[...actor.scopedAgentIds]}})},select:{id:true,name:true,userId:true,team:{select:{name:true}}},orderBy:[{name:"asc"},{id:"asc"}],skip:offset,take:51})
+    const employees=await tx.mtmAgent.findMany({where:{organizationId:org,...ATTENDANCE_TRACKED_CARD_WHERE,...(actor.scopedAgentIds===null?{}:{id:{in:[...actor.scopedAgentIds]}})},select:{id:true,name:true,userId:true,team:{select:{name:true}}},orderBy:[{name:"asc"},{id:"asc"}],skip:offset,take:51})
     const ids=employees.slice(0,50).map(e=>e.id),date=new Date(`${month}-01T00:00:00Z`)
     const closed=ids.length?await tx.$queryRaw<{agentId:string}[]>`SELECT "agentId" FROM mtm_attendance_month_members WHERE "organizationId"=${org} AND month=${date}::date AND "agentId"=ANY(${ids}::text[])`:[]
     const scope=actor.scopedAgentIds===null?Prisma.empty:Prisma.sql`AND NOT EXISTS(SELECT 1 FROM mtm_attendance_month_members member WHERE member."organizationId"=closed."organizationId" AND member."closeId"=closed.id AND NOT(member."agentId"=ANY(${actor.scopedAgentIds}::text[])))`

@@ -138,6 +138,11 @@ export default function MtmAgentsPage() {
     if (presence?.kind === "finished") {
       return { text: presence.at ? t("presenceFinishedAt", { time: at(presence.at) }) : t("presenceFinished"), tone: "quiet" }
     }
+    // A field manager sees when the agent started; whether the phone is still
+    // reporting stays next to it, because only a running shift makes silence mean something.
+    if (presence?.kind === "working" && presence.since) {
+      return { text: `${t("presenceWorkingSince", { time: at(presence.since) })} · ${lastSeenText(a)}`, tone: isOnline(a) ? "working" : "quiet" }
+    }
     // Отсутствие записи рабочего дня НЕ объясняет молчание, поэтому оно не
     // должно перебивать живую точку. Записи закономерно нет у руководителей и
     // супервайзеров — они делятся геопозицией другим механизмом, который смены

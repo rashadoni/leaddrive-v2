@@ -11511,6 +11511,7 @@
     "moreActions": "More actions",
     "presencePausedSince": "On a break since {time}",
     "presencePaused": "On a break",
+    "presenceWorkingSince": "Day started at {time}",
     "presenceFinishedAt": "Day finished at {time}",
     "presenceFinished": "Day finished",
     "presenceNotStarted": "Day not started",
