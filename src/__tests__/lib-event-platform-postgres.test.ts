@@ -26,24 +26,30 @@ postgresDescribe("event-platform PostgreSQL optimistic append", () => {
     aggregateId: string,
     expectedVersion: number | undefined,
     probe: string,
+    sessionTimeZone?: string,
   ) {
-    return prisma.$transaction((tx) => appendDomainEvent(
-      tx as unknown as EventPlatformTransaction,
-      {
-        organizationId: "org-b",
-        domain: "finance",
-        aggregateType: "sdk-probe",
-        aggregateId,
-        expectedVersion,
-        eventType: "finance.sdk-probe.v1",
-        source: "urn:leaddrive:event-platform-ci",
-        dataSchema: "urn:leaddrive:schema:finance.sdk-probe:v1",
-        classification: "internal",
-        producer: "event-platform-postgres-ci",
-        producerVersion: "integration-v1",
-        data: { probe },
-      },
-    ))
+    return prisma.$transaction(async (tx) => {
+      if (sessionTimeZone) {
+        await tx.$queryRawUnsafe(`SELECT set_config('TimeZone', $1, true)`, sessionTimeZone)
+      }
+      return appendDomainEvent(
+        tx as unknown as EventPlatformTransaction,
+        {
+          organizationId: "org-b",
+          domain: "finance",
+          aggregateType: "sdk-probe",
+          aggregateId,
+          expectedVersion,
+          eventType: "finance.sdk-probe.v1",
+          source: "urn:leaddrive:event-platform-ci",
+          dataSchema: "urn:leaddrive:schema:finance.sdk-probe:v1",
+          classification: "internal",
+          producer: "event-platform-postgres-ci",
+          producerVersion: "integration-v1",
+          data: { probe },
+        },
+      )
+    })
   }
 
   it("supports create, positive expected update, stale rejection and one concurrent winner", async () => {
@@ -100,6 +106,39 @@ postgresDescribe("event-platform PostgreSQL optimistic append", () => {
       outbox_count: 3n,
       version_count: 3n,
     })
+  })
+
+  // CI containers run in UTC, where a zone bug is invisible. The head's
+  // "lastEventAt" and the event's "occurredAt" are both `timestamp without
+  // time zone`; the deferred coherence trigger rejects the commit when they
+  // differ, so any session TimeZone must yield the same naive UTC value.
+  // One case per head statement: the UTC appends only prepare the stream, the
+  // last append is the statement under test, run in a non-UTC session.
+  it.each([
+    ["blind create", [], undefined, "Europe/Berlin"],
+    ["blind increment", [undefined], undefined, "Europe/Berlin"],
+    ["optimistic create", [], 0, "America/Los_Angeles"],
+    ["optimistic advance", [0], 1, "Europe/Berlin"],
+  ] as const)("appends in a non-UTC session (%s)", async (label, setup, expectedVersion, timeZone) => {
+    const aggregateId = `sdk-timezone-${label.replace(" ", "-")}-${randomUUID()}`
+    for (const version of setup) await append(aggregateId, version, "utc-setup")
+    await expect(append(aggregateId, expectedVersion, "non-utc", timeZone)).resolves.toMatchObject({
+      aggregateVersion: BigInt(setup.length + 1),
+    })
+
+    const rows = await prisma.$queryRawUnsafe<Array<{ matches: boolean }>>(`
+      SELECT h."lastEventAt" = e."occurredAt" AS matches
+        FROM "event_aggregate_heads" h
+        JOIN "domain_events" e
+          ON e."organizationId" = h."organizationId"
+         AND e."aggregateType" = h."aggregateType"
+         AND e."aggregateId" = h."aggregateId"
+         AND e."aggregateVersion" = h."currentVersion"
+       WHERE h."organizationId" = 'org-b'
+         AND h."aggregateType" = 'sdk-probe'
+         AND h."aggregateId" = $1
+    `, aggregateId)
+    expect(rows).toEqual([{ matches: true }])
   })
 
   it("keeps blind append create-or-increment semantics", async () => {
