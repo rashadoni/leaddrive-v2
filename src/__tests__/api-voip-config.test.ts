@@ -310,6 +310,62 @@ describe("VoIP-only provider configuration", () => {
     }));
   });
 
+  it("saves who answers inbound calls on the station line", async () => {
+    mocks.findFirst.mockResolvedValue(row);
+    mocks.update.mockResolvedValue(row);
+    const payload = asteriskPayload({ id: "voip_1" });
+    Object.assign(payload.settings, {
+      voiceAgentMode: "both",
+      inboundAnswerMode: "human_then_ai",
+      inboundAiAfterRings: 3,
+      voiceAgentInboundGreeting: "Salam! Sizi dinləyirəm.",
+    });
+
+    const res = await PUT(request("PUT", payload));
+
+    expect(res.status).toBe(200);
+    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        settings: expect.objectContaining({
+          inboundAnswerMode: "human_then_ai",
+          inboundAiAfterRings: 3,
+          voiceAgentInboundGreeting: "Salam! Sizi dinləyirəm.",
+        }),
+      }),
+    }));
+  });
+
+  it("keeps the stored inbound answer when a tab from before the setting saves", async () => {
+    mocks.findFirst.mockResolvedValue({
+      ...row,
+      settings: { ...row.settings, inboundAnswerMode: "ai", inboundAiAfterRings: 2 },
+    });
+    mocks.update.mockResolvedValue(row);
+
+    const res = await PUT(request("PUT", asteriskPayload({ id: "voip_1" })));
+
+    expect(res.status).toBe(200);
+    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        settings: expect.objectContaining({ inboundAnswerMode: "ai", inboundAiAfterRings: 2 }),
+      }),
+    }));
+  });
+
+  it("refuses an AI inbound answer the line cannot deliver", async () => {
+    for (const settings of [
+      { inboundAnswerMode: "ai", voiceAgentEnabled: false, voiceAgentPrompt: "" },
+      { inboundAnswerMode: "human_then_ai", inboundAiAfterRings: 9 },
+      { inboundAnswerMode: "voicemail" },
+    ]) {
+      const payload = asteriskPayload();
+      Object.assign(payload.settings, settings);
+      const res = await PUT(request("PUT", payload));
+      expect(res.status).toBe(400);
+    }
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
   it("rejects an invalid attempt to enable manual AI calls", async () => {
     const payload = asteriskPayload();
     payload.settings.provider = "asterisk";

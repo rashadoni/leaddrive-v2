@@ -69,7 +69,7 @@ class LifecycleClient(Protocol):
     def send_lifecycle(self, payload: Mapping[str, object]) -> SendResult:
         ...
 
-    def browser_ready(self, call_id: str) -> bool:
+    def answer_route(self, call_id: str) -> str:
         ...
 
 
@@ -186,15 +186,30 @@ class HttpLifecycleClient:
             return SendResult.RETRY
         return SendResult.REJECTED
 
-    def browser_ready(self, call_id: str) -> bool:
+    def answer_route(self, call_id: str) -> str:
+        """Who takes the call now: "browser", "ai", or "" (keep ringing).
+
+        "ai" means the CRM has handed this call to the AI voice agent under
+        the organisation's inbound answer setting.  Every failure keeps the
+        caller ringing, exactly as a browser that is not ready yet.
+        """
         try:
             status, body = self._post(self._config.readiness_url, {"callId": call_id})
             if not 200 <= status < 300:
-                return False
+                return ""
             decoded = json.loads(body.decode("utf-8"))
-            return isinstance(decoded, dict) and decoded.get("ready") is True
         except (OSError, TimeoutError, UnicodeError, json.JSONDecodeError, urllib.error.URLError, ValueError):
-            return False
+            return ""
+        if not isinstance(decoded, dict):
+            return ""
+        if decoded.get("ready") is True:
+            return "browser"
+        if decoded.get("route") == "ai":
+            return "ai"
+        return ""
+
+    def browser_ready(self, call_id: str) -> bool:
+        return self.answer_route(call_id) == "browser"
 
     def preflight(self) -> bool:
         """Prove both authenticated routes without creating or changing a call."""
@@ -442,15 +457,16 @@ def _wait_ready(
     timeout_seconds: float,
     monotonic: Callable[[], float],
     sleep: Callable[[float], None],
-) -> bool:
+) -> str:
     deadline = monotonic() + timeout_seconds
     while not _hangup_requested:
-        if client.browser_ready(call_id):
-            return True
+        route = client.answer_route(call_id)
+        if route in {"browser", "ai"}:
+            return route
         if monotonic() >= deadline:
-            return False
+            return ""
         sleep(READY_POLL_SECONDS)
-    return False
+    return ""
 
 
 def run_mode(
@@ -493,14 +509,16 @@ def run_mode(
         return 0 if sent else 1
 
     if mode == "ready":
-        ready = _wait_ready(
+        route = _wait_ready(
             client,
             call_id,
             timeout_seconds=ready_timeout_seconds,
             monotonic=monotonic,
             sleep=sleep,
         )
-        _agi_set(output, "FANUM_BROWSER_READY", "1" if ready else "0")
+        _agi_set(output, "FANUM_BROWSER_READY", "1" if route == "browser" else "0")
+        if route == "ai":
+            _agi_set(output, "FANUM_INBOUND_ROUTE", "ai")
         return 0
 
     if mode == "answered" and len(arguments) == 1:

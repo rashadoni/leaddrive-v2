@@ -17,43 +17,53 @@ SPEC.loader.exec_module(transform)
 
 
 BROWSER_LOADED_REPORT = """[ Context 'fanum-inbound-browser' created by 'pbx_config' ]
-  's' =>           1. NoOp(Fanum inbound browser gate)                 [fanum-inbound-browser.conf:9]
-                   2. Set(__FANUM_SAFE_CALL_ID=)                        [fanum-inbound-browser.conf:10]
-                   3. AGI(/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py,identify) [fanum-inbound-browser.conf:11]
-                   4. GotoIf($["${AGISTATUS}" = "SUCCESS"]?agi-succeeded:invalid-id) [fanum-inbound-browser.conf:12]
-  [agi-succeeded]  5. GotoIf($[${LEN(${FANUM_SAFE_CALL_ID})} = 36]?identified:invalid-id) [fanum-inbound-browser.conf:13]
-     [identified]  6. Set(__FANUM_INBOUND_TERMINAL_STATE=no_answer)    [fanum-inbound-browser.conf:14]
-                   7. Set(CHANNEL(hangup_handler_push)=fanum-inbound-browser-terminal,s,1) [fanum-inbound-browser.conf:15]
-                   8. Ringing()                                        [fanum-inbound-browser.conf:16]
-                   9. Set(FANUM_INBOUND_EVENT_OK=0)                    [fanum-inbound-browser.conf:17]
-                  10. AGI(/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py,ringing,${FANUM_SAFE_CALL_ID},${ARG1}) [fanum-inbound-browser.conf:18]
-                  11. GotoIf($["${FANUM_INBOUND_EVENT_OK}" = "1"]?await-browser:registration-failed) [fanum-inbound-browser.conf:19]
-  [await-browser] 12. Set(FANUM_BROWSER_READY=0)                       [fanum-inbound-browser.conf:20]
-                  13. AGI(/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py,ready,${FANUM_SAFE_CALL_ID}) [fanum-inbound-browser.conf:21]
-                  14. GotoIf($["${FANUM_BROWSER_READY}" = "1"]?answer:missed) [fanum-inbound-browser.conf:22]
-         [answer] 15. Answer()                                         [fanum-inbound-browser.conf:23]
-                  16. Set(__FANUM_INBOUND_TERMINAL_STATE=connected)    [fanum-inbound-browser.conf:24]
-                  17. AGI(/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py,answered,${FANUM_SAFE_CALL_ID}) [fanum-inbound-browser.conf:27]
-                  18. Set(CHANNEL(language)=az)                        [fanum-inbound-browser.conf:28]
-                  19. Set(DENOISE(rx)=on)                              [fanum-inbound-browser.conf:29]
-                  20. Set(AGC(rx)=5000)                                [fanum-inbound-browser.conf:30]
-                  21. AudioSocket(${FANUM_SAFE_CALL_ID},127.0.0.1:9093) [fanum-inbound-browser.conf:31]
-                  22. Hangup()                                         [fanum-inbound-browser.conf:32]
-         [missed] 23. Hangup()                                         [fanum-inbound-browser.conf:33]
-  [registration-failed] 24. Set(__FANUM_INBOUND_TERMINAL_STATE=failed) [fanum-inbound-browser.conf:34]
-                  25. Hangup()                                         [fanum-inbound-browser.conf:35]
-     [invalid-id] 26. Hangup()                                         [fanum-inbound-browser.conf:36]
--= 1 extension (26 priorities) in 1 context. =-
+  's' =>           1. NoOp(Fanum inbound browser gate)                   [fanum-inbound-browser.conf:10]
+                  2. Set(__FANUM_SAFE_CALL_ID=)                         [fanum-inbound-browser.conf:11]
+                  3. AGI(/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py,identify) [fanum-inbound-browser.conf:12]
+                  4. GotoIf($["${AGISTATUS}" = "SUCCESS"]?agi-succeeded:invalid-id) [fanum-inbound-browser.conf:13]
+  [agi-succeeded]  5. GotoIf($[${LEN(${FANUM_SAFE_CALL_ID})} = 36]?identified:invalid-id) [fanum-inbound-browser.conf:14]
+    [identified]  6. Set(__FANUM_INBOUND_TERMINAL_STATE=no_answer)      [fanum-inbound-browser.conf:15]
+                  7. Set(CHANNEL(hangup_handler_push)=fanum-inbound-browser-terminal,s,1) [fanum-inbound-browser.conf:16]
+                  8. Ringing()                                          [fanum-inbound-browser.conf:17]
+                  9. Set(FANUM_INBOUND_EVENT_OK=0)                      [fanum-inbound-browser.conf:18]
+                 10. AGI(/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py,ringing,${FANUM_SAFE_CALL_ID},${ARG1}) [fanum-inbound-browser.conf:19]
+                 11. GotoIf($["${FANUM_INBOUND_EVENT_OK}" = "1"]?await-browser:registration-failed) [fanum-inbound-browser.conf:20]
+  [await-browser] 12. Set(FANUM_BROWSER_READY=0)                         [fanum-inbound-browser.conf:21]
+                 13. Set(FANUM_INBOUND_ROUTE=)                          [fanum-inbound-browser.conf:22]
+                 14. AGI(/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py,ready,${FANUM_SAFE_CALL_ID}) [fanum-inbound-browser.conf:23]
+                 15. GotoIf($["${FANUM_BROWSER_READY}" = "1"]?answer)   [fanum-inbound-browser.conf:24]
+                 16. GotoIf($["${FANUM_INBOUND_ROUTE}" = "ai"]?ai-answer:missed) [fanum-inbound-browser.conf:27]
+        [answer] 17. Answer()                                           [fanum-inbound-browser.conf:28]
+                 18. Set(__FANUM_INBOUND_TERMINAL_STATE=connected)      [fanum-inbound-browser.conf:29]
+                 19. AGI(/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py,answered,${FANUM_SAFE_CALL_ID}) [fanum-inbound-browser.conf:32]
+                 20. Set(CHANNEL(language)=az)                          [fanum-inbound-browser.conf:33]
+                 21. Set(DENOISE(rx)=on)                                [fanum-inbound-browser.conf:34]
+                 22. Set(AGC(rx)=5000)                                  [fanum-inbound-browser.conf:35]
+                 23. AudioSocket(${FANUM_SAFE_CALL_ID},127.0.0.1:9093)  [fanum-inbound-browser.conf:36]
+                 24. Hangup()                                           [fanum-inbound-browser.conf:37]
+     [ai-answer] 25. Answer()                                           [fanum-inbound-browser.conf:40]
+                 26. Set(__FANUM_INBOUND_TERMINAL_STATE=connected)      [fanum-inbound-browser.conf:41]
+                 27. AGI(/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py,answered,${FANUM_SAFE_CALL_ID}) [fanum-inbound-browser.conf:42]
+                 28. Set(CHANNEL(language)=az)                          [fanum-inbound-browser.conf:43]
+                 29. Set(DENOISE(rx)=on)                                [fanum-inbound-browser.conf:44]
+                 30. Set(AGC(rx)=5000)                                  [fanum-inbound-browser.conf:45]
+                 31. AudioSocket(${FANUM_SAFE_CALL_ID},127.0.0.1:9092)  [fanum-inbound-browser.conf:46]
+                 32. Hangup()                                           [fanum-inbound-browser.conf:47]
+        [missed] 33. Hangup()                                           [fanum-inbound-browser.conf:48]
+  [registration-failed] 34. Set(__FANUM_INBOUND_TERMINAL_STATE=failed)         [fanum-inbound-browser.conf:49]
+                 35. Hangup()                                           [fanum-inbound-browser.conf:50]
+    [invalid-id] 36. Hangup()                                           [fanum-inbound-browser.conf:51]
+-= 1 extension (36 priorities) in 1 context. =-
 """
 
 TERMINAL_LOADED_REPORT = """[ Context 'fanum-inbound-browser-terminal' created by 'pbx_config' ]
-  's' =>           1. NoOp(Fanum inbound browser terminal event)        [fanum-inbound-browser.conf:39]
-                   2. ExecIf($["${CDR(answer)}" != ""]?Set(FANUM_INBOUND_TERMINAL_STATE=connected)) [fanum-inbound-browser.conf:42]
-                   3. Set(FANUM_INBOUND_DURATION=0)                      [fanum-inbound-browser.conf:43]
-                   4. ExecIf($["${FANUM_INBOUND_TERMINAL_STATE}" = "connected"]?Set(FANUM_INBOUND_DURATION=${CDR(billsec)})) [fanum-inbound-browser.conf:44]
-                   5. ExecIf($["${FANUM_INBOUND_DURATION}" = ""]?Set(FANUM_INBOUND_DURATION=0)) [fanum-inbound-browser.conf:45]
-                   6. AGI(/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py,terminal,${FANUM_SAFE_CALL_ID},${FANUM_INBOUND_TERMINAL_STATE},${FANUM_INBOUND_DURATION}) [fanum-inbound-browser.conf:46]
-                   7. Return()                                           [fanum-inbound-browser.conf:47]
+  's' =>           1. NoOp(Fanum inbound browser terminal event)         [fanum-inbound-browser.conf:54]
+                  2. ExecIf($["${CDR(answer)}" != ""]?Set(FANUM_INBOUND_TERMINAL_STATE=connected)) [fanum-inbound-browser.conf:57]
+                  3. Set(FANUM_INBOUND_DURATION=0)                      [fanum-inbound-browser.conf:58]
+                  4. ExecIf($["${FANUM_INBOUND_TERMINAL_STATE}" = "connected"]?Set(FANUM_INBOUND_DURATION=${CDR(billsec)})) [fanum-inbound-browser.conf:59]
+                  5. ExecIf($["${FANUM_INBOUND_DURATION}" = ""]?Set(FANUM_INBOUND_DURATION=0)) [fanum-inbound-browser.conf:60]
+                  6. AGI(/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py,terminal,${FANUM_SAFE_CALL_ID},${FANUM_INBOUND_TERMINAL_STATE},${FANUM_INBOUND_DURATION}) [fanum-inbound-browser.conf:61]
+                  7. Return()                                           [fanum-inbound-browser.conf:62]
 -= 1 extension (7 priorities) in 1 context. =-
 """
 
@@ -69,22 +79,26 @@ class InboundDialplanTransformTest(unittest.TestCase):
         )
 
     def test_loaded_browser_contexts_reject_answer_before_readiness(self):
-        reordered = LOADED_BROWSER_CONTEXTS.replace(
-            "14. GotoIf($[\"${FANUM_BROWSER_READY}\" = \"1\"]?answer:missed)",
-            "14. Answer()",
-        ).replace(
-            "15. Answer()",
-            "15. GotoIf($[\"${FANUM_BROWSER_READY}\" = \"1\"]?answer:missed)",
+        gate = "15. GotoIf($[\"${FANUM_BROWSER_READY}\" = \"1\"]?answer)"
+        reordered = LOADED_BROWSER_CONTEXTS.replace(gate, "15. Answer()", 1).replace(
+            "17. Answer()",
+            "17. GotoIf($[\"${FANUM_BROWSER_READY}\" = \"1\"]?answer)",
+            1,
         )
+        ai_gate = "16. GotoIf($[\"${FANUM_INBOUND_ROUTE}\" = \"ai\"]?ai-answer:missed)"
+        ai_first = LOADED_BROWSER_CONTEXTS.replace(ai_gate, "16. Answer()", 1)
 
-        with self.assertRaisesRegex(transform.DialplanRefused, "loaded browser context"):
-            transform.verify_loaded_browser_contexts(reordered)
+        for report in (reordered, ai_first):
+            self.assertNotEqual(report, LOADED_BROWSER_CONTEXTS)
+            with self.subTest(report=report):
+                with self.assertRaisesRegex(transform.DialplanRefused, "loaded browser context"):
+                    transform.verify_loaded_browser_contexts(report)
 
     def test_loaded_browser_contexts_reject_extra_priority_or_foreign_source(self):
         extra = LOADED_BROWSER_CONTEXTS.replace(
-            "-= 1 extension (26 priorities) in 1 context. =-",
-            "                  27. Playback(silence/1)                         [other.conf:9]\n"
-            "-= 1 extension (27 priorities) in 1 context. =-",
+            "-= 1 extension (36 priorities) in 1 context. =-",
+            "                  37. Playback(silence/1)                         [other.conf:9]\n"
+            "-= 1 extension (37 priorities) in 1 context. =-",
             1,
         )
         foreign_source = LOADED_BROWSER_CONTEXTS.replace(

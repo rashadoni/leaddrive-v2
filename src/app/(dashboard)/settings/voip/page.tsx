@@ -18,10 +18,26 @@ import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { VoiceCallingHours } from "@/components/voip/voice-calling-hours"
 import { DEFAULT_VOICE_AGENT_PROMPT } from "@/lib/voice-agent/default-prompt"
+import {
+  DEFAULT_INBOUND_GREETING,
+  DEFAULT_RINGS_BEFORE_AI,
+  INBOUND_ANSWER_MODES,
+  MAX_INBOUND_GREETING_LENGTH,
+  MAX_RINGS_BEFORE_AI,
+  MIN_RINGS_BEFORE_AI,
+  clampRingsBeforeAi,
+  deriveVoiceAgentMode,
+  type InboundAnswerMode,
+} from "@/lib/voip/inbound-answer"
 
 type Provider = "twilio" | "threecx" | "asterisk" | "custom-sip"
 type SipTransport = "udp" | "tcp" | "tls" | "wss"
 type VoiceAgentMode = "inbound" | "outbound" | "both"
+
+const RING_CHOICES = Array.from(
+  { length: MAX_RINGS_BEFORE_AI - MIN_RINGS_BEFORE_AI + 1 },
+  (_, index) => MIN_RINGS_BEFORE_AI + index,
+)
 
 type ChannelSettings = {
   provider?: Provider
@@ -51,6 +67,9 @@ type ChannelSettings = {
   voiceAgentMode?: VoiceAgentMode
   voiceAgentPrompt?: string
   voiceAgentKnowledge?: string
+  inboundAnswerMode?: InboundAnswerMode
+  inboundAiAfterRings?: number
+  voiceAgentInboundGreeting?: string
 }
 
 type ChannelConfig = {
@@ -129,7 +148,9 @@ export default function VoipSettingsPage() {
   const [voiceAgentEnabled, setVoiceAgentEnabled] = useState(false)
   const [manualLeadAiCallsEnabled, setManualLeadAiCallsEnabled] = useState(false)
   const [voiceQueueEnabled, setVoiceQueueEnabled] = useState(false)
-  const [voiceAgentMode, setVoiceAgentMode] = useState<VoiceAgentMode>("outbound")
+  const [inboundAnswerMode, setInboundAnswerMode] = useState<InboundAnswerMode>("human")
+  const [inboundAiAfterRings, setInboundAiAfterRings] = useState(DEFAULT_RINGS_BEFORE_AI)
+  const [inboundGreeting, setInboundGreeting] = useState("")
   const [voiceAgentPrompt, setVoiceAgentPrompt] = useState(DEFAULT_VOICE_AGENT_PROMPT)
   const [voiceAgentKnowledge, setVoiceAgentKnowledge] = useState("")
 
@@ -178,7 +199,13 @@ export default function VoipSettingsPage() {
         setVoiceAgentEnabled(s.voiceAgentEnabled === true)
         setManualLeadAiCallsEnabled(s.manualLeadAiCallsEnabled === true)
         setVoiceQueueEnabled(s.voiceQueueEnabled === true)
-        setVoiceAgentMode(s.voiceAgentMode || "outbound")
+        setInboundAnswerMode(
+          (INBOUND_ANSWER_MODES as readonly string[]).includes(s.inboundAnswerMode ?? "")
+            ? s.inboundAnswerMode as InboundAnswerMode
+            : "human",
+        )
+        setInboundAiAfterRings(clampRingsBeforeAi(s.inboundAiAfterRings))
+        setInboundGreeting(s.voiceAgentInboundGreeting || "")
         setVoiceAgentPrompt(s.voiceAgentPrompt || DEFAULT_VOICE_AGENT_PROMPT)
         setVoiceAgentKnowledge(s.voiceAgentKnowledge || "")
 
@@ -248,21 +275,24 @@ export default function VoipSettingsPage() {
   const voiceAgentPromptMissing = voiceAgentEnabled && !voiceAgentPrompt.trim()
 
   const buildSettings = () => {
+    const outboundAiEnabled = manualLeadAiCallsEnabled && provider === "asterisk" && voiceAgentEnabled
+    // Only the station line can hand a ringing call to the AI.
+    const effectiveInboundAnswerMode: InboundAnswerMode =
+      provider === "asterisk" && voiceAgentEnabled ? inboundAnswerMode : "human"
     const common = {
       recordCalls,
       voiceAgentEnabled,
-      manualLeadAiCallsEnabled:
-        manualLeadAiCallsEnabled
-        && provider === "asterisk"
-        && voiceAgentEnabled
-        && voiceAgentMode !== "inbound",
-      voiceQueueEnabled:
-        voiceQueueEnabled
-        && manualLeadAiCallsEnabled
-        && provider === "asterisk"
-        && voiceAgentEnabled
-        && voiceAgentMode !== "inbound",
-      voiceAgentMode,
+      manualLeadAiCallsEnabled: outboundAiEnabled,
+      voiceQueueEnabled: voiceQueueEnabled && outboundAiEnabled,
+      // Derived, not chosen: the page shows one inbound control and the
+      // outbound switches, and this legacy field must agree with both.
+      voiceAgentMode: deriveVoiceAgentMode({
+        inboundAnswerMode: effectiveInboundAnswerMode,
+        outboundAiEnabled,
+      }),
+      inboundAnswerMode: effectiveInboundAnswerMode,
+      inboundAiAfterRings,
+      voiceAgentInboundGreeting: inboundGreeting.trim(),
       voiceAgentPrompt: voiceAgentPrompt.trim(),
       voiceAgentKnowledge: voiceAgentKnowledge.trim(),
     }
@@ -659,6 +689,73 @@ export default function VoipSettingsPage() {
               </div>
             </div>
 
+            {provider === "asterisk" && (
+              <div className="space-y-3 rounded-lg bg-muted/30 p-3">
+                <div className="grid gap-2">
+                  <Label htmlFor="inbound-answer-mode" className="text-sm font-medium">
+                    {t("inboundAnswerLabel")}
+                  </Label>
+                  <Select
+                    id="inbound-answer-mode"
+                    value={voiceAgentEnabled ? inboundAnswerMode : "human"}
+                    onChange={event => {
+                      const mode = event.target.value as InboundAnswerMode
+                      setInboundAnswerMode(mode)
+                      // Choosing the AI is the decision to use it: no second
+                      // switch has to be found and turned on for it to work.
+                      if (mode !== "human" && !voiceAgentEnabled) {
+                        setVoiceAgentEnabled(true)
+                        if (!voiceAgentPrompt.trim()) setVoiceAgentPrompt(DEFAULT_VOICE_AGENT_PROMPT)
+                      }
+                    }}
+                  >
+                    <option value="human">{t("inboundAnswerHuman")}</option>
+                    <option value="ai">{t("inboundAnswerAi")}</option>
+                    <option value="human_then_ai">{t("inboundAnswerHumanThenAi")}</option>
+                  </Select>
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    {t("inboundAnswerHint")}
+                  </p>
+                </div>
+
+                {voiceAgentEnabled && inboundAnswerMode === "human_then_ai" && (
+                  <div className="grid gap-2">
+                    <Label htmlFor="inbound-ai-after-rings" className="text-sm font-medium">
+                      {t("inboundRingsLabel")}
+                    </Label>
+                    <Select
+                      id="inbound-ai-after-rings"
+                      value={String(inboundAiAfterRings)}
+                      onChange={event => setInboundAiAfterRings(clampRingsBeforeAi(Number(event.target.value)))}
+                    >
+                      {RING_CHOICES.map(count => (
+                        <option key={count} value={count}>{t("inboundRingsOption", { count })}</option>
+                      ))}
+                    </Select>
+                  </div>
+                )}
+
+                {voiceAgentEnabled && inboundAnswerMode !== "human" && (
+                  <div className="grid gap-2">
+                    <Label htmlFor="inbound-greeting" className="text-sm font-medium">
+                      {t("inboundGreetingLabel")}
+                    </Label>
+                    <Textarea
+                      id="inbound-greeting"
+                      value={inboundGreeting}
+                      onChange={event => setInboundGreeting(event.target.value)}
+                      rows={3}
+                      maxLength={MAX_INBOUND_GREETING_LENGTH}
+                      placeholder={DEFAULT_INBOUND_GREETING}
+                    />
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      {t("inboundGreetingHint")}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="flex items-start justify-between gap-4 rounded-lg bg-muted/30 p-3">
               <div className="min-w-0 space-y-1">
                 <Label htmlFor="manual-lead-ai-calls" className="text-sm font-medium">
@@ -675,7 +772,7 @@ export default function VoipSettingsPage() {
                   setManualLeadAiCallsEnabled(enabled)
                   if (!enabled) setVoiceQueueEnabled(false)
                 }}
-                disabled={!voiceAgentEnabled || provider !== "asterisk" || voiceAgentMode === "inbound"}
+                disabled={!voiceAgentEnabled || provider !== "asterisk"}
                 aria-label={t("manualLeadAiCallsEnabled")}
               />
             </div>
@@ -693,27 +790,9 @@ export default function VoipSettingsPage() {
                 id="voice-call-queue-enabled"
                 checked={voiceQueueEnabled}
                 onCheckedChange={setVoiceQueueEnabled}
-                disabled={!manualLeadAiCallsEnabled || !voiceAgentEnabled || provider !== "asterisk" || voiceAgentMode === "inbound"}
+                disabled={!manualLeadAiCallsEnabled || !voiceAgentEnabled || provider !== "asterisk"}
                 aria-label={t("voiceQueueEnabled")}
               />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="voice-agent-mode">{t("voiceAgentModeLabel")}</Label>
-              <Select
-                id="voice-agent-mode"
-                value={voiceAgentMode}
-                onChange={event => {
-                  const mode = event.target.value as VoiceAgentMode
-                  setVoiceAgentMode(mode)
-                  if (mode === "inbound") setVoiceQueueEnabled(false)
-                }}
-                disabled={!voiceAgentEnabled}
-              >
-                <option value="outbound">{t("voiceAgentModeOutbound")}</option>
-                <option value="inbound">{t("voiceAgentModeInbound")}</option>
-                <option value="both">{t("voiceAgentModeBoth")}</option>
-              </Select>
             </div>
 
             <div className="grid gap-2">

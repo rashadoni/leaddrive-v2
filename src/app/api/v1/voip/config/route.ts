@@ -8,6 +8,12 @@ import {
   validateVoipSettingsEndpoint,
   voipEndpointFingerprint,
 } from "@/lib/voip/endpoint-guard";
+import {
+  INBOUND_ANSWER_MODES,
+  MAX_INBOUND_GREETING_LENGTH,
+  MAX_RINGS_BEFORE_AI,
+  MIN_RINGS_BEFORE_AI,
+} from "@/lib/voip/inbound-answer";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +25,11 @@ const commonSettings = z.object({
   voiceAgentMode: z.enum(["inbound", "outbound", "both"]).default("outbound"),
   voiceAgentPrompt: z.string().trim().max(20_000).default(""),
   voiceAgentKnowledge: z.string().max(100_000).default(""),
+  // No defaults on purpose: a tab opened before these fields existed saves
+  // without them, and the merge below must then keep what is stored.
+  inboundAnswerMode: z.enum(INBOUND_ANSWER_MODES).optional(),
+  inboundAiAfterRings: z.number().int().min(MIN_RINGS_BEFORE_AI).max(MAX_RINGS_BEFORE_AI).optional(),
+  voiceAgentInboundGreeting: z.string().trim().max(MAX_INBOUND_GREETING_LENGTH).optional(),
 });
 
 const settingsSchema = z.discriminatedUnion("provider", [
@@ -71,6 +82,17 @@ const configSchema = z
         code: "custom",
         path: ["settings", "voiceAgentPrompt"],
         message: "AI conversation rules are required while the voice agent is enabled",
+      });
+    }
+    if (
+      value.settings.inboundAnswerMode
+      && value.settings.inboundAnswerMode !== "human"
+      && (value.settings.provider !== "asterisk" || !value.settings.voiceAgentEnabled)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["settings", "inboundAnswerMode"],
+        message: "The AI can answer inbound calls only on Asterisk with the voice agent enabled",
       });
     }
     const outboundAsteriskReady = (

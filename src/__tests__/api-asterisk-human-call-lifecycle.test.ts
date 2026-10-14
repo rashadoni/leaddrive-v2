@@ -56,6 +56,7 @@ function request(body: unknown, token = "pbx-runtime-token") {
 function baseCall(overrides: Record<string, unknown> = {}) {
   return {
     id: "human-call-log-1",
+    callMode: "human",
     leadId: null,
     leadCallClaimToken: null,
     direction: "outbound",
@@ -288,12 +289,13 @@ describe("POST /api/internal/asterisk/call-lifecycle", () => {
       where: {
         organizationId: "org-test",
         provider: "asterisk",
-        callMode: "human",
+        OR: [{ callMode: "human" }, { callMode: "ai", direction: "inbound" }],
         providerCallId: callId,
         callSid: callId,
       },
       select: {
         id: true,
+        callMode: true,
         leadId: true,
         leadCallClaimToken: true,
         direction: true,
@@ -313,7 +315,7 @@ describe("POST /api/internal/asterisk/call-lifecycle", () => {
         id: "human-call-log-1",
         organizationId: "org-test",
         provider: "asterisk",
-        callMode: "human",
+        OR: [{ callMode: "human" }, { callMode: "ai", direction: "inbound" }],
         providerCallId: callId,
         callSid: callId,
         providerOutcome: null,
@@ -360,7 +362,7 @@ describe("POST /api/internal/asterisk/call-lifecycle", () => {
           id: "human-call-log-1",
           organizationId: "org-test",
           provider: "asterisk",
-          callMode: "human",
+          OR: [{ callMode: "human" }, { callMode: "ai", direction: "inbound" }],
           providerCallId: callId,
           callSid: callId,
           providerOutcome: null,
@@ -406,7 +408,7 @@ describe("POST /api/internal/asterisk/call-lifecycle", () => {
         id: "human-call-log-1",
         organizationId: "org-test",
         provider: "asterisk",
-        callMode: "human",
+        OR: [{ callMode: "human" }, { callMode: "ai", direction: "inbound" }],
         providerCallId: callId,
         callSid: callId,
         providerOutcome: null,
@@ -468,6 +470,32 @@ describe("POST /api/internal/asterisk/call-lifecycle", () => {
     expect(response.status).toBe(404)
     expect(mocks.callLogUpdateMany).not.toHaveBeenCalled()
     expect(mocks.callEventCreate).not.toHaveBeenCalled()
+  })
+
+  it("closes an inbound call the AI answered without erasing the AI's conversation result", async () => {
+    mocks.callLogFindFirst.mockResolvedValue(baseCall({
+      callMode: "ai",
+      direction: "inbound",
+      status: "in-progress",
+      wasAnswered: true,
+      conversationOutcome: "customer_spoke",
+    }))
+
+    const response = await POST(request(terminalPayload("connected")))
+
+    expect(response.status).toBe(200)
+    const update = mocks.callLogUpdateMany.mock.calls[0]?.[0]
+    expect(update.where).toMatchObject({
+      OR: [{ callMode: "human" }, { callMode: "ai", direction: "inbound" }],
+      providerOutcome: null,
+    })
+    expect(update.data).toMatchObject({
+      status: "completed",
+      wasAnswered: true,
+      providerOutcome: "connected",
+      duration: 27,
+    })
+    expect(update.data).not.toHaveProperty("conversationOutcome")
   })
 
   it("returns an exact event replay as an idempotent no-op", async () => {

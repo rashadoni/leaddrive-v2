@@ -13,12 +13,14 @@ const mocks = vi.hoisted(() => ({
   findFirst: vi.fn(),
   updateMany: vi.fn(),
   findMessages: vi.fn(),
+  findConfigs: vi.fn(),
 }))
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     callLog: { findFirst: mocks.findFirst, updateMany: mocks.updateMany },
     channelMessage: { findMany: mocks.findMessages },
+    channelConfig: { findMany: mocks.findConfigs },
   },
 }))
 vi.mock("@/lib/rls-context", () => ({
@@ -26,6 +28,7 @@ vi.mock("@/lib/rls-context", () => ({
 }))
 
 import { GET, trimTranscriptTail } from "@/app/api/internal/voice-agent/call-continuation/route"
+import { DEFAULT_INBOUND_GREETING, INBOUND_CALL_CONTEXT } from "@/lib/voip/inbound-answer"
 
 const originalToken = process.env.FANUM_VOICE_RUNTIME_TOKEN
 const originalOrg = process.env.VOICE_AGENT_ORGANIZATION_ID
@@ -72,6 +75,8 @@ beforeEach(() => {
   mocks.findMessages.mockReset()
   mocks.findMessages.mockResolvedValue([])
   mocks.updateMany.mockResolvedValue({ count: 1 })
+  mocks.findConfigs.mockReset()
+  mocks.findConfigs.mockResolvedValue([])
 })
 
 afterEach(() => {
@@ -263,6 +268,54 @@ describe("lead correspondence", () => {
     const where = mocks.findMessages.mock.calls[0][0].where
     expect(where.createdAt.gte).toBeInstanceOf(Date)
     expect(mocks.findMessages.mock.calls[0][0].take).toBe(10)
+  })
+})
+
+describe("an inbound call the AI answered", () => {
+  function inboundRow(overrides: Record<string, unknown> = {}) {
+    return callbackRow({ continuesCallId: null, direction: "inbound", ...overrides })
+  }
+
+  it("gives the agent the organisation's inbound greeting and says the customer called", async () => {
+    mocks.findFirst.mockResolvedValueOnce(inboundRow())
+    mocks.findConfigs.mockResolvedValue([{
+      settings: {
+        provider: "asterisk",
+        voiceAgentEnabled: true,
+        voiceAgentInboundGreeting: "  Salam, Gobustone! Sizi dinləyirəm.  ",
+      },
+    }])
+
+    const response = await GET(request())
+
+    await expect(response.json()).resolves.toEqual({
+      continuation: null,
+      conversation: null,
+      opening: "Salam, Gobustone! Sizi dinləyirəm.",
+      context: INBOUND_CALL_CONTEXT,
+    })
+  })
+
+  it("falls back to the neutral inbound greeting when the organisation wrote none", async () => {
+    mocks.findFirst.mockResolvedValueOnce(inboundRow())
+    mocks.findConfigs.mockResolvedValue([{ settings: { provider: "asterisk", voiceAgentEnabled: true } }])
+
+    const body = await (await GET(request())).json()
+
+    expect(body.opening).toBe(DEFAULT_INBOUND_GREETING)
+    expect(body.opening).not.toMatch(/zəng etmişəm/u)
+  })
+
+  it("adds nothing to an outbound AI call or to a human inbound call", async () => {
+    for (const row of [
+      callbackRow({ continuesCallId: null, direction: "outbound" }),
+      inboundRow({ callMode: "human" }),
+    ]) {
+      mocks.findFirst.mockResolvedValueOnce(row)
+      const body = await (await GET(request())).json()
+      expect(body).toEqual({ continuation: null, conversation: null })
+    }
+    expect(mocks.findConfigs).not.toHaveBeenCalled()
   })
 })
 

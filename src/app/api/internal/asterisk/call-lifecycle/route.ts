@@ -74,8 +74,22 @@ type SafeEventPayload = {
   durationSeconds?: number
 }
 
+/**
+ * Rows this observer binds: ordinary human calls, and inbound calls the AI
+ * voice agent picked up (`inbound-browser-ready` flips them to `ai`). The
+ * station keeps reporting answer and hang-up for both through this route;
+ * outbound AI calls have their own registry and never come here.
+ */
+const LIFECYCLE_CALL_SCOPE: Prisma.CallLogWhereInput = {
+  OR: [
+    { callMode: "human" },
+    { callMode: "ai", direction: "inbound" },
+  ],
+}
+
 type BoundHumanCall = {
   id: string
+  callMode: string | null
   leadId: string | null
   leadCallClaimToken: string | null
   direction: string
@@ -181,12 +195,13 @@ async function loadBoundCall(
     where: {
       organizationId,
       provider: "asterisk",
-      callMode: "human",
+      ...LIFECYCLE_CALL_SCOPE,
       providerCallId: callId,
       callSid: callId,
     },
     select: {
       id: true,
+      callMode: true,
       leadId: true,
       leadCallClaimToken: true,
       direction: true,
@@ -351,7 +366,7 @@ async function applyLifecycleEvent(params: {
           id: call.id,
           organizationId: params.organizationId,
           provider: "asterisk",
-          callMode: "human",
+          ...LIFECYCLE_CALL_SCOPE,
           providerCallId: params.input.callId,
           callSid: params.input.callId,
           providerOutcome: null,
@@ -400,7 +415,7 @@ async function applyLifecycleEvent(params: {
             id: call.id,
             organizationId: params.organizationId,
             provider: "asterisk",
-            callMode: "human",
+            ...LIFECYCLE_CALL_SCOPE,
             providerCallId: params.input.callId,
             callSid: params.input.callId,
             providerOutcome: null,
@@ -424,7 +439,7 @@ async function applyLifecycleEvent(params: {
           id: call.id,
           organizationId: params.organizationId,
           provider: "asterisk",
-          callMode: "human",
+          ...LIFECYCLE_CALL_SCOPE,
           providerCallId: params.input.callId,
           callSid: params.input.callId,
           providerOutcome: null,
@@ -473,7 +488,7 @@ async function applyLifecycleEvent(params: {
         id: call.id,
         organizationId: params.organizationId,
         provider: "asterisk",
-        callMode: "human",
+        ...LIFECYCLE_CALL_SCOPE,
         providerCallId: params.input.callId,
         callSid: params.input.callId,
         providerOutcome: null,
@@ -483,7 +498,9 @@ async function applyLifecycleEvent(params: {
         status: terminalStatusByState[state],
         wasAnswered: state === "connected",
         providerOutcome: state,
-        conversationOutcome: null,
+        // The AI's own result (customer spoke or not) may already be stored;
+        // the telephony outcome must not erase it.
+        ...(call.callMode === "ai" ? {} : { conversationOutcome: null }),
         duration: durationSeconds,
         endedAt: occurredAt,
         browserAnswerClaimToken: null,
@@ -526,12 +543,13 @@ async function existingReplayResult(params: {
       where: {
         organizationId: params.organizationId,
         provider: "asterisk",
-        callMode: "human",
+        ...LIFECYCLE_CALL_SCOPE,
         providerCallId: params.input.callId,
         callSid: params.input.callId,
       },
       select: {
         id: true,
+        callMode: true,
         leadId: true,
         leadCallClaimToken: true,
         direction: true,
