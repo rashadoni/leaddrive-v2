@@ -62,16 +62,23 @@ const MODULE_GATED_API_PREFIXES = ["/api/v1/", "/api/finance/", "/api/cost-model
  * before loading data; unclassified compatibility endpoints keep their legacy
  * gate until their domain ownership is decided.
  */
-function sessionMtmApiBlocked(authUser: SessionModuleGateUser): boolean {
+function sessionMtmApiBlocked(authUser: SessionModuleGateUser, pathname: string): boolean {
   if (!authUser || authUser.role === "superadmin") return false
   const context = {
     plan: authUser.plan || "enterprise",
     addons: authUser.addons || [],
     modules: authUser.modules,
   }
-  return !FIELD_TENANT_CAPABILITY_IDS.some((capabilityId) =>
-    isTenantCapabilityEnabled(capabilityId, context),
-  )
+  // Personnel lives only under /api/v1/mtm/attendance/*: it must not open the
+  // field endpoints (routes, visits, clients) for a tenant without them.
+  const admitting = isPersonnelApiPath(pathname)
+    ? FIELD_TENANT_CAPABILITY_IDS
+    : FIELD_TENANT_CAPABILITY_IDS.filter((capabilityId) => capabilityId !== "personnel")
+  return !admitting.some((capabilityId) => isTenantCapabilityEnabled(capabilityId, context))
+}
+
+function isPersonnelApiPath(pathname: string): boolean {
+  return pathname === "/api/v1/mtm/attendance" || pathname.startsWith("/api/v1/mtm/attendance/")
 }
 
 // NOTE: /api/v1/tracking/ is PUBLIC by design — email open-pixels and SMS/link
@@ -785,7 +792,7 @@ const authMiddleware = auth(async (req) => {
   // handler's capability wrapper remains the exact Route & Field / Workforce
   // boundary.
   if (isMtmApiPath(pathname)) {
-    if (sessionMtmApiBlocked((req as any).auth?.user)) {
+    if (sessionMtmApiBlocked((req as any).auth?.user, pathname)) {
       return withCspHeaders(
         NextResponse.json(
           { error: "Forbidden", message: "No field capability is enabled for your organization." },

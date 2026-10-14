@@ -357,13 +357,13 @@ export const navItems: NavItem[] = [
   // person is given (or takes) a field scope.
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/access", icon: KeyRound, tKey: "mtmAccess", group: "Route & Field", allowedRoles: ADMIN_ROLES },
   { module: "mtm", href: "/mtm/settings", icon: Settings, tKey: "mtmSettings", group: "Route & Field" },
-  // Personnel: work-time attendance for HR, its own sidebar section instead of
-  // thirteen links inside Route & Field. Same data, gates and opt-in as before;
-  // the former pages now live as tabs of these four destinations.
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance", icon: Clock, tKey: "personnelToday", group: "Personnel", orgSetting: "attendanceEnabled" },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance/timesheet", icon: FileSpreadsheet, tKey: "personnelTimesheet", group: "Personnel", orgSetting: "attendanceEnabled" },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance/people", icon: Users, tKey: "personnelPeople", group: "Personnel", orgSetting: "attendanceEnabled" },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/attendance/settings", icon: Settings, tKey: "personnelSettings", group: "Personnel", orgSetting: "attendanceEnabled" },
+  // Personnel: work-time attendance for HR, its own sidebar section and its
+  // own sellable capability — no Route & Field needed (owner, 2026-10-14). The
+  // former pages live as tabs of these four destinations.
+  { tenantCapability: "personnel", href: "/mtm/attendance", icon: Clock, tKey: "personnelToday", group: "Personnel", orgSetting: "attendanceEnabled" },
+  { tenantCapability: "personnel", href: "/mtm/attendance/timesheet", icon: FileSpreadsheet, tKey: "personnelTimesheet", group: "Personnel", orgSetting: "attendanceEnabled" },
+  { tenantCapability: "personnel", href: "/mtm/attendance/people", icon: Users, tKey: "personnelPeople", group: "Personnel", orgSetting: "attendanceEnabled" },
+  { tenantCapability: "personnel", href: "/mtm/attendance/settings", icon: Settings, tKey: "personnelSettings", group: "Personnel", orgSetting: "attendanceEnabled" },
   // Workforce is a first-class capability, not a Route & Field child. It has
   // no `module` on purpose: a tenant can run timekeeping with no routes.
   { href: "/workforce", icon: Clock, tKey: "workforceToday", group: "HRM", capability: "workforce-hrm", permissionScope: "workforce" },

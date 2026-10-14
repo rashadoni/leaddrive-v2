@@ -173,7 +173,7 @@ pgDescribe("returning to a workday closed earlier today, on a real PostgreSQL", 
     pauses = await import("@/lib/mtm/workday-pauses")
 
     await bypass(async () => {
-      await prisma.organization.create({ data: { id: ORG, name: "Fictional company", slug: ORG, modules: { "route-field": true } } })
+      await prisma.organization.create({ data: { id: ORG, name: "Fictional company", slug: ORG, modules: { "route-field": true, personnel: true } } })
       for (const [id, role] of [[LINKED_USER, "member"], [MANAGER_USER, "admin"]] as const) {
         await prisma.user.create({ data: { id, organizationId: ORG, name: "Fictional person", email: `${id}@example.invalid`, role, passwordHash: "unusable-fixture-hash" } })
       }

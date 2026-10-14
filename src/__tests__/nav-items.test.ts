@@ -212,7 +212,7 @@ describe("accessibleNavItems", () => {
 describe("Personnel sidebar", () => {
   const personnelHrefs = ["/mtm/attendance", "/mtm/attendance/timesheet", "/mtm/attendance/people", "/mtm/attendance/settings"]
   const context = (role: string, attendanceEnabled?: boolean) => ({
-    plan: "enterprise", role, modules: { "route-field": true },
+    plan: "enterprise", role, modules: { "route-field": true, personnel: true },
     orgSettings: attendanceEnabled === undefined ? {} : { attendanceEnabled },
   })
   const personnelItems = (org: Parameters<typeof accessibleNavItems>[0]) =>
@@ -221,8 +221,8 @@ describe("Personnel sidebar", () => {
   it.each(["admin", "superadmin", "manager", "sales", "support", "viewer"])("shows exactly four destinations in its own section for %s", role => {
     const items = personnelItems(context(role, true))
     expect(items.map(item => item.href)).toEqual(personnelHrefs)
-    expect(items.every(item => item.group === "Personnel" && item.module === "mtm"
-      && item.tenantCapability === "route-field" && item.orgSetting === "attendanceEnabled")).toBe(true)
+    expect(items.every(item => item.group === "Personnel" && item.module === undefined
+      && item.tenantCapability === "personnel" && item.orgSetting === "attendanceEnabled")).toBe(true)
     // HR work no longer sits inside the field-sales menu.
     expect(accessibleNavItems(context(role, true)).some(item => item.group === "Route & Field" && item.href.startsWith("/mtm/attendance"))).toBe(false)
   })
@@ -238,9 +238,12 @@ describe("Personnel sidebar", () => {
     }
   })
 
-  it.each(["admin", "superadmin"])("requires the Route & Field capability even with attendance enabled for %s", role => {
-    const org = { ...context(role, true), modules: { "route-field": false, "workforce-hrm": true } }
-    expect(personnelItems(org)).toEqual([])
+  it.each(["admin", "superadmin"])("needs its own Personnel capability, not Route & Field, for %s", role => {
+    // Sold on its own: a tenant with Personnel and no routes sees all four.
+    expect(personnelItems({ ...context(role, true), modules: { personnel: true } }).map(item => item.href)).toEqual(personnelHrefs)
+    expect(personnelItems({ ...context(role, true), modules: { "route-field": true, personnel: false } })).toEqual([])
+    // Tenants that had attendance through the MTM bundle keep it.
+    expect(personnelItems({ ...context(role, true), modules: { mtm: true } }).map(item => item.href)).toEqual(personnelHrefs)
   })
 
   it("selects one destination per page and keeps contextual pages under Today", () => {
@@ -411,7 +414,7 @@ describe("admin sidebar catalog (derived — no drift from navItems)", () => {
     // rather than just a bug in the catalog's own .map.
     expect(SIDEBAR_SECTIONS.map((s) => s.group)).toEqual([
       "CRM", "Sales", "Contracts Control", "Marketing", "Loyalty Program", "Communication", "Social Monitoring", "VoIP", "Support", "Finance", "Analytics",
-      "Route & Field", "Personnel", "Health Cloud", "Insurance Cloud", "Public Sector",
+      "Route & Field", "Health Cloud", "Insurance Cloud", "Public Sector",
       "Media Cloud", "Energy & Utilities", "Settings",
     ])
   })

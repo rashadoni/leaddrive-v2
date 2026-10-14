@@ -15,7 +15,7 @@ export default async function AttendanceLayout({ children }: { children: ReactNo
     || user.hiddenModules?.includes("mtm")) notFound()
   const { id: userId, organizationId, role } = user
   const allowed = await runWithTenant(organizationId, async () => {
-    const capability = await getTenantCapabilityAccess(organizationId, "route-field")
+    const capability = await getTenantCapabilityAccess(organizationId, "personnel")
     if (!capability.allowed) return false
     const access = await getMtmAttendanceAccess(organizationId, userId, role)
     return access.enabled && Boolean(access.actor)

@@ -1508,6 +1508,31 @@ describe("middleware", async () => {
     expect(res.status).toBe(403)
   })
 
+  it.each([
+    ["/api/v1/mtm/attendance/report", 200],
+    ["/api/v1/mtm/attendance", 200],
+    ["/api/v1/mtm/routes", 403],
+    ["/api/v1/mtm/agents", 403],
+    ["/api/v1/mtm/attendance-old", 403],
+  ])("a Personnel-only tenant reaches only the attendance API: %s → %i", async (pathname, status) => {
+    const req = makeReq({
+      pathname,
+      host: "app.leaddrivecrm.org",
+      auth: {
+        user: {
+          id: "u1",
+          organizationId: "org-1",
+          role: "manager",
+          plan: "tier-25",
+          addons: [],
+          modules: { core: true, personnel: true },
+        },
+      },
+    })
+    const res = await authMiddleware(req)
+    expect(res.status === 403 ? 403 : 200).toBe(status)
+  })
+
   it("allows MTM API for a mobile/API-key caller (no session modules)", async () => {
     const req = makeReq({
       pathname: "/api/v1/mtm/agents",

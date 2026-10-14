@@ -25,7 +25,7 @@ export async function attendanceDeliveryActor(organizationId: string, userId: st
   if (!org) return null
   const user = await prisma.user.findFirst({ where: { organizationId, id: userId, isActive: true, anonymizedAt: null }, select: { role: true, hiddenModules: true } })
   if (!user || !checkPermission(user.role as Role, "mtm", "read") || effectiveHiddenModules(user.role, user.hiddenModules).includes("mtm")) return null
-  if (!(await getTenantCapabilityAccess(organizationId, "route-field")).allowed) return null
+  if (!(await getTenantCapabilityAccess(organizationId, "personnel")).allowed) return null
   const access = await getMtmAttendanceAccess(organizationId, userId, user.role)
   return access.enabled ? access.actor : null
 }
