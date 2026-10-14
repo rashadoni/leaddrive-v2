@@ -1,3 +1,5 @@
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs"
+import { join } from "node:path"
 import type { ReactElement } from "react"
 import { describe, expect, it, vi } from "vitest"
 
@@ -35,10 +37,38 @@ describe("Personnel → Timesheet page", () => {
     expect(page.props).toMatchObject({ initialForm: "MONTH", ...expected })
   })
 
-  it.each([{ view: "months" }, { tab: "months" }])("opens a rarer report from More with a way back (%j)", async params => {
+  it.each<Record<string, string>>([{ view: "months" }, { tab: "months" }])("opens a rarer report from More with a way back (%j)", async params => {
     const page = await open(params)
     const children = page.props.children as ReactElement<{ href?: string }>[]
     expect(children[0].props.href).toBe("/mtm/attendance/timesheet")
     expect(children[1].type).toBe(MtmAttendanceMonths)
+  })
+})
+
+// CI E2E, 2026-10-14: the page imported the filter list from a "use client"
+// file. On the server such a value is a client-reference stub, so `.includes`
+// threw and the page showed "Something went wrong" while jsdom tests passed.
+describe("Personnel server pages", () => {
+  function pages(dir: string): string[] {
+    return readdirSync(dir).flatMap(name => statSync(join(dir, name)).isDirectory() ? pages(join(dir, name)) : name === "page.tsx" || name === "layout.tsx" ? [join(dir, name)] : [])
+  }
+  function resolve(spec: string): string | null {
+    if (!spec.startsWith("@/")) return null
+    const base = join("src", spec.slice(2))
+    return [`${base}.tsx`, `${base}.ts`, join(base, "index.tsx"), join(base, "index.ts")].find(existsSync) ?? null
+  }
+  it("take only components and types from client modules", () => {
+    const offenders: string[] = []
+    for (const file of pages("src/app/(dashboard)/mtm/attendance")) {
+      const source = readFileSync(file, "utf8")
+      if (/^["']use client["']/m.test(source)) continue
+      for (const match of source.matchAll(/^import\s+(?!type\b)\{([^}]*)\}\s+from\s+"([^"]+)"/gm)) {
+        const target = resolve(match[2])
+        if (!target || !/^["']use client["']/.test(readFileSync(target, "utf8").trimStart())) continue
+        const values = match[1].split(",").map(name => name.trim()).filter(name => name && !name.startsWith("type ") && !/^[A-Z][a-z]/.test(name))
+        offenders.push(...values.map(name => `${file}: ${name} from ${match[2]}`))
+      }
+    }
+    expect(offenders).toEqual([])
   })
 })

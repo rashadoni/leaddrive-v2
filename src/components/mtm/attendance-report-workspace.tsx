@@ -17,6 +17,7 @@ import { formatAttendanceDuration, attendanceStatusText, attendanceMonthCell, at
 import { DEFAULT_ATTENDANCE_VIEW_COLUMNS, type AttendanceViewConfig } from "@/lib/mtm/attendance-view-contract"
 import { buildAttendanceTable } from "@/lib/mtm/attendance-table"
 import { attendanceOvertimeRows } from "@/lib/mtm/attendance-overtime"
+import { TIMESHEET_ISSUES, type TimesheetIssue } from "@/lib/mtm/attendance-timesheet-filters"
 import { MtmAttendanceHelp } from "@/components/mtm/attendance-help"
 import { MtmAttendancePersonalViews } from "@/components/mtm/attendance-personal-views"
 import { MtmAttendanceExportButtons } from "@/components/mtm/attendance-export-buttons"
@@ -27,9 +28,6 @@ import { MtmAttendanceRequestLimits } from "@/components/mtm/attendance-request-
 import type { AttendanceReportSnapshot } from "@/lib/mtm/attendance-query"
 
 export type AttendanceReportForm = "DAY" | "MONTH" | "LATE_EARLY" | "ABSENCES" | "JOURNAL" | "BRANCH" | "OVERTIME"
-/** Timesheet filter buttons: each keeps the people with at least one such day. */
-export const TIMESHEET_ISSUES = ["late", "absent", "missing-finish", "overtime"] as const
-export type TimesheetIssue = (typeof TIMESHEET_ISSUES)[number]
 const ISSUE_LABELS: Record<TimesheetIssue, string> = { late: "kpiLate", absent: "kpiAbsent", "missing-finish": "kpiMissing", overtime: "tabs.overtime" }
 type Form = AttendanceReportForm
 type Range = { from: string; to: string }
