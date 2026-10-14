@@ -28328,6 +28328,59 @@
     "weekPlan": "plan {total}",
     "chipLate": "{count} late",
     "chipAway": "{count} on leave",
-    "chipAbsent": "{count} missing"
+    "chipAbsent": "{count} missing",
+    "settingsTitle": "Settings",
+    "open": "Open",
+    "settingsGroups": {
+      "workday": "Working day",
+      "leave": "Leave and requests",
+      "marks": "Arrival marks",
+      "access": "Access"
+    },
+    "settingsCards": {
+      "hours": {
+        "title": "Working hours",
+        "hint": "When the day starts and ends, when lateness counts"
+      },
+      "holidays": {
+        "title": "Holidays",
+        "hint": "Company days off and moved working days"
+      },
+      "shifts": {
+        "title": "Schedules and shifts",
+        "hint": "For people who work in shifts"
+      },
+      "day-kinds": {
+        "title": "Timesheet letters",
+        "hint": "What each timesheet letter means"
+      },
+      "leave": {
+        "title": "Leave",
+        "hint": "How many leave days each person has and has left"
+      },
+      "requests": {
+        "title": "Request rules",
+        "hint": "How often a month people may ask for time off or to come late"
+      },
+      "review": {
+        "title": "Mark checks",
+        "hint": "Someone else's phone, a wrong clock on the phone"
+      },
+      "qr": {
+        "title": "Entrance QR code",
+        "hint": "Employees scan it when they arrive"
+      },
+      "location": {
+        "title": "Mark location",
+        "hint": "Whether to record where an arrival was marked · administrators only"
+      },
+      "access": {
+        "title": "Who sees the timesheet",
+        "hint": "HR staff who see the timesheet and decide requests"
+      }
+    },
+    "settingsHoursValue": "{days}, {from}–{to} · late after {grace} min",
+    "settingsHolidaysValue": "Holidays this year: {count}",
+    "settingsWaiting": "{count} waiting"
   }
 }

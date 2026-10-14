@@ -28324,6 +28324,59 @@
     "weekPlan": "plan {total}",
     "chipLate": "gecikmə: {count}",
     "chipAway": "müraciətlə: {count}",
-    "chipAbsent": "yoxdur: {count}"
+    "chipAbsent": "yoxdur: {count}",
+    "settingsTitle": "Parametrlər",
+    "open": "Aç",
+    "settingsGroups": {
+      "workday": "İş günü",
+      "leave": "Məzuniyyət və müraciətlər",
+      "marks": "Gəliş qeydləri",
+      "access": "Giriş"
+    },
+    "settingsCards": {
+      "hours": {
+        "title": "İş vaxtı",
+        "hint": "Günün başlanğıcı və sonu, gecikmə nə vaxt sayılır"
+      },
+      "holidays": {
+        "title": "Bayramlar",
+        "hint": "Şirkətin qeyri-iş günləri və köçürülmüş iş günləri"
+      },
+      "shifts": {
+        "title": "Qrafiklər və növbələr",
+        "hint": "Növbə ilə işləyənlər üçün"
+      },
+      "day-kinds": {
+        "title": "Tabeldəki hərflər",
+        "hint": "Tabeldə hər hərf nə deməkdir"
+      },
+      "leave": {
+        "title": "Məzuniyyətlər",
+        "hint": "Hər kəsin neçə günü var və neçəsi qalıb"
+      },
+      "requests": {
+        "title": "Müraciət qaydaları",
+        "hint": "Ayda neçə dəfə icazə və ya gecikmə istəmək olar"
+      },
+      "review": {
+        "title": "Qeydlərin yoxlanması",
+        "hint": "Başqasının telefonu, telefonda səhv vaxt"
+      },
+      "qr": {
+        "title": "Girişdə QR-kod",
+        "hint": "Əməkdaş gələndə onu skan edir"
+      },
+      "location": {
+        "title": "Qeydin yeri",
+        "hint": "Gəlişin harada qeyd olunduğunu yazmaq · yalnız administrator"
+      },
+      "access": {
+        "title": "Tabeli kim görür",
+        "hint": "Tabeli görən və müraciətləri həll edən HR əməkdaşları"
+      }
+    },
+    "settingsHoursValue": "{days}, {from}–{to} · {grace} dəq sonra gecikmə",
+    "settingsHolidaysValue": "Bu il bayram günləri: {count}",
+    "settingsWaiting": "gözləyir: {count}"
   }
 }
