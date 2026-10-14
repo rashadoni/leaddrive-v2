@@ -21,7 +21,7 @@ import en from "../../../messages/en.json"
 
 export async function attendanceReminderTenantEnabled(tx: Prisma.TransactionClient, organizationId: string) {
   const org = await tx.organization.findFirst({ where: { id: organizationId, isActive: true }, select: { plan: true, addons: true, features: true, modules: true, settings: true } })
-  const definition = getTenantCapabilityDefinition("route-field")
+  const definition = getTenantCapabilityDefinition("personnel")
   if (!org || !definition) return false
   const settings = capabilitySettingsFromTenantSettings(org.settings)
   const capability = resolveTenantCapability(definition, { plan: org.plan, addons: org.addons, modules: tenantModulesFromFields(org), hidden: settings.hidden, requested: settings.requested })

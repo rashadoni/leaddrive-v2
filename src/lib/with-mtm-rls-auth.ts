@@ -42,7 +42,10 @@ export interface WithMtmRlsAuthOptions {
   mobileCapability?: MobileEndpointCapability
 }
 
-type MtmRlsCapabilityOption = FieldTenantCapabilityId | WithMtmRlsAuthOptions
+// The string form names one capability for both principals, so it is limited to
+// those the phone token carries. Personnel has no mobile capability yet (stage
+// 2b of docs/mtm-attendance/roadmap-personnel.md) and uses its own web wrapper.
+type MtmRlsCapabilityOption = MobileEndpointCapability | WithMtmRlsAuthOptions
 
 function withMtmTenantCapabilityWebRlsAuth<C = unknown>(
   action: Action | undefined,
@@ -172,6 +175,17 @@ export function withRouteFieldWebRlsAuth<C = unknown>(
   handler: (req: NextRequest, auth: AuthResult, ctx: C) => Promise<Response> | Response,
 ) {
   return withMtmTenantCapabilityWebRlsAuth(action, "route-field", handler)
+}
+
+/**
+ * Personnel (HR work-time attendance): MTM RBAC, its own tenant capability —
+ * sold without Route & Field (owner, 2026-10-14).
+ */
+export function withPersonnelWebRlsAuth<C = unknown>(
+  action: Action | undefined,
+  handler: (req: NextRequest, auth: AuthResult, ctx: C) => Promise<Response> | Response,
+) {
+  return withMtmTenantCapabilityWebRlsAuth(action, "personnel", handler)
 }
 
 /** Workforce-only handlers retain MTM RBAC but use the HRM tenant gate. */

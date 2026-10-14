@@ -12,6 +12,7 @@ import { applyAttendanceTimeCorrectionInTransaction } from "@/lib/mtm/attendance
 import az from "../../../messages/az.json"
 import ru from "../../../messages/ru.json"
 import en from "../../../messages/en.json"
+import { readAttendanceFeature } from "@/lib/mtm/attendance-feature"
 
 export const AttendanceDecisionInputSchema = z.object({
   decision: z.enum(["APPROVED", "REJECTED"]), version: z.string().datetime(),
@@ -34,14 +35,13 @@ export async function resolveAttendanceReviewerScope(tx: Prisma.TransactionClien
   }
   await tx.$queryRaw`SELECT "id" FROM "organizations" WHERE "id" = ${organizationId} FOR SHARE`
   const org = await tx.organization.findUnique({ where: { id: organizationId }, select: { plan: true, addons: true, features: true, modules: true, settings: true } })
-  const definition = getTenantCapabilityDefinition("route-field")
+  const definition = getTenantCapabilityDefinition("personnel")
   if (!org || !definition) throw new AttendanceRequestError("MTM_ATTENDANCE_DECISION_FORBIDDEN", 403)
   const settings = capabilitySettingsFromTenantSettings(org.settings)
   const capability = resolveTenantCapability(definition, { plan: org.plan, addons: org.addons,
     modules: tenantModulesFromFields(org), hidden: settings.hidden, requested: settings.requested })
   if (!capability.enabled || capability.status === "disabled") throw new AttendanceRequestError("MTM_ATTENDANCE_DECISION_FORBIDDEN", 403)
-  const feature = await tx.mtmSetting.findUnique({ where: { organizationId_key: { organizationId, key: "attendanceEnabled" } }, select: { value: true } })
-  if (feature?.value !== true) throw new AttendanceRequestError("MTM_ATTENDANCE_DISABLED", 404)
+  if (!await readAttendanceFeature(tx, organizationId)) throw new AttendanceRequestError("MTM_ATTENDANCE_DISABLED", 404)
   const actor = await resolveMtmRouteActor(tx, { organizationId, userId, webRole: user.role })
   if (!actor || !["ADMIN", "MANAGER", "SUPERVISOR"].includes(actor.role) || (actor.role !== "ADMIN" && actor.scopedAgentIds === null)) {
     throw new AttendanceRequestError("MTM_ATTENDANCE_DECISION_FORBIDDEN", 403)

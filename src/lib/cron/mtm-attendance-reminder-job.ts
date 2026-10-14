@@ -1,5 +1,7 @@
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { attendanceTrackedCardSql } from "@/lib/mtm/attendance-tracking"
+import { attendanceFeatureOnSql } from "@/lib/mtm/attendance-feature"
 import { runWithRlsBypass, runWithTenant } from "@/lib/rls-context"
 import { withJobLease } from "@/lib/cron/job-lease"
 import { prismaJobCursorStore, type JobCursorStore } from "@/lib/cron/job-cursor"
@@ -16,7 +18,7 @@ export async function executeMtmAttendanceReminderJob(now = new Date(), cursorSt
   const candidates = await prisma.$queryRaw<{ organizationId: string; id: string }[]>`SELECT a."organizationId",a.id FROM mtm_agents a
     JOIN organizations o ON o.id=a."organizationId" AND o."isActive"
     WHERE a.status='ACTIVE' AND NOT a."attendanceExcluded" AND ${attendanceTrackedCardSql("a")}
-    AND EXISTS(SELECT 1 FROM mtm_settings s WHERE s."organizationId"=a."organizationId" AND s.key='attendanceEnabled' AND s.value='true'::jsonb)
+    AND ${attendanceFeatureOnSql(Prisma.raw('a."organizationId"'))}
     AND EXISTS(SELECT 1 FROM mtm_settings s WHERE s."organizationId"=a."organizationId" AND s.key IN ('attendanceEmployeeRemindersEnabled','attendanceManagerAlertsEnabled') AND s.value='true'::jsonb)
     ORDER BY a."organizationId",a.id LIMIT ${BATCH} OFFSET ${offset}`
   let processed = 0, created = 0, failed = 0

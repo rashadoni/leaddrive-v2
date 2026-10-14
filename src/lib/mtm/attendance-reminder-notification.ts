@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client"
 import { attendanceTrackedCardSql } from "@/lib/mtm/attendance-tracking"
+import { attendanceFeatureOnSql } from "@/lib/mtm/attendance-feature"
 import { prisma } from "@/lib/prisma"
 import { ATTENDANCE_REMINDER_ENTITY } from "@/lib/mtm/attendance-reminder-contract"
 import { readAttendanceReminderPolicy } from "@/lib/mtm/attendance-reminder-policy"
@@ -8,7 +9,7 @@ import { attendanceReminderReader, attendanceReminderTenantEnabled } from "@/lib
 /** Shared by list/count/mark-read. Legacy inbox entries keep their own gates. */
 export function attendanceReminderMobilePredicate(organizationId: string, agentId: string) {
   return Prisma.sql`(("metadata"->>'attendanceReminderId') IS NULL OR (
-    EXISTS(SELECT 1 FROM mtm_settings s WHERE s."organizationId"=${organizationId} AND s.key='attendanceEnabled' AND s.value='true'::jsonb)
+    ${attendanceFeatureOnSql(organizationId)}
     AND EXISTS(SELECT 1 FROM mtm_settings s WHERE s."organizationId"=${organizationId} AND s.key='attendanceEmployeeRemindersEnabled' AND s.value='true'::jsonb)
     AND EXISTS(SELECT 1 FROM mtm_agents a WHERE a."organizationId"=${organizationId} AND a.id=${agentId} AND a.status='ACTIVE' AND NOT a."attendanceExcluded" AND ${attendanceTrackedCardSql("a")})
   ))`
