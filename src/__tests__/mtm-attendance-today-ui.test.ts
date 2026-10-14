@@ -13,6 +13,7 @@ import type { AttendanceRiskItem } from "@/lib/mtm/attendance-risk-contract"
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 const ru = JSON.parse(readFileSync("messages/ru.json", "utf8"))
+const az = JSON.parse(readFileSync("messages/az.json", "utf8"))
 const p = (key: string) => ru.personnel[key] as string
 const today = "2026-10-14"
 const at = (date: string, time: string) => `${date}T${time}:00+04:00`
@@ -136,5 +137,15 @@ describe("Personnel → Today", () => {
     const days = Array.from(container.querySelectorAll<HTMLAnchorElement>('[data-testid="attendance-today-day"]'))
     expect(days.map(link => link.getAttribute("href"))).toEqual(["12", "13", "14", "15", "16"].map(d => `/mtm/attendance/timesheet?tab=days&date=2026-10-${d}`))
     expect(days[2].textContent).toContain(p("weekToday"))
+  })
+
+  it("writes Azerbaijani dates itself, never the root-locale 'M10' (prod, 2026-10-14)", async () => {
+    await act(async () => root.render(createElement(NextIntlClientProvider, { locale: "az", timeZone: "Asia/Baku", messages: az }, createElement(MtmAttendanceToday))))
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+    const text = container.textContent ?? ""
+    expect(text).not.toMatch(/M\d{2}\b/)
+    expect(text).not.toMatch(/\b(Mon|Tue|Wed|Thu|Fri)\b/)
+    expect(text).toContain("oktyabr")
+    expect(text).toContain("14 okt")
   })
 })

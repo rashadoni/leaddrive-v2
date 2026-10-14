@@ -1,7 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
-import { useFormatter, useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
+import { formatDate } from "@/lib/format-date"
 import { CalendarDays } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -28,7 +29,7 @@ function editableKind(kind: string): kind is EditableKind { return (EDITABLE_KIN
 /** Manually entered organization calendar; a blank list is never a legal holiday source. */
 export function MtmAttendanceCalendar() {
   const t = useTranslations("mtmAttendance")
-  const format = useFormatter()
+  const locale = useLocale()
   const [data, setData] = useState<CalendarData | null>(null)
   const [year, setYear] = useState<string | null>(null)
   const [draft, setDraft] = useState<Draft | null>(null)
@@ -93,7 +94,7 @@ export function MtmAttendanceCalendar() {
     }
   }, [load])
 
-  const dateLabel = (value: string) => format.dateTime(new Date(`${value}T12:00:00.000Z`), { dateStyle: "medium", timeZone: "UTC" })
+  const dateLabel = (value: string) => formatDate(`${value}T12:00:00.000Z`, locale, { dateStyle: "medium", timeZone: "UTC" })
   const kindLabel = (kind: string) => t(KIND_MESSAGES[kind] ?? "calendarOtherDay")
   const canEdit = (day: CalendarDay) => Boolean(data?.canManage && day.canEdit && editableKind(day.kind) && day.date > data.today)
 

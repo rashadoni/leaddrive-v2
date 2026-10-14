@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react"
 import Link from "next/link"
 import { useFormatter, useLocale, useTranslations } from "next-intl"
+import { formatDate, formatDateTime, formatTime } from "@/lib/format-date"
 import { CalendarDays, ChevronLeft, ChevronRight, Clock3, ListChecks, Lock, LogIn, LogOut, Search, UserRoundX, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -195,9 +196,11 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
   const lastPage = Math.max(0, Math.ceil(count / PAGE_SIZE) - 1)
   const currentPage = Math.min(page, lastPage)
   const pageStart = currentPage * PAGE_SIZE
-  const dateLabel = (date: string) => format.dateTime(new Date(`${date}T12:00:00.000Z`), { dateStyle: "medium", timeZone: "UTC" })
-  const timeLabel = (at: string | null, timezone: string, full = false) => at ? format.dateTime(new Date(at), { timeZone: timezone,
-    ...(full ? { dateStyle: "short" as const, timeStyle: "medium" as const } : { hour: "2-digit" as const, minute: "2-digit" as const, second: "2-digit" as const }) }) : "—"
+  // Shared helper, not Intl: ICU without Azerbaijani data prints "2026 M10 14".
+  const dateLabel = (date: string) => formatDate(`${date}T12:00:00.000Z`, locale, { dateStyle: "medium", timeZone: "UTC" })
+  const timeLabel = (at: string | null, timezone: string, full = false) => !at ? "—" : full
+    ? formatDateTime(at, locale, { timeZone: timezone, dateStyle: "short", timeStyle: "medium" })
+    : formatTime(at, locale, { timeZone: timezone, hour: "2-digit", minute: "2-digit", second: "2-digit" })
   const baseRowNotes = (row: MtmAttendanceReportRow) => row.factsState === "INVALID"
     ? row.invalidReasons.map((reason) => t(REASON_MESSAGES[reason] ?? "reportReasonFacts")).join(" · ")
     : row.kind === "OPEN" ? t("reportProvisional") : row.kind === "MISSING_FINISH" ? t("reportUnknownTime")
@@ -351,7 +354,7 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
 
   function timesheetView() {
     const people = monthEmployees
-    const monthLabel = range.from ? format.dateTime(new Date(`${range.from.slice(0, 7)}-15T12:00:00.000Z`), { month: "long", year: "numeric", timeZone: "UTC" }) : ""
+    const monthLabel = range.from ? formatDate(`${range.from.slice(0, 7)}-15T12:00:00.000Z`, locale, { month: "long", year: "numeric", timeZone: "UTC" }) : ""
     const pinned = employeeId ? directory.employees.find(employee => employee.id === employeeId) : null
     const dateKinds = new Map(monthDates.map(date => [date, monthEmployees[0]?.dates.get(date)?.[0]?.isWorkingDay ?? true]))
     const legend = [...new Map(rows.flatMap(row => row.dayKind ? [[row.dayKind.key, row.dayKind] as const] : [])).values()]
@@ -394,7 +397,7 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
           <thead><tr><th scope="col" className="sticky left-0 z-10 w-40 min-w-40 bg-card px-2 py-2 text-left text-xs font-medium text-muted-foreground">{t("reportEmployee")}</th>
             {monthDates.map(date => <th key={date} scope="col" className={`px-px py-1.5 text-center font-semibold ${date === today ? "rounded-t-lg bg-primary/10 text-primary" : dateKinds.get(date) === false ? "text-muted-foreground/60" : ""}`}>
               <time dateTime={date} title={dateLabel(date)} className="block text-[11px]">{Number(date.slice(-2))}</time>
-              <span className="block text-[9.5px] font-medium opacity-70">{format.dateTime(new Date(`${date}T12:00:00.000Z`), { weekday: "short", timeZone: "UTC" })}</span></th>)}
+              <span className="block text-[9.5px] font-medium opacity-70">{formatDate(`${date}T12:00:00.000Z`, locale, { weekday: "short", timeZone: "UTC" })}</span></th>)}
             {(["colDays", "colHours", "colLeave", "colSick", "colMissed"] as const).map(key => <th key={key} scope="col" className="w-11 px-1 py-2 text-center text-[11px] font-semibold text-muted-foreground">{p(key)}</th>)}</tr></thead>
           <tbody>{people.slice(pageStart, pageStart + PAGE_SIZE).map(person => {
             const worked = person.rows.filter(row => row.startedAt !== null).length

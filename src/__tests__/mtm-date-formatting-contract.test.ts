@@ -21,7 +21,9 @@ const ROOTS = ["src/components/mtm", "src/app/(dashboard)/mtm"]
  * the correct answer, and a gate that flags those teaches people to silence it.
  */
 const FILES = ["src/lib/timezone.ts", "src/lib/mtm/activity-actions.tsx"]
-const FORBIDDEN = [/\.toLocaleDateString\(/, /\.toLocaleTimeString\(/, /new Intl\.DateTimeFormat\(/]
+// next-intl's useFormatter().dateTime is Intl underneath: it printed "M10 14,
+// Wed" on Personnel → Today in Azerbaijani on prod, 2026-10-14.
+const FORBIDDEN = [/\.toLocaleDateString\(/, /\.toLocaleTimeString\(/, /new Intl\.DateTimeFormat\(/, /\bformat\.dateTime\(/]
 const ALLOW_MARKER = "eslint-disable-next-line no-restricted-syntax"
 
 function sources(dir: string, out: string[] = []): string[] {

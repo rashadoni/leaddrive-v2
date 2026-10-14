@@ -1,7 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
-import { useFormatter, useLocale, useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
+import { formatDate, formatDateTime } from "@/lib/format-date"
 import { Mail } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -30,7 +31,6 @@ function scheduleInput(schedule: AttendanceDeliverySchedule): AttendanceDelivery
 export function MtmAttendanceDeliveries({ currentConfig, onAccessLost, accessUnavailable = false }: Props) {
   const t = useTranslations("mtmAttendance")
   const locale = useLocale()
-  const format = useFormatter()
   const [open, setOpen] = useState(false)
   const [data, setData] = useState<DeliveryData | null>(null)
   const [draft, setDraft] = useState<AttendanceDeliveryInput | null>(null)
@@ -175,9 +175,9 @@ export function MtmAttendanceDeliveries({ currentConfig, onAccessLost, accessUna
     if (draft) void mutate(editing, { ...draft, recipients: recipients.split(/[,;\n]+/).map(value => value.trim()).filter(Boolean) })
   }
   function dateTime(value: string, timezone: string) {
-    return format.dateTime(new Date(value), { dateStyle: "medium", timeStyle: "short", timeZone: timezone })
+    return formatDateTime(value, locale, { dateStyle: "medium", timeStyle: "short", timeZone: timezone })
   }
-  function date(value: string) { return format.dateTime(new Date(`${value}T12:00:00Z`), { dateStyle: "medium", timeZone: "UTC" }) }
+  function date(value: string) { return formatDate(`${value}T12:00:00Z`, locale, { dateStyle: "medium", timeZone: "UTC" }) }
   const disabled = saving || loading || mustReload || Boolean(loadError) || accessUnavailable
 
   return <section data-testid="attendance-deliveries" className="space-y-3">

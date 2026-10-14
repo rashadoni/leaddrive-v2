@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useFormatter, useLocale, useTranslations } from "next-intl"
+import { formatDate, formatTime } from "@/lib/format-date"
 import { CheckCircle2, ClipboardCheck, Clock3, FileSpreadsheet, LogIn, LogOut, Paperclip, Plus, ShieldAlert, UserRoundX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -96,7 +97,9 @@ export function MtmAttendanceToday() {
     finally { setBusyId(null) }
   }
 
-  const dateLabel = (date: string, options: Intl.DateTimeFormatOptions = { day: "numeric", month: "short" }) => format.dateTime(new Date(`${date}T12:00:00.000Z`), { ...options, timeZone: "UTC" })
+  // Through the shared helper, not Intl directly: ICU without Azerbaijani data
+  // prints "M10 14, Wed" (seen on prod 2026-10-14); format-date assembles az itself.
+  const dateLabel = (date: string, options: Intl.DateTimeFormatOptions = { day: "numeric", month: "short" }) => formatDate(`${date}T12:00:00.000Z`, locale, { ...options, timeZone: "UTC" })
   const recordHref = (employeeId: string, date: string) => `/mtm/attendance/recordings?${new URLSearchParams({ employeeId, date })}`
   const dayHref = (employeeId: string, date: string) => `/mtm/attendance/timesheet?${new URLSearchParams({ tab: "journal", date, employeeId })}`
 
@@ -175,7 +178,7 @@ export function MtmAttendanceToday() {
             {attention.slice(0, ATTENTION_LIMIT).map(({ key, item }) => <li key={key} className="flex flex-wrap items-center gap-3 py-2.5" data-testid="attendance-today-attention-item" data-type={item.type}>
               <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{item.employeeName}</p>
                 <p className="text-sm text-muted-foreground">{item.type === "absent" ? t("absentNoReason")
-                  : item.type === "late" ? t("lateBy", { duration: item.lateSeconds < 3600 ? t("minutes", { count: Math.round(item.lateSeconds / 60) }) : formatAttendanceDuration(item.lateSeconds), time: format.dateTime(new Date(item.startedAt), { hour: "2-digit", minute: "2-digit", timeZone: item.timezone }) })
+                  : item.type === "late" ? t("lateBy", { duration: item.lateSeconds < 3600 ? t("minutes", { count: Math.round(item.lateSeconds / 60) }) : formatAttendanceDuration(item.lateSeconds), time: formatTime(item.startedAt, locale, { hour: "2-digit", minute: "2-digit", timeZone: item.timezone }) })
                   : t("missingFinishOn", { date: dateLabel(item.date) })}</p></div>
               <Button asChild size="sm" variant="outline" className="min-h-9 shrink-0"><Link prefetch={false} href={item.type === "absent" ? recordHref(item.employeeId, item.date) : dayHref(item.employeeId, item.date)}>{item.type === "absent" ? t("addReason") : t("openDay")}</Link></Button>
             </li>)}

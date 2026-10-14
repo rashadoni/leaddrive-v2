@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react"
 import { useFormatter, useLocale, useTranslations } from "next-intl"
+import { formatDate } from "@/lib/format-date"
 import { Building2, ListFilter } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -96,7 +97,7 @@ export function MtmAttendanceBranchReport() {
   const table = useMemo(() => report && config ? buildAttendanceTable(report, config, locale, t) : null, [report, config, locale, t])
   const scopeUnavailable = Boolean(report && (teamId || employeeId) && !rows.length)
   const hasKnownMarks = summary.totals.arrivals + summary.totals.departures > 0
-  const dateLabel = (date: string) => format.dateTime(new Date(`${date}T12:00:00Z`), { dateStyle: "medium", timeZone: "UTC" })
+  const dateLabel = (date: string) => formatDate(`${date}T12:00:00Z`, locale, { dateStyle: "medium", timeZone: "UTC" })
   const timezones = [...new Set(rows.map(row => row.timezone))]
   const metrics = [
     { key: "marks", title: "branchReportMarks", value: summary.totals.arrivals + summary.totals.departures, hint: hasKnownMarks ? t("branchReportMarkCounts", { arrivals: summary.totals.arrivals, departures: summary.totals.departures }) : t("locationReportNotRecorded") },

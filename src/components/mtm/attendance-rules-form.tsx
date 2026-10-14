@@ -1,7 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
-import { useFormatter, useTranslations } from "next-intl"
+import { useFormatter, useLocale, useTranslations } from "next-intl"
+import { formatDate } from "@/lib/format-date"
 import { CalendarClock, History } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -45,6 +46,7 @@ function nextDate(date: string): string {
 export function MtmAttendanceRulesForm() {
   const t = useTranslations("mtmAttendance")
   const format = useFormatter()
+  const locale = useLocale()
   const [data, setData] = useState<RulesData | null>(null)
   const [draft, setDraft] = useState<Draft | null>(null)
   const [loading, setLoading] = useState(true)
@@ -103,7 +105,7 @@ export function MtmAttendanceRulesForm() {
     }
   }, [load])
 
-  const dateLabel = (date: string) => format.dateTime(new Date(`${date}T12:00:00.000Z`), { dateStyle: "medium", timeZone: "UTC" })
+  const dateLabel = (date: string) => formatDate(`${date}T12:00:00.000Z`, locale, { dateStyle: "medium", timeZone: "UTC" })
   const weekendLabel = (days: readonly number[]) => {
     const names = WEEKDAYS.filter((day) => days.includes(day)).map((day) => t(DAY_KEYS[day]))
     return names.length ? format.list(names, { type: "conjunction" }) : t("noWeekendDays")
