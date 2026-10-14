@@ -484,6 +484,9 @@ try {
     const section = destinations[route][1]
     if (section !== null) {
       const link = page.locator(`aside a[href="/mtm/attendance${section ? `/${section}` : ''}"]`)
+      // The section appears once the organization's attendance switch is
+      // known (it stays hidden while loading), so wait for it before counting.
+      await link.first().waitFor({ state: 'attached', timeout: 120000 })
       assert.equal(await link.count(), 1, 'Exactly one Personnel sidebar destination')
       assert.equal(await link.getAttribute('aria-current'), 'page')
     }
@@ -521,8 +524,12 @@ try {
       assert.equal((await reloaded).status(), 200)
     }
     await page.getByTestId('attendance-day-table').waitFor({ timeout: 120000 })
-    await page.getByLabel(t('reportTeam'), { exact: true }).selectOption(fixture.team.id)
-    await page.locator('input[type="search"]').fill(fixture.users.employee.name)
+    // Scope to the timesheet: the sidebar has its own menu search field.
+    const sheet = page.getByTestId('attendance-timesheet')
+    const team = sheet.getByLabel(t('reportTeam'), { exact: true })
+    await team.selectOption(fixture.team.id)
+    await poll(async () => await team.inputValue() === fixture.team.id, 'Team filter applied')
+    await sheet.locator('input[type="search"]').fill(fixture.users.employee.name)
     await poll(async () => (await page.getByTestId('attendance-day-row').count()) === 1, 'Search narrows to one employee')
     assert.ok((await page.getByTestId('attendance-day-row').innerText()).includes(fixture.users.employee.name))
     // A real file download follows the button and confirms the browser flow.

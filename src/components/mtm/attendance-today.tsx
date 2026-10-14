@@ -117,7 +117,7 @@ export function MtmAttendanceToday() {
         <p className="text-sm text-muted-foreground first-letter:uppercase">{data ? dateLabel(data.today, { weekday: "long", day: "numeric", month: "long" }) : " "}</p></div>
       <div className="flex flex-wrap gap-2">
         <Button asChild variant="outline" className="min-h-11 rounded-full"><Link href="/mtm/attendance/recordings" prefetch={false}><Plus className="mr-2 h-4 w-4" aria-hidden="true" />{t("recordDay")}</Link></Button>
-        <Button asChild className="min-h-11 rounded-full"><Link href="/mtm/attendance/timesheet?tab=month" prefetch={false}><FileSpreadsheet className="mr-2 h-4 w-4" aria-hidden="true" />{t("openTimesheet", { month })}</Link></Button>
+        <Button asChild className="min-h-11 rounded-full"><Link href="/mtm/attendance/timesheet?tab=month" prefetch={false}><FileSpreadsheet className="mr-2 h-4 w-4" aria-hidden="true" />{month ? t("openTimesheet", { month }) : t("timesheetTitle")}</Link></Button>
       </div>
     </header>
 
