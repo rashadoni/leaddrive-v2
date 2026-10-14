@@ -4,13 +4,20 @@ import { NextRequest } from "next/server"
 const mocks = vi.hoisted(() => ({
   callLogFindFirst: vi.fn(),
   callLogUpdateMany: vi.fn(),
+  callEventCreate: vi.fn(),
+  channelConfigFindMany: vi.fn(),
+  transaction: vi.fn(),
 }))
 
 vi.mock("@/lib/prisma", () => ({
-  prisma: { callLog: {
-    findFirst: mocks.callLogFindFirst,
-    updateMany: mocks.callLogUpdateMany,
-  } },
+  prisma: {
+    callLog: {
+      findFirst: mocks.callLogFindFirst,
+      updateMany: mocks.callLogUpdateMany,
+    },
+    channelConfig: { findMany: mocks.channelConfigFindMany },
+    $transaction: mocks.transaction,
+  },
 }))
 
 vi.mock("@/lib/rls-context", () => ({
@@ -42,8 +49,52 @@ beforeEach(() => {
   process.env.SOFTPHONE_RELAY_SECRET = "r".repeat(48)
   process.env.SOFTPHONE_RELAY_PORT = "18095"
   mocks.callLogUpdateMany.mockResolvedValue({ count: 1 })
+  mocks.callEventCreate.mockResolvedValue({ id: "event-1" })
+  mocks.channelConfigFindMany.mockResolvedValue([])
+  mocks.transaction.mockImplementation(async (callback: (tx: unknown) => unknown) => callback({
+    callLog: { updateMany: mocks.callLogUpdateMany },
+    callEvent: { create: mocks.callEventCreate },
+  }))
   vi.stubGlobal("fetch", vi.fn())
 })
+
+function claimedCall(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "call-log-1",
+    callMode: "human",
+    status: "ringing",
+    startedAt: new Date(),
+    createdAt: new Date(),
+    providerCallId: callId,
+    claimedByUserId: "user-1",
+    userId: "user-1",
+    browserAnswerClaimToken: claimToken,
+    browserAnswerClaimExpiresAt: new Date(Date.now() + 30_000),
+    ...overrides,
+  }
+}
+
+function unclaimedCall(ringingForMs: number, overrides: Record<string, unknown> = {}) {
+  return claimedCall({
+    startedAt: new Date(Date.now() - ringingForMs),
+    claimedByUserId: null,
+    userId: null,
+    browserAnswerClaimToken: null,
+    browserAnswerClaimExpiresAt: null,
+    ...overrides,
+  })
+}
+
+function stationLine(settings: Record<string, unknown>) {
+  mocks.channelConfigFindMany.mockResolvedValue([{
+    settings: {
+      provider: "asterisk",
+      voiceAgentEnabled: true,
+      voiceAgentPrompt: "rules",
+      ...settings,
+    },
+  }])
+}
 
 afterEach(() => {
   if (originalToken === undefined) delete process.env.FANUM_VOICE_RUNTIME_TOKEN
@@ -59,14 +110,7 @@ afterEach(() => {
 
 describe("PBX inbound browser readiness", () => {
   it("returns ready only for a fresh relay-verified browser claim", async () => {
-    mocks.callLogFindFirst.mockResolvedValue({
-      id: "call-log-1",
-      providerCallId: callId,
-      claimedByUserId: "user-1",
-      userId: "user-1",
-      browserAnswerClaimToken: claimToken,
-      browserAnswerClaimExpiresAt: new Date(Date.now() + 30_000),
-    })
+    mocks.callLogFindFirst.mockResolvedValue(claimedCall())
     vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify({ ready: true }), {
       status: 200,
       headers: { "content-type": "application/json" },
@@ -78,25 +122,27 @@ describe("PBX inbound browser readiness", () => {
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({ ready: true })
     expect(mocks.callLogFindFirst).toHaveBeenCalledWith({
-      where: expect.objectContaining({
+      where: {
         organizationId: "org-1",
         provider: "asterisk",
         direction: "inbound",
-        callMode: "human",
+        callMode: { in: ["human", "ai"] },
         providerCallId: callId,
         callSid: callId,
-        status: { in: ["ringing", "answering"] },
+        status: { in: ["ringing", "answering", "in-progress"] },
         endedAt: null,
-        claimedByUserId: { not: null },
-        browserAnswerClaimToken: { not: null },
-        browserAnswerClaimExpiresAt: { gt: expect.any(Date) },
-      }),
+      },
       select: {
         id: true,
+        callMode: true,
+        status: true,
+        startedAt: true,
+        createdAt: true,
         providerCallId: true,
         claimedByUserId: true,
         userId: true,
         browserAnswerClaimToken: true,
+        browserAnswerClaimExpiresAt: true,
       },
     })
     expect(fetch).toHaveBeenCalledWith(
@@ -141,14 +187,7 @@ describe("PBX inbound browser readiness", () => {
   })
 
   it("returns not-ready without exposing relay rejection or failure", async () => {
-    mocks.callLogFindFirst.mockResolvedValue({
-      id: "call-log-1",
-      providerCallId: callId,
-      claimedByUserId: "user-1",
-      userId: "user-1",
-      browserAnswerClaimToken: claimToken,
-      browserAnswerClaimExpiresAt: new Date(Date.now() + 30_000),
-    })
+    mocks.callLogFindFirst.mockResolvedValue(claimedCall())
     vi.mocked(fetch)
       .mockResolvedValueOnce(new Response(JSON.stringify({ ready: false }), {
         status: 200,
@@ -166,14 +205,7 @@ describe("PBX inbound browser readiness", () => {
   })
 
   it("returns not-ready when the exact claim changes after the relay check", async () => {
-    mocks.callLogFindFirst.mockResolvedValue({
-      id: "call-log-1",
-      providerCallId: callId,
-      claimedByUserId: "user-1",
-      userId: "user-1",
-      browserAnswerClaimToken: claimToken,
-      browserAnswerClaimExpiresAt: new Date(Date.now() + 30_000),
-    })
+    mocks.callLogFindFirst.mockResolvedValue(claimedCall())
     vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify({ ready: true }), {
       status: 200,
       headers: { "content-type": "application/json" },
@@ -185,6 +217,108 @@ describe("PBX inbound browser readiness", () => {
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({ ready: false })
+  })
+
+  it("hands an unclaimed ringing call to the AI at once when the AI answers inbound calls", async () => {
+    stationLine({ inboundAnswerMode: "ai" })
+    mocks.callLogFindFirst.mockResolvedValue(unclaimedCall(500))
+    const { POST } = await import("@/app/api/internal/asterisk/inbound-browser-ready/route")
+
+    const response = await POST(request({ callId }))
+
+    await expect(response.json()).resolves.toEqual({ ready: false, route: "ai" })
+    expect(fetch).not.toHaveBeenCalled()
+    expect(mocks.callLogUpdateMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        id: "call-log-1",
+        organizationId: "org-1",
+        direction: "inbound",
+        callMode: "human",
+        status: "ringing",
+        endedAt: null,
+        OR: [
+          { browserAnswerClaimToken: null },
+          { browserAnswerClaimExpiresAt: null },
+          { browserAnswerClaimExpiresAt: { lte: expect.any(Date) } },
+        ],
+      }),
+      data: {
+        callMode: "ai",
+        status: "answering",
+        userId: null,
+        claimedByUserId: null,
+        claimedAt: null,
+        browserAnswerClaimToken: null,
+        browserAnswerClaimExpiresAt: null,
+      },
+    })
+    expect(mocks.callEventCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        callLogId: "call-log-1",
+        providerCallId: callId,
+        eventType: "asterisk_inbound_answer_route",
+        payload: expect.objectContaining({ route: "ai" }),
+      }),
+    })
+  })
+
+  it("lets salespeople ring for the configured number of rings before the AI picks up", async () => {
+    stationLine({ inboundAnswerMode: "human_then_ai", inboundAiAfterRings: 3 })
+    const { POST } = await import("@/app/api/internal/asterisk/inbound-browser-ready/route")
+
+    mocks.callLogFindFirst.mockResolvedValue(unclaimedCall(14_000))
+    await expect((await POST(request({ callId }))).json()).resolves.toEqual({ ready: false })
+    expect(mocks.callLogUpdateMany).not.toHaveBeenCalled()
+
+    mocks.callLogFindFirst.mockResolvedValue(unclaimedCall(15_000))
+    await expect((await POST(request({ callId }))).json()).resolves.toEqual({ ready: false, route: "ai" })
+    expect(mocks.callLogUpdateMany).toHaveBeenCalledTimes(1)
+  })
+
+  it("never routes to the AI when people answer, or when the voice agent is off", async () => {
+    const { POST } = await import("@/app/api/internal/asterisk/inbound-browser-ready/route")
+    for (const settings of [
+      { inboundAnswerMode: "human" },
+      {},
+      { inboundAnswerMode: "ai", voiceAgentEnabled: false },
+    ]) {
+      stationLine(settings)
+      mocks.callLogFindFirst.mockResolvedValue(unclaimedCall(60_000))
+      await expect((await POST(request({ callId }))).json()).resolves.toEqual({ ready: false })
+    }
+    expect(mocks.callLogUpdateMany).not.toHaveBeenCalled()
+  })
+
+  it("keeps a call a salesperson is already answering, even when the AI would take it", async () => {
+    stationLine({ inboundAnswerMode: "ai" })
+    mocks.callLogFindFirst.mockResolvedValue(claimedCall({ startedAt: new Date(Date.now() - 60_000) }))
+    vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify({ ready: false }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    }))
+    const { POST } = await import("@/app/api/internal/asterisk/inbound-browser-ready/route")
+
+    await expect((await POST(request({ callId }))).json()).resolves.toEqual({ ready: false })
+    expect(mocks.transaction).not.toHaveBeenCalled()
+  })
+
+  it("keeps telling the station the AI has the call on every later poll", async () => {
+    mocks.callLogFindFirst.mockResolvedValue(unclaimedCall(1_000, { callMode: "ai", status: "in-progress" }))
+    const { POST } = await import("@/app/api/internal/asterisk/inbound-browser-ready/route")
+
+    await expect((await POST(request({ callId }))).json()).resolves.toEqual({ ready: false, route: "ai" })
+    expect(mocks.callLogUpdateMany).not.toHaveBeenCalled()
+    expect(mocks.channelConfigFindMany).not.toHaveBeenCalled()
+  })
+
+  it("does not route to the AI when a salesperson won the same instant", async () => {
+    stationLine({ inboundAnswerMode: "ai" })
+    mocks.callLogFindFirst.mockResolvedValue(unclaimedCall(500))
+    mocks.callLogUpdateMany.mockResolvedValue({ count: 0 })
+    const { POST } = await import("@/app/api/internal/asterisk/inbound-browser-ready/route")
+
+    await expect((await POST(request({ callId }))).json()).resolves.toEqual({ ready: false })
+    expect(mocks.callEventCreate).not.toHaveBeenCalled()
   })
 
   it("rejects invalid identity and authorization before a database read", async () => {

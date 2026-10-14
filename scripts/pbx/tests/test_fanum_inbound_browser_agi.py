@@ -40,11 +40,12 @@ class FakeClient:
             return self.lifecycle_results.pop(0)
         return agi.SendResult.SENT
 
-    def browser_ready(self, call_id):
+    def answer_route(self, call_id):
         self.ready_call_ids.append(call_id)
-        if self.ready_results:
-            return self.ready_results.pop(0)
-        return False
+        result = self.ready_results.pop(0) if self.ready_results else False
+        if result is True:
+            return "browser"
+        return result if result == "ai" else ""
 
 
 class FakeHttpHandler(BaseHTTPRequestHandler):
@@ -74,6 +75,17 @@ class FakeHttpHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(b'{"ready":false}')
                 return
+        if type(self).response_mode in {"route-ai", "route-browser", "route-other"}:
+            body = {
+                "route-ai": b'{"ready":false,"route":"ai"}',
+                "route-browser": b'{"ready":true}',
+                "route-other": b'{"ready":false,"route":"voicemail"}',
+            }[type(self).response_mode]
+            self.send_response(200)
+            self.send_header("content-type", "application/json")
+            self.end_headers()
+            self.wfile.write(body)
+            return
         if type(self).response_mode == "redirect":
             self.send_response(307)
             self.send_header("location", "/login")
@@ -102,6 +114,22 @@ class InboundBrowserAgiTest(unittest.TestCase):
             runtime_token="t" * 48,
         )
         return server, agi.HttpLifecycleClient(config)
+
+    def test_http_answer_route_reads_only_the_two_known_answers(self):
+        for mode, expected in (
+            ("route-ai", "ai"),
+            ("route-browser", "browser"),
+            ("route-other", ""),
+            ("html", ""),
+        ):
+            with self.subTest(mode=mode):
+                server, client = self._http_client(mode)
+                try:
+                    self.assertEqual(client.answer_route(CALL_ID), expected)
+                    self.assertEqual(client.browser_ready(CALL_ID), expected == "browser")
+                finally:
+                    server.shutdown()
+                    server.server_close()
 
     def test_parses_only_required_env_values_without_executing_shell_text(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -189,6 +217,32 @@ class InboundBrowserAgiTest(unittest.TestCase):
         prefix = 'SET VARIABLE __FANUM_SAFE_CALL_ID "'
         self.assertTrue(agi_output.getvalue().startswith(prefix))
         uuid.UUID(agi_output.getvalue()[len(prefix):-2])
+
+    def test_readiness_hands_the_call_to_the_ai_when_the_crm_says_so(self):
+        client = FakeClient(ready_results=[False, "ai", True])
+        output = io.StringIO()
+        ticks = iter([0.0, 0.1, 0.2, 0.3])
+
+        result = agi.run_mode(
+            mode="ready",
+            arguments=[CALL_ID],
+            agi_variables={},
+            client=client,
+            spool_dir=Path("/unused"),
+            output=output,
+            monotonic=lambda: next(ticks),
+            sleep=lambda seconds: None,
+            ready_timeout_seconds=1.0,
+        )
+
+        self.assertEqual(result, 0)
+        self.assertEqual(
+            output.getvalue(),
+            'SET VARIABLE FANUM_BROWSER_READY "0"\n'
+            'SET VARIABLE FANUM_INBOUND_ROUTE "ai"\n',
+        )
+        # The AI answer is final: the station stops asking at once.
+        self.assertEqual(client.ready_call_ids, [CALL_ID, CALL_ID])
 
     def test_readiness_waits_for_the_exact_call_and_never_answers_itself(self):
         client = FakeClient(ready_results=[False, False, True])

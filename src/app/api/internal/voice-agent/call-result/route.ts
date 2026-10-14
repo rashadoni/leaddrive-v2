@@ -12,6 +12,7 @@ import {
   toConversationInsight,
   voiceAgentCallResultSchema,
   type VoiceAgentProviderOutcome,
+  type VoiceAgentTurn,
 } from "@/lib/voice-agent/post-call"
 import { recordCallCommitment } from "@/lib/commitments/record-call-commitment"
 import { maybePlaceCallback } from "@/lib/voice-agent/callback-trigger"
@@ -613,6 +614,195 @@ async function recordProviderUnknownNoRedialEvidence(params: {
     : "conflict"
 }
 
+/**
+ * Analyse a stored customer conversation once, record what was promised, and
+ * (for outbound calls only) let the callback policy decide on a redial.
+ */
+async function analyzeAndRecord(params: {
+  organizationId: string
+  call: { id: string }
+  callId: string
+  turns: VoiceAgentTurn[]
+  insightsWhere: Prisma.CallLogWhereInput
+  placeCallback: boolean
+}): Promise<NextResponse> {
+  const { organizationId, call } = params
+  const analysisClaim = await runWithTenant(organizationId, () => acquireAnalysisClaim({
+    organizationId,
+    callLogId: call.id,
+    providerCallId: params.callId,
+    now: new Date(),
+  }))
+  if (analysisClaim.state === "complete") {
+    return NextResponse.json({ success: true, analysisStatus: "existing" })
+  }
+  if (analysisClaim.state === "processing") {
+    return NextResponse.json(
+      { success: false, analysisStatus: "processing" },
+      { status: 503, headers: { "Retry-After": "5" } },
+    )
+  }
+
+  let analysisStatus: "complete" | "fallback" = "complete"
+  let analysis: Awaited<ReturnType<typeof analyzeVoiceCall>>
+  try {
+    analysis = await analyzeVoiceCall({
+      organizationId,
+      callId: params.callId,
+      turns: params.turns,
+    })
+  } catch (error) {
+    analysisStatus = "fallback"
+    console.error("[voice-agent] post-call analysis unavailable", {
+      callIdHash: createHash("sha256").update(params.callId).digest("hex").slice(0, 12),
+      errorType: error instanceof Error ? error.name : "unknown",
+    })
+    analysis = {
+      analysis: fallbackPostCallAnalysis(params.turns),
+      model: "extractive-fallback",
+    }
+  }
+
+  const insightsStored = await runWithTenant(organizationId, () => prisma.callLog.updateMany({
+    where: { ...params.insightsWhere, id: call.id, organizationId, insightsAt: null },
+    data: {
+      insights: toConversationInsight(analysis.analysis, analysis.model) as unknown as Prisma.InputJsonValue,
+      insightsAt: new Date(),
+      disposition: analysis.analysis.disposition,
+    },
+  }))
+  if (insightsStored.count === 0) {
+    await runWithTenant(organizationId, () => completeAnalysisClaim({
+      organizationId,
+      eventId: analysisClaim.eventId,
+      payload: analysisClaim.payload,
+      completedAt: new Date(),
+    }))
+    return NextResponse.json({ success: true, analysisStatus: "existing" })
+  }
+
+  // What the customer was promised becomes a task somebody owns.
+  //
+  // This is the path where a real AI call is analysed — the other one, POST
+  // /api/v1/calls/[id]/analyze, runs a placeholder analyser. Wiring the
+  // commitment only there would have shipped a feature that never fired on the
+  // calls that actually produce commitments.
+  await runWithTenant(organizationId, async () => {
+    const analysed = await prisma.callLog.findFirst({
+      where: { id: call.id, organizationId },
+      select: { leadId: true, userId: true, insights: true, createdAt: true },
+    })
+    if (!analysed) return
+    const lead = analysed.leadId
+      ? await prisma.lead.findFirst({
+          where: { id: analysed.leadId, organizationId },
+          select: { assignedTo: true },
+        })
+      : null
+    await recordCallCommitment({
+      organizationId,
+      callId: call.id,
+      leadId: analysed.leadId ?? null,
+      insight: analysed.insights as ConversationInsight | null,
+      callAt: new Date(),
+      assigneeId: lead?.assignedTo ?? analysed.userId ?? null,
+    })
+  })
+
+  await runWithTenant(organizationId, () => completeAnalysisClaim({
+    organizationId,
+    eventId: analysisClaim.eventId,
+    payload: analysisClaim.payload,
+    completedAt: new Date(),
+  }))
+
+  // The system's only self-initiated outgoing call. Placed last, after the
+  // result is fully stored, so a callback can never be the reason a transcript
+  // was lost. It swallows its own failures for the same reason: throwing here
+  // would fail this webhook and make the PBX retry work that already succeeded.
+  if (params.placeCallback) {
+    await maybePlaceCallback({
+      organizationId,
+      callLogId: call.id,
+      turns: params.turns,
+    })
+  }
+
+  return NextResponse.json({ success: true, analysisStatus })
+}
+
+/**
+ * The AI's result for an inbound call it answered.
+ *
+ * Such a call has no dispatcher session: the station created the row while it
+ * rang, and its answer and hang-up keep arriving through the lifecycle route,
+ * which owns status, duration and provider outcome. This writes only what the
+ * AI alone knows — the transcript and whether the customer spoke — once, then
+ * analyses it like any AI conversation. No automatic callback: the customer
+ * reached us, and redialling them is a sales decision, not a recovery.
+ * Returns null when the id is not an inbound AI call.
+ */
+async function recordInboundAiResult(params: {
+  organizationId: string
+  callId: string
+  turns: VoiceAgentTurn[]
+  agentMidUtterance?: boolean
+  recoveryAttempts?: number
+}): Promise<NextResponse | null> {
+  const { organizationId } = params
+  const scope: Prisma.CallLogWhereInput = {
+    organizationId,
+    provider: "asterisk",
+    callMode: "ai",
+    direction: "inbound",
+    providerCallId: params.callId,
+    callSid: params.callId,
+  }
+  const call = await runWithTenant(organizationId, () => prisma.callLog.findFirst({
+    where: scope,
+    select: { id: true, transcription: true, conversationOutcome: true },
+  }))
+  if (!call) return null
+
+  const customerSpoke = params.turns.some((turn) => turn.role === "customer")
+  const conversationOutcome = customerSpoke ? "customer_spoke" : "no_customer_speech"
+  const transcription = params.turns.length > 0 ? formatVoiceTranscript(params.turns) : null
+  const data: Prisma.CallLogUpdateManyMutationInput = { conversationOutcome }
+  if (transcription !== null) data.transcription = transcription
+  if (params.agentMidUtterance !== undefined) data.agentMidUtterance = params.agentMidUtterance
+  if (params.recoveryAttempts !== undefined) data.recoveryAttempts = params.recoveryAttempts
+
+  const written = await runWithTenant(organizationId, () => prisma.callLog.updateMany({
+    where: { ...scope, id: call.id, conversationOutcome: null },
+    data,
+  }))
+  if (written.count === 0) {
+    const stored = await runWithTenant(organizationId, () => prisma.callLog.findFirst({
+      where: { ...scope, id: call.id },
+      select: { transcription: true, conversationOutcome: true },
+    }))
+    if (
+      !stored
+      || stored.conversationOutcome !== conversationOutcome
+      || (stored.transcription ?? null) !== transcription
+    ) {
+      return conflictingTerminalResult()
+    }
+  }
+
+  if (!customerSpoke) {
+    return NextResponse.json({ success: true, analysisStatus: "not_applicable" })
+  }
+  return analyzeAndRecord({
+    organizationId,
+    call,
+    callId: params.callId,
+    turns: params.turns,
+    insightsWhere: scope,
+    placeCallback: false,
+  })
+}
+
 /** PBX-only terminal call-result endpoint. Tenant and call ownership are server-derived. */
 export async function POST(request: NextRequest) {
   if (!authorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -671,7 +861,19 @@ export async function POST(request: NextRequest) {
       },
     },
   }))
-  if (!session?.callLog) return NextResponse.json({ error: "Call not found" }, { status: 404 })
+  if (!session?.callLog) {
+    if (!("protocol" in parsed.data)) {
+      const inbound = await recordInboundAiResult({
+        organizationId,
+        callId: parsed.data.callId,
+        turns: parsed.data.turns,
+        agentMidUtterance: parsed.data.agentMidUtterance,
+        recoveryAttempts: parsed.data.recoveryAttempts,
+      })
+      if (inbound) return inbound
+    }
+    return NextResponse.json({ error: "Call not found" }, { status: 404 })
+  }
   const call = session.callLog
 
   if ("protocol" in parsed.data) {
@@ -941,112 +1143,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, analysisStatus: "existing" })
   }
 
-  const analysisClaim = await runWithTenant(organizationId, () => acquireAnalysisClaim({
+  return analyzeAndRecord({
     organizationId,
-    callLogId: call.id,
-    providerCallId: parsed.data.callId,
-    now: new Date(),
-  }))
-  if (analysisClaim.state === "complete") {
-    return NextResponse.json({ success: true, analysisStatus: "existing" })
-  }
-  if (analysisClaim.state === "processing") {
-    return NextResponse.json(
-      { success: false, analysisStatus: "processing" },
-      { status: 503, headers: { "Retry-After": "5" } },
-    )
-  }
-
-  let analysisStatus: "complete" | "fallback" = "complete"
-  let analysis: Awaited<ReturnType<typeof analyzeVoiceCall>>
-  try {
-    analysis = await analyzeVoiceCall({
-      organizationId,
-      callId: parsed.data.callId,
-      turns: parsed.data.turns,
-    })
-  } catch (error) {
-    analysisStatus = "fallback"
-    console.error("[voice-agent] post-call analysis unavailable", {
-      callIdHash: createHash("sha256").update(parsed.data.callId).digest("hex").slice(0, 12),
-      errorType: error instanceof Error ? error.name : "unknown",
-    })
-    analysis = {
-      analysis: fallbackPostCallAnalysis(parsed.data.turns),
-      model: "extractive-fallback",
-    }
-  }
-
-  const insightsStored = await runWithTenant(organizationId, () => prisma.callLog.updateMany({
-    where: {
-      id: call.id,
-      organizationId,
+    call,
+    callId: parsed.data.callId,
+    turns: parsed.data.turns,
+    insightsWhere: {
       callMode: "ai",
       provider: "asterisk",
       providerCallId: parsed.data.callId,
       providerOutcome: "connected",
-      insightsAt: null,
     },
-    data: {
-      insights: toConversationInsight(analysis.analysis, analysis.model) as unknown as Prisma.InputJsonValue,
-      insightsAt: new Date(),
-      disposition: analysis.analysis.disposition,
-    },
-  }))
-  if (insightsStored.count === 0) {
-    await runWithTenant(organizationId, () => completeAnalysisClaim({
-      organizationId,
-      eventId: analysisClaim.eventId,
-      payload: analysisClaim.payload,
-      completedAt: new Date(),
-    }))
-    return NextResponse.json({ success: true, analysisStatus: "existing" })
-  }
-
-  // What the customer was promised becomes a task somebody owns.
-  //
-  // This is the path where a real AI call is analysed — the other one, POST
-  // /api/v1/calls/[id]/analyze, runs a placeholder analyser. Wiring the
-  // commitment only there would have shipped a feature that never fired on the
-  // calls that actually produce commitments.
-  await runWithTenant(organizationId, async () => {
-    const analysed = await prisma.callLog.findFirst({
-      where: { id: call.id, organizationId },
-      select: { leadId: true, userId: true, insights: true, createdAt: true },
-    })
-    if (!analysed) return
-    const lead = analysed.leadId
-      ? await prisma.lead.findFirst({
-          where: { id: analysed.leadId, organizationId },
-          select: { assignedTo: true },
-        })
-      : null
-    await recordCallCommitment({
-      organizationId,
-      callId: call.id,
-      leadId: analysed.leadId ?? null,
-      insight: analysed.insights as ConversationInsight | null,
-      callAt: new Date(),
-      assigneeId: lead?.assignedTo ?? analysed.userId ?? null,
-    })
+    placeCallback: true,
   })
-
-  await runWithTenant(organizationId, () => completeAnalysisClaim({
-    organizationId,
-    eventId: analysisClaim.eventId,
-    payload: analysisClaim.payload,
-    completedAt: new Date(),
-  }))
-
-  // The system's only self-initiated outgoing call. Placed last, after the
-  // result is fully stored, so a callback can never be the reason a transcript
-  // was lost. It swallows its own failures for the same reason: throwing here
-  // would fail this webhook and make the PBX retry work that already succeeded.
-  await maybePlaceCallback({
-    organizationId,
-    callLogId: call.id,
-    turns: parsed.data.turns,
-  })
-
-  return NextResponse.json({ success: true, analysisStatus })
 }

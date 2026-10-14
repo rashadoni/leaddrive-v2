@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
 import { noteDemoCallConnecting } from "@/lib/demo-center/call-prompt-match"
 import { CALLBACK_FRESHNESS_MS } from "@/lib/voice-agent/callback-decision"
+import { INBOUND_CALL_CONTEXT } from "@/lib/voip/inbound-answer"
+import { loadInboundAnswerPolicy } from "@/lib/voip/inbound-answer-config"
 
 export const dynamic = "force-dynamic"
 
@@ -40,6 +42,12 @@ export const dynamic = "force-dynamic"
  * The practical effect is that an attacker would have to hold the token, know
  * an unguessable call id, and arrive inside the same couple of minutes as a
  * callback that is already in flight.
+ *
+ * An inbound call the AI picked up also gets `opening` (the organisation's
+ * inbound greeting, spoken word for word instead of the outbound "I am calling
+ * you") and `context` (one fixed paragraph saying the customer called us).
+ * Both are settings text, not customer data, so they add nothing to what a
+ * stolen token can read.
  */
 
 /** How many trailing transcript lines the agent needs to pick the thread back up. */
@@ -132,6 +140,7 @@ export async function GET(request: NextRequest) {
         continuationServedAt: true,
         leadId: true,
         callMode: true,
+        direction: true,
         consentAudit: true,
       },
     })
@@ -139,6 +148,10 @@ export async function GET(request: NextRequest) {
     // the demo's script (src/lib/demo-center/call-prompt-match.ts).
     await noteDemoCallConnecting(organizationId, callId, call)
     if (!call) return { continuation: null, conversation: null }
+    const inboundAi = call.callMode === "ai" && call.direction === "inbound"
+    const opening = inboundAi
+      ? (await loadInboundAnswerPolicy(organizationId)).greeting
+      : null
     // The written thread is available on every AI call, not only callbacks:
     // opening with "your number was in our system" to somebody who has been
     // writing to the company all week is the complaint this answers.
@@ -146,7 +159,9 @@ export async function GET(request: NextRequest) {
       ? await leadConversation({ organizationId, leadId: call.leadId, now })
       : null
     const continuation = await continuationFor(call, organizationId, now)
-    return { continuation, conversation }
+    return inboundAi
+      ? { continuation, conversation, opening, context: INBOUND_CALL_CONTEXT }
+      : { continuation, conversation }
   })
 
   return NextResponse.json(

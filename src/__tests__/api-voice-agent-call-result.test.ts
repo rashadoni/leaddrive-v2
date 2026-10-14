@@ -947,6 +947,8 @@ describe("POST /api/internal/voice-agent/call-result", () => {
 
   it("does not let a PBX callback mutate an ordinary Asterisk CallLog", async () => {
     mocks.findSession.mockResolvedValue(null)
+    // An ordinary human call is not an inbound call the AI answered either.
+    mocks.findCallLog.mockResolvedValue(null)
     const response = await POST(request({
       callId,
       durationSeconds: 5,
@@ -954,9 +956,98 @@ describe("POST /api/internal/voice-agent/call-result", () => {
     }))
 
     expect(response.status).toBe(404)
+    expect(mocks.findCallLog).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ callMode: "ai", direction: "inbound", providerCallId: callId }),
+    }))
     expect(mocks.callLogUpdateMany).not.toHaveBeenCalled()
     expect(mocks.transaction).not.toHaveBeenCalled()
     expect(mocks.callEventCreate).not.toHaveBeenCalled()
+  })
+
+  describe("an inbound call the AI answered", () => {
+    const inboundScope = {
+      organizationId: "org-test",
+      provider: "asterisk",
+      callMode: "ai",
+      direction: "inbound",
+      providerCallId: callId,
+      callSid: callId,
+    }
+
+    beforeEach(() => {
+      mocks.findSession.mockResolvedValue(null)
+      mocks.findCallLog.mockResolvedValue({
+        id: "inbound-call-1",
+        transcription: null,
+        conversationOutcome: null,
+        leadId: null,
+        userId: null,
+        insights: null,
+      })
+    })
+
+    it("stores the transcript once and leaves telephony state to the station", async () => {
+      const response = await POST(request({
+        callId,
+        durationSeconds: 40,
+        providerOutcome: "connected",
+        turns: [
+          { role: "agent", text: "Salam! Sizə necə kömək edə bilərəm?" },
+          { role: "customer", text: "Qiyməti öyrənmək istəyirəm." },
+        ],
+      }))
+
+      expect(response.status).toBe(200)
+      await expect(response.json()).resolves.toEqual({ success: true, analysisStatus: "complete" })
+      const transcriptWrite = mocks.callLogUpdateMany.mock.calls[0]?.[0]
+      expect(transcriptWrite.where).toEqual({ ...inboundScope, id: "inbound-call-1", conversationOutcome: null })
+      expect(transcriptWrite.data).toEqual({
+        conversationOutcome: "customer_spoke",
+        transcription: expect.stringContaining("Qiyməti öyrənmək istəyirəm."),
+      })
+      for (const field of ["status", "providerOutcome", "duration", "wasAnswered", "endedAt"]) {
+        expect(transcriptWrite.data).not.toHaveProperty(field)
+      }
+      expect(mocks.analyzeVoiceCall).toHaveBeenCalledTimes(1)
+      expect(mocks.callLogUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
+        where: { ...inboundScope, id: "inbound-call-1", insightsAt: null },
+        data: expect.objectContaining({ disposition: "callback" }),
+      }))
+      expect(mocks.maybePlaceCallback).not.toHaveBeenCalled()
+      expect(mocks.voiceCallSessionUpdateMany).not.toHaveBeenCalled()
+    })
+
+    it("does not analyse a call in which the customer never spoke", async () => {
+      const response = await POST(request({
+        callId,
+        durationSeconds: 6,
+        providerOutcome: "connected",
+        turns: [{ role: "agent", text: "Salam!" }],
+      }))
+
+      await expect(response.json()).resolves.toEqual({ success: true, analysisStatus: "not_applicable" })
+      expect(mocks.callLogUpdateMany.mock.calls[0]?.[0]?.data).toMatchObject({
+        conversationOutcome: "no_customer_speech",
+      })
+      expect(mocks.analyzeVoiceCall).not.toHaveBeenCalled()
+    })
+
+    it("rejects a second, different result for the same call", async () => {
+      mocks.callLogUpdateMany.mockResolvedValueOnce({ count: 0 })
+      mocks.findCallLog
+        .mockResolvedValueOnce({ id: "inbound-call-1", transcription: null, conversationOutcome: null })
+        .mockResolvedValueOnce({ transcription: "Müştəri: başqa söhbət", conversationOutcome: "customer_spoke" })
+
+      const response = await POST(request({
+        callId,
+        durationSeconds: 40,
+        providerOutcome: "connected",
+        turns: [{ role: "customer", text: "Qiyməti öyrənmək istəyirəm." }],
+      }))
+
+      expect(response.status).toBe(409)
+      expect(mocks.analyzeVoiceCall).not.toHaveBeenCalled()
+    })
   })
 
   it("stores the media-level end evidence the PBX reports", async () => {

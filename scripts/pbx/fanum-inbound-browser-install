@@ -35,13 +35,13 @@ readonly INCLUDE_LINE='#include "fanum-inbound-browser.conf"'
 # Station evidence captured by the read-only probe immediately before this
 # bundle was written.  Drift refuses the install before the first write.
 readonly EXPECTED_EXTENSIONS_FANUM_SHA256="6cc0489756b948f94b5d5acfe686d883376a7661f432adb34c130fd1dd95f6c4"
-readonly EXPECTED_AI_CORE_SHA256="5af0742e3e3a0469282b303f4cc5928fe39fc6ef9a16a0c21ea79fb42350f273"
+readonly EXPECTED_AI_CORE_SHA256="50dc8af71151ab99dba0f5e0f3c35372b8793992cc2341f5eac3287caee3686d"
 
 # Filled from the reviewed repository files.  Site configuration is never part
 # of this list.
-readonly EXPECTED_HELPER_SHA256="f73dc69993a3f8f94d87edc771af07cd59ac0dd48537db7562357f7ce48b325d"
-readonly EXPECTED_TRANSFORM_SHA256="77eba1dc13af985615471b32a7d356c27d3bb499760dad067dc3c022b933ac58"
-readonly EXPECTED_DIALPLAN_SHA256="54d669c8ecd5980d713ffb32ef3368f03ef3a71c22028be57beebb210f12a67e"
+readonly EXPECTED_HELPER_SHA256="1b271acbd6095ea073c13bc901d6d7a2bbe660dc41f86cd664b73c33249e3f12"
+readonly EXPECTED_TRANSFORM_SHA256="2b4551ebf7da275c03795917f6af4d9996e66974cda70e4aa3d7ebc871354807"
+readonly EXPECTED_DIALPLAN_SHA256="6abfc9b7fd0b1eae406519d324c85f2d704d5020b4e529ca6ed4caf09f45c2e3"
 readonly EXPECTED_SERVICE_SHA256="133014e6229cbcf1bc6ff4a131eac5ad9975e9f9d696ef18a5d337ac9d4a778f"
 readonly EXPECTED_TIMER_SHA256="a6522acabc29b5f098eab6f6793569aa0a6b67a5ab34e4d60ad34fc58783f01b"
 
