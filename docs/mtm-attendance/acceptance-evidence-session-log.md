@@ -93,3 +93,28 @@
   physical acceptance `NOT_RUN` at its snapshot time. Later release/device
   results will supersede that state only in the coordinator's final snapshot.
   No push, pull request, merge or release was performed by this resync.
+
+## 2026-10-14 — existing risk table and export regressions
+
+- At the coordinator's request, discovered existing tests that exercise the
+  modified shared risk table and ran only the directly relevant suites. The
+  six new date cases and 14 previously passing formatter cases were not rerun.
+- `mtm-attendance-risk-review.test.ts`: **18 PASS**, 9.97 s. Covers scoped
+  report/reviewer permissions, stale/invalid evidence and decisions, and real
+  in-memory Excel/PDF generation using the same table for az/ru/en. Database
+  access is mocked in this suite; this is not a real-Postgres or browser claim.
+- `mtm-attendance-risk-review-ui.test.ts`: **12 PASS**, 2.22 s. Exercises the
+  actual React risk screen in its DOM harness: three locales, decision retry,
+  access removal, read-only scope, stale actions, unapplied filters, empty state
+  and unmount cancellation. Network responses are mocked; no live browser or
+  production request occurred.
+- `mtm-date-formatting-contract.test.ts`: **6 PASS**, 327 ms. The existing
+  display/machine-format source contract remains satisfied. No lint exception,
+  contract, baseline or machine timestamp formatter was changed; prior targeted
+  lint for the changed builder and new test also remains PASS.
+- Resource preflight: approximately 14 GiB available memory, 231 GiB disk,
+  zero current memory pressure. Each suite ran separately with one worker and
+  a 768 MiB heap cap. Full suite, Postgres, full typecheck, build and browser
+  E2E are NOT_RUN locally under the host workload contract; hosted verification
+  remains the release gate. No source change was needed. This checkpoint
+  appends only this journal; no push, device action or production mutation.
