@@ -269,6 +269,44 @@ describe("GET /api/v1/mtm/agents", () => {
     expect(json.data.agents[0].breaks).toEqual([])
   })
 
+  it("shows a field agent's day start and finish to the field manager, never the break moment", async () => {
+    // Owner, 2026-10-14: an agent's day belongs to the field manager, not to HR
+    // attendance — so this does not wait for the withdrawn workforce module.
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    mockAgentAdministrator()
+    vi.mocked(isTenantCapabilityEnabled).mockReturnValue(false)
+    vi.mocked(prisma.organization.findUnique).mockResolvedValueOnce({ plan: "enterprise", addons: [], features: [], modules: { "route-field": true } } as never)
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([
+      { id: "a1", name: "Agent 1", role: "AGENT" }, { id: "a2", name: "Agent 2", role: "AGENT" }, { id: "a3", name: "Agent 3", role: "AGENT" }, { id: "m1", name: "Manager", role: "MANAGER" },
+    ] as never)
+    vi.mocked(prisma.mtmAgent.count).mockResolvedValue(4)
+    vi.mocked(prisma.mtmAgentWorkday.findMany).mockResolvedValue([
+      { agentId: "a1", status: "STARTED", startedAt: new Date("2026-09-09T05:00:00Z"), pausedAt: null, completedAt: null },
+      { agentId: "a2", status: "PAUSED", startedAt: new Date("2026-09-09T05:00:00Z"), pausedAt: new Date("2026-09-09T10:05:00Z"), completedAt: null },
+      { agentId: "a3", status: "COMPLETED", startedAt: new Date("2026-09-09T05:00:00Z"), pausedAt: null, completedAt: new Date("2026-09-09T14:00:00Z") },
+      { agentId: "m1", status: "COMPLETED", startedAt: new Date("2026-09-09T05:00:00Z"), pausedAt: null, completedAt: new Date("2026-09-09T14:00:00Z") },
+    ] as never)
+    const json = await (await ListAgents(makeReq("/api/v1/mtm/agents"))).json()
+    const presence = Object.fromEntries(json.data.agents.map((agent: { id: string; presence: unknown }) => [agent.id, agent.presence]))
+    expect(presence.a1).toEqual({ kind: "working", since: "2026-09-09T05:00:00.000Z" })
+    expect(presence.a2).toEqual({ kind: "paused", since: null })
+    expect(presence.a3).toEqual({ kind: "finished", at: "2026-09-09T14:00:00.000Z" })
+    // Not a field agent: office time stays HR's and keeps its old gate.
+    expect(presence.m1).toEqual({ kind: "finished", at: null })
+    expect(json.data.agents.every((agent: { breaks: unknown[] }) => agent.breaks.length === 0)).toBe(true)
+  })
+
+  it("keeps a field agent's times from a mobile token or an integration key", async () => {
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([{ id: "a1", name: "Agent 1", role: "AGENT" }] as never)
+    vi.mocked(prisma.mtmAgent.count).mockResolvedValue(1)
+    vi.mocked(prisma.mtmAgentWorkday.findMany).mockResolvedValue([
+      { agentId: "a1", status: "COMPLETED", startedAt: new Date("2026-09-09T05:00:00Z"), pausedAt: null, completedAt: new Date("2026-09-09T14:00:00Z") },
+    ] as never)
+    const json = await (await ListAgents(makeReq("/api/v1/mtm/agents"))).json()
+    expect(json.data.agents[0].presence).toEqual({ kind: "finished", at: null })
+  })
+
   it("puts plan fulfilment and app activity on the card without leaking the push token", async () => {
     // Prod 2026-09-14: «0% eff.» and amber «Aktiv deyil» on every card while the
     // route was done and the phone sent GPS every 30 s — the page read fields

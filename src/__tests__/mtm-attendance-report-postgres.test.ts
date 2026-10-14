@@ -129,10 +129,12 @@ pgDescribe("MTM report reads the real saved workday and journal", () => {
       await prisma.user.create({ data: { id: "fixture-supervisor-user", organizationId: ORG, email: "supervisor@example.test", name: "Fixture supervisor", role: "manager", passwordHash: "fixture-unusable-hash" } })
       for (const id of ["team-a", "team-b"]) await prisma.mtmTeam.create({ data: { id, organizationId: ORG, name: id } })
       await prisma.mtmAgent.createMany({ data: [
-        { id: "employee-a", organizationId: ORG, teamId: "team-a", name: "Fixture employee A", role: "AGENT" },
-        { id: "employee-b", organizationId: ORG, teamId: "team-b", name: "Fixture employee B", role: "AGENT" },
+        { id: "employee-a", organizationId: ORG, teamId: "team-a", name: "Fixture employee A", role: "EMPLOYEE", attendanceParticipant: true },
+        { id: "employee-b", organizationId: ORG, teamId: "team-b", name: "Fixture employee B", role: "EMPLOYEE", attendanceParticipant: true },
         { id: "supervisor-a", organizationId: ORG, teamId: "team-a", userId: "fixture-supervisor-user", name: "Fixture supervisor", role: "SUPERVISOR" },
-        { id: "other-employee", organizationId: OTHER, name: "Other tenant fixture", role: "AGENT" },
+        // A field agent: its day belongs to the field manager, never this report.
+        { id: "field-agent", organizationId: ORG, teamId: "team-a", name: "Fixture field agent", role: "AGENT" },
+        { id: "other-employee", organizationId: OTHER, name: "Other tenant fixture", role: "EMPLOYEE", attendanceParticipant: true },
       ] })
       await prisma.mtmWorkCalendarDay.create({ data: { organizationId: ORG, date: new Date(`${addDateKeyDays(monday, 2)}T00:00:00Z`), kind: "COMPANY_HOLIDAY", name: "Fixture holiday" } })
       await prisma.mtmAgentWorkday.create({ data: {
@@ -166,6 +168,7 @@ pgDescribe("MTM report reads the real saved workday and journal", () => {
   it("includes every date for every employee and computes recorded breaks, lateness and early departure", async () => {
     const result = await report()
     expect(result.rows).toHaveLength(14)
+    expect(result.rows.some((row) => row.employeeId === "field-agent")).toBe(false)
     const day = result.rows.find((row) => row.employeeId === "employee-a" && row.date === monday)!
     expect(day).toMatchObject({ workedSeconds: 27_540, pausedSeconds: 1800, lateSeconds: 1260, earlyLeaveSeconds: 1800, expectedWorkSeconds: 28_800, kind: "WORKED" })
     expect(result.rows.find((row) => row.employeeId === "employee-a" && row.date === addDateKeyDays(monday, 1))?.kind).toBe("ABSENT")

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { effectiveHiddenModules } from "@/lib/user-module-access"
 import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
 import type { AttendanceReviewer } from "@/lib/mtm/attendance-request-decision"
-import { isAttendanceEmployeeExcluded, lockAttendanceRequests } from "@/lib/mtm/attendance-self-access"
+import { isAttendanceMarkExempt, lockAttendanceRequests } from "@/lib/mtm/attendance-self-access"
 import { parseAttendanceInstallationId, attendanceInstallationFailure } from "@/lib/mtm/attendance-installation-contract"
 
 export const ATTENDANCE_INSTALLATION_RULE_KEY = "attendanceRequireInstallationApproval"
@@ -43,7 +43,7 @@ export async function enforceAttendanceInstallationApproval(tx: Prisma.Transacti
   await lockAttendanceRequests(tx, scope)
   // Re-read after the shared feature lock: a concurrent disable wins.
   const current = await tx.mtmSetting.findUnique({ where: { organizationId_key: { organizationId: scope.organizationId, key: "attendanceEnabled" } }, select: { value: true } })
-  if (current?.value !== true || await isAttendanceEmployeeExcluded(tx, scope)) return
+  if (current?.value !== true || await isAttendanceMarkExempt(tx, scope)) return
   await lockAttendanceInstallationPolicy(tx, scope.organizationId)
   if (!await readAttendanceInstallationRule(tx, scope.organizationId)) return
   const installationId = parseAttendanceInstallationId(rawInstallation)

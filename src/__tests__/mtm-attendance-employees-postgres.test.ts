@@ -249,7 +249,10 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
     await tenant(automaticOrg, async () => {
       const before = [await prisma.mtmAgent.count(), await prisma.mtmAuditLog.count(), await prisma.mtmAttendanceParticipationEvent.count(), await prisma.user.count()]
       const directory = await store.readAttendanceEmployees(automaticAdmin)
-      expect(directory.employees).toHaveLength(300)
+      // The existing field agent keeps its card but is not HR attendance: its
+      // day belongs to the field manager (owner, 2026-10-14).
+      expect(directory.employees).toHaveLength(299)
+      expect(directory.employees.some(employee => employee.id === "automatic-field")).toBe(false)
       expect(directory.users.every(user => !user.eligible)).toBe(true)
       expect(directory.employees.find(employee => employee.id === automaticAgentId)).toMatchObject({ included: true, participationVersion: null, includedFrom: expect.any(String), history: [] })
       expect(JSON.stringify(directory)).not.toMatch(/@example\.invalid|fixture-only|retained-.*-password/)
@@ -420,7 +423,7 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
   })
 
   it("lets a user provision finish while exclusion waits behind the real month-close canonical locks", async () => {
-    const scope = { organizationId: automaticOrg, agentId: "automatic-field" }
+    const scope = { organizationId: automaticOrg, agentId: "automatic-manual" }
     const { lockMtmWorkdayTransitions } = await import("@/lib/mtm/workday")
     let allowFence!: () => void, entered!: () => void
     const released = new Promise<void>(resolve => { allowFence = resolve }), ready = new Promise<void>(resolve => { entered = resolve })
@@ -454,7 +457,7 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
     } finally { allowFence() }
     await Promise.all([closer, excluding])
     expect(await tenant(automaticOrg, () => prisma.mtmAgent.count({ where: { userId: "automatic-month-race-user" } }))).toBe(1)
-    expect(await tenant(automaticOrg, () => prisma.mtmAgent.findUnique({ where: { id: scope.agentId } }))).toMatchObject({ role: "AGENT", attendanceParticipant: false,
-      canPlanOwnRoutes: true, canSelfPublishRoutes: true, attendanceExcluded: true })
+    expect(await tenant(automaticOrg, () => prisma.mtmAgent.findUnique({ where: { id: scope.agentId } }))).toMatchObject({ role: "EMPLOYEE", attendanceParticipant: true,
+      canPlanOwnRoutes: false, attendanceExcluded: true })
   })
 })

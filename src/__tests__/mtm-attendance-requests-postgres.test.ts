@@ -21,7 +21,7 @@ const scratch = vi.hoisted(() => {
   process.env.DATABASE_URL = app.toString()
   return { name, role, adminDb: db.toString() }
 })
-const identity = vi.hoisted(() => ({ orgId: "request-pg-a", agentId: "request-pg-owner", role: "AGENT", routeField: true }))
+const identity = vi.hoisted(() => ({ orgId: "request-pg-a", agentId: "request-pg-owner", role: "EMPLOYEE", routeField: true }))
 vi.mock("@/lib/mobile-auth", () => ({ resolveMobileAuth: async () => ({ ...identity, tenantCapabilities: { routeField: identity.routeField, workforceHrm: false } }) }))
 function sql(url: string, statement: string) {
   const file = createRequire(import.meta.url).resolve("prisma/build/index.js")
@@ -49,7 +49,7 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
   let documentLogRuntime: string | undefined
   const originalRuntime = process.env.LEADDRIVE_RUNTIME_DIR
   const originalLogs = process.env.LEADDRIVE_LOG_DIR
-  const self = { organizationId: "request-pg-a", agentId: "request-pg-owner", role: "AGENT" }
+  const self = { organizationId: "request-pg-a", agentId: "request-pg-owner", role: "EMPLOYEE" }
   const input = (date: string) => ({ clientRequestId: randomUUID(), kind: "HOURLY_ABSENCE", unit: "HOURS", startDate: date, endDate: date, startTime: "09:00", endTime: "10:00", reason: "Fictional request" })
   const submit = (body: unknown) => api.POST(new NextRequest("http://localhost/api/v2/mtm/mobile/route-field/attendance/requests", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }))
   beforeAll(async () => {
@@ -88,7 +88,7 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
         await prisma.mtmSetting.create({ data: { organizationId: org, key: "attendanceEnabled", value: true } })
       }
       await prisma.user.create({ data: { id: "request-pg-admin", organizationId: self.organizationId, name: "Fictional limits administrator", email: "limits-admin@example.invalid", role: "admin", passwordHash: "unusable-fixture-hash" } })
-      for (const [id, org] of [["request-pg-owner", "request-pg-a"], ["request-pg-colleague", "request-pg-a"], ["request-pg-foreign", "request-pg-b"]]) await prisma.mtmAgent.create({ data: { id, organizationId: org, name: "Fictional employee", role: "AGENT", status: "ACTIVE" } })
+      for (const [id, org] of [["request-pg-owner", "request-pg-a"], ["request-pg-colleague", "request-pg-a"], ["request-pg-foreign", "request-pg-b"]]) await prisma.mtmAgent.create({ data: { id, organizationId: org, name: "Fictional employee", role: "EMPLOYEE", attendanceParticipant: true, status: "ACTIVE" } })
     })
   }, 240_000)
   afterAll(async () => {

@@ -4,7 +4,7 @@ import { enforceAttendanceOutsideRule } from "@/lib/mtm/attendance-outside-rule"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
-import { isAttendanceEmployeeExcluded, lockAttendanceRequests, requireAttendanceSelf, type AttendanceSelf } from "@/lib/mtm/attendance-self-access"
+import { isAttendanceMarkExempt, lockAttendanceRequests, requireAttendanceSelf, type AttendanceSelf } from "@/lib/mtm/attendance-self-access"
 import { resolveAttendanceReviewerScope, type AttendanceReviewer } from "@/lib/mtm/attendance-request-decision"
 import { AttendanceLocationPolicyInputSchema, AttendanceLocationConsentInputSchema, evaluateAttendanceLocation,
   type AttendanceLocationPolicy, type OwnAttendanceLocation, type AttendanceBranchFix } from "@/lib/mtm/attendance-location-contract"
@@ -37,7 +37,7 @@ async function lockLocationPolicy(tx: Tx, organizationId: string, exclusive = fa
 export async function currentAttendanceStreamConsent(tx: Tx, self: Pick<AttendanceSelf,"organizationId"|"agentId">) {
   await lockAttendanceRequests(tx,self)
   const setting = await tx.mtmSetting.findFirst({where:{organizationId:self.organizationId,key:"attendanceEnabled"},select:{value:true}})
-  if (setting?.value!==true || await isAttendanceEmployeeExcluded(tx,self)) return null
+  if (setting?.value!==true || await isAttendanceMarkExempt(tx,self)) return null
   await lockLocationPolicy(tx,self.organizationId)
   const policy=await currentPolicy(tx,self.organizationId), consent=await currentConsent(tx,self)
   if (!policy?.enabled || !policy.legalReviewConfirmed || !consent?.accepted || consent.policyRevisionId!==policy.id) return null
@@ -134,7 +134,7 @@ export async function isAttendanceMarkRedactedReplay(tx: Pick<Tx,"$queryRaw">, s
  * or a closed day. A failure rolls back the event and its receipt together. */
 export async function recordAttendanceMarkEvidence(tx: Tx, context: MtmWorkdayPostEventContext, self: AttendanceSelf) {
   const mark = context.input.attendanceMark
-  if (!mark || await isAttendanceEmployeeExcluded(tx,self)) return
+  if (!mark || await isAttendanceMarkExempt(tx,self)) return
   if (!["START","FINISH"].includes(context.input.action)) return reject("BREAK_PRIVACY",400)
   await lockLocationPolicy(tx,self.organizationId)
   let onBreak = context.input.action==="FINISH" && context.beforeWorkday?.status==="PAUSED"

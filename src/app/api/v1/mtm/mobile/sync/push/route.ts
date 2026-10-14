@@ -1,7 +1,7 @@
 import { isAttendanceMonthClosedWrite } from "@/lib/mtm/attendance-month-guard"
 import { recordAttendanceQr, readAttendanceQrReceipt } from "@/lib/mtm/attendance-qr-store"
 import { enforceAttendanceInstallationApproval } from "@/lib/mtm/attendance-installation-policy"
-import { isAttendanceEmployeeExcluded, requireAttendanceSelf, lockAttendanceRequests } from "@/lib/mtm/attendance-self-access"
+import { isAttendanceMarkExempt, requireAttendanceSelf, lockAttendanceRequests } from "@/lib/mtm/attendance-self-access"
 import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
 import { recordAttendanceMarkEvidence, isAttendanceMarkRedactedReplay } from "@/lib/mtm/attendance-location-store"
 import { routeTransitionActions, writeFieldSyncAudit } from "@/lib/mtm/field-sync-audit"
@@ -1024,11 +1024,12 @@ export const POST = withMobileRls(async (req, auth) => {
           // workday write. A denied operation is not pinned and can be retried.
           await lockMtmWorkdayTransitions(tx, { organizationId: orgId, agentId })
           await lockAttendanceRequests(tx, { organizationId: orgId, agentId })
-          // A field phone can still have an attendance envelope queued from
-          // before exclusion. Its canonical field action remains valid; the
-          // attendance hooks below discard that optional evidence under these locks.
+          // A field agent's day is never an HR attendance mark (owner,
+          // 2026-10-14), and a phone can still have an attendance envelope
+          // queued from before an exclusion. The canonical field action remains
+          // valid; the attendance hooks below discard that optional evidence.
           const excludedFieldWorkday = auth.role === "AGENT" && isRouteFieldSessionOperation(auth, entity)
-            && await isAttendanceEmployeeExcluded(tx, { organizationId: orgId, agentId })
+            && await isAttendanceMarkExempt(tx, { organizationId: orgId, agentId })
           if (!excludedFieldWorkday) {
             const timezone = await requireAttendanceSelf(tx, { organizationId: orgId, agentId, role: auth.role })
             if ((attendanceWorkdayOperation && timezone !== attendanceWorkdayTimezone) || timezone !== workdayTimezone) {

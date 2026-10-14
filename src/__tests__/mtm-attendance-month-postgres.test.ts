@@ -19,12 +19,12 @@ const at=(date:string,time:string)=>new Date(`${date}T${time}:00+04:00`)
  let store:typeof import("@/lib/mtm/attendance-month-store"),requests:typeof import("@/lib/mtm/attendance-request-store"),decisions:typeof import("@/lib/mtm/attendance-request-decision"),workday:typeof import("@/lib/mtm/workday")
  let createdDb=false,createdRole=false,directory:string|undefined
  const run=<T,>(fn:()=>Promise<T>)=>tenant(ORG,fn)
- async function employee(){return run(()=>prisma.mtmAgent.create({data:{organizationId:ORG,name:"Fictional month employee",role:"AGENT",teamId:TEAM}})).then(row=>row.id)}
+ async function employee(){return run(()=>prisma.mtmAgent.create({data:{organizationId:ORG,name:"Fictional month employee",role:"EMPLOYEE",attendanceParticipant:true,teamId:TEAM}})).then(row=>row.id)}
  async function preview(ids:string[]){return run(()=>store.previewAttendanceMonth(reviewer,{month,agentIds:ids},"ru"))}
  async function command(ids:string[]){const p=await preview(ids);return{month,agentIds:ids,requestId:randomUUID(),preview:{hash:p.hash,asOf:p.asOf}}}
  const count=()=>run(()=>prisma.$queryRaw<{count:number}[]>`SELECT count(*)::int AS count FROM mtm_attendance_month_closes`).then(rows=>rows[0].count)
  async function seed(id:string,date="2026-09-28"){return run(async()=>{const day=await prisma.mtmAgentWorkday.create({data:{organizationId:ORG,agentId:id,workDate:new Date(`${date}T00:00:00Z`),status:"COMPLETED",startedAt:at(date,"09:10"),completedAt:at(date,"18:00"),totalPausedSeconds:0}});await prisma.mtmAgentWorkdayEvent.createMany({data:(["START","FINISH"] as const).map(type=>({organizationId:ORG,agentId:id,workdayId:day.id,clientEventId:randomUUID(),type,occurredAt:type==="START"?day.startedAt:day.completedAt!,appliedAt:type==="START"?day.startedAt:day.completedAt!,claimedAt:type==="START"?day.startedAt:day.completedAt!,serverReceivedAt:type==="START"?day.startedAt:day.completedAt!}))});return day})}
- async function correction(id:string,date="2026-09-28"){const {request}=await run(()=>requests.submitAttendanceRequest({organizationId:ORG,agentId:id,role:"AGENT"},{clientRequestId:randomUUID(),kind:"TIME_CORRECTION",unit:"HOURS",startDate:date,endDate:date,startTime:"09:00",endTime:"18:00",reason:"PRIVATE_MONTH_REASON"}));return run(()=>decisions.decideAttendanceRequest(reviewer,request.id,{decision:"APPROVED",version:request.version,note:"PRIVATE_DECISION_REASON"}))}
+ async function correction(id:string,date="2026-09-28"){const {request}=await run(()=>requests.submitAttendanceRequest({organizationId:ORG,agentId:id,role:"EMPLOYEE"},{clientRequestId:randomUUID(),kind:"TIME_CORRECTION",unit:"HOURS",startDate:date,endDate:date,startTime:"09:00",endTime:"18:00",reason:"PRIVATE_MONTH_REASON"}));return run(()=>decisions.decideAttendanceRequest(reviewer,request.id,{decision:"APPROVED",version:request.version,note:"PRIVATE_DECISION_REASON"}))}
  async function waitForLock(fragment:string){for(let i=0;i<40;i++){const rows=await run(()=>prisma.$queryRaw<{waiting:boolean}[]>`SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE usename=current_user AND wait_event_type='Lock' AND query LIKE ${`%${fragment}%`}) AS waiting`);if(rows[0].waiting)return;await new Promise(resolve=>setTimeout(resolve,50))}throw new Error("Expected actual database lock wait was not observed")}
  beforeAll(async()=>{
   sql(adminUrl!,`CREATE ROLE "${scratch!.role}" LOGIN PASSWORD 'month-fixture-only' NOSUPERUSER NOBYPASSRLS`);createdRole=true;sql(adminUrl!,`CREATE DATABASE "${scratch!.name}"`);createdDb=true
@@ -104,7 +104,7 @@ const at=(date:string,time:string)=>new Date(`${date}T${time}:00+04:00`)
   expect(covered[0].sourceDate.toISOString().slice(0,10)).toBe(date)
   const saved=await run(()=>store.readAttendanceMonthTable(reviewer,closed.id,"en"));expect(JSON.stringify(saved.table.rows)).toContain("8:00")
   await expect(run(()=>prisma.mtmAgentWorkdayEvent.create({data:{organizationId:ORG,agentId:id,workdayId:day.id,type:"FINISH",clientEventId:randomUUID(),occurredAt:day.completedAt!}}))).rejects.toThrow(/MTM_ATTENDANCE_MONTH_CLOSED/)
-  const {request}=await run(()=>requests.submitAttendanceRequest({organizationId:ORG,agentId:id,role:"AGENT"},{clientRequestId:randomUUID(),kind:"TIME_CORRECTION",unit:"HOURS",startDate:date,endDate:"2026-09-01",startTime:"22:00",endTime:"07:00",reason:"Fictional night correction after month closure"}))
+  const {request}=await run(()=>requests.submitAttendanceRequest({organizationId:ORG,agentId:id,role:"EMPLOYEE"},{clientRequestId:randomUUID(),kind:"TIME_CORRECTION",unit:"HOURS",startDate:date,endDate:"2026-09-01",startTime:"22:00",endTime:"07:00",reason:"Fictional night correction after month closure"}))
   await run(()=>decisions.decideAttendanceRequest(reviewer,request.id,{decision:"APPROVED",version:request.version,note:null}))
   expect(await run(()=>store.readAttendanceMonthTable(reviewer,closed.id,"en"))).toEqual(saved)
   const detail=await run(()=>store.readAttendanceMonth(reviewer,closed.id,"en"))
@@ -112,7 +112,7 @@ const at=(date:string,time:string)=>new Date(`${date}T${time}:00+04:00`)
  })
  it("waits for an approved correction and rejects the stale preview without deadlock",async()=>{
   const id=await employee();await seed(id)
-  const {request}=await run(()=>requests.submitAttendanceRequest({organizationId:ORG,agentId:id,role:"AGENT"},{clientRequestId:randomUUID(),kind:"TIME_CORRECTION",unit:"HOURS",startDate:"2026-09-28",endDate:"2026-09-28",startTime:"09:00",endTime:"18:00",reason:"Fictional concurrent correction"})),input=await command([id])
+  const {request}=await run(()=>requests.submitAttendanceRequest({organizationId:ORG,agentId:id,role:"EMPLOYEE"},{clientRequestId:randomUUID(),kind:"TIME_CORRECTION",unit:"HOURS",startDate:"2026-09-28",endDate:"2026-09-28",startTime:"09:00",endTime:"18:00",reason:"Fictional concurrent correction"})),input=await command([id])
   let release!:()=>void,entered!:()=>void;const hold=new Promise<void>(r=>release=r),ready=new Promise<void>(r=>entered=r)
   const writer=run(()=>prisma.$transaction(async tx=>{await decisions.decideAttendanceRequestInTransaction(tx,reviewer,request.id,{decision:"APPROVED",version:request.version,note:null});entered();await hold},{timeout:15000}));await ready
   const closing=run(()=>store.closeAttendanceMonth(reviewer,input)),rejected=expect(closing).rejects.toMatchObject({code:"MTM_ATTENDANCE_MONTH_CHANGED"});try{await waitForLock("pg_advisory_xact_lock")}finally{release()}await writer;await rejected

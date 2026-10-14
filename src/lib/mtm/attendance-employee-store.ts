@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto"
+import { ATTENDANCE_TRACKED_CARD_WHERE, attendanceTrackedCardSql, isAttendanceTrackedCard } from "@/lib/mtm/attendance-tracking"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { isValidTimezone, localDateTimeToUnambiguousUtc } from "@/lib/timezone"
@@ -47,7 +48,7 @@ export async function readAttendanceEmployees(actor: AttendanceReviewer): Promis
     const cards = await tx.mtmAgent.findMany({ where: { organizationId }, select: { id: true, name: true, userId: true, role: true, status: true, attendanceParticipant: true, attendanceExcluded: true, attendanceIncludedFrom: true, teamId: true, team: { select: { name: true } } }, orderBy: [{ name: "asc" }, { id: "asc" }], take: 1001 })
     const teams = await tx.mtmTeam.findMany({ where: { organizationId }, select: { id: true, name: true }, orderBy: [{ name: "asc" }, { id: "asc" }], take: 1001 })
     if (users.length > 1000 || cards.length > 1000 || teams.length > 1000) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_TOO_LARGE", 422)
-    const tracked = cards.filter(card => card.role === "AGENT" || card.attendanceParticipant)
+    const tracked = cards.filter(isAttendanceTrackedCard)
     const events = await history(tx, organizationId, tracked.map(card => card.id))
     const participation = await readAttendanceParticipationHistory(tx, organizationId, tracked.map(card => card.id))
     const latestParticipation = new Map(participation.map(event => [event.agentId, event.id]))
@@ -86,7 +87,7 @@ export async function setAttendanceParticipation(actor: AttendanceReviewer, raw:
     }
     const [card] = await tx.$queryRaw<Array<{ attendanceExcluded: boolean }>>`
       SELECT "attendanceExcluded" FROM mtm_agents WHERE "organizationId" = ${organizationId} AND id = ${input.agentId}
-        AND (role = 'AGENT' OR "attendanceParticipant") FOR UPDATE`
+        AND ${attendanceTrackedCardSql()} FOR UPDATE`
     if (!card) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_NOT_FOUND", 404)
     const [previous] = await tx.$queryRaw<Array<{ id: string }>>`SELECT id FROM mtm_attendance_participation_events
       WHERE "organizationId" = ${organizationId} AND "agentId" = ${input.agentId} ORDER BY "effectiveAt" DESC, id DESC LIMIT 1`
@@ -170,7 +171,7 @@ export async function recordAttendanceEmployment(actor: AttendanceReviewer, raw:
       return { eventId: receipt.entityId, idempotent: true }
     }
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`workforce-employment:${organizationId}:${input.agentId}`}))`
-    const card = await tx.mtmAgent.findFirst({ where: { organizationId, id: input.agentId, OR: [{ role: "AGENT" }, { attendanceParticipant: true }] }, select: { id: true } })
+    const card = await tx.mtmAgent.findFirst({ where: { organizationId, id: input.agentId, ...ATTENDANCE_TRACKED_CARD_WHERE }, select: { id: true } })
     if (!card) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_NOT_FOUND", 404)
     const previous = await history(tx, organizationId, [input.agentId])
     if ((previous.at(-1)?.id ?? null) !== input.previousEventId) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_HISTORY_CHANGED")

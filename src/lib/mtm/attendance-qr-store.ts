@@ -1,4 +1,4 @@
-import { isAttendanceEmployeeExcluded } from "@/lib/mtm/attendance-self-access"
+import { isAttendanceMarkExempt } from "@/lib/mtm/attendance-self-access"
 import { randomUUID } from "node:crypto"
 import type { Prisma } from "@prisma/client"
 import QRCode from "qrcode"
@@ -59,7 +59,7 @@ export async function issueAttendanceBranchQr(reviewer: AttendanceReviewer, raw:
 export async function recordAttendanceQr(tx: Tx, scope: { organizationId: string; agentId: string }, input: MtmWorkdayEventInput, eventId: string, finishingOnBreak = false) {
   if (!["START", "FINISH"].includes(input.action)) return
   const feature = await tx.mtmSetting.findUnique({ where: { organizationId_key: { organizationId: scope.organizationId, key: "attendanceEnabled" } }, select: { value: true } })
-  if (feature?.value !== true || await isAttendanceEmployeeExcluded(tx, scope)) return
+  if (feature?.value !== true || await isAttendanceMarkExempt(tx, scope)) return
   await lockAttendanceQrPolicy(tx, scope.organizationId)
   if (!await readAttendanceQrRule(tx, scope.organizationId)) return
   let state: AttendanceQrState = "NOT_PROVIDED", branchRevisionId: string | null = null, fingerprint: string | null = null

@@ -11,6 +11,10 @@ export async function requireAttendanceSelf(db: Prisma.TransactionClient, self: 
   if (!agentPermissionEnabled({ attendanceEnabled: values.find((value) => value.key === "attendanceEnabled")?.value === true }, permission)) {
     throw new AttendanceRequestError("MTM_ATTENDANCE_DISABLED", 404)
   }
+  // A field agent files leave and sick leave with HR, but its day is not HR
+  // attendance (owner, 2026-10-14): no attendance marks, location consent or
+  // phone approval. Its "Start day" is the field session, which never asks this.
+  if (self.role === "AGENT" && permission !== "attendanceRequests") throw new AttendanceRequestError("MTM_ATTENDANCE_SELF_REQUIRED", 403)
   const agent = await db.mtmAgent.findFirst({ where: { id: self.agentId, organizationId: self.organizationId, status: "ACTIVE", role: self.role as Prisma.MtmAgentWhereInput["role"] }, select: { id: true, role: true, attendanceParticipant: true, attendanceExcluded: true } })
   if (!agent || !mayUseAttendanceSelf(self.role, true, agent.attendanceParticipant === true, agent.attendanceExcluded === true)) throw new AttendanceRequestError("MTM_ATTENDANCE_SELF_REQUIRED", 403)
   const timezone = values.find((value) => value.key === "timezone")?.value ?? "Asia/Baku"
@@ -26,8 +30,14 @@ export async function lockAttendanceRequests(db: Prisma.TransactionClient, self:
 }
 
 /** Internal legacy-workday hooks already hold the employee/feature locks.
- * Exclusion affects attendance evidence only, never the field workday itself. */
-export async function isAttendanceEmployeeExcluded(db: Prisma.TransactionClient, self: Pick<AttendanceSelf, "organizationId" | "agentId">) {
-  const agent = await db.mtmAgent.findFirst({ where: { id: self.agentId, organizationId: self.organizationId }, select: { attendanceExcluded: true } })
-  return agent?.attendanceExcluded === true
+ * True when this card's day marks are outside HR attendance: an excluded
+ * employee, or a field agent whose day belongs to the field manager only
+ * (owner, 2026-10-14). Affects attendance evidence only — device approval, QR,
+ * location and mark checks — never the field workday itself. */
+export async function isAttendanceMarkExempt(db: Prisma.TransactionClient, self: Pick<AttendanceSelf, "organizationId" | "agentId">) {
+  const agent = await db.mtmAgent.findFirst({ where: { id: self.agentId, organizationId: self.organizationId }, select: { attendanceExcluded: true, role: true } })
+  return agent?.attendanceExcluded === true || agent?.role === "AGENT"
 }
+/** Former name. The non-UTC regression workflow swaps in a historical
+ * attendance-location-store.ts (BASELINE_SHA) that still imports it. */
+export const isAttendanceEmployeeExcluded = isAttendanceMarkExempt

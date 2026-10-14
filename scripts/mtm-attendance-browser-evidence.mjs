@@ -123,6 +123,8 @@ async function readyPage(path) {
   await page.locator('h1').first().waitFor({ timeout: 120000 })
   await poll(async () => !(await page.locator('[aria-busy="true"]').count()), 'Page still busy', 120000)
 }
+// Office staff auto-enrolled at activation; a field agent is not HR attendance.
+const rosterCard = name => fixture.admin.mtmAgent.findFirstOrThrow({ where: { organizationId: fixture.organization.id, name } })
 async function openTimesheetExtras() {
   await readyPage('timesheet')
   const extras = page.getByTestId('attendance-timesheet-extras')
@@ -302,9 +304,12 @@ try {
     await api('admin', '/request-limits', { method: 'PUT', body: { version: updated.version, monthlyMinutes: -1, monthlyRequests: 4 }, status: 400 })
   })
   await run('employee-participation', 'authenticated-http+database', async () => {
-    const before = await fixture.admin.mtmAgent.findUniqueOrThrow({ where: { id: fixture.agents.field.id } })
+    // Owner, 2026-10-14: a field agent's day is the field manager's, not HR
+    // attendance — it is not in the directory; office staff are.
+    const before = await fixture.admin.mtmAgent.findUniqueOrThrow({ where: { id: fixture.agents.manager.id } })
     const directory = await api('admin', '/employees')
-    assert.equal(directory.employees.length, 58)
+    assert.equal(directory.employees.length, 57)
+    assert.equal(directory.employees.some(row => row.id === fixture.agents.field.id), false)
     assert.ok(directory.employees.every(row => row.included))
     assert.ok(directory.employees.every(row => row.history.length === 0))
     const row = directory.employees.find(row => row.id === before.id)
@@ -316,8 +321,8 @@ try {
     const after = await fixture.admin.mtmAgent.findUniqueOrThrow({ where: { id: before.id } })
     assert.equal(after.attendanceExcluded, true)
     for (const key of ['role', 'teamId', 'userId', 'passwordHash', 'canPlanOwnRoutes', 'canSelfPublishRoutes']) assert.equal(after[key], before[key])
-    // Field operations remain usable; attendance-specific self requests deny.
-    await mobile('field', '/requests', { status: 403 })
+    // The field agent still files leave and sick leave with HR.
+    await mobile('field', '/requests')
     await request(mobiles.field, '/api/v1/mtm/mobile/bootstrap')
     await api('admin', '/employees/participation', { method: 'POST', body: { ...input, clientRequestId: randomUUID(), included: true, previousEventId: result.eventId } })
     assert.equal((await api('admin', '/employees')).employees.find(row => row.id === before.id).included, true)
@@ -394,7 +399,9 @@ try {
     assert.equal(report.rows.filter(row => input.agentIds.includes(row.employeeId) && row.kind === 'APPROVED_REQUEST').length, 2)
   })
   await run('installation-decisions', 'mobile-http+authenticated-http', async () => {
-    for (const [role, action] of [['employee', 'APPROVE'], ['field', 'REJECT']]) {
+    // A field agent's day is not HR attendance: no phone approval for it.
+    await mobile('field', '/installation', { method: 'POST', body: { requestId: randomUUID() }, status: 403 })
+    for (const [role, action] of [['employee', 'APPROVE'], ['employee', 'REJECT']]) {
       await mobile(role, '/installation', { method: 'POST', body: { requestId: randomUUID() } })
       const queue = await api('admin', '/installations?status=PENDING')
       const row = queue.items.find(item => item.employeeId === fixture.agents[role].id)
@@ -572,7 +579,7 @@ try {
     await page.getByTestId('employee-row').first().waitFor()
     assert.equal(await page.getByTestId('employee-row').count(), 25)
     await button('employeesNext').click(); await button('employeesPrevious').click()
-    await page.locator('#employee-search').fill(fixture.users.field.name)
+    await page.locator('#employee-search').fill('Fixture roster 00')
     const row = page.getByTestId('employee-row')
     assert.equal(await row.count(), 1)
     const toggle = row.getByRole('switch')
@@ -585,12 +592,12 @@ try {
     await row.waitFor()
     await clickResponse(row.getByRole('switch'), `${apiRoot}/employees/participation`)
     await page.locator('#employee-participation').selectOption('ALL')
-    await row.getByRole('button', { name: t('employeesHistoryNamed', { name: fixture.users.field.name }) }).click()
+    await row.getByRole('button', { name: t('employeesHistoryNamed', { name: 'Fixture roster 00' }) }).click()
     const history = page.getByTestId('employees-history')
     await history.waitFor()
     await button('employeesClose', history).click()
     assert.equal(await history.count(), 0)
-    assert.equal((await fixture.admin.mtmAgent.findUniqueOrThrow({ where: { id: fixture.agents.field.id } })).role, 'AGENT')
+    assert.equal((await rosterCard('Fixture roster 00')).role, 'EMPLOYEE')
     return { pagination: true, search: true, inclusionFilter: true, switchRoundTrip: true, historyOpenClose: true }
   })
   await run('browser-branch-create-edit-archive-cancel', 'browser-action+database-backed-http', async () => {
@@ -911,17 +918,17 @@ try {
   })
   await run('browser-employment-record', 'browser-action+database-backed-http', async () => {
     await readyPage('employees')
-    await page.locator('#employee-search').fill('Fixture field')
-    const row = page.getByTestId('employee-row').filter({ hasText: 'Fixture field' })
-    await row.getByRole('button', { name: t('employeesHistoryNamed', { name: 'Fixture field' }) }).click()
+    await page.locator('#employee-search').fill('Fixture roster 01')
+    const row = page.getByTestId('employee-row').filter({ hasText: 'Fixture roster 01' })
+    await row.getByRole('button', { name: t('employeesHistoryNamed', { name: 'Fixture roster 01' }) }).click()
     const history = page.getByTestId('employees-history')
     await page.locator('#employment-kind').selectOption('HIRE')
     await page.locator('#employment-date').fill(date(-90))
     await page.locator('#employment-reason').fill('Fictional documented employment date')
     await clickResponse(button('employeesSaveChange', history), `${apiRoot}/employees/history`)
-    await row.getByRole('button', { name: t('employeesHistoryNamed', { name: 'Fixture field' }) }).click()
+    await row.getByRole('button', { name: t('employeesHistoryNamed', { name: 'Fixture roster 01' }) }).click()
     await history.getByTestId('employment-event').waitFor()
-    assert.equal((await fixture.admin.mtmAgent.findUniqueOrThrow({ where: { id: fixture.agents.field.id } })).role, 'AGENT')
+    assert.equal((await rosterCard('Fixture roster 01')).role, 'EMPLOYEE')
     await button('employeesClose', history).click()
   })
   await run('browser-primary-branch-assignment', 'browser-action+database-backed-http', async () => {
@@ -971,8 +978,8 @@ try {
   await run('browser-month-preview-close-blockers', 'browser-action+synthetic-historical-facts', async () => {
     assert.ok(state.closedMonth)
     const month = state.closedMonth.month, workDate = `${month}-15`
-    for (const [role, completed] of [['manager', true], ['field', false]]) {
-      const agentId = fixture.agents[role].id
+    const blocked = await rosterCard('Fixture roster 02')
+    for (const [agentId, completed] of [[fixture.agents.manager.id, true], [blocked.id, false]]) {
       const workday = await fixture.admin.mtmAgentWorkday.create({ data: { organizationId: fixture.organization.id, agentId, workDate: new Date(`${workDate}T00:00:00Z`), status: completed ? 'COMPLETED' : 'STARTED', startedAt: new Date(`${workDate}T05:00:00Z`), completedAt: completed ? new Date(`${workDate}T14:00:00Z`) : null, totalPausedSeconds: 0 } })
       for (const type of completed ? ['START', 'FINISH'] : ['START']) {
         const occurredAt = type === 'START' ? workday.startedAt : workday.completedAt
@@ -987,9 +994,9 @@ try {
     await page.getByLabel(t('monthCloseConfirm')).check()
     const closed = await clickResponse(button('monthCloseAction'), `${apiRoot}/months`)
     assert.equal(closed.employeeCount, 1)
-    await page.getByRole('checkbox', { name: /Fixture field/ }).check()
-    const blocked = await clickResponse(button('monthClosePreview'), `${apiRoot}/months/preview`)
-    assert.ok(blocked.blockers.length)
+    await page.getByRole('checkbox', { name: /Fixture roster 02/ }).check()
+    const blockedPreview = await clickResponse(button('monthClosePreview'), `${apiRoot}/months/preview`)
+    assert.ok(blockedPreview.blockers.length)
     await page.getByText(t('monthCloseBlocked'), { exact: true }).waitFor()
     assert.equal(await button('monthCloseAction').count(), 0)
     return { completedEmployeeClosed: true, unfinishedWorkdayBlocksClose: true, historicalFacts: 'DB fixture, not phone claims' }

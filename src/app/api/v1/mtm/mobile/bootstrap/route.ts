@@ -396,6 +396,10 @@ export const GET = withMobileRls(async (req, auth) => {
     // workday projection.
     const attendanceSelf = routeFieldEnabled && mayUseAttendanceSelf(auth.role, settings.attendanceEnabled, agent.attendanceParticipant, agent.attendanceExcluded)
     const fieldSessionEnabled = routeFieldEnabled && (auth.role === "AGENT" || attendanceSelf)
+    // A field agent keeps HR requests (leave, sick leave) but its day is not an
+    // HR attendance mark (owner, 2026-10-14): no mark envelope, location
+    // consent, phone approval or branch QR. Its "Start day" is the field session above.
+    const attendanceMarks = attendanceSelf && auth.role !== "AGENT"
     const workday = fieldSessionEnabled || (workforceEnabled && hasMobilePermission(auth.role, "WORKTIME_SELF_READ"))
       ? await prisma.mtmAgentWorkday.findFirst({
           where: {
@@ -493,10 +497,10 @@ export const GET = withMobileRls(async (req, auth) => {
           // then answers MTM_AGENT_PERMISSION_DISABLED.
           agentPermissions: {
             ...agentPermissionStates(settings),
-            ...(settings.attendanceEnabled ? { attendanceRequests: attendanceSelf, attendanceWorkday: attendanceSelf, attendanceLocation: attendanceSelf, attendanceInstallation: attendanceSelf, ...(settings.attendanceBranchQrEnabled === true ? { attendanceBranchQr: attendanceSelf } : {}) } : {}),
+            ...(settings.attendanceEnabled ? { attendanceRequests: attendanceSelf, attendanceWorkday: attendanceMarks, attendanceLocation: attendanceMarks, attendanceInstallation: attendanceMarks, ...(settings.attendanceBranchQrEnabled === true ? { attendanceBranchQr: attendanceMarks } : {}) } : {}),
           },
-          ...(attendanceSelf ? { attendanceMarkVersion: 1 } : {}),
-          ...(attendanceSelf && settings.attendanceBranchQrEnabled === true ? { attendanceBranchQrVersion: 1 } : {}),
+          ...(attendanceMarks ? { attendanceMarkVersion: 1 } : {}),
+          ...(attendanceMarks && settings.attendanceBranchQrEnabled === true ? { attendanceBranchQrVersion: 1 } : {}),
           // This server lets an employee return to the workday they closed
           // earlier today (POST …/route-field/workday-return). Not a switch —
           // the owner removed the restriction for everyone on 2026-10-13 — but

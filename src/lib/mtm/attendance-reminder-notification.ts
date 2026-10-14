@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client"
+import { attendanceTrackedCardSql } from "@/lib/mtm/attendance-tracking"
 import { prisma } from "@/lib/prisma"
 import { ATTENDANCE_REMINDER_ENTITY } from "@/lib/mtm/attendance-reminder-contract"
 import { readAttendanceReminderPolicy } from "@/lib/mtm/attendance-reminder-policy"
@@ -9,7 +10,7 @@ export function attendanceReminderMobilePredicate(organizationId: string, agentI
   return Prisma.sql`(("metadata"->>'attendanceReminderId') IS NULL OR (
     EXISTS(SELECT 1 FROM mtm_settings s WHERE s."organizationId"=${organizationId} AND s.key='attendanceEnabled' AND s.value='true'::jsonb)
     AND EXISTS(SELECT 1 FROM mtm_settings s WHERE s."organizationId"=${organizationId} AND s.key='attendanceEmployeeRemindersEnabled' AND s.value='true'::jsonb)
-    AND EXISTS(SELECT 1 FROM mtm_agents a WHERE a."organizationId"=${organizationId} AND a.id=${agentId} AND a.status='ACTIVE' AND NOT a."attendanceExcluded" AND (a.role='AGENT' OR a."attendanceParticipant"))
+    AND EXISTS(SELECT 1 FROM mtm_agents a WHERE a."organizationId"=${organizationId} AND a.id=${agentId} AND a.status='ACTIVE' AND NOT a."attendanceExcluded" AND ${attendanceTrackedCardSql("a")})
   ))`
 }
 export async function attendanceReminderWebFilter(organizationId: string, userId: string): Promise<Prisma.NotificationWhereInput> {
@@ -23,7 +24,7 @@ export async function attendanceReminderWebFilter(organizationId: string, userId
         const rows = await prisma.$queryRaw<{ id: string }[]>`SELECT n.id FROM mtm_attendance_reminder_notices n
           JOIN mtm_agents a ON a."organizationId"=n."organizationId" AND a.id=n."agentId"
           WHERE n."organizationId"=${organizationId} AND n."recipientUserId"=${userId}
-            AND a.status='ACTIVE' AND NOT a."attendanceExcluded" AND (a.role='AGENT' OR a."attendanceParticipant")
+            AND a.status='ACTIVE' AND NOT a."attendanceExcluded" AND ${attendanceTrackedCardSql("a")}
             AND (a."userId" IS NULL OR a."userId"<>${userId})
             AND (${scope === null} OR n."agentId"=ANY(${scope === null ? [] : [...scope]}::text[]))
           ORDER BY n."createdAt" DESC,n.id DESC LIMIT 10000`

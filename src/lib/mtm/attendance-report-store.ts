@@ -1,4 +1,5 @@
 import { readAttendanceParticipationHistory } from "@/lib/mtm/attendance-participation-store"
+import { ATTENDANCE_TRACKED_CARD_WHERE } from "@/lib/mtm/attendance-tracking"
 import { attendanceAccountingRows } from "@/lib/mtm/attendance-shift-plan"
 import { readAttendanceShiftAssignments } from "@/lib/mtm/attendance-shift-store"
 import { addDateKeyDays } from "@/lib/mtm/mobile-week"
@@ -55,7 +56,7 @@ export async function readAttendanceProjectionInTransaction(tx: Prisma.Transacti
   const days = Math.round((to.getTime() - from.getTime()) / 86_400_000) + 1
     const employees = await tx.mtmAgent.findMany({
       where: {
-        organizationId, OR: [{ role: "AGENT" }, { attendanceParticipant: true }],
+        organizationId, ...ATTENDANCE_TRACKED_CARD_WHERE,
         ...(authorizedEmployeeIds === null ? {} : { id: { in: [...authorizedEmployeeIds] } }),
         ...(query.employeeId ? { AND: { id: query.employeeId } } : {}),
         ...(query.teamId ? { teamId: query.teamId } : {}),
