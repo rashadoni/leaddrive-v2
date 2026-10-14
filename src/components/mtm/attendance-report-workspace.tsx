@@ -374,6 +374,8 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
     const legend = [...new Map(rows.flatMap(row => row.dayKind ? [[row.dayKind.key, row.dayKind] as const] : [])).values()]
     const chip = (active: boolean) => `inline-flex min-h-10 items-center gap-1.5 rounded-full border px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${active ? "border-primary bg-primary/10 text-primary" : "border-border bg-card text-foreground hover:bg-muted"}`
     const chooseIssue = (next: TimesheetIssue | null) => { setIssue(next); setPage(0) }
+    // A saved form replaces the month grid until it is closed.
+    const closeCustomView = () => { setCustomView(null); setForm("MONTH"); setPage(0); void load(monthRange((range.from || today || "").slice(0, 7))) }
     const shortTime = (at: string | null, timezone: string) => at ? formatTime(at, locale, { timeZone: timezone, hour: "2-digit", minute: "2-digit" }) : "—"
     return <section aria-label={t("reportTitle")} className="space-y-5" data-testid="attendance-timesheet">
       <header className="flex flex-wrap items-center justify-between gap-3">
@@ -397,9 +399,11 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
         </div>
       </header>
       <div className="flex flex-wrap items-center gap-2" role="group" aria-label={p("filterLabel")} data-testid="attendance-timesheet-filters">
+        {customView ? <span className="inline-flex min-h-10 items-center gap-2 rounded-full bg-primary/10 px-4 text-sm font-medium text-primary" data-testid="attendance-timesheet-custom-chip">{t("viewsActive", { name: customView.name })}
+          <button type="button" className="rounded-full p-0.5 hover:bg-primary/15" aria-label={p("backToMonth")} onClick={closeCustomView}><X className="h-3.5 w-3.5" aria-hidden="true" /></button></span> : <>
         <button type="button" className={chip(issue === null)} aria-pressed={issue === null} onClick={() => chooseIssue(null)}>{p("filterAll")} <span className="tabular-nums">· {monthEmployees.length}</span></button>
         {TIMESHEET_ISSUES.map(kind => <button key={kind} type="button" data-testid={`attendance-filter-${kind}`} className={chip(issue === kind)} aria-pressed={issue === kind} disabled={!report}
-          onClick={() => chooseIssue(issue === kind ? null : kind)}>{p(ISSUE_LABELS[kind])} <span className="tabular-nums">· {counts[kind]}</span></button>)}
+          onClick={() => chooseIssue(issue === kind ? null : kind)}>{p(ISSUE_LABELS[kind])} <span className="tabular-nums">· {counts[kind]}</span></button>)}</>}
         <span className="flex-1" />
         <label className="relative"><span className="sr-only">{p("searchEmployee")}</span><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <Input type="search" className="min-h-10 w-56 pl-9" placeholder={p("searchEmployee")} value={search} onChange={event => { setSearch(event.target.value); setPage(0) }} /></label>
@@ -408,7 +412,7 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
         {employeeId ? <span className="inline-flex min-h-10 items-center gap-2 rounded-full bg-primary/10 px-3 text-sm font-medium text-primary">{p("onlyEmployee", { name: pinned?.name ?? t("viewsUnavailableEmployee") })}
           <button type="button" className="rounded-full p-0.5 hover:bg-primary/15" aria-label={p("showEveryone")} onClick={() => changeScope(teamId, "")}><X className="h-3.5 w-3.5" aria-hidden="true" /></button></span> : null}
       </div>
-      <div className="space-y-4 rounded-2xl border bg-card p-3" data-testid="attendance-timesheet-month">
+      {customView ? <div className="rounded-2xl border bg-card px-5" data-testid="attendance-timesheet-custom">{results}</div> : <div className="space-y-4 rounded-2xl border bg-card p-3" data-testid="attendance-timesheet-month">
         {loading ? <p role="status" className="p-2 text-sm text-muted-foreground">{t("reportLoading")}</p> : null}
         {error ? <div className="space-y-3 p-2"><p role="alert" className="text-sm text-destructive">{error}</p><Button type="button" variant="outline" className="min-h-11" onClick={() => void load(today ? range : undefined)}>{t("reportReload")}</Button></div> : null}
         {report && !people.length ? <p className="rounded-xl bg-muted/50 px-4 py-5 text-sm text-muted-foreground">{issue ? p("filterEmpty") : t("reportEmpty")}</p> : null}
@@ -463,8 +467,8 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
         </table></div> : null}
         {report && people.length > PAGE_SIZE ? <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground"><Button type="button" variant="outline" className="min-h-10" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>{t("reportPrevious")}</Button>
           <span>{t("reportPage", { current: currentPage + 1, total: Math.ceil(people.length / PAGE_SIZE) })}</span><Button type="button" variant="outline" className="min-h-10" disabled={pageStart + PAGE_SIZE >= people.length} onClick={() => setPage(currentPage + 1)}>{t("reportNext")}</Button></div> : null}
-      </div>
-      {legend.length ? <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground" aria-label={t("reportLegend")}>
+      </div>}
+      {!customView && legend.length ? <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground" aria-label={t("reportLegend")}>
         {legend.map(kind => <span key={kind.key} className="inline-flex items-center gap-1.5"><span className="inline-flex h-5 min-w-6 items-center justify-center rounded px-1 text-[10.5px] font-bold" style={{ color: kind.color, backgroundColor: `${kind.color}1a` }}>{kind.code}</span>{attendanceDayKindLabel(kind, locale)}</span>)}
         <span className="ml-auto">{p("cellHint")}</span>
       </div> : null}

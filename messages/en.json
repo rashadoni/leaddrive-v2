@@ -28158,6 +28158,7 @@
     "openEnded": "No recorded end date",
     "predecessor": "Projected previous-version change",
     "close": "{name} · version {version} would end on {date}.",
+    "backToMonth": "Back to the month",
     "noPredecessor": "No published version is recorded in this scope.",
     "recorded": "Recorded published windows ({count})",
     "record": "{name} · version {version}: {from} — {to}",

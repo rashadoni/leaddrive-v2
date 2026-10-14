@@ -29,8 +29,10 @@ const fetchMock = vi.fn<typeof fetch>(async input => {
   const url = new URL(String(input), "https://crm.test")
   if (url.pathname === "/api/v1/mtm/attendance/rules") return json({ success: true, data: { today: "2026-10-14", canManageRules: true } })
   if (url.pathname === "/api/v1/mtm/attendance/report") return json({ success: true, data: reportFor(url.searchParams.get("from")!, url.searchParams.get("to")!) })
+  if (url.pathname === "/api/v1/mtm/attendance/views") return json({ success: true, data: savedViews })
   return json({ success: true, data: { items: [], views: [], schedules: [] } })
 })
+let savedViews: unknown[] = []
 let container: HTMLDivElement, root: Root
 async function render(props: Parameters<typeof MtmAttendanceReportWorkspace>[0]) {
   await act(async () => root.render(createElement(NextIntlClientProvider, { locale: "ru", timeZone: "Asia/Baku", messages: ru },
@@ -39,7 +41,7 @@ async function render(props: Parameters<typeof MtmAttendanceReportWorkspace>[0])
 }
 const reportCalls = () => fetchMock.mock.calls.map(([url]) => new URL(String(url), "https://crm.test")).filter(url => url.pathname.endsWith("/report"))
 
-beforeEach(() => { container = document.createElement("div"); document.body.append(container); root = createRoot(container); fetchMock.mockClear(); vi.stubGlobal("fetch", fetchMock) })
+beforeEach(() => { savedViews = []; container = document.createElement("div"); document.body.append(container); root = createRoot(container); fetchMock.mockClear(); vi.stubGlobal("fetch", fetchMock) })
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); document.body.innerHTML = ""; vi.unstubAllGlobals() })
 
 describe("Personnel → Timesheet month", () => {
@@ -125,6 +127,32 @@ describe("Personnel → Timesheet month", () => {
     expect(reportCalls().at(-1)?.searchParams.get("to")).toBe("2026-09-30")
   })
 
+})
+
+describe("Timesheet saved forms", () => {
+  it("open from More, replace the month with the form's table, and close back to the month", async () => {
+    savedViews = [{ id: "v1", name: "Моя форма", version: "2026-10-14T08:00:00.000Z",
+      config: { version: 1, mode: "DAY", columns: ["employee", "date", "status", "worked"], showTotals: true, filters: { from: "2026-10-13", to: "2026-10-13", form: "ALL" } } }]
+    await render({ layout: "timesheet", initialForm: "MONTH" })
+    const more = container.querySelector<HTMLButtonElement>('[data-testid="attendance-timesheet-more"]')!
+    await act(async () => { more.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })) })
+    const item = Array.from(document.querySelectorAll<HTMLElement>('[role="menuitem"]')).find(node => node.textContent === p("customFormAndDelivery"))!
+    await act(async () => item.click())
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+    const open = Array.from(container.querySelectorAll<HTMLButtonElement>('[data-testid="attendance-personal-view"] button')).find(button => button.getAttribute("aria-label")?.includes("Моя форма") && button.textContent === ru.mtmAttendance.viewsOpen)!
+    await act(async () => open.click())
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+    expect(reportCalls().at(-1)?.searchParams.get("from")).toBe("2026-10-13")
+    expect(container.querySelector('[data-testid="attendance-custom-table"]')).not.toBeNull()
+    expect(container.querySelector('[data-testid="attendance-month-grid"]')).toBeNull()
+    const chip = container.querySelector<HTMLElement>('[data-testid="attendance-timesheet-custom-chip"]')!
+    expect(chip.textContent).toContain("Моя форма")
+    await act(async () => chip.querySelector("button")!.click())
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+    expect(reportCalls().at(-1)?.searchParams.get("from")).toBe("2026-10-01")
+    expect(container.querySelector('[data-testid="attendance-month-grid"]')).not.toBeNull()
+    expect(container.querySelector('[data-testid="attendance-custom-table"]')).toBeNull()
+  })
 })
 
 describe("Timesheet in Azerbaijani", () => {

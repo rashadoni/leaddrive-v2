@@ -28154,6 +28154,7 @@
     "openEnded": "Bitmə tarixi qeyd edilməyib",
     "predecessor": "Əvvəlki versiyanın təklif edilən dəyişməsi",
     "close": "{name} · versiya {version} üçün bitmə tarixi {date} olardı.",
+    "backToMonth": "Aya qayıt",
     "noPredecessor": "Bu əhatə dairəsində dərc edilmiş versiya qeyd edilməyib.",
     "recorded": "Saxlanmış dərc edilmiş pəncərələr ({count})",
     "record": "{name} · versiya {version}: {from} — {to}",
