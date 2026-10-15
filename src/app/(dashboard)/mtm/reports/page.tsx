@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint, HintValue } from "@/components/hint"
 import { useCallback, useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import { toast } from "sonner"
@@ -24,6 +25,12 @@ interface SummaryItem { labelKey: string; value: number | string; kind: string }
 
 export default function MtmReportsPage() {
   const t = useTranslations("mtmReports")
+  // What a summary figure counts depends on the report: «Всего» is visits in
+  // one and routes in another, so the hint is keyed by both.
+  const summaryHint = (labelKey: string) => {
+    const key = `hint.${selected}_${labelKey.replace(/^sum\./, "")}`
+    return selected && t.has(key) ? t(key) : undefined
+  }
   const locale = useLocale()
   const { data: session } = useSession()
   const orgId = session?.user?.organizationId
@@ -123,14 +130,16 @@ export default function MtmReportsPage() {
         </div>
         <div className="flex gap-2 flex-wrap">
           {PERIODS.map(p => (
-            <Button key={p} variant={period === p ? "default" : "outline"} size="sm" onClick={() => setPeriod(p)}>
+            <Hint key={p} text={t("hint.period")}><Button variant={period === p ? "default" : "outline"} size="sm" onClick={() => setPeriod(p)}>
               {t(PERIOD_KEY[p])}
-            </Button>
+            </Button></Hint>
           ))}
           {selected && (
-            <Button variant="outline" size="sm" onClick={exportReport}>
-              <Download className="h-4 w-4 mr-1" /> {t("export")}
-            </Button>
+            <Hint text={t(MANAGEMENT_REPORT_TYPES.includes(selected) ? "hint.exportFull" : "hint.exportLoaded")}>
+              <Button variant="outline" size="sm" onClick={exportReport}>
+                <Download className="h-4 w-4 mr-1" /> {t("export")}
+              </Button>
+            </Hint>
           )}
         </div>
       </div>
@@ -149,7 +158,7 @@ export default function MtmReportsPage() {
                     <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${def.iconClass}`}>
                       <Icon className="h-5 w-5" />
                     </div>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{t("records", { count: counts[rt] ?? 0 })}</span>
+                    <HintValue className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground" text={t(rt === "agent" ? "hint.recordsAgent" : "hint.recordsOther")}>{t("records", { count: counts[rt] ?? 0 })}</HintValue>
                   </div>
                   <h3 className="font-semibold mt-3">{t(`type_${rt}`)}</h3>
                   <p className="text-sm text-muted-foreground mt-1 flex-1">{t(`type_${rt}_desc`)}</p>
@@ -180,7 +189,8 @@ export default function MtmReportsPage() {
               {summary.length > 0 && (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 stagger-children">
                   {summary.map((s, i) => (
-                    <ColorStatCard key={i} label={t(s.labelKey)} value={fmt(s)} animate={s.kind !== "text"} icon={<FileText className="h-4 w-4" />} />
+                    <ColorStatCard key={i} label={t(s.labelKey)} value={fmt(s)} animate={s.kind !== "text"} icon={<FileText className="h-4 w-4" />}
+                      hint={summaryHint(s.labelKey)} />
                   ))}
                 </div>
               )}

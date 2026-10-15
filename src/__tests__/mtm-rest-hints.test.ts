@@ -54,3 +54,28 @@ describe.each([
     expect(Object.keys(at(path, "ru")).filter((key) => !keys.has(key))).toEqual([])
   })
 })
+
+describe("the hints of the reports", () => {
+  const page = readFileSync("src/app/(dashboard)/mtm/reports/page.tsx", "utf8")
+  const apis = ["src/app/api/v1/mtm/reports/route.ts", "src/app/api/v1/mtm/management-reports/route.ts"].map((file) => readFileSync(file, "utf8")).join("\n")
+  const produced = new Set([...apis.matchAll(/labelKey: "sum\.(\w+)"/g)].map((match) => match[1]))
+  const REPORTS = ["agent", "visit", "photo", "route_execution", "action_compliance", "promises", "sales"]
+
+  it("name, for every summary figure, the report it belongs to — each in three languages", () => {
+    const [r, a, e] = ["ru", "az", "en"].map((locale) => at("mtmReports.hint", locale))
+    for (const key of Object.keys(r)) {
+      if (["period", "exportFull", "exportLoaded", "recordsAgent", "recordsOther"].includes(key)) {
+        expect(page, key).toContain(`"hint.${key}"`)
+      } else {
+        const report = REPORTS.find((name) => key.startsWith(`${name}_`))
+        expect(report, key).toBeDefined()
+        // The figure is one the server really sends.
+        expect(produced.has(key.slice(report!.length + 1)), key).toBe(true)
+      }
+      expect(typeof a[key] === "string" && a[key].length > 8, `az.${key}`).toBe(true)
+      expect(typeof e[key] === "string" && e[key].length > 8, `en.${key}`).toBe(true)
+    }
+    // And the page asks for them by the report on screen.
+    expect(page).toContain("const key = `hint.${selected}_${labelKey.replace(/^sum\\./, \"\")}`")
+  })
+})
