@@ -365,6 +365,7 @@ export const navItems: NavItem[] = [
   { tenantCapability: "personnel", href: "/mtm/attendance", icon: Clock, tKey: "personnelToday", group: "Personnel", orgSetting: "attendanceEnabled" },
   { tenantCapability: "personnel", href: "/mtm/attendance/timesheet", icon: FileSpreadsheet, tKey: "personnelTimesheet", group: "Personnel", orgSetting: "attendanceEnabled" },
   { tenantCapability: "personnel", href: "/mtm/attendance/people", icon: Users, tKey: "personnelPeople", group: "Personnel", orgSetting: "attendanceEnabled" },
+  { tenantCapability: "personnel", href: "/mtm/attendance/reports", icon: BarChart3, tKey: "personnelReports", group: "Personnel", orgSetting: "attendanceEnabled" },
   { tenantCapability: "personnel", href: "/mtm/attendance/settings", icon: Settings, tKey: "personnelSettings", group: "Personnel", orgSetting: "attendanceEnabled", orgSettingAdminBypass: true },
   // Workforce is a first-class capability, not a Route & Field child. It has
   // no `module` on purpose: a tenant can run timekeeping with no routes.
