@@ -19490,6 +19490,7 @@
     "hrRecordingTitle": "Record a day type",
     "hrRecordingCard": "HR record",
     "hrRecordingIntro": "Choose an employee or department, a period and a reason. The record appears immediately in the timesheet and employee history.",
+    "hrRecordingNotSelf": "Your own days are not in the list: another manager or administrator records them.",
     "hrRecordingBack": "Back to requests and decisions",
     "hrRecordingFor": "Record for",
     "hrRecordingEmployee": "Employee",
