@@ -44,7 +44,8 @@ export interface HintProps {
 
 export function Hint({ text, children, side = "bottom", align = "center", wrap = false }: HintProps) {
   const [open, setOpen] = React.useState(false)
-  const triggerRef = React.useRef<HTMLElement>(null)
+  // Radix types its trigger as a button; the element may as well be a link or a span.
+  const triggerRef = React.useRef<HTMLButtonElement>(null)
   // Where the bubble is drawn. Inside the dashboard's own frame, so it speaks
   // in the dashboard's font like the rest of the screen (in <body> it fell
   // back to the browser's). And the live map can go full screen: only the
