@@ -72,13 +72,15 @@ beforeEach(() => {
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals(); window.history.replaceState(null, "", "/") })
 
 describe("the attendance outside-branch rule on Company settings", () => {
-  it.each(locales)("renders %s off by default, immediately after attendance, preserving every company section", async language => {
+  it.each(locales)("renders %s off by default, right after the module switches, preserving every company section", async language => {
     await render(language)
     expect(container.querySelector<HTMLElement>("#mtm-settings-panel-company")?.hidden).toBe(false)
     expect(control().getAttribute("aria-checked")).toBe("false")
     expect(control().getAttribute("aria-label")).toBe(t("lblAttendanceRejectOutsideBranch"))
     expect(row().textContent).toContain(t("hintAttendanceRejectOutsideBranch"))
-    expect(row().previousElementSibling?.getAttribute("data-setting-row")).toBe("attendanceEnabled")
+    // The attendance switch itself moved to Personnel → Settings (2026-10-15).
+    expect(row().previousElementSibling?.getAttribute("data-setting-row")).toBe("pharmacyPromotionsEnabled")
+    expect(row("attendanceEnabled")).toBeNull()
     expect(Array.from(container.querySelectorAll('#mtm-settings-panel-company [data-settings-group]')).map(element => element.getAttribute("data-settings-group"))).toEqual(["groupScheduling", "groupSupport", "groupModules", "groupAgentCapabilities", "groupAttendanceReminders", "groupAttendanceRisk"])
     expect(container.querySelectorAll('[role="tab"]')).toHaveLength(6)
     expect(row().textContent).not.toContain("mtmSettingsPage.")
@@ -95,13 +97,15 @@ describe("the attendance outside-branch rule on Company settings", () => {
     viewer.role = "manager"; await render(); expect(control().disabled).toBe(true)
     expect(row().textContent).toContain(t("adminOnlyNote")); await click(); expect(writes).toHaveLength(0); expect(saveBar().hidden).toBe(true)
   })
-  it("supports enabling attendance and its outside rule in one save", async () => {
-    stored.attendanceEnabled = false; await render(); expect(row()).toBeNull(); await click("attendanceEnabled"); await click(); await save()
-    expect(writes).toEqual([{ attendanceEnabled: true, [KEY]: true }]); expect(control().getAttribute("aria-checked")).toBe("true")
+  it("offers no attendance switch here: it is turned on in Personnel → Settings", async () => {
+    stored.attendanceEnabled = false; await render()
+    expect(row()).toBeNull(); expect(row("attendanceEnabled")).toBeNull(); expect(writes).toHaveLength(0)
   })
-  it("keeps the rule's stored value while attendance is hidden, with no accidental reset", async () => {
-    stored[KEY] = true; await render(); await click("attendanceEnabled"); expect(row()).toBeNull(); await save()
-    expect(writes).toEqual([{ attendanceEnabled: false }]); await click("attendanceEnabled"); expect(control().getAttribute("aria-checked")).toBe("true")
+  it("keeps the rule's stored value while attendance is off, with no accidental reset", async () => {
+    stored[KEY] = true; stored.attendanceEnabled = false; await render(); expect(row()).toBeNull()
+    expect(writes).toEqual([]); stored.attendanceEnabled = true
+    await act(async () => root.unmount()); root = createRoot(container); await render()
+    expect(control().getAttribute("aria-checked")).toBe("true")
   })
   it("preserves the unsaved draft after a denied save without reporting success or exposing server details", async () => {
     await render(); await click(); refuse = true; await save()
@@ -157,14 +161,15 @@ describe("attendance risk policy settings", () => {
     await save(); expect(writes).toHaveLength(0); expect(stored[CLOCK]).toBe(300)
     await setThreshold("30"); await save(); expect(writes).toEqual([{ [CLOCK]: 30 }])
   })
-  it("enables attendance and the rules in the same save", async () => {
-    stored.attendanceEnabled = false; await render(); await click("attendanceEnabled"); await click(MOCK); await setThreshold("86400"); await save()
-    expect(writes).toEqual([{ attendanceEnabled: true, [MOCK]: true, [CLOCK]: 86400 }])
+  it("saves the strictest threshold alone", async () => {
+    await render(); await click(MOCK); await setThreshold("86400"); await save()
+    expect(writes).toEqual([{ [MOCK]: true, [CLOCK]: 86400 }])
   })
-  it("keeps existing rules when attendance is switched off and drops only a hidden invalid draft", async () => {
-    stored[SHARED] = true; stored[MOCK] = true; stored[CLOCK] = 600; await render(); await setThreshold(""); await click("attendanceEnabled")
-    expect(row(CLOCK)).toBeNull(); await save(); expect(writes).toEqual([{ attendanceEnabled: false }])
-    await click("attendanceEnabled"); expect(numberControl().value).toBe("600")
+  it("keeps existing rules while attendance is off and shows them again when it is on", async () => {
+    stored[SHARED] = true; stored[MOCK] = true; stored[CLOCK] = 600; stored.attendanceEnabled = false; await render()
+    expect(row(CLOCK)).toBeNull(); expect(writes).toEqual([]); stored.attendanceEnabled = true
+    await act(async () => root.unmount()); root = createRoot(container); await render()
+    expect(numberControl().value).toBe("600")
     expect(control(SHARED).getAttribute("aria-checked")).toBe("true"); expect(control(MOCK).getAttribute("aria-checked")).toBe("true")
   })
   it("retains an unsaved policy after a denied save and retries without writing unrelated fields", async () => {

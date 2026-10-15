@@ -28386,6 +28386,14 @@
     "dayMarks": "Marks that day",
     "cellHint": "Click a cell to open the day",
     "close": "Close",
-    "backToMonth": "Back to the month"
+    "backToMonth": "Back to the month",
+    "featureOn": "Workday attendance is on",
+    "featureOff": "Workday attendance is off",
+    "featureOffHint": "Turn it on so employees mark arrival and departure in the app and HR sees the timesheet and requests. Only an administrator can turn it on or off.",
+    "featureEnable": "Turn attendance on",
+    "featureDisable": "Turn off",
+    "featureDisableConfirm": "The Personnel section disappears for everyone; arrival marks and reminders stop. All data is kept and comes back when attendance is turned on again.",
+    "featureDisableAction": "Turn attendance off",
+    "featureSaveError": "Couldn't save. Try again."
   }
 }

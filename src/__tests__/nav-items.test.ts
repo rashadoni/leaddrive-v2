@@ -227,7 +227,7 @@ describe("Personnel sidebar", () => {
     expect(accessibleNavItems(context(role, true)).some(item => item.group === "Route & Field" && item.href.startsWith("/mtm/attendance"))).toBe(false)
   })
 
-  it.each(["admin", "superadmin", "manager", "support"])("hides the entire section until opt-in is known for %s", role => {
+  it.each(["manager", "support"])("hides the entire section until opt-in is known for %s", role => {
     for (const enabled of [undefined, false]) {
       const org = context(role, enabled)
       expect(personnelItems(org)).toEqual([])
@@ -236,6 +236,16 @@ describe("Personnel sidebar", () => {
       // The attendance toggle must not remove the tenant's ordinary field work.
       expect(accessibleNavItems(org).some(item => item.href === "/mtm/routes")).toBe(true)
     }
+  })
+
+  it.each(["admin", "superadmin"])("leaves %s only Settings while attendance is off: the switch lives there", role => {
+    for (const enabled of [undefined, false]) {
+      const org = context(role, enabled)
+      expect(personnelItems(org).map(item => item.href)).toEqual(["/mtm/attendance/settings"])
+      expect(accessibleNavItems(org).some(item => item.href === "/mtm/routes")).toBe(true)
+    }
+    // Without the Personnel capability there is no switch to reach.
+    expect(personnelItems({ ...context(role, false), modules: { "route-field": true, personnel: false } })).toEqual([])
   })
 
   it.each(["admin", "superadmin"])("needs its own Personnel capability, not Route & Field, for %s", role => {

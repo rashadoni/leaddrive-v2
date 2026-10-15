@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server"
+import type { ReactElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -43,6 +44,7 @@ import { visibleMtmToolGroups } from "@/lib/mtm/navigation"
 import { GET as readAttendance } from "@/app/api/v1/mtm/attendance/route"
 import { PUT as updateSettings } from "@/app/api/v1/mtm/settings/route"
 import AttendanceLayout from "@/app/(dashboard)/mtm/attendance/layout"
+import { MtmAttendanceFeatureSwitch } from "@/components/mtm/attendance-feature-switch"
 
 const ORG = "attendance-test-org"
 const USER = "attendance-test-user"
@@ -173,7 +175,17 @@ describe("attendance API and server page guards", () => {
   })
 
   it("does not render the nested page for a disabled organization", async () => {
+    caller("manager", MANAGER)
     await expect(AttendanceLayout({ children: "private attendance content" })).rejects.toThrow("NEXT_NOT_FOUND")
+    expect(resolveMtmRouteActor).not.toHaveBeenCalled()
+  })
+
+  it("shows an administrator of a disabled organization only the switch, never the nested page", async () => {
+    // The switch lives in Personnel → Settings only (2026-10-15): with attendance
+    // off the section must stay reachable to the one person who can turn it on.
+    const content = await AttendanceLayout({ children: "private attendance content" }) as ReactElement<{ enabled: boolean; canChange: boolean }>
+    expect(content.type).toBe(MtmAttendanceFeatureSwitch)
+    expect(content.props).toEqual({ enabled: false, canChange: true })
     expect(resolveMtmRouteActor).not.toHaveBeenCalled()
   })
 

@@ -103,6 +103,8 @@ export interface NavItem {
    * `accessibleNavItems` (menus) applies it. Unknown = shown.
    */
   orgSetting?: NavOrgSettingKey
+  /** An administrator sees the item even with `orgSetting` off: it holds that switch. */
+  orgSettingAdminBypass?: true
 }
 
 /** MTM menu switches. Legacy surfaces default on; attendance defaults off. */
@@ -363,7 +365,7 @@ export const navItems: NavItem[] = [
   { tenantCapability: "personnel", href: "/mtm/attendance", icon: Clock, tKey: "personnelToday", group: "Personnel", orgSetting: "attendanceEnabled" },
   { tenantCapability: "personnel", href: "/mtm/attendance/timesheet", icon: FileSpreadsheet, tKey: "personnelTimesheet", group: "Personnel", orgSetting: "attendanceEnabled" },
   { tenantCapability: "personnel", href: "/mtm/attendance/people", icon: Users, tKey: "personnelPeople", group: "Personnel", orgSetting: "attendanceEnabled" },
-  { tenantCapability: "personnel", href: "/mtm/attendance/settings", icon: Settings, tKey: "personnelSettings", group: "Personnel", orgSetting: "attendanceEnabled" },
+  { tenantCapability: "personnel", href: "/mtm/attendance/settings", icon: Settings, tKey: "personnelSettings", group: "Personnel", orgSetting: "attendanceEnabled", orgSettingAdminBypass: true },
   // Workforce is a first-class capability, not a Route & Field child. It has
   // no `module` on purpose: a tenant can run timekeeping with no routes.
   { href: "/workforce", icon: Clock, tKey: "workforceToday", group: "HRM", capability: "workforce-hrm", permissionScope: "workforce" },
@@ -564,6 +566,7 @@ export function isNavItemEnabled(
 
 /** Attendance stays hidden until opt-in is known; legacy menu behavior is retained. */
 export function isNavItemOrgSettingEnabled(org: OrgNavContext, item: NavItem): boolean {
+  if (item.orgSettingAdminBypass && (org.role === "admin" || org.role === "superadmin")) return true
   return !item.orgSetting || isNavOrgSettingOn(item.orgSetting, org.orgSettings?.[item.orgSetting])
 }
 

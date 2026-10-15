@@ -262,22 +262,9 @@ export default function MtmSettingsPage() {
     }
   }, [dirty])
 
+  // The attendance switch itself lives in Personnel → Settings (2026-10-15).
   const updateSetting = (key: string, value: SettingValue) => {
     setSettings((prev) => ({ ...prev, [key]: value }))
-    if (key === "attendanceEnabled" && value === false) {
-      // This field disappears with attendance. Drop only its unaccepted input;
-      // keep the last valid value so a hidden error cannot block switching off.
-      setNumberDrafts((prev) => {
-        const next = { ...prev }
-        delete next.attendanceClockDifferenceSeconds
-        return next
-      })
-      setFieldErrors((prev) => {
-        const next = { ...prev }
-        delete next.attendanceClockDifferenceSeconds
-        return next
-      })
-    }
   }
 
   // A block that saves itself (the client card) reports what is now stored:
@@ -413,7 +400,6 @@ export default function MtmSettingsPage() {
       items: [
         { key: "fieldContactsEnabled", labelKey: "lblFieldContacts", hintKey: "hintFieldContacts", type: "boolean", adminOnly: true },
         { key: "pharmacyPromotionsEnabled", labelKey: "lblPharmacyPromotions", hintKey: "hintPharmacyPromotions", type: "boolean", adminOnly: true },
-        { key: "attendanceEnabled", labelKey: "lblAttendance", hintKey: "hintAttendance", type: "boolean", adminOnly: true },
         { key: "attendanceRejectOutsideBranch", labelKey: "lblAttendanceRejectOutsideBranch", hintKey: "hintAttendanceRejectOutsideBranch", type: "boolean", adminOnly: true },
       ],
     },

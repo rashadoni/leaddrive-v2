@@ -28382,6 +28382,14 @@
     "dayMarks": "Günün qeydləri",
     "cellHint": "Günü açmaq üçün xanaya toxunun",
     "close": "Bağla",
-    "backToMonth": "Aya qayıt"
+    "backToMonth": "Aya qayıt",
+    "featureOn": "İş günü uçotu aktivdir",
+    "featureOff": "İş günü uçotu söndürülüb",
+    "featureOffHint": "Aktiv edin ki, əməkdaşlar tətbiqdə gəliş və gedişi qeyd etsin, HR isə tabeli və müraciətləri görsün. Yalnız administrator aktiv edə və söndürə bilər.",
+    "featureEnable": "Uçotu aktiv et",
+    "featureDisable": "Söndür",
+    "featureDisableConfirm": "«Kadr uçotu» bölməsi hamıdan gizlənəcək, gəliş qeydləri və xatırlatmalar dayanacaq. Bütün məlumatlar saxlanılır — uçotu yenidən aktiv etsəniz, geri qayıdacaq.",
+    "featureDisableAction": "Uçotu söndür",
+    "featureSaveError": "Yadda saxlamaq alınmadı. Yenidən cəhd edin."
   }
 }
