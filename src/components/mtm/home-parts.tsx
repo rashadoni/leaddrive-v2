@@ -1,3 +1,4 @@
+import { Hint, HintValue } from "@/components/hint"
 import type { ReactNode } from "react"
 import Link from "next/link"
 import { ArrowUpRight } from "lucide-react"
@@ -56,9 +57,12 @@ export function HomeKpi({
   pill,
   progress,
   sub,
+  hint,
 }: {
   testId: string
   label: string
+  /** What the figure counts, said under the cursor on its label. */
+  hint?: string | null
   icon: ReactNode
   tone: HomeTone
   /** Null while the number is not known: a dash, never a made-up zero. */
@@ -72,7 +76,7 @@ export function HomeKpi({
   return (
     <div data-testid={testId} className={cn(CARD, "flex min-w-0 flex-col p-4")}>
       <div className="flex items-center justify-between gap-2">
-        <span className="truncate text-[13px] font-medium text-muted-foreground">{label}</span>
+        <HintValue className="truncate text-[13px] font-medium text-muted-foreground" text={hint}>{label}</HintValue>
         <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", HOME_ICON[tone])}>{icon}</span>
       </div>
       <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
@@ -104,7 +108,7 @@ export function HomeCard({
   tone: HomeTone
   title: string
   badge?: string | null
-  action?: { href: string; label: string } | null
+  action?: { href: string; label: string; hint?: string } | null
   children: ReactNode
 }) {
   return (
@@ -114,9 +118,9 @@ export function HomeCard({
         <h3 id={titleId} className="min-w-0 truncate text-[15px] font-semibold">{title}</h3>
         {badge ? <HomePill tone={tone}>{badge}</HomePill> : null}
         {action ? (
-          <Link href={action.href} prefetch={false} className="ml-auto inline-flex min-h-9 shrink-0 items-center gap-1 rounded-full border border-zinc-200 px-3 text-xs font-medium transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 dark:border-zinc-700">
+          <Hint text={action.hint}><Link href={action.href} prefetch={false} className="ml-auto inline-flex min-h-9 shrink-0 items-center gap-1 rounded-full border border-zinc-200 px-3 text-xs font-medium transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 dark:border-zinc-700">
             {action.label}<ArrowUpRight className="h-3 w-3" aria-hidden="true" />
-          </Link>
+          </Link></Hint>
         ) : null}
       </header>
       <div className="flex flex-1 flex-col px-5 py-1">{children}</div>
@@ -125,13 +129,13 @@ export function HomeCard({
 }
 
 /** The grey strip at the bottom of a card: one fact and where to read more. */
-export function HomeCardFoot({ text, href, link }: { text: string; href: string; link: string }) {
+export function HomeCardFoot({ text, href, link, textHint, linkHint }: { text: string; href: string; link: string; textHint?: string; linkHint?: string }) {
   return (
     <div className="mb-3 mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl bg-muted/60 px-3.5 py-2 text-xs">
-      <span className="font-medium">{text}</span>
-      <Link href={href} prefetch={false} className="ml-auto inline-flex min-h-9 items-center gap-1 font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:min-h-0">
+      <HintValue className="font-medium" text={textHint}>{text}</HintValue>
+      <Hint text={linkHint}><Link href={href} prefetch={false} className="ml-auto inline-flex min-h-9 items-center gap-1 font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:min-h-0">
         {link}<ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
-      </Link>
+      </Link></Hint>
     </div>
   )
 }

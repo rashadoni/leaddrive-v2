@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint } from "@/components/hint"
 import type { ReactNode } from "react"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
@@ -46,6 +47,19 @@ const CTA_KEY = {
   routesAwaitingPublish: "ctaPublish",
   olderAlerts: "ctaResolve",
   photosPendingReview: "ctaReviewPhotos",
+} as const satisfies Record<MtmPanelAttentionKind, string>
+
+/** Where each button leads and what is decided there, said under the cursor. */
+const CTA_HINT_KEY = {
+  customerLocationRequests: "hint.ctaLocationRequests",
+  attendanceRequests: "hint.ctaAttendanceRequests",
+  attendanceInstallations: "hint.ctaAttendanceInstallations",
+  contactCreateRequests: "hint.ctaContactCreate",
+  customerCreateRequests: "hint.ctaCustomerCreate",
+  routeChangeRequests: "hint.ctaRouteChange",
+  routesAwaitingPublish: "hint.ctaPublish",
+  olderAlerts: "hint.ctaAlerts",
+  photosPendingReview: "hint.ctaPhotos",
 } as const satisfies Record<MtmPanelAttentionKind, string>
 
 const ROW_TONE: Record<MtmPanelAttentionKind, HomeTone> = {
@@ -148,7 +162,7 @@ export function HomeAttentionCard({ state }: { state: HomeAttentionState }) {
     return parts.filter(Boolean).join(" · ")
   }
 
-  const rows: Array<{ key: string; tone: HomeTone; icon: ReactNode; title: string; sub: string; href: string; cta: string }> = data
+  const rows: Array<{ key: string; tone: HomeTone; icon: ReactNode; title: string; sub: string; href: string; cta: string; hint: string }> = data
     ? data.items.map((item) => ({
         key: item.kind,
         tone: ROW_TONE[item.kind],
@@ -157,6 +171,7 @@ export function HomeAttentionCard({ state }: { state: HomeAttentionState }) {
         sub: itemSub(item),
         href: attentionItemHref(item),
         cta: t(CTA_KEY[item.kind]),
+        hint: t(CTA_HINT_KEY[item.kind]),
       }))
     : []
   const next = data?.nextWorkday && data.nextWorkday.withoutRoute > 0 ? data.nextWorkday : null
@@ -173,6 +188,7 @@ export function HomeAttentionCard({ state }: { state: HomeAttentionState }) {
       sub: [dayLabel(next.date, locale, { weekday: "long", day: "numeric", month: "long" }), who].join(" · "),
       href: nextWorkdayHref(next),
       cta: t("ctaPlan"),
+      hint: t("hint.ctaPlanNextDay"),
     })
   }
 
@@ -212,9 +228,11 @@ export function HomeAttentionCard({ state }: { state: HomeAttentionState }) {
                 {row.sub ? <p className="text-xs text-muted-foreground">{row.sub}</p> : null}
               </div>
               {/* The first row is the one to start with: it alone is filled. */}
-              <Button asChild size="sm" variant={index === 0 ? "default" : "outline"} className="min-h-11 shrink-0 md:min-h-9">
-                <Link href={row.href} prefetch={false}>{row.cta}</Link>
-              </Button>
+              <Hint text={row.hint}>
+                <Button asChild size="sm" variant={index === 0 ? "default" : "outline"} className="min-h-11 shrink-0 md:min-h-9">
+                  <Link href={row.href} prefetch={false}>{row.cta}</Link>
+                </Button>
+              </Hint>
             </li>
           ))}
         </ul>
