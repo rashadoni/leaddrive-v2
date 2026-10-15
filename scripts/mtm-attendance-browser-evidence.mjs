@@ -864,7 +864,13 @@ try {
     assert.ok(await page.getByText(t('monthCloseFrozen'), { exact: true }).isVisible())
   })
   await run('browser-rules-calendar-crud', 'browser-action+database-backed-http', async () => {
-    await readyPage('settings')
+    // Settings is one page of cards (2026-10-14); a card opens its editor.
+    await readyPage('settings?tab=')
+    await page.getByTestId('attendance-settings-hub').waitFor({ timeout: 120000 })
+    assert.equal(await page.locator('[data-testid^="attendance-settings-card-"]').count(), 10)
+    await page.getByTestId('attendance-settings-card-hours').click()
+    await page.waitForURL(url => url.searchParams.get('tab') === 'hours', { timeout: 120000 })
+    await page.getByTestId('attendance-rules').waitFor({ timeout: 120000 })
     const before = await api('admin', '/rules')
     const rules = page.getByTestId('attendance-rules')
     await page.locator('#attendance-start').fill('09:30')
@@ -875,6 +881,8 @@ try {
     const savedRule = await clickResponse(button('rulesSave', rules), `${apiRoot}/rules`, 'POST', 201)
     assert.equal(savedRule.startTime, '09:30')
     assert.equal((await api('admin', '/rules')).current.id, before.current.id)
+    // Holidays are their own card now, next to working hours.
+    await readyPage('settings?tab=holidays')
     const calendar = page.getByTestId('attendance-calendar'), calendarDate = date(16)
     await page.locator('#attendance-calendar-year').selectOption(calendarDate.slice(0, 4))
     await page.locator('#attendance-calendar-date').fill(calendarDate)

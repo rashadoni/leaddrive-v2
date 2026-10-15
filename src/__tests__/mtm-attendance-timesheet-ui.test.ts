@@ -147,6 +147,7 @@ describe("Timesheet saved forms", () => {
     expect(container.querySelector('[data-testid="attendance-month-grid"]')).toBeNull()
     const chip = container.querySelector<HTMLElement>('[data-testid="attendance-timesheet-custom-chip"]')!
     expect(chip.textContent).toContain("Моя форма")
+    expect(chip.querySelector("button")!.getAttribute("aria-label")).toBe(p("backToMonth"))
     await act(async () => chip.querySelector("button")!.click())
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
     expect(reportCalls().at(-1)?.searchParams.get("from")).toBe("2026-10-01")
