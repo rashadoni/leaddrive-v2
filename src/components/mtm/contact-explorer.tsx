@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint, HintValue } from "@/components/hint"
 import {
   useCallback,
   useEffect,
@@ -826,28 +827,36 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
                 else setActiveSavedViewId("")
               }}
               options={savedViews.map((view) => ({ value: view.id, label: `${view.isDefault ? "★ " : ""}${view.name}${view.isShared ? ` · ${t("sharedView")}` : ""}` }))} />
-            <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full" title={t("saveCurrentView")} aria-label={t("saveCurrentView")} disabled={savedViewsBusy}
-              onClick={() => {
-                setSavedViewName("")
-                setSavedViewDefault(false)
-                setSaveViewOpen(true)
-              }}>
-              <Bookmark className="h-4 w-4" />
-            </Button>
-            {activeSavedView?.canDelete ? (
-              <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full text-destructive" title={t("deleteSavedView")} aria-label={t("deleteSavedView")} disabled={savedViewsBusy} onClick={() => void deleteActiveSavedView()}>
-                <Trash2 className="h-4 w-4" />
+            <Hint wrap text={t("hint.saveView")}>
+              <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full" aria-label={t("saveCurrentView")} disabled={savedViewsBusy}
+                onClick={() => {
+                  setSavedViewName("")
+                  setSavedViewDefault(false)
+                  setSaveViewOpen(true)
+                }}>
+                <Bookmark className="h-4 w-4" />
               </Button>
+            </Hint>
+            {activeSavedView?.canDelete ? (
+              <Hint wrap text={t("hint.deleteView")}>
+                <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full text-destructive" aria-label={t("deleteSavedView")} disabled={savedViewsBusy} onClick={() => void deleteActiveSavedView()}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </Hint>
             ) : null}
           </span>
-          <Button type="button" size="sm" className="min-h-11" onClick={() => setCreateOpen(true)}>
-            <UserRoundPlus className="mr-1.5 h-4 w-4" />
-            {t("createClient")}
-          </Button>
-          <Button type="button" variant="outline" size="sm" className="min-h-11" onClick={refresh} disabled={loading}>
-            <RefreshCw className={`mr-1 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            {t("refresh")}
-          </Button>
+          <Hint text={t("hint.createClient")}>
+            <Button type="button" size="sm" className="min-h-11" onClick={() => setCreateOpen(true)}>
+              <UserRoundPlus className="mr-1.5 h-4 w-4" />
+              {t("createClient")}
+            </Button>
+          </Hint>
+          <Hint wrap text={t("hint.refresh")}>
+            <Button type="button" variant="outline" size="sm" className="min-h-11" onClick={refresh} disabled={loading}>
+              <RefreshCw className={`mr-1 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+              {t("refresh")}
+            </Button>
+          </Hint>
         </div>
       </div>
       )}
@@ -905,8 +914,10 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
                 ...otherAgents.map((agent) => ({ value: agent.id, label: t("agentScope.whichClientsOf", { name: agent.status !== "ACTIVE" ? `${agent.name} · ${t("agentInactive")}` : agent.name }) })),
               ]} />
           ) : scoped ? null : (
-            <MtmFilterSelectField testId="mtm-contact-owner" label={t("owner")} value={filters.ownerAgentId} onChange={(value) => updateFilter("ownerAgentId", value)} allLabel={t("allAccessible")}
-              options={otherAgents.map((agent) => ({ value: agent.id, label: agent.status !== "ACTIVE" ? `${agent.name} · ${t("agentInactive")}` : agent.name }))} />
+            <Hint wrap text={t("hint.owner")}>
+              <MtmFilterSelectField testId="mtm-contact-owner" label={t("owner")} value={filters.ownerAgentId} onChange={(value) => updateFilter("ownerAgentId", value)} allLabel={t("allAccessible")}
+                options={otherAgents.map((agent) => ({ value: agent.id, label: agent.status !== "ACTIVE" ? `${agent.name} · ${t("agentInactive")}` : agent.name }))} />
+            </Hint>
           )}
           {shows("specialtyName") || filters.specialties.length > 0 ? (
             <MtmFilterMultiField testId="mtm-contact-specialties" label={t("filterSpecialties")} values={filters.specialties} onChange={updateSpecialties} allLabel={t("all")}
@@ -923,11 +934,15 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
             options={["ACTIVE", "INACTIVE", "PROSPECT", "DUPLICATE", "MERGED"].map((status) => ({ value: status, label: t(`statuses.${status}`) }))} />
           {advancedOpen ? (
             <>
-              <MtmFilterSelectField testId="mtm-contact-category" label={t("category")} value={filters.category} onChange={(value) => updateFilter("category", value)} allLabel={t("all")}
-                options={contactClassOptions(facets?.classes, filters.category).map((category) => ({ value: category, label: category }))} />
+              <Hint wrap text={t("hint.category")}>
+                <MtmFilterSelectField testId="mtm-contact-category" label={t("category")} value={filters.category} onChange={(value) => updateFilter("category", value)} allLabel={t("all")}
+                  options={contactClassOptions(facets?.classes, filters.category).map((category) => ({ value: category, label: category }))} />
+              </Hint>
               {scoped ? null : (
-                <MtmFilterSelectField testId="mtm-contact-assignment-state" label={t("assignmentState")} value={filters.assignmentState} onChange={(value) => updateFilter("assignmentState", value)} allLabel={t("all")}
-                  options={[{ value: "ASSIGNED", label: t("assigned") }, { value: "UNASSIGNED", label: t("unassigned") }]} />
+                <Hint wrap text={t("hint.assignmentState")}>
+                  <MtmFilterSelectField testId="mtm-contact-assignment-state" label={t("assignmentState")} value={filters.assignmentState} onChange={(value) => updateFilter("assignmentState", value)} allLabel={t("all")}
+                    options={[{ value: "ASSIGNED", label: t("assigned") }, { value: "UNASSIGNED", label: t("unassigned") }]} />
+                </Hint>
               )}
               <MtmFilterTextField testId="mtm-contact-search" label={t("filterAnywhere")} placeholder={t("searchPlaceholder")} value={filters.search} onChange={(value) => updateFilter("search", value)} clearLabel={tf("clear")} />
               {([
@@ -954,7 +969,9 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
                   options={(facets?.objectTypes ?? []).map((value) => ({ value, label: t(`objectTypes.${value}`) }))} />
               ) : null}
               {shows("coverage") || filters.coveragePeriod ? (
-                <MtmFilterDateField testId="mtm-contact-coverage-period" type="month" label={t("coveragePeriod")} active={Boolean(filters.coveragePeriod)} value={filters.coveragePeriod || payload?.coveragePeriod.key || ""} onChange={(value) => updateFilter("coveragePeriod", value)} />
+                <Hint wrap text={t("hint.coveragePeriod")}>
+                  <MtmFilterDateField testId="mtm-contact-coverage-period" type="month" label={t("coveragePeriod")} active={Boolean(filters.coveragePeriod)} value={filters.coveragePeriod || payload?.coveragePeriod.key || ""} onChange={(value) => updateFilter("coveragePeriod", value)} />
+                </Hint>
               ) : null}
             </>
           ) : null}
@@ -965,10 +982,10 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
           <MtmFilterReset testId="mtm-contact-clear-filters" show={hasActiveFilters} onReset={clearFilters} label={tf("reset")} />
         </MtmFilterActions>
         <MtmResultLine
-          aside={scoped ? undefined : <>
+          aside={scoped ? undefined : <HintValue text={t("hint.asOf")}>
             {t("asOf", { date: payload?.asOf ?? "—" })}
             {payload?.coveragePeriod ? ` · ${t("coveragePeriodRange", { start: payload.coveragePeriod.start, end: payload.coveragePeriod.end })}` : ""}
-          </>}
+          </HintValue>}
         >
           <span data-testid="mtm-contact-result-count" className="font-medium text-foreground">{resultLabel}</span>
         </MtmResultLine>
@@ -998,47 +1015,63 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
           </div>
           <div className="ml-auto flex flex-wrap items-center gap-2">
             {selected.size < total && total <= MTM_CONTACT_BULK_LIMIT ? (
-              <Button type="button" variant="outline" size="sm" onClick={() => void selectAllFiltered()} disabled={selectingAll}>
-                {selectingAll ? <RefreshCw className="mr-1 h-4 w-4 animate-spin" /> : null}
-                {t("selectAllFiltered", { count: total })}
-              </Button>
+              <Hint wrap text={t("hint.selectAll")}>
+                <Button type="button" variant="outline" size="sm" onClick={() => void selectAllFiltered()} disabled={selectingAll}>
+                  {selectingAll ? <RefreshCw className="mr-1 h-4 w-4 animate-spin" /> : null}
+                  {t("selectAllFiltered", { count: total })}
+                </Button>
+              </Hint>
             ) : null}
-            <Button type="button" variant="outline" size="sm" onClick={() => setSelected(new Set())}>{t("clearSelection")}</Button>
+            <Hint text={t("hint.clearSelection")}><Button type="button" variant="outline" size="sm" onClick={() => setSelected(new Set())}>{t("clearSelection")}</Button></Hint>
             {payload?.capabilities.canTransfer && isRouteDoctorFlow ? (
-              <Button type="button" size="sm" onClick={() => openAssignment("ASSIGN")}>
-                <UserPlus className="mr-1 h-4 w-4" />
-                {t("routeFlowAssignAndReturn")}
-              </Button>
+              <Hint text={t("hint.routeFlowAssign")}>
+                <Button type="button" size="sm" onClick={() => openAssignment("ASSIGN")}>
+                  <UserPlus className="mr-1 h-4 w-4" />
+                  {t("routeFlowAssignAndReturn")}
+                </Button>
+              </Hint>
             ) : payload?.capabilities.canTransfer && agentScope?.view === "candidates" ? (
-              <Button data-testid="mtm-agent-scope-assign" type="button" size="sm" className="min-h-11" onClick={() => openAssignment("ASSIGN")}>
-                <UserPlus className="mr-1 h-4 w-4" />
-                {t("agentScope.assignTo", { name: agentScope.agent.name })}
-              </Button>
+              <Hint text={t("hint.scopeAssign")}>
+                <Button data-testid="mtm-agent-scope-assign" type="button" size="sm" className="min-h-11" onClick={() => openAssignment("ASSIGN")}>
+                  <UserPlus className="mr-1 h-4 w-4" />
+                  {t("agentScope.assignTo", { name: agentScope.agent.name })}
+                </Button>
+              </Hint>
             ) : payload?.capabilities.canTransfer && agentScope ? (
               <>
-                <Button data-testid="mtm-agent-scope-transfer" type="button" variant="outline" size="sm" className="min-h-11" onClick={openTransfer}>
-                  <ArrowRightLeft className="mr-1 h-4 w-4" />
-                  {t("agentScope.transferToOther")}
-                </Button>
-                <Button data-testid="mtm-agent-scope-unassign" type="button" size="sm" className="min-h-11" onClick={() => openAssignment("UNASSIGN")}>
-                  <UserMinus className="mr-1 h-4 w-4" />
-                  {t("agentScope.unassignFrom", { name: agentScope.agent.name })}
-                </Button>
+                <Hint text={t("hint.scopeTransfer")}>
+                  <Button data-testid="mtm-agent-scope-transfer" type="button" variant="outline" size="sm" className="min-h-11" onClick={openTransfer}>
+                    <ArrowRightLeft className="mr-1 h-4 w-4" />
+                    {t("agentScope.transferToOther")}
+                  </Button>
+                </Hint>
+                <Hint text={t("hint.scopeUnassign")}>
+                  <Button data-testid="mtm-agent-scope-unassign" type="button" size="sm" className="min-h-11" onClick={() => openAssignment("UNASSIGN")}>
+                    <UserMinus className="mr-1 h-4 w-4" />
+                    {t("agentScope.unassignFrom", { name: agentScope.agent.name })}
+                  </Button>
+                </Hint>
               </>
             ) : payload?.capabilities.canTransfer ? (
               <>
-                <Button type="button" variant="outline" size="sm" onClick={() => openAssignment("UNASSIGN")}>
-                  <UserMinus className="mr-1 h-4 w-4" />
-                  {t("unassignAction")}
-                </Button>
-                <Button type="button" variant="outline" size="sm" onClick={() => openAssignment("ASSIGN")}>
-                  <UserPlus className="mr-1 h-4 w-4" />
-                  {t("assignAction")}
-                </Button>
-                <Button data-testid="mtm-contact-transfer-open" type="button" size="sm" onClick={openTransfer}>
-                  <ArrowRightLeft className="mr-1 h-4 w-4" />
-                  {t("transferAction")}
-                </Button>
+                <Hint text={t("hint.unassign")}>
+                  <Button type="button" variant="outline" size="sm" onClick={() => openAssignment("UNASSIGN")}>
+                    <UserMinus className="mr-1 h-4 w-4" />
+                    {t("unassignAction")}
+                  </Button>
+                </Hint>
+                <Hint text={t("hint.assign")}>
+                  <Button type="button" variant="outline" size="sm" onClick={() => openAssignment("ASSIGN")}>
+                    <UserPlus className="mr-1 h-4 w-4" />
+                    {t("assignAction")}
+                  </Button>
+                </Hint>
+                <Hint text={t("hint.transfer")}>
+                  <Button data-testid="mtm-contact-transfer-open" type="button" size="sm" onClick={openTransfer}>
+                    <ArrowRightLeft className="mr-1 h-4 w-4" />
+                    {t("transferAction")}
+                  </Button>
+                </Hint>
               </>
             ) : null}
           </div>
@@ -1094,13 +1127,13 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
                     />
                   </th>
                   <th scope="col" className="px-3 py-3 font-medium">{t("contact")}</th>
-                  {scoped ? <th scope="col" className="px-3 py-3 font-medium">{ownerLabel}</th> : null}
-                  {showsProfession ? <th scope="col" className="px-3 py-3 font-medium">{t("professional")}</th> : null}
-                  {showsCoverage ? <th scope="col" className="px-3 py-3 font-medium">{t("coverage")}</th> : null}
+                  {scoped ? <th scope="col" className="px-3 py-3 font-medium"><HintValue text={t("hint.colOwner")}>{ownerLabel}</HintValue></th> : null}
+                  {showsProfession ? <th scope="col" className="px-3 py-3 font-medium"><HintValue text={t("hint.colProfessional")}>{t("professional")}</HintValue></th> : null}
+                  {showsCoverage ? <th scope="col" className="px-3 py-3 font-medium"><HintValue text={t("hint.colCoverage")}>{t("coverage")}</HintValue></th> : null}
                   <th scope="col" className="px-3 py-3 font-medium">{t("workplace")}</th>
-                  <th scope="col" className="px-3 py-3 font-medium">{t("visitContext")}</th>
+                  <th scope="col" className="px-3 py-3 font-medium"><HintValue text={t("hint.colVisitContext")}>{t("visitContext")}</HintValue></th>
                   <th scope="col" className="px-3 py-3 font-medium">{t("communication")}</th>
-                  {scoped ? null : <th scope="col" className="px-3 py-3 font-medium">{ownerLabel}</th>}
+                  {scoped ? null : <th scope="col" className="px-3 py-3 font-medium"><HintValue text={t("hint.colOwner")}>{ownerLabel}</HintValue></th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">

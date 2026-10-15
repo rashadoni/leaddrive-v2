@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint, HintValue } from "@/components/hint"
 import { useEffect, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
@@ -283,16 +284,16 @@ export default function MtmAgentsPage() {
     const historyHref = `/mtm/map?mode=history&agentId=${encodeURIComponent(agent.id)}`
     return (
       <div className="flex gap-1 shrink-0">
-        {phone && <a href={`tel:${phone}`} title={t("actionCall")} aria-label={t("actionCall")} className="h-6 w-6 rounded flex items-center justify-center hover:bg-muted text-muted-foreground"><Phone className="h-3.5 w-3.5" /></a>}
-        {phone && <a href={`https://wa.me/${phone.replace(/^\+/, "")}`} target="_blank" rel="noopener noreferrer" title={t("actionMessage")} aria-label={t("actionMessage")} className="h-6 w-6 rounded flex items-center justify-center hover:bg-muted text-muted-foreground"><MessageCircle className="h-3.5 w-3.5" /></a>}
-        <a href={`/mtm/map?agentId=${encodeURIComponent(agent.id)}`} title={t("actionMap")} aria-label={t("actionMap")} className="h-6 w-6 rounded flex items-center justify-center hover:bg-muted text-muted-foreground"><MapPinned className="h-3.5 w-3.5" /></a>
-        <a href={historyHref} title={t("actionHistory")} aria-label={t("actionHistory")} className="h-6 w-6 rounded flex items-center justify-center hover:bg-muted text-muted-foreground"><History className="h-3.5 w-3.5" /></a>
+        {phone && <Hint text={t("hint.call")}><a href={`tel:${phone}`} aria-label={t("actionCall")} className="h-6 w-6 rounded flex items-center justify-center hover:bg-muted text-muted-foreground"><Phone className="h-3.5 w-3.5" /></a></Hint>}
+        {phone && <Hint text={t("hint.message")}><a href={`https://wa.me/${phone.replace(/^\+/, "")}`} target="_blank" rel="noopener noreferrer" aria-label={t("actionMessage")} className="h-6 w-6 rounded flex items-center justify-center hover:bg-muted text-muted-foreground"><MessageCircle className="h-3.5 w-3.5" /></a></Hint>}
+        <Hint text={t("hint.map")}><a href={`/mtm/map?agentId=${encodeURIComponent(agent.id)}`} aria-label={t("actionMap")} className="h-6 w-6 rounded flex items-center justify-center hover:bg-muted text-muted-foreground"><MapPinned className="h-3.5 w-3.5" /></a></Hint>
+        <Hint text={t("hint.history")}><a href={historyHref} aria-label={t("actionHistory")} className="h-6 w-6 rounded flex items-center justify-center hover:bg-muted text-muted-foreground"><History className="h-3.5 w-3.5" /></a></Hint>
       </div>
     )
   }
 
   const presenceDot = (agent: any, presence: { text: string; tone: string }) => (
-    <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-card ${presence.tone === "working" ? "bg-green-500" : presence.tone === "paused" ? "bg-amber-500" : "bg-muted-foreground/40"}`} title={`${presence.text} · ${lastSeenText(agent)}`} />
+    <Hint text={`${presence.text} · ${lastSeenText(agent)}`}><span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-card ${presence.tone === "working" ? "bg-green-500" : presence.tone === "paused" ? "bg-amber-500" : "bg-muted-foreground/40"}`} tabIndex={0} /></Hint>
   )
   const avatar = (agent: any, size: "sm" | "md") => {
     const box = size === "md" ? "h-10 w-10" : "h-8 w-8"
@@ -301,13 +302,13 @@ export default function MtmAgentsPage() {
       : <div className={`${box} rounded-full bg-cyan-100 dark:bg-cyan-900/30 flex items-center justify-center text-cyan-700 dark:text-cyan-400 font-semibold`}>{agent.name?.charAt(0)?.toUpperCase()}</div>
   }
   const appBadge = (app: { state: "active" | "quiet" | "never"; lastSignalAt: string | null } | undefined) => app ? (
-    <span
+    <Hint text={app.lastSignalAt ? `${t("appLastSignal", { time: formatDateTime(app.lastSignalAt, locale) })}. ${t("hint.appState")}` : t("hint.appState")}><span
       className={`text-[10px] px-2 py-0.5 rounded-full inline-flex items-center gap-1 whitespace-nowrap ${app.state === "active" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" : "bg-muted text-muted-foreground"}`}
-      title={app.lastSignalAt ? t("appLastSignal", { time: formatDateTime(app.lastSignalAt, locale) }) : undefined}
+      tabIndex={0}
       data-testid="mtm-agent-app-state"
     >
       <Smartphone className="h-2.5 w-2.5" />{app.state === "active" ? t("appActive") : app.state === "quiet" ? t("appQuiet") : t("appNever")}
-    </span>
+    </span></Hint>
   ) : null
 
   // Equal-height cards (prod 2026-09-15, "what is this emptiness"): the card is
@@ -332,13 +333,13 @@ export default function MtmAgentsPage() {
             {presenceDot(agent, presence)}
           </div>
           <div className="flex-1 min-w-0">
-            <Link href={agentHref(agent)} title={agentHrefTitle} data-testid="mtm-agent-open" className={`text-sm truncate hover:underline block ${leads ? "font-semibold" : "font-medium"}`}>{agent.name}</Link>
+            <Hint text={agentHrefTitle}><Link href={agentHref(agent)} data-testid="mtm-agent-open" className={`text-sm truncate hover:underline block ${leads ? "font-semibold" : "font-medium"}`}>{agent.name}</Link></Hint>
             {breaks.count > 0 ? (
               // The segments, not just the state: two twenty-minute breaks and
               // one two-hour break read the same as "on a break" and are very
               // different days (A7 tail).
               <div className="text-[10px] text-muted-foreground" data-testid="mtm-agent-breaks">
-                {t("breaksSummary", { count: breaks.count, minutes: breaks.minutes })}
+                <HintValue text={t("hint.breaks")}>{t("breaksSummary", { count: breaks.count, minutes: breaks.minutes })}</HintValue>
               </div>
             ) : null}
             <div className={`text-[11px] truncate ${presence.tone === "working" ? "text-green-600 dark:text-green-400" : presence.tone === "paused" ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>{presence.text}</div>
@@ -351,7 +352,7 @@ export default function MtmAgentsPage() {
             the window is said as such, never printed as 0%. */}
         {activity ? (
           <div className="flex items-center gap-2 rounded-md bg-muted/40 px-2.5 py-1.5 text-xs" data-testid="mtm-agent-activity">
-            <span className="text-muted-foreground">{t("periodLastDays", { count: activity.periodDays })}</span>
+            <HintValue className="text-muted-foreground" text={t("hint.activity")}>{t("periodLastDays", { count: activity.periodDays })}</HintValue>
             <span className="font-semibold tabular-nums">{activity.visits}</span><span className="text-muted-foreground">{t("shortVisits")}</span>
             {activity.planFulfillment === null
               ? <span className="ml-auto text-muted-foreground">{t("planNone")}</span>
@@ -366,18 +367,20 @@ export default function MtmAgentsPage() {
           <span className={`text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap ${statusColors[agent.status] || ""}`}>{statusLabel(agent.status)}</span>
           {appBadge(app)}
           {app && !app.notificationsConnected ? (
-            <span className="text-[10px] px-2 py-0.5 rounded-full inline-flex items-center gap-1 whitespace-nowrap bg-muted text-muted-foreground">
+            <Hint text={t("hint.notificationsOff")}><span tabIndex={0} className="text-[10px] px-2 py-0.5 rounded-full inline-flex items-center gap-1 whitespace-nowrap bg-muted text-muted-foreground">
               <BellOff className="h-2.5 w-2.5" />{t("notificationsOff")}
-            </span>
+            </span></Hint>
           ) : null}
         </div>
 
         {/* The way into the employee's section, in words: their clients, with the count when the server gave one. */}
         {clientSections ? (
-          <Link href={agentHref(agent)} data-testid="mtm-agent-clients-link" className="flex min-h-11 items-center justify-between gap-2 rounded-md border border-zinc-200 px-3 text-sm font-medium hover:bg-muted dark:border-zinc-700">
-            <span className="inline-flex min-w-0 items-center gap-1.5"><UsersRound className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" /><span className="truncate">{typeof agent.clients === "number" ? t("clientsCount", { count: agent.clients }) : t("clients")}</span></span>
-            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-          </Link>
+          <Hint text={t("hint.clients")}>
+            <Link href={agentHref(agent)} data-testid="mtm-agent-clients-link" className="flex min-h-11 items-center justify-between gap-2 rounded-md border border-zinc-200 px-3 text-sm font-medium hover:bg-muted dark:border-zinc-700">
+              <span className="inline-flex min-w-0 items-center gap-1.5"><UsersRound className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" /><span className="truncate">{typeof agent.clients === "number" ? t("clientsCount", { count: agent.clients }) : t("clients")}</span></span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            </Link>
+          </Hint>
         ) : null}
 
         {/* Contact + quick actions — a fixed-height footer at the bottom */}
@@ -441,7 +444,7 @@ export default function MtmAgentsPage() {
           <div className="flex items-center gap-2 min-w-0">
             <div className="relative h-8 w-8 shrink-0">{avatar(agent, "sm")}{presenceDot(agent, presence)}</div>
             <div className="min-w-0">
-              <Link href={agentHref(agent)} title={agentHrefTitle} className={`block truncate hover:underline ${leads ? "font-semibold" : "font-medium"}`}>{agent.name}</Link>
+              <Hint text={agentHrefTitle}><Link href={agentHref(agent)} className={`block truncate hover:underline ${leads ? "font-semibold" : "font-medium"}`}>{agent.name}</Link></Hint>
               <div className="flex flex-wrap items-center gap-1">
                 <span className={`text-[10px] px-1.5 rounded-full ${roleColors[agent.role] || ""}`}>{roleLabel(agent.role)}</span>
                 {leads && team ? <span className="text-[10px] text-muted-foreground">{t("teamSize", { count: team.size - 1 })}</span> : null}
@@ -521,12 +524,12 @@ export default function MtmAgentsPage() {
           <HelpButton slug="mtm-agents" variant="label" />
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => {
+          <Hint text={t("hint.export")}><Button variant="outline" size="sm" onClick={() => {
             const csv = ["Name,Email,Phone,Role,Status,LastSeen", ...filtered.map(a => `${a.name || ""},${a.email || ""},${a.phone || ""},${a.role || ""},${a.status || ""},${a.lastSeenAt || ""}`)].join("\n")
             const blob = new Blob([csv], { type: "text/csv" })
             const el = document.createElement("a"); el.href = URL.createObjectURL(blob); el.download = "field-agents.csv"; el.click()
-          }}><Download className="h-4 w-4 mr-1" /> {t("export")}</Button>
-          <Button onClick={() => { setEditData(undefined); setFormOpen(true) }}><Plus className="h-4 w-4 mr-1" /> {t("add")}</Button>
+          }}><Download className="h-4 w-4 mr-1" /> {t("export")}</Button></Hint>
+          <Hint text={t("hint.add")}><Button onClick={() => { setEditData(undefined); setFormOpen(true) }}><Plus className="h-4 w-4 mr-1" /> {t("add")}</Button></Hint>
         </div>
       </div>
 
@@ -548,38 +551,42 @@ export default function MtmAgentsPage() {
           </span>
         ) : null}
         <div role="group" aria-label={tf("status")} className="flex flex-wrap gap-1">
-          <Button variant={activeFilter === "all" ? "default" : "outline"} size="sm" className="h-10 rounded-full" onClick={() => setActiveFilter("all")}>{t("all")} ({agents.length})</Button>
-          <Button variant={activeFilter === "online" ? "default" : "outline"} size="sm" className="h-10 rounded-full" onClick={() => setActiveFilter("online")}>{t("filterOnline")} ({totalOnline})</Button>
+          <Hint text={t("hint.filterAll")}><Button variant={activeFilter === "all" ? "default" : "outline"} size="sm" className="h-10 rounded-full" onClick={() => setActiveFilter("all")}>{t("all")} ({agents.length})</Button></Hint>
+          <Hint text={t("hint.filterOnline")}><Button variant={activeFilter === "online" ? "default" : "outline"} size="sm" className="h-10 rounded-full" onClick={() => setActiveFilter("online")}>{t("filterOnline")} ({totalOnline})</Button></Hint>
           {(["ACTIVE", "INACTIVE", "SUSPENDED"] as const).map(s => (
-            <Button key={s} variant={activeFilter === s ? "default" : "outline"} size="sm" className="h-10 rounded-full" onClick={() => setActiveFilter(s)}>{t(`filter${s.charAt(0) + s.slice(1).toLowerCase()}` as never)} ({statusCounts[s] || 0})</Button>
+            <Hint key={s} text={t("hint.filterStatus", { status: statusLabel(s) })}><Button variant={activeFilter === s ? "default" : "outline"} size="sm" className="h-10 rounded-full" onClick={() => setActiveFilter(s)}>{t(`filter${s.charAt(0) + s.slice(1).toLowerCase()}` as never)} ({statusCounts[s] || 0})</Button></Hint>
           ))}
           {/* The managers filter: click shows managers and supervisors, click again shows everyone. */}
-          <button
-            type="button"
-            aria-pressed={activeFilter === "managers"}
-            aria-describedby="mtm-agents-managers-tile-hint"
-            data-testid="mtm-agents-managers-tile"
-            onClick={toggleManagers}
-            className={`inline-flex h-10 items-center rounded-full border px-3 text-sm font-medium transition-colors ${activeFilter === "managers" ? "border-primary bg-primary text-primary-foreground" : "border-zinc-200 bg-card hover:bg-muted dark:border-zinc-700"}`}
-          >
-            <span id="mtm-agents-managers-tile-hint" className="sr-only">{t("filterManagersHint")}</span>
-            {t("statManagers")} ({totalManagers})
-          </button>
+          <Hint text={t("filterManagersHint")}>
+            <button
+              type="button"
+              aria-pressed={activeFilter === "managers"}
+              aria-describedby="mtm-agents-managers-tile-hint"
+              data-testid="mtm-agents-managers-tile"
+              onClick={toggleManagers}
+              className={`inline-flex h-10 items-center rounded-full border px-3 text-sm font-medium transition-colors ${activeFilter === "managers" ? "border-primary bg-primary text-primary-foreground" : "border-zinc-200 bg-card hover:bg-muted dark:border-zinc-700"}`}
+            >
+              <span id="mtm-agents-managers-tile-hint" className="sr-only">{t("filterManagersHint")}</span>
+              {t("statManagers")} ({totalManagers})
+            </button>
+          </Hint>
         </div>
         <span className="ml-auto flex items-center gap-2">
-          <MtmFilterSelect label={tf("sort")} value={sortBy} emptyValue="activity" showValue clearable={false} allLabel={t("sortActivity")}
-            options={[
-              { value: "activity", label: t("sortActivity") },
-              { value: "lastSeen", label: t("sortLastSeen") },
-              { value: "name_asc", label: t("sortNameAsc") },
-              { value: "name_desc", label: t("sortNameDesc") },
-              { value: "role", label: t("sortRole") },
-              { value: "status", label: t("sortStatus") },
-            ]}
-            onChange={setSortBy} />
+          <Hint wrap text={t("hint.sort")}>
+            <MtmFilterSelect label={tf("sort")} value={sortBy} emptyValue="activity" showValue clearable={false} allLabel={t("sortActivity")}
+              options={[
+                { value: "activity", label: t("sortActivity") },
+                { value: "lastSeen", label: t("sortLastSeen") },
+                { value: "name_asc", label: t("sortNameAsc") },
+                { value: "name_desc", label: t("sortNameDesc") },
+                { value: "role", label: t("sortRole") },
+                { value: "status", label: t("sortStatus") },
+              ]}
+              onChange={setSortBy} />
+          </Hint>
           <span className="inline-flex rounded-full border border-zinc-200 dark:border-zinc-700" role="group" aria-label={t("viewToggle")} data-testid="mtm-agents-view-toggle">
-            <Button variant={view === "cards" ? "default" : "ghost"} size="sm" className="h-10 rounded-l-full rounded-r-none" aria-pressed={view === "cards"} onClick={() => changeView("cards")}><LayoutGrid className="h-4 w-4 sm:mr-1" aria-hidden="true" /><span className="hidden sm:inline">{t("viewCards")}</span><span className="sr-only sm:hidden">{t("viewCards")}</span></Button>
-            <Button variant={view === "list" ? "default" : "ghost"} size="sm" className="h-10 rounded-l-none rounded-r-full" aria-pressed={view === "list"} onClick={() => changeView("list")}><List className="h-4 w-4 sm:mr-1" aria-hidden="true" /><span className="hidden sm:inline">{t("viewList")}</span><span className="sr-only sm:hidden">{t("viewList")}</span></Button>
+            <Hint text={t("hint.viewCards")}><Button variant={view === "cards" ? "default" : "ghost"} size="sm" className="h-10 rounded-l-full rounded-r-none" aria-pressed={view === "cards"} onClick={() => changeView("cards")}><LayoutGrid className="h-4 w-4 sm:mr-1" aria-hidden="true" /><span className="hidden sm:inline">{t("viewCards")}</span><span className="sr-only sm:hidden">{t("viewCards")}</span></Button></Hint>
+            <Hint text={t("hint.viewList")}><Button variant={view === "list" ? "default" : "ghost"} size="sm" className="h-10 rounded-l-none rounded-r-full" aria-pressed={view === "list"} onClick={() => changeView("list")}><List className="h-4 w-4 sm:mr-1" aria-hidden="true" /><span className="hidden sm:inline">{t("viewList")}</span><span className="sr-only sm:hidden">{t("viewList")}</span></Button></Hint>
           </span>
         </span>
       </MtmFilterBar>

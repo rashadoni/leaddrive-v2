@@ -1,5 +1,6 @@
 "use client"
 
+import { HintValue } from "@/components/hint"
 import { useLocale, useTranslations } from "next-intl"
 import { AlertTriangle, CheckCircle2, MapPin } from "lucide-react"
 import {
@@ -57,13 +58,13 @@ export function VisitPlaceBadge({
   const iconClass = size === "xs" ? "h-3 w-3" : "h-3.5 w-3.5"
   return (
     <span className={`inline-flex flex-col ${className}`}>
-      <span
-        data-place-verdict={place.verdict}
-        className={`inline-flex items-center gap-1 font-medium ${size === "xs" ? "text-[10px]" : "text-xs"} ${TONE_CLASSES[tone]}`}
-      >
-        <Icon className={iconClass} aria-hidden="true" />
-        {label}
-      </span>
+      {/* What the verdict means, under the cursor: «Нет GPS на выходе» says what, not why it matters. */}
+      <HintValue text={t(`hint.${place.verdict}`)} className={`inline-flex items-center gap-1 font-medium ${size === "xs" ? "text-[10px]" : "text-xs"} ${TONE_CLASSES[tone]}`}>
+        <span data-place-verdict={place.verdict} className="inline-flex items-center gap-1">
+          <Icon className={iconClass} aria-hidden="true" />
+          {label}
+        </span>
+      </HintValue>
       {showDistanceDetail && place.distanceMeters !== null ? (
         <span className="mt-0.5 text-xs text-muted-foreground">
           {t("distanceDetail", { distance: distanceText(place.distanceMeters), radius: distanceText(place.radiusMeters) })}
