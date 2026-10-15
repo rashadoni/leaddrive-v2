@@ -28242,7 +28242,6 @@
   "personnel": {
     "peopleTabs": "Разделы сотрудников",
     "settingsTabs": "Разделы настроек",
-    "timesheetTabs": "Виды табеля",
     "tabs": {
       "employees": "Сотрудники",
       "branches": "Филиалы",
@@ -28272,7 +28271,6 @@
     "searchEmployee": "Найти сотрудника…",
     "onlyEmployee": "Только: {name}",
     "showEveryone": "Показать всех",
-    "monthHint": "Сотрудников: {total} · нажмите на клетку, чтобы открыть день",
     "colDays": "Дни",
     "colHours": "Часы",
     "colLeave": "Отпуск",
@@ -28283,8 +28281,6 @@
     "dayWorked": "Отработано",
     "dayPause": "Перерыв",
     "openDay": "Открыть день",
-    "changeDayKind": "Изменить вид дня",
-    "lettersInSettings": "Буквы меняются в Настройках →",
     "customFormAndDelivery": "Своя форма и рассылка",
     "todayTitle": "Сегодня",
     "recordDay": "Внести день сотруднику",
@@ -28381,6 +28377,15 @@
     },
     "settingsHoursValue": "{days}, {from}–{to} · опоздание после {grace} мин",
     "settingsHolidaysValue": "Праздничных дней в этом году: {count}",
-    "settingsWaiting": "ждут: {count}"
+    "settingsWaiting": "ждут: {count}",
+    "more": "Ещё",
+    "filterLabel": "Показать",
+    "filterAll": "Все",
+    "filterEmpty": "В этом месяце таких дней нет",
+    "fixDay": "Исправить день",
+    "dayMarks": "Отметки за день",
+    "cellHint": "Нажмите на клетку — откроется день",
+    "close": "Закрыть",
+    "backToMonth": "Вернуться к месяцу"
   }
 }

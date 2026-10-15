@@ -28242,7 +28242,6 @@
   "personnel": {
     "peopleTabs": "Employees sections",
     "settingsTabs": "Settings sections",
-    "timesheetTabs": "Timesheet views",
     "tabs": {
       "employees": "Employees",
       "branches": "Branches",
@@ -28272,7 +28271,6 @@
     "searchEmployee": "Find an employee…",
     "onlyEmployee": "Only: {name}",
     "showEveryone": "Show everyone",
-    "monthHint": "{total} employees · click a cell to open the day",
     "colDays": "Days",
     "colHours": "Hours",
     "colLeave": "Leave",
@@ -28283,8 +28281,6 @@
     "dayWorked": "Worked",
     "dayPause": "Break",
     "openDay": "Open day",
-    "changeDayKind": "Change day kind",
-    "lettersInSettings": "Letters are changed in Settings →",
     "customFormAndDelivery": "Custom form and email delivery",
     "todayTitle": "Today",
     "recordDay": "Record a day for an employee",
@@ -28381,6 +28377,15 @@
     },
     "settingsHoursValue": "{days}, {from}–{to} · late after {grace} min",
     "settingsHolidaysValue": "Holidays this year: {count}",
-    "settingsWaiting": "{count} waiting"
+    "settingsWaiting": "{count} waiting",
+    "more": "More",
+    "filterLabel": "Show",
+    "filterAll": "All",
+    "filterEmpty": "No such days this month",
+    "fixDay": "Fix the day",
+    "dayMarks": "Marks that day",
+    "cellHint": "Click a cell to open the day",
+    "close": "Close",
+    "backToMonth": "Back to the month"
   }
 }

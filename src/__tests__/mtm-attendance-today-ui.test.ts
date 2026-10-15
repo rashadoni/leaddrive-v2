@@ -82,7 +82,7 @@ describe("Personnel → Today", () => {
     expect(absent.textContent).toBe(p("addReason"))
     expect(absent.getAttribute("href")).toBe(`/mtm/attendance/recordings?employeeId=${encodeURIComponent("id-Рашад")}&date=${today}`)
     expect(items[1].textContent).toContain("25 мин")
-    expect(items[2].querySelector("a")!.getAttribute("href")).toBe(`/mtm/attendance/timesheet?tab=journal&date=2026-10-13&employeeId=${encodeURIComponent("id-Эльвин")}`)
+    expect(items[2].querySelector("a")!.getAttribute("href")).toBe(`/mtm/attendance/timesheet?date=2026-10-13&employeeId=${encodeURIComponent("id-Эльвин")}`)
     expect(items[3].querySelector("a")!.getAttribute("href")).toBe("/mtm/attendance/settings?tab=review")
     expect(items[3].textContent).toContain("Эльвин")
   })
@@ -135,7 +135,7 @@ describe("Personnel → Today", () => {
   it("links every weekday to that day of the timesheet", async () => {
     await render()
     const days = Array.from(container.querySelectorAll<HTMLAnchorElement>('[data-testid="attendance-today-day"]'))
-    expect(days.map(link => link.getAttribute("href"))).toEqual(["12", "13", "14", "15", "16"].map(d => `/mtm/attendance/timesheet?tab=days&date=2026-10-${d}`))
+    expect(days.map(link => link.getAttribute("href"))).toEqual(["12", "13", "14", "15", "16"].map(d => `/mtm/attendance/timesheet?date=2026-10-${d}`))
     expect(days[2].textContent).toContain(p("weekToday"))
   })
 
