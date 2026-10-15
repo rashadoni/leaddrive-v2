@@ -24,9 +24,8 @@ import { drivingDistanceMeters } from "@/lib/mtm/road-distance"
  *    «Маршрут дня»;
  *  - the time the phone was silent and neither a break nor a stop explains it.
  *
- * The time in motion is not read off the fixes' `speed` or `isMoving`: that
- * field is taken as m/s in one place and printed as km/h in another, and a
- * drive is a stretch of track between two places, not a flag on a fix.
+ * The time in motion is not read off the fixes' `speed` or `isMoving`: a
+ * drive is a stretch of track between two places, not a reading of one fix.
  *
  * Pure: no React, no fetch, no database.
  */
