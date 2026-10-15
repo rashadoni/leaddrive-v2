@@ -108,6 +108,9 @@ describe("safe attendance request/decision journal and actual files", () => {
     expect(text).toContain(rows[0].attendanceDetails.dayKind.names[locale])
     expect(text + JSON.stringify(book.worksheets.map(sheet => sheet.getSheetValues()))).not.toMatch(/PRIVATE_|attachmentIds|submissionHash|storageKey/)
     expect(pdf.headers.get("content-type")).toBe("application/pdf")
+    // Owner, 2026-10-15: «2026 M10 15 14:38:40 · UTC» — month names in every locale, the company's clock.
+    expect(JSON.stringify(table)).not.toMatch(/\bM\d{2}\b/)
+    expect(table.details.at(-1)).toContain("Asia/Baku"); expect(table.details.at(-1)).not.toContain("UTC")
   })
   it("rejects a changed snapshot and reapplies scope and feature access before exporting", async () => {
     const snapshot = (await (await read()).json()).data.snapshot

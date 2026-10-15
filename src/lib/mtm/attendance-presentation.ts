@@ -1,3 +1,4 @@
+import { createDateFormatter } from "@/lib/format-date"
 import type { MtmAttendanceCorrection, MtmAttendanceReportRow } from "@/lib/mtm/attendance-report"
 import { attendanceDayKindLabel } from "@/lib/mtm/attendance-day-kinds"
 
@@ -38,7 +39,7 @@ export function attendanceMonthCellGroup(rows: readonly MtmAttendanceReportRow[]
   return rows.map(row => {
     const cell = attendanceMonthCell(row, t)
     if (!row.sourceDate || row.sourceDate === row.date) return cell
-    const date = new Intl.DateTimeFormat(locale, { dateStyle: "short", timeZone: "UTC" }).format(new Date(`${row.sourceDate}T12:00:00Z`))
+    const date = createDateFormatter(locale, { dateStyle: "short", timeZone: "UTC" }).format(new Date(`${row.sourceDate}T12:00:00Z`))
     return `${cell} (${t("shiftSourceDate", { date })})`
   }).join(" / ")
 }
@@ -50,15 +51,15 @@ export function attendanceCatalogueLegend(rows: readonly MtmAttendanceReportRow[
 type AttendanceHistoryText = (key: string, values?: Record<string, string | number>) => string
 /** Human-readable history shared verbatim by the built-in screen and exports. */
 export function attendanceCorrectionText(row: MtmAttendanceReportRow, correction: MtmAttendanceCorrection, locale: string, t: AttendanceHistoryText): string {
-  const time = (value: string | null) => value ? new Intl.DateTimeFormat(locale, { timeZone: row.timezone, hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date(value)) : "—"
+  const time = (value: string | null) => value ? createDateFormatter(locale, { timeZone: row.timezone, hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date(value)) : "—"
   const facts = (value: MtmAttendanceCorrection["after"]) => t("reportCorrectionFacts", { start: time(value.startedAt), end: time(value.completedAt), paused: formatAttendanceDuration(value.totalPausedSeconds) })
   return t("reportCorrectionEntry", { before: correction.before.kind === "MISSING" ? t("reportCorrectionMissing") : facts(correction.before.facts), after: facts(correction.after),
     reviewer: correction.reviewer.name || t("reportCorrectionReviewer"),
-    at: new Intl.DateTimeFormat(locale, { timeZone: row.timezone, dateStyle: "short", timeStyle: "medium" }).format(new Date(correction.occurredAt)) })
+    at: createDateFormatter(locale, { timeZone: row.timezone, dateStyle: "short", timeStyle: "medium" }).format(new Date(correction.occurredAt)) })
 }
 /** Approved periods describe permission; they never manufacture a phone event. */
 export function attendanceApprovedLines(row: MtmAttendanceReportRow, locale: string, t: AttendanceHistoryText): string[] {
-  const date = (value: string) => new Intl.DateTimeFormat(locale, { timeZone: "UTC", dateStyle: "medium" }).format(new Date(`${value}T12:00:00Z`))
+  const date = (value: string) => createDateFormatter(locale, { timeZone: "UTC", dateStyle: "medium" }).format(new Date(`${value}T12:00:00Z`))
   return (row.approvedRequests ?? []).map(entry => t("reportApprovedPeriod", {
     kind: attendanceDayKindLabel(entry.details.dayKind, locale),
     period: entry.details.unit === "HOURS"
