@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint, HintValue } from "@/components/hint"
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode, type Ref, type RefObject } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { AlertTriangle, Check, ChevronDown, ChevronRight, Download, Filter, Loader2, Maximize2, Minimize2, PanelRightClose, Printer, SlidersHorizontal, X } from "lucide-react"
@@ -440,9 +441,11 @@ export function LiveMapRoster({
           {tMap("roster.shownCount", { shown: rows.length, total: agents.length })}
         </span>
         {filteredColumns.length > 0 ? (
-          <button type="button" onClick={() => onFiltersChange({})} data-testid="live-map-roster-filters-menu-reset" className="ml-auto inline-flex min-h-8 items-center rounded-md border border-zinc-200 px-2 text-xs font-semibold hover:bg-muted dark:border-zinc-700 [@media(pointer:coarse)]:min-h-11">
-            {tMap("roster.filter.resetAll")}
-          </button>
+          <Hint text={tMap("hint.resetFilters")}>
+            <button type="button" onClick={() => onFiltersChange({})} data-testid="live-map-roster-filters-menu-reset" className="ml-auto inline-flex min-h-8 items-center rounded-md border border-zinc-200 px-2 text-xs font-semibold hover:bg-muted dark:border-zinc-700 [@media(pointer:coarse)]:min-h-11">
+              {tMap("roster.filter.resetAll")}
+            </button>
+          </Hint>
         ) : null}
       </div>
       <p className="shrink-0 px-3 pt-2 text-[11px] text-muted-foreground">{tMap("roster.filter.hint")}</p>
@@ -728,54 +731,60 @@ export function LiveMapRoster({
         <div role="caption">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 pt-2">
           <h4 className="text-xs font-semibold uppercase text-muted-foreground">{tMap("agents")}</h4>
-          <span role="status" className="text-xs tabular-nums text-muted-foreground" data-testid="live-map-roster-count">
-            {tMap("roster.shownCount", { shown: rows.length, total: agents.length })}
-          </span>
+          <HintValue className="text-xs tabular-nums text-muted-foreground" text={tMap("hint.shownCount")}>
+            <span role="status" data-testid="live-map-roster-count">
+              {tMap("roster.shownCount", { shown: rows.length, total: agents.length })}
+            </span>
+          </HintValue>
           {/* The list's own tools keep to the right edge together. */}
           <div className="ml-auto flex items-center gap-1.5">
             {/* The list as a file: what is shown, in this order. A word on it, not an arrow alone. */}
             {exportFileName ? (
-              <button
-                type="button"
-                onClick={() => { void downloadExcel() }}
-                disabled={exporting === "busy" || rows.length === 0}
-                title={tMap("roster.export.hint")}
-                aria-label={tMap("roster.export.hint")}
-                data-testid="live-map-roster-export"
-                className={cn(TOOL_BUTTON, "disabled:opacity-50")}
-              >
-                {exporting === "busy"
-                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                  : <Download className="h-3.5 w-3.5" aria-hidden="true" />}
-                {tMap("roster.export.button")}
-              </button>
+              <Hint wrap text={tMap("roster.export.hint")}>
+                <button
+                  type="button"
+                  onClick={() => { void downloadExcel() }}
+                  disabled={exporting === "busy" || rows.length === 0}
+                  aria-label={tMap("roster.export.hint")}
+                  data-testid="live-map-roster-export"
+                  className={cn(TOOL_BUTTON, "disabled:opacity-50")}
+                >
+                  {exporting === "busy"
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                    : <Download className="h-3.5 w-3.5" aria-hidden="true" />}
+                  {tMap("roster.export.button")}
+                </button>
+              </Hint>
             ) : null}
             {/* The same rows on paper, for the morning briefing. */}
             {printTitle ? (
-              <button
-                type="button"
-                onClick={printList}
-                disabled={rows.length === 0}
-                title={tMap("roster.print.hint")}
-                aria-label={tMap("roster.print.hint")}
-                data-testid="live-map-roster-print"
-                className={cn(TOOL_BUTTON, "disabled:opacity-50")}
-              >
-                <Printer className="h-3.5 w-3.5" aria-hidden="true" />{tMap("roster.print.button")}
-              </button>
+              <Hint wrap text={tMap("roster.print.hint")}>
+                <button
+                  type="button"
+                  onClick={printList}
+                  disabled={rows.length === 0}
+                  aria-label={tMap("roster.print.hint")}
+                  data-testid="live-map-roster-print"
+                  className={cn(TOOL_BUTTON, "disabled:opacity-50")}
+                >
+                  <Printer className="h-3.5 w-3.5" aria-hidden="true" />{tMap("roster.print.button")}
+                </button>
+              </Hint>
             ) : null}
             {/* Only where the list stands beside the map, and the screen is wide
                 enough for a table next to a usable map, is there a width to choose. */}
-            <button
-              type="button"
-              onClick={() => onViewChange({ ...view, width: view.width === "wide" ? "narrow" : "wide" })}
-              data-testid="live-map-roster-width"
-              className={cn(TOOL_BUTTON, "ml-auto hidden min-[85rem]:inline-flex")}
-            >
-              {view.width === "wide"
-                ? <><Minimize2 className="h-3.5 w-3.5" aria-hidden="true" />{tMap("roster.narrow")}</>
-                : <><Maximize2 className="h-3.5 w-3.5" aria-hidden="true" />{tMap("roster.wide")}</>}
-            </button>
+            <Hint text={tMap(view.width === "wide" ? "hint.narrow" : "hint.wide")}>
+              <button
+                type="button"
+                onClick={() => onViewChange({ ...view, width: view.width === "wide" ? "narrow" : "wide" })}
+                data-testid="live-map-roster-width"
+                className={cn(TOOL_BUTTON, "ml-auto hidden min-[85rem]:inline-flex")}
+              >
+                {view.width === "wide"
+                  ? <><Minimize2 className="h-3.5 w-3.5" aria-hidden="true" />{tMap("roster.narrow")}</>
+                  : <><Maximize2 className="h-3.5 w-3.5" aria-hidden="true" />{tMap("roster.wide")}</>}
+              </button>
+            </Hint>
           </div>
         </div>
         {exporting === "failed" ? (
@@ -788,7 +797,7 @@ export function LiveMapRoster({
               this width has no room to draw. */}
           {filtersFloat ? (
             <Popover open={filtersOpen} onOpenChange={(open) => { holdSteady(open); setFiltersOpen(open) }}>
-              <PopoverTrigger asChild>{filtersButton}</PopoverTrigger>
+              <Hint text={tMap("hint.filters")}><PopoverTrigger asChild>{filtersButton}</PopoverTrigger></Hint>
               {/* After the trigger, not before it: the trigger names itself the
                   anchor when it mounts, and the last one to speak is the one
                   the panel stands beside. */}
@@ -807,13 +816,15 @@ export function LiveMapRoster({
                 {filtersPanel("grid-cols-2", "min-h-0 flex-1 overflow-y-auto")}
               </PopoverContent>
             </Popover>
-          ) : filtersButton}
+          ) : <Hint text={tMap("hint.filters")}>{filtersButton}</Hint>}
           <Popover>
-            <PopoverTrigger asChild>
-              <button type="button" data-testid="live-map-roster-view" className={TOOL_BUTTON}>
-                <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />{tMap("roster.view")}
-              </button>
-            </PopoverTrigger>
+            <Hint text={tMap("hint.view")}>
+              <PopoverTrigger asChild>
+                <button type="button" data-testid="live-map-roster-view" className={TOOL_BUTTON}>
+                  <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />{tMap("roster.view")}
+                </button>
+              </PopoverTrigger>
+            </Hint>
             <PopoverContent align="end" collisionPadding={8} aria-label={tMap("roster.view")} className="max-h-[var(--radix-popover-content-available-height)] w-72 max-w-[calc(100vw-2rem)] overflow-y-auto p-0" data-testid="live-map-roster-view-menu">
               <fieldset className="border-b border-zinc-200 p-2 dark:border-zinc-700">
                 <legend className="px-1 text-[11px] font-semibold uppercase text-muted-foreground">{tMap("roster.groupBy")}</legend>
@@ -888,9 +899,11 @@ export function LiveMapRoster({
               </fieldset>
               {/* Putting the list away gives the map its width — only where they stand side by side. */}
               <div className="hidden p-2 lg:block">
-                <button type="button" onClick={onHide} data-testid="live-map-roster-hide" className="inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-md border border-zinc-200 text-xs font-semibold hover:bg-muted dark:border-zinc-700">
-                  <PanelRightClose className="h-3.5 w-3.5" aria-hidden="true" />{tMap("roster.hide")}
-                </button>
+                <Hint text={tMap("hint.hideRoster")}>
+                  <button type="button" onClick={onHide} data-testid="live-map-roster-hide" className="inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-md border border-zinc-200 text-xs font-semibold hover:bg-muted dark:border-zinc-700">
+                    <PanelRightClose className="h-3.5 w-3.5" aria-hidden="true" />{tMap("roster.hide")}
+                  </button>
+                </Hint>
               </div>
             </PopoverContent>
           </Popover>
@@ -902,21 +915,27 @@ export function LiveMapRoster({
           <div role="region" aria-label={tMap("roster.filters")} className="mx-3 mt-2 rounded-lg border border-zinc-200 bg-muted/30 dark:border-zinc-700" data-testid="live-map-roster-filters-menu">
             {filtersPanel("grid-cols-1 @md:grid-cols-2 @2xl:grid-cols-3 @5xl:grid-cols-4", "")}
             <div className="border-t border-zinc-200 p-2 dark:border-zinc-700">
-              <button type="button" onClick={() => { closedByDoneRef.current = true; setFiltersOpen(false) }} data-testid="live-map-roster-filters-done" className="inline-flex min-h-9 w-full items-center justify-center rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90 [@media(pointer:coarse)]:min-h-11">
-                {tMap("roster.filter.done", { shown: rows.length, total: agents.length })}
-              </button>
+              <Hint text={tMap("hint.filterDone")}>
+                <button type="button" onClick={() => { closedByDoneRef.current = true; setFiltersOpen(false) }} data-testid="live-map-roster-filters-done" className="inline-flex min-h-9 w-full items-center justify-center rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90 [@media(pointer:coarse)]:min-h-11">
+                  {tMap("roster.filter.done", { shown: rows.length, total: agents.length })}
+                </button>
+              </Hint>
             </div>
           </div>
         ) : null}
         {/* Who is on the map: all of the list, nobody, or the ones ticked below. */}
         <div className="flex flex-wrap items-center gap-x-3 px-3 pt-1 text-[11px]" data-testid="live-map-on-map-bar">
           <span className="text-muted-foreground">{tMap("layers.onMapCount", { shown: tick.onMap, total: tick.total })}</span>
-          <button type="button" data-testid="live-map-on-map-all" onClick={() => onSetAgentsOnMap(rowIds, true)} className={cn("inline-flex min-h-8 items-center font-semibold underline-offset-2 hover:underline", ROSTER_ACTION_TEXT)}>
-            {tMap("layers.selectAll")}
-          </button>
-          <button type="button" data-testid="live-map-on-map-none" onClick={() => onSetAgentsOnMap(rowIds, false)} className={cn("inline-flex min-h-8 items-center font-semibold underline-offset-2 hover:underline", ROSTER_ACTION_TEXT)}>
-            {tMap("layers.selectNone")}
-          </button>
+          <Hint text={tMap("hint.selectAll")}>
+            <button type="button" data-testid="live-map-on-map-all" onClick={() => onSetAgentsOnMap(rowIds, true)} className={cn("inline-flex min-h-8 items-center font-semibold underline-offset-2 hover:underline", ROSTER_ACTION_TEXT)}>
+              {tMap("layers.selectAll")}
+            </button>
+          </Hint>
+          <Hint text={tMap("hint.selectNone")}>
+            <button type="button" data-testid="live-map-on-map-none" onClick={() => onSetAgentsOnMap(rowIds, false)} className={cn("inline-flex min-h-8 items-center font-semibold underline-offset-2 hover:underline", ROSTER_ACTION_TEXT)}>
+              {tMap("layers.selectNone")}
+            </button>
+          </Hint>
           <span className="ml-auto text-muted-foreground">{tMap("selectForDetails")}</span>
         </div>
         {filteredColumns.length > 0 ? (
@@ -929,26 +948,30 @@ export function LiveMapRoster({
                 </button>
               </span>
             ))}
-            <button type="button" onClick={() => onFiltersChange({})} data-testid="live-map-roster-filters-reset" className={cn("inline-flex min-h-7 items-center px-1 text-[11px] font-semibold underline-offset-2 hover:underline", ROSTER_ACTION_TEXT)}>
-              {tMap("roster.filter.resetAll")}
-            </button>
+            <Hint text={tMap("hint.resetFilters")}>
+              <button type="button" onClick={() => onFiltersChange({})} data-testid="live-map-roster-filters-reset" className={cn("inline-flex min-h-7 items-center px-1 text-[11px] font-semibold underline-offset-2 hover:underline", ROSTER_ACTION_TEXT)}>
+                {tMap("roster.filter.resetAll")}
+              </button>
+            </Hint>
           </div>
         ) : null}
         </div>
         <div role="row" className={cn(ROW_GRID, "border-t border-zinc-200 bg-muted/40 dark:border-zinc-700")}>
           <div role="columnheader" className="flex justify-center">
-            <label className={TICK_BOX} title={tMap("roster.masterTick")}>
-              <input
-                type="checkbox"
-                checked={tick.state === "all"}
-                ref={(element) => { if (element) element.indeterminate = tick.state === "some" }}
-                disabled={rowIds.length === 0}
-                onChange={() => onSetAgentsOnMap(rowIds, tick.state !== "all")}
-                aria-label={tMap("roster.masterTick")}
-                data-testid="live-map-roster-master-tick"
-                className={TICK_INPUT}
-              />
-            </label>
+            <Hint text={tMap("roster.masterTick")}>
+              <label className={TICK_BOX}>
+                <input
+                  type="checkbox"
+                  checked={tick.state === "all"}
+                  ref={(element) => { if (element) element.indeterminate = tick.state === "some" }}
+                  disabled={rowIds.length === 0}
+                  onChange={() => onSetAgentsOnMap(rowIds, tick.state !== "all")}
+                  aria-label={tMap("roster.masterTick")}
+                  data-testid="live-map-roster-master-tick"
+                  className={TICK_INPUT}
+                />
+              </label>
+            </Hint>
           </div>
           {drawnColumns.map((column) => (
             <div
@@ -968,9 +991,11 @@ export function LiveMapRoster({
           <div role="row"><div role="cell" className="px-3 py-8 text-center text-xs text-muted-foreground">
             <div>{tMap("noAgentsMatch")}</div>
             {filteredColumns.length > 0 ? (
-              <button type="button" onClick={() => onFiltersChange({})} data-testid="live-map-roster-empty-reset" className="mt-2 inline-flex min-h-9 items-center rounded-md border border-zinc-300 px-3 font-semibold text-foreground hover:bg-muted dark:border-zinc-600">
-                {tMap("roster.filter.resetAll")}
-              </button>
+              <Hint text={tMap("hint.resetFilters")}>
+                <button type="button" onClick={() => onFiltersChange({})} data-testid="live-map-roster-empty-reset" className="mt-2 inline-flex min-h-9 items-center rounded-md border border-zinc-300 px-3 font-semibold text-foreground hover:bg-muted dark:border-zinc-600">
+                  {tMap("roster.filter.resetAll")}
+                </button>
+              </Hint>
             ) : null}
           </div></div>
         ) : groups.map((group) => {
@@ -986,28 +1011,32 @@ export function LiveMapRoster({
               {grouped && groupTick ? (
                 <div role="row" data-testid={`live-map-roster-group-row-${group.key}`} className="border-b border-zinc-200 bg-muted/60 text-xs font-semibold dark:border-zinc-700">
                   <div role="cell" className="flex items-center">
-                  <label className={cn(TICK_BOX, "shrink-0")} title={tMap("roster.groupTick", { name: label })}>
-                    <input
-                      type="checkbox"
-                      checked={groupTick.state === "all"}
-                      ref={(element) => { if (element) element.indeterminate = groupTick.state === "some" }}
-                      onChange={() => onSetAgentsOnMap(memberIds, groupTick.state !== "all")}
-                      aria-label={tMap("roster.groupTick", { name: label })}
-                      className={cn(TICK_INPUT, UNDER_HEADING)}
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    aria-expanded={!collapsed}
-                    aria-label={tMap(collapsed ? "roster.expandGroup" : "roster.collapseGroup", { name: label })}
-                    onClick={() => toggleGroup(groupId, memberIds, collapsed)}
-                    className={cn("flex min-h-9 min-w-0 flex-1 items-center gap-1.5 pr-3 text-left [@media(pointer:coarse)]:min-h-11", UNDER_HEADING)}
-                  >
-                    {collapsed ? <ChevronRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> : <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />}
-                    {groupBy === "status" ? <span className={cn("h-2 w-2 shrink-0 rounded-full", ROSTER_STATUS_DOT_CLASS[group.key])} aria-hidden="true" /> : null}
-                    <span className="min-w-0 truncate">{label}</span>
-                    <span className="ml-auto shrink-0 font-normal tabular-nums text-muted-foreground">{groupTick.onMap} / {groupTick.total}</span>
-                  </button>
+                  <Hint text={tMap("roster.groupTick", { name: label })}>
+                    <label className={cn(TICK_BOX, "shrink-0")}>
+                      <input
+                        type="checkbox"
+                        checked={groupTick.state === "all"}
+                        ref={(element) => { if (element) element.indeterminate = groupTick.state === "some" }}
+                        onChange={() => onSetAgentsOnMap(memberIds, groupTick.state !== "all")}
+                        aria-label={tMap("roster.groupTick", { name: label })}
+                        className={cn(TICK_INPUT, UNDER_HEADING)}
+                      />
+                    </label>
+                  </Hint>
+                  <Hint text={tMap("hint.groupCount")}>
+                    <button
+                      type="button"
+                      aria-expanded={!collapsed}
+                      aria-label={tMap(collapsed ? "roster.expandGroup" : "roster.collapseGroup", { name: label })}
+                      onClick={() => toggleGroup(groupId, memberIds, collapsed)}
+                      className={cn("flex min-h-9 min-w-0 flex-1 items-center gap-1.5 pr-3 text-left [@media(pointer:coarse)]:min-h-11", UNDER_HEADING)}
+                    >
+                      {collapsed ? <ChevronRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> : <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />}
+                      {groupBy === "status" ? <span className={cn("h-2 w-2 shrink-0 rounded-full", ROSTER_STATUS_DOT_CLASS[group.key])} aria-hidden="true" /> : null}
+                      <span className="min-w-0 truncate">{label}</span>
+                      <span className="ml-auto shrink-0 font-normal tabular-nums text-muted-foreground">{groupTick.onMap} / {groupTick.total}</span>
+                    </button>
+                  </Hint>
                   </div>
                 </div>
               ) : null}

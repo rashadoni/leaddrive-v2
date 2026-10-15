@@ -10,6 +10,7 @@ import { PageDescription } from "@/components/page-description"
 import { MtmFilterBar, MtmFilterSearch, MtmFilterSelect } from "@/components/mtm/filter-bar"
 import { HelpButton } from "@/components/help/help-button"
 import { Button } from "@/components/ui/button"
+import { Hint, HintValue } from "@/components/hint"
 import dynamic from "next/dynamic"
 import { calculateDistance } from "@/lib/geo-utils"
 import { LiveMapDaySteps } from "@/components/mtm/live-map-day-steps"
@@ -1116,6 +1117,17 @@ export default function MtmMapPage() {
     return counts
   }, { online: 0, offline: 0 }), [agents])
 
+  // The organization's own limits, said in the hints the way the counts and
+  // the statuses use them (owner, 2026-10-15: «подсказок в модуле очень мало»).
+  const freshMinutes = Math.round((contract?.freshnessThresholds.onlineSeconds ?? 300) / 60)
+  const delayedMinutes = Math.round((contract?.freshnessThresholds.delayedSeconds ?? 600) / 60)
+  const appPresenceHint = tMap("hint.appPresence", { online: tMap("presence.online"), minutes: freshMinutes })
+  const gpsFreshnessHint = tMap("hint.gpsFreshness", {
+    fresh: tMap("freshness.online"), freshMinutes,
+    delayed: tMap("freshness.delayed"), delayedMinutes,
+    stale: tMap("freshness.stale"),
+  })
+
   const workdayCounts = useMemo(() => agents.reduce((counts, agent) => {
     if (agent.workdayState === "ACTIVE") counts.active += 1
     else if (agent.workdayState === "PAUSED") counts.paused += 1
@@ -1407,6 +1419,7 @@ export default function MtmMapPage() {
             refreshKey={`${agent.workdayState}|${agent.isOnline ? 1 : 0}`}
             // With the date when the moment is not today: last week's contact must not read as this morning's.
             formatTime={formatVisitOpened}
+            hints={{ app: appPresenceHint, freshness: gpsFreshnessHint }}
           />
         ),
       },
@@ -1438,18 +1451,18 @@ export default function MtmMapPage() {
         {/* On a phone the row has room for about fifteen letters of a name. */}
         <div className="text-xs font-semibold text-foreground sm:hidden">{agent.name}</div>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className={appPresent ? "font-medium text-green-600" : "text-muted-foreground"}>
+          <HintValue className={appPresent ? "font-medium text-green-600" : "text-muted-foreground"} text={appPresenceHint}>
             {tMap("appPresence")}: {tMap(`presence.${appPresent ? "online" : "offline"}`)}
-          </span>
-          <span className={hasFreshGps ? "font-medium text-blue-600" : agent.freshness === "DELAYED" ? "font-medium text-amber-700 dark:text-amber-300" : "text-muted-foreground"}>
+          </HintValue>
+          <HintValue className={hasFreshGps ? "font-medium text-blue-600" : agent.freshness === "DELAYED" ? "font-medium text-amber-700 dark:text-amber-300" : "text-muted-foreground"} text={gpsFreshnessHint}>
             {tMap("gpsFreshness")}: {tMap(`freshness.${agent.freshness.toLowerCase()}`)}
-          </span>
-          {workforceEnabled ? <span className={workdayTone}>
+          </HintValue>
+          {workforceEnabled ? <HintValue className={workdayTone} text={tMap("hint.workday")}>
             {tMap(`workday.${agent.workdayState.toLowerCase()}`)}
-          </span> : null}
+          </HintValue> : null}
           {agent.recordedAt ? (
             // With the date when it is not today's — as the «Телефон и приложение» block below says the same moment.
-            <span className="text-muted-foreground">{tMap("recordedAt")}: {formatVisitOpened(agent.recordedAt)}</span>
+            <HintValue className="text-muted-foreground" text={tMap("hint.recordedAt")}>{tMap("recordedAt")}: {formatVisitOpened(agent.recordedAt)}</HintValue>
           ) : null}
         </div>
         {/* Since when — only for what was recorded when it began: the visit, the break, the closed shift. */}
@@ -1485,14 +1498,14 @@ export default function MtmMapPage() {
           {agent.managerName ? <span data-testid="live-map-agent-manager">{tMap("roster.columns.manager")}: {agent.managerName}</span> : null}
           {/* The labels a manager put on him — the list shows them only as a column somebody switched on. */}
           {agent.tags?.length ? <span data-testid="live-map-agent-tags">{tMap("roster.columns.tags")}: {agent.tags.join(", ")}</span> : null}
-          {agent.speed != null && agent.speed > 0 ? <span>{tMap("roster.kmh", { value: agent.speed.toFixed(0) })}</span> : null}
-          {agent.routeCompletion > 0 ? <span><Navigation className="inline h-3 w-3" /> {agent.routeCompletion}%</span> : null}
-          {agent.accuracy != null ? <span>±{Math.round(agent.accuracy)} m</span> : null}
-          {agent.battery != null ? <span className="inline-flex items-center"><Battery className="mr-0.5 h-3 w-3" />{Math.round(agent.battery)}%</span> : null}
+          {agent.speed != null && agent.speed > 0 ? <HintValue text={tMap("hint.speed")}>{tMap("roster.kmh", { value: agent.speed.toFixed(0) })}</HintValue> : null}
+          {agent.routeCompletion > 0 ? <HintValue text={tMap("hint.routeCompletion")}><Navigation className="inline h-3 w-3" /> {agent.routeCompletion}%</HintValue> : null}
+          {agent.accuracy != null ? <HintValue text={tMap("hint.accuracy", { meters: Math.round(agent.accuracy) })}>±{Math.round(agent.accuracy)} m</HintValue> : null}
+          {agent.battery != null ? <HintValue className="inline-flex items-center" text={tMap("hint.battery")}><Battery className="mr-0.5 h-3 w-3" />{Math.round(agent.battery)}%</HintValue> : null}
         </div>
         {etaSeconds != null && etaSeconds > 0 ? (
           <div className="font-semibold text-blue-600">
-            {tMap("eta.label")}: {etaSeconds < 60
+            <HintValue text={tMap("hint.eta")}>{tMap("eta.label")}</HintValue>: {etaSeconds < 60
               ? tMap("eta.lessThanMinute")
               : etaSeconds < 3600
                 ? tMap("eta.minutes", { count: Math.round(etaSeconds / 60) })
@@ -1508,35 +1521,40 @@ export default function MtmMapPage() {
         {/* What can be done with him — in words, not icons (owner, 2026-09-22). */}
         <div className="flex flex-wrap items-center gap-1.5">
           {tenantToday ? (
-            <Link
-              href={`/mtm/map?mode=history&agentId=${encodeURIComponent(agent.agentId)}&date=${tenantToday}`}
-              aria-label={tMap("openEmployeeHistory", { name: agent.name })}
-              data-testid="live-map-open-history"
+            <Hint text={tMap("hint.historyToday")}>
+              <Link
+                href={`/mtm/map?mode=history&agentId=${encodeURIComponent(agent.agentId)}&date=${tenantToday}`}
+                aria-label={tMap("openEmployeeHistory", { name: agent.name })}
+                data-testid="live-map-open-history"
+                className="inline-flex min-h-8 items-center gap-1 rounded-full border border-zinc-300 px-2.5 text-[11px] font-medium text-foreground hover:bg-muted dark:border-zinc-600 [@media(pointer:coarse)]:min-h-11"
+              >
+                <History className="h-3 w-3" aria-hidden="true" />{tMap("roster.historyToday")}
+              </Link>
+            </Hint>
+          ) : null}
+          <Hint text={tMap("hint.onlyThis", { all: tMap("layers.selectAll"), showAll: tMap("layers.showAll"), layers: tMap("layers.title") })}>
+            <button
+              type="button"
+              onClick={() => showOnlyAgentOnMap(agent.agentId)}
+              data-testid="live-map-only-this"
               className="inline-flex min-h-8 items-center gap-1 rounded-full border border-zinc-300 px-2.5 text-[11px] font-medium text-foreground hover:bg-muted dark:border-zinc-600 [@media(pointer:coarse)]:min-h-11"
             >
-              <History className="h-3 w-3" aria-hidden="true" />{tMap("roster.historyToday")}
-            </Link>
-          ) : null}
-          <button
-            type="button"
-            onClick={() => showOnlyAgentOnMap(agent.agentId)}
-            data-testid="live-map-only-this"
-            className="inline-flex min-h-8 items-center gap-1 rounded-full border border-zinc-300 px-2.5 text-[11px] font-medium text-foreground hover:bg-muted dark:border-zinc-600 [@media(pointer:coarse)]:min-h-11"
-          >
-            <Eye className="h-3 w-3" aria-hidden="true" />{tMap("layers.onlyThis")}
-          </button>
-          <button
-            type="button"
-            aria-pressed={followSelected}
-            title={tMap("followHint")}
-            onClick={() => setFollowSelected((on) => !on)}
-            data-testid="live-map-follow"
-            className={`inline-flex min-h-8 items-center gap-1 rounded-full border px-2.5 text-[11px] font-medium transition-colors [@media(pointer:coarse)]:min-h-11 ${followSelected
-              ? "border-blue-600 bg-blue-600 text-white"
-              : "border-zinc-300 text-foreground hover:bg-muted dark:border-zinc-600"}`}
-          >
-            <Crosshair className="h-3 w-3" aria-hidden="true" />{tMap("follow")}
-          </button>
+              <Eye className="h-3 w-3" aria-hidden="true" />{tMap("layers.onlyThis")}
+            </button>
+          </Hint>
+          <Hint text={tMap("followHint")}>
+            <button
+              type="button"
+              aria-pressed={followSelected}
+              onClick={() => setFollowSelected((on) => !on)}
+              data-testid="live-map-follow"
+              className={`inline-flex min-h-8 items-center gap-1 rounded-full border px-2.5 text-[11px] font-medium transition-colors [@media(pointer:coarse)]:min-h-11 ${followSelected
+                ? "border-blue-600 bg-blue-600 text-white"
+                : "border-zinc-300 text-foreground hover:bg-muted dark:border-zinc-600"}`}
+            >
+              <Crosshair className="h-3 w-3" aria-hidden="true" />{tMap("follow")}
+            </button>
+          </Hint>
         </div>
         {/* The other screens, already narrowed to him. «История за день» is the pill above. */}
         <LiveMapAgentLinks
@@ -1572,47 +1590,55 @@ export default function MtmMapPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {returnHref ? (
-            <Button asChild variant="outline" size="sm" className="min-h-11">
-              <Link href={returnHref}>
-                <ArrowLeft className="mr-1 h-3.5 w-3.5" />
-                {tMap("returnToOperationalWeek")}
-              </Link>
-            </Button>
+            <Hint text={tMap("hint.back")}>
+              <Button asChild variant="outline" size="sm" className="min-h-11">
+                <Link href={returnHref}>
+                  <ArrowLeft className="mr-1 h-3.5 w-3.5" />
+                  {tMap("returnToOperationalWeek")}
+                </Link>
+              </Button>
+            </Hint>
           ) : null}
           <div className="flex rounded-md border bg-muted/40 p-0.5" role="tablist" aria-label={tMap("modeLabel")}>
-            <Button
-              data-testid="mtm-map-mode-live"
-              type="button"
-              role="tab"
-              aria-selected={mapMode === "live"}
-              variant={mapMode === "live" ? "default" : "ghost"}
-              size="sm"
-              className="min-h-11"
-              onClick={() => switchMapMode("live")}
-            >
-              <Radio className="mr-1.5 h-3.5 w-3.5" />{tMap("liveMode")}
-            </Button>
-            <Button
-              data-testid="mtm-map-mode-history"
-              type="button"
-              role="tab"
-              aria-selected={mapMode === "history"}
-              variant={mapMode === "history" ? "default" : "ghost"}
-              size="sm"
-              className="min-h-11"
-              onClick={() => switchMapMode("history")}
-            >
-              <History className="mr-1.5 h-3.5 w-3.5" />{tMap("historyMode")}
-            </Button>
+            <Hint text={tMap("hint.live")}>
+              <Button
+                data-testid="mtm-map-mode-live"
+                type="button"
+                role="tab"
+                aria-selected={mapMode === "live"}
+                variant={mapMode === "live" ? "default" : "ghost"}
+                size="sm"
+                className="min-h-11"
+                onClick={() => switchMapMode("live")}
+              >
+                <Radio className="mr-1.5 h-3.5 w-3.5" />{tMap("liveMode")}
+              </Button>
+            </Hint>
+            <Hint text={tMap("hint.history")}>
+              <Button
+                data-testid="mtm-map-mode-history"
+                type="button"
+                role="tab"
+                aria-selected={mapMode === "history"}
+                variant={mapMode === "history" ? "default" : "ghost"}
+                size="sm"
+                className="min-h-11"
+                onClick={() => switchMapMode("history")}
+              >
+                <History className="mr-1.5 h-3.5 w-3.5" />{tMap("historyMode")}
+              </Button>
+            </Hint>
           </div>
           {mapMode === "live" && lastUpdate && (
             <span className="text-xs text-muted-foreground flex items-center gap-1">
-              <Clock className="h-3 w-3" /> {tMap("lastUpdate")}: {formatDateTime(lastUpdate, locale, { timeStyle: "short", timeZone: contract?.timezone })}
+              <Clock className="h-3 w-3" /> {tMap("lastUpdate")}: <HintValue text={tMap("hint.lastUpdate")}>{formatDateTime(lastUpdate, locale, { timeStyle: "short", timeZone: contract?.timezone })}</HintValue>
             </span>
           )}
-          {mapMode === "live" && <Button className="min-h-11" variant="outline" size="sm" onClick={manualRefresh} disabled={refreshing || loading} data-testid="mtm-map-refresh">
-            <RefreshCw className={`mr-1 h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} /> {tc("refresh")}
-          </Button>}
+          {mapMode === "live" && <Hint wrap text={tMap("hint.refresh", { seconds: contract?.polling.minimumIntervalSeconds ?? 15 })}>
+            <Button className="min-h-11" variant="outline" size="sm" onClick={manualRefresh} disabled={refreshing || loading} data-testid="mtm-map-refresh">
+              <RefreshCw className={`mr-1 h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} /> {tc("refresh")}
+            </Button>
+          </Hint>}
         </div>
       </div>
 
@@ -1625,9 +1651,11 @@ export default function MtmMapPage() {
         <div role="status" className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
           {contract?.rosterTruncated ? <span>{tMap("rosterTruncated", { shown: contract.returnedAgents })}</span> : null}
           {teams.length > 0 ? (
-            <MtmFilterSelect testId="mtm-map-team-filter" label={tMap("teamFilter")} value={teamFilter} allLabel={tMap("allTeams")}
-              options={teams.map((team) => ({ value: team.id, label: team.name }))}
-              onChange={setTeamFilter} />
+            <Hint wrap text={tMap("hint.teamFilter")}>
+              <MtmFilterSelect testId="mtm-map-team-filter" label={tMap("teamFilter")} value={teamFilter} allLabel={tMap("allTeams")}
+                options={teams.map((team) => ({ value: team.id, label: team.name }))}
+                onChange={setTeamFilter} />
+            </Hint>
           ) : null}
         </div>
       ) : null}
@@ -1639,51 +1667,65 @@ export default function MtmMapPage() {
       ) : null}
       {/* Status filter tabs */}
       <div className="-mx-1 flex flex-nowrap gap-1.5 overflow-x-auto px-1 pb-1 sm:mx-0 sm:flex-wrap sm:px-0" role="group" aria-label={tc("status")}>
+        <Hint text={tMap("hint.chipAll")}>
           <Button className="min-h-11 shrink-0" variant={statusFilter ? "outline" : "default"} size="sm" aria-pressed={!statusFilter} data-testid="mtm-map-status-chip-all" onClick={() => pickStatus(null)}>
-          {tc("all")} ({statusCounts.total})
-        </Button>
-        <Button variant={statusChipOn("CHECKED_IN") ? "default" : "outline"} size="sm" aria-pressed={statusChipOn("CHECKED_IN")} data-testid="mtm-map-status-chip-CHECKED_IN" onClick={() => pickStatus("CHECKED_IN")}
-          className={`min-h-11 shrink-0 ${statusChipOn("CHECKED_IN") ? "" : "text-green-600 border-green-200 hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-950/20"}`}>
-          <MapPin className="h-3 w-3 mr-1" /> {tMap("fieldStatus.checkedIn")} ({statusCounts.checkedIn})
-        </Button>
-        <Button variant={statusChipOn("ON_ROAD") ? "default" : "outline"} size="sm" aria-pressed={statusChipOn("ON_ROAD")} data-testid="mtm-map-status-chip-ON_ROAD" onClick={() => pickStatus("ON_ROAD")}
-          className={`min-h-11 shrink-0 ${statusChipOn("ON_ROAD") ? "" : "text-blue-600 border-blue-200 hover:bg-blue-50 dark:border-blue-800 dark:hover:bg-blue-950/20"}`}>
-          <Navigation className="h-3 w-3 mr-1" /> {tMap("fieldStatus.onRoad")} ({statusCounts.onRoad})
-        </Button>
-        <Button variant={statusChipOn("STOPPED") ? "default" : "outline"} size="sm" aria-pressed={statusChipOn("STOPPED")} data-testid="mtm-map-status-chip-STOPPED" onClick={() => pickStatus("STOPPED")}
-          className={`min-h-11 shrink-0 ${statusChipOn("STOPPED") ? "" : "text-amber-700 border-amber-200 hover:bg-amber-50 dark:text-amber-300 dark:border-amber-800 dark:hover:bg-amber-950/20"}`}>
-          <PauseCircle className="h-3 w-3 mr-1" /> {tMap("fieldStatus.stopped")} ({statusCounts.stopped})
-        </Button>
-        <Button variant={statusChipOn("ROUTE_FINISHED") ? "default" : "outline"} size="sm" aria-pressed={statusChipOn("ROUTE_FINISHED")} data-testid="mtm-map-status-chip-ROUTE_FINISHED" onClick={() => pickStatus("ROUTE_FINISHED")}
-          className={`min-h-11 shrink-0 ${statusChipOn("ROUTE_FINISHED") ? "" : "text-emerald-700 border-emerald-200 hover:bg-emerald-50 dark:text-emerald-300 dark:border-emerald-800 dark:hover:bg-emerald-950/20"}`}>
-          <Flag className="h-3 w-3 mr-1" /> {tMap("fieldStatus.routeFinished")} ({statusCounts.routeFinished})
-        </Button>
-        <Button variant={statusChipOn("LATE") ? "default" : "outline"} size="sm" aria-pressed={statusChipOn("LATE")} data-testid="mtm-map-status-chip-LATE" onClick={() => pickStatus("LATE")}
-          className={`min-h-11 shrink-0 ${statusChipOn("LATE") ? "" : "text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950/20"}`}>
-          <AlertTriangle className="h-3 w-3 mr-1" /> {tMap("fieldStatus.late")} ({statusCounts.late})
-        </Button>
-        <Button variant={statusChipOn("OFFLINE") ? "default" : "outline"} size="sm" aria-pressed={statusChipOn("OFFLINE")} data-testid="mtm-map-status-chip-OFFLINE" onClick={() => pickStatus("OFFLINE")}
-          className={`min-h-11 shrink-0 ${statusChipOn("OFFLINE") ? "" : "text-muted-foreground"}`}>
-          <WifiOff className="h-3 w-3 mr-1" /> {tMap("fieldStatus.offline")} ({statusCounts.offline})
-        </Button>
+            {tc("all")} ({statusCounts.total})
+          </Button>
+        </Hint>
+        <Hint text={tMap("hint.chipCheckedIn")}>
+          <Button variant={statusChipOn("CHECKED_IN") ? "default" : "outline"} size="sm" aria-pressed={statusChipOn("CHECKED_IN")} data-testid="mtm-map-status-chip-CHECKED_IN" onClick={() => pickStatus("CHECKED_IN")}
+            className={`min-h-11 shrink-0 ${statusChipOn("CHECKED_IN") ? "" : "text-green-600 border-green-200 hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-950/20"}`}>
+            <MapPin className="h-3 w-3 mr-1" /> {tMap("fieldStatus.checkedIn")} ({statusCounts.checkedIn})
+          </Button>
+        </Hint>
+        <Hint text={tMap("hint.chipOnRoad")}>
+          <Button variant={statusChipOn("ON_ROAD") ? "default" : "outline"} size="sm" aria-pressed={statusChipOn("ON_ROAD")} data-testid="mtm-map-status-chip-ON_ROAD" onClick={() => pickStatus("ON_ROAD")}
+            className={`min-h-11 shrink-0 ${statusChipOn("ON_ROAD") ? "" : "text-blue-600 border-blue-200 hover:bg-blue-50 dark:border-blue-800 dark:hover:bg-blue-950/20"}`}>
+            <Navigation className="h-3 w-3 mr-1" /> {tMap("fieldStatus.onRoad")} ({statusCounts.onRoad})
+          </Button>
+        </Hint>
+        <Hint text={tMap("hint.chipStopped")}>
+          <Button variant={statusChipOn("STOPPED") ? "default" : "outline"} size="sm" aria-pressed={statusChipOn("STOPPED")} data-testid="mtm-map-status-chip-STOPPED" onClick={() => pickStatus("STOPPED")}
+            className={`min-h-11 shrink-0 ${statusChipOn("STOPPED") ? "" : "text-amber-700 border-amber-200 hover:bg-amber-50 dark:text-amber-300 dark:border-amber-800 dark:hover:bg-amber-950/20"}`}>
+            <PauseCircle className="h-3 w-3 mr-1" /> {tMap("fieldStatus.stopped")} ({statusCounts.stopped})
+          </Button>
+        </Hint>
+        <Hint text={tMap("hint.chipRouteFinished")}>
+          <Button variant={statusChipOn("ROUTE_FINISHED") ? "default" : "outline"} size="sm" aria-pressed={statusChipOn("ROUTE_FINISHED")} data-testid="mtm-map-status-chip-ROUTE_FINISHED" onClick={() => pickStatus("ROUTE_FINISHED")}
+            className={`min-h-11 shrink-0 ${statusChipOn("ROUTE_FINISHED") ? "" : "text-emerald-700 border-emerald-200 hover:bg-emerald-50 dark:text-emerald-300 dark:border-emerald-800 dark:hover:bg-emerald-950/20"}`}>
+            <Flag className="h-3 w-3 mr-1" /> {tMap("fieldStatus.routeFinished")} ({statusCounts.routeFinished})
+          </Button>
+        </Hint>
+        <Hint text={tMap("hint.chipLate")}>
+          <Button variant={statusChipOn("LATE") ? "default" : "outline"} size="sm" aria-pressed={statusChipOn("LATE")} data-testid="mtm-map-status-chip-LATE" onClick={() => pickStatus("LATE")}
+            className={`min-h-11 shrink-0 ${statusChipOn("LATE") ? "" : "text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950/20"}`}>
+            <AlertTriangle className="h-3 w-3 mr-1" /> {tMap("fieldStatus.late")} ({statusCounts.late})
+          </Button>
+        </Hint>
+        <Hint text={tMap("hint.chipOffline", { minutes: delayedMinutes })}>
+          <Button variant={statusChipOn("OFFLINE") ? "default" : "outline"} size="sm" aria-pressed={statusChipOn("OFFLINE")} data-testid="mtm-map-status-chip-OFFLINE" onClick={() => pickStatus("OFFLINE")}
+            className={`min-h-11 shrink-0 ${statusChipOn("OFFLINE") ? "" : "text-muted-foreground"}`}>
+            <WifiOff className="h-3 w-3 mr-1" /> {tMap("fieldStatus.offline")} ({statusCounts.offline})
+          </Button>
+        </Hint>
       </div>
 
       <div role="status" className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border bg-card px-3 py-2 text-xs">
-        <span className="font-semibold">{tMap("agents")}: {agents.length}</span>
+        <HintValue className="font-semibold" text={tMap("hint.agents")}>{tMap("agents")}: {agents.length}</HintValue>
         <span className="flex flex-wrap items-center gap-x-2">
-          <strong>{tMap("appPresence")}:</strong>
+          <HintValue className="font-bold" text={appPresenceHint}>{tMap("appPresence")}:</HintValue>
           <span className="text-green-700 dark:text-green-400">{tMap("presence.online")} {presenceCounts.online}</span>
           <span className="text-muted-foreground">{tMap("presence.offline")} {presenceCounts.offline}</span>
         </span>
         <span className="flex flex-wrap items-center gap-x-2">
-          <strong>{tMap("gpsFreshness")}:</strong>
+          <HintValue className="font-bold" text={gpsFreshnessHint}>{tMap("gpsFreshness")}:</HintValue>
           <span className="text-blue-700 dark:text-blue-400">{tMap("freshness.online")} {freshnessCounts.online}</span>
           <span className="text-amber-700 dark:text-amber-300">{tMap("freshness.delayed")} {freshnessCounts.delayed}</span>
           <span className="text-muted-foreground">{tMap("freshness.stale")} {freshnessCounts.stale}</span>
           <span className="text-muted-foreground">{tMap("freshness.noLocation")} {freshnessCounts.noLocation}</span>
         </span>
         {workforceEnabled ? <span className="flex flex-wrap items-center gap-x-2">
-          <strong>{tMap("workdayState")}:</strong>
+          <HintValue className="font-bold" text={tMap("hint.workday")}>{tMap("workdayState")}:</HintValue>
           <span className="text-emerald-700 dark:text-emerald-400">{tMap("workday.active")} {workdayCounts.active}</span>
           <span className="text-amber-700 dark:text-amber-300">{tMap("workday.paused")} {workdayCounts.paused}</span>
           <span className="text-muted-foreground">{tMap("workday.closed")} {workdayCounts.closed}</span>
@@ -1698,13 +1740,15 @@ export default function MtmMapPage() {
           {showLastKnown
             ? tMap("lastKnownShown", { count: stalePositions })
             : tMap("stalePositionsHidden", { count: stalePositions })}
-          <button
-            type="button"
-            onClick={() => setShowLastKnown((value) => !value)}
-            className="font-semibold text-foreground underline underline-offset-2"
-          >
-            {showLastKnown ? tMap("hideLastKnown") : tMap("showLastKnown")}
-          </button>
+          <Hint text={tMap("hint.lastKnown")}>
+            <button
+              type="button"
+              onClick={() => setShowLastKnown((value) => !value)}
+              className="font-semibold text-foreground underline underline-offset-2"
+            >
+              {showLastKnown ? tMap("hideLastKnown") : tMap("showLastKnown")}
+            </button>
+          </Hint>
         </div>
       ) : null}
       {/* Owner rule (audit 2026-09-14): the page scrolls as one. The employee
@@ -1817,17 +1861,19 @@ export default function MtmMapPage() {
               button says so. Only where the two stand side by side: under the
               map on a phone the list is never put away. */}
           {rosterHidden && !showRosterLoading ? (
-            <button
-              type="button"
-              onClick={() => setRosterHidden(false)}
-              data-testid="live-map-roster-show"
-              className="absolute left-14 top-3 z-[1100] hidden min-h-11 items-center gap-2 rounded-lg border border-zinc-300 bg-card px-3 text-sm font-medium shadow-md lg:inline-flex dark:border-zinc-600"
-            >
-              <Users className="h-4 w-4" aria-hidden="true" />
-              {filteredAgents.length !== agents.length || debouncedEmployeeFilter
-                ? tMap("roster.showFiltered", { shown: filteredAgents.length, total: agents.length })
-                : tMap("roster.show", { count: agents.length })}
-            </button>
+            <Hint text={tMap("hint.rosterShow")}>
+              <button
+                type="button"
+                onClick={() => setRosterHidden(false)}
+                data-testid="live-map-roster-show"
+                className="absolute left-14 top-3 z-[1100] hidden min-h-11 items-center gap-2 rounded-lg border border-zinc-300 bg-card px-3 text-sm font-medium shadow-md lg:inline-flex dark:border-zinc-600"
+              >
+                <Users className="h-4 w-4" aria-hidden="true" />
+                {filteredAgents.length !== agents.length || debouncedEmployeeFilter
+                  ? tMap("roster.showFiltered", { shown: filteredAgents.length, total: agents.length })
+                  : tMap("roster.show", { count: agents.length })}
+              </button>
+            </Hint>
           ) : null}
         </div>
 

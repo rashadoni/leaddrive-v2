@@ -81,6 +81,7 @@ import { ROSTER_VIEW_STORAGE_KEY } from "@/lib/mtm/live-map-roster"
 import { resetLiveMapPlaceCacheForTests } from "@/components/mtm/live-map-agent-place"
 import { resetLiveMapShareLinkCacheForTests } from "@/components/mtm/live-map-agent-share"
 import { locationShareLinkExpiresAt } from "@/lib/mtm/location-share-link"
+import { readHint } from "./helpers/hint"
 
 const METERS_PER_DEGREE = (Math.PI * 6_371_000) / 180
 const CENTRE = { latitude: 40.4093, longitude: 49.8671 }
@@ -175,6 +176,9 @@ function answerZoneWrite(method: string, path: string, body: Record<string, unkn
   return Response.json({ success: true, data: kept[index] })
 }
 
+/** The organization's own limits of a fresh coordinate; a test may give it others. */
+let freshnessThresholds = { onlineSeconds: 300, delayedSeconds: 600 }
+
 function answer(now: number) {
   const iso = (minutesAgo: number) => new Date(now - minutesAgo * 60_000).toISOString()
   return {
@@ -197,7 +201,7 @@ function answer(now: number) {
         scope: "ORGANIZATION", today: "2026-10-09", timezone: "Asia/Baku", maxRosterSize: 500, returnedAgents: rosterRows.length,
         rosterTruncated: false, markerCount: rosterRows.filter((row) => row.meters != null).length, workforceEnabled,
         generatedAt: new Date(now).toISOString(), polling: { minimumIntervalSeconds: 15 },
-        freshnessThresholds: { onlineSeconds: 300, delayedSeconds: 600 }, maxAccuracyMeters: 100, geofenceRadiusMeters: 150,
+        freshnessThresholds, maxAccuracyMeters: 100, geofenceRadiusMeters: 150,
         ...(shareLinks ? { shareLinks } : {}),
       },
     },
@@ -354,6 +358,36 @@ describe("the live map page, end to end", () => {
     act(() => root.unmount())
     container.remove()
     vi.unstubAllGlobals()
+  })
+
+  // Owner, 2026-10-15: «тут нет подсказок при наведении, и вообще подсказок в
+  // модуле очень мало». The minutes in them are the organization's own, read
+  // from the same answer the counts are made from — not the defaults.
+  it("says under the cursor what each status, the summary and the card's buttons mean, with the organization's own minutes", async () => {
+    freshnessThresholds = { onlineSeconds: 420, delayedSeconds: 900 }
+    try {
+      await open()
+      const hint = (key: string) => ((ru.mtmMap as Messages).hint as Messages)[key] as string
+      expect(await readHint(byTestId("mtm-map-status-chip-OFFLINE"))).toBe("Только те, чья последняя координата старше 15 мин или не приходила вовсе.")
+      expect(await readHint(byTestId("mtm-map-status-chip-STOPPED"))).toBe(hint("chipStopped"))
+      expect(await readHint(byTestId("mtm-map-refresh"))).toContain("15 с")
+      const summaryLabel = (text: string) => [...document.body.querySelectorAll("[data-hint-value]")].find((node) => node.textContent === text)
+      expect(await readHint(summaryLabel("Свежесть GPS:"))).toBe(
+        "Как давно пришла последняя координата: «Свежая» — не старше 7 мин, «С задержкой» — до 15 мин, «Устарела» — старше. Пороги задаются в настройках MTM.")
+      expect(await readHint(summaryLabel("Приложение:"))).toBe("«В сети» — приложение связывалось с сервером за последние 7 мин. Это про само приложение, не про GPS.")
+
+      await press(byTestId("live-map-agent-card-mid"))
+      expect(await readHint(byTestId("live-map-open-history"))).toBe(hint("historyToday"))
+      expect(await readHint(byTestId("live-map-only-this"))).toBe("Скрыть с карты всех остальных. Вернуть их — «Все» над списком или «Показать всех» в «Слои».")
+      expect(await readHint(byTestId("live-map-follow"))).toBe((ru.mtmMap as Messages).followHint)
+      // «±10 m» says how far off he may be, in the phone's own words.
+      const accuracy = [...document.body.querySelectorAll("[data-hint-value]")].find((node) => node.textContent === "±10 m")
+      expect(await readHint(accuracy)).toBe("Точность GPS: сотрудник может быть до 10 м от этой точки — так оценил сам телефон.")
+      // The browser's own slow grey hint is gone from what was converted.
+      expect(byTestId("live-map-follow")?.hasAttribute("title")).toBe(false)
+    } finally {
+      freshnessThresholds = { onlineSeconds: 300, delayedSeconds: 600 }
+    }
   })
 
   it("opens with everybody in the list by name and only the people with a live position on the map", async () => {

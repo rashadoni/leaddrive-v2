@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { Eye, Layers, X } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Hint } from "@/components/hint"
 
 export interface LiveMapLayer {
   id: string
@@ -92,18 +93,20 @@ export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents
     // The frame spans the map's width only to learn that width (@container) —
     // it takes no presses itself.
     <div className="@container pointer-events-none absolute left-3 bottom-3 right-3 top-3 z-[1200] flex flex-col items-end gap-2" data-testid="live-map-layers">
-      <button
-        type="button"
-        aria-expanded={open}
-        aria-controls="live-map-layers-panel"
-        onClick={() => setOpen((value) => !value)}
-        className="pointer-events-auto inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-zinc-300 bg-card px-3 text-sm font-medium shadow-md dark:border-zinc-600"
-      >
-        {open ? <X className="h-4 w-4" aria-hidden="true" /> : <Layers className="h-4 w-4" aria-hidden="true" />}
-        {tMap("layers.title")}
-        {/* Something is hidden: say so while the panel is closed. */}
-        {!open && offCount > 0 ? <span className="h-2 w-2 rounded-full bg-amber-500" data-testid="live-map-layers-mark" aria-hidden="true" /> : null}
-      </button>
+      <Hint side="left" text={offCount > 0 ? `${tMap("hint.layers")} ${tMap("hint.layersOff")}` : tMap("hint.layers")}>
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls="live-map-layers-panel"
+          onClick={() => setOpen((value) => !value)}
+          className="pointer-events-auto inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-zinc-300 bg-card px-3 text-sm font-medium shadow-md dark:border-zinc-600"
+        >
+          {open ? <X className="h-4 w-4" aria-hidden="true" /> : <Layers className="h-4 w-4" aria-hidden="true" />}
+          {tMap("layers.title")}
+          {/* Something is hidden: say so while the panel is closed. */}
+          {!open && offCount > 0 ? <span className="h-2 w-2 rounded-full bg-amber-500" data-testid="live-map-layers-mark" aria-hidden="true" /> : null}
+        </button>
+      </Hint>
       {open ? null : alerts.map((item, index) => (
         <div key={item.testId ?? `alert-${index}`} role="status" className="pointer-events-auto flex max-w-[min(18rem,calc(100vw-3rem))] shrink-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900 shadow-md dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200" data-testid={item.testId ?? "live-map-layers-alert"}>
           <span>{item.text}</span>
@@ -123,20 +126,21 @@ export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents
                 {baseMaps.options.map((option) => {
                   const chosen = option.id === baseMaps.value
                   return (
-                    <button
-                      key={option.id}
-                      type="button"
-                      role="radio"
-                      aria-checked={chosen}
-                      onClick={() => baseMaps.onChange(option.id)}
-                      data-testid={`live-map-base-map-${option.id}`}
-                      className={cn(
-                        "inline-flex min-h-9 items-center rounded-full border px-3 text-xs font-medium transition-colors [@media(pointer:coarse)]:min-h-11",
-                        chosen ? "border-primary bg-primary/10 font-semibold" : "border-zinc-300 hover:bg-muted dark:border-zinc-600",
-                      )}
-                    >
-                      {option.label}
-                    </button>
+                    <Hint key={option.id} text={tMap("hint.baseMap")}>
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={chosen}
+                        onClick={() => baseMaps.onChange(option.id)}
+                        data-testid={`live-map-base-map-${option.id}`}
+                        className={cn(
+                          "inline-flex min-h-9 items-center rounded-full border px-3 text-xs font-medium transition-colors [@media(pointer:coarse)]:min-h-11",
+                          chosen ? "border-primary bg-primary/10 font-semibold" : "border-zinc-300 hover:bg-muted dark:border-zinc-600",
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    </Hint>
                   )
                 })}
               </div>
@@ -169,9 +173,11 @@ export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents
           {hiddenAgentCount > 0 ? (
             <div className="mt-1 flex items-center justify-between gap-2 rounded-md bg-amber-50 px-2 py-1.5 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200" data-testid="live-map-hidden-agents">
               <span>{tMap("layers.hiddenAgents", { count: hiddenAgentCount })}</span>
-              <button type="button" onClick={onShowAllAgents} className="inline-flex min-h-9 items-center gap-1 font-semibold underline underline-offset-2">
-                <Eye className="h-3.5 w-3.5" aria-hidden="true" />{tMap("layers.showAll")}
-              </button>
+              <Hint text={tMap("hint.showAll")}>
+                <button type="button" onClick={onShowAllAgents} className="inline-flex min-h-9 items-center gap-1 font-semibold underline underline-offset-2">
+                  <Eye className="h-3.5 w-3.5" aria-hidden="true" />{tMap("layers.showAll")}
+                </button>
+              </Hint>
             </div>
           ) : null}
           {note ? <p className="mt-1 px-1 text-[11px] text-muted-foreground">{note}</p> : null}

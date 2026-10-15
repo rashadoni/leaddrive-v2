@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint, HintValue } from "@/components/hint"
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react"
 import { useTranslations } from "next-intl"
 import { copyTextWithFallback } from "@/lib/copy-text"
@@ -489,18 +490,19 @@ export function LiveMapAgentShare({ agentId, agentName, canWrite, refreshKey, no
           <div id={createLabelId} className="font-medium text-foreground">{t("share.create")}</div>
           <div className="flex flex-wrap items-center gap-1.5">
             {LOCATION_SHARE_LINK_DURATIONS.map((duration) => (
-              <button
-                key={duration}
-                type="button"
-                // Not `disabled`: a button that is being pressed would drop the keyboard's focus to the page.
-                aria-disabled={busy != null}
-                onClick={() => { void create(duration) }}
-                data-share-create=""
-                data-testid={`live-map-share-create-${duration}`}
-                className={PILL}
-              >
-                {t(`share.durations.${duration}`)}
-              </button>
+              <Hint key={duration} text={t("hint.shareCreate")}>
+                <button
+                  type="button"
+                  // Not `disabled`: a button that is being pressed would drop the keyboard's focus to the page.
+                  aria-disabled={busy != null}
+                  onClick={() => { void create(duration) }}
+                  data-share-create=""
+                  data-testid={`live-map-share-create-${duration}`}
+                  className={PILL}
+                >
+                  {t(`share.durations.${duration}`)}
+                </button>
+              </Hint>
             ))}
           </div>
         </div>
@@ -539,7 +541,7 @@ export function LiveMapAgentShare({ agentId, agentName, canWrite, refreshKey, no
                 <li key={link.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 rounded-md bg-muted/50 px-2 py-1.5" data-testid={`live-map-share-link-${link.id}`}>
                   <div className="min-w-0">
                     <div className="font-medium text-foreground" data-testid="live-map-share-link-until">{until}</div>
-                    <div className="break-words text-muted-foreground" data-testid="live-map-share-link-facts">{factsOf(link)}</div>
+                    <div className="break-words text-muted-foreground" data-testid="live-map-share-link-facts"><HintValue text={t("hint.shareStats")}>{factsOf(link)}</HintValue></div>
                   </div>
                   {fresh ? (
                     <div role="status" className="col-span-2 row-start-2 mt-1.5 rounded-md border border-emerald-300 bg-emerald-50 p-2 dark:border-emerald-800 dark:bg-emerald-950/40" data-testid={`live-map-share-fresh-${link.id}`}>
@@ -558,35 +560,41 @@ export function LiveMapAgentShare({ agentId, agentName, canWrite, refreshKey, no
                         // 16 px on a touch screen: a smaller field makes iOS zoom the whole page on focus.
                         className="mt-1 h-8 w-full rounded-lg border border-zinc-200 bg-background px-2 text-[11px] text-muted-foreground outline-none focus:border-primary/60 focus:text-foreground dark:border-zinc-700 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:text-base"
                       />
-                      <a
-                        href={liveMapShareLinkWhatsAppUrl(messageOf(fresh.url))}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={() => sentToWhatsApp(link.id)}
-                        data-testid={`live-map-share-whatsapp-${link.id}`}
-                        className={`${SEND} mt-1.5 w-full bg-emerald-600 text-white hover:bg-emerald-700`}
-                      >
-                        {t("share.sendWhatsApp")}
-                      </a>
+                      <Hint text={t("hint.shareWhatsApp")}>
+                        <a
+                          href={liveMapShareLinkWhatsAppUrl(messageOf(fresh.url))}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => sentToWhatsApp(link.id)}
+                          data-testid={`live-map-share-whatsapp-${link.id}`}
+                          className={`${SEND} mt-1.5 w-full bg-emerald-600 text-white hover:bg-emerald-700`}
+                        >
+                          {t("share.sendWhatsApp")}
+                        </a>
+                      </Hint>
                       <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                         {canShare ? (
+                          <Hint text={t("hint.shareOther")}>
+                            <button
+                              type="button"
+                              onClick={() => { void shareLink(link.id, fresh.url) }}
+                              data-testid={`live-map-share-share-${link.id}`}
+                              className={SEND_OTHER}
+                            >
+                              {t("share.shareOther")}
+                            </button>
+                          </Hint>
+                        ) : null}
+                        <Hint text={t("hint.shareCopy")}>
                           <button
                             type="button"
-                            onClick={() => { void shareLink(link.id, fresh.url) }}
-                            data-testid={`live-map-share-share-${link.id}`}
+                            onClick={() => { void copyLink(link.id, fresh.url) }}
+                            data-testid={`live-map-share-copy-${link.id}`}
                             className={SEND_OTHER}
                           >
-                            {t("share.shareOther")}
+                            {copied === "copied" ? t("share.copied") : t("share.copy")}
                           </button>
-                        ) : null}
-                        <button
-                          type="button"
-                          onClick={() => { void copyLink(link.id, fresh.url) }}
-                          data-testid={`live-map-share-copy-${link.id}`}
-                          className={SEND_OTHER}
-                        >
-                          {copied === "copied" ? t("share.copied") : t("share.copy")}
-                        </button>
+                        </Hint>
                       </div>
                       {copied === "failed" ? (
                         <p role="alert" className="mt-1 text-red-700 dark:text-red-400" data-testid="live-map-share-copy-failed">{t("share.copyFailed")}</p>
@@ -632,18 +640,20 @@ export function LiveMapAgentShare({ agentId, agentName, canWrite, refreshKey, no
                       </div>
                     </div>
                   ) : (
-                    <button
-                      type="button"
-                      // Not `disabled`: a button that is being pressed would drop the keyboard's focus to the page.
-                      aria-disabled={busy != null}
-                      onClick={() => askToRevoke(link)}
-                      aria-label={revokeLabel}
-                      data-share-revoke={link.id}
-                      data-testid={`live-map-share-revoke-${link.id}`}
-                      className={`${ACTION} col-start-2 row-start-1 self-start text-red-700 dark:text-red-400`}
-                    >
-                      {t("share.revoke")}
-                    </button>
+                    <Hint text={t("hint.shareRevoke")}>
+                      <button
+                        type="button"
+                        // Not `disabled`: a button that is being pressed would drop the keyboard's focus to the page.
+                        aria-disabled={busy != null}
+                        onClick={() => askToRevoke(link)}
+                        aria-label={revokeLabel}
+                        data-share-revoke={link.id}
+                        data-testid={`live-map-share-revoke-${link.id}`}
+                        className={`${ACTION} col-start-2 row-start-1 self-start text-red-700 dark:text-red-400`}
+                      >
+                        {t("share.revoke")}
+                      </button>
+                    </Hint>
                   )}
                 </li>
               )
@@ -679,9 +689,11 @@ export function LiveMapAgentShare({ agentId, agentName, canWrite, refreshKey, no
               ? t(`share.errors.${readProblem}`, { limit })
               : answer ? t("share.refreshFailed") : t("share.loadFailed")}
           </span>
-          <button type="button" onClick={() => setAttempt((count) => count + 1)} className={ACTION} data-testid="live-map-share-retry">
-            {t("share.retry")}
-          </button>
+          <Hint text={t("hint.retry")}>
+            <button type="button" onClick={() => setAttempt((count) => count + 1)} className={ACTION} data-testid="live-map-share-retry">
+              {t("share.retry")}
+            </button>
+          </Hint>
         </p>
       ) : null}
     </div>

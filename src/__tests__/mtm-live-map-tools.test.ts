@@ -42,6 +42,7 @@ import {
 } from "@/lib/mtm/live-map-roster"
 import { LiveMapRoster } from "@/components/mtm/live-map-roster"
 import { LiveMapTools } from "@/components/mtm/live-map-tools"
+import { readHint } from "./helpers/hint"
 
 const NOW = Date.parse("2026-10-09T10:00:00.000Z")
 const at = (minutesAgo: number) => new Date(NOW - minutesAgo * 60_000).toISOString()
@@ -363,8 +364,8 @@ describe("the tools on the map, in words", () => {
     await submit()
     const hits = [...byTestId("live-map-address-hits")!.querySelectorAll("button")]
     expect(hits.map((hit) => hit.textContent)).toEqual(["Nizami küçəsi 1, Bakı", "Nizami küçəsi 2, Bakı", "Nizami küçəsi 3, Bakı"])
-    // A long address is cut to two lines here; the whole of it is in the tooltip.
-    expect(hits[0].getAttribute("title")).toBe("Nizami küçəsi 1, Bakı")
+    // A long address is cut to two lines here; the whole of it is in the hint.
+    expect(await readHint(hits[0])).toBe("Nizami küçəsi 1, Bakı")
     expect(hits[0].querySelector("span")?.className).toContain("line-clamp-2")
   })
 

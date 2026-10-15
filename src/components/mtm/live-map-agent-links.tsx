@@ -4,6 +4,23 @@ import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { AlertTriangle, CalendarRange, ClipboardList, History, Settings, UserCog, type LucideIcon } from "lucide-react"
 import type { LiveMapAgentLink, LiveMapAgentLinkId } from "@/lib/mtm/live-map-agent-links"
+import { Hint } from "@/components/hint"
+
+// What each link opens, said under the cursor (owner, 2026-10-15: «тут нет
+// подсказок при наведении»). The employee's own section is a list narrowed to
+// him where the organization keeps that section switched off.
+const HINT: Record<LiveMapAgentLinkId, string> = {
+  history: "hint.historyToday",
+  alerts: "hint.alerts",
+  period: "hint.period",
+  tasks: "hint.tasks",
+  card: "hint.card",
+  alertRules: "links.alertRulesHint",
+}
+
+function hintKey(link: LiveMapAgentLink) {
+  return link.id === "card" && !link.href.startsWith("/mtm/agents/") ? "hint.cardList" : HINT[link.id]
+}
 
 // The icons the menu on the left shows for the same screens.
 const ICONS: Record<LiveMapAgentLinkId, LucideIcon> = {
@@ -41,16 +58,16 @@ export function LiveMapAgentLinks({ links, agentName }: {
         // would promise rules of his own, which do not exist.
         const general = link.id === "alertRules"
         return (
-          <Link
-            key={link.id}
-            href={link.href}
-            aria-label={general || !agentName.trim() ? undefined : tMap("links.forEmployee", { label, name: agentName })}
-            title={general ? tMap("links.alertRulesHint") : undefined}
-            data-testid={`live-map-agent-link-${link.id}`}
-            className="inline-flex min-h-8 items-center gap-1 rounded-full border border-zinc-300 px-2.5 text-[11px] font-medium text-foreground hover:bg-muted dark:border-zinc-600 [@media(pointer:coarse)]:min-h-11"
-          >
-            <Icon className="h-3 w-3" aria-hidden="true" />{label}
-          </Link>
+          <Hint key={link.id} text={tMap(hintKey(link))}>
+            <Link
+              href={link.href}
+              aria-label={general || !agentName.trim() ? undefined : tMap("links.forEmployee", { label, name: agentName })}
+              data-testid={`live-map-agent-link-${link.id}`}
+              className="inline-flex min-h-8 items-center gap-1 rounded-full border border-zinc-300 px-2.5 text-[11px] font-medium text-foreground hover:bg-muted dark:border-zinc-600 [@media(pointer:coarse)]:min-h-11"
+            >
+              <Icon className="h-3 w-3" aria-hidden="true" />{label}
+            </Link>
+          </Hint>
         )
       })}
     </div>
