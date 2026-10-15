@@ -164,7 +164,7 @@ describe("personal attendance forms with real report rows", () => {
     await submit()
     expect(savedViews[1].config.filters.form).toBe("JOURNAL")
     expect(customRows()).toHaveLength(4)
-    expect(headers()).toEqual(["Employee", "Team", "Date", "Day status", "Event", "Phone time", "Received by server"])
+    expect(headers()).toEqual(["Employee", "Department", "Date", "Day status", "Event", "Phone time", "Received by server"])
     expect(customRows()[0]).toContain("8:59:00")
     expect(totals()).toBeUndefined()
   })

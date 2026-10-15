@@ -23,6 +23,8 @@ const EVENT_TYPES: readonly string[] = ["START", "PAUSE", "RESUME", "FINISH", "R
 export interface MtmAttendanceEmployee {
   id: string
   name: string
+  /** Job title from the employee card; absent in older callers. */
+  position?: string | null
   teamId: string | null
   teamName: string | null
   employmentEvents?: readonly AttendanceEmploymentEvent[]
@@ -101,6 +103,7 @@ export interface MtmAttendanceReportRow {
 
   employeeId: string
   employeeName: string
+  employeePosition?: string | null
   teamId: string | null
   teamName: string | null
   date: string
@@ -228,7 +231,7 @@ function buildRow(employee: MtmAttendanceEmployee, date: string, days: readonly 
   const calendarKind = effective.overrideId !== null ? effective.kind : customWeekend ? "WEEKEND" : "WORKING_DAY"
   const expectedWorkSeconds = isWorkingDay ? plan.expectedSeconds : 0
   const row: MtmAttendanceReportRow = {
-    employeeId: employee.id, employeeName: employee.name, teamId: employee.teamId, teamName: employee.teamName,
+    employeeId: employee.id, employeeName: employee.name, employeePosition: employee.position ?? null, teamId: employee.teamId, teamName: employee.teamName,
     date, workdayId: null, kind: isWorkingDay ? date > today ? "UPCOMING" : "ABSENT"
       : ["PUBLIC_HOLIDAY", "COMPANY_HOLIDAY"].includes(calendarKind) ? "HOLIDAY" : "WEEKEND",
     factsState: "NONE", ruleId: rule.id, timezone: rule.timezone, calendarKind, calendarName: effective.name,

@@ -16,7 +16,7 @@ export type AttendanceTable = {
   totals: string[]
 }
 const REASON: Record<string, string> = { DUPLICATE_WORKDAY: "reportReasonDuplicate", SCHEDULE_INVALID: "reportReasonSchedule", TIMESTAMP_INVALID: "reportReasonTimestamp", EVENT_TYPE_INVALID: "reportReasonEvent", JOURNAL_INCOMPLETE: "reportReasonJournal", PAUSE_TOTAL_MISMATCH: "reportReasonPause", WORKDAY_INCONSISTENT: "reportReasonFacts" }
-const COLUMN: Record<AttendanceViewColumn, string> = { employee: "reportEmployee", team: "reportTeam", date: "reportDate", status: "reportStatus", startedAt: "reportStarted", completedAt: "reportFinished", worked: "reportWorked", paused: "reportPaused", late: "reportLate", early: "reportEarly", event: "reportEvent", phoneAt: "reportPhoneTime", serverAt: "reportServerTime", days: "reportMonth", absent: "reportAbsentCount", notes: "reportNotes",
+const COLUMN: Record<AttendanceViewColumn, string> = { employee: "reportEmployee", position: "reportPosition", team: "reportTeam", date: "reportDate", status: "reportStatus", startedAt: "reportStarted", completedAt: "reportFinished", worked: "reportWorked", paused: "reportPaused", late: "reportLate", early: "reportEarly", event: "reportEvent", phoneAt: "reportPhoneTime", serverAt: "reportServerTime", days: "reportMonth", absent: "reportAbsentCount", notes: "reportNotes",
   arrivalBranch: "reportArrivalBranch", departureBranch: "reportDepartureBranch", markLocation: "reportMarkLocation", branch: "branchReportBranch", arrivals: "branchReportArrivals", departures: "branchReportDepartures", employees: "branchReportEmployees", outside: "branchReportOutside", uncertain: "branchReportUncertain", noLocation: "branchReportNoLocation", noConsent: "branchReportNoConsent", planned: "overtimePlanned", excess: "overtimeExcess", threshold: "overtimeThreshold", approvedOvertime: "overtimeApproved", overtimeState: "overtimeState",
   index: "reportIndex", workedDays: "reportWorkedDays", hours: "reportHours", plannedDays: "reportPlannedDays", expected: "reportExpected", lateCount: "reportLateCount", earlyCount: "reportEarlyCount",
   leaveDays: "reportLeaveDays", sickDays: "reportSickDays", overtimeHours: "reportOvertimeHours", attendanceRate: "reportAttendanceRate", balance: "reportBalance", kinds: "reportAbsenceKinds", absenceTotal: "reportAbsenceTotal" }
@@ -72,7 +72,7 @@ export function buildAttendanceTable(report: MtmAttendanceReport, value: Attenda
     const groupRows = [...groups].map(([key, days]) => {
       const figures = periodFigures(days, overtime)
       const data: Record<string, string | number> = {
-        employee: days[0].employeeName, team: days[0].teamName ?? t("reportNoTeam"), employees: new Set(days.map(row => row.employeeId)).size,
+        employee: days[0].employeeName, position: config.mode === "TEAM" ? "—" : days[0].employeePosition || "—", team: days[0].teamName ?? t("reportNoTeam"), employees: new Set(days.map(row => row.employeeId)).size,
         plannedDays: figures.plannedDays, workedDays: figures.workedDays, expected: formatAttendanceDuration(figures.expectedSeconds),
         worked: `${formatAttendanceDuration(figures.summary.workedSeconds)}${!figures.summary.isComplete ? ` · ${t("reportPartial")}` : ""}`,
         lateCount: figures.summary.lateCount, earlyCount: figures.summary.earlyLeaveCount, absent: figures.summary.absentCount,
@@ -121,20 +121,20 @@ export function buildAttendanceTable(report: MtmAttendanceReport, value: Attenda
       const summary = summarizeMtmAttendanceRows(days)
       const byDate = new Map<string, MtmAttendanceReportRow[]>()
       for (const row of days) byDate.set(row.date, [...(byDate.get(row.date) ?? []), row])
-      const data: Record<string, string | number> = { employee: days[0].employeeName, team: days[0].teamName ?? t("reportNoTeam"),
+      const data: Record<string, string | number> = { employee: days[0].employeeName, position: days[0].employeePosition || "—", team: days[0].teamName ?? t("reportNoTeam"),
         worked: `${formatAttendanceDuration(summary.workedSeconds)}${!summary.isComplete ? ` · ${t("reportPartial")}` : ""}`, late: summary.lateCount, absent: summary.absentCount,
         index: index + 1, workedDays: days.filter(row => row.startedAt !== null && row.factsState === "VALID").length, hours: formatAttendanceDuration(summary.workedSeconds), notes: "" }
       return { key: id, cells: columns.map((column) => column.key in data ? data[column.key] : attendanceMonthCellGroup(byDate.get(column.key), locale, t)) }
     })
   } else if (config.mode === "JOURNAL") {
     tableRows = rows.flatMap((row) => attendanceJournalEntries(row, locale, t).map((entry) => {
-      const data: Record<string, string> = { employee: row.employeeName, team: row.teamName ?? t("reportNoTeam"), date: date(row.date), status: attendanceStatusText(row, locale, t), event: entry.description,
+      const data: Record<string, string> = { employee: row.employeeName, position: row.employeePosition || "—", team: row.teamName ?? t("reportNoTeam"), date: date(row.date), status: attendanceStatusText(row, locale, t), event: entry.description,
         phoneAt: time(entry.phoneAt, row.timezone, true), serverAt: time(entry.serverAt, row.timezone, true) }
       return { key: `${row.employeeId}:${row.date}:${entry.id}`, kind: row.kind, cells: columns.map((column) => data[column.key]) }
     }))
   } else {
     tableRows = rows.map((row) => {
-      const data: Record<string, string> = { employee: row.employeeName, team: row.teamName ?? t("reportNoTeam"), date: date(row.date), status: attendanceStatusText(row, locale, t), notes: dayNotes(row),
+      const data: Record<string, string> = { employee: row.employeeName, position: row.employeePosition || "—", team: row.teamName ?? t("reportNoTeam"), date: date(row.date), status: attendanceStatusText(row, locale, t), notes: dayNotes(row),
         startedAt: time(row.startedAt, row.timezone), completedAt: time(row.completedAt, row.timezone), worked: duration(row), paused: formatAttendanceDuration(row.pausedSeconds),
         late: formatAttendanceDuration(row.lateSeconds), early: formatAttendanceDuration(row.earlyLeaveSeconds),
         arrivalBranch: attendanceEndpointBranch(row, "START"), departureBranch: attendanceEndpointBranch(row, "FINISH"), markLocation: attendanceDayLocationText(row, t) }

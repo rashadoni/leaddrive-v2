@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { History, Users } from "lucide-react"
+import { History, IdCard, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { HomeCard, HomePill } from "@/components/mtm/home-parts"
 import { createDateFormatter } from "@/lib/format-date"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
 import { MtmAttendanceAddEmployee } from "@/components/mtm/attendance-add-employee"
+import { MtmAttendanceEmployeeCard, type EmployeeCardBody } from "@/components/mtm/attendance-employee-card"
 import { AttendanceParticipationInputSchema, AttendanceEmploymentInputSchema, type AttendanceEmployeeDirectory } from "@/lib/mtm/attendance-employee-contract"
 
 const ENDPOINT = "/api/v1/mtm/attendance/employees"
@@ -16,8 +17,10 @@ const SELECT = "min-h-11 w-full min-w-0 rounded-md border border-input bg-backgr
 const PAGE_SIZE = 25
 const HISTORY_SIZE = 20
 type Change = { kind: "HIRE" | "TERMINATION" | "REHIRE"; date: string; reason: string }
-type Pending = { url: string; body: ReturnType<typeof AttendanceParticipationInputSchema.parse> | ReturnType<typeof AttendanceEmploymentInputSchema.parse> }
+type Pending = { url: string; body: ReturnType<typeof AttendanceParticipationInputSchema.parse> | ReturnType<typeof AttendanceEmploymentInputSchema.parse> | EmployeeCardBody }
 const emptyChange = (): Change => ({ kind: "HIRE", date: "", reason: "" })
+const nextChange = (employee: AttendanceEmployeeDirectory["employees"][number]): Change =>
+  ({ kind: !employee.history.length ? "HIRE" : employee.history.at(-1)?.kind === "TERMINATION" ? "REHIRE" : "TERMINATION", date: "", reason: "" })
 
 export function MtmAttendanceEmployees() {
   const t = useTranslations("mtmAttendance"), p = useTranslations("personnel"), statusText = useTranslations("mtmStatus"), locale = useLocale()
@@ -32,13 +35,15 @@ export function MtmAttendanceEmployees() {
   const [denied, setDenied] = useState(false), [needsRefresh, setNeedsRefresh] = useState(false)
   const [error, setError] = useState<string | null>(null), [saved, setSaved] = useState(false)
   const [pending, setPending] = useState<Pending | null>(null)
-  const pendingRef = useRef<Pending | null>(null)
+  const pendingRef = useRef<Pending | null>(null), selectedRef = useRef<string | null>(null)
+  useEffect(() => { selectedRef.current = selectedId }, [selectedId])
   const read = useRef<AbortController | null>(null), write = useRef<AbortController | null>(null)
   const clearPrivate = useCallback(() => {
     setDirectory(null); setChange(emptyChange()); setSelectedId(null)
     setSearch(""); setParticipation("ALL"); setSaved(false); setPending(null); pendingRef.current = null; setNeedsRefresh(false)
   }, [])
-  const load = useCallback(async () => {
+  // `keep` reopens the card that was just saved, with the fresh data.
+  const load = useCallback(async (keep?: string) => {
     if (pendingRef.current) return
     read.current?.abort()
     const controller = new AbortController(); read.current = controller
@@ -50,7 +55,10 @@ export function MtmAttendanceEmployees() {
       if ([401, 403, 404].includes(response.status)) { clearPrivate(); setDenied(true); setError("employeesAccessUnavailable"); return }
       if (!response.ok || body?.success !== true || !Array.isArray(body.data?.users) || !Array.isArray(body.data?.teams) || !Array.isArray(body.data?.employees)
         || !body.data.employees.every((employee: { history?: unknown; included?: unknown; participationVersion?: unknown }) => Array.isArray(employee?.history) && typeof employee.included === "boolean" && (employee.participationVersion === null || typeof employee.participationVersion === "string"))) { setError("employeesLoadError"); return }
-      setDirectory(body.data as AttendanceEmployeeDirectory); setChange(emptyChange()); setSelectedId(null)
+      const next = { ...body.data, managers: Array.isArray(body.data.managers) ? body.data.managers : [] } as AttendanceEmployeeDirectory
+      const kept = keep ? next.employees.find(employee => employee.id === keep) : undefined
+      setDirectory(next); setSelectedId(kept?.id ?? null)
+      setChange(kept ? nextChange(kept) : emptyChange())
       setHistoryPage(0); setNeedsRefresh(false)
       return true
     } catch { if (!controller.signal.aborted) setError("employeesLoadError") }
@@ -70,11 +78,12 @@ export function MtmAttendanceEmployees() {
       if ([401, 403, 404].includes(response.status)) { clearPrivate(); setDenied(true); setError("employeesAccessUnavailable"); return }
       const resultId = body?.data?.eventId
       if (response.ok && body?.success === true && typeof resultId === "string" && typeof body.data.idempotent === "boolean") {
-        pendingRef.current = null; setPending(null); if (await load()) setSaved(true); return
+        pendingRef.current = null; setPending(null); if (await load(selectedRef.current ?? undefined)) setSaved(true); return
       }
       if ([400, 409, 413, 422].includes(response.status)) {
         pendingRef.current = null; setPending(null)
-        if (response.status === 400 || response.status === 413) setError(body?.code === "MTM_ATTENDANCE_EMPLOYEE_DATE_INVALID" ? "employeesDateInvalid" : "employeesInvalid")
+        if (body?.code === "MTM_ATTENDANCE_EMPLOYEE_MANAGER_INVALID") setError("employeesManagerInvalid")
+        else if (response.status === 400 || response.status === 413) setError(body?.code === "MTM_ATTENDANCE_EMPLOYEE_DATE_INVALID" ? "employeesDateInvalid" : "employeesInvalid")
         else { setNeedsRefresh(true); setError(body?.code === "MTM_ATTENDANCE_EMPLOYEE_TOO_LARGE" ? "employeesTooLarge" : "employeesChanged") }
       } else setError("employeesUnconfirmed")
     } catch { if (!controller.signal.aborted) setError("employeesUnconfirmed") }
@@ -107,11 +116,11 @@ export function MtmAttendanceEmployees() {
   function selectEmployee(id: string) {
     const employee = directory?.employees.find(item => item.id === id)
     setSelectedId(id); setHistoryPage(0); setSaved(false); setError(null)
-    setChange({ kind: !employee?.history.length ? "HIRE" : employee.history.at(-1)?.kind === "TERMINATION" ? "REHIRE" : "TERMINATION", date: "", reason: "" })
+    setChange(employee ? nextChange(employee) : emptyChange())
   }
   return <div className="space-y-5" data-testid="attendance-employees">
     <div className="flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-2xl font-semibold tracking-tight">{t("employeesTitle")}</h1><p className="mt-2 max-w-prose text-sm text-muted-foreground">{t("employeesIntro")}</p></div>{!denied && <div className="flex flex-wrap items-start gap-2">
-      <MtmAttendanceAddEmployee disabled={loading || saving || Boolean(pending) || !directory} onAdded={(name, email) => { void load().then(() => setAdded({ name, email })) }} />
+      <MtmAttendanceAddEmployee disabled={loading || saving || Boolean(pending) || !directory} teams={directory?.teams ?? []} onAdded={(name, email) => { void load().then(() => setAdded({ name, email })) }} />
       <Button variant="outline" className="min-h-11 rounded-full" disabled={loading || saving || Boolean(pending)} onClick={() => void load()}>{t("employeesRefresh")}</Button></div>}</div>
     {added && <p role="status" className="max-w-prose rounded-xl bg-emerald-50 p-4 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100" data-testid="attendance-employee-added">{p("addEmployeeDone", added)}</p>}
     {loading && <p role="status" className="text-sm text-muted-foreground">{t("employeesLoading")}</p>}
@@ -128,13 +137,16 @@ export function MtmAttendanceEmployees() {
           </select></div>
         </div>
         <p className="text-sm text-muted-foreground" role="status">{t("employeesParticipationCounts", { total: directory.employees.length, included: includedCount, excluded: directory.employees.length - includedCount })}</p>
-        {employees.length ? <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="hidden md:table-header-group"><tr className="border-b text-xs text-muted-foreground">{["employeesEmployee", "employeesRole", "employeesParticipation", "employeesLatest", "employeesActions"].map(key => <th key={key} className="px-3 py-3 font-medium">{t(key)}</th>)}</tr></thead><tbody className="block md:table-row-group">{employees.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE).map(employee => { const latest = employee.history.at(-1); return <tr key={employee.id} className="block border-b py-3 last:border-0 md:table-row" data-testid="employee-row"><td className="block px-3 py-2 md:table-cell"><strong className="break-words">{employee.name}</strong><span className="mt-1 block break-words text-xs text-muted-foreground">{employee.teamName ?? t("employeesNoTeam")}</span></td><td className="block px-3 py-2 md:table-cell">{mtmStatusLabel(statusText, "role", employee.role)}</td><td className="block px-3 py-2 md:table-cell"><Button type="button" variant="ghost" role="switch" aria-checked={employee.included} aria-label={t("employeesParticipationNamed", { name: employee.name })} disabled={blocked} className="min-h-11 gap-2 px-0 hover:bg-transparent" onClick={() => changeParticipation(employee)}>
+        {employees.length ? <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="hidden md:table-header-group"><tr className="border-b text-xs text-muted-foreground">{["employeesEmployee", "employeesRole", "employeesParticipation", "employeesLatest", "employeesActions"].map(key => <th key={key} className="px-3 py-3 font-medium">{t(key)}</th>)}</tr></thead><tbody className="block md:table-row-group">{employees.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE).map(employee => { const latest = employee.history.at(-1); return <tr key={employee.id} className="block border-b py-3 last:border-0 md:table-row" data-testid="employee-row"><td className="block px-3 py-2 md:table-cell"><strong className="break-words">{employee.name}</strong><span className="mt-1 block break-words text-xs text-muted-foreground">{[employee.position, employee.teamName ?? t("employeesNoTeam")].filter(Boolean).join(" · ")}</span></td><td className="block px-3 py-2 md:table-cell">{mtmStatusLabel(statusText, "role", employee.role)}</td><td className="block px-3 py-2 md:table-cell"><Button type="button" variant="ghost" role="switch" aria-checked={employee.included} aria-label={t("employeesParticipationNamed", { name: employee.name })} disabled={blocked} className="min-h-11 gap-2 px-0 hover:bg-transparent" onClick={() => changeParticipation(employee)}>
             <span aria-hidden="true" className={`flex h-6 w-10 shrink-0 items-center rounded-full p-0.5 ${employee.included ? "justify-end bg-primary" : "justify-start bg-zinc-400 dark:bg-zinc-600"}`}><span className="h-5 w-5 rounded-full bg-white" /></span>{t(employee.included ? "employeesIncluded" : "employeesExcluded")}
-          </Button>{employee.status !== "ACTIVE" && <span className="block"><HomePill tone="zinc">{mtmStatusLabel(statusText, "agentStatus", employee.status)}</HomePill></span>}</td><td className="block px-3 py-2 md:table-cell">{latest ? <>{kindLabel(latest.kind)} · {dateLabel(latest.date)}</> : t("employeesNoHistory")}</td><td className="block px-3 py-2 md:table-cell"><Button variant="outline" className="min-h-11" disabled={blocked} aria-label={t("employeesHistoryNamed", { name: employee.name })} onClick={() => selectEmployee(employee.id)}>{t("employeesOpenHistory")}</Button></td></tr> })}</tbody></table></div> : <p className="text-sm text-muted-foreground">{t("employeesEmpty")}</p>}
+          </Button>{employee.status !== "ACTIVE" && <span className="block"><HomePill tone="zinc">{mtmStatusLabel(statusText, "agentStatus", employee.status)}</HomePill></span>}</td><td className="block px-3 py-2 md:table-cell">{latest ? <>{kindLabel(latest.kind)} · {dateLabel(latest.date)}</> : t("employeesNoHistory")}</td><td className="block px-3 py-2 md:table-cell"><Button variant="outline" className="min-h-11" disabled={blocked} aria-label={p("employeeCardTitle", { name: employee.name })} onClick={() => selectEmployee(employee.id)}><IdCard className="mr-2 h-4 w-4" aria-hidden="true" />{p("employeeCardOpen")}</Button></td></tr> })}</tbody></table></div> : <p className="text-sm text-muted-foreground">{t("employeesEmpty")}</p>}
         {employees.length > PAGE_SIZE && <div className="flex flex-wrap items-center gap-3"><Button variant="outline" className="min-h-11" disabled={blocked || currentPage === 0} onClick={() => setPage(currentPage - 1)}>{t("employeesPrevious")}</Button><span className="text-xs text-muted-foreground">{t("employeesPage", { page: currentPage + 1, pages: Math.ceil(employees.length / PAGE_SIZE), count: employees.length })}</span><Button variant="outline" className="min-h-11" disabled={blocked || (currentPage + 1) * PAGE_SIZE >= employees.length} onClick={() => setPage(currentPage + 1)}>{t("employeesNext")}</Button></div>}
       </div></HomeCard>
       <p className="max-w-3xl text-sm leading-6 text-muted-foreground">{t("employeesAutomaticFooter")}</p>
-      {selected && <HomeCard testId="employees-history" titleId="attendance-employees-history-title" title={t("employeesHistoryNamed", { name: selected.name })} icon={<History className="h-4 w-4" aria-hidden="true" />} tone="orange"><div className="space-y-5 py-4">
+      {selected && <HomeCard testId="employees-history" titleId="attendance-employees-history-title" title={p("employeeCardTitle", { name: selected.name })} icon={<IdCard className="h-4 w-4" aria-hidden="true" />} tone="orange"><div className="space-y-5 py-4">
+        <MtmAttendanceEmployeeCard key={`${selected.id}:${selected.position}:${selected.teamId}:${selected.managerId}`} employee={selected} teams={directory.teams} managers={directory.managers}
+          disabled={blocked} saving={saving && pending?.url === `${ENDPOINT}/card`} saved={saved} dateLabel={dateLabel} onSave={body => void publish({ url: `${ENDPOINT}/card`, body })} />
+        <h3 className="flex items-center gap-2 border-t pt-5 text-base font-semibold"><History className="h-4 w-4 text-muted-foreground" aria-hidden="true" />{p("employeeCardHistory")}</h3>
         {history.length ? <ol className="divide-y" aria-label={t("employeesHistoryList")}>{history.slice(historyPage * HISTORY_SIZE, (historyPage + 1) * HISTORY_SIZE).map(event => <li key={event.id} className="py-3 text-sm" data-testid="employment-event"><strong>{kindLabel(event.kind)} · {dateLabel(event.date)}</strong><p className="mt-1 text-xs text-muted-foreground">{t("employeesAuthor", { name: event.byName ?? t("employeesAuthorUnknown") })}</p></li>)}</ol> : <p className="text-sm text-muted-foreground">{t("employeesNoHistory")}</p>}
         {history.length > HISTORY_SIZE && <div className="flex flex-wrap items-center gap-3"><Button variant="outline" className="min-h-11" disabled={historyPage === 0} onClick={() => setHistoryPage(value => value - 1)}>{t("employeesPrevious")}</Button><span className="text-xs text-muted-foreground">{t("employeesPage", { page: historyPage + 1, pages: Math.ceil(history.length / HISTORY_SIZE), count: history.length })}</span><Button variant="outline" className="min-h-11" disabled={(historyPage + 1) * HISTORY_SIZE >= history.length} onClick={() => setHistoryPage(value => value + 1)}>{t("employeesNext")}</Button></div>}
         <form aria-label={t("employeesRecordChange")} className="space-y-4 border-t pt-5" onSubmit={submitChange}><div className="grid min-w-0 gap-4 sm:grid-cols-2">
