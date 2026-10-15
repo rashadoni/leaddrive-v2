@@ -7,6 +7,7 @@ import { AlertTriangle, ArrowRight, CalendarDays, Clock, CaseSensitive, FileText
 import { formatDate } from "@/lib/format-date"
 import { ATTENDANCE_ADMIN_SETTINGS, ATTENDANCE_SETTINGS_GROUPS, attendanceWorkWeek, type AttendanceSettingsCard } from "@/lib/mtm/attendance-settings-cards"
 import type { MtmAttendanceRule } from "@/lib/mtm/attendance-rules"
+import { MtmAttendanceFeatureSwitch } from "@/components/mtm/attendance-feature-switch"
 
 const ICONS: Record<AttendanceSettingsCard, ReactNode> = {
   hours: <Clock className="h-5 w-5" />, holidays: <CalendarDays className="h-5 w-5" />, shifts: <Shuffle className="h-5 w-5" />, "day-kinds": <CaseSensitive className="h-5 w-5" />,
@@ -57,6 +58,7 @@ export function MtmAttendanceSettingsHub({ isAdmin }: { isAdmin: boolean }) {
 
   return <div className="space-y-6" data-testid="attendance-settings-hub">
     <h1 className="text-2xl font-bold tracking-tight">{p("settingsTitle")}</h1>
+    <MtmAttendanceFeatureSwitch enabled canChange={isAdmin} />
     {ATTENDANCE_SETTINGS_GROUPS.map(group => {
       const cards = group.cards.filter(card => isAdmin || !ATTENDANCE_ADMIN_SETTINGS.includes(card))
       if (!cards.length) return null

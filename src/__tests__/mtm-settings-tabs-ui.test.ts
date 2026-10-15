@@ -459,7 +459,8 @@ describe("attendance reminders in company settings", () => {
     expect(settingRow("attendanceEmployeeRemindersEnabled")).toBeNull()
     expect(settingRow("attendanceManagerAlertsEnabled")).toBeNull()
     expect(settingRow("taskSelfCreate")).not.toBeNull()
-    expect(settingRow("attendanceEnabled")).not.toBeNull()
+    // The switch itself moved to Personnel → Settings (one setting, one place).
+    expect(settingRow("attendanceEnabled")).toBeNull()
   })
   it("allows an administrator to enable both in one changed-key save", async () => {
     viewer.role = "admin"; stored.attendanceEnabled = true

@@ -868,6 +868,8 @@ try {
     await readyPage('settings?tab=')
     await page.getByTestId('attendance-settings-hub').waitFor({ timeout: 120000 })
     assert.equal(await page.locator('[data-testid^="attendance-settings-card-"]').count(), 10)
+    // The organization switch sits on top of Personnel → Settings (moved from MTM settings).
+    await page.getByTestId('attendance-feature-on').waitFor({ timeout: 120000 })
     await page.getByTestId('attendance-settings-card-hours').click()
     await page.waitForURL(url => url.searchParams.get('tab') === 'hours', { timeout: 120000 })
     await page.getByTestId('attendance-rules').waitFor({ timeout: 120000 })

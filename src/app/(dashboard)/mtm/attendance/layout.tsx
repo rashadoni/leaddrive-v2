@@ -5,6 +5,7 @@ import { runWithRlsBypass, runWithTenant } from "@/lib/rls-context"
 import { getTenantCapabilityAccess } from "@/lib/tenant-capability-access"
 import { checkPermission, type Role } from "@/lib/permissions"
 import { getMtmAttendanceAccess } from "@/lib/mtm/attendance-access"
+import { MtmAttendanceFeatureSwitch } from "@/components/mtm/attendance-feature-switch"
 
 export const dynamic = "force-dynamic"
 
@@ -14,12 +15,15 @@ export default async function AttendanceLayout({ children }: { children: ReactNo
   if (!user?.id || !user.organizationId || !checkPermission(user.role as Role, "mtm", "read")
     || user.hiddenModules?.includes("mtm")) notFound()
   const { id: userId, organizationId, role } = user
-  const allowed = await runWithTenant(organizationId, async () => {
+  const state = await runWithTenant(organizationId, async () => {
     const capability = await getTenantCapabilityAccess(organizationId, "personnel")
-    if (!capability.allowed) return false
+    if (!capability.allowed) return "closed" as const
     const access = await getMtmAttendanceAccess(organizationId, userId, role)
-    return access.enabled && Boolean(access.actor)
+    return !access.enabled ? "off" as const : access.actor ? "open" as const : "closed" as const
   })
-  if (!allowed) notFound()
+  // The switch lives in Personnel → Settings only, so with attendance off an
+  // administrator still reaches the section — every page of it shows the switch.
+  if (state === "off" && (role === "admin" || role === "superadmin")) return <MtmAttendanceFeatureSwitch enabled={false} canChange />
+  if (state !== "open") notFound()
   return children
 }
