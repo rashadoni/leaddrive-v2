@@ -1,36 +1,29 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
-import jwt from "jsonwebtoken"
 import { hashForRateLimit } from "@/lib/rate-limit"
 import { writeMtmAudit } from "@/lib/mtm-audit"
-import { JWT_SECRET } from "@/lib/mobile-auth"
 import { runWithRlsBypass } from "@/lib/rls-context"
 import { maskLegacyAuthEmail } from "@/lib/auth-credentials"
-import { createSessionFingerprint } from "@/lib/session-invalidation"
 import { consumePublicRateLimit } from "@/lib/public-abuse-guard"
 import { clientIp } from "@/lib/request-ip"
 import { readJsonRequestWithinLimit } from "@/lib/request-body-limit"
-import type { MtmAgent } from "@prisma/client"
 import { z } from "zod"
-import { isTenantCapabilityEnabled } from "@/lib/tenant-capabilities"
-import { readAttendanceFeature } from "@/lib/mtm/attendance-feature"
+import { findPhoneOwner, maskedPhone, phoneDigits, MOBILE_LOGIN_ORGANIZATION_SELECT } from "@/lib/mtm/mobile-login-phone"
+import {
+  linkedUserCredentials,
+  mobileAppRefusal,
+  mobileLoginSuccess,
+  officeEmployeeMaySignIn,
+  type LinkedUserCredentials,
+  type MobileLoginAgent,
+} from "@/lib/mtm/mobile-login-session"
 
-// Auth-resolved agent — either the slug-scoped findUnique or the legacy
+// Auth-resolved agent — either the slug-scoped lookup or the legacy
 // findFirst path returns a full MtmAgent row joined with a minimal org
 // projection. Hard typing this avoids the `any` foot-gun on the auth
 // critical path.
-type ResolvedAuthAgent = MtmAgent & {
-  organization: {
-    id: string
-    name: string
-    isActive: boolean
-    plan: string
-    addons: unknown
-    features: unknown
-    modules: unknown
-  }
-}
+type ResolvedAuthAgent = MobileLoginAgent
 
 // F-02: distributed brute-force protection. Separate trusted-IP and principal
 // buckets stop both one-host sprays and a botnet rotating source addresses.
@@ -41,8 +34,12 @@ const AUTH_IP_RATE_LIMIT = { maxRequests: 20, windowSeconds: 60 }
 const AUTH_PRINCIPAL_RATE_LIMIT = { maxRequests: 5, windowSeconds: 60 }
 const MAX_MOBILE_LOGIN_BODY_SIZE = 8 * 1024
 
+// An employee added by HR with a WhatsApp number and no email signs in with
+// that number (owner, 2026-10-15); everyone else keeps the email. A number
+// needs the company: it is matched inside one organization only.
 const MobileLoginSchema = z.object({
-  email: z.string().trim().min(1).max(320).email().transform((value) => value.toLowerCase()),
+  email: z.string().trim().min(1).max(320).email().transform((value) => value.toLowerCase()).optional(),
+  phone: z.string().trim().min(1).max(40).optional(),
   // Keep a generous ceiling for passphrases while bounding pre-auth CPU and
   // memory work on attacker-controlled JSON.
   password: z.string().min(1).max(1024),
@@ -95,10 +92,17 @@ export async function POST(req: NextRequest) {
       )
     }
     const parsed = MobileLoginSchema.safeParse(requestBody.value)
-    if (!parsed.success) {
+    if (!parsed.success || (parsed.data.email ? parsed.data.phone : !parsed.data.phone)) {
       return NextResponse.json({ error: "Invalid login request" }, { status: 400 })
     }
-    const { email: normalizedEmail, password, organizationSlug: normalizedSlug } = parsed.data
+    const { password, organizationSlug: normalizedSlug } = parsed.data
+    const enteredPhone = parsed.data.email ? null : phoneDigits(parsed.data.phone)
+    if (enteredPhone !== null && (!normalizedSlug || enteredPhone.length < 8)) {
+      return NextResponse.json({ error: "Invalid login request" }, { status: 400 })
+    }
+    // The identifier the limits and the audit speak of: the email, or the
+    // number's digits.
+    const normalizedEmail = parsed.data.email ?? `phone:${enteredPhone}`
 
     // F-35: optional tenant disambiguation. The same agent email can exist in
     // multiple orgs (multi-tenant), and a bare `findFirst({email})` picks one
@@ -152,15 +156,7 @@ export async function POST(req: NextRequest) {
     if (normalizedSlug) {
       resolvedOrg = await prisma.organization.findUnique({
         where: { slug: normalizedSlug, isActive: true },
-        select: {
-          id: true,
-          name: true,
-          isActive: true,
-          plan: true,
-          addons: true,
-          features: true,
-          modules: true,
-        },
+        select: MOBILE_LOGIN_ORGANIZATION_SELECT,
       })
       if (!resolvedOrg) {
         return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
@@ -189,7 +185,7 @@ export async function POST(req: NextRequest) {
           metadataKind: "rate_limited",
           newData: {
             ip,
-            email: maskLegacyAuthEmail(normalizedEmail),
+            email: enteredPhone === null ? maskLegacyAuthEmail(normalizedEmail) : maskedPhone(enteredPhone),
             limitPerWindow: AUTH_RATE_LIMIT.maxRequests,
             windowMs: AUTH_RATE_LIMIT.windowMs,
           },
@@ -202,7 +198,14 @@ export async function POST(req: NextRequest) {
       )
     }
     let agent: ResolvedAuthAgent | null = null
-    if (resolvedOrg) {
+    if (resolvedOrg && enteredPhone !== null) {
+      const org = resolvedOrg
+      const owner = await findPhoneOwner(prisma, org.id, enteredPhone)
+      const found = owner.kind === "found" ? await prisma.mtmAgent.findFirst({ where: { id: owner.agentId, organizationId: org.id } }) : null
+      if (found && found.status === "ACTIVE") {
+        agent = { ...found, organization: org }
+      }
+    } else if (resolvedOrg) {
       const org = resolvedOrg
       const found = await prisma.mtmAgent.findUnique({
         where: { organizationId_email: { organizationId: org.id, email: normalizedEmail } },
@@ -225,17 +228,7 @@ export async function POST(req: NextRequest) {
           organization: { isActive: true },
         },
         include: {
-          organization: {
-            select: {
-              id: true,
-              name: true,
-              isActive: true,
-              plan: true,
-              addons: true,
-              features: true,
-              modules: true,
-            },
-          },
+          organization: { select: MOBILE_LOGIN_ORGANIZATION_SELECT },
         },
       })
     }
@@ -244,20 +237,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
     }
 
-    if (agent.role === "EMPLOYEE") {
-      const featureOn = await readAttendanceFeature(prisma, agent.organizationId)
-      if (!agent.userId || !agent.attendanceParticipant || !featureOn) {
-        return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
-      }
+    if (!(await officeEmployeeMaySignIn(agent))) {
+      return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
     }
 
     let authenticated = false
     let linkedUserId = agent.userId
-    let linkedUserCredentialState: {
-      id: string
-      passwordHash: string | null
-      passwordChangedAt: Date | null
-    } | null = null
+    let linkedUserCredentialState: LinkedUserCredentials | null = null
     let pendingAutoLink: { previousUserId: string | null; userId: string } | null = null
 
     // Method 1: Check agent's own passwordHash (primary)
@@ -284,10 +270,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Method 3: Auto-find CRM User by same email (if no direct password)
-    if (!authenticated && !agent.passwordHash) {
+    // Method 3: Auto-find CRM User by same email (if no direct password).
+    // Signing in by number, the card's own email stands for the typed one.
+    const methodThreeEmail = enteredPhone === null ? normalizedEmail : agent.email
+    if (!authenticated && !agent.passwordHash && methodThreeEmail) {
       const user = await prisma.user.findFirst({
-        where: { email: normalizedEmail, organizationId: agent.organizationId, isActive: true },
+        where: { email: methodThreeEmail, organizationId: agent.organizationId, isActive: true },
         select: { id: true, passwordHash: true, passwordChangedAt: true },
       })
       if (user?.passwordHash) {
@@ -321,30 +309,14 @@ export async function POST(req: NextRequest) {
     // Bind the token to both credential epochs so changing either password (or
     // choosing "log out everywhere" in CRM) revokes the mobile token too.
     if (linkedUserId && !linkedUserCredentialState) {
-      linkedUserCredentialState = await prisma.user.findFirst({
-        where: { id: linkedUserId, organizationId: agent.organizationId, isActive: true },
-        select: { id: true, passwordHash: true, passwordChangedAt: true },
-      })
+      linkedUserCredentialState = await linkedUserCredentials(agent, linkedUserId)
       if (!linkedUserCredentialState) {
         return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
       }
     }
 
-    const routeFieldEnabled = isTenantCapabilityEnabled("route-field", agent.organization)
-    const workforceEnabled = isTenantCapabilityEnabled("workforce-hrm", agent.organization)
-    // Personnel alone admits office staff to their own attendance; a field
-    // agent needs routes. Every request re-checks this in resolveMobileAuth.
-    const officeAttendanceOnly = !routeFieldEnabled && !workforceEnabled
-      && isTenantCapabilityEnabled("personnel", agent.organization) && agent.role !== "AGENT"
-    if (!routeFieldEnabled && !workforceEnabled && !officeAttendanceOnly) {
-      return NextResponse.json({
-        success: false,
-        error: "The mobile app is not enabled for this tenant.",
-        code: "TENANT_CAPABILITY_DISABLED",
-        capabilityId: "mobile-field-app",
-        capabilityStatus: "disabled",
-      }, { status: 403 })
-    }
+    const refusal = mobileAppRefusal(agent)
+    if (refusal) return refusal
 
     if (pendingAutoLink) {
       // Do not mutate identity links for a tenant that cannot use either
@@ -385,54 +357,7 @@ export async function POST(req: NextRequest) {
       req,
     }).catch((err) => console.warn("[MTM/mobile/auth] LOGIN audit failed", err))
 
-    const agentSessionFingerprint = createSessionFingerprint({
-      principalId: agent.id,
-      passwordHash: agent.passwordHash,
-      secret: JWT_SECRET,
-    })
-    const userSessionFingerprint = linkedUserCredentialState
-      ? createSessionFingerprint({
-          principalId: linkedUserCredentialState.id,
-          passwordHash: linkedUserCredentialState.passwordHash,
-          passwordChangedAt: linkedUserCredentialState.passwordChangedAt,
-          secret: JWT_SECRET,
-        })
-      : undefined
-
-    // Issue JWT token (7 days). The opaque fingerprints are verified against
-    // fresh DB state on every MTM request; legacy tokens without them fail
-    // closed and must log in once after rollout.
-    const token = jwt.sign(
-      {
-        agentId: agent.id,
-        userId: linkedUserId || "",
-        orgId: agent.organizationId,
-        email: agent.email,
-        name: agent.name,
-        role: agent.role,
-        agentSessionFingerprint,
-        userSessionFingerprint,
-      },
-      JWT_SECRET,
-      { expiresIn: "7d" }
-    )
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        token,
-        agent: {
-          id: agent.id,
-          name: agent.name,
-          email: agent.email,
-          phone: agent.phone,
-          role: agent.role,
-          avatar: agent.avatar,
-          organizationId: agent.organizationId,
-          organizationName: agent.organization.name,
-        },
-      },
-    })
+    return mobileLoginSuccess(agent, linkedUserId, linkedUserCredentialState)
     })
   } catch (e: unknown) {
     console.error("[Mobile Auth] Error:", e)

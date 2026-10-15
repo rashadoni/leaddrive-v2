@@ -24,7 +24,7 @@ const nextChange = (employee: AttendanceEmployeeDirectory["employees"][number]):
 
 export function MtmAttendanceEmployees() {
   const t = useTranslations("mtmAttendance"), p = useTranslations("personnel"), statusText = useTranslations("mtmStatus"), locale = useLocale()
-  const [added, setAdded] = useState<{ name: string; email: string } | null>(null)
+  const [added, setAdded] = useState<{ name: string; phone: string } | null>(null)
   const [directory, setDirectory] = useState<AttendanceEmployeeDirectory | null>(null)
   const [change, setChange] = useState(emptyChange)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -120,7 +120,7 @@ export function MtmAttendanceEmployees() {
   }
   return <div className="space-y-5" data-testid="attendance-employees">
     <div className="flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-2xl font-semibold tracking-tight">{t("employeesTitle")}</h1><p className="mt-2 max-w-prose text-sm text-muted-foreground">{t("employeesIntro")}</p></div>{!denied && <div className="flex flex-wrap items-start gap-2">
-      <MtmAttendanceAddEmployee disabled={loading || saving || Boolean(pending) || !directory} teams={directory?.teams ?? []} onAdded={(name, email) => { void load().then(() => setAdded({ name, email })) }} />
+      <MtmAttendanceAddEmployee disabled={loading || saving || Boolean(pending) || !directory} teams={directory?.teams ?? []} onAdded={(name, phone) => { void load().then(() => setAdded({ name, phone })) }} />
       <Button variant="outline" className="min-h-11 rounded-full" disabled={loading || saving || Boolean(pending)} onClick={() => void load()}>{t("employeesRefresh")}</Button></div>}</div>
     {added && <p role="status" className="max-w-prose rounded-xl bg-emerald-50 p-4 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100" data-testid="attendance-employee-added">{p("addEmployeeDone", added)}</p>}
     {loading && <p role="status" className="text-sm text-muted-foreground">{t("employeesLoading")}</p>}

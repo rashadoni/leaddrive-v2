@@ -473,6 +473,15 @@ jobs:
           MTM_EXCEL_ROUTES_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           MTM_EXCEL_ROUTES_DB_GATE: required
 
+      - name: MTM sign-in by WhatsApp code database gate
+        # Same gate as in pr-checks: a code from LeadDrive's WhatsApp finds the
+        # one card with the number, is kept hashed under the company, works
+        # once, and lets the person set their own password (see the test's header).
+        run: npx vitest run src/__tests__/mtm-mobile-login-code-postgres.test.ts
+        env:
+          MTM_LOGIN_CODE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          MTM_LOGIN_CODE_DB_GATE: required
+
       - name: Previous Prisma client rollback-window gate
         run: node scripts/event-platform-legacy-client-probe.mjs
         env:

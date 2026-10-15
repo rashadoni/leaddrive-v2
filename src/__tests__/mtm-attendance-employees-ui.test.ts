@@ -194,47 +194,51 @@ describe("Add employee", () => {
   async function send() { await act(async () => form().dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }))) }
   const creates = () => fetchMock.mock.calls.filter(([url, options]) => String(url).endsWith("/employees/new") && options?.method === "POST")
 
-  it("creates the employee with the app login, then lists them and says how they sign in", async () => {
+  // Owner, 2026-10-15: HR sets no password — the person gets a code in WhatsApp and sets their own.
+  it("creates the employee with a WhatsApp number and no password, then lists them and says how they sign in", async () => {
     fetchMock.mockImplementation(async (url, options) => String(url).endsWith("/employees/new") ? new Response(JSON.stringify({ success: true, data: { userId: "u-new", agentId: "a-new" } }), { status: 201 }) : options?.method === "POST" ? response({ eventId: "e", idempotent: false }) : response(directory))
     await render()
     await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
-    await type("addEmployeeName", "Nigar Demo"); await type("addEmployeeEmail", "Nigar@Example.test"); await type("addEmployeePassword", "Kaxebomu-4821!")
+    expect(form().querySelector('input[type="password"]')).toBeNull()
+    expect(form().querySelector('[data-testid="attendance-add-employee-code-note"]')!.textContent).toBe(p("addEmployeeCodeNote"))
+    await type("addEmployeeName", "Nigar Demo"); await type("addEmployeePhone", "+994 50 111 22 33")
     await send()
     expect(creates()).toHaveLength(1)
-    expect(JSON.parse(String(creates()[0][1]!.body))).toEqual({ name: "Nigar Demo", email: "Nigar@Example.test", phone: null, password: "Kaxebomu-4821!", position: null, teamId: null, hireDate: null })
-    expect(container.querySelector('[data-testid="attendance-employee-added"]')!.textContent).toBe(p("addEmployeeDone", { name: "Nigar Demo", email: "nigar@example.test" }))
+    expect(JSON.parse(String(creates()[0][1]!.body))).toEqual({ name: "Nigar Demo", phone: "+994 50 111 22 33", email: null, position: null, teamId: null, hireDate: null })
+    expect(container.querySelector('[data-testid="attendance-employee-added"]')!.textContent).toBe(p("addEmployeeDone", { name: "Nigar Demo", phone: "+994 50 111 22 33" }))
     expect(container.querySelector('[data-testid="attendance-add-employee-form"]')).toBeNull()
   })
 
-  it("sends position, department and hire date with the new employee", async () => {
+  it("sends the email, position, department and hire date when HR gives them", async () => {
     fetchMock.mockImplementation(async (url, options) => String(url).endsWith("/employees/new") ? new Response(JSON.stringify({ success: true, data: { userId: "u-new", agentId: "a-new" } }), { status: 201 }) : options?.method === "POST" ? response({ eventId: "e", idempotent: false }) : response(directory))
     await render()
     await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
-    await type("addEmployeeName", "Nigar Demo"); await type("addEmployeeEmail", "nigar@example.test"); await type("addEmployeePassword", "Kaxebomu-4821!")
+    await type("addEmployeeName", "Nigar Demo"); await type("addEmployeePhone", "+994501112233"); await type("addEmployeeEmail", "nigar@example.test")
     await type("employeeCardPosition", "Кассир"); await type("employeeCardHired", "2026-10-01"); await edit("add-employee-department", "team-north")
     await send()
-    expect(JSON.parse(String(creates()[0][1]!.body))).toMatchObject({ position: "Кассир", teamId: "team-north", hireDate: "2026-10-01" })
+    expect(JSON.parse(String(creates()[0][1]!.body))).toEqual({ name: "Nigar Demo", phone: "+994501112233", email: "nigar@example.test", position: "Кассир", teamId: "team-north", hireDate: "2026-10-01" })
   })
 
-  it("refuses a weak password on the spot and suggests a strong one", async () => {
+  it("refuses a number without the country code on the spot", async () => {
     await render()
     await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
-    await type("addEmployeeName", "Nigar Demo"); await type("addEmployeeEmail", "nigar@example.test"); await type("addEmployeePassword", "short")
+    await type("addEmployeeName", "Nigar Demo"); await type("addEmployeePhone", "0501112233")
     await send()
     expect(creates()).toHaveLength(0)
-    expect(form().querySelector('[role="alert"]')!.textContent).toBe(p("addEmployeePasswordWeak"))
-    await act(async () => [...form().querySelectorAll("button")].find(node => node.textContent === p("addEmployeeSuggestPassword"))!.click())
-    expect(input("addEmployeePassword").value).toMatch(/^[A-Z][a-z]{7}-\d{4}!$/)
-    expect(input("addEmployeePassword").type).toBe("text")
+    expect(form().querySelector('[role="alert"]')!.textContent).toBe(p("addEmployeePhoneInvalid"))
   })
 
-  it("names a taken email in words and keeps what was typed", async () => {
-    fetchMock.mockImplementation(async (url, options) => String(url).endsWith("/employees/new") ? new Response(JSON.stringify({ code: "MTM_ATTENDANCE_EMPLOYEE_EMAIL_TAKEN" }), { status: 409 }) : options?.method === "POST" ? response({ eventId: "e", idempotent: false }) : response(directory))
+  it.each([
+    ["MTM_ATTENDANCE_EMPLOYEE_EMAIL_TAKEN", "addEmployeeEmailTaken"],
+    ["MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN", "addEmployeePhoneTaken"],
+  ])("names %s in words and keeps what was typed", async (code, text) => {
+    fetchMock.mockImplementation(async (url, options) => String(url).endsWith("/employees/new") ? new Response(JSON.stringify({ code }), { status: 409 }) : options?.method === "POST" ? response({ eventId: "e", idempotent: false }) : response(directory))
     await render()
     await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
-    await type("addEmployeeName", "Nigar Demo"); await type("addEmployeeEmail", "taken@example.test"); await type("addEmployeePassword", "Kaxebomu-4821!")
+    await type("addEmployeeName", "Nigar Demo"); await type("addEmployeePhone", "+994501112233"); await type("addEmployeeEmail", "taken@example.test")
     await send()
-    expect(form().querySelector('[role="alert"]')!.textContent).toBe(p("addEmployeeEmailTaken"))
+    expect(form().querySelector('[role="alert"]')!.textContent).toBe(p(text))
     expect(input("addEmployeeEmail").value).toBe("taken@example.test")
+    expect(input("addEmployeePhone").value).toBe("+994501112233")
   })
 })

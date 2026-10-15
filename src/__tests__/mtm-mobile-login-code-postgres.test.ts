@@ -1,0 +1,283 @@
+/**
+ * Signing in to the MTM app with a code sent to WhatsApp — the real request,
+ * verify and set-password handlers, then the password form, over a real
+ * Postgres.
+ *
+ * Owner, 2026-10-15, on Personnel → Add employee: «тут нужно сделать, чтоб
+ * через WhatsApp приходил OTP-пароль, чтоб сами назначали, а кадровик не
+ * занимался этой рутиной… через WhatsApp». HR gives a name and a number; the
+ * person gets six digits from LeadDrive's WhatsApp, sets their own password and
+ * is signed in. The same works for a field agent who forgot theirs.
+ *
+ * What a mocked Prisma could not show: which card a number finds (the card's
+ * own number, or the linked CRM user's), that the code lives hashed in
+ * `otp_codes` under the company, that it works once, that the password lands
+ * on the card and signs out older sessions, and that nothing is written into
+ * the sending organization's inbox log. The stand-ins: Meta's Graph API (a
+ * fake `fetch`) and the rate limiter (limits are not what is tested here).
+ *
+ * Set MTM_LOGIN_CODE_TEST_DATABASE_URL to an admin connection, e.g.
+ *   docker run --rm -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55499:5432 postgres:16
+ *   MTM_LOGIN_CODE_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55499/postgres
+ * Without it the suite is skipped. CI runs it in `static-checks` and in the
+ * deploy («MTM sign-in by WhatsApp code database gate»), where
+ * `MTM_LOGIN_CODE_DB_GATE=required` turns a missing URL into a failure.
+ */
+import { spawnSync } from "node:child_process"
+import { createRequire } from "node:module"
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import path from "node:path"
+import bcrypt from "bcryptjs"
+import jwt from "jsonwebtoken"
+import { NextRequest } from "next/server"
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest"
+
+const adminUrl = process.env.MTM_LOGIN_CODE_TEST_DATABASE_URL
+if (!adminUrl && process.env.MTM_LOGIN_CODE_DB_GATE === "required") {
+  throw new Error("MTM_LOGIN_CODE_TEST_DATABASE_URL is required by the MTM sign-in by WhatsApp code database gate")
+}
+
+const scratch = vi.hoisted(() => {
+  const admin = process.env.MTM_LOGIN_CODE_TEST_DATABASE_URL
+  if (!admin) return null
+  const name = `mtm_login_code_${process.pid}`
+  const url = new URL(admin)
+  url.pathname = `/${name}`
+  process.env.DATABASE_URL = url.toString()
+  process.env.NEXTAUTH_SECRET ||= "fictional-login-code-test-secret-0123456789"
+  // LeadDrive's own WhatsApp channel lives in this organization.
+  process.env.MTM_LOGIN_CODE_SENDER_ORGANIZATION_ID = "org-login-code-sender"
+  return { name, url: url.toString() }
+})
+
+// Limits are not under test; every request is let through.
+vi.mock("@/lib/public-abuse-guard", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/lib/public-abuse-guard")>(),
+  consumePublicRateLimit: async () => ({ allowed: true, retryAfterSeconds: 0, unavailable: false }),
+}))
+
+const ROOT = process.cwd()
+const PRISMA_CLI = createRequire(import.meta.url).resolve("prisma/build/index.js")
+const ORG = "org-login-code"
+const SENDER = "org-login-code-sender"
+const BASE = "http://localhost:3000/api/v1/mtm/mobile/auth"
+const STRONG = "Fictional-Pass-2026!"
+
+function prismaCli(args: string[], env: NodeJS.ProcessEnv, input?: string) {
+  const result = spawnSync(process.execPath, [PRISMA_CLI, ...args], { input, encoding: "utf8", env })
+  if (result.status !== 0) throw new Error(`prisma ${args.join(" ")} failed\n${result.error ?? ""}\n${result.stdout}\n${result.stderr}`)
+}
+
+/** `db push` on any Postgres: the two pgvector columns are left out; nothing here reads them. */
+function schemaWithoutEmbeddings(): string {
+  const schema = readFileSync(path.join(ROOT, "prisma/schema.prisma"), "utf8")
+  const stripped = schema.split("\n").filter((line) => !/Unsupported\("vector/.test(line)).join("\n")
+  if (stripped === schema) throw new Error("no pgvector column found — this workaround can be deleted")
+  const directory = mkdtempSync(path.join(tmpdir(), "mtm-login-code-schema-"))
+  const file = path.join(directory, "schema.prisma")
+  writeFileSync(file, stripped)
+  return file
+}
+
+type Sent = { url: string; authorization: string | null; body: { to: string; template: { name: string; language: { code: string }; components: Array<{ type: string; sub_type?: string; parameters: Array<{ text: string }> }> } } }
+
+const pgDescribe = scratch ? describe : describe.skip
+
+pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
+  let prisma!: typeof import("@/lib/prisma").prisma
+  let bypass!: typeof import("@/lib/rls-context").runWithRlsBypass
+  let requestCode!: typeof import("@/app/api/v1/mtm/mobile/auth/code/route").POST
+  let verifyCode!: typeof import("@/app/api/v1/mtm/mobile/auth/code/verify/route").POST
+  let setPassword!: typeof import("@/app/api/v1/mtm/mobile/auth/password/route").POST
+  let signIn!: typeof import("@/app/api/v1/mtm/mobile/auth/route").POST
+  let availability!: typeof import("@/lib/mtm/whatsapp-login-code")
+  const sent: Sent[] = []
+  let metaAnswers: (() => Response) | null = null
+  const ids: Record<string, string> = {}
+
+  const post = (handler: (req: NextRequest) => Promise<Response>, suffix: string, body: unknown) =>
+    handler(new NextRequest(`${BASE}${suffix}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }))
+  const ask = (phone: string, language = "az") => post(requestCode, "/code", { organizationSlug: ORG, phone, language })
+  const verify = (phone: string, code: string) => post(verifyCode, "/code/verify", { organizationSlug: ORG, phone, code })
+  const codeOf = (message: Sent) => message.body.template.components[0].parameters[0].text
+
+  beforeAll(async () => {
+    prismaCli(["db", "execute", "--url", adminUrl!, "--stdin"], process.env, `DROP DATABASE IF EXISTS "${scratch!.name}" WITH (FORCE)`)
+    prismaCli(["db", "execute", "--url", adminUrl!, "--stdin"], process.env, `CREATE DATABASE "${scratch!.name}"`)
+    prismaCli(["db", "push", "--schema", schemaWithoutEmbeddings(), "--skip-generate", "--accept-data-loss"], { ...process.env, DATABASE_URL: scratch!.url })
+    prisma = (await import("@/lib/prisma")).prisma
+    bypass = (await import("@/lib/rls-context")).runWithRlsBypass
+    requestCode = (await import("@/app/api/v1/mtm/mobile/auth/code/route")).POST
+    verifyCode = (await import("@/app/api/v1/mtm/mobile/auth/code/verify/route")).POST
+    setPassword = (await import("@/app/api/v1/mtm/mobile/auth/password/route")).POST
+    signIn = (await import("@/app/api/v1/mtm/mobile/auth/route")).POST
+    availability = await import("@/lib/mtm/whatsapp-login-code")
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init: RequestInit) => {
+      sent.push({ url, authorization: new Headers(init.headers).get("authorization"), body: JSON.parse(String(init.body)) })
+      return metaAnswers ? metaAnswers() : new Response(JSON.stringify({ messages: [{ id: `wamid.fixture-${sent.length}` }] }), { status: 200 })
+    }))
+    await bypass(async () => {
+      await prisma.organization.create({ data: { id: SENDER, name: "Fictional platform sender", slug: SENDER } })
+      await prisma.channelConfig.create({ data: { organizationId: SENDER, channelType: "whatsapp", configName: "Platform WhatsApp", accessToken: "fixture-sender-token", phoneNumberId: "100200300", isActive: true } })
+      await prisma.organization.create({ data: { id: ORG, name: "Fictional pharmacy company", slug: ORG, modules: { "route-field": true, personnel: true } } })
+      await prisma.mtmSetting.create({ data: { organizationId: ORG, key: "attendanceEnabled", value: true } })
+      // A field agent whose own card has the number, written internationally.
+      ids.field = (await prisma.mtmAgent.create({ data: { organizationId: ORG, name: "Fictional field agent", phone: "+994 50 111 00 01", role: "AGENT", passwordHash: await bcrypt.hash("Old-Field-Pass-2026!", 4) } })).id
+      // An office employee added before 2026-10-15: the number is on the CRM user only, written the national way.
+      const user = await prisma.user.create({ data: { organizationId: ORG, name: "Fictional office employee", email: "office@example.invalid", phone: "0501110002", passwordHash: "!fixture", role: "viewer" } })
+      ids.officeUser = user.id
+      ids.office = (await prisma.mtmAgent.create({ data: { organizationId: ORG, userId: user.id, name: "Fictional office employee", role: "EMPLOYEE", attendanceParticipant: true } })).id
+      // Two people with one number, and a dismissed one.
+      for (const name of ["Fictional twin A", "Fictional twin B"]) await prisma.mtmAgent.create({ data: { organizationId: ORG, name, phone: "+994501110003", role: "AGENT" } })
+      await prisma.mtmAgent.create({ data: { organizationId: ORG, name: "Fictional dismissed agent", phone: "+994501110004", role: "AGENT", status: "INACTIVE" } })
+    })
+  }, 300_000)
+
+  afterEach(() => {
+    sent.length = 0
+    metaAnswers = null
+    availability.resetLoginCodeAvailability()
+  })
+
+  afterAll(async () => {
+    vi.unstubAllGlobals()
+    await prisma?.$disconnect()
+    prismaCli(["db", "execute", "--url", adminUrl!, "--stdin"], process.env, `DROP DATABASE IF EXISTS "${scratch!.name}" WITH (FORCE)`)
+  })
+
+  it("sends six digits from LeadDrive's WhatsApp, in the text and on the copy button, and keeps only their hash", async () => {
+    const response = await ask("+994501110001")
+    expect(response.status).toBe(200)
+    expect((await response.json()).data).toEqual({ sent: true, resendAfterSeconds: 60, expiresInSeconds: 600 })
+    expect(sent).toHaveLength(1)
+    const [message] = sent
+    expect(message.url).toBe("https://graph.facebook.com/v21.0/100200300/messages")
+    expect(message.authorization).toBe("Bearer fixture-sender-token")
+    expect(message.body).toMatchObject({ to: "994501110001", template: { name: "leaddrive_login_code", language: { code: "az" } } })
+    const code = codeOf(message)
+    expect(code).toMatch(/^\d{6}$/)
+    expect(message.body.template.components[1]).toMatchObject({ type: "button", sub_type: "url", parameters: [{ text: code }] })
+    await bypass(async () => {
+      const stored = await prisma.otpCode.findFirstOrThrow({ where: { organizationId: ORG, phone: "+994501110001", purpose: "mtm_app_login" } })
+      expect(stored.codeHash).not.toContain(code)
+      expect(await bcrypt.compare(code, stored.codeHash)).toBe(true)
+      // A Zeytun employee's number has no business in LeadDrive Inc.'s inbox.
+      expect(await prisma.channelMessage.count()).toBe(0)
+      const audit = await prisma.mtmAuditLog.findFirstOrThrow({ where: { organizationId: ORG, action: "MOBILE_LOGIN_CODE_SENT" } })
+      expect(audit.agentId).toBe(ids.field)
+      expect(JSON.stringify(audit.newData)).not.toContain("1110001")
+      expect(JSON.stringify(audit.newData)).not.toContain(code)
+    })
+  })
+
+  it("asks to wait a minute before another code to the same number", async () => {
+    const response = await ask("+994501110001")
+    const { data } = await response.json()
+    expect(data.sent).toBe(true)
+    expect(data.resendAfterSeconds).toBeGreaterThan(0)
+    expect(data.resendAfterSeconds).toBeLessThanOrEqual(60)
+    expect(sent).toHaveLength(0)
+  })
+
+  it.each([
+    ["a number nobody has", "+994501119999"],
+    ["a number two people share", "+994501110003"],
+    ["a dismissed person's number", "+994501110004"],
+  ])("answers «sent» to %s and sends nothing", async (_label, phone) => {
+    const response = await ask(phone)
+    expect(response.status).toBe(200)
+    expect((await response.json()).data).toEqual({ sent: true, resendAfterSeconds: 60, expiresInSeconds: 600 })
+    expect(sent).toHaveLength(0)
+  })
+
+  it("takes the right code once, sets the person's own password, signs in, and the password works by number", async () => {
+    // A fresh code: the one from the first test is still the live one, so wait it out by retiring it.
+    await bypass(() => prisma.otpCode.updateMany({ where: { organizationId: ORG, phone: "+994501110001" }, data: { createdAt: new Date(Date.now() - 120_000) } }))
+    await ask("+994 50 111 00 01", "ru")
+    expect(sent[0].body.template.language.code).toBe("ru")
+    const code = codeOf(sent[0])
+    const wrong = code === "000000" ? "111111" : "000000"
+
+    const refused = await verify("+994501110001", wrong)
+    expect(refused.status).toBe(400)
+    expect((await refused.json()).code).toBe("MTM_LOGIN_CODE_INVALID")
+    const accepted = await verify("994501110001", code)
+    expect(accepted.status).toBe(200)
+    const { data: proof } = await accepted.json()
+    expect(proof.agent).toEqual({ name: "Fictional field agent" })
+    expect(proof.organizationName).toBe("Fictional pharmacy company")
+    const again = await verify("+994501110001", code)
+    expect((await again.json()).code).toBe("MTM_LOGIN_CODE_EXPIRED")
+
+    // The setup token is not a session.
+    const decoded = jwt.decode(proof.setupToken) as Record<string, unknown>
+    expect(decoded.agentId).toBeUndefined()
+    expect(decoded.sub).toBe(ids.field)
+
+    const weak = await post(setPassword, "/password", { setupToken: proof.setupToken, password: "short" })
+    expect(weak.status).toBe(400)
+    expect((await weak.json()).code).toBe("MTM_PASSWORD_WEAK")
+    const set = await post(setPassword, "/password", { setupToken: proof.setupToken, password: STRONG })
+    expect(set.status).toBe(200)
+    const { data: session } = await set.json()
+    const claims = jwt.verify(session.token, process.env.NEXTAUTH_SECRET!) as Record<string, unknown>
+    expect(claims).toMatchObject({ agentId: ids.field, orgId: ORG, role: "AGENT" })
+    expect(session.agent).toMatchObject({ id: ids.field, organizationName: "Fictional pharmacy company" })
+    const card = await bypass(() => prisma.mtmAgent.findUniqueOrThrow({ where: { id: ids.field } }))
+    expect(await bcrypt.compare(STRONG, card.passwordHash!)).toBe(true)
+    expect(await bcrypt.compare("Old-Field-Pass-2026!", card.passwordHash!)).toBe(false)
+
+    // Once: the password changed, so the token's fingerprint no longer matches.
+    const replay = await post(setPassword, "/password", { setupToken: proof.setupToken, password: "Another-Pass-2026!" })
+    expect(replay.status).toBe(401)
+    expect((await replay.json()).code).toBe("MTM_PASSWORD_SETUP_EXPIRED")
+
+    // From now on the password form, by number, with the company.
+    const byNumber = await post(signIn, "", { phone: "050 111 00 01", password: STRONG, organizationSlug: ORG })
+    expect(byNumber.status).toBe(200)
+    expect((jwt.verify((await byNumber.json()).data.token, process.env.NEXTAUTH_SECRET!) as Record<string, unknown>).agentId).toBe(ids.field)
+    expect((await post(signIn, "", { phone: "050 111 00 01", password: "Old-Field-Pass-2026!", organizationSlug: ORG })).status).toBe(401)
+    // A number without the company is refused outright.
+    expect((await post(signIn, "", { phone: "+994501110001", password: STRONG })).status).toBe(400)
+  })
+
+  it("reaches an office employee by the number on their CRM user, and stops when attendance is off", async () => {
+    await ask("+994501110002")
+    expect(sent).toHaveLength(1)
+    const accepted = await verify("+994501110002", codeOf(sent[0]))
+    const { data: proof } = await accepted.json()
+    const set = await post(setPassword, "/password", { setupToken: proof.setupToken, password: STRONG })
+    expect(set.status).toBe(200)
+    expect((jwt.verify((await set.json()).data.token, process.env.NEXTAUTH_SECRET!) as Record<string, unknown>)).toMatchObject({ agentId: ids.office, userId: ids.officeUser, role: "EMPLOYEE" })
+
+    await bypass(() => prisma.mtmSetting.update({ where: { organizationId_key: { organizationId: ORG, key: "attendanceEnabled" } }, data: { value: false } }))
+    try {
+      await bypass(() => prisma.otpCode.updateMany({ where: { organizationId: ORG, phone: "+994501110002" }, data: { createdAt: new Date(Date.now() - 120_000) } }))
+      sent.length = 0
+      const off = await ask("+994501110002")
+      expect((await off.json()).data.sent).toBe(true)
+      expect(sent).toHaveLength(0)
+      expect((await post(signIn, "", { phone: "+994501110002", password: STRONG, organizationSlug: ORG })).status).toBe(401)
+    } finally {
+      await bypass(() => prisma.mtmSetting.update({ where: { organizationId_key: { organizationId: ORG, key: "attendanceEnabled" } }, data: { value: true } }))
+    }
+  })
+
+  it("says aloud that codes cannot be sent while the template is missing — to everybody, and withdraws the code", async () => {
+    await bypass(() => prisma.otpCode.updateMany({ where: { organizationId: ORG, phone: "+994501110001" }, data: { createdAt: new Date(Date.now() - 120_000) } }))
+    metaAnswers = () => new Response(JSON.stringify({ error: { code: 132001, message: "Template name does not exist in the translation" } }), { status: 404 })
+    const response = await ask("+994501110001")
+    expect(response.status).toBe(503)
+    expect((await response.json()).code).toBe("MTM_LOGIN_CODE_UNAVAILABLE")
+    // Every language was tried once.
+    expect(sent.map((message) => message.body.template.language.code)).toEqual(["az", "ru", "en", "en_US"])
+    const latest = await bypass(() => prisma.otpCode.findFirstOrThrow({ where: { organizationId: ORG, phone: "+994501110001" }, orderBy: { createdAt: "desc" } }))
+    expect(latest.usedAt).not.toBeNull()
+    // For a while, the same answer for a number nobody has: it says nothing about numbers.
+    sent.length = 0
+    const stranger = await ask("+994501119998")
+    expect(stranger.status).toBe(503)
+    expect(sent).toHaveLength(0)
+  })
+})
