@@ -18,7 +18,10 @@ assert.match(head ?? '', /^[a-f0-9]{40}$/)
 assert.equal(execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), head)
 const output = process.env.MTM_E2E_OUTPUT || 'artifacts/mtm-attendance-e2e'
 await mkdir(output, { recursive: true })
-const messages = JSON.parse(await readFile('messages/en.json', 'utf8')).mtmAttendance
+const english = JSON.parse(await readFile('messages/en.json', 'utf8'))
+const messages = english.mtmAttendance
+/** Personnel labels (`personnel.*`), for the screens rebuilt on 2026-10-14. */
+const pt = key => { const value = key.split('.').reduce((node, part) => node?.[part], english.personnel); assert.equal(typeof value, 'string', `Missing label personnel.${key}`); return value }
 const t = (key, vars = {}) => {
   assert.equal(typeof messages[key], 'string', `Missing label ${key}`)
   return messages[key].replace(/\{(\w+)\}/g, (_, name) => String(vars[name] ?? `{${name}}`))
@@ -27,10 +30,10 @@ const routes = ['', 'timesheet', 'settings', 'requests', 'decisions', 'employees
 // The former pages are tabs of the four Personnel destinations now. Each route
 // key keeps its case name; the value is [address, sidebar destination].
 const destinations = {
-  '': ['', ''], timesheet: ['timesheet?tab=days', 'timesheet'], settings: ['settings?tab=hours', 'settings'], requests: ['requests', ''],
-  decisions: ['timesheet?tab=decisions', 'timesheet'], employees: ['people?tab=employees', 'people'], branches: ['people?tab=branches', 'people'],
-  'branches/report': ['timesheet?tab=branches', 'timesheet'], shifts: ['settings?tab=shifts', 'settings'], 'leave-balances': ['settings?tab=leave', 'settings'],
-  months: ['timesheet?tab=months', 'timesheet'], installations: ['people?tab=phones', 'people'], 'branch-qr': ['settings?tab=qr', 'settings'],
+  '': ['', ''], timesheet: ['timesheet', 'timesheet'], settings: ['settings?tab=hours', 'settings'], requests: ['requests', ''],
+  decisions: ['timesheet?view=decisions', 'timesheet'], employees: ['people?tab=employees', 'people'], branches: ['people?tab=branches', 'people'],
+  'branches/report': ['timesheet?view=branches', 'timesheet'], shifts: ['settings?tab=shifts', 'settings'], 'leave-balances': ['settings?tab=leave', 'settings'],
+  months: ['timesheet?view=months', 'timesheet'], installations: ['people?tab=phones', 'people'], 'branch-qr': ['settings?tab=qr', 'settings'],
   review: ['settings?tab=review', 'settings'], 'location-settings': ['settings?tab=location', 'settings'], recordings: ['recordings', null],
   'day-kinds': ['settings?tab=day-kinds', 'settings'], 'request-limits': ['settings?tab=requests', 'settings'], 'hr-access': ['settings?tab=access', 'settings'],
 }
@@ -127,8 +130,11 @@ async function readyPage(path) {
 const rosterCard = name => fixture.admin.mtmAgent.findFirstOrThrow({ where: { organizationId: fixture.organization.id, name } })
 async function openTimesheetExtras() {
   await readyPage('timesheet')
-  const extras = page.getByTestId('attendance-timesheet-extras')
-  if ((await extras.getAttribute('open')) === null) await extras.locator('summary').click()
+  // Saved forms and deliveries open from the timesheet's "More" menu.
+  if (!(await page.getByTestId('attendance-timesheet-extras').count())) {
+    await page.getByTestId('attendance-timesheet-more').click()
+    await page.getByRole('menuitem', { name: pt('customFormAndDelivery'), exact: true }).click()
+  }
   await page.getByTestId('attendance-personal-views').waitFor({ timeout: 120000 })
 }
 async function readyLeaveBalances() {
@@ -501,45 +507,51 @@ try {
   })
   await run('browser-report-tabs-filters-pagination', 'browser-action+database-backed-http', async () => {
     await readyPage('timesheet')
-    await page.getByTestId('attendance-day-table').waitFor()
-    assert.equal(await page.getByTestId('attendance-day-row').count(), 50)
+    // One screen (owner, 2026-10-14): the month opens at once, without a tab row.
+    await page.getByTestId('attendance-month-grid').waitFor({ timeout: 120000 })
+    assert.equal(await page.getByTestId('attendance-tabs').count(), 0)
+    const people = () => page.getByTestId('attendance-month-person')
+    assert.equal(await people().count(), 50)
+    const firstPerson = await people().first().innerText()
     await button('reportNext').click()
-    await poll(async () => (await page.getByTestId('attendance-day-row').count()) < 50, 'Report next page')
+    await poll(async () => await people().first().innerText() !== firstPerson, 'Timesheet next page')
     await button('reportPrevious').click()
-    // Each report form is a tab link of Personnel → Timesheet now.
-    for (const tab of ['month', 'late', 'absence', 'overtime', 'journal', 'days']) {
-      const link = page.getByTestId(`attendance-tab-${tab}`)
-      await link.click()
-      await page.waitForURL(url => url.searchParams.get('tab') === tab, { timeout: 120000 })
-      await poll(async () => await page.getByTestId(`attendance-tab-${tab}`).getAttribute('aria-current') === 'page', `Tab ${tab} selected`, 120000)
-      if (tab === 'month') {
-        await page.getByTestId('attendance-month-grid').waitFor({ timeout: 120000 })
-        // The day card opens from a real cell and links to that day and its correction.
-        await page.getByTestId('attendance-month-cell').first().click()
-        const card = page.getByTestId('attendance-day-popover')
-        await card.waitFor()
-        assert.equal(await card.locator('a').count(), 2)
-        await page.keyboard.press('Escape')
-      }
+    await poll(async () => await people().first().innerText() === firstPerson, 'Timesheet previous page')
+    // Each deviation is a filter button whose count is the people it keeps.
+    const filters = {}
+    for (const kind of ['late', 'absent', 'missing-finish', 'overtime']) {
+      const filter = page.getByTestId(`attendance-filter-${kind}`)
+      const expected = Number((await filter.innerText()).match(/(\d+)\s*$/)?.[1])
+      assert.ok(Number.isInteger(expected), `Filter ${kind} shows a count`)
+      await filter.click()
+      await poll(async () => await filter.getAttribute('aria-pressed') === 'true', `Filter ${kind} on`)
+      await poll(async () => await people().count() === Math.min(expected, 50), `Filter ${kind} keeps its people`, 120000)
+      await filter.click()
+      await poll(async () => await filter.getAttribute('aria-pressed') === 'false', `Filter ${kind} off`)
+      filters[kind] = expected
     }
-    await page.getByTestId('attendance-day-table').waitFor({ timeout: 120000 })
-    // A changed period reloads the report by itself; there is no Apply button.
-    for (const from of [date(-1), today]) {
-      const reloaded = page.waitForResponse(response => new URL(response.url()).pathname === `${apiRoot}/report` && response.request().method() === 'GET'
-        && new URL(response.url()).searchParams.get('from') === from, { timeout: 120000 })
-      await page.getByLabel(t('reportFrom'), { exact: true }).fill(from)
-      assert.equal((await reloaded).status(), 200)
-    }
-    await page.getByTestId('attendance-day-table').waitFor({ timeout: 120000 })
+    // The day card opens from a real cell with the marks and one action.
+    await page.getByTestId('attendance-month-cell').first().click()
+    const card = page.getByTestId('attendance-day-popover')
+    await card.waitFor()
+    assert.equal(await card.locator('a').count(), 1)
+    await page.keyboard.press('Escape')
+    // The month arrows reload the report for the previous month by themselves.
+    const previousMonth = `${new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 2, 1, 12)).toISOString().slice(0, 7)}-01`
+    const reloaded = page.waitForResponse(response => new URL(response.url()).pathname === `${apiRoot}/report` && response.request().method() === 'GET'
+      && new URL(response.url()).searchParams.get('from') === previousMonth, { timeout: 120000 })
+    await page.getByRole('button', { name: pt('previousMonth'), exact: true }).click()
+    assert.equal((await reloaded).status(), 200)
+    await page.getByRole('button', { name: pt('nextMonth'), exact: true }).click()
+    await page.getByTestId('attendance-month-grid').waitFor({ timeout: 120000 })
     // Scope to the timesheet: the sidebar has its own menu search field.
     const sheet = page.getByTestId('attendance-timesheet')
-    // The saved-form and delivery editors below have their own team fields.
     const team = sheet.locator(`select[aria-label="${t('reportTeam')}"]`)
     await team.selectOption(fixture.team.id)
     await poll(async () => await team.inputValue() === fixture.team.id, 'Team filter applied')
     await sheet.locator('input[type="search"]').fill(fixture.users.employee.name)
-    await poll(async () => (await page.getByTestId('attendance-day-row').count()) === 1, 'Search narrows to one employee')
-    assert.ok((await page.getByTestId('attendance-day-row').innerText()).includes(fixture.users.employee.name))
+    await poll(async () => (await people().count()) === 1, 'Search narrows to one employee')
+    assert.ok((await people().innerText()).includes(fixture.users.employee.name))
     // A real file download follows the button and confirms the browser flow.
     for (const key of ['exportExcel', 'exportPdf']) {
       const download = page.waitForEvent('download', { timeout: 120000 })
@@ -548,9 +560,14 @@ try {
       assert.equal(await file.failure(), null)
       assert.match(file.suggestedFilename(), key === 'exportPdf' ? /\.pdf$/i : /\.xlsx$/i)
     }
-    await page.getByLabel(t('reportFrom'), { exact: true }).fill(date(2))
-    await page.getByText(t('reportRangeInvalid'), { exact: true }).waitFor()
-    return { reportTabs: 6, monthDayCard: true, pagination: true, teamAndSearchFilter: true, browserDownloads: 2, invalidRange: true }
+    // Rarer reports sit under "More" and come back to the timesheet.
+    await page.getByTestId('attendance-timesheet-more').click()
+    for (const view of ['branches', 'decisions', 'months']) assert.equal(await page.getByRole('menuitem', { name: pt(`tabs.${view}`), exact: true }).count(), 1)
+    await page.getByRole('menuitem', { name: pt('tabs.decisions'), exact: true }).click()
+    await page.waitForURL(url => url.searchParams.get('view') === 'decisions', { timeout: 120000 })
+    await page.getByTestId('attendance-back-to-timesheet').click()
+    await page.getByTestId('attendance-month-grid').waitFor({ timeout: 120000 })
+    return { oneScreen: true, filters, monthDayCard: true, pagination: true, monthArrows: true, teamAndSearchFilter: true, browserDownloads: 2, moreMenu: 3 }
   })
   await run('browser-views-save-rename-delete-cancel', 'browser-action+database-backed-http', async () => {
     await openTimesheetExtras()

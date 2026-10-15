@@ -15,7 +15,7 @@ vi.mock("next/navigation", async original => ({ ...(await original<typeof import
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 const ru = JSON.parse(readFileSync("messages/ru.json", "utf8"))
 const azMessages = JSON.parse(readFileSync("messages/az.json", "utf8"))
-const p = (key: string) => ru.personnel[key] as string
+const p = (key: string) => key.split(".").reduce((node, part) => node[part], ru.personnel) as string
 const kinds = attendanceDayKindPresetCodes(defaultAttendanceDayKinds(key => ({ ru: ru.mtmAttendance[`dayKindName${key}`], az: "x", en: "x" })), "RU")
 const at = (date: string, time: string) => `${date}T${time}:00+04:00`
 const reportFor = (from: string, to: string) => buildMtmAttendanceReport({ from, to, now: "2026-10-14T08:00:00Z", rules: [], calendar: [], dayKinds: kinds,
@@ -29,8 +29,10 @@ const fetchMock = vi.fn<typeof fetch>(async input => {
   const url = new URL(String(input), "https://crm.test")
   if (url.pathname === "/api/v1/mtm/attendance/rules") return json({ success: true, data: { today: "2026-10-14", canManageRules: true } })
   if (url.pathname === "/api/v1/mtm/attendance/report") return json({ success: true, data: reportFor(url.searchParams.get("from")!, url.searchParams.get("to")!) })
+  if (url.pathname === "/api/v1/mtm/attendance/views") return json({ success: true, data: savedViews })
   return json({ success: true, data: { items: [], views: [], schedules: [] } })
 })
+let savedViews: unknown[] = []
 let container: HTMLDivElement, root: Root
 async function render(props: Parameters<typeof MtmAttendanceReportWorkspace>[0]) {
   await act(async () => root.render(createElement(NextIntlClientProvider, { locale: "ru", timeZone: "Asia/Baku", messages: ru },
@@ -39,15 +41,14 @@ async function render(props: Parameters<typeof MtmAttendanceReportWorkspace>[0])
 }
 const reportCalls = () => fetchMock.mock.calls.map(([url]) => new URL(String(url), "https://crm.test")).filter(url => url.pathname.endsWith("/report"))
 
-beforeEach(() => { container = document.createElement("div"); document.body.append(container); root = createRoot(container); fetchMock.mockClear(); vi.stubGlobal("fetch", fetchMock) })
+beforeEach(() => { savedViews = []; container = document.createElement("div"); document.body.append(container); root = createRoot(container); fetchMock.mockClear(); vi.stubGlobal("fetch", fetchMock) })
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); document.body.innerHTML = ""; vi.unstubAllGlobals() })
 
 describe("Personnel → Timesheet month", () => {
   it("opens on the current month with letters per day, totals and none of the former overview or settings", async () => {
-    await render({ layout: "timesheet", initialForm: "MONTH", tabs: createElement("nav", { "data-testid": "tabs-slot" }) })
+    await render({ layout: "timesheet", initialForm: "MONTH" })
     expect(reportCalls().at(-1)?.searchParams.get("from")).toBe("2026-10-01")
     expect(reportCalls().at(-1)?.searchParams.get("to")).toBe("2026-10-31")
-    expect(container.querySelector('[data-testid="tabs-slot"]')).not.toBeNull()
     expect(container.querySelector('[data-testid="attendance-month-switcher"]')?.textContent).toContain("октябрь 2026")
     const people = Array.from(container.querySelectorAll('[data-testid="attendance-month-person"]'))
     expect(people).toHaveLength(2)
@@ -65,18 +66,57 @@ describe("Personnel → Timesheet month", () => {
     }
   })
 
-  it("opens a day card from a cell with the marks and links to the day and to its correction", async () => {
+  it("opens a day card from a cell with the day's marks and one action: fix that day", async () => {
     await render({ layout: "timesheet", initialForm: "MONTH" })
     const nigar = Array.from(container.querySelectorAll('[data-testid="attendance-month-person"]')).find(row => row.textContent?.includes("Нигяр"))!
-    await act(async () => nigar.querySelectorAll<HTMLButtonElement>('[data-testid="attendance-month-cell"]')[13].click())
+    await act(async () => nigar.querySelectorAll<HTMLButtonElement>('[data-testid="attendance-month-cell"]')[12].click())
     const card = document.querySelector<HTMLElement>('[data-testid="attendance-day-popover"]')!
     expect(card.textContent).toContain("Нигяр Бабаева")
-    expect(card.textContent).toContain("09:25")
+    const marks = card.querySelector('[data-testid="attendance-day-marks"]')!
+    expect(Array.from(marks.querySelectorAll("li")).map(item => item.textContent)).toEqual([`09:00${ru.mtmAttendance.reportEventStart}`, `18:00${ru.mtmAttendance.reportEventFinish}`])
     const links = Array.from(card.querySelectorAll("a"))
-    expect(links.map(link => [link.textContent, link.getAttribute("href")])).toEqual([
-      [p("openDay"), "/mtm/attendance/timesheet?tab=journal&date=2026-10-14&employeeId=nigar"],
-      [p("changeDayKind"), "/mtm/attendance/recordings?date=2026-10-14&employeeId=nigar"],
-    ])
+    expect(links.map(link => [link.textContent, link.getAttribute("href")])).toEqual([[p("fixDay"), "/mtm/attendance/recordings?date=2026-10-13&employeeId=nigar"]])
+  })
+
+  it("filters people by a deviation, counts them on the button and dims the other days", async () => {
+    await render({ layout: "timesheet", initialForm: "MONTH" })
+    const late = container.querySelector<HTMLButtonElement>('[data-testid="attendance-filter-late"]')!
+    expect(late.textContent).toBe(`${p("kpiLate")} · 1`)
+    // 13 Oct is nine hours against the default eight, but no threshold is set: not overtime.
+    expect(container.querySelector('[data-testid="attendance-filter-overtime"]')!.textContent).toBe(`${p("tabs.overtime")} · 0`)
+    expect(container.querySelector('[data-testid="attendance-filter-missing-finish"]')!.textContent).toBe(`${p("kpiMissing")} · 0`)
+    await act(async () => late.click())
+    expect(late.getAttribute("aria-pressed")).toBe("true")
+    const people = Array.from(container.querySelectorAll('[data-testid="attendance-month-person"]'))
+    expect(people.map(row => row.querySelector("th")!.textContent)).toEqual(["Нигяр БабаеваОфис «Центр»"])
+    const cells = Array.from(people[0].querySelectorAll<HTMLElement>('[data-testid="attendance-month-cell"]'))
+    expect(cells[13].dataset.dimmed).toBeUndefined()   // 14 Oct, 25 minutes late
+    expect(cells[12].dataset.dimmed).toBe("true")      // 13 Oct, on time
+    await act(async () => late.click())
+    expect(container.querySelectorAll('[data-testid="attendance-month-person"]')).toHaveLength(2)
+  })
+
+  it("a filter link opens with that filter on; an empty filter says so", async () => {
+    await render({ layout: "timesheet", initialForm: "MONTH", initialFilter: "missing-finish" })
+    expect(container.querySelector('[data-testid="attendance-filter-missing-finish"]')!.getAttribute("aria-pressed")).toBe("true")
+    expect(container.querySelectorAll('[data-testid="attendance-month-person"]')).toHaveLength(0)
+    expect(container.textContent).toContain(p("filterEmpty"))
+  })
+
+  it("a day link opens that day's month and its card for that person", async () => {
+    await render({ layout: "timesheet", initialForm: "MONTH", initialDate: "2026-10-13", initialEmployeeId: "nigar" })
+    expect(reportCalls().at(-1)?.searchParams.get("from")).toBe("2026-10-01")
+    const card = document.querySelector<HTMLElement>('[data-testid="attendance-day-popover"]')!
+    expect(card.textContent).toContain("Нигяр Бабаева")
+    expect(card.querySelector("a")!.getAttribute("href")).toBe("/mtm/attendance/recordings?date=2026-10-13&employeeId=nigar")
+    expect(container.textContent).toContain(p("onlyEmployee").replace("{name}", "Нигяр Бабаева"))
+  })
+
+  it("keeps the rarer reports under More, not as tabs", async () => {
+    await render({ layout: "timesheet", initialForm: "MONTH" })
+    expect(container.querySelector('[data-testid="attendance-tabs"]')).toBeNull()
+    expect(container.querySelector('[data-testid="attendance-timesheet-more"]')!.textContent).toBe(p("more"))
+    expect(container.querySelector('[data-testid="attendance-timesheet-extras"]')).toBeNull()
   })
 
   it("moves by month with the arrows", async () => {
@@ -87,12 +127,31 @@ describe("Personnel → Timesheet month", () => {
     expect(reportCalls().at(-1)?.searchParams.get("to")).toBe("2026-09-30")
   })
 
-  it("a day link opens that day for that person only", async () => {
-    await render({ layout: "timesheet", initialForm: "JOURNAL", initialDate: "2026-10-13", initialEmployeeId: "nigar" })
+})
+
+describe("Timesheet saved forms", () => {
+  it("open from More, replace the month with the form's table, and close back to the month", async () => {
+    savedViews = [{ id: "v1", name: "Моя форма", version: "2026-10-14T08:00:00.000Z",
+      config: { version: 1, mode: "DAY", columns: ["employee", "date", "status", "worked"], showTotals: true, filters: { from: "2026-10-13", to: "2026-10-13", form: "ALL" } } }]
+    await render({ layout: "timesheet", initialForm: "MONTH" })
+    const more = container.querySelector<HTMLButtonElement>('[data-testid="attendance-timesheet-more"]')!
+    await act(async () => { more.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })) })
+    const item = Array.from(document.querySelectorAll<HTMLElement>('[role="menuitem"]')).find(node => node.textContent === p("customFormAndDelivery"))!
+    await act(async () => item.click())
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+    const open = Array.from(container.querySelectorAll<HTMLButtonElement>('[data-testid="attendance-personal-view"] button')).find(button => button.getAttribute("aria-label")?.includes("Моя форма") && button.textContent === ru.mtmAttendance.viewsOpen)!
+    await act(async () => open.click())
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
     expect(reportCalls().at(-1)?.searchParams.get("from")).toBe("2026-10-13")
-    expect(reportCalls().at(-1)?.searchParams.get("to")).toBe("2026-10-13")
-    expect(container.textContent).toContain(p("onlyEmployee").replace("{name}", "Нигяр Бабаева"))
-    expect(container.textContent).not.toContain("Рашад Алиев")
+    expect(container.querySelector('[data-testid="attendance-custom-table"]')).not.toBeNull()
+    expect(container.querySelector('[data-testid="attendance-month-grid"]')).toBeNull()
+    const chip = container.querySelector<HTMLElement>('[data-testid="attendance-timesheet-custom-chip"]')!
+    expect(chip.textContent).toContain("Моя форма")
+    await act(async () => chip.querySelector("button")!.click())
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+    expect(reportCalls().at(-1)?.searchParams.get("from")).toBe("2026-10-01")
+    expect(container.querySelector('[data-testid="attendance-month-grid"]')).not.toBeNull()
+    expect(container.querySelector('[data-testid="attendance-custom-table"]')).toBeNull()
   })
 })
 

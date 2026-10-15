@@ -101,7 +101,7 @@ export function MtmAttendanceToday() {
   // prints "M10 14, Wed" (seen on prod 2026-10-14); format-date assembles az itself.
   const dateLabel = (date: string, options: Intl.DateTimeFormatOptions = { day: "numeric", month: "short" }) => formatDate(`${date}T12:00:00.000Z`, locale, { ...options, timeZone: "UTC" })
   const recordHref = (employeeId: string, date: string) => `/mtm/attendance/recordings?${new URLSearchParams({ employeeId, date })}`
-  const dayHref = (employeeId: string, date: string) => `/mtm/attendance/timesheet?${new URLSearchParams({ tab: "journal", date, employeeId })}`
+  const dayHref = (employeeId: string, date: string) => `/mtm/attendance/timesheet?${new URLSearchParams({ date, employeeId })}`
 
   if (error) return <div className="space-y-3"><h1 className="text-2xl font-bold tracking-tight">{t("todayTitle")}</h1><p role="alert" className="text-sm text-destructive">{error}</p>
     <Button variant="outline" className="min-h-11" onClick={() => void load()}>{a("reportReload")}</Button></div>
@@ -120,20 +120,20 @@ export function MtmAttendanceToday() {
         <p className="text-sm text-muted-foreground first-letter:uppercase">{data ? dateLabel(data.today, { weekday: "long", day: "numeric", month: "long" }) : " "}</p></div>
       <div className="flex flex-wrap gap-2">
         <Button asChild variant="outline" className="min-h-11 rounded-full"><Link href="/mtm/attendance/recordings" prefetch={false}><Plus className="mr-2 h-4 w-4" aria-hidden="true" />{t("recordDay")}</Link></Button>
-        <Button asChild className="min-h-11 rounded-full"><Link href="/mtm/attendance/timesheet?tab=month" prefetch={false}><FileSpreadsheet className="mr-2 h-4 w-4" aria-hidden="true" />{month ? t("openTimesheet", { month }) : t("timesheetTitle")}</Link></Button>
+        <Button asChild className="min-h-11 rounded-full"><Link href="/mtm/attendance/timesheet" prefetch={false}><FileSpreadsheet className="mr-2 h-4 w-4" aria-hidden="true" />{month ? t("openTimesheet", { month }) : t("timesheetTitle")}</Link></Button>
       </div>
     </header>
 
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {([
         { id: "arrived", label: t("kpiArrived"), icon: <LogIn className="h-4 w-4" />, tone: "green", value: summary?.arrived, unit: summary ? t("kpiOf", { total: summary.expected }) : null,
-          progress: summary?.expected ? summary.arrived / summary.expected * 100 : 0, href: "/mtm/attendance/timesheet?tab=days", link: t("kpiArrivedLink") },
+          progress: summary?.expected ? summary.arrived / summary.expected * 100 : 0, href: "/mtm/attendance/timesheet", link: t("kpiArrivedLink") },
         { id: "late", label: t("kpiLate"), icon: <Clock3 className="h-4 w-4" />, tone: "amber", value: summary?.late, unit: null,
-          progress: summary?.expected ? summary.late / summary.expected * 100 : 0, href: "/mtm/attendance/timesheet?tab=late", link: t("kpiLateLink") },
+          progress: summary?.expected ? summary.late / summary.expected * 100 : 0, href: "/mtm/attendance/timesheet?filter=late", link: t("kpiLateLink") },
         { id: "absent", label: t("kpiAbsent"), icon: <UserRoundX className="h-4 w-4" />, tone: "red", value: summary?.absent, unit: summary ? t("kpiAbsentUnit", { away: summary.away }) : null,
-          progress: summary?.expected ? summary.absent / summary.expected * 100 : 0, href: "/mtm/attendance/timesheet?tab=absence", link: t("kpiAbsentLink") },
+          progress: summary?.expected ? summary.absent / summary.expected * 100 : 0, href: "/mtm/attendance/timesheet?filter=absent", link: t("kpiAbsentLink") },
         { id: "missing-finish", label: t("kpiMissing"), icon: <LogOut className="h-4 w-4" />, tone: "blue", value: summary?.missingFinish, unit: null,
-          progress: summary?.people ? summary.missingFinish / summary.people * 100 : 0, href: "/mtm/attendance/timesheet?tab=journal", link: t("kpiMissingLink") },
+          progress: summary?.people ? summary.missingFinish / summary.people * 100 : 0, href: "/mtm/attendance/timesheet?filter=missing-finish", link: t("kpiMissingLink") },
       ] as const).map(card => <div key={card.id} className="relative">
         <HomeKpi testId={`attendance-today-${card.id}`} label={card.label} icon={card.icon} tone={card.tone} value={card.value === undefined ? null : format.number(card.value)} unit={card.unit} progress={card.progress} sub={null} />
         <Link href={card.href} prefetch={false} className="absolute bottom-3 left-4 text-xs font-semibold text-primary hover:underline">{card.link} →</Link>
@@ -198,7 +198,7 @@ export function MtmAttendanceToday() {
       <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${summary.week.length}, minmax(0, 1fr))` }}>
         {summary.week.map(day => {
           const isToday = day.date === data?.today
-          return <Link key={day.date} prefetch={false} href={`/mtm/attendance/timesheet?tab=days&date=${day.date}`} data-testid="attendance-today-day"
+          return <Link key={day.date} prefetch={false} href={`/mtm/attendance/timesheet?date=${day.date}`} data-testid="attendance-today-day"
             className={`rounded-xl p-3 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring ${isToday ? "bg-primary/10 ring-1 ring-primary/40" : day.future ? "border border-dashed" : "bg-muted/50 hover:bg-muted"}`}>
             <p className={`text-xs font-semibold first-letter:uppercase ${isToday ? "text-primary" : "text-muted-foreground"}`}>{dateLabel(day.date, { weekday: "short", day: "numeric" })}{isToday ? ` · ${t("weekToday")}` : ""}</p>
             <p className="mt-1 text-sm"><span className="text-base font-bold tabular-nums">{day.future ? "—" : day.present}</span> <span className="text-xs text-muted-foreground">{day.future ? t("weekPlan", { total: day.expected }) : t("kpiOf", { total: day.expected })}</span></p>

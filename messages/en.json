@@ -28163,6 +28163,7 @@
     "openEnded": "No recorded end date",
     "predecessor": "Projected previous-version change",
     "close": "{name} · version {version} would end on {date}.",
+    "backToMonth": "Back to the month",
     "noPredecessor": "No published version is recorded in this scope.",
     "recorded": "Recorded published windows ({count})",
     "record": "{name} · version {version}: {from} — {to}",
@@ -28242,7 +28243,6 @@
   "personnel": {
     "peopleTabs": "Employees sections",
     "settingsTabs": "Settings sections",
-    "timesheetTabs": "Timesheet views",
     "tabs": {
       "employees": "Employees",
       "branches": "Branches",
@@ -28272,7 +28272,6 @@
     "searchEmployee": "Find an employee…",
     "onlyEmployee": "Only: {name}",
     "showEveryone": "Show everyone",
-    "monthHint": "{total} employees · click a cell to open the day",
     "colDays": "Days",
     "colHours": "Hours",
     "colLeave": "Leave",
@@ -28283,8 +28282,6 @@
     "dayWorked": "Worked",
     "dayPause": "Break",
     "openDay": "Open day",
-    "changeDayKind": "Change day kind",
-    "lettersInSettings": "Letters are changed in Settings →",
     "customFormAndDelivery": "Custom form and email delivery",
     "todayTitle": "Today",
     "recordDay": "Record a day for an employee",
@@ -28328,6 +28325,14 @@
     "weekPlan": "plan {total}",
     "chipLate": "{count} late",
     "chipAway": "{count} on leave",
-    "chipAbsent": "{count} missing"
+    "chipAbsent": "{count} missing",
+    "more": "More",
+    "filterLabel": "Show",
+    "filterAll": "All",
+    "filterEmpty": "No such days this month",
+    "fixDay": "Fix the day",
+    "dayMarks": "Marks that day",
+    "cellHint": "Click a cell to open the day",
+    "close": "Close"
   }
 }
