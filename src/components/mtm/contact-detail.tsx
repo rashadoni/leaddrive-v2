@@ -26,6 +26,7 @@ import {
   UserRound,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Hint, HintValue } from "@/components/hint"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MtmContactEditDialog } from "@/components/mtm/contact-edit-dialog"
 import { MtmContactClassPicker } from "@/components/mtm/contact-class-picker"
@@ -220,6 +221,29 @@ type ApiPayload = {
 
 type DetailTab = "profile" | "workplaces" | "communication" | "categories" | "history"
 
+// Hover hints for values whose meaning is not in their word (owner,
+// 2026-10-15: «подсказок в модуле очень мало»). Written out key by key so a
+// test finds every one of them.
+const VERIFICATION_HINT: Record<string, string> = {
+  UNVERIFIED: "hint.unverified",
+  VERIFIED: "hint.verified",
+  REJECTED: "hint.verificationRejected",
+}
+const STATUS_HINT: Record<string, string> = {
+  DUPLICATE: "hint.statusDuplicate",
+}
+const ASSIGNMENT_ROLE_HINT: Record<string, string> = {
+  PRIMARY: "hint.rolePrimary",
+  SECONDARY: "hint.roleSecondary",
+}
+const REQUEST_STATUS_HINT: Record<string, string> = {
+  SUBMITTED: "hint.requestSubmitted",
+  IN_REVIEW: "hint.requestInReview",
+  APPROVED: "hint.requestApproved",
+  REJECTED: "hint.requestRejected",
+  NEEDS_INFO: "hint.requestNeedsInfo",
+}
+
 function safeReturnHref(value: string | null): string {
   if (!value) return "/mtm/customers"
   if (value === "/mtm" || value.startsWith("/mtm?")) return value
@@ -240,13 +264,16 @@ function whatsappHref(value: string): string {
 function DefinitionRow({
   label,
   value,
+  hint,
 }: {
   label: string
   value: React.ReactNode
+  /** What the row means, under the cursor on its label. */
+  hint?: string | null
 }) {
   return (
     <div className="grid gap-1 border-b border-zinc-200 py-3 last:border-0 dark:border-zinc-700 sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-4">
-      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
+      <dt className="text-xs font-medium text-muted-foreground"><HintValue text={hint}>{label}</HintValue></dt>
       <dd className="min-w-0 break-words text-sm">{value || "—"}</dd>
     </div>
   )
@@ -255,9 +282,12 @@ function DefinitionRow({
 function StateBadge({
   children,
   tone = "neutral",
+  hint,
 }: {
   children: React.ReactNode
   tone?: "positive" | "warning" | "neutral"
+  /** What the badge means, under the cursor. */
+  hint?: string | null
 }) {
   return (
     <span className={cn(
@@ -266,7 +296,7 @@ function StateBadge({
       tone === "warning" && "bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-200",
       tone === "neutral" && "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200",
     )}>
-      {children}
+      <HintValue text={hint}>{children}</HintValue>
     </span>
   )
 }
@@ -426,6 +456,8 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
         ? assignment.entry!.labels.ru
         : assignment.entry!.labels.en)
     .join(", ") || null
+  const hintFor = (keys: Record<string, string>, value: string) => keys[value] ? t(keys[value]) : null
+  const changeHint = capabilities.canManage ? t("hint.edit") : t("hint.suggestChange")
 
   return (
     <div data-testid="mtm-contact-detail" className="space-y-5">
@@ -445,10 +477,10 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
         <div className="grid gap-6 p-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:p-7">
           <div className="grid min-w-0 gap-4">
             <div className="flex flex-wrap items-center gap-2">
-              <StateBadge tone={statusTone}>{t(`statuses.${contact.status}`)}</StateBadge>
+              <StateBadge tone={statusTone} hint={hintFor(STATUS_HINT, contact.status)}>{t(`statuses.${contact.status}`)}</StateBadge>
               <StateBadge>{clientCategoryLabel}</StateBadge>
-              <StateBadge>{t("category", { value: contact.category })}</StateBadge>
-              <StateBadge tone={verificationTone}>{t(`verificationStatuses.${contact.verificationStatus}`)}</StateBadge>
+              <StateBadge hint={t("hint.category")}>{t("category", { value: contact.category })}</StateBadge>
+              <StateBadge tone={verificationTone} hint={hintFor(VERIFICATION_HINT, contact.verificationStatus)}>{t(`verificationStatuses.${contact.verificationStatus}`)}</StateBadge>
             </div>
             <div className="grid gap-2">
               <h1 className="max-w-4xl text-2xl font-semibold tracking-tight md:text-3xl">{contact.displayName}</h1>
@@ -469,52 +501,64 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
 
           <div className="flex flex-wrap gap-2 lg:max-w-sm lg:justify-end">
             {capabilities.canManage || capabilities.canRequestChanges ? (
-              <Button type="button" variant="outline" className="min-h-11" onClick={() => setEditOpen(true)}>
-                <Pencil className="h-4 w-4" />
-                {capabilities.canManage ? t("editContact") : t("suggestChange")}
-              </Button>
+              <Hint text={changeHint}>
+                <Button type="button" variant="outline" className="min-h-11" onClick={() => setEditOpen(true)}>
+                  <Pencil className="h-4 w-4" />
+                  {capabilities.canManage ? t("editContact") : t("suggestChange")}
+                </Button>
+              </Hint>
             ) : null}
             {preferredPhone ? (
-              <Button asChild variant="outline" className="min-h-11">
-                <a href={phoneHref(preferredPhone)}><Phone className="h-4 w-4" />{t("call")}</a>
-              </Button>
+              <Hint text={t("hint.call")}>
+                <Button asChild variant="outline" className="min-h-11">
+                  <a href={phoneHref(preferredPhone)}><Phone className="h-4 w-4" />{t("call")}</a>
+                </Button>
+              </Hint>
             ) : null}
             {contact.email ? (
-              <Button asChild variant="outline" className="min-h-11">
-                <a href={`mailto:${contact.email}`}><Mail className="h-4 w-4" />{t("emailAction")}</a>
-              </Button>
+              <Hint text={t("hint.email")}>
+                <Button asChild variant="outline" className="min-h-11">
+                  <a href={`mailto:${contact.email}`}><Mail className="h-4 w-4" />{t("emailAction")}</a>
+                </Button>
+              </Hint>
             ) : null}
             {preferredMessenger ? (
-              <Button asChild variant="outline" className="min-h-11">
-                <a href={whatsappHref(preferredMessenger)} target="_blank" rel="noreferrer">
-                  <MessageCircle className="h-4 w-4" />{t("message")}
-                </a>
-              </Button>
+              <Hint text={t("hint.message")}>
+                <Button asChild variant="outline" className="min-h-11">
+                  <a href={whatsappHref(preferredMessenger)} target="_blank" rel="noreferrer">
+                    <MessageCircle className="h-4 w-4" />{t("message")}
+                  </a>
+                </Button>
+              </Hint>
             ) : null}
             {primaryWorkplace ? (
-              <Button asChild className="min-h-11">
-                <Link href={`/mtm/routes?customerId=${encodeURIComponent(primaryWorkplace.customer.id)}&contactId=${encodeURIComponent(contact.id)}`}>
-                  <CalendarPlus className="h-4 w-4" />{t("planVisit")}
+              <Hint text={t("hint.planVisit")}>
+                <Button asChild className="min-h-11">
+                  <Link href={`/mtm/routes?customerId=${encodeURIComponent(primaryWorkplace.customer.id)}&contactId=${encodeURIComponent(contact.id)}`}>
+                    <CalendarPlus className="h-4 w-4" />{t("planVisit")}
+                  </Link>
+                </Button>
+              </Hint>
+            ) : null}
+            <Hint text={t("hint.openTasks")}>
+              <Button asChild variant="outline" className="min-h-11">
+                <Link href={`/mtm/tasks?contactId=${encodeURIComponent(contact.id)}`}>
+                  <ClipboardList className="h-4 w-4" />{t("openTasks")}
                 </Link>
               </Button>
-            ) : null}
-            <Button asChild variant="outline" className="min-h-11">
-              <Link href={`/mtm/tasks?contactId=${encodeURIComponent(contact.id)}`}>
-                <ClipboardList className="h-4 w-4" />{t("openTasks")}
-              </Link>
-            </Button>
+            </Hint>
           </div>
         </div>
 
         <div className="grid divide-y border-t border-zinc-200 bg-muted/25 dark:border-zinc-700 sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
-          {[
-            [t("workplaces"), contact.workplaces.length],
-            [t("activeOwners"), activeAssignments.length],
-            [t("assessments"), contact.doctorAssessments.length],
-            [t("potentialRecords"), contact.fieldPotentials.length],
-          ].map(([label, value]) => (
+          {([
+            [t("workplaces"), contact.workplaces.length, t("hint.workplacesCount")],
+            [t("activeOwners"), activeAssignments.length, t("hint.ownersCount")],
+            [t("assessments"), contact.doctorAssessments.length, t("hint.assessmentsCount")],
+            [t("potentialRecords"), contact.fieldPotentials.length, t("hint.potentialCount")],
+          ] as const).map(([label, value, hint]) => (
             <div key={String(label)} className="grid gap-1 px-5 py-3">
-              <span className="text-xs font-medium text-muted-foreground">{label}</span>
+              <span className="text-xs font-medium text-muted-foreground"><HintValue text={hint}>{label}</HintValue></span>
               <span className="text-sm font-semibold tabular-nums">{numberFormatter.format(Number(value))}</span>
             </div>
           ))}
@@ -571,7 +615,7 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
                 {shows("specialtyCode") ? <DefinitionRow label={t("specialtyCode")} value={contact.specialtyCode} /> : null}
                 {shows("qualificationCategory") ? <DefinitionRow label={t("qualification")} value={contact.qualificationCategory} /> : null}
                 {shows("profile") ? <DefinitionRow label={t("profile")} value={contact.profile} /> : null}
-                <DefinitionRow label={t("masterCategory")} value={contact.category} />
+                <DefinitionRow label={t("masterCategory")} hint={t("hint.category")} value={contact.category} />
                 <DefinitionRow label={t("source")} value={contact.source} />
               </dl>
             </SectionCard>
@@ -584,8 +628,8 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
                       <div className="grid gap-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="font-medium">{assignment.agent.name}</span>
-                          <StateBadge>{t(`assignmentRoles.${assignment.role}`)}</StateBadge>
-                          {!assignment.effectiveTo ? <StateBadge tone="positive">{t("current")}</StateBadge> : null}
+                          <StateBadge hint={hintFor(ASSIGNMENT_ROLE_HINT, assignment.role)}>{t(`assignmentRoles.${assignment.role}`)}</StateBadge>
+                          {!assignment.effectiveTo ? <StateBadge tone="positive" hint={t("hint.currentAssignment")}>{t("current")}</StateBadge> : null}
                         </div>
                         <span className="text-xs text-muted-foreground">{assignment.reason || t("reasonMissing")}</span>
                       </div>
@@ -603,21 +647,23 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
               description={t("governanceDescription")}
               action={capabilities.canRequestChanges && !["DUPLICATE", "MERGED"].includes(contact.status) ? (
                 activeDuplicateRequest ? (
-                  <StateBadge tone="warning">{t("duplicateReportPending")}</StateBadge>
+                  <StateBadge tone="warning" hint={t("hint.duplicatePending")}>{t("duplicateReportPending")}</StateBadge>
                 ) : (
-                  <Button type="button" variant="outline" size="sm" className="min-h-11 md:min-h-9" onClick={() => setDuplicateReportOpen(true)}>
-                    <Copy className="h-4 w-4" />
-                    {t("reportDuplicate")}
-                  </Button>
+                  <Hint text={t("hint.reportDuplicate")}>
+                    <Button type="button" variant="outline" size="sm" className="min-h-11 md:min-h-9" onClick={() => setDuplicateReportOpen(true)}>
+                      <Copy className="h-4 w-4" />
+                      {t("reportDuplicate")}
+                    </Button>
+                  </Hint>
                 )
               ) : null}
             >
               <dl>
-                <DefinitionRow label={t("verification")} value={<StateBadge tone={verificationTone}>{t(`verificationStatuses.${contact.verificationStatus}`)}</StateBadge>} />
-                <DefinitionRow label={t("consent")} value={t(`consentStatuses.${contact.consentStatus}`)} />
+                <DefinitionRow label={t("verification")} value={<StateBadge tone={verificationTone} hint={hintFor(VERIFICATION_HINT, contact.verificationStatus)}>{t(`verificationStatuses.${contact.verificationStatus}`)}</StateBadge>} />
+                <DefinitionRow label={t("consent")} hint={t("hint.consent")} value={t(`consentStatuses.${contact.consentStatus}`)} />
                 <DefinitionRow label={t("preferredChannel")} value={contact.contactPreference ? t(`preferences.${contact.contactPreference}`) : null} />
-                <DefinitionRow label={t("changeMode")} value={capabilities.canManage ? t("managerChangeMode") : capabilities.canRequestChanges ? t("requestChangeMode") : t("readOnlyMode")} />
-                <DefinitionRow label={t("duplicate")} value={contact.duplicateOfContact
+                <DefinitionRow label={t("changeMode")} hint={t("hint.changeMode")} value={capabilities.canManage ? t("managerChangeMode") : capabilities.canRequestChanges ? t("requestChangeMode") : t("readOnlyMode")} />
+                <DefinitionRow label={t("duplicate")} hint={t("hint.linkedDuplicate")} value={contact.duplicateOfContact
                   ? <Link className="font-medium text-primary hover:underline" href={`/mtm/contacts/${contact.duplicateOfContact.id}`}>{contact.duplicateOfContact.displayName}</Link>
                   : t("duplicateNotLinked")} />
               </dl>
@@ -631,19 +677,21 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
               title={t("currentWorkplacesTitle")}
               description={t("currentWorkplacesDescription")}
               action={capabilities.canManage || capabilities.canRequestChanges ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="min-h-11 md:min-h-9"
-                  onClick={() => {
-                    setSelectedWorkplace(null)
-                    setWorkplaceOpen(true)
-                  }}
-                >
-                  <Plus className="h-4 w-4" />
-                  {capabilities.canManage ? t("addWorkplace") : t("suggestWorkplace")}
-                </Button>
+                <Hint text={capabilities.canManage ? t("hint.addWorkplace") : t("hint.suggestWorkplace")}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="min-h-11 md:min-h-9"
+                    onClick={() => {
+                      setSelectedWorkplace(null)
+                      setWorkplaceOpen(true)
+                    }}
+                  >
+                    <Plus className="h-4 w-4" />
+                    {capabilities.canManage ? t("addWorkplace") : t("suggestWorkplace")}
+                  </Button>
+                </Hint>
               ) : null}
             >
               {currentWorkplaces.length ? (
@@ -653,6 +701,7 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
                   dateFormatter={dateFormatter}
                   t={t}
                   canChange={capabilities.canManage || capabilities.canRequestChanges}
+                  byRequest={!capabilities.canManage}
                   onEdit={(workplace) => {
                     setSelectedWorkplace(workplace)
                     setWorkplaceOpen(true)
@@ -786,7 +835,7 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
                     <article key={request.id} className="grid gap-2 py-3 first:pt-0 last:pb-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-medium">{t(`requestKinds.${request.kind}`)}</span>
-                        <StateBadge tone={request.status === "APPROVED" ? "positive" : request.status === "REJECTED" ? "warning" : "neutral"}>
+                        <StateBadge tone={request.status === "APPROVED" ? "positive" : request.status === "REJECTED" ? "warning" : "neutral"} hint={hintFor(REQUEST_STATUS_HINT, request.status)}>
                           {t(`requestStatuses.${request.status}`)}
                         </StateBadge>
                       </div>
@@ -808,17 +857,19 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
                         && request.kind === "DUPLICATE_REPORT"
                         && ["SUBMITTED", "IN_REVIEW", "NEEDS_INFO"].includes(request.status)
                         ? (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="min-h-11 justify-self-start"
-                              onClick={() => {
-                                setSelectedDuplicateRequest(request)
-                                setDuplicateDecisionOpen(true)
-                              }}
-                            >
-                              {t("reviewDuplicateReport")}
-                            </Button>
+                            <Hint text={t("hint.reviewDuplicate")} align="start">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="min-h-11 justify-self-start"
+                                onClick={() => {
+                                  setSelectedDuplicateRequest(request)
+                                  setDuplicateDecisionOpen(true)
+                                }}
+                              >
+                                {t("reviewDuplicateReport")}
+                              </Button>
+                            </Hint>
                           )
                         : null}
                     </article>
@@ -897,14 +948,20 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
       <div className="sticky bottom-3 z-10 rounded-2xl border border-zinc-200 bg-background/95 p-3 shadow-lg backdrop-blur md:hidden dark:border-zinc-700">
         <div className={cn("grid gap-2", capabilities.canManage || capabilities.canRequestChanges ? "grid-cols-4" : "grid-cols-3")}>
           {capabilities.canManage || capabilities.canRequestChanges ? (
-            <Button type="button" variant="outline" onClick={() => setEditOpen(true)}>
-              <Pencil className="h-4 w-4" />
-              <span className="sr-only">{capabilities.canManage ? t("editContact") : t("suggestChange")}</span>
-            </Button>
+            <Hint text={changeHint} side="top">
+              <Button type="button" variant="outline" onClick={() => setEditOpen(true)}>
+                <Pencil className="h-4 w-4" />
+                <span className="sr-only">{capabilities.canManage ? t("editContact") : t("suggestChange")}</span>
+              </Button>
+            </Hint>
           ) : null}
-          {preferredPhone ? <Button asChild variant="outline"><a href={phoneHref(preferredPhone)}><Phone className="h-4 w-4" /><span className="sr-only">{t("call")}</span></a></Button> : <Button disabled variant="outline"><Phone className="h-4 w-4" /></Button>}
-          {preferredMessenger ? <Button asChild variant="outline"><a href={whatsappHref(preferredMessenger)} target="_blank" rel="noreferrer"><MessageCircle className="h-4 w-4" /><span className="sr-only">{t("message")}</span></a></Button> : <Button disabled variant="outline"><MessageCircle className="h-4 w-4" /></Button>}
-          <Button asChild><Link href={organizationReturn}><BriefcaseBusiness className="h-4 w-4" /><span className="sr-only">{t("openWorkplace")}</span></Link></Button>
+          {preferredPhone
+            ? <Hint text={t("hint.call")} side="top"><Button asChild variant="outline"><a href={phoneHref(preferredPhone)}><Phone className="h-4 w-4" /><span className="sr-only">{t("call")}</span></a></Button></Hint>
+            : <Hint wrap text={t("hint.noPhone")} side="top"><Button disabled variant="outline" className="w-full" aria-label={t("call")}><Phone className="h-4 w-4" /></Button></Hint>}
+          {preferredMessenger
+            ? <Hint text={t("hint.message")} side="top"><Button asChild variant="outline"><a href={whatsappHref(preferredMessenger)} target="_blank" rel="noreferrer"><MessageCircle className="h-4 w-4" /><span className="sr-only">{t("message")}</span></a></Button></Hint>
+            : <Hint wrap text={t("hint.noMessenger")} side="top"><Button disabled variant="outline" className="w-full" aria-label={t("message")}><MessageCircle className="h-4 w-4" /></Button></Hint>}
+          <Hint text={primaryWorkplace ? t("hint.openWorkplace") : t("hint.openWorkplaceList")} side="top"><Button asChild><Link href={organizationReturn}><BriefcaseBusiness className="h-4 w-4" /><span className="sr-only">{t("openWorkplace")}</span></Link></Button></Hint>
         </div>
       </div>
     </div>
@@ -917,6 +974,7 @@ function WorkplaceList({
   dateFormatter,
   t,
   canChange = false,
+  byRequest = false,
   onEdit,
   onEnd,
 }: {
@@ -925,6 +983,8 @@ function WorkplaceList({
   dateFormatter: DateFormatter
   t: ReturnType<typeof useTranslations>
   canChange?: boolean
+  /** The viewer changes a workplace by asking a manager, not directly. */
+  byRequest?: boolean
   onEdit?: (workplace: Workplace) => void
   onEnd?: (workplace: Workplace) => void
 }) {
@@ -939,8 +999,8 @@ function WorkplaceList({
             >
               {workplace.customer.name}
             </Link>
-            {workplace.isPrimary ? <StateBadge tone="positive">{t("primaryWorkplace")}</StateBadge> : null}
-            {workplace.endedOn ? <StateBadge>{t("historicalWorkplace")}</StateBadge> : null}
+            {workplace.isPrimary ? <StateBadge tone="positive" hint={t("hint.primaryWorkplace")}>{t("primaryWorkplace")}</StateBadge> : null}
+            {workplace.endedOn ? <StateBadge hint={t("hint.historicalWorkplace")}>{t("historicalWorkplace")}</StateBadge> : null}
           </div>
           <p className="text-sm text-muted-foreground">
             {[workplace.jobTitle, workplace.department, workplace.room ? t("room", { value: workplace.room }) : null].filter(Boolean).join(" · ") || t("workplaceRoleMissing")}
@@ -952,14 +1012,18 @@ function WorkplaceList({
           </div>
           {canChange && !workplace.endedOn ? (
             <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" size="sm" className="min-h-11 md:min-h-9" onClick={() => onEdit?.(workplace)}>
-                <Pencil className="h-4 w-4" />
-                {t("editWorkplace")}
-              </Button>
-              <Button type="button" variant="ghost" size="sm" className="min-h-11 text-muted-foreground md:min-h-9" onClick={() => onEnd?.(workplace)}>
-                <Clock3 className="h-4 w-4" />
-                {t("endWorkplace")}
-              </Button>
+              <Hint text={byRequest ? t("hint.editWorkplaceRequest") : t("hint.editWorkplace")}>
+                <Button type="button" variant="outline" size="sm" className="min-h-11 md:min-h-9" onClick={() => onEdit?.(workplace)}>
+                  <Pencil className="h-4 w-4" />
+                  {t("editWorkplace")}
+                </Button>
+              </Hint>
+              <Hint text={byRequest ? t("hint.endWorkplaceRequest") : t("hint.endWorkplace")}>
+                <Button type="button" variant="ghost" size="sm" className="min-h-11 text-muted-foreground md:min-h-9" onClick={() => onEnd?.(workplace)}>
+                  <Clock3 className="h-4 w-4" />
+                  {t("endWorkplace")}
+                </Button>
+              </Hint>
             </div>
           ) : null}
         </article>

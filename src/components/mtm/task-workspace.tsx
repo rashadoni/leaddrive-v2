@@ -29,6 +29,7 @@ import {
   Trash2,
 } from "lucide-react"
 
+import { Hint, HintValue } from "@/components/hint"
 import { MtmTaskActionsPanel } from "@/components/mtm/task-actions-panel"
 import { MtmTaskEditForm } from "@/components/mtm/task-edit-form"
 import { MtmTaskFilesPanel } from "@/components/mtm/task-files-panel"
@@ -189,6 +190,14 @@ const STATUS_VARIANT: Record<string, "outline" | "info" | "success" | "warning" 
   OVERDUE: "warning",
 }
 
+const STATUS_HINT = {
+  PENDING: "hint.wsStatusPending",
+  IN_PROGRESS: "hint.wsStatusInProgress",
+  COMPLETED: "hint.wsStatusCompleted",
+  CANCELLED: "hint.wsStatusCancelled",
+  OVERDUE: "hint.wsStatusOverdue",
+} as const
+
 const PRIORITY_VARIANT: Record<string, "outline" | "info" | "warning" | "destructive"> = {
   LOW: "outline",
   MEDIUM: "info",
@@ -272,7 +281,7 @@ function SectionHeading({
   )
 }
 
-function Definition({ label, children }: { label: string; children: ReactNode }) {
+function Definition({ label, children }: { label: ReactNode; children: ReactNode }) {
   return (
     <div className="min-w-0">
       <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
@@ -496,9 +505,9 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
             </Button>
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant={STATUS_VARIANT[task.status] || "outline"}>{t(`statuses.${task.status}` as never)}</Badge>
-                <Badge variant={PRIORITY_VARIANT[task.priority] || "outline"}>{t(`priorities.${task.priority}` as never)}</Badge>
-                <span className="text-xs text-muted-foreground">{t("version", { version: task.version })}</span>
+                <HintValue text={task.status in STATUS_HINT ? t(STATUS_HINT[task.status as keyof typeof STATUS_HINT]) : null}><Badge variant={STATUS_VARIANT[task.status] || "outline"}>{t(`statuses.${task.status}` as never)}</Badge></HintValue>
+                <HintValue text={t("hint.wsPriority")}><Badge variant={PRIORITY_VARIANT[task.priority] || "outline"}>{t(`priorities.${task.priority}` as never)}</Badge></HintValue>
+                <HintValue text={t("hint.wsVersion")} className="text-xs text-muted-foreground">{t("version", { version: task.version })}</HintValue>
               </div>
               <h1 className="max-w-[34ch] break-words text-2xl font-semibold tracking-tight sm:text-3xl">{task.title}</h1>
               <p className="text-sm text-muted-foreground">
@@ -507,13 +516,17 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
             </div>
           </div>
           <div className="flex flex-wrap gap-2 print:hidden xl:shrink-0 xl:justify-end">
-            <Button type="button" variant="outline" className="min-h-11" onClick={() => window.print()}>
-              <Printer className="h-4 w-4" />{t("print")}
-            </Button>
-            {canEdit ? (
-              <Button type="button" className="min-h-11" onClick={() => setEditing(true)}>
-                <Pencil className="h-4 w-4" />{t("edit")}
+            <Hint text={t("hint.wsPrint")}>
+              <Button type="button" variant="outline" className="min-h-11" onClick={() => window.print()}>
+                <Printer className="h-4 w-4" />{t("print")}
               </Button>
+            </Hint>
+            {canEdit ? (
+              <Hint text={t("hint.wsEdit")}>
+                <Button type="button" className="min-h-11" onClick={() => setEditing(true)}>
+                  <Pencil className="h-4 w-4" />{t("edit")}
+                </Button>
+              </Hint>
             ) : null}
           </div>
         </div>
@@ -531,7 +544,7 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
             <dl className="grid gap-x-8 gap-y-5 sm:grid-cols-2">
               <Definition label={t("assignee")}>{task.agent?.name}</Definition>
               <Definition label={t("team")}>{task.agent?.team?.name}</Definition>
-              <Definition label={t("taskGroup")}>
+              <Definition label={<HintValue text={t("hint.formGroup")}>{t("taskGroup")}</HintValue>}>
                 {task.taskGroup
                   ? locale.toLowerCase().startsWith("az")
                     ? task.taskGroup.labels.az
@@ -541,7 +554,7 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
                   : null}
               </Definition>
               <Definition label={t("organization")}>{task.customer?.name}</Definition>
-              <Definition label={t("event")}>
+              <Definition label={<HintValue text={t("hint.formEvent")}>{t("event")}</HintValue>}>
                 {task.visit ? (
                   <span className="block space-y-1">
                     <span className="block">{task.visit.contact?.displayName || t("visitEvent", { id: task.visit.id })}</span>
@@ -588,9 +601,9 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
             {task.recurrenceRule ? (
               <>
                 <dl className="grid gap-x-8 gap-y-5 sm:grid-cols-3">
-                  <Definition label={t("rule")}>{t(`recurrenceRules.${task.recurrenceRule}` as never)}</Definition>
-                  <Definition label={t("interval")}>{task.recurrenceInterval || 1}</Definition>
-                  <Definition label={t("recurrenceEnd")}>{formatRecurrenceDateTime(task.recurrenceUntil)}</Definition>
+                  <Definition label={<HintValue text={t("hint.formRule")}>{t("rule")}</HintValue>}>{t(`recurrenceRules.${task.recurrenceRule}` as never)}</Definition>
+                  <Definition label={<HintValue text={t("hint.formInterval")}>{t("interval")}</HintValue>}>{task.recurrenceInterval || 1}</Definition>
+                  <Definition label={<HintValue text={t("hint.formRecurrenceEnd")}>{t("recurrenceEnd")}</HintValue>}>{formatRecurrenceDateTime(task.recurrenceUntil)}</Definition>
                 </dl>
                 <div className="space-y-3">
                   <h3 className="text-xs font-medium text-muted-foreground">{t("nextOccurrences")}</h3>
@@ -601,14 +614,15 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
                           <span className="tabular-nums text-muted-foreground">{index + 1}</span>
                           <span>{formatRecurrenceDateTime(occurrence.dueDate || occurrence.scheduledStartAt)}</span>
                           {occurrence.dstAdjusted ? (
-                            <Badge
-                              variant="warning"
-                              title={occurrence.dstKind?.startsWith("AMBIGUOUS")
+                            <HintValue
+                              text={occurrence.dstKind?.startsWith("AMBIGUOUS")
                                 ? t("dstAmbiguousHint", { kind: occurrence.dstKind })
                                 : t("dstShiftHint", { minutes: occurrence.dstShiftedMinutes ?? 0 })}
                             >
-                              {occurrence.dstKind?.startsWith("AMBIGUOUS") ? t("dstAmbiguous") : t("dstShift")}
-                            </Badge>
+                              <Badge variant="warning">
+                                {occurrence.dstKind?.startsWith("AMBIGUOUS") ? t("dstAmbiguous") : t("dstShift")}
+                              </Badge>
+                            </HintValue>
                           ) : null}
                         </li>
                       ))}
@@ -651,14 +665,16 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
 
           {canDelete ? (
             <section className="space-y-2 border-b border-zinc-200 pb-6 print:hidden dark:border-zinc-700">
-              <Button
-                type="button"
-                variant="destructive"
-                className="min-h-11 w-full"
-                onClick={openDeleteDialog}
-              >
-                <Trash2 className="h-4 w-4" aria-hidden="true" />{t("deleteTask")}
-              </Button>
+              <Hint text={t("hint.wsDelete")}>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="min-h-11 w-full"
+                  onClick={openDeleteDialog}
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />{t("deleteTask")}
+                </Button>
+              </Hint>
               <p className="text-xs leading-5 text-muted-foreground">{t("deleteTaskHint")}</p>
             </section>
           ) : null}
@@ -667,7 +683,7 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
             <SectionHeading icon={ClipboardCheck} title={t("execution")} />
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-3 text-sm">
-                <span className="text-muted-foreground">{t("progress")}</span>
+                <HintValue text={t("hint.progress")} className="text-muted-foreground">{t("progress")}</HintValue>
                 <span className="font-semibold tabular-nums">{task.progress ?? 0}%</span>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label={t("progress")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={task.progress ?? 0}>
@@ -686,7 +702,7 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
           <section className="space-y-4 border-b border-zinc-200 pb-6 dark:border-zinc-700">
             <div className="flex items-center justify-between gap-3">
               <h2 className="flex items-center gap-2 text-sm font-semibold"><History className="h-4 w-4 text-muted-foreground" />{t("timeline")}</h2>
-              <Badge variant="outline">{timeline.length}</Badge>
+              <HintValue text={t("hint.wsTimelineCount")}><Badge variant="outline">{timeline.length}</Badge></HintValue>
             </div>
             {timeline.length ? (
               <ol className="space-y-4">
@@ -714,7 +730,7 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
           <section className="space-y-4 border-b border-zinc-200 pb-6 dark:border-zinc-700">
             <div className="flex items-center justify-between gap-3">
               <h2 className="flex items-center gap-2 text-sm font-semibold"><FileText className="h-4 w-4 text-muted-foreground" />{t("files")}</h2>
-              <Badge variant="outline">{documents.length}</Badge>
+              <HintValue text={t("hint.wsFilesCount")}><Badge variant="outline">{documents.length}</Badge></HintValue>
             </div>
             {documents.length ? (
               <ul className="space-y-3">
@@ -739,9 +755,11 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
             <Link href={returnHref}><ArrowLeft className="h-4 w-4" />{t("back")}</Link>
           </Button>
           {canEdit ? (
-            <Button type="button" className="min-h-12 flex-[1.4]" onClick={() => setEditing(true)}>
-              <Pencil className="h-4 w-4" />{t("edit")}
-            </Button>
+            <Hint text={t("hint.wsEdit")} side="top">
+              <Button type="button" className="min-h-12 flex-[1.4]" onClick={() => setEditing(true)}>
+                <Pencil className="h-4 w-4" />{t("edit")}
+              </Button>
+            </Hint>
           ) : null}
         </div>
       </div> : null}
@@ -786,9 +804,11 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
                 {tc("cancel")}
               </Button>
               {deletePhase === "conflict" || deletePhase === "error" ? (
-                <Button type="button" className="min-h-11 w-full sm:w-auto" onClick={() => void recoverDeleteConflict()}>
-                  <RefreshCw className="h-4 w-4" aria-hidden="true" />{t("reloadAndReview")}
-                </Button>
+                <Hint text={t("hint.wsReloadAndReview")} side="top">
+                  <Button type="button" className="min-h-11 w-full sm:w-auto" onClick={() => void recoverDeleteConflict()}>
+                    <RefreshCw className="h-4 w-4" aria-hidden="true" />{t("reloadAndReview")}
+                  </Button>
+                </Hint>
               ) : (
                 <Button
                   type="button"

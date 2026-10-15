@@ -21,6 +21,7 @@ import {
   Route,
   Sigma,
 } from "lucide-react"
+import { Hint, HintValue } from "@/components/hint"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -262,6 +263,44 @@ const EVIDENCE_SOURCE_LABELS: Record<string, "evidenceSourceVisitCoordinates"> =
   VISIT_COORDINATES: "evidenceSourceVisitCoordinates",
 }
 
+const GPS_EVIDENCE_HINT: Record<GpsEvidenceState, "hint.evConfirmed" | "hint.evMissingCheckIn" | "hint.evMissingCheckOut" | "hint.evInvalidCheckIn" | "hint.evInvalidCheckOut" | "hint.evManuallyExcluded"> = {
+  CONFIRMED: "hint.evConfirmed",
+  MISSING_CHECK_IN: "hint.evMissingCheckIn",
+  MISSING_CHECK_OUT: "hint.evMissingCheckOut",
+  INVALID_CHECK_IN: "hint.evInvalidCheckIn",
+  INVALID_CHECK_OUT: "hint.evInvalidCheckOut",
+  MANUALLY_EXCLUDED: "hint.evManuallyExcluded",
+}
+
+const SOURCE_FRESHNESS_HINT = {
+  CURRENT: "hint.freshCurrent",
+  LATE: "hint.freshLate",
+  HISTORICAL: "hint.freshHistorical",
+  NO_SOURCE: "hint.freshMissing",
+} as const
+
+const AUTHORITY_HINT = {
+  SIGNED_POLICY: "hint.authoritySigned",
+  PARTIAL_DATA: "hint.authorityPartial",
+  UNSIGNED_POLICY: "hint.authorityUnsigned",
+} as const
+
+/** What each tab of a ledger lists — the same words on the metric card and in the register. */
+const BUCKET_HINT = {
+  plan: {
+    numerator: "hint.planNumerator",
+    denominator: "hint.planDenominator",
+    gpsDays: "hint.gpsDays",
+    exclusions: "hint.planExclusions",
+  },
+  gps: {
+    numerator: "hint.gpsNumerator",
+    denominator: "hint.gpsDenominator",
+    gpsDays: "hint.gpsDays",
+    exclusions: "hint.gpsExclusions",
+  },
+} as const
+
 function isGpsEvidenceState(value: string): value is GpsEvidenceState {
   return value in GPS_EVIDENCE_LABELS
 }
@@ -333,9 +372,11 @@ function MetricLedger({
             <p className="mt-0.5 max-w-[62ch] text-xs leading-5 text-muted-foreground">{definition}</p>
           </div>
         </div>
-        <strong className="shrink-0 text-2xl font-semibold tabular-nums tracking-tight sm:text-3xl">
-          {ratio.percentage.toLocaleString(locale, { maximumFractionDigits: 1 })}%
-        </strong>
+        <HintValue text={t(isPlan ? "hint.planPercent" : "hint.gpsPercent")} className="shrink-0">
+          <strong className="text-2xl font-semibold tabular-nums tracking-tight sm:text-3xl">
+            {ratio.percentage.toLocaleString(locale, { maximumFractionDigits: 1 })}%
+          </strong>
+        </HintValue>
       </div>
 
       <div className="mt-5" role="progressbar" aria-label={t("attainmentAria", { value: ratio.percentage })} aria-valuemin={0} aria-valuemax={100} aria-valuenow={ratio.percentage}>
@@ -343,10 +384,10 @@ function MetricLedger({
           <div className={cn("h-full rounded-full transition-transform duration-300", accent)} style={{ width: `${Math.max(0, Math.min(100, ratio.percentage))}%` }} />
         </div>
         <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <span className="text-sm tabular-nums">
+          <HintValue text={t(isPlan ? "hint.planRatio" : "hint.gpsRatio")} className="text-sm tabular-nums">
             <strong>{ratio.numerator.toLocaleString(locale)}</strong>
             <span className="text-muted-foreground"> / {ratio.denominator.toLocaleString(locale)}</span>
-          </span>
+          </HintValue>
           <span className="text-xs text-muted-foreground">{t("numeratorOverDenominator")}</span>
         </div>
       </div>
@@ -355,18 +396,19 @@ function MetricLedger({
         {buckets.map((bucket) => {
           const selected = active?.metric === metric && active.bucket === bucket
           return (
-            <button
-              key={bucket}
-              type="button"
-              onClick={() => onOpen({ metric, bucket })}
-              aria-pressed={selected}
-              className={cn(
-                "min-h-11 rounded-md px-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-10",
-                selected ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
-              )}
-            >
-              {t(bucket)}
-            </button>
+            <Hint key={bucket} text={t(BUCKET_HINT[metric][bucket])}>
+              <button
+                type="button"
+                onClick={() => onOpen({ metric, bucket })}
+                aria-pressed={selected}
+                className={cn(
+                  "min-h-11 rounded-md px-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-10",
+                  selected ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
+                )}
+              >
+                {t(bucket)}
+              </button>
+            </Hint>
           )
         })}
       </div>
@@ -494,8 +536,8 @@ function TrendChart({
       </svg>
       </div>
       <div className="flex flex-col gap-2 px-2 pb-2 sm:flex-row sm:justify-end">
-        <Button type="button" variant="ghost" size="sm" className="min-h-11 sm:min-h-8" onClick={() => onOpen("plan")}>{t("openPlanLedger")}</Button>
-        <Button type="button" variant="ghost" size="sm" className="min-h-11 sm:min-h-8" onClick={() => onOpen("gps")}>{t("openGpsLedger")}</Button>
+        <Hint text={t("hint.planDenominator")}><Button type="button" variant="ghost" size="sm" className="min-h-11 sm:min-h-8" onClick={() => onOpen("plan")}>{t("openPlanLedger")}</Button></Hint>
+        <Hint text={t("hint.gpsDenominator")}><Button type="button" variant="ghost" size="sm" className="min-h-11 sm:min-h-8" onClick={() => onOpen("gps")}>{t("openGpsLedger")}</Button></Hint>
       </div>
     </div>
   )
@@ -924,9 +966,11 @@ export function ExplainableKpiDashboard({ orgId, className }: ExplainableKpiDash
                   <span>{t(VISIT_TYPE_LABELS[visitType])}</span>
                   {fact.brandIds.length ? <span className="max-w-52 truncate">{fact.brandIds.map((id) => brandNameById.get(id) ?? id).join(", ")}</span> : null}
                   {"visitId" in fact ? (
-                    <Badge variant={evidenceState === "CONFIRMED" ? "success" : evidenceState === "MANUALLY_EXCLUDED" ? "warning" : evidenceState?.startsWith("INVALID") ? "destructive" : "outline"}>
-                      {evidenceState ? t(GPS_EVIDENCE_LABELS[evidenceState]) : t("evidenceUnknown")}
-                    </Badge>
+                    <HintValue text={evidenceState ? t(GPS_EVIDENCE_HINT[evidenceState]) : null}>
+                      <Badge variant={evidenceState === "CONFIRMED" ? "success" : evidenceState === "MANUALLY_EXCLUDED" ? "warning" : evidenceState?.startsWith("INVALID") ? "destructive" : "outline"}>
+                        {evidenceState ? t(GPS_EVIDENCE_LABELS[evidenceState]) : t("evidenceUnknown")}
+                      </Badge>
+                    </HintValue>
                   ) : null}
                   {fact.sourceAgentName && fact.sourceAgentId !== fact.agentId ? (
                     <span className="max-w-80 truncate" title={fact.sourceAgentName}>{t("sourceOwner")}: {fact.sourceAgentName}</span>
@@ -944,27 +988,40 @@ export function ExplainableKpiDashboard({ orgId, className }: ExplainableKpiDash
                   ) : null}
                 </div>
                 <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                  <Button asChild variant="outline" size="sm" className="min-h-11 w-full sm:min-h-8 sm:w-auto">
-                    <a href={factHref(fact)}>
-                      {drilldown?.metric === "gps" ? <History className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
-                      {t("openSource")}
-                    </a>
-                  </Button>
-                  {canAdjust ? (
-                    <Button
-                      type="button"
-                      variant={effectiveAction === "EXCLUDE" ? "outline" : "secondary"}
-                      size="sm"
-                      className={cn("min-h-11 w-full sm:min-h-8 sm:w-auto", effectiveAction === "EXCLUDE" && "text-amber-800 dark:text-amber-300")}
-                      onClick={() => startAdjustment(fact, effectiveAction)}
-                      disabled={adjustmentBusy || recalculating}
-                    >
-                      {effectiveAction === "EXCLUDE" ? <AlertTriangle className="h-4 w-4" /> : <RefreshCw className="h-4 w-4" />}
-                      {t(factType === "GPS_VISIT"
-                        ? effectiveAction === "EXCLUDE" ? "excludeGpsEvidence" : "restoreGpsEvidence"
-                        : effectiveAction === "EXCLUDE" ? "excludeFact" : "restoreFact")}
+                  <Hint text={t(drilldown?.metric === "gps" ? "hint.openSourceVisit" : "hint.openSourcePlan")}>
+                    <Button asChild variant="outline" size="sm" className="min-h-11 w-full sm:min-h-8 sm:w-auto">
+                      <a href={factHref(fact)}>
+                        {drilldown?.metric === "gps" ? <History className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
+                        {t("openSource")}
+                      </a>
                     </Button>
-                  ) : fact.adjustable === false ? <Badge variant="outline">{t("factReadOnly")}</Badge> : <Badge variant="outline">{t("gpsEvidenceMissing")}</Badge>}
+                  </Hint>
+                  {canAdjust ? (
+                    <Hint
+                      wrap
+                      text={recalculating
+                        ? t("hint.waitRecalc")
+                        : adjustmentBusy
+                          ? null
+                          : t(factType === "GPS_VISIT"
+                            ? effectiveAction === "EXCLUDE" ? "hint.excludeGps" : "hint.restoreGps"
+                            : effectiveAction === "EXCLUDE" ? "hint.excludeFact" : "hint.restoreFact")}
+                    >
+                      <Button
+                        type="button"
+                        variant={effectiveAction === "EXCLUDE" ? "outline" : "secondary"}
+                        size="sm"
+                        className={cn("min-h-11 w-full sm:min-h-8 sm:w-auto", effectiveAction === "EXCLUDE" && "text-amber-800 dark:text-amber-300")}
+                        onClick={() => startAdjustment(fact, effectiveAction)}
+                        disabled={adjustmentBusy || recalculating}
+                      >
+                        {effectiveAction === "EXCLUDE" ? <AlertTriangle className="h-4 w-4" /> : <RefreshCw className="h-4 w-4" />}
+                        {t(factType === "GPS_VISIT"
+                          ? effectiveAction === "EXCLUDE" ? "excludeGpsEvidence" : "restoreGpsEvidence"
+                          : effectiveAction === "EXCLUDE" ? "excludeFact" : "restoreFact")}
+                      </Button>
+                    </Hint>
+                  ) : fact.adjustable === false ? <HintValue text={t("hint.factReadOnly")}><Badge variant="outline">{t("factReadOnly")}</Badge></HintValue> : <HintValue text={t("hint.gpsEvidenceMissing")}><Badge variant="outline">{t("gpsEvidenceMissing")}</Badge></HintValue>}
                 </div>
 
                 {editorOpen && canAdjust ? (
@@ -979,10 +1036,21 @@ export function ExplainableKpiDashboard({ orgId, className }: ExplainableKpiDash
                     </label>
                     <div className="flex flex-col gap-2 sm:min-w-44">
                       {adjustmentError ? <span className="text-xs text-destructive" role="alert">{adjustmentError}</span> : null}
-                      <Button type="button" size="sm" className="min-h-11 sm:min-h-8" onClick={() => void submitAdjustment()} disabled={recalculating || adjustmentBusy || adjustmentReason.trim().length < 10 || adjustmentReason.trim().length > 500}>
-                        {adjustmentBusy ? <RefreshCw className="h-4 w-4 animate-spin" /> : null}
-                        {t(effectiveAction === "EXCLUDE" ? "confirmExclude" : "confirmRestore")}
-                      </Button>
+                      <Hint
+                        wrap
+                        text={adjustmentBusy
+                          ? null
+                          : recalculating
+                            ? t("hint.waitRecalc")
+                            : adjustmentReason.trim().length < 10
+                              ? t("hint.reasonTooShort")
+                              : t("hint.confirmAdjustment")}
+                      >
+                        <Button type="button" size="sm" className="min-h-11 w-full sm:min-h-8" onClick={() => void submitAdjustment()} disabled={recalculating || adjustmentBusy || adjustmentReason.trim().length < 10 || adjustmentReason.trim().length > 500}>
+                          {adjustmentBusy ? <RefreshCw className="h-4 w-4 animate-spin" /> : null}
+                          {t(effectiveAction === "EXCLUDE" ? "confirmExclude" : "confirmRestore")}
+                        </Button>
+                      </Hint>
                       <Button type="button" variant="ghost" size="sm" className="min-h-11 sm:min-h-8" onClick={() => { setAdjustmentEditor(null); setAdjustmentReason(""); setAdjustmentError(null) }} disabled={adjustmentBusy}>{t("cancel")}</Button>
                     </div>
                   </div>
@@ -1020,12 +1088,12 @@ export function ExplainableKpiDashboard({ orgId, className }: ExplainableKpiDash
                   <strong className="block truncate text-sm">{day.agentName}</strong>
                   <time dateTime={day.date} className="mt-0.5 block text-xs text-muted-foreground">{dateFormatter.format(new Date(`${day.date}T00:00:00.000Z`))}</time>
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                    {workforceEnabled ? <Badge variant={workdayState === "STARTED" ? "success" : workdayState === "PAUSED" ? "warning" : "outline"}>
+                    {workforceEnabled ? <HintValue text={t("hint.workday")}><Badge variant={workdayState === "STARTED" ? "success" : workdayState === "PAUSED" ? "warning" : "outline"}>
                       {t(workdayStateLabel ?? "workdayUnknown")}
-                    </Badge> : null}
-                    <span className="text-xs text-muted-foreground">
+                    </Badge></HintValue> : null}
+                    <HintValue text={evidenceSourceLabel ? t("hint.evidenceSource") : null} className="text-xs text-muted-foreground">
                       {t("evidenceSource")}: {t(evidenceSourceLabel ?? "evidenceSourceUnknown")}
-                    </span>
+                    </HintValue>
                   </div>
                   {workforceEnabled && day.workdayId ? (
                     <p className="mt-1 truncate text-xs text-muted-foreground" title={day.workdayId}>
@@ -1041,7 +1109,7 @@ export function ExplainableKpiDashboard({ orgId, className }: ExplainableKpiDash
                 <div className="min-w-0">
                   <div className="flex items-baseline justify-between gap-3 text-xs">
                     <span className="text-muted-foreground">{t("gpsDayRatio")}</span>
-                    <strong className="tabular-nums">{day.gpsConfirmedVisits.toLocaleString(locale)} / {day.completedVisits.toLocaleString(locale)} · {percentage.toLocaleString(locale, { maximumFractionDigits: 1 })}%</strong>
+                    <HintValue text={t("hint.gpsDayRatio")}><strong className="tabular-nums">{day.gpsConfirmedVisits.toLocaleString(locale)} / {day.completedVisits.toLocaleString(locale)} · {percentage.toLocaleString(locale, { maximumFractionDigits: 1 })}%</strong></HintValue>
                   </div>
                   <div
                     className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted"
@@ -1056,16 +1124,20 @@ export function ExplainableKpiDashboard({ orgId, className }: ExplainableKpiDash
                   {evidenceBreakdown.length ? (
                     <div className="mt-2 flex flex-wrap gap-1.5" aria-label={t("evidenceBreakdown")}>
                       {evidenceBreakdown.map(([state, count]) => (
-                        <Badge key={state} variant={state === "CONFIRMED" ? "success" : state === "MANUALLY_EXCLUDED" ? "warning" : state.startsWith("INVALID") ? "destructive" : "outline"}>
-                          {t(isGpsEvidenceState(state) ? GPS_EVIDENCE_LABELS[state] : "evidenceUnknown")}: {count.toLocaleString(locale)}
-                        </Badge>
+                        <HintValue key={state} text={isGpsEvidenceState(state) ? t(GPS_EVIDENCE_HINT[state]) : null}>
+                          <Badge variant={state === "CONFIRMED" ? "success" : state === "MANUALLY_EXCLUDED" ? "warning" : state.startsWith("INVALID") ? "destructive" : "outline"}>
+                            {t(isGpsEvidenceState(state) ? GPS_EVIDENCE_LABELS[state] : "evidenceUnknown")}: {count.toLocaleString(locale)}
+                          </Badge>
+                        </HintValue>
                       ))}
                     </div>
                   ) : null}
                 </div>
-                <Button asChild variant="outline" size="sm" className="min-h-11 w-full sm:min-h-8 sm:w-auto">
-                  <a href={gpsDayHref(day)}><History className="h-4 w-4" />{t(day.sourceAgents?.length === 1 ? "openGpsHistory" : "openSource")}</a>
-                </Button>
+                <Hint text={t(day.sourceAgents?.length === 1 ? "hint.openGpsHistory" : "hint.openDayVisits")}>
+                  <Button asChild variant="outline" size="sm" className="min-h-11 w-full sm:min-h-8 sm:w-auto">
+                    <a href={gpsDayHref(day)}><History className="h-4 w-4" />{t(day.sourceAgents?.length === 1 ? "openGpsHistory" : "openSource")}</a>
+                  </Button>
+                </Hint>
               </article>
             )
           })}
@@ -1089,42 +1161,60 @@ export function ExplainableKpiDashboard({ orgId, className }: ExplainableKpiDash
               </span>
               <h2 className="text-lg font-semibold tracking-tight">{t("title")}</h2>
               {recalculating ? (
-                <Badge variant="warning" role="status"><RefreshCw className="mr-1 h-3 w-3 animate-spin" />{t("recalculating")}</Badge>
+                <HintValue text={t("hint.recalculating")}><Badge variant="warning" role="status"><RefreshCw className="mr-1 h-3 w-3 animate-spin" />{t("recalculating")}</Badge></HintValue>
               ) : report ? (
-                <Badge variant="success" role="status"><CheckCircle2 className="mr-1 h-3 w-3" />{t("ready")}</Badge>
+                <HintValue text={t("hint.ready")}><Badge variant="success" role="status"><CheckCircle2 className="mr-1 h-3 w-3" />{t("ready")}</Badge></HintValue>
               ) : null}
             </div>
             <p className="mt-2 max-w-[72ch] text-sm leading-6 text-muted-foreground">{t("subtitle")}</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-            {report ? <Badge variant="outline" title={t("formulaCodeHint", { code: report.formula.version })}>{t("formulaName")}</Badge> : null}
-            {freshnessLabel ? (
-              <Badge variant={sourceFreshness === "CURRENT" ? "success" : sourceFreshness === "LATE" ? "warning" : sourceFreshness === "NO_SOURCE" ? "destructive" : "outline"}>
-                <Clock3 className="mr-1 h-3 w-3" />
-                {freshnessLabel}
-                {report?.formula.sourceUpdatedAt ? ` · ${dateTimeFormatter.format(new Date(report.formula.sourceUpdatedAt))}` : null}
-              </Badge>
+            {/* The code stays reachable — a manager quotes it when asking finance about a number. */}
+            {report ? <HintValue text={`${t("hint.formula")} ${t("formulaCodeHint", { code: report.formula.version })}`}><Badge variant="outline">{t("formulaName")}</Badge></HintValue> : null}
+            {freshnessLabel && sourceFreshness ? (
+              <HintValue text={t(SOURCE_FRESHNESS_HINT[sourceFreshness])}>
+                <Badge variant={sourceFreshness === "CURRENT" ? "success" : sourceFreshness === "LATE" ? "warning" : sourceFreshness === "NO_SOURCE" ? "destructive" : "outline"}>
+                  <Clock3 className="mr-1 h-3 w-3" />
+                  {freshnessLabel}
+                  {report?.formula.sourceUpdatedAt ? ` · ${dateTimeFormatter.format(new Date(report.formula.sourceUpdatedAt))}` : null}
+                </Badge>
+              </HintValue>
             ) : null}
-            {report ? <Badge id={authorityStatusId} variant={report.formula.authoritative ? "info" : "warning"}>{t(report.formula.completeness === "COMPLETE" ? "complete" : "partial")} · {t(report.formula.authoritative ? "authoritative" : report.formula.authorityReason === "UNSIGNED_POLICY" ? "unsignedPolicy" : "nonAuthoritative")}</Badge> : null}
-            {report?.formula.policy ? <Badge variant="outline" title={mtmKpiPolicyNameIsCode(report.formula.policy, locale) ? report.formula.policy.approvalReference : `${report.formula.policy.code} · ${report.formula.policy.approvalReference}`}>{t("approvedPolicy", { name: mtmKpiPolicyName(report.formula.policy, locale), version: report.formula.policy.version })}</Badge> : null}
-            <Button type="button" variant="outline" size="sm" className="min-h-11 sm:min-h-8" onClick={() => void exportCsv()} disabled={!report || !report.formula.authoritative || exportBusy || invalidRange || recalculating} title={report && !report.formula.authoritative ? t("exportUnavailablePartial") : undefined} aria-describedby={report && !report.formula.authoritative ? authorityStatusId : undefined}>
-              {exportBusy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-              {t("exportCsv")}
-            </Button>
-            <Button type="button" variant="outline" size="sm" className="min-h-11 sm:min-h-8" onClick={() => setRefreshSequence((value) => value + 1)} disabled={loadState === "loading" || recalculating || invalidRange}>
-              <RefreshCw className={cn("h-4 w-4", recalculating && "animate-spin")} />
-              {t("refresh")}
-            </Button>
+            {report ? <HintValue text={report.formula.authorityReason ? t(AUTHORITY_HINT[report.formula.authorityReason]) : null}><Badge id={authorityStatusId} variant={report.formula.authoritative ? "info" : "warning"}>{t(report.formula.completeness === "COMPLETE" ? "complete" : "partial")} · {t(report.formula.authoritative ? "authoritative" : report.formula.authorityReason === "UNSIGNED_POLICY" ? "unsignedPolicy" : "nonAuthoritative")}</Badge></HintValue> : null}
+            {report?.formula.policy ? <HintValue text={t("hint.policy", { reference: mtmKpiPolicyNameIsCode(report.formula.policy, locale) ? report.formula.policy.approvalReference : `${report.formula.policy.code} · ${report.formula.policy.approvalReference}` })}><Badge variant="outline">{t("approvedPolicy", { name: mtmKpiPolicyName(report.formula.policy, locale), version: report.formula.policy.version })}</Badge></HintValue> : null}
+            <Hint
+              wrap
+              text={exportBusy || !report
+                ? null
+                : !report.formula.authoritative
+                  ? t("exportUnavailablePartial")
+                  : invalidRange
+                    ? t("invalidRange")
+                    : recalculating
+                      ? t("hint.waitRecalc")
+                      : t("hint.export")}
+            >
+              <Button type="button" variant="outline" size="sm" className="min-h-11 sm:min-h-8" onClick={() => void exportCsv()} disabled={!report || !report.formula.authoritative || exportBusy || invalidRange || recalculating} aria-describedby={report && !report.formula.authoritative ? authorityStatusId : undefined}>
+                {exportBusy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                {t("exportCsv")}
+              </Button>
+            </Hint>
+            <Hint wrap text={loadState === "loading" || recalculating ? null : invalidRange ? t("invalidRange") : t("hint.refresh")}>
+              <Button type="button" variant="outline" size="sm" className="min-h-11 sm:min-h-8" onClick={() => setRefreshSequence((value) => value + 1)} disabled={loadState === "loading" || recalculating || invalidRange}>
+                <RefreshCw className={cn("h-4 w-4", recalculating && "animate-spin")} />
+                {t("refresh")}
+              </Button>
+            </Hint>
           </div>
         </div>
 
         {report ? (
           <div className="grid gap-px border-t border-zinc-200 bg-zinc-200 text-xs dark:border-zinc-700 dark:bg-zinc-700 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="flex items-center gap-2 bg-card px-4 py-3"><CalendarDays className="h-4 w-4 text-muted-foreground" /><span className="text-muted-foreground">{t("period")}</span><strong className="ml-auto tabular-nums">{appliedFilters ? `${dateFormatter.format(new Date(`${appliedFilters.from}T00:00:00.000Z`))} – ${dateFormatter.format(new Date(`${appliedFilters.to}T00:00:00.000Z`))}` : "—"}{data?.scope?.timezone ? <span className="ml-1 font-normal text-muted-foreground">({data.scope.timezone})</span> : null}</strong></div>
-            <div className="flex items-center gap-2 bg-card px-4 py-3"><Route className="h-4 w-4 text-muted-foreground" /><span className="text-muted-foreground">{t("visitType")}</span><strong className="ml-auto">{t(VISIT_TYPE_LABELS[appliedFilters?.visitType ?? "ALL"])}</strong></div>
-            <div className="flex items-center gap-2 bg-card px-4 py-3"><Clock3 className="h-4 w-4 text-muted-foreground" /><span className="text-muted-foreground">{t("generated")}</span><strong className="ml-auto tabular-nums">{dateTimeFormatter.format(new Date(report.formula.generatedAt))}</strong></div>
-            <div className="flex min-w-0 items-center gap-2 bg-card px-4 py-3"><Filter className="h-4 w-4 shrink-0 text-muted-foreground" /><span className="shrink-0 text-muted-foreground">{t("scope")}</span><strong data-testid="mtm-kpi-applied-scope" className="ml-auto min-w-0 text-right leading-5">{appliedScopeLabel}</strong></div>
+            <div className="flex items-center gap-2 bg-card px-4 py-3"><CalendarDays className="h-4 w-4 text-muted-foreground" /><HintValue text={t("hint.period")} className="text-muted-foreground">{t("period")}</HintValue><strong className="ml-auto tabular-nums">{appliedFilters ? `${dateFormatter.format(new Date(`${appliedFilters.from}T00:00:00.000Z`))} – ${dateFormatter.format(new Date(`${appliedFilters.to}T00:00:00.000Z`))}` : "—"}{data?.scope?.timezone ? <span className="ml-1 font-normal text-muted-foreground">({data.scope.timezone})</span> : null}</strong></div>
+            <div className="flex items-center gap-2 bg-card px-4 py-3"><Route className="h-4 w-4 text-muted-foreground" /><HintValue text={t("hint.visitType")} className="text-muted-foreground">{t("visitType")}</HintValue><strong className="ml-auto">{t(VISIT_TYPE_LABELS[appliedFilters?.visitType ?? "ALL"])}</strong></div>
+            <div className="flex items-center gap-2 bg-card px-4 py-3"><Clock3 className="h-4 w-4 text-muted-foreground" /><HintValue text={t("hint.generated")} className="text-muted-foreground">{t("generated")}</HintValue><strong className="ml-auto tabular-nums">{dateTimeFormatter.format(new Date(report.formula.generatedAt))}</strong></div>
+            <div className="flex min-w-0 items-center gap-2 bg-card px-4 py-3"><Filter className="h-4 w-4 shrink-0 text-muted-foreground" /><HintValue text={t("hint.scope")} className="shrink-0 text-muted-foreground">{t("scope")}</HintValue><strong data-testid="mtm-kpi-applied-scope" className="ml-auto min-w-0 text-right leading-5">{appliedScopeLabel}</strong></div>
           </div>
         ) : null}
       </section>
@@ -1159,7 +1249,7 @@ export function ExplainableKpiDashboard({ orgId, className }: ExplainableKpiDash
                 <SearchableSelect id="mtm-kpi-team" value={filters.teamId} onValueChange={updateTeam} options={teams.map((team) => ({ value: team.id, label: team.name }))} placeholder={t("allTeams")} searchPlaceholder={t("searchTeams")} noResultsLabel={t("noFilterResults")} />
               </div>
               <div className="space-y-1">
-                <label htmlFor="mtm-kpi-agent" className="text-sm font-medium">{t("employee")}</label>
+                <label htmlFor="mtm-kpi-agent" className="text-sm font-medium"><HintValue text={t("hint.employee")}>{t("employee")}</HintValue></label>
                 <SearchableSelect id="mtm-kpi-agent" value={filters.agentId} onValueChange={(agentId) => setFilters((current) => ({ ...current, agentId }))} options={filteredAgents.map((agent) => ({ value: agent.id, label: agent.name }))} placeholder={t("allEmployees")} searchPlaceholder={t("searchEmployees")} noResultsLabel={t("noFilterResults")} />
               </div>
               <Select label={t("visitType")} value={filters.visitType} onChange={(event) => setFilters((current) => ({ ...current, visitType: event.target.value as VisitType }))}>
@@ -1171,7 +1261,7 @@ export function ExplainableKpiDashboard({ orgId, className }: ExplainableKpiDash
               </div>
               <div className="flex flex-col gap-3 sm:col-span-2 sm:flex-row sm:items-center sm:justify-between xl:col-span-3">
                 <p className="max-w-[72ch] text-xs leading-5 text-muted-foreground">{t("brandFilterHint")}</p>
-                <Button type="button" variant="ghost" size="sm" className="self-start sm:self-auto" onClick={resetFilters}>{t("resetFilters")}</Button>
+                <Hint text={t("hint.resetFilters")}><Button type="button" variant="ghost" size="sm" className="self-start sm:self-auto" onClick={resetFilters}>{t("resetFilters")}</Button></Hint>
               </div>
             </div>
           </div>
@@ -1218,7 +1308,7 @@ export function ExplainableKpiDashboard({ orgId, className }: ExplainableKpiDash
             <Filter className="mx-auto h-7 w-7 text-muted-foreground" />
             <h3 className="mt-3 text-base font-semibold">{t("outOfScopeTitle")}</h3>
             <p className="mt-1 text-sm leading-6 text-muted-foreground">{t("outOfScopeDescription")}</p>
-            <Button type="button" variant="outline" className="mt-4" onClick={resetFilters}>{t("resetFilters")}</Button>
+            <Hint text={t("hint.resetFilters")}><Button type="button" variant="outline" className="mt-4" onClick={resetFilters}>{t("resetFilters")}</Button></Hint>
           </div>
         </section>
       ) : null}
@@ -1229,7 +1319,7 @@ export function ExplainableKpiDashboard({ orgId, className }: ExplainableKpiDash
             <section className="flex flex-col gap-3 rounded-xl border border-dashed border-zinc-300 bg-card px-5 py-5 dark:border-zinc-700 sm:flex-row sm:items-center">
               <BarChart3 className="h-7 w-7 shrink-0 text-muted-foreground" />
               <div className="max-w-lg"><h3 className="text-base font-semibold">{t("emptyTitle")}</h3><p className="mt-1 text-sm leading-6 text-muted-foreground">{t("emptyDescription")}</p></div>
-              <Button type="button" variant="outline" className="sm:ml-auto" onClick={resetFilters}>{t("resetFilters")}</Button>
+              <Hint text={t("hint.resetFilters")}><Button type="button" variant="outline" className="sm:ml-auto" onClick={resetFilters}>{t("resetFilters")}</Button></Hint>
             </section>
           ) : null}
 
@@ -1272,14 +1362,16 @@ export function ExplainableKpiDashboard({ orgId, className }: ExplainableKpiDash
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">{t("drilldownDescription")}</p>
                 </div>
-                <Badge variant="outline">{drilldown.bucket === "exclusions" ? excludedFacts.length : drilldown.bucket === "gpsDays" ? gpsDays.length : drilldownFacts.length} {t("facts")}</Badge>
+                <HintValue text={t("hint.factsCount")} className="self-start sm:self-auto"><Badge variant="outline">{drilldown.bucket === "exclusions" ? excludedFacts.length : drilldown.bucket === "gpsDays" ? gpsDays.length : drilldownFacts.length} {t("facts")}</Badge></HintValue>
               </div>
 
               <div className={cn("grid gap-1 border-b border-zinc-200 bg-muted/40 p-2 dark:border-zinc-700 sm:border-r", drilldown.metric === "gps" ? "grid-cols-2 sm:max-w-2xl sm:grid-cols-4" : "grid-cols-3 sm:max-w-lg")}>
                 {(drilldown.metric === "gps" ? ["numerator", "denominator", "gpsDays", "exclusions"] as const : ["numerator", "denominator", "exclusions"] as const).map((bucket) => (
-                  <button key={bucket} type="button" onClick={() => { setDrilldown({ ...drilldown, bucket }); setVisibleFacts(PAGE_SIZE); setVisibleAdjustments(PAGE_SIZE); setAdjustmentEditor(null); setAdjustmentReason(""); setAdjustmentError(null); setAdjustmentNotice(null) }} aria-pressed={drilldown.bucket === bucket} className={cn("min-h-11 rounded-md px-2 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-10", drilldown.bucket === bucket ? "bg-card shadow-sm" : "text-muted-foreground hover:bg-card/70")}>
-                    {t(bucket)}
-                  </button>
+                  <Hint key={bucket} text={t(BUCKET_HINT[drilldown.metric][bucket])}>
+                    <button type="button" onClick={() => { setDrilldown({ ...drilldown, bucket }); setVisibleFacts(PAGE_SIZE); setVisibleAdjustments(PAGE_SIZE); setAdjustmentEditor(null); setAdjustmentReason(""); setAdjustmentError(null); setAdjustmentNotice(null) }} aria-pressed={drilldown.bucket === bucket} className={cn("min-h-11 rounded-md px-2 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-10", drilldown.bucket === bucket ? "bg-card shadow-sm" : "text-muted-foreground hover:bg-card/70")}>
+                      {t(bucket)}
+                    </button>
+                  </Hint>
                 ))}
               </div>
 

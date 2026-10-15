@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useTranslations } from "next-intl"
 import { Check, FileUp, FolderPlus, PackageOpen, RefreshCw, Users } from "lucide-react"
+import { Hint, HintValue } from "@/components/hint"
 import { PageDescription } from "@/components/page-description"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -210,9 +211,11 @@ export default function MtmProductCatalogPage() {
           <option value="">{t("rootGroup")}</option>
           {groups.filter((group) => group.canManage).map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
         </Select>
-        <Button className="min-h-11" disabled={busy === "group"} onClick={() => void createGroup()}>
-          <FolderPlus className="mr-2 h-4 w-4" />{t("createGroup")}
-        </Button>
+        <Hint text={busy === "group" ? null : t("hint.createGroup")}>
+          <Button className="min-h-11" disabled={busy === "group"} onClick={() => void createGroup()}>
+            <FolderPlus className="mr-2 h-4 w-4" />{t("createGroup")}
+          </Button>
+        </Hint>
       </section>
 
       {loading ? (
@@ -225,15 +228,16 @@ export default function MtmProductCatalogPage() {
         <div className="grid gap-4 xl:grid-cols-[minmax(240px,320px)_minmax(0,1fr)]">
           <nav className="space-y-2" aria-label={t("groups")}>
             {groups.map((group) => (
-              <button
-                key={group.id}
-                type="button"
-                onClick={() => setSelectedGroupId(group.id)}
-                className={`min-h-14 w-full rounded-xl border px-4 py-3 text-left transition-colors ${selectedGroupId === group.id ? "border-primary bg-primary/5" : "border-zinc-200 bg-card hover:bg-muted/50 dark:border-zinc-800"}`}
-              >
-                <span className="block font-medium text-foreground">{group.name}</span>
-                <span className="mt-0.5 block text-xs text-muted-foreground">{t("groupSummary", { agents: group.members.filter((member) => member.role === "AGENT").length, products: group.products.length })}</span>
-              </button>
+              <Hint key={group.id} text={t("hint.group")} side="right">
+                <button
+                  type="button"
+                  onClick={() => setSelectedGroupId(group.id)}
+                  className={`min-h-14 w-full rounded-xl border px-4 py-3 text-left transition-colors ${selectedGroupId === group.id ? "border-primary bg-primary/5" : "border-zinc-200 bg-card hover:bg-muted/50 dark:border-zinc-800"}`}
+                >
+                  <span className="block font-medium text-foreground">{group.name}</span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">{t("groupSummary", { agents: group.members.filter((member) => member.role === "AGENT").length, products: group.products.length })}</span>
+                </button>
+              </Hint>
             ))}
           </nav>
 
@@ -245,12 +249,14 @@ export default function MtmProductCatalogPage() {
                     <h2 className="text-lg font-semibold">{selectedGroup.name}</h2>
                     <p className="mt-1 text-sm text-muted-foreground">{t("assignedAgentsHint")}</p>
                   </div>
-                  <Button className="min-h-11" disabled={!selectedGroup.canManage || busy === "members"} onClick={() => void saveMembers()}>
-                    <Users className="mr-2 h-4 w-4" />{t("saveAgents")}
-                  </Button>
+                  <Hint wrap text={busy === "members" ? null : selectedGroup.canManage ? t("hint.saveAgents") : t("hint.lockedGroup")}>
+                    <Button className="min-h-11" disabled={!selectedGroup.canManage || busy === "members"} onClick={() => void saveMembers()}>
+                      <Users className="mr-2 h-4 w-4" />{t("saveAgents")}
+                    </Button>
+                  </Hint>
                 </div>
                 {selectedGroup.members.some((member) => member.role === "MANAGER") ? (
-                  <p className="mt-3 text-xs text-muted-foreground">{t("managers")}: {selectedGroup.members.filter((member) => member.role === "MANAGER").map((member) => member.agent.name).join(", ")}</p>
+                  <p className="mt-3 text-xs text-muted-foreground"><HintValue text={t("hint.managers")}>{t("managers")}</HintValue>: {selectedGroup.members.filter((member) => member.role === "MANAGER").map((member) => member.agent.name).join(", ")}</p>
                 ) : null}
                 <div className="mt-3 grid max-h-64 gap-2 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
                   {fieldAgents.map((agent) => (
@@ -284,9 +290,11 @@ export default function MtmProductCatalogPage() {
                     <input id="mtm-product-presentation" type="file" accept=".pdf,.ppt,.pptx,application/pdf,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation" className="block min-h-11 w-full rounded-lg border border-zinc-200 bg-background p-2 text-sm dark:border-zinc-800" onChange={(event) => setPresentationFile(event.target.files?.[0] ?? null)} />
                   </label>
                 </div>
-                <Button className="mt-3 min-h-11 w-full sm:w-auto" disabled={!selectedGroup.canManage || busy === "product"} onClick={() => void createProduct()}>
-                  <FileUp className="mr-2 h-4 w-4" />{t("uploadAndCreate")}
-                </Button>
+                <Hint wrap={!selectedGroup.canManage} text={busy === "product" ? null : selectedGroup.canManage ? t("hint.uploadAndCreate") : t("hint.lockedGroup")}>
+                  <Button className="mt-3 min-h-11 w-full sm:w-auto" disabled={!selectedGroup.canManage || busy === "product"} onClick={() => void createProduct()}>
+                    <FileUp className="mr-2 h-4 w-4" />{t("uploadAndCreate")}
+                  </Button>
+                </Hint>
               </section>
 
               <section className="rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-800">
@@ -302,7 +310,7 @@ export default function MtmProductCatalogPage() {
                             {product.presentationVersion ? ` · v${product.presentationVersion}` : ""}
                           </p>
                         </div>
-                        <span className="text-xs text-muted-foreground">{t("openedCount", { count: product._count.presentationSessions })}</span>
+                        <HintValue text={t("hint.openedCount")} className="text-xs text-muted-foreground">{t("openedCount", { count: product._count.presentationSessions })}</HintValue>
                       </li>
                     ))}
                   </ul>
